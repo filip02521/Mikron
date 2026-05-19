@@ -1,0 +1,38 @@
+import { describe, expect, it } from "vitest";
+import { summarizeQueueInbox } from "./queue-inbox";
+import type { IndividualOrder } from "@/types/database";
+
+function order(extra: Partial<IndividualOrder> = {}): IndividualOrder {
+  return {
+    id: "1",
+    supplier_id: "s",
+    sales_person_id: "sp",
+    symbol: "A",
+    products: "P",
+    quantity: "1",
+    delivered_quantity: "-",
+    order_type: "Glowne",
+    request_kind: "zamowienie",
+    status: "Zamowione",
+    action_at: "2026-05-01",
+    ordered_at: "2026-05-01",
+    delivery_at: null,
+    ...extra,
+  };
+}
+
+describe("queue-inbox", () => {
+  it("summarizeQueueInbox rozdziela aktywne i rezygnacje z decyzją", () => {
+    const s = summarizeQueueInbox([
+      order({ id: "a" }),
+      order({
+        id: "c",
+        sales_cancelled_at: "2026-05-10",
+        sales_cancel_phase: "in_transit",
+        procurement_cancel_disposition: "to_stock",
+      }),
+    ]);
+    expect(s.activeCount).toBe(1);
+    expect(s.cancelLabelledCount).toBe(1);
+  });
+});

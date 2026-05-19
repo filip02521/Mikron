@@ -1,0 +1,58 @@
+import { describe, expect, it } from "vitest";
+import {
+  buildSalesCancelUpdate,
+  salesCancelOrderSelect,
+} from "./sales-cancel-db";
+
+describe("sales-cancel-db", () => {
+  it("salesCancelOrderSelect bez kolumn rezygnacji", () => {
+    expect(salesCancelOrderSelect({ hasCancelledAt: false, hasCancelPhase: false })).not
+      .toContain("sales_cancelled_at");
+  });
+
+  it("buildSalesCancelUpdate — legacy tylko before_order", () => {
+    expect(
+      buildSalesCancelUpdate(
+        { hasCancelledAt: false, hasCancelPhase: false },
+        "before_order",
+        "2026-05-01"
+      )
+    ).toEqual({ status: "Anulowane", sales_acknowledged_at: "2026-05-01" });
+    expect(
+      buildSalesCancelUpdate(
+        { hasCancelledAt: false, hasCancelPhase: false },
+        "in_transit",
+        "2026-05-01"
+      )
+    ).toBeNull();
+  });
+
+  it("buildSalesCancelUpdate — pełny schemat", () => {
+    const u = buildSalesCancelUpdate(
+      { hasCancelledAt: true, hasCancelPhase: true },
+      "in_transit",
+      "2026-05-01T00:00:00Z"
+    );
+    expect(u?.sales_cancelled_at).toBe("2026-05-01T00:00:00Z");
+    expect(u?.sales_cancel_phase).toBe("in_transit");
+    expect(u?.status).toBeUndefined();
+    expect(u?.sales_acknowledged_at).toBe("2026-05-01T00:00:00Z");
+  });
+
+  it("buildSalesCancelUpdate — każda faza trafia od razu do archiwum", () => {
+    for (const phase of ["before_order", "in_transit", "on_stock"] as const) {
+      const u = buildSalesCancelUpdate(
+        { hasCancelledAt: true, hasCancelPhase: true },
+        phase,
+        "2026-05-01T12:00:00Z"
+      );
+      expect(u?.sales_acknowledged_at).toBe("2026-05-01T12:00:00Z");
+    }
+    const before = buildSalesCancelUpdate(
+      { hasCancelledAt: true, hasCancelPhase: true },
+      "before_order",
+      "2026-05-01T12:00:00Z"
+    );
+    expect(before?.status).toBe("Anulowane");
+  });
+});

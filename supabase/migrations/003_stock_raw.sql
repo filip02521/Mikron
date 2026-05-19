@@ -1,0 +1,1 @@
+ALTER TABLE suppliers ADD COLUMN IF NOT EXISTS stock_raw TEXT DEFAULT '';

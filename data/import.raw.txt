@@ -1,0 +1,15 @@
+DOSTAWCA	 	KIEROWCA MIKRAN	ZLEC ODBIÓR	SPOSÓB	 	DODATKOWE	 	DATA ZAMÓWIENIA	 	DATA KOLEJNEGO	 	PRZESUNIĘCIE	 	ZAPAS	 	UWAGI URLOPOWE	
+Anycubic	 	✔	 	MAILOWO	 	PÓŁ ROKU
+Assosciated Dental Products (OEM)	 	MAILOWO	 	Steph Martin	 	28-11-2025	 	2026-05-29	 	ROK
+Aswad Insrtuments	 	✔	 	MAILOWO	 	Naseer Ahmed - EXCEL	 	12-03-2026	 	2026-07-09	 	ROK
+Deflex	 	✔	 	MAILOWO
+Dokuz Kimuya	 	MAILOWO	 	29-04-2026	 	2026-10-28	 	ROK
+Dongguan Godsaid Technology	 	MAILOWO	 	żywice Resione	 	2026-02-11	 	2026-08-12	 	ROK
+HASS	 	MAILOWO	 	Anna Kang
+Honkong Elegoo	 	✔	 	MAILOWO	 	DW: kerris@elegoo.com	 	3-3-2026	 	2026-06-30	 	ROK
+Profeta	 	✔	 	MAILOWO	 	kevinsha@jincheng.work
+Saeshin	 	✔	 	MAILOWO
+Shenzen Upcera	 	MAILOWO	 	Leo Qiu
+Song Young	 	✔	 	MAILOWO	 	Yasmin	 	29-12-2025	 	2026-05-18	 	ROK
+Up3D	 	MAILOWO	 	Cathy Lee	 	16-03-2026	 	2026-06-15	 	PÓŁ ROKU
+ZEALIKE TECH CO., LIMITED	 	MAILOWO	 	ROK	

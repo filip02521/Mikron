@@ -1,0 +1,117 @@
+DOSTAWCA 	SUMA DNI (GŁÓWNE) 	LICZBA DOSTAW (GŁÓWNE) 	ŚREDNI CZAS (GŁÓWNE) 	SUMA DNI (POBOCZNE) 	LICZBA DOSTAW (POBOCZNE) 	ŚREDNI CZAS (POBOCZNE) 	OSTATNIA AKTUALIZACJA
+3D Jake (niceshops) 	11 	2 	6 	2026-05-16 10:34:05
+Adammed 	18 	4 	5 	2026-05-16 10:34:05
+Airpress Polska 	2 	1 	2 	2026-05-16 10:34:05
+Al Dente 	11 	1 	11 	2026-05-16 10:34:05
+AllDentPharm 	4 	2 	2 	2026-05-16 10:34:05
+Amadar 	11 	5 	2 	5 	4 	1 	2026-05-16 10:34:05
+Ambident 	4 	2 	2 	2026-05-16 10:34:05
+AP Dental (Arkona) 	1 	1 	1 	2026-05-16 10:34:05
+Apoldent 	1 	1 	1 	2026-05-16 10:34:05
+ASA Dental 	64 	4 	16 	16 	2 	8 	2026-05-16 10:34:05
+Ballito Łodź 	2 	1 	2 	2026-05-16 10:34:05
+Bart Medical 	25 	2 	13 	25 	3 	8 	2026-05-16 10:34:05
+Bausch 	24 	5 	5 	9 	1 	9 	2026-05-16 10:34:05
+Bredent 	1 	1 	1 	22 	8 	3 	2026-05-16 10:34:05
+Carlo de Giorgi 	42 	3 	14 	9 	1 	9 	2026-05-16 10:34:05
+Ceramiques Refractaires 	19 	2 	10 	2026-05-16 10:34:05
+Chifa 	101 	3 	34 	161 	8 	20 	2026-05-16 10:34:05
+Complete Dental (Deflex) 	2 	1 	2 	2026-05-16 10:34:05
+Denon Dental 	28 	7 	4 	205 	25 	8 	2026-05-16 10:34:05
+Dental Drill 	5 	1 	5 	2026-05-16 10:34:05
+Dentalstore/At-Akcept 	12 	1 	12 	2026-05-16 10:34:05
+Dentex 	4 	2 	2 	2026-05-16 10:34:05
+Dentsply Sirona (dawny Zhermack) 	8 	1 	8 	2026-05-16 10:34:05
+DETAX 	30 	5 	6 	46 	6 	8 	2026-05-16 10:34:05
+DFS 	158 	3 	53 	256 	10 	26 	2026-05-16 10:34:05
+Domedic Dental KaVo 	25 	2 	13 	2026-05-16 10:34:05
+Dongguan Godsaid Technology 	6 	1 	6 	2026-05-16 10:34:05
+Dornwell 	1 	1 	1 	2026-05-16 10:34:05
+DREVE 	27 	4 	7 	94 	19 	5 	2026-05-16 10:34:05
+Drillstom 	1 	1 	1 	2026-05-16 10:34:05
+Drux 	14 	3 	5 	2026-05-16 10:34:05
+DT Shop 	39 	10 	4 	42 	9 	5 	2026-05-16 10:34:05
+Edenta 	64 	2 	32 	2026-05-16 10:34:05
+Effegi Brega 	63 	6 	11 	32 	3 	11 	2026-05-16 10:34:05
+Emichem/Salvemedical 	5 	2 	3 	3 	1 	3 	2026-05-16 10:34:05
+Equimed (palniki Bunsena) 	7 	1 	7 	6 	1 	6 	2026-05-16 10:34:05
+Erkodent (Giedrius Juzenas) 	49 	1 	49 	131 	6 	22 	2026-05-16 10:34:05
+Ernst Hinrichs ( eco gipsy) 	1 	1 	1 	2026-05-16 10:34:05
+Ernst Hinrichs (materiały) 	44 	4 	11 	73 	12 	6 	2026-05-16 10:34:05
+Eschenbach 	2 	1 	2 	2026-05-16 10:34:05
+EVE 	41 	5 	8 	28 	8 	4 	2026-05-16 10:34:05
+Everall7 	27 	10 	3 	60 	28 	2 	2026-05-16 10:34:05
+Falcon 	19 	5 	4 	9 	2 	5 	2026-05-16 10:34:05
+Formed (kamienie) 	3 	2 	2 	0 	1 	0 	2026-05-16 10:34:05
+Formlabs 	59 	10 	6 	110 	22 	5 	2026-05-16 10:34:05
+Gaz do palników 	0 	1 	0 	2026-05-16 10:34:05
+Graphenano Dental 	9 	1 	9 	2026-05-16 10:34:05
+Hansen Dental / SPOFA Dental 	15 	1 	15 	2026-05-16 10:34:05
+Hol-Dental Depot 	5 	4 	1 	8 	6 	1 	2026-05-16 10:34:05
+Holtrade / ACETAL 	11 	8 	1 	13 	8 	2 	2026-05-16 10:34:05
+Holtrade / Rhein 	8 	2 	4 	5 	4 	1 	2026-05-16 10:34:05
+INLAY / MERZ DENTAL 	7 	3 	2 	1 	1 	1 	2026-05-16 10:34:05
+IP Division 	11 	1 	11 	2 	1 	2 	2026-05-16 10:34:05
+IPD POLAND 	20 	14 	1 	27 	23 	1 	2026-05-16 10:34:05
+Ivoclar Vivadent - EXCEL 	423 	32 	13 	119 	10 	12 	2026-05-16 10:34:05
+JK Surgical 	4 	3 	1 	2026-05-16 10:34:05
+Keystone 	16 	1 	16 	34 	2 	17 	2026-05-16 10:34:05
+KKD-Top dent 	28 	3 	9 	3 	1 	3 	2026-05-16 10:34:05
+Kol-Dental 	3 	2 	2 	4 	3 	1 	2026-05-16 10:34:05
+Konopka 	5 	1 	5 	2 	1 	2 	2026-05-16 10:34:05
+Laboral 	16 	4 	4 	28 	11 	3 	2026-05-16 10:34:05
+Larident 	24 	1 	24 	24 	1 	24 	2026-05-16 10:34:05
+LEMI 	6 	1 	6 	2026-05-16 10:34:05
+Lewa Dental 	59 	5 	12 	62 	5 	12 	2026-05-16 10:34:05
+Major 	1 	1 	1 	4 	2 	2 	2026-05-16 10:34:05
+Makromed 	15 	6 	3 	2 	2 	1 	2026-05-16 10:34:05
+Mälzer Dental 	37 	2 	19 	5 	2 	3 	2026-05-16 10:34:05
+Marrodent 	1 	1 	1 	2 	3 	1 	2026-05-16 10:34:05
+Medilab 	7 	3 	2 	2026-05-16 10:34:05
+Meditrans 	19 	5 	4 	56 	9 	6 	2026-05-16 10:34:05
+Megadenta 	6 	1 	6 	2026-05-16 10:34:05
+Mercator Medical 	17 	3 	6 	2026-05-16 10:34:05
+Mesa 	19 	3 	6 	2026-05-16 10:34:05
+Mestra 	93 	7 	13 	80 	8 	10 	2026-05-16 10:34:05
+MGM System 	2 	2 	1 	2 	2 	1 	2026-05-16 10:34:05
+Model Tray 	10 	1 	10 	2026-05-16 10:34:05
+MOTYL-Pro (frezy) 	11 	5 	2 	11 	5 	2 	2026-05-16 10:34:05
+MOTYL-Pro (tarcze) 	6 	5 	1 	1 	1 	1 	2026-05-16 10:34:05
+MOTYL-Pro (trzymadełka) 	14 	6 	2 	2026-05-16 10:34:05
+Natrodent 	7 	2 	4 	2026-05-16 10:34:05
+Neopak 	4 	1 	4 	2026-05-16 10:34:05
+OMEC 	25 	3 	8 	2026-05-16 10:34:05
+Ortho-Expert 	1 	1 	1 	2026-05-16 10:34:05
+POL-INTECH 	5 	2 	3 	2 	2 	1 	2026-05-16 10:34:05
+Polirapid 	110 	6 	18 	2026-05-16 10:34:05
+Polkard 	53 	11 	5 	131 	16 	8 	2026-05-16 10:34:05
+Polkard BIS 	24 	12 	2 	7 	4 	2 	2026-05-16 10:34:05
+Primotec 	8 	2 	4 	2026-05-16 10:34:05
+Prodento-Optimed 	29 	3 	10 	11 	3 	4 	2026-05-16 10:34:05
+Protechno 	18 	2 	9 	2026-05-16 10:34:05
+Rayshape 	6 	1 	6 	2026-05-16 10:34:05
+Reitel 	64 	6 	11 	9 	2 	5 	2026-05-16 10:34:05
+Renfert - EXCEL 	66 	8 	8 	404 	86 	5 	2026-05-16 10:34:05
+Rhein83 	3 	1 	3 	2026-05-16 10:34:05
+ROKO 	6 	5 	1 	12 	7 	2 	2026-05-16 10:34:05
+ROKO Rhein 	1 	1 	1 	2026-05-16 10:34:05
+Rusneja (Bredent) 	43 	6 	7 	42 	9 	5 	2026-05-16 10:34:05
+Scheftner 	9 	1 	9 	2026-05-16 10:34:05
+Schuler Dental 	33 	5 	7 	4 	1 	4 	2026-05-16 10:34:05
+Schutz Dental 	35 	4 	9 	9 	3 	3 	2026-05-16 10:34:05
+Shenzen Upcera 	32 	1 	32 	2026-05-16 10:34:05
+Silconic (Dent-e-con) 	15 	2 	8 	4 	1 	4 	2026-05-16 10:34:05
+Silesia Dental 	15 	2 	8 	1 	1 	1 	2026-05-16 10:34:05
+SIRIO 	10 	2 	5 	6 	1 	6 	2026-05-16 10:34:05
+Sorriso (PMMA ML) 	30 	2 	15 	2026-05-16 10:34:05
+Swiatowy (korektory) 	2 	1 	2 	2026-05-16 10:34:05
+Tamipol/Asti (worki strunowe) 	2 	1 	2 	2026-05-16 10:34:05
+TECHIM 	49 	1 	49 	12 	1 	12 	2026-05-16 10:34:05
+Ugin 	26 	4 	7 	4 	1 	4 	2026-05-16 10:34:05
+Up3D 	5 	1 	5 	4 	1 	4 	2026-05-16 10:34:05
+VANECO 	2 	1 	2 	2026-05-16 10:34:05
+VOCO 	33 	3 	11 	7 	2 	4 	2026-05-16 10:34:05
+Widlarz (Premium Business Services) 	2 	1 	2 	2026-05-16 10:34:05
+Wiedent 	15 	4 	4 	39 	8 	5 	2026-05-16 10:34:05
+ZEALIKE TECH CO., LIMITED 	38 	1 	38 	2026-05-16 10:34:05
+Zhermack 	8 	1 	8 	2026-05-16 10:34:05

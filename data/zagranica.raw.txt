@@ -1,0 +1,68 @@
+DOSTAWCA	 	KIEROWCA MIKRAN	ZLEC ODBIÓR	 	SPOSÓB	 	DODATKOWE	 	DATA ZAMÓWIENIA	 	DATA KOLEJNEGO	 	PRZESUNIĘCIE	 	ZAPAS	 	UWAGI URLOPOWE	
+3D Jake (niceshops)	 	INTERNETOWO	 	login: aleksandra.stupczynska@mikran.com
+hasło: Mikran.pl	 	31-03-2026	 	2026-06-02	 	4 MIESIĄCE
+Al Dente	 	✔	 	MAILOWO	 	10-04-2026	 	2026-05-22	 	3 MIESIĄCE
+ASA Dental	 	MAILOWO	 	betty@asadental.it	 	24-03-2026	 	2026-05-26	 	3 MIESIĄCE
+Bart Medical	 	MAILOWO	 	Pasquale Matera	 	16-03-2026	 	2026-05-18	 	3 MIESIĄCE
+Bausch	 	MAILOWO	 	29-04-2026	 	2026-07-01	 	3 MIESIĄCE
+Carlo de Giorgi	 	✔	 	MAILOWO	 	12-05-2026	 	2026-07-14	 	3 MIESIĄCE
+Ceramiques Refractaires	 	MAILOWO	 	zapytania: technique@ceramiques-refractaires.com	 	06-05-2026	 	2026-07-08	 	3 MIESIĄCE
+Chemi Pharm (SRLdental)GILVESTY	 	✔	 	MAILOWO	 	Marek Budny: chemipharm@post.pl	 	14-01-2026	 	2026-05-18	 	2026-05-18	 	PÓŁ ROKU
+Complete Dental (Deflex)	 	✔	 	MAILOWO	 	Tomas Gracias	 	W RAZIE POTRZEBY
+Deguvest (Lukadent)	 	✔	 	MAILOWO	 	sales@lukadent.de	 	19-03-2026	 	2026-09-17	 	ROK
+Dental Flex Italia	 	MAILOWO	 	Zamawia Szymon	 	16-04-2026	 	2026-05-28	 	3 MIESIĄCE
+Dentarina UAB (separatory bez trzymadełka)	 	MAILOWO	 	01-12-2025	 	2026-06-01	 	ROK
+Dentsply Sirona (dawny Zhermack)	 	MAILOWO	 	nowy opiekun: marta.jakubowska@dentsplysirona.com
+FORMULARZ W EXCEL	 	29-04-2026	 	2026-05-27	 	2 MIESIĄCE
+DETAX	 	MAILOWO	 	NOWY MAIL: order@detax.comSTARY MAIL: apollonia.goodloe@detax.de	 	07-05-2026	 	2026-06-04	 	3 MIESIĄCE
+DFS	 	MAILOWO	 	buero@dfs-diamon.de	 	02-04-2026	 	2026-05-21	 	2026-05-21	 	3 MIESIĄCE
+DREVE	 	MAILOWO	 	Susanne Justitz	 	21-04-2026	 	2026-05-19	 	2 MIESIĄCE
+DREVE ECOSIL 22	 	✔	 	MAILOWO	 	Susanne Justitz	 	18-03-2026	 	2026-05-18	 	2026-05-18	 	1 MIESIĄC
+Dreve Otoplastik	 	MAILOWO	 	W RAZIE POTRZEBY
+Edenta	 	MAILOWO	 	05-05-2026	 	2026-07-07	 	3 MIESIĄCE
+Effegi Brega	 	✔	 	MAILOWO	 	05-05-2026	 	2026-06-02	 	2 MIESIĄCE
+EmerItalia	 	MAILOWO	 	W RAZIE POTRZEBY
+Ernst Hinrichs ( eco gipsy)	 	✔	 	MAILOWO	 	31-03-2026	 	2026-05-18	 	2026-05-18	 	3 MIESIĄCE
+Ernst Hinrichs (materiały)	 	✔	 	MAILOWO	 	06-05-2026	 	2026-06-03	 	2 MIESIĄCE
+EVE	 	MAILOWO	 	23-04-2026	 	2026-05-21	 	2 MIESIĄCE
+Formlabs	 	INTERNETOWO	 	login:aleksandra.stupczynska@mikran.com H: Mikran.pl2025	 	29-04-2026	 	2026-05-27	 	2 MIESIĄCE
+Giedrius Juzenas (Erkodent / Komet)	 	✔	 	MAILOWO	 	Giedrius Juzėnas	 	30-04-2026	 	2026-07-02	 	4 MIESIĄCE
+Graphenano Dental	 	MAILOWO	 	05-05-2026	 	2026-06-02	 	3 MIESIĄCE
+Hoffmann's	 	✔	 	MAILOWO	 	Claudia Bär	 	2026-03-24	 	2026-06-23	 	4 MIESIĄCE
+HPdent	 	MAILOWO	 	13-05-2026	 	2026-07-15	 	4 MIESIĄCE
+IP Division	 	✔	 	MAILOWO	 	Brigitte De Leo	 	13-03-2026	 	2026-05-22	 	4 MIESIĄCE
+IP Division ECO	 	✔	 	MAILOWO	 	Brigitte De Leo	 	10-04-2026	 	2026-06-12	 	PÓŁ ROKU
+Ivoclar Vivadent - EXCEL	 	MAILOWO	 	DW: Natalia.Marcinkowska@ivoclar.com, Anna.Demucha@ivoclar.com	 	12-05-2026	 	2026-05-18	 	2026-05-18	 	6
+Kemdent	 	MAILOWO	 	Monica O'Brien	 	19-03-2026	 	2026-05-21	 	5 MIESIĘCY
+Keystone	 	✔	 	MAILOWO	 	Grazia Russo	 	06-02-2026	 	2026-06-05	 	5 MIESIĘCY
+KKD-Top dent	 	MAILOWO	 	2026-04-23	 	2026-05-28	 	2 MIESIĄCE
+Larident	 	MAILOWO	 	Marco Rolleri: rolleri@larident.it/ inquiry: assistenza@larident.it	 	02-04-2026	 	2026-06-18	 	4 MIESIĄCE	
+DOSTAWCA	 	KIEROWCA MIKRAN	ZLEC ODBIÓR	 	SPOSÓB	 	DODATKOWE	 	DATA ZAMÓWIENIA	 	DATA KOLEJNEGO	 	PRZESUNIĘCIE	 	ZAPAS	 	UWAGI URLOPOWE	
+Lascod	 	✔	 	MAILOWO	 	2026-05-05	 	2026-07-07	 	3 MIESIĄCE
+Lewa Dental	 	MAILOWO	 	Monica Lohmiller	 	15-05-2026	 	2026-06-19	 	2 MIESIĄCE
+Mälzer Dental	 	MAILOWO	 	Damian Kalisz	 	21-04-2026	 	2026-06-23	 	4 MIESIĄCE
+MB DentinaLT (Shera)	 	✔	 	MAILOWO	 	Marijus Koržinskas	 	29-12-2025	 	2026-06-29	 	ROK
+Medin	 	MAILOWO	 	Paulíčková Šorfová Iveta	 	12-01-2026	 	2026-06-08	 	2026-06-08	 	3 MIESIĄCE
+Mesa	 	MAILOWO	 	DW: info@mesaitalia.it	 	07-05-2026	 	2026-06-04	 	2 MIESIĄCE
+Mestra	 	✔	 	MAILOWO	 	Teresa Navas	 	06-05-2026	 	2026-06-03	 	2 MIESIĄCE
+Model Tray	 	MAILOWO	 	DOSTOSOWAĆ SYMBOLE WEDŁUG KATALOGU	 	19-03-2026	 	2026-06-18	 	PÓŁ ROKU
+Nyte3D	 	MAILOWO	 	08-04-2026	 	2026-06-10	 	4 MIESIĄCE
+OMEC	 	MAILOWO	 	Angela Panzeri	 	21-04-2026	 	2026-06-02	 	2 MIESIĄCE
+Polirapid	 	MAILOWO	 	04-05-2026	 	2026-06-01	 	2 MIESIĄCE
+Primotec	 	MAILOWO	 	primotec@primogroup.de	 	2026-03-16	 	2026-05-18	 	3 MIESIĄCE
+Protechno	 	✔	 	MAILOWO	 	Maria Soms	 	17-04-2026	 	2026-06-19	 	3 MIESIĄCE
+Rayshape	 	MAILOWO	 	2 MIESIĄCE
+Realloy	 	✔	 	MAILOWO	 	soehnigen@realloy.net / s.baysan@realloy.net	 	31-03-2026	 	2026-05-26	 	2026-05-26	 	3 MIESIĄCE
+Reitel	 	MAILOWO	 	Christian Rösch: christian.roesch@reitel.com	 	27-03-2026	 	2026-05-29	 	3 MIESIĄCE
+Renfert - EXCEL	 	MAILOWO	 	Max - max.baitinger@renfert.de - szczegółowe pytania	 	17-04-2026	 	2026-05-18	 	2026-05-18	 	2 MIESIĄCE
+Rhein83	 	MAILOWO	 	4 MIESIĄCE
+Rusneja (Bredent)	 	MAILOWO	 	15-04-2026	 	2026-06-17	 	4 MIESIĄCE
+Scheftner	 	MAILOWO	 	25-03-2026	 	2026-07-22	 	PÓŁ ROKU
+Schuler Dental	 	MAILOWO	 	12-05-2026	 	2026-06-23	 	2 MIESIĄCE
+Schutz Dental	 	✔	 	MAILOWO	 	Zlecamy odbiór paczki (+25 kg Naxco)	 	16-04-2026	 	2026-06-18	 	4 MIESIĄCE
+Silconic (Dent-e-con)	 	MAILOWO	 	wsparcie Daniela Fischer: daniela.fischer@silconic.de	 	10-04-2026	 	2026-05-15	 	2 MIESIĄCE
+SIRIO	 	✔	 	MAILOWO	 	Monica Vignoli	 	08-04-2026	 	2026-06-10	 	3 MIESIĄCE
+TECHIM	 	✔	 	MAILOWO	 	04-05-2026	 	2026-07-06	 	PÓŁ ROKU
+Ugin	 	✔	 	MAILOWO	 	christelle.aronica@ugin-dentaire.fr
+DW Stefano.BIONDI@ugin-dentaire.fr	 	08-01-2026	 	2026-05-28	 	2026-05-28	 	3 MIESIĄCE
+VOCO	 	MAILOWO	 	Stefan Goedecke - s.goedecke@voco.de	 	29-04-2026	 	2026-05-27	 	2 MIESIĄCE	
