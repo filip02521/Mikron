@@ -1,5 +1,10 @@
 import type { IndividualRequestKind } from "@/types/database";
 import { parseOrderQuantity } from "@/lib/orders/individual";
+import {
+  MAX_PRODUCT_TEXT_LEN,
+  MAX_SYMBOL_LEN,
+  clampText,
+} from "@/lib/security/text-limits";
 
 export type RequestCompleteness = "complete" | "incomplete";
 
@@ -73,9 +78,15 @@ export function normalizeDraftProducts(draft: RequestDraft): {
   products: string;
   symbol: string;
 } {
-  const symbol = hasText(draft.symbol) ? draft.symbol!.trim() : "-";
-  const product = hasText(draft.product) ? draft.product!.trim() : "";
-  if (product) return { products: product, symbol };
-  if (hasText(draft.symbol)) return { products: draft.symbol!.trim(), symbol };
+  const symbolRaw = hasText(draft.symbol)
+    ? clampText(draft.symbol!, MAX_SYMBOL_LEN)
+    : "-";
+  const product = hasText(draft.product)
+    ? clampText(draft.product!, MAX_PRODUCT_TEXT_LEN)
+    : "";
+  if (product) return { products: product, symbol: symbolRaw };
+  if (hasText(draft.symbol)) {
+    return { products: clampText(draft.symbol!, MAX_PRODUCT_TEXT_LEN), symbol: symbolRaw };
+  }
   return { products: "Do uzupełnienia", symbol: "-" };
 }

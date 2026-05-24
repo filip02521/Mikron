@@ -2,7 +2,7 @@
 
 import type { MyOrderLine, MyOrderLineStockStatus } from "@/lib/orders/my-order-presenter";
 import { SalesClientNameEditor } from "@/components/moje/SalesClientNameEditor";
-import { Button } from "@/components/ui/Button";
+import { MyOrderAckButton } from "@/components/moje/MyOrderAckButton";
 import { cn } from "@/lib/cn";
 
 function stockBadge(status: MyOrderLineStockStatus): { label: string; className: string } | null {
@@ -34,6 +34,8 @@ export function MyOrderLineItem({
   emphasizeStock,
   canAcknowledge,
   pending,
+  acknowledgeLineLabel = "Potwierdź",
+  acknowledgeLineTitle,
   onAcknowledgePickup,
   canEditClient,
   onSaveClient,
@@ -44,6 +46,8 @@ export function MyOrderLineItem({
   emphasizeStock: boolean;
   canAcknowledge: boolean;
   pending: boolean;
+  acknowledgeLineLabel?: string;
+  acknowledgeLineTitle?: string;
   onAcknowledgePickup?: (orderId: string) => void;
   canEditClient?: boolean;
   onSaveClient?: (orderId: string, name: string | null) => void | Promise<void>;
@@ -56,7 +60,7 @@ export function MyOrderLineItem({
   return (
     <li
       className={cn(
-        "rounded-lg border px-2.5 py-2 transition-colors",
+        "rounded-md border px-2 py-1.5 transition-colors",
         emphasizeStock &&
           onStock &&
           "border-emerald-400 bg-emerald-50 shadow-md ring-2 ring-emerald-300/80",
@@ -109,15 +113,15 @@ export function MyOrderLineItem({
           .join(" · ")}
       </p>
       {canAcknowledge && line.canAcknowledgePickup && onAcknowledgePickup ? (
-        <Button
-          size="lg"
-          variant="secondary"
-          className="mt-2.5 w-full min-h-11 sm:w-auto sm:min-h-9 sm:py-2 sm:text-xs"
+        <MyOrderAckButton
+          variant="inline"
+          className="mt-2"
           disabled={pending}
+          title={acknowledgeLineTitle}
           onClick={() => onAcknowledgePickup(line.id)}
         >
-          Potwierdzam odbiór tej pozycji
-        </Button>
+          {acknowledgeLineLabel}
+        </MyOrderAckButton>
       ) : null}
     </li>
   );

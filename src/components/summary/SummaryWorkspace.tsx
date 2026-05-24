@@ -30,6 +30,7 @@ import type { SupplierDirectoryEntry } from "@/components/procurement/SupplierSe
 import { VerificationPendingBanner } from "@/components/verification/VerificationPendingBanner";
 import { VerificationModal } from "@/components/verification/VerificationModal";
 import { OnDemandSuppliersSheet } from "@/components/summary/OnDemandSuppliersSheet";
+import { DailyPanelHiddenSuppliers } from "@/components/summary/DailyPanelHiddenSuppliers";
 
 export function SummaryWorkspace({
   workspace,
@@ -225,6 +226,12 @@ export function SummaryWorkspace({
         onNewRequest={() => setOrderModalOpen(true)}
         onSelectSupplier={openSupplier}
         onNewSupplier={() => openEditFor("new")}
+        onOpenOnDemand={() => setOnDemandOpen(true)}
+      />
+
+      <DailyPanelHiddenSuppliers
+        report={workspace.panelHidden}
+        onOpenSupplier={openSupplier}
         onOpenOnDemand={() => setOnDemandOpen(true)}
       />
 

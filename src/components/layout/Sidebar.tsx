@@ -2,15 +2,19 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { navForRole, sidebarSubtitle, type NavGroup, type NavItem } from "@/lib/nav";
+import { isNavItemActive, navForRole, type NavGroup, type NavItem } from "@/lib/nav";
 import { useSalesUpdates } from "@/components/sales/SalesUpdatesContext";
-import { AppBrandMark } from "@/components/ui/AppBrandMark";
+import { SidebarBrandBlock } from "@/components/layout/SidebarBrandBlock";
 import {
-  brandMarkOnLightClass,
   brandSidebarFooter,
   brandSidebarNavScroll,
   brandSidebarShell,
 } from "@/lib/ui/brand";
+import {
+  navLinkActiveClass,
+  navLinkIdleClass,
+  sidebarHeaderClass,
+} from "@/lib/ui/ontime-theme";
 import type { UserRole } from "@/types/database";
 import { cn } from "@/lib/cn";
 import { createClient } from "@/lib/supabase/client";
@@ -31,9 +35,7 @@ function NavLink({
       href={item.href}
       className={cn(
         "group block rounded-lg px-3 py-2.5 transition-colors",
-        active
-          ? "bg-indigo-600 text-white shadow-sm shadow-indigo-600/20"
-          : "text-slate-700 hover:bg-slate-100 hover:text-slate-900"
+        active ? navLinkActiveClass : navLinkIdleClass
       )}
       aria-current={active ? "page" : undefined}
     >
@@ -98,8 +100,8 @@ function NavSection({
       </h2>
       <ul className="space-y-0.5">
         {group.items.map((item) => {
-          const active =
-            pathname === item.href || pathname.startsWith(item.href + "/");
+          const siblingHrefs = group.items.map((i) => i.href);
+          const active = isNavItemActive(pathname, item.href, siblingHrefs);
           const showDot =
             item.href === "/moje" && Boolean(salesUpdates?.hasUpdates) && !active;
 
@@ -147,26 +149,8 @@ export function Sidebar({
         brandSidebarShell
       )}
     >
-      <header className="shrink-0 border-b border-slate-100 px-4 pb-4 pt-5">
-        <div className="flex items-center gap-3">
-          <AppBrandMark size="sm" className={brandMarkOnLightClass} />
-          <div className="min-w-0 flex-1">
-            <p className="text-[15px] font-semibold tracking-tight text-slate-900">
-              System Dostaw
-            </p>
-            <p className="text-xs text-slate-500">
-              {role ? sidebarSubtitle(role) : "Niezalogowany"}
-            </p>
-          </div>
-        </div>
-        {userEmail ? (
-          <p
-            className="mt-3 truncate rounded-lg bg-slate-100 px-2.5 py-1.5 text-[11px] text-slate-600"
-            title={userEmail}
-          >
-            {userEmail}
-          </p>
-        ) : null}
+      <header className={sidebarHeaderClass}>
+        <SidebarBrandBlock role={role} userEmail={userEmail} />
       </header>
 
       <nav className={brandSidebarNavScroll}>
@@ -187,14 +171,11 @@ export function Sidebar({
           <button
             type="button"
             onClick={() => void signOut()}
-            className="w-full min-h-10 rounded-lg border border-slate-200 bg-white px-4 py-2.5 text-sm font-medium text-slate-700 transition hover:bg-slate-50"
+            className="w-full min-h-10 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-medium text-slate-600 shadow-sm transition hover:border-slate-300 hover:bg-slate-50"
           >
             Wyloguj
           </button>
         )}
-        <p className="mt-2 text-center text-[10px] font-medium text-slate-400">
-          Mikran
-        </p>
       </div>
     </aside>
   );

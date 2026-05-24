@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { navForRole } from "@/lib/nav";
+import { isNavItemActive, navForRole } from "@/lib/nav";
 import { useSalesUpdates } from "@/components/sales/SalesUpdatesContext";
 import { cn } from "@/lib/cn";
 
@@ -39,14 +39,14 @@ export function MobileSalesNav({
 
   return (
     <nav
-      className="fixed inset-x-0 bottom-0 z-50 border-t border-indigo-100/80 bg-white/95 backdrop-blur-md md:hidden"
+      className="fixed inset-x-0 bottom-0 z-50 border-t border-[var(--card-border)] bg-[var(--card)]/95 shadow-[0_-4px_12px_-4px_rgba(15,23,42,0.06)] backdrop-blur-md md:hidden"
       style={{ paddingBottom: "env(safe-area-inset-bottom, 0px)" }}
       aria-label="Nawigacja handlowca"
     >
       <ul className="mx-auto flex max-w-lg items-stretch justify-around">
         {items.map((item) => {
-          const active =
-            pathname === item.href || pathname.startsWith(item.href + "/");
+          const siblingHrefs = items.map((i) => i.href);
+          const active = isNavItemActive(pathname, item.href, siblingHrefs);
           const attentionBadge =
             item.badge != null && item.badge > 0 ? item.badge : 0;
           return (

@@ -15,7 +15,10 @@ import {
   isInformacjaRequest,
   type DeliveryProgress,
 } from "@/lib/orders/individual";
-import { isAwaitingSalesPickup } from "@/lib/orders/sales-pickup";
+import {
+  isAwaitingInformacjaAck,
+  isAwaitingSalesPickup,
+} from "@/lib/orders/sales-pickup";
 import {
   canEstimateDeliveryEta,
   orderPlacementAt,
@@ -48,6 +51,7 @@ export type MyOrderAcknowledgeMode =
   | "cancelled"
   | "cancel_notice"
   | "pickup"
+  | "availability"
   | "none";
 
 export type MyOrderLine = {
@@ -134,7 +138,7 @@ export function lineStockStatus(order: IndividualOrder): MyOrderLineStockStatus 
 }
 
 function canAcknowledgePickupForOrder(order: IndividualOrder): boolean {
-  return isAwaitingSalesPickup(order);
+  return isAwaitingSalesPickup(order) || isAwaitingInformacjaAck(order);
 }
 
 function resolveAcknowledgeMode(orders: IndividualOrder[]): MyOrderAcknowledgeMode {
@@ -143,8 +147,11 @@ function resolveAcknowledgeMode(orders: IndividualOrder[]): MyOrderAcknowledgeMo
   if (open.every((o) => o.status === "Anulowane")) {
     return "cancelled";
   }
-  if (open.some((o) => canAcknowledgePickupForOrder(o))) {
+  if (open.some((o) => isAwaitingSalesPickup(o))) {
     return "pickup";
+  }
+  if (open.some((o) => isAwaitingInformacjaAck(o))) {
+    return "availability";
   }
   return "none";
 }
@@ -167,7 +174,7 @@ function rowToLine(
 }
 
 function pickupMeta(orders: IndividualOrder[]) {
-  const pending = orders.filter((o) => canAcknowledgePickupForOrder(o));
+  const pending = orders.filter(canAcknowledgePickupForOrder);
   const readyTotal = orders.filter((o) => o.status === "Zrealizowane").length;
   const acknowledged = orders.filter(
     (o) => o.status === "Zrealizowane" && Boolean(o.sales_acknowledged_at)

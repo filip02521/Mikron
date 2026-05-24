@@ -1,5 +1,6 @@
+import { AuthBrandHeader } from "@/components/auth/AuthBrandHeader";
 import { AuthQuotePanel } from "@/components/auth/AuthQuotePanel";
-import { AppBrandMark } from "@/components/ui/AppBrandMark";
+import { ONTIME_AUTH_FOOTER } from "@/lib/ui/ontime-brand";
 import { cn } from "@/lib/cn";
 
 export function AuthScreenLayout({
@@ -15,13 +16,13 @@ export function AuthScreenLayout({
 }) {
   return (
     <div className={cn("flex min-h-dvh overflow-x-hidden", className)}>
-      <aside className="relative hidden overflow-hidden bg-gradient-to-br from-indigo-700 via-indigo-800 to-slate-900 lg:flex lg:w-[min(42%,28rem)] lg:flex-col lg:px-12 lg:py-14 xl:px-16">
+      <aside className="relative hidden overflow-hidden bg-gradient-to-br from-indigo-800 via-sky-900 to-slate-950 lg:flex lg:w-[min(42%,28rem)] lg:flex-col lg:px-12 lg:py-14 xl:px-16">
         <div
-          className="pointer-events-none absolute -left-24 top-1/4 h-72 w-72 rounded-full bg-indigo-400/20 blur-3xl motion-safe:animate-auth-float"
+          className="pointer-events-none absolute -left-24 top-1/4 h-72 w-72 rounded-full bg-sky-400/25 blur-3xl motion-safe:animate-auth-float"
           aria-hidden
         />
         <div
-          className="pointer-events-none absolute -right-16 bottom-1/4 h-56 w-56 rounded-full bg-violet-400/15 blur-3xl motion-safe:animate-auth-float motion-safe:[animation-delay:1.2s]"
+          className="pointer-events-none absolute -right-16 bottom-1/4 h-56 w-56 rounded-full bg-indigo-400/20 blur-3xl motion-safe:animate-auth-float motion-safe:[animation-delay:1.2s]"
           aria-hidden
         />
         <AuthQuotePanel className="relative z-10 flex-1" />
@@ -38,19 +39,18 @@ export function AuthScreenLayout({
           )}
         >
           <div className="auth-enter w-full">
-            <header className="mb-5 text-center sm:mb-6 lg:mb-8">
-              <AppBrandMark
-                size="lg"
-                className="mx-auto mb-3 bg-indigo-600 shadow-indigo-600/25 ring-indigo-500/30 sm:mb-4 motion-safe:transition-transform motion-safe:hover:scale-[1.02]"
-              />
-              <h1 className="text-xl font-semibold tracking-tight text-slate-900 sm:text-2xl">
-                {title}
-              </h1>
-              {subtitle ? (
-                <p className="mx-auto mt-2 max-w-[28rem] text-sm leading-relaxed text-slate-500">
-                  {subtitle}
-                </p>
-              ) : null}
+            <header className="mb-5 sm:mb-6 lg:mb-8">
+              <AuthBrandHeader className="mb-5 sm:mb-6" />
+              <div className="text-center">
+                <h1 className="text-lg font-semibold tracking-tight text-slate-900 sm:text-xl">
+                  {title}
+                </h1>
+                {subtitle ? (
+                  <p className="mx-auto mt-2 max-w-[28rem] text-sm leading-relaxed text-slate-500">
+                    {subtitle}
+                  </p>
+                ) : null}
+              </div>
             </header>
 
             <AuthQuotePanel compact className="mb-5 lg:hidden" />
@@ -60,7 +60,7 @@ export function AuthScreenLayout({
             </div>
 
             <p className="mt-6 text-center text-xs leading-relaxed text-slate-400 lg:hidden">
-              Mikran · System Dostaw
+              {ONTIME_AUTH_FOOTER}
             </p>
           </div>
         </div>

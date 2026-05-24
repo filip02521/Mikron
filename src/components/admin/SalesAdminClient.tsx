@@ -9,6 +9,12 @@ import {
   actionDeleteSalesPerson,
 } from "@/app/actions/admin";
 import { actionGenerateSalesPersonInviteLink } from "@/app/actions/users";
+import {
+  actionCreateSalesTeamUser,
+  actionGenerateSalesTeamInviteLink,
+  actionResetSalesTeamUserPassword,
+} from "@/app/actions/sales-manager";
+import { TempPasswordDialog } from "@/components/sales/TempPasswordDialog";
 import { InviteLinkDialog } from "@/components/admin/InviteLinkDialog";
 import type { SalesInviteLinkResult } from "@/lib/users/sales-invite";
 import { Card, CardHeader } from "@/components/ui/Card";
@@ -24,7 +30,14 @@ type FormState = { id?: string; name: string; email: string };
 
 const emptyForm = (): FormState => ({ name: "", email: "" });
 
-export function SalesAdminClient({ initial }: { initial: SalesPersonAdminRow[] }) {
+export function SalesAdminClient({
+  initial,
+  managerMode = false,
+}: {
+  initial: SalesPersonAdminRow[];
+  /** Kierownik handlowców — bez usuwania, z hasłem jednorazowym */
+  managerMode?: boolean;
+}) {
   const router = useRouter();
   const [rows, setRows] = useState(initial);
   useEffect(() => {
@@ -40,6 +53,13 @@ export function SalesAdminClient({ initial }: { initial: SalesPersonAdminRow[] }
   const [form, setForm] = useState<FormState>(emptyForm);
   const [deleteTarget, setDeleteTarget] = useState<SalesPersonAdminRow | null>(null);
   const [inviteDialog, setInviteDialog] = useState<SalesInviteLinkResult | null>(null);
+  const [tempPasswordDialog, setTempPasswordDialog] = useState<{
+    email: string;
+    salesPersonName: string;
+    tempPassword: string;
+    variant: "create" | "reset";
+  } | null>(null);
+  const [resetTarget, setResetTarget] = useState<SalesPersonAdminRow | null>(null);
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -63,7 +83,9 @@ export function SalesAdminClient({ initial }: { initial: SalesPersonAdminRow[] }
   };
 
   const runInviteLink = async (salesPersonId: string, afterAdd = false) => {
-    const r = await actionGenerateSalesPersonInviteLink(salesPersonId);
+    const r = managerMode
+      ? await actionGenerateSalesTeamInviteLink(salesPersonId)
+      : await actionGenerateSalesPersonInviteLink(salesPersonId);
     if ("error" in r) {
       setToast({ text: r.error, tone: "error" });
       return;
@@ -95,13 +117,33 @@ export function SalesAdminClient({ initial }: { initial: SalesPersonAdminRow[] }
   const save = () => {
     const wasNew = !form.id;
     start(async () => {
+      if (managerMode && wasNew) {
+        const r = await actionCreateSalesTeamUser({
+          name: form.name,
+          email: form.email,
+        });
+        if ("error" in r) {
+          setToast({ text: r.error, tone: "error" });
+          return;
+        }
+        resetForm();
+        setTempPasswordDialog({
+          email: r.email,
+          salesPersonName: r.salesPersonName,
+          tempPassword: r.tempPassword,
+          variant: "create",
+        });
+        router.refresh();
+        return;
+      }
+
       const r = await actionUpsertSalesPerson(form);
       if ("error" in r) {
         setToast({ text: r.error, tone: "error" });
         return;
       }
       resetForm();
-      if (wasNew) {
+      if (wasNew && !managerMode) {
         await runInviteLink(r.id, true);
       } else {
         setToast({ text: "Zapisano zmiany handlowca.", tone: "success" });
@@ -116,6 +158,53 @@ export function SalesAdminClient({ initial }: { initial: SalesPersonAdminRow[] }
       {inviteDialog ? (
         <InviteLinkDialog invite={inviteDialog} onClose={() => setInviteDialog(null)} />
       ) : null}
+      {tempPasswordDialog ? (
+        <TempPasswordDialog
+          email={tempPasswordDialog.email}
+          salesPersonName={tempPasswordDialog.salesPersonName}
+          tempPassword={tempPasswordDialog.tempPassword}
+          variant={tempPasswordDialog.variant}
+          onClose={() => setTempPasswordDialog(null)}
+        />
+      ) : null}
+      <ConfirmDialog
+        open={!!resetTarget}
+        title="Zresetować hasło?"
+        message={
+          resetTarget
+            ? `Wygenerujesz nowe hasło jednorazowe dla „${resetTarget.name}". Poprzednie hasło przestanie działać — użytkownik przy logowaniu ustawi własne.`
+            : ""
+        }
+        confirmLabel="Resetuj hasło"
+        danger
+        pending={pending}
+        onCancel={() => setResetTarget(null)}
+        onConfirm={() => {
+          if (!resetTarget?.linkedUserId) {
+            setResetTarget(null);
+            return;
+          }
+          start(async () => {
+            const r = await actionResetSalesTeamUserPassword(resetTarget.id);
+            setResetTarget(null);
+            if ("error" in r) {
+              setToast({ text: r.error, tone: "error" });
+              return;
+            }
+            setTempPasswordDialog({
+              email: r.email,
+              salesPersonName: r.salesPersonName,
+              tempPassword: r.tempPassword,
+              variant: "reset",
+            });
+            setToast({
+              text: "Hasło zresetowane — skopiuj dane z okna i przekaż handlowcowi.",
+              tone: "success",
+            });
+            router.refresh();
+          });
+        }}
+      />
       <ConfirmDialog
         open={!!deleteTarget}
         title="Usunąć handlowca?"
@@ -168,7 +257,11 @@ export function SalesAdminClient({ initial }: { initial: SalesPersonAdminRow[] }
           <Card>
             <CardHeader
               title={form.id ? "Edytuj handlowca" : "Dodaj handlowca"}
-              description="E-mail służy do powiadomień i jako login przy zakładaniu konta."
+              description={
+                managerMode && !form.id
+                  ? "Utworzysz kartę handlowca i konto logowania. Hasło jednorazowe przekażesz osobiście — przy pierwszym logowaniu ustawi własne."
+                  : "E-mail służy do powiadomień i jako login przy zakładaniu konta."
+              }
             />
             <form
               className="grid gap-4 sm:grid-cols-2"
@@ -211,7 +304,11 @@ export function SalesAdminClient({ initial }: { initial: SalesPersonAdminRow[] }
           <CardHeader
             inset
             title={`Handlowcy (${rows.length})`}
-            description="Wygeneruj link zaproszenia — handlowiec ustawi hasło i konto powiąże się automatycznie."
+            description={
+              managerMode
+                ? "Nowy handlowiec dostaje hasło jednorazowe. Dla kont z logowaniem — „Reset hasła”. Bez konta — link zaproszenia."
+                : "Wygeneruj link zaproszenia — handlowiec ustawi hasło i konto powiąże się automatycznie."
+            }
           />
           <div className="border-b border-slate-100 px-4 py-3">
             <Input
@@ -276,40 +373,57 @@ export function SalesAdminClient({ initial }: { initial: SalesPersonAdminRow[] }
                               >
                                 Link zaproszenia
                               </Button>
-                              <Link
-                                href={`/admin/uzytkownicy?handlowiec=${p.id}`}
-                                className="inline-flex items-center rounded-lg px-3 py-1.5 text-xs font-medium text-slate-500 hover:bg-slate-100 hover:text-slate-800"
-                              >
-                                Ręcznie
-                              </Link>
+                              {!managerMode ? (
+                                <Link
+                                  href={`/admin/uzytkownicy?handlowiec=${p.id}`}
+                                  className="inline-flex items-center rounded-lg px-3 py-1.5 text-xs font-medium text-slate-500 hover:bg-slate-100 hover:text-slate-800"
+                                >
+                                  Ręcznie
+                                </Link>
+                              ) : null}
                             </>
                           ) : (
-                            <Link
-                              href="/admin/uzytkownicy"
-                              className="inline-flex items-center rounded-lg px-3 py-1.5 text-xs font-medium text-slate-600 hover:bg-slate-100 hover:text-slate-900"
-                            >
-                              Konto
-                            </Link>
+                            <>
+                              {managerMode ? (
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  disabled={pending}
+                                  onClick={() => setResetTarget(p)}
+                                >
+                                  Reset hasła
+                                </Button>
+                              ) : (
+                                <Link
+                                  href="/admin/uzytkownicy"
+                                  className="inline-flex items-center rounded-lg px-3 py-1.5 text-xs font-medium text-slate-600 hover:bg-slate-100 hover:text-slate-900"
+                                >
+                                  Konto
+                                </Link>
+                              )}
+                            </>
                           )}
                           <Button variant="ghost" size="sm" onClick={() => startEdit(p)}>
                             Edytuj
                           </Button>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="text-rose-600 hover:text-rose-700"
-                            disabled={p.orderCount > 0 || !!p.linkedUserId}
-                            title={
-                              p.orderCount > 0
-                                ? "Nie można usunąć — są zamówienia w historii"
-                                : p.linkedUserId
-                                  ? "Najpierw usuń powiązane konto użytkownika"
-                                  : undefined
-                            }
-                            onClick={() => setDeleteTarget(p)}
-                          >
-                            Usuń
-                          </Button>
+                          {!managerMode ? (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="text-rose-600 hover:text-rose-700"
+                              disabled={p.orderCount > 0 || !!p.linkedUserId}
+                              title={
+                                p.orderCount > 0
+                                  ? "Nie można usunąć — są zamówienia w historii"
+                                  : p.linkedUserId
+                                    ? "Najpierw usuń powiązane konto użytkownika"
+                                    : undefined
+                              }
+                              onClick={() => setDeleteTarget(p)}
+                            >
+                              Usuń
+                            </Button>
+                          ) : null}
                         </div>
                       </td>
                     </tr>

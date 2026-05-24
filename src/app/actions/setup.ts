@@ -2,6 +2,7 @@
 
 import { createAdminClient } from "@/lib/supabase/admin";
 import { needsBootstrapSetup } from "@/lib/setup/bootstrap";
+import { isValidEmail } from "@/lib/security/text-limits";
 
 export async function actionBootstrapAdmin(form: {
   email: string;
@@ -12,6 +13,9 @@ export async function actionBootstrapAdmin(form: {
 
   if (!email || !password) {
     return { error: "Podaj e-mail i hasło." };
+  }
+  if (!isValidEmail(email)) {
+    return { error: "Podaj poprawny adres e-mail." };
   }
   if (password.length < 8) {
     return { error: "Hasło musi mieć co najmniej 8 znaków." };

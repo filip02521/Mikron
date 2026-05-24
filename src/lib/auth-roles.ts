@@ -12,6 +12,23 @@ export function isSales(role: UserRole): boolean {
   return role === "sales";
 }
 
+export function isSalesManager(role: UserRole): boolean {
+  return role === "sales_manager";
+}
+
+/** Handlowiec lub kierownik — panel /moje, /prosba, /plan */
+export function isSalesAccount(role: UserRole): boolean {
+  return role === "sales" || role === "sales_manager";
+}
+
+export function canManageSalesTeam(role: UserRole): boolean {
+  return role === "admin" || role === "sales_manager";
+}
+
+export function canViewTeamMemberOrders(role: UserRole): boolean {
+  return canManageSalesTeam(role);
+}
+
 /** Panel dzienny, kolejka, harmonogramy, formularz grupowy */
 export function canAccessOperations(role: UserRole): boolean {
   return role === "admin" || role === "zakupy";
@@ -23,6 +40,7 @@ export function canManageSuppliers(role: UserRole): boolean {
 }
 
 const PROCUREMENT_PREFIXES = ["/zakupy"];
+const SALES_TEAM_PREFIXES = ["/zespol"];
 
 const OPERATIONS_PATH_PREFIXES = [
   "/podsumowanie",
@@ -34,8 +52,11 @@ const OPERATIONS_PATH_PREFIXES = [
   ...PROCUREMENT_PREFIXES,
 ];
 
+const SALES_PATH_PREFIXES = ["/moje", "/plan", "/prosba"];
+
 export function homePathForRole(role: UserRole): string {
   if (canAccessOperations(role)) return "/podsumowanie";
+  if (isSalesManager(role)) return "/zespol";
   return "/moje";
 }
 
@@ -45,14 +66,15 @@ export function canAccessPath(role: UserRole, pathname: string): boolean {
   if (OPERATIONS_PATH_PREFIXES.some((p) => pathname === p || pathname.startsWith(`${p}/`))) {
     return canAccessOperations(role);
   }
-  if (
-    pathname.startsWith("/moje") ||
-    pathname.startsWith("/plan") ||
-    pathname.startsWith("/prosba")
-  ) {
-    return true;
+  if (SALES_TEAM_PREFIXES.some((p) => pathname === p || pathname.startsWith(`${p}/`))) {
+    return canManageSalesTeam(role);
   }
-  return pathname === "/" || pathname === "/login";
+  if (
+    SALES_PATH_PREFIXES.some((p) => pathname === p || pathname.startsWith(`${p}/`))
+  ) {
+    return isSalesAccount(role);
+  }
+  return pathname === "/" || pathname === "/login" || pathname === "/ustaw-haslo";
 }
 
 export function redirectPathAfterLogin(role: UserRole, next: string | null): string {

@@ -1,3 +1,5 @@
+import { MAX_BATCH_ORDER_LINES } from "@/lib/security/text-limits";
+
 export type ProductLineDraft = {
   id: string;
   symbol: string;
@@ -33,5 +35,6 @@ export function removeProductLineAt(
 }
 
 export function appendProductLine(lines: ProductLineDraft[]): ProductLineDraft[] {
+  if (lines.length >= MAX_BATCH_ORDER_LINES) return lines;
   return [...lines, newProductLine()];
 }

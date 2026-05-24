@@ -164,7 +164,7 @@ export function SupplierEditModal({
             <option value="PRZEZ INTERNET">Internet</option>
           </Select>
         </Field>
-        <Field label="E-mail" className="sm:col-span-2">
+        <Field label="E-mail i strony" className="sm:col-span-2">
           <Input
             disabled={pending}
             value={form.mails}

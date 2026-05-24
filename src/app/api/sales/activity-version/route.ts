@@ -1,11 +1,12 @@
 import { NextResponse } from "next/server";
 import { getSessionUser } from "@/lib/auth";
 import { resolveSalesPersonForUser } from "@/lib/auth/sales-person";
+import { isSalesAccount } from "@/lib/auth-roles";
 import { computeSalesActivityVersion } from "@/lib/orders/sales-activity-version";
 
 export async function GET() {
   const user = await getSessionUser();
-  if (!user || user.role !== "sales") {
+  if (!user || !isSalesAccount(user.role)) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 

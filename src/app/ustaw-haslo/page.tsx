@@ -7,7 +7,7 @@ export default function UstawHasloPage() {
   return (
     <AuthScreenLayout
       title="Ustaw hasło"
-      subtitle="Ustaw hasło do konta w Systemie Dostaw (link od administratora)"
+      subtitle="Ustaw hasło do konta OnTime (link od administratora)"
     >
       <SetPasswordForm />
     </AuthScreenLayout>

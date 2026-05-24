@@ -40,7 +40,9 @@ export function useDailyPanelRunner() {
           if (result.undo) {
             setFlash(null);
             setUndo({
-              message: `${successMessage} Masz 5 sekund na cofnięcie.`,
+              message: result.feedbackLines?.length
+                ? `${successMessage} Sprawdź termin poniżej — masz 5 s na cofnięcie.`
+                : `${successMessage} Masz 5 sekund na cofnięcie.`,
               detailLines: result.feedbackLines,
               payload: result.undo,
             });

@@ -1,4 +1,5 @@
 import type { IndividualOrderStatus, IndividualRequestKind } from "@/types/database";
+import { formatContactHref } from "@/lib/orders/supplier-contact";
 
 export function isInformacjaRequest(order: {
   request_kind?: IndividualRequestKind | null;
@@ -97,14 +98,11 @@ export function isMissingProduct(product: string): boolean {
   return keywords.some((k) => lower.includes(k));
 }
 
-export function formatContactNote(note: string, contact: string): string {
-  const upper = (note || "").toUpperCase();
-  const lower = (contact || "").toLowerCase().trim();
-  if (upper.includes("MAILOWO") && lower.includes("@")) {
-    return `mailto:${lower}`;
-  }
-  if (upper.includes("PRZEZ INTERNET") && lower.startsWith("http")) {
-    return lower;
-  }
-  return note;
+/** Zgodne z buildSupplierContactUi — jeden parser kontaktu. */
+export function formatContactNote(
+  note: string,
+  contact: string,
+  extraInfo?: string
+): string {
+  return formatContactHref(note, contact, extraInfo);
 }

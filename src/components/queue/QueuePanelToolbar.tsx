@@ -44,7 +44,7 @@ function MetricTile({
       {hint ? (
         <p
           className={cn(
-            "mt-0.5 text-[11px]",
+            "mt-0.5 text-[11px] leading-snug",
             tone === "amber"
               ? "text-amber-700/90"
               : tone === "sky"
@@ -93,33 +93,35 @@ export function QueuePanelToolbar({
 }) {
   return (
     <div className="rounded-xl border border-slate-200 bg-white p-4 sm:p-5">
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-        <div className="min-w-0 flex-1">
-          <p className="text-sm font-semibold text-slate-900">Przegląd magazynu</p>
-          <p className="mt-0.5 text-xs text-slate-500">
-            Zamówienia u dostawcy — towar często jeszcze nie dotarł. Po przyjęciu wpisz ilość na dole
-            listy; handlowiec dostanie e-mail. Rezygnacje rozliczasz w panelu dziennym.
-          </p>
-          <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-3">
-            <MetricTile
-              value={summary.activeCount}
-              label="Do przyjęcia"
-              hint="w kolejce dostaw"
-              href={summary.activeCount > 0 ? "#dostawy-handlowcy" : undefined}
-            />
-            <MetricTile
-              value={pickupReadyCount}
-              label="Gotowe do odbioru"
-              hint="u handlowców na zielono w Moje zamówienia"
-              tone="emerald"
-            />
-            <MetricTile
-              value={summary.partialCount}
-              label="Częściowo"
-              hint="część przyjęta, reszta czeka"
-            />
-          </div>
-        </div>
+      <p className="text-sm font-semibold text-slate-900">Przegląd magazynu</p>
+      <p className="mt-0.5 text-xs text-slate-500">
+        Zamówienia u dostawcy — towar często jeszcze nie dotarł. Po przyjęciu wpisz ilość na dole
+        listy; handlowiec dostanie e-mail. Rezygnacje rozliczasz w panelu dziennym.
+      </p>
+      <div
+        className={cn(
+          "mt-3 grid grid-cols-2 gap-2",
+          informacjaCount > 0 ? "sm:grid-cols-4" : "sm:grid-cols-3"
+        )}
+      >
+        <MetricTile
+          value={summary.activeCount}
+          label="Do przyjęcia"
+          hint="w kolejce dostaw"
+          href={summary.activeCount > 0 ? "#dostawy-handlowcy" : undefined}
+        />
+        <MetricTile
+          value={pickupReadyCount}
+          label="Gotowe do odbioru"
+          hint="u handlowców na zielono w Moje zamówienia"
+          tone="emerald"
+        />
+        <MetricTile
+          value={summary.partialCount}
+          label="Częściowo"
+          hint="część przyjęta, reszta czeka"
+          tone={summary.partialCount > 0 ? "amber" : "default"}
+        />
         {informacjaCount > 0 ? (
           <MetricTile
             value={informacjaCount}

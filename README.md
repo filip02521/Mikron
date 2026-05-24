@@ -54,13 +54,19 @@ npm run migrate -- ./data
 | `/moje` | Widok handlowca |
 | `/admin` | Synchronizacja, raporty, status systemu |
 
-## Cron (Vercel / Vercel Cron)
+## Retencja historii (6 miesięcy)
+
+- Na ekranie `/historia` widać tylko wpisy z ostatnich **6 miesięcy**.
+- **Usuwanie starych danych** działa automatycznie przy normalnej pracy (nowy wpis w historii standardowej, zakończenie/anulowanie prośby indywidualnej) — co najwyżej **raz na 24 h**, bez konfiguracji crona na serwerze aplikacji.
+- Opcjonalnie to samo robi poranny endpoint `/api/cron/morning` (jeśli masz crona — Vercel lub własny).
+
+## Cron (Vercel / własny serwer — opcjonalnie)
 
 Nagłówek: `Authorization: Bearer <CRON_SECRET>`
 
 | Kiedy (Europe/Warsaw, pn–pt) | Endpoint | Co robi |
 |------------------------------|----------|---------|
-| **6:00** | `/api/cron/morning` | Przelicza terminy dostawców (panel dzienny), domyka kolejkę realizacji, wysyła status do handlowców |
+| **6:00** | `/api/cron/morning` | Przelicza terminy dostawców (panel dzienny), domyka kolejkę realizacji |
 | **Co godzinę 8:00–18:59** | `/api/cron/process-deliveries` | Zapasowe domknięcie dostaw z kolejki |
 
 Vercel uruchamia crony w UTC; w kodzie sprawdzana jest strefa **Europe/Warsaw** (CET/CEST).

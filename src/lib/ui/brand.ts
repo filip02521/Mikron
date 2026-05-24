@@ -1,16 +1,30 @@
-/** Kolory i gradienty marki — logowanie (ciemny panel) vs aplikacja (jasny sidebar). */
+import { cn } from "@/lib/cn";
+import {
+  brandMarkAppClass,
+  sidebarFooterClass,
+  sidebarNavScrollClass,
+  sidebarShellClass,
+} from "@/lib/ui/ontime-theme";
+import { ONTIME_LOGO_SHAPE } from "@/lib/ui/ontime-brand";
 
-export const brandMarkClass =
-  "flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-white/15 text-sm font-bold text-white shadow-lg shadow-black/20 ring-1 ring-white/20";
+/** Kolory marki — kształt (ONTIME_LOGO_SHAPE) ustawia AppBrandMark. */
 
-/** Logo SD na jasnym tle (sidebar aplikacji). */
-export const brandMarkOnLightClass =
-  "bg-indigo-600 text-white shadow-md shadow-indigo-600/20 ring-1 ring-indigo-500/25";
+export const brandMarkOnDarkClass = cn(
+  ONTIME_LOGO_SHAPE,
+  "bg-white/15 text-white shadow-lg shadow-black/20 ring-1 ring-white/20"
+);
 
-export const brandSidebarShell =
-  "border-r border-slate-200/90 bg-white text-slate-900 shadow-[2px_0_24px_-12px_rgba(15,23,42,0.12)]";
+/** Logo OnTime na jasnym tle (sidebar, mobile). */
+export const brandMarkOnLightClass = cn(ONTIME_LOGO_SHAPE, brandMarkAppClass);
 
-export const brandSidebarNavScroll = "flex-1 overflow-y-auto px-2 py-3";
+/** @deprecated użyj brandMarkOnDarkClass — zachowane dla kompatybilności */
+export const brandMarkClass = cn(
+  "flex shrink-0 items-center justify-center text-sm font-bold",
+  brandMarkOnDarkClass
+);
 
-export const brandSidebarFooter =
-  "shrink-0 border-t border-slate-200 bg-slate-50/90 px-3 py-3";
+export const brandSidebarShell = sidebarShellClass;
+
+export const brandSidebarNavScroll = sidebarNavScrollClass;
+
+export const brandSidebarFooter = sidebarFooterClass;

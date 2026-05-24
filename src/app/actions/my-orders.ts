@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { getSessionUser } from "@/lib/auth";
 import { resolveSalesPersonForUser } from "@/lib/auth/sales-person";
+import { isSalesAccount } from "@/lib/auth-roles";
 import { createAdminClient } from "@/lib/supabase/admin";
 import {
   isSalesCancelNoticePending,
@@ -23,12 +24,12 @@ import type { IndividualRequestEditPayload } from "@/lib/orders/individual-reque
 async function salesPersonIdForAction(): Promise<string> {
   const user = await getSessionUser();
   if (!user) throw new Error("Wymagane logowanie");
-  if (user.role !== "sales") {
-    throw new Error("Tylko handlowiec może potwierdzać odbiór lub anulowanie.");
+  if (!isSalesAccount(user.role)) {
+    throw new Error("Brak uprawnień do tej operacji.");
   }
   const resolved = await resolveSalesPersonForUser(user);
   if (!resolved) {
-    throw new Error("Konto nie jest powiązane z handlowcem.");
+    throw new Error("Konto nie jest powiązane z kartą handlowca.");
   }
   return resolved.id;
 }
@@ -88,6 +89,7 @@ async function acknowledgeOrders(
   if (error) throw new Error(error.message);
 
   revalidatePath("/moje");
+  revalidatePath("/zespol");
   return { success: true, count: orderIds.length };
 }
 

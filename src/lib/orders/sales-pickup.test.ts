@@ -1,5 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { isAwaitingSalesPickup } from "./sales-pickup";
+import {
+  isAwaitingInformacjaAck,
+  isAwaitingSalesAck,
+  isAwaitingSalesPickup,
+} from "./sales-pickup";
 import type { IndividualOrder } from "@/types/database";
 
 function order(extra: Partial<IndividualOrder> = {}): IndividualOrder {
@@ -32,5 +36,24 @@ describe("sales-pickup", () => {
       false
     );
     expect(isAwaitingSalesPickup(order({ request_kind: "informacja" }))).toBe(false);
+  });
+
+  it("informacja Zrealizowane wymaga potwierdzenia powiadomienia", () => {
+    const info = order({
+      request_kind: "informacja",
+      quantity: "-",
+      ordered_at: null,
+    });
+    expect(isAwaitingInformacjaAck(info)).toBe(true);
+    expect(isAwaitingSalesAck(info)).toBe(true);
+    expect(
+      isAwaitingInformacjaAck(
+        order({
+          request_kind: "informacja",
+          quantity: "-",
+          sales_acknowledged_at: "2026-05-02",
+        })
+      )
+    ).toBe(false);
   });
 });

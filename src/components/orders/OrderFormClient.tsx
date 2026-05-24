@@ -90,8 +90,17 @@ function emptyEntry(salesPersonId = ""): Entry {
   };
 }
 
-function emptyGroup(salesPersonId = ""): Entry[] {
-  return [emptyEntry(salesPersonId)];
+function emptyGroup(salesPersonId = "", supplierId = ""): Entry[] {
+  const row = emptyEntry(salesPersonId);
+  if (supplierId) row.supplierId = supplierId;
+  return [row];
+}
+
+function buildInitialGroups(
+  lockedId: string,
+  initialSupplierId?: string | null
+): Entry[][] {
+  return [emptyGroup(lockedId, initialSupplierId ?? "")];
 }
 
 export function OrderFormClient({
@@ -100,6 +109,8 @@ export function OrderFormClient({
   statsBySupplierId = {},
   lockedSalesPerson,
   singleGroup = false,
+  submitForOther = false,
+  initialSupplierId,
 }: {
   suppliers: { id: string; name: string; stats_mode?: StatsMode }[];
   salesPeople: { id: string; name: string }[];
@@ -108,10 +119,16 @@ export function OrderFormClient({
   lockedSalesPerson?: { id: string; name: string } | null;
   /** Uproszczony formularz dla handlowca (jedna grupa produktów) */
   singleGroup?: boolean;
+  /** Kierownik składa prośbę w imieniu innego handlowca */
+  submitForOther?: boolean;
+  /** Z harmonogramu / linku — wstępnie wybrany dostawca */
+  initialSupplierId?: string | null;
 }) {
   const lockedId = lockedSalesPerson?.id ?? "";
   const [requestKind, setRequestKind] = useState<IndividualRequestKind>("zamowienie");
-  const [groups, setGroups] = useState<Entry[][]>([emptyGroup(lockedId)]);
+  const [groups, setGroups] = useState<Entry[][]>(() =>
+    buildInitialGroups(lockedId, initialSupplierId)
+  );
   const [pending, start] = useTransition();
   const [pendingMessage, setPendingMessage] = useState<string | null>(null);
   const [msg, setMsg] = useState<{ text: string; tone: "success" | "error" } | null>(
@@ -178,7 +195,7 @@ export function OrderFormClient({
           text: formatSubmitResult(r, requestKind, Boolean(singleGroup && lockedSalesPerson)),
           tone: "success",
         });
-        setGroups([emptyGroup(lockedId)]);
+        setGroups(buildInitialGroups(lockedId, initialSupplierId));
       } catch (e) {
         setMsg({
           text: e instanceof Error ? e.message : "Błąd",
@@ -222,9 +239,15 @@ export function OrderFormClient({
           onDismiss={dismissToast}
           action={
             msg.tone === "success" && singleGroup && lockedSalesPerson ? (
-              <Link href="/moje">
+              <Link
+                href={
+                  submitForOther
+                    ? `/moje?dla=${lockedSalesPerson.id}`
+                    : "/moje"
+                }
+              >
                 <Button variant="secondary" className="w-full">
-                  Moje zamówienia
+                  {submitForOther ? "Panel handlowca" : "Moje zamówienia"}
                 </Button>
               </Link>
             ) : undefined
@@ -270,7 +293,13 @@ export function OrderFormClient({
         <Card key={gi} padding={false}>
           <CardHeader
             inset
-            title={singleGroup && lockedSalesPerson ? "Twoja prośba" : `Grupa ${gi + 1}`}
+            title={
+              singleGroup && lockedSalesPerson
+                ? submitForOther
+                  ? `Prośba: ${lockedSalesPerson.name}`
+                  : "Twoja prośba"
+                : `Grupa ${gi + 1}`
+            }
             description={
               lockedSalesPerson
                 ? requestKind === "informacja"
@@ -306,30 +335,42 @@ export function OrderFormClient({
                   <span className="font-medium text-slate-900">Dla kogo: </span>
                   {lockedSalesPerson.name}
                   <span className="mt-1 block text-xs text-slate-600">
-                    Powiązane z Twoim kontem — nie trzeba wybierać z listy.
+                    {submitForOther
+                      ? "Prośba pojawi się na panelu tego handlowca."
+                      : "Powiązane z Twoim kontem — nie trzeba wybierać z listy."}
                   </span>
                 </div>
               ) : null}
-              <Field label="Dostawca (opcjonalnie przy weryfikacji)">
-                <Select
-                  value={group[0]?.supplierId ?? ""}
-                  onChange={(e) => {
-                    const v = e.target.value;
-                    setGroups((g) =>
-                      g.map((gr, i) =>
-                        i === gi ? gr.map((row) => ({ ...row, supplierId: v })) : gr
-                      )
-                    );
-                  }}
-                >
-                  <option value="">Wybierz dostawcę</option>
-                  {suppliers.map((s) => (
-                    <option key={s.id} value={s.id}>
-                      {s.name}
-                    </option>
-                  ))}
-                </Select>
-              </Field>
+              <div>
+                <Field label="Dostawca (opcjonalnie przy weryfikacji)">
+                  <Select
+                    value={group[0]?.supplierId ?? ""}
+                    onChange={(e) => {
+                      const v = e.target.value;
+                      setGroups((g) =>
+                        g.map((gr, i) =>
+                          i === gi ? gr.map((row) => ({ ...row, supplierId: v })) : gr
+                        )
+                      );
+                    }}
+                  >
+                    <option value="">Wybierz dostawcę</option>
+                    {suppliers.map((s) => (
+                      <option key={s.id} value={s.id}>
+                        {s.name}
+                      </option>
+                    ))}
+                  </Select>
+                </Field>
+                {initialSupplierId &&
+                group[0]?.supplierId === initialSupplierId &&
+                suppliers.some((s) => s.id === initialSupplierId) ? (
+                  <p className="mt-1 text-xs font-medium text-indigo-700">
+                    Wybrany z harmonogramu:{" "}
+                    {suppliers.find((s) => s.id === initialSupplierId)?.name}
+                  </p>
+                ) : null}
+              </div>
               {!lockedSalesPerson ? (
                 <Field label="Dla kogo (handlowiec)">
                   <Select

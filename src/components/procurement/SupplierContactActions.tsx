@@ -11,26 +11,29 @@ const linkClass =
 export function SupplierContactActions({
   notes,
   mails,
+  extraInfo,
   className,
 }: {
   notes: string;
   mails: string;
-  /** @deprecated — kontakt zawsze w jednej linii */
-  compact?: boolean;
+  extraInfo?: string;
   className?: string;
 }) {
   const [copied, setCopied] = useState(false);
-  const ui = buildSupplierContactUi(notes, mails);
+  const [copyFailed, setCopyFailed] = useState(false);
+  const ui = buildSupplierContactUi(notes, mails, extraInfo);
 
   const copyContact = async () => {
     const text = ui.copyText;
     if (!text) return;
+    setCopyFailed(false);
     try {
       await navigator.clipboard.writeText(text);
       setCopied(true);
       window.setTimeout(() => setCopied(false), 2000);
     } catch {
-      /* ignore */
+      setCopyFailed(true);
+      window.setTimeout(() => setCopyFailed(false), 3000);
     }
   };
 
@@ -61,8 +64,9 @@ export function SupplierContactActions({
           type="button"
           onClick={copyContact}
           className="text-xs font-medium text-slate-600 underline decoration-slate-300 underline-offset-2 hover:text-slate-900"
+          title={ui.copyText ?? undefined}
         >
-          {copied ? "Skopiowano" : "Kopiuj kontakt"}
+          {copied ? "Skopiowano" : copyFailed ? "Nie udało się skopiować" : "Kopiuj kontakt"}
         </button>
       )}
     </div>

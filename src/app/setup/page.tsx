@@ -13,7 +13,7 @@ export default async function SetupPage() {
   return (
     <AuthScreenLayout
       title="Pierwsza konfiguracja"
-      subtitle="Utwórz konto administratora Systemu Dostaw"
+      subtitle="Utwórz pierwsze konto administratora OnTime"
     >
       <ClearSessionOnSetup />
       <SetupForm />

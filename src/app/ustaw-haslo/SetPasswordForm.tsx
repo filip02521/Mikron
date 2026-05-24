@@ -2,14 +2,17 @@
 
 import { useEffect, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/Button";
 import { Field, Input } from "@/components/ui/Field";
 import { Alert } from "@/components/ui/Alert";
 import { actionFinalizeSalesPersonInvite } from "@/app/actions/users";
+import { actionClearMustChangePassword } from "@/app/actions/sales-manager";
 
 export function SetPasswordForm() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const forcedChange = searchParams.get("wymagane") === "1";
   const [ready, setReady] = useState(false);
   const [password, setPassword] = useState("");
   const [passwordConfirm, setPasswordConfirm] = useState("");
@@ -61,6 +64,8 @@ export function SetPasswordForm() {
       return;
     }
 
+    await actionClearMustChangePassword();
+
     router.push("/");
     router.refresh();
   }
@@ -68,8 +73,9 @@ export function SetPasswordForm() {
   if (!ready) {
     return (
       <Alert tone="info">
-        Otwórz link zaproszenia lub resetu hasła od administratora. Jeśli link wygasł,
-        poproś o nowy w panelu Admin → Handlowcy (przycisk „Link zaproszenia”).
+        {forcedChange
+          ? "Zaloguj się hasłem jednorazowym przekazanym przez kierownika, aby ustawić własne hasło."
+          : "Otwórz link zaproszenia lub resetu hasła od administratora. Jeśli link wygasł, poproś o nowy w panelu Admin → Handlowcy (przycisk „Link zaproszenia”)."}
       </Alert>
     );
   }

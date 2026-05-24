@@ -26,6 +26,10 @@ import {
   formatSupplierInterval,
   locationLabel,
 } from "@/lib/display-labels";
+import {
+  buildDailyPanelHiddenReport,
+  type DailyPanelHiddenReport,
+} from "@/lib/orders/daily-panel-hidden";
 
 export type SupplierSummaryMeta = {
   id: string;
@@ -104,6 +108,7 @@ export type SummaryWorkspaceData = SummaryView & {
   forSomeoneLeft: SummaryForSomeoneEnriched[];
   informacjaLeft: SummaryInformacjaEnriched[];
   salesCancelledNotices: SalesCancelledNotice[];
+  panelHidden: DailyPanelHiddenReport;
 };
 
 const DAY_NAMES = ["Niedz", "Pon", "Wt", "Śr", "Czw", "Pt", "Sob"];
@@ -418,6 +423,8 @@ export function buildSummaryWorkspace(
     salesById
   );
 
+  const panelHidden = buildDailyPanelHiddenReport(schedules, { informacjaLeft });
+
   return {
     left,
     right,
@@ -429,5 +436,6 @@ export function buildSummaryWorkspace(
     forSomeoneLeft,
     informacjaLeft,
     salesCancelledNotices,
+    panelHidden,
   };
 }

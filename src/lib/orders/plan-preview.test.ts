@@ -2,6 +2,9 @@ import { describe, expect, it } from "vitest";
 import {
   filterWeekDaysBySupplierIds,
   matchSuppliersByQuery,
+  matchSuppliersForSalesPlanSearch,
+  SALES_PLAN_SEARCH_LIMIT,
+  orderSalesPrioritySuppliers,
   pickPreviewSupplierIds,
   pickSalesPlanSupplierIds,
 } from "./plan-preview";
@@ -41,6 +44,18 @@ function supplier(
 }
 
 describe("plan-preview", () => {
+  it("orderSalesPrioritySuppliers nie dopełnia listy harmonogramem", () => {
+    const ordered = orderSalesPrioritySuppliers(
+      [
+        supplier("prio", "Priorytet", "2026-06-15"),
+        supplier("near", "Bliski", "2026-05-01"),
+        supplier("far", "Daleki", "2026-05-20"),
+      ],
+      ["prio"]
+    );
+    expect(ordered.map((s) => s.id)).toEqual(["prio"]);
+  });
+
   it("pickSalesPlanSupplierIds preferuje dostawców z otwartych prośb", () => {
     const ids = pickSalesPlanSupplierIds(
       [
@@ -64,6 +79,14 @@ describe("plan-preview", () => {
       2
     );
     expect([...ids]).toEqual(["a", "b"]);
+  });
+
+  it("matchSuppliersForSalesPlanSearch ogranicza liczbę wyników", () => {
+    const many = Array.from({ length: 30 }, (_, i) =>
+      supplier(`id-${i}`, `Dostawca ${i}`, null)
+    );
+    const hits = matchSuppliersForSalesPlanSearch(many, "dostawca");
+    expect(hits).toHaveLength(SALES_PLAN_SEARCH_LIMIT);
   });
 
   it("matchSuppliersByQuery filtruje po fragmencie nazwy", () => {

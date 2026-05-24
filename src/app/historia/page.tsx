@@ -13,7 +13,7 @@ export default async function HistoriaPage() {
   try {
     [individual, normal] = await Promise.all([
       fetchIndividualHistory(),
-      fetchNormalHistory(50),
+      fetchNormalHistory(),
     ]);
   } catch {
     /* empty */
@@ -23,7 +23,7 @@ export default async function HistoriaPage() {
     <>
       <PageHeader
         title="Historia"
-        description="Audyt zamówień dla handlowców (bez pozycji informacyjnych — tylko powiadomienie e-mail)."
+        description="Audyt zamówień dla handlowców (bez pozycji informacyjnych). Na stronie 6 ostatnich wpisów; pełna lista z wyszukiwaniem po „Pokaż pełną historię”. Dane starsze niż 6 miesięcy są usuwane automatycznie."
       />
       <HistoriaClient
         individual={individual}

@@ -2,6 +2,11 @@
 
 import { useEffect, useState } from "react";
 import { AUTH_QUOTES, type AuthQuote } from "@/lib/auth-quotes";
+import {
+  ONTIME_APP_NAME,
+  ONTIME_COMPANY,
+  ONTIME_TAGLINE,
+} from "@/lib/ui/ontime-brand";
 import { cn } from "@/lib/cn";
 
 const ROTATE_MS = 9000;
@@ -34,7 +39,7 @@ export function AuthQuotePanel({
     return (
       <div
         className={cn(
-          "relative overflow-hidden rounded-2xl bg-gradient-to-br from-indigo-700 via-indigo-800 to-slate-900 px-4 py-4 shadow-lg shadow-indigo-900/20",
+          "relative overflow-hidden rounded-2xl bg-gradient-to-br from-indigo-700 via-sky-800 to-slate-900 px-4 py-4 shadow-lg shadow-indigo-900/20",
           className
         )}
       >
@@ -42,9 +47,13 @@ export function AuthQuotePanel({
           className="pointer-events-none absolute -right-8 top-0 h-24 w-24 rounded-full bg-indigo-400/20 blur-2xl"
           aria-hidden
         />
+        <p className="relative text-[10px] font-semibold uppercase tracking-[0.2em] text-indigo-200/80">
+          {ONTIME_COMPANY} · {ONTIME_APP_NAME}
+        </p>
+        <p className="relative mt-0.5 text-xs font-medium text-sky-100/95">{ONTIME_TAGLINE}</p>
         <blockquote
           className={cn(
-            "relative text-base font-medium leading-snug tracking-tight text-white transition-all duration-300 ease-out motion-reduce:transition-none",
+            "relative mt-3 text-base font-medium leading-snug tracking-tight text-white transition-all duration-300 ease-out motion-reduce:transition-none",
             visible ? "translate-y-0 opacity-100" : "translate-y-1 opacity-0"
           )}
         >
@@ -71,11 +80,19 @@ export function AuthQuotePanel({
     <div className={cn("flex flex-col justify-between", className)}>
       <div>
         <p className="text-xs font-semibold uppercase tracking-[0.2em] text-indigo-200/90">
-          System Dostaw
+          {ONTIME_COMPANY}
         </p>
+        <p
+          className="mt-2 text-4xl font-semibold tracking-tight text-white xl:text-[2.75rem]"
+          aria-label={ONTIME_APP_NAME}
+        >
+          <span>On</span>
+          <span className="text-sky-200">Time</span>
+        </p>
+        <p className="mt-2 text-sm font-medium text-sky-100/95">{ONTIME_TAGLINE}</p>
         <blockquote
           className={cn(
-            "mt-8 text-2xl font-medium leading-snug tracking-tight text-white transition-all duration-300 ease-out motion-reduce:transition-none",
+            "mt-10 text-2xl font-medium leading-snug tracking-tight text-white transition-all duration-300 ease-out motion-reduce:transition-none xl:mt-12",
             visible ? "translate-y-0 opacity-100" : "translate-y-2 opacity-0"
           )}
         >

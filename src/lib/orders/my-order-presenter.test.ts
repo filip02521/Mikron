@@ -93,6 +93,25 @@ describe("presentMyOrder", () => {
     expect(row.timingLabel).toBeNull();
   });
 
+  it("informacja na magazynie ma tryb potwierdzenia powiadomienia", () => {
+    const row = presentMyOrders(
+      [
+        {
+          ...baseOrder,
+          request_kind: "informacja",
+          status: "Zrealizowane",
+          quantity: "-",
+          delivery_at: "2026-05-10",
+        },
+      ],
+      []
+    ).informacje[0];
+    expect(row.statusTitle).toBe("Dostępne");
+    expect(row.acknowledgeMode).toBe("availability");
+    expect(row.pickupPendingCount).toBe(1);
+    expect(row.headlineTone).toBe("action");
+  });
+
   it("rozróżnia badge przed zamówieniem i zamówione", () => {
     const przed = presentMyOrders(
       [{ ...baseOrder, status: "Nowe", ordered_at: null, action_at: "2026-05-01" }],

@@ -5,7 +5,39 @@ export function supplierKey(order: IndividualOrder): string {
   return order.supplier?.name?.trim() || "—";
 }
 
-/** Indeks grupy dostawcy (0, 1, 2…) dla posortowanej listy. */
+export type SupplierOrderGroup = {
+  supplierKey: string;
+  orders: IndividualOrder[];
+};
+
+/** Id pozycji w bloku tego samego dostawcy (lista posortowana po dostawcy). */
+export function orderIdsInSupplierGroup(
+  orders: IndividualOrder[],
+  startIndex: number
+): string[] {
+  const key = supplierKey(orders[startIndex]!);
+  const ids: string[] = [];
+  for (let i = startIndex; i < orders.length; i++) {
+    if (supplierKey(orders[i]!) !== key) break;
+    ids.push(orders[i]!.id);
+  }
+  return ids;
+}
+
+export function groupOrdersBySupplier(orders: IndividualOrder[]): SupplierOrderGroup[] {
+  const groups: SupplierOrderGroup[] = [];
+  for (const order of orders) {
+    const key = supplierKey(order);
+    const last = groups[groups.length - 1];
+    if (last && last.supplierKey === key) {
+      last.orders.push(order);
+    } else {
+      groups.push({ supplierKey: key, orders: [order] });
+    }
+  }
+  return groups;
+}
+
 export function supplierGroupIndexByOrderId(
   orders: IndividualOrder[]
 ): Map<string, number> {

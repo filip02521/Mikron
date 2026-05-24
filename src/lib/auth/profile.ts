@@ -5,6 +5,7 @@ export type ProfileRow = {
   role: UserRole;
   sales_person_id: string | null;
   email: string | null;
+  must_change_password: boolean;
 };
 
 /** Odczyt profilu service role — zawsze zgodny z bazą (po walidacji JWT). */
@@ -16,7 +17,7 @@ export async function fetchProfileByUserId(
   const admin = createAdminClient();
   const { data, error } = await admin
     .from("profiles")
-    .select("role, sales_person_id, email")
+    .select("role, sales_person_id, email, must_change_password")
     .eq("id", userId)
     .maybeSingle();
 
@@ -25,5 +26,6 @@ export async function fetchProfileByUserId(
     role: data.role as UserRole,
     sales_person_id: data.sales_person_id,
     email: data.email,
+    must_change_password: Boolean(data.must_change_password),
   };
 }

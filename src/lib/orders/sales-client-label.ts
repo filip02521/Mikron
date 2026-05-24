@@ -1,6 +1,6 @@
 import type { IndividualOrder } from "@/types/database";
 
-const MAX_CLIENT_NAME_LEN = 80;
+export const MAX_CLIENT_NAME_LEN = 80;
 
 /** Normalizuje etykietę klienta (pusty → null). */
 export function normalizeSalesClientName(

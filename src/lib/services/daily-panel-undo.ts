@@ -5,10 +5,9 @@ import type {
   ScheduleSnapshot,
 } from "@/lib/orders/daily-panel-undo";
 import { recalcSupplierSchedule } from "@/lib/services/orders";
-import {
-  formatScheduleOutcomeLines,
-  mapSupplierRowsToOutcomes,
-} from "@/lib/orders/daily-panel-action-feedback";
+import { buildScheduleFeedback } from "@/lib/orders/daily-panel-action-feedback";
+
+export { buildScheduleFeedback } from "@/lib/orders/daily-panel-action-feedback";
 
 export async function captureScheduleSnapshot(
   supplierId: string
@@ -162,16 +161,12 @@ export async function buildProcessIndividualFeedback(
     action === "GLOWNE" ? glowneSupplierIdsBeforeAction : []
   );
 
-  const supabase = createAdminClient();
-  const { data, error } = await supabase
-    .from("suppliers")
-    .select(
-      "id, name, interval_raw, interval_weeks, supplier_schedules(computed_next_date, vacation_note)"
-    )
-    .in("id", supplierIds);
+  return buildScheduleFeedback(supplierIds, action, adjustedIds);
+}
 
-  if (error || !data?.length) return [];
-
-  const outcomes = mapSupplierRowsToOutcomes(data, adjustedIds);
-  return formatScheduleOutcomeLines(outcomes, action);
+/** Po „Zamówione” — kiedy wypada kolejne zamówienie planowe. */
+export async function buildMarkOrderedFeedback(
+  supplierIds: string[]
+): Promise<string[]> {
+  return buildScheduleFeedback(supplierIds, "ZAMOWIONE");
 }

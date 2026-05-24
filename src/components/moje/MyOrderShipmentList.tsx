@@ -1,8 +1,9 @@
 "use client";
 
-import { useCallback, useState, useTransition } from "react";
+import { useCallback, useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import type { MyOrderRow } from "@/lib/orders/my-order-presenter";
+import { sortMyOrderRows } from "@/lib/orders/my-order-sales-ui";
 import {
   actionAcknowledgePickup,
   actionSalesCancelOrders,
@@ -35,6 +36,19 @@ type CancelConfirmState = {
   phase: SalesCancelPhase;
 };
 
+function pickInitialExpandedId(rows: MyOrderRow[]): string | null {
+  const action = rows.find(
+    (r) =>
+      r.acknowledgeMode === "pickup" ||
+      r.acknowledgeMode === "availability" ||
+      r.acknowledgeMode === "cancelled"
+  );
+  if (action) return action.id;
+  if (rows.length === 1) return rows[0].id;
+  if (rows.length <= 3) return rows[0].id;
+  return null;
+}
+
 export function MyOrderShipmentList({
   rows,
   showProgress,
@@ -49,7 +63,10 @@ export function MyOrderShipmentList({
   suppliers?: { id: string; name: string }[];
 }) {
   const router = useRouter();
-  const [expandedId, setExpandedId] = useState<string | null>(null);
+  const sortedRows = useMemo(() => sortMyOrderRows(rows), [rows]);
+  const [expandedId, setExpandedId] = useState<string | null>(() =>
+    pickInitialExpandedId(sortedRows)
+  );
   const [pending, start] = useTransition();
   const [pendingMessage, setPendingMessage] = useState<string | null>(null);
   const [undo, setUndo] = useState<UndoState | null>(null);
@@ -74,8 +91,8 @@ export function MyOrderShipmentList({
             orderIds,
             message:
               n === 1
-                ? "Odbiór zapisany — wpis zniknie z listy. Masz 5 s na cofnięcie."
-                : `Odbiór ${n} poz. zapisany. Masz 5 s na cofnięcie.`,
+                ? "Odbiór zapisany — masz 5 s na cofnięcie."
+                : `Odbiór ${n} poz. zapisany — masz 5 s na cofnięcie.`,
           });
           router.refresh();
         } catch (e) {
@@ -158,6 +175,8 @@ export function MyOrderShipmentList({
     });
   }, [undo, router]);
 
+  if (!sortedRows.length) return null;
+
   return (
     <div className="relative">
       {pendingMessage ? (
@@ -188,7 +207,7 @@ export function MyOrderShipmentList({
                   ?.scrollIntoView({ behavior: "smooth", block: "start" });
               }}
             >
-              Przewiń do „Ostatnio zakończone”
+              Archiwum
             </button>
           }
         />
@@ -232,39 +251,39 @@ export function MyOrderShipmentList({
           }}
         />
       ) : null}
-      <ul className="space-y-2.5 p-3 sm:p-4">
-        {rows.map((row) => (
-          <li key={row.id} id={cardIdPrefix?.(row.id)}>
-            <MyOrderShipmentCard
-              row={row}
-              showProgress={showProgress}
-              canAcknowledge={canAcknowledge}
-              pending={pending}
-              expanded={expandedId === row.id}
-              onToggle={() =>
-                setExpandedId((cur) => (cur === row.id ? null : row.id))
-              }
-              onAcknowledgePickup={runPickup}
-              onCancelRequest={
-                canAcknowledge && row.salesCancelOrderIds.length && row.salesCancelPhase
-                  ? (ids, phase) => requestCancel(ids, phase)
-                  : undefined
-              }
-              onSaveClient={canAcknowledge ? saveClient : undefined}
-              onEditRequest={
-                canAcknowledge
-                  ? (row) => {
-                      const initial = editInitialFromMyOrderRow(row);
-                      if (!initial) {
-                        setErrorToast("Uzupełnij dostawcę w prośbie przed edycją.");
-                        return;
-                      }
-                      setEditTarget({ orderIds: row.orderIds, initial });
+      <ul>
+        {sortedRows.map((row) => (
+          <MyOrderShipmentCard
+            key={row.id}
+            domId={cardIdPrefix?.(row.id)}
+            row={row}
+            showProgress={showProgress}
+            canAcknowledge={canAcknowledge}
+            pending={pending}
+            expanded={expandedId === row.id}
+            onToggle={() =>
+              setExpandedId((cur) => (cur === row.id ? null : row.id))
+            }
+            onAcknowledgePickup={runPickup}
+            onCancelRequest={
+              canAcknowledge && row.salesCancelOrderIds.length && row.salesCancelPhase
+                ? (ids, phase) => requestCancel(ids, phase)
+                : undefined
+            }
+            onSaveClient={canAcknowledge ? saveClient : undefined}
+            onEditRequest={
+              canAcknowledge
+                ? (r) => {
+                    const initial = editInitialFromMyOrderRow(r);
+                    if (!initial) {
+                      setErrorToast("Uzupełnij dostawcę w prośbie przed edycją.");
+                      return;
                     }
-                  : undefined
-              }
-            />
-          </li>
+                    setEditTarget({ orderIds: r.orderIds, initial });
+                  }
+                : undefined
+            }
+          />
         ))}
       </ul>
     </div>

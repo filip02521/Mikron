@@ -27,6 +27,7 @@ export type DailyInboxSummary = {
   weekPlanCount: number;
   onDemandCount: number;
   vacationSupplierCount: number;
+  hiddenScheduleCount: number;
 };
 
 /** Licznik menu: tylko otwarte prośby indywidualne (zamówienie, status Nowe) — bez harmonogramu i informacji. */
@@ -63,6 +64,7 @@ export function summarizeDailyInbox(workspace: SummaryWorkspaceData): DailyInbox
     weekPlanCount,
     onDemandCount: workspace.onDemandSuppliers.length,
     vacationSupplierCount,
+    hiddenScheduleCount: workspace.panelHidden.suppliers.length,
   };
 }
 

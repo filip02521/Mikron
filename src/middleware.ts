@@ -3,6 +3,13 @@ import { NextResponse, type NextRequest } from "next/server";
 import type { UserRole } from "@/types/database";
 import { fetchProfileByUserId } from "@/lib/auth/profile";
 import { middlewareNeedsBootstrap } from "@/lib/setup/middleware-bootstrap";
+import {
+  canAccessOperations,
+  canAccessPath,
+  canManageSalesTeam,
+  homePathForRole,
+  isSalesAccount,
+} from "@/lib/auth-roles";
 
 const OPERATIONS_PREFIXES = [
   "/podsumowanie",
@@ -19,18 +26,15 @@ const PROCUREMENT_PREFIXES = ["/zakupy"];
 
 const SALES_PREFIXES = ["/moje", "/plan", "/prosba"];
 
+const SALES_TEAM_PREFIXES = ["/zespol"];
+
 function matchesPrefix(pathname: string, prefixes: string[]): boolean {
   return prefixes.some((p) => pathname === p || pathname.startsWith(`${p}/`));
-}
-
-function canAccessOperations(role: UserRole): boolean {
-  return role === "admin" || role === "zakupy";
 }
 
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
-  // Pierwsza konfiguracja — dopóki nie ma admina w bazie, tylko /setup
   const publicAuthPaths = ["/setup", "/login", "/ustaw-haslo"];
 
   const needsSetup = await middlewareNeedsBootstrap();
@@ -53,7 +57,8 @@ export async function middleware(request: NextRequest) {
     matchesPrefix(pathname, OPERATIONS_PREFIXES) ||
     matchesPrefix(pathname, PROCUREMENT_PREFIXES) ||
     matchesPrefix(pathname, ADMIN_PREFIXES) ||
-    matchesPrefix(pathname, SALES_PREFIXES);
+    matchesPrefix(pathname, SALES_PREFIXES) ||
+    matchesPrefix(pathname, SALES_TEAM_PREFIXES);
 
   if (!isProtected) {
     return NextResponse.next();
@@ -96,12 +101,31 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(login);
   }
 
-  const role = profile.role;
+  const role = profile.role as UserRole;
+
+  if (
+    profile.must_change_password &&
+    pathname !== "/ustaw-haslo" &&
+    !pathname.startsWith("/api/")
+  ) {
+    const reset = new URL("/ustaw-haslo", request.url);
+    reset.searchParams.set("wymagane", "1");
+    return NextResponse.redirect(reset);
+  }
+
+  if (!canAccessPath(role, pathname)) {
+    return NextResponse.redirect(new URL(homePathForRole(role), request.url));
+  }
 
   if (matchesPrefix(pathname, ADMIN_PREFIXES) && role !== "admin") {
-    return NextResponse.redirect(
-      new URL(canAccessOperations(role) ? "/podsumowanie" : "/moje", request.url)
-    );
+    return NextResponse.redirect(new URL(homePathForRole(role), request.url));
+  }
+
+  if (
+    matchesPrefix(pathname, SALES_TEAM_PREFIXES) &&
+    !canManageSalesTeam(role)
+  ) {
+    return NextResponse.redirect(new URL(homePathForRole(role), request.url));
   }
 
   if (
@@ -112,10 +136,10 @@ export async function middleware(request: NextRequest) {
     if (pathname.startsWith("/zamowienia")) {
       return NextResponse.redirect(new URL("/prosba", request.url));
     }
-    return NextResponse.redirect(new URL("/moje", request.url));
+    return NextResponse.redirect(new URL(homePathForRole(role), request.url));
   }
 
-  if (role === "sales" && pathname.startsWith("/zamowienia/nowe")) {
+  if (isSalesAccount(role) && pathname.startsWith("/zamowienia/nowe")) {
     return NextResponse.redirect(new URL("/prosba", request.url));
   }
 

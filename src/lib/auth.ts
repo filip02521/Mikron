@@ -1,6 +1,12 @@
 import { createClient } from "@/lib/supabase/server";
 import { fetchProfileByUserId } from "@/lib/auth/profile";
-import { canAccessOperations, canManageSuppliers, isAdmin } from "@/lib/auth-roles";
+import {
+  canAccessOperations,
+  canManageSalesTeam,
+  canManageSuppliers,
+  isAdmin,
+  isSalesAccount,
+} from "@/lib/auth-roles";
 import type { UserRole } from "@/types/database";
 
 export interface SessionUser {
@@ -8,6 +14,7 @@ export interface SessionUser {
   email: string;
   role: UserRole;
   salesPersonId: string | null;
+  mustChangePassword: boolean;
 }
 
 export async function getSessionUser(): Promise<SessionUser | null> {
@@ -27,13 +34,38 @@ export async function getSessionUser(): Promise<SessionUser | null> {
     email: profile.email ?? user.email ?? "",
     role: profile.role,
     salesPersonId: profile.sales_person_id,
+    mustChangePassword: profile.must_change_password,
   };
+}
+
+export async function requireSalesTeamManagement(): Promise<SessionUser> {
+  const user = await getSessionUser();
+  if (!user || !canManageSalesTeam(user.role)) {
+    throw new Error("Brak uprawnień do zarządzania zespołem handlowców");
+  }
+  return user;
+}
+
+export async function requireSalesAccount(): Promise<SessionUser> {
+  const user = await getSessionUser();
+  if (!user || !isSalesAccount(user.role)) {
+    throw new Error("Brak uprawnień handlowca");
+  }
+  return user;
 }
 
 export async function requireAdmin(): Promise<SessionUser> {
   const user = await getSessionUser();
   if (!user || !isAdmin(user.role)) {
     throw new Error("Brak uprawnień administratora");
+  }
+  return user;
+}
+
+export async function requireAdminOrSalesTeamManagement(): Promise<SessionUser> {
+  const user = await getSessionUser();
+  if (!user || (!isAdmin(user.role) && !canManageSalesTeam(user.role))) {
+    throw new Error("Brak uprawnień");
   }
   return user;
 }

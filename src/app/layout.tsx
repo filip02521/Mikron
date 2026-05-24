@@ -2,6 +2,10 @@ import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { AppShell } from "@/components/layout/AppShell";
+import {
+  ONTIME_APP_DESCRIPTION,
+  ONTIME_APP_NAME,
+} from "@/lib/ui/ontime-brand";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -15,8 +19,11 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "System Dostaw",
-  description: "Zarządzanie zamówieniami u dostawców",
+  title: {
+    default: ONTIME_APP_NAME,
+    template: `%s · ${ONTIME_APP_NAME}`,
+  },
+  description: ONTIME_APP_DESCRIPTION,
 };
 
 export const viewport = {

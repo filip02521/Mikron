@@ -46,7 +46,7 @@ export function LoginForm() {
 
     const { data: profile, error: profileError } = await supabase
       .from("profiles")
-      .select("role")
+      .select("role, must_change_password")
       .eq("id", userId)
       .maybeSingle();
 
@@ -55,6 +55,12 @@ export function LoginForm() {
     if (profileError || !profile) {
       setError("Brak profilu użytkownika — skontaktuj się z administratorem.");
       await supabase.auth.signOut();
+      return;
+    }
+
+    if (profile.must_change_password) {
+      router.push("/ustaw-haslo?wymagane=1");
+      router.refresh();
       return;
     }
 

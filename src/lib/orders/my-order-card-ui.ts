@@ -2,7 +2,9 @@ import type { MyOrderRow } from "@/lib/orders/my-order-presenter";
 
 /** Badge statusu — ukryty, gdy kolorowy pasek już mówi to samo. */
 export function shouldShowOrderStatusBadge(row: MyOrderRow): boolean {
-  if (row.acknowledgeMode === "pickup") return false;
+  if (row.acknowledgeMode === "pickup" || row.acknowledgeMode === "availability") {
+    return false;
+  }
   if (row.headlineTone === "action" || row.headlineTone === "success") return false;
   return true;
 }
@@ -10,7 +12,9 @@ export function shouldShowOrderStatusBadge(row: MyOrderRow): boolean {
 /** Szary opis w rozwinięciu — tylko gdy dodaje coś ponad nagłówek. */
 export function shouldShowOrderStatusDetail(row: MyOrderRow): boolean {
   if (!row.statusDetail?.trim()) return false;
-  if (row.acknowledgeMode === "pickup") return false;
+  if (row.acknowledgeMode === "pickup" || row.acknowledgeMode === "availability") {
+    return false;
+  }
   if (row.kind === "informacja" && row.statusTitle === "Dostępne") return false;
   if (row.statusTitle === "Zamówione" && row.headlineTone === "info") return false;
   if (row.statusTitle === "Przed zamówieniem") return false;

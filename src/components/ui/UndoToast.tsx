@@ -44,7 +44,7 @@ export function UndoToast({
       {detailLines?.length ? (
         <ul
           className={cn(
-            "space-y-1.5 border-t pt-2 text-xs font-normal leading-snug",
+            "max-h-40 space-y-1.5 overflow-y-auto border-t pt-2 text-xs font-normal leading-snug",
             tone === "success"
               ? "border-emerald-200/80 text-emerald-950/90"
               : "border-red-200/80 text-red-950/90"

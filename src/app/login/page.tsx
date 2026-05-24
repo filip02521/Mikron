@@ -10,10 +10,7 @@ export default async function LoginPage() {
   if (await needsBootstrapSetup()) redirect("/setup");
 
   return (
-    <AuthScreenLayout
-      title="System Dostaw"
-      subtitle="Zaloguj się, aby zarządzać zamówieniami i harmonogramem"
-    >
+    <AuthScreenLayout title="Zaloguj się">
       <Suspense fallback={<p className="text-sm text-slate-500">Ładowanie…</p>}>
         <LoginForm />
       </Suspense>

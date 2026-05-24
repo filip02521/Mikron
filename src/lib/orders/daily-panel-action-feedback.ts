@@ -1,3 +1,4 @@
+import { createAdminClient } from "@/lib/supabase/admin";
 import { formatPlDate, formatSupplierInterval, vacationNoteLabel } from "@/lib/display-labels";
 import { resolveSupplierInterval } from "@/lib/orders/dates";
 
@@ -10,9 +11,17 @@ export type DailyPanelScheduleOutcome = {
   vacationNote: string | null;
 };
 
+export type DailyPanelScheduleFeedbackAction =
+  | "GLOWNE"
+  | "POBOCZNE"
+  | "ZAMOWIONE"
+  | "PRZESUNIETE";
+
+export const MAX_SCHEDULE_FEEDBACK_LINES = 5;
+
 export function formatScheduleOutcomeLines(
   outcomes: DailyPanelScheduleOutcome[],
-  action: "GLOWNE" | "POBOCZNE"
+  action: DailyPanelScheduleFeedbackAction
 ): string[] {
   if (!outcomes.length) return [];
 
@@ -29,6 +38,14 @@ export function formatScheduleOutcomeLines(
       o.vacationNote && o.vacationNote !== "—"
         ? ` ${vacationNoteLabel(o.vacationNote)}.`
         : "";
+
+    if (action === "ZAMOWIONE") {
+      return `${o.supplierName}: zamówienie zapisane · harmonogram przeliczony. ${datePart} ${intervalPart}${vac}`;
+    }
+
+    if (action === "PRZESUNIETE") {
+      return `${o.supplierName}: termin przesunięty. ${datePart} ${intervalPart}${vac}`;
+    }
 
     if (action === "GLOWNE" && o.scheduleAdjusted) {
       return `${o.supplierName}: oznaczono główne · harmonogram przeliczony. ${datePart} ${intervalPart}${vac}`;
@@ -80,4 +97,36 @@ export function mapSupplierRowsToOutcomes(
       vacationNote: schedule?.vacation_note ?? null,
     };
   });
+}
+
+function truncateFeedbackLines(lines: string[]): string[] {
+  if (lines.length <= MAX_SCHEDULE_FEEDBACK_LINES) return lines;
+  return [
+    ...lines.slice(0, MAX_SCHEDULE_FEEDBACK_LINES),
+    `… i ${lines.length - MAX_SCHEDULE_FEEDBACK_LINES} kolejnych — szczegóły na liście po odświeżeniu.`,
+  ];
+}
+
+/** Podgląd harmonogramu po akcji w panelu dziennym (toast z cofnięciem). */
+export async function buildScheduleFeedback(
+  supplierIds: string[],
+  action: DailyPanelScheduleFeedbackAction,
+  adjustedSupplierIds?: Set<string>
+): Promise<string[]> {
+  const unique = [...new Set(supplierIds)];
+  if (!unique.length) return [];
+
+  const adjusted = adjustedSupplierIds ?? new Set(unique);
+  const supabase = createAdminClient();
+  const { data, error } = await supabase
+    .from("suppliers")
+    .select(
+      "id, name, interval_raw, interval_weeks, supplier_schedules(computed_next_date, vacation_note)"
+    )
+    .in("id", unique);
+
+  if (error || !data?.length) return [];
+
+  const outcomes = mapSupplierRowsToOutcomes(data, adjusted);
+  return truncateFeedbackLines(formatScheduleOutcomeLines(outcomes, action));
 }

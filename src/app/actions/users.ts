@@ -1,7 +1,12 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { requireAdmin, getSessionUser } from "@/lib/auth";
+import {
+  requireAdmin,
+  requireAdminOrSalesTeamManagement,
+  getSessionUser,
+} from "@/lib/auth";
+import { roleRequiresSalesPerson } from "@/lib/users/labels";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { assertUniqueSalesPersonLink } from "@/lib/users/sales-person-link";
 import {
@@ -10,6 +15,7 @@ import {
 } from "@/lib/users/sales-invite";
 import { getAppUrl } from "@/lib/env/app-config";
 import type { UserRole } from "@/types/database";
+import { isValidEmail } from "@/lib/security/text-limits";
 
 function revalidateUsers() {
   revalidatePath("/admin/uzytkownicy");
@@ -30,10 +36,11 @@ export async function actionCreateAppUser(form: {
 
   const email = form.email.trim().toLowerCase();
   if (!email) return { error: "Podaj adres e-mail." };
+  if (!isValidEmail(email)) return { error: "Podaj poprawny adres e-mail." };
   if (form.password.length < 8) {
     return { error: "Hasło musi mieć co najmniej 8 znaków." };
   }
-  if (form.role === "sales" && !form.salesPersonId) {
+  if (roleRequiresSalesPerson(form.role) && !form.salesPersonId) {
     return { error: "Dla handlowca wybierz powiązaną osobę z listy handlowców." };
   }
 
@@ -57,7 +64,7 @@ export async function actionCreateAppUser(form: {
     .update({
       email,
       role: form.role,
-      sales_person_id: form.role === "sales" ? form.salesPersonId : null,
+      sales_person_id: roleRequiresSalesPerson(form.role) ? form.salesPersonId : null,
     })
     .eq("id", created.user.id);
 
@@ -77,7 +84,7 @@ export async function actionUpdateAppUser(form: {
 }): Promise<{ success: true } | { error: string }> {
   const current = await requireAdmin();
 
-  if (form.role === "sales" && !form.salesPersonId) {
+  if (roleRequiresSalesPerson(form.role) && !form.salesPersonId) {
     return { error: "Handlowiec musi być powiązany z osobą z listy." };
   }
 
@@ -85,7 +92,7 @@ export async function actionUpdateAppUser(form: {
 
   const linkError = await assertUniqueSalesPersonLink(
     supabase,
-    form.role === "sales" ? form.salesPersonId : null,
+    roleRequiresSalesPerson(form.role) ? form.salesPersonId : null,
     form.userId
   );
   if (linkError) return { error: linkError };
@@ -104,7 +111,7 @@ export async function actionUpdateAppUser(form: {
     .from("profiles")
     .update({
       role: form.role,
-      sales_person_id: form.role === "sales" ? form.salesPersonId : null,
+      sales_person_id: roleRequiresSalesPerson(form.role) ? form.salesPersonId : null,
     })
     .eq("id", form.userId);
 
@@ -135,7 +142,7 @@ export async function actionSetUserPassword(
 export async function actionGenerateSalesPersonInviteLink(
   salesPersonId: string
 ): Promise<{ success: true; invite: SalesInviteLinkResult } | { error: string }> {
-  await requireAdmin();
+  await requireAdminOrSalesTeamManagement();
   const supabase = createAdminClient();
   const result = await generateSalesPersonInviteLink(supabase, salesPersonId);
   if ("error" in result) return { error: result.error };
@@ -192,10 +199,15 @@ export async function actionGeneratePasswordResetLink(
 ): Promise<{ success: true; link: string } | { error: string }> {
   await requireAdmin();
 
+  const normalized = email.trim().toLowerCase();
+  if (!isValidEmail(normalized)) {
+    return { error: "Podaj poprawny adres e-mail." };
+  }
+
   const supabase = createAdminClient();
   const { data, error } = await supabase.auth.admin.generateLink({
     type: "recovery",
-    email: email.trim().toLowerCase(),
+    email: normalized,
     options: {
       redirectTo: `${appUrl()}/ustaw-haslo`,
     },

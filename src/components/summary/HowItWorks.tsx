@@ -9,8 +9,8 @@ export function HowItWorksContent() {
       </li>
       <li>
         <strong className="text-slate-800">Zaległe i na dziś</strong> — oznacz{" "}
-        <strong>Zamówione</strong> (pojedynczo lub wiele). Czerwone = po terminie,
-        niebieskie = na dziś.
+        <strong>Zamówione</strong> (pojedynczo lub wiele). Zaległe mają delikatne różowe
+        tło, na dziś — standardową białą kartę.
       </li>
       <li>
         <strong className="text-slate-800">Plan tygodnia</strong> — podgląd pon.–pt.;{" "}

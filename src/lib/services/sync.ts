@@ -1,5 +1,5 @@
 import { createAdminClient } from "@/lib/supabase/admin";
-import { formatContactNote } from "@/lib/orders/individual";
+import { formatContactHref } from "@/lib/orders/supplier-contact";
 import { recalcScheduleRow } from "@/lib/orders/recalc";
 import type { VacationPeriod } from "@/lib/orders/vacations";
 import { dateToIso, parseDateOnly, resolveSupplierInterval } from "@/lib/orders/dates";
@@ -175,6 +175,6 @@ export function buildSupplierRowFromSettings(row: {
   notes: string;
   mails: string;
 }) {
-  const contact = formatContactNote(row.notes, row.mails);
-  return { ...row, contact_display: contact };
+  const contact_display = formatContactHref(row.notes, row.mails);
+  return { ...row, contact_display };
 }

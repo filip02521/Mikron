@@ -1,14 +1,19 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { createAdminClient, hasSupabaseConfig } from "@/lib/supabase/admin";
-import { isAppUrlProductionReady, isProductionRuntime } from "@/lib/env/app-config";
-import { getCronSecret } from "@/lib/env/app-config";
+import { isAppUrlProductionReady, isProductionRuntime, getCronSecret } from "@/lib/env/app-config";
 import { isEmailConfigured } from "@/lib/env/email-config";
 import { runSchemaChecks } from "@/lib/supabase/schema-check";
 import { readCronRun } from "@/lib/services/cron-run-log";
+import { authorizeCronRequest } from "@/lib/services/cron-auth";
 
 export const dynamic = "force-dynamic";
 
-export async function GET() {
+export async function GET(request: NextRequest) {
+  if (getCronSecret()) {
+    const denied = authorizeCronRequest(request.headers.get("authorization"));
+    if (denied) return denied;
+  }
+
   const checks: Record<string, boolean | string> = {};
   const issues: string[] = [];
 

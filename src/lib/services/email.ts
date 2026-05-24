@@ -8,22 +8,15 @@ import {
   getMondayOfWeek,
   getFridayOfWeek,
   toDateOnly,
-  calculateBusinessDate,
   parseDateOnly,
 } from "@/lib/orders/dates";
-import { avgDaysForOrderType } from "@/lib/orders/delivery-eta";
-import { orderPlacementAt } from "@/lib/orders/order-timing";
-import type { SupplierWithSchedule, StatsMode } from "@/types/database";
-import { warsawNowParts } from "@/lib/time/warsaw";
-import { readCronRun, recordCronRun } from "@/lib/services/cron-run-log";
-
-async function dailySalesEmailAlreadySentToday(): Promise<boolean> {
-  const { dateKey } = warsawNowParts();
-  const last = await readCronRun("daily_sales");
-  if (!last) return false;
-  const detail = last.detail as { warsawDateKey?: string; emailsSent?: number } | undefined;
-  return detail?.warsawDateKey === dateKey && (detail?.emailsSent ?? 0) > 0;
-}
+import type { SupplierWithSchedule } from "@/types/database";
+import { escapeHtml } from "@/lib/security/escape-html";
+import type { SalesPersonEmailBatch } from "@/lib/email/sales-notification-types";
+import {
+  renderDeliveryArrivedEmail,
+  renderInformacjaArrivedEmail,
+} from "@/lib/email/sales-email-templates";
 
 function getResend() {
   const key = getResendApiKey();
@@ -89,28 +82,28 @@ export async function getEmailRecipients(): Promise<string[]> {
 }
 
 export async function sendDeliveryNotificationEmails(
-  notifications: Map<string, { email: string; name: string; lines: string[] }>
+  notifications: Map<string, SalesPersonEmailBatch>
 ): Promise<EmailSendResult> {
   const result: EmailSendResult = { sent: 0, failures: [] };
 
-  for (const { email, name, lines } of notifications.values()) {
-    if (!lines.length) continue;
+  for (const { email, name, items } of notifications.values()) {
+    const deliveryItems = items.filter((i) => i.kind === "delivery");
+    if (!deliveryItems.length) continue;
     const to = email.trim();
     if (!to) {
       result.failures.push({ to: "(brak adresu)", error: "Handlowiec bez e-maila w bazie" });
       continue;
     }
 
-    const body = `<p>Cześć ${name.split(" ")[0]},</p>
-<p><strong>Twój towar dotarł na magazyn.</strong></p>
-<p>Szczegóły:</p>
-<ul>${lines.map((l) => `<li>${l}</li>`).join("")}</ul>
-<p style="color:#64748b;font-size:12px">Wiadomość z Systemu Dostaw Mikran.</p>`;
+    const { subject, html } = renderDeliveryArrivedEmail({
+      recipientName: name,
+      items: deliveryItems,
+    });
 
     const send = await sendHtmlEmail({
       to,
-      subject: "Towar na magazynie — zamówienie indywidualne",
-      html: body,
+      subject,
+      html,
     });
 
     if (send.ok) {
@@ -125,29 +118,28 @@ export async function sendDeliveryNotificationEmails(
 
 /** E-mail do handlowca: prośba informacyjna — towar jest już na magazynie. */
 export async function sendInformacjaArrivedEmails(
-  notifications: Map<string, { email: string; name: string; lines: string[] }>
+  notifications: Map<string, SalesPersonEmailBatch>
 ): Promise<EmailSendResult> {
   const result: EmailSendResult = { sent: 0, failures: [] };
 
-  for (const { email, name, lines } of notifications.values()) {
-    if (!lines.length) continue;
+  for (const { email, name, items } of notifications.values()) {
+    const informacjaItems = items.filter((i) => i.kind === "informacja");
+    if (!informacjaItems.length) continue;
     const to = email.trim();
     if (!to) {
       result.failures.push({ to: "(brak adresu)", error: "Handlowiec bez e-maila w bazie" });
       continue;
     }
 
-    const body = `<p>Cześć ${name.split(" ")[0]},</p>
-<p><strong>Towar, o który prosiłeś/aś o informację, jest już na magazynie.</strong></p>
-<p>To nie było zamówienie u dostawcy — tylko powiadomienie, że możesz odebrać towar.</p>
-<p>Szczegóły:</p>
-<ul>${lines.map((l) => `<li>${l}</li>`).join("")}</ul>
-<p style="color:#64748b;font-size:12px">Wiadomość z Systemu Dostaw Mikran.</p>`;
+    const { subject, html } = renderInformacjaArrivedEmail({
+      recipientName: name,
+      items: informacjaItems,
+    });
 
     const send = await sendHtmlEmail({
       to,
-      subject: "Na magazynie — informacja o towarze",
-      html: body,
+      subject,
+      html,
     });
 
     if (send.ok) {
@@ -212,7 +204,7 @@ export async function sendWeeklySummaryEmail(): Promise<boolean> {
   if (overdue.length) {
     body += `<h3>PILNE: po terminie</h3><ul>`;
     overdue.forEach((o) => {
-      body += `<li>${o.name} - ${o.schedule?.computed_next_date}</li>`;
+      body += `<li>${escapeHtml(o.name)} — ${escapeHtml(o.schedule?.computed_next_date ?? "—")}</li>`;
     });
     body += `</ul>`;
   }
@@ -222,87 +214,4 @@ export async function sendWeeklySummaryEmail(): Promise<boolean> {
   const send = await sendHtmlEmail({ to: recipients, subject, html: body });
   if (!send.ok) throw new Error(send.error);
   return true;
-}
-
-export type DailySalesEmailResult = {
-  sent: number;
-  skipped: boolean;
-  reason?: string;
-  failures: string[];
-};
-
-export async function sendDailyStatusToSales(): Promise<DailySalesEmailResult> {
-  const resend = getResend();
-  const warsaw = warsawNowParts();
-  if (warsaw.isWeekend) {
-    return { sent: 0, skipped: true, reason: "weekend", failures: [] };
-  }
-  if (!resend) {
-    return { sent: 0, skipped: true, reason: "email_not_configured", failures: [] };
-  }
-  if (await dailySalesEmailAlreadySentToday()) {
-    return { sent: 0, skipped: true, reason: "already_sent_today", failures: [] };
-  }
-
-  const supabase = createAdminClient();
-  const { data: salesPeople } = await supabase.from("sales_people").select("*");
-  const { data: ordersRaw } = await supabase
-    .from("individual_orders")
-    .select("*, supplier:suppliers(*), sales_person:sales_people(*)");
-  const orders = normalizeIndividualOrders(ordersRaw ?? []);
-  const { data: stats } = await supabase.from("delivery_stats").select("*");
-
-  const statsMap = Object.fromEntries((stats ?? []).map((s) => [s.supplier_id, s]));
-  let sent = 0;
-  const failures: string[] = [];
-
-  for (const person of salesPeople ?? []) {
-    const mine = orders.filter((o) => o.sales_person_id === person.id);
-    const pending = mine.filter((o) => o.status === "Zamowione");
-    const newOnes = mine.filter(
-      (o) => o.status === "Nowe" && (o.request_kind ?? "zamowienie") === "zamowienie"
-    );
-    if (!pending.length && !newOnes.length) continue;
-
-    let body = `<p>Cześć ${person.name.split(" ")[0]},</p><p>Status Twoich zamówień:</p><ul>`;
-    pending.forEach((o) => {
-      const st = o.supplier_id ? statsMap[o.supplier_id] : undefined;
-      const statsMode = (o.supplier?.stats_mode ?? "LACZNIE") as StatsMode;
-      const avg = avgDaysForOrderType(st ?? null, o.order_type, statsMode);
-      let eta = "";
-      const placement = orderPlacementAt(o);
-      if (avg && placement) {
-        const etaDate = calculateBusinessDate(parseDateOnly(placement)!, Number(avg));
-        eta = ` (ETA: ${formatDateString(etaDate, "dd.MM.yyyy")})`;
-      }
-      body += `<li>${o.supplier?.name}: ${o.products}${eta}</li>`;
-    });
-    newOnes.forEach((o) => {
-      body += `<li>[Nowe] ${o.supplier?.name}: ${o.products}</li>`;
-    });
-    body += `</ul>`;
-
-    const send = await sendHtmlEmail({
-      to: person.email,
-      subject: "Codzienny Status Twoich Zamówień Indywidualnych",
-      html: body,
-    });
-    if (send.ok) sent++;
-    else failures.push(`${person.email}: ${send.error}`);
-  }
-
-  if (sent > 0) {
-    await recordCronRun("daily_sales", {
-      ok: failures.length === 0,
-      detail: {
-        warsawDateKey: warsaw.dateKey,
-        emailsSent: sent,
-        partialFailure: failures.length > 0,
-        failures: failures.length > 0 ? failures : undefined,
-      },
-      error: failures.length > 0 ? failures.join("; ") : undefined,
-    });
-  }
-
-  return { sent, skipped: false, failures };
 }

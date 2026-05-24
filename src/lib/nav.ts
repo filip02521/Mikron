@@ -1,4 +1,5 @@
 import type { UserRole } from "@/types/database";
+import { canManageSalesTeam, isSalesAccount, isSalesManager } from "@/lib/auth-roles";
 
 export type NavItem = {
   href: string;
@@ -11,6 +12,25 @@ export type NavGroup = {
   title: string;
   items: NavItem[];
 };
+
+/**
+ * Czy punkt menu jest aktywny.
+ * Nie podświetla krótszego href (np. /zespol), gdy pathname pasuje do dokładniejszego siblinga (/zespol/handlowcy).
+ */
+export function isNavItemActive(
+  pathname: string,
+  href: string,
+  siblingHrefs: string[] = []
+): boolean {
+  if (pathname === href) return true;
+  if (!pathname.startsWith(`${href}/`)) return false;
+  return !siblingHrefs.some(
+    (other) =>
+      other !== href &&
+      other.startsWith(`${href}/`) &&
+      (pathname === other || pathname.startsWith(`${other}/`))
+  );
+}
 
 function operationsNavItems(badges: {
   nowe?: number;
@@ -106,25 +126,42 @@ export function navForRole(
     ];
   }
 
-  return [
+  const handlowiecItems: NavItem[] = [
     {
-      title: "Handlowiec",
-      items: [
-        {
-          href: "/moje",
-          label: "Moje zamówienia",
-          description: "Statusy i odbiór",
-          badge: badges.salesMoje,
-        },
-        { href: "/prosba", label: "Nowa prośba", description: "Zgłoszenie do zakupów" },
-        {
-          href: "/plan",
-          label: "Harmonogram zakupów",
-          description: "Kalendarz działu dostaw · wyszukiwarka dostawców",
-        },
-      ],
+      href: "/moje",
+      label: "Moje zamówienia",
+      description: "Statusy i odbiór",
+      badge: badges.salesMoje,
+    },
+    { href: "/prosba", label: "Nowa prośba", description: "Zgłoszenie do zakupów" },
+    {
+      href: "/plan",
+      label: "Harmonogram zakupów",
+      description: "Kalendarz działu dostaw · wyszukiwarka dostawców",
     },
   ];
+
+  const groups: NavGroup[] = [{ title: "Handlowiec", items: handlowiecItems }];
+
+  if (isSalesManager(role)) {
+    groups.push({
+      title: "Zespół",
+      items: [
+        {
+          href: "/zespol",
+          label: "Podgląd zespołu",
+          description: "Panel każdego handlowca",
+        },
+        {
+          href: "/zespol/handlowcy",
+          label: "Handlowcy i konta",
+          description: "Karty, zaproszenia, hasła startowe",
+        },
+      ],
+    });
+  }
+
+  return groups;
 }
 
 /** @deprecated użyj navForRole */
@@ -132,15 +169,19 @@ export const adminNav = navForRole("admin");
 export const salesNav = navForRole("sales");
 
 export function pageTitle(pathname: string): string {
-  for (const role of ["admin", "zakupy", "sales"] as const) {
+  for (const role of ["admin", "zakupy", "sales", "sales_manager"] as const) {
     for (const g of navForRole(role)) {
-      const hit = g.items.find(
-        (i) => pathname === i.href || pathname.startsWith(i.href + "/")
-      );
+      const hrefs = g.items.map((i) => i.href);
+      const matches = g.items.filter((i) => isNavItemActive(pathname, i.href, hrefs));
+      const hit = matches.sort((a, b) => b.href.length - a.href.length)[0];
       if (hit) return hit.label;
     }
   }
   if (pathname.startsWith("/lokalizacje/")) return "Terminy zamówień";
+  if (pathname.startsWith("/zespol")) {
+    if (pathname.startsWith("/zespol/handlowcy")) return "Handlowcy i konta";
+    return "Podgląd zespołu";
+  }
   if (pathname.startsWith("/admin")) {
     if (pathname.startsWith("/admin/uzytkownicy")) return "Konta";
     if (pathname.startsWith("/admin/handlowcy")) return "Handlowcy";
@@ -149,11 +190,12 @@ export function pageTitle(pathname: string): string {
     return "Administracja";
   }
   if (pathname === "/login") return "Logowanie";
-  return "System Dostaw";
+  return "OnTime";
 }
 
 export function sidebarSubtitle(role: UserRole): string {
   if (role === "admin") return "Administrator";
   if (role === "zakupy") return "Dział zakupów";
+  if (isSalesManager(role)) return "Kierownik handlowców";
   return "Handlowiec";
 }

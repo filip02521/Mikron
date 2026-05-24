@@ -12,8 +12,9 @@ import {
 } from "@/lib/orders/my-order-archive";
 import { getSessionUser } from "@/lib/auth";
 import { resolveSalesPersonForUser } from "@/lib/auth/sales-person";
+import { resolvePreviewSalesPerson } from "@/lib/auth/resolve-preview-sales-person";
 import { getAppRole } from "@/lib/auth-dev";
-import { canAccessOperations } from "@/lib/auth-roles";
+import { canAccessOperations, isSalesAccount, isSalesManager } from "@/lib/auth-roles";
 import { presentMyOrders } from "@/lib/orders/my-order-presenter";
 import Link from "next/link";
 import { PageHeader } from "@/components/ui/PageHeader";
@@ -22,23 +23,47 @@ import { Alert } from "@/components/ui/Alert";
 import { MojeOrdersView } from "@/components/moje/MojeOrdersView";
 import { MojePageSalesToolbar } from "@/components/moje/MojePageSalesToolbar";
 import { SalesAccountLinkRequired } from "@/components/sales/SalesAccountLinkRequired";
+import { ManagerPreviewBanner } from "@/components/sales/ManagerPreviewBanner";
 import type { DeliveryStats, IndividualOrder } from "@/types/database";
 
-export default async function MojePage() {
+export default async function MojePage({
+  searchParams,
+}: {
+  searchParams: Promise<{ dla?: string }>;
+}) {
+  const { dla: previewSalesPersonId } = await searchParams;
   const role = await getAppRole();
   let salesPersonId: string | null = null;
   let salesPersonName: string | null = null;
+  let ownSalesPersonId: string | null = null;
   let linkError: string | null = null;
+  let isTeamPreview = false;
 
   try {
     const user = await getSessionUser();
-    if (user?.role === "sales") {
-      const resolved = await resolveSalesPersonForUser(user);
-      salesPersonId = resolved?.id ?? null;
-      salesPersonName = resolved?.name ?? null;
-      if (!salesPersonId) {
+    if (user && isSalesAccount(user.role)) {
+      const own = await resolveSalesPersonForUser(user);
+      ownSalesPersonId = own?.id ?? null;
+      if (isSalesManager(user.role) && previewSalesPersonId) {
+        const preview = await resolvePreviewSalesPerson(previewSalesPersonId);
+        if (preview) {
+          salesPersonId = preview.id;
+          salesPersonName = preview.name;
+          isTeamPreview = preview.id !== ownSalesPersonId;
+        } else {
+          linkError = "Nie znaleziono handlowca do podglądu.";
+        }
+      } else {
+        salesPersonId = own?.id ?? null;
+        salesPersonName = own?.name ?? null;
+      }
+      if (!ownSalesPersonId && user.role === "sales") {
         linkError =
           "Twoje konto nie jest powiązane z kartą handlowca. Poproś administratora o nowy link zaproszenia (Admin → Handlowcy).";
+      }
+      if (!ownSalesPersonId && user.role === "sales_manager") {
+        linkError =
+          "Twoje konto kierownika nie jest powiązane z kartą handlowca — poproś administratora o przypisanie w panelu użytkowników.";
       }
     } else {
       salesPersonId = user?.salesPersonId ?? null;
@@ -47,7 +72,7 @@ export default async function MojePage() {
     /* dev */
   }
 
-  if (role === "sales" && linkError) {
+  if (role && isSalesAccount(role) && linkError && !previewSalesPersonId) {
     return (
       <SalesAccountLinkRequired
         title="Moje zamówienia"
@@ -63,39 +88,44 @@ export default async function MojePage() {
   let archiwumExtended: ReturnType<typeof presentArchivedMyOrders> = [];
   let loadError: string | null = null;
 
+  const viewingOwnPanel =
+    isSalesAccount(role ?? "sales") && salesPersonId && salesPersonId === ownSalesPersonId;
+
   try {
-    if (role === "sales" && salesPersonId) {
+    if (isSalesAccount(role ?? "sales") && salesPersonId) {
       const [orderRows, statsRows, acknowledgedRows, supplierRows] = await Promise.all([
         fetchIndividualOrders({
           salesPersonId,
           hideSalesAcknowledged: false,
         }),
         fetchDeliveryStats(),
-        fetchSalesAcknowledgedOrders(salesPersonId, {
-          acknowledgedSince: archiveAcknowledgedSinceExpanded(),
-          limit: 200,
-        }),
+        viewingOwnPanel
+          ? fetchSalesAcknowledgedOrders(salesPersonId, {
+              acknowledgedSince: archiveAcknowledgedSinceExpanded(),
+              limit: 200,
+            })
+          : Promise.resolve([]),
         fetchSuppliersWithSchedules(),
       ]);
       orders = orderRows;
       stats = statsRows as DeliveryStats[];
       suppliers = supplierRows.map((s) => ({ id: s.id, name: s.name }));
-      const legacyUnackedCancelled = orderRows.filter(
-        (o) => o.status === "Anulowane" && !o.sales_acknowledged_at
-      );
-      const archiveSource = [...acknowledgedRows, ...legacyUnackedCancelled];
-      archiwumRecent = presentArchivedMyOrders(archiveSource, stats, {
-        acknowledgedSince: archiveAcknowledgedSinceRecent(),
-      });
-      archiwumExtended = presentArchivedMyOrders(archiveSource, stats, {
-        acknowledgedSince: archiveAcknowledgedSinceExpanded(),
-        groupLimit: ARCHIVE_EXPANDED_GROUP_LIMIT,
-      });
+      if (viewingOwnPanel) {
+        const legacyUnackedCancelled = orderRows.filter(
+          (o) => o.status === "Anulowane" && !o.sales_acknowledged_at
+        );
+        const archiveSource = [...acknowledgedRows, ...legacyUnackedCancelled];
+        archiwumRecent = presentArchivedMyOrders(archiveSource, stats, {
+          acknowledgedSince: archiveAcknowledgedSinceRecent(),
+        });
+        archiwumExtended = presentArchivedMyOrders(archiveSource, stats, {
+          acknowledgedSince: archiveAcknowledgedSinceExpanded(),
+          groupLimit: ARCHIVE_EXPANDED_GROUP_LIMIT,
+        });
+      }
     } else if (role && canAccessOperations(role)) {
       const [orderRows, statsRows, supplierRows] = await Promise.all([
-        fetchIndividualOrders(
-          salesPersonId ? { salesPersonId } : undefined
-        ),
+        fetchIndividualOrders(salesPersonId ? { salesPersonId } : undefined),
         fetchDeliveryStats(),
         fetchSuppliersWithSchedules(),
       ]);
@@ -112,23 +142,35 @@ export default async function MojePage() {
   return (
     <>
       <PageHeader
-        title="Moje zamówienia"
+        title={isTeamPreview ? `Panel: ${salesPersonName}` : "Moje zamówienia"}
         description={
-          salesPersonName
-            ? `Status prośb i odbiór z magazynu — najpierw to, co wymaga Twojej akcji (${salesPersonName}).`
-            : "Status prośb, postęp na magazynie i potwierdzenie odbioru towaru."
+          isTeamPreview
+            ? `Podgląd prośb: ${salesPersonName}`
+            : "Aktywne dostawy — status w wierszu, szczegóły po rozwinięciu."
         }
         actions={
           role && !canAccessOperations(role) ? (
             <div className="flex w-full flex-wrap items-center gap-2 sm:w-auto">
               <MojePageSalesToolbar />
-              <Link href="/prosba" className="hidden sm:block">
-                <Button className="w-full sm:w-auto">Zgłoś prośbę</Button>
-              </Link>
+              {!isTeamPreview ? (
+                <Link href="/prosba" className="hidden sm:block">
+                  <Button className="w-full sm:w-auto">Zgłoś prośbę</Button>
+                </Link>
+              ) : null}
             </div>
           ) : undefined
         }
       />
+
+      {linkError && previewSalesPersonId ? (
+        <Alert tone="error" className="mb-6">
+          {linkError}
+        </Alert>
+      ) : null}
+
+      {isTeamPreview && salesPersonId && salesPersonName ? (
+        <ManagerPreviewBanner salesPersonId={salesPersonId} salesPersonName={salesPersonName} />
+      ) : null}
 
       {loadError ? (
         <Alert tone="error" className="mb-6">
@@ -145,11 +187,11 @@ export default async function MojePage() {
       <MojeOrdersView
         zamowienia={zamowienia}
         informacje={informacje}
-        archiwumRecent={role === "sales" ? archiwumRecent : []}
-        archiwumExtended={role === "sales" ? archiwumExtended : []}
+        archiwumRecent={viewingOwnPanel ? archiwumRecent : []}
+        archiwumExtended={viewingOwnPanel ? archiwumExtended : []}
         productLineCount={productLineCount}
-        canAcknowledge={role === "sales" && !!salesPersonId}
-        showProsbaCta={role === "sales"}
+        canAcknowledge={!!viewingOwnPanel}
+        showProsbaCta={isSalesAccount(role ?? "sales") && !isTeamPreview}
         suppliers={suppliers}
       />
     </>

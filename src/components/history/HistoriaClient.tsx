@@ -3,46 +3,21 @@
 import { useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import type { IndividualOrder } from "@/types/database";
-import { formatPlDate } from "@/lib/display-labels";
-import { getDeliveryProgress } from "@/lib/orders/individual";
-import { matchesIndividualSearch } from "@/lib/orders/history-search";
-import { SUMMARY_COLORS } from "@/types/database";
 import {
   actionDeleteIndividualHistory,
   actionDeleteNormalHistory,
 } from "@/app/actions/admin";
+import { HISTORY_PREVIEW_COUNT, HISTORY_RETENTION_MONTHS } from "@/lib/orders/history-retention";
+import { HistoriaIndividualTable } from "@/components/history/HistoriaIndividualTable";
+import {
+  HistoriaNormalTable,
+  type NormalHistoryRow,
+} from "@/components/history/HistoriaNormalTable";
+import { HistoriaBrowseSheet } from "@/components/history/HistoriaBrowseSheet";
 import { Card, CardHeader } from "@/components/ui/Card";
-import { DataTable, TableScroll } from "@/components/ui/DataTable";
-import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { EmptyState } from "@/components/ui/EmptyState";
-import { Input } from "@/components/ui/Field";
 import { Toast } from "@/components/ui/Toast";
-
-const STATUS_COLORS: Record<string, string> = {
-  Nowe: SUMMARY_COLORS.historyNew,
-  Zamowione: SUMMARY_COLORS.historyPending,
-  Czesciowo_zrealizowane: SUMMARY_COLORS.historyPartial,
-  Zrealizowane: SUMMARY_COLORS.historyCompleted,
-  Anulowane: SUMMARY_COLORS.historyCancelled,
-};
-
-const STATUS_LABELS: Record<string, string> = {
-  Nowe: "Nowe",
-  Zamowione: "Zamówione",
-  Czesciowo_zrealizowane: "Częściowo",
-  Zrealizowane: "Zrealizowane",
-  Anulowane: "Anulowane",
-};
-
-type NormalHistoryRow = {
-  id: string;
-  action_at: string;
-  user_email: string;
-  suppliers?: { name: string };
-  action: string;
-  next_date: string | null;
-};
 
 export function HistoriaClient({
   individual,
@@ -55,20 +30,21 @@ export function HistoriaClient({
 }) {
   const router = useRouter();
   const [pending, start] = useTransition();
-  const [productQuery, setProductQuery] = useState("");
   const [msg, setMsg] = useState<{ text: string; tone: "success" | "error" } | null>(
     null
   );
+  const [sheet, setSheet] = useState<"individual" | "normal" | null>(null);
 
-  const filteredIndividual = useMemo(
-    () => individual.filter((o) => matchesIndividualSearch(o, productQuery)),
-    [individual, productQuery]
+  const previewIndividual = useMemo(
+    () => individual.slice(0, HISTORY_PREVIEW_COUNT),
+    [individual]
+  );
+  const previewNormal = useMemo(
+    () => normal.slice(0, HISTORY_PREVIEW_COUNT),
+    [normal]
   );
 
-  const individualDescription =
-    productQuery.trim() === ""
-      ? `${individual.length} wpisów`
-      : `${filteredIndividual.length} z ${individual.length} wpisów`;
+  const retentionNote = `Ostatnie ${HISTORY_RETENTION_MONTHS} miesięcy · starsze wpisy kasuje aplikacja przy kolejnych zamówieniach (ok. raz na dobę) — bez crona na serwerze.`;
 
   const removeIndividual = (id: string) => {
     if (!confirm("Usunąć ten wpis z historii indywidualnej?")) return;
@@ -108,105 +84,34 @@ export function HistoriaClient({
         <Toast message={msg.text} tone={msg.tone} onDismiss={() => setMsg(null)} />
       ) : null}
 
+      <p className="rounded-xl border border-slate-200 bg-slate-50/80 px-4 py-2.5 text-sm text-slate-600">
+        {retentionNote}
+      </p>
+
       <Card padding={false}>
         <CardHeader
           inset
           title="Historia indywidualna"
-          description={`${individualDescription} · bez pozycji informacyjnych`}
+          description={`${individual.length} wpisów · bez pozycji informacyjnych · na liście ${Math.min(individual.length, HISTORY_PREVIEW_COUNT)} ostatnich`}
         />
-        {individual.length > 0 ? (
-          <div className="border-b border-slate-100 px-6 pb-4">
-            <label className="block max-w-md">
-              <span className="mb-1.5 block text-xs font-semibold text-slate-600">
-                Szukaj po towarze
-              </span>
-              <Input
-                type="search"
-                placeholder="Nazwa produktu, symbol…"
-                value={productQuery}
-                onChange={(e) => setProductQuery(e.target.value)}
-                autoComplete="off"
-              />
-            </label>
-          </div>
-        ) : null}
-
         {!individual.length ? (
           <EmptyState title="Brak wpisów w historii indywidualnej" />
-        ) : !filteredIndividual.length ? (
-          <EmptyState
-            title="Brak wyników"
-            description={`Nie znaleziono towaru pasującego do „${productQuery.trim()}”.`}
-          />
         ) : (
-          <TableScroll>
-            <DataTable>
-              <thead>
-                <tr>
-                  <th>Data</th>
-                  <th>Dostawca</th>
-                  <th>Dla kogo</th>
-                  <th>Produkt</th>
-                  <th>Ilość</th>
-                  <th>Dostawa</th>
-                  <th>Status</th>
-                  {canManageHistory ? <th /> : null}
-                </tr>
-              </thead>
-              <tbody>
-                {filteredIndividual.map((o) => {
-                  const progress = getDeliveryProgress(
-                    o.quantity,
-                    o.delivered_quantity && o.delivered_quantity !== "-"
-                      ? o.delivered_quantity
-                      : "0"
-                  );
-                  return (
-                    <tr
-                      key={o.id}
-                      style={{
-                        backgroundColor: STATUS_COLORS[o.status] ?? "#fff",
-                      }}
-                    >
-                      <td className="whitespace-nowrap text-slate-800 tabular-nums">
-                        {formatPlDate(o.action_at?.slice(0, 10))}
-                      </td>
-                      <td className="font-medium text-slate-900">
-                        {o.supplier?.name ?? "—"}
-                      </td>
-                      <td>{o.sales_person?.name ?? "—"}</td>
-                      <td className="max-w-[280px]">
-                        <span className="line-clamp-2">{o.products}</span>
-                      </td>
-                      <td className="tabular-nums">{o.quantity}</td>
-                      <td className="tabular-nums text-sm">
-                        {progress.hasNumericQty
-                          ? progress.fractionLabel
-                          : o.delivered_quantity || "—"}
-                      </td>
-                      <td>
-                        <Badge variant="info">
-                          {STATUS_LABELS[o.status] ?? o.status}
-                        </Badge>
-                      </td>
-                      {canManageHistory ? (
-                        <td>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            disabled={pending}
-                            onClick={() => removeIndividual(o.id)}
-                          >
-                            Usuń
-                          </Button>
-                        </td>
-                      ) : null}
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </DataTable>
-          </TableScroll>
+          <>
+            <HistoriaIndividualTable
+              rows={previewIndividual}
+              canManageHistory={canManageHistory}
+              pending={pending}
+              onRemove={removeIndividual}
+            />
+            {individual.length > HISTORY_PREVIEW_COUNT ? (
+              <div className="border-t border-slate-100 px-6 py-4">
+                <Button variant="outline" size="sm" onClick={() => setSheet("individual")}>
+                  Pokaż pełną historię ({individual.length} wpisów)
+                </Button>
+              </div>
+            ) : null}
+          </>
         )}
       </Card>
 
@@ -214,56 +119,40 @@ export function HistoriaClient({
         <CardHeader
           inset
           title="Zamówienia standardowe"
-          description={`${normal.length} ostatnich akcji`}
+          description={`${normal.length} akcji w okresie retencji`}
         />
         {!normal.length ? (
           <EmptyState title="Brak historii zamówień standardowych" />
         ) : (
-          <TableScroll>
-            <DataTable>
-              <thead>
-                <tr>
-                  <th>Data</th>
-                  <th>Użytkownik</th>
-                  <th>Dostawca</th>
-                  <th>Akcja</th>
-                  <th>Następna data</th>
-                  {canManageHistory ? <th /> : null}
-                </tr>
-              </thead>
-              <tbody>
-                {normal.map((h) => (
-                  <tr key={h.id}>
-                    <td className="whitespace-nowrap text-slate-800 tabular-nums">
-                      {formatPlDate(h.action_at?.slice(0, 10))}
-                    </td>
-                    <td className="max-w-[200px] truncate">{h.user_email}</td>
-                    <td className="font-medium text-slate-900">
-                      {h.suppliers?.name ?? "—"}
-                    </td>
-                    <td>{h.action}</td>
-                    <td className="whitespace-nowrap tabular-nums">
-                      {formatPlDate(h.next_date)}
-                    </td>
-                    {canManageHistory ? (
-                      <td>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          disabled={pending}
-                          onClick={() => removeNormal(h.id)}
-                        >
-                          Usuń
-                        </Button>
-                      </td>
-                    ) : null}
-                  </tr>
-                ))}
-              </tbody>
-            </DataTable>
-          </TableScroll>
+          <>
+            <HistoriaNormalTable
+              rows={previewNormal}
+              canManageHistory={canManageHistory}
+              pending={pending}
+              onRemove={removeNormal}
+            />
+            {normal.length > HISTORY_PREVIEW_COUNT ? (
+              <div className="border-t border-slate-100 px-6 py-4">
+                <Button variant="outline" size="sm" onClick={() => setSheet("normal")}>
+                  Pokaż pełną historię ({normal.length} wpisów)
+                </Button>
+              </div>
+            ) : null}
+          </>
         )}
       </Card>
+
+      <HistoriaBrowseSheet
+        open={sheet !== null}
+        kind={sheet ?? "individual"}
+        individual={individual}
+        normal={normal}
+        canManageHistory={canManageHistory}
+        pending={pending}
+        onClose={() => setSheet(null)}
+        onRemoveIndividual={removeIndividual}
+        onRemoveNormal={removeNormal}
+      />
     </div>
   );
 }

@@ -176,8 +176,12 @@ export function SupplierDrawer({
           ) : null}
 
           <DrawerBlock title="Kontakt i zamówienia" className="mt-6">
-            <SupplierContactActions notes={supplier.notes} mails={supplier.mails} />
-            {supplier.extra_info ? (
+            <SupplierContactActions
+              notes={supplier.notes}
+              mails={supplier.mails}
+              extraInfo={supplier.extra_info}
+            />
+            {supplier.extra_info?.trim() && supplier.mails?.trim() ? (
               <p className="mt-3 text-sm text-slate-600">
                 <span className="text-slate-500">Uwagi: </span>
                 {supplier.extra_info}

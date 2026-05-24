@@ -29,6 +29,22 @@ describe("formatScheduleOutcomeLines", () => {
     expect(lines[0]).toContain("15.06.2026");
   });
 
+  it("Przesunięcie — nowy termin planowy", () => {
+    const lines = formatScheduleOutcomeLines([{ ...base, scheduleAdjusted: true }], "PRZESUNIETE");
+    expect(lines[0]).toContain("termin przesunięty");
+    expect(lines[0]).toContain("15.06.2026");
+  });
+
+  it("Zamówione — kolejna data planowa", () => {
+    const lines = formatScheduleOutcomeLines(
+      [{ ...base, scheduleAdjusted: true }],
+      "ZAMOWIONE"
+    );
+    expect(lines[0]).toContain("zamówienie zapisane");
+    expect(lines[0]).toContain("harmonogram przeliczony");
+    expect(lines[0]).toContain("15.06.2026");
+  });
+
   it("ostrzeżenie przy braku interwału", () => {
     const lines = formatScheduleOutcomeLines(
       [

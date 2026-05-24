@@ -2,7 +2,9 @@ import { createAdminClient, hasSupabaseConfig } from "@/lib/supabase/admin";
 import { normalizeIndividualOrders } from "@/lib/data/normalize-order";
 import { buildSummaryWorkspace } from "@/lib/orders/summary-workspace";
 import { sortIndividualOrdersBySupplier } from "@/lib/orders/queue-sort";
+import { sortInformacjaQueueByProduct } from "@/lib/orders/queue-product-groups";
 import { isSalesCancelledForQueue } from "@/lib/orders/sales-cancel";
+import { historyRetentionCutoffIso } from "@/lib/orders/history-retention";
 import type {
   IndividualOrder,
   SupplierLocation,
@@ -158,6 +160,7 @@ export async function fetchIndividualHistory(): Promise<IndividualOrder[]> {
     .select("*, supplier:suppliers(*), sales_person:sales_people(*)")
     .neq("request_kind", "informacja")
     .neq("status", "Weryfikacja")
+    .gte("action_at", historyRetentionCutoffIso())
     .order("action_at", { ascending: false });
   if (error) throw new Error(error.message);
   return normalizeIndividualOrders(data ?? []);
@@ -174,7 +177,7 @@ export async function fetchInformacjaQueue(): Promise<IndividualOrder[]> {
     .eq("status", "Nowe")
     .order("action_at", { ascending: true });
   if (error) throw new Error(error.message);
-  return sortIndividualOrdersBySupplier(normalizeIndividualOrders(data ?? []));
+  return sortInformacjaQueueByProduct(normalizeIndividualOrders(data ?? []));
 }
 
 /** Liczba pozycji w kolejce dostaw (zamówione u dostawcy, bez informacji). */
@@ -352,13 +355,16 @@ export async function fetchSupplierDeliveryContext() {
   };
 }
 
-export async function fetchNormalHistory(limit = 100) {
+export async function fetchNormalHistory(limit?: number) {
   if (!hasSupabaseConfig()) return [];
   const supabase = createAdminClient();
-  const { data } = await supabase
+  let q = supabase
     .from("normal_order_history")
     .select("*, suppliers(name)")
-    .order("action_at", { ascending: false })
-    .limit(limit);
+    .gte("action_at", historyRetentionCutoffIso())
+    .order("action_at", { ascending: false });
+  if (limit != null) q = q.limit(limit);
+  const { data, error } = await q;
+  if (error) throw new Error(error.message);
   return data ?? [];
 }

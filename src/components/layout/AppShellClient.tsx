@@ -10,7 +10,9 @@ import {
 } from "@/components/sales/SalesUpdatesContext";
 import { cn } from "@/lib/cn";
 import { salesMobileChromeRoot } from "@/lib/ui/sales-mobile-chrome";
+import { appMainClass, appShellClass } from "@/lib/ui/ontime-theme";
 import type { UserRole } from "@/types/database";
+import { isSalesAccount } from "@/lib/auth-roles";
 
 export function AppShellClient({
   children,
@@ -44,13 +46,13 @@ export function AppShellClient({
     );
   }
 
-  const salesLive = role === "sales";
+  const salesLive = role ? isSalesAccount(role) : false;
 
   return (
     <SalesUpdatesProvider enabled={salesLive} initialVersion={salesActivityVersion}>
       <div
         className={cn(
-          "min-h-screen bg-gradient-to-br from-slate-50 via-white to-indigo-50/25",
+          appShellClass,
           salesLive && salesMobileChromeRoot
         )}
       >
@@ -62,10 +64,10 @@ export function AppShellClient({
             navBadges={navBadges}
           />
         </div>
-        {salesLive ? <MobileSalesHeader userEmail={userEmail} /> : null}
+        {salesLive ? <MobileSalesHeader role={role} userEmail={userEmail} /> : null}
         <main
           className={cn(
-            "min-h-screen overflow-y-auto",
+            appMainClass,
             salesLive
               ? "ml-0 pb-[calc(3.5rem+env(safe-area-inset-bottom,0px))] md:ml-64 md:pb-0"
               : "ml-64"

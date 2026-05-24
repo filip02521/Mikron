@@ -25,9 +25,35 @@ describe("buildSupplierContactUi", () => {
     });
   });
 
+  it("internet — www bez protokołu", () => {
+    const ui = buildSupplierContactUi("PRZEZ INTERNET", "www.sklep.example.com");
+    expect(ui.contactLink).toMatchObject({
+      kind: "url",
+      href: "https://www.sklep.example.com",
+      label: "www.sklep.example.com",
+    });
+  });
+
+  it("internet — domena bez www", () => {
+    const ui = buildSupplierContactUi("PRZEZ INTERNET", "sklep.example.com/zamowienia");
+    expect(ui.contactLink?.kind).toBe("url");
+    expect(ui.contactLink?.href).toContain("sklep.example.com");
+  });
+
   it("bez kontaktu zwraca null", () => {
     const ui = buildSupplierContactUi("MAILOWO", "");
     expect(ui.contactLink).toBeNull();
     expect(ui.copyText).toBeNull();
+  });
+
+  it("MAILOWO + URL — nie linkuje strony przy odznace mail", () => {
+    const ui = buildSupplierContactUi("MAILOWO", "https://sklep.example.com");
+    expect(ui.contactLink).toBeNull();
+    expect(ui.copyText).toBe("https://sklep.example.com");
+  });
+
+  it("telefon w extra_info gdy mails puste", () => {
+    const ui = buildSupplierContactUi("TELEFONICZNIE", "", "tel. +48 501 234 567");
+    expect(ui.contactLink?.kind).toBe("tel");
   });
 });

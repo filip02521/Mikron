@@ -3,11 +3,12 @@
 import { revalidatePath } from "next/cache";
 import {
   requireAdmin,
+  requireAdminOrSalesTeamManagement,
   requireOperations,
   requireSupplierManagement,
   getSessionUser,
 } from "@/lib/auth";
-import { canAccessOperations } from "@/lib/auth-roles";
+import { canAccessOperations, isSales, isSalesManager } from "@/lib/auth-roles";
 import { tryAcquireLock, releaseLock } from "@/lib/services/locks";
 import {
   recalcSingleSupplierSchedule,
@@ -21,17 +22,30 @@ import {
   processIndividualFromSummary,
   cancelIndividualOrder,
   updateDeliveredQuantity,
+  batchUpdateDeliveredQuantities,
   processMarkedDeliveries,
   recalculateAllStats,
   completeVerificationOrder,
   updateIndividualRequestGroup,
 } from "@/lib/services/orders";
 import type { IndividualRequestEditPayload } from "@/lib/orders/individual-request-edit";
-import { sendWeeklySummaryEmail, sendDailyStatusToSales } from "@/lib/services/email";
+import { sendWeeklySummaryEmail } from "@/lib/services/email";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { intervalWeeksForStorage, parseInterval } from "@/lib/orders/dates";
 import { resolveOrderOnDemandForSave } from "@/lib/orders/supplier-on-demand";
+import { validateSupplierContactFields } from "@/lib/orders/validate-supplier-contact";
 import type { IndividualRequestKind, SupplierLocation, StatsMode } from "@/types/database";
+import {
+  clampOptionalText,
+  clampText,
+  isValidEmail,
+  MAX_DISPOSITION_NOTE_LEN,
+  MAX_INTERVAL_RAW_LEN,
+  MAX_SUPPLIER_EXTRA_LEN,
+  MAX_SUPPLIER_MAILS_LEN,
+  MAX_SUPPLIER_NAME_LEN,
+  MAX_SUPPLIER_NOTES_LEN,
+} from "@/lib/security/text-limits";
 import { dateToIso, parseDateOnly, snapToBusinessDay } from "@/lib/orders/dates";
 import { DAILY_PANEL_UNDO_MS } from "@/lib/orders/daily-panel-undo";
 import type { DailyPanelActionResult } from "@/lib/orders/daily-panel-undo";
@@ -43,6 +57,8 @@ import {
   revertDailyPanelChange,
   supplierIdsForGlownePlacement,
   buildProcessIndividualFeedback,
+  buildMarkOrderedFeedback,
+  buildScheduleFeedback,
 } from "@/lib/services/daily-panel-undo";
 
 function revalidateAll() {
@@ -106,9 +122,11 @@ export async function actionMarkOrdered(
   const user = await requireOperations();
   const scheduleBefore = await captureScheduleSnapshot(supplierId);
   await markStandardOrdered(supplierId, user.email);
+  const feedbackLines = await buildMarkOrderedFeedback([supplierId]);
   revalidateAll();
   return {
     success: true,
+    feedbackLines,
     undo: {
       token: { kind: "schedules", snapshots: [scheduleBefore] },
       performedAt: Date.now(),
@@ -127,9 +145,11 @@ export async function actionShiftOrder(
     ? snapToBusinessDay(parseDateOnly(manualDateIso)!)
     : null;
   await shiftSupplierOrder(supplierId, weeks, manual, user.email);
+  const feedbackLines = await buildScheduleFeedback([supplierId], "PRZESUNIETE");
   revalidateAll();
   return {
     success: true,
+    feedbackLines,
     undo: {
       token: { kind: "schedules", snapshots: [scheduleBefore] },
       performedAt: Date.now(),
@@ -159,9 +179,14 @@ export async function actionBatchShiftOrder(
     await shiftSupplierOrder(supplierId, null, manual, user.email);
   }
 
+  const feedbackLines = await buildScheduleFeedback(
+    list.map(([id]) => id),
+    "PRZESUNIETE"
+  );
   revalidateAll();
   return {
     success: true,
+    feedbackLines,
     undo: {
       token: { kind: "schedules", snapshots },
       performedAt: Date.now(),
@@ -209,17 +234,28 @@ export async function actionProcessIndividual(
 export async function actionMarkInformacjaArrived(
   orderIds: string[]
 ): Promise<
-  | { success: true; updated: number; emailSent: number; emailError?: string }
+  | {
+      success: true;
+      updated: number;
+      skipped: number;
+      requested: number;
+      emailSent: number;
+      emailError?: string;
+    }
   | { error: string }
 > {
   await requireOperations();
   if (!orderIds.length) return { error: "Brak pozycji do oznaczenia." };
-  const result = await markInformacjaArrived(orderIds);
-  if (result.updated === 0) {
-    return { error: "Nie znaleziono oczekujących prośb informacyjnych." };
+  try {
+    const result = await markInformacjaArrived(orderIds);
+    if (result.updated === 0) {
+      return { error: "Nie znaleziono oczekujących prośb informacyjnych." };
+    }
+    revalidateAll();
+    return { success: true, ...result };
+  } catch (e) {
+    return { error: e instanceof Error ? e.message : "Nie udało się powiadomić." };
   }
-  revalidateAll();
-  return { success: true, ...result };
 }
 
 export async function actionBulkOrdered(
@@ -230,10 +266,12 @@ export async function actionBulkOrdered(
   for (const id of supplierIds) {
     await markStandardOrdered(id, user.email);
   }
+  const feedbackLines = await buildMarkOrderedFeedback(supplierIds);
   revalidateAll();
   return {
     success: true,
     count: supplierIds.length,
+    feedbackLines,
     undo: {
       token: { kind: "schedules", snapshots: schedulesBefore },
       performedAt: Date.now(),
@@ -264,12 +302,16 @@ export async function actionAddIndividualOrders(
 ) {
   const user = await getSessionUser();
   if (!user) throw new Error("Wymagane logowanie");
-  if (!canAccessOperations(user.role) && user.role !== "sales") {
+  if (
+    !canAccessOperations(user.role) &&
+    !isSales(user.role) &&
+    !isSalesManager(user.role)
+  ) {
     throw new Error("Brak uprawnień");
   }
 
   let salesPersonIdForSales: string | null = null;
-  if (user.role === "sales") {
+  if (isSales(user.role)) {
     const { resolveSalesPersonForUser } = await import("@/lib/auth/sales-person");
     const resolved = await resolveSalesPersonForUser(user);
     if (!resolved) {
@@ -278,6 +320,21 @@ export async function actionAddIndividualOrders(
       );
     }
     salesPersonIdForSales = resolved.id;
+  }
+
+  if (isSalesManager(user.role)) {
+    const supabase = createAdminClient();
+    for (const e of entries) {
+      if (!e.salesPersonId) {
+        throw new Error("Wybierz handlowca, w imieniu którego składasz prośbę.");
+      }
+      const { data: person } = await supabase
+        .from("sales_people")
+        .select("id")
+        .eq("id", e.salesPersonId)
+        .maybeSingle();
+      if (!person) throw new Error("Nieprawidłowy handlowiec.");
+    }
   }
 
   const normalized = entries.map((e) => ({
@@ -404,7 +461,7 @@ export async function actionSetProcurementCancelDisposition(
 
   const supabase = createAdminClient();
   const now = new Date().toISOString();
-  const trimmedNote = note?.trim() || null;
+  const trimmedNote = clampOptionalText(note, MAX_DISPOSITION_NOTE_LEN);
 
   const { data, error } = await supabase
     .from("individual_orders")
@@ -459,6 +516,47 @@ export async function actionUpdateDelivered(orderId: string, qty: string) {
   return { success: true, emailSent, emailError };
 }
 
+export async function actionBatchUpdateDelivered(
+  updates: Array<{ orderId: string; qty: string }>
+): Promise<
+  | {
+      success: true;
+      saved: number;
+      savedOrderIds: string[];
+      emailSent: number;
+      errors: string[];
+      emailError?: string;
+    }
+  | { error: string }
+> {
+  await requireOperations();
+  if (!updates.length) return { error: "Zaznacz pozycje i wpisz ilości do zapisania." };
+
+  try {
+    const result = await batchUpdateDeliveredQuantities(
+      updates.map((u) => ({ orderId: u.orderId, deliveredQuantity: u.qty }))
+    );
+    revalidateAll();
+
+    if (result.saved === 0) {
+      return {
+        error: result.errors[0] ?? "Nie udało się zapisać żadnej pozycji.",
+      };
+    }
+
+    return {
+      success: true,
+      saved: result.saved,
+      savedOrderIds: result.savedOrderIds,
+      emailSent: result.emailSent,
+      errors: result.errors,
+      emailError: result.emailError,
+    };
+  } catch (e) {
+    return { error: e instanceof Error ? e.message : "Nie udało się zapisać." };
+  }
+}
+
 export async function actionProcessDeliveries() {
   await requireOperations();
   const result = await processMarkedDeliveries();
@@ -484,18 +582,6 @@ export async function actionSendWeeklyEmail() {
   return { success: ok };
 }
 
-export async function actionSendDailySalesEmail() {
-  await requireAdmin();
-  const result = await sendDailyStatusToSales();
-  return {
-    success: result.failures.length === 0 && !result.skipped,
-    sent: result.sent,
-    skipped: result.skipped,
-    reason: result.reason,
-    failures: result.failures,
-  };
-}
-
 export async function actionUpsertSupplier(form: {
   id?: string;
   name: string;
@@ -511,27 +597,36 @@ export async function actionUpsertSupplier(form: {
   order_on_demand: boolean;
 }) {
   await requireSupplierManagement();
+  const notes = clampText(form.notes, MAX_SUPPLIER_NOTES_LEN);
+  const mails = clampText(form.mails, MAX_SUPPLIER_MAILS_LEN);
+  const extraInfo = clampText(form.extra_info, MAX_SUPPLIER_EXTRA_LEN);
+  const contactError = validateSupplierContactFields(notes, mails, extraInfo);
+  if (contactError) {
+    throw new Error(contactError);
+  }
   const supabase = createAdminClient();
-  const intervalParsed = parseInterval(form.interval_raw);
-  const stockParsed = parseInterval(form.stock_raw);
+  const intervalRaw = clampText(form.interval_raw, MAX_INTERVAL_RAW_LEN);
+  const stockRaw = clampText(form.stock_raw, MAX_INTERVAL_RAW_LEN);
+  const intervalParsed = parseInterval(intervalRaw);
+  const stockParsed = parseInterval(stockRaw);
   const payload = {
-    name: form.name.trim(),
+    name: clampText(form.name, MAX_SUPPLIER_NAME_LEN),
     location: form.location,
     pickup_mikran: form.pickup_mikran,
     pickup_pallet: form.pickup_pallet,
-    notes: form.notes,
-    mails: form.mails,
-    extra_info: form.extra_info,
-    interval_raw: form.interval_raw.trim(),
-    interval_weeks: intervalWeeksForStorage(form.interval_raw, intervalParsed),
-    stock_raw: form.stock_raw.trim(),
-    stock: intervalWeeksForStorage(form.stock_raw, stockParsed),
+    notes,
+    mails,
+    extra_info: extraInfo,
+    interval_raw: intervalRaw,
+    interval_weeks: intervalWeeksForStorage(intervalRaw, intervalParsed),
+    stock_raw: stockRaw,
+    stock: intervalWeeksForStorage(stockRaw, stockParsed),
     stats_mode: form.stats_mode,
     order_on_demand: resolveOrderOnDemandForSave({
       order_on_demand: form.order_on_demand,
-      stock_raw: form.stock_raw,
-      interval_raw: form.interval_raw,
-      extra_info: form.extra_info,
+      stock_raw: stockRaw,
+      interval_raw: intervalRaw,
+      extra_info: extraInfo,
     }),
     updated_at: new Date().toISOString(),
   };
@@ -665,13 +760,13 @@ export async function actionUpsertSalesPerson(form: {
   name: string;
   email: string;
 }): Promise<{ success: true; id: string } | { error: string }> {
-  await requireAdmin();
+  await requireAdminOrSalesTeamManagement();
 
   const name = form.name.trim();
   const email = form.email.trim().toLowerCase();
   if (!name) return { error: "Podaj imię i nazwisko handlowca." };
   if (!email) return { error: "Podaj adres e-mail." };
-  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+  if (!isValidEmail(email)) {
     return { error: "Podaj poprawny adres e-mail." };
   }
 
@@ -711,7 +806,7 @@ export async function actionUpsertSalesPerson(form: {
 export async function actionDeleteSalesPerson(
   id: string
 ): Promise<{ success: true } | { error: string }> {
-  await requireAdmin();
+  await requireAdminOrSalesTeamManagement();
   const supabase = createAdminClient();
 
   const { data: person } = await supabase

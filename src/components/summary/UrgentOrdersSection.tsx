@@ -25,6 +25,11 @@ import { SupplierContactActions } from "@/components/procurement/SupplierContact
 import type { SupplierSummaryMeta } from "@/lib/orders/summary-workspace";
 import type { DailyUrgentProgress } from "@/lib/orders/daily-urgent-progress";
 import { cn } from "@/lib/cn";
+import {
+  urgentCardClassName,
+  urgentGroupDividerClassName,
+  urgentGroupHeadingClassName,
+} from "@/components/summary/urgent-card-styles";
 
 function SectionHelp() {
   return (
@@ -67,12 +72,7 @@ function UrgentCard({
   const isOverdue = ui.statusTitle === "Zaległe";
 
   return (
-    <article
-      className={cn(
-        "rounded-xl border border-slate-200 bg-white",
-        isOverdue && "border-l-[3px] border-l-slate-500"
-      )}
-    >
+    <article className={urgentCardClassName(isOverdue)}>
       <div className="flex flex-wrap items-center gap-x-3 gap-y-2 px-3.5 py-3">
         <input
           type="checkbox"
@@ -90,7 +90,10 @@ function UrgentCard({
             >
               {item.supplierName}
             </button>
-            <Badge variant="default" className="text-[10px]">
+            <Badge
+              variant={isOverdue ? "warning" : "info"}
+              className="text-[10px]"
+            >
               {ui.statusTitle}
               {isOverdue ? ` · ${dateLabel}` : null}
             </Badge>
@@ -117,7 +120,7 @@ function UrgentCard({
             <SupplierContactActions
               notes={supplierMeta.notes}
               mails={supplierMeta.mails}
-              compact
+              extraInfo={supplierMeta.extra_info}
               className="mt-2"
             />
           ) : null}
@@ -174,6 +177,8 @@ function UrgentCard({
 function UrgentGroup({
   title,
   items,
+  variant,
+  showTopDivider = false,
   supplierMeta,
   selected,
   pending,
@@ -185,6 +190,8 @@ function UrgentGroup({
 }: {
   title: string;
   items: SummaryStandardItem[];
+  variant: "overdue" | "today";
+  showTopDivider?: boolean;
   supplierMeta: Record<string, SupplierSummaryMeta>;
   selected: Record<string, boolean>;
   pending: boolean;
@@ -196,11 +203,18 @@ function UrgentGroup({
 }) {
   if (!items.length) return null;
 
+  const isOverdue = variant === "overdue";
+
   return (
-    <section className="space-y-2">
-      <h3 className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-        {title} ({items.length})
-      </h3>
+    <section
+      className={cn("space-y-2", showTopDivider && "border-t border-slate-200/90 pt-4")}
+    >
+      <div className="flex items-center gap-3">
+        <h3 className={urgentGroupHeadingClassName(isOverdue)}>
+          {title} ({items.length})
+        </h3>
+        <div className={urgentGroupDividerClassName(isOverdue)} aria-hidden />
+      </div>
       <ul className="space-y-2">
         {items.map((item) => (
           <li key={item.supplierId}>
@@ -336,6 +350,7 @@ export function UrgentOrdersSection({
         <div className="space-y-4 p-3 sm:p-4">
           <UrgentGroup
             title="Zaległe"
+            variant="overdue"
             items={overdue}
             supplierMeta={supplierMeta}
             selected={selected}
@@ -348,6 +363,8 @@ export function UrgentOrdersSection({
           />
           <UrgentGroup
             title="Na dziś"
+            variant="today"
+            showTopDivider={overdue.length > 0}
             items={todayList}
             supplierMeta={supplierMeta}
             selected={selected}

@@ -14,7 +14,7 @@ export type VacationNote =
   | "PRZESUNIETE_PO"
   | "PRZYSPIESZONE_PRZED"
   | "OSTATNIE_ZAMOWIENIE";
-export type UserRole = "admin" | "zakupy" | "sales";
+export type UserRole = "admin" | "zakupy" | "sales" | "sales_manager";
 
 export interface Supplier {
   id: string;
@@ -110,7 +110,7 @@ export interface DeliveryStats {
 }
 
 export const SUMMARY_COLORS = {
-  expired: "#f5f5f5",
+  expired: "#fff1f2",
   today: "#eff6ff",
   tomorrow: "#fffde7",
   thisWeek: "#e3f2fd",

@@ -1,5 +1,6 @@
 import { createAdminClient, hasSupabaseConfig } from "@/lib/supabase/admin";
 import type { SessionUser } from "@/lib/auth";
+import { isSalesAccount } from "@/lib/auth-roles";
 
 export type ResolvedSalesPerson = {
   id: string;
@@ -10,7 +11,7 @@ export type ResolvedSalesPerson = {
 export async function resolveSalesPersonForUser(
   user: SessionUser
 ): Promise<ResolvedSalesPerson | null> {
-  if (user.role !== "sales" || !hasSupabaseConfig()) return null;
+  if (!isSalesAccount(user.role) || !hasSupabaseConfig()) return null;
 
   const admin = createAdminClient();
 

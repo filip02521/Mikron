@@ -10,28 +10,59 @@ import { Badge } from "@/components/ui/Badge";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { DataTable, TableScroll } from "@/components/ui/DataTable";
 import { Toast } from "@/components/ui/Toast";
-import { SUMMARY_COLORS } from "@/types/database";
 import { ActionLoadingOverlay } from "@/components/ui/ActionLoadingOverlay";
-import { cn } from "@/lib/cn";
+import { supplierKey } from "@/lib/orders/queue-supplier-groups";
 import {
-  queueSupplierRowClass,
-  supplierGroupIndexByOrderId,
-  supplierKey,
-} from "@/lib/orders/queue-supplier-groups";
+  informacjaProductKey,
+  informacjaProductTitle,
+  orderIdsInProductGroup,
+  productGroupIndexByOrderId,
+  queueInformacjaProductRowClass,
+} from "@/lib/orders/queue-product-groups";
+import {
+  batchNotifyButtonLabel,
+  countSalesPeopleInOrders,
+  formatInformacjaBatchToast,
+} from "@/lib/orders/queue-batch-notify";
 
 export function InformacjaQueueSection({ orders }: { orders: IndividualOrder[] }) {
   const router = useRouter();
   const [pending, start] = useTransition();
   const [pendingMessage, setPendingMessage] = useState<string | null>(null);
+  const [selected, setSelected] = useState<Record<string, boolean>>({});
   const [toast, setToast] = useState<{ text: string; tone: "success" | "error" } | null>(
     null
   );
   const dismissToast = useCallback(() => setToast(null), []);
 
-  const supplierGroups = useMemo(
-    () => supplierGroupIndexByOrderId(orders),
+  const productGroups = useMemo(
+    () => productGroupIndexByOrderId(orders),
     [orders]
   );
+
+  const selectedIds = useMemo(
+    () => orders.filter((o) => selected[o.id]).map((o) => o.id),
+    [orders, selected]
+  );
+
+  const allSelected = orders.length > 0 && orders.every((o) => selected[o.id]);
+
+  const toggleSelected = (orderId: string) => {
+    setSelected((s) => ({ ...s, [orderId]: !s[orderId] }));
+  };
+
+  const toggleProductGroup = (startIndex: number, checked: boolean) => {
+    const ids = orderIdsInProductGroup(orders, startIndex);
+    setSelected((s) => {
+      const next = { ...s };
+      for (const id of ids) next[id] = checked;
+      return next;
+    });
+  };
+
+  const toggleAll = (checked: boolean) => {
+    setSelected(checked ? Object.fromEntries(orders.map((o) => [o.id, true])) : {});
+  };
 
   const markArrived = (orderIds: string[]) => {
     setPendingMessage(
@@ -44,15 +75,12 @@ export function InformacjaQueueSection({ orders }: { orders: IndividualOrder[] }
           setToast({ text: r.error, tone: "error" });
           return;
         }
-        const extra = r.emailError
-          ? ` Uwaga: ${r.emailError}`
-          : r.emailSent
-            ? ` Wysłano ${r.emailSent} e-mail(i).`
-            : "";
-        setToast({
-          text: `Powiadomiono handlowca (${r.updated} poz.)${extra}`,
-          tone: r.emailError ? "error" : "success",
+        setSelected((s) => {
+          const next = { ...s };
+          for (const id of orderIds) delete next[id];
+          return next;
         });
+        setToast(formatInformacjaBatchToast(r));
         router.refresh();
       } catch (e) {
         setToast({
@@ -64,6 +92,21 @@ export function InformacjaQueueSection({ orders }: { orders: IndividualOrder[] }
       }
     });
   };
+
+  const headerNotifyLabel = useMemo(() => {
+    if (!orders.length) return "Powiadom wszystkich";
+    const emails = countSalesPeopleInOrders(orders, orders.map((o) => o.id));
+    if (emails <= 1) return `Powiadom wszystkich (${orders.length}) — mail do handlowca`;
+    return `Powiadom wszystkich (${orders.length}) — ${emails} handlowców`;
+  }, [orders]);
+
+  const selectedHeaderLabel = useMemo(() => {
+    if (selectedIds.length <= 1) return "Powiadom zaznaczone";
+    const emails = countSalesPeopleInOrders(orders, selectedIds);
+    return emails <= 1
+      ? `Powiadom zaznaczone (${selectedIds.length}) — mail do handlowca`
+      : `Powiadom zaznaczone (${selectedIds.length}) — ${emails} handlowców`;
+  }, [orders, selectedIds]);
 
   return (
     <div className="relative space-y-4">
@@ -80,35 +123,31 @@ export function InformacjaQueueSection({ orders }: { orders: IndividualOrder[] }
           title="Pozycje informacyjne"
           description={
             orders.length
-              ? `${orders.length} ${orders.length === 1 ? "pozycja" : "pozycji"} · alfabetycznie po dostawcy`
+              ? `${orders.length} ${orders.length === 1 ? "pozycja" : "pozycji"} w kolejce`
               : "Brak oczekujących"
           }
           action={
-            orders.length > 1 ? (
+            selectedIds.length > 0 ? (
+              <Button
+                variant="primary"
+                size="sm"
+                disabled={pending}
+                onClick={() => markArrived(selectedIds)}
+              >
+                {selectedHeaderLabel}
+              </Button>
+            ) : orders.length > 1 ? (
               <Button
                 variant="outline"
                 size="sm"
                 disabled={pending}
                 onClick={() => markArrived(orders.map((o) => o.id))}
               >
-                Powiadom wszystkich
+                {headerNotifyLabel}
               </Button>
             ) : undefined
           }
         />
-
-        <div
-          className="border-b border-sky-100 px-6 py-3 text-sm leading-relaxed text-sky-950"
-          style={{ backgroundColor: SUMMARY_COLORS.informacja }}
-        >
-          <p className="font-medium">
-            Tylko informacja — bez rezerwacji towaru na regale dla handlowca
-          </p>
-          <p className="mt-1 text-sky-900/90">
-            Towar odkładacie na standardowe miejsce w magazynie. Gdy jest dostępny, wyślij
-            e-mail — pozycja nie trafia do historii realizacji indywidualnej.
-          </p>
-        </div>
 
         {!orders.length ? (
           <EmptyState
@@ -120,6 +159,16 @@ export function InformacjaQueueSection({ orders }: { orders: IndividualOrder[] }
             <DataTable className="text-sm">
               <thead>
                 <tr>
+                  <th className="w-10">
+                    <input
+                      type="checkbox"
+                      className="size-4 rounded border-slate-300 text-sky-600 focus:ring-sky-500/30"
+                      checked={allSelected}
+                      disabled={pending}
+                      aria-label="Zaznacz wszystkie pozycje informacyjne"
+                      onChange={(e) => toggleAll(e.target.checked)}
+                    />
+                  </th>
                   <th className="min-w-[7rem]">Dla kogo</th>
                   <th className="min-w-[6rem]">Dostawca</th>
                   <th className="min-w-[10rem]">Produkt</th>
@@ -130,25 +179,35 @@ export function InformacjaQueueSection({ orders }: { orders: IndividualOrder[] }
                 {orders.map((o, index) => {
                   const personName = o.sales_person?.name?.trim() || "—";
                   const supplierName = supplierKey(o);
-                  const groupIndex = supplierGroups.get(o.id) ?? 0;
-                  const prevSupplier =
-                    index > 0 ? supplierKey(orders[index - 1]!) : null;
-                  const isFirstInSupplierGroup = supplierName !== prevSupplier;
-                  const productTitle = [
-                    o.products,
-                    o.symbol && o.symbol !== "-" ? `(${o.symbol})` : null,
-                  ]
-                    .filter(Boolean)
-                    .join(" ");
+                  const groupIndex = productGroups.get(o.id) ?? 0;
+                  const prevKey =
+                    index > 0 ? informacjaProductKey(orders[index - 1]!) : null;
+                  const isFirstInProductGroup =
+                    informacjaProductKey(o) !== prevKey;
+                  const groupIds = isFirstInProductGroup
+                    ? orderIdsInProductGroup(orders, index)
+                    : [];
+                  const groupAllSelected =
+                    groupIds.length > 0 && groupIds.every((id) => selected[id]);
+                  const productTitle = informacjaProductTitle(o);
 
                   return (
                     <tr
                       key={o.id}
-                      className={queueSupplierRowClass(groupIndex, {
-                        variant: "informacja",
-                        isFirstInSupplierGroup,
+                      className={queueInformacjaProductRowClass(groupIndex, {
+                        isFirstInProductGroup,
                       })}
                     >
+                      <td className="text-center align-top pt-3">
+                        <input
+                          type="checkbox"
+                          className="size-4 rounded border-slate-300 text-sky-600 focus:ring-sky-500/30"
+                          checked={!!selected[o.id]}
+                          disabled={pending}
+                          aria-label={`Zaznacz pozycję ${personName}`}
+                          onChange={() => toggleSelected(o.id)}
+                        />
+                      </td>
                       <td className="whitespace-nowrap">
                         <span className="font-semibold text-slate-900">{personName}</span>
                         <Badge variant="info" className="ml-2 align-middle text-[10px]">
@@ -156,35 +215,79 @@ export function InformacjaQueueSection({ orders }: { orders: IndividualOrder[] }
                         </Badge>
                       </td>
                       <td
-                        className={cn(
-                          "max-w-[8rem] truncate",
-                          isFirstInSupplierGroup
-                            ? "font-semibold text-slate-900"
-                            : "text-slate-500"
-                        )}
+                        className="max-w-[8rem] truncate text-slate-700"
                         title={supplierName}
                       >
-                        {isFirstInSupplierGroup ? supplierName : "↳ ten sam dostawca"}
+                        {supplierName}
                       </td>
                       <td className="max-w-[14rem]">
-                        <span className="line-clamp-2 text-slate-800" title={productTitle}>
-                          {o.products}
-                        </span>
-                        {o.symbol && o.symbol !== "-" ? (
-                          <span className="text-xs text-slate-500">{o.symbol}</span>
-                        ) : null}
+                        {isFirstInProductGroup ? (
+                          <div className="flex flex-col gap-1">
+                            <span
+                              className="line-clamp-2 font-semibold text-slate-900"
+                              title={productTitle}
+                            >
+                              {o.products}
+                            </span>
+                            {o.symbol && o.symbol !== "-" ? (
+                              <span className="text-xs font-medium text-slate-600">
+                                {o.symbol}
+                              </span>
+                            ) : null}
+                            {groupIds.length > 1 ? (
+                              <span className="text-[10px] font-semibold text-sky-800">
+                                {groupIds.length}{" "}
+                                {groupIds.length === 1
+                                  ? "osoba pyta"
+                                  : groupIds.length < 5
+                                    ? "osoby pytają"
+                                    : "osób pyta"}{" "}
+                                o ten towar
+                              </span>
+                            ) : null}
+                            {groupIds.length > 1 ? (
+                              <button
+                                type="button"
+                                className="text-left text-[10px] font-semibold text-sky-800 underline-offset-2 hover:underline"
+                                disabled={pending}
+                                onClick={() => toggleProductGroup(index, !groupAllSelected)}
+                              >
+                                {groupAllSelected
+                                  ? "Odznacz ten towar"
+                                  : `Zaznacz wszystkich (${groupIds.length})`}
+                              </button>
+                            ) : null}
+                          </div>
+                        ) : (
+                          <span className="text-xs text-slate-500">↳ ten sam towar</span>
+                        )}
                       </td>
                       <td>
-                        <div className="flex justify-end">
-                          <Button
-                            variant="primary"
-                            size="sm"
-                            className="text-xs font-semibold"
-                            disabled={pending}
-                            onClick={() => markArrived([o.id])}
-                          >
-                            Na magazynie — wyślij e-mail
-                          </Button>
+                        <div className="flex flex-col items-end gap-1">
+                          {isFirstInProductGroup && groupIds.length > 1 ? (
+                            <Button
+                              variant="primary"
+                              size="sm"
+                              className="text-xs font-semibold"
+                              disabled={pending}
+                              onClick={() => markArrived(groupIds)}
+                            >
+                              {batchNotifyButtonLabel(orders, groupIds, {
+                                prefix: "Ten towar na magazynie",
+                                unit: "osoba",
+                              })}
+                            </Button>
+                          ) : (
+                            <Button
+                              variant="primary"
+                              size="sm"
+                              className="text-xs font-semibold"
+                              disabled={pending}
+                              onClick={() => markArrived([o.id])}
+                            >
+                              Na magazynie — wyślij e-mail
+                            </Button>
+                          )}
                         </div>
                       </td>
                     </tr>
@@ -198,3 +301,4 @@ export function InformacjaQueueSection({ orders }: { orders: IndividualOrder[] }
     </div>
   );
 }
+

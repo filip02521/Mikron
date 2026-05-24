@@ -1,7 +1,8 @@
 import { syncSuppliersFromSettings } from "@/lib/services/sync";
 import { processMarkedDeliveries } from "@/lib/services/orders";
-import { sendDailyStatusToSales } from "@/lib/services/email";
 import { tryAcquireLock, releaseLock } from "@/lib/services/locks";
+import { purgeHistoryRetention } from "@/lib/services/history-cleanup";
+import type { HistoryCleanupResult } from "@/lib/services/history-cleanup";
 
 const MORNING_LOCK = "MORNING_ROUTINE";
 
@@ -30,16 +31,16 @@ export async function runMorningScheduleSync(): Promise<MorningSyncResult> {
 export type MorningRoutineResult = {
   sync: MorningSyncResult;
   deliveries: Awaited<ReturnType<typeof processMarkedDeliveries>>;
-  dailySales: Awaited<ReturnType<typeof sendDailyStatusToSales>>;
+  historyCleanup: HistoryCleanupResult;
 };
 
 /**
- * Poranna rutyna (cron): harmonogramy → domknięcie kolejki dostaw → e-mail statusu handlowcom.
- * Panel dzienny po wejściu zakupów pokazuje świeże daty bez ręcznego „Przelicz terminy”.
+ * Poranna rutyna (cron, opcjonalnie): harmonogramy → kolejka → zapasowe czyszczenie historii.
+ * Retencja historii działa też bez crona (przy zapisach w aplikacji, blokada 24 h w bazie).
  */
 export async function runMorningRoutine(): Promise<MorningRoutineResult> {
   const sync = await runMorningScheduleSync();
   const deliveries = await processMarkedDeliveries();
-  const dailySales = await sendDailyStatusToSales();
-  return { sync, deliveries, dailySales };
+  const historyCleanup = await purgeHistoryRetention();
+  return { sync, deliveries, historyCleanup };
 }

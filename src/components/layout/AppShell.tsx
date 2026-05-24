@@ -1,6 +1,6 @@
 import { getSessionUser } from "@/lib/auth";
 import { resolveSalesPersonForUser } from "@/lib/auth/sales-person";
-import { canAccessOperations } from "@/lib/auth-roles";
+import { canAccessOperations, isSalesAccount } from "@/lib/auth-roles";
 import {
   countVerificationOrders,
   fetchIndividualOrders,
@@ -46,7 +46,7 @@ export async function AppShell({ children }: { children: React.ReactNode }) {
     }
   }
 
-  if (role === "sales" && session) {
+  if (role && isSalesAccount(role) && session) {
     try {
       const salesPerson = await resolveSalesPersonForUser(session);
       if (salesPerson) {

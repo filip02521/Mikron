@@ -13,7 +13,7 @@ export const AUTH_QUOTES: AuthQuote[] = [
   },
   {
     text: "Spokój w magazynie buduje się z harmonogramu, nie z domysłów.",
-    attribution: "System Dostaw",
+    attribution: "OnTime",
   },
   {
     text: "Krótkie potwierdzenie dziś oszczędza godzinę szukania „czy to już zamówione”.",

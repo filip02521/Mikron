@@ -4,7 +4,7 @@ import { useMemo, useState, useTransition, useCallback, useEffect } from "react"
 import { useRouter } from "next/navigation";
 import type { AppUserRow } from "@/lib/data/users";
 import type { UserRole } from "@/types/database";
-import { ROLE_LABELS, ROLE_OPTIONS } from "@/lib/users/labels";
+import { ROLE_LABELS, ROLE_OPTIONS, roleRequiresSalesPerson } from "@/lib/users/labels";
 import {
   actionCreateAppUser,
   actionUpdateAppUser,
@@ -119,7 +119,9 @@ export function UsersAdminClient({
       const edit = edits[u.id];
       const handlowiec = salesPersonLabel(
         salesPeople,
-        edit?.role === "sales" ? edit.salesPersonId || u.salesPersonId : null,
+        edit && roleRequiresSalesPerson(edit.role)
+          ? edit.salesPersonId || u.salesPersonId
+          : null,
         u.salesPersonName
       );
       return (
@@ -237,8 +239,9 @@ export function UsersAdminClient({
                   const r = await actionCreateAppUser({
                     email: createForm.email,
                     role: createForm.role,
-                    salesPersonId:
-                      createForm.role === "sales" ? createForm.salesPersonId || null : null,
+                    salesPersonId: roleRequiresSalesPerson(createForm.role)
+                      ? createForm.salesPersonId || null
+                      : null,
                     password: createForm.password,
                   });
                   if ("error" in r) {
@@ -264,12 +267,12 @@ export function UsersAdminClient({
                   value={createForm.email}
                   onChange={(e) => setCreateForm({ ...createForm, email: e.target.value })}
                   placeholder={
-                    createForm.role === "sales"
+                    roleRequiresSalesPerson(createForm.role)
                       ? "Uzupełni się po wyborze handlowca"
                       : "osoba@firma.pl"
                   }
                 />
-                {createForm.role === "sales" &&
+                {roleRequiresSalesPerson(createForm.role) &&
                 createForm.salesPersonId &&
                 createForm.email ? (
                   <p className="mt-1 text-xs text-slate-500">
@@ -295,7 +298,7 @@ export function UsersAdminClient({
                     const role = e.target.value as UserRole;
                     setCreateForm((f) => {
                       const next = { ...f, role };
-                      if (role === "sales" && f.salesPersonId) {
+                      if (roleRequiresSalesPerson(role) && f.salesPersonId) {
                         const email = emailForSalesPerson(f.salesPersonId);
                         if (email) next.email = email;
                       }
@@ -310,8 +313,14 @@ export function UsersAdminClient({
                   ))}
                 </Select>
               </Field>
-              {createForm.role === "sales" ? (
-                <Field label="Powiązany handlowiec">
+              {roleRequiresSalesPerson(createForm.role) ? (
+                <Field
+                  label={
+                    createForm.role === "sales_manager"
+                      ? "Karta handlowca kierownika"
+                      : "Powiązany handlowiec"
+                  }
+                >
                   <Select
                     required
                     value={createForm.salesPersonId}
@@ -340,7 +349,7 @@ export function UsersAdminClient({
                     pending ||
                     !createForm.email.trim() ||
                     createForm.password.length < 8 ||
-                    (createForm.role === "sales" && !createForm.salesPersonId)
+                    (roleRequiresSalesPerson(createForm.role) && !createForm.salesPersonId)
                   }
                 >
                   Utwórz konto
@@ -401,7 +410,8 @@ export function UsersAdminClient({
                     const edit = edits[u.id];
                     const isSelf = u.id === currentUserId;
                     const salesTakenByOther =
-                      edit?.role === "sales" &&
+                      edit &&
+                      roleRequiresSalesPerson(edit.role) &&
                       edit.salesPersonId &&
                       users.some(
                         (x) =>
@@ -431,7 +441,7 @@ export function UsersAdminClient({
                           </Select>
                         </td>
                         <td>
-                          {edit?.role === "sales" ? (
+                          {edit && roleRequiresSalesPerson(edit.role) ? (
                             <>
                               <Select
                                 className="min-w-[10rem]"
@@ -485,10 +495,9 @@ export function UsersAdminClient({
                                   const r = await actionUpdateAppUser({
                                     userId: u.id,
                                     role: edit.role,
-                                    salesPersonId:
-                                      edit.role === "sales"
-                                        ? edit.salesPersonId || null
-                                        : null,
+                                    salesPersonId: roleRequiresSalesPerson(edit.role)
+                                      ? edit.salesPersonId || null
+                                      : null,
                                   });
                                   if ("error" in r) {
                                     setToast({ text: r.error, tone: "error" });
@@ -497,7 +506,9 @@ export function UsersAdminClient({
                                   patchUserAfterSave(
                                     u.id,
                                     edit.role,
-                                    edit.role === "sales" ? edit.salesPersonId || null : null
+                                    roleRequiresSalesPerson(edit.role)
+                                      ? edit.salesPersonId || null
+                                      : null
                                   );
                                   setToast({ text: "Zapisano uprawnienia.", tone: "success" });
                                 });

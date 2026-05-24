@@ -4,7 +4,7 @@ import {
   fetchSuppliersWithSchedules,
 } from "@/lib/data/queries";
 import type { DeliveryStats } from "@/types/database";
-import { aggregateOpenOrdersBySupplier } from "@/lib/orders/sales-open-orders";
+import { aggregateVisibleMyOrdersBySupplier } from "@/lib/orders/sales-open-orders";
 import { buildSummaryWorkspace } from "@/lib/orders/summary-workspace";
 import { PlanClient } from "@/components/plan/PlanClient";
 import { PageHeader } from "@/components/ui/PageHeader";
@@ -13,12 +13,13 @@ import { SalesAccountLinkRequired } from "@/components/sales/SalesAccountLinkReq
 import { getAppRole } from "@/lib/auth-dev";
 import { getSessionUser } from "@/lib/auth";
 import { resolveSalesPersonForUser } from "@/lib/auth/sales-person";
+import { isSalesAccount } from "@/lib/auth-roles";
 
 export default async function PlanPage() {
   const role = await getAppRole();
   let salesPersonId: string | null = null;
 
-  if (role === "sales") {
+  if (role && isSalesAccount(role)) {
     try {
       const user = await getSessionUser();
       if (user) {
@@ -57,12 +58,15 @@ export default async function PlanPage() {
     );
     workspace = buildSummaryWorkspace(suppliers, []);
 
-    if (role === "sales" && salesPersonId) {
+    if (isSalesAccount(role ?? "sales") && salesPersonId) {
       const openOrders = await fetchIndividualOrders({
         salesPersonId,
         hideSalesAcknowledged: false,
       });
-      const aggregated = aggregateOpenOrdersBySupplier(openOrders);
+      const aggregated = aggregateVisibleMyOrdersBySupplier(
+        openOrders,
+        statsRows as DeliveryStats[]
+      );
       prioritySupplierIds = aggregated.prioritySupplierIds;
       openOrderCountBySupplier = aggregated.openOrderCountBySupplier;
     }
@@ -70,15 +74,15 @@ export default async function PlanPage() {
     error = e instanceof Error ? e.message : "Błąd ładowania";
   }
 
-  const isSales = role === "sales";
+  const salesMode = role ? isSalesAccount(role) : false;
 
   return (
     <>
       <PageHeader
         title="Harmonogram zakupów"
         description={
-          isSales
-            ? "Wyszukaj dostawcę po terminie i czasie realizacji — u góry możesz rozwinąć kalendarz zamówień działu dostaw."
+          salesMode
+            ? "Otwarte prośby i terminy u dostawców — wyszukiwarka i kalendarz działu dostaw w jednym widoku."
             : "Podgląd harmonogramu zamówień u dostawców — bez panelu zakupowego."
         }
       />
@@ -90,7 +94,7 @@ export default async function PlanPage() {
       <PlanClient
         workspace={workspace}
         suppliers={suppliers}
-        mode={isSales ? "sales" : "full"}
+        mode={salesMode ? "sales" : "full"}
         prioritySupplierIds={prioritySupplierIds}
         openOrderCountBySupplier={openOrderCountBySupplier}
         statsBySupplierId={statsBySupplierId}

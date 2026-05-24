@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { matchesIndividualSearch } from "./history-search";
+import { matchesIndividualSearch, matchesNormalSearch } from "./history-search";
 import type { IndividualOrder } from "@/types/database";
 
 const base = {
@@ -33,5 +33,20 @@ describe("matchesIndividualSearch", () => {
 
   it("nie dopasowuje nieistniejącego towaru", () => {
     expect(matchesIndividualSearch(base, "xyz brak")).toBe(false);
+  });
+});
+
+describe("matchesNormalSearch", () => {
+  it("dopasowuje po dostawcy i akcji", () => {
+    expect(
+      matchesNormalSearch(
+        {
+          user_email: "zakupy@mikran.com",
+          action: "Zamówione",
+          suppliers: { name: "Hoffmann" },
+        },
+        "hoffmann"
+      )
+    ).toBe(true);
   });
 });

@@ -155,7 +155,7 @@ export function SalesUpdatesBanner() {
   return (
     <div
       role="status"
-      className="mb-4 flex flex-col gap-3 rounded-xl border border-indigo-200 bg-indigo-50 px-3 py-3 text-sm text-indigo-950 shadow-sm sm:mb-6 sm:flex-row sm:items-center sm:justify-between sm:px-4"
+      className="mb-4 flex flex-col gap-3 rounded-xl border border-indigo-200/90 bg-[var(--primary-muted)] px-3 py-3 text-sm text-indigo-950 shadow-[var(--shadow-card)] sm:mb-6 sm:flex-row sm:items-center sm:justify-between sm:px-4"
     >
       <div>
         <p className="font-semibold">Są nowe informacje o zamówieniach</p>

@@ -66,6 +66,15 @@ export function summarizeMyOrdersInbox(rows: MyOrderRow[]): MyOrdersInboxSummary
 export function enrichMyOrderSalesUi(row: MyOrderRow): MyOrderSalesUi {
   const overdue = Boolean(row.timingLabel?.includes("po terminie"));
 
+  if (row.acknowledgeMode === "availability" && row.pickupPendingCount > 0) {
+    return {
+      headline: "Towar jest na magazynie",
+      headlineTone: "action",
+      subline: "Potwierdź powiadomienie, aby usunąć z listy",
+      sortPriority: 10,
+    };
+  }
+
   if (row.acknowledgeMode === "pickup" && row.pickupPendingCount > 0) {
     const n = row.pickupPendingCount;
     const progress =
@@ -80,15 +89,6 @@ export function enrichMyOrderSalesUi(row: MyOrderRow): MyOrderSalesUi {
       headlineTone: "action",
       subline: progress ?? "Po potwierdzeniu wpis zniknie z listy",
       sortPriority: 1,
-    };
-  }
-
-  if (row.kind === "informacja" && row.statusTitle === "Dostępne") {
-    return {
-      headline: "Towar jest na magazynie",
-      headlineTone: "success",
-      subline: "Potwierdź powiadomienie, aby usunąć z listy",
-      sortPriority: 10,
     };
   }
 

@@ -3,7 +3,7 @@
 import { useMemo, useState, useTransition, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import type { IndividualOrder } from "@/types/database";
-import { actionUpdateDelivered } from "@/app/actions/admin";
+import { actionBatchUpdateDelivered, actionUpdateDelivered } from "@/app/actions/admin";
 import { getDeliveryProgress, parseOrderQuantity } from "@/lib/orders/individual";
 import { procurementDispositionQueueLabel } from "@/lib/orders/procurement-disposition";
 import { Card, CardHeader } from "@/components/ui/Card";
@@ -17,10 +17,17 @@ import { ActionLoadingOverlay } from "@/components/ui/ActionLoadingOverlay";
 import { QueuePanelToolbar } from "@/components/queue/QueuePanelToolbar";
 import { summarizeQueueInbox } from "@/lib/orders/queue-inbox";
 import {
+  orderIdsInSupplierGroup,
   queueSupplierRowClass,
   supplierGroupIndexByOrderId,
   supplierKey,
 } from "@/lib/orders/queue-supplier-groups";
+import {
+  batchNotifyButtonLabel,
+  countSalesPeopleInOrders,
+  formatDeliveryBatchToast,
+  selectedSaveButtonLabel,
+} from "@/lib/orders/queue-batch-notify";
 
 export function QueueClient({
   orders,
@@ -35,6 +42,7 @@ export function QueueClient({
   const [pending, start] = useTransition();
   const [pendingMessage, setPendingMessage] = useState<string | null>(null);
   const [qty, setQty] = useState<Record<string, string>>({});
+  const [selected, setSelected] = useState<Record<string, boolean>>({});
   const [toast, setToast] = useState<{ text: string; tone: "success" | "error" } | null>(
     null
   );
@@ -53,6 +61,36 @@ export function QueueClient({
     if (d && d !== "-") return d;
     return "";
   };
+
+  const selectedIds = useMemo(
+    () => shelf.filter((o) => selected[o.id]).map((o) => o.id),
+    [shelf, selected]
+  );
+
+  const toggleSelected = (orderId: string) => {
+    setSelected((s) => ({ ...s, [orderId]: !s[orderId] }));
+  };
+
+  const toggleSupplierGroup = (startIndex: number, checked: boolean) => {
+    const ids = orderIdsInSupplierGroup(shelf, startIndex);
+    setSelected((s) => {
+      const next = { ...s };
+      for (const id of ids) next[id] = checked;
+      return next;
+    });
+  };
+
+  const toggleAll = (checked: boolean) => {
+    setSelected((s) => {
+      if (!checked) return {};
+      const next: Record<string, boolean> = {};
+      for (const o of shelf) next[o.id] = true;
+      return next;
+    });
+  };
+
+  const allSelected =
+    shelf.length > 0 && shelf.every((o) => selected[o.id]);
 
   const saveDelivery = (order: IndividualOrder, value: string) => {
     setPendingMessage("Zapisywanie dostawy…");
@@ -104,6 +142,88 @@ export function QueueClient({
     });
   };
 
+  const saveBatch = (orderIds: string[], opts?: { fullQuantity?: boolean }) => {
+    const updates = orderIds
+      .map((id) => {
+        const order = shelf.find((o) => o.id === id);
+        if (!order) return null;
+        const ordered = parseOrderQuantity(order.quantity);
+        const value = opts?.fullQuantity && ordered != null ? String(ordered) : getQty(order);
+        if (!value.trim()) return null;
+        return { orderId: id, qty: value };
+      })
+      .filter((u): u is { orderId: string; qty: string } => u != null);
+
+    const skippedQty = orderIds.length - updates.length;
+
+    if (!updates.length) {
+      setToast({ text: "Wpisz ilość w kolumnie „Dost.” lub użyj „Całość”.", tone: "error" });
+      return;
+    }
+
+    setPendingMessage(
+      updates.length > 1 ? "Zbiorczy zapis dostaw…" : "Zapisywanie dostawy…"
+    );
+    start(async () => {
+      try {
+        if (updates.length === 1 && orderIds.length === 1) {
+          const only = updates[0]!;
+          const result = await actionUpdateDelivered(only.orderId, only.qty);
+          setSelected((s) => {
+            const next = { ...s };
+            delete next[only.orderId];
+            return next;
+          });
+          setQty((s) => {
+            const next = { ...s };
+            delete next[only.orderId];
+            return next;
+          });
+          const order = shelf.find((o) => o.id === only.orderId);
+          const person = order?.sales_person?.name ?? "handlowiec";
+          setToast({
+            text: result.emailError
+              ? `Zapisano, ale e-mail: ${result.emailError}`
+              : result.emailSent
+                ? `Zapisano · ${person} · wysłano mail`
+                : `Zapisano · ${person}`,
+            tone: result.emailError ? "error" : "success",
+          });
+        } else {
+          const result = await actionBatchUpdateDelivered(updates);
+          if ("error" in result) {
+            setToast({ text: result.error, tone: "error" });
+            return;
+          }
+          setSelected((s) => {
+            const next = { ...s };
+            for (const id of result.savedOrderIds) delete next[id];
+            return next;
+          });
+          setQty((s) => {
+            const next = { ...s };
+            for (const id of result.savedOrderIds) delete next[id];
+            return next;
+          });
+          const toast = formatDeliveryBatchToast(result);
+          if (skippedQty > 0) {
+            toast.text += ` · ${skippedQty} bez ilości (pominięto)`;
+            toast.tone = "error";
+          }
+          setToast(toast);
+        }
+        router.refresh();
+      } catch (e) {
+        setToast({
+          text: e instanceof Error ? e.message : "Nie udało się zapisać",
+          tone: "error",
+        });
+      } finally {
+        setPendingMessage(null);
+      }
+    });
+  };
+
   const supplierGroups = useMemo(
     () => supplierGroupIndexByOrderId(shelf),
     [shelf]
@@ -135,7 +255,9 @@ export function QueueClient({
           <strong>Dostawy dla handlowców</strong> — gdy towar fizycznie przyszedł, wpisz ilość w
           kolumnie „Dost.” i zapisz (lub <strong>Całość</strong>). Handlowiec dostaje powiadomienie.
           Przy rezygnacji widać decyzję zakupów (stan lub zwrot).{" "}
-          <strong>Informacje</strong> poniżej — tylko e-mail po dotarciu towaru (bez kolejki dostaw).
+          <strong>Informacje</strong> poniżej — tylko e-mail po dotarciu towaru (bez kolejki dostaw).{" "}
+          Przy wielu pozycjach naraz wysyłamy <strong>jeden e-mail na handlowca</strong> (nie na
+          dostawcę) — przy różnych handlowcach w grupie dostawcy będzie kilka maili.
         </p>
       </details>
 
@@ -149,6 +271,23 @@ export function QueueClient({
                 ? `${shelf.length} poz. w kolejce · ${pickupReadyCount} gotowych do odbioru u handlowców · ${partialCount} częściowo przyjęte${cancelLabelled ? ` · ${cancelLabelled} z rezygnacją (decyzja zakupów)` : ""}`
                 : "Brak pozycji — po Główne/Uzupełniające w panelu dziennym"
             }
+            action={
+              selectedIds.length > 0 ? (
+                <Button
+                  variant="primary"
+                  size="sm"
+                  disabled={pending}
+                  onClick={() => saveBatch(selectedIds)}
+                >
+                  {selectedSaveButtonLabel(selectedIds.length)}
+                  {selectedIds.length > 1
+                    ? countSalesPeopleInOrders(shelf, selectedIds) === 1
+                      ? " · mail do handlowca"
+                      : ` · ${countSalesPeopleInOrders(shelf, selectedIds)} handlowców`
+                    : ""}
+                </Button>
+              ) : undefined
+            }
           />
 
           {!shelf.length ? (
@@ -161,6 +300,16 @@ export function QueueClient({
               <DataTable className="queue-table text-sm">
                 <thead>
                   <tr>
+                    <th className="w-10">
+                      <input
+                        type="checkbox"
+                        className="size-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500/30"
+                        checked={allSelected}
+                        disabled={pending || !shelf.length}
+                        aria-label="Zaznacz wszystkie pozycje"
+                        onChange={(e) => toggleAll(e.target.checked)}
+                      />
+                    </th>
                     <th className="min-w-[7rem]">Dla kogo</th>
                     <th className="min-w-[6rem]">Dostawca</th>
                     <th className="min-w-[10rem]">Produkt</th>
@@ -178,6 +327,11 @@ export function QueueClient({
                     const prevSupplier =
                       index > 0 ? supplierKey(shelf[index - 1]!) : null;
                     const isFirstInSupplierGroup = supplierName !== prevSupplier;
+                    const groupIds = isFirstInSupplierGroup
+                      ? orderIdsInSupplierGroup(shelf, index)
+                      : [];
+                    const groupAllSelected =
+                      groupIds.length > 0 && groupIds.every((id) => selected[id]);
                     const ordered = parseOrderQuantity(o.quantity);
                     const inputVal = getQty(o);
                     const previewN = inputVal === "" ? 0 : parseInt(inputVal, 10);
@@ -212,6 +366,16 @@ export function QueueClient({
                             : undefined
                         }
                       >
+                        <td className="text-center align-top pt-3">
+                          <input
+                            type="checkbox"
+                            className="size-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500/30"
+                            checked={!!selected[o.id]}
+                            disabled={pending}
+                            aria-label={`Zaznacz pozycję ${personName}`}
+                            onChange={() => toggleSelected(o.id)}
+                          />
+                        </td>
                         <td className="whitespace-nowrap font-semibold text-slate-900">
                           {personName}
                           {salesCancelRow ? (
@@ -233,7 +397,38 @@ export function QueueClient({
                           )}
                           title={supplierName}
                         >
-                          {isFirstInSupplierGroup ? supplierName : "↳ ten sam dostawca"}
+                          <div className="flex flex-col gap-1">
+                            <span>
+                              {isFirstInSupplierGroup ? supplierName : "↳ ten sam dostawca"}
+                            </span>
+                            {isFirstInSupplierGroup && groupIds.length > 1 ? (
+                              <div className="flex flex-wrap gap-1">
+                                <button
+                                  type="button"
+                                  className="text-left text-[10px] font-semibold text-indigo-700 underline-offset-2 hover:underline"
+                                  disabled={pending}
+                                  onClick={() => toggleSupplierGroup(index, !groupAllSelected)}
+                                >
+                                  {groupAllSelected ? "Odznacz grupę" : `Zaznacz grupę (${groupIds.length})`}
+                                </button>
+                                <button
+                                  type="button"
+                                  className="text-left text-[10px] font-semibold text-indigo-700 underline-offset-2 hover:underline"
+                                  disabled={pending}
+                                  title={batchNotifyButtonLabel(shelf, groupIds, {
+                                    prefix: "Całość",
+                                  })}
+                                  onClick={() =>
+                                    saveBatch(groupIds, { fullQuantity: true })
+                                  }
+                                >
+                                  {batchNotifyButtonLabel(shelf, groupIds, {
+                                    prefix: "Całość",
+                                  })}
+                                </button>
+                              </div>
+                            ) : null}
+                          </div>
                         </td>
                         <td className="max-w-[14rem]">
                           <span className="line-clamp-2 text-slate-800" title={productTitle}>

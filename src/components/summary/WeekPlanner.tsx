@@ -22,6 +22,8 @@ import { buttonGroupItemClassName } from "@/components/ui/ButtonGroup";
 import { cn } from "@/lib/cn";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { formatDateString, parseDateOnly } from "@/lib/orders/dates";
+import { todayInWarsaw } from "@/lib/time/warsaw";
+import { urgentCardClassName } from "@/components/summary/urgent-card-styles";
 
 function PlanSectionHelp({ planning }: { planning: boolean }) {
   return (
@@ -399,6 +401,8 @@ function PlannerCard({
   onDragEnd: () => void;
 }) {
   const note = formatPlannerNote(item.notes);
+  const todayStr = formatDateString(todayInWarsaw());
+  const isOverdue = formatDateString(item.nextDate) < todayStr;
 
   const markOrdered = () => {
     if (!run) return;
@@ -459,10 +463,12 @@ function PlannerCard({
         }
         onDragEnd={planningMode ? onDragEnd : undefined}
         className={cn(
-          "overflow-hidden rounded-xl border bg-white text-sm shadow-sm transition",
-          isMoved ? "border-amber-300/90 ring-1 ring-amber-200/80" : "border-slate-200/90",
+          "overflow-hidden text-sm transition",
+          urgentCardClassName(isOverdue && !isMoved),
+          isMoved && "border-amber-300/90 bg-white ring-1 ring-amber-200/80",
           isDragging && "opacity-50",
-          !planningMode && "hover:border-slate-300"
+          !planningMode && !isOverdue && "hover:border-slate-300",
+          !planningMode && isOverdue && !isMoved && "hover:border-rose-300/90"
         )}
       >
         {onOpen ? (

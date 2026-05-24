@@ -10,7 +10,6 @@ import {
   actionRecalculateStats,
   actionProcessDeliveries,
   actionSendWeeklyEmail,
-  actionSendDailySalesEmail,
 } from "@/app/actions/admin";
 
 export function AdminToolsPanel() {
@@ -38,7 +37,7 @@ export function AdminToolsPanel() {
             <li>
               <strong className="text-slate-800">6:00 (Europe/Warsaw)</strong> w dni robocze —{" "}
               <code className="rounded bg-slate-100 px-1 text-xs">/api/cron/morning</code>:
-              przelicza terminy, domyka kolejkę realizacji, wysyła status do handlowców.
+              przelicza terminy i domyka kolejkę realizacji.
             </li>
             <li>
               <strong className="text-slate-800">Co godzinę 8:00–18:59</strong> —{" "}
@@ -105,14 +104,9 @@ export function AdminToolsPanel() {
         <Card>
           <CardHeader
             title="Komunikacja"
-            description="Ręczne wysłanie — np. gdy cron nie zadziałał."
+            description="Raport tygodniowy dla zakupów — status handlowców jest w /moje."
           />
           <div className="flex flex-col gap-2">
-            <AdminActionButton
-              action={actionSendDailySalesEmail}
-              label="Status do handlowców (dziś)"
-              onMessage={notify}
-            />
             <AdminActionButton
               action={actionSendWeeklyEmail}
               label="Raport tygodniowy (zakupy)"

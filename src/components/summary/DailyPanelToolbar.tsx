@@ -175,6 +175,14 @@ export function DailyPanelToolbar({
                   <p className="mt-0.5 text-[11px] text-violet-600/90">na żądanie</p>
                 </button>
               ) : null}
+              {summary.hiddenScheduleCount > 0 ? (
+                <MetricTile
+                  value={summary.hiddenScheduleCount}
+                  label="Poza harmonogramem"
+                  hint="brak danych do harmonogramu"
+                  href="#poza-harmonogramem"
+                />
+              ) : null}
             </div>
           </div>
           {urgentVacationCount > 0 ? (

@@ -5,6 +5,7 @@ import { getVacationMessage } from "@/lib/orders/colors";
 import { todayInWarsaw } from "@/lib/time/warsaw";
 
 export const PLAN_PREVIEW_SUPPLIER_LIMIT = 8;
+export const SALES_PLAN_SEARCH_LIMIT = 25;
 
 function sortByNextDate(
   entries: { id: string; next: string | null }[]
@@ -17,7 +18,26 @@ function sortByNextDate(
   });
 }
 
-/** Plan handlowca: najpierw dostawcy z otwartych prośb, potem najbliższe terminy. */
+/** Dostawcy z aktywnych prośb handlowca — bez dopełniania listy harmonogramem firmy. */
+export function orderSalesPrioritySuppliers(
+  suppliers: SupplierWithSchedule[],
+  prioritySupplierIds: string[]
+): SupplierWithSchedule[] {
+  const entries = prioritySupplierIds
+    .map((id) => {
+      const s = suppliers.find((row) => row.id === id);
+      if (!s) return null;
+      return { id: s.id, next: s.schedule?.computed_next_date ?? null, supplier: s };
+    })
+    .filter((e): e is { id: string; next: string | null; supplier: SupplierWithSchedule } =>
+      Boolean(e)
+    );
+
+  return sortByNextDate(entries.map(({ id, next }) => ({ id, next })))
+    .map(({ id }) => entries.find((e) => e.id === id)!.supplier);
+}
+
+/** Plan handlowca (legacy / podgląd): najpierw prośby, potem dopełnienie najbliższymi terminami. */
 export function pickSalesPlanSupplierIds(
   suppliers: SupplierWithSchedule[],
   prioritySupplierIds: string[],
@@ -97,6 +117,14 @@ export function matchSuppliersByQuery(
   const q = query.trim().toLowerCase();
   if (!q) return [];
   return suppliers.filter((s) => s.name.toLowerCase().includes(q));
+}
+
+export function matchSuppliersForSalesPlanSearch(
+  suppliers: SupplierWithSchedule[],
+  query: string,
+  limit = SALES_PLAN_SEARCH_LIMIT
+): SupplierWithSchedule[] {
+  return matchSuppliersByQuery(suppliers, query).slice(0, limit);
 }
 
 export type SupplierPlanInsight = {

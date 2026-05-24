@@ -14,7 +14,6 @@ import {
  * Pełna poranna rutyna o 6:00 Europe/Warsaw (pn–pt):
  * 1. Przelicz terminy dostawców → panel dzienny
  * 2. Domknij pozycje w kolejce realizacji (z wpisaną ilością dostarczoną)
- * 3. Wyślij codzienny status do handlowców (jeśli Resend skonfigurowany)
  */
 export async function GET(request: NextRequest) {
   const denied = authorizeCronRequest(request.headers.get("authorization"));
@@ -50,34 +49,31 @@ export async function GET(request: NextRequest) {
     revalidatePath("/kolejka");
     revalidatePath("/moje");
     revalidatePath("/lokalizacje/[location]", "page");
+    revalidatePath("/historia");
 
     const issues = [
       ...result.sync.scheduleErrors,
       ...result.deliveries.emailFailures,
-      ...result.dailySales.failures,
     ];
-    const skippedEmail =
-      result.dailySales.skipped && result.dailySales.reason === "email_not_configured";
 
     await recordCronRun("morning_routine", {
-      ok: issues.length === 0 && !skippedEmail,
+      ok: issues.length === 0,
       detail: {
         warsawDateKey: warsaw.dateKey,
         schedulesProcessed: result.sync.schedulesProcessed,
         deliveriesProcessed: result.deliveries.processed,
-        dailySalesSent: result.dailySales.sent,
-        dailySalesSkipped: result.dailySales.skipped,
-        dailySalesReason: result.dailySales.reason,
+        historyIndividualDeleted: result.historyCleanup.individualDeleted,
+        historyNormalDeleted: result.historyCleanup.normalDeleted,
         issues,
       },
-      error: issues.length ? issues.join("; ") : skippedEmail ? "email_not_configured" : undefined,
+      error: issues.length ? issues.join("; ") : undefined,
     });
 
     return NextResponse.json({
       success: issues.length === 0,
       sync: result.sync,
       deliveries: result.deliveries,
-      dailySales: result.dailySales,
+      historyCleanup: result.historyCleanup,
       issues,
     });
   } catch (e) {

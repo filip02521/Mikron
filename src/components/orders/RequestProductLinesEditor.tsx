@@ -11,6 +11,13 @@ import {
   updateProductLine,
   type ProductLineDraft,
 } from "@/components/orders/request-product-lines";
+import {
+  MAX_BATCH_ORDER_LINES,
+  MAX_PRODUCT_TEXT_LEN,
+  MAX_QUANTITY_LEN,
+  MAX_SYMBOL_LEN,
+} from "@/lib/security/text-limits";
+import { MAX_CLIENT_NAME_LEN } from "@/lib/orders/sales-client-label";
 
 export function RequestProductLinesEditor({
   lines,
@@ -65,6 +72,7 @@ export function RequestProductLinesEditor({
             <Field label="Symbol">
               <Input
                 placeholder="np. ABC"
+                maxLength={MAX_SYMBOL_LEN}
                 value={line.symbol}
                 onChange={(e) =>
                   onChange(updateProductLine(lines, index, { symbol: e.target.value }))
@@ -85,6 +93,7 @@ export function RequestProductLinesEditor({
                     ? "Np. wkręt M6 — interesuje tylko dostępność"
                     : "Opis produktów"
                 }
+                maxLength={MAX_PRODUCT_TEXT_LEN}
                 value={line.product}
                 onChange={(e) =>
                   onChange(updateProductLine(lines, index, { product: e.target.value }))
@@ -98,6 +107,7 @@ export function RequestProductLinesEditor({
                   min={1}
                   step={1}
                   required
+                  maxLength={MAX_QUANTITY_LEN}
                   placeholder="np. 1"
                   value={line.quantity}
                   onChange={(e) =>
@@ -111,6 +121,7 @@ export function RequestProductLinesEditor({
             <Field label="Klient (opcjonalnie)" className="mt-2">
               <Input
                 placeholder="dla kogo jest ten towar — pojawi się w mailu po dostawie"
+                maxLength={MAX_CLIENT_NAME_LEN}
                 value={line.clientName ?? ""}
                 onChange={(e) =>
                   onChange(
@@ -127,9 +138,13 @@ export function RequestProductLinesEditor({
         type="button"
         variant="ghost"
         size="sm"
+        disabled={lines.length >= MAX_BATCH_ORDER_LINES}
         onClick={() => onChange(appendProductLine(lines))}
       >
         {addLabel}
+        {lines.length >= MAX_BATCH_ORDER_LINES
+          ? ` (maks. ${MAX_BATCH_ORDER_LINES})`
+          : ""}
       </Button>
     </div>
   );

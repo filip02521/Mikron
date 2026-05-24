@@ -23,6 +23,7 @@ import {
 import { calculateBusinessDays } from "@/lib/orders/dates";
 import { isMissingProduct, parseOrderQuantity } from "@/lib/orders/individual";
 import type { IndividualOrderStatus, OrderType, SupplierLocation } from "@/types/database";
+import { scheduleHistoryRetentionPurge } from "@/lib/services/history-cleanup";
 import {
   sendDeliveryNotificationEmails,
   sendInformacjaArrivedEmails,
@@ -31,11 +32,12 @@ import type { IndividualRequestKind } from "@/types/database";
 import { INFORMACJA_NO_QUANTITY, quantityForRequestKind } from "@/lib/orders/individual";
 import { orderPlacementAt } from "@/lib/orders/order-timing";
 import { isProcurementDraftReady } from "@/lib/orders/procurement-readiness";
+import { normalizeSalesClientName } from "@/lib/orders/sales-client-label";
+import type { SalesPersonEmailBatch } from "@/lib/email/sales-notification-types";
 import {
-  formatDeliveryEmailLine,
-  formatInformacjaEmailLine,
-  normalizeSalesClientName,
-} from "@/lib/orders/sales-client-label";
+  buildDeliveryNotificationItem,
+  buildInformacjaNotificationItem,
+} from "@/lib/email/sales-notification-items";
 import {
   assessRequestCompleteness,
   hasAnyProductHint,
@@ -47,6 +49,15 @@ import {
   type IndividualRequestEditPayload,
 } from "@/lib/orders/individual-request-edit";
 import { v4 as uuidv4 } from "uuid";
+import { resolveSalesPersonEmail } from "@/lib/orders/resolve-sales-person-email";
+import {
+  assertMaxBatchSize,
+  MAX_BATCH_ORDER_LINES,
+  MAX_DELIVERED_QTY_LEN,
+  MAX_QUEUE_BATCH_SIZE,
+  MAX_REQUEST_EDIT_LINES,
+} from "@/lib/security/text-limits";
+import { sanitizeOrderDraftFields } from "@/lib/security/sanitize-order-fields";
 
 async function getVacationsForSupplier(supplierId: string): Promise<VacationPeriod[]> {
   const supabase = createAdminClient();
@@ -119,6 +130,7 @@ export async function logNormalHistory(
     user_email: userEmail,
     next_date: dateToIso(nextDate),
   });
+  scheduleHistoryRetentionPurge();
 }
 
 export async function markStandardOrdered(
@@ -255,6 +267,8 @@ export async function batchAddIndividualOrders(
   }>,
   createdBy?: string
 ): Promise<{ count: number; complete: number; verification: number }> {
+  assertMaxBatchSize(entries.length, MAX_BATCH_ORDER_LINES, "pozycji");
+
   const { tryAcquireLock, releaseLock } = await import("@/lib/services/locks");
   const ok = await tryAcquireLock("BATCH_INDIVIDUAL", 10);
   if (!ok) throw new Error("Trwa inna operacja dodawania zamówień");
@@ -266,17 +280,22 @@ export async function batchAddIndividualOrders(
     let verification = 0;
     const rows = entries.map((e) => {
       const kind = (e.requestKind ?? "zamowienie") as IndividualRequestKind;
-      const draft = {
-        supplierId: e.supplierId,
+      const sanitized = sanitizeOrderDraftFields({
         symbol: e.symbol,
         product: e.product,
         quantity: e.quantity,
+      });
+      const draft = {
+        supplierId: e.supplierId,
+        symbol: sanitized.symbol,
+        product: sanitized.product,
+        quantity: sanitized.quantity,
         requestKind: kind,
       };
       if (!hasAnyProductHint(draft)) {
         throw new Error("Podaj symbol lub opis produktu.");
       }
-      if (kind === "zamowienie" && !hasValidOrderQuantity(e.quantity, kind)) {
+      if (kind === "zamowienie" && !hasValidOrderQuantity(sanitized.quantity, kind)) {
         throw new Error("Podaj ilość (liczba sztuk, np. 1).");
       }
       const assessment = assessRequestCompleteness(draft);
@@ -292,7 +311,7 @@ export async function batchAddIndividualOrders(
         sales_person_id: e.salesPersonId,
         symbol,
         products,
-        quantity: quantityForRequestKind(e.requestKind, e.quantity),
+        quantity: quantityForRequestKind(e.requestKind, sanitized.quantity),
         status,
         order_type: "None" as OrderType,
         request_kind: (e.requestKind ?? "zamowienie") as IndividualRequestKind,
@@ -321,11 +340,16 @@ export async function completeVerificationOrder(
   }
 ) {
   const kind = (data.requestKind ?? "zamowienie") as IndividualRequestKind;
-  const assessment = assessRequestCompleteness({
-    supplierId: data.supplierId,
+  const sanitized = sanitizeOrderDraftFields({
     symbol: data.symbol,
     product: data.product,
     quantity: data.quantity,
+  });
+  const assessment = assessRequestCompleteness({
+    supplierId: data.supplierId,
+    symbol: sanitized.symbol,
+    product: sanitized.product,
+    quantity: sanitized.quantity,
     requestKind: kind,
   });
   if (assessment !== "complete") {
@@ -336,7 +360,12 @@ export async function completeVerificationOrder(
     );
   }
 
-  const { products, symbol } = normalizeDraftProducts(data);
+  const { products, symbol } = normalizeDraftProducts({
+    ...data,
+    symbol: sanitized.symbol,
+    product: sanitized.product,
+    quantity: sanitized.quantity,
+  });
   const supabase = createAdminClient();
   const { error } = await supabase
     .from("individual_orders")
@@ -345,7 +374,7 @@ export async function completeVerificationOrder(
       sales_person_id: data.salesPersonId,
       symbol,
       products,
-      quantity: quantityForRequestKind(data.requestKind, data.quantity),
+      quantity: quantityForRequestKind(data.requestKind, sanitized.quantity),
       request_kind: (data.requestKind ?? "zamowienie") as IndividualRequestKind,
       status: "Nowe",
     })
@@ -376,6 +405,7 @@ export async function updateIndividualRequestGroup(
 ): Promise<{ updated: number; inserted: number; removed: number }> {
   if (!orderIds.length) throw new Error("Brak pozycji do edycji.");
   if (!payload.lines.length) throw new Error("Dodaj co najmniej jedną pozycję.");
+  assertMaxBatchSize(payload.lines.length, MAX_REQUEST_EDIT_LINES, "pozycji w prośbie");
 
   const supabase = createAdminClient();
   const { data: rawRows, error: fetchError } = await supabase
@@ -414,17 +444,22 @@ export async function updateIndividualRequestGroup(
 
   for (const line of payload.lines) {
     const kind = payload.requestKind;
-    const draft = {
-      supplierId: payload.supplierId,
+    const sanitized = sanitizeOrderDraftFields({
       symbol: line.symbol,
       product: line.product,
       quantity: line.quantity,
+    });
+    const draft = {
+      supplierId: payload.supplierId,
+      symbol: sanitized.symbol,
+      product: sanitized.product,
+      quantity: sanitized.quantity,
       requestKind: kind,
     };
     if (!hasAnyProductHint(draft)) {
       throw new Error("Podaj symbol lub opis produktu w każdej pozycji.");
     }
-    if (kind === "zamowienie" && !hasValidOrderQuantity(line.quantity, kind)) {
+    if (kind === "zamowienie" && !hasValidOrderQuantity(sanitized.quantity, kind)) {
       throw new Error("Podaj ilość (liczba sztuk, np. 1) w każdej pozycji zamówienia.");
     }
 
@@ -435,7 +470,7 @@ export async function updateIndividualRequestGroup(
       sales_person_id: payload.salesPersonId,
       symbol,
       products,
-      quantity: quantityForRequestKind(kind, line.quantity),
+      quantity: quantityForRequestKind(kind, sanitized.quantity),
       request_kind: kind,
       status,
       sales_client_name: normalizeSalesClientName(line.clientName),
@@ -566,15 +601,23 @@ export async function processIndividualFromSummary(
 
 export async function markInformacjaArrived(
   orderIds: string[]
-): Promise<{ updated: number; emailSent: number; emailError?: string }> {
+): Promise<{
+  updated: number;
+  skipped: number;
+  requested: number;
+  emailSent: number;
+  emailError?: string;
+}> {
+  const uniqueIds = [...new Set(orderIds)];
+  assertMaxBatchSize(uniqueIds.length, MAX_QUEUE_BATCH_SIZE, "pozycji informacyjnych");
   const supabase = createAdminClient();
-  const notifications = new Map<
-    string,
-    { email: string; name: string; lines: string[] }
-  >();
+  const personEmailCache = new Map<string, Awaited<ReturnType<typeof resolveSalesPersonEmail>>>();
+  const notifications = new Map<string, SalesPersonEmailBatch>();
+  const notifySkipped: string[] = [];
   let updated = 0;
+  let skipped = 0;
 
-  for (const id of orderIds) {
+  for (const id of uniqueIds) {
     const { data: raw } = await supabase
       .from("individual_orders")
       .select("*, supplier:suppliers(*), sales_person:sales_people(*)")
@@ -582,6 +625,7 @@ export async function markInformacjaArrived(
       .single();
     const order = raw ? normalizeIndividualOrder(raw) : null;
     if (!order || order.request_kind !== "informacja" || order.status !== "Nowe") {
+      skipped++;
       continue;
     }
 
@@ -595,32 +639,26 @@ export async function markInformacjaArrived(
       .eq("id", id);
     updated++;
 
-    let personEmail = order.sales_person?.email?.trim();
-    let personName = order.sales_person?.name?.trim() ?? "Handlowiec";
-    const personId = order.sales_person_id;
-
-    if (!personEmail && personId) {
-      const { data: sp } = await supabase
-        .from("sales_people")
-        .select("email, name")
-        .eq("id", personId)
-        .maybeSingle();
-      personEmail = sp?.email?.trim();
-      if (sp?.name) personName = sp.name;
+    let person = personEmailCache.get(order.sales_person_id);
+    if (person === undefined) {
+      person = await resolveSalesPersonEmail(supabase, order);
+      personEmailCache.set(order.sales_person_id, person);
     }
 
-    if (personEmail) {
-      const line = formatInformacjaEmailLine(order);
-      const existing = notifications.get(personId);
+    if (person) {
+      const item = buildInformacjaNotificationItem(order);
+      const existing = notifications.get(person.personId);
       if (existing) {
-        existing.lines.push(line);
+        existing.items.push(item);
       } else {
-        notifications.set(personId, {
-          email: personEmail,
-          name: personName,
-          lines: [line],
+        notifications.set(person.personId, {
+          email: person.email,
+          name: person.name,
+          items: [item],
         });
       }
+    } else if (order.sales_person_id) {
+      notifySkipped.push(order.sales_person?.name?.trim() ?? "Handlowiec");
     }
   }
 
@@ -635,8 +673,17 @@ export async function markInformacjaArrived(
   } else if (updated > 0) {
     emailError = "Brak adresu e-mail handlowca — zapisano bez powiadomienia";
   }
+  if (notifySkipped.length) {
+    const skipNote =
+      notifySkipped.length === 1
+        ? `${notifySkipped[0]}: brak e-maila — zapisano bez powiadomienia`
+        : `${notifySkipped.length} handlowców bez e-maila — zapisano bez powiadomienia`;
+    emailError = emailError ? `${emailError}; ${skipNote}` : skipNote;
+  }
 
-  return { updated, emailSent, emailError };
+  if (updated > 0) scheduleHistoryRetentionPurge();
+
+  return { updated, skipped, requested: uniqueIds.length, emailSent, emailError };
 }
 
 export async function cancelIndividualOrder(orderId: string) {
@@ -645,12 +692,32 @@ export async function cancelIndividualOrder(orderId: string) {
     .from("individual_orders")
     .update({ status: "Anulowane" })
     .eq("id", orderId);
+  scheduleHistoryRetentionPurge();
 }
 
-export async function updateDeliveredQuantity(
+type DeliveryNotifyPayload = {
+  personId: string;
+  email: string;
+  name: string;
+  item: ReturnType<typeof buildDeliveryNotificationItem>;
+};
+
+type PersonEmailCache = Map<
+  string,
+  Awaited<ReturnType<typeof resolveSalesPersonEmail>>
+>;
+
+async function applyDeliveredQuantityUpdate(
   orderId: string,
-  deliveredQuantity: string
-): Promise<{ emailSent: boolean; emailError?: string }> {
+  deliveredQuantity: string,
+  opts?: { personEmailCache?: PersonEmailCache }
+): Promise<{
+  notify?: DeliveryNotifyPayload;
+  statsUpdated: boolean;
+  /** Zapis OK, ale brak adresu e-mail przy oczekiwanym powiadomieniu. */
+  notifySkipped?: string;
+}> {
+  const qtyInput = deliveredQuantity.trim().slice(0, MAX_DELIVERED_QTY_LEN);
   const supabase = createAdminClient();
   const { data: raw } = await supabase
     .from("individual_orders")
@@ -661,7 +728,7 @@ export async function updateDeliveredQuantity(
   if (!order) throw new Error("Nie znaleziono zamówienia");
 
   const ordered = parseInt(order.quantity, 10);
-  const delivered = parseInt(deliveredQuantity, 10);
+  const delivered = parseInt(qtyInput, 10);
   if (!isNaN(ordered) && ordered > 0) {
     if (isNaN(delivered) || delivered < 0) {
       throw new Error("Podaj poprawną liczbę dostarczonych sztuk (0 lub więcej)");
@@ -672,12 +739,9 @@ export async function updateDeliveredQuantity(
   }
 
   const prevStatus = order.status;
-  const status = resolveStatusFromDeliveredQuantity(
-    order.quantity,
-    deliveredQuantity
-  );
+  const status = resolveStatusFromDeliveredQuantity(order.quantity, qtyInput);
   const finalDelivered =
-    status === "Zrealizowane" && !isNaN(ordered) ? String(ordered) : deliveredQuantity;
+    status === "Zrealizowane" && !isNaN(ordered) ? String(ordered) : qtyInput;
 
   const update: Record<string, unknown> = {
     delivered_quantity: finalDelivered,
@@ -691,7 +755,9 @@ export async function updateDeliveredQuantity(
 
   await supabase.from("individual_orders").update(update).eq("id", orderId);
 
+  let statsUpdated = false;
   if (status === "Zrealizowane" && prevStatus !== "Zrealizowane") {
+    statsUpdated = true;
     const placement = orderPlacementAt(order);
     const orderDate = placement ? parseDateOnly(placement) : null;
     const skipStats = isMissingProduct(order.products);
@@ -709,57 +775,157 @@ export async function updateDeliveredQuantity(
     }
   }
 
-  let emailSent = false;
-  let emailError: string | undefined;
-
   const shouldNotify =
     !order.sales_cancelled_at &&
     status !== "Zamowione" &&
     (status !== prevStatus || finalDelivered !== (order.delivered_quantity ?? ""));
 
-  if (shouldNotify) {
-    let personEmail = order.sales_person?.email?.trim();
-    let personName = order.sales_person?.name?.trim() ?? "Handlowiec";
-    const personId = order.sales_person_id;
+  if (!shouldNotify) {
+    return { statsUpdated };
+  }
 
-    if (!personEmail && personId) {
-      const { data: sp } = await supabase
-        .from("sales_people")
-        .select("email, name")
-        .eq("id", personId)
-        .maybeSingle();
-      personEmail = sp?.email?.trim();
-      if (sp?.name) personName = sp.name;
-    }
+  let person = opts?.personEmailCache?.get(order.sales_person_id);
+  if (person === undefined) {
+    person = await resolveSalesPersonEmail(supabase, order);
+    opts?.personEmailCache?.set(order.sales_person_id, person);
+  }
 
-    if (!personEmail) {
-      emailError = "Brak adresu e-mail handlowca w bazie (Admin → Handlowcy)";
-    } else {
-      const label =
-        status === "Czesciowo_zrealizowane"
-          ? `Częściowo (${finalDelivered}/${order.quantity}) — brakuje jeszcze ${Math.max(0, (parseOrderQuantity(order.quantity) ?? 0) - parseInt(finalDelivered, 10))} szt.`
-          : "Dostarczone w całości — możesz odebrać z magazynu";
-      const mailResult = await sendDeliveryNotificationEmails(
-        new Map([
-          [
-            personId,
-            {
-              email: personEmail,
-              name: personName,
-              lines: [formatDeliveryEmailLine(order, label)],
-            },
-          ],
-        ])
-      );
-      if (mailResult.sent > 0) {
-        emailSent = true;
-      } else if (mailResult.failures.length) {
-        emailError = `${mailResult.failures[0].to}: ${mailResult.failures[0].error}`;
+  if (!person) {
+    return {
+      statsUpdated,
+      notifySkipped: order.sales_person?.name?.trim() ?? "Handlowiec",
+    };
+  }
+
+  const item = buildDeliveryNotificationItem(
+    { ...order, status, delivered_quantity: finalDelivered },
+    { deliveredQuantity: finalDelivered }
+  );
+
+  return {
+    statsUpdated,
+    notify: {
+      personId: person.personId,
+      email: person.email,
+      name: person.name,
+      item,
+    },
+  };
+}
+
+async function flushDeliveryNotifications(
+  notifications: Map<string, SalesPersonEmailBatch>
+): Promise<{ emailSent: number; emailError?: string }> {
+  if (!notifications.size) {
+    return { emailSent: 0 };
+  }
+  const mailResult = await sendDeliveryNotificationEmails(notifications);
+  const emailError = mailResult.failures.length
+    ? `${mailResult.failures[0].to}: ${mailResult.failures[0].error}`
+    : undefined;
+  return { emailSent: mailResult.sent, emailError };
+}
+
+export async function updateDeliveredQuantity(
+  orderId: string,
+  deliveredQuantity: string
+): Promise<{ emailSent: boolean; emailError?: string }> {
+  const result = await applyDeliveredQuantityUpdate(orderId, deliveredQuantity);
+  if (result.statsUpdated) scheduleHistoryRetentionPurge();
+
+  if (result.notifySkipped) {
+    return {
+      emailSent: false,
+      emailError: `Brak e-maila handlowca (${result.notifySkipped}) — zapisano bez powiadomienia`,
+    };
+  }
+
+  if (!result.notify) {
+    return { emailSent: false };
+  }
+
+  const notifications = new Map<string, SalesPersonEmailBatch>([
+    [
+      result.notify.personId,
+      {
+        email: result.notify.email,
+        name: result.notify.name,
+        items: [result.notify.item],
+      },
+    ],
+  ]);
+  const { emailSent, emailError } = await flushDeliveryNotifications(notifications);
+  return { emailSent: emailSent > 0, emailError };
+}
+
+export type BatchDeliveredUpdateResult = {
+  saved: number;
+  savedOrderIds: string[];
+  emailSent: number;
+  errors: string[];
+  emailError?: string;
+};
+
+/** Zbiorczy zapis dostaw — jeden e-mail na handlowca z wieloma pozycjami. */
+export async function batchUpdateDeliveredQuantities(
+  updates: Array<{ orderId: string; deliveredQuantity: string }>
+): Promise<BatchDeliveredUpdateResult> {
+  if (!updates.length) {
+    return { saved: 0, savedOrderIds: [], emailSent: 0, errors: ["Brak pozycji do zapisania."] };
+  }
+
+  const byOrderId = new Map<string, string>();
+  for (const { orderId, deliveredQuantity } of updates) {
+    byOrderId.set(orderId, deliveredQuantity);
+  }
+  const uniqueUpdates = [...byOrderId.entries()].map(([orderId, deliveredQuantity]) => ({
+    orderId,
+    deliveredQuantity,
+  }));
+
+  assertMaxBatchSize(uniqueUpdates.length, MAX_QUEUE_BATCH_SIZE, "pozycji dostaw");
+
+  const notifications = new Map<string, SalesPersonEmailBatch>();
+  const personEmailCache: PersonEmailCache = new Map();
+  let saved = 0;
+  const savedOrderIds: string[] = [];
+  let statsTouches = 0;
+  const errors: string[] = [];
+
+  for (const { orderId, deliveredQuantity } of uniqueUpdates) {
+    try {
+      const result = await applyDeliveredQuantityUpdate(orderId, deliveredQuantity, {
+        personEmailCache,
+      });
+      saved++;
+      savedOrderIds.push(orderId);
+      if (result.statsUpdated) statsTouches++;
+      if (result.notify) {
+        const existing = notifications.get(result.notify.personId);
+        if (existing) {
+          existing.items.push(result.notify.item);
+        } else {
+          notifications.set(result.notify.personId, {
+            email: result.notify.email,
+            name: result.notify.name,
+            items: [result.notify.item],
+          });
+        }
+      } else if (result.notifySkipped) {
+        errors.push(
+          `${result.notifySkipped}: brak e-maila — zapisano bez powiadomienia`
+        );
       }
+    } catch (e) {
+      errors.push(e instanceof Error ? e.message : "Błąd zapisu pozycji");
     }
   }
 
-  return { emailSent, emailError };
+  if (statsTouches > 0) scheduleHistoryRetentionPurge();
+
+  const { emailSent, emailError } = await flushDeliveryNotifications(notifications);
+
+  return { saved, savedOrderIds, emailSent, errors, emailError };
 }
 
 export async function updateSupplierStats(
@@ -828,10 +994,7 @@ export async function processMarkedDeliveries(): Promise<ProcessDeliveriesResult
   if (!queue?.length) return empty;
 
   const processedGroups = new Set<string>();
-  const notifications = new Map<
-    string,
-    { email: string; name: string; lines: string[] }
-  >();
+  const notifications = new Map<string, SalesPersonEmailBatch>();
   let processed = 0;
 
   for (const order of queue) {
@@ -885,21 +1048,22 @@ export async function processMarkedDeliveries(): Promise<ProcessDeliveriesResult
       }
     }
 
-    const person = order.sales_person;
-    if (person?.email) {
-      const key = person.id;
-      if (!notifications.has(key)) {
-        notifications.set(key, {
+    const person = await resolveSalesPersonEmail(supabase, order);
+    if (person) {
+      if (!notifications.has(person.personId)) {
+        notifications.set(person.personId, {
           email: person.email,
           name: person.name,
-          lines: [],
+          items: [],
         });
       }
-      const label =
-        status === "Czesciowo_zrealizowane"
-          ? `Częściowo (${deliveredQty}/${order.quantity})`
-          : "Dostarczone";
-      notifications.get(key)!.lines.push(formatDeliveryEmailLine(order, label));
+      const finalQty =
+        status === "Zrealizowane" && !isNaN(ordered) ? String(ordered) : deliveredQty;
+      const item = buildDeliveryNotificationItem(
+        { ...order, status, delivered_quantity: finalQty },
+        { deliveredQuantity: finalQty }
+      );
+      notifications.get(person.personId)!.items.push(item);
     }
   }
 
@@ -912,6 +1076,8 @@ export async function processMarkedDeliveries(): Promise<ProcessDeliveriesResult
       emailFailures.push(`${f.to}: ${f.error}`);
     }
   }
+
+  if (processed > 0) scheduleHistoryRetentionPurge();
 
   return { processed, emailSent, emailFailures };
 }
