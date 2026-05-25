@@ -53,7 +53,7 @@ export function AuthQuotePanel({
         <p className="relative mt-0.5 text-xs font-medium text-sky-100/95">{ONTIME_TAGLINE}</p>
         <blockquote
           className={cn(
-            "relative mt-3 text-base font-medium leading-snug tracking-tight text-white transition-all duration-300 ease-out motion-reduce:transition-none",
+            "relative mt-2.5 text-sm font-medium leading-snug tracking-tight text-white transition-all duration-300 ease-out motion-reduce:transition-none sm:mt-3 sm:text-base",
             visible ? "translate-y-0 opacity-100" : "translate-y-1 opacity-0"
           )}
         >

@@ -18,6 +18,10 @@ import { Card, CardHeader } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { Toast } from "@/components/ui/Toast";
+import { SectionListLabel } from "@/components/ui/SectionListLabel";
+import { SectionHeadingIcon } from "@/components/icons/SectionHeadingIcon";
+import { IconArchive, IconClipboardList } from "@/components/icons/StrokeIcons";
+import { HistoriaHelp } from "@/components/history/HistoriaHelp";
 
 export function HistoriaClient({
   individual,
@@ -43,8 +47,6 @@ export function HistoriaClient({
     () => normal.slice(0, HISTORY_PREVIEW_COUNT),
     [normal]
   );
-
-  const retentionNote = `Ostatnie ${HISTORY_RETENTION_MONTHS} miesięcy · starsze wpisy kasuje aplikacja przy kolejnych zamówieniach (ok. raz na dobę) — bez crona na serwerze.`;
 
   const removeIndividual = (id: string) => {
     if (!confirm("Usunąć ten wpis z historii indywidualnej?")) return;
@@ -79,20 +81,30 @@ export function HistoriaClient({
   };
 
   return (
-    <div className="space-y-8">
+    <div className="relative mx-auto max-w-6xl">
       {msg ? (
         <Toast message={msg.text} tone={msg.tone} onDismiss={() => setMsg(null)} />
       ) : null}
 
-      <p className="rounded-xl border border-slate-200 bg-slate-50/80 px-4 py-2.5 text-sm text-slate-600">
-        {retentionNote}
-      </p>
-
-      <Card padding={false}>
+      <Card padding={false} className="overflow-hidden">
         <CardHeader
           inset
+          leading={
+            <SectionHeadingIcon tileClassName="bg-slate-100 text-slate-600">
+              <IconArchive size={20} />
+            </SectionHeadingIcon>
+          }
+          title="Historia"
+          description={`Audyt zamówień — ostatnie ${HISTORY_RETENTION_MONTHS} miesięcy. Na liście po ${HISTORY_PREVIEW_COUNT} najnowszych wpisów w każdej sekcji.`}
+          action={<HistoriaHelp />}
+        />
+
+        <SectionListLabel
           title="Historia indywidualna"
-          description={`${individual.length} wpisów · bez pozycji informacyjnych · na liście ${Math.min(individual.length, HISTORY_PREVIEW_COUNT)} ostatnich`}
+          hint="Bez pozycji informacyjnych"
+          count={individual.length}
+          icon={<IconClipboardList size={17} />}
+          tileClassName="bg-indigo-100 text-indigo-700"
         />
         {!individual.length ? (
           <EmptyState title="Brak wpisów w historii indywidualnej" />
@@ -105,7 +117,7 @@ export function HistoriaClient({
               onRemove={removeIndividual}
             />
             {individual.length > HISTORY_PREVIEW_COUNT ? (
-              <div className="border-t border-slate-100 px-6 py-4">
+              <div className="border-t border-slate-100 px-4 py-4 sm:px-6">
                 <Button variant="outline" size="sm" onClick={() => setSheet("individual")}>
                   Pokaż pełną historię ({individual.length} wpisów)
                 </Button>
@@ -113,14 +125,16 @@ export function HistoriaClient({
             ) : null}
           </>
         )}
-      </Card>
 
-      <Card padding={false}>
-        <CardHeader
-          inset
-          title="Zamówienia standardowe"
-          description={`${normal.length} akcji w okresie retencji`}
-        />
+        <div className="border-t border-slate-100">
+          <SectionListLabel
+            title="Zamówienia standardowe"
+            hint="Akcje zbiorcze w panelu dziennym"
+            count={normal.length}
+            icon={<IconArchive size={17} />}
+            tileClassName="bg-slate-100 text-slate-600"
+          />
+        </div>
         {!normal.length ? (
           <EmptyState title="Brak historii zamówień standardowych" />
         ) : (
@@ -132,7 +146,7 @@ export function HistoriaClient({
               onRemove={removeNormal}
             />
             {normal.length > HISTORY_PREVIEW_COUNT ? (
-              <div className="border-t border-slate-100 px-6 py-4">
+              <div className="border-t border-slate-100 px-4 py-4 sm:px-6">
                 <Button variant="outline" size="sm" onClick={() => setSheet("normal")}>
                   Pokaż pełną historię ({normal.length} wpisów)
                 </Button>

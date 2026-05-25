@@ -1,4 +1,3 @@
-import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 import type { UserRole } from "@/types/database";
 import { fetchProfileByUserId } from "@/lib/auth/profile";
@@ -10,6 +9,10 @@ import {
   homePathForRole,
   isSalesAccount,
 } from "@/lib/auth-roles";
+import {
+  redirectWithSession,
+  refreshSupabaseSession,
+} from "@/lib/supabase/middleware";
 
 const OPERATIONS_PREFIXES = [
   "/podsumowanie",
@@ -49,8 +52,20 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(new URL("/login", request.url));
   }
 
+  const { response: sessionResponse, user } = await refreshSupabaseSession(request);
+
   if (publicAuthPaths.includes(pathname)) {
-    return NextResponse.next();
+    if (pathname === "/login" && user) {
+      const profile = await fetchProfileByUserId(user.id);
+      if (profile && !profile.must_change_password) {
+        return redirectWithSession(
+          request,
+          sessionResponse,
+          homePathForRole(profile.role as UserRole)
+        );
+      }
+    }
+    return sessionResponse;
   }
 
   const isProtected =
@@ -61,44 +76,22 @@ export async function middleware(request: NextRequest) {
     matchesPrefix(pathname, SALES_TEAM_PREFIXES);
 
   if (!isProtected) {
-    return NextResponse.next();
+    return sessionResponse;
   }
 
-  let response = NextResponse.next({ request });
-  const supabase = createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    {
-      cookies: {
-        getAll() {
-          return request.cookies.getAll();
-        },
-        setAll(cookiesToSet) {
-          cookiesToSet.forEach(({ name, value }) => request.cookies.set(name, value));
-          response = NextResponse.next({ request });
-          cookiesToSet.forEach(({ name, value, options }) =>
-            response.cookies.set(name, value, options)
-          );
-        },
-      },
-    }
-  );
-
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
   if (!user) {
-    const login = new URL("/login", request.url);
-    login.searchParams.set("next", pathname);
-    return NextResponse.redirect(login);
+    return redirectWithSession(request, sessionResponse, "/login", {
+      next: pathname,
+      reason: "session",
+    });
   }
 
   const profile = await fetchProfileByUserId(user.id);
 
   if (!profile) {
-    const login = new URL("/login", request.url);
-    return NextResponse.redirect(login);
+    return redirectWithSession(request, sessionResponse, "/login", {
+      reason: "session",
+    });
   }
 
   const role = profile.role as UserRole;
@@ -108,24 +101,36 @@ export async function middleware(request: NextRequest) {
     pathname !== "/ustaw-haslo" &&
     !pathname.startsWith("/api/")
   ) {
-    const reset = new URL("/ustaw-haslo", request.url);
-    reset.searchParams.set("wymagane", "1");
-    return NextResponse.redirect(reset);
+    return redirectWithSession(request, sessionResponse, "/ustaw-haslo", {
+      wymagane: "1",
+    });
   }
 
   if (!canAccessPath(role, pathname)) {
-    return NextResponse.redirect(new URL(homePathForRole(role), request.url));
+    return redirectWithSession(
+      request,
+      sessionResponse,
+      homePathForRole(role)
+    );
   }
 
   if (matchesPrefix(pathname, ADMIN_PREFIXES) && role !== "admin") {
-    return NextResponse.redirect(new URL(homePathForRole(role), request.url));
+    return redirectWithSession(
+      request,
+      sessionResponse,
+      homePathForRole(role)
+    );
   }
 
   if (
     matchesPrefix(pathname, SALES_TEAM_PREFIXES) &&
     !canManageSalesTeam(role)
   ) {
-    return NextResponse.redirect(new URL(homePathForRole(role), request.url));
+    return redirectWithSession(
+      request,
+      sessionResponse,
+      homePathForRole(role)
+    );
   }
 
   if (
@@ -134,16 +139,20 @@ export async function middleware(request: NextRequest) {
     !canAccessOperations(role)
   ) {
     if (pathname.startsWith("/zamowienia")) {
-      return NextResponse.redirect(new URL("/prosba", request.url));
+      return redirectWithSession(request, sessionResponse, "/prosba");
     }
-    return NextResponse.redirect(new URL(homePathForRole(role), request.url));
+    return redirectWithSession(
+      request,
+      sessionResponse,
+      homePathForRole(role)
+    );
   }
 
   if (isSalesAccount(role) && pathname.startsWith("/zamowienia/nowe")) {
-    return NextResponse.redirect(new URL("/prosba", request.url));
+    return redirectWithSession(request, sessionResponse, "/prosba");
   }
 
-  return response;
+  return sessionResponse;
 }
 
 export const config = {

@@ -1,6 +1,6 @@
+import { Suspense } from "react";
 import { fetchSalesPeople, fetchSupplierDeliveryContext } from "@/lib/data/queries";
 import { OrderFormClient } from "@/components/orders/OrderFormClient";
-import { ProsbaDelegatePicker } from "@/components/orders/ProsbaDelegatePicker";
 import { getSessionUser } from "@/lib/auth";
 import { resolveSalesPersonForUser } from "@/lib/auth/sales-person";
 import { resolvePreviewSalesPerson } from "@/lib/auth/resolve-preview-sales-person";
@@ -62,8 +62,8 @@ export default async function ProsbaPage({
   if (isSales && !lockedSalesPerson) {
     return (
       <SalesAccountLinkRequired
-        title="Zgłoś prośbę"
-        description="Formularz prośby jest dostępny po powiązaniu konta z kartą handlowca."
+        title="Nowa prośba"
+        description="Formularz jest dostępny po powiązaniu konta z kartą handlowca."
       />
     );
   }
@@ -72,7 +72,7 @@ export default async function ProsbaPage({
     return (
       <>
         <PageHeader
-          title="Zgłoś prośbę"
+          title="Nowa prośba"
           description="Wybierz handlowca z zespołu lub powiąż swoje konto z kartą handlowca."
         />
         <Alert tone="warning">
@@ -90,40 +90,27 @@ export default async function ProsbaPage({
   if (isManager && delegateId && !lockedSalesPerson) {
     return (
       <>
-        <PageHeader title="Zgłoś prośbę" description="Nie znaleziono wybranego handlowca." />
+        <PageHeader title="Nowa prośba" description="Nie znaleziono wybranego handlowca." />
         <Alert tone="error">Sprawdź link lub wybierz osobę z listy zespołu.</Alert>
       </>
     );
   }
 
-  const delegatePeople = isManager
-    ? salesPeople
-    : [];
-
+  const delegatePeople = isManager ? salesPeople : [];
   const initialSupplierId = resolveProsbaSupplierId(
     dostawcaParam,
     suppliers.map((s) => s.id)
   );
 
   return (
-    <>
-      <PageHeader
-        title="Zgłoś prośbę"
-        description={
-          isManager && lockedSalesPerson && lockedSalesPerson.id !== managerSelfId
-            ? `Prośba zostanie przypisana do ${lockedSalesPerson.name} i pojawi się na jego panelu.`
-            : isManager
-              ? "Możesz zgłosić prośbę dla siebie lub w imieniu handlowca z zespołu."
-              : "Prośba jest zawsze składana na Twoje konto — wybierasz tylko dostawcę i produkt."
+    <div className="mx-auto max-w-3xl">
+      <Suspense
+        fallback={
+          <p className="rounded-xl border border-slate-200 bg-white px-6 py-12 text-center text-sm text-slate-500">
+            Ładowanie formularza…
+          </p>
         }
-      />
-      {isManager && managerSelfId && delegatePeople.length > 0 && lockedSalesPerson ? (
-        <ProsbaDelegatePicker
-          people={delegatePeople}
-          selectedId={lockedSalesPerson.id}
-          selfId={managerSelfId}
-        />
-      ) : null}
+      >
       {lockedSalesPerson ? (
         <OrderFormClient
           suppliers={suppliers}
@@ -133,6 +120,12 @@ export default async function ProsbaPage({
           singleGroup
           submitForOther={isManager && lockedSalesPerson.id !== managerSelfId}
           initialSupplierId={initialSupplierId}
+          delegatePeople={
+            isManager && managerSelfId && delegatePeople.length > 0
+              ? delegatePeople
+              : undefined
+          }
+          managerSelfId={managerSelfId ?? undefined}
         />
       ) : (
         <OrderFormClient
@@ -142,6 +135,7 @@ export default async function ProsbaPage({
           initialSupplierId={initialSupplierId}
         />
       )}
-    </>
+      </Suspense>
+    </div>
   );
 }

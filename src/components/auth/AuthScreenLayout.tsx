@@ -53,7 +53,7 @@ export function AuthScreenLayout({
               </div>
             </header>
 
-            <AuthQuotePanel compact className="mb-5 lg:hidden" />
+            <AuthQuotePanel compact className="mb-4 max-sm:mb-3 lg:hidden" />
 
             <div className="auth-card-enter rounded-2xl border border-slate-200/80 bg-white/95 p-5 shadow-xl shadow-slate-200/40 backdrop-blur-sm sm:p-8">
               {children}

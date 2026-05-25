@@ -10,8 +10,8 @@ export function MojePageSalesToolbar() {
   return (
     <label
       className={cn(
-        "flex cursor-pointer items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-medium text-slate-700",
-        "min-h-11 sm:min-h-0"
+        "flex w-full cursor-pointer items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-medium leading-snug text-slate-700",
+        "min-h-11 sm:w-auto sm:min-h-0"
       )}
     >
       <input

@@ -7,11 +7,20 @@ import { actionBatchUpdateDelivered, actionUpdateDelivered } from "@/app/actions
 import { getDeliveryProgress, parseOrderQuantity } from "@/lib/orders/individual";
 import { procurementDispositionQueueLabel } from "@/lib/orders/procurement-disposition";
 import { Card, CardHeader } from "@/components/ui/Card";
+import { SectionListLabel } from "@/components/ui/SectionListLabel";
+import { SectionHeadingIcon } from "@/components/icons/SectionHeadingIcon";
+import {
+  IconAvailability,
+  IconTruck,
+  IconWarehouse,
+} from "@/components/icons/StrokeIcons";
+import { QueuePanelHelp } from "@/components/queue/QueuePanelHelp";
 import { Button } from "@/components/ui/Button";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { Toast } from "@/components/ui/Toast";
 import { DataTable, TableScroll } from "@/components/ui/DataTable";
 import { cn } from "@/lib/cn";
+import { brandLinkClass, checkboxBrandClass, controlFocusClass } from "@/lib/ui/ontime-theme";
 import { InformacjaQueueSection } from "@/components/queue/InformacjaQueueSection";
 import { ActionLoadingOverlay } from "@/components/ui/ActionLoadingOverlay";
 import { QueuePanelToolbar } from "@/components/queue/QueuePanelToolbar";
@@ -232,8 +241,12 @@ export function QueueClient({
   const partialCount = inboxSummary.partialCount;
   const cancelLabelled = inboxSummary.cancelLabelledCount;
 
+  const deliveryHint = shelf.length
+    ? `${pickupReadyCount} gotowych do odbioru · ${partialCount} częściowo przyjęte${cancelLabelled ? ` · ${cancelLabelled} z rezygnacją` : ""}`
+    : "Po zamówieniu u dostawcy w panelu dziennym";
+
   return (
-    <div className="relative space-y-6">
+    <div className="relative mx-auto max-w-6xl">
       {pendingMessage ? (
         <ActionLoadingOverlay message={pendingMessage} variant="viewport" />
       ) : null}
@@ -241,54 +254,52 @@ export function QueueClient({
         <Toast message={toast.text} tone={toast.tone} onDismiss={dismissToast} />
       ) : null}
 
-      <QueuePanelToolbar
-        summary={inboxSummary}
-        informacjaCount={informacjaOrders.length}
-        pickupReadyCount={pickupReadyCount}
-      />
+      <Card padding={false} className="overflow-hidden">
+        <CardHeader
+          inset
+          leading={
+            <SectionHeadingIcon tileClassName="bg-emerald-100 text-emerald-800">
+              <IconWarehouse size={20} />
+            </SectionHeadingIcon>
+          }
+          title="Magazyn i regał"
+          description="Przyjęcie towaru dla handlowców oraz powiadomienia o dostępności na magazynie."
+          action={<QueuePanelHelp />}
+        />
 
-      <details className="rounded-xl border border-slate-200 bg-white text-sm text-slate-600">
-        <summary className="cursor-pointer px-4 py-2.5 font-medium text-slate-800 marker:content-none [&::-webkit-details-marker]:hidden">
-          Jak wpisywać dostawy
-        </summary>
-        <p className="border-t border-slate-100 px-4 py-2.5 leading-relaxed">
-          <strong>Dostawy dla handlowców</strong> — gdy towar fizycznie przyszedł, wpisz ilość w
-          kolumnie „Dost.” i zapisz (lub <strong>Całość</strong>). Handlowiec dostaje powiadomienie.
-          Przy rezygnacji widać decyzję zakupów (stan lub zwrot).{" "}
-          <strong>Informacje</strong> poniżej — tylko e-mail po dotarciu towaru (bez kolejki dostaw).{" "}
-          Przy wielu pozycjach naraz wysyłamy <strong>jeden e-mail na handlowca</strong> (nie na
-          dostawcę) — przy różnych handlowcach w grupie dostawcy będzie kilka maili.
-        </p>
-      </details>
+        <QueuePanelToolbar
+          summary={inboxSummary}
+          informacjaCount={informacjaOrders.length}
+          pickupReadyCount={pickupReadyCount}
+        />
 
-      <section id="dostawy-handlowcy" className="scroll-mt-20">
-        <Card padding={false} className="overflow-hidden border-violet-200">
-          <CardHeader
-            inset
+        <section className="scroll-mt-20">
+          <SectionListLabel
+            id="dostawy-handlowcy"
             title="Dostawy dla handlowców"
-            description={
-              shelf.length
-                ? `${shelf.length} poz. w kolejce · ${pickupReadyCount} gotowych do odbioru u handlowców · ${partialCount} częściowo przyjęte${cancelLabelled ? ` · ${cancelLabelled} z rezygnacją (decyzja zakupów)` : ""}`
-                : "Brak pozycji — po Główne/Uzupełniające w panelu dziennym"
-            }
-            action={
-              selectedIds.length > 0 ? (
-                <Button
-                  variant="primary"
-                  size="sm"
-                  disabled={pending}
-                  onClick={() => saveBatch(selectedIds)}
-                >
-                  {selectedSaveButtonLabel(selectedIds.length)}
-                  {selectedIds.length > 1
-                    ? countSalesPeopleInOrders(shelf, selectedIds) === 1
-                      ? " · mail do handlowca"
-                      : ` · ${countSalesPeopleInOrders(shelf, selectedIds)} handlowców`
-                    : ""}
-                </Button>
-              ) : undefined
-            }
+            hint={deliveryHint}
+            count={shelf.length}
+            accent="emerald"
+            icon={<IconTruck size={17} />}
+            tileClassName="bg-emerald-100 text-emerald-800"
           />
+          {selectedIds.length > 0 ? (
+            <div className="flex justify-end border-b border-emerald-100 bg-emerald-50/40 px-3 py-2 sm:px-4">
+              <Button
+                variant="primary"
+                size="sm"
+                disabled={pending}
+                onClick={() => saveBatch(selectedIds)}
+              >
+                {selectedSaveButtonLabel(selectedIds.length)}
+                {selectedIds.length > 1
+                  ? countSalesPeopleInOrders(shelf, selectedIds) === 1
+                    ? " · mail do handlowca"
+                    : ` · ${countSalesPeopleInOrders(shelf, selectedIds)} handlowców`
+                  : ""}
+              </Button>
+            </div>
+          ) : null}
 
           {!shelf.length ? (
             <EmptyState
@@ -303,7 +314,7 @@ export function QueueClient({
                     <th className="w-10">
                       <input
                         type="checkbox"
-                        className="size-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500/30"
+                        className={cn("size-4", checkboxBrandClass)}
                         checked={allSelected}
                         disabled={pending || !shelf.length}
                         aria-label="Zaznacz wszystkie pozycje"
@@ -369,7 +380,7 @@ export function QueueClient({
                         <td className="text-center align-top pt-3">
                           <input
                             type="checkbox"
-                            className="size-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500/30"
+                            className={cn("size-4", checkboxBrandClass)}
                             checked={!!selected[o.id]}
                             disabled={pending}
                             aria-label={`Zaznacz pozycję ${personName}`}
@@ -405,7 +416,7 @@ export function QueueClient({
                               <div className="flex flex-wrap gap-1">
                                 <button
                                   type="button"
-                                  className="text-left text-[10px] font-semibold text-indigo-700 underline-offset-2 hover:underline"
+                                  className={cn("text-left text-[10px] font-semibold underline-offset-2", brandLinkClass)}
                                   disabled={pending}
                                   onClick={() => toggleSupplierGroup(index, !groupAllSelected)}
                                 >
@@ -413,7 +424,7 @@ export function QueueClient({
                                 </button>
                                 <button
                                   type="button"
-                                  className="text-left text-[10px] font-semibold text-indigo-700 underline-offset-2 hover:underline"
+                                  className={cn("text-left text-[10px] font-semibold underline-offset-2", brandLinkClass)}
                                   disabled={pending}
                                   title={batchNotifyButtonLabel(shelf, groupIds, {
                                     prefix: "Całość",
@@ -463,7 +474,10 @@ export function QueueClient({
                             onChange={(e) =>
                               setQty((s) => ({ ...s, [o.id]: e.target.value }))
                             }
-                            className="w-14 rounded-md border border-slate-200 px-1.5 py-1 text-center text-sm font-semibold tabular-nums text-slate-900 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500/30 disabled:opacity-50"
+                            className={cn(
+                              "w-14 rounded-md border border-slate-200 px-1.5 py-1 text-center text-sm font-semibold tabular-nums text-slate-900 disabled:opacity-50",
+                              controlFocusClass
+                            )}
                             aria-label={`Dostarczono dla ${personName}`}
                           />
                         </td>
@@ -511,12 +525,20 @@ export function QueueClient({
               </DataTable>
             </TableScroll>
           )}
-        </Card>
-      </section>
+        </section>
 
-      <section id="informacja" className="scroll-mt-20">
-        <InformacjaQueueSection orders={informacjaOrders} />
-      </section>
+        <section id="informacja" className="scroll-mt-20 border-t border-slate-100">
+          <SectionListLabel
+            id="informacja"
+            title="Pozycje informacyjne"
+            hint="E-mail po dotarciu towaru — bez wpisywania ilości"
+            count={informacjaOrders.length}
+            icon={<IconAvailability size={17} />}
+            tileClassName="bg-sky-100 text-sky-800"
+          />
+          <InformacjaQueueSection orders={informacjaOrders} embedded />
+        </section>
+      </Card>
     </div>
   );
 }

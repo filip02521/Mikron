@@ -31,7 +31,8 @@ export function VerificationModal({
       titleId="verification-modal-title"
       size="xl"
       tier="top"
-      bodyClassName="px-5 py-4 sm:px-6 sm:py-5"
+      className="max-h-[min(calc(100dvh-env(safe-area-inset-top)-env(safe-area-inset-bottom)-1.5rem),920px)]"
+      bodyClassName="flex min-h-0 flex-1 flex-col overflow-y-auto overscroll-contain px-4 py-3 sm:overflow-hidden sm:px-5 sm:py-4"
       footer={
         <Link
           href="/weryfikacja"
@@ -44,6 +45,7 @@ export function VerificationModal({
     >
       {orders.length > 0 ? (
         <VerificationWorkspace
+          layout="modal"
           orders={orders}
           suppliers={suppliers}
           salesPeople={salesPeople}

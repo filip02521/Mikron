@@ -52,7 +52,7 @@ npm run migrate -- ./data
 | `/historia` | Historia standardowa i indywidualna |
 | `/zamowienia/nowe` | Formularz zamówienia dla kogoś |
 | `/moje` | Widok handlowca |
-| `/admin` | Synchronizacja, raporty, status systemu |
+| `/admin` | Synchronizacja, raporty, status systemu, test integracji Subiekt |
 
 ## Retencja historii (6 miesięcy)
 
@@ -74,6 +74,10 @@ Vercel uruchamia crony w UTC; w kodzie sprawdzana jest strefa **Europe/Warsaw** 
 Tylko synchronizacja harmonogramów: `/api/cron/morning-sync`
 
 E-mail „towar dotarł” wysyłany jest **od razu** po zapisie w Realizacji, nie czeka na cron.
+
+## Integracja Subiekt (opcjonalnie)
+
+Mostek **HTTP REST** (nie bezpośrednio Sfera/SQL). Konfiguracja w `.env.local` — zmienne `SUBIEKT_*`, opis w [docs/integrations/subiekt.md](docs/integrations/subiekt.md). Test połączenia: **Administracja** → Integracja Subiekt.
 
 ## Testy logiki biznesowej
 

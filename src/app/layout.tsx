@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
+import { CryptoPolyfillScript } from "@/components/CryptoPolyfillScript";
 import { AppShell } from "@/components/layout/AppShell";
 import {
   ONTIME_APP_DESCRIPTION,
@@ -37,6 +38,9 @@ export default function RootLayout({
 }: Readonly<{ children: React.ReactNode }>) {
   return (
     <html lang="pl" className={`${geistSans.variable} ${geistMono.variable}`}>
+      <head>
+        <CryptoPolyfillScript />
+      </head>
       <body className="min-h-screen font-sans antialiased">
         <AppShell>{children}</AppShell>
       </body>

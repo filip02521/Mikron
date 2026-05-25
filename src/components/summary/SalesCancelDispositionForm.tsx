@@ -6,6 +6,7 @@ import type { ProcurementCancelDisposition } from "@/lib/orders/procurement-disp
 import type { SalesCancelPhase } from "@/lib/orders/sales-cancel";
 import { Button } from "@/components/ui/Button";
 import { cn } from "@/lib/cn";
+import { controlFocusClass } from "@/lib/ui/ontime-theme";
 
 export type SalesCancelDispositionFormProps = {
   orderIds: string[];
@@ -107,7 +108,10 @@ export function SalesCancelDispositionForm({
             onChange={(e) => setNote(e.target.value)}
             rows={2}
             placeholder="np. regał B3, list przewozowy…"
-            className="mt-1 w-full resize-y rounded-xl border border-slate-200 px-2.5 py-1.5 text-xs text-slate-800 placeholder:text-slate-400 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500/30"
+            className={cn(
+              "mt-1 w-full resize-y rounded-xl border border-slate-200 px-2.5 py-1.5 text-xs text-slate-800 placeholder:text-slate-400",
+              controlFocusClass
+            )}
           />
         </label>
         <Button size="sm" disabled={busy || !disposition} onClick={() => void save()}>

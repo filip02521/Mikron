@@ -6,30 +6,47 @@ import {
   groupHiddenSuppliersByReason,
   type DailyPanelHiddenReport,
 } from "@/lib/orders/daily-panel-hidden";
+import {
+  DailySectionIcon,
+  dailySectionIconTileClass,
+  IconChevronDown,
+} from "@/components/icons/StrokeIcons";
+import { SectionHeadingIcon } from "@/components/icons/SectionHeadingIcon";
+import { cn } from "@/lib/cn";
+import { brandLinkClass } from "@/lib/ui/ontime-theme";
 
 export function DailyPanelHiddenSuppliers({
   report,
   onOpenSupplier,
   onOpenOnDemand,
+  embedded = false,
 }: {
   report: DailyPanelHiddenReport;
   onOpenSupplier: (id: string) => void;
   onOpenOnDemand?: () => void;
+  embedded?: boolean;
 }) {
   const groups = groupHiddenSuppliersByReason(report.suppliers);
   const hasSuppliers = report.suppliers.length > 0;
-  const hasInformacja = report.informacjaGroupCount > 0;
 
-  if (!hasSuppliers && !hasInformacja) return null;
+  if (!hasSuppliers) return null;
 
   return (
     <details
       id="poza-harmonogramem"
-      className="scroll-mt-20 rounded-xl border border-slate-200 bg-white shadow-[0_1px_2px_rgba(15,23,42,0.05)]"
+      className={cn(
+        "scroll-mt-20",
+        embedded
+          ? "border-b border-slate-100"
+          : "rounded-xl border border-slate-200 bg-white shadow-[0_1px_2px_rgba(15,23,42,0.05)]"
+      )}
       open={hasSuppliers && report.suppliers.length <= 8}
     >
-      <summary className="cursor-pointer list-none px-4 py-3.5 marker:content-none sm:px-5 [&::-webkit-details-marker]:hidden">
-        <div className="flex flex-wrap items-start justify-between gap-2">
+      <summary className="cursor-pointer list-none px-4 py-3.5 marker:content-none sm:px-6 [&::-webkit-details-marker]:hidden">
+        <div className="flex items-start gap-2.5">
+          <SectionHeadingIcon tileClassName={dailySectionIconTileClass("hidden")}>
+            <DailySectionIcon kind="hidden" size={16} />
+          </SectionHeadingIcon>
           <div className="min-w-0 flex-1">
             <p className="text-sm font-semibold text-slate-900">
               Poza listą harmonogramu
@@ -41,40 +58,14 @@ export function DailyPanelHiddenSuppliers({
               ) : null}
             </p>
             <p className="mt-0.5 text-xs leading-relaxed text-slate-500">
-              Dostawcy, którzy nie pojawią się w harmonogramie, dopóki brakuje danych lub mają
-              zamówienie na żądanie — oraz prośby obsługiwane gdzie indziej.
+              Dostawcy bez wpisu w harmonogramie lub prośby obsługiwane gdzie indziej.
             </p>
           </div>
-          <span className="shrink-0 text-xs font-medium text-indigo-600">Rozwiń</span>
+          <IconChevronDown className="mt-1 shrink-0 text-slate-400" size={18} />
         </div>
       </summary>
 
-      <div className="space-y-4 border-t border-slate-100 px-4 py-4 sm:px-5">
-        {hasInformacja ? (
-          <div className="rounded-lg border border-sky-200/90 bg-sky-50/50 px-3.5 py-3">
-            <p className="text-sm font-medium text-sky-950">
-              Prośby tylko o dostępność (
-              {report.informacjaGroupCount === 1
-                ? "1 grupa"
-                : `${report.informacjaGroupCount} grup`}
-              {report.informacjaLineCount > 0
-                ? ` · ${report.informacjaLineCount} prod.`
-                : ""}
-              )
-            </p>
-            <p className="mt-0.5 text-xs leading-relaxed text-sky-900/85">
-              Nie składamy zamówienia u dostawcy — obsługa w{" "}
-              <Link
-                href="/kolejka#informacja"
-                className="font-medium underline decoration-sky-300 underline-offset-2 hover:text-sky-950"
-              >
-                Magazyn i regał → Informacja
-              </Link>
-              .
-            </p>
-          </div>
-        ) : null}
-
+      <div className="space-y-4 border-t border-slate-100 px-4 py-4 sm:px-6">
         {groups.map(({ reason, items }) => {
           const meta = DAILY_PANEL_HIDDEN_REASON_META[reason];
           return (
@@ -121,7 +112,7 @@ export function DailyPanelHiddenSuppliers({
                     ) : (
                       <Link
                         href={`/lokalizacje/${row.location}`}
-                        className="shrink-0 text-xs font-medium text-indigo-700 hover:underline"
+                        className={cn("shrink-0 text-xs", brandLinkClass)}
                       >
                         Terminy
                       </Link>

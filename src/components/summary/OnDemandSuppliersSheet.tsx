@@ -3,23 +3,21 @@
 import type { OnDemandSupplierRow } from "@/lib/orders/summary-workspace";
 import { actionMarkOrdered } from "@/app/actions/admin";
 import { SupplierContactActions } from "@/components/procurement/SupplierContactActions";
-import { HoldToConfirmButton } from "@/components/ui/HoldToConfirmButton";
 import { Button } from "@/components/ui/Button";
-import { ButtonGroup } from "@/components/ui/ButtonGroup";
 import { EmptyState } from "@/components/ui/EmptyState";
 import type { DailyPanelRunFn } from "@/components/summary/useDailyPanelRunner";
 
 export function OnDemandSuppliersSheet({
   open,
   suppliers,
-  pending,
+  isScopePending,
   onClose,
   onOpenSupplier,
   run,
 }: {
   open: boolean;
   suppliers: OnDemandSupplierRow[];
-  pending: boolean;
+  isScopePending: (supplierId: string) => boolean;
   onClose: () => void;
   onOpenSupplier: (id: string) => void;
   run: DailyPanelRunFn;
@@ -66,54 +64,55 @@ export function OnDemandSuppliersSheet({
             />
           ) : (
             <ul className="space-y-2">
-              {suppliers.map((row) => (
-                <li
-                  key={row.supplierId}
-                  className="rounded-xl border border-slate-200 bg-slate-50/50 px-3.5 py-3"
-                >
-                  <div className="flex flex-wrap items-start justify-between gap-2">
-                    <div className="min-w-0 flex-1">
-                      <button
-                        type="button"
-                        className="text-left text-sm font-semibold text-slate-900 hover:underline"
-                        onClick={() => onOpenSupplier(row.supplierId)}
-                      >
-                        {row.supplierName}
-                      </button>
-                      <p className="mt-0.5 text-xs text-slate-500">
-                        {row.locationLabel}
-                        {row.stockLabel !== "—" ? ` · ${row.stockLabel}` : ""}
-                        {row.intervalLabel && row.intervalLabel !== "—"
-                          ? ` · ${row.intervalLabel}`
-                          : ""}
-                      </p>
-                      <SupplierContactActions
-                        notes={row.notes}
-                        mails={row.mails}
-                        className="mt-2"
-                      />
-                    </div>
-                    <ButtonGroup
-                      className="shrink-0"
-                      ariaLabel="Zamówione — przytrzymaj, aby potwierdzić"
-                    >
-                      <HoldToConfirmButton
+              {suppliers.map((row) => {
+                const rowPending = isScopePending(row.supplierId);
+                return (
+                  <li
+                    key={row.supplierId}
+                    className="rounded-xl border border-slate-200 bg-slate-50/50 px-3.5 py-3"
+                  >
+                    <div className="flex flex-wrap items-start justify-between gap-2">
+                      <div className="min-w-0 flex-1">
+                        <button
+                          type="button"
+                          className="text-left text-sm font-semibold text-slate-900 hover:underline"
+                          onClick={() => onOpenSupplier(row.supplierId)}
+                        >
+                          {row.supplierName}
+                        </button>
+                        <p className="mt-0.5 text-xs text-slate-500">
+                          {row.locationLabel}
+                          {row.stockLabel !== "—" ? ` · ${row.stockLabel}` : ""}
+                          {row.intervalLabel && row.intervalLabel !== "—"
+                            ? ` · ${row.intervalLabel}`
+                            : ""}
+                        </p>
+                        <SupplierContactActions
+                          notes={row.notes}
+                          mails={row.mails}
+                          className="mt-2"
+                        />
+                      </div>
+                      <Button
                         variant="primary"
-                        className="px-3 py-2 text-xs"
-                        disabled={pending}
-                        label="Zamówione"
-                        onConfirm={() =>
+                        size="sm"
+                        className="shrink-0"
+                        disabled={rowPending}
+                        onClick={() =>
                           run(
                             () => actionMarkOrdered(row.supplierId),
                             `Zamówiono: ${row.supplierName}`,
-                            "Oznaczanie jako zamówione…"
+                            "Oznaczanie jako zamówione…",
+                            { scope: row.supplierId }
                           )
                         }
-                      />
-                    </ButtonGroup>
-                  </div>
-                </li>
-              ))}
+                      >
+                        Zamówione
+                      </Button>
+                    </div>
+                  </li>
+                );
+              })}
             </ul>
           )}
         </div>

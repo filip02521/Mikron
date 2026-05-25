@@ -26,6 +26,7 @@ export function RequestProductLinesEditor({
   minLines = 1,
   addLabel = "+ Dodaj pozycję",
   showClientField = false,
+  appearance = "default",
 }: {
   lines: ProductLineDraft[];
   onChange: (lines: ProductLineDraft[]) => void;
@@ -34,8 +35,12 @@ export function RequestProductLinesEditor({
   addLabel?: string;
   /** Pole „Klient” przy składaniu prośby (handlowiec). */
   showClientField?: boolean;
+  /** Uproszczony układ w formularzu /prosba */
+  appearance?: "default" | "prosba";
 }) {
   const canRemove = lines.length > minLines;
+  const prosba = appearance === "prosba";
+  const showLineLabel = !prosba || lines.length > 1;
 
   return (
     <div className="space-y-3">
@@ -43,13 +48,15 @@ export function RequestProductLinesEditor({
         <div
           key={line.id}
           className={cn(
-            "rounded-xl border border-dashed border-slate-200 bg-slate-50/50 p-3",
-            "sm:grid-cols-1"
+            prosba
+              ? "rounded-xl border border-slate-200 bg-white p-4 shadow-sm"
+              : "rounded-xl border border-dashed border-slate-200 bg-slate-50/50 p-3"
           )}
         >
+          {showLineLabel ? (
           <div className="mb-2 flex items-center justify-between gap-2">
             <span className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-              Pozycja {index + 1}
+              {prosba ? `Produkt ${index + 1}` : `Pozycja ${index + 1}`}
             </span>
             {canRemove ? (
               <Button
@@ -63,10 +70,27 @@ export function RequestProductLinesEditor({
               </Button>
             ) : null}
           </div>
+          ) : canRemove ? (
+            <div className="mb-2 flex justify-end">
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                className="text-red-700 hover:bg-red-50"
+                onClick={() => onChange(removeProductLineAt(lines, index, minLines))}
+              >
+                Usuń
+              </Button>
+            </div>
+          ) : null}
           <div
             className={cn(
               "grid gap-3",
-              requestKind === "informacja" ? "sm:grid-cols-3" : "sm:grid-cols-4"
+              prosba
+                ? "grid-cols-1"
+                : requestKind === "informacja"
+                  ? "sm:grid-cols-3"
+                  : "sm:grid-cols-4"
             )}
           >
             <Field label="Symbol">
@@ -85,7 +109,7 @@ export function RequestProductLinesEditor({
                   ? "Produkt (co ma być na stanie)"
                   : "Produkty"
               }
-              className="sm:col-span-2"
+              className={prosba ? undefined : "sm:col-span-2"}
             >
               <Input
                 placeholder={
@@ -136,8 +160,9 @@ export function RequestProductLinesEditor({
 
       <Button
         type="button"
-        variant="ghost"
+        variant={prosba ? "secondary" : "ghost"}
         size="sm"
+        className={prosba ? "w-full sm:w-auto" : undefined}
         disabled={lines.length >= MAX_BATCH_ORDER_LINES}
         onClick={() => onChange(appendProductLine(lines))}
       >

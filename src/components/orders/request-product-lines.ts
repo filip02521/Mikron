@@ -1,3 +1,4 @@
+import { randomId } from "@/lib/ensure-crypto";
 import { MAX_BATCH_ORDER_LINES } from "@/lib/security/text-limits";
 
 export type ProductLineDraft = {
@@ -10,7 +11,7 @@ export type ProductLineDraft = {
 
 export function newProductLine(): ProductLineDraft {
   return {
-    id: crypto.randomUUID(),
+    id: randomId(),
     symbol: "",
     product: "",
     quantity: "",

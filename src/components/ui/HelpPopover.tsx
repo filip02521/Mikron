@@ -73,7 +73,7 @@ export function HelpPopover({
           role="dialog"
           aria-label={title}
           className={cn(
-            "absolute top-full z-50 mt-2 w-[min(100vw-2rem,24rem)] rounded-xl border border-slate-200 bg-white p-4 text-sm text-slate-600 shadow-lg",
+            "absolute top-full z-50 mt-2 max-h-[min(70vh,28rem)] w-[min(100vw-2rem,24rem)] overflow-y-auto rounded-xl border border-slate-200 bg-white p-4 text-sm text-slate-600 shadow-lg overscroll-contain",
             align === "right" ? "right-0" : "left-0"
           )}
         >

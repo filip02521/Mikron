@@ -102,7 +102,12 @@ export function HoldToConfirmButton({
         e.currentTarget.setPointerCapture(e.pointerId);
         start();
       }}
-      onPointerUp={stop}
+      onPointerUp={(e) => {
+        if (e.currentTarget.hasPointerCapture(e.pointerId)) {
+          e.currentTarget.releasePointerCapture(e.pointerId);
+        }
+        stop();
+      }}
       onPointerLeave={stop}
       onPointerCancel={stop}
       onContextMenu={(e) => e.preventDefault()}

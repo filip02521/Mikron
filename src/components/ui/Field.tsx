@@ -22,7 +22,7 @@ export function Field({
 }
 
 const control =
-  "w-full min-h-11 rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-base leading-snug text-slate-900 shadow-sm transition-[border-color,box-shadow] placeholder:text-slate-400 hover:border-slate-300 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 disabled:cursor-not-allowed disabled:bg-slate-50 disabled:text-slate-400 sm:min-h-[2.5rem] sm:text-sm";
+  "w-full min-h-11 rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-base leading-snug text-slate-900 shadow-sm transition-[border-color,box-shadow] placeholder:text-slate-400 hover:border-slate-300 focus:border-indigo-500 focus:ring-2 focus:ring-sky-500/15 disabled:cursor-not-allowed disabled:bg-slate-50 disabled:text-slate-400 sm:min-h-[2.5rem] sm:text-sm";
 
 export function Input(props: React.InputHTMLAttributes<HTMLInputElement>) {
   return <input className={cn(control, props.className)} {...props} />;

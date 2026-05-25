@@ -1,25 +1,28 @@
 import { cn } from "@/lib/cn";
 
-/** Wspólna baza kart harmonogramu (zaległe / na dziś) — jak prośby handlowców. */
-export const URGENT_CARD_BASE =
-  "rounded-xl border border-[var(--card-border)] bg-[var(--card)] shadow-[var(--shadow-card)]";
-
-export function urgentCardClassName(overdue: boolean) {
+/** Karta harmonogramu — jak prośby handlowców; zaległe z delikatnym bursztynem. */
+export function urgentCardClassName(isOverdue = false) {
   return cn(
-    URGENT_CARD_BASE,
-    overdue
-      ? "border-rose-200/90 bg-rose-50/55 ring-1 ring-rose-100/70"
-      : "border-slate-200/90"
+    "rounded-xl border bg-white shadow-sm transition",
+    isOverdue
+      ? "border-amber-200/80 hover:border-amber-300/90"
+      : "border-slate-200 hover:border-slate-300"
   );
 }
 
-export function urgentGroupHeadingClassName(overdue: boolean) {
+export function urgentGroupHeadingClassName(isOverdue = false) {
   return cn(
     "shrink-0 text-xs font-semibold uppercase tracking-wide",
-    overdue ? "text-rose-800/90" : "text-slate-500"
+    isOverdue ? "text-amber-800" : "text-slate-500"
   );
 }
 
-export function urgentGroupDividerClassName(overdue: boolean) {
-  return cn("h-px flex-1", overdue ? "bg-rose-200/80" : "bg-slate-200");
+export function urgentGroupDividerClassName(isOverdue = false) {
+  return cn("h-px flex-1", isOverdue ? "bg-amber-200/70" : "bg-slate-200");
+}
+
+export function urgentStatusBadgeVariant(
+  isOverdue: boolean
+): "warning" | "info" {
+  return isOverdue ? "warning" : "info";
 }

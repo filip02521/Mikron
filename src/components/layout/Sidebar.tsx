@@ -13,11 +13,19 @@ import {
 import {
   navLinkActiveClass,
   navLinkIdleClass,
+  sidebarBrandAccentClass,
   sidebarHeaderClass,
 } from "@/lib/ui/ontime-theme";
+import { ONTIME_AUTH_FOOTER } from "@/lib/ui/ontime-brand";
+import { buttonPrimaryClass } from "@/lib/ui/ontime-theme";
 import type { UserRole } from "@/types/database";
 import { cn } from "@/lib/cn";
 import { createClient } from "@/lib/supabase/client";
+import {
+  NavIcon,
+  navIconKeyFromHref,
+  navIconTileIdleClass,
+} from "@/components/icons/NavIcon";
 
 function NavLink({
   item,
@@ -29,6 +37,7 @@ function NavLink({
   showDot: boolean;
 }) {
   const hasBadge = item.badge != null && item.badge > 0;
+  const iconKey = navIconKeyFromHref(item.href);
 
   return (
     <Link
@@ -40,6 +49,17 @@ function NavLink({
       aria-current={active ? "page" : undefined}
     >
       <span className="flex items-start justify-between gap-2">
+        <span className="flex min-w-0 flex-1 items-start gap-2.5">
+          <span
+            className={cn(
+              "mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-lg transition-colors",
+              active
+                ? "bg-white/15 text-white"
+                : cn(navIconTileIdleClass(iconKey), "group-hover:opacity-90")
+            )}
+          >
+            <NavIcon navKey={iconKey} size={18} />
+          </span>
         <span className="min-w-0 flex-1">
           <span
             className={cn(
@@ -59,6 +79,7 @@ function NavLink({
               {item.description}
             </span>
           ) : null}
+        </span>
         </span>
         <span className="flex shrink-0 items-center gap-1.5 pt-0.5">
           {showDot ? (
@@ -150,6 +171,7 @@ export function Sidebar({
       )}
     >
       <header className={sidebarHeaderClass}>
+        <div className={sidebarBrandAccentClass} aria-hidden />
         <SidebarBrandBlock role={role} userEmail={userEmail} />
       </header>
 
@@ -163,18 +185,26 @@ export function Sidebar({
         {showLoginLink ? (
           <Link
             href="/login"
-            className="flex w-full min-h-10 items-center justify-center rounded-lg bg-indigo-600 px-4 py-2.5 text-sm font-medium text-white shadow-sm transition hover:bg-indigo-700"
+            className={cn(
+              "inline-flex w-full min-h-10 items-center justify-center rounded-xl px-4 py-2.5 text-sm font-medium transition-colors",
+              buttonPrimaryClass
+            )}
           >
             Zaloguj się
           </Link>
         ) : (
-          <button
-            type="button"
-            onClick={() => void signOut()}
-            className="w-full min-h-10 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-medium text-slate-600 shadow-sm transition hover:border-slate-300 hover:bg-slate-50"
-          >
-            Wyloguj
-          </button>
+          <>
+            <button
+              type="button"
+              onClick={() => void signOut()}
+              className="w-full min-h-10 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-medium text-slate-600 shadow-sm transition hover:border-slate-300 hover:bg-slate-50"
+            >
+              Wyloguj
+            </button>
+            <p className="mt-2.5 text-center text-[10px] font-medium uppercase tracking-[0.14em] text-slate-400">
+              {ONTIME_AUTH_FOOTER}
+            </p>
+          </>
         )}
       </div>
     </aside>

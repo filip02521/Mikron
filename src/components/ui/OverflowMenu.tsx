@@ -145,6 +145,24 @@ export function OverflowMenu({
         </span>
         {iconOnly ? <span className="sr-only">Więcej</span> : <span>Więcej</span>}
       </button>
+    ) : iconOnly ? (
+      <button
+        ref={triggerRef}
+        type="button"
+        disabled={disabled}
+        onClick={() => setOpen((v) => !v)}
+        aria-expanded={open}
+        aria-haspopup="menu"
+        aria-controls={open ? menuId : undefined}
+        aria-label={label}
+        className={cn(
+          "inline-flex h-8 w-8 shrink-0 cursor-pointer items-center justify-center rounded-lg border border-slate-200/90 bg-white text-slate-600 shadow-sm transition hover:border-slate-300 hover:bg-slate-50 hover:text-slate-900 disabled:cursor-not-allowed disabled:opacity-50",
+          open && "border-indigo-300 bg-indigo-50 text-indigo-700",
+          triggerClassName
+        )}
+      >
+        <MoreIcon />
+      </button>
     ) : (
       <Button
         ref={triggerRef}

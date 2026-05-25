@@ -1,7 +1,6 @@
 import { fetchVacations, fetchSuppliersWithSchedules } from "@/lib/data/queries";
 import { VacationsAdminClient } from "@/components/admin/VacationsAdminClient";
-import { SuppliersHubNav } from "@/components/admin/SuppliersHubNav";
-import { PageHeader } from "@/components/ui/PageHeader";
+import { SuppliersHubShell } from "@/components/admin/SuppliersHubShell";
 
 export default async function UrlopyPage() {
   let vacations: Awaited<ReturnType<typeof fetchVacations>> = [];
@@ -15,13 +14,13 @@ export default async function UrlopyPage() {
   }
 
   return (
-    <>
-      <PageHeader
-        title="Urlopy dostawców"
-        description="Te same urlopy co w widoku zakupów — wpływ na wyliczone daty zamówień."
-      />
-      <SuppliersHubNav activeTab="vacations" context="admin" />
+    <SuppliersHubShell
+      title="Urlopy dostawców"
+      description="Te same urlopy co w widoku zakupów — wpływ na wyliczone daty zamówień."
+      activeTab="vacations"
+      context="admin"
+    >
       <VacationsAdminClient vacations={vacations} suppliers={suppliers} />
-    </>
+    </SuppliersHubShell>
   );
 }

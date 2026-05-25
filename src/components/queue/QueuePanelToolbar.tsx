@@ -3,6 +3,7 @@
 import Link from "next/link";
 import type { QueueInboxSummary } from "@/lib/orders/queue-inbox";
 import { cn } from "@/lib/cn";
+import { brandLinkClass, surfaceCardClass } from "@/lib/ui/ontime-theme";
 
 function MetricTile({
   value,
@@ -61,14 +62,14 @@ function MetricTile({
   );
 
   const className = cn(
-    "rounded-xl border px-3 py-2.5 text-left transition",
+    "rounded-xl border px-3 py-2.5 text-left transition shadow-[var(--shadow-card)]",
     tone === "amber"
-      ? "border-amber-200 bg-amber-50/60 hover:border-amber-300"
+      ? "border-amber-200/90 bg-amber-50/60 hover:border-amber-300"
       : tone === "sky"
-        ? "border-sky-200 bg-sky-50/50 hover:border-sky-300"
+        ? "border-sky-200/90 bg-sky-50/50 hover:border-sky-300"
         : tone === "emerald"
-          ? "border-emerald-200 bg-emerald-50/60 hover:border-emerald-300"
-          : "border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50"
+          ? "border-emerald-200/90 bg-emerald-50/60 hover:border-emerald-300"
+          : cn(surfaceCardClass, "hover:border-slate-300 hover:bg-slate-50/80")
   );
 
   if (href) {
@@ -92,7 +93,7 @@ export function QueuePanelToolbar({
   pickupReadyCount: number;
 }) {
   return (
-    <div className="rounded-xl border border-slate-200 bg-white p-4 sm:p-5">
+    <div className="border-b border-slate-100 px-4 py-4 sm:px-6">
       <p className="text-sm font-semibold text-slate-900">Przegląd magazynu</p>
       <p className="mt-0.5 text-xs text-slate-500">
         Zamówienia u dostawcy — towar często jeszcze nie dotarł. Po przyjęciu wpisz ilość na dole
@@ -136,7 +137,7 @@ export function QueuePanelToolbar({
         „Gotowe do odbioru” — całość przyjęta na magazyn, handlowiec widzi zieloną pozycję do
         potwierdzenia odbioru (nie ma ich już na liście przyjęcia poniżej). Brak dostawcy lub opisu
         uzupełniasz w{" "}
-        <Link href="/podsumowanie" className="font-medium text-indigo-700 hover:underline">
+        <Link href="/podsumowanie" className={brandLinkClass}>
           panelu dziennym
         </Link>{" "}
         (Weryfikacja).

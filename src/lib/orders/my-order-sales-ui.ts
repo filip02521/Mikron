@@ -4,6 +4,19 @@ import { progressLabelInSubline } from "@/lib/orders/my-order-card-ui";
 
 export type MyOrderHeadlineTone = "action" | "warning" | "success" | "info" | "neutral";
 
+/** Jedna linia pod nagłówkiem — bez powtórzenia statusDetail w rozwinięciu. */
+export function verificationSublineFromDetail(statusDetail: string | null): string {
+  if (!statusDetail?.trim()) return "Dział dostaw uzupełnia brakujące dane";
+  if (statusDetail.startsWith("Brakuje:")) {
+    const missing = statusDetail.slice("Brakuje:".length).split(".")[0]?.trim();
+    return missing
+      ? `Brakuje: ${missing} — dział dostaw uzupełni`
+      : "Dział dostaw uzupełnia brakujące dane";
+  }
+  if (statusDetail.includes("sprawdzają")) return "Zakupy sprawdzają szczegóły";
+  return "Dział dostaw uzupełnia brakujące dane";
+}
+
 export type MyOrderSalesUi = {
   /** Najważniejsza informacja na karcie — co się dzieje / co zrobić. */
   headline: string;
@@ -122,7 +135,7 @@ export function enrichMyOrderSalesUi(row: MyOrderRow): MyOrderSalesUi {
     return {
       headline: "Uzupełniamy dane w prośbie",
       headlineTone: "info",
-      subline: "Dział dostaw dopisze brakujące informacje — rozwiń kartę po szczegóły",
+      subline: verificationSublineFromDetail(row.statusDetail),
       sortPriority: 5,
     };
   }
@@ -155,7 +168,7 @@ export function enrichMyOrderSalesUi(row: MyOrderRow): MyOrderSalesUi {
     return {
       headline: "Powiadomimy, gdy towar przyjedzie",
       headlineTone: "neutral",
-      subline: "Bez zamówienia u dostawcy — e-mail, gdy pojawi się na magazynie",
+      subline: null,
       sortPriority: 9,
     };
   }

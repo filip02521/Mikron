@@ -41,7 +41,7 @@ function operationsNavItems(badges: {
     {
       href: "/podsumowanie",
       label: "Panel dzienny",
-      description: "Prośby handlowców, zaległe, plan tygodnia",
+      description: "Przegląd dnia, prośby i harmonogram",
       badge: badges.nowe,
     },
     {
@@ -133,11 +133,11 @@ export function navForRole(
       description: "Statusy i odbiór",
       badge: badges.salesMoje,
     },
-    { href: "/prosba", label: "Nowa prośba", description: "Zgłoszenie do zakupów" },
+    { href: "/prosba", label: "Nowa prośba", description: "Jeden formularz — zamówienie lub dostępność" },
     {
       href: "/plan",
       label: "Harmonogram zakupów",
-      description: "Kalendarz działu dostaw · wyszukiwarka dostawców",
+      description: "Terminy, otwarte prośby i wyszukiwarka",
     },
   ];
 

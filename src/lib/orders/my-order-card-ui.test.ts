@@ -62,6 +62,14 @@ describe("my-order-card-ui", () => {
         row({ acknowledgeMode: "pickup", statusDetail: "Potwierdź" })
       )
     ).toBe(false);
+    expect(
+      shouldShowOrderStatusDetail(
+        row({
+          statusTitle: "Uzupełnianie danych",
+          statusDetail: "Brakuje: dostawca. Dział dostaw uzupełni to w systemie.",
+        })
+      )
+    ).toBe(false);
   });
 
   it("wykrywa postęp w subline", () => {

@@ -1,22 +1,71 @@
 "use client";
 
-import { HelpPopover } from "@/components/ui/HelpPopover";
+import { HelpPopover, GuideIcon } from "@/components/ui/HelpPopover";
+import { IconAvailability, IconTruck } from "@/components/icons/StrokeIcons";
 
 /** Krótka pomoc — szczegóły w popoverze, bez dużego bloku na stronie. */
 export function MojeOrdersHelp() {
   return (
-    <HelpPopover label="Jak to czytać" title="Moje zamówienia" shortLabel="Pomoc">
-      <p className="mb-2">
-        <strong className="font-medium text-slate-800">Wiersz</strong> — dostawca, status i
-        produkty. Rozwiń po szczegóły, poprawę lub wycofanie prośby.
+    <HelpPopover
+      label="Jak to czytać"
+      title="Moje zamówienia"
+      shortLabel="Pomoc"
+      icon={<GuideIcon />}
+    >
+      <p className="mb-3 text-slate-600">
+        Każdy wiersz to jedna prośba u jednego dostawcy. Najpierw patrz na{" "}
+        <strong className="font-medium text-slate-800">nagłówek</strong> — mówi, co się dzieje
+        i czy coś od Ciebie zależy.
+      </p>
+      <ol className="mb-3 list-decimal space-y-1.5 pl-4 text-slate-600">
+        <li>
+          <strong className="font-medium text-slate-800">Nagłówek</strong> — np. odbiór z
+          magazynu albo „powiadomimy, gdy przyjedzie”
+        </li>
+        <li>
+          <strong className="font-medium text-slate-800">Status</strong> (pod nagłówkiem) —
+          oficjalny etap prośby
+        </li>
+        <li>
+          <strong className="font-medium text-slate-800">Zielony przycisk</strong> — tylko gdy
+          trzeba potwierdzić odbiór lub powiadomienie
+        </li>
+        <li>
+          <strong className="font-medium text-slate-800">Menu ⋮</strong> — klient, poprawka,
+          anulowanie
+        </li>
+        <li>
+          <strong className="font-medium text-slate-800">Strzałka rozwiń</strong> — wiele
+          produktów lub dodatkowe szczegóły
+        </li>
+      </ol>
+      <p className="mb-2 flex items-start gap-2">
+        <IconTruck size={16} className="mt-0.5 shrink-0 text-slate-500" aria-hidden />
+        <span>
+          <strong className="font-medium text-slate-800">Zamówiliśmy u dostawcy</strong> — białe
+          tło; dział składa zamówienie i informuje o odbiorze.
+        </span>
+      </p>
+      <p className="mb-3 flex items-start gap-2">
+        <IconAvailability size={16} className="mt-0.5 shrink-0 text-violet-600" aria-hidden />
+        <span>
+          <strong className="font-medium text-slate-800">Tylko sprawdzamy dostępność</strong> —{" "}
+          <span className="font-medium text-violet-800">fioletowe tło</span>; bez zamówienia u
+          dostawcy, e-mail gdy towar będzie na magazynie.
+        </span>
       </p>
       <p className="mb-2">
-        <strong className="font-medium text-slate-800">Zielony / „Odbiór”</strong> — towar na
-        magazynie; potwierdź, gdy go odbierzesz.
+        <strong className="font-medium text-slate-800">Filtry</strong> u góry (
+        <em>Od Ciebie zależy</em> / <em>W realizacji</em>) opcjonalnie zawężają listę — np.
+        „Odbiór”, gdy czeka wiele prośb.
       </p>
-      <p>
-        <strong className="font-medium text-slate-800">Filtry</strong> u góry listy — opcjonalnie
-        zawężają widok. Na dole — archiwum zakończonych prośb.
+      <p className="mb-2 text-slate-600">
+        Sekcja <strong className="font-medium text-slate-800">Od Ciebie zależy</strong> na liście
+        zbiera prośby z zielonym przyciskiem — reszta jest w sekcjach poniżej.
+      </p>
+      <p className="text-slate-600">
+        Na dole strony — <strong className="font-medium text-slate-800">archiwum</strong>{" "}
+        zakończonych prośb.
       </p>
     </HelpPopover>
   );

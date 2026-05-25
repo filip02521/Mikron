@@ -6,6 +6,8 @@ import { ARCHIVE_RECENT_DAYS } from "@/lib/orders/my-order-archive";
 import { MyOrderShipmentList } from "@/components/moje/MyOrderShipmentList";
 import { Card, CardHeader } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
+import { MojeSectionIcon, mojeSectionIconTileClass } from "@/components/icons/StrokeIcons";
+import { SectionHeadingIcon } from "@/components/icons/SectionHeadingIcon";
 
 export function MyOrderArchiveSection({
   rowsRecent,
@@ -47,6 +49,11 @@ export function MyOrderArchiveSection({
         inset
         title="Ostatnio zakończone"
         description={description}
+        leading={
+          <SectionHeadingIcon tileClassName={mojeSectionIconTileClass("archive")}>
+            <MojeSectionIcon kind="archive" size={20} />
+          </SectionHeadingIcon>
+        }
         action={
           <button
             type="button"
@@ -68,6 +75,7 @@ export function MyOrderArchiveSection({
           {visibleRows.length > 0 ? (
             <MyOrderShipmentList
               rows={visibleRows}
+              listKind={visibleRows[0]?.kind === "informacja" ? "informacja" : "zamowienie"}
               showProgress={false}
               canAcknowledge={false}
             />

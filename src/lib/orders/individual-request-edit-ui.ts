@@ -1,3 +1,4 @@
+import { randomId } from "@/lib/ensure-crypto";
 import type { SummaryForSomeoneEnriched } from "@/lib/orders/summary-workspace";
 import type { MyOrderRow } from "@/lib/orders/my-order-presenter";
 import type { EditIndividualRequestInitial } from "@/components/orders/EditIndividualRequestModal";
@@ -43,7 +44,7 @@ export function editInitialFromOrders(orders: IndividualOrder[]): EditIndividual
     salesPersonId: rep.sales_person_id,
     requestKind: rep.request_kind ?? "zamowienie",
     lines: ordersToEditLines(orders).map((l) => ({
-      id: l.id ?? crypto.randomUUID(),
+      id: l.id ?? randomId(),
       symbol: l.symbol ?? "",
       product: l.product ?? "",
       quantity: l.quantity ?? "",

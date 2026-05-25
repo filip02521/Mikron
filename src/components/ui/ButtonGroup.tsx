@@ -7,16 +7,23 @@ export function ButtonGroup({
   children,
   ariaLabel,
   className,
+  allowOverflow = false,
 }: {
   children: React.ReactNode;
   ariaLabel: string;
   className?: string;
+  /** Menu rozwijane (Przesuń, ⋮) — bez obcinania przez overflow-hidden. */
+  allowOverflow?: boolean;
 }) {
   return (
     <div
       role="group"
       aria-label={ariaLabel}
-      className={cn(buttonGroupShellClass, className)}
+      className={cn(
+        buttonGroupShellClass,
+        allowOverflow && "overflow-visible",
+        className
+      )}
     >
       {children}
     </div>

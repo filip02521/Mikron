@@ -6,10 +6,22 @@ import { actionUndoDailyPanelChange } from "@/app/actions/admin";
 import type { DailyPanelActionResult } from "@/lib/orders/daily-panel-undo";
 import type { DailyPanelUndoPayload } from "@/lib/orders/daily-panel-undo";
 
+export const DAILY_PANEL_SCOPE_BULK = "__bulk__";
+export const DAILY_PANEL_SCOPE_GLOBAL = "__global__";
+export const DAILY_PANEL_SCOPE_PLAN = "__plan__";
+
+export type DailyPanelRunOptions = {
+  /** Id dostawcy, klucz grupy prośby, __bulk__, __plan__ itd. */
+  scope?: string;
+  /** Pełnoekranowy overlay — tylko undo i rzadkie operacje globalne */
+  overlay?: boolean;
+};
+
 export type DailyPanelRunFn = (
   action: () => Promise<DailyPanelActionResult>,
   successMessage: string,
-  pendingMessage?: string
+  pendingMessage?: string,
+  options?: DailyPanelRunOptions
 ) => void;
 
 type UndoState = {
@@ -20,7 +32,8 @@ type UndoState = {
 
 export function useDailyPanelRunner() {
   const router = useRouter();
-  const [pending, start] = useTransition();
+  const [isPending, start] = useTransition();
+  const [pendingScope, setPendingScope] = useState<string | null>(null);
   const [pendingMessage, setPendingMessage] = useState<string | null>(null);
   const [undo, setUndo] = useState<UndoState | null>(null);
   const [flash, setFlash] = useState<{ text: string; tone: "success" | "error" } | null>(
@@ -30,9 +43,25 @@ export function useDailyPanelRunner() {
   const dismissFlash = useCallback(() => setFlash(null), []);
   const dismissUndo = useCallback(() => setUndo(null), []);
 
+  const isScopePending = useCallback(
+    (scope: string) => isPending && pendingScope === scope,
+    [isPending, pendingScope]
+  );
+
+  const isBulkPending = isScopePending(DAILY_PANEL_SCOPE_BULK);
+  const isGlobalPending = isScopePending(DAILY_PANEL_SCOPE_GLOBAL);
+  const isPlanPending = isScopePending(DAILY_PANEL_SCOPE_PLAN);
+
   const run: DailyPanelRunFn = useCallback(
-    (action, successMessage, pendingMessage = "Przetwarzanie…") => {
-      setPendingMessage(pendingMessage);
+    (action, successMessage, pendingMsg = "Przetwarzanie…", options) => {
+      const scope = options?.scope ?? DAILY_PANEL_SCOPE_GLOBAL;
+      const useOverlay = options?.overlay ?? scope === DAILY_PANEL_SCOPE_GLOBAL;
+
+      setPendingScope(scope);
+      if (useOverlay) {
+        setPendingMessage(pendingMsg);
+      }
+
       start(async () => {
         try {
           const result = await action();
@@ -57,6 +86,7 @@ export function useDailyPanelRunner() {
             tone: "error",
           });
         } finally {
+          setPendingScope(null);
           setPendingMessage(null);
         }
       });
@@ -67,6 +97,7 @@ export function useDailyPanelRunner() {
   const handleUndo = useCallback(() => {
     if (!undo) return;
     const payload = undo.payload;
+    setPendingScope(DAILY_PANEL_SCOPE_GLOBAL);
     setPendingMessage("Cofanie ostatniej akcji…");
     start(async () => {
       try {
@@ -82,6 +113,7 @@ export function useDailyPanelRunner() {
         setUndo(null);
         router.refresh();
       } finally {
+        setPendingScope(null);
         setPendingMessage(null);
       }
     });
@@ -93,8 +125,13 @@ export function useDailyPanelRunner() {
   }, []);
 
   return {
-    pending,
+    pending: isPending,
     pendingMessage,
+    pendingScope,
+    isScopePending,
+    isBulkPending,
+    isGlobalPending,
+    isPlanPending,
     run,
     notify,
     undo,

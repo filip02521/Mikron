@@ -6,10 +6,13 @@ import type { SummaryWorkspaceData, WeekDayPlan } from "@/lib/orders/summary-wor
 import type { DeliveryStats, SupplierWithSchedule } from "@/types/database";
 import { WeekPlanner } from "@/components/summary/WeekPlanner";
 import { Card, CardHeader } from "@/components/ui/Card";
+import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Field";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { Badge } from "@/components/ui/Badge";
-import { HelpPopover } from "@/components/ui/HelpPopover";
+import { HelpPopover, GuideIcon } from "@/components/ui/HelpPopover";
+import { SectionListLabel } from "@/components/ui/SectionListLabel";
+import { ProsbaFormSection } from "@/components/orders/ProsbaFormSection";
 import { locationLabel } from "@/lib/display-labels";
 import {
   matchSuppliersByQuery,
@@ -22,140 +25,50 @@ import {
   type SalesSupplierInsight,
 } from "@/lib/orders/sales-supplier-insight";
 import { prosbaHref } from "@/lib/orders/prosba-url";
+import {
+  IconCalendar,
+  IconChevronDown,
+  IconClipboardList,
+  IconPlusCircle,
+  PlanSectionIcon,
+  planSectionIconTileClass,
+} from "@/components/icons/StrokeIcons";
+import { SectionHeadingIcon } from "@/components/icons/SectionHeadingIcon";
 import { cn } from "@/lib/cn";
+
+const PLAN_INTRO =
+  "Otwarte prośby, terminy u dostawców i wyszukiwarka — w jednym miejscu. Kalendarz działu dostaw to kiedy składamy zamówienia, nie kiedy towar jest na magazynie.";
 
 function PlanGuide() {
   return (
-    <HelpPopover label="Jak korzystać" title="Harmonogram zakupów" shortLabel="Pomoc">
-      <p className="mb-2">
-        Na liście widać dostawców z <strong className="font-medium text-slate-800">otwartych prośb</strong>{" "}
-        w „Moje zamówienia”. Rozwiń wiersz po szczegóły terminu i czasu realizacji.
+    <HelpPopover
+      label="Jak korzystać"
+      title="Harmonogram zakupów"
+      shortLabel="Pomoc"
+      icon={<GuideIcon />}
+    >
+      <p className="mb-2 flex items-start gap-2">
+        <PlanSectionIcon kind="prosby" size={16} className="mt-0.5 shrink-0 text-indigo-600" />
+        <span>
+          Lista <strong className="font-medium text-slate-800">Z otwartymi prośbami</strong> pokazuje
+          dostawców z aktywnych wpisów w „Moje zamówienia”. Rozwiń wiersz po termin i czas realizacji.
+        </span>
       </p>
-      <p className="mb-2">
-        <strong className="font-medium text-slate-800">Wyszukiwarka</strong> w tej samej sekcji służy do
-        każdego innego dostawcy w bazie.
+      <p className="mb-2 flex items-start gap-2">
+        <PlanSectionIcon kind="search" size={16} className="mt-0.5 shrink-0 text-violet-700" />
+        <span>
+          <strong className="font-medium text-slate-800">Wyszukiwarka</strong> służy do każdego innego
+          dostawcy w bazie.
+        </span>
       </p>
-      <p>
-        U góry strony możesz rozwinąć kalendarz działu dostaw (pon.–pt.) — to kiedy dział składa
-        zamówienia, nie kiedy towar trafi na magazyn.
+      <p className="flex items-start gap-2">
+        <PlanSectionIcon kind="calendar" size={16} className="mt-0.5 shrink-0 text-indigo-600" />
+        <span>
+          <strong className="font-medium text-slate-800">Plan działu dostaw</strong> (pon.–pt.) możesz
+          rozwinąć u góry karty — to harmonogram składania zamówień przez zakupy.
+        </span>
       </p>
     </HelpPopover>
-  );
-}
-
-function SearchIcon({ className }: { className?: string }) {
-  return (
-    <svg
-      className={cn("h-4 w-4", className)}
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      aria-hidden
-    >
-      <circle cx="11" cy="11" r="7" />
-      <path d="M20 20l-3-3" strokeLinecap="round" />
-    </svg>
-  );
-}
-
-function ChevronIcon({ open }: { open?: boolean }) {
-  return (
-    <svg
-      className={cn(
-        "h-4 w-4 shrink-0 text-slate-400 transition-transform",
-        open && "rotate-180"
-      )}
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      aria-hidden
-    >
-      <path d="M6 9l6 6 6-6" strokeLinecap="round" strokeLinejoin="round" />
-    </svg>
-  );
-}
-
-const PROCUREMENT_PLAN_SECTION_ID = "plan-zamowien-dzialu";
-
-function ProcurementPlanCollapsible({
-  open,
-  onOpenChange,
-  days,
-}: {
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
-  days: WeekDayPlan[];
-}) {
-  return (
-    <section id={PROCUREMENT_PLAN_SECTION_ID}>
-      <Card padding={false}>
-        <CardHeader
-          inset
-          title="Plan zamówień działu dostaw"
-          description="Kalendarz pon.–pt. — kiedy dział składa zamówienia (nie termin towaru na magazynie)."
-        />
-        {open ? (
-          <div className="space-y-3 border-t border-slate-100 px-4 pb-5 sm:px-6">
-            <WeekPlanner
-              title="Ten tydzień"
-              description="Poniedziałek–piątek · podgląd harmonogramu zakupów"
-              days={days}
-              readOnly
-            />
-            <button
-              type="button"
-              onClick={() => onOpenChange(false)}
-              className="text-sm font-medium text-slate-500 transition hover:text-slate-800"
-            >
-              Ukryj kalendarz
-            </button>
-          </div>
-        ) : (
-          <div className="border-t border-slate-100 px-4 pb-5 sm:px-6">
-            <button
-              type="button"
-              onClick={() => onOpenChange(true)}
-              className="w-full rounded-xl border border-dashed border-slate-200 bg-slate-50/50 px-4 py-3 text-sm font-medium text-slate-600 transition hover:border-slate-300 hover:bg-slate-50 hover:text-slate-900"
-            >
-              Pokaż kalendarz tygodnia działu dostaw
-            </button>
-          </div>
-        )}
-      </Card>
-    </section>
-  );
-}
-
-function ListSectionLabel({
-  id,
-  title,
-  hint,
-  count,
-}: {
-  id: string;
-  title: string;
-  hint?: string;
-  count?: number;
-}) {
-  return (
-    <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1 border-b border-slate-100 bg-slate-50/80 px-4 py-2.5 sm:px-5">
-      <div className="min-w-0">
-        <h3
-          id={id}
-          className="text-xs font-semibold uppercase tracking-wide text-slate-700"
-        >
-          {title}
-        </h3>
-        {hint ? <p className="mt-0.5 text-xs text-slate-500">{hint}</p> : null}
-      </div>
-      {count !== undefined && count > 0 ? (
-        <span className="rounded-full bg-white px-2 py-0.5 text-xs font-semibold tabular-nums text-slate-600 ring-1 ring-slate-200/80">
-          {count}
-        </span>
-      ) : null}
-    </div>
   );
 }
 
@@ -191,29 +104,28 @@ function SalesSupplierRow({
   return (
     <li
       className={cn(
-        "border-b border-slate-200/70 transition-[background-color,box-shadow,margin] duration-200 last:border-b-0",
+        "border-b border-slate-100 transition-[background-color,box-shadow] duration-200 last:border-b-0",
         expanded
-          ? "z-[1] mx-1.5 my-2 rounded-xl border border-indigo-200/90 bg-indigo-50/80 shadow-md shadow-indigo-100/50 ring-1 ring-indigo-100 last:border-b"
-          : hasOpenRequests && "bg-indigo-50/30"
+          ? "z-[1] bg-indigo-50/70 shadow-sm ring-1 ring-inset ring-indigo-200/80"
+          : hasOpenRequests && "bg-indigo-50/25"
       )}
     >
-      <div
-        className={cn(
-          "flex items-stretch gap-1 sm:gap-2",
-          expanded && "rounded-t-xl border-b border-indigo-200/50 bg-indigo-100/40"
-        )}
-      >
+      <div className="flex items-stretch gap-1 sm:gap-2">
         <button
           type="button"
           onClick={() => setExpanded((v) => !v)}
           className={cn(
             "flex min-h-[3.25rem] min-w-0 flex-1 items-center gap-2 px-3 py-2.5 text-left transition-colors sm:gap-3 sm:px-4 sm:py-3",
-            expanded ? "hover:bg-indigo-100/50" : "hover:bg-white/80"
+            expanded ? "hover:bg-indigo-100/40" : "hover:bg-white/80"
           )}
           aria-expanded={expanded}
           aria-label={`${expanded ? "Zwiń" : "Rozwiń"} szczegóły: ${insight.name}`}
         >
-          <ChevronIcon open={expanded} />
+          <IconChevronDown
+            open={expanded}
+            className="shrink-0 text-slate-400"
+            size={18}
+          />
           <div className="min-w-0 flex-1">
             <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5">
               <span
@@ -233,7 +145,7 @@ function SalesSupplierRow({
             {hasOpenRequests ? (
               <p className="mt-0.5 text-xs font-medium text-indigo-700">
                 {openOrderCount}{" "}
-                {openOrderCount === 1 ? "otwarta pozycja" : "otwarte pozycje"}
+                {openOrderCount === 1 ? "otwarta prośba" : "otwarte prośby"}
               </p>
             ) : variant === "search" ? (
               <p className="mt-0.5 text-xs text-slate-500">Harmonogram</p>
@@ -256,17 +168,17 @@ function SalesSupplierRow({
           ) : null}
           {hasOpenRequests ? (
             <Badge variant="info" className="tabular-nums">
-              {openOrderCount} {openOrderCount === 1 ? "poz." : "poz."}
+              {openOrderCount} {openOrderCount === 1 ? "prośba" : "prośby"}
             </Badge>
           ) : null}
         </div>
       </div>
 
       {expanded ? (
-        <div className="rounded-b-xl border-t border-indigo-200/40 bg-indigo-100/25 px-3 pb-3 pt-2 sm:px-4 sm:pb-3.5">
-          <div className="rounded-lg border border-indigo-200/70 bg-white/95 p-3 shadow-sm">
-            <div className="border-b border-indigo-100 pb-2.5">
-              <p className="text-[0.6rem] font-semibold uppercase tracking-wide text-indigo-700">
+        <div className="border-t border-indigo-200/50 bg-white/60 px-3 pb-3 pt-2 sm:px-4 sm:pb-3.5">
+          <div className="rounded-lg border border-slate-200 bg-white p-3 shadow-sm">
+            <div className="border-b border-slate-100 pb-2.5">
+              <p className="text-[0.65rem] font-semibold uppercase tracking-wide text-slate-500">
                 Kolejne zamówienie u dostawcy
               </p>
               <p className="mt-0.5 text-sm font-semibold leading-snug text-slate-900">
@@ -302,24 +214,67 @@ function SalesSupplierRow({
 
             <div className="mt-2.5 flex flex-wrap gap-2 border-t border-slate-100 pt-2.5">
               {hasOpenRequests ? (
-                <Link
-                  href="/moje"
-                  className="inline-flex min-h-8 items-center rounded-md bg-indigo-600 px-2.5 text-xs font-semibold text-white shadow-sm transition hover:bg-indigo-700"
-                >
-                  Moje prośby ({openOrderCount})
+                <Link href="/moje">
+                  <Button size="sm" className="gap-1.5">
+                    <IconClipboardList size={14} />
+                    Moje prośby ({openOrderCount})
+                  </Button>
                 </Link>
               ) : null}
-              <Link
-                href={prosbaHref({ supplierId: insight.supplierId })}
-                className="inline-flex min-h-8 items-center rounded-md px-2.5 text-xs font-medium text-slate-700 ring-1 ring-slate-200 transition hover:bg-slate-50"
-              >
-                Zgłoś prośbę
+              <Link href={prosbaHref({ supplierId: insight.supplierId })}>
+                <Button size="sm" variant="secondary">
+                  Zgłoś prośbę
+                </Button>
               </Link>
             </div>
           </div>
         </div>
       ) : null}
     </li>
+  );
+}
+
+function ProcurementPlanBlock({
+  open,
+  onOpenChange,
+  days,
+}: {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  days: WeekDayPlan[];
+}) {
+  return (
+    <div className="border-b border-slate-100 px-4 py-5 sm:px-6">
+      <button
+        type="button"
+        onClick={() => onOpenChange(!open)}
+        className="flex w-full cursor-pointer items-start gap-3 rounded-xl border border-slate-200 bg-slate-50/50 px-3.5 py-3 text-left transition hover:border-slate-300 hover:bg-slate-50"
+        aria-expanded={open}
+      >
+        <SectionHeadingIcon tileClassName={planSectionIconTileClass("calendar")}>
+          <IconCalendar size={18} />
+        </SectionHeadingIcon>
+        <span className="min-w-0 flex-1">
+          <span className="block text-sm font-semibold text-slate-900">
+            Plan zamówień działu dostaw
+          </span>
+          <span className="mt-0.5 block text-xs leading-relaxed text-slate-500">
+            Kalendarz pon.–pt. — kiedy dział składa zamówienia (nie termin towaru na magazynie).
+          </span>
+        </span>
+        <IconChevronDown open={open} className="mt-1 shrink-0 text-slate-400" size={18} />
+      </button>
+      {open ? (
+        <div className="mt-4">
+          <WeekPlanner
+            embedded
+            title="Ten tydzień"
+            days={days}
+            readOnly
+          />
+        </div>
+      ) : null}
+    </div>
   );
 }
 
@@ -375,50 +330,62 @@ export function SalesPlanView({
   const openRequestCount = myInsights.length;
 
   return (
-    <div className="space-y-6">
-      <ProcurementPlanCollapsible
-        open={showProcurementPlan}
-        onOpenChange={setShowProcurementPlan}
-        days={workspace.thisWeekDays}
-      />
-
+    <div className="mx-auto max-w-3xl">
       <Card padding={false} className="overflow-hidden">
         <CardHeader
           inset
-          title="Dostawcy i terminy"
-          description="Twoje otwarte prośby poniżej — każdy inny dostawca wyszukaj w polu."
+          leading={
+            <SectionHeadingIcon tileClassName="bg-indigo-100 text-indigo-800">
+              <IconCalendar size={20} />
+            </SectionHeadingIcon>
+          }
+          title="Harmonogram zakupów"
+          description={PLAN_INTRO}
           action={<PlanGuide />}
         />
 
-        <div className="border-b border-slate-100 px-4 py-3 sm:px-5">
-          <label className="block">
-            <span className="sr-only">Szukaj dostawcy</span>
-            <div className="relative">
-              <span className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3 text-slate-400">
-                <SearchIcon />
-              </span>
-              <Input
-                type="search"
-                placeholder="Inny dostawca — wpisz fragment nazwy…"
-                value={query}
-                onChange={(e) => setQuery(e.target.value)}
-                autoComplete="off"
-                className="border-slate-200 bg-slate-50/60 pl-9 focus:bg-white"
-              />
-            </div>
-          </label>
+        <ProcurementPlanBlock
+          open={showProcurementPlan}
+          onOpenChange={setShowProcurementPlan}
+          days={workspace.thisWeekDays}
+        />
+
+        <div className="border-b border-slate-100 px-4 py-5 sm:px-6">
+          <ProsbaFormSection
+            title="Szukaj dostawcy"
+            hint="Każdy dostawca z bazy — ten sam układ szczegółów po rozwinięciu wiersza."
+          >
+            <label className="block">
+              <span className="sr-only">Szukaj dostawcy</span>
+              <div className="relative">
+                <span className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3 text-slate-400">
+                  <PlanSectionIcon kind="search" size={18} />
+                </span>
+                <Input
+                  type="search"
+                  placeholder="Wpisz fragment nazwy…"
+                  value={query}
+                  onChange={(e) => setQuery(e.target.value)}
+                  autoComplete="off"
+                  className="border-slate-200 bg-white pl-10 focus:bg-white"
+                />
+              </div>
+            </label>
+          </ProsbaFormSection>
         </div>
 
         {searchQuery ? (
           <section aria-labelledby="sales-plan-search-results">
-            <ListSectionLabel
+            <SectionListLabel
               id="sales-plan-search-results"
               title="Wyniki wyszukiwania"
               hint={`Dla „${searchQuery}”`}
               count={searchInsights.length || undefined}
+              icon={<PlanSectionIcon kind="search" size={17} />}
+              tileClassName={planSectionIconTileClass("search")}
             />
             {searchTotalMatches > SALES_PLAN_SEARCH_LIMIT ? (
-              <p className="border-b border-slate-100 px-4 py-2 text-xs text-slate-500 sm:px-5">
+              <p className="border-b border-slate-100 px-3 py-2 text-xs text-slate-500 sm:px-4">
                 Pokazano pierwsze {SALES_PLAN_SEARCH_LIMIT} z {searchTotalMatches} dopasowań.
               </p>
             ) : null}
@@ -435,14 +402,15 @@ export function SalesPlanView({
                 ))}
               </ul>
             ) : (
-              <div className="px-4 py-8 sm:px-5">
+              <div className="px-4 py-10 sm:px-6">
                 <EmptyState
                   title="Nie znaleziono dostawcy"
                   description="Sprawdź pisownię lub wpisz krótszy fragment nazwy."
+                  icon={<PlanSectionIcon kind="search" size={28} />}
                 />
               </div>
             )}
-            <div className="border-t border-slate-100 bg-slate-50/60 px-4 py-2.5 sm:px-5">
+            <div className="border-t border-slate-100 bg-slate-50/80 px-4 py-2.5 sm:px-6">
               <button
                 type="button"
                 onClick={() => setQuery("")}
@@ -454,11 +422,14 @@ export function SalesPlanView({
           </section>
         ) : (
           <section aria-labelledby="sales-plan-my-suppliers">
-            <ListSectionLabel
+            <SectionListLabel
               id="sales-plan-my-suppliers"
               title="Z otwartymi prośbami"
-              hint="Te same karty co w „Moje zamówienia” (bez potwierdzenia odbioru)"
+              hint="Te same dostawcy co w „Moje zamówienia” — rozwiń wiersz po szczegóły."
               count={openRequestCount || undefined}
+              accent="indigo"
+              icon={<PlanSectionIcon kind="prosby" size={17} />}
+              tileClassName={planSectionIconTileClass("prosby")}
             />
             {myInsights.length ? (
               <ul>
@@ -472,41 +443,41 @@ export function SalesPlanView({
                 ))}
               </ul>
             ) : (
-              <div className="px-4 py-8 text-center sm:px-5">
-                <p className="text-sm font-medium text-slate-800">Brak otwartych prośb</p>
-                <p className="mx-auto mt-1 max-w-sm text-sm text-slate-600">
-                  Gdy zgłosisz zamówienie, dostawca pojawi się tutaj z terminem planowego zakupu.
-                  Innego dostawcę znajdziesz w wyszukiwarce powyżej.
-                </p>
+              <div className="px-4 py-10 text-center sm:px-6">
+                <EmptyState
+                  title="Brak otwartych prośb"
+                  description="Gdy zgłosisz prośbę, dostawca pojawi się tutaj z terminem planowego zakupu. Innego dostawcę znajdziesz w wyszukiwarce powyżej."
+                  icon={<IconClipboardList size={28} strokeWidth={1.75} />}
+                />
               </div>
             )}
-            {!searchQuery && myInsights.length > 0 ? (
-              <div className="border-t border-dashed border-slate-200 bg-slate-50/40 px-4 py-3 sm:px-5">
-                <p className="text-xs leading-relaxed text-slate-600">
-                  Potrzebujesz innego dostawcy? Użyj{" "}
-                  <span className="font-medium text-slate-700">wyszukiwarki na górze tej karty</span>{" "}
-                  — zobaczysz ten sam układ szczegółów po rozwinięciu wiersza.
-                </p>
-              </div>
-            ) : null}
           </section>
         )}
-      </Card>
 
-      <div className="flex flex-col gap-2 sm:flex-row sm:justify-center sm:gap-3">
-        <Link
-          href="/prosba"
-          className="inline-flex min-h-11 items-center justify-center rounded-xl border border-indigo-200 bg-indigo-50/60 px-5 text-sm font-semibold text-indigo-800 transition hover:border-indigo-300 hover:bg-indigo-50"
-        >
-          Zgłoś nową prośbę
-        </Link>
-        <Link
-          href="/moje"
-          className="inline-flex min-h-11 items-center justify-center rounded-xl border border-slate-200 bg-white px-5 text-sm font-semibold text-slate-700 shadow-sm transition hover:border-slate-300 hover:bg-slate-50"
-        >
-          Moje zamówienia
-        </Link>
-      </div>
+        <div className="flex flex-col gap-3 border-t border-slate-100 bg-slate-50/90 px-4 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-6">
+          <p className="text-xs leading-relaxed text-slate-500">
+            Zgłoś nową prośbę lub sprawdź status w{" "}
+            <Link href="/moje" className="font-medium text-indigo-700 hover:underline">
+              Moje zamówienia
+            </Link>
+            .
+          </p>
+          <div className="flex flex-wrap gap-2">
+            <Link href="/prosba">
+              <Button className="gap-1.5">
+                <IconPlusCircle size={16} />
+                Nowa prośba
+              </Button>
+            </Link>
+            <Link href="/moje">
+              <Button variant="secondary" className="gap-1.5">
+                <IconClipboardList size={16} />
+                Moje zamówienia
+              </Button>
+            </Link>
+          </div>
+        </div>
+      </Card>
     </div>
   );
 }

@@ -35,6 +35,21 @@ export function countDailyPanelNavBadge(workspace: SummaryWorkspaceData): number
   return summarizeDailyInbox(workspace).forSomeoneLineCount;
 }
 
+/** Liczba pozycji na zakładce Wyjątki (badge). */
+export function countDailyPanelExceptions(
+  workspace: Pick<
+    SummaryWorkspaceData,
+    "panelHidden" | "informacjaLeft" | "onDemandSuppliers" | "salesCancelledNotices"
+  >
+): number {
+  return (
+    workspace.panelHidden.suppliers.length +
+    workspace.informacjaLeft.length +
+    workspace.onDemandSuppliers.length +
+    workspace.salesCancelledNotices.length
+  );
+}
+
 export function summarizeDailyInbox(workspace: SummaryWorkspaceData): DailyInboxSummary {
   const todayStr = formatDateString(todayInWarsaw());
   let overdueCount = 0;

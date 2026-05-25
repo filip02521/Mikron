@@ -3,8 +3,6 @@ import { OrderFormClient } from "@/components/orders/OrderFormClient";
 import { getAppRole } from "@/lib/auth-dev";
 import { getSessionUser } from "@/lib/auth";
 import { resolveSalesPersonForUser } from "@/lib/auth/sales-person";
-import { PageHeader } from "@/components/ui/PageHeader";
-
 export default async function NoweZamowieniePage() {
   const role = await getAppRole();
   let suppliers: Awaited<
@@ -34,17 +32,13 @@ export default async function NoweZamowieniePage() {
   }
 
   return (
-    <>
-      <PageHeader
-        title="Nowe zamówienie"
-        description="Zgłoszenie indywidualne „Dla kogoś” — wiele produktów w jednej grupie."
-      />
+    <div className="mx-auto max-w-3xl">
       <OrderFormClient
         suppliers={suppliers}
         statsBySupplierId={statsBySupplierId}
         salesPeople={salesPeople}
         lockedSalesPerson={lockedSalesPerson}
       />
-    </>
+    </div>
   );
 }

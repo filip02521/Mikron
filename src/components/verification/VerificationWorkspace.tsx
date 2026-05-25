@@ -16,23 +16,35 @@ import { Button } from "@/components/ui/Button";
 import { Field, Input, Select } from "@/components/ui/Field";
 import { Toast } from "@/components/ui/Toast";
 import { Badge } from "@/components/ui/Badge";
+import { EmptyState } from "@/components/ui/EmptyState";
+import { SectionListLabel } from "@/components/ui/SectionListLabel";
+import { SectionHeadingIcon } from "@/components/icons/SectionHeadingIcon";
+import { IconClipboardList, IconClipboardPen } from "@/components/icons/StrokeIcons";
+import { VerificationHelp } from "@/components/verification/VerificationHelp";
 import { formatPlDate } from "@/lib/display-labels";
 import { RequestCompletenessBanner } from "@/components/orders/RequestCompletenessBanner";
 import { ActionLoadingOverlay } from "@/components/ui/ActionLoadingOverlay";
 import { RequestKindPicker } from "@/components/ui/RequestKindPicker";
+
+const VERIFICATION_INTRO =
+  "Niekompletne prośby handlowców — uzupełnij dostawcę i produkt. Po zatwierdzeniu trafiają do panelu dziennego jako „Nowe”.";
 
 export function VerificationWorkspace({
   orders,
   suppliers,
   salesPeople,
   onQueueEmpty,
+  layout = "page",
 }: {
   orders: IndividualOrder[];
   suppliers: { id: string; name: string }[];
   salesPeople: { id: string; name: string }[];
   /** Wywołane gdy kolejka się opróżni (np. zamknięcie modala). */
   onQueueEmpty?: () => void;
+  /** `modal` — bez duplikatu nagłówka, kolumny wypełniają wysokość okna. */
+  layout?: "page" | "modal";
 }) {
+  const inModal = layout === "modal";
   const router = useRouter();
   const [pending, start] = useTransition();
   const [pendingMessage, setPendingMessage] = useState<string | null>(null);
@@ -136,148 +148,224 @@ export function VerificationWorkspace({
     });
   };
 
+  const workspaceBody =
+    !orders.length ? (
+      <EmptyState
+        title="Brak pozycji do weryfikacji"
+        description="Niekompletne zgłoszenia handlowców pojawią się tutaj."
+      />
+    ) : (
+      <div
+        className={
+          inModal
+            ? "flex min-h-0 flex-1 flex-col lg:grid lg:grid-cols-[minmax(0,0.95fr)_minmax(0,1.05fr)] lg:divide-x lg:divide-slate-100"
+            : "grid lg:grid-cols-[minmax(0,1fr)_minmax(0,1.15fr)] lg:divide-x lg:divide-slate-100"
+        }
+      >
+        <div
+          className={
+            inModal
+              ? "flex min-h-0 shrink-0 flex-col border-b border-slate-100 lg:min-h-0 lg:shrink lg:border-b-0"
+              : "min-w-0"
+          }
+        >
+          <SectionListLabel
+            title="Kolejka"
+            hint="Wybierz prośbę z listy"
+            count={orders.length}
+            icon={<IconClipboardList size={17} />}
+            tileClassName="bg-amber-100 text-amber-800"
+          />
+          <ul
+            className={
+              inModal
+                ? "max-h-[11rem] divide-y divide-amber-100 overflow-y-auto overscroll-contain sm:max-h-[13rem] lg:max-h-none lg:min-h-0 lg:flex-1"
+                : "divide-y divide-amber-100"
+            }
+          >
+                {orders.map((o) => (
+                  <li key={o.id}>
+                    <button
+                      type="button"
+                      onClick={() => loadOrder(o)}
+                      className={`w-full px-4 py-3 text-left transition hover:bg-amber-50/80 ${
+                        activeId === o.id ? "bg-amber-50" : ""
+                      }`}
+                    >
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="min-w-0">
+                          <p className="font-medium text-slate-900">
+                            {o.sales_person?.name ?? "Handlowiec"}
+                          </p>
+                          <p className="truncate text-sm text-slate-600">
+                            {o.supplier?.name ?? "Brak dostawcy"} · {o.products}
+                          </p>
+                          <p className="mt-1 text-xs text-slate-500">
+                            {formatPlDate(o.action_at.slice(0, 10))}
+                            {o.request_kind === "informacja" ? " · informacja" : ""}
+                          </p>
+                        </div>
+                        <Badge variant="warning">Weryfikacja</Badge>
+                      </div>
+                    </button>
+                  </li>
+                ))}
+              </ul>
+        </div>
+
+        {active ? (
+          <div
+            className={
+              inModal ? "flex min-h-0 min-w-0 flex-1 flex-col lg:min-h-0" : "min-w-0"
+            }
+          >
+            <SectionListLabel
+              title="Uzupełnij dane"
+              hint={`Zgłoszenie od ${active.sales_person?.name ?? "handlowca"}`}
+              icon={<IconClipboardPen size={17} />}
+              tileClassName="bg-amber-100 text-amber-800"
+            />
+            <div
+              className={
+                inModal
+                  ? "min-h-0 flex-1 space-y-4 overflow-y-auto overscroll-contain px-4 py-4 sm:px-6 sm:py-5 lg:overflow-y-auto"
+                  : "space-y-4 px-4 py-5 sm:px-6"
+              }
+            >
+                  <RequestCompletenessBanner draft={draft} requestKind={form.requestKind} />
+
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    <Field label="Dostawca">
+                      <Select
+                        value={form.supplierId}
+                        onChange={(e) =>
+                          setForm((f) => ({ ...f, supplierId: e.target.value }))
+                        }
+                      >
+                        <option value="">Wybierz…</option>
+                        {suppliers.map((s) => (
+                          <option key={s.id} value={s.id}>
+                            {s.name}
+                          </option>
+                        ))}
+                      </Select>
+                    </Field>
+                    <Field label="Handlowiec">
+                      <Select
+                        value={form.salesPersonId}
+                        onChange={(e) =>
+                          setForm((f) => ({ ...f, salesPersonId: e.target.value }))
+                        }
+                      >
+                        {salesPeople.map((p) => (
+                          <option key={p.id} value={p.id}>
+                            {p.name}
+                          </option>
+                        ))}
+                      </Select>
+                    </Field>
+                  </div>
+
+                  <RequestKindPicker
+                    compact
+                    value={form.requestKind}
+                    onChange={(requestKind) => setForm((f) => ({ ...f, requestKind }))}
+                  />
+
+                  <div className="grid gap-3 sm:grid-cols-3">
+                    <Field label="Symbol">
+                      <Input
+                        value={form.symbol}
+                        onChange={(e) => setForm((f) => ({ ...f, symbol: e.target.value }))}
+                      />
+                    </Field>
+                    <Field label="Produkt" className="sm:col-span-2">
+                      <Input
+                        value={form.product}
+                        onChange={(e) => setForm((f) => ({ ...f, product: e.target.value }))}
+                      />
+                    </Field>
+                    {form.requestKind === "zamowienie" ? (
+                      <Field label="Ilość (wymagane)">
+                        <Input
+                          type="number"
+                          min={1}
+                          step={1}
+                          required
+                          placeholder="np. 1"
+                          value={form.quantity}
+                          onChange={(e) =>
+                            setForm((f) => ({ ...f, quantity: e.target.value }))
+                          }
+                        />
+                      </Field>
+                    ) : null}
+                  </div>
+
+                  <p className="text-xs text-slate-500">
+                    {completenessUserHint(assessment, form.requestKind, draft).detail}
+                  </p>
+
+                  <div className="flex flex-wrap gap-2">
+                    <Button
+                      disabled={pending || assessment !== "complete"}
+                      onClick={save}
+                    >
+                      Zatwierdź i prześlij do panelu
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      className="text-red-700"
+                      disabled={pending}
+                      onClick={() => cancel(active.id)}
+                    >
+                      Anuluj prośbę
+                    </Button>
+                  </div>
+            </div>
+          </div>
+        ) : null}
+      </div>
+    );
+
   return (
-    <div className="relative">
+    <div
+      className={
+        inModal
+          ? "relative flex min-h-0 flex-1 flex-col"
+          : "relative mx-auto max-w-6xl"
+      }
+    >
       {pendingMessage ? (
-        <ActionLoadingOverlay message={pendingMessage} variant="viewport" />
+        <ActionLoadingOverlay
+          message={pendingMessage}
+          variant={inModal ? "modal" : "viewport"}
+        />
       ) : null}
       {toast ? (
         <Toast message={toast.text} tone={toast.tone} onDismiss={() => setToast(null)} />
       ) : null}
 
-      <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.15fr)]">
-        <Card padding={false}>
-          <CardHeader inset title="Kolejka" description={`${orders.length} pozycji`} />
-          <ul className="max-h-[min(52vh,28rem)] divide-y divide-amber-100 overflow-y-auto">
-            {orders.map((o) => (
-              <li key={o.id}>
-                <button
-                  type="button"
-                  onClick={() => loadOrder(o)}
-                  className={`w-full px-4 py-3 text-left transition hover:bg-amber-50/80 ${
-                    activeId === o.id ? "bg-amber-50" : ""
-                  }`}
-                >
-                  <div className="flex items-start justify-between gap-2">
-                    <div className="min-w-0">
-                      <p className="font-medium text-slate-900">
-                        {o.sales_person?.name ?? "Handlowiec"}
-                      </p>
-                      <p className="truncate text-sm text-slate-600">
-                        {o.supplier?.name ?? "Brak dostawcy"} · {o.products}
-                      </p>
-                      <p className="mt-1 text-xs text-slate-500">
-                        {formatPlDate(o.action_at.slice(0, 10))}
-                        {o.request_kind === "informacja" ? " · informacja" : ""}
-                      </p>
-                    </div>
-                    <Badge variant="warning">Weryfikacja</Badge>
-                  </div>
-                </button>
-              </li>
-            ))}
-          </ul>
+      {inModal ? (
+        <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-xl border border-amber-100 bg-white">
+          {workspaceBody}
+        </div>
+      ) : (
+        <Card padding={false} className="overflow-hidden">
+          <CardHeader
+            inset
+            leading={
+              <SectionHeadingIcon tileClassName="bg-amber-100 text-amber-800">
+                <IconClipboardPen size={20} />
+              </SectionHeadingIcon>
+            }
+            title="Weryfikacja zgłoszeń"
+            description={VERIFICATION_INTRO}
+            action={<VerificationHelp />}
+          />
+          {workspaceBody}
         </Card>
-
-        {active ? (
-          <Card className="max-h-[min(52vh,28rem)] overflow-y-auto">
-            <CardHeader
-              title="Uzupełnij dane"
-              description={`Zgłoszenie od ${active.sales_person?.name ?? "handlowca"}`}
-            />
-            <div className="space-y-4">
-              <RequestCompletenessBanner draft={draft} requestKind={form.requestKind} />
-
-              <div className="grid gap-3 sm:grid-cols-2">
-                <Field label="Dostawca">
-                  <Select
-                    value={form.supplierId}
-                    onChange={(e) =>
-                      setForm((f) => ({ ...f, supplierId: e.target.value }))
-                    }
-                  >
-                    <option value="">Wybierz…</option>
-                    {suppliers.map((s) => (
-                      <option key={s.id} value={s.id}>
-                        {s.name}
-                      </option>
-                    ))}
-                  </Select>
-                </Field>
-                <Field label="Handlowiec">
-                  <Select
-                    value={form.salesPersonId}
-                    onChange={(e) =>
-                      setForm((f) => ({ ...f, salesPersonId: e.target.value }))
-                    }
-                  >
-                    {salesPeople.map((p) => (
-                      <option key={p.id} value={p.id}>
-                        {p.name}
-                      </option>
-                    ))}
-                  </Select>
-                </Field>
-              </div>
-
-              <RequestKindPicker
-                compact
-                value={form.requestKind}
-                onChange={(requestKind) => setForm((f) => ({ ...f, requestKind }))}
-              />
-
-              <div className="grid gap-3 sm:grid-cols-3">
-                <Field label="Symbol">
-                  <Input
-                    value={form.symbol}
-                    onChange={(e) => setForm((f) => ({ ...f, symbol: e.target.value }))}
-                  />
-                </Field>
-                <Field label="Produkt" className="sm:col-span-2">
-                  <Input
-                    value={form.product}
-                    onChange={(e) => setForm((f) => ({ ...f, product: e.target.value }))}
-                  />
-                </Field>
-                {form.requestKind === "zamowienie" ? (
-                  <Field label="Ilość (wymagane)">
-                    <Input
-                      type="number"
-                      min={1}
-                      step={1}
-                      required
-                      placeholder="np. 1"
-                      value={form.quantity}
-                      onChange={(e) => setForm((f) => ({ ...f, quantity: e.target.value }))}
-                    />
-                  </Field>
-                ) : null}
-              </div>
-
-              <p className="text-xs text-slate-500">
-                {completenessUserHint(assessment, form.requestKind, draft).detail}
-              </p>
-
-              <div className="flex flex-wrap gap-2">
-                <Button
-                  disabled={pending || assessment !== "complete"}
-                  onClick={save}
-                >
-                  Zatwierdź i prześlij do panelu
-                </Button>
-                <Button
-                  variant="ghost"
-                  className="text-red-700"
-                  disabled={pending}
-                  onClick={() => cancel(active.id)}
-                >
-                  Anuluj prośbę
-                </Button>
-              </div>
-            </div>
-          </Card>
-        ) : null}
-      </div>
+      )}
     </div>
   );
 }

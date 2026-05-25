@@ -28,14 +28,14 @@ type HistoryRow = {
 export function SupplierDrawer({
   supplier,
   onClose,
-  pending,
+  isScopePending,
   run,
   onVacation,
   onEdit,
 }: {
   supplier: SupplierSummaryMeta | null;
   onClose: () => void;
-  pending: boolean;
+  isScopePending: (supplierId: string) => boolean;
   run: DailyPanelRunFn;
   onVacation: () => void;
   onEdit: () => void;
@@ -67,6 +67,8 @@ export function SupplierDrawer({
 
   if (!supplier) return null;
 
+  const rowPending = isScopePending(supplier.id);
+  const scope = { scope: supplier.id };
   const scheduleHref = `/lokalizacje/${supplier.location}?q=${encodeURIComponent(supplier.name)}`;
 
   return (
@@ -107,38 +109,41 @@ export function SupplierDrawer({
             <Button
               variant="primary"
               size="sm"
-              disabled={pending}
+              disabled={rowPending}
               onClick={() =>
                 run(
                   () => actionMarkOrdered(supplier.id),
                   "Oznaczono jako zamówione",
-                  "Oznaczanie jako zamówione…"
+                  "Oznaczanie jako zamówione…",
+                  scope
                 )
               }
             >
               Zamówione
             </Button>
             <ShiftMenu
-              disabled={pending}
+              disabled={rowPending}
               onShiftWeeks={(w) =>
                 run(
                   () => actionShiftOrder(supplier.id, w, null),
                   `Przesunięto o ${w} ${w === 1 ? "tydzień" : "tygodnie"}`,
-                  `Przesuwanie terminu…`
+                  `Przesuwanie terminu…`,
+                  scope
                 )
               }
               onShiftDate={(iso) =>
                 run(
                   () => actionShiftOrder(supplier.id, null, iso),
                   "Ustawiono datę przesunięcia",
-                  "Zapisywanie daty…"
+                  "Zapisywanie daty…",
+                  scope
                 )
               }
             />
-            <Button variant="secondary" size="sm" disabled={pending} onClick={onVacation}>
+            <Button variant="secondary" size="sm" disabled={rowPending} onClick={onVacation}>
               Urlop
             </Button>
-            <Button variant="secondary" size="sm" disabled={pending} onClick={onEdit}>
+            <Button variant="secondary" size="sm" disabled={rowPending} onClick={onEdit}>
               Edytuj
             </Button>
             <Link href={scheduleHref}>

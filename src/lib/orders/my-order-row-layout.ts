@@ -1,0 +1,170 @@
+import type { MyOrderRow } from "@/lib/orders/my-order-presenter";
+import {
+  shouldShowOrderStatusDetail,
+} from "@/lib/orders/my-order-card-ui";
+import {
+  myOrderMetaFields,
+  verificationSublineFromDetail,
+} from "@/lib/orders/my-order-sales-ui";
+
+export type MyOrderListKind = "zamowienie" | "informacja";
+
+/** Krótka wskazówka pod nagłówkiem — tylko to, co potrzebne bez rozwijania. */
+export function myOrderCollapsedSubline(row: MyOrderRow): string | null {
+  if (
+    row.acknowledgeMode === "pickup" ||
+    row.acknowledgeMode === "availability" ||
+    row.acknowledgeMode === "cancelled"
+  ) {
+    return row.subline ?? null;
+  }
+
+  if (row.statusTitle === "Uzupełnianie danych") {
+    return verificationSublineFromDetail(row.statusDetail);
+  }
+
+  if (row.statusTitle === "Częściowo na magazynie" && row.subline) {
+    return row.subline;
+  }
+
+  if (row.headlineTone === "warning" && row.timingLabel) {
+    return row.timingLabel.replace(" · po terminie", "").trim() || null;
+  }
+
+  return null;
+}
+
+/** Dłuższe wyjaśnienia — wyłącznie w rozwinięciu. */
+export function myOrderExpandedNotes(row: MyOrderRow): string | null {
+  const parts: string[] = [];
+  const collapsed = myOrderCollapsedSubline(row);
+
+  if (shouldShowOrderStatusDetail(row) && row.statusDetail?.trim()) {
+    parts.push(row.statusDetail.trim());
+  }
+
+  if (row.subline?.trim() && row.subline !== collapsed) {
+    const explanatory =
+      row.statusTitle === "Przed zamówieniem" ||
+      row.statusTitle === "Oczekuje na dostawę" ||
+      row.statusTitle === "Zamówione" ||
+      row.statusTitle === "Uzupełnianie danych" ||
+      row.kind === "informacja";
+    if (explanatory) parts.push(row.subline.trim());
+  }
+
+  return parts.length ? parts.join(" ") : null;
+}
+
+/** Metadane na zwiniętym wierszu — bez nadmiaru. */
+export function myOrderCollapsedMetaFields(
+  row: MyOrderRow,
+  showProgress: boolean
+): { label: string; value: string; emphasize?: boolean }[] {
+  const all = myOrderMetaFields(row, showProgress);
+  const pick = new Set<string>();
+
+  pick.add("Zgłoszono");
+
+  if (row.clientLabel && row.lineCount <= 1) pick.add("Klient");
+
+  if (row.headlineTone === "warning" || row.timingLabel?.includes("po terminie")) {
+    pick.add("Termin");
+    pick.add("Szacunek");
+  }
+
+  if (row.kind === "informacja" && row.timingLabel) {
+    pick.add("Termin");
+    pick.add("Szacunek");
+  }
+
+  if (
+    showProgress &&
+    (row.acknowledgeMode === "pickup" ||
+      row.statusTitle.includes("magazynie") ||
+      row.statusTitle === "Częściowo na magazynie")
+  ) {
+    pick.add("Magazyn");
+  }
+
+  const filtered = all.filter((f) => pick.has(f.label));
+  if (filtered.length >= 2) return filtered;
+
+  if (row.lineCount <= 1 && all.some((f) => f.label === "Szacunek" || f.label === "Termin")) {
+    for (const f of all) {
+      if (f.label === "Szacunek" || f.label === "Termin") {
+        if (!filtered.some((x) => x.label === f.label)) filtered.push(f);
+      }
+    }
+  }
+
+  return filtered.length ? filtered : all.slice(0, 2);
+}
+
+export function myOrderProductPreviewLine(row: MyOrderRow): string {
+  if (row.lineCount <= 1) {
+    const line = row.lines[0];
+    if (!line) return row.product;
+    return [line.product, line.symbol, line.quantityLabel].filter(Boolean).join(" · ");
+  }
+  const first = row.lines[0]?.product ?? row.product;
+  const n = row.lineCount - 1;
+  return `${first} · +${n} ${n === 1 ? "poz." : "poz."}`;
+}
+
+export type MyOrderExpandContext = {
+  listKind: MyOrderListKind;
+  showGroupPickup: boolean;
+};
+
+export function myOrderNeedsExpand(row: MyOrderRow, ctx: MyOrderExpandContext): boolean {
+  if (ctx.listKind === "zamowienie" && row.lineCount >= 2) return true;
+  if (ctx.listKind === "informacja" && row.lineCount >= 2) return true;
+  if (myOrderExpandedNotes(row)) return true;
+  if (ctx.showGroupPickup) return true;
+  return false;
+}
+
+/** Zwinięty podgląd produktów: pełna lista (1–3) lub tylko skrót. */
+export function myOrderCollapsedProductMode(
+  row: MyOrderRow,
+  listKind: MyOrderListKind
+): "full" | "summary" {
+  if (row.lineCount > 3) return "summary";
+  if (listKind === "zamowienie" && row.lineCount >= 2) return "summary";
+  if (listKind === "informacja" && row.lineCount >= 2) return "summary";
+  return "full";
+}
+
+function pluralPozycje(n: number): string {
+  if (n === 1) return "pozycję";
+  const mod10 = n % 10;
+  const mod100 = n % 100;
+  if (mod10 >= 2 && mod10 <= 4 && (mod100 < 12 || mod100 > 14)) return "pozycje";
+  return "pozycji";
+}
+
+function pluralProdukty(n: number): string {
+  if (n === 1) return "produkt";
+  const mod10 = n % 10;
+  const mod100 = n % 100;
+  if (mod10 >= 2 && mod10 <= 4 && (mod100 < 12 || mod100 > 14)) return "produkty";
+  return "produktów";
+}
+
+/** Tekst zachęty przy zwiniętym wierszu z chevronem. */
+export function myOrderExpandHint(row: MyOrderRow, ctx: MyOrderExpandContext): string {
+  const n = row.lineCount;
+  if (ctx.listKind === "zamowienie" && n >= 2) {
+    return `Rozwiń ${n} ${pluralProdukty(n)}`;
+  }
+  if (ctx.listKind === "informacja" && n >= 2) {
+    return `Rozwiń ${n} ${pluralPozycje(n)}`;
+  }
+  if (myOrderExpandedNotes(row)) {
+    return row.kind === "informacja" ? "Rozwiń wyjaśnienie" : "Rozwiń wyjaśnienie statusu";
+  }
+  if (n > 3) return "Rozwiń listę produktów";
+  if (n > 1) return "Rozwiń pozycje";
+  return "Rozwiń szczegóły";
+}

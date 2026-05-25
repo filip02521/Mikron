@@ -66,10 +66,12 @@ export function LocationScheduleClient({
   location,
   cardsBasePath,
   initialRows,
+  inHubShell = false,
 }: {
   location: string;
   cardsBasePath: string;
   initialRows: ScheduleRow[];
+  inHubShell?: boolean;
 }) {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -151,7 +153,12 @@ export function LocationScheduleClient({
   const locLabel = locationLabel(location);
 
   return (
-    <div className="relative space-y-4">
+    <div
+      className={cn(
+        "relative space-y-4",
+        inHubShell && "p-4 sm:p-5"
+      )}
+    >
       {pendingMessage ? (
         <ActionLoadingOverlay
           message={pendingMessage}
@@ -168,7 +175,11 @@ export function LocationScheduleClient({
       <Card padding={false}>
         <CardHeader
           inset
-          title={`Terminy · ${locLabel} (${filtered.length}${filter !== "all" || search.trim() ? ` z ${initialRows.length}` : ""})`}
+          title={
+            inHubShell
+              ? `Lista dostawców (${filtered.length}${filter !== "all" || search.trim() ? ` z ${initialRows.length}` : ""})`
+              : `Terminy · ${locLabel} (${filtered.length}${filter !== "all" || search.trim() ? ` z ${initialRows.length}` : ""})`
+          }
           description="Kliknij datę, aby zapisać. Kolory = pilność następnego zamówienia. Ustawienia karty — link przy nazwie."
         />
 

@@ -5,6 +5,7 @@ import {
   myOrderMetaFields,
   sortMyOrderRows,
   summarizeMyOrdersInbox,
+  verificationSublineFromDetail,
 } from "./my-order-sales-ui";
 import type { IndividualOrder } from "@/types/database";
 
@@ -128,6 +129,17 @@ describe("enrichMyOrderSalesUi — termin", () => {
     expect(row.timingLabel).toBeTruthy();
     expect(ui.subline ?? "").not.toContain("Termin pojawi się");
     expect(ui.subline ?? "").not.toContain("historię realizacji");
+  });
+});
+
+describe("verificationSublineFromDetail", () => {
+  it("skraca komunikat weryfikacji do jednej linii", () => {
+    expect(
+      verificationSublineFromDetail(
+        "Brakuje: dostawca. Dział dostaw uzupełni to w systemie — nie musisz nic robić."
+      )
+    ).toBe("Brakuje: dostawca — dział dostaw uzupełni");
+    expect(verificationSublineFromDetail(null)).toContain("uzupełnia");
   });
 });
 

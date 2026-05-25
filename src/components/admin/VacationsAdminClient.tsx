@@ -124,7 +124,7 @@ export function VacationsAdminClient({
   };
 
   return (
-    <section className="relative space-y-6">
+    <section className="relative space-y-6 p-4 sm:p-5">
       {pendingMessage ? (
         <ActionLoadingOverlay
           variant="viewport"

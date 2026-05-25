@@ -8,19 +8,26 @@ import { actionBulkOrdered, actionMarkOrdered } from "@/app/actions/admin";
 import { Toast } from "@/components/ui/Toast";
 import { UndoToast } from "@/components/ui/UndoToast";
 import { EmptyState } from "@/components/ui/EmptyState";
+import { Card, CardHeader } from "@/components/ui/Card";
+import { Button } from "@/components/ui/Button";
 import { WeekPlanner } from "@/components/summary/WeekPlanner";
 import { SupplierDrawer } from "@/components/summary/SupplierDrawer";
 import { QuickOrderModal } from "@/components/summary/QuickOrderModal";
 import {
+  countDailyPanelExceptions,
   countUrgentItemsWithVacation,
+  splitUrgentItems,
   summarizeDailyInbox,
 } from "@/lib/orders/procurement-daily-ui";
-import { useDailyUrgentProgress } from "@/hooks/useDailyUrgentProgress";
+import { useDailyDayProgress } from "@/hooks/useDailyDayProgress";
+import {
+  DAILY_PANEL_SCOPE_BULK,
+  DAILY_PANEL_SCOPE_GLOBAL,
+} from "@/components/summary/useDailyPanelRunner";
 import { DailyPanelToolbar } from "@/components/summary/DailyPanelToolbar";
-import { DailyPanelNav } from "@/components/summary/DailyPanelNav";
-import { DailyPanelSection } from "@/components/summary/DailyPanelSection";
+import { DailyPanelTabs } from "@/components/summary/DailyPanelTabs";
+import { useDailyPanelView } from "@/hooks/useDailyPanelView";
 import { ForSomeoneRequests } from "@/components/summary/ForSomeoneRequests";
-import { SalesCancelledDailyCompact } from "@/components/summary/SalesCancelledDailyCompact";
 import { UrgentOrdersSection } from "@/components/summary/UrgentOrdersSection";
 import { useDailyPanelRunner } from "@/components/summary/useDailyPanelRunner";
 import { ActionLoadingOverlay } from "@/components/ui/ActionLoadingOverlay";
@@ -30,7 +37,22 @@ import type { SupplierDirectoryEntry } from "@/components/procurement/SupplierSe
 import { VerificationPendingBanner } from "@/components/verification/VerificationPendingBanner";
 import { VerificationModal } from "@/components/verification/VerificationModal";
 import { OnDemandSuppliersSheet } from "@/components/summary/OnDemandSuppliersSheet";
-import { DailyPanelHiddenSuppliers } from "@/components/summary/DailyPanelHiddenSuppliers";
+import { DailyPanelActionsBar } from "@/components/summary/DailyPanelActionsBar";
+import { DailyPanelExceptionsView } from "@/components/summary/DailyPanelExceptionsView";
+import { PanelDailyHelp } from "@/components/summary/PanelDailyHelp";
+import { SectionListLabel } from "@/components/ui/SectionListLabel";
+import {
+  DailySectionIcon,
+  dailySectionIconTileClass,
+  IconLayoutPanel,
+} from "@/components/icons/StrokeIcons";
+import { SectionHeadingIcon } from "@/components/icons/SectionHeadingIcon";
+import { brandIconTileClass, sidebarBrandAccentClass } from "@/lib/ui/ontime-theme";
+import { ProsbaFormSection } from "@/components/orders/ProsbaFormSection";
+import { cn } from "@/lib/cn";
+
+const PANEL_INTRO =
+  "Dziś — kolejka pracy · Tydzień — plan · Wyjątki — poza harmonogramem i innymi ścieżkami. Skróty: wyszukaj dostawcę (/), nowa prośba, menu ⋯.";
 
 export function SummaryWorkspace({
   workspace,
@@ -50,8 +72,10 @@ export function SummaryWorkspace({
   verificationOrders?: IndividualOrder[];
 }) {
   const {
-    pending,
     pendingMessage,
+    isScopePending,
+    isBulkPending,
+    isPlanPending,
     run,
     undo,
     dismissUndo,
@@ -59,6 +83,8 @@ export function SummaryWorkspace({
     flash,
     dismissFlash,
   } = useDailyPanelRunner();
+
+  const { view: panelView, setView: setPanelView } = useDailyPanelView();
 
   const [selected, setSelected] = useState<Record<string, boolean>>({});
   const [drawerId, setDrawerId] = useState<string | null>(null);
@@ -74,6 +100,7 @@ export function SummaryWorkspace({
   const [onDemandOpen, setOnDemandOpen] = useState(false);
 
   const verificationCount = verificationOrders.length;
+  const exceptionsCount = countDailyPanelExceptions(workspace);
 
   const drawerSupplier = drawerId ? workspace.supplierMeta[drawerId] ?? null : null;
   const inboxSummary = summarizeDailyInbox(workspace);
@@ -90,12 +117,22 @@ export function SummaryWorkspace({
   );
 
   const urgentRemainingTotal = inboxSummary.overdueCount + inboxSummary.todayCount;
-  const urgentProgress = useDailyUrgentProgress(urgentRemainingTotal);
+  const forSomeoneRemaining = workspace.forSomeoneLeft.length;
+  const dayProgress = useDailyDayProgress(urgentRemainingTotal, forSomeoneRemaining);
+
+  const { overdue: urgentOverdue, todayList: urgentToday } = useMemo(
+    () => splitUrgentItems(standardUrgentAll),
+    [standardUrgentAll]
+  );
+
+  const todayQueueCount =
+    inboxSummary.overdueCount +
+    inboxSummary.todayCount +
+    inboxSummary.forSomeoneGroupCount;
 
   const hasForSomeone = workspace.forSomeoneLeft.length > 0;
-  const hasUrgent = standardUrgentAll.length > 0;
-  const hasSalesCancelled = workspace.salesCancelledNotices.length > 0;
-  const hasTodayWork = hasForSomeone || hasUrgent || hasSalesCancelled;
+  const hasUrgentSchedule = urgentOverdue.length > 0 || urgentToday.length > 0;
+  const hasTodayWork = hasForSomeone || hasUrgentSchedule;
 
   const openSupplier = useCallback((id: string) => setDrawerId(id), []);
 
@@ -138,7 +175,8 @@ export function SummaryWorkspace({
         run(
           () => actionMarkOrdered(drawerId),
           "Oznaczono jako zamówione",
-          "Oznaczanie jako zamówione…"
+          "Oznaczanie jako zamówione…",
+          { scope: drawerId }
         );
       }
     };
@@ -149,17 +187,20 @@ export function SummaryWorkspace({
   const toggle = (supplierId: string) =>
     setSelected((s) => ({ ...s, [supplierId]: !s[supplierId] }));
 
-  const selectAllUrgent = (checked: boolean) => {
-    if (!checked) {
-      setSelected({});
-      return;
-    }
-    const next: Record<string, boolean> = {};
-    standardUrgentAll.forEach((item) => {
-      next[item.supplierId] = true;
+  const selectUrgentScope = useCallback((checked: boolean, supplierIds: string[]) => {
+    setSelected((prev) => {
+      if (!checked) {
+        const next = { ...prev };
+        supplierIds.forEach((id) => delete next[id]);
+        return next;
+      }
+      const next = { ...prev };
+      supplierIds.forEach((id) => {
+        next[id] = true;
+      });
+      return next;
     });
-    setSelected(next);
-  };
+  }, []);
 
   const selectedCount = Object.values(selected).filter(Boolean).length;
 
@@ -175,8 +216,10 @@ export function SummaryWorkspace({
         : `Oznaczono jako zamówione (${ids.length} dostawców).`,
       ids.length === 1
         ? "Oznaczanie jako zamówione…"
-        : `Oznaczanie ${ids.length} dostawców…`
+        : `Oznaczanie ${ids.length} dostawców…`,
+      { scope: DAILY_PANEL_SCOPE_BULK }
     );
+    setSelected({});
   };
 
   const vacationModalName =
@@ -196,12 +239,13 @@ export function SummaryWorkspace({
     run(
       async () => ({ success: true as const }),
       text,
-      "Odświeżanie panelu…"
+      "Odświeżanie panelu…",
+      { scope: DAILY_PANEL_SCOPE_GLOBAL, overlay: true }
     );
   };
 
   return (
-    <div className="relative space-y-6">
+    <div className="relative mx-auto max-w-6xl">
       {pendingMessage ? (
         <ActionLoadingOverlay message={pendingMessage} variant="viewport" />
       ) : null}
@@ -218,152 +262,262 @@ export function SummaryWorkspace({
         />
       ) : null}
 
-      <DailyPanelToolbar
-        summary={inboxSummary}
-        urgentProgress={urgentProgress}
-        urgentVacationCount={urgentVacationCount}
-        suppliers={supplierDirectory}
-        onNewRequest={() => setOrderModalOpen(true)}
-        onSelectSupplier={openSupplier}
-        onNewSupplier={() => openEditFor("new")}
-        onOpenOnDemand={() => setOnDemandOpen(true)}
-      />
-
-      <DailyPanelHiddenSuppliers
-        report={workspace.panelHidden}
-        onOpenSupplier={openSupplier}
-        onOpenOnDemand={() => setOnDemandOpen(true)}
-      />
-
-      <DailyPanelNav />
-
-      <DailyPanelSection
-        id="dzis"
-        step={1}
-        title="Do obsługi dziś"
-        description="Prośby handlowców i zamówienia według harmonogramu. Po każdej akcji masz 5 s na cofnięcie."
-      >
-        {verificationCount > 0 ? (
-          <VerificationPendingBanner
-            count={verificationCount}
-            onOpen={() => setVerificationModalOpen(true)}
-          />
-        ) : null}
-
-        {workspace.salesCancelledNotices.length > 0 ? (
-          <SalesCancelledDailyCompact
-            notices={workspace.salesCancelledNotices}
-            pending={pending}
-            run={run}
-          />
-        ) : null}
-
-        {!hasTodayWork &&
-        verificationCount === 0 &&
-        workspace.salesCancelledNotices.length === 0 ? (
-          <EmptyState
-            title="Nic pilnego na dziś"
-            description="Brak prośb handlowców i zamówień po terminie. Sprawdź plan tygodnia poniżej."
-          />
-        ) : (
-          <>
-            {hasForSomeone ? (
-              <ForSomeoneRequests
-                groups={workspace.forSomeoneLeft}
-                pending={pending}
-                run={run}
-                onOpenSupplier={openSupplier}
-                statsBySupplierId={statsBySupplierId}
-                supplierStatsMode={supplierStatsMode}
-                suppliers={suppliers}
-                salesPeople={salesPeople}
+      <Card padding={false} className="overflow-hidden">
+        <div className={cn(sidebarBrandAccentClass, "rounded-none opacity-75")} aria-hidden />
+        <CardHeader
+          inset
+          leading={
+            <SectionHeadingIcon tileClassName={brandIconTileClass}>
+              <IconLayoutPanel size={20} />
+            </SectionHeadingIcon>
+          }
+          title="Panel dzienny"
+          description={PANEL_INTRO}
+          action={
+            <div className="flex w-full min-w-0 flex-col items-stretch gap-2 lg:w-auto lg:min-w-[20rem] lg:max-w-xl">
+              <DailyPanelActionsBar
+                summary={inboxSummary}
+                suppliers={supplierDirectory}
+                onNewRequest={() => setOrderModalOpen(true)}
+                onSelectSupplier={openSupplier}
+                onNewSupplier={() => openEditFor("new")}
+                onOpenOnDemand={() => setOnDemandOpen(true)}
               />
-            ) : null}
+              <div className="flex justify-end">
+                <PanelDailyHelp />
+              </div>
+            </div>
+          }
+        />
 
-            {hasUrgent ? (
-              <UrgentOrdersSection
-                items={standardUrgentAll}
-                supplierMeta={workspace.supplierMeta}
-                urgentProgress={urgentProgress}
-                pending={pending}
-                run={run}
+        <DailyPanelTabs
+          active={panelView}
+          todayCount={todayQueueCount}
+          weekCount={inboxSummary.weekPlanCount}
+          verificationCount={verificationCount}
+          exceptionsCount={exceptionsCount}
+          onChange={setPanelView}
+        />
+
+        {verificationCount > 0 ? (
+          <div className="border-b border-amber-100/80 bg-amber-50/40 px-4 py-3 sm:px-6">
+            <VerificationPendingBanner
+              count={verificationCount}
+              onOpen={() => setVerificationModalOpen(true)}
+            />
+          </div>
+        ) : null}
+
+        <DailyPanelToolbar
+          view={panelView}
+          summary={inboxSummary}
+          dayProgress={dayProgress}
+          urgentVacationCount={urgentVacationCount}
+          exceptionsCount={exceptionsCount}
+          onOpenOnDemand={() => setOnDemandOpen(true)}
+        />
+
+        {panelView === "dzis" ? (
+          <>
+            <SectionListLabel
+              id="dzis"
+              title="Do obsługi dziś"
+              hint="Kolejka: zaległe → prośby handlowców → na dziś"
+              accent="emerald"
+              icon={<DailySectionIcon kind="dzis" size={17} />}
+              tileClassName={dailySectionIconTileClass("dzis")}
+            />
+            <div
+              id="panel-view-dzis"
+              role="tabpanel"
+              aria-labelledby="panel-tab-dzis"
+              className="space-y-4 px-4 py-5 sm:px-6"
+            >
+              {!hasTodayWork && verificationCount === 0 ? (
+                <EmptyState
+                  title="Nic pilnego na dziś"
+                  description="Brak prośb i harmonogramu na dziś. Sprawdź zakładkę Tydzień."
+                  icon={<DailySectionIcon kind="dzis" size={28} />}
+                  action={
+                    <Button variant="secondary" size="sm" onClick={() => setPanelView("tydzien")}>
+                      Plan tygodnia
+                    </Button>
+                  }
+                />
+              ) : (
+                <div className="space-y-4">
+                  {urgentOverdue.length > 0 ? (
+                    <UrgentOrdersSection
+                      embedded
+                      queuePart="overdue"
+                      items={standardUrgentAll}
+                      supplierMeta={workspace.supplierMeta}
+                      showBulkToolbar
+                      run={run}
+                      onOpenSupplier={openSupplier}
+                      onVacation={openVacationFor}
+                      onEdit={(id) => openEditFor(id)}
+                      selected={selected}
+                      onToggle={toggle}
+                      onSelectAllInScope={selectUrgentScope}
+                      selectedCount={selectedCount}
+                      onBulkOrdered={processBulk}
+                      isScopePending={isScopePending}
+                      isBulkPending={isBulkPending}
+                    />
+                  ) : null}
+
+                  {hasForSomeone ? (
+                    <ForSomeoneRequests
+                      embedded
+                      groups={workspace.forSomeoneLeft}
+                      isScopePending={isScopePending}
+                      run={run}
+                      onOpenSupplier={openSupplier}
+                      statsBySupplierId={statsBySupplierId}
+                      supplierStatsMode={supplierStatsMode}
+                      suppliers={suppliers}
+                      salesPeople={salesPeople}
+                    />
+                  ) : null}
+
+                  {urgentToday.length > 0 ? (
+                    <UrgentOrdersSection
+                      embedded
+                      queuePart="today"
+                      items={standardUrgentAll}
+                      supplierMeta={workspace.supplierMeta}
+                      showBulkToolbar={urgentOverdue.length === 0}
+                      run={run}
+                      onOpenSupplier={openSupplier}
+                      onVacation={openVacationFor}
+                      onEdit={(id) => openEditFor(id)}
+                      selected={selected}
+                      onToggle={toggle}
+                      onSelectAllInScope={selectUrgentScope}
+                      selectedCount={selectedCount}
+                      onBulkOrdered={processBulk}
+                      isScopePending={isScopePending}
+                      isBulkPending={isBulkPending}
+                    />
+                  ) : null}
+                </div>
+              )}
+            </div>
+          </>
+        ) : null}
+
+        {panelView === "tydzien" ? (
+          <>
+            <SectionListLabel
+              id="plan"
+              title="Plan tygodnia"
+              hint="Przyszłe terminy — zamówienie z wyprzedzeniem lub tryb planowania"
+              accent="indigo"
+              icon={<DailySectionIcon kind="plan" size={17} />}
+              tileClassName={dailySectionIconTileClass("plan")}
+            />
+            <div
+              id="panel-view-tydzien"
+              role="tabpanel"
+              aria-labelledby="panel-tab-tydzien"
+              className="space-y-4 px-4 py-5 pb-6 sm:px-6"
+            >
+              {workspace.onDemandSuppliers.length > 0 ? (
+                <ProsbaFormSection
+                  title="Dostawcy na żądanie"
+                  hint="Bez stałego terminu w harmonogramie — zamów, gdy coś jest potrzebne."
+                >
+                  <button
+                    type="button"
+                    className="text-sm font-medium text-violet-800 underline decoration-violet-200 underline-offset-2 hover:text-violet-950"
+                    onClick={() => setOnDemandOpen(true)}
+                  >
+                    Pokaż listę ({workspace.onDemandSuppliers.length}{" "}
+                    {workspace.onDemandSuppliers.length === 1 ? "dostawca" : "dostawców"})
+                  </button>
+                </ProsbaFormSection>
+              ) : null}
+
+              <WeekPlanner
+                title="Ten tydzień"
+                description="Poniedziałek–piątek · zamówione z wyprzedzeniem lub szczegóły dostawcy"
+                days={workspace.thisWeekDays}
                 onOpenSupplier={openSupplier}
                 onVacation={openVacationFor}
                 onEdit={(id) => openEditFor(id)}
-                selected={selected}
-                onToggle={toggle}
-                onSelectAll={selectAllUrgent}
-                selectedCount={selectedCount}
-                onBulkOrdered={processBulk}
+                run={run}
+                isScopePending={isScopePending}
+                isPlanPending={isPlanPending}
               />
-            ) : null}
-          </>
-        )}
-      </DailyPanelSection>
 
-      <DailyPanelSection
-        id="plan"
-        step={2}
-        title="Plan tygodnia"
-        description="Przyszłe terminy — możesz oznaczyć zamówienie z wyprzedzeniem. Zaległe i na dziś obsługujesz w sekcji powyżej."
-      >
-        {workspace.onDemandSuppliers.length > 0 ? (
-          <p className="-mt-2 text-sm text-slate-600">
-            <button
-              type="button"
-              className="font-medium text-violet-800 underline decoration-violet-200 underline-offset-2 hover:text-violet-950"
-              onClick={() => setOnDemandOpen(true)}
-            >
-              Dostawcy w razie potrzeby ({workspace.onDemandSuppliers.length})
-            </button>
-            <span className="text-slate-500">
-              {" "}
-              — bez stałego terminu; zamów, gdy coś jest potrzebne.
-            </span>
-          </p>
+              {showNextWeek ? (
+                <>
+                  <WeekPlanner
+                    title="Następny tydzień"
+                    description="Ten sam układ co bieżący tydzień"
+                    days={workspace.nextWeekDays}
+                    onOpenSupplier={openSupplier}
+                    onVacation={openVacationFor}
+                    onEdit={(id) => openEditFor(id)}
+                    run={run}
+                    isScopePending={isScopePending}
+                    isPlanPending={isPlanPending}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowNextWeek(false)}
+                    className="text-sm font-medium text-slate-500 hover:text-slate-800"
+                  >
+                    Ukryj następny tydzień
+                  </button>
+                </>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => setShowNextWeek(true)}
+                  className="w-full rounded-xl border border-dashed border-slate-200 bg-slate-50/50 px-4 py-3 text-sm font-medium text-slate-600 transition hover:border-slate-300 hover:bg-slate-50 hover:text-slate-900"
+                >
+                  Pokaż następny tydzień
+                </button>
+              )}
+            </div>
+          </>
         ) : null}
-        <WeekPlanner
-          title="Ten tydzień"
-          description="Poniedziałek–piątek · Zamówione z wyprzedzeniem lub szczegóły dostawcy"
-          days={workspace.thisWeekDays}
-          onOpenSupplier={openSupplier}
-          run={run}
-          pending={pending}
-        />
 
-        {showNextWeek ? (
+        {panelView === "wyjatki" ? (
           <>
-            <WeekPlanner
-              title="Następny tydzień"
-              description="Zamówienia z wyprzedzeniem — ten sam przycisk co w bieżącym tygodniu"
-              days={workspace.nextWeekDays}
-              onOpenSupplier={openSupplier}
-              run={run}
-              pending={pending}
+            <SectionListLabel
+              id="wyjatki"
+              title="Wyjątki"
+              hint="Rezygnacje · informacja · na żądanie · poza harmonogramem"
+              accent="indigo"
+              icon={<DailySectionIcon kind="hidden" size={17} />}
+              tileClassName={dailySectionIconTileClass("hidden")}
             />
-            <button
-              type="button"
-              onClick={() => setShowNextWeek(false)}
-              className="text-sm font-medium text-slate-500 hover:text-slate-800"
+            <div
+              id="panel-view-wyjatki"
+              role="tabpanel"
+              aria-labelledby="panel-tab-wyjatki"
+              className="space-y-4 px-4 py-5 sm:px-6"
             >
-              Ukryj następny tydzień
-            </button>
+              <DailyPanelExceptionsView
+                workspace={workspace}
+                isScopePending={isScopePending}
+                run={run}
+                onOpenSupplier={openSupplier}
+                onOpenOnDemand={() => setOnDemandOpen(true)}
+                onGoToday={() => setPanelView("dzis")}
+              />
+            </div>
           </>
-        ) : (
-          <button
-            type="button"
-            onClick={() => setShowNextWeek(true)}
-            className="w-full rounded-xl border border-dashed border-slate-200 bg-slate-50/50 px-4 py-3 text-sm font-medium text-slate-600 transition hover:border-slate-300 hover:bg-slate-50 hover:text-slate-900"
-          >
-            Pokaż następny tydzień
-          </button>
-        )}
-      </DailyPanelSection>
+        ) : null}
+      </Card>
 
       <SupplierDrawer
         supplier={drawerSupplier}
         onClose={() => setDrawerId(null)}
-        pending={pending}
+        isScopePending={isScopePending}
         run={run}
         onVacation={() => drawerId && setVacationModalSupplierId(drawerId)}
         onEdit={() => drawerId && openEditFor(drawerId)}
@@ -404,7 +558,7 @@ export function SummaryWorkspace({
       <OnDemandSuppliersSheet
         open={onDemandOpen}
         suppliers={workspace.onDemandSuppliers}
-        pending={pending}
+        isScopePending={isScopePending}
         onClose={() => setOnDemandOpen(false)}
         onOpenSupplier={(id) => {
           setOnDemandOpen(false);

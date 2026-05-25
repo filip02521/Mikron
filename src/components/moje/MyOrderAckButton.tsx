@@ -15,7 +15,7 @@ export function MyOrderAckButton({
   children: React.ReactNode;
   onClick: () => void;
   disabled?: boolean;
-  variant?: "banner" | "inline";
+  variant?: "banner" | "inline" | "action";
   className?: string;
   title?: string;
 }) {
@@ -36,6 +36,23 @@ export function MyOrderAckButton({
     );
   }
 
+  if (variant === "action") {
+    return (
+      <button
+        type="button"
+        disabled={disabled}
+        title={title}
+        onClick={onClick}
+        className={cn(
+          "inline-flex min-h-8 shrink-0 cursor-pointer items-center justify-center rounded-lg border border-emerald-700 bg-emerald-600 px-3 py-1.5 text-xs font-semibold text-white shadow-sm transition hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-50",
+          className
+        )}
+      >
+        {children}
+      </button>
+    );
+  }
+
   return (
     <Button
       type="button"
@@ -44,7 +61,7 @@ export function MyOrderAckButton({
       disabled={disabled}
       title={title}
       onClick={onClick}
-      className={cn("font-semibold", className)}
+      className={cn("min-h-8 font-semibold", className)}
     >
       {children}
     </Button>

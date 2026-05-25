@@ -2,6 +2,11 @@
 
 import type { MyOrderHeadlineTone } from "@/lib/orders/my-order-sales-ui";
 import { cn } from "@/lib/cn";
+import {
+  mojeHeadlineInfoSubClass,
+  mojeHeadlineInfoTitleClass,
+  mojeHeadlineInfoWrapClass,
+} from "@/lib/ui/ontime-theme";
 
 const toneStyles: Record<
   MyOrderHeadlineTone,
@@ -23,9 +28,9 @@ const toneStyles: Record<
     sub: "text-emerald-800",
   },
   info: {
-    wrap: "bg-indigo-50 text-indigo-950",
-    title: "text-indigo-900",
-    sub: "text-indigo-800",
+    wrap: mojeHeadlineInfoWrapClass,
+    title: mojeHeadlineInfoTitleClass,
+    sub: mojeHeadlineInfoSubClass,
   },
   neutral: {
     wrap: "bg-slate-50 text-slate-800",

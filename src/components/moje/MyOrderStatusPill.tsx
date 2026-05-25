@@ -1,0 +1,37 @@
+import type { MyOrderRow } from "@/lib/orders/my-order-presenter";
+import { cn } from "@/lib/cn";
+
+const variantStyles: Record<
+  NonNullable<MyOrderRow["badgeVariant"]>,
+  string
+> = {
+  default: "bg-white/95 text-slate-600 ring-slate-200/90",
+  success: "bg-white/95 text-emerald-800 ring-emerald-200/90",
+  warning: "bg-white/95 text-amber-900 ring-amber-200/90",
+  info: "bg-white/95 text-indigo-800 ring-indigo-200/90",
+  purple: "bg-white/95 text-violet-800 ring-violet-200/90",
+  danger: "bg-white/95 text-red-800 ring-red-200/90",
+};
+
+export function MyOrderStatusPill({
+  label,
+  variant = "default",
+  className,
+}: {
+  label: string;
+  variant?: MyOrderRow["badgeVariant"];
+  className?: string;
+}) {
+  return (
+    <span
+      className={cn(
+        "inline-flex max-w-[9.5rem] shrink-0 items-center truncate rounded-md px-1.5 py-0.5 text-[0.65rem] font-semibold leading-tight ring-1",
+        variantStyles[variant],
+        className
+      )}
+      title={label}
+    >
+      {label}
+    </span>
+  );
+}

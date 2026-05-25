@@ -4,9 +4,7 @@ import {
   fetchInformacjaQueue,
 } from "@/lib/data/queries";
 import { QueueClient } from "@/components/queue/QueueClient";
-import { PageHeader } from "@/components/ui/PageHeader";
 import { Alert } from "@/components/ui/Alert";
-import { Badge } from "@/components/ui/Badge";
 import type { IndividualOrder } from "@/types/database";
 
 export default async function KolejkaPage() {
@@ -30,18 +28,8 @@ export default async function KolejkaPage() {
 
   return (
     <>
-      <PageHeader
-        badge={
-          <Badge variant="info" className="mb-2">
-            Magazyn i regał
-          </Badge>
-        }
-        title="Magazyn i regał"
-        description="Przyjęcie towaru dla handlowców (zamówione u dostawcy — po dotarciu wpisujesz ilość) oraz powiadomienia o dostępności."
-      />
-
       {error ? (
-        <Alert tone="error" className="mb-6">
+        <Alert tone="error" className="mx-auto mb-4 max-w-6xl">
           {error}
         </Alert>
       ) : null}

@@ -2,7 +2,7 @@
 
 export const surface = {
   /** Główna karta strony (Card). */
-  panel: "rounded-2xl border border-slate-200/90 bg-white shadow-[0_1px_3px_rgba(15,23,42,0.06)]",
+  panel: "rounded-2xl border border-slate-200/80 bg-white shadow-[var(--shadow-card-elevated)]",
   /** Karta / wiersz wewnątrz sekcji. */
   nested: "rounded-xl border border-slate-200 bg-white",
   /** Delikatne tło pod listą / metrykami. */
@@ -15,7 +15,7 @@ export const modalBackdropClass =
   "fixed inset-0 cursor-pointer bg-slate-900/45 backdrop-blur-sm";
 
 export const modalPanelClass =
-  "relative flex flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl";
+  "relative flex flex-col overflow-hidden rounded-2xl border border-slate-200/80 bg-white shadow-[var(--shadow-card-elevated)] ring-1 ring-slate-900/5";
 
 export const choiceChipClass = {
   order:

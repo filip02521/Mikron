@@ -34,12 +34,13 @@ function OnTimeWordmark({
 }) {
   const text =
     size === "sm"
-      ? "text-sm font-semibold tracking-tight text-indigo-700"
-      : "text-base font-semibold tracking-tight text-indigo-700";
+      ? "text-sm font-semibold tracking-tight"
+      : "text-base font-semibold tracking-tight";
 
   return (
     <p className={cn(text, className)} aria-label={ONTIME_APP_NAME}>
-      OnTime
+      <span className="text-slate-800">On</span>
+      <span className="text-indigo-600">Time</span>
     </p>
   );
 }
@@ -132,8 +133,9 @@ export function SidebarBrandBlock({
           <OnTimeWordmark />
           <p className="mt-0.5 text-[11px] leading-snug text-slate-500">
             {ONTIME_TAGLINE_SHORT}
-            <span className="text-slate-300"> · </span>
-            <span className="text-slate-400">{ONTIME_COMPANY}</span>
+          </p>
+          <p className="mt-0.5 text-[10px] font-semibold uppercase tracking-[0.14em] text-sky-700/80">
+            {ONTIME_COMPANY}
           </p>
         </div>
       </div>

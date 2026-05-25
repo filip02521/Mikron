@@ -2,6 +2,7 @@
 
 import { useState, useTransition, useCallback } from "react";
 import Link from "next/link";
+import { useRouter, useSearchParams } from "next/navigation";
 import { actionAddIndividualOrders } from "@/app/actions/admin";
 import { Card, CardHeader } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
@@ -9,6 +10,11 @@ import { Toast } from "@/components/ui/Toast";
 import { Field, Select } from "@/components/ui/Field";
 import type { DeliveryStats, IndividualRequestKind, StatsMode } from "@/types/database";
 import { SupplierLeadTimeHint } from "@/components/orders/SupplierLeadTimeHint";
+import { RequestKindToggle } from "@/components/orders/RequestKindToggle";
+import { ProsbaFormSection } from "@/components/orders/ProsbaFormSection";
+import { prosbaHref } from "@/lib/orders/prosba-url";
+import { IconLayers, IconPlusCircle } from "@/components/icons/StrokeIcons";
+import { SectionHeadingIcon } from "@/components/icons/SectionHeadingIcon";
 import { cn } from "@/lib/cn";
 import {
   assessRequestCompleteness,
@@ -111,6 +117,8 @@ export function OrderFormClient({
   singleGroup = false,
   submitForOther = false,
   initialSupplierId,
+  delegatePeople,
+  managerSelfId,
 }: {
   suppliers: { id: string; name: string; stats_mode?: StatsMode }[];
   salesPeople: { id: string; name: string }[];
@@ -123,7 +131,12 @@ export function OrderFormClient({
   submitForOther?: boolean;
   /** Z harmonogramu / linku — wstępnie wybrany dostawca */
   initialSupplierId?: string | null;
+  /** Kierownik — lista do przełączenia „w czyim imieniu” (formularz /prosba) */
+  delegatePeople?: { id: string; name: string }[];
+  managerSelfId?: string;
 }) {
+  const router = useRouter();
+  const searchParams = useSearchParams();
   const lockedId = lockedSalesPerson?.id ?? "";
   const [requestKind, setRequestKind] = useState<IndividualRequestKind>("zamowienie");
   const [groups, setGroups] = useState<Entry[][]>(() =>
@@ -227,65 +240,210 @@ export function OrderFormClient({
     );
   };
 
+  const toastSlot = msg ? (
+    <Toast
+      message={msg.text}
+      tone={msg.tone}
+      onDismiss={dismissToast}
+      action={
+        msg.tone === "success" && singleGroup && lockedSalesPerson ? (
+          <Link
+            href={submitForOther ? `/moje?dla=${lockedSalesPerson.id}` : "/moje"}
+          >
+            <Button variant="secondary" className="w-full">
+              {submitForOther ? "Panel handlowca" : "Moje zamówienia"}
+            </Button>
+          </Link>
+        ) : undefined
+      }
+    />
+  ) : null;
+
+  if (singleGroup && lockedSalesPerson) {
+    const group = groups[0] ?? emptyGroup(lockedId, initialSupplierId ?? undefined);
+    const supplierId = group[0]?.supplierId ?? "";
+    const supplierFromPlan =
+      initialSupplierId &&
+      supplierId === initialSupplierId &&
+      suppliers.some((s) => s.id === initialSupplierId);
+
+    return (
+      <div className="relative">
+        {pendingMessage ? (
+          <ActionLoadingOverlay message={pendingMessage} variant="viewport" />
+        ) : null}
+        {toastSlot}
+
+        <Card padding={false} className="overflow-hidden">
+          <CardHeader
+            inset
+            leading={
+              <SectionHeadingIcon tileClassName="bg-indigo-100 text-indigo-800">
+                <IconPlusCircle size={20} />
+              </SectionHeadingIcon>
+            }
+            title="Nowa prośba"
+            description={
+              submitForOther
+                ? `Zgłaszasz w imieniu: ${lockedSalesPerson.name}. Po wysłaniu prośba pojawi się na jego panelu.`
+                : "Jeden formularz — rodzaj prośby, dostawca i produkty. Status śledzisz w Moje zamówienia."
+            }
+          />
+
+          <div className="space-y-8 px-4 py-6 sm:px-6">
+            {delegatePeople && delegatePeople.length > 0 && managerSelfId ? (
+              <ProsbaFormSection
+                title="W czyim imieniu?"
+                hint="Kierownik może złożyć prośbę dla handlowca z zespołu."
+              >
+                <Field label="Handlowiec">
+                  <Select
+                    value={lockedSalesPerson.id}
+                    onChange={(e) => {
+                      const id = e.target.value;
+                      const dostawca = searchParams.get("dostawca") ?? undefined;
+                      router.push(
+                        prosbaHref({
+                          salesPersonId: id === managerSelfId ? undefined : id,
+                          supplierId: dostawca,
+                        })
+                      );
+                    }}
+                  >
+                    {delegatePeople.map((p) => (
+                      <option key={p.id} value={p.id}>
+                        {p.id === managerSelfId ? `${p.name} (ja)` : p.name}
+                      </option>
+                    ))}
+                  </Select>
+                </Field>
+              </ProsbaFormSection>
+            ) : null}
+
+            <ProsbaFormSection
+              title="Co chcesz zgłosić?"
+              hint="Wybierz jedną opcję — pola poniżej dopasują się do rodzaju prośby."
+            >
+              <RequestKindToggle value={requestKind} onChange={setRequestKind} />
+            </ProsbaFormSection>
+
+            <ProsbaFormSection
+              title="Dostawca i produkty"
+              hint={
+                requestKind === "informacja"
+                  ? "Wystarczy symbol lub opis — bez ilości. Dostawcę możesz pominąć, dział dostaw uzupełni."
+                  : "Podaj symbol lub opis oraz ilość. Dostawcę możesz wybrać teraz lub zostawić do uzupełnienia."
+              }
+            >
+              <div className="space-y-4">
+                <Field label="Dostawca (opcjonalnie)">
+                  <Select
+                    value={supplierId}
+                    onChange={(e) => {
+                      const v = e.target.value;
+                      setGroups((g) =>
+                        g.map((gr, i) =>
+                          i === 0 ? gr.map((row) => ({ ...row, supplierId: v })) : gr
+                        )
+                      );
+                    }}
+                  >
+                    <option value="">Wybierz później / nie wiem</option>
+                    {suppliers.map((s) => (
+                      <option key={s.id} value={s.id}>
+                        {s.name}
+                      </option>
+                    ))}
+                  </Select>
+                </Field>
+                {supplierFromPlan ? (
+                  <p className="text-xs font-medium text-indigo-700">
+                    Z harmonogramu:{" "}
+                    {suppliers.find((s) => s.id === initialSupplierId)?.name}
+                  </p>
+                ) : null}
+
+                {requestKind === "zamowienie" && supplierId ? (
+                  <SupplierLeadTimeHint
+                    compact
+                    stats={statsBySupplierId[supplierId]}
+                    statsMode={
+                      suppliers.find((s) => s.id === supplierId)?.stats_mode ?? "LACZNIE"
+                    }
+                  />
+                ) : null}
+
+                <RequestProductLinesEditor
+                  lines={group}
+                  onChange={(lines) => updateGroupLines(0, lines as Entry[])}
+                  requestKind={requestKind}
+                  appearance="prosba"
+                  addLabel="+ Kolejny produkt"
+                  showClientField
+                />
+
+                <RequestCompletenessBanner
+                  draft={{
+                    supplierId,
+                    symbol: group.find((r) => r.symbol.trim())?.symbol,
+                    product: group.find((r) => r.product.trim())?.product,
+                    quantity: group.find((r) => r.quantity.trim())?.quantity,
+                    requestKind,
+                  }}
+                  requestKind={requestKind}
+                  forcedAssessment={groupCompletenessAssessment(group, requestKind)}
+                />
+              </div>
+            </ProsbaFormSection>
+          </div>
+
+          <div className="flex flex-col gap-3 border-t border-slate-100 bg-slate-50/90 px-4 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-6">
+            <p className="text-xs leading-relaxed text-slate-500">
+              Po wysłaniu sprawdź status w{" "}
+              <Link href="/moje" className="font-medium text-indigo-700 hover:underline">
+                Moje zamówienia
+              </Link>
+              . O ważnych zmianach dostaniesz też e-mail.
+            </p>
+            <Button
+              disabled={pending}
+              onClick={submit}
+              className="w-full shrink-0 sm:w-auto sm:min-w-[10rem]"
+            >
+              {pending ? "Wysyłanie…" : "Wyślij prośbę"}
+            </Button>
+          </div>
+        </Card>
+      </div>
+    );
+  }
+
   return (
     <div className="relative space-y-6">
       {pendingMessage ? (
         <ActionLoadingOverlay message={pendingMessage} variant="viewport" />
       ) : null}
-      {msg ? (
-        <Toast
-          message={msg.text}
-          tone={msg.tone}
-          onDismiss={dismissToast}
-          action={
-            msg.tone === "success" && singleGroup && lockedSalesPerson ? (
-              <Link
-                href={
-                  submitForOther
-                    ? `/moje?dla=${lockedSalesPerson.id}`
-                    : "/moje"
-                }
-              >
-                <Button variant="secondary" className="w-full">
-                  {submitForOther ? "Panel handlowca" : "Moje zamówienia"}
-                </Button>
-              </Link>
-            ) : undefined
-          }
-        />
-      ) : null}
+      {toastSlot}
 
-      <Card>
+      <Card padding={false} className="overflow-hidden">
         <CardHeader
-          title="Rodzaj prośby"
-          description="Wybierz, czy zamawiamy u dostawcy, czy tylko informujemy o dostawie na magazyn"
+          inset
+          leading={
+            <SectionHeadingIcon tileClassName="bg-violet-100 text-violet-800">
+              <IconLayers size={20} />
+            </SectionHeadingIcon>
+          }
+          title="Zamówienie grupowe"
+          description="Wiele produktów w jednej lub kilku grupach — jeden dostawca i handlowiec na grupę."
         />
-        <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap">
-          <label className="flex min-h-12 w-full cursor-pointer items-center gap-2 rounded-xl border border-slate-200 px-4 py-3 has-[:checked]:border-indigo-500 has-[:checked]:bg-indigo-50 sm:w-auto sm:min-w-[min(100%,18rem)]">
-            <input
-              type="radio"
-              name="requestKind"
-              checked={requestKind === "zamowienie"}
-              onChange={() => setRequestKind("zamowienie")}
-            />
-            <span className="text-sm font-medium text-slate-800">
-              Zamówienie u dostawcy
-            </span>
-          </label>
-          <label className="flex min-h-12 w-full cursor-pointer items-center gap-2 rounded-xl border border-sky-200 px-4 py-3 has-[:checked]:border-sky-500 has-[:checked]:bg-sky-50 sm:w-auto sm:min-w-[min(100%,18rem)]">
-            <input
-              type="radio"
-              name="requestKind"
-              checked={requestKind === "informacja"}
-              onChange={() => setRequestKind("informacja")}
-            />
-            <span className="text-sm font-medium text-slate-800">
-              Informacja gdy dotarło na magazyn
-              <span className="mt-0.5 block text-xs font-normal text-sky-800/80">
-                Bez ilości — tylko czy towar jest na stanie
-              </span>
-            </span>
-          </label>
+
+        <div className="space-y-6 border-b border-slate-100 px-4 py-5 sm:px-6">
+          <ProsbaFormSection
+            title="Rodzaj prośby"
+            hint="Zamówienie u dostawcy albo tylko informacja o dostępności na magazynie"
+          >
+            <RequestKindToggle value={requestKind} onChange={setRequestKind} />
+          </ProsbaFormSection>
         </div>
       </Card>
 
@@ -430,20 +588,28 @@ export function OrderFormClient({
         </Card>
       ))}
 
-      <div className="flex flex-wrap gap-3">
-        {!singleGroup ? (
-          <Button
-            variant="secondary"
-            type="button"
-            onClick={() => setGroups((g) => [...g, emptyGroup(lockedId)])}
-          >
-            + Nowa grupa
-          </Button>
-        ) : null}
-        <Button disabled={pending} onClick={submit}>
-          {pending ? "Zapisywanie…" : singleGroup ? "Wyślij prośbę" : "Zatwierdź wszystkie"}
-        </Button>
-      </div>
+      <Card padding={false} className="overflow-hidden">
+        <div className="flex flex-col gap-3 bg-slate-50/90 px-4 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-6">
+          <p className="text-xs leading-relaxed text-slate-500">
+            Po zapisie prośby trafią do weryfikacji lub panelu dziennego — zależnie od kompletności
+            danych.
+          </p>
+          <div className="flex flex-wrap gap-2">
+            {!singleGroup ? (
+              <Button
+                variant="secondary"
+                type="button"
+                onClick={() => setGroups((g) => [...g, emptyGroup(lockedId)])}
+              >
+                + Nowa grupa
+              </Button>
+            ) : null}
+            <Button disabled={pending} onClick={submit}>
+              {pending ? "Zapisywanie…" : "Zatwierdź wszystkie"}
+            </Button>
+          </div>
+        </div>
+      </Card>
     </div>
   );
 }

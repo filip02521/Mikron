@@ -17,7 +17,6 @@ import { getAppRole } from "@/lib/auth-dev";
 import { canAccessOperations, isSalesAccount, isSalesManager } from "@/lib/auth-roles";
 import { presentMyOrders } from "@/lib/orders/my-order-presenter";
 import Link from "next/link";
-import { PageHeader } from "@/components/ui/PageHeader";
 import { Button } from "@/components/ui/Button";
 import { Alert } from "@/components/ui/Alert";
 import { MojeOrdersView } from "@/components/moje/MojeOrdersView";
@@ -139,52 +138,51 @@ export default async function MojePage({
 
   const { zamowienia, informacje, productLineCount } = presentMyOrders(orders, stats);
 
-  return (
-    <>
-      <PageHeader
-        title={isTeamPreview ? `Panel: ${salesPersonName}` : "Moje zamówienia"}
-        description={
-          isTeamPreview
-            ? `Podgląd prośb: ${salesPersonName}`
-            : "Aktywne dostawy — status w wierszu, szczegóły po rozwinięciu."
-        }
-        actions={
-          role && !canAccessOperations(role) ? (
-            <div className="flex w-full flex-wrap items-center gap-2 sm:w-auto">
-              <MojePageSalesToolbar />
-              {!isTeamPreview ? (
-                <Link href="/prosba" className="hidden sm:block">
-                  <Button className="w-full sm:w-auto">Zgłoś prośbę</Button>
-                </Link>
-              ) : null}
-            </div>
-          ) : undefined
-        }
-      />
+  const salesHeaderActions =
+    role && !canAccessOperations(role) ? (
+      <>
+        <MojePageSalesToolbar />
+        {!isTeamPreview ? (
+          <Link href="/prosba" className="hidden sm:inline-flex">
+            <Button size="sm">Zgłoś prośbę</Button>
+          </Link>
+        ) : null}
+      </>
+    ) : undefined;
 
+  return (
+    <div className="mx-auto max-w-3xl space-y-4">
       {linkError && previewSalesPersonId ? (
-        <Alert tone="error" className="mb-6">
+        <Alert tone="error">
           {linkError}
         </Alert>
       ) : null}
 
       {isTeamPreview && salesPersonId && salesPersonName ? (
-        <ManagerPreviewBanner salesPersonId={salesPersonId} salesPersonName={salesPersonName} />
+        <ManagerPreviewBanner
+          salesPersonId={salesPersonId}
+          salesPersonName={salesPersonName}
+        />
       ) : null}
 
       {loadError ? (
-        <Alert tone="error" className="mb-6">
-          {loadError}
-        </Alert>
+        <Alert tone="error">{loadError}</Alert>
       ) : null}
 
       {role && canAccessOperations(role) && !salesPersonId ? (
-        <Alert tone="warning" className="mb-6">
+        <Alert tone="warning">
           Tryb administratora — widzisz wszystkie zamówienia.
         </Alert>
       ) : null}
 
       <MojeOrdersView
+        pageTitle={isTeamPreview ? `Panel: ${salesPersonName}` : "Moje zamówienia"}
+        pageDescription={
+          isTeamPreview
+            ? `Podgląd prośb handlowca — statusy i odbiór.`
+            : undefined
+        }
+        headerActions={salesHeaderActions}
         zamowienia={zamowienia}
         informacje={informacje}
         archiwumRecent={viewingOwnPanel ? archiwumRecent : []}
@@ -194,6 +192,6 @@ export default async function MojePage({
         showProsbaCta={isSalesAccount(role ?? "sales") && !isTeamPreview}
         suppliers={suppliers}
       />
-    </>
+    </div>
   );
 }

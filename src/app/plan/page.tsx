@@ -78,16 +78,14 @@ export default async function PlanPage() {
 
   return (
     <>
-      <PageHeader
-        title="Harmonogram zakupów"
-        description={
-          salesMode
-            ? "Otwarte prośby i terminy u dostawców — wyszukiwarka i kalendarz działu dostaw w jednym widoku."
-            : "Podgląd harmonogramu zamówień u dostawców — bez panelu zakupowego."
-        }
-      />
+      {!salesMode ? (
+        <PageHeader
+          title="Harmonogram zakupów"
+          description="Podgląd harmonogramu zamówień u dostawców — bez panelu zakupowego."
+        />
+      ) : null}
       {error ? (
-        <Alert tone="warning" className="mb-6">
+        <Alert tone="warning" className={salesMode ? "mb-4" : "mb-6"}>
           {error}
         </Alert>
       ) : null}

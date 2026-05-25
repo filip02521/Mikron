@@ -5,10 +5,8 @@ import { getRowColorForDate } from "@/lib/orders/colors";
 import { parseDateOnly } from "@/lib/orders/dates";
 import { locationLabel } from "@/lib/display-labels";
 import { LocationScheduleClient } from "@/components/targets/LocationScheduleClient";
-import { SuppliersHubNav } from "@/components/admin/SuppliersHubNav";
+import { SuppliersHubShell } from "@/components/admin/SuppliersHubShell";
 import { ScheduleLocationNav } from "@/components/admin/ScheduleLocationNav";
-import { PageHeader } from "@/components/ui/PageHeader";
-import { Badge } from "@/components/ui/Badge";
 import { supplierHubPaths } from "@/lib/supplier-hub";
 
 const VALID: SupplierLocation[] = ["POLSKA", "ZAGRANICA", "IMPORT"];
@@ -37,21 +35,18 @@ export default async function LocationPage({
   }
 
   return (
-    <>
-      <PageHeader
-        badge={
-          <Badge variant="info" className="mb-2">
-            {label}
-          </Badge>
-        }
-        title={`Terminy zamówień · ${label}`}
-        description="Tylko daty w cyklu zamówień (ostatnie, następne, przesunięcie). Karta dostawcy — kontakt, zapas i częstotliwość — w osobnej zakładce."
-      />
-      <SuppliersHubNav activeTab="schedules" context={hubContext} scheduleLocation={location} />
-      <ScheduleLocationNav value={location} context={hubContext} />
+    <SuppliersHubShell
+      title={`Terminy zamówień · ${label}`}
+      description="Daty w cyklu zamówień (ostatnie, następne, przesunięcie). Kontakt i zapas — w Kartach dostawców."
+      activeTab="schedules"
+      context={hubContext}
+      scheduleLocation={location}
+      locationNav={<ScheduleLocationNav value={location} context={hubContext} />}
+    >
       <LocationScheduleClient
         location={location}
         cardsBasePath={cardsPath}
+        inHubShell
         initialRows={rows.map((s) => ({
           id: s.id,
           name: s.name,
@@ -68,6 +63,6 @@ export default async function LocationPage({
             ) ?? "#fff",
         }))}
       />
-    </>
+    </SuppliersHubShell>
   );
 }

@@ -187,7 +187,7 @@ export function SuppliersAdminClient({
       />
       ) : null}
 
-      <section className="space-y-6">
+      <section className="space-y-6 p-4 sm:p-5">
         {!formOpen ? (
           <Button
             variant="outline"

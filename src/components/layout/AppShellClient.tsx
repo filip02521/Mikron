@@ -39,11 +39,7 @@ export function AppShellClient({
     pathname === "/login" || pathname === "/setup" || pathname === "/ustaw-haslo";
 
   if (isAuthScreen) {
-    return (
-      <div className="min-h-dvh overflow-x-hidden bg-gradient-to-br from-slate-50 via-white to-indigo-50/30">
-        {children}
-      </div>
-    );
+    return <div className="min-h-dvh overflow-x-hidden">{children}</div>;
   }
 
   const salesLive = role ? isSalesAccount(role) : false;
@@ -56,7 +52,7 @@ export function AppShellClient({
           salesLive && salesMobileChromeRoot
         )}
       >
-        <div className={cn(salesLive && "hidden md:block")}>
+        <div className="hidden md:block">
           <Sidebar
             role={role}
             userEmail={userEmail}
@@ -70,7 +66,7 @@ export function AppShellClient({
             appMainClass,
             salesLive
               ? "ml-0 pb-[calc(3.5rem+env(safe-area-inset-bottom,0px))] md:ml-64 md:pb-0"
-              : "ml-64"
+              : "ml-0 md:ml-64"
           )}
         >
           <div className="mx-auto max-w-7xl px-3 py-5 sm:px-6 sm:py-8 lg:px-8">

@@ -4,8 +4,10 @@ import { useCallback, useMemo, useState } from "react";
 import type { WeekDayPlan } from "@/lib/orders/summary-workspace";
 import type { SummaryStandardItem } from "@/lib/orders/summary";
 import { formatPlannerNote } from "@/lib/orders/procurement-daily-ui";
-import { actionBatchShiftOrder, actionMarkOrdered } from "@/app/actions/admin";
+import { actionBatchShiftOrder } from "@/app/actions/admin";
 import type { DailyPanelRunFn } from "@/components/summary/useDailyPanelRunner";
+import { DAILY_PANEL_SCOPE_PLAN } from "@/components/summary/useDailyPanelRunner";
+import { ScheduleSupplierActionBar } from "@/components/summary/ScheduleSupplierActionBar";
 import {
   buildPlacementMap,
   canDropOnDay,
@@ -15,15 +17,22 @@ import {
 } from "@/lib/orders/week-planner-draft";
 import { Card, CardHeader } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
-import { ButtonGroup } from "@/components/ui/ButtonGroup";
-import { HoldToConfirmButton } from "@/components/ui/HoldToConfirmButton";
 import { HelpPopover } from "@/components/ui/HelpPopover";
-import { buttonGroupItemClassName } from "@/components/ui/ButtonGroup";
 import { cn } from "@/lib/cn";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { formatDateString, parseDateOnly } from "@/lib/orders/dates";
 import { todayInWarsaw } from "@/lib/time/warsaw";
 import { urgentCardClassName } from "@/components/summary/urgent-card-styles";
+import { IconGripVertical } from "@/components/icons/StrokeIcons";
+import {
+  plannerDropActiveClass,
+  plannerDropHintClass,
+  plannerModeBannerClass,
+  plannerModeTextClass,
+  plannerHintMutedClass,
+  plannerHintMutedFaintClass,
+  surfaceCardClass,
+} from "@/lib/ui/ontime-theme";
 
 function PlanSectionHelp({ planning }: { planning: boolean }) {
   return (
@@ -52,20 +61,30 @@ export function WeekPlanner({
   description,
   days,
   onOpenSupplier,
+  onVacation,
+  onEdit,
   readOnly = false,
   headerAction,
   run,
-  pending = false,
+  isScopePending,
+  isPlanPending = false,
+  embedded = false,
 }: {
   title: string;
   description?: string;
   days: WeekDayPlan[];
   onOpenSupplier?: (supplierId: string) => void;
+  onVacation?: (supplierId: string) => void;
+  onEdit?: (supplierId: string) => void;
   readOnly?: boolean;
   headerAction?: React.ReactNode;
   run?: DailyPanelRunFn;
-  pending?: boolean;
+  isScopePending?: (supplierId: string) => boolean;
+  isPlanPending?: boolean;
+  /** Bez zewnętrznej karty — do osadzenia w większej sekcji (np. /plan handlowiec). */
+  embedded?: boolean;
 }) {
+  const rowPending = (id: string) => isScopePending?.(id) ?? false;
   const canOrder = Boolean(run) && !readOnly;
   const [planningMode, setPlanningMode] = useState(false);
   const [draftDays, setDraftDays] = useState<WeekDayPlan[] | null>(null);
@@ -108,7 +127,8 @@ export function WeekPlanner({
       `Plan zatwierdzony — ${pendingChanges.length} ${
         pendingChanges.length === 1 ? "przesunięcie" : "przesunięć"
       }`,
-      "Zapisywanie planu tygodnia…"
+      "Zapisywanie planu tygodnia…",
+      { scope: DAILY_PANEL_SCOPE_PLAN }
     );
     setPlanningMode(false);
     setDraftDays(null);
@@ -132,7 +152,7 @@ export function WeekPlanner({
       type="button"
       size="sm"
       variant={planningMode ? "primary" : "outline"}
-      disabled={pending}
+      disabled={isPlanPending}
       onClick={() => {
         if (planningMode) {
           if (pendingChanges.length > 0) {
@@ -151,6 +171,84 @@ export function WeekPlanner({
     </Button>
   ) : null;
 
+  const grid = !total ? (
+    <EmptyState title="Brak zamówień w tym tygodniu" />
+  ) : (
+    <div className="grid gap-0 border-t border-slate-100 max-lg:divide-y lg:grid-cols-5 lg:divide-x lg:divide-slate-100">
+      {displayDays.map((day) => (
+        <DayColumn
+          key={day.dateKey}
+          day={day}
+          planningMode={planningMode}
+          originalPlacement={originalPlacement}
+          dropActive={dropTargetKey === day.dateKey}
+          draggingId={draggingId}
+          onOpenSupplier={onOpenSupplier}
+          canOrder={canOrder && !planningMode}
+          run={run}
+          isScopePending={rowPending}
+          isPlanPending={isPlanPending}
+          onVacation={onVacation}
+          onEdit={onEdit}
+          onDragOverColumn={(key) => setDropTargetKey(key)}
+          onDragLeaveColumn={() => setDropTargetKey(null)}
+          onDropOnColumn={handleDrop}
+          onDragStartItem={setDraggingId}
+          onDragEndItem={() => setDraggingId(null)}
+        />
+      ))}
+    </div>
+  );
+
+  const planningBar = planningMode ? (
+        <div className={plannerModeBannerClass}>
+          <p className={plannerModeTextClass}>
+            Przeciągnij dostawców na wybrany dzień. Terminy w bazie zmienią się dopiero po{" "}
+            <span className="font-semibold">Zatwierdź plan</span> (przeliczenie jak przy ręcznym
+            przesunięciu).
+          </p>
+          <div className="mt-3 flex flex-wrap items-center gap-2">
+            <Button
+              type="button"
+              size="sm"
+              variant="ghost"
+              disabled={isPlanPending}
+              onClick={cancelPlanning}
+            >
+              Anuluj
+            </Button>
+            <Button
+              type="button"
+              size="sm"
+              variant="primary"
+              disabled={isPlanPending || pendingChanges.length === 0}
+              onClick={confirmPlanning}
+            >
+              Zatwierdź plan
+              {pendingChanges.length > 0 ? ` (${pendingChanges.length})` : ""}
+            </Button>
+            {pendingChanges.length > 0 ? (
+              <span className={plannerHintMutedClass}>
+                {pendingChanges.length === 1
+                  ? "1 dostawca zmieni termin"
+                  : `${pendingChanges.length} dostawców zmieni termin`}
+              </span>
+            ) : (
+              <span className={plannerHintMutedFaintClass}>Brak zmian do zapisania</span>
+            )}
+          </div>
+        </div>
+      ) : null;
+
+  if (embedded) {
+    return (
+      <div className={cn("overflow-hidden", surfaceCardClass)}>
+        {planningBar}
+        {grid}
+      </div>
+    );
+  }
+
   return (
     <Card padding={false} className="overflow-hidden">
       <CardHeader
@@ -166,71 +264,9 @@ export function WeekPlanner({
         }
       />
 
-      {planningMode ? (
-        <div className="border-b border-indigo-200/80 bg-indigo-50/60 px-4 py-3 sm:px-5">
-          <p className="text-sm text-indigo-950">
-            Przeciągnij dostawców na wybrany dzień. Terminy w bazie zmienią się dopiero po{" "}
-            <span className="font-semibold">Zatwierdź plan</span> (przeliczenie jak przy ręcznym
-            przesunięciu).
-          </p>
-          <div className="mt-3 flex flex-wrap items-center gap-2">
-            <Button
-              type="button"
-              size="sm"
-              variant="ghost"
-              disabled={pending}
-              onClick={cancelPlanning}
-            >
-              Anuluj
-            </Button>
-            <Button
-              type="button"
-              size="sm"
-              variant="primary"
-              disabled={pending || pendingChanges.length === 0}
-              onClick={confirmPlanning}
-            >
-              Zatwierdź plan
-              {pendingChanges.length > 0 ? ` (${pendingChanges.length})` : ""}
-            </Button>
-            {pendingChanges.length > 0 ? (
-              <span className="text-xs text-indigo-800/80">
-                {pendingChanges.length === 1
-                  ? "1 dostawca zmieni termin"
-                  : `${pendingChanges.length} dostawców zmieni termin`}
-              </span>
-            ) : (
-              <span className="text-xs text-indigo-800/60">Brak zmian do zapisania</span>
-            )}
-          </div>
-        </div>
-      ) : null}
+      {planningBar}
 
-      {!total ? (
-        <EmptyState title="Brak zamówień w tym tygodniu" />
-      ) : (
-        <div className="grid gap-0 border-t border-slate-100 max-lg:divide-y lg:grid-cols-5 lg:divide-x lg:divide-slate-100">
-          {displayDays.map((day) => (
-            <DayColumn
-              key={day.dateKey}
-              day={day}
-              planningMode={planningMode}
-              originalPlacement={originalPlacement}
-              dropActive={dropTargetKey === day.dateKey}
-              draggingId={draggingId}
-              onOpenSupplier={onOpenSupplier}
-              canOrder={canOrder && !planningMode}
-              run={run}
-              pending={pending}
-              onDragOverColumn={(key) => setDropTargetKey(key)}
-              onDragLeaveColumn={() => setDropTargetKey(null)}
-              onDropOnColumn={handleDrop}
-              onDragStartItem={setDraggingId}
-              onDragEndItem={() => setDraggingId(null)}
-            />
-          ))}
-        </div>
-      )}
+      {grid}
     </Card>
   );
 }
@@ -244,7 +280,10 @@ function DayColumn({
   onOpenSupplier,
   canOrder,
   run,
-  pending,
+  isScopePending,
+  isPlanPending,
+  onVacation,
+  onEdit,
   onDragOverColumn,
   onDragLeaveColumn,
   onDropOnColumn,
@@ -259,7 +298,10 @@ function DayColumn({
   onOpenSupplier?: (supplierId: string) => void;
   canOrder: boolean;
   run?: DailyPanelRunFn;
-  pending: boolean;
+  isScopePending: (supplierId: string) => boolean;
+  isPlanPending: boolean;
+  onVacation?: (supplierId: string) => void;
+  onEdit?: (supplierId: string) => void;
   onDragOverColumn: (dateKey: string) => void;
   onDragLeaveColumn: () => void;
   onDropOnColumn: (supplierId: string, dateKey: string) => void;
@@ -274,7 +316,7 @@ function DayColumn({
         "flex min-h-[140px] flex-col transition-colors",
         day.isToday && "bg-slate-50",
         day.isPast && !day.isToday && "bg-slate-50/40",
-        dropActive && droppable && "bg-indigo-50/80 ring-2 ring-inset ring-indigo-300/50"
+        dropActive && droppable && plannerDropActiveClass
       )}
       onDragOver={
         droppable
@@ -338,7 +380,7 @@ function DayColumn({
           <li
             className={cn(
               "flex flex-1 items-center justify-center px-1 py-6 text-center text-xs",
-              droppable ? "rounded-lg border border-dashed border-indigo-200 text-indigo-400" : "text-slate-400"
+              droppable ? plannerDropHintClass : "text-slate-400"
             )}
           >
             {droppable && dropActive ? "Upuść tutaj" : "Brak"}
@@ -358,8 +400,11 @@ function DayColumn({
               }
               isDragging={draggingId === item.supplierId}
               canOrder={canOrder}
-              pending={pending}
+              isScopePending={isScopePending}
+              isPlanPending={isPlanPending}
               run={run}
+              onVacation={onVacation}
+              onEdit={onEdit}
               onOpen={
                 onOpenSupplier && !planningMode
                   ? () => onOpenSupplier(item.supplierId)
@@ -384,7 +429,10 @@ function PlannerCard({
   onOpen,
   canOrder,
   run,
-  pending,
+  isScopePending,
+  isPlanPending,
+  onVacation,
+  onEdit,
   onDragStart,
   onDragEnd,
 }: {
@@ -396,22 +444,17 @@ function PlannerCard({
   onOpen?: () => void;
   canOrder: boolean;
   run?: DailyPanelRunFn;
-  pending: boolean;
+  isScopePending: (supplierId: string) => boolean;
+  isPlanPending: boolean;
+  onVacation?: (supplierId: string) => void;
+  onEdit?: (supplierId: string) => void;
   onDragStart: () => void;
   onDragEnd: () => void;
 }) {
   const note = formatPlannerNote(item.notes);
   const todayStr = formatDateString(todayInWarsaw());
   const isOverdue = formatDateString(item.nextDate) < todayStr;
-
-  const markOrdered = () => {
-    if (!run) return;
-    run(
-      () => actionMarkOrdered(item.supplierId),
-      `Zamówione · ${item.supplierName}`,
-      "Oznaczanie jako zamówione…"
-    );
-  };
+  const rowPending = isScopePending(item.supplierId) || isPlanPending;
 
   const movedLabel = useMemo(() => {
     if (!isMoved) return null;
@@ -425,10 +468,9 @@ function PlannerCard({
         {planningMode ? (
           <span
             className="mt-0.5 cursor-grab text-slate-400 active:cursor-grabbing"
-            aria-hidden
             title="Przeciągnij"
           >
-            ⠿
+            <IconGripVertical size={16} aria-hidden />
           </span>
         ) : null}
         <div className="min-w-0 flex-1">
@@ -451,7 +493,7 @@ function PlannerCard({
   return (
     <li>
       <article
-        draggable={planningMode && !pending}
+        draggable={planningMode && !isPlanPending}
         onDragStart={
           planningMode
             ? (e) => {
@@ -463,12 +505,10 @@ function PlannerCard({
         }
         onDragEnd={planningMode ? onDragEnd : undefined}
         className={cn(
-          "overflow-hidden text-sm transition",
+          "text-sm transition",
           urgentCardClassName(isOverdue && !isMoved),
           isMoved && "border-amber-300/90 bg-white ring-1 ring-amber-200/80",
-          isDragging && "opacity-50",
-          !planningMode && !isOverdue && "hover:border-slate-300",
-          !planningMode && isOverdue && !isMoved && "hover:border-rose-300/90"
+          isDragging && "opacity-50"
         )}
       >
         {onOpen ? (
@@ -482,34 +522,19 @@ function PlannerCard({
         ) : (
           <div className="px-2.5 py-2">{body}</div>
         )}
-        {canOrder && run ? (
-          <div className="flex border-t border-slate-100 bg-slate-50/50">
-            <ButtonGroup
-              ariaLabel={`Zamówione — ${item.supplierName}`}
-              className="min-w-0 flex-1 rounded-none border-0 shadow-none"
-            >
-              <HoldToConfirmButton
-                label="Zamówione"
-                variant="primary"
-                disabled={pending}
-                className={buttonGroupItemClassName("h-8 flex-1 text-xs")}
-                onConfirm={markOrdered}
-              />
-              {onOpen ? (
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  disabled={pending}
-                  className={buttonGroupItemClassName(
-                    "h-8 flex-1 border-l border-slate-100 text-xs text-slate-600"
-                  )}
-                  onClick={onOpen}
-                >
-                  Szczegóły
-                </Button>
-              ) : null}
-            </ButtonGroup>
+        {canOrder && run && onVacation && onEdit ? (
+          <div className="border-t border-slate-100/80 bg-slate-50/50 px-2 py-1.5">
+            <ScheduleSupplierActionBar
+              compact
+              supplierId={item.supplierId}
+              supplierName={item.supplierName}
+              location={item.location}
+              pending={rowPending}
+              run={run}
+              onOpenSupplier={onOpen ?? (() => {})}
+              onVacation={() => onVacation(item.supplierId)}
+              onEdit={() => onEdit(item.supplierId)}
+            />
           </div>
         ) : null}
       </article>

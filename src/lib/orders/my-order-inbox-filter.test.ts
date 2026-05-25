@@ -1,59 +1,66 @@
 import { describe, expect, it } from "vitest";
-import { filterMyOrderRows, rowMatchesInboxFilter } from "./my-order-inbox-filter";
-import type { MyOrderRow } from "./my-order-presenter";
+import type { MyOrderRow } from "@/lib/orders/my-order-presenter";
+import {
+  partitionMyOrderRowsBySalesAction,
+  rowNeedsSalesAction,
+} from "@/lib/orders/my-order-inbox-filter";
 
 function row(partial: Partial<MyOrderRow> & Pick<MyOrderRow, "id">): MyOrderRow {
+  const { id, ...rest } = partial;
   return {
-    id: partial.id,
-    lineCount: 1,
-    lines: [],
+    id,
     kind: "zamowienie",
-    submittedLabel: "01.05.2026",
-    supplierName: "Dostawca",
-    product: "Produkt",
-    symbol: null,
+    requestKind: "zamowienie",
     statusTitle: "Zamówione",
     statusDetail: null,
-    timingLabel: null,
-    quantityLabel: "1 szt.",
-    progressLabel: null,
-    badgeVariant: "info",
-    rowColor: "#fff",
-    headline: "Zamówione",
-    headlineTone: "info",
-    subline: null,
-    sortPriority: 7,
-    acknowledgeMode: "none",
-    orderIds: [partial.id],
+    submittedLabel: "2026-01-01",
+    clientLabel: null,
+    lineCount: 1,
     pickupPendingCount: 0,
-    pickupPendingIds: [],
     pickupReadyTotal: 0,
     pickupAcknowledgedCount: 0,
-    ...partial,
-  };
+    acknowledgeMode: null,
+    timingLabel: null,
+    progressLabel: null,
+    headline: "Czekamy",
+    headlineTone: "neutral",
+    subline: null,
+    rowColor: "white",
+    badgeVariant: "blue",
+    ...rest,
+  } as MyOrderRow;
 }
 
-describe("my-order-inbox-filter", () => {
-  it("filtruje po statusie przed zamówieniem", () => {
-    const rows = [
-      row({ id: "a", statusTitle: "Przed zamówieniem", badgeVariant: "purple" }),
-      row({ id: "b", statusTitle: "Zamówione" }),
-    ];
-    const filtered = filterMyOrderRows(rows, "przed_zamowieniem");
-    expect(filtered).toHaveLength(1);
-    expect(filtered[0].id).toBe("a");
+describe("rowNeedsSalesAction", () => {
+  it("true przy odbiorze", () => {
+    expect(
+      rowNeedsSalesAction(
+        row({
+          id: "1",
+          acknowledgeMode: "pickup",
+          pickupPendingCount: 1,
+          statusTitle: "Do odbioru",
+        })
+      )
+    ).toBe(true);
   });
 
-  it("oznacza odbiór jako pickup", () => {
-    const pickup = row({
-      id: "p",
-      statusTitle: "Do odbioru",
+  it("false przy zamówionym bez akcji", () => {
+    expect(rowNeedsSalesAction(row({ id: "2", statusTitle: "Zamówione" }))).toBe(false);
+  });
+});
+
+describe("partitionMyOrderRowsBySalesAction", () => {
+  it("dzieli listę na potwierdzenie i resztę", () => {
+    const a = row({
+      id: "a",
       acknowledgeMode: "pickup",
       pickupPendingCount: 1,
-      sortPriority: 1,
-      headlineTone: "action",
+      statusTitle: "Do odbioru",
     });
-    expect(rowMatchesInboxFilter(pickup, "pickup")).toBe(true);
-    expect(rowMatchesInboxFilter(pickup, "zamowione")).toBe(false);
+    const b = row({ id: "b", statusTitle: "Zamówione" });
+    const { needsAction, inProgress } = partitionMyOrderRowsBySalesAction([b, a]);
+    expect(needsAction.map((r) => r.id)).toEqual(["a"]);
+    expect(inProgress.map((r) => r.id)).toEqual(["b"]);
   });
 });

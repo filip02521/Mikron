@@ -9,6 +9,8 @@ import {
   useState,
 } from "react";
 import { usePathname, useRouter } from "next/navigation";
+import { Button } from "@/components/ui/Button";
+import { salesUpdatesBannerClass } from "@/lib/ui/ontime-theme";
 
 const POLL_MS = 45_000;
 const AUTO_REFRESH_MS = 3 * 60_000;
@@ -153,10 +155,7 @@ export function SalesUpdatesBanner() {
   if (!ctx?.hasUpdates) return null;
 
   return (
-    <div
-      role="status"
-      className="mb-4 flex flex-col gap-3 rounded-xl border border-indigo-200/90 bg-[var(--primary-muted)] px-3 py-3 text-sm text-indigo-950 shadow-[var(--shadow-card)] sm:mb-6 sm:flex-row sm:items-center sm:justify-between sm:px-4"
-    >
+    <div role="status" className={salesUpdatesBannerClass}>
       <div>
         <p className="font-semibold">Są nowe informacje o zamówieniach</p>
         <p className="mt-0.5 text-xs text-indigo-800/90">
@@ -165,13 +164,9 @@ export function SalesUpdatesBanner() {
         </p>
       </div>
       <div className="flex flex-wrap items-center gap-2">
-        <button
-          type="button"
-          onClick={ctx.refreshNow}
-          className="min-h-10 cursor-pointer rounded-lg bg-indigo-600 px-4 py-2 text-xs font-semibold text-white hover:bg-indigo-700"
-        >
+        <Button type="button" size="sm" className="min-h-10 shrink-0" onClick={ctx.refreshNow}>
           Odśwież teraz
-        </button>
+        </Button>
       </div>
     </div>
   );

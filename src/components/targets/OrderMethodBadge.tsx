@@ -4,6 +4,12 @@ import {
   type OrderMethodKind,
 } from "@/lib/display-labels";
 import { cn } from "@/lib/cn";
+import {
+  IconGlobe,
+  IconMail,
+  IconPhone,
+  type StrokeIconProps,
+} from "@/components/icons/StrokeIcons";
 
 const STYLES: Record<OrderMethodKind, string> = {
   mail: "bg-sky-50 text-sky-800 border-sky-200",
@@ -12,11 +18,14 @@ const STYLES: Record<OrderMethodKind, string> = {
   other: "bg-slate-50 text-slate-600 border-slate-200",
 };
 
-const ICONS: Record<OrderMethodKind, string> = {
-  mail: "✉",
-  phone: "☎",
-  web: "🌐",
-  other: "·",
+const ICONS: Record<
+  OrderMethodKind,
+  ((props: StrokeIconProps) => React.ReactElement) | null
+> = {
+  mail: IconMail,
+  phone: IconPhone,
+  web: IconGlobe,
+  other: null,
 };
 
 export function OrderMethodBadge({
@@ -28,6 +37,7 @@ export function OrderMethodBadge({
 }) {
   const kind = orderMethodKind(notes);
   const label = orderMethodLabel(notes);
+  const Icon = ICONS[kind];
 
   return (
     <span
@@ -38,7 +48,7 @@ export function OrderMethodBadge({
       )}
       title={notes || label}
     >
-      <span aria-hidden>{ICONS[kind]}</span>
+      {Icon ? <Icon size={14} className="shrink-0 opacity-90" /> : null}
       {label}
     </span>
   );

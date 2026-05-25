@@ -26,6 +26,9 @@ import {
 } from "@/components/orders/EditIndividualRequestModal";
 import { editInitialFromForSomeoneGroup } from "@/lib/orders/individual-request-edit-ui";
 import { RequestGroupOverflowMenu } from "@/components/summary/RequestGroupOverflowMenu";
+import { DailyPanelSubsectionBar } from "@/components/summary/DailyPanelSubsectionBar";
+import { cn } from "@/lib/cn";
+import { rowPendingRingClass } from "@/lib/ui/ontime-theme";
 
 function groupKey(g: SummaryForSomeoneEnriched) {
   return `${g.supplierId}-${g.salesPersonId}`;
@@ -50,22 +53,24 @@ function SectionHelp() {
 
 export function ForSomeoneRequests({
   groups,
-  pending,
+  isScopePending,
   run,
   onOpenSupplier,
   statsBySupplierId = {},
   supplierStatsMode = {},
   suppliers = [],
   salesPeople = [],
+  embedded = false,
 }: {
   groups: SummaryForSomeoneEnriched[];
-  pending: boolean;
+  isScopePending: (scope: string) => boolean;
   run: DailyPanelRunFn;
   onOpenSupplier: (id: string) => void;
   statsBySupplierId?: Record<string, DeliveryStats>;
   supplierStatsMode?: Record<string, StatsMode>;
   suppliers?: { id: string; name: string }[];
   salesPeople?: { id: string; name: string }[];
+  embedded?: boolean;
 }) {
   const sorted = useMemo(() => sortForSomeoneGroups(groups), [groups]);
   const keys = useMemo(() => sorted.map(groupKey), [sorted]);
@@ -84,14 +89,55 @@ export function ForSomeoneRequests({
   const [cancelTarget, setCancelTarget] = useState<{
     orderIds: string[];
     headline: string;
+    scopeKey: string;
   } | null>(null);
   const [editTarget, setEditTarget] = useState<{
     orderIds: string[];
     initial: EditIndividualRequestInitial;
   } | null>(null);
 
+  const Wrapper = embedded ? "div" : Card;
+  const wrapperProps = embedded
+    ? { className: "overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm" }
+    : { padding: false as const };
+
+  const subsectionHeader = (
+    <DailyPanelSubsectionBar
+      title="Prośby handlowców"
+      description={`Prośby w kolejce dnia · ${groups.length} ${groups.length === 1 ? "grupa" : "grup"} · ${lineCount} ${lineCount === 1 ? "produkt" : "produktów"}`}
+      action={
+        <div className="flex items-center gap-2">
+          {keys.length > 1 ? (
+            <Button variant="ghost" size="sm" onClick={() => setAll(!allExpanded)}>
+              {allExpanded ? "Zwiń" : "Rozwiń"}
+            </Button>
+          ) : null}
+          <SectionHelp />
+        </div>
+      }
+    />
+  );
+
+  const legacyHeader = (
+    <CardHeader
+      inset
+      title="Prośby handlowców"
+      description={`Prośby w kolejce dnia · ${groups.length} ${groups.length === 1 ? "grupa" : "grup"} · ${lineCount} ${lineCount === 1 ? "produkt" : "produktów"}`}
+      action={
+        <div className="flex items-center gap-2">
+          {keys.length > 1 ? (
+            <Button variant="ghost" size="sm" onClick={() => setAll(!allExpanded)}>
+              {allExpanded ? "Zwiń" : "Rozwiń"}
+            </Button>
+          ) : null}
+          <SectionHelp />
+        </div>
+      }
+    />
+  );
+
   return (
-    <Card padding={false}>
+    <Wrapper {...wrapperProps}>
       <EditIndividualRequestModal
         open={editTarget !== null}
         mode="procurement"
@@ -118,38 +164,26 @@ export function ForSomeoneRequests({
         }
         confirmLabel="Anuluj prośbę"
         danger
-        pending={pending}
+        pending={cancelTarget ? isScopePending(cancelTarget.scopeKey) : false}
         onCancel={() => setCancelTarget(null)}
         onConfirm={() => {
           if (!cancelTarget) return;
-          const { orderIds } = cancelTarget;
+          const { orderIds, scopeKey } = cancelTarget;
           setCancelTarget(null);
           run(
             () => actionProcessIndividual(orderIds, "ANULOWANO"),
             "Anulowano prośbę",
-            "Anulowanie prośby…"
+            "Anulowanie prośby…",
+            { scope: scopeKey }
           );
         }}
       />
-      <CardHeader
-        inset
-        title="Prośby handlowców"
-        description={`${groups.length} ${groups.length === 1 ? "grupa" : "grup"} · ${lineCount} ${lineCount === 1 ? "produkt" : "produktów"}`}
-        action={
-          <div className="flex items-center gap-2">
-            {keys.length > 1 ? (
-              <Button variant="ghost" size="sm" onClick={() => setAll(!allExpanded)}>
-                {allExpanded ? "Zwiń" : "Rozwiń"}
-              </Button>
-            ) : null}
-            <SectionHelp />
-          </div>
-        }
-      />
+      {embedded ? subsectionHeader : legacyHeader}
 
       <ul className="space-y-2.5 p-3 sm:p-4">
         {sorted.map((g) => {
           const key = groupKey(g);
+          const groupPending = isScopePending(key);
           const isOpen = expanded.has(key);
           const ui = enrichForSomeoneGroup(g);
           const stats = statsBySupplierId[g.supplierId];
@@ -160,7 +194,13 @@ export function ForSomeoneRequests({
 
           return (
             <li key={key}>
-              <article className="rounded-xl border border-slate-200 bg-white">
+              <article
+                className={cn(
+                  "rounded-xl border border-slate-200 bg-white",
+                  groupPending && rowPendingRingClass
+                )}
+                aria-busy={groupPending}
+              >
                 <div className="px-3.5 py-3">
                   <div className="flex flex-wrap items-start justify-between gap-2">
                     <div className="min-w-0">
@@ -191,7 +231,7 @@ export function ForSomeoneRequests({
                       <Button
                         variant="secondary"
                         size="sm"
-                        disabled={pending}
+                        disabled={groupPending}
                         className="min-h-[2.125rem] shrink-0"
                         onClick={() =>
                           setExpanded((prev) => {
@@ -215,32 +255,34 @@ export function ForSomeoneRequests({
                       <HoldToConfirmButton
                         label="Główne"
                         variant="primary"
-                        disabled={pending || !g.supplierId}
+                        disabled={groupPending || !g.supplierId}
                         className="px-3 py-2"
                         onConfirm={() =>
                           run(
                             () => actionProcessIndividual(g.orderIds, "GLOWNE"),
                             "Oznaczono jako zamówienie główne",
-                            "Oznaczanie jako główne…"
+                            "Oznaczanie jako główne…",
+                            { scope: key }
                           )
                         }
                       />
                       <HoldToConfirmButton
                         label="Uzupełniające"
                         variant="outline"
-                        disabled={pending || !g.supplierId}
+                        disabled={groupPending || !g.supplierId}
                         className="border-l border-slate-200 px-3 py-2"
                         onConfirm={() =>
                           run(
                             () => actionProcessIndividual(g.orderIds, "POBOCZNE"),
                             "Oznaczono jako uzupełniające",
-                            "Oznaczanie jako uzupełniające…"
+                            "Oznaczanie jako uzupełniające…",
+                            { scope: key }
                           )
                         }
                       />
                       <RequestGroupOverflowMenu
                         headline={ui.headline}
-                        disabled={pending}
+                        disabled={groupPending}
                         iconOnly
                         onEdit={() =>
                           setEditTarget({
@@ -249,7 +291,11 @@ export function ForSomeoneRequests({
                           })
                         }
                         onCancel={() =>
-                          setCancelTarget({ orderIds: g.orderIds, headline: ui.headline })
+                          setCancelTarget({
+                            orderIds: g.orderIds,
+                            headline: ui.headline,
+                            scopeKey: key,
+                          })
                         }
                       />
                     </ButtonGroup>
@@ -296,6 +342,6 @@ export function ForSomeoneRequests({
           );
         })}
       </ul>
-    </Card>
+    </Wrapper>
   );
 }

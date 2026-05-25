@@ -1,7 +1,6 @@
 import { fetchSuppliersWithSchedules } from "@/lib/data/queries";
 import { SuppliersAdminClient } from "@/components/admin/SuppliersAdminClient";
-import { SuppliersHubNav } from "@/components/admin/SuppliersHubNav";
-import { PageHeader } from "@/components/ui/PageHeader";
+import { SuppliersHubShell } from "@/components/admin/SuppliersHubShell";
 import type { SupplierWithSchedule } from "@/types/database";
 
 export default async function DostawcyAdminPage() {
@@ -13,13 +12,13 @@ export default async function DostawcyAdminPage() {
   }
 
   return (
-    <>
-      <PageHeader
-        title="Karty dostawców"
-        description="Wersja administratora z usuwaniem. Codzienna edycja bez usuwania — w menu Dostawcy. Daty — w Terminach zamówień."
-      />
-      <SuppliersHubNav activeTab="cards" context="admin" />
+    <SuppliersHubShell
+      title="Karty dostawców"
+      description="Wersja administratora z usuwaniem. Daty w cyklu — w Terminach zamówień."
+      activeTab="cards"
+      context="admin"
+    >
       <SuppliersAdminClient initial={suppliers} allowDelete />
-    </>
+    </SuppliersHubShell>
   );
 }

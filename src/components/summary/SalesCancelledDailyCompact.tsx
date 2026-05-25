@@ -28,13 +28,14 @@ function noticeSummary(notices: SalesCancelledNotice[]): string {
 
 export function SalesCancelledDailyCompact({
   notices,
-  pending,
+  isScopePending,
   run,
 }: {
   notices: SalesCancelledNotice[];
-  pending: boolean;
+  isScopePending: (scope: string) => boolean;
   run: DailyPanelRunFn;
 }) {
+  const noticeScope = (n: SalesCancelledNotice) => `cancel-${n.orderIds[0] ?? n.person}`;
   const [open, setOpen] = useState(false);
   const summary = useMemo(() => noticeSummary(notices), [notices]);
 
@@ -125,16 +126,17 @@ export function SalesCancelledDailyCompact({
                         : "in_transit"
                     }
                     lines={n.lines}
-                    disabled={pending}
+                    disabled={isScopePending(noticeScope(n))}
                     onDone={(message, isError) => {
+                      const scope = { scope: noticeScope(n) };
                       if (isError) {
                         run(async () => {
                           throw new Error(message);
-                        }, message, "");
+                        }, message, "", scope);
                         return;
                       }
                       setOpen(false);
-                      run(async () => ({ success: true }), message, "Zapisywanie…");
+                      run(async () => ({ success: true }), message, "Zapisywanie…", scope);
                     }}
                   />
                 </div>
@@ -153,12 +155,13 @@ export function SalesCancelledDailyCompact({
                     variant="ghost"
                     size="sm"
                     className="mt-2 px-2 text-[11px] text-slate-600"
-                    disabled={pending}
+                    disabled={isScopePending(noticeScope(n))}
                     onClick={() =>
                       run(
                         () => actionAcknowledgeProcurementSalesCancel(n.orderIds),
                         "Ukryto",
-                        "Zapisywanie…"
+                        "Zapisywanie…",
+                        { scope: noticeScope(n) }
                       )
                     }
                   >

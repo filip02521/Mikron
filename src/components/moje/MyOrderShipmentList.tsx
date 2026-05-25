@@ -37,26 +37,21 @@ type CancelConfirmState = {
 };
 
 function pickInitialExpandedId(rows: MyOrderRow[]): string | null {
-  const action = rows.find(
-    (r) =>
-      r.acknowledgeMode === "pickup" ||
-      r.acknowledgeMode === "availability" ||
-      r.acknowledgeMode === "cancelled"
-  );
-  if (action) return action.id;
-  if (rows.length === 1) return rows[0].id;
-  if (rows.length <= 3) return rows[0].id;
+  const manyProducts = rows.find((r) => r.lineCount >= 3);
+  if (manyProducts) return manyProducts.id;
   return null;
 }
 
 export function MyOrderShipmentList({
   rows,
+  listKind,
   showProgress,
   canAcknowledge,
   cardIdPrefix,
   suppliers = [],
 }: {
   rows: MyOrderRow[];
+  listKind: "zamowienie" | "informacja";
   showProgress: boolean;
   canAcknowledge: boolean;
   cardIdPrefix?: (rowId: string) => string;
@@ -257,6 +252,7 @@ export function MyOrderShipmentList({
             key={row.id}
             domId={cardIdPrefix?.(row.id)}
             row={row}
+            listKind={listKind}
             showProgress={showProgress}
             canAcknowledge={canAcknowledge}
             pending={pending}

@@ -19,6 +19,7 @@ export function shouldShowOrderStatusDetail(row: MyOrderRow): boolean {
   if (row.statusTitle === "Zamówione" && row.headlineTone === "info") return false;
   if (row.statusTitle === "Przed zamówieniem") return false;
   if (row.statusTitle === "Oczekuje na dostawę") return false;
+  if (row.statusTitle === "Uzupełnianie danych") return false;
   return true;
 }
 

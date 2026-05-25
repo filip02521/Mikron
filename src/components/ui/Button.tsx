@@ -1,11 +1,11 @@
 import { forwardRef } from "react";
 import { cn } from "@/lib/cn";
+import { buttonPrimaryClass } from "@/lib/ui/ontime-theme";
 
 type Variant = "primary" | "secondary" | "ghost" | "danger" | "outline";
 
 const variants: Record<Variant, string> = {
-  primary:
-    "bg-[var(--primary)] text-white shadow-sm hover:bg-[var(--primary-hover)] active:bg-indigo-800",
+  primary: buttonPrimaryClass,
   secondary:
     "border border-[var(--card-border)] bg-[var(--card)] text-slate-700 shadow-sm hover:bg-slate-50",
   outline:

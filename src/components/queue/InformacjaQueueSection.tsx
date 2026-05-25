@@ -25,7 +25,13 @@ import {
   formatInformacjaBatchToast,
 } from "@/lib/orders/queue-batch-notify";
 
-export function InformacjaQueueSection({ orders }: { orders: IndividualOrder[] }) {
+export function InformacjaQueueSection({
+  orders,
+  embedded = false,
+}: {
+  orders: IndividualOrder[];
+  embedded?: boolean;
+}) {
   const router = useRouter();
   const [pending, start] = useTransition();
   const [pendingMessage, setPendingMessage] = useState<string | null>(null);
@@ -108,54 +114,34 @@ export function InformacjaQueueSection({ orders }: { orders: IndividualOrder[] }
       : `Powiadom zaznaczone (${selectedIds.length}) — ${emails} handlowców`;
   }, [orders, selectedIds]);
 
-  return (
-    <div className="relative space-y-4">
-      {pendingMessage ? (
-        <ActionLoadingOverlay message={pendingMessage} variant="section" />
-      ) : null}
-      {toast ? (
-        <Toast message={toast.text} tone={toast.tone} onDismiss={dismissToast} />
-      ) : null}
+  const headerAction =
+    selectedIds.length > 0 ? (
+      <Button
+        variant="primary"
+        size="sm"
+        disabled={pending}
+        onClick={() => markArrived(selectedIds)}
+      >
+        {selectedHeaderLabel}
+      </Button>
+    ) : orders.length > 1 ? (
+      <Button
+        variant="outline"
+        size="sm"
+        disabled={pending}
+        onClick={() => markArrived(orders.map((o) => o.id))}
+      >
+        {headerNotifyLabel}
+      </Button>
+    ) : null;
 
-      <Card padding={false} className="overflow-hidden border-sky-200">
-        <CardHeader
-          inset
-          title="Pozycje informacyjne"
-          description={
-            orders.length
-              ? `${orders.length} ${orders.length === 1 ? "pozycja" : "pozycji"} w kolejce`
-              : "Brak oczekujących"
-          }
-          action={
-            selectedIds.length > 0 ? (
-              <Button
-                variant="primary"
-                size="sm"
-                disabled={pending}
-                onClick={() => markArrived(selectedIds)}
-              >
-                {selectedHeaderLabel}
-              </Button>
-            ) : orders.length > 1 ? (
-              <Button
-                variant="outline"
-                size="sm"
-                disabled={pending}
-                onClick={() => markArrived(orders.map((o) => o.id))}
-              >
-                {headerNotifyLabel}
-              </Button>
-            ) : undefined
-          }
-        />
-
-        {!orders.length ? (
-          <EmptyState
-            title="Brak pozycji informacyjnych"
-            description="Nowe prośby „Informacja gdy dotarło” pojawią się tutaj po zgłoszeniu przez handlowca."
-          />
-        ) : (
-          <TableScroll className="px-0 pb-0">
+  const tableBlock = !orders.length ? (
+    <EmptyState
+      title="Brak pozycji informacyjnych"
+      description="Nowe prośby „Informacja gdy dotarło” pojawią się tutaj po zgłoszeniu przez handlowca."
+    />
+  ) : (
+    <TableScroll className="px-0 pb-0">
             <DataTable className="text-sm">
               <thead>
                 <tr>
@@ -295,8 +281,49 @@ export function InformacjaQueueSection({ orders }: { orders: IndividualOrder[] }
                 })}
               </tbody>
             </DataTable>
-          </TableScroll>
-        )}
+    </TableScroll>
+  );
+
+  if (embedded) {
+    return (
+      <div className="relative">
+        {pendingMessage ? (
+          <ActionLoadingOverlay message={pendingMessage} variant="section" />
+        ) : null}
+        {toast ? (
+          <Toast message={toast.text} tone={toast.tone} onDismiss={dismissToast} />
+        ) : null}
+        {headerAction ? (
+          <div className="flex justify-end border-b border-slate-100 px-3 py-2 sm:px-4">
+            {headerAction}
+          </div>
+        ) : null}
+        {tableBlock}
+      </div>
+    );
+  }
+
+  return (
+    <div className="relative space-y-4">
+      {pendingMessage ? (
+        <ActionLoadingOverlay message={pendingMessage} variant="section" />
+      ) : null}
+      {toast ? (
+        <Toast message={toast.text} tone={toast.tone} onDismiss={dismissToast} />
+      ) : null}
+
+      <Card padding={false} className="overflow-hidden border-sky-200">
+        <CardHeader
+          inset
+          title="Pozycje informacyjne"
+          description={
+            orders.length
+              ? `${orders.length} ${orders.length === 1 ? "pozycja" : "pozycji"} w kolejce`
+              : "Brak oczekujących"
+          }
+          action={headerAction ?? undefined}
+        />
+        {tableBlock}
       </Card>
     </div>
   );
