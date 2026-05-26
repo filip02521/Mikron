@@ -51,6 +51,7 @@ export type SupplierSummaryMeta = {
   computed_next_date: string | null;
   vacation_note: string | null;
   stats_mode: StatsMode;
+  subiekt_kh_id: number | null;
 };
 
 export type ForSomeoneLine = {
@@ -147,6 +148,7 @@ function toMeta(s: SupplierWithSchedule): SupplierSummaryMeta {
     computed_next_date: sch?.computed_next_date ?? null,
     vacation_note: sch?.vacation_note ?? null,
     stats_mode: (s.stats_mode ?? "LACZNIE") as StatsMode,
+    subiekt_kh_id: s.subiekt_kh_id ?? null,
   };
 }
 

@@ -15,6 +15,8 @@ import {
   RequestProductLinesEditor,
   initialProductLines,
 } from "@/components/orders/RequestProductLinesEditor";
+import { SubiektFeedbackAlert } from "@/components/subiekt/SubiektFeedbackAlert";
+import type { SubiektFeedback } from "@/lib/subiekt/feedback";
 
 export function QuickOrderModal({
   open,
@@ -37,12 +39,15 @@ export function QuickOrderModal({
   const [msg, setMsg] = useState<{ text: string; tone: "success" | "error" } | null>(
     null
   );
+  const [supplierSubiektFeedback, setSupplierSubiektFeedback] =
+    useState<SubiektFeedback | null>(null);
 
   const reset = () => {
     setSupplierId("");
     setSalesPersonId("");
     setLines(initialProductLines());
     setMsg(null);
+    setSupplierSubiektFeedback(null);
   };
 
   const submit = () => {
@@ -144,6 +149,10 @@ export function QuickOrderModal({
         </Field>
       </div>
 
+      {supplierSubiektFeedback ? (
+        <SubiektFeedbackAlert feedback={supplierSubiektFeedback} compact />
+      ) : null}
+
       <div className="space-y-2">
         <p className="text-xs font-semibold uppercase tracking-wider text-slate-500">
           Produkty
@@ -152,6 +161,12 @@ export function QuickOrderModal({
           lines={lines}
           onChange={setLines}
           requestKind={requestKind}
+          suppliers={suppliers}
+          onSupplierResolved={({ supplierId }) => {
+            setSupplierSubiektFeedback(null);
+            setSupplierId(supplierId);
+          }}
+          onSupplierResolveFeedback={setSupplierSubiektFeedback}
         />
       </div>
     </ModalShell>

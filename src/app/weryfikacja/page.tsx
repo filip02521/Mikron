@@ -17,7 +17,11 @@ export default async function WeryfikacjaPage() {
       fetchSuppliersWithSchedules(),
     ]);
     orders = o;
-    suppliers = s.map((x) => ({ id: x.id, name: x.name }));
+    suppliers = s.map((x) => ({
+      id: x.id,
+      name: x.name,
+      subiekt_kh_id: x.subiekt_kh_id ?? null,
+    }));
     salesPeople = await fetchSalesPeople();
   } catch {
     /* empty */

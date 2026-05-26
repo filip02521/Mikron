@@ -17,6 +17,7 @@ import { ShiftMenu } from "@/components/summary/ShiftMenu";
 import { actionFetchSupplierRecentHistory, actionMarkOrdered, actionShiftOrder } from "@/app/actions/admin";
 import type { DailyPanelRunFn } from "@/components/summary/useDailyPanelRunner";
 import { cn } from "@/lib/cn";
+import { SupplierSubiektLinkIndicator } from "@/components/admin/SupplierSubiektLinkIndicator";
 
 type HistoryRow = {
   action_at: string;
@@ -70,6 +71,7 @@ export function SupplierDrawer({
   const rowPending = isScopePending(supplier.id);
   const scope = { scope: supplier.id };
   const scheduleHref = `/lokalizacje/${supplier.location}?q=${encodeURIComponent(supplier.name)}`;
+  const cardsHref = `/zakupy/dostawcy?q=${encodeURIComponent(supplier.name)}&powiaz=1`;
 
   return (
     <>
@@ -181,6 +183,25 @@ export function SupplierDrawer({
           ) : null}
 
           <DrawerBlock title="Kontakt i zamówienia" className="mt-6">
+            <div className="mb-4 flex flex-wrap items-center gap-2 rounded-lg border border-slate-200 bg-slate-50/80 px-3 py-2.5">
+              <SupplierSubiektLinkIndicator subiektKhId={supplier.subiekt_kh_id} />
+              <div className="min-w-0 flex-1 text-sm">
+                {supplier.subiekt_kh_id != null ? (
+                  <p className="font-medium text-indigo-900">
+                    Powiązany z Subiektem (kh_Id {supplier.subiekt_kh_id})
+                  </p>
+                ) : (
+                  <p className="text-slate-700">
+                    Brak powiązania z Subiektem — auto-dostawca z ZD może nie trafić.
+                  </p>
+                )}
+              </div>
+              <Link href={cardsHref}>
+                <Button variant="secondary" size="sm">
+                  {supplier.subiekt_kh_id != null ? "Zmień powiązanie" : "Powiąż Subiekt"}
+                </Button>
+              </Link>
+            </div>
             <SupplierContactActions
               notes={supplier.notes}
               mails={supplier.mails}

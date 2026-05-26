@@ -27,6 +27,8 @@ import {
   suggestOrderOnDemandAfterFieldChange,
 } from "@/lib/orders/supplier-on-demand";
 import { Badge } from "@/components/ui/Badge";
+import { SupplierSubiektLinkField } from "@/components/admin/SupplierSubiektLinkField";
+import { SupplierSubiektLinkIndicator } from "@/components/admin/SupplierSubiektLinkIndicator";
 
 type FormState = {
   id?: string;
@@ -41,6 +43,7 @@ type FormState = {
   stock_raw: string;
   stats_mode: StatsMode;
   order_on_demand: boolean;
+  subiekt_kh_id: number | null;
 };
 
 const emptyForm = (): FormState => ({
@@ -55,6 +58,7 @@ const emptyForm = (): FormState => ({
   stock_raw: "2 MIESIĄCE",
   stats_mode: "LACZNIE",
   order_on_demand: false,
+  subiekt_kh_id: null,
 });
 
 function scheduleHref(location: SupplierLocation, name: string): string {
@@ -79,14 +83,14 @@ export function SuppliersAdminClient({
   const dismiss = useCallback(() => setToast(null), []);
   const [search, setSearch] = useState("");
   const [locationFilter, setLocationFilter] = useState<SupplierLocationFilter>("all");
+  const [formOpen, setFormOpen] = useState(false);
+  const [form, setForm] = useState<FormState>(emptyForm);
+  const [deleteTarget, setDeleteTarget] = useState<SupplierWithSchedule | null>(null);
 
   useEffect(() => {
     const q = searchParams.get("q")?.trim();
     if (q) setSearch(q);
   }, [searchParams]);
-  const [formOpen, setFormOpen] = useState(false);
-  const [form, setForm] = useState<FormState>(emptyForm);
-  const [deleteTarget, setDeleteTarget] = useState<SupplierWithSchedule | null>(null);
 
   const locationCounts = useMemo(() => countSuppliersByLocation(rows), [rows]);
 
@@ -109,9 +113,20 @@ export function SuppliersAdminClient({
       stock_raw: s.stock_raw ?? (s.stock != null ? String(s.stock) : ""),
       stats_mode: s.stats_mode,
       order_on_demand: defaultOrderOnDemandChecked(s),
+      subiekt_kh_id: s.subiekt_kh_id ?? null,
     });
     setFormOpen(true);
   };
+
+  useEffect(() => {
+    const q = searchParams.get("q")?.trim();
+    if (searchParams.get("powiaz") !== "1" || !q || formOpen) return;
+    const match =
+      rows.find((r) => r.name.toLowerCase() === q.toLowerCase()) ??
+      rows.find((r) => r.name.toLowerCase().includes(q.toLowerCase()));
+    if (match) startEdit(match);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- tylko wejście z linku ?powiaz=1
+  }, [searchParams, rows, formOpen]);
 
   const resetForm = () => {
     setForm(emptyForm());
@@ -204,7 +219,11 @@ export function SuppliersAdminClient({
           <Card>
             <CardHeader
               title={form.id ? "Edytuj dostawcę" : "Dodaj dostawcę"}
-              description="Zapas = na jaki okres robisz większe zamówienie (np. 2 miesiące)."
+              description={
+                form.id
+                  ? "Na górze formularza możesz powiązać kartę z kontrahentem Subiekt (auto-dostawca z ZD)."
+                  : "Zapas = na jaki okres robisz większe zamówienie (np. 2 miesiące)."
+              }
             />
             <form
               className="grid gap-4 sm:grid-cols-2"
@@ -213,6 +232,23 @@ export function SuppliersAdminClient({
                 save();
               }}
             >
+              {form.id ? (
+                <div className="sm:col-span-2">
+                  <SupplierSubiektLinkField
+                    supplierId={form.id}
+                    supplierName={form.name}
+                    subiektKhId={form.subiekt_kh_id}
+                    onLinked={(khId) => {
+                      setForm((f) => ({ ...f, subiekt_kh_id: khId }));
+                      setRows((list) =>
+                        list.map((r) =>
+                          r.id === form.id ? { ...r, subiekt_kh_id: khId } : r
+                        )
+                      );
+                    }}
+                  />
+                </div>
+              ) : null}
               <Field label="Nazwa dostawcy">
                 <Input
                   value={form.name}
@@ -342,9 +378,20 @@ export function SuppliersAdminClient({
           <CardHeader
             inset
             title={`Karty (${filtered.length}${locationFilter !== "all" || search.trim() ? ` z ${rows.length}` : ""})`}
-            description="Filtruj po lokalizacji i nazwie. Terminy — link w ostatniej kolumnie."
+            description="Kolumna Subiekt: ikona powiązania. Edytuj lub „Powiąż” — sekcja na górze formularza."
           />
           <div className="space-y-3 border-b border-slate-100 px-6 pb-4">
+            <p className="text-xs text-slate-500">
+              <span className="inline-flex items-center gap-1.5">
+                <SupplierSubiektLinkIndicator subiektKhId={1} className="scale-90" />
+                powiązany z Subiektem
+              </span>
+              <span className="mx-2 text-slate-300">·</span>
+              <span className="inline-flex items-center gap-1.5">
+                <SupplierSubiektLinkIndicator subiektKhId={null} className="scale-90" />
+                brak powiązania — ustaw ręcznie
+              </span>
+            </p>
             <SupplierLocationFilters
               value={locationFilter}
               onChange={setLocationFilter}
@@ -373,6 +420,7 @@ export function SuppliersAdminClient({
             <DataTable>
               <thead>
                 <tr>
+                  <th className="w-14 text-center">Subiekt</th>
                   <th>Nazwa</th>
                   <th>Lokalizacja</th>
                   <th>Sposób</th>
@@ -385,6 +433,9 @@ export function SuppliersAdminClient({
               <tbody>
                 {filtered.map((s) => (
                   <tr key={s.id}>
+                    <td className="w-14 text-center">
+                      <SupplierSubiektLinkIndicator subiektKhId={s.subiekt_kh_id} />
+                    </td>
                     <td>
                       <span className="flex flex-wrap items-center gap-2">
                         <span className="font-medium text-slate-900">{s.name}</span>
@@ -415,6 +466,15 @@ export function SuppliersAdminClient({
                     </td>
                     <td>
                       <p className="flex justify-end gap-1">
+                        {s.subiekt_kh_id == null ? (
+                          <Button
+                            variant="secondary"
+                            size="sm"
+                            onClick={() => startEdit(s)}
+                          >
+                            Powiąż
+                          </Button>
+                        ) : null}
                         <Button variant="ghost" size="sm" onClick={() => startEdit(s)}>
                           Edytuj
                         </Button>

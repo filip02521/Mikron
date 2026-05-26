@@ -15,6 +15,8 @@ import {
 } from "@/components/orders/request-product-lines";
 import { MAX_BATCH_ORDER_LINES } from "@/lib/security/text-limits";
 import { MAX_CLIENT_NAME_LEN } from "@/lib/orders/sales-client-label";
+import type { AppSupplierRef } from "@/lib/subiekt/match-supplier";
+import type { SubiektFeedback } from "@/lib/subiekt/feedback";
 
 export function RequestProductLinesEditor({
   lines,
@@ -24,6 +26,9 @@ export function RequestProductLinesEditor({
   addLabel = "+ Dodaj pozycję",
   showClientField = false,
   appearance = "default",
+  suppliers,
+  onSupplierResolved,
+  onSupplierResolveFeedback,
 }: {
   lines: ProductLineDraft[];
   onChange: (lines: ProductLineDraft[]) => void;
@@ -32,6 +37,13 @@ export function RequestProductLinesEditor({
   addLabel?: string;
   showClientField?: boolean;
   appearance?: "default" | "prosba";
+  suppliers?: AppSupplierRef[];
+  onSupplierResolved?: (result: {
+    supplierId: string;
+    supplierName: string;
+    documentNumber: string | null;
+  }) => void;
+  onSupplierResolveFeedback?: (feedback: SubiektFeedback | null) => void;
 }) {
   const canRemove = lines.length > minLines;
   const prosba = appearance === "prosba";
@@ -89,6 +101,9 @@ export function RequestProductLinesEditor({
             appearance={appearance}
             requestKind={requestKind}
             productFieldClassName={prosba ? undefined : "sm:col-span-2"}
+            suppliers={suppliers}
+            onSupplierResolved={onSupplierResolved}
+            onSupplierResolveFeedback={onSupplierResolveFeedback}
             value={{
               symbol: line.symbol,
               product: line.product,

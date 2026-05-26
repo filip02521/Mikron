@@ -383,6 +383,27 @@ export function IconLayoutPanel(props: StrokeIconProps) {
   );
 }
 
+/** Powiązanie z Subiektem (aktywne) */
+export function IconLink(props: StrokeIconProps) {
+  return (
+    <Svg {...props}>
+      <path d="M10 13a5 5 0 007.07 0l1.41-1.41a5 5 0 00-7.07-7.07L10 5.93" />
+      <path d="M14 11a5 5 0 00-7.07 0L5.52 12.41a5 5 0 007.07 7.07L14 18.07" />
+    </Svg>
+  );
+}
+
+/** Brak powiązania z Subiektem */
+export function IconLinkOff(props: StrokeIconProps) {
+  return (
+    <Svg {...props}>
+      <path d="M9 9l6 6" />
+      <path d="M10.5 6.5l1.41-1.41a5 5 0 017.07 7.07L16.5 13.5" />
+      <path d="M13.5 17.5l-1.41 1.41a5 5 0 01-7.07-7.07L7.5 10.5" />
+    </Svg>
+  );
+}
+
 export type DailySectionIconKind = "dzis" | "prosby" | "harmonogram" | "plan" | "hidden";
 
 const DAILY_SECTION_ICON_MAP: Record<

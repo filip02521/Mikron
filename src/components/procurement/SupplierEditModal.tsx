@@ -12,6 +12,7 @@ import {
   defaultOrderOnDemandChecked,
   suggestOrderOnDemandAfterFieldChange,
 } from "@/lib/orders/supplier-on-demand";
+import { SupplierSubiektLinkField } from "@/components/admin/SupplierSubiektLinkField";
 
 const LOCATIONS: { value: SupplierLocation; label: string }[] = [
   { value: "POLSKA", label: "Polska" },
@@ -34,6 +35,7 @@ function formFromSupplier(s: SupplierSummaryMeta | null) {
       stock_raw: "2 MIESIĄCE",
       stats_mode: "LACZNIE" as StatsMode,
       order_on_demand: false,
+      subiekt_kh_id: null as number | null,
     };
   }
   return {
@@ -54,6 +56,7 @@ function formFromSupplier(s: SupplierSummaryMeta | null) {
       interval_raw: s.interval_raw,
       extra_info: s.extra_info,
     }),
+    subiekt_kh_id: s.subiekt_kh_id ?? null,
   };
 }
 
@@ -123,6 +126,16 @@ export function SupplierEditModal({
       }
     >
       <div className="grid gap-3 sm:grid-cols-2">
+        {!isNew && form.id ? (
+          <div className="sm:col-span-2">
+            <SupplierSubiektLinkField
+              supplierId={form.id}
+              supplierName={form.name}
+              subiektKhId={form.subiekt_kh_id}
+              onLinked={(khId) => setForm((f) => ({ ...f, subiekt_kh_id: khId }))}
+            />
+          </div>
+        ) : null}
         <Field label="Nazwa" className="sm:col-span-2">
           <Input
             disabled={pending}

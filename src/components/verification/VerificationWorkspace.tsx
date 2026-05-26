@@ -27,6 +27,8 @@ import { ActionLoadingOverlay } from "@/components/ui/ActionLoadingOverlay";
 import { RequestKindPicker } from "@/components/ui/RequestKindPicker";
 import { SupplierPickerField } from "@/components/orders/SupplierPickerField";
 import { SubiektProductLineFields } from "@/components/subiekt/SubiektProductLineFields";
+import { SubiektFeedbackAlert } from "@/components/subiekt/SubiektFeedbackAlert";
+import type { SubiektFeedback } from "@/lib/subiekt/feedback";
 
 const VERIFICATION_INTRO =
   "Niekompletne prośby handlowców — uzupełnij dostawcę i produkt. Po zatwierdzeniu trafiają do panelu dziennego jako „Nowe”.";
@@ -39,7 +41,7 @@ export function VerificationWorkspace({
   layout = "page",
 }: {
   orders: IndividualOrder[];
-  suppliers: { id: string; name: string }[];
+  suppliers: { id: string; name: string; subiekt_kh_id?: number | null }[];
   salesPeople: { id: string; name: string }[];
   /** Wywołane gdy kolejka się opróżni (np. zamknięcie modala). */
   onQueueEmpty?: () => void;
@@ -67,6 +69,9 @@ export function VerificationWorkspace({
 
   const active = orders.find((o) => o.id === activeId) ?? null;
 
+  const [supplierSubiektFeedback, setSupplierSubiektFeedback] =
+    useState<SubiektFeedback | null>(null);
+
   const [form, setForm] = useState(() => ({
     supplierId: "",
     salesPersonId: "",
@@ -79,6 +84,7 @@ export function VerificationWorkspace({
 
   const loadOrder = useCallback((o: IndividualOrder) => {
     setActiveId(o.id);
+    setSupplierSubiektFeedback(null);
     setForm({
       supplierId: o.supplier_id ?? "",
       salesPersonId: o.sales_person_id,
@@ -251,6 +257,11 @@ export function VerificationWorkspace({
                         emptyLabel="Wybierz dostawcę"
                       />
                     </Field>
+                    {supplierSubiektFeedback ? (
+                      <div className="sm:col-span-2">
+                        <SubiektFeedbackAlert feedback={supplierSubiektFeedback} compact />
+                      </div>
+                    ) : null}
                     <Field label="Handlowiec">
                       <Select
                         value={form.salesPersonId}
@@ -282,6 +293,12 @@ export function VerificationWorkspace({
                   <SubiektProductLineFields
                     requestKind={form.requestKind}
                     productFieldClassName="sm:col-span-2"
+                    suppliers={suppliers}
+                    onSupplierResolved={({ supplierId }) => {
+                      setSupplierSubiektFeedback(null);
+                      setForm((f) => ({ ...f, supplierId }));
+                    }}
+                    onSupplierResolveFeedback={setSupplierSubiektFeedback}
                     value={{
                       symbol: form.symbol,
                       product: form.product,

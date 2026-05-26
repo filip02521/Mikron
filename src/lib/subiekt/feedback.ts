@@ -23,6 +23,7 @@ export type SubiektErrorCode =
   | "health_degraded"
   | "sql_not_configured"
   | "subiekt_unavailable"
+  | "supplier_from_product_unmapped"
   | "unknown";
 
 export type SubiektFeedbackTone = "info" | "warning" | "error";
@@ -125,6 +126,12 @@ const TEMPLATES: Record<SubiektErrorCode, FeedbackTemplate> = {
     message: "API Subiekta nie ma skonfiguowanego połączenia z bazą danych.",
     hint: "Skonfiguruj MSSQL po stronie usługi REST — bez SQL podpowiedzi nie zadziałają.",
     tone: "error",
+  },
+  supplier_from_product_unmapped: {
+    title: "Dostawca tylko w Subiekcie",
+    message: "Znaleziono ZD z tym towarem, ale kontrahent nie jest w bazie aplikacji.",
+    hint: "Wyszukaj i wybierz dostawcę ręcznie w polu powyżej.",
+    tone: "info",
   },
   subiekt_unavailable: {
     title: "Podpowiedzi Subiekt chwilowo niedostępne",

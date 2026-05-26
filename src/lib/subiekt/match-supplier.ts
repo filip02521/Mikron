@@ -1,6 +1,10 @@
 import type { SubiektKontrahent } from "@/lib/subiekt/types";
 
-export type AppSupplierRef = { id: string; name: string };
+export type AppSupplierRef = {
+  id: string;
+  name: string;
+  subiektKhId?: number | null;
+};
 
 function normalize(text: string): string {
   return text
@@ -17,11 +21,25 @@ function kontrahentLabels(k: SubiektKontrahent): string[] {
     .map((v) => normalize(v));
 }
 
-/** Dopasowanie kontrahenta Subiekt → dostawca w aplikacji (po nazwie / symbolu). */
+/** Szukaj dostawcy po zapisanym kh_Id (najpewniejsze). */
+export function findSupplierBySubiektKhId(
+  khId: number,
+  suppliers: AppSupplierRef[]
+): AppSupplierRef | null {
+  if (!Number.isFinite(khId)) return null;
+  return suppliers.find((s) => s.subiektKhId != null && s.subiektKhId === khId) ?? null;
+}
+
+/** Dopasowanie kontrahenta Subiekt → dostawca (najpierw kh_Id, potem nazwa). */
 export function matchSubiektKontrahentToSupplier(
   k: SubiektKontrahent,
   suppliers: AppSupplierRef[]
 ): string | null {
+  if (k.kh_Id != null) {
+    const byId = findSupplierBySubiektKhId(k.kh_Id, suppliers);
+    if (byId) return byId.id;
+  }
+
   const labels = kontrahentLabels(k);
   if (labels.length === 0) return null;
 
@@ -41,4 +59,39 @@ export function formatSubiektKontrahentLabel(k: SubiektKontrahent): string {
   const name = k.adr_NazwaPelna ?? k.adr_Nazwa ?? k.kh_Symbol ?? "Kontrahent";
   const sym = k.kh_Symbol && k.kh_Symbol !== name ? k.kh_Symbol : null;
   return sym ? `${sym} — ${name}` : name;
+}
+
+export function toAppSupplierRefs(
+  suppliers: Array<{ id: string; name: string; subiekt_kh_id?: number | null }>
+): AppSupplierRef[] {
+  return suppliers.map((s) => ({
+    id: s.id,
+    name: s.name,
+    subiektKhId: s.subiekt_kh_id ?? null,
+  }));
+}
+
+/** Ocena dopasowania nazwy (0–100) — do skryptu powiązań i podpowiedzi. */
+export function scoreSupplierKontrahentMatch(
+  supplierName: string,
+  k: SubiektKontrahent
+): number {
+  const sn = normalize(supplierName);
+  if (!sn) return 0;
+
+  let best = 0;
+  for (const label of kontrahentLabels(k)) {
+    if (label === sn) return 100;
+    if (sn.includes(label) || label.includes(sn)) {
+      const ratio = Math.min(label.length, sn.length) / Math.max(label.length, sn.length);
+      best = Math.max(best, Math.round(70 + ratio * 25));
+    }
+  }
+
+  const sym = k.kh_Symbol ? normalize(k.kh_Symbol) : "";
+  if (sym && (sn.includes(sym) || sym.includes(sn))) {
+    best = Math.max(best, 65);
+  }
+
+  return best;
 }

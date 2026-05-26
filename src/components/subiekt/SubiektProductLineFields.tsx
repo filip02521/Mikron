@@ -24,6 +24,7 @@ import {
   MAX_QUANTITY_LEN,
   MAX_SYMBOL_LEN,
 } from "@/lib/security/text-limits";
+import type { AppSupplierRef } from "@/lib/subiekt/match-supplier";
 import type { SubiektProduct } from "@/lib/subiekt/types";
 
 export type SubiektProductLineValue = {
@@ -42,6 +43,9 @@ export function SubiektProductLineFields({
   disabled,
   appearance = "default",
   productFieldClassName,
+  suppliers,
+  onSupplierResolved,
+  onSupplierResolveFeedback,
 }: {
   value: SubiektProductLineValue;
   onChange: (patch: Partial<SubiektProductLineValue>) => void;
@@ -49,6 +53,14 @@ export function SubiektProductLineFields({
   disabled?: boolean;
   appearance?: "default" | "prosba";
   productFieldClassName?: string;
+  /** Lista dostawców aplikacji — do auto-uzupełnienia po wyborze towaru z Subiekta. */
+  suppliers?: AppSupplierRef[];
+  onSupplierResolved?: (result: {
+    supplierId: string;
+    supplierName: string;
+    documentNumber: string | null;
+  }) => void;
+  onSupplierResolveFeedback?: (feedback: SubiektFeedback | null) => void;
 }) {
   const ref = useRef<HTMLDivElement>(null);
   const [enabled, setEnabled] = useState(false);
@@ -58,6 +70,10 @@ export function SubiektProductLineFields({
   const [items, setItems] = useState<SubiektProduct[]>([]);
   const [status, setStatus] = useState<"idle" | "loading">("idle");
   const [feedback, setFeedback] = useState<SubiektFeedback | null>(null);
+  const [supplierFeedback, setSupplierFeedback] = useState<SubiektFeedback | null>(
+    null
+  );
+  const [resolvingSupplier, setResolvingSupplier] = useState(false);
   const [, startTransition] = useTransition();
 
   const querySource = activeField === "symbol" ? value.symbol : value.product;
@@ -115,6 +131,34 @@ export function SubiektProductLineFields({
     onChange({ ...patch, subiektTwId: patch.subiektTwId });
     setFeedback(null);
     setOpen(false);
+
+    if (!suppliers?.length || !onSupplierResolved) return;
+
+    setResolvingSupplier(true);
+    setSupplierFeedback(null);
+    onSupplierResolveFeedback?.(null);
+    startTransition(async () => {
+      try {
+        const { actionSubiektResolveSupplierForProduct } = await import(
+          "@/app/actions/subiekt"
+        );
+        const res = await actionSubiektResolveSupplierForProduct(p, suppliers);
+        if (res.ok) {
+          onSupplierResolved({
+            supplierId: res.supplierId,
+            supplierName: res.supplierName,
+            documentNumber: res.documentNumber,
+          });
+          setSupplierFeedback(null);
+          onSupplierResolveFeedback?.(null);
+        } else {
+          setSupplierFeedback(res.feedback);
+          onSupplierResolveFeedback?.(res.feedback);
+        }
+      } finally {
+        setResolvingSupplier(false);
+      }
+    });
   };
 
   const manualPatch = (
@@ -248,10 +292,16 @@ export function SubiektProductLineFields({
 
           {!feedback ? (
             <p className="text-xs text-slate-400">
-              {isInformacja
-                ? "Wpisz symbol lub nazwę (min. 2 znaki) — po wyborze uzupełnimy pola prośby o dostępność."
-                : "Wpisz symbol lub nazwę (min. 2 znaki) — po wyborze uzupełnimy symbol, produkt i ilość."}
+              {resolvingSupplier
+                ? "Szukam dostawcy w ostatnich ZD Subiekta…"
+                : isInformacja
+                  ? "Wpisz symbol lub nazwę (min. 2 znaki) — po wyborze uzupełnimy pola i spróbujemy ustawić dostawcę z ZD."
+                  : "Wpisz symbol lub nazwę (min. 2 znaki) — po wyborze uzupełnimy pola i spróbujemy ustawić dostawcę z ZD."}
             </p>
+          ) : null}
+
+          {supplierFeedback ? (
+            <SubiektFeedbackAlert feedback={supplierFeedback} compact />
           ) : null}
 
           {showError ? <SubiektFeedbackAlert feedback={feedback} compact /> : null}

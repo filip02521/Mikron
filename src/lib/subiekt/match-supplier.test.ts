@@ -6,9 +6,17 @@ import {
 
 describe("matchSubiektKontrahentToSupplier", () => {
   const suppliers = [
-    { id: "uuid-1", name: "ABC Sp. z o.o." },
+    { id: "uuid-1", name: "ABC Sp. z o.o.", subiektKhId: 99 },
     { id: "uuid-2", name: "Inny Dostawca" },
   ];
+
+  it("preferuje zapisane subiektKhId", () => {
+    const id = matchSubiektKontrahentToSupplier(
+      { kh_Id: 99, adr_NazwaPelna: "Inna nazwa w Subiekcie" },
+      suppliers
+    );
+    expect(id).toBe("uuid-1");
+  });
 
   it("dopasowuje po nazwie pełnej", () => {
     const id = matchSubiektKontrahentToSupplier(

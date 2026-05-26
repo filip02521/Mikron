@@ -373,6 +373,7 @@ export async function fetchSupplierDeliveryContext() {
       id: s.id,
       name: s.name,
       stats_mode: (s.stats_mode ?? "LACZNIE") as import("@/types/database").StatsMode,
+      subiekt_kh_id: s.subiekt_kh_id ?? null,
     })),
     statsBySupplierId,
   };

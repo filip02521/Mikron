@@ -1,6 +1,8 @@
 "use server";
 
-import { requireAdmin, requireSubiektLookup } from "@/lib/auth";
+import { revalidatePath } from "next/cache";
+import { requireAdmin, requireSubiektLookup, requireSupplierManagement } from "@/lib/auth";
+import { createAdminClient } from "@/lib/supabase/admin";
 import {
   searchSubiektProducts,
   searchSubiektSuppliers,
@@ -25,6 +27,7 @@ import {
   matchSubiektKontrahentToSupplier,
   type AppSupplierRef,
 } from "@/lib/subiekt/match-supplier";
+import { lookupSupplierForSubiektProduct } from "@/lib/subiekt/product-supplier";
 import type { SubiektKontrahent, SubiektProduct } from "@/lib/subiekt/types";
 
 export async function actionGetSubiektStatus() {
@@ -98,6 +101,58 @@ export async function actionSubiektSuggestProducts(
 ): Promise<SubiektLookupResult<SubiektProduct>> {
   await requireSubiektLookup();
   return suggestProducts(query);
+}
+
+export type SubiektResolveSupplierResult =
+  | {
+      ok: true;
+      supplierId: string;
+      supplierName: string;
+      documentNumber: string | null;
+    }
+  | { ok: false; feedback: SubiektFeedback };
+
+/** Po wyborze towaru z Subiekta — dostawca z ostatniego ZD z tą pozycją. */
+export async function actionSubiektResolveSupplierForProduct(
+  product: SubiektProduct,
+  appSuppliers: AppSupplierRef[]
+): Promise<SubiektResolveSupplierResult> {
+  await requireSubiektLookup();
+  if (!isSubiektConfigured()) {
+    return { ok: false, feedback: getSubiektFeedback("not_configured") };
+  }
+
+  try {
+    const lookup = await lookupSupplierForSubiektProduct(product, appSuppliers);
+
+    if (lookup.status === "mapped") {
+      return {
+        ok: true,
+        supplierId: lookup.supplierId,
+        supplierName: lookup.supplierName,
+        documentNumber: lookup.documentNumber,
+      };
+    }
+
+    if (lookup.status === "unmapped") {
+      const nr = lookup.documentNumber ? ` (${lookup.documentNumber})` : "";
+      return {
+        ok: false,
+        feedback: getSubiektFeedback("supplier_from_product_unmapped", {
+          message: `W Subiekcie: ${lookup.subiektLabel}${nr} — wybierz odpowiednika w polu dostawcy.`,
+        }),
+      };
+    }
+
+    return {
+      ok: false,
+      feedback: getSubiektFeedback("not_found_supplier", {
+        message: "Nie znaleziono ZD z tym towarem — wybierz dostawcę ręcznie lub zostaw puste.",
+      }),
+    };
+  } catch (e) {
+    return { ok: false, feedback: feedbackFromException(e) };
+  }
 }
 
 async function suggestProducts(query: string): Promise<SubiektLookupResult<SubiektProduct>> {
@@ -176,6 +231,54 @@ export async function actionSubiektLookupSupplier(
 }
 
 /** Podpowiedzi dostawcy — lista app + Subiekt. */
+export async function actionSetSupplierSubiektKhId(
+  supplierId: string,
+  subiektKhId: number | null
+): Promise<{ ok: true } | { ok: false; feedback: SubiektFeedback }> {
+  await requireSupplierManagement();
+
+  if (subiektKhId != null && (!Number.isFinite(subiektKhId) || subiektKhId <= 0)) {
+    return {
+      ok: false,
+      feedback: getSubiektFeedback("unknown", {
+        message: "Nieprawidłowy identyfikator kontrahenta Subiekt.",
+      }),
+    };
+  }
+
+  const supabase = createAdminClient();
+
+  const { error } = await supabase
+    .from("suppliers")
+    .update({
+      subiekt_kh_id: subiektKhId,
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", supplierId);
+
+  if (error) {
+    if (error.message?.includes("subiekt_kh_id")) {
+      return {
+        ok: false,
+        feedback: getSubiektFeedback("unknown", {
+          message: "Brak kolumny subiekt_kh_id — uruchom migrację 026_supplier_subiekt_kh_id.sql w Supabase.",
+        }),
+      };
+    }
+    return {
+      ok: false,
+      feedback: feedbackFromException(new Error(error.message)),
+    };
+  }
+
+  revalidatePath("/admin/dostawcy");
+  revalidatePath("/zakupy/dostawcy");
+  revalidatePath("/podsumowanie");
+  revalidatePath("/prosba");
+
+  return { ok: true };
+}
+
 export async function actionSubiektSuggestSuppliers(
   query: string,
   appSuppliers: AppSupplierRef[]

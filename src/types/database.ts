@@ -32,6 +32,8 @@ export interface Supplier {
   stats_mode: StatsMode;
   /** Zamówienia tylko na zgłoszenie — bez stałego wpisu w planie tygodnia. */
   order_on_demand: boolean;
+  /** Kontrahent-dostawca w Subiekcie (kh_Id) — jawne powiązanie zamiast dopasowania po nazwie. */
+  subiekt_kh_id?: number | null;
 }
 
 export interface SupplierSchedule {

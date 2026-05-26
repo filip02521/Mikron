@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition, useCallback } from "react";
+import { useState, useTransition, useCallback, useMemo } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { actionAddIndividualOrders } from "@/app/actions/admin";
@@ -27,6 +27,9 @@ import { RequestCompletenessBanner } from "@/components/orders/RequestCompletene
 import { RequestProductLinesEditor } from "@/components/orders/RequestProductLinesEditor";
 import { ActionLoadingOverlay } from "@/components/ui/ActionLoadingOverlay";
 import { newProductLine } from "@/components/orders/request-product-lines";
+import { SubiektFeedbackAlert } from "@/components/subiekt/SubiektFeedbackAlert";
+import type { SubiektFeedback } from "@/lib/subiekt/feedback";
+import { toAppSupplierRefs } from "@/lib/subiekt/match-supplier";
 
 function groupCompletenessAssessment(
   group: Entry[],
@@ -122,7 +125,7 @@ export function OrderFormClient({
   delegatePeople,
   managerSelfId,
 }: {
-  suppliers: { id: string; name: string; stats_mode?: StatsMode }[];
+  suppliers: { id: string; name: string; stats_mode?: StatsMode; subiekt_kh_id?: number | null }[];
   salesPeople: { id: string; name: string }[];
   statsBySupplierId?: Record<string, DeliveryStats>;
   /** Zalogowany handlowiec — bez wyboru „dla kogo”. */
@@ -150,6 +153,25 @@ export function OrderFormClient({
     null
   );
   const dismissToast = useCallback(() => setMsg(null), []);
+  const [supplierSubiektFeedback, setSupplierSubiektFeedback] =
+    useState<SubiektFeedback | null>(null);
+
+  const supplierRefs = useMemo(() => toAppSupplierRefs(suppliers), [suppliers]);
+
+  const applySupplierFromSubiekt = useCallback(
+    (
+      supplierId: string,
+      groupIndex = 0
+    ) => {
+      setSupplierSubiektFeedback(null);
+      setGroups((g) =>
+        g.map((gr, i) =>
+          i === groupIndex ? gr.map((row) => ({ ...row, supplierId })) : gr
+        )
+      );
+    },
+    []
+  );
 
   const submit = () => {
     const entries: Entry[] = [];
@@ -361,6 +383,10 @@ export function OrderFormClient({
                   </p>
                 ) : null}
 
+                {supplierSubiektFeedback ? (
+                  <SubiektFeedbackAlert feedback={supplierSubiektFeedback} compact />
+                ) : null}
+
                 {requestKind === "zamowienie" && supplierId ? (
                   <SupplierLeadTimeHint
                     compact
@@ -378,6 +404,11 @@ export function OrderFormClient({
                   appearance="prosba"
                   addLabel="+ Kolejny produkt"
                   showClientField
+                  suppliers={supplierRefs}
+                  onSupplierResolved={({ supplierId }) =>
+                    applySupplierFromSubiekt(supplierId, 0)
+                  }
+                  onSupplierResolveFeedback={setSupplierSubiektFeedback}
                 />
 
                 <RequestCompletenessBanner
@@ -577,6 +608,11 @@ export function OrderFormClient({
               requestKind={requestKind}
               addLabel="+ Kolejny produkt w grupie"
               showClientField={Boolean(lockedSalesPerson)}
+              suppliers={supplierRefs}
+              onSupplierResolved={({ supplierId }) =>
+                applySupplierFromSubiekt(supplierId, gi)
+              }
+              onSupplierResolveFeedback={setSupplierSubiektFeedback}
             />
           </div>
         </Card>

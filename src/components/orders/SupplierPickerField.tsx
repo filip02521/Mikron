@@ -16,7 +16,11 @@ import {
 import { useDebouncedValue } from "@/hooks/useDebouncedValue";
 import type { SubiektFeedback } from "@/lib/subiekt/feedback";
 
-export type SupplierPickerOption = { id: string; name: string };
+export type SupplierPickerOption = {
+  id: string;
+  name: string;
+  subiektKhId?: number | null;
+};
 
 export function SupplierPickerField({
   suppliers,
@@ -83,7 +87,11 @@ export function SupplierPickerField({
     startTransition(async () => {
       const res = await actionSubiektSuggestSuppliers(
         debounced,
-        suppliers.map((s) => ({ id: s.id, name: s.name }))
+        suppliers.map((s) => ({
+          id: s.id,
+          name: s.name,
+          subiektKhId: s.subiektKhId ?? null,
+        }))
       );
       if (!res.ok) {
         setRemote([]);
