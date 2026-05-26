@@ -2,6 +2,11 @@
 
 import { revalidatePath } from "next/cache";
 import { getSessionUser, requireSalesTeamManagement } from "@/lib/auth";
+import { isAdmin } from "@/lib/auth-roles";
+import {
+  assertManagerCanUseGroupId,
+  canAccessSalesPerson,
+} from "@/lib/data/sales-group-access";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { assertUniqueSalesPersonLink } from "@/lib/users/sales-person-link";
 import {
@@ -13,6 +18,7 @@ import { isValidEmail } from "@/lib/security/text-limits";
 function revalidateTeamPaths() {
   revalidatePath("/zespol");
   revalidatePath("/zespol/handlowcy");
+  revalidatePath("/zespol/grupy");
   revalidatePath("/admin/handlowcy");
   revalidatePath("/admin/uzytkownicy");
 }
@@ -27,6 +33,7 @@ function generateTempPassword(): string {
 export async function actionCreateSalesTeamUser(form: {
   name: string;
   email: string;
+  groupId?: string | null;
 }): Promise<
   | {
       success: true;
@@ -37,7 +44,7 @@ export async function actionCreateSalesTeamUser(form: {
     }
   | { error: string }
 > {
-  await requireSalesTeamManagement();
+  const actor = await requireSalesTeamManagement();
 
   const name = form.name.trim();
   const email = form.email.trim().toLowerCase();
@@ -59,9 +66,29 @@ export async function actionCreateSalesTeamUser(form: {
     return { error: "Handlowiec z tym adresem e-mail już istnieje." };
   }
 
+  let groupId: string | null = form.groupId?.trim() ? form.groupId.trim() : null;
+  if (groupId) {
+    const { data: group } = await supabase
+      .from("sales_groups")
+      .select("id")
+      .eq("id", groupId)
+      .maybeSingle();
+    if (!group) return { error: "Wybrana grupa nie istnieje." };
+  } else {
+    groupId = null;
+  }
+
+  if (!isAdmin(actor.role)) {
+    try {
+      await assertManagerCanUseGroupId(actor, groupId);
+    } catch (e) {
+      return { error: e instanceof Error ? e.message : "Brak uprawnień do grupy." };
+    }
+  }
+
   const { data: person, error: personError } = await supabase
     .from("sales_people")
-    .insert({ name, email })
+    .insert({ name, email, group_id: groupId })
     .select("id, name")
     .single();
 
@@ -138,6 +165,13 @@ export async function actionResetSalesTeamUserPassword(
   if (personError) return { error: personError.message };
   if (!person) return { error: "Nie znaleziono handlowca." };
 
+  if (!isAdmin(current.role)) {
+    const allowed = await canAccessSalesPerson(current, salesPersonId);
+    if (!allowed) {
+      return { error: "Nie masz uprawnień do tego handlowca." };
+    }
+  }
+
   const { data: profile, error: profileError } = await supabase
     .from("profiles")
     .select("id, email, role, sales_person_id")
@@ -188,7 +222,11 @@ export async function actionResetSalesTeamUserPassword(
 export async function actionGenerateSalesTeamInviteLink(
   salesPersonId: string
 ): Promise<{ success: true; invite: SalesInviteLinkResult } | { error: string }> {
-  await requireSalesTeamManagement();
+  const actor = await requireSalesTeamManagement();
+  if (!isAdmin(actor.role)) {
+    const allowed = await canAccessSalesPerson(actor, salesPersonId);
+    if (!allowed) return { error: "Nie masz uprawnień do tego handlowca." };
+  }
   const supabase = createAdminClient();
   const result = await generateSalesPersonInviteLink(supabase, salesPersonId);
   if ("error" in result) return { error: result.error };

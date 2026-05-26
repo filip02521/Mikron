@@ -1,26 +1,27 @@
 import { Suspense } from "react";
-import { fetchSalesPeople, fetchSupplierDeliveryContext } from "@/lib/data/queries";
+import { fetchSalesPeople, fetchSupplierFormContext } from "@/lib/data/queries";
 import { OrderFormClient } from "@/components/orders/OrderFormClient";
 import { getSessionUser } from "@/lib/auth";
 import { resolveSalesPersonForUser } from "@/lib/auth/sales-person";
 import { resolvePreviewSalesPerson } from "@/lib/auth/resolve-preview-sales-person";
 import { isSalesManager } from "@/lib/auth-roles";
+import {
+  filterRowsByGroupScope,
+  getManagedGroupIdsForUser,
+} from "@/lib/data/sales-group-access";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { SalesAccountLinkRequired } from "@/components/sales/SalesAccountLinkRequired";
 import { Alert } from "@/components/ui/Alert";
-import { resolveProsbaSupplierId } from "@/lib/orders/prosba-url";
 
 export default async function ProsbaPage({
   searchParams,
 }: {
-  searchParams: Promise<{ dla?: string; dostawca?: string }>;
+  searchParams: Promise<{ dla?: string }>;
 }) {
-  const { dla: delegateId, dostawca: dostawcaParam } = await searchParams;
-  let suppliers: Awaited<
-    ReturnType<typeof fetchSupplierDeliveryContext>
-  >["suppliers"] = [];
+  const { dla: delegateId } = await searchParams;
+  let suppliers: Awaited<ReturnType<typeof fetchSupplierFormContext>>["suppliers"] = [];
   let statsBySupplierId: Awaited<
-    ReturnType<typeof fetchSupplierDeliveryContext>
+    ReturnType<typeof fetchSupplierFormContext>
   >["statsBySupplierId"] = {};
   let salesPeople: { id: string; name: string }[] = [];
   let lockedSalesPerson: { id: string; name: string } | null = null;
@@ -29,10 +30,9 @@ export default async function ProsbaPage({
   let managerSelfId: string | null = null;
 
   try {
-    const ctx = await fetchSupplierDeliveryContext();
+    const ctx = await fetchSupplierFormContext();
     suppliers = ctx.suppliers;
     statsBySupplierId = ctx.statsBySupplierId;
-    salesPeople = await fetchSalesPeople();
   } catch {
     /* empty */
   }
@@ -46,14 +46,34 @@ export default async function ProsbaPage({
       managerSelfId = own?.id ?? null;
 
       if (isManager) {
+        const scope = await getManagedGroupIdsForUser(user);
+        const scoped = filterRowsByGroupScope(
+          (await fetchSalesPeople()).map((p) => ({
+            id: p.id,
+            name: p.name,
+            groupId: (p.group_id as string | null) ?? null,
+          })),
+          scope
+        );
+        salesPeople = scoped.map((p) => ({ id: p.id, name: p.name }));
+
         if (delegateId) {
-          lockedSalesPerson = await resolvePreviewSalesPerson(delegateId);
+          lockedSalesPerson = await resolvePreviewSalesPerson(delegateId, user);
         } else {
           lockedSalesPerson = own;
         }
       } else {
+        salesPeople = (await fetchSalesPeople()).map((p) => ({
+          id: p.id,
+          name: p.name,
+        }));
         lockedSalesPerson = own;
       }
+    } else {
+      salesPeople = (await fetchSalesPeople()).map((p) => ({
+        id: p.id,
+        name: p.name,
+      }));
     }
   } catch {
     /* empty */
@@ -65,6 +85,21 @@ export default async function ProsbaPage({
         title="Nowa prośba"
         description="Formularz jest dostępny po powiązaniu konta z kartą handlowca."
       />
+    );
+  }
+
+  if (isManager && delegateId && !lockedSalesPerson) {
+    return (
+      <>
+        <PageHeader title="Nowa prośba" description="Nie znaleziono wybranego handlowca." />
+        <Alert tone="error">
+          Sprawdź link lub wybierz osobę z{" "}
+          <a href="/zespol" className="font-medium text-red-800 underline">
+            podglądu zespołu
+          </a>
+          .
+        </Alert>
+      </>
     );
   }
 
@@ -87,20 +122,7 @@ export default async function ProsbaPage({
     );
   }
 
-  if (isManager && delegateId && !lockedSalesPerson) {
-    return (
-      <>
-        <PageHeader title="Nowa prośba" description="Nie znaleziono wybranego handlowca." />
-        <Alert tone="error">Sprawdź link lub wybierz osobę z listy zespołu.</Alert>
-      </>
-    );
-  }
-
   const delegatePeople = isManager ? salesPeople : [];
-  const initialSupplierId = resolveProsbaSupplierId(
-    dostawcaParam,
-    suppliers.map((s) => s.id)
-  );
 
   return (
     <div className="mx-auto max-w-3xl">
@@ -119,11 +141,8 @@ export default async function ProsbaPage({
           lockedSalesPerson={lockedSalesPerson}
           singleGroup
           submitForOther={isManager && lockedSalesPerson.id !== managerSelfId}
-          initialSupplierId={initialSupplierId}
           delegatePeople={
-            isManager && managerSelfId && delegatePeople.length > 0
-              ? delegatePeople
-              : undefined
+            isManager && delegatePeople.length > 0 ? delegatePeople : undefined
           }
           managerSelfId={managerSelfId ?? undefined}
         />
@@ -132,7 +151,6 @@ export default async function ProsbaPage({
           suppliers={suppliers}
           statsBySupplierId={statsBySupplierId}
           salesPeople={salesPeople}
-          initialSupplierId={initialSupplierId}
         />
       )}
       </Suspense>

@@ -109,11 +109,16 @@ export function SupplierEditModal({
       open
       onClose={onClose}
       title={isNew ? "Nowy dostawca" : `Edycja — ${supplier?.name ?? ""}`}
-      size="md"
+      size="lg"
       tier="raised"
       loadingMessage={pendingMessage}
       disableBackdropClose={pending}
       bodyClassName="px-5 py-4 sm:px-6"
+      description={
+        isNew
+          ? undefined
+          : "Przewijaj pola w oknie — nagłówek i przyciski Zapisz / Anuluj pozostają na miejscu."
+      }
       footer={
         <>
           <Button variant="ghost" disabled={pending} onClick={onClose}>

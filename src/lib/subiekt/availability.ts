@@ -50,7 +50,7 @@ function onlineAvailability(durationMs?: number): SubiektAvailability {
     reachable: true,
     checkedAt: Date.now(),
     shortLabel: "Subiekt: połączony",
-    message: `Połączenie z Subiektem działa${ms} — terminy ZD są aktualizowane.`,
+    message: `Połączenie z Subiektem działa${ms} — terminy ZD (tylko u powiązanego dostawcy) odświeżamy co ok. 2 godziny.`,
   };
 }
 

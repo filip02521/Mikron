@@ -359,17 +359,34 @@ export async function fetchDeliveryStats() {
   return data ?? [];
 }
 
+/** Lekka lista dostawców do pól wyboru (bez harmonogramów). */
+export async function fetchSuppliersForForm() {
+  if (!hasSupabaseConfig()) return [];
+  const supabase = createAdminClient();
+  const { data, error } = await supabase
+    .from("suppliers")
+    .select("id, name, stats_mode, subiekt_kh_id")
+    .order("name");
+  if (error) throw new Error(error.message);
+  return (data ?? []).map((s) => ({
+    id: s.id,
+    name: s.name,
+    stats_mode: (s.stats_mode ?? "LACZNIE") as import("@/types/database").StatsMode,
+    subiekt_kh_id: s.subiekt_kh_id ?? null,
+  }));
+}
+
 /** Dostawcy + statystyki czasów realizacji (formularze, panel dzienny). */
-export async function fetchSupplierDeliveryContext() {
-  const [schedules, statsRows] = await Promise.all([
-    fetchSuppliersWithSchedules(),
+export async function fetchSupplierDeliveryContext(options?: { lightSuppliers?: boolean }) {
+  const [supplierRows, statsRows] = await Promise.all([
+    options?.lightSuppliers ? fetchSuppliersForForm() : fetchSuppliersWithSchedules(),
     fetchDeliveryStats(),
   ]);
   const statsBySupplierId = Object.fromEntries(
     statsRows.map((s) => [s.supplier_id, s])
   );
   return {
-    suppliers: schedules.map((s) => ({
+    suppliers: supplierRows.map((s) => ({
       id: s.id,
       name: s.name,
       stats_mode: (s.stats_mode ?? "LACZNIE") as import("@/types/database").StatsMode,
@@ -377,6 +394,11 @@ export async function fetchSupplierDeliveryContext() {
     })),
     statsBySupplierId,
   };
+}
+
+/** Prośby handlowca — tylko pola potrzebne w formularzu (szybsze SSR). */
+export async function fetchSupplierFormContext() {
+  return fetchSupplierDeliveryContext({ lightSuppliers: true });
 }
 
 export async function fetchNormalHistory(limit?: number) {

@@ -27,10 +27,6 @@ export function myOrderCollapsedSubline(row: MyOrderRow): string | null {
     return row.subline;
   }
 
-  if (row.headlineTone === "warning" && row.timingLabel) {
-    return row.timingLabel.replace(" · po terminie", "").trim() || null;
-  }
-
   return null;
 }
 
@@ -68,12 +64,7 @@ export function myOrderCollapsedMetaFields(
 
   if (row.clientLabel && row.lineCount <= 1) pick.add("Klient");
 
-  if (row.headlineTone === "warning" || row.timingLabel?.includes("po terminie")) {
-    pick.add("Termin");
-    pick.add("Szacunek");
-  }
-
-  if (row.kind === "informacja" && row.timingLabel) {
+  if (row.timingLabel?.trim()) {
     pick.add("Termin");
     pick.add("Szacunek");
   }
@@ -117,23 +108,33 @@ export type MyOrderExpandContext = {
   showGroupPickup: boolean;
 };
 
+/** Każda prośba z pozycjami jest zwijana — lista towaru dopiero po rozwinięciu. */
 export function myOrderNeedsExpand(row: MyOrderRow, ctx: MyOrderExpandContext): boolean {
-  if (ctx.listKind === "zamowienie" && row.lineCount >= 2) return true;
-  if (ctx.listKind === "informacja" && row.lineCount >= 2) return true;
+  if (row.lineCount > 0) return true;
   if (myOrderExpandedNotes(row)) return true;
   if (ctx.showGroupPickup) return true;
   return false;
 }
 
-/** Zwinięty podgląd produktów: pełna lista (1–3) lub tylko skrót. */
+/** @deprecated Lista produktów tylko w panelu rozwinięcia — zawsze skrót na wierszu. */
 export function myOrderCollapsedProductMode(
+  _row: MyOrderRow,
+  _listKind: MyOrderListKind
+): "full" | "summary" {
+  return "summary";
+}
+
+/** Krótki opis liczby pozycji na zwiniętym wierszu (bez nazw towaru). */
+export function myOrderCollapsedProductSummary(
   row: MyOrderRow,
   listKind: MyOrderListKind
-): "full" | "summary" {
-  if (row.lineCount > 3) return "summary";
-  if (listKind === "zamowienie" && row.lineCount >= 2) return "summary";
-  if (listKind === "informacja" && row.lineCount >= 2) return "summary";
-  return "full";
+): string {
+  const n = row.lineCount;
+  if (n <= 0) return "";
+  if (listKind === "informacja") {
+    return n === 1 ? "1 pozycja" : `${n} ${pluralPozycje(n)}`;
+  }
+  return n === 1 ? "1 produkt" : `${n} ${pluralProdukty(n)}`;
 }
 
 function pluralPozycje(n: number): string {
@@ -164,7 +165,5 @@ export function myOrderExpandHint(row: MyOrderRow, ctx: MyOrderExpandContext): s
   if (myOrderExpandedNotes(row)) {
     return row.kind === "informacja" ? "Rozwiń wyjaśnienie" : "Rozwiń wyjaśnienie statusu";
   }
-  if (n > 3) return "Rozwiń listę produktów";
-  if (n > 1) return "Rozwiń pozycje";
-  return "Rozwiń szczegóły";
+  return ctx.listKind === "informacja" ? "Rozwiń pozycję" : "Rozwiń produkt";
 }

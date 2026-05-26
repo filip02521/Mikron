@@ -74,6 +74,7 @@ export function MyOrderArchiveSection({
         <div>
           {visibleRows.length > 0 ? (
             <MyOrderShipmentList
+              embedded
               rows={visibleRows}
               listKind={visibleRows[0]?.kind === "informacja" ? "informacja" : "zamowienie"}
               showProgress={false}

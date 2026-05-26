@@ -26,6 +26,18 @@ describe("describeVerificationGaps", () => {
     expect(text).toContain("ilość");
   });
 
+  it("pending supplier — komunikat o dopasowaniu w tle", () => {
+    const text = describeVerificationGaps({
+      ...base,
+      supplier_resolve_pending: true,
+      symbol: "ABC",
+      products: "Test",
+      quantity: "1",
+    });
+    expect(text).toContain("dopasowuje dostawcę");
+    expect(text).not.toContain("Brakuje:");
+  });
+
   it("nie wymaga ilości dla informacji", () => {
     const text = describeVerificationGaps({
       ...base,

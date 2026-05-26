@@ -1,3 +1,4 @@
+import { findSupplierBySubiektKhIdPreferCanonical } from "@/lib/subiekt/dedupe-suppliers-by-kh";
 import type { SubiektKontrahent } from "@/lib/subiekt/types";
 
 export type AppSupplierRef = {
@@ -27,7 +28,7 @@ export function findSupplierBySubiektKhId(
   suppliers: AppSupplierRef[]
 ): AppSupplierRef | null {
   if (!Number.isFinite(khId)) return null;
-  return suppliers.find((s) => s.subiektKhId != null && s.subiektKhId === khId) ?? null;
+  return findSupplierBySubiektKhIdPreferCanonical(khId, suppliers);
 }
 
 /** Dopasowanie kontrahenta Subiekt → dostawca (najpierw kh_Id, potem nazwa). */

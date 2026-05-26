@@ -1,31 +1,48 @@
 import { requireSalesTeamManagement } from "@/lib/auth";
 import { resolveSalesPersonForUser } from "@/lib/auth/sales-person";
-import { fetchSalesPeopleAdmin } from "@/lib/data/sales-people-admin";
+import { fetchSalesGroups } from "@/lib/data/sales-groups";
+import { fetchSalesPeopleAdminForUser } from "@/lib/data/sales-people-admin";
+import { filterGroupsByScope, getManagedGroupIdsForUser } from "@/lib/data/sales-group-access";
+import { resolveSalesTeamUiContext, salesTeamPageCopy } from "@/lib/sales/team-ui";
 import { SalesTeamOverview } from "@/components/sales/SalesTeamOverview";
+import { SalesTeamSubnav } from "@/components/sales/SalesTeamSubnav";
 import { SalesTeamWorkspace } from "@/components/sales/SalesTeamWorkspace";
-import Link from "next/link";
-import { Button } from "@/components/ui/Button";
 
 export default async function ZespolPage() {
   const user = await requireSalesTeamManagement();
-  const [rows, ownSalesPerson] = await Promise.all([
-    fetchSalesPeopleAdmin(),
-    resolveSalesPersonForUser(user),
-  ]);
+  const scope = await getManagedGroupIdsForUser(user);
+  const allGroups = await fetchSalesGroups();
+  const groups = filterGroupsByScope(allGroups, scope);
+  const teamUi = await resolveSalesTeamUiContext(
+    user,
+    groups.map((g) => g.name)
+  );
+  const copy = salesTeamPageCopy(teamUi, "overview");
+
+  let rows: Awaited<ReturnType<typeof fetchSalesPeopleAdminForUser>> = [];
+  let loadError: string | null = null;
+  try {
+    rows = await fetchSalesPeopleAdminForUser(user);
+  } catch (e) {
+    loadError =
+      e instanceof Error ? e.message : "Nie udało się wczytać zespołu. Sprawdź migrację 028_sales_groups.sql.";
+  }
+  const ownSalesPerson = await resolveSalesPersonForUser(user);
 
   return (
-    <SalesTeamWorkspace
-      title="Podgląd zespołu"
-      description="Szybki dostęp do panelu każdego handlowca i składanie prośb w jego imieniu."
-      action={
-        <Link href="/zespol/handlowcy">
-          <Button variant="secondary" size="sm">
-            Handlowcy i konta
-          </Button>
-        </Link>
-      }
-    >
-      <SalesTeamOverview rows={rows} managerSalesPersonId={ownSalesPerson?.id ?? null} />
+    <SalesTeamWorkspace title={copy.title} description={copy.description}>
+      <SalesTeamSubnav />
+      {loadError ? (
+        <p className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+          {loadError}
+        </p>
+      ) : null}
+      <SalesTeamOverview
+        rows={rows}
+        groups={groups}
+        managerSalesPersonId={ownSalesPerson?.id ?? null}
+        teamUi={teamUi}
+      />
     </SalesTeamWorkspace>
   );
 }

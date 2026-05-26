@@ -10,6 +10,10 @@ import {
   type RequestCompleteness,
   type RequestDraft,
 } from "@/lib/orders/request-completeness";
+import {
+  salesSubmitUserHint,
+  type SalesRequestSubmitPlan,
+} from "@/lib/orders/sales-request-submit";
 import { cn } from "@/lib/cn";
 
 function dedupeFeedbacks(items: SubiektFeedback[]): SubiektFeedback[] {
@@ -30,6 +34,7 @@ export function RequestFormStatusPanel({
   forcedAssessment,
   subiektFeedbacks = [],
   resolvingSupplier = false,
+  salesSubmitPlan,
   leadTime,
   scheduleHint,
   formMessage,
@@ -40,6 +45,8 @@ export function RequestFormStatusPanel({
   forcedAssessment?: RequestCompleteness | null;
   subiektFeedbacks?: Array<SubiektFeedback | null | undefined>;
   resolvingSupplier?: boolean;
+  /** Formularz prośby handlowca — komunikat bez czekania na dostawcę. */
+  salesSubmitPlan?: SalesRequestSubmitPlan | null;
   leadTime?: {
     stats: DeliveryStats | null | undefined;
     statsMode: StatsMode;
@@ -89,6 +96,26 @@ export function RequestFormStatusPanel({
         </p>
       ) : null}
 
+      {salesSubmitPlan && !resolvingSupplier
+        ? (() => {
+            const hint = salesSubmitUserHint(salesSubmitPlan, requestKind);
+            if (!hint) return null;
+            return (
+              <div
+                className={cn(
+                  "rounded-lg border px-3 py-2.5 text-sm",
+                  hint.tone === "success"
+                    ? "border-emerald-200 bg-emerald-50 text-emerald-950"
+                    : "border-amber-200 bg-amber-50 text-amber-950"
+                )}
+              >
+                <p className="font-semibold">{hint.title}</p>
+                <p className="mt-1 leading-relaxed opacity-90">{hint.detail}</p>
+              </div>
+            );
+          })()
+        : null}
+
       {alerts.map((feedback, i) => (
         <SubiektFeedbackAlert key={`${feedback.tone}-${i}`} feedback={feedback} compact />
       ))}
@@ -102,12 +129,14 @@ export function RequestFormStatusPanel({
         />
       ) : null}
 
-      <RequestCompletenessBanner
-        embedded
-        draft={draft}
-        requestKind={requestKind}
-        forcedAssessment={forcedAssessment}
-      />
+      {!salesSubmitPlan ? (
+        <RequestCompletenessBanner
+          embedded
+          draft={draft}
+          requestKind={requestKind}
+          forcedAssessment={forcedAssessment}
+        />
+      ) : null}
     </div>
   );
 }

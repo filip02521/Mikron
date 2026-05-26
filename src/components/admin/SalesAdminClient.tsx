@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState, useTransition, useCallback } from "react";
 import type { SalesPersonAdminRow } from "@/lib/data/sales-people-admin";
+import type { SalesGroupRow } from "@/lib/data/sales-groups";
 import {
   actionUpsertSalesPerson,
   actionDeleteSalesPerson,
@@ -18,7 +19,7 @@ import { TempPasswordDialog } from "@/components/sales/TempPasswordDialog";
 import { InviteLinkDialog } from "@/components/admin/InviteLinkDialog";
 import type { SalesInviteLinkResult } from "@/lib/users/sales-invite";
 import { Card, CardHeader } from "@/components/ui/Card";
-import { Field, Input } from "@/components/ui/Field";
+import { Field, Input, Select } from "@/components/ui/Field";
 import { Button } from "@/components/ui/Button";
 import { Toast } from "@/components/ui/Toast";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
@@ -26,17 +27,22 @@ import { DataTable, TableScroll } from "@/components/ui/DataTable";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { Badge } from "@/components/ui/Badge";
 
-type FormState = { id?: string; name: string; email: string };
+type FormState = { id?: string; name: string; email: string; groupId: string };
 
-const emptyForm = (): FormState => ({ name: "", email: "" });
+const emptyForm = (): FormState => ({ name: "", email: "", groupId: "" });
 
 export function SalesAdminClient({
   initial,
+  groups,
   managerMode = false,
+  requireGroupOnCreate = false,
 }: {
   initial: SalesPersonAdminRow[];
+  groups: SalesGroupRow[];
   /** Kierownik handlowców — bez usuwania, z hasłem jednorazowym */
   managerMode?: boolean;
+  /** Kierownik musi wybrać grupę ze swojego scope */
+  requireGroupOnCreate?: boolean;
 }) {
   const router = useRouter();
   const [rows, setRows] = useState(initial);
@@ -49,6 +55,7 @@ export function SalesAdminClient({
   );
   const dismiss = useCallback(() => setToast(null), []);
   const [search, setSearch] = useState("");
+  const [groupFilter, setGroupFilter] = useState<string>("all");
   const [formOpen, setFormOpen] = useState(false);
   const [form, setForm] = useState<FormState>(emptyForm);
   const [deleteTarget, setDeleteTarget] = useState<SalesPersonAdminRow | null>(null);
@@ -62,23 +69,42 @@ export function SalesAdminClient({
   const [resetTarget, setResetTarget] = useState<SalesPersonAdminRow | null>(null);
 
   const filtered = useMemo(() => {
+    let list = rows;
+    if (groupFilter === "none") {
+      list = list.filter((r) => !r.groupId);
+    } else if (groupFilter !== "all") {
+      list = list.filter((r) => r.groupId === groupFilter);
+    }
     const q = search.trim().toLowerCase();
-    if (!q) return rows;
-    return rows.filter(
+    if (!q) return list;
+    return list.filter(
       (r) =>
         r.name.toLowerCase().includes(q) ||
         r.email.toLowerCase().includes(q) ||
-        (r.linkedUserEmail?.toLowerCase().includes(q) ?? false)
+        (r.linkedUserEmail?.toLowerCase().includes(q) ?? false) ||
+        (r.groupName?.toLowerCase().includes(q) ?? false)
     );
-  }, [rows, search]);
+  }, [rows, search, groupFilter]);
 
   const resetForm = () => {
     setForm(emptyForm());
     setFormOpen(false);
   };
 
+  const defaultGroupId = groups.length === 1 ? groups[0]!.id : "";
+
+  const openCreateForm = () => {
+    setForm({ ...emptyForm(), groupId: defaultGroupId });
+    setFormOpen(true);
+  };
+
   const startEdit = (row: SalesPersonAdminRow) => {
-    setForm({ id: row.id, name: row.name, email: row.email });
+    setForm({
+      id: row.id,
+      name: row.name,
+      email: row.email,
+      groupId: row.groupId ?? "",
+    });
     setFormOpen(true);
   };
 
@@ -116,11 +142,16 @@ export function SalesAdminClient({
 
   const save = () => {
     const wasNew = !form.id;
+    if (requireGroupOnCreate && !form.groupId.trim()) {
+      setToast({ text: "Wybierz grupę z listy przypisanych.", tone: "error" });
+      return;
+    }
     start(async () => {
       if (managerMode && wasNew) {
         const r = await actionCreateSalesTeamUser({
           name: form.name,
           email: form.email,
+          groupId: form.groupId || null,
         });
         if ("error" in r) {
           setToast({ text: r.error, tone: "error" });
@@ -137,7 +168,12 @@ export function SalesAdminClient({
         return;
       }
 
-      const r = await actionUpsertSalesPerson(form);
+      const r = await actionUpsertSalesPerson({
+        id: form.id,
+        name: form.name,
+        email: form.email,
+        groupId: form.groupId || null,
+      });
       if ("error" in r) {
         setToast({ text: r.error, tone: "error" });
         return;
@@ -244,10 +280,13 @@ export function SalesAdminClient({
         {!formOpen ? (
           <Button
             variant="outline"
-            onClick={() => {
-              setForm(emptyForm());
-              setFormOpen(true);
-            }}
+            onClick={openCreateForm}
+            disabled={managerMode && requireGroupOnCreate && !groups.length}
+            title={
+              managerMode && requireGroupOnCreate && !groups.length
+                ? "Brak przypisanych grup — poproś administratora"
+                : undefined
+            }
           >
             + Dodaj handlowca
           </Button>
@@ -285,6 +324,23 @@ export function SalesAdminClient({
                   onChange={(e) => setForm({ ...form, email: e.target.value })}
                 />
               </Field>
+              <Field label="Grupa" className="sm:col-span-2">
+                <Select
+                  value={form.groupId}
+                  onChange={(e) => setForm({ ...form, groupId: e.target.value })}
+                >
+                  {!requireGroupOnCreate ? (
+                    <option value="">— Bez grupy —</option>
+                  ) : (
+                    <option value="">— Wybierz grupę —</option>
+                  )}
+                  {groups.map((g) => (
+                    <option key={g.id} value={g.id}>
+                      {g.name}
+                    </option>
+                  ))}
+                </Select>
+              </Field>
               <div className="flex flex-wrap gap-2 sm:col-span-2">
                 <Button
                   type="submit"
@@ -310,9 +366,49 @@ export function SalesAdminClient({
                 : "Wygeneruj link zaproszenia — handlowiec ustawi hasło i konto powiąże się automatycznie."
             }
           />
-          <div className="border-b border-slate-100 px-4 py-3">
+          <div className="space-y-3 border-b border-slate-100 px-4 py-3">
+            <div className="flex flex-wrap gap-1.5">
+              <button
+                type="button"
+                onClick={() => setGroupFilter("all")}
+                className={`rounded-full px-2.5 py-1 text-xs font-medium ${
+                  groupFilter === "all"
+                    ? "bg-slate-900 text-white"
+                    : "bg-slate-100 text-slate-600 hover:bg-slate-200"
+                }`}
+              >
+                Wszyscy
+              </button>
+              {groups.map((g) => (
+                <button
+                  key={g.id}
+                  type="button"
+                  onClick={() => setGroupFilter(g.id)}
+                  className={`rounded-full px-2.5 py-1 text-xs font-medium ${
+                    groupFilter === g.id
+                      ? "bg-slate-900 text-white"
+                      : "bg-slate-100 text-slate-600 hover:bg-slate-200"
+                  }`}
+                >
+                  {g.name}
+                </button>
+              ))}
+              {!managerMode ? (
+                <button
+                  type="button"
+                  onClick={() => setGroupFilter("none")}
+                  className={`rounded-full px-2.5 py-1 text-xs font-medium ${
+                    groupFilter === "none"
+                      ? "bg-slate-900 text-white"
+                      : "bg-slate-100 text-slate-600 hover:bg-slate-200"
+                  }`}
+                >
+                  Bez grupy
+                </button>
+              ) : null}
+            </div>
             <Input
-              placeholder="Szukaj po imieniu, e-mailu lub koncie…"
+              placeholder="Szukaj po imieniu, e-mailu, grupie lub koncie…"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               aria-label="Szukaj handlowców"
@@ -333,6 +429,7 @@ export function SalesAdminClient({
                 <thead>
                   <tr>
                     <th>Imię i nazwisko</th>
+                    <th>Grupa</th>
                     <th>E-mail</th>
                     <th>Konto w systemie</th>
                     <th className="text-center">Zamówienia</th>
@@ -343,6 +440,7 @@ export function SalesAdminClient({
                   {filtered.map((p) => (
                     <tr key={p.id}>
                       <td className="font-medium text-slate-900">{p.name}</td>
+                      <td className="text-slate-600">{p.groupName ?? "—"}</td>
                       <td className="text-slate-700">{p.email || "—"}</td>
                       <td>
                         {p.linkedUserEmail ? (

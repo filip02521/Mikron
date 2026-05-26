@@ -67,6 +67,7 @@ const HREF_TO_NAV_ICON: Record<string, NavIconKey> = {
   "/plan": "plan",
   "/zespol": "team",
   "/zespol/handlowcy": "teamAccounts",
+  "/zespol/grupy": "teamAccounts",
 };
 
 export function navIconKeyFromHref(href: string): NavIconKey {

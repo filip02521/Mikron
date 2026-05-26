@@ -26,7 +26,10 @@ import {
 } from "@/components/orders/EditIndividualRequestModal";
 import { editInitialFromForSomeoneGroup } from "@/lib/orders/individual-request-edit-ui";
 import { RequestGroupOverflowMenu } from "@/components/summary/RequestGroupOverflowMenu";
-import { DailyPanelSubsectionBar } from "@/components/summary/DailyPanelSubsectionBar";
+import {
+  DailyPanelSubsectionBar,
+  dailyPanelQueueShellClass,
+} from "@/components/summary/DailyPanelSubsectionBar";
 import { cn } from "@/lib/cn";
 import { panelNameLinkClass, rowPendingRingClass } from "@/lib/ui/ontime-theme";
 
@@ -66,6 +69,8 @@ export function ForSomeoneRequests({
   suppliers = [],
   salesPeople = [],
   embedded = false,
+  queueStep,
+  sectionId = "kolejka-prosby",
 }: {
   groups: SummaryForSomeoneEnriched[];
   isScopePending: (scope: string) => boolean;
@@ -76,6 +81,8 @@ export function ForSomeoneRequests({
   suppliers?: { id: string; name: string }[];
   salesPeople?: { id: string; name: string }[];
   embedded?: boolean;
+  queueStep?: number;
+  sectionId?: string;
 }) {
   const sorted = useMemo(() => sortForSomeoneGroups(groups), [groups]);
   const keys = useMemo(() => sorted.map(groupKey), [sorted]);
@@ -102,14 +109,20 @@ export function ForSomeoneRequests({
     scopeKey: string;
   } | null>(null);
 
-  const Wrapper = embedded ? "div" : Card;
+  const Wrapper = embedded ? "section" : Card;
   const wrapperProps = embedded
-    ? { className: "overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm" }
+    ? {
+        id: sectionId,
+        className: cn("scroll-mt-24", dailyPanelQueueShellClass("prosby")),
+      }
     : { padding: false as const };
 
   const subsectionHeader = (
     <DailyPanelSubsectionBar
       title="Prośby handlowców"
+      tone="prosby"
+      step={queueStep}
+      count={groups.length}
       description={`Prośby w kolejce dnia · ${groups.length} ${groups.length === 1 ? "grupa" : "grup"} · ${lineCount} ${lineCount === 1 ? "produkt" : "produktów"}`}
       action={
         <div className="flex items-center gap-2">

@@ -3,11 +3,11 @@
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useState, useTransition, useCallback } from "react";
-import type { SupplierLocation, StatsMode, SupplierWithSchedule } from "@/types/database";
+import type { SupplierLocation, SupplierWithSchedule } from "@/types/database";
 import { actionUpsertSupplier, actionDeleteSupplier } from "@/app/actions/admin";
 import { formatStockPeriod, locationLabel } from "@/lib/display-labels";
 import { Card, CardHeader } from "@/components/ui/Card";
-import { Field, Input, Select } from "@/components/ui/Field";
+import { Input } from "@/components/ui/Field";
 import { Button } from "@/components/ui/Button";
 import { Toast } from "@/components/ui/Toast";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
@@ -16,7 +16,6 @@ import { OrderMethodBadge } from "@/components/targets/OrderMethodBadge";
 import { SupplierLocationFilters } from "@/components/admin/SupplierLocationFilters";
 import { EmptyState } from "@/components/ui/EmptyState";
 import {
-  SUPPLIER_LOCATION_OPTIONS,
   countSuppliersByLocation,
   filterSuppliersForAdmin,
   type SupplierLocationFilter,
@@ -27,26 +26,15 @@ import {
   suggestOrderOnDemandAfterFieldChange,
 } from "@/lib/orders/supplier-on-demand";
 import { Badge } from "@/components/ui/Badge";
-import { SupplierSubiektLinkField } from "@/components/admin/SupplierSubiektLinkField";
 import { SupplierSubiektLinkIndicator } from "@/components/admin/SupplierSubiektLinkIndicator";
+import {
+  SupplierAdminForm,
+  type SupplierAdminFormState,
+} from "@/components/admin/SupplierAdminForm";
+import { SupplierEditSheet } from "@/components/admin/SupplierEditSheet";
+import { cn } from "@/lib/cn";
 
-type FormState = {
-  id?: string;
-  name: string;
-  location: SupplierLocation;
-  pickup_mikran: boolean;
-  pickup_pallet: boolean;
-  notes: string;
-  mails: string;
-  extra_info: string;
-  interval_raw: string;
-  stock_raw: string;
-  stats_mode: StatsMode;
-  order_on_demand: boolean;
-  subiekt_kh_id: number | null;
-};
-
-const emptyForm = (): FormState => ({
+const emptyForm = (): SupplierAdminFormState => ({
   name: "",
   location: "POLSKA",
   pickup_mikran: false,
@@ -84,7 +72,7 @@ export function SuppliersAdminClient({
   const [search, setSearch] = useState("");
   const [locationFilter, setLocationFilter] = useState<SupplierLocationFilter>("all");
   const [formOpen, setFormOpen] = useState(false);
-  const [form, setForm] = useState<FormState>(emptyForm);
+  const [form, setForm] = useState<SupplierAdminFormState>(emptyForm);
   const [deleteTarget, setDeleteTarget] = useState<SupplierWithSchedule | null>(null);
 
   useEffect(() => {
@@ -118,6 +106,11 @@ export function SuppliersAdminClient({
     setFormOpen(true);
   };
 
+  const openNew = () => {
+    setForm(emptyForm());
+    setFormOpen(true);
+  };
+
   useEffect(() => {
     const q = searchParams.get("q")?.trim();
     if (searchParams.get("powiaz") !== "1" || !q || formOpen) return;
@@ -128,13 +121,19 @@ export function SuppliersAdminClient({
     // eslint-disable-next-line react-hooks/exhaustive-deps -- tylko wejście z linku ?powiaz=1
   }, [searchParams, rows, formOpen]);
 
+  useEffect(() => {
+    if (!formOpen || !form.id) return;
+    const row = document.getElementById(`supplier-row-${form.id}`);
+    row?.scrollIntoView({ block: "nearest", behavior: "smooth" });
+  }, [formOpen, form.id]);
+
   const resetForm = () => {
     setForm(emptyForm());
     setFormOpen(false);
   };
 
   const patchCycleFields = (
-    patch: Partial<Pick<FormState, "stock_raw" | "interval_raw" | "extra_info">>
+    patch: Partial<Pick<SupplierAdminFormState, "stock_raw" | "interval_raw" | "extra_info">>
   ) => {
     setForm((prev) => {
       const next = { ...prev, ...patch };
@@ -169,216 +168,95 @@ export function SuppliersAdminClient({
     });
   };
 
+  const sheetTitle = form.id ? form.name || "Edytuj dostawcę" : "Nowy dostawca";
+  const sheetDescription = form.id
+    ? "Pola poniżej — zapis na dole panelu. Lista kart zostaje widoczna po lewej."
+    : "Zapas = na jaki okres robisz większe zamówienie (np. 2 miesiące).";
+
   return (
     <>
       {toast ? <Toast message={toast.text} tone={toast.tone} onDismiss={dismiss} /> : null}
       {allowDelete ? (
-      <ConfirmDialog
-        open={!!deleteTarget}
-        title="Usunąć dostawcę?"
-        message={
-          deleteTarget
-            ? `Czy na pewno usunąć „${deleteTarget.name}”? Tej operacji nie można cofnąć.`
-            : ""
-        }
-        confirmLabel="Usuń"
-        danger
-        pending={pending}
-        onCancel={() => setDeleteTarget(null)}
-        onConfirm={() => {
-          if (!deleteTarget) return;
-          start(async () => {
-            const r = await actionDeleteSupplier(deleteTarget.id);
-            if ("error" in r) {
-              setToast({ text: r.error, tone: "error" });
+        <ConfirmDialog
+          open={!!deleteTarget}
+          title="Usunąć dostawcę?"
+          message={
+            deleteTarget
+              ? `Czy na pewno usunąć „${deleteTarget.name}”? Tej operacji nie można cofnąć.`
+              : ""
+          }
+          confirmLabel="Usuń"
+          danger
+          pending={pending}
+          onCancel={() => setDeleteTarget(null)}
+          onConfirm={() => {
+            if (!deleteTarget) return;
+            start(async () => {
+              const r = await actionDeleteSupplier(deleteTarget.id);
+              if ("error" in r) {
+                setToast({ text: r.error, tone: "error" });
+                setDeleteTarget(null);
+                return;
+              }
+              setRows((list) => list.filter((x) => x.id !== deleteTarget.id));
               setDeleteTarget(null);
-              return;
-            }
-            setRows((list) => list.filter((x) => x.id !== deleteTarget.id));
-            setDeleteTarget(null);
-            setToast({ text: "Dostawca usunięty", tone: "success" });
-          });
-        }}
-      />
+              setToast({ text: "Dostawca usunięty", tone: "success" });
+            });
+          }}
+        />
       ) : null}
 
-      <section className="space-y-6 p-4 sm:p-5">
-        {!formOpen ? (
-          <Button
-            variant="outline"
-            onClick={() => {
-              setForm(emptyForm());
-              setFormOpen(true);
-            }}
-          >
-            + Dodaj dostawcę
-          </Button>
-        ) : null}
-
-        {formOpen ? (
-          <Card>
-            <CardHeader
-              title={form.id ? "Edytuj dostawcę" : "Dodaj dostawcę"}
-              description={
-                form.id
-                  ? "Na górze formularza możesz powiązać kartę z kontrahentem Subiekt (auto-dostawca z ZD)."
-                  : "Zapas = na jaki okres robisz większe zamówienie (np. 2 miesiące)."
+      <SupplierEditSheet
+        open={formOpen}
+        title={sheetTitle}
+        description={sheetDescription}
+        onClose={resetForm}
+        pending={pending}
+        footer={
+          <>
+            <Button type="submit" form="supplier-admin-form" disabled={pending}>
+              {form.id ? "Zapisz zmiany" : "Dodaj dostawcę"}
+            </Button>
+            <Button type="button" variant="ghost" disabled={pending} onClick={resetForm}>
+              Anuluj
+            </Button>
+          </>
+        }
+      >
+        <form
+          id="supplier-admin-form"
+          onSubmit={(e) => {
+            e.preventDefault();
+            save();
+          }}
+        >
+          <SupplierAdminForm
+            form={form}
+            disabled={pending}
+            onChange={setForm}
+            onPatchCycleFields={patchCycleFields}
+            onSubiektLinked={(khId) => {
+              setForm((f) => ({ ...f, subiekt_kh_id: khId }));
+              if (form.id) {
+                setRows((list) =>
+                  list.map((r) => (r.id === form.id ? { ...r, subiekt_kh_id: khId } : r))
+                );
               }
-            />
-            <form
-              className="grid gap-4 sm:grid-cols-2"
-              onSubmit={(e) => {
-                e.preventDefault();
-                save();
-              }}
-            >
-              {form.id ? (
-                <div className="sm:col-span-2">
-                  <SupplierSubiektLinkField
-                    supplierId={form.id}
-                    supplierName={form.name}
-                    subiektKhId={form.subiekt_kh_id}
-                    onLinked={(khId) => {
-                      setForm((f) => ({ ...f, subiekt_kh_id: khId }));
-                      setRows((list) =>
-                        list.map((r) =>
-                          r.id === form.id ? { ...r, subiekt_kh_id: khId } : r
-                        )
-                      );
-                    }}
-                  />
-                </div>
-              ) : null}
-              <Field label="Nazwa dostawcy">
-                <Input
-                  value={form.name}
-                  onChange={(e) => setForm({ ...form, name: e.target.value })}
-                />
-              </Field>
-              <Field label="Lokalizacja">
-                <Select
-                  value={form.location}
-                  onChange={(e) =>
-                    setForm({ ...form, location: e.target.value as SupplierLocation })
-                  }
-                >
-                  {SUPPLIER_LOCATION_OPTIONS.map((l) => (
-                    <option key={l.value} value={l.value}>
-                      {l.label}
-                    </option>
-                  ))}
-                </Select>
-              </Field>
-              <p className="text-xs font-semibold uppercase tracking-wide text-slate-500 sm:col-span-2">
-                Kontakt i sposób zamówienia
-              </p>
-              <Field label="Sposób zamówienia" className="sm:col-span-2">
-                <Select
-                  value={form.notes}
-                  onChange={(e) => setForm({ ...form, notes: e.target.value })}
-                >
-                  <option value="">—</option>
-                  <option value="MAILOWO">Mail</option>
-                  <option value="TELEFONICZNIE">Telefon</option>
-                  <option value="PRZEZ INTERNET">Internet</option>
-                </Select>
-              </Field>
-              <Field label="E-mail i strony" className="sm:col-span-2">
-                <Input
-                  value={form.mails}
-                  onChange={(e) => setForm({ ...form, mails: e.target.value })}
-                />
-              </Field>
-              <Field label="Dodatkowe informacje" className="sm:col-span-2">
-                <Input
-                  value={form.extra_info}
-                  onChange={(e) => patchCycleFields({ extra_info: e.target.value })}
-                />
-              </Field>
-              <p className="text-xs font-semibold uppercase tracking-wide text-slate-500 sm:col-span-2">
-                Cykl zamówień
-                <span className="ml-2 font-normal normal-case tracking-normal text-slate-400">
-                  (wpływa na przeliczanie terminów)
-                </span>
-              </p>
-              <Field label="Zapas (okres zamówienia)">
-                <Input
-                  placeholder="np. 2 miesiące, 6 tyg., w razie potrzeby"
-                  value={form.stock_raw}
-                  onChange={(e) => patchCycleFields({ stock_raw: e.target.value })}
-                />
-              </Field>
-              <Field label="Częstotliwość zamówień">
-                <Input
-                  placeholder="np. 6 tyg. lub 1 miesiąc"
-                  value={form.interval_raw}
-                  onChange={(e) => patchCycleFields({ interval_raw: e.target.value })}
-                />
-              </Field>
-              <Field label="Statystyki dostaw">
-                <Select
-                  value={form.stats_mode}
-                  onChange={(e) =>
-                    setForm({ ...form, stats_mode: e.target.value as StatsMode })
-                  }
-                >
-                  <option value="LACZNIE">Łącznie</option>
-                  <option value="OSOBNO">Osobno</option>
-                </Select>
-              </Field>
-              <label className="flex cursor-pointer items-start gap-2 sm:col-span-2">
-                <input
-                  type="checkbox"
-                  className="mt-0.5 h-4 w-4 rounded border-slate-300"
-                  checked={form.order_on_demand}
-                  onChange={(e) =>
-                    setForm({ ...form, order_on_demand: e.target.checked })
-                  }
-                />
-                <span className="text-sm text-slate-700">
-                  Tylko w razie potrzeby — bez stałego terminu w panelu dziennym
-                </span>
-              </label>
-              <p className="text-xs font-semibold uppercase tracking-wide text-slate-500 sm:col-span-2">
-                Odbiór
-              </p>
-              <label className="flex items-center gap-2 text-sm sm:col-span-2">
-                <input
-                  type="checkbox"
-                  checked={form.pickup_mikran}
-                  onChange={(e) =>
-                    setForm({ ...form, pickup_mikran: e.target.checked })
-                  }
-                />
-                Kierowca Mikran
-              </label>
-              <label className="flex items-center gap-2 text-sm sm:col-span-2">
-                <input
-                  type="checkbox"
-                  checked={form.pickup_pallet}
-                  onChange={(e) =>
-                    setForm({ ...form, pickup_pallet: e.target.checked })
-                  }
-                />
-                Zlecamy odbiór palety
-              </label>
-              <p className="flex flex-wrap gap-2 sm:col-span-2">
-                <Button type="submit" disabled={pending}>
-                  {form.id ? "Zapisz zmiany" : "Dodaj dostawcę"}
-                </Button>
-                <Button type="button" variant="ghost" onClick={resetForm}>
-                  Anuluj
-                </Button>
-              </p>
-            </form>
-          </Card>
-        ) : null}
+            }}
+          />
+        </form>
+      </SupplierEditSheet>
+
+      <section className="space-y-6 p-4 sm:p-5">
+        <Button variant="outline" onClick={openNew}>
+          + Dodaj dostawcę
+        </Button>
 
         <Card padding={false}>
           <CardHeader
             inset
             title={`Karty (${filtered.length}${locationFilter !== "all" || search.trim() ? ` z ${rows.length}` : ""})`}
-            description="Kolumna Subiekt: ikona powiązania. Edytuj lub „Powiąż” — sekcja na górze formularza."
+            description="Edycja otwiera panel z boku — bez przewijania do góry strony."
           />
           <div className="space-y-3 border-b border-slate-100 px-6 pb-4">
             <p className="text-xs text-slate-500">
@@ -389,7 +267,7 @@ export function SuppliersAdminClient({
               <span className="mx-2 text-slate-300">·</span>
               <span className="inline-flex items-center gap-1.5">
                 <SupplierSubiektLinkIndicator subiektKhId={null} className="scale-90" />
-                brak powiązania — ustaw ręcznie
+                brak powiązania — ustaw w panelu edycji
               </span>
             </p>
             <SupplierLocationFilters
@@ -416,85 +294,99 @@ export function SuppliersAdminClient({
               }
             />
           ) : (
-          <TableScroll>
-            <DataTable>
-              <thead>
-                <tr>
-                  <th className="w-14 text-center">Subiekt</th>
-                  <th>Nazwa</th>
-                  <th>Lokalizacja</th>
-                  <th>Sposób</th>
-                  <th>Zapas</th>
-                  <th>Częstotliwość</th>
-                  <th>Terminy</th>
-                  <th />
-                </tr>
-              </thead>
-              <tbody>
-                {filtered.map((s) => (
-                  <tr key={s.id}>
-                    <td className="w-14 text-center">
-                      <SupplierSubiektLinkIndicator subiektKhId={s.subiekt_kh_id} />
-                    </td>
-                    <td>
-                      <span className="flex flex-wrap items-center gap-2">
-                        <span className="font-medium text-slate-900">{s.name}</span>
-                        {isSupplierOrderOnDemand(s) ? (
-                          <Badge variant="purple" className="text-[10px]">
-                            Na żądanie
-                          </Badge>
-                        ) : null}
-                      </span>
-                    </td>
-                    <td>{locationLabel(s.location)}</td>
-                    <td>
-                      <OrderMethodBadge notes={s.notes} />
-                    </td>
-                    <td className="max-w-[140px] text-sm text-slate-700">
-                      {formatStockPeriod(s.stock_raw, s.stock != null ? Number(s.stock) : null)}
-                    </td>
-                    <td className="text-sm text-slate-700">
-                      {s.interval_raw?.trim() || s.interval_weeks || "—"}
-                    </td>
-                    <td>
-                      <Link
-                        href={scheduleHref(s.location, s.name)}
-                        className="text-sm font-medium text-sky-700 hover:text-sky-900 hover:underline"
-                      >
-                        Terminy →
-                      </Link>
-                    </td>
-                    <td>
-                      <p className="flex justify-end gap-1">
-                        {s.subiekt_kh_id == null ? (
-                          <Button
-                            variant="secondary"
-                            size="sm"
-                            onClick={() => startEdit(s)}
-                          >
-                            Powiąż
-                          </Button>
-                        ) : null}
-                        <Button variant="ghost" size="sm" onClick={() => startEdit(s)}>
-                          Edytuj
-                        </Button>
-                        {allowDelete ? (
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="text-red-600"
-                            onClick={() => setDeleteTarget(s)}
-                          >
-                            Usuń
-                          </Button>
-                        ) : null}
-                      </p>
-                    </td>
+            <TableScroll>
+              <DataTable>
+                <thead>
+                  <tr>
+                    <th className="w-14 text-center">Subiekt</th>
+                    <th>Nazwa</th>
+                    <th>Lokalizacja</th>
+                    <th>Sposób</th>
+                    <th>Zapas</th>
+                    <th>Częstotliwość</th>
+                    <th>Terminy</th>
+                    <th />
                   </tr>
-                ))}
-              </tbody>
-            </DataTable>
-          </TableScroll>
+                </thead>
+                <tbody>
+                  {filtered.map((s) => {
+                    const isEditing = formOpen && form.id === s.id;
+                    return (
+                      <tr
+                        key={s.id}
+                        id={`supplier-row-${s.id}`}
+                        className={cn(
+                          isEditing && "bg-indigo-50/80 ring-1 ring-inset ring-indigo-200"
+                        )}
+                      >
+                        <td className="w-14 text-center">
+                          <SupplierSubiektLinkIndicator subiektKhId={s.subiekt_kh_id} />
+                        </td>
+                        <td>
+                          <span className="flex flex-wrap items-center gap-2">
+                            <span className="font-medium text-slate-900">{s.name}</span>
+                            {isSupplierOrderOnDemand(s) ? (
+                              <Badge variant="purple" className="text-[10px]">
+                                Na żądanie
+                              </Badge>
+                            ) : null}
+                            {isEditing ? (
+                              <Badge variant="info" className="text-[10px]">
+                                Edycja
+                              </Badge>
+                            ) : null}
+                          </span>
+                        </td>
+                        <td>{locationLabel(s.location)}</td>
+                        <td>
+                          <OrderMethodBadge notes={s.notes} />
+                        </td>
+                        <td className="max-w-[140px] text-sm text-slate-700">
+                          {formatStockPeriod(s.stock_raw, s.stock != null ? Number(s.stock) : null)}
+                        </td>
+                        <td className="text-sm text-slate-700">
+                          {s.interval_raw?.trim() || s.interval_weeks || "—"}
+                        </td>
+                        <td>
+                          <Link
+                            href={scheduleHref(s.location, s.name)}
+                            className="text-sm font-medium text-sky-700 hover:text-sky-900 hover:underline"
+                          >
+                            Terminy →
+                          </Link>
+                        </td>
+                        <td>
+                          <p className="flex justify-end gap-1">
+                            {s.subiekt_kh_id == null ? (
+                              <Button
+                                variant="secondary"
+                                size="sm"
+                                onClick={() => startEdit(s)}
+                              >
+                                Powiąż
+                              </Button>
+                            ) : null}
+                            <Button variant="ghost" size="sm" onClick={() => startEdit(s)}>
+                              Edytuj
+                            </Button>
+                            {allowDelete ? (
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className="text-red-600"
+                                onClick={() => setDeleteTarget(s)}
+                              >
+                                Usuń
+                              </Button>
+                            ) : null}
+                          </p>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </DataTable>
+            </TableScroll>
           )}
         </Card>
       </section>

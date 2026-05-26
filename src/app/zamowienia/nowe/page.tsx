@@ -1,19 +1,17 @@
-import { fetchSalesPeople, fetchSupplierDeliveryContext } from "@/lib/data/queries";
+import { fetchSalesPeople, fetchSupplierFormContext } from "@/lib/data/queries";
 import { OrderFormClient } from "@/components/orders/OrderFormClient";
 import { getAppRole } from "@/lib/auth-dev";
 import { getSessionUser } from "@/lib/auth";
 import { resolveSalesPersonForUser } from "@/lib/auth/sales-person";
 export default async function NoweZamowieniePage() {
   const role = await getAppRole();
-  let suppliers: Awaited<
-    ReturnType<typeof fetchSupplierDeliveryContext>
-  >["suppliers"] = [];
+  let suppliers: Awaited<ReturnType<typeof fetchSupplierFormContext>>["suppliers"] = [];
   let statsBySupplierId: Awaited<
-    ReturnType<typeof fetchSupplierDeliveryContext>
+    ReturnType<typeof fetchSupplierFormContext>
   >["statsBySupplierId"] = {};
   let salesPeople: { id: string; name: string }[] = [];
   try {
-    const ctx = await fetchSupplierDeliveryContext();
+    const ctx = await fetchSupplierFormContext();
     suppliers = ctx.suppliers;
     statsBySupplierId = ctx.statsBySupplierId;
     salesPeople = await fetchSalesPeople();

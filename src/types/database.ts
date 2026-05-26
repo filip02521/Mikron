@@ -62,6 +62,7 @@ export interface SalesPerson {
   id: string;
   name: string;
   email: string;
+  group_id?: string | null;
 }
 
 export interface IndividualOrder {
@@ -101,6 +102,8 @@ export interface IndividualOrder {
   warehouse_shelf?: string | null;
   /** ID towaru w Subiekcie (tw_Id) — wybor z kartoteki; brak = wpis ręczny. */
   subiekt_tw_id?: number | null;
+  /** Dopasowanie dostawcy z ZD Subiekt w toku po zapisie prośby. */
+  supplier_resolve_pending?: boolean;
   supplier?: Supplier;
   sales_person?: SalesPerson;
 }

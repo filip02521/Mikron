@@ -18,7 +18,6 @@ import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import type { DailyPanelRunFn } from "@/components/summary/useDailyPanelRunner";
 import { SupplierContactActions } from "@/components/procurement/SupplierContactActions";
 import type { SupplierSummaryMeta } from "@/lib/orders/summary-workspace";
-import type { DailyPanelSubsectionTone } from "@/components/summary/DailyPanelSubsectionBar";
 import { cn } from "@/lib/cn";
 import {
   checkboxBrandClass,
@@ -31,11 +30,18 @@ import {
   urgentGroupHeadingClassName,
   urgentStatusBadgeVariant,
 } from "@/components/summary/urgent-card-styles";
-import { DailyPanelSubsectionBar } from "@/components/summary/DailyPanelSubsectionBar";
+import {
+  DailyPanelSubsectionBar,
+  dailyPanelQueueShellClass,
+  type DailyPanelSubsectionTone,
+} from "@/components/summary/DailyPanelSubsectionBar";
 
 export type UrgentQueuePart = "full" | "overdue" | "today";
 
-const EMBEDDED_SHELL = "overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm";
+const QUEUE_SECTION_ID: Record<Exclude<UrgentQueuePart, "full">, string> = {
+  overdue: "kolejka-zalegle",
+  today: "kolejka-harmonogram-dzis",
+};
 
 function SectionHelp() {
   return (
@@ -234,6 +240,8 @@ export function UrgentOrdersSection({
   isBulkPending,
   embedded = false,
   showBulkToolbar = false,
+  queueStep,
+  sectionId,
 }: {
   items: SummaryStandardItem[];
   supplierMeta: Record<string, SupplierSummaryMeta>;
@@ -251,6 +259,8 @@ export function UrgentOrdersSection({
   isBulkPending: boolean;
   embedded?: boolean;
   showBulkToolbar?: boolean;
+  queueStep?: number;
+  sectionId?: string;
 }) {
   const { overdue, todayList } = useMemo(() => splitUrgentItems(items), [items]);
   const showOverdue = queuePart === "full" || queuePart === "overdue";
@@ -274,7 +284,8 @@ export function UrgentOrdersSection({
   const visibleCount = overdueItems.length + todayItems.length;
   const hideInnerHeading = queuePart !== "full";
   const subsectionTone: DailyPanelSubsectionTone =
-    queuePart === "overdue" ? "overdue" : "default";
+    queuePart === "overdue" ? "overdue" : queuePart === "today" ? "today" : "default";
+  const scopeCount = scopeItems.length;
 
   if (visibleCount === 0) return null;
 
@@ -341,6 +352,8 @@ export function UrgentOrdersSection({
           description={descriptions[queuePart]}
           action={headerAction}
           tone={subsectionTone}
+          step={queueStep}
+          count={scopeCount}
         />
       ) : (
         <CardHeader
@@ -392,5 +405,18 @@ export function UrgentOrdersSection({
     return <Card padding={false}>{inner}</Card>;
   }
 
-  return <div className={EMBEDDED_SHELL}>{inner}</div>;
+  const anchorId =
+    sectionId ??
+    (queuePart === "overdue" || queuePart === "today"
+      ? QUEUE_SECTION_ID[queuePart]
+      : undefined);
+
+  return (
+    <section
+      id={anchorId}
+      className={cn("scroll-mt-24", dailyPanelQueueShellClass(subsectionTone))}
+    >
+      {inner}
+    </section>
+  );
 }

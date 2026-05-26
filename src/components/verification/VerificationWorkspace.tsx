@@ -21,6 +21,7 @@ import { SectionHeadingIcon } from "@/components/icons/SectionHeadingIcon";
 import { IconClipboardList, IconClipboardPen } from "@/components/icons/StrokeIcons";
 import { VerificationHelp } from "@/components/verification/VerificationHelp";
 import { formatPlDate } from "@/lib/display-labels";
+import { describeVerificationGaps } from "@/lib/orders/verification-gaps";
 import { RequestFormStatusPanel } from "@/components/orders/RequestFormStatusPanel";
 import { ActionLoadingOverlay } from "@/components/ui/ActionLoadingOverlay";
 import { RequestKindPicker } from "@/components/ui/RequestKindPicker";
@@ -122,6 +123,9 @@ export function VerificationWorkspace({
     requestKind: form.requestKind,
   };
   const assessment = assessRequestCompleteness(draft);
+  const supplierResolvePending = Boolean(
+    active?.supplier_resolve_pending && !active?.supplier_id
+  );
 
   const save = () => {
     if (!active) return;
@@ -207,7 +211,11 @@ export function VerificationWorkspace({
                 : "divide-y divide-amber-100"
             }
           >
-                {orders.map((o) => (
+                {orders.map((o) => {
+                  const pendingResolve = Boolean(
+                    o.supplier_resolve_pending && !o.supplier_id
+                  );
+                  return (
                   <li key={o.id}>
                     <button
                       type="button"
@@ -222,18 +230,24 @@ export function VerificationWorkspace({
                             {o.sales_person?.name ?? "Handlowiec"}
                           </p>
                           <p className="truncate text-sm text-slate-600">
-                            {o.supplier?.name ?? "Brak dostawcy"} · {o.products}
+                            {pendingResolve
+                              ? "Dopasowywanie dostawcy…"
+                              : (o.supplier?.name ?? "Brak dostawcy")}{" "}
+                            · {o.products}
                           </p>
                           <p className="mt-1 text-xs text-slate-500">
                             {formatPlDate(o.action_at.slice(0, 10))}
                             {o.request_kind === "informacja" ? " · informacja" : ""}
                           </p>
                         </div>
-                        <Badge variant="warning">Weryfikacja</Badge>
+                        <Badge variant={pendingResolve ? "info" : "warning"}>
+                          {pendingResolve ? "Auto" : "Weryfikacja"}
+                        </Badge>
                       </div>
                     </button>
                   </li>
-                ))}
+                  );
+                })}
               </ul>
         </div>
 
@@ -256,6 +270,11 @@ export function VerificationWorkspace({
                   : "space-y-4 px-4 py-5 sm:px-6"
               }
             >
+                  {supplierResolvePending ? (
+                    <p className="rounded-lg border border-indigo-100 bg-indigo-50/80 px-3 py-2.5 text-sm text-indigo-900">
+                      {describeVerificationGaps(active)}
+                    </p>
+                  ) : null}
                   <div className="grid gap-3 sm:grid-cols-2">
                     <Field label="Dostawca">
                       <SupplierPickerField

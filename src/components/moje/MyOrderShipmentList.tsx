@@ -16,6 +16,11 @@ import {
   type SalesCancelPhase,
 } from "@/lib/orders/sales-cancel";
 import { MyOrderShipmentCard } from "@/components/moje/MyOrderShipmentCard";
+import { Button } from "@/components/ui/Button";
+import {
+  mojeShipmentListClass,
+  mojeShipmentSectionShellClass,
+} from "@/lib/ui/moje-shipment-row-styles";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { UndoToast } from "@/components/ui/UndoToast";
 import { Toast } from "@/components/ui/Toast";
@@ -25,6 +30,7 @@ import {
   type EditIndividualRequestInitial,
 } from "@/components/orders/EditIndividualRequestModal";
 import { editInitialFromMyOrderRow } from "@/lib/orders/individual-request-edit-ui";
+import { cn } from "@/lib/cn";
 
 type UndoState = {
   orderIds: string[];
@@ -36,12 +42,6 @@ type CancelConfirmState = {
   phase: SalesCancelPhase;
 };
 
-function pickInitialExpandedId(rows: MyOrderRow[]): string | null {
-  const manyProducts = rows.find((r) => r.lineCount >= 3);
-  if (manyProducts) return manyProducts.id;
-  return null;
-}
-
 export function MyOrderShipmentList({
   rows,
   listKind,
@@ -49,6 +49,8 @@ export function MyOrderShipmentList({
   canAcknowledge,
   cardIdPrefix,
   suppliers = [],
+  embedded = false,
+  continuation = false,
 }: {
   rows: MyOrderRow[];
   listKind: "zamowienie" | "informacja";
@@ -56,12 +58,33 @@ export function MyOrderShipmentList({
   canAcknowledge: boolean;
   cardIdPrefix?: (rowId: string) => string;
   suppliers?: { id: string; name: string }[];
+  /** Wewnątrz wspólnej obwódki sekcji (bez drugiego rounded-xl). */
+  embedded?: boolean;
+  /** Kolejna lista w tej samej sekcji — separator u góry. */
+  continuation?: boolean;
 }) {
   const router = useRouter();
   const sortedRows = useMemo(() => sortMyOrderRows(rows), [rows]);
-  const [expandedId, setExpandedId] = useState<string | null>(() =>
-    pickInitialExpandedId(sortedRows)
-  );
+  const [expandedIds, setExpandedIds] = useState<Set<string>>(() => new Set());
+  const allExpanded =
+    sortedRows.length > 0 && sortedRows.every((r) => expandedIds.has(r.id));
+
+  const toggleExpanded = useCallback((id: string) => {
+    setExpandedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }, []);
+
+  const expandAll = useCallback(() => {
+    setExpandedIds(new Set(sortedRows.map((r) => r.id)));
+  }, [sortedRows]);
+
+  const collapseAll = useCallback(() => {
+    setExpandedIds(new Set());
+  }, []);
   const [pending, start] = useTransition();
   const [pendingMessage, setPendingMessage] = useState<string | null>(null);
   const [undo, setUndo] = useState<UndoState | null>(null);
@@ -172,8 +195,8 @@ export function MyOrderShipmentList({
 
   if (!sortedRows.length) return null;
 
-  return (
-    <div className="relative">
+  const listBody = (
+    <>
       {pendingMessage ? (
         <ActionLoadingOverlay message={pendingMessage} variant="section" />
       ) : null}
@@ -246,7 +269,24 @@ export function MyOrderShipmentList({
           }}
         />
       ) : null}
-      <ul>
+      {sortedRows.length > 1 ? (
+        <div className="flex justify-end border-b border-slate-100 px-3 py-1.5 sm:px-4">
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            onClick={() => (allExpanded ? collapseAll() : expandAll())}
+          >
+            {allExpanded ? "Zwiń wszystkie" : "Rozwiń wszystkie"}
+          </Button>
+        </div>
+      ) : null}
+      <ul
+        className={cn(
+          mojeShipmentListClass,
+          continuation && "border-t border-slate-100"
+        )}
+      >
         {sortedRows.map((row) => (
           <MyOrderShipmentCard
             key={row.id}
@@ -256,10 +296,8 @@ export function MyOrderShipmentList({
             showProgress={showProgress}
             canAcknowledge={canAcknowledge}
             pending={pending}
-            expanded={expandedId === row.id}
-            onToggle={() =>
-              setExpandedId((cur) => (cur === row.id ? null : row.id))
-            }
+            expanded={expandedIds.has(row.id)}
+            onToggle={() => toggleExpanded(row.id)}
             onAcknowledgePickup={runPickup}
             onCancelRequest={
               canAcknowledge && row.salesCancelOrderIds.length && row.salesCancelPhase
@@ -271,10 +309,7 @@ export function MyOrderShipmentList({
               canAcknowledge
                 ? (r) => {
                     const initial = editInitialFromMyOrderRow(r);
-                    if (!initial) {
-                      setErrorToast("Uzupełnij dostawcę w prośbie przed edycją.");
-                      return;
-                    }
+                    if (!initial) return;
                     setEditTarget({ orderIds: r.orderIds, initial });
                   }
                 : undefined
@@ -282,6 +317,14 @@ export function MyOrderShipmentList({
           />
         ))}
       </ul>
-    </div>
+    </>
+  );
+
+  if (embedded) {
+    return <div className="relative">{listBody}</div>;
+  }
+
+  return (
+    <div className={cn("relative", mojeShipmentSectionShellClass)}>{listBody}</div>
   );
 }

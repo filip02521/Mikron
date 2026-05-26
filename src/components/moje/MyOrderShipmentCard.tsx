@@ -1,184 +1,69 @@
 "use client";
 
 import { useId, useState } from "react";
-import type { MyOrderLine, MyOrderRow } from "@/lib/orders/my-order-presenter";
+import type { MyOrderRow } from "@/lib/orders/my-order-presenter";
 import type { SalesCancelPhase } from "@/lib/orders/sales-cancel";
 import { shouldShowOrderStatusBadge } from "@/lib/orders/my-order-card-ui";
 import type { MyOrderListKind } from "@/lib/orders/my-order-row-layout";
 import {
-  myOrderCollapsedMetaFields,
-  myOrderCollapsedProductMode,
+  myOrderCollapsedProductSummary,
   myOrderCollapsedSubline,
   myOrderExpandHint,
   myOrderExpandedNotes,
   myOrderNeedsExpand,
-  myOrderProductPreviewLine,
 } from "@/lib/orders/my-order-row-layout";
+import { myOrderMetaFields } from "@/lib/orders/my-order-sales-ui";
 import { MyOrderAckButton } from "@/components/moje/MyOrderAckButton";
 import { MyOrderLineItem } from "@/components/moje/MyOrderLineItem";
-import { MyOrderAssignedClient } from "@/components/moje/MyOrderAssignedClient";
-import { SalesClientNameEditor } from "@/components/moje/SalesClientNameEditor";
 import { MyOrderShipmentOverflowMenu } from "@/components/moje/MyOrderShipmentOverflowMenu";
 import { MyOrderStatusPill } from "@/components/moje/MyOrderStatusPill";
 import { cn } from "@/lib/cn";
-import { brandLinkSubtleClass, mojeCardHighlightClass } from "@/lib/ui/ontime-theme";
+import { brandLinkSubtleClass } from "@/lib/ui/ontime-theme";
+import {
+  mojeShipmentExpandedPanelClass,
+  mojeShipmentLinesListClass,
+  mojeShipmentRowClass,
+} from "@/lib/ui/moje-shipment-row-styles";
 
 function ChevronIcon({ open }: { open?: boolean }) {
   return (
     <svg
-      className={cn(
-        "h-4 w-4 transition-transform",
-        open ? "rotate-180 text-indigo-700" : "text-slate-500"
-      )}
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
       aria-hidden
+      viewBox="0 0 20 20"
+      className={cn(
+        "size-4 shrink-0 transition-transform",
+        open ? "rotate-90 text-indigo-700" : "text-slate-500"
+      )}
+      fill="currentColor"
     >
-      <path d="M6 9l6 6 6-6" strokeLinecap="round" strokeLinejoin="round" />
+      <path d="M7.2 4.2a1 1 0 0 1 1.4 0l4.8 4.8a1 1 0 0 1 0 1.4l-4.8 4.8a1 1 0 1 1-1.4-1.4L11.58 10 7.2 5.6a1 1 0 0 1 0-1.4Z" />
     </svg>
   );
 }
 
-function rowSurfaceClass({
-  expanded,
-  needsExpand,
-  isAction,
-  isUrgent,
-  isInformacja,
-}: {
-  expanded: boolean;
-  needsExpand: boolean;
-  isAction: boolean;
-  isUrgent: boolean;
-  isInformacja: boolean;
-}): string {
-  if (expanded && needsExpand) {
-    if (isAction) {
-      return "z-[1] my-1 rounded-xl border border-emerald-300/90 bg-emerald-50 shadow-md shadow-emerald-100/40 ring-1 ring-emerald-200/70";
-    }
-    if (isUrgent) {
-      return "z-[1] my-1 rounded-xl border border-amber-300/90 bg-amber-50 shadow-md shadow-amber-100/30 ring-1 ring-amber-200/70";
-    }
-    if (isInformacja) {
-      return "z-[1] my-1 rounded-xl border border-violet-300/90 bg-violet-50/95 shadow-md shadow-violet-100/30 ring-1 ring-violet-200/70";
-    }
-    return mojeCardHighlightClass;
-  }
-  if (isAction) return "bg-emerald-50/50";
-  if (isUrgent) return "bg-amber-50/40";
-  if (isInformacja) return "bg-violet-50/40";
-  return "bg-white";
-}
-
-function MetaInline({
+function MetaGrid({
   fields,
-  statusLabel,
-  statusVariant,
-  showStatus,
-  lineCount,
 }: {
   fields: { label: string; value: string; emphasize?: boolean }[];
-  statusLabel?: string;
-  statusVariant?: MyOrderRow["badgeVariant"];
-  showStatus?: boolean;
-  lineCount: number;
 }) {
-  const hasMeta = fields.length > 0 || showStatus || lineCount > 1;
-  if (!hasMeta) return null;
+  if (!fields.length) return null;
 
   return (
-    <div className="mt-1.5 flex flex-wrap items-center gap-x-1.5 gap-y-1">
-      {showStatus && statusLabel ? (
-        <MyOrderStatusPill label={statusLabel} variant={statusVariant} />
-      ) : null}
-      {lineCount > 1 ? (
-        <span className="text-[0.65rem] font-medium tabular-nums text-slate-500">
-          {lineCount} poz.
-        </span>
-      ) : null}
-      {fields.length > 0 ? (
-        <span className="hidden h-3 w-px shrink-0 bg-slate-200 sm:inline-block" aria-hidden />
-      ) : null}
-      <dl className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-0.5 text-[0.68rem] leading-snug">
-        {fields.map((f) => (
-          <div key={f.label} className="flex min-w-0 items-baseline gap-1">
-            <dt className="shrink-0 text-slate-400">{f.label}</dt>
-            <dd
-              className={cn(
-                "min-w-0 truncate font-medium text-slate-700",
-                f.emphasize && "text-amber-900"
-              )}
-            >
-              {f.value}
-            </dd>
-          </div>
-        ))}
-      </dl>
-    </div>
-  );
-}
-
-function ProductStrip({
-  line,
-  showProgress,
-  emphasizeStock,
-  canEditClient,
-  pending,
-  openClientEditor,
-  onSaveClient,
-}: {
-  line: MyOrderLine;
-  showProgress: boolean;
-  emphasizeStock: boolean;
-  canEditClient: boolean;
-  pending: boolean;
-  openClientEditor: boolean;
-  onSaveClient?: (orderId: string, name: string | null) => void | Promise<void>;
-}) {
-  const detail = [line.symbol, line.quantityLabel, showProgress ? line.progressLabel : null]
-    .filter(Boolean)
-    .join(" · ");
-
-  const onStock = line.stockStatus === "on_stock";
-  const partial = line.stockStatus === "partial";
-
-  return (
-    <div
-      className={cn(
-        "mt-2 rounded-lg bg-white/90 px-2.5 py-2 ring-1 ring-slate-200/80",
-        emphasizeStock && onStock && "ring-emerald-200/90",
-        emphasizeStock && partial && "ring-amber-200/80"
-      )}
-    >
-      <div className="flex items-start justify-between gap-2">
-        <div className="min-w-0 flex-1">
-          <p className="text-sm font-medium leading-snug text-slate-900">{line.product}</p>
-          {detail ? (
-            <p className="mt-0.5 text-xs text-slate-500">{detail}</p>
-          ) : null}
+    <dl className="grid grid-cols-1 gap-x-4 gap-y-1.5 text-xs sm:grid-cols-2">
+      {fields.map((f) => (
+        <div key={f.label} className="flex min-w-0 gap-2">
+          <dt className="w-16 shrink-0 text-slate-400">{f.label}</dt>
+          <dd
+            className={cn(
+              "min-w-0 font-medium text-slate-800",
+              f.emphasize && "text-amber-900"
+            )}
+          >
+            {f.value}
+          </dd>
         </div>
-        {emphasizeStock && onStock ? (
-          <span className="shrink-0 rounded-md bg-emerald-100 px-1.5 py-0.5 text-[0.65rem] font-semibold text-emerald-800">
-            ✓ U nas
-          </span>
-        ) : null}
-        {emphasizeStock && partial ? (
-          <span className="shrink-0 rounded-md bg-amber-100 px-1.5 py-0.5 text-[0.65rem] font-semibold text-amber-900">
-            Częściowo
-          </span>
-        ) : null}
-      </div>
-      {canEditClient && onSaveClient && openClientEditor ? (
-        <SalesClientNameEditor
-          value={line.clientName}
-          disabled={pending}
-          openOnMount
-          onSave={(name) => onSaveClient(line.id, name)}
-        />
-      ) : null}
-    </div>
+      ))}
+    </dl>
   );
 }
 
@@ -209,17 +94,14 @@ function ShipmentToolbar({
   if (!hasToolbar) return null;
 
   return (
-    <div className="flex shrink-0 flex-col items-stretch gap-1.5 sm:min-w-[7.5rem] sm:items-end">
-      <div className="flex items-center justify-end gap-1">
-        {overflowMenu}
-      </div>
+    <div className="flex shrink-0 items-center gap-1 sm:gap-1.5">
+      {overflowMenu}
       {showSinglePickup ? (
         <MyOrderAckButton
           variant={isAction ? "action" : "inline"}
           disabled={pending}
           title={ackFullTitle}
           onClick={() => onAcknowledgePickup(pickupIds)}
-          className="w-full sm:w-auto"
         >
           {ackShortLabel}
         </MyOrderAckButton>
@@ -230,7 +112,7 @@ function ShipmentToolbar({
           disabled={pending}
           title={ackFullTitle}
           onClick={() => onAcknowledgePickup(pickupIds)}
-          className="w-full whitespace-nowrap sm:w-auto"
+          className="whitespace-nowrap"
         >
           {pickupCount} do odbioru
         </MyOrderAckButton>
@@ -297,8 +179,7 @@ export function MyOrderShipmentCard({
     row.canCancelBySales &&
     row.salesCancelPhase &&
     onCancelRequest;
-  const showEditLink =
-    canAcknowledge && row.canEditBySales && onEditRequest && row.supplierId;
+  const showEditLink = canAcknowledge && row.canEditBySales && onEditRequest;
   const showStatusBadge = shouldShowOrderStatusBadge(row);
   const canEditClient = canAcknowledge && Boolean(onSaveClient);
 
@@ -306,7 +187,7 @@ export function MyOrderShipmentCard({
     headlineTone === "action" ||
     row.acknowledgeMode === "pickup" ||
     row.acknowledgeMode === "availability";
-  const isUrgent = headlineTone === "warning" || isAction;
+  const isUrgent = headlineTone === "warning";
   const isInformacja = listKind === "informacja" || row.kind === "informacja";
 
   const emphasizeStock =
@@ -316,23 +197,14 @@ export function MyOrderShipmentCard({
 
   const expandCtx = { listKind, showGroupPickup };
   const needsExpand = myOrderNeedsExpand(row, expandCtx);
-  const isCompact = !needsExpand;
   const collapsedSubline = myOrderCollapsedSubline(row);
   const expandedNotes = myOrderExpandedNotes(row);
-  const collapsedMeta = myOrderCollapsedMetaFields(row, showProgress);
+  const expandedMeta = myOrderMetaFields(row, showProgress);
   const expandHint = myOrderExpandHint(row, expandCtx);
-  const productPeekMode = myOrderCollapsedProductMode(row, listKind);
-  const surfaceClass = rowSurfaceClass({
-    expanded,
-    needsExpand,
-    isAction,
-    isUrgent,
-    isInformacja,
-  });
+  const productSummary = myOrderCollapsedProductSummary(row, listKind);
 
   const visibleLines = linesOpen ? row.lines : row.lines.slice(0, 8);
   const hasClient = Boolean(row.clientLabel || row.lines.some((l) => l.clientName?.trim()));
-  const singleLine = row.lineCount === 1 ? row.lines[0] : null;
 
   const ensureExpanded = () => {
     if (!expanded && needsExpand) onToggle();
@@ -346,6 +218,7 @@ export function MyOrderShipmentCard({
   };
 
   const handleToggle = () => {
+    if (!needsExpand) return;
     if (expanded) setClientEditorLineId(null);
     onToggle();
   };
@@ -385,6 +258,7 @@ export function MyOrderShipmentCard({
   const lineItemProps = (lineId: string) => ({
     showProgress,
     emphasizeStock,
+    compact: true,
     canAcknowledge: showGroupPickup,
     pending,
     acknowledgeLineLabel: "Potwierdź" as const,
@@ -397,206 +271,161 @@ export function MyOrderShipmentCard({
     openClientEditor: clientEditorLineId === lineId,
   });
 
-  const showProductStrip = isCompact && singleLine && productPeekMode === "full";
-
-  const mainContent = (
-    <div className="min-w-0 flex-1">
-      <div className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
-        <h3
-          className={cn(
-            "truncate text-[0.95rem] text-slate-900",
-            expanded && needsExpand ? "font-semibold" : "font-medium"
-          )}
-        >
-          {row.supplierName}
-        </h3>
-        <span className="shrink-0 text-[0.6rem] font-semibold uppercase tracking-wide text-slate-400">
-          {kindLabel}
-        </span>
-        {expanded && needsExpand ? (
-          <span className="shrink-0 rounded-md bg-white/90 px-1.5 py-0.5 text-[0.6rem] font-semibold uppercase tracking-wide text-slate-500 ring-1 ring-slate-200/80">
-            Szczegóły
-          </span>
-        ) : null}
-      </div>
-
-      <p
-        className={cn(
-          "mt-0.5 text-[0.8125rem] font-medium leading-snug",
-          isAction && "text-emerald-800",
-          !isAction && isUrgent && "text-amber-900",
-          !isAction && !isUrgent && "text-slate-700"
-        )}
-      >
-        {headline}
-      </p>
-
-      {collapsedSubline ? (
-        <p
-          className={cn(
-            "mt-1 text-[0.7rem] leading-snug",
-            isAction ? "text-emerald-800/90" : "text-slate-600"
-          )}
-        >
-          {collapsedSubline}
-        </p>
-      ) : null}
-
-      <MetaInline
-        fields={collapsedMeta}
-        statusLabel={row.statusTitle}
-        statusVariant={row.badgeVariant}
-        showStatus={showStatusBadge}
-        lineCount={row.lineCount}
-      />
-
-      {showProductStrip && singleLine ? (
-        <ProductStrip
-          line={singleLine}
-          showProgress={showProgress}
-          emphasizeStock={emphasizeStock}
-          canEditClient={canEditClient}
-          pending={pending}
-          openClientEditor={clientEditorLineId === singleLine.id}
-          onSaveClient={onSaveClient}
-        />
-      ) : null}
-
-      {!expanded && !showProductStrip && row.lineCount > 0 ? (
-        <p className="mt-2 truncate text-xs text-slate-600">
-          {productPeekMode === "summary" ? (
-            <span className="font-medium text-slate-700">{myOrderProductPreviewLine(row)}</span>
-          ) : null}
-          {productPeekMode === "full" && row.lineCount > 1 ? (
-            <span className="font-medium text-slate-700">{myOrderProductPreviewLine(row)}</span>
-          ) : null}
-        </p>
-      ) : null}
-
-      {needsExpand && !expanded ? (
-        <p className={cn("mt-1.5 text-[0.65rem] font-medium opacity-80", brandLinkSubtleClass)}>
-          {expandHint}
-        </p>
-      ) : null}
-    </div>
-  );
-
-  const expandedPanel = (
-    <div
-      id={panelId}
-      className={cn(
-        "border-t border-slate-200/60 px-3 pb-2.5 pt-2 sm:px-3.5",
-        isInformacja && "border-violet-200/50"
-      )}
-    >
-      {expandedNotes ? (
-        <p className="mb-2 rounded-lg bg-white/70 px-2.5 py-2 text-[0.7rem] leading-relaxed text-slate-600 ring-1 ring-slate-200/60">
-          {expandedNotes}
-        </p>
-      ) : null}
-
-      {row.lineCount > 0 ? (
-        <div className="rounded-lg bg-white/70 ring-1 ring-slate-200/70">
-          {row.lineCount > 1 ? (
-            <div className="flex items-center justify-between gap-2 border-b border-slate-100 px-2.5 py-1.5">
-              <p className="text-[0.62rem] font-semibold uppercase tracking-wide text-slate-500">
-                Pozycje ({row.lineCount})
-              </p>
-              {row.lineCount > 8 ? (
-                <button
-                  type="button"
-                  onClick={() => setLinesOpen((v) => !v)}
-                  className={cn("text-[0.7rem] font-medium", brandLinkSubtleClass)}
-                >
-                  {linesOpen ? "Zwiń" : "Wszystkie"}
-                </button>
-              ) : null}
-            </div>
-          ) : null}
-          {emphasizeStock ? (
-            <p className="border-b border-slate-100 px-2.5 py-1 text-[0.65rem] text-emerald-800">
-              Zielony pasek — na magazynie
-            </p>
-          ) : null}
-          <ul className="divide-y divide-slate-100 px-1">
-            {(row.lineCount > 8 ? visibleLines : row.lines).map((line, i) => (
-              <MyOrderLineItem
-                key={line.id}
-                line={line}
-                index={i}
-                {...lineItemProps(line.id)}
-              />
-            ))}
-          </ul>
-          {!linesOpen && row.lineCount > 8 ? (
-            <p className="border-t border-slate-100 px-2.5 py-1 text-[0.7rem] text-slate-500">
-              … +{row.lineCount - 8} poz.
-            </p>
-          ) : null}
-        </div>
-      ) : null}
-
-      {showGroupPickup && row.pickupPendingIds.length ? (
-        <div className="mt-2 flex justify-end">
-          <MyOrderAckButton
-            variant="action"
-            disabled={pending}
-            title={ackFullTitle}
-            onClick={() => onAcknowledgePickup(row.pickupPendingIds)}
-          >
-            {row.acknowledgeMode === "availability"
-              ? `Potwierdź wszystkie (${row.pickupPendingCount})`
-              : `Odbiór wszystkich (${row.pickupPendingCount})`}
-          </MyOrderAckButton>
-        </div>
-      ) : null}
-    </div>
+  const headlineClass = cn(
+    "truncate text-xs font-medium sm:text-[0.8125rem]",
+    isAction && "text-emerald-800",
+    isUrgent && "text-amber-900",
+    !isAction && !isUrgent && "text-slate-600"
   );
 
   return (
     <li
       id={domId}
-      className={cn(
-        "border-b border-slate-200/60 transition-[background-color,box-shadow] duration-150 last:border-b-0",
-        surfaceClass
-      )}
+      className={mojeShipmentRowClass({ expanded, isAction, isUrgent, isInformacja })}
     >
-      <div className="flex items-start gap-1 px-2 py-2.5 sm:gap-2 sm:px-3 sm:py-3">
-        {needsExpand ? (
-          <button
-            type="button"
-            onClick={handleToggle}
-            className={cn(
-              "mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-slate-500 transition hover:bg-white/80 hover:text-indigo-700",
-              expanded && "bg-white/90 text-indigo-700 ring-1 ring-indigo-200/80"
-            )}
-            aria-expanded={expanded}
-            aria-controls={panelId}
-            aria-label={`${expanded ? "Zwiń" : expandHint}: ${row.supplierName}`}
-          >
-            <ChevronIcon open={expanded} />
-          </button>
-        ) : (
-          <span className="mt-1.5 w-0 shrink-0 sm:w-2" aria-hidden />
-        )}
+      <div className="flex min-h-[2.75rem] items-center gap-1 px-2 py-1.5 sm:gap-2 sm:px-3 sm:py-2">
+        <button
+          type="button"
+          onClick={handleToggle}
+          disabled={!needsExpand}
+          aria-expanded={needsExpand ? expanded : undefined}
+          aria-controls={needsExpand ? panelId : undefined}
+          aria-label={
+            needsExpand
+              ? `${expanded ? "Zwiń" : expandHint}: ${row.supplierName}`
+              : row.supplierName
+          }
+          className={cn(
+            "flex h-8 w-8 shrink-0 items-center justify-center text-slate-500",
+            needsExpand && "hover:bg-slate-100 hover:text-indigo-700"
+          )}
+        >
+          {needsExpand ? <ChevronIcon open={expanded} /> : null}
+        </button>
 
-        {mainContent}
-        {toolbar}
+        <button
+          type="button"
+          onClick={handleToggle}
+          disabled={!needsExpand}
+          className={cn(
+            "min-w-0 flex-1 text-left",
+            needsExpand &&
+              "hover:bg-black/[0.02] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-indigo-300"
+          )}
+        >
+          <div className="flex min-w-0 items-baseline gap-2">
+            <span className="truncate text-sm font-semibold text-slate-900">
+              {row.supplierName}
+            </span>
+            <span className="hidden shrink-0 text-[0.6rem] font-semibold uppercase tracking-wide text-slate-400 sm:inline">
+              {kindLabel}
+            </span>
+          </div>
+          <p className={headlineClass}>{headline}</p>
+          {!expanded && collapsedSubline ? (
+            <p className="mt-0.5 truncate text-[0.68rem] leading-snug text-slate-500">
+              {collapsedSubline}
+            </p>
+          ) : null}
+        </button>
+
+        {!expanded ? (
+          <div className="hidden shrink-0 flex-col items-end gap-1 sm:flex">
+            {showStatusBadge ? (
+              <MyOrderStatusPill label={row.statusTitle} variant={row.badgeVariant} />
+            ) : null}
+            {productSummary ? (
+              <span className="text-[0.65rem] font-medium tabular-nums text-slate-500">
+                {productSummary}
+              </span>
+            ) : null}
+          </div>
+        ) : null}
+
+        <div className="shrink-0" onClick={(e) => e.stopPropagation()}>
+          {toolbar}
+        </div>
       </div>
 
-      {needsExpand && expanded ? expandedPanel : null}
+      {!expanded && (showStatusBadge || productSummary) ? (
+        <div className="flex flex-wrap items-center gap-2 border-t border-slate-100/80 px-3 pb-1.5 pt-0 sm:hidden">
+          {showStatusBadge ? (
+            <MyOrderStatusPill label={row.statusTitle} variant={row.badgeVariant} />
+          ) : null}
+          {productSummary ? (
+            <span className="text-[0.65rem] font-medium text-slate-500">{productSummary}</span>
+          ) : null}
+        </div>
+      ) : null}
 
-      {!showProductStrip && clientEditorLineId && singleLine ? (
-        <div className="border-t border-slate-200/60 px-3 pb-2.5 pt-0 sm:px-3.5">
-          <ProductStrip
-            line={singleLine}
-            showProgress={showProgress}
-            emphasizeStock={emphasizeStock}
-            canEditClient={canEditClient}
-            pending={pending}
-            openClientEditor
-            onSaveClient={onSaveClient}
-          />
+      {needsExpand && expanded ? (
+        <div
+          id={panelId}
+          role="region"
+          aria-label={`Szczegóły: ${row.supplierName}`}
+          className={mojeShipmentExpandedPanelClass}
+        >
+          {expandedNotes ? (
+            <p className="mb-2.5 text-xs leading-relaxed text-slate-600">{expandedNotes}</p>
+          ) : null}
+
+          <MetaGrid fields={expandedMeta} />
+
+          {row.clientLabel ? (
+            <p className="mt-2 text-xs text-slate-600">
+              <span className="text-slate-400">Klient: </span>
+              <span className="font-medium text-slate-800">{row.clientLabel}</span>
+            </p>
+          ) : null}
+
+          {row.lineCount > 0 ? (
+            <div className={mojeShipmentLinesListClass}>
+              <div className="flex items-center justify-between gap-2 px-0.5 pb-1 pt-0.5">
+                <p className="text-[0.62rem] font-semibold uppercase tracking-wide text-slate-500">
+                  {row.lineCount > 1 ? productSummary : "Towar"}
+                </p>
+                {row.lineCount > 8 ? (
+                  <button
+                    type="button"
+                    onClick={() => setLinesOpen((v) => !v)}
+                    className={cn("text-[0.7rem] font-medium", brandLinkSubtleClass)}
+                  >
+                    {linesOpen ? "Zwiń" : "Wszystkie"}
+                  </button>
+                ) : null}
+              </div>
+              <ul>
+                {(row.lineCount > 8 ? visibleLines : row.lines).map((line, i) => (
+                  <MyOrderLineItem
+                    key={line.id}
+                    line={line}
+                    index={i}
+                    {...lineItemProps(line.id)}
+                  />
+                ))}
+              </ul>
+              {!linesOpen && row.lineCount > 8 ? (
+                <p className="border-t border-slate-100 px-2.5 py-1 text-[0.7rem] text-slate-500">
+                  … +{row.lineCount - 8} poz.
+                </p>
+              ) : null}
+            </div>
+          ) : null}
+
+          {showGroupPickup && row.pickupPendingIds.length ? (
+            <div className="mt-2.5 flex justify-end">
+              <MyOrderAckButton
+                variant="action"
+                disabled={pending}
+                title={ackFullTitle}
+                onClick={() => onAcknowledgePickup(row.pickupPendingIds)}
+              >
+                {row.acknowledgeMode === "availability"
+                  ? `Potwierdź wszystkie (${row.pickupPendingCount})`
+                  : `Odbiór wszystkich (${row.pickupPendingCount})`}
+              </MyOrderAckButton>
+            </div>
+          ) : null}
         </div>
       ) : null}
     </li>

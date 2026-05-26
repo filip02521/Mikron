@@ -101,14 +101,22 @@ export function DailyPanelMetricsOverview({
         value={summary.overdueCount}
         label="Zaległe"
         hint="po terminie"
-        href={urgentTotal > 0 ? "/podsumowanie?view=dzis" : undefined}
+        href={
+          summary.overdueCount > 0
+            ? "/podsumowanie?view=dzis#kolejka-zalegle"
+            : undefined
+        }
         icon={<DailySectionIcon kind="harmonogram" size={15} />}
         tileClassName="bg-amber-100 text-amber-800"
       />
       <MetricTile
         value={summary.todayCount}
         label="Na dziś"
-        href={urgentTotal > 0 ? "/podsumowanie?view=dzis" : undefined}
+        href={
+          summary.todayCount > 0
+            ? "/podsumowanie?view=dzis#kolejka-harmonogram-dzis"
+            : undefined
+        }
         icon={<IconCalendar size={15} />}
         tileClassName="bg-slate-100 text-slate-700"
       />
@@ -120,7 +128,11 @@ export function DailyPanelMetricsOverview({
             ? `${summary.forSomeoneLineCount} prod.`
             : undefined
         }
-        href={summary.forSomeoneGroupCount > 0 ? "/podsumowanie?view=dzis" : undefined}
+        href={
+          summary.forSomeoneGroupCount > 0
+            ? "/podsumowanie?view=dzis#kolejka-prosby"
+            : undefined
+        }
         icon={<IconClipboardList size={15} />}
         tileClassName={sectionIconTileBrandClass}
       />

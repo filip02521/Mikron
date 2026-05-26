@@ -1,11 +1,16 @@
-import { getSubiektDocument, searchSubiektZd } from "@/lib/subiekt/api";
+import {
+  defaultZdSearchDataOd,
+  getSubiektDocumentCached,
+  searchSubiektZdCached,
+} from "@/lib/subiekt/subiekt-runtime-cache";
 import { isSubiektReachable } from "@/lib/subiekt/availability";
+import { dedupeAppSuppliersByKhId } from "@/lib/subiekt/dedupe-suppliers-by-kh";
 import {
   formatSubiektKontrahentLabel,
   matchSubiektKontrahentToSupplier,
   type AppSupplierRef,
 } from "@/lib/subiekt/match-supplier";
-import { zdSearchPlansForProduct } from "@/lib/subiekt/zd-search-for-product";
+import { zdSearchPlansForProductSupplierLookup } from "@/lib/subiekt/zd-search-for-product";
 import type {
   SubiektDocument,
   SubiektDocumentLine,
@@ -27,9 +32,9 @@ export type UnmappedProductSupplier = {
 };
 
 /** Maks. ZD na jedną frazę wyszukiwania (żeby „Viva” nie zjadło limitu przed „Flex”). */
-const MAX_ZD_PER_SEARCH_PLAN = 5;
+const MAX_ZD_PER_SEARCH_PLAN = 6;
 /** Łączny limit detali ZD na jeden wybór towaru. */
-const MAX_ZD_DETAIL_FETCH_TOTAL = 18;
+const MAX_ZD_DETAIL_FETCH_TOTAL = 24;
 
 function kontrahentFromDoc(doc: SubiektDocument): SubiektKontrahent | null {
   return doc.kh__Kontrahent_Odbiorca ?? doc.kh__Kontrahent_Platnik ?? null;
@@ -56,22 +61,38 @@ function lineMatchesProduct(
 type ScanResult = {
   kontrahent: SubiektKontrahent;
   documentNumber: string | null;
+  sortKey: string;
+  mappedSupplierId: string | null;
 };
 
-/** Przeszukuje ZD (wiele fraz z nazwy) i zatrzymuje się na pierwszej pasującej pozycji. */
+function docSortKey(doc: SubiektDocument): string {
+  return `${doc.dok_DataWyst ?? ""}|${doc.dok_Id}`;
+}
+
+/** Przeszukuje ZD — zbiera trafienia i preferuje dostawcę powiązanego w aplikacji (kh_Id). */
 async function scanProductInZdDocuments(
-  product: SubiektProduct
+  product: SubiektProduct,
+  appSuppliers: AppSupplierRef[]
 ): Promise<ScanResult | null> {
   const symbol = (product.tw_Symbol ?? "").trim();
   const name = (product.tw_Nazwa ?? "").trim();
-  const plans = zdSearchPlansForProduct(product);
+  const scopedSuppliers = dedupeAppSuppliersByKhId(appSuppliers);
+  const plans = zdSearchPlansForProductSupplierLookup(product, scopedSuppliers);
   const seen = new Set<number>();
   let fetchedTotal = 0;
+  const candidates: ScanResult[] = [];
 
   for (const plan of plans) {
+    if (candidates.some((c) => c.mappedSupplierId) && fetchedTotal >= MAX_ZD_DETAIL_FETCH_TOTAL) {
+      break;
+    }
+
     let list;
     try {
-      list = await searchSubiektZd(plan);
+      list = await searchSubiektZdCached({
+        ...plan,
+        dataOd: plan.dataOd ?? defaultZdSearchDataOd(),
+      });
     } catch {
       continue;
     }
@@ -84,7 +105,7 @@ async function scanProductInZdDocuments(
 
     for (const brief of list.data) {
       if (fetchedThisPlan >= MAX_ZD_PER_SEARCH_PLAN) break;
-      if (fetchedTotal >= MAX_ZD_DETAIL_FETCH_TOTAL) return null;
+      if (fetchedTotal >= MAX_ZD_DETAIL_FETCH_TOTAL) break;
 
       if (seen.has(brief.dok_Id)) continue;
       seen.add(brief.dok_Id);
@@ -93,7 +114,7 @@ async function scanProductInZdDocuments(
 
       let doc: SubiektDocument;
       try {
-        doc = await getSubiektDocument(brief.dok_Id);
+        doc = await getSubiektDocumentCached(brief.dok_Id);
       } catch {
         continue;
       }
@@ -106,14 +127,27 @@ async function scanProductInZdDocuments(
       const kontrahent = kontrahentFromDoc(doc);
       if (!kontrahent) continue;
 
-      return {
+      const mappedSupplierId = matchSubiektKontrahentToSupplier(kontrahent, scopedSuppliers);
+
+      candidates.push({
         kontrahent,
         documentNumber: doc.dok_NrPelny?.trim() ?? null,
-      };
+        sortKey: docSortKey(doc),
+        mappedSupplierId,
+      });
     }
   }
 
-  return null;
+  if (!candidates.length) return null;
+
+  candidates.sort((a, b) => {
+    const aMapped = a.mappedSupplierId ? 1 : 0;
+    const bMapped = b.mappedSupplierId ? 1 : 0;
+    if (aMapped !== bMapped) return bMapped - aMapped;
+    return b.sortKey.localeCompare(a.sortKey);
+  });
+
+  return candidates[0] ?? null;
 }
 
 export type ProductSupplierLookup =
@@ -142,15 +176,16 @@ export async function lookupSupplierForSubiektProduct(
   const name = (product.tw_Nazwa ?? "").trim();
   if (!symbol && !name) return { status: "not_found" };
 
-  const hit = await scanProductInZdDocuments(product);
+  const scopedSuppliers = dedupeAppSuppliersByKhId(appSuppliers);
+  const hit = await scanProductInZdDocuments(product, scopedSuppliers);
   if (!hit) return { status: "not_found" };
 
   const subiektLabel = formatSubiektKontrahentLabel(hit.kontrahent);
-  const supplierId = matchSubiektKontrahentToSupplier(hit.kontrahent, appSuppliers);
+  const supplierId = hit.mappedSupplierId;
 
   if (supplierId) {
     const supplierName =
-      appSuppliers.find((s) => s.id === supplierId)?.name ?? subiektLabel;
+      scopedSuppliers.find((s) => s.id === supplierId)?.name ?? subiektLabel;
     return {
       status: "mapped",
       supplierId,

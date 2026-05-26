@@ -1,28 +1,49 @@
 import { requireSalesTeamManagement } from "@/lib/auth";
-import { fetchSalesPeopleAdmin } from "@/lib/data/sales-people-admin";
+import { filterGroupsByScope, getManagedGroupIdsForUser } from "@/lib/data/sales-group-access";
+import { fetchSalesGroups } from "@/lib/data/sales-groups";
+import { fetchSalesPeopleAdminForUser } from "@/lib/data/sales-people-admin";
+import { resolveSalesTeamUiContext, salesTeamPageCopy } from "@/lib/sales/team-ui";
 import { SalesAdminClient } from "@/components/admin/SalesAdminClient";
+import { SalesTeamSubnav } from "@/components/sales/SalesTeamSubnav";
 import { SalesTeamWorkspace } from "@/components/sales/SalesTeamWorkspace";
-import Link from "next/link";
-import { Button } from "@/components/ui/Button";
 
 export default async function ZespolHandlowcyPage() {
-  await requireSalesTeamManagement();
-  const rows = await fetchSalesPeopleAdmin();
+  const user = await requireSalesTeamManagement();
+  const scope = await getManagedGroupIdsForUser(user);
+  const groups = filterGroupsByScope(await fetchSalesGroups(), scope);
+  const teamUi = await resolveSalesTeamUiContext(
+    user,
+    groups.map((g) => g.name)
+  );
+  const copy = salesTeamPageCopy(teamUi, "handlowcy");
+
+  let rows: Awaited<ReturnType<typeof fetchSalesPeopleAdminForUser>> = [];
+  let loadError: string | null = null;
+  try {
+    rows = await fetchSalesPeopleAdminForUser(user);
+  } catch (e) {
+    loadError =
+      e instanceof Error ? e.message : "Nie udało się wczytać listy. Uruchom migrację 028_sales_groups.sql w Supabase.";
+  }
 
   return (
     <SalesTeamWorkspace
-      title="Handlowcy i konta"
-      description="Dodawaj handlowców, zakładaj konta z hasłem jednorazowym i generuj linki zaproszenia."
+      title={copy.title}
+      description={copy.description}
       iconKey="teamAccounts"
-      action={
-        <Link href="/zespol">
-          <Button variant="outline" size="sm">
-            Podgląd zespołu
-          </Button>
-        </Link>
-      }
     >
-      <SalesAdminClient initial={rows} managerMode />
+      <SalesTeamSubnav />
+      {loadError ? (
+        <p className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+          {loadError}
+        </p>
+      ) : null}
+      <SalesAdminClient
+        initial={rows}
+        groups={groups}
+        managerMode={teamUi.isManager}
+        requireGroupOnCreate={teamUi.isManager && teamUi.hasTeamScope}
+      />
     </SalesTeamWorkspace>
   );
 }

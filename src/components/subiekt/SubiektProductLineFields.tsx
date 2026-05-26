@@ -5,6 +5,7 @@ import { actionSubiektSuggestProducts } from "@/app/actions/subiekt";
 import type { IndividualRequestKind } from "@/types/database";
 import { Field, Input } from "@/components/ui/Field";
 import { Spinner } from "@/components/ui/Spinner";
+import { IconCircleCheck } from "@/components/icons/StrokeIcons";
 import { SubiektFeedbackAlert } from "@/components/subiekt/SubiektFeedbackAlert";
 import {
   TypeaheadDropdown,
@@ -36,6 +37,34 @@ export type SubiektProductLineValue = {
 
 type ActiveField = "symbol" | "product";
 
+function SubiektFieldAdornment({
+  linked,
+  loading,
+}: {
+  linked: boolean;
+  loading: boolean;
+}) {
+  if (linked) {
+    return (
+      <span
+        className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-emerald-600"
+        title="Wybrano z Subiekta"
+        aria-label="Wybrano z Subiekta"
+      >
+        <IconCircleCheck size={18} strokeWidth={2.25} />
+      </span>
+    );
+  }
+  if (loading) {
+    return (
+      <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2">
+        <Spinner size="sm" />
+      </span>
+    );
+  }
+  return null;
+}
+
 export function SubiektProductLineFields({
   value,
   onChange,
@@ -50,6 +79,8 @@ export function SubiektProductLineFields({
   onProductFeedbackChange,
   onConfigFeedbackChange,
   onResolvingSupplierChange,
+  /** Prośba handlowca — dostawca dopasowywany po wysłaniu, nie przy wyborze towaru. */
+  deferSupplierResolve = false,
 }: {
   value: SubiektProductLineValue;
   onChange: (patch: Partial<SubiektProductLineValue>) => void;
@@ -70,6 +101,7 @@ export function SubiektProductLineFields({
   onProductFeedbackChange?: (feedback: SubiektFeedback | null) => void;
   onConfigFeedbackChange?: (feedback: SubiektFeedback | null) => void;
   onResolvingSupplierChange?: (resolving: boolean) => void;
+  deferSupplierResolve?: boolean;
 }) {
   const ref = useRef<HTMLDivElement>(null);
   const [enabled, setEnabled] = useState(false);
@@ -89,6 +121,7 @@ export function SubiektProductLineFields({
   const debounced = useDebouncedValue(querySource.trim(), 320);
   const prosba = appearance === "prosba";
   const isInformacja = requestKind === "informacja";
+  const linkedFromSubiekt = value.subiektTwId != null;
 
   useEffect(() => {
     void (async () => {
@@ -127,10 +160,19 @@ export function SubiektProductLineFields({
     if (!enabled) {
       setItems([]);
       setFeedback(null);
+      setStatus("idle");
+      return;
+    }
+    if (linkedFromSubiekt) {
+      setStatus("idle");
+      setItems([]);
+      setOpen(false);
+      setFeedback(null);
       return;
     }
     if (debounced.length < 2) {
       setItems([]);
+      setStatus("idle");
       setFeedback(debounced.length === 1 ? getSubiektFeedback("short_query") : null);
       return;
     }
@@ -138,26 +180,32 @@ export function SubiektProductLineFields({
     setStatus("loading");
     setFeedback(null);
     startTransition(async () => {
-      const res = await actionSubiektSuggestProducts(debounced);
-      if (!res.ok) {
-        setItems([]);
-        setFeedback(res.feedback);
-        setOpen(false);
-        return;
+      try {
+        const res = await actionSubiektSuggestProducts(debounced);
+        if (!res.ok) {
+          setItems([]);
+          setFeedback(res.feedback);
+          setOpen(false);
+          return;
+        }
+        setItems(res.items);
+        setFeedback(res.feedback ?? null);
+        setOpen(res.items.length > 0);
+      } finally {
+        setStatus("idle");
       }
-      setItems(res.items);
-      setFeedback(res.feedback ?? null);
-      setOpen(res.items.length > 0);
     });
-  }, [debounced, enabled]);
+  }, [debounced, enabled, linkedFromSubiekt]);
 
   const pick = (p: SubiektProduct) => {
     const patch = buildProductPickFromSubiekt(p, requestKind, value.quantity);
     onChange({ ...patch, subiektTwId: patch.subiektTwId });
     setFeedback(null);
     setOpen(false);
+    setItems([]);
+    setStatus("idle");
 
-    if (!suppliers?.length || !onSupplierResolved) return;
+    if (deferSupplierResolve || !suppliers?.length || !onSupplierResolved) return;
 
     setResolvingSupplier(true);
     setSupplierFeedback(null);
@@ -195,12 +243,9 @@ export function SubiektProductLineFields({
 
   const showError = feedback && feedback.tone !== "info";
   const showInfo = feedback && feedback.tone === "info" && items.length === 0;
-  const subiektPlaceholder = enabled
-    ? "Szukaj w Subiekcie (symbol lub nazwa)…"
-    : "Wpisz ręcznie";
 
   return (
-    <div ref={ref} className="relative space-y-2">
+    <div ref={ref} className="relative space-y-3">
       <div
         className={cn(
           "grid gap-3",
@@ -211,7 +256,7 @@ export function SubiektProductLineFields({
           <div className="relative">
             <Input
               disabled={disabled}
-              placeholder={enabled ? "np. ABC" : "np. ABC"}
+              placeholder="np. ABC"
               maxLength={MAX_SYMBOL_LEN}
               value={value.symbol}
               autoComplete="off"
@@ -221,22 +266,20 @@ export function SubiektProductLineFields({
                 setOpen(true);
               }}
               onFocus={() => {
+                if (linkedFromSubiekt) return;
                 setActiveField("symbol");
                 setOpen(true);
               }}
             />
-            {activeField === "symbol" && status === "loading" ? (
-              <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2">
-                <Spinner size="sm" />
-              </span>
-            ) : null}
+            <SubiektFieldAdornment
+              linked={linkedFromSubiekt}
+              loading={activeField === "symbol" && status === "loading"}
+            />
           </div>
         </Field>
 
         <Field
-          label={
-            isInformacja ? "Produkt (co ma być na stanie)" : "Produkty"
-          }
+          label={isInformacja ? "Produkt (co ma być na stanie)" : "Produkty"}
           className={productFieldClassName}
         >
           <div className="relative">
@@ -244,9 +287,9 @@ export function SubiektProductLineFields({
               disabled={disabled}
               placeholder={
                 isInformacja
-                  ? subiektPlaceholder
+                  ? "Symbol lub nazwa z Subiekta…"
                   : enabled
-                    ? "Nazwa z Subiekta lub opis…"
+                    ? "Symbol lub nazwa z Subiekta…"
                     : "Opis produktów"
               }
               maxLength={MAX_PRODUCT_TEXT_LEN}
@@ -258,15 +301,15 @@ export function SubiektProductLineFields({
                 setOpen(true);
               }}
               onFocus={() => {
+                if (linkedFromSubiekt) return;
                 setActiveField("product");
                 setOpen(true);
               }}
             />
-            {activeField === "product" && status === "loading" ? (
-              <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2">
-                <Spinner size="sm" />
-              </span>
-            ) : null}
+            <SubiektFieldAdornment
+              linked={linkedFromSubiekt}
+              loading={activeField === "product" && status === "loading"}
+            />
           </div>
         </Field>
 
@@ -315,11 +358,15 @@ export function SubiektProductLineFields({
             })}
           </TypeaheadDropdown>
 
-          {!delegateAlerts && !feedback && !resolvingSupplier ? (
+          {!delegateAlerts && !feedback && !resolvingSupplier && !linkedFromSubiekt ? (
             <p className="text-xs text-slate-400">
-              {isInformacja
-                ? "Wpisz symbol lub nazwę (min. 2 znaki) — po wyborze uzupełnimy pola i spróbujemy ustawić dostawcę z ZD."
-                : "Wpisz symbol lub nazwę (min. 2 znaki) — po wyborze uzupełnimy pola i spróbujemy ustawić dostawcę z ZD."}
+              {deferSupplierResolve
+                ? isInformacja
+                  ? "Wpisz symbol lub nazwę (min. 2 znaki) — po wyborze towaru możesz od razu wysłać prośbę; dostawcę dopasujemy w tle."
+                  : "Wpisz symbol lub nazwę (min. 2 znaki) — po wyborze towaru możesz wysłać prośbę; dostawcę dopasujemy w tle z Subiekta."
+                : isInformacja
+                  ? "Wpisz symbol lub nazwę (min. 2 znaki) — po wyborze uzupełnimy pola i spróbujemy ustawić dostawcę z ZD."
+                  : "Wpisz symbol lub nazwę (min. 2 znaki) — po wyborze uzupełnimy pola i spróbujemy ustawić dostawcę z ZD."}
             </p>
           ) : null}
 

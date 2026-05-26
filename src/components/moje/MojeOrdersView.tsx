@@ -24,6 +24,7 @@ import {
 } from "@/components/icons/StrokeIcons";
 import { SectionHeadingIcon } from "@/components/icons/SectionHeadingIcon";
 import { brandLinkSubtleClass, sectionIconTileBrandClass } from "@/lib/ui/ontime-theme";
+import { mojeShipmentSectionShellClass } from "@/lib/ui/moje-shipment-row-styles";
 import { SubiektStatusBar } from "@/components/subiekt/SubiektStatusBar";
 import type { SubiektAvailability } from "@/lib/subiekt/availability";
 
@@ -111,12 +112,16 @@ function MyOrderShipmentBlock({
   showProgress,
   canAcknowledge,
   suppliers,
+  embedded = false,
+  continuation = false,
 }: {
   rows: MyOrderRow[];
   listKind: "zamowienie" | "informacja";
   showProgress: boolean;
   canAcknowledge: boolean;
   suppliers: { id: string; name: string }[];
+  embedded?: boolean;
+  continuation?: boolean;
 }) {
   if (rows.length === 0) return null;
   return (
@@ -127,6 +132,8 @@ function MyOrderShipmentBlock({
       canAcknowledge={canAcknowledge}
       cardIdPrefix={cardDomId}
       suppliers={suppliers}
+      embedded={embedded}
+      continuation={continuation}
     />
   );
 }
@@ -144,6 +151,7 @@ export function MojeOrdersView({
   pageDescription,
   headerActions,
   subiektAvailability,
+  zdEtaNoticeSlot,
 }: {
   zamowienia: MyOrderRow[];
   informacje: MyOrderRow[];
@@ -157,6 +165,7 @@ export function MojeOrdersView({
   pageDescription?: string;
   headerActions?: React.ReactNode;
   subiektAvailability?: SubiektAvailability;
+  zdEtaNoticeSlot?: React.ReactNode;
 }) {
   const [activeFilter, setActiveFilter] = useState<MyOrderInboxFilter | null>(null);
 
@@ -292,6 +301,10 @@ export function MojeOrdersView({
           onFilterChange={setActiveFilter}
         />
 
+        {zdEtaNoticeSlot ? (
+          <div className="border-b border-slate-100 px-3 py-2.5 sm:px-4">{zdEtaNoticeSlot}</div>
+        ) : null}
+
         {inboxSummary.pickupCount > 0 && !activeFilter ? (
           <p className="flex items-start gap-2 border-b border-emerald-100 bg-emerald-50/80 px-3 py-2 text-xs font-medium text-emerald-900 sm:px-4">
             <IconPackageCheck
@@ -320,32 +333,36 @@ export function MojeOrdersView({
           </p>
         ) : null}
 
+        <div className="space-y-4 p-3 sm:p-4">
         {splitByAction && actionCount > 0 ? (
-          <>
+          <div className={mojeShipmentSectionShellClass}>
             <ListSectionLabel
               title="Od Ciebie zależy"
-              hint="Potwierdź odbiór lub powiadomienie — zielony przycisk po prawej stronie wiersza."
+              hint="Zwinięta lista — rozwiń wiersz po szczegóły i towar. Odbiór: zielony przycisk po prawej."
               count={actionCount}
               accent="emerald"
               icon="action"
             />
             <MyOrderShipmentBlock
+              embedded
               rows={actionZamowienia}
               listKind="zamowienie"
               showProgress
               {...listProps}
             />
             <MyOrderShipmentBlock
+              embedded
+              continuation
               rows={actionInformacje}
               listKind="informacja"
               showProgress={false}
               {...listProps}
             />
-          </>
+          </div>
         ) : null}
 
         {zamowieniaListRows.length > 0 ? (
-          <>
+          <div className={mojeShipmentSectionShellClass}>
             {showKindSectionLabels ? (
               <ListSectionLabel
                 title={
@@ -361,16 +378,17 @@ export function MojeOrdersView({
               />
             ) : null}
             <MyOrderShipmentBlock
+              embedded
               rows={zamowieniaListRows}
               listKind="zamowienie"
               showProgress
               {...listProps}
             />
-          </>
+          </div>
         ) : null}
 
         {informacjeListRows.length > 0 ? (
-          <>
+          <div className={mojeShipmentSectionShellClass}>
             {showKindSectionLabels ? (
               <ListSectionLabel
                 title={
@@ -388,13 +406,15 @@ export function MojeOrdersView({
               />
             ) : null}
             <MyOrderShipmentBlock
+              embedded
               rows={informacjeListRows}
               listKind="informacja"
               showProgress={false}
               {...listProps}
             />
-          </>
+          </div>
         ) : null}
+        </div>
       </Card>
 
       <MyOrderArchiveSection

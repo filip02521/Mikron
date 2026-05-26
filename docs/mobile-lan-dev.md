@@ -5,7 +5,7 @@
 Na telefonie otwieraj **ten sam host**, który masz w `.env.local`:
 
 ```
-http://192.168.68.51:3000/login
+http://192.168.10.173:3000/login
 ```
 
 Nie używaj `localhost` na telefonie — to inny komputer.
@@ -23,8 +23,8 @@ npm run dev
 W `.env.local`:
 
 ```env
-NEXT_PUBLIC_APP_URL=http://192.168.68.51:3000
-LAN_DEV_HOST=192.168.68.51
+NEXT_PUBLIC_APP_URL=http://192.168.10.173:3000
+LAN_DEV_HOST=192.168.10.173
 ```
 
 Po zmianie IP w sieci zaktualizuj obie wartości i zrestartuj `npm run dev`.
@@ -35,8 +35,8 @@ W [Supabase Dashboard](https://supabase.com/dashboard) → projekt → **Authent
 
 | Pole | Wartość |
 |------|---------|
-| **Site URL** | `http://192.168.68.51:3000` |
-| **Redirect URLs** | `http://192.168.68.51:3000/**` |
+| **Site URL** | `http://192.168.10.173:3000` |
+| **Redirect URLs** | `http://192.168.10.173:3000/**` |
 
 Zachowaj też `http://localhost:3000/**` jeśli logujesz się z komputera.
 

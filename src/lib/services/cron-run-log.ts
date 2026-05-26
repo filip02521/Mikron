@@ -8,7 +8,7 @@ export type CronRunPayload = {
 };
 
 export async function recordCronRun(
-  job: "process_deliveries" | "morning_sync" | "morning_routine",
+  job: "process_deliveries" | "morning_sync" | "morning_routine" | "resolve_suppliers",
   payload: Omit<CronRunPayload, "at"> & { at?: string }
 ): Promise<void> {
   try {
@@ -29,7 +29,11 @@ export async function recordCronRun(
 }
 
 export async function readCronRun(
-  job: "process_deliveries" | "morning_sync" | "morning_routine"
+  job:
+    | "process_deliveries"
+    | "morning_sync"
+    | "morning_routine"
+    | "resolve_suppliers"
 ): Promise<CronRunPayload | null> {
   try {
     const supabase = createAdminClient();

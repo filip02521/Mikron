@@ -12,6 +12,7 @@ import {
   actionGeneratePasswordResetLink,
   actionDeleteAppUser,
 } from "@/app/actions/users";
+import { actionSetSalesManagerGroups } from "@/app/actions/sales-group-managers";
 import { Card, CardHeader } from "@/components/ui/Card";
 import { Field, Input, Select } from "@/components/ui/Field";
 import { Button } from "@/components/ui/Button";
@@ -23,6 +24,7 @@ import { Badge } from "@/components/ui/Badge";
 import { formatPlDate } from "@/lib/display-labels";
 
 type SalesPerson = { id: string; name: string; email: string };
+type SalesGroupOption = { id: string; name: string };
 
 function salesPersonLabel(
   salesPeople: SalesPerson[],
@@ -40,11 +42,15 @@ function salesPersonLabel(
 export function UsersAdminClient({
   initialUsers,
   salesPeople,
+  salesGroups = [],
+  initialManagerGroups = {},
   currentUserId,
   prefillSalesPersonId,
 }: {
   initialUsers: AppUserRow[];
   salesPeople: SalesPerson[];
+  salesGroups?: SalesGroupOption[];
+  initialManagerGroups?: Record<string, string[]>;
   currentUserId: string;
   prefillSalesPersonId?: string;
 }) {
@@ -77,6 +83,9 @@ export function UsersAdminClient({
     )
   );
 
+  const [managerGroups, setManagerGroups] =
+    useState<Record<string, string[]>>(initialManagerGroups);
+
   const [passwordModal, setPasswordModal] = useState<{
     userId: string;
     email: string;
@@ -93,7 +102,18 @@ export function UsersAdminClient({
         ])
       )
     );
-  }, [initialUsers]);
+    setManagerGroups(initialManagerGroups);
+  }, [initialUsers, initialManagerGroups]);
+
+  const toggleManagerGroup = (userId: string, groupId: string) => {
+    setManagerGroups((prev) => {
+      const cur = prev[userId] ?? [];
+      const next = cur.includes(groupId)
+        ? cur.filter((g) => g !== groupId)
+        : [...cur, groupId];
+      return { ...prev, [userId]: next };
+    });
+  };
 
   useEffect(() => {
     if (!prefillSalesPersonId) return;
@@ -401,6 +421,7 @@ export function UsersAdminClient({
                     <th>E-mail</th>
                     <th>Rola</th>
                     <th>Handlowiec</th>
+                    <th>Grupy (kierownik)</th>
                     <th>Ostatnie logowanie</th>
                     <th />
                   </tr>
@@ -479,6 +500,32 @@ export function UsersAdminClient({
                             <span className="text-slate-400">—</span>
                           )}
                         </td>
+                        <td>
+                          {edit?.role === "sales_manager" && salesGroups.length ? (
+                            <div className="flex flex-wrap gap-2 max-w-xs">
+                              {salesGroups.map((g) => {
+                                const checked = (managerGroups[u.id] ?? []).includes(g.id);
+                                return (
+                                  <label
+                                    key={g.id}
+                                    className="inline-flex items-center gap-1 text-xs text-slate-700"
+                                  >
+                                    <input
+                                      type="checkbox"
+                                      checked={checked}
+                                      onChange={() => toggleManagerGroup(u.id, g.id)}
+                                    />
+                                    {g.name}
+                                  </label>
+                                );
+                              })}
+                            </div>
+                          ) : edit?.role === "sales_manager" ? (
+                            <span className="text-xs text-amber-700">Brak grup w systemie</span>
+                          ) : (
+                            <span className="text-slate-400">—</span>
+                          )}
+                        </td>
                         <td className="whitespace-nowrap text-sm text-slate-600 tabular-nums">
                           {u.lastSignInAt
                             ? formatPlDate(u.lastSignInAt.slice(0, 10))
@@ -502,6 +549,23 @@ export function UsersAdminClient({
                                   if ("error" in r) {
                                     setToast({ text: r.error, tone: "error" });
                                     return;
+                                  }
+                                  if (edit.role === "sales_manager") {
+                                    const mg = await actionSetSalesManagerGroups(
+                                      u.id,
+                                      managerGroups[u.id] ?? []
+                                    );
+                                    if ("error" in mg) {
+                                      setToast({ text: mg.error, tone: "error" });
+                                      return;
+                                    }
+                                  } else if (u.role === "sales_manager") {
+                                    await actionSetSalesManagerGroups(u.id, []);
+                                    setManagerGroups((prev) => {
+                                      const next = { ...prev };
+                                      delete next[u.id];
+                                      return next;
+                                    });
                                   }
                                   patchUserAfterSave(
                                     u.id,
@@ -590,6 +654,10 @@ export function UsersAdminClient({
             <li>
               <Badge variant="info">{ROLE_LABELS.sales}</Badge> — moje zamówienia, prośby,
               podgląd planu (bez zamawiania towaru).
+            </li>
+            <li>
+              <Badge variant="info">{ROLE_LABELS.sales_manager}</Badge> — jak handlowiec +
+              zespół; przypisz grupy (Sklep/Biuro), żeby widział tylko swoich ludzi.
             </li>
           </ul>
         </Card>

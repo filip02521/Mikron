@@ -45,6 +45,7 @@ import {
   hasValidOrderQuantity,
   normalizeDraftProducts,
 } from "@/lib/orders/request-completeness";
+import { planSalesRequestSubmit } from "@/lib/orders/sales-request-submit";
 import {
   canEditIndividualRequestGroup,
   type IndividualRequestEditPayload,
@@ -268,7 +269,12 @@ export async function batchAddIndividualOrders(
     subiektTwId?: number | null;
   }>,
   createdBy?: string
-): Promise<{ count: number; complete: number; verification: number }> {
+): Promise<{
+  count: number;
+  complete: number;
+  verification: number;
+  pendingSupplierResolve: number;
+}> {
   assertMaxBatchSize(entries.length, MAX_BATCH_ORDER_LINES, "pozycji");
 
   const { tryAcquireLock, releaseLock } = await import("@/lib/services/locks");
@@ -280,6 +286,7 @@ export async function batchAddIndividualOrders(
   try {
     let complete = 0;
     let verification = 0;
+    let pendingSupplierResolve = 0;
     const rows = entries.map((e) => {
       const kind = (e.requestKind ?? "zamowienie") as IndividualRequestKind;
       const sanitized = sanitizeOrderDraftFields({
@@ -293,19 +300,23 @@ export async function batchAddIndividualOrders(
         product: sanitized.product,
         quantity: sanitized.quantity,
         requestKind: kind,
+        subiektTwId: e.subiektTwId,
       };
       if (!hasAnyProductHint(draft)) {
         throw new Error("Podaj symbol lub opis produktu.");
       }
-      if (kind === "zamowienie" && !hasValidOrderQuantity(sanitized.quantity, kind)) {
-        throw new Error("Podaj ilość (liczba sztuk, np. 1).");
+      const submitPlan = planSalesRequestSubmit(draft);
+      if (!submitPlan.submittable) {
+        if (kind === "zamowienie" && !hasValidOrderQuantity(sanitized.quantity, kind)) {
+          throw new Error("Podaj ilość (liczba sztuk, np. 1).");
+        }
+        throw new Error("Uzupełnij wymagane pola prośby.");
       }
-      const assessment = assessRequestCompleteness(draft);
       const { products, symbol } = normalizeDraftProducts(draft);
-      const status: IndividualOrderStatus =
-        assessment === "complete" ? "Nowe" : "Weryfikacja";
+      const status = submitPlan.initialStatus;
       if (status === "Nowe") complete++;
       else verification++;
+      if (submitPlan.supplierResolvePending) pendingSupplierResolve++;
 
       return {
         id: uuidv4(),
@@ -322,11 +333,42 @@ export async function batchAddIndividualOrders(
         sales_client_name: normalizeSalesClientName(e.clientName),
         subiekt_tw_id:
           e.subiektTwId != null && e.subiektTwId > 0 ? e.subiektTwId : null,
+        supplier_resolve_pending: submitPlan.supplierResolvePending,
       };
     });
     const { error } = await supabase.from("individual_orders").insert(rows);
-    if (error) throw new Error(formatDbError(error));
-    return { count: rows.length, complete, verification };
+    if (error) {
+      const msg = formatDbError(error);
+      if (msg.includes("supplier_resolve_pending")) {
+        throw new Error(
+          `${msg} — uruchom migrację supabase/migrations/029_supplier_resolve_pending.sql w bazie.`
+        );
+      }
+      throw new Error(msg);
+    }
+
+    const pendingIds = rows
+      .filter((r) => r.supplier_resolve_pending)
+      .map((r) => r.id);
+    if (pendingIds.length > 0) {
+      const { after } = await import("next/server");
+      after(async () => {
+        try {
+          const { resolveOrdersSupplierBackground } = await import(
+            "@/lib/subiekt/resolve-order-supplier"
+          );
+          await resolveOrdersSupplierBackground(pendingIds);
+          const { revalidatePath } = await import("next/cache");
+          revalidatePath("/podsumowanie");
+          revalidatePath("/weryfikacja");
+          revalidatePath("/moje");
+        } catch (e) {
+          console.error("[resolveOrdersSupplierBackground]", e);
+        }
+      });
+    }
+
+    return { count: rows.length, complete, verification, pendingSupplierResolve };
   } finally {
     await releaseLock("BATCH_INDIVIDUAL");
   }
@@ -372,7 +414,7 @@ export async function completeVerificationOrder(
     quantity: sanitized.quantity,
   });
   const supabase = createAdminClient();
-  const { error } = await supabase
+  const { data: updated, error } = await supabase
     .from("individual_orders")
     .update({
       supplier_id: data.supplierId,
@@ -382,13 +424,19 @@ export async function completeVerificationOrder(
       quantity: quantityForRequestKind(data.requestKind, sanitized.quantity),
       request_kind: (data.requestKind ?? "zamowienie") as IndividualRequestKind,
       status: "Nowe",
+      supplier_resolve_pending: false,
       subiekt_tw_id:
         data.subiektTwId != null && data.subiektTwId > 0 ? data.subiektTwId : null,
     })
     .eq("id", orderId)
-    .eq("status", "Weryfikacja");
+    .eq("status", "Weryfikacja")
+    .select("id")
+    .maybeSingle();
 
   if (error) throw new Error(error.message);
+  if (!updated) {
+    throw new Error("Prośba została już przetworzona — odśwież listę.");
+  }
 }
 
 function statusForEditedLine(
@@ -398,9 +446,24 @@ function statusForEditedLine(
     product?: string;
     quantity?: string;
     requestKind: IndividualRequestKind;
+    subiektTwId?: number | null;
   }
-): IndividualOrderStatus {
-  return assessRequestCompleteness(draft) === "complete" ? "Nowe" : "Weryfikacja";
+): { status: IndividualOrderStatus; supplierResolvePending: boolean } {
+  const plan = planSalesRequestSubmit({
+    supplierId: draft.supplierId?.trim() || undefined,
+    symbol: draft.symbol,
+    product: draft.product,
+    quantity: draft.quantity,
+    requestKind: draft.requestKind,
+    subiektTwId: draft.subiektTwId,
+  });
+  if (!plan.submittable) {
+    return { status: "Weryfikacja", supplierResolvePending: false };
+  }
+  return {
+    status: plan.initialStatus,
+    supplierResolvePending: plan.supplierResolvePending,
+  };
 }
 
 export async function updateIndividualRequestGroup(
@@ -448,6 +511,7 @@ export async function updateIndividualRequestGroup(
   const keptIds = new Set<string>();
   let updated = 0;
   let inserted = 0;
+  const pendingResolveIds: string[] = [];
 
   for (const line of payload.lines) {
     const kind = payload.requestKind;
@@ -471,7 +535,10 @@ export async function updateIndividualRequestGroup(
     }
 
     const { products, symbol } = normalizeDraftProducts(draft);
-    const status = statusForEditedLine(draft);
+    const { status, supplierResolvePending } = statusForEditedLine({
+      ...draft,
+      subiektTwId: line.subiektTwId,
+    });
     const rowPayload = {
       supplier_id: payload.supplierId.trim() || null,
       sales_person_id: payload.salesPersonId,
@@ -480,6 +547,7 @@ export async function updateIndividualRequestGroup(
       quantity: quantityForRequestKind(kind, sanitized.quantity),
       request_kind: kind,
       status,
+      supplier_resolve_pending: supplierResolvePending,
       sales_client_name: normalizeSalesClientName(line.clientName),
       subiekt_tw_id:
         line.subiektTwId != null && line.subiektTwId > 0 ? line.subiektTwId : null,
@@ -496,15 +564,18 @@ export async function updateIndividualRequestGroup(
         .in("status", ["Nowe", "Weryfikacja"]);
       if (error) throw new Error(error.message);
       keptIds.add(line.id);
+      if (supplierResolvePending) pendingResolveIds.push(line.id);
       updated++;
     } else {
+      const newId = uuidv4();
       const { error } = await supabase.from("individual_orders").insert({
-        id: uuidv4(),
+        id: newId,
         ...rowPayload,
         order_type: "None" as OrderType,
         submission_group_id: submissionGroupId,
       });
       if (error) throw new Error(formatDbError(error));
+      if (supplierResolvePending) pendingResolveIds.push(newId);
       inserted++;
     }
   }
@@ -519,6 +590,24 @@ export async function updateIndividualRequestGroup(
       .in("status", ["Nowe", "Weryfikacja"]);
     if (error) throw new Error(error.message);
     removed = removeIds.length;
+  }
+
+  if (pendingResolveIds.length > 0) {
+    const { after } = await import("next/server");
+    after(async () => {
+      try {
+        const { resolveOrdersSupplierBackground } = await import(
+          "@/lib/subiekt/resolve-order-supplier"
+        );
+        await resolveOrdersSupplierBackground(pendingResolveIds);
+        const { revalidatePath } = await import("next/cache");
+        revalidatePath("/podsumowanie");
+        revalidatePath("/weryfikacja");
+        revalidatePath("/moje");
+      } catch (e) {
+        console.error("[resolveOrdersSupplierBackground after edit]", e);
+      }
+    });
   }
 
   return { updated, inserted, removed };

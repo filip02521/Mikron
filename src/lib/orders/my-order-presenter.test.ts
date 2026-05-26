@@ -139,6 +139,24 @@ describe("presentMyOrder", () => {
     expect(row.headlineTone).toBe("action");
   });
 
+  it("pokazuje osobny status gdy trwa dopasowanie dostawcy", () => {
+    const row = presentMyOrders(
+      [
+        {
+          ...baseOrder,
+          status: "Weryfikacja",
+          supplier_id: null,
+          supplier: undefined,
+          supplier_resolve_pending: true,
+        },
+      ],
+      []
+    ).zamowienia[0];
+    expect(row.statusTitle).toBe("Dopasowujemy dostawcę");
+    expect(row.supplierName).toContain("Dopasowywanie");
+    expect(row.statusDetail).toContain("System dopasowuje dostawcę");
+  });
+
   it("rozróżnia badge przed zamówieniem i zamówione", () => {
     const przed = presentMyOrders(
       [{ ...baseOrder, status: "Nowe", ordered_at: null, action_at: "2026-05-01" }],

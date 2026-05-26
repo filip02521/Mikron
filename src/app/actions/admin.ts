@@ -8,7 +8,11 @@ import {
   requireSupplierManagement,
   getSessionUser,
 } from "@/lib/auth";
-import { canAccessOperations, isSales, isSalesManager } from "@/lib/auth-roles";
+import { canAccessOperations, isAdmin, isSales, isSalesManager } from "@/lib/auth-roles";
+import {
+  assertManagerCanUseGroupId,
+  canAccessSalesPerson,
+} from "@/lib/data/sales-group-access";
 import { tryAcquireLock, releaseLock } from "@/lib/services/locks";
 import {
   recalcSingleSupplierSchedule,
@@ -325,17 +329,14 @@ export async function actionAddIndividualOrders(
   }
 
   if (isSalesManager(user.role)) {
-    const supabase = createAdminClient();
     for (const e of entries) {
       if (!e.salesPersonId) {
         throw new Error("Wybierz handlowca, w imieniu którego składasz prośbę.");
       }
-      const { data: person } = await supabase
-        .from("sales_people")
-        .select("id")
-        .eq("id", e.salesPersonId)
-        .maybeSingle();
-      if (!person) throw new Error("Nieprawidłowy handlowiec.");
+      const allowed = await canAccessSalesPerson(user, e.salesPersonId);
+      if (!allowed) {
+        throw new Error("Nie masz uprawnień do składania prośby dla tego handlowca.");
+      }
     }
   }
 
@@ -782,8 +783,9 @@ export async function actionUpsertSalesPerson(form: {
   id?: string;
   name: string;
   email: string;
+  groupId?: string | null;
 }): Promise<{ success: true; id: string } | { error: string }> {
-  await requireAdminOrSalesTeamManagement();
+  const actor = await requireAdminOrSalesTeamManagement();
 
   const name = form.name.trim();
   const email = form.email.trim().toLowerCase();
@@ -805,16 +807,40 @@ export async function actionUpsertSalesPerson(form: {
     return { error: `Ten e-mail jest już przypisany do handlowca „${duplicate.name}".` };
   }
 
+  const groupId = form.groupId?.trim() ? form.groupId.trim() : null;
+  if (groupId) {
+    const { data: group } = await supabase
+      .from("sales_groups")
+      .select("id")
+      .eq("id", groupId)
+      .maybeSingle();
+    if (!group) return { error: "Wybrana grupa nie istnieje." };
+  }
+
+  if (!isAdmin(actor.role)) {
+    if (form.id) {
+      const allowed = await canAccessSalesPerson(actor, form.id);
+      if (!allowed) {
+        return { error: "Nie masz uprawnień do edycji tego handlowca." };
+      }
+    }
+    try {
+      await assertManagerCanUseGroupId(actor, groupId);
+    } catch (e) {
+      return { error: e instanceof Error ? e.message : "Brak uprawnień do grupy." };
+    }
+  }
+
   if (form.id) {
     const { error } = await supabase
       .from("sales_people")
-      .update({ name, email })
+      .update({ name, email, group_id: groupId })
       .eq("id", form.id);
     if (error) return { error: error.message };
   } else {
     const { data: inserted, error } = await supabase
       .from("sales_people")
-      .insert({ name, email })
+      .insert({ name, email, group_id: groupId })
       .select("id")
       .single();
     if (error) return { error: error.message };
@@ -829,7 +855,7 @@ export async function actionUpsertSalesPerson(form: {
 export async function actionDeleteSalesPerson(
   id: string
 ): Promise<{ success: true } | { error: string }> {
-  await requireAdminOrSalesTeamManagement();
+  const actor = await requireAdminOrSalesTeamManagement();
   const supabase = createAdminClient();
 
   const { data: person } = await supabase
@@ -838,6 +864,13 @@ export async function actionDeleteSalesPerson(
     .eq("id", id)
     .maybeSingle();
   if (!person) return { error: "Nie znaleziono handlowca." };
+
+  if (!isAdmin(actor.role)) {
+    const allowed = await canAccessSalesPerson(actor, id);
+    if (!allowed) {
+      return { error: "Nie masz uprawnień do usunięcia tego handlowca." };
+    }
+  }
 
   const { count: orderCount } = await supabase
     .from("individual_orders")

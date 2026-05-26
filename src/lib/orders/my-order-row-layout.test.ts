@@ -1,12 +1,15 @@
 import { describe, expect, it } from "vitest";
 import type { MyOrderRow } from "./my-order-presenter";
 import {
+  myOrderCollapsedMetaFields,
   myOrderCollapsedProductMode,
+  myOrderCollapsedProductSummary,
   myOrderCollapsedSubline,
   myOrderExpandedNotes,
   myOrderExpandHint,
   myOrderNeedsExpand,
 } from "./my-order-row-layout";
+import { myOrderTimingMetaField } from "./my-order-sales-ui";
 
 function row(extra: Partial<MyOrderRow> = {}): MyOrderRow {
   return {
@@ -95,7 +98,7 @@ describe("my-order-row-layout", () => {
     );
   });
 
-  it("informacja „Oczekuje na dostawę” nie powiela wyjaśnienia pod nagłówkiem", () => {
+  it("informacja „Oczekuje na dostawę” — wyjaśnienie w rozwinięciu, wiersz zwijany", () => {
     const r = row({
       kind: "informacja",
       requestKind: "informacja",
@@ -109,6 +112,35 @@ describe("my-order-row-layout", () => {
     expect(myOrderCollapsedSubline(r)).toBeNull();
     expect(
       myOrderNeedsExpand(r, { listKind: "informacja", showGroupPickup: false })
-    ).toBe(false);
+    ).toBe(true);
+    expect(myOrderCollapsedSubline(r)).toBeNull();
+  });
+
+  it("pojedyncza prośba — skrót bez nazwy produktu na liście", () => {
+    const r = row({ subline: null });
+    expect(myOrderCollapsedProductMode(r, "zamowienie")).toBe("summary");
+    expect(myOrderCollapsedProductSummary(r, "zamowienie")).toBe("1 produkt");
+    expect(myOrderExpandHint(r, { listKind: "zamowienie", showGroupPickup: false })).toBe(
+      "Rozwiń produkt"
+    );
+  });
+
+  it("termin realizacji tylko w metadanych rozwinięcia, nie na zwiniętym wierszu", () => {
+    const r = row({
+      lineCount: 4,
+      lines: Array.from({ length: 4 }, (_, i) => ({
+        ...row().lines[0],
+        id: `l${i}`,
+        product: `P${i}`,
+      })),
+      headlineTone: "warning",
+      timingLabel: "ok. 10.05.2026 (~5 dni rob.) · po terminie",
+    });
+    expect(myOrderCollapsedSubline(r)).toBeNull();
+    const timing = myOrderTimingMetaField(r, true);
+    expect(timing?.label).toBe("Termin");
+    expect(timing?.value).toContain("10.05");
+    const collapsed = myOrderCollapsedMetaFields(r, true);
+    expect(collapsed.some((f) => f.label === "Termin")).toBe(true);
   });
 });

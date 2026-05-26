@@ -65,6 +65,8 @@ export type SubiektDocument = {
   dok_Id: number;
   dok_NrPelny?: string | null;
   dok_Typ?: number;
+  dok_OdbiorcaId?: number | null;
+  dok_PlatnikId?: number | null;
   dok_DataWyst?: string | null;
   /** Termin / data realizacji (nazwy pól zależą od wersji API — pierwsze dostępne wygrywa). */
   dok_DataRealizacji?: string | null;

@@ -93,4 +93,23 @@ describe("groupOrdersForMyView", () => {
     expect(groups).toHaveLength(1);
     expect(groups[0]).toHaveLength(10);
   });
+
+  it("splits submission group when lines have mixed open statuses", () => {
+    const gid = "44444444-4444-4444-4444-444444444444";
+    const verification = order({
+      id: "1",
+      status: "Weryfikacja",
+      ordered_at: null,
+      submission_group_id: gid,
+    });
+    const nowe = order({
+      id: "2",
+      status: "Nowe",
+      ordered_at: null,
+      submission_group_id: gid,
+    });
+    expect(myOrderGroupKey(verification)).not.toBe(myOrderGroupKey(nowe));
+    const groups = groupOrdersForMyView([verification, nowe]);
+    expect(groups).toHaveLength(2);
+  });
 });

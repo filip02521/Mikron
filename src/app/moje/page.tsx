@@ -17,11 +17,11 @@ import { getAppRole } from "@/lib/auth-dev";
 import { canAccessOperations, isSalesAccount, isSalesManager } from "@/lib/auth-roles";
 import { presentMyOrders } from "@/lib/orders/my-order-presenter";
 import { getSubiektAvailability } from "@/lib/subiekt/availability";
-import { resolveSubiektZdEtasForOrders, type SubiektZdEta } from "@/lib/subiekt/zd-eta";
+import { countZdEligibleOrders } from "@/lib/subiekt/zd-eta-cache";
 import Link from "next/link";
 import { Button } from "@/components/ui/Button";
 import { Alert } from "@/components/ui/Alert";
-import { MojeOrdersView } from "@/components/moje/MojeOrdersView";
+import { MojeOrdersShell } from "@/components/moje/MojeOrdersShell";
 import { MojePageSalesToolbar } from "@/components/moje/MojePageSalesToolbar";
 import { SalesAccountLinkRequired } from "@/components/sales/SalesAccountLinkRequired";
 import { ManagerPreviewBanner } from "@/components/sales/ManagerPreviewBanner";
@@ -46,7 +46,7 @@ export default async function MojePage({
       const own = await resolveSalesPersonForUser(user);
       ownSalesPersonId = own?.id ?? null;
       if (isSalesManager(user.role) && previewSalesPersonId) {
-        const preview = await resolvePreviewSalesPerson(previewSalesPersonId);
+        const preview = await resolvePreviewSalesPerson(previewSalesPersonId, user);
         if (preview) {
           salesPersonId = preview.id;
           salesPersonName = preview.name;
@@ -140,20 +140,11 @@ export default async function MojePage({
 
   const subiektAvailability = await getSubiektAvailability();
 
-  let zdEtaByOrderId: Record<string, SubiektZdEta> = {};
-  if (subiektAvailability.reachable) {
-    try {
-      zdEtaByOrderId = await resolveSubiektZdEtasForOrders(orders);
-    } catch {
-      /* pojedynczy błąd ZD — zostaje szacunek z historii */
-    }
-  }
+  const { zamowienia, informacje, productLineCount } = presentMyOrders(orders, stats);
 
-  const { zamowienia, informacje, productLineCount } = presentMyOrders(
-    orders,
-    stats,
-    zdEtaByOrderId
-  );
+  const zdEligibleCount = salesPersonId
+    ? countZdEligibleOrders(orders)
+    : 0;
 
   const salesHeaderActions =
     role && !canAccessOperations(role) ? (
@@ -192,7 +183,11 @@ export default async function MojePage({
         </Alert>
       ) : null}
 
-      <MojeOrdersView
+      <MojeOrdersShell
+        initial={{ zamowienia, informacje, productLineCount }}
+        salesPersonId={salesPersonId}
+        subiektReachable={subiektAvailability.reachable}
+        zdEligibleCount={zdEligibleCount}
         pageTitle={isTeamPreview ? `Panel: ${salesPersonName}` : "Moje zamówienia"}
         pageDescription={
           isTeamPreview
@@ -200,11 +195,8 @@ export default async function MojePage({
             : undefined
         }
         headerActions={salesHeaderActions}
-        zamowienia={zamowienia}
-        informacje={informacje}
         archiwumRecent={viewingOwnPanel ? archiwumRecent : []}
         archiwumExtended={viewingOwnPanel ? archiwumExtended : []}
-        productLineCount={productLineCount}
         canAcknowledge={!!viewingOwnPanel}
         showProsbaCta={isSalesAccount(role ?? "sales") && !isTeamPreview}
         suppliers={suppliers}

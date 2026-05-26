@@ -14,6 +14,7 @@ import {
   TypeaheadSectionLabel,
 } from "@/components/ui/TypeaheadDropdown";
 import { useDebouncedValue } from "@/hooks/useDebouncedValue";
+import { filterSuppliersByName } from "@/lib/orders/filter-suppliers";
 import type { SubiektFeedback } from "@/lib/subiekt/feedback";
 
 export type SupplierPickerOption = {
@@ -21,6 +22,9 @@ export type SupplierPickerOption = {
   name: string;
   subiektKhId?: number | null;
 };
+
+const SUBIEKT_DEBOUNCE_MS = 450;
+const SUBIEKT_MIN_QUERY_LEN = 2;
 
 export function SupplierPickerField({
   suppliers,
@@ -45,14 +49,15 @@ export function SupplierPickerField({
   onSubiektFeedbackChange?: (feedbacks: SubiektFeedback[]) => void;
 }) {
   const ref = useRef<HTMLDivElement>(null);
+  const subiektRequestId = useRef(0);
   const [query, setQuery] = useState("");
   const [open, setOpen] = useState(false);
-  const [remote, setRemote] = useState<SubiektSupplierSuggestion[]>([]);
+  const [subiektRows, setSubiektRows] = useState<SubiektSupplierSuggestion[]>([]);
   const [feedback, setFeedback] = useState<SubiektFeedback | null>(null);
   const [subiektWarning, setSubiektWarning] = useState<SubiektFeedback | null>(null);
   const [status, setStatus] = useState<"idle" | "loading" | "error">("idle");
   const [, startTransition] = useTransition();
-  const debounced = useDebouncedValue(query.trim(), 300);
+  const debouncedForSubiekt = useDebouncedValue(query.trim(), SUBIEKT_DEBOUNCE_MS);
 
   const selected = useMemo(
     () => suppliers.find((s) => s.id === value),
@@ -64,11 +69,25 @@ export function SupplierPickerField({
     [suppliers]
   );
 
-  const localOnly = useMemo(() => {
-    const q = query.trim().toLowerCase();
-    if (!q) return sorted.slice(0, 12);
-    return sorted.filter((s) => s.name.toLowerCase().includes(q)).slice(0, 12);
-  }, [query, sorted]);
+  const localMatches = useMemo(
+    () => filterSuppliersByName(sorted, query, 12),
+    [query, sorted]
+  );
+
+  const appRows: SubiektSupplierSuggestion[] = useMemo(
+    () =>
+      localMatches.map((s) => ({
+        supplierId: s.id,
+        label: s.name,
+        source: "app" as const,
+      })),
+    [localMatches]
+  );
+
+  const shownSubiektRows = useMemo(() => {
+    const localIds = new Set(appRows.map((r) => r.supplierId).filter(Boolean));
+    return subiektRows.filter((r) => !r.supplierId || !localIds.has(r.supplierId));
+  }, [appRows, subiektRows]);
 
   useEffect(() => {
     const onDoc = (e: MouseEvent) => {
@@ -79,37 +98,35 @@ export function SupplierPickerField({
   }, []);
 
   useEffect(() => {
-    if (debounced.length < 2) {
-      setRemote([]);
+    if (debouncedForSubiekt.length < SUBIEKT_MIN_QUERY_LEN) {
+      setSubiektRows([]);
       setFeedback(null);
       setSubiektWarning(null);
       setStatus("idle");
       return;
     }
+
+    const requestId = ++subiektRequestId.current;
     setStatus("loading");
     setFeedback(null);
     setSubiektWarning(null);
+
     startTransition(async () => {
-      const res = await actionSubiektSuggestSuppliers(
-        debounced,
-        suppliers.map((s) => ({
-          id: s.id,
-          name: s.name,
-          subiektKhId: s.subiektKhId ?? null,
-        }))
-      );
+      const res = await actionSubiektSuggestSuppliers(debouncedForSubiekt);
+      if (requestId !== subiektRequestId.current) return;
+
       if (!res.ok) {
-        setRemote([]);
+        setSubiektRows([]);
         setFeedback(res.feedback);
         setStatus("error");
         return;
       }
-      setRemote(res.suggestions);
+      setSubiektRows(res.suggestions);
       setFeedback(res.feedback ?? null);
       setSubiektWarning(res.subiektWarning ?? null);
       setStatus("idle");
     });
-  }, [debounced, suppliers]);
+  }, [debouncedForSubiekt]);
 
   const displayValue = open ? query : (selected?.name ?? "");
 
@@ -119,6 +136,7 @@ export function SupplierPickerField({
     setOpen(false);
     setFeedback(null);
     setSubiektWarning(null);
+    setSubiektRows([]);
   };
 
   const clear = () => {
@@ -126,27 +144,22 @@ export function SupplierPickerField({
     setQuery("");
     setOpen(false);
     setFeedback(null);
+    setSubiektRows([]);
   };
-
-  const useRemote = debounced.length >= 2;
-  const appRows: SubiektSupplierSuggestion[] = useRemote
-    ? remote.filter((s) => s.supplierId)
-    : localOnly.map((s) => ({
-        supplierId: s.id,
-        label: s.name,
-        source: "app" as const,
-      }));
-  const subiektRows = useRemote ? remote.filter((s) => !s.supplierId) : [];
 
   const showDropdown =
     open &&
     (allowEmpty ||
       appRows.length > 0 ||
-      subiektRows.length > 0 ||
+      shownSubiektRows.length > 0 ||
       status === "loading");
 
   const showInfoFeedback =
-    feedback && feedback.tone === "info" && appRows.length === 0 && subiektRows.length === 0;
+    feedback &&
+    feedback.tone === "info" &&
+    appRows.length === 0 &&
+    shownSubiektRows.length === 0 &&
+    debouncedForSubiekt.length >= SUBIEKT_MIN_QUERY_LEN;
 
   const pickerFeedbacks = useMemo(() => {
     if (showInlineFeedback) return [] as SubiektFeedback[];
@@ -180,7 +193,7 @@ export function SupplierPickerField({
             setQuery(selected?.name ?? query);
           }}
         />
-        {status === "loading" ? (
+        {status === "loading" && debouncedForSubiekt.length >= SUBIEKT_MIN_QUERY_LEN ? (
           <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2">
             <Spinner size="sm" />
           </span>
@@ -205,7 +218,13 @@ export function SupplierPickerField({
 
       <TypeaheadDropdown
         open={showDropdown}
-        emptyMessage={status === "loading" ? "Szukam dostawców…" : undefined}
+        emptyMessage={
+          status === "loading" && appRows.length === 0
+            ? "Szukam w Subiekcie…"
+            : query.trim() && appRows.length === 0 && shownSubiektRows.length === 0
+              ? "Brak wyników w systemie"
+              : undefined
+        }
       >
         {allowEmpty && !query.trim() ? (
           <TypeaheadOption
@@ -231,15 +250,18 @@ export function SupplierPickerField({
           </>
         ) : null}
 
-        {subiektRows.length > 0 ? (
+        {shownSubiektRows.length > 0 ? (
           <>
             <TypeaheadSectionLabel>Subiekt — brak w bazie</TypeaheadSectionLabel>
-            {subiektRows.map((s, i) => (
+            {shownSubiektRows.map((s, i) => (
               <TypeaheadOption
-                key={`unmapped-${i}`}
+                key={s.supplierId ?? `unmapped-${i}`}
                 title={s.label}
                 subtitle={s.detail}
-                onSelect={() => setOpen(false)}
+                onSelect={() => {
+                  if (s.supplierId) select(s.supplierId, s.label);
+                  else setOpen(false);
+                }}
               />
             ))}
           </>

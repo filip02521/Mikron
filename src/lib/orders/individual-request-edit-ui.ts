@@ -23,9 +23,8 @@ export function editInitialFromForSomeoneGroup(
 }
 
 export function editInitialFromMyOrderRow(row: MyOrderRow): EditIndividualRequestInitial | null {
-  if (!row.supplierId) return null;
   return {
-    supplierId: row.supplierId,
+    supplierId: row.supplierId ?? "",
     salesPersonId: row.salesPersonId,
     requestKind: row.requestKind,
     lines: row.lines.map((l) => ({

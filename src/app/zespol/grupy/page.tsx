@@ -1,0 +1,38 @@
+import { requireSalesTeamManagement } from "@/lib/auth";
+import { filterGroupsByScope, getManagedGroupIdsForUser } from "@/lib/data/sales-group-access";
+import { fetchSalesGroups } from "@/lib/data/sales-groups";
+import { resolveSalesTeamUiContext, salesTeamPageCopy } from "@/lib/sales/team-ui";
+import { SalesGroupsClient } from "@/components/sales/SalesGroupsClient";
+import { SalesTeamSubnav } from "@/components/sales/SalesTeamSubnav";
+import { SalesTeamWorkspace } from "@/components/sales/SalesTeamWorkspace";
+
+export default async function ZespolGrupyPage() {
+  const user = await requireSalesTeamManagement();
+  const scope = await getManagedGroupIdsForUser(user);
+  const groups = filterGroupsByScope(await fetchSalesGroups(), scope);
+  const teamUi = await resolveSalesTeamUiContext(
+    user,
+    groups.map((g) => g.name)
+  );
+  const copy = salesTeamPageCopy(teamUi, "grupy");
+
+  let loadError: string | null = null;
+  try {
+    await fetchSalesGroups();
+  } catch (e) {
+    loadError =
+      e instanceof Error ? e.message : "Nie udało się wczytać grup. Uruchom migrację 028_sales_groups.sql w Supabase.";
+  }
+
+  return (
+    <SalesTeamWorkspace title={copy.title} description={copy.description} iconKey="teamAccounts">
+      <SalesTeamSubnav />
+      {loadError ? (
+        <p className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+          {loadError}
+        </p>
+      ) : null}
+      <SalesGroupsClient initial={groups} canCreateGroups={teamUi.canCreateGroups} />
+    </SalesTeamWorkspace>
+  );
+}

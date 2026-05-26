@@ -41,6 +41,7 @@ import { VerificationModal } from "@/components/verification/VerificationModal";
 import { OnDemandSuppliersSheet } from "@/components/summary/OnDemandSuppliersSheet";
 import { DailyPanelActionsBar } from "@/components/summary/DailyPanelActionsBar";
 import { DailyPanelExceptionsView } from "@/components/summary/DailyPanelExceptionsView";
+import { DailyPanelQueueSteps } from "@/components/summary/DailyPanelQueueSteps";
 import { SectionListLabel } from "@/components/ui/SectionListLabel";
 import {
   DailySectionIcon,
@@ -132,6 +133,16 @@ export function SummaryWorkspace({
   const hasForSomeone = workspace.forSomeoneLeft.length > 0;
   const hasUrgentSchedule = urgentOverdue.length > 0 || urgentToday.length > 0;
   const hasTodayWork = hasForSomeone || hasUrgentSchedule;
+
+  const queueStepBySection = useMemo(() => {
+    let step = 0;
+    const next = () => ++step;
+    return {
+      overdue: urgentOverdue.length > 0 ? next() : undefined,
+      prosby: hasForSomeone ? next() : undefined,
+      today: urgentToday.length > 0 ? next() : undefined,
+    };
+  }, [urgentOverdue.length, hasForSomeone, urgentToday.length]);
 
   const openSupplier = useCallback((id: string) => setDrawerId(id), []);
 
@@ -336,6 +347,7 @@ export function SummaryWorkspace({
               id="dzis"
               title="Do obsługi dziś"
               hint="Kolejka: zaległe → prośby handlowców → na dziś"
+              count={todayQueueCount}
               accent="emerald"
               icon={<DailySectionIcon kind="dzis" size={17} />}
               tileClassName={dailySectionIconTileClass("dzis")}
@@ -358,10 +370,16 @@ export function SummaryWorkspace({
                   }
                 />
               ) : (
-                <div className="space-y-4">
+                <div className="space-y-6">
+                  <DailyPanelQueueSteps
+                    overdueCount={inboxSummary.overdueCount}
+                    forSomeoneGroupCount={inboxSummary.forSomeoneGroupCount}
+                    todayCount={inboxSummary.todayCount}
+                  />
                   {urgentOverdue.length > 0 ? (
                     <UrgentOrdersSection
                       embedded
+                      queueStep={queueStepBySection.overdue}
                       queuePart="overdue"
                       items={standardUrgentAll}
                       supplierMeta={workspace.supplierMeta}
@@ -383,6 +401,7 @@ export function SummaryWorkspace({
                   {hasForSomeone ? (
                     <ForSomeoneRequests
                       embedded
+                      queueStep={queueStepBySection.prosby}
                       groups={workspace.forSomeoneLeft}
                       isScopePending={isScopePending}
                       run={run}
@@ -397,6 +416,7 @@ export function SummaryWorkspace({
                   {urgentToday.length > 0 ? (
                     <UrgentOrdersSection
                       embedded
+                      queueStep={queueStepBySection.today}
                       queuePart="today"
                       items={standardUrgentAll}
                       supplierMeta={workspace.supplierMeta}

@@ -22,6 +22,7 @@ describe("auth-roles sales_manager", () => {
     expect(canManageSalesTeam("sales")).toBe(false);
     expect(canAccessPath("sales_manager", "/zespol")).toBe(true);
     expect(canAccessPath("sales_manager", "/zespol/handlowcy")).toBe(true);
+    expect(canAccessPath("sales_manager", "/zespol/grupy")).toBe(true);
     expect(canAccessPath("sales", "/zespol")).toBe(false);
   });
 

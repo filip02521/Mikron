@@ -104,7 +104,8 @@ Przy składaniu i uzupełnianiu próśb (gdy `SUBIEKT_API_BASE_URL` jest ustawio
 | Pole | Zachowanie |
 |------|------------|
 | **Symbol lub nazwa** | Wpisz ≥2 znaki w polu symbol **lub** produkt → lista z Subiekta; wybór uzupełnia **symbol**, **produkt** i **ilość** (zamówienie: domyślnie 1; informacja: bez ilości). |
-| **Dostawca** | Wyszukiwarka z listy aplikacji + dopasowania z Subiekta do istniejących dostawców. |
+| **Dostawca** | Wyszukiwarka z listy aplikacji (natychmiast, bez czekania na Subiekt przy każdym znaku). Opcjonalnie — można wysłać prośbę bez dostawcy, jeśli wybrano towar z Subiekta. |
+| **Dostawca z ZD (prośba handlowca)** | Po **wysłaniu** prośby serwer w tle szuka dostawcy w ZD (`supplier_resolve_pending`). Sukces → status **Nowe** (panel dzienny); brak dopasowania → **Weryfikacja**. Handlowiec nie czeka przy wyborze towaru. |
 
 Miejsca: `/prosba`, `/zamowienia/nowe`, szybka prośba w panelu dziennym, edycja prośby, `/weryfikacja`.
 
@@ -114,4 +115,12 @@ Komponenty: `SubiektProductLineFields`, `SupplierPickerField`, `SubiektFeedbackA
 
 ### Termin dostawy w „Moje zamówienia”
 
-Dla zamówień (nie informacji) aplikacja szuka w Subiekcie dokumentu **ZD** z pasującą pozycją (symbol lub nazwa towaru + dostawca) i wyświetla **termin realizacji** z pól `dok_TerminRealizacji` / `dok_DataRealizacji` (lub zapasowych dat na dokumencie). Gdy ZD nie ma — zostaje szacunek z historii dostaw (`delivery_stats`). Wymaga LAN i `SUBIEKT_API_BASE_URL`.
+Dla zamówień (nie informacji) aplikacja szuka w Subiekcie dokumentu **ZD** z pasującą pozycją (symbol, nazwa lub `tw_Id`) **wyłącznie u dostawcy powiązanego z Subiektem** (`suppliers.subiekt_kh_id` / kh_Id z prośby). Bez powiązania — tylko szacunek z historii dostaw (`delivery_stats`). Termin z pól `dok_TerminRealizacji` / `dok_DataRealizacji`. Wymaga LAN i `SUBIEKT_API_BASE_URL`.
+
+**Ograniczanie obciążenia API (Moje zamówienia):**
+
+- wynik na handlowca w cache Next **2 h** (`zd-eta-v4`);
+- w procesie: cache list ZD i pełnych dokumentów **2 h** (`subiekt-runtime-cache.ts`);
+- wyszukiwanie z `dataOd` (domyślnie 18 mies.) + `khId` + max **3 frazy** na prośbę;
+- **wczesne przerwanie** — kolejne frazy tylko gdy brak dopasowania;
+- max **24** pełne dokumenty na przebieg (wspólny limit dla wszystkich dostawców).

@@ -249,6 +249,18 @@ export function myOrderMetaFields(
   return fields;
 }
 
+/** Pole terminu / szacunku — zawsze widoczne na liście, także na zwiniętym wierszu. */
+export function myOrderTimingMetaField(
+  row: MyOrderRow,
+  showProgress: boolean
+): { label: string; value: string; emphasize?: boolean } | null {
+  return (
+    myOrderMetaFields(row, showProgress).find(
+      (f) => f.label === "Termin" || f.label === "Szacunek"
+    ) ?? null
+  );
+}
+
 export function isTimingOverdue(timingLabel: string | null): boolean {
   if (!timingLabel?.includes("po terminie")) return false;
   return true;

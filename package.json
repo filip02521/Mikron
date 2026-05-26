@@ -5,7 +5,8 @@
   "scripts": {
     "dev": "next dev -H 0.0.0.0",
     "build": "next build",
-    "start": "next start",
+    "start": "next start -H 0.0.0.0",
+    "lan-check": "bash scripts/lan-check.sh",
     "lint": "eslint",
     "test": "vitest run",
     "migrate": "tsx scripts/migrate-from-csv.ts",

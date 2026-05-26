@@ -35,11 +35,30 @@ import { SUMMARY_COLORS } from "@/types/database";
 import { groupOrdersForMyView, myOrderGroupKey } from "@/lib/orders/my-order-groups";
 import {
   formatSubiektZdTimingLabel,
+  pickBestZdEtaForOrders,
   subiektZdStatusHint,
   type SubiektZdEta,
 } from "@/lib/subiekt/zd-eta";
 import { clientNamesSummary } from "@/lib/orders/sales-client-label";
 import { describeVerificationGaps } from "@/lib/orders/verification-gaps";
+
+function isSupplierResolvePending(order: IndividualOrder): boolean {
+  return Boolean(order.supplier_resolve_pending && !order.supplier_id);
+}
+
+function weryfikacjaPresentation(order: IndividualOrder) {
+  const pending = isSupplierResolvePending(order);
+  return {
+    supplierName: pending
+      ? "Dopasowywanie dostawcy…"
+      : (order.supplier?.name ?? "Do ustalenia"),
+    statusTitle: pending ? "Dopasowujemy dostawcę" : "Uzupełnianie danych",
+    statusDetail: describeVerificationGaps(order),
+    timingLabel: null,
+    badgeVariant: "warning" as const,
+    rowColor: SUMMARY_COLORS.historyVerification,
+  };
+}
 import {
   canSalesCancelOrders,
   isSalesCancelNoticePending,
@@ -290,6 +309,14 @@ function appendGroupDetail(detail: string | null, lineCount: number): string | n
 }
 
 function pickRepresentativeOrder(orders: IndividualOrder[]): IndividualOrder {
+  const hasMixedOpen =
+    orders.some((o) => o.status === "Weryfikacja") &&
+    orders.some((o) => o.status === "Nowe");
+  if (hasMixedOpen) {
+    const verification = orders.find((o) => o.status === "Weryfikacja");
+    if (verification) return verification;
+  }
+
   const priority: IndividualOrderStatus[] = [
     "Czesciowo_zrealizowane",
     "Zamowione",
@@ -327,8 +354,11 @@ function salesProgressLabel(
   const q = progress.ordered;
   const d = progress.delivered;
 
-  if (status === "Nowe" || status === "Weryfikacja") {
-    return `Zamówiono ${q} szt.`;
+  if (status === "Weryfikacja") {
+    return progress.hasNumericQty ? `Prośba: ${q} szt.` : null;
+  }
+  if (status === "Nowe") {
+    return progress.hasNumericQty ? `Prośba: ${q} szt.` : null;
   }
   if (status === "Zamowione" && d === 0) {
     return `0 z ${q} szt.`;
@@ -374,12 +404,7 @@ function presentInformacja(order: IndividualOrder): MyOrderRow {
     case "Weryfikacja":
       return finalize({
         ...base,
-        supplierName: order.supplier?.name ?? "Do ustalenia",
-        statusTitle: "Uzupełnianie danych",
-        statusDetail: describeVerificationGaps(order),
-        timingLabel: null,
-        badgeVariant: "warning",
-        rowColor: SUMMARY_COLORS.historyVerification,
+        ...weryfikacjaPresentation(order),
       });
     case "Nowe":
       return finalize({
@@ -494,12 +519,7 @@ function presentZamowienie(
     case "Weryfikacja":
       return finalize({
         ...base,
-        supplierName: order.supplier?.name ?? "Do ustalenia",
-        statusTitle: "Uzupełnianie danych",
-        statusDetail: describeVerificationGaps(order),
-        timingLabel: null,
-        badgeVariant: "warning",
-        rowColor: SUMMARY_COLORS.historyVerification,
+        ...weryfikacjaPresentation(order),
       });
     case "Nowe":
       return finalize({
@@ -588,19 +608,24 @@ function presentZamowienie(
 export function presentMyOrderGroup(
   orders: IndividualOrder[],
   statsBySupplier: Record<string, DeliveryStats>,
-  zdEtaByOrderId: Record<string, SubiektZdEta> = {}
+  zdEtaByOrderId: Record<string, SubiektZdEta> | null = {}
 ): MyOrderRow {
+  const zdMap = zdEtaByOrderId ?? {};
   const visibleOrders = orders.filter((o) => !o.sales_acknowledged_at);
 
   if (orders.length === 1) {
-    const row = presentMyOrder(orders[0], statsBySupplier, zdEtaByOrderId);
+    const row = presentMyOrder(orders[0], statsBySupplier, zdMap);
     return withAckMeta(row, orders, visibleOrders);
   }
 
   const representative = pickRepresentativeOrder(visibleOrders.length ? visibleOrders : orders);
-  const base = presentMyOrder(representative, statsBySupplier, zdEtaByOrderId);
+  const orderIdsForZd = (visibleOrders.length ? visibleOrders : orders).map((o) => o.id);
+  const groupZd = pickBestZdEtaForOrders(orderIdsForZd, zdMap);
+  const zdForHeader: Record<string, SubiektZdEta> = { ...zdMap };
+  if (groupZd) zdForHeader[representative.id] = groupZd;
+  const base = presentMyOrder(representative, statsBySupplier, zdForHeader);
   const lines = visibleOrders.map((o) => {
-    const row = presentMyOrder(o, statsBySupplier, zdEtaByOrderId);
+    const row = presentMyOrder(o, statsBySupplier, zdMap);
     return rowToLine(row, o);
   });
 
@@ -632,7 +657,7 @@ export function presentMyOrderGroup(
 export function presentMyOrder(
   order: IndividualOrder,
   statsBySupplier: Record<string, DeliveryStats>,
-  zdEtaByOrderId: Record<string, SubiektZdEta> = {}
+  zdEtaByOrderId: Record<string, SubiektZdEta> | null = {}
 ): MyOrderRow {
   if (isInformacjaRequest(order)) {
     return presentInformacja(order);
@@ -640,7 +665,7 @@ export function presentMyOrder(
   const stats = order.supplier_id
     ? statsBySupplier[order.supplier_id]
     : undefined;
-  const zdEta = zdEtaByOrderId[order.id] ?? null;
+  const zdEta = zdEtaByOrderId?.[order.id] ?? null;
   return presentZamowienie(order, stats, zdEta);
 }
 

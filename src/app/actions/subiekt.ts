@@ -3,10 +3,9 @@
 import { revalidatePath } from "next/cache";
 import { requireAdmin, requireSubiektLookup, requireSupplierManagement } from "@/lib/auth";
 import { createAdminClient } from "@/lib/supabase/admin";
-import {
-  searchSubiektProducts,
-  searchSubiektSuppliers,
-} from "@/lib/subiekt/api";
+import { searchSubiektProducts } from "@/lib/subiekt/api";
+import { getAppSupplierRefsCached } from "@/lib/data/supplier-refs";
+import { searchSubiektSuppliersCached } from "@/lib/subiekt/subiekt-runtime-cache";
 import { productSearchParams } from "@/lib/subiekt/product-pick";
 import { getSubiektConfigSummary, isSubiektConfigured } from "@/lib/subiekt/config";
 import { testSubiektConnection, type SubiektHealthResult } from "@/lib/subiekt/client";
@@ -28,6 +27,7 @@ import {
   type AppSupplierRef,
 } from "@/lib/subiekt/match-supplier";
 import { lookupSupplierForSubiektProduct } from "@/lib/subiekt/product-supplier";
+import { expandSupplierSearchQueries } from "@/lib/subiekt/supplier-search-tokens";
 import type { SubiektKontrahent, SubiektProduct } from "@/lib/subiekt/types";
 
 export async function actionGetSubiektStatus() {
@@ -210,7 +210,7 @@ export async function actionSubiektLookupSupplier(
   }
 
   try {
-    const res = await searchSubiektSuppliers({
+    const res = await searchSubiektSuppliersCached({
       search: q,
       symbol: q,
       pageSize: 10,
@@ -279,47 +279,63 @@ export async function actionSetSupplierSubiektKhId(
   return { ok: true };
 }
 
+/**
+ * Podpowiedzi z Subiekta (dopasowania i brak w bazie).
+ * Lista „W systemie” filtruje klient — bez wysyłania całej bazy na serwer.
+ */
 export async function actionSubiektSuggestSuppliers(
-  query: string,
-  appSuppliers: AppSupplierRef[]
+  query: string
 ): Promise<SubiektSupplierSuggestResult> {
   await requireSubiektLookup();
-  const q = query.trim().toLowerCase();
-  if (!q) {
+  const trimmed = query.trim();
+  const q = trimmed.toLowerCase();
+  if (q.length < 2) {
     return { ok: true, suggestions: [] };
   }
 
-  const appMatches: SubiektSupplierSuggestion[] = appSuppliers
-    .filter((s) => s.name.toLowerCase().includes(q))
-    .slice(0, 12)
-    .map((s) => ({
-      supplierId: s.id,
-      label: s.name,
-      source: "app" as const,
-    }));
-
   if (!isSubiektConfigured()) {
-    if (appMatches.length === 0) {
-      return {
-        ok: true,
-        suggestions: [],
-        feedback: getSubiektFeedback("not_found_app_supplier"),
-      };
-    }
-    return { ok: true, suggestions: appMatches };
+    return { ok: true, suggestions: [] };
+  }
+
+  const reachable = await isSubiektReachable();
+  if (!reachable) {
+    return {
+      ok: true,
+      suggestions: [],
+      subiektWarning: getSubiektFeedback("subiekt_unavailable", {
+        hint: "Wyszukiwanie w systemie działa — Subiekt jest offline.",
+      }),
+    };
   }
 
   try {
-    const res = await searchSubiektSuppliers({
-      search: query.trim(),
-      pageSize: 8,
-      page: 1,
-    });
+    const appSuppliers = await getAppSupplierRefsCached();
+    const queries = expandSupplierSearchQueries(trimmed);
+    const mergedKontrahenci: SubiektKontrahent[] = [];
+    const seenKh = new Set<number>();
+
+    for (const searchPhrase of queries) {
+      const res = await searchSubiektSuppliersCached({
+        search: searchPhrase,
+        pageSize: 8,
+        page: 1,
+      });
+      for (const k of res.data) {
+        const khId = k.kh_Id;
+        if (khId != null && Number.isFinite(khId)) {
+          if (seenKh.has(khId)) continue;
+          seenKh.add(khId);
+        }
+        mergedKontrahenci.push(k);
+        if (mergedKontrahenci.length >= 12) break;
+      }
+      if (mergedKontrahenci.length >= 12) break;
+    }
 
     const subiektSuggestions: SubiektSupplierSuggestion[] = [];
-    const seenIds = new Set(appMatches.map((m) => m.supplierId));
+    const seenIds = new Set<string>();
 
-    for (const k of res.data) {
+    for (const k of mergedKontrahenci) {
       const matchedId = matchSubiektKontrahentToSupplier(k, appSuppliers);
       if (matchedId && !seenIds.has(matchedId)) {
         seenIds.add(matchedId);
@@ -340,34 +356,13 @@ export async function actionSubiektSuggestSuppliers(
       }
     }
 
-    const suggestions = [...appMatches, ...subiektSuggestions].slice(0, 14);
     const feedback =
-      suggestions.length === 0
-        ? getSubiektFeedback("not_found_app_supplier", {
-            message: `Brak dostawcy w systemie i w Subiekcie dla „${query.trim()}”.`,
-          })
-        : appMatches.length === 0 && res.data.length === 0
-          ? notFoundSupplierFeedback(query.trim())
-          : undefined;
+      subiektSuggestions.length === 0 && mergedKontrahenci.length === 0
+        ? notFoundSupplierFeedback(trimmed)
+        : undefined;
 
-    return { ok: true, suggestions, feedback };
+    return { ok: true, suggestions: subiektSuggestions, feedback };
   } catch (e) {
-    const feedback = feedbackFromException(e);
-    if (feedback.code === "not_configured") {
-      return appMatches.length
-        ? { ok: true, suggestions: appMatches }
-        : { ok: true, suggestions: [], feedback: getSubiektFeedback("not_found_app_supplier") };
-    }
-    if (appMatches.length > 0) {
-      return {
-        ok: true,
-        suggestions: appMatches,
-        subiektWarning: getSubiektFeedback("subiekt_unavailable", {
-          message: feedback.message,
-          hint: feedback.hint,
-        }),
-      };
-    }
-    return { ok: false, feedback };
+    return { ok: false, feedback: feedbackFromException(e) };
   }
 }

@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import type { IndividualRequestKind } from "@/types/database";
 import { actionUpdateIndividualRequest } from "@/app/actions/admin";
 import { actionUpdateMyIndividualRequest } from "@/app/actions/my-orders";
+import { assessSalesGroupSubmittable } from "@/lib/orders/sales-request-submit";
 import { RequestFormStatusPanel } from "@/components/orders/RequestFormStatusPanel";
 import { RequestProductLinesEditor } from "@/components/orders/RequestProductLinesEditor";
 import { newProductLine, type ProductLineDraft } from "@/components/orders/request-product-lines";
@@ -51,6 +52,11 @@ export function EditIndividualRequestModal({
     [suppliers]
   );
 
+  const salesSubmitPlan = useMemo(() => {
+    if (mode !== "sales") return null;
+    return assessSalesGroupSubmittable(lines, "", requestKind);
+  }, [mode, lines, requestKind]);
+
   useEffect(() => {
     if (!open || !initial) return;
     setSupplierId(initial.supplierId);
@@ -68,7 +74,7 @@ export function EditIndividualRequestModal({
     run(
       async () => {
         const payload = {
-          supplierId,
+          supplierId: mode === "sales" ? "" : supplierId,
           salesPersonId,
           requestKind,
           lines: lines.map((l) => ({
@@ -109,7 +115,14 @@ export function EditIndividualRequestModal({
           <Button variant="ghost" disabled={pending} onClick={onClose}>
             Anuluj
           </Button>
-          <Button disabled={pending || !initial} onClick={save}>
+          <Button
+            disabled={
+              pending ||
+              !initial ||
+              (mode === "sales" && salesSubmitPlan?.submittable === false)
+            }
+            onClick={save}
+          >
             Zapisz zmiany
           </Button>
         </>
@@ -122,32 +135,43 @@ export function EditIndividualRequestModal({
       </p>
 
       <div className="grid gap-4 sm:grid-cols-2">
-        <Field label="Dostawca" className="sm:col-span-2">
-          <SupplierPickerField
-            suppliers={sortedSuppliers}
-            value={supplierId}
-            onChange={setSupplierId}
-            disabled={pending}
-            allowEmpty
-            emptyLabel="— wybierz —"
-          />
-        </Field>
-
-        {mode === "procurement" && salesPeople.length > 0 ? (
-          <Field label="Handlowiec" className="sm:col-span-2">
-            <Select
+        {mode === "procurement" ? (
+          <Field label="Dostawca" className="sm:col-span-2">
+            <SupplierPickerField
+              suppliers={sortedSuppliers}
+              value={supplierId}
+              onChange={setSupplierId}
               disabled={pending}
-              value={salesPersonId}
-              onChange={(e) => setSalesPersonId(e.target.value)}
-            >
-              {salesPeople.map((p) => (
-                <option key={p.id} value={p.id}>
-                  {p.name}
-                </option>
-              ))}
-            </Select>
+              allowEmpty
+              emptyLabel="— wybierz —"
+            />
           </Field>
         ) : null}
+
+        {mode === "procurement" ? (
+          <>
+            {salesPeople.length > 0 ? (
+              <Field label="Handlowiec" className="sm:col-span-2">
+                <Select
+                  disabled={pending}
+                  value={salesPersonId}
+                  onChange={(e) => setSalesPersonId(e.target.value)}
+                >
+                  {salesPeople.map((p) => (
+                    <option key={p.id} value={p.id}>
+                      {p.name}
+                    </option>
+                  ))}
+                </Select>
+              </Field>
+            ) : null}
+          </>
+        ) : (
+          <p className="sm:col-span-2 text-xs text-slate-500">
+            Dostawcę dopasujemy z Subiekta po zapisie (jeśli wybrałeś towar z katalogu) albo
+            uzupełni go dział dostaw.
+          </p>
+        )}
 
         <div className="sm:col-span-2">
           <RequestKindPicker value={requestKind} onChange={setRequestKind} />
@@ -167,12 +191,13 @@ export function EditIndividualRequestModal({
           <RequestFormStatusPanel
             requestKind={requestKind}
             draft={{
-              supplierId,
+              supplierId: mode === "sales" ? "" : supplierId,
               symbol: lines.find((l) => l.symbol.trim())?.symbol,
               product: lines.find((l) => l.product.trim())?.product,
               quantity: lines.find((l) => l.quantity.trim())?.quantity,
               requestKind,
             }}
+            salesSubmitPlan={salesSubmitPlan}
           />
         </div>
       </div>

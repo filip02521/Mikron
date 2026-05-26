@@ -221,7 +221,7 @@ function SalesSupplierRow({
                   </Button>
                 </Link>
               ) : null}
-              <Link href={prosbaHref({ supplierId: insight.supplierId })}>
+              <Link href="/prosba">
                 <Button size="sm" variant="secondary">
                   Zgłoś prośbę
                 </Button>

@@ -21,6 +21,10 @@ export function describeVerificationGaps(order: IndividualOrder): string {
   const draft = orderToDraft(order);
   const missing: string[] = [];
 
+  if (order.supplier_resolve_pending && !order.supplier_id) {
+    return "System dopasowuje dostawcę z historii ZD w Subiekcie. To zwykle trwa chwilę — odśwież listę za moment. Gdy się nie uda, dział dostaw uzupełni dane ręcznie.";
+  }
+
   if (!order.supplier_id) missing.push("dostawca");
   if (!hasAnyProductHint(draft)) missing.push("opis produktu (symbol lub nazwa)");
   if (

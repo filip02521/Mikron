@@ -1,5 +1,6 @@
 import type { UserRole } from "@/types/database";
 import { canManageSalesTeam, isSalesAccount, isSalesManager } from "@/lib/auth-roles";
+import { salesManagerNavTeamDescriptions } from "@/lib/sales/team-ui";
 
 export type NavItem = {
   href: string;
@@ -144,18 +145,24 @@ export function navForRole(
   const groups: NavGroup[] = [{ title: "Handlowiec", items: handlowiecItems }];
 
   if (isSalesManager(role)) {
+    const teamNav = salesManagerNavTeamDescriptions();
     groups.push({
       title: "Zespół",
       items: [
         {
           href: "/zespol",
           label: "Podgląd zespołu",
-          description: "Panel każdego handlowca",
+          description: teamNav.overview,
         },
         {
           href: "/zespol/handlowcy",
           label: "Handlowcy i konta",
-          description: "Karty, zaproszenia, hasła startowe",
+          description: teamNav.handlowcy,
+        },
+        {
+          href: "/zespol/grupy",
+          label: "Przypisane grupy",
+          description: teamNav.grupy,
         },
       ],
     });
@@ -180,6 +187,7 @@ export function pageTitle(pathname: string): string {
   if (pathname.startsWith("/lokalizacje/")) return "Terminy zamówień";
   if (pathname.startsWith("/zespol")) {
     if (pathname.startsWith("/zespol/handlowcy")) return "Handlowcy i konta";
+    if (pathname.startsWith("/zespol/grupy")) return "Grupy zespołu";
     return "Podgląd zespołu";
   }
   if (pathname.startsWith("/admin")) {

@@ -1,43 +1,45 @@
 import { describe, expect, it } from "vitest";
-import { zdSearchPlansForProduct, zdSearchTokensFromProduct } from "./zd-search-for-product";
-import type { SubiektProduct } from "@/lib/subiekt/types";
+import {
+  brandTokensFromProductName,
+  zdSearchPlansForOrderInput,
+  zdSearchPlansForProductSupplierLookup,
+} from "./zd-search-for-product";
 
-describe("zdSearchTokensFromProduct", () => {
-  it("buduje frazy z nazwy, nie z samego symbolu numerycznego", () => {
-    const product: SubiektProduct = {
-      tw_Id: 2319,
-      tw_Symbol: "00187",
-      tw_Nazwa: 'Viva Flex "LF" - 500g LF0',
-    };
-    const tokens = zdSearchTokensFromProduct(product);
-    expect(tokens.some((t) => t.toLowerCase().includes("viva"))).toBe(true);
-    expect(tokens.some((t) => t.toLowerCase().includes("flex"))).toBe(true);
-    expect(tokens).not.toContain("00187");
-    expect(tokens.indexOf("Flex")).toBeLessThan(tokens.indexOf("Viva"));
-  });
-
-  it("zawiera symbol alfanumeryczny", () => {
-    const product: SubiektProduct = {
-      tw_Id: 1,
-      tw_Symbol: "ABC-12",
-      tw_Nazwa: "Test",
-    };
-    expect(zdSearchTokensFromProduct(product)).toContain("ABC-12");
-  });
-});
-
-describe("zdSearchPlansForProduct", () => {
-  it("używa wyłącznie parametru search", () => {
-    const plans = zdSearchPlansForProduct({
-      tw_Id: 1,
-      tw_Symbol: "00187",
-      tw_Nazwa: "Viva Flex test",
+describe("zdSearchPlansForOrderInput", () => {
+  it("dla numerycznego symbolu buduje plany z nazwy towaru", () => {
+    const plans = zdSearchPlansForOrderInput({
+      symbol: "00187",
+      products: "Viva Flex polish",
+      subiekt_tw_id: 2319,
     });
     expect(plans.length).toBeGreaterThan(0);
-    for (const p of plans) {
-      expect(p.search).toBeTruthy();
-      expect(p.name).toBeUndefined();
-      expect(p.symbol).toBeUndefined();
-    }
+    expect(plans.every((p) => "search" in p && p.search)).toBe(true);
+    expect(plans.some((p) => p.search?.toLowerCase().includes("viva"))).toBe(true);
+  });
+
+  it("wyciąga markę Renfert z nazwy z łącznikiem", () => {
+    expect(brandTokensFromProductName("Renfert-Waxlectric Light I")).toContain("Renfert");
+  });
+
+  it("planuje wyszukiwanie ZD po marce i kh_Id dostawcy", () => {
+    const plans = zdSearchPlansForProductSupplierLookup(
+      {
+        tw_Id: 198,
+        tw_Symbol: "21500000",
+        tw_Nazwa: "Renfert-Waxlectric Light I",
+      },
+      [{ id: "renfert", name: "renfert - excel", subiektKhId: 17465 }]
+    );
+    expect(plans.some((p) => p.search === "Renfert" && p.khId === 17465)).toBe(true);
+  });
+
+  it("dodaje khId do planów gdy dostawca jest powiązany", () => {
+    const plans = zdSearchPlansForOrderInput({
+      symbol: "ABC",
+      products: "Produkt test",
+      subiekt_kh_id: 688,
+    });
+    expect(plans.length).toBeGreaterThan(0);
+    expect(plans.every((p) => p.khId === 688)).toBe(true);
   });
 });

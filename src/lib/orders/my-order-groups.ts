@@ -28,9 +28,9 @@ function isPlacedStatus(status: IndividualOrderStatus): boolean {
  */
 export function myOrderGroupKey(order: IndividualOrder): string {
   if (isInformacjaRequest(order)) {
-    if (order.submission_group_id && isOpenStatus(order.status)) {
-      return `inf-sub|${order.submission_group_id}`;
-    }
+  if (order.submission_group_id && isOpenStatus(order.status)) {
+    return `inf-sub|${order.submission_group_id}|${order.status}`;
+  }
     return [
       "inf",
       order.supplier_id ?? "none",
@@ -40,7 +40,7 @@ export function myOrderGroupKey(order: IndividualOrder): string {
   }
 
   if (order.submission_group_id && isOpenStatus(order.status)) {
-    return `sub|${order.submission_group_id}`;
+    return `sub|${order.submission_group_id}|${order.status}`;
   }
 
   if (order.placement_group_id && isPlacedStatus(order.status)) {

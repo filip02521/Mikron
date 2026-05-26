@@ -22,6 +22,7 @@ import {
   hasValidOrderQuantity,
   type RequestCompleteness,
 } from "@/lib/orders/request-completeness";
+import { assessSalesGroupSubmittable } from "@/lib/orders/sales-request-submit";
 import { RequestFormStatusPanel } from "@/components/orders/RequestFormStatusPanel";
 import { RequestProductLinesEditor } from "@/components/orders/RequestProductLinesEditor";
 import { ActionLoadingOverlay } from "@/components/ui/ActionLoadingOverlay";
@@ -51,12 +52,23 @@ function groupCompletenessAssessment(
 }
 
 function formatSubmitResult(
-  r: { count: number; complete: number; verification: number },
+  r: {
+    count: number;
+    complete: number;
+    verification: number;
+    pendingSupplierResolve?: number;
+  },
   requestKind: IndividualRequestKind,
   forSales?: boolean
 ): string {
-  const { complete, verification } = r;
+  const { complete, verification, pendingSupplierResolve = 0 } = r;
   if (forSales) {
+    if (pendingSupplierResolve > 0 && complete === 0 && verification === pendingSupplierResolve) {
+      return "Prośba zapisana. Dostawcę dopasowujemy z Subiekta w tle — gdy się uda, zobaczysz ją w panelu dziennym; w przeciwnym razie trafi do weryfikacji u działu dostaw.";
+    }
+    if (pendingSupplierResolve > 0) {
+      return `Zapisano prośbę (${pendingSupplierResolve} poz. czeka na dostawcę z Subiekta). Sprawdź status w „Moje zamówienia”.`;
+    }
     if (verification > 0 && complete === 0) {
       return "Prośba przekazana do uzupełnienia przez dział dostaw.";
     }
@@ -161,6 +173,7 @@ export function OrderFormClient({
   );
   const [configFeedback, setConfigFeedback] = useState<SubiektFeedback | null>(null);
   const [resolvingSupplier, setResolvingSupplier] = useState(false);
+  const deferSupplierResolve = Boolean(singleGroup && lockedSalesPerson);
   const [formNotice, setFormNotice] = useState<{
     text: string;
     tone: "error" | "warning";
@@ -187,9 +200,41 @@ export function OrderFormClient({
 
   const submit = () => {
     setFormNotice(null);
+
+    if (!singleGroup && !lockedId) {
+      const groupIssues: string[] = [];
+      groups.forEach((group, gi) => {
+        const supplierId = group[0]?.supplierId ?? "";
+        const hasContent = group.some((e) =>
+          hasAnyProductHint({ supplierId, symbol: e.symbol, product: e.product })
+        );
+        if (!hasContent) return;
+
+        const salesPersonId = group[0]?.salesPersonId ?? "";
+        if (!salesPersonId) {
+          groupIssues.push(`Grupa ${gi + 1}: wybierz handlowca`);
+        }
+        if (
+          requestKind === "zamowienie" &&
+          group.some(
+            (e) =>
+              hasAnyProductHint({ supplierId, symbol: e.symbol, product: e.product }) &&
+              !hasValidOrderQuantity(e.quantity, "zamowienie")
+          )
+        ) {
+          groupIssues.push(`Grupa ${gi + 1}: uzupełnij ilość przy każdej pozycji`);
+        }
+      });
+      if (groupIssues.length) {
+        setFormNotice({ text: groupIssues.join(". "), tone: "error" });
+        return;
+      }
+    }
+
     const entries: Entry[] = [];
     groups.forEach((group) => {
-      const supplierId = group[0]?.supplierId ?? "";
+      const supplierId =
+        singleGroup && lockedSalesPerson ? "" : (group[0]?.supplierId ?? "");
       const salesPersonId = lockedId || (group[0]?.salesPersonId ?? "");
       group.forEach((e) => {
         const draft = {
@@ -302,11 +347,9 @@ export function OrderFormClient({
 
   if (singleGroup && lockedSalesPerson) {
     const group = groups[0] ?? emptyGroup(lockedId, initialSupplierId ?? undefined);
-    const supplierId = group[0]?.supplierId ?? "";
-    const supplierFromPlan =
-      initialSupplierId &&
-      supplierId === initialSupplierId &&
-      suppliers.some((s) => s.id === initialSupplierId);
+    // Prośba handlowca: dostawca nie jest wybierany ręcznie.
+    const supplierId = "";
+    const salesSubmitPlan = assessSalesGroupSubmittable(group, supplierId, requestKind);
 
     return (
       <div className="relative">
@@ -327,12 +370,12 @@ export function OrderFormClient({
             description={
               submitForOther
                 ? `Zgłaszasz w imieniu: ${lockedSalesPerson.name}. Po wysłaniu prośba pojawi się na jego panelu.`
-                : "Jeden formularz — rodzaj prośby, dostawca i produkty. Status śledzisz w Moje zamówienia."
+                : "Jeden formularz — rodzaj prośby i produkty. Dostawcę dopasujemy z Subiekta lub uzupełni go dział dostaw."
             }
           />
 
           <div className="space-y-8 px-4 py-6 sm:px-6">
-            {delegatePeople && delegatePeople.length > 0 && managerSelfId ? (
+            {delegatePeople && delegatePeople.length > 0 ? (
               <ProsbaFormSection
                 title="W czyim imieniu?"
                 hint="Kierownik może złożyć prośbę dla handlowca z zespołu."
@@ -342,18 +385,19 @@ export function OrderFormClient({
                     value={lockedSalesPerson.id}
                     onChange={(e) => {
                       const id = e.target.value;
-                      const dostawca = searchParams.get("dostawca") ?? undefined;
                       router.push(
                         prosbaHref({
-                          salesPersonId: id === managerSelfId ? undefined : id,
-                          supplierId: dostawca,
+                          salesPersonId:
+                            managerSelfId && id === managerSelfId ? undefined : id,
                         })
                       );
                     }}
                   >
                     {delegatePeople.map((p) => (
                       <option key={p.id} value={p.id}>
-                        {p.id === managerSelfId ? `${p.name} (ja)` : p.name}
+                        {managerSelfId && p.id === managerSelfId
+                          ? `${p.name} (ja)`
+                          : p.name}
                       </option>
                     ))}
                   </Select>
@@ -369,33 +413,14 @@ export function OrderFormClient({
             </ProsbaFormSection>
 
             <ProsbaFormSection
-              title="Dostawca i produkty"
+              title="Produkty"
               hint={
                 requestKind === "informacja"
-                  ? "Wystarczy symbol lub opis — bez ilości. Dostawcę możesz pominąć, dział dostaw uzupełni."
-                  : "Podaj symbol lub opis oraz ilość. Dostawcę możesz wybrać teraz lub zostawić do uzupełnienia."
+                  ? "Wystarczy symbol lub opis — bez ilości. Dostawcę dopasujemy z Subiekta lub uzupełni go dział dostaw."
+                  : "Podaj symbol lub opis oraz ilość. Dostawcę dopasujemy z Subiekta lub uzupełni go dział dostaw."
               }
             >
               <div className="space-y-4">
-                <Field label="Dostawca (opcjonalnie)">
-                  <SupplierPickerField
-                    suppliers={suppliers}
-                    value={supplierId}
-                    onChange={(v) => {
-                      clearFormNotice();
-                      setGroups((g) =>
-                        g.map((gr, i) =>
-                          i === 0 ? gr.map((row) => ({ ...row, supplierId: v })) : gr
-                        )
-                      );
-                    }}
-                    allowEmpty
-                    emptyLabel="Wybierz później / nie wiem"
-                    showInlineFeedback={false}
-                    onSubiektFeedbackChange={setSupplierPickerFeedbacks}
-                  />
-                </Field>
-
                 <RequestProductLinesEditor
                   lines={group}
                   onChange={(lines) => {
@@ -408,13 +433,13 @@ export function OrderFormClient({
                   showClientField
                   suppliers={supplierRefs}
                   unifiedFeedback
-                  onSupplierResolved={({ supplierId }) =>
-                    applySupplierFromSubiekt(supplierId, 0)
-                  }
+                  deferSupplierResolve={deferSupplierResolve}
                   onSupplierResolveFeedback={setSupplierSubiektFeedback}
                   onProductFeedbackChange={setProductLineFeedback}
                   onConfigFeedbackChange={setConfigFeedback}
-                  onResolvingSupplierChange={setResolvingSupplier}
+                  onResolvingSupplierChange={
+                    deferSupplierResolve ? undefined : setResolvingSupplier
+                  }
                 />
 
                 <RequestFormStatusPanel
@@ -426,29 +451,13 @@ export function OrderFormClient({
                     quantity: group.find((r) => r.quantity.trim())?.quantity,
                     requestKind,
                   }}
-                  forcedAssessment={groupCompletenessAssessment(group, requestKind)}
+                  salesSubmitPlan={salesSubmitPlan}
                   subiektFeedbacks={[
                     configFeedback,
-                    ...supplierPickerFeedbacks,
                     supplierSubiektFeedback,
                     productLineFeedback,
                   ]}
-                  resolvingSupplier={resolvingSupplier}
-                  leadTime={
-                    requestKind === "zamowienie" && supplierId
-                      ? {
-                          stats: statsBySupplierId[supplierId],
-                          statsMode:
-                            suppliers.find((s) => s.id === supplierId)?.stats_mode ??
-                            "LACZNIE",
-                        }
-                      : null
-                  }
-                  scheduleHint={
-                    supplierFromPlan
-                      ? `Z harmonogramu: ${suppliers.find((s) => s.id === initialSupplierId)?.name ?? ""}`
-                      : null
-                  }
+                  resolvingSupplier={deferSupplierResolve ? false : resolvingSupplier}
                   formMessage={formNotice}
                 />
               </div>
@@ -458,13 +467,16 @@ export function OrderFormClient({
           <div className="flex flex-col gap-3 border-t border-slate-100 bg-slate-50/90 px-4 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-6">
             <p className="text-xs leading-relaxed text-slate-500">
               Po wysłaniu sprawdź status w{" "}
-              <Link href="/moje" className="font-medium text-indigo-700 hover:underline">
-                Moje zamówienia
+              <Link
+                href={submitForOther ? `/moje?dla=${lockedSalesPerson.id}` : "/moje"}
+                className="font-medium text-indigo-700 hover:underline"
+              >
+                {submitForOther ? "Panel handlowca" : "Moje zamówienia"}
               </Link>
               . O ważnych zmianach dostaniesz też e-mail.
             </p>
             <Button
-              disabled={pending}
+              disabled={pending || salesSubmitPlan?.submittable === false}
               onClick={submit}
               className="w-full shrink-0 sm:w-auto sm:min-w-[10rem]"
             >

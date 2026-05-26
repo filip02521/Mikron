@@ -17,6 +17,8 @@ export type SubiektListParams = {
   symbol?: string;
   email?: string;
   id?: number | string;
+  /** Kontrahent (kh_Id) — działa razem z `search` na GET /documents/zd. */
+  khId?: number;
   name?: string;
   limit?: number;
   typ?: number;

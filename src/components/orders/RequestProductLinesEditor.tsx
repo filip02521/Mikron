@@ -33,6 +33,7 @@ export function RequestProductLinesEditor({
   onProductFeedbackChange,
   onConfigFeedbackChange,
   onResolvingSupplierChange,
+  deferSupplierResolve = false,
 }: {
   lines: ProductLineDraft[];
   onChange: (lines: ProductLineDraft[]) => void;
@@ -52,10 +53,12 @@ export function RequestProductLinesEditor({
   onProductFeedbackChange?: (feedback: SubiektFeedback | null) => void;
   onConfigFeedbackChange?: (feedback: SubiektFeedback | null) => void;
   onResolvingSupplierChange?: (resolving: boolean) => void;
+  deferSupplierResolve?: boolean;
 }) {
   const canRemove = lines.length > minLines;
   const prosba = appearance === "prosba";
   const showLineLabel = !prosba || lines.length > 1;
+  const wrapLine = prosba ? lines.length > 1 : true;
 
   useEffect(() => {
     if (requestKind !== "informacja") return;
@@ -69,9 +72,11 @@ export function RequestProductLinesEditor({
         <div
           key={line.id}
           className={cn(
-            prosba
-              ? "rounded-xl border border-slate-200 bg-white p-4 shadow-sm"
-              : "rounded-xl border border-dashed border-slate-200 bg-slate-50/50 p-3"
+            wrapLine
+              ? prosba
+                ? "rounded-xl border border-slate-200 bg-white p-4 shadow-sm"
+                : "rounded-xl border border-dashed border-slate-200 bg-slate-50/50 p-3"
+              : "space-y-3"
           )}
         >
           {showLineLabel ? (
@@ -120,6 +125,7 @@ export function RequestProductLinesEditor({
             onResolvingSupplierChange={
               index === lines.length - 1 ? onResolvingSupplierChange : undefined
             }
+            deferSupplierResolve={deferSupplierResolve}
             value={{
               symbol: line.symbol,
               product: line.product,
@@ -132,7 +138,7 @@ export function RequestProductLinesEditor({
           />
 
           {showClientField ? (
-            <Field label="Klient (opcjonalnie)" className="mt-2">
+            <Field label="Klient (opcjonalnie)" className={wrapLine ? "mt-2" : undefined}>
               <Input
                 placeholder="dla kogo jest ten towar — pojawi się w mailu po dostawie"
                 maxLength={MAX_CLIENT_NAME_LEN}
