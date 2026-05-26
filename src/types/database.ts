@@ -104,6 +104,8 @@ export interface IndividualOrder {
   subiekt_tw_id?: number | null;
   /** Dopasowanie dostawcy z ZD Subiekt w toku po zapisie prośby. */
   supplier_resolve_pending?: boolean;
+  /** Kod Mikran (tw_PLU) — opcjonalnie przy prośbie. */
+  mikran_code?: string | null;
   supplier?: Supplier;
   sales_person?: SalesPerson;
 }

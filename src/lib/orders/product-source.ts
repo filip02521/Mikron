@@ -14,6 +14,7 @@ export function mapOrderToForSomeoneLine(item: IndividualOrder): ForSomeoneLine 
     id: item.id,
     products: item.products,
     symbol: item.symbol || "-",
+    mikranCode: item.mikran_code?.trim() || null,
     quantity: item.quantity || "-",
     fromSubiekt: isSubiektVerifiedOrder(item),
     subiektTwId: item.subiekt_tw_id ?? null,

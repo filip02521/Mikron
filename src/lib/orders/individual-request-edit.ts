@@ -14,6 +14,7 @@ export type IndividualRequestEditLineInput = {
   /** Istniejąca pozycja — brak id = nowa linia w tej samej prośbie. */
   id?: string;
   symbol?: string;
+  mikranCode?: string;
   product?: string;
   quantity?: string;
   clientName?: string;
@@ -31,6 +32,7 @@ export function ordersToEditLines(orders: IndividualOrder[]): IndividualRequestE
   return orders.map((o) => ({
     id: o.id,
     symbol: o.symbol !== "-" ? o.symbol : "",
+    mikranCode: o.mikran_code?.trim() ?? "",
     product: o.products !== "Do uzupełnienia" ? o.products : "",
     quantity: o.quantity !== "-" ? o.quantity : "",
     clientName: o.sales_client_name ?? "",

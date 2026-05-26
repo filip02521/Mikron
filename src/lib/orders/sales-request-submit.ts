@@ -89,8 +89,8 @@ export function salesSubmitUserHint(
         title: "Wymaga uzupełnienia",
         detail:
           requestKind === "informacja"
-            ? "Podaj symbol lub opis produktu. Dostawcę dopasujemy z Subiekta (jeśli wybierzesz towar) albo uzupełni go dział dostaw."
-            : "Podaj produkt i ilość (np. 1). Dostawcę dopasujemy z Subiekta (jeśli wybierzesz towar) albo uzupełni go dział dostaw.",
+            ? "Podaj symbol, kod Mikran lub opis produktu. Dostawcę dopasujemy z Subiekta (jeśli wybierzesz towar) albo uzupełni go dział dostaw."
+            : "Podaj symbol, kod Mikran lub opis produktu oraz ilość (np. 1). Dostawcę dopasujemy z Subiekta (jeśli wybierzesz towar) albo uzupełni go dział dostaw.",
       };
     case "pending_supplier":
       return {
@@ -134,6 +134,7 @@ export function assessSalesGroupSubmittable(
   rows: Array<{
     supplierId?: string;
     symbol?: string;
+    mikranCode?: string;
     product?: string;
     quantity?: string;
     subiektTwId?: number | null;
@@ -148,6 +149,7 @@ export function assessSalesGroupSubmittable(
     const draft: SalesRequestDraft = {
       supplierId: groupSupplierId || row.supplierId,
       symbol: row.symbol,
+      mikranCode: row.mikranCode,
       product: row.product,
       quantity: row.quantity,
       requestKind,

@@ -15,6 +15,7 @@ export function editInitialFromForSomeoneGroup(
     lines: g.lines.map((l) => ({
       id: l.id,
       symbol: l.symbol === "-" ? "" : l.symbol,
+      mikranCode: l.mikranCode ?? "",
       product: l.products,
       quantity: l.quantity === "-" ? "" : l.quantity,
       subiektTwId: l.subiektTwId ?? null,
@@ -30,6 +31,7 @@ export function editInitialFromMyOrderRow(row: MyOrderRow): EditIndividualReques
     lines: row.lines.map((l) => ({
       id: l.id,
       symbol: l.symbol ?? "",
+      mikranCode: l.mikranCode ?? "",
       product: l.product,
       quantity: l.quantity,
       clientName: l.clientName ?? "",
@@ -47,6 +49,7 @@ export function editInitialFromOrders(orders: IndividualOrder[]): EditIndividual
     lines: ordersToEditLines(orders).map((l) => ({
       id: l.id ?? randomId(),
       symbol: l.symbol ?? "",
+      mikranCode: l.mikranCode ?? "",
       product: l.product ?? "",
       quantity: l.quantity ?? "",
       clientName: l.clientName ?? "",

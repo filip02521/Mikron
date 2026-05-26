@@ -262,6 +262,7 @@ export async function batchAddIndividualOrders(
     supplierId?: string;
     salesPersonId: string;
     symbol?: string;
+    mikranCode?: string;
     product?: string;
     quantity?: string;
     requestKind?: IndividualRequestKind;
@@ -291,19 +292,21 @@ export async function batchAddIndividualOrders(
       const kind = (e.requestKind ?? "zamowienie") as IndividualRequestKind;
       const sanitized = sanitizeOrderDraftFields({
         symbol: e.symbol,
+        mikranCode: e.mikranCode,
         product: e.product,
         quantity: e.quantity,
       });
       const draft = {
         supplierId: e.supplierId,
         symbol: sanitized.symbol,
+        mikranCode: sanitized.mikranCode,
         product: sanitized.product,
         quantity: sanitized.quantity,
         requestKind: kind,
         subiektTwId: e.subiektTwId,
       };
       if (!hasAnyProductHint(draft)) {
-        throw new Error("Podaj symbol lub opis produktu.");
+        throw new Error("Podaj symbol, kod Mikran lub opis produktu.");
       }
       const submitPlan = planSalesRequestSubmit(draft);
       if (!submitPlan.submittable) {
@@ -333,6 +336,7 @@ export async function batchAddIndividualOrders(
         sales_client_name: normalizeSalesClientName(e.clientName),
         subiekt_tw_id:
           e.subiektTwId != null && e.subiektTwId > 0 ? e.subiektTwId : null,
+        mikran_code: sanitized.mikranCode?.trim() || null,
         supplier_resolve_pending: submitPlan.supplierResolvePending,
       };
     });
@@ -342,6 +346,11 @@ export async function batchAddIndividualOrders(
       if (msg.includes("supplier_resolve_pending")) {
         throw new Error(
           `${msg} — uruchom migrację supabase/migrations/029_supplier_resolve_pending.sql w bazie.`
+        );
+      }
+      if (msg.includes("mikran_code")) {
+        throw new Error(
+          `${msg} — uruchom migrację supabase/migrations/031_mikran_code.sql w bazie.`
         );
       }
       throw new Error(msg);
@@ -380,6 +389,7 @@ export async function completeVerificationOrder(
     supplierId: string;
     salesPersonId: string;
     symbol?: string;
+    mikranCode?: string;
     product: string;
     quantity?: string;
     requestKind?: IndividualRequestKind;
@@ -389,12 +399,14 @@ export async function completeVerificationOrder(
   const kind = (data.requestKind ?? "zamowienie") as IndividualRequestKind;
   const sanitized = sanitizeOrderDraftFields({
     symbol: data.symbol,
+    mikranCode: data.mikranCode,
     product: data.product,
     quantity: data.quantity,
   });
   const assessment = assessRequestCompleteness({
     supplierId: data.supplierId,
     symbol: sanitized.symbol,
+    mikranCode: sanitized.mikranCode,
     product: sanitized.product,
     quantity: sanitized.quantity,
     requestKind: kind,
@@ -427,6 +439,7 @@ export async function completeVerificationOrder(
       supplier_resolve_pending: false,
       subiekt_tw_id:
         data.subiektTwId != null && data.subiektTwId > 0 ? data.subiektTwId : null,
+      mikran_code: sanitized.mikranCode?.trim() || null,
     })
     .eq("id", orderId)
     .eq("status", "Weryfikacja")
@@ -443,6 +456,7 @@ function statusForEditedLine(
   draft: {
     supplierId: string;
     symbol?: string;
+    mikranCode?: string;
     product?: string;
     quantity?: string;
     requestKind: IndividualRequestKind;
@@ -452,6 +466,7 @@ function statusForEditedLine(
   const plan = planSalesRequestSubmit({
     supplierId: draft.supplierId?.trim() || undefined,
     symbol: draft.symbol,
+    mikranCode: draft.mikranCode,
     product: draft.product,
     quantity: draft.quantity,
     requestKind: draft.requestKind,
@@ -517,18 +532,20 @@ export async function updateIndividualRequestGroup(
     const kind = payload.requestKind;
     const sanitized = sanitizeOrderDraftFields({
       symbol: line.symbol,
+      mikranCode: line.mikranCode,
       product: line.product,
       quantity: line.quantity,
     });
     const draft = {
       supplierId: payload.supplierId,
       symbol: sanitized.symbol,
+      mikranCode: sanitized.mikranCode,
       product: sanitized.product,
       quantity: sanitized.quantity,
       requestKind: kind,
     };
     if (!hasAnyProductHint(draft)) {
-      throw new Error("Podaj symbol lub opis produktu w każdej pozycji.");
+      throw new Error("Podaj symbol, kod Mikran lub opis produktu w każdej pozycji.");
     }
     if (kind === "zamowienie" && !hasValidOrderQuantity(sanitized.quantity, kind)) {
       throw new Error("Podaj ilość (liczba sztuk, np. 1) w każdej pozycji zamówienia.");
@@ -551,6 +568,7 @@ export async function updateIndividualRequestGroup(
       sales_client_name: normalizeSalesClientName(line.clientName),
       subiekt_tw_id:
         line.subiektTwId != null && line.subiektTwId > 0 ? line.subiektTwId : null,
+      mikran_code: sanitized.mikranCode?.trim() || null,
     };
 
     if (line.id) {

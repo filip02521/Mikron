@@ -128,6 +128,7 @@ export function RequestProductLinesEditor({
             deferSupplierResolve={deferSupplierResolve}
             value={{
               symbol: line.symbol,
+              mikranCode: line.mikranCode,
               product: line.product,
               quantity: line.quantity,
               subiektTwId: line.subiektTwId,

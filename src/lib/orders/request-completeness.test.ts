@@ -66,6 +66,7 @@ describe("assessRequestCompleteness", () => {
   it("marks incomplete without product hint", () => {
     expect(assessRequestCompleteness({ supplierId: "sup-1" })).toBe("incomplete");
     expect(hasAnyProductHint({ supplierId: "sup-1" })).toBe(false);
+    expect(hasAnyProductHint({ mikranCode: "896" })).toBe(true);
   });
 });
 

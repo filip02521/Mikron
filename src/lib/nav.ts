@@ -97,6 +97,11 @@ const adminOnlyItems: NavItem[] = [
     label: "Administracja",
     description: "System, konta, handlowcy",
   },
+  {
+    href: "/zespol/grupy",
+    label: "Grupy zespołu",
+    description: "Sklep, Biuro — tworzenie i kolejność",
+  },
 ];
 
 export function navForRole(

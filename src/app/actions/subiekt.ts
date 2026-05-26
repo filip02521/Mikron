@@ -6,7 +6,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { searchSubiektProducts } from "@/lib/subiekt/api";
 import { getAppSupplierRefsCached } from "@/lib/data/supplier-refs";
 import { searchSubiektSuppliersCached } from "@/lib/subiekt/subiekt-runtime-cache";
-import { productSearchParams } from "@/lib/subiekt/product-pick";
+import { productSearchParams, minProductSearchLength, looksLikeProductSymbol, type ProductSearchField } from "@/lib/subiekt/product-pick";
 import { getSubiektConfigSummary, isSubiektConfigured } from "@/lib/subiekt/config";
 import { testSubiektConnection, type SubiektHealthResult } from "@/lib/subiekt/client";
 import {
@@ -97,10 +97,11 @@ export async function actionSubiektLookupProduct(
 
 /** Podpowiedzi towaru przy prośbach. */
 export async function actionSubiektSuggestProducts(
-  query: string
+  query: string,
+  searchField: ProductSearchField = "name"
 ): Promise<SubiektLookupResult<SubiektProduct>> {
   await requireSubiektLookup();
-  return suggestProducts(query);
+  return suggestProducts(query, searchField);
 }
 
 export type SubiektResolveSupplierResult =
@@ -155,15 +156,32 @@ export async function actionSubiektResolveSupplierForProduct(
   }
 }
 
-async function suggestProducts(query: string): Promise<SubiektLookupResult<SubiektProduct>> {
+async function suggestProducts(
+  query: string,
+  searchField?: ProductSearchField
+): Promise<SubiektLookupResult<SubiektProduct>> {
   const q = query.trim();
-  if (q.length < 2) return validationFailure("short_query");
+  const field = searchField ?? (looksLikeProductSymbol(q) ? "symbol" : "name");
+  const minLen = minProductSearchLength(field);
+  if (q.length < minLen) return validationFailure("short_query");
   if (!isSubiektConfigured()) {
     return { ok: false, feedback: getSubiektFeedback("not_configured") };
   }
 
   try {
-    const res = await searchSubiektProducts(productSearchParams(q));
+    let res = await searchSubiektProducts(productSearchParams(q, field));
+    if (field === "plu" && res.data.length === 0) {
+      const wide = await searchSubiektProducts({
+        search: q,
+        symbol: q,
+        pageSize: 24,
+        page: 1,
+      });
+      const byPlu = wide.data.filter((p) => (p.tw_PLU ?? "").trim() === q);
+      if (byPlu.length) {
+        res = { ...res, data: byPlu.slice(0, 12) };
+      }
+    }
     if (res.data.length === 0) {
       return {
         ok: true,

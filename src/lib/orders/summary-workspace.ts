@@ -58,6 +58,7 @@ export type ForSomeoneLine = {
   id: string;
   products: string;
   symbol: string;
+  mikranCode?: string | null;
   quantity: string;
   fromSubiekt: boolean;
   subiektTwId?: number | null;

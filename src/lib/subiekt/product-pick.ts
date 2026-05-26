@@ -8,7 +8,15 @@ export type SubiektProductPick = {
   product: string;
   quantity: string;
   subiektTwId: number;
+  mikranCode: string;
 };
+
+export type ProductSearchField = "symbol" | "plu" | "name";
+
+/** Minimalna długość frazy — PLU może być jednocyfrowe (np. 1). */
+export function minProductSearchLength(field: ProductSearchField): number {
+  return field === "plu" ? 1 : 2;
+}
 
 /** Czy fraza wygląda na symbol (krótki kod), a nie na nazwę towaru. */
 export function looksLikeProductSymbol(query: string): boolean {
@@ -18,13 +26,28 @@ export function looksLikeProductSymbol(query: string): boolean {
   return /^[\p{L}\p{N}._\-/]+$/u.test(q);
 }
 
-/** Parametry wyszukiwania — nazwa vs symbol (API /products). */
-export function productSearchParams(query: string): SubiektListParams {
+/** Parametry wyszukiwania — symbol, Kod Mikran (PLU) lub nazwa. */
+export function productSearchParams(
+  query: string,
+  field?: ProductSearchField
+): SubiektListParams {
   const q = query.trim();
-  if (looksLikeProductSymbol(q)) {
-    return { search: q, symbol: q, pageSize: 12, page: 1 };
+  const base = { search: q, pageSize: 12, page: 1 };
+
+  if (field === "plu") {
+    return { ...base, plu: q };
   }
-  return { search: q, name: q, pageSize: 12, page: 1 };
+  if (field === "symbol") {
+    return { ...base, symbol: q };
+  }
+  if (field === "name") {
+    return { ...base, name: q };
+  }
+
+  if (looksLikeProductSymbol(q)) {
+    return { ...base, symbol: q };
+  }
+  return { ...base, name: q };
 }
 
 /** Uzupełnia pola linii prośby po wyborze z Subiekta (zamówienie i informacja). */
@@ -35,20 +58,22 @@ export function buildProductPickFromSubiekt(
 ): SubiektProductPick {
   const sym = (p.tw_Symbol ?? "").trim();
   const name = (p.tw_Nazwa ?? "").trim();
+  const plu = (p.tw_PLU ?? "").trim();
   const symbol = sym || "-";
   const product = name || sym || "";
+  const mikranCode = plu;
 
   const subiektTwId = p.tw_Id;
 
   if (requestKind === "informacja") {
-    return { symbol, product, quantity: "", subiektTwId };
+    return { symbol, product, quantity: "", subiektTwId, mikranCode };
   }
 
   const prev = existingQuantity.trim();
   const quantity =
     prev && parseOrderQuantity(prev) !== null ? prev : "1";
 
-  return { symbol, product, quantity, subiektTwId };
+  return { symbol, product, quantity, subiektTwId, mikranCode };
 }
 
 export function formatSubiektProductOption(p: SubiektProduct): {
@@ -57,11 +82,20 @@ export function formatSubiektProductOption(p: SubiektProduct): {
 } {
   const sym = (p.tw_Symbol ?? "").trim();
   const name = (p.tw_Nazwa ?? "").trim();
-  if (sym && name) {
-    return { title: name, subtitle: `Symbol: ${sym}` };
+  const plu = (p.tw_PLU ?? "").trim();
+  const parts = [
+    sym ? `Symbol: ${sym}` : null,
+    plu ? `Kod Mikran: ${plu}` : null,
+  ].filter(Boolean);
+
+  if (name) {
+    return {
+      title: name,
+      subtitle: parts.length ? parts.join(" · ") : "Bez symbolu i kodu",
+    };
   }
   return {
-    title: name || sym || "—",
-    subtitle: name ? (sym ? `Symbol: ${sym}` : "Bez symbolu") : "Bez nazwy w kartotece",
+    title: sym || plu || "—",
+    subtitle: parts.length ? parts.join(" · ") : "Bez nazwy w kartotece",
   };
 }

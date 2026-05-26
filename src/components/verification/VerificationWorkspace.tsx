@@ -86,6 +86,7 @@ export function VerificationWorkspace({
     supplierId: "",
     salesPersonId: "",
     symbol: "",
+    mikranCode: "",
     product: "",
     quantity: "",
     requestKind: "zamowienie" as IndividualRequestKind,
@@ -103,6 +104,7 @@ export function VerificationWorkspace({
       supplierId: o.supplier_id ?? "",
       salesPersonId: o.sales_person_id,
       symbol: o.symbol !== "-" ? o.symbol : "",
+      mikranCode: o.mikran_code?.trim() ?? "",
       product: o.products !== "Do uzupełnienia" ? o.products : "",
       quantity: o.quantity !== "-" ? o.quantity : "",
       requestKind: o.request_kind ?? "zamowienie",
@@ -118,6 +120,7 @@ export function VerificationWorkspace({
   const draft = {
     supplierId: form.supplierId,
     symbol: form.symbol,
+    mikranCode: form.mikranCode,
     product: form.product,
     quantity: form.quantity,
     requestKind: form.requestKind,
@@ -136,6 +139,7 @@ export function VerificationWorkspace({
           supplierId: form.supplierId,
           salesPersonId: form.salesPersonId,
           symbol: form.symbol,
+          mikranCode: form.mikranCode,
           product: form.product,
           quantity: form.requestKind === "informacja" ? undefined : form.quantity,
           requestKind: form.requestKind,
@@ -332,6 +336,7 @@ export function VerificationWorkspace({
                     onResolvingSupplierChange={setResolvingSupplier}
                     value={{
                       symbol: form.symbol,
+                      mikranCode: form.mikranCode,
                       product: form.product,
                       quantity: form.quantity,
                       subiektTwId: form.subiektTwId,

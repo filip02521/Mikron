@@ -27,4 +27,8 @@ describe("pageTitle", () => {
   it("zwraca Handlowcy i konta dla /zespol/handlowcy", () => {
     expect(pageTitle("/zespol/handlowcy")).toBe("Handlowcy i konta");
   });
+
+  it("zwraca Grupy zespołu dla /zespol/grupy (admin w menu)", () => {
+    expect(pageTitle("/zespol/grupy")).toBe("Grupy zespołu");
+  });
 });

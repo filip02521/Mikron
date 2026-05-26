@@ -72,11 +72,12 @@ export function QuickOrderModal({
       return;
     }
     const entries = lines
-      .filter((l) => l.product.trim() || l.symbol.trim())
+      .filter((l) => l.product.trim() || l.symbol.trim() || l.mikranCode.trim())
       .map((l) => ({
         supplierId,
         salesPersonId,
         symbol: l.symbol,
+        mikranCode: l.mikranCode,
         product: l.product,
         quantity: requestKind === "informacja" ? undefined : l.quantity,
         requestKind,
@@ -188,6 +189,7 @@ export function QuickOrderModal({
         draft={{
           supplierId,
           symbol: lines.find((l) => l.symbol.trim())?.symbol,
+          mikranCode: lines.find((l) => l.mikranCode.trim())?.mikranCode,
           product: lines.find((l) => l.product.trim())?.product,
           quantity: lines.find((l) => l.quantity.trim())?.quantity,
           requestKind,

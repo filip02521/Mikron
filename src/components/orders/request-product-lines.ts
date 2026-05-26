@@ -4,6 +4,8 @@ import { MAX_BATCH_ORDER_LINES } from "@/lib/security/text-limits";
 export type ProductLineDraft = {
   id: string;
   symbol: string;
+  /** Kod Mikran (tw_PLU). */
+  mikranCode: string;
   product: string;
   quantity: string;
   clientName?: string;
@@ -14,6 +16,7 @@ export function newProductLine(): ProductLineDraft {
   return {
     id: randomId(),
     symbol: "",
+    mikranCode: "",
     product: "",
     quantity: "",
   };

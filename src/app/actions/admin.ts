@@ -299,6 +299,7 @@ export async function actionAddIndividualOrders(
     supplierId?: string;
     salesPersonId: string;
     symbol?: string;
+    mikranCode?: string;
     product?: string;
     quantity?: string;
     requestKind?: IndividualRequestKind;
@@ -366,6 +367,7 @@ export async function actionCompleteVerification(
     supplierId: string;
     salesPersonId: string;
     symbol?: string;
+    mikranCode?: string;
     product: string;
     quantity?: string;
     requestKind?: IndividualRequestKind;

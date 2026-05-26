@@ -85,6 +85,8 @@ export type MyOrderLine = {
   /** Id towaru Subiekt — zachowane przy edycji prośby przez handlowca. */
   subiektTwId: number | null;
   /** Surowa ilość z bazy (do edycji prośby). */
+  /** Kod Mikran (tw_PLU) — do edycji prośby. */
+  mikranCode: string | null;
   quantity: string;
   quantityLabel: string;
   progressLabel: string | null;
@@ -197,6 +199,7 @@ function rowToLine(
     product: row.product,
     symbol: row.symbol,
     subiektTwId,
+    mikranCode: order.mikran_code?.trim() || null,
     quantity: order.quantity !== "-" ? order.quantity : "",
     quantityLabel: row.quantityLabel,
     progressLabel: row.progressLabel,

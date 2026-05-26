@@ -10,6 +10,7 @@ function orderToDraft(order: IndividualOrder): RequestDraft {
   return {
     supplierId: order.supplier_id ?? undefined,
     symbol: order.symbol,
+    mikranCode: order.mikran_code ?? undefined,
     product: order.products,
     quantity: order.quantity,
     requestKind: order.request_kind ?? "zamowienie",
@@ -26,7 +27,9 @@ export function describeVerificationGaps(order: IndividualOrder): string {
   }
 
   if (!order.supplier_id) missing.push("dostawca");
-  if (!hasAnyProductHint(draft)) missing.push("opis produktu (symbol lub nazwa)");
+  if (!hasAnyProductHint(draft)) {
+    missing.push("opis produktu (symbol, kod Mikran lub nazwa)");
+  }
   if (
     !isInformacjaRequest(order) &&
     !hasValidOrderQuantity(order.quantity, "zamowienie")

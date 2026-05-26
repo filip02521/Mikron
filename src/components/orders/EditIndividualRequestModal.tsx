@@ -80,6 +80,7 @@ export function EditIndividualRequestModal({
           lines: lines.map((l) => ({
             id: l.id,
             symbol: l.symbol,
+            mikranCode: l.mikranCode,
             product: l.product,
             quantity: l.quantity,
             clientName: l.clientName,
@@ -193,6 +194,7 @@ export function EditIndividualRequestModal({
             draft={{
               supplierId: mode === "sales" ? "" : supplierId,
               symbol: lines.find((l) => l.symbol.trim())?.symbol,
+              mikranCode: lines.find((l) => l.mikranCode.trim())?.mikranCode,
               product: lines.find((l) => l.product.trim())?.product,
               quantity: lines.find((l) => l.quantity.trim())?.quantity,
               requestKind,

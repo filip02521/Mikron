@@ -1,6 +1,8 @@
 /** Limity długości pól tekstowych (ochrona przed nadużyciem / przepełnieniem). */
 export const MAX_PRODUCT_TEXT_LEN = 500;
 export const MAX_SYMBOL_LEN = 100;
+/** Kod Mikran (tw_PLU) — zwykle liczbowy, może być krótki (np. 1). */
+export const MAX_MIKRAN_CODE_LEN = 32;
 export const MAX_QUANTITY_LEN = 20;
 export const MAX_BATCH_ORDER_LINES = 30;
 export const MAX_REQUEST_EDIT_LINES = 30;

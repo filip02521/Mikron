@@ -1,6 +1,7 @@
 import type { IndividualRequestKind } from "@/types/database";
 import { parseOrderQuantity } from "@/lib/orders/individual";
 import {
+  MAX_MIKRAN_CODE_LEN,
   MAX_PRODUCT_TEXT_LEN,
   MAX_SYMBOL_LEN,
   clampText,
@@ -11,6 +12,8 @@ export type RequestCompleteness = "complete" | "incomplete";
 export type RequestDraft = {
   supplierId?: string;
   symbol?: string;
+  /** Kod Mikran (tw_PLU). */
+  mikranCode?: string;
   product?: string;
   quantity?: string;
   salesPersonId?: string;
@@ -24,7 +27,7 @@ function hasText(value?: string): boolean {
 
 /** Czy zgłoszenie ma choć jeden sensowny opis towaru. */
 export function hasAnyProductHint(draft: RequestDraft): boolean {
-  return hasText(draft.symbol) || hasText(draft.product);
+  return hasText(draft.symbol) || hasText(draft.mikranCode) || hasText(draft.product);
 }
 
 /** Zamówienie u dostawcy wymaga dodatniej liczby sztuk (np. 1, 2). */
@@ -83,10 +86,18 @@ export function normalizeDraftProducts(draft: RequestDraft): {
     : "-";
   const product = hasText(draft.product)
     ? clampText(draft.product!, MAX_PRODUCT_TEXT_LEN)
-    : "";
+    : hasText(draft.mikranCode)
+      ? clampText(draft.mikranCode!, MAX_MIKRAN_CODE_LEN)
+      : "";
   if (product) return { products: product, symbol: symbolRaw };
   if (hasText(draft.symbol)) {
     return { products: clampText(draft.symbol!, MAX_PRODUCT_TEXT_LEN), symbol: symbolRaw };
+  }
+  if (hasText(draft.mikranCode)) {
+    return {
+      products: clampText(draft.mikranCode!, MAX_MIKRAN_CODE_LEN),
+      symbol: "-",
+    };
   }
   return { products: "Do uzupełnienia", symbol: "-" };
 }

@@ -39,6 +39,6 @@ export function adminHubHint(tab: AdminHubTab): string {
     case "users":
       return "Konto logowania ≠ karta handlowca: handlowiec musi być na liście Handlowcy, potem tworzysz konto z rolą „handlowiec” i powiązaniem. Zaproszenia generujesz z zakładki Handlowcy.";
     case "sales":
-      return "Lista osób do powiadomień i panelu „Moje zamówienia”. Po dodaniu wygeneruj link zaproszenia — handlowiec ustawi hasło sam.";
+      return "Lista osób do powiadomień i panelu „Moje zamówienia”. Grupy (Sklep, Biuro) zakładasz w menu Grupy zespołu; kierowników przypisujesz w zakładce Konta.";
   }
 }

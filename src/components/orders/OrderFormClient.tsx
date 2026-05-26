@@ -40,6 +40,7 @@ function groupCompletenessAssessment(
     const draft = {
       supplierId,
       symbol: row.symbol,
+      mikranCode: row.mikranCode,
       product: row.product,
       quantity: row.quantity,
       requestKind,
@@ -96,6 +97,7 @@ interface Entry {
   supplierId: string;
   salesPersonId: string;
   symbol: string;
+  mikranCode: string;
   product: string;
   quantity: string;
   clientName?: string;
@@ -206,7 +208,12 @@ export function OrderFormClient({
       groups.forEach((group, gi) => {
         const supplierId = group[0]?.supplierId ?? "";
         const hasContent = group.some((e) =>
-          hasAnyProductHint({ supplierId, symbol: e.symbol, product: e.product })
+          hasAnyProductHint({
+            supplierId,
+            symbol: e.symbol,
+            mikranCode: e.mikranCode,
+            product: e.product,
+          })
         );
         if (!hasContent) return;
 
@@ -218,7 +225,12 @@ export function OrderFormClient({
           requestKind === "zamowienie" &&
           group.some(
             (e) =>
-              hasAnyProductHint({ supplierId, symbol: e.symbol, product: e.product }) &&
+              hasAnyProductHint({
+                supplierId,
+                symbol: e.symbol,
+                mikranCode: e.mikranCode,
+                product: e.product,
+              }) &&
               !hasValidOrderQuantity(e.quantity, "zamowienie")
           )
         ) {
@@ -240,6 +252,7 @@ export function OrderFormClient({
         const draft = {
           supplierId: supplierId || e.supplierId,
           symbol: e.symbol,
+          mikranCode: e.mikranCode,
           product: e.product,
         };
         if (!hasAnyProductHint(draft)) return;
@@ -254,8 +267,8 @@ export function OrderFormClient({
     if (!entries.length) {
       setFormNotice({
         text: lockedSalesPerson
-          ? "Podaj symbol lub opis produktu."
-          : "Podaj symbol lub opis produktu oraz wybierz handlowca.",
+          ? "Podaj symbol, kod Mikran lub opis produktu."
+          : "Podaj symbol, kod Mikran lub opis produktu oraz wybierz handlowca.",
         tone: "error",
       });
       return;
@@ -280,6 +293,7 @@ export function OrderFormClient({
             supplierId: e.supplierId || undefined,
             salesPersonId: e.salesPersonId,
             symbol: e.symbol,
+            mikranCode: e.mikranCode,
             product: e.product,
             quantity: requestKind === "informacja" ? undefined : e.quantity,
             requestKind,
@@ -416,8 +430,8 @@ export function OrderFormClient({
               title="Produkty"
               hint={
                 requestKind === "informacja"
-                  ? "Wystarczy symbol lub opis — bez ilości. Dostawcę dopasujemy z Subiekta lub uzupełni go dział dostaw."
-                  : "Podaj symbol lub opis oraz ilość. Dostawcę dopasujemy z Subiekta lub uzupełni go dział dostaw."
+                  ? "Wystarczy symbol, kod Mikran lub opis — bez ilości. Dostawcę dopasujemy z Subiekta lub uzupełni go dział dostaw."
+                  : "Podaj symbol, kod Mikran lub opis oraz ilość. Dostawcę dopasujemy z Subiekta lub uzupełni go dział dostaw."
               }
             >
               <div className="space-y-4">
@@ -447,6 +461,7 @@ export function OrderFormClient({
                   draft={{
                     supplierId,
                     symbol: group.find((r) => r.symbol.trim())?.symbol,
+                    mikranCode: group.find((r) => r.mikranCode.trim())?.mikranCode,
                     product: group.find((r) => r.product.trim())?.product,
                     quantity: group.find((r) => r.quantity.trim())?.quantity,
                     requestKind,
@@ -641,6 +656,7 @@ export function OrderFormClient({
               draft={{
                 supplierId: group[0]?.supplierId,
                 symbol: group.find((r) => r.symbol.trim())?.symbol,
+                mikranCode: group.find((r) => r.mikranCode.trim())?.mikranCode,
                 product: group.find((r) => r.product.trim())?.product,
                 quantity: group.find((r) => r.quantity.trim())?.quantity,
                 requestKind,

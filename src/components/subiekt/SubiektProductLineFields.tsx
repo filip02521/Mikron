@@ -18,9 +18,12 @@ import { getSubiektFeedback } from "@/lib/subiekt/feedback";
 import {
   buildProductPickFromSubiekt,
   formatSubiektProductOption,
+  minProductSearchLength,
+  type ProductSearchField,
 } from "@/lib/subiekt/product-pick";
 import { cn } from "@/lib/cn";
 import {
+  MAX_MIKRAN_CODE_LEN,
   MAX_PRODUCT_TEXT_LEN,
   MAX_QUANTITY_LEN,
   MAX_SYMBOL_LEN,
@@ -30,12 +33,13 @@ import type { SubiektProduct } from "@/lib/subiekt/types";
 
 export type SubiektProductLineValue = {
   symbol: string;
+  mikranCode: string;
   product: string;
   quantity: string;
   subiektTwId?: number | null;
 };
 
-type ActiveField = "symbol" | "product";
+type ActiveField = ProductSearchField;
 
 function SubiektFieldAdornment({
   linked,
@@ -65,6 +69,18 @@ function SubiektFieldAdornment({
   return null;
 }
 
+function activeFieldQuery(value: SubiektProductLineValue, field: ActiveField): string {
+  if (field === "symbol") return value.symbol;
+  if (field === "plu") return value.mikranCode;
+  return value.product;
+}
+
+function typeaheadSectionLabel(field: ActiveField): string {
+  if (field === "plu") return "po kodzie Mikran";
+  if (field === "name") return "po nazwie";
+  return "po symbolu";
+}
+
 export function SubiektProductLineFields({
   value,
   onChange,
@@ -79,7 +95,6 @@ export function SubiektProductLineFields({
   onProductFeedbackChange,
   onConfigFeedbackChange,
   onResolvingSupplierChange,
-  /** Prośba handlowca — dostawca dopasowywany po wysłaniu, nie przy wyborze towaru. */
   deferSupplierResolve = false,
 }: {
   value: SubiektProductLineValue;
@@ -88,7 +103,6 @@ export function SubiektProductLineFields({
   disabled?: boolean;
   appearance?: "default" | "prosba";
   productFieldClassName?: string;
-  /** Lista dostawców aplikacji — do auto-uzupełnienia po wyborze towaru z Subiekta. */
   suppliers?: AppSupplierRef[];
   onSupplierResolved?: (result: {
     supplierId: string;
@@ -96,7 +110,6 @@ export function SubiektProductLineFields({
     documentNumber: string | null;
   }) => void;
   onSupplierResolveFeedback?: (feedback: SubiektFeedback | null) => void;
-  /** Komunikaty w RequestFormStatusPanel zamiast pod polami */
   delegateAlerts?: boolean;
   onProductFeedbackChange?: (feedback: SubiektFeedback | null) => void;
   onConfigFeedbackChange?: (feedback: SubiektFeedback | null) => void;
@@ -117,11 +130,12 @@ export function SubiektProductLineFields({
   const [resolvingSupplier, setResolvingSupplier] = useState(false);
   const [, startTransition] = useTransition();
 
-  const querySource = activeField === "symbol" ? value.symbol : value.product;
+  const querySource = activeFieldQuery(value, activeField);
   const debounced = useDebouncedValue(querySource.trim(), 320);
   const prosba = appearance === "prosba";
   const isInformacja = requestKind === "informacja";
   const linkedFromSubiekt = value.subiektTwId != null;
+  const minQueryLen = minProductSearchLength(activeField);
 
   useEffect(() => {
     void (async () => {
@@ -170,10 +184,14 @@ export function SubiektProductLineFields({
       setFeedback(null);
       return;
     }
-    if (debounced.length < 2) {
+    if (debounced.length < minQueryLen) {
       setItems([]);
       setStatus("idle");
-      setFeedback(debounced.length === 1 ? getSubiektFeedback("short_query") : null);
+      setFeedback(
+        debounced.length > 0 && debounced.length < minQueryLen
+          ? getSubiektFeedback("short_query")
+          : null
+      );
       return;
     }
 
@@ -181,7 +199,7 @@ export function SubiektProductLineFields({
     setFeedback(null);
     startTransition(async () => {
       try {
-        const res = await actionSubiektSuggestProducts(debounced);
+        const res = await actionSubiektSuggestProducts(debounced, activeField);
         if (!res.ok) {
           setItems([]);
           setFeedback(res.feedback);
@@ -195,7 +213,7 @@ export function SubiektProductLineFields({
         setStatus("idle");
       }
     });
-  }, [debounced, enabled, linkedFromSubiekt]);
+  }, [debounced, enabled, linkedFromSubiekt, activeField, minQueryLen]);
 
   const pick = (p: SubiektProduct) => {
     const patch = buildProductPickFromSubiekt(p, requestKind, value.quantity);
@@ -244,91 +262,230 @@ export function SubiektProductLineFields({
   const showError = feedback && feedback.tone !== "info";
   const showInfo = feedback && feedback.tone === "info" && items.length === 0;
 
+  const symbolPluRow = (
+    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+      <Field label="Symbol">
+        <div className="relative">
+          <Input
+            disabled={disabled}
+            placeholder="np. ABC"
+            maxLength={MAX_SYMBOL_LEN}
+            value={value.symbol}
+            autoComplete="off"
+            onChange={(e) => {
+              manualPatch({ symbol: e.target.value }, true);
+              setActiveField("symbol");
+              setOpen(true);
+            }}
+            onFocus={() => {
+              if (linkedFromSubiekt) return;
+              setActiveField("symbol");
+              setOpen(true);
+            }}
+          />
+          <SubiektFieldAdornment
+            linked={linkedFromSubiekt}
+            loading={activeField === "symbol" && status === "loading"}
+          />
+        </div>
+      </Field>
+
+      <Field label="Kod mikran">
+        <div className="relative">
+          <Input
+            disabled={disabled}
+            placeholder="np. 896"
+            inputMode="numeric"
+            maxLength={MAX_MIKRAN_CODE_LEN}
+            value={value.mikranCode}
+            autoComplete="off"
+            onChange={(e) => {
+              manualPatch({ mikranCode: e.target.value }, true);
+              setActiveField("plu");
+              setOpen(true);
+            }}
+            onFocus={() => {
+              if (linkedFromSubiekt) return;
+              setActiveField("plu");
+              setOpen(true);
+            }}
+          />
+          <SubiektFieldAdornment
+            linked={linkedFromSubiekt}
+            loading={activeField === "plu" && status === "loading"}
+          />
+        </div>
+      </Field>
+    </div>
+  );
+
   return (
     <div ref={ref} className="relative space-y-3">
-      <div
-        className={cn(
-          "grid gap-3",
-          prosba ? "grid-cols-1" : isInformacja ? "sm:grid-cols-3" : "sm:grid-cols-4"
-        )}
-      >
-        <Field label="Symbol">
-          <div className="relative">
-            <Input
-              disabled={disabled}
-              placeholder="np. ABC"
-              maxLength={MAX_SYMBOL_LEN}
-              value={value.symbol}
-              autoComplete="off"
-              onChange={(e) => {
-                manualPatch({ symbol: e.target.value }, true);
-                setActiveField("symbol");
-                setOpen(true);
-              }}
-              onFocus={() => {
-                if (linkedFromSubiekt) return;
-                setActiveField("symbol");
-                setOpen(true);
-              }}
-            />
-            <SubiektFieldAdornment
-              linked={linkedFromSubiekt}
-              loading={activeField === "symbol" && status === "loading"}
-            />
-          </div>
-        </Field>
-
-        <Field
-          label={isInformacja ? "Produkt (co ma być na stanie)" : "Produkty"}
-          className={productFieldClassName}
-        >
-          <div className="relative">
-            <Input
-              disabled={disabled}
-              placeholder={
-                isInformacja
-                  ? "Symbol lub nazwa z Subiekta…"
-                  : enabled
-                    ? "Symbol lub nazwa z Subiekta…"
-                    : "Opis produktów"
-              }
-              maxLength={MAX_PRODUCT_TEXT_LEN}
-              value={value.product}
-              autoComplete="off"
-              onChange={(e) => {
-                manualPatch({ product: e.target.value }, true);
-                setActiveField("product");
-                setOpen(true);
-              }}
-              onFocus={() => {
-                if (linkedFromSubiekt) return;
-                setActiveField("product");
-                setOpen(true);
-              }}
-            />
-            <SubiektFieldAdornment
-              linked={linkedFromSubiekt}
-              loading={activeField === "product" && status === "loading"}
-            />
-          </div>
-        </Field>
-
-        {!isInformacja ? (
-          <Field label="Ilość (wymagane)">
-            <Input
-              type="number"
-              min={1}
-              step={1}
-              required
-              disabled={disabled}
-              maxLength={MAX_QUANTITY_LEN}
-              placeholder="np. 1"
-              value={value.quantity}
-              onChange={(e) => onChange({ quantity: e.target.value })}
-            />
+      {prosba ? (
+        <>
+          {symbolPluRow}
+          <Field
+            label={isInformacja ? "Produkt (co ma być na stanie)" : "Produkty"}
+            className={productFieldClassName}
+          >
+            <div className="relative">
+              <Input
+                disabled={disabled}
+                placeholder={
+                  isInformacja
+                    ? "Nazwa z Subiekta…"
+                    : enabled
+                      ? "Nazwa z Subiekta…"
+                      : "Opis produktów"
+                }
+                maxLength={MAX_PRODUCT_TEXT_LEN}
+                value={value.product}
+                autoComplete="off"
+                onChange={(e) => {
+                  manualPatch({ product: e.target.value }, true);
+                  setActiveField("name");
+                  setOpen(true);
+                }}
+                onFocus={() => {
+                  if (linkedFromSubiekt) return;
+                  setActiveField("name");
+                  setOpen(true);
+                }}
+              />
+              <SubiektFieldAdornment
+                linked={linkedFromSubiekt}
+                loading={activeField === "name" && status === "loading"}
+              />
+            </div>
           </Field>
-        ) : null}
-      </div>
+          {!isInformacja ? (
+            <Field label="Ilość (wymagane)">
+              <Input
+                type="number"
+                min={1}
+                step={1}
+                required
+                disabled={disabled}
+                maxLength={MAX_QUANTITY_LEN}
+                placeholder="np. 1"
+                value={value.quantity}
+                onChange={(e) => onChange({ quantity: e.target.value })}
+              />
+            </Field>
+          ) : null}
+        </>
+      ) : (
+        <div
+          className={cn(
+            "grid gap-3",
+            isInformacja ? "sm:grid-cols-3" : "sm:grid-cols-2 lg:grid-cols-4"
+          )}
+        >
+          <Field label="Symbol">
+            <div className="relative">
+              <Input
+                disabled={disabled}
+                placeholder="np. ABC"
+                maxLength={MAX_SYMBOL_LEN}
+                value={value.symbol}
+                autoComplete="off"
+                onChange={(e) => {
+                  manualPatch({ symbol: e.target.value }, true);
+                  setActiveField("symbol");
+                  setOpen(true);
+                }}
+                onFocus={() => {
+                  if (linkedFromSubiekt) return;
+                  setActiveField("symbol");
+                  setOpen(true);
+                }}
+              />
+              <SubiektFieldAdornment
+                linked={linkedFromSubiekt}
+                loading={activeField === "symbol" && status === "loading"}
+              />
+            </div>
+          </Field>
+
+          <Field label="Kod mikran">
+            <div className="relative">
+              <Input
+                disabled={disabled}
+                placeholder="np. 896"
+                inputMode="numeric"
+                maxLength={MAX_MIKRAN_CODE_LEN}
+                value={value.mikranCode}
+                autoComplete="off"
+                onChange={(e) => {
+                  manualPatch({ mikranCode: e.target.value }, true);
+                  setActiveField("plu");
+                  setOpen(true);
+                }}
+                onFocus={() => {
+                  if (linkedFromSubiekt) return;
+                  setActiveField("plu");
+                  setOpen(true);
+                }}
+              />
+              <SubiektFieldAdornment
+                linked={linkedFromSubiekt}
+                loading={activeField === "plu" && status === "loading"}
+              />
+            </div>
+          </Field>
+
+          <Field
+            label={isInformacja ? "Produkt (co ma być na stanie)" : "Produkty"}
+            className={cn(productFieldClassName, "sm:col-span-2 lg:col-span-1")}
+          >
+            <div className="relative">
+              <Input
+                disabled={disabled}
+                placeholder={
+                  isInformacja
+                    ? "Nazwa z Subiekta…"
+                    : enabled
+                      ? "Nazwa z Subiekta…"
+                      : "Opis produktów"
+                }
+                maxLength={MAX_PRODUCT_TEXT_LEN}
+                value={value.product}
+                autoComplete="off"
+                onChange={(e) => {
+                  manualPatch({ product: e.target.value }, true);
+                  setActiveField("name");
+                  setOpen(true);
+                }}
+                onFocus={() => {
+                  if (linkedFromSubiekt) return;
+                  setActiveField("name");
+                  setOpen(true);
+                }}
+              />
+              <SubiektFieldAdornment
+                linked={linkedFromSubiekt}
+                loading={activeField === "name" && status === "loading"}
+              />
+            </div>
+          </Field>
+
+          {!isInformacja ? (
+            <Field label="Ilość (wymagane)">
+              <Input
+                type="number"
+                min={1}
+                step={1}
+                required
+                disabled={disabled}
+                maxLength={MAX_QUANTITY_LEN}
+                placeholder="np. 1"
+                value={value.quantity}
+                onChange={(e) => onChange({ quantity: e.target.value })}
+              />
+            </Field>
+          ) : null}
+        </div>
+      )}
 
       {!enabled && configFeedback && !delegateAlerts ? (
         <SubiektFeedbackAlert feedback={configFeedback} compact />
@@ -342,7 +499,7 @@ export function SubiektProductLineFields({
             emptyMessage={status === "loading" ? "Szukam w Subiekcie…" : undefined}
           >
             <TypeaheadSectionLabel>
-              Subiekt — {activeField === "product" ? "po nazwie" : "po symbolu"}
+              Subiekt — {typeaheadSectionLabel(activeField)}
             </TypeaheadSectionLabel>
             {items.map((p) => {
               const { title, subtitle } = formatSubiektProductOption(p);
@@ -362,11 +519,11 @@ export function SubiektProductLineFields({
             <p className="text-xs text-slate-400">
               {deferSupplierResolve
                 ? isInformacja
-                  ? "Wpisz symbol lub nazwę (min. 2 znaki) — po wyborze towaru możesz od razu wysłać prośbę; dostawcę dopasujemy w tle."
-                  : "Wpisz symbol lub nazwę (min. 2 znaki) — po wyborze towaru możesz wysłać prośbę; dostawcę dopasujemy w tle z Subiekta."
+                  ? "Wpisz symbol, kod Mikran (min. 1 cyfra) lub nazwę (min. 2 znaki) — po wyborze towaru możesz od razu wysłać prośbę; dostawcę dopasujemy w tle."
+                  : "Wpisz symbol, kod Mikran (min. 1 cyfra) lub nazwę (min. 2 znaki) — po wyborze towaru możesz wysłać prośbę; dostawcę dopasujemy w tle z Subiekta."
                 : isInformacja
-                  ? "Wpisz symbol lub nazwę (min. 2 znaki) — po wyborze uzupełnimy pola i spróbujemy ustawić dostawcę z ZD."
-                  : "Wpisz symbol lub nazwę (min. 2 znaki) — po wyborze uzupełnimy pola i spróbujemy ustawić dostawcę z ZD."}
+                  ? "Wpisz symbol, kod Mikran lub nazwę — po wyborze uzupełnimy pola i spróbujemy ustawić dostawcę z ZD."
+                  : "Wpisz symbol, kod Mikran lub nazwę — po wyborze uzupełnimy pola i spróbujemy ustawić dostawcę z ZD."}
             </p>
           ) : null}
 
