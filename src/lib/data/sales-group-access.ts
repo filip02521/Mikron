@@ -1,6 +1,34 @@
 import { createAdminClient, hasSupabaseConfig } from "@/lib/supabase/admin";
 import type { SessionUser } from "@/lib/auth";
+import { resolveSalesPersonForUser } from "@/lib/auth/sales-person";
 import { isAdmin, isSalesManager } from "@/lib/auth-roles";
+
+/** Karta handlowca powiązana z kontem kierownika (profil lub e-mail). */
+export async function isManagersOwnSalesPerson(
+  user: Pick<SessionUser, "id" | "role">,
+  salesPersonId: string
+): Promise<boolean> {
+  if (!isSalesManager(user.role) || !salesPersonId) return false;
+  if (!hasSupabaseConfig()) return false;
+
+  const supabase = createAdminClient();
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("sales_person_id, email")
+    .eq("id", user.id)
+    .maybeSingle();
+
+  if (profile?.sales_person_id === salesPersonId) return true;
+
+  const own = await resolveSalesPersonForUser({
+    id: user.id,
+    role: user.role,
+    email: (profile?.email as string | undefined) ?? "",
+    salesPersonId: (profile?.sales_person_id as string | null | undefined) ?? null,
+    mustChangePassword: false,
+  });
+  return own?.id === salesPersonId;
+}
 
 /** null = pełny dostęp (admin), [] = brak grup, string[] = tylko te grupy */
 export async function getManagedGroupIdsForUser(
@@ -45,6 +73,8 @@ export async function canAccessSalesPerson(
 ): Promise<boolean> {
   if (isAdmin(user.role)) return true;
   if (!isSalesManager(user.role)) return false;
+
+  if (await isManagersOwnSalesPerson(user, salesPersonId)) return true;
 
   const scope = await getManagedGroupIdsForUser(user);
   if (scope === null) return true;

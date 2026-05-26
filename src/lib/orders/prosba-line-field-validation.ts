@@ -1,0 +1,110 @@
+import type { ProductLineDraft } from "@/components/orders/request-product-lines";
+import {
+  hasAnyProductHint,
+  hasValidOrderQuantity,
+} from "@/lib/orders/request-completeness";
+import type { IndividualRequestKind } from "@/types/database";
+
+export type ProsbaFieldKey = "symbol" | "mikranCode" | "product" | "quantity";
+
+export type ProsbaFieldVisualState = "default" | "warning" | "error" | "success";
+
+export type ProsbaLineFieldState = {
+  state: ProsbaFieldVisualState;
+  message?: string;
+};
+
+export type ProsbaLineFieldMap = Record<ProsbaFieldKey, ProsbaLineFieldState>;
+
+const DEFAULT_FIELD: ProsbaLineFieldState = { state: "default" };
+
+function emptyFieldMap(): ProsbaLineFieldMap {
+  return {
+    symbol: { ...DEFAULT_FIELD },
+    mikranCode: { ...DEFAULT_FIELD },
+    product: { ...DEFAULT_FIELD },
+    quantity: { ...DEFAULT_FIELD },
+  };
+}
+
+function hasPartialLineInput(line: ProductLineDraft): boolean {
+  return (
+    line.symbol.trim() !== "" ||
+    line.mikranCode.trim() !== "" ||
+    line.product.trim() !== "" ||
+    line.quantity.trim() !== ""
+  );
+}
+
+/** Czy pokazać walidację pól dla danej pozycji. */
+export function shouldShowProsbaLineFieldValidation(
+  line: ProductLineDraft,
+  options: {
+    active: boolean;
+    validationAttempted: boolean;
+    lineCount: number;
+  }
+): boolean {
+  if (options.validationAttempted) {
+    return hasAnyProductHint(line) || options.active || options.lineCount === 1;
+  }
+  if (options.active) {
+    return hasPartialLineInput(line);
+  }
+  return false;
+}
+
+/** Stan wizualny pól pozycji prośby (braki, ilość). */
+export function assessProsbaLineFields(
+  line: ProductLineDraft,
+  requestKind: IndividualRequestKind,
+  mode: "soft" | "strict"
+): ProsbaLineFieldMap {
+  const fields = emptyFieldMap();
+  const draft = {
+    symbol: line.symbol,
+    mikranCode: line.mikranCode,
+    product: line.product,
+    quantity: line.quantity,
+    requestKind,
+  };
+  const linked = line.subiektTwId != null && line.subiektTwId > 0;
+  const severity: ProsbaFieldVisualState = mode === "strict" ? "error" : "warning";
+
+  if (!hasAnyProductHint(draft)) {
+    const message =
+      requestKind === "informacja"
+        ? "Podaj symbol, kod Mikran lub opis produktu."
+        : "Podaj symbol, kod Mikran lub opis produktu.";
+    for (const key of ["symbol", "mikranCode", "product"] as const) {
+      fields[key] = { state: severity, message };
+    }
+    return fields;
+  }
+
+  if (linked) {
+    if (line.symbol.trim()) fields.symbol = { state: "success" };
+    if (line.mikranCode.trim()) fields.mikranCode = { state: "success" };
+    if (line.product.trim()) fields.product = { state: "success" };
+  }
+
+  if (
+    requestKind === "zamowienie" &&
+    !hasValidOrderQuantity(line.quantity, requestKind)
+  ) {
+    fields.quantity = {
+      state: severity,
+      message: "Podaj ilość (liczba sztuk, np. 1).",
+    };
+  } else if (requestKind === "zamowienie" && line.quantity.trim()) {
+    fields.quantity = { state: "success" };
+  }
+
+  return fields;
+}
+
+export function prosbaLineHasFieldIssues(fields: ProsbaLineFieldMap): boolean {
+  return Object.values(fields).some(
+    (field) => field.state === "error" || field.state === "warning"
+  );
+}

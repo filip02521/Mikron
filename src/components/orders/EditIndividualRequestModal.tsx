@@ -5,6 +5,8 @@ import type { IndividualRequestKind } from "@/types/database";
 import { actionUpdateIndividualRequest } from "@/app/actions/admin";
 import { actionUpdateMyIndividualRequest } from "@/app/actions/my-orders";
 import { assessSalesGroupSubmittable } from "@/lib/orders/sales-request-submit";
+import { hasValidOrderQuantity } from "@/lib/orders/request-completeness";
+import { ProsbaFormReadiness } from "@/components/orders/ProsbaFormReadiness";
 import { RequestFormStatusPanel } from "@/components/orders/RequestFormStatusPanel";
 import { RequestProductLinesEditor } from "@/components/orders/RequestProductLinesEditor";
 import { newProductLine, type ProductLineDraft } from "@/components/orders/request-product-lines";
@@ -46,6 +48,11 @@ export function EditIndividualRequestModal({
   const [salesPersonId, setSalesPersonId] = useState("");
   const [requestKind, setRequestKind] = useState<IndividualRequestKind>("zamowienie");
   const [lines, setLines] = useState<ProductLineDraft[]>([newProductLine()]);
+  const [validationAttempted, setValidationAttempted] = useState(false);
+  const [formNotice, setFormNotice] = useState<{
+    text: string;
+    tone: "error" | "warning";
+  } | null>(null);
 
   const sortedSuppliers = useMemo(
     () => [...suppliers].sort((a, b) => a.name.localeCompare(b.name, "pl")),
@@ -67,10 +74,44 @@ export function EditIndividualRequestModal({
         ? initial.lines.map((l) => ({ ...l }))
         : [newProductLine()]
     );
+    setValidationAttempted(false);
+    setFormNotice(null);
   }, [open, initial]);
 
   const save = () => {
     if (!initial) return;
+    setFormNotice(null);
+
+    if (mode === "sales") {
+      const plan = assessSalesGroupSubmittable(lines, "", requestKind);
+      if (!plan?.submittable) {
+        setValidationAttempted(true);
+        setFormNotice({
+          text:
+            requestKind === "informacja"
+              ? "Uzupełnij wymagane pola — symbol, kod Mikran lub opis produktu."
+              : "Uzupełnij wymagane pola — produkt i ilość przy każdej pozycji.",
+          tone: "error",
+        });
+        return;
+      }
+      if (
+        requestKind === "zamowienie" &&
+        lines.some(
+          (l) =>
+            (l.symbol.trim() || l.mikranCode.trim() || l.product.trim()) &&
+            !hasValidOrderQuantity(l.quantity, "zamowienie")
+        )
+      ) {
+        setValidationAttempted(true);
+        setFormNotice({
+          text: "Każda pozycja zamówienia musi mieć ilość (liczba sztuk, np. 1).",
+          tone: "error",
+        });
+        return;
+      }
+    }
+
     run(
       async () => {
         const payload = {
@@ -116,14 +157,7 @@ export function EditIndividualRequestModal({
           <Button variant="ghost" disabled={pending} onClick={onClose}>
             Anuluj
           </Button>
-          <Button
-            disabled={
-              pending ||
-              !initial ||
-              (mode === "sales" && salesSubmitPlan?.submittable === false)
-            }
-            onClick={save}
-          >
+          <Button disabled={pending || !initial} onClick={save}>
             Zapisz zmiany
           </Button>
         </>
@@ -181,26 +215,39 @@ export function EditIndividualRequestModal({
         <div className="sm:col-span-2">
           <RequestProductLinesEditor
             lines={lines}
-            onChange={setLines}
+            onChange={(next) => {
+              setFormNotice(null);
+              setLines(next);
+            }}
             requestKind={requestKind}
-            appearance="prosba"
+            appearance={mode === "sales" ? "prosba" : "default"}
             showClientField={mode === "sales"}
+            deferSupplierResolve={mode === "sales"}
+            validationAttempted={mode === "sales" ? validationAttempted : false}
           />
         </div>
 
         <div className="sm:col-span-2">
-          <RequestFormStatusPanel
-            requestKind={requestKind}
-            draft={{
-              supplierId: mode === "sales" ? "" : supplierId,
-              symbol: lines.find((l) => l.symbol.trim())?.symbol,
-              mikranCode: lines.find((l) => l.mikranCode.trim())?.mikranCode,
-              product: lines.find((l) => l.product.trim())?.product,
-              quantity: lines.find((l) => l.quantity.trim())?.quantity,
-              requestKind,
-            }}
-            salesSubmitPlan={salesSubmitPlan}
-          />
+          {mode === "sales" ? (
+            <ProsbaFormReadiness
+              lines={lines}
+              requestKind={requestKind}
+              salesSubmitPlan={salesSubmitPlan}
+              formMessage={formNotice}
+            />
+          ) : (
+            <RequestFormStatusPanel
+              requestKind={requestKind}
+              draft={{
+                supplierId,
+                symbol: lines.find((l) => l.symbol.trim())?.symbol,
+                mikranCode: lines.find((l) => l.mikranCode.trim())?.mikranCode,
+                product: lines.find((l) => l.product.trim())?.product,
+                quantity: lines.find((l) => l.quantity.trim())?.quantity,
+                requestKind,
+              }}
+            />
+          )}
         </div>
       </div>
     </ModalShell>

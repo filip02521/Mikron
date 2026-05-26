@@ -52,7 +52,7 @@ function weryfikacjaPresentation(order: IndividualOrder) {
     supplierName: pending
       ? "Dopasowywanie dostawcy…"
       : (order.supplier?.name ?? "Do ustalenia"),
-    statusTitle: pending ? "Dopasowujemy dostawcę" : "Uzupełnianie danych",
+    statusTitle: pending ? "Dopasowujemy dostawcę" : "W dziale dostaw",
     statusDetail: describeVerificationGaps(order),
     timingLabel: null,
     badgeVariant: "warning" as const,

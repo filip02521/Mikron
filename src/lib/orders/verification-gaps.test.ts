@@ -19,11 +19,23 @@ const base: IndividualOrder = {
 };
 
 describe("describeVerificationGaps", () => {
-  it("wymienia brakujące pola", () => {
+  it("opisuje pracę działu dostaw bez „Brakuje”", () => {
     const text = describeVerificationGaps(base);
-    expect(text).toContain("dostawca");
-    expect(text).toContain("opis produktu");
-    expect(text).toContain("ilość");
+    expect(text).toContain("Dział dostaw uzupełni:");
+    expect(text).toContain("dostawcę");
+    expect(text).toContain("nie musisz");
+    expect(text).not.toContain("Brakuje:");
+  });
+
+  it("tylko dostawca — krótszy komunikat", () => {
+    const text = describeVerificationGaps({
+      ...base,
+      symbol: "ABC",
+      products: "Test",
+      quantity: "1",
+    });
+    expect(text).toContain("Dział dostaw dopasuje dostawcę");
+    expect(text).not.toContain("Brakuje:");
   });
 
   it("pending supplier — komunikat o dopasowaniu w tle", () => {
@@ -34,7 +46,7 @@ describe("describeVerificationGaps", () => {
       products: "Test",
       quantity: "1",
     });
-    expect(text).toContain("dopasowuje dostawcę");
+    expect(text).toContain("Szukamy dostawcy");
     expect(text).not.toContain("Brakuje:");
   });
 

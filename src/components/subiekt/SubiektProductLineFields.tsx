@@ -23,6 +23,11 @@ import {
 } from "@/lib/subiekt/product-pick";
 import { cn } from "@/lib/cn";
 import {
+  ProsbaLineFieldMessages,
+  type ProsbaLineMessageItem,
+} from "@/components/orders/ProsbaLineFieldMessages";
+import type { ProsbaLineFieldMap } from "@/lib/orders/prosba-line-field-validation";
+import {
   MAX_MIKRAN_CODE_LEN,
   MAX_PRODUCT_TEXT_LEN,
   MAX_QUANTITY_LEN,
@@ -81,6 +86,25 @@ function typeaheadSectionLabel(field: ActiveField): string {
   return "po symbolu";
 }
 
+function subiektFieldLabel(field: ActiveField): string {
+  if (field === "plu") return "Kod mikran";
+  if (field === "name") return "Produkt";
+  return "Symbol";
+}
+
+function prosbaFieldProps(
+  key: keyof ProsbaLineFieldMap,
+  validation?: ProsbaLineFieldMap
+): { state?: "default" | "warning" | "error" | "success"; error?: string; hint?: string } {
+  const v = validation?.[key];
+  if (!v || v.state === "default") return {};
+  const sharedProductMessage = v.message?.includes("symbol, kod Mikran");
+  if (sharedProductMessage && key !== "product") {
+    return { state: v.state };
+  }
+  return { state: v.state, error: v.message };
+}
+
 export function SubiektProductLineFields({
   value,
   onChange,
@@ -96,6 +120,8 @@ export function SubiektProductLineFields({
   onConfigFeedbackChange,
   onResolvingSupplierChange,
   deferSupplierResolve = false,
+  fieldValidation,
+  lineIndex = 0,
 }: {
   value: SubiektProductLineValue;
   onChange: (patch: Partial<SubiektProductLineValue>) => void;
@@ -115,6 +141,9 @@ export function SubiektProductLineFields({
   onConfigFeedbackChange?: (feedback: SubiektFeedback | null) => void;
   onResolvingSupplierChange?: (resolving: boolean) => void;
   deferSupplierResolve?: boolean;
+  /** Stany pól (prośba handlowca). */
+  fieldValidation?: ProsbaLineFieldMap;
+  lineIndex?: number;
 }) {
   const ref = useRef<HTMLDivElement>(null);
   const [enabled, setEnabled] = useState(false);
@@ -261,10 +290,62 @@ export function SubiektProductLineFields({
 
   const showError = feedback && feedback.tone !== "info";
   const showInfo = feedback && feedback.tone === "info" && items.length === 0;
+  const productFieldFeedback =
+    feedback && (showError || showInfo) && !linkedFromSubiekt ? feedback : null;
+
+  const symbolField = prosbaFieldProps("symbol", fieldValidation);
+  const mikranField = prosbaFieldProps("mikranCode", fieldValidation);
+  const productField = prosbaFieldProps("product", fieldValidation);
+  const quantityField = prosbaFieldProps("quantity", fieldValidation);
+
+  const prosbaMessageItems: ProsbaLineMessageItem[] = [];
+  if (prosba) {
+    if (resolvingSupplier) {
+      prosbaMessageItems.push({ kind: "resolving" });
+    }
+    if (supplierFeedback) {
+      prosbaMessageItems.push({ kind: "feedback", feedback: supplierFeedback });
+    }
+    if (productFieldFeedback) {
+      prosbaMessageItems.push({
+        kind: "feedback",
+        feedback: productFieldFeedback,
+        fieldLabel: `Subiekt — ${subiektFieldLabel(activeField)}`,
+      });
+    }
+    if (
+      enabled &&
+      !productFieldFeedback &&
+      !resolvingSupplier &&
+      !linkedFromSubiekt &&
+      !Object.values(fieldValidation ?? {}).some((f) => f.state !== "default")
+    ) {
+      prosbaMessageItems.push({
+        kind: "hint",
+        text: deferSupplierResolve
+          ? isInformacja
+            ? "Wpisz symbol, kod Mikran (min. 1 cyfra) lub nazwę (min. 2 znaki) — po wyborze towaru możesz od razu wysłać prośbę; dostawcę dopasujemy w tle."
+            : "Wpisz symbol, kod Mikran (min. 1 cyfra) lub nazwę (min. 2 znaki) — po wyborze towaru możesz od razu wysłać prośbę; dostawcę dopasujemy w tle z Subiekta."
+          : isInformacja
+            ? "Wpisz symbol, kod Mikran lub nazwę — po wyborze uzupełnimy pola i spróbujemy ustawić dostawcę z ZD."
+            : "Wpisz symbol, kod Mikran lub nazwę — po wyborze uzupełnimy pola i spróbujemy ustawić dostawcę z ZD.",
+      });
+    }
+  }
 
   const symbolPluRow = (
     <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-      <Field label="Symbol">
+      <Field
+        label="Symbol"
+        {...symbolField}
+        hint={
+          prosba && !symbolField.error && !symbolField.state
+            ? enabled
+              ? "Symbol z kartoteki Subiekta (min. 2 znaki)"
+              : "Symbol towaru (wpis ręczny)"
+            : undefined
+        }
+      >
         <div className="relative">
           <Input
             disabled={disabled}
@@ -272,6 +353,7 @@ export function SubiektProductLineFields({
             maxLength={MAX_SYMBOL_LEN}
             value={value.symbol}
             autoComplete="off"
+            state={symbolField.state}
             onChange={(e) => {
               manualPatch({ symbol: e.target.value }, true);
               setActiveField("symbol");
@@ -290,7 +372,17 @@ export function SubiektProductLineFields({
         </div>
       </Field>
 
-      <Field label="Kod mikran">
+      <Field
+        label="Kod mikran"
+        {...mikranField}
+        hint={
+          prosba && !mikranField.error && !mikranField.state
+            ? enabled
+              ? "Numer PLU / tw_PLU (min. 1 cyfra)"
+              : "Numer PLU / kod Mikran (wpis ręczny)"
+            : undefined
+        }
+      >
         <div className="relative">
           <Input
             disabled={disabled}
@@ -299,6 +391,7 @@ export function SubiektProductLineFields({
             maxLength={MAX_MIKRAN_CODE_LEN}
             value={value.mikranCode}
             autoComplete="off"
+            state={mikranField.state}
             onChange={(e) => {
               manualPatch({ mikranCode: e.target.value }, true);
               setActiveField("plu");
@@ -327,6 +420,14 @@ export function SubiektProductLineFields({
           <Field
             label={isInformacja ? "Produkt (co ma być na stanie)" : "Produkty"}
             className={productFieldClassName}
+            {...productField}
+            hint={
+              prosba && !productField.error && !productField.state
+                ? enabled
+                  ? "Nazwa lub opis produktu (min. 2 znaki do wyszukiwania)"
+                  : "Nazwa lub opis produktu (wpis ręczny)"
+                : undefined
+            }
           >
             <div className="relative">
               <Input
@@ -341,6 +442,7 @@ export function SubiektProductLineFields({
                 maxLength={MAX_PRODUCT_TEXT_LEN}
                 value={value.product}
                 autoComplete="off"
+                state={productField.state}
                 onChange={(e) => {
                   manualPatch({ product: e.target.value }, true);
                   setActiveField("name");
@@ -359,7 +461,15 @@ export function SubiektProductLineFields({
             </div>
           </Field>
           {!isInformacja ? (
-            <Field label="Ilość (wymagane)">
+            <Field
+              label="Ilość (wymagane)"
+              {...quantityField}
+              hint={
+                prosba && !quantityField.error && !quantityField.state
+                  ? "Liczba sztuk do zamówienia u dostawcy"
+                  : undefined
+              }
+            >
               <Input
                 type="number"
                 min={1}
@@ -369,9 +479,17 @@ export function SubiektProductLineFields({
                 maxLength={MAX_QUANTITY_LEN}
                 placeholder="np. 1"
                 value={value.quantity}
+                state={quantityField.state}
                 onChange={(e) => onChange({ quantity: e.target.value })}
               />
             </Field>
+          ) : null}
+
+          {prosbaMessageItems.length > 0 ? (
+            <ProsbaLineFieldMessages
+              lineLabel={`Informacje — produkt ${lineIndex + 1}`}
+              items={prosbaMessageItems}
+            />
           ) : null}
         </>
       ) : (
@@ -487,7 +605,7 @@ export function SubiektProductLineFields({
         </div>
       )}
 
-      {!enabled && configFeedback && !delegateAlerts ? (
+      {!enabled && configFeedback && !delegateAlerts && !prosba ? (
         <SubiektFeedbackAlert feedback={configFeedback} compact />
       ) : null}
 
@@ -515,7 +633,7 @@ export function SubiektProductLineFields({
             })}
           </TypeaheadDropdown>
 
-          {!delegateAlerts && !feedback && !resolvingSupplier && !linkedFromSubiekt ? (
+          {!delegateAlerts && !prosba && !feedback && !resolvingSupplier && !linkedFromSubiekt ? (
             <p className="text-xs text-slate-400">
               {deferSupplierResolve
                 ? isInformacja
@@ -527,14 +645,14 @@ export function SubiektProductLineFields({
             </p>
           ) : null}
 
-          {!delegateAlerts && supplierFeedback ? (
+          {!delegateAlerts && !prosba && supplierFeedback ? (
             <SubiektFeedbackAlert feedback={supplierFeedback} compact />
           ) : null}
 
-          {!delegateAlerts && showError ? (
+          {!delegateAlerts && !prosba && showError ? (
             <SubiektFeedbackAlert feedback={feedback} compact />
           ) : null}
-          {!delegateAlerts && showInfo ? (
+          {!delegateAlerts && !prosba && showInfo ? (
             <SubiektFeedbackAlert feedback={feedback} compact />
           ) : null}
         </>

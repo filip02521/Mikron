@@ -17,32 +17,35 @@ function orderToDraft(order: IndividualOrder): RequestDraft {
   };
 }
 
-/** Czytelny opis braków dla handlowca (status Weryfikacja). */
+/** Czytelny opis etapu prośby w statusie Weryfikacja (dla handlowca). */
 export function describeVerificationGaps(order: IndividualOrder): string {
   const draft = orderToDraft(order);
-  const missing: string[] = [];
+  const procurementTodo: string[] = [];
 
   if (order.supplier_resolve_pending && !order.supplier_id) {
-    return "System dopasowuje dostawcę z historii ZD w Subiekcie. To zwykle trwa chwilę — odśwież listę za moment. Gdy się nie uda, dział dostaw uzupełni dane ręcznie.";
+    return "Szukamy dostawcy w Subiekcie (historia ZD). To zwykle chwilę — odśwież listę za moment. Prośba jest zapisana — nie musisz nic uzupełniać.";
   }
 
-  if (!order.supplier_id) missing.push("dostawca");
+  if (!order.supplier_id) procurementTodo.push("dostawcę");
   if (!hasAnyProductHint(draft)) {
-    missing.push("opis produktu (symbol, kod Mikran lub nazwa)");
+    procurementTodo.push("opis produktu (symbol, kod Mikran lub nazwa)");
   }
   if (
     !isInformacjaRequest(order) &&
     !hasValidOrderQuantity(order.quantity, "zamowienie")
   ) {
-    missing.push("ilość (szt.)");
+    procurementTodo.push("ilość (szt.)");
   }
 
-  const footer =
-    "Dział dostaw uzupełni to w systemie — nie musisz nic robić.";
+  const footer = "Prośba jest zapisana — nie musisz nic uzupełniać.";
 
-  if (missing.length === 0) {
-    return `Zakupy sprawdzają szczegóły prośby. ${footer}`;
+  if (procurementTodo.length === 0) {
+    return `Zakupy sprawdzają szczegóły przed zamówieniem u dostawcy. ${footer}`;
   }
 
-  return `Brakuje: ${missing.join(", ")}. ${footer}`;
+  if (procurementTodo.length === 1 && procurementTodo[0] === "dostawcę") {
+    return `Dział dostaw dopasuje dostawcę. ${footer}`;
+  }
+
+  return `Dział dostaw uzupełni: ${procurementTodo.join(", ")}. ${footer}`;
 }

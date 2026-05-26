@@ -4,6 +4,7 @@ import {
 } from "@/lib/orders/my-order-card-ui";
 import {
   myOrderMetaFields,
+  isProsbaHandoffStatus,
   verificationSublineFromDetail,
 } from "@/lib/orders/my-order-sales-ui";
 
@@ -19,7 +20,7 @@ export function myOrderCollapsedSubline(row: MyOrderRow): string | null {
     return row.subline ?? null;
   }
 
-  if (row.statusTitle === "Uzupełnianie danych") {
+  if (isProsbaHandoffStatus(row.statusTitle)) {
     return verificationSublineFromDetail(row.statusDetail);
   }
 
@@ -44,7 +45,7 @@ export function myOrderExpandedNotes(row: MyOrderRow): string | null {
       row.statusTitle === "Przed zamówieniem" ||
       row.statusTitle === "Oczekuje na dostawę" ||
       row.statusTitle === "Zamówione" ||
-      row.statusTitle === "Uzupełnianie danych" ||
+      isProsbaHandoffStatus(row.statusTitle) ||
       row.kind === "informacja";
     if (explanatory) parts.push(row.subline.trim());
   }

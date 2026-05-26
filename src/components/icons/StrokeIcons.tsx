@@ -73,6 +73,17 @@ export function IconCircleCheck(props: StrokeIconProps) {
   );
 }
 
+/** Ostrzeżenie / brakujące pole */
+export function IconAlertCircle(props: StrokeIconProps) {
+  return (
+    <Svg {...props}>
+      <circle cx="12" cy="12" r="9" />
+      <path d="M12 8v4" />
+      <path d="M12 16h.01" />
+    </Svg>
+  );
+}
+
 /** Zamówienie u dostawcy */
 export function IconTruck(props: StrokeIconProps) {
   return (

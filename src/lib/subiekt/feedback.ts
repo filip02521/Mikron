@@ -40,9 +40,9 @@ type FeedbackTemplate = Omit<SubiektFeedback, "code">;
 
 const TEMPLATES: Record<SubiektErrorCode, FeedbackTemplate> = {
   not_configured: {
-    title: "Subiekt wyłączony",
-    message: "Integracja nie jest skonfigurowana na tym serwerze.",
-    hint: "Podpowiedzi z kartoteki nie będą dostępne — uzupełnij pola ręcznie.",
+    title: "Brak podpowiedzi Subiekt",
+    message: "Integracja nie jest skonfigurowana lub jest poza siecią firmową.",
+    hint: "Wyszukiwanie w kartotece nie działa — pola wypełniasz ręcznie.",
     tone: "info",
   },
   short_query: {
@@ -134,9 +134,10 @@ const TEMPLATES: Record<SubiektErrorCode, FeedbackTemplate> = {
     tone: "info",
   },
   subiekt_unavailable: {
-    title: "Podpowiedzi Subiekt chwilowo niedostępne",
-    message: "Wyszukiwanie w Subiekcie nie powiodło się — nadal możesz korzystać z listy w systemie.",
-    tone: "warning",
+    title: "Subiekt chwilowo niedostępny",
+    message: "API Subiekta nie odpowiada — np. poza LAN lub serwis wyłączony.",
+    hint: "Spróbuj w sieci firmowej później. Teraz wpisz symbol i opis ręcznie.",
+    tone: "info",
   },
   unknown: {
     title: "Nieznany błąd",

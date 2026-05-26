@@ -4,17 +4,42 @@ import { progressLabelInSubline } from "@/lib/orders/my-order-card-ui";
 
 export type MyOrderHeadlineTone = "action" | "warning" | "success" | "info" | "neutral";
 
+/** Status otwartej prośby przekazanej do działu dostaw (nie wymaga akcji handlowca). */
+export function isProsbaHandoffStatus(statusTitle: string): boolean {
+  return (
+    statusTitle === "W dziale dostaw" ||
+    statusTitle === "Dopasowujemy dostawcę" ||
+    statusTitle === "Uzupełnianie danych"
+  );
+}
+
 /** Jedna linia pod nagłówkiem — bez powtórzenia statusDetail w rozwinięciu. */
 export function verificationSublineFromDetail(statusDetail: string | null): string {
-  if (!statusDetail?.trim()) return "Dział dostaw uzupełnia brakujące dane";
+  if (!statusDetail?.trim()) return "Zakupy dopracują szczegóły — bez Twojej akcji";
+  if (
+    statusDetail.includes("Szukamy dostawcy") ||
+    statusDetail.includes("dopasowuje dostawcę")
+  ) {
+    return "Trwa dopasowanie dostawcy w Subiekcie";
+  }
+  if (statusDetail.includes("Dział dostaw dopasuje dostawcę")) {
+    return "Zakupy dopasują dostawcę — bez Twojej akcji";
+  }
+  if (statusDetail.includes("Dział dostaw uzupełni:")) {
+    const match = statusDetail.match(/Dział dostaw uzupełni: ([^.]+)/);
+    return match ? `Zakupy uzupełnią ${match[1]}` : "Zakupy dopracują szczegóły";
+  }
+  if (statusDetail.includes("nie musisz")) {
+    return "Prośba zapisana — bez Twojej akcji";
+  }
   if (statusDetail.startsWith("Brakuje:")) {
     const missing = statusDetail.slice("Brakuje:".length).split(".")[0]?.trim();
     return missing
-      ? `Brakuje: ${missing} — dział dostaw uzupełni`
-      : "Dział dostaw uzupełnia brakujące dane";
+      ? `Zakupy uzupełnią ${missing}`
+      : "Zakupy dopracują szczegóły — bez Twojej akcji";
   }
-  if (statusDetail.includes("sprawdzają")) return "Zakupy sprawdzają szczegóły";
-  return "Dział dostaw uzupełnia brakujące dane";
+  if (statusDetail.includes("sprawdzają")) return "Zakupy sprawdzają szczegóły przed zamówieniem";
+  return "Zakupy dopracują szczegóły — bez Twojej akcji";
 }
 
 export type MyOrderSalesUi = {
@@ -131,9 +156,10 @@ export function enrichMyOrderSalesUi(row: MyOrderRow): MyOrderSalesUi {
     };
   }
 
-  if (row.statusTitle === "Uzupełnianie danych") {
+  if (isProsbaHandoffStatus(row.statusTitle)) {
+    const pending = row.statusTitle === "Dopasowujemy dostawcę";
     return {
-      headline: "Uzupełniamy dane w prośbie",
+      headline: pending ? "Dopasowujemy dostawcę" : "Prośba w dziale dostaw",
       headlineTone: "info",
       subline: verificationSublineFromDetail(row.statusDetail),
       sortPriority: 5,

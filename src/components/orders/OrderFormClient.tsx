@@ -24,6 +24,7 @@ import {
 } from "@/lib/orders/request-completeness";
 import { assessSalesGroupSubmittable } from "@/lib/orders/sales-request-submit";
 import { RequestFormStatusPanel } from "@/components/orders/RequestFormStatusPanel";
+import { ProsbaFormReadiness } from "@/components/orders/ProsbaFormReadiness";
 import { RequestProductLinesEditor } from "@/components/orders/RequestProductLinesEditor";
 import { ActionLoadingOverlay } from "@/components/ui/ActionLoadingOverlay";
 import { newProductLine } from "@/components/orders/request-product-lines";
@@ -65,16 +66,16 @@ function formatSubmitResult(
   const { complete, verification, pendingSupplierResolve = 0 } = r;
   if (forSales) {
     if (pendingSupplierResolve > 0 && complete === 0 && verification === pendingSupplierResolve) {
-      return "Prośba zapisana. Dostawcę dopasowujemy z Subiekta w tle — gdy się uda, zobaczysz ją w panelu dziennym; w przeciwnym razie trafi do weryfikacji u działu dostaw.";
+      return "Prośba zapisana. Dopasowujemy dostawcę w Subiekcie — śledź status w „Moje zamówienia”.";
     }
     if (pendingSupplierResolve > 0) {
       return `Zapisano prośbę (${pendingSupplierResolve} poz. czeka na dostawcę z Subiekta). Sprawdź status w „Moje zamówienia”.`;
     }
     if (verification > 0 && complete === 0) {
-      return "Prośba przekazana do uzupełnienia przez dział dostaw.";
+      return "Prośba zapisana — dział dostaw dopracuje szczegóły. Śledź status w „Moje zamówienia”.";
     }
     if (verification > 0 && complete > 0) {
-      return `Zapisano ${complete} kompletnych i ${verification} do uzupełnienia — śledź status w „Moje zamówienia”.`;
+      return `Zapisano prośbę (${complete} od razu do realizacji, ${verification} w dziale dostaw). Sprawdź „Moje zamówienia”.`;
     }
     return requestKind === "informacja"
       ? "Prośba o dostępność zapisana."
@@ -180,6 +181,7 @@ export function OrderFormClient({
     text: string;
     tone: "error" | "warning";
   } | null>(null);
+  const [validationAttempted, setValidationAttempted] = useState(false);
 
   const clearFormNotice = useCallback(() => setFormNotice(null), []);
 
@@ -202,6 +204,22 @@ export function OrderFormClient({
 
   const submit = () => {
     setFormNotice(null);
+
+    if (singleGroup && lockedSalesPerson) {
+      const group = groups[0] ?? emptyGroup(lockedId, initialSupplierId ?? undefined);
+      const salesPlan = assessSalesGroupSubmittable(group, "", requestKind);
+      if (!salesPlan?.submittable) {
+        setValidationAttempted(true);
+        setFormNotice({
+          text:
+            requestKind === "informacja"
+              ? "Uzupełnij wymagane pola — symbol, kod Mikran lub opis produktu."
+              : "Uzupełnij wymagane pola — produkt (symbol, kod Mikran lub opis) i ilość przy każdej pozycji.",
+          tone: "error",
+        });
+        return;
+      }
+    }
 
     if (!singleGroup && !lockedId) {
       const groupIssues: string[] = [];
@@ -265,6 +283,7 @@ export function OrderFormClient({
       });
     });
     if (!entries.length) {
+      setValidationAttempted(true);
       setFormNotice({
         text: lockedSalesPerson
           ? "Podaj symbol, kod Mikran lub opis produktu."
@@ -277,6 +296,7 @@ export function OrderFormClient({
       requestKind === "zamowienie" &&
       entries.some((e) => !hasValidOrderQuantity(e.quantity, "zamowienie"))
     ) {
+      setValidationAttempted(true);
       setFormNotice({
         text: "Każda pozycja zamówienia musi mieć ilość (liczba sztuk, np. 1).",
         tone: "error",
@@ -306,6 +326,7 @@ export function OrderFormClient({
           tone: "success",
         });
         setFormNotice(null);
+        setValidationAttempted(false);
         setSupplierSubiektFeedback(null);
         setProductLineFeedback(null);
         setGroups(buildInitialGroups(lockedId, initialSupplierId));
@@ -446,33 +467,14 @@ export function OrderFormClient({
                   addLabel="+ Kolejny produkt"
                   showClientField
                   suppliers={supplierRefs}
-                  unifiedFeedback
                   deferSupplierResolve={deferSupplierResolve}
-                  onSupplierResolveFeedback={setSupplierSubiektFeedback}
-                  onProductFeedbackChange={setProductLineFeedback}
-                  onConfigFeedbackChange={setConfigFeedback}
-                  onResolvingSupplierChange={
-                    deferSupplierResolve ? undefined : setResolvingSupplier
-                  }
+                  validationAttempted={validationAttempted}
                 />
 
-                <RequestFormStatusPanel
+                <ProsbaFormReadiness
+                  lines={group}
                   requestKind={requestKind}
-                  draft={{
-                    supplierId,
-                    symbol: group.find((r) => r.symbol.trim())?.symbol,
-                    mikranCode: group.find((r) => r.mikranCode.trim())?.mikranCode,
-                    product: group.find((r) => r.product.trim())?.product,
-                    quantity: group.find((r) => r.quantity.trim())?.quantity,
-                    requestKind,
-                  }}
                   salesSubmitPlan={salesSubmitPlan}
-                  subiektFeedbacks={[
-                    configFeedback,
-                    supplierSubiektFeedback,
-                    productLineFeedback,
-                  ]}
-                  resolvingSupplier={deferSupplierResolve ? false : resolvingSupplier}
                   formMessage={formNotice}
                 />
               </div>
@@ -491,9 +493,12 @@ export function OrderFormClient({
               . O ważnych zmianach dostaniesz też e-mail.
             </p>
             <Button
-              disabled={pending || salesSubmitPlan?.submittable === false}
+              disabled={pending}
               onClick={submit}
-              className="w-full shrink-0 sm:w-auto sm:min-w-[10rem]"
+              className={cn(
+                "w-full shrink-0 sm:w-auto sm:min-w-[10rem]",
+                !pending && salesSubmitPlan?.submittable === false && "opacity-90"
+              )}
             >
               {pending ? "Wysyłanie…" : "Wyślij prośbę"}
             </Button>

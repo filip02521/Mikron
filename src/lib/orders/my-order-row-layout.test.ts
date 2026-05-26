@@ -71,12 +71,12 @@ describe("my-order-row-layout", () => {
 
   it("weryfikacja — skrót na liście bez powtórzenia w expanded", () => {
     const r = row({
-      statusTitle: "Uzupełnianie danych",
+      statusTitle: "W dziale dostaw",
       statusDetail:
-        "Brakuje: dostawca. Dział dostaw uzupełni to w systemie — nie musisz nic robić.",
-      subline: "Brakuje: dostawca — dział dostaw uzupełni",
+        "Dział dostaw dopasuje dostawcę. Prośba jest zapisana — nie musisz nic uzupełniać.",
+      subline: "Zakupy dopasują dostawcę — bez Twojej akcji",
     });
-    expect(myOrderCollapsedSubline(r)).toContain("Brakuje: dostawca");
+    expect(myOrderCollapsedSubline(r)).toContain("Zakupy dopasują dostawcę");
     expect(myOrderExpandedNotes(r)).toBeNull();
   });
 

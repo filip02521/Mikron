@@ -23,6 +23,8 @@ export type SalesRequestDraft = RequestDraft & {
   subiektTwId?: number | null;
 };
 
+export type SalesSubmitHintTone = "success" | "warning" | "info";
+
 function hasSubiektProduct(draft: SalesRequestDraft): boolean {
   const id = draft.subiektTwId;
   return id != null && id > 0;
@@ -76,30 +78,46 @@ export function planSalesRequestSubmit(draft: SalesRequestDraft): SalesRequestSu
   };
 }
 
+/** Komunikat w panelu statusu formularza prośby — rozróżnia „blokada” vs „można wysłać”. */
 export function salesSubmitUserHint(
   plan: SalesRequestSubmitPlan,
   requestKind: IndividualRequestKind
-): { tone: "success" | "warning"; title: string; detail: string } | null {
+): { tone: SalesSubmitHintTone; title: string; detail: string } | null {
+  if (!plan.submittable) {
+    if (plan.bannerKind === "empty") return null;
+    if (plan.bannerKind === "incomplete") {
+      return {
+        tone: "warning",
+        title: "Uzupełnij przed wysłaniem",
+        detail:
+          requestKind === "informacja"
+            ? "Podaj symbol, kod Mikran lub opis produktu — dopiero wtedy wyślesz prośbę."
+            : "Podaj symbol, kod Mikran lub opis produktu oraz ilość (np. 1) — dopiero wtedy wyślesz prośbę.",
+      };
+    }
+    return null;
+  }
+
   switch (plan.bannerKind) {
     case "empty":
       return null;
     case "incomplete":
       return {
-        tone: "warning",
-        title: "Wymaga uzupełnienia",
+        tone: "info",
+        title: "Możesz wysłać prośbę",
         detail:
           requestKind === "informacja"
-            ? "Podaj symbol, kod Mikran lub opis produktu. Dostawcę dopasujemy z Subiekta (jeśli wybierzesz towar) albo uzupełni go dział dostaw."
-            : "Podaj symbol, kod Mikran lub opis produktu oraz ilość (np. 1). Dostawcę dopasujemy z Subiekta (jeśli wybierzesz towar) albo uzupełni go dział dostaw.",
+            ? "Twoje dane wystarczą do zgłoszenia. Dział dostaw dopasuje dostawcę i dopracuje szczegóły — śledź postęp w „Moje zamówienia”."
+            : "Produkt i ilość są podane — to wystarczy do wysłania. Dział dostaw dopasuje dostawcę i dopracuje resztę — śledź postęp w „Moje zamówienia”.",
       };
     case "pending_supplier":
       return {
         tone: "success",
-        title: "Możesz wysłać prośbę",
+        title: "Gotowe do wysłania",
         detail:
           requestKind === "informacja"
-            ? "Towar z Subiekta jest zapisany. Dostawcę dopasujemy w tle — gdy się uda, prośba trafi do panelu dziennego, w przeciwnym razie do weryfikacji."
-            : "Towar z Subiekta jest zapisany. Dostawcę dopasujemy w tle z historii ZD — gdy się uda, prośba trafi do panelu dziennego, w przeciwnym razie do weryfikacji.",
+            ? "Towar z Subiekta jest zapisany. Po wysłaniu system dopasuje dostawcę w tle — zwykle bez Twojego udziału."
+            : "Towar z Subiekta jest zapisany. Po wysłaniu system dopasuje dostawcę z historii ZD — zwykle bez Twojego udziału.",
       };
     case "complete":
       return {
@@ -107,8 +125,8 @@ export function salesSubmitUserHint(
         title: "Zgłoszenie kompletne",
         detail:
           requestKind === "informacja"
-            ? "Trafia do działu dostaw bez dodatkowej weryfikacji."
-            : "Dostawca, produkt i ilość są podane — trafia do panelu dziennego.",
+            ? "Trafia od razu do działu dostaw — bez dodatkowego sprawdzania."
+            : "Dostawca, produkt i ilość są podane — trafia od razu do panelu dziennego.",
       };
   }
 }

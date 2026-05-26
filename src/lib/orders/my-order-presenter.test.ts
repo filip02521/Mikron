@@ -154,7 +154,7 @@ describe("presentMyOrder", () => {
     ).zamowienia[0];
     expect(row.statusTitle).toBe("Dopasowujemy dostawcę");
     expect(row.supplierName).toContain("Dopasowywanie");
-    expect(row.statusDetail).toContain("System dopasowuje dostawcę");
+    expect(row.statusDetail).toContain("Szukamy dostawcy");
   });
 
   it("rozróżnia badge przed zamówieniem i zamówione", () => {

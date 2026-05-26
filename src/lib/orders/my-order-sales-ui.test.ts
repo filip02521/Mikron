@@ -136,10 +136,10 @@ describe("verificationSublineFromDetail", () => {
   it("skraca komunikat weryfikacji do jednej linii", () => {
     expect(
       verificationSublineFromDetail(
-        "Brakuje: dostawca. Dział dostaw uzupełni to w systemie — nie musisz nic robić."
+        "Dział dostaw dopasuje dostawcę. Prośba jest zapisana — nie musisz nic uzupełniać."
       )
-    ).toBe("Brakuje: dostawca — dział dostaw uzupełni");
-    expect(verificationSublineFromDetail(null)).toContain("uzupełnia");
+    ).toBe("Zakupy dopasują dostawcę — bez Twojej akcji");
+    expect(verificationSublineFromDetail(null)).toContain("dopracują");
   });
 });
 

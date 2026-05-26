@@ -171,7 +171,7 @@ export function QuickOrderModal({
         lines={lines}
         onChange={setLines}
         requestKind={requestKind}
-        appearance="prosba"
+        appearance="default"
         suppliers={supplierRefs}
         unifiedFeedback
         onSupplierResolved={({ supplierId }) => {
