@@ -17,6 +17,7 @@ import {
   intervalWeeksForStorage,
   parseInterval,
 } from "../src/lib/orders/dates";
+import { parseCsv, headerIndex } from "./lib/parse-csv";
 
 const url = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const key = process.env.SUPABASE_SERVICE_ROLE_KEY!;
@@ -28,41 +29,10 @@ if (!url || !key) {
 
 const supabase = createClient(url, key);
 
-function parseCsv(content: string): string[][] {
-  const lines = content.split(/\r?\n/).filter((l) => l.trim());
-  return lines.map((line) => {
-    const result: string[] = [];
-    let cur = "";
-    let inQ = false;
-    for (let i = 0; i < line.length; i++) {
-      const c = line[i];
-      if (c === '"') {
-        inQ = !inQ;
-        continue;
-      }
-      if (c === "," && !inQ) {
-        result.push(cur.trim());
-        cur = "";
-      } else cur += c;
-    }
-    result.push(cur.trim());
-    return result;
-  });
-}
-
 function loadCsv(dir: string, name: string): string[][] | null {
   const p = join(dir, name);
   if (!existsSync(p)) return null;
   return parseCsv(readFileSync(p, "utf-8"));
-}
-
-function headerIndex(headers: string[], ...names: string[]): number {
-  const upper = headers.map((h) => h.toUpperCase().trim());
-  for (const n of names) {
-    const i = upper.indexOf(n.toUpperCase());
-    if (i >= 0) return i;
-  }
-  return -1;
 }
 
 async function main() {

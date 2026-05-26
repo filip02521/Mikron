@@ -10,6 +10,11 @@ import { Button } from "@/components/ui/Button";
 import { SalesCancelDispositionForm } from "@/components/summary/SalesCancelDispositionForm";
 import type { DailyPanelRunFn } from "@/components/summary/useDailyPanelRunner";
 import { cn } from "@/lib/cn";
+import {
+  panelNoticeTriggerBaseClass,
+  panelNoticeTriggerDefaultClass,
+  panelNoticeTriggerUrgentClass,
+} from "@/lib/ui/ontime-theme";
 
 function noticeSummary(notices: SalesCancelledNotice[]): string {
   const toSettle = notices.filter((n) => n.needsDisposition).length;
@@ -50,10 +55,8 @@ export function SalesCancelledDailyCompact({
         id="rezygnacje"
         onClick={() => setOpen(true)}
         className={cn(
-          "flex w-full items-center justify-between gap-2 rounded-lg border px-3 py-2 text-left text-sm transition",
-          hasUrgent
-            ? "border-amber-200/90 bg-amber-50/50 hover:border-amber-300 hover:bg-amber-50"
-            : "border-slate-200 bg-slate-50/80 hover:bg-slate-50"
+          panelNoticeTriggerBaseClass,
+          hasUrgent ? panelNoticeTriggerUrgentClass : panelNoticeTriggerDefaultClass
         )}
       >
         <span className="min-w-0 truncate">

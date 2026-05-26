@@ -1,8 +1,10 @@
 "use client";
 
+import { useEffect } from "react";
 import type { IndividualRequestKind } from "@/types/database";
 import { Button } from "@/components/ui/Button";
 import { Field, Input } from "@/components/ui/Field";
+import { SubiektProductLineFields } from "@/components/subiekt/SubiektProductLineFields";
 import { cn } from "@/lib/cn";
 import {
   appendProductLine,
@@ -11,12 +13,7 @@ import {
   updateProductLine,
   type ProductLineDraft,
 } from "@/components/orders/request-product-lines";
-import {
-  MAX_BATCH_ORDER_LINES,
-  MAX_PRODUCT_TEXT_LEN,
-  MAX_QUANTITY_LEN,
-  MAX_SYMBOL_LEN,
-} from "@/lib/security/text-limits";
+import { MAX_BATCH_ORDER_LINES } from "@/lib/security/text-limits";
 import { MAX_CLIENT_NAME_LEN } from "@/lib/orders/sales-client-label";
 
 export function RequestProductLinesEditor({
@@ -33,14 +30,18 @@ export function RequestProductLinesEditor({
   requestKind: IndividualRequestKind;
   minLines?: number;
   addLabel?: string;
-  /** Pole „Klient” przy składaniu prośby (handlowiec). */
   showClientField?: boolean;
-  /** Uproszczony układ w formularzu /prosba */
   appearance?: "default" | "prosba";
 }) {
   const canRemove = lines.length > minLines;
   const prosba = appearance === "prosba";
   const showLineLabel = !prosba || lines.length > 1;
+
+  useEffect(() => {
+    if (requestKind !== "informacja") return;
+    if (!lines.some((l) => l.quantity.trim() !== "")) return;
+    onChange(lines.map((l) => ({ ...l, quantity: "" })));
+  }, [requestKind, lines, onChange]);
 
   return (
     <div className="space-y-3">
@@ -54,22 +55,22 @@ export function RequestProductLinesEditor({
           )}
         >
           {showLineLabel ? (
-          <div className="mb-2 flex items-center justify-between gap-2">
-            <span className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-              {prosba ? `Produkt ${index + 1}` : `Pozycja ${index + 1}`}
-            </span>
-            {canRemove ? (
-              <Button
-                type="button"
-                variant="ghost"
-                size="sm"
-                className="text-red-700 hover:bg-red-50"
-                onClick={() => onChange(removeProductLineAt(lines, index, minLines))}
-              >
-                Usuń
-              </Button>
-            ) : null}
-          </div>
+            <div className="mb-2 flex items-center justify-between gap-2">
+              <span className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                {prosba ? `Produkt ${index + 1}` : `Pozycja ${index + 1}`}
+              </span>
+              {canRemove ? (
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  className="text-red-700 hover:bg-red-50"
+                  onClick={() => onChange(removeProductLineAt(lines, index, minLines))}
+                >
+                  Usuń
+                </Button>
+              ) : null}
+            </div>
           ) : canRemove ? (
             <div className="mb-2 flex justify-end">
               <Button
@@ -83,64 +84,22 @@ export function RequestProductLinesEditor({
               </Button>
             </div>
           ) : null}
-          <div
-            className={cn(
-              "grid gap-3",
-              prosba
-                ? "grid-cols-1"
-                : requestKind === "informacja"
-                  ? "sm:grid-cols-3"
-                  : "sm:grid-cols-4"
-            )}
-          >
-            <Field label="Symbol">
-              <Input
-                placeholder="np. ABC"
-                maxLength={MAX_SYMBOL_LEN}
-                value={line.symbol}
-                onChange={(e) =>
-                  onChange(updateProductLine(lines, index, { symbol: e.target.value }))
-                }
-              />
-            </Field>
-            <Field
-              label={
-                requestKind === "informacja"
-                  ? "Produkt (co ma być na stanie)"
-                  : "Produkty"
-              }
-              className={prosba ? undefined : "sm:col-span-2"}
-            >
-              <Input
-                placeholder={
-                  requestKind === "informacja"
-                    ? "Np. wkręt M6 — interesuje tylko dostępność"
-                    : "Opis produktów"
-                }
-                maxLength={MAX_PRODUCT_TEXT_LEN}
-                value={line.product}
-                onChange={(e) =>
-                  onChange(updateProductLine(lines, index, { product: e.target.value }))
-                }
-              />
-            </Field>
-            {requestKind === "zamowienie" ? (
-              <Field label="Ilość (wymagane)">
-                <Input
-                  type="number"
-                  min={1}
-                  step={1}
-                  required
-                  maxLength={MAX_QUANTITY_LEN}
-                  placeholder="np. 1"
-                  value={line.quantity}
-                  onChange={(e) =>
-                    onChange(updateProductLine(lines, index, { quantity: e.target.value }))
-                  }
-                />
-              </Field>
-            ) : null}
-          </div>
+
+          <SubiektProductLineFields
+            appearance={appearance}
+            requestKind={requestKind}
+            productFieldClassName={prosba ? undefined : "sm:col-span-2"}
+            value={{
+              symbol: line.symbol,
+              product: line.product,
+              quantity: line.quantity,
+              subiektTwId: line.subiektTwId,
+            }}
+            onChange={(patch) =>
+              onChange(updateProductLine(lines, index, patch))
+            }
+          />
+
           {showClientField ? (
             <Field label="Klient (opcjonalnie)" className="mt-2">
               <Input
@@ -175,7 +134,6 @@ export function RequestProductLinesEditor({
   );
 }
 
-/** Jedna pozycja startowa z stabilnym id (formularze wielowierszowe). */
 export function initialProductLines(count = 1): ProductLineDraft[] {
   return Array.from({ length: count }, () => newProductLine());
 }

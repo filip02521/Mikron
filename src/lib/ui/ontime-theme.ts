@@ -3,6 +3,8 @@
  * Gradient tła i akcentów jest subtelny; ciemny panel zostaje na ekranach auth.
  */
 
+import { cn } from "@/lib/cn";
+
 /** Tło całej aplikacji (main + shell) */
 export const appShellClass = "min-h-screen bg-transparent";
 
@@ -157,3 +159,94 @@ export const mobileNavBadgeClass =
 
 export const salesUpdatesBannerClass =
   "mb-4 flex flex-col gap-3 rounded-xl border border-indigo-200/80 bg-gradient-to-br from-indigo-50/90 via-white to-sky-50/40 px-3 py-3 text-sm text-indigo-950 shadow-[var(--shadow-card-elevated)] sm:mb-6 sm:flex-row sm:items-center sm:justify-between sm:px-4";
+
+/** Panel dzienny — kafelki, zakładki, linki i przyciski pomocnicze */
+export const panelMetricTileClass =
+  "rounded-xl border border-slate-200/80 bg-white px-3 py-2.5 text-left shadow-[var(--shadow-card)] transition";
+
+export const panelMetricTileInteractiveClass =
+  "cursor-pointer hover:border-indigo-200/80 hover:bg-indigo-50/40 hover:shadow-[var(--shadow-card-elevated)]";
+
+export const panelTabIdleClass =
+  "border-slate-200/90 bg-white text-slate-700 hover:border-indigo-200/70 hover:bg-indigo-50/50";
+
+/** Klikalna nazwa dostawcy — wygląd jak nagłówek, nie jak odwiedzony link */
+export const panelNameLinkClass =
+  "text-left font-medium text-slate-900 transition-colors hover:text-slate-950";
+
+/** Drobna akcja tekstowa w panelu (np. pełna lista, Terminy) */
+export const panelTextLinkClass =
+  "font-medium text-slate-600 transition-colors hover:text-slate-800";
+
+/** E-mail lub kontakt do dostawcy — bez podkreślenia */
+export const panelContactLinkClass =
+  "max-w-[min(100%,18rem)] truncate text-xs font-medium text-slate-600 transition-colors hover:text-slate-900";
+
+export const panelChoiceChipClass =
+  "rounded-xl border px-3 py-2 text-left text-xs font-medium transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500/15";
+
+export const panelChoiceChipIdleClass =
+  "border-slate-200/90 bg-white text-slate-700 hover:border-indigo-200/80 hover:bg-indigo-50/50";
+
+export const panelChoiceChipSelectedClass =
+  "border-indigo-400/90 bg-gradient-to-b from-indigo-50 to-white text-indigo-950 ring-1 ring-indigo-200/60";
+
+export const panelChoiceChipSuccessSelectedClass =
+  "border-emerald-400/90 bg-gradient-to-b from-emerald-50 to-white text-emerald-950 ring-1 ring-emerald-200/50";
+
+export const panelDashedActionClass =
+  "w-full rounded-xl border border-dashed border-indigo-200/70 bg-indigo-50/30 px-4 py-3 text-sm font-medium text-indigo-800 transition hover:border-indigo-300/90 hover:bg-indigo-50/60 hover:text-indigo-950";
+
+export const panelMutedToggleClass =
+  "text-sm font-medium text-slate-600 transition hover:text-indigo-800";
+
+export const panelMenuItemClass =
+  "block w-full cursor-pointer px-3 py-2 text-left text-sm text-slate-700 transition hover:bg-indigo-50/80 hover:text-indigo-950";
+
+export const panelSegmentControlClass =
+  "min-h-9 shrink-0 !rounded-none border-0 border-l border-slate-200/90 px-3 text-sm font-medium text-slate-700 shadow-none transition hover:bg-indigo-50/60";
+
+export const panelSegmentControlOpenClass = "bg-indigo-50/80 text-indigo-900";
+
+/** Pierwszy segment w grupie (Zamówione) — gradient primary, biały tekst */
+export const panelSegmentPrimaryClass = cn(
+  buttonPrimaryClass,
+  "min-h-9 shrink-0 !rounded-none rounded-l-xl border-0 px-3.5 text-sm font-semibold text-white shadow-none hover:shadow-sm"
+);
+
+export const panelCardHitAreaClass =
+  "w-full cursor-pointer rounded-xl text-left transition hover:bg-indigo-50/35";
+
+export const panelNoticeTriggerBaseClass =
+  "flex w-full items-center justify-between gap-2 rounded-xl border px-3 py-2 text-left text-sm transition";
+
+export const panelNoticeTriggerUrgentClass =
+  "border-amber-200/90 bg-amber-50/50 hover:border-amber-300 hover:bg-amber-50";
+
+export const panelNoticeTriggerDefaultClass =
+  "border-slate-200/90 bg-slate-50/60 hover:border-indigo-200/70 hover:bg-indigo-50/40";
+
+/** Przycisk outline w grupie (HoldToConfirm — Uzupełniające) */
+export const panelHoldOutlineClass =
+  "border border-indigo-200/90 bg-[var(--primary-muted)]/60 text-indigo-800 hover:bg-[var(--primary-muted)]";
+
+/** Pasek akcji w nagłówku panelu dziennego (wyszukiwarka + przyciski) */
+export const panelToolbarShellClass =
+  "w-full min-w-0 rounded-xl border border-slate-200/80 bg-gradient-to-b from-slate-50/80 to-white p-1.5 shadow-sm";
+
+export const panelToolbarRowClass =
+  "flex min-w-0 flex-col gap-2 sm:flex-row sm:items-stretch";
+
+export const panelToolbarSearchWrapClass = "min-w-0 flex-1 px-0.5 sm:flex sm:items-center";
+
+export const panelToolbarSearchInputClass =
+  "h-9 w-full rounded-lg border border-slate-200/90 bg-white px-3 text-sm text-slate-900 shadow-sm placeholder:text-slate-400 focus:border-indigo-300 focus:outline-none focus:ring-2 focus:ring-indigo-100";
+
+export const panelToolbarActionsClass =
+  "flex shrink-0 flex-wrap items-center justify-end gap-1.5 sm:border-l sm:border-slate-200/80 sm:pl-2";
+
+export const panelToolbarTextButtonClass =
+  "inline-flex h-9 cursor-pointer items-center gap-1.5 rounded-lg border border-slate-200/90 bg-white px-2.5 text-xs font-medium text-slate-600 shadow-sm transition hover:border-slate-300 hover:bg-white hover:text-slate-900";
+
+export const panelToolbarIconButtonClass =
+  "inline-flex h-9 w-9 shrink-0 cursor-pointer items-center justify-center rounded-lg border border-slate-200/90 bg-white text-slate-600 shadow-sm transition hover:border-slate-300 hover:bg-white hover:text-slate-900 disabled:cursor-not-allowed disabled:opacity-50";

@@ -6,6 +6,8 @@ import { SupplierContactActions } from "@/components/procurement/SupplierContact
 import { Button } from "@/components/ui/Button";
 import { EmptyState } from "@/components/ui/EmptyState";
 import type { DailyPanelRunFn } from "@/components/summary/useDailyPanelRunner";
+import { cn } from "@/lib/cn";
+import { panelNameLinkClass } from "@/lib/ui/ontime-theme";
 
 export function OnDemandSuppliersSheet({
   open,
@@ -75,7 +77,7 @@ export function OnDemandSuppliersSheet({
                       <div className="min-w-0 flex-1">
                         <button
                           type="button"
-                          className="text-left text-sm font-semibold text-slate-900 hover:underline"
+                          className={cn("text-sm font-semibold", panelNameLinkClass)}
                           onClick={() => onOpenSupplier(row.supplierId)}
                         >
                           {row.supplierName}

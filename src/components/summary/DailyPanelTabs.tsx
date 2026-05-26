@@ -7,6 +7,7 @@ import {
 } from "@/lib/orders/daily-panel-view";
 import {
   panelStickyTabsClass,
+  panelTabIdleClass,
   tabBadgeSelectedClass,
   tabSelectedClass,
 } from "@/lib/ui/ontime-theme";
@@ -58,7 +59,7 @@ export function DailyPanelTabs({
             onClick={() => onChange(id)}
             className={cn(
               "flex min-h-10 shrink-0 items-center gap-2 rounded-xl border px-3.5 py-2 text-sm font-medium transition",
-              selected ? tabSelectedClass : "border-slate-200 bg-white text-slate-700 hover:border-slate-300 hover:bg-slate-50"
+              selected ? tabSelectedClass : panelTabIdleClass
             )}
           >
             {dailyPanelViewLabel(id)}

@@ -87,3 +87,12 @@ export async function requireSupplierManagement(): Promise<SessionUser> {
   }
   return user;
 }
+
+/** Podpowiedzi Subiekt przy składaniu / edycji próśb (handlowiec, zakupy, admin). */
+export async function requireSubiektLookup(): Promise<SessionUser> {
+  const user = await getSessionUser();
+  if (!user || (!isSalesAccount(user.role) && !canAccessOperations(user.role))) {
+    throw new Error("Brak uprawnień do podpowiedzi Subiekt");
+  }
+  return user;
+}

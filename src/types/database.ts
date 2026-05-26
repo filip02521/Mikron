@@ -95,6 +95,10 @@ export interface IndividualOrder {
   procurement_cancel_disposition?: string | null;
   procurement_cancel_disposition_note?: string | null;
   procurement_cancel_disposition_at?: string | null;
+  /** Fizyczna lokalizacja na magazynie (regał / strefa). */
+  warehouse_shelf?: string | null;
+  /** ID towaru w Subiekcie (tw_Id) — wybor z kartoteki; brak = wpis ręczny. */
+  subiekt_tw_id?: number | null;
   supplier?: Supplier;
   sales_person?: SalesPerson;
 }

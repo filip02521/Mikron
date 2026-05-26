@@ -10,12 +10,14 @@ function MetricTile({
   label,
   hint,
   href,
+  onNavigate,
   tone = "default",
 }: {
   value: number;
   label: string;
   hint?: string;
   href?: string;
+  onNavigate?: () => void;
   tone?: "default" | "amber" | "sky" | "emerald";
 }) {
   const inner = (
@@ -74,7 +76,16 @@ function MetricTile({
 
   if (href) {
     return (
-      <a href={href} className={className}>
+      <a
+        href={href}
+        className={className}
+        onClick={(e) => {
+          if (onNavigate) {
+            e.preventDefault();
+            onNavigate();
+          }
+        }}
+      >
         {inner}
       </a>
     );
@@ -87,10 +98,14 @@ export function QueuePanelToolbar({
   summary,
   informacjaCount,
   pickupReadyCount,
+  inventoryCount = 0,
+  onOpenInventory,
 }: {
   summary: QueueInboxSummary;
   informacjaCount: number;
   pickupReadyCount: number;
+  inventoryCount?: number;
+  onOpenInventory?: () => void;
 }) {
   return (
     <div className="border-b border-slate-100 px-4 py-4 sm:px-6">
@@ -112,10 +127,18 @@ export function QueuePanelToolbar({
           href={summary.activeCount > 0 ? "#dostawy-handlowcy" : undefined}
         />
         <MetricTile
-          value={pickupReadyCount}
-          label="Gotowe do odbioru"
-          hint="u handlowców na zielono w Moje zamówienia"
+          value={inventoryCount}
+          label="Na magazynie (inwentaryzacja)"
+          hint={
+            inventoryCount > 0
+              ? "pełny odbiór, części i informacje — kliknij, aby zobaczyć listę"
+              : pickupReadyCount > 0
+                ? `${pickupReadyCount} gotowych do odbioru u handlowców (Moje zamówienia)`
+                : "brak pozycji na regale"
+          }
           tone="emerald"
+          href={inventoryCount > 0 ? "#inwentaryzacja" : undefined}
+          onNavigate={onOpenInventory}
         />
         <MetricTile
           value={summary.partialCount}
@@ -134,9 +157,9 @@ export function QueuePanelToolbar({
         ) : null}
       </div>
       <p className="mt-3 text-[11px] text-slate-500">
-        „Gotowe do odbioru” — całość przyjęta na magazyn, handlowiec widzi zieloną pozycję do
-        potwierdzenia odbioru (nie ma ich już na liście przyjęcia poniżej). Brak dostawcy lub opisu
-        uzupełniasz w{" "}
+        <strong>Inwentaryzacja regału</strong> — lista tego, co fizycznie czeka na odbiór: handlowiec,
+        klient, regał i ile dni leży na magazynie. Przełącz widok u góry karty lub kliknij kafelek
+        „Na magazynie”. Brak dostawcy lub opisu uzupełniasz w{" "}
         <Link href="/podsumowanie" className={brandLinkClass}>
           panelu dziennym
         </Link>{" "}

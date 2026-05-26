@@ -11,6 +11,7 @@ import { RequestKindPicker } from "@/components/ui/RequestKindPicker";
 import { ModalShell } from "@/components/ui/ModalShell";
 import { Button } from "@/components/ui/Button";
 import { Field, Select } from "@/components/ui/Field";
+import { SupplierPickerField } from "@/components/orders/SupplierPickerField";
 import { useActionPending } from "@/hooks/useActionPending";
 
 export type EditIndividualRequestInitial = {
@@ -76,6 +77,7 @@ export function EditIndividualRequestModal({
             product: l.product,
             quantity: l.quantity,
             clientName: l.clientName,
+            subiektTwId: l.subiektTwId,
           })),
         };
         if (mode === "procurement") {
@@ -121,18 +123,14 @@ export function EditIndividualRequestModal({
 
       <div className="grid gap-4 sm:grid-cols-2">
         <Field label="Dostawca" className="sm:col-span-2">
-          <Select
-            disabled={pending}
+          <SupplierPickerField
+            suppliers={sortedSuppliers}
             value={supplierId}
-            onChange={(e) => setSupplierId(e.target.value)}
-          >
-            <option value="">— wybierz —</option>
-            {sortedSuppliers.map((s) => (
-              <option key={s.id} value={s.id}>
-                {s.name}
-              </option>
-            ))}
-          </Select>
+            onChange={setSupplierId}
+            disabled={pending}
+            allowEmpty
+            emptyLabel="— wybierz —"
+          />
         </Field>
 
         {mode === "procurement" && salesPeople.length > 0 ? (

@@ -5,6 +5,26 @@ export class SubiektNotConfiguredError extends Error {
   }
 }
 
+export class SubiektTimeoutError extends Error {
+  readonly timeoutMs: number;
+
+  constructor(timeoutMs: number) {
+    super(`Przekroczono limit czasu (${timeoutMs} ms)`);
+    this.name = "SubiektTimeoutError";
+    this.timeoutMs = timeoutMs;
+  }
+}
+
+export class SubiektNetworkError extends Error {
+  readonly cause?: unknown;
+
+  constructor(message: string, cause?: unknown) {
+    super(message);
+    this.name = "SubiektNetworkError";
+    this.cause = cause;
+  }
+}
+
 export class SubiektRequestError extends Error {
   readonly status: number;
   readonly bodySnippet: string;

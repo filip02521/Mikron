@@ -8,6 +8,7 @@ import {
   effectiveSalesCancelPhase,
   type SalesCancelPhase,
 } from "@/lib/orders/sales-cancel";
+import { mapOrderToForSomeoneLine } from "@/lib/orders/product-source";
 import type { ForSomeoneLine } from "@/lib/orders/summary-workspace";
 import type { IndividualOrder, SupplierLocation } from "@/types/database";
 
@@ -109,12 +110,7 @@ export function buildSalesCancelledNotices(
       phaseLabel: procurementSalesCancelPhaseLabel(phase),
       dispositionSummary,
       needsDisposition: salesCancelPhaseNeedsDisposition(phase),
-      lines: items.map((item) => ({
-        id: item.id,
-        products: item.products,
-        symbol: item.symbol || "-",
-        quantity: item.quantity || "-",
-      })),
+      lines: items.map((item) => mapOrderToForSomeoneLine(item)),
       orderIds: items.map((i) => i.id),
     });
   }

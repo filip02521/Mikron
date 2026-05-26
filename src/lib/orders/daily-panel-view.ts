@@ -21,3 +21,22 @@ export function dailyPanelViewLabel(view: DailyPanelView): string {
       return "Wyjątki";
   }
 }
+
+const PANEL_INTRO_BY_VIEW: Record<DailyPanelView, string> = {
+  dzis: "Zaległe terminy, harmonogram na dziś i prośby handlowców.",
+  tydzien: "Plan zamówień w tygodniu — karty dostawców, przesunięcia i tryb planowania.",
+  wyjatki:
+    "Rezygnacje handlowców, prośby informacyjne, dostawcy na żądanie oraz pozycje poza harmonogramem.",
+};
+
+const PANEL_INTRO_SHORTCUTS = "Skróty: / — wyszukaj dostawcę · Nowa prośba · ⋯ — więcej akcji.";
+
+/** Opis pod nagłówkiem panelu — treść dopasowana do aktywnej zakładki. */
+export function dailyPanelIntroDescription(
+  view: DailyPanelView,
+  opts?: { includeShortcuts?: boolean }
+): string {
+  const includeShortcuts = opts?.includeShortcuts ?? true;
+  const main = PANEL_INTRO_BY_VIEW[view];
+  return includeShortcuts ? `${main} ${PANEL_INTRO_SHORTCUTS}` : main;
+}

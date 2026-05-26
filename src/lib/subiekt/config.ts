@@ -38,17 +38,19 @@ export function getSubiektConfig(): SubiektConfig | null {
   const apiKeyHeader =
     trimOrUndefined(process.env.SUBIEKT_API_KEY_HEADER) ?? "X-Api-Key";
 
+  const authModeEnv = trimOrUndefined(process.env.SUBIEKT_API_AUTH_MODE);
   let authMode: SubiektAuthMode = "none";
-  if (apiKey) {
-    const mode = trimOrUndefined(process.env.SUBIEKT_API_AUTH_MODE);
-    if (mode === "basic") authMode = "basic";
-    else if (mode === "api-key-header") authMode = "api-key-header";
+  if (authModeEnv === "none") {
+    authMode = "none";
+  } else if (apiKey) {
+    if (authModeEnv === "basic") authMode = "basic";
+    else if (authModeEnv === "api-key-header") authMode = "api-key-header";
     else authMode = "bearer";
   } else if (username && password) {
     authMode = "basic";
   }
 
-  const healthPath = trimOrUndefined(process.env.SUBIEKT_API_HEALTH_PATH) ?? "/";
+  const healthPath = trimOrUndefined(process.env.SUBIEKT_API_HEALTH_PATH) ?? "/health";
   const timeoutRaw = Number(process.env.SUBIEKT_API_TIMEOUT_MS ?? "15000");
   const timeoutMs = Number.isFinite(timeoutRaw) && timeoutRaw > 0 ? timeoutRaw : 15000;
 

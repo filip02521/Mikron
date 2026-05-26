@@ -4,16 +4,29 @@ import { HelpPopover, GuideIcon, LegendIcon } from "@/components/ui/HelpPopover"
 import { ColorLegendContent } from "@/components/summary/ColorLegend";
 import { HowItWorksContent } from "@/components/summary/HowItWorks";
 
+import { panelToolbarTextButtonClass } from "@/lib/ui/ontime-theme";
+import { cn } from "@/lib/cn";
+
 /** Pomoc przy tytule strony — zwarte przyciski z opisem. */
-export function PanelDailyHelp() {
+export function PanelDailyHelp({
+  density = "default",
+}: {
+  density?: "default" | "toolbar";
+}) {
+  const toolbarButton =
+    density === "toolbar"
+      ? cn(panelToolbarTextButtonClass, "shadow-none hover:shadow-sm")
+      : undefined;
+
   return (
-    <div className="flex flex-wrap items-center gap-2">
+    <div className={cn("flex items-center gap-1.5", density === "default" && "flex-wrap gap-2")}>
       <HelpPopover
         label="Legenda kolorów w panelu"
         title="Legenda kolorów"
         shortLabel="Kolory"
         icon={<LegendIcon />}
         align="right"
+        buttonClassName={toolbarButton}
       >
         <ColorLegendContent />
       </HelpPopover>
@@ -23,6 +36,7 @@ export function PanelDailyHelp() {
         shortLabel="Instrukcja"
         icon={<GuideIcon />}
         align="right"
+        buttonClassName={toolbarButton}
       >
         <HowItWorksContent />
       </HelpPopover>

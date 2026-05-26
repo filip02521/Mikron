@@ -25,6 +25,8 @@ import { formatPlDate } from "@/lib/display-labels";
 import { RequestCompletenessBanner } from "@/components/orders/RequestCompletenessBanner";
 import { ActionLoadingOverlay } from "@/components/ui/ActionLoadingOverlay";
 import { RequestKindPicker } from "@/components/ui/RequestKindPicker";
+import { SupplierPickerField } from "@/components/orders/SupplierPickerField";
+import { SubiektProductLineFields } from "@/components/subiekt/SubiektProductLineFields";
 
 const VERIFICATION_INTRO =
   "Niekompletne prośby handlowców — uzupełnij dostawcę i produkt. Po zatwierdzeniu trafiają do panelu dziennego jako „Nowe”.";
@@ -72,6 +74,7 @@ export function VerificationWorkspace({
     product: "",
     quantity: "",
     requestKind: "zamowienie" as IndividualRequestKind,
+    subiektTwId: null as number | null,
   }));
 
   const loadOrder = useCallback((o: IndividualOrder) => {
@@ -83,6 +86,7 @@ export function VerificationWorkspace({
       product: o.products !== "Do uzupełnienia" ? o.products : "",
       quantity: o.quantity !== "-" ? o.quantity : "",
       requestKind: o.request_kind ?? "zamowienie",
+      subiektTwId: o.subiekt_tw_id ?? null,
     });
   }, []);
 
@@ -112,6 +116,7 @@ export function VerificationWorkspace({
           product: form.product,
           quantity: form.requestKind === "informacja" ? undefined : form.quantity,
           requestKind: form.requestKind,
+          subiektTwId: form.subiektTwId,
         });
         setToast({
           text: "Uzupełniono — prośba trafiła do panelu dziennego jako „Nowe”.",
@@ -236,19 +241,15 @@ export function VerificationWorkspace({
 
                   <div className="grid gap-3 sm:grid-cols-2">
                     <Field label="Dostawca">
-                      <Select
+                      <SupplierPickerField
+                        suppliers={suppliers}
                         value={form.supplierId}
-                        onChange={(e) =>
-                          setForm((f) => ({ ...f, supplierId: e.target.value }))
+                        onChange={(supplierId) =>
+                          setForm((f) => ({ ...f, supplierId }))
                         }
-                      >
-                        <option value="">Wybierz…</option>
-                        {suppliers.map((s) => (
-                          <option key={s.id} value={s.id}>
-                            {s.name}
-                          </option>
-                        ))}
-                      </Select>
+                        allowEmpty={false}
+                        emptyLabel="Wybierz dostawcę"
+                      />
                     </Field>
                     <Field label="Handlowiec">
                       <Select
@@ -269,38 +270,26 @@ export function VerificationWorkspace({
                   <RequestKindPicker
                     compact
                     value={form.requestKind}
-                    onChange={(requestKind) => setForm((f) => ({ ...f, requestKind }))}
+                    onChange={(requestKind) =>
+                      setForm((f) => ({
+                        ...f,
+                        requestKind,
+                        quantity: requestKind === "informacja" ? "" : f.quantity,
+                      }))
+                    }
                   />
 
-                  <div className="grid gap-3 sm:grid-cols-3">
-                    <Field label="Symbol">
-                      <Input
-                        value={form.symbol}
-                        onChange={(e) => setForm((f) => ({ ...f, symbol: e.target.value }))}
-                      />
-                    </Field>
-                    <Field label="Produkt" className="sm:col-span-2">
-                      <Input
-                        value={form.product}
-                        onChange={(e) => setForm((f) => ({ ...f, product: e.target.value }))}
-                      />
-                    </Field>
-                    {form.requestKind === "zamowienie" ? (
-                      <Field label="Ilość (wymagane)">
-                        <Input
-                          type="number"
-                          min={1}
-                          step={1}
-                          required
-                          placeholder="np. 1"
-                          value={form.quantity}
-                          onChange={(e) =>
-                            setForm((f) => ({ ...f, quantity: e.target.value }))
-                          }
-                        />
-                      </Field>
-                    ) : null}
-                  </div>
+                  <SubiektProductLineFields
+                    requestKind={form.requestKind}
+                    productFieldClassName="sm:col-span-2"
+                    value={{
+                      symbol: form.symbol,
+                      product: form.product,
+                      quantity: form.quantity,
+                      subiektTwId: form.subiektTwId,
+                    }}
+                    onChange={(patch) => setForm((f) => ({ ...f, ...patch }))}
+                  />
 
                   <p className="text-xs text-slate-500">
                     {completenessUserHint(assessment, form.requestKind, draft).detail}

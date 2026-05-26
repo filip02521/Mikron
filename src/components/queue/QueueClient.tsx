@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState, useTransition, useCallback } from "react";
+import { Fragment, useMemo, useState, useTransition, useCallback, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import type { IndividualOrder } from "@/types/database";
 import { actionBatchUpdateDelivered, actionUpdateDelivered } from "@/app/actions/admin";
@@ -20,15 +20,24 @@ import { EmptyState } from "@/components/ui/EmptyState";
 import { Toast } from "@/components/ui/Toast";
 import { DataTable, TableScroll } from "@/components/ui/DataTable";
 import { cn } from "@/lib/cn";
-import { brandLinkClass, checkboxBrandClass, controlFocusClass } from "@/lib/ui/ontime-theme";
+import { checkboxBrandClass, controlFocusClass } from "@/lib/ui/ontime-theme";
 import { InformacjaQueueSection } from "@/components/queue/InformacjaQueueSection";
 import { ActionLoadingOverlay } from "@/components/ui/ActionLoadingOverlay";
 import { QueuePanelToolbar } from "@/components/queue/QueuePanelToolbar";
+import { WarehouseInventorySection } from "@/components/queue/WarehouseInventorySection";
+import { SegmentedControl } from "@/components/ui/SegmentedControl";
+import { buildWarehouseInventoryRows } from "@/lib/orders/warehouse-inventory";
+import { partialReceiveCrossLabel } from "@/lib/orders/warehouse-cross-link";
+import { countOrdersBySupplier, filterOrdersBySupplier } from "@/lib/orders/supplier-filter-summary";
 import { summarizeQueueInbox } from "@/lib/orders/queue-inbox";
+import { SupplierFilterChips } from "@/components/queue/SupplierFilterChips";
+import { SupplierGroupHeaderRow } from "@/components/queue/SupplierGroupHeaderRow";
+import { buildSupplierGroupMetrics, formatSupplierGroupHeaderSummary } from "@/lib/orders/supplier-group-metrics";
+import { useSupplierGroupCollapse } from "@/lib/orders/use-supplier-group-collapse";
 import {
-  orderIdsInSupplierGroup,
+  groupOrdersBySupplier,
+  queueSupplierLeadingCellClass,
   queueSupplierRowClass,
-  supplierGroupIndexByOrderId,
   supplierKey,
 } from "@/lib/orders/queue-supplier-groups";
 import {
@@ -38,16 +47,21 @@ import {
   selectedSaveButtonLabel,
 } from "@/lib/orders/queue-batch-notify";
 
+type QueueView = "receive" | "inventory";
+
 export function QueueClient({
   orders,
   informacjaOrders,
   pickupReadyCount,
+  warehouseInventory,
 }: {
   orders: IndividualOrder[];
   informacjaOrders: IndividualOrder[];
   pickupReadyCount: number;
+  warehouseInventory: IndividualOrder[];
 }) {
   const router = useRouter();
+  const [view, setView] = useState<QueueView>("receive");
   const [pending, start] = useTransition();
   const [pendingMessage, setPendingMessage] = useState<string | null>(null);
   const [qty, setQty] = useState<Record<string, string>>({});
@@ -55,14 +69,67 @@ export function QueueClient({
   const [toast, setToast] = useState<{ text: string; tone: "success" | "error" } | null>(
     null
   );
+  const [supplierFilter, setSupplierFilter] = useState("");
 
   const dismissToast = useCallback(() => setToast(null), []);
+
+  const inventoryCount = useMemo(
+    () => buildWarehouseInventoryRows(warehouseInventory).length,
+    [warehouseInventory]
+  );
+
+  useEffect(() => {
+    const sync = () => {
+      const next: QueueView =
+        window.location.hash === "#inwentaryzacja" ? "inventory" : "receive";
+      setView(next);
+    };
+    sync();
+    window.addEventListener("hashchange", sync);
+    return () => window.removeEventListener("hashchange", sync);
+  }, []);
+
+  useEffect(() => {
+    if (view !== "inventory") return;
+    const frame = requestAnimationFrame(() => {
+      document
+        .getElementById("inwentaryzacja")
+        ?.scrollIntoView({ behavior: "smooth", block: "start" });
+    });
+    return () => cancelAnimationFrame(frame);
+  }, [view]);
+
+  const setQueueView = useCallback((next: QueueView) => {
+    setView(next);
+    const hash = next === "inventory" ? "#inwentaryzacja" : "";
+    const target = hash
+      ? `${window.location.pathname}${window.location.search}${hash}`
+      : `${window.location.pathname}${window.location.search}`;
+    if (`${window.location.pathname}${window.location.search}${window.location.hash}` !== target) {
+      window.history.replaceState(null, "", target);
+    }
+  }, []);
 
   const shelf = useMemo(
     () => orders.filter((o) => !o.sales_cancelled_at || o.procurement_cancel_disposition),
     [orders]
   );
+  const shelfFiltered = useMemo(
+    () => filterOrdersBySupplier(shelf, supplierFilter),
+    [shelf, supplierFilter]
+  );
+  const deliverySupplierChips = useMemo(() => countOrdersBySupplier(shelf), [shelf]);
+  const deliveryGroups = useMemo(
+    () => groupOrdersBySupplier(shelfFiltered),
+    [shelfFiltered]
+  );
+  const supplierMetrics = useMemo(
+    () => buildSupplierGroupMetrics(shelf, warehouseInventory),
+    [shelf, warehouseInventory]
+  );
   const inboxSummary = useMemo(() => summarizeQueueInbox(orders), [orders]);
+
+  const deliveryCollapse = useSupplierGroupCollapse(deliveryGroups, supplierFilter);
 
   const getQty = (o: IndividualOrder) => {
     if (qty[o.id] !== undefined) return qty[o.id];
@@ -72,16 +139,15 @@ export function QueueClient({
   };
 
   const selectedIds = useMemo(
-    () => shelf.filter((o) => selected[o.id]).map((o) => o.id),
-    [shelf, selected]
+    () => shelfFiltered.filter((o) => selected[o.id]).map((o) => o.id),
+    [shelfFiltered, selected]
   );
 
   const toggleSelected = (orderId: string) => {
     setSelected((s) => ({ ...s, [orderId]: !s[orderId] }));
   };
 
-  const toggleSupplierGroup = (startIndex: number, checked: boolean) => {
-    const ids = orderIdsInSupplierGroup(shelf, startIndex);
+  const toggleSupplierGroupIds = (ids: string[], checked: boolean) => {
     setSelected((s) => {
       const next = { ...s };
       for (const id of ids) next[id] = checked;
@@ -93,13 +159,13 @@ export function QueueClient({
     setSelected((s) => {
       if (!checked) return {};
       const next: Record<string, boolean> = {};
-      for (const o of shelf) next[o.id] = true;
+      for (const o of shelfFiltered) next[o.id] = true;
       return next;
     });
   };
 
   const allSelected =
-    shelf.length > 0 && shelf.every((o) => selected[o.id]);
+    shelfFiltered.length > 0 && shelfFiltered.every((o) => selected[o.id]);
 
   const saveDelivery = (order: IndividualOrder, value: string) => {
     setPendingMessage("Zapisywanie dostawy…");
@@ -233,16 +299,11 @@ export function QueueClient({
     });
   };
 
-  const supplierGroups = useMemo(
-    () => supplierGroupIndexByOrderId(shelf),
-    [shelf]
-  );
-
   const partialCount = inboxSummary.partialCount;
   const cancelLabelled = inboxSummary.cancelLabelledCount;
 
   const deliveryHint = shelf.length
-    ? `${pickupReadyCount} gotowych do odbioru · ${partialCount} częściowo przyjęte${cancelLabelled ? ` · ${cancelLabelled} z rezygnacją` : ""}`
+    ? `${pickupReadyCount} na regale do odbioru · ${partialCount} częściowo przyjęte · ${deliverySupplierChips.length} dostawców${cancelLabelled ? ` · ${cancelLabelled} z rezygnacją` : ""}`
     : "Po zamówieniu u dostawcy w panelu dziennym";
 
   return (
@@ -271,18 +332,74 @@ export function QueueClient({
           summary={inboxSummary}
           informacjaCount={informacjaOrders.length}
           pickupReadyCount={pickupReadyCount}
+          inventoryCount={inventoryCount}
+          onOpenInventory={() => setQueueView("inventory")}
         />
 
+        <div className="border-b border-slate-100 px-4 py-3 sm:px-6">
+          <SegmentedControl<QueueView>
+            ariaLabel="Widok magazynu"
+            value={view}
+            onChange={setQueueView}
+            touchFriendly
+            className="w-full sm:w-auto"
+            options={[
+              { value: "receive", label: "Przyjęcie towaru" },
+              {
+                value: "inventory",
+                label:
+                  inventoryCount > 0
+                    ? `Inwentaryzacja regału (${inventoryCount})`
+                    : "Inwentaryzacja regału",
+                title: "Co leży na magazynie i kto nie odbiera towaru",
+              },
+            ]}
+          />
+        </div>
+
+        {view === "inventory" ? (
+          <WarehouseInventorySection
+            orders={warehouseInventory}
+            deliveryQueueOrders={shelf}
+          />
+        ) : (
+          <>
         <section className="scroll-mt-20">
           <SectionListLabel
             id="dostawy-handlowcy"
             title="Dostawy dla handlowców"
             hint={deliveryHint}
-            count={shelf.length}
+            count={supplierFilter ? shelfFiltered.length : shelf.length}
             accent="emerald"
             icon={<IconTruck size={17} />}
             tileClassName="bg-emerald-100 text-emerald-800"
           />
+          {shelf.length > 0 ? (
+            <div className="space-y-3 border-b border-slate-100 px-4 py-3 sm:px-6">
+              <SupplierFilterChips
+                chips={deliverySupplierChips}
+                value={supplierFilter}
+                onChange={setSupplierFilter}
+                totalLabel="Kolejka — wszyscy"
+              />
+              {deliveryGroups.length > 1 ? (
+                <div className="flex justify-end">
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    onClick={() =>
+                      deliveryCollapse.allExpanded
+                        ? deliveryCollapse.collapseAll()
+                        : deliveryCollapse.expandAll()
+                    }
+                  >
+                    {deliveryCollapse.allExpanded ? "Zwiń dostawców" : "Rozwiń dostawców"}
+                  </Button>
+                </div>
+              ) : null}
+            </div>
+          ) : null}
           {selectedIds.length > 0 ? (
             <div className="flex justify-end border-b border-emerald-100 bg-emerald-50/40 px-3 py-2 sm:px-4">
               <Button
@@ -306,6 +423,11 @@ export function QueueClient({
               title="Kolejka dostaw jest pusta"
               description="Tu trafiają zamówienia już złożone u dostawcy. Gdy towar dotrze, wpisz ilość na liście i zapisz — wtedy handlowiec dostanie informację."
             />
+          ) : !shelfFiltered.length ? (
+            <EmptyState
+              title="Brak pozycji dla wybranego dostawcy"
+              description="Wybierz innego dostawcę lub pokaż całą kolejkę."
+            />
           ) : (
             <TableScroll className="px-0 pb-0">
               <DataTable className="queue-table text-sm">
@@ -316,7 +438,7 @@ export function QueueClient({
                         type="checkbox"
                         className={cn("size-4", checkboxBrandClass)}
                         checked={allSelected}
-                        disabled={pending || !shelf.length}
+                        disabled={pending || !shelfFiltered.length}
                         aria-label="Zaznacz wszystkie pozycje"
                         onChange={(e) => toggleAll(e.target.checked)}
                       />
@@ -331,100 +453,44 @@ export function QueueClient({
                   </tr>
                 </thead>
                 <tbody>
-                  {shelf.map((o, index) => {
-                    const personName = o.sales_person?.name?.trim() || "—";
-                    const supplierName = supplierKey(o);
-                    const groupIndex = supplierGroups.get(o.id) ?? 0;
-                    const prevSupplier =
-                      index > 0 ? supplierKey(shelf[index - 1]!) : null;
-                    const isFirstInSupplierGroup = supplierName !== prevSupplier;
-                    const groupIds = isFirstInSupplierGroup
-                      ? orderIdsInSupplierGroup(shelf, index)
-                      : [];
+                  {deliveryGroups.map((group, groupIndex) => {
+                    const groupIds = group.orders.map((o) => o.id);
                     const groupAllSelected =
                       groupIds.length > 0 && groupIds.every((id) => selected[id]);
-                    const ordered = parseOrderQuantity(o.quantity);
-                    const inputVal = getQty(o);
-                    const previewN = inputVal === "" ? 0 : parseInt(inputVal, 10);
-                    const progress = getDeliveryProgress(
-                      o.quantity,
-                      Number.isFinite(previewN) ? String(previewN) : "0"
+                    const isOpen = deliveryCollapse.isExpanded(group.supplierKey);
+                    const summary = formatSupplierGroupHeaderSummary(
+                      group.orders,
+                      supplierMetrics.get(group.supplierKey)
                     );
-                    const isPartial = o.status === "Czesciowo_zrealizowane";
-                    const salesCancelRow = Boolean(o.sales_cancelled_at);
-                    const zakupyLabel = procurementDispositionQueueLabel(o);
-                    const productTitle = [
-                      o.products,
-                      o.symbol && o.symbol !== "-" ? `(${o.symbol})` : null,
-                    ]
-                      .filter(Boolean)
-                      .join(" ");
 
                     return (
-                      <tr
-                        key={o.id}
-                        className={cn(
-                          queueSupplierRowClass(groupIndex, {
-                            variant: "delivery",
-                            isPartial,
-                            isFirstInSupplierGroup,
-                          }),
-                          salesCancelRow && "bg-amber-50/50"
-                        )}
-                        title={
-                          isPartial && progress.hasNumericQty
-                            ? `Częściowo zrealizowane — czeka na ${progress.remaining} szt.`
-                            : undefined
-                        }
-                      >
-                        <td className="text-center align-top pt-3">
-                          <input
-                            type="checkbox"
-                            className={cn("size-4", checkboxBrandClass)}
-                            checked={!!selected[o.id]}
-                            disabled={pending}
-                            aria-label={`Zaznacz pozycję ${personName}`}
-                            onChange={() => toggleSelected(o.id)}
-                          />
-                        </td>
-                        <td className="whitespace-nowrap font-semibold text-slate-900">
-                          {personName}
-                          {salesCancelRow ? (
-                            <span className="ml-1 text-[10px] font-bold uppercase text-amber-800">
-                              rezygn.
-                            </span>
-                          ) : isPartial ? (
-                            <span className="ml-1 text-[10px] font-bold uppercase text-amber-700">
-                              część
-                            </span>
-                          ) : null}
-                        </td>
-                        <td
-                          className={cn(
-                            "max-w-[8rem] truncate",
-                            isFirstInSupplierGroup
-                              ? "font-semibold text-slate-900"
-                              : "text-slate-500"
-                          )}
-                          title={supplierName}
-                        >
-                          <div className="flex flex-col gap-1">
-                            <span>
-                              {isFirstInSupplierGroup ? supplierName : "↳ ten sam dostawca"}
-                            </span>
-                            {isFirstInSupplierGroup && groupIds.length > 1 ? (
-                              <div className="flex flex-wrap gap-1">
+                      <Fragment key={group.supplierKey}>
+                        <SupplierGroupHeaderRow
+                          colSpan={8}
+                          groupIndex={groupIndex}
+                          group={group}
+                          summary={summary}
+                          isOpen={isOpen}
+                          onToggle={() => deliveryCollapse.toggle(group.supplierKey)}
+                          variant="delivery"
+                          actions={
+                            group.orders.length > 1 ? (
+                              <>
                                 <button
                                   type="button"
-                                  className={cn("text-left text-[10px] font-semibold underline-offset-2", brandLinkClass)}
+                                  className="text-xs font-semibold text-slate-600 hover:text-slate-900"
                                   disabled={pending}
-                                  onClick={() => toggleSupplierGroup(index, !groupAllSelected)}
+                                  onClick={() =>
+                                    toggleSupplierGroupIds(groupIds, !groupAllSelected)
+                                  }
                                 >
-                                  {groupAllSelected ? "Odznacz grupę" : `Zaznacz grupę (${groupIds.length})`}
+                                  {groupAllSelected
+                                    ? "Odznacz grupę"
+                                    : `Zaznacz (${groupIds.length})`}
                                 </button>
                                 <button
                                   type="button"
-                                  className={cn("text-left text-[10px] font-semibold underline-offset-2", brandLinkClass)}
+                                  className="text-xs font-semibold text-slate-600 hover:text-slate-900"
                                   disabled={pending}
                                   title={batchNotifyButtonLabel(shelf, groupIds, {
                                     prefix: "Całość",
@@ -437,88 +503,170 @@ export function QueueClient({
                                     prefix: "Całość",
                                   })}
                                 </button>
-                              </div>
-                            ) : null}
-                          </div>
-                        </td>
-                        <td className="max-w-[14rem]">
-                          <span className="line-clamp-2 text-slate-800" title={productTitle}>
-                            {o.products}
-                          </span>
-                          {o.symbol && o.symbol !== "-" ? (
-                            <span className="text-xs text-slate-500">{o.symbol}</span>
-                          ) : null}
-                          {zakupyLabel ? (
-                            <p
-                              className={cn(
-                                "mt-1 text-[11px] leading-snug font-medium",
-                                o.procurement_cancel_disposition === "return"
-                                  ? "text-violet-900"
-                                  : "text-emerald-900"
-                              )}
-                            >
-                              {zakupyLabel}
-                            </p>
-                          ) : null}
-                        </td>
-                        <td className="text-center tabular-nums font-medium text-slate-800">
-                          {ordered ?? o.quantity}
-                        </td>
-                        <td className="text-center">
-                          <input
-                            type="text"
-                            inputMode="numeric"
-                            placeholder="0"
-                            disabled={pending}
-                            value={inputVal}
-                            onChange={(e) =>
-                              setQty((s) => ({ ...s, [o.id]: e.target.value }))
-                            }
-                            className={cn(
-                              "w-14 rounded-md border border-slate-200 px-1.5 py-1 text-center text-sm font-semibold tabular-nums text-slate-900 disabled:opacity-50",
-                              controlFocusClass
-                            )}
-                            aria-label={`Dostarczono dla ${personName}`}
-                          />
-                        </td>
-                        <td
-                          className={cn(
-                            "text-center tabular-nums font-bold",
-                            progress.remaining && progress.remaining > 0
-                              ? "text-amber-700"
-                              : progress.delivered > 0 && progress.hasNumericQty
-                                ? "text-emerald-700"
-                                : "text-slate-400"
-                          )}
-                        >
-                          {progress.hasNumericQty ? progress.remaining : "—"}
-                        </td>
-                        <td>
-                          <div className="flex justify-end gap-1">
-                            {ordered != null && ordered > 0 ? (
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                className="!px-2 !py-1 text-xs"
-                                disabled={pending}
-                                onClick={() => saveDelivery(o, String(ordered))}
-                                title={`Dostarczono w całości: ${ordered} szt.`}
-                              >
-                                Całość
-                              </Button>
-                            ) : null}
-                            <Button
-                              variant="primary"
-                              size="sm"
-                              className="!px-2 !py-1 text-xs font-semibold"
-                              disabled={pending || inputVal === ""}
-                              onClick={() => saveDelivery(o, inputVal)}
-                            >
-                              Zapisz
-                            </Button>
-                          </div>
-                        </td>
-                      </tr>
+                              </>
+                            ) : null
+                          }
+                        />
+                        {isOpen
+                          ? group.orders.map((o, rowIndex) => {
+                              const personName = o.sales_person?.name?.trim() || "—";
+                              const partialCross = partialReceiveCrossLabel(o);
+                              const ordered = parseOrderQuantity(o.quantity);
+                              const inputVal = getQty(o);
+                              const previewN = inputVal === "" ? 0 : parseInt(inputVal, 10);
+                              const progress = getDeliveryProgress(
+                                o.quantity,
+                                Number.isFinite(previewN) ? String(previewN) : "0"
+                              );
+                              const isPartial = o.status === "Czesciowo_zrealizowane";
+                              const salesCancelRow = Boolean(o.sales_cancelled_at);
+                              const zakupyLabel = procurementDispositionQueueLabel(o);
+                              const productTitle = [
+                                o.products,
+                                o.symbol && o.symbol !== "-" ? `(${o.symbol})` : null,
+                              ]
+                                .filter(Boolean)
+                                .join(" ");
+
+                              return (
+                                <tr
+                                  key={o.id}
+                                  className={cn(
+                                    queueSupplierRowClass(groupIndex, {
+                                      variant: "delivery",
+                                      isPartial,
+                                      isFirstInSupplierGroup: rowIndex === 0,
+                                    }),
+                                    salesCancelRow && "bg-amber-50/50"
+                                  )}
+                                  title={
+                                    isPartial && progress.hasNumericQty
+                                      ? `Częściowo zrealizowane — czeka na ${progress.remaining} szt.`
+                                      : undefined
+                                  }
+                                >
+                                  <td
+                                    className={cn(
+                                      "text-center align-top pt-3",
+                                      queueSupplierLeadingCellClass(groupIndex, {
+                                        variant: "delivery",
+                                      })
+                                    )}
+                                  >
+                                    <input
+                                      type="checkbox"
+                                      className={cn("size-4", checkboxBrandClass)}
+                                      checked={!!selected[o.id]}
+                                      disabled={pending}
+                                      aria-label={`Zaznacz pozycję ${personName}`}
+                                      onChange={() => toggleSelected(o.id)}
+                                    />
+                                  </td>
+                                  <td className="whitespace-nowrap font-semibold text-slate-900">
+                                    {personName}
+                                    {salesCancelRow ? (
+                                      <span className="ml-1 text-[10px] font-bold uppercase text-amber-800">
+                                        rezygn.
+                                      </span>
+                                    ) : isPartial ? (
+                                      <span className="ml-1 text-[10px] font-bold uppercase text-amber-700">
+                                        część
+                                      </span>
+                                    ) : null}
+                                  </td>
+                                  <td className="max-w-[8rem] text-slate-400" aria-hidden>
+                                    —
+                                  </td>
+                                  <td className="max-w-[14rem]">
+                                    <span
+                                      className="line-clamp-2 text-slate-800"
+                                      title={productTitle}
+                                    >
+                                      {o.products}
+                                    </span>
+                                    {o.symbol && o.symbol !== "-" ? (
+                                      <span className="text-xs text-slate-500">{o.symbol}</span>
+                                    ) : null}
+                                    {partialCross ? (
+                                      <p className="mt-1 text-[11px] font-medium leading-snug text-amber-800">
+                                        {partialCross}
+                                      </p>
+                                    ) : null}
+                                    {zakupyLabel ? (
+                                      <p
+                                        className={cn(
+                                          "mt-1 text-[11px] leading-snug font-medium",
+                                          o.procurement_cancel_disposition === "return"
+                                            ? "text-violet-900"
+                                            : "text-emerald-900"
+                                        )}
+                                      >
+                                        {zakupyLabel}
+                                      </p>
+                                    ) : null}
+                                  </td>
+                                  <td className="text-center tabular-nums font-medium text-slate-800">
+                                    {ordered ?? o.quantity}
+                                  </td>
+                                  <td className="text-center">
+                                    <input
+                                      type="text"
+                                      inputMode="numeric"
+                                      placeholder="0"
+                                      disabled={pending}
+                                      value={inputVal}
+                                      onChange={(e) =>
+                                        setQty((s) => ({ ...s, [o.id]: e.target.value }))
+                                      }
+                                      className={cn(
+                                        "w-14 rounded-md border border-slate-200 px-1.5 py-1 text-center text-sm font-semibold tabular-nums text-slate-900 disabled:opacity-50",
+                                        controlFocusClass
+                                      )}
+                                      aria-label={`Dostarczono dla ${personName}`}
+                                    />
+                                  </td>
+                                  <td
+                                    className={cn(
+                                      "text-center tabular-nums font-bold",
+                                      progress.remaining && progress.remaining > 0
+                                        ? "text-amber-700"
+                                        : progress.delivered > 0 && progress.hasNumericQty
+                                          ? "text-emerald-700"
+                                          : "text-slate-400"
+                                    )}
+                                  >
+                                    {progress.hasNumericQty ? progress.remaining : "—"}
+                                  </td>
+                                  <td>
+                                    <div className="flex justify-end gap-1">
+                                      {ordered != null && ordered > 0 ? (
+                                        <Button
+                                          variant="outline"
+                                          size="sm"
+                                          className="!px-2 !py-1 text-xs"
+                                          disabled={pending}
+                                          onClick={() => saveDelivery(o, String(ordered))}
+                                          title={`Dostarczono w całości: ${ordered} szt.`}
+                                        >
+                                          Całość
+                                        </Button>
+                                      ) : null}
+                                      <Button
+                                        variant="primary"
+                                        size="sm"
+                                        className="!px-2 !py-1 text-xs font-semibold"
+                                        disabled={pending || inputVal === ""}
+                                        onClick={() => saveDelivery(o, inputVal)}
+                                      >
+                                        Zapisz
+                                      </Button>
+                                    </div>
+                                  </td>
+                                </tr>
+                              );
+                            })
+                          : null}
+                      </Fragment>
                     );
                   })}
                 </tbody>
@@ -538,6 +686,8 @@ export function QueueClient({
           />
           <InformacjaQueueSection orders={informacjaOrders} embedded />
         </section>
+          </>
+        )}
       </Card>
     </div>
   );

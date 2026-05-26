@@ -1,4 +1,5 @@
 import type { ParsedDeliveryStatsRow } from "@/lib/orders/delivery-stats-schema";
+import { resolveCanonicalSupplierName } from "./supplier-aliases";
 
 const UPDATED_AT_RE =
   /(\d{4}-\d{2}-\d{2}\s+\d{2}:\d{2}:\d{2})\s*$/;
@@ -83,6 +84,61 @@ export function parseDeliveryStatsText(text: string): ParsedDeliveryStatsRow[] {
   return rows;
 }
 
+function optionalInt(cell: string | undefined): number | null {
+  if (!cell?.trim()) return null;
+  const n = parseInt(cell.trim(), 10);
+  return Number.isNaN(n) ? null : n;
+}
+
+function parseUpdatedAt(cell: string | undefined): string | null {
+  const raw = cell?.trim();
+  if (!raw) return null;
+  const iso = raw.includes("T") ? raw : raw.replace(" ", "T");
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return null;
+  return d.toISOString();
+}
+
+/**
+ * Eksport CSV z arkusza STATYSTYKI DOSTAW (nagłówek + wiersze jako tablica kolumn).
+ */
+export function parseDeliveryStatsRows(grid: string[][]): ParsedDeliveryStatsRow[] {
+  if (grid.length < 2) return [];
+
+  const headers = grid[0].map((h) => h.toUpperCase().trim());
+  const col = (label: string) => headers.findIndex((h) => h.includes(label));
+
+  const supplierI = col("DOSTAWCA");
+  const mainSumI = col("SUMA DNI (GŁÓWNE)");
+  const mainCountI = col("LICZBA DOSTAW (GŁÓWNE)");
+  const mainAvgI = col("ŚREDNI CZAS (GŁÓWNE)");
+  const sideSumI = col("SUMA DNI (POBOCZNE)");
+  const sideCountI = col("LICZBA DOSTAW (POBOCZNE)");
+  const sideAvgI = col("ŚREDNI CZAS (POBOCZNE)");
+  const updatedI = col("OSTATNIA AKTUALIZACJA");
+
+  if (supplierI < 0) return [];
+
+  const out: ParsedDeliveryStatsRow[] = [];
+  for (let i = 1; i < grid.length; i++) {
+    const row = grid[i];
+    const supplierName = row[supplierI]?.trim();
+    if (!supplierName || /^DOSTAWCA$/i.test(supplierName)) continue;
+
+    out.push({
+      supplierName,
+      main_sum: mainSumI >= 0 ? optionalInt(row[mainSumI]) : null,
+      main_count: mainCountI >= 0 ? optionalInt(row[mainCountI]) : null,
+      main_avg: mainAvgI >= 0 ? optionalInt(row[mainAvgI]) : null,
+      side_sum: sideSumI >= 0 ? optionalInt(row[sideSumI]) : null,
+      side_count: sideCountI >= 0 ? optionalInt(row[sideCountI]) : null,
+      side_avg: sideAvgI >= 0 ? optionalInt(row[sideAvgI]) : null,
+      updated_at: updatedI >= 0 ? parseUpdatedAt(row[updatedI]) : null,
+    });
+  }
+  return out;
+}
+
 /** Normalizacja nazwy do dopasowania PDF ↔ baza. */
 export function normalizeSupplierName(name: string): string {
   return name
@@ -96,12 +152,13 @@ export function matchSupplierId(
   supplierName: string,
   suppliers: { id: string; name: string }[]
 ): string | null {
-  const norm = normalizeSupplierName(supplierName);
+  const canonical = resolveCanonicalSupplierName(supplierName);
+  const norm = normalizeSupplierName(canonical);
   const exact = suppliers.find((s) => normalizeSupplierName(s.name) === norm);
   if (exact) return exact.id;
 
   const ci = suppliers.find(
-    (s) => s.name.trim().toLowerCase() === supplierName.trim().toLowerCase()
+    (s) => s.name.trim().toLowerCase() === canonical.trim().toLowerCase()
   );
   if (ci) return ci.id;
 

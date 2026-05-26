@@ -11,7 +11,13 @@ import {
 } from "@/components/icons/StrokeIcons";
 import { SectionHeadingIcon } from "@/components/icons/SectionHeadingIcon";
 import { cn } from "@/lib/cn";
-import { brandLinkClass, sectionIconTileBrandClass, sectionIconTileBrandSoftClass } from "@/lib/ui/ontime-theme";
+import {
+  panelTextLinkClass,
+  panelMetricTileClass,
+  panelMetricTileInteractiveClass,
+  sectionIconTileBrandClass,
+  sectionIconTileBrandSoftClass,
+} from "@/lib/ui/ontime-theme";
 
 function MetricTile({
   value,
@@ -44,8 +50,8 @@ function MetricTile({
   );
 
   const className = cn(
-    "rounded-xl border border-slate-200/80 bg-white px-3 py-2.5 text-left shadow-[var(--shadow-card)] transition",
-    (href || onClick) && "cursor-pointer hover:border-slate-300 hover:bg-slate-50/80"
+    panelMetricTileClass,
+    (href || onClick) && panelMetricTileInteractiveClass
   );
 
   if (href) {
@@ -185,7 +191,7 @@ export function DailyPanelMetricsOverview({
               {mobileSummary || "Brak pozycji na liście"}
             </p>
           </div>
-          <span className={cn("inline-flex shrink-0 items-center gap-0.5 text-xs", brandLinkClass)}>
+          <span className={cn("inline-flex shrink-0 items-center gap-0.5 text-xs", panelTextLinkClass)}>
             <span className="group-open:hidden">Rozwiń</span>
             <span className="hidden group-open:inline">Zwiń</span>
             <IconChevronDown size={14} className="group-open:rotate-180" />

@@ -11,12 +11,16 @@ import { EmptyState } from "@/components/ui/EmptyState";
 import { DataTable, TableScroll } from "@/components/ui/DataTable";
 import { Toast } from "@/components/ui/Toast";
 import { ActionLoadingOverlay } from "@/components/ui/ActionLoadingOverlay";
+import { cn } from "@/lib/cn";
+import { SupplierFilterChips } from "@/components/queue/SupplierFilterChips";
+import { countOrdersBySupplier, filterOrdersBySupplier } from "@/lib/orders/supplier-filter-summary";
 import { supplierKey } from "@/lib/orders/queue-supplier-groups";
 import {
   informacjaProductKey,
   informacjaProductTitle,
   orderIdsInProductGroup,
   productGroupIndexByOrderId,
+  queueInformacjaProductLeadingCellClass,
   queueInformacjaProductRowClass,
 } from "@/lib/orders/queue-product-groups";
 import {
@@ -39,19 +43,27 @@ export function InformacjaQueueSection({
   const [toast, setToast] = useState<{ text: string; tone: "success" | "error" } | null>(
     null
   );
+  const [supplierFilter, setSupplierFilter] = useState("");
   const dismissToast = useCallback(() => setToast(null), []);
 
+  const supplierChips = useMemo(() => countOrdersBySupplier(orders), [orders]);
+  const ordersFiltered = useMemo(
+    () => filterOrdersBySupplier(orders, supplierFilter),
+    [orders, supplierFilter]
+  );
+
   const productGroups = useMemo(
-    () => productGroupIndexByOrderId(orders),
-    [orders]
+    () => productGroupIndexByOrderId(ordersFiltered),
+    [ordersFiltered]
   );
 
   const selectedIds = useMemo(
-    () => orders.filter((o) => selected[o.id]).map((o) => o.id),
-    [orders, selected]
+    () => ordersFiltered.filter((o) => selected[o.id]).map((o) => o.id),
+    [ordersFiltered, selected]
   );
 
-  const allSelected = orders.length > 0 && orders.every((o) => selected[o.id]);
+  const allSelected =
+    ordersFiltered.length > 0 && ordersFiltered.every((o) => selected[o.id]);
 
   const toggleSelected = (orderId: string) => {
     setSelected((s) => ({ ...s, [orderId]: !s[orderId] }));
@@ -100,11 +112,16 @@ export function InformacjaQueueSection({
   };
 
   const headerNotifyLabel = useMemo(() => {
-    if (!orders.length) return "Powiadom wszystkich";
-    const emails = countSalesPeopleInOrders(orders, orders.map((o) => o.id));
-    if (emails <= 1) return `Powiadom wszystkich (${orders.length}) — mail do handlowca`;
-    return `Powiadom wszystkich (${orders.length}) — ${emails} handlowców`;
-  }, [orders]);
+    if (!ordersFiltered.length) return "Powiadom wszystkich";
+    const emails = countSalesPeopleInOrders(
+      ordersFiltered,
+      ordersFiltered.map((o) => o.id)
+    );
+    if (emails <= 1) {
+      return `Powiadom wszystkich (${ordersFiltered.length}) — mail do handlowca`;
+    }
+    return `Powiadom wszystkich (${ordersFiltered.length}) — ${emails} handlowców`;
+  }, [ordersFiltered]);
 
   const selectedHeaderLabel = useMemo(() => {
     if (selectedIds.length <= 1) return "Powiadom zaznaczone";
@@ -124,12 +141,12 @@ export function InformacjaQueueSection({
       >
         {selectedHeaderLabel}
       </Button>
-    ) : orders.length > 1 ? (
+    ) : ordersFiltered.length > 1 ? (
       <Button
         variant="outline"
         size="sm"
         disabled={pending}
-        onClick={() => markArrived(orders.map((o) => o.id))}
+        onClick={() => markArrived(ordersFiltered.map((o) => o.id))}
       >
         {headerNotifyLabel}
       </Button>
@@ -140,7 +157,23 @@ export function InformacjaQueueSection({
       title="Brak pozycji informacyjnych"
       description="Nowe prośby „Informacja gdy dotarło” pojawią się tutaj po zgłoszeniu przez handlowca."
     />
+  ) : !ordersFiltered.length ? (
+    <EmptyState
+      title="Brak pozycji dla wybranego dostawcy"
+      description="Wybierz innego dostawcę lub pokaż wszystkie informacje."
+    />
   ) : (
+    <>
+      {supplierChips.length > 1 ? (
+        <div className="border-b border-slate-100 px-4 py-3 sm:px-6">
+          <SupplierFilterChips
+            chips={supplierChips}
+            value={supplierFilter}
+            onChange={setSupplierFilter}
+            totalLabel="Informacje — wszyscy"
+          />
+        </div>
+      ) : null}
     <TableScroll className="px-0 pb-0">
             <DataTable className="text-sm">
               <thead>
@@ -162,16 +195,16 @@ export function InformacjaQueueSection({
                 </tr>
               </thead>
               <tbody>
-                {orders.map((o, index) => {
+                {ordersFiltered.map((o, index) => {
                   const personName = o.sales_person?.name?.trim() || "—";
                   const supplierName = supplierKey(o);
                   const groupIndex = productGroups.get(o.id) ?? 0;
                   const prevKey =
-                    index > 0 ? informacjaProductKey(orders[index - 1]!) : null;
+                    index > 0 ? informacjaProductKey(ordersFiltered[index - 1]!) : null;
                   const isFirstInProductGroup =
                     informacjaProductKey(o) !== prevKey;
                   const groupIds = isFirstInProductGroup
-                    ? orderIdsInProductGroup(orders, index)
+                    ? orderIdsInProductGroup(ordersFiltered, index)
                     : [];
                   const groupAllSelected =
                     groupIds.length > 0 && groupIds.every((id) => selected[id]);
@@ -184,7 +217,12 @@ export function InformacjaQueueSection({
                         isFirstInProductGroup,
                       })}
                     >
-                      <td className="text-center align-top pt-3">
+                      <td
+                        className={cn(
+                          "text-center align-top pt-3",
+                          queueInformacjaProductLeadingCellClass(groupIndex)
+                        )}
+                      >
                         <input
                           type="checkbox"
                           className="size-4 rounded border-slate-300 text-sky-600 focus:ring-sky-500/30"
@@ -282,6 +320,7 @@ export function InformacjaQueueSection({
               </tbody>
             </DataTable>
     </TableScroll>
+    </>
   );
 
   if (embedded) {

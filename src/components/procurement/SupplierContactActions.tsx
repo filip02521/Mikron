@@ -4,9 +4,7 @@ import { useState } from "react";
 import { buildSupplierContactUi } from "@/lib/orders/supplier-contact";
 import { OrderMethodBadge } from "@/components/targets/OrderMethodBadge";
 import { cn } from "@/lib/cn";
-
-const linkClass =
-  "max-w-[min(100%,18rem)] truncate text-xs font-medium text-sky-800 underline decoration-sky-200 underline-offset-2 hover:text-sky-950";
+import { panelContactLinkClass } from "@/lib/ui/ontime-theme";
 
 export function SupplierContactActions({
   notes,
@@ -54,7 +52,7 @@ export function SupplierContactActions({
           href={ui.contactLink.href}
           target={ui.contactLink.kind === "url" ? "_blank" : undefined}
           rel={ui.contactLink.kind === "url" ? "noopener noreferrer" : undefined}
-          className={linkClass}
+          className={panelContactLinkClass}
           title={ui.copyText ?? ui.contactLink.label}
         >
           {ui.contactLink.label}
@@ -63,7 +61,7 @@ export function SupplierContactActions({
         <button
           type="button"
           onClick={copyContact}
-          className="text-xs font-medium text-slate-600 underline decoration-slate-300 underline-offset-2 hover:text-slate-900"
+          className="text-xs font-medium text-slate-600 transition-colors hover:text-slate-800"
           title={ui.copyText ?? undefined}
         >
           {copied ? "Skopiowano" : copyFailed ? "Nie udało się skopiować" : "Kopiuj kontakt"}

@@ -515,7 +515,7 @@ function PlannerCard({
           <button
             type="button"
             onClick={onOpen}
-            className="w-full cursor-pointer px-2.5 py-2 text-left transition hover:bg-slate-50/80"
+            className="w-full cursor-pointer rounded-xl px-2.5 py-2 text-left transition hover:bg-indigo-50/35"
           >
             {body}
           </button>
@@ -531,7 +531,7 @@ function PlannerCard({
               location={item.location}
               pending={rowPending}
               run={run}
-              onOpenSupplier={onOpen ?? (() => {})}
+              onOpenSupplier={onOpen}
               onVacation={() => onVacation(item.supplierId)}
               onEdit={() => onEdit(item.supplierId)}
             />

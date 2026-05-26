@@ -17,6 +17,7 @@ export type IndividualRequestEditLineInput = {
   product?: string;
   quantity?: string;
   clientName?: string;
+  subiektTwId?: number | null;
 };
 
 export type IndividualRequestEditPayload = {
@@ -33,5 +34,6 @@ export function ordersToEditLines(orders: IndividualOrder[]): IndividualRequestE
     product: o.products !== "Do uzupełnienia" ? o.products : "",
     quantity: o.quantity !== "-" ? o.quantity : "",
     clientName: o.sales_client_name ?? "",
+    subiektTwId: o.subiekt_tw_id ?? null,
   }));
 }

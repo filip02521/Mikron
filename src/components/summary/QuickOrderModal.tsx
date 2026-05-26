@@ -6,6 +6,7 @@ import { actionAddIndividualOrders } from "@/app/actions/admin";
 import { Button } from "@/components/ui/Button";
 import { Alert } from "@/components/ui/Alert";
 import { Field, Select } from "@/components/ui/Field";
+import { SupplierPickerField } from "@/components/orders/SupplierPickerField";
 import { ModalShell } from "@/components/ui/ModalShell";
 import { RequestKindPicker } from "@/components/ui/RequestKindPicker";
 import type { IndividualRequestKind } from "@/types/database";
@@ -58,6 +59,7 @@ export function QuickOrderModal({
         product: l.product,
         quantity: requestKind === "informacja" ? undefined : l.quantity,
         requestKind,
+        subiektTwId: l.subiektTwId,
       }));
     if (!entries.length) {
       setMsg({ text: "Dodaj co najmniej jeden produkt z opisem.", tone: "error" });
@@ -121,14 +123,14 @@ export function QuickOrderModal({
 
       <div className="grid gap-3 sm:grid-cols-2">
         <Field label="Dostawca">
-          <Select value={supplierId} onChange={(e) => setSupplierId(e.target.value)}>
-            <option value="">Wybierz…</option>
-            {suppliers.map((s) => (
-              <option key={s.id} value={s.id}>
-                {s.name}
-              </option>
-            ))}
-          </Select>
+          <SupplierPickerField
+            suppliers={suppliers}
+            value={supplierId}
+            onChange={setSupplierId}
+            allowEmpty={false}
+            emptyLabel="Wybierz dostawcę"
+            placeholder="Szukaj dostawcy…"
+          />
         </Field>
         <Field label="Dla kogo (handlowiec)">
           <Select value={salesPersonId} onChange={(e) => setSalesPersonId(e.target.value)}>

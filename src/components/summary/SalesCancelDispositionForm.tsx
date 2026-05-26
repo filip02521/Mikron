@@ -6,7 +6,13 @@ import type { ProcurementCancelDisposition } from "@/lib/orders/procurement-disp
 import type { SalesCancelPhase } from "@/lib/orders/sales-cancel";
 import { Button } from "@/components/ui/Button";
 import { cn } from "@/lib/cn";
-import { controlFocusClass } from "@/lib/ui/ontime-theme";
+import {
+  controlFocusClass,
+  panelChoiceChipClass,
+  panelChoiceChipIdleClass,
+  panelChoiceChipSelectedClass,
+  panelChoiceChipSuccessSelectedClass,
+} from "@/lib/ui/ontime-theme";
 
 export type SalesCancelDispositionFormProps = {
   orderIds: string[];
@@ -80,10 +86,10 @@ export function SalesCancelDispositionForm({
             type="button"
             onClick={() => setDisposition("to_stock")}
             className={cn(
-              "rounded-xl border px-3 py-2 text-left text-xs font-medium transition",
+              panelChoiceChipClass,
               disposition === "to_stock"
-                ? "border-emerald-500 bg-emerald-50 text-emerald-950 ring-1 ring-emerald-500/30"
-                : "border-slate-200 bg-white text-slate-700 hover:bg-slate-50"
+                ? panelChoiceChipSuccessSelectedClass
+                : panelChoiceChipIdleClass
             )}
           >
             Na stan magazynu
@@ -92,10 +98,10 @@ export function SalesCancelDispositionForm({
             type="button"
             onClick={() => setDisposition("return")}
             className={cn(
-              "rounded-xl border px-3 py-2 text-left text-xs font-medium transition",
+              panelChoiceChipClass,
               disposition === "return"
-                ? "border-violet-500 bg-violet-50 text-violet-950 ring-1 ring-violet-500/30"
-                : "border-slate-200 bg-white text-slate-700 hover:bg-slate-50"
+                ? panelChoiceChipSelectedClass
+                : panelChoiceChipIdleClass
             )}
           >
             Przygotować do zwrotu

@@ -8,11 +8,19 @@ import {
   type SupplierDirectoryEntry,
 } from "@/components/procurement/SupplierSearchField";
 import { Button } from "@/components/ui/Button";
-import { Spinner } from "@/components/ui/Spinner";
 import { ActionLoadingOverlay } from "@/components/ui/ActionLoadingOverlay";
 import { OverflowMenu, OverflowMenuItem } from "@/components/ui/OverflowMenu";
 import { useActionPending } from "@/hooks/useActionPending";
 import { IconPlusCircle } from "@/components/icons/StrokeIcons";
+import { PanelDailyHelp } from "@/components/summary/PanelDailyHelp";
+import {
+  panelToolbarActionsClass,
+  panelToolbarIconButtonClass,
+  panelToolbarRowClass,
+  panelToolbarSearchWrapClass,
+  panelToolbarShellClass,
+} from "@/lib/ui/ontime-theme";
+import { cn } from "@/lib/cn";
 
 export function DailyPanelActionsBar({
   summary,
@@ -40,7 +48,7 @@ export function DailyPanelActionsBar({
   };
 
   return (
-    <div className="relative flex min-w-0 flex-1 flex-wrap items-center justify-end gap-2 sm:flex-nowrap">
+    <div className={cn(panelToolbarShellClass, "relative")}>
       {pendingMessage ? (
         <ActionLoadingOverlay
           variant="viewport"
@@ -48,33 +56,51 @@ export function DailyPanelActionsBar({
           hint="Urlopy i interwały — panel odświeży się automatycznie"
         />
       ) : null}
-      <div className="min-w-0 w-full basis-full sm:w-auto sm:max-w-[14rem] sm:flex-1 lg:max-w-xs">
-        <SupplierSearchField suppliers={suppliers} onSelect={onSelectSupplier} />
+      <div className={panelToolbarRowClass}>
+        <div className={panelToolbarSearchWrapClass}>
+          <SupplierSearchField
+            appearance="toolbar"
+            suppliers={suppliers}
+            onSelect={onSelectSupplier}
+          />
+        </div>
+        <div className={panelToolbarActionsClass}>
+          <Button
+            size="sm"
+            className="h-9 min-h-9 shrink-0 gap-1.5 px-3.5 py-0 text-xs"
+            onClick={onNewRequest}
+          >
+            <IconPlusCircle size={15} />
+            Nowa prośba
+          </Button>
+          <PanelDailyHelp density="toolbar" />
+          <OverflowMenu
+            label="Więcej akcji panelu"
+            iconOnly
+            align="end"
+            triggerClassName={panelToolbarIconButtonClass}
+          >
+            <OverflowMenuItem onClick={() => document.getElementById("supplier-search")?.focus()}>
+              Szukaj dostawcy…
+            </OverflowMenuItem>
+            <OverflowMenuItem onClick={onNewSupplier}>+ Nowy dostawca</OverflowMenuItem>
+            {onOpenOnDemand && summary.onDemandCount > 0 ? (
+              <OverflowMenuItem onClick={onOpenOnDemand}>
+                Lista na żądanie ({summary.onDemandCount})
+              </OverflowMenuItem>
+            ) : null}
+            <OverflowMenuItem onClick={runSyncSchedules} disabled={syncPending}>
+              {syncPending ? "Przeliczanie terminów…" : "Przelicz terminy"}
+            </OverflowMenuItem>
+            <OverflowMenuItem onClick={() => router.push("/zakupy/urlopy")}>
+              Urlopy
+              {summary.vacationSupplierCount > 0
+                ? ` (${summary.vacationSupplierCount})`
+                : ""}
+            </OverflowMenuItem>
+          </OverflowMenu>
+        </div>
       </div>
-      <Button size="sm" className="shrink-0 gap-1.5" onClick={onNewRequest}>
-        <IconPlusCircle size={16} />
-        Nowa prośba
-      </Button>
-      <OverflowMenu label="Więcej akcji panelu" iconOnly align="end">
-        <OverflowMenuItem onClick={() => document.getElementById("supplier-search")?.focus()}>
-          Szukaj dostawcy…
-        </OverflowMenuItem>
-        <OverflowMenuItem onClick={onNewSupplier}>+ Nowy dostawca</OverflowMenuItem>
-        {onOpenOnDemand && summary.onDemandCount > 0 ? (
-          <OverflowMenuItem onClick={onOpenOnDemand}>
-            Lista na żądanie ({summary.onDemandCount})
-          </OverflowMenuItem>
-        ) : null}
-        <OverflowMenuItem onClick={runSyncSchedules} disabled={syncPending}>
-          {syncPending ? "Przeliczanie terminów…" : "Przelicz terminy"}
-        </OverflowMenuItem>
-        <OverflowMenuItem onClick={() => router.push("/zakupy/urlopy")}>
-          Urlopy
-          {summary.vacationSupplierCount > 0
-            ? ` (${summary.vacationSupplierCount})`
-            : ""}
-        </OverflowMenuItem>
-      </OverflowMenu>
     </div>
   );
 }

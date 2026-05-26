@@ -22,6 +22,8 @@
     "backfill-interval-raw": "tsx scripts/backfill-interval-raw.ts",
     "backfill-ustawienia": "tsx scripts/backfill-ustawienia-from-json.ts",
     "import-stats-pdf": "tsx scripts/import-delivery-stats-from-pdf.ts",
+    "import-stats-csv": "tsx scripts/import-delivery-stats-from-csv.ts",
+    "import-historia": "tsx scripts/import-historia-from-csv.ts",
     "seed": "tsx scripts/seed-demo.ts",
     "setup-check": "tsx scripts/setup-check.ts",
     "db:migrate:sales-cancel": "tsx scripts/apply-sql-migration.ts supabase/migrations/018_sales_cancel_bundle.sql"

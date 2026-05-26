@@ -7,6 +7,8 @@ import { Button } from "@/components/ui/Button";
 import { SectionHeadingIcon } from "@/components/icons/SectionHeadingIcon";
 import { IconTruck } from "@/components/icons/StrokeIcons";
 import type { DailyPanelRunFn } from "@/components/summary/useDailyPanelRunner";
+import { cn } from "@/lib/cn";
+import { panelNameLinkClass, panelTextLinkClass } from "@/lib/ui/ontime-theme";
 
 export function DailyPanelOnDemandSection({
   suppliers,
@@ -47,7 +49,7 @@ export function DailyPanelOnDemandSection({
           </div>
         </div>
         {onOpenFullList ? (
-          <Button variant="ghost" size="sm" className="shrink-0 text-violet-800" onClick={onOpenFullList}>
+          <Button variant="outline" size="sm" className="shrink-0" onClick={onOpenFullList}>
             Pełna lista
           </Button>
         ) : null}
@@ -63,7 +65,7 @@ export function DailyPanelOnDemandSection({
               <div className="min-w-0 flex-1">
                 <button
                   type="button"
-                  className="text-left text-sm font-semibold text-slate-900 hover:underline"
+                  className={cn("text-sm font-semibold", panelNameLinkClass)}
                   onClick={() => onOpenSupplier(row.supplierId)}
                 >
                   {row.supplierName}
@@ -77,7 +79,7 @@ export function DailyPanelOnDemandSection({
                 <SupplierContactActions notes={row.notes} mails={row.mails} className="mt-1" />
                 <Button
                   size="sm"
-                  variant="secondary"
+                  variant="primary"
                   disabled={rowPending}
                   onClick={() =>
                     run(
@@ -99,7 +101,7 @@ export function DailyPanelOnDemandSection({
         <div className="border-t border-violet-100/80 px-4 py-2.5 sm:px-5">
           <button
             type="button"
-            className="text-sm font-medium text-violet-800 hover:underline"
+            className={panelTextLinkClass}
             onClick={onOpenFullList}
           >
             + {rest} {rest === 1 ? "dostawca" : "dostawców"} — pokaż wszystkich

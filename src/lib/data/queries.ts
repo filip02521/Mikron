@@ -5,6 +5,10 @@ import { sortIndividualOrdersBySupplier } from "@/lib/orders/queue-sort";
 import { sortInformacjaQueueByProduct } from "@/lib/orders/queue-product-groups";
 import { isSalesCancelledForQueue } from "@/lib/orders/sales-cancel";
 import { historyRetentionCutoffIso } from "@/lib/orders/history-retention";
+import {
+  buildWarehouseInventoryRows,
+  isWarehouseInventoryOrder,
+} from "@/lib/orders/warehouse-inventory";
 import type {
   IndividualOrder,
   SupplierLocation,
@@ -202,6 +206,25 @@ export async function countPickupReadyForSales(): Promise<number> {
     throw new Error(error.message);
   }
   return count ?? 0;
+}
+
+/** Pozycje fizycznie na magazynie — inwentaryzacja regału (odbiór / informacja). */
+export async function fetchWarehouseInventory(): Promise<IndividualOrder[]> {
+  if (!hasSupabaseConfig()) return [];
+  const supabase = createAdminClient();
+  const { data, error } = await supabase
+    .from("individual_orders")
+    .select("*, supplier:suppliers(*), sales_person:sales_people(*)")
+    .in("status", ["Zrealizowane", "Czesciowo_zrealizowane"])
+    .is("sales_acknowledged_at", null)
+    .is("sales_cancelled_at", null);
+  if (error) {
+    if (error.message?.includes("sales_acknowledged_at")) return [];
+    throw new Error(error.message);
+  }
+  const normalized = normalizeIndividualOrders(data ?? []).filter(isWarehouseInventoryOrder);
+  const rows = buildWarehouseInventoryRows(normalized);
+  return rows.map((r) => r.order);
 }
 
 /** Kolejka dostaw: zamówienia dla handlowca do przyjęcia towaru — bez informacji. */

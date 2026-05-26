@@ -63,7 +63,7 @@ export function DailyPanelInformacjaSection({
       <div className="border-t border-sky-100/80 px-4 py-3 sm:px-5">
         <Link
           href="/kolejka#informacja"
-          className="text-sm font-medium text-sky-800 underline decoration-sky-300 underline-offset-2 hover:text-sky-950"
+          className="text-sm font-medium text-slate-600 transition-colors hover:text-slate-800"
         >
           Otwórz kolejkę magazynu → Informacja
         </Link>

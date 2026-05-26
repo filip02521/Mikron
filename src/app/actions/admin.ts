@@ -33,6 +33,7 @@ import { sendWeeklySummaryEmail } from "@/lib/services/email";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { intervalWeeksForStorage, parseInterval } from "@/lib/orders/dates";
 import { resolveOrderOnDemandForSave } from "@/lib/orders/supplier-on-demand";
+import { WAREHOUSE_SHELF_DEFAULT } from "@/lib/orders/warehouse-inventory";
 import { validateSupplierContactFields } from "@/lib/orders/validate-supplier-contact";
 import type { IndividualRequestKind, SupplierLocation, StatsMode } from "@/types/database";
 import {
@@ -298,6 +299,7 @@ export async function actionAddIndividualOrders(
     quantity?: string;
     requestKind?: IndividualRequestKind;
     clientName?: string;
+    subiektTwId?: number | null;
   }>
 ) {
   const user = await getSessionUser();
@@ -366,6 +368,7 @@ export async function actionCompleteVerification(
     product: string;
     quantity?: string;
     requestKind?: IndividualRequestKind;
+    subiektTwId?: number | null;
   }
 ) {
   await requireOperations();
@@ -514,6 +517,26 @@ export async function actionUpdateDelivered(orderId: string, qty: string) {
   const { emailSent, emailError } = await updateDeliveredQuantity(orderId, qty);
   revalidateAll();
   return { success: true, emailSent, emailError };
+}
+
+export async function actionSetWarehouseShelf(orderId: string, shelf: string) {
+  await requireOperations();
+  const supabase = createAdminClient();
+  const trimmed = shelf.trim();
+  const { error } = await supabase
+    .from("individual_orders")
+    .update({ warehouse_shelf: trimmed.length ? trimmed : WAREHOUSE_SHELF_DEFAULT })
+    .eq("id", orderId);
+  if (error) {
+    if (error.message?.includes("warehouse_shelf")) {
+      throw new Error(
+        "Brak kolumny warehouse_shelf — zastosuj migracje 023 i 024 w Supabase."
+      );
+    }
+    throw new Error(error.message);
+  }
+  revalidateAll();
+  return { success: true };
 }
 
 export async function actionBatchUpdateDelivered(

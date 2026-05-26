@@ -1,5 +1,15 @@
 import { getSubiektConfig, type SubiektConfig } from "@/lib/subiekt/config";
-import { SubiektNotConfiguredError, SubiektRequestError } from "@/lib/subiekt/errors";
+import {
+  SubiektNetworkError,
+  SubiektNotConfiguredError,
+  SubiektRequestError,
+  SubiektTimeoutError,
+} from "@/lib/subiekt/errors";
+import {
+  feedbackFromException,
+  getSubiektFeedback,
+  type SubiektFeedback,
+} from "@/lib/subiekt/feedback";
 
 export type SubiektHealthResult = {
   ok: boolean;
@@ -9,6 +19,11 @@ export type SubiektHealthResult = {
   durationMs?: number;
   message?: string;
   error?: string;
+  /** Z GET /health — status API Subiekta */
+  apiStatus?: "ok" | "degraded";
+  sqlConfigured?: boolean;
+  /** Komunikat dla użytkownika (sukces z ostrzeżeniem lub błąd) */
+  feedback?: SubiektFeedback;
 };
 
 function buildAuthHeaders(config: SubiektConfig): HeadersInit {
@@ -76,6 +91,12 @@ export async function subiektFetch(
       signal: controller.signal,
       cache: "no-store",
     });
+  } catch (e) {
+    if (e instanceof Error && e.name === "AbortError") {
+      throw new SubiektTimeoutError(config.timeoutMs);
+    }
+    const msg = e instanceof Error ? e.message : "fetch failed";
+    throw new SubiektNetworkError(msg, e);
   } finally {
     clearTimeout(timeout);
   }
@@ -99,64 +120,128 @@ export async function subiektJson<T>(
 }
 
 /** Test połączenia — domyślnie GET na SUBIEKT_API_HEALTH_PATH. */
-export async function testSubiektConnection(): Promise<SubiektHealthResult> {
+export async function testSubiektConnection(options?: {
+  /** Krótszy limit na sondę dostępności (np. przed listą zamówień). */
+  timeoutMs?: number;
+}): Promise<SubiektHealthResult> {
   const config = getSubiektConfig();
   if (!config) {
+    const feedback = getSubiektFeedback("not_configured", {
+      hint: "Uzupełnij SUBIEKT_API_BASE_URL w .env.local (patrz .env.subiekt.work.example).",
+    });
     return {
       ok: false,
       configured: false,
-      error: "not_configured",
-      message: "Uzupełnij SUBIEKT_API_BASE_URL w .env.local",
+      error: feedback.code,
+      message: feedback.message,
+      feedback,
     };
   }
 
   const url = resolveUrl(config, config.healthPath);
   const started = Date.now();
+  const probeTimeoutMs = Math.min(
+    options?.timeoutMs ?? config.timeoutMs,
+    config.timeoutMs
+  );
 
   try {
-    const res = await subiektFetch(config.healthPath, { method: "GET" });
+    const headers = new Headers(buildAuthHeaders(config));
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), probeTimeoutMs);
+    let res: Response;
+    try {
+      res = await fetch(resolveUrl(config, config.healthPath), {
+        method: "GET",
+        headers,
+        signal: controller.signal,
+        cache: "no-store",
+      });
+    } catch (e) {
+      if (e instanceof Error && e.name === "AbortError") {
+        throw new SubiektTimeoutError(probeTimeoutMs);
+      }
+      const msg = e instanceof Error ? e.message : "fetch failed";
+      throw new SubiektNetworkError(msg, e);
+    } finally {
+      clearTimeout(timeout);
+    }
     const durationMs = Date.now() - started;
     const text = await res.text();
 
     if (!res.ok) {
+      const feedback = feedbackFromException(
+        new SubiektRequestError(res.status, snippet(text || res.statusText))
+      );
       return {
         ok: false,
         configured: true,
         url,
         status: res.status,
         durationMs,
-        error: "http_error",
-        message: snippet(text || res.statusText),
+        error: feedback.code,
+        message: feedback.message,
+        feedback,
       };
     }
 
+    let apiStatus: "ok" | "degraded" | undefined;
+    let sqlConfigured: boolean | undefined;
+    if (text) {
+      try {
+        const parsed = JSON.parse(text) as {
+          data?: { status?: string; sqlConfigured?: boolean };
+        };
+        const data = parsed.data;
+        if (data?.status === "ok" || data?.status === "degraded") {
+          apiStatus = data.status;
+        }
+        if (typeof data?.sqlConfigured === "boolean") {
+          sqlConfigured = data.sqlConfigured;
+        }
+      } catch {
+        /* nie envelope — zostaw tylko HTTP OK */
+      }
+    }
+
+    const healthOk = apiStatus === undefined || apiStatus === "ok";
+    const parts: string[] = [`Połączenie OK (${res.status})`];
+    if (apiStatus) parts.push(`status: ${apiStatus}`);
+    if (sqlConfigured !== undefined) {
+      parts.push(sqlConfigured ? "SQL: skonfigurowane" : "SQL: brak konfiguracji");
+    }
+
+    let feedback: SubiektFeedback | undefined;
+    if (apiStatus === "degraded") {
+      feedback = getSubiektFeedback("health_degraded");
+    } else if (sqlConfigured === false) {
+      feedback = getSubiektFeedback("sql_not_configured");
+    }
+
     return {
-      ok: true,
+      ok: healthOk,
       configured: true,
       url,
       status: res.status,
       durationMs,
-      message:
-        text.length > 0
-          ? `Połączenie OK (${res.status}) — ${snippet(text, 120)}`
-          : `Połączenie OK (${res.status})`,
+      apiStatus,
+      sqlConfigured,
+      message: parts.join(" · "),
+      error: healthOk ? undefined : "health_degraded",
+      feedback,
     };
   } catch (e) {
     const durationMs = Date.now() - started;
-    const message =
-      e instanceof Error
-        ? e.name === "AbortError"
-          ? `Przekroczono limit czasu (${config.timeoutMs} ms)`
-          : e.message
-        : "Nieznany błąd połączenia";
+    const feedback = feedbackFromException(e);
 
     return {
       ok: false,
       configured: true,
       url,
       durationMs,
-      error: "network_error",
-      message,
+      error: feedback.code,
+      message: feedback.message,
+      feedback,
     };
   }
 }

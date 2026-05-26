@@ -33,6 +33,7 @@ import { INFORMACJA_NO_QUANTITY, quantityForRequestKind } from "@/lib/orders/ind
 import { orderPlacementAt } from "@/lib/orders/order-timing";
 import { isProcurementDraftReady } from "@/lib/orders/procurement-readiness";
 import { normalizeSalesClientName } from "@/lib/orders/sales-client-label";
+import { WAREHOUSE_SHELF_DEFAULT } from "@/lib/orders/warehouse-inventory";
 import type { SalesPersonEmailBatch } from "@/lib/email/sales-notification-types";
 import {
   buildDeliveryNotificationItem,
@@ -264,6 +265,7 @@ export async function batchAddIndividualOrders(
     quantity?: string;
     requestKind?: IndividualRequestKind;
     clientName?: string;
+    subiektTwId?: number | null;
   }>,
   createdBy?: string
 ): Promise<{ count: number; complete: number; verification: number }> {
@@ -318,6 +320,8 @@ export async function batchAddIndividualOrders(
         submission_group_id: submissionGroupId,
         created_by: createdBy ?? null,
         sales_client_name: normalizeSalesClientName(e.clientName),
+        subiekt_tw_id:
+          e.subiektTwId != null && e.subiektTwId > 0 ? e.subiektTwId : null,
       };
     });
     const { error } = await supabase.from("individual_orders").insert(rows);
@@ -337,6 +341,7 @@ export async function completeVerificationOrder(
     product: string;
     quantity?: string;
     requestKind?: IndividualRequestKind;
+    subiektTwId?: number | null;
   }
 ) {
   const kind = (data.requestKind ?? "zamowienie") as IndividualRequestKind;
@@ -377,6 +382,8 @@ export async function completeVerificationOrder(
       quantity: quantityForRequestKind(data.requestKind, sanitized.quantity),
       request_kind: (data.requestKind ?? "zamowienie") as IndividualRequestKind,
       status: "Nowe",
+      subiekt_tw_id:
+        data.subiektTwId != null && data.subiektTwId > 0 ? data.subiektTwId : null,
     })
     .eq("id", orderId)
     .eq("status", "Weryfikacja");
@@ -474,6 +481,8 @@ export async function updateIndividualRequestGroup(
       request_kind: kind,
       status,
       sales_client_name: normalizeSalesClientName(line.clientName),
+      subiekt_tw_id:
+        line.subiektTwId != null && line.subiektTwId > 0 ? line.subiektTwId : null,
     };
 
     if (line.id) {
@@ -629,14 +638,15 @@ export async function markInformacjaArrived(
       continue;
     }
 
-    await supabase
-      .from("individual_orders")
-      .update({
-        status: "Zrealizowane",
-        delivered_quantity: INFORMACJA_NO_QUANTITY,
-        delivery_at: new Date().toISOString(),
-      })
-      .eq("id", id);
+    const shelfUpdate: Record<string, unknown> = {
+      status: "Zrealizowane",
+      delivered_quantity: INFORMACJA_NO_QUANTITY,
+      delivery_at: new Date().toISOString(),
+    };
+    if (!order.warehouse_shelf?.trim()) {
+      shelfUpdate.warehouse_shelf = WAREHOUSE_SHELF_DEFAULT;
+    }
+    await supabase.from("individual_orders").update(shelfUpdate).eq("id", id);
     updated++;
 
     let person = personEmailCache.get(order.sales_person_id);
@@ -749,6 +759,9 @@ async function applyDeliveredQuantityUpdate(
   };
   if (status === "Zrealizowane" || status === "Czesciowo_zrealizowane") {
     update.delivery_at = new Date().toISOString();
+    if (!order.warehouse_shelf?.trim()) {
+      update.warehouse_shelf = WAREHOUSE_SHELF_DEFAULT;
+    }
   } else if (status === "Zamowione") {
     update.delivery_at = null;
   }
@@ -1008,16 +1021,26 @@ export async function processMarkedDeliveries(): Promise<ProcessDeliveriesResult
     const status = resolveStatusFromDeliveredQuantity(order.quantity, deliveredQty);
     if (status === "Zamowione") continue;
 
+    const updatePayload: {
+      status: typeof status;
+      delivery_at: string;
+      delivered_quantity: string;
+      warehouse_shelf?: string;
+    } = {
+      status,
+      delivery_at: new Date().toISOString(),
+      delivered_quantity:
+        status === "Zrealizowane" && !isNaN(ordered)
+          ? String(ordered)
+          : deliveredQty,
+    };
+    if (status === "Zrealizowane" || status === "Czesciowo_zrealizowane") {
+      updatePayload.warehouse_shelf = WAREHOUSE_SHELF_DEFAULT;
+    }
+
     const { error: updateError } = await supabase
       .from("individual_orders")
-      .update({
-        status,
-        delivery_at: new Date().toISOString(),
-        delivered_quantity:
-          status === "Zrealizowane" && !isNaN(ordered)
-            ? String(ordered)
-            : deliveredQty,
-      })
+      .update(updatePayload)
       .eq("id", order.id)
       .eq("status", "Zamowione");
 

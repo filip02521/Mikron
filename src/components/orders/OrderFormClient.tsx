@@ -8,6 +8,7 @@ import { Card, CardHeader } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { Toast } from "@/components/ui/Toast";
 import { Field, Select } from "@/components/ui/Field";
+import { SupplierPickerField } from "@/components/orders/SupplierPickerField";
 import type { DeliveryStats, IndividualRequestKind, StatsMode } from "@/types/database";
 import { SupplierLeadTimeHint } from "@/components/orders/SupplierLeadTimeHint";
 import { RequestKindToggle } from "@/components/orders/RequestKindToggle";
@@ -85,6 +86,7 @@ interface Entry {
   product: string;
   quantity: string;
   clientName?: string;
+  subiektTwId?: number | null;
 }
 
 function emptyEntry(salesPersonId = ""): Entry {
@@ -202,6 +204,7 @@ export function OrderFormClient({
             quantity: requestKind === "informacja" ? undefined : e.quantity,
             requestKind,
             clientName: e.clientName,
+            subiektTwId: e.subiektTwId,
           }))
         );
         setMsg({
@@ -337,24 +340,19 @@ export function OrderFormClient({
             >
               <div className="space-y-4">
                 <Field label="Dostawca (opcjonalnie)">
-                  <Select
+                  <SupplierPickerField
+                    suppliers={suppliers}
                     value={supplierId}
-                    onChange={(e) => {
-                      const v = e.target.value;
+                    onChange={(v) => {
                       setGroups((g) =>
                         g.map((gr, i) =>
                           i === 0 ? gr.map((row) => ({ ...row, supplierId: v })) : gr
                         )
                       );
                     }}
-                  >
-                    <option value="">Wybierz później / nie wiem</option>
-                    {suppliers.map((s) => (
-                      <option key={s.id} value={s.id}>
-                        {s.name}
-                      </option>
-                    ))}
-                  </Select>
+                    allowEmpty
+                    emptyLabel="Wybierz później / nie wiem"
+                  />
                 </Field>
                 {supplierFromPlan ? (
                   <p className="text-xs font-medium text-indigo-700">
@@ -501,24 +499,20 @@ export function OrderFormClient({
               ) : null}
               <div>
                 <Field label="Dostawca (opcjonalnie przy weryfikacji)">
-                  <Select
+                  <SupplierPickerField
+                    suppliers={suppliers}
                     value={group[0]?.supplierId ?? ""}
-                    onChange={(e) => {
-                      const v = e.target.value;
+                    onChange={(v) => {
                       setGroups((g) =>
                         g.map((gr, i) =>
                           i === gi ? gr.map((row) => ({ ...row, supplierId: v })) : gr
                         )
                       );
                     }}
-                  >
-                    <option value="">Wybierz dostawcę</option>
-                    {suppliers.map((s) => (
-                      <option key={s.id} value={s.id}>
-                        {s.name}
-                      </option>
-                    ))}
-                  </Select>
+                    allowEmpty
+                    emptyLabel="Wybierz dostawcę"
+                    placeholder="Szukaj dostawcy w systemie lub Subiekcie…"
+                  />
                 </Field>
                 {initialSupplierId &&
                 group[0]?.supplierId === initialSupplierId &&

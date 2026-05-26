@@ -19,6 +19,7 @@ import {
   buildSalesCancelledNotices,
   type SalesCancelledNotice,
 } from "@/lib/orders/sales-cancelled-notices";
+import { mapOrderToForSomeoneLine } from "@/lib/orders/product-source";
 import { isIndividualOrderProcurementReady } from "@/lib/orders/procurement-readiness";
 import { isSupplierOrderOnDemand } from "@/lib/orders/supplier-on-demand";
 import {
@@ -57,6 +58,8 @@ export type ForSomeoneLine = {
   products: string;
   symbol: string;
   quantity: string;
+  fromSubiekt: boolean;
+  subiektTwId?: number | null;
 };
 
 export type SummaryForSomeoneEnriched = {
@@ -320,12 +323,7 @@ export function buildSummaryWorkspace(
     const count = g.items.length;
     const countLabel =
       count === 1 ? "produkt" : count > 1 && count < 5 ? "produkty" : "produktów";
-    const lines = g.items.map((item) => ({
-      id: item.id,
-      products: item.products,
-      symbol: item.symbol || "-",
-      quantity: item.quantity || "-",
-    }));
+    const lines = g.items.map((item) => mapOrderToForSomeoneLine(item));
     const hoverNote = lines
       .map((l) => `${l.symbol}: ${l.products} (${l.quantity})`)
       .join("\n");

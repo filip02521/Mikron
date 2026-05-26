@@ -2,6 +2,8 @@
 
 import { useMemo, useState, useRef, useEffect } from "react";
 import { locationLabel } from "@/lib/display-labels";
+import { panelToolbarSearchInputClass } from "@/lib/ui/ontime-theme";
+import { cn } from "@/lib/cn";
 import type { SupplierLocation } from "@/types/database";
 
 export type SupplierDirectoryEntry = {
@@ -15,10 +17,13 @@ export function SupplierSearchField({
   suppliers,
   onSelect,
   inputId = "supplier-search",
+  appearance = "default",
 }: {
   suppliers: SupplierDirectoryEntry[];
   onSelect: (id: string) => void;
   inputId?: string;
+  /** toolbar — wysokość jak przyciski w nagłówku panelu dziennego */
+  appearance?: "default" | "toolbar";
 }) {
   const [query, setQuery] = useState("");
   const [open, setOpen] = useState(false);
@@ -40,8 +45,13 @@ export function SupplierSearchField({
     return () => document.removeEventListener("mousedown", onDoc);
   }, []);
 
+  const isToolbar = appearance === "toolbar";
+
   return (
-    <div ref={ref} className="relative min-w-0 flex-1 sm:max-w-xs">
+    <div
+      ref={ref}
+      className={cn("relative min-w-0", isToolbar ? "w-full" : "flex-1 sm:max-w-xs")}
+    >
       <label htmlFor={inputId} className="sr-only">
         Szukaj dostawcy
       </label>
@@ -49,7 +59,11 @@ export function SupplierSearchField({
         id={inputId}
         type="search"
         placeholder="Szukaj dostawcy… (/)"
-        className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm shadow-sm placeholder:text-slate-400 focus:border-indigo-300 focus:outline-none focus:ring-2 focus:ring-indigo-100"
+        className={cn(
+          isToolbar
+            ? panelToolbarSearchInputClass
+            : "w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm shadow-sm placeholder:text-slate-400 focus:border-indigo-300 focus:outline-none focus:ring-2 focus:ring-indigo-100"
+        )}
         value={query}
         onChange={(e) => {
           setQuery(e.target.value);

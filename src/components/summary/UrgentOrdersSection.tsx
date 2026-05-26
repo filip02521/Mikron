@@ -20,7 +20,11 @@ import { SupplierContactActions } from "@/components/procurement/SupplierContact
 import type { SupplierSummaryMeta } from "@/lib/orders/summary-workspace";
 import type { DailyPanelSubsectionTone } from "@/components/summary/DailyPanelSubsectionBar";
 import { cn } from "@/lib/cn";
-import { checkboxBrandClass, rowPendingRingClass } from "@/lib/ui/ontime-theme";
+import {
+  checkboxBrandClass,
+  panelNameLinkClass,
+  rowPendingRingClass,
+} from "@/lib/ui/ontime-theme";
 import {
   urgentCardClassName,
   urgentGroupDividerClassName,
@@ -93,7 +97,7 @@ function UrgentCard({
             <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5">
               <button
                 type="button"
-                className="text-left text-sm font-semibold leading-tight text-slate-900 hover:underline"
+                className={cn("text-sm font-semibold leading-tight", panelNameLinkClass)}
                 onClick={() => onOpenSupplier(item.supplierId)}
               >
                 {item.supplierName}
@@ -299,7 +303,7 @@ export function UrgentOrdersSection({
         <label className="flex cursor-pointer items-center gap-2 text-sm text-slate-600">
           <input
             type="checkbox"
-            className="h-4 w-4 rounded border-slate-300"
+            className={cn("h-4 w-4", checkboxBrandClass)}
             checked={allSelected}
             onChange={(e) => onSelectAllInScope(e.target.checked, scopeIds)}
           />

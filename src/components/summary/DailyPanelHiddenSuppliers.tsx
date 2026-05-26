@@ -13,7 +13,7 @@ import {
 } from "@/components/icons/StrokeIcons";
 import { SectionHeadingIcon } from "@/components/icons/SectionHeadingIcon";
 import { cn } from "@/lib/cn";
-import { brandLinkClass } from "@/lib/ui/ontime-theme";
+import { panelNameLinkClass, panelTextLinkClass } from "@/lib/ui/ontime-theme";
 
 export function DailyPanelHiddenSuppliers({
   report,
@@ -89,7 +89,7 @@ export function DailyPanelHiddenSuppliers({
                       <button
                         type="button"
                         onClick={() => onOpenSupplier(row.supplierId)}
-                        className="text-left text-sm font-medium text-slate-900 hover:underline"
+                        className={cn("text-sm", panelNameLinkClass)}
                       >
                         {row.supplierName}
                       </button>
@@ -105,14 +105,14 @@ export function DailyPanelHiddenSuppliers({
                       <button
                         type="button"
                         onClick={onOpenOnDemand}
-                        className="shrink-0 text-xs font-medium text-violet-800 hover:underline"
+                        className={cn("shrink-0 text-xs", panelTextLinkClass)}
                       >
                         Lista na żądanie
                       </button>
                     ) : (
                       <Link
                         href={`/lokalizacje/${row.location}`}
-                        className={cn("shrink-0 text-xs", brandLinkClass)}
+                        className={cn("shrink-0 text-xs", panelTextLinkClass)}
                       >
                         Terminy
                       </Link>

@@ -2,6 +2,7 @@
 
 import { useCallback, useRef, useState } from "react";
 import { cn } from "@/lib/cn";
+import { buttonPrimaryClass, panelHoldOutlineClass } from "@/lib/ui/ontime-theme";
 import { buttonGroupItemClass } from "@/lib/ui/surfaces";
 
 const DEFAULT_HOLD_MS = 650;
@@ -9,22 +10,20 @@ const DEFAULT_HOLD_MS = 650;
 type Variant = "primary" | "outline" | "sky";
 
 const variantShell: Record<Variant, string> = {
-  primary:
-    "bg-indigo-600 text-white hover:bg-indigo-700 active:bg-indigo-800",
-  outline:
-    "border border-indigo-200 bg-indigo-50/50 text-indigo-700 hover:bg-indigo-50",
-  sky: "bg-sky-600 text-white hover:bg-sky-700 active:bg-sky-800",
+  primary: cn(buttonPrimaryClass, "shadow-sm shadow-indigo-600/15"),
+  outline: panelHoldOutlineClass,
+  sky: cn(buttonPrimaryClass, "from-sky-600 to-sky-700 shadow-sm shadow-sky-600/15"),
 };
 
 const variantFill: Record<Variant, string> = {
-  primary: "bg-indigo-300/50",
-  outline: "bg-indigo-200/70",
-  sky: "bg-sky-300/50",
+  primary: "bg-white/25",
+  outline: "bg-indigo-200/60",
+  sky: "bg-white/25",
 };
 
 const variantRing: Record<Variant, string> = {
-  primary: "ring-indigo-400/40",
-  outline: "ring-indigo-400/40",
+  primary: "ring-sky-500/25",
+  outline: "ring-indigo-300/50",
   sky: "ring-sky-400/40",
 };
 

@@ -7,12 +7,8 @@ import { SupplierQuickActionsMenu } from "@/components/procurement/SupplierQuick
 import type { DailyPanelRunFn } from "@/components/summary/useDailyPanelRunner";
 import type { SupplierLocation } from "@/types/database";
 import { cn } from "@/lib/cn";
-
-const shellClass =
-  "inline-flex max-w-full items-stretch rounded-xl border border-slate-200 bg-white shadow-sm";
-
-const segmentClass =
-  "min-h-9 shrink-0 !rounded-none border-0 shadow-none focus-visible:z-10";
+import { panelSegmentPrimaryClass } from "@/lib/ui/ontime-theme";
+import { buttonGroupItemClass, buttonGroupShellClass } from "@/lib/ui/surfaces";
 
 /** Zamówione + Przesuń + ⋮ — jeden segment wizualnie, osobne cele kliknięcia. */
 export function ScheduleSupplierActionBar({
@@ -32,7 +28,7 @@ export function ScheduleSupplierActionBar({
   location: SupplierLocation;
   pending: boolean;
   run: DailyPanelRunFn;
-  onOpenSupplier: () => void;
+  onOpenSupplier?: () => void;
   onVacation: () => void;
   onEdit: () => void;
   className?: string;
@@ -61,7 +57,7 @@ export function ScheduleSupplierActionBar({
           variant="primary"
           size="sm"
           disabled={pending}
-          className="h-8 w-full rounded-lg text-xs font-semibold"
+          className="h-8 w-full rounded-xl text-xs font-semibold"
           onClick={markOrdered}
         >
           Zamówione
@@ -113,14 +109,14 @@ export function ScheduleSupplierActionBar({
       role="group"
       aria-label={`Akcje harmonogramu — ${supplierName}`}
       aria-busy={pending}
-      className={cn(shellClass, pending && "opacity-60", className)}
+      className={cn(buttonGroupShellClass, "max-w-full", pending && "opacity-60", className)}
     >
       <Button
         type="button"
         variant="primary"
         size="sm"
         disabled={pending}
-        className={cn(segmentClass, "rounded-l-xl px-3.5 font-semibold")}
+        className={cn(buttonGroupItemClass, panelSegmentPrimaryClass, "focus-visible:z-10")}
         onClick={markOrdered}
       >
         Zamówione

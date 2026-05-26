@@ -28,7 +28,7 @@ import { editInitialFromForSomeoneGroup } from "@/lib/orders/individual-request-
 import { RequestGroupOverflowMenu } from "@/components/summary/RequestGroupOverflowMenu";
 import { DailyPanelSubsectionBar } from "@/components/summary/DailyPanelSubsectionBar";
 import { cn } from "@/lib/cn";
-import { rowPendingRingClass } from "@/lib/ui/ontime-theme";
+import { panelNameLinkClass, rowPendingRingClass } from "@/lib/ui/ontime-theme";
 
 function groupKey(g: SummaryForSomeoneEnriched) {
   return `${g.supplierId}-${g.salesPersonId}`;
@@ -45,6 +45,11 @@ function SectionHelp() {
       <p className="mb-2">
         <strong className="font-medium text-slate-800">Przytrzymaj</strong> wybrany przycisk ok.
         0,7 s — zabezpieczenie przed przypadkowym zamówieniem.
+      </p>
+      <p className="mb-2">
+        Przy produkcie: <strong className="text-emerald-800">✓</strong> — wybrano z kartoteki
+        Subiekt; <strong className="text-slate-600">✎</strong> — wpis ręczny (bez powiązania z
+        Subiektem).
       </p>
       <p>Rozwiń kartę po listę produktów i szacunek czasu realizacji u dostawcy.</p>
     </HelpPopover>
@@ -94,6 +99,7 @@ export function ForSomeoneRequests({
   const [editTarget, setEditTarget] = useState<{
     orderIds: string[];
     initial: EditIndividualRequestInitial;
+    scopeKey: string;
   } | null>(null);
 
   const Wrapper = embedded ? "div" : Card;
@@ -150,7 +156,10 @@ export function ForSomeoneRequests({
           run(
             async () => ({ success: true as const }),
             msg,
-            "Odświeżanie panelu…"
+            "Odświeżanie panelu…",
+            editTarget
+              ? { scope: `${editTarget.scopeKey}:edit`, overlay: false }
+              : { overlay: false }
           )
         }
       />
@@ -208,7 +217,7 @@ export function ForSomeoneRequests({
                       <p className="mt-0.5 text-xs text-slate-500">
                         <button
                           type="button"
-                          className="font-medium text-slate-700 hover:underline"
+                          className={panelNameLinkClass}
                           onClick={() => onOpenSupplier(g.supplierId)}
                         >
                           {g.supplierName}
@@ -229,7 +238,7 @@ export function ForSomeoneRequests({
                   <div className="mt-3 flex flex-wrap items-center justify-between gap-2">
                     {g.lines.length > 0 ? (
                       <Button
-                        variant="secondary"
+                        variant="outline"
                         size="sm"
                         disabled={groupPending}
                         className="min-h-[2.125rem] shrink-0"
@@ -288,6 +297,7 @@ export function ForSomeoneRequests({
                           setEditTarget({
                             orderIds: g.orderIds,
                             initial: editInitialFromForSomeoneGroup(g),
+                            scopeKey: key,
                           })
                         }
                         onCancel={() =>

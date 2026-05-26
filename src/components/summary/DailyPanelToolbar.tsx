@@ -54,7 +54,7 @@ export function DailyPanelToolbar({
               {" "}
               <button
                 type="button"
-                className="font-medium text-violet-800 underline decoration-violet-200 underline-offset-2 hover:text-violet-950"
+                className="font-medium text-slate-600 transition-colors hover:text-slate-800"
                 onClick={onOpenOnDemand}
               >
                 Pełna lista na żądanie ({summary.onDemandCount})

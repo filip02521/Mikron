@@ -160,7 +160,7 @@ select:disabled,
   background-color: #f8fafc;
 }
 
-.data-table tbody tr:hover td:first-child {
+.data-table tbody tr:hover td:first-child:not([class*="border-l-"]) {
   box-shadow: inset 3px 0 0 0 var(--primary);
 }
 

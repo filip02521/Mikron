@@ -10,6 +10,7 @@ import { UndoToast } from "@/components/ui/UndoToast";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { Card, CardHeader } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
+import { panelDashedActionClass } from "@/lib/ui/ontime-theme";
 import { WeekPlanner } from "@/components/summary/WeekPlanner";
 import { SupplierDrawer } from "@/components/summary/SupplierDrawer";
 import { QuickOrderModal } from "@/components/summary/QuickOrderModal";
@@ -27,6 +28,7 @@ import {
 import { DailyPanelToolbar } from "@/components/summary/DailyPanelToolbar";
 import { DailyPanelTabs } from "@/components/summary/DailyPanelTabs";
 import { useDailyPanelView } from "@/hooks/useDailyPanelView";
+import { dailyPanelIntroDescription } from "@/lib/orders/daily-panel-view";
 import { ForSomeoneRequests } from "@/components/summary/ForSomeoneRequests";
 import { UrgentOrdersSection } from "@/components/summary/UrgentOrdersSection";
 import { useDailyPanelRunner } from "@/components/summary/useDailyPanelRunner";
@@ -39,7 +41,6 @@ import { VerificationModal } from "@/components/verification/VerificationModal";
 import { OnDemandSuppliersSheet } from "@/components/summary/OnDemandSuppliersSheet";
 import { DailyPanelActionsBar } from "@/components/summary/DailyPanelActionsBar";
 import { DailyPanelExceptionsView } from "@/components/summary/DailyPanelExceptionsView";
-import { PanelDailyHelp } from "@/components/summary/PanelDailyHelp";
 import { SectionListLabel } from "@/components/ui/SectionListLabel";
 import {
   DailySectionIcon,
@@ -50,9 +51,6 @@ import { SectionHeadingIcon } from "@/components/icons/SectionHeadingIcon";
 import { brandIconTileClass, sidebarBrandAccentClass } from "@/lib/ui/ontime-theme";
 import { ProsbaFormSection } from "@/components/orders/ProsbaFormSection";
 import { cn } from "@/lib/cn";
-
-const PANEL_INTRO =
-  "Dziś — kolejka pracy · Tydzień — plan · Wyjątki — poza harmonogramem i innymi ścieżkami. Skróty: wyszukaj dostawcę (/), nowa prośba, menu ⋯.";
 
 export function SummaryWorkspace({
   workspace,
@@ -85,6 +83,7 @@ export function SummaryWorkspace({
   } = useDailyPanelRunner();
 
   const { view: panelView, setView: setPanelView } = useDailyPanelView();
+  const panelIntro = dailyPanelIntroDescription(panelView);
 
   const [selected, setSelected] = useState<Record<string, boolean>>({});
   const [drawerId, setDrawerId] = useState<string | null>(null);
@@ -159,8 +158,16 @@ export function SummaryWorkspace({
       }
 
       if (e.key === "/" && !e.metaKey && !e.ctrlKey) {
-        e.preventDefault();
-        document.getElementById("supplier-search")?.focus();
+        const blocked =
+          orderModalOpen ||
+          verificationModalOpen ||
+          editModalSupplierId !== null ||
+          vacationModalSupplierId !== null ||
+          onDemandOpen;
+        if (!blocked) {
+          e.preventDefault();
+          document.getElementById("supplier-search")?.focus();
+        }
         return;
       }
 
@@ -182,7 +189,16 @@ export function SummaryWorkspace({
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [drawerId, drawerSupplier, run]);
+  }, [
+    drawerId,
+    drawerSupplier,
+    run,
+    orderModalOpen,
+    verificationModalOpen,
+    editModalSupplierId,
+    vacationModalSupplierId,
+    onDemandOpen,
+  ]);
 
   const toggle = (supplierId: string) =>
     setSelected((s) => ({ ...s, [supplierId]: !s[supplierId] }));
@@ -272,9 +288,9 @@ export function SummaryWorkspace({
             </SectionHeadingIcon>
           }
           title="Panel dzienny"
-          description={PANEL_INTRO}
+          description={panelIntro}
           action={
-            <div className="flex w-full min-w-0 flex-col items-stretch gap-2 lg:w-auto lg:min-w-[20rem] lg:max-w-xl">
+            <div className="w-full min-w-0 lg:max-w-xl">
               <DailyPanelActionsBar
                 summary={inboxSummary}
                 suppliers={supplierDirectory}
@@ -283,9 +299,6 @@ export function SummaryWorkspace({
                 onNewSupplier={() => openEditFor("new")}
                 onOpenOnDemand={() => setOnDemandOpen(true)}
               />
-              <div className="flex justify-end">
-                <PanelDailyHelp />
-              </div>
             </div>
           }
         />
@@ -430,7 +443,7 @@ export function SummaryWorkspace({
                 >
                   <button
                     type="button"
-                    className="text-sm font-medium text-violet-800 underline decoration-violet-200 underline-offset-2 hover:text-violet-950"
+                    className="text-sm font-medium text-slate-600 transition-colors hover:text-slate-800"
                     onClick={() => setOnDemandOpen(true)}
                   >
                     Pokaż listę ({workspace.onDemandSuppliers.length}{" "}
@@ -467,7 +480,7 @@ export function SummaryWorkspace({
                   <button
                     type="button"
                     onClick={() => setShowNextWeek(false)}
-                    className="text-sm font-medium text-slate-500 hover:text-slate-800"
+                    className="text-sm font-medium text-slate-600 transition hover:text-indigo-800"
                   >
                     Ukryj następny tydzień
                   </button>
@@ -476,7 +489,7 @@ export function SummaryWorkspace({
                 <button
                   type="button"
                   onClick={() => setShowNextWeek(true)}
-                  className="w-full rounded-xl border border-dashed border-slate-200 bg-slate-50/50 px-4 py-3 text-sm font-medium text-slate-600 transition hover:border-slate-300 hover:bg-slate-50 hover:text-slate-900"
+                  className={panelDashedActionClass}
                 >
                   Pokaż następny tydzień
                 </button>

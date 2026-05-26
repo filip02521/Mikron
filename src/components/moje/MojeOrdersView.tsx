@@ -24,6 +24,8 @@ import {
 } from "@/components/icons/StrokeIcons";
 import { SectionHeadingIcon } from "@/components/icons/SectionHeadingIcon";
 import { brandLinkSubtleClass, sectionIconTileBrandClass } from "@/lib/ui/ontime-theme";
+import { SubiektStatusBar } from "@/components/subiekt/SubiektStatusBar";
+import type { SubiektAvailability } from "@/lib/subiekt/availability";
 
 function cardDomId(rowId: string) {
   return `moje-card-${rowId}`;
@@ -141,6 +143,7 @@ export function MojeOrdersView({
   pageTitle = "Moje zamówienia",
   pageDescription,
   headerActions,
+  subiektAvailability,
 }: {
   zamowienia: MyOrderRow[];
   informacje: MyOrderRow[];
@@ -153,6 +156,7 @@ export function MojeOrdersView({
   pageTitle?: string;
   pageDescription?: string;
   headerActions?: React.ReactNode;
+  subiektAvailability?: SubiektAvailability;
 }) {
   const [activeFilter, setActiveFilter] = useState<MyOrderInboxFilter | null>(null);
 
@@ -397,6 +401,10 @@ export function MojeOrdersView({
         rowsRecent={archiwumRecent}
         rowsExtended={archiwumExtended}
       />
+
+      {subiektAvailability ? (
+        <SubiektStatusBar initial={subiektAvailability} className="mt-2" />
+      ) : null}
     </div>
   );
 }

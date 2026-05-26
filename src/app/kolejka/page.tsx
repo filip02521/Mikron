@@ -2,6 +2,7 @@ import {
   countPickupReadyForSales,
   fetchDeliveryQueue,
   fetchInformacjaQueue,
+  fetchWarehouseInventory,
 } from "@/lib/data/queries";
 import { QueueClient } from "@/components/queue/QueueClient";
 import { Alert } from "@/components/ui/Alert";
@@ -11,19 +12,22 @@ export default async function KolejkaPage() {
   let orders: IndividualOrder[] = [];
   let informacjaOrders: IndividualOrder[] = [];
   let pickupReadyCount = 0;
+  let warehouseInventory: IndividualOrder[] = [];
   let error: string | null = null;
 
   try {
-    [orders, informacjaOrders, pickupReadyCount] = await Promise.all([
+    [orders, informacjaOrders, pickupReadyCount, warehouseInventory] = await Promise.all([
       fetchDeliveryQueue(),
       fetchInformacjaQueue(),
       countPickupReadyForSales(),
+      fetchWarehouseInventory(),
     ]);
   } catch (e) {
     error = e instanceof Error ? e.message : "Nie udało się załadować kolejki.";
     orders = [];
     informacjaOrders = [];
     pickupReadyCount = 0;
+    warehouseInventory = [];
   }
 
   return (
@@ -38,6 +42,7 @@ export default async function KolejkaPage() {
         orders={orders}
         informacjaOrders={informacjaOrders}
         pickupReadyCount={pickupReadyCount}
+        warehouseInventory={warehouseInventory}
       />
     </>
   );

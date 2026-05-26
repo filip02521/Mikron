@@ -16,6 +16,8 @@ import { resolvePreviewSalesPerson } from "@/lib/auth/resolve-preview-sales-pers
 import { getAppRole } from "@/lib/auth-dev";
 import { canAccessOperations, isSalesAccount, isSalesManager } from "@/lib/auth-roles";
 import { presentMyOrders } from "@/lib/orders/my-order-presenter";
+import { getSubiektAvailability } from "@/lib/subiekt/availability";
+import { resolveSubiektZdEtasForOrders, type SubiektZdEta } from "@/lib/subiekt/zd-eta";
 import Link from "next/link";
 import { Button } from "@/components/ui/Button";
 import { Alert } from "@/components/ui/Alert";
@@ -136,7 +138,22 @@ export default async function MojePage({
     loadError = e instanceof Error ? e.message : "Nie udało się załadować zamówień.";
   }
 
-  const { zamowienia, informacje, productLineCount } = presentMyOrders(orders, stats);
+  const subiektAvailability = await getSubiektAvailability();
+
+  let zdEtaByOrderId: Record<string, SubiektZdEta> = {};
+  if (subiektAvailability.reachable) {
+    try {
+      zdEtaByOrderId = await resolveSubiektZdEtasForOrders(orders);
+    } catch {
+      /* pojedynczy błąd ZD — zostaje szacunek z historii */
+    }
+  }
+
+  const { zamowienia, informacje, productLineCount } = presentMyOrders(
+    orders,
+    stats,
+    zdEtaByOrderId
+  );
 
   const salesHeaderActions =
     role && !canAccessOperations(role) ? (
@@ -191,6 +208,7 @@ export default async function MojePage({
         canAcknowledge={!!viewingOwnPanel}
         showProsbaCta={isSalesAccount(role ?? "sales") && !isTeamPreview}
         suppliers={suppliers}
+        subiektAvailability={subiektAvailability}
       />
     </div>
   );

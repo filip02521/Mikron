@@ -7,6 +7,7 @@ export type ProductLineDraft = {
   product: string;
   quantity: string;
   clientName?: string;
+  subiektTwId?: number | null;
 };
 
 export function newProductLine(): ProductLineDraft {

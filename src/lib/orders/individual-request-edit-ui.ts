@@ -17,6 +17,7 @@ export function editInitialFromForSomeoneGroup(
       symbol: l.symbol === "-" ? "" : l.symbol,
       product: l.products,
       quantity: l.quantity === "-" ? "" : l.quantity,
+      subiektTwId: l.subiektTwId ?? null,
     })),
   };
 }
@@ -33,6 +34,7 @@ export function editInitialFromMyOrderRow(row: MyOrderRow): EditIndividualReques
       product: l.product,
       quantity: l.quantity,
       clientName: l.clientName ?? "",
+      subiektTwId: l.subiektTwId ?? null,
     })),
   };
 }
@@ -49,6 +51,7 @@ export function editInitialFromOrders(orders: IndividualOrder[]): EditIndividual
       product: l.product ?? "",
       quantity: l.quantity ?? "",
       clientName: l.clientName ?? "",
+      subiektTwId: l.subiektTwId ?? null,
     })),
   };
 }

@@ -34,6 +34,33 @@ const baseOrder: IndividualOrder = {
 };
 
 describe("presentMyOrder", () => {
+  it("preferuje termin z ZD Subiekta nad historią", () => {
+    const row = presentMyOrders(
+      [baseOrder],
+      [
+        {
+          supplier_id: "sup1",
+          main_avg: 5,
+          main_count: 10,
+          main_sum: 50,
+          side_avg: null,
+          side_count: null,
+          side_sum: null,
+        },
+      ],
+      {
+        "1": {
+          realizationDate: "2026-06-18",
+          documentNumber: "ZD/99",
+          matchedBy: "symbol",
+        },
+      }
+    ).zamowienia[0];
+    expect(row.timingLabel).toContain("Termin ZD ZD/99");
+    expect(row.timingLabel).toContain("18.06.2026");
+    expect(row.statusDetail).toContain("W Subiekcie jest ZD");
+  });
+
   it("pokazuje szacowany termin dla zamówienia u dostawcy", () => {
     const row = presentMyOrders([baseOrder], [
       {

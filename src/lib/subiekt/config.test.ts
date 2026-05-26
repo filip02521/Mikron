@@ -33,7 +33,15 @@ describe("subiekt config", () => {
     const config = getSubiektConfig();
     expect(config?.baseUrl).toBe("https://subiekt.example.com/api");
     expect(config?.authMode).toBe("bearer");
-    expect(config?.healthPath).toBe("/");
+    expect(config?.healthPath).toBe("/health");
+  });
+
+  it("honoruje authMode=none bez klucza", () => {
+    process.env.SUBIEKT_API_BASE_URL = "http://192.168.0.140:5080/api/v1";
+    process.env.SUBIEKT_API_AUTH_MODE = "none";
+    const config = getSubiektConfig();
+    expect(config?.authMode).toBe("none");
+    expect(config?.healthPath).toBe("/health");
   });
 
   it("summary bez sekretów", () => {

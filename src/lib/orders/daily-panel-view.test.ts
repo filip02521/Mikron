@@ -1,5 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { dailyPanelViewLabel, parseDailyPanelView } from "./daily-panel-view";
+import {
+  dailyPanelIntroDescription,
+  dailyPanelViewLabel,
+  parseDailyPanelView,
+} from "./daily-panel-view";
 
 describe("daily panel view", () => {
   it("parsuje view z URL", () => {
@@ -14,5 +18,18 @@ describe("daily panel view", () => {
     expect(dailyPanelViewLabel("dzis")).toBe("Dziś");
     expect(dailyPanelViewLabel("tydzien")).toBe("Tydzień");
     expect(dailyPanelViewLabel("wyjatki")).toBe("Wyjątki");
+  });
+
+  it("opis panelu zależy od zakładki", () => {
+    expect(dailyPanelIntroDescription("dzis", { includeShortcuts: false })).toContain(
+      "Zaległe"
+    );
+    expect(dailyPanelIntroDescription("tydzien", { includeShortcuts: false })).toContain(
+      "Plan zamówień"
+    );
+    expect(dailyPanelIntroDescription("wyjatki", { includeShortcuts: false })).toContain(
+      "Rezygnacje"
+    );
+    expect(dailyPanelIntroDescription("dzis")).toContain("Skróty:");
   });
 });

@@ -71,6 +71,13 @@ const INFORMACJA_GROUP_STYLES = [
 
 type QueueTableVariant = "delivery" | "informacja";
 
+function supplierGroupPalette(groupIndex: number, variant: QueueTableVariant) {
+  return variant === "informacja"
+    ? INFORMACJA_GROUP_STYLES[groupIndex % INFORMACJA_GROUP_STYLES.length]
+    : DELIVERY_GROUP_STYLES[groupIndex % DELIVERY_GROUP_STYLES.length];
+}
+
+/** Tło wiersza (na `<tr>`). Pasek koloru — na pierwszej `<td>` przez `queueSupplierLeadingCellClass`. */
 export function queueSupplierRowClass(
   groupIndex: number,
   options?: {
@@ -80,15 +87,20 @@ export function queueSupplierRowClass(
   }
 ): string {
   const variant = options?.variant ?? "delivery";
-  const palette =
-    variant === "informacja"
-      ? INFORMACJA_GROUP_STYLES[groupIndex % INFORMACJA_GROUP_STYLES.length]
-      : DELIVERY_GROUP_STYLES[groupIndex % DELIVERY_GROUP_STYLES.length];
+  const palette = supplierGroupPalette(groupIndex, variant);
 
   return cn(
-    "border-l-[3px]",
-    palette.border,
     options?.isPartial ? "bg-amber-50/85" : palette.bg,
     options?.isFirstInSupplierGroup === false && "border-t border-slate-200/90"
   );
+}
+
+/** Lewy pasek grupy — musi być na pierwszej komórce wiersza (border na `<tr>` nie renderuje się przy border-collapse). */
+export function queueSupplierLeadingCellClass(
+  groupIndex: number,
+  options?: { variant?: QueueTableVariant }
+): string {
+  const variant = options?.variant ?? "delivery";
+  const palette = supplierGroupPalette(groupIndex, variant);
+  return cn("border-l-[3px]", palette.border);
 }

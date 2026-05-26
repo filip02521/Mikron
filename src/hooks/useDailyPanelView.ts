@@ -30,12 +30,13 @@ export function useDailyPanelView() {
     } else if (hash === "dzis") {
       setView("dzis");
       window.history.replaceState(null, "", window.location.pathname + window.location.search);
-    } else if (hash === "poza-harmonogramem") {
+    } else if (hash === "poza-harmonogramem" || hash === "narzedzia") {
       setView("wyjatki");
+      const nextHash = hash === "poza-harmonogramem" ? "#poza-harmonogramem" : "";
       window.history.replaceState(
         null,
         "",
-        `${window.location.pathname}?view=wyjatki#poza-harmonogramem`
+        `${window.location.pathname}?view=wyjatki${nextHash}`
       );
     }
   }, [setView]);

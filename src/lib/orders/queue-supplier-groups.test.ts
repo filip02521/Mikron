@@ -2,6 +2,8 @@ import { describe, expect, it } from "vitest";
 import {
   groupOrdersBySupplier,
   orderIdsInSupplierGroup,
+  queueSupplierLeadingCellClass,
+  queueSupplierRowClass,
 } from "@/lib/orders/queue-supplier-groups";
 import type { IndividualOrder } from "@/types/database";
 
@@ -43,5 +45,11 @@ describe("queue supplier groups", () => {
     ]);
     expect(groups).toHaveLength(1);
     expect(groups[0]!.orders).toHaveLength(2);
+  });
+
+  it("pasek koloru jest na pierwszej komórce, nie na tr", () => {
+    expect(queueSupplierRowClass(0)).not.toContain("border-l-");
+    expect(queueSupplierLeadingCellClass(0)).toContain("border-l-");
+    expect(queueSupplierLeadingCellClass(1, { variant: "informacja" })).toContain("border-l-sky");
   });
 });

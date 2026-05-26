@@ -5,6 +5,7 @@ import { createPortal } from "react-dom";
 import { Button } from "@/components/ui/Button";
 import { IconChevronDown } from "@/components/icons/StrokeIcons";
 import { cn } from "@/lib/cn";
+import { panelMenuItemClass, panelSegmentControlClass, panelSegmentControlOpenClass } from "@/lib/ui/ontime-theme";
 
 function useMenuAnchor() {
   const anchorRef = useRef<HTMLDivElement>(null);
@@ -108,7 +109,7 @@ export function ShiftMenu({
             key={w}
             type="button"
             role="menuitem"
-            className="block w-full cursor-pointer px-3 py-2 text-left text-sm text-slate-700 hover:bg-slate-50"
+            className={panelMenuItemClass}
             onMouseDown={(e) => {
               e.preventDefault();
               pickWeeks(w);
@@ -123,7 +124,7 @@ export function ShiftMenu({
             <button
               type="button"
               role="menuitem"
-              className="block w-full cursor-pointer px-3 py-2 text-left text-sm text-slate-700 hover:bg-slate-50"
+              className={panelMenuItemClass}
               onMouseDown={(e) => {
                 e.preventDefault();
                 setManualOpen(true);
@@ -192,12 +193,10 @@ export function ShiftMenu({
         aria-expanded={open}
         aria-haspopup="menu"
         className={cn(
-          grouped &&
-            !compact &&
-            "min-h-9 shrink-0 !rounded-none border-0 border-l border-slate-200 px-3 text-sm font-medium text-slate-700 shadow-none hover:bg-slate-50",
+          grouped && !compact && cn(panelSegmentControlClass, open && panelSegmentControlOpenClass),
           grouped &&
             compact &&
-            "h-8 min-h-8 w-full !rounded-lg border border-slate-200 px-2 text-xs font-medium text-slate-700 shadow-none hover:bg-slate-50",
+            "h-8 min-h-8 w-full !rounded-xl border border-slate-200/90 px-2 text-xs font-medium text-slate-700 shadow-none hover:bg-indigo-50/60",
           className
         )}
       >

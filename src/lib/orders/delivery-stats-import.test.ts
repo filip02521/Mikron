@@ -1,5 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { parseDeliveryStatsLine } from "./delivery-stats-import";
+import {
+  matchSupplierId,
+  parseDeliveryStatsLine,
+  parseDeliveryStatsRows,
+} from "./delivery-stats-import";
 
 describe("parseDeliveryStatsLine", () => {
   it("parsuje wiersz tylko główny", () => {
@@ -11,6 +15,35 @@ describe("parseDeliveryStatsLine", () => {
     expect(row?.main_count).toBe(2);
     expect(row?.main_avg).toBe(6);
     expect(row?.side_sum).toBeNull();
+  });
+
+  it("parsuje eksport CSV z arkusza", () => {
+    const rows = parseDeliveryStatsRows([
+      [
+        "DOSTAWCA",
+        "SUMA DNI (GŁÓWNE)",
+        "LICZBA DOSTAW (GŁÓWNE)",
+        "ŚREDNI CZAS (GŁÓWNE)",
+        "SUMA DNI (POBOCZNE)",
+        "LICZBA DOSTAW (POBOCZNE)",
+        "ŚREDNI CZAS (POBOCZNE)",
+        "OSTATNIA AKTUALIZACJA",
+      ],
+      ["Amadar", "18", "4", "5", "5", "4", "1", "2026-05-25 19:24:17"],
+      ["3D Jake (niceshops)", "", "", "", "11", "2", "6", "2026-05-25 19:24:17"],
+    ]);
+    expect(rows).toHaveLength(2);
+    expect(rows[0]?.main_avg).toBe(5);
+    expect(rows[0]?.side_avg).toBe(1);
+    expect(rows[1]?.main_sum).toBeNull();
+    expect(rows[1]?.side_count).toBe(2);
+  });
+
+  it("dopasowuje alias Erkodent do Giedrius Juzenas", () => {
+    const suppliers = [
+      { id: "erk-1", name: "Giedrius Juzenas (Erkodent / Komet)" },
+    ];
+    expect(matchSupplierId("Erkodent (Giedrius Juzenas)", suppliers)).toBe("erk-1");
   });
 
   it("parsuje wiersz główny i poboczny", () => {

@@ -13,6 +13,7 @@ import {
 import { createPortal } from "react-dom";
 import { Button } from "@/components/ui/Button";
 import { cn } from "@/lib/cn";
+import { panelSegmentControlClass, panelSegmentControlOpenClass } from "@/lib/ui/ontime-theme";
 import { buttonGroupItemClass } from "@/lib/ui/surfaces";
 
 const CloseMenuContext = createContext<() => void>(() => {});
@@ -121,9 +122,10 @@ export function OverflowMenu({
 
   const segmentTriggerClass = cn(
     buttonGroupItemClass,
-    "relative inline-flex shrink-0 cursor-pointer select-none items-center justify-center overflow-hidden border-l border-slate-200 bg-white px-2.5 py-2 text-sm font-semibold text-slate-700 transition-colors hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50",
-    iconOnly ? "min-w-[2.75rem]" : "gap-1.5 px-3",
-    open && "bg-slate-50",
+    panelSegmentControlClass,
+    "relative inline-flex cursor-pointer select-none items-center justify-center overflow-hidden",
+    iconOnly ? "min-w-[2.75rem] px-2.5" : "gap-1.5 px-3",
+    open && panelSegmentControlOpenClass,
     triggerClassName
   );
 
@@ -244,7 +246,7 @@ export function OverflowMenuItem({
         "block w-full cursor-pointer px-3 py-2 text-left text-sm disabled:cursor-not-allowed disabled:opacity-50",
         danger
           ? "text-red-700 hover:bg-red-50"
-          : "text-slate-700 hover:bg-slate-50"
+          : "text-slate-700 hover:bg-indigo-50/80 hover:text-indigo-950"
       )}
       onClick={() => {
         onClick();

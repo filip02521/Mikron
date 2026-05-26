@@ -1,5 +1,8 @@
 import type { IndividualOrder } from "@/types/database";
-import { queueSupplierRowClass } from "@/lib/orders/queue-supplier-groups";
+import {
+  queueSupplierLeadingCellClass,
+  queueSupplierRowClass,
+} from "@/lib/orders/queue-supplier-groups";
 
 function normalizeToken(value: string): string {
   return value.trim().toLowerCase().replace(/\s+/g, " ");
@@ -81,4 +84,8 @@ export function queueInformacjaProductRowClass(
     variant: "informacja",
     isFirstInSupplierGroup: options?.isFirstInProductGroup,
   });
+}
+
+export function queueInformacjaProductLeadingCellClass(groupIndex: number): string {
+  return queueSupplierLeadingCellClass(groupIndex, { variant: "informacja" });
 }
