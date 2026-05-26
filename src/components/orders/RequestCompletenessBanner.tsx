@@ -15,11 +15,14 @@ export function RequestCompletenessBanner({
   draft,
   requestKind,
   forcedAssessment,
+  embedded = false,
 }: {
   draft: RequestDraft;
   requestKind: IndividualRequestKind;
   /** Gdy formularz ma wiele wierszy — ocena całej grupy */
   forcedAssessment?: RequestCompleteness | null;
+  /** Wewnątrz RequestFormStatusPanel — bez podwójnej ramki */
+  embedded?: boolean;
 }) {
   const assessment = useMemo(() => {
     if (forcedAssessment !== undefined) return forcedAssessment;
@@ -29,7 +32,14 @@ export function RequestCompletenessBanner({
 
   if (!assessment) {
     return (
-      <p className="rounded-xl border border-dashed border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-600">
+      <p
+        className={cn(
+          "text-sm text-slate-600",
+          embedded
+            ? "rounded-lg border border-dashed border-slate-200 bg-white px-3 py-2.5"
+            : "rounded-xl border border-dashed border-slate-200 bg-slate-50 px-4 py-3"
+        )}
+      >
         {requestKind === "zamowienie"
           ? "Wpisz symbol lub opis produktu oraz ilość (np. 1) — zobaczysz, czy zgłoszenie jest kompletne."
           : "Wpisz symbol lub opis produktu — zobaczysz, czy zgłoszenie jest kompletne."}
@@ -42,7 +52,8 @@ export function RequestCompletenessBanner({
   return (
     <div
       className={cn(
-        "rounded-xl border px-4 py-3 text-sm",
+        "text-sm",
+        embedded ? "rounded-lg border px-3 py-2.5" : "rounded-xl border px-4 py-3",
         hint.tone === "success"
           ? "border-emerald-200 bg-emerald-50 text-emerald-950"
           : "border-amber-200 bg-amber-50 text-amber-950"

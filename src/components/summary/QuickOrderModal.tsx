@@ -4,7 +4,6 @@ import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { actionAddIndividualOrders } from "@/app/actions/admin";
 import { Button } from "@/components/ui/Button";
-import { Alert } from "@/components/ui/Alert";
 import { Field, Select } from "@/components/ui/Field";
 import { SupplierPickerField } from "@/components/orders/SupplierPickerField";
 import { ModalShell } from "@/components/ui/ModalShell";
@@ -15,8 +14,9 @@ import {
   RequestProductLinesEditor,
   initialProductLines,
 } from "@/components/orders/RequestProductLinesEditor";
-import { SubiektFeedbackAlert } from "@/components/subiekt/SubiektFeedbackAlert";
+import { RequestFormStatusPanel } from "@/components/orders/RequestFormStatusPanel";
 import type { SubiektFeedback } from "@/lib/subiekt/feedback";
+import { toAppSupplierRefs } from "@/lib/subiekt/match-supplier";
 
 export function QuickOrderModal({
   open,
@@ -26,7 +26,7 @@ export function QuickOrderModal({
 }: {
   open: boolean;
   onClose: () => void;
-  suppliers: { id: string; name: string }[];
+  suppliers: { id: string; name: string; subiekt_kh_id?: number | null }[];
   salesPeople: { id: string; name: string }[];
 }) {
   const router = useRouter();
@@ -36,23 +36,39 @@ export function QuickOrderModal({
   const [supplierId, setSupplierId] = useState("");
   const [salesPersonId, setSalesPersonId] = useState("");
   const [lines, setLines] = useState(initialProductLines);
-  const [msg, setMsg] = useState<{ text: string; tone: "success" | "error" } | null>(
-    null
-  );
+  const [formNotice, setFormNotice] = useState<{
+    text: string;
+    tone: "error" | "warning" | "success";
+  } | null>(null);
   const [supplierSubiektFeedback, setSupplierSubiektFeedback] =
     useState<SubiektFeedback | null>(null);
+  const [supplierPickerFeedbacks, setSupplierPickerFeedbacks] = useState<SubiektFeedback[]>(
+    []
+  );
+  const [productLineFeedback, setProductLineFeedback] = useState<SubiektFeedback | null>(
+    null
+  );
+  const [configFeedback, setConfigFeedback] = useState<SubiektFeedback | null>(null);
+  const [resolvingSupplier, setResolvingSupplier] = useState(false);
+
+  const supplierRefs = toAppSupplierRefs(suppliers);
 
   const reset = () => {
     setSupplierId("");
     setSalesPersonId("");
     setLines(initialProductLines());
-    setMsg(null);
+    setFormNotice(null);
     setSupplierSubiektFeedback(null);
+    setSupplierPickerFeedbacks([]);
+    setProductLineFeedback(null);
+    setConfigFeedback(null);
+    setResolvingSupplier(false);
   };
 
   const submit = () => {
+    setFormNotice(null);
     if (!supplierId || !salesPersonId) {
-      setMsg({ text: "Wybierz dostawcę i handlowca.", tone: "error" });
+      setFormNotice({ text: "Wybierz dostawcę i handlowca.", tone: "error" });
       return;
     }
     const entries = lines
@@ -67,28 +83,31 @@ export function QuickOrderModal({
         subiektTwId: l.subiektTwId,
       }));
     if (!entries.length) {
-      setMsg({ text: "Dodaj co najmniej jeden produkt z opisem.", tone: "error" });
+      setFormNotice({ text: "Dodaj co najmniej jeden produkt z opisem.", tone: "error" });
       return;
     }
     if (
       requestKind === "zamowienie" &&
       entries.some((e) => !hasValidOrderQuantity(e.quantity, "zamowienie"))
     ) {
-      setMsg({ text: "Każda pozycja musi mieć ilość (liczba sztuk, np. 1).", tone: "error" });
+      setFormNotice({
+        text: "Każda pozycja musi mieć ilość (liczba sztuk, np. 1).",
+        tone: "error",
+      });
       return;
     }
     setPendingMessage("Zapisywanie prośby…");
     start(async () => {
       try {
         const r = await actionAddIndividualOrders(entries);
-        setMsg({ text: `Dodano ${r.count} pozycji.`, tone: "success" });
+        setFormNotice({ text: `Dodano ${r.count} pozycji.`, tone: "success" });
         router.refresh();
         setTimeout(() => {
           reset();
           onClose();
         }, 600);
       } catch (e) {
-        setMsg({
+        setFormNotice({
           text: e instanceof Error ? e.message : "Błąd zapisu",
           tone: "error",
         });
@@ -104,7 +123,7 @@ export function QuickOrderModal({
       onClose={onClose}
       title="Nowa prośba handlowca"
       description="Zamówienie lub prośba informacyjna — pojawi się w panelu dziennym."
-      size="md"
+      size="lg"
       tier="raised"
       loadingMessage={pendingMessage}
       disableBackdropClose={pending}
@@ -120,10 +139,6 @@ export function QuickOrderModal({
         </>
       }
     >
-      {msg ? (
-        <Alert tone={msg.tone === "success" ? "success" : "error"}>{msg.text}</Alert>
-      ) : null}
-
       <RequestKindPicker value={requestKind} onChange={setRequestKind} compact />
 
       <div className="grid gap-3 sm:grid-cols-2">
@@ -135,6 +150,8 @@ export function QuickOrderModal({
             allowEmpty={false}
             emptyLabel="Wybierz dostawcę"
             placeholder="Szukaj dostawcy…"
+            showInlineFeedback={false}
+            onSubiektFeedbackChange={setSupplierPickerFeedbacks}
           />
         </Field>
         <Field label="Dla kogo (handlowiec)">
@@ -149,26 +166,41 @@ export function QuickOrderModal({
         </Field>
       </div>
 
-      {supplierSubiektFeedback ? (
-        <SubiektFeedbackAlert feedback={supplierSubiektFeedback} compact />
-      ) : null}
+      <RequestProductLinesEditor
+        lines={lines}
+        onChange={setLines}
+        requestKind={requestKind}
+        appearance="prosba"
+        suppliers={supplierRefs}
+        unifiedFeedback
+        onSupplierResolved={({ supplierId }) => {
+          setSupplierSubiektFeedback(null);
+          setSupplierId(supplierId);
+        }}
+        onSupplierResolveFeedback={setSupplierSubiektFeedback}
+        onProductFeedbackChange={setProductLineFeedback}
+        onConfigFeedbackChange={setConfigFeedback}
+        onResolvingSupplierChange={setResolvingSupplier}
+      />
 
-      <div className="space-y-2">
-        <p className="text-xs font-semibold uppercase tracking-wider text-slate-500">
-          Produkty
-        </p>
-        <RequestProductLinesEditor
-          lines={lines}
-          onChange={setLines}
-          requestKind={requestKind}
-          suppliers={suppliers}
-          onSupplierResolved={({ supplierId }) => {
-            setSupplierSubiektFeedback(null);
-            setSupplierId(supplierId);
-          }}
-          onSupplierResolveFeedback={setSupplierSubiektFeedback}
-        />
-      </div>
+      <RequestFormStatusPanel
+        requestKind={requestKind}
+        draft={{
+          supplierId,
+          symbol: lines.find((l) => l.symbol.trim())?.symbol,
+          product: lines.find((l) => l.product.trim())?.product,
+          quantity: lines.find((l) => l.quantity.trim())?.quantity,
+          requestKind,
+        }}
+        subiektFeedbacks={[
+          configFeedback,
+          ...supplierPickerFeedbacks,
+          supplierSubiektFeedback,
+          productLineFeedback,
+        ]}
+        resolvingSupplier={resolvingSupplier}
+        formMessage={formNotice}
+      />
     </ModalShell>
   );
 }

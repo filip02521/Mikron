@@ -4,9 +4,9 @@ import { useEffect, useMemo, useState } from "react";
 import type { IndividualRequestKind } from "@/types/database";
 import { actionUpdateIndividualRequest } from "@/app/actions/admin";
 import { actionUpdateMyIndividualRequest } from "@/app/actions/my-orders";
+import { RequestFormStatusPanel } from "@/components/orders/RequestFormStatusPanel";
 import { RequestProductLinesEditor } from "@/components/orders/RequestProductLinesEditor";
 import { newProductLine, type ProductLineDraft } from "@/components/orders/request-product-lines";
-import { RequestCompletenessBanner } from "@/components/orders/RequestCompletenessBanner";
 import { RequestKindPicker } from "@/components/ui/RequestKindPicker";
 import { ModalShell } from "@/components/ui/ModalShell";
 import { Button } from "@/components/ui/Button";
@@ -154,7 +154,18 @@ export function EditIndividualRequestModal({
         </div>
 
         <div className="sm:col-span-2">
-          <RequestCompletenessBanner
+          <RequestProductLinesEditor
+            lines={lines}
+            onChange={setLines}
+            requestKind={requestKind}
+            appearance="prosba"
+            showClientField={mode === "sales"}
+          />
+        </div>
+
+        <div className="sm:col-span-2">
+          <RequestFormStatusPanel
+            requestKind={requestKind}
             draft={{
               supplierId,
               symbol: lines.find((l) => l.symbol.trim())?.symbol,
@@ -162,16 +173,6 @@ export function EditIndividualRequestModal({
               quantity: lines.find((l) => l.quantity.trim())?.quantity,
               requestKind,
             }}
-            requestKind={requestKind}
-          />
-        </div>
-
-        <div className="sm:col-span-2">
-          <RequestProductLinesEditor
-            lines={lines}
-            onChange={setLines}
-            requestKind={requestKind}
-            showClientField={mode === "sales"}
           />
         </div>
       </div>

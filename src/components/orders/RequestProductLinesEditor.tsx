@@ -29,6 +29,10 @@ export function RequestProductLinesEditor({
   suppliers,
   onSupplierResolved,
   onSupplierResolveFeedback,
+  unifiedFeedback = false,
+  onProductFeedbackChange,
+  onConfigFeedbackChange,
+  onResolvingSupplierChange,
 }: {
   lines: ProductLineDraft[];
   onChange: (lines: ProductLineDraft[]) => void;
@@ -44,6 +48,10 @@ export function RequestProductLinesEditor({
     documentNumber: string | null;
   }) => void;
   onSupplierResolveFeedback?: (feedback: SubiektFeedback | null) => void;
+  unifiedFeedback?: boolean;
+  onProductFeedbackChange?: (feedback: SubiektFeedback | null) => void;
+  onConfigFeedbackChange?: (feedback: SubiektFeedback | null) => void;
+  onResolvingSupplierChange?: (resolving: boolean) => void;
 }) {
   const canRemove = lines.length > minLines;
   const prosba = appearance === "prosba";
@@ -104,6 +112,14 @@ export function RequestProductLinesEditor({
             suppliers={suppliers}
             onSupplierResolved={onSupplierResolved}
             onSupplierResolveFeedback={onSupplierResolveFeedback}
+            delegateAlerts={unifiedFeedback}
+            onProductFeedbackChange={
+              index === lines.length - 1 ? onProductFeedbackChange : undefined
+            }
+            onConfigFeedbackChange={index === 0 ? onConfigFeedbackChange : undefined}
+            onResolvingSupplierChange={
+              index === lines.length - 1 ? onResolvingSupplierChange : undefined
+            }
             value={{
               symbol: line.symbol,
               product: line.product,

@@ -46,6 +46,10 @@ export function SubiektProductLineFields({
   suppliers,
   onSupplierResolved,
   onSupplierResolveFeedback,
+  delegateAlerts = false,
+  onProductFeedbackChange,
+  onConfigFeedbackChange,
+  onResolvingSupplierChange,
 }: {
   value: SubiektProductLineValue;
   onChange: (patch: Partial<SubiektProductLineValue>) => void;
@@ -61,6 +65,11 @@ export function SubiektProductLineFields({
     documentNumber: string | null;
   }) => void;
   onSupplierResolveFeedback?: (feedback: SubiektFeedback | null) => void;
+  /** Komunikaty w RequestFormStatusPanel zamiast pod polami */
+  delegateAlerts?: boolean;
+  onProductFeedbackChange?: (feedback: SubiektFeedback | null) => void;
+  onConfigFeedbackChange?: (feedback: SubiektFeedback | null) => void;
+  onResolvingSupplierChange?: (resolving: boolean) => void;
 }) {
   const ref = useRef<HTMLDivElement>(null);
   const [enabled, setEnabled] = useState(false);
@@ -89,6 +98,22 @@ export function SubiektProductLineFields({
       setConfigFeedback(r.feedback ?? null);
     })();
   }, []);
+
+  useEffect(() => {
+    if (!delegateAlerts) return;
+    onConfigFeedbackChange?.(configFeedback);
+  }, [configFeedback, delegateAlerts, onConfigFeedbackChange]);
+
+  useEffect(() => {
+    if (!delegateAlerts) return;
+    const productFb =
+      feedback && (feedback.tone !== "info" || items.length === 0) ? feedback : null;
+    onProductFeedbackChange?.(productFb);
+  }, [feedback, items.length, delegateAlerts, onProductFeedbackChange]);
+
+  useEffect(() => {
+    onResolvingSupplierChange?.(resolvingSupplier);
+  }, [resolvingSupplier, onResolvingSupplierChange]);
 
   useEffect(() => {
     const onDoc = (e: MouseEvent) => {
@@ -152,7 +177,7 @@ export function SubiektProductLineFields({
           setSupplierFeedback(null);
           onSupplierResolveFeedback?.(null);
         } else {
-          setSupplierFeedback(res.feedback);
+          if (!delegateAlerts) setSupplierFeedback(res.feedback);
           onSupplierResolveFeedback?.(res.feedback);
         }
       } finally {
@@ -262,7 +287,7 @@ export function SubiektProductLineFields({
         ) : null}
       </div>
 
-      {!enabled && configFeedback ? (
+      {!enabled && configFeedback && !delegateAlerts ? (
         <SubiektFeedbackAlert feedback={configFeedback} compact />
       ) : null}
 
@@ -270,7 +295,7 @@ export function SubiektProductLineFields({
         <>
           <TypeaheadDropdown
             open={open && items.length > 0}
-            className="left-0 right-0"
+            className="left-0 right-0 z-20"
             emptyMessage={status === "loading" ? "Szukam w Subiekcie…" : undefined}
           >
             <TypeaheadSectionLabel>
@@ -290,22 +315,24 @@ export function SubiektProductLineFields({
             })}
           </TypeaheadDropdown>
 
-          {!feedback ? (
+          {!delegateAlerts && !feedback && !resolvingSupplier ? (
             <p className="text-xs text-slate-400">
-              {resolvingSupplier
-                ? "Szukam dostawcy w ostatnich ZD Subiekta…"
-                : isInformacja
-                  ? "Wpisz symbol lub nazwę (min. 2 znaki) — po wyborze uzupełnimy pola i spróbujemy ustawić dostawcę z ZD."
-                  : "Wpisz symbol lub nazwę (min. 2 znaki) — po wyborze uzupełnimy pola i spróbujemy ustawić dostawcę z ZD."}
+              {isInformacja
+                ? "Wpisz symbol lub nazwę (min. 2 znaki) — po wyborze uzupełnimy pola i spróbujemy ustawić dostawcę z ZD."
+                : "Wpisz symbol lub nazwę (min. 2 znaki) — po wyborze uzupełnimy pola i spróbujemy ustawić dostawcę z ZD."}
             </p>
           ) : null}
 
-          {supplierFeedback ? (
+          {!delegateAlerts && supplierFeedback ? (
             <SubiektFeedbackAlert feedback={supplierFeedback} compact />
           ) : null}
 
-          {showError ? <SubiektFeedbackAlert feedback={feedback} compact /> : null}
-          {showInfo ? <SubiektFeedbackAlert feedback={feedback} compact /> : null}
+          {!delegateAlerts && showError ? (
+            <SubiektFeedbackAlert feedback={feedback} compact />
+          ) : null}
+          {!delegateAlerts && showInfo ? (
+            <SubiektFeedbackAlert feedback={feedback} compact />
+          ) : null}
         </>
       ) : null}
     </div>

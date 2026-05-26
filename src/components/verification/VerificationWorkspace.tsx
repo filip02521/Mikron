@@ -9,11 +9,10 @@ import {
 } from "@/app/actions/admin";
 import {
   assessRequestCompleteness,
-  completenessUserHint,
 } from "@/lib/orders/request-completeness";
 import { Card, CardHeader } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
-import { Field, Input, Select } from "@/components/ui/Field";
+import { Field, Select } from "@/components/ui/Field";
 import { Toast } from "@/components/ui/Toast";
 import { Badge } from "@/components/ui/Badge";
 import { EmptyState } from "@/components/ui/EmptyState";
@@ -22,13 +21,13 @@ import { SectionHeadingIcon } from "@/components/icons/SectionHeadingIcon";
 import { IconClipboardList, IconClipboardPen } from "@/components/icons/StrokeIcons";
 import { VerificationHelp } from "@/components/verification/VerificationHelp";
 import { formatPlDate } from "@/lib/display-labels";
-import { RequestCompletenessBanner } from "@/components/orders/RequestCompletenessBanner";
+import { RequestFormStatusPanel } from "@/components/orders/RequestFormStatusPanel";
 import { ActionLoadingOverlay } from "@/components/ui/ActionLoadingOverlay";
 import { RequestKindPicker } from "@/components/ui/RequestKindPicker";
 import { SupplierPickerField } from "@/components/orders/SupplierPickerField";
 import { SubiektProductLineFields } from "@/components/subiekt/SubiektProductLineFields";
-import { SubiektFeedbackAlert } from "@/components/subiekt/SubiektFeedbackAlert";
 import type { SubiektFeedback } from "@/lib/subiekt/feedback";
+import { toAppSupplierRefs } from "@/lib/subiekt/match-supplier";
 
 const VERIFICATION_INTRO =
   "Niekompletne prośby handlowców — uzupełnij dostawcę i produkt. Po zatwierdzeniu trafiają do panelu dziennego jako „Nowe”.";
@@ -71,6 +70,16 @@ export function VerificationWorkspace({
 
   const [supplierSubiektFeedback, setSupplierSubiektFeedback] =
     useState<SubiektFeedback | null>(null);
+  const [supplierPickerFeedbacks, setSupplierPickerFeedbacks] = useState<SubiektFeedback[]>(
+    []
+  );
+  const [productLineFeedback, setProductLineFeedback] = useState<SubiektFeedback | null>(
+    null
+  );
+  const [configFeedback, setConfigFeedback] = useState<SubiektFeedback | null>(null);
+  const [resolvingSupplier, setResolvingSupplier] = useState(false);
+
+  const supplierRefs = toAppSupplierRefs(suppliers);
 
   const [form, setForm] = useState(() => ({
     supplierId: "",
@@ -85,6 +94,10 @@ export function VerificationWorkspace({
   const loadOrder = useCallback((o: IndividualOrder) => {
     setActiveId(o.id);
     setSupplierSubiektFeedback(null);
+    setSupplierPickerFeedbacks([]);
+    setProductLineFeedback(null);
+    setConfigFeedback(null);
+    setResolvingSupplier(false);
     setForm({
       supplierId: o.supplier_id ?? "",
       salesPersonId: o.sales_person_id,
@@ -243,8 +256,6 @@ export function VerificationWorkspace({
                   : "space-y-4 px-4 py-5 sm:px-6"
               }
             >
-                  <RequestCompletenessBanner draft={draft} requestKind={form.requestKind} />
-
                   <div className="grid gap-3 sm:grid-cols-2">
                     <Field label="Dostawca">
                       <SupplierPickerField
@@ -255,13 +266,10 @@ export function VerificationWorkspace({
                         }
                         allowEmpty={false}
                         emptyLabel="Wybierz dostawcę"
+                        showInlineFeedback={false}
+                        onSubiektFeedbackChange={setSupplierPickerFeedbacks}
                       />
                     </Field>
-                    {supplierSubiektFeedback ? (
-                      <div className="sm:col-span-2">
-                        <SubiektFeedbackAlert feedback={supplierSubiektFeedback} compact />
-                      </div>
-                    ) : null}
                     <Field label="Handlowiec">
                       <Select
                         value={form.salesPersonId}
@@ -291,14 +299,18 @@ export function VerificationWorkspace({
                   />
 
                   <SubiektProductLineFields
+                    appearance="prosba"
                     requestKind={form.requestKind}
-                    productFieldClassName="sm:col-span-2"
-                    suppliers={suppliers}
+                    suppliers={supplierRefs}
+                    delegateAlerts
                     onSupplierResolved={({ supplierId }) => {
                       setSupplierSubiektFeedback(null);
                       setForm((f) => ({ ...f, supplierId }));
                     }}
                     onSupplierResolveFeedback={setSupplierSubiektFeedback}
+                    onProductFeedbackChange={setProductLineFeedback}
+                    onConfigFeedbackChange={setConfigFeedback}
+                    onResolvingSupplierChange={setResolvingSupplier}
                     value={{
                       symbol: form.symbol,
                       product: form.product,
@@ -308,9 +320,17 @@ export function VerificationWorkspace({
                     onChange={(patch) => setForm((f) => ({ ...f, ...patch }))}
                   />
 
-                  <p className="text-xs text-slate-500">
-                    {completenessUserHint(assessment, form.requestKind, draft).detail}
-                  </p>
+                  <RequestFormStatusPanel
+                    requestKind={form.requestKind}
+                    draft={draft}
+                    subiektFeedbacks={[
+                      configFeedback,
+                      ...supplierPickerFeedbacks,
+                      supplierSubiektFeedback,
+                      productLineFeedback,
+                    ]}
+                    resolvingSupplier={resolvingSupplier}
+                  />
 
                   <div className="flex flex-wrap gap-2">
                     <Button

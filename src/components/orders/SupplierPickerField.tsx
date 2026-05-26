@@ -30,6 +30,8 @@ export function SupplierPickerField({
   placeholder = "Szukaj dostawcy…",
   allowEmpty = true,
   emptyLabel = "Wybierz później / nie wiem",
+  showInlineFeedback = true,
+  onSubiektFeedbackChange,
 }: {
   suppliers: SupplierPickerOption[];
   value: string;
@@ -38,6 +40,9 @@ export function SupplierPickerField({
   placeholder?: string;
   allowEmpty?: boolean;
   emptyLabel?: string;
+  /** false — komunikaty idą do rodzica (RequestFormStatusPanel) */
+  showInlineFeedback?: boolean;
+  onSubiektFeedbackChange?: (feedbacks: SubiektFeedback[]) => void;
 }) {
   const ref = useRef<HTMLDivElement>(null);
   const [query, setQuery] = useState("");
@@ -143,6 +148,19 @@ export function SupplierPickerField({
   const showInfoFeedback =
     feedback && feedback.tone === "info" && appRows.length === 0 && subiektRows.length === 0;
 
+  const pickerFeedbacks = useMemo(() => {
+    if (showInlineFeedback) return [] as SubiektFeedback[];
+    return [
+      subiektWarning,
+      status === "error" ? feedback : null,
+      showInfoFeedback ? feedback : null,
+    ].filter(Boolean) as SubiektFeedback[];
+  }, [showInlineFeedback, subiektWarning, status, feedback, showInfoFeedback]);
+
+  useEffect(() => {
+    onSubiektFeedbackChange?.(pickerFeedbacks);
+  }, [pickerFeedbacks, onSubiektFeedbackChange]);
+
   return (
     <div ref={ref} className="relative space-y-2">
       <div className="relative">
@@ -228,11 +246,13 @@ export function SupplierPickerField({
         ) : null}
       </TypeaheadDropdown>
 
-      {subiektWarning ? <SubiektFeedbackAlert feedback={subiektWarning} compact /> : null}
-      {status === "error" && feedback ? (
+      {showInlineFeedback && subiektWarning ? (
+        <SubiektFeedbackAlert feedback={subiektWarning} compact />
+      ) : null}
+      {showInlineFeedback && status === "error" && feedback ? (
         <SubiektFeedbackAlert feedback={feedback} compact />
       ) : null}
-      {showInfoFeedback && feedback ? (
+      {showInlineFeedback && showInfoFeedback && feedback ? (
         <SubiektFeedbackAlert feedback={feedback} compact />
       ) : null}
     </div>

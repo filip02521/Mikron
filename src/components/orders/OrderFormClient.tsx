@@ -10,7 +10,6 @@ import { Toast } from "@/components/ui/Toast";
 import { Field, Select } from "@/components/ui/Field";
 import { SupplierPickerField } from "@/components/orders/SupplierPickerField";
 import type { DeliveryStats, IndividualRequestKind, StatsMode } from "@/types/database";
-import { SupplierLeadTimeHint } from "@/components/orders/SupplierLeadTimeHint";
 import { RequestKindToggle } from "@/components/orders/RequestKindToggle";
 import { ProsbaFormSection } from "@/components/orders/ProsbaFormSection";
 import { prosbaHref } from "@/lib/orders/prosba-url";
@@ -23,11 +22,10 @@ import {
   hasValidOrderQuantity,
   type RequestCompleteness,
 } from "@/lib/orders/request-completeness";
-import { RequestCompletenessBanner } from "@/components/orders/RequestCompletenessBanner";
+import { RequestFormStatusPanel } from "@/components/orders/RequestFormStatusPanel";
 import { RequestProductLinesEditor } from "@/components/orders/RequestProductLinesEditor";
 import { ActionLoadingOverlay } from "@/components/ui/ActionLoadingOverlay";
 import { newProductLine } from "@/components/orders/request-product-lines";
-import { SubiektFeedbackAlert } from "@/components/subiekt/SubiektFeedbackAlert";
 import type { SubiektFeedback } from "@/lib/subiekt/feedback";
 import { toAppSupplierRefs } from "@/lib/subiekt/match-supplier";
 
@@ -155,6 +153,20 @@ export function OrderFormClient({
   const dismissToast = useCallback(() => setMsg(null), []);
   const [supplierSubiektFeedback, setSupplierSubiektFeedback] =
     useState<SubiektFeedback | null>(null);
+  const [supplierPickerFeedbacks, setSupplierPickerFeedbacks] = useState<SubiektFeedback[]>(
+    []
+  );
+  const [productLineFeedback, setProductLineFeedback] = useState<SubiektFeedback | null>(
+    null
+  );
+  const [configFeedback, setConfigFeedback] = useState<SubiektFeedback | null>(null);
+  const [resolvingSupplier, setResolvingSupplier] = useState(false);
+  const [formNotice, setFormNotice] = useState<{
+    text: string;
+    tone: "error" | "warning";
+  } | null>(null);
+
+  const clearFormNotice = useCallback(() => setFormNotice(null), []);
 
   const supplierRefs = useMemo(() => toAppSupplierRefs(suppliers), [suppliers]);
 
@@ -174,6 +186,7 @@ export function OrderFormClient({
   );
 
   const submit = () => {
+    setFormNotice(null);
     const entries: Entry[] = [];
     groups.forEach((group) => {
       const supplierId = group[0]?.supplierId ?? "";
@@ -194,7 +207,7 @@ export function OrderFormClient({
       });
     });
     if (!entries.length) {
-      setMsg({
+      setFormNotice({
         text: lockedSalesPerson
           ? "Podaj symbol lub opis produktu."
           : "Podaj symbol lub opis produktu oraz wybierz handlowca.",
@@ -206,7 +219,7 @@ export function OrderFormClient({
       requestKind === "zamowienie" &&
       entries.some((e) => !hasValidOrderQuantity(e.quantity, "zamowienie"))
     ) {
-      setMsg({
+      setFormNotice({
         text: "Każda pozycja zamówienia musi mieć ilość (liczba sztuk, np. 1).",
         tone: "error",
       });
@@ -233,6 +246,9 @@ export function OrderFormClient({
           text: formatSubmitResult(r, requestKind, Boolean(singleGroup && lockedSalesPerson)),
           tone: "success",
         });
+        setFormNotice(null);
+        setSupplierSubiektFeedback(null);
+        setProductLineFeedback(null);
         setGroups(buildInitialGroups(lockedId, initialSupplierId));
       } catch (e) {
         setMsg({
@@ -299,7 +315,7 @@ export function OrderFormClient({
         ) : null}
         {toastSlot}
 
-        <Card padding={false} className="overflow-hidden">
+        <Card padding={false}>
           <CardHeader
             inset
             leading={
@@ -366,6 +382,7 @@ export function OrderFormClient({
                     suppliers={suppliers}
                     value={supplierId}
                     onChange={(v) => {
+                      clearFormNotice();
                       setGroups((g) =>
                         g.map((gr, i) =>
                           i === 0 ? gr.map((row) => ({ ...row, supplierId: v })) : gr
@@ -374,44 +391,34 @@ export function OrderFormClient({
                     }}
                     allowEmpty
                     emptyLabel="Wybierz później / nie wiem"
+                    showInlineFeedback={false}
+                    onSubiektFeedbackChange={setSupplierPickerFeedbacks}
                   />
                 </Field>
-                {supplierFromPlan ? (
-                  <p className="text-xs font-medium text-indigo-700">
-                    Z harmonogramu:{" "}
-                    {suppliers.find((s) => s.id === initialSupplierId)?.name}
-                  </p>
-                ) : null}
-
-                {supplierSubiektFeedback ? (
-                  <SubiektFeedbackAlert feedback={supplierSubiektFeedback} compact />
-                ) : null}
-
-                {requestKind === "zamowienie" && supplierId ? (
-                  <SupplierLeadTimeHint
-                    compact
-                    stats={statsBySupplierId[supplierId]}
-                    statsMode={
-                      suppliers.find((s) => s.id === supplierId)?.stats_mode ?? "LACZNIE"
-                    }
-                  />
-                ) : null}
 
                 <RequestProductLinesEditor
                   lines={group}
-                  onChange={(lines) => updateGroupLines(0, lines as Entry[])}
+                  onChange={(lines) => {
+                    clearFormNotice();
+                    updateGroupLines(0, lines as Entry[]);
+                  }}
                   requestKind={requestKind}
                   appearance="prosba"
                   addLabel="+ Kolejny produkt"
                   showClientField
                   suppliers={supplierRefs}
+                  unifiedFeedback
                   onSupplierResolved={({ supplierId }) =>
                     applySupplierFromSubiekt(supplierId, 0)
                   }
                   onSupplierResolveFeedback={setSupplierSubiektFeedback}
+                  onProductFeedbackChange={setProductLineFeedback}
+                  onConfigFeedbackChange={setConfigFeedback}
+                  onResolvingSupplierChange={setResolvingSupplier}
                 />
 
-                <RequestCompletenessBanner
+                <RequestFormStatusPanel
+                  requestKind={requestKind}
                   draft={{
                     supplierId,
                     symbol: group.find((r) => r.symbol.trim())?.symbol,
@@ -419,8 +426,30 @@ export function OrderFormClient({
                     quantity: group.find((r) => r.quantity.trim())?.quantity,
                     requestKind,
                   }}
-                  requestKind={requestKind}
                   forcedAssessment={groupCompletenessAssessment(group, requestKind)}
+                  subiektFeedbacks={[
+                    configFeedback,
+                    ...supplierPickerFeedbacks,
+                    supplierSubiektFeedback,
+                    productLineFeedback,
+                  ]}
+                  resolvingSupplier={resolvingSupplier}
+                  leadTime={
+                    requestKind === "zamowienie" && supplierId
+                      ? {
+                          stats: statsBySupplierId[supplierId],
+                          statsMode:
+                            suppliers.find((s) => s.id === supplierId)?.stats_mode ??
+                            "LACZNIE",
+                        }
+                      : null
+                  }
+                  scheduleHint={
+                    supplierFromPlan
+                      ? `Z harmonogramu: ${suppliers.find((s) => s.id === initialSupplierId)?.name ?? ""}`
+                      : null
+                  }
+                  formMessage={formNotice}
                 />
               </div>
             </ProsbaFormSection>
@@ -454,7 +483,7 @@ export function OrderFormClient({
       ) : null}
       {toastSlot}
 
-      <Card padding={false} className="overflow-hidden">
+      <Card padding={false}>
         <CardHeader
           inset
           leading={
@@ -528,12 +557,13 @@ export function OrderFormClient({
                   </span>
                 </div>
               ) : null}
-              <div>
+              <div className="sm:col-span-2">
                 <Field label="Dostawca (opcjonalnie przy weryfikacji)">
                   <SupplierPickerField
                     suppliers={suppliers}
                     value={group[0]?.supplierId ?? ""}
                     onChange={(v) => {
+                      clearFormNotice();
                       setGroups((g) =>
                         g.map((gr, i) =>
                           i === gi ? gr.map((row) => ({ ...row, supplierId: v })) : gr
@@ -543,16 +573,10 @@ export function OrderFormClient({
                     allowEmpty
                     emptyLabel="Wybierz dostawcę"
                     placeholder="Szukaj dostawcy w systemie lub Subiekcie…"
+                    showInlineFeedback={false}
+                    onSubiektFeedbackChange={setSupplierPickerFeedbacks}
                   />
                 </Field>
-                {initialSupplierId &&
-                group[0]?.supplierId === initialSupplierId &&
-                suppliers.some((s) => s.id === initialSupplierId) ? (
-                  <p className="mt-1 text-xs font-medium text-indigo-700">
-                    Wybrany z harmonogramu:{" "}
-                    {suppliers.find((s) => s.id === initialSupplierId)?.name}
-                  </p>
-                ) : null}
               </div>
               {!lockedSalesPerson ? (
                 <Field label="Dla kogo (handlowiec)">
@@ -580,17 +604,28 @@ export function OrderFormClient({
               ) : null}
             </div>
 
-            {requestKind === "zamowienie" && group[0]?.supplierId ? (
-              <SupplierLeadTimeHint
-                stats={statsBySupplierId[group[0].supplierId]}
-                statsMode={
-                  suppliers.find((s) => s.id === group[0]?.supplierId)?.stats_mode ??
-                  "LACZNIE"
-                }
-              />
-            ) : null}
+            <RequestProductLinesEditor
+              lines={group}
+              onChange={(lines) => {
+                clearFormNotice();
+                updateGroupLines(gi, lines as Entry[]);
+              }}
+              requestKind={requestKind}
+              addLabel="+ Kolejny produkt w grupie"
+              showClientField={Boolean(lockedSalesPerson)}
+              suppliers={supplierRefs}
+              unifiedFeedback
+              onSupplierResolved={({ supplierId }) =>
+                applySupplierFromSubiekt(supplierId, gi)
+              }
+              onSupplierResolveFeedback={setSupplierSubiektFeedback}
+              onProductFeedbackChange={setProductLineFeedback}
+              onConfigFeedbackChange={setConfigFeedback}
+              onResolvingSupplierChange={setResolvingSupplier}
+            />
 
-            <RequestCompletenessBanner
+            <RequestFormStatusPanel
+              requestKind={requestKind}
               draft={{
                 supplierId: group[0]?.supplierId,
                 symbol: group.find((r) => r.symbol.trim())?.symbol,
@@ -598,27 +633,38 @@ export function OrderFormClient({
                 quantity: group.find((r) => r.quantity.trim())?.quantity,
                 requestKind,
               }}
-              requestKind={requestKind}
               forcedAssessment={groupCompletenessAssessment(group, requestKind)}
-            />
-
-            <RequestProductLinesEditor
-              lines={group}
-              onChange={(lines) => updateGroupLines(gi, lines as Entry[])}
-              requestKind={requestKind}
-              addLabel="+ Kolejny produkt w grupie"
-              showClientField={Boolean(lockedSalesPerson)}
-              suppliers={supplierRefs}
-              onSupplierResolved={({ supplierId }) =>
-                applySupplierFromSubiekt(supplierId, gi)
+              subiektFeedbacks={[
+                configFeedback,
+                ...supplierPickerFeedbacks,
+                supplierSubiektFeedback,
+                productLineFeedback,
+              ]}
+              resolvingSupplier={resolvingSupplier}
+              leadTime={
+                requestKind === "zamowienie" && group[0]?.supplierId
+                  ? {
+                      stats: statsBySupplierId[group[0].supplierId],
+                      statsMode:
+                        suppliers.find((s) => s.id === group[0]?.supplierId)?.stats_mode ??
+                        "LACZNIE",
+                    }
+                  : null
               }
-              onSupplierResolveFeedback={setSupplierSubiektFeedback}
+              scheduleHint={
+                initialSupplierId &&
+                group[0]?.supplierId === initialSupplierId &&
+                suppliers.some((s) => s.id === initialSupplierId)
+                  ? `Wybrany z harmonogramu: ${suppliers.find((s) => s.id === initialSupplierId)?.name ?? ""}`
+                  : null
+              }
+              formMessage={gi === 0 ? formNotice : null}
             />
           </div>
         </Card>
       ))}
 
-      <Card padding={false} className="overflow-hidden">
+      <Card padding={false}>
         <div className="flex flex-col gap-3 bg-slate-50/90 px-4 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-6">
           <p className="text-xs leading-relaxed text-slate-500">
             Po zapisie prośby trafią do weryfikacji lub panelu dziennego — zależnie od kompletności
