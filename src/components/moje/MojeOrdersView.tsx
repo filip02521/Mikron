@@ -252,6 +252,9 @@ export function MojeOrdersView({
             }
             action={cardAction}
           />
+          {subiektAvailability ? (
+            <SubiektStatusBar initial={subiektAvailability} embedded />
+          ) : null}
           <EmptyState
             title="Brak aktywnych prośb"
             description={cardDescription}
@@ -294,6 +297,10 @@ export function MojeOrdersView({
         <p className="border-b border-slate-100 px-3 pb-2.5 text-xs text-slate-500 sm:px-6">
           {activeDescription}
         </p>
+
+        {subiektAvailability ? (
+          <SubiektStatusBar initial={subiektAvailability} embedded />
+        ) : null}
 
         <MyOrdersInboxSummary
           summary={inboxSummary}
@@ -421,10 +428,6 @@ export function MojeOrdersView({
         rowsRecent={archiwumRecent}
         rowsExtended={archiwumExtended}
       />
-
-      {subiektAvailability ? (
-        <SubiektStatusBar initial={subiektAvailability} className="mt-2" />
-      ) : null}
     </div>
   );
 }

@@ -139,6 +139,7 @@ export function SidebarBrandBlock({
           </p>
         </div>
       </div>
+      <div className="brand-accent-strip !mb-0 opacity-70" aria-hidden />
       <SidebarUserRow role={role} userEmail={userEmail} />
     </div>
   );

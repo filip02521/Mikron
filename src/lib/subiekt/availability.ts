@@ -28,7 +28,8 @@ function notConfiguredAvailability(): SubiektAvailability {
     reachable: false,
     checkedAt: Date.now(),
     shortLabel: "Subiekt: wyłączony",
-    message: "Integracja Subiekt nie jest skonfigurowana — terminy z historii dostaw.",
+    message:
+      "Integracja nie jest skonfigurowana — terminy z dokumentów ZD nie są pobierane, zostają szacunki z historii dostaw.",
   };
 }
 
@@ -81,7 +82,7 @@ export async function getSubiektAvailability(options?: {
     ? onlineAvailability(result.durationMs)
     : offlineAvailability(
         result.message ??
-          "Subiekt niedostępny (poza siecią firmową lub API wyłączone) — pokazujemy szacunki z historii."
+          "Subiekt niedostępny (poza siecią firmową lub API wyłączone) — terminy bez ZD, zostają szacunki z historii dostaw.",
       );
 
   cache = { at: now, value };

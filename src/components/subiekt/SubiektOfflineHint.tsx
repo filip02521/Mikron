@@ -10,20 +10,29 @@ function badgeLabel(count: number): string {
   return `${count} ${word}`;
 }
 
+const FOOTER: Record<"prosba" | "moje", string> = {
+  prosba: "Możesz wpisać dane ręcznie i wysłać prośbę bez Subiekta.",
+  moje: "Lista prośb działa normalnie — szacunki terminów z historii dostaw.",
+};
+
 /** Dyskretna informacja: Subiekt niedostępny — szczegóły po najechaniu / fokusie. */
 export function SubiektOfflineHint({
   feedback,
   count = 1,
   className,
   align = "right",
+  context = "prosba",
 }: {
   feedback: SubiektFeedback;
   /** Liczba komunikatów (domyślnie 1 → „Tryb ręczny”). */
   count?: number;
   className?: string;
   align?: "left" | "right";
+  /** Kontekst ekranu — zmienia tekst w stopce tooltipa. */
+  context?: "prosba" | "moje";
 }) {
   const label = badgeLabel(count);
+  const footer = FOOTER[context];
 
   return (
     <div className={cn("group relative inline-flex", className)}>
@@ -54,9 +63,7 @@ export function SubiektOfflineHint({
         <p className="font-semibold text-slate-900">{feedback.title}</p>
         <p className="mt-1">{feedback.message}</p>
         {feedback.hint ? <p className="mt-2 text-slate-500">{feedback.hint}</p> : null}
-        <p className="mt-2 font-medium text-emerald-800/90">
-          Możesz wpisać dane ręcznie i wysłać prośbę bez Subiekta.
-        </p>
+        <p className="mt-2 font-medium text-emerald-800/90">{footer}</p>
       </div>
     </div>
   );

@@ -1,19 +1,23 @@
 import { cn } from "@/lib/cn";
 import { brandMarkOnDarkClass, brandMarkOnLightClass } from "@/lib/ui/brand";
 import { ONTIME_LOGO_MONOGRAM, ONTIME_LOGO_SHAPE } from "@/lib/ui/ontime-brand";
+import { BrandClockHandsAnimated } from "@/components/ui/BrandClockHandsAnimated";
 
 const SIZE_STYLES = {
   sm: {
     box: "h-8 w-8",
     text: "text-[0.65rem] tracking-tighter",
+    showTicks: false,
   },
   md: {
     box: "h-10 w-10",
     text: "text-[0.7rem] tracking-tighter",
+    showTicks: true,
   },
   lg: {
     box: "h-14 w-14",
     text: "text-lg tracking-tight",
+    showTicks: true,
   },
 } as const;
 
@@ -27,7 +31,7 @@ export function AppBrandMark({
   /** light = sidebar/aplikacja, dark = panel boczny logowania */
   variant?: "light" | "dark";
 }) {
-  const { box, text } = SIZE_STYLES[size];
+  const { box, text, showTicks } = SIZE_STYLES[size];
   const toneClass = variant === "dark" ? brandMarkOnDarkClass : brandMarkOnLightClass;
 
   return (
@@ -42,11 +46,14 @@ export function AppBrandMark({
       )}
       aria-hidden
     >
+      <BrandClockHandsAnimated showTicks={showTicks} />
       <span
-        className="pointer-events-none absolute inset-[3px] rounded-[inherit] border border-white/25"
+        className="pointer-events-none absolute inset-[3px] z-[1] rounded-[inherit] border border-white/25"
         aria-hidden
       />
-      {ONTIME_LOGO_MONOGRAM}
+      <span className="relative z-[2] text-white drop-shadow-[0_1px_2px_rgba(15,23,42,0.22)]">
+        {ONTIME_LOGO_MONOGRAM}
+      </span>
     </span>
   );
 }
