@@ -24,7 +24,18 @@ export type ProsbaReadinessLine = {
   mikranCode?: string;
   product?: string;
   quantity?: string;
+  supplierId?: string;
+  subiektTwId?: number | null;
 };
+
+export type ProsbaFormReadinessOptions = {
+  /** Trwa wyszukiwanie dostawcy w Subiekcie (ZD) po wyborze towaru. */
+  resolvingSupplier?: boolean;
+};
+
+function hasText(value: string | undefined): boolean {
+  return Boolean(value?.trim());
+}
 
 function linesWithProductHint(lines: ProsbaReadinessLine[]): ProsbaReadinessLine[] {
   return lines.filter((line) =>
@@ -40,10 +51,16 @@ function linesWithProductHint(lines: ProsbaReadinessLine[]): ProsbaReadinessLine
 export function buildProsbaFormReadiness(
   lines: ProsbaReadinessLine[],
   requestKind: IndividualRequestKind,
-  plan: SalesRequestSubmitPlan | null
+  plan: SalesRequestSubmitPlan | null,
+  options?: ProsbaFormReadinessOptions
 ): ProsbaFormReadinessView {
   const filled = linesWithProductHint(lines);
   const isZamowienie = requestKind === "zamowienie";
+  const resolvingSupplier = Boolean(options?.resolvingSupplier);
+  const hasSubiektProduct = filled.some(
+    (line) => line.subiektTwId != null && line.subiektTwId > 0
+  );
+  const hasResolvedSupplier = filled.some((line) => hasText(line.supplierId));
 
   const productDone = filled.length > 0;
   const quantityDone =
@@ -104,11 +121,23 @@ export function buildProsbaFormReadiness(
       state: "done",
       detail: "Wybrany — trafia do panelu dziennego",
     };
-  } else if (plan.bannerKind === "pending_supplier") {
+  } else if (resolvingSupplier && hasSubiektProduct && !hasResolvedSupplier) {
+    supplierStep = {
+      ...supplierStep,
+      state: "action",
+      detail: "Sprawdzamy historię ZD w Subiekcie…",
+    };
+  } else if (hasResolvedSupplier) {
     supplierStep = {
       ...supplierStep,
       state: "done",
-      detail: "Z Subiekta — dopasujemy z historii ZD po wysłaniu",
+      detail: "Znaleziony w historii ZD — trafia do panelu dziennego",
+    };
+  } else if (plan.bannerKind === "pending_supplier") {
+    supplierStep = {
+      ...supplierStep,
+      state: "handoff",
+      detail: "Nie znaleziono w ZD przy wyborze — po wysłaniu sprawdzimy ponownie",
     };
   } else {
     supplierStep = {
@@ -159,7 +188,11 @@ export function buildProsbaFormReadiness(
   if (plan?.bannerKind === "pending_supplier") {
     return {
       headline: "Gotowe do wysłania",
-      subline: "Towar z Subiekta — dostawcę dopasujemy po wysłaniu.",
+      subline: hasResolvedSupplier
+        ? "Dostawca z historii ZD — możesz wysłać prośbę."
+        : resolvingSupplier
+          ? "Sprawdzamy historię ZD w Subiekcie…"
+          : "Towar z Subiekta — dostawcę ustalimy z historii ZD.",
       tone: "ready",
       steps,
       canSubmit: true,

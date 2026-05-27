@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   buildProductPickFromSubiekt,
+  formatSubiektProductOption,
   looksLikeProductSymbol,
   minProductSearchLength,
   productSearchParams,
@@ -91,5 +92,20 @@ describe("buildProductPickFromSubiekt", () => {
     );
     expect(pick.quantity).toBe("3");
     expect(pick.mikranCode).toBe("1");
+  });
+
+  it("obsługuje liczbowy tw_PLU (nie wywala trim)", () => {
+    const pick = buildProductPickFromSubiekt(
+      // @ts-expect-error: Subiekt czasem zwraca PLU jako number
+      { tw_Id: 1, tw_Symbol: "A", tw_Nazwa: "B", tw_PLU: 896 },
+      "zamowienie"
+    );
+    expect(pick.mikranCode).toBe("896");
+
+    const opt = formatSubiektProductOption(
+      // @ts-expect-error: Subiekt czasem zwraca PLU jako number
+      { tw_Id: 1, tw_Symbol: "A", tw_Nazwa: "B", tw_PLU: 896 }
+    );
+    expect(opt.subtitle).toContain("Kod Mikran: 896");
   });
 });

@@ -116,7 +116,7 @@ function NavSection({
 
   return (
     <section className={cn(!isFirst && "mt-3 border-t border-slate-100 pt-3")}>
-      <h2 className="mb-1.5 px-3 text-[11px] font-semibold uppercase tracking-[0.1em] text-slate-400">
+      <h2 className="mb-1.5 px-3 text-[11px] font-semibold uppercase tracking-[0.1em] text-indigo-400/90">
         {group.title}
       </h2>
       <ul className="space-y-0.5">

@@ -1,6 +1,7 @@
 "use client";
 
 import { cn } from "@/lib/cn";
+import { panelQueueStepsShellClass } from "@/lib/ui/ontime-theme";
 
 export type DailyPanelQueueStepKind = "overdue" | "prosby" | "today";
 
@@ -89,12 +90,9 @@ export function DailyPanelQueueSteps({
   return (
     <nav
       aria-label="Kroki kolejki dnia"
-      className={cn(
-        "flex flex-wrap items-center gap-2 rounded-xl border border-slate-200/90 bg-slate-50/50 px-3 py-2.5",
-        className
-      )}
+      className={cn(panelQueueStepsShellClass, className)}
     >
-      <span className="mr-0.5 text-[11px] font-medium uppercase tracking-wide text-slate-500">
+      <span className="mr-0.5 text-[11px] font-medium uppercase tracking-wide text-indigo-500/85">
         Kolejka
       </span>
       {steps.map((item, index) => (

@@ -98,15 +98,19 @@ export function ProsbaFormReadiness({
   requestKind,
   salesSubmitPlan,
   formMessage,
+  resolvingSupplier = false,
   className,
 }: {
   lines: ProsbaReadinessLine[];
   requestKind: IndividualRequestKind;
   salesSubmitPlan: SalesRequestSubmitPlan | null;
   formMessage?: { text: string; tone: "error" | "warning" | "success" } | null;
+  resolvingSupplier?: boolean;
   className?: string;
 }) {
-  const view = buildProsbaFormReadiness(lines, requestKind, salesSubmitPlan);
+  const view = buildProsbaFormReadiness(lines, requestKind, salesSubmitPlan, {
+    resolvingSupplier,
+  });
   const styles = toneStyles(view.tone);
 
   return (

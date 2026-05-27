@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { MyOrderRow } from "@/lib/orders/my-order-presenter";
 import { actionRefreshMojeZdEtas } from "@/app/actions/moje-zd-etas";
 import { MojeOrdersView } from "@/components/moje/MojeOrdersView";
@@ -14,6 +14,13 @@ type Presented = {
   informacje: MyOrderRow[];
   productLineCount: number;
 };
+
+/** Identyfikator skrzynki — zmiana po anulowaniu / odświeżeniu RSC. */
+function mojeInboxSignature(data: Presented): string {
+  return [...data.zamowienia, ...data.informacje]
+    .map((r) => `${r.id}:${r.orderIds.join(",")}`)
+    .join("|");
+}
 
 export function MojeOrdersShell({
   initial,
@@ -32,6 +39,17 @@ export function MojeOrdersShell({
 >) {
   const [presented, setPresented] = useState(initial);
   const [zdEligibleLive, setZdEligibleLive] = useState(zdEligibleCount);
+  const inboxSignature = useMemo(() => mojeInboxSignature(initial), [initial]);
+  const inboxSignatureRef = useRef(inboxSignature);
+
+  // Po router.refresh() (anulowanie, odbiór, edycja) RSC podaje nowe `initial`,
+  // a lokalny stan listy musi się zsynchronizować — inaczej widać stare wiersze.
+  useEffect(() => {
+    const prev = inboxSignatureRef.current;
+    inboxSignatureRef.current = inboxSignature;
+    if (prev === inboxSignature) return;
+    setPresented(initial);
+  }, [inboxSignature, initial]);
 
   const [zdNotice, setZdNotice] = useState<MojeZdEtaNoticeState>(() => {
     if (!subiektReachable || !salesPersonId) {

@@ -111,7 +111,7 @@ describe("resolveSupplierForSubiektProduct", () => {
     );
   });
 
-  it("szuka ZD po nazwie towaru gdy symbol jest numeryczny", async () => {
+  it("szuka ZD po nazwie towaru gdy symbol jest krótko numeryczny", async () => {
     vi.mocked(searchSubiektZdCached).mockImplementation(async (params) => {
       if (params.search?.toLowerCase().includes("flex")) {
         return {
@@ -138,6 +138,43 @@ describe("resolveSupplierForSubiektProduct", () => {
     expect(result?.supplierId).toBe("sup-1");
     expect(vi.mocked(searchSubiektZdCached)).toHaveBeenCalledWith(
       expect.objectContaining({ search: expect.stringMatching(/flex/i) })
+    );
+  });
+
+  it("dodaje długi symbol numeryczny jako token wyszukiwania ZD", async () => {
+    const numericProduct: SubiektProduct = {
+      tw_Id: 999,
+      tw_Symbol: "18080500",
+      tw_Nazwa: "Produkt test",
+    };
+
+    vi.mocked(searchSubiektZdCached).mockImplementation(async (params) => {
+      if (params.search === "18080500") {
+        return {
+          data: [{ dok_Id: 1900 }],
+          pagination: { page: 1, pageSize: 25, totalCount: 1, totalPages: 1 },
+        };
+      }
+      return {
+        data: [],
+        pagination: { page: 1, pageSize: 25, totalCount: 0, totalPages: 0 },
+      };
+    });
+    vi.mocked(getSubiektDocumentCached).mockResolvedValue({
+      dok_Id: 1900,
+      dok_NrPelny: "ZD/N/1",
+      dok_DataWyst: "2026-05-01",
+      kh__Kontrahent_Odbiorca: {
+        kh_Id: 1,
+        adr_NazwaPelna: "Dental Flex Italia Srl",
+      },
+      dok_Pozycja: [{ ob_TowId: 999, tw_Symbol: "18080500", tw_Nazwa: "Produkt test" }],
+    });
+
+    const result = await resolveSupplierForSubiektProduct(numericProduct, suppliers);
+    expect(result?.supplierId).toBe("sup-1");
+    expect(vi.mocked(searchSubiektZdCached)).toHaveBeenCalledWith(
+      expect.objectContaining({ search: "18080500" })
     );
   });
 });

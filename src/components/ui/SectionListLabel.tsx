@@ -26,7 +26,7 @@ export function SectionListLabel({
           ? "flex items-start justify-between gap-2 border-b border-emerald-100 bg-emerald-50/60 px-3 py-2.5 sm:px-4"
           : accent === "indigo"
             ? "flex items-start justify-between gap-2 border-b border-indigo-100/90 bg-gradient-to-r from-indigo-50/70 to-sky-50/40 px-3 py-2.5 sm:px-4"
-            : "flex items-start justify-between gap-2 border-b border-slate-100 bg-white px-3 py-2.5 sm:px-4"
+            : "flex items-start justify-between gap-2 border-b border-indigo-100/70 bg-gradient-to-r from-indigo-50/25 via-white to-white px-3 py-2.5 sm:px-4"
       }
     >
       <div className="flex min-w-0 items-start gap-2.5">
@@ -39,7 +39,7 @@ export function SectionListLabel({
                 ? "text-xs font-semibold uppercase tracking-wide text-emerald-900"
                 : accent === "indigo"
                   ? "text-xs font-semibold uppercase tracking-wide text-indigo-900"
-                  : "text-xs font-semibold uppercase tracking-wide text-slate-600",
+                  : "text-xs font-semibold uppercase tracking-wide text-indigo-900/90",
               id && "scroll-mt-24"
             )}
           >
@@ -53,7 +53,7 @@ export function SectionListLabel({
                   ? "text-emerald-800/90"
                   : accent === "indigo"
                     ? "text-indigo-800/90"
-                    : "text-slate-500"
+                    : "text-indigo-800/75"
               )}
             >
               {hint}
@@ -69,7 +69,7 @@ export function SectionListLabel({
               ? "bg-emerald-100 text-emerald-900"
               : accent === "indigo"
                 ? "bg-indigo-100 text-indigo-900"
-                : "bg-slate-100 text-slate-600"
+                : "bg-indigo-100/90 text-indigo-900"
           )}
         >
           {count}

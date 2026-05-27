@@ -50,6 +50,9 @@ function normalizeText(value: string): string {
     .toLowerCase()
     .normalize("NFD")
     .replace(/\p{M}/gu, "")
+    // Ujednolicenie separatorów w nazwach/symbolach: "-", "+", "/" itp.
+    // Dzięki temu "MT3+tarcza" i "MT3 tarcza" będą traktowane tak samo.
+    .replace(/[^a-z0-9]+/gi, " ")
     .replace(/\s+/g, " ")
     .trim();
 }
@@ -317,7 +320,7 @@ async function loadZdDocumentsForPlans(
 
     let list;
     try {
-      list = await searchSubiektZdCached(plan);
+      list = await searchSubiektZdCached({ ...plan, includeBlocked: true });
     } catch {
       continue;
     }

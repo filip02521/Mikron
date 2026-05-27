@@ -170,6 +170,21 @@ async function suggestProducts(
 
   try {
     let res = await searchSubiektProducts(productSearchParams(q, field));
+    if (field === "plu" && res.data.length > 0) {
+      const normalizePlu = (v: unknown): string => {
+        const raw = String(v ?? "").trim();
+        // Kod Mikran bywa liczbowy; normalizujemy wiodące zera (np. 0896 == 896).
+        if (/^\d+$/.test(raw)) return raw.replace(/^0+(?=\d)/, "");
+        return raw;
+      };
+      const qn = normalizePlu(q);
+      // W trybie “Kod Mikran” pokazuj tylko wyniki faktycznie po tw_PLU.
+      // Subiekt (lub warstwa API) potrafi dorzucić dopasowania po symbolu.
+      const onlyPlu = res.data.filter((p) => normalizePlu(p.tw_PLU) === qn);
+      if (onlyPlu.length !== res.data.length) {
+        res = { ...res, data: onlyPlu };
+      }
+    }
     if (field === "plu" && res.data.length === 0) {
       const wide = await searchSubiektProducts({
         search: q,
@@ -177,7 +192,13 @@ async function suggestProducts(
         pageSize: 24,
         page: 1,
       });
-      const byPlu = wide.data.filter((p) => (p.tw_PLU ?? "").trim() === q);
+      const normalizePlu = (v: unknown): string => {
+        const raw = String(v ?? "").trim();
+        if (/^\d+$/.test(raw)) return raw.replace(/^0+(?=\d)/, "");
+        return raw;
+      };
+      const qn = normalizePlu(q);
+      const byPlu = wide.data.filter((p) => normalizePlu(p.tw_PLU) === qn);
       if (byPlu.length) {
         res = { ...res, data: byPlu.slice(0, 12) };
       }

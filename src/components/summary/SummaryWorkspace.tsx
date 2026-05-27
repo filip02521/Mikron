@@ -10,7 +10,7 @@ import { UndoToast } from "@/components/ui/UndoToast";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { Card, CardHeader } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
-import { panelDashedActionClass } from "@/lib/ui/ontime-theme";
+import { panelDashedActionClass, panelTextLinkClass } from "@/lib/ui/ontime-theme";
 import { WeekPlanner } from "@/components/summary/WeekPlanner";
 import { SupplierDrawer } from "@/components/summary/SupplierDrawer";
 import { QuickOrderModal } from "@/components/summary/QuickOrderModal";
@@ -463,7 +463,7 @@ export function SummaryWorkspace({
                 >
                   <button
                     type="button"
-                    className="text-sm font-medium text-slate-600 transition-colors hover:text-slate-800"
+                    className={cn("text-sm", panelTextLinkClass)}
                     onClick={() => setOnDemandOpen(true)}
                   >
                     Pokaż listę ({workspace.onDemandSuppliers.length}{" "}
@@ -500,7 +500,7 @@ export function SummaryWorkspace({
                   <button
                     type="button"
                     onClick={() => setShowNextWeek(false)}
-                    className="text-sm font-medium text-slate-600 transition hover:text-indigo-800"
+                    className={cn("text-sm", panelTextLinkClass)}
                   >
                     Ukryj następny tydzień
                   </button>

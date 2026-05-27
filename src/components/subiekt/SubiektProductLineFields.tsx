@@ -252,11 +252,15 @@ export function SubiektProductLineFields({
     setItems([]);
     setStatus("idle");
 
-    if (deferSupplierResolve || !suppliers?.length || !onSupplierResolved) return;
+    if (!suppliers?.length || !onSupplierResolved) return;
 
-    setResolvingSupplier(true);
-    setSupplierFeedback(null);
-    onSupplierResolveFeedback?.(null);
+    const silentResolve = deferSupplierResolve;
+    if (!silentResolve) {
+      setResolvingSupplier(true);
+      setSupplierFeedback(null);
+      onSupplierResolveFeedback?.(null);
+    }
+    onResolvingSupplierChange?.(true);
     startTransition(async () => {
       try {
         const { actionSubiektResolveSupplierForProduct } = await import(
@@ -269,14 +273,17 @@ export function SubiektProductLineFields({
             supplierName: res.supplierName,
             documentNumber: res.documentNumber,
           });
-          setSupplierFeedback(null);
-          onSupplierResolveFeedback?.(null);
-        } else {
+          if (!silentResolve) {
+            setSupplierFeedback(null);
+            onSupplierResolveFeedback?.(null);
+          }
+        } else if (!silentResolve) {
           if (!delegateAlerts) setSupplierFeedback(res.feedback);
           onSupplierResolveFeedback?.(res.feedback);
         }
       } finally {
-        setResolvingSupplier(false);
+        onResolvingSupplierChange?.(false);
+        if (!silentResolve) setResolvingSupplier(false);
       }
     });
   };
@@ -324,11 +331,11 @@ export function SubiektProductLineFields({
         kind: "hint",
         text: deferSupplierResolve
           ? isInformacja
-            ? "Wpisz symbol, kod Mikran (min. 1 cyfra) lub nazwę (min. 2 znaki) — po wyborze towaru możesz od razu wysłać prośbę; dostawcę dopasujemy w tle."
-            : "Wpisz symbol, kod Mikran (min. 1 cyfra) lub nazwę (min. 2 znaki) — po wyborze towaru możesz od razu wysłać prośbę; dostawcę dopasujemy w tle z Subiekta."
+            ? "Wpisz symbol, kod Mikran lub nazwę, aby wyszukać w Subiekcie."
+            : "Wpisz symbol, kod Mikran lub nazwę, aby wyszukać w Subiekcie."
           : isInformacja
-            ? "Wpisz symbol, kod Mikran lub nazwę — po wyborze uzupełnimy pola i spróbujemy ustawić dostawcę z ZD."
-            : "Wpisz symbol, kod Mikran lub nazwę — po wyborze uzupełnimy pola i spróbujemy ustawić dostawcę z ZD.",
+            ? "Wpisz symbol, kod Mikran lub nazwę, aby wyszukać w Subiekcie."
+            : "Wpisz symbol, kod Mikran lub nazwę, aby wyszukać w Subiekcie.",
       });
     }
   }
@@ -635,13 +642,7 @@ export function SubiektProductLineFields({
 
           {!delegateAlerts && !prosba && !feedback && !resolvingSupplier && !linkedFromSubiekt ? (
             <p className="text-xs text-slate-400">
-              {deferSupplierResolve
-                ? isInformacja
-                  ? "Wpisz symbol, kod Mikran (min. 1 cyfra) lub nazwę (min. 2 znaki) — po wyborze towaru możesz od razu wysłać prośbę; dostawcę dopasujemy w tle."
-                  : "Wpisz symbol, kod Mikran (min. 1 cyfra) lub nazwę (min. 2 znaki) — po wyborze towaru możesz wysłać prośbę; dostawcę dopasujemy w tle z Subiekta."
-                : isInformacja
-                  ? "Wpisz symbol, kod Mikran lub nazwę — po wyborze uzupełnimy pola i spróbujemy ustawić dostawcę z ZD."
-                  : "Wpisz symbol, kod Mikran lub nazwę — po wyborze uzupełnimy pola i spróbujemy ustawić dostawcę z ZD."}
+              Wpisz symbol, kod Mikran lub nazwę, aby wyszukać w Subiekcie.
             </p>
           ) : null}
 

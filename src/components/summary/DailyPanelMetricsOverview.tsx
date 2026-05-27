@@ -118,7 +118,7 @@ export function DailyPanelMetricsOverview({
             : undefined
         }
         icon={<IconCalendar size={15} />}
-        tileClassName="bg-slate-100 text-slate-700"
+        tileClassName="bg-sky-100 text-sky-800"
       />
       <MetricTile
         value={summary.forSomeoneGroupCount}
@@ -160,7 +160,7 @@ export function DailyPanelMetricsOverview({
           hint="brak danych"
           href="/podsumowanie?view=wyjatki#poza-harmonogramem"
           icon={<DailySectionIcon kind="hidden" size={15} />}
-          tileClassName="bg-slate-200/80 text-slate-600"
+          tileClassName="bg-indigo-100/70 text-indigo-800/90"
         />
       ) : null}
     </div>
@@ -193,7 +193,7 @@ export function DailyPanelMetricsOverview({
     ) : null;
 
   return (
-    <div className="border-t border-slate-100 px-4 py-4 sm:px-6">
+    <div className="border-t border-indigo-100/70 px-4 py-4 sm:px-6">
       {/* Mobile: zwijany przegląd */}
       <details className="group sm:hidden">
         <summary className="flex cursor-pointer list-none items-center justify-between gap-2 marker:content-none [&::-webkit-details-marker]:hidden">

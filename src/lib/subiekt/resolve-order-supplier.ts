@@ -1,6 +1,10 @@
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getAppSupplierRefsCached } from "@/lib/data/supplier-refs";
 import { recordSupplierResolveLog } from "@/lib/data/supplier-resolve-metrics";
+import {
+  getCachedSupplierForSubiektProduct,
+  upsertCachedSupplierForSubiektProduct,
+} from "@/lib/data/product-supplier-cache";
 import { getSubiektProduct } from "@/lib/subiekt/api";
 import { isSubiektReachable } from "@/lib/subiekt/availability";
 import { dedupeAppSuppliersByKhId } from "@/lib/subiekt/dedupe-suppliers-by-kh";
@@ -91,6 +95,39 @@ export async function resolveOrderSupplierBackground(
     return "failed";
   }
 
+  // 0) Najtańsze: cache z poprzednich dopasowań (jeśli jest świeże i dostawca dalej istnieje).
+  const cached = await getCachedSupplierForSubiektProduct(product.tw_Id);
+  if (cached?.supplierId) {
+    const kind = (row.request_kind ?? "zamowienie") as IndividualRequestKind;
+    const assessment = assessRequestCompleteness({
+      supplierId: cached.supplierId,
+      symbol: row.symbol,
+      product: row.products,
+      quantity: row.quantity,
+      requestKind: kind,
+    });
+    if (assessment === "complete" && (kind !== "zamowienie" || hasValidOrderQuantity(row.quantity, kind))) {
+      const supabase = createAdminClient();
+      const { data: updated, error } = await supabase
+        .from("individual_orders")
+        .update({
+          supplier_id: cached.supplierId,
+          status: "Nowe",
+          supplier_resolve_pending: false,
+        })
+        .eq("id", orderId)
+        .eq("status", "Weryfikacja")
+        .select("id")
+        .maybeSingle();
+
+      if (error) throw new Error(error.message);
+      if (updated) {
+        await logResult(orderId, "promoted", started);
+        return "promoted";
+      }
+    }
+  }
+
   let fullProduct = product;
   try {
     fullProduct = await getSubiektProduct(product.tw_Id);
@@ -102,11 +139,56 @@ export async function resolveOrderSupplierBackground(
   const lookup = await lookupSupplierForSubiektProduct(fullProduct, appSuppliers);
 
   if (lookup.status !== "mapped") {
+    // 3) Ostatnia deska ratunku: nasza historia individual_orders.
+    // Tańsze niż dalsze grzebanie w ZD i często trafne, gdy towar był kupowany dawno temu.
+    const historySupplierId = await findSupplierFromIndividualHistory(fullProduct.tw_Id);
+    if (historySupplierId) {
+      await upsertCachedSupplierForSubiektProduct({
+        subiektTwId: fullProduct.tw_Id,
+        supplierId: historySupplierId,
+        source: "history",
+      });
+
+      const kind = (row.request_kind ?? "zamowienie") as IndividualRequestKind;
+      const assessment = assessRequestCompleteness({
+        supplierId: historySupplierId,
+        symbol: row.symbol,
+        product: row.products,
+        quantity: row.quantity,
+        requestKind: kind,
+      });
+      if (assessment === "complete" && (kind !== "zamowienie" || hasValidOrderQuantity(row.quantity, kind))) {
+        const supabase = createAdminClient();
+        const { data: updated, error } = await supabase
+          .from("individual_orders")
+          .update({
+            supplier_id: historySupplierId,
+            status: "Nowe",
+            supplier_resolve_pending: false,
+          })
+          .eq("id", orderId)
+          .eq("status", "Weryfikacja")
+          .select("id")
+          .maybeSingle();
+        if (error) throw new Error(error.message);
+        if (updated) {
+          await logResult(orderId, "promoted", started);
+          return "promoted";
+        }
+      }
+    }
+
     await clearPending(orderId);
     const outcome = lookup.status === "not_found" ? "not_found" : "failed";
     await logResult(orderId, outcome, started);
     return outcome;
   }
+
+  await upsertCachedSupplierForSubiektProduct({
+    subiektTwId: fullProduct.tw_Id,
+    supplierId: lookup.supplierId,
+    source: "zd",
+  });
 
   const kind = (row.request_kind ?? "zamowienie") as IndividualRequestKind;
   const assessment = assessRequestCompleteness({
@@ -151,6 +233,23 @@ export async function resolveOrderSupplierBackground(
 
   await logResult(orderId, "promoted", started);
   return "promoted";
+}
+
+async function findSupplierFromIndividualHistory(
+  subiektTwId: number
+): Promise<string | null> {
+  if (!Number.isFinite(subiektTwId) || subiektTwId <= 0) return null;
+  const supabase = createAdminClient();
+  const { data, error } = await supabase
+    .from("individual_orders")
+    .select("supplier_id, action_at")
+    .eq("subiekt_tw_id", Math.trunc(subiektTwId))
+    .not("supplier_id", "is", null)
+    .order("action_at", { ascending: false })
+    .limit(1);
+  if (error) throw new Error(error.message);
+  const row = data?.[0];
+  return row?.supplier_id ?? null;
 }
 
 async function clearPending(orderId: string) {

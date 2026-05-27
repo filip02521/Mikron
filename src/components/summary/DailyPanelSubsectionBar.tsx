@@ -28,11 +28,11 @@ const TONE_BAR: Record<
     count: "bg-sky-100 text-sky-900",
   },
   default: {
-    bar: "border-slate-100 bg-slate-50/70",
-    title: "text-slate-900",
-    description: "text-slate-500",
-    step: "bg-slate-200/80 text-slate-800",
-    count: "bg-slate-100 text-slate-700",
+    bar: "border-indigo-100/75 bg-gradient-to-r from-indigo-50/30 via-white to-sky-50/20",
+    title: "text-indigo-950",
+    description: "text-indigo-800/75",
+    step: "bg-indigo-200/65 text-indigo-950",
+    count: "bg-indigo-100/90 text-indigo-900",
   },
 };
 
@@ -45,7 +45,7 @@ export function dailyPanelQueueShellClass(tone: DailyPanelSubsectionTone): strin
         ? "border-l-indigo-500 ring-indigo-100/70"
         : tone === "today"
           ? "border-l-sky-500 ring-sky-100/70"
-          : "border-l-slate-400 ring-slate-100/80";
+          : "border-l-indigo-400/90 ring-indigo-100/70";
 
   const border =
     tone === "overdue"
@@ -54,7 +54,7 @@ export function dailyPanelQueueShellClass(tone: DailyPanelSubsectionTone): strin
         ? "border-indigo-200/85"
         : tone === "today"
           ? "border-sky-200/85"
-          : "border-slate-200";
+          : "border-indigo-200/80";
 
   return cn(
     "overflow-hidden rounded-xl border border-l-4 bg-white shadow-sm ring-1",

@@ -41,7 +41,33 @@ describe("buildProsbaFormReadiness", () => {
     );
     expect(view.tone).toBe("ready");
     expect(view.canSubmit).toBe(true);
+    expect(view.steps.find((s) => s.id === "supplier")?.state).toBe("handoff");
+    expect(view.steps.find((s) => s.id === "supplier")?.detail).toContain("ZD");
+  });
+
+  it("subiekt z dopasowanym dostawcą — done", () => {
+    const plan = planSalesRequestSubmit({
+      symbol: "A",
+      product: "Test",
+      quantity: "1",
+      subiektTwId: 9,
+      supplierId: "sup-1",
+      requestKind: "zamowienie",
+    });
+    const view = buildProsbaFormReadiness(
+      [
+        {
+          symbol: "A",
+          product: "Test",
+          quantity: "1",
+          subiektTwId: 9,
+          supplierId: "sup-1",
+        },
+      ],
+      "zamowienie",
+      plan
+    );
     expect(view.steps.find((s) => s.id === "supplier")?.state).toBe("done");
-    expect(view.steps.find((s) => s.id === "supplier")?.detail).toContain("Subiekta");
+    expect(view.steps.find((s) => s.id === "supplier")?.detail).toContain("panelu dziennego");
   });
 });

@@ -5,7 +5,7 @@ import { createPortal } from "react-dom";
 import { Button } from "@/components/ui/Button";
 import { IconChevronDown } from "@/components/icons/StrokeIcons";
 import { cn } from "@/lib/cn";
-import { panelMenuItemClass, panelSegmentControlClass, panelSegmentControlOpenClass } from "@/lib/ui/ontime-theme";
+import { panelDropdownShellClass, panelMenuItemClass, panelSegmentControlClass, panelSegmentControlOpenClass } from "@/lib/ui/ontime-theme";
 
 function useMenuAnchor() {
   const anchorRef = useRef<HTMLDivElement>(null);
@@ -96,7 +96,7 @@ export function ShiftMenu({
       <div
         id="shift-menu-panel"
         role="menu"
-        className="fixed z-[100] min-w-[168px] rounded-xl border border-slate-200 bg-white py-1 shadow-lg"
+        className={cn("fixed z-[100] min-w-[168px] py-1", panelDropdownShellClass)}
         style={{
           top: pos.top,
           left: pos.left,

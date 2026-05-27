@@ -48,9 +48,11 @@ function pruneMap<T>(map: Map<number | string, CacheEntry<T>>, max: number) {
 function listCacheKey(params: SubiektListParams): string {
   return JSON.stringify({
     search: params.search ?? "",
+    symbol: params.symbol ?? "",
     khId: params.khId ?? "",
     dataOd: params.dataOd ?? "",
     dataDo: params.dataDo ?? "",
+    includeBlocked: params.includeBlocked ?? false,
     page: params.page ?? 1,
     pageSize: params.pageSize ?? 25,
   });

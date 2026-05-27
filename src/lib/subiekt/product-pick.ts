@@ -3,6 +3,13 @@ import { parseOrderQuantity } from "@/lib/orders/individual";
 import type { SubiektListParams } from "@/lib/subiekt/api";
 import type { SubiektProduct } from "@/lib/subiekt/types";
 
+function safeTrim(v: unknown): string {
+  if (v == null) return "";
+  if (typeof v === "string") return v.trim();
+  if (typeof v === "number") return String(v).trim();
+  return String(v).trim();
+}
+
 export type SubiektProductPick = {
   symbol: string;
   product: string;
@@ -35,6 +42,8 @@ export function productSearchParams(
   const base = { search: q, pageSize: 12, page: 1 };
 
   if (field === "plu") {
+    // Subiekt bywa tak skonfigurowany, że bez `search` endpoint nic nie zwraca.
+    // Zawężenie do faktycznego tw_PLU robimy po stronie aplikacji (actions/subiekt.ts).
     return { ...base, plu: q };
   }
   if (field === "symbol") {
@@ -56,9 +65,9 @@ export function buildProductPickFromSubiekt(
   requestKind: IndividualRequestKind,
   existingQuantity = ""
 ): SubiektProductPick {
-  const sym = (p.tw_Symbol ?? "").trim();
-  const name = (p.tw_Nazwa ?? "").trim();
-  const plu = (p.tw_PLU ?? "").trim();
+  const sym = safeTrim(p.tw_Symbol);
+  const name = safeTrim(p.tw_Nazwa);
+  const plu = safeTrim(p.tw_PLU);
   const symbol = sym || "-";
   const product = name || sym || "";
   const mikranCode = plu;
@@ -80,9 +89,9 @@ export function formatSubiektProductOption(p: SubiektProduct): {
   title: string;
   subtitle: string;
 } {
-  const sym = (p.tw_Symbol ?? "").trim();
-  const name = (p.tw_Nazwa ?? "").trim();
-  const plu = (p.tw_PLU ?? "").trim();
+  const sym = safeTrim(p.tw_Symbol);
+  const name = safeTrim(p.tw_Nazwa);
+  const plu = safeTrim(p.tw_PLU);
   const parts = [
     sym ? `Symbol: ${sym}` : null,
     plu ? `Kod Mikran: ${plu}` : null,

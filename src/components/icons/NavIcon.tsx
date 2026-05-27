@@ -93,10 +93,11 @@ export function navIconTileIdleClass(key: NavIconKey): string {
     case "warehouse":
       return "bg-emerald-100 text-emerald-800";
     case "history":
-    case "teamAccounts":
-      return "bg-slate-100 text-slate-600";
+      return "bg-indigo-50 text-indigo-700";
     case "suppliers":
-      return "bg-slate-100 text-slate-700";
+      return "bg-sky-50 text-sky-800";
+    case "teamAccounts":
+      return "bg-indigo-50/90 text-indigo-700";
     case "vacation":
       return "bg-sky-100 text-sky-800";
     case "groupOrder":

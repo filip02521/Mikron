@@ -13,7 +13,7 @@ import {
 import { createPortal } from "react-dom";
 import { Button } from "@/components/ui/Button";
 import { cn } from "@/lib/cn";
-import { panelSegmentControlClass, panelSegmentControlOpenClass } from "@/lib/ui/ontime-theme";
+import { panelSegmentControlClass, panelSegmentControlOpenClass, panelDropdownShellClass, panelToolbarIconButtonClass } from "@/lib/ui/ontime-theme";
 import { buttonGroupItemClass } from "@/lib/ui/surfaces";
 
 const CloseMenuContext = createContext<() => void>(() => {});
@@ -158,7 +158,8 @@ export function OverflowMenu({
         aria-controls={open ? menuId : undefined}
         aria-label={label}
         className={cn(
-          "inline-flex h-8 w-8 shrink-0 cursor-pointer items-center justify-center rounded-lg border border-slate-200/90 bg-white text-slate-600 shadow-sm transition hover:border-slate-300 hover:bg-slate-50 hover:text-slate-900 disabled:cursor-not-allowed disabled:opacity-50",
+          panelToolbarIconButtonClass,
+          "h-8 w-8",
           open && "border-indigo-300 bg-indigo-50 text-indigo-700",
           triggerClassName
         )}
@@ -194,7 +195,7 @@ export function OverflowMenu({
           ref={menuRef}
           id={menuId}
           role="menu"
-          className="fixed z-[200] min-w-[11rem] rounded-xl border border-slate-200 bg-white py-1 shadow-lg"
+          className={cn("fixed z-[200] min-w-[11rem]", panelDropdownShellClass)}
           style={{ top: menuPos.top, left: menuPos.left }}
         >
           {children}

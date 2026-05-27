@@ -1,5 +1,5 @@
 import { cn } from "@/lib/cn";
-import { sectionIconTileBrandClass } from "@/lib/ui/ontime-theme";
+import { sectionIconTileBrandClass, sectionIconTileBrandSoftClass } from "@/lib/ui/ontime-theme";
 
 export type StrokeIconProps = {
   className?: string;
@@ -450,8 +450,8 @@ export function dailySectionIconTileClass(kind: DailySectionIconKind): string {
     case "harmonogram":
       return "bg-amber-100 text-amber-800";
     case "plan":
-      return "bg-slate-100 text-slate-700";
+      return sectionIconTileBrandSoftClass;
     case "hidden":
-      return "bg-slate-200/80 text-slate-600";
+      return "bg-indigo-100/70 text-indigo-800/90";
   }
 }

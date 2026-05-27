@@ -468,6 +468,10 @@ export function OrderFormClient({
                   showClientField
                   suppliers={supplierRefs}
                   deferSupplierResolve={deferSupplierResolve}
+                  onSupplierResolved={({ supplierId }) =>
+                    applySupplierFromSubiekt(supplierId, 0)
+                  }
+                  onResolvingSupplierChange={setResolvingSupplier}
                   validationAttempted={validationAttempted}
                 />
 
@@ -476,6 +480,7 @@ export function OrderFormClient({
                   requestKind={requestKind}
                   salesSubmitPlan={salesSubmitPlan}
                   formMessage={formNotice}
+                  resolvingSupplier={resolvingSupplier}
                 />
               </div>
             </ProsbaFormSection>

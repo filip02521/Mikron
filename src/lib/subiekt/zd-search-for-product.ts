@@ -23,6 +23,20 @@ const STOP_WORDS = new Set([
   "ml",
 ]);
 
+/** Symbol do wyszukiwania ZD — tw_Symbol albo długi kod numeryczny z końca nazwy. */
+export function effectiveProductSymbol(product: SubiektProduct): string {
+  const sym = (product.tw_Symbol ?? "").trim();
+  if (sym && sym !== "-") {
+    const hasLetters = /[a-zA-Ząćęłńóśźż]/i.test(sym);
+    const isLongNumeric = /^\d{6,}$/.test(sym);
+    if (hasLetters || isLongNumeric) return sym;
+  }
+  const name = (product.tw_Nazwa ?? "").trim();
+  const fromName = name.match(/\b(\d{6,})\b/g);
+  if (fromName?.length) return fromName[fromName.length - 1]!;
+  return sym && sym !== "-" ? sym : "";
+}
+
 /** Marka z prefiksu nazwy (np. „Renfert-Waxlectric …” → „Renfert”) — API ZD nie znajduje po całym łączniku. */
 export function brandTokensFromProductName(name: string): string[] {
   const trimmed = name.trim();
@@ -50,22 +64,36 @@ export function brandTokensFromProductName(name: string): string[] {
   return out;
 }
 
-/** Tokeny z nazwy towaru do wyszukiwania ZD (API nie znajduje po samym symbolu numerycznym). */
+/** Tokeny do wyszukiwania ZD (marka/nazwa + czasem symbol). */
 export function zdSearchTokensFromProduct(
   product: SubiektProduct,
   maxTokens = 6
 ): string[] {
   const name = (product.tw_Nazwa ?? "").trim();
-  const symbol = (product.tw_Symbol ?? "").trim();
+  const symbol = effectiveProductSymbol(product);
   const tokens: string[] = [];
+
+  // Symbol jako token bywa kluczowy przy dopasowaniu dostawcy (szczególnie numeryczne kody).
+  // Musi mieć wysoką priorytetyzację, bo lista tokenów jest ucinana do `maxTokens`.
+  let symbolToken: string | null = null;
+  if (symbol && symbol.length >= 3) {
+    const hasLetters = /[a-zA-Ząćęłńóśźż]/i.test(symbol);
+    const isNumeric = /^\d+$/.test(symbol);
+    if (hasLetters || (isNumeric && symbol.length >= 6)) {
+      symbolToken = symbol;
+    }
+  }
 
   for (const brand of brandTokensFromProductName(name)) {
     tokens.push(brand);
   }
+  if (symbolToken) tokens.push(symbolToken);
 
   const words = name
     .replace(/["„”]/g, " ")
-    .split(/[\s,;/]+/)
+    // ZD search lepiej działa na “gołych” tokenach niż na ciągach typu "MT3+tarcza".
+    .replace(/[+\-/]/g, " ")
+    .split(/[\s,;]+/)
     .map((w) => w.replace(/^[^a-zA-Z0-9ąćęłńóśźżĄĆĘŁŃÓŚŹŻ]+|[^a-zA-Z0-9ąćęłńóśźżĄĆĘŁŃÓŚŹŻ]+$/gi, ""))
     .filter((w) => w.length >= 3 && !STOP_WORDS.has(w.toLowerCase()));
 
@@ -85,10 +113,6 @@ export function zdSearchTokensFromProduct(
     tokens.push(w);
   }
 
-  if (symbol && /[a-zA-Ząćęłńóśźż]/i.test(symbol) && symbol.length >= 3) {
-    tokens.push(symbol);
-  }
-
   const seen = new Set<string>();
   const out: string[] = [];
   for (const t of tokens) {
@@ -97,7 +121,14 @@ export function zdSearchTokensFromProduct(
     seen.add(key);
     out.push(t);
   }
-  return out.slice(0, maxTokens);
+  if (!symbolToken) return out.slice(0, maxTokens);
+
+  // Gwarancja: jeśli zdecydowaliśmy, że symbol jest istotny, nie może wypaść przez limit.
+  const limited = out.slice(0, maxTokens);
+  if (limited.some((t) => t.toLowerCase() === symbolToken.toLowerCase())) return limited;
+  // Podmień ostatni token, zachowując priorytet wcześniejszych.
+  if (limited.length === 0) return [symbolToken];
+  return [...limited.slice(0, Math.max(0, maxTokens - 1)), symbolToken];
 }
 
 const ZD_ORDER_SEARCH_MAX_TOKENS = 3;
@@ -124,7 +155,7 @@ function dedupeZdSearchPlans(plans: SubiektListParams[]): SubiektListParams[] {
   const seen = new Set<string>();
   const out: SubiektListParams[] = [];
   for (const plan of plans) {
-    const key = `${plan.search ?? ""}|${plan.khId ?? ""}|${plan.dataOd ?? dataOd}`;
+    const key = `${plan.search ?? ""}|${plan.symbol ?? ""}|${plan.khId ?? ""}|${plan.dataOd ?? dataOd}`;
     if (seen.has(key)) continue;
     seen.add(key);
     out.push({ ...plan, dataOd: plan.dataOd ?? dataOd });
@@ -153,11 +184,17 @@ export function zdSearchPlansForProductSupplierLookup(
 
   const plans: SubiektListParams[] = [];
   const brandTokens = brandTokensFromProductName(product.tw_Nazwa ?? "");
+  const symbol = effectiveProductSymbol(product);
+
+  if (symbol.length >= 3) {
+    plans.push({ symbol, search: symbol, dataOd, pageSize: 25, page: 1 });
+  }
 
   for (const brand of brandTokens) {
     for (const khId of linkedKhIds) {
       plans.push({ search: brand, khId, dataOd, pageSize: 25, page: 1 });
     }
+    plans.push({ search: brand, dataOd, pageSize: 25, page: 1 });
   }
 
   for (const search of tokens) {
