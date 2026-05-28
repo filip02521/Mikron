@@ -21,6 +21,13 @@ import {
   tickZdIndexJob,
   type ZdIndexJobState,
 } from "@/lib/subiekt/zd-index-job";
+import {
+  readZdImportAllSuppliersJobState,
+  startZdImportAllSuppliersJob,
+  stopZdImportAllSuppliersJob,
+  tickZdImportAllSuppliersJob,
+  type ZdImportAllSuppliersJobState,
+} from "@/lib/subiekt/zd-import-all-suppliers-job";
 
 const MAX_NOTE_LEN = 500;
 
@@ -388,6 +395,32 @@ export async function actionTickZdIndexJob(options?: { maxDocs?: number }): Prom
 export async function actionStopZdIndexJob() {
   await requireAdmin();
   const next = await stopZdIndexJob();
+  revalidatePath("/admin/produkty");
+  return next;
+}
+
+export async function actionReadZdImportAllSuppliersJob(): Promise<ZdImportAllSuppliersJobState | null> {
+  await requireAdmin();
+  return readZdImportAllSuppliersJobState();
+}
+
+export async function actionStartZdImportAllSuppliersJob(): Promise<ZdImportAllSuppliersJobState> {
+  await requireAdmin();
+  // startujemy od dataOd=18m wstecz (tak samo jak reszta ZD)
+  const { defaultZdSearchDataOd } = await import("@/lib/subiekt/subiekt-runtime-cache");
+  return startZdImportAllSuppliersJob({ dataOd: defaultZdSearchDataOd(18), batchDocs: 3 });
+}
+
+export async function actionTickZdImportAllSuppliersJob(): Promise<ZdImportAllSuppliersJobState> {
+  await requireAdmin();
+  const next = await tickZdImportAllSuppliersJob({ maxDocs: 3 });
+  revalidatePath("/admin/produkty");
+  return next;
+}
+
+export async function actionStopZdImportAllSuppliersJob() {
+  await requireAdmin();
+  const next = await stopZdImportAllSuppliersJob();
   revalidatePath("/admin/produkty");
   return next;
 }

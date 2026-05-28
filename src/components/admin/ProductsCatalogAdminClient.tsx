@@ -20,6 +20,10 @@ import {
   actionStartZdIndexJob,
   actionStopZdIndexJob,
   actionTickZdIndexJob,
+  actionReadZdImportAllSuppliersJob,
+  actionStartZdImportAllSuppliersJob,
+  actionStopZdImportAllSuppliersJob,
+  actionTickZdImportAllSuppliersJob,
 } from "@/app/actions/product-catalog";
 
 export function ProductsCatalogAdminClient({
@@ -40,6 +44,9 @@ export function ProductsCatalogAdminClient({
   const [indexState, setIndexState] = useState<any | null>(null);
   const [indexRunning, setIndexRunning] = useState(false);
   const indexTimer = useRef<number | null>(null);
+  const [allState, setAllState] = useState<any | null>(null);
+  const [allRunning, setAllRunning] = useState(false);
+  const allTimer = useRef<number | null>(null);
 
   const stopTickLoop = () => {
     if (tickTimer.current != null) {
@@ -55,6 +62,14 @@ export function ProductsCatalogAdminClient({
       indexTimer.current = null;
     }
     setIndexRunning(false);
+  };
+
+  const stopAllLoop = () => {
+    if (allTimer.current != null) {
+      window.clearInterval(allTimer.current);
+      allTimer.current = null;
+    }
+    setAllRunning(false);
   };
 
   const refreshImportState = () => {
@@ -80,6 +95,17 @@ export function ProductsCatalogAdminClient({
     });
   };
 
+  const refreshAllState = () => {
+    start(async () => {
+      try {
+        const state = await actionReadZdImportAllSuppliersJob();
+        setAllState(state);
+      } catch (e) {
+        setToast({ text: e instanceof Error ? e.message : "Błąd odczytu autopilota", tone: "error" });
+      }
+    });
+  };
+
   useEffect(() => {
     refreshImportState();
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -87,6 +113,11 @@ export function ProductsCatalogAdminClient({
 
   useEffect(() => {
     refreshIndexState();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  useEffect(() => {
+    refreshAllState();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -220,6 +251,50 @@ export function ProductsCatalogAdminClient({
     } catch (e) {
       stopIndexLoop();
       setToast({ text: e instanceof Error ? e.message : "Błąd tick indeksu", tone: "error" });
+    }
+  };
+
+  const startAll = () => {
+    start(async () => {
+      try {
+        const s = await actionStartZdImportAllSuppliersJob();
+        setAllState(s);
+        setToast({ text: "Autopilot: start importu po dostawcach…", tone: "success" });
+        setAllRunning(true);
+        if (allTimer.current == null) {
+          allTimer.current = window.setInterval(() => {
+            void tickAll();
+          }, 1500);
+        }
+      } catch (e) {
+        setToast({ text: e instanceof Error ? e.message : "Błąd startu autopilota", tone: "error" });
+      }
+    });
+  };
+
+  const stopAll = () => {
+    stopAllLoop();
+    start(async () => {
+      try {
+        const s = await actionStopZdImportAllSuppliersJob();
+        setAllState(s);
+        setToast({ text: "Autopilot zatrzymany.", tone: "success" });
+      } catch (e) {
+        setToast({ text: e instanceof Error ? e.message : "Błąd stop autopilota", tone: "error" });
+      }
+    });
+  };
+
+  const tickAll = async () => {
+    try {
+      const s = await actionTickZdImportAllSuppliersJob();
+      setAllState(s);
+      if (s?.status === "done" || s?.status === "failed" || s?.status === "idle") {
+        stopAllLoop();
+      }
+    } catch (e) {
+      stopAllLoop();
+      setToast({ text: e instanceof Error ? e.message : "Błąd tick autopilota", tone: "error" });
     }
   };
 
@@ -359,6 +434,67 @@ export function ProductsCatalogAdminClient({
             ) : null}
             {indexState?.lastError ? (
               <p className="mt-2 text-[11px] text-red-700">Błąd: {indexState.lastError}</p>
+            ) : null}
+          </div>
+
+          <hr className="my-4 border-slate-200" />
+
+          <p className="text-sm font-semibold text-slate-900">Autopilot: import po dostawcach</p>
+          <p className="mt-0.5 text-xs text-slate-600">
+            Sam przechodzi po wszystkich dostawcach z Subiektem i importuje produkty na podstawie `subiekt_zd_index`.
+          </p>
+          <div className="mt-3 flex flex-wrap gap-2">
+            <Button variant="secondary" onClick={startAll} disabled={pending}>
+              Start autopilota
+            </Button>
+            <Button variant="secondary" onClick={() => void tickAll()} disabled={pending}>
+              Tick
+            </Button>
+            <Button variant="secondary" onClick={stopAll} disabled={pending}>
+              Stop
+            </Button>
+            <Button variant="secondary" onClick={refreshAllState} disabled={pending}>
+              Odśwież status
+            </Button>
+          </div>
+          <div className="mt-3 text-xs text-slate-700">
+            <div className="flex flex-wrap gap-2">
+              <span className="rounded-full bg-slate-100 px-2 py-0.5">
+                Status: <span className="font-semibold">{allState?.status ?? "—"}</span>
+              </span>
+              <span className="rounded-full bg-slate-100 px-2 py-0.5">
+                Dostawca:{" "}
+                <span className="font-semibold">
+                  {allState?.supplierName ?? "—"}
+                </span>
+              </span>
+              <span className="rounded-full bg-slate-100 px-2 py-0.5">
+                Dostawcy:{" "}
+                <span className="font-semibold tabular-nums">
+                  {allState?.processedSuppliers ?? 0}/{allState?.supplierIds?.length ?? "?"}
+                </span>
+              </span>
+              <span className="rounded-full bg-slate-100 px-2 py-0.5">
+                Offset:{" "}
+                <span className="font-semibold tabular-nums">
+                  {allState?.indexOffset ?? 0}/{allState?.indexTotalDocs ?? "?"}
+                </span>
+              </span>
+              <span className="rounded-full bg-slate-100 px-2 py-0.5">
+                ZD: <span className="font-semibold tabular-nums">{allState?.processedDocs ?? 0}</span>
+              </span>
+              <span className={cn("rounded-full px-2 py-0.5", allRunning ? "bg-indigo-50 text-indigo-900" : "bg-slate-100")}>
+                Pętla: <span className="font-semibold">{allRunning ? "ON" : "OFF"}</span>
+              </span>
+            </div>
+            {allState?.lastDocNumber ? (
+              <p className="mt-2 text-[11px] text-slate-600">
+                Ostatni dokument: <span className="font-medium">{allState.lastDocNumber}</span> ·{" "}
+                {String(allState.lastUpdatedAt ?? "").slice(0, 19).replace("T", " ")}
+              </p>
+            ) : null}
+            {allState?.lastError ? (
+              <p className="mt-2 text-[11px] text-red-700">Błąd: {allState.lastError}</p>
             ) : null}
           </div>
 
