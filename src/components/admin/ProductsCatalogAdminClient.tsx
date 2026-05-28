@@ -16,6 +16,10 @@ import {
   actionStopZdImportSupplierJob,
   actionTickZdImportSupplierJob,
   actionCleanupZdImportForSupplier,
+  actionReadZdIndexJob,
+  actionStartZdIndexJob,
+  actionStopZdIndexJob,
+  actionTickZdIndexJob,
 } from "@/app/actions/product-catalog";
 
 export function ProductsCatalogAdminClient({
@@ -33,6 +37,9 @@ export function ProductsCatalogAdminClient({
   const [importState, setImportState] = useState<any | null>(null);
   const [importRunning, setImportRunning] = useState(false);
   const tickTimer = useRef<number | null>(null);
+  const [indexState, setIndexState] = useState<any | null>(null);
+  const [indexRunning, setIndexRunning] = useState(false);
+  const indexTimer = useRef<number | null>(null);
 
   const stopTickLoop = () => {
     if (tickTimer.current != null) {
@@ -40,6 +47,14 @@ export function ProductsCatalogAdminClient({
       tickTimer.current = null;
     }
     setImportRunning(false);
+  };
+
+  const stopIndexLoop = () => {
+    if (indexTimer.current != null) {
+      window.clearInterval(indexTimer.current);
+      indexTimer.current = null;
+    }
+    setIndexRunning(false);
   };
 
   const refreshImportState = () => {
@@ -54,10 +69,26 @@ export function ProductsCatalogAdminClient({
     });
   };
 
+  const refreshIndexState = () => {
+    start(async () => {
+      try {
+        const state = await actionReadZdIndexJob();
+        setIndexState(state);
+      } catch (e) {
+        setToast({ text: e instanceof Error ? e.message : "Błąd odczytu indeksu ZD", tone: "error" });
+      }
+    });
+  };
+
   useEffect(() => {
     refreshImportState();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [importSupplierId]);
+
+  useEffect(() => {
+    refreshIndexState();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const filtered = useMemo(() => {
     const q = filter.trim().toLowerCase();
@@ -148,6 +179,50 @@ export function ProductsCatalogAdminClient({
     }
   };
 
+  const startIndex = () => {
+    start(async () => {
+      try {
+        const s = await actionStartZdIndexJob({ monthsBack: 18 });
+        setIndexState(s);
+        setToast({ text: "Start indeksowania ZD — uruchamiam…", tone: "success" });
+        setIndexRunning(true);
+        if (indexTimer.current == null) {
+          indexTimer.current = window.setInterval(() => {
+            void tickIndex();
+          }, 1500);
+        }
+      } catch (e) {
+        setToast({ text: e instanceof Error ? e.message : "Błąd startu indeksowania", tone: "error" });
+      }
+    });
+  };
+
+  const stopIndex = () => {
+    stopIndexLoop();
+    start(async () => {
+      try {
+        const s = await actionStopZdIndexJob();
+        setIndexState(s);
+        setToast({ text: "Indeksowanie zatrzymane.", tone: "success" });
+      } catch (e) {
+        setToast({ text: e instanceof Error ? e.message : "Błąd stop indeksowania", tone: "error" });
+      }
+    });
+  };
+
+  const tickIndex = async () => {
+    try {
+      const s = await actionTickZdIndexJob({ maxDocs: 3 });
+      setIndexState(s);
+      if (s?.status === "done" || s?.status === "failed" || s?.status === "idle") {
+        stopIndexLoop();
+      }
+    } catch (e) {
+      stopIndexLoop();
+      setToast({ text: e instanceof Error ? e.message : "Błąd tick indeksu", tone: "error" });
+    }
+  };
+
   const rebuild = () => {
     if (!confirm("Odbudować bazę produktów z historii individual_orders?")) return;
     start(async () => {
@@ -229,6 +304,66 @@ export function ProductsCatalogAdminClient({
 
       <div className="px-6 pb-5">
         <div className="mt-2 rounded-xl border border-slate-200 bg-white p-4">
+          <p className="text-sm font-semibold text-slate-900">Indeks ZD → dostawca</p>
+          <p className="mt-0.5 text-xs text-slate-600">
+            Jednorazowo przechodzi po wszystkich ZD i przypisuje numer dokumentu do dostawcy w aplikacji (po `subiekt_kh_id`).
+          </p>
+
+          <div className="mt-3 flex flex-wrap gap-2">
+            <Button variant="secondary" onClick={startIndex} disabled={pending}>
+              Start indeksowania
+            </Button>
+            <Button variant="secondary" onClick={() => void tickIndex()} disabled={pending}>
+              Tick
+            </Button>
+            <Button variant="secondary" onClick={stopIndex} disabled={pending}>
+              Stop
+            </Button>
+            <Button variant="secondary" onClick={refreshIndexState} disabled={pending}>
+              Odśwież status
+            </Button>
+          </div>
+
+          <div className="mt-3 text-xs text-slate-700">
+            <div className="flex flex-wrap gap-2">
+              <span className="rounded-full bg-slate-100 px-2 py-0.5">
+                Status: <span className="font-semibold">{indexState?.status ?? "—"}</span>
+              </span>
+              <span className="rounded-full bg-slate-100 px-2 py-0.5">
+                Strona:{" "}
+                <span className="font-semibold tabular-nums">
+                  {indexState?.page ?? "—"}/{indexState?.totalPages ?? "?"}
+                </span>
+              </span>
+              <span className="rounded-full bg-slate-100 px-2 py-0.5">
+                Przetw.: <span className="font-semibold tabular-nums">{indexState?.processed ?? 0}</span>
+              </span>
+              <span className="rounded-full bg-slate-100 px-2 py-0.5">
+                Dopas.: <span className="font-semibold tabular-nums">{indexState?.mapped ?? 0}</span>
+              </span>
+              <span className="rounded-full bg-slate-100 px-2 py-0.5">
+                Brak dost.: <span className="font-semibold tabular-nums">{indexState?.unmapped ?? 0}</span>
+              </span>
+              <span className="rounded-full bg-slate-100 px-2 py-0.5">
+                Niezweryf.: <span className="font-semibold tabular-nums">{indexState?.unverifiable ?? 0}</span>
+              </span>
+              <span className={cn("rounded-full px-2 py-0.5", indexRunning ? "bg-indigo-50 text-indigo-900" : "bg-slate-100")}>
+                Pętla: <span className="font-semibold">{indexRunning ? "ON" : "OFF"}</span>
+              </span>
+            </div>
+            {indexState?.lastDocNumber ? (
+              <p className="mt-2 text-[11px] text-slate-600">
+                Ostatni dokument: <span className="font-medium">{indexState.lastDocNumber}</span> ·{" "}
+                {String(indexState.lastUpdatedAt ?? "").slice(0, 19).replace("T", " ")}
+              </p>
+            ) : null}
+            {indexState?.lastError ? (
+              <p className="mt-2 text-[11px] text-red-700">Błąd: {indexState.lastError}</p>
+            ) : null}
+          </div>
+
+          <hr className="my-4 border-slate-200" />
+
           <p className="text-sm font-semibold text-slate-900">Import z ZD (per dostawca)</p>
           <p className="mt-0.5 text-xs text-slate-600">
             Przetwarza dokumenty ZD w Subiekcie dla wybranego dostawcy (po `kh_Id`) i zapisuje mapowania do bazy produktów.

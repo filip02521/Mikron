@@ -14,6 +14,13 @@ import {
   tickZdImportForSupplier,
   type ZdImportSupplierJobState,
 } from "@/lib/subiekt/zd-import-supplier-job";
+import {
+  readZdIndexJobState,
+  startZdIndexJob,
+  stopZdIndexJob,
+  tickZdIndexJob,
+  type ZdIndexJobState,
+} from "@/lib/subiekt/zd-index-job";
 
 const MAX_NOTE_LEN = 500;
 
@@ -359,5 +366,29 @@ export async function actionCleanupZdImportForSupplier(supplierId: string): Prom
   if (error) throw new Error(error.message);
   revalidatePath("/admin/produkty");
   return { success: true, removedLinks: count ?? 0 };
+}
+
+export async function actionReadZdIndexJob(): Promise<ZdIndexJobState | null> {
+  await requireAdmin();
+  return readZdIndexJobState();
+}
+
+export async function actionStartZdIndexJob(options?: { monthsBack?: number }) {
+  await requireAdmin();
+  return startZdIndexJob({ monthsBack: options?.monthsBack ?? 18, pageSize: 25 });
+}
+
+export async function actionTickZdIndexJob(options?: { maxDocs?: number }): Promise<ZdIndexJobState> {
+  await requireAdmin();
+  const next = await tickZdIndexJob({ maxDocs: options?.maxDocs ?? 3 });
+  revalidatePath("/admin/produkty");
+  return next;
+}
+
+export async function actionStopZdIndexJob() {
+  await requireAdmin();
+  const next = await stopZdIndexJob();
+  revalidatePath("/admin/produkty");
+  return next;
 }
 
