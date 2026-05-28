@@ -26,6 +26,7 @@ import { MojePageSalesToolbar } from "@/components/moje/MojePageSalesToolbar";
 import { SalesAccountLinkRequired } from "@/components/sales/SalesAccountLinkRequired";
 import { ManagerPreviewBanner } from "@/components/sales/ManagerPreviewBanner";
 import type { DeliveryStats, IndividualOrder } from "@/types/database";
+import { autoAssignMissingSuppliersFromCatalog } from "@/lib/services/auto-assign-suppliers";
 
 export default async function MojePage({
   searchParams,
@@ -111,6 +112,24 @@ export default async function MojePage({
       orders = orderRows;
       stats = statsRows as DeliveryStats[];
       suppliers = supplierRows.map((s) => ({ id: s.id, name: s.name }));
+
+      // Auto-uzupełnianie dostawcy w tle na podstawie własnej bazy mapowań (product_supplier_links).
+      // Robimy to po pobraniu, żeby pierwszy render był szybki.
+      const missing = orderRows.filter((o) => !o.supplier_id && o.subiekt_tw_id);
+      if (missing.length > 0) {
+        const { after } = await import("next/server");
+        after(async () => {
+          try {
+            await autoAssignMissingSuppliersFromCatalog({
+              salesPersonId,
+              limit: 80,
+              minOrderCountForZdImport: 3,
+            });
+          } catch (e) {
+            console.error("[autoAssignMissingSuppliersFromCatalog moje]", e);
+          }
+        });
+      }
       if (viewingOwnPanel) {
         const legacyUnackedCancelled = orderRows.filter(
           (o) => o.status === "Anulowane" && !o.sales_acknowledged_at
@@ -133,6 +152,22 @@ export default async function MojePage({
       orders = orderRows;
       stats = statsRows as DeliveryStats[];
       suppliers = supplierRows.map((s) => ({ id: s.id, name: s.name }));
+
+      const missing = orderRows.filter((o) => !o.supplier_id && o.subiekt_tw_id);
+      if (missing.length > 0) {
+        const { after } = await import("next/server");
+        after(async () => {
+          try {
+            await autoAssignMissingSuppliersFromCatalog({
+              salesPersonId: salesPersonId ?? undefined,
+              limit: 120,
+              minOrderCountForZdImport: 3,
+            });
+          } catch (e) {
+            console.error("[autoAssignMissingSuppliersFromCatalog ops moje]", e);
+          }
+        });
+      }
     }
   } catch (e) {
     loadError = e instanceof Error ? e.message : "Nie udało się załadować zamówień.";
