@@ -3,7 +3,7 @@ import { isSubiektReachable } from "@/lib/subiekt/availability";
 import { defaultZdSearchDataOd, getSubiektDocumentCached, searchSubiektZdCached } from "@/lib/subiekt/subiekt-runtime-cache";
 import { upsertSubiektProduct, bumpProductSupplierLinkBy } from "@/lib/data/product-catalog";
 import type { SubiektDocumentLine } from "@/lib/subiekt/types";
-import { zdDocumentMatchesSupplierKh } from "@/lib/subiekt/zd-eta";
+import type { SubiektDocument } from "@/lib/subiekt/types";
 
 export type ZdImportSupplierJobState = {
   status: "idle" | "running" | "done" | "failed";
@@ -18,6 +18,7 @@ export type ZdImportSupplierJobState = {
   // metrics
   processedDocs: number;
   skippedDocsWrongSupplier: number;
+  unverifiableDocs: number;
   processedLines: number;
   uniqueProductsSeen: number;
   linksUpserted: number;
@@ -76,6 +77,7 @@ export async function startZdImportForSupplier(input: {
     totalPages: null,
     processedDocs: 0,
     skippedDocsWrongSupplier: 0,
+    unverifiableDocs: 0,
     processedLines: 0,
     uniqueProductsSeen: 0,
     linksUpserted: 0,
@@ -107,6 +109,56 @@ function lineTowId(line: SubiektDocumentLine): number | null {
   const n = Number(raw);
   if (!Number.isFinite(n) || n <= 0) return null;
   return Math.trunc(n);
+}
+
+function normalizeNumeric(value: unknown): number | null {
+  if (value == null) return null;
+  const n = Number(value);
+  if (!Number.isFinite(n) || n <= 0) return null;
+  return Math.trunc(n);
+}
+
+/**
+ * W Subiekt API pola kontrahenta bywają różne zależnie od wersji/widoku.
+ * Zwraca:
+ * - true/false jeśli potrafimy jednoznacznie porównać do target kh_Id
+ * - null jeśli w dokumencie nie ma żadnego sensownego id kontrahenta (nie weryfikujemy)
+ */
+function docMatchesKhId(doc: SubiektDocument, targetKhId: number): boolean | null {
+  const target = Math.trunc(targetKhId);
+  const ids: number[] = [];
+
+  // Najczęstsze pola (zgodne z typami)
+  ids.push(
+    ...[
+      normalizeNumeric((doc as any).dok_PlatnikId),
+      normalizeNumeric((doc as any).dok_OdbiorcaId),
+      normalizeNumeric((doc as any).kh_Id),
+      normalizeNumeric((doc as any).dok_KontrahentId),
+      normalizeNumeric((doc as any).dok_KhId),
+      normalizeNumeric((doc as any).dok_DostawcaId),
+    ].filter((n): n is number => n != null)
+  );
+
+  // Zagnieżdżone kontrahenty
+  for (const k of [(doc as any).kh__Kontrahent_Platnik, (doc as any).kh__Kontrahent_Odbiorca]) {
+    if (k?.kh_Id != null) {
+      const n = normalizeNumeric(k.kh_Id);
+      if (n != null) ids.push(n);
+    }
+  }
+
+  // Heurystyka: jeśli API zwraca inne pola z id kontrahenta, zbierz je.
+  // Nie bierzemy wszystkiego — tylko liczby przy kluczach wyglądających jak kontrahent.
+  for (const [key, value] of Object.entries(doc as Record<string, unknown>)) {
+    if (!/(kh|kontrah|platnik|odbiorca|dostawc)/i.test(key)) continue;
+    const n = normalizeNumeric(value);
+    if (n != null) ids.push(n);
+  }
+
+  const unique = [...new Set(ids)].filter((n) => Number.isFinite(n) && n > 0);
+  if (!unique.length) return null;
+  return unique.includes(target);
 }
 
 export async function tickZdImportForSupplier(input: {
@@ -157,6 +209,7 @@ export async function tickZdImportForSupplier(input: {
     const towAgg = new Map<number, { symbol: string | null; name: string | null; count: number }>();
     let processedDocs = 0;
     let skippedDocsWrongSupplier = 0;
+    let unverifiableDocs = 0;
     let processedLines = 0;
     let lastDocNumber: string | null = null;
 
@@ -167,9 +220,13 @@ export async function tickZdImportForSupplier(input: {
       lastDocNumber = doc.dok_NrPelny ?? null;
 
       // Twarda walidacja: API listy ZD potrafi zwrócić dokumenty spoza khId.
-      if (!zdDocumentMatchesSupplierKh(doc, current.subiektKhId)) {
+      const match = docMatchesKhId(doc as unknown as SubiektDocument, current.subiektKhId);
+      if (match === false) {
         skippedDocsWrongSupplier += 1;
         continue;
+      }
+      if (match == null) {
+        unverifiableDocs += 1;
       }
 
       processedDocs += 1;
@@ -223,6 +280,7 @@ export async function tickZdImportForSupplier(input: {
       page: isDone ? current.page : nextPage,
       processedDocs: current.processedDocs + processedDocs,
       skippedDocsWrongSupplier: current.skippedDocsWrongSupplier + skippedDocsWrongSupplier,
+      unverifiableDocs: current.unverifiableDocs + unverifiableDocs,
       processedLines: current.processedLines + processedLines,
       uniqueProductsSeen: seenBefore + towAgg.size,
       linksUpserted: current.linksUpserted + linksUpserted,

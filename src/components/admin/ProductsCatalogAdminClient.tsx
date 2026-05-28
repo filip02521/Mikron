@@ -288,6 +288,10 @@ export function ProductsCatalogAdminClient({
                 <span className="font-semibold tabular-nums">{importState?.skippedDocsWrongSupplier ?? 0}</span>
               </span>
               <span className="rounded-full bg-slate-100 px-2 py-0.5">
+                Niezweryf.:{" "}
+                <span className="font-semibold tabular-nums">{importState?.unverifiableDocs ?? 0}</span>
+              </span>
+              <span className="rounded-full bg-slate-100 px-2 py-0.5">
                 Linie: <span className="font-semibold tabular-nums">{importState?.processedLines ?? 0}</span>
               </span>
               <span className="rounded-full bg-slate-100 px-2 py-0.5">
