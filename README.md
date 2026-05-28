@@ -68,6 +68,10 @@ Nagłówek: `Authorization: Bearer <CRON_SECRET>`
 |------------------------------|----------|---------|
 | **6:00** | `/api/cron/morning` | Przelicza terminy dostawców (panel dzienny), domyka kolejkę realizacji |
 | **Co godzinę 8:00–18:59** | `/api/cron/process-deliveries` | Zapasowe domknięcie dostaw z kolejki |
+| **Noc (1:00–4:59)** | `/api/cron/catalog-zd-sync` | Indeks ZD + import do katalogu produktów (wymaga Subiekta w LAN) |
+
+**Serwer w firmie:** crona ustawiasz w systemie (patrz [docs/catalog-zd-sync-cron.md](docs/catalog-zd-sync-cron.md)).  
+**Vercel:** wpisy w `vercel.json` — tylko jeśli produkcja widzi API Subiekta (zwykle nie, bez tunelu).
 
 Vercel uruchamia crony w UTC; w kodzie sprawdzana jest strefa **Europe/Warsaw** (CET/CEST).
 

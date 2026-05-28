@@ -5,7 +5,11 @@ import type { IndividualRequestKind } from "@/types/database";
 import { actionUpdateIndividualRequest } from "@/app/actions/admin";
 import { actionUpdateMyIndividualRequest } from "@/app/actions/my-orders";
 import { assessSalesGroupSubmittable } from "@/lib/orders/sales-request-submit";
-import { hasValidOrderQuantity } from "@/lib/orders/request-completeness";
+import {
+  assessRequestCompleteness,
+  hasValidOrderQuantity,
+} from "@/lib/orders/request-completeness";
+import { assertProcurementEntryComplete } from "@/lib/orders/procurement-submit";
 import { ProsbaFormReadiness } from "@/components/orders/ProsbaFormReadiness";
 import { RequestFormStatusPanel } from "@/components/orders/RequestFormStatusPanel";
 import { RequestProductLinesEditor } from "@/components/orders/RequestProductLinesEditor";
@@ -16,6 +20,8 @@ import { Button } from "@/components/ui/Button";
 import { Field, Select } from "@/components/ui/Field";
 import { SupplierPickerField } from "@/components/orders/SupplierPickerField";
 import { useActionPending } from "@/hooks/useActionPending";
+import { toAppSupplierRefs } from "@/lib/subiekt/match-supplier";
+import type { SubiektFeedback } from "@/lib/subiekt/feedback";
 
 export type EditIndividualRequestInitial = {
   supplierId: string;
@@ -58,6 +64,9 @@ export function EditIndividualRequestModal({
     () => [...suppliers].sort((a, b) => a.name.localeCompare(b.name, "pl")),
     [suppliers]
   );
+  const supplierRefs = useMemo(() => toAppSupplierRefs(suppliers), [suppliers]);
+  const [supplierResolveFeedback, setSupplierResolveFeedback] =
+    useState<SubiektFeedback | null>(null);
 
   const salesSubmitPlan = useMemo(() => {
     if (mode !== "sales") return null;
@@ -81,6 +90,32 @@ export function EditIndividualRequestModal({
   const save = () => {
     if (!initial) return;
     setFormNotice(null);
+
+    if (mode === "procurement" && requestKind === "zamowienie") {
+      if (!supplierId.trim()) {
+        setFormNotice({ text: "Wybierz dostawcę.", tone: "error" });
+        return;
+      }
+      try {
+        for (const line of lines) {
+          assertProcurementEntryComplete({
+            supplierId,
+            symbol: line.symbol,
+            mikranCode: line.mikranCode,
+            product: line.product,
+            quantity: line.quantity,
+            requestKind,
+            subiektTwId: line.subiektTwId,
+          });
+        }
+      } catch (e) {
+        setFormNotice({
+          text: e instanceof Error ? e.message : "Uzupełnij wymagane pola.",
+          tone: "error",
+        });
+        return;
+      }
+    }
 
     if (mode === "sales") {
       const plan = assessSalesGroupSubmittable(lines, "", requestKind);
@@ -224,6 +259,21 @@ export function EditIndividualRequestModal({
             showClientField={mode === "sales"}
             deferSupplierResolve={mode === "sales"}
             validationAttempted={mode === "sales" ? validationAttempted : false}
+            suppliers={mode === "procurement" ? supplierRefs : undefined}
+            onSupplierResolved={
+              mode === "procurement"
+                ? ({ supplierId }) => {
+                    setSupplierId(supplierId);
+                    setSupplierResolveFeedback(null);
+                  }
+                : undefined
+            }
+            onSupplierMappingMissing={
+              mode === "procurement" ? () => setSupplierId("") : undefined
+            }
+            onSupplierResolveFeedback={
+              mode === "procurement" ? setSupplierResolveFeedback : undefined
+            }
           />
         </div>
 
@@ -238,6 +288,7 @@ export function EditIndividualRequestModal({
           ) : (
             <RequestFormStatusPanel
               requestKind={requestKind}
+              audience={mode === "procurement" ? "procurement" : "default"}
               draft={{
                 supplierId,
                 symbol: lines.find((l) => l.symbol.trim())?.symbol,
@@ -246,6 +297,20 @@ export function EditIndividualRequestModal({
                 quantity: lines.find((l) => l.quantity.trim())?.quantity,
                 requestKind,
               }}
+              forcedAssessment={
+                mode === "procurement" && requestKind === "zamowienie"
+                  ? assessRequestCompleteness({
+                      supplierId,
+                      symbol: lines.find((l) => l.symbol.trim())?.symbol,
+                      mikranCode: lines.find((l) => l.mikranCode.trim())?.mikranCode,
+                      product: lines.find((l) => l.product.trim())?.product,
+                      quantity: lines.find((l) => l.quantity.trim())?.quantity,
+                      requestKind,
+                    })
+                  : undefined
+              }
+              subiektFeedbacks={supplierResolveFeedback ? [supplierResolveFeedback] : []}
+              formMessage={formNotice}
             />
           )}
         </div>

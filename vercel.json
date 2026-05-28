@@ -9,8 +9,8 @@
       "schedule": "0 6-18 * * 1-5"
     },
     {
-      "path": "/api/cron/resolve-suppliers",
-      "schedule": "*/10 6-18 * * 1-5"
+      "path": "/api/cron/catalog-zd-sync",
+      "schedule": "0 1 * * *"
     }
   ]
 }

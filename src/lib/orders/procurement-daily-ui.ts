@@ -154,7 +154,7 @@ export function enrichForSomeoneGroup(
     subline: `${group.supplierName} · ${countLabel}`,
     headlineTone: "neutral",
     statusTitle: "Do zamówienia",
-    statusDetail: "Główne — z planem dostawcy · Uzupełniające — osobno",
+    statusDetail: null,
   };
 }
 

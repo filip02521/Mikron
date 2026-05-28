@@ -150,6 +150,30 @@ export function buildSupplierLeadTimeHint(
   return { lines, lowConfidence, hasData: true };
 }
 
+/** Jedna krótka linia na karcie panelu dziennego (bez rozwijania szczegółów). */
+export function formatSupplierLeadTimeBrief(
+  stats: DeliveryStats | null | undefined,
+  statsMode: StatsMode
+): string | null {
+  if (!stats || totalSampleCount(stats) === 0) return null;
+  const low = totalSampleCount(stats) < 3 ? " · szacunek" : "";
+
+  if (statsMode === "LACZNIE") {
+    const avg = combinedAvgDays(stats);
+    if (avg == null || avg <= 0) return null;
+    const n = Math.round(avg);
+    return `~${n} ${n === 1 ? "dzień" : "dni"} rob.${low}`;
+  }
+
+  const parts: string[] = [];
+  const main = mainAvgDays(stats);
+  if (main != null && main > 0) parts.push(`gł. ~${Math.round(main)} d`);
+  const side = sideAvgDays(stats);
+  if (side != null && side > 0) parts.push(`pob. ~${Math.round(side)} d`);
+  if (!parts.length) return null;
+  return `${parts.join(" · ")}${low}`;
+}
+
 /** Które warianty szacunku pokazać w panelu (bez duplikatów przy trybie łącznym). */
 export function orderTypesForLeadTimeHints(
   stats: DeliveryStats | null | undefined,

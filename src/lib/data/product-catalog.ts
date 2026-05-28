@@ -131,8 +131,77 @@ export async function recordProductEvent(input: {
   if (error) throw new Error(error.message);
 }
 
+/** Ręczne mapowanie produkt → dostawca z panelu admina (/admin/produkty). */
+export async function assignProductSupplierLinkAdmin(input: {
+  subiektTwId: number;
+  supplierId: string;
+}): Promise<{ supplierId: string; supplierName: string; orderCount: number }> {
+  const supabase = createAdminClient();
+  const subiektTwId = Math.trunc(input.subiektTwId);
+  const supplierId = input.supplierId.trim();
+  if (!Number.isFinite(subiektTwId) || subiektTwId <= 0) {
+    throw new Error("Nieprawidłowy identyfikator produktu (tw_Id).");
+  }
+  if (!supplierId) throw new Error("Wybierz dostawcę.");
+
+  const { data: product, error: prodErr } = await supabase
+    .from("subiekt_products")
+    .select("subiekt_tw_id")
+    .eq("subiekt_tw_id", subiektTwId)
+    .maybeSingle();
+  if (prodErr) throw new Error(prodErr.message);
+  if (!product) throw new Error("Produkt nie istnieje w katalogu — najpierw zapisz go z prośby lub importu ZD.");
+
+  const { data: supplier, error: supErr } = await supabase
+    .from("suppliers")
+    .select("id, name")
+    .eq("id", supplierId)
+    .maybeSingle();
+  if (supErr) throw new Error(supErr.message);
+  if (!supplier) throw new Error("Nie znaleziono dostawcy.");
+
+  const { data: existing, error: fetchError } = await supabase
+    .from("product_supplier_links")
+    .select("order_count")
+    .eq("subiekt_tw_id", subiektTwId)
+    .eq("supplier_id", supplierId)
+    .maybeSingle();
+  if (fetchError) throw new Error(fetchError.message);
+
+  const at = nowIso();
+  const orderCount = Math.max(Number(existing?.order_count ?? 0), 1);
+
+  const { error } = await supabase.from("product_supplier_links").upsert(
+    {
+      subiekt_tw_id: subiektTwId,
+      supplier_id: supplierId,
+      order_count: orderCount,
+      last_action_at: at,
+      last_source: "procurement_verification",
+      updated_at: at,
+    },
+    { onConflict: "subiekt_tw_id,supplier_id" }
+  );
+  if (error) throw new Error(error.message);
+
+  await recordProductEvent({
+    subiektTwId,
+    supplierId,
+    source: "procurement_verification",
+    action: "link_upserted",
+    detail: { manualAdmin: true },
+    at,
+  });
+
+  return {
+    supplierId,
+    supplierName: String(supplier.name ?? "Dostawca"),
+    orderCount,
+  };
+}
+
 export async function indexOrderLineToProductCatalog(input: {
-  orderId: string;
+  orderId?: string | null;
   subiektTwId: number | null;
   symbol?: string | null;
   productName?: string | null;
@@ -140,6 +209,8 @@ export async function indexOrderLineToProductCatalog(input: {
   supplierId?: string | null;
   actionAt?: string | null;
   source: Exclude<ProductCatalogSource, "admin_note">;
+  /** Domyślnie: true gdy podano supplierId. U zakupów ustaw false bez tw_Id z Subiekta. */
+  linkSupplier?: boolean;
 }): Promise<void> {
   if (input.subiektTwId == null || input.subiektTwId <= 0) return;
 
@@ -154,13 +225,14 @@ export async function indexOrderLineToProductCatalog(input: {
   await recordProductEvent({
     subiektTwId: input.subiektTwId,
     supplierId: input.supplierId ?? null,
-    orderId: input.orderId,
+    orderId: input.orderId ?? null,
     source: input.source,
     action: "seen",
     at: input.actionAt ?? undefined,
   });
 
-  if (input.supplierId) {
+  const linkSupplier = input.linkSupplier ?? Boolean(input.supplierId?.trim());
+  if (input.supplierId && linkSupplier) {
     await bumpProductSupplierLink({
       subiektTwId: input.subiektTwId,
       supplierId: input.supplierId,

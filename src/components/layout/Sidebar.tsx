@@ -37,6 +37,7 @@ function NavLink({
   showDot: boolean;
 }) {
   const hasBadge = item.badge != null && item.badge > 0;
+  const isVerificationNav = item.href === "/weryfikacja";
   const iconKey = navIconKeyFromHref(item.href);
 
   return (
@@ -92,7 +93,11 @@ function NavLink({
             <span
               className={cn(
                 "min-w-[1.25rem] rounded-md px-1.5 py-0.5 text-center text-[10px] font-semibold tabular-nums",
-                active ? "bg-white/20 text-white" : "bg-slate-200 text-slate-700"
+                active
+                  ? "bg-white/20 text-white"
+                  : isVerificationNav
+                    ? "bg-amber-200 text-amber-950"
+                    : "bg-slate-200 text-slate-700"
               )}
             >
               {item.badge! > 99 ? "99+" : item.badge}

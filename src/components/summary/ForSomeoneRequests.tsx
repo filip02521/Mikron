@@ -17,8 +17,7 @@ import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { HelpPopover } from "@/components/ui/HelpPopover";
 import type { DailyPanelRunFn } from "@/components/summary/useDailyPanelRunner";
 import type { DeliveryStats, StatsMode } from "@/types/database";
-import { SupplierLeadTimeHint } from "@/components/orders/SupplierLeadTimeHint";
-import { orderTypesForLeadTimeHints } from "@/lib/orders/delivery-eta";
+import { formatSupplierLeadTimeBrief } from "@/lib/orders/delivery-eta";
 import { ProcurementRequestLine } from "@/components/summary/ProcurementRequestLine";
 import {
   EditIndividualRequestModal,
@@ -54,7 +53,7 @@ function SectionHelp() {
         Subiekt; <strong className="text-slate-600">✎</strong> — wpis ręczny (bez powiązania z
         Subiektem).
       </p>
-      <p>Rozwiń kartę po listę produktów i szacunek czasu realizacji u dostawcy.</p>
+      <p>Rozwiń kartę, aby zobaczyć listę produktów. Przy dostawcy z historią widać skrócony szacunek czasu dostawy.</p>
     </HelpPopover>
   );
 }
@@ -210,9 +209,9 @@ export function ForSomeoneRequests({
           const ui = enrichForSomeoneGroup(g);
           const stats = statsBySupplierId[g.supplierId];
           const statsMode = supplierStatsMode[g.supplierId] ?? "LACZNIE";
-          const leadTimeOrderTypes = stats
-            ? orderTypesForLeadTimeHints(stats, statsMode)
-            : [];
+          const leadTimeBrief = stats
+            ? formatSupplierLeadTimeBrief(stats, statsMode)
+            : null;
 
           return (
             <li key={key}>
@@ -240,8 +239,8 @@ export function ForSomeoneRequests({
                         {" · "}
                         {locationLabel(g.location)}
                       </p>
-                      {ui.statusDetail ? (
-                        <p className="mt-1 text-xs text-slate-500">{ui.statusDetail}</p>
+                      {leadTimeBrief ? (
+                        <p className="mt-0.5 text-[10px] text-slate-400">{leadTimeBrief}</p>
                       ) : null}
                     </div>
                     <Badge variant="default" className="shrink-0 text-[10px]">
@@ -329,30 +328,6 @@ export function ForSomeoneRequests({
                 </div>
                 {isOpen ? (
                   <div className="border-t border-slate-100">
-                    {stats && leadTimeOrderTypes.length > 0 ? (
-                      <div className="border-b border-slate-100 bg-slate-50/50 px-3.5 py-2">
-                        <p className="mb-2 text-[10px] font-semibold uppercase tracking-wide text-slate-500">
-                          Szacunek po zamówieniu (dni robocze)
-                        </p>
-                        <div
-                          className={
-                            leadTimeOrderTypes.length > 1
-                              ? "grid gap-2 lg:grid-cols-2"
-                              : undefined
-                          }
-                        >
-                          {leadTimeOrderTypes.map((orderType) => (
-                            <SupplierLeadTimeHint
-                              key={orderType}
-                              stats={stats}
-                              statsMode={statsMode}
-                              orderType={orderType}
-                              compact
-                            />
-                          ))}
-                        </div>
-                      </div>
-                    ) : null}
                     <ul className="space-y-1.5 px-3.5 py-2">
                       {g.lines.map((line) => (
                         <ProcurementRequestLine key={line.id} line={line} />

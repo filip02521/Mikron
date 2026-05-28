@@ -33,12 +33,6 @@ import type {
 } from "@/types/database";
 import { SUMMARY_COLORS } from "@/types/database";
 import { groupOrdersForMyView, myOrderGroupKey } from "@/lib/orders/my-order-groups";
-import {
-  formatSubiektZdTimingLabel,
-  pickBestZdEtaForOrders,
-  subiektZdStatusHint,
-  type SubiektZdEta,
-} from "@/lib/subiekt/zd-eta";
 import { clientNamesSummary } from "@/lib/orders/sales-client-label";
 import { describeVerificationGaps } from "@/lib/orders/verification-gaps";
 
@@ -444,8 +438,7 @@ function presentInformacja(order: IndividualOrder): MyOrderRow {
 
 function presentZamowienie(
   order: IndividualOrder,
-  stats: DeliveryStats | undefined,
-  zdEta?: SubiektZdEta | null
+  stats: DeliveryStats | undefined
 ): MyOrderRow {
   const statsMode = (order.supplier?.stats_mode ?? "LACZNIE") as StatsMode;
   const progress = getDeliveryProgress(
@@ -492,15 +485,10 @@ function presentZamowienie(
       : null
     : null;
 
-  const zdTimingLabel = zdEta ? formatSubiektZdTimingLabel(zdEta) : null;
-  const zdOverdue = Boolean(zdTimingLabel?.includes("po terminie"));
-
   let timingLabel: string | null = null;
   if (order.status === "Zrealizowane" && order.delivery_at && placement) {
     const actual = formatActualDeliveryDays(placement, order.delivery_at);
     timingLabel = actual ? `Dostawa trwała: ${actual}` : null;
-  } else if (zdTimingLabel) {
-    timingLabel = zdTimingLabel;
   } else if (eta) {
     timingLabel = salesTimingLabel(
       eta.expectedDate,
@@ -508,8 +496,6 @@ function presentZamowienie(
       eta.lowConfidence
     );
   }
-
-  const zdHint = zdEta ? subiektZdStatusHint(zdEta) : null;
 
   switch (order.status) {
     case "Weryfikacja":
@@ -522,11 +508,11 @@ function presentZamowienie(
         ...base,
         statusTitle: "Przed zamówieniem",
         statusDetail:
-          [zdHint, "Prośba jest u działu dostaw. Złożymy zamówienie planowo (z innymi towarami) lub osobno."]
+          ["Prośba jest u działu dostaw. Złożymy zamówienie planowo (z innymi towarami) lub osobno."]
             .filter(Boolean)
             .join(" "),
         timingLabel,
-        badgeVariant: zdOverdue ? "danger" : "purple",
+        badgeVariant: "purple",
         rowColor: SUMMARY_COLORS.historyNew,
       });
     case "Zamowione":
@@ -534,19 +520,14 @@ function presentZamowienie(
         ...base,
         statusTitle: "Zamówione",
         statusDetail: [
-          zdHint,
           orderTypeHintForSales(order.order_type),
-          placement && !zdEta
-            ? `Zamówiono ${formatPlDate(placement.slice(0, 10))} — od tej daty liczymy szacowany termin z historii`
-            : placement
-              ? `Zamówiono ${formatPlDate(placement.slice(0, 10))}`
-              : null,
+          placement ? `Zamówiono ${formatPlDate(placement.slice(0, 10))}` : null,
         ]
           .filter(Boolean)
           .join(" · "),
         timingLabel,
         badgeVariant:
-          zdOverdue || (eta && isPastExpectedDate(eta.expectedDate))
+          eta && isPastExpectedDate(eta.expectedDate)
             ? "danger"
             : "info",
         rowColor: SUMMARY_COLORS.historyPending,
@@ -559,12 +540,11 @@ function presentZamowienie(
           progress.remaining != null && progress.remaining > 0
             ? `Część sztuk jest już u nas — możesz odebrać. U dostawcy brakuje jeszcze ${progress.remaining} szt.`
             : "Część towaru jest do odbioru, reszta czeka u dostawcy.",
-          zdHint,
         ]
           .filter(Boolean)
           .join(" · "),
         timingLabel,
-        badgeVariant: zdOverdue ? "danger" : "warning",
+        badgeVariant: "warning",
         rowColor: SUMMARY_COLORS.historyPartial,
       });
     case "Zrealizowane":
@@ -603,25 +583,19 @@ function presentZamowienie(
 
 export function presentMyOrderGroup(
   orders: IndividualOrder[],
-  statsBySupplier: Record<string, DeliveryStats>,
-  zdEtaByOrderId: Record<string, SubiektZdEta> | null = {}
+  statsBySupplier: Record<string, DeliveryStats>
 ): MyOrderRow {
-  const zdMap = zdEtaByOrderId ?? {};
   const visibleOrders = orders.filter((o) => !o.sales_acknowledged_at);
 
   if (orders.length === 1) {
-    const row = presentMyOrder(orders[0], statsBySupplier, zdMap);
+    const row = presentMyOrder(orders[0], statsBySupplier);
     return withAckMeta(row, orders, visibleOrders);
   }
 
   const representative = pickRepresentativeOrder(visibleOrders.length ? visibleOrders : orders);
-  const orderIdsForZd = (visibleOrders.length ? visibleOrders : orders).map((o) => o.id);
-  const groupZd = pickBestZdEtaForOrders(orderIdsForZd, zdMap);
-  const zdForHeader: Record<string, SubiektZdEta> = { ...zdMap };
-  if (groupZd) zdForHeader[representative.id] = groupZd;
-  const base = presentMyOrder(representative, statsBySupplier, zdForHeader);
+  const base = presentMyOrder(representative, statsBySupplier);
   const lines = visibleOrders.map((o) => {
-    const row = presentMyOrder(o, statsBySupplier, zdMap);
+    const row = presentMyOrder(o, statsBySupplier);
     return rowToLine(row, o);
   });
 
@@ -652,8 +626,7 @@ export function presentMyOrderGroup(
 
 export function presentMyOrder(
   order: IndividualOrder,
-  statsBySupplier: Record<string, DeliveryStats>,
-  zdEtaByOrderId: Record<string, SubiektZdEta> | null = {}
+  statsBySupplier: Record<string, DeliveryStats>
 ): MyOrderRow {
   if (isInformacjaRequest(order)) {
     return presentInformacja(order);
@@ -661,14 +634,12 @@ export function presentMyOrder(
   const stats = order.supplier_id
     ? statsBySupplier[order.supplier_id]
     : undefined;
-  const zdEta = zdEtaByOrderId?.[order.id] ?? null;
-  return presentZamowienie(order, stats, zdEta);
+  return presentZamowienie(order, stats);
 }
 
 export function presentMyOrders(
   orders: IndividualOrder[],
-  statsRows: DeliveryStats[],
-  zdEtaByOrderId: Record<string, SubiektZdEta> = {}
+  statsRows: DeliveryStats[]
 ): {
   zamowienia: MyOrderRow[];
   informacje: MyOrderRow[];
@@ -687,13 +658,13 @@ export function presentMyOrders(
     const open = group.filter((o) => !o.sales_acknowledged_at);
     if (!open.length) continue;
     if (open.every((o) => o.status === "Anulowane")) continue;
-    zamowienia.push(presentMyOrderGroup(group, statsBySupplier, zdEtaByOrderId));
+    zamowienia.push(presentMyOrderGroup(group, statsBySupplier));
   }
   for (const group of groupOrdersForMyView(informacjaOrders)) {
     const open = group.filter((o) => !o.sales_acknowledged_at);
     if (!open.length) continue;
     if (open.every((o) => o.status === "Anulowane")) continue;
-    informacje.push(presentMyOrderGroup(group, statsBySupplier, zdEtaByOrderId));
+    informacje.push(presentMyOrderGroup(group, statsBySupplier));
   }
 
   const productLineCount = zamowienia.reduce((n, r) => n + r.lineCount, 0)

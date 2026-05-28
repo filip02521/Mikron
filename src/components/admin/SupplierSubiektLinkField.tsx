@@ -84,8 +84,8 @@ export function SupplierSubiektLinkField({
         </p>
       ) : (
         <p className="text-xs text-slate-600">
-          Bez powiązania auto-dostawca z ZD może nie trafić — wyszukaj kontrahenta w Subiekcie
-          i zapisz powiązanie.
+          Powiązanie `kh_Id` jest potrzebne do importu mapowań produkt→dostawca z Subiekta (ZD) w
+          panelu admina.
         </p>
       )}
 
@@ -125,11 +125,18 @@ export function SupplierSubiektLinkField({
             <li key={k.kh_Id}>
               <button
                 type="button"
-                className="w-full rounded-md px-2 py-1.5 text-left text-sm hover:bg-indigo-50"
+                className="w-full rounded-md px-2 py-1.5 text-left hover:bg-indigo-50"
                 onClick={() => link(k)}
               >
-                <span className="font-medium">{formatSubiektKontrahentLabel(k)}</span>
-                <span className="ml-2 text-xs text-slate-400">id {k.kh_Id}</span>
+                <div className="flex flex-wrap items-baseline justify-between gap-2">
+                  <span className="text-sm font-medium">{formatSubiektKontrahentLabel(k)}</span>
+                  <span className="text-xs text-slate-400">kh_Id {k.kh_Id}</span>
+                </div>
+                <div className="mt-0.5 flex flex-wrap gap-x-3 gap-y-0.5 text-[11px] text-slate-500">
+                  {k.adr_NIP ? <span>NIP: {k.adr_NIP}</span> : null}
+                  {k.adr_Miejscowosc ? <span>{k.adr_Miejscowosc}</span> : null}
+                  {k.kh_Symbol ? <span>Symbol: {k.kh_Symbol}</span> : null}
+                </div>
               </button>
             </li>
           ))}

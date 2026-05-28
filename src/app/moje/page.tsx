@@ -17,7 +17,6 @@ import { getAppRole } from "@/lib/auth-dev";
 import { canAccessOperations, isSalesAccount, isSalesManager } from "@/lib/auth-roles";
 import { presentMyOrders } from "@/lib/orders/my-order-presenter";
 import { getSubiektAvailability } from "@/lib/subiekt/availability";
-import { countZdEligibleOrders } from "@/lib/subiekt/zd-eta-cache";
 import Link from "next/link";
 import { Button } from "@/components/ui/Button";
 import { Alert } from "@/components/ui/Alert";
@@ -123,7 +122,6 @@ export default async function MojePage({
             await autoAssignMissingSuppliersFromCatalog({
               salesPersonId,
               limit: 80,
-              minOrderCountForZdImport: 3,
             });
           } catch (e) {
             console.error("[autoAssignMissingSuppliersFromCatalog moje]", e);
@@ -161,7 +159,6 @@ export default async function MojePage({
             await autoAssignMissingSuppliersFromCatalog({
               salesPersonId: salesPersonId ?? undefined,
               limit: 120,
-              minOrderCountForZdImport: 3,
             });
           } catch (e) {
             console.error("[autoAssignMissingSuppliersFromCatalog ops moje]", e);
@@ -176,10 +173,6 @@ export default async function MojePage({
   const subiektAvailability = await getSubiektAvailability();
 
   const { zamowienia, informacje, productLineCount } = presentMyOrders(orders, stats);
-
-  const zdEligibleCount = salesPersonId
-    ? countZdEligibleOrders(orders)
-    : 0;
 
   const salesHeaderActions =
     role && !canAccessOperations(role) ? (
@@ -221,8 +214,6 @@ export default async function MojePage({
       <MojeOrdersShell
         initial={{ zamowienia, informacje, productLineCount }}
         salesPersonId={salesPersonId}
-        subiektReachable={subiektAvailability.reachable}
-        zdEligibleCount={zdEligibleCount}
         pageTitle={isTeamPreview ? `Panel: ${salesPersonName}` : "Moje zamówienia"}
         pageDescription={
           isTeamPreview

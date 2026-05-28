@@ -1,15 +1,29 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState, useTransition } from "react";
-import type { ProductCatalogRow } from "@/lib/data/product-catalog-queries";
+import type {
+  ProductCatalogCoverageStats,
+  ProductCatalogPage,
+  ProductCatalogRow,
+} from "@/lib/data/product-catalog-queries";
+import { CatalogZdSyncStatusPanel } from "@/components/admin/CatalogZdSyncStatusPanel";
+import { ProductCatalogSupplierAssign } from "@/components/admin/ProductCatalogSupplierAssign";
 import { Card, CardHeader } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
-import { Input } from "@/components/ui/Field";
+import { Input, Select } from "@/components/ui/Field";
 import { Toast } from "@/components/ui/Toast";
 import { cn } from "@/lib/cn";
 import {
   actionBackfillOrdersSubiektTwIdFromSymbol,
   actionRebuildProductCatalogFromOrders,
+  actionAssignProductSupplier,
+  actionCountProductCatalogCoverage,
+  actionFetchProductCatalogPage,
+  actionContinueCatalogZdSync,
+  actionFetchProductsWithoutSupplierPage,
+  actionSearchProductCatalogPage,
+  actionSearchProductsWithoutSupplierPage,
+  actionSupplierProductLinkStats,
   actionUpdateSubiektProductNote,
   actionReadZdImportSupplierJob,
   actionStartZdImportSupplierJob,
@@ -24,29 +38,56 @@ import {
   actionStartZdImportAllSuppliersJob,
   actionStopZdImportAllSuppliersJob,
   actionTickZdImportAllSuppliersJob,
+  actionReadCatalogZdSyncStatus,
+  actionRunCatalogZdSyncNow,
 } from "@/app/actions/product-catalog";
+
+type CatalogListMode = "all" | "noSupplier";
 
 export function ProductsCatalogAdminClient({
   initial,
+  coverage: initialCoverage,
   suppliers,
+  assignSuppliers,
 }: {
-  initial: ProductCatalogRow[];
+  initial: ProductCatalogPage;
+  coverage: ProductCatalogCoverageStats;
   suppliers: Array<{ id: string; name: string; subiekt_kh_id: number }>;
+  assignSuppliers: Array<{ id: string; name: string; subiektKhId: number | null }>;
 }) {
   const [pending, start] = useTransition();
   const [toast, setToast] = useState<{ text: string; tone: "success" | "error" } | null>(null);
-  const [rows, setRows] = useState<ProductCatalogRow[]>(initial);
+  const [rows, setRows] = useState<ProductCatalogRow[]>(initial.rows);
+  const [total, setTotal] = useState<number>(initial.total);
+  const [loaded, setLoaded] = useState<number>(initial.rows.length);
+  const pageSize = initial.limit;
   const [filter, setFilter] = useState("");
+  const [listMode, setListMode] = useState<CatalogListMode>("all");
+  const [coverage, setCoverage] = useState<ProductCatalogCoverageStats>(initialCoverage);
   const [importSupplierId, setImportSupplierId] = useState<string>(suppliers[0]?.id ?? "");
   const [importState, setImportState] = useState<any | null>(null);
   const [importRunning, setImportRunning] = useState(false);
   const tickTimer = useRef<number | null>(null);
+  const [catalogSync, setCatalogSync] = useState<{
+    state: import("@/lib/subiekt/catalog-zd-sync").CatalogZdSyncState | null;
+    lastCron: import("@/lib/services/cron-run-log").CronRunPayload | null;
+  } | null>(null);
   const [indexState, setIndexState] = useState<any | null>(null);
   const [indexRunning, setIndexRunning] = useState(false);
   const indexTimer = useRef<number | null>(null);
   const [allState, setAllState] = useState<any | null>(null);
   const [allRunning, setAllRunning] = useState(false);
   const allTimer = useRef<number | null>(null);
+  const [zdMonthsBack, setZdMonthsBack] = useState<number>(60);
+  const [indexMonthsBack, setIndexMonthsBack] = useState<number>(60);
+  const MONTHS_OPTIONS = [30, 60, 120, 240] as const;
+  const [supplierStats, setSupplierStats] = useState<Array<{
+    id: string;
+    name: string;
+    subiekt_kh_id: number;
+    linksTotal: number;
+    linksZdImport: number;
+  }> | null>(null);
 
   const stopTickLoop = () => {
     if (tickTimer.current != null) {
@@ -84,6 +125,62 @@ export function ProductsCatalogAdminClient({
     });
   };
 
+  const refreshCatalogSync = () => {
+    start(async () => {
+      try {
+        const data = await actionReadCatalogZdSyncStatus();
+        setCatalogSync(data);
+      } catch (e) {
+        setToast({
+          text: e instanceof Error ? e.message : "Błąd odczytu synchronizacji nocnej",
+          tone: "error",
+        });
+      }
+    });
+  };
+
+  const refreshCoverage = () => {
+    start(async () => {
+      try {
+        const next = await actionCountProductCatalogCoverage();
+        setCoverage(next);
+      } catch (e) {
+        setToast({
+          text: e instanceof Error ? e.message : "Błąd liczenia produktów bez dostawcy",
+          tone: "error",
+        });
+      }
+    });
+  };
+
+  const runCatalogSync = (mode: "continue" | "test" | "reset") => {
+    start(async () => {
+      try {
+        const result =
+          mode === "continue"
+            ? await actionContinueCatalogZdSync()
+            : await actionRunCatalogZdSyncNow({ reset: mode === "reset" });
+        refreshCatalogSync();
+        const s = result.state;
+        const label =
+          mode === "continue" ? "Kontynuacja" : mode === "reset" ? "Restart" : "Przebieg";
+        setToast({
+          text: result.skipped
+            ? "Synchronizacja na dziś już zakończona (użyj restartu, aby zacząć od nowa)."
+            : result.timedOut
+              ? `${label} (limit czasu) — indeks: ${s.indexProcessed}, import ZD: ${s.importProcessedDocs}, auto-przypisanie: ${s.autoAssignUpdated}`
+              : `${label}: ${s.status} — indeks: ${s.indexProcessed}, import: ${s.importProcessedDocs}, auto-przypisanie: ${s.autoAssignUpdated}`,
+          tone: result.ok || result.skipped ? "success" : "error",
+        });
+      } catch (e) {
+        setToast({
+          text: e instanceof Error ? e.message : "Błąd synchronizacji",
+          tone: "error",
+        });
+      }
+    });
+  };
+
   const refreshIndexState = () => {
     start(async () => {
       try {
@@ -107,6 +204,7 @@ export function ProductsCatalogAdminClient({
   };
 
   useEffect(() => {
+    refreshCatalogSync();
     refreshImportState();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [importSupplierId]);
@@ -121,23 +219,140 @@ export function ProductsCatalogAdminClient({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  const refreshSupplierStats = () => {
+    start(async () => {
+      try {
+        const stats = await actionSupplierProductLinkStats();
+        setSupplierStats(stats);
+      } catch (e) {
+        setToast({ text: e instanceof Error ? e.message : "Błąd odczytu statystyk dostawców", tone: "error" });
+      }
+    });
+  };
+
+  // Uwaga: statystyki per-dostawca mogą być kosztowne (wiele zapytań),
+  // więc odpalamy je wyłącznie ręcznie po kliknięciu.
+
   const filtered = useMemo(() => {
     const q = filter.trim().toLowerCase();
-    if (!q) return rows;
-    return rows.filter((r) => {
+    let list = rows;
+    if (listMode === "noSupplier") {
+      list = list.filter((r) => !r.topSupplier);
+    }
+    if (!q) return list;
+    return list.filter((r) => {
       const parts = [
         String(r.subiektTwId),
         r.symbol ?? "",
         r.name ?? "",
         r.plu ?? "",
-        r.topSupplier?.name ?? "",
         r.note ?? "",
       ]
         .join(" ")
         .toLowerCase();
       return parts.includes(q);
     });
-  }, [rows, filter]);
+  }, [rows, filter, listMode]);
+
+  const canLoadMore = loaded < total;
+
+  const switchListMode = (mode: CatalogListMode) => {
+    setListMode(mode);
+    setRows([]);
+    setLoaded(0);
+    setTotal(0);
+  };
+
+  // Server-side search po całej bazie (nie tylko po wczytanych 250).
+  useEffect(() => {
+    const q = filter.trim();
+
+    const loadNoSupplier = async () => {
+      if (!q) {
+        const page = await actionFetchProductsWithoutSupplierPage({ limit: pageSize, offset: 0 });
+        setRows(page.rows);
+        setTotal(page.total);
+        setLoaded(page.rows.length);
+        return;
+      }
+      const page = await actionSearchProductsWithoutSupplierPage({
+        query: q,
+        limit: pageSize,
+        offset: 0,
+      });
+      setRows(page.rows);
+      setTotal(page.total);
+      setLoaded(page.rows.length);
+    };
+
+    const loadAll = async () => {
+      if (!q) {
+        const page = await actionFetchProductCatalogPage({ limit: pageSize, offset: 0 });
+        setRows(page.rows);
+        setTotal(page.total);
+        setLoaded(page.rows.length);
+        return;
+      }
+      const page = await actionSearchProductCatalogPage({ query: q, limit: pageSize, offset: 0 });
+      setRows(page.rows);
+      setTotal(page.total);
+      setLoaded(page.rows.length);
+    };
+
+    const run = () => {
+      start(async () => {
+        try {
+          if (listMode === "noSupplier") await loadNoSupplier();
+          else await loadAll();
+        } catch (e) {
+          setToast({
+            text: e instanceof Error ? e.message : "Błąd pobierania listy",
+            tone: "error",
+          });
+        }
+      });
+    };
+
+    if (!q) {
+      run();
+      return;
+    }
+
+    const t = window.setTimeout(run, 250);
+    return () => window.clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [filter, listMode]);
+
+  const loadMore = () => {
+    if (!canLoadMore) return;
+    start(async () => {
+      try {
+        const q = filter.trim();
+        let next: ProductCatalogPage;
+        if (listMode === "noSupplier") {
+          next = q
+            ? await actionSearchProductsWithoutSupplierPage({
+                query: q,
+                limit: pageSize,
+                offset: loaded,
+              })
+            : await actionFetchProductsWithoutSupplierPage({
+                limit: pageSize,
+                offset: loaded,
+              });
+        } else {
+          next = q
+            ? await actionSearchProductCatalogPage({ query: q, limit: pageSize, offset: loaded })
+            : await actionFetchProductCatalogPage({ limit: pageSize, offset: loaded });
+        }
+        setRows((prev) => [...prev, ...next.rows]);
+        setTotal(next.total);
+        setLoaded((prev) => prev + next.rows.length);
+      } catch (e) {
+        setToast({ text: e instanceof Error ? e.message : "Błąd pobierania", tone: "error" });
+      }
+    });
+  };
 
   const startImport = () => {
     if (!importSupplierId) return;
@@ -158,6 +373,7 @@ export function ProductsCatalogAdminClient({
     });
   };
 
+  // ...rest of component continues...
   const stopImport = () => {
     if (!importSupplierId) return;
     stopTickLoop();
@@ -213,7 +429,7 @@ export function ProductsCatalogAdminClient({
   const startIndex = () => {
     start(async () => {
       try {
-        const s = await actionStartZdIndexJob({ monthsBack: 18 });
+        const s = await actionStartZdIndexJob({ monthsBack: indexMonthsBack });
         setIndexState(s);
         setToast({ text: "Start indeksowania ZD — uruchamiam…", tone: "success" });
         setIndexRunning(true);
@@ -257,7 +473,7 @@ export function ProductsCatalogAdminClient({
   const startAll = () => {
     start(async () => {
       try {
-        const s = await actionStartZdImportAllSuppliersJob();
+        const s = await actionStartZdImportAllSuppliersJob({ monthsBack: zdMonthsBack, batchDocs: 3 });
         setAllState(s);
         setToast({ text: "Autopilot: start importu po dostawcach…", tone: "success" });
         setAllRunning(true);
@@ -345,6 +561,38 @@ export function ProductsCatalogAdminClient({
     });
   };
 
+  const assignSupplier = (subiektTwId: number, supplierId: string) => {
+    start(async () => {
+      try {
+        const { row, autoAssign } = await actionAssignProductSupplier(subiektTwId, supplierId);
+        setRows((prev) => {
+          if (listMode === "noSupplier") {
+            return prev.filter((r) => r.subiektTwId !== subiektTwId);
+          }
+          return prev.map((r) => (r.subiektTwId === subiektTwId ? row : r));
+        });
+        if (listMode === "noSupplier") {
+          setTotal((t) => Math.max(0, t - 1));
+          setLoaded((n) => Math.max(0, n - 1));
+        }
+        refreshCoverage();
+        const extra =
+          autoAssign.updated > 0
+            ? ` · uzupełniono ${autoAssign.updated} prośb w weryfikacji`
+            : "";
+        setToast({
+          text: `Przypisano dostawcę: ${row.topSupplier?.name ?? "—"}${extra}.`,
+          tone: "success",
+        });
+      } catch (e) {
+        setToast({
+          text: e instanceof Error ? e.message : "Błąd przypisania dostawcy",
+          tone: "error",
+        });
+      }
+    });
+  };
+
   const saveNote = (subiektTwId: number, note: string) => {
     start(async () => {
       try {
@@ -364,7 +612,7 @@ export function ProductsCatalogAdminClient({
       <CardHeader
         inset
         title="Produkty (baza własna)"
-        description="Źródło: historia prośb + weryfikacja zakupów + (docelowo) import z ZD. Każdy produkt to Subiekt tw_Id."
+        description="Źródło: historia prośb + weryfikacja zakupów + import z ZD (nocny cron na serwerze w firmie). Każdy produkt to Subiekt tw_Id."
         action={
           <div className="flex flex-wrap gap-2">
             <Button variant="secondary" onClick={backfillFromSymbol} disabled={pending}>
@@ -378,11 +626,41 @@ export function ProductsCatalogAdminClient({
       />
 
       <div className="px-6 pb-5">
-        <div className="mt-2 rounded-xl border border-slate-200 bg-white p-4">
+        <CatalogZdSyncStatusPanel
+          catalogSync={catalogSync}
+          pending={pending}
+          onRefresh={refreshCatalogSync}
+          onRunNow={() => runCatalogSync("test")}
+          onContinue={() => runCatalogSync("continue")}
+          onReset={() => runCatalogSync("reset")}
+          syncRunning={catalogSync?.state?.status === "running"}
+        />
+
+        <div className="mt-4 rounded-xl border border-slate-200 bg-white p-4">
           <p className="text-sm font-semibold text-slate-900">Indeks ZD → dostawca</p>
           <p className="mt-0.5 text-xs text-slate-600">
             Jednorazowo przechodzi po wszystkich ZD i przypisuje numer dokumentu do dostawcy w aplikacji (po `subiekt_kh_id`).
           </p>
+          <div className="mt-2 flex flex-wrap items-end gap-2">
+            <div className="min-w-[10rem]">
+              <label className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">
+                Zakres (mies. wstecz)
+              </label>
+              <Select
+                value={String(indexMonthsBack)}
+                onChange={(e) => setIndexMonthsBack(Number(e.target.value))}
+              >
+                {MONTHS_OPTIONS.map((m) => (
+                  <option key={m} value={m}>
+                    {m} miesięcy
+                  </option>
+                ))}
+              </Select>
+            </div>
+            <p className="text-[11px] text-slate-500">
+              Większy zakres = więcej ZD do przypisania do dostawców.
+            </p>
+          </div>
 
           <div className="mt-3 flex flex-wrap gap-2">
             <Button variant="secondary" onClick={startIndex} disabled={pending}>
@@ -439,10 +717,93 @@ export function ProductsCatalogAdminClient({
 
           <hr className="my-4 border-slate-200" />
 
+          <p className="text-sm font-semibold text-slate-900">Dostawcy bez mapowań produktów</p>
+          <p className="mt-0.5 text-xs text-slate-600">
+            Lista dostawców z `subiekt_kh_id`, którzy mają 0 wpisów w `product_supplier_links`.
+            Użyj tego, żeby szybko ponowić import dla konkretnego dostawcy.
+          </p>
+          <div className="mt-3 flex flex-wrap gap-2">
+            <Button variant="secondary" onClick={refreshSupplierStats} disabled={pending}>
+              Sprawdź teraz
+            </Button>
+          </div>
+          <div className="mt-3 space-y-2">
+            {supplierStats == null ? (
+              <p className="text-xs text-slate-600">
+                Kliknij <span className="font-medium">Sprawdź teraz</span>, żeby policzyć dostawców bez mapowań.
+              </p>
+            ) : (supplierStats ?? []).filter((s) => (s.linksTotal ?? 0) === 0).length === 0 ? (
+              <p className="text-xs text-slate-600">Brak — każdy dostawca ma już jakieś mapowania.</p>
+            ) : (
+              (supplierStats ?? [])
+                .filter((s) => (s.linksTotal ?? 0) === 0)
+                .map((s) => (
+                  <div key={s.id} className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-slate-200 bg-slate-50/70 px-3 py-2">
+                    <div className="min-w-0">
+                      <p className="text-sm font-semibold text-slate-900">{s.name}</p>
+                      <p className="text-xs text-slate-500">
+                        kh_Id {s.subiekt_kh_id} · linki: 0 · z ZD: {s.linksZdImport}
+                      </p>
+                    </div>
+                    <div className="flex gap-2">
+                      <Button
+                        type="button"
+                        variant="secondary"
+                        size="sm"
+                        disabled={pending}
+                        onClick={() => {
+                          setImportSupplierId(s.id);
+                          start(async () => {
+                            try {
+                              const st = await actionStartZdImportSupplierJob({ supplierId: s.id, monthsBack: 60 });
+                              setImportState(st);
+                              setToast({ text: `Start importu ZD dla: ${s.name}`, tone: "success" });
+                              setImportRunning(true);
+                              if (tickTimer.current == null) {
+                                tickTimer.current = window.setInterval(() => {
+                                  void tickImport();
+                                }, 1500);
+                              }
+                            } catch (e) {
+                              setToast({ text: e instanceof Error ? e.message : "Błąd startu importu", tone: "error" });
+                            }
+                          });
+                        }}
+                      >
+                        Start importu (ZD)
+                      </Button>
+                    </div>
+                  </div>
+                ))
+            )}
+          </div>
+
+          <hr className="my-4 border-slate-200" />
+
           <p className="text-sm font-semibold text-slate-900">Autopilot: import po dostawcach</p>
           <p className="mt-0.5 text-xs text-slate-600">
             Sam przechodzi po wszystkich dostawcach z Subiektem i importuje produkty na podstawie `subiekt_zd_index`.
           </p>
+          <div className="mt-2 flex flex-wrap items-end gap-2">
+            <div className="min-w-[10rem]">
+              <label className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">
+                Zakres (mies. wstecz)
+              </label>
+              <Select
+                value={String(zdMonthsBack)}
+                onChange={(e) => setZdMonthsBack(Number(e.target.value))}
+              >
+                {MONTHS_OPTIONS.map((m) => (
+                  <option key={m} value={m}>
+                    {m} miesięcy
+                  </option>
+                ))}
+              </Select>
+            </div>
+            <p className="text-[11px] text-slate-500">
+              Im większy zakres, tym więcej ZD i więcej unikalnych produktów (np. Ivoclar ~1000).
+            </p>
+          </div>
           <div className="mt-3 flex flex-wrap gap-2">
             <Button variant="secondary" onClick={startAll} disabled={pending}>
               Start autopilota
@@ -588,14 +949,61 @@ export function ProductsCatalogAdminClient({
       </div>
 
       <div className="px-6 pb-3">
+        <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+          <div className="flex flex-wrap gap-2">
+            <button
+              type="button"
+              onClick={() => switchListMode("all")}
+              className={cn(
+                "rounded-full px-3 py-1 text-xs font-semibold transition",
+                listMode === "all"
+                  ? "bg-indigo-600 text-white"
+                  : "bg-slate-100 text-slate-700 hover:bg-slate-200"
+              )}
+            >
+              Wszystkie ({coverage.totalProducts})
+            </button>
+            <button
+              type="button"
+              onClick={() => switchListMode("noSupplier")}
+              className={cn(
+                "rounded-full px-3 py-1 text-xs font-semibold transition",
+                listMode === "noSupplier"
+                  ? "bg-amber-600 text-white"
+                  : "bg-slate-100 text-slate-700 hover:bg-slate-200"
+              )}
+            >
+              Bez dostawcy ({coverage.withoutSupplier})
+            </button>
+          </div>
+          <Button variant="secondary" size="sm" onClick={refreshCoverage} disabled={pending}>
+            Odśwież liczniki
+          </Button>
+        </div>
+        {listMode === "noSupplier" ? (
+          <p className="mb-2 text-xs text-amber-900/90">
+            Produkty w katalogu bez wpisu w{" "}
+            <span className="font-mono">product_supplier_links</span> — uzupełnij importem ZD lub
+            przypisaniem przy weryfikacji prośby lub ręcznie poniżej (lista dostawców).
+          </p>
+        ) : null}
         <Input
           value={filter}
           onChange={(e) => setFilter(e.target.value)}
           placeholder="Szukaj: tw_Id / symbol / nazwa / kod / dostawca / notatka…"
         />
         <p className="mt-2 text-xs text-slate-500">
-          Pokazuję {filtered.length} z {rows.length}.
+          {listMode === "noSupplier" ? "Raport: bez dostawcy · " : ""}
+          Pokazuję {filtered.length} z {rows.length} (wczytane: {loaded}/{total}
+          {listMode === "all" ? ` · z mapą: ${coverage.withSupplier}` : ""}).
         </p>
+        {canLoadMore ? (
+          <div className="mt-3">
+            <Button type="button" variant="secondary" size="sm" disabled={pending} onClick={loadMore}>
+              Załaduj więcej
+            </Button>
+          </div>
+        ) : null}
       </div>
 
       <div className="divide-y divide-slate-100">
@@ -623,7 +1031,7 @@ export function ProductsCatalogAdminClient({
                   <span
                     className={cn(
                       "rounded-full px-2 py-0.5",
-                      r.topSupplier ? "bg-indigo-50 text-indigo-900" : "bg-slate-100"
+                      r.topSupplier ? "bg-indigo-50 text-indigo-900" : "bg-amber-100 text-amber-950"
                     )}
                   >
                     Dostawca:{" "}
@@ -632,6 +1040,15 @@ export function ProductsCatalogAdminClient({
                     </span>
                   </span>
                 </div>
+              </div>
+
+              <div className="w-full sm:max-w-md">
+                <ProductCatalogSupplierAssign
+                  row={r}
+                  suppliers={assignSuppliers}
+                  disabled={pending}
+                  onAssign={assignSupplier}
+                />
               </div>
 
               <div className="w-full sm:w-[22rem]">

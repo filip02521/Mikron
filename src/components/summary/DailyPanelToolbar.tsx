@@ -11,6 +11,7 @@ export function DailyPanelToolbar({
   dayProgress,
   urgentVacationCount,
   exceptionsCount = 0,
+  verificationCount = 0,
   onOpenOnDemand,
 }: {
   view: DailyPanelView;
@@ -18,6 +19,7 @@ export function DailyPanelToolbar({
   dayProgress: DailyDayProgress;
   urgentVacationCount: number;
   exceptionsCount?: number;
+  verificationCount?: number;
   onOpenOnDemand?: () => void;
 }) {
   const urgentTotal = summary.overdueCount + summary.todayCount;
@@ -76,6 +78,7 @@ export function DailyPanelToolbar({
         urgentTotal={urgentTotal}
         onOpenOnDemand={onOpenOnDemand}
         urgentVacationCount={urgentVacationCount}
+        verificationCount={verificationCount}
       />
     </div>
   );

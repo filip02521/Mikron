@@ -31,11 +31,9 @@ export async function autoAssignMissingSuppliersFromCatalog(options: {
   orderIds?: string[];
   salesPersonId?: string;
   limit?: number;
-  minOrderCountForZdImport?: number;
 }): Promise<{ checked: number; updated: number; promoted: number }> {
   const supabase = createAdminClient();
   const limit = options.limit != null ? Math.max(1, Math.min(200, options.limit)) : 80;
-  const minZd = options.minOrderCountForZdImport ?? 3;
 
   let q = supabase
     .from("individual_orders")
@@ -83,9 +81,6 @@ export async function autoAssignMissingSuppliersFromCatalog(options: {
     if (!Number.isFinite(twId) || twId <= 0) continue;
     const best = bestSupplierForTwId(byTwId.get(twId) ?? []);
     if (!best) continue;
-
-    // Bezpieczeństwo: jeśli jedyne źródło to zd_import, wymagaj minimalnej liczby wystąpień.
-    if (best.source === "zd_import" && best.orderCount < minZd) continue;
 
     const kind = (row.request_kind ?? "zamowienie") as IndividualOrder["request_kind"];
     const assessment = assessRequestCompleteness({

@@ -41,7 +41,7 @@ export function ProsbaLineFieldMessages({
               className="flex items-center gap-2 rounded-md border border-indigo-100 bg-white px-2.5 py-2 text-xs text-indigo-800"
             >
               <Spinner size="sm" />
-              Szukam dostawcy w ostatnich ZD Subiekta…
+              Sprawdzam dostawcę w naszej bazie…
             </p>
           );
         }

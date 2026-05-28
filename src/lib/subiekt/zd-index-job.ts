@@ -31,7 +31,7 @@ function normalizeNumeric(value: unknown): number | null {
   return Math.trunc(n);
 }
 
-function extractDocKhId(doc: SubiektDocument): number | null {
+function extractDocKhIds(doc: SubiektDocument): number[] {
   const ids: number[] = [];
   ids.push(
     ...[
@@ -47,8 +47,7 @@ function extractDocKhId(doc: SubiektDocument): number | null {
     const n = normalizeNumeric(k?.kh_Id);
     if (n != null) ids.push(n);
   }
-  const unique = [...new Set(ids)].filter((n) => Number.isFinite(n) && n > 0);
-  return unique[0] ?? null;
+  return [...new Set(ids)].filter((n) => Number.isFinite(n) && n > 0);
 }
 
 async function writeState(state: ZdIndexJobState): Promise<void> {
@@ -161,9 +160,13 @@ export async function tickZdIndexJob(options?: { maxDocs?: number }): Promise<Zd
       if (!Number.isFinite(docId)) continue;
       const doc = await getSubiektDocumentCached(docId);
       lastDocNumber = doc.dok_NrPelny ?? null;
-      const khId = extractDocKhId(doc as SubiektDocument);
-      const supplierId = khId != null ? supplierByKh.get(khId) ?? null : null;
-      const verified = khId != null;
+      const khIds = extractDocKhIds(doc as SubiektDocument);
+      // W dokumencie mogą być 2+ identyfikatory kontrahenta (płatnik/odbiorca/kontrahent).
+      // Najpierw wybierz taki, który odpowiada któremuś dostawcy w aplikacji.
+      const matchedKhId = khIds.find((id) => supplierByKh.has(id)) ?? null;
+      const supplierId = matchedKhId != null ? supplierByKh.get(matchedKhId) ?? null : null;
+      const verified = khIds.length > 0;
+      const storedKhId = matchedKhId ?? khIds[0] ?? null;
 
       if (!verified) unverifiable += 1;
       else if (supplierId) mapped += 1;
@@ -174,7 +177,7 @@ export async function tickZdIndexJob(options?: { maxDocs?: number }): Promise<Zd
           dok_id: Math.trunc(Number(doc.dok_Id)),
           dok_nr_pelny: doc.dok_NrPelny ?? null,
           dok_data_wyst: doc.dok_DataWyst ?? null,
-          subiekt_kh_id: khId,
+          subiekt_kh_id: storedKhId,
           supplier_id: supplierId,
           verified,
           processed_at: nowIso(),

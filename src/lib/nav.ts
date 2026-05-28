@@ -48,7 +48,7 @@ function operationsNavItems(badges: {
     {
       href: "/weryfikacja",
       label: "Weryfikacja",
-      description: "Uzupełnianie danych w prośbach",
+      description: "Prośby bez dostawcy lub towaru — uzupełnij dane",
       badge: badges.weryfikacja,
     },
     {
@@ -96,6 +96,11 @@ const adminOnlyItems: NavItem[] = [
     href: "/admin",
     label: "Administracja",
     description: "System, konta, handlowcy",
+  },
+  {
+    href: "/admin/produkty",
+    label: "Katalog produktów",
+    description: "Towar Subiekt → dostawca",
   },
   {
     href: "/zespol/grupy",
@@ -198,6 +203,7 @@ export function pageTitle(pathname: string): string {
   if (pathname.startsWith("/admin")) {
     if (pathname.startsWith("/admin/uzytkownicy")) return "Konta";
     if (pathname.startsWith("/admin/handlowcy")) return "Handlowcy";
+    if (pathname.startsWith("/admin/produkty")) return "Katalog produktów";
     if (pathname.startsWith("/admin/dostawcy")) return "Karty dostawców";
     if (pathname.startsWith("/admin/urlopy")) return "Urlopy";
     return "Administracja";

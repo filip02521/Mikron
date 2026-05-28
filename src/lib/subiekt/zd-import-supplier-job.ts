@@ -1,9 +1,10 @@
 import { createAdminClient } from "@/lib/supabase/admin";
 import { isSubiektReachable } from "@/lib/subiekt/availability";
-import { defaultZdSearchDataOd, getSubiektDocumentCached } from "@/lib/subiekt/subiekt-runtime-cache";
-import { upsertSubiektProduct, bumpProductSupplierLinkBy } from "@/lib/data/product-catalog";
-import type { SubiektDocumentLine } from "@/lib/subiekt/types";
-import type { SubiektDocument } from "@/lib/subiekt/types";
+import { defaultZdSearchDataOd } from "@/lib/subiekt/subiekt-runtime-cache";
+import {
+  importZdDocumentToCatalog,
+  markZdCatalogImported,
+} from "@/lib/subiekt/zd-catalog-import";
 
 export type ZdImportSupplierJobState = {
   status: "idle" | "running" | "done" | "failed";
@@ -99,17 +100,6 @@ export async function stopZdImportForSupplier(
   return next;
 }
 
-function lineTowId(line: SubiektDocumentLine): number | null {
-  const raw = line.ob_TowId;
-  if (raw == null) return null;
-  const n = Number(raw);
-  if (!Number.isFinite(n) || n <= 0) return null;
-  return Math.trunc(n);
-}
-
-// (stare dopasowanie po kh_Id w detalu dokumentu usunięte —
-// teraz import działa wyłącznie na dok_Id z tabeli subiekt_zd_index)
-
 export async function tickZdImportForSupplier(input: {
   supplierId: string;
   maxDocs?: number;
@@ -179,53 +169,27 @@ export async function tickZdImportForSupplier(input: {
       return done;
     }
 
-    const towAgg = new Map<number, { symbol: string | null; name: string | null; count: number }>();
     let processedDocs = 0;
     let processedLines = 0;
     let lastDocNumber: string | null = null;
+    let uniqueProducts = 0;
+    let linksUpserted = 0;
+    const importedIds: number[] = [];
 
     for (const brief of slice) {
       const docId = brief.dokId;
-      const doc = await getSubiektDocumentCached(docId);
-      lastDocNumber = doc.dok_NrPelny ?? brief.nr ?? null;
+      const imported = await importZdDocumentToCatalog(docId, current.supplierId);
+      importedIds.push(docId);
       processedDocs += 1;
-
-      for (const line of doc.dok_Pozycja ?? []) {
-        const twId = lineTowId(line);
-        if (!twId) continue;
-        processedLines += 1;
-        const prev = towAgg.get(twId);
-        if (!prev) {
-          towAgg.set(twId, {
-            symbol: typeof line.tw_Symbol === "string" ? (line.tw_Symbol.trim() || null) : null,
-            name: typeof line.tw_Nazwa === "string" ? (line.tw_Nazwa.trim() || null) : null,
-            count: 1,
-          });
-        } else {
-          prev.count += 1;
-        }
-      }
+      processedLines += imported.processedLines;
+      uniqueProducts += imported.uniqueProducts;
+      linksUpserted += imported.linksUpserted;
+      lastDocNumber = brief.nr ?? lastDocNumber;
     }
 
-    // upsert produkty + linki (agregacja po tw_Id)
+    await markZdCatalogImported(importedIds);
+
     const seenBefore = current.uniqueProductsSeen;
-    let linksUpserted = 0;
-    for (const [twId, meta] of towAgg.entries()) {
-      await upsertSubiektProduct({
-        subiektTwId: twId,
-        symbol: meta.symbol,
-        name: meta.name,
-        seenAt: nowIso(),
-      });
-      await bumpProductSupplierLinkBy({
-        subiektTwId: twId,
-        supplierId: current.supplierId,
-        delta: meta.count,
-        lastSource: "zd_import",
-        lastActionAt: nowIso(),
-      });
-      linksUpserted += 1;
-    }
 
     const nextOffset = current.indexOffset + slice.length;
     const isDone = current.indexTotalDocs != null && nextOffset >= current.indexTotalDocs;
@@ -236,7 +200,7 @@ export async function tickZdImportForSupplier(input: {
       indexOffset: isDone ? current.indexOffset : nextOffset,
       processedDocs: current.processedDocs + processedDocs,
       processedLines: current.processedLines + processedLines,
-      uniqueProductsSeen: seenBefore + towAgg.size,
+      uniqueProductsSeen: seenBefore + uniqueProducts,
       linksUpserted: current.linksUpserted + linksUpserted,
       lastDocNumber,
       lastUpdatedAt: nowIso(),

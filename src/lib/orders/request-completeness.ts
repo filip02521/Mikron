@@ -54,7 +54,8 @@ export function assessRequestCompleteness(draft: RequestDraft): RequestCompleten
 export function completenessUserHint(
   assessment: RequestCompleteness,
   requestKind: IndividualRequestKind,
-  draft: RequestDraft = {}
+  draft: RequestDraft = {},
+  options?: { audience?: "procurement" | "default" }
 ): { tone: "success" | "warning"; title: string; detail: string } {
   if (assessment === "complete") {
     return {
@@ -62,12 +63,25 @@ export function completenessUserHint(
       title: "Zgłoszenie kompletne",
       detail:
         requestKind === "informacja"
-          ? "Trafia do działu dostaw bez dodatkowej weryfikacji."
-          : "Dostawca, produkt i ilość są podane — trafia do panelu dziennego.",
+          ? options?.audience === "procurement"
+            ? "Można zapisać — trafi do kolejki informacji."
+            : "Trafia do działu dostaw bez dodatkowej weryfikacji."
+          : options?.audience === "procurement"
+            ? "Dostawca, produkt i ilość są podane — można zapisać do panelu dziennego."
+            : "Dostawca, produkt i ilość są podane — trafia do panelu dziennego.",
     };
   }
   const missingQty =
     requestKind === "zamowienie" && !hasValidOrderQuantity(draft.quantity, requestKind);
+  if (options?.audience === "procurement") {
+    return {
+      tone: "warning",
+      title: "Uzupełnij przed zapisem",
+      detail: missingQty
+        ? "Wybierz dostawcę, produkt z Subiekta lub ręcznie oraz ilość (np. 1)."
+        : "Wybierz dostawcę oraz opis produktu (najlepiej z Subiekta po symbolu lub kodzie Mikran).",
+    };
+  }
   return {
     tone: "warning",
     title: "Wymaga weryfikacji przez dział dostaw",

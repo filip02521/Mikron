@@ -115,6 +115,7 @@ export function SubiektProductLineFields({
   suppliers,
   onSupplierResolved,
   onSupplierResolveFeedback,
+  onSupplierMappingMissing,
   delegateAlerts = false,
   onProductFeedbackChange,
   onConfigFeedbackChange,
@@ -136,6 +137,8 @@ export function SubiektProductLineFields({
     documentNumber: string | null;
   }) => void;
   onSupplierResolveFeedback?: (feedback: SubiektFeedback | null) => void;
+  /** Gdy po wyborze z Subiekta nie ma dostawcy w bazie — np. wyczyść pole dostawcy w formularzu zakupów. */
+  onSupplierMappingMissing?: () => void;
   delegateAlerts?: boolean;
   onProductFeedbackChange?: (feedback: SubiektFeedback | null) => void;
   onConfigFeedbackChange?: (feedback: SubiektFeedback | null) => void;
@@ -254,6 +257,9 @@ export function SubiektProductLineFields({
 
     if (!suppliers?.length || !onSupplierResolved) return;
 
+    // Nowe podejście: dopasowanie dostawcy robimy po naszej bazie (product_supplier_links),
+    // więc jest szybkie. Dla prośby handlowca robimy to "po cichu" (bez spinnera),
+    // a jeśli nie ma mapowania — pozycja zostaje do weryfikacji.
     const silentResolve = deferSupplierResolve;
     if (!silentResolve) {
       setResolvingSupplier(true);
@@ -276,10 +282,30 @@ export function SubiektProductLineFields({
           if (!silentResolve) {
             setSupplierFeedback(null);
             onSupplierResolveFeedback?.(null);
+            try {
+              const { actionRecordCatalogFromSubiektPick } = await import(
+                "@/app/actions/subiekt"
+              );
+              const twId = Number((p as { tw_Id?: unknown }).tw_Id);
+              if (Number.isFinite(twId) && twId > 0) {
+                await actionRecordCatalogFromSubiektPick({
+                  subiektTwId: twId,
+                  symbol: patch.symbol,
+                  productName: patch.product,
+                  mikranCode: patch.mikranCode,
+                  supplierId: res.supplierId,
+                });
+              }
+            } catch {
+              /* katalog — best effort */
+            }
           }
-        } else if (!silentResolve) {
-          if (!delegateAlerts) setSupplierFeedback(res.feedback);
-          onSupplierResolveFeedback?.(res.feedback);
+        } else {
+          if (!silentResolve) {
+            onSupplierMappingMissing?.();
+            if (!delegateAlerts) setSupplierFeedback(res.feedback);
+            onSupplierResolveFeedback?.(res.feedback);
+          }
         }
       } finally {
         onResolvingSupplierChange?.(false);

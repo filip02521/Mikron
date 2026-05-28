@@ -10,6 +10,7 @@ import { ModalShell } from "@/components/ui/ModalShell";
 import { RequestKindPicker } from "@/components/ui/RequestKindPicker";
 import type { IndividualRequestKind } from "@/types/database";
 import { hasValidOrderQuantity } from "@/lib/orders/request-completeness";
+import { assertProcurementEntryComplete } from "@/lib/orders/procurement-submit";
 import {
   RequestProductLinesEditor,
   initialProductLines,
@@ -97,6 +98,30 @@ export function QuickOrderModal({
       });
       return;
     }
+    try {
+      let lineNo = 0;
+      for (const e of entries) {
+        lineNo += 1;
+        assertProcurementEntryComplete(
+          {
+            supplierId: e.supplierId,
+            symbol: e.symbol,
+            mikranCode: e.mikranCode,
+            product: e.product,
+            quantity: e.quantity,
+            requestKind,
+            subiektTwId: e.subiektTwId,
+          },
+          entries.length > 1 ? `Pozycja ${lineNo}` : undefined
+        );
+      }
+    } catch (err) {
+      setFormNotice({
+        text: err instanceof Error ? err.message : "Uzupełnij wymagane pola.",
+        tone: "error",
+      });
+      return;
+    }
     setPendingMessage("Zapisywanie prośby…");
     start(async () => {
       try {
@@ -178,6 +203,7 @@ export function QuickOrderModal({
           setSupplierSubiektFeedback(null);
           setSupplierId(supplierId);
         }}
+        onSupplierMappingMissing={() => setSupplierId("")}
         onSupplierResolveFeedback={setSupplierSubiektFeedback}
         onProductFeedbackChange={setProductLineFeedback}
         onConfigFeedbackChange={setConfigFeedback}
@@ -202,6 +228,7 @@ export function QuickOrderModal({
         ]}
         resolvingSupplier={resolvingSupplier}
         formMessage={formNotice}
+        audience="procurement"
       />
     </ModalShell>
   );

@@ -8,7 +8,12 @@ import {
   requireSupplierManagement,
   getSessionUser,
 } from "@/lib/auth";
-import { canAccessOperations, isAdmin, isSales, isSalesManager } from "@/lib/auth-roles";
+import {
+  canAccessOperations,
+  isAdmin,
+  isSales,
+  isSalesManager,
+} from "@/lib/auth-roles";
 import {
   assertManagerCanUseGroupId,
   canAccessSalesPerson,
@@ -348,8 +353,18 @@ export async function actionAddIndividualOrders(
     salesPersonId: salesPersonIdForSales ?? e.salesPersonId,
   }));
   const createdBy = user.id === "dev" ? undefined : user.id;
-  const result = await batchAddIndividualOrders(normalized, createdBy);
-  revalidateAll();
+  const submitMode =
+    isSales(user.role) || isSalesManager(user.role) ? "sales" : "procurement";
+  const result = await batchAddIndividualOrders(normalized, createdBy, { submitMode });
+  // Dla handlowców unikamy ciężkiego "revalidateAll" (potrafi trwać długo),
+  // bo ich submit dotyczy głównie kilku widoków.
+  if (isSales(user.role) || isSalesManager(user.role)) {
+    revalidatePath("/moje");
+    revalidatePath("/prosba");
+    revalidatePath("/podsumowanie");
+  } else {
+    revalidateAll();
+  }
   return { success: true, ...result };
 }
 

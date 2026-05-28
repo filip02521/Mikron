@@ -87,16 +87,24 @@ export function DailyPanelMetricsOverview({
   urgentTotal,
   onOpenOnDemand,
   urgentVacationCount,
+  verificationCount = 0,
 }: {
   summary: DailyInboxSummary;
   urgentTotal: number;
   onOpenOnDemand?: () => void;
   urgentVacationCount: number;
+  /** Prośby wymagające uzupełnienia — link do /weryfikacja. */
+  verificationCount?: number;
 }) {
   const mobileSummary = buildMetricsSummary(summary);
 
   const grid = (
-    <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-5">
+    <div
+      className={cn(
+        "mt-3 grid grid-cols-2 gap-2 sm:grid-cols-3",
+        verificationCount > 0 ? "lg:grid-cols-6" : "lg:grid-cols-5"
+      )}
+    >
       <MetricTile
         value={summary.overdueCount}
         label="Zaległe"
@@ -161,6 +169,16 @@ export function DailyPanelMetricsOverview({
           href="/podsumowanie?view=wyjatki#poza-harmonogramem"
           icon={<DailySectionIcon kind="hidden" size={15} />}
           tileClassName="bg-indigo-100/70 text-indigo-800/90"
+        />
+      ) : null}
+      {verificationCount > 0 ? (
+        <MetricTile
+          value={verificationCount}
+          label="Do weryfikacji"
+          hint="brak dostawcy lub towaru"
+          href="/weryfikacja"
+          icon={<IconClipboardList size={15} />}
+          tileClassName="bg-amber-100 text-amber-900"
         />
       ) : null}
     </div>

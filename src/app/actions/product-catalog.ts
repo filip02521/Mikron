@@ -6,7 +6,23 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { clampOptionalText } from "@/lib/security/text-limits";
 import { isSubiektReachable } from "@/lib/subiekt/availability";
 import { searchSubiektProducts } from "@/lib/subiekt/api";
-import { indexOrderLineToProductCatalog } from "@/lib/data/product-catalog";
+import {
+  assignProductSupplierLinkAdmin,
+  indexOrderLineToProductCatalog,
+} from "@/lib/data/product-catalog";
+import { getAppSupplierRefsCached } from "@/lib/data/supplier-refs";
+import { autoAssignMissingSuppliersFromCatalog } from "@/lib/services/auto-assign-suppliers";
+import {
+  countProductCatalogCoverage,
+  fetchProductCatalogPage,
+  fetchProductCatalogRowsByTwIds,
+  fetchProductsWithoutSupplierPage,
+  searchProductCatalogPage,
+  searchProductsWithoutSupplierPage,
+  type ProductCatalogCoverageStats,
+  type ProductCatalogPage,
+  type ProductCatalogRow,
+} from "@/lib/data/product-catalog-queries";
 import {
   readZdImportSupplierJobState,
   startZdImportForSupplier,
@@ -28,8 +44,53 @@ import {
   tickZdImportAllSuppliersJob,
   type ZdImportAllSuppliersJobState,
 } from "@/lib/subiekt/zd-import-all-suppliers-job";
+import {
+  readCatalogZdSyncState,
+  runCatalogZdSync,
+  type CatalogZdSyncState,
+} from "@/lib/subiekt/catalog-zd-sync";
+import { readCronRun, type CronRunPayload } from "@/lib/services/cron-run-log";
 
 const MAX_NOTE_LEN = 500;
+
+export async function actionFetchProductCatalogPage(options?: {
+  limit?: number;
+  offset?: number;
+}): Promise<ProductCatalogPage> {
+  await requireAdmin();
+  return fetchProductCatalogPage(options);
+}
+
+export async function actionSearchProductCatalogPage(options: {
+  query: string;
+  limit?: number;
+  offset?: number;
+}): Promise<ProductCatalogPage> {
+  await requireAdmin();
+  return searchProductCatalogPage(options);
+}
+
+export async function actionCountProductCatalogCoverage(): Promise<ProductCatalogCoverageStats> {
+  await requireAdmin();
+  return countProductCatalogCoverage();
+}
+
+export async function actionFetchProductsWithoutSupplierPage(options?: {
+  limit?: number;
+  offset?: number;
+}): Promise<ProductCatalogPage> {
+  await requireAdmin();
+  return fetchProductsWithoutSupplierPage(options);
+}
+
+export async function actionSearchProductsWithoutSupplierPage(options: {
+  query: string;
+  limit?: number;
+  offset?: number;
+}): Promise<ProductCatalogPage> {
+  await requireAdmin();
+  return searchProductsWithoutSupplierPage(options);
+}
 
 export async function actionUpdateSubiektProductNote(subiektTwId: number, note: string) {
   await requireAdmin();
@@ -42,6 +103,54 @@ export async function actionUpdateSubiektProductNote(subiektTwId: number, note: 
   if (error) throw new Error(error.message);
   revalidatePath("/admin/produkty");
   return { success: true as const };
+}
+
+export async function actionListCatalogAssignSuppliers(): Promise<
+  Array<{ id: string; name: string; subiektKhId: number | null }>
+> {
+  await requireAdmin();
+  const refs = await getAppSupplierRefsCached();
+  return refs.map((s) => ({
+    id: s.id,
+    name: s.name,
+    subiektKhId: s.subiektKhId ?? null,
+  }));
+}
+
+export async function actionAssignProductSupplier(
+  subiektTwId: number,
+  supplierId: string
+): Promise<{
+  row: ProductCatalogRow;
+  autoAssign: { updated: number; promoted: number };
+}> {
+  await requireAdmin();
+  const twId = Math.trunc(subiektTwId);
+  await assignProductSupplierLinkAdmin({ subiektTwId: twId, supplierId });
+
+  const supabase = createAdminClient();
+  const { data: pendingOrders, error: ordErr } = await supabase
+    .from("individual_orders")
+    .select("id")
+    .eq("subiekt_tw_id", twId)
+    .eq("status", "Weryfikacja")
+    .is("supplier_id", null);
+  if (ordErr) throw new Error(ordErr.message);
+
+  const orderIds = (pendingOrders ?? []).map((o) => String((o as { id: string }).id));
+  const autoAssign = orderIds.length
+    ? await autoAssignMissingSuppliersFromCatalog({ orderIds, limit: orderIds.length })
+    : { checked: 0, updated: 0, promoted: 0 };
+
+  const rows = await fetchProductCatalogRowsByTwIds([twId]);
+  const row = rows[0];
+  if (!row) throw new Error("Nie udało się odczytać produktu po zapisie.");
+
+  revalidatePath("/admin/produkty");
+  revalidatePath("/weryfikacja");
+  revalidatePath("/podsumowanie");
+
+  return { row, autoAssign: { updated: autoAssign.updated, promoted: autoAssign.promoted } };
 }
 
 export async function actionRebuildProductCatalogFromOrders(options?: { limit?: number }) {
@@ -305,6 +414,49 @@ export async function actionListSubiektLinkedSuppliers(): Promise<
     .filter((s) => Number.isFinite(s.subiekt_kh_id) && s.subiekt_kh_id > 0);
 }
 
+export async function actionSupplierProductLinkStats(): Promise<
+  Array<{
+    id: string;
+    name: string;
+    subiekt_kh_id: number;
+    linksTotal: number;
+    linksZdImport: number;
+  }>
+> {
+  await requireAdmin();
+  const supabase = createAdminClient();
+
+  const suppliers = await actionListSubiektLinkedSuppliers();
+  const out: Array<{
+    id: string;
+    name: string;
+    subiekt_kh_id: number;
+    linksTotal: number;
+    linksZdImport: number;
+  }> = [];
+
+  for (const s of suppliers) {
+    const [{ count: total }, { count: zd }] = await Promise.all([
+      supabase
+        .from("product_supplier_links")
+        .select("subiekt_tw_id", { count: "exact", head: true })
+        .eq("supplier_id", s.id),
+      supabase
+        .from("product_supplier_links")
+        .select("subiekt_tw_id", { count: "exact", head: true })
+        .eq("supplier_id", s.id)
+        .eq("last_source", "zd_import"),
+    ]);
+    out.push({
+      ...s,
+      linksTotal: Number(total ?? 0),
+      linksZdImport: Number(zd ?? 0),
+    });
+  }
+
+  return out;
+}
+
 export async function actionReadZdImportSupplierJob(
   supplierId: string
 ): Promise<ZdImportSupplierJobState | null> {
@@ -404,11 +556,16 @@ export async function actionReadZdImportAllSuppliersJob(): Promise<ZdImportAllSu
   return readZdImportAllSuppliersJobState();
 }
 
-export async function actionStartZdImportAllSuppliersJob(): Promise<ZdImportAllSuppliersJobState> {
+export async function actionStartZdImportAllSuppliersJob(options?: {
+  monthsBack?: number;
+  batchDocs?: number;
+}): Promise<ZdImportAllSuppliersJobState> {
   await requireAdmin();
-  // startujemy od dataOd=18m wstecz (tak samo jak reszta ZD)
+  // Domyślnie bierzemy szerszy zakres niż dawniej, bo katalog produktów ma być możliwie kompletny.
   const { defaultZdSearchDataOd } = await import("@/lib/subiekt/subiekt-runtime-cache");
-  return startZdImportAllSuppliersJob({ dataOd: defaultZdSearchDataOd(18), batchDocs: 3 });
+  const monthsBack = options?.monthsBack ?? 60;
+  const batchDocs = options?.batchDocs ?? 3;
+  return startZdImportAllSuppliersJob({ dataOd: defaultZdSearchDataOd(monthsBack), batchDocs });
 }
 
 export async function actionTickZdImportAllSuppliersJob(): Promise<ZdImportAllSuppliersJobState> {
@@ -423,5 +580,46 @@ export async function actionStopZdImportAllSuppliersJob() {
   const next = await stopZdImportAllSuppliersJob();
   revalidatePath("/admin/produkty");
   return next;
+}
+
+export async function actionReadCatalogZdSyncStatus(): Promise<{
+  state: CatalogZdSyncState | null;
+  lastCron: CronRunPayload | null;
+}> {
+  await requireAdmin();
+  const [state, lastCron] = await Promise.all([
+    readCatalogZdSyncState(),
+    readCronRun("catalog_zd_sync"),
+  ]);
+  return { state, lastCron };
+}
+
+/** Kontynuacja przerwanego przebiegu (bez resetu stanu). */
+export async function actionContinueCatalogZdSync() {
+  await requireAdmin();
+  if (!(await isSubiektReachable())) {
+    throw new Error("Subiekt niedostępny — synchronizacja wymaga LAN.");
+  }
+  const result = await runCatalogZdSync({
+    force: true,
+    maxDurationMs: 2 * 60 * 1000,
+  });
+  revalidatePath("/admin/produkty");
+  return result;
+}
+
+/** Test / ponowny przebieg — `reset` tylko gdy jawnie żądany (domyślnie kontynuuje). */
+export async function actionRunCatalogZdSyncNow(options?: { reset?: boolean }) {
+  await requireAdmin();
+  if (!(await isSubiektReachable())) {
+    throw new Error("Subiekt niedostępny — synchronizacja wymaga LAN.");
+  }
+  const result = await runCatalogZdSync({
+    force: true,
+    reset: options?.reset === true,
+    maxDurationMs: 2 * 60 * 1000,
+  });
+  revalidatePath("/admin/produkty");
+  return result;
 }
 

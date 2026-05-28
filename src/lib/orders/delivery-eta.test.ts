@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   avgDaysForOrderType,
   combinedAvgDays,
+  formatSupplierLeadTimeBrief,
   orderTypesForLeadTimeHints,
 } from "@/lib/orders/delivery-eta";
 import type { DeliveryStats } from "@/types/database";
@@ -26,6 +27,20 @@ describe("avgDaysForOrderType LACZNIE", () => {
   it("OSOBNO rozdziela typy", () => {
     expect(avgDaysForOrderType(stats, "Glowne", "OSOBNO")).toBe(10);
     expect(avgDaysForOrderType(stats, "Poboczne", "OSOBNO")).toBe(5);
+  });
+});
+
+describe("formatSupplierLeadTimeBrief", () => {
+  it("LACZNIE — jedna krótka linia", () => {
+    expect(formatSupplierLeadTimeBrief(stats, "LACZNIE")).toBe("~8 dni rob.");
+  });
+
+  it("OSOBNO — główne i poboczne", () => {
+    expect(formatSupplierLeadTimeBrief(stats, "OSOBNO")).toBe("gł. ~10 d · pob. ~5 d");
+  });
+
+  it("brak historii — null", () => {
+    expect(formatSupplierLeadTimeBrief(null, "LACZNIE")).toBeNull();
   });
 });
 

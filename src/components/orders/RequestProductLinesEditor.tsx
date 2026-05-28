@@ -37,6 +37,7 @@ export function RequestProductLinesEditor({
   suppliers,
   onSupplierResolved,
   onSupplierResolveFeedback,
+  onSupplierMappingMissing,
   unifiedFeedback = false,
   onProductFeedbackChange,
   onConfigFeedbackChange,
@@ -59,6 +60,7 @@ export function RequestProductLinesEditor({
     documentNumber: string | null;
   }) => void;
   onSupplierResolveFeedback?: (feedback: SubiektFeedback | null) => void;
+  onSupplierMappingMissing?: () => void;
   unifiedFeedback?: boolean;
   onProductFeedbackChange?: (feedback: SubiektFeedback | null) => void;
   onConfigFeedbackChange?: (feedback: SubiektFeedback | null) => void;
@@ -258,6 +260,7 @@ export function RequestProductLinesEditor({
               suppliers={suppliers}
               onSupplierResolved={onSupplierResolved}
               onSupplierResolveFeedback={onSupplierResolveFeedback}
+              onSupplierMappingMissing={onSupplierMappingMissing}
               delegateAlerts={unifiedFeedback}
               onProductFeedbackChange={
                 isActive ? onProductFeedbackChange : undefined

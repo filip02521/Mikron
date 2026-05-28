@@ -1,9 +1,15 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { requireAdmin, requireSubiektLookup, requireSupplierManagement } from "@/lib/auth";
+import {
+  requireAdmin,
+  requireOperations,
+  requireSubiektLookup,
+  requireSupplierManagement,
+} from "@/lib/auth";
+import { indexOrderLineToProductCatalog } from "@/lib/data/product-catalog";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { searchSubiektProducts } from "@/lib/subiekt/api";
+import { searchSubiektKontrahenci, searchSubiektProducts } from "@/lib/subiekt/api";
 import { getAppSupplierRefsCached } from "@/lib/data/supplier-refs";
 import { searchSubiektSuppliersCached } from "@/lib/subiekt/subiekt-runtime-cache";
 import { productSearchParams, minProductSearchLength, looksLikeProductSymbol, type ProductSearchField } from "@/lib/subiekt/product-pick";
@@ -26,7 +32,6 @@ import {
   matchSubiektKontrahentToSupplier,
   type AppSupplierRef,
 } from "@/lib/subiekt/match-supplier";
-import { lookupSupplierForSubiektProduct } from "@/lib/subiekt/product-supplier";
 import { expandSupplierSearchQueries } from "@/lib/subiekt/supplier-search-tokens";
 import type { SubiektKontrahent, SubiektProduct } from "@/lib/subiekt/types";
 
@@ -113,47 +118,107 @@ export type SubiektResolveSupplierResult =
     }
   | { ok: false; feedback: SubiektFeedback };
 
-/** Po wyborze towaru z Subiekta — dostawca z ostatniego ZD z tą pozycją. */
+/** Po wyborze towaru z Subiekta — dostawca z naszej bazy (product_supplier_links), bez przeszukiwania ZD. */
 export async function actionSubiektResolveSupplierForProduct(
   product: SubiektProduct,
   appSuppliers: AppSupplierRef[]
 ): Promise<SubiektResolveSupplierResult> {
   await requireSubiektLookup();
-  if (!isSubiektConfigured()) {
-    return { ok: false, feedback: getSubiektFeedback("not_configured") };
-  }
+  // Najnowsze podejście: nie przeszukujemy ZD przy wyborze produktu.
+  // Subiekt jest używany tylko do podpowiedzi kartotek, a dostawcę bierzemy z własnej bazy mapowań.
 
   try {
-    const lookup = await lookupSupplierForSubiektProduct(product, appSuppliers);
-
-    if (lookup.status === "mapped") {
+    const twId = Math.trunc(Number((product as any)?.tw_Id));
+    if (!Number.isFinite(twId) || twId <= 0) {
       return {
-        ok: true,
-        supplierId: lookup.supplierId,
-        supplierName: lookup.supplierName,
-        documentNumber: lookup.documentNumber,
+        ok: false,
+        feedback: getSubiektFeedback("not_found_supplier", {
+          message: "Brak ID towaru (tw_Id) — wybierz dostawcę ręcznie lub zostaw puste.",
+        }),
       };
     }
 
-    if (lookup.status === "unmapped") {
-      const nr = lookup.documentNumber ? ` (${lookup.documentNumber})` : "";
+    const supabase = createAdminClient();
+    const { data: linksRaw, error } = await supabase
+      .from("product_supplier_links")
+      .select("supplier_id, order_count, last_source, suppliers(name)")
+      .eq("subiekt_tw_id", twId);
+    if (error) throw new Error(error.message);
+
+    const links = (linksRaw ?? []).map((row: any) => ({
+      supplierId: String(row.supplier_id),
+      orderCount: Number(row.order_count ?? 0),
+      lastSource: (row.last_source as string | null) ?? null,
+      supplierName:
+        row?.suppliers?.name != null ? String(row.suppliers.name) : "Dostawca",
+    }));
+
+    if (!links.length) {
       return {
         ok: false,
-        feedback: getSubiektFeedback("supplier_from_product_unmapped", {
-          message: `W Subiekcie: ${lookup.subiektLabel}${nr} — wybierz odpowiednika w polu dostawcy.`,
+        feedback: getSubiektFeedback("not_found_supplier", {
+          message:
+            "Brak przypisanego dostawcy w naszej bazie dla tego towaru — wybierz dostawcę ręcznie (powstanie powiązanie po zapisie).",
+        }),
+      };
+    }
+
+    const scoreSource = (s: string | null) =>
+      s === "procurement_verification" ? 3 : s === "order_history" ? 2 : s === "zd_import" ? 1 : 0;
+    links.sort((a, b) => {
+      const c = (b.orderCount ?? 0) - (a.orderCount ?? 0);
+      if (c !== 0) return c;
+      return scoreSource(b.lastSource) - scoreSource(a.lastSource);
+    });
+
+    const best = links[0]!;
+
+    // Jeśli dostawca nie jest już dostępny w aplikacji (np. usunięty), nie ustawiaj automatycznie.
+    if (appSuppliers?.length && !appSuppliers.some((s) => s.id === best.supplierId)) {
+      return {
+        ok: false,
+        feedback: getSubiektFeedback("not_found_supplier", {
+          message:
+            "Dostawca z naszej bazy nie jest dostępny na liście dostawców — wybierz ręcznie lub zostaw puste.",
         }),
       };
     }
 
     return {
-      ok: false,
-      feedback: getSubiektFeedback("not_found_supplier", {
-        message: "Nie znaleziono ZD z tym towarem — wybierz dostawcę ręcznie lub zostaw puste.",
-      }),
+      ok: true,
+      supplierId: best.supplierId,
+      supplierName: best.supplierName,
+      documentNumber: null,
     };
   } catch (e) {
     return { ok: false, feedback: feedbackFromException(e) };
   }
+}
+
+/** Po wyborze towaru z Subiekta (zakupy) — produkt w katalogu; link tylko gdy podano dostawcę. */
+export async function actionRecordCatalogFromSubiektPick(input: {
+  subiektTwId: number;
+  symbol?: string | null;
+  productName?: string | null;
+  mikranCode?: string | null;
+  supplierId?: string | null;
+}): Promise<{ success: true }> {
+  await requireOperations();
+  const twId = Math.trunc(Number(input.subiektTwId));
+  if (!Number.isFinite(twId) || twId <= 0) {
+    throw new Error("Brak ID towaru z Subiekta.");
+  }
+  await indexOrderLineToProductCatalog({
+    orderId: null,
+    subiektTwId: twId,
+    symbol: input.symbol,
+    productName: input.productName,
+    mikranCode: input.mikranCode,
+    supplierId: input.supplierId?.trim() || null,
+    source: "procurement_verification",
+    linkSupplier: Boolean(input.supplierId?.trim()),
+  });
+  return { success: true };
 }
 
 async function suggestProducts(
@@ -241,7 +306,8 @@ export type SubiektSupplierSuggestResult =
 export async function actionSubiektLookupSupplier(
   query: string
 ): Promise<SubiektLookupResult<SubiektKontrahent>> {
-  await requireAdmin();
+  // Powiązanie kh_Id jest używane także w module zakupów, więc search nie może być tylko dla admina.
+  await requireSupplierManagement();
   const q = query.trim();
   if (!q) return validationFailure("empty_query");
   if (!isSubiektConfigured()) {
@@ -249,21 +315,87 @@ export async function actionSubiektLookupSupplier(
   }
 
   try {
-    const res = await searchSubiektSuppliersCached({
-      search: q,
-      symbol: q,
-      pageSize: 10,
-      page: 1,
-    });
-    if (res.data.length === 0) {
-      return {
-        ok: true,
-        items: [],
-        totalCount: 0,
-        feedback: notFoundSupplierFeedback(q),
-      };
+    const normalizePhrase = (value: string): string => {
+      // Usuń cudzysłowy i “dziwne” znaki, kropki traktuj jak separator.
+      const noQuotes = value.replaceAll('"', " ").replaceAll("“", " ").replaceAll("”", " ");
+      const noDots = noQuotes.replaceAll(".", " ");
+      const cleaned = noDots
+        .replace(/[^\p{L}\p{N}\s-]+/gu, " ")
+        .replace(/\s+/g, " ")
+        .trim();
+      return cleaned;
+    };
+
+    const buildLookupPhrases = (raw: string): string[] => {
+      const base = expandSupplierSearchQueries(raw);
+      const extra: string[] = [];
+      for (const b of base) {
+        const n = normalizePhrase(b);
+        if (n && n !== b) extra.push(n);
+        // jeśli mamy kilka tokenów (np. PPUH Kos), spróbuj ostatniego (najczęściej nazwa)
+        const tokens = n.split(" ").filter(Boolean);
+        if (tokens.length >= 2) {
+          extra.push(tokens[tokens.length - 1] ?? "");
+        }
+      }
+      return [...new Set([...base, ...extra].map((s) => s.trim()).filter(Boolean))].slice(0, 8);
+    };
+
+    // W praktyce kontrahent może nie być oznaczony jako "dostawca" w Subiekcie,
+    // a nadal chcemy móc powiązać `kh_Id` w aplikacji. Szukamy więc najpierw w
+    // "/kontrahenci/dostawcy", a jeśli nic nie znajdzie, to fallback do "/kontrahenci".
+    const queries = buildLookupPhrases(q);
+    const merged: SubiektKontrahent[] = [];
+    const seenKh = new Set<number>();
+
+    for (const phrase of queries) {
+      const [suppliersRes, kontrahenciRes] = await Promise.all([
+        searchSubiektSuppliersCached({
+          search: phrase,
+          pageSize: 24,
+          page: 1,
+          includeBlocked: true,
+        }),
+        searchSubiektKontrahenci({
+          search: phrase,
+          pageSize: 24,
+          page: 1,
+          includeBlocked: true,
+        }),
+      ]);
+
+      for (const row of [...(suppliersRes.data ?? []), ...(kontrahenciRes.data ?? [])]) {
+        const khId = Number((row as any).kh_Id);
+        if (Number.isFinite(khId)) {
+          if (seenKh.has(khId)) continue;
+          seenKh.add(khId);
+        }
+        merged.push(row);
+        if (merged.length >= 16) break;
+      }
+      if (merged.length >= 16) break;
     }
-    return { ok: true, items: res.data, totalCount: res.pagination?.totalCount };
+
+    if (merged.length === 0) {
+      return { ok: true, items: [], totalCount: 0, feedback: notFoundSupplierFeedback(q) };
+    }
+
+    // Sortuj tak, żeby wyniki zawierające wszystkie tokeny z frazy były na górze.
+    const scoreRow = (row: SubiektKontrahent): number => {
+      const label = `${row.adr_NazwaPelna ?? ""} ${row.adr_Nazwa ?? ""} ${row.kh_Symbol ?? ""}`.toLowerCase();
+      const tokens = normalizePhrase(q)
+        .toLowerCase()
+        .split(" ")
+        .filter((t) => t.length >= 2 && !["ppuh", "pphu", "puh", "sp", "zoo", "s", "a"].includes(t));
+      if (!tokens.length) return 0;
+      const hits = tokens.filter((t) => label.includes(t)).length;
+      // preferuj pełne trafienia
+      return hits === tokens.length ? 100 + hits : hits;
+    };
+
+    const sorted = [...merged].sort((a, b) => scoreRow(b) - scoreRow(a));
+    const top = sorted.slice(0, 40);
+    return { ok: true, items: top, totalCount: top.length };
   } catch (e) {
     return lookupFailure(e);
   }

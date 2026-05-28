@@ -16,6 +16,7 @@ export function RequestCompletenessBanner({
   requestKind,
   forcedAssessment,
   embedded = false,
+  audience = "default",
 }: {
   draft: RequestDraft;
   requestKind: IndividualRequestKind;
@@ -23,6 +24,7 @@ export function RequestCompletenessBanner({
   forcedAssessment?: RequestCompleteness | null;
   /** Wewnątrz RequestFormStatusPanel — bez podwójnej ramki */
   embedded?: boolean;
+  audience?: "procurement" | "default";
 }) {
   const assessment = useMemo(() => {
     if (forcedAssessment !== undefined) return forcedAssessment;
@@ -47,7 +49,9 @@ export function RequestCompletenessBanner({
     );
   }
 
-  const hint = completenessUserHint(assessment, requestKind, { ...draft, requestKind });
+  const hint = completenessUserHint(assessment, requestKind, { ...draft, requestKind }, {
+    audience,
+  });
 
   return (
     <div

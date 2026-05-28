@@ -167,23 +167,18 @@ export function enrichMyOrderSalesUi(row: MyOrderRow): MyOrderSalesUi {
   }
 
   if (row.statusTitle === "Zamówione") {
-    const fromZd = Boolean(row.timingLabel?.includes("Termin ZD") || row.timingLabel?.includes("Termin z ZD"));
     const hasEstimate = Boolean(row.timingLabel);
     const lowHistory = row.timingLabel?.includes("mało historii");
     return {
-      headline: fromZd
-        ? "Zamówione — termin z Subiekta"
-        : hasEstimate
-          ? "Zamówione — czekamy na dostawę"
-          : "Zamówione u dostawcy",
+      headline: hasEstimate
+        ? "Zamówione — czekamy na dostawę"
+        : "Zamówione u dostawcy",
       headlineTone: "info",
-      subline: fromZd
-        ? (row.timingLabel?.replace(" · po terminie", "") ?? null)
-        : !hasEstimate
-          ? "Szacowany termin podamy z historii lub z dokumentu ZD w Subiekcie"
-          : lowHistory
-            ? "Mało dostaw w historii — termin jest orientacyjny"
-            : null,
+      subline: !hasEstimate
+        ? "Szacowany termin podamy z historii dostaw"
+        : lowHistory
+          ? "Mało dostaw w historii — termin jest orientacyjny"
+          : null,
       sortPriority: 7,
     };
   }

@@ -12,7 +12,7 @@ export async function recordCronRun(
     | "process_deliveries"
     | "morning_sync"
     | "morning_routine"
-    | "import_zd_links",
+    | "catalog_zd_sync",
   payload: Omit<CronRunPayload, "at"> & { at?: string }
 ): Promise<void> {
   try {
@@ -37,7 +37,7 @@ export async function readCronRun(
     | "process_deliveries"
     | "morning_sync"
     | "morning_routine"
-    | "import_zd_links"
+    | "catalog_zd_sync"
 ): Promise<CronRunPayload | null> {
   try {
     const supabase = createAdminClient();

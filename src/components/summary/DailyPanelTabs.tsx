@@ -73,19 +73,6 @@ export function DailyPanelTabs({
                 {count}
               </span>
             ) : null}
-            {id === "dzis" && verificationCount > 0 ? (
-              <span
-                className={cn(
-                  "rounded-full px-2 py-0.5 text-xs font-bold tabular-nums",
-                  selected
-                    ? "bg-amber-500 text-white"
-                    : "border border-amber-300 bg-amber-100 text-amber-950"
-                )}
-                title="Wymaga uzupełnienia danych"
-              >
-                +{verificationCount}
-              </span>
-            ) : null}
           </button>
         );
       })}

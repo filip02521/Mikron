@@ -22,6 +22,7 @@ import {
   hasValidOrderQuantity,
   type RequestCompleteness,
 } from "@/lib/orders/request-completeness";
+import { assertProcurementEntryComplete } from "@/lib/orders/procurement-submit";
 import { assessSalesGroupSubmittable } from "@/lib/orders/sales-request-submit";
 import { RequestFormStatusPanel } from "@/components/orders/RequestFormStatusPanel";
 import { ProsbaFormReadiness } from "@/components/orders/ProsbaFormReadiness";
@@ -296,6 +297,34 @@ export function OrderFormClient({
       });
       return;
     }
+
+    if (!singleGroup || !lockedSalesPerson) {
+      try {
+        let lineNo = 0;
+        for (const e of entries) {
+          lineNo += 1;
+          assertProcurementEntryComplete(
+            {
+              supplierId: e.supplierId,
+              symbol: e.symbol,
+              mikranCode: e.mikranCode,
+              product: e.product,
+              quantity: e.quantity,
+              requestKind,
+              subiektTwId: e.subiektTwId,
+            },
+            entries.length > 1 ? `Pozycja ${lineNo}` : undefined
+          );
+        }
+      } catch (err) {
+        setFormNotice({
+          text: err instanceof Error ? err.message : "Uzupełnij wymagane pola.",
+          tone: "error",
+        });
+        return;
+      }
+    }
+
     setPendingMessage(
       singleGroup ? "Wysyłanie prośby…" : "Zapisywanie zamówień…"
     );
@@ -315,7 +344,12 @@ export function OrderFormClient({
           }))
         );
         setMsg({
-          text: formatSubmitResult(r, requestKind, Boolean(singleGroup && lockedSalesPerson)),
+          text:
+            singleGroup && lockedSalesPerson
+              ? formatSubmitResult(r, requestKind, true)
+              : requestKind === "informacja"
+                ? `Dodano ${r.count} prośb(y) informacyjn(e).`
+                : `Dodano ${r.count} pozycji do panelu dziennego.`,
           tone: "success",
         });
         setFormNotice(null);
@@ -588,7 +622,7 @@ export function OrderFormClient({
                 </div>
               ) : null}
               <div className="sm:col-span-2">
-                <Field label="Dostawca (opcjonalnie przy weryfikacji)">
+                <Field label="Dostawca">
                   <SupplierPickerField
                     suppliers={suppliers}
                     value={group[0]?.supplierId ?? ""}
@@ -648,6 +682,13 @@ export function OrderFormClient({
               onSupplierResolved={({ supplierId }) =>
                 applySupplierFromSubiekt(supplierId, gi)
               }
+              onSupplierMappingMissing={() =>
+                setGroups((g) =>
+                  g.map((gr, i) =>
+                    i === gi ? gr.map((row) => ({ ...row, supplierId: "" })) : gr
+                  )
+                )
+              }
               onSupplierResolveFeedback={setSupplierSubiektFeedback}
               onProductFeedbackChange={setProductLineFeedback}
               onConfigFeedbackChange={setConfigFeedback}
@@ -690,6 +731,7 @@ export function OrderFormClient({
                   : null
               }
               formMessage={gi === 0 ? formNotice : null}
+              audience="procurement"
             />
           </div>
         </Card>
@@ -698,8 +740,8 @@ export function OrderFormClient({
       <Card padding={false}>
         <div className="flex flex-col gap-3 bg-slate-50/90 px-4 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-6">
           <p className="text-xs leading-relaxed text-slate-500">
-            Po zapisie prośby trafią do weryfikacji lub panelu dziennego — zależnie od kompletności
-            danych.
+            Zamówienia trafiają do panelu dziennego po zapisie kompletnych danych (dostawca, produkt z
+            Subiekta lub ręcznie, ilość).
           </p>
           <div className="flex flex-wrap gap-2">
             {!singleGroup ? (

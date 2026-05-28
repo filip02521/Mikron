@@ -61,6 +61,11 @@ import {
 } from "@/lib/security/text-limits";
 import { sanitizeOrderDraftFields } from "@/lib/security/sanitize-order-fields";
 import { indexOrderLineToProductCatalog } from "@/lib/data/product-catalog";
+import {
+  assertProcurementEntryComplete,
+  procurementStatusForEntry,
+  shouldLinkProcurementCatalogEntry,
+} from "@/lib/orders/procurement-submit";
 
 async function getVacationsForSupplier(supplierId: string): Promise<VacationPeriod[]> {
   const supabase = createAdminClient();
@@ -270,7 +275,8 @@ export async function batchAddIndividualOrders(
     clientName?: string;
     subiektTwId?: number | null;
   }>,
-  createdBy?: string
+  createdBy?: string,
+  options?: { submitMode?: "sales" | "procurement" }
 ): Promise<{
   count: number;
   complete: number;
@@ -284,10 +290,55 @@ export async function batchAddIndividualOrders(
 
   const supabase = createAdminClient();
   const submissionGroupId = uuidv4();
+  const procurementMode = options?.submitMode === "procurement";
+  const catalogSource = procurementMode ? "procurement_verification" : "order_history";
   try {
     let complete = 0;
     let verification = 0;
-    const rows = entries.map((e) => {
+
+    // Nowe podejście: jeśli handlowiec wpisał symbol / kod, ale nie wybrał pozycji z podpowiedzi Subiekta,
+    // spróbuj dopasować tw_Id po naszej bazie `subiekt_products` (symbol/plu).
+    // Dzięki temu dalsze kroki (katalog mapowań produkt→dostawca) działają bez ZD.
+    const escapeIlike = (v: string) => v.replaceAll("\\", "\\\\").replaceAll("%", "\\%").replaceAll("_", "\\_");
+    const resolveTwIdFromCatalog = async (input: {
+      subiektTwId?: number | null;
+      symbol?: string;
+      mikranCode?: string;
+    }): Promise<number | null> => {
+      const existing = input.subiektTwId != null ? Math.trunc(Number(input.subiektTwId)) : null;
+      if (existing && Number.isFinite(existing) && existing > 0) return existing;
+
+      const symbol = String(input.symbol ?? "").trim();
+      const plu = String(input.mikranCode ?? "").trim();
+
+      // 1) symbol exact (case-insensitive) => ilike bez wildcardów
+      if (symbol) {
+        const pattern = escapeIlike(symbol);
+        const { data, error } = await supabase
+          .from("subiekt_products")
+          .select("subiekt_tw_id, symbol")
+          .ilike("symbol", pattern)
+          .limit(2);
+        if (error) throw new Error(error.message);
+        if ((data ?? []).length === 1) return Number((data as any)[0].subiekt_tw_id) || null;
+      }
+
+      // 2) PLU (Mikran) exact
+      if (plu) {
+        const pattern = escapeIlike(plu);
+        const { data, error } = await supabase
+          .from("subiekt_products")
+          .select("subiekt_tw_id, plu")
+          .ilike("plu", pattern)
+          .limit(2);
+        if (error) throw new Error(error.message);
+        if ((data ?? []).length === 1) return Number((data as any)[0].subiekt_tw_id) || null;
+      }
+
+      return null;
+    };
+
+    const rows = await Promise.all(entries.map(async (e) => {
       const kind = (e.requestKind ?? "zamowienie") as IndividualRequestKind;
       const sanitized = sanitizeOrderDraftFields({
         symbol: e.symbol,
@@ -302,22 +353,38 @@ export async function batchAddIndividualOrders(
         product: sanitized.product,
         quantity: sanitized.quantity,
         requestKind: kind,
-        subiektTwId: e.subiektTwId,
+        subiektTwId: await resolveTwIdFromCatalog({
+          subiektTwId: e.subiektTwId,
+          symbol: sanitized.symbol,
+          mikranCode: sanitized.mikranCode,
+        }),
       };
       if (!hasAnyProductHint(draft)) {
         throw new Error("Podaj symbol, kod Mikran lub opis produktu.");
       }
-      const submitPlan = planSalesRequestSubmit(draft);
-      if (!submitPlan.submittable) {
-        if (kind === "zamowienie" && !hasValidOrderQuantity(sanitized.quantity, kind)) {
-          throw new Error("Podaj ilość (liczba sztuk, np. 1).");
+
+      let status: IndividualOrderStatus;
+      if (procurementMode) {
+        assertProcurementEntryComplete({
+          ...draft,
+          requestKind: kind,
+        });
+        status = procurementStatusForEntry({ ...draft, requestKind: kind });
+        complete++;
+      } else {
+        const submitPlan = planSalesRequestSubmit(draft);
+        if (!submitPlan.submittable) {
+          if (kind === "zamowienie" && !hasValidOrderQuantity(sanitized.quantity, kind)) {
+            throw new Error("Podaj ilość (liczba sztuk, np. 1).");
+          }
+          throw new Error("Uzupełnij wymagane pola prośby.");
         }
-        throw new Error("Uzupełnij wymagane pola prośby.");
+        status = submitPlan.initialStatus;
+        if (status === "Nowe") complete++;
+        else verification++;
       }
+
       const { products, symbol } = normalizeDraftProducts(draft);
-      const status = submitPlan.initialStatus;
-      if (status === "Nowe") complete++;
-      else verification++;
       // Stare podejście (dopasowanie dostawcy z ZD w tle) zostało wycofane.
 
       return {
@@ -334,10 +401,10 @@ export async function batchAddIndividualOrders(
         created_by: createdBy ?? null,
         sales_client_name: normalizeSalesClientName(e.clientName),
         subiekt_tw_id:
-          e.subiektTwId != null && e.subiektTwId > 0 ? e.subiektTwId : null,
+          draft.subiektTwId != null && draft.subiektTwId > 0 ? draft.subiektTwId : null,
         mikran_code: sanitized.mikranCode?.trim() || null,
       };
-    });
+    }));
     const { error } = await supabase.from("individual_orders").insert(rows);
     if (error) {
       const msg = formatDbError(error);
@@ -361,7 +428,17 @@ export async function batchAddIndividualOrders(
             mikranCode: row.mikran_code ?? null,
             supplierId: row.supplier_id ?? null,
             actionAt: null,
-            source: "order_history",
+            source: catalogSource,
+            linkSupplier: procurementMode
+              ? shouldLinkProcurementCatalogEntry({
+                  subiektTwId: row.subiekt_tw_id,
+                  supplierId: row.supplier_id ?? undefined,
+                  symbol: row.symbol ?? undefined,
+                  product: row.products ?? undefined,
+                  quantity: row.quantity ?? undefined,
+                  requestKind: row.request_kind ?? "zamowienie",
+                })
+              : Boolean(row.supplier_id && row.subiekt_tw_id),
           });
         } catch (e) {
           console.error("[indexOrderLineToProductCatalog batchAdd]", e);
@@ -443,15 +520,25 @@ export async function completeVerificationOrder(
   }
 
   try {
+    const twId =
+      data.subiektTwId != null && data.subiektTwId > 0 ? data.subiektTwId : null;
     await indexOrderLineToProductCatalog({
       orderId,
-      subiektTwId: data.subiektTwId != null && data.subiektTwId > 0 ? data.subiektTwId : null,
+      subiektTwId: twId,
       symbol,
       productName: products,
       mikranCode: sanitized.mikranCode?.trim() || null,
       supplierId: data.supplierId,
       actionAt: new Date().toISOString(),
       source: "procurement_verification",
+      linkSupplier: shouldLinkProcurementCatalogEntry({
+        subiektTwId: twId,
+        supplierId: data.supplierId,
+        symbol,
+        product: products,
+        quantity: sanitized.quantity,
+        requestKind: data.requestKind ?? "zamowienie",
+      }),
     });
   } catch (e) {
     console.error("[indexOrderLineToProductCatalog completeVerificationOrder]", e);
@@ -492,6 +579,12 @@ export async function updateIndividualRequestGroup(
   payload: IndividualRequestEditPayload,
   options: {
     salesPersonIdConstraint?: string;
+    /**
+     * Źródło indeksowania do katalogu produktów.
+     * - Edycje handlowca w "/moje" powinny być słabszym sygnałem ("order_history")
+     * - Operacje/zakupy (admin) mogą zapisywać mocny sygnał ("procurement_verification")
+     */
+    catalogSource?: "order_history" | "procurement_verification";
   }
 ): Promise<{ updated: number; inserted: number; removed: number }> {
   if (!orderIds.length) throw new Error("Brak pozycji do edycji.");
@@ -527,6 +620,10 @@ export async function updateIndividualRequestGroup(
     }
   }
 
+  const catalogSource: "order_history" | "procurement_verification" =
+    options.catalogSource ??
+    (options.salesPersonIdConstraint ? "order_history" : "procurement_verification");
+
   const submissionGroupId =
     existing[0]?.submission_group_id ?? uuidv4();
   const keptIds = new Set<string>();
@@ -558,10 +655,12 @@ export async function updateIndividualRequestGroup(
     }
 
     const { products, symbol } = normalizeDraftProducts(draft);
-    const { status, supplierResolvePending } = statusForEditedLine({
-      ...draft,
-      subiektTwId: line.subiektTwId,
-    });
+    const lineDraft = { ...draft, subiektTwId: line.subiektTwId };
+    const status =
+      catalogSource === "procurement_verification"
+        ? procurementStatusForEntry(lineDraft)
+        : statusForEditedLine(lineDraft).status;
+    const supplierResolvePending = false;
     const rowPayload = {
       supplier_id: payload.supplierId.trim() || null,
       sales_person_id: payload.salesPersonId,
@@ -598,7 +697,11 @@ export async function updateIndividualRequestGroup(
           mikranCode: rowPayload.mikran_code ?? null,
           supplierId: rowPayload.supplier_id ?? null,
           actionAt: new Date().toISOString(),
-          source: "procurement_verification",
+          source: catalogSource,
+          linkSupplier:
+            catalogSource === "procurement_verification"
+              ? shouldLinkProcurementCatalogEntry(lineDraft)
+              : Boolean(rowPayload.supplier_id && rowPayload.subiekt_tw_id),
         });
       } catch (e) {
         console.error("[indexOrderLineToProductCatalog updateIndividualRequestGroup update]", e);
@@ -623,7 +726,11 @@ export async function updateIndividualRequestGroup(
           mikranCode: rowPayload.mikran_code ?? null,
           supplierId: rowPayload.supplier_id ?? null,
           actionAt: new Date().toISOString(),
-          source: "procurement_verification",
+          source: catalogSource,
+          linkSupplier:
+            catalogSource === "procurement_verification"
+              ? shouldLinkProcurementCatalogEntry(lineDraft)
+              : Boolean(rowPayload.supplier_id && rowPayload.subiekt_tw_id),
         });
       } catch (e) {
         console.error("[indexOrderLineToProductCatalog updateIndividualRequestGroup insert]", e);
@@ -674,8 +781,8 @@ export async function processIndividualFromSummary(
   if (incomplete.length && action !== "ANULOWANO") {
     throw new Error(
       incomplete.length === 1
-        ? "Uzupełnij dostawcę, produkt i ilość w zakładce Weryfikacja — bez tego nie można złożyć zamówienia u dostawcy."
-        : `${incomplete.length} pozycje wymagają uzupełnienia w Weryfikacji (dostawca, produkt, ilość) — nie można ich jeszcze oznaczyć jako Główne/Uzupełniające.`
+        ? "Ta pozycja nie ma kompletnych danych (dostawca, produkt, ilość) — użyj edycji prośby lub uzupełnij w widoku Weryfikacja."
+        : `${incomplete.length} pozycji nie ma kompletnych danych — użyj edycji lub widoku Weryfikacja przed oznaczeniem jako Główne/Uzupełniające.`
     );
   }
 

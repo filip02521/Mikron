@@ -1,12 +1,24 @@
 import { PageHeader } from "@/components/ui/PageHeader";
 import { AdminHubNav } from "@/components/admin/AdminHubNav";
 import { ProductsCatalogAdminClient } from "@/components/admin/ProductsCatalogAdminClient";
-import { fetchProductCatalogRows } from "@/lib/data/product-catalog-queries";
-import { actionListSubiektLinkedSuppliers } from "@/app/actions/product-catalog";
+import {
+  actionListCatalogAssignSuppliers,
+  actionListSubiektLinkedSuppliers,
+} from "@/app/actions/product-catalog";
+import {
+  countProductCatalogCoverage,
+  fetchProductCatalogPage,
+} from "@/lib/data/product-catalog-queries";
 
 export default async function AdminProduktyPage() {
-  const rows = await fetchProductCatalogRows({ limit: 250 });
-  const suppliers = await actionListSubiektLinkedSuppliers();
+  const [page, coverage] = await Promise.all([
+    fetchProductCatalogPage({ limit: 250, offset: 0 }),
+    countProductCatalogCoverage(),
+  ]);
+  const [suppliers, assignSuppliers] = await Promise.all([
+    actionListSubiektLinkedSuppliers(),
+    actionListCatalogAssignSuppliers(),
+  ]);
   return (
     <>
       <PageHeader
@@ -15,7 +27,12 @@ export default async function AdminProduktyPage() {
       />
       <AdminHubNav activeTab="system" />
       <div className="mb-8">
-        <ProductsCatalogAdminClient initial={rows} suppliers={suppliers} />
+        <ProductsCatalogAdminClient
+          initial={page}
+          coverage={coverage}
+          suppliers={suppliers}
+          assignSuppliers={assignSuppliers}
+        />
       </div>
     </>
   );

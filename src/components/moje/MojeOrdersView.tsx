@@ -151,7 +151,6 @@ export function MojeOrdersView({
   pageDescription,
   headerActions,
   subiektAvailability,
-  zdEtaNoticeSlot,
 }: {
   zamowienia: MyOrderRow[];
   informacje: MyOrderRow[];
@@ -165,7 +164,6 @@ export function MojeOrdersView({
   pageDescription?: string;
   headerActions?: React.ReactNode;
   subiektAvailability?: SubiektAvailability;
-  zdEtaNoticeSlot?: React.ReactNode;
 }) {
   const [activeFilter, setActiveFilter] = useState<MyOrderInboxFilter | null>(null);
 
@@ -307,10 +305,6 @@ export function MojeOrdersView({
           activeFilter={activeFilter}
           onFilterChange={setActiveFilter}
         />
-
-        {zdEtaNoticeSlot ? (
-          <div className="border-b border-slate-100 px-3 py-2.5 sm:px-4">{zdEtaNoticeSlot}</div>
-        ) : null}
 
         {inboxSummary.pickupCount > 0 && !activeFilter ? (
           <p className="flex items-start gap-2 border-b border-emerald-100 bg-emerald-50/80 px-3 py-2 text-xs font-medium text-emerald-900 sm:px-4">

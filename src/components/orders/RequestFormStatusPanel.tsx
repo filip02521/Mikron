@@ -39,6 +39,7 @@ export function RequestFormStatusPanel({
   scheduleHint,
   formMessage,
   className,
+  audience = "default",
 }: {
   requestKind: IndividualRequestKind;
   draft: RequestDraft;
@@ -54,6 +55,7 @@ export function RequestFormStatusPanel({
   scheduleHint?: string | null;
   formMessage?: { text: string; tone: "error" | "warning" | "success" } | null;
   className?: string;
+  audience?: "procurement" | "default";
 }) {
   const alerts = dedupeFeedbacks(subiektFeedbacks.filter(Boolean) as SubiektFeedback[]);
 
@@ -92,7 +94,7 @@ export function RequestFormStatusPanel({
       {resolvingSupplier ? (
         <p className="flex items-center gap-2 rounded-lg border border-indigo-100 bg-white px-3 py-2 text-xs text-indigo-800">
           <Spinner size="sm" />
-          Szukam dostawcy w ostatnich ZD Subiekta…
+          Sprawdzam dostawcę w naszej bazie…
         </p>
       ) : null}
 
@@ -138,6 +140,7 @@ export function RequestFormStatusPanel({
           draft={draft}
           requestKind={requestKind}
           forcedAssessment={forcedAssessment}
+          audience={audience}
         />
       ) : null}
     </div>

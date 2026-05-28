@@ -1,0 +1,448 @@
+import { createAdminClient } from "@/lib/supabase/admin";
+import { isSubiektReachable } from "@/lib/subiekt/availability";
+import { autoAssignMissingSuppliersFromCatalog } from "@/lib/services/auto-assign-suppliers";
+import {
+  getSubiektDocumentCached,
+  searchSubiektZdCached,
+} from "@/lib/subiekt/subiekt-runtime-cache";
+import {
+  importZdDocumentToCatalog,
+  markZdCatalogImported,
+} from "@/lib/subiekt/zd-catalog-import";
+import { warsawNowParts } from "@/lib/time/warsaw";
+import type { SubiektDocument } from "@/lib/subiekt/types";
+
+export const CATALOG_ZD_SYNC_STATE_KEY = "catalog_zd_sync_state";
+export const CATALOG_SYNC_DAYS_BACK = 21;
+export const CATALOG_SYNC_INDEX_PAGE_SIZE = 25;
+export const CATALOG_SYNC_INDEX_BATCH_DOCS = 8;
+export const CATALOG_SYNC_IMPORT_BATCH_DOCS = 12;
+
+function nowIso(): string {
+  return new Date().toISOString();
+}
+
+function normalizeNumeric(value: unknown): number | null {
+  if (value == null) return null;
+  const n = Number(value);
+  if (!Number.isFinite(n) || n <= 0) return null;
+  return Math.trunc(n);
+}
+
+function extractDocKhIds(doc: SubiektDocument): number[] {
+  const ids: number[] = [];
+  ids.push(
+    ...[
+      normalizeNumeric((doc as SubiektDocument & { dok_OdbiorcaId?: unknown }).dok_OdbiorcaId),
+      normalizeNumeric((doc as SubiektDocument & { dok_PlatnikId?: unknown }).dok_PlatnikId),
+      normalizeNumeric((doc as SubiektDocument & { kh_Id?: unknown }).kh_Id),
+      normalizeNumeric((doc as SubiektDocument & { dok_KontrahentId?: unknown }).dok_KontrahentId),
+      normalizeNumeric((doc as SubiektDocument & { dok_KhId?: unknown }).dok_KhId),
+      normalizeNumeric((doc as SubiektDocument & { dok_DostawcaId?: unknown }).dok_DostawcaId),
+    ].filter((n): n is number => n != null)
+  );
+  for (const k of [
+    (doc as SubiektDocument & { kh__Kontrahent_Platnik?: { kh_Id?: unknown } }).kh__Kontrahent_Platnik,
+    (doc as SubiektDocument & { kh__Kontrahent_Odbiorca?: { kh_Id?: unknown } }).kh__Kontrahent_Odbiorca,
+  ]) {
+    const n = normalizeNumeric(k?.kh_Id);
+    if (n != null) ids.push(n);
+  }
+  return [...new Set(ids)].filter((n) => Number.isFinite(n) && n > 0);
+}
+
+export function catalogSyncDataOd(daysBack = CATALOG_SYNC_DAYS_BACK): string {
+  const d = new Date();
+  d.setDate(d.getDate() - daysBack);
+  return d.toISOString().slice(0, 10);
+}
+
+/** Okno nocnej synchronizacji katalogu: 1:00–4:59 w Warszawie (dowolny dzień tygodnia). */
+export function isWarsawCatalogSyncWindow(date = new Date()): boolean {
+  const { hour } = warsawNowParts(date);
+  return hour >= 1 && hour <= 4;
+}
+
+export type CatalogZdSyncPhase = "index" | "import";
+
+export type CatalogZdSyncState = {
+  status: "idle" | "running" | "done" | "failed";
+  runId: string;
+  phase: CatalogZdSyncPhase;
+  dataOd: string;
+  indexPage: number;
+  indexPageSize: number;
+  indexTotalPages: number | null;
+  indexComplete: boolean;
+  importComplete: boolean;
+  indexProcessed: number;
+  indexMapped: number;
+  indexUnmapped: number;
+  indexUnverifiable: number;
+  importProcessedDocs: number;
+  importProducts: number;
+  importLinks: number;
+  importPending: number | null;
+  autoAssignUpdated: number;
+  startedAt: string;
+  finishedAt: string | null;
+  lastDocNumber: string | null;
+  lastError: string | null;
+  lastUpdatedAt: string;
+};
+
+export type CatalogZdSyncRunResult = {
+  ok: boolean;
+  skipped?: boolean;
+  reason?: string;
+  subiektOffline?: boolean;
+  state: CatalogZdSyncState;
+  timedOut: boolean;
+};
+
+function freshState(runId: string): CatalogZdSyncState {
+  const at = nowIso();
+  return {
+    status: "running",
+    runId,
+    phase: "index",
+    dataOd: catalogSyncDataOd(),
+    indexPage: 1,
+    indexPageSize: CATALOG_SYNC_INDEX_PAGE_SIZE,
+    indexTotalPages: null,
+    indexComplete: false,
+    importComplete: false,
+    indexProcessed: 0,
+    indexMapped: 0,
+    indexUnmapped: 0,
+    indexUnverifiable: 0,
+    importProcessedDocs: 0,
+    importProducts: 0,
+    importLinks: 0,
+    importPending: null,
+    autoAssignUpdated: 0,
+    startedAt: at,
+    finishedAt: null,
+    lastDocNumber: null,
+    lastError: null,
+    lastUpdatedAt: at,
+  };
+}
+
+export async function readCatalogZdSyncState(): Promise<CatalogZdSyncState | null> {
+  const supabase = createAdminClient();
+  const { data, error } = await supabase
+    .from("app_settings")
+    .select("value")
+    .eq("key", CATALOG_ZD_SYNC_STATE_KEY)
+    .maybeSingle();
+  if (error) throw new Error(error.message);
+  if (!data?.value || typeof data.value !== "object") return null;
+  return data.value as CatalogZdSyncState;
+}
+
+async function writeCatalogZdSyncState(state: CatalogZdSyncState): Promise<void> {
+  const supabase = createAdminClient();
+  const { error } = await supabase.from("app_settings").upsert({
+    key: CATALOG_ZD_SYNC_STATE_KEY,
+    value: state,
+  });
+  if (error) throw new Error(error.message);
+}
+
+async function loadSupplierByKh(): Promise<Map<number, string>> {
+  const supabase = createAdminClient();
+  const { data: suppliersRaw, error } = await supabase
+    .from("suppliers")
+    .select("id, subiekt_kh_id")
+    .not("subiekt_kh_id", "is", null);
+  if (error) throw new Error(error.message);
+  const supplierByKh = new Map<number, string>();
+  for (const s of suppliersRaw ?? []) {
+    const kh = Number((s as { subiekt_kh_id: number }).subiekt_kh_id);
+    if (!Number.isFinite(kh) || kh <= 0) continue;
+    supplierByKh.set(Math.trunc(kh), String((s as { id: string }).id));
+  }
+  return supplierByKh;
+}
+
+async function countPendingImports(dataOd: string): Promise<number> {
+  const supabase = createAdminClient();
+  const { count, error } = await supabase
+    .from("subiekt_zd_index")
+    .select("dok_id", { count: "exact", head: true })
+    .eq("verified", true)
+    .not("supplier_id", "is", null)
+    .is("catalog_imported_at", null)
+    .gte("dok_data_wyst", dataOd);
+  if (error) throw new Error(error.message);
+  return count ?? 0;
+}
+
+async function indexBatch(
+  state: CatalogZdSyncState,
+  supplierByKh: Map<number, string>,
+  maxDocs: number
+): Promise<CatalogZdSyncState> {
+  const list = await searchSubiektZdCached({
+    dataOd: state.dataOd,
+    page: state.indexPage,
+    pageSize: state.indexPageSize,
+    includeBlocked: true,
+  });
+
+  const totalPages = list.pagination?.totalPages ?? null;
+  const docs = list.data ?? [];
+
+  if (!docs.length) {
+    return {
+      ...state,
+      indexTotalPages: totalPages,
+      indexComplete: true,
+      phase: "import",
+      lastUpdatedAt: nowIso(),
+    };
+  }
+
+  const supabase = createAdminClient();
+  const slice = docs.slice(0, maxDocs);
+  let indexMapped = 0;
+  let indexUnmapped = 0;
+  let indexUnverifiable = 0;
+  let lastDocNumber: string | null = null;
+
+  for (const brief of slice) {
+    const docId = Number((brief as { dok_Id?: unknown }).dok_Id);
+    if (!Number.isFinite(docId)) continue;
+    const doc = await getSubiektDocumentCached(docId);
+    lastDocNumber = doc.dok_NrPelny ?? null;
+    const khIds = extractDocKhIds(doc);
+    const matchedKhId = khIds.find((id) => supplierByKh.has(id)) ?? null;
+    const supplierId = matchedKhId != null ? supplierByKh.get(matchedKhId) ?? null : null;
+    const verified = khIds.length > 0;
+    const storedKhId = matchedKhId ?? khIds[0] ?? null;
+
+    if (!verified) indexUnverifiable += 1;
+    else if (supplierId) indexMapped += 1;
+    else indexUnmapped += 1;
+
+    const { error } = await supabase.from("subiekt_zd_index").upsert(
+      {
+        dok_id: Math.trunc(Number(doc.dok_Id)),
+        dok_nr_pelny: doc.dok_NrPelny ?? null,
+        dok_data_wyst: doc.dok_DataWyst ?? null,
+        subiekt_kh_id: storedKhId,
+        supplier_id: supplierId,
+        verified,
+        processed_at: nowIso(),
+        updated_at: nowIso(),
+      },
+      { onConflict: "dok_id", ignoreDuplicates: false }
+    );
+    if (error) throw new Error(error.message);
+  }
+
+  const nextPage = state.indexPage + 1;
+  const indexComplete = totalPages != null && nextPage > totalPages;
+
+  return {
+    ...state,
+    indexTotalPages: totalPages,
+    indexPage: indexComplete ? state.indexPage : nextPage,
+    indexComplete,
+    phase: indexComplete ? "import" : "index",
+    indexProcessed: state.indexProcessed + slice.length,
+    indexMapped: state.indexMapped + indexMapped,
+    indexUnmapped: state.indexUnmapped + indexUnmapped,
+    indexUnverifiable: state.indexUnverifiable + indexUnverifiable,
+    lastDocNumber,
+    lastUpdatedAt: nowIso(),
+    lastError: null,
+  };
+}
+
+async function importBatch(
+  state: CatalogZdSyncState,
+  maxDocs: number
+): Promise<CatalogZdSyncState> {
+  const supabase = createAdminClient();
+  const { data: rows, error } = await supabase
+    .from("subiekt_zd_index")
+    .select("dok_id, dok_nr_pelny, supplier_id")
+    .eq("verified", true)
+    .not("supplier_id", "is", null)
+    .is("catalog_imported_at", null)
+    .gte("dok_data_wyst", state.dataOd)
+    .order("dok_data_wyst", { ascending: false })
+    .order("dok_id", { ascending: false })
+    .limit(maxDocs);
+  if (error) throw new Error(error.message);
+
+  const slice = (rows ?? []) as Array<{
+    dok_id: number;
+    dok_nr_pelny: string | null;
+    supplier_id: string;
+  }>;
+
+  if (!slice.length) {
+    const pending = await countPendingImports(state.dataOd);
+    return {
+      ...state,
+      importComplete: true,
+      importPending: pending,
+      lastUpdatedAt: nowIso(),
+    };
+  }
+
+  let importProducts = 0;
+  let importLinks = 0;
+  const importedIds: number[] = [];
+  let lastDocNumber: string | null = null;
+
+  for (const row of slice) {
+    const dokId = Math.trunc(Number(row.dok_id));
+    const supplierId = String(row.supplier_id);
+    if (!Number.isFinite(dokId) || !supplierId) continue;
+    const result = await importZdDocumentToCatalog(dokId, supplierId);
+    importProducts += result.uniqueProducts;
+    importLinks += result.linksUpserted;
+    importedIds.push(dokId);
+    lastDocNumber = row.dok_nr_pelny ?? lastDocNumber;
+  }
+
+  await markZdCatalogImported(importedIds);
+
+  const pending = await countPendingImports(state.dataOd);
+  const importComplete = pending === 0;
+
+  return {
+    ...state,
+    importProcessedDocs: state.importProcessedDocs + slice.length,
+    importProducts: state.importProducts + importProducts,
+    importLinks: state.importLinks + importLinks,
+    importComplete,
+    importPending: pending,
+    lastDocNumber,
+    lastUpdatedAt: nowIso(),
+    lastError: null,
+  };
+}
+
+/**
+ * Wybór stanu startowego — `force` pomija „już dziś”, ale NIE zeruje postępu.
+ * Pełny restart tylko przy `reset: true` lub nowym dniu (inny runId).
+ */
+export function resolveCatalogZdSyncStartState(
+  existing: CatalogZdSyncState | null,
+  runId: string,
+  options?: { force?: boolean; reset?: boolean }
+): CatalogZdSyncState {
+  if (options?.reset || !existing || existing.runId !== runId) {
+    return freshState(runId);
+  }
+  if (existing.status === "running") {
+    return existing;
+  }
+  return {
+    ...existing,
+    status: "running",
+    lastError: null,
+    lastUpdatedAt: nowIso(),
+  };
+}
+
+export async function runCatalogZdSync(options?: {
+  force?: boolean;
+  /** Pełny restart indeksu+importu (np. test po zakończonym przebiegu). */
+  reset?: boolean;
+  maxDurationMs?: number;
+  indexBatchDocs?: number;
+  importBatchDocs?: number;
+}): Promise<CatalogZdSyncRunResult> {
+  const runId = warsawNowParts().dateKey;
+  const maxDurationMs = options?.maxDurationMs ?? 4 * 60 * 1000;
+  const indexBatchDocs = options?.indexBatchDocs ?? CATALOG_SYNC_INDEX_BATCH_DOCS;
+  const importBatchDocs = options?.importBatchDocs ?? CATALOG_SYNC_IMPORT_BATCH_DOCS;
+  const started = Date.now();
+
+  if (!(await isSubiektReachable())) {
+    const prev = (await readCatalogZdSyncState()) ?? freshState(runId);
+    const failed: CatalogZdSyncState = {
+      ...prev,
+      status: "failed",
+      lastError: "Subiekt offline / poza LAN",
+      lastUpdatedAt: nowIso(),
+    };
+    await writeCatalogZdSyncState(failed);
+    return { ok: false, subiektOffline: true, state: failed, timedOut: false };
+  }
+
+  const prev = await readCatalogZdSyncState();
+  if (
+    !options?.force &&
+    !options?.reset &&
+    prev?.status === "done" &&
+    prev.runId === runId
+  ) {
+    return { ok: true, skipped: true, reason: "already_ran_today", state: prev, timedOut: false };
+  }
+
+  let state = resolveCatalogZdSyncStartState(prev, runId, options);
+
+  const supplierByKh = await loadSupplierByKh();
+
+  try {
+    while (Date.now() - started < maxDurationMs) {
+      if (state.phase === "index" && !state.indexComplete) {
+        state = await indexBatch(state, supplierByKh, indexBatchDocs);
+      } else if (!state.importComplete) {
+        state = await importBatch(state, importBatchDocs);
+      } else {
+        break;
+      }
+
+      await writeCatalogZdSyncState(state);
+
+      if (state.indexComplete && state.importComplete) break;
+    }
+
+    const timedOut = Date.now() - started >= maxDurationMs;
+    const allDone = state.indexComplete && state.importComplete;
+
+    if (allDone) {
+      const auto = await autoAssignMissingSuppliersFromCatalog({ limit: 120 });
+      state = {
+        ...state,
+        autoAssignUpdated: auto.updated,
+        status: "done",
+        finishedAt: nowIso(),
+        lastUpdatedAt: nowIso(),
+      };
+    } else if (timedOut) {
+      state = {
+        ...state,
+        status: "running",
+        lastUpdatedAt: nowIso(),
+      };
+    }
+
+    await writeCatalogZdSyncState(state);
+
+    return {
+      ok: allDone && !state.lastError,
+      state,
+      timedOut,
+      skipped: false,
+    };
+  } catch (e) {
+    const message = e instanceof Error ? e.message : "catalog sync failed";
+    state = {
+      ...state,
+      status: "failed",
+      lastError: message,
+      lastUpdatedAt: nowIso(),
+    };
+    await writeCatalogZdSyncState(state);
+    return { ok: false, state, timedOut: false };
+  }
+}

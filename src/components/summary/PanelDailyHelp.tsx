@@ -1,8 +1,9 @@
 "use client";
 
-import { HelpPopover, GuideIcon, LegendIcon } from "@/components/ui/HelpPopover";
-import { ColorLegendContent } from "@/components/summary/ColorLegend";
+import Link from "next/link";
+import { HelpPopover, GuideIcon } from "@/components/ui/HelpPopover";
 import { HowItWorksContent } from "@/components/summary/HowItWorks";
+import { IconCalendarRange } from "@/components/icons/StrokeIcons";
 
 import { panelToolbarTextButtonClass } from "@/lib/ui/ontime-theme";
 import { cn } from "@/lib/cn";
@@ -20,16 +21,22 @@ export function PanelDailyHelp({
 
   return (
     <div className={cn("flex items-center gap-1.5", density === "default" && "flex-wrap gap-2")}>
-      <HelpPopover
-        label="Legenda kolorów w panelu"
-        title="Legenda kolorów"
-        shortLabel="Kolory"
-        icon={<LegendIcon />}
-        align="right"
-        buttonClassName={toolbarButton}
+      <Link
+        href="/lokalizacje/POLSKA"
+        className={cn(
+          toolbarButton ?? "text-sm font-medium text-indigo-800 underline-offset-2 hover:underline"
+        )}
+        title="Harmonogram i legenda kolorów terminów (PL / ZA / Import)"
       >
-        <ColorLegendContent />
-      </HelpPopover>
+        {density === "toolbar" ? (
+          <>
+            <IconCalendarRange size={15} />
+            Terminy
+          </>
+        ) : (
+          "Terminy zamówień"
+        )}
+      </Link>
       <HelpPopover
         label="Instrukcja obsługi panelu dziennego"
         title="Jak działa panel dzienny"

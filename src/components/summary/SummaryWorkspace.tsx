@@ -36,7 +36,6 @@ import { ActionLoadingOverlay } from "@/components/ui/ActionLoadingOverlay";
 import { SupplierVacationModal } from "@/components/procurement/SupplierVacationModal";
 import { SupplierEditModal } from "@/components/procurement/SupplierEditModal";
 import type { SupplierDirectoryEntry } from "@/components/procurement/SupplierSearchField";
-import { VerificationPendingBanner } from "@/components/verification/VerificationPendingBanner";
 import { VerificationModal } from "@/components/verification/VerificationModal";
 import { OnDemandSuppliersSheet } from "@/components/summary/OnDemandSuppliersSheet";
 import { DailyPanelActionsBar } from "@/components/summary/DailyPanelActionsBar";
@@ -323,21 +322,13 @@ export function SummaryWorkspace({
           onChange={setPanelView}
         />
 
-        {verificationCount > 0 ? (
-          <div className="border-b border-amber-100/80 bg-amber-50/40 px-4 py-3 sm:px-6">
-            <VerificationPendingBanner
-              count={verificationCount}
-              onOpen={() => setVerificationModalOpen(true)}
-            />
-          </div>
-        ) : null}
-
         <DailyPanelToolbar
           view={panelView}
           summary={inboxSummary}
           dayProgress={dayProgress}
           urgentVacationCount={urgentVacationCount}
           exceptionsCount={exceptionsCount}
+          verificationCount={verificationCount}
           onOpenOnDemand={() => setOnDemandOpen(true)}
         />
 
