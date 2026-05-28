@@ -82,7 +82,7 @@ export async function bumpProductSupplierLinkBy(input: {
 
   const { data: existing, error: fetchError } = await supabase
     .from("product_supplier_links")
-    .select("order_count, note")
+    .select("order_count, note, last_source")
     .eq("subiekt_tw_id", subiektTwId)
     .eq("supplier_id", input.supplierId)
     .maybeSingle();
@@ -90,6 +90,9 @@ export async function bumpProductSupplierLinkBy(input: {
   if (fetchError) throw new Error(fetchError.message);
 
   const nextCount = (existing?.order_count ?? 0) + delta;
+  const existingSource = (existing?.last_source as string | null) ?? null;
+  const keepSource =
+    existingSource && existingSource !== "zd_import" ? existingSource : input.lastSource;
 
   const { error } = await supabase.from("product_supplier_links").upsert(
     {
@@ -97,7 +100,7 @@ export async function bumpProductSupplierLinkBy(input: {
       supplier_id: input.supplierId,
       order_count: nextCount,
       last_action_at: actionAt,
-      last_source: input.lastSource,
+      last_source: keepSource,
       note: existing?.note ?? "",
       updated_at: nowIso(),
     },

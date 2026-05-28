@@ -15,6 +15,7 @@ import {
   actionStartZdImportSupplierJob,
   actionStopZdImportSupplierJob,
   actionTickZdImportSupplierJob,
+  actionCleanupZdImportForSupplier,
 } from "@/app/actions/product-catalog";
 
 export function ProductsCatalogAdminClient({
@@ -105,6 +106,30 @@ export function ProductsCatalogAdminClient({
         setToast({ text: "Import zatrzymany.", tone: "success" });
       } catch (e) {
         setToast({ text: e instanceof Error ? e.message : "Błąd zatrzymania importu", tone: "error" });
+      }
+    });
+  };
+
+  const cleanupImport = () => {
+    if (!importSupplierId) return;
+    if (
+      !confirm(
+        "Usunąć mapowania dodane przez import ZD dla tego dostawcy? (Naprawa po błędnym imporcie; potem uruchom Start jeszcze raz.)"
+      )
+    ) {
+      return;
+    }
+    stopTickLoop();
+    start(async () => {
+      try {
+        const res = await actionCleanupZdImportForSupplier(importSupplierId);
+        setToast({
+          text: `Usunięto ${res.removedLinks} mapowań z importu ZD dla wybranego dostawcy.`,
+          tone: "success",
+        });
+        window.location.reload();
+      } catch (e) {
+        setToast({ text: e instanceof Error ? e.message : "Błąd czyszczenia", tone: "error" });
       }
     });
   };
@@ -234,6 +259,9 @@ export function ProductsCatalogAdminClient({
               </Button>
               <Button variant="secondary" onClick={stopImport} disabled={pending || !importSupplierId}>
                 Stop
+              </Button>
+              <Button variant="secondary" onClick={cleanupImport} disabled={pending || !importSupplierId}>
+                Wyczyść błędny import
               </Button>
               <Button variant="secondary" onClick={refreshImportState} disabled={pending || !importSupplierId}>
                 Odśwież status

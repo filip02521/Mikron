@@ -344,3 +344,20 @@ export async function actionStopZdImportSupplierJob(supplierId: string) {
   return next;
 }
 
+/** Usuwa mapowania dodane przez import ZD dla jednego dostawcy (naprawa po błędnym imporcie). */
+export async function actionCleanupZdImportForSupplier(supplierId: string): Promise<{
+  success: true;
+  removedLinks: number;
+}> {
+  await requireAdmin();
+  const supabase = createAdminClient();
+  const { error, count } = await supabase
+    .from("product_supplier_links")
+    .delete({ count: "exact" })
+    .eq("supplier_id", supplierId)
+    .eq("last_source", "zd_import");
+  if (error) throw new Error(error.message);
+  revalidatePath("/admin/produkty");
+  return { success: true, removedLinks: count ?? 0 };
+}
+
