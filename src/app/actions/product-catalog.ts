@@ -327,7 +327,7 @@ export async function actionStartZdImportSupplierJob(input: {
     supplierName: String((data as any).name ?? "Dostawca"),
     subiektKhId: khId,
     monthsBack: input.monthsBack ?? 18,
-    pageSize: 25,
+    batchDocs: 3,
   });
 }
 

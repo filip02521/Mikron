@@ -1,6 +1,6 @@
 import { createAdminClient } from "@/lib/supabase/admin";
 import { isSubiektReachable } from "@/lib/subiekt/availability";
-import { defaultZdSearchDataOd, getSubiektDocumentCached, searchSubiektZdCached } from "@/lib/subiekt/subiekt-runtime-cache";
+import { defaultZdSearchDataOd, getSubiektDocumentCached } from "@/lib/subiekt/subiekt-runtime-cache";
 import { upsertSubiektProduct, bumpProductSupplierLinkBy } from "@/lib/data/product-catalog";
 import type { SubiektDocumentLine } from "@/lib/subiekt/types";
 import type { SubiektDocument } from "@/lib/subiekt/types";
@@ -12,13 +12,11 @@ export type ZdImportSupplierJobState = {
   subiektKhId: number;
   // cursor
   dataOd: string;
-  page: number;
-  pageSize: number;
-  totalPages: number | null;
+  indexOffset: number;
+  indexTotalDocs: number | null;
+  batchDocs: number;
   // metrics
   processedDocs: number;
-  skippedDocsWrongSupplier: number;
-  unverifiableDocs: number;
   processedLines: number;
   uniqueProductsSeen: number;
   linksUpserted: number;
@@ -63,7 +61,7 @@ export async function startZdImportForSupplier(input: {
   supplierName: string;
   subiektKhId: number;
   monthsBack?: number;
-  pageSize?: number;
+  batchDocs?: number;
 }): Promise<ZdImportSupplierJobState> {
   const dataOd = defaultZdSearchDataOd(input.monthsBack ?? 18);
   const state: ZdImportSupplierJobState = {
@@ -72,12 +70,10 @@ export async function startZdImportForSupplier(input: {
     supplierName: input.supplierName,
     subiektKhId: Math.trunc(input.subiektKhId),
     dataOd,
-    page: 1,
-    pageSize: input.pageSize ?? 25,
-    totalPages: null,
+    indexOffset: 0,
+    indexTotalDocs: null,
+    batchDocs: input.batchDocs ?? 3,
     processedDocs: 0,
-    skippedDocsWrongSupplier: 0,
-    unverifiableDocs: 0,
     processedLines: 0,
     uniqueProductsSeen: 0,
     linksUpserted: 0,
@@ -111,55 +107,8 @@ function lineTowId(line: SubiektDocumentLine): number | null {
   return Math.trunc(n);
 }
 
-function normalizeNumeric(value: unknown): number | null {
-  if (value == null) return null;
-  const n = Number(value);
-  if (!Number.isFinite(n) || n <= 0) return null;
-  return Math.trunc(n);
-}
-
-/**
- * W Subiekt API pola kontrahenta bywają różne zależnie od wersji/widoku.
- * Zwraca:
- * - true/false jeśli potrafimy jednoznacznie porównać do target kh_Id
- * - null jeśli w dokumencie nie ma żadnego sensownego id kontrahenta (nie weryfikujemy)
- */
-function docMatchesKhId(doc: SubiektDocument, targetKhId: number): boolean | null {
-  const target = Math.trunc(targetKhId);
-  const ids: number[] = [];
-
-  // Najczęstsze pola (zgodne z typami)
-  ids.push(
-    ...[
-      normalizeNumeric((doc as any).dok_PlatnikId),
-      normalizeNumeric((doc as any).dok_OdbiorcaId),
-      normalizeNumeric((doc as any).kh_Id),
-      normalizeNumeric((doc as any).dok_KontrahentId),
-      normalizeNumeric((doc as any).dok_KhId),
-      normalizeNumeric((doc as any).dok_DostawcaId),
-    ].filter((n): n is number => n != null)
-  );
-
-  // Zagnieżdżone kontrahenty
-  for (const k of [(doc as any).kh__Kontrahent_Platnik, (doc as any).kh__Kontrahent_Odbiorca]) {
-    if (k?.kh_Id != null) {
-      const n = normalizeNumeric(k.kh_Id);
-      if (n != null) ids.push(n);
-    }
-  }
-
-  // Heurystyka: jeśli API zwraca inne pola z id kontrahenta, zbierz je.
-  // Nie bierzemy wszystkiego — tylko liczby przy kluczach wyglądających jak kontrahent.
-  for (const [key, value] of Object.entries(doc as Record<string, unknown>)) {
-    if (!/(kh|kontrah|platnik|odbiorca|dostawc)/i.test(key)) continue;
-    const n = normalizeNumeric(value);
-    if (n != null) ids.push(n);
-  }
-
-  const unique = [...new Set(ids)].filter((n) => Number.isFinite(n) && n > 0);
-  if (!unique.length) return null;
-  return unique.includes(target);
-}
+// (stare dopasowanie po kh_Id w detalu dokumentu usunięte —
+// teraz import działa wyłącznie na dok_Id z tabeli subiekt_zd_index)
 
 export async function tickZdImportForSupplier(input: {
   supplierId: string;
@@ -180,55 +129,65 @@ export async function tickZdImportForSupplier(input: {
     return next;
   }
 
-  const maxDocs = input.maxDocs ?? 3;
+  const maxDocs = input.maxDocs ?? current.batchDocs ?? 3;
 
   try {
-    const list = await searchSubiektZdCached({
-      khId: current.subiektKhId,
-      dataOd: current.dataOd,
-      page: current.page,
-      pageSize: current.pageSize,
-      includeBlocked: true,
-    });
+    const supabase = createAdminClient();
 
-    const totalPages = list.pagination?.totalPages ?? null;
-    const docs = list.data ?? [];
+    if (current.indexTotalDocs == null) {
+      const { count, error } = await supabase
+        .from("subiekt_zd_index")
+        .select("dok_id", { count: "exact", head: true })
+        .eq("supplier_id", current.supplierId)
+        .eq("verified", true)
+        .gte("dok_data_wyst", current.dataOd);
+      if (error) throw new Error(error.message);
+      const primed: ZdImportSupplierJobState = {
+        ...current,
+        indexTotalDocs: count ?? 0,
+        lastUpdatedAt: nowIso(),
+      };
+      await writeState(primed);
+      return primed;
+    }
 
-    if (!docs.length) {
+    const from = current.indexOffset;
+    const to = current.indexOffset + Math.max(1, maxDocs) - 1;
+    const { data: indexRows, error: idxErr } = await supabase
+      .from("subiekt_zd_index")
+      .select("dok_id, dok_nr_pelny, dok_data_wyst")
+      .eq("supplier_id", current.supplierId)
+      .eq("verified", true)
+      .gte("dok_data_wyst", current.dataOd)
+      .order("dok_data_wyst", { ascending: false })
+      .order("dok_id", { ascending: false })
+      .range(from, to);
+    if (idxErr) throw new Error(idxErr.message);
+
+    const slice = (indexRows ?? []).map((r) => ({
+      dokId: Number((r as any).dok_id),
+      nr: (r as any).dok_nr_pelny != null ? String((r as any).dok_nr_pelny) : null,
+    })).filter((r) => Number.isFinite(r.dokId));
+
+    if (!slice.length) {
       const done: ZdImportSupplierJobState = {
         ...current,
         status: "done",
-        totalPages,
         lastUpdatedAt: nowIso(),
       };
       await writeState(done);
       return done;
     }
 
-    const slice = docs.slice(0, maxDocs);
     const towAgg = new Map<number, { symbol: string | null; name: string | null; count: number }>();
     let processedDocs = 0;
-    let skippedDocsWrongSupplier = 0;
-    let unverifiableDocs = 0;
     let processedLines = 0;
     let lastDocNumber: string | null = null;
 
     for (const brief of slice) {
-      const docId = Number(brief.dok_Id);
-      if (!Number.isFinite(docId)) continue;
+      const docId = brief.dokId;
       const doc = await getSubiektDocumentCached(docId);
-      lastDocNumber = doc.dok_NrPelny ?? null;
-
-      // Twarda walidacja: API listy ZD potrafi zwrócić dokumenty spoza khId.
-      const match = docMatchesKhId(doc as unknown as SubiektDocument, current.subiektKhId);
-      if (match === false) {
-        skippedDocsWrongSupplier += 1;
-        continue;
-      }
-      if (match == null) {
-        unverifiableDocs += 1;
-      }
-
+      lastDocNumber = doc.dok_NrPelny ?? brief.nr ?? null;
       processedDocs += 1;
 
       for (const line of doc.dok_Pozycja ?? []) {
@@ -268,19 +227,14 @@ export async function tickZdImportForSupplier(input: {
       linksUpserted += 1;
     }
 
-    // jeśli przetworzyliśmy tylko część strony, zostajemy na tej stronie,
-    // ale w praktyce w kolejnych tickach będziemy i tak iść stronami — prostsze:
-    const nextPage = current.page + 1;
-    const isDone = totalPages != null && nextPage > totalPages;
+    const nextOffset = current.indexOffset + slice.length;
+    const isDone = current.indexTotalDocs != null && nextOffset >= current.indexTotalDocs;
 
     const next: ZdImportSupplierJobState = {
       ...current,
       status: isDone ? "done" : "running",
-      totalPages,
-      page: isDone ? current.page : nextPage,
+      indexOffset: isDone ? current.indexOffset : nextOffset,
       processedDocs: current.processedDocs + processedDocs,
-      skippedDocsWrongSupplier: current.skippedDocsWrongSupplier + skippedDocsWrongSupplier,
-      unverifiableDocs: current.unverifiableDocs + unverifiableDocs,
       processedLines: current.processedLines + processedLines,
       uniqueProductsSeen: seenBefore + towAgg.size,
       linksUpserted: current.linksUpserted + linksUpserted,

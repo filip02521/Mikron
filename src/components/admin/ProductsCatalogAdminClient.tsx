@@ -419,12 +419,10 @@ export function ProductsCatalogAdminClient({
                 ZD: <span className="font-semibold tabular-nums">{importState?.processedDocs ?? 0}</span>
               </span>
               <span className="rounded-full bg-slate-100 px-2 py-0.5">
-                Pominięte:{" "}
-                <span className="font-semibold tabular-nums">{importState?.skippedDocsWrongSupplier ?? 0}</span>
-              </span>
-              <span className="rounded-full bg-slate-100 px-2 py-0.5">
-                Niezweryf.:{" "}
-                <span className="font-semibold tabular-nums">{importState?.unverifiableDocs ?? 0}</span>
+                Offset:{" "}
+                <span className="font-semibold tabular-nums">
+                  {importState?.indexOffset ?? 0}/{importState?.indexTotalDocs ?? "?"}
+                </span>
               </span>
               <span className="rounded-full bg-slate-100 px-2 py-0.5">
                 Linie: <span className="font-semibold tabular-nums">{importState?.processedLines ?? 0}</span>
