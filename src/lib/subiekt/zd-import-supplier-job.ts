@@ -3,6 +3,7 @@ import { isSubiektReachable } from "@/lib/subiekt/availability";
 import { defaultZdSearchDataOd, getSubiektDocumentCached, searchSubiektZdCached } from "@/lib/subiekt/subiekt-runtime-cache";
 import { upsertSubiektProduct, bumpProductSupplierLinkBy } from "@/lib/data/product-catalog";
 import type { SubiektDocumentLine } from "@/lib/subiekt/types";
+import { zdDocumentMatchesSupplierKh } from "@/lib/subiekt/zd-eta";
 
 export type ZdImportSupplierJobState = {
   status: "idle" | "running" | "done" | "failed";
@@ -16,6 +17,7 @@ export type ZdImportSupplierJobState = {
   totalPages: number | null;
   // metrics
   processedDocs: number;
+  skippedDocsWrongSupplier: number;
   processedLines: number;
   uniqueProductsSeen: number;
   linksUpserted: number;
@@ -73,6 +75,7 @@ export async function startZdImportForSupplier(input: {
     pageSize: input.pageSize ?? 25,
     totalPages: null,
     processedDocs: 0,
+    skippedDocsWrongSupplier: 0,
     processedLines: 0,
     uniqueProductsSeen: 0,
     linksUpserted: 0,
@@ -153,6 +156,7 @@ export async function tickZdImportForSupplier(input: {
     const slice = docs.slice(0, maxDocs);
     const towAgg = new Map<number, { symbol: string | null; name: string | null; count: number }>();
     let processedDocs = 0;
+    let skippedDocsWrongSupplier = 0;
     let processedLines = 0;
     let lastDocNumber: string | null = null;
 
@@ -160,8 +164,15 @@ export async function tickZdImportForSupplier(input: {
       const docId = Number(brief.dok_Id);
       if (!Number.isFinite(docId)) continue;
       const doc = await getSubiektDocumentCached(docId);
-      processedDocs += 1;
       lastDocNumber = doc.dok_NrPelny ?? null;
+
+      // Twarda walidacja: API listy ZD potrafi zwrócić dokumenty spoza khId.
+      if (!zdDocumentMatchesSupplierKh(doc, current.subiektKhId)) {
+        skippedDocsWrongSupplier += 1;
+        continue;
+      }
+
+      processedDocs += 1;
 
       for (const line of doc.dok_Pozycja ?? []) {
         const twId = lineTowId(line);
@@ -211,6 +222,7 @@ export async function tickZdImportForSupplier(input: {
       totalPages,
       page: isDone ? current.page : nextPage,
       processedDocs: current.processedDocs + processedDocs,
+      skippedDocsWrongSupplier: current.skippedDocsWrongSupplier + skippedDocsWrongSupplier,
       processedLines: current.processedLines + processedLines,
       uniqueProductsSeen: seenBefore + towAgg.size,
       linksUpserted: current.linksUpserted + linksUpserted,
