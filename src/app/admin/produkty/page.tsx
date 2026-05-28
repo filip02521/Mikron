@@ -2,9 +2,11 @@ import { PageHeader } from "@/components/ui/PageHeader";
 import { AdminHubNav } from "@/components/admin/AdminHubNav";
 import { ProductsCatalogAdminClient } from "@/components/admin/ProductsCatalogAdminClient";
 import { fetchProductCatalogRows } from "@/lib/data/product-catalog-queries";
+import { actionListSubiektLinkedSuppliers } from "@/app/actions/product-catalog";
 
 export default async function AdminProduktyPage() {
   const rows = await fetchProductCatalogRows({ limit: 250 });
+  const suppliers = await actionListSubiektLinkedSuppliers();
   return (
     <>
       <PageHeader
@@ -13,7 +15,7 @@ export default async function AdminProduktyPage() {
       />
       <AdminHubNav activeTab="system" />
       <div className="mb-8">
-        <ProductsCatalogAdminClient initial={rows} />
+        <ProductsCatalogAdminClient initial={rows} suppliers={suppliers} />
       </div>
     </>
   );

@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState, useTransition } from "react";
+import { useEffect, useMemo, useRef, useState, useTransition } from "react";
 import type { ProductCatalogRow } from "@/lib/data/product-catalog-queries";
 import { Card, CardHeader } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
@@ -11,17 +11,52 @@ import {
   actionBackfillOrdersSubiektTwIdFromSymbol,
   actionRebuildProductCatalogFromOrders,
   actionUpdateSubiektProductNote,
+  actionReadZdImportSupplierJob,
+  actionStartZdImportSupplierJob,
+  actionStopZdImportSupplierJob,
+  actionTickZdImportSupplierJob,
 } from "@/app/actions/product-catalog";
 
 export function ProductsCatalogAdminClient({
   initial,
+  suppliers,
 }: {
   initial: ProductCatalogRow[];
+  suppliers: Array<{ id: string; name: string; subiekt_kh_id: number }>;
 }) {
   const [pending, start] = useTransition();
   const [toast, setToast] = useState<{ text: string; tone: "success" | "error" } | null>(null);
   const [rows, setRows] = useState<ProductCatalogRow[]>(initial);
   const [filter, setFilter] = useState("");
+  const [importSupplierId, setImportSupplierId] = useState<string>(suppliers[0]?.id ?? "");
+  const [importState, setImportState] = useState<any | null>(null);
+  const [importRunning, setImportRunning] = useState(false);
+  const tickTimer = useRef<number | null>(null);
+
+  const stopTickLoop = () => {
+    if (tickTimer.current != null) {
+      window.clearInterval(tickTimer.current);
+      tickTimer.current = null;
+    }
+    setImportRunning(false);
+  };
+
+  const refreshImportState = () => {
+    if (!importSupplierId) return;
+    start(async () => {
+      try {
+        const state = await actionReadZdImportSupplierJob(importSupplierId);
+        setImportState(state);
+      } catch (e) {
+        setToast({ text: e instanceof Error ? e.message : "Błąd odczytu joba", tone: "error" });
+      }
+    });
+  };
+
+  useEffect(() => {
+    refreshImportState();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [importSupplierId]);
 
   const filtered = useMemo(() => {
     const q = filter.trim().toLowerCase();
@@ -40,6 +75,53 @@ export function ProductsCatalogAdminClient({
       return parts.includes(q);
     });
   }, [rows, filter]);
+
+  const startImport = () => {
+    if (!importSupplierId) return;
+    start(async () => {
+      try {
+        const s = await actionStartZdImportSupplierJob({ supplierId: importSupplierId, monthsBack: 18 });
+        setImportState(s);
+        setToast({ text: "Start importu z ZD — uruchamiam przetwarzanie…", tone: "success" });
+        setImportRunning(true);
+        if (tickTimer.current == null) {
+          tickTimer.current = window.setInterval(() => {
+            void tickImport();
+          }, 1500);
+        }
+      } catch (e) {
+        setToast({ text: e instanceof Error ? e.message : "Błąd startu importu", tone: "error" });
+      }
+    });
+  };
+
+  const stopImport = () => {
+    if (!importSupplierId) return;
+    stopTickLoop();
+    start(async () => {
+      try {
+        const s = await actionStopZdImportSupplierJob(importSupplierId);
+        setImportState(s);
+        setToast({ text: "Import zatrzymany.", tone: "success" });
+      } catch (e) {
+        setToast({ text: e instanceof Error ? e.message : "Błąd zatrzymania importu", tone: "error" });
+      }
+    });
+  };
+
+  const tickImport = async () => {
+    if (!importSupplierId) return;
+    try {
+      const s = await actionTickZdImportSupplierJob({ supplierId: importSupplierId, maxDocs: 3 });
+      setImportState(s);
+      if (s?.status === "done" || s?.status === "failed" || s?.status === "idle") {
+        stopTickLoop();
+      }
+    } catch (e) {
+      stopTickLoop();
+      setToast({ text: e instanceof Error ? e.message : "Błąd tick", tone: "error" });
+    }
+  };
 
   const rebuild = () => {
     if (!confirm("Odbudować bazę produktów z historii individual_orders?")) return;
@@ -119,6 +201,86 @@ export function ProductsCatalogAdminClient({
           </div>
         }
       />
+
+      <div className="px-6 pb-5">
+        <div className="mt-2 rounded-xl border border-slate-200 bg-white p-4">
+          <p className="text-sm font-semibold text-slate-900">Import z ZD (per dostawca)</p>
+          <p className="mt-0.5 text-xs text-slate-600">
+            Przetwarza dokumenty ZD w Subiekcie dla wybranego dostawcy (po `kh_Id`) i zapisuje mapowania do bazy produktów.
+          </p>
+
+          <div className="mt-3 flex flex-col gap-2 sm:flex-row sm:items-center">
+            <select
+              value={importSupplierId}
+              onChange={(e) => {
+                stopTickLoop();
+                setImportSupplierId(e.target.value);
+              }}
+              className="h-9 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm text-slate-900 shadow-sm focus:border-indigo-300 focus:outline-none focus:ring-2 focus:ring-indigo-100/90 sm:max-w-[26rem]"
+            >
+              {suppliers.map((s) => (
+                <option key={s.id} value={s.id}>
+                  {s.name} (kh_Id {s.subiekt_kh_id})
+                </option>
+              ))}
+            </select>
+
+            <div className="flex flex-wrap gap-2">
+              <Button variant="secondary" onClick={startImport} disabled={pending || !importSupplierId}>
+                Start
+              </Button>
+              <Button variant="secondary" onClick={() => void tickImport()} disabled={pending || !importSupplierId}>
+                Tick
+              </Button>
+              <Button variant="secondary" onClick={stopImport} disabled={pending || !importSupplierId}>
+                Stop
+              </Button>
+              <Button variant="secondary" onClick={refreshImportState} disabled={pending || !importSupplierId}>
+                Odśwież status
+              </Button>
+            </div>
+          </div>
+
+          <div className="mt-3 text-xs text-slate-700">
+            <div className="flex flex-wrap gap-2">
+              <span className="rounded-full bg-slate-100 px-2 py-0.5">
+                Status: <span className="font-semibold">{importState?.status ?? "—"}</span>
+              </span>
+              <span className="rounded-full bg-slate-100 px-2 py-0.5">
+                Strona:{" "}
+                <span className="font-semibold tabular-nums">
+                  {importState?.page ?? "—"}/{importState?.totalPages ?? "?"}
+                </span>
+              </span>
+              <span className="rounded-full bg-slate-100 px-2 py-0.5">
+                ZD: <span className="font-semibold tabular-nums">{importState?.processedDocs ?? 0}</span>
+              </span>
+              <span className="rounded-full bg-slate-100 px-2 py-0.5">
+                Linie: <span className="font-semibold tabular-nums">{importState?.processedLines ?? 0}</span>
+              </span>
+              <span className="rounded-full bg-slate-100 px-2 py-0.5">
+                Produkty (unikalne):{" "}
+                <span className="font-semibold tabular-nums">{importState?.uniqueProductsSeen ?? 0}</span>
+              </span>
+              <span className="rounded-full bg-slate-100 px-2 py-0.5">
+                Linki: <span className="font-semibold tabular-nums">{importState?.linksUpserted ?? 0}</span>
+              </span>
+              <span className={cn("rounded-full px-2 py-0.5", importRunning ? "bg-indigo-50 text-indigo-900" : "bg-slate-100")}>
+                Pętla: <span className="font-semibold">{importRunning ? "ON" : "OFF"}</span>
+              </span>
+            </div>
+            {importState?.lastDocNumber ? (
+              <p className="mt-2 text-[11px] text-slate-600">
+                Ostatni dokument: <span className="font-medium">{importState.lastDocNumber}</span> ·{" "}
+                {String(importState.lastUpdatedAt ?? "").slice(0, 19).replace("T", " ")}
+              </p>
+            ) : null}
+            {importState?.lastError ? (
+              <p className="mt-2 text-[11px] text-red-700">Błąd: {importState.lastError}</p>
+            ) : null}
+          </div>
+        </div>
+      </div>
 
       <div className="px-6 pb-3">
         <Input

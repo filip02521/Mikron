@@ -7,6 +7,13 @@ import { clampOptionalText } from "@/lib/security/text-limits";
 import { isSubiektReachable } from "@/lib/subiekt/availability";
 import { searchSubiektProducts } from "@/lib/subiekt/api";
 import { indexOrderLineToProductCatalog } from "@/lib/data/product-catalog";
+import {
+  readZdImportSupplierJobState,
+  startZdImportForSupplier,
+  stopZdImportForSupplier,
+  tickZdImportForSupplier,
+  type ZdImportSupplierJobState,
+} from "@/lib/subiekt/zd-import-supplier-job";
 
 const MAX_NOTE_LEN = 500;
 
@@ -262,5 +269,78 @@ export async function actionBackfillOrdersSubiektTwIdFromSymbol(options?: {
 
   revalidatePath("/admin/produkty");
   return { success: true, scanned, updated, indexed, skippedOffline: false };
+}
+
+export async function actionListSubiektLinkedSuppliers(): Promise<
+  Array<{ id: string; name: string; subiekt_kh_id: number }>
+> {
+  await requireAdmin();
+  const supabase = createAdminClient();
+  const { data, error } = await supabase
+    .from("suppliers")
+    .select("id, name, subiekt_kh_id")
+    .not("subiekt_kh_id", "is", null)
+    .order("name");
+  if (error) throw new Error(error.message);
+  return (data ?? [])
+    .map((s) => ({
+      id: String(s.id),
+      name: String(s.name ?? ""),
+      subiekt_kh_id: Number(s.subiekt_kh_id),
+    }))
+    .filter((s) => Number.isFinite(s.subiekt_kh_id) && s.subiekt_kh_id > 0);
+}
+
+export async function actionReadZdImportSupplierJob(
+  supplierId: string
+): Promise<ZdImportSupplierJobState | null> {
+  await requireAdmin();
+  return readZdImportSupplierJobState(supplierId);
+}
+
+export async function actionStartZdImportSupplierJob(input: {
+  supplierId: string;
+  monthsBack?: number;
+}): Promise<ZdImportSupplierJobState> {
+  await requireAdmin();
+  const supabase = createAdminClient();
+  const { data, error } = await supabase
+    .from("suppliers")
+    .select("id, name, subiekt_kh_id")
+    .eq("id", input.supplierId)
+    .maybeSingle();
+  if (error) throw new Error(error.message);
+  if (!data) throw new Error("Nie znaleziono dostawcy.");
+  const khId = Number((data as any).subiekt_kh_id);
+  if (!Number.isFinite(khId) || khId <= 0) {
+    throw new Error("Dostawca nie ma powiązania z Subiektem (subiekt_kh_id).");
+  }
+  return startZdImportForSupplier({
+    supplierId: String((data as any).id),
+    supplierName: String((data as any).name ?? "Dostawca"),
+    subiektKhId: khId,
+    monthsBack: input.monthsBack ?? 18,
+    pageSize: 25,
+  });
+}
+
+export async function actionTickZdImportSupplierJob(input: {
+  supplierId: string;
+  maxDocs?: number;
+}): Promise<ZdImportSupplierJobState> {
+  await requireAdmin();
+  const next = await tickZdImportForSupplier({
+    supplierId: input.supplierId,
+    maxDocs: input.maxDocs ?? 3,
+  });
+  revalidatePath("/admin/produkty");
+  return next;
+}
+
+export async function actionStopZdImportSupplierJob(supplierId: string) {
+  await requireAdmin();
+  const next = await stopZdImportForSupplier(supplierId);
+  revalidatePath("/admin/produkty");
+  return next;
 }
 

@@ -67,6 +67,45 @@ export async function bumpProductSupplierLink(input: {
   if (error) throw new Error(error.message);
 }
 
+export async function bumpProductSupplierLinkBy(input: {
+  subiektTwId: number;
+  supplierId: string;
+  delta: number;
+  lastSource: Exclude<ProductCatalogSource, "admin_note">;
+  lastActionAt?: string;
+}): Promise<void> {
+  const supabase = createAdminClient();
+  const subiektTwId = Math.trunc(input.subiektTwId);
+  const delta = Math.trunc(input.delta);
+  if (!Number.isFinite(delta) || delta <= 0) return;
+  const actionAt = input.lastActionAt ?? nowIso();
+
+  const { data: existing, error: fetchError } = await supabase
+    .from("product_supplier_links")
+    .select("order_count, note")
+    .eq("subiekt_tw_id", subiektTwId)
+    .eq("supplier_id", input.supplierId)
+    .maybeSingle();
+
+  if (fetchError) throw new Error(fetchError.message);
+
+  const nextCount = (existing?.order_count ?? 0) + delta;
+
+  const { error } = await supabase.from("product_supplier_links").upsert(
+    {
+      subiekt_tw_id: subiektTwId,
+      supplier_id: input.supplierId,
+      order_count: nextCount,
+      last_action_at: actionAt,
+      last_source: input.lastSource,
+      note: existing?.note ?? "",
+      updated_at: nowIso(),
+    },
+    { onConflict: "subiekt_tw_id,supplier_id" }
+  );
+  if (error) throw new Error(error.message);
+}
+
 export async function recordProductEvent(input: {
   subiektTwId: number;
   supplierId?: string | null;
