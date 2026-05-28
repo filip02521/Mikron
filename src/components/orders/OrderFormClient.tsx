@@ -58,19 +58,12 @@ function formatSubmitResult(
     count: number;
     complete: number;
     verification: number;
-    pendingSupplierResolve?: number;
   },
   requestKind: IndividualRequestKind,
   forSales?: boolean
 ): string {
-  const { complete, verification, pendingSupplierResolve = 0 } = r;
+  const { complete, verification } = r;
   if (forSales) {
-    if (pendingSupplierResolve > 0 && complete === 0 && verification === pendingSupplierResolve) {
-      return "Prośba zapisana. Dopasowujemy dostawcę w Subiekcie — śledź status w „Moje zamówienia”.";
-    }
-    if (pendingSupplierResolve > 0) {
-      return `Zapisano prośbę (${pendingSupplierResolve} poz. czeka na dostawcę z Subiekta). Sprawdź status w „Moje zamówienia”.`;
-    }
     if (verification > 0 && complete === 0) {
       return "Prośba zapisana — dział dostaw dopracuje szczegóły. Śledź status w „Moje zamówienia”.";
     }

@@ -60,6 +60,7 @@ import {
   MAX_REQUEST_EDIT_LINES,
 } from "@/lib/security/text-limits";
 import { sanitizeOrderDraftFields } from "@/lib/security/sanitize-order-fields";
+import { indexOrderLineToProductCatalog } from "@/lib/data/product-catalog";
 
 async function getVacationsForSupplier(supplierId: string): Promise<VacationPeriod[]> {
   const supabase = createAdminClient();
@@ -274,7 +275,6 @@ export async function batchAddIndividualOrders(
   count: number;
   complete: number;
   verification: number;
-  pendingSupplierResolve: number;
 }> {
   assertMaxBatchSize(entries.length, MAX_BATCH_ORDER_LINES, "pozycji");
 
@@ -287,7 +287,6 @@ export async function batchAddIndividualOrders(
   try {
     let complete = 0;
     let verification = 0;
-    let pendingSupplierResolve = 0;
     const rows = entries.map((e) => {
       const kind = (e.requestKind ?? "zamowienie") as IndividualRequestKind;
       const sanitized = sanitizeOrderDraftFields({
@@ -319,7 +318,7 @@ export async function batchAddIndividualOrders(
       const status = submitPlan.initialStatus;
       if (status === "Nowe") complete++;
       else verification++;
-      if (submitPlan.supplierResolvePending) pendingSupplierResolve++;
+      // Stare podejście (dopasowanie dostawcy z ZD w tle) zostało wycofane.
 
       return {
         id: uuidv4(),
@@ -337,17 +336,11 @@ export async function batchAddIndividualOrders(
         subiekt_tw_id:
           e.subiektTwId != null && e.subiektTwId > 0 ? e.subiektTwId : null,
         mikran_code: sanitized.mikranCode?.trim() || null,
-        supplier_resolve_pending: submitPlan.supplierResolvePending,
       };
     });
     const { error } = await supabase.from("individual_orders").insert(rows);
     if (error) {
       const msg = formatDbError(error);
-      if (msg.includes("supplier_resolve_pending")) {
-        throw new Error(
-          `${msg} — uruchom migrację supabase/migrations/029_supplier_resolve_pending.sql w bazie.`
-        );
-      }
       if (msg.includes("mikran_code")) {
         throw new Error(
           `${msg} — uruchom migrację supabase/migrations/031_mikran_code.sql w bazie.`
@@ -356,28 +349,27 @@ export async function batchAddIndividualOrders(
       throw new Error(msg);
     }
 
-    const pendingIds = rows
-      .filter((r) => r.supplier_resolve_pending)
-      .map((r) => r.id);
-    if (pendingIds.length > 0) {
-      const { after } = await import("next/server");
-      after(async () => {
+    const { after } = await import("next/server");
+    after(async () => {
+      for (const row of rows) {
         try {
-          const { resolveOrdersSupplierBackground } = await import(
-            "@/lib/subiekt/resolve-order-supplier"
-          );
-          await resolveOrdersSupplierBackground(pendingIds);
-          const { revalidatePath } = await import("next/cache");
-          revalidatePath("/podsumowanie");
-          revalidatePath("/weryfikacja");
-          revalidatePath("/moje");
+          await indexOrderLineToProductCatalog({
+            orderId: row.id,
+            subiektTwId: row.subiekt_tw_id ?? null,
+            symbol: row.symbol ?? null,
+            productName: row.products ?? null,
+            mikranCode: row.mikran_code ?? null,
+            supplierId: row.supplier_id ?? null,
+            actionAt: null,
+            source: "order_history",
+          });
         } catch (e) {
-          console.error("[resolveOrdersSupplierBackground]", e);
+          console.error("[indexOrderLineToProductCatalog batchAdd]", e);
         }
-      });
-    }
+      }
+    });
 
-    return { count: rows.length, complete, verification, pendingSupplierResolve };
+    return { count: rows.length, complete, verification };
   } finally {
     await releaseLock("BATCH_INDIVIDUAL");
   }
@@ -436,7 +428,6 @@ export async function completeVerificationOrder(
       quantity: quantityForRequestKind(data.requestKind, sanitized.quantity),
       request_kind: (data.requestKind ?? "zamowienie") as IndividualRequestKind,
       status: "Nowe",
-      supplier_resolve_pending: false,
       subiekt_tw_id:
         data.subiektTwId != null && data.subiektTwId > 0 ? data.subiektTwId : null,
       mikran_code: sanitized.mikranCode?.trim() || null,
@@ -449,6 +440,21 @@ export async function completeVerificationOrder(
   if (error) throw new Error(error.message);
   if (!updated) {
     throw new Error("Prośba została już przetworzona — odśwież listę.");
+  }
+
+  try {
+    await indexOrderLineToProductCatalog({
+      orderId,
+      subiektTwId: data.subiektTwId != null && data.subiektTwId > 0 ? data.subiektTwId : null,
+      symbol,
+      productName: products,
+      mikranCode: sanitized.mikranCode?.trim() || null,
+      supplierId: data.supplierId,
+      actionAt: new Date().toISOString(),
+      source: "procurement_verification",
+    });
+  } catch (e) {
+    console.error("[indexOrderLineToProductCatalog completeVerificationOrder]", e);
   }
 }
 
@@ -477,7 +483,7 @@ function statusForEditedLine(
   }
   return {
     status: plan.initialStatus,
-    supplierResolvePending: plan.supplierResolvePending,
+    supplierResolvePending: false,
   };
 }
 
@@ -526,7 +532,7 @@ export async function updateIndividualRequestGroup(
   const keptIds = new Set<string>();
   let updated = 0;
   let inserted = 0;
-  const pendingResolveIds: string[] = [];
+  // Stare podejście (dopasowanie dostawcy z ZD) zostało wycofane.
 
   for (const line of payload.lines) {
     const kind = payload.requestKind;
@@ -564,7 +570,6 @@ export async function updateIndividualRequestGroup(
       quantity: quantityForRequestKind(kind, sanitized.quantity),
       request_kind: kind,
       status,
-      supplier_resolve_pending: supplierResolvePending,
       sales_client_name: normalizeSalesClientName(line.clientName),
       subiekt_tw_id:
         line.subiektTwId != null && line.subiektTwId > 0 ? line.subiektTwId : null,
@@ -582,8 +587,22 @@ export async function updateIndividualRequestGroup(
         .in("status", ["Nowe", "Weryfikacja"]);
       if (error) throw new Error(error.message);
       keptIds.add(line.id);
-      if (supplierResolvePending) pendingResolveIds.push(line.id);
       updated++;
+
+      try {
+        await indexOrderLineToProductCatalog({
+          orderId: line.id,
+          subiektTwId: rowPayload.subiekt_tw_id ?? null,
+          symbol: rowPayload.symbol ?? null,
+          productName: rowPayload.products ?? null,
+          mikranCode: rowPayload.mikran_code ?? null,
+          supplierId: rowPayload.supplier_id ?? null,
+          actionAt: new Date().toISOString(),
+          source: "procurement_verification",
+        });
+      } catch (e) {
+        console.error("[indexOrderLineToProductCatalog updateIndividualRequestGroup update]", e);
+      }
     } else {
       const newId = uuidv4();
       const { error } = await supabase.from("individual_orders").insert({
@@ -593,8 +612,22 @@ export async function updateIndividualRequestGroup(
         submission_group_id: submissionGroupId,
       });
       if (error) throw new Error(formatDbError(error));
-      if (supplierResolvePending) pendingResolveIds.push(newId);
       inserted++;
+
+      try {
+        await indexOrderLineToProductCatalog({
+          orderId: newId,
+          subiektTwId: rowPayload.subiekt_tw_id ?? null,
+          symbol: rowPayload.symbol ?? null,
+          productName: rowPayload.products ?? null,
+          mikranCode: rowPayload.mikran_code ?? null,
+          supplierId: rowPayload.supplier_id ?? null,
+          actionAt: new Date().toISOString(),
+          source: "procurement_verification",
+        });
+      } catch (e) {
+        console.error("[indexOrderLineToProductCatalog updateIndividualRequestGroup insert]", e);
+      }
     }
   }
 
@@ -608,24 +641,6 @@ export async function updateIndividualRequestGroup(
       .in("status", ["Nowe", "Weryfikacja"]);
     if (error) throw new Error(error.message);
     removed = removeIds.length;
-  }
-
-  if (pendingResolveIds.length > 0) {
-    const { after } = await import("next/server");
-    after(async () => {
-      try {
-        const { resolveOrdersSupplierBackground } = await import(
-          "@/lib/subiekt/resolve-order-supplier"
-        );
-        await resolveOrdersSupplierBackground(pendingResolveIds);
-        const { revalidatePath } = await import("next/cache");
-        revalidatePath("/podsumowanie");
-        revalidatePath("/weryfikacja");
-        revalidatePath("/moje");
-      } catch (e) {
-        console.error("[resolveOrdersSupplierBackground after edit]", e);
-      }
-    });
   }
 
   return { updated, inserted, removed };

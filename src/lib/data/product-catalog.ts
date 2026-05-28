@@ -1,0 +1,139 @@
+import { createAdminClient } from "@/lib/supabase/admin";
+
+export type ProductCatalogSource = "order_history" | "procurement_verification" | "zd_import" | "admin_note";
+
+function nowIso(): string {
+  return new Date().toISOString();
+}
+
+export async function upsertSubiektProduct(input: {
+  subiektTwId: number;
+  symbol?: string | null;
+  name?: string | null;
+  plu?: string | null;
+  seenAt?: string;
+}): Promise<void> {
+  const supabase = createAdminClient();
+  const seenAt = input.seenAt ?? nowIso();
+  const { error } = await supabase.from("subiekt_products").upsert(
+    {
+      subiekt_tw_id: Math.trunc(input.subiektTwId),
+      symbol: input.symbol ?? null,
+      name: input.name ?? null,
+      plu: input.plu ?? null,
+      updated_at: nowIso(),
+      last_seen_at: seenAt,
+    },
+    { onConflict: "subiekt_tw_id" }
+  );
+  if (error) throw new Error(error.message);
+}
+
+export async function bumpProductSupplierLink(input: {
+  subiektTwId: number;
+  supplierId: string;
+  orderId?: string | null;
+  source: Exclude<ProductCatalogSource, "admin_note">;
+  actionAt?: string;
+}): Promise<void> {
+  const supabase = createAdminClient();
+  const subiektTwId = Math.trunc(input.subiektTwId);
+  const actionAt = input.actionAt ?? nowIso();
+
+  // Nie ma atomowego "upsert + increment" w supabase-js bez RPC.
+  // Skala jest mała, więc robimy read-modify-write.
+  const { data: existing, error: fetchError } = await supabase
+    .from("product_supplier_links")
+    .select("order_count")
+    .eq("subiekt_tw_id", subiektTwId)
+    .eq("supplier_id", input.supplierId)
+    .maybeSingle();
+
+  if (fetchError) throw new Error(fetchError.message);
+  const nextCount = (existing?.order_count ?? 0) + 1;
+
+  const { error } = await supabase.from("product_supplier_links").upsert(
+    {
+      subiekt_tw_id: subiektTwId,
+      supplier_id: input.supplierId,
+      order_count: nextCount,
+      last_action_at: actionAt,
+      last_order_id: input.orderId ?? null,
+      last_source: input.source,
+      updated_at: nowIso(),
+    },
+    { onConflict: "subiekt_tw_id,supplier_id" }
+  );
+  if (error) throw new Error(error.message);
+}
+
+export async function recordProductEvent(input: {
+  subiektTwId: number;
+  supplierId?: string | null;
+  orderId?: string | null;
+  source: ProductCatalogSource;
+  action: "seen" | "link_upserted" | "note_updated";
+  detail?: Record<string, unknown> | null;
+  at?: string;
+}): Promise<void> {
+  const supabase = createAdminClient();
+  const { error } = await supabase.from("product_events").insert({
+    subiekt_tw_id: Math.trunc(input.subiektTwId),
+    supplier_id: input.supplierId ?? null,
+    order_id: input.orderId ?? null,
+    source: input.source,
+    action: input.action,
+    detail: input.detail ?? null,
+    created_at: input.at ?? nowIso(),
+  });
+  if (error) throw new Error(error.message);
+}
+
+export async function indexOrderLineToProductCatalog(input: {
+  orderId: string;
+  subiektTwId: number | null;
+  symbol?: string | null;
+  productName?: string | null;
+  mikranCode?: string | null;
+  supplierId?: string | null;
+  actionAt?: string | null;
+  source: Exclude<ProductCatalogSource, "admin_note">;
+}): Promise<void> {
+  if (input.subiektTwId == null || input.subiektTwId <= 0) return;
+
+  await upsertSubiektProduct({
+    subiektTwId: input.subiektTwId,
+    symbol: (input.symbol ?? "").trim() || null,
+    name: (input.productName ?? "").trim() || null,
+    plu: (input.mikranCode ?? "").trim() || null,
+    seenAt: input.actionAt ?? undefined,
+  });
+
+  await recordProductEvent({
+    subiektTwId: input.subiektTwId,
+    supplierId: input.supplierId ?? null,
+    orderId: input.orderId,
+    source: input.source,
+    action: "seen",
+    at: input.actionAt ?? undefined,
+  });
+
+  if (input.supplierId) {
+    await bumpProductSupplierLink({
+      subiektTwId: input.subiektTwId,
+      supplierId: input.supplierId,
+      orderId: input.orderId,
+      source: input.source,
+      actionAt: input.actionAt ?? undefined,
+    });
+    await recordProductEvent({
+      subiektTwId: input.subiektTwId,
+      supplierId: input.supplierId,
+      orderId: input.orderId,
+      source: input.source,
+      action: "link_upserted",
+      at: input.actionAt ?? undefined,
+    });
+  }
+}
+

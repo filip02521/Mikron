@@ -29,8 +29,7 @@ export type ProsbaReadinessLine = {
 };
 
 export type ProsbaFormReadinessOptions = {
-  /** Trwa wyszukiwanie dostawcy w Subiekcie (ZD) po wyborze towaru. */
-  resolvingSupplier?: boolean;
+  // Zarezerwowane na przyszłe warianty UI.
 };
 
 function hasText(value: string | undefined): boolean {
@@ -56,10 +55,7 @@ export function buildProsbaFormReadiness(
 ): ProsbaFormReadinessView {
   const filled = linesWithProductHint(lines);
   const isZamowienie = requestKind === "zamowienie";
-  const resolvingSupplier = Boolean(options?.resolvingSupplier);
-  const hasSubiektProduct = filled.some(
-    (line) => line.subiektTwId != null && line.subiektTwId > 0
-  );
+  void options;
   const hasResolvedSupplier = filled.some((line) => hasText(line.supplierId));
 
   const productDone = filled.length > 0;
@@ -121,24 +117,6 @@ export function buildProsbaFormReadiness(
       state: "done",
       detail: "Wybrany — trafia do panelu dziennego",
     };
-  } else if (resolvingSupplier && hasSubiektProduct && !hasResolvedSupplier) {
-    supplierStep = {
-      ...supplierStep,
-      state: "action",
-      detail: "Sprawdzamy historię ZD w Subiekcie…",
-    };
-  } else if (hasResolvedSupplier) {
-    supplierStep = {
-      ...supplierStep,
-      state: "done",
-      detail: "Znaleziony w historii ZD — trafia do panelu dziennego",
-    };
-  } else if (plan.bannerKind === "pending_supplier") {
-    supplierStep = {
-      ...supplierStep,
-      state: "handoff",
-      detail: "Nie znaleziono w ZD przy wyborze — po wysłaniu sprawdzimy ponownie",
-    };
   } else {
     supplierStep = {
       ...supplierStep,
@@ -179,20 +157,6 @@ export function buildProsbaFormReadiness(
     return {
       headline: "Gotowe do wysłania",
       subline: "Kompletne — trafi od razu do realizacji.",
-      tone: "ready",
-      steps,
-      canSubmit: true,
-    };
-  }
-
-  if (plan?.bannerKind === "pending_supplier") {
-    return {
-      headline: "Gotowe do wysłania",
-      subline: hasResolvedSupplier
-        ? "Dostawca z historii ZD — możesz wysłać prośbę."
-        : resolvingSupplier
-          ? "Sprawdzamy historię ZD w Subiekcie…"
-          : "Towar z Subiekta — dostawcę ustalimy z historii ZD.",
       tone: "ready",
       steps,
       canSubmit: true,

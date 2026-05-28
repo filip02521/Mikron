@@ -42,17 +42,10 @@ import {
 import { clientNamesSummary } from "@/lib/orders/sales-client-label";
 import { describeVerificationGaps } from "@/lib/orders/verification-gaps";
 
-function isSupplierResolvePending(order: IndividualOrder): boolean {
-  return Boolean(order.supplier_resolve_pending && !order.supplier_id);
-}
-
 function weryfikacjaPresentation(order: IndividualOrder) {
-  const pending = isSupplierResolvePending(order);
   return {
-    supplierName: pending
-      ? "Dopasowywanie dostawcy…"
-      : (order.supplier?.name ?? "Do ustalenia"),
-    statusTitle: pending ? "Dopasowujemy dostawcę" : "W dziale dostaw",
+    supplierName: order.supplier?.name ?? "Do ustalenia",
+    statusTitle: "W dziale dostaw",
     statusDetail: describeVerificationGaps(order),
     timingLabel: null,
     badgeVariant: "warning" as const,

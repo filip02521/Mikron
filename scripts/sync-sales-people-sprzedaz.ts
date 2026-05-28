@@ -236,7 +236,15 @@ async function main() {
   }
 }
 
-main().catch((e) => {
-  console.error(e);
-  process.exit(1);
-});
+// Uruchamiaj tylko jako skrypt CLI, nie przy imporcie w testach.
+const isDirectRun =
+  typeof process !== "undefined" &&
+  typeof process.argv?.[1] === "string" &&
+  process.argv[1].includes("sync-sales-people-sprzedaz");
+
+if (isDirectRun) {
+  main().catch((e) => {
+    console.error(e);
+    process.exit(1);
+  });
+}

@@ -5,7 +5,6 @@ import { AdminSystemStatus } from "@/components/admin/AdminSystemStatus";
 import { AdminToolsPanel } from "@/components/admin/AdminToolsPanel";
 import { AdminDataShortcuts } from "@/components/admin/AdminDataShortcuts";
 import { SubiektIntegrationPanel } from "@/components/admin/SubiektIntegrationPanel";
-import { SupplierResolveMetricsCard } from "@/components/admin/SupplierResolveMetricsCard";
 import { PageHeader } from "@/components/ui/PageHeader";
 import type { SubiektAuthMode } from "@/lib/subiekt/config";
 
@@ -41,7 +40,6 @@ export default async function AdminPage() {
         initialBaseUrl={subiektStatus.baseUrl}
         initialAuthMode={subiektStatus.authMode}
       />
-      <SupplierResolveMetricsCard />
       <section className="mb-8 space-y-2">
         <h2 className="text-sm font-semibold uppercase tracking-wide text-slate-500">
           Narzędzia serwisowe

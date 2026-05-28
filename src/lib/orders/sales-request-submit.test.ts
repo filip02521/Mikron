@@ -6,7 +6,7 @@ import {
 } from "./sales-request-submit";
 
 describe("planSalesRequestSubmit", () => {
-  it("pozwala wysłać z towarem Subiekt bez dostawcy — pending w tle", () => {
+  it("pozwala wysłać bez dostawcy (do weryfikacji)", () => {
     const plan = planSalesRequestSubmit({
       symbol: "ABC",
       product: "Test",
@@ -15,9 +15,8 @@ describe("planSalesRequestSubmit", () => {
       subiektTwId: 42,
     });
     expect(plan.submittable).toBe(true);
-    expect(plan.supplierResolvePending).toBe(true);
     expect(plan.initialStatus).toBe("Weryfikacja");
-    expect(plan.bannerKind).toBe("pending_supplier");
+    expect(plan.bannerKind).toBe("incomplete");
   });
 
   it("z dostawcą od razu trafia do Nowe", () => {
@@ -30,12 +29,11 @@ describe("planSalesRequestSubmit", () => {
       subiektTwId: 42,
     });
     expect(plan.initialStatus).toBe("Nowe");
-    expect(plan.supplierResolvePending).toBe(false);
   });
 });
 
 describe("assessSalesGroupSubmittable", () => {
-  it("łączy wiele linii z pending", () => {
+  it("łączy wiele linii (submittable)", () => {
     const plan = assessSalesGroupSubmittable(
       [
         { symbol: "A", product: "P1", quantity: "1", subiektTwId: 1 },
@@ -44,7 +42,6 @@ describe("assessSalesGroupSubmittable", () => {
       "",
       "zamowienie"
     );
-    expect(plan?.bannerKind).toBe("pending_supplier");
     expect(plan?.submittable).toBe(true);
   });
 });
@@ -74,16 +71,5 @@ describe("salesSubmitUserHint", () => {
     expect(hint?.title).toContain("przed wysłaniem");
   });
 
-  it("pending supplier — gotowe do wysłania", () => {
-    const plan = planSalesRequestSubmit({
-      symbol: "ABC",
-      product: "Test",
-      quantity: "1",
-      requestKind: "zamowienie",
-      subiektTwId: 1,
-    });
-    const hint = salesSubmitUserHint(plan, "zamowienie");
-    expect(hint?.tone).toBe("success");
-    expect(hint?.title).toContain("Gotowe");
-  });
+  // Brak osobnego trybu "pending_supplier" — auto-dopasowanie dostawcy z Subiekta jest wycofane.
 });

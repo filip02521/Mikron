@@ -139,23 +139,7 @@ describe("presentMyOrder", () => {
     expect(row.headlineTone).toBe("action");
   });
 
-  it("pokazuje osobny status gdy trwa dopasowanie dostawcy", () => {
-    const row = presentMyOrders(
-      [
-        {
-          ...baseOrder,
-          status: "Weryfikacja",
-          supplier_id: null,
-          supplier: undefined,
-          supplier_resolve_pending: true,
-        },
-      ],
-      []
-    ).zamowienia[0];
-    expect(row.statusTitle).toBe("Dopasowujemy dostawcę");
-    expect(row.supplierName).toContain("Dopasowywanie");
-    expect(row.statusDetail).toContain("Szukamy dostawcy");
-  });
+  // Brak osobnego trybu "dopasowanie dostawcy" — mechanizm Subiekt ZD został wycofany.
 
   it("rozróżnia badge przed zamówieniem i zamówione", () => {
     const przed = presentMyOrders(

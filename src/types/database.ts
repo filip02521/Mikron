@@ -102,8 +102,6 @@ export interface IndividualOrder {
   warehouse_shelf?: string | null;
   /** ID towaru w Subiekcie (tw_Id) — wybor z kartoteki; brak = wpis ręczny. */
   subiekt_tw_id?: number | null;
-  /** Dopasowanie dostawcy z ZD Subiekt w toku po zapisie prośby. */
-  supplier_resolve_pending?: boolean;
   /** Kod Mikran (tw_PLU) — opcjonalnie przy prośbie. */
   mikran_code?: string | null;
   supplier?: Supplier;

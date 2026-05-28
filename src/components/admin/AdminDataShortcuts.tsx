@@ -21,6 +21,11 @@ const shortcuts = [
     title: "Urlopy dostawców",
     description: "Okresy niedostępności i przeliczanie harmonogramów.",
   },
+  {
+    href: "/admin/produkty",
+    title: "Produkty (baza własna)",
+    description: "Powiązania produkt ↔ dostawca (Subiekt tw_Id) + notatki i metryki.",
+  },
 ] as const;
 
 export function AdminDataShortcuts() {

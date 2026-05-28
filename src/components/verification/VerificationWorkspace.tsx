@@ -126,9 +126,6 @@ export function VerificationWorkspace({
     requestKind: form.requestKind,
   };
   const assessment = assessRequestCompleteness(draft);
-  const supplierResolvePending = Boolean(
-    active?.supplier_resolve_pending && !active?.supplier_id
-  );
 
   const save = () => {
     if (!active) return;
@@ -216,9 +213,6 @@ export function VerificationWorkspace({
             }
           >
                 {orders.map((o) => {
-                  const pendingResolve = Boolean(
-                    o.supplier_resolve_pending && !o.supplier_id
-                  );
                   return (
                   <li key={o.id}>
                     <button
@@ -234,9 +228,7 @@ export function VerificationWorkspace({
                             {o.sales_person?.name ?? "Handlowiec"}
                           </p>
                           <p className="truncate text-sm text-slate-600">
-                            {pendingResolve
-                              ? "Dopasowywanie dostawcy…"
-                              : (o.supplier?.name ?? "Brak dostawcy")}{" "}
+                            {(o.supplier?.name ?? "Brak dostawcy")}{" "}
                             · {o.products}
                           </p>
                           <p className="mt-1 text-xs text-slate-500">
@@ -244,9 +236,7 @@ export function VerificationWorkspace({
                             {o.request_kind === "informacja" ? " · informacja" : ""}
                           </p>
                         </div>
-                        <Badge variant={pendingResolve ? "info" : "warning"}>
-                          {pendingResolve ? "Auto" : "Weryfikacja"}
-                        </Badge>
+                        <Badge variant="warning">Weryfikacja</Badge>
                       </div>
                     </button>
                   </li>
@@ -274,11 +264,6 @@ export function VerificationWorkspace({
                   : "space-y-4 px-4 py-5 sm:px-6"
               }
             >
-                  {supplierResolvePending ? (
-                    <p className="rounded-lg border border-indigo-100 bg-indigo-50/80 px-3 py-2.5 text-sm text-indigo-900">
-                      {describeVerificationGaps(active)}
-                    </p>
-                  ) : null}
                   <div className="grid gap-3 sm:grid-cols-2">
                     <Field label="Dostawca">
                       <SupplierPickerField

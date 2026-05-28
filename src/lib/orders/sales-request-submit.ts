@@ -9,13 +9,11 @@ import {
 export type SalesSubmitBannerKind =
   | "empty"
   | "incomplete"
-  | "complete"
-  | "pending_supplier";
+  | "complete";
 
 export type SalesRequestSubmitPlan = {
   submittable: boolean;
   initialStatus: IndividualOrderStatus;
-  supplierResolvePending: boolean;
   bannerKind: SalesSubmitBannerKind;
 };
 
@@ -25,11 +23,6 @@ export type SalesRequestDraft = RequestDraft & {
 
 export type SalesSubmitHintTone = "success" | "warning" | "info";
 
-function hasSubiektProduct(draft: SalesRequestDraft): boolean {
-  const id = draft.subiektTwId;
-  return id != null && id > 0;
-}
-
 /** Plan zapisu prośby handlowca — bez czekania na dostawcę przy wyborze towaru z Subiekta. */
 export function planSalesRequestSubmit(draft: SalesRequestDraft): SalesRequestSubmitPlan {
   const kind = draft.requestKind ?? "zamowienie";
@@ -38,7 +31,6 @@ export function planSalesRequestSubmit(draft: SalesRequestDraft): SalesRequestSu
     return {
       submittable: false,
       initialStatus: "Weryfikacja",
-      supplierResolvePending: false,
       bannerKind: "empty",
     };
   }
@@ -47,7 +39,6 @@ export function planSalesRequestSubmit(draft: SalesRequestDraft): SalesRequestSu
     return {
       submittable: false,
       initialStatus: "Weryfikacja",
-      supplierResolvePending: false,
       bannerKind: "incomplete",
     };
   }
@@ -56,24 +47,13 @@ export function planSalesRequestSubmit(draft: SalesRequestDraft): SalesRequestSu
     return {
       submittable: true,
       initialStatus: "Nowe",
-      supplierResolvePending: false,
       bannerKind: "complete",
-    };
-  }
-
-  if (hasSubiektProduct(draft)) {
-    return {
-      submittable: true,
-      initialStatus: "Weryfikacja",
-      supplierResolvePending: true,
-      bannerKind: "pending_supplier",
     };
   }
 
   return {
     submittable: true,
     initialStatus: "Weryfikacja",
-    supplierResolvePending: false,
     bannerKind: "incomplete",
   };
 }
@@ -110,15 +90,6 @@ export function salesSubmitUserHint(
             ? "Twoje dane wystarczą do zgłoszenia. Dział dostaw dopasuje dostawcę i dopracuje szczegóły — śledź postęp w „Moje zamówienia”."
             : "Produkt i ilość są podane — to wystarczy do wysłania. Dział dostaw dopasuje dostawcę i dopracuje resztę — śledź postęp w „Moje zamówienia”.",
       };
-    case "pending_supplier":
-      return {
-        tone: "success",
-        title: "Gotowe do wysłania",
-        detail:
-          requestKind === "informacja"
-            ? "Towar z Subiekta jest zapisany. Po wysłaniu system dopasuje dostawcę w tle — zwykle bez Twojego udziału."
-            : "Towar z Subiekta jest zapisany. Po wysłaniu system dopasuje dostawcę z historii ZD — zwykle bez Twojego udziału.",
-      };
     case "complete":
       return {
         tone: "success",
@@ -133,9 +104,8 @@ export function salesSubmitUserHint(
 
 const BANNER_PRIORITY: Record<SalesSubmitBannerKind, number> = {
   incomplete: 0,
-  pending_supplier: 1,
-  complete: 2,
-  empty: 3,
+  complete: 1,
+  empty: 2,
 };
 
 function mergeSubmitPlans(

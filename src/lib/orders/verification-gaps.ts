@@ -22,10 +22,6 @@ export function describeVerificationGaps(order: IndividualOrder): string {
   const draft = orderToDraft(order);
   const procurementTodo: string[] = [];
 
-  if (order.supplier_resolve_pending && !order.supplier_id) {
-    return "Szukamy dostawcy w Subiekcie (historia ZD). To zwykle chwilę — odśwież listę za moment. Prośba jest zapisana — nie musisz nic uzupełniać.";
-  }
-
   if (!order.supplier_id) procurementTodo.push("dostawcę");
   if (!hasAnyProductHint(draft)) {
     procurementTodo.push("opis produktu (symbol, kod Mikran lub nazwa)");
