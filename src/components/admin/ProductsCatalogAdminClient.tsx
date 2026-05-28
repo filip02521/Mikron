@@ -7,7 +7,11 @@ import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Field";
 import { Toast } from "@/components/ui/Toast";
 import { cn } from "@/lib/cn";
-import { actionRebuildProductCatalogFromOrders, actionUpdateSubiektProductNote } from "@/app/actions/product-catalog";
+import {
+  actionBackfillOrdersSubiektTwIdFromSymbol,
+  actionRebuildProductCatalogFromOrders,
+  actionUpdateSubiektProductNote,
+} from "@/app/actions/product-catalog";
 
 export function ProductsCatalogAdminClient({
   initial,
@@ -55,6 +59,35 @@ export function ProductsCatalogAdminClient({
     });
   };
 
+  const backfillFromSymbol = () => {
+    if (
+      !confirm(
+        "Uzupełnić tw_Id w individual_orders po symbolu z Subiekta i dopisać mapowania? (Wymaga dostępu do Subiekta w LAN)"
+      )
+    ) {
+      return;
+    }
+    start(async () => {
+      try {
+        const res = await actionBackfillOrdersSubiektTwIdFromSymbol({ limit: 250 });
+        if (res.skippedOffline) {
+          setToast({
+            text: "Subiekt offline / poza LAN — nie da się teraz uzupełnić po symbolu.",
+            tone: "error",
+          });
+          return;
+        }
+        setToast({
+          text: `Uzupełniono: zeskanowano ${res.scanned}, zapisano tw_Id w ${res.updated}, zindeksowano ${res.indexed}. Odświeżam…`,
+          tone: "success",
+        });
+        window.location.reload();
+      } catch (e) {
+        setToast({ text: e instanceof Error ? e.message : "Błąd uzupełniania", tone: "error" });
+      }
+    });
+  };
+
   const saveNote = (subiektTwId: number, note: string) => {
     start(async () => {
       try {
@@ -77,6 +110,9 @@ export function ProductsCatalogAdminClient({
         description="Źródło: historia prośb + weryfikacja zakupów + (docelowo) import z ZD. Każdy produkt to Subiekt tw_Id."
         action={
           <div className="flex flex-wrap gap-2">
+            <Button variant="secondary" onClick={backfillFromSymbol} disabled={pending}>
+              Uzupełnij z symbolu (Subiekt)
+            </Button>
             <Button variant="secondary" onClick={rebuild} disabled={pending}>
               Odbuduj z historii
             </Button>

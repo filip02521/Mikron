@@ -4,6 +4,9 @@ import { revalidatePath } from "next/cache";
 import { requireAdmin } from "@/lib/auth";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { clampOptionalText } from "@/lib/security/text-limits";
+import { isSubiektReachable } from "@/lib/subiekt/availability";
+import { searchSubiektProducts } from "@/lib/subiekt/api";
+import { indexOrderLineToProductCatalog } from "@/lib/data/product-catalog";
 
 const MAX_NOTE_LEN = 500;
 
@@ -166,5 +169,98 @@ export async function actionRebuildProductCatalogFromOrders(options?: { limit?: 
     products: productsUpserts.length,
     links: linkRows.length,
   };
+}
+
+function normalizeSymbol(value: string | null | undefined): string {
+  return String(value ?? "").trim().toLowerCase();
+}
+
+/**
+ * Backfill `individual_orders.subiekt_tw_id` na podstawie symbolu (Subiekt tw_Symbol),
+ * a następnie indeksuje do własnej bazy produktów razem z dostawcą z historii.
+ *
+ * Wymaga dostępu do Subiekt API (LAN).
+ */
+export async function actionBackfillOrdersSubiektTwIdFromSymbol(options?: {
+  limit?: number;
+}): Promise<{
+  success: true;
+  scanned: number;
+  updated: number;
+  indexed: number;
+  skippedOffline: boolean;
+}> {
+  await requireAdmin();
+  const supabase = createAdminClient();
+
+  const limit = options?.limit != null ? Math.max(1, Math.min(400, options.limit)) : 200;
+
+  if (!(await isSubiektReachable())) {
+    return { success: true, scanned: 0, updated: 0, indexed: 0, skippedOffline: true };
+  }
+
+  const { data: ordersRaw, error } = await supabase
+    .from("individual_orders")
+    .select("id, supplier_id, subiekt_tw_id, symbol, products, mikran_code, action_at")
+    .is("subiekt_tw_id", null)
+    .not("symbol", "eq", "-")
+    .not("supplier_id", "is", null)
+    .order("action_at", { ascending: false })
+    .limit(limit);
+
+  if (error) throw new Error(error.message);
+
+  const orders = (ordersRaw ?? []) as Array<{
+    id: string;
+    supplier_id: string;
+    subiekt_tw_id: number | null;
+    symbol: string;
+    products: string;
+    mikran_code: string | null;
+    action_at: string;
+  }>;
+
+  let scanned = 0;
+  let updated = 0;
+  let indexed = 0;
+
+  for (const o of orders) {
+    scanned += 1;
+    const sym = normalizeSymbol(o.symbol);
+    if (!sym) continue;
+
+    try {
+      const res = await searchSubiektProducts({ symbol: o.symbol.trim(), pageSize: 12, page: 1 });
+      const exact = res.data.find((p) => normalizeSymbol(p.tw_Symbol) === sym) ?? null;
+      const picked = exact ?? res.data[0] ?? null;
+      const twId = picked?.tw_Id != null ? Number(picked.tw_Id) : null;
+      if (!twId || !Number.isFinite(twId) || twId <= 0) continue;
+
+      const { error: updErr } = await supabase
+        .from("individual_orders")
+        .update({ subiekt_tw_id: Math.trunc(twId) })
+        .eq("id", o.id)
+        .is("subiekt_tw_id", null);
+      if (updErr) throw new Error(updErr.message);
+      updated += 1;
+
+      await indexOrderLineToProductCatalog({
+        orderId: o.id,
+        subiektTwId: Math.trunc(twId),
+        symbol: o.symbol ?? null,
+        productName: o.products ?? null,
+        mikranCode: o.mikran_code ?? null,
+        supplierId: o.supplier_id ?? null,
+        actionAt: o.action_at ?? null,
+        source: "order_history",
+      });
+      indexed += 1;
+    } catch {
+      // best-effort: pomijamy błędy pojedynczych rekordów
+    }
+  }
+
+  revalidatePath("/admin/produkty");
+  return { success: true, scanned, updated, indexed, skippedOffline: false };
 }
 
