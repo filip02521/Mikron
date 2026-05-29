@@ -26,4 +26,11 @@ describe("findSupplierBySubiektKhIdPreferCanonical", () => {
     const hit = findSupplierBySubiektKhIdPreferCanonical(10, refs);
     expect(hit?.id).toBe("b");
   });
+
+  it("dopasowuje dodatkowy kh_Id", () => {
+    const withAlias: AppSupplierRef[] = [
+      { id: "x", name: "Renfert", subiektKhId: 100, additionalSubiektKhIds: [200] },
+    ];
+    expect(findSupplierBySubiektKhIdPreferCanonical(200, withAlias)?.id).toBe("x");
+  });
 });

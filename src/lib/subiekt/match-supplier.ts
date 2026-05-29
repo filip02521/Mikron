@@ -5,6 +5,8 @@ export type AppSupplierRef = {
   id: string;
   name: string;
   subiektKhId?: number | null;
+  /** Dodatkowe kh_Id (np. stary kontrahent po zmianie w Subiekcie). */
+  additionalSubiektKhIds?: number[];
 };
 
 function normalize(text: string): string {

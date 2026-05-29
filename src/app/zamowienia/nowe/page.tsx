@@ -1,4 +1,5 @@
-import { fetchSalesPeople, fetchSupplierFormContext } from "@/lib/data/queries";
+import { fetchSupplierFormContext } from "@/lib/data/queries";
+import { fetchSalesPeopleForPicker } from "@/lib/data/sales-people-admin";
 import { OrderFormClient } from "@/components/orders/OrderFormClient";
 import { getAppRole } from "@/lib/auth-dev";
 import { getSessionUser } from "@/lib/auth";
@@ -14,7 +15,7 @@ export default async function NoweZamowieniePage() {
     const ctx = await fetchSupplierFormContext();
     suppliers = ctx.suppliers;
     statsBySupplierId = ctx.statsBySupplierId;
-    salesPeople = await fetchSalesPeople();
+    salesPeople = await fetchSalesPeopleForPicker();
   } catch {
     /* empty */
   }

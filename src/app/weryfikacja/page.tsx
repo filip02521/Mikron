@@ -1,8 +1,8 @@
 import {
-  fetchSalesPeople,
   fetchSuppliersWithSchedules,
   fetchVerificationOrders,
 } from "@/lib/data/queries";
+import { fetchSalesPeopleForPicker } from "@/lib/data/sales-people-admin";
 import { VerificationClient } from "@/components/verification/VerificationClient";
 import type { IndividualOrder } from "@/types/database";
 
@@ -22,7 +22,7 @@ export default async function WeryfikacjaPage() {
       name: x.name,
       subiekt_kh_id: x.subiekt_kh_id ?? null,
     }));
-    salesPeople = await fetchSalesPeople();
+    salesPeople = await fetchSalesPeopleForPicker();
   } catch {
     /* empty */
   }

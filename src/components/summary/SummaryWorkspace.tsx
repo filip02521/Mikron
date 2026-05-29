@@ -64,7 +64,7 @@ export function SummaryWorkspace({
   workspace: SummaryWorkspaceData;
   suppliers: { id: string; name: string }[];
   supplierDirectory: SupplierDirectoryEntry[];
-  salesPeople: { id: string; name: string }[];
+  salesPeople: { id: string; name: string; email: string }[];
   statsBySupplierId?: Record<string, DeliveryStats>;
   supplierStatsMode?: Record<string, StatsMode>;
   verificationOrders?: IndividualOrder[];

@@ -20,7 +20,10 @@ import {
   type SalesCancelledNotice,
 } from "@/lib/orders/sales-cancelled-notices";
 import { mapOrderToForSomeoneLine } from "@/lib/orders/product-source";
-import { isIndividualOrderProcurementReady } from "@/lib/orders/procurement-readiness";
+import {
+  canShowInForSomeoneLeft,
+  isInformacjaQueueViaDailyPanel,
+} from "@/lib/orders/informacja-via-daily-panel";
 import { isSupplierOrderOnDemand } from "@/lib/orders/supplier-on-demand";
 import {
   formatStockPeriod,
@@ -63,6 +66,8 @@ export type ForSomeoneLine = {
   quantity: string;
   fromSubiekt: boolean;
   subiektTwId?: number | null;
+  /** Informacja z opcją „najpierw panel Dziś”. */
+  informacjaViaPanel?: boolean;
 };
 
 export type SummaryForSomeoneEnriched = {
@@ -297,7 +302,8 @@ export function buildSummaryWorkspace(
     > = {};
     for (const o of orders) {
       if (o.status !== "Nowe") continue;
-      if (kind === "forSomeone" && !isIndividualOrderProcurementReady(o)) continue;
+      if (kind === "forSomeone" && !canShowInForSomeoneLeft(o)) continue;
+      if (kind === "informacja" && isInformacjaQueueViaDailyPanel(o)) continue;
       const key = `${o.supplier_id}|${o.sales_person_id}`;
       if (!grouped[key]) {
         grouped[key] = {
@@ -355,15 +361,20 @@ export function buildSummaryWorkspace(
     (o) => (o.request_kind ?? "zamowienie") === "zamowienie"
   );
   const informacjaNew = newOrders.filter((o) => o.request_kind === "informacja");
+  const informacjaViaPanel = informacjaNew.filter((o) =>
+    isInformacjaQueueViaDailyPanel(o)
+  );
+  const informacjaDirect = informacjaNew.filter(
+    (o) => !isInformacjaQueueViaDailyPanel(o)
+  );
 
-  const forSomeoneLeft = buildRequestGroups(
-    zamowienieNew,
-    "[DLA KOGOŚ]",
-    "forSomeone"
-  ) as SummaryForSomeoneEnriched[];
+  const forSomeoneLeft = [
+    ...buildRequestGroups(zamowienieNew, "[DLA KOGOŚ]", "forSomeone"),
+    ...buildRequestGroups(informacjaViaPanel, "[INFO→ZD]", "forSomeone"),
+  ] as SummaryForSomeoneEnriched[];
 
   const informacjaLeft = buildRequestGroups(
-    informacjaNew,
+    informacjaDirect,
     "[INFO]",
     "informacja"
   ) as SummaryInformacjaEnriched[];

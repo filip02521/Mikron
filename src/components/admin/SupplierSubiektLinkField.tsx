@@ -1,10 +1,15 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useCallback, useEffect, useRef, useState, useTransition } from "react";
 import {
   actionSubiektLookupSupplier,
   actionSetSupplierSubiektKhId,
+  actionListSupplierSubiektKhAliases,
+  actionAddSupplierSubiektKhAlias,
+  actionRemoveSupplierSubiektKhAlias,
+  actionResolveKontrahentLabels,
 } from "@/app/actions/subiekt";
+import { kontrahentDisplayName } from "@/lib/subiekt/resolve-kontrahent-labels";
 import { SubiektFeedbackAlert } from "@/components/subiekt/SubiektFeedbackAlert";
 import { Button } from "@/components/ui/Button";
 import { Field, Input } from "@/components/ui/Field";
@@ -12,6 +17,7 @@ import { Spinner } from "@/components/ui/Spinner";
 import type { SubiektFeedback } from "@/lib/subiekt/feedback";
 import { formatSubiektKontrahentLabel } from "@/lib/subiekt/match-supplier";
 import type { SubiektKontrahent } from "@/lib/subiekt/types";
+import type { SupplierSubiektKhAliasRow } from "@/lib/data/supplier-subiekt-kh";
 
 export function SupplierSubiektLinkField({
   supplierId,
@@ -28,7 +34,59 @@ export function SupplierSubiektLinkField({
   const [results, setResults] = useState<SubiektKontrahent[]>([]);
   const [feedback, setFeedback] = useState<SubiektFeedback | null>(null);
   const [linkedLabel, setLinkedLabel] = useState<string | null>(null);
+  const [primaryLabel, setPrimaryLabel] = useState<string | null>(null);
+  const [aliases, setAliases] = useState<SupplierSubiektKhAliasRow[]>([]);
   const [pending, start] = useTransition();
+  const primaryLabelKhRef = useRef<number | null>(null);
+
+  useEffect(() => {
+    if (subiektKhId == null) {
+      primaryLabelKhRef.current = null;
+      setPrimaryLabel(null);
+      return;
+    }
+    if (linkedLabel) {
+      primaryLabelKhRef.current = subiektKhId;
+      setPrimaryLabel(linkedLabel);
+      return;
+    }
+    if (primaryLabelKhRef.current === subiektKhId) return;
+    primaryLabelKhRef.current = subiektKhId;
+    start(async () => {
+      try {
+        const labels = await actionResolveKontrahentLabels([subiektKhId]);
+        setPrimaryLabel(labels[subiektKhId] ?? null);
+      } catch {
+        setPrimaryLabel(null);
+      }
+    });
+  }, [subiektKhId, linkedLabel]);
+
+  const reloadAliases = useCallback(() => {
+    start(async () => {
+      try {
+        const rows = await actionListSupplierSubiektKhAliases(supplierId);
+        const missingKh = rows.filter((r) => !r.kontrahentLabel).map((r) => r.subiektKhId);
+        if (missingKh.length === 0) {
+          setAliases(rows);
+          return;
+        }
+        const labels = await actionResolveKontrahentLabels(missingKh);
+        setAliases(
+          rows.map((r) => ({
+            ...r,
+            kontrahentLabel: r.kontrahentLabel ?? labels[r.subiektKhId] ?? null,
+          }))
+        );
+      } catch {
+        setAliases([]);
+      }
+    });
+  }, [supplierId]);
+
+  useEffect(() => {
+    reloadAliases();
+  }, [reloadAliases, subiektKhId]);
 
   const search = () => {
     const q = query.trim();
@@ -46,7 +104,7 @@ export function SupplierSubiektLinkField({
     });
   };
 
-  const link = (k: SubiektKontrahent) => {
+  const setPrimary = (k: SubiektKontrahent) => {
     start(async () => {
       const res = await actionSetSupplierSubiektKhId(supplierId, k.kh_Id);
       if (!res.ok) {
@@ -57,10 +115,37 @@ export function SupplierSubiektLinkField({
       setResults([]);
       setFeedback(null);
       onLinked?.(k.kh_Id);
+      reloadAliases();
     });
   };
 
-  const clear = () => {
+  const addAlias = (k: SubiektKontrahent) => {
+    start(async () => {
+      const res = await actionAddSupplierSubiektKhAlias(supplierId, k.kh_Id, {
+        kontrahentLabel: formatSubiektKontrahentLabel(k),
+      });
+      if (!res.ok) {
+        setFeedback(res.feedback);
+        return;
+      }
+      setResults([]);
+      setFeedback(null);
+      reloadAliases();
+    });
+  };
+
+  const removeAlias = (khId: number) => {
+    start(async () => {
+      const res = await actionRemoveSupplierSubiektKhAlias(supplierId, khId);
+      if (!res.ok) {
+        setFeedback(res.feedback);
+        return;
+      }
+      reloadAliases();
+    });
+  };
+
+  const clearPrimary = () => {
     start(async () => {
       const res = await actionSetSupplierSubiektKhId(supplierId, null);
       if (!res.ok) {
@@ -73,21 +158,64 @@ export function SupplierSubiektLinkField({
   };
 
   return (
-    <div className="rounded-xl border border-slate-200 bg-slate-50/80 p-3 space-y-2">
+    <div className="rounded-xl border border-slate-200 bg-slate-50/80 p-3 space-y-3">
       <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
         Powiązanie z Subiektem
       </p>
       {subiektKhId != null ? (
         <p className="text-sm text-indigo-800">
-          Powiązano: <span className="font-medium">kh_Id {subiektKhId}</span>
-          {linkedLabel ? ` · ${linkedLabel}` : null}
+          Główne:{" "}
+          <span className="font-medium">
+            {kontrahentDisplayName(primaryLabel ?? linkedLabel, subiektKhId)}
+          </span>
+          <span className="mt-0.5 block text-[11px] font-normal text-indigo-600/90">
+            id {subiektKhId}
+          </span>
         </p>
       ) : (
         <p className="text-xs text-slate-600">
-          Powiązanie `kh_Id` jest potrzebne do importu mapowań produkt→dostawca z Subiekta (ZD) w
-          panelu admina.
+          Wyszukaj kontrahenta po nazwie w Subiekcie i ustaw jako głównego albo dodaj dodatkowego
+          (np. po zmianie firmy) — indeks ZD dopasuje dokumenty z każdej z tych kart do tego
+          dostawcy.
         </p>
       )}
+
+      {aliases.length > 0 ? (
+        <div className="space-y-1">
+          <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">
+            Dodatkowe kontrahenci
+          </p>
+          <ul className="space-y-1">
+            {aliases.map((a) => (
+              <li
+                key={a.id}
+                className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-slate-200 bg-white px-2 py-1.5 text-sm"
+              >
+                <span>
+                  <span className="font-medium text-slate-900">
+                    {kontrahentDisplayName(a.kontrahentLabel, a.subiektKhId)}
+                  </span>
+                  <span className="mt-0.5 block font-mono text-[10px] text-slate-400">
+                    id {a.subiektKhId}
+                  </span>
+                  {a.note ? (
+                    <span className="mt-0.5 block text-xs text-slate-600">{a.note}</span>
+                  ) : null}
+                </span>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => removeAlias(a.subiektKhId)}
+                  disabled={pending}
+                >
+                  Usuń
+                </Button>
+              </li>
+            ))}
+          </ul>
+        </div>
+      ) : null}
 
       <div className="flex flex-wrap gap-2">
         <Field label="Szukaj w Subiekcie" className="min-w-[12rem] flex-1">
@@ -107,8 +235,8 @@ export function SupplierSubiektLinkField({
           Szukaj
         </Button>
         {subiektKhId != null ? (
-          <Button type="button" variant="ghost" size="sm" className="self-end" onClick={clear}>
-            Usuń powiązanie
+          <Button type="button" variant="ghost" size="sm" className="self-end" onClick={clearPrimary}>
+            Usuń główne
           </Button>
         ) : null}
       </div>
@@ -120,26 +248,53 @@ export function SupplierSubiektLinkField({
       ) : null}
 
       {results.length > 0 ? (
-        <ul className="max-h-40 space-y-1 overflow-y-auto rounded-lg border border-slate-200 bg-white p-1">
-          {results.map((k) => (
-            <li key={k.kh_Id}>
-              <button
-                type="button"
-                className="w-full rounded-md px-2 py-1.5 text-left hover:bg-indigo-50"
-                onClick={() => link(k)}
-              >
-                <div className="flex flex-wrap items-baseline justify-between gap-2">
-                  <span className="text-sm font-medium">{formatSubiektKontrahentLabel(k)}</span>
-                  <span className="text-xs text-slate-400">kh_Id {k.kh_Id}</span>
+        <ul className="max-h-48 space-y-1 overflow-y-auto rounded-lg border border-slate-200 bg-white p-1">
+          {results.map((k) => {
+            const isPrimary = subiektKhId === k.kh_Id;
+            const isAlias = aliases.some((a) => a.subiektKhId === k.kh_Id);
+            return (
+              <li key={k.kh_Id} className="rounded-md border border-transparent p-1 hover:border-slate-100">
+                <div className="px-1 py-0.5">
+                  <div className="flex flex-wrap items-baseline justify-between gap-2">
+                    <span className="text-sm font-medium">{formatSubiektKontrahentLabel(k)}</span>
+                    <span className="text-xs text-slate-400">id {k.kh_Id}</span>
+                  </div>
+                  <div className="mt-0.5 flex flex-wrap gap-x-3 gap-y-0.5 text-[11px] text-slate-500">
+                    {k.adr_NIP ? <span>NIP: {k.adr_NIP}</span> : null}
+                    {k.adr_Miejscowosc ? <span>{k.adr_Miejscowosc}</span> : null}
+                  </div>
                 </div>
-                <div className="mt-0.5 flex flex-wrap gap-x-3 gap-y-0.5 text-[11px] text-slate-500">
-                  {k.adr_NIP ? <span>NIP: {k.adr_NIP}</span> : null}
-                  {k.adr_Miejscowosc ? <span>{k.adr_Miejscowosc}</span> : null}
-                  {k.kh_Symbol ? <span>Symbol: {k.kh_Symbol}</span> : null}
+                <div className="mt-1 flex flex-wrap gap-1 px-1">
+                  {!isPrimary ? (
+                    <Button
+                      type="button"
+                      variant="secondary"
+                      size="sm"
+                      onClick={() => setPrimary(k)}
+                      disabled={pending}
+                    >
+                      Ustaw jako główne
+                    </Button>
+                  ) : (
+                    <span className="self-center px-2 text-[11px] text-indigo-700">Główne</span>
+                  )}
+                  {!isAlias && !isPrimary ? (
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => addAlias(k)}
+                      disabled={pending}
+                    >
+                      Dodaj dodatkowy
+                    </Button>
+                  ) : isAlias ? (
+                    <span className="self-center px-2 text-[11px] text-slate-500">Już dodatkowy</span>
+                  ) : null}
                 </div>
-              </button>
-            </li>
-          ))}
+              </li>
+            );
+          })}
         </ul>
       ) : null}
 

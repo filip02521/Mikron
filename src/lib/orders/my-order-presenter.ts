@@ -397,6 +397,18 @@ function presentInformacja(order: IndividualOrder): MyOrderRow {
         ...weryfikacjaPresentation(order),
       });
     case "Nowe":
+      if (order.ordered_at?.trim()) {
+        return finalize({
+          ...base,
+          statusTitle: "Zamówione — czekamy na magazyn",
+          statusDetail:
+            "Dział dostaw złożył zamówienie u dostawcy. Wyślemy e-mail, gdy towar pojawi się na magazynie.",
+          timingLabel: order.ordered_at
+            ? `Zamówione ${formatPlDate(order.ordered_at.slice(0, 10))}`
+            : null,
+          badgeVariant: "info",
+        });
+      }
       return finalize({
         ...base,
         statusTitle: "Oczekuje na dostawę",

@@ -1,6 +1,7 @@
 import { createAdminClient } from "@/lib/supabase/admin";
 import { isSubiektReachable } from "@/lib/subiekt/availability";
 import { defaultZdSearchDataOd, getSubiektDocumentCached, searchSubiektZdCached } from "@/lib/subiekt/subiekt-runtime-cache";
+import { resolveKhLabelForZdDocument } from "@/lib/subiekt/kontrahent-from-document";
 import type { SubiektDocument } from "@/lib/subiekt/types";
 
 export type ZdIndexJobState = {
@@ -135,18 +136,8 @@ export async function tickZdIndexJob(options?: { maxDocs?: number }): Promise<Zd
     }
 
     const supabase = createAdminClient();
-    const { data: suppliersRaw, error: supErr } = await supabase
-      .from("suppliers")
-      .select("id, subiekt_kh_id")
-      .not("subiekt_kh_id", "is", null);
-    if (supErr) throw new Error(supErr.message);
-
-    const supplierByKh = new Map<number, string>();
-    for (const s of suppliersRaw ?? []) {
-      const kh = Number((s as any).subiekt_kh_id);
-      if (!Number.isFinite(kh) || kh <= 0) continue;
-      supplierByKh.set(Math.trunc(kh), String((s as any).id));
-    }
+    const { loadSupplierIdByKhMap } = await import("@/lib/data/supplier-subiekt-kh");
+    const supplierByKh = await loadSupplierIdByKhMap();
 
     const slice = docs.slice(0, maxDocs);
     let processed = 0;
@@ -167,6 +158,7 @@ export async function tickZdIndexJob(options?: { maxDocs?: number }): Promise<Zd
       const supplierId = matchedKhId != null ? supplierByKh.get(matchedKhId) ?? null : null;
       const verified = khIds.length > 0;
       const storedKhId = matchedKhId ?? khIds[0] ?? null;
+      const khLabel = resolveKhLabelForZdDocument(doc as SubiektDocument, storedKhId, khIds);
 
       if (!verified) unverifiable += 1;
       else if (supplierId) mapped += 1;
@@ -178,6 +170,7 @@ export async function tickZdIndexJob(options?: { maxDocs?: number }): Promise<Zd
           dok_nr_pelny: doc.dok_NrPelny ?? null,
           dok_data_wyst: doc.dok_DataWyst ?? null,
           subiekt_kh_id: storedKhId,
+          subiekt_kh_label: khLabel,
           supplier_id: supplierId,
           verified,
           processed_at: nowIso(),

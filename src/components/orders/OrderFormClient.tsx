@@ -16,12 +16,9 @@ import { prosbaHref } from "@/lib/orders/prosba-url";
 import { IconLayers, IconPlusCircle } from "@/components/icons/StrokeIcons";
 import { SectionHeadingIcon } from "@/components/icons/SectionHeadingIcon";
 import { cn } from "@/lib/cn";
-import {
-  assessRequestCompleteness,
-  hasAnyProductHint,
-  hasValidOrderQuantity,
-  type RequestCompleteness,
-} from "@/lib/orders/request-completeness";
+import { hasAnyProductHint, hasValidOrderQuantity } from "@/lib/orders/request-completeness";
+import { assessProcurementGroupCompleteness } from "@/lib/orders/procurement-form-readiness";
+import type { RequestCompleteness } from "@/lib/orders/request-completeness";
 import { assertProcurementEntryComplete } from "@/lib/orders/procurement-submit";
 import { assessSalesGroupSubmittable } from "@/lib/orders/sales-request-submit";
 import { RequestFormStatusPanel } from "@/components/orders/RequestFormStatusPanel";
@@ -36,22 +33,18 @@ function groupCompletenessAssessment(
   group: Entry[],
   requestKind: IndividualRequestKind
 ): RequestCompleteness | null {
-  const supplierId = group[0]?.supplierId;
-  let anyHint = false;
-  for (const row of group) {
-    const draft = {
-      supplierId,
+  return assessProcurementGroupCompleteness(
+    group.map((row) => ({
       symbol: row.symbol,
       mikranCode: row.mikranCode,
       product: row.product,
       quantity: row.quantity,
-      requestKind,
-    };
-    if (!hasAnyProductHint(draft)) continue;
-    anyHint = true;
-    if (assessRequestCompleteness(draft) === "incomplete") return "incomplete";
-  }
-  return anyHint ? "complete" : null;
+      supplierId: row.supplierId,
+      subiektTwId: row.subiektTwId,
+    })),
+    group[0]?.supplierId ?? "",
+    requestKind
+  );
 }
 
 function formatSubmitResult(

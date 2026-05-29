@@ -18,6 +18,8 @@ export type RequestDraft = {
   quantity?: string;
   salesPersonId?: string;
   requestKind?: IndividualRequestKind;
+  /** Informacja: najpierw kolejka Dziś, potem magazyn. */
+  informacjaQueueViaDailyPanel?: boolean;
 };
 
 function hasText(value?: string): boolean {

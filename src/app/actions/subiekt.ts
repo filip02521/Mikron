@@ -1,6 +1,6 @@
 "use server";
 
-import { revalidatePath } from "next/cache";
+import { revalidatePath, updateTag } from "next/cache";
 import {
   requireAdmin,
   requireOperations,
@@ -11,6 +11,15 @@ import { indexOrderLineToProductCatalog } from "@/lib/data/product-catalog";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { searchSubiektKontrahenci, searchSubiektProducts } from "@/lib/subiekt/api";
 import { getAppSupplierRefsCached } from "@/lib/data/supplier-refs";
+import {
+  fetchSupplierSubiektKhAliases,
+  findSupplierIdOwningKhId,
+  type SupplierSubiektKhAliasRow,
+} from "@/lib/data/supplier-subiekt-kh";
+import {
+  labelsMapToRecord,
+  resolveSubiektKontrahentLabels,
+} from "@/lib/subiekt/resolve-kontrahent-labels";
 import { searchSubiektSuppliersCached } from "@/lib/subiekt/subiekt-runtime-cache";
 import { productSearchParams, minProductSearchLength, looksLikeProductSymbol, type ProductSearchField } from "@/lib/subiekt/product-pick";
 import { getSubiektConfigSummary, isSubiektConfigured } from "@/lib/subiekt/config";
@@ -419,6 +428,23 @@ export async function actionSetSupplierSubiektKhId(
 
   const supabase = createAdminClient();
 
+  if (subiektKhId != null) {
+    const owner = await findSupplierIdOwningKhId(subiektKhId, supplierId);
+    if (owner) {
+      return {
+        ok: false,
+        feedback: getSubiektFeedback("unknown", {
+          message: `kh_Id ${subiektKhId} jest już powiązany z innym dostawcą — usuń powiązanie lub dodaj jako dodatkowy kontrahent tam.`,
+        }),
+      };
+    }
+    await supabase
+      .from("supplier_subiekt_kh_aliases")
+      .delete()
+      .eq("supplier_id", supplierId)
+      .eq("subiekt_kh_id", Math.trunc(subiektKhId));
+  }
+
   const { error } = await supabase
     .from("suppliers")
     .update({
@@ -442,11 +468,138 @@ export async function actionSetSupplierSubiektKhId(
     };
   }
 
+  revalidateSupplierSubiektKhCaches();
+
+  return { ok: true };
+}
+
+function revalidateSupplierSubiektKhCaches() {
+  updateTag("app-supplier-refs");
   revalidatePath("/admin/dostawcy");
+  revalidatePath("/admin/produkty");
   revalidatePath("/zakupy/dostawcy");
   revalidatePath("/podsumowanie");
   revalidatePath("/prosba");
+}
 
+export async function actionListSupplierSubiektKhAliases(
+  supplierId: string
+): Promise<SupplierSubiektKhAliasRow[]> {
+  await requireSupplierManagement();
+  return fetchSupplierSubiektKhAliases(supplierId);
+}
+
+export async function actionResolveKontrahentLabels(
+  khIds: number[]
+): Promise<Record<number, string>> {
+  await requireSupplierManagement();
+  const map = await resolveSubiektKontrahentLabels(khIds);
+  return labelsMapToRecord(map);
+}
+
+export async function actionAddSupplierSubiektKhAlias(
+  supplierId: string,
+  subiektKhId: number,
+  options?: { note?: string | null; kontrahentLabel?: string | null }
+): Promise<{ ok: true } | { ok: false; feedback: SubiektFeedback }> {
+  await requireSupplierManagement();
+
+  const kh = Math.trunc(subiektKhId);
+  if (!Number.isFinite(kh) || kh <= 0) {
+    return {
+      ok: false,
+      feedback: getSubiektFeedback("unknown", {
+        message: "Nieprawidłowy identyfikator kontrahenta Subiekt.",
+      }),
+    };
+  }
+
+  const supabase = createAdminClient();
+  const { data: self } = await supabase
+    .from("suppliers")
+    .select("subiekt_kh_id")
+    .eq("id", supplierId)
+    .maybeSingle();
+  if (self?.subiekt_kh_id != null && Math.trunc(Number(self.subiekt_kh_id)) === kh) {
+    return {
+      ok: false,
+      feedback: getSubiektFeedback("unknown", {
+        message: "Ten kh_Id jest już ustawiony jako główne powiązanie tego dostawcy.",
+      }),
+    };
+  }
+
+  const owner = await findSupplierIdOwningKhId(kh, supplierId);
+  if (owner) {
+    return {
+      ok: false,
+      feedback: getSubiektFeedback("unknown", {
+        message: `kh_Id ${kh} jest już używany przez innego dostawcę (główne lub dodatkowe powiązanie).`,
+      }),
+    };
+  }
+
+  const trimmedNote = options?.note?.trim() ? options.note.trim().slice(0, 200) : null;
+  const trimmedLabel = options?.kontrahentLabel?.trim()
+    ? options.kontrahentLabel.trim().slice(0, 300)
+    : null;
+  const { error } = await supabase.from("supplier_subiekt_kh_aliases").insert({
+    supplier_id: supplierId,
+    subiekt_kh_id: kh,
+    subiekt_label: trimmedLabel,
+    note: trimmedNote,
+  });
+
+  if (error) {
+    if (error.code === "23505" || error.message.includes("unique")) {
+      return {
+        ok: false,
+        feedback: getSubiektFeedback("unknown", {
+          message: `kh_Id ${kh} jest już przypisany (unikalność w bazie).`,
+        }),
+      };
+    }
+    if (error.message.includes("supplier_subiekt_kh_aliases")) {
+      return {
+        ok: false,
+        feedback: getSubiektFeedback("unknown", {
+          message:
+            "Brak tabeli supplier_subiekt_kh_aliases — uruchom migrację 040_supplier_subiekt_kh_aliases.sql w Supabase.",
+        }),
+      };
+    }
+    return {
+      ok: false,
+      feedback: feedbackFromException(new Error(error.message)),
+    };
+  }
+
+  revalidateSupplierSubiektKhCaches();
+  return { ok: true };
+}
+
+export async function actionRemoveSupplierSubiektKhAlias(
+  supplierId: string,
+  subiektKhId: number
+): Promise<{ ok: true } | { ok: false; feedback: SubiektFeedback }> {
+  await requireSupplierManagement();
+
+  const kh = Math.trunc(subiektKhId);
+  const supabase = createAdminClient();
+  const { error } = await supabase
+    .from("supplier_subiekt_kh_aliases")
+    .delete()
+    .eq("supplier_id", supplierId)
+    .eq("subiekt_kh_id", kh);
+
+  if (error) {
+    return {
+      ok: false,
+      feedback: feedbackFromException(new Error(error.message)),
+    };
+  }
+
+  revalidateSupplierSubiektKhCaches();
   return { ok: true };
 }
 

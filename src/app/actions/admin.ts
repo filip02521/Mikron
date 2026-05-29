@@ -310,6 +310,7 @@ export async function actionAddIndividualOrders(
     requestKind?: IndividualRequestKind;
     clientName?: string;
     subiektTwId?: number | null;
+    informacjaQueueViaDailyPanel?: boolean;
   }>
 ) {
   const user = await getSessionUser();

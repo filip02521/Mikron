@@ -153,6 +153,38 @@ describe("procurement-daily-ui", () => {
     expect(countDailyPanelNavBadge(ws)).toBe(0);
   });
 
+  it("countDailyPanelNavBadge liczy informację z opcją panelu Dziś", () => {
+    const today = new Date(2026, 4, 15);
+    const ws = buildSummaryWorkspace(
+      [],
+      [
+        {
+          id: "info-via-panel",
+          supplier_id: "a",
+          sales_person_id: "sp1",
+          symbol: "X",
+          products: "Towar",
+          quantity: "-",
+          delivered_quantity: "-",
+          order_type: "Glowne",
+          request_kind: "informacja",
+          informacja_queue_via_daily_panel: true,
+          status: "Nowe",
+          action_at: null,
+          ordered_at: null,
+          delivery_at: null,
+          supplier: { id: "a", name: "A" } as never,
+          sales_person: { id: "sp1", name: "Jan" } as never,
+        },
+      ],
+      today,
+      [{ id: "sp1", name: "Jan" }]
+    );
+    expect(countDailyPanelNavBadge(ws)).toBe(1);
+    expect(ws.forSomeoneLeft.length).toBe(1);
+    expect(ws.informacjaLeft.length).toBe(0);
+  });
+
   it("countDailyPanelNavBadge nie liczy samych prośb informacyjnych", () => {
     const today = new Date(2026, 4, 15);
     const ws = buildSummaryWorkspace(

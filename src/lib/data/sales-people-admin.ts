@@ -4,6 +4,7 @@ import {
   filterRowsByGroupScope,
   getManagedGroupIdsForUser,
 } from "@/lib/data/sales-group-access";
+import { isManagedSalesPersonEmail } from "@/lib/sales/sales-person-catalog";
 
 export type SalesPersonAdminRow = {
   id: string;
@@ -80,4 +81,21 @@ export async function fetchSalesPeopleAdminForUser(
   const rows = await fetchSalesPeopleAdmin();
   const scope = await getManagedGroupIdsForUser(user);
   return filterRowsByGroupScope(rows, scope);
+}
+
+/**
+ * Handlowcy z Admin → Handlowcy — bez wpisów z importu historii
+ * (np. „Kamil / Nazwa kliniki”, e-mail @import.historia.mikran).
+ */
+export async function fetchSalesPeopleForPicker(): Promise<
+  Array<{ id: string; name: string; email: string }>
+> {
+  const rows = await fetchSalesPeopleAdmin();
+  return rows
+    .filter((p) => isManagedSalesPersonEmail(p.email))
+    .map((p) => ({
+      id: p.id,
+      name: p.name,
+      email: p.email,
+    }));
 }

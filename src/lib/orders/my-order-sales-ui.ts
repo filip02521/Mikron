@@ -92,7 +92,8 @@ export function summarizeMyOrdersInbox(rows: MyOrderRow[]): MyOrdersInboxSummary
       s.zamowioneCount++;
     } else if (
       row.kind === "informacja" &&
-      row.statusTitle === "Oczekuje na dostawę"
+      (row.statusTitle === "Oczekuje na dostawę" ||
+        row.statusTitle === "Zamówione — czekamy na magazyn")
     ) {
       s.availabilityPendingCount++;
     }
@@ -197,6 +198,15 @@ export function enrichMyOrderSalesUi(row: MyOrderRow): MyOrderSalesUi {
       headline: "Powiadomimy, gdy towar przyjedzie",
       headlineTone: "neutral",
       subline: null,
+      sortPriority: 9,
+    };
+  }
+
+  if (row.statusTitle === "Zamówione — czekamy na magazyn") {
+    return {
+      headline: "Zamówione u dostawcy",
+      headlineTone: "info",
+      subline: "Powiadomimy e-mailem, gdy towar będzie na magazynie",
       sortPriority: 9,
     };
   }

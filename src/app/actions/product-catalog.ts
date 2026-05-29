@@ -38,6 +38,10 @@ import {
   type ZdIndexJobState,
 } from "@/lib/subiekt/zd-index-job";
 import {
+  fetchZdUnmappedKhReport,
+  type ZdUnmappedKhReport,
+} from "@/lib/subiekt/zd-unmapped-kh";
+import {
   readZdImportAllSuppliersJobState,
   startZdImportAllSuppliersJob,
   stopZdImportAllSuppliersJob,
@@ -549,6 +553,11 @@ export async function actionStopZdIndexJob() {
   const next = await stopZdIndexJob();
   revalidatePath("/admin/produkty");
   return next;
+}
+
+export async function actionListZdUnmappedKh(): Promise<ZdUnmappedKhReport> {
+  await requireAdmin();
+  return fetchZdUnmappedKhReport();
 }
 
 export async function actionReadZdImportAllSuppliersJob(): Promise<ZdImportAllSuppliersJobState | null> {

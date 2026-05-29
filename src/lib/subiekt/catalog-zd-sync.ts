@@ -10,6 +10,7 @@ import {
   markZdCatalogImported,
 } from "@/lib/subiekt/zd-catalog-import";
 import { warsawNowParts } from "@/lib/time/warsaw";
+import { resolveKhLabelForZdDocument } from "@/lib/subiekt/kontrahent-from-document";
 import type { SubiektDocument } from "@/lib/subiekt/types";
 
 export const CATALOG_ZD_SYNC_STATE_KEY = "catalog_zd_sync_state";
@@ -151,19 +152,8 @@ async function writeCatalogZdSyncState(state: CatalogZdSyncState): Promise<void>
 }
 
 async function loadSupplierByKh(): Promise<Map<number, string>> {
-  const supabase = createAdminClient();
-  const { data: suppliersRaw, error } = await supabase
-    .from("suppliers")
-    .select("id, subiekt_kh_id")
-    .not("subiekt_kh_id", "is", null);
-  if (error) throw new Error(error.message);
-  const supplierByKh = new Map<number, string>();
-  for (const s of suppliersRaw ?? []) {
-    const kh = Number((s as { subiekt_kh_id: number }).subiekt_kh_id);
-    if (!Number.isFinite(kh) || kh <= 0) continue;
-    supplierByKh.set(Math.trunc(kh), String((s as { id: string }).id));
-  }
-  return supplierByKh;
+  const { loadSupplierIdByKhMap } = await import("@/lib/data/supplier-subiekt-kh");
+  return loadSupplierIdByKhMap();
 }
 
 async function countPendingImports(dataOd: string): Promise<number> {
@@ -221,6 +211,7 @@ async function indexBatch(
     const supplierId = matchedKhId != null ? supplierByKh.get(matchedKhId) ?? null : null;
     const verified = khIds.length > 0;
     const storedKhId = matchedKhId ?? khIds[0] ?? null;
+    const khLabel = resolveKhLabelForZdDocument(doc, storedKhId, khIds);
 
     if (!verified) indexUnverifiable += 1;
     else if (supplierId) indexMapped += 1;
@@ -232,6 +223,7 @@ async function indexBatch(
         dok_nr_pelny: doc.dok_NrPelny ?? null,
         dok_data_wyst: doc.dok_DataWyst ?? null,
         subiekt_kh_id: storedKhId,
+        subiekt_kh_label: khLabel,
         supplier_id: supplierId,
         verified,
         processed_at: nowIso(),

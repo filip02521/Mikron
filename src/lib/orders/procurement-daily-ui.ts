@@ -30,7 +30,7 @@ export type DailyInboxSummary = {
   hiddenScheduleCount: number;
 };
 
-/** Licznik menu: tylko otwarte prośby indywidualne (zamówienie, status Nowe) — bez harmonogramu i informacji. */
+/** Licznik menu: prośby w kolejce Dziś (zamówienia + informacja z opcją panelu) — bez harmonogramu i informacji w Wyjątkach. */
 export function countDailyPanelNavBadge(workspace: SummaryWorkspaceData): number {
   return summarizeDailyInbox(workspace).forSomeoneLineCount;
 }
@@ -148,13 +148,16 @@ export function enrichForSomeoneGroup(
   const count = group.lines.length;
   const countLabel =
     count === 1 ? "1 produkt" : count < 5 ? `${count} produkty` : `${count} produktów`;
+  const infoViaPanel = group.lines.some((l) => l.informacjaViaPanel);
 
   return {
     headline: group.person,
     subline: `${group.supplierName} · ${countLabel}`,
-    headlineTone: "neutral",
-    statusTitle: "Do zamówienia",
-    statusDetail: null,
+    headlineTone: infoViaPanel ? "info" : "neutral",
+    statusTitle: infoViaPanel ? "Info → magazyn po ZD" : "Do zamówienia",
+    statusDetail: infoViaPanel
+      ? "Po Główne/Uzupełniające trafi do kolejki informacji w magazynie."
+      : null,
   };
 }
 

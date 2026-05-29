@@ -100,6 +100,7 @@ describe("summarizeMyOrdersInbox", () => {
           request_kind: "informacja",
           status: "Nowe",
           quantity: "-",
+          ordered_at: null,
         },
       ],
       []

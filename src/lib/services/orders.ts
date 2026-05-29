@@ -274,6 +274,7 @@ export async function batchAddIndividualOrders(
     requestKind?: IndividualRequestKind;
     clientName?: string;
     subiektTwId?: number | null;
+    informacjaQueueViaDailyPanel?: boolean;
   }>,
   createdBy?: string,
   options?: { submitMode?: "sales" | "procurement" }
@@ -368,6 +369,8 @@ export async function batchAddIndividualOrders(
         assertProcurementEntryComplete({
           ...draft,
           requestKind: kind,
+          informacjaQueueViaDailyPanel:
+            kind === "informacja" && Boolean(e.informacjaQueueViaDailyPanel),
         });
         status = procurementStatusForEntry({ ...draft, requestKind: kind });
         complete++;
@@ -403,6 +406,8 @@ export async function batchAddIndividualOrders(
         subiekt_tw_id:
           draft.subiektTwId != null && draft.subiektTwId > 0 ? draft.subiektTwId : null,
         mikran_code: sanitized.mikranCode?.trim() || null,
+        informacja_queue_via_daily_panel:
+          kind === "informacja" && Boolean(e.informacjaQueueViaDailyPanel),
       };
     }));
     const { error } = await supabase.from("individual_orders").insert(rows);
@@ -761,36 +766,49 @@ export async function processIndividualFromSummary(
   const supabase = createAdminClient();
   const { data: statusRows } = await supabase
     .from("individual_orders")
-    .select("id, request_kind, status, supplier_id, symbol, products, quantity")
+    .select(
+      "id, request_kind, status, supplier_id, symbol, products, quantity, informacja_queue_via_daily_panel"
+    )
     .in("id", orderIds);
 
-  const zamowienieNowe = (statusRows ?? []).filter(
-    (r) => (r.request_kind ?? "zamowienie") === "zamowienie" && r.status === "Nowe"
-  );
+  const processableNowe = (statusRows ?? []).filter((r) => {
+    if (r.status !== "Nowe") return false;
+    const kind = r.request_kind ?? "zamowienie";
+    if (kind === "zamowienie") return true;
+    return kind === "informacja" && r.informacja_queue_via_daily_panel === true;
+  });
 
-  const incomplete = zamowienieNowe.filter(
-    (r) =>
-      !isProcurementDraftReady({
-        supplierId: r.supplier_id ?? undefined,
-        symbol: r.symbol ?? undefined,
-        product: r.products ?? undefined,
-        quantity: r.quantity ?? undefined,
-        requestKind: (r.request_kind ?? "zamowienie") as "zamowienie" | "informacja",
-      })
-  );
+  const incomplete = processableNowe.filter((r) => {
+    const kind = (r.request_kind ?? "zamowienie") as IndividualRequestKind;
+    const draft = {
+      supplierId: r.supplier_id ?? undefined,
+      symbol: r.symbol ?? undefined,
+      product: r.products ?? undefined,
+      quantity: r.quantity ?? undefined,
+      requestKind: kind,
+    };
+    if (kind === "zamowienie") return !isProcurementDraftReady(draft);
+    return assessRequestCompleteness({ ...draft, requestKind: "informacja" }) !== "complete";
+  });
   if (incomplete.length && action !== "ANULOWANO") {
+    const hasInformacja = incomplete.some(
+      (r) => (r.request_kind ?? "zamowienie") === "informacja"
+    );
+    const fieldsHint = hasInformacja
+      ? "dostawca i produkt"
+      : "dostawca, produkt i ilość";
     throw new Error(
       incomplete.length === 1
-        ? "Ta pozycja nie ma kompletnych danych (dostawca, produkt, ilość) — użyj edycji prośby lub uzupełnij w widoku Weryfikacja."
-        : `${incomplete.length} pozycji nie ma kompletnych danych — użyj edycji lub widoku Weryfikacja przed oznaczeniem jako Główne/Uzupełniające.`
+        ? `Ta pozycja nie ma kompletnych danych (${fieldsHint}) — użyj edycji prośby lub uzupełnij w widoku Weryfikacja.`
+        : `${incomplete.length} pozycji nie ma kompletnych danych (${fieldsHint}) — użyj edycji lub widoku Weryfikacja przed oznaczeniem jako Główne/Uzupełniające.`
     );
   }
 
-  const allowedIds = new Set(zamowienieNowe.map((r) => r.id));
+  const allowedIds = new Set(processableNowe.map((r) => r.id));
 
   if (!allowedIds.size) {
     throw new Error(
-      "Brak prośb do obsłużenia — wszystkie są już zamknięte lub to nie jest zamówienie."
+      "Brak prośb do obsłużenia — wszystkie są już zamknięte lub nie kwalifikują się do Główne/Uzupełniające."
     );
   }
 
@@ -812,7 +830,23 @@ export async function processIndividualFromSummary(
     if (action === "ANULOWANO") {
       await supabase
         .from("individual_orders")
-        .update({ status: "Anulowane" })
+        .update({ status: "Anulowane", informacja_queue_via_daily_panel: false })
+        .eq("id", id);
+      continue;
+    }
+
+    if (
+      order.request_kind === "informacja" &&
+      order.informacja_queue_via_daily_panel
+    ) {
+      await supabase
+        .from("individual_orders")
+        .update({
+          informacja_queue_via_daily_panel: false,
+          order_type: orderType,
+          ordered_at: batchOrderedAt,
+          placement_group_id: placementGroupId,
+        })
         .eq("id", id);
       continue;
     }

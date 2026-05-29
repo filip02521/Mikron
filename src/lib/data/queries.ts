@@ -195,6 +195,7 @@ export async function fetchInformacjaQueue(): Promise<IndividualOrder[]> {
     .select("*, supplier:suppliers(*), sales_person:sales_people(*)")
     .eq("request_kind", "informacja")
     .eq("status", "Nowe")
+    .eq("informacja_queue_via_daily_panel", false)
     .order("action_at", { ascending: true });
   if (error) throw new Error(error.message);
   return sortInformacjaQueueByProduct(normalizeIndividualOrders(data ?? []));
@@ -318,9 +319,10 @@ export async function fetchSummaryWorkspace(options?: { salesPersonId?: string }
     const allowed = await fetchSupplierIdsForSalesPerson(options.salesPersonId);
     schedules = allSchedules.filter((s) => allowed.has(s.id));
   }
+  const { fetchSalesPeopleForPicker } = await import("@/lib/data/sales-people-admin");
   const [allNewOrders, salesPeople, statsRows] = await Promise.all([
     fetchIndividualOrders({ hideSalesAcknowledged: false }),
-    fetchSalesPeople(),
+    fetchSalesPeopleForPicker(),
     fetchDeliveryStats(),
   ]);
   const newOrders = options?.salesPersonId
@@ -352,7 +354,7 @@ export async function fetchSummaryWorkspace(options?: { salesPersonId?: string }
       location: s.location,
       vacationNote: s.schedule?.vacation_note ?? null,
     })),
-    salesPeople: salesPeople.map((p) => ({ id: p.id, name: p.name })),
+    salesPeople,
     statsBySupplierId,
     supplierStatsMode,
   };
@@ -368,7 +370,13 @@ export async function fetchSalesPeople() {
   if (!hasSupabaseConfig()) return [];
   const supabase = createAdminClient();
   const { data } = await supabase.from("sales_people").select("*").order("name");
-  return data ?? [];
+  const rows = data ?? [];
+  const byId = new Map<string, (typeof rows)[number]>();
+  for (const row of rows) {
+    if (!row.id || byId.has(row.id)) continue;
+    byId.set(row.id, row);
+  }
+  return [...byId.values()];
 }
 
 export async function fetchVacations() {

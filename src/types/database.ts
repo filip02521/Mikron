@@ -80,6 +80,8 @@ export interface IndividualOrder {
   delivered_quantity: string;
   order_type: OrderType;
   request_kind: IndividualRequestKind;
+  /** Informacja: najpierw panel Dziś (Główne/Uzupełniające), potem kolejka magazynu. */
+  informacja_queue_via_daily_panel?: boolean;
   status: IndividualOrderStatus;
   action_at: string;
   /** Moment oznaczenia Główne/Uzupełniające — start liczenia czasu realizacji. */

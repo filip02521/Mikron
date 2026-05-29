@@ -1,11 +1,12 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { actionAddIndividualOrders } from "@/app/actions/admin";
 import { Button } from "@/components/ui/Button";
 import { Field, Select } from "@/components/ui/Field";
 import { SupplierPickerField } from "@/components/orders/SupplierPickerField";
+import { ProcurementFormReadiness } from "@/components/orders/ProcurementFormReadiness";
 import { ModalShell } from "@/components/ui/ModalShell";
 import { RequestKindPicker } from "@/components/ui/RequestKindPicker";
 import type { IndividualRequestKind } from "@/types/database";
@@ -15,7 +16,6 @@ import {
   RequestProductLinesEditor,
   initialProductLines,
 } from "@/components/orders/RequestProductLinesEditor";
-import { RequestFormStatusPanel } from "@/components/orders/RequestFormStatusPanel";
 import type { SubiektFeedback } from "@/lib/subiekt/feedback";
 import { toAppSupplierRefs } from "@/lib/subiekt/match-supplier";
 
@@ -28,12 +28,14 @@ export function QuickOrderModal({
   open: boolean;
   onClose: () => void;
   suppliers: { id: string; name: string; subiekt_kh_id?: number | null }[];
-  salesPeople: { id: string; name: string }[];
+  /** Wyłącznie karty z Admin → Handlowcy (fetchSalesPeopleForPicker). */
+  salesPeople: { id: string; name: string; email: string }[];
 }) {
   const router = useRouter();
   const [pending, start] = useTransition();
   const [pendingMessage, setPendingMessage] = useState<string | null>(null);
   const [requestKind, setRequestKind] = useState<IndividualRequestKind>("zamowienie");
+  const [informacjaViaDailyPanel, setInformacjaViaDailyPanel] = useState(false);
   const [supplierId, setSupplierId] = useState("");
   const [salesPersonId, setSalesPersonId] = useState("");
   const [lines, setLines] = useState(initialProductLines);
@@ -54,6 +56,19 @@ export function QuickOrderModal({
 
   const supplierRefs = toAppSupplierRefs(suppliers);
 
+  const readinessLines = useMemo(
+    () =>
+      lines.map((l) => ({
+        symbol: l.symbol,
+        mikranCode: l.mikranCode,
+        product: l.product,
+        quantity: l.quantity,
+        supplierId,
+        subiektTwId: l.subiektTwId,
+      })),
+    [lines, supplierId]
+  );
+
   const reset = () => {
     setSupplierId("");
     setSalesPersonId("");
@@ -64,6 +79,7 @@ export function QuickOrderModal({
     setProductLineFeedback(null);
     setConfigFeedback(null);
     setResolvingSupplier(false);
+    setInformacjaViaDailyPanel(false);
   };
 
   const submit = () => {
@@ -83,6 +99,8 @@ export function QuickOrderModal({
         quantity: requestKind === "informacja" ? undefined : l.quantity,
         requestKind,
         subiektTwId: l.subiektTwId,
+        informacjaQueueViaDailyPanel:
+          requestKind === "informacja" && informacjaViaDailyPanel,
       }));
     if (!entries.length) {
       setFormNotice({ text: "Dodaj co najmniej jeden produkt z opisem.", tone: "error" });
@@ -111,6 +129,8 @@ export function QuickOrderModal({
             quantity: e.quantity,
             requestKind,
             subiektTwId: e.subiektTwId,
+            informacjaQueueViaDailyPanel:
+              requestKind === "informacja" && informacjaViaDailyPanel,
           },
           entries.length > 1 ? `Pozycja ${lineNo}` : undefined
         );
@@ -153,7 +173,7 @@ export function QuickOrderModal({
       tier="raised"
       loadingMessage={pendingMessage}
       disableBackdropClose={pending}
-      bodyClassName="space-y-4 px-5 py-4 sm:px-6"
+      bodyClassName="space-y-3 px-5 py-4 sm:px-6"
       footer={
         <>
           <Button variant="secondary" onClick={onClose} disabled={pending}>
@@ -165,9 +185,54 @@ export function QuickOrderModal({
         </>
       }
     >
-      <RequestKindPicker value={requestKind} onChange={setRequestKind} compact />
+      <RequestKindPicker
+        value={requestKind}
+        onChange={(k) => {
+          setRequestKind(k);
+          if (k !== "informacja") setInformacjaViaDailyPanel(false);
+        }}
+        compact
+      />
+
+      {requestKind === "informacja" ? (
+        <label className="flex cursor-pointer items-start gap-2 rounded-lg border border-sky-200 bg-sky-50/80 px-3 py-2.5 text-xs text-slate-700">
+          <input
+            type="checkbox"
+            className="mt-0.5"
+            checked={informacjaViaDailyPanel}
+            onChange={(e) => setInformacjaViaDailyPanel(e.target.checked)}
+            disabled={pending}
+          />
+          <span>
+            <span className="font-medium text-slate-900">
+              Najpierw zamów u dostawcy z panelu dziennego
+            </span>
+            <span className="mt-0.5 block text-slate-600">
+              Pozycja trafi do kolejki „Dla kogoś” (Główne / Uzupełniające). Dopiero po zamówieniu
+              pojawi się w magazynie i na regale — bez tego od razu idzie do kolejki informacji.
+            </span>
+          </span>
+        </label>
+      ) : null}
 
       <div className="grid gap-3 sm:grid-cols-2">
+        <Field
+          label="Dla kogo (handlowiec)"
+          hint={`Lista z Admin → Handlowcy (${salesPeople.length} ${salesPeople.length === 1 ? "osoba" : "osób"})`}
+        >
+          <Select
+            value={salesPersonId}
+            disabled={pending || salesPeople.length === 0}
+            onChange={(e) => setSalesPersonId(e.target.value)}
+          >
+            <option value="">— wybierz handlowca —</option>
+            {salesPeople.map((p) => (
+              <option key={p.id} value={p.id}>
+                {p.name}
+              </option>
+            ))}
+          </Select>
+        </Field>
         <Field label="Dostawca">
           <SupplierPickerField
             suppliers={suppliers}
@@ -180,16 +245,6 @@ export function QuickOrderModal({
             onSubiektFeedbackChange={setSupplierPickerFeedbacks}
           />
         </Field>
-        <Field label="Dla kogo (handlowiec)">
-          <Select value={salesPersonId} onChange={(e) => setSalesPersonId(e.target.value)}>
-            <option value="">Wybierz…</option>
-            {salesPeople.map((p) => (
-              <option key={p.id} value={p.id}>
-                {p.name}
-              </option>
-            ))}
-          </Select>
-        </Field>
       </div>
 
       <RequestProductLinesEditor
@@ -199,9 +254,9 @@ export function QuickOrderModal({
         appearance="default"
         suppliers={supplierRefs}
         unifiedFeedback
-        onSupplierResolved={({ supplierId }) => {
+        onSupplierResolved={({ supplierId: id }) => {
           setSupplierSubiektFeedback(null);
-          setSupplierId(supplierId);
+          setSupplierId(id);
         }}
         onSupplierMappingMissing={() => setSupplierId("")}
         onSupplierResolveFeedback={setSupplierSubiektFeedback}
@@ -210,25 +265,20 @@ export function QuickOrderModal({
         onResolvingSupplierChange={setResolvingSupplier}
       />
 
-      <RequestFormStatusPanel
+      <ProcurementFormReadiness
+        salesPersonId={salesPersonId}
+        supplierId={supplierId}
+        lines={readinessLines}
         requestKind={requestKind}
-        draft={{
-          supplierId,
-          symbol: lines.find((l) => l.symbol.trim())?.symbol,
-          mikranCode: lines.find((l) => l.mikranCode.trim())?.mikranCode,
-          product: lines.find((l) => l.product.trim())?.product,
-          quantity: lines.find((l) => l.quantity.trim())?.quantity,
-          requestKind,
-        }}
+        informacjaViaDailyPanel={informacjaViaDailyPanel}
+        formMessage={formNotice}
+        resolvingSupplier={resolvingSupplier}
         subiektFeedbacks={[
           configFeedback,
           ...supplierPickerFeedbacks,
           supplierSubiektFeedback,
           productLineFeedback,
         ]}
-        resolvingSupplier={resolvingSupplier}
-        formMessage={formNotice}
-        audience="procurement"
       />
     </ModalShell>
   );

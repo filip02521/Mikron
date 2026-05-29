@@ -7,6 +7,8 @@ import type {
   ProductCatalogRow,
 } from "@/lib/data/product-catalog-queries";
 import { CatalogZdSyncStatusPanel } from "@/components/admin/CatalogZdSyncStatusPanel";
+import { ZdUnmappedKhPanel } from "@/components/admin/ZdUnmappedKhPanel";
+import type { ZdUnmappedKhReport } from "@/lib/subiekt/zd-unmapped-kh";
 import { ProductCatalogSupplierAssign } from "@/components/admin/ProductCatalogSupplierAssign";
 import { Card, CardHeader } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
@@ -34,6 +36,7 @@ import {
   actionStartZdIndexJob,
   actionStopZdIndexJob,
   actionTickZdIndexJob,
+  actionListZdUnmappedKh,
   actionReadZdImportAllSuppliersJob,
   actionStartZdImportAllSuppliersJob,
   actionStopZdImportAllSuppliersJob,
@@ -73,6 +76,8 @@ export function ProductsCatalogAdminClient({
     lastCron: import("@/lib/services/cron-run-log").CronRunPayload | null;
   } | null>(null);
   const [indexState, setIndexState] = useState<any | null>(null);
+  const [zdUnmapped, setZdUnmapped] = useState<ZdUnmappedKhReport | null>(null);
+  const zdUnmappedFetchRef = useRef(false);
   const [indexRunning, setIndexRunning] = useState(false);
   const indexTimer = useRef<number | null>(null);
   const [allState, setAllState] = useState<any | null>(null);
@@ -181,11 +186,32 @@ export function ProductsCatalogAdminClient({
     });
   };
 
+  const refreshZdUnmapped = () => {
+    if (zdUnmappedFetchRef.current) return;
+    zdUnmappedFetchRef.current = true;
+    start(async () => {
+      try {
+        const report = await actionListZdUnmappedKh();
+        setZdUnmapped(report);
+      } catch (e) {
+        setToast({
+          text: e instanceof Error ? e.message : "Błąd listy kontrahentów bez dostawcy",
+          tone: "error",
+        });
+      } finally {
+        zdUnmappedFetchRef.current = false;
+      }
+    });
+  };
+
   const refreshIndexState = () => {
     start(async () => {
       try {
         const state = await actionReadZdIndexJob();
         setIndexState(state);
+        if (state?.status !== "running") {
+          stopIndexLoop();
+        }
       } catch (e) {
         setToast({ text: e instanceof Error ? e.message : "Błąd odczytu indeksu ZD", tone: "error" });
       }
@@ -211,11 +237,12 @@ export function ProductsCatalogAdminClient({
 
   useEffect(() => {
     refreshIndexState();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  useEffect(() => {
     refreshAllState();
+    return () => {
+      stopIndexLoop();
+      stopTickLoop();
+      stopAllLoop();
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -461,8 +488,13 @@ export function ProductsCatalogAdminClient({
     try {
       const s = await actionTickZdIndexJob({ maxDocs: 3 });
       setIndexState(s);
-      if (s?.status === "done" || s?.status === "failed" || s?.status === "idle") {
+      const indexFinished =
+        s?.status === "done" || s?.status === "failed" || s?.status === "idle";
+      if (indexFinished) {
         stopIndexLoop();
+        if (zdUnmapped != null) {
+          refreshZdUnmapped();
+        }
       }
     } catch (e) {
       stopIndexLoop();
@@ -639,7 +671,7 @@ export function ProductsCatalogAdminClient({
         <div className="mt-4 rounded-xl border border-slate-200 bg-white p-4">
           <p className="text-sm font-semibold text-slate-900">Indeks ZD → dostawca</p>
           <p className="mt-0.5 text-xs text-slate-600">
-            Jednorazowo przechodzi po wszystkich ZD i przypisuje numer dokumentu do dostawcy w aplikacji (po `subiekt_kh_id`).
+            Jednorazowo przechodzi po wszystkich ZD i przypisuje numer dokumentu do dostawcy (główne i dodatkowe `kh_Id` w kartotece dostawcy).
           </p>
           <div className="mt-2 flex flex-wrap items-end gap-2">
             <div className="min-w-[10rem]">
@@ -714,6 +746,12 @@ export function ProductsCatalogAdminClient({
               <p className="mt-2 text-[11px] text-red-700">Błąd: {indexState.lastError}</p>
             ) : null}
           </div>
+
+          <ZdUnmappedKhPanel
+            report={zdUnmapped}
+            loading={pending}
+            onRefresh={refreshZdUnmapped}
+          />
 
           <hr className="my-4 border-slate-200" />
 

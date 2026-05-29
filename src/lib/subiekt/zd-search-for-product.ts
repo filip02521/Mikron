@@ -1,6 +1,7 @@
 import type { SubiektListParams } from "@/lib/subiekt/api";
 import { defaultZdSearchDataOd } from "@/lib/subiekt/subiekt-runtime-cache";
 import { parseSubiektKhId } from "@/lib/subiekt/parse-kh-id";
+import { collectKhIdsForSupplierRef } from "@/lib/data/supplier-subiekt-kh";
 import { dedupeAppSuppliersByKhId } from "@/lib/subiekt/dedupe-suppliers-by-kh";
 import type { AppSupplierRef } from "@/lib/subiekt/match-supplier";
 import type { SubiektProduct } from "@/lib/subiekt/types";
@@ -176,9 +177,7 @@ export function zdSearchPlansForProductSupplierLookup(
   const scopedSuppliers = dedupeAppSuppliersByKhId(appSuppliers);
   const linkedKhIds = [
     ...new Set(
-      scopedSuppliers
-        .map((s) => parseSubiektKhId(s.subiektKhId))
-        .filter((id): id is number => id != null)
+      scopedSuppliers.flatMap((s) => collectKhIdsForSupplierRef(s))
     ),
   ];
 

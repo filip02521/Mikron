@@ -23,7 +23,14 @@ export function ProcurementRequestLine({
     >
       <p className="flex items-start gap-1.5 font-medium text-slate-900">
         <ProductSourceBadge fromSubiekt={line.fromSubiekt} className="mt-0.5 size-5" />
-        <span className="min-w-0 flex-1">{line.products}</span>
+        <span className="min-w-0 flex-1">
+          {line.products}
+          {line.informacjaViaPanel ? (
+            <span className="ml-1.5 rounded bg-sky-100 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-sky-900">
+              Info → magazyn po ZD
+            </span>
+          ) : null}
+        </span>
       </p>
       {hasMeta ? (
         <p className="mt-0.5 text-slate-500">
