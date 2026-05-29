@@ -11,6 +11,8 @@ import { Alert } from "@/components/ui/Alert";
 import { cn } from "@/lib/cn";
 import { controlFocusClass } from "@/lib/ui/ontime-theme";
 import type { SalesNote, SalesNoteColor } from "@/types/database";
+import { formatFollowUpLabel, isFollowUpDue } from "@/lib/sales/notepad-follow-up";
+import { Badge } from "@/components/ui/Badge";
 import { NoteColorPicker } from "./NoteColorPicker";
 import { NOTE_COLOR_CARD } from "./note-styles";
 
@@ -30,6 +32,7 @@ function NoteCard({
   const [title, setTitle] = useState(note.title ?? "");
   const [color, setColor] = useState(note.color);
   const [pinned, setPinned] = useState(note.pinned);
+  const [followUpDraft, setFollowUpDraft] = useState(note.follow_up_at?.slice(0, 10) ?? "");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -38,6 +41,7 @@ function NoteCard({
     setTitle(note.title ?? "");
     setColor(note.color);
     setPinned(note.pinned);
+    setFollowUpDraft(note.follow_up_at?.slice(0, 10) ?? "");
   }, [note]);
 
   async function save() {
@@ -86,6 +90,22 @@ function NoteCard({
     }
   }
 
+  async function saveFollowUp(nextValue?: string) {
+    if (readOnly) return;
+    const value = (nextValue ?? followUpDraft).trim();
+    const normalized = value || null;
+    if (normalized === (note.follow_up_at?.slice(0, 10) ?? null)) return;
+    try {
+      await actionUpdateSalesNote(note.id, { follow_up_at: normalized });
+      onUpdated?.({ ...note, follow_up_at: normalized });
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Nie udało się zapisać przypomnienia.");
+    }
+  }
+
+  const followUpDue = isFollowUpDue(note.follow_up_at);
+  const followUpLabel = formatFollowUpLabel(note.follow_up_at);
+
   async function archive() {
     setError(null);
     try {
@@ -105,7 +125,8 @@ function NoteCard({
       className={cn(
         "flex flex-col rounded-xl border p-4 shadow-sm",
         NOTE_COLOR_CARD[displayColor] ?? NOTE_COLOR_CARD.default,
-        pinned && !editing ? "ring-1 ring-indigo-200/80" : undefined
+        pinned && !editing ? "ring-1 ring-indigo-200/80" : undefined,
+        followUpDue && !editing ? "ring-1 ring-violet-200/80" : undefined
       )}
     >
       {editing && !readOnly ? (
@@ -146,14 +167,52 @@ function NoteCard({
               Przypięta
             </p>
           ) : null}
+          {followUpDue ? (
+            <Badge variant="purple" className="mb-1 text-[10px]">
+              Follow-up
+            </Badge>
+          ) : null}
           {displayTitle?.trim() ? (
             <h3 className="mb-1 text-sm font-semibold text-slate-900">{displayTitle}</h3>
           ) : null}
           <p className="whitespace-pre-wrap text-sm leading-relaxed text-slate-800">
             {displayBody}
           </p>
+          {followUpLabel ? (
+            <p className={cn("mt-2 text-xs", followUpDue ? "font-semibold text-violet-800" : "text-slate-500")}>
+              Przypomnienie {followUpLabel}
+            </p>
+          ) : null}
           {!readOnly ? (
             <div className="mt-3 space-y-3 border-t border-black/5 pt-3">
+              <div className="flex flex-wrap items-center gap-2 text-xs text-slate-600">
+                <label htmlFor={`note-follow-up-${note.id}`} className="font-medium">
+                  Przypomnij
+                </label>
+                <input
+                  id={`note-follow-up-${note.id}`}
+                  type="date"
+                  value={followUpDraft}
+                  onChange={(e) => setFollowUpDraft(e.target.value)}
+                  onBlur={() => void saveFollowUp()}
+                  className={cn(
+                    "rounded-md border border-slate-200/80 bg-white/70 px-2 py-1 text-sm",
+                    controlFocusClass
+                  )}
+                />
+                {followUpDraft ? (
+                  <button
+                    type="button"
+                    className="text-slate-500 hover:text-slate-800"
+                    onClick={() => {
+                      setFollowUpDraft("");
+                      void saveFollowUp("");
+                    }}
+                  >
+                    Wyczyść
+                  </button>
+                ) : null}
+              </div>
               <NoteColorPicker value={displayColor} onChange={(c) => void changeColor(c)} />
               <div className="flex flex-wrap gap-2">
                 <Button size="sm" variant="ghost" onClick={() => setEditing(true)}>
@@ -218,6 +277,9 @@ export function NotesSection({
 
   const sorted = [...notes].sort((a, b) => {
     if (a.pinned !== b.pinned) return a.pinned ? -1 : 1;
+    const followA = isFollowUpDue(a.follow_up_at);
+    const followB = isFollowUpDue(b.follow_up_at);
+    if (followA !== followB) return followA ? -1 : 1;
     return b.updated_at.localeCompare(a.updated_at);
   });
 

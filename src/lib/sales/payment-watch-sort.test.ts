@@ -16,6 +16,7 @@ function watch(partial: Partial<SalesPaymentWatch> & Pick<SalesPaymentWatch, "id
     note: null,
     line_summary: null,
     subiekt_snapshot: null,
+    follow_up_at: null,
     settled_at: null,
     archived_at: null,
     created_at: "2026-05-01T00:00:00Z",

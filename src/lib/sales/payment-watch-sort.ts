@@ -1,3 +1,4 @@
+import { isFollowUpDue, followUpTimestamp } from "@/lib/sales/notepad-follow-up";
 import type { SalesPaymentWatch } from "@/types/database";
 
 function dueTimestamp(watch: SalesPaymentWatch): number | null {
@@ -43,6 +44,16 @@ export function sortPaymentWatches(
 ): SalesPaymentWatch[] {
   const now = todayStart(referenceMs);
   return [...watches].sort((a, b) => {
+    const followUpDueA = isFollowUpDue(a.follow_up_at, referenceMs);
+    const followUpDueB = isFollowUpDue(b.follow_up_at, referenceMs);
+    if (followUpDueA !== followUpDueB) return followUpDueA ? -1 : 1;
+
+    const followA = followUpTimestamp(a.follow_up_at);
+    const followB = followUpTimestamp(b.follow_up_at);
+    if (followA != null && followB != null && followA !== followB) return followA - followB;
+    if (followA != null && followB == null) return -1;
+    if (followA == null && followB != null) return 1;
+
     const dueA = dueTimestamp(a);
     const dueB = dueTimestamp(b);
     const overdueA = dueA != null && dueA < now;

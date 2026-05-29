@@ -55,3 +55,23 @@ export async function countActivePaymentWatches(
   if (error) throw new Error(error.message);
   return count ?? 0;
 }
+
+/** Badge notatnika: aktywne ZK + notatki z follow-up na dziś/wcześniej. */
+export async function countNotepadNavBadge(salesPersonId: string): Promise<number> {
+  const supabase = createAdminClient();
+  const today = new Date().toISOString().slice(0, 10);
+
+  const [activeZk, notesDueRes] = await Promise.all([
+    countActivePaymentWatches(salesPersonId),
+    supabase
+      .from("sales_notes")
+      .select("id", { count: "exact", head: true })
+      .eq("sales_person_id", salesPersonId)
+      .is("archived_at", null)
+      .not("follow_up_at", "is", null)
+      .lte("follow_up_at", today),
+  ]);
+
+  if (notesDueRes.error) throw new Error(notesDueRes.error.message);
+  return activeZk + (notesDueRes.count ?? 0);
+}

@@ -7,8 +7,10 @@ import {
   partitionMyOrderRowsBySalesAction,
   type MyOrderInboxFilter,
 } from "@/lib/orders/my-order-inbox-filter";
+import { filterMyOrderRowsByClient } from "@/lib/orders/my-order-client-filter";
 import { sortMyOrderRows, summarizeMyOrdersInbox } from "@/lib/orders/my-order-sales-ui";
 import { INFORMACJA_FLOW_MY_ORDERS_HINT } from "@/lib/orders/informacja-flow-copy";
+import { Alert } from "@/components/ui/Alert";
 import { MyOrderArchiveSection } from "@/components/moje/MyOrderArchiveSection";
 import { MyOrderShipmentList } from "@/components/moje/MyOrderShipmentList";
 import { MyOrdersInboxSummary } from "@/components/moje/MyOrdersInboxSummary";
@@ -152,6 +154,7 @@ export function MojeOrdersView({
   pageDescription,
   headerActions,
   subiektAvailability,
+  initialClientQuery,
 }: {
   zamowienia: MyOrderRow[];
   informacje: MyOrderRow[];
@@ -165,19 +168,30 @@ export function MojeOrdersView({
   pageDescription?: string;
   headerActions?: React.ReactNode;
   subiektAvailability?: SubiektAvailability;
+  initialClientQuery?: string | null;
 }) {
   const [activeFilter, setActiveFilter] = useState<MyOrderInboxFilter | null>(null);
+  const clientQuery = initialClientQuery?.trim() || null;
 
   const sortedZamowienia = useMemo(() => sortMyOrderRows(zamowienia), [zamowienia]);
   const sortedInformacje = useMemo(() => sortMyOrderRows(informacje), [informacje]);
 
+  const clientFilteredZamowienia = useMemo(
+    () => filterMyOrderRowsByClient(sortedZamowienia, clientQuery),
+    [sortedZamowienia, clientQuery]
+  );
+  const clientFilteredInformacje = useMemo(
+    () => filterMyOrderRowsByClient(sortedInformacje, clientQuery),
+    [sortedInformacje, clientQuery]
+  );
+
   const filteredZamowienia = useMemo(
-    () => filterMyOrderRows(sortedZamowienia, activeFilter),
-    [sortedZamowienia, activeFilter]
+    () => filterMyOrderRows(clientFilteredZamowienia, activeFilter),
+    [clientFilteredZamowienia, activeFilter]
   );
   const filteredInformacje = useMemo(
-    () => filterMyOrderRows(sortedInformacje, activeFilter),
-    [sortedInformacje, activeFilter]
+    () => filterMyOrderRows(clientFilteredInformacje, activeFilter),
+    [clientFilteredInformacje, activeFilter]
   );
 
   const splitByAction = !activeFilter;
@@ -299,6 +313,14 @@ export function MojeOrdersView({
 
         {subiektAvailability ? (
           <SubiektStatusBar initial={subiektAvailability} embedded />
+        ) : null}
+
+        {clientQuery ? (
+          <div className="border-b border-slate-100 px-3 py-2 sm:px-4">
+            <Alert tone="info">
+              Filtr klienta: <span className="font-semibold">{clientQuery}</span>
+            </Alert>
+          </div>
         ) : null}
 
         <MyOrdersInboxSummary

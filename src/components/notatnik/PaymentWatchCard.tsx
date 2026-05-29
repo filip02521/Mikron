@@ -1,10 +1,12 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useState } from "react";
 import {
   actionRefreshPaymentWatchFromSubiekt,
   actionRestorePaymentWatch,
   actionSettlePaymentWatch,
+  actionUpdatePaymentWatchFollowUp,
   actionUpdatePaymentWatchNote,
 } from "@/app/actions/sales-notepad";
 import { Badge } from "@/components/ui/Badge";
@@ -22,6 +24,11 @@ import {
   extractPaymentWatchClientContact,
   normalizePhoneHref,
 } from "@/lib/sales/payment-watch-contact";
+import {
+  buildMojeClientLink,
+  formatFollowUpLabel,
+  isFollowUpDue,
+} from "@/lib/sales/notepad-follow-up";
 import { controlFocusClass } from "@/lib/ui/ontime-theme";
 import type { SalesPaymentWatch } from "@/types/database";
 
@@ -47,13 +54,16 @@ export function PaymentWatchCard({
   const [noteDraft, setNoteDraft] = useState(watch.note ?? "");
   const [savedNote, setSavedNote] = useState(watch.note ?? "");
   const [savingNote, setSavingNote] = useState(false);
+  const [followUpDraft, setFollowUpDraft] = useState(watch.follow_up_at?.slice(0, 10) ?? "");
+  const [savingFollowUp, setSavingFollowUp] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     setNoteDraft(watch.note ?? "");
     setSavedNote(watch.note ?? "");
     setNoteOpen(Boolean(watch.note?.trim()));
-  }, [watch.id, watch.note]);
+    setFollowUpDraft(watch.follow_up_at?.slice(0, 10) ?? "");
+  }, [watch.id, watch.note, watch.follow_up_at]);
 
   const subtitle = paymentWatchSubtitle(watch);
   const due = formatShortDate(watch.due_at);
@@ -62,6 +72,11 @@ export function PaymentWatchCard({
   const settledLabel = formatShortDate(watch.settled_at);
   const clientContact = extractPaymentWatchClientContact(watch);
   const isRealizedInSubiekt = subiektStatus === "Zrealizowane";
+  const followUpDue = !archived && isFollowUpDue(watch.follow_up_at);
+  const followUpLabel = formatFollowUpLabel(watch.follow_up_at);
+  const mojeClientHref = buildMojeClientLink(watch.sales_person_id, watch.client_label, {
+    preview: readOnly,
+  });
 
   async function markPaid() {
     if (readOnly || settling) return;
@@ -105,6 +120,24 @@ export function PaymentWatchCard({
     }
   }
 
+  async function saveFollowUp(nextValue?: string) {
+    if (readOnly || savingFollowUp || archived) return;
+    const value = (nextValue ?? followUpDraft).trim();
+    const normalized = value || null;
+    if (normalized === (watch.follow_up_at?.slice(0, 10) ?? null)) return;
+    setSavingFollowUp(true);
+    setError(null);
+    try {
+      const { watch: updated } = await actionUpdatePaymentWatchFollowUp(watch.id, normalized);
+      setFollowUpDraft(updated.follow_up_at?.slice(0, 10) ?? "");
+      onRefreshed?.(updated);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Nie udało się zapisać przypomnienia.");
+    } finally {
+      setSavingFollowUp(false);
+    }
+  }
+
   async function saveNote() {
     if (readOnly || savingNote) return;
     setSavingNote(true);
@@ -124,7 +157,10 @@ export function PaymentWatchCard({
   return (
     <Card
       padding={false}
-      className={cn(archived ? "opacity-80" : undefined, overdue ? "ring-2 ring-red-200/90" : undefined)}
+      className={cn(
+        archived ? "opacity-80" : undefined,
+        overdue ? "ring-2 ring-red-200/90" : followUpDue ? "ring-2 ring-violet-200/90" : undefined
+      )}
     >
       <div className="space-y-3 p-4 sm:p-5">
         <div className="flex flex-wrap items-start justify-between gap-3">
@@ -145,6 +181,11 @@ export function PaymentWatchCard({
                   {overdue ? (
                     <Badge variant="danger" className="text-[10px]">
                       Po terminie
+                    </Badge>
+                  ) : null}
+                  {followUpDue ? (
+                    <Badge variant="purple" className="text-[10px]">
+                      Follow-up
                     </Badge>
                   ) : null}
                   {subiektStatus ? (
@@ -178,6 +219,11 @@ export function PaymentWatchCard({
             ) : null}
             {subtitle ? (
               <p className="text-xs leading-relaxed text-slate-500">{subtitle}</p>
+            ) : null}
+            {!archived && followUpLabel ? (
+              <p className={cn("text-xs", followUpDue ? "font-semibold text-violet-800" : "text-slate-500")}>
+                Przypomnienie {followUpLabel}
+              </p>
             ) : null}
             {archived && settledLabel ? (
               <p className="text-xs text-slate-500">Opłacono {settledLabel}</p>
@@ -219,6 +265,11 @@ export function PaymentWatchCard({
             >
               {refreshing ? "Odświeżam…" : "Odśwież z Subiekta"}
             </Button>
+            <Link href={mojeClientHref}>
+              <Button size="sm" variant="ghost" type="button">
+                Prośby klienta
+              </Button>
+            </Link>
             <Button
               size="sm"
               variant="ghost"
@@ -226,6 +277,46 @@ export function PaymentWatchCard({
             >
               {noteOpen ? "Ukryj notatkę" : "Notatka"}
             </Button>
+          </div>
+        ) : readOnly && !archived ? (
+          <div className="border-t border-slate-100 pt-3">
+            <Link href={mojeClientHref}>
+              <Button size="sm" variant="ghost" type="button">
+                Prośby klienta
+              </Button>
+            </Link>
+          </div>
+        ) : null}
+
+        {!readOnly && !archived ? (
+          <div className="flex flex-wrap items-center gap-2 text-xs text-slate-600">
+            <label htmlFor={`follow-up-${watch.id}`} className="shrink-0 font-medium">
+              Przypomnij
+            </label>
+            <input
+              id={`follow-up-${watch.id}`}
+              type="date"
+              value={followUpDraft}
+              disabled={savingFollowUp}
+              onChange={(e) => setFollowUpDraft(e.target.value)}
+              onBlur={() => void saveFollowUp()}
+              className={cn(
+                "rounded-lg border border-slate-200 px-2 py-1 text-sm text-slate-900",
+                controlFocusClass
+              )}
+            />
+            {followUpDraft ? (
+              <button
+                type="button"
+                className="text-slate-500 hover:text-slate-800"
+                onClick={() => {
+                  setFollowUpDraft("");
+                  void saveFollowUp("");
+                }}
+              >
+                Wyczyść
+              </button>
+            ) : null}
           </div>
         ) : null}
 

@@ -11,7 +11,7 @@ import { buildSummaryWorkspace } from "@/lib/orders/summary-workspace";
 import { countDailyPanelNavBadge } from "@/lib/orders/procurement-daily-ui";
 import { computeSalesActivityVersion } from "@/lib/orders/sales-activity-version";
 import { countSalesNavAttention } from "@/lib/orders/sales-nav-attention";
-import { countActivePaymentWatches } from "@/lib/data/sales-notepad";
+import { countNotepadNavBadge } from "@/lib/data/sales-notepad";
 import { AppShellClient } from "./AppShellClient";
 
 export async function AppShell({ children }: { children: React.ReactNode }) {
@@ -59,7 +59,7 @@ export async function AppShell({ children }: { children: React.ReactNode }) {
         const [version, attention, notatnikCount] = await Promise.all([
           computeSalesActivityVersion(salesPerson.id),
           countSalesNavAttention(salesPerson.id),
-          countActivePaymentWatches(salesPerson.id).catch(() => 0),
+          countNotepadNavBadge(salesPerson.id).catch(() => 0),
         ]);
         salesActivityVersion = version;
         navBadges = {

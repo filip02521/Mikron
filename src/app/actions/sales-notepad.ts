@@ -229,6 +229,39 @@ export async function actionUpdatePaymentWatchNote(watchId: string, note: string
   return { success: true };
 }
 
+export async function actionUpdatePaymentWatchFollowUp(
+  watchId: string,
+  followUpAt: string | null
+) {
+  const salesPersonId = await salesPersonIdForAction();
+  const supabase = createAdminClient();
+  const normalized = followUpAt?.trim().slice(0, 10) || null;
+
+  const { data: row, error: fetchError } = await supabase
+    .from("sales_payment_watches")
+    .select("id, sales_person_id, settled_at")
+    .eq("id", watchId)
+    .maybeSingle();
+
+  if (fetchError) throw new Error(fetchError.message);
+  if (!row) throw new Error("Nie znaleziono wpisu.");
+  if (row.sales_person_id !== salesPersonId) {
+    throw new Error("Brak uprawnień do tego wpisu.");
+  }
+  if (row.settled_at) throw new Error("Nie można ustawić przypomnienia dla opłaconego ZK.");
+
+  const { data, error } = await supabase
+    .from("sales_payment_watches")
+    .update({ follow_up_at: normalized, updated_at: new Date().toISOString() })
+    .eq("id", watchId)
+    .select("*")
+    .single();
+
+  if (error) throw new Error(error.message);
+  revalidateNotepad();
+  return { watch: data as SalesPaymentWatch };
+}
+
 export async function actionCreateSalesNote(
   body: string,
   options?: { title?: string | null; color?: SalesNoteColor }
@@ -256,7 +289,13 @@ export async function actionCreateSalesNote(
 
 export async function actionUpdateSalesNote(
   noteId: string,
-  payload: { body?: string; title?: string | null; color?: SalesNoteColor; pinned?: boolean }
+  payload: {
+    body?: string;
+    title?: string | null;
+    color?: SalesNoteColor;
+    pinned?: boolean;
+    follow_up_at?: string | null;
+  }
 ) {
   const salesPersonId = await salesPersonIdForAction();
   const supabase = createAdminClient();
@@ -282,6 +321,9 @@ export async function actionUpdateSalesNote(
   if (payload.title !== undefined) patch.title = payload.title?.trim() || null;
   if (payload.color !== undefined) patch.color = payload.color;
   if (payload.pinned !== undefined) patch.pinned = payload.pinned;
+  if (payload.follow_up_at !== undefined) {
+    patch.follow_up_at = payload.follow_up_at?.trim().slice(0, 10) || null;
+  }
 
   const { error } = await supabase.from("sales_notes").update(patch).eq("id", noteId);
   if (error) throw new Error(error.message);

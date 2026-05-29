@@ -125,6 +125,7 @@ export interface SalesNote {
   color: SalesNoteColor;
   pinned: boolean;
   archived_at: string | null;
+  follow_up_at: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -143,6 +144,7 @@ export interface SalesPaymentWatch {
   note: string | null;
   line_summary: string | null;
   subiekt_snapshot: Record<string, unknown> | null;
+  follow_up_at: string | null;
   settled_at: string | null;
   archived_at: string | null;
   created_at: string;
