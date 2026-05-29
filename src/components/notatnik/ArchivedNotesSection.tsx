@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { actionRestoreSalesNote } from "@/app/actions/sales-notepad";
+import { actionRestoreSalesNote, actionDeleteArchivedSalesNote } from "@/app/actions/sales-notepad";
 import { Button } from "@/components/ui/Button";
 import { cn } from "@/lib/cn";
 import { formatShortDate } from "@/lib/sales/notepad-format";
@@ -12,10 +12,12 @@ export function ArchivedNotesSection({
   notes,
   readOnly,
   onRestored,
+  onDeleted,
 }: {
   notes: SalesNote[];
   readOnly?: boolean;
   onRestored?: (note: SalesNote) => void;
+  onDeleted?: (noteId: string) => void;
 }) {
   if (!notes.length) return null;
 
@@ -27,6 +29,7 @@ export function ArchivedNotesSection({
           note={note}
           readOnly={readOnly}
           onRestored={onRestored}
+          onDeleted={onDeleted}
         />
       ))}
     </div>
@@ -37,12 +40,15 @@ function ArchivedNoteCard({
   note,
   readOnly,
   onRestored,
+  onDeleted,
 }: {
   note: SalesNote;
   readOnly?: boolean;
   onRestored?: (note: SalesNote) => void;
+  onDeleted?: (noteId: string) => void;
 }) {
   const [restoring, setRestoring] = useState(false);
+  const [deleting, setDeleting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   async function restore() {
@@ -56,6 +62,23 @@ function ArchivedNoteCard({
       setError(e instanceof Error ? e.message : "Nie udało się przywrócić notatki.");
     } finally {
       setRestoring(false);
+    }
+  }
+
+  async function remove() {
+    if (readOnly || deleting) return;
+    if (!window.confirm("Usunąć notatkę z archiwum na stałe? Tej operacji nie można cofnąć.")) {
+      return;
+    }
+    setDeleting(true);
+    setError(null);
+    try {
+      await actionDeleteArchivedSalesNote(note.id);
+      onDeleted?.(note.id);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Nie udało się usunąć notatki.");
+    } finally {
+      setDeleting(false);
     }
   }
 
@@ -76,11 +99,20 @@ function ArchivedNoteCard({
         <p className="mt-2 text-xs text-slate-500">Zarchiwizowano {archivedLabel}</p>
       ) : null}
       {!readOnly ? (
-        <div className="mt-3 border-t border-black/5 pt-3">
+        <div className="mt-3 flex flex-wrap gap-2 border-t border-black/5 pt-3">
           <Button size="sm" variant="ghost" disabled={restoring} onClick={() => void restore()}>
             {restoring ? "Przywracam…" : "Przywróć"}
           </Button>
-          {error ? <p className="mt-2 text-xs text-red-600">{error}</p> : null}
+          <Button
+            size="sm"
+            variant="ghost"
+            disabled={deleting}
+            onClick={() => void remove()}
+            className="text-red-700 hover:text-red-900"
+          >
+            {deleting ? "Usuwam…" : "Usuń na stałe"}
+          </Button>
+          {error ? <p className="w-full text-xs text-red-600">{error}</p> : null}
         </div>
       ) : null}
     </article>

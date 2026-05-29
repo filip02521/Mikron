@@ -96,7 +96,7 @@ export function PaymentWatchSection({
       ) : (
         <ul className="space-y-3">
           {sortPaymentWatches(watches).map((watch) => (
-            <li key={watch.id}>
+            <li key={watch.id} id={`watch-${watch.id}`}>
               <PaymentWatchCard
                 watch={watch}
                 readOnly={readOnly}

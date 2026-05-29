@@ -41,6 +41,12 @@ export function isWarsawBusinessDay(date = new Date()): boolean {
   return !warsawNowParts(date).isWeekend;
 }
 
+/** Okno digestu notatnika: 7:00–7:59 w Warszawie (pn–pt). */
+export function isWarsawNotepadFollowUpHour(date = new Date()): boolean {
+  const { hour, isWeekend } = warsawNowParts(date);
+  return !isWeekend && hour === 7;
+}
+
 /** Okno porannej rutyny: 6:00–6:59 w Warszawie. */
 export function isWarsawMorningRoutineHour(date = new Date()): boolean {
   const { hour, isWeekend } = warsawNowParts(date);

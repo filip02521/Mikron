@@ -13,6 +13,7 @@ import { PaymentWatchSection } from "./PaymentWatchSection";
 import { PaymentWatchCard } from "./PaymentWatchCard";
 import { NotesSection } from "./NotesSection";
 import { ArchivedNotesSection } from "./ArchivedNotesSection";
+import { TodayTasksSection } from "./TodayTasksSection";
 
 function contextualizeSubiektMessage(message: string): string {
   return message
@@ -128,6 +129,16 @@ export function NotatnikClient({
     refresh();
   }
 
+  function handleWatchDeleted(watchId: string) {
+    setArchivedWatches((prev) => prev.filter((w) => w.id !== watchId));
+    refresh();
+  }
+
+  function handleNoteDeleted(noteId: string) {
+    setArchivedNotes((prev) => prev.filter((n) => n.id !== noteId));
+    refresh();
+  }
+
   const subiektForNotepad = subiektAvailability
     ? {
         ...subiektAvailability,
@@ -142,6 +153,8 @@ export function NotatnikClient({
       {subiektForNotepad ? (
         <SubiektStatusBar initial={subiektForNotepad} className="mb-2" />
       ) : null}
+
+      <TodayTasksSection watches={paymentWatches} notes={notes} />
 
       <PaymentWatchSection
         watches={paymentWatches}
@@ -182,12 +195,13 @@ export function NotatnikClient({
               {archivedWatches.length > 0 ? (
                 <ul className="space-y-3">
                   {archivedWatches.map((watch) => (
-                    <li key={watch.id}>
+                    <li key={watch.id} id={`watch-${watch.id}`}>
                       <PaymentWatchCard
                         watch={watch}
                         readOnly={readOnly}
                         archived
                         onRestored={handleWatchRestored}
+                        onDeleted={() => handleWatchDeleted(watch.id)}
                       />
                     </li>
                   ))}
@@ -197,6 +211,7 @@ export function NotatnikClient({
                 notes={archivedNotes}
                 readOnly={readOnly}
                 onRestored={handleNoteRestored}
+                onDeleted={handleNoteDeleted}
               />
             </div>
           ) : null}

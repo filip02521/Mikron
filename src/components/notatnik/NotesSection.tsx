@@ -357,13 +357,14 @@ export function NotesSection({
       ) : (
         <div className="grid gap-3 sm:grid-cols-2">
           {filtered.map((note) => (
-            <NoteCard
-              key={note.id}
+            <div key={note.id} id={`note-${note.id}`}>
+              <NoteCard
               note={note}
               readOnly={readOnly}
               onUpdated={onNoteUpdated}
               onArchived={onNoteArchived}
             />
+            </div>
           ))}
         </div>
       )}

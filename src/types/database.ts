@@ -126,6 +126,7 @@ export interface SalesNote {
   pinned: boolean;
   archived_at: string | null;
   follow_up_at: string | null;
+  digest_notified_at: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -145,6 +146,7 @@ export interface SalesPaymentWatch {
   line_summary: string | null;
   subiekt_snapshot: Record<string, unknown> | null;
   follow_up_at: string | null;
+  digest_notified_at: string | null;
   settled_at: string | null;
   archived_at: string | null;
   created_at: string;

@@ -6,6 +6,7 @@ import {
   actionRefreshPaymentWatchFromSubiekt,
   actionRestorePaymentWatch,
   actionSettlePaymentWatch,
+  actionDeleteArchivedPaymentWatch,
   actionUpdatePaymentWatchFollowUp,
   actionUpdatePaymentWatchNote,
 } from "@/app/actions/sales-notepad";
@@ -38,6 +39,7 @@ export function PaymentWatchCard({
   onSettled,
   onRestored,
   onRefreshed,
+  onDeleted,
   archived,
 }: {
   watch: SalesPaymentWatch;
@@ -45,10 +47,12 @@ export function PaymentWatchCard({
   onSettled?: () => void;
   onRestored?: (watch: SalesPaymentWatch) => void;
   onRefreshed?: (watch: SalesPaymentWatch) => void;
+  onDeleted?: () => void;
   archived?: boolean;
 }) {
   const [settling, setSettling] = useState(false);
   const [restoring, setRestoring] = useState(false);
+  const [deleting, setDeleting] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [noteOpen, setNoteOpen] = useState(Boolean(watch.note?.trim()));
   const [noteDraft, setNoteDraft] = useState(watch.note ?? "");
@@ -135,6 +139,23 @@ export function PaymentWatchCard({
       setError(e instanceof Error ? e.message : "Nie udało się zapisać przypomnienia.");
     } finally {
       setSavingFollowUp(false);
+    }
+  }
+
+  async function removeFromArchive() {
+    if (readOnly || deleting || !archived) return;
+    if (!window.confirm("Usunąć ten ZK z archiwum na stałe? Tej operacji nie można cofnąć.")) {
+      return;
+    }
+    setDeleting(true);
+    setError(null);
+    try {
+      await actionDeleteArchivedPaymentWatch(watch.id);
+      onDeleted?.();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Nie udało się usunąć wpisu.");
+    } finally {
+      setDeleting(false);
     }
   }
 
@@ -321,9 +342,18 @@ export function PaymentWatchCard({
         ) : null}
 
         {!readOnly && archived ? (
-          <div className="border-t border-slate-100 pt-3">
+          <div className="flex flex-wrap gap-2 border-t border-slate-100 pt-3">
             <Button size="sm" variant="ghost" disabled={restoring} onClick={() => void restore()}>
               {restoring ? "Przywracam…" : "Przywróć na listę"}
+            </Button>
+            <Button
+              size="sm"
+              variant="ghost"
+              disabled={deleting}
+              onClick={() => void removeFromArchive()}
+              className="text-red-700 hover:text-red-900"
+            >
+              {deleting ? "Usuwam…" : "Usuń na stałe"}
             </Button>
           </div>
         ) : null}

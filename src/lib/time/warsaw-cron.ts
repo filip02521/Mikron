@@ -12,7 +12,12 @@ export async function morningRoutineAlreadyRanToday(): Promise<boolean> {
 }
 
 export async function recordCronSkipped(
-  job: "morning_routine" | "process_deliveries" | "morning_sync" | "catalog_zd_sync",
+  job:
+    | "morning_routine"
+    | "process_deliveries"
+    | "morning_sync"
+    | "catalog_zd_sync"
+    | "notepad_follow_up",
   reason: string,
   detail?: Record<string, unknown>
 ): Promise<void> {

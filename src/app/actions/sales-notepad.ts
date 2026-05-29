@@ -252,7 +252,7 @@ export async function actionUpdatePaymentWatchFollowUp(
 
   const { data, error } = await supabase
     .from("sales_payment_watches")
-    .update({ follow_up_at: normalized, updated_at: new Date().toISOString() })
+    .update({ follow_up_at: normalized, digest_notified_at: null, updated_at: new Date().toISOString() })
     .eq("id", watchId)
     .select("*")
     .single();
@@ -323,6 +323,7 @@ export async function actionUpdateSalesNote(
   if (payload.pinned !== undefined) patch.pinned = payload.pinned;
   if (payload.follow_up_at !== undefined) {
     patch.follow_up_at = payload.follow_up_at?.trim().slice(0, 10) || null;
+    patch.digest_notified_at = null;
   }
 
   const { error } = await supabase.from("sales_notes").update(patch).eq("id", noteId);
@@ -386,4 +387,50 @@ export async function actionRestoreSalesNote(noteId: string) {
   if (error) throw new Error(error.message);
   revalidateNotepad();
   return { note: data as SalesNote };
+}
+
+export async function actionDeleteArchivedPaymentWatch(watchId: string) {
+  const salesPersonId = await salesPersonIdForAction();
+  const supabase = createAdminClient();
+
+  const { data: row, error: fetchError } = await supabase
+    .from("sales_payment_watches")
+    .select("id, sales_person_id, settled_at")
+    .eq("id", watchId)
+    .maybeSingle();
+
+  if (fetchError) throw new Error(fetchError.message);
+  if (!row) throw new Error("Nie znaleziono wpisu.");
+  if (row.sales_person_id !== salesPersonId) {
+    throw new Error("Brak uprawnień do tego wpisu.");
+  }
+  if (!row.settled_at) throw new Error("Można usunąć tylko opłacone ZK z archiwum.");
+
+  const { error } = await supabase.from("sales_payment_watches").delete().eq("id", watchId);
+  if (error) throw new Error(error.message);
+  revalidateNotepad();
+  return { success: true };
+}
+
+export async function actionDeleteArchivedSalesNote(noteId: string) {
+  const salesPersonId = await salesPersonIdForAction();
+  const supabase = createAdminClient();
+
+  const { data: row, error: fetchError } = await supabase
+    .from("sales_notes")
+    .select("id, sales_person_id, archived_at")
+    .eq("id", noteId)
+    .maybeSingle();
+
+  if (fetchError) throw new Error(fetchError.message);
+  if (!row) throw new Error("Nie znaleziono notatki.");
+  if (row.sales_person_id !== salesPersonId) {
+    throw new Error("Brak uprawnień do tej notatki.");
+  }
+  if (!row.archived_at) throw new Error("Można usunąć tylko notatki z archiwum.");
+
+  const { error } = await supabase.from("sales_notes").delete().eq("id", noteId);
+  if (error) throw new Error(error.message);
+  revalidateNotepad();
+  return { success: true };
 }
