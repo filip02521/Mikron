@@ -36,7 +36,7 @@ function SalesPersonCard({
         }
       />
       <div className="space-y-3 px-4 pb-4 sm:px-5">
-        <dl className="grid grid-cols-2 gap-2 text-xs sm:grid-cols-3">
+        <dl className="grid grid-cols-2 gap-2 text-xs sm:grid-cols-4">
           <div>
             <dt className="text-slate-500">Zamówienia</dt>
             <dd className="font-semibold tabular-nums text-slate-900">{row.orderCount}</dd>
@@ -45,13 +45,33 @@ function SalesPersonCard({
             <dt className="text-slate-500">ZK na zapłatę</dt>
             <dd className="font-semibold tabular-nums text-slate-900">
               {row.pendingZkCount > 0 ? (
-                <span className="text-amber-800">{row.pendingZkCount}</span>
+                <Link
+                  href={`/notatnik?dla=${row.id}`}
+                  className="text-amber-800 underline decoration-amber-300 underline-offset-2 hover:text-amber-950"
+                >
+                  {row.pendingZkCount}
+                </Link>
               ) : (
                 row.pendingZkCount
               )}
             </dd>
           </div>
-          <div className="col-span-2 sm:col-span-1">
+          <div>
+            <dt className="text-slate-500">Po terminie</dt>
+            <dd className="font-semibold tabular-nums text-slate-900">
+              {row.overdueZkCount > 0 ? (
+                <Link
+                  href={`/notatnik?dla=${row.id}`}
+                  className="text-red-700 underline decoration-red-200 underline-offset-2 hover:text-red-900"
+                >
+                  {row.overdueZkCount}
+                </Link>
+              ) : (
+                row.overdueZkCount
+              )}
+            </dd>
+          </div>
+          <div>
             <dt className="text-slate-500">Konto</dt>
             <dd className="font-medium text-slate-800">
               {row.linkedUserEmail ? "Aktywne" : "Brak logowania"}
@@ -116,18 +136,47 @@ export function SalesTeamOverview({
   }
 
   const sections = groupSalesPeopleForTeamView(rows, groups);
+  const totalOverdue = rows.reduce((sum, row) => sum + row.overdueZkCount, 0);
+  const totalPending = rows.reduce((sum, row) => sum + row.pendingZkCount, 0);
 
   return (
     <div className="space-y-8">
+      {totalPending > 0 ? (
+        <div className="flex flex-wrap items-center gap-2 rounded-xl border border-amber-100 bg-amber-50/70 px-4 py-3 text-sm text-amber-950">
+          <span className="font-medium">
+            Zespół: {totalPending} {totalPending === 1 ? "ZK czeka" : "ZK czeka"} na zapłatę
+          </span>
+          {totalOverdue > 0 ? (
+            <Badge variant="danger" className="text-[10px]">
+              {totalOverdue} po terminie
+            </Badge>
+          ) : null}
+        </div>
+      ) : null}
+
       {sections.map((section) => {
         const title = section.group?.name ?? "Bez grupy";
         const key = section.group?.id ?? "unassigned";
+        const sectionPending = section.rows.reduce((sum, row) => sum + row.pendingZkCount, 0);
+        const sectionOverdue = section.rows.reduce((sum, row) => sum + row.overdueZkCount, 0);
+
         return (
           <section key={key} className="space-y-3">
-            <div className="flex flex-wrap items-baseline justify-between gap-2 border-b border-slate-100 pb-2">
-              <h2 className="text-sm font-semibold uppercase tracking-wide text-slate-700">
-                {title}
-              </h2>
+            <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 pb-2">
+              <div className="flex flex-wrap items-baseline gap-2">
+                <h2 className="text-sm font-semibold uppercase tracking-wide text-slate-700">
+                  {title}
+                </h2>
+                {sectionOverdue > 0 ? (
+                  <Badge variant="danger" className="text-[10px]">
+                    {sectionOverdue} ZK po terminie
+                  </Badge>
+                ) : sectionPending > 0 ? (
+                  <Badge variant="warning" className="text-[10px]">
+                    {sectionPending} ZK na zapłatę
+                  </Badge>
+                ) : null}
+              </div>
               <span className="text-xs text-slate-500">
                 {section.rows.length}{" "}
                 {section.rows.length === 1 ? "osoba" : section.rows.length < 5 ? "osoby" : "osób"}

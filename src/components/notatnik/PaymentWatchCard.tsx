@@ -18,6 +18,10 @@ import {
   paymentWatchSubtitle,
 } from "@/lib/sales/notepad-format";
 import { isPaymentWatchOverdue } from "@/lib/sales/payment-watch-sort";
+import {
+  extractPaymentWatchClientContact,
+  normalizePhoneHref,
+} from "@/lib/sales/payment-watch-contact";
 import { controlFocusClass } from "@/lib/ui/ontime-theme";
 import type { SalesPaymentWatch } from "@/types/database";
 
@@ -56,6 +60,8 @@ export function PaymentWatchCard({
   const overdue = !archived && isPaymentWatchOverdue(watch);
   const subiektStatus = paymentWatchStatusLabel(watch);
   const settledLabel = formatShortDate(watch.settled_at);
+  const clientContact = extractPaymentWatchClientContact(watch);
+  const isRealizedInSubiekt = subiektStatus === "Zrealizowane";
 
   async function markPaid() {
     if (readOnly || settling) return;
@@ -150,6 +156,26 @@ export function PaymentWatchCard({
               )}
             </div>
             <p className="text-sm font-medium text-slate-800">{watch.client_label}</p>
+            {clientContact.email || clientContact.phone ? (
+              <div className="flex flex-wrap gap-x-3 gap-y-1 text-xs">
+                {clientContact.phone ? (
+                  <a
+                    href={normalizePhoneHref(clientContact.phone)}
+                    className="font-medium text-indigo-700 hover:text-indigo-900"
+                  >
+                    {clientContact.phone}
+                  </a>
+                ) : null}
+                {clientContact.email ? (
+                  <a
+                    href={`mailto:${clientContact.email}`}
+                    className="font-medium text-indigo-700 hover:text-indigo-900"
+                  >
+                    {clientContact.email}
+                  </a>
+                ) : null}
+              </div>
+            ) : null}
             {subtitle ? (
               <p className="text-xs leading-relaxed text-slate-500">{subtitle}</p>
             ) : null}
@@ -168,6 +194,17 @@ export function PaymentWatchCard({
             ) : null}
           </div>
         </div>
+
+        {isRealizedInSubiekt && !archived && !readOnly ? (
+          <div className="flex flex-col gap-2 rounded-lg border border-emerald-200 bg-emerald-50/80 px-3 py-2.5 sm:flex-row sm:items-center sm:justify-between">
+            <p className="text-xs leading-relaxed text-emerald-950">
+              W Subiekcie ten ZK ma status „Zrealizowane” — prawdopodobnie już opłacony.
+            </p>
+            <Button size="sm" variant="secondary" disabled={settling} onClick={() => void markPaid()}>
+              {settling ? "Zapis…" : "Oznacz jako opłacone"}
+            </Button>
+          </div>
+        ) : null}
 
         {!readOnly && !archived ? (
           <div className="flex flex-wrap gap-2 border-t border-slate-100 pt-3">

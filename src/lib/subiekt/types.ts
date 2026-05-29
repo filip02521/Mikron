@@ -41,6 +41,8 @@ export type SubiektKontrahent = {
   kh_Id: number;
   kh_Symbol?: string | null;
   kh_EMail?: string | null;
+  adr_Telefon?: string | null;
+  kh_Telefon?: string | null;
   kh_Typ?: number | null;
   adr_Nazwa?: string | null;
   adr_NazwaPelna?: string | null;

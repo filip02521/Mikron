@@ -188,10 +188,10 @@ export function NotesSection({
   onNoteUpdated?: (note: SalesNote) => void;
   onNoteArchived?: (noteId: string) => void;
 }) {
-  const [composing, setComposing] = useState(false);
   const [draftTitle, setDraftTitle] = useState("");
   const [draft, setDraft] = useState("");
   const [draftColor, setDraftColor] = useState<SalesNoteColor>("default");
+  const [searchQuery, setSearchQuery] = useState("");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -208,7 +208,6 @@ export function NotesSection({
       setDraft("");
       setDraftTitle("");
       setDraftColor("default");
-      setComposing(false);
       onNoteCreated?.(note);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Nie udało się dodać notatki.");
@@ -222,21 +221,23 @@ export function NotesSection({
     return b.updated_at.localeCompare(a.updated_at);
   });
 
+  const needle = searchQuery.trim().toLowerCase();
+  const filtered = needle
+    ? sorted.filter(
+        (note) =>
+          note.body.toLowerCase().includes(needle) ||
+          note.title?.toLowerCase().includes(needle)
+      )
+    : sorted;
+
   return (
     <section className="space-y-4">
-      <div className="flex flex-wrap items-end justify-between gap-3">
-        <div>
-          <h2 className="text-base font-semibold text-slate-900">Notatki</h2>
-          <p className="mt-1 text-sm text-slate-500">Krótkie zapiski — jak w Keep.</p>
-        </div>
-        {!readOnly && !composing ? (
-          <Button size="sm" variant="secondary" onClick={() => setComposing(true)}>
-            Nowa notatka
-          </Button>
-        ) : null}
+      <div>
+        <h2 className="text-base font-semibold text-slate-900">Notatki</h2>
+        <p className="mt-1 text-sm text-slate-500">Krótkie zapiski — jak w Keep.</p>
       </div>
 
-      {!readOnly && composing ? (
+      {!readOnly ? (
         <div
           className={cn(
             "rounded-xl border p-4 shadow-sm",
@@ -254,8 +255,7 @@ export function NotesSection({
             )}
           />
           <textarea
-            rows={4}
-            autoFocus
+            rows={3}
             value={draft}
             onChange={(e) => setDraft(e.target.value)}
             placeholder="Wpisz notatkę…"
@@ -266,36 +266,35 @@ export function NotesSection({
           />
           <div className="mt-3 space-y-2">
             <NoteColorPicker value={draftColor} onChange={setDraftColor} disabled={saving} />
-            <div className="flex flex-wrap gap-2">
-              <Button size="sm" disabled={saving || !draft.trim()} onClick={() => void createNote()}>
-                {saving ? "Zapis…" : "Dodaj"}
-              </Button>
-              <Button
-                size="sm"
-                variant="ghost"
-                onClick={() => {
-                  setComposing(false);
-                  setDraft("");
-                  setDraftTitle("");
-                  setDraftColor("default");
-                }}
-              >
-                Anuluj
-              </Button>
-            </div>
+            <Button size="sm" disabled={saving || !draft.trim()} onClick={() => void createNote()}>
+              {saving ? "Zapis…" : "Dodaj notatkę"}
+            </Button>
           </div>
         </div>
       ) : null}
 
+      {notes.length > 0 ? (
+        <input
+          type="search"
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+          placeholder="Szukaj w notatkach…"
+          className={cn(
+            "w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-sm text-slate-900 shadow-sm",
+            controlFocusClass
+          )}
+        />
+      ) : null}
+
       {error ? <Alert tone="error">{error}</Alert> : null}
 
-      {sorted.length === 0 ? (
+      {filtered.length === 0 ? (
         <p className="rounded-xl border border-dashed border-slate-200 bg-slate-50/80 px-4 py-6 text-center text-sm text-slate-500">
-          Brak notatek.
+          {needle ? "Brak notatek pasujących do wyszukiwania." : "Brak notatek."}
         </p>
       ) : (
         <div className="grid gap-3 sm:grid-cols-2">
-          {sorted.map((note) => (
+          {filtered.map((note) => (
             <NoteCard
               key={note.id}
               note={note}

@@ -15,6 +15,16 @@ function todayStart(referenceMs?: number): number {
   );
 }
 
+/** Data terminu wcześniejsza niż dziś. */
+export function isDueDateOverdue(
+  dueAt: string | null | undefined,
+  referenceMs?: number
+): boolean {
+  const due = dueTimestamp({ due_at: dueAt ?? null } as SalesPaymentWatch);
+  if (due == null) return false;
+  return due < todayStart(referenceMs);
+}
+
 /** ZK z terminem wcześniejszym niż dziś (tylko aktywne). */
 export function isPaymentWatchOverdue(
   watch: SalesPaymentWatch,

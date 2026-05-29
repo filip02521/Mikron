@@ -5,6 +5,7 @@ import {
   getManagedGroupIdsForUser,
 } from "@/lib/data/sales-group-access";
 import { isManagedSalesPersonEmail } from "@/lib/sales/sales-person-catalog";
+import { isDueDateOverdue } from "@/lib/sales/payment-watch-sort";
 
 export type SalesPersonAdminRow = {
   id: string;
@@ -15,6 +16,8 @@ export type SalesPersonAdminRow = {
   orderCount: number;
   /** Aktywne ZK oczekujące na zapłatę (notatnik). */
   pendingZkCount: number;
+  /** Aktywne ZK z terminem wcześniejszym niż dziś. */
+  overdueZkCount: number;
   linkedUserId: string | null;
   linkedUserEmail: string | null;
 };
@@ -33,7 +36,7 @@ export async function fetchSalesPeopleAdmin(): Promise<SalesPersonAdminRow[]> {
         .not("sales_person_id", "is", null),
       supabase
         .from("sales_payment_watches")
-        .select("sales_person_id")
+        .select("sales_person_id, due_at, settled_at, archived_at")
         .is("settled_at", null)
         .is("archived_at", null),
     ]);
@@ -68,10 +71,14 @@ export async function fetchSalesPeopleAdmin(): Promise<SalesPersonAdminRow[]> {
   }
 
   const pendingZkBySalesId = new Map<string, number>();
+  const overdueZkBySalesId = new Map<string, number>();
   for (const row of watchRows ?? []) {
     const id = row.sales_person_id;
     if (!id) continue;
     pendingZkBySalesId.set(id, (pendingZkBySalesId.get(id) ?? 0) + 1);
+    if (isDueDateOverdue(row.due_at)) {
+      overdueZkBySalesId.set(id, (overdueZkBySalesId.get(id) ?? 0) + 1);
+    }
   }
 
   return (people ?? []).map((p) => {
@@ -85,6 +92,7 @@ export async function fetchSalesPeopleAdmin(): Promise<SalesPersonAdminRow[]> {
       groupName: groupId ? (groupNameById.get(groupId) ?? null) : null,
       orderCount: orderCountBySalesId.get(p.id) ?? 0,
       pendingZkCount: pendingZkBySalesId.get(p.id) ?? 0,
+      overdueZkCount: overdueZkBySalesId.get(p.id) ?? 0,
       linkedUserId: linked?.id ?? null,
       linkedUserEmail: linked?.email ?? null,
     };
