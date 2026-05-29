@@ -35,7 +35,6 @@ import { useSupplierGroupCollapse } from "@/lib/orders/use-supplier-group-collap
 import {
   queueSupplierLeadingCellClass,
   queueSupplierRowClass,
-  supplierGroupIndexByOrderId,
   supplierKey,
   type SupplierOrderGroup,
 } from "@/lib/orders/queue-supplier-groups";
@@ -119,16 +118,21 @@ function WaitingBadge({ row }: { row: WarehouseInventoryRow }) {
 }
 
 function groupInventoryRows(
-  rows: WarehouseInventoryRow[]
+  rows: WarehouseInventoryRow[],
+  groupKeyOf: (row: WarehouseInventoryRow) => string
 ): { supplierKey: string; rows: WarehouseInventoryRow[] }[] {
   const groups: { supplierKey: string; rows: WarehouseInventoryRow[] }[] = [];
   for (const row of rows) {
-    const key = supplierKey(row.order);
+    const key = groupKeyOf(row);
     const last = groups[groups.length - 1];
     if (last?.supplierKey === key) last.rows.push(row);
     else groups.push({ supplierKey: key, rows: [row] });
   }
   return groups;
+}
+
+function salesGroupKey(row: WarehouseInventoryRow): string {
+  return row.order.sales_person?.name?.trim() || "Handlowiec nieprzypisany";
 }
 
 export function WarehouseInventorySection({
@@ -193,27 +197,25 @@ export function WarehouseInventorySection({
   }, [sortedRows, filter, shelfFilter, supplierFilter, search]);
 
   const inventoryGroups = useMemo(() => {
-    if (sortMode !== "supplier") return null;
-    return groupInventoryRows(filtered);
+    const keyOf =
+      sortMode === "supplier"
+        ? (row: WarehouseInventoryRow) => supplierKey(row.order)
+        : sortMode === "shelf"
+          ? (row: WarehouseInventoryRow) => row.shelfLabel
+          : (row: WarehouseInventoryRow) => salesGroupKey(row);
+    return groupInventoryRows(filtered, keyOf);
   }, [filtered, sortMode]);
 
   const inventoryGroupsAsSupplier = useMemo((): SupplierOrderGroup[] => {
-    if (!inventoryGroups) return [];
     return inventoryGroups.map((g) => ({
       supplierKey: g.supplierKey,
       orders: g.rows.map((r) => r.order),
     }));
   }, [inventoryGroups]);
 
-  const inventoryCollapse = useSupplierGroupCollapse(
-    sortMode === "supplier" ? inventoryGroupsAsSupplier : [],
-    supplierFilter
-  );
-
-  const flatGroupIndex = useMemo(
-    () => supplierGroupIndexByOrderId(filtered.map((r) => r.order)),
-    [filtered]
-  );
+  const inventoryCollapse = useSupplierGroupCollapse(inventoryGroupsAsSupplier, supplierFilter, {
+    collapseMode: "all",
+  });
 
   const saveShelf = useCallback(
     (orderId: string, shelf: string) => {
@@ -394,7 +396,7 @@ export function WarehouseInventorySection({
           onChange={setSupplierFilter}
           totalLabel="Wszyscy"
         />
-        {sortMode === "supplier" && (inventoryGroups?.length ?? 0) > 1 ? (
+        {inventoryGroups.length > 1 ? (
           <div className="flex justify-end">
             <Button
               type="button"
@@ -517,7 +519,7 @@ export function WarehouseInventorySection({
               </tr>
             </thead>
             <tbody>
-              {sortMode === "supplier" && inventoryGroups
+              {inventoryGroups.length > 0
                 ? inventoryGroups.map((group, groupIndex) => {
                     const isOpen = inventoryCollapse.isExpanded(group.supplierKey);
                     const summary = formatSupplierGroupHeaderSummary(
@@ -550,14 +552,7 @@ export function WarehouseInventorySection({
                       </Fragment>
                     );
                   })
-                : filtered.map((row, index) => {
-                    const prevSupplier =
-                      index > 0 ? supplierKey(filtered[index - 1]!.order) : null;
-                    const showSupplier = supplierKey(row.order) !== prevSupplier;
-                    return renderDataRow(row, flatGroupIndex.get(row.order.id) ?? 0, {
-                      showSupplierColumn: showSupplier,
-                    });
-                  })}
+                : null}
             </tbody>
           </DataTable>
         </TableScroll>

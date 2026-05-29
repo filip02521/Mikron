@@ -12,6 +12,12 @@ describe("supplier group collapse", () => {
     { supplierKey: "B", orders: [{ id: "2" } as never, { id: "3" } as never] },
   ];
 
+  it("tryb all zwija wszystkie grupy", () => {
+    const collapsed = defaultCollapsedSupplierKeys(groups, "all");
+    expect(isSupplierGroupExpanded("A", collapsed)).toBe(false);
+    expect(isSupplierGroupExpanded("B", collapsed)).toBe(false);
+  });
+
   it("rozwija małe grupy, zwija większe przy wielu dostawcach", () => {
     const collapsed = defaultCollapsedSupplierKeys(groups);
     expect(isSupplierGroupExpanded("A", collapsed)).toBe(true);

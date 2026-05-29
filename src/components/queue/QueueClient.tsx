@@ -153,7 +153,9 @@ export function QueueClient({
   );
   const inboxSummary = useMemo(() => summarizeQueueInbox(orders), [orders]);
 
-  const deliveryCollapse = useSupplierGroupCollapse(deliveryGroups, supplierFilter);
+  const deliveryCollapse = useSupplierGroupCollapse(deliveryGroups, supplierFilter, {
+    collapseMode: "all",
+  });
 
   const getQty = (o: IndividualOrder) => {
     if (qty[o.id] !== undefined) return qty[o.id];

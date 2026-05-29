@@ -8,6 +8,7 @@ import {
   expandAllSupplierGroups,
   isSupplierGroupExpanded,
   toggleSupplierGroupCollapsed,
+  type SupplierGroupCollapseMode,
 } from "@/lib/orders/supplier-group-collapse";
 
 /** Stabilny podpis listy grup — zmiana przy dodaniu/usunięciu dostawcy. */
@@ -21,23 +22,25 @@ export function supplierGroupsSignature(groups: SupplierOrderGroup[]): string {
  */
 export function useSupplierGroupCollapse(
   groups: SupplierOrderGroup[],
-  supplierFilter: string
+  supplierFilter: string,
+  options?: { collapseMode?: SupplierGroupCollapseMode }
 ) {
+  const collapseMode = options?.collapseMode ?? "smart";
   const [collapsed, setCollapsed] = useState<Set<string>>(() =>
-    defaultCollapsedSupplierKeys(groups)
+    defaultCollapsedSupplierKeys(groups, collapseMode)
   );
 
   const signature = supplierGroupsSignature(groups);
 
   useEffect(() => {
     setCollapsed(() => {
-      const next = defaultCollapsedSupplierKeys(groups);
+      const next = defaultCollapsedSupplierKeys(groups, collapseMode);
       if (supplierFilter) next.delete(supplierFilter);
       return next;
     });
     // groups — tylko przy zmianie signature (lista dostawców), nie przy każdym refreshu wierszy
     // eslint-disable-next-line react-hooks/exhaustive-deps -- groups zsynchronizowane z signature w rodzicu (useMemo)
-  }, [signature, supplierFilter]);
+  }, [signature, supplierFilter, collapseMode]);
 
   const toggle = useCallback((supplierKey: string) => {
     setCollapsed((prev) => toggleSupplierGroupCollapsed(prev, supplierKey));

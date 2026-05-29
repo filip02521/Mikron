@@ -2,10 +2,20 @@ import type { SupplierOrderGroup } from "@/lib/orders/queue-supplier-groups";
 
 const AUTO_EXPAND_MAX_LINES = 3;
 
+/** smart = rozwijaj małe grupy; all = zawsze zwinięte (magazyn przy dużej liczbie pozycji). */
+export type SupplierGroupCollapseMode = "smart" | "all";
+
 /**
  * Domyślnie zwinięte duże grupy; rozwinięte: jeden dostawca lub małe partie (≤3 pozycje).
+ * W trybie `all` wszystkie grupy startują zwinięte.
  */
-export function defaultCollapsedSupplierKeys(groups: SupplierOrderGroup[]): Set<string> {
+export function defaultCollapsedSupplierKeys(
+  groups: SupplierOrderGroup[],
+  mode: SupplierGroupCollapseMode = "smart"
+): Set<string> {
+  if (mode === "all") {
+    return collapseAllSupplierGroups(groups);
+  }
   if (groups.length <= 1) {
     return expandAllSupplierGroups(groups);
   }
