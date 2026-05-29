@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { Fragment, useEffect, useMemo, useState } from "react";
 import type { MyOrderRow } from "@/lib/orders/my-order-presenter";
 import {
   filterMyOrderRows,
@@ -8,6 +8,10 @@ import {
   type MyOrderInboxFilter,
 } from "@/lib/orders/my-order-inbox-filter";
 import { sortMyOrderRows, summarizeMyOrdersInbox } from "@/lib/orders/my-order-sales-ui";
+import {
+  informacjaCombinedSectionHint,
+  partitionInformacjaProgressRows,
+} from "@/lib/orders/my-order-informacja-sections";
 import { MyOrderArchiveSection } from "@/components/moje/MyOrderArchiveSection";
 import { MyOrderShipmentList } from "@/components/moje/MyOrderShipmentList";
 import { MyOrdersInboxSummary } from "@/components/moje/MyOrdersInboxSummary";
@@ -199,6 +203,10 @@ export function MojeOrdersView({
 
   const zamowieniaListRows = splitByAction ? progressZamowienia : filteredZamowienia;
   const informacjeListRows = splitByAction ? progressInformacje : filteredInformacje;
+  const informacjaPhaseSections = useMemo(
+    () => partitionInformacjaProgressRows(informacjeListRows),
+    [informacjeListRows]
+  );
   const showKindSectionLabels =
     !activeFilter ||
     (zamowieniaListRows.length > 0 && informacjeListRows.length > 0);
@@ -388,31 +396,38 @@ export function MojeOrdersView({
           </div>
         ) : null}
 
-        {informacjeListRows.length > 0 ? (
+        {informacjaPhaseSections.length > 0 ? (
           <div className={mojeShipmentSectionShellClass}>
-            {showKindSectionLabels ? (
+            {showKindSectionLabels && informacjaPhaseSections.length > 1 ? (
               <ListSectionLabel
                 title={
-                  activeFilter
-                    ? "Informacje o dostępności"
-                    : "Tylko sprawdzamy dostępność"
+                  activeFilter ? "Informacje o dostępności" : "Sprawdzamy dostępność"
                 }
-                hint={
-                  activeFilter
-                    ? undefined
-                    : "Nie składamy zamówienia u dostawcy — powiadomimy e-mailem, gdy towar pojawi się na magazynie."
-                }
+                hint={informacjaCombinedSectionHint(informacjaPhaseSections.length)}
                 count={informacjeListRows.length}
                 icon="informacja"
               />
             ) : null}
-            <MyOrderShipmentBlock
-              embedded
-              rows={informacjeListRows}
-              listKind="informacja"
-              showProgress={false}
-              {...listProps}
-            />
+            {informacjaPhaseSections.map((section, index) => (
+              <Fragment key={section.phase}>
+                {showKindSectionLabels ? (
+                  <ListSectionLabel
+                    title={section.title}
+                    hint={section.hint}
+                    count={section.rows.length}
+                    icon="informacja"
+                  />
+                ) : null}
+                <MyOrderShipmentBlock
+                  embedded
+                  continuation={index > 0 || informacjaPhaseSections.length > 1}
+                  rows={section.rows}
+                  listKind="informacja"
+                  showProgress={false}
+                  {...listProps}
+                />
+              </Fragment>
+            ))}
           </div>
         ) : null}
         </div>
