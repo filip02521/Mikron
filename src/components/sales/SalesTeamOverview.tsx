@@ -36,12 +36,22 @@ function SalesPersonCard({
         }
       />
       <div className="space-y-3 px-4 pb-4 sm:px-5">
-        <dl className="grid grid-cols-2 gap-2 text-xs">
+        <dl className="grid grid-cols-2 gap-2 text-xs sm:grid-cols-3">
           <div>
             <dt className="text-slate-500">Zamówienia</dt>
             <dd className="font-semibold tabular-nums text-slate-900">{row.orderCount}</dd>
           </div>
           <div>
+            <dt className="text-slate-500">ZK na zapłatę</dt>
+            <dd className="font-semibold tabular-nums text-slate-900">
+              {row.pendingZkCount > 0 ? (
+                <span className="text-amber-800">{row.pendingZkCount}</span>
+              ) : (
+                row.pendingZkCount
+              )}
+            </dd>
+          </div>
+          <div className="col-span-2 sm:col-span-1">
             <dt className="text-slate-500">Konto</dt>
             <dd className="font-medium text-slate-800">
               {row.linkedUserEmail ? "Aktywne" : "Brak logowania"}
@@ -52,6 +62,11 @@ function SalesPersonCard({
           <Link href={`/moje?dla=${row.id}`}>
             <Button size="sm" variant={isSelf ? "primary" : "secondary"}>
               {isSelf ? "Mój panel" : "Podgląd panelu"}
+            </Button>
+          </Link>
+          <Link href={`/notatnik?dla=${row.id}`}>
+            <Button size="sm" variant="outline">
+              Notatnik
             </Button>
           </Link>
           {!isSelf ? (

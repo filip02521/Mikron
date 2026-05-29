@@ -13,15 +13,20 @@ import {
   mobileNavLinkIdleClass,
   mobileSalesNavClass,
 } from "@/lib/ui/ontime-theme";
+import { isSalesManager } from "@/lib/auth-roles";
+import type { UserRole } from "@/types/database";
 
 export function MobileSalesNav({
-  navBadges = { salesMoje: 0 },
+  navBadges = { salesMoje: 0, salesNotatnik: 0 },
+  role = "sales",
 }: {
-  navBadges?: { salesMoje?: number };
+  navBadges?: { salesMoje?: number; salesNotatnik?: number };
+  role?: UserRole;
 }) {
   const pathname = usePathname();
   const salesUpdates = useSalesUpdates();
-  const items = navForRole("sales", navBadges)[0]?.items ?? [];
+  const navRole = isSalesManager(role) ? "sales_manager" : "sales";
+  const items = navForRole(navRole, navBadges)[0]?.items ?? [];
 
   return (
     <nav
@@ -29,28 +34,31 @@ export function MobileSalesNav({
       style={{ paddingBottom: "env(safe-area-inset-bottom, 0px)" }}
       aria-label="Nawigacja handlowca"
     >
-      <ul className="mx-auto flex max-w-lg items-stretch justify-around">
+      <ul className="mx-auto flex max-w-lg items-stretch justify-around gap-0.5 px-0.5">
         {items.map((item) => {
           const siblingHrefs = items.map((i) => i.href);
           const active = isNavItemActive(pathname, item.href, siblingHrefs);
           const attentionBadge =
             item.badge != null && item.badge > 0 ? item.badge : 0;
+          const label = item.mobileLabel ?? item.label;
           return (
-            <li key={item.href} className="flex-1">
+            <li key={item.href} className="min-w-0 flex-1">
               <Link
                 href={item.href}
                 className={cn(
                   mobileNavLinkBaseClass,
+                  "px-1",
                   active ? mobileNavLinkActiveClass : mobileNavLinkIdleClass
                 )}
                 aria-current={active ? "page" : undefined}
+                title={item.label}
               >
                 <span className="relative">
-                  <NavIcon href={item.href} size={22} className="text-current" />
+                  <NavIcon href={item.href} size={20} className="text-current" />
                   {attentionBadge > 0 && !active ? (
                     <span
                       className={cn(
-                        "absolute -right-2 -top-1 flex h-4 min-w-4 items-center justify-center rounded-full px-1 text-[9px] font-bold tabular-nums",
+                        "absolute -right-1.5 -top-1 flex h-3.5 min-w-3.5 items-center justify-center rounded-full px-0.5 text-[8px] font-bold tabular-nums",
                         mobileNavBadgeClass
                       )}
                     >
@@ -58,7 +66,7 @@ export function MobileSalesNav({
                     </span>
                   ) : null}
                 </span>
-                <span className="max-w-full truncate">{item.label}</span>
+                <span className="max-w-full truncate leading-tight">{label}</span>
                 {item.href === "/moje" &&
                 salesUpdates?.hasUpdates &&
                 !active &&

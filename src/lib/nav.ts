@@ -5,6 +5,8 @@ import { salesManagerNavTeamDescriptions } from "@/lib/sales/team-ui";
 export type NavItem = {
   href: string;
   label: string;
+  /** Krótsza etykieta w dolnej nawigacji mobilnej. */
+  mobileLabel?: string;
   description?: string;
   badge?: number;
 };
@@ -117,6 +119,8 @@ export function navForRole(
     realizacja?: number;
     /** Aktywne karty wymagające uwagi handlowca (/moje). */
     salesMoje?: number;
+    /** Aktywne ZK oczekujące na zapłatę (/notatnik). */
+    salesNotatnik?: number;
   } = {}
 ): NavGroup[] {
   const ops = operationsNavItems(badges);
@@ -157,14 +161,28 @@ export function navForRole(
     {
       href: "/moje",
       label: "Moje zamówienia",
+      mobileLabel: "Moje",
       description: "Statusy i odbiór",
       badge: badges.salesMoje,
     },
-    { href: "/prosba", label: "Nowa prośba", description: "Jeden formularz — zamówienie lub dostępność" },
+    {
+      href: "/prosba",
+      label: "Nowa prośba",
+      mobileLabel: "Prośba",
+      description: "Jeden formularz — zamówienie lub dostępność",
+    },
     {
       href: "/plan",
       label: "Harmonogram zakupów",
+      mobileLabel: "Plan",
       description: "Terminy, otwarte prośby i wyszukiwarka",
+    },
+    {
+      href: "/notatnik",
+      label: "Notatnik",
+      mobileLabel: "Notatnik",
+      description: "ZK na zapłatę i własne notatki",
+      badge: badges.salesNotatnik,
     },
   ];
 
@@ -211,6 +229,7 @@ export function pageTitle(pathname: string): string {
     }
   }
   if (pathname.startsWith("/lokalizacje/")) return "Terminy zamówień";
+  if (pathname.startsWith("/notatnik")) return "Notatnik";
   if (pathname.startsWith("/zespol")) {
     if (pathname.startsWith("/zespol/handlowcy")) return "Handlowcy i konta";
     if (pathname.startsWith("/zespol/grupy")) return "Grupy zespołu";

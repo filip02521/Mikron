@@ -28,7 +28,7 @@ const ADMIN_PREFIXES = ["/admin"];
 
 const PROCUREMENT_PREFIXES = ["/zakupy"];
 
-const SALES_PREFIXES = ["/moje", "/plan", "/prosba"];
+const SALES_PREFIXES = ["/moje", "/plan", "/prosba", "/notatnik"];
 
 const SALES_TEAM_PREFIXES = ["/zespol"];
 

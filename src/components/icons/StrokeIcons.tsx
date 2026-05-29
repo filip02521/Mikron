@@ -415,6 +415,17 @@ export function IconLinkOff(props: StrokeIconProps) {
   );
 }
 
+/** Notatnik handlowca */
+export function IconNotepad(props: StrokeIconProps) {
+  return (
+    <Svg {...props}>
+      <path d="M8 2h8a2 2 0 012 2v16l-4-2-4 2-4-2-4 2V4a2 2 0 012-2z" />
+      <path d="M9 7h6" />
+      <path d="M9 11h6" />
+    </Svg>
+  );
+}
+
 export type DailySectionIconKind = "dzis" | "prosby" | "harmonogram" | "plan" | "hidden";
 
 const DAILY_SECTION_ICON_MAP: Record<

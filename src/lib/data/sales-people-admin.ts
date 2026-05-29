@@ -13,6 +13,8 @@ export type SalesPersonAdminRow = {
   groupId: string | null;
   groupName: string | null;
   orderCount: number;
+  /** Aktywne ZK oczekujące na zapłatę (notatnik). */
+  pendingZkCount: number;
   linkedUserId: string | null;
   linkedUserEmail: string | null;
 };
@@ -22,17 +24,23 @@ export async function fetchSalesPeopleAdmin(): Promise<SalesPersonAdminRow[]> {
 
   const supabase = createAdminClient();
 
-  const [{ data: people, error: peopleError }, { data: profiles, error: profilesError }] =
+  const [{ data: people, error: peopleError }, { data: profiles, error: profilesError }, { data: watchRows, error: watchesError }] =
     await Promise.all([
       supabase.from("sales_people").select("id, name, email, group_id").order("name"),
       supabase
         .from("profiles")
         .select("id, email, sales_person_id")
         .not("sales_person_id", "is", null),
+      supabase
+        .from("sales_payment_watches")
+        .select("sales_person_id")
+        .is("settled_at", null)
+        .is("archived_at", null),
     ]);
 
   if (peopleError) throw new Error(peopleError.message);
   if (profilesError) throw new Error(profilesError.message);
+  if (watchesError) throw new Error(watchesError.message);
 
   const { data: groups, error: groupsError } = await supabase
     .from("sales_groups")
@@ -59,6 +67,13 @@ export async function fetchSalesPeopleAdmin(): Promise<SalesPersonAdminRow[]> {
     orderCountBySalesId.set(id, (orderCountBySalesId.get(id) ?? 0) + 1);
   }
 
+  const pendingZkBySalesId = new Map<string, number>();
+  for (const row of watchRows ?? []) {
+    const id = row.sales_person_id;
+    if (!id) continue;
+    pendingZkBySalesId.set(id, (pendingZkBySalesId.get(id) ?? 0) + 1);
+  }
+
   return (people ?? []).map((p) => {
     const linked = linkedBySalesId.get(p.id);
     const groupId = (p.group_id as string | null) ?? null;
@@ -69,6 +84,7 @@ export async function fetchSalesPeopleAdmin(): Promise<SalesPersonAdminRow[]> {
       groupId,
       groupName: groupId ? (groupNameById.get(groupId) ?? null) : null,
       orderCount: orderCountBySalesId.get(p.id) ?? 0,
+      pendingZkCount: pendingZkBySalesId.get(p.id) ?? 0,
       linkedUserId: linked?.id ?? null,
       linkedUserEmail: linked?.email ?? null,
     };

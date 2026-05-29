@@ -156,6 +156,7 @@ export function Sidebar({
     weryfikacja?: number;
     realizacja?: number;
     salesMoje?: number;
+    salesNotatnik?: number;
   };
 }) {
   const router = useRouter();

@@ -31,6 +31,7 @@ export function AppShellClient({
     weryfikacja?: number;
     realizacja?: number;
     salesMoje?: number;
+    salesNotatnik?: number;
   };
   salesActivityVersion?: string | null;
 }) {
@@ -74,7 +75,7 @@ export function AppShellClient({
             {children}
           </div>
         </main>
-        {salesLive ? <MobileSalesNav navBadges={navBadges} /> : null}
+        {salesLive ? <MobileSalesNav navBadges={navBadges} role={role ?? "sales"} /> : null}
       </div>
     </SalesUpdatesProvider>
   );

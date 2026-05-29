@@ -115,6 +115,40 @@ export interface IndividualOrder {
   sales_person?: SalesPerson;
 }
 
+export type SalesNoteColor = "default" | "yellow" | "green" | "blue" | "pink";
+
+export interface SalesNote {
+  id: string;
+  sales_person_id: string;
+  title: string | null;
+  body: string;
+  color: SalesNoteColor;
+  pinned: boolean;
+  archived_at: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface SalesPaymentWatch {
+  id: string;
+  sales_person_id: string;
+  subiekt_dok_id: number;
+  zk_number: string;
+  client_label: string;
+  client_kh_id: number | null;
+  amount_net: number | null;
+  amount_gross: number | null;
+  zk_issued_at: string | null;
+  due_at: string | null;
+  note: string | null;
+  line_summary: string | null;
+  subiekt_snapshot: Record<string, unknown> | null;
+  settled_at: string | null;
+  archived_at: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
 export interface DeliveryStats {
   supplier_id: string;
   main_sum: number | null;

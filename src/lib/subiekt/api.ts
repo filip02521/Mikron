@@ -108,3 +108,10 @@ export async function getSubiektDocument(
   const res = await subiektGet<SubiektDocument>(SUBIEKT_PATHS.document(id));
   return res.data;
 }
+
+export async function getSubiektZk(
+  id: number | string
+): Promise<SubiektDocument> {
+  const res = await subiektGet<SubiektDocument>(SUBIEKT_PATHS.documentZk(id));
+  return res.data;
+}

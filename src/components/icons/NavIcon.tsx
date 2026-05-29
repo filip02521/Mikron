@@ -13,6 +13,7 @@ import {
   IconUserCog,
   IconUsers,
   IconWarehouse,
+  IconNotepad,
   type StrokeIconProps,
 } from "@/components/icons/StrokeIcons";
 
@@ -29,6 +30,7 @@ export type NavIconKey =
   | "myOrders"
   | "newRequest"
   | "plan"
+  | "notepad"
   | "team"
   | "teamAccounts";
 
@@ -48,6 +50,7 @@ const NAV_ICON_BY_KEY: Record<
   myOrders: IconClipboardList,
   newRequest: IconPlusCircle,
   plan: IconCalendar,
+  notepad: IconNotepad,
   team: IconUsers,
   teamAccounts: IconUserCog,
 };
@@ -65,6 +68,7 @@ const HREF_TO_NAV_ICON: Record<string, NavIconKey> = {
   "/moje": "myOrders",
   "/prosba": "newRequest",
   "/plan": "plan",
+  "/notatnik": "notepad",
   "/zespol": "team",
   "/zespol/handlowcy": "teamAccounts",
   "/zespol/grupy": "teamAccounts",
@@ -85,6 +89,7 @@ export function navIconTileIdleClass(key: NavIconKey): string {
     case "myOrders":
     case "newRequest":
     case "plan":
+    case "notepad":
     case "schedule":
     case "team":
       return "bg-indigo-100 text-indigo-700";
