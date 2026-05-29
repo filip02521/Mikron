@@ -1,6 +1,6 @@
 "use client";
 
-import { Fragment, useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import type { MyOrderRow } from "@/lib/orders/my-order-presenter";
 import {
   filterMyOrderRows,
@@ -8,10 +8,7 @@ import {
   type MyOrderInboxFilter,
 } from "@/lib/orders/my-order-inbox-filter";
 import { sortMyOrderRows, summarizeMyOrdersInbox } from "@/lib/orders/my-order-sales-ui";
-import {
-  informacjaCombinedSectionHint,
-  partitionInformacjaProgressRows,
-} from "@/lib/orders/my-order-informacja-sections";
+import { INFORMACJA_FLOW_MY_ORDERS_HINT } from "@/lib/orders/informacja-flow-copy";
 import { MyOrderArchiveSection } from "@/components/moje/MyOrderArchiveSection";
 import { MyOrderShipmentList } from "@/components/moje/MyOrderShipmentList";
 import { MyOrdersInboxSummary } from "@/components/moje/MyOrdersInboxSummary";
@@ -203,10 +200,6 @@ export function MojeOrdersView({
 
   const zamowieniaListRows = splitByAction ? progressZamowienia : filteredZamowienia;
   const informacjeListRows = splitByAction ? progressInformacje : filteredInformacje;
-  const informacjaPhaseSections = useMemo(
-    () => partitionInformacjaProgressRows(informacjeListRows),
-    [informacjeListRows]
-  );
   const showKindSectionLabels =
     !activeFilter ||
     (zamowieniaListRows.length > 0 && informacjeListRows.length > 0);
@@ -396,38 +389,27 @@ export function MojeOrdersView({
           </div>
         ) : null}
 
-        {informacjaPhaseSections.length > 0 ? (
+        {informacjeListRows.length > 0 ? (
           <div className={mojeShipmentSectionShellClass}>
-            {showKindSectionLabels && informacjaPhaseSections.length > 1 ? (
+            {showKindSectionLabels ? (
               <ListSectionLabel
                 title={
-                  activeFilter ? "Informacje o dostępności" : "Sprawdzamy dostępność"
+                  activeFilter ? "Informacje o dostępności" : "Tylko sprawdzamy dostępność"
                 }
-                hint={informacjaCombinedSectionHint(informacjaPhaseSections.length)}
+                hint={
+                  activeFilter ? undefined : INFORMACJA_FLOW_MY_ORDERS_HINT
+                }
                 count={informacjeListRows.length}
                 icon="informacja"
               />
             ) : null}
-            {informacjaPhaseSections.map((section, index) => (
-              <Fragment key={section.phase}>
-                {showKindSectionLabels ? (
-                  <ListSectionLabel
-                    title={section.title}
-                    hint={section.hint}
-                    count={section.rows.length}
-                    icon="informacja"
-                  />
-                ) : null}
-                <MyOrderShipmentBlock
-                  embedded
-                  continuation={index > 0 || informacjaPhaseSections.length > 1}
-                  rows={section.rows}
-                  listKind="informacja"
-                  showProgress={false}
-                  {...listProps}
-                />
-              </Fragment>
-            ))}
+            <MyOrderShipmentBlock
+              embedded
+              rows={informacjeListRows}
+              listKind="informacja"
+              showProgress={false}
+              {...listProps}
+            />
           </div>
         ) : null}
         </div>
