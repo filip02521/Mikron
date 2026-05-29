@@ -1,8 +1,21 @@
 import type { SupplierOrderGroup } from "@/lib/orders/queue-supplier-groups";
 
-/** Domyślnie zwinięte: wszystkie grupy dostawców. */
+const AUTO_EXPAND_MAX_LINES = 3;
+
+/**
+ * Domyślnie zwinięte duże grupy; rozwinięte: jeden dostawca lub małe partie (≤3 pozycje).
+ */
 export function defaultCollapsedSupplierKeys(groups: SupplierOrderGroup[]): Set<string> {
-  return collapseAllSupplierGroups(groups);
+  if (groups.length <= 1) {
+    return expandAllSupplierGroups(groups);
+  }
+  const collapsed = collapseAllSupplierGroups(groups);
+  for (const g of groups) {
+    if (g.orders.length <= AUTO_EXPAND_MAX_LINES) {
+      collapsed.delete(g.supplierKey);
+    }
+  }
+  return collapsed;
 }
 
 export function isSupplierGroupExpanded(

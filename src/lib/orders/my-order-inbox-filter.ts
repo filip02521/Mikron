@@ -37,7 +37,10 @@ export function rowMatchesInboxFilter(
       return row.kind === "zamowienie" && row.statusTitle === "Zamówione";
     case "availability_pending":
       return (
-        row.kind === "informacja" && row.statusTitle === "Oczekuje na dostawę"
+        row.kind === "informacja" &&
+        (row.statusTitle === "Oczekuje na magazyn" ||
+          row.statusTitle === "Czekamy na zamówienie u dostawcy" ||
+          row.statusTitle === "Zamówione — czekamy na magazyn")
       );
     default:
       return true;

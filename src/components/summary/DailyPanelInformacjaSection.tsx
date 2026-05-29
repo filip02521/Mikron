@@ -10,6 +10,8 @@ import { SectionHeadingIcon } from "@/components/icons/SectionHeadingIcon";
 import { DailySectionIcon, dailySectionIconTileClass } from "@/components/icons/StrokeIcons";
 import { Badge } from "@/components/ui/Badge";
 import { informacjaSurfaceClass } from "@/lib/ui/ontime-theme";
+import { InformacjaFlowLegend } from "@/components/orders/InformacjaFlowLegend";
+import { INFORMACJA_FLOW_DIRECT } from "@/lib/orders/informacja-flow-copy";
 
 export function DailyPanelInformacjaSection({
   groups,
@@ -36,8 +38,11 @@ export function DailyPanelInformacjaSection({
             </span>
           </p>
           <p className="mt-0.5 text-xs leading-relaxed text-sky-900/85">
-            Bez zamówienia u dostawcy — obsługa w magazynie po przyjęciu towaru.
+            {INFORMACJA_FLOW_DIRECT.short}
           </p>
+          <div className="mt-2">
+            <InformacjaFlowLegend compact />
+          </div>
         </div>
       </header>
       <ul className="divide-y divide-sky-50">

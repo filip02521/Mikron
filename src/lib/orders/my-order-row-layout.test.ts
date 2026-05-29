@@ -98,11 +98,11 @@ describe("my-order-row-layout", () => {
     );
   });
 
-  it("informacja „Oczekuje na dostawę” — wyjaśnienie w rozwinięciu, wiersz zwijany", () => {
+  it("informacja „Oczekuje na magazyn” — wyjaśnienie w rozwinięciu, wiersz zwijany", () => {
     const r = row({
       kind: "informacja",
       requestKind: "informacja",
-      statusTitle: "Oczekuje na dostawę",
+      statusTitle: "Oczekuje na magazyn",
       subline: null,
       headline: "Powiadomimy, gdy towar przyjedzie",
       headlineTone: "neutral",

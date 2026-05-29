@@ -96,12 +96,21 @@ export function QueueClient({
       let next: QueueView = "receive";
       if (hash === "#inwentaryzacja") next = "inventory";
       else if (hash === "#dziennik-dostaw") next = "journal";
+      else if (hash === "#informacja") next = "receive";
       setView(next);
     };
     sync();
     window.addEventListener("hashchange", sync);
     return () => window.removeEventListener("hashchange", sync);
   }, []);
+
+  useEffect(() => {
+    if (view !== "receive" || window.location.hash !== "#informacja") return;
+    const frame = requestAnimationFrame(() => {
+      document.getElementById("informacja")?.scrollIntoView({ behavior: "smooth", block: "start" });
+    });
+    return () => cancelAnimationFrame(frame);
+  }, [view, informacjaOrders.length]);
 
   useEffect(() => {
     if (view !== "inventory") return;
@@ -150,6 +159,8 @@ export function QueueClient({
     if (qty[o.id] !== undefined) return qty[o.id];
     const d = o.delivered_quantity;
     if (d && d !== "-") return d;
+    const ordered = parseOrderQuantity(o.quantity);
+    if (ordered != null && ordered > 0) return String(ordered);
     return "";
   };
 

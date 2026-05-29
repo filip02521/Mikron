@@ -51,6 +51,7 @@ import { SectionHeadingIcon } from "@/components/icons/SectionHeadingIcon";
 import { brandIconTileClass, sidebarBrandAccentClass } from "@/lib/ui/ontime-theme";
 import { ProsbaFormSection } from "@/components/orders/ProsbaFormSection";
 import { cn } from "@/lib/cn";
+import { DailyPanelVerificationBanner } from "@/components/summary/DailyPanelVerificationBanner";
 
 export function SummaryWorkspace({
   workspace,
@@ -362,6 +363,12 @@ export function SummaryWorkspace({
                 />
               ) : (
                 <div className="space-y-6">
+                  {verificationCount > 0 ? (
+                    <DailyPanelVerificationBanner
+                      count={verificationCount}
+                      onOpenModal={() => setVerificationModalOpen(true)}
+                    />
+                  ) : null}
                   <DailyPanelQueueSteps
                     overdueCount={inboxSummary.overdueCount}
                     forSomeoneGroupCount={inboxSummary.forSomeoneGroupCount}

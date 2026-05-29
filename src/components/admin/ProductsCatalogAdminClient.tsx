@@ -1061,7 +1061,10 @@ export function ProductsCatalogAdminClient({
             >
               <div className="min-w-0">
                 <div className="flex min-w-0 items-baseline gap-2">
-                  <p className="min-w-0 truncate text-sm font-medium text-slate-900" title={r.name}>
+                  <p
+                    className="min-w-0 truncate text-sm font-medium text-slate-900"
+                    title={r.name ?? undefined}
+                  >
                     {r.name || "—"}
                   </p>
                   <span className="shrink-0 font-mono text-[11px] tabular-nums text-slate-500">

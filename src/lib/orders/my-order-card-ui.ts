@@ -19,7 +19,13 @@ export function shouldShowOrderStatusDetail(row: MyOrderRow): boolean {
   if (row.kind === "informacja" && row.statusTitle === "Dostępne") return false;
   if (row.statusTitle === "Zamówione" && row.headlineTone === "info") return false;
   if (row.statusTitle === "Przed zamówieniem") return false;
-  if (row.statusTitle === "Oczekuje na dostawę") return false;
+  if (
+    row.statusTitle === "Oczekuje na magazyn" ||
+    row.statusTitle === "Czekamy na zamówienie u dostawcy" ||
+    row.statusTitle === "Zamówione — czekamy na magazyn"
+  ) {
+    return false;
+  }
   if (isProsbaHandoffStatus(row.statusTitle)) return false;
   return true;
 }

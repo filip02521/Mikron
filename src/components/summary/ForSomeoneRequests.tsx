@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState, useCallback } from "react";
+import { useMemo, useState, useCallback, useEffect } from "react";
 import type { SummaryForSomeoneEnriched } from "@/lib/orders/summary-workspace";
 import {
   enrichForSomeoneGroup,
@@ -31,6 +31,8 @@ import {
 } from "@/components/summary/DailyPanelSubsectionBar";
 import { cn } from "@/lib/cn";
 import { panelNameLinkClass, rowPendingRingClass } from "@/lib/ui/ontime-theme";
+import { INFORMACJA_FLOW_PROCUREMENT_GROUP_BANNER } from "@/lib/orders/informacja-flow-copy";
+import { InformacjaFlowLegend } from "@/components/orders/InformacjaFlowLegend";
 
 function groupKey(g: SummaryForSomeoneEnriched) {
   return `${g.supplierId}-${g.salesPersonId}`;
@@ -85,7 +87,29 @@ export function ForSomeoneRequests({
 }) {
   const sorted = useMemo(() => sortForSomeoneGroups(groups), [groups]);
   const keys = useMemo(() => sorted.map(groupKey), [sorted]);
+
+  const defaultExpandedKeys = useMemo(() => {
+    const next = new Set<string>();
+    if (sorted.length === 1) {
+      next.add(groupKey(sorted[0]!));
+      return next;
+    }
+    for (const g of sorted) {
+      if (g.lines.some((l) => l.informacjaViaPanel) || g.lines.length <= 1) {
+        next.add(groupKey(g));
+      }
+    }
+    return next;
+  }, [sorted]);
+
   const [expanded, setExpanded] = useState<Set<string>>(() => new Set());
+
+  useEffect(() => {
+    setExpanded((prev) => {
+      if (prev.size > 0) return prev;
+      return new Set(defaultExpandedKeys);
+    });
+  }, [defaultExpandedKeys]);
 
   const allExpanded = keys.length > 0 && keys.every((k) => expanded.has(k));
 
@@ -201,6 +225,12 @@ export function ForSomeoneRequests({
       />
       {embedded ? subsectionHeader : legacyHeader}
 
+      {sorted.some((g) => g.lines.some((l) => l.informacjaViaPanel)) ? (
+        <div className="border-b border-slate-100 px-3 pb-2 pt-1 sm:px-4">
+          <InformacjaFlowLegend compact />
+        </div>
+      ) : null}
+
       <ul className="space-y-2.5 p-3 sm:p-4">
         {sorted.map((g) => {
           const key = groupKey(g);
@@ -212,6 +242,8 @@ export function ForSomeoneRequests({
           const leadTimeBrief = stats
             ? formatSupplierLeadTimeBrief(stats, statsMode)
             : null;
+          const hasInfoViaPanel = g.lines.some((l) => l.informacjaViaPanel);
+          const previewLine = !isOpen && g.lines[0] ? g.lines[0] : null;
 
           return (
             <li key={key}>
@@ -242,11 +274,24 @@ export function ForSomeoneRequests({
                       {leadTimeBrief ? (
                         <p className="mt-0.5 text-[10px] text-slate-400">{leadTimeBrief}</p>
                       ) : null}
+                      {previewLine ? (
+                        <p className="mt-1 line-clamp-1 text-[11px] text-slate-600">
+                          <span className="font-medium text-slate-700">
+                            {previewLine.symbol !== "-" ? previewLine.symbol : "Produkt"}:
+                          </span>{" "}
+                          {previewLine.products}
+                        </p>
+                      ) : null}
                     </div>
                     <Badge variant="default" className="shrink-0 text-[10px]">
                       {ui.statusTitle}
                     </Badge>
                   </div>
+                  {hasInfoViaPanel ? (
+                    <div className="mt-2.5 rounded-lg border border-sky-200 bg-sky-50/90 px-3 py-2 text-xs leading-relaxed text-sky-950">
+                      <p>{INFORMACJA_FLOW_PROCUREMENT_GROUP_BANNER}</p>
+                    </div>
+                  ) : null}
                   <div className="mt-3 flex flex-wrap items-center justify-between gap-2">
                     {g.lines.length > 0 ? (
                       <Button
@@ -274,7 +319,7 @@ export function ForSomeoneRequests({
                       className="ml-auto shrink-0"
                     >
                       <HoldToConfirmButton
-                        label="Główne"
+                        label={hasInfoViaPanel ? "Główne (info)" : "Główne"}
                         variant="primary"
                         disabled={groupPending || !g.supplierId}
                         className="px-3 py-2"
@@ -288,7 +333,7 @@ export function ForSomeoneRequests({
                         }
                       />
                       <HoldToConfirmButton
-                        label="Uzupełniające"
+                        label={hasInfoViaPanel ? "Uzupełn. (info)" : "Uzupełniające"}
                         variant="outline"
                         disabled={groupPending || !g.supplierId}
                         className="border-l border-slate-200 px-3 py-2"

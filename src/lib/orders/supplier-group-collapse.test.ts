@@ -12,16 +12,24 @@ describe("supplier group collapse", () => {
     { supplierKey: "B", orders: [{ id: "2" } as never, { id: "3" } as never] },
   ];
 
-  it("zwija wszystkie grupy domyślnie", () => {
+  it("rozwija małe grupy, zwija większe przy wielu dostawcach", () => {
     const collapsed = defaultCollapsedSupplierKeys(groups);
-    expect(collapsed.has("A")).toBe(true);
-    expect(collapsed.has("B")).toBe(true);
-    expect(isSupplierGroupExpanded("A", collapsed)).toBe(false);
-    expect(isSupplierGroupExpanded("B", collapsed)).toBe(false);
+    expect(isSupplierGroupExpanded("A", collapsed)).toBe(true);
+    expect(isSupplierGroupExpanded("B", collapsed)).toBe(true);
+  });
+
+  it("rozwija jedyną grupę dostawcy", () => {
+    const single = defaultCollapsedSupplierKeys([groups[0]!]);
+    expect(isSupplierGroupExpanded("A", single)).toBe(true);
   });
 
   it("toggle rozwija zwiniętą grupę", () => {
-    let c = defaultCollapsedSupplierKeys(groups);
+    const big: SupplierOrderGroup[] = [
+      { supplierKey: "A", orders: Array.from({ length: 5 }, (_, i) => ({ id: `a${i}` } as never)) },
+      { supplierKey: "B", orders: Array.from({ length: 5 }, (_, i) => ({ id: `b${i}` } as never)) },
+    ];
+    let c = defaultCollapsedSupplierKeys(big);
+    expect(isSupplierGroupExpanded("B", c)).toBe(false);
     c = toggleSupplierGroupCollapsed(c, "B");
     expect(isSupplierGroupExpanded("B", c)).toBe(true);
   });

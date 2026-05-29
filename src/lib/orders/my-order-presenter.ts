@@ -15,6 +15,12 @@ import {
   isInformacjaRequest,
   type DeliveryProgress,
 } from "@/lib/orders/individual";
+import { isInformacjaQueueViaDailyPanel } from "@/lib/orders/informacja-via-daily-panel";
+import {
+  INFORMACJA_FLOW_SALES_AWAITING_PROCUREMENT,
+  INFORMACJA_FLOW_SALES_AWAITING_WAREHOUSE,
+  INFORMACJA_FLOW_SALES_DIRECT,
+} from "@/lib/orders/informacja-flow-copy";
 import {
   isAwaitingInformacjaAck,
   isAwaitingSalesPickup,
@@ -400,20 +406,27 @@ function presentInformacja(order: IndividualOrder): MyOrderRow {
       if (order.ordered_at?.trim()) {
         return finalize({
           ...base,
-          statusTitle: "Zamówione — czekamy na magazyn",
-          statusDetail:
-            "Dział dostaw złożył zamówienie u dostawcy. Wyślemy e-mail, gdy towar pojawi się na magazynie.",
+          statusTitle: INFORMACJA_FLOW_SALES_AWAITING_WAREHOUSE.statusTitle,
+          statusDetail: INFORMACJA_FLOW_SALES_AWAITING_WAREHOUSE.statusDetail,
           timingLabel: order.ordered_at
             ? `Zamówione ${formatPlDate(order.ordered_at.slice(0, 10))}`
             : null,
           badgeVariant: "info",
         });
       }
+      if (isInformacjaQueueViaDailyPanel(order)) {
+        return finalize({
+          ...base,
+          statusTitle: INFORMACJA_FLOW_SALES_AWAITING_PROCUREMENT.statusTitle,
+          statusDetail: INFORMACJA_FLOW_SALES_AWAITING_PROCUREMENT.statusDetail,
+          timingLabel: null,
+          badgeVariant: "info",
+        });
+      }
       return finalize({
         ...base,
-        statusTitle: "Oczekuje na dostawę",
-        statusDetail:
-          "Nie składamy zamówienia u dostawcy. Wyślemy e-mail, gdy towar pojawi się na magazynie.",
+        statusTitle: INFORMACJA_FLOW_SALES_DIRECT.statusTitle,
+        statusDetail: INFORMACJA_FLOW_SALES_DIRECT.statusDetail,
         timingLabel: null,
         badgeVariant: "purple",
       });

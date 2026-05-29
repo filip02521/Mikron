@@ -10,6 +10,7 @@ import {
   mojeFilterChipSuccessClass,
 } from "@/lib/ui/ontime-theme";
 import { IconCircleCheck, IconClock } from "@/components/icons/StrokeIcons";
+import { INFORMACJA_FLOW_MY_ORDERS_HINT } from "@/lib/orders/informacja-flow-copy";
 
 function FilterGroupLabel({
   children,
@@ -178,12 +179,17 @@ export function MyOrdersInboxSummary({
           />
           <Chip
             count={summary.availabilityPendingCount}
-            label="Czeka"
+            label="Czeka (info)"
             tone="purple"
             filter="availability_pending"
             {...chipProps}
           />
         </div>
+      ) : null}
+      {summary.availabilityPendingCount > 0 ? (
+        <p className="w-full text-[10px] leading-snug text-slate-500">
+          {INFORMACJA_FLOW_MY_ORDERS_HINT}
+        </p>
       ) : null}
       {activeFilter ? (
         <button

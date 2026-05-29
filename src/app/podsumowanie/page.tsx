@@ -31,7 +31,7 @@ export default async function PodsumowaniePage() {
   let supplierDirectory: Awaited<
     ReturnType<typeof fetchSummaryWorkspace>
   >["supplierDirectory"] = [];
-  let salesPeople: { id: string; name: string }[] = [];
+  let salesPeople: { id: string; name: string; email: string }[] = [];
   let statsBySupplierId: Record<string, import("@/types/database").DeliveryStats> =
     {};
   let supplierStatsMode: Record<string, import("@/types/database").StatsMode> = {};

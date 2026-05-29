@@ -43,7 +43,9 @@ export function myOrderExpandedNotes(row: MyOrderRow): string | null {
   if (row.subline?.trim() && row.subline !== collapsed) {
     const explanatory =
       row.statusTitle === "Przed zamówieniem" ||
-      row.statusTitle === "Oczekuje na dostawę" ||
+      row.statusTitle === "Oczekuje na magazyn" ||
+      row.statusTitle === "Czekamy na zamówienie u dostawcy" ||
+      row.statusTitle === "Zamówione — czekamy na magazyn" ||
       row.statusTitle === "Zamówione" ||
       isProsbaHandoffStatus(row.statusTitle) ||
       row.kind === "informacja";

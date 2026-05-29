@@ -18,6 +18,12 @@ import {
 } from "@/components/orders/RequestProductLinesEditor";
 import type { SubiektFeedback } from "@/lib/subiekt/feedback";
 import { toAppSupplierRefs } from "@/lib/subiekt/match-supplier";
+import { buildProcurementFormReadiness } from "@/lib/orders/procurement-form-readiness";
+import {
+  INFORMACJA_FLOW_DIRECT,
+  INFORMACJA_FLOW_VIA_PANEL,
+} from "@/lib/orders/informacja-flow-copy";
+import { InformacjaFlowLegend } from "@/components/orders/InformacjaFlowLegend";
 
 export function QuickOrderModal({
   open,
@@ -68,6 +74,23 @@ export function QuickOrderModal({
       })),
     [lines, supplierId]
   );
+
+  const readinessView = useMemo(
+    () =>
+      buildProcurementFormReadiness({
+        salesPersonId,
+        supplierId,
+        lines: readinessLines,
+        requestKind,
+        informacjaViaDailyPanel,
+      }),
+    [salesPersonId, supplierId, readinessLines, requestKind, informacjaViaDailyPanel]
+  );
+
+  const submitLabel =
+    requestKind === "informacja"
+      ? "Dodaj prośbę informacyjną"
+      : "Dodaj zamówienie";
 
   const reset = () => {
     setSupplierId("");
@@ -179,8 +202,8 @@ export function QuickOrderModal({
           <Button variant="secondary" onClick={onClose} disabled={pending}>
             Anuluj
           </Button>
-          <Button onClick={submit} disabled={pending}>
-            {pending ? "Zapisywanie…" : "Dodaj zamówienie"}
+          <Button onClick={submit} disabled={pending || !readinessView.canSubmit}>
+            {pending ? "Zapisywanie…" : submitLabel}
           </Button>
         </>
       }
@@ -195,24 +218,40 @@ export function QuickOrderModal({
       />
 
       {requestKind === "informacja" ? (
-        <label className="flex cursor-pointer items-start gap-2 rounded-lg border border-sky-200 bg-sky-50/80 px-3 py-2.5 text-xs text-slate-700">
-          <input
-            type="checkbox"
-            className="mt-0.5"
-            checked={informacjaViaDailyPanel}
-            onChange={(e) => setInformacjaViaDailyPanel(e.target.checked)}
-            disabled={pending}
-          />
-          <span>
-            <span className="font-medium text-slate-900">
-              Najpierw zamów u dostawcy z panelu dziennego
+        <fieldset className="space-y-2 rounded-lg border border-sky-200 bg-sky-50/60 px-3 py-2.5">
+          <legend className="px-1 text-xs font-semibold text-slate-900">
+            Ścieżka informacji
+          </legend>
+          <label className="flex cursor-pointer items-start gap-2 text-xs text-slate-700">
+            <input
+              type="radio"
+              name="informacja-path"
+              className="mt-0.5"
+              checked={!informacjaViaDailyPanel}
+              onChange={() => setInformacjaViaDailyPanel(false)}
+              disabled={pending}
+            />
+            <span>
+              <span className="font-medium text-slate-900">{INFORMACJA_FLOW_DIRECT.label}</span>
+              <span className="mt-0.5 block text-slate-600">{INFORMACJA_FLOW_DIRECT.short}</span>
             </span>
-            <span className="mt-0.5 block text-slate-600">
-              Pozycja trafi do kolejki „Dla kogoś” (Główne / Uzupełniające). Dopiero po zamówieniu
-              pojawi się w magazynie i na regale — bez tego od razu idzie do kolejki informacji.
+          </label>
+          <label className="flex cursor-pointer items-start gap-2 text-xs text-slate-700">
+            <input
+              type="radio"
+              name="informacja-path"
+              className="mt-0.5"
+              checked={informacjaViaDailyPanel}
+              onChange={() => setInformacjaViaDailyPanel(true)}
+              disabled={pending}
+            />
+            <span>
+              <span className="font-medium text-slate-900">{INFORMACJA_FLOW_VIA_PANEL.label}</span>
+              <span className="mt-0.5 block text-slate-600">{INFORMACJA_FLOW_VIA_PANEL.short}</span>
             </span>
-          </span>
-        </label>
+          </label>
+          <InformacjaFlowLegend compact className="border-t border-sky-100 pt-2" />
+        </fieldset>
       ) : null}
 
       <div className="grid gap-3 sm:grid-cols-2">

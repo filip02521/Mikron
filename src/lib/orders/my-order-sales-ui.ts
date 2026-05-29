@@ -92,7 +92,8 @@ export function summarizeMyOrdersInbox(rows: MyOrderRow[]): MyOrdersInboxSummary
       s.zamowioneCount++;
     } else if (
       row.kind === "informacja" &&
-      (row.statusTitle === "Oczekuje na dostawę" ||
+      (row.statusTitle === "Oczekuje na magazyn" ||
+        row.statusTitle === "Czekamy na zamówienie u dostawcy" ||
         row.statusTitle === "Zamówione — czekamy na magazyn")
     ) {
       s.availabilityPendingCount++;
@@ -193,11 +194,20 @@ export function enrichMyOrderSalesUi(row: MyOrderRow): MyOrderSalesUi {
     };
   }
 
-  if (row.statusTitle === "Oczekuje na dostawę") {
+  if (row.statusTitle === "Czekamy na zamówienie u dostawcy") {
+    return {
+      headline: "Zakupy zamówią u dostawcy",
+      headlineTone: "info",
+      subline: "Potem magazyn i powiadomienie e-mail",
+      sortPriority: 9,
+    };
+  }
+
+  if (row.statusTitle === "Oczekuje na magazyn") {
     return {
       headline: "Powiadomimy, gdy towar przyjedzie",
       headlineTone: "neutral",
-      subline: null,
+      subline: "Magazyn obserwuje dostępność — bez zamówienia z panelu",
       sortPriority: 9,
     };
   }
