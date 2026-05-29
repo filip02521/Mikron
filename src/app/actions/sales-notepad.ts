@@ -264,13 +264,28 @@ export async function actionUpdatePaymentWatchFollowUp(
 
 export async function actionCreateSalesNote(
   body: string,
-  options?: { title?: string | null; color?: SalesNoteColor }
+  options?: { title?: string | null; color?: SalesNoteColor; follow_up_at?: string | null }
 ) {
   const salesPersonId = await salesPersonIdForAction();
   const trimmed = body.trim();
   if (!trimmed) throw new Error("Notatka nie może być pusta.");
 
+  const followUp =
+    options?.follow_up_at?.trim().slice(0, 10) || null;
+
   const supabase = createAdminClient();
+
+  const { data: topNote } = await supabase
+    .from("sales_notes")
+    .select("sort_order")
+    .eq("sales_person_id", salesPersonId)
+    .is("archived_at", null)
+    .order("sort_order", { ascending: true })
+    .limit(1)
+    .maybeSingle();
+
+  const sortOrder = (topNote?.sort_order ?? 0) - 1;
+
   const { data, error } = await supabase
     .from("sales_notes")
     .insert({
@@ -278,6 +293,8 @@ export async function actionCreateSalesNote(
       title: options?.title?.trim() || null,
       body: trimmed,
       color: options?.color ?? "default",
+      follow_up_at: followUp,
+      sort_order: sortOrder,
     })
     .select("*")
     .single();
@@ -331,6 +348,55 @@ export async function actionUpdateSalesNote(
   return { success: true };
 }
 
+export async function actionReorderSalesNotes(noteIds: string[]) {
+  const salesPersonId = await salesPersonIdForAction();
+  if (!noteIds.length) return { success: true };
+
+  const uniqueIds = [...new Set(noteIds)];
+  const supabase = createAdminClient();
+
+  const { data: rows, error: fetchError } = await supabase
+    .from("sales_notes")
+    .select("id, sales_person_id, archived_at")
+    .in("id", uniqueIds);
+
+  if (fetchError) throw new Error(fetchError.message);
+  if (!rows || rows.length !== uniqueIds.length) {
+    throw new Error("Nie znaleziono wszystkich notatek do zmiany kolejności.");
+  }
+
+  for (const row of rows) {
+    if (row.sales_person_id !== salesPersonId) {
+      throw new Error("Brak uprawnień do tej notatki.");
+    }
+    if (row.archived_at) {
+      throw new Error("Nie można zmieniać kolejności notatek w archiwum.");
+    }
+  }
+
+  const { count: activeCount, error: countError } = await supabase
+    .from("sales_notes")
+    .select("id", { count: "exact", head: true })
+    .eq("sales_person_id", salesPersonId)
+    .is("archived_at", null);
+
+  if (countError) throw new Error(countError.message);
+  if (activeCount !== uniqueIds.length) {
+    throw new Error("Niekompletna lista notatek — odśwież stronę i spróbuj ponownie.");
+  }
+
+  for (let i = 0; i < uniqueIds.length; i++) {
+    const { error } = await supabase
+      .from("sales_notes")
+      .update({ sort_order: i })
+      .eq("id", uniqueIds[i]!);
+    if (error) throw new Error(error.message);
+  }
+
+  revalidateNotepad();
+  return { success: true };
+}
+
 export async function actionArchiveSalesNote(noteId: string) {
   const salesPersonId = await salesPersonIdForAction();
   const supabase = createAdminClient();
@@ -376,9 +442,20 @@ export async function actionRestoreSalesNote(noteId: string) {
   }
   if (!row.archived_at) throw new Error("Notatka nie jest w archiwum.");
 
+  const { data: topNote } = await supabase
+    .from("sales_notes")
+    .select("sort_order")
+    .eq("sales_person_id", salesPersonId)
+    .is("archived_at", null)
+    .order("sort_order", { ascending: true })
+    .limit(1)
+    .maybeSingle();
+
+  const sortOrder = (topNote?.sort_order ?? 0) - 1;
+
   const { data, error } = await supabase
     .from("sales_notes")
-    .update({ archived_at: null, updated_at: now })
+    .update({ archived_at: null, updated_at: now, sort_order: sortOrder })
     .eq("id", noteId)
     .select("*")
     .single();

@@ -30,8 +30,12 @@ import {
   formatFollowUpLabel,
   isFollowUpDue,
 } from "@/lib/sales/notepad-follow-up";
-import { controlFocusClass } from "@/lib/ui/ontime-theme";
 import type { SalesPaymentWatch } from "@/types/database";
+import { FollowUpQuickDates } from "./FollowUpQuickDates";
+import {
+  NOTATNIK_INPUT_CLASS,
+  NOTATNIK_TEXTAREA_CLASS,
+} from "./notatnik-layout";
 
 export function PaymentWatchCard({
   watch,
@@ -41,6 +45,7 @@ export function PaymentWatchCard({
   onRefreshed,
   onDeleted,
   archived,
+  compact,
 }: {
   watch: SalesPaymentWatch;
   readOnly?: boolean;
@@ -49,6 +54,7 @@ export function PaymentWatchCard({
   onRefreshed?: (watch: SalesPaymentWatch) => void;
   onDeleted?: () => void;
   archived?: boolean;
+  compact?: boolean;
 }) {
   const [settling, setSettling] = useState(false);
   const [restoring, setRestoring] = useState(false);
@@ -183,11 +189,16 @@ export function PaymentWatchCard({
         overdue ? "ring-2 ring-red-200/90" : followUpDue ? "ring-2 ring-violet-200/90" : undefined
       )}
     >
-      <div className="space-y-3 p-4 sm:p-5">
-        <div className="flex flex-wrap items-start justify-between gap-3">
+      <div className={cn("space-y-2", compact ? "p-3" : "space-y-3 p-4 sm:p-5")}>
+        <div className="flex flex-wrap items-start justify-between gap-2">
           <div className="min-w-0 space-y-1">
-            <div className="flex flex-wrap items-center gap-2">
-              <p className="text-base font-semibold tabular-nums text-slate-900">
+            <div className="flex flex-wrap items-center gap-1.5">
+              <p
+                className={cn(
+                  "font-semibold tabular-nums text-slate-900",
+                  compact ? "text-sm" : "text-base"
+                )}
+              >
                 {watch.zk_number}
               </p>
               {archived ? (
@@ -217,7 +228,9 @@ export function PaymentWatchCard({
                 </>
               )}
             </div>
-            <p className="text-sm font-medium text-slate-800">{watch.client_label}</p>
+            <p className={cn("font-medium text-slate-800", compact ? "text-xs" : "text-sm")}>
+              {watch.client_label}
+            </p>
             {clientContact.email || clientContact.phone ? (
               <div className="flex flex-wrap gap-x-3 gap-y-1 text-xs">
                 {clientContact.phone ? (
@@ -250,8 +263,13 @@ export function PaymentWatchCard({
               <p className="text-xs text-slate-500">Opłacono {settledLabel}</p>
             ) : null}
           </div>
-          <div className="text-right">
-            <p className="text-lg font-semibold tabular-nums text-slate-900">
+          <div className="shrink-0 text-right">
+            <p
+              className={cn(
+                "font-semibold tabular-nums text-slate-900",
+                compact ? "text-sm" : "text-lg"
+              )}
+            >
               {formatPln(watch.amount_gross)}
             </p>
             {due ? (
@@ -310,34 +328,39 @@ export function PaymentWatchCard({
         ) : null}
 
         {!readOnly && !archived ? (
-          <div className="flex flex-wrap items-center gap-2 text-xs text-slate-600">
-            <label htmlFor={`follow-up-${watch.id}`} className="shrink-0 font-medium">
-              Przypomnij
-            </label>
-            <input
-              id={`follow-up-${watch.id}`}
-              type="date"
-              value={followUpDraft}
+          <div className="space-y-1.5 text-xs text-slate-600">
+            <span className="font-medium">⏰ Przypomnij</span>
+            <FollowUpQuickDates
+              value={followUpDraft || null}
               disabled={savingFollowUp}
-              onChange={(e) => setFollowUpDraft(e.target.value)}
-              onBlur={() => void saveFollowUp()}
-              className={cn(
-                "rounded-lg border border-slate-200 px-2 py-1 text-sm text-slate-900",
-                controlFocusClass
-              )}
+              onPick={(iso) => {
+                setFollowUpDraft(iso);
+                void saveFollowUp(iso);
+              }}
             />
-            {followUpDraft ? (
-              <button
-                type="button"
-                className="text-slate-500 hover:text-slate-800"
-                onClick={() => {
-                  setFollowUpDraft("");
-                  void saveFollowUp("");
-                }}
-              >
-                Wyczyść
-              </button>
-            ) : null}
+            <div className="flex flex-wrap items-center gap-2">
+              <input
+                id={`follow-up-${watch.id}`}
+                type="date"
+                value={followUpDraft}
+                disabled={savingFollowUp}
+                onChange={(e) => setFollowUpDraft(e.target.value)}
+                onBlur={() => void saveFollowUp()}
+                className={cn(NOTATNIK_INPUT_CLASS, "h-8 w-auto text-xs")}
+              />
+              {followUpDraft ? (
+                <button
+                  type="button"
+                  className="text-slate-500 hover:text-slate-800"
+                  onClick={() => {
+                    setFollowUpDraft("");
+                    void saveFollowUp("");
+                  }}
+                >
+                  Wyczyść
+                </button>
+              ) : null}
+            </div>
           </div>
         ) : null}
 
@@ -366,10 +389,7 @@ export function PaymentWatchCard({
               disabled={savingNote}
               onChange={(e) => setNoteDraft(e.target.value)}
               placeholder="Krótka notatka do tego ZK…"
-              className={cn(
-                "w-full rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-900",
-                controlFocusClass
-              )}
+              className={cn(NOTATNIK_TEXTAREA_CLASS, "w-full text-xs")}
             />
             <Button size="sm" disabled={savingNote} onClick={() => void saveNote()}>
               {savingNote ? "Zapis…" : "Zapisz notatkę"}

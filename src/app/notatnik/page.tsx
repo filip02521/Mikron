@@ -8,6 +8,7 @@ import { Alert } from "@/components/ui/Alert";
 import { SalesAccountLinkRequired } from "@/components/sales/SalesAccountLinkRequired";
 import { ManagerPreviewBanner } from "@/components/sales/ManagerPreviewBanner";
 import { NotatnikClient } from "@/components/notatnik/NotatnikClient";
+import { NOTATNIK_PAGE_CLASS } from "@/components/notatnik/notatnik-layout";
 import { getSubiektAvailability } from "@/lib/subiekt/availability";
 
 export default async function NotatnikPage({
@@ -98,7 +99,7 @@ export default async function NotatnikPage({
   const subiektAvailability = await getSubiektAvailability();
 
   return (
-    <div className="mx-auto max-w-3xl space-y-4">
+    <div className={NOTATNIK_PAGE_CLASS}>
       {linkError && (previewSalesPersonId || role === "sales") ? (
         <Alert tone="error">{linkError}</Alert>
       ) : null}

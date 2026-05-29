@@ -1,5 +1,6 @@
 "use client";
 
+import type { ReactNode } from "react";
 import { cn } from "@/lib/cn";
 import type { SalesNoteColor } from "@/types/database";
 import { NOTE_COLOR_OPTIONS, NOTE_COLOR_SWATCH } from "./note-styles";
@@ -8,28 +9,99 @@ export function NoteColorPicker({
   value,
   onChange,
   disabled,
+  size = "md",
 }: {
   value: SalesNoteColor;
   onChange: (color: SalesNoteColor) => void;
   disabled?: boolean;
+  size?: "sm" | "md";
+}) {
+  const sm = size === "sm";
+  return (
+    <div
+      className={cn(
+        "flex flex-wrap items-center overflow-visible",
+        sm ? "gap-1.5 py-0.5 pl-0.5 pr-1" : "gap-2 py-1 pl-0.5 pr-1.5"
+      )}
+      role="group"
+      aria-label="Kolor notatki"
+    >
+      {NOTE_COLOR_OPTIONS.map((color) => {
+        const selected = value === color;
+        return (
+          <button
+            key={color}
+            type="button"
+            disabled={disabled}
+            aria-label={color}
+            aria-pressed={selected}
+            onClick={() => onChange(color)}
+            className={cn(
+              "rounded-full border-2 transition-all disabled:opacity-50",
+              sm ? "h-[1.125rem] w-[1.125rem]" : "h-6 w-6",
+              NOTE_COLOR_SWATCH[color],
+              selected
+                ? "border-slate-700 shadow-[0_0_0_1px_rgba(255,255,255,0.9)]"
+                : "border-white/80 hover:border-slate-400"
+            )}
+          />
+        );
+      })}
+    </div>
+  );
+}
+
+function NoteAction({
+  children,
+  onClick,
+  disabled,
+}: {
+  children: ReactNode;
+  onClick: () => void;
+  disabled?: boolean;
 }) {
   return (
-    <div className="flex flex-wrap items-center gap-1.5" role="group" aria-label="Kolor notatki">
-      {NOTE_COLOR_OPTIONS.map((color) => (
-        <button
-          key={color}
-          type="button"
-          disabled={disabled}
-          aria-label={color}
-          aria-pressed={value === color}
-          onClick={() => onChange(color)}
-          className={cn(
-            "h-6 w-6 rounded-full ring-2 ring-offset-1 transition-transform disabled:opacity-50",
-            NOTE_COLOR_SWATCH[color],
-            value === color ? "scale-110 ring-slate-400" : "ring-transparent hover:scale-105"
-          )}
-        />
-      ))}
+    <button
+      type="button"
+      disabled={disabled}
+      onClick={onClick}
+      className="rounded px-1 py-0.5 text-[11px] font-medium text-slate-600 transition hover:bg-black/5 hover:text-slate-900 disabled:opacity-50"
+    >
+      {children}
+    </button>
+  );
+}
+
+export function NoteCardToolbar({
+  pinned,
+  saving,
+  onEdit,
+  onTogglePin,
+  onArchive,
+}: {
+  pinned: boolean;
+  saving?: boolean;
+  onEdit: () => void;
+  onTogglePin: () => void;
+  onArchive: () => void;
+}) {
+  return (
+    <div className="flex flex-wrap items-center gap-0.5">
+      <NoteAction onClick={onEdit} disabled={saving}>
+        Edytuj
+      </NoteAction>
+      <span className="text-slate-300" aria-hidden>
+        ·
+      </span>
+      <NoteAction onClick={onTogglePin} disabled={saving}>
+        {pinned ? "Odepnij" : "Przypnij"}
+      </NoteAction>
+      <span className="text-slate-300" aria-hidden>
+        ·
+      </span>
+      <NoteAction onClick={onArchive} disabled={saving}>
+        Archiwum
+      </NoteAction>
     </div>
   );
 }

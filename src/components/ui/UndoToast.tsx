@@ -12,6 +12,7 @@ export function UndoToast({
   onDismiss,
   onUndo,
   undoLabel = "Cofnij",
+  undoShortcut,
   durationMs = 5000,
 }: {
   message: string;
@@ -20,6 +21,7 @@ export function UndoToast({
   onDismiss: () => void;
   onUndo?: () => void;
   undoLabel?: string;
+  undoShortcut?: string;
   durationMs?: number;
 }) {
   useEffect(() => {
@@ -56,7 +58,12 @@ export function UndoToast({
         </ul>
       ) : null}
       {onUndo ? (
-        <UndoActions onUndo={onUndo} onDismiss={onDismiss} undoLabel={undoLabel} />
+        <UndoActions
+          onUndo={onUndo}
+          onDismiss={onDismiss}
+          undoLabel={undoLabel}
+          undoShortcut={undoShortcut}
+        />
       ) : null}
     </div>
   );
@@ -66,24 +73,36 @@ function UndoActions({
   onUndo,
   onDismiss,
   undoLabel,
+  undoShortcut,
 }: {
   onUndo: () => void;
   onDismiss: () => void;
   undoLabel: string;
+  undoShortcut?: string;
 }) {
   return (
-    <div className="flex flex-wrap gap-2">
-      <Button
-        size="sm"
-        variant="secondary"
-        className="min-h-10 flex-1 sm:flex-none"
-        onClick={onUndo}
-      >
-        {undoLabel}
-      </Button>
-      <Button size="sm" variant="ghost" className="min-h-10 text-slate-600" onClick={onDismiss}>
-        Zamknij
-      </Button>
+    <div className="flex flex-col gap-2">
+      {undoShortcut ? (
+        <p className="text-xs font-normal text-emerald-800/80">
+          <kbd className="rounded border border-emerald-200/80 bg-white/70 px-1 font-mono text-[10px]">
+            {undoShortcut}
+          </kbd>{" "}
+          — szybkie cofnięcie
+        </p>
+      ) : null}
+      <div className="flex flex-wrap gap-2">
+        <Button
+          size="sm"
+          variant="secondary"
+          className="min-h-10 flex-1 sm:flex-none"
+          onClick={onUndo}
+        >
+          {undoLabel}
+        </Button>
+        <Button size="sm" variant="ghost" className="min-h-10 text-slate-600" onClick={onDismiss}>
+          Zamknij
+        </Button>
+      </div>
     </div>
   );
 }

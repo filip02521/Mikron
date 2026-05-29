@@ -1,10 +1,15 @@
 "use client";
 
-import { collectNotepadTodayTasks } from "@/lib/sales/notepad-today-tasks";
+import {
+  collectNotepadTodayTasks,
+  type NotepadTodayTaskKind,
+} from "@/lib/sales/notepad-today-tasks";
 import type { SalesNote, SalesPaymentWatch } from "@/types/database";
 import { Badge } from "@/components/ui/Badge";
+import { surfaceCardClass } from "@/lib/ui/ontime-theme";
+import { cn } from "@/lib/cn";
 
-function taskBadge(kind: ReturnType<typeof collectNotepadTodayTasks>[number]["kind"]) {
+function taskBadge(kind: NotepadTodayTaskKind) {
   switch (kind) {
     case "zk-overdue":
       return (
@@ -30,45 +35,50 @@ function taskBadge(kind: ReturnType<typeof collectNotepadTodayTasks>[number]["ki
 export function TodayTasksSection({
   watches,
   notes,
+  onTaskClick,
 }: {
   watches: SalesPaymentWatch[];
   notes: SalesNote[];
+  onTaskClick?: (anchor: string, kind: NotepadTodayTaskKind) => void;
 }) {
   const tasks = collectNotepadTodayTasks(watches, notes);
   if (!tasks.length) return null;
 
-  function scrollTo(anchor: string) {
+  function navigate(anchor: string, kind: NotepadTodayTaskKind) {
+    if (onTaskClick) {
+      onTaskClick(anchor, kind);
+      return;
+    }
     document.getElementById(anchor)?.scrollIntoView({ behavior: "smooth", block: "center" });
   }
 
   return (
-    <section className="rounded-xl border border-violet-200/90 bg-violet-50/50 p-4 sm:p-5">
-      <div className="mb-3">
-        <h2 className="text-base font-semibold text-slate-900">Do zrobienia dziś</h2>
-        <p className="mt-1 text-sm text-slate-600">
+    <section className={cn(surfaceCardClass, "border-violet-200/80 bg-violet-50/40 p-3 sm:p-4")}>
+      <div className="mb-2">
+        <h2 className="text-sm font-semibold text-slate-900">Do zrobienia dziś</h2>
+        <p className="text-xs text-slate-600">
           {tasks.length}{" "}
-          {tasks.length === 1 ? "rzecz wymaga uwagi" : tasks.length < 5 ? "rzeczy wymagają uwagi" : "rzeczy wymaga uwagi"}
-          — ZK po terminie i przypomnienia.
+          {tasks.length === 1 ? "rzecz wymaga uwagi" : "rzeczy wymaga uwagi"}
         </p>
       </div>
-      <ul className="space-y-2">
+      <ul className="flex flex-col gap-1.5">
         {tasks.map((task) => (
           <li key={`${task.kind}-${task.id}`}>
             <button
               type="button"
-              onClick={() => scrollTo(task.anchor)}
-              className="flex w-full flex-col gap-1 rounded-lg border border-white/80 bg-white/90 px-3 py-2.5 text-left shadow-sm transition hover:border-violet-200 hover:bg-white sm:flex-row sm:items-center sm:justify-between"
+              onClick={() => navigate(task.anchor, task.kind)}
+              className="flex w-full items-center justify-between gap-2 rounded-lg border border-white/80 bg-white/90 px-3 py-2 text-left shadow-sm transition hover:border-violet-200 hover:bg-white"
             >
-              <div className="min-w-0 space-y-1">
+              <div className="min-w-0 flex-1">
                 <div className="flex flex-wrap items-center gap-2">
                   {taskBadge(task.kind)}
-                  <span className="text-sm font-semibold text-slate-900">{task.title}</span>
+                  <span className="truncate text-xs font-semibold text-slate-900">{task.title}</span>
                 </div>
                 {task.subtitle ? (
-                  <p className="text-xs leading-relaxed text-slate-600">{task.subtitle}</p>
+                  <p className="mt-0.5 truncate text-[11px] text-slate-500">{task.subtitle}</p>
                 ) : null}
               </div>
-              <span className="shrink-0 text-xs font-medium text-indigo-700">Pokaż →</span>
+              <span className="shrink-0 text-[11px] font-medium text-indigo-700">→</span>
             </button>
           </li>
         ))}

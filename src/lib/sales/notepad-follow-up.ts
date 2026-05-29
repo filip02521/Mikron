@@ -41,6 +41,26 @@ export function formatFollowUpLabel(followUpAt: string | null | undefined): stri
   return `${day}.${m}.${y}`;
 }
 
+export function todayIso(referenceMs?: number): string {
+  const ref = referenceMs != null ? new Date(referenceMs) : new Date();
+  return `${ref.getFullYear()}-${String(ref.getMonth() + 1).padStart(2, "0")}-${String(ref.getDate()).padStart(2, "0")}`;
+}
+
+export function addDaysToIso(isoDate: string, days: number): string {
+  const d = new Date(`${isoDate.slice(0, 10)}T12:00:00`);
+  d.setDate(d.getDate() + days);
+  return todayIso(d.getTime());
+}
+
+export function followUpQuickDates(): { label: string; value: string }[] {
+  const today = todayIso();
+  return [
+    { label: "Dziś", value: today },
+    { label: "Jutro", value: addDaysToIso(today, 1) },
+    { label: "Za tydz.", value: addDaysToIso(today, 7) },
+  ];
+}
+
 /** Link do panelu zamówień z filtrem klienta. */
 export function buildMojeClientLink(
   salesPersonId: string,

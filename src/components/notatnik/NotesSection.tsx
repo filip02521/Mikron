@@ -1,39 +1,83 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
   actionArchiveSalesNote,
   actionCreateSalesNote,
+  actionReorderSalesNotes,
   actionUpdateSalesNote,
 } from "@/app/actions/sales-notepad";
 import { Button } from "@/components/ui/Button";
 import { Alert } from "@/components/ui/Alert";
+import { KeyboardShortcutsHint } from "@/components/ui/KeyboardShortcutsHint";
 import { cn } from "@/lib/cn";
 import { controlFocusClass } from "@/lib/ui/ontime-theme";
+import { reorderNoteIds, sortSalesNotes, notesInSamePinBand } from "@/lib/sales/notepad-note-sort";
 import type { SalesNote, SalesNoteColor } from "@/types/database";
-import { formatFollowUpLabel, isFollowUpDue } from "@/lib/sales/notepad-follow-up";
-import { Badge } from "@/components/ui/Badge";
-import { NoteColorPicker } from "./NoteColorPicker";
+import { isFollowUpDue } from "@/lib/sales/notepad-follow-up";
+import { NoteColorPicker, NoteCardToolbar } from "./NoteColorPicker";
+import { NoteFollowUpControl } from "./NoteFollowUpControl";
+import { FollowUpQuickDates } from "./FollowUpQuickDates";
+import {
+  NOTATNIK_INPUT_CLASS,
+  NOTATNIK_NOTES_GRID_CLASS,
+  NOTATNIK_SEARCH_CLASS,
+  NOTATNIK_TEXTAREA_CLASS,
+} from "./notatnik-layout";
 import { NOTE_COLOR_CARD } from "./note-styles";
+
+export const NOTATNIK_KEYBOARD_HINTS = [
+  { keys: ["N"], label: "nowa notatka" },
+  { keys: ["/"], label: "szukaj" },
+  { keys: ["↑", "↓"], label: "fokus karty" },
+  { keys: ["E"], label: "edytuj" },
+  { keys: ["P"], label: "przypnij" },
+  { keys: ["Ctrl", "Enter"], label: "zapisz" },
+  { keys: ["Ctrl", "Z"], label: "cofnij" },
+] as const;
 
 function NoteCard({
   note,
   readOnly,
+  focused,
+  draggable,
+  isDragging,
+  dragOver,
+  pendingKeyboardAction,
+  onConsumeKeyboardAction,
+  onFocus,
   onUpdated,
   onArchived,
+  onDragStart,
+  onDragEnd,
+  onDragOver,
+  onDrop,
 }: {
   note: SalesNote;
   readOnly?: boolean;
+  focused?: boolean;
+  draggable?: boolean;
+  isDragging?: boolean;
+  dragOver?: boolean;
+  pendingKeyboardAction?: "edit" | "pin" | null;
+  onConsumeKeyboardAction?: () => void;
+  onFocus?: () => void;
   onUpdated?: (note: SalesNote) => void;
-  onArchived?: (noteId: string) => void;
+  onArchived?: (note: SalesNote) => void;
+  onDragStart?: () => void;
+  onDragEnd?: () => void;
+  onDragOver?: (e: React.DragEvent) => void;
+  onDrop?: (e: React.DragEvent) => void;
 }) {
   const [editing, setEditing] = useState(false);
   const [body, setBody] = useState(note.body);
   const [title, setTitle] = useState(note.title ?? "");
   const [color, setColor] = useState(note.color);
   const [pinned, setPinned] = useState(note.pinned);
+  const [followUpAt, setFollowUpAt] = useState<string | null>(note.follow_up_at?.slice(0, 10) ?? null);
   const [followUpDraft, setFollowUpDraft] = useState(note.follow_up_at?.slice(0, 10) ?? "");
   const [saving, setSaving] = useState(false);
+  const [savingFollowUp, setSavingFollowUp] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -41,23 +85,46 @@ function NoteCard({
     setTitle(note.title ?? "");
     setColor(note.color);
     setPinned(note.pinned);
-    setFollowUpDraft(note.follow_up_at?.slice(0, 10) ?? "");
+    const iso = note.follow_up_at?.slice(0, 10) ?? null;
+    setFollowUpAt(iso);
+    setFollowUpDraft(iso ?? "");
   }, [note]);
+
+  useEffect(() => {
+    if (!pendingKeyboardAction || readOnly) return;
+    if (pendingKeyboardAction === "edit") {
+      setEditing(true);
+      onConsumeKeyboardAction?.();
+      return;
+    }
+    if (pendingKeyboardAction === "pin") {
+      onConsumeKeyboardAction?.();
+      const nextPinned = !pinned;
+      setPinned(nextPinned);
+      void actionUpdateSalesNote(note.id, { pinned: nextPinned })
+        .then(() => onUpdated?.({ ...note, pinned: nextPinned }))
+        .catch(() => setPinned(!nextPinned));
+    }
+  }, [pendingKeyboardAction, readOnly, note, pinned, onConsumeKeyboardAction, onUpdated]);
 
   async function save() {
     setSaving(true);
     setError(null);
     try {
+      const trimmedFollowUp = followUpDraft.trim() || null;
       await actionUpdateSalesNote(note.id, {
         body,
         title: title || null,
         color,
+        follow_up_at: trimmedFollowUp,
       });
+      setFollowUpAt(trimmedFollowUp);
       onUpdated?.({
         ...note,
         body: body.trim(),
         title: title.trim() || null,
         color,
+        follow_up_at: trimmedFollowUp,
       });
       setEditing(false);
     } catch (e) {
@@ -79,6 +146,24 @@ function NoteCard({
     }
   }
 
+  async function changeFollowUp(next: string | null) {
+    if (readOnly) return;
+    const prev = followUpAt;
+    setFollowUpAt(next);
+    setSavingFollowUp(true);
+    setError(null);
+    try {
+      await actionUpdateSalesNote(note.id, { follow_up_at: next });
+      onUpdated?.({ ...note, follow_up_at: next });
+    } catch (e) {
+      setFollowUpAt(prev);
+      setError(e instanceof Error ? e.message : "Nie udało się ustawić przypomnienia.");
+      throw e;
+    } finally {
+      setSavingFollowUp(false);
+    }
+  }
+
   async function togglePin() {
     const nextPinned = !pinned;
     setPinned(nextPinned);
@@ -90,45 +175,67 @@ function NoteCard({
     }
   }
 
-  async function saveFollowUp(nextValue?: string) {
-    if (readOnly) return;
-    const value = (nextValue ?? followUpDraft).trim();
-    const normalized = value || null;
-    if (normalized === (note.follow_up_at?.slice(0, 10) ?? null)) return;
-    try {
-      await actionUpdateSalesNote(note.id, { follow_up_at: normalized });
-      onUpdated?.({ ...note, follow_up_at: normalized });
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "Nie udało się zapisać przypomnienia.");
-    }
-  }
-
-  const followUpDue = isFollowUpDue(note.follow_up_at);
-  const followUpLabel = formatFollowUpLabel(note.follow_up_at);
-
   async function archive() {
     setError(null);
     try {
       await actionArchiveSalesNote(note.id);
-      onArchived?.(note.id);
+      onArchived?.(note);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Nie udało się zarchiwizować notatki.");
     }
   }
 
+  const followUpDue = isFollowUpDue(followUpAt);
   const displayTitle = editing ? title : note.title;
   const displayBody = editing ? body : note.body;
   const displayColor = editing ? color : note.color;
 
   return (
     <article
+      tabIndex={focused ? 0 : -1}
+      draggable={draggable && !editing}
+      onDragStart={(e) => {
+        if (!draggable || editing) return;
+        e.dataTransfer.effectAllowed = "move";
+        onDragStart?.();
+      }}
+      onDragEnd={onDragEnd}
+      onDragOver={onDragOver}
+      onDrop={onDrop}
+      onFocus={onFocus}
+      onDoubleClick={() => {
+        if (!readOnly && !editing) setEditing(true);
+      }}
       className={cn(
-        "flex flex-col rounded-xl border p-4 shadow-sm",
+        "group relative flex w-full flex-col overflow-visible rounded-lg border p-2.5 shadow-sm transition-shadow hover:shadow-md",
         NOTE_COLOR_CARD[displayColor] ?? NOTE_COLOR_CARD.default,
         pinned && !editing ? "ring-1 ring-indigo-200/80" : undefined,
-        followUpDue && !editing ? "ring-1 ring-violet-200/80" : undefined
+        followUpDue && !editing ? "ring-1 ring-violet-200/80" : undefined,
+        focused ? "ring-2 ring-indigo-400/70 ring-offset-1" : undefined,
+        dragOver ? "border-indigo-300 bg-white/90" : undefined,
+        isDragging ? "opacity-50" : undefined
       )}
     >
+      {draggable && !editing && !readOnly ? (
+        <span
+          className="absolute left-1.5 top-1.5 cursor-grab text-[10px] text-slate-400 opacity-0 transition group-hover:opacity-100 active:cursor-grabbing"
+          aria-hidden
+          title="Przeciągnij, aby zmienić kolejność"
+        >
+          ⠿
+        </span>
+      ) : null}
+
+      {pinned && !editing ? (
+        <span
+          className="absolute right-2 top-2 text-[10px] text-indigo-600"
+          title="Przypięta"
+          aria-label="Przypięta"
+        >
+          📌
+        </span>
+      ) : null}
+
       {editing && !readOnly ? (
         <div className="space-y-2">
           <input
@@ -136,22 +243,25 @@ function NoteCard({
             value={title}
             onChange={(e) => setTitle(e.target.value)}
             placeholder="Tytuł (opcjonalnie)"
-            className={cn(
-              "w-full rounded-md border border-slate-200/80 bg-white/70 px-2 py-1 text-sm",
-              controlFocusClass
-            )}
+            className={cn(NOTATNIK_INPUT_CLASS, "w-full text-xs")}
           />
           <textarea
-            rows={4}
+            rows={3}
             value={body}
             onChange={(e) => setBody(e.target.value)}
-            className={cn(
-              "w-full rounded-md border border-slate-200/80 bg-white/70 px-2 py-1.5 text-sm",
-              controlFocusClass
-            )}
+            className={cn(NOTATNIK_TEXTAREA_CLASS, "w-full text-xs")}
           />
-          <NoteColorPicker value={color} onChange={setColor} disabled={saving} />
-          <div className="flex flex-wrap gap-2">
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="text-[11px] text-slate-600">Przypomnij</span>
+            <input
+              type="date"
+              value={followUpDraft}
+              onChange={(e) => setFollowUpDraft(e.target.value)}
+              className={cn(NOTATNIK_INPUT_CLASS, "h-8 w-auto text-xs")}
+            />
+          </div>
+          <NoteColorPicker value={color} onChange={setColor} disabled={saving} size="sm" />
+          <div className="flex flex-wrap gap-1.5">
             <Button size="sm" disabled={saving} onClick={() => void save()}>
               {saving ? "Zapis…" : "Zapisz"}
             </Button>
@@ -162,74 +272,43 @@ function NoteCard({
         </div>
       ) : (
         <>
-          {pinned ? (
-            <p className="mb-1 text-[10px] font-semibold uppercase tracking-wide text-indigo-600">
-              Przypięta
-            </p>
-          ) : null}
-          {followUpDue ? (
-            <Badge variant="purple" className="mb-1 text-[10px]">
-              Follow-up
-            </Badge>
-          ) : null}
           {displayTitle?.trim() ? (
-            <h3 className="mb-1 text-sm font-semibold text-slate-900">{displayTitle}</h3>
+            <h3 className="mb-0.5 pr-5 pl-3 text-xs font-semibold leading-snug text-slate-900">
+              {displayTitle}
+            </h3>
           ) : null}
-          <p className="whitespace-pre-wrap text-sm leading-relaxed text-slate-800">
-            {displayBody}
-          </p>
-          {followUpLabel ? (
-            <p className={cn("mt-2 text-xs", followUpDue ? "font-semibold text-violet-800" : "text-slate-500")}>
-              Przypomnienie {followUpLabel}
-            </p>
-          ) : null}
+          <p className="whitespace-pre-wrap pl-3 text-xs leading-snug text-slate-800">{displayBody}</p>
+
           {!readOnly ? (
-            <div className="mt-3 space-y-3 border-t border-black/5 pt-3">
-              <div className="flex flex-wrap items-center gap-2 text-xs text-slate-600">
-                <label htmlFor={`note-follow-up-${note.id}`} className="font-medium">
-                  Przypomnij
-                </label>
-                <input
-                  id={`note-follow-up-${note.id}`}
-                  type="date"
-                  value={followUpDraft}
-                  onChange={(e) => setFollowUpDraft(e.target.value)}
-                  onBlur={() => void saveFollowUp()}
-                  className={cn(
-                    "rounded-md border border-slate-200/80 bg-white/70 px-2 py-1 text-sm",
-                    controlFocusClass
-                  )}
+            <div className="mt-2 space-y-1.5 overflow-visible border-t border-black/5 pt-2">
+              <NoteFollowUpControl
+                value={followUpAt}
+                onChange={changeFollowUp}
+                saving={savingFollowUp}
+              />
+              <div className="space-y-1.5 overflow-visible py-0.5 transition-opacity lg:opacity-100 lg:group-hover:opacity-100 lg:group-focus-within:opacity-100">
+                <NoteColorPicker
+                  value={displayColor}
+                  onChange={(c) => void changeColor(c)}
+                  size="sm"
                 />
-                {followUpDraft ? (
-                  <button
-                    type="button"
-                    className="text-slate-500 hover:text-slate-800"
-                    onClick={() => {
-                      setFollowUpDraft("");
-                      void saveFollowUp("");
-                    }}
-                  >
-                    Wyczyść
-                  </button>
-                ) : null}
+                <NoteCardToolbar
+                  pinned={pinned}
+                  saving={saving || savingFollowUp}
+                  onEdit={() => setEditing(true)}
+                  onTogglePin={() => void togglePin()}
+                  onArchive={() => void archive()}
+                />
               </div>
-              <NoteColorPicker value={displayColor} onChange={(c) => void changeColor(c)} />
-              <div className="flex flex-wrap gap-2">
-                <Button size="sm" variant="ghost" onClick={() => setEditing(true)}>
-                  Edytuj
-                </Button>
-                <Button size="sm" variant="ghost" onClick={() => void togglePin()}>
-                  {pinned ? "Odepnij" : "Przypnij"}
-                </Button>
-                <Button size="sm" variant="ghost" onClick={() => void archive()}>
-                  Archiwum
-                </Button>
-              </div>
+            </div>
+          ) : followUpAt ? (
+            <div className="mt-2 border-t border-black/5 pt-2">
+              <NoteFollowUpControl value={followUpAt} onChange={() => {}} disabled />
             </div>
           ) : null}
         </>
       )}
-      {error ? <p className="mt-2 text-xs text-red-600">{error}</p> : null}
+      {error ? <p className="mt-1 text-[10px] text-red-600">{error}</p> : null}
     </article>
   );
 }
@@ -237,22 +316,211 @@ function NoteCard({
 export function NotesSection({
   notes,
   readOnly,
+  embedded,
   onNoteCreated,
   onNoteUpdated,
   onNoteArchived,
+  onNotesReordered,
 }: {
   notes: SalesNote[];
   readOnly?: boolean;
+  embedded?: boolean;
   onNoteCreated?: (note: SalesNote) => void;
   onNoteUpdated?: (note: SalesNote) => void;
-  onNoteArchived?: (noteId: string) => void;
+  onNoteArchived?: (note: SalesNote) => void;
+  onNotesReordered?: (notes: SalesNote[], previousForUndo?: SalesNote[]) => void;
 }) {
   const [draftTitle, setDraftTitle] = useState("");
   const [draft, setDraft] = useState("");
   const [draftColor, setDraftColor] = useState<SalesNoteColor>("default");
+  const [draftFollowUp, setDraftFollowUp] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
+  const [composeOpen, setComposeOpen] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [draggingId, setDraggingId] = useState<string | null>(null);
+  const [dragOverId, setDragOverId] = useState<string | null>(null);
+  const [focusedNoteId, setFocusedNoteId] = useState<string | null>(null);
+  const [keyboardAction, setKeyboardAction] = useState<{
+    noteId: string;
+    action: "edit" | "pin";
+  } | null>(null);
+  const composeRef = useRef<HTMLDivElement>(null);
+  const searchRef = useRef<HTMLInputElement>(null);
+
+  const composeExpanded =
+    composeOpen || Boolean(draft.trim() || draftTitle.trim() || draftFollowUp);
+
+  useEffect(() => {
+    if (composeOpen) composeRef.current?.querySelector<HTMLElement>("textarea")?.focus();
+  }, [composeOpen]);
+
+  const sorted = sortSalesNotes(notes);
+  const needle = searchQuery.trim().toLowerCase();
+  const filtered = needle
+    ? sorted.filter(
+        (note) =>
+          note.body.toLowerCase().includes(needle) ||
+          note.title?.toLowerCase().includes(needle)
+      )
+    : sorted;
+
+  const canDrag = !readOnly && !needle;
+
+  const pinnedFiltered = filtered.filter((n) => n.pinned);
+  const regularFiltered = filtered.filter((n) => !n.pinned);
+
+  const persistReorder = useCallback(
+    async (nextIds: string[] | null) => {
+      if (!nextIds) {
+        setError("Kolejność można zmieniać tylko w sekcji przypiętych lub zwykłych notatek.");
+        return;
+      }
+      const prev = sortSalesNotes(notes);
+      const optimistic = nextIds.map((id, index) => {
+        const note = prev.find((n) => n.id === id)!;
+        return { ...note, sort_order: index };
+      });
+      onNotesReordered?.(optimistic);
+      try {
+        await actionReorderSalesNotes(nextIds);
+        onNotesReordered?.(optimistic, prev);
+      } catch (e) {
+        onNotesReordered?.(prev);
+        setError(e instanceof Error ? e.message : "Nie udało się zmienić kolejności.");
+      }
+    },
+    [notes, onNotesReordered]
+  );
+
+  function renderNoteGrid(list: SalesNote[], sectionLabel?: string) {
+    if (!list.length) return null;
+    const draggingNote = draggingId ? notes.find((n) => n.id === draggingId) : null;
+
+    return (
+      <div className="space-y-1.5">
+        {sectionLabel ? (
+          <p className="text-[10px] font-medium uppercase tracking-wide text-slate-500">
+            {sectionLabel}
+          </p>
+        ) : null}
+        <div className={NOTATNIK_NOTES_GRID_CLASS}>
+          {list.map((note) => (
+            <div key={note.id} id={`note-${note.id}`}>
+              <NoteCard
+                note={note}
+                readOnly={readOnly}
+                focused={focusedNoteId === note.id}
+                draggable={canDrag}
+                isDragging={draggingId === note.id}
+                dragOver={
+                  dragOverId === note.id &&
+                  draggingId !== note.id &&
+                  !!draggingNote &&
+                  notesInSamePinBand(draggingNote, note)
+                }
+                pendingKeyboardAction={
+                  keyboardAction?.noteId === note.id ? keyboardAction.action : null
+                }
+                onConsumeKeyboardAction={() => setKeyboardAction(null)}
+                onFocus={() => setFocusedNoteId(note.id)}
+                onUpdated={onNoteUpdated}
+                onArchived={onNoteArchived}
+                onDragStart={() => setDraggingId(note.id)}
+                onDragEnd={() => {
+                  setDraggingId(null);
+                  setDragOverId(null);
+                }}
+                onDragOver={(e) => {
+                  if (!canDrag || !draggingId || draggingId === note.id) return;
+                  const from = notes.find((n) => n.id === draggingId);
+                  if (!from || !notesInSamePinBand(from, note)) return;
+                  e.preventDefault();
+                  setDragOverId(note.id);
+                }}
+                onDrop={(e) => {
+                  e.preventDefault();
+                  if (!draggingId || draggingId === note.id) return;
+                  const nextIds = reorderNoteIds(notes, draggingId, note.id);
+                  setDraggingId(null);
+                  setDragOverId(null);
+                  void persistReorder(nextIds);
+                }}
+              />
+            </div>
+          ))}
+        </div>
+      </div>
+    );
+  }
+
+  useEffect(() => {
+    if (!focusedNoteId) return;
+    document.getElementById(`note-${focusedNoteId}`)?.scrollIntoView({
+      behavior: "smooth",
+      block: "nearest",
+    });
+  }, [focusedNoteId]);
+
+  useEffect(() => {
+    if (readOnly) return;
+
+    const onKey = (e: KeyboardEvent) => {
+      const tag = (e.target as HTMLElement)?.tagName;
+      const inField = tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT";
+
+      if (inField) {
+        if (e.key === "Escape") (e.target as HTMLElement).blur();
+        return;
+      }
+
+      if (e.key === "/" && !e.metaKey && !e.ctrlKey) {
+        e.preventDefault();
+        searchRef.current?.focus();
+        return;
+      }
+
+      if (e.key === "n" || e.key === "N") {
+        e.preventDefault();
+        setComposeOpen(true);
+        return;
+      }
+
+      if (!filtered.length) return;
+
+      const idx = focusedNoteId ? filtered.findIndex((n) => n.id === focusedNoteId) : -1;
+
+      if (e.key === "ArrowDown") {
+        e.preventDefault();
+        const nextIdx = idx < 0 ? 0 : Math.min(idx + 1, filtered.length - 1);
+        setFocusedNoteId(filtered[nextIdx]!.id);
+        return;
+      }
+
+      if (e.key === "ArrowUp") {
+        e.preventDefault();
+        const nextIdx = idx < 0 ? 0 : Math.max(idx - 1, 0);
+        setFocusedNoteId(filtered[nextIdx]!.id);
+        return;
+      }
+
+      if (!focusedNoteId) return;
+
+      if (e.key === "e" || e.key === "E") {
+        e.preventDefault();
+        setKeyboardAction({ noteId: focusedNoteId, action: "edit" });
+        return;
+      }
+
+      if (e.key === "p" || e.key === "P") {
+        e.preventDefault();
+        setKeyboardAction({ noteId: focusedNoteId, action: "pin" });
+      }
+    };
+
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [readOnly, filtered, focusedNoteId]);
 
   async function createNote() {
     const trimmed = draft.trim();
@@ -263,10 +531,13 @@ export function NotesSection({
       const { note } = await actionCreateSalesNote(trimmed, {
         title: draftTitle.trim() || null,
         color: draftColor,
+        follow_up_at: draftFollowUp.trim() || null,
       });
       setDraft("");
       setDraftTitle("");
       setDraftColor("default");
+      setDraftFollowUp("");
+      setComposeOpen(false);
       onNoteCreated?.(note);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Nie udało się dodać notatki.");
@@ -275,99 +546,145 @@ export function NotesSection({
     }
   }
 
-  const sorted = [...notes].sort((a, b) => {
-    if (a.pinned !== b.pinned) return a.pinned ? -1 : 1;
-    const followA = isFollowUpDue(a.follow_up_at);
-    const followB = isFollowUpDue(b.follow_up_at);
-    if (followA !== followB) return followA ? -1 : 1;
-    return b.updated_at.localeCompare(a.updated_at);
-  });
-
-  const needle = searchQuery.trim().toLowerCase();
-  const filtered = needle
-    ? sorted.filter(
-        (note) =>
-          note.body.toLowerCase().includes(needle) ||
-          note.title?.toLowerCase().includes(needle)
-      )
-    : sorted;
-
   return (
-    <section className="space-y-4">
-      <div>
-        <h2 className="text-base font-semibold text-slate-900">Notatki</h2>
-        <p className="mt-1 text-sm text-slate-500">Krótkie zapiski — jak w Keep.</p>
-      </div>
-
-      {!readOnly ? (
-        <div
-          className={cn(
-            "rounded-xl border p-4 shadow-sm",
-            NOTE_COLOR_CARD[draftColor] ?? NOTE_COLOR_CARD.default
-          )}
-        >
-          <input
-            type="text"
-            value={draftTitle}
-            onChange={(e) => setDraftTitle(e.target.value)}
-            placeholder="Tytuł (opcjonalnie)"
-            className={cn(
-              "mb-2 w-full rounded-lg border border-white/80 bg-white/80 px-3 py-2 text-sm",
-              controlFocusClass
-            )}
-          />
-          <textarea
-            rows={3}
-            value={draft}
-            onChange={(e) => setDraft(e.target.value)}
-            placeholder="Wpisz notatkę…"
-            className={cn(
-              "w-full rounded-lg border border-white/80 bg-white px-3 py-2 text-sm",
-              controlFocusClass
-            )}
-          />
-          <div className="mt-3 space-y-2">
-            <NoteColorPicker value={draftColor} onChange={setDraftColor} disabled={saving} />
-            <Button size="sm" disabled={saving || !draft.trim()} onClick={() => void createNote()}>
-              {saving ? "Zapis…" : "Dodaj notatkę"}
-            </Button>
+    <div className={embedded ? "space-y-3" : "space-y-3"}>
+      {!embedded ? (
+        <div className="flex flex-wrap items-end justify-between gap-2">
+          <div>
+            <h2 className="text-base font-semibold text-slate-900">Notatki</h2>
+            <KeyboardShortcutsHint items={[...NOTATNIK_KEYBOARD_HINTS]} className="mt-1" compact />
           </div>
         </div>
+      ) : (
+        <KeyboardShortcutsHint items={[...NOTATNIK_KEYBOARD_HINTS]} compact />
+      )}
+
+      {!readOnly ? (
+        composeExpanded ? (
+          <div
+            ref={composeRef}
+            className={cn(
+              "rounded-lg border p-3",
+              NOTE_COLOR_CARD[draftColor] ?? NOTE_COLOR_CARD.default
+            )}
+            onKeyDown={(e) => {
+              if ((e.metaKey || e.ctrlKey) && e.key === "Enter") {
+                e.preventDefault();
+                void createNote();
+              }
+            }}
+          >
+            <div className="space-y-2">
+              <input
+                type="text"
+                value={draftTitle}
+                onChange={(e) => setDraftTitle(e.target.value)}
+                placeholder="Tytuł (opcjonalnie)"
+                className={cn(
+                  "h-8 w-full rounded-lg border border-white/80 bg-white/80 px-2 text-xs",
+                  controlFocusClass
+                )}
+              />
+              <textarea
+                rows={2}
+                value={draft}
+                onChange={(e) => setDraft(e.target.value)}
+                placeholder="Wpisz notatkę…"
+                className={cn(
+                  "w-full rounded-lg border border-white/80 bg-white px-2 py-1.5 text-xs leading-snug",
+                  controlFocusClass
+                )}
+              />
+              <div className="space-y-1.5">
+                <span className="text-[10px] font-medium text-slate-600">Przypomnij</span>
+                <FollowUpQuickDates
+                  value={draftFollowUp || null}
+                  disabled={saving}
+                  onPick={setDraftFollowUp}
+                />
+                <input
+                  id="note-compose-follow-up"
+                  type="date"
+                  value={draftFollowUp}
+                  onChange={(e) => setDraftFollowUp(e.target.value)}
+                  className={cn(NOTATNIK_INPUT_CLASS, "h-8 w-auto text-xs")}
+                />
+              </div>
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <NoteColorPicker value={draftColor} onChange={setDraftColor} disabled={saving} size="sm" />
+                <div className="flex gap-1.5">
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    onClick={() => {
+                      setDraft("");
+                      setDraftTitle("");
+                      setDraftFollowUp("");
+                      setDraftColor("default");
+                      setComposeOpen(false);
+                    }}
+                  >
+                    Anuluj
+                  </Button>
+                  <Button size="sm" disabled={saving || !draft.trim()} onClick={() => void createNote()}>
+                    {saving ? "Zapis…" : "Dodaj"}
+                  </Button>
+                </div>
+              </div>
+            </div>
+          </div>
+        ) : (
+          <button
+            type="button"
+            onClick={() => setComposeOpen(true)}
+            className="flex w-full items-center gap-2 rounded-lg border border-dashed border-slate-200 bg-slate-50/60 px-3 py-2.5 text-left text-xs text-slate-500 transition hover:border-indigo-200 hover:bg-indigo-50/40 hover:text-indigo-800"
+          >
+            <span className="text-base leading-none text-indigo-600" aria-hidden>
+              +
+            </span>
+            Wpisz notatkę…
+            <span className="ml-auto hidden sm:inline">
+              <KeyboardShortcutsHint items={[{ keys: ["N"], label: "" }]} compact />
+            </span>
+          </button>
+        )
       ) : null}
 
       {notes.length > 0 ? (
-        <input
-          type="search"
-          value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
-          placeholder="Szukaj w notatkach…"
-          className={cn(
-            "w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-sm text-slate-900 shadow-sm",
-            controlFocusClass
-          )}
-        />
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <input
+            ref={searchRef}
+            type="search"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            placeholder="Szukaj…"
+            className={NOTATNIK_SEARCH_CLASS}
+          />
+          {filtered.length > 0 ? (
+            <span className="text-[11px] tabular-nums text-slate-500">{filtered.length} szt.</span>
+          ) : null}
+        </div>
+      ) : null}
+
+      {canDrag && filtered.length > 1 ? (
+        <p className="text-[10px] text-slate-400">
+          Przeciągnij kartę (⠿) w sekcji przypiętych lub zwykłych — między sekcjami nie da się
+          przenieść.
+        </p>
       ) : null}
 
       {error ? <Alert tone="error">{error}</Alert> : null}
 
       {filtered.length === 0 ? (
-        <p className="rounded-xl border border-dashed border-slate-200 bg-slate-50/80 px-4 py-6 text-center text-sm text-slate-500">
+        <p className="rounded-lg border border-dashed border-slate-200 bg-slate-50/80 px-3 py-4 text-center text-xs text-slate-500">
           {needle ? "Brak notatek pasujących do wyszukiwania." : "Brak notatek."}
         </p>
       ) : (
-        <div className="grid gap-3 sm:grid-cols-2">
-          {filtered.map((note) => (
-            <div key={note.id} id={`note-${note.id}`}>
-              <NoteCard
-              note={note}
-              readOnly={readOnly}
-              onUpdated={onNoteUpdated}
-              onArchived={onNoteArchived}
-            />
-            </div>
-          ))}
+        <div className="space-y-4">
+          {renderNoteGrid(pinnedFiltered, pinnedFiltered.length ? "Przypięte" : undefined)}
+          {renderNoteGrid(regularFiltered, pinnedFiltered.length ? "Pozostałe" : undefined)}
         </div>
       )}
-    </section>
+    </div>
   );
 }

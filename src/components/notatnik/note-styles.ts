@@ -9,11 +9,11 @@ export const NOTE_COLOR_OPTIONS: SalesNoteColor[] = [
 ];
 
 export const NOTE_COLOR_SWATCH: Record<SalesNoteColor, string> = {
-  default: "bg-amber-200 ring-amber-300",
-  yellow: "bg-yellow-200 ring-yellow-300",
-  green: "bg-emerald-200 ring-emerald-300",
-  blue: "bg-sky-200 ring-sky-300",
-  pink: "bg-pink-200 ring-pink-300",
+  default: "bg-amber-200",
+  yellow: "bg-yellow-200",
+  green: "bg-emerald-200",
+  blue: "bg-sky-200",
+  pink: "bg-pink-200",
 };
 
 export const NOTE_COLOR_CARD: Record<SalesNoteColor, string> = {

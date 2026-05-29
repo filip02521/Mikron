@@ -15,6 +15,8 @@ import { HoldToConfirmButton } from "@/components/ui/HoldToConfirmButton";
 import { Badge } from "@/components/ui/Badge";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { HelpPopover } from "@/components/ui/HelpPopover";
+import { KeyboardShortcutsHint } from "@/components/ui/KeyboardShortcutsHint";
+import { Kbd } from "@/components/ui/Kbd";
 import type { DailyPanelRunFn } from "@/components/summary/useDailyPanelRunner";
 import type { DeliveryStats, StatsMode } from "@/types/database";
 import { formatSupplierLeadTimeBrief } from "@/lib/orders/delivery-eta";
@@ -38,6 +40,16 @@ function groupKey(g: SummaryForSomeoneEnriched) {
   return `${g.supplierId}-${g.salesPersonId}`;
 }
 
+const FOR_SOMEONE_KEYBOARD_HINTS = [
+  { keys: ["↑", "↓"], label: "grupy" },
+  { keys: ["Enter"], label: "produkty" },
+  { keys: ["Shift", "G"], label: "główne" },
+  { keys: ["Shift", "U"], label: "uzupełniające" },
+  { keys: ["E"], label: "edycja" },
+  { keys: ["/"], label: "wyszukaj dostawcę (panel)" },
+  { keys: ["Ctrl", "Z"], label: "cofnij" },
+] as const;
+
 function SectionHelp() {
   return (
     <HelpPopover label="Jak obsłużyć" title="Prośby handlowców" shortLabel="Pomoc">
@@ -48,8 +60,10 @@ function SectionHelp() {
       </p>
       <p className="mb-2">
         <strong className="font-medium text-slate-800">Przytrzymaj</strong> wybrany przycisk ok.
-        0,7 s — zabezpieczenie przed przypadkowym zamówieniem.
+        0,7 s — albo użyj <Kbd>Shift</Kbd>+<Kbd>G</Kbd> / <Kbd>Shift</Kbd>+<Kbd>U</Kbd> na
+        zaznaczonej grupie.
       </p>
+      <KeyboardShortcutsHint items={[...FOR_SOMEONE_KEYBOARD_HINTS]} className="mb-2" />
       <p className="mb-2">
         Przy produkcie: <strong className="text-emerald-800">✓</strong> — wybrano z kartoteki
         Subiekt; <strong className="text-slate-600">✎</strong> — wpis ręczny (bez powiązania z
@@ -131,6 +145,100 @@ export function ForSomeoneRequests({
     initial: EditIndividualRequestInitial;
     scopeKey: string;
   } | null>(null);
+  const [focusedGroupIndex, setFocusedGroupIndex] = useState(-1);
+
+  useEffect(() => {
+    if (editTarget || cancelTarget || !sorted.length) return;
+
+    const onKey = (e: KeyboardEvent) => {
+      const tag = (e.target as HTMLElement)?.tagName;
+      if (tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT") {
+        if (e.key === "Escape") (e.target as HTMLElement).blur();
+        return;
+      }
+
+      if (e.key === "Escape") {
+        setFocusedGroupIndex(-1);
+        return;
+      }
+
+      if (e.key === "ArrowDown") {
+        e.preventDefault();
+        setFocusedGroupIndex((i) => Math.min(sorted.length - 1, i < 0 ? 0 : i + 1));
+        return;
+      }
+
+      if (e.key === "ArrowUp") {
+        e.preventDefault();
+        setFocusedGroupIndex((i) => Math.max(0, i < 0 ? 0 : i - 1));
+        return;
+      }
+
+      if (focusedGroupIndex < 0 || focusedGroupIndex >= sorted.length) return;
+      const group = sorted[focusedGroupIndex]!;
+      const key = groupKey(group);
+      const ui = enrichForSomeoneGroup(group);
+
+      if (e.key === "Enter") {
+        e.preventDefault();
+        setExpanded((prev) => {
+          const next = new Set(prev);
+          if (next.has(key)) next.delete(key);
+          else next.add(key);
+          return next;
+        });
+        return;
+      }
+
+      if (e.key === "e" || e.key === "E") {
+        e.preventDefault();
+        setEditTarget({
+          orderIds: group.orderIds,
+          initial: editInitialFromForSomeoneGroup(group),
+          scopeKey: key,
+        });
+        return;
+      }
+
+      if ((e.key === "g" || e.key === "G") && e.shiftKey) {
+        e.preventDefault();
+        if (
+          !window.confirm(
+            `Oznaczyć „${ui.headline}” jako zamówienie główne?`
+          )
+        ) {
+          return;
+        }
+        run(
+          () => actionProcessIndividual(group.orderIds, "GLOWNE"),
+          "Oznaczono jako zamówienie główne",
+          "Oznaczanie jako główne…",
+          { scope: key }
+        );
+        return;
+      }
+
+      if ((e.key === "u" || e.key === "U") && e.shiftKey) {
+        e.preventDefault();
+        if (
+          !window.confirm(
+            `Oznaczyć „${ui.headline}” jako uzupełniające?`
+          )
+        ) {
+          return;
+        }
+        run(
+          () => actionProcessIndividual(group.orderIds, "POBOCZNE"),
+          "Oznaczono jako uzupełniające",
+          "Oznaczanie jako uzupełniające…",
+          { scope: key }
+        );
+      }
+    };
+
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [sorted, focusedGroupIndex, editTarget, cancelTarget, run]);
 
   const Wrapper = embedded ? "section" : Card;
   const wrapperProps = embedded
@@ -225,6 +333,10 @@ export function ForSomeoneRequests({
       />
       {embedded ? subsectionHeader : legacyHeader}
 
+      <div className="border-b border-slate-100 px-3 pb-2 pt-0 sm:px-4">
+        <KeyboardShortcutsHint items={[...FOR_SOMEONE_KEYBOARD_HINTS]} compact />
+      </div>
+
       {sorted.some((g) => g.lines.some((l) => l.informacjaViaPanel)) ? (
         <div className="border-b border-slate-100 px-3 pb-2 pt-1 sm:px-4">
           <InformacjaFlowLegend compact />
@@ -232,10 +344,11 @@ export function ForSomeoneRequests({
       ) : null}
 
       <ul className="space-y-2.5 p-3 sm:p-4">
-        {sorted.map((g) => {
+        {sorted.map((g, groupIndex) => {
           const key = groupKey(g);
           const groupPending = isScopePending(key);
           const isOpen = expanded.has(key);
+          const isFocused = focusedGroupIndex === groupIndex;
           const ui = enrichForSomeoneGroup(g);
           const stats = statsBySupplierId[g.supplierId];
           const statsMode = supplierStatsMode[g.supplierId] ?? "LACZNIE";
@@ -249,10 +362,12 @@ export function ForSomeoneRequests({
             <li key={key}>
               <article
                 className={cn(
-                  "rounded-xl border border-slate-200 bg-white",
-                  groupPending && rowPendingRingClass
+                  "rounded-xl border border-slate-200 bg-white transition-shadow",
+                  groupPending && rowPendingRingClass,
+                  isFocused && "ring-2 ring-indigo-400/70 ring-offset-1"
                 )}
                 aria-busy={groupPending}
+                onMouseEnter={() => setFocusedGroupIndex(groupIndex)}
               >
                 <div className="px-3.5 py-3">
                   <div className="flex flex-wrap items-start justify-between gap-2">
@@ -371,7 +486,8 @@ export function ForSomeoneRequests({
                     </ButtonGroup>
                   </div>
                   <p className="mt-1.5 text-right text-[10px] text-slate-400">
-                    Przytrzymaj Główne lub Uzupełniające ok. 0,7 s
+                    Przytrzymaj Główne / Uzupełniające ok. 0,7 s ·{" "}
+                    <Kbd>Shift</Kbd>+<Kbd>G</Kbd> / <Kbd>Shift</Kbd>+<Kbd>U</Kbd>
                   </p>
                 </div>
                 {isOpen ? (

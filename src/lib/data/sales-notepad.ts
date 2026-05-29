@@ -24,6 +24,7 @@ export async function fetchSalesNotepad(
       .select("*")
       .eq("sales_person_id", salesPersonId)
       .order("pinned", { ascending: false })
+      .order("sort_order", { ascending: true })
       .order("updated_at", { ascending: false }),
   ]);
 

@@ -168,6 +168,12 @@ export function SummaryWorkspace({
         return;
       }
 
+      if ((e.metaKey || e.ctrlKey) && e.key === "z" && undo) {
+        e.preventDefault();
+        handleUndo();
+        return;
+      }
+
       if (e.key === "/" && !e.metaKey && !e.ctrlKey) {
         const blocked =
           orderModalOpen ||
@@ -204,6 +210,8 @@ export function SummaryWorkspace({
     drawerId,
     drawerSupplier,
     run,
+    undo,
+    handleUndo,
     orderModalOpen,
     verificationModalOpen,
     editModalSupplierId,
@@ -285,6 +293,7 @@ export function SummaryWorkspace({
           detailLines={undo.detailLines}
           onDismiss={dismissUndo}
           onUndo={handleUndo}
+          undoShortcut="Ctrl+Z"
           durationMs={5000}
         />
       ) : null}

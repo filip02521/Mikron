@@ -29,7 +29,8 @@ const PANEL_INTRO_BY_VIEW: Record<DailyPanelView, string> = {
     "Rezygnacje handlowców, prośby informacyjne, dostawcy na żądanie oraz pozycje poza harmonogramem.",
 };
 
-const PANEL_INTRO_SHORTCUTS = "Skróty: / — wyszukaj dostawcę · Nowa prośba · ⋯ — więcej akcji.";
+const PANEL_INTRO_SHORTCUTS =
+  "Skróty: / — wyszukaj dostawcę · ↑↓ — grupy prośby · Shift+G / Shift+U — główne / uzupełniające · Ctrl+Z — cofnij.";
 
 /** Opis pod nagłówkiem panelu — treść dopasowana do aktywnej zakładki. */
 export function dailyPanelIntroDescription(

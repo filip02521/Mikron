@@ -7,6 +7,7 @@ import { cn } from "@/lib/cn";
 import { formatShortDate } from "@/lib/sales/notepad-format";
 import type { SalesNote } from "@/types/database";
 import { NOTE_COLOR_CARD } from "./note-styles";
+import { NOTATNIK_NOTES_GRID_CLASS } from "./notatnik-layout";
 
 export function ArchivedNotesSection({
   notes,
@@ -22,15 +23,16 @@ export function ArchivedNotesSection({
   if (!notes.length) return null;
 
   return (
-    <div className="grid gap-3 sm:grid-cols-2">
+    <div className={NOTATNIK_NOTES_GRID_CLASS}>
       {notes.map((note) => (
-        <ArchivedNoteCard
-          key={note.id}
-          note={note}
-          readOnly={readOnly}
-          onRestored={onRestored}
-          onDeleted={onDeleted}
-        />
+        <div key={note.id}>
+          <ArchivedNoteCard
+            note={note}
+            readOnly={readOnly}
+            onRestored={onRestored}
+            onDeleted={onDeleted}
+          />
+        </div>
       ))}
     </div>
   );
@@ -87,19 +89,19 @@ function ArchivedNoteCard({
   return (
     <article
       className={cn(
-        "flex flex-col rounded-xl border p-4 text-sm opacity-90",
+        "flex w-full flex-col rounded-lg border p-2.5 text-xs opacity-90 sm:p-3",
         NOTE_COLOR_CARD[note.color] ?? NOTE_COLOR_CARD.default
       )}
     >
       {note.title?.trim() ? (
-        <p className="mb-1 font-medium text-slate-800">{note.title}</p>
+        <p className="mb-0.5 text-xs font-semibold text-slate-800">{note.title}</p>
       ) : null}
-      <p className="whitespace-pre-wrap leading-relaxed text-slate-700">{note.body}</p>
+      <p className="whitespace-pre-wrap leading-snug text-slate-700">{note.body}</p>
       {archivedLabel ? (
-        <p className="mt-2 text-xs text-slate-500">Zarchiwizowano {archivedLabel}</p>
+        <p className="mt-1.5 text-[10px] text-slate-500">Zarchiwizowano {archivedLabel}</p>
       ) : null}
       {!readOnly ? (
-        <div className="mt-3 flex flex-wrap gap-2 border-t border-black/5 pt-3">
+        <div className="mt-2 flex flex-wrap gap-1.5 border-t border-black/5 pt-2">
           <Button size="sm" variant="ghost" disabled={restoring} onClick={() => void restore()}>
             {restoring ? "Przywracam…" : "Przywróć"}
           </Button>

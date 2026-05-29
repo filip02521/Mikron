@@ -124,6 +124,7 @@ export interface SalesNote {
   body: string;
   color: SalesNoteColor;
   pinned: boolean;
+  sort_order: number;
   archived_at: string | null;
   follow_up_at: string | null;
   created_at: string;
