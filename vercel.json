@@ -11,10 +11,6 @@
     {
       "path": "/api/cron/catalog-zd-sync",
       "schedule": "0 1 * * *"
-    },
-    {
-      "path": "/api/cron/notepad-follow-up",
-      "schedule": "0 5,6,7 * * 1-5"
     }
   ]
 }

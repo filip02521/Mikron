@@ -252,7 +252,7 @@ export async function actionUpdatePaymentWatchFollowUp(
 
   const { data, error } = await supabase
     .from("sales_payment_watches")
-    .update({ follow_up_at: normalized, digest_notified_at: null, updated_at: new Date().toISOString() })
+    .update({ follow_up_at: normalized, updated_at: new Date().toISOString() })
     .eq("id", watchId)
     .select("*")
     .single();
@@ -323,7 +323,6 @@ export async function actionUpdateSalesNote(
   if (payload.pinned !== undefined) patch.pinned = payload.pinned;
   if (payload.follow_up_at !== undefined) {
     patch.follow_up_at = payload.follow_up_at?.trim().slice(0, 10) || null;
-    patch.digest_notified_at = null;
   }
 
   const { error } = await supabase.from("sales_notes").update(patch).eq("id", noteId);
