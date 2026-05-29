@@ -64,6 +64,8 @@ export type SubiektDocumentLine = {
 export type SubiektDocument = {
   dok_Id: number;
   dok_NrPelny?: string | null;
+  /** Uwaga własna / opis w Subiekcie (np. „czeka”, „wz trasa”). */
+  dok_NrPelnyOryg?: string | null;
   dok_Typ?: number;
   dok_OdbiorcaId?: number | null;
   dok_PlatnikId?: number | null;

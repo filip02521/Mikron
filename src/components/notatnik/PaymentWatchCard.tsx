@@ -2,6 +2,8 @@
 
 import { useEffect, useState } from "react";
 import {
+  actionRefreshPaymentWatchFromSubiekt,
+  actionRestorePaymentWatch,
   actionSettlePaymentWatch,
   actionUpdatePaymentWatchNote,
 } from "@/app/actions/sales-notepad";
@@ -12,6 +14,7 @@ import { cn } from "@/lib/cn";
 import {
   formatPln,
   formatShortDate,
+  paymentWatchStatusLabel,
   paymentWatchSubtitle,
 } from "@/lib/sales/notepad-format";
 import { isPaymentWatchOverdue } from "@/lib/sales/payment-watch-sort";
@@ -22,14 +25,20 @@ export function PaymentWatchCard({
   watch,
   readOnly,
   onSettled,
+  onRestored,
+  onRefreshed,
   archived,
 }: {
   watch: SalesPaymentWatch;
   readOnly?: boolean;
   onSettled?: () => void;
+  onRestored?: (watch: SalesPaymentWatch) => void;
+  onRefreshed?: (watch: SalesPaymentWatch) => void;
   archived?: boolean;
 }) {
   const [settling, setSettling] = useState(false);
+  const [restoring, setRestoring] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
   const [noteOpen, setNoteOpen] = useState(Boolean(watch.note?.trim()));
   const [noteDraft, setNoteDraft] = useState(watch.note ?? "");
   const [savedNote, setSavedNote] = useState(watch.note ?? "");
@@ -45,6 +54,8 @@ export function PaymentWatchCard({
   const subtitle = paymentWatchSubtitle(watch);
   const due = formatShortDate(watch.due_at);
   const overdue = !archived && isPaymentWatchOverdue(watch);
+  const subiektStatus = paymentWatchStatusLabel(watch);
+  const settledLabel = formatShortDate(watch.settled_at);
 
   async function markPaid() {
     if (readOnly || settling) return;
@@ -57,6 +68,34 @@ export function PaymentWatchCard({
       setError(e instanceof Error ? e.message : "Nie udało się oznaczyć jako opłacone.");
     } finally {
       setSettling(false);
+    }
+  }
+
+  async function restore() {
+    if (readOnly || restoring) return;
+    setRestoring(true);
+    setError(null);
+    try {
+      const { watch: restored } = await actionRestorePaymentWatch(watch.id);
+      onRestored?.(restored);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Nie udało się przywrócić ZK.");
+    } finally {
+      setRestoring(false);
+    }
+  }
+
+  async function refreshFromSubiekt() {
+    if (readOnly || refreshing || archived) return;
+    setRefreshing(true);
+    setError(null);
+    try {
+      const { watch: refreshed } = await actionRefreshPaymentWatchFromSubiekt(watch.id);
+      onRefreshed?.(refreshed);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Nie udało się odświeżyć danych z Subiekta.");
+    } finally {
+      setRefreshing(false);
     }
   }
 
@@ -102,12 +141,20 @@ export function PaymentWatchCard({
                       Po terminie
                     </Badge>
                   ) : null}
+                  {subiektStatus ? (
+                    <Badge variant="info" className="text-[10px]">
+                      {subiektStatus}
+                    </Badge>
+                  ) : null}
                 </>
               )}
             </div>
             <p className="text-sm font-medium text-slate-800">{watch.client_label}</p>
             {subtitle ? (
               <p className="text-xs leading-relaxed text-slate-500">{subtitle}</p>
+            ) : null}
+            {archived && settledLabel ? (
+              <p className="text-xs text-slate-500">Opłacono {settledLabel}</p>
             ) : null}
           </div>
           <div className="text-right">
@@ -130,9 +177,25 @@ export function PaymentWatchCard({
             <Button
               size="sm"
               variant="ghost"
+              disabled={refreshing}
+              onClick={() => void refreshFromSubiekt()}
+            >
+              {refreshing ? "Odświeżam…" : "Odśwież z Subiekta"}
+            </Button>
+            <Button
+              size="sm"
+              variant="ghost"
               onClick={() => setNoteOpen((v) => !v)}
             >
               {noteOpen ? "Ukryj notatkę" : "Notatka"}
+            </Button>
+          </div>
+        ) : null}
+
+        {!readOnly && archived ? (
+          <div className="border-t border-slate-100 pt-3">
+            <Button size="sm" variant="ghost" disabled={restoring} onClick={() => void restore()}>
+              {restoring ? "Przywracam…" : "Przywróć na listę"}
             </Button>
           </div>
         ) : null}

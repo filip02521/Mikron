@@ -107,7 +107,8 @@ export async function middleware(request: NextRequest) {
     });
   }
 
-  if (!canAccessPath(role, pathname)) {
+  const previewSalesPersonId = request.nextUrl.searchParams.get("dla");
+  if (!canAccessPath(role, pathname, { previewSalesPersonId })) {
     return redirectWithSession(
       request,
       sessionResponse,

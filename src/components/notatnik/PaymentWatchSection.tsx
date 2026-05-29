@@ -15,11 +15,13 @@ export function PaymentWatchSection({
   readOnly,
   onWatchAdded,
   onWatchSettled,
+  onWatchRefreshed,
 }: {
   watches: SalesPaymentWatch[];
   readOnly?: boolean;
   onWatchAdded?: (watch: SalesPaymentWatch) => void;
   onWatchSettled?: (watchId: string) => void;
+  onWatchRefreshed?: (watch: SalesPaymentWatch) => void;
 }) {
   const inputRef = useRef<HTMLInputElement>(null);
   const [query, setQuery] = useState("");
@@ -48,7 +50,7 @@ export function PaymentWatchSection({
       <div>
         <h2 className="text-base font-semibold text-slate-900">Czeka na zapłatę</h2>
         <p className="mt-1 text-sm text-slate-500">
-          Wpisz numer ZK — klient i pełny numer wczytają się z Subiekta.
+          Wpisz numer ZK, np. 153157/M/04/2026 — klient i pełny numer wczytają się z Subiekta.
         </p>
       </div>
 
@@ -66,7 +68,7 @@ export function PaymentWatchSection({
             inputMode="text"
             autoComplete="off"
             spellCheck={false}
-            placeholder="np. 145/2026 lub ZK 145/2026"
+            placeholder="np. 153157/M/04/2026 lub 153157"
             value={query}
             disabled={loading}
             onChange={(e) => setQuery(e.target.value)}
@@ -99,6 +101,7 @@ export function PaymentWatchSection({
                 watch={watch}
                 readOnly={readOnly}
                 onSettled={() => onWatchSettled?.(watch.id)}
+                onRefreshed={onWatchRefreshed}
               />
             </li>
           ))}

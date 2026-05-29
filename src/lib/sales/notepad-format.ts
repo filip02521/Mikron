@@ -1,4 +1,5 @@
 import type { SalesPaymentWatch } from "@/types/database";
+import { zkDocumentStatusLabel } from "@/lib/subiekt/zk-document";
 
 export function formatPln(value: number | string | null | undefined): string {
   if (value == null || value === "") return "—";
@@ -19,10 +20,23 @@ export function formatShortDate(value: string | null | undefined): string | null
   return `${day}.${m}.${y}`;
 }
 
+function readSnapshotStatusLabel(watch: SalesPaymentWatch): string | null {
+  const snap = watch.subiekt_snapshot as { dok_Status?: number | null } | null;
+  return zkDocumentStatusLabel(snap?.dok_Status ?? null);
+}
+
 export function paymentWatchSubtitle(watch: SalesPaymentWatch): string | null {
   const parts: string[] = [];
   const issued = formatShortDate(watch.zk_issued_at);
   if (issued) parts.push(`Wystawiono ${issued}`);
   if (watch.line_summary?.trim()) parts.push(watch.line_summary.trim());
+  const status = readSnapshotStatusLabel(watch);
+  if (status && status !== "Aktywne") parts.push(`Subiekt: ${status}`);
   return parts.length ? parts.join(" · ") : null;
+}
+
+export function paymentWatchStatusLabel(watch: SalesPaymentWatch): string | null {
+  const label = readSnapshotStatusLabel(watch);
+  if (!label || label === "Aktywne") return null;
+  return label;
 }

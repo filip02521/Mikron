@@ -3,7 +3,7 @@ import { getSessionUser } from "@/lib/auth";
 import { resolveSalesPersonForUser } from "@/lib/auth/sales-person";
 import { resolvePreviewSalesPerson } from "@/lib/auth/resolve-preview-sales-person";
 import { getAppRole } from "@/lib/auth-dev";
-import { isSalesAccount, isSalesManager } from "@/lib/auth-roles";
+import { isAdmin, isSalesAccount, isSalesManager } from "@/lib/auth-roles";
 import { Alert } from "@/components/ui/Alert";
 import { SalesAccountLinkRequired } from "@/components/sales/SalesAccountLinkRequired";
 import { ManagerPreviewBanner } from "@/components/sales/ManagerPreviewBanner";
@@ -25,7 +25,16 @@ export default async function NotatnikPage({
 
   try {
     const user = await getSessionUser();
-    if (user && isSalesAccount(user.role)) {
+    if (user && isAdmin(user.role) && previewSalesPersonId) {
+      const preview = await resolvePreviewSalesPerson(previewSalesPersonId, user);
+      if (preview) {
+        salesPersonId = preview.id;
+        salesPersonName = preview.name;
+        isTeamPreview = true;
+      } else {
+        linkError = "Nie znaleziono handlowca do podglądu.";
+      }
+    } else if (user && isSalesAccount(user.role)) {
       const own = await resolveSalesPersonForUser(user);
       ownSalesPersonId = own?.id ?? null;
       if (isSalesManager(user.role) && previewSalesPersonId) {
@@ -40,6 +49,13 @@ export default async function NotatnikPage({
       } else {
         salesPersonId = own?.id ?? null;
         salesPersonName = own?.name ?? null;
+        if (
+          user.role === "sales" &&
+          previewSalesPersonId &&
+          previewSalesPersonId !== ownSalesPersonId
+        ) {
+          linkError = "Możesz przeglądać tylko własny notatnik — parametr ?dla= został zignorowany.";
+        }
       }
       if (!ownSalesPersonId && user.role === "sales") {
         linkError =
@@ -83,7 +99,9 @@ export default async function NotatnikPage({
 
   return (
     <div className="mx-auto max-w-3xl space-y-4">
-      {linkError && previewSalesPersonId ? <Alert tone="error">{linkError}</Alert> : null}
+      {linkError && (previewSalesPersonId || role === "sales") ? (
+        <Alert tone="error">{linkError}</Alert>
+      ) : null}
 
       {isTeamPreview && salesPersonId && salesPersonName ? (
         <ManagerPreviewBanner
@@ -103,7 +121,7 @@ export default async function NotatnikPage({
         pageDescription={
           isTeamPreview
             ? "Podgląd notatek i ZK handlowca — edycja tylko na własnym koncie."
-            : "Wpisz numer ZK — reszta wczyta się z Subiekta. Notatki i archiwum w jednym miejscu."
+            : "Wpisz numer ZK (np. 153157/M/04/2026) — reszta wczyta się z Subiekta. Notatki i archiwum w jednym miejscu."
         }
       />
     </div>

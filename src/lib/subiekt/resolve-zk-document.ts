@@ -1,9 +1,16 @@
 import { searchSubiektZk, getSubiektZk } from "@/lib/subiekt/api";
-import {
-  extractAnyKhLabelFromDocument,
-  extractKhLabelFromDocument,
-} from "@/lib/subiekt/kontrahent-from-document";
 import type { SubiektDocument } from "@/lib/subiekt/types";
+import {
+  buildZkLineSummary,
+  buildZkOrigNote,
+  isLikelySubiektDocumentId,
+  normalizeZkQuery,
+  parseSubiektDocDate,
+  pickBestZkMatch,
+  resolveZkClientLabel,
+  toSubiektAmount,
+  zkDocumentStatusLabel,
+} from "@/lib/subiekt/zk-document";
 
 export type ResolvedZkDocument = {
   subiektDokId: number;
@@ -15,20 +22,13 @@ export type ResolvedZkDocument = {
   issuedAt: string | null;
   dueAt: string | null;
   lineSummary: string | null;
+  origNote: string | null;
+  subiektStatus: number | null;
+  statusLabel: string | null;
   snapshot: SubiektDocument;
 };
 
-/** Usuwa prefiks ZK i zbędne spacje z wpisu handlowca. */
-export function normalizeZkQuery(input: string): string {
-  return input
-    .trim()
-    .replace(/^zk\s*[:#]?\s*/i, "")
-    .trim();
-}
-
-function normalizeDocNumber(value: string): string {
-  return value.replace(/\s+/g, "").toLowerCase();
-}
+export { normalizeZkQuery } from "@/lib/subiekt/zk-document";
 
 function pickKhId(doc: SubiektDocument): number | null {
   const raw = doc.dok_OdbiorcaId ?? doc.dok_PlatnikId;
@@ -37,53 +37,13 @@ function pickKhId(doc: SubiektDocument): number | null {
   return Number.isFinite(n) && n > 0 ? n : null;
 }
 
-function resolveClientLabel(doc: SubiektDocument): string {
-  const khId = pickKhId(doc);
-  if (khId != null) {
-    const labeled = extractKhLabelFromDocument(doc, khId);
-    if (labeled?.trim()) return labeled.trim();
-  }
-  const any = extractAnyKhLabelFromDocument(doc);
-  if (any?.trim()) return any.trim();
-  return "Klient z Subiekta";
-}
-
-function parseDocDate(doc: SubiektDocument): string | null {
-  const raw =
-    doc.dok_DataWyst ??
-    doc.dok_DataRealizacji ??
-    doc.dok_TerminRealizacji ??
-    doc.dok_Termin ??
-    null;
-  if (!raw || typeof raw !== "string") return null;
-  return raw.slice(0, 10);
-}
-
 function parseDueDate(doc: SubiektDocument): string | null {
   const raw =
     doc.dok_TerminRealizacji ??
     doc.dok_Termin ??
     doc.dok_DataOdbioru ??
     null;
-  if (!raw || typeof raw !== "string") return null;
-  return raw.slice(0, 10);
-}
-
-function toAmount(value: unknown): number | null {
-  if (value == null) return null;
-  const n = Number(value);
-  return Number.isFinite(n) ? n : null;
-}
-
-function buildLineSummary(doc: SubiektDocument): string | null {
-  const lines = doc.dok_Pozycja ?? [];
-  if (!lines.length) return null;
-  const names = lines
-    .map((l) => l.tw_Nazwa?.trim() || l.tw_Symbol?.trim())
-    .filter((n): n is string => Boolean(n));
-  if (!names.length) return `${lines.length} poz.`;
-  if (names.length === 1) return names[0]!;
-  return `${names[0]} · +${names.length - 1} poz.`;
+  return parseSubiektDocDate(raw);
 }
 
 export function mapZkDocument(doc: SubiektDocument): ResolvedZkDocument {
@@ -91,27 +51,31 @@ export function mapZkDocument(doc: SubiektDocument): ResolvedZkDocument {
   if (!Number.isFinite(subiektDokId) || subiektDokId <= 0) {
     throw new Error("Nieprawidłowy dokument ZK z Subiekta.");
   }
+  const status = doc.dok_Status ?? null;
   const zkNumber = doc.dok_NrPelny?.trim() || `ZK #${subiektDokId}`;
   return {
     subiektDokId,
     zkNumber,
-    clientLabel: resolveClientLabel(doc),
+    clientLabel: resolveZkClientLabel(doc),
     clientKhId: pickKhId(doc),
-    amountNet: toAmount(doc.dok_WartNetto),
-    amountGross: toAmount(doc.dok_WartBrutto),
-    issuedAt: parseDocDate(doc),
+    amountNet: toSubiektAmount(doc.dok_WartNetto),
+    amountGross: toSubiektAmount(doc.dok_WartBrutto),
+    issuedAt: parseSubiektDocDate(doc.dok_DataWyst),
     dueAt: parseDueDate(doc),
-    lineSummary: buildLineSummary(doc),
+    lineSummary: buildZkLineSummary(doc),
+    origNote: buildZkOrigNote(doc),
+    subiektStatus: status,
+    statusLabel: zkDocumentStatusLabel(status),
     snapshot: doc,
   };
 }
 
-/** Wyszukuje ZK po numerze (np. „145/2026”) — jeden wynik lub błąd. */
+/** Wyszukuje ZK po numerze (np. „153157/M/04/2026”) — jeden wynik lub błąd. */
 export async function resolveZkByNumber(query: string): Promise<ResolvedZkDocument> {
   const q = normalizeZkQuery(query);
-  if (!q) throw new Error("Podaj numer ZK, np. 145/2026");
+  if (!q) throw new Error("Podaj numer ZK, np. 153157/M/04/2026");
 
-  if (/^\d+$/.test(q)) {
+  if (isLikelySubiektDocumentId(q)) {
     try {
       const doc = await getSubiektZk(q);
       return mapZkDocument(doc);
@@ -120,25 +84,21 @@ export async function resolveZkByNumber(query: string): Promise<ResolvedZkDocume
     }
   }
 
-  const { data } = await searchSubiektZk({ search: q, pageSize: 25 });
+  const { data } = await searchSubiektZk({ search: q, pageSize: 40 });
   const list = data ?? [];
-  const needle = normalizeDocNumber(q);
+  const match = pickBestZkMatch(list, q);
 
-  const exact = list.find((d) => {
-    const nr = d.dok_NrPelny?.trim();
-    if (!nr) return false;
-    return normalizeDocNumber(nr) === needle;
-  });
-  if (exact) return loadFullZkDocument(exact);
-
-  if (list.length === 1) return loadFullZkDocument(list[0]!);
+  if (match) return loadFullZkDocument(match);
 
   if (!list.length) {
     throw new Error(`Nie znaleziono ZK „${q}” w Subiekcie.`);
   }
 
+  const serialOnly = /^\d+$/.test(q);
   throw new Error(
-    `Znaleziono ${list.length} dokumentów — wpisz pełny numer ZK, np. 145/2026.`
+    serialOnly
+      ? `Znaleziono wiele ZK z numerem ${q} — wpisz pełny numer, np. 153157/M/04/2026.`
+      : `Znaleziono ${list.length} dokumentów — wpisz pełny numer ZK, np. 153157/M/04/2026.`
   );
 }
 

@@ -14,6 +14,19 @@ import { PaymentWatchCard } from "./PaymentWatchCard";
 import { NotesSection } from "./NotesSection";
 import { ArchivedNotesSection } from "./ArchivedNotesSection";
 
+function contextualizeSubiektMessage(message: string): string {
+  return message
+    .replace(/dokumentów ZD/g, "danych ZK")
+    .replace(
+      /terminy bez danych z Subiekta, zostają szacunki z historii dostaw\./g,
+      "dodawanie ZK i odświeżanie danych z Subiekta może być niedostępne."
+    )
+    .replace(
+      /terminy z dokumentów ZD nie są pobierane, zostają szacunki z historii dostaw\./g,
+      "pobieranie danych ZK z Subiekta jest niedostępne."
+    );
+}
+
 export function NotatnikClient({
   initial,
   readOnly,
@@ -52,11 +65,35 @@ export function NotatnikClient({
 
   function handleWatchAdded(watch: SalesPaymentWatch) {
     setPaymentWatches((prev) => uniqueById(sortPaymentWatches([watch, ...prev])));
+    setArchivedWatches((prev) => prev.filter((w) => w.id !== watch.id));
     refresh();
   }
 
   function handleWatchSettled(watchId: string) {
-    setPaymentWatches((prev) => prev.filter((w) => w.id !== watchId));
+    const now = new Date().toISOString();
+    setPaymentWatches((prev) => {
+      const watch = prev.find((w) => w.id === watchId);
+      if (watch) {
+        setArchivedWatches((archived) =>
+          uniqueById([{ ...watch, settled_at: now, updated_at: now }, ...archived])
+        );
+      }
+      return prev.filter((w) => w.id !== watchId);
+    });
+    setShowArchive(true);
+    refresh();
+  }
+
+  function handleWatchRestored(watch: SalesPaymentWatch) {
+    setArchivedWatches((prev) => prev.filter((w) => w.id !== watch.id));
+    setPaymentWatches((prev) => uniqueById(sortPaymentWatches([watch, ...prev])));
+    refresh();
+  }
+
+  function handleWatchRefreshed(watch: SalesPaymentWatch) {
+    setPaymentWatches((prev) =>
+      uniqueById(sortPaymentWatches(prev.map((w) => (w.id === watch.id ? watch : w))))
+    );
     refresh();
   }
 
@@ -71,7 +108,16 @@ export function NotatnikClient({
   }
 
   function handleNoteArchived(noteId: string) {
-    setNotes((prev) => prev.filter((n) => n.id !== noteId));
+    const now = new Date().toISOString();
+    setNotes((prev) => {
+      const note = prev.find((n) => n.id === noteId);
+      if (note) {
+        setArchivedNotes((archived) =>
+          uniqueById([{ ...note, archived_at: now, updated_at: now }, ...archived])
+        );
+      }
+      return prev.filter((n) => n.id !== noteId);
+    });
     setShowArchive(true);
     refresh();
   }
@@ -82,12 +128,19 @@ export function NotatnikClient({
     refresh();
   }
 
+  const subiektForNotepad = subiektAvailability
+    ? {
+        ...subiektAvailability,
+        message: contextualizeSubiektMessage(subiektAvailability.message),
+      }
+    : undefined;
+
   return (
     <div className="mx-auto max-w-3xl space-y-8 pb-8">
       <PageHeader title={pageTitle} description={pageDescription} />
 
-      {subiektAvailability ? (
-        <SubiektStatusBar initial={subiektAvailability} className="mb-2" />
+      {subiektForNotepad ? (
+        <SubiektStatusBar initial={subiektForNotepad} className="mb-2" />
       ) : null}
 
       <PaymentWatchSection
@@ -95,6 +148,7 @@ export function NotatnikClient({
         readOnly={readOnly}
         onWatchAdded={handleWatchAdded}
         onWatchSettled={handleWatchSettled}
+        onWatchRefreshed={handleWatchRefreshed}
       />
 
       <NotesSection
@@ -129,7 +183,12 @@ export function NotatnikClient({
                 <ul className="space-y-3">
                   {archivedWatches.map((watch) => (
                     <li key={watch.id}>
-                      <PaymentWatchCard watch={watch} readOnly archived />
+                      <PaymentWatchCard
+                        watch={watch}
+                        readOnly={readOnly}
+                        archived
+                        onRestored={handleWatchRestored}
+                      />
                     </li>
                   ))}
                 </ul>

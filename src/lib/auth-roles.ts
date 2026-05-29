@@ -72,8 +72,17 @@ export function homePathForRole(role: UserRole): string {
   return "/moje";
 }
 
+export type CanAccessPathOptions = {
+  /** Parametr ?dla= — podgląd notatnika handlowca (admin). */
+  previewSalesPersonId?: string | null;
+};
+
 /** Czy rola może wejść na ścieżkę (do przekierowania po logowaniu). */
-export function canAccessPath(role: UserRole, pathname: string): boolean {
+export function canAccessPath(
+  role: UserRole,
+  pathname: string,
+  options?: CanAccessPathOptions
+): boolean {
   if (pathname.startsWith("/admin")) return isAdmin(role);
   if (isMagazyn(role)) {
     return WAREHOUSE_PATH_PREFIXES.some(
@@ -85,6 +94,11 @@ export function canAccessPath(role: UserRole, pathname: string): boolean {
   }
   if (SALES_TEAM_PREFIXES.some((p) => pathname === p || pathname.startsWith(`${p}/`))) {
     return canManageSalesTeam(role);
+  }
+  if (pathname === "/notatnik" || pathname.startsWith("/notatnik/")) {
+    if (isSalesAccount(role)) return true;
+    if (isAdmin(role) && options?.previewSalesPersonId?.trim()) return true;
+    return false;
   }
   if (
     SALES_PATH_PREFIXES.some((p) => pathname === p || pathname.startsWith(`${p}/`))

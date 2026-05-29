@@ -7,6 +7,7 @@ import {
   actionUpdateSalesNote,
 } from "@/app/actions/sales-notepad";
 import { Button } from "@/components/ui/Button";
+import { Alert } from "@/components/ui/Alert";
 import { cn } from "@/lib/cn";
 import { controlFocusClass } from "@/lib/ui/ontime-theme";
 import type { SalesNote, SalesNoteColor } from "@/types/database";
@@ -30,6 +31,7 @@ function NoteCard({
   const [color, setColor] = useState(note.color);
   const [pinned, setPinned] = useState(note.pinned);
   const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     setBody(note.body);
@@ -40,6 +42,7 @@ function NoteCard({
 
   async function save() {
     setSaving(true);
+    setError(null);
     try {
       await actionUpdateSalesNote(note.id, {
         body,
@@ -53,6 +56,8 @@ function NoteCard({
         color,
       });
       setEditing(false);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Nie udało się zapisać notatki.");
     } finally {
       setSaving(false);
     }
@@ -82,8 +87,13 @@ function NoteCard({
   }
 
   async function archive() {
-    await actionArchiveSalesNote(note.id);
-    onArchived?.(note.id);
+    setError(null);
+    try {
+      await actionArchiveSalesNote(note.id);
+      onArchived?.(note.id);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Nie udało się zarchiwizować notatki.");
+    }
   }
 
   const displayTitle = editing ? title : note.title;
@@ -160,6 +170,7 @@ function NoteCard({
           ) : null}
         </>
       )}
+      {error ? <p className="mt-2 text-xs text-red-600">{error}</p> : null}
     </article>
   );
 }
@@ -182,11 +193,13 @@ export function NotesSection({
   const [draft, setDraft] = useState("");
   const [draftColor, setDraftColor] = useState<SalesNoteColor>("default");
   const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   async function createNote() {
     const trimmed = draft.trim();
     if (!trimmed || saving) return;
     setSaving(true);
+    setError(null);
     try {
       const { note } = await actionCreateSalesNote(trimmed, {
         title: draftTitle.trim() || null,
@@ -197,6 +210,8 @@ export function NotesSection({
       setDraftColor("default");
       setComposing(false);
       onNoteCreated?.(note);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Nie udało się dodać notatki.");
     } finally {
       setSaving(false);
     }
@@ -271,6 +286,8 @@ export function NotesSection({
           </div>
         </div>
       ) : null}
+
+      {error ? <Alert tone="error">{error}</Alert> : null}
 
       {sorted.length === 0 ? (
         <p className="rounded-xl border border-dashed border-slate-200 bg-slate-50/80 px-4 py-6 text-center text-sm text-slate-500">

@@ -43,13 +43,17 @@ function ArchivedNoteCard({
   onRestored?: (note: SalesNote) => void;
 }) {
   const [restoring, setRestoring] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   async function restore() {
     if (readOnly || restoring) return;
     setRestoring(true);
+    setError(null);
     try {
       const { note: restored } = await actionRestoreSalesNote(note.id);
       onRestored?.(restored);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Nie udało się przywrócić notatki.");
     } finally {
       setRestoring(false);
     }
@@ -76,6 +80,7 @@ function ArchivedNoteCard({
           <Button size="sm" variant="ghost" disabled={restoring} onClick={() => void restore()}>
             {restoring ? "Przywracam…" : "Przywróć"}
           </Button>
+          {error ? <p className="mt-2 text-xs text-red-600">{error}</p> : null}
         </div>
       ) : null}
     </article>

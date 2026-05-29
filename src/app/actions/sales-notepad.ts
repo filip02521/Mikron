@@ -5,7 +5,8 @@ import { getSessionUser } from "@/lib/auth";
 import { resolveSalesPersonForUser } from "@/lib/auth/sales-person";
 import { isSalesAccount } from "@/lib/auth-roles";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { resolveZkByNumber } from "@/lib/subiekt/resolve-zk-document";
+import { resolveZkByNumber, mapZkDocument } from "@/lib/subiekt/resolve-zk-document";
+import { getSubiektZk } from "@/lib/subiekt/api";
 import type { SalesNote, SalesNoteColor, SalesPaymentWatch } from "@/types/database";
 
 async function salesPersonIdForAction(): Promise<string> {
@@ -41,7 +42,7 @@ export async function actionAddPaymentWatchByZkNumber(
 
   const { data: existing } = await supabase
     .from("sales_payment_watches")
-    .select("id, settled_at, archived_at")
+    .select("id, settled_at, archived_at, note")
     .eq("sales_person_id", salesPersonId)
     .eq("subiekt_dok_id", resolved.subiektDokId)
     .maybeSingle();
@@ -49,6 +50,8 @@ export async function actionAddPaymentWatchByZkNumber(
   if (existing && !existing.settled_at && !existing.archived_at) {
     throw new Error(`ZK ${resolved.zkNumber} jest już na liście oczekujących.`);
   }
+
+  const reactivating = Boolean(existing?.settled_at || existing?.archived_at);
 
   const row = {
     sales_person_id: salesPersonId,
@@ -64,6 +67,7 @@ export async function actionAddPaymentWatchByZkNumber(
     subiekt_snapshot: resolved.snapshot as unknown as Record<string, unknown>,
     settled_at: null,
     archived_at: null,
+    note: reactivating ? null : existing?.note ?? null,
     updated_at: now,
   };
 
@@ -122,6 +126,80 @@ export async function actionSettlePaymentWatch(watchId: string) {
   if (error) throw new Error(error.message);
   revalidateNotepad();
   return { success: true };
+}
+
+export async function actionRestorePaymentWatch(watchId: string) {
+  const salesPersonId = await salesPersonIdForAction();
+  const supabase = createAdminClient();
+  const now = new Date().toISOString();
+
+  const { data: row, error: fetchError } = await supabase
+    .from("sales_payment_watches")
+    .select("id, sales_person_id, settled_at")
+    .eq("id", watchId)
+    .maybeSingle();
+
+  if (fetchError) throw new Error(fetchError.message);
+  if (!row) throw new Error("Nie znaleziono wpisu.");
+  if (row.sales_person_id !== salesPersonId) {
+    throw new Error("Brak uprawnień do tego wpisu.");
+  }
+  if (!row.settled_at) throw new Error("Ten ZK jest już na liście oczekujących.");
+
+  const { data, error } = await supabase
+    .from("sales_payment_watches")
+    .update({ settled_at: null, updated_at: now })
+    .eq("id", watchId)
+    .select("*")
+    .single();
+
+  if (error) throw new Error(error.message);
+  revalidateNotepad();
+  return { watch: data as SalesPaymentWatch };
+}
+
+export async function actionRefreshPaymentWatchFromSubiekt(watchId: string) {
+  const salesPersonId = await salesPersonIdForAction();
+  const supabase = createAdminClient();
+  const now = new Date().toISOString();
+
+  const { data: row, error: fetchError } = await supabase
+    .from("sales_payment_watches")
+    .select("id, sales_person_id, subiekt_dok_id, settled_at")
+    .eq("id", watchId)
+    .maybeSingle();
+
+  if (fetchError) throw new Error(fetchError.message);
+  if (!row) throw new Error("Nie znaleziono wpisu.");
+  if (row.sales_person_id !== salesPersonId) {
+    throw new Error("Brak uprawnień do tego wpisu.");
+  }
+  if (row.settled_at) throw new Error("Nie można odświeżyć opłaconego ZK — przywróć go na listę.");
+
+  const doc = await getSubiektZk(row.subiekt_dok_id);
+  const resolved = mapZkDocument(doc);
+
+  const { data, error } = await supabase
+    .from("sales_payment_watches")
+    .update({
+      zk_number: resolved.zkNumber,
+      client_label: resolved.clientLabel,
+      client_kh_id: resolved.clientKhId,
+      amount_net: resolved.amountNet,
+      amount_gross: resolved.amountGross,
+      zk_issued_at: resolved.issuedAt,
+      due_at: resolved.dueAt,
+      line_summary: resolved.lineSummary,
+      subiekt_snapshot: resolved.snapshot as unknown as Record<string, unknown>,
+      updated_at: now,
+    })
+    .eq("id", watchId)
+    .select("*")
+    .single();
+
+  if (error) throw new Error(error.message);
+  revalidateNotepad();
+  return { watch: data as SalesPaymentWatch };
 }
 
 export async function actionUpdatePaymentWatchNote(watchId: string, note: string) {

@@ -29,4 +29,10 @@ describe("auth-roles sales_manager", () => {
   it("uses zespol as home for manager", () => {
     expect(homePathForRole("sales_manager")).toBe("/zespol");
   });
+
+  it("allows admin notatnik preview with ?dla=", () => {
+    expect(canAccessPath("admin", "/notatnik")).toBe(false);
+    expect(canAccessPath("admin", "/notatnik", { previewSalesPersonId: "sp-1" })).toBe(true);
+    expect(canAccessPath("sales", "/notatnik")).toBe(true);
+  });
 });
