@@ -5,6 +5,7 @@ import { middlewareNeedsBootstrap } from "@/lib/setup/middleware-bootstrap";
 import {
   canAccessOperations,
   canAccessPath,
+  canAccessWarehouse,
   canManageSalesTeam,
   homePathForRole,
   isSalesAccount,
@@ -133,10 +134,22 @@ export async function middleware(request: NextRequest) {
     );
   }
 
+  const warehouseOnlyKolejka =
+    (pathname === "/kolejka" || pathname.startsWith("/kolejka/")) &&
+    canAccessWarehouse(role);
+
+  if (matchesPrefix(pathname, PROCUREMENT_PREFIXES) && !canAccessOperations(role)) {
+    return redirectWithSession(
+      request,
+      sessionResponse,
+      homePathForRole(role)
+    );
+  }
+
   if (
-    (matchesPrefix(pathname, OPERATIONS_PREFIXES) ||
-      matchesPrefix(pathname, PROCUREMENT_PREFIXES)) &&
-    !canAccessOperations(role)
+    matchesPrefix(pathname, OPERATIONS_PREFIXES) &&
+    !canAccessOperations(role) &&
+    !warehouseOnlyKolejka
   ) {
     if (pathname.startsWith("/zamowienia")) {
       return redirectWithSession(request, sessionResponse, "/prosba");

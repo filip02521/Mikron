@@ -137,6 +137,22 @@ export function navForRole(
     ];
   }
 
+  if (role === "magazyn") {
+    return [
+      {
+        title: "Magazyn",
+        items: [
+          {
+            href: "/kolejka",
+            label: "Magazyn i regał",
+            description: "Przyjęcie towaru i dziennik dostaw",
+            badge: badges.realizacja,
+          },
+        ],
+      },
+    ];
+  }
+
   const handlowiecItems: NavItem[] = [
     {
       href: "/moje",
@@ -186,7 +202,7 @@ export const adminNav = navForRole("admin");
 export const salesNav = navForRole("sales");
 
 export function pageTitle(pathname: string): string {
-  for (const role of ["admin", "zakupy", "sales", "sales_manager"] as const) {
+  for (const role of ["admin", "zakupy", "magazyn", "sales", "sales_manager"] as const) {
     for (const g of navForRole(role)) {
       const hrefs = g.items.map((i) => i.href);
       const matches = g.items.filter((i) => isNavItemActive(pathname, i.href, hrefs));
@@ -215,6 +231,7 @@ export function pageTitle(pathname: string): string {
 export function sidebarSubtitle(role: UserRole): string {
   if (role === "admin") return "Administrator";
   if (role === "zakupy") return "Dział zakupów";
+  if (role === "magazyn") return "Dział dostaw";
   if (isSalesManager(role)) return "Kierownik handlowców";
   return "Handlowiec";
 }

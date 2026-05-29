@@ -10,16 +10,18 @@ import {
 import { SectionTabNav, type SectionTab } from "@/components/ui/SectionTabNav";
 import type { SupplierLocation } from "@/types/database";
 
-const TAB_ORDER: SupplierHubTab[] = ["cards", "schedules", "vacations"];
+const TAB_ORDER: SupplierHubTab[] = ["cards", "schedules", "inactive", "vacations"];
 
 export function SuppliersHubNav({
   activeTab,
   context,
   scheduleLocation = "POLSKA",
+  inactiveCount = 0,
 }: {
   activeTab: SupplierHubTab;
   context: SupplierHubContext;
   scheduleLocation?: SupplierLocation;
+  inactiveCount?: number;
 }) {
   const paths = supplierHubPaths(context);
 
@@ -30,9 +32,12 @@ export function SuppliersHubNav({
     href:
       id === "cards"
         ? paths.cards
-        : id === "vacations"
-          ? paths.vacations
-          : paths.schedule(scheduleLocation),
+        : id === "inactive"
+          ? paths.inactive
+          : id === "vacations"
+            ? paths.vacations
+            : paths.schedule(scheduleLocation),
+    badgeCount: id === "inactive" ? inactiveCount : undefined,
   }));
 
   return (

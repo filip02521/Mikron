@@ -2,6 +2,7 @@ import { createClient } from "@/lib/supabase/server";
 import { fetchProfileByUserId } from "@/lib/auth/profile";
 import {
   canAccessOperations,
+  canAccessWarehouse,
   canManageSalesTeam,
   canManageSuppliers,
   isAdmin,
@@ -75,6 +76,15 @@ export async function requireOperations(): Promise<SessionUser> {
   const user = await getSessionUser();
   if (!user || !canAccessOperations(user.role)) {
     throw new Error("Brak uprawnień do operacji zakupowych");
+  }
+  return user;
+}
+
+/** Magazyn: przyjęcie towaru, dziennik dostaw (admin + zakupy + magazyn). */
+export async function requireWarehouse(): Promise<SessionUser> {
+  const user = await getSessionUser();
+  if (!user || !canAccessWarehouse(user.role)) {
+    throw new Error("Brak uprawnień magazynu");
   }
   return user;
 }

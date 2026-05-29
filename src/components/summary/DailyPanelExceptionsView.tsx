@@ -75,7 +75,6 @@ export function DailyPanelExceptionsView({
         <DailyPanelHiddenSuppliers
           report={workspace.panelHidden}
           onOpenSupplier={onOpenSupplier}
-          onOpenOnDemand={onOpenOnDemand}
         />
       ) : null}
     </div>

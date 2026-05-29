@@ -32,8 +32,16 @@ export async function fetchSupplierIdsForSalesPerson(
   );
 }
 
+export type FetchSuppliersOptions = {
+  /** Domyślnie true — tylko aktywni (panel dzienny, plan). */
+  activeOnly?: boolean;
+  /** Wyłącznie nieaktywni (lista Nieaktywni). */
+  inactiveOnly?: boolean;
+};
+
 export async function fetchSuppliersWithSchedules(
-  location?: SupplierLocation
+  location?: SupplierLocation,
+  options?: FetchSuppliersOptions
 ): Promise<SupplierWithSchedule[]> {
   if (!hasSupabaseConfig()) return [];
   const supabase = createAdminClient();
@@ -42,6 +50,14 @@ export async function fetchSuppliersWithSchedules(
     .select("*, supplier_schedules(*)")
     .order("name");
   if (location) q = q.eq("location", location);
+  if (options?.inactiveOnly && options?.activeOnly === false) {
+    throw new Error("fetchSuppliersWithSchedules: nie używaj inactiveOnly razem z activeOnly: false");
+  }
+  if (options?.inactiveOnly) {
+    q = q.eq("is_active", false);
+  } else if (options?.activeOnly !== false) {
+    q = q.eq("is_active", true);
+  }
   const { data, error } = await q;
   if (error) throw new Error(error.message);
   return (data ?? []).map((s) => ({
@@ -208,23 +224,36 @@ export async function countPickupReadyForSales(): Promise<number> {
   return count ?? 0;
 }
 
+const SUPABASE_PAGE = 1000;
+
 /** Pozycje fizycznie na magazynie — inwentaryzacja regału (odbiór / informacja). */
 export async function fetchWarehouseInventory(): Promise<IndividualOrder[]> {
   if (!hasSupabaseConfig()) return [];
   const supabase = createAdminClient();
-  const { data, error } = await supabase
-    .from("individual_orders")
-    .select("*, supplier:suppliers(*), sales_person:sales_people(*)")
-    .in("status", ["Zrealizowane", "Czesciowo_zrealizowane"])
-    .is("sales_acknowledged_at", null)
-    .is("sales_cancelled_at", null);
-  if (error) {
-    if (error.message?.includes("sales_acknowledged_at")) return [];
-    throw new Error(error.message);
+  const orders: IndividualOrder[] = [];
+  let offset = 0;
+
+  while (true) {
+    const { data, error } = await supabase
+      .from("individual_orders")
+      .select("*, supplier:suppliers(*), sales_person:sales_people(*)")
+      .in("status", ["Zrealizowane", "Czesciowo_zrealizowane"])
+      .is("sales_acknowledged_at", null)
+      .is("sales_cancelled_at", null)
+      .order("action_at", { ascending: true })
+      .range(offset, offset + SUPABASE_PAGE - 1);
+    if (error) {
+      if (error.message?.includes("sales_acknowledged_at")) return [];
+      throw new Error(error.message);
+    }
+    const batch = data ?? [];
+    const normalized = normalizeIndividualOrders(batch).filter(isWarehouseInventoryOrder);
+    orders.push(...buildWarehouseInventoryRows(normalized).map((r) => r.order));
+    if (batch.length < SUPABASE_PAGE) break;
+    offset += SUPABASE_PAGE;
   }
-  const normalized = normalizeIndividualOrders(data ?? []).filter(isWarehouseInventoryOrder);
-  const rows = buildWarehouseInventoryRows(normalized);
-  return rows.map((r) => r.order);
+
+  return orders;
 }
 
 /** Kolejka dostaw: zamówienia dla handlowca do przyjęcia towaru — bez informacji. */
@@ -283,7 +312,7 @@ export async function fetchSummaryWorkspace(options?: { salesPersonId?: string }
     await runRepairIncompleteIndividualOrders(supabase);
   }
 
-  const allSchedules = await fetchSuppliersWithSchedules();
+  const allSchedules = await fetchSuppliersWithSchedules(undefined, { activeOnly: true });
   let schedules = allSchedules;
   if (options?.salesPersonId) {
     const allowed = await fetchSupplierIdsForSalesPerson(options.salesPersonId);
@@ -359,7 +388,22 @@ export async function fetchDeliveryStats() {
   return data ?? [];
 }
 
-/** Lekka lista dostawców do pól wyboru (bez harmonogramów). */
+/** Liczba nieaktywnych dostawców (badge w hubie). */
+export async function countInactiveSuppliers(): Promise<number> {
+  if (!hasSupabaseConfig()) return 0;
+  const supabase = createAdminClient();
+  const { count, error } = await supabase
+    .from("suppliers")
+    .select("id", { count: "exact", head: true })
+    .eq("is_active", false);
+  if (error) {
+    console.error("countInactiveSuppliers:", error.message);
+    return 0;
+  }
+  return count ?? 0;
+}
+
+/** Lekka lista dostawców do pól wyboru (bez harmonogramów, także nieaktywni). */
 export async function fetchSuppliersForForm() {
   if (!hasSupabaseConfig()) return [];
   const supabase = createAdminClient();

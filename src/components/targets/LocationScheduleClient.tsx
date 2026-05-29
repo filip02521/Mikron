@@ -25,10 +25,13 @@ import {
 } from "@/lib/orders/dates";
 import { cn } from "@/lib/cn";
 import { Badge } from "@/components/ui/Badge";
+import { InactiveSupplierBadge } from "@/components/suppliers/InactiveSupplierBadge";
+import { inactiveSupplierRowClass, inactiveSupplierNameClass } from "@/lib/suppliers/active";
 
 export interface ScheduleRow {
   id: string;
   name: string;
+  is_active: boolean;
   interval_hint: string | null;
   order_date: string | null;
   shift_date: string | null;
@@ -259,10 +262,18 @@ export function LocationScheduleClient({
                   <tr
                     key={row.id}
                     style={{ backgroundColor: row.rowColor }}
-                    className={cn(savedId === row.id && "ring-2 ring-inset ring-emerald-400")}
+                    className={cn(
+                      inactiveSupplierRowClass(row.is_active),
+                      savedId === row.id && "ring-2 ring-inset ring-emerald-400"
+                    )}
                   >
-                    <td className="font-semibold text-slate-900">
-                      <p>{row.name}</p>
+                    <td className={cn("font-semibold", inactiveSupplierNameClass(row.is_active))}>
+                      <p className="flex flex-wrap items-center gap-2">
+                        <span>{row.name}</span>
+                        {!row.is_active ? (
+                          <InactiveSupplierBadge className="text-[10px]" />
+                        ) : null}
+                      </p>
                       {row.interval_hint ? (
                         <p className="mt-0.5 text-[11px] font-normal text-slate-500">
                           Cykl: {row.interval_hint}

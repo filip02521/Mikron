@@ -127,6 +127,7 @@ export async function syncSuppliersFromSettings(): Promise<{
 
   let processed = 0;
   for (const s of suppliers) {
+    if (s.is_active === false) continue;
     try {
       const schedule = scheduleRow(s as SupplierWithSchedule);
       const shiftDate = parseDateOnly(schedule?.shift_date ?? null);

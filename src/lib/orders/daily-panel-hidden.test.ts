@@ -69,4 +69,15 @@ describe("buildDailyPanelHiddenReport", () => {
     const report = buildDailyPanelHiddenReport([onToday], ws);
     expect(report.suppliers).toHaveLength(0);
   });
+
+  it("nie zgłasza dostawcy w razie potrzeby — ma osobną sekcję w panelu", () => {
+    const onDemand = supplier("od", "Na żądanie", {
+      order_on_demand: true,
+      computed_next_date: null,
+      order_date: null,
+    });
+    const ws = buildSummaryWorkspace([onDemand], [], today);
+    const report = buildDailyPanelHiddenReport([onDemand], ws);
+    expect(report.suppliers).toHaveLength(0);
+  });
 });

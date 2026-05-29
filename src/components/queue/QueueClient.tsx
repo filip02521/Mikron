@@ -25,6 +25,8 @@ import { InformacjaQueueSection } from "@/components/queue/InformacjaQueueSectio
 import { ActionLoadingOverlay } from "@/components/ui/ActionLoadingOverlay";
 import { QueuePanelToolbar } from "@/components/queue/QueuePanelToolbar";
 import { WarehouseInventorySection } from "@/components/queue/WarehouseInventorySection";
+import { DeliveryJournalSection } from "@/components/queue/DeliveryJournalSection";
+import type { WarehouseDeliveryReceipt } from "@/lib/warehouse/delivery-receipts";
 import { SegmentedControl } from "@/components/ui/SegmentedControl";
 import { buildWarehouseInventoryRows } from "@/lib/orders/warehouse-inventory";
 import { partialReceiveCrossLabel } from "@/lib/orders/warehouse-cross-link";
@@ -47,18 +49,28 @@ import {
   selectedSaveButtonLabel,
 } from "@/lib/orders/queue-batch-notify";
 
-type QueueView = "receive" | "inventory";
+type QueueView = "receive" | "journal" | "inventory";
 
 export function QueueClient({
   orders,
   informacjaOrders,
   pickupReadyCount,
   warehouseInventory,
+  deliveryJournal,
+  journalSuppliers,
+  isMagazynRole = false,
 }: {
   orders: IndividualOrder[];
   informacjaOrders: IndividualOrder[];
   pickupReadyCount: number;
   warehouseInventory: IndividualOrder[];
+  deliveryJournal: {
+    date: string;
+    receipts: WarehouseDeliveryReceipt[];
+    summary: { receiptCount: number; packageCount: number; palletCount: number };
+  };
+  journalSuppliers: Array<{ id: string; name: string; subiektKhId: number | null }>;
+  isMagazynRole?: boolean;
 }) {
   const router = useRouter();
   const [view, setView] = useState<QueueView>("receive");
@@ -80,8 +92,10 @@ export function QueueClient({
 
   useEffect(() => {
     const sync = () => {
-      const next: QueueView =
-        window.location.hash === "#inwentaryzacja" ? "inventory" : "receive";
+      const hash = window.location.hash;
+      let next: QueueView = "receive";
+      if (hash === "#inwentaryzacja") next = "inventory";
+      else if (hash === "#dziennik-dostaw") next = "journal";
       setView(next);
     };
     sync();
@@ -101,7 +115,8 @@ export function QueueClient({
 
   const setQueueView = useCallback((next: QueueView) => {
     setView(next);
-    const hash = next === "inventory" ? "#inwentaryzacja" : "";
+    const hash =
+      next === "inventory" ? "#inwentaryzacja" : next === "journal" ? "#dziennik-dostaw" : "";
     const target = hash
       ? `${window.location.pathname}${window.location.search}${hash}`
       : `${window.location.pathname}${window.location.search}`;
@@ -333,7 +348,10 @@ export function QueueClient({
           informacjaCount={informacjaOrders.length}
           pickupReadyCount={pickupReadyCount}
           inventoryCount={inventoryCount}
+          journalCount={deliveryJournal.summary.receiptCount}
           onOpenInventory={() => setQueueView("inventory")}
+          onOpenJournal={() => setQueueView("journal")}
+          showProcurementLinks={!isMagazynRole}
         />
 
         <div className="border-b border-slate-100 px-4 py-3 sm:px-6">
@@ -346,6 +364,14 @@ export function QueueClient({
             options={[
               { value: "receive", label: "Przyjęcie towaru" },
               {
+                value: "journal",
+                label:
+                  deliveryJournal.summary.receiptCount > 0
+                    ? `Dziennik dostaw (${deliveryJournal.summary.receiptCount})`
+                    : "Dziennik dostaw",
+                title: "Kurier, paczki, palety — zamiast Excela",
+              },
+              {
                 value: "inventory",
                 label:
                   inventoryCount > 0
@@ -357,7 +383,14 @@ export function QueueClient({
           />
         </div>
 
-        {view === "inventory" ? (
+        {view === "journal" ? (
+          <DeliveryJournalSection
+            suppliers={journalSuppliers}
+            initialJournal={deliveryJournal}
+            todayDateKey={deliveryJournal.date}
+            isMagazynRole={isMagazynRole}
+          />
+        ) : view === "inventory" ? (
           <WarehouseInventorySection
             orders={warehouseInventory}
             deliveryQueueOrders={shelf}

@@ -46,6 +46,7 @@ export type SupplierSummaryMeta = {
   pickup_mikran: boolean;
   pickup_pallet: boolean;
   order_on_demand: boolean;
+  is_active: boolean;
   order_date: string | null;
   shift_date: string | null;
   computed_next_date: string | null;
@@ -144,6 +145,7 @@ function toMeta(s: SupplierWithSchedule): SupplierSummaryMeta {
     pickup_mikran: s.pickup_mikran,
     pickup_pallet: s.pickup_pallet,
     order_on_demand: isSupplierOrderOnDemand(s),
+    is_active: s.is_active !== false,
     order_date: sch?.order_date ?? null,
     shift_date: sch?.shift_date ?? null,
     computed_next_date: sch?.computed_next_date ?? null,

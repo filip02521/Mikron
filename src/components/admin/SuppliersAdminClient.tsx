@@ -3,8 +3,14 @@
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useState, useTransition, useCallback } from "react";
+import { useLatest } from "@/hooks/useLatest";
 import type { SupplierLocation, SupplierWithSchedule } from "@/types/database";
-import { actionUpsertSupplier, actionDeleteSupplier } from "@/app/actions/admin";
+import {
+  actionUpsertSupplier,
+  actionDeleteSupplier,
+  actionSetSupplierActive,
+} from "@/app/actions/admin";
+import { isSupplierActive, inactiveSupplierRowClass } from "@/lib/suppliers/active";
 import { formatStockPeriod, locationLabel } from "@/lib/display-labels";
 import { Card, CardHeader } from "@/components/ui/Card";
 import { Input } from "@/components/ui/Field";
@@ -21,10 +27,13 @@ import {
   type SupplierLocationFilter,
 } from "@/lib/supplier-locations";
 import {
-  defaultOrderOnDemandChecked,
   isSupplierOrderOnDemand,
   suggestOrderOnDemandAfterFieldChange,
 } from "@/lib/orders/supplier-on-demand";
+import {
+  emptySupplierAdminForm,
+  supplierToAdminForm,
+} from "@/lib/suppliers/admin-form";
 import { Badge } from "@/components/ui/Badge";
 import { SupplierSubiektLinkIndicator } from "@/components/admin/SupplierSubiektLinkIndicator";
 import {
@@ -33,21 +42,6 @@ import {
 } from "@/components/admin/SupplierAdminForm";
 import { SupplierEditSheet } from "@/components/admin/SupplierEditSheet";
 import { cn } from "@/lib/cn";
-
-const emptyForm = (): SupplierAdminFormState => ({
-  name: "",
-  location: "POLSKA",
-  pickup_mikran: false,
-  pickup_pallet: false,
-  notes: "",
-  mails: "",
-  extra_info: "",
-  interval_raw: "2 MIESIĄCE",
-  stock_raw: "2 MIESIĄCE",
-  stats_mode: "LACZNIE",
-  order_on_demand: false,
-  subiekt_kh_id: null,
-});
 
 function scheduleHref(location: SupplierLocation, name: string): string {
   const q = encodeURIComponent(name);
@@ -72,8 +66,12 @@ export function SuppliersAdminClient({
   const [search, setSearch] = useState("");
   const [locationFilter, setLocationFilter] = useState<SupplierLocationFilter>("all");
   const [formOpen, setFormOpen] = useState(false);
-  const [form, setForm] = useState<SupplierAdminFormState>(emptyForm);
+  const [form, setForm] = useState<SupplierAdminFormState>(emptySupplierAdminForm);
+  const formRef = useLatest(form);
   const [deleteTarget, setDeleteTarget] = useState<SupplierWithSchedule | null>(null);
+  const [deactivateTarget, setDeactivateTarget] = useState<SupplierWithSchedule | null>(
+    null
+  );
 
   useEffect(() => {
     const q = searchParams.get("q")?.trim();
@@ -88,26 +86,12 @@ export function SuppliersAdminClient({
   );
 
   const startEdit = (s: SupplierWithSchedule) => {
-    setForm({
-      id: s.id,
-      name: s.name,
-      location: s.location,
-      pickup_mikran: s.pickup_mikran,
-      pickup_pallet: s.pickup_pallet,
-      notes: s.notes,
-      mails: s.mails,
-      extra_info: s.extra_info,
-      interval_raw: s.interval_raw ?? "",
-      stock_raw: s.stock_raw ?? (s.stock != null ? String(s.stock) : ""),
-      stats_mode: s.stats_mode,
-      order_on_demand: defaultOrderOnDemandChecked(s),
-      subiekt_kh_id: s.subiekt_kh_id ?? null,
-    });
+    setForm(supplierToAdminForm(s));
     setFormOpen(true);
   };
 
   const openNew = () => {
-    setForm(emptyForm());
+    setForm(emptySupplierAdminForm());
     setFormOpen(true);
   };
 
@@ -128,7 +112,7 @@ export function SuppliersAdminClient({
   }, [formOpen, form.id]);
 
   const resetForm = () => {
-    setForm(emptyForm());
+    setForm(emptySupplierAdminForm());
     setFormOpen(false);
   };
 
@@ -148,16 +132,46 @@ export function SuppliersAdminClient({
     });
   };
 
+  const confirmDeactivate = () => {
+    const s = deactivateTarget;
+    if (!s) return;
+    start(async () => {
+      try {
+        await actionSetSupplierActive(s.id, false);
+        setRows((list) => list.filter((x) => x.id !== s.id));
+        if (form.id === s.id) resetForm();
+        setDeactivateTarget(null);
+        setToast({
+          text: `„${s.name}” oznaczono jako nieaktywny — nie pojawi się w panelu dziennym.`,
+          tone: "success",
+        });
+      } catch (e) {
+        setToast({
+          text: e instanceof Error ? e.message : "Nie udało się zapisać",
+          tone: "error",
+        });
+      }
+    });
+  };
+
   const save = () => {
     if (!form.name.trim()) {
       setToast({ text: "Podaj nazwę dostawcy", tone: "error" });
       return;
     }
     start(async () => {
+      const snapshot = { ...formRef.current };
       try {
-        await actionUpsertSupplier(form);
+        await actionUpsertSupplier(snapshot);
+        if (snapshot.id && !snapshot.is_active) {
+          setRows((list) => list.filter((x) => x.id !== snapshot.id));
+        }
         setToast({
-          text: form.id ? "Zapisano zmiany dostawcy" : "Dodano dostawcę",
+          text: snapshot.id
+            ? snapshot.is_active
+              ? "Zapisano zmiany dostawcy"
+              : "Dostawca oznaczony jako nieaktywny"
+            : "Dodano dostawcę",
           tone: "success",
         });
         resetForm();
@@ -176,6 +190,20 @@ export function SuppliersAdminClient({
   return (
     <>
       {toast ? <Toast message={toast.text} tone={toast.tone} onDismiss={dismiss} /> : null}
+      <ConfirmDialog
+        open={!!deactivateTarget}
+        title="Oznaczyć jako nieaktywnego?"
+        message={
+          deactivateTarget
+            ? `„${deactivateTarget.name}” zniknie z panelu dziennego i planu tygodnia. Harmonogram i karta pozostaną — przywrócisz w zakładce Nieaktywni.`
+            : ""
+        }
+        confirmLabel="Dezaktywuj"
+        danger
+        pending={pending}
+        onCancel={() => setDeactivateTarget(null)}
+        onConfirm={confirmDeactivate}
+      />
       {allowDelete ? (
         <ConfirmDialog
           open={!!deleteTarget}
@@ -316,6 +344,7 @@ export function SuppliersAdminClient({
                         key={s.id}
                         id={`supplier-row-${s.id}`}
                         className={cn(
+                          inactiveSupplierRowClass(isSupplierActive(s)),
                           isEditing && "bg-indigo-50/80 ring-1 ring-inset ring-indigo-200"
                         )}
                       >
@@ -368,6 +397,14 @@ export function SuppliersAdminClient({
                             ) : null}
                             <Button variant="ghost" size="sm" onClick={() => startEdit(s)}>
                               Edytuj
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="text-amber-800"
+                              onClick={() => setDeactivateTarget(s)}
+                            >
+                              Dezaktywuj
                             </Button>
                             {allowDelete ? (
                               <Button

@@ -4,6 +4,10 @@ import type { SupplierLocation, StatsMode } from "@/types/database";
 import { Field, Input, Select } from "@/components/ui/Field";
 import { SUPPLIER_LOCATION_OPTIONS } from "@/lib/supplier-locations";
 import { SupplierSubiektLinkField } from "@/components/admin/SupplierSubiektLinkField";
+import {
+  WAREHOUSE_CARRIERS,
+  WAREHOUSE_SHIPMENT_FORMS,
+} from "@/lib/warehouse/delivery-carriers";
 
 export type SupplierAdminFormState = {
   id?: string;
@@ -18,7 +22,10 @@ export type SupplierAdminFormState = {
   stock_raw: string;
   stats_mode: StatsMode;
   order_on_demand: boolean;
+  is_active: boolean;
   subiekt_kh_id: number | null;
+  default_delivery_carrier: string;
+  default_delivery_shipment_form: string;
 };
 
 export function SupplierAdminForm({
@@ -137,6 +144,21 @@ export function SupplierAdminForm({
         <input
           type="checkbox"
           className="mt-0.5 h-4 w-4 rounded border-slate-300"
+          checked={form.is_active}
+          disabled={disabled}
+          onChange={(e) => onChange({ ...form, is_active: e.target.checked })}
+        />
+        <span className="text-sm text-slate-700">
+          <span className="font-medium text-slate-900">Aktywny dostawca</span>
+          {" — "}
+          widoczny w panelu dziennym i planie tygodnia. Odznacz, aby ukryć (lista
+          Nieaktywni).
+        </span>
+      </label>
+      <label className="flex cursor-pointer items-start gap-2 sm:col-span-2">
+        <input
+          type="checkbox"
+          className="mt-0.5 h-4 w-4 rounded border-slate-300"
           checked={form.order_on_demand}
           disabled={disabled}
           onChange={(e) => onChange({ ...form, order_on_demand: e.target.checked })}
@@ -145,6 +167,45 @@ export function SupplierAdminForm({
           Tylko w razie potrzeby — bez stałego terminu w panelu dziennym
         </span>
       </label>
+      <p className="text-xs font-semibold uppercase tracking-wide text-slate-500 sm:col-span-2">
+        Dziennik dostaw (magazyn)
+      </p>
+      <Field label="Domyślny kurier">
+        <Select
+          disabled={disabled}
+          value={form.default_delivery_carrier}
+          onChange={(e) =>
+            onChange({ ...form, default_delivery_carrier: e.target.value })
+          }
+        >
+          <option value="">— z historii wpisów —</option>
+          {WAREHOUSE_CARRIERS.map((c) => (
+            <option key={c.value} value={c.value}>
+              {c.label}
+            </option>
+          ))}
+        </Select>
+      </Field>
+      <Field label="Domyślna forma">
+        <Select
+          disabled={disabled}
+          value={form.default_delivery_shipment_form}
+          onChange={(e) =>
+            onChange({ ...form, default_delivery_shipment_form: e.target.value })
+          }
+        >
+          <option value="">— z historii —</option>
+          {WAREHOUSE_SHIPMENT_FORMS.map((f) => (
+            <option key={f.value} value={f.value}>
+              {f.label}
+            </option>
+          ))}
+        </Select>
+      </Field>
+      <p className="text-xs leading-snug text-slate-500 sm:col-span-2">
+        Ustaw np. DHL dla dostawcy, który zawsze jedzie tym kurierem. Puste pola — system uczy się z
+        wpisów magazynu.
+      </p>
       <p className="text-xs font-semibold uppercase tracking-wide text-slate-500 sm:col-span-2">
         Odbiór
       </p>

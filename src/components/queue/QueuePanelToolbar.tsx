@@ -99,13 +99,19 @@ export function QueuePanelToolbar({
   informacjaCount,
   pickupReadyCount,
   inventoryCount = 0,
+  journalCount = 0,
   onOpenInventory,
+  onOpenJournal,
+  showProcurementLinks = true,
 }: {
   summary: QueueInboxSummary;
   informacjaCount: number;
   pickupReadyCount: number;
   inventoryCount?: number;
+  journalCount?: number;
   onOpenInventory?: () => void;
+  onOpenJournal?: () => void;
+  showProcurementLinks?: boolean;
 }) {
   return (
     <div className="border-b border-slate-100 px-4 py-4 sm:px-6">
@@ -117,9 +123,17 @@ export function QueuePanelToolbar({
       <div
         className={cn(
           "mt-3 grid grid-cols-2 gap-2",
-          informacjaCount > 0 ? "sm:grid-cols-4" : "sm:grid-cols-3"
+          informacjaCount > 0 ? "sm:grid-cols-2 lg:grid-cols-5" : "sm:grid-cols-2 lg:grid-cols-4"
         )}
       >
+        <MetricTile
+          value={journalCount}
+          label="Dziennik dziś"
+          hint="fizyczne dostawy na rampę"
+          tone={journalCount > 0 ? "sky" : "default"}
+          href={journalCount > 0 ? "#dziennik-dostaw" : undefined}
+          onNavigate={onOpenJournal}
+        />
         <MetricTile
           value={summary.activeCount}
           label="Do przyjęcia"
@@ -157,13 +171,18 @@ export function QueuePanelToolbar({
         ) : null}
       </div>
       <p className="mt-3 text-[11px] text-slate-500">
-        <strong>Inwentaryzacja regału</strong> — lista tego, co fizycznie czeka na odbiór: handlowiec,
-        klient, regał i ile dni leży na magazynie. Przełącz widok u góry karty lub kliknij kafelek
-        „Na magazynie”. Brak dostawcy lub opisu uzupełniasz w{" "}
-        <Link href="/podsumowanie" className={brandLinkClass}>
-          panelu dziennym
-        </Link>{" "}
-        (Weryfikacja).
+        <strong>Dziennik dostaw</strong> — zapis kuriera, paczek i palet (zamiast Excela).{" "}
+        <strong>Inwentaryzacja regału</strong> — co czeka na odbiór u handlowców.
+        {showProcurementLinks ? (
+          <>
+            {" "}
+            Brak dostawcy w prośbie uzupełnia dział zakupów w{" "}
+            <Link href="/podsumowanie" className={brandLinkClass}>
+              panelu dziennym
+            </Link>
+            .
+          </>
+        ) : null}
       </p>
     </div>
   );

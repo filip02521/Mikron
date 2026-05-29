@@ -18,12 +18,10 @@ import { panelNameLinkClass, panelTextLinkClass } from "@/lib/ui/ontime-theme";
 export function DailyPanelHiddenSuppliers({
   report,
   onOpenSupplier,
-  onOpenOnDemand,
   embedded = false,
 }: {
   report: DailyPanelHiddenReport;
   onOpenSupplier: (id: string) => void;
-  onOpenOnDemand?: () => void;
   embedded?: boolean;
 }) {
   const groups = groupHiddenSuppliersByReason(report.suppliers);
@@ -58,7 +56,7 @@ export function DailyPanelHiddenSuppliers({
               ) : null}
             </p>
             <p className="mt-0.5 text-xs leading-relaxed text-slate-500">
-              Dostawcy bez wpisu w harmonogramie lub prośby obsługiwane gdzie indziej.
+              Braki w danych harmonogramu — dostawcy „w razie potrzeby” są w sekcji wyżej.
             </p>
           </div>
           <IconChevronDown className="mt-1 shrink-0 text-slate-400" size={18} />
@@ -101,22 +99,12 @@ export function DailyPanelHiddenSuppliers({
                         {row.detail}
                       </p>
                     </div>
-                    {reason === "on_demand" && onOpenOnDemand ? (
-                      <button
-                        type="button"
-                        onClick={onOpenOnDemand}
-                        className={cn("shrink-0 text-xs", panelTextLinkClass)}
-                      >
-                        Lista na żądanie
-                      </button>
-                    ) : (
-                      <Link
-                        href={`/lokalizacje/${row.location}`}
-                        className={cn("shrink-0 text-xs", panelTextLinkClass)}
-                      >
-                        Terminy
-                      </Link>
-                    )}
+                    <Link
+                      href={`/lokalizacje/${row.location}`}
+                      className={cn("shrink-0 text-xs", panelTextLinkClass)}
+                    >
+                      Terminy
+                    </Link>
                   </li>
                 ))}
               </ul>

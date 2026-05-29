@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useLatest } from "@/hooks/useLatest";
 import type { SupplierLocation, StatsMode } from "@/types/database";
 import type { SupplierSummaryMeta } from "@/lib/orders/summary-workspace";
 import { actionUpsertSupplier } from "@/app/actions/admin";
@@ -35,6 +36,7 @@ function formFromSupplier(s: SupplierSummaryMeta | null) {
       stock_raw: "2 MIESIĄCE",
       stats_mode: "LACZNIE" as StatsMode,
       order_on_demand: false,
+      is_active: true,
       subiekt_kh_id: null as number | null,
     };
   }
@@ -56,11 +58,22 @@ function formFromSupplier(s: SupplierSummaryMeta | null) {
       interval_raw: s.interval_raw,
       extra_info: s.extra_info,
     }),
+    is_active: s.is_active !== false,
     subiekt_kh_id: s.subiekt_kh_id ?? null,
   };
 }
 
-export function SupplierEditModal({
+export function SupplierEditModal(props: {
+  supplier: SupplierSummaryMeta | null;
+  onClose: () => void;
+  onSaved?: (id: string, message: string) => void;
+}) {
+  return (
+    <SupplierEditModalInner key={props.supplier?.id ?? "new"} {...props} />
+  );
+}
+
+function SupplierEditModalInner({
   supplier,
   onClose,
   onSaved,
@@ -72,6 +85,7 @@ export function SupplierEditModal({
   const isNew = !supplier;
   const { pending, pendingMessage, run } = useActionPending();
   const [form, setForm] = useState(() => formFromSupplier(supplier));
+  const formRef = useLatest(form);
 
   const patchCycleFields = (
     patch: Partial<Pick<typeof form, "stock_raw" | "interval_raw" | "extra_info">>
@@ -93,11 +107,14 @@ export function SupplierEditModal({
     if (!form.name.trim()) return;
     run(
       async () => {
-        const result = await actionUpsertSupplier(form);
-        onSaved?.(
-          result.id,
-          isNew ? `Dodano dostawcę „${form.name.trim()}”.` : "Zapisano zmiany dostawcy."
-        );
+        const snapshot = { ...formRef.current };
+        const result = await actionUpsertSupplier(snapshot);
+        const msg = !snapshot.is_active
+          ? "Dostawca oznaczony jako nieaktywny — zniknie z cyklu w panelu dziennym."
+          : isNew
+            ? `Dodano dostawcę „${snapshot.name.trim()}”.`
+            : "Zapisano zmiany dostawcy.";
+        onSaved?.(result.id, msg);
         onClose();
       },
       isNew ? "Dodawanie dostawcy…" : "Zapisywanie karty dostawcy…"
@@ -197,6 +214,22 @@ export function SupplierEditModal({
             placeholder="np. 2 MIESIĄCE lub W RAZIE POTRZEBY"
           />
         </Field>
+        <label className="flex cursor-pointer items-start gap-2 sm:col-span-2">
+          <input
+            type="checkbox"
+            className="mt-0.5 h-4 w-4 rounded border-slate-300"
+            checked={form.is_active}
+            disabled={pending}
+            onChange={(e) => setForm({ ...form, is_active: e.target.checked })}
+          />
+          <span className="text-sm text-slate-700">
+            <span className="font-medium text-slate-900">Aktywny dostawca</span>
+            <span className="mt-0.5 block text-slate-500">
+              Wyłącz, aby ukryć cykliczne zamówienia w panelu dziennym. Prośby o konkretne
+              produkty nadal możliwe.
+            </span>
+          </span>
+        </label>
         <label className="flex cursor-pointer items-start gap-2 sm:col-span-2">
           <input
             type="checkbox"

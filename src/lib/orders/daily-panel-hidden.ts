@@ -5,7 +5,6 @@ import type { SummaryWorkspaceData } from "@/lib/orders/summary-workspace";
 import type { SupplierLocation, SupplierWithSchedule } from "@/types/database";
 
 export type DailyPanelHiddenReason =
-  | "on_demand"
   | "missing_last_order"
   | "missing_interval"
   | "no_computed_date";
@@ -31,7 +30,6 @@ const REASON_ORDER: DailyPanelHiddenReason[] = [
   "missing_last_order",
   "missing_interval",
   "no_computed_date",
-  "on_demand",
 ];
 
 export const DAILY_PANEL_HIDDEN_REASON_META: Record<
@@ -51,11 +49,6 @@ export const DAILY_PANEL_HIDDEN_REASON_META: Record<
     sectionTitle: "Brak wyliczonego terminu",
     sectionHint:
       "Dane są częściowo uzupełnione, ale termin się nie liczy — sprawdź kartę lub użyj „Przelicz terminy”.",
-  },
-  on_demand: {
-    sectionTitle: "W razie potrzeby",
-    sectionHint:
-      "Celowo poza harmonogramem — zamawiasz ręcznie, gdy towar jest potrzebny (lista w sekcji planu).",
   },
 };
 
@@ -106,15 +99,7 @@ export function buildDailyPanelHiddenReport(
       nextDateLabel: null as string | null,
     };
 
-    if (isSupplierOrderOnDemand(s)) {
-      suppliers.push({
-        ...base,
-        reason: "on_demand",
-        title: "Zamówienie na żądanie",
-        detail: "Nie ma stałego terminu w harmonogramie — tylko lista „W razie potrzeby”.",
-      });
-      continue;
-    }
+    if (isSupplierOrderOnDemand(s)) continue;
 
     const next = parseDateOnly(s.schedule?.computed_next_date ?? null);
     if (!next) {

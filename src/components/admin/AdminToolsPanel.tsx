@@ -9,7 +9,6 @@ import {
   actionSyncData,
   actionRecalculateStats,
   actionProcessDeliveries,
-  actionSendWeeklyEmail,
 } from "@/app/actions/admin";
 
 export function AdminToolsPanel() {
@@ -54,7 +53,7 @@ export function AdminToolsPanel() {
         </div>
       </details>
 
-      <div className="grid gap-6 lg:grid-cols-3">
+      <div className="grid gap-6 lg:grid-cols-2">
         <Card>
           <CardHeader
             title="Harmonogramy"
@@ -97,27 +96,6 @@ export function AdminToolsPanel() {
             <p className="text-xs leading-relaxed text-slate-500">
               ETA na co dzień aktualizuje się przy zapisie realizacji — pełne przeliczenie tylko
               po korekcie historii.
-            </p>
-          </div>
-        </Card>
-
-        <Card>
-          <CardHeader
-            title="Komunikacja"
-            description="Raport tygodniowy dla zakupów — status handlowców jest w /moje."
-          />
-          <div className="flex flex-col gap-2">
-            <AdminActionButton
-              action={actionSendWeeklyEmail}
-              label="Raport tygodniowy (zakupy)"
-              onMessage={notify}
-            />
-            <p className="text-xs leading-relaxed text-slate-500">
-              Raport tygodniowy: lista z{" "}
-              <code className="rounded bg-slate-100 px-1 text-xs">
-                app_settings.email_recipients
-              </code>
-              .
             </p>
           </div>
         </Card>

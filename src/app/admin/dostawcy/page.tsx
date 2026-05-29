@@ -1,12 +1,16 @@
-import { fetchSuppliersWithSchedules } from "@/lib/data/queries";
+import { countInactiveSuppliers, fetchSuppliersWithSchedules } from "@/lib/data/queries";
 import { SuppliersAdminClient } from "@/components/admin/SuppliersAdminClient";
 import { SuppliersHubShell } from "@/components/admin/SuppliersHubShell";
 import type { SupplierWithSchedule } from "@/types/database";
 
 export default async function DostawcyAdminPage() {
   let suppliers: SupplierWithSchedule[] = [];
+  let inactiveCount = 0;
   try {
-    suppliers = await fetchSuppliersWithSchedules();
+    [suppliers, inactiveCount] = await Promise.all([
+      fetchSuppliersWithSchedules(),
+      countInactiveSuppliers(),
+    ]);
   } catch {
     suppliers = [];
   }
@@ -17,6 +21,7 @@ export default async function DostawcyAdminPage() {
       description="Wersja administratora z usuwaniem. Daty w cyklu — w Terminach zamówień."
       activeTab="cards"
       context="admin"
+      inactiveCount={inactiveCount}
     >
       <SuppliersAdminClient initial={suppliers} allowDelete />
     </SuppliersHubShell>

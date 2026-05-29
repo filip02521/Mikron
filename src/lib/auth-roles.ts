@@ -8,6 +8,15 @@ export function isZakupy(role: UserRole): boolean {
   return role === "zakupy";
 }
 
+export function isMagazyn(role: UserRole): boolean {
+  return role === "magazyn";
+}
+
+/** Magazyn i regał — przyjęcie towaru + dziennik dostaw. */
+export function canAccessWarehouse(role: UserRole): boolean {
+  return role === "admin" || role === "zakupy" || role === "magazyn";
+}
+
 export function isSales(role: UserRole): boolean {
   return role === "sales";
 }
@@ -42,6 +51,8 @@ export function canManageSuppliers(role: UserRole): boolean {
 const PROCUREMENT_PREFIXES = ["/zakupy"];
 const SALES_TEAM_PREFIXES = ["/zespol"];
 
+const WAREHOUSE_PATH_PREFIXES = ["/kolejka"];
+
 const OPERATIONS_PATH_PREFIXES = [
   "/podsumowanie",
   "/kolejka",
@@ -55,6 +66,7 @@ const OPERATIONS_PATH_PREFIXES = [
 const SALES_PATH_PREFIXES = ["/moje", "/plan", "/prosba"];
 
 export function homePathForRole(role: UserRole): string {
+  if (isMagazyn(role)) return "/kolejka";
   if (canAccessOperations(role)) return "/podsumowanie";
   if (isSalesManager(role)) return "/zespol";
   return "/moje";
@@ -63,6 +75,11 @@ export function homePathForRole(role: UserRole): string {
 /** Czy rola może wejść na ścieżkę (do przekierowania po logowaniu). */
 export function canAccessPath(role: UserRole, pathname: string): boolean {
   if (pathname.startsWith("/admin")) return isAdmin(role);
+  if (isMagazyn(role)) {
+    return WAREHOUSE_PATH_PREFIXES.some(
+      (p) => pathname === p || pathname.startsWith(`${p}/`)
+    );
+  }
   if (OPERATIONS_PATH_PREFIXES.some((p) => pathname === p || pathname.startsWith(`${p}/`))) {
     return canAccessOperations(role);
   }

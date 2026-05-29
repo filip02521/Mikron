@@ -38,7 +38,6 @@ import {
   updateIndividualRequestGroup,
 } from "@/lib/services/orders";
 import type { IndividualRequestEditPayload } from "@/lib/orders/individual-request-edit";
-import { sendWeeklySummaryEmail } from "@/lib/services/email";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { intervalWeeksForStorage, parseInterval } from "@/lib/orders/dates";
 import { resolveOrderOnDemandForSave } from "@/lib/orders/supplier-on-demand";
@@ -254,7 +253,8 @@ export async function actionMarkInformacjaArrived(
     }
   | { error: string }
 > {
-  await requireOperations();
+  const { requireWarehouse } = await import("@/lib/auth");
+  await requireWarehouse();
   if (!orderIds.length) return { error: "Brak pozycji do oznaczenia." };
   try {
     const result = await markInformacjaArrived(orderIds);
@@ -533,14 +533,16 @@ export async function actionSetProcurementCancelDisposition(
 }
 
 export async function actionUpdateDelivered(orderId: string, qty: string) {
-  await requireOperations();
+  const { requireWarehouse } = await import("@/lib/auth");
+  await requireWarehouse();
   const { emailSent, emailError } = await updateDeliveredQuantity(orderId, qty);
   revalidateAll();
   return { success: true, emailSent, emailError };
 }
 
 export async function actionSetWarehouseShelf(orderId: string, shelf: string) {
-  await requireOperations();
+  const { requireWarehouse } = await import("@/lib/auth");
+  await requireWarehouse();
   const supabase = createAdminClient();
   const trimmed = shelf.trim();
   const { error } = await supabase
@@ -572,7 +574,8 @@ export async function actionBatchUpdateDelivered(
     }
   | { error: string }
 > {
-  await requireOperations();
+  const { requireWarehouse } = await import("@/lib/auth");
+  await requireWarehouse();
   if (!updates.length) return { error: "Zaznacz pozycje i wpisz ilości do zapisania." };
 
   try {
@@ -619,12 +622,6 @@ export async function actionRecalculateStats() {
   return { success: true, count };
 }
 
-export async function actionSendWeeklyEmail() {
-  await requireAdmin();
-  const ok = await sendWeeklySummaryEmail();
-  return { success: ok };
-}
-
 export async function actionUpsertSupplier(form: {
   id?: string;
   name: string;
@@ -638,6 +635,9 @@ export async function actionUpsertSupplier(form: {
   stock_raw: string;
   stats_mode: StatsMode;
   order_on_demand: boolean;
+  is_active: boolean;
+  default_delivery_carrier?: string | null;
+  default_delivery_shipment_form?: string | null;
 }) {
   await requireSupplierManagement();
   const notes = clampText(form.notes, MAX_SUPPLIER_NOTES_LEN);
@@ -671,23 +671,52 @@ export async function actionUpsertSupplier(form: {
       interval_raw: intervalRaw,
       extra_info: extraInfo,
     }),
+    default_delivery_carrier: form.default_delivery_carrier || null,
+    default_delivery_shipment_form: form.default_delivery_shipment_form || null,
+    is_active: form.is_active,
     updated_at: new Date().toISOString(),
   };
 
   if (form.id) {
-    await supabase.from("suppliers").update(payload).eq("id", form.id);
-    await recalcSingleSupplierSchedule(form.id);
+    const { error } = await supabase.from("suppliers").update(payload).eq("id", form.id);
+    if (error) throw new Error(error.message);
+    if (payload.is_active) {
+      await recalcSingleSupplierSchedule(form.id);
+    }
     revalidateAll();
     return { success: true as const, id: form.id };
   }
 
-  const { data } = await supabase.from("suppliers").insert(payload).select("id").single();
+  const { data, error: insertError } = await supabase
+    .from("suppliers")
+    .insert(payload)
+    .select("id")
+    .single();
+  if (insertError) throw new Error(insertError.message);
   if (data) {
     await supabase.from("supplier_schedules").insert({ supplier_id: data.id });
     await recalcSingleSupplierSchedule(data.id);
   }
   revalidateAll();
   return { success: true as const, id: data?.id ?? "" };
+}
+
+export async function actionSetSupplierActive(
+  id: string,
+  isActive: boolean
+): Promise<{ success: true }> {
+  await requireSupplierManagement();
+  const supabase = createAdminClient();
+  const { error } = await supabase
+    .from("suppliers")
+    .update({ is_active: isActive, updated_at: new Date().toISOString() })
+    .eq("id", id);
+  if (error) throw new Error(error.message);
+  if (isActive) {
+    await recalcSingleSupplierSchedule(id);
+  }
+  revalidateAll();
+  return { success: true };
 }
 
 export async function actionDeleteSupplier(

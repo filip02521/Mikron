@@ -11,6 +11,7 @@ import type { SupplierLocation } from "@/types/database";
 const TAB_ICON: Record<SupplierHubTab, NavIconKey> = {
   cards: "suppliers",
   schedules: "schedule",
+  inactive: "history",
   vacations: "vacation",
 };
 
@@ -21,6 +22,7 @@ export function SuppliersHubShell({
   context,
   scheduleLocation = "POLSKA",
   locationNav,
+  inactiveCount = 0,
   children,
 }: {
   title: string;
@@ -29,6 +31,7 @@ export function SuppliersHubShell({
   context: SupplierHubContext;
   scheduleLocation?: SupplierLocation;
   locationNav?: React.ReactNode;
+  inactiveCount?: number;
   children: React.ReactNode;
 }) {
   const iconKey = TAB_ICON[activeTab];
@@ -52,6 +55,7 @@ export function SuppliersHubShell({
             activeTab={activeTab}
             context={context}
             scheduleLocation={scheduleLocation}
+            inactiveCount={inactiveCount}
           />
           {locationNav ? <div className="mt-3">{locationNav}</div> : null}
         </div>

@@ -11,6 +11,7 @@ import { cn } from "@/lib/cn";
 const roleDotClass: Record<UserRole, string> = {
   admin: "bg-violet-500",
   zakupy: "bg-amber-500",
+  magazyn: "bg-emerald-500",
   sales: "bg-indigo-500",
   sales_manager: "bg-indigo-400",
 };

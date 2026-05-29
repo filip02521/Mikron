@@ -48,11 +48,25 @@ npm run migrate -- ./data
 |---------|------|
 | `/podsumowanie` | Panel dzienny (lewa/prawa tabela, akcje ZAMÓWIONE / GŁÓWNE / POBOCZNE) |
 | `/lokalizacje/[POLSKA\|ZAGRANICA\|IMPORT]` | Harmonogramy dostawców |
+| `/admin/dostawcy` · `/zakupy/dostawcy` | Karty dostawców (aktywni) |
+| `…/dostawcy/nieaktywni` | Lista nieaktywnych (poza cyklem w panelu dziennym) |
 | `/kolejka` | Realizacja zamówień indywidualnych |
 | `/historia` | Historia standardowa i indywidualna |
 | `/zamowienia/nowe` | Formularz zamówienia dla kogoś |
 | `/moje` | Widok handlowca |
 | `/admin` | Synchronizacja, raporty, status systemu, test integracji Subiekt |
+
+## Dostawcy nieaktywni i import harmonogramów
+
+Szczegóły: [docs/suppliers-active-inactive.md](docs/suppliers-active-inactive.md)
+
+```bash
+# Eksport CSV z zakładek POLSKA / ZAGRANICA / IMPORT (Downloads)
+npm run import-location-schedules-csv -- --dir "/ścieżka/Downloads"
+npm run verify-location-schedules -- --dir "/ścieżka/Downloads"
+```
+
+Migracja `039_supplier_is_active.sql` — kolumna `is_active` na `suppliers`.
 
 ## Retencja historii (6 miesięcy)
 

@@ -21,6 +21,8 @@ function supplier(
     stock_raw: "",
     stock: null,
     stats_mode: "LACZNIE",
+    order_on_demand: false,
+    is_active: true,
     schedule: {
       id: `sch-${id}`,
       supplier_id: id,

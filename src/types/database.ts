@@ -14,7 +14,7 @@ export type VacationNote =
   | "PRZESUNIETE_PO"
   | "PRZYSPIESZONE_PRZED"
   | "OSTATNIE_ZAMOWIENIE";
-export type UserRole = "admin" | "zakupy" | "sales" | "sales_manager";
+export type UserRole = "admin" | "zakupy" | "magazyn" | "sales" | "sales_manager";
 
 export interface Supplier {
   id: string;
@@ -32,8 +32,13 @@ export interface Supplier {
   stats_mode: StatsMode;
   /** Zamówienia tylko na zgłoszenie — bez stałego wpisu w planie tygodnia. */
   order_on_demand: boolean;
+  /** false = ukryty w panelu dziennym; zarządzanie w Kartach / liście Nieaktywni. */
+  is_active: boolean;
   /** Kontrahent-dostawca w Subiekcie (kh_Id) — jawne powiązanie zamiast dopasowania po nazwie. */
   subiekt_kh_id?: number | null;
+  /** Domyślny kurier w dzienniku dostaw magazynu. */
+  default_delivery_carrier?: string | null;
+  default_delivery_shipment_form?: string | null;
 }
 
 export interface SupplierSchedule {

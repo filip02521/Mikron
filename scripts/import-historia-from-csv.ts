@@ -6,7 +6,11 @@
  *   historia_indywidualne.csv — prośby handlowców → individual_orders
  *
  *   npx tsx scripts/import-historia-from-csv.ts ./data
- *   npx tsx scripts/import-historia-from-csv.ts "/Users/.../Downloads"
+ *   npx tsx scripts/import-historia-from-csv.ts "/Users/.../Downloads" --fresh
+ *   npx tsx scripts/import-historia-from-csv.ts ./data --rebuild-schedules
+ *
+ * Po imporcie HISTORIA (--fresh lub --rebuild-schedules) przelicza supplier_schedules:
+ * Zamówione / Zamówienie Główne → data zamówienia; Przesunięte o N tyg. → shift_date z DATA NAST. ZAM.
  */
 import { createClient } from "@supabase/supabase-js";
 import { existsSync, readdirSync, readFileSync } from "fs";
@@ -18,6 +22,8 @@ import {
   ensureSalesPeopleFromAliases,
   resolveSalesPersonId,
 } from "./lib/sales-person-import";
+import { rebuildAllSupplierSchedulesFromHistoria } from "../src/lib/services/rebuild-schedules-from-historia";
+import { syncLocationSchedulesFromDir } from "./lib/sync-location-schedules-from-dir";
 
 const url = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const key = process.env.SUPABASE_SERVICE_ROLE_KEY!;
@@ -68,6 +74,12 @@ async function main() {
   const fresh = process.argv.includes("--fresh");
   const skipExisting = process.argv.includes("--skip-existing");
   const backfillSuppliers = process.argv.includes("--backfill-suppliers");
+  const rebuildSchedules =
+    process.argv.includes("--rebuild-schedules") ||
+    (fresh && !process.argv.includes("--no-rebuild-schedules"));
+  const syncScheduleTabs =
+    process.argv.includes("--sync-schedule-tabs") ||
+    (rebuildSchedules && !process.argv.includes("--no-sync-schedule-tabs"));
   const input = args[0];
   if (!input) {
     console.error(
@@ -407,6 +419,9 @@ async function main() {
         action_at,
         delivery_at,
         ordered_at: status === "Zamowione" || status === "Zrealizowane" ? action_at : null,
+        ...(status === "Zrealizowane"
+          ? { sales_acknowledged_at: delivery_at ?? action_at }
+          : {}),
       });
       if (batch.length >= 100) await flushInd();
     }
@@ -439,6 +454,26 @@ async function main() {
         supplierList,
         supplierMatchCache
       );
+    }
+  }
+
+  if (rebuildSchedules && (normalCount > 0 || fresh)) {
+    console.log("Przeliczanie harmonogramów z historii (Zamówione / Zamówienie Główne / Przesunięte)…");
+    const rebuilt = await rebuildAllSupplierSchedulesFromHistoria();
+    console.log(`Harmonogramy z historii: ${rebuilt.updated} dostawców`);
+    if (rebuilt.errors.length) {
+      console.log(`Błędy harmonogramów (${rebuilt.errors.length}), przykłady:`);
+      rebuilt.errors.slice(0, 15).forEach((e) => console.log(`  - ${e}`));
+    }
+  }
+
+  if (syncScheduleTabs && dir) {
+    console.log("Synchronizacja z zakładkami POLSKA/ZAGRANICA/IMPORT (stan bieżący z arkusza)…");
+    const synced = await syncLocationSchedulesFromDir(supabase, dir);
+    if (!synced.locations.length) {
+      console.log("Brak plików *-POLSKA.csv / *-ZAGRANICA.csv / *-IMPORT.csv w katalogu — pominięto.");
+    } else {
+      console.log(`Zakładki lokalizacji: ${synced.updated} wierszy (${synced.locations.join(", ")})`);
     }
   }
 }

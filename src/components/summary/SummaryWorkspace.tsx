@@ -558,6 +558,7 @@ export function SummaryWorkspace({
 
       {editModalSupplierId !== null ? (
         <SupplierEditModal
+          key={editModalSupplierId ?? "new"}
           supplier={editModalSupplier}
           onClose={() => setEditModalSupplierId(null)}
           onSaved={(_id, msg) => appendFlash(msg)}

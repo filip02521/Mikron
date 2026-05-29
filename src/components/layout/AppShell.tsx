@@ -1,6 +1,6 @@
 import { getSessionUser } from "@/lib/auth";
 import { resolveSalesPersonForUser } from "@/lib/auth/sales-person";
-import { canAccessOperations, isSalesAccount } from "@/lib/auth-roles";
+import { canAccessOperations, canAccessWarehouse, isSalesAccount } from "@/lib/auth-roles";
 import {
   countVerificationOrders,
   fetchIndividualOrders,
@@ -24,23 +24,27 @@ export async function AppShell({ children }: { children: React.ReactNode }) {
   } = { nowe: 0, weryfikacja: 0, realizacja: 0 };
   let salesActivityVersion: string | null = null;
 
-  if (role && canAccessOperations(role)) {
+  if (role && canAccessWarehouse(role)) {
     try {
-      const [schedules, newOrders, weryfikacja, realizacjaCount] = await Promise.all([
-        fetchSuppliersWithSchedules(),
-        fetchIndividualOrders({ status: "Nowe", hideSalesAcknowledged: false }),
-        countVerificationOrders(),
-        countDeliveryQueue(),
-      ]);
-      const workspace = buildSummaryWorkspace(
-        schedules,
-        newOrders.filter((o) => o.status === "Nowe")
-      );
-      navBadges = {
-        nowe: countDailyPanelNavBadge(workspace),
-        weryfikacja,
-        realizacja: realizacjaCount,
-      };
+      const realizacjaCount = await countDeliveryQueue();
+      if (canAccessOperations(role)) {
+        const [schedules, newOrders, weryfikacja] = await Promise.all([
+          fetchSuppliersWithSchedules(),
+          fetchIndividualOrders({ status: "Nowe", hideSalesAcknowledged: false }),
+          countVerificationOrders(),
+        ]);
+        const workspace = buildSummaryWorkspace(
+          schedules,
+          newOrders.filter((o) => o.status === "Nowe")
+        );
+        navBadges = {
+          nowe: countDailyPanelNavBadge(workspace),
+          weryfikacja,
+          realizacja: realizacjaCount,
+        };
+      } else {
+        navBadges = { nowe: 0, weryfikacja: 0, realizacja: realizacjaCount };
+      }
     } catch {
       navBadges = { nowe: 0, weryfikacja: 0, realizacja: 0 };
     }

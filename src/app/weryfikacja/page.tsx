@@ -14,7 +14,7 @@ export default async function WeryfikacjaPage() {
   try {
     const [o, s] = await Promise.all([
       fetchVerificationOrders(),
-      fetchSuppliersWithSchedules(),
+      fetchSuppliersWithSchedules(undefined, { activeOnly: false }),
     ]);
     orders = o;
     suppliers = s.map((x) => ({
