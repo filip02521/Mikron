@@ -1,6 +1,5 @@
-import Script from "next/script";
-
-const POLYFILL = `
+/** Kod wstrzykiwany w <head> przed hydracją (HTTP / brak secure context). */
+export const CRYPTO_RANDOMUUID_POLYFILL = `
 (function () {
   var c = typeof globalThis !== "undefined" ? globalThis.crypto : null;
   if (!c || typeof c.randomUUID === "function") return;
@@ -34,7 +33,14 @@ const POLYFILL = `
 })();
 `;
 
-/** Uruchamia się przed hydracją — potrzebne przy logowaniu po IP (HTTP, nie secure context). */
+/**
+ * Natywny <script> w layoutcie — bez next/script (React 19 nie wykonuje Script w drzewie klienta).
+ */
 export function CryptoPolyfillScript() {
-  return <Script id="crypto-randomuuid-polyfill" strategy="beforeInteractive" dangerouslySetInnerHTML={{ __html: POLYFILL }} />;
+  return (
+    <script
+      id="crypto-randomuuid-polyfill"
+      dangerouslySetInnerHTML={{ __html: CRYPTO_RANDOMUUID_POLYFILL }}
+    />
+  );
 }

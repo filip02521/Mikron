@@ -14,6 +14,7 @@ import {
 } from "@/lib/orders/my-order-row-layout";
 import { myOrderMetaFields } from "@/lib/orders/my-order-sales-ui";
 import { MyOrderAckButton } from "@/components/moje/MyOrderAckButton";
+import { MyOrderAssignedClient } from "@/components/moje/MyOrderAssignedClient";
 import { MyOrderLineItem } from "@/components/moje/MyOrderLineItem";
 import { MyOrderShipmentOverflowMenu } from "@/components/moje/MyOrderShipmentOverflowMenu";
 import { MyOrderStatusPill } from "@/components/moje/MyOrderStatusPill";
@@ -255,10 +256,13 @@ export function MyOrderShipmentCard({
     />
   );
 
+  const hideLineClient = row.lineCount === 1 && Boolean(row.clientLabel);
+
   const lineItemProps = (lineId: string) => ({
     showProgress,
     emphasizeStock,
     compact: true,
+    hideClientLabel: hideLineClient,
     canAcknowledge: showGroupPickup,
     pending,
     acknowledgeLineLabel: "Potwierdź" as const,
@@ -267,7 +271,12 @@ export function MyOrderShipmentCard({
       ? (id: string) => onAcknowledgePickup([id])
       : undefined,
     canEditClient,
-    onSaveClient,
+    onSaveClient: onSaveClient
+      ? async (orderId: string, name: string | null) => {
+          await onSaveClient(orderId, name);
+          setClientEditorLineId(null);
+        }
+      : undefined,
     openClientEditor: clientEditorLineId === lineId,
   });
 
@@ -327,6 +336,12 @@ export function MyOrderShipmentCard({
               {collapsedSubline}
             </p>
           ) : null}
+          {!expanded && row.clientLabel ? (
+            <MyOrderAssignedClient
+              name={row.clientLabel}
+              className="mt-0.5 max-w-full truncate"
+            />
+          ) : null}
         </button>
 
         {!expanded ? (
@@ -371,7 +386,7 @@ export function MyOrderShipmentCard({
 
           <MetaGrid fields={expandedMeta} />
 
-          {row.clientLabel ? (
+          {row.lineCount > 1 && row.clientLabel ? (
             <p className="mt-2 text-xs text-slate-600">
               <span className="text-slate-400">Klient: </span>
               <span className="font-medium text-slate-800">{row.clientLabel}</span>

@@ -1,30 +1,35 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useId, useLayoutEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { Button } from "@/components/ui/Button";
 import { IconChevronDown } from "@/components/icons/StrokeIcons";
 import { cn } from "@/lib/cn";
+import { computeAnchoredDropdownPosition } from "@/lib/ui/dropdown-anchor";
 import { panelDropdownShellClass, panelMenuItemClass, panelSegmentControlClass, panelSegmentControlOpenClass } from "@/lib/ui/ontime-theme";
 
-function useMenuAnchor() {
+function useMenuAnchor(manualOpen: boolean) {
   const anchorRef = useRef<HTMLDivElement>(null);
-  const [pos, setPos] = useState<{ top: number; left: number; width: number } | null>(
-    null
-  );
+  const panelRef = useRef<HTMLDivElement>(null);
+  const [pos, setPos] = useState<{
+    top: number;
+    left: number;
+    width: number;
+    maxHeight: number;
+  } | null>(null);
 
   const update = useCallback(() => {
     const el = anchorRef.current;
     if (!el) return;
     const r = el.getBoundingClientRect();
-    setPos({
-      top: r.bottom + 4,
-      left: r.right,
-      width: Math.max(r.width, 168),
-    });
-  }, []);
+    const panel = panelRef.current;
+    const measured = panel?.scrollHeight ?? panel?.offsetHeight;
+    const fallback = manualOpen ? 148 : 300;
+    const menuHeight = measured && measured > 0 ? measured : fallback;
+    setPos(computeAnchoredDropdownPosition(r, menuHeight));
+  }, [manualOpen]);
 
-  return { anchorRef, pos, update, clear: () => setPos(null) };
+  return { anchorRef, panelRef, pos, update, clear: () => setPos(null) };
 }
 
 export function ShiftMenu({
@@ -45,7 +50,9 @@ export function ShiftMenu({
   const [open, setOpen] = useState(false);
   const [manualOpen, setManualOpen] = useState(false);
   const [dateValue, setDateValue] = useState("");
-  const { anchorRef, pos, update, clear } = useMenuAnchor();
+  const panelId = useId();
+  const dateInputRef = useRef<HTMLInputElement>(null);
+  const { anchorRef, panelRef, pos, update, clear } = useMenuAnchor(manualOpen);
 
   const close = useCallback(() => {
     setOpen(false);
@@ -54,36 +61,57 @@ export function ShiftMenu({
     clear();
   }, [clear]);
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (!open) return;
+    if (panelRef.current) panelRef.current.scrollTop = 0;
     update();
+    const raf = requestAnimationFrame(() => {
+      if (panelRef.current) panelRef.current.scrollTop = 0;
+      update();
+    });
     const onScroll = () => update();
     const onResize = () => update();
     window.addEventListener("scroll", onScroll, true);
     window.addEventListener("resize", onResize);
     return () => {
+      cancelAnimationFrame(raf);
       window.removeEventListener("scroll", onScroll, true);
       window.removeEventListener("resize", onResize);
     };
-  }, [open, update]);
+  }, [open, manualOpen, update]);
+
+  useLayoutEffect(() => {
+    if (!open || !manualOpen) return;
+    const input = dateInputRef.current;
+    if (!input) return;
+    input.focus();
+    try {
+      input.showPicker();
+    } catch {
+      /* showPicker wymaga gestu użytkownika w części przeglądarek */
+    }
+  }, [open, manualOpen]);
 
   useEffect(() => {
     if (!open) return;
     const onDoc = (e: MouseEvent) => {
       const t = e.target as Node;
       if (anchorRef.current?.contains(t)) return;
-      const panel = document.getElementById("shift-menu-panel");
-      if (panel?.contains(t)) return;
+      if (panelRef.current?.contains(t)) return;
       close();
     };
     document.addEventListener("mousedown", onDoc);
     return () => document.removeEventListener("mousedown", onDoc);
-  }, [open, close, anchorRef]);
+  }, [open, close, anchorRef, panelRef]);
 
   const pickWeeks = (w: number) => {
     onShiftWeeks(w);
     close();
   };
+
+  const openManualDate = useCallback(() => {
+    setManualOpen(true);
+  }, []);
 
   const applyDate = () => {
     if (!dateValue) return;
@@ -94,14 +122,19 @@ export function ShiftMenu({
   const menuPanel =
     open && pos && typeof document !== "undefined" ? (
       <div
-        id="shift-menu-panel"
+        ref={panelRef}
+        id={panelId}
         role="menu"
-        className={cn("fixed z-[100] min-w-[168px] py-1", panelDropdownShellClass)}
+        className={cn(
+          "fixed z-[100] min-w-[168px] py-1",
+          manualOpen ? "overflow-visible" : "overflow-y-auto overscroll-y-contain",
+          panelDropdownShellClass
+        )}
         style={{
           top: pos.top,
           left: pos.left,
-          transform: "translateX(-100%)",
           minWidth: pos.width,
+          maxHeight: manualOpen ? undefined : pos.maxHeight,
         }}
       >
         {[1, 2, 3, 4, 5, 6].map((w) => (
@@ -125,10 +158,7 @@ export function ShiftMenu({
               type="button"
               role="menuitem"
               className={panelMenuItemClass}
-              onMouseDown={(e) => {
-                e.preventDefault();
-                setManualOpen(true);
-              }}
+              onClick={openManualDate}
             >
               Wybierz datę…
             </button>
@@ -138,12 +168,23 @@ export function ShiftMenu({
           </>
         ) : (
           <div className="space-y-2 px-3 py-2">
-            <input
-              type="date"
-              className="w-full rounded-lg border border-slate-200 px-2 py-1.5 text-sm"
-              value={dateValue}
-              onChange={(e) => setDateValue(e.target.value)}
-            />
+            <label className="block text-[11px] font-medium text-slate-600">
+              Nowy termin
+              <input
+                ref={dateInputRef}
+                type="date"
+                className="mt-1 w-full rounded-lg border border-slate-200 px-2 py-1.5 text-sm"
+                value={dateValue}
+                onChange={(e) => setDateValue(e.target.value)}
+                onClick={(e) => {
+                  try {
+                    e.currentTarget.showPicker();
+                  } catch {
+                    /* ignore */
+                  }
+                }}
+              />
+            </label>
             <div className="flex gap-1">
               <Button
                 size="sm"

@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import Link from "next/link";
 import { Button } from "@/components/ui/Button";
@@ -10,19 +10,29 @@ import { cn } from "@/lib/cn";
 import { actionMarkOrdered, actionShiftOrder } from "@/app/actions/admin";
 import type { DailyPanelRunFn } from "@/components/summary/useDailyPanelRunner";
 import type { SupplierLocation } from "@/types/database";
+import { computeAnchoredDropdownPosition } from "@/lib/ui/dropdown-anchor";
 
 function useMenuAnchor() {
   const anchorRef = useRef<HTMLDivElement>(null);
-  const [pos, setPos] = useState<{ top: number; left: number } | null>(null);
+  const panelRef = useRef<HTMLDivElement>(null);
+  const [pos, setPos] = useState<{
+    top: number;
+    left: number;
+    maxHeight: number;
+  } | null>(null);
 
   const update = useCallback(() => {
     const el = anchorRef.current;
     if (!el) return;
     const r = el.getBoundingClientRect();
-    setPos({ top: r.bottom + 4, left: r.right });
+    const menuHeight = panelRef.current?.offsetHeight ?? 220;
+    const { top, left, maxHeight } = computeAnchoredDropdownPosition(r, menuHeight, {
+      minWidth: 200,
+    });
+    setPos({ top, left, maxHeight });
   }, []);
 
-  return { anchorRef, pos, update, clear: () => setPos(null) };
+  return { anchorRef, panelRef, pos, update, clear: () => setPos(null) };
 }
 
 export function SupplierQuickActionsMenu({
@@ -56,7 +66,7 @@ export function SupplierQuickActionsMenu({
 }) {
   const scopeOpt = runScope ? { scope: runScope } : undefined;
   const [open, setOpen] = useState(false);
-  const { anchorRef, pos, update, clear } = useMenuAnchor();
+  const { anchorRef, panelRef, pos, update, clear } = useMenuAnchor();
   const scheduleHref = `/lokalizacje/${location}`;
 
   const close = useCallback(() => {
@@ -64,14 +74,16 @@ export function SupplierQuickActionsMenu({
     clear();
   }, [clear]);
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (!open) return;
     update();
+    const raf = requestAnimationFrame(update);
     const onScroll = () => update();
     const onResize = () => update();
     window.addEventListener("scroll", onScroll, true);
     window.addEventListener("resize", onResize);
     return () => {
+      cancelAnimationFrame(raf);
       window.removeEventListener("scroll", onScroll, true);
       window.removeEventListener("resize", onResize);
     };
@@ -93,13 +105,17 @@ export function SupplierQuickActionsMenu({
   const menuPanel =
     open && pos && typeof document !== "undefined" ? (
       <div
+        ref={panelRef}
         id={`supplier-menu-${supplierId}`}
         role="menu"
-        className="fixed z-[100] min-w-[200px] rounded-xl border border-slate-200 bg-white py-1 shadow-lg"
+        className="fixed z-[100] min-w-[200px] overflow-y-auto overscroll-y-contain rounded-xl border border-slate-200 bg-white py-1 shadow-lg"
         style={{
           top: pos.top,
-          left: align === "end" ? pos.left : anchorRef.current?.getBoundingClientRect().left,
-          transform: align === "end" ? "translateX(-100%)" : undefined,
+          left:
+            align === "end"
+              ? pos.left
+              : (anchorRef.current?.getBoundingClientRect().left ?? pos.left),
+          maxHeight: pos.maxHeight,
         }}
       >
         {includeOrderActions ? (

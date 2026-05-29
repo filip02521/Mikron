@@ -42,6 +42,7 @@ export function MyOrderLineItem({
   canEditClient,
   onSaveClient,
   openClientEditor = false,
+  hideClientLabel = false,
 }: {
   line: MyOrderLine;
   index: number;
@@ -56,6 +57,8 @@ export function MyOrderLineItem({
   canEditClient?: boolean;
   onSaveClient?: (orderId: string, name: string | null) => void | Promise<void>;
   openClientEditor?: boolean;
+  /** Gdy klient jest już w MetaGrid (1 produkt w grupie). */
+  hideClientLabel?: boolean;
 }) {
   const badge = showProgress && emphasizeStock ? stockBadge(line.stockStatus) : null;
   const onStock = line.stockStatus === "on_stock";
@@ -100,7 +103,7 @@ export function MyOrderLineItem({
               openOnMount
               onSave={(name) => onSaveClient(line.id, name)}
             />
-          ) : line.clientName?.trim() ? (
+          ) : !hideClientLabel && line.clientName?.trim() ? (
             <MyOrderAssignedClient
               name={line.clientName}
               className={cn("mt-0.5", !compact && "pl-5")}
