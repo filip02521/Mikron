@@ -330,7 +330,7 @@ export function MyOrderShipmentCard({
         </button>
 
         {!expanded ? (
-          <div className="hidden shrink-0 flex-col items-end gap-1 sm:flex">
+          <div className="hidden min-w-0 max-w-[46%] shrink-0 flex-col items-end gap-1 sm:flex">
             {showStatusBadge ? (
               <MyOrderStatusPill label={row.statusTitle} variant={row.badgeVariant} />
             ) : null}

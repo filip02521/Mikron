@@ -283,7 +283,10 @@ export function ForSomeoneRequests({
                         </p>
                       ) : null}
                     </div>
-                    <Badge variant="default" className="shrink-0 text-[10px]">
+                    <Badge
+                      variant={hasInfoViaPanel ? "info" : "default"}
+                      className="shrink-0 whitespace-normal text-right text-[10px] leading-snug"
+                    >
                       {ui.statusTitle}
                     </Badge>
                   </div>

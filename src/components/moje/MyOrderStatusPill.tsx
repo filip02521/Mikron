@@ -25,7 +25,8 @@ export function MyOrderStatusPill({
   return (
     <span
       className={cn(
-        "inline-flex max-w-[9.5rem] shrink-0 items-center truncate rounded-md px-1.5 py-0.5 text-[0.65rem] font-semibold leading-tight ring-1",
+        "inline-flex max-w-full shrink-0 items-center rounded-md px-1.5 py-0.5 text-[0.65rem] font-semibold leading-snug ring-1",
+        "whitespace-normal text-right sm:max-w-[14rem]",
         variantStyles[variant],
         className
       )}
