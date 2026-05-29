@@ -1006,71 +1006,75 @@ export function ProductsCatalogAdminClient({
         ) : null}
       </div>
 
-      <div className="divide-y divide-slate-100">
-        {filtered.map((r) => (
-          <div key={r.subiektTwId} className="px-6 py-4">
-            <div className="flex flex-wrap items-start justify-between gap-3">
+      <div className="border-t border-slate-100">
+        <div
+          className="hidden border-b border-slate-100 bg-slate-50/90 px-4 py-2 text-[11px] font-semibold uppercase tracking-wide text-slate-500 lg:grid lg:grid-cols-[minmax(0,1fr)_minmax(220px,1fr)_minmax(140px,180px)] lg:gap-3"
+          aria-hidden
+        >
+          <span>Produkt</span>
+          <span>Dostawca</span>
+          <span>Notatka</span>
+        </div>
+        <ul className="divide-y divide-slate-100">
+          {filtered.map((r) => (
+            <li
+              key={r.subiektTwId}
+              className="px-4 py-2.5 transition-colors hover:bg-slate-50/60 lg:grid lg:grid-cols-[minmax(0,1fr)_minmax(220px,1fr)_minmax(140px,180px)] lg:items-center lg:gap-3"
+            >
               <div className="min-w-0">
-                <p className="font-semibold text-slate-900">
-                  {r.symbol ? `${r.symbol} · ` : ""}tw_Id {r.subiektTwId}
-                </p>
-                <p className="mt-0.5 text-sm text-slate-700">{r.name || "—"}</p>
-                <div className="mt-2 flex flex-wrap gap-2 text-xs text-slate-600">
-                  <span className="rounded-full bg-slate-100 px-2 py-0.5">
-                    Zleceń: <span className="font-semibold tabular-nums">{r.totalOrders}</span>
-                  </span>
-                  <span className="rounded-full bg-slate-100 px-2 py-0.5">
-                    Ostatnia akcja:{" "}
-                    <span className="font-semibold tabular-nums">
-                      {r.lastActionAt?.slice(0, 10) ?? "—"}
-                    </span>
-                  </span>
-                  <span className="rounded-full bg-slate-100 px-2 py-0.5">
-                    PLU: <span className="font-semibold">{r.plu || "—"}</span>
-                  </span>
-                  <span
-                    className={cn(
-                      "rounded-full px-2 py-0.5",
-                      r.topSupplier ? "bg-indigo-50 text-indigo-900" : "bg-amber-100 text-amber-950"
-                    )}
-                  >
-                    Dostawca:{" "}
-                    <span className="font-semibold">
-                      {r.topSupplier ? `${r.topSupplier.name} (${r.topSupplier.orderCount})` : "—"}
-                    </span>
+                <div className="flex min-w-0 items-baseline gap-2">
+                  <p className="min-w-0 truncate text-sm font-medium text-slate-900" title={r.name}>
+                    {r.name || "—"}
+                  </p>
+                  <span className="shrink-0 font-mono text-[11px] tabular-nums text-slate-500">
+                    {r.subiektTwId}
                   </span>
                 </div>
+                <p className="mt-0.5 truncate text-[11px] leading-snug text-slate-500">
+                  {[
+                    r.symbol || null,
+                    `${r.totalOrders} zlec.`,
+                    r.lastActionAt ? r.lastActionAt.slice(0, 10) : null,
+                    r.plu ? `PLU ${r.plu}` : null,
+                    r.topSupplier
+                      ? `${r.topSupplier.name} (${r.topSupplier.orderCount})`
+                      : "bez dostawcy",
+                  ]
+                    .filter(Boolean)
+                    .join(" · ")}
+                </p>
               </div>
 
-              <div className="w-full sm:max-w-md">
+              <div className="mt-2 min-w-0 lg:mt-0">
                 <ProductCatalogSupplierAssign
                   row={r}
                   suppliers={assignSuppliers}
                   disabled={pending}
                   onAssign={assignSupplier}
+                  compact
                 />
               </div>
 
-              <div className="w-full sm:w-[22rem]">
-                <label className="text-xs font-medium text-slate-600">Notatka</label>
-                <textarea
+              <div className="mt-2 min-w-0 lg:mt-0">
+                <label className="sr-only" htmlFor={`note-${r.subiektTwId}`}>
+                  Notatka
+                </label>
+                <Input
+                  id={`note-${r.subiektTwId}`}
                   defaultValue={r.note}
-                  className="mt-1 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 shadow-sm focus:border-indigo-300 focus:outline-none focus:ring-2 focus:ring-indigo-100/90"
-                  rows={2}
+                  placeholder="Notatka…"
+                  className="h-8 text-xs"
                   onBlur={(e) => {
                     const next = e.target.value ?? "";
                     if (next !== r.note) saveNote(r.subiektTwId, next);
                   }}
                 />
-                <p className="mt-1 text-[11px] text-slate-500">
-                  Zapis automatyczny po wyjściu z pola.
-                </p>
               </div>
-            </div>
-          </div>
-        ))}
+            </li>
+          ))}
+        </ul>
         {!filtered.length ? (
-          <div className="px-6 py-8 text-sm text-slate-600">Brak wyników.</div>
+          <div className="px-4 py-8 text-sm text-slate-600">Brak wyników.</div>
         ) : null}
       </div>
 
