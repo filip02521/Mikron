@@ -29,7 +29,7 @@ export function Toast({
       role="status"
       aria-live="polite"
       className={cn(
-        "fixed z-[60] max-w-sm rounded-xl border px-4 py-3 text-sm shadow-lg",
+        "fixed z-[60] max-w-sm rounded-md border px-4 py-3 text-sm shadow-lg",
         floatingToastBottomClass,
         "left-4 right-4 sm:left-auto sm:right-6",
         tone === "success"

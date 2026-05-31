@@ -382,7 +382,7 @@ export function VerificationWorkspace({
       ) : null}
 
       {inModal ? (
-        <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-xl border border-amber-100 bg-white">
+        <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-md border border-amber-100 bg-white">
           {workspaceBody}
         </div>
       ) : (

@@ -115,7 +115,7 @@ export function SalesCancelDispositionForm({
             rows={2}
             placeholder="np. regał B3, list przewozowy…"
             className={cn(
-              "mt-1 w-full resize-y rounded-xl border border-slate-200 px-2.5 py-1.5 text-xs text-slate-800 placeholder:text-slate-400",
+              "mt-1 w-full resize-y rounded-md border border-slate-200 px-2.5 py-1.5 text-xs text-slate-800 placeholder:text-slate-400",
               controlFocusClass
             )}
           />

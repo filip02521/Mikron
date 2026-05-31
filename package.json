@@ -31,6 +31,8 @@
     "rebuild-schedules-from-historia": "tsx scripts/rebuild-schedules-from-historia.ts",
     "seed": "tsx scripts/seed-demo.ts",
     "setup-check": "tsx scripts/setup-check.ts",
+    "verify-bug-reports": "tsx scripts/verify-bug-reports-migration.ts",
+    "server-setup": "bash scripts/server-setup.sh",
     "db:migrate:sales-cancel": "tsx scripts/apply-sql-migration.ts supabase/migrations/018_sales_cancel_bundle.sql"
   },
   "dependencies": {

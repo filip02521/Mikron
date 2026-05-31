@@ -3,6 +3,9 @@ import { redirectPathAfterLogin } from "@/lib/auth-roles";
 
 ensureCryptoRandomUUID();
 import { translateAuthError } from "@/lib/auth-errors";
+import {
+  loginServerResponseErrorMessage,
+} from "@/lib/auth/login-messages";
 import { createClient } from "@/lib/supabase/client";
 import type { UserRole } from "@/types/database";
 
@@ -73,8 +76,7 @@ export async function runLoginFlow(
     } catch {
       return {
         ok: false,
-        error:
-          "Serwer nie odpowiedział poprawnie. Upewnij się, że ładujesz stronę z tego samego adresu co w .env (np. http://192.168.68.51:3000).",
+        error: loginServerResponseErrorMessage(),
       };
     }
 

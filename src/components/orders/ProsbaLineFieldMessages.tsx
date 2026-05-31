@@ -24,7 +24,7 @@ export function ProsbaLineFieldMessages({
   return (
     <div
       className={cn(
-        "space-y-2 rounded-lg border border-slate-200 bg-slate-50/90 px-3 py-2.5",
+        "space-y-2 rounded-md border border-slate-200 bg-slate-50/90 px-3 py-2.5",
         className
       )}
       aria-live="polite"

@@ -7,7 +7,8 @@ import { isSalesAccount } from "@/lib/auth-roles";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { resolveZkByNumber, mapZkDocument } from "@/lib/subiekt/resolve-zk-document";
 import { getSubiektZk } from "@/lib/subiekt/api";
-import type { SalesNote, SalesNoteColor, SalesPaymentWatch } from "@/types/database";
+import { isSubiektReachable } from "@/lib/subiekt/availability";
+import type { SalesNote, SalesNoteColor, SalesZkWatch } from "@/types/database";
 
 async function salesPersonIdForAction(): Promise<string> {
   const user = await getSessionUser();
@@ -31,27 +32,36 @@ function isDuplicateKeyError(error: { code?: string } | null): boolean {
   return error?.code === "23505";
 }
 
+async function assertSubiektReachableForZk(): Promise<void> {
+  if (!(await isSubiektReachable())) {
+    throw new Error(
+      "Brak połączenia z systemem magazynowym — nie można wczytać danych ZK. Poczekaj na przywrócenie połączenia i użyj „Sprawdź ponownie” u góry strony."
+    );
+  }
+}
+
 /** Wpisz numer ZK — od razu dodaje obserwację z klientem i pełnym numerem. */
-export async function actionAddPaymentWatchByZkNumber(
+export async function actionAddZkWatchByNumber(
   zkQuery: string
-): Promise<{ watch: SalesPaymentWatch }> {
+): Promise<{ watch: SalesZkWatch }> {
+  await assertSubiektReachableForZk();
   const salesPersonId = await salesPersonIdForAction();
   const resolved = await resolveZkByNumber(zkQuery);
   const supabase = createAdminClient();
   const now = new Date().toISOString();
 
   const { data: existing } = await supabase
-    .from("sales_payment_watches")
-    .select("id, settled_at, archived_at, note")
+    .from("sales_zk_watches")
+    .select("id, closed_at, archived_at, note")
     .eq("sales_person_id", salesPersonId)
     .eq("subiekt_dok_id", resolved.subiektDokId)
     .maybeSingle();
 
-  if (existing && !existing.settled_at && !existing.archived_at) {
+  if (existing && !existing.closed_at && !existing.archived_at) {
     throw new Error(`ZK ${resolved.zkNumber} jest już na liście oczekujących.`);
   }
 
-  const reactivating = Boolean(existing?.settled_at || existing?.archived_at);
+  const reactivating = Boolean(existing?.closed_at || existing?.archived_at);
 
   const row = {
     sales_person_id: salesPersonId,
@@ -62,30 +72,34 @@ export async function actionAddPaymentWatchByZkNumber(
     amount_net: resolved.amountNet,
     amount_gross: resolved.amountGross,
     zk_issued_at: resolved.issuedAt,
-    due_at: resolved.dueAt,
     line_summary: resolved.lineSummary,
     subiekt_snapshot: resolved.snapshot as unknown as Record<string, unknown>,
-    settled_at: null,
+    closed_at: null,
     archived_at: null,
+    follow_up_at: reactivating ? null : undefined,
     note: reactivating ? null : existing?.note ?? null,
     updated_at: now,
   };
 
+  const rowForWrite = Object.fromEntries(
+    Object.entries(row).filter(([, value]) => value !== undefined)
+  );
+
   if (existing) {
     const { data, error } = await supabase
-      .from("sales_payment_watches")
-      .update(row)
+      .from("sales_zk_watches")
+      .update(rowForWrite)
       .eq("id", existing.id)
       .select("*")
       .single();
     if (error) throw new Error(error.message);
     revalidateNotepad();
-    return { watch: data as SalesPaymentWatch };
+    return { watch: data as SalesZkWatch };
   }
 
   const { data, error } = await supabase
-    .from("sales_payment_watches")
-    .insert({ ...row, created_at: now })
+    .from("sales_zk_watches")
+    .insert({ ...rowForWrite, created_at: now })
     .select("*")
     .single();
 
@@ -97,17 +111,17 @@ export async function actionAddPaymentWatchByZkNumber(
   }
 
   revalidateNotepad();
-  return { watch: data as SalesPaymentWatch };
+  return { watch: data as SalesZkWatch };
 }
 
-export async function actionSettlePaymentWatch(watchId: string) {
+export async function actionCloseZkWatch(watchId: string) {
   const salesPersonId = await salesPersonIdForAction();
   const supabase = createAdminClient();
   const now = new Date().toISOString();
 
   const { data: row, error: fetchError } = await supabase
-    .from("sales_payment_watches")
-    .select("id, sales_person_id, settled_at")
+    .from("sales_zk_watches")
+    .select("id, sales_person_id, closed_at")
     .eq("id", watchId)
     .maybeSingle();
 
@@ -116,11 +130,11 @@ export async function actionSettlePaymentWatch(watchId: string) {
   if (row.sales_person_id !== salesPersonId) {
     throw new Error("Brak uprawnień do tego wpisu.");
   }
-  if (row.settled_at) throw new Error("Ten ZK został już oznaczony jako opłacony.");
+  if (row.closed_at) throw new Error("Ten ZK został już zamknięty.");
 
   const { error } = await supabase
-    .from("sales_payment_watches")
-    .update({ settled_at: now, updated_at: now })
+    .from("sales_zk_watches")
+    .update({ closed_at: now, updated_at: now })
     .eq("id", watchId);
 
   if (error) throw new Error(error.message);
@@ -128,14 +142,14 @@ export async function actionSettlePaymentWatch(watchId: string) {
   return { success: true };
 }
 
-export async function actionRestorePaymentWatch(watchId: string) {
+export async function actionRestoreZkWatch(watchId: string) {
   const salesPersonId = await salesPersonIdForAction();
   const supabase = createAdminClient();
   const now = new Date().toISOString();
 
   const { data: row, error: fetchError } = await supabase
-    .from("sales_payment_watches")
-    .select("id, sales_person_id, settled_at")
+    .from("sales_zk_watches")
+    .select("id, sales_person_id, closed_at")
     .eq("id", watchId)
     .maybeSingle();
 
@@ -144,28 +158,34 @@ export async function actionRestorePaymentWatch(watchId: string) {
   if (row.sales_person_id !== salesPersonId) {
     throw new Error("Brak uprawnień do tego wpisu.");
   }
-  if (!row.settled_at) throw new Error("Ten ZK jest już na liście oczekujących.");
+  if (!row.closed_at) throw new Error("Ten ZK jest już na liście oczekujących.");
 
   const { data, error } = await supabase
-    .from("sales_payment_watches")
-    .update({ settled_at: null, updated_at: now })
+    .from("sales_zk_watches")
+    .update({
+      closed_at: null,
+      follow_up_at: null,
+      note: null,
+      updated_at: now,
+    })
     .eq("id", watchId)
     .select("*")
     .single();
 
   if (error) throw new Error(error.message);
   revalidateNotepad();
-  return { watch: data as SalesPaymentWatch };
+  return { watch: data as SalesZkWatch };
 }
 
-export async function actionRefreshPaymentWatchFromSubiekt(watchId: string) {
+export async function actionRefreshZkWatchFromSubiekt(watchId: string) {
+  await assertSubiektReachableForZk();
   const salesPersonId = await salesPersonIdForAction();
   const supabase = createAdminClient();
   const now = new Date().toISOString();
 
   const { data: row, error: fetchError } = await supabase
-    .from("sales_payment_watches")
-    .select("id, sales_person_id, subiekt_dok_id, settled_at")
+    .from("sales_zk_watches")
+    .select("id, sales_person_id, subiekt_dok_id, closed_at")
     .eq("id", watchId)
     .maybeSingle();
 
@@ -174,13 +194,13 @@ export async function actionRefreshPaymentWatchFromSubiekt(watchId: string) {
   if (row.sales_person_id !== salesPersonId) {
     throw new Error("Brak uprawnień do tego wpisu.");
   }
-  if (row.settled_at) throw new Error("Nie można odświeżyć opłaconego ZK — przywróć go na listę.");
+  if (row.closed_at) throw new Error("Nie można odświeżyć zamkniętego ZK — przywróć go na listę.");
 
   const doc = await getSubiektZk(row.subiekt_dok_id);
   const resolved = mapZkDocument(doc);
 
   const { data, error } = await supabase
-    .from("sales_payment_watches")
+    .from("sales_zk_watches")
     .update({
       zk_number: resolved.zkNumber,
       client_label: resolved.clientLabel,
@@ -188,7 +208,6 @@ export async function actionRefreshPaymentWatchFromSubiekt(watchId: string) {
       amount_net: resolved.amountNet,
       amount_gross: resolved.amountGross,
       zk_issued_at: resolved.issuedAt,
-      due_at: resolved.dueAt,
       line_summary: resolved.lineSummary,
       subiekt_snapshot: resolved.snapshot as unknown as Record<string, unknown>,
       updated_at: now,
@@ -199,17 +218,17 @@ export async function actionRefreshPaymentWatchFromSubiekt(watchId: string) {
 
   if (error) throw new Error(error.message);
   revalidateNotepad();
-  return { watch: data as SalesPaymentWatch };
+  return { watch: data as SalesZkWatch };
 }
 
-export async function actionUpdatePaymentWatchNote(watchId: string, note: string) {
+export async function actionUpdateZkWatchNote(watchId: string, note: string) {
   const salesPersonId = await salesPersonIdForAction();
   const supabase = createAdminClient();
   const trimmed = note.trim() || null;
 
   const { data: row, error: fetchError } = await supabase
-    .from("sales_payment_watches")
-    .select("id, sales_person_id")
+    .from("sales_zk_watches")
+    .select("id, sales_person_id, closed_at")
     .eq("id", watchId)
     .maybeSingle();
 
@@ -218,9 +237,10 @@ export async function actionUpdatePaymentWatchNote(watchId: string, note: string
   if (row.sales_person_id !== salesPersonId) {
     throw new Error("Brak uprawnień do tego wpisu.");
   }
+  if (row.closed_at) throw new Error("Nie można edytować notatki zamkniętego ZK.");
 
   const { error } = await supabase
-    .from("sales_payment_watches")
+    .from("sales_zk_watches")
     .update({ note: trimmed, updated_at: new Date().toISOString() })
     .eq("id", watchId);
 
@@ -229,7 +249,7 @@ export async function actionUpdatePaymentWatchNote(watchId: string, note: string
   return { success: true };
 }
 
-export async function actionUpdatePaymentWatchFollowUp(
+export async function actionUpdateZkWatchFollowUp(
   watchId: string,
   followUpAt: string | null
 ) {
@@ -238,8 +258,8 @@ export async function actionUpdatePaymentWatchFollowUp(
   const normalized = followUpAt?.trim().slice(0, 10) || null;
 
   const { data: row, error: fetchError } = await supabase
-    .from("sales_payment_watches")
-    .select("id, sales_person_id, settled_at")
+    .from("sales_zk_watches")
+    .select("id, sales_person_id, closed_at")
     .eq("id", watchId)
     .maybeSingle();
 
@@ -248,10 +268,10 @@ export async function actionUpdatePaymentWatchFollowUp(
   if (row.sales_person_id !== salesPersonId) {
     throw new Error("Brak uprawnień do tego wpisu.");
   }
-  if (row.settled_at) throw new Error("Nie można ustawić przypomnienia dla opłaconego ZK.");
+  if (row.closed_at) throw new Error("Nie można ustawić przypomnienia dla zamkniętego ZK.");
 
   const { data, error } = await supabase
-    .from("sales_payment_watches")
+    .from("sales_zk_watches")
     .update({ follow_up_at: normalized, updated_at: new Date().toISOString() })
     .eq("id", watchId)
     .select("*")
@@ -259,7 +279,7 @@ export async function actionUpdatePaymentWatchFollowUp(
 
   if (error) throw new Error(error.message);
   revalidateNotepad();
-  return { watch: data as SalesPaymentWatch };
+  return { watch: data as SalesZkWatch };
 }
 
 export async function actionCreateSalesNote(
@@ -465,13 +485,13 @@ export async function actionRestoreSalesNote(noteId: string) {
   return { note: data as SalesNote };
 }
 
-export async function actionDeleteArchivedPaymentWatch(watchId: string) {
+export async function actionDeleteArchivedZkWatch(watchId: string) {
   const salesPersonId = await salesPersonIdForAction();
   const supabase = createAdminClient();
 
   const { data: row, error: fetchError } = await supabase
-    .from("sales_payment_watches")
-    .select("id, sales_person_id, settled_at")
+    .from("sales_zk_watches")
+    .select("id, sales_person_id, closed_at")
     .eq("id", watchId)
     .maybeSingle();
 
@@ -480,9 +500,9 @@ export async function actionDeleteArchivedPaymentWatch(watchId: string) {
   if (row.sales_person_id !== salesPersonId) {
     throw new Error("Brak uprawnień do tego wpisu.");
   }
-  if (!row.settled_at) throw new Error("Można usunąć tylko opłacone ZK z archiwum.");
+  if (!row.closed_at) throw new Error("Można usunąć tylko zamknięte ZK z archiwum.");
 
-  const { error } = await supabase.from("sales_payment_watches").delete().eq("id", watchId);
+  const { error } = await supabase.from("sales_zk_watches").delete().eq("id", watchId);
   if (error) throw new Error(error.message);
   revalidateNotepad();
   return { success: true };

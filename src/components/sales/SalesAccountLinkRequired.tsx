@@ -3,12 +3,12 @@ import { Alert } from "@/components/ui/Alert";
 
 const STEPS = [
   "Administrator otwiera Admin → Handlowcy i wysyła link zaproszenia na Twój e-mail, lub",
-  "przypisuje Twoje konto do istniejącej karty handlowca (ten sam e-mail co w systemie).",
+  "przypisuje Twoje konto do profilu handlowca (ten sam e-mail co w systemie).",
 ];
 
 export function SalesAccountLinkRequired({
   title,
-  description = "Aby korzystać z panelu handlowca, konto musi być powiązane z kartą handlowca.",
+  description = "Aby korzystać z aplikacji jako handlowiec, konto musi być przypisane do Twojego profilu w systemie.",
 }: {
   title: string;
   description?: string;

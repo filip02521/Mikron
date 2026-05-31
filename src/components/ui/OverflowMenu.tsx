@@ -13,7 +13,13 @@ import {
 import { createPortal } from "react-dom";
 import { Button } from "@/components/ui/Button";
 import { cn } from "@/lib/cn";
-import { panelSegmentControlClass, panelSegmentControlOpenClass, panelDropdownShellClass, panelToolbarIconButtonClass } from "@/lib/ui/ontime-theme";
+import {
+  panelDropdownShellClass,
+  panelSegmentControlClass,
+  panelSegmentControlOpenClass,
+  panelSegmentLastClass,
+  panelToolbarIconButtonClass,
+} from "@/lib/ui/ontime-theme";
 import { buttonGroupItemClass } from "@/lib/ui/surfaces";
 
 const CloseMenuContext = createContext<() => void>(() => {});
@@ -123,8 +129,8 @@ export function OverflowMenu({
   const segmentTriggerClass = cn(
     buttonGroupItemClass,
     panelSegmentControlClass,
-    "relative inline-flex cursor-pointer select-none items-center justify-center overflow-hidden",
-    iconOnly ? "min-w-[2.75rem] px-2.5" : "gap-1.5 px-3",
+    "relative flex cursor-pointer select-none items-center justify-center overflow-hidden transition-colors duration-150",
+    iconOnly ? "min-w-8 px-1" : "gap-1 px-2",
     open && panelSegmentControlOpenClass,
     triggerClassName
   );

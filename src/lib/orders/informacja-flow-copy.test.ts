@@ -10,6 +10,8 @@ describe("informacja-flow-copy", () => {
     expect(INFORMACJA_FLOW_VIA_PANEL.steps.length).toBeGreaterThan(
       INFORMACJA_FLOW_DIRECT.steps.length
     );
-    expect(INFORMACJA_FLOW_VIA_PANEL.steps).toContain("Panel Dziś (Główne / Uzupełniające)");
+    expect(INFORMACJA_FLOW_VIA_PANEL.steps).toContain(
+      "Zamówienie u dostawcy (Główne / Uzupełniające)"
+    );
   });
 });

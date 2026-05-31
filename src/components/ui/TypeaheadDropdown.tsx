@@ -19,7 +19,7 @@ export function TypeaheadDropdown({
     <ul
       role="listbox"
       className={cn(
-        "absolute z-50 mt-1 max-h-64 w-full overflow-auto rounded-xl border border-slate-200 bg-white py-1 shadow-lg",
+        "absolute z-50 mt-1 max-h-64 w-full overflow-auto rounded-md border border-slate-200 bg-white py-1 shadow-lg",
         className
       )}
     >

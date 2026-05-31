@@ -3,12 +3,12 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import {
-  actionRefreshPaymentWatchFromSubiekt,
-  actionRestorePaymentWatch,
-  actionSettlePaymentWatch,
-  actionDeleteArchivedPaymentWatch,
-  actionUpdatePaymentWatchFollowUp,
-  actionUpdatePaymentWatchNote,
+  actionRefreshZkWatchFromSubiekt,
+  actionRestoreZkWatch,
+  actionCloseZkWatch,
+  actionDeleteArchivedZkWatch,
+  actionUpdateZkWatchFollowUp,
+  actionUpdateZkWatchNote,
 } from "@/app/actions/sales-notepad";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
@@ -17,46 +17,53 @@ import { cn } from "@/lib/cn";
 import {
   formatPln,
   formatShortDate,
-  paymentWatchStatusLabel,
-  paymentWatchSubtitle,
+  zkWatchStatusLabel,
+  zkWatchSubtitle,
 } from "@/lib/sales/notepad-format";
-import { isPaymentWatchOverdue } from "@/lib/sales/payment-watch-sort";
 import {
-  extractPaymentWatchClientContact,
+  extractZkWatchClientContact,
   normalizePhoneHref,
-} from "@/lib/sales/payment-watch-contact";
+} from "@/lib/sales/zk-watch-contact";
 import {
   buildMojeClientLink,
   formatFollowUpLabel,
   isFollowUpDue,
 } from "@/lib/sales/notepad-follow-up";
-import type { SalesPaymentWatch } from "@/types/database";
+import {
+  prosbaHrefFromZkWatch,
+  stashZkProsbaPrefill,
+} from "@/lib/orders/zk-watch-prosba-prefill";
+import type { SalesZkWatch } from "@/types/database";
 import { FollowUpQuickDates } from "./FollowUpQuickDates";
 import {
   NOTATNIK_INPUT_CLASS,
   NOTATNIK_TEXTAREA_CLASS,
 } from "./notatnik-layout";
 
-export function PaymentWatchCard({
+export function ZkWatchCard({
   watch,
   readOnly,
-  onSettled,
+  tourPreview = false,
+  onClosed,
   onRestored,
   onRefreshed,
   onDeleted,
   archived,
   compact,
+  subiektReachable = true,
 }: {
-  watch: SalesPaymentWatch;
+  watch: SalesZkWatch;
   readOnly?: boolean;
-  onSettled?: () => void;
-  onRestored?: (watch: SalesPaymentWatch) => void;
-  onRefreshed?: (watch: SalesPaymentWatch) => void;
+  tourPreview?: boolean;
+  onClosed?: () => void;
+  onRestored?: (watch: SalesZkWatch) => void;
+  onRefreshed?: (watch: SalesZkWatch) => void;
   onDeleted?: () => void;
   archived?: boolean;
   compact?: boolean;
+  subiektReachable?: boolean;
 }) {
-  const [settling, setSettling] = useState(false);
+  const [closing, setClosing] = useState(false);
   const [restoring, setRestoring] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
@@ -75,39 +82,38 @@ export function PaymentWatchCard({
     setFollowUpDraft(watch.follow_up_at?.slice(0, 10) ?? "");
   }, [watch.id, watch.note, watch.follow_up_at]);
 
-  const subtitle = paymentWatchSubtitle(watch);
-  const due = formatShortDate(watch.due_at);
-  const overdue = !archived && isPaymentWatchOverdue(watch);
-  const subiektStatus = paymentWatchStatusLabel(watch);
-  const settledLabel = formatShortDate(watch.settled_at);
-  const clientContact = extractPaymentWatchClientContact(watch);
+  const subtitle = zkWatchSubtitle(watch);
+  const subiektStatus = zkWatchStatusLabel(watch);
+  const closedLabel = formatShortDate(watch.closed_at);
+  const clientContact = extractZkWatchClientContact(watch);
   const isRealizedInSubiekt = subiektStatus === "Zrealizowane";
   const followUpDue = !archived && isFollowUpDue(watch.follow_up_at);
   const followUpLabel = formatFollowUpLabel(watch.follow_up_at);
   const mojeClientHref = buildMojeClientLink(watch.sales_person_id, watch.client_label, {
-    preview: readOnly,
+    preview: readOnly || tourPreview,
   });
+  const prosbaHref = prosbaHrefFromZkWatch(watch);
 
-  async function markPaid() {
-    if (readOnly || settling) return;
-    setSettling(true);
+  async function markClosed() {
+    if (readOnly || tourPreview || closing) return;
+    setClosing(true);
     setError(null);
     try {
-      await actionSettlePaymentWatch(watch.id);
-      onSettled?.();
+      await actionCloseZkWatch(watch.id);
+      onClosed?.();
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Nie udało się oznaczyć jako opłacone.");
+      setError(e instanceof Error ? e.message : "Nie udało się zamknąć sprawy.");
     } finally {
-      setSettling(false);
+      setClosing(false);
     }
   }
 
   async function restore() {
-    if (readOnly || restoring) return;
+    if (readOnly || tourPreview || restoring) return;
     setRestoring(true);
     setError(null);
     try {
-      const { watch: restored } = await actionRestorePaymentWatch(watch.id);
+      const { watch: restored } = await actionRestoreZkWatch(watch.id);
       onRestored?.(restored);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Nie udało się przywrócić ZK.");
@@ -117,11 +123,11 @@ export function PaymentWatchCard({
   }
 
   async function refreshFromSubiekt() {
-    if (readOnly || refreshing || archived) return;
+    if (readOnly || tourPreview || refreshing || archived || !subiektReachable) return;
     setRefreshing(true);
     setError(null);
     try {
-      const { watch: refreshed } = await actionRefreshPaymentWatchFromSubiekt(watch.id);
+      const { watch: refreshed } = await actionRefreshZkWatchFromSubiekt(watch.id);
       onRefreshed?.(refreshed);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Nie udało się odświeżyć danych z Subiekta.");
@@ -131,14 +137,14 @@ export function PaymentWatchCard({
   }
 
   async function saveFollowUp(nextValue?: string) {
-    if (readOnly || savingFollowUp || archived) return;
+    if (readOnly || tourPreview || savingFollowUp || archived) return;
     const value = (nextValue ?? followUpDraft).trim();
     const normalized = value || null;
     if (normalized === (watch.follow_up_at?.slice(0, 10) ?? null)) return;
     setSavingFollowUp(true);
     setError(null);
     try {
-      const { watch: updated } = await actionUpdatePaymentWatchFollowUp(watch.id, normalized);
+      const { watch: updated } = await actionUpdateZkWatchFollowUp(watch.id, normalized);
       setFollowUpDraft(updated.follow_up_at?.slice(0, 10) ?? "");
       onRefreshed?.(updated);
     } catch (e) {
@@ -149,14 +155,14 @@ export function PaymentWatchCard({
   }
 
   async function removeFromArchive() {
-    if (readOnly || deleting || !archived) return;
+    if (readOnly || tourPreview || deleting || !archived) return;
     if (!window.confirm("Usunąć ten ZK z archiwum na stałe? Tej operacji nie można cofnąć.")) {
       return;
     }
     setDeleting(true);
     setError(null);
     try {
-      await actionDeleteArchivedPaymentWatch(watch.id);
+      await actionDeleteArchivedZkWatch(watch.id);
       onDeleted?.();
     } catch (e) {
       setError(e instanceof Error ? e.message : "Nie udało się usunąć wpisu.");
@@ -166,11 +172,11 @@ export function PaymentWatchCard({
   }
 
   async function saveNote() {
-    if (readOnly || savingNote) return;
+    if (readOnly || tourPreview || savingNote || archived) return;
     setSavingNote(true);
     setError(null);
     try {
-      await actionUpdatePaymentWatchNote(watch.id, noteDraft);
+      await actionUpdateZkWatchNote(watch.id, noteDraft);
       const trimmed = noteDraft.trim();
       setSavedNote(trimmed);
       setNoteOpen(Boolean(trimmed));
@@ -186,7 +192,7 @@ export function PaymentWatchCard({
       padding={false}
       className={cn(
         archived ? "opacity-80" : undefined,
-        overdue ? "ring-2 ring-red-200/90" : followUpDue ? "ring-2 ring-violet-200/90" : undefined
+        followUpDue ? "ring-2 ring-violet-200/90" : undefined
       )}
     >
       <div className={cn("space-y-2", compact ? "p-3" : "space-y-3 p-4 sm:p-5")}>
@@ -203,18 +209,13 @@ export function PaymentWatchCard({
               </p>
               {archived ? (
                 <Badge variant="default" className="text-[10px]">
-                  Opłacone
+                  Zamknięte
                 </Badge>
               ) : (
                 <>
                   <Badge variant="warning" className="text-[10px]">
-                    Czeka na zapłatę
+                    Czeka na towar
                   </Badge>
-                  {overdue ? (
-                    <Badge variant="danger" className="text-[10px]">
-                      Po terminie
-                    </Badge>
-                  ) : null}
                   {followUpDue ? (
                     <Badge variant="purple" className="text-[10px]">
                       Follow-up
@@ -254,52 +255,46 @@ export function PaymentWatchCard({
             {subtitle ? (
               <p className="text-xs leading-relaxed text-slate-500">{subtitle}</p>
             ) : null}
+            {watch.amount_gross != null ? (
+              <p className="text-xs tabular-nums text-slate-500">{formatPln(watch.amount_gross)}</p>
+            ) : null}
             {!archived && followUpLabel ? (
               <p className={cn("text-xs", followUpDue ? "font-semibold text-violet-800" : "text-slate-500")}>
                 Przypomnienie {followUpLabel}
               </p>
             ) : null}
-            {archived && settledLabel ? (
-              <p className="text-xs text-slate-500">Opłacono {settledLabel}</p>
-            ) : null}
-          </div>
-          <div className="shrink-0 text-right">
-            <p
-              className={cn(
-                "font-semibold tabular-nums text-slate-900",
-                compact ? "text-sm" : "text-lg"
-              )}
-            >
-              {formatPln(watch.amount_gross)}
-            </p>
-            {due ? (
-              <p className={cn("text-xs", overdue ? "font-semibold text-red-700" : "text-slate-500")}>
-                Termin {due}
-              </p>
+            {archived && closedLabel ? (
+              <p className="text-xs text-slate-500">Zamknięto {closedLabel}</p>
             ) : null}
           </div>
         </div>
 
         {isRealizedInSubiekt && !archived && !readOnly ? (
-          <div className="flex flex-col gap-2 rounded-lg border border-emerald-200 bg-emerald-50/80 px-3 py-2.5 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex flex-col gap-2 rounded-md border border-emerald-200 bg-emerald-50/80 px-3 py-2.5 sm:flex-row sm:items-center sm:justify-between">
             <p className="text-xs leading-relaxed text-emerald-950">
-              W Subiekcie ten ZK ma status „Zrealizowane” — prawdopodobnie już opłacony.
+              W Subiekcie ten ZK ma status „Zrealizowane” — prawdopodobnie towar został już wydany.
             </p>
-            <Button size="sm" variant="secondary" disabled={settling} onClick={() => void markPaid()}>
-              {settling ? "Zapis…" : "Oznacz jako opłacone"}
+            <Button size="sm" variant="secondary" disabled={closing} onClick={() => void markClosed()}>
+              {closing ? "Zapis…" : "Zamknij sprawę"}
             </Button>
           </div>
         ) : null}
 
         {!readOnly && !archived ? (
           <div className="flex flex-wrap gap-2 border-t border-slate-100 pt-3">
-            <Button size="sm" variant="secondary" disabled={settling} onClick={() => void markPaid()}>
-              {settling ? "Zapis…" : "Opłacone"}
+            <Link href={prosbaHref} onClick={() => stashZkProsbaPrefill(watch)}>
+              <Button size="sm" variant="primary" type="button">
+                Zgłoś prośbę
+              </Button>
+            </Link>
+            <Button size="sm" variant="secondary" disabled={closing} onClick={() => void markClosed()}>
+              {closing ? "Zapis…" : "Zamknij"}
             </Button>
             <Button
               size="sm"
               variant="ghost"
-              disabled={refreshing}
+              disabled={refreshing || !subiektReachable}
+              title={!subiektReachable ? "Brak połączenia z systemem magazynowym" : undefined}
               onClick={() => void refreshFromSubiekt()}
             >
               {refreshing ? "Odświeżam…" : "Odśwież z Subiekta"}
@@ -318,7 +313,12 @@ export function PaymentWatchCard({
             </Button>
           </div>
         ) : readOnly && !archived ? (
-          <div className="border-t border-slate-100 pt-3">
+          <div className="flex flex-wrap gap-2 border-t border-slate-100 pt-3">
+            <Link href={prosbaHref} onClick={() => stashZkProsbaPrefill(watch)}>
+              <Button size="sm" variant="primary" type="button">
+                Zgłoś prośbę
+              </Button>
+            </Link>
             <Link href={mojeClientHref}>
               <Button size="sm" variant="ghost" type="button">
                 Prośby klienta
@@ -388,7 +388,7 @@ export function PaymentWatchCard({
               value={noteDraft}
               disabled={savingNote}
               onChange={(e) => setNoteDraft(e.target.value)}
-              placeholder="Krótka notatka do tego ZK…"
+              placeholder="Notatka do tego zamówienia…"
               className={cn(NOTATNIK_TEXTAREA_CLASS, "w-full text-xs")}
             />
             <Button size="sm" disabled={savingNote} onClick={() => void saveNote()}>

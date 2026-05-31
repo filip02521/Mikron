@@ -18,11 +18,13 @@ export function SubiektStatusBar({
   initial,
   className,
   embedded = false,
+  onStatusChange,
 }: {
   initial: SubiektAvailability;
   className?: string;
   /** Wewnątrz karty Moje — pełna szerokość bez zaokrąglenia zewnętrznego. */
   embedded?: boolean;
+  onStatusChange?: (status: SubiektAvailability) => void;
 }) {
   const [status, setStatus] = useState(initial);
   const [refreshing, setRefreshing] = useState(false);
@@ -32,23 +34,27 @@ export function SubiektStatusBar({
     try {
       const next = await actionGetSubiektAvailability({ force });
       setStatus(next);
+      onStatusChange?.(next);
     } catch {
-      setStatus((prev) =>
-        prev.configured
-          ? {
-              ...prev,
-              reachable: false,
-              shortLabel: "Subiekt: offline",
-              message:
-                "Nie udało się sprawdzić połączenia — terminy bez danych z Subiekta, zostają szacunki z historii dostaw.",
-              checkedAt: Date.now(),
-            }
-          : prev
-      );
+      setStatus((prev) => {
+        const fallback =
+          prev.configured
+            ? {
+                ...prev,
+                reachable: false,
+                shortLabel: "System magazynowy: niedostępny",
+                message:
+                  "Nie udało się sprawdzić połączenia — szacunki terminów pochodzą z historii dostaw.",
+                checkedAt: Date.now(),
+              }
+            : prev;
+        onStatusChange?.(fallback);
+        return fallback;
+      });
     } finally {
       setRefreshing(false);
     }
-  }, []);
+  }, [onStatusChange]);
 
   useEffect(() => {
     if (!status.configured) return;
@@ -76,7 +82,7 @@ export function SubiektStatusBar({
                 "border-slate-100 bg-slate-50/80 text-slate-700"
             )
           : cn(
-              "rounded-xl border px-3 py-2.5",
+              "rounded-md border px-3 py-2.5",
               tone === "warn" &&
                 "border-amber-200/90 bg-amber-50/60 text-amber-950",
               tone === "muted" &&
@@ -108,7 +114,7 @@ export function SubiektStatusBar({
           onClick={() => void refresh(true)}
           disabled={refreshing}
           className={cn(
-            "shrink-0 self-start rounded-lg border px-2.5 py-1 text-xs font-medium transition sm:self-center",
+            "shrink-0 self-start rounded-md border px-2.5 py-1 text-xs font-medium transition sm:self-center",
             tone === "warn" &&
               "border-amber-300/80 bg-white/80 text-amber-900 hover:bg-white",
             refreshing && "cursor-wait opacity-60"

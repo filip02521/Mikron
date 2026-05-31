@@ -60,11 +60,11 @@ export default async function NotatnikPage({
       }
       if (!ownSalesPersonId && user.role === "sales") {
         linkError =
-          "Twoje konto nie jest powiązane z kartą handlowca. Poproś administratora o nowy link zaproszenia (Admin → Handlowcy).";
+          "Twoje konto nie jest przypisane do profilu handlowca. Poproś administratora o link zaproszenia (Admin → Handlowcy).";
       }
       if (!ownSalesPersonId && user.role === "sales_manager") {
         linkError =
-          "Twoje konto kierownika nie jest powiązane z kartą handlowca — poproś administratora o przypisanie w panelu użytkowników.";
+          "Twoje konto kierownika nie jest przypisane do profilu handlowca — poproś administratora o przypisanie w sekcji Użytkownicy.";
       }
     }
   } catch {
@@ -75,15 +75,15 @@ export default async function NotatnikPage({
     return (
       <SalesAccountLinkRequired
         title="Notatnik"
-        description="Twoje notatki i ZK oczekujące na zapłatę — wymagane powiązanie konta z kartą handlowca."
+        description="Twoje notatki i zamówienia klienta (ZK) czekające na towar. Konto musi być przypisane do profilu handlowca."
       />
     );
   }
 
   let loadError: string | null = null;
   let notepad = {
-    paymentWatches: [],
-    archivedPaymentWatches: [],
+    zkWatches: [],
+    archivedZkWatches: [],
     notes: [],
     archivedNotes: [],
   } as Awaited<ReturnType<typeof fetchSalesNotepad>>;
@@ -121,8 +121,8 @@ export default async function NotatnikPage({
         pageTitle={isTeamPreview ? `Notatnik: ${salesPersonName}` : "Notatnik"}
         pageDescription={
           isTeamPreview
-            ? "Podgląd notatek i ZK handlowca — edycja tylko na własnym koncie."
-            : "Wpisz numer ZK (np. 153157/M/04/2026) — reszta wczyta się z Subiekta. Notatki i archiwum w jednym miejscu."
+            ? "Podgląd notatek i ZK wybranego handlowca. Edycja tylko we własnym notatniku."
+            : "Wpisz numer zamówienia klienta (ZK) — dane wczytają się automatycznie. Notatki i archiwum w jednym miejscu."
         }
       />
     </div>

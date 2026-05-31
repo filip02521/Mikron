@@ -25,7 +25,7 @@ export default async function HandlowcyPage() {
         description="Osoby kontaktowe, powiadomienia e-mail i linki zaproszeń do zakładania kont."
       />
       <AdminHubNav activeTab="sales" />
-      <p className="mb-4 rounded-xl border border-indigo-100 bg-indigo-50/70 px-4 py-3 text-sm text-indigo-950">
+      <p className="mb-4 rounded-md border border-indigo-100 bg-indigo-50/70 px-4 py-3 text-sm text-indigo-950">
         Brak grupy na liście?{" "}
         <Link href="/zespol/grupy" className="font-semibold text-indigo-800 underline underline-offset-2">
           Utwórz grupę zespołu

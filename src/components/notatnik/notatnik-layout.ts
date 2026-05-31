@@ -10,12 +10,12 @@ export const NOTATNIK_NOTES_GRID_CLASS = "grid grid-cols-2 gap-2";
 export const NOTATNIK_ZK_LIST_CLASS = "flex flex-col gap-2";
 
 export const NOTATNIK_INPUT_CLASS = cn(
-  "h-9 rounded-lg border border-slate-200 bg-white px-2.5 text-sm text-slate-900 shadow-sm",
+  "h-9 rounded-md border border-slate-200 bg-white px-2.5 text-sm text-slate-900 shadow-sm",
   controlFocusClass
 );
 
 export const NOTATNIK_TEXTAREA_CLASS = cn(
-  "rounded-lg border border-slate-200 bg-white px-2.5 py-2 text-sm leading-snug text-slate-900 shadow-sm",
+  "rounded-md border border-slate-200 bg-white px-2.5 py-2 text-sm leading-snug text-slate-900 shadow-sm",
   controlFocusClass
 );
 

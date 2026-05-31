@@ -100,15 +100,15 @@ export function MyOrdersInboxSummary({
   };
 
   return (
-    <div className="flex flex-wrap items-center gap-x-3 gap-y-2 border-b border-slate-100 bg-slate-50/80 px-3 py-2.5 sm:px-4">
+    <div className="flex flex-wrap items-center gap-x-3 gap-y-2 border-b border-slate-100 bg-slate-50/80 px-4 py-2.5 sm:px-6">
       {hasAction ? (
         <div className="flex flex-wrap items-center gap-1.5">
-          <span title="Prośby z zielonym przyciskiem — potwierdź odbiór lub powiadomienie">
+          <span title="Prośby wymagające Twojego potwierdzenia — odbiór towaru lub informacji o dostępności">
             <FilterGroupLabel
               className="text-[0.65rem] font-semibold uppercase tracking-wide text-emerald-800"
               icon={<IconCircleCheck size={13} strokeWidth={2.25} />}
             >
-              Od Ciebie zależy
+              Do potwierdzenia
             </FilterGroupLabel>
           </span>
           <Chip
@@ -147,7 +147,7 @@ export function MyOrdersInboxSummary({
             className="text-[0.65rem] font-semibold uppercase tracking-wide text-slate-500"
             icon={<IconClock size={13} strokeWidth={2.25} />}
           >
-            W realizacji
+            W toku
           </FilterGroupLabel>
           <Chip
             count={summary.overdueCount}
@@ -158,14 +158,14 @@ export function MyOrdersInboxSummary({
           />
           <Chip
             count={summary.verificationCount}
-            label="Uzupełniamy"
+            label="Sprawdzamy dane"
             tone="info"
             filter="verification"
             {...chipProps}
           />
           <Chip
             count={summary.przedZamowieniemCount}
-            label="Przed zamówieniem"
+            label="Czeka na zamówienie"
             tone="purple"
             filter="przed_zamowieniem"
             {...chipProps}
@@ -179,7 +179,7 @@ export function MyOrdersInboxSummary({
           />
           <Chip
             count={summary.availabilityPendingCount}
-            label="Czeka (info)"
+            label="Czeka na magazyn"
             tone="purple"
             filter="availability_pending"
             {...chipProps}

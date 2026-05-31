@@ -158,7 +158,7 @@ export function SupplierSubiektLinkField({
   };
 
   return (
-    <div className="rounded-xl border border-slate-200 bg-slate-50/80 p-3 space-y-3">
+    <div className="rounded-md border border-slate-200 bg-slate-50/80 p-3 space-y-3">
       <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
         Powiązanie z Subiektem
       </p>
@@ -189,7 +189,7 @@ export function SupplierSubiektLinkField({
             {aliases.map((a) => (
               <li
                 key={a.id}
-                className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-slate-200 bg-white px-2 py-1.5 text-sm"
+                className="flex flex-wrap items-center justify-between gap-2 rounded-md border border-slate-200 bg-white px-2 py-1.5 text-sm"
               >
                 <span>
                   <span className="font-medium text-slate-900">
@@ -248,7 +248,7 @@ export function SupplierSubiektLinkField({
       ) : null}
 
       {results.length > 0 ? (
-        <ul className="max-h-48 space-y-1 overflow-y-auto rounded-lg border border-slate-200 bg-white p-1">
+        <ul className="max-h-48 space-y-1 overflow-y-auto rounded-md border border-slate-200 bg-white p-1">
           {results.map((k) => {
             const isPrimary = subiektKhId === k.kh_Id;
             const isAlias = aliases.some((a) => a.subiektKhId === k.kh_Id);

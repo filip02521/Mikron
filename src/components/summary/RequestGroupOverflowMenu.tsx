@@ -9,6 +9,7 @@ export function RequestGroupOverflowMenu({
   onCancel,
   variant = "segment",
   iconOnly = false,
+  className,
 }: {
   headline: string;
   disabled?: boolean;
@@ -16,6 +17,7 @@ export function RequestGroupOverflowMenu({
   onCancel: () => void;
   variant?: "standalone" | "segment";
   iconOnly?: boolean;
+  className?: string;
 }) {
   return (
     <OverflowMenu
@@ -24,6 +26,7 @@ export function RequestGroupOverflowMenu({
       align="end"
       variant={variant}
       iconOnly={iconOnly}
+      className={className}
     >
       <OverflowMenuItem
         disabled={disabled}

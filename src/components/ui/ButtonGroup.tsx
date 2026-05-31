@@ -1,7 +1,7 @@
 "use client";
 
 import { cn } from "@/lib/cn";
-import { buttonGroupItemClass, buttonGroupShellClass } from "@/lib/ui/surfaces";
+import { buttonGroupItemClass, buttonGroupShellClass, panelActionBarShellClass } from "@/lib/ui/surfaces";
 
 export function ButtonGroup({
   children,
@@ -20,8 +20,7 @@ export function ButtonGroup({
       role="group"
       aria-label={ariaLabel}
       className={cn(
-        buttonGroupShellClass,
-        allowOverflow && "overflow-visible",
+        allowOverflow ? panelActionBarShellClass : buttonGroupShellClass,
         className
       )}
     >

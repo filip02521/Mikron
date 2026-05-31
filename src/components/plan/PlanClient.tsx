@@ -19,6 +19,8 @@ import {
 import { SalesPlanView } from "@/components/plan/SalesPlanView";
 import type { DeliveryStats } from "@/types/database";
 import { cn } from "@/lib/cn";
+import { useSalesOnboardingDemo } from "@/components/sales/SalesOnboardingContext";
+import { buildOnboardingPlanDemo } from "@/lib/sales/sales-onboarding-demo-data";
 
 const SEARCH_TABLE_LIMIT = 25;
 
@@ -30,18 +32,32 @@ export function PlanClient(props: {
   openOrderCountBySupplier?: Record<string, number>;
   statsBySupplierId?: Record<string, DeliveryStats>;
 }) {
-  if (props.mode === "sales") {
+  const tourDemo = useSalesOnboardingDemo("plan");
+  const demo = useMemo(() => buildOnboardingPlanDemo(), []);
+  const resolved = tourDemo
+    ? {
+        workspace: demo.workspace,
+        suppliers: demo.suppliers,
+        mode: "sales" as const,
+        prioritySupplierIds: demo.prioritySupplierIds,
+        openOrderCountBySupplier: demo.openOrderCountBySupplier,
+        statsBySupplierId: demo.statsBySupplierId,
+      }
+    : props;
+
+  if (resolved.mode === "sales") {
     return (
       <SalesPlanView
-        workspace={props.workspace}
-        suppliers={props.suppliers}
-        statsBySupplierId={props.statsBySupplierId ?? {}}
-        prioritySupplierIds={props.prioritySupplierIds ?? []}
-        openOrderCountBySupplier={props.openOrderCountBySupplier ?? {}}
+        workspace={resolved.workspace}
+        suppliers={resolved.suppliers}
+        statsBySupplierId={resolved.statsBySupplierId ?? {}}
+        prioritySupplierIds={resolved.prioritySupplierIds ?? []}
+        openOrderCountBySupplier={resolved.openOrderCountBySupplier ?? {}}
+        tourPreview={tourDemo}
       />
     );
   }
-  return <PlanPreviewClient {...props} />;
+  return <PlanPreviewClient {...resolved} />;
 }
 
 function PlanPreviewClient({
@@ -229,7 +245,7 @@ function SupplierPlanSearchCard({
   return (
     <li
       className={cn(
-        "rounded-xl border border-indigo-200/80 bg-gradient-to-br from-indigo-50/90 to-white shadow-sm",
+        "rounded-md border border-indigo-200/80 bg-gradient-to-br from-indigo-50/90 to-white shadow-sm",
         compact ? "p-3" : "p-4"
       )}
     >

@@ -62,7 +62,7 @@ export function RequestFormStatusPanel({
   return (
     <div
       className={cn(
-        "space-y-2 rounded-xl border border-slate-200 bg-slate-50/90 p-3 sm:p-4",
+        "space-y-2 rounded-md border border-slate-200 bg-slate-50/90 p-3 sm:p-4",
         className
       )}
       aria-live="polite"
@@ -75,7 +75,7 @@ export function RequestFormStatusPanel({
       {formMessage ? (
         <div
           className={cn(
-            "rounded-lg border px-3 py-2.5 text-sm",
+            "rounded-md border px-3 py-2.5 text-sm",
             formMessage.tone === "error" && "border-red-200 bg-red-50 text-red-950",
             formMessage.tone === "warning" && "border-amber-200 bg-amber-50 text-amber-950",
             formMessage.tone === "success" && "border-emerald-200 bg-emerald-50 text-emerald-950"
@@ -86,13 +86,13 @@ export function RequestFormStatusPanel({
       ) : null}
 
       {scheduleHint ? (
-        <p className="rounded-lg border border-indigo-100 bg-indigo-50/70 px-3 py-2 text-xs font-medium text-indigo-800">
+        <p className="rounded-md border border-indigo-100 bg-indigo-50/70 px-3 py-2 text-xs font-medium text-indigo-800">
           {scheduleHint}
         </p>
       ) : null}
 
       {resolvingSupplier ? (
-        <p className="flex items-center gap-2 rounded-lg border border-indigo-100 bg-white px-3 py-2 text-xs text-indigo-800">
+        <p className="flex items-center gap-2 rounded-md border border-indigo-100 bg-white px-3 py-2 text-xs text-indigo-800">
           <Spinner size="sm" />
           Sprawdzam dostawcę w naszej bazie…
         </p>
@@ -105,7 +105,7 @@ export function RequestFormStatusPanel({
             return (
               <div
                 className={cn(
-                  "rounded-lg border px-3 py-2.5 text-sm",
+                  "rounded-md border px-3 py-2.5 text-sm",
                   hint.tone === "success" &&
                     "border-emerald-200 bg-emerald-50 text-emerald-950",
                   hint.tone === "warning" &&

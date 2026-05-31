@@ -64,7 +64,7 @@ function MetricTile({
   );
 
   const className = cn(
-    "rounded-xl border px-3 py-2.5 text-left transition shadow-[var(--shadow-card)]",
+    "rounded-md border px-3 py-2.5 text-left transition shadow-[var(--shadow-card)]",
     tone === "amber"
       ? "border-amber-200/90 bg-amber-50/60 hover:border-amber-300"
       : tone === "sky"

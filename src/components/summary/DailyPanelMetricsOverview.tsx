@@ -88,23 +88,23 @@ export function DailyPanelMetricsOverview({
   onOpenOnDemand,
   urgentVacationCount,
   verificationCount = 0,
+  hideVerificationMetric = false,
+  hideQueueMetrics = false,
 }: {
   summary: DailyInboxSummary;
   urgentTotal: number;
   onOpenOnDemand?: () => void;
   urgentVacationCount: number;
-  /** Prośby wymagające uzupełnienia — link do /weryfikacja. */
   verificationCount?: number;
+  /** Ukryj kafelek weryfikacji, gdy baner w zakładce Dziś już informuje. */
+  hideVerificationMetric?: boolean;
+  /** Ukryj zaległe / na dziś / prośby — gdy te same liczby są w pasku u góry. */
+  hideQueueMetrics?: boolean;
 }) {
   const mobileSummary = buildMetricsSummary(summary);
 
-  const grid = (
-    <div
-      className={cn(
-        "mt-3 grid grid-cols-2 gap-2 sm:grid-cols-3",
-        verificationCount > 0 ? "lg:grid-cols-6" : "lg:grid-cols-5"
-      )}
-    >
+  const queueTiles = hideQueueMetrics ? null : (
+    <>
       <MetricTile
         value={summary.overdueCount}
         label="Zaległe"
@@ -133,7 +133,7 @@ export function DailyPanelMetricsOverview({
         label="Prośby handlowców"
         hint={
           summary.forSomeoneLineCount > 0
-            ? `${summary.forSomeoneLineCount} prod.`
+            ? `${summary.forSomeoneLineCount} produktów`
             : undefined
         }
         href={
@@ -144,6 +144,21 @@ export function DailyPanelMetricsOverview({
         icon={<IconClipboardList size={15} />}
         tileClassName={sectionIconTileBrandClass}
       />
+      {verificationCount > 0 && !hideVerificationMetric ? (
+        <MetricTile
+          value={verificationCount}
+          label="Do weryfikacji"
+          hint="brak dostawcy lub towaru"
+          href="/weryfikacja"
+          icon={<IconClipboardList size={15} />}
+          tileClassName="bg-amber-100 text-amber-900"
+        />
+      ) : null}
+    </>
+  );
+
+  const supplementaryTiles = (
+    <>
       <MetricTile
         value={summary.weekPlanCount}
         label="W planie tygodnia"
@@ -171,23 +186,36 @@ export function DailyPanelMetricsOverview({
           tileClassName="bg-indigo-100/70 text-indigo-800/90"
         />
       ) : null}
-      {verificationCount > 0 ? (
-        <MetricTile
-          value={verificationCount}
-          label="Do weryfikacji"
-          hint="brak dostawcy lub towaru"
-          href="/weryfikacja"
-          icon={<IconClipboardList size={15} />}
-          tileClassName="bg-amber-100 text-amber-900"
-        />
-      ) : null}
+    </>
+  );
+
+  const hasSupplementaryTiles =
+    summary.weekPlanCount > 0 ||
+    (summary.onDemandCount > 0 && onOpenOnDemand) ||
+    summary.hiddenScheduleCount > 0;
+
+  const grid = hideQueueMetrics ? (
+    hasSupplementaryTiles ? (
+      <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-3">
+        {supplementaryTiles}
+      </div>
+    ) : null
+  ) : (
+    <div
+      className={cn(
+        "mt-3 grid grid-cols-2 gap-2 sm:grid-cols-3",
+        !hideVerificationMetric && verificationCount > 0 ? "lg:grid-cols-6" : "lg:grid-cols-5"
+      )}
+    >
+      {queueTiles}
+      {supplementaryTiles}
     </div>
   );
 
   const vacationBanner =
     urgentVacationCount > 0 ? (
       <div
-        className="mt-3 rounded-xl border border-amber-200/90 bg-amber-50/70 px-3 py-2.5 text-sm text-amber-950"
+        className="mt-3 rounded-md border border-amber-200/90 bg-amber-50/70 px-3 py-2.5 text-sm text-amber-950"
         role="status"
       >
         <p className="font-medium">
@@ -210,15 +238,38 @@ export function DailyPanelMetricsOverview({
       </div>
     ) : null;
 
+  if (hideQueueMetrics && !grid && !vacationBanner) {
+    return null;
+  }
+
+  if (hideQueueMetrics && !grid && vacationBanner) {
+    return (
+      <div className="border-t border-indigo-100/70 px-4 py-4 sm:px-6">
+        {vacationBanner}
+      </div>
+    );
+  }
+
+  const sectionTitle = hideQueueMetrics ? "Poza kolejką dziś" : "Przegląd dnia";
+  const mobileLine = hideQueueMetrics
+    ? [
+        summary.weekPlanCount > 0 ? `${summary.weekPlanCount} w planie` : null,
+        summary.onDemandCount > 0 ? `${summary.onDemandCount} na żądanie` : null,
+        summary.hiddenScheduleCount > 0 ? `${summary.hiddenScheduleCount} poza harmonogramem` : null,
+      ]
+        .filter(Boolean)
+        .join(" · ")
+    : mobileSummary;
+
   return (
     <div className="border-t border-indigo-100/70 px-4 py-4 sm:px-6">
       {/* Mobile: zwijany przegląd */}
       <details className="group sm:hidden">
         <summary className="flex cursor-pointer list-none items-center justify-between gap-2 marker:content-none [&::-webkit-details-marker]:hidden">
           <div className="min-w-0">
-            <p className="text-sm font-semibold text-slate-900">Przegląd dnia</p>
+            <p className="text-sm font-semibold text-slate-900">{sectionTitle}</p>
             <p className="mt-0.5 truncate text-xs text-slate-500 group-open:hidden">
-              {mobileSummary || "Brak pozycji na liście"}
+              {mobileLine || "Brak dodatkowych pozycji"}
             </p>
           </div>
           <span className={cn("inline-flex shrink-0 items-center gap-0.5 text-xs", panelTextLinkClass)}>
@@ -235,7 +286,7 @@ export function DailyPanelMetricsOverview({
 
       {/* Desktop: zawsze widoczny */}
       <div className="hidden sm:block">
-        <p className="text-sm font-semibold text-slate-900">Przegląd dnia</p>
+        <p className="text-sm font-semibold text-slate-900">{sectionTitle}</p>
         {grid}
         {vacationBanner}
       </div>

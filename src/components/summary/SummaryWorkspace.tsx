@@ -7,11 +7,7 @@ import type { SummaryStandardItem } from "@/lib/orders/summary";
 import { actionBulkOrdered, actionMarkOrdered } from "@/app/actions/admin";
 import { Toast } from "@/components/ui/Toast";
 import { UndoToast } from "@/components/ui/UndoToast";
-import { EmptyState } from "@/components/ui/EmptyState";
 import { Card, CardHeader } from "@/components/ui/Card";
-import { Button } from "@/components/ui/Button";
-import { panelDashedActionClass, panelTextLinkClass } from "@/lib/ui/ontime-theme";
-import { WeekPlanner } from "@/components/summary/WeekPlanner";
 import { SupplierDrawer } from "@/components/summary/SupplierDrawer";
 import { QuickOrderModal } from "@/components/summary/QuickOrderModal";
 import {
@@ -29,9 +25,10 @@ import { DailyPanelToolbar } from "@/components/summary/DailyPanelToolbar";
 import { DailyPanelTabs } from "@/components/summary/DailyPanelTabs";
 import { useDailyPanelView } from "@/hooks/useDailyPanelView";
 import { dailyPanelIntroDescription } from "@/lib/orders/daily-panel-view";
-import { ForSomeoneRequests } from "@/components/summary/ForSomeoneRequests";
-import { UrgentOrdersSection } from "@/components/summary/UrgentOrdersSection";
 import { useDailyPanelRunner } from "@/components/summary/useDailyPanelRunner";
+import { DailyPanelStatusBand } from "@/components/summary/DailyPanelStatusBand";
+import { DailyTodayView } from "@/components/summary/DailyTodayView";
+import { DailyWeekView } from "@/components/summary/DailyWeekView";
 import { ActionLoadingOverlay } from "@/components/ui/ActionLoadingOverlay";
 import { SupplierVacationModal } from "@/components/procurement/SupplierVacationModal";
 import { SupplierEditModal } from "@/components/procurement/SupplierEditModal";
@@ -40,18 +37,13 @@ import { VerificationModal } from "@/components/verification/VerificationModal";
 import { OnDemandSuppliersSheet } from "@/components/summary/OnDemandSuppliersSheet";
 import { DailyPanelActionsBar } from "@/components/summary/DailyPanelActionsBar";
 import { DailyPanelExceptionsView } from "@/components/summary/DailyPanelExceptionsView";
-import { DailyPanelQueueSteps } from "@/components/summary/DailyPanelQueueSteps";
-import { SectionListLabel } from "@/components/ui/SectionListLabel";
 import {
-  DailySectionIcon,
-  dailySectionIconTileClass,
   IconLayoutPanel,
 } from "@/components/icons/StrokeIcons";
+import { undoShortcutLabel } from "@/lib/platform/keyboard-shortcut-label";
 import { SectionHeadingIcon } from "@/components/icons/SectionHeadingIcon";
 import { brandIconTileClass, sidebarBrandAccentClass } from "@/lib/ui/ontime-theme";
-import { ProsbaFormSection } from "@/components/orders/ProsbaFormSection";
 import { cn } from "@/lib/cn";
-import { DailyPanelVerificationBanner } from "@/components/summary/DailyPanelVerificationBanner";
 
 export function SummaryWorkspace({
   workspace,
@@ -88,7 +80,6 @@ export function SummaryWorkspace({
 
   const [selected, setSelected] = useState<Record<string, boolean>>({});
   const [drawerId, setDrawerId] = useState<string | null>(null);
-  const [showNextWeek, setShowNextWeek] = useState(false);
   const [orderModalOpen, setOrderModalOpen] = useState(false);
   const [vacationModalSupplierId, setVacationModalSupplierId] = useState<string | null>(
     null
@@ -125,14 +116,18 @@ export function SummaryWorkspace({
     [standardUrgentAll]
   );
 
-  const todayQueueCount =
-    inboxSummary.overdueCount +
-    inboxSummary.todayCount +
-    inboxSummary.forSomeoneGroupCount;
-
+  const hasCancelled = workspace.salesCancelledNotices.length > 0;
   const hasForSomeone = workspace.forSomeoneLeft.length > 0;
   const hasUrgentSchedule = urgentOverdue.length > 0 || urgentToday.length > 0;
   const hasTodayWork = hasForSomeone || hasUrgentSchedule;
+
+  const todayQueueCount =
+    inboxSummary.overdueCount +
+    inboxSummary.todayCount +
+    inboxSummary.forSomeoneGroupCount +
+    (hasCancelled ? workspace.salesCancelledNotices.length : 0);
+  const hideVerificationDup =
+    panelView === "dzis" && verificationCount > 0;
 
   const queueStepBySection = useMemo(() => {
     let step = 0;
@@ -293,7 +288,7 @@ export function SummaryWorkspace({
           detailLines={undo.detailLines}
           onDismiss={dismissUndo}
           onUndo={handleUndo}
-          undoShortcut="Ctrl+Z"
+          undoShortcut={undoShortcutLabel()}
           durationMs={5000}
         />
       ) : null}
@@ -309,19 +304,18 @@ export function SummaryWorkspace({
           }
           title="Panel dzienny"
           description={panelIntro}
-          action={
-            <div className="w-full min-w-0 lg:max-w-xl">
-              <DailyPanelActionsBar
-                summary={inboxSummary}
-                suppliers={supplierDirectory}
-                onNewRequest={() => setOrderModalOpen(true)}
-                onSelectSupplier={openSupplier}
-                onNewSupplier={() => openEditFor("new")}
-                onOpenOnDemand={() => setOnDemandOpen(true)}
-              />
-            </div>
-          }
         />
+
+        <div className="flex items-center border-b border-slate-100 px-4 py-3 sm:px-6">
+          <DailyPanelActionsBar
+            summary={inboxSummary}
+            suppliers={supplierDirectory}
+            onNewRequest={() => setOrderModalOpen(true)}
+            onSelectSupplier={openSupplier}
+            onNewSupplier={() => openEditFor("new")}
+            onOpenOnDemand={() => setOnDemandOpen(true)}
+          />
+        </div>
 
         <DailyPanelTabs
           active={panelView}
@@ -329,7 +323,18 @@ export function SummaryWorkspace({
           weekCount={inboxSummary.weekPlanCount}
           verificationCount={verificationCount}
           exceptionsCount={exceptionsCount}
+          hideVerificationBadge={hideVerificationDup}
           onChange={setPanelView}
+        />
+
+        <DailyPanelStatusBand
+          view={panelView}
+          summary={inboxSummary}
+          dayProgress={dayProgress}
+          verificationCount={verificationCount}
+          showVerification={!hideVerificationDup}
+          urgentVacationCount={urgentVacationCount}
+          onOpenOnDemand={() => setOnDemandOpen(true)}
         />
 
         <DailyPanelToolbar
@@ -339,218 +344,69 @@ export function SummaryWorkspace({
           urgentVacationCount={urgentVacationCount}
           exceptionsCount={exceptionsCount}
           verificationCount={verificationCount}
+          hideVerificationMetric={hideVerificationDup}
           onOpenOnDemand={() => setOnDemandOpen(true)}
         />
 
         {panelView === "dzis" ? (
-          <>
-            <SectionListLabel
-              id="dzis"
-              title="Do obsługi dziś"
-              hint="Kolejka: zaległe → prośby handlowców → na dziś"
-              count={todayQueueCount}
-              accent="emerald"
-              icon={<DailySectionIcon kind="dzis" size={17} />}
-              tileClassName={dailySectionIconTileClass("dzis")}
-            />
-            <div
-              id="panel-view-dzis"
-              role="tabpanel"
-              aria-labelledby="panel-tab-dzis"
-              className="space-y-4 px-4 py-5 sm:px-6"
-            >
-              {!hasTodayWork && verificationCount === 0 ? (
-                <EmptyState
-                  title="Nic pilnego na dziś"
-                  description="Brak prośb i harmonogramu na dziś. Sprawdź zakładkę Tydzień."
-                  icon={<DailySectionIcon kind="dzis" size={28} />}
-                  action={
-                    <Button variant="secondary" size="sm" onClick={() => setPanelView("tydzien")}>
-                      Plan tygodnia
-                    </Button>
-                  }
-                />
-              ) : (
-                <div className="space-y-6">
-                  {verificationCount > 0 ? (
-                    <DailyPanelVerificationBanner
-                      count={verificationCount}
-                      onOpenModal={() => setVerificationModalOpen(true)}
-                    />
-                  ) : null}
-                  <DailyPanelQueueSteps
-                    overdueCount={inboxSummary.overdueCount}
-                    forSomeoneGroupCount={inboxSummary.forSomeoneGroupCount}
-                    todayCount={inboxSummary.todayCount}
-                  />
-                  {urgentOverdue.length > 0 ? (
-                    <UrgentOrdersSection
-                      embedded
-                      queueStep={queueStepBySection.overdue}
-                      queuePart="overdue"
-                      items={standardUrgentAll}
-                      supplierMeta={workspace.supplierMeta}
-                      showBulkToolbar
-                      run={run}
-                      onOpenSupplier={openSupplier}
-                      onVacation={openVacationFor}
-                      onEdit={(id) => openEditFor(id)}
-                      selected={selected}
-                      onToggle={toggle}
-                      onSelectAllInScope={selectUrgentScope}
-                      selectedCount={selectedCount}
-                      onBulkOrdered={processBulk}
-                      isScopePending={isScopePending}
-                      isBulkPending={isBulkPending}
-                    />
-                  ) : null}
-
-                  {hasForSomeone ? (
-                    <ForSomeoneRequests
-                      embedded
-                      queueStep={queueStepBySection.prosby}
-                      groups={workspace.forSomeoneLeft}
-                      isScopePending={isScopePending}
-                      run={run}
-                      onOpenSupplier={openSupplier}
-                      statsBySupplierId={statsBySupplierId}
-                      supplierStatsMode={supplierStatsMode}
-                      suppliers={suppliers}
-                      salesPeople={salesPeople}
-                    />
-                  ) : null}
-
-                  {urgentToday.length > 0 ? (
-                    <UrgentOrdersSection
-                      embedded
-                      queueStep={queueStepBySection.today}
-                      queuePart="today"
-                      items={standardUrgentAll}
-                      supplierMeta={workspace.supplierMeta}
-                      showBulkToolbar={urgentOverdue.length === 0}
-                      run={run}
-                      onOpenSupplier={openSupplier}
-                      onVacation={openVacationFor}
-                      onEdit={(id) => openEditFor(id)}
-                      selected={selected}
-                      onToggle={toggle}
-                      onSelectAllInScope={selectUrgentScope}
-                      selectedCount={selectedCount}
-                      onBulkOrdered={processBulk}
-                      isScopePending={isScopePending}
-                      isBulkPending={isBulkPending}
-                    />
-                  ) : null}
-                </div>
-              )}
-            </div>
-          </>
+          <DailyTodayView
+            workspace={workspace}
+            verificationCount={verificationCount}
+            hasTodayWork={hasTodayWork}
+            hasForSomeone={hasForSomeone}
+            urgentOverdue={urgentOverdue}
+            urgentToday={urgentToday}
+            standardUrgentAll={standardUrgentAll}
+            queueStepBySection={queueStepBySection}
+            selected={selected}
+            selectedCount={selectedCount}
+            isScopePending={isScopePending}
+            isBulkPending={isBulkPending}
+            statsBySupplierId={statsBySupplierId}
+            supplierStatsMode={supplierStatsMode}
+            suppliers={suppliers}
+            salesPeople={salesPeople}
+            run={run}
+            onOpenSupplier={openSupplier}
+            onVacation={openVacationFor}
+            onEdit={(id) => openEditFor(id)}
+            onToggle={toggle}
+            onSelectAllInScope={selectUrgentScope}
+            onBulkOrdered={processBulk}
+            onOpenVerification={() => setVerificationModalOpen(true)}
+            onOpenWeek={() => setPanelView("tydzien")}
+          />
         ) : null}
 
         {panelView === "tydzien" ? (
-          <>
-            <SectionListLabel
-              id="plan"
-              title="Plan tygodnia"
-              hint="Przyszłe terminy — zamówienie z wyprzedzeniem lub tryb planowania"
-              accent="indigo"
-              icon={<DailySectionIcon kind="plan" size={17} />}
-              tileClassName={dailySectionIconTileClass("plan")}
-            />
-            <div
-              id="panel-view-tydzien"
-              role="tabpanel"
-              aria-labelledby="panel-tab-tydzien"
-              className="space-y-4 px-4 py-5 pb-6 sm:px-6"
-            >
-              {workspace.onDemandSuppliers.length > 0 ? (
-                <ProsbaFormSection
-                  title="Dostawcy na żądanie"
-                  hint="Bez stałego terminu w harmonogramie — zamów, gdy coś jest potrzebne."
-                >
-                  <button
-                    type="button"
-                    className={cn("text-sm", panelTextLinkClass)}
-                    onClick={() => setOnDemandOpen(true)}
-                  >
-                    Pokaż listę ({workspace.onDemandSuppliers.length}{" "}
-                    {workspace.onDemandSuppliers.length === 1 ? "dostawca" : "dostawców"})
-                  </button>
-                </ProsbaFormSection>
-              ) : null}
-
-              <WeekPlanner
-                title="Ten tydzień"
-                description="Poniedziałek–piątek · zamówione z wyprzedzeniem lub szczegóły dostawcy"
-                days={workspace.thisWeekDays}
-                onOpenSupplier={openSupplier}
-                onVacation={openVacationFor}
-                onEdit={(id) => openEditFor(id)}
-                run={run}
-                isScopePending={isScopePending}
-                isPlanPending={isPlanPending}
-              />
-
-              {showNextWeek ? (
-                <>
-                  <WeekPlanner
-                    title="Następny tydzień"
-                    description="Ten sam układ co bieżący tydzień"
-                    days={workspace.nextWeekDays}
-                    onOpenSupplier={openSupplier}
-                    onVacation={openVacationFor}
-                    onEdit={(id) => openEditFor(id)}
-                    run={run}
-                    isScopePending={isScopePending}
-                    isPlanPending={isPlanPending}
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowNextWeek(false)}
-                    className={cn("text-sm", panelTextLinkClass)}
-                  >
-                    Ukryj następny tydzień
-                  </button>
-                </>
-              ) : (
-                <button
-                  type="button"
-                  onClick={() => setShowNextWeek(true)}
-                  className={panelDashedActionClass}
-                >
-                  Pokaż następny tydzień
-                </button>
-              )}
-            </div>
-          </>
+          <DailyWeekView
+            workspace={workspace}
+            run={run}
+            isScopePending={isScopePending}
+            isPlanPending={isPlanPending}
+            onOpenSupplier={openSupplier}
+            onVacation={openVacationFor}
+            onEdit={(id) => openEditFor(id)}
+            onOpenOnDemand={() => setOnDemandOpen(true)}
+          />
         ) : null}
 
         {panelView === "wyjatki" ? (
-          <>
-            <SectionListLabel
-              id="wyjatki"
-              title="Wyjątki"
-              hint="Rezygnacje · informacja · na żądanie · poza harmonogramem"
-              accent="indigo"
-              icon={<DailySectionIcon kind="hidden" size={17} />}
-              tileClassName={dailySectionIconTileClass("hidden")}
-            />
-            <div
-              id="panel-view-wyjatki"
-              role="tabpanel"
-              aria-labelledby="panel-tab-wyjatki"
-              className="space-y-4 px-4 py-5 sm:px-6"
-            >
-              <DailyPanelExceptionsView
+          <div
+            id="panel-view-wyjatki"
+            role="tabpanel"
+            aria-labelledby="panel-tab-wyjatki"
+            className="space-y-3 px-4 py-4 sm:px-6"
+          >
+            <DailyPanelExceptionsView
                 workspace={workspace}
                 isScopePending={isScopePending}
                 run={run}
                 onOpenSupplier={openSupplier}
                 onOpenOnDemand={() => setOnDemandOpen(true)}
                 onGoToday={() => setPanelView("dzis")}
-              />
-            </div>
-          </>
+            />
+          </div>
         ) : null}
       </Card>
 

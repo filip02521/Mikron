@@ -13,7 +13,7 @@ export function SectionHeadingIcon({
   return (
     <span
       className={cn(
-        "flex h-8 w-8 shrink-0 items-center justify-center rounded-lg [&_svg]:shrink-0",
+        "flex h-8 w-8 shrink-0 items-center justify-center rounded-md [&_svg]:shrink-0",
         tileClassName,
         className
       )}

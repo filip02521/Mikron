@@ -51,6 +51,7 @@ export function MyOrderShipmentList({
   suppliers = [],
   embedded = false,
   continuation = false,
+  tourPreview = false,
 }: {
   rows: MyOrderRow[];
   listKind: "zamowienie" | "informacja";
@@ -58,10 +59,11 @@ export function MyOrderShipmentList({
   canAcknowledge: boolean;
   cardIdPrefix?: (rowId: string) => string;
   suppliers?: { id: string; name: string }[];
-  /** Wewnątrz wspólnej obwódki sekcji (bez drugiego rounded-xl). */
+  /** Wewnątrz wspólnej obwódki sekcji (bez drugiego rounded-md). */
   embedded?: boolean;
   /** Kolejna lista w tej samej sekcji — separator u góry. */
   continuation?: boolean;
+  tourPreview?: boolean;
 }) {
   const router = useRouter();
   const sortedRows = useMemo(() => sortMyOrderRows(rows), [rows]);
@@ -100,6 +102,7 @@ export function MyOrderShipmentList({
 
   const runPickup = useCallback(
     (orderIds: string[]) => {
+      if (tourPreview) return;
       const n = orderIds.length;
       setPendingMessage(n === 1 ? "Potwierdzanie odbioru…" : `Potwierdzanie ${n} pozycji…`);
       start(async () => {
@@ -122,11 +125,12 @@ export function MyOrderShipmentList({
         }
       });
     },
-    [router]
+    [router, tourPreview]
   );
 
   const saveClient = useCallback(
     async (orderId: string, name: string | null) => {
+      if (tourPreview) return;
       setPendingMessage("Zapisywanie klienta…");
       start(async () => {
         try {
@@ -141,11 +145,12 @@ export function MyOrderShipmentList({
         }
       });
     },
-    [router]
+    [router, tourPreview]
   );
 
   const runCancel = useCallback(
     (orderIds: string[]) => {
+      if (tourPreview) return;
       setPendingMessage("Anulowanie prośby…");
       start(async () => {
         try {
@@ -162,18 +167,19 @@ export function MyOrderShipmentList({
         }
       });
     },
-    [router]
+    [router, tourPreview]
   );
 
   const requestCancel = useCallback(
     (orderIds: string[], phase: SalesCancelPhase) => {
+      if (tourPreview) return;
       setCancelConfirm({ orderIds, phase });
     },
-    []
+    [tourPreview]
   );
 
   const handleUndo = useCallback(() => {
-    if (!undo) return;
+    if (!undo || tourPreview) return;
     const ids = undo.orderIds;
     setPendingMessage("Cofanie potwierdzenia…");
     start(async () => {
@@ -191,7 +197,7 @@ export function MyOrderShipmentList({
         setPendingMessage(null);
       }
     });
-  }, [undo, router]);
+  }, [undo, router, tourPreview]);
 
   if (!sortedRows.length) return null;
 
@@ -306,7 +312,7 @@ export function MyOrderShipmentList({
             }
             onSaveClient={canAcknowledge ? saveClient : undefined}
             onEditRequest={
-              canAcknowledge
+              canAcknowledge && !tourPreview
                 ? (r) => {
                     const initial = editInitialFromMyOrderRow(r);
                     if (!initial) return;
@@ -314,6 +320,7 @@ export function MyOrderShipmentList({
                   }
                 : undefined
             }
+            tourPreview={tourPreview}
           />
         ))}
       </ul>

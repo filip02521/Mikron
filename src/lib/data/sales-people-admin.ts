@@ -5,7 +5,7 @@ import {
   getManagedGroupIdsForUser,
 } from "@/lib/data/sales-group-access";
 import { isManagedSalesPersonEmail } from "@/lib/sales/sales-person-catalog";
-import { isDueDateOverdue } from "@/lib/sales/payment-watch-sort";
+import { isFollowUpDue } from "@/lib/sales/notepad-follow-up";
 
 export type SalesPersonAdminRow = {
   id: string;
@@ -14,10 +14,10 @@ export type SalesPersonAdminRow = {
   groupId: string | null;
   groupName: string | null;
   orderCount: number;
-  /** Aktywne ZK oczekujące na zapłatę (notatnik). */
+  /** Aktywne ZK oczekujące na towar (notatnik). */
   pendingZkCount: number;
-  /** Aktywne ZK z terminem wcześniejszym niż dziś. */
-  overdueZkCount: number;
+  /** Aktywne ZK z przypomnieniem na dziś lub wcześniej. */
+  followUpDueZkCount: number;
   linkedUserId: string | null;
   linkedUserEmail: string | null;
 };
@@ -35,9 +35,9 @@ export async function fetchSalesPeopleAdmin(): Promise<SalesPersonAdminRow[]> {
         .select("id, email, sales_person_id")
         .not("sales_person_id", "is", null),
       supabase
-        .from("sales_payment_watches")
-        .select("sales_person_id, due_at, settled_at, archived_at")
-        .is("settled_at", null)
+        .from("sales_zk_watches")
+        .select("sales_person_id, follow_up_at, closed_at, archived_at")
+        .is("closed_at", null)
         .is("archived_at", null),
     ]);
 
@@ -71,13 +71,13 @@ export async function fetchSalesPeopleAdmin(): Promise<SalesPersonAdminRow[]> {
   }
 
   const pendingZkBySalesId = new Map<string, number>();
-  const overdueZkBySalesId = new Map<string, number>();
+  const followUpDueZkBySalesId = new Map<string, number>();
   for (const row of watchRows ?? []) {
     const id = row.sales_person_id;
     if (!id) continue;
     pendingZkBySalesId.set(id, (pendingZkBySalesId.get(id) ?? 0) + 1);
-    if (isDueDateOverdue(row.due_at)) {
-      overdueZkBySalesId.set(id, (overdueZkBySalesId.get(id) ?? 0) + 1);
+    if (isFollowUpDue(row.follow_up_at)) {
+      followUpDueZkBySalesId.set(id, (followUpDueZkBySalesId.get(id) ?? 0) + 1);
     }
   }
 
@@ -92,7 +92,7 @@ export async function fetchSalesPeopleAdmin(): Promise<SalesPersonAdminRow[]> {
       groupName: groupId ? (groupNameById.get(groupId) ?? null) : null,
       orderCount: orderCountBySalesId.get(p.id) ?? 0,
       pendingZkCount: pendingZkBySalesId.get(p.id) ?? 0,
-      overdueZkCount: overdueZkBySalesId.get(p.id) ?? 0,
+      followUpDueZkCount: followUpDueZkBySalesId.get(p.id) ?? 0,
       linkedUserId: linked?.id ?? null,
       linkedUserEmail: linked?.email ?? null,
     };

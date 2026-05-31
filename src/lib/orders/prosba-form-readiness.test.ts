@@ -42,7 +42,7 @@ describe("buildProsbaFormReadiness", () => {
     expect(view.tone).toBe("handoff");
     expect(view.canSubmit).toBe(true);
     expect(view.steps.find((s) => s.id === "supplier")?.state).toBe("handoff");
-    expect(view.steps.find((s) => s.id === "supplier")?.detail).toContain("dopasuje dział dostaw");
+    expect(view.steps.find((s) => s.id === "supplier")?.detail).toContain("dopasuje dział zakupów");
   });
 
   it("subiekt z dopasowanym dostawcą — done", () => {

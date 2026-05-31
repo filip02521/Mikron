@@ -49,51 +49,55 @@ export function SupplierSearchField({
 
   return (
     <div
-      ref={ref}
-      className={cn("relative min-w-0", isToolbar ? "w-full" : "flex-1 sm:max-w-xs")}
+      className={cn(
+        "min-w-0",
+        isToolbar ? "w-full" : "relative flex-1 sm:max-w-xs"
+      )}
     >
-      <label htmlFor={inputId} className="sr-only">
-        Szukaj dostawcy
-      </label>
-      <input
-        id={inputId}
-        type="search"
-        placeholder="Szukaj dostawcy… (/)"
-        className={cn(
-          isToolbar
-            ? panelToolbarSearchInputClass
-            : "w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm shadow-sm placeholder:text-slate-400 focus:border-indigo-300 focus:outline-none focus:ring-2 focus:ring-indigo-100"
-        )}
-        value={query}
-        onChange={(e) => {
-          setQuery(e.target.value);
-          setOpen(true);
-        }}
-        onFocus={() => setOpen(true)}
-      />
-      {open && filtered.length > 0 ? (
-        <ul className="absolute z-40 mt-1 max-h-60 w-full overflow-auto rounded-xl border border-slate-200 bg-white py-1 shadow-lg">
-          {filtered.map((s) => (
-            <li key={s.id}>
-              <button
-                type="button"
-                className="flex w-full cursor-pointer flex-col px-3 py-2 text-left text-sm hover:bg-slate-50"
-                onClick={() => {
-                  onSelect(s.id);
-                  setQuery("");
-                  setOpen(false);
-                }}
-              >
-                <span className="font-medium text-slate-900">{s.name}</span>
-                <span className="text-xs text-slate-500">
-                  {locationLabel(s.location)}
-                  {s.vacationNote ? " · urlop" : ""}
-                </span>
-              </button>
-            </li>
-          ))}
-        </ul>
-      ) : null}
+      <div ref={ref} className="relative w-full min-w-0">
+        <label htmlFor={inputId} className="sr-only">
+          Szukaj dostawcy
+        </label>
+        <input
+          id={inputId}
+          type="search"
+          placeholder="Szukaj dostawcy… (/)"
+          className={cn(
+            isToolbar
+              ? panelToolbarSearchInputClass
+              : "w-full rounded-md border border-slate-200 bg-white px-3 py-2 text-sm shadow-sm placeholder:text-slate-400 focus:border-indigo-300 focus:outline-none focus:ring-2 focus:ring-indigo-100"
+          )}
+          value={query}
+          onChange={(e) => {
+            setQuery(e.target.value);
+            setOpen(true);
+          }}
+          onFocus={() => setOpen(true)}
+        />
+        {open && filtered.length > 0 ? (
+          <ul className="absolute inset-x-0 top-full z-40 mt-1 max-h-60 overflow-auto rounded-md border border-slate-200 bg-white py-1 shadow-lg">
+            {filtered.map((s) => (
+              <li key={s.id}>
+                <button
+                  type="button"
+                  className="flex w-full cursor-pointer flex-col px-3 py-2 text-left text-sm hover:bg-slate-50"
+                  onClick={() => {
+                    onSelect(s.id);
+                    setQuery("");
+                    setOpen(false);
+                  }}
+                >
+                  <span className="font-medium text-slate-900">{s.name}</span>
+                  <span className="text-xs text-slate-500">
+                    {locationLabel(s.location)}
+                    {s.vacationNote ? " · urlop" : ""}
+                  </span>
+                </button>
+              </li>
+            ))}
+          </ul>
+        ) : null}
+      </div>
     </div>
   );
 }

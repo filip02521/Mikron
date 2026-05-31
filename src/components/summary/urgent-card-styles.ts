@@ -1,11 +1,11 @@
 import { cn } from "@/lib/cn";
 
-/** Karta harmonogramu — jak prośby handlowców; zaległe z delikatnym bursztynem. */
+/** Karta harmonogramu — neutralna obudowa; zaległe tylko cienkim akcentem. */
 export function urgentCardClassName(isOverdue = false) {
   return cn(
-    "rounded-xl border bg-white shadow-sm transition",
+    "rounded-md border bg-white transition",
     isOverdue
-      ? "border-amber-200/80 hover:border-amber-300/90"
+      ? "border-slate-200 border-l-2 border-l-amber-400 hover:border-slate-300"
       : "border-slate-200 hover:border-slate-300"
   );
 }
@@ -13,12 +13,12 @@ export function urgentCardClassName(isOverdue = false) {
 export function urgentGroupHeadingClassName(isOverdue = false) {
   return cn(
     "shrink-0 text-xs font-semibold uppercase tracking-wide",
-    isOverdue ? "text-amber-800" : "text-slate-500"
+    isOverdue ? "text-slate-600" : "text-slate-500"
   );
 }
 
-export function urgentGroupDividerClassName(isOverdue = false) {
-  return cn("h-px flex-1", isOverdue ? "bg-amber-200/70" : "bg-slate-200");
+export function urgentGroupDividerClassName(_isOverdue = false) {
+  return "h-px flex-1 bg-slate-200";
 }
 
 export function urgentStatusBadgeVariant(

@@ -43,7 +43,7 @@ export function CatalogZdSyncStatusPanel({
           : "border-indigo-200 bg-indigo-50/40";
 
   return (
-    <div className={cn("mt-2 rounded-xl border p-4", toneBorder)}>
+    <div className={cn("mt-2 rounded-md border p-4", toneBorder)}>
       <p className="text-sm font-semibold text-slate-900">Synchronizacja nocna (cron)</p>
       <p className="mt-0.5 text-xs text-slate-600">
         Na serwerze w firmie: indeks ostatnich ~3 tyg. ZD + import nowych linii do katalogu. W dzień

@@ -474,7 +474,7 @@ export function SalesAdminClient({
                               {!managerMode ? (
                                 <Link
                                   href={`/admin/uzytkownicy?handlowiec=${p.id}`}
-                                  className="inline-flex items-center rounded-lg px-3 py-1.5 text-xs font-medium text-slate-500 hover:bg-slate-100 hover:text-slate-800"
+                                  className="inline-flex items-center rounded-md px-3 py-1.5 text-xs font-medium text-slate-500 hover:bg-slate-100 hover:text-slate-800"
                                 >
                                   Ręcznie
                                 </Link>
@@ -494,7 +494,7 @@ export function SalesAdminClient({
                               ) : (
                                 <Link
                                   href="/admin/uzytkownicy"
-                                  className="inline-flex items-center rounded-lg px-3 py-1.5 text-xs font-medium text-slate-600 hover:bg-slate-100 hover:text-slate-900"
+                                  className="inline-flex items-center rounded-md px-3 py-1.5 text-xs font-medium text-slate-600 hover:bg-slate-100 hover:text-slate-900"
                                 >
                                   Konto
                                 </Link>

@@ -94,7 +94,7 @@ describe("procurement-daily-ui", () => {
     expect(s.overdueCount + s.todayCount).toBe(2);
     expect(s.forSomeoneGroupCount).toBe(1);
     expect(s.forSomeoneLineCount).toBe(1);
-    expect(countDailyPanelNavBadge(ws)).toBe(1);
+    expect(countDailyPanelNavBadge(ws)).toBe(3);
   });
 
   it("formatUrgentVacationHint opisuje wpływ urlopu", () => {
@@ -142,7 +142,7 @@ describe("procurement-daily-ui", () => {
     expect(formatPlannerNote("DO ZAMÓWIENIA DZIŚ")).toBe("DO ZAMÓWIENIA DZIŚ");
   });
 
-  it("countDailyPanelNavBadge nie liczy zaległych z harmonogramu", () => {
+  it("countDailyPanelNavBadge liczy zaległe z harmonogramu", () => {
     const today = new Date(2026, 4, 15);
     const ws = buildSummaryWorkspace(
       [supplier("a", "A", "2026-05-14")],
@@ -150,7 +150,7 @@ describe("procurement-daily-ui", () => {
       today
     );
     expect(summarizeDailyInbox(ws).overdueCount).toBe(1);
-    expect(countDailyPanelNavBadge(ws)).toBe(0);
+    expect(countDailyPanelNavBadge(ws)).toBe(1);
   });
 
   it("countDailyPanelNavBadge liczy informację z opcją panelu Dziś", () => {

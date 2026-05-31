@@ -1,5 +1,6 @@
 "use client";
 
+import { useCallback, useRef } from "react";
 import { cn } from "@/lib/cn";
 import {
   dailyPanelViewLabel,
@@ -20,21 +21,66 @@ export function DailyPanelTabs({
   weekCount,
   verificationCount = 0,
   exceptionsCount = 0,
+  hideVerificationBadge = false,
   onChange,
 }: {
   active: DailyPanelView;
   todayCount: number;
   weekCount: number;
-  /** Niekompletne zgłoszenia — badge na zakładce „Dziś”. */
   verificationCount?: number;
+  hideVerificationBadge?: boolean;
   exceptionsCount?: number;
   onChange: (view: DailyPanelView) => void;
 }) {
+  const tabRefs = useRef<Partial<Record<DailyPanelView, HTMLButtonElement | null>>>({});
+
+  const focusTab = useCallback((view: DailyPanelView) => {
+    tabRefs.current[view]?.focus();
+  }, []);
+
+  const handleKeyDown = useCallback(
+    (e: React.KeyboardEvent, id: DailyPanelView) => {
+      const idx = TAB_ORDER.indexOf(id);
+      if (idx < 0) return;
+
+      if (e.key === "ArrowRight") {
+        e.preventDefault();
+        const next = TAB_ORDER[(idx + 1) % TAB_ORDER.length]!;
+        onChange(next);
+        focusTab(next);
+        return;
+      }
+      if (e.key === "ArrowLeft") {
+        e.preventDefault();
+        const next = TAB_ORDER[(idx - 1 + TAB_ORDER.length) % TAB_ORDER.length]!;
+        onChange(next);
+        focusTab(next);
+        return;
+      }
+      if (e.key === "Home") {
+        e.preventDefault();
+        onChange(TAB_ORDER[0]!);
+        focusTab(TAB_ORDER[0]!);
+        return;
+      }
+      if (e.key === "End") {
+        e.preventDefault();
+        const last = TAB_ORDER[TAB_ORDER.length - 1]!;
+        onChange(last);
+        focusTab(last);
+      }
+    },
+    [onChange, focusTab]
+  );
+
   const counts: Record<DailyPanelView, number | undefined> = {
     dzis: todayCount,
     tydzien: weekCount,
     wyjatki: exceptionsCount > 0 ? exceptionsCount : undefined,
   };
+
+  const showVerificationChip =
+    !hideVerificationBadge && verificationCount > 0;
 
   return (
     <div
@@ -42,25 +88,29 @@ export function DailyPanelTabs({
       aria-label="Widoki panelu dziennego"
       className={cn(
         panelStickyTabsClass,
-        "flex gap-2 overflow-x-auto px-4 py-3 [-ms-overflow-style:none] [scrollbar-width:none] sm:px-6 [&::-webkit-scrollbar]:hidden"
+        "flex gap-2 overflow-x-auto px-4 py-2 [-ms-overflow-style:none] [scrollbar-width:none] sm:px-6 [&::-webkit-scrollbar]:hidden"
       )}
     >
       {TAB_ORDER.map((id) => {
         const selected = active === id;
         const count = counts[id];
-        const verificationBadge =
-          id === "dzis" && verificationCount > 0 ? verificationCount : 0;
+        const verificationBadge = id === "dzis" && showVerificationChip ? verificationCount : 0;
         return (
           <button
             key={id}
+            ref={(el) => {
+              tabRefs.current[id] = el;
+            }}
             type="button"
             role="tab"
             aria-selected={selected}
+            tabIndex={selected ? 0 : -1}
             id={`panel-tab-${id}`}
             aria-controls={`panel-view-${id}`}
             onClick={() => onChange(id)}
+            onKeyDown={(e) => handleKeyDown(e, id)}
             className={cn(
-              "flex min-h-10 shrink-0 items-center gap-2 rounded-xl border px-3.5 py-2 text-sm font-medium transition",
+              "flex min-h-9 shrink-0 items-center gap-2 rounded-md border px-3 py-1.5 text-sm font-medium transition",
               selected ? tabSelectedClass : panelTabIdleClass
             )}
           >
@@ -78,12 +128,12 @@ export function DailyPanelTabs({
             {verificationBadge > 0 ? (
               <span
                 className={cn(
-                  "rounded-full px-2 py-0.5 text-xs font-semibold tabular-nums",
+                  "rounded-full px-1.5 py-0.5 text-[10px] font-semibold tabular-nums",
                   selected ? "bg-amber-200 text-amber-950" : "bg-amber-100 text-amber-900"
                 )}
                 title="Zgłoszenia do uzupełnienia w weryfikacji"
               >
-                {verificationBadge} weryf.
+                {verificationBadge}
               </span>
             ) : null}
           </button>

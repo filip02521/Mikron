@@ -31,7 +31,7 @@ export function MobileSalesHeader({
       <button
         type="button"
         onClick={() => void signOut()}
-        className="relative min-h-10 shrink-0 cursor-pointer rounded-xl border border-slate-200/90 bg-white px-3 py-2 text-xs font-semibold text-slate-600 shadow-sm hover:bg-slate-50"
+        className="relative min-h-10 shrink-0 cursor-pointer rounded-md border border-slate-200/90 bg-white px-3 py-2 text-xs font-semibold text-slate-600 shadow-sm hover:bg-slate-50"
       >
         Wyloguj
       </button>

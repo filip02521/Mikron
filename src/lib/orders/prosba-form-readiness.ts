@@ -1,4 +1,5 @@
 import { hasAnyProductHint, hasValidOrderQuantity } from "@/lib/orders/request-completeness";
+import { PROCUREMENT_TEAM_LABEL } from "./procurement-copy";
 import type { SalesRequestSubmitPlan } from "@/lib/orders/sales-request-submit";
 import type { IndividualRequestKind } from "@/types/database";
 
@@ -121,7 +122,7 @@ export function buildProsbaFormReadiness(
     supplierStep = {
       ...supplierStep,
       state: "handoff",
-      detail: "Po wysłaniu: dopasuje dział dostaw",
+      detail: `Po wysłaniu: dopasuje ${PROCUREMENT_TEAM_LABEL}`,
     };
   }
 

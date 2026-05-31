@@ -55,7 +55,7 @@ export function HelpPopover({
         title={label}
         onClick={() => setOpen((v) => !v)}
         className={cn(
-          "inline-flex cursor-pointer items-center gap-1.5 rounded-xl border px-2.5 py-1.5 text-xs font-medium shadow-sm transition",
+          "inline-flex cursor-pointer items-center gap-1.5 rounded-md border px-2.5 py-1.5 text-xs font-medium shadow-sm transition",
           open
             ? "border-indigo-300 bg-indigo-50 text-indigo-800"
             : "border-slate-200 bg-white text-slate-600 hover:border-slate-300 hover:bg-slate-50",
@@ -76,7 +76,7 @@ export function HelpPopover({
           role="dialog"
           aria-label={title}
           className={cn(
-            "absolute top-full z-50 mt-2 max-h-[min(70vh,28rem)] w-[min(100vw-2rem,24rem)] overflow-y-auto rounded-xl border border-slate-200 bg-white p-4 text-sm text-slate-600 shadow-lg overscroll-contain",
+            "absolute top-full z-50 mt-2 max-h-[min(70vh,28rem)] w-[min(100vw-2rem,24rem)] overflow-y-auto rounded-md border border-slate-200 bg-white p-4 text-sm text-slate-600 shadow-lg overscroll-contain",
             align === "right" ? "right-0" : "left-0"
           )}
         >

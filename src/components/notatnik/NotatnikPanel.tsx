@@ -1,34 +1,38 @@
 import type { ReactNode } from "react";
+import { SectionListLabel } from "@/components/ui/SectionListLabel";
 import { cn } from "@/lib/cn";
-import { notatnikPanelClass } from "./notatnik-layout";
+import { mojeShipmentSectionShellClass } from "@/lib/ui/moje-shipment-row-styles";
+import { sectionIconTileBrandClass } from "@/lib/ui/ontime-theme";
 
 export function NotatnikPanel({
   title,
   description,
-  meta,
+  count,
+  icon,
+  tileClassName = sectionIconTileBrandClass,
   children,
   className,
   bodyClassName,
 }: {
   title: string;
   description?: string;
-  meta?: ReactNode;
+  count?: number;
+  icon: ReactNode;
+  tileClassName?: string;
   children: ReactNode;
   className?: string;
   bodyClassName?: string;
 }) {
   return (
-    <section className={notatnikPanelClass(className)}>
-      <header className="flex items-start justify-between gap-3 border-b border-slate-100 px-4 py-3">
-        <div className="min-w-0">
-          <h2 className="text-sm font-semibold tracking-tight text-slate-900">{title}</h2>
-          {description ? (
-            <p className="mt-0.5 text-xs leading-snug text-slate-500">{description}</p>
-          ) : null}
-        </div>
-        {meta ? <div className="shrink-0 text-xs text-slate-500">{meta}</div> : null}
-      </header>
-      <div className={cn("p-4", bodyClassName)}>{children}</div>
+    <section className={cn(mojeShipmentSectionShellClass, className)}>
+      <SectionListLabel
+        title={title}
+        hint={description}
+        count={count}
+        icon={icon}
+        tileClassName={tileClassName}
+      />
+      <div className={cn("p-3 sm:p-4", bodyClassName)}>{children}</div>
     </section>
   );
 }

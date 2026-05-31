@@ -65,14 +65,14 @@ export function salesTeamPageCopy(
       return {
         title: "Podgląd zespołu",
         description:
-          "Handlowcy w grupach — podgląd panelu i składanie prośb w ich imieniu.",
+          "Handlowcy w grupach — podgląd prośb i składanie w ich imieniu.",
       };
     }
     if (!ctx.hasTeamScope) {
       return {
         title: "Podgląd zespołu",
         description:
-          "Administrator musi przypisać Ci grupy (Sklep, Biuro itd.) w panelu Użytkownicy.",
+          "Poproś administratora o przypisanie grup (np. Sklep, Biuro) do Twojego konta.",
       };
     }
     return {

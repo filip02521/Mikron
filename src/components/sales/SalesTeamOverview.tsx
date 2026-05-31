@@ -42,7 +42,7 @@ function SalesPersonCard({
             <dd className="font-semibold tabular-nums text-slate-900">{row.orderCount}</dd>
           </div>
           <div>
-            <dt className="text-slate-500">ZK na zapłatę</dt>
+            <dt className="text-slate-500">Czeka na towar</dt>
             <dd className="font-semibold tabular-nums text-slate-900">
               {row.pendingZkCount > 0 ? (
                 <Link
@@ -57,17 +57,17 @@ function SalesPersonCard({
             </dd>
           </div>
           <div>
-            <dt className="text-slate-500">Po terminie</dt>
+            <dt className="text-slate-500">Przypomnienia</dt>
             <dd className="font-semibold tabular-nums text-slate-900">
-              {row.overdueZkCount > 0 ? (
+              {row.followUpDueZkCount > 0 ? (
                 <Link
                   href={`/notatnik?dla=${row.id}`}
-                  className="text-red-700 underline decoration-red-200 underline-offset-2 hover:text-red-900"
+                  className="text-violet-800 underline decoration-violet-200 underline-offset-2 hover:text-violet-950"
                 >
-                  {row.overdueZkCount}
+                  {row.followUpDueZkCount}
                 </Link>
               ) : (
-                row.overdueZkCount
+                row.followUpDueZkCount
               )}
             </dd>
           </div>
@@ -81,7 +81,7 @@ function SalesPersonCard({
         <div className="flex flex-wrap gap-2">
           <Link href={`/moje?dla=${row.id}`}>
             <Button size="sm" variant={isSelf ? "primary" : "secondary"}>
-              {isSelf ? "Mój panel" : "Podgląd panelu"}
+              {isSelf ? "Moje zamówienia" : "Zobacz prośby"}
             </Button>
           </Link>
           <Link href={`/notatnik?dla=${row.id}`}>
@@ -136,19 +136,19 @@ export function SalesTeamOverview({
   }
 
   const sections = groupSalesPeopleForTeamView(rows, groups);
-  const totalOverdue = rows.reduce((sum, row) => sum + row.overdueZkCount, 0);
+  const totalFollowUpDue = rows.reduce((sum, row) => sum + row.followUpDueZkCount, 0);
   const totalPending = rows.reduce((sum, row) => sum + row.pendingZkCount, 0);
 
   return (
     <div className="space-y-8">
       {totalPending > 0 ? (
-        <div className="flex flex-wrap items-center gap-2 rounded-xl border border-amber-100 bg-amber-50/70 px-4 py-3 text-sm text-amber-950">
+        <div className="flex flex-wrap items-center gap-2 rounded-md border border-amber-100 bg-amber-50/70 px-4 py-3 text-sm text-amber-950">
           <span className="font-medium">
-            Zespół: {totalPending} {totalPending === 1 ? "ZK czeka" : "ZK czeka"} na zapłatę
+            Zespół: {totalPending} {totalPending === 1 ? "ZK czeka" : "ZK czeka"} na towar
           </span>
-          {totalOverdue > 0 ? (
-            <Badge variant="danger" className="text-[10px]">
-              {totalOverdue} po terminie
+          {totalFollowUpDue > 0 ? (
+            <Badge variant="purple" className="text-[10px]">
+              {totalFollowUpDue} przypomnienie{totalFollowUpDue === 1 ? "" : totalFollowUpDue < 5 ? "a" : "ń"}
             </Badge>
           ) : null}
         </div>
@@ -158,7 +158,10 @@ export function SalesTeamOverview({
         const title = section.group?.name ?? "Bez grupy";
         const key = section.group?.id ?? "unassigned";
         const sectionPending = section.rows.reduce((sum, row) => sum + row.pendingZkCount, 0);
-        const sectionOverdue = section.rows.reduce((sum, row) => sum + row.overdueZkCount, 0);
+        const sectionFollowUpDue = section.rows.reduce(
+          (sum, row) => sum + row.followUpDueZkCount,
+          0
+        );
 
         return (
           <section key={key} className="space-y-3">
@@ -167,13 +170,14 @@ export function SalesTeamOverview({
                 <h2 className="text-sm font-semibold uppercase tracking-wide text-slate-700">
                   {title}
                 </h2>
-                {sectionOverdue > 0 ? (
-                  <Badge variant="danger" className="text-[10px]">
-                    {sectionOverdue} ZK po terminie
+                {sectionFollowUpDue > 0 ? (
+                  <Badge variant="purple" className="text-[10px]">
+                    {sectionFollowUpDue} przypomnienie
+                    {sectionFollowUpDue === 1 ? "" : sectionFollowUpDue < 5 ? "a" : "ń"}
                   </Badge>
                 ) : sectionPending > 0 ? (
                   <Badge variant="warning" className="text-[10px]">
-                    {sectionPending} ZK na zapłatę
+                    {sectionPending} ZK na towar
                   </Badge>
                 ) : null}
               </div>

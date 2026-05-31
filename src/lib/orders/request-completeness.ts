@@ -67,10 +67,10 @@ export function completenessUserHint(
         requestKind === "informacja"
           ? options?.audience === "procurement"
             ? "Można zapisać — trafi do kolejki informacji."
-            : "Trafia do działu dostaw bez dodatkowej weryfikacji."
+            : "Trafia do działu zakupów bez dodatkowej weryfikacji."
           : options?.audience === "procurement"
-            ? "Dostawca, produkt i ilość są podane — można zapisać do panelu dziennego."
-            : "Dostawca, produkt i ilość są podane — trafia do panelu dziennego.",
+            ? "Dostawca, produkt i ilość są podane — można zapisać do listy na dziś."
+            : "Dostawca, produkt i ilość są podane — trafia od razu do realizacji.",
     };
   }
   const missingQty =
@@ -86,10 +86,10 @@ export function completenessUserHint(
   }
   return {
     tone: "warning",
-    title: "Wymaga weryfikacji przez dział dostaw",
+    title: "Wymaga weryfikacji przez dział zakupów",
     detail: missingQty
-      ? "Podaj ilość (liczba sztuk, np. 1), dostawcę oraz opis produktu — bez tego dział dostaw nie wie, ile zamówić."
-      : "Podaj dostawcę oraz opis produktu (symbol lub nazwa). Zakupy uzupełnią brakujące dane.",
+      ? "Podaj ilość (liczba sztuk, np. 1), dostawcę oraz opis produktu — bez tego nie wiemy, ile zamówić."
+      : "Podaj dostawcę oraz opis produktu (symbol lub nazwa). Dział zakupów uzupełni brakujące dane.",
   };
 }
 

@@ -176,7 +176,7 @@ function SalesSupplierRow({
 
       {expanded ? (
         <div className="border-t border-indigo-200/50 bg-white/60 px-3 pb-3 pt-2 sm:px-4 sm:pb-3.5">
-          <div className="rounded-lg border border-slate-200 bg-white p-3 shadow-sm">
+          <div className="rounded-md border border-slate-200 bg-white p-3 shadow-sm">
             <div className="border-b border-slate-100 pb-2.5">
               <p className="text-[0.65rem] font-semibold uppercase tracking-wide text-slate-500">
                 Kolejne zamówienie u dostawcy
@@ -248,7 +248,7 @@ function ProcurementPlanBlock({
       <button
         type="button"
         onClick={() => onOpenChange(!open)}
-        className="flex w-full cursor-pointer items-start gap-3 rounded-xl border border-slate-200 bg-slate-50/50 px-3.5 py-3 text-left transition hover:border-slate-300 hover:bg-slate-50"
+        className="flex w-full cursor-pointer items-start gap-3 rounded-md border border-slate-200 bg-slate-50/50 px-3.5 py-3 text-left transition hover:border-slate-300 hover:bg-slate-50"
         aria-expanded={open}
       >
         <SectionHeadingIcon tileClassName={planSectionIconTileClass("calendar")}>
@@ -284,12 +284,14 @@ export function SalesPlanView({
   statsBySupplierId,
   prioritySupplierIds,
   openOrderCountBySupplier,
+  tourPreview = false,
 }: {
   workspace: SummaryWorkspaceData;
   suppliers: SupplierWithSchedule[];
   statsBySupplierId: Record<string, DeliveryStats>;
   prioritySupplierIds: string[];
   openOrderCountBySupplier: Record<string, number>;
+  tourPreview?: boolean;
 }) {
   const [query, setQuery] = useState("");
   const [showProcurementPlan, setShowProcurementPlan] = useState(false);
@@ -344,11 +346,13 @@ export function SalesPlanView({
           action={<PlanGuide />}
         />
 
-        <ProcurementPlanBlock
-          open={showProcurementPlan}
-          onOpenChange={setShowProcurementPlan}
-          days={workspace.thisWeekDays}
-        />
+        {!tourPreview ? (
+          <ProcurementPlanBlock
+            open={showProcurementPlan}
+            onOpenChange={setShowProcurementPlan}
+            days={workspace.thisWeekDays}
+          />
+        ) : null}
 
         <div className="border-b border-slate-100 px-4 py-5 sm:px-6">
           <ProsbaFormSection

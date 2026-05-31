@@ -89,7 +89,7 @@ function ArchivedNoteCard({
   return (
     <article
       className={cn(
-        "flex w-full flex-col rounded-lg border p-2.5 text-xs opacity-90 sm:p-3",
+        "flex w-full flex-col rounded-md border p-2.5 text-xs opacity-90 sm:p-3",
         NOTE_COLOR_CARD[note.color] ?? NOTE_COLOR_CARD.default
       )}
     >

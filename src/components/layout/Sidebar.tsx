@@ -26,34 +26,35 @@ import {
   navIconKeyFromHref,
   navIconTileIdleClass,
 } from "@/components/icons/NavIcon";
+import { useSalesOnboardingOptional } from "@/components/sales/SalesOnboardingContext";
 
 function NavLink({
   item,
   active,
   showDot,
+  locked,
 }: {
   item: NavItem;
   active: boolean;
   showDot: boolean;
+  locked?: boolean;
 }) {
   const hasBadge = item.badge != null && item.badge > 0;
   const isVerificationNav = item.href === "/weryfikacja";
   const iconKey = navIconKeyFromHref(item.href);
 
-  return (
-    <Link
-      href={item.href}
-      className={cn(
-        "group block rounded-lg px-3 py-2.5 transition-colors",
-        active ? navLinkActiveClass : navLinkIdleClass
-      )}
-      aria-current={active ? "page" : undefined}
-    >
-      <span className="flex items-start justify-between gap-2">
+  const className = cn(
+    "group block rounded-md px-3 py-2.5 transition-colors",
+    active ? navLinkActiveClass : navLinkIdleClass,
+    locked && !active && "cursor-not-allowed opacity-45 hover:bg-transparent hover:text-inherit"
+  );
+
+  const content = (
+    <span className="flex items-start justify-between gap-2">
         <span className="flex min-w-0 flex-1 items-start gap-2.5">
           <span
             className={cn(
-              "mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-lg transition-colors",
+              "mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-md transition-colors",
               active
                 ? "bg-white/15 text-white"
                 : cn(navIconTileIdleClass(iconKey), "group-hover:opacity-90")
@@ -105,6 +106,23 @@ function NavLink({
           ) : null}
         </span>
       </span>
+  );
+
+  if (locked && !active) {
+    return (
+      <span
+        className={className}
+        aria-disabled="true"
+        title="Dokończ wprowadzenie — użyj przycisku Dalej w panelu touru"
+      >
+        {content}
+      </span>
+    );
+  }
+
+  return (
+    <Link href={item.href} className={className} aria-current={active ? "page" : undefined}>
+      {content}
     </Link>
   );
 }
@@ -112,9 +130,11 @@ function NavLink({
 function NavSection({
   group,
   isFirst,
+  navLocked,
 }: {
   group: NavGroup;
   isFirst: boolean;
+  navLocked: boolean;
 }) {
   const pathname = usePathname();
   const salesUpdates = useSalesUpdates();
@@ -133,7 +153,7 @@ function NavSection({
 
           return (
             <li key={item.href}>
-              <NavLink item={item} active={active} showDot={showDot} />
+              <NavLink item={item} active={active} showDot={showDot} locked={navLocked} />
             </li>
           );
         })}
@@ -157,9 +177,11 @@ export function Sidebar({
     realizacja?: number;
     salesMoje?: number;
     salesNotatnik?: number;
+    adminBugReports?: number;
   };
 }) {
   const router = useRouter();
+  const navLocked = useSalesOnboardingOptional()?.navLocked ?? false;
   const groups = role ? navForRole(role, navBadges) : [];
 
   async function signOut() {
@@ -181,9 +203,9 @@ export function Sidebar({
         <SidebarBrandBlock role={role} userEmail={userEmail} />
       </header>
 
-      <nav className={brandSidebarNavScroll}>
+      <nav className={cn(brandSidebarNavScroll, navLocked && "opacity-80")}>
         {groups.map((g, index) => (
-          <NavSection key={g.title} group={g} isFirst={index === 0} />
+          <NavSection key={g.title} group={g} isFirst={index === 0} navLocked={navLocked} />
         ))}
       </nav>
 
@@ -192,7 +214,7 @@ export function Sidebar({
           <Link
             href="/login"
             className={cn(
-              "inline-flex w-full min-h-10 items-center justify-center rounded-xl px-4 py-2.5 text-sm font-medium transition-colors",
+              "inline-flex w-full min-h-10 items-center justify-center rounded-md px-4 py-2.5 text-sm font-medium transition-colors",
               buttonPrimaryClass
             )}
           >
@@ -203,7 +225,7 @@ export function Sidebar({
             <button
               type="button"
               onClick={() => void signOut()}
-              className="w-full min-h-10 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-medium text-slate-600 shadow-sm transition hover:border-slate-300 hover:bg-slate-50"
+              className="w-full min-h-10 rounded-md border border-slate-200 bg-white px-4 py-2.5 text-sm font-medium text-slate-600 shadow-sm transition hover:border-slate-300 hover:bg-slate-50"
             >
               Wyloguj
             </button>

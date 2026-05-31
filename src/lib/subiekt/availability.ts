@@ -27,9 +27,9 @@ function notConfiguredAvailability(): SubiektAvailability {
     configured: false,
     reachable: false,
     checkedAt: Date.now(),
-    shortLabel: "Subiekt: wyłączony",
+    shortLabel: "System magazynowy: wyłączony",
     message:
-      "Integracja nie jest skonfigurowana — terminy z dokumentów ZD nie są pobierane, zostają szacunki z historii dostaw.",
+      "Połączenie z systemem magazynowym nie jest skonfigurowane — szacunki terminów pochodzą z historii dostaw.",
   };
 }
 
@@ -38,7 +38,7 @@ function offlineAvailability(message: string): SubiektAvailability {
     configured: true,
     reachable: false,
     checkedAt: Date.now(),
-    shortLabel: "Subiekt: offline",
+    shortLabel: "System magazynowy: niedostępny",
     message,
   };
 }
@@ -50,8 +50,8 @@ function onlineAvailability(durationMs?: number): SubiektAvailability {
     configured: true,
     reachable: true,
     checkedAt: Date.now(),
-    shortLabel: "Subiekt: połączony",
-    message: `Połączenie z Subiektem działa${ms} — terminy ZD (tylko u powiązanego dostawcy) odświeżamy co ok. 2 godziny.`,
+    shortLabel: "System magazynowy: połączony",
+    message: `Połączenie działa${ms} — dane produktów odświeżamy co ok. 2 godziny.`,
   };
 }
 
@@ -82,7 +82,7 @@ export async function getSubiektAvailability(options?: {
     ? onlineAvailability(result.durationMs)
     : offlineAvailability(
         result.message ??
-          "Subiekt niedostępny (poza siecią firmową lub API wyłączone) — terminy bez ZD, zostają szacunki z historii dostaw.",
+          "System magazynowy niedostępny (poza siecią firmową) — szacunki terminów pochodzą z historii dostaw.",
       );
 
   cache = { at: now, value };

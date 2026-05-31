@@ -2,9 +2,8 @@ export function HowItWorksContent() {
   return (
     <ol className="list-decimal space-y-2 pl-4 text-sm leading-relaxed text-slate-600">
       <li>
-        <strong className="text-slate-800">Dziś</strong> — kolejka: zaległe → prośby
-        (przytrzymaj Główne / Uzupełniające) → na dziś. Pasek postępu sumuje harmonogram i
-        prośby.
+        <strong className="text-slate-800">Dziś</strong> — kolejka: zaległe → prośby → na dziś.
+        Pasek postępu sumuje harmonogram i prośby.
       </li>
       <li>
         <strong className="text-slate-800">Tydzień</strong> — plan pon.–pt., to samo kliknięcie{" "}
@@ -36,7 +35,7 @@ export function HowItWorksContent() {
 /** Zachowane dla ewentualnego użycia poza panelem dziennym. */
 export function HowItWorks() {
   return (
-    <details className="group rounded-2xl border border-slate-200/90 bg-white shadow-sm open:shadow-md">
+    <details className="group rounded-lg border border-slate-200/90 bg-white shadow-sm open:shadow-md">
       <summary className="cursor-pointer list-none px-6 py-4 text-sm font-semibold text-slate-900 marker:content-none [&::-webkit-details-marker]:hidden">
         <span className="flex items-center justify-between gap-2">
           Jak działa panel dzienny?

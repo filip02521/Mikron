@@ -70,6 +70,23 @@ export interface SalesPerson {
   group_id?: string | null;
 }
 
+export type SalesBugReportStatus = "open" | "triaged" | "closed";
+
+export interface SalesBugReport {
+  id: string;
+  profile_id: string;
+  sales_person_id: string | null;
+  reporter_name: string;
+  reporter_email: string | null;
+  page_path: string;
+  message: string;
+  user_agent: string | null;
+  status: SalesBugReportStatus;
+  admin_note: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
 export interface IndividualOrder {
   id: string;
   supplier_id: string | null;
@@ -131,7 +148,7 @@ export interface SalesNote {
   updated_at: string;
 }
 
-export interface SalesPaymentWatch {
+export interface SalesZkWatch {
   id: string;
   sales_person_id: string;
   subiekt_dok_id: number;
@@ -141,12 +158,11 @@ export interface SalesPaymentWatch {
   amount_net: number | null;
   amount_gross: number | null;
   zk_issued_at: string | null;
-  due_at: string | null;
   note: string | null;
   line_summary: string | null;
   subiekt_snapshot: Record<string, unknown> | null;
   follow_up_at: string | null;
-  settled_at: string | null;
+  closed_at: string | null;
   archived_at: string | null;
   created_at: string;
   updated_at: string;

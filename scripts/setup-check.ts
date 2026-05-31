@@ -79,7 +79,7 @@ async function main() {
         env.NEXT_PUBLIC_SUPABASE_URL,
         env.SUPABASE_SERVICE_ROLE_KEY
       );
-      const tables = ["suppliers", "sales_people", "profiles"] as const;
+      const tables = ["suppliers", "sales_people", "profiles", "sales_bug_reports"] as const;
       for (const t of tables) {
         const { error, count } = await supabase
           .from(t)

@@ -1,4 +1,4 @@
--- Notatnik handlowca: własne notatki + obserwowane ZK (oczekujące na zapłatę).
+-- Notatnik handlowca: własne notatki + obserwowane ZK (oczekujące na towar).
 
 CREATE TABLE sales_notes (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),

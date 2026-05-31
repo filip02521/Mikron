@@ -115,7 +115,7 @@ export function ProsbaFormReadiness({
 
   return (
     <div
-      className={cn("overflow-hidden rounded-xl border shadow-sm", styles.shell, className)}
+      className={cn("overflow-hidden rounded-md border shadow-sm", styles.shell, className)}
       aria-live="polite"
     >
       {formMessage ? (

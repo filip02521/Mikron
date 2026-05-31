@@ -1,8 +1,8 @@
 import { describe, expect, it } from "vitest";
 import { collectNotepadTodayTasks } from "./notepad-today-tasks";
-import type { SalesNote, SalesPaymentWatch } from "@/types/database";
+import type { SalesNote, SalesZkWatch } from "@/types/database";
 
-const watch = (partial: Partial<SalesPaymentWatch>): SalesPaymentWatch => ({
+const watch = (partial: Partial<SalesZkWatch>): SalesZkWatch => ({
   id: "w1",
   sales_person_id: "sp1",
   subiekt_dok_id: 1,
@@ -12,12 +12,11 @@ const watch = (partial: Partial<SalesPaymentWatch>): SalesPaymentWatch => ({
   amount_net: null,
   amount_gross: 100,
   zk_issued_at: null,
-  due_at: "2026-05-01",
   note: null,
   line_summary: null,
   subiekt_snapshot: null,
   follow_up_at: null,
-  settled_at: null,
+  closed_at: null,
   archived_at: null,
   created_at: "",
   updated_at: "",
@@ -39,13 +38,13 @@ const note = (partial: Partial<SalesNote>): SalesNote => ({
 });
 
 describe("collectNotepadTodayTasks", () => {
-  it("zbiera ZK po terminie i notatki z follow-up", () => {
+  it("zbiera ZK z przypomnieniem i notatki z follow-up", () => {
     const today = new Date();
     const iso = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`;
     const tasks = collectNotepadTodayTasks(
-      [watch({ id: "w-over", due_at: "2026-01-01" })],
+      [watch({ id: "w-fu", follow_up_at: iso })],
       [note({ id: "n-fu", follow_up_at: iso })]
     );
-    expect(tasks.map((t) => t.kind)).toEqual(["zk-overdue", "note-follow-up"]);
+    expect(tasks.map((t) => t.kind)).toEqual(["zk-follow-up", "note-follow-up"]);
   });
 });

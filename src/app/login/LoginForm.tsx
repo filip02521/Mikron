@@ -3,12 +3,10 @@
 import { useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { runLoginFlow } from "@/lib/auth/login-flow";
+import { loginSessionLostMessage } from "@/lib/auth/login-messages";
 import { Button } from "@/components/ui/Button";
 import { Field, Input } from "@/components/ui/Field";
 import { Alert } from "@/components/ui/Alert";
-
-const SESSION_LOST_MSG =
-  "Sesja wygasła lub nie została zapisana. Na telefonie używaj adresu IP z .env (np. http://192.168.68.51:3000), zezwól na ciasteczka i dodaj ten adres w Supabase → URL Configuration.";
 
 export function LoginForm() {
   const searchParams = useSearchParams();
@@ -21,7 +19,7 @@ export function LoginForm() {
 
   useEffect(() => {
     if (reason === "session") {
-      setError(SESSION_LOST_MSG);
+      setError(loginSessionLostMessage());
     }
   }, [reason]);
 
@@ -44,7 +42,7 @@ export function LoginForm() {
   return (
     <form onSubmit={onSubmit} className="space-y-5" noValidate>
       <noscript>
-        <p className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900">
+        <p className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900">
           Do logowania wymagany jest JavaScript w przeglądarce.
         </p>
       </noscript>

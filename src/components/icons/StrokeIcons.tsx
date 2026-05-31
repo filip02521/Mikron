@@ -297,6 +297,19 @@ export function IconGripVertical(props: StrokeIconProps) {
   );
 }
 
+/** Przytrzymaj — potwierdzenie (prośby indywidualne). */
+export function IconHoldPress(props: StrokeIconProps) {
+  return (
+    <Svg viewBox="0 0 24 24" {...props}>
+      <path d="M10 4v6.5" />
+      <path d="M13 6a2 2 0 00-2 2v4.5" />
+      <path d="M10 10.5V14" />
+      <path d="M7.5 14h6.5" />
+      <path d="M6 19.5h12" />
+    </Svg>
+  );
+}
+
 export function IconChevronDown({
   open,
   className,

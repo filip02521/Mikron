@@ -15,10 +15,10 @@ export function ManagerPreviewBanner({
     <Alert tone="info" className="mb-6">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <p>
-          Podgląd {notatnikPreview ? "notatnika" : "panelu handlowca"}:{" "}
+          Podgląd {notatnikPreview ? "notatnika" : "prośb handlowca"}:{" "}
           <span className="font-semibold text-slate-900">{salesPersonName}</span>.
           {notatnikPreview
-            ? " Edycja dostępna tylko na własnym koncie."
+            ? " Edycja dostępna tylko we własnym notatniku."
             : " Potwierdzenie odbioru i archiwum są dostępne tylko na własnym koncie."}
         </p>
         <div className="flex shrink-0 flex-wrap gap-2">
@@ -37,7 +37,7 @@ export function ManagerPreviewBanner({
           )}
           <Link href={notatnikPreview ? "/notatnik" : "/moje"}>
             <Button size="sm" variant="outline">
-              {notatnikPreview ? "Mój notatnik" : "Mój panel"}
+              {notatnikPreview ? "Mój notatnik" : "Moje zamówienia"}
             </Button>
           </Link>
         </div>

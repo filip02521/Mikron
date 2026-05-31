@@ -34,7 +34,7 @@ export function UndoToast({
       role="status"
       aria-live="polite"
       className={cn(
-        "fixed z-[60] flex max-w-[min(100vw-1.5rem,28rem)] flex-col gap-2 rounded-xl border px-4 py-3 text-sm font-medium shadow-lg",
+        "fixed z-[60] flex max-w-[min(100vw-1.5rem,28rem)] flex-col gap-2 rounded-md border px-4 py-3 text-sm font-medium shadow-lg",
         floatingToastBottomClass,
         "left-4 right-4 sm:left-auto sm:right-6",
         tone === "success"

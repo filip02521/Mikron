@@ -1,12 +1,7 @@
-import type { SalesNote, SalesPaymentWatch } from "@/types/database";
+import type { SalesNote, SalesZkWatch } from "@/types/database";
 import { isFollowUpDue, formatFollowUpLabel } from "@/lib/sales/notepad-follow-up";
-import { isPaymentWatchOverdue } from "@/lib/sales/payment-watch-sort";
-import { formatPln } from "@/lib/sales/notepad-format";
 
-export type NotepadTodayTaskKind =
-  | "zk-overdue"
-  | "zk-follow-up"
-  | "note-follow-up";
+export type NotepadTodayTaskKind = "zk-follow-up" | "note-follow-up";
 
 export type NotepadTodayTask = {
   kind: NotepadTodayTaskKind;
@@ -19,44 +14,30 @@ export type NotepadTodayTask = {
 
 function taskPriority(kind: NotepadTodayTaskKind): number {
   switch (kind) {
-    case "zk-overdue":
-      return 0;
     case "zk-follow-up":
-      return 1;
+      return 0;
     case "note-follow-up":
-      return 2;
+      return 1;
   }
 }
 
 export function collectNotepadTodayTasks(
-  watches: SalesPaymentWatch[],
+  watches: SalesZkWatch[],
   notes: SalesNote[]
 ): NotepadTodayTask[] {
   const tasks: NotepadTodayTask[] = [];
 
   for (const watch of watches) {
-    if (watch.settled_at || watch.archived_at) continue;
-    if (isPaymentWatchOverdue(watch)) {
-      tasks.push({
-        kind: "zk-overdue",
-        id: watch.id,
-        anchor: `watch-${watch.id}`,
-        title: watch.zk_number,
-        subtitle: `${watch.client_label} · ${formatPln(watch.amount_gross)} · po terminie płatności`,
-        priority: taskPriority("zk-overdue"),
-      });
-      continue;
-    }
-    if (isFollowUpDue(watch.follow_up_at)) {
-      tasks.push({
-        kind: "zk-follow-up",
-        id: watch.id,
-        anchor: `watch-${watch.id}`,
-        title: watch.zk_number,
-        subtitle: `${watch.client_label} · przypomnienie ${formatFollowUpLabel(watch.follow_up_at) ?? ""}`.trim(),
-        priority: taskPriority("zk-follow-up"),
-      });
-    }
+    if (watch.closed_at || watch.archived_at) continue;
+    if (!isFollowUpDue(watch.follow_up_at)) continue;
+    tasks.push({
+      kind: "zk-follow-up",
+      id: watch.id,
+      anchor: `watch-${watch.id}`,
+      title: watch.zk_number,
+      subtitle: `${watch.client_label} · przypomnienie ${formatFollowUpLabel(watch.follow_up_at) ?? ""}`.trim(),
+      priority: taskPriority("zk-follow-up"),
+    });
   }
 
   for (const note of notes) {
@@ -77,7 +58,7 @@ export function collectNotepadTodayTasks(
 }
 
 export function hasNotepadTodayTasks(
-  watches: SalesPaymentWatch[],
+  watches: SalesZkWatch[],
   notes: SalesNote[]
 ): boolean {
   return collectNotepadTodayTasks(watches, notes).length > 0;

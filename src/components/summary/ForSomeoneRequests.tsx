@@ -10,8 +10,6 @@ import { locationLabel } from "@/lib/display-labels";
 import { actionProcessIndividual } from "@/app/actions/admin";
 import { Card, CardHeader } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
-import { ButtonGroup } from "@/components/ui/ButtonGroup";
-import { HoldToConfirmButton } from "@/components/ui/HoldToConfirmButton";
 import { Badge } from "@/components/ui/Badge";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { HelpPopover } from "@/components/ui/HelpPopover";
@@ -20,18 +18,20 @@ import { Kbd } from "@/components/ui/Kbd";
 import type { DailyPanelRunFn } from "@/components/summary/useDailyPanelRunner";
 import type { DeliveryStats, StatsMode } from "@/types/database";
 import { formatSupplierLeadTimeBrief } from "@/lib/orders/delivery-eta";
-import { ProcurementRequestLine } from "@/components/summary/ProcurementRequestLine";
+import { ProcurementRequestLine, ProcurementRequestLineInline } from "@/components/summary/ProcurementRequestLine";
 import {
   EditIndividualRequestModal,
   type EditIndividualRequestInitial,
 } from "@/components/orders/EditIndividualRequestModal";
 import { editInitialFromForSomeoneGroup } from "@/lib/orders/individual-request-edit-ui";
-import { RequestGroupOverflowMenu } from "@/components/summary/RequestGroupOverflowMenu";
+import { IndividualRequestActionBar } from "@/components/summary/IndividualRequestActionBar";
 import {
   DailyPanelSubsectionBar,
   dailyPanelQueueShellClass,
 } from "@/components/summary/DailyPanelSubsectionBar";
 import { cn } from "@/lib/cn";
+import { PanelRowActionsInlineEnd } from "@/components/summary/PanelRowActionsInlineEnd";
+import { panelRowClearFocusOnLeave, panelRowGroupClass } from "@/lib/ui/panel-row-actions-reveal";
 import { panelNameLinkClass, rowPendingRingClass } from "@/lib/ui/ontime-theme";
 import { INFORMACJA_FLOW_PROCUREMENT_GROUP_BANNER } from "@/lib/orders/informacja-flow-copy";
 import { InformacjaFlowLegend } from "@/components/orders/InformacjaFlowLegend";
@@ -54,22 +54,27 @@ function SectionHelp() {
   return (
     <HelpPopover label="Jak obsłużyć" title="Prośby handlowców" shortLabel="Pomoc">
       <p className="mb-2">
+        Na komputerze najedź na wiersz prośby — pojawią się przyciski Główne / Uzupełniające.
+        Produkty są widoczne cały czas (jeden inline, więcej — przycisk „Produkty”).
+        Na tablecie i telefonie przyciski akcji są widoczne cały czas.
+      </p>
+      <p className="mb-2">
         <strong className="font-medium text-slate-800">Główne</strong> — zamówienie z planem
         dostawcy. <strong className="font-medium text-slate-800">Uzupełniające</strong> — osobne
         domówienie poza planem.
       </p>
       <p className="mb-2">
-        <strong className="font-medium text-slate-800">Przytrzymaj</strong> wybrany przycisk ok.
-        0,7 s — albo użyj <Kbd>Shift</Kbd>+<Kbd>G</Kbd> / <Kbd>Shift</Kbd>+<Kbd>U</Kbd> na
-        zaznaczonej grupie.
+        Kliknij <strong className="font-medium text-slate-800">Główne</strong> lub{" "}
+        <strong className="font-medium text-slate-800">Uzupełniające</strong> — albo skróty{" "}
+        <Kbd>Shift</Kbd>+<Kbd>G</Kbd> / <Kbd>Shift</Kbd>+<Kbd>U</Kbd> na zaznaczonej grupie (
+        <Kbd>↑</Kbd>/<Kbd>↓</Kbd>).
       </p>
       <KeyboardShortcutsHint items={[...FOR_SOMEONE_KEYBOARD_HINTS]} className="mb-2" />
       <p className="mb-2">
-        Przy produkcie: <strong className="text-emerald-800">✓</strong> — wybrano z kartoteki
-        Subiekt; <strong className="text-slate-600">✎</strong> — wpis ręczny (bez powiązania z
-        Subiektem).
+        Przy produkcie: <strong className="text-emerald-800">✓</strong> — produkt z bazy;{" "}
+        <strong className="text-slate-600">✎</strong> — wpis ręczny.
       </p>
-      <p>Rozwiń kartę, aby zobaczyć listę produktów. Przy dostawcy z historią widać skrócony szacunek czasu dostawy.</p>
+      <p>Rozwiń grupę z wieloma produktami, aby zobaczyć pełną listę. Przy dostawcy z historią widać skrócony szacunek czasu dostawy.</p>
     </HelpPopover>
   );
 }
@@ -101,37 +106,21 @@ export function ForSomeoneRequests({
 }) {
   const sorted = useMemo(() => sortForSomeoneGroups(groups), [groups]);
   const keys = useMemo(() => sorted.map(groupKey), [sorted]);
-
-  const defaultExpandedKeys = useMemo(() => {
-    const next = new Set<string>();
-    if (sorted.length === 1) {
-      next.add(groupKey(sorted[0]!));
-      return next;
-    }
-    for (const g of sorted) {
-      if (g.lines.some((l) => l.informacjaViaPanel) || g.lines.length <= 1) {
-        next.add(groupKey(g));
-      }
-    }
-    return next;
-  }, [sorted]);
+  const multiLineKeys = useMemo(
+    () => sorted.filter((g) => g.lines.length >= 2).map(groupKey),
+    [sorted]
+  );
 
   const [expanded, setExpanded] = useState<Set<string>>(() => new Set());
 
-  useEffect(() => {
-    setExpanded((prev) => {
-      if (prev.size > 0) return prev;
-      return new Set(defaultExpandedKeys);
-    });
-  }, [defaultExpandedKeys]);
-
-  const allExpanded = keys.length > 0 && keys.every((k) => expanded.has(k));
+  const allExpanded =
+    multiLineKeys.length > 0 && multiLineKeys.every((k) => expanded.has(k));
 
   const setAll = useCallback(
     (open: boolean) => {
-      setExpanded(open ? new Set(keys) : new Set());
+      setExpanded(open ? new Set(multiLineKeys) : new Set());
     },
-    [keys]
+    [multiLineKeys]
   );
 
   const lineCount = groups.reduce((n, g) => n + g.lines.length, 0);
@@ -180,6 +169,7 @@ export function ForSomeoneRequests({
       const ui = enrichForSomeoneGroup(group);
 
       if (e.key === "Enter") {
+        if (group.lines.length < 2) return;
         e.preventDefault();
         setExpanded((prev) => {
           const next = new Set(prev);
@@ -254,12 +244,13 @@ export function ForSomeoneRequests({
       tone="prosby"
       step={queueStep}
       count={groups.length}
-      description={`Prośby w kolejce dnia · ${groups.length} ${groups.length === 1 ? "grupa" : "grup"} · ${lineCount} ${lineCount === 1 ? "produkt" : "produktów"}`}
+      countUnit={{ one: "grupa", few: "grupy", many: "grup" }}
+      compact
       action={
-        <div className="flex items-center gap-2">
-          {keys.length > 1 ? (
-            <Button variant="ghost" size="sm" onClick={() => setAll(!allExpanded)}>
-              {allExpanded ? "Zwiń" : "Rozwiń"}
+        <div className="flex items-center gap-1">
+          {multiLineKeys.length > 1 ? (
+            <Button variant="ghost" size="sm" className="h-8 px-2 text-xs" onClick={() => setAll(!allExpanded)}>
+              {allExpanded ? "Zwiń listy" : "Rozwiń listy"}
             </Button>
           ) : null}
           <SectionHelp />
@@ -275,9 +266,9 @@ export function ForSomeoneRequests({
       description={`Prośby w kolejce dnia · ${groups.length} ${groups.length === 1 ? "grupa" : "grup"} · ${lineCount} ${lineCount === 1 ? "produkt" : "produktów"}`}
       action={
         <div className="flex items-center gap-2">
-          {keys.length > 1 ? (
+          {multiLineKeys.length > 1 ? (
             <Button variant="ghost" size="sm" onClick={() => setAll(!allExpanded)}>
-              {allExpanded ? "Zwiń" : "Rozwiń"}
+              {allExpanded ? "Zwiń listy" : "Rozwiń listy"}
             </Button>
           ) : null}
           <SectionHelp />
@@ -333,21 +324,16 @@ export function ForSomeoneRequests({
       />
       {embedded ? subsectionHeader : legacyHeader}
 
-      <div className="border-b border-slate-100 px-3 pb-2 pt-0 sm:px-4">
-        <KeyboardShortcutsHint items={[...FOR_SOMEONE_KEYBOARD_HINTS]} compact />
-      </div>
-
       {sorted.some((g) => g.lines.some((l) => l.informacjaViaPanel)) ? (
-        <div className="border-b border-slate-100 px-3 pb-2 pt-1 sm:px-4">
+        <div className="border-b border-slate-100 px-2 py-1.5 sm:px-3">
           <InformacjaFlowLegend compact />
         </div>
       ) : null}
 
-      <ul className="space-y-2.5 p-3 sm:p-4">
+      <ul className="space-y-1 p-2 sm:p-2">
         {sorted.map((g, groupIndex) => {
           const key = groupKey(g);
           const groupPending = isScopePending(key);
-          const isOpen = expanded.has(key);
           const isFocused = focusedGroupIndex === groupIndex;
           const ui = enrichForSomeoneGroup(g);
           const stats = statsBySupplierId[g.supplierId];
@@ -356,23 +342,28 @@ export function ForSomeoneRequests({
             ? formatSupplierLeadTimeBrief(stats, statsMode)
             : null;
           const hasInfoViaPanel = g.lines.some((l) => l.informacjaViaPanel);
-          const previewLine = !isOpen && g.lines[0] ? g.lines[0] : null;
+          const singleLine = g.lines.length === 1 ? g.lines[0]! : null;
+          const hasMultiLine = g.lines.length >= 2;
+          const isOpen = hasMultiLine && expanded.has(key);
 
           return (
             <li key={key}>
               <article
                 className={cn(
-                  "rounded-xl border border-slate-200 bg-white transition-shadow",
+                  panelRowGroupClass("rounded-md border border-slate-200 bg-white transition-shadow"),
                   groupPending && rowPendingRingClass,
                   isFocused && "ring-2 ring-indigo-400/70 ring-offset-1"
                 )}
                 aria-busy={groupPending}
-                onMouseEnter={() => setFocusedGroupIndex(groupIndex)}
+                onMouseLeave={(e) => {
+                  panelRowClearFocusOnLeave(e);
+                  if (focusedGroupIndex === groupIndex) setFocusedGroupIndex(-1);
+                }}
               >
-                <div className="px-3.5 py-3">
-                  <div className="flex flex-wrap items-start justify-between gap-2">
-                    <div className="min-w-0">
-                      <p className="text-sm font-semibold text-slate-900">{ui.headline}</p>
+                <div className="px-2 py-1.5">
+                  <div className="flex items-start gap-1.5">
+                    <div className="min-w-0 flex-1">
+                      <p className="text-sm font-semibold leading-snug text-slate-900">{ui.headline}</p>
                       <p className="mt-0.5 text-xs text-slate-500">
                         <button
                           type="button"
@@ -389,110 +380,69 @@ export function ForSomeoneRequests({
                       {leadTimeBrief ? (
                         <p className="mt-0.5 text-[10px] text-slate-400">{leadTimeBrief}</p>
                       ) : null}
-                      {previewLine ? (
-                        <p className="mt-1 line-clamp-1 text-[11px] text-slate-600">
-                          <span className="font-medium text-slate-700">
-                            {previewLine.symbol !== "-" ? previewLine.symbol : "Produkt"}:
-                          </span>{" "}
-                          {previewLine.products}
-                        </p>
-                      ) : null}
+                      {singleLine ? <ProcurementRequestLineInline line={singleLine} /> : null}
                     </div>
-                    <Badge
-                      variant={hasInfoViaPanel ? "info" : "default"}
-                      className="shrink-0 whitespace-normal text-right text-[10px] leading-snug"
-                    >
-                      {ui.statusTitle}
-                    </Badge>
+                    <div className="flex shrink-0 flex-col items-end gap-1">
+                      <Badge
+                        variant={hasInfoViaPanel ? "info" : "default"}
+                        className="shrink-0 whitespace-normal text-right text-[10px] leading-snug"
+                      >
+                        {ui.statusTitle}
+                      </Badge>
+                      <PanelRowActionsInlineEnd forceVisible={groupPending}>
+                        <IndividualRequestActionBar
+                          orderIds={g.orderIds}
+                          supplierId={g.supplierId}
+                          hasInfoViaPanel={hasInfoViaPanel}
+                          headline={ui.headline}
+                          pending={groupPending}
+                          scopeKey={key}
+                          run={run}
+                          onEdit={() =>
+                            setEditTarget({
+                              orderIds: g.orderIds,
+                              initial: editInitialFromForSomeoneGroup(g),
+                              scopeKey: key,
+                            })
+                          }
+                          onCancel={() =>
+                            setCancelTarget({
+                              orderIds: g.orderIds,
+                              headline: ui.headline,
+                              scopeKey: key,
+                            })
+                          }
+                        />
+                      </PanelRowActionsInlineEnd>
+                    </div>
                   </div>
                   {hasInfoViaPanel ? (
-                    <div className="mt-2.5 rounded-lg border border-sky-200 bg-sky-50/90 px-3 py-2 text-xs leading-relaxed text-sky-950">
+                    <div className="mt-1.5 rounded-md border border-slate-200 bg-slate-50 px-2 py-1 text-[11px] leading-snug text-slate-700">
                       <p>{INFORMACJA_FLOW_PROCUREMENT_GROUP_BANNER}</p>
                     </div>
                   ) : null}
-                  <div className="mt-3 flex flex-wrap items-center justify-between gap-2">
-                    {g.lines.length > 0 ? (
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        disabled={groupPending}
-                        className="min-h-[2.125rem] shrink-0"
-                        onClick={() =>
-                          setExpanded((prev) => {
-                            const next = new Set(prev);
-                            if (isOpen) next.delete(key);
-                            else next.add(key);
-                            return next;
-                          })
-                        }
-                      >
-                        {isOpen ? "Zwiń" : `Produkty (${g.lines.length})`}
-                      </Button>
-                    ) : (
-                      <span className="min-w-0 flex-1 sm:flex-none" aria-hidden />
-                    )}
-
-                    <ButtonGroup
-                      ariaLabel="Zamówienie i więcej opcji"
-                      className="ml-auto shrink-0"
+                  {hasMultiLine ? (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      disabled={groupPending}
+                      className="mt-1.5 h-7 shrink-0 px-2.5"
+                      onClick={() =>
+                        setExpanded((prev) => {
+                          const next = new Set(prev);
+                          if (isOpen) next.delete(key);
+                          else next.add(key);
+                          return next;
+                        })
+                      }
                     >
-                      <HoldToConfirmButton
-                        label={hasInfoViaPanel ? "Główne (info)" : "Główne"}
-                        variant="primary"
-                        disabled={groupPending || !g.supplierId}
-                        className="px-3 py-2"
-                        onConfirm={() =>
-                          run(
-                            () => actionProcessIndividual(g.orderIds, "GLOWNE"),
-                            "Oznaczono jako zamówienie główne",
-                            "Oznaczanie jako główne…",
-                            { scope: key }
-                          )
-                        }
-                      />
-                      <HoldToConfirmButton
-                        label={hasInfoViaPanel ? "Uzupełn. (info)" : "Uzupełniające"}
-                        variant="outline"
-                        disabled={groupPending || !g.supplierId}
-                        className="border-l border-slate-200 px-3 py-2"
-                        onConfirm={() =>
-                          run(
-                            () => actionProcessIndividual(g.orderIds, "POBOCZNE"),
-                            "Oznaczono jako uzupełniające",
-                            "Oznaczanie jako uzupełniające…",
-                            { scope: key }
-                          )
-                        }
-                      />
-                      <RequestGroupOverflowMenu
-                        headline={ui.headline}
-                        disabled={groupPending}
-                        iconOnly
-                        onEdit={() =>
-                          setEditTarget({
-                            orderIds: g.orderIds,
-                            initial: editInitialFromForSomeoneGroup(g),
-                            scopeKey: key,
-                          })
-                        }
-                        onCancel={() =>
-                          setCancelTarget({
-                            orderIds: g.orderIds,
-                            headline: ui.headline,
-                            scopeKey: key,
-                          })
-                        }
-                      />
-                    </ButtonGroup>
-                  </div>
-                  <p className="mt-1.5 text-right text-[10px] text-slate-400">
-                    Przytrzymaj Główne / Uzupełniające ok. 0,7 s ·{" "}
-                    <Kbd>Shift</Kbd>+<Kbd>G</Kbd> / <Kbd>Shift</Kbd>+<Kbd>U</Kbd>
-                  </p>
+                      {isOpen ? "Zwiń" : `Produkty (${g.lines.length})`}
+                    </Button>
+                  ) : null}
                 </div>
                 {isOpen ? (
                   <div className="border-t border-slate-100">
-                    <ul className="space-y-1.5 px-3.5 py-2">
+                    <ul className="space-y-1 px-2.5 py-1.5">
                       {g.lines.map((line) => (
                         <ProcurementRequestLine key={line.id} line={line} />
                       ))}

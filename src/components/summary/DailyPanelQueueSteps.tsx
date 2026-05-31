@@ -45,7 +45,7 @@ function QueueStepChip({
     <a
       href={href}
       className={cn(
-        "inline-flex min-w-0 items-center gap-2 rounded-lg border px-2.5 py-1.5 text-xs font-medium transition-colors",
+        "inline-flex min-w-0 items-center gap-2 rounded-md border px-2.5 py-1.5 text-xs font-medium transition-colors",
         styles.chip
       )}
     >

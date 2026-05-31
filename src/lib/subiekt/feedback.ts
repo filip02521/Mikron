@@ -4,6 +4,7 @@ import {
   SubiektRequestError,
   SubiektTimeoutError,
 } from "@/lib/subiekt/errors";
+import { PROCUREMENT_TEAM_LABEL } from "@/lib/orders/procurement-copy";
 
 /** Kody sytuacji — używaj w logice i testach. */
 export type SubiektErrorCode =
@@ -63,7 +64,7 @@ const TEMPLATES: Record<SubiektErrorCode, FeedbackTemplate> = {
   not_found_supplier: {
     title: "Nie znaleziono w Subiekcie",
     message: "Brak kontrahenta (dostawcy) pasującego do wyszukiwania.",
-    hint: "Wybierz dostawcę z listy w systemie lub zostaw pole puste do uzupełnienia przez dział dostaw.",
+    hint: `Wybierz dostawcę z listy w systemie lub zostaw pole puste do uzupełnienia przez ${PROCUREMENT_TEAM_LABEL}.`,
     tone: "info",
   },
   not_found_app_supplier: {

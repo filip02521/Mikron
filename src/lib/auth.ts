@@ -16,6 +16,7 @@ export interface SessionUser {
   role: UserRole;
   salesPersonId: string | null;
   mustChangePassword: boolean;
+  salesOnboardingCompletedAt: string | null;
 }
 
 export async function getSessionUser(): Promise<SessionUser | null> {
@@ -36,6 +37,7 @@ export async function getSessionUser(): Promise<SessionUser | null> {
     role: profile.role,
     salesPersonId: profile.sales_person_id,
     mustChangePassword: profile.must_change_password,
+    salesOnboardingCompletedAt: profile.sales_onboarding_completed_at,
   };
 }
 

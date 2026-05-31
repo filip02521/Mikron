@@ -34,7 +34,7 @@ function formatDateLabel(dateKey: string): string {
 
 function InsightReceiptRow({ receipt }: { receipt: WarehouseDeliveryReceipt }) {
   return (
-    <li className="rounded-xl border border-slate-200 bg-white px-4 py-3">
+    <li className="rounded-md border border-slate-200 bg-white px-4 py-3">
       <div className="flex flex-wrap items-start justify-between gap-2">
         <div>
           <p className="text-[11px] font-medium text-slate-500">
@@ -66,7 +66,7 @@ function SummaryStat({
   sub?: string;
 }) {
   return (
-    <div className="rounded-xl border border-slate-200 bg-white px-3 py-2.5">
+    <div className="rounded-md border border-slate-200 bg-white px-3 py-2.5">
       <p className="text-[11px] font-medium text-slate-500">{label}</p>
       <p className="mt-0.5 text-lg font-semibold tabular-nums text-slate-900">{value}</p>
       {sub ? <p className="mt-0.5 text-[11px] text-slate-500">{sub}</p> : null}
@@ -133,7 +133,7 @@ export function DeliveryJournalInsightsPanel({
         <strong className="font-medium text-slate-800">Wpisy</strong> (dziś).
       </p>
 
-      <div className="mt-4 space-y-4 rounded-xl border border-slate-200 bg-slate-50/80 p-4">
+      <div className="mt-4 space-y-4 rounded-md border border-slate-200 bg-slate-50/80 p-4">
         <SegmentedControl<DeliveryJournalDatePreset>
           ariaLabel="Zakres dat"
           value={preset}
@@ -221,7 +221,7 @@ export function DeliveryJournalInsightsPanel({
             <SummaryStat label="Dostawcy" value={summary.supplierCount} />
           </div>
           {summary.byCarrier.length > 0 ? (
-            <div className="overflow-hidden rounded-xl border border-slate-200 bg-white">
+            <div className="overflow-hidden rounded-md border border-slate-200 bg-white">
               <table className="w-full text-left text-sm">
                 <thead className="border-b border-slate-100 bg-slate-50/80 text-xs text-slate-600">
                   <tr>

@@ -1,6 +1,6 @@
 import { getSessionUser } from "@/lib/auth";
 import { resolveSalesPersonForUser } from "@/lib/auth/sales-person";
-import { canAccessOperations, canAccessWarehouse, isSalesAccount } from "@/lib/auth-roles";
+import { canAccessOperations, canAccessWarehouse, isAdmin, isSalesAccount } from "@/lib/auth-roles";
 import {
   countVerificationOrders,
   fetchIndividualOrders,
@@ -12,6 +12,7 @@ import { countDailyPanelNavBadge } from "@/lib/orders/procurement-daily-ui";
 import { computeSalesActivityVersion } from "@/lib/orders/sales-activity-version";
 import { countSalesNavAttention } from "@/lib/orders/sales-nav-attention";
 import { countNotepadNavBadge } from "@/lib/data/sales-notepad";
+import { countOpenSalesBugReports } from "@/lib/data/sales-bug-reports";
 import { AppShellClient } from "./AppShellClient";
 
 export async function AppShell({ children }: { children: React.ReactNode }) {
@@ -23,8 +24,10 @@ export async function AppShell({ children }: { children: React.ReactNode }) {
     realizacja: number;
     salesMoje?: number;
     salesNotatnik?: number;
+    adminBugReports?: number;
   } = { nowe: 0, weryfikacja: 0, realizacja: 0 };
   let salesActivityVersion: string | null = null;
+  let salesPersonName: string | null = null;
 
   if (role && canAccessWarehouse(role)) {
     try {
@@ -56,6 +59,7 @@ export async function AppShell({ children }: { children: React.ReactNode }) {
     try {
       const salesPerson = await resolveSalesPersonForUser(session);
       if (salesPerson) {
+        salesPersonName = salesPerson.name;
         const [version, attention, notatnikCount] = await Promise.all([
           computeSalesActivityVersion(salesPerson.id),
           countSalesNavAttention(salesPerson.id),
@@ -73,6 +77,15 @@ export async function AppShell({ children }: { children: React.ReactNode }) {
     }
   }
 
+  if (role && isAdmin(role)) {
+    try {
+      const openReports = await countOpenSalesBugReports();
+      navBadges = { ...navBadges, adminBugReports: openReports };
+    } catch {
+      /* empty */
+    }
+  }
+
   return (
     <AppShellClient
       role={role}
@@ -80,6 +93,10 @@ export async function AppShell({ children }: { children: React.ReactNode }) {
       showLoginLink={!role}
       navBadges={navBadges}
       salesActivityVersion={salesActivityVersion}
+      salesPersonId={session?.salesPersonId ?? null}
+      mustChangePassword={session?.mustChangePassword ?? false}
+      salesOnboardingCompletedAt={session?.salesOnboardingCompletedAt ?? null}
+      salesPersonName={salesPersonName}
     >
       {children}
     </AppShellClient>

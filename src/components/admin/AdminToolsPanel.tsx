@@ -24,7 +24,7 @@ export function AdminToolsPanel() {
     <>
       {toast ? <Toast message={toast.text} tone={toast.tone} onDismiss={dismiss} /> : null}
 
-      <details className="group mb-6 rounded-xl border border-slate-200/90 bg-white shadow-sm open:shadow-md">
+      <details className="group mb-6 rounded-md border border-slate-200/90 bg-white shadow-sm open:shadow-md">
         <summary className="cursor-pointer list-none px-6 py-4 text-sm font-semibold text-slate-900 marker:content-none [&::-webkit-details-marker]:hidden">
           <span className="flex items-center justify-between gap-2">
             Automatyka (Vercel Cron)

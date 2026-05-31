@@ -27,7 +27,7 @@ export function SupplierLeadTimeHint({
   return (
     <div
       className={cn(
-        "rounded-xl border px-3 py-2.5 text-xs leading-relaxed",
+        "rounded-md border px-3 py-2.5 text-xs leading-relaxed",
         hint.hasData
           ? "border-indigo-200 bg-indigo-50/80 text-indigo-950"
           : "border-amber-200 bg-amber-50/90 text-amber-950",

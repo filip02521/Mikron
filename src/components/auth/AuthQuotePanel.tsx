@@ -2,6 +2,8 @@
 
 import { useEffect, useState } from "react";
 import { AUTH_QUOTES, type AuthQuote } from "@/lib/auth-quotes";
+import { AuthCompactQuoteBackdrop } from "@/components/auth/AuthBackgroundArt";
+import { isAuthVisualVariant } from "@/components/auth/auth-visual-variant";
 import {
   ONTIME_APP_NAME,
   ONTIME_COMPANY,
@@ -39,14 +41,17 @@ export function AuthQuotePanel({
     return (
       <div
         className={cn(
-          "relative overflow-hidden rounded-2xl bg-gradient-to-br from-indigo-700 via-sky-800 to-slate-900 px-4 py-4 shadow-lg shadow-indigo-900/20",
+          "relative overflow-hidden rounded-lg bg-gradient-to-br from-indigo-700 via-sky-800 to-slate-900 px-4 py-4 shadow-lg shadow-indigo-900/20",
           className
         )}
       >
-        <div
-          className="pointer-events-none absolute -right-8 top-0 h-24 w-24 rounded-full bg-indigo-400/20 blur-2xl"
-          aria-hidden
-        />
+        {!isAuthVisualVariant('minimal') ? <AuthCompactQuoteBackdrop /> : null}
+        {!isAuthVisualVariant('minimal') ? (
+          <div
+            className="pointer-events-none absolute -right-8 top-0 h-24 w-24 rounded-full bg-indigo-400/20 blur-2xl"
+            aria-hidden
+          />
+        ) : null}
         <p className="relative text-[10px] font-semibold uppercase tracking-[0.2em] text-indigo-200/80">
           {ONTIME_COMPANY} · {ONTIME_APP_NAME}
         </p>

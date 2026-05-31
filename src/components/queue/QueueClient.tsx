@@ -16,6 +16,7 @@ import {
 } from "@/components/icons/StrokeIcons";
 import { QueuePanelHelp } from "@/components/queue/QueuePanelHelp";
 import { Button } from "@/components/ui/Button";
+import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { Toast } from "@/components/ui/Toast";
 import { DataTable, TableScroll } from "@/components/ui/DataTable";
@@ -44,8 +45,10 @@ import {
 } from "@/lib/orders/queue-supplier-groups";
 import {
   batchNotifyButtonLabel,
+  batchDeliveryConfirmMessage,
   countSalesPeopleInOrders,
   formatDeliveryBatchToast,
+  requiresQueueBatchConfirm,
   selectedSaveButtonLabel,
 } from "@/lib/orders/queue-batch-notify";
 
@@ -82,6 +85,10 @@ export function QueueClient({
     null
   );
   const [supplierFilter, setSupplierFilter] = useState("");
+  const [batchSaveConfirm, setBatchSaveConfirm] = useState<{
+    orderIds: string[];
+    fullQuantity?: boolean;
+  } | null>(null);
 
   const dismissToast = useCallback(() => setToast(null), []);
 
@@ -327,6 +334,14 @@ export function QueueClient({
     });
   };
 
+  const requestSaveBatch = (orderIds: string[], opts?: { fullQuantity?: boolean }) => {
+    if (requiresQueueBatchConfirm(orderIds) || opts?.fullQuantity) {
+      setBatchSaveConfirm({ orderIds, fullQuantity: opts?.fullQuantity });
+      return;
+    }
+    saveBatch(orderIds, opts);
+  };
+
   const partialCount = inboxSummary.partialCount;
   const cancelLabelled = inboxSummary.cancelLabelledCount;
 
@@ -342,6 +357,39 @@ export function QueueClient({
       {toast ? (
         <Toast message={toast.text} tone={toast.tone} onDismiss={dismissToast} />
       ) : null}
+
+      <ConfirmDialog
+        open={batchSaveConfirm != null}
+        title={
+          batchSaveConfirm?.fullQuantity
+            ? "Zapisać całą dostawę grupy?"
+            : "Zapisać zaznaczone pozycje?"
+        }
+        message={
+          batchSaveConfirm
+            ? batchDeliveryConfirmMessage(shelf, batchSaveConfirm.orderIds, {
+                fullQuantity: batchSaveConfirm.fullQuantity,
+              })
+            : ""
+        }
+        confirmLabel={
+          batchSaveConfirm
+            ? batchSaveConfirm.fullQuantity
+              ? batchNotifyButtonLabel(shelf, batchSaveConfirm.orderIds, {
+                  prefix: "Całość",
+                })
+              : selectedSaveButtonLabel(batchSaveConfirm.orderIds.length)
+            : "Zapisz"
+        }
+        pending={pending}
+        onCancel={() => setBatchSaveConfirm(null)}
+        onConfirm={() => {
+          if (!batchSaveConfirm) return;
+          const { orderIds, fullQuantity } = batchSaveConfirm;
+          setBatchSaveConfirm(null);
+          saveBatch(orderIds, fullQuantity ? { fullQuantity: true } : undefined);
+        }}
+      />
 
       <Card padding={false} className="overflow-hidden">
         <CardHeader
@@ -452,7 +500,7 @@ export function QueueClient({
                 variant="primary"
                 size="sm"
                 disabled={pending}
-                onClick={() => saveBatch(selectedIds)}
+                onClick={() => requestSaveBatch(selectedIds)}
               >
                 {selectedSaveButtonLabel(selectedIds.length)}
                 {selectedIds.length > 1
@@ -490,7 +538,6 @@ export function QueueClient({
                       />
                     </th>
                     <th className="min-w-[7rem]">Dla kogo</th>
-                    <th className="min-w-[6rem]">Dostawca</th>
                     <th className="min-w-[10rem]">Produkt</th>
                     <th className="w-12 text-center">Zam.</th>
                     <th className="w-16 text-center">Dost.</th>
@@ -512,7 +559,7 @@ export function QueueClient({
                     return (
                       <Fragment key={group.supplierKey}>
                         <SupplierGroupHeaderRow
-                          colSpan={8}
+                          colSpan={7}
                           groupIndex={groupIndex}
                           group={group}
                           summary={summary}
@@ -542,7 +589,7 @@ export function QueueClient({
                                     prefix: "Całość",
                                   })}
                                   onClick={() =>
-                                    saveBatch(groupIds, { fullQuantity: true })
+                                    requestSaveBatch(groupIds, { fullQuantity: true })
                                   }
                                 >
                                   {batchNotifyButtonLabel(shelf, groupIds, {
@@ -619,9 +666,6 @@ export function QueueClient({
                                         część
                                       </span>
                                     ) : null}
-                                  </td>
-                                  <td className="max-w-[8rem] text-slate-400" aria-hidden>
-                                    —
                                   </td>
                                   <td className="max-w-[14rem]">
                                     <span

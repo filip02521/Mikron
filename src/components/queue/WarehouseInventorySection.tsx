@@ -206,6 +206,9 @@ export function WarehouseInventorySection({
     return groupInventoryRows(filtered, keyOf);
   }, [filtered, sortMode]);
 
+  const groupBySupplier = sortMode === "supplier";
+  const tableColSpan = groupBySupplier ? 7 : 8;
+
   const inventoryGroupsAsSupplier = useMemo((): SupplierOrderGroup[] => {
     return inventoryGroups.map((g) => ({
       supplierKey: g.supplierKey,
@@ -279,19 +282,14 @@ export function WarehouseInventorySection({
             onSaved={(shelf) => saveShelf(o.id, shelf)}
           />
         </td>
-        <td
-          className={cn(
-            "max-w-[9rem] align-top",
-            options.showSupplierColumn ? "font-semibold text-slate-900" : "text-slate-400"
-          )}
-          title={supplierName}
-        >
-          {options.showSupplierColumn ? (
+        {options.showSupplierColumn ? (
+          <td
+            className="max-w-[9rem] align-top font-semibold text-slate-900"
+            title={supplierName}
+          >
             <span className="line-clamp-2">{supplierName}</span>
-          ) : (
-            "—"
-          )}
-        </td>
+          </td>
+        ) : null}
         <td className="align-top">
           <p className="font-medium text-slate-900" title={productTitle}>
             {o.products}
@@ -348,11 +346,11 @@ export function WarehouseInventorySection({
 
       <div className="space-y-4 border-b border-slate-100 px-4 py-4 sm:px-6">
         <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
-          <div className="rounded-xl border border-slate-200 bg-white px-3 py-2.5 shadow-[var(--shadow-card)]">
+          <div className="rounded-md border border-slate-200 bg-white px-3 py-2.5 shadow-[var(--shadow-card)]">
             <p className="text-2xl font-semibold tabular-nums text-slate-900">{summary.total}</p>
             <p className="text-xs font-medium text-slate-700">Pozycji na magazynie</p>
           </div>
-          <div className="rounded-xl border border-slate-200 bg-white px-3 py-2.5 shadow-[var(--shadow-card)]">
+          <div className="rounded-md border border-slate-200 bg-white px-3 py-2.5 shadow-[var(--shadow-card)]">
             <p className="text-2xl font-semibold tabular-nums text-slate-900">
               {supplierChips.length}
             </p>
@@ -364,7 +362,7 @@ export function WarehouseInventorySection({
               setFilter(filter === "stale" || filter === "critical" ? "all" : "stale")
             }
             className={cn(
-              "rounded-xl border px-3 py-2.5 text-left shadow-[var(--shadow-card)] transition",
+              "rounded-md border px-3 py-2.5 text-left shadow-[var(--shadow-card)] transition",
               filter === "stale" || filter === "critical"
                 ? "border-amber-300 bg-amber-50/80"
                 : "border-amber-200/90 bg-amber-50/60 hover:border-amber-300"
@@ -379,7 +377,7 @@ export function WarehouseInventorySection({
             type="button"
             onClick={() => setFilter(filter === "unassigned" ? "all" : "unassigned")}
             className={cn(
-              "rounded-xl border px-3 py-2.5 text-left shadow-[var(--shadow-card)] transition",
+              "rounded-md border px-3 py-2.5 text-left shadow-[var(--shadow-card)] transition",
               filter === "unassigned"
                 ? "border-sky-300 bg-sky-50/80"
                 : "border-sky-200/90 bg-sky-50/50 hover:border-sky-300"
@@ -423,7 +421,7 @@ export function WarehouseInventorySection({
                 onChange={(e) => setSearch(e.target.value)}
                 placeholder="Dostawca, produkt, symbol, handlowiec…"
                 className={cn(
-                  "w-full rounded-lg border border-slate-200 px-3 py-2 text-sm",
+                  "w-full rounded-md border border-slate-200 px-3 py-2 text-sm",
                   controlFocusClass
                 )}
               />
@@ -434,7 +432,7 @@ export function WarehouseInventorySection({
                 value={shelfFilter}
                 onChange={(e) => setShelfFilter(e.target.value)}
                 className={cn(
-                  "w-full rounded-lg border border-slate-200 px-3 py-2 text-sm",
+                  "w-full rounded-md border border-slate-200 px-3 py-2 text-sm",
                   controlFocusClass
                 )}
               >
@@ -476,7 +474,7 @@ export function WarehouseInventorySection({
               type="button"
               onClick={() => setFilter(id)}
               className={cn(
-                "rounded-lg border px-2.5 py-1.5 text-xs font-medium transition",
+                "rounded-md border px-2.5 py-1.5 text-xs font-medium transition",
                 filter === id
                   ? "border-sky-300 bg-sky-100 text-sky-900"
                   : "border-slate-200 bg-white text-slate-600 hover:bg-slate-50"
@@ -509,7 +507,7 @@ export function WarehouseInventorySection({
             <thead>
               <tr>
                 <th>Regał</th>
-                <th className="min-w-[6.5rem]">Dostawca</th>
+                {!groupBySupplier ? <th className="min-w-[6.5rem]">Dostawca</th> : null}
                 <th className="min-w-[10rem]">Produkt</th>
                 <th>Handlowiec</th>
                 <th>Klient</th>
@@ -534,7 +532,7 @@ export function WarehouseInventorySection({
                     return (
                       <Fragment key={group.supplierKey}>
                         <SupplierGroupHeaderRow
-                          colSpan={8}
+                          colSpan={tableColSpan}
                           groupIndex={groupIndex}
                           group={supplierGroup}
                           summary={summary}
@@ -545,7 +543,7 @@ export function WarehouseInventorySection({
                         {isOpen
                           ? group.rows.map((row) =>
                               renderDataRow(row, groupIndex, {
-                                showSupplierColumn: false,
+                                showSupplierColumn: !groupBySupplier,
                               })
                             )
                           : null}

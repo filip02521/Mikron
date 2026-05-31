@@ -9,7 +9,7 @@ export type ResolvedSalesPerson = {
 
 /** Handlowiec z profilu lub dopasowany po e-mailu do karty w sales_people. */
 export async function resolveSalesPersonForUser(
-  user: SessionUser
+  user: Pick<SessionUser, "id" | "role" | "email" | "salesPersonId">
 ): Promise<ResolvedSalesPerson | null> {
   if (!isSalesAccount(user.role) || !hasSupabaseConfig()) return null;
 

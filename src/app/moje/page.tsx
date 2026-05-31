@@ -60,11 +60,11 @@ export default async function MojePage({
       }
       if (!ownSalesPersonId && user.role === "sales") {
         linkError =
-          "Twoje konto nie jest powiązane z kartą handlowca. Poproś administratora o nowy link zaproszenia (Admin → Handlowcy).";
+          "Twoje konto nie jest przypisane do profilu handlowca. Poproś administratora o link zaproszenia (Admin → Handlowcy).";
       }
       if (!ownSalesPersonId && user.role === "sales_manager") {
         linkError =
-          "Twoje konto kierownika nie jest powiązane z kartą handlowca — poproś administratora o przypisanie w panelu użytkowników.";
+          "Twoje konto kierownika nie jest przypisane do profilu handlowca — poproś administratora o przypisanie w sekcji Użytkownicy.";
       }
     } else {
       salesPersonId = user?.salesPersonId ?? null;
@@ -77,7 +77,7 @@ export default async function MojePage({
     return (
       <SalesAccountLinkRequired
         title="Moje zamówienia"
-        description="Tutaj śledzisz status prośb — wymagane powiązanie konta z kartą handlowca."
+        description="Tutaj śledzisz status prośb. Konto musi być przypisane do Twojego profilu handlowca."
       />
     );
   }
@@ -214,10 +214,10 @@ export default async function MojePage({
       <MojeOrdersShell
         initial={{ zamowienia, informacje, productLineCount }}
         salesPersonId={salesPersonId}
-        pageTitle={isTeamPreview ? `Panel: ${salesPersonName}` : "Moje zamówienia"}
+        pageTitle={isTeamPreview ? `Prośby: ${salesPersonName}` : "Moje zamówienia"}
         pageDescription={
           isTeamPreview
-            ? `Podgląd prośb handlowca — statusy i odbiór.`
+            ? "Podgląd prośb wybranego handlowca — statusy i odbiór."
             : undefined
         }
         headerActions={salesHeaderActions}

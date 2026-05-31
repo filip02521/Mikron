@@ -13,7 +13,7 @@ export function EmptyState({
 }) {
   return (
     <div className="flex flex-col items-center justify-center px-4 py-10 text-center sm:px-6 sm:py-14">
-      <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-slate-100 text-slate-500">
+      <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-lg bg-slate-100 text-slate-500">
         {icon ?? <IconInbox size={28} strokeWidth={1.75} />}
       </div>
       <p className="text-sm font-semibold text-slate-900">{title}</p>

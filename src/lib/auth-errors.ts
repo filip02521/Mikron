@@ -1,3 +1,5 @@
+import { isProductionRuntime } from "@/lib/env/app-config";
+
 const MAP: [RegExp | string, string][] = [
   ["Invalid login credentials", "Nieprawidłowy e-mail lub hasło"],
   ["Email not confirmed", "Potwierdź adres e-mail przed logowaniem"],
@@ -12,6 +14,9 @@ export function translateAuthError(message: string): string {
     } else if (pattern.test(message)) {
       return pl;
     }
+  }
+  if (isProductionRuntime()) {
+    return "Nie udało się zalogować. Sprawdź dane i spróbuj ponownie.";
   }
   return message;
 }

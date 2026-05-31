@@ -343,7 +343,7 @@ export async function actionAddIndividualOrders(
       const allowed = await canAccessSalesPerson(user, e.salesPersonId);
       if (!allowed) {
         throw new Error(
-          "Nie masz uprawnień do składania prośby dla tego handlowca. Kierownik może składać prośby dla siebie (własna karta handlowca) oraz dla osób z przypisanych grup zespołu — poproś administratora o grupy przy koncie kierownika i grupę przy karcie handlowca."
+          "Nie masz uprawnień do składania prośby dla tego handlowca. Kierownik może składać prośby dla siebie oraz dla osób z przypisanych grup zespołu — poproś administratora o przypisanie grup do Twojego konta."
         );
       }
     }

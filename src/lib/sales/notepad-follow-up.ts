@@ -1,4 +1,4 @@
-import type { SalesPaymentWatch } from "@/types/database";
+import type { SalesZkWatch } from "@/types/database";
 
 function dateOnlyTimestamp(value: string | null | undefined): number | null {
   if (!value) return null;
@@ -76,9 +76,9 @@ export function buildMojeClientLink(
 }
 
 export function watchNeedsNotepadAttention(
-  watch: Pick<SalesPaymentWatch, "follow_up_at" | "settled_at" | "archived_at">,
+  watch: Pick<SalesZkWatch, "follow_up_at" | "closed_at" | "archived_at">,
   referenceMs?: number
 ): boolean {
-  if (watch.settled_at || watch.archived_at) return false;
+  if (watch.closed_at || watch.archived_at) return false;
   return isFollowUpDue(watch.follow_up_at, referenceMs);
 }

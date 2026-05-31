@@ -71,7 +71,7 @@ export function ProductCatalogSupplierAssign({
   if (compact) return controls;
 
   return (
-    <div className="mt-3 rounded-lg border border-slate-200 bg-slate-50/80 p-3">
+    <div className="mt-3 rounded-md border border-slate-200 bg-slate-50/80 p-3">
       <p className="text-xs font-semibold text-slate-700">
         {row.topSupplier ? "Dostawca w katalogu" : "Przypisz dostawcę ręcznie"}
       </p>

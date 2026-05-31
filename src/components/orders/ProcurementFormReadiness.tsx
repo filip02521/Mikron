@@ -92,7 +92,7 @@ export function ProcurementFormReadiness({
   return (
     <div
       className={cn(
-        "rounded-xl border text-sm",
+        "rounded-md border text-sm",
         view.tone === "ready"
           ? "border-emerald-200 bg-emerald-50/50"
           : "border-slate-200 bg-slate-50/80",

@@ -15,7 +15,7 @@ export function MojeOrdersHelp() {
       <p className="mb-3 text-slate-600">
         Każdy wiersz to jedna prośba u jednego dostawcy. Najpierw patrz na{" "}
         <strong className="font-medium text-slate-800">nagłówek</strong> — mówi, co się dzieje
-        i czy coś od Ciebie zależy.
+        i czy musisz coś potwierdzić.
       </p>
       <ol className="mb-3 list-decimal space-y-1.5 pl-4 text-slate-600">
         <li>
@@ -56,11 +56,11 @@ export function MojeOrdersHelp() {
       </p>
       <p className="mb-2">
         <strong className="font-medium text-slate-800">Filtry</strong> u góry (
-        <em>Od Ciebie zależy</em> / <em>W realizacji</em>) opcjonalnie zawężają listę — np.
+        <em>Do potwierdzenia</em> / <em>W toku</em>) opcjonalnie zawężają listę — np.
         „Odbiór”, gdy czeka wiele prośb.
       </p>
       <p className="mb-2 text-slate-600">
-        Sekcja <strong className="font-medium text-slate-800">Od Ciebie zależy</strong> na liście
+        Sekcja <strong className="font-medium text-slate-800">Do potwierdzenia</strong> na liście
         zbiera prośby z zielonym przyciskiem — reszta jest w sekcjach poniżej.
       </p>
       <p className="text-slate-600">

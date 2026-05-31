@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState, useTransition } from "react";
+import { useMemo, useState, useTransition, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { actionAddIndividualOrders } from "@/app/actions/admin";
 import { Button } from "@/components/ui/Button";
@@ -19,11 +19,11 @@ import {
 import type { SubiektFeedback } from "@/lib/subiekt/feedback";
 import { toAppSupplierRefs } from "@/lib/subiekt/match-supplier";
 import { buildProcurementFormReadiness } from "@/lib/orders/procurement-form-readiness";
+import { InformacjaFlowPicker } from "@/components/orders/InformacjaFlowPicker";
 import {
-  INFORMACJA_FLOW_DIRECT,
-  INFORMACJA_FLOW_VIA_PANEL,
-} from "@/lib/orders/informacja-flow-copy";
-import { InformacjaFlowLegend } from "@/components/orders/InformacjaFlowLegend";
+  handleProcurementProsbaKeyboardEvent,
+  PROCUREMENT_PROSBA_KEYBOARD_HINTS,
+} from "@/lib/orders/procurement-prosba-keyboard";
 
 export function QuickOrderModal({
   open,
@@ -105,6 +105,8 @@ export function QuickOrderModal({
     setInformacjaViaDailyPanel(false);
   };
 
+  const submitRef = useRef<() => void>(() => {});
+
   const submit = () => {
     setFormNotice(null);
     if (!supplierId || !salesPersonId) {
@@ -169,7 +171,15 @@ export function QuickOrderModal({
     start(async () => {
       try {
         const r = await actionAddIndividualOrders(entries);
-        setFormNotice({ text: `Dodano ${r.count} pozycji.`, tone: "success" });
+        setFormNotice({
+          text:
+            requestKind === "informacja"
+              ? informacjaViaDailyPanel
+                ? `Dodano ${r.count} prośb(y) informacyjn(e) — najpierw kolejka Dziś (Główne/Uzupełniające).`
+                : `Dodano ${r.count} prośb(y) informacyjn(e) — od razu do kolejki magazynu.`
+              : `Dodano ${r.count} pozycji do panelu dziennego.`,
+          tone: "success",
+        });
         router.refresh();
         setTimeout(() => {
           reset();
@@ -185,6 +195,19 @@ export function QuickOrderModal({
       }
     });
   };
+  submitRef.current = submit;
+
+  useEffect(() => {
+    if (!open) return;
+    const onKey = (e: KeyboardEvent) => {
+      handleProcurementProsbaKeyboardEvent(e, {
+        pending,
+        onSubmit: () => submitRef.current(),
+      });
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [open, pending]);
 
   return (
     <ModalShell
@@ -218,40 +241,11 @@ export function QuickOrderModal({
       />
 
       {requestKind === "informacja" ? (
-        <fieldset className="space-y-2 rounded-lg border border-sky-200 bg-sky-50/60 px-3 py-2.5">
-          <legend className="px-1 text-xs font-semibold text-slate-900">
-            Ścieżka informacji
-          </legend>
-          <label className="flex cursor-pointer items-start gap-2 text-xs text-slate-700">
-            <input
-              type="radio"
-              name="informacja-path"
-              className="mt-0.5"
-              checked={!informacjaViaDailyPanel}
-              onChange={() => setInformacjaViaDailyPanel(false)}
-              disabled={pending}
-            />
-            <span>
-              <span className="font-medium text-slate-900">{INFORMACJA_FLOW_DIRECT.label}</span>
-              <span className="mt-0.5 block text-slate-600">{INFORMACJA_FLOW_DIRECT.short}</span>
-            </span>
-          </label>
-          <label className="flex cursor-pointer items-start gap-2 text-xs text-slate-700">
-            <input
-              type="radio"
-              name="informacja-path"
-              className="mt-0.5"
-              checked={informacjaViaDailyPanel}
-              onChange={() => setInformacjaViaDailyPanel(true)}
-              disabled={pending}
-            />
-            <span>
-              <span className="font-medium text-slate-900">{INFORMACJA_FLOW_VIA_PANEL.label}</span>
-              <span className="mt-0.5 block text-slate-600">{INFORMACJA_FLOW_VIA_PANEL.short}</span>
-            </span>
-          </label>
-          <InformacjaFlowLegend compact className="border-t border-sky-100 pt-2" />
-        </fieldset>
+        <InformacjaFlowPicker
+          viaDailyPanel={informacjaViaDailyPanel}
+          onChange={setInformacjaViaDailyPanel}
+          disabled={pending}
+        />
       ) : null}
 
       <div className="grid gap-3 sm:grid-cols-2">

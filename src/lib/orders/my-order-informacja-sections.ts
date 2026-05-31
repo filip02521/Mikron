@@ -20,7 +20,7 @@ const PHASE_META: Record<
 > = {
   awaiting_procurement: {
     title: "Czekamy na zamówienie u dostawcy",
-    hint: "Zakupy zamówią z panelu dziennego (Główne / Uzupełniające). Potem magazyn przyjmie towar i wyślemy e-mail.",
+    hint: "Dział zakupów złoży zamówienie u dostawcy. Gdy towar dotrze na magazyn, dostaniesz e-mail.",
   },
   ordered_awaiting_warehouse: {
     title: "Zamówione u dostawcy — czekamy na magazyn",
@@ -28,7 +28,7 @@ const PHASE_META: Record<
   },
   direct_monitoring: {
     title: "Tylko obserwacja magazynu",
-    hint: "Bez zamówienia u dostawcy z panelu — magazyn sprawdza dostępność i wyśle e-mail po przyjęciu towaru.",
+    hint: "Bez zamówienia u dostawcy — magazyn sprawdza dostępność i wyśle e-mail po przyjęciu towaru.",
   },
   other: {
     title: "Informacje — inne statusy",

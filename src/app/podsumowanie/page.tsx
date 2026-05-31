@@ -10,16 +10,16 @@ const emptyWorkspace = buildSummaryWorkspace([], []);
 function PanelLoadingFallback() {
   return (
     <div
-      className="mx-auto max-w-6xl animate-pulse rounded-2xl border border-slate-200 bg-white p-8"
+      className="mx-auto max-w-6xl animate-pulse rounded-lg border border-slate-200 bg-white p-8"
       aria-busy
       aria-label="Ładowanie panelu dziennego"
     >
       <div className="h-6 w-48 rounded bg-slate-200" />
       <div className="mt-3 h-4 max-w-lg rounded bg-slate-100" />
       <div className="mt-6 flex gap-2">
-        <div className="h-10 w-24 rounded-xl bg-slate-100" />
-        <div className="h-10 w-24 rounded-xl bg-slate-100" />
-        <div className="h-10 w-24 rounded-xl bg-slate-100" />
+        <div className="h-10 w-24 rounded-md bg-slate-100" />
+        <div className="h-10 w-24 rounded-md bg-slate-100" />
+        <div className="h-10 w-24 rounded-md bg-slate-100" />
       </div>
     </div>
   );

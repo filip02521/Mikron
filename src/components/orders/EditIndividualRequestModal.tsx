@@ -10,6 +10,7 @@ import {
   hasValidOrderQuantity,
 } from "@/lib/orders/request-completeness";
 import { assertProcurementEntryComplete } from "@/lib/orders/procurement-submit";
+import { PROCUREMENT_TEAM_LABEL } from "@/lib/orders/procurement-copy";
 import { ProsbaFormReadiness } from "@/components/orders/ProsbaFormReadiness";
 import { RequestFormStatusPanel } from "@/components/orders/RequestFormStatusPanel";
 import { RequestProductLinesEditor } from "@/components/orders/RequestProductLinesEditor";
@@ -201,7 +202,7 @@ export function EditIndividualRequestModal({
       <p className="mb-4 text-sm text-slate-600">
         {mode === "procurement"
           ? "Korekta przed złożeniem zamówienia u dostawcy — np. zły dostawca lub opis produktu."
-          : "Możesz poprawić prośbę, dopóki dział dostaw nie oznaczy jej jako zamówionej."}
+          : `Możesz poprawić prośbę, dopóki ${PROCUREMENT_TEAM_LABEL} nie oznaczy jej jako zamówionej.`}
       </p>
 
       <div className="grid gap-4 sm:grid-cols-2">
@@ -239,7 +240,7 @@ export function EditIndividualRequestModal({
         ) : (
           <p className="sm:col-span-2 text-xs text-slate-500">
             Dostawcę dopasujemy z Subiekta po zapisie (jeśli wybrałeś towar z katalogu) albo
-            uzupełni go dział dostaw.
+            uzupełni go {PROCUREMENT_TEAM_LABEL}.
           </p>
         )}
 

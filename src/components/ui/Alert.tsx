@@ -22,7 +22,7 @@ export function Alert({
     <div
       role="alert"
       className={cn(
-        "rounded-xl border px-4 py-3 text-sm leading-relaxed",
+        "rounded-md border px-4 py-3 text-sm leading-relaxed",
         tones[tone],
         className
       )}

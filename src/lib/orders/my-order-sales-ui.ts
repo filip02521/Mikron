@@ -20,7 +20,7 @@ export function verificationSublineFromDetail(statusDetail: string | null): stri
     statusDetail.includes("Szukamy dostawcy") ||
     statusDetail.includes("dopasowuje dostawcę")
   ) {
-    return "Trwa dopasowanie dostawcy w Subiekcie";
+    return "Trwa dopasowanie dostawcy w systemie";
   }
   if (statusDetail.includes("Dział dostaw dopasuje dostawcę")) {
     return "Zakupy dopasują dostawcę — bez Twojej akcji";
@@ -161,7 +161,7 @@ export function enrichMyOrderSalesUi(row: MyOrderRow): MyOrderSalesUi {
   if (isProsbaHandoffStatus(row.statusTitle)) {
     const pending = row.statusTitle === "Dopasowujemy dostawcę";
     return {
-      headline: pending ? "Dopasowujemy dostawcę" : "Prośba w dziale dostaw",
+      headline: pending ? "Dopasowujemy dostawcę" : "Prośba jest weryfikowana",
       headlineTone: "info",
       subline: verificationSublineFromDetail(row.statusDetail),
       sortPriority: 5,
@@ -196,7 +196,7 @@ export function enrichMyOrderSalesUi(row: MyOrderRow): MyOrderSalesUi {
 
   if (row.statusTitle === "Czekamy na zamówienie u dostawcy") {
     return {
-      headline: "Zakupy zamówią u dostawcy",
+      headline: "Zamówimy u dostawcy",
       headlineTone: "info",
       subline: "Potem magazyn i powiadomienie e-mail",
       sortPriority: 9,
@@ -207,7 +207,7 @@ export function enrichMyOrderSalesUi(row: MyOrderRow): MyOrderSalesUi {
     return {
       headline: "Powiadomimy, gdy towar przyjedzie",
       headlineTone: "neutral",
-      subline: "Magazyn obserwuje dostępność — bez zamówienia z panelu",
+      subline: "Magazyn obserwuje dostępność — bez zamówienia u dostawcy",
       sortPriority: 9,
     };
   }

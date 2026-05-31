@@ -22,14 +22,15 @@ describe("daily panel view", () => {
 
   it("opis panelu zależy od zakładki", () => {
     expect(dailyPanelIntroDescription("dzis", { includeShortcuts: false })).toContain(
-      "Zaległe"
+      "zaległe"
     );
     expect(dailyPanelIntroDescription("tydzien", { includeShortcuts: false })).toContain(
       "Plan zamówień"
     );
     expect(dailyPanelIntroDescription("wyjatki", { includeShortcuts: false })).toContain(
-      "Rezygnacje"
+      "Informacja"
     );
-    expect(dailyPanelIntroDescription("dzis")).toContain("Skróty:");
+    expect(dailyPanelIntroDescription("dzis")).not.toContain("Skróty:");
+    expect(dailyPanelIntroDescription("dzis", { includeShortcuts: true })).toContain("Skróty:");
   });
 });

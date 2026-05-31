@@ -17,12 +17,52 @@ export function ProcurementRequestLine({
   return (
     <li
       className={cn(
-        "rounded-lg border border-slate-100 bg-slate-50/60 px-2.5 py-2 text-xs",
+        "rounded-md border border-slate-100/80 bg-slate-50/50 px-2 py-1.5 text-xs",
         className
       )}
     >
-      <p className="flex items-start gap-1.5 font-medium text-slate-900">
-        <ProductSourceBadge fromSubiekt={line.fromSubiekt} className="mt-0.5 size-5" />
+      <ProcurementRequestLineContent line={line} />
+    </li>
+  );
+}
+
+/** Jedna pozycja inline w nagłówku grupy (bez osobnej listy). */
+export function ProcurementRequestLineInline({
+  line,
+  className,
+}: {
+  line: ForSomeoneLine;
+  className?: string;
+}) {
+  return (
+    <div className={cn("mt-1", className)}>
+      <ProcurementRequestLineContent line={line} compact />
+    </div>
+  );
+}
+
+function ProcurementRequestLineContent({
+  line,
+  compact = false,
+}: {
+  line: ForSomeoneLine;
+  compact?: boolean;
+}) {
+  const hasMeta =
+    (line.symbol && line.symbol !== "-") || (line.quantity && line.quantity !== "-");
+
+  return (
+    <>
+      <p
+        className={cn(
+          "flex items-start gap-1.5 font-medium text-slate-900",
+          compact ? "text-[11px] leading-snug" : "text-xs"
+        )}
+      >
+        <ProductSourceBadge
+          fromSubiekt={line.fromSubiekt}
+          className={cn("mt-0.5 shrink-0", compact ? "size-4" : "size-5")}
+        />
         <span className="min-w-0 flex-1">
           {line.products}
           {line.informacjaViaPanel ? (
@@ -33,7 +73,7 @@ export function ProcurementRequestLine({
         </span>
       </p>
       {hasMeta ? (
-        <p className="mt-0.5 text-slate-500">
+        <p className={cn("mt-0.5 text-slate-500", compact ? "pl-5 text-[10px]" : "text-xs")}>
           {line.symbol && line.symbol !== "-" ? line.symbol : null}
           {line.symbol && line.symbol !== "-" && line.quantity && line.quantity !== "-"
             ? " · "
@@ -43,6 +83,6 @@ export function ProcurementRequestLine({
             : null}
         </p>
       ) : null}
-    </li>
+    </>
   );
 }

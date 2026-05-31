@@ -137,7 +137,7 @@ function ReceiptRow({
 
   if (!editing) {
     return (
-      <li className="rounded-xl border border-slate-200 bg-white px-4 py-3">
+      <li className="rounded-md border border-slate-200 bg-white px-4 py-3">
         <div className="flex flex-wrap items-start justify-between gap-2">
           <div>
             <p className="font-semibold text-slate-900">{receipt.supplierName}</p>
@@ -176,7 +176,7 @@ function ReceiptRow({
   }
 
   return (
-    <li className="rounded-xl border border-indigo-200 bg-indigo-50/40 px-4 py-3">
+    <li className="rounded-md border border-indigo-200 bg-indigo-50/40 px-4 py-3">
       <ReceiptFormFields
         form={form}
         setForm={setForm}
@@ -575,7 +575,7 @@ export function DeliveryJournalSection({
       ) : (
         <div className="px-4 py-5 sm:px-6">
       {canBrowseDates ? (
-        <div className="mb-4 flex flex-wrap items-end gap-3 rounded-xl border border-slate-200 bg-slate-50/80 p-3">
+        <div className="mb-4 flex flex-wrap items-end gap-3 rounded-md border border-slate-200 bg-slate-50/80 p-3">
           <Field label="Data" className="min-w-[12.5rem] flex-1 sm:max-w-[17rem]">
             <div className="flex gap-1.5">
               <JournalDateStepButton
@@ -625,7 +625,7 @@ export function DeliveryJournalSection({
         <div
           ref={formPanelRef}
           className={cn(
-            "mt-4 rounded-xl border border-amber-200/90 bg-amber-50/50 p-4",
+            "mt-4 rounded-md border border-amber-200/90 bg-amber-50/50 p-4",
             pending && "opacity-70"
           )}
         >

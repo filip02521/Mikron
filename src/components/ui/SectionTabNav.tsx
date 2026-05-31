@@ -67,7 +67,7 @@ export function SectionTabNav<T extends string>({
       </div>
 
       {contextHint ? (
-        <p className="rounded-xl border border-slate-200/90 bg-slate-50/80 px-4 py-3 text-sm leading-relaxed text-slate-600">
+        <p className="rounded-md border border-slate-200/90 bg-slate-50/80 px-4 py-3 text-sm leading-relaxed text-slate-600">
           {contextHint}
         </p>
       ) : null}

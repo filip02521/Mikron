@@ -36,7 +36,7 @@ function cardDomId(rowId: string) {
 }
 
 const MOJE_INTRO =
-  "Tu widzisz, co dzieje się z Twoimi prośbami — co jest do odbioru, co czeka u dostawcy i co tylko monitorujemy.";
+  "Tu śledzisz swoje prośby — co jest do odbioru, co czeka u dostawcy i co obserwujemy na magazynie.";
 
 function formatProsbaCount(n: number): string {
   if (n === 1) return "1 prośba";
@@ -44,6 +44,60 @@ function formatProsbaCount(n: number): string {
   const mod100 = n % 100;
   if (mod10 >= 2 && mod10 <= 4 && (mod100 < 12 || mod100 > 14)) return `${n} prośby`;
   return `${n} prośb`;
+}
+
+function prosbaUnitLabel(n: number): string {
+  return formatProsbaCount(n).replace(/^\d+\s+/, "");
+}
+
+function lineUnitLabel(n: number): string {
+  if (n === 1) return "pozycja";
+  const mod10 = n % 10;
+  const mod100 = n % 100;
+  if (mod10 >= 2 && mod10 <= 4 && (mod100 < 12 || mod100 > 14)) return "pozycje";
+  return "pozycji";
+}
+
+function MojeOrdersOverviewStats({
+  shipmentCount,
+  lineCount,
+  activeFilter,
+  filteredCount,
+}: {
+  shipmentCount: number;
+  lineCount: number;
+  activeFilter: MyOrderInboxFilter | null;
+  filteredCount: number;
+}) {
+  return (
+    <div className="flex flex-wrap items-center gap-x-4 gap-y-2 border-b border-slate-100 bg-slate-50/60 px-4 py-3 sm:px-6">
+      {activeFilter ? (
+        <p className="text-xs leading-relaxed text-slate-600">
+          Pokazano{" "}
+          <span className="font-semibold tabular-nums text-slate-900">{filteredCount}</span>
+          {" z "}
+          <span className="font-semibold tabular-nums text-slate-900">{shipmentCount}</span>
+          <span className="ml-2 inline-flex rounded-full bg-indigo-100 px-2 py-0.5 text-[10px] font-semibold text-indigo-900">
+            filtr aktywny
+          </span>
+        </p>
+      ) : (
+        <div className="flex flex-wrap items-center gap-3">
+          <div className="inline-flex items-baseline gap-1.5">
+            <span className="text-base font-semibold tabular-nums text-slate-900">
+              {shipmentCount}
+            </span>
+            <span className="text-xs text-slate-500">{prosbaUnitLabel(shipmentCount)}</span>
+          </div>
+          <span className="hidden h-3.5 w-px bg-slate-200 sm:block" aria-hidden />
+          <div className="inline-flex items-baseline gap-1.5">
+            <span className="text-base font-semibold tabular-nums text-slate-900">{lineCount}</span>
+            <span className="text-xs text-slate-500">{lineUnitLabel(lineCount)}</span>
+          </div>
+        </div>
+      )}
+    </div>
+  );
 }
 
 function ListSectionLabel({
@@ -117,6 +171,7 @@ function MyOrderShipmentBlock({
   suppliers,
   embedded = false,
   continuation = false,
+  tourPreview = false,
 }: {
   rows: MyOrderRow[];
   listKind: "zamowienie" | "informacja";
@@ -125,6 +180,7 @@ function MyOrderShipmentBlock({
   suppliers: { id: string; name: string }[];
   embedded?: boolean;
   continuation?: boolean;
+  tourPreview?: boolean;
 }) {
   if (rows.length === 0) return null;
   return (
@@ -137,6 +193,7 @@ function MyOrderShipmentBlock({
       suppliers={suppliers}
       embedded={embedded}
       continuation={continuation}
+      tourPreview={tourPreview}
     />
   );
 }
@@ -155,6 +212,7 @@ export function MojeOrdersView({
   headerActions,
   subiektAvailability,
   initialClientQuery,
+  tourPreview = false,
 }: {
   zamowienia: MyOrderRow[];
   informacje: MyOrderRow[];
@@ -169,6 +227,7 @@ export function MojeOrdersView({
   headerActions?: React.ReactNode;
   subiektAvailability?: SubiektAvailability;
   initialClientQuery?: string | null;
+  tourPreview?: boolean;
 }) {
   const [activeFilter, setActiveFilter] = useState<MyOrderInboxFilter | null>(null);
   const clientQuery = initialClientQuery?.trim() || null;
@@ -278,18 +337,16 @@ export function MojeOrdersView({
         <MyOrderArchiveSection
           rowsRecent={archiwumRecent}
           rowsExtended={archiwumExtended}
+          defaultOpen={tourPreview}
         />
       </div>
     );
   }
 
-  const activeDescription = activeFilter
-    ? `${filteredCount} z ${shipmentCount} · filtr włączony`
-    : `${formatProsbaCount(shipmentCount)} · ${lineCount} ${lineCount === 1 ? "pozycja" : "pozycji"}`;
-
   const listProps = {
     canAcknowledge,
     suppliers,
+    tourPreview,
   };
 
   return (
@@ -307,9 +364,12 @@ export function MojeOrdersView({
           action={cardAction}
         />
 
-        <p className="border-b border-slate-100 px-3 pb-2.5 text-xs text-slate-500 sm:px-6">
-          {activeDescription}
-        </p>
+        <MojeOrdersOverviewStats
+          shipmentCount={shipmentCount}
+          lineCount={lineCount}
+          activeFilter={activeFilter}
+          filteredCount={filteredCount}
+        />
 
         {subiektAvailability ? (
           <SubiektStatusBar initial={subiektAvailability} embedded />
@@ -361,8 +421,8 @@ export function MojeOrdersView({
         {splitByAction && actionCount > 0 ? (
           <div className={mojeShipmentSectionShellClass}>
             <ListSectionLabel
-              title="Od Ciebie zależy"
-              hint="Zwinięta lista — rozwiń wiersz po szczegóły i towar. Odbiór: zielony przycisk po prawej."
+              title="Do potwierdzenia"
+              hint="Kliknij strzałkę przy wierszu, żeby zobaczyć produkty. Potwierdź odbiór lub powiadomienie zielonym przyciskiem po prawej."
               count={actionCount}
               accent="emerald"
               icon="action"
@@ -440,6 +500,7 @@ export function MojeOrdersView({
       <MyOrderArchiveSection
         rowsRecent={archiwumRecent}
         rowsExtended={archiwumExtended}
+        defaultOpen={tourPreview}
       />
     </div>
   );

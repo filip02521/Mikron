@@ -28,7 +28,7 @@ export function VerificationPendingBanner({
     <div
       role="alert"
       className={cn(
-        "relative overflow-hidden rounded-2xl border border-amber-300/90 bg-gradient-to-br from-amber-50 via-white to-amber-50/50 shadow-[var(--shadow-card-elevated)] ring-1 ring-amber-200/80",
+        "relative overflow-hidden rounded-lg border border-amber-300/90 bg-gradient-to-br from-amber-50 via-white to-amber-50/50 shadow-[var(--shadow-card-elevated)] ring-1 ring-amber-200/80",
         className
       )}
     >
@@ -43,7 +43,7 @@ export function VerificationPendingBanner({
 
       <div className="relative flex flex-col gap-4 p-4 sm:flex-row sm:items-stretch sm:gap-5 sm:p-5">
         <SectionHeadingIcon
-          tileClassName="h-14 w-14 rounded-xl bg-amber-100 text-amber-800 shadow-inner shadow-amber-900/5"
+          tileClassName="h-14 w-14 rounded-md bg-amber-100 text-amber-800 shadow-inner shadow-amber-900/5"
           className="self-start sm:self-center"
         >
           <IconClipboardPen size={28} />

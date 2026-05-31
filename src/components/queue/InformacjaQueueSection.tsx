@@ -6,6 +6,7 @@ import type { IndividualOrder } from "@/types/database";
 import { actionMarkInformacjaArrived } from "@/app/actions/admin";
 import { Card, CardHeader } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
+import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { Badge } from "@/components/ui/Badge";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { DataTable, TableScroll } from "@/components/ui/DataTable";
@@ -24,9 +25,11 @@ import {
   queueInformacjaProductRowClass,
 } from "@/lib/orders/queue-product-groups";
 import {
+  batchInformacjaConfirmMessage,
   batchNotifyButtonLabel,
   countSalesPeopleInOrders,
   formatInformacjaBatchToast,
+  requiresQueueBatchConfirm,
 } from "@/lib/orders/queue-batch-notify";
 
 export function InformacjaQueueSection({
@@ -44,6 +47,7 @@ export function InformacjaQueueSection({
     null
   );
   const [supplierFilter, setSupplierFilter] = useState("");
+  const [notifyConfirmIds, setNotifyConfirmIds] = useState<string[] | null>(null);
   const dismissToast = useCallback(() => setToast(null), []);
 
   const supplierChips = useMemo(() => countOrdersBySupplier(orders), [orders]);
@@ -111,6 +115,14 @@ export function InformacjaQueueSection({
     });
   };
 
+  const requestMarkArrived = (orderIds: string[]) => {
+    if (requiresQueueBatchConfirm(orderIds)) {
+      setNotifyConfirmIds(orderIds);
+      return;
+    }
+    markArrived(orderIds);
+  };
+
   const headerNotifyLabel = useMemo(() => {
     if (!ordersFiltered.length) return "Powiadom wszystkich";
     const emails = countSalesPeopleInOrders(
@@ -137,7 +149,7 @@ export function InformacjaQueueSection({
         variant="primary"
         size="sm"
         disabled={pending}
-        onClick={() => markArrived(selectedIds)}
+        onClick={() => requestMarkArrived(selectedIds)}
       >
         {selectedHeaderLabel}
       </Button>
@@ -146,7 +158,7 @@ export function InformacjaQueueSection({
         variant="outline"
         size="sm"
         disabled={pending}
-        onClick={() => markArrived(ordersFiltered.map((o) => o.id))}
+        onClick={() => requestMarkArrived(ordersFiltered.map((o) => o.id))}
       >
         {headerNotifyLabel}
       </Button>
@@ -294,7 +306,7 @@ export function InformacjaQueueSection({
                               size="sm"
                               className="text-xs font-semibold"
                               disabled={pending}
-                              onClick={() => markArrived(groupIds)}
+                              onClick={() => requestMarkArrived(groupIds)}
                             >
                               {batchNotifyButtonLabel(orders, groupIds, {
                                 prefix: "Ten towar na magazynie",
@@ -323,9 +335,35 @@ export function InformacjaQueueSection({
     </>
   );
 
+  const confirmDialog = (
+    <ConfirmDialog
+      open={notifyConfirmIds != null}
+      title="Wysłać powiadomienia grupowo?"
+      message={
+        notifyConfirmIds
+          ? batchInformacjaConfirmMessage(orders, notifyConfirmIds)
+          : ""
+      }
+      confirmLabel={
+        notifyConfirmIds
+          ? `Wyślij powiadomienia (${notifyConfirmIds.length})`
+          : "Wyślij"
+      }
+      pending={pending}
+      onCancel={() => setNotifyConfirmIds(null)}
+      onConfirm={() => {
+        if (!notifyConfirmIds) return;
+        const ids = notifyConfirmIds;
+        setNotifyConfirmIds(null);
+        markArrived(ids);
+      }}
+    />
+  );
+
   if (embedded) {
     return (
       <div className="relative">
+        {confirmDialog}
         {pendingMessage ? (
           <ActionLoadingOverlay message={pendingMessage} variant="section" />
         ) : null}
@@ -344,6 +382,7 @@ export function InformacjaQueueSection({
 
   return (
     <div className="relative space-y-4">
+      {confirmDialog}
       {pendingMessage ? (
         <ActionLoadingOverlay message={pendingMessage} variant="section" />
       ) : null}

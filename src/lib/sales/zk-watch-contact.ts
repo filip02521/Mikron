@@ -1,8 +1,8 @@
 import type { SubiektDocument, SubiektKontrahent } from "@/lib/subiekt/types";
 import { cleanSubiektText, pickKhIdFromDocument } from "@/lib/subiekt/zk-document";
-import type { SalesPaymentWatch } from "@/types/database";
+import type { SalesZkWatch } from "@/types/database";
 
-export type PaymentWatchClientContact = {
+export type ZkWatchClientContact = {
   email: string | null;
   phone: string | null;
 };
@@ -23,7 +23,7 @@ function readKontrahentPhone(k: SubiektKontrahent): string | null {
   return null;
 }
 
-function contactFromKontrahent(k: SubiektKontrahent): PaymentWatchClientContact {
+function contactFromKontrahent(k: SubiektKontrahent): ZkWatchClientContact {
   return {
     email: cleanSubiektText(k.kh_EMail),
     phone: readKontrahentPhone(k),
@@ -31,9 +31,9 @@ function contactFromKontrahent(k: SubiektKontrahent): PaymentWatchClientContact 
 }
 
 function mergeContact(
-  base: PaymentWatchClientContact,
-  next: PaymentWatchClientContact
-): PaymentWatchClientContact {
+  base: ZkWatchClientContact,
+  next: ZkWatchClientContact
+): ZkWatchClientContact {
   return {
     email: base.email ?? next.email,
     phone: base.phone ?? next.phone,
@@ -41,9 +41,7 @@ function mergeContact(
 }
 
 /** E-mail / telefon kontrahenta z zapisanego snapshotu Subiekta. */
-export function extractPaymentWatchClientContact(
-  watch: SalesPaymentWatch
-): PaymentWatchClientContact {
+export function extractZkWatchClientContact(watch: SalesZkWatch): ZkWatchClientContact {
   const snap = watch.subiekt_snapshot as SubiektDocument | null;
   if (!snap) return { email: null, phone: null };
 
@@ -56,7 +54,7 @@ export function extractPaymentWatchClientContact(
     (k): k is SubiektKontrahent => k != null
   );
 
-  let contact: PaymentWatchClientContact = { email: null, phone: null };
+  let contact: ZkWatchClientContact = { email: null, phone: null };
 
   if (targetId != null) {
     for (const k of blocks) {

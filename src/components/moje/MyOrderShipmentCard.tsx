@@ -79,6 +79,7 @@ function ShipmentToolbar({
   pickupCount,
   isAction,
   onAcknowledgePickup,
+  tourPreview = false,
 }: {
   overflowMenu: React.ReactNode;
   showSinglePickup: boolean;
@@ -90,6 +91,7 @@ function ShipmentToolbar({
   pickupCount: number;
   isAction: boolean;
   onAcknowledgePickup: (ids: string[]) => void;
+  tourPreview?: boolean;
 }) {
   const hasToolbar = overflowMenu || showSinglePickup || showBulkPickup;
   if (!hasToolbar) return null;
@@ -101,6 +103,7 @@ function ShipmentToolbar({
         <MyOrderAckButton
           variant={isAction ? "action" : "inline"}
           disabled={pending}
+          preview={tourPreview}
           title={ackFullTitle}
           onClick={() => onAcknowledgePickup(pickupIds)}
         >
@@ -111,6 +114,7 @@ function ShipmentToolbar({
         <MyOrderAckButton
           variant={isAction ? "action" : "inline"}
           disabled={pending}
+          preview={tourPreview}
           title={ackFullTitle}
           onClick={() => onAcknowledgePickup(pickupIds)}
           className="whitespace-nowrap"
@@ -135,6 +139,7 @@ export function MyOrderShipmentCard({
   onCancelRequest,
   onSaveClient,
   onEditRequest,
+  tourPreview = false,
 }: {
   row: MyOrderRow;
   listKind: MyOrderListKind;
@@ -148,6 +153,7 @@ export function MyOrderShipmentCard({
   onCancelRequest?: (orderIds: string[], phase: SalesCancelPhase) => void;
   onSaveClient?: (orderId: string, name: string | null) => void | Promise<void>;
   onEditRequest?: (row: MyOrderRow) => void;
+  tourPreview?: boolean;
 }) {
   const panelId = useId();
   const [linesOpen, setLinesOpen] = useState(false);
@@ -177,10 +183,11 @@ export function MyOrderShipmentCard({
 
   const showSalesCancelLink =
     canAcknowledge &&
+    !tourPreview &&
     row.canCancelBySales &&
     row.salesCancelPhase &&
     onCancelRequest;
-  const showEditLink = canAcknowledge && row.canEditBySales && onEditRequest;
+  const showEditLink = canAcknowledge && !tourPreview && row.canEditBySales && onEditRequest;
   const showStatusBadge = shouldShowOrderStatusBadge(row);
   const canEditClient = canAcknowledge && Boolean(onSaveClient);
 
@@ -224,7 +231,7 @@ export function MyOrderShipmentCard({
     onToggle();
   };
 
-  const overflowMenu = canAcknowledge ? (
+  const overflowMenu = canAcknowledge && !tourPreview ? (
     <MyOrderShipmentOverflowMenu
       supplierName={row.supplierName}
       listKind={listKind}
@@ -253,6 +260,7 @@ export function MyOrderShipmentCard({
       pickupCount={row.pickupPendingCount}
       isAction={isAction}
       onAcknowledgePickup={onAcknowledgePickup}
+      tourPreview={tourPreview}
     />
   );
 
@@ -432,6 +440,7 @@ export function MyOrderShipmentCard({
               <MyOrderAckButton
                 variant="action"
                 disabled={pending}
+                preview={tourPreview}
                 title={ackFullTitle}
                 onClick={() => onAcknowledgePickup(row.pickupPendingIds)}
               >

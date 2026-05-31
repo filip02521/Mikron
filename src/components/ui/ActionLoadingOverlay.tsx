@@ -19,8 +19,8 @@ export function ActionLoadingOverlay({
     variant === "viewport"
       ? "fixed inset-0 z-[70]"
       : variant === "modal"
-        ? "absolute inset-0 z-20 rounded-2xl"
-        : "absolute inset-0 z-30 rounded-xl";
+        ? "absolute inset-0 z-20 rounded-lg"
+        : "absolute inset-0 z-30 rounded-md";
 
   return (
     <div
@@ -34,7 +34,7 @@ export function ActionLoadingOverlay({
       )}
     >
       <div className="action-loading-shimmer pointer-events-none absolute inset-x-0 top-0 h-0.5 bg-gradient-to-r from-transparent via-indigo-500 to-transparent" />
-      <div className="mx-4 flex max-w-sm items-center gap-3.5 rounded-2xl border border-slate-200/90 bg-white px-5 py-4 shadow-xl ring-1 ring-slate-900/5">
+      <div className="mx-4 flex max-w-sm items-center gap-3.5 rounded-lg border border-slate-200/90 bg-white px-5 py-4 shadow-xl ring-1 ring-slate-900/5">
         <Spinner size="md" />
         <div className="min-w-0">
           <p className="text-sm font-semibold text-slate-900">{message}</p>

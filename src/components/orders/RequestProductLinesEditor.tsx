@@ -164,7 +164,7 @@ export function RequestProductLinesEditor({
           return (
             <div
               key={segment.indexes.map((i) => lines[i]!.id).join("|")}
-              className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm"
+              className="overflow-hidden rounded-md border border-slate-200 bg-white shadow-sm"
             >
               <ul className="divide-y divide-slate-100">
                 {segment.indexes.map((index) => {
@@ -217,8 +217,8 @@ export function RequestProductLinesEditor({
             className={cn(
               wrapLine
                 ? prosba
-                  ? "rounded-xl border border-slate-200 bg-white p-4 shadow-sm"
-                  : "rounded-xl border border-dashed border-slate-200 bg-slate-50/50 p-3"
+                  ? "rounded-md border border-slate-200 bg-white p-4 shadow-sm"
+                  : "rounded-md border border-dashed border-slate-200 bg-slate-50/50 p-3"
                 : "space-y-3"
             )}
           >

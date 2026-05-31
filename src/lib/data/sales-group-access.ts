@@ -25,7 +25,6 @@ export async function isManagersOwnSalesPerson(
     role: user.role,
     email: (profile?.email as string | undefined) ?? "",
     salesPersonId: (profile?.sales_person_id as string | null | undefined) ?? null,
-    mustChangePassword: false,
   });
   return own?.id === salesPersonId;
 }

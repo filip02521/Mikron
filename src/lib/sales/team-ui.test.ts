@@ -28,7 +28,7 @@ describe("salesTeamPageCopy", () => {
       },
       "overview"
     );
-    expect(copy.description).toContain("Administrator");
+    expect(copy.description).toContain("administratora");
   });
 
   it("kierownik ze scope — bez obietnicy tworzenia grup", () => {

@@ -11,6 +11,7 @@ export function MyOrderAckButton({
   variant = "inline",
   className,
   title,
+  preview,
 }: {
   children: React.ReactNode;
   onClick: () => void;
@@ -18,7 +19,56 @@ export function MyOrderAckButton({
   variant?: "banner" | "inline" | "action";
   className?: string;
   title?: string;
+  /** Tour — pełny wygląd przycisku bez akcji (podgląd). */
+  preview?: boolean;
 }) {
+  if (preview) {
+    const previewTitle = title ?? "Podgląd w tourze — po wprowadzeniu potwierdzisz odbiór tutaj";
+    if (variant === "banner") {
+      return (
+        <span
+          role="img"
+          aria-label={previewTitle}
+          title={previewTitle}
+          className={cn(
+            "shrink-0 rounded-md bg-white px-2.5 py-1 text-xs font-semibold text-emerald-800 shadow-sm ring-1 ring-white/90",
+            className
+          )}
+        >
+          {children}
+        </span>
+      );
+    }
+    if (variant === "action") {
+      return (
+        <span
+          role="img"
+          aria-label={previewTitle}
+          title={previewTitle}
+          className={cn(
+            "inline-flex min-h-8 shrink-0 items-center justify-center rounded-md border border-emerald-700 bg-emerald-600 px-3 py-1.5 text-xs font-semibold text-white shadow-sm ring-2 ring-emerald-300/80 ring-offset-1",
+            className
+          )}
+        >
+          {children}
+        </span>
+      );
+    }
+    return (
+      <span
+        role="img"
+        aria-label={previewTitle}
+        title={previewTitle}
+        className={cn(
+          "inline-flex min-h-8 items-center justify-center rounded-md border border-emerald-200 bg-white px-3 py-1.5 text-xs font-semibold text-emerald-800 shadow-sm",
+          className
+        )}
+      >
+        {children}
+      </span>
+    );
+  }
+
   if (variant === "banner") {
     return (
       <button
@@ -27,7 +77,7 @@ export function MyOrderAckButton({
         title={title}
         onClick={onClick}
         className={cn(
-          "shrink-0 cursor-pointer rounded-lg bg-white px-2.5 py-1 text-xs font-semibold text-emerald-800 shadow-sm ring-1 ring-white/90 transition-colors hover:bg-emerald-50 disabled:cursor-not-allowed disabled:opacity-50",
+          "shrink-0 cursor-pointer rounded-md bg-white px-2.5 py-1 text-xs font-semibold text-emerald-800 shadow-sm ring-1 ring-white/90 transition-colors hover:bg-emerald-50 disabled:cursor-not-allowed disabled:opacity-50",
           className
         )}
       >
@@ -44,7 +94,7 @@ export function MyOrderAckButton({
         title={title}
         onClick={onClick}
         className={cn(
-          "inline-flex min-h-8 shrink-0 cursor-pointer items-center justify-center rounded-lg border border-emerald-700 bg-emerald-600 px-3 py-1.5 text-xs font-semibold text-white shadow-sm transition hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-50",
+          "inline-flex min-h-8 shrink-0 cursor-pointer items-center justify-center rounded-md border border-emerald-700 bg-emerald-600 px-3 py-1.5 text-xs font-semibold text-white shadow-sm transition hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-50",
           className
         )}
       >

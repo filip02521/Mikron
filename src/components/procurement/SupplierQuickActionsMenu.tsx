@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/Button";
 import { IconMoreVertical } from "@/components/icons/StrokeIcons";
 import { ShiftMenu } from "@/components/summary/ShiftMenu";
 import { cn } from "@/lib/cn";
+import { panelSegmentControlClass, panelSegmentLastClass } from "@/lib/ui/ontime-theme";
 import { actionMarkOrdered, actionShiftOrder } from "@/app/actions/admin";
 import type { DailyPanelRunFn } from "@/components/summary/useDailyPanelRunner";
 import type { SupplierLocation } from "@/types/database";
@@ -108,7 +109,7 @@ export function SupplierQuickActionsMenu({
         ref={panelRef}
         id={`supplier-menu-${supplierId}`}
         role="menu"
-        className="fixed z-[100] min-w-[200px] overflow-y-auto overscroll-y-contain rounded-xl border border-slate-200 bg-white py-1 shadow-lg"
+        className="fixed z-[100] min-w-[200px] overflow-y-auto overscroll-y-contain rounded-md border border-slate-200 bg-white py-1 shadow-lg"
         style={{
           top: pos.top,
           left:
@@ -201,7 +202,7 @@ export function SupplierQuickActionsMenu({
     ) : null;
 
   return (
-    <div ref={anchorRef} className={cn("relative shrink-0", grouped && "shrink-0")}>
+    <div ref={anchorRef} className={cn("relative flex shrink-0", grouped && "shrink-0")}>
       <Button
         type="button"
         variant="ghost"
@@ -220,10 +221,10 @@ export function SupplierQuickActionsMenu({
         className={cn(
           grouped &&
             !compact &&
-            "min-h-9 min-w-10 shrink-0 !rounded-none rounded-r-xl border-0 border-l border-slate-200 px-1.5 shadow-none hover:bg-slate-50",
+            cn(panelSegmentControlClass, panelSegmentLastClass, "min-w-8 px-1"),
           grouped &&
             compact &&
-            "h-8 min-h-8 min-w-9 shrink-0 rounded-lg border border-slate-200 px-1.5 shadow-none hover:bg-slate-50"
+            "h-7 min-h-7 min-w-8 shrink-0 rounded-md border border-slate-200 px-1.5 shadow-none hover:bg-slate-50",
         )}
       >
         {grouped ? (

@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useMemo, useState } from "react";
+import Link from "next/link";
 import type { WeekDayPlan } from "@/lib/orders/summary-workspace";
 import type { SummaryStandardItem } from "@/lib/orders/summary";
 import { formatPlannerNote } from "@/lib/orders/procurement-daily-ui";
@@ -23,7 +24,7 @@ import { EmptyState } from "@/components/ui/EmptyState";
 import { formatDateString, parseDateOnly } from "@/lib/orders/dates";
 import { todayInWarsaw } from "@/lib/time/warsaw";
 import { urgentCardClassName } from "@/components/summary/urgent-card-styles";
-import { IconGripVertical } from "@/components/icons/StrokeIcons";
+import { DailySectionIcon, IconGripVertical } from "@/components/icons/StrokeIcons";
 import {
   plannerDropActiveClass,
   plannerDropHintClass,
@@ -33,6 +34,8 @@ import {
   plannerHintMutedFaintClass,
   surfaceCardClass,
 } from "@/lib/ui/ontime-theme";
+import { PanelRowActionsInlineEnd } from "@/components/summary/PanelRowActionsInlineEnd";
+import { panelRowClearFocusOnLeave, panelRowGroupClass } from "@/lib/ui/panel-row-actions-reveal";
 
 function PlanSectionHelp({ planning }: { planning: boolean }) {
   return (
@@ -45,7 +48,8 @@ function PlanSectionHelp({ planning }: { planning: boolean }) {
         </p>
       ) : (
         <p>
-          Karty z przyszłymi terminami — możesz{" "}
+          Karty z przyszłymi terminami — na komputerze najedź na wiersz, aby zobaczyć akcje
+          zamówienia. Możesz{" "}
           <strong className="font-medium text-slate-800">oznaczyć zamówienie z wyprzedzeniem</strong>
           , gdy złożysz je wcześniej u dostawcy, albo włączyć{" "}
           <strong className="font-medium text-slate-800">tryb planowania</strong> i rozłożyć zamówienia
@@ -69,6 +73,7 @@ export function WeekPlanner({
   isScopePending,
   isPlanPending = false,
   embedded = false,
+  emptyContext,
 }: {
   title: string;
   description?: string;
@@ -83,6 +88,11 @@ export function WeekPlanner({
   isPlanPending?: boolean;
   /** Bez zewnętrznej karty — do osadzenia w większej sekcji (np. /plan handlowiec). */
   embedded?: boolean;
+  /** Gdy tydzień pusty — kontekst do wyśrodkowanego komunikatu w siatce kalendarza. */
+  emptyContext?: {
+    onDemandCount?: number;
+    onOpenOnDemand?: () => void;
+  };
 }) {
   const rowPending = (id: string) => isScopePending?.(id) ?? false;
   const canOrder = Boolean(run) && !readOnly;
@@ -172,7 +182,10 @@ export function WeekPlanner({
   ) : null;
 
   const grid = !total ? (
-    <EmptyState title="Brak zamówień w tym tygodniu" />
+    <WeekPlanEmptyCalendar
+      days={displayDays}
+      emptyContext={emptyContext}
+    />
   ) : (
     <div className="grid gap-0 border-t border-slate-100 max-lg:divide-y lg:grid-cols-5 lg:divide-x lg:divide-slate-100">
       {displayDays.map((day) => (
@@ -242,7 +255,7 @@ export function WeekPlanner({
 
   if (embedded) {
     return (
-      <div className={cn("overflow-hidden", surfaceCardClass)}>
+      <div className={cn(total > 0 && "overflow-hidden", surfaceCardClass)}>
         {planningBar}
         {grid}
       </div>
@@ -250,7 +263,7 @@ export function WeekPlanner({
   }
 
   return (
-    <Card padding={false} className="overflow-hidden">
+    <Card padding={false} className={cn(total > 0 && "overflow-hidden")}>
       <CardHeader
         inset
         title={title}
@@ -268,6 +281,83 @@ export function WeekPlanner({
 
       {grid}
     </Card>
+  );
+}
+
+function WeekPlanEmptyCalendar({
+  days,
+  emptyContext,
+}: {
+  days: WeekDayPlan[];
+  emptyContext?: {
+    onDemandCount?: number;
+    onOpenOnDemand?: () => void;
+  };
+}) {
+  const onDemandCount = emptyContext?.onDemandCount ?? 0;
+  const onOpenOnDemand = emptyContext?.onOpenOnDemand;
+
+  const onDemandLine =
+    onDemandCount > 0
+      ? `${onDemandCount} ${
+          onDemandCount === 1 ? "dostawca na żądanie" : "dostawców na żądanie"
+        } — bez stałego terminu w harmonogramie.`
+      : null;
+
+  return (
+    <div className="border-t border-slate-100">
+      <div className="grid grid-cols-2 divide-x divide-y divide-slate-100 border-b border-slate-100 sm:grid-cols-3 lg:grid-cols-5 lg:divide-y-0">
+        {days.map((day) => (
+          <div
+            key={day.dateKey}
+            className={cn("px-3 py-3 text-center", day.isToday && "bg-slate-50")}
+          >
+            <p
+              className={cn(
+                "text-[10px] font-semibold uppercase tracking-wider",
+                day.isToday ? "text-slate-800" : "text-slate-500"
+              )}
+            >
+              {day.weekdayLabel}
+            </p>
+            <p className="mt-0.5 text-sm font-semibold text-slate-900">{day.dateLabel}</p>
+            {day.isToday ? (
+              <span className="mt-1.5 inline-block rounded-full border border-slate-300 bg-white px-2 py-0.5 text-[9px] font-semibold uppercase text-slate-700">
+                Dziś
+              </span>
+            ) : null}
+          </div>
+        ))}
+      </div>
+      <div className="bg-slate-50/35">
+        <EmptyState
+          icon={<DailySectionIcon kind="plan" size={28} />}
+          title="Brak zaplanowanych zamówień w tym tygodniu"
+          description={
+            [
+              "Harmonogram na najbliższe dni robocze jest pusty. Gdy coś się pojawi, zobaczysz to na kartach dostawców poniżej.",
+              onDemandLine,
+            ]
+              .filter(Boolean)
+              .join(" ")
+          }
+          action={
+            <div className="flex flex-wrap items-center justify-center gap-2">
+              <Link href="/lokalizacje/POLSKA">
+                <Button size="sm" variant="secondary">
+                  Terminy zamówień
+                </Button>
+              </Link>
+              {onDemandCount > 0 && onOpenOnDemand ? (
+                <Button size="sm" variant="outline" onClick={onOpenOnDemand}>
+                  Na żądanie ({onDemandCount})
+                </Button>
+              ) : null}
+            </div>
+          }
+        />
+      </div>
+    </div>
   );
 }
 
@@ -462,33 +552,34 @@ function PlannerCard({
     return d ? formatDateString(d, "dd.MM") : dayDateKey;
   }, [isMoved, dayDateKey]);
 
-  const body = (
+  const mainContent = (
     <>
-      <div className="flex items-start gap-1.5">
-        {planningMode ? (
-          <span
-            className="mt-0.5 cursor-grab text-slate-400 active:cursor-grabbing"
-            title="Przeciągnij"
-          >
-            <IconGripVertical size={16} aria-hidden />
-          </span>
-        ) : null}
-        <div className="min-w-0 flex-1">
-          <span className="block font-semibold leading-snug text-slate-900">
-            {item.supplierName}
-          </span>
-          {note ? (
-            <p className="mt-0.5 line-clamp-2 text-xs leading-snug text-slate-500">{note}</p>
-          ) : null}
-          {isMoved && movedLabel ? (
-            <p className="mt-1 text-[10px] font-medium text-amber-800">
-              Przeniesiono → {movedLabel}
-            </p>
-          ) : null}
-        </div>
-      </div>
+      <span className="block font-semibold leading-snug text-slate-900">{item.supplierName}</span>
+      {note ? (
+        <p className="mt-0.5 line-clamp-2 text-xs leading-snug text-slate-500">{note}</p>
+      ) : null}
+      {isMoved && movedLabel ? (
+        <p className="mt-0.5 text-[10px] font-medium text-amber-800">Przeniesiono → {movedLabel}</p>
+      ) : null}
     </>
   );
+
+  const actionBar =
+    canOrder && run && onVacation && onEdit ? (
+      <PanelRowActionsInlineEnd forceVisible={rowPending}>
+        <ScheduleSupplierActionBar
+          compact
+          supplierId={item.supplierId}
+          supplierName={item.supplierName}
+          location={item.location}
+          pending={rowPending}
+          run={run}
+          onOpenSupplier={onOpen}
+          onVacation={() => onVacation(item.supplierId)}
+          onEdit={() => onEdit(item.supplierId)}
+        />
+      </PanelRowActionsInlineEnd>
+    ) : null;
 
   return (
     <li>
@@ -505,38 +596,35 @@ function PlannerCard({
         }
         onDragEnd={planningMode ? onDragEnd : undefined}
         className={cn(
-          "text-sm transition",
+          panelRowGroupClass("text-sm transition"),
           urgentCardClassName(isOverdue && !isMoved),
-          isMoved && "border-amber-300/90 bg-white ring-1 ring-amber-200/80",
+          isMoved && "border-slate-200 border-l-2 border-l-amber-400 bg-white",
           isDragging && "opacity-50"
         )}
+        onMouseLeave={panelRowClearFocusOnLeave}
       >
-        {onOpen ? (
-          <button
-            type="button"
-            onClick={onOpen}
-            className="w-full cursor-pointer rounded-xl px-2.5 py-2 text-left transition hover:bg-indigo-50/35"
-          >
-            {body}
-          </button>
-        ) : (
-          <div className="px-2.5 py-2">{body}</div>
-        )}
-        {canOrder && run && onVacation && onEdit ? (
-          <div className="border-t border-slate-100/80 bg-slate-50/50 px-2 py-1.5">
-            <ScheduleSupplierActionBar
-              compact
-              supplierId={item.supplierId}
-              supplierName={item.supplierName}
-              location={item.location}
-              pending={rowPending}
-              run={run}
-              onOpenSupplier={onOpen}
-              onVacation={() => onVacation(item.supplierId)}
-              onEdit={() => onEdit(item.supplierId)}
-            />
-          </div>
-        ) : null}
+        <div className="flex items-start gap-1 px-2 py-1.5">
+          {planningMode ? (
+            <span
+              className="mt-0.5 cursor-grab text-slate-400 active:cursor-grabbing"
+              title="Przeciągnij"
+            >
+              <IconGripVertical size={16} aria-hidden />
+            </span>
+          ) : null}
+          {onOpen ? (
+            <button
+              type="button"
+              onClick={onOpen}
+              className="min-w-0 flex-1 cursor-pointer rounded-md text-left transition hover:bg-indigo-50/35"
+            >
+              {mainContent}
+            </button>
+          ) : (
+            <div className="min-w-0 flex-1">{mainContent}</div>
+          )}
+          {actionBar}
+        </div>
       </article>
     </li>
   );

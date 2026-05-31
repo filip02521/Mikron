@@ -1,12 +1,22 @@
 import { createAdminClient } from "@/lib/supabase/admin";
-import type { SalesNote, SalesPaymentWatch } from "@/types/database";
+import type { SalesNote, SalesZkWatch } from "@/types/database";
 
 export type SalesNotepadData = {
-  paymentWatches: SalesPaymentWatch[];
-  archivedPaymentWatches: SalesPaymentWatch[];
+  zkWatches: SalesZkWatch[];
+  archivedZkWatches: SalesZkWatch[];
   notes: SalesNote[];
   archivedNotes: SalesNote[];
 };
+
+export function partitionSalesZkWatches(watches: SalesZkWatch[]): Pick<
+  SalesNotepadData,
+  "zkWatches" | "archivedZkWatches"
+> {
+  return {
+    zkWatches: watches.filter((w) => !w.closed_at && !w.archived_at),
+    archivedZkWatches: watches.filter((w) => w.closed_at || w.archived_at),
+  };
+}
 
 export async function fetchSalesNotepad(
   salesPersonId: string
@@ -15,7 +25,7 @@ export async function fetchSalesNotepad(
 
   const [watchesRes, notesRes] = await Promise.all([
     supabase
-      .from("sales_payment_watches")
+      .from("sales_zk_watches")
       .select("*")
       .eq("sales_person_id", salesPersonId)
       .order("created_at", { ascending: true }),
@@ -31,39 +41,45 @@ export async function fetchSalesNotepad(
   if (watchesRes.error) throw new Error(watchesRes.error.message);
   if (notesRes.error) throw new Error(notesRes.error.message);
 
-  const watches = (watchesRes.data ?? []) as SalesPaymentWatch[];
+  const watches = (watchesRes.data ?? []) as SalesZkWatch[];
   const notes = (notesRes.data ?? []) as SalesNote[];
+  const { zkWatches, archivedZkWatches } = partitionSalesZkWatches(watches);
 
   return {
-    paymentWatches: watches.filter((w) => !w.settled_at && !w.archived_at),
-    archivedPaymentWatches: watches.filter((w) => w.settled_at || w.archived_at),
+    zkWatches,
+    archivedZkWatches,
     notes: notes.filter((n) => !n.archived_at),
     archivedNotes: notes.filter((n) => n.archived_at),
   };
 }
 
-export async function countActivePaymentWatches(
-  salesPersonId: string
-): Promise<number> {
+export async function countActiveZkWatches(salesPersonId: string): Promise<number> {
   const supabase = createAdminClient();
   const { count, error } = await supabase
-    .from("sales_payment_watches")
+    .from("sales_zk_watches")
     .select("id", { count: "exact", head: true })
     .eq("sales_person_id", salesPersonId)
-    .is("settled_at", null)
+    .is("closed_at", null)
     .is("archived_at", null);
 
   if (error) throw new Error(error.message);
   return count ?? 0;
 }
 
-/** Badge notatnika: aktywne ZK + notatki z follow-up na dziś/wcześniej. */
+/** Badge notatnika: ZK i notatki z przypomnieniem na dziś/wcześniej. */
 export async function countNotepadNavBadge(salesPersonId: string): Promise<number> {
   const supabase = createAdminClient();
   const today = new Date().toISOString().slice(0, 10);
 
-  const [activeZk, notesDueRes] = await Promise.all([
-    countActivePaymentWatches(salesPersonId),
+  const [watchesDueRes, notesDueRes] = await Promise.all([
+    supabase
+      .from("sales_zk_watches")
+      .select("id", { count: "exact", head: true })
+      .eq("sales_person_id", salesPersonId)
+      .is("closed_at", null)
+      .is("archived_at", null)
+      .not("follow_up_at", "is", null)
+      .lte("follow_up_at", today),
     supabase
       .from("sales_notes")
       .select("id", { count: "exact", head: true })
@@ -73,6 +89,7 @@ export async function countNotepadNavBadge(salesPersonId: string): Promise<numbe
       .lte("follow_up_at", today),
   ]);
 
+  if (watchesDueRes.error) throw new Error(watchesDueRes.error.message);
   if (notesDueRes.error) throw new Error(notesDueRes.error.message);
-  return activeZk + (notesDueRes.count ?? 0);
+  return (watchesDueRes.count ?? 0) + (notesDueRes.count ?? 0);
 }

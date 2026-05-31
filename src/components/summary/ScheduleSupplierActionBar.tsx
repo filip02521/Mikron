@@ -8,7 +8,7 @@ import type { DailyPanelRunFn } from "@/components/summary/useDailyPanelRunner";
 import type { SupplierLocation } from "@/types/database";
 import { cn } from "@/lib/cn";
 import { panelSegmentPrimaryClass } from "@/lib/ui/ontime-theme";
-import { buttonGroupItemClass, buttonGroupShellClass } from "@/lib/ui/surfaces";
+import { buttonGroupItemClass, panelActionBarShellClass } from "@/lib/ui/surfaces";
 
 /** Zamówione + Przesuń + ⋮ — jeden segment wizualnie, osobne cele kliknięcia. */
 export function ScheduleSupplierActionBar({
@@ -50,14 +50,14 @@ export function ScheduleSupplierActionBar({
         role="group"
         aria-label={`Akcje harmonogramu — ${supplierName}`}
         aria-busy={pending}
-        className={cn("flex w-full flex-col gap-1.5", pending && "opacity-60", className)}
+        className={cn("flex w-full flex-col gap-1", pending && "opacity-60", className)}
       >
         <Button
           type="button"
           variant="primary"
           size="sm"
           disabled={pending}
-          className="h-8 w-full rounded-xl text-xs font-semibold"
+          className="h-7 w-full rounded-md text-xs font-semibold"
           onClick={markOrdered}
         >
           Zamówione
@@ -109,18 +109,20 @@ export function ScheduleSupplierActionBar({
       role="group"
       aria-label={`Akcje harmonogramu — ${supplierName}`}
       aria-busy={pending}
-      className={cn(buttonGroupShellClass, "max-w-full", pending && "opacity-60", className)}
+      className={cn(panelActionBarShellClass, pending && "opacity-60", className)}
     >
-      <Button
+      <button
         type="button"
-        variant="primary"
-        size="sm"
         disabled={pending}
-        className={cn(buttonGroupItemClass, panelSegmentPrimaryClass, "focus-visible:z-10")}
+        className={cn(
+          buttonGroupItemClass,
+          panelSegmentPrimaryClass,
+          "focus-visible:z-10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400/50"
+        )}
         onClick={markOrdered}
       >
         Zamówione
-      </Button>
+      </button>
       <ShiftMenu
         grouped
         disabled={pending}

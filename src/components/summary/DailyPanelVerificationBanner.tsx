@@ -14,28 +14,25 @@ export function DailyPanelVerificationBanner({
 
   const label =
     count === 1
-      ? "1 zgłoszenie wymaga uzupełnienia"
-      : `${count} zgłoszeń wymaga uzupełnienia`;
+      ? "1 zgłoszenie do uzupełnienia"
+      : `${count} zgłoszeń do uzupełnienia`;
 
   return (
     <div
-      className="rounded-xl border border-amber-200 bg-amber-50/90 px-4 py-3.5 sm:flex sm:items-center sm:justify-between sm:gap-4"
+      className="flex flex-wrap items-center justify-between gap-2 rounded-md border border-slate-200/90 bg-white px-3 py-2.5 sm:px-4"
       role="status"
     >
-      <div className="min-w-0">
-        <p className="text-sm font-semibold text-amber-950">{label}</p>
-        <p className="mt-0.5 text-xs leading-relaxed text-amber-900/90">
-          Prośby handlowców bez kompletnych danych nie trafią do kolejki Dziś. Uzupełnij je w
-          weryfikacji.
-        </p>
-      </div>
-      <div className="mt-3 flex shrink-0 flex-wrap gap-2 sm:mt-0">
-        <Button variant="primary" size="sm" onClick={onOpenModal}>
-          Uzupełnij teraz
+      <p className="min-w-0 text-sm text-slate-800">
+        <span className="font-semibold">{label}</span>
+        <span className="text-slate-500"> — brak danych blokuje kolejkę prośb.</span>
+      </p>
+      <div className="flex shrink-0 flex-wrap gap-1.5">
+        <Button variant="primary" size="sm" className="h-8" onClick={onOpenModal}>
+          Uzupełnij
         </Button>
         <Link
           href="/weryfikacja"
-          className="inline-flex min-h-9 items-center rounded-lg border border-amber-300 bg-white px-3 text-sm font-medium text-amber-950 transition hover:bg-amber-50"
+          className="inline-flex h-8 items-center rounded-md border border-slate-200 bg-white px-2.5 text-xs font-medium text-slate-700 transition hover:bg-slate-50"
         >
           Pełny widok
         </Link>

@@ -668,7 +668,7 @@ export function ProductsCatalogAdminClient({
           syncRunning={catalogSync?.state?.status === "running"}
         />
 
-        <div className="mt-4 rounded-xl border border-slate-200 bg-white p-4">
+        <div className="mt-4 rounded-md border border-slate-200 bg-white p-4">
           <p className="text-sm font-semibold text-slate-900">Indeks ZD → dostawca</p>
           <p className="mt-0.5 text-xs text-slate-600">
             Jednorazowo przechodzi po wszystkich ZD i przypisuje numer dokumentu do dostawcy (główne i dodatkowe `kh_Id` w kartotece dostawcy).
@@ -776,7 +776,7 @@ export function ProductsCatalogAdminClient({
               (supplierStats ?? [])
                 .filter((s) => (s.linksTotal ?? 0) === 0)
                 .map((s) => (
-                  <div key={s.id} className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-slate-200 bg-slate-50/70 px-3 py-2">
+                  <div key={s.id} className="flex flex-wrap items-center justify-between gap-2 rounded-md border border-slate-200 bg-slate-50/70 px-3 py-2">
                     <div className="min-w-0">
                       <p className="text-sm font-semibold text-slate-900">{s.name}</p>
                       <p className="text-xs text-slate-500">
@@ -911,7 +911,7 @@ export function ProductsCatalogAdminClient({
                 stopTickLoop();
                 setImportSupplierId(e.target.value);
               }}
-              className="h-9 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm text-slate-900 shadow-sm focus:border-indigo-300 focus:outline-none focus:ring-2 focus:ring-indigo-100/90 sm:max-w-[26rem]"
+              className="h-9 w-full rounded-md border border-slate-200 bg-white px-3 text-sm text-slate-900 shadow-sm focus:border-indigo-300 focus:outline-none focus:ring-2 focus:ring-indigo-100/90 sm:max-w-[26rem]"
             >
               {suppliers.map((s) => (
                 <option key={s.id} value={s.id}>

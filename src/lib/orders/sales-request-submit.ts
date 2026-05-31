@@ -87,8 +87,8 @@ export function salesSubmitUserHint(
         title: "Możesz wysłać prośbę",
         detail:
           requestKind === "informacja"
-            ? "Twoje dane wystarczą do zgłoszenia. Dział dostaw dopasuje dostawcę i dopracuje szczegóły — śledź postęp w „Moje zamówienia”."
-            : "Produkt i ilość są podane — to wystarczy do wysłania. Dział dostaw dopasuje dostawcę i dopracuje resztę — śledź postęp w „Moje zamówienia”.",
+            ? "Twoje dane wystarczą do zgłoszenia. Dział zakupów dopasuje dostawcę i dopracuje szczegóły — śledź postęp w „Moje zamówienia”."
+            : "Produkt i ilość są podane — to wystarczy do wysłania. Dział zakupów dopasuje dostawcę i dopracuje resztę — śledź postęp w „Moje zamówienia”.",
       };
     case "complete":
       return {
@@ -96,8 +96,8 @@ export function salesSubmitUserHint(
         title: "Zgłoszenie kompletne",
         detail:
           requestKind === "informacja"
-            ? "Trafia od razu do działu dostaw — bez dodatkowego sprawdzania."
-            : "Dostawca, produkt i ilość są podane — trafia od razu do panelu dziennego.",
+            ? "Trafia od razu do działu zakupów — bez dodatkowego sprawdzania."
+            : "Dostawca, produkt i ilość są podane — trafia od razu do realizacji.",
       };
   }
 }

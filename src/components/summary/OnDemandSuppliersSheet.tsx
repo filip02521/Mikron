@@ -8,6 +8,8 @@ import { EmptyState } from "@/components/ui/EmptyState";
 import type { DailyPanelRunFn } from "@/components/summary/useDailyPanelRunner";
 import { cn } from "@/lib/cn";
 import { panelNameLinkClass } from "@/lib/ui/ontime-theme";
+import { PanelRowActionsInlineEnd } from "@/components/summary/PanelRowActionsInlineEnd";
+import { panelRowClearFocusOnLeave, panelRowGroupClass } from "@/lib/ui/panel-row-actions-reveal";
 
 export function OnDemandSuppliersSheet({
   open,
@@ -71,7 +73,10 @@ export function OnDemandSuppliersSheet({
                 return (
                   <li
                     key={row.supplierId}
-                    className="rounded-xl border border-slate-200 bg-slate-50/50 px-3.5 py-3"
+                    className={panelRowGroupClass(
+                      "rounded-md border border-slate-200 bg-slate-50/50 px-3 py-2.5"
+                    )}
+                    onMouseLeave={panelRowClearFocusOnLeave}
                   >
                     <div className="flex flex-wrap items-start justify-between gap-2">
                       <div className="min-w-0 flex-1">
@@ -95,22 +100,23 @@ export function OnDemandSuppliersSheet({
                           className="mt-2"
                         />
                       </div>
-                      <Button
-                        variant="primary"
-                        size="sm"
-                        className="shrink-0"
-                        disabled={rowPending}
-                        onClick={() =>
-                          run(
-                            () => actionMarkOrdered(row.supplierId),
-                            `Zamówiono: ${row.supplierName}`,
-                            "Oznaczanie jako zamówione…",
-                            { scope: row.supplierId }
-                          )
-                        }
-                      >
-                        Zamówione
-                      </Button>
+                      <PanelRowActionsInlineEnd forceVisible={rowPending}>
+                        <Button
+                          variant="primary"
+                          size="sm"
+                          disabled={rowPending}
+                          onClick={() =>
+                            run(
+                              () => actionMarkOrdered(row.supplierId),
+                              `Zamówiono: ${row.supplierName}`,
+                              "Oznaczanie jako zamówione…",
+                              { scope: row.supplierId }
+                            )
+                          }
+                        >
+                          Zamówione
+                        </Button>
+                      </PanelRowActionsInlineEnd>
                     </div>
                   </li>
                 );

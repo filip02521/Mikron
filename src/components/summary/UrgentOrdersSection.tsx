@@ -25,6 +25,13 @@ import {
   rowPendingRingClass,
 } from "@/lib/ui/ontime-theme";
 import {
+  PanelRowActionsInlineEnd,
+} from "@/components/summary/PanelRowActionsInlineEnd";
+import {
+  panelRowClearFocusOnLeave,
+  panelRowGroupClass,
+} from "@/lib/ui/panel-row-actions-reveal";
+import {
   urgentCardClassName,
   urgentGroupDividerClassName,
   urgentGroupHeadingClassName,
@@ -50,6 +57,10 @@ function SectionHelp() {
         <strong className="font-medium text-slate-800">Zaległe</strong> — minął planowany termin.
         <strong className="font-medium text-slate-800"> Na dziś</strong> — zamówienie na bieżący
         dzień.
+      </p>
+      <p className="mb-2">
+        Na komputerze najedź na wiersz — pojawią się przyciski Zamówione / Przesuń / Więcej.
+        Na tablecie i telefonie są widoczne cały czas.
       </p>
       <p>
         Po złożeniu u dostawcy kliknij <strong className="font-medium text-slate-800">Zamówione</strong>.
@@ -86,61 +97,62 @@ function UrgentCard({
 
   return (
     <article
-      className={cn(urgentCardClassName(isOverdue), rowPending && rowPendingRingClass)}
+      className={cn(
+        panelRowGroupClass(urgentCardClassName(isOverdue)),
+        rowPending && rowPendingRingClass
+      )}
       aria-busy={rowPending}
+      onMouseLeave={panelRowClearFocusOnLeave}
     >
-      <div className="flex flex-col gap-2 px-3 py-2">
-        <div className="flex min-w-0 items-start gap-2">
-          <input
-            type="checkbox"
-            className={cn("mt-0.5 h-4 w-4 shrink-0", checkboxBrandClass)}
-            checked={checked}
-            disabled={rowPending}
-            onChange={onToggle}
-            aria-label={`Zaznacz ${item.supplierName}`}
-          />
-          <div className="min-w-0 flex-1">
-            <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5">
-              <button
-                type="button"
-                className={cn("text-sm font-semibold leading-tight", panelNameLinkClass)}
-                onClick={() => onOpenSupplier(item.supplierId)}
-              >
-                {item.supplierName}
-              </button>
-              <Badge variant={urgentStatusBadgeVariant(isOverdue)} className="text-[10px]">
-                {ui.statusTitle}
-                {isOverdue ? ` · ${dateLabel}` : null}
+      <div className="flex items-start gap-2 px-2 py-1.5">
+        <input
+          type="checkbox"
+          className={cn("mt-0.5 h-4 w-4 shrink-0", checkboxBrandClass)}
+          checked={checked}
+          disabled={rowPending}
+          onChange={onToggle}
+          aria-label={`Zaznacz ${item.supplierName}`}
+        />
+        <div className="min-w-0 flex-1">
+          <div className="flex flex-wrap items-center gap-x-1.5 gap-y-0.5">
+            <button
+              type="button"
+              className={cn("text-sm font-semibold leading-tight", panelNameLinkClass)}
+              onClick={() => onOpenSupplier(item.supplierId)}
+            >
+              {item.supplierName}
+            </button>
+            <Badge variant={urgentStatusBadgeVariant(isOverdue)} className="text-[10px]">
+              {ui.statusTitle}
+              {isOverdue ? ` · ${dateLabel}` : null}
+            </Badge>
+            {item.vacationNote ? (
+              <Badge variant="warning" className="text-[10px]">
+                {vacationNoteLabel(item.vacationNote)}
               </Badge>
-              {item.vacationNote ? (
-                <Badge variant="warning" className="text-[10px]">
-                  {vacationNoteLabel(item.vacationNote)}
-                </Badge>
-              ) : null}
-              <span className="text-xs text-slate-500">{locationLabel(item.location)}</span>
-            </div>
-            {ui.statusDetail ? (
-              <p
-                className={cn(
-                  "mt-0.5 line-clamp-2 text-xs leading-snug",
-                  item.vacationNote ? "text-amber-900/90" : "text-slate-500"
-                )}
-              >
-                {ui.statusDetail}
-              </p>
             ) : null}
-            {supplierMeta ? (
-              <SupplierContactActions
-                notes={supplierMeta.notes}
-                mails={supplierMeta.mails}
-                extraInfo={supplierMeta.extra_info}
-                className="mt-1"
-              />
-            ) : null}
+            <span className="text-xs text-slate-500">{locationLabel(item.location)}</span>
           </div>
+          {ui.statusDetail ? (
+            <p
+              className={cn(
+                "mt-0.5 line-clamp-2 text-xs leading-snug",
+                item.vacationNote ? "text-amber-900/90" : "text-slate-500"
+              )}
+            >
+              {ui.statusDetail}
+            </p>
+          ) : null}
+          {supplierMeta ? (
+            <SupplierContactActions
+              notes={supplierMeta.notes}
+              mails={supplierMeta.mails}
+              extraInfo={supplierMeta.extra_info}
+              className="mt-0.5"
+            />
+          ) : null}
         </div>
-
-        <div className="flex justify-end border-t border-slate-100/80 pt-2">
+        <PanelRowActionsInlineEnd forceVisible={rowPending}>
           <ScheduleSupplierActionBar
             supplierId={item.supplierId}
             supplierName={item.supplierName}
@@ -151,7 +163,7 @@ function UrgentCard({
             onVacation={() => onVacation(item.supplierId)}
             onEdit={() => onEdit(item.supplierId)}
           />
-        </div>
+        </PanelRowActionsInlineEnd>
       </div>
     </article>
   );
@@ -202,7 +214,7 @@ function UrgentGroup({
           <div className={urgentGroupDividerClassName(isOverdue)} aria-hidden />
         </div>
       ) : null}
-      <ul className="space-y-1.5">
+      <ul className="space-y-1">
         {items.map((item) => (
           <li key={item.supplierId}>
             <UrgentCard
@@ -295,7 +307,7 @@ export function UrgentOrdersSection({
     today: "Na dziś — harmonogram",
   };
 
-  const descriptions: Record<UrgentQueuePart, string> = {
+  const descriptions: Record<UrgentQueuePart, string | undefined> = {
     full: [
       overdue.length && todayList.length
         ? `${overdue.length} zaległych · ${todayList.length} na dziś`
@@ -303,8 +315,8 @@ export function UrgentOrdersSection({
           ? `${overdue.length} zaległych`
           : `${todayList.length} na dziś`,
     ].filter(Boolean).join(""),
-    overdue: `${overdue.length} po terminie — pierwszy krok kolejki dnia`,
-    today: `${todayList.length} na bieżący dzień`,
+    overdue: undefined,
+    today: undefined,
   };
 
   const headerAction =
@@ -323,6 +335,7 @@ export function UrgentOrdersSection({
         <Button
           size="sm"
           disabled={isBulkPending || selectedCount === 0}
+          className="h-7"
           onClick={handleBulkClick}
         >
           Zamówione ({selectedCount})
@@ -354,6 +367,8 @@ export function UrgentOrdersSection({
           tone={subsectionTone}
           step={queueStep}
           count={scopeCount}
+          countUnit={{ one: "dostawca", few: "dostawców", many: "dostawców" }}
+          compact
         />
       ) : (
         <CardHeader
@@ -363,7 +378,7 @@ export function UrgentOrdersSection({
           action={headerAction}
         />
       )}
-      <div className="space-y-3 p-2.5 sm:p-3">
+      <div className="space-y-1.5 p-2 sm:p-2.5">
         {showOverdue ? (
           <UrgentGroup
             title="Zaległe"

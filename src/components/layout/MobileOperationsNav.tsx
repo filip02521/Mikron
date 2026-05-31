@@ -1,0 +1,73 @@
+"use client";
+
+import Link from "next/link";
+import { usePathname } from "next/navigation";
+import { isNavItemActive, navForRole } from "@/lib/nav";
+import { cn } from "@/lib/cn";
+import { NavIcon } from "@/components/icons/NavIcon";
+import {
+  mobileNavBadgeClass,
+  mobileNavLinkActiveClass,
+  mobileNavLinkBaseClass,
+  mobileNavLinkIdleClass,
+  mobileSalesNavClass,
+} from "@/lib/ui/ontime-theme";
+import type { UserRole } from "@/types/database";
+
+export function MobileOperationsNav({
+  role,
+  navBadges = { nowe: 0, weryfikacja: 0, realizacja: 0 },
+}: {
+  role: UserRole;
+  navBadges?: { nowe?: number; weryfikacja?: number; realizacja?: number };
+}) {
+  const pathname = usePathname();
+  const groups = navForRole(role, navBadges);
+  const items = groups.find((g) => g.title === "Dzień roboczy")?.items ?? groups[0]?.items ?? [];
+
+  return (
+    <nav
+      className={mobileSalesNavClass}
+      style={{ paddingBottom: "env(safe-area-inset-bottom, 0px)" }}
+      aria-label="Nawigacja działu zakupów"
+    >
+      <ul className="mx-auto flex max-w-lg items-stretch justify-around gap-0.5 px-0.5">
+        {items.map((item) => {
+          const siblingHrefs = items.map((i) => i.href);
+          const active = isNavItemActive(pathname, item.href, siblingHrefs);
+          const attentionBadge = item.badge != null && item.badge > 0 ? item.badge : 0;
+          const label = item.mobileLabel ?? item.label;
+          return (
+            <li key={item.href} className="min-w-0 flex-1">
+              <Link
+                href={item.href}
+                className={cn(
+                  mobileNavLinkBaseClass,
+                  "px-1",
+                  active ? mobileNavLinkActiveClass : mobileNavLinkIdleClass
+                )}
+                aria-current={active ? "page" : undefined}
+                title={item.description ?? item.label}
+              >
+                <span className="relative">
+                  <NavIcon href={item.href} size={20} className="text-current" />
+                  {attentionBadge > 0 && !active ? (
+                    <span
+                      className={cn(
+                        "absolute -right-1.5 -top-1 flex h-3.5 min-w-3.5 items-center justify-center rounded-full px-0.5 text-[8px] font-bold tabular-nums",
+                        mobileNavBadgeClass
+                      )}
+                    >
+                      {attentionBadge > 9 ? "9+" : attentionBadge}
+                    </span>
+                  ) : null}
+                </span>
+                <span className="max-w-full truncate leading-tight">{label}</span>
+              </Link>
+            </li>
+          );
+        })}
+      </ul>
+    </nav>
+  );
+}

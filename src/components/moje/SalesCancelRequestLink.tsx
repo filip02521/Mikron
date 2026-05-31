@@ -14,7 +14,7 @@ export function SalesCancelRequestLink({
         type="button"
         disabled={disabled}
         onClick={onClick}
-        className="inline-flex min-h-11 cursor-pointer items-center justify-center rounded-lg px-2 font-medium text-slate-600 underline decoration-slate-300 underline-offset-2 hover:bg-red-50 hover:text-red-800 disabled:cursor-not-allowed disabled:opacity-50"
+        className="inline-flex min-h-11 cursor-pointer items-center justify-center rounded-md px-2 font-medium text-slate-600 underline decoration-slate-300 underline-offset-2 hover:bg-red-50 hover:text-red-800 disabled:cursor-not-allowed disabled:opacity-50"
       >
         Wycofaj prośbę…
       </button>

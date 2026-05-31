@@ -6,6 +6,7 @@ import {
 } from "@/lib/orders/delivery-stats-schema";
 import { formatPlDate, formatSupplierIntervalForSales } from "@/lib/display-labels";
 import { buildSupplierPlanInsight, type SupplierPlanInsight } from "@/lib/orders/plan-preview";
+import { PROCUREMENT_TEAM_LABEL } from "@/lib/orders/procurement-copy";
 import type { WeekDayPlan } from "@/lib/orders/summary-workspace";
 import type { DeliveryStats, StatsMode, SupplierWithSchedule } from "@/types/database";
 
@@ -138,7 +139,7 @@ export function describeNextOrderForSales(insight: SalesSupplierInsight): {
   if (insight.orderOnDemand) {
     return {
       primary: "Na żądanie — bez stałego terminu w kalendarzu",
-      secondary: "Zgłoś prośbę; dział dostaw zamówi, gdy będzie to możliwe.",
+      secondary: `Zgłoś prośbę; ${PROCUREMENT_TEAM_LABEL} zamówi, gdy będzie to możliwe.`,
     };
   }
 

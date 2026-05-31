@@ -67,11 +67,20 @@ export function DailyPanelActionsBar({
         <div className={panelToolbarActionsClass}>
           <Button
             size="sm"
-            className="h-9 min-h-9 shrink-0 gap-1.5 px-3.5 py-0 text-xs"
+            className="h-10 min-h-10 shrink-0 gap-1.5 px-3.5 py-0 text-xs"
             onClick={onNewRequest}
           >
             <IconPlusCircle size={15} />
             Nowa prośba
+          </Button>
+          <Button
+            size="sm"
+            variant="outline"
+            className="h-10 min-h-10 shrink-0 gap-1.5 px-3 py-0 text-xs"
+            onClick={runSyncSchedules}
+            disabled={syncPending}
+          >
+            {syncPending ? "Przeliczanie…" : "Przelicz terminy"}
           </Button>
           <PanelDailyHelp density="toolbar" />
           <OverflowMenu
@@ -90,7 +99,7 @@ export function DailyPanelActionsBar({
               </OverflowMenuItem>
             ) : null}
             <OverflowMenuItem onClick={runSyncSchedules} disabled={syncPending}>
-              {syncPending ? "Przeliczanie terminów…" : "Przelicz terminy"}
+              {syncPending ? "Przeliczanie terminów…" : "Przelicz terminy (menu)"}
             </OverflowMenuItem>
             <OverflowMenuItem onClick={() => router.push("/zakupy/urlopy")}>
               Urlopy

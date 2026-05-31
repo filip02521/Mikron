@@ -5,7 +5,6 @@ import { countDailyPanelExceptions } from "@/lib/orders/procurement-daily-ui";
 import { DailyPanelHiddenSuppliers } from "@/components/summary/DailyPanelHiddenSuppliers";
 import { DailyPanelInformacjaSection } from "@/components/summary/DailyPanelInformacjaSection";
 import { DailyPanelOnDemandSection } from "@/components/summary/DailyPanelOnDemandSection";
-import { SalesCancelledDailyCompact } from "@/components/summary/SalesCancelledDailyCompact";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { Button } from "@/components/ui/Button";
 import { DailySectionIcon } from "@/components/icons/StrokeIcons";
@@ -30,7 +29,6 @@ export function DailyPanelExceptionsView({
   const hasHidden = workspace.panelHidden.suppliers.length > 0;
   const hasInformacja = workspace.informacjaLeft.length > 0;
   const hasOnDemand = workspace.onDemandSuppliers.length > 0;
-  const hasCancelled = workspace.salesCancelledNotices.length > 0;
 
   if (exceptionCount === 0) {
     return (
@@ -48,15 +46,7 @@ export function DailyPanelExceptionsView({
   }
 
   return (
-    <div className="space-y-4">
-      {hasCancelled ? (
-        <SalesCancelledDailyCompact
-          notices={workspace.salesCancelledNotices}
-          isScopePending={isScopePending}
-          run={run}
-        />
-      ) : null}
-
+    <div className="space-y-3">
       {hasInformacja ? (
         <DailyPanelInformacjaSection groups={workspace.informacjaLeft} />
       ) : null}

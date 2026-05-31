@@ -1,0 +1,180 @@
+"use client";
+
+import type { SummaryWorkspaceData } from "@/lib/orders/summary-workspace";
+import type { SummaryStandardItem } from "@/lib/orders/summary";
+import type { DeliveryStats, StatsMode } from "@/types/database";
+import { Button } from "@/components/ui/Button";
+import { EmptyState } from "@/components/ui/EmptyState";
+import { DailyPanelEmptyGuide } from "@/components/summary/DailyPanelEmptyGuide";
+import { DailyPanelVerificationBanner } from "@/components/summary/DailyPanelVerificationBanner";
+import { SalesCancelledDailyPanel } from "@/components/summary/SalesCancelledDailyPanel";
+import { ForSomeoneRequests } from "@/components/summary/ForSomeoneRequests";
+import { UrgentOrdersSection } from "@/components/summary/UrgentOrdersSection";
+import {
+  DailySectionIcon,
+} from "@/components/icons/StrokeIcons";
+import type { DailyPanelRunFn } from "@/components/summary/useDailyPanelRunner";
+
+export function DailyTodayView({
+  workspace,
+  verificationCount,
+  hasTodayWork,
+  hasForSomeone,
+  urgentOverdue,
+  urgentToday,
+  standardUrgentAll,
+  queueStepBySection,
+  selected,
+  selectedCount,
+  isScopePending,
+  isBulkPending,
+  statsBySupplierId,
+  supplierStatsMode,
+  suppliers,
+  salesPeople,
+  run,
+  onOpenSupplier,
+  onVacation,
+  onEdit,
+  onToggle,
+  onSelectAllInScope,
+  onBulkOrdered,
+  onOpenVerification,
+  onOpenWeek,
+}: {
+  workspace: SummaryWorkspaceData;
+  verificationCount: number;
+  hasTodayWork: boolean;
+  hasForSomeone: boolean;
+  urgentOverdue: SummaryStandardItem[];
+  urgentToday: SummaryStandardItem[];
+  standardUrgentAll: SummaryStandardItem[];
+  queueStepBySection: {
+    overdue?: number;
+    prosby?: number;
+    today?: number;
+  };
+  selected: Record<string, boolean>;
+  selectedCount: number;
+  isScopePending: (scope: string) => boolean;
+  isBulkPending: boolean;
+  statsBySupplierId: Record<string, DeliveryStats>;
+  supplierStatsMode: Record<string, StatsMode>;
+  suppliers: { id: string; name: string }[];
+  salesPeople: { id: string; name: string; email: string }[];
+  run: DailyPanelRunFn;
+  onOpenSupplier: (id: string) => void;
+  onVacation: (id: string) => void;
+  onEdit: (id: string) => void;
+  onToggle: (supplierId: string) => void;
+  onSelectAllInScope: (checked: boolean, supplierIds: string[]) => void;
+  onBulkOrdered: () => void;
+  onOpenVerification: () => void;
+  onOpenWeek: () => void;
+}) {
+  const hasCancelled = workspace.salesCancelledNotices.length > 0;
+  const showEmpty = !hasTodayWork && verificationCount === 0 && !hasCancelled;
+
+  return (
+    <div
+      id="panel-view-dzis"
+      role="tabpanel"
+      aria-labelledby="panel-tab-dzis"
+      className="px-4 py-4 sm:px-6"
+    >
+        {!showEmpty ? (
+          <div className="space-y-3">
+            {hasCancelled ? (
+              <SalesCancelledDailyPanel
+                notices={workspace.salesCancelledNotices}
+                isScopePending={isScopePending}
+                run={run}
+              />
+            ) : null}
+            {verificationCount > 0 ? (
+              <DailyPanelVerificationBanner
+                count={verificationCount}
+                onOpenModal={onOpenVerification}
+              />
+            ) : null}
+            {hasTodayWork ? (
+              <>
+                {urgentOverdue.length > 0 ? (
+                  <UrgentOrdersSection
+                    embedded
+                    queueStep={queueStepBySection.overdue}
+                    queuePart="overdue"
+                    items={standardUrgentAll}
+                    supplierMeta={workspace.supplierMeta}
+                    showBulkToolbar
+                    run={run}
+                    onOpenSupplier={onOpenSupplier}
+                    onVacation={onVacation}
+                    onEdit={onEdit}
+                    selected={selected}
+                    onToggle={onToggle}
+                    onSelectAllInScope={onSelectAllInScope}
+                    selectedCount={selectedCount}
+                    onBulkOrdered={onBulkOrdered}
+                    isScopePending={isScopePending}
+                    isBulkPending={isBulkPending}
+                  />
+                ) : null}
+
+                {hasForSomeone ? (
+                  <ForSomeoneRequests
+                    embedded
+                    queueStep={queueStepBySection.prosby}
+                    groups={workspace.forSomeoneLeft}
+                    isScopePending={isScopePending}
+                    run={run}
+                    onOpenSupplier={onOpenSupplier}
+                    statsBySupplierId={statsBySupplierId}
+                    supplierStatsMode={supplierStatsMode}
+                    suppliers={suppliers}
+                    salesPeople={salesPeople}
+                  />
+                ) : null}
+
+                {urgentToday.length > 0 ? (
+                  <UrgentOrdersSection
+                    embedded
+                    queueStep={queueStepBySection.today}
+                    queuePart="today"
+                    items={standardUrgentAll}
+                    supplierMeta={workspace.supplierMeta}
+                    showBulkToolbar={urgentOverdue.length === 0}
+                    run={run}
+                    onOpenSupplier={onOpenSupplier}
+                    onVacation={onVacation}
+                    onEdit={onEdit}
+                    selected={selected}
+                    onToggle={onToggle}
+                    onSelectAllInScope={onSelectAllInScope}
+                    selectedCount={selectedCount}
+                    onBulkOrdered={onBulkOrdered}
+                    isScopePending={isScopePending}
+                    isBulkPending={isBulkPending}
+                  />
+                ) : null}
+              </>
+            ) : null}
+          </div>
+        ) : (
+          <>
+            <EmptyState
+              title="Nic pilnego na dziś"
+              description="Brak prośb i harmonogramu na dziś. Sprawdź zakładkę Tydzień lub terminy w kalendarzu."
+              icon={<DailySectionIcon kind="dzis" size={28} />}
+              action={
+                <Button variant="secondary" size="sm" onClick={onOpenWeek}>
+                  Plan tygodnia
+                </Button>
+              }
+            />
+            <DailyPanelEmptyGuide onOpenWeek={onOpenWeek} />
+          </>
+        )}
+    </div>
+  );
+}

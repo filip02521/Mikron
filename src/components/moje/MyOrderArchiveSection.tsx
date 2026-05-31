@@ -12,13 +12,16 @@ import { SectionHeadingIcon } from "@/components/icons/SectionHeadingIcon";
 export function MyOrderArchiveSection({
   rowsRecent,
   rowsExtended,
+  defaultOpen = false,
 }: {
   /** Potwierdzenia z ostatnich 7 dni. */
   rowsRecent: MyOrderRow[];
   /** Szersze archiwum (np. 90 dni), po „Pokaż więcej”. */
   rowsExtended: MyOrderRow[];
+  /** Tour / onboarding — sekcja rozwinięta od razu. */
+  defaultOpen?: boolean;
 }) {
-  const [open, setOpen] = useState(false);
+  const [open, setOpen] = useState(defaultOpen);
   const [showMore, setShowMore] = useState(false);
 
   const hasRecent = rowsRecent.length > 0;
@@ -63,7 +66,7 @@ export function MyOrderArchiveSection({
                 return !v;
               });
             }}
-            className="min-h-10 cursor-pointer rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50"
+            className="min-h-10 cursor-pointer rounded-md border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50"
             aria-expanded={open}
           >
             {open ? "Zwiń" : "Pokaż"}

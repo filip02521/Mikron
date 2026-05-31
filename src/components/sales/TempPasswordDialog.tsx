@@ -44,7 +44,7 @@ export function TempPasswordDialog({
       aria-modal="true"
       aria-labelledby="temp-password-title"
     >
-      <div className="w-full max-w-md rounded-2xl border border-slate-200 bg-white p-6 shadow-xl">
+      <div className="w-full max-w-md rounded-lg border border-slate-200 bg-white p-6 shadow-xl">
         <h2 id="temp-password-title" className="text-lg font-semibold text-slate-900">
           {isReset ? "Hasło zresetowane" : "Konto utworzone"}
         </h2>
@@ -63,7 +63,7 @@ export function TempPasswordDialog({
             </>
           )}
         </p>
-        <dl className="mt-4 space-y-3 rounded-xl border border-amber-100 bg-amber-50/80 p-4 text-sm">
+        <dl className="mt-4 space-y-3 rounded-md border border-amber-100 bg-amber-50/80 p-4 text-sm">
           <div>
             <dt className="text-xs font-medium uppercase tracking-wide text-amber-900/70">
               E-mail (login)

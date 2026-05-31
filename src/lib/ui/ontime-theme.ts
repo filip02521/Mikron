@@ -45,14 +45,14 @@ export function roleBadgeClass(role: string): string {
     sales_manager: "border-l-indigo-400",
   };
   return [
-    "inline-flex max-w-full items-center rounded-lg border border-slate-200/90 border-l-[3px] bg-slate-50/80 px-2.5 py-1 text-[10px] font-semibold leading-tight text-slate-700",
+    "inline-flex max-w-full items-center rounded-md border border-slate-200/90 border-l-[3px] bg-slate-50/80 px-2.5 py-1 text-[10px] font-semibold leading-tight text-slate-700",
     accent[role] ?? "border-l-slate-400",
   ].join(" ");
 }
 
 /** Karty treści — cień zbliżony do karty na logowaniu */
 export const surfaceCardClass =
-  "rounded-xl border border-slate-200/80 bg-[var(--card)] shadow-[var(--shadow-card-elevated)]";
+  "rounded-md border border-slate-200/80 bg-[var(--card)] shadow-[var(--shadow-card-elevated)]";
 
 /** Przycisk primary — ledwo zauważalny gradient */
 export const buttonPrimaryClass =
@@ -119,7 +119,7 @@ export const plannerDropActiveClass =
   "bg-indigo-50/80 ring-2 ring-inset ring-indigo-300/50";
 
 export const plannerDropHintClass =
-  "rounded-lg border border-dashed border-indigo-200 text-indigo-400";
+  "rounded-md border border-dashed border-indigo-200 text-indigo-400";
 
 /** Moje zamówienia — banery i karty */
 export const mojeHeadlineInfoWrapClass = "bg-indigo-50 text-indigo-950";
@@ -127,7 +127,7 @@ export const mojeHeadlineInfoTitleClass = "text-indigo-900";
 export const mojeHeadlineInfoSubClass = "text-indigo-800";
 
 export const mojeCardHighlightClass =
-  "z-[1] my-1 rounded-xl border border-indigo-300/90 bg-indigo-50/90 shadow-md shadow-indigo-100/30 ring-1 ring-indigo-200/70";
+  "z-[1] my-1 rounded-md border border-indigo-300/90 bg-indigo-50/90 shadow-md shadow-indigo-100/30 ring-1 ring-indigo-200/70";
 
 export const mojeFilterChipActiveClass = "ring-2 ring-indigo-400 ring-offset-1";
 
@@ -137,7 +137,7 @@ export const mojeFilterChipSuccessClass = "bg-indigo-50 text-indigo-900";
 
 /** Sekcja informacja (magazyn) — sky pozostaje semantyczny */
 export const informacjaSurfaceClass =
-  "rounded-xl border border-sky-200/90 bg-[var(--card)] shadow-[var(--shadow-card-elevated)]";
+  "rounded-md border border-sky-200/90 bg-[var(--card)] shadow-[var(--shadow-card-elevated)]";
 
 /** Mobile — widok handlowca */
 export const mobileSalesHeaderClass =
@@ -158,7 +158,7 @@ export const mobileNavBadgeClass =
   "bg-gradient-to-br from-indigo-600 to-sky-600 text-white shadow-sm shadow-indigo-600/20";
 
 export const salesUpdatesBannerClass =
-  "mb-4 flex flex-col gap-3 rounded-xl border border-indigo-200/80 bg-gradient-to-br from-indigo-50/90 via-white to-sky-50/40 px-3 py-3 text-sm text-indigo-950 shadow-[var(--shadow-card-elevated)] sm:mb-6 sm:flex-row sm:items-center sm:justify-between sm:px-4";
+  "mb-4 flex flex-col gap-3 rounded-md border border-indigo-200/80 bg-gradient-to-br from-indigo-50/90 via-white to-sky-50/40 px-3 py-3 text-sm text-indigo-950 shadow-[var(--shadow-card-elevated)] sm:mb-6 sm:flex-row sm:items-center sm:justify-between sm:px-4";
 
 /** Delikatna powierzchnia z akcentem marki (kolejka, stopki podsekcji). */
 export const panelMutedSurfaceClass =
@@ -166,17 +166,17 @@ export const panelMutedSurfaceClass =
 
 /** Obudowa menu kontekstowego w panelu dzennym. */
 export const panelDropdownShellClass =
-  "rounded-xl border border-indigo-100/85 bg-white py-1 shadow-lg shadow-indigo-950/5 ring-1 ring-sky-100/35";
+  "rounded-md border border-indigo-100/85 bg-white py-1 shadow-lg shadow-indigo-950/5 ring-1 ring-sky-100/35";
 
 /** Skrócona nawigacja po kolejce dnia. */
 export const panelQueueStepsShellClass = cn(
   panelMutedSurfaceClass,
-  "flex flex-wrap items-center gap-2 rounded-xl border px-3 py-2.5"
+  "flex flex-wrap items-center gap-2 rounded-md border px-3 py-2.5"
 );
 
 /** Panel dzienny — kafelki, zakładki, linki i przyciski pomocnicze */
 export const panelMetricTileClass =
-  "rounded-xl border border-indigo-100/70 bg-white px-3 py-2.5 text-left shadow-[var(--shadow-card)] transition";
+  "rounded-md border border-indigo-100/70 bg-white px-3 py-2.5 text-left shadow-[var(--shadow-card)] transition";
 
 export const panelMetricTileInteractiveClass =
   "cursor-pointer hover:border-indigo-200/80 hover:bg-indigo-50/45 hover:shadow-[var(--shadow-card-elevated)]";
@@ -197,7 +197,7 @@ export const panelContactLinkClass =
   "max-w-[min(100%,18rem)] truncate text-xs font-medium text-indigo-700/80 transition-colors hover:text-indigo-950";
 
 export const panelChoiceChipClass =
-  "rounded-xl border px-3 py-2 text-left text-xs font-medium transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500/15";
+  "rounded-md border px-3 py-2 text-left text-xs font-medium transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500/15";
 
 export const panelChoiceChipIdleClass =
   "border-indigo-100/80 bg-white text-slate-700 hover:border-indigo-200/80 hover:bg-indigo-50/50";
@@ -209,7 +209,7 @@ export const panelChoiceChipSuccessSelectedClass =
   "border-emerald-400/90 bg-gradient-to-b from-emerald-50 to-white text-emerald-950 ring-1 ring-emerald-200/50";
 
 export const panelDashedActionClass =
-  "w-full rounded-xl border border-dashed border-indigo-200/70 bg-indigo-50/30 px-4 py-3 text-sm font-medium text-indigo-800 transition hover:border-indigo-300/90 hover:bg-indigo-50/60 hover:text-indigo-950";
+  "w-full rounded-md border border-dashed border-indigo-200/70 bg-indigo-50/30 px-4 py-3 text-sm font-medium text-indigo-800 transition hover:border-indigo-300/90 hover:bg-indigo-50/60 hover:text-indigo-950";
 
 export const panelMutedToggleClass =
   "text-sm font-medium text-indigo-700/80 transition hover:text-indigo-900";
@@ -217,22 +217,26 @@ export const panelMutedToggleClass =
 export const panelMenuItemClass =
   "block w-full cursor-pointer px-3 py-2 text-left text-sm text-slate-700 transition hover:bg-indigo-50/80 hover:text-indigo-950";
 
+/** Segmenty w grupie akcji panelu (Zamówione, Przesuń, ⋮) — h-7, zaokrąglenia na końcach. */
+export const panelSegmentPrimaryClass =
+  "flex h-7 min-h-7 max-h-7 shrink-0 items-center justify-center rounded-none rounded-l-md border-0 bg-indigo-600 px-2.5 text-xs font-semibold leading-none text-white shadow-none transition-colors duration-150 hover:bg-indigo-700 active:bg-indigo-800";
+
 export const panelSegmentControlClass =
-  "min-h-9 shrink-0 !rounded-none border-0 border-l border-indigo-100/80 px-3 text-sm font-medium text-slate-700 shadow-none transition hover:bg-indigo-50/65";
+  "flex h-7 min-h-7 max-h-7 shrink-0 items-center justify-center rounded-none border-0 border-l border-slate-200/90 px-2 text-xs font-medium leading-none text-slate-700 shadow-none transition-colors duration-150 hover:bg-slate-50";
 
-export const panelSegmentControlOpenClass = "bg-indigo-50/80 text-indigo-900";
+export const panelSegmentLastClass = "rounded-r-md";
 
-/** Pierwszy segment w grupie (Zamówione) — gradient primary, biały tekst */
-export const panelSegmentPrimaryClass = cn(
-  buttonPrimaryClass,
-  "min-h-9 shrink-0 !rounded-none rounded-l-xl border-0 px-3.5 text-sm font-semibold text-white shadow-none hover:shadow-sm"
-);
+/** Segment outline w środku grupy (HoldToConfirm — Uzupełniające). */
+export const panelHoldOutlineSegmentClass =
+  "border-0 border-l border-indigo-200/90 bg-[var(--primary-muted)]/60 text-indigo-800 transition-colors duration-150 hover:bg-[var(--primary-muted)]";
+
+export const panelSegmentControlOpenClass = "bg-slate-50 text-slate-900";
 
 export const panelCardHitAreaClass =
-  "w-full cursor-pointer rounded-xl text-left transition hover:bg-indigo-50/35";
+  "w-full cursor-pointer rounded-md text-left transition hover:bg-indigo-50/35";
 
 export const panelNoticeTriggerBaseClass =
-  "flex w-full items-center justify-between gap-2 rounded-xl border px-3 py-2 text-left text-sm transition";
+  "flex w-full items-center justify-between gap-2 rounded-md border px-3 py-2 text-left text-sm transition";
 
 export const panelNoticeTriggerUrgentClass =
   "border-amber-200/90 bg-amber-50/50 hover:border-amber-300 hover:bg-amber-50";
@@ -246,21 +250,22 @@ export const panelHoldOutlineClass =
 
 /** Pasek akcji w nagłówku panelu dziennego (wyszukiwarka + przyciski) */
 export const panelToolbarShellClass =
-  "w-full min-w-0 rounded-xl border border-indigo-100/75 bg-gradient-to-b from-indigo-50/35 via-white to-white p-1.5 shadow-sm";
+  "flex w-full min-w-0 items-center rounded-md border border-indigo-100/75 bg-gradient-to-b from-indigo-50/35 via-white to-white p-2 shadow-sm";
 
 export const panelToolbarRowClass =
-  "flex min-w-0 flex-col gap-2 sm:flex-row sm:items-stretch";
+  "flex w-full min-w-0 flex-col gap-2 lg:flex-row lg:items-center";
 
-export const panelToolbarSearchWrapClass = "min-w-0 flex-1 px-0.5 sm:flex sm:items-center";
+export const panelToolbarSearchWrapClass =
+  "flex min-w-0 flex-1 items-center px-0.5 lg:min-w-[16rem]";
 
 export const panelToolbarSearchInputClass =
-  "h-9 w-full rounded-lg border border-indigo-100/80 bg-white px-3 text-sm text-slate-900 shadow-sm placeholder:text-slate-400 focus:border-indigo-300 focus:outline-none focus:ring-2 focus:ring-indigo-100/90";
+  "h-10 w-full rounded-md border border-indigo-100/80 bg-white px-3.5 text-sm text-slate-900 shadow-sm placeholder:text-slate-400 focus:border-indigo-300 focus:outline-none focus:ring-2 focus:ring-indigo-100/90";
 
 export const panelToolbarActionsClass =
-  "flex shrink-0 flex-wrap items-center justify-end gap-1.5 sm:border-l sm:border-indigo-100/75 sm:pl-2";
+  "flex shrink-0 flex-wrap items-center justify-end gap-1.5 lg:border-l lg:border-indigo-100/75 lg:pl-2.5";
 
 export const panelToolbarTextButtonClass =
-  "inline-flex h-9 cursor-pointer items-center gap-1.5 rounded-lg border border-indigo-100/80 bg-white px-2.5 text-xs font-medium text-indigo-800/85 shadow-sm transition hover:border-indigo-200/80 hover:bg-indigo-50/45 hover:text-indigo-950";
+  "inline-flex h-10 cursor-pointer items-center gap-1.5 rounded-md border border-indigo-100/80 bg-white px-2.5 text-xs font-medium text-indigo-800/85 shadow-sm transition hover:border-indigo-200/80 hover:bg-indigo-50/45 hover:text-indigo-950";
 
 export const panelToolbarIconButtonClass =
-  "inline-flex h-9 w-9 shrink-0 cursor-pointer items-center justify-center rounded-lg border border-indigo-100/80 bg-white text-indigo-800/85 shadow-sm transition hover:border-indigo-200/80 hover:bg-indigo-50/45 hover:text-indigo-950 disabled:cursor-not-allowed disabled:opacity-50";
+  "inline-flex h-10 w-10 shrink-0 cursor-pointer items-center justify-center rounded-md border border-indigo-100/80 bg-white text-indigo-800/85 shadow-sm transition hover:border-indigo-200/80 hover:bg-indigo-50/45 hover:text-indigo-950 disabled:cursor-not-allowed disabled:opacity-50";

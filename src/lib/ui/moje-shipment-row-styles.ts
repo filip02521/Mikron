@@ -2,7 +2,7 @@ import { cn } from "@/lib/cn";
 
 /** Jedna sekcja listy (nagłówek + wiersze) — zaokrąglenie tylko na zewnątrz. */
 export const mojeShipmentSectionShellClass =
-  "overflow-hidden rounded-xl border border-slate-200/90 bg-white shadow-sm";
+  "overflow-hidden rounded-md border border-slate-200/90 bg-white shadow-sm";
 
 /** Wiersze wewnątrz sekcji — bez własnych rogów. */
 export const mojeShipmentListClass = "divide-y divide-slate-100";

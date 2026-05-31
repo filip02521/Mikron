@@ -47,6 +47,43 @@ export function selectedSaveButtonLabel(selectedCount: number): string {
   return `Zapisz zaznaczone (${selectedCount})`;
 }
 
+/** Czy akcja w magazynie wymaga potwierdzenia (grupowa / wielu odbiorców). */
+export function requiresQueueBatchConfirm(orderIds: string[]): boolean {
+  return orderIds.length > 1;
+}
+
+/** Treść modala przed zbiorczym zapisem dostawy w kolejce. */
+export function batchDeliveryConfirmMessage(
+  orders: IndividualOrder[],
+  orderIds: string[],
+  opts?: { fullQuantity?: boolean }
+): string {
+  const n = orderIds.length;
+  const people = countSalesPeopleInOrders(orders, orderIds);
+  const emailPart =
+    people <= 1
+      ? "Handlowiec dostanie e-mail o przyjęciu towaru."
+      : `${people} handlowców dostanie osobne e-maile o przyjęciu towaru.`;
+  const qtyPart = opts?.fullQuantity
+    ? "Dla każdej pozycji zostanie zapisana pełna zamówiona ilość (Całość)."
+    : "Zostanie zapisana ilość z kolumny „Dost.” dla każdej zaznaczonej pozycji.";
+  return `Zapiszesz dostawę dla ${polishPozycjeLabel(n)}. ${qtyPart} ${emailPart} Sprawdź zaznaczenie — błędny zapis utrudni późniejszą korektę.`;
+}
+
+/** Treść modala przed zbiorczym powiadomieniem informacyjnym. */
+export function batchInformacjaConfirmMessage(
+  orders: IndividualOrder[],
+  orderIds: string[]
+): string {
+  const n = orderIds.length;
+  const people = countSalesPeopleInOrders(orders, orderIds);
+  const emailPart =
+    people <= 1
+      ? "Handlowiec dostanie e-mail, że towar jest na magazynie."
+      : `${people} handlowców dostanie osobne e-maile, że towar jest na magazynie.`;
+  return `Wyślesz powiadomienie dla ${polishPozycjeLabel(n)}. ${emailPart} Sprawdź listę — po wysłaniu trzeba będzie ręcznie wyjaśniać ewentualne pomyłki.`;
+}
+
 export type BatchOperationToast = {
   text: string;
   tone: "success" | "error";

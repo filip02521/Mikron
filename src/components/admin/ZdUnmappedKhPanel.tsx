@@ -64,7 +64,7 @@ export function ZdUnmappedKhPanel({
   };
 
   return (
-    <div className="mt-4 rounded-lg border border-amber-200/80 bg-amber-50/40 p-3">
+    <div className="mt-4 rounded-md border border-amber-200/80 bg-amber-50/40 p-3">
       <div className="flex flex-wrap items-start justify-between gap-2">
         <div>
           <p className="text-sm font-semibold text-slate-900">
@@ -123,7 +123,7 @@ export function ZdUnmappedKhPanel({
               ? ` · indeks ${report.indexedAt.slice(0, 19).replace("T", " ")}`
               : ""}
           </p>
-          <div className="mt-3 max-h-80 overflow-auto rounded-lg border border-slate-200 bg-white">
+          <div className="mt-3 max-h-80 overflow-auto rounded-md border border-slate-200 bg-white">
             <table className="w-full min-w-[44rem] text-left text-xs">
               <thead className="sticky top-0 bg-slate-50 text-[11px] font-semibold uppercase tracking-wide text-slate-500">
                 <tr>

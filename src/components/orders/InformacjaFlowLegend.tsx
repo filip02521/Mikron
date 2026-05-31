@@ -47,7 +47,7 @@ function FlowCard({
   return (
     <div
       className={cn(
-        "rounded-lg border px-2.5 py-2",
+        "rounded-md border px-2.5 py-2",
         tone === "sky" ? "border-sky-200 bg-sky-50/90" : "border-slate-200 bg-slate-50"
       )}
     >

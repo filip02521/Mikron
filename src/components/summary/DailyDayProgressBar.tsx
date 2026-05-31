@@ -14,17 +14,60 @@ import {
 export function DailyDayProgressBar({
   progress,
   className,
+  variant = "default",
 }: {
   progress: DailyDayProgress;
   className?: string;
+  variant?: "default" | "compact";
 }) {
   const { combined, urgent, forSomeone } = progress;
+
+  if (variant === "compact") {
+    if (!combined.hasWork) return null;
+
+    const urgentDoneWidth =
+      combined.total > 0 ? (urgent.done / combined.total) * 100 : 0;
+    const forSomeoneDoneWidth =
+      combined.total > 0 ? (forSomeone.done / combined.total) * 100 : 0;
+
+    return (
+      <div
+        className={cn("flex min-w-0 items-center gap-2 sm:gap-3", className)}
+        role="progressbar"
+        aria-valuenow={combined.percent}
+        aria-valuemin={0}
+        aria-valuemax={100}
+        aria-label="Postęp dnia"
+      >
+        <div className="flex h-1.5 min-w-[5rem] flex-1 overflow-hidden rounded-full bg-slate-200/80">
+          {urgentDoneWidth > 0 ? (
+            <div
+              className={cn("h-full transition-all duration-500", progressFillUrgentClass)}
+              style={{ width: `${urgentDoneWidth}%` }}
+            />
+          ) : null}
+          {forSomeoneDoneWidth > 0 ? (
+            <div
+              className={cn("h-full transition-all duration-500", progressFillForSomeoneClass)}
+              style={{ width: `${forSomeoneDoneWidth}%` }}
+            />
+          ) : null}
+        </div>
+        <span className="shrink-0 text-[11px] font-semibold tabular-nums text-slate-700">
+          {combined.percent}%
+        </span>
+        <span className="hidden min-w-0 truncate text-[11px] text-slate-500 sm:inline">
+          harm. {urgent.done}/{urgent.total} · prośby {forSomeone.done}/{forSomeone.total}
+        </span>
+      </div>
+    );
+  }
 
   if (!combined.hasWork) {
     return (
       <div
         className={cn(
-          "rounded-xl border border-dashed border-slate-200 bg-slate-50/60 px-4 py-3 text-sm text-slate-500",
+          "rounded-md border border-dashed border-slate-200 bg-slate-50/60 px-4 py-3 text-sm text-slate-500",
           className
         )}
       >
@@ -41,7 +84,7 @@ export function DailyDayProgressBar({
   return (
     <div
       className={cn(
-        "rounded-xl border border-slate-200/80 bg-white px-4 py-3.5 shadow-[var(--shadow-card-elevated)] sm:px-5",
+        "rounded-md border border-slate-200/80 bg-white px-4 py-3.5 shadow-[var(--shadow-card-elevated)] sm:px-5",
         combined.complete && "border-emerald-200 bg-emerald-50/40",
         className
       )}

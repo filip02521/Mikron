@@ -26,7 +26,7 @@ export function SupplierFilterChips({
           type="button"
           onClick={() => onChange("")}
           className={cn(
-            "rounded-lg border px-2.5 py-1 text-xs font-medium transition",
+            "rounded-md border px-2.5 py-1 text-xs font-medium transition",
             !value
               ? "border-slate-800 bg-slate-800 text-white"
               : "border-slate-200 bg-white text-slate-600 hover:border-slate-300 hover:bg-slate-50"
@@ -41,7 +41,7 @@ export function SupplierFilterChips({
             title={chip.key}
             onClick={() => onChange(value === chip.key ? "" : chip.key)}
             className={cn(
-              "max-w-[14rem] truncate rounded-lg border px-2.5 py-1 text-xs font-medium transition",
+              "max-w-[14rem] truncate rounded-md border px-2.5 py-1 text-xs font-medium transition",
               value === chip.key
                 ? "border-violet-600 bg-violet-600 text-white"
                 : "border-slate-200 bg-white text-slate-700 hover:border-violet-200 hover:bg-violet-50"

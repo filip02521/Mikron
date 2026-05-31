@@ -7,7 +7,7 @@ export function fieldControlClass(
   className?: string
 ) {
   return cn(
-    "w-full min-h-11 rounded-xl border bg-white px-3.5 py-2.5 text-base leading-snug text-slate-900 shadow-sm transition-[border-color,box-shadow] placeholder:text-slate-400 hover:border-slate-300 focus:ring-2 disabled:cursor-not-allowed disabled:bg-slate-50 disabled:text-slate-400 sm:min-h-[2.5rem] sm:text-sm",
+    "w-full min-h-11 rounded-md border bg-white px-3.5 py-2.5 text-base leading-snug text-slate-900 shadow-sm transition-[border-color,box-shadow] placeholder:text-slate-400 hover:border-slate-300 focus:ring-2 disabled:cursor-not-allowed disabled:bg-slate-50 disabled:text-slate-400 sm:min-h-[2.5rem] sm:text-sm",
     state === "default" &&
       "border-slate-200 focus:border-indigo-500 focus:ring-sky-500/15",
     state === "warning" &&

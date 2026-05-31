@@ -10,6 +10,17 @@ describe("prosba-url", () => {
     expect(prosbaHref()).toBe("/prosba");
   });
 
+  it("prosbaHref obsługuje prefill z ZK", () => {
+    expect(
+      prosbaHref({
+        salesPersonId: "sp1",
+        fromZk: true,
+        zk: "ZK/2026/0138",
+        klient: "Klinika Smile",
+      })
+    ).toBe("/prosba?dla=sp1&fromZk=1&zk=ZK%2F2026%2F0138&klient=Klinika+Smile");
+  });
+
   it("resolveProsbaSupplierId odrzuca nieznane id", () => {
     expect(resolveProsbaSupplierId("s1", ["s1", "s2"])).toBe("s1");
     expect(resolveProsbaSupplierId("x", ["s1"])).toBeUndefined();

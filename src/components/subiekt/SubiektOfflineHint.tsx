@@ -53,7 +53,7 @@ export function SubiektOfflineHint({
       <div
         role="tooltip"
         className={cn(
-          "pointer-events-none absolute top-full z-30 mt-1.5 w-[min(100vw-2rem,17rem)] rounded-lg border border-amber-200 bg-white p-3 text-xs leading-relaxed text-slate-600 shadow-lg",
+          "pointer-events-none absolute top-full z-30 mt-1.5 w-[min(100vw-2rem,17rem)] rounded-md border border-amber-200 bg-white p-3 text-xs leading-relaxed text-slate-600 shadow-lg",
           "opacity-0 transition-opacity duration-150",
           "group-hover:pointer-events-auto group-hover:opacity-100",
           "group-focus-within:pointer-events-auto group-focus-within:opacity-100",

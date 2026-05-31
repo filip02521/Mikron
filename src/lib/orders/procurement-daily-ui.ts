@@ -31,23 +31,28 @@ export type DailyInboxSummary = {
   hiddenScheduleCount: number;
 };
 
-/** Licznik menu: prośby w kolejce Dziś (zamówienia + informacja z opcją panelu) — bez harmonogramu i informacji w Wyjątkach. */
+/** Licznik menu: pozycje w kolejce Dziś (zaległe + harmonogram na dziś + grupy prośb + rezygnacje). */
 export function countDailyPanelNavBadge(workspace: SummaryWorkspaceData): number {
-  return summarizeDailyInbox(workspace).forSomeoneLineCount;
+  const s = summarizeDailyInbox(workspace);
+  return (
+    s.overdueCount +
+    s.todayCount +
+    s.forSomeoneGroupCount +
+    workspace.salesCancelledNotices.length
+  );
 }
 
 /** Liczba pozycji na zakładce Wyjątki (badge). */
 export function countDailyPanelExceptions(
   workspace: Pick<
     SummaryWorkspaceData,
-    "panelHidden" | "informacjaLeft" | "onDemandSuppliers" | "salesCancelledNotices"
+    "panelHidden" | "informacjaLeft" | "onDemandSuppliers"
   >
 ): number {
   return (
     workspace.panelHidden.suppliers.length +
     workspace.informacjaLeft.length +
-    workspace.onDemandSuppliers.length +
-    workspace.salesCancelledNotices.length
+    workspace.onDemandSuppliers.length
   );
 }
 

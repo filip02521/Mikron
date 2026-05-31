@@ -14,7 +14,7 @@ export function DailyUrgentProgressBar({
     return (
       <div
         className={cn(
-          "rounded-xl border border-dashed border-slate-200 bg-slate-50/60 px-4 py-3 text-sm text-slate-500",
+          "rounded-md border border-dashed border-slate-200 bg-slate-50/60 px-4 py-3 text-sm text-slate-500",
           className
         )}
       >
@@ -26,7 +26,7 @@ export function DailyUrgentProgressBar({
   return (
     <div
       className={cn(
-        "rounded-xl border border-slate-200 bg-white px-4 py-3.5 sm:px-5",
+        "rounded-md border border-slate-200 bg-white px-4 py-3.5 sm:px-5",
         progress.complete && "border-emerald-200 bg-emerald-50/40",
         className
       )}

@@ -44,25 +44,29 @@ function operationsNavItems(badges: {
     {
       href: "/podsumowanie",
       label: "Panel dzienny",
-      description: "Przegląd dnia, prośby i harmonogram",
+      mobileLabel: "Panel",
+      description: "Zacznij tu — kolejka dnia, prośby i harmonogram",
       badge: badges.nowe,
     },
     {
       href: "/weryfikacja",
       label: "Weryfikacja",
-      description: "Prośby bez dostawcy lub towaru — uzupełnij dane",
+      mobileLabel: "Weryfik.",
+      description: "Uzupełnij brakujące dane prośby",
       badge: badges.weryfikacja,
     },
     {
       href: "/kolejka",
       label: "Magazyn i regał",
-      description: "Przyjęcie dostaw i informacje",
+      mobileLabel: "Magazyn",
+      description: "Po zamówieniu u dostawcy — przyjęcie towaru",
       badge: badges.realizacja,
     },
     {
       href: "/historia",
       label: "Historia",
-      description: "Przegląd zamówień",
+      mobileLabel: "Historia",
+      description: "Archiwum złożonych zamówień",
     },
   ];
 }
@@ -93,11 +97,16 @@ const orderFormItems: NavItem[] = [
   },
 ];
 
-const adminOnlyItems: NavItem[] = [
+const adminOnlyItemsBase: NavItem[] = [
   {
     href: "/admin",
     label: "Administracja",
     description: "System, konta, handlowcy",
+  },
+  {
+    href: "/admin/zgloszenia",
+    label: "Zgłoszenia handlowców",
+    description: "Błędy i uwagi od zespołu sprzedaży",
   },
   {
     href: "/admin/produkty",
@@ -111,6 +120,14 @@ const adminOnlyItems: NavItem[] = [
   },
 ];
 
+function adminNavItems(badges: { adminBugReports?: number }): NavItem[] {
+  return adminOnlyItemsBase.map((item) =>
+    item.href === "/admin/zgloszenia"
+      ? { ...item, badge: badges.adminBugReports }
+      : item
+  );
+}
+
 export function navForRole(
   role: UserRole,
   badges: {
@@ -119,8 +136,10 @@ export function navForRole(
     realizacja?: number;
     /** Aktywne karty wymagające uwagi handlowca (/moje). */
     salesMoje?: number;
-    /** Aktywne ZK oczekujące na zapłatę (/notatnik). */
+    /** ZK i notatki z przypomnieniem (/notatnik). */
     salesNotatnik?: number;
+    /** Otwarte zgłoszenia od handlowców (/admin/zgloszenia). */
+    adminBugReports?: number;
   } = {}
 ): NavGroup[] {
   const ops = operationsNavItems(badges);
@@ -129,7 +148,7 @@ export function navForRole(
       { title: "Dzień roboczy", items: ops },
       { title: "Dostawcy", items: supplierHubItems },
       { title: "Formularze", items: orderFormItems },
-      { title: "Administracja", items: adminOnlyItems },
+      { title: "Administracja", items: adminNavItems(badges) },
     ];
   }
 
@@ -169,19 +188,19 @@ export function navForRole(
       href: "/prosba",
       label: "Nowa prośba",
       mobileLabel: "Prośba",
-      description: "Jeden formularz — zamówienie lub dostępność",
+      description: "Jedna prośba: zamówienie u dostawcy albo info o dostępności",
     },
     {
       href: "/plan",
       label: "Harmonogram zakupów",
       mobileLabel: "Plan",
-      description: "Terminy, otwarte prośby i wyszukiwarka",
+      description: "Terminy u dostawców, otwarte prośby i wyszukiwarka",
     },
     {
       href: "/notatnik",
       label: "Notatnik",
       mobileLabel: "Notatnik",
-      description: "ZK na zapłatę i własne notatki",
+      description: "ZK czekające na towar i notatki",
       badge: badges.salesNotatnik,
     },
   ];
@@ -237,6 +256,7 @@ export function pageTitle(pathname: string): string {
   }
   if (pathname.startsWith("/admin")) {
     if (pathname.startsWith("/admin/uzytkownicy")) return "Konta";
+    if (pathname.startsWith("/admin/zgloszenia")) return "Zgłoszenia handlowców";
     if (pathname.startsWith("/admin/handlowcy")) return "Handlowcy";
     if (pathname.startsWith("/admin/produkty")) return "Katalog produktów";
     if (pathname.startsWith("/admin/dostawcy")) return "Karty dostawców";

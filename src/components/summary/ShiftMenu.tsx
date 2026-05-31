@@ -173,7 +173,7 @@ export function ShiftMenu({
               <input
                 ref={dateInputRef}
                 type="date"
-                className="mt-1 w-full rounded-lg border border-slate-200 px-2 py-1.5 text-sm"
+                className="mt-1 w-full rounded-md border border-slate-200 px-2 py-1.5 text-sm"
                 value={dateValue}
                 onChange={(e) => setDateValue(e.target.value)}
                 onClick={(e) => {
@@ -217,7 +217,7 @@ export function ShiftMenu({
   return (
     <div
       ref={anchorRef}
-      className={cn("relative shrink-0", grouped && "shrink-0", compact && "min-w-0 flex-1")}
+      className={cn("relative flex shrink-0", grouped && "shrink-0", compact && "min-w-0 flex-1")}
     >
       <Button
         type="button"
@@ -237,7 +237,7 @@ export function ShiftMenu({
           grouped && !compact && cn(panelSegmentControlClass, open && panelSegmentControlOpenClass),
           grouped &&
             compact &&
-            "h-8 min-h-8 w-full !rounded-xl border border-slate-200/90 px-2 text-xs font-medium text-slate-700 shadow-none hover:bg-indigo-50/60",
+            "h-7 min-h-7 w-full !rounded-md border border-slate-200/90 px-2 text-xs font-medium text-slate-700 shadow-none hover:bg-indigo-50/60",
           className
         )}
       >

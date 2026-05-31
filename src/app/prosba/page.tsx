@@ -128,7 +128,7 @@ export default async function ProsbaPage({
     <div className="mx-auto max-w-3xl">
       <Suspense
         fallback={
-          <p className="rounded-xl border border-slate-200 bg-white px-6 py-12 text-center text-sm text-slate-500">
+          <p className="rounded-md border border-slate-200 bg-white px-6 py-12 text-center text-sm text-slate-500">
             Ładowanie formularza…
           </p>
         }
