@@ -8,13 +8,19 @@ export type SalesNotepadData = {
   archivedNotes: SalesNote[];
 };
 
+export function isZkWatchArchived(
+  watch: Pick<SalesZkWatch, "closed_at" | "archived_at">
+): boolean {
+  return Boolean(watch.closed_at || watch.archived_at);
+}
+
 export function partitionSalesZkWatches(watches: SalesZkWatch[]): Pick<
   SalesNotepadData,
   "zkWatches" | "archivedZkWatches"
 > {
   return {
-    zkWatches: watches.filter((w) => !w.closed_at && !w.archived_at),
-    archivedZkWatches: watches.filter((w) => w.closed_at || w.archived_at),
+    zkWatches: watches.filter((w) => !isZkWatchArchived(w)),
+    archivedZkWatches: watches.filter((w) => isZkWatchArchived(w)),
   };
 }
 

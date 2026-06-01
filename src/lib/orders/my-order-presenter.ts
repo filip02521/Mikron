@@ -165,6 +165,9 @@ function canAcknowledgePickupForOrder(order: IndividualOrder): boolean {
 function resolveAcknowledgeMode(orders: IndividualOrder[]): MyOrderAcknowledgeMode {
   const open = orders.filter((o) => !o.sales_acknowledged_at);
   if (!open.length) return "none";
+  if (open.some((o) => isSalesCancelNoticePending(o))) {
+    return "cancel_notice";
+  }
   if (open.every((o) => o.status === "Anulowane")) {
     return "cancelled";
   }
@@ -682,13 +685,11 @@ export function presentMyOrders(
   for (const group of groupOrdersForMyView(zamowienieOrders)) {
     const open = group.filter((o) => !o.sales_acknowledged_at);
     if (!open.length) continue;
-    if (open.every((o) => o.status === "Anulowane")) continue;
     zamowienia.push(presentMyOrderGroup(group, statsBySupplier));
   }
   for (const group of groupOrdersForMyView(informacjaOrders)) {
     const open = group.filter((o) => !o.sales_acknowledged_at);
     if (!open.length) continue;
-    if (open.every((o) => o.status === "Anulowane")) continue;
     informacje.push(presentMyOrderGroup(group, statsBySupplier));
   }
 

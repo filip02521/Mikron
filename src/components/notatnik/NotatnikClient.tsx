@@ -30,6 +30,8 @@ import { ArchivedNotesSection } from "./ArchivedNotesSection";
 import { TodayTasksSection } from "./TodayTasksSection";
 import { NotatnikPanel } from "./NotatnikPanel";
 import { NotatnikCollapsible } from "./NotatnikCollapsible";
+import { NOTATNIK_ZK_LIST_CLASS } from "./notatnik-layout";
+import { mojeShipmentSectionShellClass } from "@/lib/ui/moje-shipment-row-styles";
 
 type NotatnikUndoState =
   | { type: "archive"; note: SalesNote }
@@ -393,20 +395,22 @@ export function NotatnikClient({
                 {archivedWatches.length > 0 ? (
                   <div className="space-y-2">
                     <p className="text-xs font-medium text-slate-600">ZK zamknięte</p>
-                    <ul className="space-y-2">
-                      {archivedWatches.map((watch) => (
-                        <li key={watch.id} id={`watch-${watch.id}`}>
-                          <ZkWatchCard
-                            watch={watch}
-                            readOnly={effectiveReadOnly}
-                            archived
-                            compact
-                            onRestored={handleWatchRestored}
-                            onDeleted={() => handleWatchDeleted(watch.id)}
-                          />
-                        </li>
-                      ))}
-                    </ul>
+                    <div className={mojeShipmentSectionShellClass}>
+                      <ul className={NOTATNIK_ZK_LIST_CLASS}>
+                        {archivedWatches.map((watch) => (
+                          <li key={watch.id} id={`watch-${watch.id}`}>
+                            <ZkWatchCard
+                              watch={watch}
+                              readOnly={effectiveReadOnly}
+                              archived
+                              compact
+                              onRestored={handleWatchRestored}
+                              onDeleted={() => handleWatchDeleted(watch.id)}
+                            />
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
                   </div>
                 ) : null}
                 {archivedNotes.length > 0 ? (

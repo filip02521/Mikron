@@ -28,7 +28,11 @@ export function MobileSalesNav({
   const navLocked = useSalesOnboardingOptional()?.navLocked ?? false;
   const salesUpdates = useSalesUpdates();
   const navRole = isSalesManager(role) ? "sales_manager" : "sales";
-  const items = navForRole(navRole, navBadges)[0]?.items ?? [];
+  const groups = navForRole(navRole, navBadges);
+  const items = [
+    ...(groups[0]?.items ?? []),
+    ...(isSalesManager(role) && groups[1]?.items[0] ? [groups[1].items[0]] : []),
+  ];
 
   return (
     <nav

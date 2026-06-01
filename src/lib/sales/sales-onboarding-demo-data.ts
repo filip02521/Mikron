@@ -425,6 +425,7 @@ export function buildOnboardingNotepadDemo(salesPersonId: string): SalesNotepadD
         closed_at: null,
         note: "Klient pytał o termin dostawy skalera — oddzwonić w piątek.",
         line_summary: "Skaler UDS · końcówki · 4 poz.",
+        line_checks: [{ key: "ob:1", arrived: true }],
         subiekt_snapshot: demoZkSnapshot(
           {
             khId: 8802,
@@ -455,6 +456,7 @@ export function buildOnboardingNotepadDemo(salesPersonId: string): SalesNotepadD
         closed_at: null,
         note: "Towar do potwierdzenia u dostawcy — można zgłosić prośbę.",
         line_summary: "Filtr powietrza XYZ · 2 szt.",
+        line_checks: [],
         subiekt_snapshot: demoZkSnapshot(
           {
             khId: 8801,

@@ -15,6 +15,7 @@ function watch(partial: Partial<SalesZkWatch> & Pick<SalesZkWatch, "id">): Sales
     note: null,
     line_summary: null,
     subiekt_snapshot: null,
+    line_checks: [],
     follow_up_at: null,
     closed_at: null,
     archived_at: null,

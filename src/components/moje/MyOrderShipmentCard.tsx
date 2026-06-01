@@ -72,33 +72,55 @@ function ShipmentToolbar({
   overflowMenu,
   showSinglePickup,
   showBulkPickup,
+  showDismissAck,
   ackShortLabel,
   ackFullTitle,
+  dismissAckLabel,
+  dismissAckTitle,
+  dismissAckIds,
   pending,
   pickupIds,
   pickupCount,
   isAction,
   onAcknowledgePickup,
+  onAcknowledgeDismiss,
   tourPreview = false,
 }: {
   overflowMenu: React.ReactNode;
   showSinglePickup: boolean;
   showBulkPickup: boolean;
+  showDismissAck: boolean;
   ackShortLabel: string;
   ackFullTitle: string;
+  dismissAckLabel: string;
+  dismissAckTitle: string;
+  dismissAckIds: string[];
   pending: boolean;
   pickupIds: string[];
   pickupCount: number;
   isAction: boolean;
   onAcknowledgePickup: (ids: string[]) => void;
+  onAcknowledgeDismiss: (ids: string[]) => void;
   tourPreview?: boolean;
 }) {
-  const hasToolbar = overflowMenu || showSinglePickup || showBulkPickup;
+  const hasToolbar =
+    overflowMenu || showSinglePickup || showBulkPickup || showDismissAck;
   if (!hasToolbar) return null;
 
   return (
     <div className="flex shrink-0 items-center gap-1 sm:gap-1.5">
       {overflowMenu}
+      {showDismissAck ? (
+        <MyOrderAckButton
+          variant={isAction ? "action" : "inline"}
+          disabled={pending}
+          preview={tourPreview}
+          title={dismissAckTitle}
+          onClick={() => onAcknowledgeDismiss(dismissAckIds)}
+        >
+          {dismissAckLabel}
+        </MyOrderAckButton>
+      ) : null}
       {showSinglePickup ? (
         <MyOrderAckButton
           variant={isAction ? "action" : "inline"}
@@ -136,6 +158,8 @@ export function MyOrderShipmentCard({
   expanded,
   onToggle,
   onAcknowledgePickup,
+  onAcknowledgeCancelled,
+  onAcknowledgeCancelNotice,
   onCancelRequest,
   onSaveClient,
   onEditRequest,
@@ -150,6 +174,8 @@ export function MyOrderShipmentCard({
   expanded: boolean;
   onToggle: () => void;
   onAcknowledgePickup: (orderIds: string[]) => void;
+  onAcknowledgeCancelled?: (orderIds: string[]) => void;
+  onAcknowledgeCancelNotice?: (orderIds: string[]) => void;
   onCancelRequest?: (orderIds: string[], phase: SalesCancelPhase) => void;
   onSaveClient?: (orderId: string, name: string | null) => void | Promise<void>;
   onEditRequest?: (row: MyOrderRow) => void;
@@ -165,6 +191,27 @@ export function MyOrderShipmentCard({
 
   const needsAck =
     row.acknowledgeMode === "pickup" || row.acknowledgeMode === "availability";
+  const needsCancelAck =
+    row.acknowledgeMode === "cancelled" && row.cancelledAckOrderIds.length > 0;
+  const needsCancelNoticeAck =
+    row.acknowledgeMode === "cancel_notice" && row.cancelNoticeOrderIds.length > 0;
+  const showDismissAck =
+    canAcknowledge &&
+    (needsCancelAck || needsCancelNoticeAck) &&
+    Boolean(
+      needsCancelNoticeAck ? onAcknowledgeCancelNotice : onAcknowledgeCancelled
+    );
+  const dismissAckIds = needsCancelNoticeAck
+    ? row.cancelNoticeOrderIds
+    : row.cancelledAckOrderIds;
+  const dismissAckLabel = "Potwierdź";
+  const dismissAckTitle = needsCancelNoticeAck
+    ? "Potwierdzam, że zapoznałem/am się z informacją o rezygnacji"
+    : "Potwierdzam anulowanie — ukryj z listy";
+  const onAcknowledgeDismiss = needsCancelNoticeAck
+    ? onAcknowledgeCancelNotice!
+    : onAcknowledgeCancelled!;
+
   const ackShortLabel =
     row.acknowledgeMode === "availability" ? "Potwierdź" : "Potwierdź odbiór";
   const ackFullTitle =
@@ -194,7 +241,8 @@ export function MyOrderShipmentCard({
   const isAction =
     headlineTone === "action" ||
     row.acknowledgeMode === "pickup" ||
-    row.acknowledgeMode === "availability";
+    row.acknowledgeMode === "availability" ||
+    showDismissAck;
   const isUrgent = headlineTone === "warning";
   const isInformacja = listKind === "informacja" || row.kind === "informacja";
 
@@ -207,7 +255,9 @@ export function MyOrderShipmentCard({
   const needsExpand = myOrderNeedsExpand(row, expandCtx);
   const collapsedSubline = myOrderCollapsedSubline(row);
   const expandedNotes = myOrderExpandedNotes(row);
-  const expandedMeta = myOrderMetaFields(row, showProgress);
+  const expandedMeta = myOrderMetaFields(row, showProgress).filter(
+    (f) => !(f.label === "Klient" && canEditClient)
+  );
   const expandHint = myOrderExpandHint(row, expandCtx);
   const productSummary = myOrderCollapsedProductSummary(row, listKind);
 
@@ -219,11 +269,26 @@ export function MyOrderShipmentCard({
   };
 
   const handleAssignClient = () => {
-    const target = row.lines.find((l) => !l.clientName?.trim()) ?? row.lines[0];
-    if (!target) return;
     ensureExpanded();
-    setClientEditorLineId(target.id);
+    if (row.lineCount === 1 && row.lines[0]) {
+      setClientEditorLineId(row.lines[0].id);
+      return;
+    }
+    const unassigned = row.lines.filter((l) => !l.clientName?.trim());
+    if (unassigned.length === 1) {
+      setClientEditorLineId(unassigned[0]!.id);
+    } else {
+      setClientEditorLineId(null);
+    }
   };
+
+  const unassignedLineCount = row.lines.filter((l) => !l.clientName?.trim()).length;
+  const assignClientLabel =
+    row.lineCount > 1
+      ? unassignedLineCount > 0
+        ? "Przypisz klientów przy produktach"
+        : "Klienci przy produktach"
+      : undefined;
 
   const handleToggle = () => {
     if (!needsExpand) return;
@@ -238,6 +303,7 @@ export function MyOrderShipmentCard({
       disabled={pending}
       hasClient={hasClient}
       canAssignClient={canEditClient && row.lineCount > 0}
+      assignClientLabel={assignClientLabel}
       canEdit={Boolean(showEditLink)}
       canCancel={Boolean(showSalesCancelLink)}
       onAssignClient={handleAssignClient}
@@ -253,18 +319,24 @@ export function MyOrderShipmentCard({
       overflowMenu={overflowMenu}
       showSinglePickup={Boolean(showSinglePickup)}
       showBulkPickup={Boolean(showBulkPickup)}
+      showDismissAck={Boolean(showDismissAck)}
       ackShortLabel={ackShortLabel}
       ackFullTitle={ackFullTitle}
+      dismissAckLabel={dismissAckLabel}
+      dismissAckTitle={dismissAckTitle}
+      dismissAckIds={dismissAckIds}
       pending={pending}
       pickupIds={row.pickupPendingIds}
       pickupCount={row.pickupPendingCount}
       isAction={isAction}
       onAcknowledgePickup={onAcknowledgePickup}
+      onAcknowledgeDismiss={onAcknowledgeDismiss}
       tourPreview={tourPreview}
     />
   );
 
-  const hideLineClient = row.lineCount === 1 && Boolean(row.clientLabel);
+  const hideLineClient =
+    row.lineCount === 1 && Boolean(row.clientLabel) && !canEditClient;
 
   const lineItemProps = (lineId: string) => ({
     showProgress,
@@ -286,6 +358,12 @@ export function MyOrderShipmentCard({
         }
       : undefined,
     openClientEditor: clientEditorLineId === lineId,
+    onStartEditClient: canEditClient
+      ? () => {
+          ensureExpanded();
+          setClientEditorLineId(lineId);
+        }
+      : undefined,
   });
 
   const headlineClass = cn(
@@ -395,9 +473,10 @@ export function MyOrderShipmentCard({
           <MetaGrid fields={expandedMeta} />
 
           {row.lineCount > 1 && row.clientLabel ? (
-            <p className="mt-2 text-xs text-slate-600">
-              <span className="text-slate-400">Klient: </span>
-              <span className="font-medium text-slate-800">{row.clientLabel}</span>
+            <p className="mt-2 text-xs text-slate-500">
+              <span className="text-slate-400">Klienci: </span>
+              <span className="font-medium text-slate-700">{row.clientLabel}</span>
+              <span className="text-slate-400"> — szczegóły przy produktach poniżej</span>
             </p>
           ) : null}
 

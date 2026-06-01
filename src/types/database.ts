@@ -161,6 +161,8 @@ export interface SalesZkWatch {
   note: string | null;
   line_summary: string | null;
   subiekt_snapshot: Record<string, unknown> | null;
+  /** Stan odbioru pozycji — patrz ZkWatchLineCheckStored. */
+  line_checks: unknown;
   follow_up_at: string | null;
   closed_at: string | null;
   archived_at: string | null;

@@ -132,6 +132,27 @@ export function enrichMyOrderSalesUi(row: MyOrderRow): MyOrderSalesUi {
     };
   }
 
+  if (
+    row.acknowledgeMode === "cancel_notice" &&
+    row.cancelNoticeOrderIds.length > 0
+  ) {
+    return {
+      headline: "Potwierdź informację o rezygnacji",
+      headlineTone: "neutral",
+      subline: "Po potwierdzeniu wpis zniknie z listy",
+      sortPriority: 3,
+    };
+  }
+
+  if (row.acknowledgeMode === "cancelled") {
+    return {
+      headline: "Potwierdź anulowanie prośby",
+      headlineTone: "neutral",
+      subline: "Po potwierdzeniu wpis zniknie z listy",
+      sortPriority: 3,
+    };
+  }
+
   if (row.statusTitle === "Częściowo na magazynie") {
     const onStock = row.lines.filter(
       (l) => l.stockStatus === "on_stock" || l.stockStatus === "partial"
@@ -218,15 +239,6 @@ export function enrichMyOrderSalesUi(row: MyOrderRow): MyOrderSalesUi {
       headlineTone: "info",
       subline: "Powiadomimy e-mailem, gdy towar będzie na magazynie",
       sortPriority: 9,
-    };
-  }
-
-  if (row.acknowledgeMode === "cancelled") {
-    return {
-      headline: "Potwierdź anulowanie prośby",
-      headlineTone: "neutral",
-      subline: "Po potwierdzeniu wpis zniknie z listy",
-      sortPriority: 3,
     };
   }
 

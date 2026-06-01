@@ -25,11 +25,16 @@ function readSnapshotStatusLabel(watch: SalesZkWatch): string | null {
   return zkDocumentStatusLabel(snap?.dok_Status ?? null);
 }
 
-export function zkWatchSubtitle(watch: SalesZkWatch): string | null {
+export function zkWatchSubtitle(
+  watch: SalesZkWatch,
+  options?: { omitLineSummary?: boolean }
+): string | null {
   const parts: string[] = [];
   const issued = formatShortDate(watch.zk_issued_at);
   if (issued) parts.push(`Wystawiono ${issued}`);
-  if (watch.line_summary?.trim()) parts.push(watch.line_summary.trim());
+  if (!options?.omitLineSummary && watch.line_summary?.trim()) {
+    parts.push(watch.line_summary.trim());
+  }
   const status = readSnapshotStatusLabel(watch);
   if (status && status !== "Aktywne") parts.push(`Status: ${status}`);
   return parts.length ? parts.join(" · ") : null;

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { partitionSalesZkWatches } from "@/lib/data/sales-notepad";
+import { isZkWatchArchived, partitionSalesZkWatches } from "@/lib/data/sales-notepad";
 import { watchNeedsNotepadAttention } from "@/lib/sales/notepad-follow-up";
 import { collectNotepadTodayTasks } from "@/lib/sales/notepad-today-tasks";
 import { sortZkWatches } from "@/lib/sales/zk-watch-sort";
@@ -18,6 +18,7 @@ function watch(partial: Partial<SalesZkWatch> & Pick<SalesZkWatch, "id">): Sales
     note: null,
     line_summary: null,
     subiekt_snapshot: null,
+    line_checks: [],
     follow_up_at: null,
     closed_at: null,
     archived_at: null,
@@ -28,6 +29,16 @@ function watch(partial: Partial<SalesZkWatch> & Pick<SalesZkWatch, "id">): Sales
 }
 
 describe("ZK czeka na towar — logika notatnika", () => {
+  it("isZkWatchArchived obejmuje closed_at i archived_at", () => {
+    expect(isZkWatchArchived(watch({ id: "a" }))).toBe(false);
+    expect(isZkWatchArchived(watch({ id: "b", closed_at: "2026-05-10T00:00:00Z" }))).toBe(
+      true
+    );
+    expect(isZkWatchArchived(watch({ id: "c", archived_at: "2026-05-11T00:00:00Z" }))).toBe(
+      true
+    );
+  });
+
   it("partitionSalesZkWatches rozdziela aktywne i archiwum", () => {
     const { zkWatches, archivedZkWatches } = partitionSalesZkWatches([
       watch({ id: "active", zk_number: "A" }),

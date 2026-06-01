@@ -111,6 +111,35 @@ describe("summarizeMyOrdersInbox", () => {
     expect(s.przedZamowieniemCount).toBe(0);
     expect(s.availabilityPendingCount).toBe(1);
   });
+
+  it("liczy anulowania do potwierdzenia", () => {
+    const row = presentMyOrders(
+      [{ ...baseOrder, id: "c1", status: "Anulowane" }],
+      []
+    ).zamowienia[0];
+    const s = summarizeMyOrdersInbox([row]);
+    expect(s.cancelAckCount).toBe(1);
+    expect(row.acknowledgeMode).toBe("cancelled");
+  });
+
+  it("liczy rezygnację do potwierdzenia", () => {
+    const row = presentMyOrders(
+      [
+        {
+          ...baseOrder,
+          id: "cn1",
+          status: "Zamowione",
+          sales_cancelled_at: "2026-05-01T10:00:00.000Z",
+          sales_cancel_phase: "in_transit",
+        },
+      ],
+      []
+    ).zamowienia[0];
+    const s = summarizeMyOrdersInbox([row]);
+    expect(s.cancelAckCount).toBe(1);
+    expect(row.acknowledgeMode).toBe("cancel_notice");
+    expect(row.cancelNoticeOrderIds).toEqual(["cn1"]);
+  });
 });
 
 describe("enrichMyOrderSalesUi — termin", () => {

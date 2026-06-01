@@ -6,6 +6,8 @@ import type { MyOrderRow } from "@/lib/orders/my-order-presenter";
 import { sortMyOrderRows } from "@/lib/orders/my-order-sales-ui";
 import {
   actionAcknowledgePickup,
+  actionAcknowledgeCancelled,
+  actionAcknowledgeSalesCancelNotice,
   actionSalesCancelOrders,
   actionUpdateSalesClientName,
   actionUnacknowledgePickup,
@@ -119,6 +121,56 @@ export function MyOrderShipmentList({
         } catch (e) {
           setErrorToast(
             e instanceof Error ? e.message : "Nie udało się potwierdzić odbioru"
+          );
+        } finally {
+          setPendingMessage(null);
+        }
+      });
+    },
+    [router, tourPreview]
+  );
+
+  const runAcknowledgeCancelled = useCallback(
+    (orderIds: string[]) => {
+      if (tourPreview) return;
+      const n = orderIds.length;
+      setPendingMessage(
+        n === 1 ? "Potwierdzanie anulowania…" : `Potwierdzanie ${n} anulowań…`
+      );
+      start(async () => {
+        try {
+          await actionAcknowledgeCancelled(orderIds);
+          router.refresh();
+        } catch (e) {
+          setErrorToast(
+            e instanceof Error ? e.message : "Nie udało się potwierdzić anulowania"
+          );
+        } finally {
+          setPendingMessage(null);
+        }
+      });
+    },
+    [router, tourPreview]
+  );
+
+  const runAcknowledgeCancelNotice = useCallback(
+    (orderIds: string[]) => {
+      if (tourPreview) return;
+      const n = orderIds.length;
+      setPendingMessage(
+        n === 1
+          ? "Potwierdzanie informacji o rezygnacji…"
+          : `Potwierdzanie ${n} informacji o rezygnacji…`
+      );
+      start(async () => {
+        try {
+          await actionAcknowledgeSalesCancelNotice(orderIds);
+          router.refresh();
+        } catch (e) {
+          setErrorToast(
+            e instanceof Error
+              ? e.message
+              : "Nie udało się potwierdzić informacji o rezygnacji"
           );
         } finally {
           setPendingMessage(null);
@@ -305,6 +357,16 @@ export function MyOrderShipmentList({
             expanded={expandedIds.has(row.id)}
             onToggle={() => toggleExpanded(row.id)}
             onAcknowledgePickup={runPickup}
+            onAcknowledgeCancelled={
+              canAcknowledge && row.cancelledAckOrderIds.length
+                ? runAcknowledgeCancelled
+                : undefined
+            }
+            onAcknowledgeCancelNotice={
+              canAcknowledge && row.cancelNoticeOrderIds.length
+                ? runAcknowledgeCancelNotice
+                : undefined
+            }
             onCancelRequest={
               canAcknowledge && row.salesCancelOrderIds.length && row.salesCancelPhase
                 ? (ids, phase) => requestCancel(ids, phase)

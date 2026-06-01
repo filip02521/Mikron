@@ -8,6 +8,12 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { resolveZkByNumber, mapZkDocument } from "@/lib/subiekt/resolve-zk-document";
 import { getSubiektZk } from "@/lib/subiekt/api";
 import { isSubiektReachable } from "@/lib/subiekt/availability";
+import {
+  buildZkWatchLineViews,
+  mergeLineChecksAfterRefresh,
+  parseZkWatchLineChecks,
+  type ZkWatchLineCheckStored,
+} from "@/lib/sales/zk-watch-lines";
 import type { SalesNote, SalesNoteColor, SalesZkWatch } from "@/types/database";
 
 async function salesPersonIdForAction(): Promise<string> {
@@ -52,7 +58,7 @@ export async function actionAddZkWatchByNumber(
 
   const { data: existing } = await supabase
     .from("sales_zk_watches")
-    .select("id, closed_at, archived_at, note")
+    .select("id, closed_at, archived_at, note, line_checks")
     .eq("sales_person_id", salesPersonId)
     .eq("subiekt_dok_id", resolved.subiektDokId)
     .maybeSingle();
@@ -62,6 +68,32 @@ export async function actionAddZkWatchByNumber(
   }
 
   const reactivating = Boolean(existing?.closed_at || existing?.archived_at);
+  const snapshot = resolved.snapshot as unknown as Record<string, unknown>;
+  const mergedLineChecks = reactivating
+    ? mergeLineChecksAfterRefresh(
+        parseZkWatchLineChecks(existing?.line_checks),
+        buildZkWatchLineViews({
+          id: existing.id,
+          sales_person_id: salesPersonId,
+          subiekt_dok_id: resolved.subiektDokId,
+          zk_number: resolved.zkNumber,
+          client_label: resolved.clientLabel,
+          client_kh_id: resolved.clientKhId,
+          amount_net: resolved.amountNet,
+          amount_gross: resolved.amountGross,
+          zk_issued_at: resolved.issuedAt,
+          note: null,
+          line_summary: resolved.lineSummary,
+          subiekt_snapshot: snapshot,
+          line_checks: [],
+          follow_up_at: null,
+          closed_at: null,
+          archived_at: null,
+          created_at: now,
+          updated_at: now,
+        })
+      )
+    : undefined;
 
   const row = {
     sales_person_id: salesPersonId,
@@ -73,11 +105,12 @@ export async function actionAddZkWatchByNumber(
     amount_gross: resolved.amountGross,
     zk_issued_at: resolved.issuedAt,
     line_summary: resolved.lineSummary,
-    subiekt_snapshot: resolved.snapshot as unknown as Record<string, unknown>,
+    subiekt_snapshot: snapshot,
     closed_at: null,
     archived_at: null,
     follow_up_at: reactivating ? null : undefined,
     note: reactivating ? null : existing?.note ?? null,
+    ...(mergedLineChecks != null ? { line_checks: mergedLineChecks } : {}),
     updated_at: now,
   };
 
@@ -149,7 +182,7 @@ export async function actionRestoreZkWatch(watchId: string) {
 
   const { data: row, error: fetchError } = await supabase
     .from("sales_zk_watches")
-    .select("id, sales_person_id, closed_at")
+    .select("id, sales_person_id, closed_at, archived_at")
     .eq("id", watchId)
     .maybeSingle();
 
@@ -158,12 +191,15 @@ export async function actionRestoreZkWatch(watchId: string) {
   if (row.sales_person_id !== salesPersonId) {
     throw new Error("Brak uprawnień do tego wpisu.");
   }
-  if (!row.closed_at) throw new Error("Ten ZK jest już na liście oczekujących.");
+  if (!row.closed_at && !row.archived_at) {
+    throw new Error("Ten ZK jest już na liście oczekujących.");
+  }
 
   const { data, error } = await supabase
     .from("sales_zk_watches")
     .update({
       closed_at: null,
+      archived_at: null,
       follow_up_at: null,
       note: null,
       updated_at: now,
@@ -185,7 +221,7 @@ export async function actionRefreshZkWatchFromSubiekt(watchId: string) {
 
   const { data: row, error: fetchError } = await supabase
     .from("sales_zk_watches")
-    .select("id, sales_person_id, subiekt_dok_id, closed_at")
+    .select("*")
     .eq("id", watchId)
     .maybeSingle();
 
@@ -194,10 +230,21 @@ export async function actionRefreshZkWatchFromSubiekt(watchId: string) {
   if (row.sales_person_id !== salesPersonId) {
     throw new Error("Brak uprawnień do tego wpisu.");
   }
-  if (row.closed_at) throw new Error("Nie można odświeżyć zamkniętego ZK — przywróć go na listę.");
+  if (row.closed_at || row.archived_at) {
+    throw new Error("Nie można odświeżyć zamkniętego ZK — przywróć go na listę.");
+  }
 
   const doc = await getSubiektZk(row.subiekt_dok_id);
   const resolved = mapZkDocument(doc);
+
+  const mergedChecks = mergeLineChecksAfterRefresh(
+    parseZkWatchLineChecks((row as SalesZkWatch).line_checks),
+    buildZkWatchLineViews({
+      ...(row as SalesZkWatch),
+      subiekt_snapshot: resolved.snapshot as unknown as Record<string, unknown>,
+      line_summary: resolved.lineSummary,
+    })
+  );
 
   const { data, error } = await supabase
     .from("sales_zk_watches")
@@ -210,6 +257,7 @@ export async function actionRefreshZkWatchFromSubiekt(watchId: string) {
       zk_issued_at: resolved.issuedAt,
       line_summary: resolved.lineSummary,
       subiekt_snapshot: resolved.snapshot as unknown as Record<string, unknown>,
+      line_checks: mergedChecks,
       updated_at: now,
     })
     .eq("id", watchId)
@@ -228,7 +276,7 @@ export async function actionUpdateZkWatchNote(watchId: string, note: string) {
 
   const { data: row, error: fetchError } = await supabase
     .from("sales_zk_watches")
-    .select("id, sales_person_id, closed_at")
+    .select("id, sales_person_id, closed_at, archived_at")
     .eq("id", watchId)
     .maybeSingle();
 
@@ -237,7 +285,9 @@ export async function actionUpdateZkWatchNote(watchId: string, note: string) {
   if (row.sales_person_id !== salesPersonId) {
     throw new Error("Brak uprawnień do tego wpisu.");
   }
-  if (row.closed_at) throw new Error("Nie można edytować notatki zamkniętego ZK.");
+  if (row.closed_at || row.archived_at) {
+    throw new Error("Nie można edytować notatki zamkniętego ZK.");
+  }
 
   const { error } = await supabase
     .from("sales_zk_watches")
@@ -247,6 +297,63 @@ export async function actionUpdateZkWatchNote(watchId: string, note: string) {
   if (error) throw new Error(error.message);
   revalidateNotepad();
   return { success: true };
+}
+
+export async function actionUpdateZkWatchLineChecks(
+  watchId: string,
+  checks: ZkWatchLineCheckStored[]
+) {
+  const salesPersonId = await salesPersonIdForAction();
+  const supabase = createAdminClient();
+
+  const { data: row, error: fetchError } = await supabase
+    .from("sales_zk_watches")
+    .select("*")
+    .eq("id", watchId)
+    .maybeSingle();
+
+  if (fetchError) throw new Error(fetchError.message);
+  if (!row) throw new Error("Nie znaleziono wpisu.");
+  if (row.sales_person_id !== salesPersonId) {
+    throw new Error("Brak uprawnień do tego wpisu.");
+  }
+  if (row.closed_at || row.archived_at) {
+    throw new Error("Nie można zmieniać listy towaru dla zamkniętego ZK.");
+  }
+
+  const views = buildZkWatchLineViews(row as SalesZkWatch);
+  const validKeys = new Set(views.map((v) => v.key));
+  const arrivedByKey = new Map(
+    checks
+      .filter((c) => validKeys.has(c.key))
+      .map((c) => [c.key, Boolean(c.arrived)])
+  );
+  const sanitized = views.map((v) => ({
+    key: v.key,
+    arrived: arrivedByKey.get(v.key) ?? false,
+  }));
+
+  const { data, error } = await supabase
+    .from("sales_zk_watches")
+    .update({
+      line_checks: sanitized,
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", watchId)
+    .select("*")
+    .single();
+
+  if (error) {
+    if (error.message?.includes("line_checks")) {
+      throw new Error(
+        "Brak kolumny line_checks — uruchom migrację supabase/migrations/051_zk_watch_line_checks.sql"
+      );
+    }
+    throw new Error(error.message);
+  }
+
+  revalidateNotepad();
+  return { watch: data as SalesZkWatch };
 }
 
 export async function actionUpdateZkWatchFollowUp(
@@ -259,7 +366,7 @@ export async function actionUpdateZkWatchFollowUp(
 
   const { data: row, error: fetchError } = await supabase
     .from("sales_zk_watches")
-    .select("id, sales_person_id, closed_at")
+    .select("id, sales_person_id, closed_at, archived_at")
     .eq("id", watchId)
     .maybeSingle();
 
@@ -268,7 +375,9 @@ export async function actionUpdateZkWatchFollowUp(
   if (row.sales_person_id !== salesPersonId) {
     throw new Error("Brak uprawnień do tego wpisu.");
   }
-  if (row.closed_at) throw new Error("Nie można ustawić przypomnienia dla zamkniętego ZK.");
+  if (row.closed_at || row.archived_at) {
+    throw new Error("Nie można ustawić przypomnienia dla zamkniętego ZK.");
+  }
 
   const { data, error } = await supabase
     .from("sales_zk_watches")
@@ -491,7 +600,7 @@ export async function actionDeleteArchivedZkWatch(watchId: string) {
 
   const { data: row, error: fetchError } = await supabase
     .from("sales_zk_watches")
-    .select("id, sales_person_id, closed_at")
+    .select("id, sales_person_id, closed_at, archived_at")
     .eq("id", watchId)
     .maybeSingle();
 
@@ -500,7 +609,9 @@ export async function actionDeleteArchivedZkWatch(watchId: string) {
   if (row.sales_person_id !== salesPersonId) {
     throw new Error("Brak uprawnień do tego wpisu.");
   }
-  if (!row.closed_at) throw new Error("Można usunąć tylko zamknięte ZK z archiwum.");
+  if (!row.closed_at && !row.archived_at) {
+    throw new Error("Można usunąć tylko zamknięte ZK z archiwum.");
+  }
 
   const { error } = await supabase.from("sales_zk_watches").delete().eq("id", watchId);
   if (error) throw new Error(error.message);

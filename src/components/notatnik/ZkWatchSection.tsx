@@ -13,6 +13,7 @@ import {
   NOTATNIK_INPUT_NARROW_CLASS,
   NOTATNIK_ZK_LIST_CLASS,
 } from "./notatnik-layout";
+import { mojeShipmentSectionShellClass } from "@/lib/ui/moje-shipment-row-styles";
 
 export function ZkWatchSection({
   watches,
@@ -125,25 +126,27 @@ export function ZkWatchSection({
       {error ? <Alert tone="error">{error}</Alert> : null}
 
       {watches.length === 0 ? (
-        <p className="rounded-md border border-dashed border-slate-200 bg-slate-50/80 px-3 py-4 text-center text-xs text-slate-500">
+        <p className="rounded-md border border-dashed border-slate-200 bg-slate-50/80 px-3 py-3 text-center text-xs text-slate-500">
           Brak zamówień klienta czekających na towar.
         </p>
       ) : (
-        <ul className={NOTATNIK_ZK_LIST_CLASS}>
-          {sortZkWatches(watches).map((watch) => (
-            <li key={watch.id} id={`watch-${watch.id}`}>
-              <ZkWatchCard
-                watch={watch}
-                readOnly={readOnly}
-                tourPreview={tourPreview}
-                compact={compact}
-                subiektReachable={subiektReachable}
-                onClosed={() => onWatchClosed?.(watch.id)}
-                onRefreshed={onWatchRefreshed}
-              />
-            </li>
-          ))}
-        </ul>
+        <div className={embedded ? undefined : mojeShipmentSectionShellClass}>
+          <ul className={NOTATNIK_ZK_LIST_CLASS}>
+            {sortZkWatches(watches).map((watch) => (
+              <li key={watch.id} id={`watch-${watch.id}`}>
+                <ZkWatchCard
+                  watch={watch}
+                  readOnly={readOnly}
+                  tourPreview={tourPreview}
+                  compact={compact}
+                  subiektReachable={subiektReachable}
+                  onClosed={() => onWatchClosed?.(watch.id)}
+                  onRefreshed={onWatchRefreshed}
+                />
+              </li>
+            ))}
+          </ul>
+        </div>
       )}
     </div>
   );

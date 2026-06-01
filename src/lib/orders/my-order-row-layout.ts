@@ -15,6 +15,7 @@ export function myOrderCollapsedSubline(row: MyOrderRow): string | null {
   if (
     row.acknowledgeMode === "pickup" ||
     row.acknowledgeMode === "availability" ||
+    row.acknowledgeMode === "cancel_notice" ||
     row.acknowledgeMode === "cancelled"
   ) {
     return row.subline ?? null;

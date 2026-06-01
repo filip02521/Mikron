@@ -2,7 +2,7 @@
 
 import type { MyOrderLine, MyOrderLineStockStatus } from "@/lib/orders/my-order-presenter";
 import { MyOrderAssignedClient } from "@/components/moje/MyOrderAssignedClient";
-import { SalesClientNameEditor } from "@/components/moje/SalesClientNameEditor";
+import { MyOrderLineClientField } from "@/components/moje/MyOrderLineClientField";
 import { MyOrderAckButton } from "@/components/moje/MyOrderAckButton";
 import { cn } from "@/lib/cn";
 
@@ -42,6 +42,7 @@ export function MyOrderLineItem({
   canEditClient,
   onSaveClient,
   openClientEditor = false,
+  onStartEditClient,
   hideClientLabel = false,
 }: {
   line: MyOrderLine;
@@ -57,7 +58,8 @@ export function MyOrderLineItem({
   canEditClient?: boolean;
   onSaveClient?: (orderId: string, name: string | null) => void | Promise<void>;
   openClientEditor?: boolean;
-  /** Gdy klient jest już w MetaGrid (1 produkt w grupie). */
+  onStartEditClient?: () => void;
+  /** Gdy klient jest już w MetaGrid (1 produkt, bez edycji). */
   hideClientLabel?: boolean;
 }) {
   const badge = showProgress && emphasizeStock ? stockBadge(line.stockStatus) : null;
@@ -96,11 +98,13 @@ export function MyOrderLineItem({
               {detail}
             </p>
           ) : null}
-          {canEditClient && onSaveClient && openClientEditor ? (
-            <SalesClientNameEditor
-              value={line.clientName}
+          {canEditClient && onSaveClient && onStartEditClient ? (
+            <MyOrderLineClientField
+              clientName={line.clientName}
               disabled={pending}
-              openOnMount
+              editing={openClientEditor}
+              className={!compact ? "pl-5" : undefined}
+              onStartEdit={onStartEditClient}
               onSave={(name) => onSaveClient(line.id, name)}
             />
           ) : !hideClientLabel && line.clientName?.trim() ? (

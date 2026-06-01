@@ -22,6 +22,7 @@ export async function countSalesNavAttention(
   return (
     s.pickupCount +
     s.partialReadyCount +
+    s.cancelAckCount +
     s.informacjaReadyCount
   );
 }

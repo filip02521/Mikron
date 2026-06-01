@@ -22,6 +22,7 @@ const baseWatch: SalesZkWatch = {
       { tw_Nazwa: "Filtr powietrza XYZ", tw_Symbol: "FP-100", ob_Ilosc: 2, ob_TowId: 99 },
     ],
   },
+  line_checks: [],
   follow_up_at: null,
   closed_at: null,
   archived_at: null,
@@ -38,6 +39,25 @@ describe("zk-watch-prosba-prefill", () => {
     expect(lines[0]?.quantity).toBe("2");
     expect(lines[0]?.clientName).toBe("Klinika Smile");
     expect(lines[0]?.subiektTwId).toBe(99);
+  });
+
+  it("pomija koszty przesyłki w liniach prośby", () => {
+    const lines = extractProsbaLinesFromZkWatch({
+      ...baseWatch,
+      subiekt_snapshot: {
+        dok_Pozycja: [
+          { tw_Nazwa: "Szczotka", tw_Symbol: "SZ-1", ob_Ilosc: 1, ob_TowId: 1 },
+          {
+            tw_Nazwa: "pakowanie przesyłki/koszty dostawy",
+            tw_Symbol: "KOSZTY/2",
+            ob_Ilosc: 1,
+            ob_TowId: 2,
+          },
+        ],
+      },
+    });
+    expect(lines).toHaveLength(1);
+    expect(lines[0]?.product).toBe("Szczotka");
   });
 
   it("prosbaHrefFromZkWatch buduje link z parametrami ZK", () => {

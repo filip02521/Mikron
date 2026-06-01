@@ -215,6 +215,7 @@ export function navForRole(
         {
           href: "/zespol",
           label: "Podgląd zespołu",
+          mobileLabel: "Zespół",
           description: teamNav.overview,
         },
         {

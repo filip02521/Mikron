@@ -14,6 +14,7 @@ const baseWatch: SalesZkWatch = {
   zk_issued_at: null,
   note: null,
   line_summary: null,
+  line_checks: [],
   subiekt_snapshot: {
     kh__Kontrahent_Odbiorca: {
       kh_Id: 42,

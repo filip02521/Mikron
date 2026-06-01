@@ -4,6 +4,8 @@ import {
   filterRowsByGroupScope,
   getManagedGroupIdsForUser,
 } from "@/lib/data/sales-group-access";
+import { fetchAllAuthUsersLastSignIn } from "@/lib/data/users";
+import { formatPlDate } from "@/lib/display-labels";
 import { isManagedSalesPersonEmail } from "@/lib/sales/sales-person-catalog";
 import { isFollowUpDue } from "@/lib/sales/notepad-follow-up";
 
@@ -20,7 +22,17 @@ export type SalesPersonAdminRow = {
   followUpDueZkCount: number;
   linkedUserId: string | null;
   linkedUserEmail: string | null;
+  linkedUserLastSignInAt: string | null;
 };
+
+/** Etykieta w kolumnie „Konto” na podglądzie zespołu. */
+export function formatSalesPersonAccountStatus(
+  row: Pick<SalesPersonAdminRow, "linkedUserEmail" | "linkedUserLastSignInAt">
+): string {
+  if (!row.linkedUserEmail) return "Brak konta";
+  if (!row.linkedUserLastSignInAt) return "Nie logował się";
+  return formatPlDate(row.linkedUserLastSignInAt.slice(0, 10)) ?? "—";
+}
 
 export async function fetchSalesPeopleAdmin(): Promise<SalesPersonAdminRow[]> {
   if (!hasSupabaseConfig()) return [];
@@ -44,6 +56,8 @@ export async function fetchSalesPeopleAdmin(): Promise<SalesPersonAdminRow[]> {
   if (peopleError) throw new Error(peopleError.message);
   if (profilesError) throw new Error(profilesError.message);
   if (watchesError) throw new Error(watchesError.message);
+
+  const lastSignInByUserId = await fetchAllAuthUsersLastSignIn(supabase);
 
   const { data: groups, error: groupsError } = await supabase
     .from("sales_groups")
@@ -95,6 +109,9 @@ export async function fetchSalesPeopleAdmin(): Promise<SalesPersonAdminRow[]> {
       followUpDueZkCount: followUpDueZkBySalesId.get(p.id) ?? 0,
       linkedUserId: linked?.id ?? null,
       linkedUserEmail: linked?.email ?? null,
+      linkedUserLastSignInAt: linked?.id
+        ? (lastSignInByUserId.get(linked.id) ?? null)
+        : null,
     };
   });
 }

@@ -15,6 +15,7 @@ const watch = (partial: Partial<SalesZkWatch>): SalesZkWatch => ({
   note: null,
   line_summary: null,
   subiekt_snapshot: null,
+  line_checks: [],
   follow_up_at: null,
   closed_at: null,
   archived_at: null,

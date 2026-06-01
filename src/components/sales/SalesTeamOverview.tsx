@@ -2,13 +2,65 @@
 
 import Link from "next/link";
 import type { SalesPersonAdminRow } from "@/lib/data/sales-people-admin";
+import { formatSalesPersonAccountStatus } from "@/lib/data/sales-people-admin";
 import type { SalesGroupRow } from "@/lib/data/sales-groups";
 import type { SalesTeamUiContext } from "@/lib/sales/team-ui";
 import { groupSalesPeopleForTeamView } from "@/lib/sales/team-grouping";
-import { Card, CardHeader } from "@/components/ui/Card";
+import { Card } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { EmptyState } from "@/components/ui/EmptyState";
+import { cn } from "@/lib/cn";
+
+function TeamCardActionLink({
+  href,
+  children,
+  className,
+}: {
+  href: string;
+  children: React.ReactNode;
+  className?: string;
+}) {
+  return (
+    <Link href={href} className={cn("block min-w-0", className)}>
+      {children}
+    </Link>
+  );
+}
+
+function SalesPersonCardActions({
+  rowId,
+  isSelf,
+}: {
+  rowId: string;
+  isSelf: boolean;
+}) {
+  return (
+    <div className="grid grid-cols-2 gap-2 border-t border-slate-100 pt-2.5">
+      <TeamCardActionLink href={`/moje?dla=${rowId}`}>
+        <Button
+          size="sm"
+          variant={isSelf ? "primary" : "secondary"}
+          className="h-8 w-full px-2 text-xs"
+        >
+          {isSelf ? "Moje zamówienia" : "Zobacz prośby"}
+        </Button>
+      </TeamCardActionLink>
+      <TeamCardActionLink href={`/notatnik?dla=${rowId}`}>
+        <Button size="sm" variant="outline" className="h-8 w-full px-2 text-xs">
+          Notatnik
+        </Button>
+      </TeamCardActionLink>
+      {!isSelf ? (
+        <TeamCardActionLink href={`/prosba?dla=${rowId}`} className="col-span-2">
+          <Button size="sm" variant="outline" className="h-8 w-full px-2 text-xs">
+            Prośba w jego imieniu
+          </Button>
+        </TeamCardActionLink>
+      ) : null}
+    </div>
+  );
+}
 
 function SalesPersonCard({
   row,
@@ -19,29 +71,30 @@ function SalesPersonCard({
 }) {
   return (
     <Card key={row.id} padding={false} className={isSelf ? "ring-1 ring-indigo-200" : ""}>
-      <CardHeader
-        inset
-        title={row.name}
-        description={row.email}
-        action={
-          isSelf ? (
-            <Badge variant="info" className="text-[10px]">
-              Ty
-            </Badge>
-          ) : row.groupName ? (
-            <Badge variant="default" className="text-[10px]">
-              {row.groupName}
-            </Badge>
-          ) : null
-        }
-      />
-      <div className="space-y-3 px-4 pb-4 sm:px-5">
-        <dl className="grid grid-cols-2 gap-2 text-xs sm:grid-cols-4">
-          <div>
+      <div className="flex items-start justify-between gap-2 border-b border-slate-100 px-4 py-3">
+        <div className="min-w-0 flex-1">
+          <div className="flex min-w-0 items-center gap-2">
+            <h3 className="truncate text-sm font-semibold text-slate-900">{row.name}</h3>
+            {isSelf ? (
+              <Badge variant="info" className="shrink-0 text-[10px]">
+                Ty
+              </Badge>
+            ) : row.groupName ? (
+              <Badge variant="default" className="shrink-0 text-[10px]">
+                {row.groupName}
+              </Badge>
+            ) : null}
+          </div>
+          <p className="mt-0.5 truncate text-xs text-slate-500">{row.email}</p>
+        </div>
+      </div>
+      <div className="space-y-2.5 px-4 py-3">
+        <dl className="grid grid-cols-2 gap-x-3 gap-y-2 text-xs">
+          <div className="min-w-0">
             <dt className="text-slate-500">Zamówienia</dt>
             <dd className="font-semibold tabular-nums text-slate-900">{row.orderCount}</dd>
           </div>
-          <div>
+          <div className="min-w-0">
             <dt className="text-slate-500">Czeka na towar</dt>
             <dd className="font-semibold tabular-nums text-slate-900">
               {row.pendingZkCount > 0 ? (
@@ -56,7 +109,7 @@ function SalesPersonCard({
               )}
             </dd>
           </div>
-          <div>
+          <div className="min-w-0">
             <dt className="text-slate-500">Przypomnienia</dt>
             <dd className="font-semibold tabular-nums text-slate-900">
               {row.followUpDueZkCount > 0 ? (
@@ -71,32 +124,26 @@ function SalesPersonCard({
               )}
             </dd>
           </div>
-          <div>
+          <div className="min-w-0">
             <dt className="text-slate-500">Konto</dt>
-            <dd className="font-medium text-slate-800">
-              {row.linkedUserEmail ? "Aktywne" : "Brak logowania"}
+            <dd
+              className={cn(
+                "font-medium",
+                row.linkedUserEmail ? "text-slate-800" : "text-slate-500"
+              )}
+              title={
+                row.linkedUserLastSignInAt
+                  ? `Ostatnie logowanie: ${formatSalesPersonAccountStatus(row)}`
+                  : row.linkedUserEmail
+                    ? "Konto aktywne — brak zapisanego logowania"
+                    : "Brak powiązanego konta użytkownika"
+              }
+            >
+              {formatSalesPersonAccountStatus(row)}
             </dd>
           </div>
         </dl>
-        <div className="flex flex-wrap gap-2">
-          <Link href={`/moje?dla=${row.id}`}>
-            <Button size="sm" variant={isSelf ? "primary" : "secondary"}>
-              {isSelf ? "Moje zamówienia" : "Zobacz prośby"}
-            </Button>
-          </Link>
-          <Link href={`/notatnik?dla=${row.id}`}>
-            <Button size="sm" variant="outline">
-              Notatnik
-            </Button>
-          </Link>
-          {!isSelf ? (
-            <Link href={`/prosba?dla=${row.id}`}>
-              <Button size="sm" variant="outline">
-                Prośba w jego imieniu
-              </Button>
-            </Link>
-          ) : null}
-        </div>
+        <SalesPersonCardActions rowId={row.id} isSelf={isSelf} />
       </div>
     </Card>
   );
@@ -187,7 +234,7 @@ export function SalesTeamOverview({
               </span>
             </div>
             {section.rows.length ? (
-              <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+              <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-3">
                 {section.rows.map((row) => (
                   <SalesPersonCard
                     key={row.id}

@@ -55,8 +55,9 @@ describe("sales-open-orders", () => {
     ];
     const { zamowienia } = presentMyOrders(orders, []);
     const r = aggregateVisibleMyOrdersBySupplier(orders, []);
+    const s1Row = zamowienia.find((row) => row.supplierId === "s1");
     expect(r.prioritySupplierIds).toEqual(["s1"]);
-    expect(r.openOrderCountBySupplier.s1).toBe(zamowienia[0]?.lineCount ?? 0);
+    expect(r.openOrderCountBySupplier.s1).toBe(s1Row?.lineCount ?? 0);
     expect(r.prioritySupplierIds).not.toContain("s2");
     expect(r.prioritySupplierIds).not.toContain("s3");
   });

@@ -33,8 +33,8 @@ export function aggregateOpenOrdersBySupplier(orders: IndividualOrder[]): {
 }
 
 /**
- * Lista dostawców na /plan — ta sama widoczność co karty w „Moje zamówienia”
- * (grupy bez potwierdzenia, z pominięciem samych anulowań).
+ * Lista dostawców na /plan — ta sama widoczność co karty w „Moje zamówienia”,
+ * bez samych anulowań oczekujących na potwierdzenie ukrycia.
  */
 export function aggregateVisibleMyOrdersBySupplier(
   orders: IndividualOrder[],
@@ -44,7 +44,9 @@ export function aggregateVisibleMyOrdersBySupplier(
   openOrderCountBySupplier: Record<string, number>;
 } {
   const { zamowienia, informacje } = presentMyOrders(orders, stats);
-  const rows = [...zamowienia, ...informacje];
+  const rows = [...zamowienia, ...informacje].filter(
+    (row) => row.acknowledgeMode !== "cancelled"
+  );
   const openOrderCountBySupplier: Record<string, number> = {};
   const seen = new Set<string>();
 

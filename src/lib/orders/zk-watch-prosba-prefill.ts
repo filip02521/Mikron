@@ -1,4 +1,5 @@
 import { randomId } from "@/lib/ensure-crypto";
+import { isZkWatchShippingCostLine } from "@/lib/sales/zk-watch-lines";
 import type { SubiektDocumentLine } from "@/lib/subiekt/types";
 import type { ProductLineDraft } from "@/components/orders/request-product-lines";
 import type { SalesZkWatch } from "@/types/database";
@@ -18,6 +19,7 @@ export function extractProsbaLinesFromZkWatch(watch: SalesZkWatch): ProductLineD
 
   const fromSnapshot: ProductLineDraft[] = [];
   for (const line of pozycje) {
+    if (isZkWatchShippingCostLine(line)) continue;
     const product = (line.tw_Nazwa ?? line.tw_Symbol ?? "").trim();
     const symbol = (line.tw_Symbol ?? "").trim();
     if (!product && !symbol) continue;

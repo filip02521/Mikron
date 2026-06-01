@@ -12,8 +12,8 @@ import {
 } from "@/app/actions/sales-notepad";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
-import { Card } from "@/components/ui/Card";
 import { cn } from "@/lib/cn";
+import { brandLinkSubtleClass } from "@/lib/ui/ontime-theme";
 import {
   formatPln,
   formatShortDate,
@@ -35,10 +35,30 @@ import {
 } from "@/lib/orders/zk-watch-prosba-prefill";
 import type { SalesZkWatch } from "@/types/database";
 import { FollowUpQuickDates } from "./FollowUpQuickDates";
+import { ZkWatchLinesModal } from "./ZkWatchLinesModal";
+import { ZkWatchOverflowMenu } from "./ZkWatchOverflowMenu";
+import { buildZkWatchLineViews, formatZkLinesShort } from "@/lib/sales/zk-watch-lines";
 import {
   NOTATNIK_INPUT_CLASS,
   NOTATNIK_TEXTAREA_CLASS,
+  zkWatchRowClass,
 } from "./notatnik-layout";
+
+function ChevronIcon({ open }: { open?: boolean }) {
+  return (
+    <svg
+      aria-hidden
+      viewBox="0 0 20 20"
+      className={cn(
+        "size-4 shrink-0 transition-transform",
+        open ? "rotate-90 text-indigo-700" : "text-slate-500"
+      )}
+      fill="currentColor"
+    >
+      <path d="M7.2 4.2a1 1 0 0 1 1.4 0l4.8 4.8a1 1 0 0 1 0 1.4l-4.8 4.8a1 1 0 1 1-1.4-1.4L11.58 10 7.2 5.6a1 1 0 0 1 0-1.4Z" />
+    </svg>
+  );
+}
 
 export function ZkWatchCard({
   watch,
@@ -49,7 +69,6 @@ export function ZkWatchCard({
   onRefreshed,
   onDeleted,
   archived,
-  compact,
   subiektReachable = true,
 }: {
   watch: SalesZkWatch;
@@ -67,22 +86,22 @@ export function ZkWatchCard({
   const [restoring, setRestoring] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
-  const [noteOpen, setNoteOpen] = useState(Boolean(watch.note?.trim()));
+  const [expanded, setExpanded] = useState(false);
+  const [noteOpen, setNoteOpen] = useState(false);
   const [noteDraft, setNoteDraft] = useState(watch.note ?? "");
   const [savedNote, setSavedNote] = useState(watch.note ?? "");
   const [savingNote, setSavingNote] = useState(false);
   const [followUpDraft, setFollowUpDraft] = useState(watch.follow_up_at?.slice(0, 10) ?? "");
   const [savingFollowUp, setSavingFollowUp] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [linesOpen, setLinesOpen] = useState(false);
 
-  useEffect(() => {
-    setNoteDraft(watch.note ?? "");
-    setSavedNote(watch.note ?? "");
-    setNoteOpen(Boolean(watch.note?.trim()));
-    setFollowUpDraft(watch.follow_up_at?.slice(0, 10) ?? "");
-  }, [watch.id, watch.note, watch.follow_up_at]);
+  const lineViews = buildZkWatchLineViews(watch);
+  const linesShort = formatZkLinesShort(lineViews);
 
-  const subtitle = zkWatchSubtitle(watch);
+  const subtitle = zkWatchSubtitle(watch, {
+    omitLineSummary: lineViews.length > 0,
+  });
   const subiektStatus = zkWatchStatusLabel(watch);
   const closedLabel = formatShortDate(watch.closed_at);
   const clientContact = extractZkWatchClientContact(watch);
@@ -93,9 +112,34 @@ export function ZkWatchCard({
     preview: readOnly || tourPreview,
   });
   const prosbaHref = prosbaHrefFromZkWatch(watch);
+  const canEdit = !readOnly && !tourPreview && !archived;
+  const pending = closing || restoring || deleting || refreshing || savingNote || savingFollowUp;
+
+  const metaParts: string[] = [];
+  if (subtitle) metaParts.push(subtitle);
+  if (watch.amount_gross != null) metaParts.push(formatPln(watch.amount_gross));
+  if (!archived && followUpLabel) {
+    metaParts.push(followUpDue ? `Przypomnienie: ${followUpLabel}` : `Przyp. ${followUpLabel}`);
+  }
+  if (archived && closedLabel) metaParts.push(`Zamknięto ${closedLabel}`);
+
+  const hasDetails =
+    Boolean(savedNote.trim()) ||
+    followUpDue ||
+    isRealizedInSubiekt ||
+    noteOpen ||
+    (!archived && canEdit);
+
+  const needsExpand = hasDetails && !archived;
+
+  useEffect(() => {
+    setNoteDraft(watch.note ?? "");
+    setSavedNote(watch.note ?? "");
+    setFollowUpDraft(watch.follow_up_at?.slice(0, 10) ?? "");
+  }, [watch.id, watch.note, watch.follow_up_at]);
 
   async function markClosed() {
-    if (readOnly || tourPreview || closing) return;
+    if (!canEdit || closing) return;
     setClosing(true);
     setError(null);
     try {
@@ -123,7 +167,7 @@ export function ZkWatchCard({
   }
 
   async function refreshFromSubiekt() {
-    if (readOnly || tourPreview || refreshing || archived || !subiektReachable) return;
+    if (!canEdit || refreshing || !subiektReachable) return;
     setRefreshing(true);
     setError(null);
     try {
@@ -137,7 +181,7 @@ export function ZkWatchCard({
   }
 
   async function saveFollowUp(nextValue?: string) {
-    if (readOnly || tourPreview || savingFollowUp || archived) return;
+    if (!canEdit || savingFollowUp) return;
     const value = (nextValue ?? followUpDraft).trim();
     const normalized = value || null;
     if (normalized === (watch.follow_up_at?.slice(0, 10) ?? null)) return;
@@ -172,14 +216,14 @@ export function ZkWatchCard({
   }
 
   async function saveNote() {
-    if (readOnly || tourPreview || savingNote || archived) return;
+    if (!canEdit || savingNote) return;
     setSavingNote(true);
     setError(null);
     try {
       await actionUpdateZkWatchNote(watch.id, noteDraft);
       const trimmed = noteDraft.trim();
       setSavedNote(trimmed);
-      setNoteOpen(Boolean(trimmed));
+      setNoteOpen(false);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Nie udało się zapisać notatki.");
     } finally {
@@ -187,220 +231,216 @@ export function ZkWatchCard({
     }
   }
 
+  function openNote() {
+    setExpanded(true);
+    setNoteOpen(true);
+  }
+
   return (
-    <Card
-      padding={false}
-      className={cn(
-        archived ? "opacity-80" : undefined,
-        followUpDue ? "ring-2 ring-violet-200/90" : undefined
-      )}
-    >
-      <div className={cn("space-y-2", compact ? "p-3" : "space-y-3 p-4 sm:p-5")}>
-        <div className="flex flex-wrap items-start justify-between gap-2">
-          <div className="min-w-0 space-y-1">
-            <div className="flex flex-wrap items-center gap-1.5">
-              <p
-                className={cn(
-                  "font-semibold tabular-nums text-slate-900",
-                  compact ? "text-sm" : "text-base"
-                )}
-              >
-                {watch.zk_number}
-              </p>
-              {archived ? (
-                <Badge variant="default" className="text-[10px]">
-                  Zamknięte
-                </Badge>
-              ) : (
-                <>
-                  <Badge variant="warning" className="text-[10px]">
-                    Czeka na towar
-                  </Badge>
-                  {followUpDue ? (
-                    <Badge variant="purple" className="text-[10px]">
-                      Follow-up
-                    </Badge>
-                  ) : null}
-                  {subiektStatus ? (
-                    <Badge variant="info" className="text-[10px]">
-                      {subiektStatus}
-                    </Badge>
-                  ) : null}
-                </>
+    <article className={zkWatchRowClass({ followUpDue, archived })}>
+      <div className="flex min-h-[2.75rem] items-center gap-1 px-2 py-1.5 sm:gap-1.5 sm:px-3">
+        <button
+          type="button"
+          onClick={() => needsExpand && setExpanded((v) => !v)}
+          disabled={!needsExpand}
+          aria-expanded={needsExpand ? expanded : undefined}
+          className={cn(
+            "flex h-8 w-8 shrink-0 items-center justify-center",
+            needsExpand && "hover:bg-slate-100 hover:text-indigo-700"
+          )}
+        >
+          {needsExpand ? <ChevronIcon open={expanded} /> : null}
+        </button>
+
+        <div className="min-w-0 flex-1">
+          <div className="flex min-w-0 items-baseline gap-2">
+            <span className="shrink-0 text-sm font-semibold tabular-nums text-slate-900">
+              {watch.zk_number}
+            </span>
+            <span className="truncate text-sm text-slate-800">{watch.client_label}</span>
+          </div>
+          {metaParts.length || clientContact.phone || clientContact.email ? (
+            <p
+              className={cn(
+                "mt-0.5 truncate text-[0.68rem] leading-snug",
+                followUpDue ? "font-medium text-violet-800" : "text-slate-500"
               )}
-            </div>
-            <p className={cn("font-medium text-slate-800", compact ? "text-xs" : "text-sm")}>
-              {watch.client_label}
-            </p>
-            {clientContact.email || clientContact.phone ? (
-              <div className="flex flex-wrap gap-x-3 gap-y-1 text-xs">
-                {clientContact.phone ? (
+            >
+              {clientContact.phone ? (
+                <>
                   <a
                     href={normalizePhoneHref(clientContact.phone)}
-                    className="font-medium text-indigo-700 hover:text-indigo-900"
+                    className={cn("font-medium", brandLinkSubtleClass)}
+                    onClick={(e) => e.stopPropagation()}
                   >
                     {clientContact.phone}
                   </a>
-                ) : null}
-                {clientContact.email ? (
+                  {metaParts.length > 0 || clientContact.email ? " · " : null}
+                </>
+              ) : clientContact.email ? (
+                <>
                   <a
                     href={`mailto:${clientContact.email}`}
-                    className="font-medium text-indigo-700 hover:text-indigo-900"
+                    className={cn("font-medium", brandLinkSubtleClass)}
+                    onClick={(e) => e.stopPropagation()}
                   >
                     {clientContact.email}
                   </a>
-                ) : null}
-              </div>
-            ) : null}
-            {subtitle ? (
-              <p className="text-xs leading-relaxed text-slate-500">{subtitle}</p>
-            ) : null}
-            {watch.amount_gross != null ? (
-              <p className="text-xs tabular-nums text-slate-500">{formatPln(watch.amount_gross)}</p>
-            ) : null}
-            {!archived && followUpLabel ? (
-              <p className={cn("text-xs", followUpDue ? "font-semibold text-violet-800" : "text-slate-500")}>
-                Przypomnienie {followUpLabel}
-              </p>
-            ) : null}
-            {archived && closedLabel ? (
-              <p className="text-xs text-slate-500">Zamknięto {closedLabel}</p>
-            ) : null}
-          </div>
+                  {metaParts.length > 0 ? " · " : null}
+                </>
+              ) : null}
+              {metaParts.join(" · ")}
+            </p>
+          ) : null}
         </div>
 
-        {isRealizedInSubiekt && !archived && !readOnly ? (
-          <div className="flex flex-col gap-2 rounded-md border border-emerald-200 bg-emerald-50/80 px-3 py-2.5 sm:flex-row sm:items-center sm:justify-between">
-            <p className="text-xs leading-relaxed text-emerald-950">
-              W Subiekcie ten ZK ma status „Zrealizowane” — prawdopodobnie towar został już wydany.
+        <div className="flex shrink-0 items-center gap-1" onClick={(e) => e.stopPropagation()}>
+          {subiektStatus && subiektStatus !== "Aktywne" && !archived ? (
+            <Badge variant="info" className="hidden text-[9px] sm:inline-flex">
+              {subiektStatus}
+            </Badge>
+          ) : null}
+          {followUpDue ? (
+            <Badge variant="purple" className="text-[9px]">
+              !
+            </Badge>
+          ) : null}
+
+          {!archived ? (
+            <Link href={prosbaHref} onClick={() => stashZkProsbaPrefill(watch)}>
+              <Button
+                size="sm"
+                variant="primary"
+                type="button"
+                className="h-7 px-2 text-[0.68rem]"
+                disabled={pending}
+              >
+                Prośba
+              </Button>
+            </Link>
+          ) : null}
+
+          <ZkWatchOverflowMenu
+            label={`Opcje — ${watch.zk_number}`}
+            disabled={pending}
+            archived={archived}
+            readOnly={readOnly || tourPreview}
+            hasLines={lineViews.length > 0}
+            linesLabel={linesShort ?? String(lineViews.length)}
+            onOpenLines={() => setLinesOpen(true)}
+            onRefresh={canEdit ? () => void refreshFromSubiekt() : undefined}
+            refreshDisabled={refreshing || !subiektReachable}
+            mojeClientHref={mojeClientHref}
+            onNote={canEdit ? openNote : undefined}
+            noteLabel={savedNote.trim() ? "Edytuj notatkę" : "Notatka"}
+            onClose={canEdit ? () => void markClosed() : undefined}
+            closeDisabled={closing}
+            onRestore={archived && !readOnly && !tourPreview ? () => void restore() : undefined}
+            restoreDisabled={restoring}
+            onDelete={
+              archived && !readOnly && !tourPreview ? () => void removeFromArchive() : undefined
+            }
+            deleteDisabled={deleting}
+          />
+        </div>
+      </div>
+
+      {needsExpand && expanded ? (
+        <div className="border-t border-slate-100 bg-slate-50/70 px-3 pb-2.5 pt-2 sm:px-3.5">
+          {isRealizedInSubiekt && canEdit ? (
+            <p className="mb-2 text-[0.68rem] leading-snug text-emerald-900">
+              Subiekt: Zrealizowane — rozważ zamknięcie sprawy (menu ⋮).
             </p>
-            <Button size="sm" variant="secondary" disabled={closing} onClick={() => void markClosed()}>
-              {closing ? "Zapis…" : "Zamknij sprawę"}
-            </Button>
-          </div>
-        ) : null}
+          ) : null}
 
-        {!readOnly && !archived ? (
-          <div className="flex flex-wrap gap-2 border-t border-slate-100 pt-3">
-            <Link href={prosbaHref} onClick={() => stashZkProsbaPrefill(watch)}>
-              <Button size="sm" variant="primary" type="button">
-                Zgłoś prośbę
-              </Button>
-            </Link>
-            <Button size="sm" variant="secondary" disabled={closing} onClick={() => void markClosed()}>
-              {closing ? "Zapis…" : "Zamknij"}
-            </Button>
-            <Button
-              size="sm"
-              variant="ghost"
-              disabled={refreshing || !subiektReachable}
-              title={!subiektReachable ? "Brak połączenia z systemem magazynowym" : undefined}
-              onClick={() => void refreshFromSubiekt()}
-            >
-              {refreshing ? "Odświeżam…" : "Odśwież z Subiekta"}
-            </Button>
-            <Link href={mojeClientHref}>
-              <Button size="sm" variant="ghost" type="button">
-                Prośby klienta
-              </Button>
-            </Link>
-            <Button
-              size="sm"
-              variant="ghost"
-              onClick={() => setNoteOpen((v) => !v)}
-            >
-              {noteOpen ? "Ukryj notatkę" : "Notatka"}
-            </Button>
-          </div>
-        ) : readOnly && !archived ? (
-          <div className="flex flex-wrap gap-2 border-t border-slate-100 pt-3">
-            <Link href={prosbaHref} onClick={() => stashZkProsbaPrefill(watch)}>
-              <Button size="sm" variant="primary" type="button">
-                Zgłoś prośbę
-              </Button>
-            </Link>
-            <Link href={mojeClientHref}>
-              <Button size="sm" variant="ghost" type="button">
-                Prośby klienta
-              </Button>
-            </Link>
-          </div>
-        ) : null}
+          {canEdit ? (
+            <div className="mb-2 space-y-1">
+              <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+                <span className="text-[0.65rem] font-medium text-slate-500">Przypomnij</span>
+                <FollowUpQuickDates
+                  value={followUpDraft || null}
+                  disabled={savingFollowUp}
+                  className="gap-0.5"
+                  onPick={(iso) => {
+                    setFollowUpDraft(iso);
+                    void saveFollowUp(iso);
+                  }}
+                />
+                <input
+                  type="date"
+                  value={followUpDraft}
+                  disabled={savingFollowUp}
+                  onChange={(e) => setFollowUpDraft(e.target.value)}
+                  onBlur={() => void saveFollowUp()}
+                  className={cn(NOTATNIK_INPUT_CLASS, "h-7 w-auto text-xs")}
+                />
+                {followUpDraft ? (
+                  <button
+                    type="button"
+                    className="text-[0.68rem] text-slate-500 hover:text-slate-800"
+                    onClick={() => {
+                      setFollowUpDraft("");
+                      void saveFollowUp("");
+                    }}
+                  >
+                    Wyczyść
+                  </button>
+                ) : null}
+              </div>
+            </div>
+          ) : null}
 
-        {!readOnly && !archived ? (
-          <div className="space-y-1.5 text-xs text-slate-600">
-            <span className="font-medium">⏰ Przypomnij</span>
-            <FollowUpQuickDates
-              value={followUpDraft || null}
-              disabled={savingFollowUp}
-              onPick={(iso) => {
-                setFollowUpDraft(iso);
-                void saveFollowUp(iso);
-              }}
-            />
-            <div className="flex flex-wrap items-center gap-2">
-              <input
-                id={`follow-up-${watch.id}`}
-                type="date"
-                value={followUpDraft}
-                disabled={savingFollowUp}
-                onChange={(e) => setFollowUpDraft(e.target.value)}
-                onBlur={() => void saveFollowUp()}
-                className={cn(NOTATNIK_INPUT_CLASS, "h-8 w-auto text-xs")}
+          {noteOpen && canEdit ? (
+            <div className="space-y-1.5">
+              <textarea
+                rows={2}
+                value={noteDraft}
+                disabled={savingNote}
+                onChange={(e) => setNoteDraft(e.target.value)}
+                placeholder="Notatka…"
+                className={cn(NOTATNIK_TEXTAREA_CLASS, "w-full text-xs")}
+                autoFocus
               />
-              {followUpDraft ? (
-                <button
-                  type="button"
-                  className="text-slate-500 hover:text-slate-800"
+              <div className="flex gap-2">
+                <Button
+                  size="sm"
+                  className="h-7 px-2 text-xs"
+                  disabled={savingNote}
+                  onClick={() => void saveNote()}
+                >
+                  {savingNote ? "Zapis…" : "Zapisz"}
+                </Button>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  className="h-7 px-2 text-xs"
                   onClick={() => {
-                    setFollowUpDraft("");
-                    void saveFollowUp("");
+                    setNoteDraft(savedNote);
+                    setNoteOpen(false);
                   }}
                 >
-                  Wyczyść
-                </button>
-              ) : null}
+                  Anuluj
+                </Button>
+              </div>
             </div>
-          </div>
-        ) : null}
+          ) : savedNote.trim() ? (
+            <p className="text-xs leading-relaxed text-slate-600">{savedNote}</p>
+          ) : null}
 
-        {!readOnly && archived ? (
-          <div className="flex flex-wrap gap-2 border-t border-slate-100 pt-3">
-            <Button size="sm" variant="ghost" disabled={restoring} onClick={() => void restore()}>
-              {restoring ? "Przywracam…" : "Przywróć na listę"}
-            </Button>
-            <Button
-              size="sm"
-              variant="ghost"
-              disabled={deleting}
-              onClick={() => void removeFromArchive()}
-              className="text-red-700 hover:text-red-900"
-            >
-              {deleting ? "Usuwam…" : "Usuń na stałe"}
-            </Button>
-          </div>
-        ) : null}
+          {error ? <p className="mt-2 text-xs text-red-600">{error}</p> : null}
+        </div>
+      ) : error && !expanded ? (
+        <p className="border-t border-slate-100 px-3 py-1.5 text-xs text-red-600">{error}</p>
+      ) : null}
 
-        {noteOpen && !readOnly && !archived ? (
-          <div className="space-y-2">
-            <textarea
-              rows={2}
-              value={noteDraft}
-              disabled={savingNote}
-              onChange={(e) => setNoteDraft(e.target.value)}
-              placeholder="Notatka do tego zamówienia…"
-              className={cn(NOTATNIK_TEXTAREA_CLASS, "w-full text-xs")}
-            />
-            <Button size="sm" disabled={savingNote} onClick={() => void saveNote()}>
-              {savingNote ? "Zapis…" : "Zapisz notatkę"}
-            </Button>
-          </div>
-        ) : savedNote.trim() && (!noteOpen || readOnly || archived) ? (
-          <p className="border-t border-slate-100 pt-3 text-sm text-slate-600">{savedNote}</p>
-        ) : null}
-
-        {error ? <p className="text-xs text-red-600">{error}</p> : null}
-      </div>
-    </Card>
+      <ZkWatchLinesModal
+        watch={watch}
+        open={linesOpen}
+        readOnly={readOnly}
+        tourPreview={tourPreview}
+        onClose={() => setLinesOpen(false)}
+        onSaved={(updated) => onRefreshed?.(updated)}
+      />
+    </article>
   );
 }

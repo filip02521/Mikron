@@ -13,6 +13,7 @@ function person(
     orderCount: 0,
     linkedUserId: null,
     linkedUserEmail: null,
+    linkedUserLastSignInAt: null,
     ...partial,
   };
 }

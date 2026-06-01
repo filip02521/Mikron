@@ -11,7 +11,7 @@ export type AppUserRow = {
   lastSignInAt: string | null;
 };
 
-async function fetchAllAuthUsersLastSignIn(
+export async function fetchAllAuthUsersLastSignIn(
   supabase: ReturnType<typeof createAdminClient>
 ): Promise<Map<string, string | null>> {
   const lastSignIn = new Map<string, string | null>();
