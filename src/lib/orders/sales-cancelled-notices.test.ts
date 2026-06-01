@@ -1,28 +1,17 @@
 import { describe, expect, it } from "vitest";
 import { buildSalesCancelledNotices } from "./sales-cancelled-notices";
-import type { IndividualOrder } from "@/types/database";
+import { testIndividualOrder } from "@/test-utils/fixtures";
 
-function order(
-  overrides: Partial<IndividualOrder> & Pick<IndividualOrder, "id">
-): IndividualOrder {
-  return {
-    id: overrides.id,
-    supplier_id: "s1",
-    sales_person_id: "sp1",
-    symbol: "SYM",
-    products: "Produkt",
-    quantity: "1",
+function order(overrides: Parameters<typeof testIndividualOrder>[0]) {
+  return testIndividualOrder({
     delivered_quantity: "0",
-    order_type: "GLOWNE",
-    request_kind: "zamowienie",
+    order_type: "Glowne",
     status: "Anulowane",
     action_at: "2026-05-10T10:00:00Z",
-    ordered_at: null,
-    delivery_at: null,
     sales_cancelled_at: "2026-05-10T12:00:00Z",
     sales_cancel_phase: "before_order",
     ...overrides,
-  };
+  });
 }
 
 describe("buildSalesCancelledNotices", () => {

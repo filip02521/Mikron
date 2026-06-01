@@ -11,6 +11,7 @@ import {
   type MyOrderSalesUi,
 } from "@/lib/orders/my-order-sales-ui";
 import {
+  formatOrderQuantityLabel,
   getDeliveryProgress,
   isInformacjaRequest,
   type DeliveryProgress,
@@ -196,7 +197,10 @@ function rowToLine(
     symbol: row.symbol,
     subiektTwId,
     mikranCode: order.mikran_code?.trim() || null,
-    quantity: order.quantity !== "-" ? order.quantity : "",
+    quantity:
+      order.quantity !== "-" && order.quantity?.trim()
+        ? order.quantity
+        : "",
     quantityLabel: row.quantityLabel,
     progressLabel: row.progressLabel,
     stockStatus: lineStockStatus(order),
@@ -485,7 +489,9 @@ function presentZamowienie(
     supplierName: order.supplier?.name ?? "—",
     product: order.products,
     symbol: order.symbol && order.symbol !== "-" ? order.symbol : null,
-    quantityLabel: progress.hasNumericQty ? `${order.quantity} szt.` : order.quantity,
+    quantityLabel: progress.hasNumericQty
+      ? `${order.quantity} szt.`
+      : formatOrderQuantityLabel(order.quantity, order.request_kind),
     progressLabel:
       salesProgressLabel(order.status, progress) ??
       (order.delivered_quantity && order.delivered_quantity !== "-"

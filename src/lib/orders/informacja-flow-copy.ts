@@ -12,20 +12,25 @@ export const INFORMACJA_FLOW_VIA_PANEL = {
   id: "via_panel" as const,
   label: "Najpierw zamówienie u dostawcy",
   short:
-    "Zakupy oznaczają Główne lub Uzupełniające u dostawcy — dopiero potem kolejka informacji i e-mail.",
+    "Najpierw zamówienie u dostawcy w panelu Dziś, potem sprawdzenie na magazynie i e-mail do handlowca.",
   steps: [
-    "Zgłoszenie",
-    "Zamówienie u dostawcy (Główne / Uzupełniające)",
-    "Kolejka informacji (magazyn)",
-    "E-mail do handlowca",
+    "Zgłoszenie handlowca",
+    "Zamówienie u dostawcy (Główne lub Uzupełniające)",
+    "Sprawdzenie na magazynie",
+    "Wiadomość e-mail do handlowca",
   ],
 };
+
+/** Etykieta na pozycji w panelu Dziś (ścieżka: magazyn sprawdza, potem informacja dla handlowca). */
+export const INFORMACJA_VIA_PANEL_BADGE = "Magazyn → info";
+
+export const INFORMACJA_VIA_PANEL_STATUS_TITLE = INFORMACJA_VIA_PANEL_BADGE;
 
 export const INFORMACJA_FLOW_LEGEND_PANEL =
   "Informacja bez wcześniejszego zamówienia trafia do Wyjątków i kolejki magazynu. Z opcją „najpierw zamówienie u dostawcy” — najpierw Prośby handlowców (Główne / Uzupełniające), potem magazyn.";
 
-export const INFORMACJA_FLOW_PROCUREMENT_GROUP_BANNER =
-  "Prośba informacyjna: po oznaczeniu Główne lub Uzupełniające pozycja trafi do kolejki magazynu — nie odkładaj od razu na regał.";
+/** Krótki opis pod pozycją w panelu Dziś (szczegóły ścieżki: badge + legenda). */
+export const INFORMACJA_FLOW_PROCUREMENT_GROUP_BANNER = "Prośba informacyjna.";
 
 export const INFORMACJA_FLOW_SALES_AWAITING_PROCUREMENT = {
   statusTitle: "Czekamy na zamówienie u dostawcy",

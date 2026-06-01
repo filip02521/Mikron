@@ -39,6 +39,7 @@ const base: IndividualOrder = {
     stock: null,
     stats_mode: "LACZNIE",
     order_on_demand: false,
+    is_active: true,
   },
 };
 

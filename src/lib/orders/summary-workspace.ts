@@ -370,7 +370,7 @@ export function buildSummaryWorkspace(
 
   const forSomeoneLeft = [
     ...buildRequestGroups(zamowienieNew, "[DLA KOGOŚ]", "forSomeone"),
-    ...buildRequestGroups(informacjaViaPanel, "[INFO→ZD]", "forSomeone"),
+    ...buildRequestGroups(informacjaViaPanel, "[Magazyn→info]", "forSomeone"),
   ] as SummaryForSomeoneEnriched[];
 
   const informacjaLeft = buildRequestGroups(

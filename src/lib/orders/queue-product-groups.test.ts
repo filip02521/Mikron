@@ -4,22 +4,17 @@ import {
   orderIdsInProductGroup,
   sortInformacjaQueueByProduct,
 } from "@/lib/orders/queue-product-groups";
-import type { IndividualOrder } from "@/types/database";
+import { testIndividualOrder } from "@/test-utils/fixtures";
 
 function order(
-  partial: Partial<IndividualOrder> & { id: string; sales_person_id: string }
-): IndividualOrder {
-  return {
-    id: partial.id,
-    supplier_id: partial.supplier_id ?? "s1",
-    sales_person_id: partial.sales_person_id,
-    symbol: partial.symbol ?? "SYM-1",
-    products: partial.products ?? "Produkt A",
-    quantity: "1",
-    action_at: partial.action_at ?? "2026-01-01T10:00:00Z",
-    sales_person: { name: partial.sales_person_id } as IndividualOrder["sales_person"],
+  partial: Parameters<typeof testIndividualOrder>[0] & { sales_person_id: string }
+) {
+  return testIndividualOrder({
+    symbol: "SYM-1",
+    products: "Produkt A",
+    sales_person: { name: partial.sales_person_id } as never,
     ...partial,
-  } as IndividualOrder;
+  });
 }
 
 describe("queue-product-groups", () => {

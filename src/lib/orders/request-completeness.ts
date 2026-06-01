@@ -1,5 +1,6 @@
 import type { IndividualRequestKind } from "@/types/database";
 import { parseOrderQuantity } from "@/lib/orders/individual";
+import { isInformacjaQuantityMarker } from "@/lib/orders/informacja-import-rules";
 import {
   MAX_MIKRAN_CODE_LEN,
   MAX_PRODUCT_TEXT_LEN,
@@ -32,12 +33,13 @@ export function hasAnyProductHint(draft: RequestDraft): boolean {
   return hasText(draft.symbol) || hasText(draft.mikranCode) || hasText(draft.product);
 }
 
-/** Zamówienie u dostawcy wymaga dodatniej liczby sztuk (np. 1, 2). */
+/** Zamówienie u dostawcy wymaga liczby sztuk (1, 2…). „-” dotyczy wyłącznie informacji. */
 export function hasValidOrderQuantity(
   quantity?: string,
   requestKind: IndividualRequestKind = "zamowienie"
 ): boolean {
   if (requestKind === "informacja") return true;
+  if (isInformacjaQuantityMarker(quantity)) return false;
   return parseOrderQuantity(quantity?.trim() ?? "") !== null;
 }
 
@@ -74,22 +76,29 @@ export function completenessUserHint(
     };
   }
   const missingQty =
-    requestKind === "zamowienie" && !hasValidOrderQuantity(draft.quantity, requestKind);
+    requestKind === "zamowienie" &&
+    !hasValidOrderQuantity(draft.quantity, requestKind);
+  const dashAsZamowienie =
+    requestKind === "zamowienie" && isInformacjaQuantityMarker(draft.quantity);
   if (options?.audience === "procurement") {
     return {
       tone: "warning",
       title: "Uzupełnij przed zapisem",
-      detail: missingQty
-        ? "Wybierz dostawcę, produkt z Subiekta lub ręcznie oraz ilość (np. 1)."
-        : "Wybierz dostawcę oraz opis produktu (najlepiej z Subiekta po symbolu lub kodzie Mikran).",
+      detail: dashAsZamowienie
+        ? "Ilość „-” oznacza prośbę informacyjną — wybierz typ „Informacja” zamiast zamówienia u dostawcy."
+        : missingQty
+          ? "Wybierz dostawcę, produkt oraz ilość (np. 1)."
+          : "Wybierz dostawcę oraz opis produktu (najlepiej z Subiekta po symbolu lub kodzie Mikran).",
     };
   }
   return {
     tone: "warning",
     title: "Wymaga weryfikacji przez dział zakupów",
-    detail: missingQty
-      ? "Podaj ilość (liczba sztuk, np. 1), dostawcę oraz opis produktu — bez tego nie wiemy, ile zamówić."
-      : "Podaj dostawcę oraz opis produktu (symbol lub nazwa). Dział zakupów uzupełni brakujące dane.",
+    detail: dashAsZamowienie
+      ? "Ilość „-” to prośba informacyjna — wybierz typ „Informacja” (bez zamawiania u dostawcy)."
+      : missingQty
+        ? "Podaj ilość sztuk (np. 1) oraz dostawcę i opis produktu."
+        : "Podaj dostawcę oraz opis produktu (symbol lub nazwa). Dział zakupów uzupełni brakujące dane.",
   };
 }
 

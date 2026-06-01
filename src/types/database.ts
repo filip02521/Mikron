@@ -134,6 +134,26 @@ export interface IndividualOrder {
 
 export type SalesNoteColor = "default" | "yellow" | "green" | "blue" | "pink";
 
+export type OperationsDepartment = "zakupy" | "magazyn";
+export type OperationsNoteVisibility = "private" | "public";
+
+export interface OperationsNote {
+  id: string;
+  department: OperationsDepartment;
+  visibility: OperationsNoteVisibility;
+  created_by: string;
+  title: string | null;
+  body: string;
+  color: SalesNoteColor;
+  pinned: boolean;
+  sort_order: number;
+  archived_at: string | null;
+  follow_up_at: string | null;
+  created_at: string;
+  updated_at: string;
+  author?: { email: string | null } | null;
+}
+
 export interface SalesNote {
   id: string;
   sales_person_id: string;

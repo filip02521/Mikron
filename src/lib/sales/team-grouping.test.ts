@@ -1,22 +1,9 @@
 import { describe, expect, it } from "vitest";
 import { groupSalesPeopleForTeamView } from "./team-grouping";
-import type { SalesPersonAdminRow } from "@/lib/data/sales-people-admin";
 import type { SalesGroupRow } from "@/lib/data/sales-groups";
+import { testSalesPersonAdminRow } from "@/test-utils/fixtures";
 
-function person(
-  partial: Partial<SalesPersonAdminRow> & Pick<SalesPersonAdminRow, "id" | "name">
-): SalesPersonAdminRow {
-  return {
-    email: "a@b.pl",
-    groupId: null,
-    groupName: null,
-    orderCount: 0,
-    linkedUserId: null,
-    linkedUserEmail: null,
-    linkedUserLastSignInAt: null,
-    ...partial,
-  };
-}
+const person = testSalesPersonAdminRow;
 
 describe("groupSalesPeopleForTeamView", () => {
   const groups: SalesGroupRow[] = [

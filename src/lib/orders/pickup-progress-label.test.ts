@@ -25,6 +25,16 @@ function row(partial: Partial<MyOrderRow>): MyOrderRow {
     pickupPendingIds: ["a", "b", "c"],
     pickupReadyTotal: 5,
     pickupAcknowledgedCount: 2,
+    canCancelBySales: false,
+    salesCancelPhase: null,
+    salesCancelOrderIds: [],
+    cancelNoticeOrderIds: [],
+    cancelledAckOrderIds: [],
+    clientLabel: null,
+    supplierId: null,
+    salesPersonId: "sp1",
+    requestKind: "zamowienie",
+    canEditBySales: false,
     ...partial,
   };
 }

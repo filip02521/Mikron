@@ -5,9 +5,7 @@ export const LOCATION_SCHEDULE_NAME_ALIASES: Record<
   string,
   Record<string, string>
 > = {
-  POLSKA: {
-    "FUTURE TECHNOLOGY AND DEVELOPMENT": "AND DEVELOPMENT",
-  },
+  POLSKA: {},
   ZAGRANICA: {
     "Dentsply Sirona (dawny Zhermack)": "Dentsply Sirona (dawny Zhermack)",
   },
@@ -48,7 +46,8 @@ export async function applyLocationScheduleRows(
   const missing: string[] = [];
 
   for (const row of filtered) {
-    const keyName = row.name.toUpperCase().trim();
+    const normalizedName = row.name.replace(/[\r\n]+/g, " ").replace(/\s+/g, " ").trim();
+    const keyName = normalizedName.toUpperCase().trim();
     let id = byName.get(keyName);
     if (!id && aliases[keyName]) {
       id = byName.get(aliases[keyName].toUpperCase().trim());
@@ -59,7 +58,7 @@ export async function applyLocationScheduleRows(
     }
 
     const supplierPatch: Record<string, unknown> = {
-      name: row.name,
+      name: normalizedName,
       pickup_mikran: row.pickup_mikran,
       pickup_pallet: row.pickup_pallet,
       notes: row.notes || undefined,

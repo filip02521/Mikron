@@ -11,6 +11,7 @@ const base = {
   quantity: "2",
   delivered_quantity: "-",
   order_type: "Glowne" as const,
+  request_kind: "zamowienie" as const,
   status: "Zrealizowane" as const,
   action_at: "2026-01-01",
   ordered_at: null,

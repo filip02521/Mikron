@@ -3,28 +3,17 @@ import {
   buildSupplierGroupMetrics,
   formatSupplierGroupHeaderSummary,
 } from "./supplier-group-metrics";
-import type { IndividualOrder } from "@/types/database";
+import { testIndividualOrder } from "@/test-utils/fixtures";
 
-function order(
-  partial: Partial<IndividualOrder> & { id: string }
-): IndividualOrder {
-  return {
-    id: partial.id,
-    supplier_id: "s1",
-    sales_person_id: "sp1",
-    symbol: "-",
-    products: "P",
+function order(partial: Parameters<typeof testIndividualOrder>[0]) {
+  return testIndividualOrder({
     quantity: "10",
     delivered_quantity: "2",
-    order_type: "None",
-    request_kind: "zamowienie",
-    status: partial.status ?? "Zamowione",
+    status: "Zamowione",
     action_at: "",
-    ordered_at: null,
-    delivery_at: null,
-    supplier: { name: "DFS" } as IndividualOrder["supplier"],
+    supplier: { name: "DFS" } as never,
     ...partial,
-  } as IndividualOrder;
+  });
 }
 
 describe("supplier group metrics", () => {

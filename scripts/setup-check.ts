@@ -4,10 +4,14 @@
  */
 
 import { existsSync, readFileSync } from "fs";
-import { join } from "path";
-
+import { join, dirname } from "path";
 import { fileURLToPath } from "url";
-import { dirname } from "path";
+
+import {
+  getEmailDomain,
+  getEmailFromAddress,
+  isEmailConfigured,
+} from "../src/lib/env/email-config";
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
 
@@ -68,8 +72,28 @@ async function main() {
     ok.push("RESEND_API_KEY");
   }
 
+  if (env.EMAIL_DOMAIN) {
+    ok.push(`EMAIL_DOMAIN (${env.EMAIL_DOMAIN})`);
+  } else if (isEmailConfigured()) {
+    issues.push("Brak EMAIL_DOMAIN — ustaw zweryfikowaną domenę Resend");
+  }
+
   if (env.EMAIL_FROM) {
     ok.push(`EMAIL_FROM (${env.EMAIL_FROM})`);
+    const normalized = getEmailFromAddress();
+    if (!normalized.includes("@")) {
+      issues.push("EMAIL_FROM — nieprawidłowy format (wymagane: Nazwa <adres@domena>)");
+    } else if (env.EMAIL_FROM.trim() === normalized && !env.EMAIL_FROM.includes("@")) {
+      issues.push(
+        `EMAIL_FROM to sama etykieta („${env.EMAIL_FROM}”) — używany zostanie ${normalized}`
+      );
+    }
+  } else if (isEmailConfigured()) {
+    issues.push("Brak EMAIL_FROM — używany domyślny adres Resend (sandbox)");
+  }
+
+  if (env.EMAIL_OVERRIDE_TO) {
+    ok.push(`EMAIL_OVERRIDE_TO (${env.EMAIL_OVERRIDE_TO}) — wszystkie maile na ten adres`);
   }
 
   if (env.NEXT_PUBLIC_SUPABASE_URL && env.SUPABASE_SERVICE_ROLE_KEY) {

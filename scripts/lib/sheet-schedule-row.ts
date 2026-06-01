@@ -32,6 +32,10 @@ function parseOnDemand(raw: string): boolean {
   return /w razie potrzeby/i.test(raw.trim());
 }
 
+function normalizeSupplierSheetName(name: string): string {
+  return name.replace(/[\r\n]+/g, " ").replace(/\s+/g, " ").trim();
+}
+
 /**
  * Jedna linia arkusza → pola harmonogramu zgodne z Sheets:
  * - order_date ← F (DATA ZAMÓWIENIA)
@@ -43,7 +47,9 @@ export function parseSheetScheduleRow(
   cells: string[]
 ): LocationScheduleRow | null {
   const map = headerMap(headers);
-  const name = colByHeader(map, cells, ["DOSTAWCA"], SHEET_SCHEDULE_COL.DOSTAWCA);
+  const name = normalizeSupplierSheetName(
+    colByHeader(map, cells, ["DOSTAWCA"], SHEET_SCHEDULE_COL.DOSTAWCA)
+  );
   if (!name || /^DOSTAWCA$/i.test(name)) return null;
   if (parseFlexibleDate(name)) return null;
 

@@ -198,6 +198,15 @@ select:disabled,
   z-index: 1;
 }
 
+/* Kolejka przyjęcia — czytelniejsze wiersze */
+.data-table.receive-queue-table tbody tr:hover td {
+  background-color: #f1f5f9;
+}
+
+.data-table.receive-queue-table tbody tr[class*="ring-violet"] td {
+  background-color: #f5f3ff;
+}
+
 /* ——— Formularze ——— */
 input[type="text"],
 input[type="email"],

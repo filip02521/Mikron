@@ -17,6 +17,10 @@ import { existsSync, readdirSync, readFileSync } from "fs";
 import { join } from "path";
 import { parseCsv, headerIndex } from "./lib/parse-csv";
 import { parseDateOnly } from "../src/lib/orders/dates";
+import { INFORMACJA_NO_QUANTITY } from "../src/lib/orders/individual";
+import {
+  shouldTreatAsInformacjaOnly,
+} from "../src/lib/orders/informacja-import-rules";
 import { matchSupplierId } from "../src/lib/orders/delivery-stats-import";
 import {
   ensureSalesPeopleFromAliases,
@@ -339,6 +343,8 @@ async function main() {
     const unmatchedSuppliersInd = new Set<string>();
     const batch: Record<string, unknown>[] = [];
     let skippedExisting = 0;
+    let informacjaOnlyCount = 0;
+    const stanSalesPersonId = salesByName.get("STAN") ?? null;
 
     const existingIds = new Set<string>();
     if (skipExisting) {
@@ -372,7 +378,21 @@ async function main() {
       const sid = supplier
         ? resolveSupplierId(supplier, supplierList, supplierMatchCache)
         : null;
-      const pid = person ? resolveSalesPersonId(person, salesByName) : null;
+      const sid = supplier
+        ? resolveSupplierId(supplier, supplierList, supplierMatchCache)
+        : null;
+      const products = row[productsI >= 0 ? productsI : -1]?.trim() || "-";
+      const quantityRaw = row[qtyI >= 0 ? qtyI : -1]?.trim() || "-";
+      const asInformacjaPreview = shouldTreatAsInformacjaOnly({
+        quantity: quantityRaw,
+        personLabel: person,
+        salesPersonId: null,
+        stanSalesPersonId,
+      });
+      let pid = person ? resolveSalesPersonId(person, salesByName) : null;
+      if (!pid && asInformacjaPreview && stanSalesPersonId) {
+        pid = stanSalesPersonId;
+      }
 
       if (!sid && supplier) unmatchedSuppliersInd.add(supplier);
       if (!sid || !pid) {
@@ -403,7 +423,15 @@ async function main() {
         skippedExisting++;
         continue;
       }
-      const products = row[productsI >= 0 ? productsI : -1]?.trim() || "-";
+      const asInformacja = shouldTreatAsInformacjaOnly({
+        quantity: quantityRaw,
+        personLabel: person,
+        salesPersonId: pid,
+        stanSalesPersonId,
+      });
+      if (asInformacja) informacjaOnlyCount++;
+      const informacjaAlreadyOrdered =
+        asInformacja && (status === "Zamowione" || status === "Zrealizowane");
 
       batch.push({
         ...(orderId ? { id: orderId } : {}),
@@ -411,14 +439,16 @@ async function main() {
         sales_person_id: pid,
         symbol: row[symbolI >= 0 ? symbolI : -1]?.trim() || "-",
         products,
-        quantity: row[qtyI >= 0 ? qtyI : -1]?.trim() || "-",
+        quantity: asInformacja ? INFORMACJA_NO_QUANTITY : quantityRaw,
         delivered_quantity: row[deliveredI >= 0 ? deliveredI : -1]?.trim() || "-",
         status,
-        order_type,
-        request_kind: "zamowienie",
+        order_type: informacjaAlreadyOrdered ? order_type : asInformacja ? "None" : order_type,
+        request_kind: asInformacja ? "informacja" : "zamowienie",
+        informacja_queue_via_daily_panel: false,
         action_at,
         delivery_at,
-        ordered_at: status === "Zamowione" || status === "Zrealizowane" ? action_at : null,
+        ordered_at:
+          status === "Zamowione" || status === "Zrealizowane" ? action_at : null,
         ...(status === "Zrealizowane"
           ? { sales_acknowledged_at: delivery_at ?? action_at }
           : {}),
@@ -428,6 +458,11 @@ async function main() {
     await flushInd();
 
     console.log(`Historia indywidualna (${indywPath}): ${indCount} wpisów`);
+    if (informacjaOnlyCount) {
+      console.log(
+        `  → prośby informacyjne (ilość „-” lub handlowiec STAN): ${informacjaOnlyCount}`
+      );
+    }
     if (skipExisting && skippedExisting) {
       console.log(`Pominięte (już w bazie): ${skippedExisting}`);
     }

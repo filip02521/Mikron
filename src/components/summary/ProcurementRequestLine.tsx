@@ -1,5 +1,6 @@
 "use client";
 
+import { INFORMACJA_VIA_PANEL_BADGE } from "@/lib/orders/informacja-flow-copy";
 import type { ForSomeoneLine } from "@/lib/orders/summary-workspace";
 import { ProductSourceBadge } from "@/components/orders/ProductSourceBadge";
 import { cn } from "@/lib/cn";
@@ -67,7 +68,7 @@ function ProcurementRequestLineContent({
           {line.products}
           {line.informacjaViaPanel ? (
             <span className="ml-1.5 rounded bg-sky-100 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-sky-900">
-              Info → magazyn po ZD
+              {INFORMACJA_VIA_PANEL_BADGE}
             </span>
           ) : null}
         </span>
@@ -78,8 +79,10 @@ function ProcurementRequestLineContent({
           {line.symbol && line.symbol !== "-" && line.quantity && line.quantity !== "-"
             ? " · "
             : null}
-          {line.quantity && line.quantity !== "-"
-            ? `Ilość: ${line.quantity}`
+          {line.quantity && line.quantity !== "-" && line.quantity !== "—"
+            ? line.quantity === "informacja"
+              ? "Informacja o dostępności"
+              : `Ilość: ${line.quantity}`
             : null}
         </p>
       ) : null}

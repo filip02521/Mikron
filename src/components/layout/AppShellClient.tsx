@@ -72,6 +72,7 @@ export function AppShellClient({
     realizacja?: number;
     salesMoje?: number;
     salesNotatnik?: number;
+    operationsNotatki?: number;
     adminBugReports?: number;
   };
   salesActivityVersion?: string | null;

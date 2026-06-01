@@ -15,9 +15,9 @@ export function InformacjaFlowLegend({
     return (
       <p className={cn("text-[11px] leading-relaxed text-slate-600", className)}>
         <span className="font-medium text-slate-800">{INFORMACJA_FLOW_VIA_PANEL.label}:</span>{" "}
-        panel Dziś → magazyn → e-mail.{" "}
+        zamówienie w Dziś → magazyn → info dla handlowca.{" "}
         <span className="font-medium text-slate-800">{INFORMACJA_FLOW_DIRECT.label}:</span> od razu
-        magazyn → e-mail.
+        magazyn → info dla handlowca.
       </p>
     );
   }

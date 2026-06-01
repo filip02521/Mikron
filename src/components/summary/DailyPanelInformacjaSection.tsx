@@ -75,7 +75,7 @@ export function DailyPanelInformacjaSection({
       </ul>
       <div className="border-t border-slate-100 px-3 py-2 sm:px-4">
         <Link
-          href="/kolejka#informacja"
+          href="/kolejka#kolejka-przyjecie"
           className="text-xs font-medium text-slate-600 transition-colors hover:text-slate-800"
         >
           Kolejka magazynu → Informacja

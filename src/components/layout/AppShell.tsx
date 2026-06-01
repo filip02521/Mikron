@@ -1,6 +1,7 @@
 import { getSessionUser } from "@/lib/auth";
 import { resolveSalesPersonForUser } from "@/lib/auth/sales-person";
 import { canAccessOperations, canAccessWarehouse, isAdmin, isSalesAccount } from "@/lib/auth-roles";
+import { canAccessOperationsNotepad, departmentsForRole } from "@/lib/operations/notepad-department";
 import {
   countVerificationOrders,
   fetchIndividualOrders,
@@ -24,6 +25,7 @@ export async function AppShell({ children }: { children: React.ReactNode }) {
     realizacja: number;
     salesMoje?: number;
     salesNotatnik?: number;
+    operationsNotatki?: number;
     adminBugReports?: number;
   } = { nowe: 0, weryfikacja: 0, realizacja: 0 };
   let salesActivityVersion: string | null = null;
@@ -31,7 +33,11 @@ export async function AppShell({ children }: { children: React.ReactNode }) {
 
   if (role && canAccessWarehouse(role)) {
     try {
-      const realizacjaCount = await countDeliveryQueue();
+      const { countInformacjaQueue } = await import("@/lib/data/queries");
+      const [realizacjaCount, informacjaCount] = await Promise.all([
+        countDeliveryQueue(),
+        countInformacjaQueue().catch(() => 0),
+      ]);
       if (canAccessOperations(role)) {
         const [schedules, newOrders, weryfikacja] = await Promise.all([
           fetchSuppliersWithSchedules(),
@@ -45,10 +51,10 @@ export async function AppShell({ children }: { children: React.ReactNode }) {
         navBadges = {
           nowe: countDailyPanelNavBadge(workspace),
           weryfikacja,
-          realizacja: realizacjaCount,
+          realizacja: realizacjaCount + informacjaCount,
         };
       } else {
-        navBadges = { nowe: 0, weryfikacja: 0, realizacja: realizacjaCount };
+        navBadges = { nowe: 0, weryfikacja: 0, realizacja: realizacjaCount + informacjaCount };
       }
     } catch {
       navBadges = { nowe: 0, weryfikacja: 0, realizacja: 0 };
@@ -74,6 +80,19 @@ export async function AppShell({ children }: { children: React.ReactNode }) {
       }
     } catch {
       salesActivityVersion = null;
+    }
+  }
+
+  if (role && session?.id && canAccessOperationsNotepad(role)) {
+    try {
+      const { countOperationsNotepadBadge } = await import("@/lib/data/operations-notepad");
+      const count = await countOperationsNotepadBadge(
+        session.id,
+        departmentsForRole(role)
+      );
+      navBadges = { ...navBadges, operationsNotatki: count };
+    } catch {
+      /* empty */
     }
   }
 

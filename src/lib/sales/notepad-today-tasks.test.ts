@@ -31,6 +31,7 @@ const note = (partial: Partial<SalesNote>): SalesNote => ({
   body: "Oddzwonić",
   color: "default",
   pinned: false,
+  sort_order: 0,
   archived_at: null,
   follow_up_at: null,
   created_at: "",

@@ -10,6 +10,17 @@ export function isInformacjaRequest(order: {
 /** Pozycje informacyjne nie mają ilości — tylko „czy jest na stanie”. */
 export const INFORMACJA_NO_QUANTITY = "-";
 
+/** Etykieta ilości w UI (panel, kolejka, Moje). */
+export function formatOrderQuantityLabel(
+  quantity?: string | null,
+  requestKind?: IndividualRequestKind | null
+): string {
+  if (requestKind === "informacja") return "informacja";
+  const t = quantity?.trim();
+  if (!t || t === INFORMACJA_NO_QUANTITY) return "—";
+  return t;
+}
+
 export function quantityForRequestKind(
   requestKind: IndividualRequestKind | undefined,
   quantity?: string

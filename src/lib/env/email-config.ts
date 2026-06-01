@@ -43,11 +43,49 @@ export function getResendApiKey(): string | undefined {
   return readEnvLocalVar("RESEND_API_KEY");
 }
 
+/** Zweryfikowana domena w Resend (np. projektorowo.pl). */
+export function getEmailDomain(): string | undefined {
+  ensureEnvLoaded();
+  const fromProcess = process.env.EMAIL_DOMAIN?.trim();
+  if (fromProcess) return fromProcess;
+  return readEnvLocalVar("EMAIL_DOMAIN");
+}
+
+/** Lokalna część nadawcy przy składaniu z EMAIL_DOMAIN (domyślnie OnTime@). */
+function getEmailFromLocalPart(): string {
+  ensureEnvLoaded();
+  return (
+    process.env.EMAIL_FROM_LOCAL?.trim() ||
+    readEnvLocalVar("EMAIL_FROM_LOCAL") ||
+    "OnTime"
+  );
+}
+
+/** Adres nadawcy z domeny projektu lub sandbox Resend. */
+export function getDefaultSenderAddress(): string {
+  const domain = getEmailDomain();
+  if (domain) return `${getEmailFromLocalPart()}@${domain}`;
+  return "onboarding@resend.dev";
+}
+
+export function getDefaultEmailFrom(): string {
+  return `System Dostaw <${getDefaultSenderAddress()}>`;
+}
+
+/** Resend wymaga `email@domena` lub `Nazwa <email@domena>`. */
+function normalizeEmailFrom(raw: string | undefined): string {
+  const value = raw?.trim();
+  if (!value) return getDefaultEmailFrom();
+  if (/<[^>]+@[^>]+>/.test(value)) return value;
+  if (/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)) return value;
+  return `${value} <${getDefaultSenderAddress()}>`;
+}
+
 export function getEmailFromAddress(): string {
   ensureEnvLoaded();
   const fromProcess = process.env.EMAIL_FROM?.trim();
   const fromFile = readEnvLocalVar("EMAIL_FROM");
-  return fromProcess || fromFile || "Mikran - Asystent Zamówień <onboarding@resend.dev>";
+  return normalizeEmailFrom(fromProcess || fromFile);
 }
 
 export function isEmailConfigured(): boolean {

@@ -33,6 +33,17 @@ describe("queue-inbox", () => {
       }),
     ]);
     expect(s.activeCount).toBe(1);
+    expect(s.zamowienieCount).toBe(1);
+    expect(s.informacjaCount).toBe(0);
     expect(s.cancelLabelledCount).toBe(1);
+  });
+
+  it("liczy informacje w jednej kolejce z zamówieniami", () => {
+    const s = summarizeQueueInbox(
+      [order({ id: "z1" })],
+      [order({ id: "i1", request_kind: "informacja", quantity: "-" })]
+    );
+    expect(s.activeCount).toBe(2);
+    expect(s.informacjaCount).toBe(1);
   });
 });

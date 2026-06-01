@@ -40,6 +40,8 @@ function order(
       stock_raw: null,
       stock: null,
       stats_mode: "LACZNIE",
+      order_on_demand: false,
+      is_active: true,
     },
   };
 }

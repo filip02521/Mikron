@@ -1,5 +1,6 @@
 import type { IndividualOrder } from "@/types/database";
 import {
+  groupOrdersBySupplier,
   queueSupplierLeadingCellClass,
   queueSupplierRowClass,
 } from "@/lib/orders/queue-supplier-groups";
@@ -74,6 +75,15 @@ export function sortInformacjaQueueByProduct(
 
     return new Date(a.action_at).getTime() - new Date(b.action_at).getTime();
   });
+}
+
+/** Jak kolejka dostaw: grupy dostawców, w grupie ten sam towar razem. */
+export function sortInformacjaQueueForDisplay(
+  orders: IndividualOrder[]
+): IndividualOrder[] {
+  return groupOrdersBySupplier(orders).flatMap((g) =>
+    sortInformacjaQueueByProduct(g.orders)
+  );
 }
 
 export function queueInformacjaProductRowClass(

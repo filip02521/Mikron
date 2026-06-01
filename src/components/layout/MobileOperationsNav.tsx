@@ -19,11 +19,20 @@ export function MobileOperationsNav({
   navBadges = { nowe: 0, weryfikacja: 0, realizacja: 0 },
 }: {
   role: UserRole;
-  navBadges?: { nowe?: number; weryfikacja?: number; realizacja?: number };
+  navBadges?: {
+    nowe?: number;
+    weryfikacja?: number;
+    realizacja?: number;
+    operationsNotatki?: number;
+  };
 }) {
   const pathname = usePathname();
   const groups = navForRole(role, navBadges);
-  const items = groups.find((g) => g.title === "Dzień roboczy")?.items ?? groups[0]?.items ?? [];
+  const items =
+    groups.find((g) => g.title === "Dzień roboczy")?.items ??
+    groups.find((g) => g.title === "Magazyn")?.items ??
+    groups[0]?.items ??
+    [];
 
   return (
     <nav

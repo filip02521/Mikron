@@ -35,10 +35,15 @@ export function isNavItemActive(
   );
 }
 
+const OPERATIONS_NOTATKI_PATH = "/notatki";
+/** Magazyn — jawny dział w URL (zakupy/admin domyślnie bez parametru). */
+const OPERATIONS_NOTATKI_MAGAZYN = "/notatki?dzial=magazyn";
+
 function operationsNavItems(badges: {
   nowe?: number;
   weryfikacja?: number;
   realizacja?: number;
+  operationsNotatki?: number;
 }): NavItem[] {
   return [
     {
@@ -47,6 +52,13 @@ function operationsNavItems(badges: {
       mobileLabel: "Panel",
       description: "Zacznij tu — kolejka dnia, prośby i harmonogram",
       badge: badges.nowe,
+    },
+    {
+      href: OPERATIONS_NOTATKI_PATH,
+      label: "Notatki",
+      mobileLabel: "Notatki",
+      description: "Prywatne i wspólne",
+      badge: badges.operationsNotatki,
     },
     {
       href: "/weryfikacja",
@@ -138,6 +150,8 @@ export function navForRole(
     salesMoje?: number;
     /** ZK i notatki z przypomnieniem (/notatnik). */
     salesNotatnik?: number;
+    /** Przypomnienia w notatkach zakupów/magazynu (/notatki). */
+    operationsNotatki?: number;
     /** Otwarte zgłoszenia od handlowców (/admin/zgloszenia). */
     adminBugReports?: number;
   } = {}
@@ -170,6 +184,13 @@ export function navForRole(
             label: "Magazyn i regał",
             description: "Przyjęcie towaru i dziennik dostaw",
             badge: badges.realizacja,
+          },
+          {
+            href: OPERATIONS_NOTATKI_MAGAZYN,
+            label: "Notatki",
+            mobileLabel: "Notatki",
+            description: "Prywatne i wspólne dla magazynu",
+            badge: badges.operationsNotatki,
           },
         ],
       },
@@ -250,6 +271,7 @@ export function pageTitle(pathname: string): string {
   }
   if (pathname.startsWith("/lokalizacje/")) return "Terminy zamówień";
   if (pathname.startsWith("/notatnik")) return "Notatnik";
+  if (pathname.startsWith("/notatki")) return "Notatki";
   if (pathname.startsWith("/zespol")) {
     if (pathname.startsWith("/zespol/handlowcy")) return "Handlowcy i konta";
     if (pathname.startsWith("/zespol/grupy")) return "Grupy zespołu";

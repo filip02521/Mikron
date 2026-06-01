@@ -11,14 +11,10 @@ export function QueuePanelHelp() {
       icon={<GuideIcon />}
     >
       <p>
-        <strong>Dostawy dla handlowców</strong> — gdy towar fizycznie przyszedł, wpisz ilość w
-        kolumnie „Dost.” i zapisz (lub <strong>Całość</strong>). Handlowiec dostaje powiadomienie.
-        Filtruj listę <strong>chipem dostawcy</strong> — te same grupy co w arkuszu. Przy częściowej
-        dostawie badge pokazuje, ile sztuk jest już na regale.
-      </p>
-      <p className="mt-2">
-        <strong>Informacje</strong> — tylko e-mail po dotarciu towaru (bez kolejki dostaw). Przy
-        wielu pozycjach naraz wysyłamy <strong>jeden e-mail na handlowca</strong>.
+        <strong>Kolejka przyjęcia</strong> — jedna lista pogrupowana po dostawcy (domyślnie zwinięta).
+        Wiersze z zieloną kropką: kliknij ilość zamówioną lub wpisz dostawę, Enter lub ✓.
+        Niebieska kropka (informacja): przycisk Powiadom po dotarciu towaru.
+        Zaznacz wiele pozycji — pasek akcji u góry tabeli.
       </p>
       <p className="mt-2">
         <strong>Inwentaryzacja regału</strong> — co czeka na odbiór, sortowanie po dostawcy / regale /

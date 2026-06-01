@@ -2,7 +2,8 @@ import { createAdminClient, hasSupabaseConfig } from "@/lib/supabase/admin";
 import { normalizeIndividualOrders } from "@/lib/data/normalize-order";
 import { buildSummaryWorkspace } from "@/lib/orders/summary-workspace";
 import { sortIndividualOrdersBySupplier } from "@/lib/orders/queue-sort";
-import { sortInformacjaQueueByProduct } from "@/lib/orders/queue-product-groups";
+import { sortInformacjaQueueForDisplay } from "@/lib/orders/queue-product-groups";
+import { isInformacjaWarehouseQueueOrder } from "@/lib/orders/informacja-warehouse-queue";
 import { isSalesCancelledForQueue } from "@/lib/orders/sales-cancel";
 import { historyRetentionCutoffIso } from "@/lib/orders/history-retention";
 import {
@@ -186,7 +187,7 @@ export async function fetchIndividualHistory(): Promise<IndividualOrder[]> {
   return normalizeIndividualOrders(data ?? []);
 }
 
-/** Kolejka: prośby informacyjne — powiadom handlowca, bez odkładania na regał. */
+/** Kolejka magazynu: prośby informacyjne (sprawdzenie dostępności lub powiadomienie po dostawie). */
 export async function fetchInformacjaQueue(): Promise<IndividualOrder[]> {
   if (!hasSupabaseConfig()) return [];
   const supabase = createAdminClient();
@@ -194,11 +195,17 @@ export async function fetchInformacjaQueue(): Promise<IndividualOrder[]> {
     .from("individual_orders")
     .select("*, supplier:suppliers(*), sales_person:sales_people(*)")
     .eq("request_kind", "informacja")
-    .eq("status", "Nowe")
-    .eq("informacja_queue_via_daily_panel", false)
+    .in("status", ["Nowe", "Zamowione", "Czesciowo_zrealizowane"])
+    .is("sales_cancelled_at", null)
     .order("action_at", { ascending: true });
   if (error) throw new Error(error.message);
-  return sortInformacjaQueueByProduct(normalizeIndividualOrders(data ?? []));
+  const rows = normalizeIndividualOrders(data ?? []).filter(isInformacjaWarehouseQueueOrder);
+  return sortInformacjaQueueForDisplay(rows);
+}
+
+export async function countInformacjaQueue(): Promise<number> {
+  const rows = await fetchInformacjaQueue();
+  return rows.length;
 }
 
 /** Liczba pozycji w kolejce dostaw (zamówione u dostawcy, bez informacji). */

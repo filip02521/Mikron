@@ -30,6 +30,8 @@ import {
 } from "@/lib/services/email";
 import type { IndividualRequestKind } from "@/types/database";
 import { INFORMACJA_NO_QUANTITY, quantityForRequestKind } from "@/lib/orders/individual";
+import { isInformacjaWarehouseQueueOrder } from "@/lib/orders/informacja-warehouse-queue";
+import { shouldTreatAsInformacjaOnly } from "@/lib/orders/informacja-import-rules";
 import { orderPlacementAt } from "@/lib/orders/order-timing";
 import { isProcurementDraftReady } from "@/lib/orders/procurement-readiness";
 import { normalizeSalesClientName } from "@/lib/orders/sales-client-label";
@@ -297,6 +299,14 @@ export async function batchAddIndividualOrders(
     let complete = 0;
     let verification = 0;
 
+    const { data: stanSalesRow } = await supabase
+      .from("sales_people")
+      .select("id")
+      .ilike("name", "STAN")
+      .limit(1)
+      .maybeSingle();
+    const stanSalesPersonId = stanSalesRow?.id ?? null;
+
     // Nowe podejście: jeśli handlowiec wpisał symbol / kod, ale nie wybrał pozycji z podpowiedzi Subiekta,
     // spróbuj dopasować tw_Id po naszej bazie `subiekt_products` (symbol/plu).
     // Dzięki temu dalsze kroki (katalog mapowań produkt→dostawca) działają bez ZD.
@@ -340,13 +350,26 @@ export async function batchAddIndividualOrders(
     };
 
     const rows = await Promise.all(entries.map(async (e) => {
-      const kind = (e.requestKind ?? "zamowienie") as IndividualRequestKind;
       const sanitized = sanitizeOrderDraftFields({
         symbol: e.symbol,
         mikranCode: e.mikranCode,
         product: e.product,
         quantity: e.quantity,
       });
+      let kind = (e.requestKind ?? "zamowienie") as IndividualRequestKind;
+      let informacjaQueueViaDailyPanel =
+        kind === "informacja" && Boolean(e.informacjaQueueViaDailyPanel);
+      if (
+        kind === "zamowienie" &&
+        shouldTreatAsInformacjaOnly({
+          quantity: sanitized.quantity,
+          salesPersonId: e.salesPersonId,
+          stanSalesPersonId,
+        })
+      ) {
+        kind = "informacja";
+        informacjaQueueViaDailyPanel = false;
+      }
       const draft = {
         supplierId: e.supplierId,
         symbol: sanitized.symbol,
@@ -354,6 +377,7 @@ export async function batchAddIndividualOrders(
         product: sanitized.product,
         quantity: sanitized.quantity,
         requestKind: kind,
+        informacjaQueueViaDailyPanel,
         subiektTwId: await resolveTwIdFromCatalog({
           subiektTwId: e.subiektTwId,
           symbol: sanitized.symbol,
@@ -369,8 +393,7 @@ export async function batchAddIndividualOrders(
         assertProcurementEntryComplete({
           ...draft,
           requestKind: kind,
-          informacjaQueueViaDailyPanel:
-            kind === "informacja" && Boolean(e.informacjaQueueViaDailyPanel),
+          informacjaQueueViaDailyPanel,
         });
         status = procurementStatusForEntry({ ...draft, requestKind: kind });
         complete++;
@@ -396,18 +419,17 @@ export async function batchAddIndividualOrders(
         sales_person_id: e.salesPersonId,
         symbol,
         products,
-        quantity: quantityForRequestKind(e.requestKind, sanitized.quantity),
+        quantity: quantityForRequestKind(kind, sanitized.quantity),
         status,
         order_type: "None" as OrderType,
-        request_kind: (e.requestKind ?? "zamowienie") as IndividualRequestKind,
+        request_kind: kind,
         submission_group_id: submissionGroupId,
         created_by: createdBy ?? null,
         sales_client_name: normalizeSalesClientName(e.clientName),
         subiekt_tw_id:
           draft.subiektTwId != null && draft.subiektTwId > 0 ? draft.subiektTwId : null,
         mikran_code: sanitized.mikranCode?.trim() || null,
-        informacja_queue_via_daily_panel:
-          kind === "informacja" && Boolean(e.informacjaQueueViaDailyPanel),
+        informacja_queue_via_daily_panel: informacjaQueueViaDailyPanel,
       };
     }));
     const { error } = await supabase.from("individual_orders").insert(rows);
@@ -896,7 +918,7 @@ export async function markInformacjaArrived(
       .eq("id", id)
       .single();
     const order = raw ? normalizeIndividualOrder(raw) : null;
-    if (!order || order.request_kind !== "informacja" || order.status !== "Nowe") {
+    if (!order || !isInformacjaWarehouseQueueOrder(order)) {
       skipped++;
       continue;
     }

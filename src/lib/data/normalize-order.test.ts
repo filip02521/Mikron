@@ -12,8 +12,11 @@ describe("normalizeIndividualOrder", () => {
       quantity: "1",
       status: "Nowe",
       order_type: "None",
+      delivered_quantity: "-",
+      request_kind: "zamowienie",
       action_at: "2026-01-01",
       ordered_at: null,
+      delivery_at: null,
       suppliers: { id: "s1", name: "Dentaurum" } as never,
     });
     expect(row.supplier?.name).toBe("Dentaurum");
@@ -29,8 +32,11 @@ describe("normalizeIndividualOrder", () => {
       quantity: "1",
       status: "Nowe",
       order_type: "None",
+      delivered_quantity: "-",
+      request_kind: "zamowienie",
       action_at: "2026-01-01",
       ordered_at: null,
+      delivery_at: null,
       sales_people: { id: "p1", name: "Jan Kowalski" } as never,
     });
     expect(row.sales_person?.name).toBe("Jan Kowalski");

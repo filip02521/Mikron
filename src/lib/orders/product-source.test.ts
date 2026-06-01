@@ -30,4 +30,13 @@ describe("product source", () => {
     expect(line.fromSubiekt).toBe(true);
     expect(line.subiektTwId).toBe(7);
   });
+
+  it("informacja → etykieta informacja", () => {
+    const line = mapOrderToForSomeoneLine({
+      ...base,
+      quantity: "-",
+      request_kind: "informacja",
+    });
+    expect(line.quantity).toBe("informacja");
+  });
 });

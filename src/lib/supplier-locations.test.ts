@@ -3,25 +3,14 @@ import {
   countSuppliersByLocation,
   filterSuppliersForAdmin,
 } from "./supplier-locations";
-import type { SupplierWithSchedule } from "@/types/database";
+import { testSupplierWithSchedule } from "@/test-utils/fixtures";
 
 function supplier(
   id: string,
   name: string,
   location: "POLSKA" | "ZAGRANICA" | "IMPORT"
-): SupplierWithSchedule {
-  return {
-    id,
-    name,
-    location,
-    pickup_mikran: false,
-    pickup_pallet: false,
-    notes: "",
-    mails: "",
-    extra_info: "",
-    interval_weeks: 4,
-    stats_mode: "LACZNIE",
-  };
+) {
+  return testSupplierWithSchedule({ id, name, location, interval_weeks: 4 });
 }
 
 describe("supplier location filters", () => {

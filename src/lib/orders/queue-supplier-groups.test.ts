@@ -5,26 +5,17 @@ import {
   queueSupplierLeadingCellClass,
   queueSupplierRowClass,
 } from "@/lib/orders/queue-supplier-groups";
-import type { IndividualOrder } from "@/types/database";
+import { testIndividualOrder } from "@/test-utils/fixtures";
 
-function order(partial: Partial<IndividualOrder> & { id: string }): IndividualOrder {
-  return {
-    id: partial.id,
-    supplier_id: "s1",
-    sales_person_id: "sp1",
-    symbol: "-",
-    products: "P",
-    quantity: "1",
-    delivered_quantity: "-",
-    order_type: "None",
-    request_kind: "zamowienie",
+function order(partial: Parameters<typeof testIndividualOrder>[0]) {
+  const supplierName =
+    partial.supplier && "name" in partial.supplier ? partial.supplier.name : "Dostawca A";
+  return testIndividualOrder({
     status: "Zamowione",
     action_at: "",
-    ordered_at: null,
-    delivery_at: null,
-    supplier: { name: partial.supplier?.name ?? "Dostawca A" } as IndividualOrder["supplier"],
+    supplier: { name: supplierName } as never,
     ...partial,
-  } as IndividualOrder;
+  });
 }
 
 describe("queue supplier groups", () => {

@@ -11,7 +11,7 @@ describe("informacja-flow-copy", () => {
       INFORMACJA_FLOW_DIRECT.steps.length
     );
     expect(INFORMACJA_FLOW_VIA_PANEL.steps).toContain(
-      "Zamówienie u dostawcy (Główne / Uzupełniające)"
+      "Zamówienie u dostawcy (Główne lub Uzupełniające)"
     );
   });
 });

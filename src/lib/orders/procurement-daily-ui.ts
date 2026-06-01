@@ -8,7 +8,10 @@ import type {
   SummaryWorkspaceData,
 } from "@/lib/orders/summary-workspace";
 import type { MyOrderHeadlineTone } from "@/lib/orders/my-order-sales-ui";
-import { INFORMACJA_FLOW_PROCUREMENT_GROUP_BANNER } from "@/lib/orders/informacja-flow-copy";
+import {
+  INFORMACJA_FLOW_PROCUREMENT_GROUP_BANNER,
+  INFORMACJA_VIA_PANEL_STATUS_TITLE,
+} from "@/lib/orders/informacja-flow-copy";
 
 export type ProcurementHeadlineTone = MyOrderHeadlineTone;
 
@@ -160,7 +163,7 @@ export function enrichForSomeoneGroup(
     headline: group.person,
     subline: `${group.supplierName} · ${countLabel}`,
     headlineTone: infoViaPanel ? "info" : "neutral",
-    statusTitle: infoViaPanel ? "Info → magazyn po ZD" : "Do zamówienia",
+    statusTitle: infoViaPanel ? INFORMACJA_VIA_PANEL_STATUS_TITLE : "Do zamówienia",
     statusDetail: infoViaPanel ? INFORMACJA_FLOW_PROCUREMENT_GROUP_BANNER : null,
   };
 }

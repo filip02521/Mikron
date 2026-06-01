@@ -22,6 +22,7 @@ const OPERATIONS_PREFIXES = [
   "/kolejka",
   "/historia",
   "/zamowienia",
+  "/notatki",
 ];
 
 const ADMIN_PREFIXES = ["/admin"];
@@ -135,9 +136,12 @@ export async function middleware(request: NextRequest) {
     );
   }
 
-  const warehouseOnlyKolejka =
-    (pathname === "/kolejka" || pathname.startsWith("/kolejka/")) &&
-    canAccessWarehouse(role);
+  const warehouseExtraPaths =
+    canAccessWarehouse(role) &&
+    (pathname === "/notatki" ||
+      pathname.startsWith("/notatki/") ||
+      pathname === "/kolejka" ||
+      pathname.startsWith("/kolejka/"));
 
   if (matchesPrefix(pathname, PROCUREMENT_PREFIXES) && !canAccessOperations(role)) {
     return redirectWithSession(
@@ -150,7 +154,7 @@ export async function middleware(request: NextRequest) {
   if (
     matchesPrefix(pathname, OPERATIONS_PREFIXES) &&
     !canAccessOperations(role) &&
-    !warehouseOnlyKolejka
+    !warehouseExtraPaths
   ) {
     if (pathname.startsWith("/zamowienia")) {
       return redirectWithSession(request, sessionResponse, "/prosba");

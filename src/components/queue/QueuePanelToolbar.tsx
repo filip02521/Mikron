@@ -117,8 +117,9 @@ export function QueuePanelToolbar({
     <div className="border-b border-slate-100 px-4 py-4 sm:px-6">
       <p className="text-sm font-semibold text-slate-900">Przegląd magazynu</p>
       <p className="mt-0.5 text-xs text-slate-500">
-        Zamówienia u dostawcy — towar często jeszcze nie dotarł. Po przyjęciu wpisz ilość na dole
-        listy; handlowiec dostanie e-mail. Rezygnacje rozliczasz w panelu dziennym.
+        Jedna lista przyjęcia: zamówienia (wpisz ilość) i informacje (powiadom handlowca). Towar
+        często jeszcze nie dotarł — weryfikujesz wszystko u jednego dostawcy. Rezygnacje w panelu
+        dziennym.
       </p>
       <div
         className={cn(
@@ -137,8 +138,12 @@ export function QueuePanelToolbar({
         <MetricTile
           value={summary.activeCount}
           label="Do przyjęcia"
-          hint="w kolejce dostaw"
-          href={summary.activeCount > 0 ? "#dostawy-handlowcy" : undefined}
+          hint={
+            summary.informacjaCount > 0
+              ? `${summary.zamowienieCount} zam. · ${summary.informacjaCount} info`
+              : "zamówienia w kolejce"
+          }
+          href={summary.activeCount > 0 ? "#kolejka-przyjecie" : undefined}
         />
         <MetricTile
           value={inventoryCount}
@@ -163,10 +168,10 @@ export function QueuePanelToolbar({
         {informacjaCount > 0 ? (
           <MetricTile
             value={informacjaCount}
-            label="Informacje"
-            hint="e-mail po dotarciu"
+            label="w tym informacje"
+            hint="w tej samej liście przyjęcia"
             tone="sky"
-            href="#informacja"
+            href="#kolejka-przyjecie"
           />
         ) : null}
       </div>

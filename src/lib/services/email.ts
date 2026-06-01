@@ -6,6 +6,10 @@ import {
   renderInformacjaArrivedEmail,
 } from "@/lib/email/sales-email-templates";
 
+function getEmailOverrideTo(): string | undefined {
+  return process.env.EMAIL_OVERRIDE_TO?.trim() || undefined;
+}
+
 function getResend() {
   const key = getResendApiKey();
   if (!key) return null;
@@ -23,7 +27,12 @@ export async function sendHtmlEmail(params: {
   html: string;
 }): Promise<{ ok: true; id: string } | { ok: false; error: string; to: string }> {
   const resend = getResend();
-  const to = Array.isArray(params.to) ? params.to[0] : params.to;
+  const intendedTo = Array.isArray(params.to) ? params.to[0]! : params.to;
+  const overrideTo = getEmailOverrideTo();
+  const to = overrideTo ?? intendedTo;
+  const subject = overrideTo
+    ? `[TEST → ${intendedTo}] ${params.subject}`
+    : params.subject;
   if (!resend) {
     return {
       ok: false,
@@ -35,8 +44,8 @@ export async function sendHtmlEmail(params: {
 
   const { data, error } = await resend.emails.send({
     from: getEmailFromAddress(),
-    to: params.to,
-    subject: params.subject,
+    to,
+    subject,
     html: params.html,
   });
 

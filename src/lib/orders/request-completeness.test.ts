@@ -53,6 +53,18 @@ describe("assessRequestCompleteness", () => {
     ).toBe("complete");
   });
 
+  it("does not accept quantity dash for zamowienie", () => {
+    expect(hasValidOrderQuantity("-", "zamowienie")).toBe(false);
+    expect(
+      assessRequestCompleteness({
+        product: "HD TriVest Plunger",
+        supplierId: "sup-1",
+        quantity: "-",
+        requestKind: "zamowienie",
+      })
+    ).toBe("incomplete");
+  });
+
   it("does not require quantity for informacja", () => {
     expect(
       assessRequestCompleteness({

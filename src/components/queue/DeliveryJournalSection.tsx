@@ -132,7 +132,9 @@ function ReceiptRow({
         setEditing(false);
         onSaved();
       })
-      .catch(() => onSaved());
+      .catch((err) => {
+        window.alert(err instanceof Error ? err.message : "Nie udało się zapisać wpisu dziennika.");
+      });
   };
 
   if (!editing) {

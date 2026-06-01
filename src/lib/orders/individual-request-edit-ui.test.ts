@@ -1,52 +1,29 @@
 import { describe, expect, it } from "vitest";
 import { editInitialFromMyOrderRow } from "./individual-request-edit-ui";
-import type { MyOrderRow } from "./my-order-presenter";
+import { testMyOrderLine, testMyOrderRow } from "@/test-utils/fixtures";
 
-function minimalRow(overrides: Partial<MyOrderRow> = {}): MyOrderRow {
-  return {
+function minimalRow(overrides: Partial<Parameters<typeof testMyOrderRow>[0]> = {}) {
+  return testMyOrderRow({
     id: "g1",
-    kind: "zamowienie",
-    lineCount: 1,
     lines: [
-      {
+      testMyOrderLine({
         id: "o1",
         product: "Wkręt",
         symbol: "A1",
         subiektTwId: 42,
         quantity: "2",
         quantityLabel: "2 szt.",
-        progressLabel: null,
-        stockStatus: "waiting",
-        canAcknowledgePickup: false,
-        clientName: null,
-      },
+      }),
     ],
     supplierId: "sup-1",
     salesPersonId: "sp-1",
     requestKind: "zamowienie",
     headline: "Test",
-    productSummary: "Wkręt",
-    statusLabel: "Zamówione",
-    statusTone: "default",
-    orderedAtLabel: null,
-    deliveryEtaLabel: null,
-    subiektZdLabel: null,
-    subiektZdHint: null,
-    acknowledgeMode: "none",
-    canCancelBySales: false,
+    headlineTone: "neutral",
     canEditBySales: true,
     orderIds: ["o1"],
-    salesCancelPhase: null,
-    salesCancelOrderIds: [],
-    cancelNoticeOrderIds: [],
-    cancelledAckOrderIds: [],
-    clientLabel: null,
-    pickupPendingCount: 0,
-    pickupPendingIds: [],
-    pickupReadyTotal: 0,
-    pickupAcknowledgedCount: 0,
     ...overrides,
-  };
+  });
 }
 
 describe("editInitialFromMyOrderRow", () => {

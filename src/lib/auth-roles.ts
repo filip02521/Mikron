@@ -51,7 +51,7 @@ export function canManageSuppliers(role: UserRole): boolean {
 const PROCUREMENT_PREFIXES = ["/zakupy"];
 const SALES_TEAM_PREFIXES = ["/zespol"];
 
-const WAREHOUSE_PATH_PREFIXES = ["/kolejka"];
+const WAREHOUSE_PATH_PREFIXES = ["/kolejka", "/notatki"];
 
 const OPERATIONS_PATH_PREFIXES = [
   "/podsumowanie",
@@ -99,6 +99,9 @@ export function canAccessPath(
     if (isSalesAccount(role)) return true;
     if (isAdmin(role) && options?.previewSalesPersonId?.trim()) return true;
     return false;
+  }
+  if (pathname === "/notatki" || pathname.startsWith("/notatki/")) {
+    return isAdmin(role) || isZakupy(role) || isMagazyn(role);
   }
   if (
     SALES_PATH_PREFIXES.some((p) => pathname === p || pathname.startsWith(`${p}/`))
