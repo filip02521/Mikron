@@ -69,11 +69,12 @@ export async function actionAddZkWatchByNumber(
 
   const reactivating = Boolean(existing?.closed_at || existing?.archived_at);
   const snapshot = resolved.snapshot as unknown as Record<string, unknown>;
-  const mergedLineChecks = reactivating
-    ? mergeLineChecksAfterRefresh(
-        parseZkWatchLineChecks(existing?.line_checks),
-        buildZkWatchLineViews({
-          id: existing.id,
+  const mergedLineChecks =
+    reactivating && existing
+      ? mergeLineChecksAfterRefresh(
+          parseZkWatchLineChecks(existing.line_checks),
+          buildZkWatchLineViews({
+            id: existing.id,
           sales_person_id: salesPersonId,
           subiekt_dok_id: resolved.subiektDokId,
           zk_number: resolved.zkNumber,
