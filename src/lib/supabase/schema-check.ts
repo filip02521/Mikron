@@ -60,6 +60,12 @@ export async function hasProcurementSalesCancelAckColumn(
   return columnExists(supabase, "procurement_sales_cancel_ack_at");
 }
 
+export async function hasProcurementSeenAtColumn(
+  supabase: SupabaseClient
+): Promise<boolean> {
+  return columnExists(supabase, "procurement_seen_at");
+}
+
 export async function hasProcurementCancelDispositionColumn(
   supabase: SupabaseClient
 ): Promise<boolean> {

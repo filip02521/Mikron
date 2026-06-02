@@ -1,50 +1,90 @@
-import { describe, expect, it } from "vitest";
-import { mapZkDocument, normalizeZkQuery } from "./resolve-zk-document";
+import { describe, expect, it, vi, beforeEach } from "vitest";
+import { searchZkForAdd } from "./resolve-zk-document";
 import type { SubiektDocument } from "@/lib/subiekt/types";
 
-const SAMPLE_ZK: SubiektDocument = {
-  dok_Id: 1782110,
-  dok_NrPelny: "ZK 153157/M/04/2026",
-  dok_NrPelnyOryg: "czeka",
-  dok_OdbiorcaId: 6769,
-  dok_WartNetto: 4065.04,
-  dok_WartBrutto: 5000,
-  dok_DataWyst: "2026-04-24T00:00:00",
-  dok_Status: 7,
-  kh__Kontrahent_Odbiorca: {
-    kh_Id: 6769,
-    kh_Symbol: "WALCZAK JACEK",
-    adr_Nazwa: "Walczak Jacek",
-    adr_Miejscowosc: "Raszków",
-  },
-  dok_Pozycja: [{ tw_Nazwa: "Szczotka" }, { tw_Nazwa: "Pasta" }],
+const DOC_MARCH: SubiektDocument = {
+  dok_Id: 101,
+  dok_NrPelny: "ZK 234/M/03/2026",
+  dok_DataWyst: "2026-03-12T00:00:00",
+  dok_OdbiorcaId: 1,
+  kh__Kontrahent_Odbiorca: { kh_Id: 1, adr_Nazwa: "Klient A" },
 };
 
-describe("normalizeZkQuery", () => {
-  it("usuwa prefiks ZK", () => {
-    expect(normalizeZkQuery("ZK 153157/M/04/2026")).toBe("153157/M/04/2026");
-  });
-});
+const DOC_APRIL: SubiektDocument = {
+  dok_Id: 102,
+  dok_NrPelny: "ZK 234/M/04/2026",
+  dok_DataWyst: "2026-04-02T00:00:00",
+  dok_OdbiorcaId: 2,
+  kh__Kontrahent_Odbiorca: { kh_Id: 2, adr_Nazwa: "Klient B" },
+};
 
-describe("mapZkDocument", () => {
-  it("mapuje pełny numer Mikron, klienta, kwoty i uwagę", () => {
-    const r = mapZkDocument(SAMPLE_ZK);
-    expect(r.zkNumber).toBe("ZK 153157/M/04/2026");
-    expect(r.clientLabel).toContain("Walczak Jacek");
-    expect(r.amountGross).toBe(5000);
-    expect(r.lineSummary).toContain("Szczotka");
-    expect(r.origNote).toBe("czeka");
-    expect(r.statusLabel).toBe("Aktywne");
-    expect(r.issuedAt).toBe("2026-04-24");
+const searchSubiektZk = vi.fn();
+const getSubiektZk = vi.fn();
+
+vi.mock("@/lib/subiekt/api", () => ({
+  searchSubiektZk: (...args: unknown[]) => searchSubiektZk(...args),
+  getSubiektZk: (...args: unknown[]) => getSubiektZk(...args),
+}));
+
+describe("searchZkForAdd", () => {
+  beforeEach(() => {
+    searchSubiektZk.mockReset();
+    getSubiektZk.mockReset();
+    getSubiektZk.mockImplementation(async (id: number) =>
+      id === 101 ? DOC_MARCH : DOC_APRIL
+    );
   });
 
-  it("używa dok_NrPelnyOryg gdy brak pozycji", () => {
-    const doc: SubiektDocument = {
-      ...SAMPLE_ZK,
-      dok_Pozycja: [],
-      dok_NrPelnyOryg: "wz trasa 27.04",
-    };
-    const r = mapZkDocument(doc);
-    expect(r.lineSummary).toBe("wz trasa 27.04");
+  it("pełny numer szuka w zakresie miesiąca z kodu", async () => {
+    searchSubiektZk.mockResolvedValue({ data: [DOC_MARCH, DOC_APRIL] });
+
+    const result = await searchZkForAdd("234/M/03/2026", new Date(2026, 4, 28));
+
+    expect(searchSubiektZk).toHaveBeenCalledWith(
+      expect.objectContaining({
+        search: "234",
+        dataOd: "2026-03-01",
+        dataDo: "2026-03-31",
+      })
+    );
+    expect(result.kind).toBe("single");
+    if (result.kind === "single") {
+      expect(result.resolved.subiektDokId).toBe(101);
+    }
+  });
+
+  it("krótki numer szuka w ostatnich 30 dniach", async () => {
+    searchSubiektZk.mockResolvedValue({ data: [DOC_MARCH, DOC_APRIL] });
+
+    const result = await searchZkForAdd("23", new Date(2026, 4, 28));
+
+    expect(searchSubiektZk).toHaveBeenCalledWith(
+      expect.objectContaining({
+        search: "23",
+        dataOd: "2026-04-28",
+        dataDo: "2026-05-28",
+      })
+    );
+    expect(result.kind).toBe("choose");
+    if (result.kind === "choose") {
+      expect(result.candidates).toHaveLength(2);
+    }
+  });
+
+  it("jeden wynik w 30 dniach dodaje od razu", async () => {
+    searchSubiektZk.mockResolvedValue({ data: [DOC_APRIL] });
+
+    const result = await searchZkForAdd("234", new Date(2026, 4, 28));
+
+    expect(result.kind).toBe("single");
+    if (result.kind === "single") {
+      expect(result.resolved.subiektDokId).toBe(102);
+    }
+  });
+
+  it("odrzuca wpis krótszy niż 2 znaki", async () => {
+    const result = await searchZkForAdd("5");
+    expect(result.kind).toBe("error");
+    expect(searchSubiektZk).not.toHaveBeenCalled();
   });
 });

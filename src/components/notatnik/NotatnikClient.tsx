@@ -365,7 +365,7 @@ export function NotatnikClient({
 
           <NotatnikCollapsible
             title="Czeka na towar"
-            description="Wpisz numer ZK — dane klienta i pozycje wczytają się automatycznie."
+            description="Krótki numer (min. 2 znaki) szuka w ostatnich 30 dniach; pełny np. 234/M/03/2026 — tylko dany miesiąc."
             count={zkWatches.length || undefined}
             open={showZk}
             highlight={followUpZkCount > 0}

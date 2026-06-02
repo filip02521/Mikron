@@ -856,10 +856,12 @@ export async function processIndividualFromSummary(
     const order = raw ? normalizeIndividualOrder(raw) : null;
     if (!order) continue;
 
+    const seenPatch = { procurement_seen_at: batchOrderedAt };
+
     if (action === "ANULOWANO") {
       await supabase
         .from("individual_orders")
-        .update({ status: "Anulowane", informacja_queue_via_daily_panel: false })
+        .update({ status: "Anulowane", informacja_queue_via_daily_panel: false, ...seenPatch })
         .eq("id", id);
       continue;
     }
@@ -875,6 +877,7 @@ export async function processIndividualFromSummary(
           order_type: orderType,
           ordered_at: batchOrderedAt,
           placement_group_id: placementGroupId,
+          ...seenPatch,
         })
         .eq("id", id);
       continue;
@@ -887,6 +890,7 @@ export async function processIndividualFromSummary(
         order_type: orderType,
         ordered_at: batchOrderedAt,
         placement_group_id: placementGroupId,
+        ...seenPatch,
       })
       .eq("id", id);
 

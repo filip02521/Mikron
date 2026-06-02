@@ -29,6 +29,18 @@ export function extractZkPathSuffix(dokNrPelny: string): string | null {
   return m?.[1]?.replace(/\s+/g, "").toLowerCase() ?? null;
 }
 
+/** Pełny numer Mikron: 153157/M/04/2026 */
+export function isFullZkNumberQuery(query: string): boolean {
+  return /^\d+\/M\/\d+\/\d{4}$/i.test(normalizeZkQuery(query).replace(/\s+/g, ""));
+}
+
+/** dok_Id w Subiekcie (np. 1782112) — nie mylić z numerem seryjnym ZK (153159). */
+export function isLikelySubiektDocumentId(query: string): boolean {
+  if (!/^\d+$/.test(query)) return false;
+  const n = Number(query);
+  return Number.isFinite(n) && n >= 1_000_000;
+}
+
 export function cleanSubiektText(value: string | null | undefined): string | null {
   if (!value) return null;
   const cleaned = value.replace(/\r\n/g, " ").replace(/\s+/g, " ").trim();
@@ -66,13 +78,6 @@ export function zkDocumentStatusLabel(status: number | null | undefined): string
     default:
       return `Status ${status}`;
   }
-}
-
-/** dok_Id w Subiekcie (np. 1782112) — nie mylić z numerem seryjnym ZK (153159). */
-export function isLikelySubiektDocumentId(query: string): boolean {
-  if (!/^\d+$/.test(query)) return false;
-  const n = Number(query);
-  return Number.isFinite(n) && n >= 1_000_000;
 }
 
 export function zkNumbersEquivalent(a: string, b: string): boolean {

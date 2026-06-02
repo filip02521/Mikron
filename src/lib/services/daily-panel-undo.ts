@@ -40,7 +40,9 @@ export async function captureIndividualOrdersSnapshot(
   const supabase = createAdminClient();
   const { data, error } = await supabase
     .from("individual_orders")
-    .select("id, status, order_type, ordered_at, placement_group_id")
+    .select(
+      "id, status, order_type, ordered_at, placement_group_id, procurement_seen_at, informacja_queue_via_daily_panel"
+    )
     .in("id", orderIds);
 
   if (error) throw new Error(error.message);
@@ -51,6 +53,8 @@ export async function captureIndividualOrdersSnapshot(
     orderType: row.order_type,
     orderedAt: row.ordered_at,
     placementGroupId: row.placement_group_id,
+    procurementSeenAt: row.procurement_seen_at ?? null,
+    informacjaQueueViaDailyPanel: row.informacja_queue_via_daily_panel ?? null,
   }));
 }
 
@@ -81,6 +85,10 @@ async function restoreIndividualOrderSnapshot(
       order_type: snapshot.orderType,
       ordered_at: snapshot.orderedAt,
       placement_group_id: snapshot.placementGroupId,
+      procurement_seen_at: snapshot.procurementSeenAt,
+      ...(snapshot.informacjaQueueViaDailyPanel !== null
+        ? { informacja_queue_via_daily_panel: snapshot.informacjaQueueViaDailyPanel }
+        : {}),
     })
     .eq("id", snapshot.orderId);
 

@@ -12,6 +12,8 @@ export type IndividualOrderSnapshot = {
   orderType: string | null;
   orderedAt: string | null;
   placementGroupId: string | null;
+  procurementSeenAt: string | null;
+  informacjaQueueViaDailyPanel: boolean | null;
 };
 
 export type DailyPanelUndoToken =

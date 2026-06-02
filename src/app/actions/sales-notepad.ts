@@ -5,8 +5,13 @@ import { getSessionUser } from "@/lib/auth";
 import { resolveSalesPersonForUser } from "@/lib/auth/sales-person";
 import { isSalesAccount } from "@/lib/auth-roles";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { resolveZkByNumber, mapZkDocument } from "@/lib/subiekt/resolve-zk-document";
 import { getSubiektZk } from "@/lib/subiekt/api";
+import {
+  mapZkDocument,
+  resolveZkBySubiektDokId,
+  searchZkForAdd,
+  type ZkSearchCandidate,
+} from "@/lib/subiekt/resolve-zk-document";
 import { isSubiektReachable } from "@/lib/subiekt/availability";
 import {
   buildZkWatchLineViews,
@@ -50,13 +55,14 @@ async function assertSubiektReachableForZk(): Promise<void> {
   }
 }
 
-/** Wpisz numer ZK — od razu dodaje obserwację z klientem i pełnym numerem. */
-export async function actionAddZkWatchByNumber(
-  zkQuery: string
-): Promise<{ watch: SalesZkWatch }> {
-  await assertSubiektReachableForZk();
-  const salesPersonId = await salesPersonIdForAction();
-  const resolved = await resolveZkByNumber(zkQuery);
+export type ZkAddWatchResult =
+  | { kind: "added"; watch: SalesZkWatch }
+  | { kind: "choose"; candidates: ZkSearchCandidate[]; hint: string };
+
+async function persistZkWatch(
+  salesPersonId: string,
+  resolved: Awaited<ReturnType<typeof mapZkDocument>>
+): Promise<SalesZkWatch> {
   const supabase = createAdminClient();
   const now = new Date().toISOString();
 
@@ -79,26 +85,26 @@ export async function actionAddZkWatchByNumber(
           parseZkWatchLineChecks(existing.line_checks),
           buildZkWatchLineViews({
             id: existing.id,
-          sales_person_id: salesPersonId,
-          subiekt_dok_id: resolved.subiektDokId,
-          zk_number: resolved.zkNumber,
-          client_label: resolved.clientLabel,
-          client_kh_id: resolved.clientKhId,
-          amount_net: resolved.amountNet,
-          amount_gross: resolved.amountGross,
-          zk_issued_at: resolved.issuedAt,
-          note: null,
-          line_summary: resolved.lineSummary,
-          subiekt_snapshot: snapshot,
-          line_checks: [],
-          follow_up_at: null,
-          closed_at: null,
-          archived_at: null,
-          created_at: now,
-          updated_at: now,
-        })
-      )
-    : undefined;
+            sales_person_id: salesPersonId,
+            subiekt_dok_id: resolved.subiektDokId,
+            zk_number: resolved.zkNumber,
+            client_label: resolved.clientLabel,
+            client_kh_id: resolved.clientKhId,
+            amount_net: resolved.amountNet,
+            amount_gross: resolved.amountGross,
+            zk_issued_at: resolved.issuedAt,
+            note: null,
+            line_summary: resolved.lineSummary,
+            subiekt_snapshot: snapshot,
+            line_checks: [],
+            follow_up_at: null,
+            closed_at: null,
+            archived_at: null,
+            created_at: now,
+            updated_at: now,
+          })
+        )
+      : undefined;
 
   const row = {
     sales_person_id: salesPersonId,
@@ -132,7 +138,7 @@ export async function actionAddZkWatchByNumber(
       .single();
     if (error) throw new Error(error.message);
     revalidateNotepad();
-    return { watch: data as SalesZkWatch };
+    return data as SalesZkWatch;
   }
 
   const { data, error } = await supabase
@@ -149,7 +155,39 @@ export async function actionAddZkWatchByNumber(
   }
 
   revalidateNotepad();
-  return { watch: data as SalesZkWatch };
+  return data as SalesZkWatch;
+}
+
+/** Wpisz numer ZK — dodaje obserwację lub zwraca listę do wyboru. */
+export async function actionAddZkWatchByNumber(
+  zkQuery: string
+): Promise<ZkAddWatchResult> {
+  await assertSubiektReachableForZk();
+  const salesPersonId = await salesPersonIdForAction();
+  const result = await searchZkForAdd(zkQuery);
+
+  if (result.kind === "error") throw new Error(result.message);
+  if (result.kind === "choose") {
+    return {
+      kind: "choose",
+      candidates: result.candidates,
+      hint: result.hint,
+    };
+  }
+
+  const watch = await persistZkWatch(salesPersonId, result.resolved);
+  return { kind: "added", watch };
+}
+
+/** Dodaje ZK wybrane z listy kandydatów (po wyszukiwaniu). */
+export async function actionAddZkWatchBySubiektDokId(
+  subiektDokId: number
+): Promise<{ watch: SalesZkWatch }> {
+  await assertSubiektReachableForZk();
+  const salesPersonId = await salesPersonIdForAction();
+  const resolved = await resolveZkBySubiektDokId(subiektDokId);
+  const watch = await persistZkWatch(salesPersonId, resolved);
+  return { watch };
 }
 
 export async function actionCloseZkWatch(watchId: string) {

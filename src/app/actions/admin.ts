@@ -466,6 +466,48 @@ export async function actionAcknowledgeProcurementSalesCancel(
   return { success: true };
 }
 
+/** Zakupy: oznaczenie prośby jako zapoznanej w panelu dziennym (badge „Nowa”). */
+export async function actionMarkProcurementRequestsSeen(
+  orderIds: string[]
+): Promise<DailyPanelActionResult> {
+  await requireOperations();
+  const ids = [...new Set(orderIds.filter(Boolean))];
+  if (!ids.length) return { success: true };
+
+  const supabase = createAdminClient();
+  const now = new Date().toISOString();
+
+  const { data, error } = await supabase
+    .from("individual_orders")
+    .select("id, status, procurement_seen_at")
+    .in("id", ids);
+
+  if (error) {
+    if (error.message?.includes("procurement_seen_at")) {
+      throw new Error(
+        "Brak kolumny procurement_seen_at — uruchom supabase/migrations/053_procurement_seen_at.sql"
+      );
+    }
+    throw new Error(error.message);
+  }
+
+  const toMark = (data ?? []).filter(
+    (row) => row.status === "Nowe" && !row.procurement_seen_at
+  );
+  if (!toMark.length) return { success: true };
+
+  const { error: updErr } = await supabase
+    .from("individual_orders")
+    .update({ procurement_seen_at: now })
+    .in(
+      "id",
+      toMark.map((r) => r.id)
+    );
+  if (updErr) throw new Error(updErr.message);
+
+  return { success: true };
+}
+
 const DISPOSITION_MIGRATION_HINT =
   "Brak kolumn rozliczenia rezygnacji — uruchom supabase/migrations/021_procurement_cancel_disposition.sql";
 

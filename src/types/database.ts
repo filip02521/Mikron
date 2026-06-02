@@ -120,6 +120,8 @@ export interface IndividualOrder {
   sales_client_kh_id?: number | null;
   /** Dział dostaw potwierdził zapoznanie z rezygnacją handlowca (panel dzienny). */
   procurement_sales_cancel_ack_at?: string | null;
+  /** Zakupy zapoznały się z prośbą w panelu dziennym — ukrywa badge „Nowa”. */
+  procurement_seen_at?: string | null;
   /** Rozliczenie rezygnacji: to_stock | return */
   procurement_cancel_disposition?: string | null;
   procurement_cancel_disposition_note?: string | null;

@@ -1,13 +1,13 @@
 "use client";
 
-import { useMemo, useState, useCallback, useEffect } from "react";
+import { useMemo, useState, useCallback, useEffect, useRef } from "react";
 import type { SummaryForSomeoneEnriched } from "@/lib/orders/summary-workspace";
 import {
   enrichForSomeoneGroup,
   sortForSomeoneGroups,
 } from "@/lib/orders/procurement-daily-ui";
 import { locationLabel } from "@/lib/display-labels";
-import { actionProcessIndividual } from "@/app/actions/admin";
+import { actionMarkProcurementRequestsSeen, actionProcessIndividual } from "@/app/actions/admin";
 import { Card, CardHeader } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/Badge";
@@ -40,6 +40,78 @@ function groupKey(g: SummaryForSomeoneEnriched) {
   return `${g.supplierId}-${g.salesPersonId}`;
 }
 
+const MARK_SEEN_DELAY_MS = 1500;
+
+function useProcurementSeenTracker() {
+  const [locallySeenKeys, setLocallySeenKeys] = useState<Set<string>>(() => new Set());
+  const timersRef = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map());
+  /** Klucze, dla których wysłano już zapis do API (poza cyklem renderu). */
+  const persistSeenRef = useRef<Set<string>>(new Set());
+  const locallySeenRef = useRef(locallySeenKeys);
+  locallySeenRef.current = locallySeenKeys;
+
+  useEffect(() => {
+    const timers = timersRef.current;
+    return () => {
+      for (const timer of timers.values()) clearTimeout(timer);
+      timers.clear();
+    };
+  }, []);
+
+  const isGroupUnseen = useCallback(
+    (group: SummaryForSomeoneEnriched) =>
+      group.hasUnseen && !locallySeenKeys.has(groupKey(group)),
+    [locallySeenKeys]
+  );
+
+  const markGroupSeen = useCallback((group: SummaryForSomeoneEnriched) => {
+    if (!group.hasUnseen) return;
+    const key = groupKey(group);
+    if (locallySeenRef.current.has(key) || persistSeenRef.current.has(key)) return;
+
+    persistSeenRef.current.add(key);
+    setLocallySeenKeys((prev) => new Set(prev).add(key));
+
+    void actionMarkProcurementRequestsSeen(group.orderIds).catch(() => {
+      persistSeenRef.current.delete(key);
+      setLocallySeenKeys((prev) => {
+        if (!prev.has(key)) return prev;
+        const next = new Set(prev);
+        next.delete(key);
+        return next;
+      });
+    });
+  }, []);
+
+  const scheduleMarkSeen = useCallback(
+    (group: SummaryForSomeoneEnriched) => {
+      const key = groupKey(group);
+      if (!group.hasUnseen || locallySeenRef.current.has(key)) return;
+      const existing = timersRef.current.get(key);
+      if (existing) clearTimeout(existing);
+      timersRef.current.set(
+        key,
+        setTimeout(() => {
+          timersRef.current.delete(key);
+          markGroupSeen(group);
+        }, MARK_SEEN_DELAY_MS)
+      );
+    },
+    [markGroupSeen]
+  );
+
+  const cancelMarkSeen = useCallback((group: SummaryForSomeoneEnriched) => {
+    const key = groupKey(group);
+    const existing = timersRef.current.get(key);
+    if (existing) {
+      clearTimeout(existing);
+      timersRef.current.delete(key);
+    }
+  }, []);
+
+  return { isGroupUnseen, markGroupSeen, scheduleMarkSeen, cancelMarkSeen };
+}
+
 const FOR_SOMEONE_KEYBOARD_HINTS = [
   { keys: ["↑", "↓"], label: "grupy" },
   { keys: ["Enter"], label: "produkty" },
@@ -70,6 +142,11 @@ function SectionHelp() {
         <Kbd>↑</Kbd>/<Kbd>↓</Kbd>).
       </p>
       <KeyboardShortcutsHint items={[...FOR_SOMEONE_KEYBOARD_HINTS]} className="mb-2" />
+      <p className="mb-2">
+        Badge <strong className="font-medium text-violet-800">Nowa</strong> oznacza prośbę,
+        z którą zakupy jeszcze się nie zapoznały. Znika po ok. 1,5 s najechania na wiersz lub po
+        obsłużeniu prośby. Przy każdej grupie widać datę i godzinę zgłoszenia.
+      </p>
       <p className="mb-2">
         Przy produkcie: <strong className="text-emerald-800">✓</strong> — produkt z bazy;{" "}
         <strong className="text-slate-600">✎</strong> — wpis ręczny.
@@ -105,7 +182,12 @@ export function ForSomeoneRequests({
   sectionId?: string;
 }) {
   const sorted = useMemo(() => sortForSomeoneGroups(groups), [groups]);
-  const keys = useMemo(() => sorted.map(groupKey), [sorted]);
+  const { isGroupUnseen, markGroupSeen, scheduleMarkSeen, cancelMarkSeen } =
+    useProcurementSeenTracker();
+  const unseenGroupCount = useMemo(
+    () => sorted.filter((g) => isGroupUnseen(g)).length,
+    [sorted, isGroupUnseen]
+  );
   const multiLineKeys = useMemo(
     () => sorted.filter((g) => g.lines.length >= 2).map(groupKey),
     [sorted]
@@ -135,6 +217,11 @@ export function ForSomeoneRequests({
     scopeKey: string;
   } | null>(null);
   const [focusedGroupIndex, setFocusedGroupIndex] = useState(-1);
+
+  useEffect(() => {
+    if (focusedGroupIndex < 0 || focusedGroupIndex >= sorted.length) return;
+    scheduleMarkSeen(sorted[focusedGroupIndex]!);
+  }, [focusedGroupIndex, sorted, scheduleMarkSeen]);
 
   useEffect(() => {
     if (editTarget || cancelTarget || !sorted.length) return;
@@ -182,6 +269,7 @@ export function ForSomeoneRequests({
 
       if (e.key === "e" || e.key === "E") {
         e.preventDefault();
+        markGroupSeen(group);
         setEditTarget({
           orderIds: group.orderIds,
           initial: editInitialFromForSomeoneGroup(group),
@@ -228,7 +316,7 @@ export function ForSomeoneRequests({
 
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [sorted, focusedGroupIndex, editTarget, cancelTarget, run]);
+  }, [sorted, focusedGroupIndex, editTarget, cancelTarget, run, markGroupSeen]);
 
   const Wrapper = embedded ? "section" : Card;
   const wrapperProps = embedded
@@ -248,6 +336,16 @@ export function ForSomeoneRequests({
       compact
       action={
         <div className="flex items-center gap-1">
+          {unseenGroupCount > 0 ? (
+            <Badge variant="purple" className="h-7 shrink-0 px-2 text-[11px]">
+              {unseenGroupCount}{" "}
+              {unseenGroupCount === 1
+                ? "nowa"
+                : unseenGroupCount >= 2 && unseenGroupCount <= 4
+                  ? "nowe"
+                  : "nowych"}
+            </Badge>
+          ) : null}
           {multiLineKeys.length > 1 ? (
             <Button variant="ghost" size="sm" className="h-8 px-2 text-xs" onClick={() => setAll(!allExpanded)}>
               {allExpanded ? "Zwiń listy" : "Rozwiń listy"}
@@ -336,6 +434,7 @@ export function ForSomeoneRequests({
           const groupPending = isScopePending(key);
           const isFocused = focusedGroupIndex === groupIndex;
           const ui = enrichForSomeoneGroup(g);
+          const isUnseen = isGroupUnseen(g);
           const stats = statsBySupplierId[g.supplierId];
           const statsMode = supplierStatsMode[g.supplierId] ?? "LACZNIE";
           const leadTimeBrief = stats
@@ -352,10 +451,21 @@ export function ForSomeoneRequests({
                 className={cn(
                   panelRowGroupClass("rounded-md border border-slate-200 bg-white transition-shadow"),
                   groupPending && rowPendingRingClass,
-                  isFocused && "ring-2 ring-indigo-400/70 ring-offset-1"
+                  isFocused && "ring-2 ring-indigo-400/70 ring-offset-1",
+                  isUnseen && "border-violet-200/90 bg-violet-50/30"
                 )}
                 aria-busy={groupPending}
+                onMouseEnter={() => scheduleMarkSeen(g)}
+                onPointerDown={(e) => {
+                  if (e.pointerType === "touch") scheduleMarkSeen(g);
+                }}
+                onClick={(e) => {
+                  const target = e.target as HTMLElement;
+                  if (target.closest("button, a, [role='button']")) return;
+                  scheduleMarkSeen(g);
+                }}
                 onMouseLeave={(e) => {
+                  cancelMarkSeen(g);
                   panelRowClearFocusOnLeave(e);
                   if (focusedGroupIndex === groupIndex) setFocusedGroupIndex(-1);
                 }}
@@ -363,7 +473,17 @@ export function ForSomeoneRequests({
                 <div className="px-2 py-1.5">
                   <div className="flex items-start gap-1.5">
                     <div className="min-w-0 flex-1">
-                      <p className="text-sm font-semibold leading-snug text-slate-900">{ui.headline}</p>
+                      <div className="flex flex-wrap items-center gap-1.5">
+                        <p className="text-sm font-semibold leading-snug text-slate-900">
+                          {ui.headline}
+                        </p>
+                        {isUnseen ? (
+                          <Badge variant="purple" className="px-1.5 py-0 text-[10px]">
+                            Nowa
+                            {ui.unseenCount > 1 ? ` (${ui.unseenCount})` : ""}
+                          </Badge>
+                        ) : null}
+                      </div>
                       <p className="mt-0.5 text-xs text-slate-500">
                         <button
                           type="button"
@@ -376,6 +496,12 @@ export function ForSomeoneRequests({
                         {ui.subline}
                         {" · "}
                         {locationLabel(g.location)}
+                      </p>
+                      <p
+                        className="mt-0.5 text-[11px] text-slate-400"
+                        title={ui.submittedTitle}
+                      >
+                        Zgłoszono {ui.submittedLabel}
                       </p>
                       {leadTimeBrief ? (
                         <p className="mt-0.5 text-[10px] text-slate-400">{leadTimeBrief}</p>
@@ -398,13 +524,14 @@ export function ForSomeoneRequests({
                           pending={groupPending}
                           scopeKey={key}
                           run={run}
-                          onEdit={() =>
+                          onEdit={() => {
+                            markGroupSeen(g);
                             setEditTarget({
                               orderIds: g.orderIds,
                               initial: editInitialFromForSomeoneGroup(g),
                               scopeKey: key,
-                            })
-                          }
+                            });
+                          }}
                           onCancel={() =>
                             setCancelTarget({
                               orderIds: g.orderIds,
@@ -427,14 +554,15 @@ export function ForSomeoneRequests({
                       size="sm"
                       disabled={groupPending}
                       className="mt-1.5 h-7 shrink-0 px-2.5"
-                      onClick={() =>
+                      onClick={() => {
+                        if (!isOpen) markGroupSeen(g);
                         setExpanded((prev) => {
                           const next = new Set(prev);
                           if (isOpen) next.delete(key);
                           else next.add(key);
                           return next;
-                        })
-                      }
+                        });
+                      }}
                     >
                       {isOpen ? "Zwiń" : `Produkty (${g.lines.length})`}
                     </Button>

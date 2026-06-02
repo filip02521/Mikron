@@ -31,9 +31,25 @@ import {
   locationLabel,
 } from "@/lib/display-labels";
 import {
+  compareProcurementSubmittedAt,
+} from "@/lib/orders/procurement-request-timing";
+import {
   buildDailyPanelHiddenReport,
   type DailyPanelHiddenReport,
 } from "@/lib/orders/daily-panel-hidden";
+
+function computeForSomeoneGroupMeta(items: IndividualOrder[]) {
+  const sorted = [...items].sort((a, b) =>
+    compareProcurementSubmittedAt(a.action_at, b.action_at)
+  );
+  const unseen = sorted.filter((item) => !item.procurement_seen_at);
+  return {
+    submittedAt: sorted[0]!.action_at,
+    submittedAtLatest: sorted[sorted.length - 1]!.action_at,
+    hasUnseen: unseen.length > 0,
+    unseenCount: unseen.length,
+  };
+}
 
 export type SupplierSummaryMeta = {
   id: string;
@@ -68,6 +84,10 @@ export type ForSomeoneLine = {
   subiektTwId?: number | null;
   /** Informacja z opcją „najpierw panel Dziś”. */
   informacjaViaPanel?: boolean;
+  /** Moment zgłoszenia prośby (action_at). */
+  submittedAt: string;
+  /** Zakupy zapoznały się z prośbą w panelu dziennym. */
+  procurementSeenAt?: string | null;
 };
 
 export type SummaryForSomeoneEnriched = {
@@ -85,6 +105,14 @@ export type SummaryForSomeoneEnriched = {
   shift: "[DLA KOGOŚ]";
   status: string;
   nextDate: Date;
+  /** Najwcześniejsze zgłoszenie w grupie. */
+  submittedAt: string;
+  /** Ostatnie zgłoszenie w grupie (gdy różni się od submittedAt). */
+  submittedAtLatest: string;
+  /** Grupa ma co najmniej jedną nieprzeczytaną prośbę. */
+  hasUnseen: boolean;
+  /** Liczba nieprzeczytanych pozycji w grupie. */
+  unseenCount: number;
 };
 
 export type WeekDayPlan = {
@@ -338,6 +366,7 @@ export function buildSummaryWorkspace(
     const hoverNote = lines
       .map((l) => `${l.symbol}: ${l.products} (${l.quantity})`)
       .join("\n");
+    const timing = computeForSomeoneGroupMeta(g.items);
     return {
       kind,
       supplierId,
@@ -353,6 +382,7 @@ export function buildSummaryWorkspace(
       shift: shiftLabel,
       status: "-",
       nextDate: new Date(8640000000000000),
+      ...timing,
     };
     });
   }

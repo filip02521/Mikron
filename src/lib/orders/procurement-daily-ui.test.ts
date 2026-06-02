@@ -7,10 +7,46 @@ import {
   enrichUrgentItem,
   formatPlannerNote,
   formatUrgentVacationHint,
+  sortForSomeoneGroups,
   summarizeDailyInbox,
 } from "./procurement-daily-ui";
 import type { SummaryStandardItem } from "./summary";
+import type { SummaryForSomeoneEnriched } from "./summary-workspace";
 import type { SupplierWithSchedule } from "@/types/database";
+
+function testForSomeoneGroup(
+  partial: Partial<SummaryForSomeoneEnriched> &
+    Pick<SummaryForSomeoneEnriched, "supplierId" | "salesPersonId" | "person">
+): SummaryForSomeoneEnriched {
+  return {
+    kind: "forSomeone",
+    supplierName: "Dostawca",
+    flaggedName: "🇵🇱Dostawca",
+    location: "POLSKA",
+    displayText: `${partial.person} · 1 produkt`,
+    hoverNote: "",
+    lines: [
+      {
+        id: "1",
+        products: "X",
+        symbol: "-",
+        quantity: "1",
+        fromSubiekt: false,
+        submittedAt: "2026-05-28T10:00:00Z",
+        procurementSeenAt: null,
+      },
+    ],
+    orderIds: ["1"],
+    shift: "[DLA KOGOŚ]",
+    status: "-",
+    nextDate: new Date(),
+    submittedAt: "2026-05-28T10:00:00Z",
+    submittedAtLatest: "2026-05-28T10:00:00Z",
+    hasUnseen: true,
+    unseenCount: 1,
+    ...partial,
+  };
+}
 
 function supplier(
   id: string,
@@ -218,43 +254,50 @@ describe("procurement-daily-ui", () => {
   });
 
   it("enrichForSomeoneGroup i informacja mają różne komunikaty", () => {
-    const ws = buildSummaryWorkspace([], [], new Date());
-    const zam = enrichForSomeoneGroup({
-      kind: "forSomeone",
-      supplierId: "a",
-      salesPersonId: "sp",
-      supplierName: "Dostawca",
-      flaggedName: "🇵🇱Dostawca",
-      location: "POLSKA",
-      person: "Anna",
-      displayText: "Anna · 1 produkt",
-      hoverNote: "",
-      lines: [{ id: "1", products: "X", symbol: "-", quantity: "1", fromSubiekt: false }],
-      orderIds: ["1"],
-      shift: "[DLA KOGOŚ]",
-      status: "-",
-      nextDate: new Date(),
-    });
+    const at = new Date(2026, 4, 28, 12);
+    const zam = enrichForSomeoneGroup(
+      testForSomeoneGroup({
+        supplierId: "a",
+        salesPersonId: "sp",
+        person: "Anna",
+      }),
+      at
+    );
     expect(zam.headline).toContain("Anna");
     expect(zam.statusTitle).toBe("Do zamówienia");
+    expect(zam.submittedLabel).toContain("dziś");
+    expect(zam.isUnseen).toBe(true);
 
     const info = enrichInformacjaGroup({
+      ...testForSomeoneGroup({
+        supplierId: "a",
+        salesPersonId: "sp",
+        person: "Anna",
+      }),
       kind: "informacja",
-      supplierId: "a",
-      salesPersonId: "sp",
-      supplierName: "Dostawca",
-      flaggedName: "🇵🇱Dostawca",
-      location: "POLSKA",
-      person: "Anna",
-      displayText: "Anna · 1 produkt",
-      hoverNote: "",
-      lines: [{ id: "1", products: "X", symbol: "-", quantity: "-", fromSubiekt: false }],
-      orderIds: ["1"],
-      shift: "[DLA KOGOŚ]",
-      status: "-",
-      nextDate: new Date(),
     });
     expect(info.headline).toContain("informacja");
     expect(info.statusTitle).toBe("Bez zamówienia");
+  });
+
+  it("sortForSomeoneGroups stawia nieprzeczytane na górze", () => {
+    const seen = testForSomeoneGroup({
+      supplierId: "a",
+      salesPersonId: "sp1",
+      person: "Anna",
+      hasUnseen: false,
+      unseenCount: 0,
+      submittedAt: "2026-05-28T08:00:00Z",
+      submittedAtLatest: "2026-05-28T08:00:00Z",
+    });
+    const unseen = testForSomeoneGroup({
+      supplierId: "b",
+      salesPersonId: "sp2",
+      person: "Jan",
+      submittedAt: "2026-05-28T12:00:00Z",
+      submittedAtLatest: "2026-05-28T12:00:00Z",
+    });
+    const sorted = sortForSomeoneGroups([seen, unseen]);
+    expect(sorted[0]?.person).toBe("Jan");
   });
 });

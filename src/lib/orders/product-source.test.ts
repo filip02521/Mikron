@@ -29,6 +29,7 @@ describe("product source", () => {
     const line = mapOrderToForSomeoneLine({ ...base, subiekt_tw_id: 7 });
     expect(line.fromSubiekt).toBe(true);
     expect(line.subiektTwId).toBe(7);
+    expect(line.submittedAt).toBe("2026-05-01");
   });
 
   it("informacja → etykieta informacja", () => {

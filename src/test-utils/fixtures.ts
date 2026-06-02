@@ -125,6 +125,8 @@ export function testForSomeoneLine(
     symbol: "-",
     quantity: "1",
     fromSubiekt: false,
+    submittedAt: "2026-01-01T10:00:00Z",
+    procurementSeenAt: null,
     ...partial,
   };
 }

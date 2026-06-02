@@ -12,6 +12,10 @@ import {
   INFORMACJA_FLOW_PROCUREMENT_GROUP_BANNER,
   INFORMACJA_VIA_PANEL_STATUS_TITLE,
 } from "@/lib/orders/informacja-flow-copy";
+import {
+  compareProcurementSubmittedAt,
+  formatProcurementGroupSubmittedLabel,
+} from "@/lib/orders/procurement-request-timing";
 
 export type ProcurementHeadlineTone = MyOrderHeadlineTone;
 
@@ -21,6 +25,10 @@ export type ProcurementRequestUi = {
   headlineTone: ProcurementHeadlineTone;
   statusTitle: string;
   statusDetail: string | null;
+  submittedLabel: string;
+  submittedTitle: string;
+  isUnseen: boolean;
+  unseenCount: number;
 };
 
 export type DailyInboxSummary = {
@@ -28,6 +36,7 @@ export type DailyInboxSummary = {
   todayCount: number;
   forSomeoneGroupCount: number;
   forSomeoneLineCount: number;
+  forSomeoneUnseenGroupCount: number;
   weekPlanCount: number;
   onDemandCount: number;
   vacationSupplierCount: number;
@@ -85,6 +94,8 @@ export function summarizeDailyInbox(workspace: SummaryWorkspaceData): DailyInbox
     todayCount,
     forSomeoneGroupCount: workspace.forSomeoneLeft.length,
     forSomeoneLineCount,
+    forSomeoneUnseenGroupCount: workspace.forSomeoneLeft.filter((g) => g.hasUnseen)
+      .length,
     weekPlanCount,
     onDemandCount: workspace.onDemandSuppliers.length,
     vacationSupplierCount,
@@ -139,6 +150,10 @@ export function enrichUrgentItem(item: SummaryStandardItem): ProcurementRequestU
       headlineTone: "warning",
       statusTitle: "Zaległe",
       statusDetail: detail,
+      submittedLabel: "",
+      submittedTitle: "",
+      isUnseen: false,
+      unseenCount: 0,
     };
   }
 
@@ -148,16 +163,26 @@ export function enrichUrgentItem(item: SummaryStandardItem): ProcurementRequestU
     headlineTone: "neutral",
     statusTitle: "Na dziś",
     statusDetail: detail,
+    submittedLabel: "",
+    submittedTitle: "",
+    isUnseen: false,
+    unseenCount: 0,
   };
 }
 
 export function enrichForSomeoneGroup(
-  group: SummaryForSomeoneEnriched
+  group: SummaryForSomeoneEnriched,
+  at: Date = todayInWarsaw()
 ): ProcurementRequestUi {
   const count = group.lines.length;
   const countLabel =
     count === 1 ? "1 produkt" : count < 5 ? `${count} produkty` : `${count} produktów`;
   const infoViaPanel = group.lines.some((l) => l.informacjaViaPanel);
+  const submittedLabel = formatProcurementGroupSubmittedLabel(
+    group.submittedAt,
+    group.submittedAtLatest,
+    at
+  );
 
   return {
     headline: group.person,
@@ -165,6 +190,10 @@ export function enrichForSomeoneGroup(
     headlineTone: infoViaPanel ? "info" : "neutral",
     statusTitle: infoViaPanel ? INFORMACJA_VIA_PANEL_STATUS_TITLE : "Do zamówienia",
     statusDetail: infoViaPanel ? INFORMACJA_FLOW_PROCUREMENT_GROUP_BANNER : null,
+    submittedLabel,
+    submittedTitle: `Zgłoszono ${submittedLabel}`,
+    isUnseen: group.hasUnseen,
+    unseenCount: group.unseenCount,
   };
 }
 
@@ -181,17 +210,31 @@ export function enrichInformacjaGroup(
     headlineTone: "info",
     statusTitle: "Bez zamówienia",
     statusDetail: null,
+    submittedLabel: formatProcurementGroupSubmittedLabel(
+      group.submittedAt,
+      group.submittedAtLatest,
+      todayInWarsaw()
+    ),
+    submittedTitle: "",
+    isUnseen: group.hasUnseen,
+    unseenCount: group.unseenCount,
   };
 }
 
 export function sortForSomeoneGroups(
   groups: SummaryForSomeoneEnriched[]
 ): SummaryForSomeoneEnriched[] {
-  return [...groups].sort(
-    (a, b) =>
+  return [...groups].sort((a, b) => {
+    if (a.hasUnseen !== b.hasUnseen) return a.hasUnseen ? -1 : 1;
+    const byTime =
+      compareProcurementSubmittedAt(a.submittedAt, b.submittedAt) ||
+      compareProcurementSubmittedAt(a.submittedAtLatest, b.submittedAtLatest);
+    if (byTime !== 0) return byTime;
+    return (
       a.supplierName.localeCompare(b.supplierName, "pl") ||
       a.person.localeCompare(b.person, "pl")
-  );
+    );
+  });
 }
 
 export function sortInformacjaGroups(

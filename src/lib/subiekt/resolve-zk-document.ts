@@ -1,16 +1,25 @@
 import { searchSubiektZk, getSubiektZk } from "@/lib/subiekt/api";
+import { feedbackFromException } from "@/lib/subiekt/feedback";
 import type { SubiektDocument } from "@/lib/subiekt/types";
 import {
   buildZkLineSummary,
   buildZkOrigNote,
-  isLikelySubiektDocumentId,
   normalizeZkQuery,
   parseSubiektDocDate,
-  pickBestZkMatch,
   resolveZkClientLabel,
   toSubiektAmount,
   zkDocumentStatusLabel,
 } from "@/lib/subiekt/zk-document";
+import {
+  collectMatchingZkDocuments,
+  extractZkSearchToken,
+  resolveZkSearchScope,
+  toZkSearchCandidate,
+  validateZkQueryForSubmit,
+  zkSearchChooseHint,
+  zkSearchNotFoundMessage,
+  type ZkSearchCandidate,
+} from "@/lib/subiekt/zk-search";
 
 export type ResolvedZkDocument = {
   subiektDokId: number;
@@ -28,7 +37,13 @@ export type ResolvedZkDocument = {
   snapshot: SubiektDocument;
 };
 
+export type ZkAddSearchResult =
+  | { kind: "single"; resolved: ResolvedZkDocument }
+  | { kind: "choose"; candidates: ZkSearchCandidate[]; hint: string }
+  | { kind: "error"; message: string };
+
 export { normalizeZkQuery } from "@/lib/subiekt/zk-document";
+export type { ZkSearchCandidate } from "@/lib/subiekt/zk-search";
 
 function pickKhId(doc: SubiektDocument): number | null {
   const raw = doc.dok_OdbiorcaId ?? doc.dok_PlatnikId;
@@ -70,36 +85,74 @@ export function mapZkDocument(doc: SubiektDocument): ResolvedZkDocument {
   };
 }
 
-/** Wyszukuje ZK po numerze (np. „153157/M/04/2026”) — jeden wynik lub błąd. */
-export async function resolveZkByNumber(query: string): Promise<ResolvedZkDocument> {
-  const q = normalizeZkQuery(query);
-  if (!q) throw new Error("Podaj numer ZK, np. 153157/M/04/2026");
+/** Wyszukuje ZK do dodania — 1 wynik, lista wyboru lub błąd. */
+export async function searchZkForAdd(
+  query: string,
+  at: Date = new Date()
+): Promise<ZkAddSearchResult> {
+  const validated = validateZkQueryForSubmit(query);
+  if (!validated.ok) return { kind: "error", message: validated.message };
 
-  if (isLikelySubiektDocumentId(q)) {
+  const q = validated.normalized;
+  const scope = resolveZkSearchScope(q, at);
+
+  if (scope.mode === "document_id") {
     try {
       const doc = await getSubiektZk(q);
-      return mapZkDocument(doc);
-    } catch {
-      /* szukaj po numerze */
+      return { kind: "single", resolved: mapZkDocument(doc) };
+    } catch (e) {
+      return { kind: "error", message: feedbackFromException(e).message };
     }
   }
 
-  const { data } = await searchSubiektZk({ search: q, pageSize: 40 });
-  const list = data ?? [];
-  const match = pickBestZkMatch(list, q);
-
-  if (match) return loadFullZkDocument(match);
-
-  if (!list.length) {
-    throw new Error(`Nie znaleziono ZK „${q}” w Subiekcie.`);
+  let list: SubiektDocument[] = [];
+  try {
+    const { data } = await searchSubiektZk({
+      search: extractZkSearchToken(q),
+      dataOd: scope.dataOd,
+      dataDo: scope.dataDo,
+      pageSize: 40,
+    });
+    list = data ?? [];
+  } catch (e) {
+    return { kind: "error", message: feedbackFromException(e).message };
   }
 
-  const serialOnly = /^\d+$/.test(q);
-  throw new Error(
-    serialOnly
-      ? `Znaleziono wiele ZK z numerem ${q} — wpisz pełny numer, np. 153157/M/04/2026.`
-      : `Znaleziono ${list.length} dokumentów — wpisz pełny numer ZK, np. 153157/M/04/2026.`
-  );
+  const matches = collectMatchingZkDocuments(list, q);
+  if (!matches.length) {
+    return { kind: "error", message: zkSearchNotFoundMessage(q, scope) };
+  }
+
+  if (matches.length === 1) {
+    return { kind: "single", resolved: await loadFullZkDocument(matches[0]!) };
+  }
+
+  return {
+    kind: "choose",
+    candidates: matches.map(toZkSearchCandidate),
+    hint: zkSearchChooseHint(q, scope, matches.length),
+  };
+}
+
+/** Wyszukuje ZK po numerze — dokładnie jeden wynik lub błąd (bez wyboru). */
+export async function resolveZkByNumber(query: string): Promise<ResolvedZkDocument> {
+  const result = await searchZkForAdd(query);
+  if (result.kind === "error") throw new Error(result.message);
+  if (result.kind === "choose") {
+    throw new Error(result.hint);
+  }
+  return result.resolved;
+}
+
+export async function resolveZkBySubiektDokId(
+  subiektDokId: number
+): Promise<ResolvedZkDocument> {
+  const id = Math.trunc(subiektDokId);
+  if (!Number.isFinite(id) || id <= 0) {
+    throw new Error("Nieprawidłowy identyfikator ZK.");
+  }
+  const doc = await getSubiektZk(id);
+  return loadFullZkDocument(doc);
 }
 
 /** Lista ZK bywa bez embedów — pobieramy pełny dokument po dok_Id. */

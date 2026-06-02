@@ -1,6 +1,7 @@
 import type { IndividualOrder } from "@/types/database";
 import { formatOrderQuantityLabel } from "@/lib/orders/individual";
 import { isInformacjaQueueViaDailyPanel } from "@/lib/orders/informacja-via-daily-panel";
+import { submittedAt } from "@/lib/orders/order-timing";
 import type { ForSomeoneLine } from "@/lib/orders/summary-workspace";
 
 /** Pozycja wybrana z kartoteki Subiekt (nie wpis ręczny). */
@@ -21,5 +22,7 @@ export function mapOrderToForSomeoneLine(item: IndividualOrder): ForSomeoneLine 
     fromSubiekt: isSubiektVerifiedOrder(item),
     subiektTwId: item.subiekt_tw_id ?? null,
     informacjaViaPanel: isInformacjaQueueViaDailyPanel(item),
+    submittedAt: submittedAt(item),
+    procurementSeenAt: item.procurement_seen_at ?? null,
   };
 }
