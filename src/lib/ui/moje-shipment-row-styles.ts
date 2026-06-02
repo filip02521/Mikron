@@ -40,7 +40,7 @@ export const mojeShipmentExpandedNotesClass =
   "rounded-md border border-indigo-100/90 bg-indigo-50/60 px-3 py-2 text-xs leading-relaxed text-indigo-950";
 
 export const mojeShipmentExpandedMetaShellClass =
-  "rounded-md border border-slate-200/90 bg-white px-3 py-2.5 shadow-sm";
+  "rounded-md border border-slate-200/80 bg-slate-50/70 px-2.5 py-1.5";
 
 export const mojeShipmentExpandedClientsClass =
   "rounded-md border border-slate-200/80 bg-slate-50/80 px-3 py-2 text-xs text-slate-600";
