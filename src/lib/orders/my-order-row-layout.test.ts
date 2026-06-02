@@ -10,6 +10,9 @@ import {
   myOrderNeedsExpand,
 } from "./my-order-row-layout";
 import { myOrderTimingMetaField } from "./my-order-sales-ui";
+import { presentMyOrders } from "./my-order-presenter";
+import type { IndividualOrder } from "@/types/database";
+import { myOrderExpandedMetaFields } from "./my-order-sales-ui";
 
 function row(extra: Partial<MyOrderRow> = {}): MyOrderRow {
   return {
@@ -67,10 +70,10 @@ function row(extra: Partial<MyOrderRow> = {}): MyOrderRow {
 }
 
 describe("my-order-row-layout", () => {
-  it("długi subline zamówienia trafia do expandedNotes, nie do collapsed", () => {
+  it("długi subline zamówienia trafia do metadanych, nie do osobnej notatki", () => {
     const r = row();
     expect(myOrderCollapsedSubline(r)).toBeNull();
-    expect(myOrderExpandedNotes(r)).toContain("Mało dostaw w historii");
+    expect(myOrderExpandedNotes(r)).toBeNull();
   });
 
   it("weryfikacja — skrót na liście bez powtórzenia w expanded", () => {
@@ -146,5 +149,57 @@ describe("my-order-row-layout", () => {
     expect(timing?.value).toContain("10.05");
     const collapsed = myOrderCollapsedMetaFields(r, true);
     expect(collapsed.some((f) => f.label === "Termin")).toBe(true);
+  });
+
+  it("typ i zamówienie ze statusDetail trafiają do metadanych bez powtórzenia w notatce", () => {
+    const baseOrder: IndividualOrder = {
+      id: "1",
+      supplier_id: "sup1",
+      sales_person_id: "sp1",
+      symbol: "ABC",
+      products: "Wkręt",
+      quantity: "3",
+      delivered_quantity: "-",
+      order_type: "Poboczne",
+      request_kind: "zamowienie",
+      status: "Zamowione",
+      action_at: "2026-04-28",
+      ordered_at: "2026-05-06",
+      delivery_at: null,
+      supplier: {
+        id: "sup1",
+        name: "Dostawca X",
+        location: "POLSKA",
+        pickup_mikran: false,
+        pickup_pallet: false,
+        notes: "",
+        mails: "",
+        extra_info: "",
+        interval_raw: null,
+        interval_weeks: null,
+        stock_raw: null,
+        stock: null,
+        stats_mode: "LACZNIE",
+        order_on_demand: false,
+        is_active: true,
+      },
+    };
+    const r = presentMyOrders([baseOrder], [
+      {
+        supplier_id: "sup1",
+        main_avg: 13,
+        main_count: 10,
+        main_sum: 130,
+        side_avg: 13,
+        side_count: 5,
+        side_sum: 65,
+      },
+    ]).zamowienia[0];
+
+    const meta = myOrderExpandedMetaFields(r, true);
+    expect(meta.some((f) => f.label === "Typ" && f.value === "Poza planem")).toBe(true);
+    expect(meta.some((f) => f.label === "Zamówiono" && f.value === "06.05.2026")).toBe(true);
+    expect(meta.some((f) => f.label === "Termin")).toBe(true);
+    expect(myOrderExpandedNotes(r)).toBeNull();
   });
 });

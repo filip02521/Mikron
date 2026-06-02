@@ -12,7 +12,7 @@ import {
   myOrderExpandedNotes,
   myOrderNeedsExpand,
 } from "@/lib/orders/my-order-row-layout";
-import { myOrderMetaFields } from "@/lib/orders/my-order-sales-ui";
+import { myOrderExpandedMetaFields } from "@/lib/orders/my-order-sales-ui";
 import { myOrderFriendlyStatusHint } from "@/lib/orders/my-order-friendly-status";
 import { MyOrderExpandedMeta } from "@/components/moje/MyOrderExpandedMeta";
 import { MyOrderAckButton } from "@/components/moje/MyOrderAckButton";
@@ -267,7 +267,7 @@ export function MyOrderShipmentCard({
   const needsExpand = myOrderNeedsExpand(row, expandCtx);
   const collapsedSubline = myOrderCollapsedSubline(row);
   const expandedNotes = myOrderExpandedNotes(row);
-  const expandedMeta = myOrderMetaFields(row, showProgress).filter(
+  const expandedMeta = myOrderExpandedMetaFields(row, showProgress).filter(
     (f) => !(f.label === "Klient" && canEditClient)
   );
   const expandHint = myOrderExpandHint(row, expandCtx);

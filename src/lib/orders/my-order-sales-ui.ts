@@ -302,6 +302,89 @@ export function myOrderMetaFields(
   return fields;
 }
 
+export type MyOrderMetaField = { label: string; value: string; emphasize?: boolean };
+
+/** Rozbija statusDetail na pola metadanych i resztę do osobnej notatki. */
+export function parseStatusDetailMetaParts(statusDetail: string | null): {
+  orderTypeLabel: string | null;
+  orderedAtLabel: string | null;
+  remainder: string | null;
+} {
+  if (!statusDetail?.trim()) {
+    return { orderTypeLabel: null, orderedAtLabel: null, remainder: null };
+  }
+
+  const segments = statusDetail.split(" · ").map((s) => s.trim()).filter(Boolean);
+  let orderTypeLabel: string | null = null;
+  let orderedAtLabel: string | null = null;
+  const remainder: string[] = [];
+
+  for (const segment of segments) {
+    if (segment.startsWith("Osobne domówienie")) {
+      orderTypeLabel = "Poza planem";
+    } else if (segment.startsWith("W planowej dostawie")) {
+      orderTypeLabel = "Planowa dostawa";
+    } else if (/^Zamówiono \d/.test(segment)) {
+      orderedAtLabel = segment.slice("Zamówiono ".length);
+    } else {
+      remainder.push(segment);
+    }
+  }
+
+  return {
+    orderTypeLabel,
+    orderedAtLabel,
+    remainder: remainder.length ? remainder.join(" · ") : null,
+  };
+}
+
+/** Subline już pokryty przez timingLabel lub szacunek w metadanych. */
+export function isExpandedSublineRedundant(row: MyOrderRow): boolean {
+  if (!row.subline?.trim()) return false;
+  if (row.timingLabel) {
+    const sub = row.subline.replace(" · po terminie", "").trim();
+    const timing = row.timingLabel.replace(" · po terminie", "").trim();
+    if (sub === timing) return true;
+  }
+  if (
+    row.subline.includes("Mało dostaw w historii") &&
+    row.timingLabel?.includes("mało historii")
+  ) {
+    return true;
+  }
+  if (
+    row.statusTitle === "Zamówione" &&
+    row.subline.includes("Mało dostaw w historii") &&
+    row.timingLabel?.trim()
+  ) {
+    return true;
+  }
+  return false;
+}
+
+/** Metadane rozwinięcia — typ/zamówienie ze statusDetail bez osobnego calloutu. */
+export function myOrderExpandedMetaFields(
+  row: MyOrderRow,
+  showProgress: boolean
+): MyOrderMetaField[] {
+  const fields = myOrderMetaFields(row, showProgress);
+  const parsed = parseStatusDetailMetaParts(row.statusDetail);
+
+  let insertIndex = 1;
+  if (parsed.orderTypeLabel) {
+    fields.splice(insertIndex, 0, { label: "Typ", value: parsed.orderTypeLabel });
+    insertIndex++;
+  }
+  if (parsed.orderedAtLabel && parsed.orderedAtLabel !== row.submittedLabel) {
+    fields.splice(insertIndex, 0, {
+      label: "Zamówiono",
+      value: parsed.orderedAtLabel,
+    });
+  }
+
+  return fields;
+}
+
 /** Pole terminu / szacunku — zawsze widoczne na liście, także na zwiniętym wierszu. */
 export function myOrderTimingMetaField(
   row: MyOrderRow,

@@ -5,6 +5,8 @@ import {
 import {
   myOrderMetaFields,
   isProsbaHandoffStatus,
+  isExpandedSublineRedundant,
+  parseStatusDetailMetaParts,
   verificationSublineFromDetail,
 } from "@/lib/orders/my-order-sales-ui";
 
@@ -38,10 +40,11 @@ export function myOrderExpandedNotes(row: MyOrderRow): string | null {
   const collapsed = myOrderCollapsedSubline(row);
 
   if (shouldShowOrderStatusDetail(row) && row.statusDetail?.trim()) {
-    parts.push(row.statusDetail.trim());
+    const { remainder } = parseStatusDetailMetaParts(row.statusDetail);
+    if (remainder) parts.push(remainder);
   }
 
-  if (row.subline?.trim() && row.subline !== collapsed) {
+  if (row.subline?.trim() && row.subline !== collapsed && !isExpandedSublineRedundant(row)) {
     const explanatory =
       row.statusTitle === "Przed zamówieniem" ||
       row.statusTitle === "Oczekuje na magazyn" ||

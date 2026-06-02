@@ -3,6 +3,8 @@ import { presentMyOrder, presentMyOrders } from "./my-order-presenter";
 import {
   enrichMyOrderSalesUi,
   myOrderMetaFields,
+  myOrderExpandedMetaFields,
+  parseStatusDetailMetaParts,
   sortMyOrderRows,
   summarizeMyOrdersInbox,
   verificationSublineFromDetail,
@@ -193,5 +195,36 @@ describe("myOrderMetaFields", () => {
     expect(fields.some((f) => f.label === "Szacunek" || f.label === "Termin")).toBe(
       true
     );
+  });
+});
+
+describe("parseStatusDetailMetaParts", () => {
+  it("wyciąga typ i datę zamówienia z statusDetail", () => {
+    const parsed = parseStatusDetailMetaParts(
+      "Osobne domówienie tylko na Twoją prośbę — poza planową dostawą · Zamówiono 06.05.2026"
+    );
+    expect(parsed.orderTypeLabel).toBe("Poza planem");
+    expect(parsed.orderedAtLabel).toBe("06.05.2026");
+    expect(parsed.remainder).toBeNull();
+  });
+
+  it("myOrderExpandedMetaFields dodaje typ i zamówiono", () => {
+    const row = presentMyOrders(
+      [{ ...baseOrder, order_type: "Poboczne", ordered_at: "2026-05-06" }],
+      [
+        {
+          supplier_id: "sup1",
+          main_avg: 5,
+          main_count: 10,
+          main_sum: 50,
+          side_avg: null,
+          side_count: null,
+          side_sum: null,
+        },
+      ]
+    ).zamowienia[0];
+    const fields = myOrderExpandedMetaFields(row, true);
+    expect(fields.some((f) => f.label === "Typ")).toBe(true);
+    expect(fields.some((f) => f.label === "Zamówiono")).toBe(true);
   });
 });
