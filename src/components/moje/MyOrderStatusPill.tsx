@@ -1,4 +1,5 @@
 import type { MyOrderRow } from "@/lib/orders/my-order-presenter";
+import { myOrderFriendlyStatusLabel } from "@/lib/orders/my-order-friendly-status";
 import { cn } from "@/lib/cn";
 import { SearchHighlightText } from "@/components/moje/SearchHighlightText";
 
@@ -25,17 +26,20 @@ export function MyOrderStatusPill({
   className?: string;
   searchQuery?: string | null;
 }) {
+  const friendly = myOrderFriendlyStatusLabel(label);
+
   return (
     <span
       className={cn(
-        "inline-flex max-w-full shrink-0 items-center rounded-md px-1.5 py-0.5 text-[0.65rem] font-semibold leading-snug ring-1",
+        "inline-flex max-w-full shrink-0 items-center rounded-md px-1.5 py-0.5 text-xs font-semibold leading-snug ring-1",
         "whitespace-normal text-right sm:max-w-[14rem]",
         variantStyles[variant],
         className
       )}
-      title={label}
+      title={friendly !== label ? `${friendly} (${label})` : label}
+      aria-label={friendly}
     >
-      <SearchHighlightText text={label} searchQuery={searchQuery} />
+      <SearchHighlightText text={friendly} searchQuery={searchQuery} />
     </span>
   );
 }

@@ -40,7 +40,7 @@ export function MyOrderShipmentOverflowMenu({
       disabled={disabled}
       align="end"
       iconOnly
-      triggerClassName="h-7 w-7"
+      triggerClassName="h-10 w-10 sm:h-7 sm:w-7"
     >
       {canAssignClient ? (
         <OverflowMenuItem disabled={disabled} onClick={onAssignClient}>

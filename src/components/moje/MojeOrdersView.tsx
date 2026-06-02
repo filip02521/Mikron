@@ -20,6 +20,7 @@ import { Alert } from "@/components/ui/Alert";
 import { MyOrderArchiveSection } from "@/components/moje/MyOrderArchiveSection";
 import { MyOrderShipmentList } from "@/components/moje/MyOrderShipmentList";
 import { MyOrdersInboxSummary } from "@/components/moje/MyOrdersInboxSummary";
+import { MojeStickyPickupBar } from "@/components/moje/MojeStickyPickupBar";
 import { MojeOrdersHelp } from "@/components/moje/MojeOrdersGuide";
 import { MojeOrdersEmptyGuide } from "@/components/moje/MojeOrdersEmptyGuide";
 import { Card, CardHeader } from "@/components/ui/Card";
@@ -83,7 +84,7 @@ function MojeOrdersOverviewStats({
   return (
     <div className="flex flex-wrap items-center gap-x-4 gap-y-2 border-b border-slate-100 bg-slate-50/60 px-4 py-3 sm:px-6">
       {narrowed ? (
-        <p className="text-xs leading-relaxed text-slate-600">
+        <p className="text-xs leading-relaxed text-slate-600" aria-live="polite">
           Pokazano{" "}
           <span className="font-semibold tabular-nums text-slate-900">{filteredCount}</span>
           {" z "}
@@ -150,6 +151,7 @@ function ListSectionLabel({
         </SectionHeadingIcon>
         <div className="min-w-0">
         <h3
+          id={`moje-section-${icon}`}
           className={
             accent === "emerald"
               ? "text-xs font-semibold uppercase tracking-wide text-emerald-900"
@@ -340,7 +342,7 @@ function MojeOrdersViewContent({
     searchFilteredInformacje,
   ]);
 
-  const splitByAction = !activeFilter;
+  const splitByAction = !activeFilter || activeFilter === "action_group";
 
   const { actionZamowienia, progressZamowienia } = useMemo(() => {
     if (!splitByAction) {
@@ -450,10 +452,13 @@ function MojeOrdersViewContent({
     if (!activeFilter || filteredCount === 0) return;
     const first = filteredZamowienia[0]?.id ?? filteredInformacje[0]?.id;
     if (!first) return;
-    document.getElementById(cardDomId(first))?.scrollIntoView({
+    const el = document.getElementById(cardDomId(first));
+    if (!(el instanceof HTMLElement)) return;
+    el.scrollIntoView({
       behavior: "smooth",
       block: "nearest",
     });
+    el.focus({ preventScroll: true });
   }, [activeFilter, filteredCount, filteredZamowienia, filteredInformacje]);
 
   const cardDescription = pageDescription ?? MOJE_INTRO;
@@ -495,8 +500,13 @@ function MojeOrdersViewContent({
             }
             icon={<IconClipboardList size={28} strokeWidth={1.75} />}
           />
+          {showProsbaCta ? (
+            <div className="border-t border-slate-100 px-3 py-4 sm:px-4">
+              <MojeOrdersEmptyGuide showActions />
+            </div>
+          ) : null}
         </Card>
-        <MojeOrdersEmptyGuide showActions={showProsbaCta} />
+        {!showProsbaCta ? <MojeOrdersEmptyGuide showActions={false} /> : null}
         <MyOrderArchiveSection
           rowsRecent={archiwumRecentFiltered}
           rowsExtended={archiwumExtendedFiltered}
@@ -552,17 +562,25 @@ function MojeOrdersViewContent({
           onFilterChange={setActiveFilter}
         />
 
+        <MojeStickyPickupBar
+          count={
+            !activeFilter || activeFilter === "pickup" || activeFilter === "action_group"
+              ? inboxSummary.pickupCount
+              : 0
+          }
+          onShowPickup={() => setActiveFilter("pickup")}
+        />
+
         {inboxSummary.pickupCount > 0 && !activeFilter ? (
           <p className="flex items-start gap-2 border-b border-emerald-100 bg-emerald-50/80 px-3 py-2 text-xs font-medium text-emerald-900 sm:px-4">
             <IconPackageCheck
               size={16}
               strokeWidth={2}
               className="mt-0.5 shrink-0 text-emerald-700"
+              aria-hidden
             />
             <span>
-            {inboxSummary.pickupCount === 1
-              ? "1 prośba do odbioru — potwierdź odbiór zielonym przyciskiem po prawej stronie wiersza."
-              : `${formatProsbaCount(inboxSummary.pickupCount)} do odbioru — filtr „Odbiór” zawęzi listę.`}
+              Potwierdź odbiór zielonym przyciskiem — na liście lub w zielonym pasku u góry.
             </span>
           </p>
         ) : null}
@@ -614,10 +632,10 @@ function MojeOrdersViewContent({
 
         <div className="space-y-4 p-3 sm:p-4">
         {splitByAction && actionCount > 0 ? (
-          <div className={mojeShipmentSectionShellClass}>
+          <div className={mojeShipmentSectionShellClass} aria-labelledby="moje-section-action">
             <ListSectionLabel
               title="Do potwierdzenia"
-              hint="Kliknij strzałkę przy wierszu, żeby zobaczyć produkty. Potwierdź odbiór lub powiadomienie zielonym przyciskiem po prawej."
+              hint="Kliknij strzałkę przy wierszu, żeby zobaczyć produkty. Potwierdź odbiór lub powiadomienie zielonym przyciskiem."
               count={actionCount}
               accent="emerald"
               icon="action"

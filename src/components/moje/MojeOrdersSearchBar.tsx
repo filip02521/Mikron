@@ -100,7 +100,7 @@ export function MojeOrdersSearchBar({
         ) : null}
       </div>
       {active ? (
-        <p className="mt-2 text-xs leading-relaxed text-slate-600">
+        <p className="mt-2 text-xs leading-relaxed text-slate-600" aria-live="polite">
           Aktywne:{" "}
           <span className="font-semibold tabular-nums text-slate-900">{matchCount}</span>
           {" z "}
@@ -124,11 +124,15 @@ export function MojeOrdersSearchBar({
           )}
         </p>
       ) : (
-        <p className="mt-2 hidden text-xs text-slate-500 sm:block">
-          Wpisz fragment nazwy towaru, dostawcy lub klienta. Skrót:{" "}
-          <kbd className="rounded border border-slate-200 bg-slate-50 px-1 font-mono text-[10px]">
-            /
-          </kbd>
+        <p className="mt-2 text-xs text-slate-500">
+          Szukaj po produkcie, dostawcy, kliencie lub symbolu.
+          <span className="hidden sm:inline">
+            {" "}
+            Skrót:{" "}
+            <kbd className="rounded border border-slate-200 bg-slate-50 px-1 font-mono text-[10px]">
+              /
+            </kbd>
+          </span>
         </p>
       )}
     </div>

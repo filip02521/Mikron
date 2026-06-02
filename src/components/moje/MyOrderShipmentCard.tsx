@@ -13,10 +13,12 @@ import {
   myOrderNeedsExpand,
 } from "@/lib/orders/my-order-row-layout";
 import { myOrderMetaFields } from "@/lib/orders/my-order-sales-ui";
+import { myOrderFriendlyStatusHint } from "@/lib/orders/my-order-friendly-status";
 import { MyOrderAckButton } from "@/components/moje/MyOrderAckButton";
 import { MyOrderAssignedClient } from "@/components/moje/MyOrderAssignedClient";
 import { MyOrderLineItem } from "@/components/moje/MyOrderLineItem";
 import { MyOrderShipmentOverflowMenu } from "@/components/moje/MyOrderShipmentOverflowMenu";
+import { MyOrderHeadlineBanner } from "@/components/moje/MyOrderHeadlineBanner";
 import { MyOrderStatusPill } from "@/components/moje/MyOrderStatusPill";
 import { cn } from "@/lib/cn";
 import { brandLinkSubtleClass } from "@/lib/ui/ontime-theme";
@@ -81,6 +83,7 @@ function ShipmentToolbar({
   showSinglePickup,
   showBulkPickup,
   showDismissAck,
+  hideSinglePickup = false,
   ackShortLabel,
   ackFullTitle,
   dismissAckLabel,
@@ -98,6 +101,7 @@ function ShipmentToolbar({
   showSinglePickup: boolean;
   showBulkPickup: boolean;
   showDismissAck: boolean;
+  hideSinglePickup?: boolean;
   ackShortLabel: string;
   ackFullTitle: string;
   dismissAckLabel: string;
@@ -112,7 +116,10 @@ function ShipmentToolbar({
   tourPreview?: boolean;
 }) {
   const hasToolbar =
-    overflowMenu || showSinglePickup || showBulkPickup || showDismissAck;
+    overflowMenu ||
+    showDismissAck ||
+    showBulkPickup ||
+    (showSinglePickup && !hideSinglePickup);
   if (!hasToolbar) return null;
 
   return (
@@ -129,7 +136,7 @@ function ShipmentToolbar({
           {dismissAckLabel}
         </MyOrderAckButton>
       ) : null}
-      {showSinglePickup ? (
+      {showSinglePickup && !hideSinglePickup ? (
         <MyOrderAckButton
           variant={isAction ? "action" : "inline"}
           disabled={pending}
@@ -216,7 +223,6 @@ export function MyOrderShipmentCard({
 
   const headline = row.headline ?? row.statusTitle;
   const headlineTone = row.headlineTone ?? "neutral";
-  const kindLabel = row.kind === "informacja" ? "Informacja" : "Zamówienie";
 
   const needsAck =
     row.acknowledgeMode === "pickup" || row.acknowledgeMode === "availability";
@@ -344,12 +350,39 @@ export function MyOrderShipmentCard({
     />
   ) : null;
 
+  const kindShort = row.kind === "informacja" ? "Info." : "Zam.";
+  const statusHint = myOrderFriendlyStatusHint(row.statusTitle);
+
+  const showHeadlineBanner =
+    !expanded &&
+    (headlineTone === "action" ||
+      headlineTone === "warning" ||
+      headlineTone === "success" ||
+      isAction ||
+      isUrgent);
+
+  const bannerAckInHeadline = showHeadlineBanner && Boolean(showSinglePickup);
+
+  const bannerAction = bannerAckInHeadline ? (
+    <MyOrderAckButton
+      variant="banner"
+      disabled={pending}
+      preview={tourPreview}
+      title={ackFullTitle}
+      ariaLabel={ackFullTitle}
+      onClick={() => onAcknowledgePickup(row.pickupPendingIds)}
+    >
+      {ackShortLabel}
+    </MyOrderAckButton>
+  ) : undefined;
+
   const toolbar = (
     <ShipmentToolbar
       overflowMenu={overflowMenu}
       showSinglePickup={Boolean(showSinglePickup)}
       showBulkPickup={Boolean(showBulkPickup)}
       showDismissAck={Boolean(showDismissAck)}
+      hideSinglePickup={bannerAckInHeadline}
       ackShortLabel={ackShortLabel}
       ackFullTitle={ackFullTitle}
       dismissAckLabel={dismissAckLabel}
@@ -406,9 +439,18 @@ export function MyOrderShipmentCard({
   return (
     <li
       id={domId}
+      tabIndex={-1}
       className={mojeShipmentRowClass({ expanded, isAction, isUrgent, isInformacja })}
     >
-      <div className="flex min-h-[2.75rem] items-center gap-1 px-2 py-1.5 sm:gap-2 sm:px-3 sm:py-2">
+      {showHeadlineBanner ? (
+        <MyOrderHeadlineBanner
+          headline={headline}
+          subline={statusHint ?? collapsedSubline}
+          tone={headlineTone}
+          action={bannerAction}
+        />
+      ) : null}
+      <div className="flex min-h-[2.75rem] items-center gap-1 px-2 py-1.5 sm:min-h-[3rem] sm:gap-2 sm:px-3 sm:py-2">
         <button
           type="button"
           onClick={handleToggle}
@@ -421,7 +463,7 @@ export function MyOrderShipmentCard({
               : row.supplierName
           }
           className={cn(
-            "flex h-8 w-8 shrink-0 items-center justify-center text-slate-500",
+            "flex h-10 w-10 shrink-0 items-center justify-center text-slate-500 sm:h-8 sm:w-8",
             needsExpand && "hover:bg-slate-100 hover:text-indigo-700"
           )}
         >
@@ -444,17 +486,26 @@ export function MyOrderShipmentCard({
               searchQuery={searchQuery}
               className="truncate text-sm font-semibold text-slate-900"
             />
-            <span className="hidden shrink-0 text-[0.6rem] font-semibold uppercase tracking-wide text-slate-400 sm:inline">
-              {kindLabel}
+            <span
+              className={cn(
+                "shrink-0 rounded px-1 py-0.5 text-[0.65rem] font-semibold uppercase tracking-wide",
+                isInformacja
+                  ? "bg-violet-100 text-violet-800"
+                  : "bg-slate-100 text-slate-600"
+              )}
+            >
+              {kindShort}
             </span>
           </div>
-          <SearchHighlightText
-            text={headline}
-            searchQuery={searchQuery}
-            className={headlineClass}
-            as="p"
-          />
-          {!expanded && collapsedSubline ? (
+          {!showHeadlineBanner ? (
+            <SearchHighlightText
+              text={headline}
+              searchQuery={searchQuery}
+              className={headlineClass}
+              as="p"
+            />
+          ) : null}
+          {!showHeadlineBanner && !expanded && collapsedSubline ? (
             <SearchHighlightText
               text={collapsedSubline}
               searchQuery={searchQuery}
