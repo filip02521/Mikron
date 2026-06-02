@@ -436,16 +436,20 @@ export function MyOrderShipmentCard({
     !isAction && !isUrgent && "text-slate-600"
   );
 
+  const bannerSubline =
+    collapsedSubline && statusHint
+      ? `${collapsedSubline} · ${statusHint}`
+      : collapsedSubline ?? statusHint;
+
   return (
     <li
       id={domId}
-      tabIndex={-1}
       className={mojeShipmentRowClass({ expanded, isAction, isUrgent, isInformacja })}
     >
       {showHeadlineBanner ? (
         <MyOrderHeadlineBanner
           headline={headline}
-          subline={statusHint ?? collapsedSubline}
+          subline={bannerSubline}
           tone={headlineTone}
           action={bannerAction}
         />
@@ -453,6 +457,7 @@ export function MyOrderShipmentCard({
       <div className="flex min-h-[2.75rem] items-center gap-1 px-2 py-1.5 sm:min-h-[3rem] sm:gap-2 sm:px-3 sm:py-2">
         <button
           type="button"
+          data-moje-row-toggle=""
           onClick={handleToggle}
           disabled={!needsExpand}
           aria-expanded={needsExpand ? expanded : undefined}

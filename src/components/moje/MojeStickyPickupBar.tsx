@@ -1,6 +1,7 @@
 "use client";
 
 import { IconPackageCheck } from "@/components/icons/StrokeIcons";
+import { formatPickupBarLabel } from "@/lib/orders/my-order-plural";
 import { cn } from "@/lib/cn";
 
 export function MojeStickyPickupBar({
@@ -14,9 +15,6 @@ export function MojeStickyPickupBar({
 }) {
   if (count <= 0) return null;
 
-  const label =
-    count === 1 ? "1 prośba do odbioru" : `${count} prośby do odbioru`;
-
   return (
     <div
       className={cn(
@@ -27,7 +25,7 @@ export function MojeStickyPickupBar({
     >
       <div className="flex min-w-0 items-center gap-2 text-sm font-medium">
         <IconPackageCheck size={18} strokeWidth={2.25} className="shrink-0" aria-hidden />
-        <span className="truncate">{label}</span>
+        <span className="truncate">{formatPickupBarLabel(count)}</span>
       </div>
       <button
         type="button"

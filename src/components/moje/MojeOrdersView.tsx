@@ -15,6 +15,7 @@ import { MojeClientKhFilterBanner } from "@/components/moje/MojeClientKhFilterBa
 import { MojeOrdersSearchBar, MojeOrdersSearchEmptyHint } from "@/components/moje/MojeOrdersSearchBar";
 import { useMojeOrdersSearch } from "@/components/moje/useMojeOrdersSearch";
 import { sortMyOrderRows, summarizeMyOrdersInbox } from "@/lib/orders/my-order-sales-ui";
+import { formatProsbaCount } from "@/lib/orders/my-order-plural";
 import { INFORMACJA_FLOW_MY_ORDERS_HINT } from "@/lib/orders/informacja-flow-copy";
 import { Alert } from "@/components/ui/Alert";
 import { MyOrderArchiveSection } from "@/components/moje/MyOrderArchiveSection";
@@ -27,7 +28,6 @@ import { Card, CardHeader } from "@/components/ui/Card";
 import { EmptyState } from "@/components/ui/EmptyState";
 import {
   IconClipboardList,
-  IconPackageCheck,
   MojeSectionIcon,
   type MojeSectionIconKind,
   mojeSectionIconTileClass,
@@ -44,14 +44,6 @@ function cardDomId(rowId: string) {
 
 const MOJE_INTRO =
   "Tu śledzisz swoje prośby — co jest do odbioru, co czeka u dostawcy i co obserwujemy na magazynie.";
-
-function formatProsbaCount(n: number): string {
-  if (n === 1) return "1 prośba";
-  const mod10 = n % 10;
-  const mod100 = n % 100;
-  if (mod10 >= 2 && mod10 <= 4 && (mod100 < 12 || mod100 > 14)) return `${n} prośby`;
-  return `${n} prośb`;
-}
 
 function prosbaUnitLabel(n: number): string {
   return formatProsbaCount(n).replace(/^\d+\s+/, "");
@@ -452,7 +444,9 @@ function MojeOrdersViewContent({
     if (!activeFilter || filteredCount === 0) return;
     const first = filteredZamowienia[0]?.id ?? filteredInformacje[0]?.id;
     if (!first) return;
-    const el = document.getElementById(cardDomId(first));
+    const el =
+      document.querySelector<HTMLElement>(`#${cardDomId(first)} [data-moje-row-toggle]`) ??
+      document.getElementById(cardDomId(first));
     if (!(el instanceof HTMLElement)) return;
     el.scrollIntoView({
       behavior: "smooth",
@@ -502,7 +496,7 @@ function MojeOrdersViewContent({
           />
           {showProsbaCta ? (
             <div className="border-t border-slate-100 px-3 py-4 sm:px-4">
-              <MojeOrdersEmptyGuide showActions />
+              <MojeOrdersEmptyGuide showActions embedded />
             </div>
           ) : null}
         </Card>
@@ -527,7 +521,7 @@ function MojeOrdersViewContent({
 
   return (
     <div className="space-y-5">
-      <Card padding={false} className="overflow-hidden">
+      <Card padding={false}>
         <CardHeader
           inset
           title={pageTitle}
@@ -570,20 +564,6 @@ function MojeOrdersViewContent({
           }
           onShowPickup={() => setActiveFilter("pickup")}
         />
-
-        {inboxSummary.pickupCount > 0 && !activeFilter ? (
-          <p className="flex items-start gap-2 border-b border-emerald-100 bg-emerald-50/80 px-3 py-2 text-xs font-medium text-emerald-900 sm:px-4">
-            <IconPackageCheck
-              size={16}
-              strokeWidth={2}
-              className="mt-0.5 shrink-0 text-emerald-700"
-              aria-hidden
-            />
-            <span>
-              Potwierdź odbiór zielonym przyciskiem — na liście lub w zielonym pasku u góry.
-            </span>
-          </p>
-        ) : null}
 
         {searchActive && searchMatchCount === 0 && !archiveMatchCount ? (
           <MojeOrdersSearchEmptyHint

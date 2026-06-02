@@ -289,4 +289,16 @@ describe("myOrderRowSearchText", () => {
     expect(myOrderRowSearchText(row({ supplierName: "X", product: "Y" }))).toContain("x");
     expect(myOrderRowSearchText(row({ supplierName: "X", product: "Y" }))).toContain("y");
   });
+
+  it("indeksuje przyjazną etykietę statusu", () => {
+    const text = myOrderRowSearchText(row({ statusTitle: "W dziale dostaw" }));
+    expect(text).toContain("sprawdzamy twoja prosbe");
+  });
+});
+
+describe("filterMyOrderRowsBySearch friendly status", () => {
+  it("znajduje po przyjaznej etykiecie statusu", () => {
+    const rows = [row({ id: "v", statusTitle: "W dziale dostaw", supplierName: "Acme" })];
+    expect(filterMyOrderRowsBySearch(rows, "sprawdzamy").map((r) => r.id)).toEqual(["v"]);
+  });
 });

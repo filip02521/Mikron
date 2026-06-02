@@ -33,12 +33,9 @@ function GuidePoint({
   );
 }
 
-/** Onboarding przy pustej skrzynce — punkty 5 z planu UX. */
-export function MojeOrdersEmptyGuide({ showActions = true }: { showActions?: boolean }) {
+function GuideContent({ showActions = true }: { showActions?: boolean }) {
   return (
-    <Card className="relative overflow-hidden px-4 py-5 sm:px-6">
-      <BrandCardAccent className="absolute -right-6 -top-6 h-28 w-36 opacity-90" />
-      <div className="relative z-[1]">
+    <>
       <h3 className="text-sm font-semibold text-slate-900">Jak działa ta zakładka?</h3>
       <ul className="mt-3 space-y-3">
         <GuidePoint
@@ -81,6 +78,34 @@ export function MojeOrdersEmptyGuide({ showActions = true }: { showActions?: boo
           </Link>
         </div>
       ) : null}
+    </>
+  );
+}
+
+/** Onboarding przy pustej skrzynce. */
+export function MojeOrdersEmptyGuide({
+  showActions = true,
+  embedded = false,
+}: {
+  showActions?: boolean;
+  embedded?: boolean;
+}) {
+  if (embedded) {
+    return (
+      <div className="relative overflow-hidden rounded-md border border-slate-200/80 bg-slate-50/50 px-4 py-4">
+        <BrandCardAccent className="absolute -right-6 -top-6 h-24 w-32 opacity-80" />
+        <div className="relative z-[1]">
+          <GuideContent showActions={showActions} />
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <Card className="relative overflow-hidden px-4 py-5 sm:px-6">
+      <BrandCardAccent className="absolute -right-6 -top-6 h-28 w-36 opacity-90" />
+      <div className="relative z-[1]">
+        <GuideContent showActions={showActions} />
       </div>
     </Card>
   );

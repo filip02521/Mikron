@@ -13,6 +13,8 @@ const FRIENDLY_STATUS: Record<string, string> = {
   Dostępne: "Towar dostępny u dostawcy",
   Anulowano: "Prośba anulowana",
   Anulowane: "Prośba anulowana",
+  "Rezygnacja — towar w drodze": "Rezygnacja — towar w drodze od dostawcy",
+  "Rezygnacja — towar na magazynie": "Rezygnacja — towar czeka na magazynie",
 };
 
 export function myOrderFriendlyStatusLabel(statusTitle: string): string {

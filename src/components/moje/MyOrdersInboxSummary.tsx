@@ -116,6 +116,22 @@ export function MyOrdersInboxSummary({
   const showActionSub = activeGroup === "action";
   const showWatchSub = activeGroup === "watch";
 
+  function toggleActionGroup() {
+    if (activeFilter === "action_group") {
+      onFilterChange(null);
+    } else {
+      onFilterChange("action_group");
+    }
+  }
+
+  function toggleWatchGroup() {
+    if (activeFilter === "watch_group") {
+      onFilterChange(null);
+    } else {
+      onFilterChange("watch_group");
+    }
+  }
+
   const chipProps = {
     activeFilter,
     onSelect: onFilterChange,
@@ -128,21 +144,13 @@ export function MyOrdersInboxSummary({
           count={actionCount}
           label="Wymaga reakcji"
           active={activeFilter === "action_group" || showActionSub}
-          onClick={() =>
-            onFilterChange(
-              activeFilter === "action_group" || showActionSub ? null : "action_group"
-            )
-          }
+          onClick={toggleActionGroup}
         />
         <GroupChip
           count={watchCount}
           label="W toku"
           active={activeFilter === "watch_group" || showWatchSub}
-          onClick={() =>
-            onFilterChange(
-              activeFilter === "watch_group" || showWatchSub ? null : "watch_group"
-            )
-          }
+          onClick={toggleWatchGroup}
         />
         {activeFilter ? (
           <button

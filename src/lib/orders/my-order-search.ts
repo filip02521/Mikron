@@ -1,4 +1,5 @@
 import type { MyOrderLine, MyOrderRow } from "@/lib/orders/my-order-presenter";
+import { myOrderFriendlyStatusLabel } from "@/lib/orders/my-order-friendly-status";
 
 const POLISH_FOLD_MAP: Record<string, string> = {
   ą: "a",
@@ -33,6 +34,7 @@ export function myOrderRowSearchText(row: MyOrderRow): string {
     row.symbol ?? "",
     row.clientLabel ?? "",
     row.statusTitle,
+    myOrderFriendlyStatusLabel(row.statusTitle),
     row.statusDetail ?? "",
     row.timingLabel ?? "",
     row.headline ?? "",
