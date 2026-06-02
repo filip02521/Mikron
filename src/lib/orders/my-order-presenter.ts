@@ -88,6 +88,7 @@ export type MyOrderLine = {
   /** Pozycja gotowa do potwierdzenia odbioru / powiadomienia. */
   canAcknowledgePickup: boolean;
   clientName: string | null;
+  clientKhId: number | null;
 };
 
 type MyOrderRowCore = {
@@ -206,6 +207,10 @@ function rowToLine(
     stockStatus: lineStockStatus(order),
     canAcknowledgePickup: canAcknowledgePickupForOrder(order),
     clientName: order.sales_client_name?.trim() || null,
+    clientKhId:
+      order.sales_client_kh_id != null && Number.isFinite(Number(order.sales_client_kh_id))
+        ? Math.trunc(Number(order.sales_client_kh_id))
+        : null,
   };
 }
 

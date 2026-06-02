@@ -275,6 +275,7 @@ export async function batchAddIndividualOrders(
     quantity?: string;
     requestKind?: IndividualRequestKind;
     clientName?: string;
+    clientKhId?: number | null;
     subiektTwId?: number | null;
     informacjaQueueViaDailyPanel?: boolean;
   }>,
@@ -426,6 +427,8 @@ export async function batchAddIndividualOrders(
         submission_group_id: submissionGroupId,
         created_by: createdBy ?? null,
         sales_client_name: normalizeSalesClientName(e.clientName),
+        sales_client_kh_id:
+          e.clientKhId != null && e.clientKhId > 0 ? Math.trunc(e.clientKhId) : null,
         subiekt_tw_id:
           draft.subiektTwId != null && draft.subiektTwId > 0 ? draft.subiektTwId : null,
         mikran_code: sanitized.mikranCode?.trim() || null,
@@ -697,6 +700,10 @@ export async function updateIndividualRequestGroup(
       request_kind: kind,
       status,
       sales_client_name: normalizeSalesClientName(line.clientName),
+      sales_client_kh_id:
+        line.clientKhId != null && line.clientKhId > 0
+          ? Math.trunc(line.clientKhId)
+          : null,
       subiekt_tw_id:
         line.subiektTwId != null && line.subiektTwId > 0 ? line.subiektTwId : null,
       mikran_code: sanitized.mikranCode?.trim() || null,
@@ -1053,6 +1060,24 @@ async function applyDeliveredQuantityUpdate(
 
   await supabase.from("individual_orders").update(update).eq("id", orderId);
 
+  const deliveredNow =
+    (status === "Zrealizowane" || status === "Czesciowo_zrealizowane") &&
+    prevStatus !== status;
+  if (deliveredNow) {
+    try {
+      const { syncZkWatchLineChecksFromDeliveredOrder } = await import(
+        "@/lib/sales/zk-watch-order-sync"
+      );
+      await syncZkWatchLineChecksFromDeliveredOrder({
+        ...order,
+        status,
+        delivered_quantity: finalDelivered,
+      });
+    } catch (e) {
+      console.error("[syncZkWatchLineChecksFromDeliveredOrder]", e);
+    }
+  }
+
   let statsUpdated = false;
   if (status === "Zrealizowane" && prevStatus !== "Zrealizowane") {
     statsUpdated = true;
@@ -1336,6 +1361,23 @@ export async function processMarkedDeliveries(): Promise<ProcessDeliveriesResult
 
     processed++;
 
+    const finalQty =
+      status === "Zrealizowane" && !isNaN(ordered) ? String(ordered) : deliveredQty;
+    try {
+      const { syncZkWatchLineChecksFromDeliveredOrder } = await import(
+        "@/lib/sales/zk-watch-order-sync"
+      );
+      await syncZkWatchLineChecksFromDeliveredOrder({
+        ...order,
+        status,
+        delivered_quantity: finalQty,
+        delivery_at: updatePayload.delivery_at,
+        warehouse_shelf: updatePayload.warehouse_shelf,
+      });
+    } catch (e) {
+      console.error("[processMarkedDeliveries syncZkWatchLineChecks]", order.id, e);
+    }
+
     const placement = orderPlacementAt(order);
     const orderDate = placement ? parseDateOnly(placement) : null;
     const groupKey = `${order.supplier_id}|${orderDate?.toISOString().slice(0, 10)}`;
@@ -1365,8 +1407,6 @@ export async function processMarkedDeliveries(): Promise<ProcessDeliveriesResult
           items: [],
         });
       }
-      const finalQty =
-        status === "Zrealizowane" && !isNaN(ordered) ? String(ordered) : deliveredQty;
       const item = buildDeliveryNotificationItem(
         { ...order, status, delivered_quantity: finalQty },
         { deliveredQuantity: finalQty }

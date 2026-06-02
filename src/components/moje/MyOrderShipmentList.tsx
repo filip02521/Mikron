@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useMemo, useState, useTransition } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import type { MyOrderRow } from "@/lib/orders/my-order-presenter";
 import { sortMyOrderRows } from "@/lib/orders/my-order-sales-ui";
@@ -32,6 +32,10 @@ import {
   type EditIndividualRequestInitial,
 } from "@/components/orders/EditIndividualRequestModal";
 import { editInitialFromMyOrderRow } from "@/lib/orders/individual-request-edit-ui";
+import {
+  searchQueryTokens,
+  shouldAutoExpandOrderLinesForSearch,
+} from "@/lib/orders/my-order-search";
 import { cn } from "@/lib/cn";
 
 type UndoState = {
@@ -53,6 +57,7 @@ export function MyOrderShipmentList({
   suppliers = [],
   embedded = false,
   continuation = false,
+  searchQuery,
   tourPreview = false,
 }: {
   rows: MyOrderRow[];
@@ -65,6 +70,7 @@ export function MyOrderShipmentList({
   embedded?: boolean;
   /** Kolejna lista w tej samej sekcji — separator u góry. */
   continuation?: boolean;
+  searchQuery?: string | null;
   tourPreview?: boolean;
 }) {
   const router = useRouter();
@@ -89,6 +95,44 @@ export function MyOrderShipmentList({
   const collapseAll = useCallback(() => {
     setExpandedIds(new Set());
   }, []);
+
+  const searchActive = searchQueryTokens(searchQuery).length > 0;
+  /** Stan rozwinięć sprzed pierwszego znaku wyszukiwania — przywracany po wyczyszczeniu. */
+  const preSearchExpandedRef = useRef<Set<string> | null>(null);
+  const searchExpandedIdsRef = useRef<Set<string>>(new Set());
+
+  useEffect(() => {
+    if (!searchActive) {
+      if (preSearchExpandedRef.current !== null) {
+        setExpandedIds(new Set(preSearchExpandedRef.current));
+        preSearchExpandedRef.current = null;
+      }
+      searchExpandedIdsRef.current = new Set();
+      return;
+    }
+
+    const idsToExpand = new Set(
+      sortedRows
+        .filter((r) => shouldAutoExpandOrderLinesForSearch(r, searchQuery))
+        .map((r) => r.id)
+    );
+    const prevAuto = searchExpandedIdsRef.current;
+    const toCollapse = [...prevAuto].filter((id) => !idsToExpand.has(id));
+    const toExpand = [...idsToExpand].filter((id) => !prevAuto.has(id));
+    searchExpandedIdsRef.current = idsToExpand;
+
+    setExpandedIds((prev) => {
+      if (preSearchExpandedRef.current === null) {
+        preSearchExpandedRef.current = new Set(prev);
+      }
+      if (!toCollapse.length && !toExpand.length) return prev;
+      const next = new Set(prev);
+      for (const id of toCollapse) next.delete(id);
+      for (const id of toExpand) next.add(id);
+      return next;
+    });
+  }, [searchActive, searchQuery, sortedRows]);
+
   const [pending, start] = useTransition();
   const [pendingMessage, setPendingMessage] = useState<string | null>(null);
   const [undo, setUndo] = useState<UndoState | null>(null);
@@ -382,6 +426,7 @@ export function MyOrderShipmentList({
                   }
                 : undefined
             }
+            searchQuery={searchQuery}
             tourPreview={tourPreview}
           />
         ))}

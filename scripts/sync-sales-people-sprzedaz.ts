@@ -16,9 +16,9 @@ import {
   normalizeSalesAlias,
   SALES_SHEET_ALIASES,
 } from "./lib/sales-person-import";
+import { parseSalesPersonAndClient } from "../src/lib/sales/sales-person-alias";
 
-const DEFAULT_CSV =
-  "/Users/Filip/Downloads/System Dostaw v.9 Synchronizacja DK z HI, Częściowa realizacja - SPRZEDAŻ.csv";
+export { parseSalesPersonAndClient };
 
 function normalizeKey(name: string): string {
   return name.trim().toUpperCase();
@@ -32,19 +32,8 @@ function resolveCanonicalName(raw: string): string {
   return normalizeSalesAlias(trimmed) ?? trimmed;
 }
 
-export function parseSalesPersonAndClient(raw: string): {
-  salesName: string;
-  clientName: string | null;
-} {
-  const trimmed = raw.trim();
-  if (!trimmed.includes("/")) {
-    return { salesName: resolveCanonicalName(trimmed), clientName: null };
-  }
-  const parts = trimmed.split("/").map((p) => p.trim());
-  const salesName = resolveCanonicalName(parts[0] ?? "");
-  const clientName = parts.slice(1).join(" / ").trim() || null;
-  return { salesName, clientName };
-}
+const DEFAULT_CSV =
+  "/Users/Filip/Downloads/System Dostaw v.9 Synchronizacja DK z HI, Częściowa realizacja - SPRZEDAŻ.csv";
 
 type CanonicalRow = { name: string; email: string };
 

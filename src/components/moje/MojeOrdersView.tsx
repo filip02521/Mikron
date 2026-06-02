@@ -1,13 +1,19 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { Suspense, useEffect, useMemo, useState } from "react";
 import type { MyOrderRow } from "@/lib/orders/my-order-presenter";
 import {
   filterMyOrderRows,
   partitionMyOrderRowsBySalesAction,
   type MyOrderInboxFilter,
 } from "@/lib/orders/my-order-inbox-filter";
-import { filterMyOrderRowsByClient } from "@/lib/orders/my-order-client-filter";
+import {
+  filterMyOrderRowsByClientKh,
+  filterMyOrderRowsBySearch,
+} from "@/lib/orders/my-order-search";
+import { MojeClientKhFilterBanner } from "@/components/moje/MojeClientKhFilterBanner";
+import { MojeOrdersSearchBar, MojeOrdersSearchEmptyHint } from "@/components/moje/MojeOrdersSearchBar";
+import { useMojeOrdersSearch } from "@/components/moje/useMojeOrdersSearch";
 import { sortMyOrderRows, summarizeMyOrdersInbox } from "@/lib/orders/my-order-sales-ui";
 import { INFORMACJA_FLOW_MY_ORDERS_HINT } from "@/lib/orders/informacja-flow-copy";
 import { Alert } from "@/components/ui/Alert";
@@ -63,23 +69,40 @@ function MojeOrdersOverviewStats({
   lineCount,
   activeFilter,
   filteredCount,
+  searchActive,
+  archiveMatchCount = 0,
 }: {
   shipmentCount: number;
   lineCount: number;
   activeFilter: MyOrderInboxFilter | null;
   filteredCount: number;
+  searchActive: boolean;
+  archiveMatchCount?: number;
 }) {
+  const narrowed = activeFilter || searchActive;
   return (
     <div className="flex flex-wrap items-center gap-x-4 gap-y-2 border-b border-slate-100 bg-slate-50/60 px-4 py-3 sm:px-6">
-      {activeFilter ? (
+      {narrowed ? (
         <p className="text-xs leading-relaxed text-slate-600">
           Pokazano{" "}
           <span className="font-semibold tabular-nums text-slate-900">{filteredCount}</span>
           {" z "}
           <span className="font-semibold tabular-nums text-slate-900">{shipmentCount}</span>
-          <span className="ml-2 inline-flex rounded-full bg-indigo-100 px-2 py-0.5 text-[10px] font-semibold text-indigo-900">
-            filtr aktywny
-          </span>
+          {activeFilter ? (
+            <span className="ml-2 inline-flex rounded-full bg-indigo-100 px-2 py-0.5 text-[10px] font-semibold text-indigo-900">
+              filtr
+            </span>
+          ) : null}
+          {searchActive ? (
+            <span className="ml-2 inline-flex rounded-full bg-sky-100 px-2 py-0.5 text-[10px] font-semibold text-sky-900">
+              szukaj
+            </span>
+          ) : null}
+          {searchActive && archiveMatchCount ? (
+            <span className="ml-2 text-slate-500">
+              +{archiveMatchCount} w archiwum
+            </span>
+          ) : null}
         </p>
       ) : (
         <div className="flex flex-wrap items-center gap-3">
@@ -169,6 +192,7 @@ function MyOrderShipmentBlock({
   showProgress,
   canAcknowledge,
   suppliers,
+  searchQuery,
   embedded = false,
   continuation = false,
   tourPreview = false,
@@ -178,6 +202,7 @@ function MyOrderShipmentBlock({
   showProgress: boolean;
   canAcknowledge: boolean;
   suppliers: { id: string; name: string }[];
+  searchQuery?: string | null;
   embedded?: boolean;
   continuation?: boolean;
   tourPreview?: boolean;
@@ -191,6 +216,7 @@ function MyOrderShipmentBlock({
       canAcknowledge={canAcknowledge}
       cardIdPrefix={cardDomId}
       suppliers={suppliers}
+      searchQuery={searchQuery}
       embedded={embedded}
       continuation={continuation}
       tourPreview={tourPreview}
@@ -198,7 +224,7 @@ function MyOrderShipmentBlock({
   );
 }
 
-export function MojeOrdersView({
+function MojeOrdersViewContent({
   zamowienia,
   informacje,
   archiwumRecent = [],
@@ -211,7 +237,12 @@ export function MojeOrdersView({
   pageDescription,
   headerActions,
   subiektAvailability,
+  initialSearchQuery,
+  /** @deprecated użyj initialSearchQuery */
   initialClientQuery,
+  initialClientKhId,
+  initialClientKhLabel,
+  syncSearchUrl = true,
   tourPreview = false,
 }: {
   zamowienia: MyOrderRow[];
@@ -226,32 +257,88 @@ export function MojeOrdersView({
   pageDescription?: string;
   headerActions?: React.ReactNode;
   subiektAvailability?: SubiektAvailability;
+  initialSearchQuery?: string | null;
   initialClientQuery?: string | null;
+  initialClientKhId?: number | null;
+  /** Etykieta z ?klient= (link z notatnika ZK). */
+  initialClientKhLabel?: string | null;
+  syncSearchUrl?: boolean;
   tourPreview?: boolean;
 }) {
   const [activeFilter, setActiveFilter] = useState<MyOrderInboxFilter | null>(null);
-  const clientQuery = initialClientQuery?.trim() || null;
+  const initialQ = (initialSearchQuery ?? initialClientQuery ?? "").trim();
+  const clientKhFilter =
+    initialClientKhId != null && initialClientKhId > 0 ? initialClientKhId : null;
+  const { query: searchQuery, setQuery: setSearchQuery, trimmed: searchTrimmed } =
+    useMojeOrdersSearch(initialQ, syncSearchUrl && !tourPreview);
 
   const sortedZamowienia = useMemo(() => sortMyOrderRows(zamowienia), [zamowienia]);
   const sortedInformacje = useMemo(() => sortMyOrderRows(informacje), [informacje]);
 
-  const clientFilteredZamowienia = useMemo(
-    () => filterMyOrderRowsByClient(sortedZamowienia, clientQuery),
-    [sortedZamowienia, clientQuery]
+  const khFilteredZamowienia = useMemo(
+    () => filterMyOrderRowsByClientKh(sortedZamowienia, clientKhFilter),
+    [sortedZamowienia, clientKhFilter]
   );
-  const clientFilteredInformacje = useMemo(
-    () => filterMyOrderRowsByClient(sortedInformacje, clientQuery),
-    [sortedInformacje, clientQuery]
+  const khFilteredInformacje = useMemo(
+    () => filterMyOrderRowsByClientKh(sortedInformacje, clientKhFilter),
+    [sortedInformacje, clientKhFilter]
+  );
+
+  const searchFilteredZamowienia = useMemo(
+    () => filterMyOrderRowsBySearch(khFilteredZamowienia, searchQuery),
+    [khFilteredZamowienia, searchQuery]
+  );
+  const searchFilteredInformacje = useMemo(
+    () => filterMyOrderRowsBySearch(khFilteredInformacje, searchQuery),
+    [khFilteredInformacje, searchQuery]
   );
 
   const filteredZamowienia = useMemo(
-    () => filterMyOrderRows(clientFilteredZamowienia, activeFilter),
-    [clientFilteredZamowienia, activeFilter]
+    () => filterMyOrderRows(searchFilteredZamowienia, activeFilter),
+    [searchFilteredZamowienia, activeFilter]
   );
   const filteredInformacje = useMemo(
-    () => filterMyOrderRows(clientFilteredInformacje, activeFilter),
-    [clientFilteredInformacje, activeFilter]
+    () => filterMyOrderRows(searchFilteredInformacje, activeFilter),
+    [searchFilteredInformacje, activeFilter]
   );
+
+  const searchActive = searchTrimmed.length > 0;
+  const clientKhFilterActive = clientKhFilter != null;
+  const searchMatchCount = searchFilteredZamowienia.length + searchFilteredInformacje.length;
+
+  const archiveMatchCount = useMemo(() => {
+    const ids = new Set<string>();
+    const recentKh = filterMyOrderRowsByClientKh(archiwumRecent, clientKhFilter);
+    const extendedKh = filterMyOrderRowsByClientKh(archiwumExtended, clientKhFilter);
+    for (const row of filterMyOrderRowsBySearch(recentKh, searchQuery)) {
+      ids.add(row.id);
+    }
+    for (const row of filterMyOrderRowsBySearch(extendedKh, searchQuery)) {
+      ids.add(row.id);
+    }
+    return ids.size;
+  }, [archiwumRecent, archiwumExtended, searchQuery, clientKhFilter]);
+
+  const filteredLineCount = useMemo(() => {
+    if (!searchActive) {
+      return (
+        productLineCount ??
+        zamowienia.reduce((n, r) => n + r.lineCount, 0) +
+          informacje.reduce((n, r) => n + r.lineCount, 0)
+      );
+    }
+    return [...searchFilteredZamowienia, ...searchFilteredInformacje].reduce(
+      (n, r) => n + r.lineCount,
+      0
+    );
+  }, [
+    searchActive,
+    productLineCount,
+    zamowienia,
+    informacje,
+    searchFilteredZamowienia,
+    searchFilteredInformacje,
+  ]);
 
   const splitByAction = !activeFilter;
 
@@ -285,12 +372,79 @@ export function MojeOrdersView({
 
   const shipmentCount = zamowienia.length + informacje.length;
   const filteredCount = filteredZamowienia.length + filteredInformacje.length;
-  const lineCount =
-    productLineCount ??
-    zamowienia.reduce((n, r) => n + r.lineCount, 0) +
-      informacje.reduce((n, r) => n + r.lineCount, 0);
-
   const actionCount = actionZamowienia.length + actionInformacje.length;
+
+  const hasArchiveData = archiwumRecent.length > 0 || archiwumExtended.length > 0;
+  const archiwumRecentFiltered = useMemo(
+    () => filterMyOrderRowsByClientKh(archiwumRecent, clientKhFilter),
+    [archiwumRecent, clientKhFilter]
+  );
+  const archiwumExtendedFiltered = useMemo(
+    () => filterMyOrderRowsByClientKh(archiwumExtended, clientKhFilter),
+    [archiwumExtended, clientKhFilter]
+  );
+  const openArchiveForSearch =
+    (searchActive || clientKhFilterActive) &&
+    searchMatchCount === 0 &&
+    archiveMatchCount > 0;
+
+  const clientKhDisplayLabel = useMemo(() => {
+    if (!clientKhFilter) return null;
+    const urlLabel = (initialClientKhLabel ?? initialClientQuery ?? "").trim();
+    const rows = [
+      ...khFilteredZamowienia,
+      ...khFilteredInformacje,
+      ...archiwumRecentFiltered,
+      ...archiwumExtendedFiltered,
+    ];
+    for (const row of rows) {
+      for (const line of row.lines) {
+        if (line.clientKhId === clientKhFilter && line.clientName?.trim()) {
+          return line.clientName.trim();
+        }
+      }
+    }
+    return urlLabel || null;
+  }, [
+    clientKhFilter,
+    initialClientKhLabel,
+    initialClientQuery,
+    khFilteredZamowienia,
+    khFilteredInformacje,
+    archiwumRecentFiltered,
+    archiwumExtendedFiltered,
+  ]);
+
+  const clientKhBanner =
+    clientKhFilterActive && clientKhFilter != null ? (
+      <Suspense fallback={null}>
+        <MojeClientKhFilterBanner
+          clientKhId={clientKhFilter}
+          clientLabel={clientKhDisplayLabel}
+          matchCount={searchMatchCount}
+          syncUrl={syncSearchUrl && !tourPreview}
+        />
+      </Suspense>
+    ) : null;
+
+  const searchBar = (
+    <Suspense
+      fallback={
+        <div className="border-b border-slate-100 px-3 py-3 sm:px-4">
+          <div className="h-11 animate-pulse rounded-md bg-slate-100" />
+        </div>
+      }
+    >
+      <MojeOrdersSearchBar
+        value={searchQuery}
+        onChange={setSearchQuery}
+        matchCount={searchMatchCount}
+        totalCount={shipmentCount}
+        archiveMatchCount={archiveMatchCount}
+        enableShortcut={!tourPreview}
+      />
+    </Suspense>
+  );
 
   useEffect(() => {
     if (!activeFilter || filteredCount === 0) return;
@@ -327,17 +481,28 @@ export function MojeOrdersView({
           {subiektAvailability ? (
             <SubiektStatusBar initial={subiektAvailability} embedded />
           ) : null}
+          {hasArchiveData ? searchBar : null}
+          {clientKhBanner}
+          {searchActive && !archiveMatchCount ? (
+            <MojeOrdersSearchEmptyHint query={searchTrimmed} onClear={() => setSearchQuery("")} />
+          ) : null}
           <EmptyState
             title="Brak aktywnych prośb"
-            description={cardDescription}
+            description={
+              hasArchiveData && searchActive && archiveMatchCount > 0
+                ? "Brak aktywnych prośb pasujących do wyszukiwania — zobacz archiwum poniżej."
+                : cardDescription
+            }
             icon={<IconClipboardList size={28} strokeWidth={1.75} />}
           />
         </Card>
         <MojeOrdersEmptyGuide showActions={showProsbaCta} />
         <MyOrderArchiveSection
-          rowsRecent={archiwumRecent}
-          rowsExtended={archiwumExtended}
+          rowsRecent={archiwumRecentFiltered}
+          rowsExtended={archiwumExtendedFiltered}
           defaultOpen={tourPreview}
+          forceOpen={openArchiveForSearch}
+          searchQuery={searchQuery}
         />
       </div>
     );
@@ -346,6 +511,7 @@ export function MojeOrdersView({
   const listProps = {
     canAcknowledge,
     suppliers,
+    searchQuery,
     tourPreview,
   };
 
@@ -366,22 +532,19 @@ export function MojeOrdersView({
 
         <MojeOrdersOverviewStats
           shipmentCount={shipmentCount}
-          lineCount={lineCount}
+          lineCount={filteredLineCount}
           activeFilter={activeFilter}
           filteredCount={filteredCount}
+          searchActive={searchActive}
+          archiveMatchCount={archiveMatchCount}
         />
 
         {subiektAvailability ? (
           <SubiektStatusBar initial={subiektAvailability} embedded />
         ) : null}
 
-        {clientQuery ? (
-          <div className="border-b border-slate-100 px-3 py-2 sm:px-4">
-            <Alert tone="info">
-              Filtr klienta: <span className="font-semibold">{clientQuery}</span>
-            </Alert>
-          </div>
-        ) : null}
+        {searchBar}
+        {clientKhBanner}
 
         <MyOrdersInboxSummary
           summary={inboxSummary}
@@ -404,7 +567,26 @@ export function MojeOrdersView({
           </p>
         ) : null}
 
-        {activeFilter && filteredCount === 0 ? (
+        {searchActive && searchMatchCount === 0 && !archiveMatchCount ? (
+          <MojeOrdersSearchEmptyHint
+            query={searchTrimmed}
+            onClear={() => setSearchQuery("")}
+            hasInboxFilter={!!activeFilter}
+            onClearFilter={activeFilter ? () => setActiveFilter(null) : undefined}
+          />
+        ) : null}
+
+        {searchActive && searchMatchCount === 0 && archiveMatchCount > 0 ? (
+          <MojeOrdersSearchEmptyHint
+            query={searchTrimmed}
+            onClear={() => setSearchQuery("")}
+            hasInboxFilter={!!activeFilter}
+            onClearFilter={activeFilter ? () => setActiveFilter(null) : undefined}
+            archiveOnly
+          />
+        ) : null}
+
+        {activeFilter && filteredCount === 0 && !searchActive ? (
           <p className="border-b border-slate-100 px-3 py-3 text-sm text-slate-600 sm:px-4">
             Brak w tej kategorii.{" "}
             <button
@@ -413,6 +595,19 @@ export function MojeOrdersView({
               onClick={() => setActiveFilter(null)}
             >
               Pokaż wszystkie
+            </button>
+          </p>
+        ) : null}
+
+        {activeFilter && filteredCount === 0 && searchActive && searchMatchCount > 0 ? (
+          <p className="border-b border-slate-100 px-3 py-3 text-sm text-slate-600 sm:px-4">
+            Brak w tej kategorii przy aktywnym wyszukiwaniu.{" "}
+            <button
+              type="button"
+              className={brandLinkSubtleClass}
+              onClick={() => setActiveFilter(null)}
+            >
+              Pokaż wyniki wyszukiwania
             </button>
           </p>
         ) : null}
@@ -498,10 +693,34 @@ export function MojeOrdersView({
       </Card>
 
       <MyOrderArchiveSection
-        rowsRecent={archiwumRecent}
-        rowsExtended={archiwumExtended}
+        rowsRecent={archiwumRecentFiltered}
+        rowsExtended={archiwumExtendedFiltered}
         defaultOpen={tourPreview}
+        forceOpen={openArchiveForSearch}
+        searchQuery={searchQuery}
       />
     </div>
+  );
+}
+
+export function MojeOrdersView(
+  props: React.ComponentProps<typeof MojeOrdersViewContent>
+) {
+  return (
+    <Suspense
+      fallback={
+        <div className="space-y-5">
+          <Card padding={false} className="overflow-hidden">
+            <CardHeader inset title={props.pageTitle ?? "Moje zamówienia"} />
+            <div className="border-b border-slate-100 px-3 py-3 sm:px-4">
+              <div className="h-11 animate-pulse rounded-md bg-slate-100" />
+            </div>
+            <div className="px-4 py-12 text-center text-sm text-slate-500">Ładowanie…</div>
+          </Card>
+        </div>
+      }
+    >
+      <MojeOrdersViewContent {...props} />
+    </Suspense>
   );
 }

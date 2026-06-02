@@ -7,3 +7,21 @@ export function isManagedSalesPersonEmail(email: string | null | undefined): boo
   if (!e.includes("@")) return false;
   return !e.endsWith(SALES_PERSON_IMPORT_EMAIL_DOMAIN);
 }
+
+export function hasSalesTeamGroup(groupId: string | null | undefined): boolean {
+  return Boolean(groupId?.trim());
+}
+
+/** Widoczny w zespole, pickerach i listach — przypisana grupa + firmowy e-mail. */
+export function isTeamSalesPerson(row: {
+  name: string;
+  email: string;
+  groupId?: string | null;
+}): boolean {
+  return hasSalesTeamGroup(row.groupId) && isManagedSalesPersonEmail(row.email);
+}
+
+/** Karta bez grupy (zwykle import lub „Jan / Klinika”). */
+export function isUngroupedSalesPerson(row: { groupId?: string | null }): boolean {
+  return !hasSalesTeamGroup(row.groupId);
+}

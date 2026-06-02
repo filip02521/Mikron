@@ -40,7 +40,7 @@ describe("myOrderGroupKey", () => {
     expect(myOrderGroupKey(a)).toBe(myOrderGroupKey(b));
   });
 
-  it("groups ten lines in one open basket per supplier when legacy", () => {
+  it("groups open lines per supplier and status (legacy separate submits)", () => {
     const a = order({
       id: "1",
       status: "Nowe",
@@ -58,21 +58,50 @@ describe("myOrderGroupKey", () => {
     expect(myOrderGroupKey(a)).toBe(myOrderGroupKey(b));
   });
 
-  it("groups by placement_group_id when ordered from panel", () => {
-    const gid = "22222222-2222-2222-2222-222222222222";
-    const a = order({ id: "1", placement_group_id: gid });
+  it("groups Zamowione at same supplier regardless of placement time", () => {
+    const a = order({
+      id: "1",
+      ordered_at: "2026-05-02T10:00:00.000Z",
+      placement_group_id: "pg-a",
+    });
     const b = order({
       id: "2",
       products: "Inny",
-      placement_group_id: gid,
+      ordered_at: "2026-05-10T14:00:00.000Z",
+      placement_group_id: "pg-b",
     });
     expect(myOrderGroupKey(a)).toBe(myOrderGroupKey(b));
   });
 
-  it("groups by exact ordered_at when placement_group missing", () => {
-    const ts = "2026-05-02T10:00:00.000Z";
-    const a = order({ id: "1", ordered_at: ts });
-    const b = order({ id: "2", ordered_at: ts, products: "B" });
+  it("splits different statuses at same supplier", () => {
+    const zamowione = order({ id: "1", status: "Zamowione" });
+    const partial = order({ id: "2", status: "Czesciowo_zrealizowane" });
+    expect(myOrderGroupKey(zamowione)).not.toBe(myOrderGroupKey(partial));
+  });
+
+  it("splits different suppliers with same status", () => {
+    const a = order({ id: "1", supplier_id: "sup-a" });
+    const b = order({ id: "2", supplier_id: "sup-b" });
+    expect(myOrderGroupKey(a)).not.toBe(myOrderGroupKey(b));
+  });
+
+  it("groups informacja per supplier and status", () => {
+    const a = order({
+      id: "1",
+      request_kind: "informacja",
+      status: "Nowe",
+      ordered_at: null,
+      quantity: "-",
+    });
+    const b = order({
+      id: "2",
+      request_kind: "informacja",
+      status: "Nowe",
+      ordered_at: null,
+      quantity: "-",
+      products: "Inny towar",
+      action_at: "2026-05-05T12:00:00Z",
+    });
     expect(myOrderGroupKey(a)).toBe(myOrderGroupKey(b));
   });
 });
@@ -111,5 +140,14 @@ describe("groupOrdersForMyView", () => {
     expect(myOrderGroupKey(verification)).not.toBe(myOrderGroupKey(nowe));
     const groups = groupOrdersForMyView([verification, nowe]);
     expect(groups).toHaveLength(2);
+  });
+
+  it("merges multiple Zamowione batches from same supplier into one group", () => {
+    const groups = groupOrdersForMyView([
+      order({ id: "1", ordered_at: "2026-05-01T10:00:00Z" }),
+      order({ id: "2", ordered_at: "2026-05-08T10:00:00Z", products: "B" }),
+    ]);
+    expect(groups).toHaveLength(1);
+    expect(groups[0]).toHaveLength(2);
   });
 });

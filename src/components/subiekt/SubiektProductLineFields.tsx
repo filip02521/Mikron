@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useRef, useState, useTransition } from "react";
+import { useCallback, useEffect, useId, useRef, useState, useTransition } from "react";
+import type { KeyboardEvent, ReactNode } from "react";
 import { actionSubiektSuggestProducts } from "@/app/actions/subiekt";
 import type { IndividualRequestKind } from "@/types/database";
 import { Field, Input } from "@/components/ui/Field";
@@ -92,6 +93,37 @@ function subiektFieldLabel(field: ActiveField): string {
   return "Symbol";
 }
 
+const TYPEAHEAD_KEYBOARD_HINT = "↑↓ wybierz · Enter zatwierdź · Esc zamknij";
+
+function SubiektSearchFieldSlot({
+  field,
+  activeField,
+  panelVisible,
+  panel,
+  children,
+}: {
+  field: ActiveField;
+  activeField: ActiveField;
+  panelVisible: boolean;
+  panel: React.ReactNode;
+  children: ReactNode;
+}) {
+  const isActive = activeField === field;
+  const showChrome = isActive && panelVisible;
+
+  return (
+    <div
+      className={cn(
+        "relative rounded-md transition-[box-shadow]",
+        showChrome && "z-30 ring-2 ring-indigo-400/80 ring-offset-2"
+      )}
+    >
+      {children}
+      {isActive ? panel : null}
+    </div>
+  );
+}
+
 function prosbaFieldProps(
   key: keyof ProsbaLineFieldMap,
   validation?: ProsbaLineFieldMap
@@ -149,7 +181,9 @@ export function SubiektProductLineFields({
   lineIndex?: number;
 }) {
   const ref = useRef<HTMLDivElement>(null);
+  const typeaheadInstanceId = useId();
   const [enabled, setEnabled] = useState(false);
+  const [highlightedIndex, setHighlightedIndex] = useState(0);
   const [configFeedback, setConfigFeedback] = useState<SubiektFeedback | null>(null);
   const [activeField, setActiveField] = useState<ActiveField>("symbol");
   const [open, setOpen] = useState(false);
@@ -241,11 +275,24 @@ export function SubiektProductLineFields({
         setItems(res.items);
         setFeedback(res.feedback ?? null);
         setOpen(res.items.length > 0);
+        setHighlightedIndex(0);
       } finally {
         setStatus("idle");
       }
     });
   }, [debounced, enabled, linkedFromSubiekt, activeField, minQueryLen]);
+
+  useEffect(() => {
+    setHighlightedIndex(0);
+  }, [items, activeField]);
+
+  const typeaheadListVisible = open && items.length > 0;
+  const typeaheadPanelVisible =
+    enabled &&
+    !linkedFromSubiekt &&
+    (status === "loading" || typeaheadListVisible);
+
+  const listboxId = `${typeaheadInstanceId}-${activeField}`;
 
   const pick = (p: SubiektProduct) => {
     const patch = buildProductPickFromSubiekt(p, requestKind, value.quantity);
@@ -254,6 +301,7 @@ export function SubiektProductLineFields({
     setOpen(false);
     setItems([]);
     setStatus("idle");
+    setHighlightedIndex(0);
 
     if (!suppliers?.length || !onSupplierResolved) return;
 
@@ -321,6 +369,104 @@ export function SubiektProductLineFields({
     onChange(clearSubiekt ? { ...patch, subiektTwId: null } : patch);
   };
 
+  const handleTypeaheadKeyDown = useCallback(
+    (e: KeyboardEvent<HTMLInputElement>) => {
+      if (!enabled || linkedFromSubiekt) return;
+
+      const hasList = typeaheadListVisible;
+
+      if (e.key === "ArrowDown" && hasList) {
+        e.preventDefault();
+        setHighlightedIndex((i) => Math.min(i + 1, items.length - 1));
+        return;
+      }
+      if (e.key === "ArrowUp" && hasList) {
+        e.preventDefault();
+        setHighlightedIndex((i) => Math.max(i - 1, 0));
+        return;
+      }
+      if (e.key === "Enter" && hasList) {
+        e.preventDefault();
+        e.stopPropagation();
+        const chosen = items[highlightedIndex];
+        if (chosen) pick(chosen);
+        return;
+      }
+      if (
+        e.key === "Escape" &&
+        (hasList || status === "loading" || open)
+      ) {
+        e.preventDefault();
+        e.stopPropagation();
+        setOpen(false);
+        setHighlightedIndex(0);
+      }
+    },
+    [
+      enabled,
+      linkedFromSubiekt,
+      typeaheadListVisible,
+      items,
+      highlightedIndex,
+      status,
+      open,
+      pick,
+    ]
+  );
+
+  const typeaheadInputA11y = (field: ActiveField) => {
+    const isActive = activeField === field;
+    const fieldPanelOpen = isActive && typeaheadPanelVisible;
+    return {
+      "aria-autocomplete": "list" as const,
+      "aria-expanded": fieldPanelOpen,
+      "aria-controls": fieldPanelOpen ? listboxId : undefined,
+      "aria-activedescendant":
+        isActive && typeaheadListVisible
+          ? `${listboxId}-opt-${highlightedIndex}`
+          : undefined,
+    };
+  };
+
+  const renderTypeaheadPanel = (field: ActiveField) => {
+    if (activeField !== field || !typeaheadPanelVisible) return null;
+
+    const resultLabel =
+      items.length === 1 ? "1 wynik" : `${items.length} wyników`;
+
+    return (
+      <TypeaheadDropdown
+        open
+        listboxId={listboxId}
+        emptyMessage={status === "loading" ? "Szukam w Subiekcie…" : undefined}
+        footer={typeaheadListVisible ? TYPEAHEAD_KEYBOARD_HINT : undefined}
+      >
+        {typeaheadListVisible ? (
+          <>
+            <TypeaheadSectionLabel>
+              Subiekt — {typeaheadSectionLabel(field)} · {resultLabel}
+            </TypeaheadSectionLabel>
+            {items.map((p, index) => {
+              const { title, subtitle } = formatSubiektProductOption(p);
+              return (
+                <TypeaheadOption
+                  key={p.tw_Id}
+                  optionId={`${listboxId}-opt-${index}`}
+                  title={title}
+                  subtitle={subtitle}
+                  badge="towar"
+                  highlighted={highlightedIndex === index}
+                  onHighlight={() => setHighlightedIndex(index)}
+                  onSelect={() => pick(p)}
+                />
+              );
+            })}
+          </>
+        ) : null}
+      </TypeaheadDropdown>
+    );
+  };
+
   const showError = feedback && feedback.tone !== "info";
   const showInfo = feedback && feedback.tone === "info" && items.length === 0;
   const productFieldFeedback =
@@ -355,13 +501,7 @@ export function SubiektProductLineFields({
     ) {
       prosbaMessageItems.push({
         kind: "hint",
-        text: deferSupplierResolve
-          ? isInformacja
-            ? "Wpisz symbol, kod Mikran lub nazwę, aby wyszukać w Subiekcie."
-            : "Wpisz symbol, kod Mikran lub nazwę, aby wyszukać w Subiekcie."
-          : isInformacja
-            ? "Wpisz symbol, kod Mikran lub nazwę, aby wyszukać w Subiekcie."
-            : "Wpisz symbol, kod Mikran lub nazwę, aby wyszukać w Subiekcie.",
+        text: "Wpisz symbol, kod Mikran lub nazwę — lista pojawi się pod polem. Strzałki ↑↓ i Enter wybierają towar z Subiekta.",
       });
     }
   }
@@ -379,7 +519,12 @@ export function SubiektProductLineFields({
             : undefined
         }
       >
-        <div className="relative">
+        <SubiektSearchFieldSlot
+          field="symbol"
+          activeField={activeField}
+          panelVisible={typeaheadPanelVisible}
+          panel={renderTypeaheadPanel("symbol")}
+        >
           <Input
             disabled={disabled}
             placeholder="np. ABC"
@@ -387,6 +532,8 @@ export function SubiektProductLineFields({
             value={value.symbol}
             autoComplete="off"
             state={symbolField.state}
+            onKeyDown={handleTypeaheadKeyDown}
+            {...typeaheadInputA11y("symbol")}
             onChange={(e) => {
               manualPatch({ symbol: e.target.value }, true);
               setActiveField("symbol");
@@ -402,7 +549,7 @@ export function SubiektProductLineFields({
             linked={linkedFromSubiekt}
             loading={activeField === "symbol" && status === "loading"}
           />
-        </div>
+        </SubiektSearchFieldSlot>
       </Field>
 
       <Field
@@ -416,7 +563,12 @@ export function SubiektProductLineFields({
             : undefined
         }
       >
-        <div className="relative">
+        <SubiektSearchFieldSlot
+          field="plu"
+          activeField={activeField}
+          panelVisible={typeaheadPanelVisible}
+          panel={renderTypeaheadPanel("plu")}
+        >
           <Input
             disabled={disabled}
             placeholder="np. 896"
@@ -425,6 +577,8 @@ export function SubiektProductLineFields({
             value={value.mikranCode}
             autoComplete="off"
             state={mikranField.state}
+            onKeyDown={handleTypeaheadKeyDown}
+            {...typeaheadInputA11y("plu")}
             onChange={(e) => {
               manualPatch({ mikranCode: e.target.value }, true);
               setActiveField("plu");
@@ -440,7 +594,7 @@ export function SubiektProductLineFields({
             linked={linkedFromSubiekt}
             loading={activeField === "plu" && status === "loading"}
           />
-        </div>
+        </SubiektSearchFieldSlot>
       </Field>
     </div>
   );
@@ -462,7 +616,12 @@ export function SubiektProductLineFields({
                 : undefined
             }
           >
-            <div className="relative">
+            <SubiektSearchFieldSlot
+              field="name"
+              activeField={activeField}
+              panelVisible={typeaheadPanelVisible}
+              panel={renderTypeaheadPanel("name")}
+            >
               <Input
                 disabled={disabled}
                 placeholder={
@@ -476,6 +635,8 @@ export function SubiektProductLineFields({
                 value={value.product}
                 autoComplete="off"
                 state={productField.state}
+                onKeyDown={handleTypeaheadKeyDown}
+                {...typeaheadInputA11y("name")}
                 onChange={(e) => {
                   manualPatch({ product: e.target.value }, true);
                   setActiveField("name");
@@ -491,7 +652,7 @@ export function SubiektProductLineFields({
                 linked={linkedFromSubiekt}
                 loading={activeField === "name" && status === "loading"}
               />
-            </div>
+            </SubiektSearchFieldSlot>
           </Field>
           {!isInformacja ? (
             <Field
@@ -533,13 +694,20 @@ export function SubiektProductLineFields({
           )}
         >
           <Field label="Symbol">
-            <div className="relative">
+            <SubiektSearchFieldSlot
+              field="symbol"
+              activeField={activeField}
+              panelVisible={typeaheadPanelVisible}
+              panel={renderTypeaheadPanel("symbol")}
+            >
               <Input
                 disabled={disabled}
                 placeholder="np. ABC"
                 maxLength={MAX_SYMBOL_LEN}
                 value={value.symbol}
                 autoComplete="off"
+                onKeyDown={handleTypeaheadKeyDown}
+                {...typeaheadInputA11y("symbol")}
                 onChange={(e) => {
                   manualPatch({ symbol: e.target.value }, true);
                   setActiveField("symbol");
@@ -555,11 +723,16 @@ export function SubiektProductLineFields({
                 linked={linkedFromSubiekt}
                 loading={activeField === "symbol" && status === "loading"}
               />
-            </div>
+            </SubiektSearchFieldSlot>
           </Field>
 
           <Field label="Kod mikran">
-            <div className="relative">
+            <SubiektSearchFieldSlot
+              field="plu"
+              activeField={activeField}
+              panelVisible={typeaheadPanelVisible}
+              panel={renderTypeaheadPanel("plu")}
+            >
               <Input
                 disabled={disabled}
                 placeholder="np. 896"
@@ -567,6 +740,8 @@ export function SubiektProductLineFields({
                 maxLength={MAX_MIKRAN_CODE_LEN}
                 value={value.mikranCode}
                 autoComplete="off"
+                onKeyDown={handleTypeaheadKeyDown}
+                {...typeaheadInputA11y("plu")}
                 onChange={(e) => {
                   manualPatch({ mikranCode: e.target.value }, true);
                   setActiveField("plu");
@@ -582,14 +757,19 @@ export function SubiektProductLineFields({
                 linked={linkedFromSubiekt}
                 loading={activeField === "plu" && status === "loading"}
               />
-            </div>
+            </SubiektSearchFieldSlot>
           </Field>
 
           <Field
             label={isInformacja ? "Produkt (co ma być na stanie)" : "Produkty"}
             className={cn(productFieldClassName, "sm:col-span-2 lg:col-span-1")}
           >
-            <div className="relative">
+            <SubiektSearchFieldSlot
+              field="name"
+              activeField={activeField}
+              panelVisible={typeaheadPanelVisible}
+              panel={renderTypeaheadPanel("name")}
+            >
               <Input
                 disabled={disabled}
                 placeholder={
@@ -602,6 +782,8 @@ export function SubiektProductLineFields({
                 maxLength={MAX_PRODUCT_TEXT_LEN}
                 value={value.product}
                 autoComplete="off"
+                onKeyDown={handleTypeaheadKeyDown}
+                {...typeaheadInputA11y("name")}
                 onChange={(e) => {
                   manualPatch({ product: e.target.value }, true);
                   setActiveField("name");
@@ -617,7 +799,7 @@ export function SubiektProductLineFields({
                 linked={linkedFromSubiekt}
                 loading={activeField === "name" && status === "loading"}
               />
-            </div>
+            </SubiektSearchFieldSlot>
           </Field>
 
           {!isInformacja ? (
@@ -644,28 +826,6 @@ export function SubiektProductLineFields({
 
       {enabled ? (
         <>
-          <TypeaheadDropdown
-            open={open && items.length > 0}
-            className="left-0 right-0 z-20"
-            emptyMessage={status === "loading" ? "Szukam w Subiekcie…" : undefined}
-          >
-            <TypeaheadSectionLabel>
-              Subiekt — {typeaheadSectionLabel(activeField)}
-            </TypeaheadSectionLabel>
-            {items.map((p) => {
-              const { title, subtitle } = formatSubiektProductOption(p);
-              return (
-                <TypeaheadOption
-                  key={p.tw_Id}
-                  title={title}
-                  subtitle={subtitle}
-                  badge="towar"
-                  onSelect={() => pick(p)}
-                />
-              );
-            })}
-          </TypeaheadDropdown>
-
           {!delegateAlerts && !prosba && !feedback && !resolvingSupplier && !linkedFromSubiekt ? (
             <p className="text-xs text-slate-400">
               Wpisz symbol, kod Mikran lub nazwę, aby wyszukać w Subiekcie.

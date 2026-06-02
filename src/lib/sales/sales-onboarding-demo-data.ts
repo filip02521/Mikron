@@ -56,6 +56,7 @@ function demoLine(
     stockStatus: extra.stockStatus ?? "waiting",
     canAcknowledgePickup: extra.canAcknowledgePickup ?? false,
     clientName: extra.clientName ?? null,
+    clientKhId: extra.clientKhId ?? null,
   };
 }
 
@@ -502,5 +503,33 @@ export function buildOnboardingNotepadDemo(salesPersonId: string): SalesNotepadD
       },
     ],
     archivedNotes: [],
+    zkLinkableOrders: [
+      {
+        id: "demo-link-open",
+        sales_person_id: salesPersonId,
+        sales_client_name: "Klinika Smile",
+        sales_client_kh_id: 8801,
+        subiekt_tw_id: 91001,
+        symbol: "FP-100",
+        products: "Filtr powietrza XYZ",
+        mikran_code: null,
+        status: "Zamowione",
+        sales_acknowledged_at: null,
+        sales_cancelled_at: null,
+      },
+      {
+        id: "demo-link-delivered",
+        sales_person_id: salesPersonId,
+        sales_client_name: "Gabinet stomatologiczny Dr Kowalski",
+        sales_client_kh_id: 8802,
+        subiekt_tw_id: 91002,
+        symbol: "UDS-01",
+        products: "Skaler ultradźwiękowy UDS",
+        mikran_code: null,
+        status: "Zrealizowane",
+        sales_acknowledged_at: null,
+        sales_cancelled_at: null,
+      },
+    ],
   };
 }

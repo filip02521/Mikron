@@ -3,7 +3,8 @@
 import { useEffect, useState } from "react";
 import type { IndividualRequestKind } from "@/types/database";
 import { Button } from "@/components/ui/Button";
-import { Field, Input } from "@/components/ui/Field";
+import { Field } from "@/components/ui/Field";
+import { SubiektClientNameField } from "@/components/subiekt/SubiektClientNameField";
 import { SubiektProductLineFields } from "@/components/subiekt/SubiektProductLineFields";
 import { ProsbaProductLineCollapsedRow } from "@/components/orders/ProsbaProductLineCollapsedRow";
 import { cn } from "@/lib/cn";
@@ -286,14 +287,12 @@ export function RequestProductLinesEditor({
 
             {showClientField ? (
               <Field label="Klient (opcjonalnie)" className={wrapLine ? "mt-2" : undefined}>
-                <Input
-                  placeholder="dla kogo jest ten towar — pojawi się w mailu po dostawie"
+                <SubiektClientNameField
                   maxLength={MAX_CLIENT_NAME_LEN}
                   value={line.clientName ?? ""}
-                  onChange={(e) =>
-                    onChange(
-                      updateProductLine(lines, index, { clientName: e.target.value })
-                    )
+                  clientKhId={line.clientKhId ?? null}
+                  onChange={({ clientName, clientKhId }) =>
+                    onChange(updateProductLine(lines, index, { clientName, clientKhId }))
                   }
                 />
               </Field>

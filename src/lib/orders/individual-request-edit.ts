@@ -18,6 +18,7 @@ export type IndividualRequestEditLineInput = {
   product?: string;
   quantity?: string;
   clientName?: string;
+  clientKhId?: number | null;
   subiektTwId?: number | null;
 };
 
@@ -36,6 +37,7 @@ export function ordersToEditLines(orders: IndividualOrder[]): IndividualRequestE
     product: o.products !== "Do uzupełnienia" ? o.products : "",
     quantity: o.quantity !== "-" ? o.quantity : "",
     clientName: o.sales_client_name ?? "",
+    clientKhId: o.sales_client_kh_id ?? null,
     subiektTwId: o.subiekt_tw_id ?? null,
   }));
 }

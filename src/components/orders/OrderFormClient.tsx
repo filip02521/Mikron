@@ -41,9 +41,12 @@ import {
 import { PROCUREMENT_TEAM_LABEL, PROCUREMENT_TEAM_LABEL_TITLE } from "@/lib/orders/procurement-copy";
 import { useSalesOnboardingDemo } from "@/components/sales/SalesOnboardingContext";
 import { buildOnboardingProsbaLines } from "@/lib/sales/sales-onboarding-demo-data";
+import { actionGetZkProsbaPrefill } from "@/app/actions/sales-notepad";
 import {
+  buildProsbaPrefillFromUrlParams,
   clearZkProsbaPrefill,
   readZkProsbaPrefill,
+  type ZkProsbaPrefill,
 } from "@/lib/orders/zk-watch-prosba-prefill";
 
 function groupCompletenessAssessment(
@@ -106,6 +109,7 @@ interface Entry {
   product: string;
   quantity: string;
   clientName?: string;
+  clientKhId?: number | null;
   subiektTwId?: number | null;
 }
 
@@ -203,26 +207,68 @@ export function OrderFormClient({
 
   useEffect(() => {
     if (tourDemo || !searchParams.get("fromZk")) return;
-    const prefill = readZkProsbaPrefill();
-    if (!prefill?.lines.length) return;
-    clearZkProsbaPrefill();
-    setRequestKind("zamowienie");
-    setValidationAttempted(false);
-    setFormNotice(null);
-    setMsg(null);
-    setGroups([
-      prefill.lines.map((line) => ({
-        id: line.id,
-        supplierId: "",
-        salesPersonId: lockedId,
-        symbol: line.symbol,
-        mikranCode: line.mikranCode,
-        product: line.product,
-        quantity: line.quantity,
-        clientName: prefill.clientName || line.clientName,
-        subiektTwId: line.subiektTwId ?? null,
-      })),
-    ]);
+
+    let cancelled = false;
+
+    function applyZkPrefill(prefill: ZkProsbaPrefill) {
+      if (!prefill.lines.length) return;
+      setRequestKind("zamowienie");
+      setValidationAttempted(false);
+      setFormNotice(null);
+      setMsg(null);
+      setGroups([
+        prefill.lines.map((line) => ({
+          id: line.id,
+          supplierId: "",
+          salesPersonId: lockedId,
+          symbol: line.symbol,
+          mikranCode: line.mikranCode,
+          product: line.product,
+          quantity: line.quantity,
+          clientName: prefill.clientName || line.clientName,
+          clientKhId: prefill.clientKhId ?? line.clientKhId ?? null,
+          subiektTwId: line.subiektTwId ?? null,
+        })),
+      ]);
+    }
+
+    async function loadZkPrefill() {
+      const fromStorage = readZkProsbaPrefill();
+      if (fromStorage?.lines.length) {
+        clearZkProsbaPrefill();
+        if (!cancelled) applyZkPrefill(fromStorage);
+        return;
+      }
+
+      const zk = searchParams.get("zk")?.trim();
+      const delegateId = searchParams.get("dla")?.trim() || lockedId;
+
+      if (zk) {
+        try {
+          const fromServer = await actionGetZkProsbaPrefill(zk, delegateId || undefined);
+          if (!cancelled && fromServer?.lines.length) {
+            applyZkPrefill(fromServer);
+            return;
+          }
+        } catch {
+          /* fallback do parametrów URL */
+        }
+      }
+
+      const fromUrl = buildProsbaPrefillFromUrlParams({
+        klient: searchParams.get("klient"),
+        kh: searchParams.get("kh"),
+        zk: searchParams.get("zk"),
+      });
+      if (!cancelled && fromUrl?.lines.length) {
+        applyZkPrefill(fromUrl);
+      }
+    }
+
+    void loadZkPrefill();
+    return () => {
+      cancelled = true;
+    };
   }, [lockedId, searchParams, tourDemo]);
 
   const supplierRefs = useMemo(() => toAppSupplierRefs(suppliers), [suppliers]);
@@ -433,6 +479,7 @@ export function OrderFormClient({
             quantity: requestKind === "informacja" ? undefined : e.quantity,
             requestKind,
             clientName: e.clientName,
+            clientKhId: e.clientKhId,
             subiektTwId: e.subiektTwId,
             informacjaQueueViaDailyPanel:
               requestKind === "informacja" && informacjaViaDailyPanel,

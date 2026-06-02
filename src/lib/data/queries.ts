@@ -375,9 +375,16 @@ export async function fetchSummary() {
 
 export async function fetchSalesPeople() {
   if (!hasSupabaseConfig()) return [];
+  const { isTeamSalesPerson } = await import("@/lib/sales/sales-person-catalog");
   const supabase = createAdminClient();
-  const { data } = await supabase.from("sales_people").select("*").order("name");
-  const rows = data ?? [];
+  const { data } = await supabase
+    .from("sales_people")
+    .select("*")
+    .not("group_id", "is", null)
+    .order("name");
+  const rows = (data ?? []).filter((p) =>
+    isTeamSalesPerson({ name: p.name, email: p.email, groupId: p.group_id })
+  );
   const byId = new Map<string, (typeof rows)[number]>();
   for (const row of rows) {
     if (!row.id || byId.has(row.id)) continue;

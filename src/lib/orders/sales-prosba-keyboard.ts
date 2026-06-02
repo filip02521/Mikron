@@ -5,6 +5,8 @@ export const SALES_PROSBA_KEYBOARD_HINTS: readonly KeyboardShortcutItem[] = [
   { keys: ["1"], label: "zamówienie" },
   { keys: ["2"], label: "dostępność" },
   { keys: ["+"], label: "kolejny produkt" },
+  { keys: ["↑", "↓"], label: "wybór z Subiekta" },
+  { keys: ["Enter"], label: "towar z listy" },
   { keys: ["Ctrl", "Enter"], label: "wyślij" },
 ];
 

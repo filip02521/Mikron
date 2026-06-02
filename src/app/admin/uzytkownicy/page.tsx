@@ -23,6 +23,7 @@ export default async function UzytkownicyPage({
   let salesPeople: { id: string; name: string; email: string }[] = [];
   let salesGroups: { id: string; name: string }[] = [];
   let initialManagerGroups: Record<string, string[]> = {};
+  let loadError: string | null = null;
 
   try {
     const [u, sp, groups, managerMap] = await Promise.all([
@@ -39,8 +40,8 @@ export default async function UzytkownicyPage({
     }));
     salesGroups = groups.map((g) => ({ id: g.id, name: g.name }));
     initialManagerGroups = Object.fromEntries(managerMap);
-  } catch {
-    /* empty */
+  } catch (e) {
+    loadError = e instanceof Error ? e.message : "Nie udało się wczytać listy kont.";
   }
 
   return (
@@ -50,6 +51,11 @@ export default async function UzytkownicyPage({
         description="Logowanie do systemu, role i hasła. Handlowiec musi mieć kartę w zakładce Handlowcy."
       />
       <AdminHubNav activeTab="users" />
+      {loadError ? (
+        <p className="mb-4 rounded-md border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">
+          {loadError}
+        </p>
+      ) : null}
       <UsersAdminClient
         initialUsers={users}
         salesPeople={salesPeople}

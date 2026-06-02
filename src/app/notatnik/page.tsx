@@ -86,6 +86,7 @@ export default async function NotatnikPage({
     archivedZkWatches: [],
     notes: [],
     archivedNotes: [],
+    zkLinkableOrders: [],
   } as Awaited<ReturnType<typeof fetchSalesNotepad>>;
 
   if (salesPersonId) {

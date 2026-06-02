@@ -74,6 +74,7 @@ export function testMyOrderLine(
     stockStatus: "waiting",
     canAcknowledgePickup: false,
     clientName: null,
+    clientKhId: null,
     ...partial,
   };
 }

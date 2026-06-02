@@ -1,6 +1,6 @@
 "use client";
 
-import { useId, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import type { MyOrderRow } from "@/lib/orders/my-order-presenter";
 import type { SalesCancelPhase } from "@/lib/orders/sales-cancel";
 import { shouldShowOrderStatusBadge } from "@/lib/orders/my-order-card-ui";
@@ -25,6 +25,11 @@ import {
   mojeShipmentLinesListClass,
   mojeShipmentRowClass,
 } from "@/lib/ui/moje-shipment-row-styles";
+import { SearchHighlightText } from "@/components/moje/SearchHighlightText";
+import {
+  rowSearchHighlightsProductLines,
+  searchQueryTokens,
+} from "@/lib/orders/my-order-search";
 
 function ChevronIcon({ open }: { open?: boolean }) {
   return (
@@ -44,8 +49,10 @@ function ChevronIcon({ open }: { open?: boolean }) {
 
 function MetaGrid({
   fields,
+  searchQuery,
 }: {
   fields: { label: string; value: string; emphasize?: boolean }[];
+  searchQuery?: string | null;
 }) {
   if (!fields.length) return null;
 
@@ -54,14 +61,15 @@ function MetaGrid({
       {fields.map((f) => (
         <div key={f.label} className="flex min-w-0 gap-2">
           <dt className="w-16 shrink-0 text-slate-400">{f.label}</dt>
-          <dd
+          <SearchHighlightText
+            text={f.value}
+            searchQuery={searchQuery}
+            as="dd"
             className={cn(
               "min-w-0 font-medium text-slate-800",
               f.emphasize && "text-amber-900"
             )}
-          >
-            {f.value}
-          </dd>
+          />
         </div>
       ))}
     </dl>
@@ -163,6 +171,7 @@ export function MyOrderShipmentCard({
   onCancelRequest,
   onSaveClient,
   onEditRequest,
+  searchQuery,
   tourPreview = false,
 }: {
   row: MyOrderRow;
@@ -179,11 +188,31 @@ export function MyOrderShipmentCard({
   onCancelRequest?: (orderIds: string[], phase: SalesCancelPhase) => void;
   onSaveClient?: (orderId: string, name: string | null) => void | Promise<void>;
   onEditRequest?: (row: MyOrderRow) => void;
+  searchQuery?: string | null;
   tourPreview?: boolean;
 }) {
   const panelId = useId();
+  const searchActive = searchQueryTokens(searchQuery).length > 0;
+  const searchShowsProductLines =
+    searchActive && expanded && rowSearchHighlightsProductLines(row, searchQuery);
   const [linesOpen, setLinesOpen] = useState(false);
+  const preSearchLinesOpenRef = useRef<boolean | null>(null);
   const [clientEditorLineId, setClientEditorLineId] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!searchActive) {
+      if (preSearchLinesOpenRef.current !== null) {
+        setLinesOpen(preSearchLinesOpenRef.current);
+        preSearchLinesOpenRef.current = null;
+      }
+      return;
+    }
+    if (!searchShowsProductLines) return;
+    setLinesOpen((prev) => {
+      if (preSearchLinesOpenRef.current === null) preSearchLinesOpenRef.current = prev;
+      return true;
+    });
+  }, [searchShowsProductLines, searchActive]);
 
   const headline = row.headline ?? row.statusTitle;
   const headlineTone = row.headlineTone ?? "neutral";
@@ -261,7 +290,8 @@ export function MyOrderShipmentCard({
   const expandHint = myOrderExpandHint(row, expandCtx);
   const productSummary = myOrderCollapsedProductSummary(row, listKind);
 
-  const visibleLines = linesOpen ? row.lines : row.lines.slice(0, 8);
+  const showAllProductLines = linesOpen || searchShowsProductLines;
+  const visibleLines = showAllProductLines ? row.lines : row.lines.slice(0, 8);
   const hasClient = Boolean(row.clientLabel || row.lines.some((l) => l.clientName?.trim()));
 
   const ensureExpanded = () => {
@@ -409,22 +439,33 @@ export function MyOrderShipmentCard({
           )}
         >
           <div className="flex min-w-0 items-baseline gap-2">
-            <span className="truncate text-sm font-semibold text-slate-900">
-              {row.supplierName}
-            </span>
+            <SearchHighlightText
+              text={row.supplierName}
+              searchQuery={searchQuery}
+              className="truncate text-sm font-semibold text-slate-900"
+            />
             <span className="hidden shrink-0 text-[0.6rem] font-semibold uppercase tracking-wide text-slate-400 sm:inline">
               {kindLabel}
             </span>
           </div>
-          <p className={headlineClass}>{headline}</p>
+          <SearchHighlightText
+            text={headline}
+            searchQuery={searchQuery}
+            className={headlineClass}
+            as="p"
+          />
           {!expanded && collapsedSubline ? (
-            <p className="mt-0.5 truncate text-[0.68rem] leading-snug text-slate-500">
-              {collapsedSubline}
-            </p>
+            <SearchHighlightText
+              text={collapsedSubline}
+              searchQuery={searchQuery}
+              className="mt-0.5 truncate text-[0.68rem] leading-snug text-slate-500"
+              as="p"
+            />
           ) : null}
           {!expanded && row.clientLabel ? (
             <MyOrderAssignedClient
               name={row.clientLabel}
+              searchQuery={searchQuery}
               className="mt-0.5 max-w-full truncate"
             />
           ) : null}
@@ -433,12 +474,18 @@ export function MyOrderShipmentCard({
         {!expanded ? (
           <div className="hidden min-w-0 max-w-[46%] shrink-0 flex-col items-end gap-1 sm:flex">
             {showStatusBadge ? (
-              <MyOrderStatusPill label={row.statusTitle} variant={row.badgeVariant} />
+              <MyOrderStatusPill
+                label={row.statusTitle}
+                variant={row.badgeVariant}
+                searchQuery={searchQuery}
+              />
             ) : null}
             {productSummary ? (
-              <span className="text-[0.65rem] font-medium tabular-nums text-slate-500">
-                {productSummary}
-              </span>
+              <SearchHighlightText
+                text={productSummary}
+                searchQuery={searchQuery}
+                className="text-[0.65rem] font-medium tabular-nums text-slate-500"
+              />
             ) : null}
           </div>
         ) : null}
@@ -451,10 +498,18 @@ export function MyOrderShipmentCard({
       {!expanded && (showStatusBadge || productSummary) ? (
         <div className="flex flex-wrap items-center gap-2 border-t border-slate-100/80 px-3 pb-1.5 pt-0 sm:hidden">
           {showStatusBadge ? (
-            <MyOrderStatusPill label={row.statusTitle} variant={row.badgeVariant} />
+            <MyOrderStatusPill
+              label={row.statusTitle}
+              variant={row.badgeVariant}
+              searchQuery={searchQuery}
+            />
           ) : null}
           {productSummary ? (
-            <span className="text-[0.65rem] font-medium text-slate-500">{productSummary}</span>
+            <SearchHighlightText
+              text={productSummary}
+              searchQuery={searchQuery}
+              className="text-[0.65rem] font-medium text-slate-500"
+            />
           ) : null}
         </div>
       ) : null}
@@ -467,15 +522,24 @@ export function MyOrderShipmentCard({
           className={mojeShipmentExpandedPanelClass}
         >
           {expandedNotes ? (
-            <p className="mb-2.5 text-xs leading-relaxed text-slate-600">{expandedNotes}</p>
+            <SearchHighlightText
+              text={expandedNotes}
+              searchQuery={searchQuery}
+              className="mb-2.5 text-xs leading-relaxed text-slate-600"
+              as="p"
+            />
           ) : null}
 
-          <MetaGrid fields={expandedMeta} />
+          <MetaGrid fields={expandedMeta} searchQuery={searchQuery} />
 
           {row.lineCount > 1 && row.clientLabel ? (
             <p className="mt-2 text-xs text-slate-500">
               <span className="text-slate-400">Klienci: </span>
-              <span className="font-medium text-slate-700">{row.clientLabel}</span>
+              <SearchHighlightText
+                text={row.clientLabel}
+                searchQuery={searchQuery}
+                className="font-medium text-slate-700"
+              />
               <span className="text-slate-400"> — szczegóły przy produktach poniżej</span>
             </p>
           ) : null}
@@ -492,7 +556,7 @@ export function MyOrderShipmentCard({
                     onClick={() => setLinesOpen((v) => !v)}
                     className={cn("text-[0.7rem] font-medium", brandLinkSubtleClass)}
                   >
-                    {linesOpen ? "Zwiń" : "Wszystkie"}
+                    {showAllProductLines ? "Zwiń" : "Wszystkie"}
                   </button>
                 ) : null}
               </div>
@@ -502,11 +566,12 @@ export function MyOrderShipmentCard({
                     key={line.id}
                     line={line}
                     index={i}
+                    searchQuery={searchQuery}
                     {...lineItemProps(line.id)}
                   />
                 ))}
               </ul>
-              {!linesOpen && row.lineCount > 8 ? (
+              {!showAllProductLines && row.lineCount > 8 ? (
                 <p className="border-t border-slate-100 px-2.5 py-1 text-[0.7rem] text-slate-500">
                   … +{row.lineCount - 8} poz.
                 </p>

@@ -6,6 +6,7 @@ export function prosbaHref(options?: {
   fromZk?: boolean;
   zk?: string;
   klient?: string;
+  clientKhId?: number | null;
 }): string {
   const params = new URLSearchParams();
   if (options?.salesPersonId) params.set("dla", options.salesPersonId);
@@ -13,6 +14,10 @@ export function prosbaHref(options?: {
   if (options?.fromZk) params.set("fromZk", "1");
   if (options?.zk?.trim()) params.set("zk", options.zk.trim());
   if (options?.klient?.trim()) params.set("klient", options.klient.trim().slice(0, 80));
+  const kh = options?.clientKhId;
+  if (kh != null && Number.isFinite(kh) && kh > 0) {
+    params.set("kh", String(Math.trunc(kh)));
+  }
   const query = params.toString();
   return query ? `/prosba?${query}` : "/prosba";
 }

@@ -5,6 +5,10 @@ import { MyOrderAssignedClient } from "@/components/moje/MyOrderAssignedClient";
 import { MyOrderLineClientField } from "@/components/moje/MyOrderLineClientField";
 import { MyOrderAckButton } from "@/components/moje/MyOrderAckButton";
 import { cn } from "@/lib/cn";
+import {
+  SearchHighlightJoined,
+  SearchHighlightText,
+} from "@/components/moje/SearchHighlightText";
 
 function stockBadge(status: MyOrderLineStockStatus): { label: string; className: string } | null {
   switch (status) {
@@ -44,6 +48,7 @@ export function MyOrderLineItem({
   openClientEditor = false,
   onStartEditClient,
   hideClientLabel = false,
+  searchQuery,
 }: {
   line: MyOrderLine;
   index: number;
@@ -61,6 +66,7 @@ export function MyOrderLineItem({
   onStartEditClient?: () => void;
   /** Gdy klient jest już w MetaGrid (1 produkt, bez edycji). */
   hideClientLabel?: boolean;
+  searchQuery?: string | null;
 }) {
   const badge = showProgress && emphasizeStock ? stockBadge(line.stockStatus) : null;
   const onStock = line.stockStatus === "on_stock";
@@ -84,7 +90,7 @@ export function MyOrderLineItem({
             {!compact ? (
               <span className="mr-1.5 tabular-nums text-slate-400">{index + 1}.</span>
             ) : null}
-            {line.product}
+            <SearchHighlightText text={line.product} searchQuery={searchQuery} />
           </p>
           {detail ? (
             <p
@@ -95,7 +101,10 @@ export function MyOrderLineItem({
                 emphasizeStock && partial && "font-medium text-amber-900"
               )}
             >
-              {detail}
+              <SearchHighlightJoined
+                parts={[line.symbol, line.quantityLabel, showProgress ? line.progressLabel : null]}
+                searchQuery={searchQuery}
+              />
             </p>
           ) : null}
           {canEditClient && onSaveClient && onStartEditClient ? (
@@ -110,6 +119,7 @@ export function MyOrderLineItem({
           ) : !hideClientLabel && line.clientName?.trim() ? (
             <MyOrderAssignedClient
               name={line.clientName}
+              searchQuery={searchQuery}
               className={cn("mt-0.5", !compact && "pl-5")}
             />
           ) : null}

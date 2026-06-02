@@ -13,15 +13,20 @@ export const NOTATNIK_ZK_LIST_CLASS = "divide-y divide-slate-100";
 export function zkWatchRowClass({
   followUpDue,
   archived,
+  orderDelivered,
 }: {
   followUpDue?: boolean;
   archived?: boolean;
+  /** Wszystkie pozycje towarowe dopasowane do dostarczonych prośb. */
+  orderDelivered?: boolean;
 }): string {
   const accent = archived
     ? "border-l-slate-300"
     : followUpDue
       ? "border-l-violet-500"
-      : "border-l-amber-400";
+      : orderDelivered
+        ? "border-l-emerald-500"
+        : "border-l-amber-400";
 
   return cn(
     "border-l-[3px] bg-white transition-colors",

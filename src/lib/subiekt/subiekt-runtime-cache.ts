@@ -1,5 +1,7 @@
 import {
   getSubiektDocument,
+  searchSubiektCustomers,
+  searchSubiektKontrahenci,
   searchSubiektSuppliers,
   searchSubiektZd,
   type SubiektListParams,
@@ -16,6 +18,7 @@ export const SUBIEKT_RUNTIME_CACHE_TTL_MS = 2 * 60 * 60 * 1000;
 const MAX_DOC_ENTRIES = 400;
 const MAX_LIST_ENTRIES = 200;
 const MAX_SUPPLIER_SEARCH_ENTRIES = 120;
+const MAX_CUSTOMER_SEARCH_ENTRIES = 120;
 
 /** Krótszy TTL — wyszukiwarka dostawcy przy prośbach. */
 export const SUBIEKT_SUPPLIER_SEARCH_TTL_MS = 30 * 60 * 1000;
@@ -31,6 +34,22 @@ const supplierSearchByKey = new Map<
   CacheEntry<SubiektListEnvelope<SubiektKontrahent>>
 >();
 const supplierSearchInflight = new Map<
+  string,
+  Promise<SubiektListEnvelope<SubiektKontrahent>>
+>();
+const customerSearchByKey = new Map<
+  string,
+  CacheEntry<SubiektListEnvelope<SubiektKontrahent>>
+>();
+const customerSearchInflight = new Map<
+  string,
+  Promise<SubiektListEnvelope<SubiektKontrahent>>
+>();
+const kontrahenciSearchByKey = new Map<
+  string,
+  CacheEntry<SubiektListEnvelope<SubiektKontrahent>>
+>();
+const kontrahenciSearchInflight = new Map<
   string,
   Promise<SubiektListEnvelope<SubiektKontrahent>>
 >();
@@ -144,6 +163,64 @@ export async function searchSubiektSuppliersCached(
   return load;
 }
 
+/** Wyszukiwanie odbiorców (klienci końcowi) — cache w procesie (typeahead). */
+export async function searchSubiektCustomersCached(
+  params: SubiektListParams
+): Promise<SubiektListEnvelope<SubiektKontrahent>> {
+  const key = `odbiorcy:${listCacheKey(params)}`;
+  const now = Date.now();
+  const hit = customerSearchByKey.get(key);
+  if (hit && hit.expiresAt > now) return hit.value;
+
+  const inflight = customerSearchInflight.get(key);
+  if (inflight) return inflight;
+
+  const load = searchSubiektCustomers(params)
+    .then((list) => {
+      customerSearchByKey.set(key, {
+        value: list,
+        expiresAt: Date.now() + SUBIEKT_SUPPLIER_SEARCH_TTL_MS,
+      });
+      pruneMap(customerSearchByKey, MAX_CUSTOMER_SEARCH_ENTRIES);
+      return list;
+    })
+    .finally(() => {
+      customerSearchInflight.delete(key);
+    });
+
+  customerSearchInflight.set(key, load);
+  return load;
+}
+
+/** Wyszukiwanie kartoteki kontrahentów — cache w procesie (fallback klientów). */
+export async function searchSubiektKontrahenciCached(
+  params: SubiektListParams
+): Promise<SubiektListEnvelope<SubiektKontrahent>> {
+  const key = `kontrahenci:${listCacheKey(params)}`;
+  const now = Date.now();
+  const hit = kontrahenciSearchByKey.get(key);
+  if (hit && hit.expiresAt > now) return hit.value;
+
+  const inflight = kontrahenciSearchInflight.get(key);
+  if (inflight) return inflight;
+
+  const load = searchSubiektKontrahenci(params)
+    .then((list) => {
+      kontrahenciSearchByKey.set(key, {
+        value: list,
+        expiresAt: Date.now() + SUBIEKT_SUPPLIER_SEARCH_TTL_MS,
+      });
+      pruneMap(kontrahenciSearchByKey, MAX_CUSTOMER_SEARCH_ENTRIES);
+      return list;
+    })
+    .finally(() => {
+      kontrahenciSearchInflight.delete(key);
+    });
+
+  kontrahenciSearchInflight.set(key, load);
+  return load;
+}
+
 /** Domyślny dolny zakres daty ZD — węższe wyszukiwanie niż cała historia. */
 export function defaultZdSearchDataOd(monthsBack = 18): string {
   const d = new Date();
@@ -157,4 +234,10 @@ export function clearSubiektRuntimeCache(): void {
   documentInflight.clear();
   zdListByKey.clear();
   zdListInflight.clear();
+  supplierSearchByKey.clear();
+  supplierSearchInflight.clear();
+  customerSearchByKey.clear();
+  customerSearchInflight.clear();
+  kontrahenciSearchByKey.clear();
+  kontrahenciSearchInflight.clear();
 }

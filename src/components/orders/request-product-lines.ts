@@ -9,6 +9,8 @@ export type ProductLineDraft = {
   product: string;
   quantity: string;
   clientName?: string;
+  /** kh_Id odbiorcy z Subiekta (opcjonalnie). */
+  clientKhId?: number | null;
   subiektTwId?: number | null;
 };
 

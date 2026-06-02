@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useRef } from "react";
 import { cn } from "@/lib/cn";
 
 export function TypeaheadDropdown({
@@ -7,25 +8,35 @@ export function TypeaheadDropdown({
   children,
   className,
   emptyMessage,
+  listboxId,
+  footer,
 }: {
   open: boolean;
   children: React.ReactNode;
   className?: string;
   emptyMessage?: string;
+  listboxId?: string;
+  footer?: React.ReactNode;
 }) {
   if (!open) return null;
 
   return (
     <ul
+      id={listboxId}
       role="listbox"
       className={cn(
-        "absolute z-50 mt-1 max-h-64 w-full overflow-auto rounded-md border border-slate-200 bg-white py-1 shadow-lg",
+        "absolute left-0 right-0 top-full z-50 mt-1 max-h-72 w-full overflow-auto rounded-lg border border-indigo-200/80 bg-white py-1 shadow-xl shadow-indigo-900/10 ring-1 ring-indigo-100",
         className
       )}
     >
       {children}
       {emptyMessage ? (
-        <li className="px-3 py-2 text-sm text-slate-500">{emptyMessage}</li>
+        <li className="px-3 py-2.5 text-sm text-slate-600">{emptyMessage}</li>
+      ) : null}
+      {footer ? (
+        <li className="sticky bottom-0 border-t border-slate-100 bg-slate-50/95 px-3 py-1.5 text-[10px] leading-snug text-slate-500">
+          {footer}
+        </li>
       ) : null}
     </ul>
   );
@@ -33,7 +44,7 @@ export function TypeaheadDropdown({
 
 export function TypeaheadSectionLabel({ children }: { children: React.ReactNode }) {
   return (
-    <li className="px-3 pb-0.5 pt-2 text-[10px] font-bold uppercase tracking-wider text-slate-400">
+    <li className="px-3 pb-0.5 pt-2 text-[10px] font-bold uppercase tracking-wider text-indigo-600/80">
       {children}
     </li>
   );
@@ -41,32 +52,56 @@ export function TypeaheadSectionLabel({ children }: { children: React.ReactNode 
 
 export function TypeaheadOption({
   onSelect,
+  onHighlight,
   title,
   subtitle,
   badge,
+  highlighted = false,
+  optionId,
 }: {
   onSelect: () => void;
+  onHighlight?: () => void;
   title: string;
   subtitle?: string;
   badge?: string;
+  highlighted?: boolean;
+  optionId?: string;
 }) {
+  const ref = useRef<HTMLButtonElement>(null);
+
+  useEffect(() => {
+    if (highlighted) {
+      ref.current?.scrollIntoView({ block: "nearest" });
+    }
+  }, [highlighted]);
+
   return (
-    <li role="option">
+    <li role="presentation">
       <button
+        id={optionId}
+        ref={ref}
         type="button"
-        className="flex w-full cursor-pointer flex-col gap-0.5 px-3 py-2 text-left text-sm hover:bg-indigo-50/80 focus:bg-indigo-50/80 focus:outline-none"
+        role="option"
+        aria-selected={highlighted}
+        className={cn(
+          "flex w-full cursor-pointer flex-col gap-0.5 px-3 py-2.5 text-left text-sm transition-colors",
+          highlighted
+            ? "bg-indigo-100 text-indigo-950 ring-1 ring-inset ring-indigo-200"
+            : "text-slate-900 hover:bg-indigo-50/80 focus:bg-indigo-50/80 focus:outline-none"
+        )}
         onMouseDown={(e) => e.preventDefault()}
+        onMouseEnter={onHighlight}
         onClick={onSelect}
       >
         <span className="flex items-start justify-between gap-2">
-          <span className="font-medium text-slate-900">{title}</span>
+          <span className="font-medium">{title}</span>
           {badge ? (
-            <span className="shrink-0 rounded-md bg-slate-100 px-1.5 py-0.5 text-[10px] font-semibold text-slate-600">
+            <span className="shrink-0 rounded-md bg-indigo-50 px-1.5 py-0.5 text-[10px] font-semibold text-indigo-800">
               {badge}
             </span>
           ) : null}
         </span>
-        {subtitle ? <span className="text-xs text-slate-500">{subtitle}</span> : null}
+        {subtitle ? <span className="text-xs text-slate-600">{subtitle}</span> : null}
       </button>
     </li>
   );

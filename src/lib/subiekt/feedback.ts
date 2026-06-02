@@ -225,3 +225,11 @@ export function notFoundSupplierFeedback(query: string): SubiektFeedback {
   });
 }
 
+export function notFoundClientFeedback(query: string): SubiektFeedback {
+  return getSubiektFeedback("not_found_supplier", {
+    title: "Nie znaleziono klienta",
+    message: `Brak odbiorcy w Subiekcie dla „${query}”.`,
+    hint: "Możesz wpisać dowolną nazwę ręcznie — pole jest opcjonalne.",
+  });
+}
+

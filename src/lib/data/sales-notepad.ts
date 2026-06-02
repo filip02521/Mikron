@@ -1,4 +1,5 @@
 import { createAdminClient } from "@/lib/supabase/admin";
+import type { ZkLinkableOrder } from "@/lib/sales/zk-watch-order-link";
 import type { SalesNote, SalesZkWatch } from "@/types/database";
 
 export type SalesNotepadData = {
@@ -6,7 +7,36 @@ export type SalesNotepadData = {
   archivedZkWatches: SalesZkWatch[];
   notes: SalesNote[];
   archivedNotes: SalesNote[];
+  /** Otwarte prośby handlowca — powiązanie z ZK (dostawa / podpowiedzi). */
+  zkLinkableOrders: ZkLinkableOrder[];
+  /** Brak kolumny sales_client_kh_id — uruchom migrację 052. */
+  zkOrdersMigrationMissing?: boolean;
 };
+
+const ZK_LINK_ORDER_SELECT =
+  "id, sales_person_id, sales_client_name, sales_client_kh_id, subiekt_tw_id, symbol, products, mikran_code, status, sales_acknowledged_at, sales_cancelled_at";
+
+export async function fetchZkLinkableOrdersForSalesPerson(
+  salesPersonId: string
+): Promise<{ orders: ZkLinkableOrder[]; migrationMissing: boolean }> {
+  const supabase = createAdminClient();
+  const { data, error } = await supabase
+    .from("individual_orders")
+    .select(ZK_LINK_ORDER_SELECT)
+    .eq("sales_person_id", salesPersonId)
+    .is("sales_cancelled_at", null)
+    .order("action_at", { ascending: false })
+    .limit(400);
+
+  if (error) {
+    if (error.message.includes("sales_client_kh_id")) {
+      return { orders: [], migrationMissing: true };
+    }
+    throw new Error(error.message);
+  }
+
+  return { orders: (data ?? []) as ZkLinkableOrder[], migrationMissing: false };
+}
 
 export function isZkWatchArchived(
   watch: Pick<SalesZkWatch, "closed_at" | "archived_at">
@@ -29,7 +59,7 @@ export async function fetchSalesNotepad(
 ): Promise<SalesNotepadData> {
   const supabase = createAdminClient();
 
-  const [watchesRes, notesRes] = await Promise.all([
+  const [watchesRes, notesRes, linkResult] = await Promise.all([
     supabase
       .from("sales_zk_watches")
       .select("*")
@@ -42,6 +72,7 @@ export async function fetchSalesNotepad(
       .order("pinned", { ascending: false })
       .order("sort_order", { ascending: true })
       .order("updated_at", { ascending: false }),
+    fetchZkLinkableOrdersForSalesPerson(salesPersonId),
   ]);
 
   if (watchesRes.error) throw new Error(watchesRes.error.message);
@@ -56,6 +87,8 @@ export async function fetchSalesNotepad(
     archivedZkWatches,
     notes: notes.filter((n) => !n.archived_at),
     archivedNotes: notes.filter((n) => n.archived_at),
+    zkLinkableOrders: linkResult.orders,
+    zkOrdersMigrationMissing: linkResult.migrationMissing,
   };
 }
 

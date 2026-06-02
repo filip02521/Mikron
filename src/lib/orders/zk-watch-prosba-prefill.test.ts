@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 import {
+  buildProsbaPrefillFromUrlParams,
   extractProsbaLinesFromZkWatch,
+  parseProsbaClientKhParam,
   prosbaHrefFromZkWatch,
 } from "./zk-watch-prosba-prefill";
 import type { SalesZkWatch } from "@/types/database";
@@ -38,6 +40,7 @@ describe("zk-watch-prosba-prefill", () => {
     expect(lines[0]?.symbol).toBe("FP-100");
     expect(lines[0]?.quantity).toBe("2");
     expect(lines[0]?.clientName).toBe("Klinika Smile");
+    expect(lines[0]?.clientKhId).toBe(1);
     expect(lines[0]?.subiektTwId).toBe(99);
   });
 
@@ -61,8 +64,27 @@ describe("zk-watch-prosba-prefill", () => {
   });
 
   it("prosbaHrefFromZkWatch buduje link z parametrami ZK", () => {
-    expect(prosbaHrefFromZkWatch(baseWatch)).toContain("fromZk=1");
-    expect(prosbaHrefFromZkWatch(baseWatch)).toContain("dla=sp1");
-    expect(prosbaHrefFromZkWatch(baseWatch)).toContain("zk=ZK%2F2026%2F0138");
+    const href = prosbaHrefFromZkWatch(baseWatch);
+    expect(href).toContain("fromZk=1");
+    expect(href).toContain("dla=sp1");
+    expect(href).toContain("zk=ZK%2F2026%2F0138");
+    expect(href).toContain("kh=1");
+  });
+
+  it("buildProsbaPrefillFromUrlParams buduje minimalny prefill", () => {
+    const prefill = buildProsbaPrefillFromUrlParams({
+      klient: "Klinika Smile",
+      kh: "42",
+      zk: "ZK/1",
+    });
+    expect(prefill?.clientName).toBe("Klinika Smile");
+    expect(prefill?.clientKhId).toBe(42);
+    expect(prefill?.lines[0]?.clientKhId).toBe(42);
+  });
+
+  it("parseProsbaClientKhParam odrzuca nieprawidłowe wartości", () => {
+    expect(parseProsbaClientKhParam("0")).toBeNull();
+    expect(parseProsbaClientKhParam("abc")).toBeNull();
+    expect(parseProsbaClientKhParam("99")).toBe(99);
   });
 });

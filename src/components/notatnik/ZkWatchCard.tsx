@@ -33,6 +33,7 @@ import {
   prosbaHrefFromZkWatch,
   stashZkProsbaPrefill,
 } from "@/lib/orders/zk-watch-prosba-prefill";
+import type { ZkWatchOrderHints } from "@/lib/sales/zk-watch-order-link";
 import type { SalesZkWatch } from "@/types/database";
 import { FollowUpQuickDates } from "./FollowUpQuickDates";
 import { ZkWatchLinesModal } from "./ZkWatchLinesModal";
@@ -62,6 +63,7 @@ function ChevronIcon({ open }: { open?: boolean }) {
 
 export function ZkWatchCard({
   watch,
+  orderHints,
   readOnly,
   tourPreview = false,
   onClosed,
@@ -72,6 +74,7 @@ export function ZkWatchCard({
   subiektReachable = true,
 }: {
   watch: SalesZkWatch;
+  orderHints?: ZkWatchOrderHints;
   readOnly?: boolean;
   tourPreview?: boolean;
   onClosed?: () => void;
@@ -110,7 +113,10 @@ export function ZkWatchCard({
   const followUpLabel = formatFollowUpLabel(watch.follow_up_at);
   const mojeClientHref = buildMojeClientLink(watch.sales_person_id, watch.client_label, {
     preview: readOnly || tourPreview,
+    clientKhId: watch.client_kh_id,
   });
+  const hasOpenMatchingProsba = (orderHints?.matchingOpenRequestCount ?? 0) > 0;
+  const allLinesFromOrders = orderHints?.allLinesMatchedByOrders ?? false;
   const prosbaHref = prosbaHrefFromZkWatch(watch);
   const canEdit = !readOnly && !tourPreview && !archived;
   const pending = closing || restoring || deleting || refreshing || savingNote || savingFollowUp;
@@ -237,7 +243,13 @@ export function ZkWatchCard({
   }
 
   return (
-    <article className={zkWatchRowClass({ followUpDue, archived })}>
+    <article
+      className={zkWatchRowClass({
+        followUpDue,
+        archived,
+        orderDelivered: !archived && allLinesFromOrders,
+      })}
+    >
       <div className="flex min-h-[2.75rem] items-center gap-1 px-2 py-1.5 sm:gap-1.5 sm:px-3">
         <button
           type="button"
@@ -295,6 +307,16 @@ export function ZkWatchCard({
         </div>
 
         <div className="flex shrink-0 items-center gap-1" onClick={(e) => e.stopPropagation()}>
+          {hasOpenMatchingProsba && !archived ? (
+            <Badge variant="info" className="hidden text-[9px] sm:inline-flex">
+              Prośba w toku
+            </Badge>
+          ) : null}
+          {allLinesFromOrders && !archived ? (
+            <Badge variant="success" className="hidden text-[9px] sm:inline-flex">
+              Towar z prośby
+            </Badge>
+          ) : null}
           {subiektStatus && subiektStatus !== "Aktywne" && !archived ? (
             <Badge variant="info" className="hidden text-[9px] sm:inline-flex">
               {subiektStatus}
@@ -438,6 +460,7 @@ export function ZkWatchCard({
         open={linesOpen}
         readOnly={readOnly}
         tourPreview={tourPreview}
+        matchedDeliveredLineKeys={orderHints?.matchedDeliveredLineKeys}
         onClose={() => setLinesOpen(false)}
         onSaved={(updated) => onRefreshed?.(updated)}
       />

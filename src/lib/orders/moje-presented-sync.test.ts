@@ -20,6 +20,7 @@ function minimalRow(overrides: Partial<MyOrderRow> = {}): MyOrderRow {
         stockStatus: "waiting",
         canAcknowledgePickup: false,
         clientName: null,
+        clientKhId: null,
       },
     ],
     submittedLabel: "01.05.2026",

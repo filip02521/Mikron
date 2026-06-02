@@ -28,6 +28,7 @@ function row(extra: Partial<MyOrderRow> = {}): MyOrderRow {
         progressLabel: null,
         stockStatus: "waiting",
         clientName: null,
+        clientKhId: null,
         canAcknowledgePickup: false,
       },
     ],

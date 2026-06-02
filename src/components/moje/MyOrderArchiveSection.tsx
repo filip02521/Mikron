@@ -1,8 +1,12 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import type { MyOrderRow } from "@/lib/orders/my-order-presenter";
 import { ARCHIVE_RECENT_DAYS } from "@/lib/orders/my-order-archive";
+import {
+  filterMyOrderRowsBySearch,
+  searchQueryTokens,
+} from "@/lib/orders/my-order-search";
 import { MyOrderShipmentList } from "@/components/moje/MyOrderShipmentList";
 import { Card, CardHeader } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
@@ -13,6 +17,8 @@ export function MyOrderArchiveSection({
   rowsRecent,
   rowsExtended,
   defaultOpen = false,
+  forceOpen = false,
+  searchQuery = "",
 }: {
   /** Potwierdzenia z ostatnich 7 dni. */
   rowsRecent: MyOrderRow[];
@@ -20,30 +26,88 @@ export function MyOrderArchiveSection({
   rowsExtended: MyOrderRow[];
   /** Tour / onboarding — sekcja rozwinięta od razu. */
   defaultOpen?: boolean;
+  /** Rozwiń gdy wynik jest tylko w archiwum. */
+  forceOpen?: boolean;
+  searchQuery?: string;
 }) {
-  const [open, setOpen] = useState(defaultOpen);
+  const [open, setOpen] = useState(defaultOpen || forceOpen);
   const [showMore, setShowMore] = useState(false);
+  const searchOpenedRef = useRef(false);
+  const searchShowMoreRef = useRef(false);
+  const preSearchOpenRef = useRef<boolean | null>(null);
+  const preSearchShowMoreRef = useRef<boolean | null>(null);
 
-  const hasRecent = rowsRecent.length > 0;
-  const hasExtended = rowsExtended.length > 0;
+  const filteredRecent = useMemo(
+    () => filterMyOrderRowsBySearch(rowsRecent, searchQuery),
+    [rowsRecent, searchQuery]
+  );
+  const filteredExtended = useMemo(
+    () => filterMyOrderRowsBySearch(rowsExtended, searchQuery),
+    [rowsExtended, searchQuery]
+  );
+
+  useEffect(() => {
+    if (forceOpen) {
+      setOpen((wasOpen) => {
+        if (preSearchOpenRef.current === null) preSearchOpenRef.current = wasOpen;
+        return true;
+      });
+      searchOpenedRef.current = true;
+      return;
+    }
+    const searchActive = searchQueryTokens(searchQuery).length > 0;
+    if (!searchActive && searchOpenedRef.current) {
+      setOpen(preSearchOpenRef.current ?? defaultOpen);
+      preSearchOpenRef.current = null;
+      searchOpenedRef.current = false;
+    }
+  }, [forceOpen, searchQuery, defaultOpen]);
+
+  useEffect(() => {
+    const searchActive = searchQueryTokens(searchQuery).length > 0;
+    if (!searchActive) {
+      if (searchShowMoreRef.current) {
+        setShowMore(preSearchShowMoreRef.current ?? false);
+        preSearchShowMoreRef.current = null;
+        searchShowMoreRef.current = false;
+      }
+      return;
+    }
+    if (filteredRecent.length > 0 || filteredExtended.length === 0) return;
+    setShowMore((wasMore) => {
+      if (preSearchShowMoreRef.current === null) preSearchShowMoreRef.current = wasMore;
+      searchShowMoreRef.current = true;
+      return true;
+    });
+  }, [searchQuery, filteredRecent.length, filteredExtended.length]);
+
+  const searchActive = searchQueryTokens(searchQuery).length > 0;
+
+  const hasRecent = filteredRecent.length > 0;
+  const hasExtended = filteredExtended.length > 0;
   const hasMoreToLoad =
-    rowsExtended.length > rowsRecent.length ||
-    rowsExtended.some((r) => !rowsRecent.some((x) => x.id === r.id));
+    filteredExtended.length > filteredRecent.length ||
+    filteredExtended.some((r) => !filteredRecent.some((x) => x.id === r.id));
 
-  if (!hasRecent && !hasExtended) return null;
+  if (!searchActive && !rowsRecent.length && !rowsExtended.length) return null;
+  if (searchActive && !hasRecent && !hasExtended) return null;
 
-  const visibleRows = showMore ? rowsExtended : rowsRecent;
+  const visibleRows = showMore ? filteredExtended : filteredRecent;
 
   const countLabel = (n: number) =>
     `${n} ${n === 1 ? "wpis" : n < 5 ? "wpisy" : "wpisów"}`;
 
   const description = open
     ? showMore
-      ? `${countLabel(rowsExtended.length)} z ostatnich 90 dni — tylko do wglądu`
+      ? `${countLabel(filteredExtended.length)} z ostatnich 90 dni — tylko do wglądu`
       : hasRecent
-        ? `${countLabel(rowsRecent.length)} z ostatnich ${ARCHIVE_RECENT_DAYS} dni — tylko do wglądu`
-        : `Brak wpisów z ostatnich ${ARCHIVE_RECENT_DAYS} dni`
-    : `Odebrane, wycofane i zakończone prośby z ostatnich ${ARCHIVE_RECENT_DAYS} dni`;
+        ? `${countLabel(filteredRecent.length)} z ostatnich ${ARCHIVE_RECENT_DAYS} dni — tylko do wglądu`
+        : searchActive
+          ? "Brak zakończonych prośb pasujących do wyszukiwania"
+          : `Brak wpisów z ostatnich ${ARCHIVE_RECENT_DAYS} dni`
+    : searchActive
+      ? "Zakończone prośby pasujące do wyszukiwania"
+      : `Odebrane, wycofane i zakończone prośby z ostatnich ${ARCHIVE_RECENT_DAYS} dni`;
 
   return (
     <div id="moje-ostatnio-zakonczone">
@@ -82,6 +146,7 @@ export function MyOrderArchiveSection({
               listKind={visibleRows[0]?.kind === "informacja" ? "informacja" : "zamowienie"}
               showProgress={false}
               canAcknowledge={false}
+              searchQuery={searchQuery}
             />
           ) : (
             <p className="px-4 py-6 text-sm text-slate-500">
@@ -101,7 +166,7 @@ export function MyOrderArchiveSection({
               >
                 {showMore
                   ? "Pokaż tylko ostatnie 7 dni"
-                  : `Pokaż więcej (${countLabel(rowsExtended.length)} z 90 dni)`}
+                  : `Pokaż więcej (${countLabel(filteredExtended.length)} z 90 dni)`}
               </Button>
             </div>
           ) : null}

@@ -30,9 +30,14 @@ import { autoAssignMissingSuppliersFromCatalog } from "@/lib/services/auto-assig
 export default async function MojePage({
   searchParams,
 }: {
-  searchParams: Promise<{ dla?: string; klient?: string }>;
+  searchParams: Promise<{ dla?: string; klient?: string; q?: string; kh?: string }>;
 }) {
-  const { dla: previewSalesPersonId, klient: clientQuery } = await searchParams;
+  const { dla: previewSalesPersonId, klient: clientQuery, q: searchQuery, kh: khParam } =
+    await searchParams;
+  const initialSearchQuery = (searchQuery ?? clientQuery)?.trim() || null;
+  const parsedKh = khParam ? Math.trunc(Number(khParam)) : null;
+  const initialClientKhId =
+    parsedKh != null && Number.isFinite(parsedKh) && parsedKh > 0 ? parsedKh : null;
   const role = await getAppRole();
   let salesPersonId: string | null = null;
   let salesPersonName: string | null = null;
@@ -227,7 +232,10 @@ export default async function MojePage({
         showProsbaCta={isSalesAccount(role ?? "sales") && !isTeamPreview}
         suppliers={suppliers}
         subiektAvailability={subiektAvailability}
-        initialClientQuery={clientQuery ?? null}
+        initialSearchQuery={initialSearchQuery}
+        initialClientKhId={initialClientKhId}
+        initialClientKhLabel={clientQuery?.trim() || null}
+        syncSearchUrl={!isTeamPreview}
       />
     </div>
   );

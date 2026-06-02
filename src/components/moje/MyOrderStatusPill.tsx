@@ -1,5 +1,6 @@
 import type { MyOrderRow } from "@/lib/orders/my-order-presenter";
 import { cn } from "@/lib/cn";
+import { SearchHighlightText } from "@/components/moje/SearchHighlightText";
 
 const variantStyles: Record<
   NonNullable<MyOrderRow["badgeVariant"]>,
@@ -17,10 +18,12 @@ export function MyOrderStatusPill({
   label,
   variant = "default",
   className,
+  searchQuery,
 }: {
   label: string;
   variant?: MyOrderRow["badgeVariant"];
   className?: string;
+  searchQuery?: string | null;
 }) {
   return (
     <span
@@ -32,7 +35,7 @@ export function MyOrderStatusPill({
       )}
       title={label}
     >
-      {label}
+      <SearchHighlightText text={label} searchQuery={searchQuery} />
     </span>
   );
 }

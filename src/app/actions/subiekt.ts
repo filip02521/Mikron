@@ -10,6 +10,10 @@ import {
 import { indexOrderLineToProductCatalog } from "@/lib/data/product-catalog";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { searchSubiektKontrahenci, searchSubiektProducts } from "@/lib/subiekt/api";
+import {
+  mergeKontrahenciUnique,
+  MIN_CLIENT_SEARCH_LENGTH,
+} from "@/lib/subiekt/client-pick";
 import { getAppSupplierRefsCached } from "@/lib/data/supplier-refs";
 import {
   fetchSupplierSubiektKhAliases,
@@ -20,7 +24,11 @@ import {
   labelsMapToRecord,
   resolveSubiektKontrahentLabels,
 } from "@/lib/subiekt/resolve-kontrahent-labels";
-import { searchSubiektSuppliersCached } from "@/lib/subiekt/subiekt-runtime-cache";
+import {
+  searchSubiektCustomersCached,
+  searchSubiektKontrahenciCached,
+  searchSubiektSuppliersCached,
+} from "@/lib/subiekt/subiekt-runtime-cache";
 import { productSearchParams, minProductSearchLength, looksLikeProductSymbol, type ProductSearchField } from "@/lib/subiekt/product-pick";
 import { getSubiektConfigSummary, isSubiektConfigured } from "@/lib/subiekt/config";
 import { testSubiektConnection, type SubiektHealthResult } from "@/lib/subiekt/client";
@@ -32,6 +40,7 @@ import {
 import {
   feedbackFromException,
   getSubiektFeedback,
+  notFoundClientFeedback,
   notFoundProductFeedback,
   notFoundSupplierFeedback,
   type SubiektFeedback,
@@ -116,6 +125,91 @@ export async function actionSubiektSuggestProducts(
 ): Promise<SubiektLookupResult<SubiektProduct>> {
   await requireSubiektLookup();
   return suggestProducts(query, searchField);
+}
+
+/** Podpowiedzi klienta końcowego (odbiorcy) przy prośbach handlowca. */
+export async function actionSubiektSuggestClients(
+  query: string
+): Promise<SubiektLookupResult<SubiektKontrahent>> {
+  await requireSubiektLookup();
+  const q = query.trim();
+  if (!q) return validationFailure("empty_query");
+  if (q.length < MIN_CLIENT_SEARCH_LENGTH) return validationFailure("short_query");
+  if (!isSubiektConfigured()) {
+    return { ok: false, feedback: getSubiektFeedback("not_configured") };
+  }
+
+  const reachable = await isSubiektReachable();
+  if (!reachable) {
+    return {
+      ok: true,
+      items: [],
+      feedback: getSubiektFeedback("subiekt_unavailable", {
+        hint: "Wpisz nazwę klienta ręcznie — pole pozostaje opcjonalne.",
+      }),
+    };
+  }
+
+  try {
+    const merged: SubiektKontrahent[] = [];
+    const seenKh = new Set<number>();
+    const seenLabels = new Set<string>();
+    const phrases = expandSupplierSearchQueries(q).slice(0, 4);
+    const listBase = {
+      pageSize: 12,
+      page: 1,
+      includeBlocked: true,
+    } as const;
+
+    for (const phrase of phrases) {
+      if (merged.length >= 12) break;
+      const customersRes = await searchSubiektCustomersCached({
+        ...listBase,
+        search: phrase,
+      });
+      mergeKontrahenciUnique(
+        merged,
+        seenKh,
+        seenLabels,
+        customersRes.data ?? [],
+        12
+      );
+    }
+
+    if (merged.length < 8) {
+      for (const phrase of phrases) {
+        if (merged.length >= 12) break;
+        const kontrahenciRes = await searchSubiektKontrahenciCached({
+          ...listBase,
+          search: phrase,
+        });
+        mergeKontrahenciUnique(
+          merged,
+          seenKh,
+          seenLabels,
+          kontrahenciRes.data ?? [],
+          12
+        );
+      }
+    }
+
+    if (merged.length === 0) {
+      return {
+        ok: true,
+        items: [],
+        totalCount: 0,
+        feedback: notFoundClientFeedback(q),
+      };
+    }
+
+    return {
+      ok: true,
+      items: merged,
+      totalCount: merged.length,
+    };
+  } catch (e) {
+    return lookupFailure(e);
+  }
 }
 
 export type SubiektResolveSupplierResult =

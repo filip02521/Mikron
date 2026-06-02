@@ -27,6 +27,7 @@ export function ZkWatchLinesModal({
   open,
   readOnly,
   tourPreview = false,
+  matchedDeliveredLineKeys,
   onClose,
   onSaved,
 }: {
@@ -34,6 +35,8 @@ export function ZkWatchLinesModal({
   open: boolean;
   readOnly?: boolean;
   tourPreview?: boolean;
+  /** Pozycje dopasowane do dostarczonych prośb (podświetlenie). */
+  matchedDeliveredLineKeys?: string[];
   onClose: () => void;
   onSaved?: (watch: SalesZkWatch) => void;
 }) {
@@ -51,6 +54,14 @@ export function ZkWatchLinesModal({
 
   const summary = useMemo(() => summarizeZkWatchLines(views), [views]);
   const filtered = useMemo(() => filterViews(views, filter), [views, filter]);
+  const matchedFromProsba = useMemo(
+    () => new Set(matchedDeliveredLineKeys ?? []),
+    [matchedDeliveredLineKeys]
+  );
+  const prosbaMatchedCount = useMemo(
+    () => views.filter((v) => v.key !== "summary" && matchedFromProsba.has(v.key)).length,
+    [views, matchedFromProsba]
+  );
   const canEdit = !readOnly && !tourPreview && !watch.closed_at && !watch.archived_at;
   const progressPct =
     summary.total > 0 ? Math.round((summary.arrived / summary.total) * 100) : 0;
@@ -151,6 +162,19 @@ export function ZkWatchLinesModal({
           </div>
         </div>
 
+        {prosbaMatchedCount > 0 ? (
+          <p className="rounded-md border border-emerald-200/90 bg-emerald-50/90 px-2.5 py-2 text-xs leading-snug text-emerald-950">
+            <span className="font-medium">
+              {prosbaMatchedCount === 1
+                ? "1 pozycja pasuje"
+                : `${prosbaMatchedCount} pozycje pasują`}{" "}
+              do dostarczonej prośby
+            </span>
+            {" — "}
+            podświetlone wiersze możesz od razu oznaczyć jako na miejscu.
+          </p>
+        ) : null}
+
         <div className="flex flex-wrap gap-1.5">
           {filterChips.map((chip) => (
             <button
@@ -182,12 +206,18 @@ export function ZkWatchLinesModal({
           </p>
         ) : (
           <ul className="max-h-[min(52vh,28rem)] divide-y divide-slate-100 overflow-y-auto rounded-md border border-slate-200/90">
-            {filtered.map((line) => (
+            {filtered.map((line) => {
+              const fromProsba = matchedFromProsba.has(line.key);
+              return (
               <li key={line.key}>
                 <label
                   className={cn(
                     "flex cursor-pointer items-start gap-3 px-3 py-2.5 transition hover:bg-slate-50/80",
                     line.arrived && "bg-emerald-50/40",
+                    fromProsba &&
+                      !line.arrived &&
+                      "bg-indigo-50/50 ring-1 ring-inset ring-indigo-200/90",
+                    fromProsba && line.arrived && "ring-1 ring-inset ring-emerald-200/80",
                     !canEdit && "cursor-default"
                   )}
                 >
@@ -212,14 +242,22 @@ export function ZkWatchLinesModal({
                         "—"}
                     </span>
                   </span>
-                  {line.arrived ? (
-                    <span className="shrink-0 text-[0.65rem] font-semibold uppercase tracking-wide text-emerald-700">
-                      OK
-                    </span>
-                  ) : null}
+                  <span className="flex shrink-0 flex-col items-end gap-0.5">
+                    {fromProsba ? (
+                      <span className="text-[0.65rem] font-semibold text-indigo-800">
+                        Z prośby
+                      </span>
+                    ) : null}
+                    {line.arrived ? (
+                      <span className="text-[0.65rem] font-semibold uppercase tracking-wide text-emerald-700">
+                        OK
+                      </span>
+                    ) : null}
+                  </span>
                 </label>
               </li>
-            ))}
+            );
+            })}
           </ul>
         )}
 

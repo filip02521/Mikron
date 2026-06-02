@@ -72,7 +72,9 @@ export function SalesAdminClient({
     let list = rows;
     if (groupFilter === "none") {
       list = list.filter((r) => !r.groupId);
-    } else if (groupFilter !== "all") {
+    } else if (groupFilter === "all") {
+      list = list.filter((r) => r.groupId);
+    } else {
       list = list.filter((r) => r.groupId === groupFilter);
     }
     const q = search.trim().toLowerCase();

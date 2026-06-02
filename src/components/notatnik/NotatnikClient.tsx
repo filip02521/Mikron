@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useSalesOnboardingDemo } from "@/components/sales/SalesOnboardingContext";
 import { buildOnboardingNotepadDemo } from "@/lib/sales/sales-onboarding-demo-data";
 import { Card, CardHeader } from "@/components/ui/Card";
+import { Alert } from "@/components/ui/Alert";
 import { Badge } from "@/components/ui/Badge";
 import { UndoToast } from "@/components/ui/UndoToast";
 import { IconNotepad, IconPackageCheck, IconArchive, IconClipboardPen } from "@/components/icons/StrokeIcons";
@@ -13,6 +14,10 @@ import { sectionIconTileBrandClass } from "@/lib/ui/ontime-theme";
 import { uniqueById } from "@/lib/sales/notepad-list";
 import { sortZkWatches } from "@/lib/sales/zk-watch-sort";
 import { watchNeedsNotepadAttention } from "@/lib/sales/notepad-follow-up";
+import {
+  computeZkWatchOrderHints,
+  type ZkWatchOrderHints,
+} from "@/lib/sales/zk-watch-order-link";
 import { sortSalesNotes } from "@/lib/sales/notepad-note-sort";
 import type { NotepadTodayTaskKind } from "@/lib/sales/notepad-today-tasks";
 import type { SalesNotepadData } from "@/lib/data/sales-notepad";
@@ -93,6 +98,7 @@ export function NotatnikClient({
     [initial.notes]
   );
   const source = tourDemo ? demoInitial : initial;
+  const zkLinkableOrders = source.zkLinkableOrders;
   /** W tourze pokazujemy pełny UI kart ZK (kliknięcia i tak blokuje warstwa touru). */
   const effectiveReadOnly = tourDemo ? false : Boolean(readOnly);
   const [zkWatches, setZkWatches] = useState(source.zkWatches);
@@ -104,6 +110,14 @@ export function NotatnikClient({
   );
   const [showArchive, setShowArchive] = useState(false);
   const [undo, setUndo] = useState<NotatnikUndoState | null>(null);
+
+  const zkHintsByWatchId = useMemo(() => {
+    const map = new Map<string, ZkWatchOrderHints>();
+    for (const watch of zkWatches) {
+      map.set(watch.id, computeZkWatchOrderHints(watch, zkLinkableOrders));
+    }
+    return map;
+  }, [zkWatches, zkLinkableOrders]);
 
   const subiektForNotepad = useMemo(() => {
     if (!subiektAvailability) return undefined;
@@ -316,6 +330,14 @@ export function NotatnikClient({
           />
         ) : null}
 
+        {source.zkOrdersMigrationMissing && !tourDemo ? (
+          <Alert tone="warning" className="mx-3 mt-3 sm:mx-4">
+            Powiązanie ZK z prośbami (dostawa, podpowiedzi) wymaga migracji bazy{" "}
+            <code className="text-[0.85em]">052_individual_orders_sales_client_kh_id</code>.
+            Uruchom migracje Supabase — bez niej lista prośb do dopasowania pozostaje pusta.
+          </Alert>
+        ) : null}
+
         <TodayTasksSection
           watches={zkWatches}
           notes={notes}
@@ -365,6 +387,7 @@ export function NotatnikClient({
           >
             <ZkWatchSection
               watches={zkWatches}
+              zkHintsByWatchId={zkHintsByWatchId}
               readOnly={effectiveReadOnly}
               tourPreview={tourDemo}
               embedded

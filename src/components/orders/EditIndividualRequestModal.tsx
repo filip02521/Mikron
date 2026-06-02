@@ -161,6 +161,7 @@ export function EditIndividualRequestModal({
             product: l.product,
             quantity: l.quantity,
             clientName: l.clientName,
+            clientKhId: l.clientKhId,
             subiektTwId: l.subiektTwId,
           })),
         };

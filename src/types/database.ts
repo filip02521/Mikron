@@ -116,6 +116,8 @@ export interface IndividualOrder {
   sales_cancel_phase?: string | null;
   /** Etykieta klienta końcowego (opcjonalnie, ustawia handlowiec). */
   sales_client_name?: string | null;
+  /** kh_Id odbiorcy z Subiekta — powiązanie z ZK / wyszukiwanie. */
+  sales_client_kh_id?: number | null;
   /** Dział dostaw potwierdził zapoznanie z rezygnacją handlowca (panel dzienny). */
   procurement_sales_cancel_ack_at?: string | null;
   /** Rozliczenie rezygnacji: to_stock | return */

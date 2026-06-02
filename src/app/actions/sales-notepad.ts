@@ -14,6 +14,10 @@ import {
   parseZkWatchLineChecks,
   type ZkWatchLineCheckStored,
 } from "@/lib/sales/zk-watch-lines";
+import {
+  extractProsbaLinesFromZkWatch,
+  type ZkProsbaPrefill,
+} from "@/lib/orders/zk-watch-prosba-prefill";
 import type { SalesNote, SalesNoteColor, SalesZkWatch } from "@/types/database";
 
 async function salesPersonIdForAction(): Promise<string> {
@@ -641,4 +645,47 @@ export async function actionDeleteArchivedSalesNote(noteId: string) {
   if (error) throw new Error(error.message);
   revalidateNotepad();
   return { success: true };
+}
+
+/** Prefill prośby z ZK po numerze (np. nowa karta — bez sessionStorage). */
+export async function actionGetZkProsbaPrefill(
+  zkNumber: string,
+  salesPersonIdOverride?: string
+): Promise<ZkProsbaPrefill | null> {
+  const trimmed = zkNumber.trim();
+  if (!trimmed) return null;
+
+  const user = await getSessionUser();
+  if (!user || !isSalesAccount(user.role)) {
+    throw new Error("Wymagane logowanie.");
+  }
+
+  let salesPersonId = salesPersonIdOverride?.trim() || "";
+  if (!salesPersonId) {
+    salesPersonId = await salesPersonIdForAction();
+  } else {
+    const own = await resolveSalesPersonForUser(user);
+    if (user.role === "sales" && own?.id !== salesPersonId) {
+      throw new Error("Brak uprawnień do prośby tego handlowca.");
+    }
+  }
+
+  const supabase = createAdminClient();
+  const { data, error } = await supabase
+    .from("sales_zk_watches")
+    .select("*")
+    .eq("sales_person_id", salesPersonId)
+    .eq("zk_number", trimmed)
+    .maybeSingle();
+
+  if (error) throw new Error(error.message);
+  if (!data) return null;
+
+  const watch = data as SalesZkWatch;
+  return {
+    clientName: watch.client_label,
+    clientKhId: watch.client_kh_id,
+    zkNumber: watch.zk_number,
+    lines: extractProsbaLinesFromZkWatch(watch),
+  };
 }

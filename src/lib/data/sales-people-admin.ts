@@ -6,7 +6,10 @@ import {
 } from "@/lib/data/sales-group-access";
 import { fetchAllAuthUsersLastSignIn } from "@/lib/data/users";
 import { formatPlDate } from "@/lib/display-labels";
-import { isManagedSalesPersonEmail } from "@/lib/sales/sales-person-catalog";
+import {
+  isManagedSalesPersonEmail,
+  isTeamSalesPerson,
+} from "@/lib/sales/sales-person-catalog";
 import { isFollowUpDue } from "@/lib/sales/notepad-follow-up";
 
 export type SalesPersonAdminRow = {
@@ -120,8 +123,8 @@ export async function fetchSalesPeopleAdminForUser(
   user: Pick<SessionUser, "id" | "role">
 ): Promise<SalesPersonAdminRow[]> {
   const rows = await fetchSalesPeopleAdmin();
-  const scope = await getManagedGroupIdsForUser(user);
-  return filterRowsByGroupScope(rows, scope);
+  const scoped = filterRowsByGroupScope(rows, await getManagedGroupIdsForUser(user));
+  return scoped.filter(isTeamSalesPerson);
 }
 
 /**
@@ -133,7 +136,7 @@ export async function fetchSalesPeopleForPicker(): Promise<
 > {
   const rows = await fetchSalesPeopleAdmin();
   return rows
-    .filter((p) => isManagedSalesPersonEmail(p.email))
+    .filter((p) => isTeamSalesPerson(p))
     .map((p) => ({
       id: p.id,
       name: p.name,

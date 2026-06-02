@@ -35,6 +35,7 @@ export function editInitialFromMyOrderRow(row: MyOrderRow): EditIndividualReques
       product: l.product,
       quantity: l.quantity,
       clientName: l.clientName ?? "",
+      clientKhId: l.clientKhId ?? null,
       subiektTwId: l.subiektTwId ?? null,
     })),
   };
@@ -53,6 +54,7 @@ export function editInitialFromOrders(orders: IndividualOrder[]): EditIndividual
       product: l.product ?? "",
       quantity: l.quantity ?? "",
       clientName: l.clientName ?? "",
+      clientKhId: l.clientKhId ?? null,
       subiektTwId: l.subiektTwId ?? null,
     })),
   };

@@ -17,8 +17,11 @@ describe("prosba-url", () => {
         fromZk: true,
         zk: "ZK/2026/0138",
         klient: "Klinika Smile",
+        clientKhId: 42,
       })
-    ).toBe("/prosba?dla=sp1&fromZk=1&zk=ZK%2F2026%2F0138&klient=Klinika+Smile");
+    ).toBe(
+      "/prosba?dla=sp1&fromZk=1&zk=ZK%2F2026%2F0138&klient=Klinika+Smile&kh=42"
+    );
   });
 
   it("resolveProsbaSupplierId odrzuca nieznane id", () => {

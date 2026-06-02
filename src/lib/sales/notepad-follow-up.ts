@@ -65,12 +65,16 @@ export function followUpQuickDates(): { label: string; value: string }[] {
 export function buildMojeClientLink(
   salesPersonId: string,
   clientLabel: string,
-  options?: { preview?: boolean }
+  options?: { preview?: boolean; clientKhId?: number | null }
 ): string {
   const primary = clientLabel.split(/[·(,]/)[0]?.trim() || clientLabel.trim();
   const params = new URLSearchParams();
   if (options?.preview) params.set("dla", salesPersonId);
   if (primary) params.set("klient", primary.slice(0, 60));
+  const kh = options?.clientKhId;
+  if (kh != null && Number.isFinite(kh) && kh > 0) {
+    params.set("kh", String(Math.trunc(kh)));
+  }
   const qs = params.toString();
   return qs ? `/moje?${qs}` : "/moje";
 }

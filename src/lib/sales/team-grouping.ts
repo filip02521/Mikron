@@ -6,37 +6,24 @@ export type SalesTeamGroupSection = {
   rows: SalesPersonAdminRow[];
 };
 
-/** Sekcje podglądu zespołu: grupy wg sort_order, na końcu osoby bez grupy. */
+/** Sekcje podglądu zespołu: tylko osoby z przypisaną grupą. */
 export function groupSalesPeopleForTeamView(
   rows: SalesPersonAdminRow[],
   groups: SalesGroupRow[]
 ): SalesTeamGroupSection[] {
   const byGroupId = new Map<string, SalesPersonAdminRow[]>();
-  const unassigned: SalesPersonAdminRow[] = [];
 
   for (const row of rows) {
-    if (row.groupId) {
-      const list = byGroupId.get(row.groupId) ?? [];
-      list.push(row);
-      byGroupId.set(row.groupId, list);
-    } else {
-      unassigned.push(row);
-    }
+    if (!row.groupId) continue;
+    const list = byGroupId.get(row.groupId) ?? [];
+    list.push(row);
+    byGroupId.set(row.groupId, list);
   }
 
-  const sections: SalesTeamGroupSection[] = groups.map((group) => ({
+  return groups.map((group) => ({
     group,
     rows: (byGroupId.get(group.id) ?? []).sort((a, b) =>
       a.name.localeCompare(b.name, "pl")
     ),
   }));
-
-  if (unassigned.length) {
-    sections.push({
-      group: null,
-      rows: unassigned.sort((a, b) => a.name.localeCompare(b.name, "pl")),
-    });
-  }
-
-  return sections;
 }

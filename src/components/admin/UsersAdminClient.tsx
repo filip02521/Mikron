@@ -1,18 +1,16 @@
 "use client";
 
-import { useMemo, useState, useTransition, useCallback, useEffect } from "react";
-import { useRouter } from "next/navigation";
+import { useMemo, useState, useTransition, useCallback, useEffect, useRef } from "react";
 import type { AppUserRow } from "@/lib/data/users";
 import type { UserRole } from "@/types/database";
 import { ROLE_LABELS, ROLE_OPTIONS, roleRequiresSalesPerson } from "@/lib/users/labels";
 import {
   actionCreateAppUser,
-  actionUpdateAppUser,
+  actionSaveAppUserPermissions,
   actionSetUserPassword,
   actionGeneratePasswordResetLink,
   actionDeleteAppUser,
 } from "@/app/actions/users";
-import { actionSetSalesManagerGroups } from "@/app/actions/sales-group-managers";
 import { Card, CardHeader } from "@/components/ui/Card";
 import { Field, Input, Select } from "@/components/ui/Field";
 import { Button } from "@/components/ui/Button";
@@ -22,6 +20,14 @@ import { DataTable, TableScroll } from "@/components/ui/DataTable";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { Badge } from "@/components/ui/Badge";
 import { formatPlDate } from "@/lib/display-labels";
+import {
+  applyUserPermissionSave,
+  buildUserEditsFromRows,
+  salesPersonIdForSave,
+  userRowHasUnsavedChanges,
+  usersAdminListSignature,
+  usersManagerGroupsSignature,
+} from "@/lib/users/users-admin-sync";
 
 type SalesPerson = { id: string; name: string; email: string };
 type SalesGroupOption = { id: string; name: string };
@@ -54,7 +60,6 @@ export function UsersAdminClient({
   currentUserId: string;
   prefillSalesPersonId?: string;
 }) {
-  const router = useRouter();
   const [users, setUsers] = useState(initialUsers);
   const [pending, start] = useTransition();
   const [toast, setToast] = useState<{ text: string; tone: "success" | "error" } | null>(
@@ -74,16 +79,12 @@ export function UsersAdminClient({
 
   const [edits, setEdits] = useState<
     Record<string, { role: UserRole; salesPersonId: string }>
-  >(() =>
-    Object.fromEntries(
-      initialUsers.map((u) => [
-        u.id,
-        { role: u.role, salesPersonId: u.salesPersonId ?? "" },
-      ])
-    )
-  );
+  >(() => buildUserEditsFromRows(initialUsers));
 
   const [managerGroups, setManagerGroups] =
+    useState<Record<string, string[]>>(initialManagerGroups);
+  /** Ostatnio zapisane grupy kierowników (serwer + lokalny zapis). */
+  const [committedManagerGroups, setCommittedManagerGroups] =
     useState<Record<string, string[]>>(initialManagerGroups);
 
   const [passwordModal, setPasswordModal] = useState<{
@@ -92,18 +93,31 @@ export function UsersAdminClient({
   } | null>(null);
   const [newPassword, setNewPassword] = useState("");
 
+  const incomingUsersSignature = useMemo(
+    () => usersAdminListSignature(initialUsers),
+    [initialUsers]
+  );
+  const incomingManagerSignature = useMemo(
+    () => usersManagerGroupsSignature(initialManagerGroups),
+    [initialManagerGroups]
+  );
+  const usersSignatureRef = useRef(incomingUsersSignature);
+  const managerSignatureRef = useRef(incomingManagerSignature);
+  const prefillAppliedRef = useRef<string | null>(null);
+
   useEffect(() => {
+    if (usersSignatureRef.current === incomingUsersSignature) return;
+    usersSignatureRef.current = incomingUsersSignature;
     setUsers(initialUsers);
-    setEdits(
-      Object.fromEntries(
-        initialUsers.map((u) => [
-          u.id,
-          { role: u.role, salesPersonId: u.salesPersonId ?? "" },
-        ])
-      )
-    );
+    setEdits(buildUserEditsFromRows(initialUsers));
+  }, [incomingUsersSignature, initialUsers]);
+
+  useEffect(() => {
+    if (managerSignatureRef.current === incomingManagerSignature) return;
+    managerSignatureRef.current = incomingManagerSignature;
     setManagerGroups(initialManagerGroups);
-  }, [initialUsers, initialManagerGroups]);
+    setCommittedManagerGroups(initialManagerGroups);
+  }, [incomingManagerSignature, initialManagerGroups]);
 
   const toggleManagerGroup = (userId: string, groupId: string) => {
     setManagerGroups((prev) => {
@@ -116,7 +130,12 @@ export function UsersAdminClient({
   };
 
   useEffect(() => {
-    if (!prefillSalesPersonId) return;
+    if (!prefillSalesPersonId) {
+      prefillAppliedRef.current = null;
+      return;
+    }
+    if (prefillAppliedRef.current === prefillSalesPersonId) return;
+    prefillAppliedRef.current = prefillSalesPersonId;
     const email = salesPeople.find((p) => p.id === prefillSalesPersonId)?.email?.trim() ?? "";
     setCreateForm({
       email,
@@ -144,19 +163,28 @@ export function UsersAdminClient({
           : null,
         u.salesPersonName
       );
+      const roleForSearch = edit?.role ?? u.role;
       return (
         u.email.toLowerCase().includes(q) ||
-        ROLE_LABELS[u.role].toLowerCase().includes(q) ||
+        ROLE_LABELS[roleForSearch].toLowerCase().includes(q) ||
         handlowiec.toLowerCase().includes(q)
       );
     });
   }, [users, search, edits, salesPeople]);
 
   const updateEdit = (userId: string, patch: Partial<{ role: UserRole; salesPersonId: string }>) => {
-    setEdits((prev) => ({
-      ...prev,
-      [userId]: { ...prev[userId], ...patch },
-    }));
+    setEdits((prev) => {
+      const saved = users.find((u) => u.id === userId);
+      const current = prev[userId] ?? {
+        role: saved?.role ?? "zakupy",
+        salesPersonId: saved?.salesPersonId ?? "",
+      };
+      const next = { ...current, ...patch };
+      if (patch.role && !roleRequiresSalesPerson(patch.role)) {
+        next.salesPersonId = "";
+      }
+      return { ...prev, [userId]: next };
+    });
   };
 
   const emailForSalesPerson = (id: string) =>
@@ -181,29 +209,6 @@ export function UsersAdminClient({
         tone: "error",
       });
     }
-  };
-
-  const patchUserAfterSave = (
-    userId: string,
-    role: UserRole,
-    salesPersonId: string | null
-  ) => {
-    setUsers((list) =>
-      list.map((u) =>
-        u.id === userId
-          ? {
-              ...u,
-              role,
-              salesPersonId,
-              salesPersonName: salesPersonLabel(
-                salesPeople,
-                salesPersonId,
-                u.salesPersonName
-              ),
-            }
-          : u
-      )
-    );
   };
 
   return (
@@ -231,7 +236,14 @@ export function UsersAdminClient({
               setDeleteTarget(null);
               return;
             }
-            setUsers((list) => list.filter((x) => x.id !== deleteTarget.id));
+            const nextUsers = users.filter((x) => x.id !== deleteTarget.id);
+            setUsers(nextUsers);
+            usersSignatureRef.current = usersAdminListSignature(nextUsers);
+            setEdits((prev) => {
+              const next = { ...prev };
+              delete next[deleteTarget.id];
+              return next;
+            });
             setDeleteTarget(null);
             setToast({ text: "Konto usunięte.", tone: "success" });
           });
@@ -268,6 +280,16 @@ export function UsersAdminClient({
                     setToast({ text: r.error, tone: "error" });
                     return;
                   }
+                  const nextUsers = [...users, r.user];
+                  setUsers(nextUsers);
+                  usersSignatureRef.current = usersAdminListSignature(nextUsers);
+                  setEdits((prev) => ({
+                    ...prev,
+                    [r.user.id]: {
+                      role: r.user.role,
+                      salesPersonId: r.user.salesPersonId ?? "",
+                    },
+                  }));
                   setToast({ text: "Konto utworzone.", tone: "success" });
                   setCreateForm({
                     email: "",
@@ -276,7 +298,7 @@ export function UsersAdminClient({
                     password: "",
                   });
                   setCreateOpen(false);
-                  router.refresh();
+                  prefillAppliedRef.current = null;
                 });
               }}
             >
@@ -318,7 +340,9 @@ export function UsersAdminClient({
                     const role = e.target.value as UserRole;
                     setCreateForm((f) => {
                       const next = { ...f, role };
-                      if (roleRequiresSalesPerson(role) && f.salesPersonId) {
+                      if (!roleRequiresSalesPerson(role)) {
+                        next.salesPersonId = "";
+                      } else if (f.salesPersonId) {
                         const email = emailForSalesPerson(f.salesPersonId);
                         if (email) next.email = email;
                       }
@@ -429,6 +453,14 @@ export function UsersAdminClient({
                 <tbody>
                   {filteredUsers.map((u) => {
                     const edit = edits[u.id];
+                    const savedManagerGroups = committedManagerGroups[u.id] ?? [];
+                    const draftManagerGroups = managerGroups[u.id] ?? [];
+                    const isDirty = userRowHasUnsavedChanges(
+                      u,
+                      edit,
+                      draftManagerGroups,
+                      savedManagerGroups
+                    );
                     const isSelf = u.id === currentUserId;
                     const salesTakenByOther =
                       edit &&
@@ -438,8 +470,15 @@ export function UsersAdminClient({
                         (x) =>
                           x.id !== u.id && x.salesPersonId === edit.salesPersonId
                       );
+                    const managerNeedsGroups =
+                      edit?.role === "sales_manager" &&
+                      salesGroups.length > 0 &&
+                      draftManagerGroups.length === 0;
                     return (
-                      <tr key={u.id}>
+                      <tr
+                        key={u.id}
+                        className={isDirty ? "bg-amber-50/60" : undefined}
+                      >
                         <td className="font-medium text-slate-900">
                           {u.email}
                           {isSelf ? (
@@ -525,6 +564,11 @@ export function UsersAdminClient({
                           ) : (
                             <span className="text-slate-400">—</span>
                           )}
+                          {managerNeedsGroups ? (
+                            <p className="mt-1 text-xs text-amber-700">
+                              Wybierz co najmniej jedną grupę.
+                            </p>
+                          ) : null}
                         </td>
                         <td className="whitespace-nowrap text-sm text-slate-600 tabular-nums">
                           {u.lastSignInAt
@@ -536,50 +580,98 @@ export function UsersAdminClient({
                             <Button
                               variant="ghost"
                               size="sm"
-                              disabled={pending || !!salesTakenByOther}
+                              disabled={
+                                pending ||
+                                !isDirty ||
+                                !!salesTakenByOther ||
+                                managerNeedsGroups
+                              }
                               onClick={() => {
+                                if (!edit) return;
                                 start(async () => {
-                                  const r = await actionUpdateAppUser({
+                                  const savedRole = edit.role;
+                                  const savedSalesPersonId = salesPersonIdForSave(
+                                    savedRole,
+                                    edit.salesPersonId
+                                  );
+                                  const groupIds =
+                                    savedRole === "sales_manager"
+                                      ? (managerGroups[u.id] ?? [])
+                                      : [];
+
+                                  const r = await actionSaveAppUserPermissions({
                                     userId: u.id,
-                                    role: edit.role,
-                                    salesPersonId: roleRequiresSalesPerson(edit.role)
-                                      ? edit.salesPersonId || null
-                                      : null,
+                                    role: savedRole,
+                                    salesPersonId: savedSalesPersonId,
+                                    managerGroupIds: groupIds,
                                   });
                                   if ("error" in r) {
                                     setToast({ text: r.error, tone: "error" });
                                     return;
                                   }
-                                  if (edit.role === "sales_manager") {
-                                    const mg = await actionSetSalesManagerGroups(
-                                      u.id,
-                                      managerGroups[u.id] ?? []
-                                    );
-                                    if ("error" in mg) {
-                                      setToast({ text: mg.error, tone: "error" });
-                                      return;
-                                    }
-                                  } else if (u.role === "sales_manager") {
-                                    await actionSetSalesManagerGroups(u.id, []);
-                                    setManagerGroups((prev) => {
-                                      const next = { ...prev };
-                                      delete next[u.id];
-                                      return next;
-                                    });
-                                  }
-                                  patchUserAfterSave(
-                                    u.id,
-                                    edit.role,
-                                    roleRequiresSalesPerson(edit.role)
-                                      ? edit.salesPersonId || null
-                                      : null
+
+                                  const spName = salesPersonLabel(
+                                    salesPeople,
+                                    savedSalesPersonId,
+                                    u.salesPersonName
                                   );
+                                  const nextUsers = applyUserPermissionSave(
+                                    users,
+                                    u.id,
+                                    savedRole,
+                                    savedSalesPersonId,
+                                    spName === "—" ? null : spName
+                                  );
+                                  setUsers(nextUsers);
+                                  usersSignatureRef.current =
+                                    usersAdminListSignature(nextUsers);
+
+                                  const nextManagerGroups = { ...managerGroups };
+                                  if (savedRole === "sales_manager") {
+                                    nextManagerGroups[u.id] = groupIds;
+                                  } else {
+                                    delete nextManagerGroups[u.id];
+                                  }
+                                  setManagerGroups(nextManagerGroups);
+                                  setCommittedManagerGroups(nextManagerGroups);
+                                  managerSignatureRef.current =
+                                    usersManagerGroupsSignature(nextManagerGroups);
+
+                                  setEdits((prev) => ({
+                                    ...prev,
+                                    [u.id]: {
+                                      role: savedRole,
+                                      salesPersonId: savedSalesPersonId ?? "",
+                                    },
+                                  }));
                                   setToast({ text: "Zapisano uprawnienia.", tone: "success" });
                                 });
                               }}
                             >
-                              Zapisz
+                              {isDirty ? "Zapisz zmiany" : "Zapisz"}
                             </Button>
+                            {isDirty ? (
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                disabled={pending}
+                                onClick={() => {
+                                  setEdits((prev) => ({
+                                    ...prev,
+                                    [u.id]: {
+                                      role: u.role,
+                                      salesPersonId: u.salesPersonId ?? "",
+                                    },
+                                  }));
+                                  setManagerGroups((prev) => ({
+                                    ...prev,
+                                    [u.id]: [...savedManagerGroups],
+                                  }));
+                                }}
+                              >
+                                Cofnij
+                              </Button>
+                            ) : null}
                             <Button
                               variant="ghost"
                               size="sm"
@@ -650,6 +742,10 @@ export function UsersAdminClient({
             <li>
               <Badge variant="info">{ROLE_LABELS.zakupy}</Badge> — panel dzienny, kolejka,
               harmonogramy, bez administracji.
+            </li>
+            <li>
+              <Badge variant="info">{ROLE_LABELS.magazyn}</Badge> — kolejka magazynu i regał,
+              bez panelu zakupów.
             </li>
             <li>
               <Badge variant="info">{ROLE_LABELS.sales}</Badge> — moje zamówienia, prośby,
