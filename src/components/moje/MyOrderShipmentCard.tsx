@@ -14,6 +14,7 @@ import {
 } from "@/lib/orders/my-order-row-layout";
 import { myOrderMetaFields } from "@/lib/orders/my-order-sales-ui";
 import { myOrderFriendlyStatusHint } from "@/lib/orders/my-order-friendly-status";
+import { MyOrderExpandedMeta } from "@/components/moje/MyOrderExpandedMeta";
 import { MyOrderAckButton } from "@/components/moje/MyOrderAckButton";
 import { MyOrderAssignedClient } from "@/components/moje/MyOrderAssignedClient";
 import { MyOrderLineItem } from "@/components/moje/MyOrderLineItem";
@@ -23,8 +24,13 @@ import { MyOrderStatusPill } from "@/components/moje/MyOrderStatusPill";
 import { cn } from "@/lib/cn";
 import { brandLinkSubtleClass } from "@/lib/ui/ontime-theme";
 import {
+  mojeShipmentExpandedActionsClass,
+  mojeShipmentExpandedClientsClass,
+  mojeShipmentExpandedNotesClass,
   mojeShipmentExpandedPanelClass,
-  mojeShipmentLinesListClass,
+  mojeShipmentLinesHeaderClass,
+  mojeShipmentLinesHeaderTitleClass,
+  mojeShipmentLinesShellClass,
   mojeShipmentRowClass,
 } from "@/lib/ui/moje-shipment-row-styles";
 import { SearchHighlightText } from "@/components/moje/SearchHighlightText";
@@ -46,35 +52,6 @@ function ChevronIcon({ open }: { open?: boolean }) {
     >
       <path d="M7.2 4.2a1 1 0 0 1 1.4 0l4.8 4.8a1 1 0 0 1 0 1.4l-4.8 4.8a1 1 0 1 1-1.4-1.4L11.58 10 7.2 5.6a1 1 0 0 1 0-1.4Z" />
     </svg>
-  );
-}
-
-function MetaGrid({
-  fields,
-  searchQuery,
-}: {
-  fields: { label: string; value: string; emphasize?: boolean }[];
-  searchQuery?: string | null;
-}) {
-  if (!fields.length) return null;
-
-  return (
-    <dl className="grid grid-cols-1 gap-x-4 gap-y-1.5 text-xs sm:grid-cols-2">
-      {fields.map((f) => (
-        <div key={f.label} className="flex min-w-0 gap-2">
-          <dt className="w-16 shrink-0 text-slate-400">{f.label}</dt>
-          <SearchHighlightText
-            text={f.value}
-            searchQuery={searchQuery}
-            as="dd"
-            className={cn(
-              "min-w-0 font-medium text-slate-800",
-              f.emphasize && "text-amber-900"
-            )}
-          />
-        </div>
-      ))}
-    </dl>
   );
 }
 
@@ -577,42 +554,53 @@ export function MyOrderShipmentCard({
           aria-label={`Szczegóły: ${row.supplierName}`}
           className={mojeShipmentExpandedPanelClass}
         >
-          {expandedNotes ? (
-            <SearchHighlightText
-              text={expandedNotes}
-              searchQuery={searchQuery}
-              className="mb-2.5 text-xs leading-relaxed text-slate-600"
-              as="p"
-            />
-          ) : null}
+          {(showStatusBadge || expandedNotes) && (
+            <div className="space-y-2">
+              {showStatusBadge ? (
+                <MyOrderStatusPill
+                  label={row.statusTitle}
+                  variant={row.badgeVariant}
+                  searchQuery={searchQuery}
+                  className="text-xs"
+                />
+              ) : null}
+              {expandedNotes ? (
+                <SearchHighlightText
+                  text={expandedNotes}
+                  searchQuery={searchQuery}
+                  className={mojeShipmentExpandedNotesClass}
+                  as="p"
+                />
+              ) : null}
+            </div>
+          )}
 
-          <MetaGrid fields={expandedMeta} searchQuery={searchQuery} />
+          <MyOrderExpandedMeta fields={expandedMeta} searchQuery={searchQuery} />
 
           {row.lineCount > 1 && row.clientLabel ? (
-            <p className="mt-2 text-xs text-slate-500">
-              <span className="text-slate-400">Klienci: </span>
+            <p className={mojeShipmentExpandedClientsClass}>
+              <span className="font-semibold text-slate-700">Klienci przy produktach: </span>
               <SearchHighlightText
                 text={row.clientLabel}
                 searchQuery={searchQuery}
-                className="font-medium text-slate-700"
+                className="font-medium text-slate-800"
               />
-              <span className="text-slate-400"> — szczegóły przy produktach poniżej</span>
             </p>
           ) : null}
 
           {row.lineCount > 0 ? (
-            <div className={mojeShipmentLinesListClass}>
-              <div className="flex items-center justify-between gap-2 px-0.5 pb-1 pt-0.5">
-                <p className="text-[0.62rem] font-semibold uppercase tracking-wide text-slate-500">
-                  {row.lineCount > 1 ? productSummary : "Towar"}
+            <div className={mojeShipmentLinesShellClass}>
+              <div className={mojeShipmentLinesHeaderClass}>
+                <p className={mojeShipmentLinesHeaderTitleClass}>
+                  {row.lineCount > 1 ? productSummary ?? "Produkty" : "Produkt"}
                 </p>
                 {row.lineCount > 8 ? (
                   <button
                     type="button"
                     onClick={() => setLinesOpen((v) => !v)}
-                    className={cn("text-[0.7rem] font-medium", brandLinkSubtleClass)}
+                    className={cn("text-xs font-medium", brandLinkSubtleClass)}
                   >
-                    {showAllProductLines ? "Zwiń" : "Wszystkie"}
+                    {showAllProductLines ? "Zwiń listę" : "Pokaż wszystkie"}
                   </button>
                 ) : null}
               </div>
@@ -628,26 +616,27 @@ export function MyOrderShipmentCard({
                 ))}
               </ul>
               {!showAllProductLines && row.lineCount > 8 ? (
-                <p className="border-t border-slate-100 px-2.5 py-1 text-[0.7rem] text-slate-500">
-                  … +{row.lineCount - 8} poz.
+                <p className="border-t border-slate-100 bg-slate-50/60 px-3 py-2 text-xs text-slate-500">
+                  … i jeszcze {row.lineCount - 8}{" "}
+                  {row.lineCount - 8 === 1 ? "pozycja" : "pozycje"}
                 </p>
               ) : null}
-            </div>
-          ) : null}
-
-          {showGroupPickup && row.pickupPendingIds.length ? (
-            <div className="mt-2.5 flex justify-end">
-              <MyOrderAckButton
-                variant="action"
-                disabled={pending}
-                preview={tourPreview}
-                title={ackFullTitle}
-                onClick={() => onAcknowledgePickup(row.pickupPendingIds)}
-              >
-                {row.acknowledgeMode === "availability"
-                  ? `Potwierdź wszystkie (${row.pickupPendingCount})`
-                  : `Odbiór wszystkich (${row.pickupPendingCount})`}
-              </MyOrderAckButton>
+              {showGroupPickup && row.pickupPendingIds.length ? (
+                <div className={mojeShipmentExpandedActionsClass}>
+                  <MyOrderAckButton
+                    variant="action"
+                    disabled={pending}
+                    preview={tourPreview}
+                    title={ackFullTitle}
+                    ariaLabel={ackFullTitle}
+                    onClick={() => onAcknowledgePickup(row.pickupPendingIds)}
+                  >
+                    {row.acknowledgeMode === "availability"
+                      ? `Potwierdź wszystkie (${row.pickupPendingCount})`
+                      : `Odbiór wszystkich (${row.pickupPendingCount})`}
+                  </MyOrderAckButton>
+                </div>
+              ) : null}
             </div>
           ) : null}
         </div>

@@ -5,6 +5,7 @@ import { MyOrderAssignedClient } from "@/components/moje/MyOrderAssignedClient";
 import { MyOrderLineClientField } from "@/components/moje/MyOrderLineClientField";
 import { MyOrderAckButton } from "@/components/moje/MyOrderAckButton";
 import { cn } from "@/lib/cn";
+import { mojeShipmentLineRowClass } from "@/lib/ui/moje-shipment-row-styles";
 import {
   SearchHighlightJoined,
   SearchHighlightText,
@@ -15,17 +16,17 @@ function stockBadge(status: MyOrderLineStockStatus): { label: string; className:
     case "on_stock":
       return {
         label: "U nas",
-        className: "bg-emerald-100 text-emerald-800",
+        className: "bg-emerald-50 text-emerald-800 ring-emerald-200/90",
       };
     case "partial":
       return {
         label: "Częściowo",
-        className: "bg-amber-100 text-amber-900",
+        className: "bg-amber-50 text-amber-900 ring-amber-200/90",
       };
     case "waiting":
       return {
         label: "W dostawie",
-        className: "bg-slate-100 text-slate-600",
+        className: "bg-slate-50 text-slate-600 ring-slate-200/90",
       };
     default:
       return null;
@@ -72,47 +73,73 @@ export function MyOrderLineItem({
   const onStock = line.stockStatus === "on_stock";
   const partial = line.stockStatus === "partial";
 
-  const detail = [line.symbol, line.quantityLabel, showProgress ? line.progressLabel : null]
-    .filter(Boolean)
-    .join(" · ");
+  const detailParts = [line.quantityLabel, showProgress ? line.progressLabel : null].filter(
+    Boolean
+  );
 
   return (
     <li
       className={cn(
-        compact ? "py-1 first:pt-0" : "py-1.5 px-0.5",
-        emphasizeStock && onStock && "border-l-2 border-emerald-500 pl-2",
-        emphasizeStock && partial && "border-l-2 border-amber-400 pl-2"
+        compact ? mojeShipmentLineRowClass : "py-1.5 px-0.5",
+        !compact && emphasizeStock && onStock && "border-l-2 border-emerald-500 pl-2",
+        !compact && emphasizeStock && partial && "border-l-2 border-amber-400 pl-2",
+        compact &&
+          emphasizeStock &&
+          onStock &&
+          "border-l-[3px] border-l-emerald-400 bg-emerald-50/20",
+        compact &&
+          emphasizeStock &&
+          partial &&
+          "border-l-[3px] border-l-amber-400 bg-amber-50/20"
       )}
     >
-      <div className="flex items-start justify-between gap-2">
+      <div className="flex items-start justify-between gap-3">
         <div className="min-w-0 flex-1">
-          <p className="text-sm text-slate-800">
-            {!compact ? (
-              <span className="mr-1.5 tabular-nums text-slate-400">{index + 1}.</span>
+          <div className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
+            <span
+              className={cn(
+                "shrink-0 tabular-nums font-semibold text-slate-400",
+                compact ? "text-xs" : "mr-1.5"
+              )}
+            >
+              {index + 1}.
+            </span>
+            <SearchHighlightText
+              text={line.product}
+              searchQuery={searchQuery}
+              className={cn(
+                "min-w-0 font-medium text-slate-900",
+                compact ? "text-sm leading-snug" : "text-sm text-slate-800"
+              )}
+            />
+            {line.symbol?.trim() ? (
+              <SearchHighlightText
+                text={line.symbol.trim()}
+                searchQuery={searchQuery}
+                className="shrink-0 rounded bg-slate-100 px-1.5 py-0.5 font-mono text-[0.68rem] font-semibold text-slate-600"
+              />
             ) : null}
-            <SearchHighlightText text={line.product} searchQuery={searchQuery} />
-          </p>
-          {detail ? (
+          </div>
+
+          {detailParts.length > 0 ? (
             <p
               className={cn(
-                "mt-0.5 text-xs",
-                compact ? "text-slate-500" : "pl-5 text-slate-500",
+                "mt-1 text-xs leading-relaxed text-slate-500",
+                !compact && "pl-5",
                 emphasizeStock && onStock && "font-medium text-emerald-800",
                 emphasizeStock && partial && "font-medium text-amber-900"
               )}
             >
-              <SearchHighlightJoined
-                parts={[line.symbol, line.quantityLabel, showProgress ? line.progressLabel : null]}
-                searchQuery={searchQuery}
-              />
+              <SearchHighlightJoined parts={detailParts} searchQuery={searchQuery} />
             </p>
           ) : null}
+
           {canEditClient && onSaveClient && onStartEditClient ? (
             <MyOrderLineClientField
               clientName={line.clientName}
               disabled={pending}
               editing={openClientEditor}
-              className={!compact ? "pl-5" : undefined}
+              className={cn("mt-1.5", !compact && "pl-5")}
               onStartEdit={onStartEditClient}
               onSave={(name) => onSaveClient(line.id, name)}
             />
@@ -120,14 +147,15 @@ export function MyOrderLineItem({
             <MyOrderAssignedClient
               name={line.clientName}
               searchQuery={searchQuery}
-              className={cn("mt-0.5", !compact && "pl-5")}
+              className={cn("mt-1.5", !compact && "pl-5")}
             />
           ) : null}
         </div>
+
         {badge ? (
           <span
             className={cn(
-              "shrink-0 rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide",
+              "shrink-0 rounded-md px-2 py-0.5 text-[0.68rem] font-semibold ring-1",
               badge.className
             )}
           >
@@ -136,12 +164,14 @@ export function MyOrderLineItem({
           </span>
         ) : null}
       </div>
+
       {canAcknowledge && line.canAcknowledgePickup && onAcknowledgePickup ? (
         <MyOrderAckButton
           variant="inline"
-          className="mt-1.5"
+          className="mt-2"
           disabled={pending}
           title={acknowledgeLineTitle}
+          ariaLabel={acknowledgeLineTitle}
           onClick={() => onAcknowledgePickup(line.id)}
         >
           {acknowledgeLineLabel}
