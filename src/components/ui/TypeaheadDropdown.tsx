@@ -10,6 +10,7 @@ export function TypeaheadDropdown({
   emptyMessage,
   listboxId,
   footer,
+  size = "default",
 }: {
   open: boolean;
   children: React.ReactNode;
@@ -17,6 +18,8 @@ export function TypeaheadDropdown({
   emptyMessage?: string;
   listboxId?: string;
   footer?: React.ReactNode;
+  /** comfortable — wyższa lista w modalach i formularzach z wieloma wynikami */
+  size?: "default" | "comfortable";
 }) {
   if (!open) return null;
 
@@ -25,7 +28,10 @@ export function TypeaheadDropdown({
       id={listboxId}
       role="listbox"
       className={cn(
-        "absolute left-0 right-0 top-full z-50 mt-1 max-h-72 w-full overflow-auto rounded-lg border border-indigo-200/80 bg-white py-1 shadow-xl shadow-indigo-900/10 ring-1 ring-indigo-100",
+        "absolute left-0 right-0 top-full z-[80] mt-1 w-full overflow-auto rounded-lg border border-indigo-200/80 bg-white py-1 shadow-xl shadow-indigo-900/10 ring-1 ring-indigo-100",
+        size === "comfortable"
+          ? "max-h-[min(22rem,52dvh)]"
+          : "max-h-72",
         className
       )}
     >
@@ -58,6 +64,7 @@ export function TypeaheadOption({
   badge,
   highlighted = false,
   optionId,
+  size = "default",
 }: {
   onSelect: () => void;
   onHighlight?: () => void;
@@ -66,6 +73,7 @@ export function TypeaheadOption({
   badge?: string;
   highlighted?: boolean;
   optionId?: string;
+  size?: "default" | "comfortable";
 }) {
   const ref = useRef<HTMLButtonElement>(null);
 
@@ -84,7 +92,8 @@ export function TypeaheadOption({
         role="option"
         aria-selected={highlighted}
         className={cn(
-          "flex w-full cursor-pointer flex-col gap-0.5 px-3 py-2.5 text-left text-sm transition-colors",
+          "flex w-full cursor-pointer flex-col gap-0.5 text-left text-sm transition-colors",
+          size === "comfortable" ? "px-3.5 py-3" : "px-3 py-2.5",
           highlighted
             ? "bg-indigo-100 text-indigo-950 ring-1 ring-inset ring-indigo-200"
             : "text-slate-900 hover:bg-indigo-50/80 focus:bg-indigo-50/80 focus:outline-none"

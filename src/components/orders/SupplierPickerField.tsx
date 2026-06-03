@@ -36,6 +36,7 @@ export function SupplierPickerField({
   emptyLabel = "Wybierz później / nie wiem",
   showInlineFeedback = true,
   onSubiektFeedbackChange,
+  dropdownSize = "default",
 }: {
   suppliers: SupplierPickerOption[];
   value: string;
@@ -47,6 +48,7 @@ export function SupplierPickerField({
   /** false — komunikaty idą do rodzica (RequestFormStatusPanel) */
   showInlineFeedback?: boolean;
   onSubiektFeedbackChange?: (feedbacks: SubiektFeedback[]) => void;
+  dropdownSize?: "default" | "comfortable";
 }) {
   const ref = useRef<HTMLDivElement>(null);
   const subiektRequestId = useRef(0);
@@ -218,6 +220,7 @@ export function SupplierPickerField({
 
       <TypeaheadDropdown
         open={showDropdown}
+        size={dropdownSize}
         emptyMessage={
           status === "loading" && appRows.length === 0
             ? "Szukam w Subiekcie…"
@@ -243,6 +246,7 @@ export function SupplierPickerField({
                   key={s.supplierId}
                   title={s.label}
                   subtitle={s.detail}
+                  size={dropdownSize}
                   onSelect={() => select(s.supplierId!, s.label)}
                 />
               ) : null
@@ -258,6 +262,7 @@ export function SupplierPickerField({
                 key={s.supplierId ?? `unmapped-${i}`}
                 title={s.label}
                 subtitle={s.detail}
+                size={dropdownSize}
                 onSelect={() => {
                   if (s.supplierId) select(s.supplierId, s.label);
                   else setOpen(false);

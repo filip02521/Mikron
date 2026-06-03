@@ -221,78 +221,102 @@ export type SubiektResolveSupplierResult =
     }
   | { ok: false; feedback: SubiektFeedback };
 
+async function lookupSupplierFromCatalogTwId(
+  twId: number,
+  appSuppliers: AppSupplierRef[]
+): Promise<SubiektResolveSupplierResult> {
+  if (!Number.isFinite(twId) || twId <= 0) {
+    return {
+      ok: false,
+      feedback: getSubiektFeedback("not_found_supplier", {
+        message: "Brak ID towaru (tw_Id) — wybierz dostawcę ręcznie.",
+      }),
+    };
+  }
+
+  const supabase = createAdminClient();
+  const { data: linksRaw, error } = await supabase
+    .from("product_supplier_links")
+    .select("supplier_id, order_count, last_source, suppliers(name)")
+    .eq("subiekt_tw_id", twId);
+  if (error) throw new Error(error.message);
+
+  const links = (linksRaw ?? []).map((row: any) => ({
+    supplierId: String(row.supplier_id),
+    orderCount: Number(row.order_count ?? 0),
+    lastSource: (row.last_source as string | null) ?? null,
+    supplierName:
+      row?.suppliers?.name != null ? String(row.suppliers.name) : "Dostawca",
+  }));
+
+  if (!links.length) {
+    return {
+      ok: false,
+      feedback: getSubiektFeedback("not_found_supplier", {
+        message:
+          "Brak przypisanego dostawcy w naszej bazie dla tego towaru — wybierz dostawcę ręcznie (powstanie powiązanie po zapisie).",
+      }),
+    };
+  }
+
+  const scoreSource = (s: string | null) =>
+    s === "procurement_verification" ? 3 : s === "order_history" ? 2 : s === "zd_import" ? 1 : 0;
+  links.sort((a, b) => {
+    const c = (b.orderCount ?? 0) - (a.orderCount ?? 0);
+    if (c !== 0) return c;
+    return scoreSource(b.lastSource) - scoreSource(a.lastSource);
+  });
+
+  const best = links[0]!;
+
+  if (appSuppliers?.length && !appSuppliers.some((s) => s.id === best.supplierId)) {
+    return {
+      ok: false,
+      feedback: getSubiektFeedback("not_found_supplier", {
+        message:
+          "Dostawca z naszej bazy nie jest dostępny na liście dostawców — wybierz ręcznie.",
+      }),
+    };
+  }
+
+  return {
+    ok: true,
+    supplierId: best.supplierId,
+    supplierName: best.supplierName,
+    documentNumber: null,
+  };
+}
+
+/** Dopasowanie dostawcy po tw_Id z katalogu (np. przy wczytywaniu weryfikacji). */
+export async function actionLookupSupplierFromCatalogTwId(
+  subiektTwId: number,
+  appSuppliers: AppSupplierRef[]
+): Promise<SubiektResolveSupplierResult> {
+  await requireSubiektLookup();
+  try {
+    return await lookupSupplierFromCatalogTwId(Math.trunc(subiektTwId), appSuppliers);
+  } catch (e) {
+    return { ok: false, feedback: feedbackFromException(e) };
+  }
+}
+
 /** Po wyborze towaru z Subiekta — dostawca z naszej bazy (product_supplier_links), bez przeszukiwania ZD. */
 export async function actionSubiektResolveSupplierForProduct(
   product: SubiektProduct,
   appSuppliers: AppSupplierRef[]
 ): Promise<SubiektResolveSupplierResult> {
   await requireSubiektLookup();
-  // Najnowsze podejście: nie przeszukujemy ZD przy wyborze produktu.
-  // Subiekt jest używany tylko do podpowiedzi kartotek, a dostawcę bierzemy z własnej bazy mapowań.
-
-  try {
-    const twId = Math.trunc(Number((product as any)?.tw_Id));
-    if (!Number.isFinite(twId) || twId <= 0) {
-      return {
-        ok: false,
-        feedback: getSubiektFeedback("not_found_supplier", {
-          message: "Brak ID towaru (tw_Id) — wybierz dostawcę ręcznie lub zostaw puste.",
-        }),
-      };
-    }
-
-    const supabase = createAdminClient();
-    const { data: linksRaw, error } = await supabase
-      .from("product_supplier_links")
-      .select("supplier_id, order_count, last_source, suppliers(name)")
-      .eq("subiekt_tw_id", twId);
-    if (error) throw new Error(error.message);
-
-    const links = (linksRaw ?? []).map((row: any) => ({
-      supplierId: String(row.supplier_id),
-      orderCount: Number(row.order_count ?? 0),
-      lastSource: (row.last_source as string | null) ?? null,
-      supplierName:
-        row?.suppliers?.name != null ? String(row.suppliers.name) : "Dostawca",
-    }));
-
-    if (!links.length) {
-      return {
-        ok: false,
-        feedback: getSubiektFeedback("not_found_supplier", {
-          message:
-            "Brak przypisanego dostawcy w naszej bazie dla tego towaru — wybierz dostawcę ręcznie (powstanie powiązanie po zapisie).",
-        }),
-      };
-    }
-
-    const scoreSource = (s: string | null) =>
-      s === "procurement_verification" ? 3 : s === "order_history" ? 2 : s === "zd_import" ? 1 : 0;
-    links.sort((a, b) => {
-      const c = (b.orderCount ?? 0) - (a.orderCount ?? 0);
-      if (c !== 0) return c;
-      return scoreSource(b.lastSource) - scoreSource(a.lastSource);
-    });
-
-    const best = links[0]!;
-
-    // Jeśli dostawca nie jest już dostępny w aplikacji (np. usunięty), nie ustawiaj automatycznie.
-    if (appSuppliers?.length && !appSuppliers.some((s) => s.id === best.supplierId)) {
-      return {
-        ok: false,
-        feedback: getSubiektFeedback("not_found_supplier", {
-          message:
-            "Dostawca z naszej bazy nie jest dostępny na liście dostawców — wybierz ręcznie lub zostaw puste.",
-        }),
-      };
-    }
-
+  const twId = Math.trunc(Number((product as { tw_Id?: unknown }).tw_Id));
+  if (!Number.isFinite(twId) || twId <= 0) {
     return {
-      ok: true,
-      supplierId: best.supplierId,
-      supplierName: best.supplierName,
-      documentNumber: null,
+      ok: false,
+      feedback: getSubiektFeedback("not_found_supplier", {
+        message: "Brak ID towaru (tw_Id) — wybierz dostawcę ręcznie lub zostaw puste.",
+      }),
     };
+  }
+  try {
+    return await lookupSupplierFromCatalogTwId(twId, appSuppliers);
   } catch (e) {
     return { ok: false, feedback: feedbackFromException(e) };
   }

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import type { IndividualRequestKind } from "@/types/database";
 import { actionUpdateIndividualRequest } from "@/app/actions/admin";
 import { actionUpdateMyIndividualRequest } from "@/app/actions/my-orders";
@@ -12,17 +12,23 @@ import {
 import { assertProcurementEntryComplete } from "@/lib/orders/procurement-submit";
 import { PROCUREMENT_TEAM_LABEL } from "@/lib/orders/procurement-copy";
 import { ProsbaFormReadiness } from "@/components/orders/ProsbaFormReadiness";
+import { ProsbaFormSection } from "@/components/orders/ProsbaFormSection";
 import { RequestFormStatusPanel } from "@/components/orders/RequestFormStatusPanel";
 import { RequestProductLinesEditor } from "@/components/orders/RequestProductLinesEditor";
-import { newProductLine, type ProductLineDraft } from "@/components/orders/request-product-lines";
-import { RequestKindPicker } from "@/components/ui/RequestKindPicker";
+import { newProductLine, appendProductLine, type ProductLineDraft } from "@/components/orders/request-product-lines";
+import { RequestKindToggle } from "@/components/orders/RequestKindToggle";
 import { ModalShell } from "@/components/ui/ModalShell";
 import { Button } from "@/components/ui/Button";
 import { Field, Select } from "@/components/ui/Field";
 import { SupplierPickerField } from "@/components/orders/SupplierPickerField";
+import { KeyboardShortcutsHint } from "@/components/ui/KeyboardShortcutsHint";
 import { useActionPending } from "@/hooks/useActionPending";
 import { toAppSupplierRefs } from "@/lib/subiekt/match-supplier";
 import type { SubiektFeedback } from "@/lib/subiekt/feedback";
+import {
+  handleProcurementProsbaKeyboardEvent,
+  PROCUREMENT_PROSBA_KEYBOARD_HINTS,
+} from "@/lib/orders/procurement-prosba-keyboard";
 
 export type EditIndividualRequestInitial = {
   supplierId: string;
@@ -88,12 +94,17 @@ export function EditIndividualRequestModal({
     setFormNotice(null);
   }, [open, initial]);
 
+  const saveRef = useRef<() => void>(() => {});
+  const addLineRef = useRef<() => void>(() => {});
+
   const save = () => {
     if (!initial) return;
     setFormNotice(null);
+    setValidationAttempted(false);
 
     if (mode === "procurement" && requestKind === "zamowienie") {
       if (!supplierId.trim()) {
+        setValidationAttempted(true);
         setFormNotice({ text: "Wybierz dostawcę.", tone: "error" });
         return;
       }
@@ -110,6 +121,7 @@ export function EditIndividualRequestModal({
           });
         }
       } catch (e) {
+        setValidationAttempted(true);
         setFormNotice({
           text: e instanceof Error ? e.message : "Uzupełnij wymagane pola.",
           tone: "error",
@@ -176,6 +188,22 @@ export function EditIndividualRequestModal({
       "Zapisywanie prośby…"
     );
   };
+  saveRef.current = save;
+  addLineRef.current = () => setLines((prev) => appendProductLine(prev));
+
+  useEffect(() => {
+    if (!open) return;
+    const onKey = (e: KeyboardEvent) => {
+      handleProcurementProsbaKeyboardEvent(e, {
+        pending,
+        onSubmit: () => saveRef.current(),
+        onSetRequestKind: mode === "procurement" ? setRequestKind : undefined,
+        onAddProductLine: () => addLineRef.current(),
+      });
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [open, pending, mode]);
 
   if (!open) return null;
 
@@ -184,11 +212,17 @@ export function EditIndividualRequestModal({
       open
       onClose={onClose}
       title={mode === "procurement" ? "Popraw prośbę handlowca" : "Popraw swoją prośbę"}
-      size="lg"
+      description={
+        mode === "procurement"
+          ? "Korekta przed złożeniem zamówienia u dostawcy — np. zły dostawca lub opis produktu."
+          : `Możesz poprawić prośbę, dopóki ${PROCUREMENT_TEAM_LABEL} nie oznaczy jej jako zamówionej.`
+      }
+      size="xl"
       tier="raised"
+      className="max-h-[min(calc(100dvh-1rem),920px)]"
       loadingMessage={pendingMessage}
       disableBackdropClose={pending}
-      bodyClassName="px-5 py-4 sm:px-6"
+      bodyClassName="flex min-h-0 flex-1 flex-col"
       footer={
         <>
           <Button variant="ghost" disabled={pending} onClick={onClose}>
@@ -200,122 +234,136 @@ export function EditIndividualRequestModal({
         </>
       }
     >
-      <p className="mb-4 text-sm text-slate-600">
-        {mode === "procurement"
-          ? "Korekta przed złożeniem zamówienia u dostawcy — np. zły dostawca lub opis produktu."
-          : `Możesz poprawić prośbę, dopóki ${PROCUREMENT_TEAM_LABEL} nie oznaczy jej jako zamówionej.`}
-      </p>
+      <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5 border-b border-slate-100 bg-slate-50/60 px-5 py-2.5 sm:px-6">
+        <span className="shrink-0 text-xs font-medium text-slate-600">Skróty klawiszowe</span>
+        <KeyboardShortcutsHint items={[...PROCUREMENT_PROSBA_KEYBOARD_HINTS]} compact />
+      </div>
 
-      <div className="grid gap-4 sm:grid-cols-2">
+      <div className="min-h-0 flex-1 space-y-6 overflow-y-auto px-5 py-4 sm:px-6 sm:py-5">
         {mode === "procurement" ? (
-          <Field label="Dostawca" className="sm:col-span-2">
-            <SupplierPickerField
-              suppliers={sortedSuppliers}
-              value={supplierId}
-              onChange={setSupplierId}
-              disabled={pending}
-              allowEmpty
-              emptyLabel="— wybierz —"
-            />
-          </Field>
-        ) : null}
-
-        {mode === "procurement" ? (
-          <>
-            {salesPeople.length > 0 ? (
-              <Field label="Handlowiec" className="sm:col-span-2">
-                <Select
+          <ProsbaFormSection
+            title="Dla kogo i u kogo?"
+            hint="Handlowiec i dostawca przypisany do prośby."
+          >
+            <div className="grid gap-4 lg:grid-cols-2">
+              <Field label="Dostawca">
+                <SupplierPickerField
+                  suppliers={sortedSuppliers}
+                  value={supplierId}
+                  onChange={setSupplierId}
                   disabled={pending}
-                  value={salesPersonId}
-                  onChange={(e) => setSalesPersonId(e.target.value)}
-                >
-                  {salesPeople.map((p) => (
-                    <option key={p.id} value={p.id}>
-                      {p.name}
-                    </option>
-                  ))}
-                </Select>
+                  allowEmpty
+                  emptyLabel="— wybierz —"
+                  dropdownSize="comfortable"
+                />
               </Field>
-            ) : null}
-          </>
+              {salesPeople.length > 0 ? (
+                <Field label="Handlowiec">
+                  <Select
+                    disabled={pending}
+                    value={salesPersonId}
+                    onChange={(e) => setSalesPersonId(e.target.value)}
+                  >
+                    {salesPeople.map((p) => (
+                      <option key={p.id} value={p.id}>
+                        {p.name}
+                      </option>
+                    ))}
+                  </Select>
+                </Field>
+              ) : null}
+            </div>
+          </ProsbaFormSection>
         ) : (
-          <p className="sm:col-span-2 text-xs text-slate-500">
+          <p className="text-xs leading-relaxed text-slate-500">
             Dostawcę dopasujemy z Subiekta po zapisie (jeśli wybrałeś towar z katalogu) albo
             uzupełni go {PROCUREMENT_TEAM_LABEL}.
           </p>
         )}
 
-        <div className="sm:col-span-2">
-          <RequestKindPicker value={requestKind} onChange={setRequestKind} />
-        </div>
+        <ProsbaFormSection
+          title="Co chcesz zgłosić?"
+          hint="Rodzaj prośby decyduje o wymaganych polach produktu."
+        >
+          <RequestKindToggle value={requestKind} onChange={setRequestKind} />
+        </ProsbaFormSection>
 
-        <div className="sm:col-span-2">
-          <RequestProductLinesEditor
-            lines={lines}
-            onChange={(next) => {
-              setFormNotice(null);
-              setLines(next);
-            }}
-            requestKind={requestKind}
-            appearance={mode === "sales" ? "prosba" : "default"}
-            showClientField={mode === "sales"}
-            deferSupplierResolve={mode === "sales"}
-            validationAttempted={mode === "sales" ? validationAttempted : false}
-            suppliers={mode === "procurement" ? supplierRefs : undefined}
-            onSupplierResolved={
-              mode === "procurement"
-                ? ({ supplierId }) => {
-                    setSupplierId(supplierId);
-                    setSupplierResolveFeedback(null);
-                  }
-                : undefined
-            }
-            onSupplierMappingMissing={
-              mode === "procurement" ? () => setSupplierId("") : undefined
-            }
-            onSupplierResolveFeedback={
-              mode === "procurement" ? setSupplierResolveFeedback : undefined
-            }
-          />
-        </div>
-
-        <div className="sm:col-span-2">
-          {mode === "sales" ? (
-            <ProsbaFormReadiness
+        <ProsbaFormSection
+          title="Produkty"
+          hint={
+            requestKind === "informacja"
+              ? "Symbol, kod Mikran lub opis — bez ilości."
+              : "Symbol, kod Mikran lub opis oraz ilość przy każdej pozycji."
+          }
+        >
+          <div className="space-y-4">
+            <RequestProductLinesEditor
               lines={lines}
-              requestKind={requestKind}
-              salesSubmitPlan={salesSubmitPlan}
-              formMessage={formNotice}
-            />
-          ) : (
-            <RequestFormStatusPanel
-              requestKind={requestKind}
-              audience={mode === "procurement" ? "procurement" : "default"}
-              draft={{
-                supplierId,
-                symbol: lines.find((l) => l.symbol.trim())?.symbol,
-                mikranCode: lines.find((l) => l.mikranCode.trim())?.mikranCode,
-                product: lines.find((l) => l.product.trim())?.product,
-                quantity: lines.find((l) => l.quantity.trim())?.quantity,
-                requestKind,
+              onChange={(next) => {
+                setFormNotice(null);
+                setLines(next);
               }}
-              forcedAssessment={
-                mode === "procurement" && requestKind === "zamowienie"
-                  ? assessRequestCompleteness({
-                      supplierId,
-                      symbol: lines.find((l) => l.symbol.trim())?.symbol,
-                      mikranCode: lines.find((l) => l.mikranCode.trim())?.mikranCode,
-                      product: lines.find((l) => l.product.trim())?.product,
-                      quantity: lines.find((l) => l.quantity.trim())?.quantity,
-                      requestKind,
-                    })
+              requestKind={requestKind}
+              appearance="prosba"
+              addLabel="+ Kolejny produkt"
+              showClientField={mode === "sales"}
+              deferSupplierResolve={mode === "sales"}
+              typeaheadSize="comfortable"
+              validationAttempted={validationAttempted}
+              suppliers={mode === "procurement" ? supplierRefs : undefined}
+              onSupplierResolved={
+                mode === "procurement"
+                  ? ({ supplierId: id }) => {
+                      setSupplierId(id);
+                      setSupplierResolveFeedback(null);
+                    }
                   : undefined
               }
-              subiektFeedbacks={supplierResolveFeedback ? [supplierResolveFeedback] : []}
-              formMessage={formNotice}
+              onSupplierMappingMissing={
+                mode === "procurement" ? () => setSupplierId("") : undefined
+              }
+              onSupplierResolveFeedback={
+                mode === "procurement" ? setSupplierResolveFeedback : undefined
+              }
             />
-          )}
-        </div>
+
+            {mode === "sales" ? (
+              <ProsbaFormReadiness
+                lines={lines}
+                requestKind={requestKind}
+                salesSubmitPlan={salesSubmitPlan}
+                formMessage={formNotice}
+              />
+            ) : (
+              <RequestFormStatusPanel
+                requestKind={requestKind}
+                audience="procurement"
+                draft={{
+                  supplierId,
+                  symbol: lines.find((l) => l.symbol.trim())?.symbol,
+                  mikranCode: lines.find((l) => l.mikranCode.trim())?.mikranCode,
+                  product: lines.find((l) => l.product.trim())?.product,
+                  quantity: lines.find((l) => l.quantity.trim())?.quantity,
+                  requestKind,
+                }}
+                forcedAssessment={
+                  requestKind === "zamowienie"
+                    ? assessRequestCompleteness({
+                        supplierId,
+                        symbol: lines.find((l) => l.symbol.trim())?.symbol,
+                        mikranCode: lines.find((l) => l.mikranCode.trim())?.mikranCode,
+                        product: lines.find((l) => l.product.trim())?.product,
+                        quantity: lines.find((l) => l.quantity.trim())?.quantity,
+                        requestKind,
+                      })
+                    : undefined
+                }
+                subiektFeedbacks={supplierResolveFeedback ? [supplierResolveFeedback] : []}
+                formMessage={formNotice}
+              />
+            )}
+          </div>
+        </ProsbaFormSection>
       </div>
     </ModalShell>
   );

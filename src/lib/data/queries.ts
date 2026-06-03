@@ -153,6 +153,15 @@ export async function fetchVerificationOrders(): Promise<IndividualOrder[]> {
   );
   await runRepairIncompleteIndividualOrders(supabase);
 
+  const { autoAssignMissingSuppliersFromCatalog } = await import(
+    "@/lib/services/auto-assign-suppliers"
+  );
+  try {
+    await autoAssignMissingSuppliersFromCatalog({ limit: 80 });
+  } catch (e) {
+    console.error("[fetchVerificationOrders autoAssign]", e);
+  }
+
   const { data, error } = await supabase
     .from("individual_orders")
     .select("*, supplier:suppliers(*), sales_person:sales_people(*)")

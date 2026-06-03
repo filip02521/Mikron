@@ -1,5 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { describeVerificationGaps } from "./verification-gaps";
+import {
+  describeVerificationGaps,
+  verificationDraftMissingLabels,
+  verificationQueueMissingLabels,
+} from "./verification-gaps";
 import type { IndividualOrder } from "@/types/database";
 
 const base: IndividualOrder = {
@@ -45,5 +49,48 @@ describe("describeVerificationGaps", () => {
       quantity: "-",
     });
     expect(text).not.toContain("ilość");
+  });
+});
+
+describe("verificationQueueMissingLabels", () => {
+  it("zwraca brakujące pola dla kolejki", () => {
+    expect(verificationQueueMissingLabels(base)).toEqual([
+      "dostawca",
+      "produkt",
+      "ilość",
+    ]);
+  });
+
+  it("bez ilości dla informacji", () => {
+    expect(
+      verificationQueueMissingLabels({
+        ...base,
+        request_kind: "informacja",
+        symbol: "A",
+        products: "Test",
+      })
+    ).toEqual(["dostawca"]);
+  });
+});
+
+describe("verificationDraftMissingLabels", () => {
+  it("uwzględnia dostawcę z formularza", () => {
+    expect(
+      verificationDraftMissingLabels({
+        supplierId: "sup-1",
+        symbol: "A",
+        product: "Test",
+        quantity: "1",
+        requestKind: "zamowienie",
+      })
+    ).toEqual([]);
+  });
+
+  it("zwraca braki jak w kolejce", () => {
+    expect(
+      verificationDraftMissingLabels({
+        requestKind: "zamowienie",
+      })
+    ).toEqual(["dostawca", "produkt", "ilość"]);
   });
 });

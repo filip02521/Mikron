@@ -45,3 +45,38 @@ export function describeVerificationGaps(order: IndividualOrder): string {
 
   return `Dział dostaw uzupełni: ${procurementTodo.join(", ")}. ${footer}`;
 }
+
+/** Krótkie etykiety braków — lista kolejki w weryfikacji. */
+export function verificationQueueMissingLabels(order: IndividualOrder): string[] {
+  const draft = orderToDraft(order);
+  const labels: string[] = [];
+
+  if (!order.supplier_id) labels.push("dostawca");
+  if (!hasAnyProductHint(draft)) labels.push("produkt");
+  if (
+    !isInformacjaRequest(order) &&
+    !hasValidOrderQuantity(order.quantity, "zamowienie")
+  ) {
+    labels.push("ilość");
+  }
+
+  return labels;
+}
+
+/** Braki w bieżącym szkicu formularza (aktywna pozycja w weryfikacji). */
+export function verificationDraftMissingLabels(
+  draft: RequestDraft
+): string[] {
+  const labels: string[] = [];
+
+  if (!draft.supplierId?.trim()) labels.push("dostawca");
+  if (!hasAnyProductHint(draft)) labels.push("produkt");
+  if (
+    draft.requestKind !== "informacja" &&
+    !hasValidOrderQuantity(draft.quantity, "zamowienie")
+  ) {
+    labels.push("ilość");
+  }
+
+  return labels;
+}

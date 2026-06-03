@@ -22,7 +22,12 @@ import {
 } from "@/lib/orders/vacations";
 import { calculateBusinessDays } from "@/lib/orders/dates";
 import { isMissingProduct, parseOrderQuantity } from "@/lib/orders/individual";
-import type { IndividualOrderStatus, OrderType, SupplierLocation } from "@/types/database";
+import type {
+  IndividualOrder,
+  IndividualOrderStatus,
+  OrderType,
+  SupplierLocation,
+} from "@/types/database";
 import { scheduleHistoryRetentionPurge } from "@/lib/services/history-cleanup";
 import {
   sendDeliveryNotificationEmails,
@@ -68,6 +73,10 @@ import {
   procurementStatusForEntry,
   shouldLinkProcurementCatalogEntry,
 } from "@/lib/orders/procurement-submit";
+import {
+  formatGlowneMissingIntervalError,
+  supplierNamesWithoutOrderInterval,
+} from "@/lib/orders/glowne-interval-validation";
 
 async function getVacationsForSupplier(supplierId: string): Promise<VacationPeriod[]> {
   const supabase = createAdminClient();
@@ -787,6 +796,93 @@ export async function updateIndividualRequestGroup(
   return { updated, inserted, removed };
 }
 
+type IndividualOrderProcessSnapshot = {
+  id: string;
+  status: IndividualOrderStatus;
+  order_type: OrderType | null;
+  ordered_at: string | null;
+  placement_group_id: string | null;
+  procurement_seen_at: string | null;
+  informacja_queue_via_daily_panel: boolean | null;
+};
+
+async function captureIndividualOrderProcessSnapshots(
+  orderIds: string[]
+): Promise<IndividualOrderProcessSnapshot[]> {
+  if (!orderIds.length) return [];
+  const supabase = createAdminClient();
+  const { data, error } = await supabase
+    .from("individual_orders")
+    .select(
+      "id, status, order_type, ordered_at, placement_group_id, procurement_seen_at, informacja_queue_via_daily_panel"
+    )
+    .in("id", orderIds);
+  if (error) throw new Error(error.message);
+  return (data ?? []).map((row) => ({
+    id: row.id,
+    status: row.status as IndividualOrderStatus,
+    order_type: row.order_type as OrderType | null,
+    ordered_at: row.ordered_at,
+    placement_group_id: row.placement_group_id,
+    procurement_seen_at: row.procurement_seen_at ?? null,
+    informacja_queue_via_daily_panel: row.informacja_queue_via_daily_panel ?? null,
+  }));
+}
+
+async function rollbackIndividualOrderProcessSnapshots(
+  snapshots: IndividualOrderProcessSnapshot[]
+): Promise<void> {
+  if (!snapshots.length) return;
+  const supabase = createAdminClient();
+  for (const s of snapshots) {
+    const { error } = await supabase
+      .from("individual_orders")
+      .update({
+        status: s.status,
+        order_type: s.order_type,
+        ordered_at: s.ordered_at,
+        placement_group_id: s.placement_group_id,
+        procurement_seen_at: s.procurement_seen_at,
+        informacja_queue_via_daily_panel: s.informacja_queue_via_daily_panel,
+      })
+      .eq("id", s.id);
+    if (error) throw new Error(error.message);
+  }
+}
+
+function glowneSupplierIdsFromOrders(
+  orders: IndividualOrder[],
+  action: "GLOWNE" | "POBOCZNE" | "ANULOWANO"
+): Set<string> {
+  const ids = new Set<string>();
+  if (action !== "GLOWNE") return ids;
+  for (const order of orders) {
+    if (!order.supplier_id) continue;
+    if (
+      order.request_kind === "informacja" &&
+      order.informacja_queue_via_daily_panel
+    ) {
+      continue;
+    }
+    ids.add(order.supplier_id);
+  }
+  return ids;
+}
+
+async function assertGlowneSuppliersHaveInterval(supplierIds: Set<string>): Promise<void> {
+  if (!supplierIds.size) return;
+  const supabase = createAdminClient();
+  const { data, error } = await supabase
+    .from("suppliers")
+    .select("name, interval_raw, interval_weeks")
+    .in("id", [...supplierIds]);
+  if (error) throw new Error(error.message);
+  const missing = supplierNamesWithoutOrderInterval(data ?? []);
+  if (missing.length) {
+    throw new Error(formatGlowneMissingIntervalError(missing));
+  }
+}
+
 export async function processIndividualFromSummary(
   orderIds: string[],
   action: "GLOWNE" | "POBOCZNE" | "ANULOWANO",
@@ -844,8 +940,8 @@ export async function processIndividualFromSummary(
   const orderType: OrderType = action === "GLOWNE" ? "Glowne" : "Poboczne";
   const batchOrderedAt = new Date().toISOString();
   const placementGroupId = uuidv4();
-  const glowneSupplierIds = new Set<string>();
 
+  const ordersToProcess: IndividualOrder[] = [];
   for (const id of orderIds) {
     if (!allowedIds.has(id)) continue;
     const { data: raw } = await supabase
@@ -854,8 +950,20 @@ export async function processIndividualFromSummary(
       .eq("id", id)
       .single();
     const order = raw ? normalizeIndividualOrder(raw) : null;
-    if (!order) continue;
+    if (order) ordersToProcess.push(order);
+  }
 
+  const glowneSupplierIds = glowneSupplierIdsFromOrders(ordersToProcess, action);
+  if (action === "GLOWNE") {
+    await assertGlowneSuppliersHaveInterval(glowneSupplierIds);
+  }
+
+  const processSnapshots = await captureIndividualOrderProcessSnapshots(
+    ordersToProcess.map((o) => o.id)
+  );
+
+  for (const order of ordersToProcess) {
+    const id = order.id;
     const seenPatch = { procurement_seen_at: batchOrderedAt };
 
     if (action === "ANULOWANO") {
@@ -893,14 +1001,17 @@ export async function processIndividualFromSummary(
         ...seenPatch,
       })
       .eq("id", id);
-
-    if (action === "GLOWNE" && order.supplier_id) {
-      glowneSupplierIds.add(order.supplier_id);
-    }
   }
 
-  for (const supplierId of glowneSupplierIds) {
-    await markStandardOrdered(supplierId, userEmail, true);
+  if (glowneSupplierIds.size) {
+    try {
+      for (const supplierId of glowneSupplierIds) {
+        await markStandardOrdered(supplierId, userEmail, true);
+      }
+    } catch (e) {
+      await rollbackIndividualOrderProcessSnapshots(processSnapshots);
+      throw e;
+    }
   }
 }
 

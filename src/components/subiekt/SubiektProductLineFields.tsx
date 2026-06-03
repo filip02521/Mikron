@@ -155,6 +155,7 @@ export function SubiektProductLineFields({
   deferSupplierResolve = false,
   fieldValidation,
   lineIndex = 0,
+  typeaheadSize = "default",
 }: {
   value: SubiektProductLineValue;
   onChange: (patch: Partial<SubiektProductLineValue>) => void;
@@ -179,6 +180,7 @@ export function SubiektProductLineFields({
   /** Stany pól (prośba handlowca). */
   fieldValidation?: ProsbaLineFieldMap;
   lineIndex?: number;
+  typeaheadSize?: "default" | "comfortable";
 }) {
   const ref = useRef<HTMLDivElement>(null);
   const typeaheadInstanceId = useId();
@@ -437,6 +439,7 @@ export function SubiektProductLineFields({
     return (
       <TypeaheadDropdown
         open
+        size={typeaheadSize}
         listboxId={listboxId}
         emptyMessage={status === "loading" ? "Szukam w Subiekcie…" : undefined}
         footer={typeaheadListVisible ? TYPEAHEAD_KEYBOARD_HINT : undefined}
@@ -455,6 +458,7 @@ export function SubiektProductLineFields({
                   title={title}
                   subtitle={subtitle}
                   badge="towar"
+                  size={typeaheadSize}
                   highlighted={highlightedIndex === index}
                   onHighlight={() => setHighlightedIndex(index)}
                   onSelect={() => pick(p)}

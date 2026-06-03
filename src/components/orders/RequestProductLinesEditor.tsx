@@ -45,6 +45,7 @@ export function RequestProductLinesEditor({
   onResolvingSupplierChange,
   deferSupplierResolve = false,
   validationAttempted = false,
+  typeaheadSize = "default",
 }: {
   lines: ProductLineDraft[];
   onChange: (lines: ProductLineDraft[]) => void;
@@ -52,7 +53,7 @@ export function RequestProductLinesEditor({
   minLines?: number;
   addLabel?: string;
   showClientField?: boolean;
-  /** Układ handlowca (/prosba, edycja własnej prośby) — zwijanie linii, checklista, tryb ręczny. Nie używać w modalach zakupów. */
+  /** Układ handlowca (/prosba) — zwijanie linii, checklista; używany też w modalach panelu dziennego. */
   appearance?: "default" | "prosba";
   suppliers?: AppSupplierRef[];
   onSupplierResolved?: (result: {
@@ -69,6 +70,8 @@ export function RequestProductLinesEditor({
   deferSupplierResolve?: boolean;
   /** Po nieudanej próbie wysłania — podświetlenie braków we wszystkich pozycjach. */
   validationAttempted?: boolean;
+  /** Wyższa lista podpowiedzi Subiekta / dostawcy w modalach. */
+  typeaheadSize?: "default" | "comfortable";
 }) {
   const canRemove = lines.length > minLines;
   const prosba = appearance === "prosba";
@@ -271,6 +274,7 @@ export function RequestProductLinesEditor({
                 isActive ? onResolvingSupplierChange : undefined
               }
               deferSupplierResolve={deferSupplierResolve}
+              typeaheadSize={typeaheadSize}
               fieldValidation={fieldValidation}
               lineIndex={index}
               value={{
