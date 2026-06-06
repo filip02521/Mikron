@@ -9,6 +9,7 @@ import { Card, CardHeader } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Field";
 import { EmptyState } from "@/components/ui/EmptyState";
+import { BackChevron } from "@/components/ui/UiGlyphs";
 import { Badge } from "@/components/ui/Badge";
 import { HelpPopover, GuideIcon } from "@/components/ui/HelpPopover";
 import { SectionListLabel } from "@/components/ui/SectionListLabel";
@@ -418,9 +419,10 @@ export function SalesPlanView({
               <button
                 type="button"
                 onClick={() => setQuery("")}
-                className="text-sm font-medium text-indigo-700 hover:text-indigo-900"
+                className="inline-flex items-center gap-1.5 text-sm font-medium text-indigo-700 hover:text-indigo-900"
               >
-                ← Wróć do listy z prośbami
+                <BackChevron className="text-indigo-600" />
+                Wróć do listy z prośbami
               </button>
             </div>
           </section>

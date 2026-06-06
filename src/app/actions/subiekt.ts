@@ -29,7 +29,14 @@ import {
   searchSubiektKontrahenciCached,
   searchSubiektSuppliersCached,
 } from "@/lib/subiekt/subiekt-runtime-cache";
-import { productSearchParams, minProductSearchLength, looksLikeProductSymbol, type ProductSearchField } from "@/lib/subiekt/product-pick";
+import {
+  isCombinedProductSearchField,
+  mergeSubiektProductSearchResults,
+  minProductSearchLength,
+  productSearchParams,
+  looksLikeProductSymbol,
+  type ProductSearchField,
+} from "@/lib/subiekt/product-pick";
 import { getSubiektConfigSummary, isSubiektConfigured } from "@/lib/subiekt/config";
 import { testSubiektConnection, type SubiektHealthResult } from "@/lib/subiekt/client";
 import {
@@ -348,65 +355,109 @@ export async function actionRecordCatalogFromSubiektPick(input: {
   return { success: true };
 }
 
+async function searchSubiektProductsCombined(
+  query: string
+): Promise<{ data: SubiektProduct[]; totalCount?: number }> {
+  const [symbolSettled, nameSettled] = await Promise.allSettled([
+    searchSubiektProducts(productSearchParams(query, "symbol")),
+    searchSubiektProducts(productSearchParams(query, "name")),
+  ]);
+
+  const symbolData =
+    symbolSettled.status === "fulfilled" ? symbolSettled.value.data : [];
+  const nameData = nameSettled.status === "fulfilled" ? nameSettled.value.data : [];
+
+  if (
+    symbolSettled.status === "rejected" &&
+    nameSettled.status === "rejected"
+  ) {
+    throw symbolSettled.reason;
+  }
+
+  const data = mergeSubiektProductSearchResults([symbolData, nameData], 12);
+  const totalCount = Math.max(
+    symbolSettled.status === "fulfilled"
+      ? (symbolSettled.value.pagination?.totalCount ?? 0)
+      : 0,
+    nameSettled.status === "fulfilled"
+      ? (nameSettled.value.pagination?.totalCount ?? 0)
+      : 0
+  );
+
+  return { data, totalCount: totalCount || undefined };
+}
+
 async function suggestProducts(
   query: string,
   searchField?: ProductSearchField
 ): Promise<SubiektLookupResult<SubiektProduct>> {
   const q = query.trim();
   const field = searchField ?? (looksLikeProductSymbol(q) ? "symbol" : "name");
-  const minLen = minProductSearchLength(field);
+  const minLen = minProductSearchLength(isCombinedProductSearchField(field) ? "name" : field);
   if (q.length < minLen) return validationFailure("short_query");
   if (!isSubiektConfigured()) {
     return { ok: false, feedback: getSubiektFeedback("not_configured") };
   }
 
   try {
-    let res = await searchSubiektProducts(productSearchParams(q, field));
-    if (field === "plu" && res.data.length > 0) {
-      const normalizePlu = (v: unknown): string => {
-        const raw = String(v ?? "").trim();
-        // Kod Mikran bywa liczbowy; normalizujemy wiodące zera (np. 0896 == 896).
-        if (/^\d+$/.test(raw)) return raw.replace(/^0+(?=\d)/, "");
-        return raw;
-      };
-      const qn = normalizePlu(q);
-      // W trybie “Kod Mikran” pokazuj tylko wyniki faktycznie po tw_PLU.
-      // Subiekt (lub warstwa API) potrafi dorzucić dopasowania po symbolu.
-      const onlyPlu = res.data.filter((p) => normalizePlu(p.tw_PLU) === qn);
-      if (onlyPlu.length !== res.data.length) {
-        res = { ...res, data: onlyPlu };
+    let rows: SubiektProduct[] = [];
+    let totalCount: number | undefined;
+
+    if (isCombinedProductSearchField(field)) {
+      const combined = await searchSubiektProductsCombined(q);
+      rows = combined.data;
+      totalCount = combined.totalCount;
+    } else {
+      let res = await searchSubiektProducts(productSearchParams(q, field));
+      if (field === "plu" && res.data.length > 0) {
+        const normalizePlu = (v: unknown): string => {
+          const raw = String(v ?? "").trim();
+          // Kod Mikran bywa liczbowy; normalizujemy wiodące zera (np. 0896 == 896).
+          if (/^\d+$/.test(raw)) return raw.replace(/^0+(?=\d)/, "");
+          return raw;
+        };
+        const qn = normalizePlu(q);
+        // W trybie “Kod Mikran” pokazuj tylko wyniki faktycznie po tw_PLU.
+        // Subiekt (lub warstwa API) potrafi dorzucić dopasowania po symbolu.
+        const onlyPlu = res.data.filter((p) => normalizePlu(p.tw_PLU) === qn);
+        if (onlyPlu.length !== res.data.length) {
+          res = { ...res, data: onlyPlu };
+        }
       }
-    }
-    if (field === "plu" && res.data.length === 0) {
-      const wide = await searchSubiektProducts({
-        search: q,
-        symbol: q,
-        pageSize: 24,
-        page: 1,
-      });
-      const normalizePlu = (v: unknown): string => {
-        const raw = String(v ?? "").trim();
-        if (/^\d+$/.test(raw)) return raw.replace(/^0+(?=\d)/, "");
-        return raw;
-      };
-      const qn = normalizePlu(q);
-      const byPlu = wide.data.filter((p) => normalizePlu(p.tw_PLU) === qn);
-      if (byPlu.length) {
-        res = { ...res, data: byPlu.slice(0, 12) };
+      if (field === "plu" && res.data.length === 0) {
+        const wide = await searchSubiektProducts({
+          search: q,
+          symbol: q,
+          pageSize: 24,
+          page: 1,
+        });
+        const normalizePlu = (v: unknown): string => {
+          const raw = String(v ?? "").trim();
+          if (/^\d+$/.test(raw)) return raw.replace(/^0+(?=\d)/, "");
+          return raw;
+        };
+        const qn = normalizePlu(q);
+        const byPlu = wide.data.filter((p) => normalizePlu(p.tw_PLU) === qn);
+        if (byPlu.length) {
+          res = { ...res, data: byPlu.slice(0, 12) };
+        }
       }
+      rows = res.data;
+      totalCount = res.pagination?.totalCount;
     }
-    if (res.data.length === 0) {
+
+    if (rows.length === 0) {
       return {
         ok: true,
         items: [],
-        totalCount: res.pagination?.totalCount ?? 0,
+        totalCount: totalCount ?? 0,
         feedback: notFoundProductFeedback(q),
       };
     }
     return {
       ok: true,
-      items: res.data,
-      totalCount: res.pagination?.totalCount,
+      items: rows,
+      totalCount,
     };
   } catch (e) {
     return lookupFailure(e);

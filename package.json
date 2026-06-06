@@ -9,6 +9,8 @@
     "lan-check": "bash scripts/lan-check.sh",
     "lint": "eslint",
     "test": "vitest run",
+    "test:e2e": "playwright test",
+    "test:e2e:install": "playwright install chromium",
     "migrate": "tsx scripts/migrate-from-csv.ts",
     "build-ustawienia": "tsx scripts/build-ustawienia-from-pdf.ts",
     "sync-intervals": "npm run build-ustawienia && tsx scripts/backfill-interval-raw.ts",
@@ -48,7 +50,10 @@
     "zod": "^4.4.3"
   },
   "devDependencies": {
+    "@playwright/test": "^1.52.0",
     "@tailwindcss/postcss": "^4",
+    "@testing-library/dom": "^10.4.1",
+    "@testing-library/react": "^16.3.2",
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
@@ -56,6 +61,7 @@
     "@vitejs/plugin-react": "^6.0.2",
     "eslint": "^9",
     "eslint-config-next": "16.2.6",
+    "happy-dom": "^20.9.0",
     "tailwindcss": "^4",
     "tsx": "^4.22.0",
     "typescript": "^5",

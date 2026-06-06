@@ -1,10 +1,29 @@
+/**
+ * Kurierzy w dzienniku dostaw magazynu (ewidencja).
+ * Wartości `value` muszą odpowiadać enum `warehouse_carrier` w Postgres.
+ */
 export const WAREHOUSE_CARRIERS = [
-  { value: "inpost", label: "InPost" },
-  { value: "dhl", label: "DHL" },
   { value: "dpd", label: "DPD" },
-  { value: "gls", label: "GLS" },
+  { value: "dhl", label: "DHL" },
+  { value: "dhl_express", label: "DHL Express" },
+  { value: "ups", label: "UPS" },
+  { value: "inpost", label: "InPost" },
   { value: "fedex", label: "FedEx" },
-  { value: "poczta", label: "Poczta / listy" },
+  { value: "gls", label: "GLS" },
+  { value: "rhenus_naxco", label: "Rhenus / Naxco" },
+  { value: "raben", label: "Raben" },
+  { value: "poczta", label: "Poczta Polska" },
+  { value: "psd", label: "PSD" },
+  { value: "tnt", label: "TNT" },
+  { value: "poltraf", label: "POLTRAF" },
+  { value: "kuehne_nagel", label: "Kuehne + Nagel" },
+  { value: "suus_logistics", label: "SUUS Logistics" },
+  { value: "dachser", label: "Dachser" },
+  { value: "db_schenker", label: "DB Schenker" },
+  { value: "mikran_bartek", label: "Mikran Bartek" },
+  { value: "geis", label: "Geis" },
+  { value: "jasfbg", label: "JASFBG" },
+  { value: "hellmann", label: "Hellmann" },
   { value: "kurier_dostawcy", label: "Kurier dostawcy" },
   { value: "odbior_wlasny", label: "Odbiór własny" },
   { value: "inne", label: "Inne" },
@@ -26,4 +45,35 @@ export function warehouseCarrierLabel(value: string): string {
 
 export function warehouseShipmentFormLabel(value: string): string {
   return WAREHOUSE_SHIPMENT_FORMS.find((f) => f.value === value)?.label ?? value;
+}
+
+/** Wszystkie wartości enum — do walidacji zapisu. */
+export function isWarehouseCarrier(value: string): value is WarehouseCarrier {
+  return WAREHOUSE_CARRIERS.some((c) => c.value === value);
+}
+
+export function isWarehouseShipmentForm(
+  value: string
+): value is WarehouseShipmentForm {
+  return WAREHOUSE_SHIPMENT_FORMS.some((f) => f.value === value);
+}
+
+export function parseWarehouseCarrier(value: string): WarehouseCarrier {
+  const trimmed = value.trim();
+  if (!isWarehouseCarrier(trimmed)) {
+    throw new Error(
+      `Nieprawidłowy kurier „${value}”. Odśwież stronę i wybierz kuriera z listy.`
+    );
+  }
+  return trimmed;
+}
+
+export function parseWarehouseShipmentForm(value: string): WarehouseShipmentForm {
+  const trimmed = value.trim();
+  if (!isWarehouseShipmentForm(trimmed)) {
+    throw new Error(
+      `Nieprawidłowa forma dostawy „${value}”. Wybierz paczki, palety lub obie.`
+    );
+  }
+  return trimmed;
 }

@@ -18,9 +18,15 @@ import {
 } from "@/lib/orders/individual";
 import { isInformacjaQueueViaDailyPanel } from "@/lib/orders/informacja-via-daily-panel";
 import {
+  filterIndividualOrdersForSalesMyOrders,
+  isInformacjaStockOutReorder,
+} from "@/lib/orders/informacja-stock-out-reorder";
+import {
   INFORMACJA_FLOW_SALES_AWAITING_PROCUREMENT,
   INFORMACJA_FLOW_SALES_AWAITING_WAREHOUSE,
   INFORMACJA_FLOW_SALES_DIRECT,
+  INFORMACJA_FLOW_SALES_STOCK_OUT,
+  INFORMACJA_FLOW_SALES_STOCK_OUT_ORDERED,
 } from "@/lib/orders/informacja-flow-copy";
 import {
   isAwaitingInformacjaAck,
@@ -129,6 +135,9 @@ export type MyOrderRow = MyOrderRowCore &
     cancelledAckOrderIds: string[];
     /** Skrót etykiet klientów na karcie (meta). */
     clientLabel: string | null;
+    /** Powiązanie z kartą ZK w notatniku (przycisk Prośba). */
+    sourceZkWatchId?: string | null;
+    sourceZkNumber?: string | null;
     supplierId: string | null;
     salesPersonId: string;
     requestKind: "zamowienie" | "informacja";
@@ -258,6 +267,14 @@ function withAckMeta(
       .filter((o) => o.status === "Anulowane")
       .map((o) => o.id),
     clientLabel: clientNamesSummary(visible),
+    sourceZkWatchId:
+      visible.map((o) => o.source_zk_watch_id).find(Boolean) ??
+      orders.map((o) => o.source_zk_watch_id).find(Boolean) ??
+      null,
+    sourceZkNumber:
+      visible.map((o) => o.source_zk_number?.trim()).find(Boolean) ??
+      orders.map((o) => o.source_zk_number?.trim()).find(Boolean) ??
+      null,
     ...pickup,
   };
 }
@@ -415,6 +432,15 @@ function presentInformacja(order: IndividualOrder): MyOrderRow {
         ...weryfikacjaPresentation(order),
       });
     case "Nowe":
+      if (isInformacjaStockOutReorder(order)) {
+        return finalize({
+          ...base,
+          statusTitle: INFORMACJA_FLOW_SALES_STOCK_OUT.statusTitle,
+          statusDetail: INFORMACJA_FLOW_SALES_STOCK_OUT.statusDetail,
+          timingLabel: null,
+          badgeVariant: "warning",
+        });
+      }
       if (order.ordered_at?.trim()) {
         return finalize({
           ...base,
@@ -463,6 +489,17 @@ function presentInformacja(order: IndividualOrder): MyOrderRow {
         rowColor: SUMMARY_COLORS.historyCancelled,
       });
     default:
+      if (isInformacjaStockOutReorder(order)) {
+        return finalize({
+          ...base,
+          statusTitle: INFORMACJA_FLOW_SALES_STOCK_OUT_ORDERED.statusTitle,
+          statusDetail: INFORMACJA_FLOW_SALES_STOCK_OUT_ORDERED.statusDetail,
+          timingLabel: order.ordered_at
+            ? `Zamówione ${formatPlDate(order.ordered_at.slice(0, 10))}`
+            : null,
+          badgeVariant: "warning",
+        });
+      }
       return finalize({
         ...base,
         statusTitle: order.status,
@@ -687,11 +724,12 @@ export function presentMyOrders(
   const statsBySupplier = Object.fromEntries(
     statsRows.map((s) => [s.supplier_id, s])
   );
+  const salesVisibleOrders = filterIndividualOrdersForSalesMyOrders(orders);
   const zamowienia: MyOrderRow[] = [];
   const informacje: MyOrderRow[] = [];
 
-  const zamowienieOrders = orders.filter((o) => !isInformacjaRequest(o));
-  const informacjaOrders = orders.filter((o) => isInformacjaRequest(o));
+  const zamowienieOrders = salesVisibleOrders.filter((o) => !isInformacjaRequest(o));
+  const informacjaOrders = salesVisibleOrders.filter((o) => isInformacjaRequest(o));
 
   for (const group of groupOrdersForMyView(zamowienieOrders)) {
     const open = group.filter((o) => !o.sales_acknowledged_at);

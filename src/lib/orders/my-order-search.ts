@@ -1,5 +1,13 @@
 import type { MyOrderLine, MyOrderRow } from "@/lib/orders/my-order-presenter";
 import { myOrderFriendlyStatusLabel } from "@/lib/orders/my-order-friendly-status";
+import type { MojeClientLinkFilter } from "@/lib/orders/moje-client-link-filter";
+import {
+  filterMyOrderRowsByClientLink,
+  rowMatchesMojeClientLinkFilter,
+} from "@/lib/orders/moje-client-link-filter";
+
+export type { MojeClientLinkFilter };
+export { filterMyOrderRowsByClientLink, rowMatchesMojeClientLinkFilter };
 
 const POLISH_FOLD_MAP: Record<string, string> = {
   ą: "a",
@@ -33,6 +41,7 @@ export function myOrderRowSearchText(row: MyOrderRow): string {
     row.product,
     row.symbol ?? "",
     row.clientLabel ?? "",
+    row.sourceZkNumber ?? "",
     row.statusTitle,
     myOrderFriendlyStatusLabel(row.statusTitle),
     row.statusDetail ?? "",
@@ -134,19 +143,24 @@ export function shouldAutoExpandOrderLinesForSearch(
 /** Filtr po kh_Id klienta (np. z linku z notatnika / ZK). */
 export function rowMatchesClientKhFilter(
   row: MyOrderRow,
-  khId: number | null | undefined
+  khId: number | null | undefined,
+  options?: Pick<MojeClientLinkFilter, "clientLabel">
 ): boolean {
-  const kh = khId != null ? Math.trunc(Number(khId)) : null;
-  if (kh == null || kh <= 0) return true;
-  return row.lines.some((line) => line.clientKhId === kh);
+  return rowMatchesMojeClientLinkFilter(row, {
+    khId,
+    clientLabel: options?.clientLabel,
+  });
 }
 
 export function filterMyOrderRowsByClientKh(
   rows: MyOrderRow[],
-  khId: number | null | undefined
+  khId: number | null | undefined,
+  options?: Pick<MojeClientLinkFilter, "clientLabel">
 ): MyOrderRow[] {
-  if (khId == null || Math.trunc(Number(khId)) <= 0) return rows;
-  return rows.filter((row) => rowMatchesClientKhFilter(row, khId));
+  return filterMyOrderRowsByClientLink(rows, {
+    khId,
+    clientLabel: options?.clientLabel,
+  });
 }
 
 export function filterMyOrderRowsBySearch(

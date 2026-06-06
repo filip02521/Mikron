@@ -9,9 +9,11 @@ import { cn } from "@/lib/cn";
 export function MobileSalesHeader({
   role,
   userEmail,
+  salesPersonName,
 }: {
   role: UserRole | null;
   userEmail?: string | null;
+  salesPersonName?: string | null;
 }) {
   async function signOut() {
     const supabase = createClient();
@@ -26,7 +28,11 @@ export function MobileSalesHeader({
         aria-hidden
       />
       <div className="relative flex min-w-0 flex-1 items-center">
-        <MobileBrandBlock role={role} userEmail={userEmail} />
+        <MobileBrandBlock
+          role={role}
+          userEmail={userEmail}
+          salesPersonName={salesPersonName}
+        />
       </div>
       <button
         type="button"

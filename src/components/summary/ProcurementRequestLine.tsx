@@ -1,8 +1,9 @@
 "use client";
 
-import { INFORMACJA_VIA_PANEL_BADGE } from "@/lib/orders/informacja-flow-copy";
 import type { ForSomeoneLine } from "@/lib/orders/summary-workspace";
 import { ProductSourceBadge } from "@/components/orders/ProductSourceBadge";
+import { InformacjaFlowLineBadge } from "@/components/orders/InformacjaFlowLineBadge";
+import { MyOrderAssignedClient } from "@/components/moje/MyOrderAssignedClient";
 import { cn } from "@/lib/cn";
 
 export function ProcurementRequestLine({
@@ -66,11 +67,7 @@ function ProcurementRequestLineContent({
         />
         <span className="min-w-0 flex-1">
           {line.products}
-          {line.informacjaViaPanel ? (
-            <span className="ml-1.5 rounded bg-sky-100 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-sky-900">
-              {INFORMACJA_VIA_PANEL_BADGE}
-            </span>
-          ) : null}
+          <InformacjaFlowLineBadge line={line} className="ml-1.5" />
         </span>
       </p>
       {hasMeta ? (
@@ -85,6 +82,12 @@ function ProcurementRequestLineContent({
               : `Ilość: ${line.quantity}`
             : null}
         </p>
+      ) : null}
+      {line.clientName ? (
+        <MyOrderAssignedClient
+          name={line.clientName}
+          className={cn(compact ? "mt-1 pl-5" : "mt-1.5")}
+        />
       ) : null}
     </>
   );

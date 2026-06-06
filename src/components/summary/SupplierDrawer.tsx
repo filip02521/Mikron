@@ -17,6 +17,7 @@ import { ShiftMenu } from "@/components/summary/ShiftMenu";
 import { actionFetchSupplierRecentHistory, actionMarkOrdered, actionShiftOrder } from "@/app/actions/admin";
 import type { DailyPanelRunFn } from "@/components/summary/useDailyPanelRunner";
 import { cn } from "@/lib/cn";
+import { FlowChevron } from "@/components/ui/UiGlyphs";
 import { SupplierSubiektLinkIndicator } from "@/components/admin/SupplierSubiektLinkIndicator";
 
 type HistoryRow = {
@@ -255,9 +256,16 @@ export function SupplierDrawer({
                     className="rounded-md border border-slate-100 bg-slate-50/80 px-3 py-2"
                   >
                     <p className="font-medium text-slate-800">{h.action}</p>
-                    <p className="mt-0.5 text-xs text-slate-500">
-                      {formatPlDate(h.action_at.slice(0, 10))} · {h.user_email}
-                      {h.next_date ? ` → ${formatPlDate(h.next_date)}` : ""}
+                    <p className="mt-0.5 inline-flex flex-wrap items-center gap-1 text-xs text-slate-500">
+                      <span>
+                        {formatPlDate(h.action_at.slice(0, 10))} · {h.user_email}
+                      </span>
+                      {h.next_date ? (
+                        <>
+                          <FlowChevron size={11} className="text-slate-300" />
+                          <span>{formatPlDate(h.next_date)}</span>
+                        </>
+                      ) : null}
                     </p>
                   </li>
                 ))}

@@ -1,4 +1,5 @@
 import type { MyOrderRow } from "@/lib/orders/my-order-presenter";
+import { isInformacjaAvailabilityPendingStatusTitle } from "@/lib/orders/informacja-flow-copy";
 import { enrichMyOrderSalesUi } from "@/lib/orders/my-order-sales-ui";
 
 export type MyOrderInboxFilter =
@@ -111,7 +112,7 @@ export function rowMatchesInboxFilter(
     case "availability_pending":
       return (
         row.kind === "informacja" &&
-        (row.statusTitle === "Oczekuje na magazyn" ||
+        (isInformacjaAvailabilityPendingStatusTitle(row.statusTitle) ||
           row.statusTitle === "Czekamy na zamówienie u dostawcy" ||
           row.statusTitle === "Zamówione — czekamy na magazyn")
       );

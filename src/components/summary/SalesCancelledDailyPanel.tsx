@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react";
 import type { SalesCancelledNotice } from "@/lib/orders/sales-cancelled-notices";
 import { locationLabel } from "@/lib/display-labels";
+import { LinkChevron } from "@/components/ui/UiGlyphs";
 import { actionAcknowledgeProcurementSalesCancel } from "@/app/actions/admin";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
@@ -169,8 +170,9 @@ function SalesCancelledNoticeRow({
             </p>
           ) : null}
         </div>
-        <span className="shrink-0 text-[11px] font-medium text-slate-600">
-          {noticeActionLabel(notice)} →
+        <span className="inline-flex shrink-0 items-center gap-1 text-[11px] font-medium text-slate-600">
+          {noticeActionLabel(notice)}
+          <LinkChevron size={13} tone="muted" />
         </span>
       </button>
     </li>

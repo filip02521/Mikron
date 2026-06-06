@@ -1,5 +1,8 @@
 import type { MyOrderRow } from "@/lib/orders/my-order-presenter";
-import { INFORMACJA_FLOW_MY_ORDERS_HINT } from "@/lib/orders/informacja-flow-copy";
+import {
+  INFORMACJA_FLOW_MY_ORDERS_HINT,
+  isInformacjaAvailabilityPendingStatusTitle,
+} from "@/lib/orders/informacja-flow-copy";
 
 export type InformacjaProgressPhase =
   | "awaiting_procurement"
@@ -27,8 +30,8 @@ const PHASE_META: Record<
     hint: "Zamówienie u dostawcy jest złożone. Powiadomimy e-mailem, gdy towar pojawi się na magazynie.",
   },
   direct_monitoring: {
-    title: "Tylko obserwacja magazynu",
-    hint: "Bez zamówienia u dostawcy — magazyn sprawdza dostępność i wyśle e-mail po przyjęciu towaru.",
+    title: "Informacja o dostępności",
+    hint: "Magazyn obserwuje dostępność — powiadomimy e-mailem po dotarciu towaru na magazyn.",
   },
   other: {
     title: "Informacje — inne statusy",
@@ -50,9 +53,10 @@ export function informacjaProgressPhase(row: MyOrderRow): InformacjaProgressPhas
       return "awaiting_procurement";
     case "Zamówione — czekamy na magazyn":
       return "ordered_awaiting_warehouse";
-    case "Oczekuje na magazyn":
-      return "direct_monitoring";
     default:
+      if (isInformacjaAvailabilityPendingStatusTitle(row.statusTitle)) {
+        return "direct_monitoring";
+      }
       return "other";
   }
 }

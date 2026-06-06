@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/Button";
 import { cn } from "@/lib/cn";
 import { controlFocusClass } from "@/lib/ui/ontime-theme";
 
-/** Formularz przypisania klienta — tylko z menu ⋮ lub gdy już otwarty. Bez stanu „nie przypisano” na liście. */
+/** Formularz przypisania klienta — tylko z menu Więcej lub gdy już otwarty. Bez stanu „nie przypisano” na liście. */
 export function SalesClientNameEditor({
   value,
   disabled,

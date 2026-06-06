@@ -67,6 +67,7 @@ describe("zk-watch-prosba-prefill", () => {
     const href = prosbaHrefFromZkWatch(baseWatch);
     expect(href).toContain("fromZk=1");
     expect(href).toContain("dla=sp1");
+    expect(href).toContain("zkWatch=w1");
     expect(href).toContain("zk=ZK%2F2026%2F0138");
     expect(href).toContain("kh=1");
   });
@@ -76,9 +77,11 @@ describe("zk-watch-prosba-prefill", () => {
       klient: "Klinika Smile",
       kh: "42",
       zk: "ZK/1",
+      zkWatch: "watch-uuid",
     });
     expect(prefill?.clientName).toBe("Klinika Smile");
     expect(prefill?.clientKhId).toBe(42);
+    expect(prefill?.zkWatchId).toBe("watch-uuid");
     expect(prefill?.lines[0]?.clientKhId).toBe(42);
   });
 

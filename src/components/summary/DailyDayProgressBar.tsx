@@ -53,9 +53,15 @@ export function DailyDayProgressBar({
             />
           ) : null}
         </div>
-        <span className="shrink-0 text-[11px] font-semibold tabular-nums text-slate-700">
-          {combined.percent}%
-        </span>
+        {combined.complete ? (
+          <span className="shrink-0 text-emerald-600" aria-hidden>
+            <IconCircleCheck size={16} strokeWidth={2.5} />
+          </span>
+        ) : (
+          <span className="shrink-0 text-[11px] font-semibold tabular-nums text-slate-700">
+            {combined.percent}%
+          </span>
+        )}
         <span className="hidden min-w-0 truncate text-[11px] text-slate-500 sm:inline">
           harm. {urgent.done}/{urgent.total} · prośby {forSomeone.done}/{forSomeone.total}
         </span>

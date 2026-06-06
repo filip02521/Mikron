@@ -23,7 +23,10 @@ export function DailyPanelOverviewStats({
   showVerification?: boolean;
 }) {
   const queueTotal =
-    summary.overdueCount + summary.todayCount + summary.forSomeoneGroupCount;
+    summary.overdueCount +
+    summary.todayCount +
+    summary.forSomeoneGroupCount +
+    summary.stockOutGroupCount;
 
   return (
     <div className="flex flex-wrap items-center gap-x-4 gap-y-2 border-b border-slate-100 bg-slate-50/60 px-4 py-3 sm:px-6">
@@ -34,6 +37,15 @@ export function DailyPanelOverviewStats({
           value={summary.forSomeoneGroupCount}
           label={unitLabel(summary.forSomeoneGroupCount, "grupa prośb", "grupy prośb", "grup prośb")}
         />
+        {summary.stockOutGroupCount > 0 ? (
+          <>
+            <Divider />
+            <Stat
+              value={summary.stockOutGroupCount}
+              label={unitLabel(summary.stockOutGroupCount, "brak stanu", "braki stanu", "braków stanu")}
+            />
+          </>
+        ) : null}
         <Divider />
         <Stat
           value={summary.todayCount}

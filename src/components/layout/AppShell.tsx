@@ -4,14 +4,11 @@ import { canAccessOperations, canAccessWarehouse, isAdmin, isSalesAccount } from
 import { canAccessOperationsNotepad, departmentsForRole } from "@/lib/operations/notepad-department";
 import {
   countVerificationOrders,
-  fetchIndividualOrders,
   countDeliveryQueue,
-  fetchSuppliersWithSchedules,
+  countInformacjaQueue,
 } from "@/lib/data/queries";
-import { buildSummaryWorkspace } from "@/lib/orders/summary-workspace";
-import { countDailyPanelNavBadge } from "@/lib/orders/procurement-daily-ui";
-import { computeSalesActivityVersion } from "@/lib/orders/sales-activity-version";
-import { countSalesNavAttention } from "@/lib/orders/sales-nav-attention";
+import { countDailyPanelNavBadgeForNav } from "@/lib/orders/daily-panel-nav-badge";
+import { fetchSalesShellMetrics } from "@/lib/orders/sales-shell-metrics";
 import { countNotepadNavBadge } from "@/lib/data/sales-notepad";
 import { countOpenSalesBugReports } from "@/lib/data/sales-bug-reports";
 import { AppShellClient } from "./AppShellClient";
@@ -31,33 +28,31 @@ export async function AppShell({ children }: { children: React.ReactNode }) {
   let salesActivityVersion: string | null = null;
   let salesPersonName: string | null = null;
 
+  if (role && canAccessOperations(role)) {
+    try {
+      navBadges.weryfikacja = await countVerificationOrders();
+    } catch {
+      /* badge opcjonalny */
+    }
+    try {
+      navBadges.nowe = await countDailyPanelNavBadgeForNav();
+    } catch {
+      /* badge opcjonalny */
+    }
+  }
+
   if (role && canAccessWarehouse(role)) {
     try {
-      const { countInformacjaQueue } = await import("@/lib/data/queries");
       const [realizacjaCount, informacjaCount] = await Promise.all([
         countDeliveryQueue(),
         countInformacjaQueue().catch(() => 0),
       ]);
-      if (canAccessOperations(role)) {
-        const [schedules, newOrders, weryfikacja] = await Promise.all([
-          fetchSuppliersWithSchedules(),
-          fetchIndividualOrders({ status: "Nowe", hideSalesAcknowledged: false }),
-          countVerificationOrders(),
-        ]);
-        const workspace = buildSummaryWorkspace(
-          schedules,
-          newOrders.filter((o) => o.status === "Nowe")
-        );
-        navBadges = {
-          nowe: countDailyPanelNavBadge(workspace),
-          weryfikacja,
-          realizacja: realizacjaCount + informacjaCount,
-        };
-      } else {
-        navBadges = { nowe: 0, weryfikacja: 0, realizacja: realizacjaCount + informacjaCount };
-      }
+      navBadges = {
+        ...navBadges,
+        realizacja: realizacjaCount + informacjaCount,
+      };
     } catch {
-      navBadges = { nowe: 0, weryfikacja: 0, realizacja: 0 };
+      /* badge opcjonalny */
     }
   }
 
@@ -66,15 +61,14 @@ export async function AppShell({ children }: { children: React.ReactNode }) {
       const salesPerson = await resolveSalesPersonForUser(session);
       if (salesPerson) {
         salesPersonName = salesPerson.name;
-        const [version, attention, notatnikCount] = await Promise.all([
-          computeSalesActivityVersion(salesPerson.id),
-          countSalesNavAttention(salesPerson.id),
+        const [metrics, notatnikCount] = await Promise.all([
+          fetchSalesShellMetrics(salesPerson.id),
           countNotepadNavBadge(salesPerson.id).catch(() => 0),
         ]);
-        salesActivityVersion = version;
+        salesActivityVersion = metrics.activityVersion;
         navBadges = {
           ...navBadges,
-          salesMoje: attention,
+          salesMoje: metrics.navAttention,
           salesNotatnik: notatnikCount,
         };
       }

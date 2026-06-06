@@ -19,6 +19,16 @@ import { cn } from "@/lib/cn";
 import { hasAnyProductHint, hasValidOrderQuantity } from "@/lib/orders/request-completeness";
 import { assessProcurementGroupCompleteness, buildProcurementFormReadiness } from "@/lib/orders/procurement-form-readiness";
 import { InformacjaFlowPicker } from "@/components/orders/InformacjaFlowPicker";
+import {
+  DEFAULT_INFORMACJA_FLOW_PATH,
+  INFORMACJA_FLOW_PICKER_SECTION,
+  informacjaProductsFormHint,
+  informacjaSalesFooterNote,
+} from "@/lib/orders/informacja-flow-ui";
+import {
+  flagsFromInformacjaFlowPath,
+  type InformacjaFlowPath,
+} from "@/lib/orders/informacja-stock-out-reorder";
 import type { RequestCompleteness } from "@/lib/orders/request-completeness";
 import { assertProcurementEntryComplete } from "@/lib/orders/procurement-submit";
 import { assessSalesGroupSubmittable } from "@/lib/orders/sales-request-submit";
@@ -41,7 +51,12 @@ import {
 import { PROCUREMENT_TEAM_LABEL, PROCUREMENT_TEAM_LABEL_TITLE } from "@/lib/orders/procurement-copy";
 import { useSalesOnboardingDemo } from "@/components/sales/SalesOnboardingContext";
 import { buildOnboardingProsbaLines } from "@/lib/sales/sales-onboarding-demo-data";
-import { actionGetZkProsbaPrefill } from "@/app/actions/sales-notepad";
+import {
+  actionGetZkProsbaPrefill,
+  actionGetZkProsbaPrefillByWatchId,
+} from "@/app/actions/sales-notepad";
+import { ZkProsbaLinkBanner } from "@/components/orders/ZkProsbaLinkBanner";
+import { buildMojeClientLink } from "@/lib/sales/notepad-follow-up";
 import {
   buildProsbaPrefillFromUrlParams,
   clearZkProsbaPrefill,
@@ -166,15 +181,20 @@ export function OrderFormClient({
   const tourDemo = useSalesOnboardingDemo("prosba");
   const lockedId = lockedSalesPerson?.id ?? "";
   const [requestKind, setRequestKind] = useState<IndividualRequestKind>("zamowienie");
-  const [informacjaViaDailyPanel, setInformacjaViaDailyPanel] = useState(false);
+  const [informacjaPath, setInformacjaPath] = useState<InformacjaFlowPath>(
+    DEFAULT_INFORMACJA_FLOW_PATH
+  );
   const [groups, setGroups] = useState<Entry[][]>(() =>
     buildInitialGroups(lockedId, initialSupplierId)
   );
   const [pending, start] = useTransition();
   const [pendingMessage, setPendingMessage] = useState<string | null>(null);
-  const [msg, setMsg] = useState<{ text: string; tone: "success" | "error" } | null>(
-    null
-  );
+  const [msg, setMsg] = useState<{
+    text: string;
+    tone: "success" | "error";
+    actionHref?: string;
+    actionLabel?: string;
+  } | null>(null);
   const dismissToast = useCallback(() => setMsg(null), []);
   const [supplierSubiektFeedback, setSupplierSubiektFeedback] =
     useState<SubiektFeedback | null>(null);
@@ -191,6 +211,13 @@ export function OrderFormClient({
     text: string;
     tone: "error" | "warning";
   } | null>(null);
+  /** Po prefill z ZK — link „Moje zamówienia” z tym samym filtrem co w notatniku. */
+  const [zkProsbaLinkContext, setZkProsbaLinkContext] = useState<{
+    zkWatchId: string | null;
+    zkNumber: string;
+    clientLabel: string;
+    clientKhId: number | null;
+  } | null>(null);
   const [validationAttempted, setValidationAttempted] = useState(false);
   const submitRef = useRef<() => void>(() => {});
 
@@ -206,16 +233,30 @@ export function OrderFormClient({
   }, [lockedId, tourDemo]);
 
   useEffect(() => {
-    if (tourDemo || !searchParams.get("fromZk")) return;
+    const zkWatchParam = searchParams.get("zkWatch")?.trim();
+    const zkParam = searchParams.get("zk")?.trim();
+    const fromZkFlow =
+      searchParams.get("fromZk") === "1" || Boolean(zkWatchParam) || Boolean(zkParam);
+    if (tourDemo || !fromZkFlow) return;
 
     let cancelled = false;
 
     function applyZkPrefill(prefill: ZkProsbaPrefill) {
       if (!prefill.lines.length) return;
+      const clientName = prefill.clientName?.trim() || "";
+      const clientKhId = prefill.clientKhId ?? null;
       setRequestKind("zamowienie");
       setValidationAttempted(false);
       setFormNotice(null);
       setMsg(null);
+      if (prefill.zkWatchId || prefill.zkNumber.trim()) {
+        setZkProsbaLinkContext({
+          zkWatchId: prefill.zkWatchId,
+          zkNumber: prefill.zkNumber,
+          clientLabel: clientName,
+          clientKhId,
+        });
+      }
       setGroups([
         prefill.lines.map((line) => ({
           id: line.id,
@@ -225,14 +266,17 @@ export function OrderFormClient({
           mikranCode: line.mikranCode,
           product: line.product,
           quantity: line.quantity,
-          clientName: prefill.clientName || line.clientName,
-          clientKhId: prefill.clientKhId ?? line.clientKhId ?? null,
+          clientName: clientName || line.clientName,
+          clientKhId: clientKhId ?? line.clientKhId ?? null,
           subiektTwId: line.subiektTwId ?? null,
         })),
       ]);
     }
 
     async function loadZkPrefill() {
+      const delegateId = searchParams.get("dla")?.trim() || lockedId;
+      if (!delegateId) return;
+
       const fromStorage = readZkProsbaPrefill();
       if (fromStorage?.lines.length) {
         clearZkProsbaPrefill();
@@ -240,18 +284,36 @@ export function OrderFormClient({
         return;
       }
 
+      const zkWatch = searchParams.get("zkWatch")?.trim();
       const zk = searchParams.get("zk")?.trim();
-      const delegateId = searchParams.get("dla")?.trim() || lockedId;
 
-      if (zk) {
-        try {
+      try {
+        if (zkWatch) {
+          const fromWatch = await actionGetZkProsbaPrefillByWatchId(
+            zkWatch,
+            delegateId || undefined
+          );
+          if (!cancelled && fromWatch?.lines.length) {
+            applyZkPrefill(fromWatch);
+            return;
+          }
+        }
+        if (zk) {
           const fromServer = await actionGetZkProsbaPrefill(zk, delegateId || undefined);
           if (!cancelled && fromServer?.lines.length) {
             applyZkPrefill(fromServer);
             return;
           }
-        } catch {
-          /* fallback do parametrów URL */
+        }
+      } catch (err) {
+        if (!cancelled) {
+          setFormNotice({
+            text:
+              err instanceof Error
+                ? err.message
+                : "Nie udało się wczytać danych ZK — uzupełnij prośbę ręcznie.",
+            tone: "warning",
+          });
         }
       }
 
@@ -259,6 +321,7 @@ export function OrderFormClient({
         klient: searchParams.get("klient"),
         kh: searchParams.get("kh"),
         zk: searchParams.get("zk"),
+        zkWatch: searchParams.get("zkWatch"),
       });
       if (!cancelled && fromUrl?.lines.length) {
         applyZkPrefill(fromUrl);
@@ -305,10 +368,23 @@ export function OrderFormClient({
           subiektTwId: row.subiektTwId,
         })),
         requestKind,
-        informacjaViaDailyPanel,
+        ...flagsFromInformacjaFlowPath(
+          requestKind === "informacja" ? informacjaPath : "direct"
+        ),
       }).canSubmit;
     });
-  }, [groups, requestKind, informacjaViaDailyPanel, lockedId, isProcurementGroupForm]);
+  }, [groups, requestKind, informacjaPath, lockedId, isProcurementGroupForm]);
+
+  const informacjaFlags = useMemo(
+    () =>
+      requestKind === "informacja"
+        ? flagsFromInformacjaFlowPath(informacjaPath)
+        : {
+            informacjaQueueViaDailyPanel: false,
+            informacjaStockOutReorder: false,
+          },
+    [requestKind, informacjaPath]
+  );
 
   const applySupplierFromSubiekt = useCallback(
     (
@@ -417,8 +493,8 @@ export function OrderFormClient({
       setValidationAttempted(true);
       setFormNotice({
         text: lockedSalesPerson
-          ? "Podaj symbol, kod Mikran lub opis produktu."
-          : "Podaj symbol, kod Mikran lub opis produktu oraz wybierz handlowca.",
+          ? "Wpisz nazwę lub symbol produktu (kod Mikran obok)."
+          : "Wpisz produkt (nazwa lub symbol) oraz wybierz handlowca.",
         tone: "error",
       });
       return;
@@ -449,8 +525,8 @@ export function OrderFormClient({
               quantity: e.quantity,
               requestKind,
               subiektTwId: e.subiektTwId,
-              informacjaQueueViaDailyPanel:
-                requestKind === "informacja" && informacjaViaDailyPanel,
+              informacjaQueueViaDailyPanel: informacjaFlags.informacjaQueueViaDailyPanel,
+              informacjaStockOutReorder: informacjaFlags.informacjaStockOutReorder,
             },
             entries.length > 1 ? `Pozycja ${lineNo}` : undefined
           );
@@ -468,6 +544,7 @@ export function OrderFormClient({
       singleGroup ? "Wysyłanie prośby…" : "Zapisywanie zamówień…"
     );
     start(async () => {
+      const zkCtx = zkProsbaLinkContext;
       try {
         const r = await actionAddIndividualOrders(
           entries.map((e) => ({
@@ -481,26 +558,61 @@ export function OrderFormClient({
             clientName: e.clientName,
             clientKhId: e.clientKhId,
             subiektTwId: e.subiektTwId,
-            informacjaQueueViaDailyPanel:
-              requestKind === "informacja" && informacjaViaDailyPanel,
+            sourceZkWatchId: zkCtx?.zkWatchId ?? undefined,
+            sourceZkNumber: zkCtx?.zkNumber ?? undefined,
+            informacjaQueueViaDailyPanel: informacjaFlags.informacjaQueueViaDailyPanel,
+            informacjaStockOutReorder: informacjaFlags.informacjaStockOutReorder,
           }))
         );
-        setMsg({
-          text:
-            singleGroup && lockedSalesPerson
-              ? formatSubmitResult(r, requestKind, true)
-              : requestKind === "informacja"
-                ? informacjaViaDailyPanel
+        const defaultSuccessText =
+          singleGroup && lockedSalesPerson
+            ? requestKind === "informacja" && informacjaFlags.informacjaStockOutReorder
+              ? "Prośba zapisana — sygnał „brak na stanie” trafi do zakupów w panelu Dziś (Prośby handlowców)."
+              : requestKind === "informacja" && informacjaFlags.informacjaQueueViaDailyPanel
+                ? "Prośba zapisana — zakupy najpierw zamówią u dostawcy, potem magazyn wyśle informację e-mailem."
+                : formatSubmitResult(r, requestKind, true)
+            : requestKind === "informacja"
+              ? informacjaFlags.informacjaStockOutReorder
+                ? `Dodano ${r.count} sygnał(ów) „brak na stanie” — w panelu Dziś (Prośby handlowców).`
+                : informacjaFlags.informacjaQueueViaDailyPanel
                   ? `Dodano ${r.count} prośb(y) informacyjn(e) — najpierw kolejka Dziś (Główne/Uzupełniające).`
                   : `Dodano ${r.count} prośb(y) informacyjn(e) — od razu do kolejki magazynu.`
-                : `Dodano ${r.count} pozycji do panelu dziennego.`,
+              : `Dodano ${r.count} pozycji do panelu dziennego.`;
+
+        const stockOutHidden =
+          requestKind === "informacja" && informacjaFlags.informacjaStockOutReorder;
+
+        setMsg({
+          text: zkCtx
+            ? `Prośba zapisana i powiązana z ${zkCtx.zkNumber}.`
+            : defaultSuccessText,
           tone: "success",
+          actionHref: stockOutHidden
+            ? undefined
+            : zkCtx
+              ? buildMojeClientLink(lockedId, zkCtx.clientLabel, {
+                  preview: submitForOther,
+                  clientKhId: zkCtx.clientKhId,
+                  zkWatchId: zkCtx.zkWatchId,
+                  zkNumber: zkCtx.zkNumber,
+                })
+              : submitForOther
+                ? `/moje?dla=${lockedSalesPerson?.id ?? lockedId}`
+                : "/moje",
+          actionLabel: stockOutHidden
+            ? undefined
+            : zkCtx
+              ? "Prośby tego klienta"
+              : submitForOther
+                ? "Prośby handlowca"
+                : "Moje zamówienia",
         });
         setFormNotice(null);
         setValidationAttempted(false);
-        setInformacjaViaDailyPanel(false);
+        setInformacjaPath(DEFAULT_INFORMACJA_FLOW_PATH);
         setSupplierSubiektFeedback(null);
         setProductLineFeedback(null);
+        setZkProsbaLinkContext(null);
         setGroups(buildInitialGroups(lockedId, initialSupplierId));
       } catch (e) {
         setMsg({
@@ -522,6 +634,7 @@ export function OrderFormClient({
       const appended = appendProductLine(group);
       if (appended.length <= group.length) return g;
       const newLine = appended[appended.length - 1]!;
+      const inheritClient = group[0];
       return [
         [
           ...group,
@@ -529,6 +642,8 @@ export function OrderFormClient({
             ...newLine,
             supplierId: "",
             salesPersonId: lockedId,
+            clientName: inheritClient?.clientName,
+            clientKhId: inheritClient?.clientKhId ?? null,
           },
         ],
       ];
@@ -591,12 +706,10 @@ export function OrderFormClient({
       tone={msg.tone}
       onDismiss={dismissToast}
       action={
-        msg.tone === "success" && singleGroup && lockedSalesPerson ? (
-          <Link
-            href={submitForOther ? `/moje?dla=${lockedSalesPerson.id}` : "/moje"}
-          >
+        msg.tone === "success" && singleGroup && lockedSalesPerson && msg.actionHref ? (
+          <Link href={msg.actionHref}>
             <Button variant="secondary" className="w-full">
-              {submitForOther ? "Prośby handlowca" : "Moje zamówienia"}
+              {msg.actionLabel ?? "Moje zamówienia"}
             </Button>
           </Link>
         ) : undefined
@@ -638,6 +751,13 @@ export function OrderFormClient({
             <div className="border-b border-amber-200/90 bg-amber-50 px-4 py-2.5 text-xs leading-relaxed text-amber-950 sm:px-6">
               Podgląd formularza z przykładowymi pozycjami — edycja i wysyłka są wyłączone.
             </div>
+          ) : null}
+
+          {zkProsbaLinkContext && !tourDemo ? (
+            <ZkProsbaLinkBanner
+              zkNumber={zkProsbaLinkContext.zkNumber}
+              clientLabel={zkProsbaLinkContext.clientLabel}
+            />
           ) : null}
 
           <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5 border-b border-slate-100 bg-slate-50/60 px-4 py-2.5 sm:px-6">
@@ -685,15 +805,35 @@ export function OrderFormClient({
               title="Co chcesz zgłosić?"
               hint="Wybierz jedną opcję — pola poniżej dopasują się do rodzaju prośby."
             >
-              <RequestKindToggle value={requestKind} onChange={setRequestKind} />
+              <RequestKindToggle
+                value={requestKind}
+                onChange={(kind) => {
+                  setRequestKind(kind);
+                  if (kind === "informacja") setInformacjaPath(DEFAULT_INFORMACJA_FLOW_PATH);
+                  else setInformacjaPath("direct");
+                }}
+              />
             </ProsbaFormSection>
+
+            {requestKind === "informacja" ? (
+              <ProsbaFormSection
+                title={INFORMACJA_FLOW_PICKER_SECTION.title}
+                hint={INFORMACJA_FLOW_PICKER_SECTION.hint}
+              >
+                <InformacjaFlowPicker
+                  path={informacjaPath}
+                  onChange={setInformacjaPath}
+                  disabled={pending}
+                />
+              </ProsbaFormSection>
+            ) : null}
 
             <ProsbaFormSection
               title="Produkty"
               hint={
                 requestKind === "informacja"
-                  ? "Wystarczy symbol, kod Mikran lub opis — bez ilości. Dostawcę dobierzemy automatycznie albo uzupełni dział zakupów."
-                  : "Podaj symbol, kod Mikran lub opis oraz ilość. Dostawcę dobierzemy automatycznie albo uzupełni dział zakupów."
+                  ? informacjaProductsFormHint(informacjaPath)
+                  : "Podaj nazwę lub symbol oraz ilość. Dostawcę dobierzemy automatycznie albo uzupełni dział zakupów."
               }
             >
               <div className="space-y-4">
@@ -722,6 +862,7 @@ export function OrderFormClient({
                   salesSubmitPlan={salesSubmitPlan}
                   formMessage={formNotice}
                   resolvingSupplier={resolvingSupplier}
+                  informacjaPath={informacjaPath}
                 />
               </div>
             </ProsbaFormSection>
@@ -736,7 +877,12 @@ export function OrderFormClient({
               >
                 {submitForOther ? "Prośby handlowca" : "Moje zamówienia"}
               </Link>
-              . O ważnych zmianach dostaniesz też e-mail.
+              .
+              {requestKind === "informacja" ? (
+                <> {informacjaSalesFooterNote(informacjaPath)}</>
+              ) : (
+                <> O ważnych zmianach dostaniesz też e-mail.</>
+              )}
             </p>
             <Button
               disabled={pending || tourDemo}
@@ -788,18 +934,23 @@ export function OrderFormClient({
               value={requestKind}
               onChange={(kind) => {
                 setRequestKind(kind);
-                if (kind !== "informacja") setInformacjaViaDailyPanel(false);
+                if (kind === "informacja") setInformacjaPath(DEFAULT_INFORMACJA_FLOW_PATH);
+                else setInformacjaPath("direct");
               }}
             />
           </ProsbaFormSection>
 
           {requestKind === "informacja" ? (
-            <InformacjaFlowPicker
-              viaDailyPanel={informacjaViaDailyPanel}
-              onChange={setInformacjaViaDailyPanel}
-              disabled={pending}
-              name="informacja-path-group"
-            />
+            <ProsbaFormSection
+              title={INFORMACJA_FLOW_PICKER_SECTION.title}
+              hint={INFORMACJA_FLOW_PICKER_SECTION.hint}
+            >
+              <InformacjaFlowPicker
+                path={informacjaPath}
+                onChange={setInformacjaPath}
+                disabled={pending}
+              />
+            </ProsbaFormSection>
           ) : null}
         </div>
       </Card>

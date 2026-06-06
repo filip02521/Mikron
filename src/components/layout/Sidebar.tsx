@@ -165,11 +165,13 @@ function NavSection({
 export function Sidebar({
   role,
   userEmail,
+  salesPersonName,
   showLoginLink,
   navBadges = { nowe: 0, weryfikacja: 0, realizacja: 0, salesMoje: 0 },
 }: {
   role: UserRole | null;
   userEmail?: string | null;
+  salesPersonName?: string | null;
   showLoginLink?: boolean;
   navBadges?: {
     nowe?: number;
@@ -200,7 +202,11 @@ export function Sidebar({
     >
       <header className={sidebarHeaderClass}>
         <div className={sidebarBrandAccentClass} aria-hidden />
-        <SidebarBrandBlock role={role} userEmail={userEmail} />
+        <SidebarBrandBlock
+          role={role}
+          userEmail={userEmail}
+          salesPersonName={salesPersonName}
+        />
       </header>
 
       <nav className={cn(brandSidebarNavScroll, navLocked && "opacity-80")}>

@@ -190,6 +190,7 @@ function MyOrderShipmentBlock({
   embedded = false,
   continuation = false,
   tourPreview = false,
+  compactActionLayout = false,
 }: {
   rows: MyOrderRow[];
   listKind: "zamowienie" | "informacja";
@@ -200,6 +201,7 @@ function MyOrderShipmentBlock({
   embedded?: boolean;
   continuation?: boolean;
   tourPreview?: boolean;
+  compactActionLayout?: boolean;
 }) {
   if (rows.length === 0) return null;
   return (
@@ -214,6 +216,7 @@ function MyOrderShipmentBlock({
       embedded={embedded}
       continuation={continuation}
       tourPreview={tourPreview}
+      compactActionLayout={compactActionLayout}
     />
   );
 }
@@ -236,6 +239,8 @@ function MojeOrdersViewContent({
   initialClientQuery,
   initialClientKhId,
   initialClientKhLabel,
+  initialClientZkWatchId,
+  initialClientZkNumber,
   syncSearchUrl = true,
   tourPreview = false,
 }: {
@@ -254,28 +259,61 @@ function MojeOrdersViewContent({
   initialSearchQuery?: string | null;
   initialClientQuery?: string | null;
   initialClientKhId?: number | null;
-  /** Etykieta z ?klient= (link z notatnika ZK). */
+  /** Etykieta z ?klient= (link z notatnika / ZK). */
   initialClientKhLabel?: string | null;
+  initialClientZkWatchId?: string | null;
+  initialClientZkNumber?: string | null;
   syncSearchUrl?: boolean;
   tourPreview?: boolean;
 }) {
   const [activeFilter, setActiveFilter] = useState<MyOrderInboxFilter | null>(null);
-  const initialQ = (initialSearchQuery ?? initialClientQuery ?? "").trim();
   const clientKhFilter =
     initialClientKhId != null && initialClientKhId > 0 ? initialClientKhId : null;
+  const clientLinkLabel = (initialClientKhLabel ?? initialClientQuery ?? "").trim() || null;
+  const clientZkWatchId = initialClientZkWatchId?.trim() || null;
+  const clientZkNumber = initialClientZkNumber?.trim() || null;
+  const clientLinkFilterActive =
+    clientKhFilter != null ||
+    Boolean(clientLinkLabel) ||
+    Boolean(clientZkWatchId) ||
+    Boolean(clientZkNumber);
+  /** Przy filtrze z notatnika (?kh= / ?zkWatch=) nie dubluj ?klient= w pasku szukaj. */
+  const initialQ =
+    clientLinkFilterActive
+      ? (initialSearchQuery ?? "").trim()
+      : (initialSearchQuery ?? initialClientQuery ?? "").trim();
   const { query: searchQuery, setQuery: setSearchQuery, trimmed: searchTrimmed } =
     useMojeOrdersSearch(initialQ, syncSearchUrl && !tourPreview);
 
   const sortedZamowienia = useMemo(() => sortMyOrderRows(zamowienia), [zamowienia]);
   const sortedInformacje = useMemo(() => sortMyOrderRows(informacje), [informacje]);
 
+  const clientLinkFilterOpts = useMemo(
+    () =>
+      clientLinkFilterActive
+        ? {
+            khId: clientKhFilter,
+            clientLabel: clientLinkLabel,
+            zkWatchId: clientZkWatchId,
+            zkNumber: clientZkNumber,
+          }
+        : undefined,
+    [
+      clientLinkFilterActive,
+      clientKhFilter,
+      clientLinkLabel,
+      clientZkWatchId,
+      clientZkNumber,
+    ]
+  );
+
   const khFilteredZamowienia = useMemo(
-    () => filterMyOrderRowsByClientKh(sortedZamowienia, clientKhFilter),
-    [sortedZamowienia, clientKhFilter]
+    () => filterMyOrderRowsByClientKh(sortedZamowienia, clientKhFilter, clientLinkFilterOpts),
+    [sortedZamowienia, clientKhFilter, clientLinkFilterOpts]
   );
   const khFilteredInformacje = useMemo(
-    () => filterMyOrderRowsByClientKh(sortedInformacje, clientKhFilter),
-    [sortedInformacje, clientKhFilter]
+    () => filterMyOrderRowsByClientKh(sortedInformacje, clientKhFilter, clientLinkFilterOpts),
+    [sortedInformacje, clientKhFilter, clientLinkFilterOpts]
   );
 
   const searchFilteredZamowienia = useMemo(
@@ -297,13 +335,21 @@ function MojeOrdersViewContent({
   );
 
   const searchActive = searchTrimmed.length > 0;
-  const clientKhFilterActive = clientKhFilter != null;
+  const clientKhFilterActive = clientLinkFilterActive;
   const searchMatchCount = searchFilteredZamowienia.length + searchFilteredInformacje.length;
 
   const archiveMatchCount = useMemo(() => {
     const ids = new Set<string>();
-    const recentKh = filterMyOrderRowsByClientKh(archiwumRecent, clientKhFilter);
-    const extendedKh = filterMyOrderRowsByClientKh(archiwumExtended, clientKhFilter);
+    const recentKh = filterMyOrderRowsByClientKh(
+      archiwumRecent,
+      clientKhFilter,
+      clientLinkFilterOpts
+    );
+    const extendedKh = filterMyOrderRowsByClientKh(
+      archiwumExtended,
+      clientKhFilter,
+      clientLinkFilterOpts
+    );
     for (const row of filterMyOrderRowsBySearch(recentKh, searchQuery)) {
       ids.add(row.id);
     }
@@ -311,7 +357,7 @@ function MojeOrdersViewContent({
       ids.add(row.id);
     }
     return ids.size;
-  }, [archiwumRecent, archiwumExtended, searchQuery, clientKhFilter]);
+  }, [archiwumRecent, archiwumExtended, searchQuery, clientKhFilter, clientLinkFilterOpts]);
 
   const filteredLineCount = useMemo(() => {
     if (!searchActive) {
@@ -370,12 +416,12 @@ function MojeOrdersViewContent({
 
   const hasArchiveData = archiwumRecent.length > 0 || archiwumExtended.length > 0;
   const archiwumRecentFiltered = useMemo(
-    () => filterMyOrderRowsByClientKh(archiwumRecent, clientKhFilter),
-    [archiwumRecent, clientKhFilter]
+    () => filterMyOrderRowsByClientKh(archiwumRecent, clientKhFilter, clientLinkFilterOpts),
+    [archiwumRecent, clientKhFilter, clientLinkFilterOpts]
   );
   const archiwumExtendedFiltered = useMemo(
-    () => filterMyOrderRowsByClientKh(archiwumExtended, clientKhFilter),
-    [archiwumExtended, clientKhFilter]
+    () => filterMyOrderRowsByClientKh(archiwumExtended, clientKhFilter, clientLinkFilterOpts),
+    [archiwumExtended, clientKhFilter, clientLinkFilterOpts]
   );
   const openArchiveForSearch =
     (searchActive || clientKhFilterActive) &&
@@ -409,17 +455,17 @@ function MojeOrdersViewContent({
     archiwumExtendedFiltered,
   ]);
 
-  const clientKhBanner =
-    clientKhFilterActive && clientKhFilter != null ? (
-      <Suspense fallback={null}>
-        <MojeClientKhFilterBanner
-          clientKhId={clientKhFilter}
-          clientLabel={clientKhDisplayLabel}
-          matchCount={searchMatchCount}
-          syncUrl={syncSearchUrl && !tourPreview}
-        />
-      </Suspense>
-    ) : null;
+  const clientKhBanner = clientLinkFilterActive ? (
+    <Suspense fallback={null}>
+      <MojeClientKhFilterBanner
+        clientKhId={clientKhFilter}
+        clientLabel={clientKhDisplayLabel}
+        zkNumber={clientZkNumber}
+        matchCount={searchMatchCount}
+        syncUrl={syncSearchUrl && !tourPreview}
+      />
+    </Suspense>
+  ) : null;
 
   const searchBar = (
     <Suspense
@@ -444,9 +490,9 @@ function MojeOrdersViewContent({
     if (!activeFilter || filteredCount === 0) return;
     const first = filteredZamowienia[0]?.id ?? filteredInformacje[0]?.id;
     if (!first) return;
+    const card = document.getElementById(cardDomId(first));
     const el =
-      document.querySelector<HTMLElement>(`#${cardDomId(first)} [data-moje-row-toggle]`) ??
-      document.getElementById(cardDomId(first));
+      card?.querySelector<HTMLElement>("[data-moje-row-toggle]") ?? card;
     if (!(el instanceof HTMLElement)) return;
     el.scrollIntoView({
       behavior: "smooth",
@@ -457,10 +503,10 @@ function MojeOrdersViewContent({
 
   const cardDescription = pageDescription ?? MOJE_INTRO;
   const cardAction = (
-    <>
+    <div className="flex w-full flex-wrap items-center gap-2 sm:w-auto sm:justify-end">
       {headerActions}
       <MojeOrdersHelp />
-    </>
+    </div>
   );
 
   if (!shipmentCount) {
@@ -512,11 +558,14 @@ function MojeOrdersViewContent({
     );
   }
 
+  const compactActionRows = splitByAction || activeFilter === "pickup";
+
   const listProps = {
     canAcknowledge,
     suppliers,
     searchQuery,
     tourPreview,
+    compactActionLayout: compactActionRows,
   };
 
   return (
@@ -558,9 +607,13 @@ function MojeOrdersViewContent({
 
         <MojeStickyPickupBar
           count={
-            !activeFilter || activeFilter === "pickup" || activeFilter === "action_group"
-              ? inboxSummary.pickupCount
-              : 0
+            !activeFilter &&
+            splitByAction &&
+            actionCount > 0
+              ? 0
+              : !activeFilter || activeFilter === "pickup" || activeFilter === "action_group"
+                ? inboxSummary.pickupCount
+                : 0
           }
           onShowPickup={() => setActiveFilter("pickup")}
         />
@@ -615,7 +668,7 @@ function MojeOrdersViewContent({
           <div className={mojeShipmentSectionShellClass} aria-labelledby="moje-section-action">
             <ListSectionLabel
               title="Do potwierdzenia"
-              hint="Kliknij strzałkę przy wierszu, żeby zobaczyć produkty. Potwierdź odbiór lub powiadomienie zielonym przyciskiem."
+              hint="Strzałka — produkty · zielony przycisk — potwierdzenie"
               count={actionCount}
               accent="emerald"
               icon="action"

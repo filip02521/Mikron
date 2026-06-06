@@ -1,7 +1,16 @@
 "use client";
 
 import { HelpPopover, GuideIcon } from "@/components/ui/HelpPopover";
-import { IconAvailability, IconTruck } from "@/components/icons/StrokeIcons";
+import { pageToolbarSizingClass } from "@/lib/ui/ontime-theme";
+import {
+  IconAvailability,
+  IconTruck,
+} from "@/components/icons/StrokeIcons";
+import { HelpMenuGlyph } from "@/components/ui/UiGlyphs";
+import {
+  INFORMACJA_FLOW_DIRECT,
+  INFORMACJA_FLOW_MY_ORDERS_HINT,
+} from "@/lib/orders/informacja-flow-copy";
 
 /** Krótka pomoc — szczegóły w popoverze, bez dużego bloku na stronie. */
 export function MojeOrdersHelp() {
@@ -11,6 +20,7 @@ export function MojeOrdersHelp() {
       title="Moje zamówienia"
       shortLabel="Pomoc"
       icon={<GuideIcon />}
+      buttonClassName={pageToolbarSizingClass}
     >
       <p className="mb-3 text-slate-600">
         Każdy wiersz to jedna prośba u jednego dostawcy. Najpierw patrz na{" "}
@@ -31,8 +41,8 @@ export function MojeOrdersHelp() {
           trzeba potwierdzić odbiór lub powiadomienie
         </li>
         <li>
-          <strong className="font-medium text-slate-800">Menu ⋮</strong> — klient, poprawka,
-          anulowanie
+          <strong className="font-medium text-slate-800">Menu</strong>{" "}
+          <HelpMenuGlyph className="align-[-2px]" /> — klient, poprawka, anulowanie
         </li>
         <li>
           <strong className="font-medium text-slate-800">Strzałka rozwiń</strong> — wiele
@@ -42,18 +52,21 @@ export function MojeOrdersHelp() {
       <p className="mb-2 flex items-start gap-2">
         <IconTruck size={16} className="mt-0.5 shrink-0 text-slate-500" aria-hidden />
         <span>
-          <strong className="font-medium text-slate-800">Zamówiliśmy u dostawcy</strong> — białe
+          <strong className="font-medium text-slate-800">Zamówienie u dostawcy</strong> — białe
           tło; dział składa zamówienie i informuje o odbiorze.
         </span>
       </p>
       <p className="mb-3 flex items-start gap-2">
         <IconAvailability size={16} className="mt-0.5 shrink-0 text-violet-600" aria-hidden />
         <span>
-          <strong className="font-medium text-slate-800">Tylko sprawdzamy dostępność</strong> —{" "}
-          <span className="font-medium text-violet-800">fioletowe tło</span>; bez zamówienia u
-          dostawcy, e-mail gdy towar będzie na magazynie.
+          <strong className="font-medium text-slate-800">
+            {INFORMACJA_FLOW_DIRECT.label}
+          </strong>{" "}
+          — <span className="font-medium text-violet-800">fioletowe tło</span>; magazyn obserwuje
+          dostępność i wysyła e-mail, gdy towar trafi na stan (bez zamówienia u dostawcy).
         </span>
       </p>
+      <p className="mb-3 text-xs leading-relaxed text-slate-500">{INFORMACJA_FLOW_MY_ORDERS_HINT}</p>
       <p className="mb-2">
         <strong className="font-medium text-slate-800">Filtry</strong> u góry (
         <em>Do potwierdzenia</em> / <em>W toku</em>) opcjonalnie zawężają listę — np.

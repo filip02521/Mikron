@@ -1,5 +1,6 @@
 import { isPastExpectedDate } from "@/lib/orders/delivery-eta";
 import type { MyOrderRow } from "@/lib/orders/my-order-presenter";
+import { isInformacjaAvailabilityPendingStatusTitle } from "@/lib/orders/informacja-flow-copy";
 import { progressLabelInSubline } from "@/lib/orders/my-order-card-ui";
 
 export type MyOrderHeadlineTone = "action" | "warning" | "success" | "info" | "neutral";
@@ -92,7 +93,7 @@ export function summarizeMyOrdersInbox(rows: MyOrderRow[]): MyOrdersInboxSummary
       s.zamowioneCount++;
     } else if (
       row.kind === "informacja" &&
-      (row.statusTitle === "Oczekuje na magazyn" ||
+      (isInformacjaAvailabilityPendingStatusTitle(row.statusTitle) ||
         row.statusTitle === "Czekamy na zamówienie u dostawcy" ||
         row.statusTitle === "Zamówione — czekamy na magazyn")
     ) {
@@ -108,9 +109,9 @@ export function enrichMyOrderSalesUi(row: MyOrderRow): MyOrderSalesUi {
 
   if (row.acknowledgeMode === "availability" && row.pickupPendingCount > 0) {
     return {
-      headline: "Towar jest na magazynie",
+      headline: "Na magazynie",
       headlineTone: "action",
-      subline: "Potwierdź powiadomienie, aby usunąć z listy",
+      subline: null,
       sortPriority: 10,
     };
   }
@@ -122,12 +123,9 @@ export function enrichMyOrderSalesUi(row: MyOrderRow): MyOrderSalesUi {
         ? `${row.pickupAcknowledgedCount}/${row.pickupReadyTotal} już odebrane`
         : null;
     return {
-      headline:
-        n === 1
-          ? "Odbierz towar z magazynu"
-          : `Odbierz ${n} ${n === 1 ? "pozycję" : n < 5 ? "pozycje" : "pozycji"} z magazynu`,
+      headline: n === 1 ? "Do odbioru" : `Do odbioru · ${n} poz.`,
       headlineTone: "action",
-      subline: progress ?? "Po potwierdzeniu wpis zniknie z listy",
+      subline: progress,
       sortPriority: 1,
     };
   }
@@ -224,7 +222,7 @@ export function enrichMyOrderSalesUi(row: MyOrderRow): MyOrderSalesUi {
     };
   }
 
-  if (row.statusTitle === "Oczekuje na magazyn") {
+  if (isInformacjaAvailabilityPendingStatusTitle(row.statusTitle)) {
     return {
       headline: "Powiadomimy, gdy towar przyjedzie",
       headlineTone: "neutral",
@@ -273,6 +271,13 @@ export function myOrderMetaFields(
       label: "Klient",
       value: row.clientLabel,
       emphasize: true,
+    });
+  }
+
+  if (row.sourceZkNumber?.trim()) {
+    fields.push({
+      label: "ZK",
+      value: row.sourceZkNumber.trim(),
     });
   }
 

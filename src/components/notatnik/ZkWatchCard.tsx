@@ -12,6 +12,8 @@ import {
 } from "@/app/actions/sales-notepad";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
+import { IconChevronRight } from "@/components/icons/StrokeIcons";
+import { HelpMenuGlyph } from "@/components/ui/UiGlyphs";
 import { cn } from "@/lib/cn";
 import { brandLinkSubtleClass } from "@/lib/ui/ontime-theme";
 import {
@@ -47,17 +49,15 @@ import {
 
 function ChevronIcon({ open }: { open?: boolean }) {
   return (
-    <svg
-      aria-hidden
-      viewBox="0 0 20 20"
+    <IconChevronRight
+      size={16}
+      strokeWidth={2.25}
       className={cn(
-        "size-4 shrink-0 transition-transform",
+        "shrink-0 transition-transform",
         open ? "rotate-90 text-indigo-700" : "text-slate-500"
       )}
-      fill="currentColor"
-    >
-      <path d="M7.2 4.2a1 1 0 0 1 1.4 0l4.8 4.8a1 1 0 0 1 0 1.4l-4.8 4.8a1 1 0 1 1-1.4-1.4L11.58 10 7.2 5.6a1 1 0 0 1 0-1.4Z" />
-    </svg>
+      aria-hidden
+    />
   );
 }
 
@@ -114,6 +114,8 @@ export function ZkWatchCard({
   const mojeClientHref = buildMojeClientLink(watch.sales_person_id, watch.client_label, {
     preview: readOnly || tourPreview,
     clientKhId: watch.client_kh_id,
+    zkWatchId: watch.id,
+    zkNumber: watch.zk_number,
   });
   const hasOpenMatchingProsba = (orderHints?.matchingOpenRequestCount ?? 0) > 0;
   const allLinesFromOrders = orderHints?.allLinesMatchedByOrders ?? false;
@@ -308,9 +310,15 @@ export function ZkWatchCard({
 
         <div className="flex shrink-0 items-center gap-1" onClick={(e) => e.stopPropagation()}>
           {hasOpenMatchingProsba && !archived ? (
-            <Badge variant="info" className="hidden text-[9px] sm:inline-flex">
-              Prośba w toku
-            </Badge>
+            <Link
+              href={mojeClientHref}
+              className="hidden sm:inline-flex"
+              title="Prośby tego klienta — Moje zamówienia"
+            >
+              <Badge variant="info" className="text-[9px] transition-opacity hover:opacity-90">
+                Prośba w toku
+              </Badge>
+            </Link>
           ) : null}
           {allLinesFromOrders && !archived ? (
             <Badge variant="success" className="hidden text-[9px] sm:inline-flex">
@@ -371,7 +379,9 @@ export function ZkWatchCard({
         <div className="border-t border-slate-100 bg-slate-50/70 px-3 pb-2.5 pt-2 sm:px-3.5">
           {isRealizedInSubiekt && canEdit ? (
             <p className="mb-2 text-[0.68rem] leading-snug text-emerald-900">
-              Subiekt: Zrealizowane — rozważ zamknięcie sprawy (menu ⋮).
+              Subiekt: Zrealizowane — rozważ zamknięcie sprawy (menu{" "}
+              <HelpMenuGlyph className="align-[-2px]" />
+              ).
             </p>
           ) : null}
 

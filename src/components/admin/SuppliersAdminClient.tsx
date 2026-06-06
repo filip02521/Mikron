@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { LinkChevron } from "@/components/ui/UiGlyphs";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useState, useTransition, useCallback } from "react";
 import { useLatest } from "@/hooks/useLatest";
@@ -379,9 +380,10 @@ export function SuppliersAdminClient({
                         <td>
                           <Link
                             href={scheduleHref(s.location, s.name)}
-                            className="text-sm font-medium text-sky-700 hover:text-sky-900 hover:underline"
+                            className="inline-flex items-center gap-1 text-sm font-medium text-sky-700 hover:text-sky-900 hover:underline"
                           >
-                            Terminy →
+                            Terminy
+                            <LinkChevron size={14} tone="sky" />
                           </Link>
                         </td>
                         <td>

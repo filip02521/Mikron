@@ -7,6 +7,7 @@ import {
 import type { SalesNote, SalesZkWatch } from "@/types/database";
 import { Badge } from "@/components/ui/Badge";
 import { surfaceCardClass } from "@/lib/ui/ontime-theme";
+import { LinkChevron } from "@/components/ui/UiGlyphs";
 import { cn } from "@/lib/cn";
 
 function taskBadge(kind: NotepadTodayTaskKind) {
@@ -79,7 +80,7 @@ export function TodayTasksSection({
                   <p className="mt-0.5 truncate text-[11px] text-slate-500">{task.subtitle}</p>
                 ) : null}
               </div>
-              <span className="shrink-0 text-[11px] font-medium text-indigo-700">→</span>
+              <LinkChevron size={14} tone="brand" />
             </button>
           </li>
         ))}

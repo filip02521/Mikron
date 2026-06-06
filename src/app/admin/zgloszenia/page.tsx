@@ -3,6 +3,7 @@ import { getSessionUser } from "@/lib/auth";
 import { BugReportsAdminClient } from "@/components/admin/BugReportsAdminClient";
 import { PageHeader } from "@/components/ui/PageHeader";
 import Link from "next/link";
+import { BackChevron } from "@/components/ui/UiGlyphs";
 import { redirect } from "next/navigation";
 
 export default async function AdminZgloszeniaPage() {
@@ -26,9 +27,10 @@ export default async function AdminZgloszeniaPage() {
         actions={
           <Link
             href="/admin"
-            className="text-sm font-medium text-slate-600 underline-offset-2 hover:text-slate-900 hover:underline"
+            className="inline-flex items-center gap-1.5 text-sm font-medium text-slate-600 underline-offset-2 hover:text-slate-900 hover:underline"
           >
-            ← Administracja
+            <BackChevron className="text-slate-500" />
+            Administracja
           </Link>
         }
       />

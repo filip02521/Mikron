@@ -20,6 +20,7 @@ import {
   type SalesCancelledNotice,
 } from "@/lib/orders/sales-cancelled-notices";
 import { mapOrderToForSomeoneLine } from "@/lib/orders/product-source";
+import { isInformacjaStockOutReorder } from "@/lib/orders/informacja-stock-out-reorder";
 import {
   canShowInForSomeoneLeft,
   isInformacjaQueueViaDailyPanel,
@@ -84,10 +85,14 @@ export type ForSomeoneLine = {
   subiektTwId?: number | null;
   /** Informacja z opcją „najpierw panel Dziś”. */
   informacjaViaPanel?: boolean;
+  informacjaStockOut?: boolean;
   /** Moment zgłoszenia prośby (action_at). */
   submittedAt: string;
   /** Zakupy zapoznały się z prośbą w panelu dziennym. */
   procurementSeenAt?: string | null;
+  /** Klient podany przez handlowca (opcjonalnie). */
+  clientName?: string | null;
+  clientKhId?: number | null;
 };
 
 export type SummaryForSomeoneEnriched = {
@@ -145,6 +150,8 @@ export type SummaryWorkspaceData = SummaryView & {
   thisWeekDays: WeekDayPlan[];
   nextWeekDays: WeekDayPlan[];
   forSomeoneLeft: SummaryForSomeoneEnriched[];
+  /** Sygnały „brak na stanie” — osobna sekcja, nie mieszane z prośbami klientów. */
+  stockOutLeft: SummaryForSomeoneEnriched[];
   informacjaLeft: SummaryInformacjaEnriched[];
   salesCancelledNotices: SalesCancelledNotice[];
   panelHidden: DailyPanelHiddenReport;
@@ -364,7 +371,10 @@ export function buildSummaryWorkspace(
       count === 1 ? "produkt" : count > 1 && count < 5 ? "produkty" : "produktów";
     const lines = g.items.map((item) => mapOrderToForSomeoneLine(item));
     const hoverNote = lines
-      .map((l) => `${l.symbol}: ${l.products} (${l.quantity})`)
+      .map((l) => {
+        const client = l.clientName ? ` · klient: ${l.clientName}` : "";
+        return `${l.symbol}: ${l.products} (${l.quantity})${client}`;
+      })
       .join("\n");
     const timing = computeForSomeoneGroupMeta(g.items);
     return {
@@ -394,14 +404,24 @@ export function buildSummaryWorkspace(
   const informacjaViaPanel = informacjaNew.filter((o) =>
     isInformacjaQueueViaDailyPanel(o)
   );
+  const informacjaStockOut = informacjaNew.filter((o) =>
+    isInformacjaStockOutReorder(o)
+  );
   const informacjaDirect = informacjaNew.filter(
-    (o) => !isInformacjaQueueViaDailyPanel(o)
+    (o) =>
+      !isInformacjaQueueViaDailyPanel(o) && !isInformacjaStockOutReorder(o)
   );
 
   const forSomeoneLeft = [
     ...buildRequestGroups(zamowienieNew, "[DLA KOGOŚ]", "forSomeone"),
     ...buildRequestGroups(informacjaViaPanel, "[Magazyn→info]", "forSomeone"),
   ] as SummaryForSomeoneEnriched[];
+
+  const stockOutLeft = buildRequestGroups(
+    informacjaStockOut,
+    "[Brak na stanie]",
+    "forSomeone"
+  ) as SummaryForSomeoneEnriched[];
 
   const informacjaLeft = buildRequestGroups(
     informacjaDirect,
@@ -478,6 +498,7 @@ export function buildSummaryWorkspace(
     thisWeekDays,
     nextWeekDays,
     forSomeoneLeft,
+    stockOutLeft,
     informacjaLeft,
     salesCancelledNotices,
     panelHidden,

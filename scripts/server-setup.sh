@@ -167,6 +167,13 @@ EOF
   if [[ -n "${LAN_DEV_HOST:-}" ]]; then
     echo "LAN_DEV_HOST=${LAN_DEV_HOST}" >>"$dest"
   fi
+  if [[ -n "${APP_SERVER_HOST:-}" ]]; then
+    echo "APP_SERVER_HOST=${APP_SERVER_HOST}" >>"$dest"
+    echo "APP_PORT=${APP_PORT:-3000}" >>"$dest"
+  fi
+  if [[ -n "${SERVER_ACTION_ALLOWED_ORIGINS:-}" ]]; then
+    echo "SERVER_ACTION_ALLOWED_ORIGINS=${SERVER_ACTION_ALLOWED_ORIGINS}" >>"$dest"
+  fi
 
   if [[ -n "${SUBIEKT_API_BASE_URL:-}" ]]; then
     cat >>"$dest" <<EOF
@@ -412,6 +419,13 @@ print_summary() {
   log "Supabase → Authentication → URL Configuration:"
   log "  Site URL:        ${NEXT_PUBLIC_APP_URL}"
   log "  Redirect URLs:   ${NEXT_PUBLIC_APP_URL}/**"
+  if [[ -n "${APP_SERVER_HOST:-}" ]]; then
+    log "                   http://${APP_SERVER_HOST}:${APP_PORT:-3000}/**"
+    log "                   http://${APP_SERVER_HOST}/**"
+  fi
+  if [[ "${NEXT_PUBLIC_APP_URL}" != *":3000"* && "${NEXT_PUBLIC_APP_URL}" == http://* ]]; then
+    warn "Brak :3000 w URL — OK tylko gdy masz reverse proxy (port 80 → 3000)."
+  fi
   log ""
   log "Po zmianie URL zrestartuj aplikację."
   log "Diagnostyka LAN: npm run lan-check"

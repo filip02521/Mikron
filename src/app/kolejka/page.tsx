@@ -4,6 +4,7 @@ import {
   fetchInformacjaQueue,
   fetchWarehouseInventory,
 } from "@/lib/data/queries";
+import { runOrderMaintenanceBeforePageLoad } from "@/lib/services/deferred-order-maintenance";
 import { actionFetchTodayDeliveryJournal, actionListWarehouseAssignSuppliers } from "@/app/actions/warehouse-delivery";
 import { getSessionUser } from "@/lib/auth";
 import { isMagazyn } from "@/lib/auth-roles";
@@ -12,6 +13,8 @@ import { Alert } from "@/components/ui/Alert";
 import type { IndividualOrder } from "@/types/database";
 
 export default async function KolejkaPage() {
+  await runOrderMaintenanceBeforePageLoad();
+
   const session = await getSessionUser();
   const role = session?.role ?? null;
   let orders: IndividualOrder[] = [];

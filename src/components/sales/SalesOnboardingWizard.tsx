@@ -10,6 +10,7 @@ import {
 import { useSalesOnboarding, clearSalesOnboardingTourStarted } from "@/components/sales/SalesOnboardingContext";
 import { BrandCardAccent } from "@/components/brand/BrandCardAccent";
 import { Button } from "@/components/ui/Button";
+import { LinkChevron } from "@/components/ui/UiGlyphs";
 import { cn } from "@/lib/cn";
 import type { SalesOnboardingStep } from "@/lib/sales/sales-onboarding-steps";
 
@@ -293,7 +294,10 @@ export function SalesOnboardingWizard() {
     >
       <div className="relative z-[2] hidden shrink-0 rounded-t-lg bg-indigo-600 px-3 py-2 text-center md:block">
         <p className="text-xs font-semibold text-white">Panel wprowadzenia</p>
-        <p className="text-[11px] text-indigo-100">Przechodź kroki przyciskiem Dalej →</p>
+        <p className="inline-flex items-center justify-center gap-1 text-[11px] text-indigo-100">
+          Przechodź kroki przyciskiem Dalej
+          <LinkChevron size={13} tone="inherit" className="text-indigo-100" />
+        </p>
       </div>
 
       <div className="relative z-[2] shrink-0 rounded-t-lg bg-indigo-600 px-3 py-1.5 text-center md:hidden">

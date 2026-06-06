@@ -3,12 +3,14 @@
 import Link from "next/link";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
+import { BrandCardAccent } from "@/components/brand/BrandCardAccent";
 import {
   IconCalendar,
   IconClipboardList,
   IconLayoutPanel,
 } from "@/components/icons/StrokeIcons";
 import { SectionHeadingIcon } from "@/components/icons/SectionHeadingIcon";
+import { LinkChevron } from "@/components/ui/UiGlyphs";
 import { sectionIconTileBrandClass } from "@/lib/ui/ontime-theme";
 
 function GuideStep({
@@ -38,45 +40,50 @@ function GuideStep({
 /** Krótka ścieżka „od czego zacząć” przy pustym panelu Dziś. */
 export function DailyPanelEmptyGuide({ onOpenWeek }: { onOpenWeek: () => void }) {
   return (
-    <Card className="mt-4 px-4 py-5 sm:px-6">
-      <h3 className="text-sm font-semibold text-slate-900">Jak zacząć dzień w panelu?</h3>
-      <ol className="mt-3 space-y-3">
-        <GuideStep
-          icon={<IconClipboardList size={15} />}
-          tileClassName="bg-amber-100 text-amber-800"
-          title="1. Prośby handlowców"
-        >
-          Oznacz Główne lub Uzupełniające — potem trafią do magazynu lub kolejki informacji.
-        </GuideStep>
-        <GuideStep
-          icon={<IconLayoutPanel size={15} />}
-          tileClassName="bg-sky-100 text-sky-800"
-          title="2. Harmonogram na dziś"
-        >
-          Zaznacz dostawców jako zamówione po złożeniu zamówienia u dostawcy.
-        </GuideStep>
-        <GuideStep
-          icon={<IconCalendar size={15} />}
-          tileClassName={sectionIconTileBrandClass}
-          title="3. Plan tygodnia"
-        >
-          Sprawdź terminy z wyprzedzeniem — kalendarz w zakładce Tydzień lub w Terminach zamówień.
-        </GuideStep>
-      </ol>
-      <div className="mt-4 flex flex-wrap gap-2">
-        <Button size="sm" variant="secondary" onClick={onOpenWeek}>
-          Plan tygodnia
-        </Button>
-        <Link href="/lokalizacje/POLSKA">
-          <Button size="sm" variant="outline">
-            Terminy zamówień
+    <Card className="relative mt-4 overflow-hidden px-4 py-5 sm:px-6">
+      <BrandCardAccent className="pointer-events-none absolute -right-6 -top-6 h-28 w-36 opacity-90" />
+      <div className="relative z-[1]">
+        <h3 className="text-sm font-semibold text-slate-900">Jak zacząć dzień w panelu?</h3>
+        <ol className="mt-3 space-y-3">
+          <GuideStep
+            icon={<IconClipboardList size={15} />}
+            tileClassName="bg-amber-100 text-amber-800"
+            title="1. Prośby handlowców"
+          >
+            Oznacz Główne lub Uzupełniające — potem trafią do magazynu lub kolejki informacji.
+          </GuideStep>
+          <GuideStep
+            icon={<IconLayoutPanel size={15} />}
+            tileClassName="bg-sky-100 text-sky-800"
+            title="2. Harmonogram na dziś"
+          >
+            Zaznacz dostawców jako zamówione po złożeniu zamówienia u dostawcy.
+          </GuideStep>
+          <GuideStep
+            icon={<IconCalendar size={15} />}
+            tileClassName={sectionIconTileBrandClass}
+            title="3. Plan tygodnia"
+          >
+            Sprawdź terminy z wyprzedzeniem — kalendarz w zakładce Tydzień lub w Terminach zamówień.
+          </GuideStep>
+        </ol>
+        <div className="mt-4 flex flex-wrap gap-2">
+          <Button size="sm" variant="secondary" onClick={onOpenWeek}>
+            Plan tygodnia
           </Button>
-        </Link>
-        <Link href="/weryfikacja">
-          <Button size="sm" variant="ghost">
-            Weryfikacja
-          </Button>
-        </Link>
+          <Link href="/lokalizacje/POLSKA">
+            <Button size="sm" variant="outline" className="inline-flex items-center gap-1">
+              Terminy zamówień
+              <LinkChevron size={13} tone="brand" />
+            </Button>
+          </Link>
+          <Link href="/weryfikacja">
+            <Button size="sm" variant="ghost" className="inline-flex items-center gap-1">
+              Weryfikacja
+              <LinkChevron size={13} tone="muted" />
+            </Button>
+          </Link>
+        </div>
       </div>
     </Card>
   );

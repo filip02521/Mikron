@@ -2,10 +2,15 @@
 
 import { useMemo, useState, useCallback, useEffect, useRef } from "react";
 import type { SummaryForSomeoneEnriched } from "@/lib/orders/summary-workspace";
+import { enrichForSomeoneGroup, enrichStockOutSignalGroup } from "@/lib/orders/procurement-daily-ui";
 import {
-  enrichForSomeoneGroup,
-  sortForSomeoneGroups,
-} from "@/lib/orders/procurement-daily-ui";
+  buildProcurementSupplierBlocks,
+  filterNavigableProcurementGroups,
+  procurementProductCountLabel,
+  showProcurementSupplierBlockHeader,
+  procurementSupplierBlockScopeKey,
+} from "@/lib/orders/procurement-supplier-groups";
+import { ProcurementSupplierBlockBar } from "@/components/summary/ProcurementSupplierBlockBar";
 import { locationLabel } from "@/lib/display-labels";
 import { actionMarkProcurementRequestsSeen, actionProcessIndividual } from "@/app/actions/admin";
 import { Card, CardHeader } from "@/components/ui/Card";
@@ -33,8 +38,18 @@ import { cn } from "@/lib/cn";
 import { PanelRowActionsInlineEnd } from "@/components/summary/PanelRowActionsInlineEnd";
 import { panelRowClearFocusOnLeave, panelRowGroupClass } from "@/lib/ui/panel-row-actions-reveal";
 import { panelNameLinkClass, rowPendingRingClass } from "@/lib/ui/ontime-theme";
-import { INFORMACJA_FLOW_PROCUREMENT_GROUP_BANNER } from "@/lib/orders/informacja-flow-copy";
+import {
+  INFORMACJA_FLOW_PROCUREMENT_GROUP_BANNER,
+  INFORMACJA_STOCK_OUT_PANEL_BANNER,
+  INFORMACJA_STOCK_OUT_PROCUREMENT_SECTION_HINT,
+} from "@/lib/orders/informacja-flow-copy";
+import { ProductSourceBadge } from "@/components/orders/ProductSourceBadge";
 import { InformacjaFlowLegend } from "@/components/orders/InformacjaFlowLegend";
+import { PanelQueueStatDot } from "@/components/ui/UiGlyphs";
+
+function groupHasInformacjaFlow(g: SummaryForSomeoneEnriched): boolean {
+  return g.lines.some((l) => l.informacjaViaPanel);
+}
 
 function groupKey(g: SummaryForSomeoneEnriched) {
   return `${g.supplierId}-${g.salesPersonId}`;
@@ -122,6 +137,23 @@ const FOR_SOMEONE_KEYBOARD_HINTS = [
   { keys: ["Ctrl", "Z"], label: "cofnij" },
 ] as const;
 
+function StockOutSectionHelp() {
+  return (
+    <HelpPopover label="Co to jest" title="Brak na stanie" shortLabel="Pomoc">
+      <p className="mb-2 inline-flex flex-wrap items-center gap-1.5">
+        <PanelQueueStatDot tone="stockOut" />
+        <span>{INFORMACJA_STOCK_OUT_PROCUREMENT_SECTION_HINT}</span>
+      </p>
+      <p className="mb-2">
+        <strong className="font-medium text-slate-800">Główne</strong> — zamówienie w planie
+        dostawcy (jak zwykłe domówienie).{" "}
+        <strong className="font-medium text-slate-800">Uzupełniające</strong> — poza planem.
+      </p>
+      <p>{INFORMACJA_STOCK_OUT_PANEL_BANNER}</p>
+    </HelpPopover>
+  );
+}
+
 function SectionHelp() {
   return (
     <HelpPopover label="Jak obsłużyć" title="Prośby handlowców" shortLabel="Pomoc">
@@ -139,7 +171,7 @@ function SectionHelp() {
         Kliknij <strong className="font-medium text-slate-800">Główne</strong> lub{" "}
         <strong className="font-medium text-slate-800">Uzupełniające</strong> — albo skróty{" "}
         <Kbd>Shift</Kbd>+<Kbd>G</Kbd> / <Kbd>Shift</Kbd>+<Kbd>U</Kbd> na zaznaczonej grupie (
-        <Kbd>↑</Kbd>/<Kbd>↓</Kbd>).
+        <Kbd>↑</Kbd>/<Kbd>↓</Kbd>). Zwinięty blok dostawcy nie jest w nawigacji klawiaturą.
       </p>
       <KeyboardShortcutsHint items={[...FOR_SOMEONE_KEYBOARD_HINTS]} className="mb-2" />
       <p className="mb-2">
@@ -147,11 +179,16 @@ function SectionHelp() {
         z którą zakupy jeszcze się nie zapoznały. Znika po ok. 1,5 s najechania na wiersz lub po
         obsłużeniu prośby. Przy każdej grupie widać datę i godzinę zgłoszenia.
       </p>
-      <p className="mb-2">
-        Przy produkcie: <strong className="text-emerald-800">✓</strong> — produkt z bazy;{" "}
-        <strong className="text-slate-600">✎</strong> — wpis ręczny.
+      <p className="mb-2 inline-flex flex-wrap items-center gap-x-1.5 gap-y-1">
+        Przy produkcie:{" "}
+        <ProductSourceBadge fromSubiekt size={12} className="size-5" /> — produkt z bazy;{" "}
+        <ProductSourceBadge fromSubiekt={false} size={12} className="size-5" /> — wpis ręczny.
       </p>
-      <p>Rozwiń grupę z wieloma produktami, aby zobaczyć pełną listę. Przy dostawcy z historią widać skrócony szacunek czasu dostawy.</p>
+      <p>
+        Przy kilku handlowcach u jednego dostawcy użyj paska{" "}
+        <strong className="font-medium text-slate-800">Zamów razem</strong> (wszystkie osoby) albo{" "}
+        <strong className="font-medium text-slate-800">Tylko ta osoba</strong> w wierszu poniżej.
+      </p>
     </HelpPopover>
   );
 }
@@ -168,6 +205,7 @@ export function ForSomeoneRequests({
   embedded = false,
   queueStep,
   sectionId = "kolejka-prosby",
+  variant = "requests",
 }: {
   groups: SummaryForSomeoneEnriched[];
   isScopePending: (scope: string) => boolean;
@@ -180,17 +218,37 @@ export function ForSomeoneRequests({
   embedded?: boolean;
   queueStep?: number;
   sectionId?: string;
+  variant?: "requests" | "stockOut";
 }) {
-  const sorted = useMemo(() => sortForSomeoneGroups(groups), [groups]);
+  const isStockOutSection = variant === "stockOut";
+  const enrichGroup = isStockOutSection ? enrichStockOutSignalGroup : enrichForSomeoneGroup;
+  const unseenBadgeVariant = isStockOutSection ? "warning" : "purple";
+  const supplierBlocks = useMemo(
+    () => buildProcurementSupplierBlocks(groups),
+    [groups]
+  );
+  const [collapsedSuppliers, setCollapsedSuppliers] = useState<Set<string>>(() => new Set());
+
+  const navigableGroups = useMemo(
+    () => filterNavigableProcurementGroups(supplierBlocks, collapsedSuppliers),
+    [supplierBlocks, collapsedSuppliers]
+  );
+  useEffect(() => {
+    const valid = new Set(supplierBlocks.map((b) => b.supplierId));
+    setCollapsedSuppliers((prev) => {
+      const next = new Set([...prev].filter((id) => valid.has(id)));
+      return next.size === prev.size ? prev : next;
+    });
+  }, [supplierBlocks]);
   const { isGroupUnseen, markGroupSeen, scheduleMarkSeen, cancelMarkSeen } =
     useProcurementSeenTracker();
   const unseenGroupCount = useMemo(
-    () => sorted.filter((g) => isGroupUnseen(g)).length,
-    [sorted, isGroupUnseen]
+    () => groups.filter((g) => isGroupUnseen(g)).length,
+    [groups, isGroupUnseen]
   );
   const multiLineKeys = useMemo(
-    () => sorted.filter((g) => g.lines.length >= 2).map(groupKey),
-    [sorted]
+    () => groups.filter((g) => g.lines.length >= 2).map(groupKey),
+    [groups]
   );
 
   const [expanded, setExpanded] = useState<Set<string>>(() => new Set());
@@ -216,15 +274,33 @@ export function ForSomeoneRequests({
     initial: EditIndividualRequestInitial;
     scopeKey: string;
   } | null>(null);
-  const [focusedGroupIndex, setFocusedGroupIndex] = useState(-1);
+  const [focusedGroupKey, setFocusedGroupKey] = useState<string | null>(null);
+
+  const focusedGroup = useMemo(() => {
+    if (!focusedGroupKey) return null;
+    return navigableGroups.find((g) => groupKey(g) === focusedGroupKey) ?? null;
+  }, [focusedGroupKey, navigableGroups]);
 
   useEffect(() => {
-    if (focusedGroupIndex < 0 || focusedGroupIndex >= sorted.length) return;
-    scheduleMarkSeen(sorted[focusedGroupIndex]!);
-  }, [focusedGroupIndex, sorted, scheduleMarkSeen]);
+    if (focusedGroupKey && !focusedGroup) setFocusedGroupKey(null);
+  }, [focusedGroupKey, focusedGroup]);
 
   useEffect(() => {
-    if (editTarget || cancelTarget || !sorted.length) return;
+    if (!focusedGroup) return;
+    scheduleMarkSeen(focusedGroup);
+  }, [focusedGroup, scheduleMarkSeen]);
+
+  useEffect(() => {
+    if (!focusedGroupKey) return;
+    document
+      .querySelector<HTMLElement>(
+        `[data-procurement-group="${CSS.escape(focusedGroupKey)}"]`
+      )
+      ?.scrollIntoView({ behavior: "smooth", block: "nearest" });
+  }, [focusedGroupKey]);
+
+  useEffect(() => {
+    if (editTarget || cancelTarget || !navigableGroups.length) return;
 
     const onKey = (e: KeyboardEvent) => {
       const tag = (e.target as HTMLElement)?.tagName;
@@ -234,26 +310,37 @@ export function ForSomeoneRequests({
       }
 
       if (e.key === "Escape") {
-        setFocusedGroupIndex(-1);
+        setFocusedGroupKey(null);
         return;
       }
 
+      const currentIndex = focusedGroupKey
+        ? navigableGroups.findIndex((g) => groupKey(g) === focusedGroupKey)
+        : -1;
+
       if (e.key === "ArrowDown") {
         e.preventDefault();
-        setFocusedGroupIndex((i) => Math.min(sorted.length - 1, i < 0 ? 0 : i + 1));
+        const next = Math.min(
+          navigableGroups.length - 1,
+          currentIndex < 0 ? 0 : currentIndex + 1
+        );
+        const g = navigableGroups[next];
+        setFocusedGroupKey(g ? groupKey(g) : null);
         return;
       }
 
       if (e.key === "ArrowUp") {
         e.preventDefault();
-        setFocusedGroupIndex((i) => Math.max(0, i < 0 ? 0 : i - 1));
+        const next = Math.max(0, currentIndex < 0 ? 0 : currentIndex - 1);
+        const g = navigableGroups[next];
+        setFocusedGroupKey(g ? groupKey(g) : null);
         return;
       }
 
-      if (focusedGroupIndex < 0 || focusedGroupIndex >= sorted.length) return;
-      const group = sorted[focusedGroupIndex]!;
+      if (!focusedGroup) return;
+      const group = focusedGroup;
       const key = groupKey(group);
-      const ui = enrichForSomeoneGroup(group);
+      const ui = enrichGroup(group);
 
       if (e.key === "Enter") {
         if (group.lines.length < 2) return;
@@ -316,31 +403,41 @@ export function ForSomeoneRequests({
 
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [sorted, focusedGroupIndex, editTarget, cancelTarget, run, markGroupSeen]);
+  }, [navigableGroups, focusedGroup, focusedGroupKey, editTarget, cancelTarget, run, markGroupSeen]);
 
   const Wrapper = embedded ? "section" : Card;
   const wrapperProps = embedded
     ? {
         id: sectionId,
-        className: cn("scroll-mt-24", dailyPanelQueueShellClass("prosby")),
+        className: cn(
+          "scroll-mt-24",
+          dailyPanelQueueShellClass(isStockOutSection ? "stockOut" : "prosby")
+        ),
       }
     : { padding: false as const };
 
   const subsectionHeader = (
     <DailyPanelSubsectionBar
-      title="Prośby handlowców"
-      tone="prosby"
+      title={isStockOutSection ? "Brak na stanie — do zamówienia" : "Prośby handlowców"}
+      description={
+        isStockOutSection ? INFORMACJA_STOCK_OUT_PROCUREMENT_SECTION_HINT : undefined
+      }
+      tone={isStockOutSection ? "stockOut" : "prosby"}
       step={queueStep}
       count={groups.length}
-      countUnit={{ one: "grupa", few: "grupy", many: "grup" }}
-      compact
+      countUnit={
+        isStockOutSection
+          ? { one: "sygnał", few: "sygnały", many: "sygnałów" }
+          : { one: "grupa", few: "grupy", many: "grup" }
+      }
+      compact={!isStockOutSection}
       action={
         <div className="flex items-center gap-1">
           {unseenGroupCount > 0 ? (
-            <Badge variant="purple" className="h-7 shrink-0 px-2 text-[11px]">
+            <Badge variant={unseenBadgeVariant} className="h-7 shrink-0 px-2 text-[11px]">
               {unseenGroupCount}{" "}
               {unseenGroupCount === 1
-                ? "nowa"
+                ? "nowy"
                 : unseenGroupCount >= 2 && unseenGroupCount <= 4
                   ? "nowe"
                   : "nowych"}
@@ -351,7 +448,7 @@ export function ForSomeoneRequests({
               {allExpanded ? "Zwiń listy" : "Rozwiń listy"}
             </Button>
           ) : null}
-          <SectionHelp />
+          {isStockOutSection ? <StockOutSectionHelp /> : <SectionHelp />}
         </div>
       }
     />
@@ -422,37 +519,99 @@ export function ForSomeoneRequests({
       />
       {embedded ? subsectionHeader : legacyHeader}
 
-      {sorted.some((g) => g.lines.some((l) => l.informacjaViaPanel)) ? (
-        <div className="border-b border-slate-100 px-2 py-1.5 sm:px-3">
-          <InformacjaFlowLegend compact />
+      {!isStockOutSection && groups.some(groupHasInformacjaFlow) ? (
+        <div className="border-b border-slate-100 bg-slate-50/40 px-2 py-2 sm:px-3">
+          <InformacjaFlowLegend
+            compact
+            showLegacyViaPanel={groups.some((g) =>
+              g.lines.some((l) => l.informacjaViaPanel)
+            )}
+          />
         </div>
       ) : null}
 
-      <ul className="space-y-1 p-2 sm:p-2">
-        {sorted.map((g, groupIndex) => {
+      <ul className="space-y-2 p-2 sm:p-2">
+        {supplierBlocks.map((block) => {
+          const showSupplierHeader = showProcurementSupplierBlockHeader(block);
+          const supplierCollapsed =
+            showSupplierHeader && collapsedSuppliers.has(block.supplierId);
+          const blockStats = statsBySupplierId[block.supplierId];
+          const blockStatsMode = supplierStatsMode[block.supplierId] ?? "LACZNIE";
+          const blockLeadTimeBrief =
+            showSupplierHeader && blockStats
+              ? formatSupplierLeadTimeBrief(blockStats, blockStatsMode)
+              : null;
+          const blockScopeKey = procurementSupplierBlockScopeKey(block.supplierId);
+          const blockPending = isScopePending(blockScopeKey);
+
+          return (
+            <li
+              key={block.supplierId}
+              className={cn(
+                showSupplierHeader &&
+                  (isStockOutSection
+                    ? "overflow-hidden rounded-md border border-amber-300/80 shadow-sm"
+                    : "overflow-hidden rounded-md border border-indigo-200/90 shadow-sm")
+              )}
+              aria-label={`Dostawca ${block.supplierName}`}
+            >
+              {showSupplierHeader ? (
+                <ProcurementSupplierBlockBar
+                  block={block}
+                  collapsed={supplierCollapsed}
+                  leadTimeBrief={blockLeadTimeBrief}
+                  pending={blockPending}
+                  run={run}
+                  onToggleCollapse={() =>
+                    setCollapsedSuppliers((prev) => {
+                      const next = new Set(prev);
+                      if (next.has(block.supplierId)) next.delete(block.supplierId);
+                      else next.add(block.supplierId);
+                      return next;
+                    })
+                  }
+                  onOpenSupplier={onOpenSupplier}
+                />
+              ) : null}
+              {!supplierCollapsed ? (
+                <ul
+                  className={cn(
+                    "space-y-1",
+                    showSupplierHeader && "divide-y divide-slate-100/90 bg-white/60 p-1.5 sm:p-2"
+                  )}
+                >
+                  {block.requestGroups.map((g) => {
           const key = groupKey(g);
-          const groupPending = isScopePending(key);
-          const isFocused = focusedGroupIndex === groupIndex;
-          const ui = enrichForSomeoneGroup(g);
+          const groupPending = isScopePending(key) || blockPending;
+          const isFocused = focusedGroupKey === key;
+          const ui = enrichGroup(g);
           const isUnseen = isGroupUnseen(g);
           const stats = statsBySupplierId[g.supplierId];
           const statsMode = supplierStatsMode[g.supplierId] ?? "LACZNIE";
           const leadTimeBrief = stats
             ? formatSupplierLeadTimeBrief(stats, statsMode)
             : null;
-          const hasInfoViaPanel = g.lines.some((l) => l.informacjaViaPanel);
+          const hasInfoViaPanel = !isStockOutSection && g.lines.some((l) => l.informacjaViaPanel);
+          const informacjaBadgeVariant = hasInfoViaPanel ? "info" : "default";
           const singleLine = g.lines.length === 1 ? g.lines[0]! : null;
           const hasMultiLine = g.lines.length >= 2;
           const isOpen = hasMultiLine && expanded.has(key);
+          const countLabel = procurementProductCountLabel(g.lines.length);
+          const rowSubline = showSupplierHeader ? countLabel : ui.subline;
+          const showRowLeadTime = !showSupplierHeader || !blockLeadTimeBrief;
 
           return (
             <li key={key}>
               <article
+                data-procurement-group={key}
                 className={cn(
                   panelRowGroupClass("rounded-md border border-slate-200 bg-white transition-shadow"),
                   groupPending && rowPendingRingClass,
-                  isFocused && "ring-2 ring-indigo-400/70 ring-offset-1",
-                  isUnseen && "border-violet-200/90 bg-violet-50/30"
+                  isFocused && (isStockOutSection ? "ring-2 ring-amber-400/70 ring-offset-1" : "ring-2 ring-indigo-400/70 ring-offset-1"),
+                  isUnseen &&
+                    (isStockOutSection
+                      ? "border-amber-300/90 bg-amber-50/50"
+                      : "border-violet-200/90 bg-violet-50/30")
                 )}
                 aria-busy={groupPending}
                 onMouseEnter={() => scheduleMarkSeen(g)}
@@ -467,7 +626,7 @@ export function ForSomeoneRequests({
                 onMouseLeave={(e) => {
                   cancelMarkSeen(g);
                   panelRowClearFocusOnLeave(e);
-                  if (focusedGroupIndex === groupIndex) setFocusedGroupIndex(-1);
+                  if (focusedGroupKey === key) setFocusedGroupKey(null);
                 }}
               >
                 <div className="px-2 py-1.5">
@@ -478,24 +637,30 @@ export function ForSomeoneRequests({
                           {ui.headline}
                         </p>
                         {isUnseen ? (
-                          <Badge variant="purple" className="px-1.5 py-0 text-[10px]">
+                          <Badge variant={unseenBadgeVariant} className="px-1.5 py-0 text-[10px]">
                             Nowa
                             {ui.unseenCount > 1 ? ` (${ui.unseenCount})` : ""}
                           </Badge>
                         ) : null}
                       </div>
                       <p className="mt-0.5 text-xs text-slate-500">
-                        <button
-                          type="button"
-                          className={panelNameLinkClass}
-                          onClick={() => onOpenSupplier(g.supplierId)}
-                        >
-                          {g.supplierName}
-                        </button>
-                        {" · "}
-                        {ui.subline}
-                        {" · "}
-                        {locationLabel(g.location)}
+                        {showSupplierHeader ? (
+                          rowSubline
+                        ) : (
+                          <>
+                            <button
+                              type="button"
+                              className={panelNameLinkClass}
+                              onClick={() => onOpenSupplier(g.supplierId)}
+                            >
+                              {g.supplierName}
+                            </button>
+                            {" · "}
+                            {ui.subline}
+                            {" · "}
+                            {locationLabel(g.location)}
+                          </>
+                        )}
                       </p>
                       <p
                         className="mt-0.5 text-[11px] text-slate-400"
@@ -503,14 +668,14 @@ export function ForSomeoneRequests({
                       >
                         Zgłoszono {ui.submittedLabel}
                       </p>
-                      {leadTimeBrief ? (
+                      {showRowLeadTime && leadTimeBrief ? (
                         <p className="mt-0.5 text-[10px] text-slate-400">{leadTimeBrief}</p>
                       ) : null}
                       {singleLine ? <ProcurementRequestLineInline line={singleLine} /> : null}
                     </div>
                     <div className="flex shrink-0 flex-col items-end gap-1">
                       <Badge
-                        variant={hasInfoViaPanel ? "info" : "default"}
+                        variant={informacjaBadgeVariant}
                         className="shrink-0 whitespace-normal text-right text-[10px] leading-snug"
                       >
                         {ui.statusTitle}
@@ -523,6 +688,7 @@ export function ForSomeoneRequests({
                           headline={ui.headline}
                           pending={groupPending}
                           scopeKey={key}
+                          density={showSupplierHeader ? "nested" : "default"}
                           run={run}
                           onEdit={() => {
                             markGroupSeen(g);
@@ -543,8 +709,12 @@ export function ForSomeoneRequests({
                       </PanelRowActionsInlineEnd>
                     </div>
                   </div>
-                  {hasInfoViaPanel ? (
-                    <div className="mt-1.5 rounded-md border border-slate-200 bg-slate-50 px-2 py-1 text-[11px] leading-snug text-slate-700">
+                  {isStockOutSection && ui.statusDetail ? (
+                    <div className="mt-1.5 rounded-md border border-amber-200/90 bg-amber-50/80 px-2 py-1 text-[11px] leading-snug text-amber-950">
+                      <p>{ui.statusDetail}</p>
+                    </div>
+                  ) : hasInfoViaPanel ? (
+                    <div className="mt-1.5 rounded-md border border-indigo-200/90 bg-indigo-50/60 px-2 py-1 text-[11px] leading-snug text-indigo-950">
                       <p>{INFORMACJA_FLOW_PROCUREMENT_GROUP_BANNER}</p>
                     </div>
                   ) : null}
@@ -578,6 +748,11 @@ export function ForSomeoneRequests({
                   </div>
                 ) : null}
               </article>
+            </li>
+          );
+                  })}
+                </ul>
+              ) : null}
             </li>
           );
         })}

@@ -12,7 +12,7 @@ export function ButtonGroup({
   children: React.ReactNode;
   ariaLabel: string;
   className?: string;
-  /** Menu rozwijane (Przesuń, ⋮) — bez obcinania przez overflow-hidden. */
+  /** Menu rozwijane (Przesuń, Więcej) — bez obcinania przez overflow-hidden. */
   allowOverflow?: boolean;
 }) {
   return (

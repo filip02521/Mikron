@@ -14,6 +14,8 @@ function toZkLinkableOrder(order: IndividualOrder): ZkLinkableOrder {
     sales_person_id: order.sales_person_id,
     sales_client_name: order.sales_client_name ?? null,
     sales_client_kh_id: order.sales_client_kh_id ?? null,
+    source_zk_watch_id: order.source_zk_watch_id ?? null,
+    source_zk_number: order.source_zk_number ?? null,
     subiekt_tw_id: order.subiekt_tw_id ?? null,
     symbol: order.symbol ?? null,
     products: order.products ?? null,

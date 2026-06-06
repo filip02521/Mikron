@@ -3,6 +3,10 @@ import { normalizeIndividualOrders } from "@/lib/data/normalize-order";
 import { buildSummaryWorkspace } from "@/lib/orders/summary-workspace";
 import { sortIndividualOrdersBySupplier } from "@/lib/orders/queue-sort";
 import { sortInformacjaQueueForDisplay } from "@/lib/orders/queue-product-groups";
+import {
+  countDeliveryQueueCancelledRows,
+  countInformacjaWarehouseQueueRows,
+} from "@/lib/data/queue-counts";
 import { isInformacjaWarehouseQueueOrder } from "@/lib/orders/informacja-warehouse-queue";
 import { isSalesCancelledForQueue } from "@/lib/orders/sales-cancel";
 import { historyRetentionCutoffIso } from "@/lib/orders/history-retention";
@@ -148,19 +152,6 @@ export async function fetchSalesCancelledOrders(
 export async function fetchVerificationOrders(): Promise<IndividualOrder[]> {
   if (!hasSupabaseConfig()) return [];
   const supabase = createAdminClient();
-  const { runRepairIncompleteIndividualOrders } = await import(
-    "@/lib/services/repair-incomplete-orders-runner"
-  );
-  await runRepairIncompleteIndividualOrders(supabase);
-
-  const { autoAssignMissingSuppliersFromCatalog } = await import(
-    "@/lib/services/auto-assign-suppliers"
-  );
-  try {
-    await autoAssignMissingSuppliersFromCatalog({ limit: 80 });
-  } catch (e) {
-    console.error("[fetchVerificationOrders autoAssign]", e);
-  }
 
   const { data, error } = await supabase
     .from("individual_orders")
@@ -212,15 +203,64 @@ export async function fetchInformacjaQueue(): Promise<IndividualOrder[]> {
   return sortInformacjaQueueForDisplay(rows);
 }
 
+const INFORMACJA_QUEUE_COUNT_SELECT =
+  "request_kind, status, informacja_queue_via_daily_panel, sales_cancelled_at";
+
 export async function countInformacjaQueue(): Promise<number> {
-  const rows = await fetchInformacjaQueue();
-  return rows.length;
+  if (!hasSupabaseConfig()) return 0;
+  const supabase = createAdminClient();
+  const { data, error } = await supabase
+    .from("individual_orders")
+    .select(INFORMACJA_QUEUE_COUNT_SELECT)
+    .eq("request_kind", "informacja")
+    .in("status", ["Nowe", "Zamowione", "Czesciowo_zrealizowane"])
+    .is("sales_cancelled_at", null);
+
+  if (error) throw new Error(error.message);
+
+  return countInformacjaWarehouseQueueRows(
+    (data ?? []) as import("@/lib/data/queue-counts").InformacjaQueueCountRow[]
+  );
 }
+
+const DELIVERY_QUEUE_CANCELLED_COUNT_SELECT =
+  "status, sales_cancelled_at, sales_cancel_phase, quantity, delivered_quantity, procurement_cancel_disposition, request_kind";
 
 /** Liczba pozycji w kolejce dostaw (zamówione u dostawcy, bez informacji). */
 export async function countDeliveryQueue(): Promise<number> {
-  const rows = await fetchDeliveryQueue();
-  return rows.length;
+  if (!hasSupabaseConfig()) return 0;
+  const supabase = createAdminClient();
+
+  const [activeRes, cancelledRes] = await Promise.all([
+    supabase
+      .from("individual_orders")
+      .select("id", { count: "exact", head: true })
+      .eq("request_kind", "zamowienie")
+      .in("status", ["Zamowione", "Czesciowo_zrealizowane"])
+      .is("sales_cancelled_at", null)
+      .not("supplier_id", "is", null),
+    supabase
+      .from("individual_orders")
+      .select(DELIVERY_QUEUE_CANCELLED_COUNT_SELECT)
+      .eq("request_kind", "zamowienie")
+      .not("sales_cancelled_at", "is", null)
+      .not("procurement_cancel_disposition", "is", null)
+      .order("sales_cancelled_at", { ascending: false }),
+  ]);
+
+  if (activeRes.error) throw new Error(activeRes.error.message);
+  if (cancelledRes.error) {
+    if (cancelledRes.error.message?.includes("sales_cancelled_at")) {
+      return activeRes.count ?? 0;
+    }
+    throw new Error(cancelledRes.error.message);
+  }
+
+  const cancelledForQueue = countDeliveryQueueCancelledRows(
+    (cancelledRes.data ?? []) as import("@/lib/data/queue-counts").DeliveryQueueCancelledCountRow[]
+  );
+
+  return (activeRes.count ?? 0) + cancelledForQueue;
 }
 
 /** Całość na regale — u handlowców świeci na zielono do odbioru (poza kolejką przyjęcia). */
@@ -277,10 +317,6 @@ export async function fetchWarehouseInventory(): Promise<IndividualOrder[]> {
 export async function fetchDeliveryQueue(): Promise<IndividualOrder[]> {
   if (!hasSupabaseConfig()) return [];
   const supabase = createAdminClient();
-  const { runRepairIncompleteIndividualOrders } = await import(
-    "@/lib/services/repair-incomplete-orders-runner"
-  );
-  await runRepairIncompleteIndividualOrders(supabase);
 
   const [activeRes, cancelledRes] = await Promise.all([
     supabase
@@ -321,14 +357,6 @@ export async function fetchDeliveryQueue(): Promise<IndividualOrder[]> {
 }
 
 export async function fetchSummaryWorkspace(options?: { salesPersonId?: string }) {
-  if (hasSupabaseConfig()) {
-    const supabase = createAdminClient();
-    const { runRepairIncompleteIndividualOrders } = await import(
-      "@/lib/services/repair-incomplete-orders-runner"
-    );
-    await runRepairIncompleteIndividualOrders(supabase);
-  }
-
   const allSchedules = await fetchSuppliersWithSchedules(undefined, { activeOnly: true });
   let schedules = allSchedules;
   if (options?.salesPersonId) {
@@ -337,7 +365,7 @@ export async function fetchSummaryWorkspace(options?: { salesPersonId?: string }
   }
   const { fetchSalesPeopleForPicker } = await import("@/lib/data/sales-people-admin");
   const [allNewOrders, salesPeople, statsRows] = await Promise.all([
-    fetchIndividualOrders({ hideSalesAcknowledged: false }),
+    fetchIndividualOrders({ status: "Nowe", hideSalesAcknowledged: false }),
     fetchSalesPeopleForPicker(),
     fetchDeliveryStats(),
   ]);
@@ -350,7 +378,7 @@ export async function fetchSummaryWorkspace(options?: { salesPersonId?: string }
 
   const workspace = buildSummaryWorkspace(
     schedules,
-    newOrders.filter((o) => o.status === "Nowe"),
+    newOrders,
     undefined,
     salesPeople.map((p) => ({ id: p.id, name: p.name })),
     salesCancelledOrders

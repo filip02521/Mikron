@@ -1,55 +1,90 @@
 "use client";
 
+import type { ReactElement } from "react";
+import type { InformacjaFlowPath } from "@/lib/orders/informacja-stock-out-reorder";
 import {
-  INFORMACJA_FLOW_DIRECT,
-  INFORMACJA_FLOW_VIA_PANEL,
-} from "@/lib/orders/informacja-flow-copy";
-import { InformacjaFlowLegend } from "@/components/orders/InformacjaFlowLegend";
+  INFORMACJA_FLOW_CARD_STYLES,
+  informacjaFlowPickerOptions,
+  type InformacjaFlowUiDef,
+} from "@/lib/orders/informacja-flow-ui";
+import { cn } from "@/lib/cn";
+import { SectionHeadingIcon } from "@/components/icons/SectionHeadingIcon";
+import {
+  IconAlertCircle,
+  IconAvailability,
+  IconTruck,
+} from "@/components/icons/StrokeIcons";
+import type { StrokeIconProps } from "@/components/icons/StrokeIcons";
 
-/** Wybór ścieżki prośby informacyjnej — wspólny dla modalu panelu i zamówienia grupowego. */
+const PICKER_FLOW_ICONS: Record<
+  InformacjaFlowUiDef["path"],
+  (props: StrokeIconProps) => ReactElement
+> = {
+  stock_out: IconAlertCircle,
+  direct: IconAvailability,
+  via_panel: IconTruck,
+};
+
+/** Wybór ścieżki prośby informacyjnej — ten sam wzorzec co RequestKindToggle. */
 export function InformacjaFlowPicker({
-  viaDailyPanel,
+  path,
   onChange,
   disabled = false,
-  name = "informacja-path",
+  /** Tylko panel dzienny → Nowa prośba (zakupy). */
+  includeViaPanel = false,
 }: {
-  viaDailyPanel: boolean;
-  onChange: (viaDailyPanel: boolean) => void;
+  path: InformacjaFlowPath;
+  onChange: (path: InformacjaFlowPath) => void;
   disabled?: boolean;
+  includeViaPanel?: boolean;
+  /** @deprecated Ignorowane — wybór przez przyciski, bez ukrytych radio. */
   name?: string;
 }) {
+  const options = informacjaFlowPickerOptions({ includeViaPanel });
+
   return (
-    <fieldset className="space-y-2 rounded-md border border-sky-200 bg-sky-50/60 px-3 py-2.5">
-      <legend className="px-1 text-xs font-semibold text-slate-900">Ścieżka informacji</legend>
-      <label className="flex cursor-pointer items-start gap-2 text-xs text-slate-700">
-        <input
-          type="radio"
-          name={name}
-          className="mt-0.5"
-          checked={!viaDailyPanel}
-          onChange={() => onChange(false)}
-          disabled={disabled}
-        />
-        <span>
-          <span className="font-medium text-slate-900">{INFORMACJA_FLOW_DIRECT.label}</span>
-          <span className="mt-0.5 block text-slate-600">{INFORMACJA_FLOW_DIRECT.short}</span>
-        </span>
-      </label>
-      <label className="flex cursor-pointer items-start gap-2 text-xs text-slate-700">
-        <input
-          type="radio"
-          name={name}
-          className="mt-0.5"
-          checked={viaDailyPanel}
-          onChange={() => onChange(true)}
-          disabled={disabled}
-        />
-        <span>
-          <span className="font-medium text-slate-900">{INFORMACJA_FLOW_VIA_PANEL.label}</span>
-          <span className="mt-0.5 block text-slate-600">{INFORMACJA_FLOW_VIA_PANEL.short}</span>
-        </span>
-      </label>
-      <InformacjaFlowLegend compact className="border-t border-sky-100 pt-2" />
-    </fieldset>
+    <div
+      className="grid gap-2"
+      role="radiogroup"
+      aria-label="Ścieżka informacji"
+    >
+      {options.map((flow) => {
+        const isActive = path === flow.path;
+        const styles = INFORMACJA_FLOW_CARD_STYLES[flow.tone];
+        const Icon = PICKER_FLOW_ICONS[flow.path];
+
+        return (
+          <button
+            key={flow.path}
+            type="button"
+            role="radio"
+            aria-checked={isActive}
+            disabled={disabled}
+            onClick={() => onChange(flow.path)}
+            className={cn(
+              "flex w-full cursor-pointer items-center gap-2.5 rounded-md border px-3 py-2.5 text-left transition-shadow",
+              "sm:min-h-[4.25rem] sm:items-start sm:gap-3 sm:px-3.5 sm:py-3",
+              "disabled:cursor-not-allowed disabled:opacity-60",
+              isActive ? styles.active : styles.idle
+            )}
+          >
+            <SectionHeadingIcon
+              tileClassName={isActive ? styles.iconActive : styles.iconIdle}
+              className="h-8 w-8 shrink-0 sm:h-9 sm:w-9"
+            >
+              <Icon size={18} />
+            </SectionHeadingIcon>
+            <span className="min-w-0 sm:pt-0.5">
+              <span className="block text-sm font-semibold leading-snug text-slate-900">
+                {flow.label}
+              </span>
+              <span className="mt-0.5 block text-[11px] leading-snug text-slate-600 line-clamp-1 sm:text-xs sm:leading-relaxed sm:line-clamp-none">
+                {flow.short}
+              </span>
+            </span>
+          </button>
+        );
+      })}
+    </div>
   );
 }

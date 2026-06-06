@@ -51,7 +51,7 @@ describe("enrichMyOrderSalesUi", () => {
       []
     ).zamowienia[0];
     const ui = enrichMyOrderSalesUi(row);
-    expect(ui.headline).toContain("Odbierz");
+    expect(ui.headline).toContain("Do odbioru");
     expect(ui.headlineTone).toBe("action");
     expect(ui.sortPriority).toBe(1);
   });
@@ -206,6 +206,22 @@ describe("parseStatusDetailMetaParts", () => {
     expect(parsed.orderTypeLabel).toBe("Poza planem");
     expect(parsed.orderedAtLabel).toBe("06.05.2026");
     expect(parsed.remainder).toBeNull();
+  });
+
+  it("myOrderMetaFields pokazuje ZK gdy prośba z notatnika", () => {
+    const row = presentMyOrders(
+      [
+        {
+          ...baseOrder,
+          source_zk_number: "ZK/2026/0138",
+          sales_client_name: "Klinika",
+        },
+      ],
+      []
+    ).zamowienia[0];
+    expect(myOrderMetaFields(row, false).some((f) => f.label === "ZK" && f.value === "ZK/2026/0138")).toBe(
+      true
+    );
   });
 
   it("myOrderExpandedMetaFields dodaje typ i zamówiono", () => {

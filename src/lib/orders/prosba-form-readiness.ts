@@ -2,11 +2,16 @@ import { hasAnyProductHint, hasValidOrderQuantity } from "@/lib/orders/request-c
 import { PROCUREMENT_TEAM_LABEL } from "./procurement-copy";
 import type { SalesRequestSubmitPlan } from "@/lib/orders/sales-request-submit";
 import type { IndividualRequestKind } from "@/types/database";
+import type { InformacjaFlowPath } from "@/lib/orders/informacja-stock-out-reorder";
+import {
+  informacjaFlowUiForPath,
+  informacjaReadinessSubline,
+} from "@/lib/orders/informacja-flow-ui";
 
 export type ProsbaReadinessStepState = "empty" | "done" | "action" | "handoff";
 
 export type ProsbaReadinessStep = {
-  id: "product" | "quantity" | "supplier";
+  id: "product" | "quantity" | "supplier" | "path";
   label: string;
   state: ProsbaReadinessStepState;
   detail: string;
@@ -30,7 +35,8 @@ export type ProsbaReadinessLine = {
 };
 
 export type ProsbaFormReadinessOptions = {
-  // Zarezerwowane na przyszłe warianty UI.
+  informacjaPath?: InformacjaFlowPath;
+  resolvingSupplier?: boolean;
 };
 
 function hasText(value: string | undefined): boolean {
@@ -56,7 +62,8 @@ export function buildProsbaFormReadiness(
 ): ProsbaFormReadinessView {
   const filled = linesWithProductHint(lines);
   const isZamowienie = requestKind === "zamowienie";
-  void options;
+  const informacjaPath = options?.informacjaPath ?? "direct";
+  void options?.resolvingSupplier;
   const hasResolvedSupplier = filled.some((line) => hasText(line.supplierId));
 
   const productDone = filled.length > 0;
@@ -126,9 +133,16 @@ export function buildProsbaFormReadiness(
     };
   }
 
+  const pathStep: ProsbaReadinessStep = {
+    id: "path",
+    label: "Ścieżka",
+    state: "done",
+    detail: informacjaFlowUiForPath(informacjaPath).label,
+  };
+
   const steps = isZamowienie
     ? [productStep, quantityStep, supplierStep]
-    : [productStep, supplierStep];
+    : [productStep, pathStep, supplierStep];
 
   if (!productDone) {
     return {
@@ -157,7 +171,9 @@ export function buildProsbaFormReadiness(
   if (plan?.bannerKind === "complete") {
     return {
       headline: "Gotowe do wysłania",
-      subline: "Kompletne — trafi od razu do realizacji.",
+      subline: isZamowienie
+        ? "Kompletne — trafi od razu do realizacji."
+        : informacjaReadinessSubline(informacjaPath, "complete"),
       tone: "ready",
       steps,
       canSubmit: true,
@@ -165,8 +181,10 @@ export function buildProsbaFormReadiness(
   }
 
   return {
-    headline: "Możesz wysłać prośbę",
-    subline: "Dział dostaw dopracuje dostawcę — śledź postęp w „Moje zamówienia”.",
+    headline: isZamowienie ? "Możesz wysłać prośbę" : "Możesz wysłać informację",
+    subline: isZamowienie
+      ? "Dział dostaw dopracuje dostawcę — śledź postęp w „Moje zamówienia”."
+      : informacjaReadinessSubline(informacjaPath, "incomplete"),
     tone: "handoff",
     steps,
     canSubmit: true,

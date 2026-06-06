@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useId, useRef, useState } from "react";
+import { IconColorLegendSample, IconHelpCircle } from "@/components/icons/StrokeIcons";
 import { cn } from "@/lib/cn";
 
 export function HelpPopover({
@@ -24,8 +25,15 @@ export function HelpPopover({
   buttonClassName?: string;
 }) {
   const [open, setOpen] = useState(false);
+  const [mounted, setMounted] = useState(false);
   const rootRef = useRef<HTMLDivElement>(null);
-  const panelId = useId();
+  const generatedId = useId();
+  /** useId bywa niespójny między SSR a klientem przy różnej liczbie instancji w drzewie — ustawiamy po mount. */
+  const panelId = mounted ? generatedId : undefined;
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   useEffect(() => {
     if (!open) return;
@@ -51,7 +59,7 @@ export function HelpPopover({
         type="button"
         aria-label={label}
         aria-expanded={open}
-        aria-controls={panelId}
+        aria-controls={open && panelId ? panelId : undefined}
         title={label}
         onClick={() => setOpen((v) => !v)}
         className={cn(
@@ -70,7 +78,7 @@ export function HelpPopover({
         <span>{shortLabel}</span>
       </button>
 
-      {open ? (
+      {open && panelId ? (
         <div
           id={panelId}
           role="dialog"
@@ -88,29 +96,12 @@ export function HelpPopover({
   );
 }
 
-function LegendIcon() {
-  return (
-    <svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden>
-      <rect x="1" y="1" width="5" height="5" rx="1" fill="#eff6ff" stroke="#94a3b8" />
-      <rect x="8" y="1" width="5" height="5" rx="1" fill="#fffde7" stroke="#94a3b8" />
-      <rect x="1" y="8" width="5" height="5" rx="1" fill="#ffebee" stroke="#94a3b8" />
-      <rect x="8" y="8" width="5" height="5" rx="1" fill="#e8f5e9" stroke="#94a3b8" />
-    </svg>
-  );
+/** @deprecated Użyj IconHelpCircle z StrokeIcons. */
+export function GuideIcon({ className }: { className?: string }) {
+  return <IconHelpCircle size={14} strokeWidth={1.75} className={className} aria-hidden />;
 }
 
-function GuideIcon() {
-  return (
-    <svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden>
-      <circle cx="7" cy="7" r="6" stroke="currentColor" strokeWidth="1.2" />
-      <path
-        d="M7 6.2V4.5M7 9.2h.01"
-        stroke="currentColor"
-        strokeWidth="1.4"
-        strokeLinecap="round"
-      />
-    </svg>
-  );
+/** @deprecated Użyj IconColorLegendSample z StrokeIcons. */
+export function LegendIcon({ className }: { className?: string }) {
+  return <IconColorLegendSample size={14} className={className} />;
 }
-
-export { LegendIcon, GuideIcon };

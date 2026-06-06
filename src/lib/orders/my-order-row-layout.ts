@@ -1,4 +1,5 @@
 import type { MyOrderRow } from "@/lib/orders/my-order-presenter";
+import { isInformacjaAvailabilityPendingStatusTitle } from "@/lib/orders/informacja-flow-copy";
 import {
   shouldShowOrderStatusDetail,
 } from "@/lib/orders/my-order-card-ui";
@@ -47,7 +48,7 @@ export function myOrderExpandedNotes(row: MyOrderRow): string | null {
   if (row.subline?.trim() && row.subline !== collapsed && !isExpandedSublineRedundant(row)) {
     const explanatory =
       row.statusTitle === "Przed zamówieniem" ||
-      row.statusTitle === "Oczekuje na magazyn" ||
+      isInformacjaAvailabilityPendingStatusTitle(row.statusTitle) ||
       row.statusTitle === "Czekamy na zamówienie u dostawcy" ||
       row.statusTitle === "Zamówione — czekamy na magazyn" ||
       row.statusTitle === "Zamówione" ||

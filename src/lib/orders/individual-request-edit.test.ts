@@ -38,6 +38,15 @@ describe("individual-request-edit", () => {
     ).toBe(false);
   });
 
+  it("blokuje edycję po złożeniu u dostawcy (ordered_at)", () => {
+    expect(
+      isIndividualOrderEditable({
+        ...order("Nowe"),
+        ordered_at: "2026-05-15T10:00:00Z",
+      })
+    ).toBe(false);
+  });
+
   it("grupa edytowalna tylko gdy wszystkie pozycje edytowalne", () => {
     expect(canEditIndividualRequestGroup([order("Nowe"), order("Nowe")])).toBe(true);
     expect(canEditIndividualRequestGroup([order("Nowe"), order("Zamowione")])).toBe(

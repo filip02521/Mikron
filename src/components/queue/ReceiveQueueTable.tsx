@@ -23,6 +23,7 @@ import {
   parseOrderQuantity,
 } from "@/lib/orders/individual";
 import { checkboxBrandClass } from "@/lib/ui/ontime-theme";
+import { InlineCheck } from "@/components/ui/UiGlyphs";
 import { countOrdersBySupplier, filterOrdersBySupplier } from "@/lib/orders/supplier-filter-summary";
 import {
   informacjaProductKey,
@@ -425,7 +426,8 @@ export function ReceiveQueueTable({
           <p className="max-w-xl text-[11px] leading-relaxed text-slate-500">
             <span className="inline-flex items-center gap-1">
               <span className="size-1.5 rounded-full bg-emerald-500" />
-              zamówienie: kliknij ilość zamówioną lub wpisz dostawę, Enter lub ✓
+              zamówienie: kliknij ilość zamówioną lub wpisz dostawę, Enter lub{" "}
+              <InlineCheck size={11} className="align-[-2px]" />
             </span>
             <span className="mx-2 text-slate-300">·</span>
             <span className="inline-flex items-center gap-1">

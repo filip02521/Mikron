@@ -1,6 +1,7 @@
 "use client";
 
 import type { ReactNode } from "react";
+import { IconPin } from "@/components/icons/StrokeIcons";
 import { cn } from "@/lib/cn";
 import type { SalesNoteColor } from "@/types/database";
 import { NOTE_COLOR_OPTIONS, NOTE_COLOR_SWATCH } from "./note-styles";
@@ -94,7 +95,15 @@ export function NoteCardToolbar({
         ·
       </span>
       <NoteAction onClick={onTogglePin} disabled={saving}>
-        {pinned ? "Odepnij" : "Przypnij"}
+        <span className="inline-flex items-center gap-1">
+          <IconPin
+            size={12}
+            strokeWidth={2.5}
+            className={cn(pinned ? "text-indigo-700" : "text-slate-500")}
+            aria-hidden
+          />
+          {pinned ? "Odepnij" : "Przypnij"}
+        </span>
       </NoteAction>
       <span className="text-slate-300" aria-hidden>
         ·

@@ -4,14 +4,37 @@ import type { MyOrderRow } from "@/lib/orders/my-order-presenter";
 import type { EditIndividualRequestInitial } from "@/components/orders/EditIndividualRequestModal";
 import type { IndividualOrder } from "@/types/database";
 import { ordersToEditLines } from "@/lib/orders/individual-request-edit";
+import {
+  informacjaFlowPathFromOrder,
+  type InformacjaFlowPath,
+} from "@/lib/orders/informacja-stock-out-reorder";
+
+function requestKindFromForSomeoneGroup(
+  g: SummaryForSomeoneEnriched
+): "zamowienie" | "informacja" {
+  return g.lines.some((l) => l.informacjaStockOut || l.informacjaViaPanel)
+    ? "informacja"
+    : "zamowienie";
+}
+
+function informacjaPathFromForSomeoneLines(
+  lines: SummaryForSomeoneEnriched["lines"]
+): InformacjaFlowPath {
+  if (lines.some((l) => l.informacjaStockOut)) return "stock_out";
+  if (lines.some((l) => l.informacjaViaPanel)) return "via_panel";
+  return "direct";
+}
 
 export function editInitialFromForSomeoneGroup(
   g: SummaryForSomeoneEnriched
 ): EditIndividualRequestInitial {
+  const requestKind = requestKindFromForSomeoneGroup(g);
   return {
     supplierId: g.supplierId,
     salesPersonId: g.salesPersonId,
-    requestKind: "zamowienie",
+    requestKind,
+    informacjaPath:
+      requestKind === "informacja" ? informacjaPathFromForSomeoneLines(g.lines) : undefined,
     lines: g.lines.map((l) => ({
       id: l.id,
       symbol: l.symbol === "-" ? "" : l.symbol,
@@ -43,10 +66,13 @@ export function editInitialFromMyOrderRow(row: MyOrderRow): EditIndividualReques
 
 export function editInitialFromOrders(orders: IndividualOrder[]): EditIndividualRequestInitial {
   const rep = orders[0];
+  const requestKind = rep.request_kind ?? "zamowienie";
+  const informacjaPath = informacjaFlowPathFromOrder(rep) ?? undefined;
   return {
     supplierId: rep.supplier_id ?? "",
     salesPersonId: rep.sales_person_id,
-    requestKind: rep.request_kind ?? "zamowienie",
+    requestKind,
+    informacjaPath: requestKind === "informacja" ? informacjaPath ?? "direct" : undefined,
     lines: ordersToEditLines(orders).map((l) => ({
       id: l.id ?? randomId(),
       symbol: l.symbol ?? "",

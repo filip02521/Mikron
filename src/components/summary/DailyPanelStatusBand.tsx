@@ -8,6 +8,8 @@ import type { DailyPanelView } from "@/lib/orders/daily-panel-view";
 import { DailyDayProgressBar } from "@/components/summary/DailyDayProgressBar";
 import { DailyPanelShortcutsPopover } from "@/components/summary/DailyPanelShortcutsPopover";
 import { cn } from "@/lib/cn";
+import { PanelQueueStatDot } from "@/components/ui/UiGlyphs";
+import { IconClipboardPen } from "@/components/icons/StrokeIcons";
 
 function unitLabel(n: number, one: string, few: string, many: string): string {
   if (n === 1) return one;
@@ -17,9 +19,18 @@ function unitLabel(n: number, one: string, few: string, many: string): string {
   return many;
 }
 
-function Stat({ value, label }: { value: number; label: string }) {
+function Stat({
+  value,
+  label,
+  dotTone,
+}: {
+  value: number;
+  label: string;
+  dotTone?: "overdue" | "prosby" | "stockOut" | "today";
+}) {
   return (
-    <span className="inline-flex items-baseline gap-1">
+    <span className="inline-flex items-center gap-1.5">
+      {dotTone ? <PanelQueueStatDot tone={dotTone} /> : null}
       <span className="text-sm font-semibold tabular-nums text-slate-900">{value}</span>
       <span className="text-[11px] text-slate-500">{label}</span>
     </span>
@@ -110,7 +121,10 @@ export function DailyPanelStatusBand({
   if (view !== "dzis") return null;
 
   const queueTotal =
-    summary.overdueCount + summary.todayCount + summary.forSomeoneGroupCount;
+    summary.overdueCount +
+    summary.todayCount +
+    summary.forSomeoneGroupCount +
+    summary.stockOutGroupCount;
   const hasSupplementary =
     summary.weekPlanCount > 0 ||
     (summary.onDemandCount > 0 && onOpenOnDemand) ||
@@ -123,16 +137,29 @@ export function DailyPanelStatusBand({
           <Stat
             value={summary.overdueCount}
             label={unitLabel(summary.overdueCount, "zaległe", "zaległe", "zaległych")}
+            dotTone="overdue"
           />
           <StatDivider />
           <Stat
             value={summary.forSomeoneGroupCount}
             label={unitLabel(summary.forSomeoneGroupCount, "grupa prośb", "grupy prośb", "grup prośb")}
+            dotTone="prosby"
           />
+          {summary.stockOutGroupCount > 0 ? (
+            <>
+              <StatDivider />
+              <Stat
+                value={summary.stockOutGroupCount}
+                label={unitLabel(summary.stockOutGroupCount, "brak stanu", "braki stanu", "braków stanu")}
+                dotTone="stockOut"
+              />
+            </>
+          ) : null}
           <StatDivider />
           <Stat
             value={summary.todayCount}
             label={unitLabel(summary.todayCount, "na dziś", "na dziś", "na dziś")}
+            dotTone="today"
           />
           <StatDivider />
           <span className="inline-flex items-baseline gap-1">
@@ -147,6 +174,7 @@ export function DailyPanelStatusBand({
               href="/weryfikacja"
               className="inline-flex items-center gap-1 rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-semibold text-amber-950 hover:bg-amber-200/90"
             >
+              <IconClipboardPen size={12} strokeWidth={2.25} aria-hidden />
               <span className="tabular-nums">{verificationCount}</span>
               weryfikacja
             </Link>

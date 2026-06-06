@@ -112,11 +112,18 @@ export function AppShellClient({
           <Sidebar
             role={role}
             userEmail={userEmail}
+            salesPersonName={salesPersonName}
             showLoginLink={showLoginLink}
             navBadges={navBadges}
           />
         </div>
-        {salesLive ? <MobileSalesHeader role={role} userEmail={userEmail} /> : null}
+        {salesLive ? (
+          <MobileSalesHeader
+            role={role}
+            userEmail={userEmail}
+            salesPersonName={salesPersonName}
+          />
+        ) : null}
         {operationsLive && !salesLive ? (
           <MobileOperationsHeader role={role} userEmail={userEmail} />
         ) : null}

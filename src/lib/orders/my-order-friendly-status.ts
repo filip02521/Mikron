@@ -7,6 +7,7 @@ const FRIENDLY_STATUS: Record<string, string> = {
   Zamówione: "Zamówione — czekamy na dostawę",
   "Częściowo na magazynie": "Część towaru jest już u nas",
   "Do odbioru": "Gotowe do odbioru z magazynu",
+  "Informacja o dostępności": "Magazyn sprawdza dostępność",
   "Oczekuje na magazyn": "Magazyn sprawdza dostępność",
   "Czekamy na zamówienie u dostawcy": "Zamówimy u dostawcy, gdy będzie potrzeba",
   "Zamówione — czekamy na magazyn": "Zamówione u dostawcy — czekamy na magazyn",
@@ -31,6 +32,7 @@ export function myOrderFriendlyStatusHint(statusTitle: string): string | null {
       return "Dział dostaw złoży zamówienie u dostawcy.";
     case "Zamówione":
       return "Towar jest w drodze od dostawcy.";
+    case "Informacja o dostępności":
     case "Oczekuje na magazyn":
       return "Sprawdzamy, czy mamy towar na stanie.";
     default:

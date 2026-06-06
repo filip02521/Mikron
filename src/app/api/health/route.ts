@@ -34,7 +34,9 @@ export async function GET(request: NextRequest) {
 
   checks.app_url = isAppUrlProductionReady();
   if (isProductionRuntime() && !checks.app_url) {
-    issues.push("NEXT_PUBLIC_APP_URL musi być https:// (nie localhost)");
+    issues.push(
+      "NEXT_PUBLIC_APP_URL musi być https:// lub wewnętrzna domena HTTP (np. ontime.mikran.pl)"
+    );
   }
 
   if (hasSupabaseConfig()) {

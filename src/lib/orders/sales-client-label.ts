@@ -27,6 +27,15 @@ export function clientNamesSummary(
   return `${names.length} różnych klientów`;
 }
 
+/** Skrót klientów z linii prośby (panel zakupów). */
+export function clientNamesSummaryFromLines(
+  lines: Pick<{ clientName?: string | null }, "clientName">[]
+): string | null {
+  return clientNamesSummary(
+    lines.map((line) => ({ sales_client_name: line.clientName ?? null }))
+  );
+}
+
 type OrderEmailBits = Pick<
   IndividualOrder,
   "products" | "symbol" | "sales_client_name"

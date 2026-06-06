@@ -8,6 +8,7 @@ import { DailyPanelOnDemandSection } from "@/components/summary/DailyPanelOnDema
 import { EmptyState } from "@/components/ui/EmptyState";
 import { Button } from "@/components/ui/Button";
 import { DailySectionIcon } from "@/components/icons/StrokeIcons";
+import { BackChevron } from "@/components/ui/UiGlyphs";
 import type { DailyPanelRunFn } from "@/components/summary/useDailyPanelRunner";
 
 export function DailyPanelExceptionsView({
@@ -33,11 +34,13 @@ export function DailyPanelExceptionsView({
   if (exceptionCount === 0) {
     return (
       <EmptyState
+        brandAccent
         title="Brak wyjątków"
         description="Wszystko jest w harmonogramie lub kolejce Dziś. Gdy pojawi się coś poza planem — zobaczysz to tutaj."
         icon={<DailySectionIcon kind="hidden" size={28} />}
         action={
-          <Button variant="secondary" size="sm" onClick={onGoToday}>
+          <Button variant="secondary" size="sm" className="inline-flex items-center gap-1.5" onClick={onGoToday}>
+            <BackChevron className="text-slate-500" size={14} />
             Wróć do Dziś
           </Button>
         }

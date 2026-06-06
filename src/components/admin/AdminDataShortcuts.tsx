@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { LinkChevron } from "@/components/ui/UiGlyphs";
 import { Card, CardHeader } from "@/components/ui/Card";
 const shortcuts = [
   {
@@ -47,8 +48,9 @@ export function AdminDataShortcuts() {
                 <p className="font-medium text-slate-900">{item.title}</p>
                 <p className="mt-0.5 text-sm text-slate-500">{item.description}</p>
               </div>
-              <span className="mt-2 shrink-0 text-sm font-medium text-sky-700 sm:mt-0">
-                Otwórz →
+              <span className="mt-2 inline-flex shrink-0 items-center gap-1 text-sm font-medium text-indigo-700 sm:mt-0">
+                Otwórz
+                <LinkChevron tone="brand" />
               </span>
             </Link>
           </li>

@@ -2,6 +2,10 @@
 
 import { useSalesUpdates } from "@/components/sales/SalesUpdatesContext";
 import { cn } from "@/lib/cn";
+import {
+  pageToolbarSizingClass,
+  pageToolbarSurfaceClass,
+} from "@/lib/ui/ontime-theme";
 
 export function MojePageSalesToolbar() {
   const ctx = useSalesUpdates();
@@ -10,17 +14,18 @@ export function MojePageSalesToolbar() {
   return (
     <label
       className={cn(
-        "flex w-full cursor-pointer items-center gap-2 rounded-md border border-slate-200 bg-white px-3 py-2 text-xs font-medium leading-snug text-slate-700",
-        "min-h-11 sm:w-auto sm:min-h-0"
+        pageToolbarSurfaceClass,
+        pageToolbarSizingClass,
+        "w-full cursor-pointer text-slate-700 sm:w-auto"
       )}
     >
       <input
         type="checkbox"
         checked={ctx.autoRefresh}
         onChange={(e) => ctx.setAutoRefresh(e.target.checked)}
-        className="rounded border-slate-300"
+        className="size-3.5 shrink-0 rounded border-slate-300 text-indigo-600"
       />
-      Odświeżaj listę co 3 min
+      <span className="whitespace-nowrap">Odświeżaj listę co 3 min</span>
     </label>
   );
 }

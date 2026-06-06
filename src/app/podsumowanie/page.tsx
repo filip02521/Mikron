@@ -1,5 +1,6 @@
 import { Suspense } from "react";
 import { fetchSummaryWorkspace, fetchVerificationOrders } from "@/lib/data/queries";
+import { runOrderMaintenanceBeforePageLoad } from "@/lib/services/deferred-order-maintenance";
 import { SummaryWorkspace } from "@/components/summary/SummaryWorkspace";
 import { Alert } from "@/components/ui/Alert";
 import { buildSummaryWorkspace } from "@/lib/orders/summary-workspace";
@@ -26,6 +27,8 @@ function PanelLoadingFallback() {
 }
 
 export default async function PodsumowaniePage() {
+  await runOrderMaintenanceBeforePageLoad();
+
   let workspace = emptyWorkspace;
   let suppliers: { id: string; name: string }[] = [];
   let supplierDirectory: Awaited<

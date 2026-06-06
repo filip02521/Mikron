@@ -36,10 +36,21 @@ import {
 import type { IndividualRequestKind } from "@/types/database";
 import { INFORMACJA_NO_QUANTITY, quantityForRequestKind } from "@/lib/orders/individual";
 import { isInformacjaWarehouseQueueOrder } from "@/lib/orders/informacja-warehouse-queue";
+import {
+  flagsFromInformacjaFlowPath,
+  isInformacjaStockOutReorder,
+} from "@/lib/orders/informacja-stock-out-reorder";
+import { glowneScheduleSupplierIds } from "@/lib/orders/glowne-supplier-placement";
+import { resolveVerificationInformacjaFlags } from "@/lib/orders/verification-informacja-ui";
+import type { InformacjaFlowPath } from "@/lib/orders/informacja-stock-out-reorder";
 import { shouldTreatAsInformacjaOnly } from "@/lib/orders/informacja-import-rules";
 import { orderPlacementAt } from "@/lib/orders/order-timing";
 import { isProcurementDraftReady } from "@/lib/orders/procurement-readiness";
 import { normalizeSalesClientName } from "@/lib/orders/sales-client-label";
+import {
+  normalizeZkProsbaSourceInput,
+  zkProsbaSourceFromOrder,
+} from "@/lib/orders/zk-prosba-source";
 import { WAREHOUSE_SHELF_DEFAULT } from "@/lib/orders/warehouse-inventory";
 import type { SalesPersonEmailBatch } from "@/lib/email/sales-notification-types";
 import {
@@ -286,7 +297,10 @@ export async function batchAddIndividualOrders(
     clientName?: string;
     clientKhId?: number | null;
     subiektTwId?: number | null;
+    sourceZkWatchId?: string | null;
+    sourceZkNumber?: string | null;
     informacjaQueueViaDailyPanel?: boolean;
+    informacjaStockOutReorder?: boolean;
   }>,
   createdBy?: string,
   options?: { submitMode?: "sales" | "procurement" }
@@ -369,6 +383,11 @@ export async function batchAddIndividualOrders(
       let kind = (e.requestKind ?? "zamowienie") as IndividualRequestKind;
       let informacjaQueueViaDailyPanel =
         kind === "informacja" && Boolean(e.informacjaQueueViaDailyPanel);
+      let informacjaStockOutReorder =
+        kind === "informacja" && Boolean(e.informacjaStockOutReorder);
+      if (informacjaStockOutReorder) {
+        informacjaQueueViaDailyPanel = false;
+      }
       if (
         kind === "zamowienie" &&
         shouldTreatAsInformacjaOnly({
@@ -379,6 +398,7 @@ export async function batchAddIndividualOrders(
       ) {
         kind = "informacja";
         informacjaQueueViaDailyPanel = false;
+        informacjaStockOutReorder = false;
       }
       const draft = {
         supplierId: e.supplierId,
@@ -442,11 +462,21 @@ export async function batchAddIndividualOrders(
           draft.subiektTwId != null && draft.subiektTwId > 0 ? draft.subiektTwId : null,
         mikran_code: sanitized.mikranCode?.trim() || null,
         informacja_queue_via_daily_panel: informacjaQueueViaDailyPanel,
+        informacja_stock_out_reorder: informacjaStockOutReorder,
+        ...normalizeZkProsbaSourceInput({
+          sourceZkWatchId: e.sourceZkWatchId,
+          sourceZkNumber: e.sourceZkNumber,
+        }),
       };
     }));
     const { error } = await supabase.from("individual_orders").insert(rows);
     if (error) {
       const msg = formatDbError(error);
+      if (msg.includes("source_zk")) {
+        throw new Error(
+          `${msg} — uruchom migrację supabase/migrations/055_individual_orders_source_zk.sql w bazie.`
+        );
+      }
       if (msg.includes("mikran_code")) {
         throw new Error(
           `${msg} — uruchom migrację supabase/migrations/031_mikran_code.sql w bazie.`
@@ -502,9 +532,31 @@ export async function completeVerificationOrder(
     quantity?: string;
     requestKind?: IndividualRequestKind;
     subiektTwId?: number | null;
+    informacjaPath?: InformacjaFlowPath;
   }
 ) {
   const kind = (data.requestKind ?? "zamowienie") as IndividualRequestKind;
+  const supabase = createAdminClient();
+  const { data: priorRow, error: priorErr } = await supabase
+    .from("individual_orders")
+    .select(
+      "id, request_kind, informacja_queue_via_daily_panel, informacja_stock_out_reorder"
+    )
+    .eq("id", orderId)
+    .eq("status", "Weryfikacja")
+    .maybeSingle();
+
+  if (priorErr) throw new Error(priorErr.message);
+  if (!priorRow) {
+    throw new Error("Prośba została już przetworzona — odśwież listę.");
+  }
+
+  const informacjaFlags = resolveVerificationInformacjaFlags({
+    requestKind: kind,
+    informacjaPath: data.informacjaPath ?? null,
+    priorOrder: priorRow as IndividualOrder,
+  });
+
   const sanitized = sanitizeOrderDraftFields({
     symbol: data.symbol,
     mikranCode: data.mikranCode,
@@ -518,6 +570,8 @@ export async function completeVerificationOrder(
     product: sanitized.product,
     quantity: sanitized.quantity,
     requestKind: kind,
+    informacjaQueueViaDailyPanel: informacjaFlags.informacjaQueueViaDailyPanel,
+    informacjaStockOutReorder: informacjaFlags.informacjaStockOutReorder,
   });
   if (assessment !== "complete") {
     throw new Error(
@@ -533,7 +587,6 @@ export async function completeVerificationOrder(
     product: sanitized.product,
     quantity: sanitized.quantity,
   });
-  const supabase = createAdminClient();
   const { data: updated, error } = await supabase
     .from("individual_orders")
     .update({
@@ -547,6 +600,8 @@ export async function completeVerificationOrder(
       subiekt_tw_id:
         data.subiektTwId != null && data.subiektTwId > 0 ? data.subiektTwId : null,
       mikran_code: sanitized.mikranCode?.trim() || null,
+      informacja_queue_via_daily_panel: informacjaFlags.informacjaQueueViaDailyPanel,
+      informacja_stock_out_reorder: informacjaFlags.informacjaStockOutReorder,
     })
     .eq("id", orderId)
     .eq("status", "Weryfikacja")
@@ -665,13 +720,34 @@ export async function updateIndividualRequestGroup(
 
   const submissionGroupId =
     existing[0]?.submission_group_id ?? uuidv4();
+  const inheritedZkSource = zkProsbaSourceFromOrder(existing[0]);
   const keptIds = new Set<string>();
   let updated = 0;
   let inserted = 0;
   // Stare podejście (dopasowanie dostawcy z ZD) zostało wycofane.
 
+  const resolveInformacjaFlags = (lineId?: string) => {
+    if (payload.requestKind !== "informacja") {
+      return { informacjaQueueViaDailyPanel: false, informacjaStockOutReorder: false };
+    }
+    if (payload.informacjaPath) {
+      const flags = flagsFromInformacjaFlowPath(payload.informacjaPath);
+      return {
+        informacjaQueueViaDailyPanel: flags.informacjaQueueViaDailyPanel,
+        informacjaStockOutReorder: flags.informacjaStockOutReorder,
+      };
+    }
+    const prior =
+      (lineId ? existing.find((o) => o.id === lineId) : null) ?? existing[0];
+    return {
+      informacjaQueueViaDailyPanel: prior?.informacja_queue_via_daily_panel === true,
+      informacjaStockOutReorder: prior?.informacja_stock_out_reorder === true,
+    };
+  };
+
   for (const line of payload.lines) {
     const kind = payload.requestKind;
+    const informacjaFlags = resolveInformacjaFlags(line.id);
     const sanitized = sanitizeOrderDraftFields({
       symbol: line.symbol,
       mikranCode: line.mikranCode,
@@ -685,6 +761,8 @@ export async function updateIndividualRequestGroup(
       product: sanitized.product,
       quantity: sanitized.quantity,
       requestKind: kind,
+      informacjaQueueViaDailyPanel: informacjaFlags.informacjaQueueViaDailyPanel,
+      informacjaStockOutReorder: informacjaFlags.informacjaStockOutReorder,
     };
     if (!hasAnyProductHint(draft)) {
       throw new Error("Podaj symbol, kod Mikran lub opis produktu w każdej pozycji.");
@@ -716,6 +794,8 @@ export async function updateIndividualRequestGroup(
       subiekt_tw_id:
         line.subiektTwId != null && line.subiektTwId > 0 ? line.subiektTwId : null,
       mikran_code: sanitized.mikranCode?.trim() || null,
+      informacja_queue_via_daily_panel: informacjaFlags.informacjaQueueViaDailyPanel,
+      informacja_stock_out_reorder: informacjaFlags.informacjaStockOutReorder,
     };
 
     if (line.id) {
@@ -754,6 +834,7 @@ export async function updateIndividualRequestGroup(
       const { error } = await supabase.from("individual_orders").insert({
         id: newId,
         ...rowPayload,
+        ...inheritedZkSource,
         order_type: "None" as OrderType,
         submission_group_id: submissionGroupId,
       });
@@ -850,25 +931,6 @@ async function rollbackIndividualOrderProcessSnapshots(
   }
 }
 
-function glowneSupplierIdsFromOrders(
-  orders: IndividualOrder[],
-  action: "GLOWNE" | "POBOCZNE" | "ANULOWANO"
-): Set<string> {
-  const ids = new Set<string>();
-  if (action !== "GLOWNE") return ids;
-  for (const order of orders) {
-    if (!order.supplier_id) continue;
-    if (
-      order.request_kind === "informacja" &&
-      order.informacja_queue_via_daily_panel
-    ) {
-      continue;
-    }
-    ids.add(order.supplier_id);
-  }
-  return ids;
-}
-
 async function assertGlowneSuppliersHaveInterval(supplierIds: Set<string>): Promise<void> {
   if (!supplierIds.size) return;
   const supabase = createAdminClient();
@@ -892,7 +954,7 @@ export async function processIndividualFromSummary(
   const { data: statusRows } = await supabase
     .from("individual_orders")
     .select(
-      "id, request_kind, status, supplier_id, symbol, products, quantity, informacja_queue_via_daily_panel"
+      "id, request_kind, status, supplier_id, symbol, products, quantity, informacja_queue_via_daily_panel, informacja_stock_out_reorder"
     )
     .in("id", orderIds);
 
@@ -900,7 +962,11 @@ export async function processIndividualFromSummary(
     if (r.status !== "Nowe") return false;
     const kind = r.request_kind ?? "zamowienie";
     if (kind === "zamowienie") return true;
-    return kind === "informacja" && r.informacja_queue_via_daily_panel === true;
+    return (
+      kind === "informacja" &&
+      (r.informacja_queue_via_daily_panel === true ||
+        r.informacja_stock_out_reorder === true)
+    );
   });
 
   const incomplete = processableNowe.filter((r) => {
@@ -953,7 +1019,7 @@ export async function processIndividualFromSummary(
     if (order) ordersToProcess.push(order);
   }
 
-  const glowneSupplierIds = glowneSupplierIdsFromOrders(ordersToProcess, action);
+  const glowneSupplierIds = glowneScheduleSupplierIds(ordersToProcess, action);
   if (action === "GLOWNE") {
     await assertGlowneSuppliersHaveInterval(glowneSupplierIds);
   }
@@ -969,7 +1035,12 @@ export async function processIndividualFromSummary(
     if (action === "ANULOWANO") {
       await supabase
         .from("individual_orders")
-        .update({ status: "Anulowane", informacja_queue_via_daily_panel: false, ...seenPatch })
+        .update({
+          status: "Anulowane",
+          informacja_queue_via_daily_panel: false,
+          informacja_stock_out_reorder: false,
+          ...seenPatch,
+        })
         .eq("id", id);
       continue;
     }
@@ -1214,6 +1285,7 @@ async function applyDeliveredQuantityUpdate(
   }
 
   const shouldNotify =
+    !isInformacjaStockOutReorder(order) &&
     !order.sales_cancelled_at &&
     status !== "Zamowione" &&
     (status !== prevStatus || finalDelivered !== (order.delivered_quantity ?? ""));

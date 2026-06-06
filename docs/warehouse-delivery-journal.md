@@ -19,6 +19,12 @@ Rola **Dział dostaw** w zakładce **Dziennik dostaw** ma podzakładki:
 
 **Administrator** i **zakupy** na `/kolejka`: jeden widok z **wyborem daty** (podgląd archiwum, bez edycji). Bez podzakładki „Archiwum i raporty” — pełne wyszukiwanie i raporty ma rola **magazyn**.
 
+## Kurierzy (lista w formularzu)
+
+Katalog: `src/lib/warehouse/delivery-carriers.ts` (musi być zgodny z enum `warehouse_carrier` w bazie).
+
+Po dodaniu nowych wartości uruchom migrację `054_warehouse_carrier_expand.sql` (lub nowszą) na Supabase.
+
 ## Podpowiedź kuriera
 
 Po wybraniu **dostawcy z listy** system ustawia kurier / formę / typowe liczby:

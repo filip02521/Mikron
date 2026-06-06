@@ -1,8 +1,10 @@
 import type { IndividualOrder, IndividualRequestKind } from "@/types/database";
+import type { InformacjaFlowPath } from "@/lib/orders/informacja-stock-out-reorder";
 
 /** Prośbę można edytować, dopóki dział dostaw jej nie złożył u dostawcy. */
 export function isIndividualOrderEditable(order: IndividualOrder): boolean {
   if (order.sales_cancelled_at) return false;
+  if (order.ordered_at?.trim()) return false;
   return order.status === "Nowe" || order.status === "Weryfikacja";
 }
 
@@ -26,6 +28,8 @@ export type IndividualRequestEditPayload = {
   supplierId: string;
   salesPersonId: string;
   requestKind: IndividualRequestKind;
+  /** Tylko przy `requestKind === "informacja"` — ścieżka magazyn / panel / brak na stanie. */
+  informacjaPath?: InformacjaFlowPath;
   lines: IndividualRequestEditLineInput[];
 };
 

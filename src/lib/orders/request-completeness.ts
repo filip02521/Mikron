@@ -21,6 +21,7 @@ export type RequestDraft = {
   requestKind?: IndividualRequestKind;
   /** Informacja: najpierw kolejka Dziś, potem magazyn. */
   informacjaQueueViaDailyPanel?: boolean;
+  informacjaStockOutReorder?: boolean;
 };
 
 function hasText(value?: string): boolean {
@@ -62,13 +63,21 @@ export function completenessUserHint(
   options?: { audience?: "procurement" | "default" }
 ): { tone: "success" | "warning"; title: string; detail: string } {
   if (assessment === "complete") {
+    const isStockOut =
+      requestKind === "informacja" && draft.informacjaStockOutReorder === true;
+    const isViaPanel =
+      requestKind === "informacja" && draft.informacjaQueueViaDailyPanel === true;
     return {
       tone: "success",
       title: "Zgłoszenie kompletne",
       detail:
         requestKind === "informacja"
           ? options?.audience === "procurement"
-            ? "Można zapisać — trafi do kolejki informacji."
+            ? isStockOut
+              ? "Po zatwierdzeniu: sekcja „Brak na stanie” w panelu Dziś — bez e-maila do handlowca."
+              : isViaPanel
+                ? "Po zatwierdzeniu: Prośby handlowców (Główne), potem magazyn i e-mail."
+                : "Po zatwierdzeniu: Wyjątki → kolejka magazynu (e-mail po przyjęciu)."
             : "Trafia do działu zakupów bez dodatkowej weryfikacji."
           : options?.audience === "procurement"
             ? "Dostawca, produkt i ilość są podane — można zapisać do listy na dziś."

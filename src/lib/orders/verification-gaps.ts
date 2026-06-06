@@ -4,6 +4,7 @@ import {
   type RequestDraft,
 } from "@/lib/orders/request-completeness";
 import { isInformacjaRequest } from "@/lib/orders/individual";
+import { verificationInformacjaUiForOrder } from "@/lib/orders/verification-informacja-ui";
 import type { IndividualOrder } from "@/types/database";
 
 function orderToDraft(order: IndividualOrder): RequestDraft {
@@ -36,6 +37,10 @@ export function describeVerificationGaps(order: IndividualOrder): string {
   const footer = "Prośba jest zapisana — nie musisz nic uzupełniać.";
 
   if (procurementTodo.length === 0) {
+    const pathNote = verificationInformacjaUiForOrder(order)?.destinationSummary;
+    if (pathNote && isInformacjaRequest(order)) {
+      return `Zakupy sprawdzają szczegóły przed przekazaniem do panelu. ${pathNote} ${footer}`;
+    }
     return `Zakupy sprawdzają szczegóły przed zamówieniem u dostawcy. ${footer}`;
   }
 

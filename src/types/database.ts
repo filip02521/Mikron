@@ -99,6 +99,8 @@ export interface IndividualOrder {
   request_kind: IndividualRequestKind;
   /** Informacja: najpierw panel Dziś (Główne/Uzupełniające), potem kolejka magazynu. */
   informacja_queue_via_daily_panel?: boolean;
+  /** Informacja: koniec stanu — tylko panel Dziś (zamówienie u dostawcy), bez powiadomienia handlowca. */
+  informacja_stock_out_reorder?: boolean;
   status: IndividualOrderStatus;
   action_at: string;
   /** Moment oznaczenia Główne/Uzupełniające — start liczenia czasu realizacji. */
@@ -118,6 +120,10 @@ export interface IndividualOrder {
   sales_client_name?: string | null;
   /** kh_Id odbiorcy z Subiekta — powiązanie z ZK / wyszukiwanie. */
   sales_client_kh_id?: number | null;
+  /** Karta ZK z notatnika (przycisk Prośba). */
+  source_zk_watch_id?: string | null;
+  /** Numer ZK przy złożeniu prośby. */
+  source_zk_number?: string | null;
   /** Dział dostaw potwierdził zapoznanie z rezygnacją handlowca (panel dzienny). */
   procurement_sales_cancel_ack_at?: string | null;
   /** Zakupy zapoznały się z prośbą w panelu dziennym — ukrywa badge „Nowa”. */

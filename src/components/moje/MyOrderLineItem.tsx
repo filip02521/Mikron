@@ -4,6 +4,7 @@ import type { MyOrderLine, MyOrderLineStockStatus } from "@/lib/orders/my-order-
 import { MyOrderAssignedClient } from "@/components/moje/MyOrderAssignedClient";
 import { MyOrderLineClientField } from "@/components/moje/MyOrderLineClientField";
 import { MyOrderAckButton } from "@/components/moje/MyOrderAckButton";
+import { IconCircleCheck } from "@/components/icons/StrokeIcons";
 import { cn } from "@/lib/cn";
 import { mojeShipmentLineRowClass } from "@/lib/ui/moje-shipment-row-styles";
 import {
@@ -155,11 +156,13 @@ export function MyOrderLineItem({
         {badge ? (
           <span
             className={cn(
-              "shrink-0 rounded-md px-2 py-0.5 text-[0.68rem] font-semibold ring-1",
+              "inline-flex shrink-0 items-center gap-1 rounded-md px-2 py-0.5 text-[0.68rem] font-semibold ring-1",
               badge.className
             )}
           >
-            {onStock ? "✓ " : ""}
+            {onStock ? (
+              <IconCircleCheck size={12} strokeWidth={2.5} className="shrink-0" aria-hidden />
+            ) : null}
             {badge.label}
           </span>
         ) : null}

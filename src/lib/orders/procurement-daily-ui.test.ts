@@ -4,6 +4,7 @@ import {
   countDailyPanelNavBadge,
   enrichForSomeoneGroup,
   enrichInformacjaGroup,
+  enrichStockOutSignalGroup,
   enrichUrgentItem,
   formatPlannerNote,
   formatUrgentVacationHint,
@@ -299,5 +300,57 @@ describe("procurement-daily-ui", () => {
     });
     const sorted = sortForSomeoneGroups([seen, unseen]);
     expect(sorted[0]?.person).toBe("Jan");
+  });
+
+  it("stock_out trafia do stockOutLeft, nie do forSomeoneLeft", () => {
+    const today = new Date(2026, 4, 15);
+    const ws = buildSummaryWorkspace(
+      [],
+      [
+        {
+          id: "so1",
+          supplier_id: "a",
+          sales_person_id: "sp1",
+          symbol: "X",
+          products: "Towar",
+          quantity: "-",
+          delivered_quantity: "-",
+          order_type: "Glowne",
+          request_kind: "informacja",
+          informacja_stock_out_reorder: true,
+          status: "Nowe",
+          action_at: "2026-05-15T10:00:00Z",
+          ordered_at: null,
+          delivery_at: null,
+          supplier: { id: "a", name: "A" } as never,
+          sales_person: { id: "sp1", name: "Jan" } as never,
+        },
+        {
+          id: "z1",
+          supplier_id: "a",
+          sales_person_id: "sp1",
+          symbol: "Y",
+          products: "Wkręt",
+          quantity: "1",
+          delivered_quantity: "-",
+          order_type: "Glowne",
+          request_kind: "zamowienie",
+          status: "Nowe",
+          action_at: "2026-05-15T11:00:00Z",
+          ordered_at: null,
+          delivery_at: null,
+          supplier: { id: "a", name: "A" } as never,
+          sales_person: { id: "sp1", name: "Jan" } as never,
+        },
+      ],
+      today,
+      [{ id: "sp1", name: "Jan" }]
+    );
+    expect(ws.stockOutLeft.length).toBe(1);
+    expect(ws.forSomeoneLeft.length).toBe(1);
+    expect(countDailyPanelNavBadge(ws)).toBe(2);
+    const stockUi = enrichStockOutSignalGroup(ws.stockOutLeft[0]!);
+    expect(stockUi.headline).toBe("Towar");
+    expect(stockUi.subline).toContain("Jan");
   });
 });

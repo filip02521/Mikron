@@ -9,7 +9,9 @@ import {
 } from "@/lib/orders/prosba-form-readiness";
 import type { SalesRequestSubmitPlan } from "@/lib/orders/sales-request-submit";
 import type { IndividualRequestKind } from "@/types/database";
-import { IconAlertCircle, IconCircleCheck } from "@/components/icons/StrokeIcons";
+import type { InformacjaFlowPath } from "@/lib/orders/informacja-stock-out-reorder";
+import { IconAlertCircle, IconChevronRight, IconCircleCheck } from "@/components/icons/StrokeIcons";
+import { SubmitHintChevron } from "@/components/ui/UiGlyphs";
 import { cn } from "@/lib/cn";
 
 function StepIcon({ state }: { state: ProsbaReadinessStepState }) {
@@ -29,11 +31,8 @@ function StepIcon({ state }: { state: ProsbaReadinessStepState }) {
   }
   if (state === "handoff") {
     return (
-      <span
-        className="flex size-6 shrink-0 items-center justify-center rounded-full border-2 border-indigo-300 bg-indigo-50 text-[10px] font-bold text-indigo-700"
-        aria-hidden
-      >
-        →
+      <span className="flex size-6 shrink-0 items-center justify-center rounded-full border-2 border-indigo-300 bg-indigo-50 text-indigo-700">
+        <IconChevronRight size={13} strokeWidth={2.5} aria-hidden />
       </span>
     );
   }
@@ -99,6 +98,7 @@ export function ProsbaFormReadiness({
   salesSubmitPlan,
   formMessage,
   resolvingSupplier = false,
+  informacjaPath = "direct",
   className,
 }: {
   lines: ProsbaReadinessLine[];
@@ -106,10 +106,12 @@ export function ProsbaFormReadiness({
   salesSubmitPlan: SalesRequestSubmitPlan | null;
   formMessage?: { text: string; tone: "error" | "warning" | "success" } | null;
   resolvingSupplier?: boolean;
+  informacjaPath?: InformacjaFlowPath;
   className?: string;
 }) {
   const view = buildProsbaFormReadiness(lines, requestKind, salesSubmitPlan, {
     resolvingSupplier,
+    informacjaPath,
   });
   const styles = toneStyles(view.tone);
 
@@ -143,8 +145,9 @@ export function ProsbaFormReadiness({
             ) : null}
           </div>
           {view.canSubmit ? (
-            <span className="shrink-0 rounded-full bg-white/80 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wide text-emerald-800 ring-1 ring-emerald-200/80">
-              Wyślij ↓
+            <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-white/80 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wide text-emerald-800 ring-1 ring-emerald-200/80">
+              Wyślij
+              <SubmitHintChevron />
             </span>
           ) : null}
         </div>

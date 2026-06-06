@@ -227,13 +227,7 @@ export function SupplierQuickActionsMenu({
             "h-7 min-h-7 min-w-8 shrink-0 rounded-md border border-slate-200 px-1.5 shadow-none hover:bg-slate-50",
         )}
       >
-        {grouped ? (
-          <IconMoreVertical size={compact ? 18 : 20} className="text-slate-600" />
-        ) : (
-          <span className="text-lg leading-none text-slate-600" aria-hidden>
-            ⋮
-          </span>
-        )}
+        <IconMoreVertical size={compact ? 18 : 20} className="text-slate-600" />
       </Button>
       {menuPanel ? createPortal(menuPanel, document.body) : null}
     </div>

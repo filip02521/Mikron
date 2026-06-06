@@ -40,4 +40,14 @@ describe("product source", () => {
     });
     expect(line.quantity).toBe("informacja");
   });
+
+  it("mapuje klienta handlowca", () => {
+    const line = mapOrderToForSomeoneLine({
+      ...base,
+      sales_client_name: "  Klinika Smile  ",
+      sales_client_kh_id: 42,
+    });
+    expect(line.clientName).toBe("Klinika Smile");
+    expect(line.clientKhId).toBe(42);
+  });
 });

@@ -15,7 +15,10 @@ import {
   warsawTodayDateKey,
   type WarehouseDeliveryReceipt,
 } from "@/lib/warehouse/delivery-receipts";
-import type { WarehouseCarrier, WarehouseShipmentForm } from "@/lib/warehouse/delivery-carriers";
+import {
+  parseWarehouseCarrier,
+  parseWarehouseShipmentForm,
+} from "@/lib/warehouse/delivery-carriers";
 import {
   searchDeliveryReceipts,
   summarizeDeliveryReceiptsRange,
@@ -88,19 +91,21 @@ export async function actionFetchCarrierHintForSupplier(supplierId: string) {
 export async function actionCreateDeliveryReceipt(input: {
   supplierId: string | null;
   supplierLabel?: string;
-  carrier: WarehouseCarrier;
-  shipmentForm: WarehouseShipmentForm;
+  carrier: string;
+  shipmentForm: string;
   packageCount: number;
   palletCount: number;
   note?: string;
 }) {
   const user = await requireWarehouse();
+  const carrier = parseWarehouseCarrier(input.carrier);
+  const shipmentForm = parseWarehouseShipmentForm(input.shipmentForm);
   const receipt = await createDeliveryReceipt({
     receivedDate: warsawTodayDateKey(),
     supplierId: input.supplierId,
     supplierLabel: input.supplierLabel,
-    carrier: input.carrier,
-    shipmentForm: input.shipmentForm,
+    carrier,
+    shipmentForm,
     packageCount: input.packageCount,
     palletCount: input.palletCount,
     note: input.note,
@@ -114,20 +119,22 @@ export async function actionUpdateDeliveryReceipt(input: {
   id: string;
   supplierId: string | null;
   supplierLabel?: string;
-  carrier: WarehouseCarrier;
-  shipmentForm: WarehouseShipmentForm;
+  carrier: string;
+  shipmentForm: string;
   packageCount: number;
   palletCount: number;
   note?: string;
 }) {
   const user = await requireWarehouse();
+  const carrier = parseWarehouseCarrier(input.carrier);
+  const shipmentForm = parseWarehouseShipmentForm(input.shipmentForm);
   const receipt = await updateDeliveryReceipt({
     id: input.id,
     receivedDate: warsawTodayDateKey(),
     supplierId: input.supplierId,
     supplierLabel: input.supplierLabel,
-    carrier: input.carrier,
-    shipmentForm: input.shipmentForm,
+    carrier,
+    shipmentForm,
     packageCount: input.packageCount,
     palletCount: input.palletCount,
     note: input.note,

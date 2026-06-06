@@ -5,6 +5,7 @@ import { actionMarkOrdered } from "@/app/actions/admin";
 import { SupplierContactActions } from "@/components/procurement/SupplierContactActions";
 import { Button } from "@/components/ui/Button";
 import type { DailyPanelRunFn } from "@/components/summary/useDailyPanelRunner";
+import { LinkChevron } from "@/components/ui/UiGlyphs";
 import { cn } from "@/lib/cn";
 import { panelNameLinkClass, panelTextLinkClass } from "@/lib/ui/ontime-theme";
 import { PanelRowActionsInlineEnd } from "@/components/summary/PanelRowActionsInlineEnd";
@@ -98,8 +99,13 @@ export function DailyPanelOnDemandSection({
       </ul>
       {rest > 0 && onOpenFullList ? (
         <div className="border-t border-slate-100 px-3 py-2 sm:px-4">
-          <button type="button" className={cn("text-xs", panelTextLinkClass)} onClick={onOpenFullList}>
+          <button
+            type="button"
+            className={cn("inline-flex items-center gap-1 text-xs", panelTextLinkClass)}
+            onClick={onOpenFullList}
+          >
             + {rest} {rest === 1 ? "dostawca" : "dostawców"} — pokaż wszystkich
+            <LinkChevron size={12} tone="brand" />
           </button>
         </div>
       ) : null}

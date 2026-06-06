@@ -70,4 +70,20 @@ describe("buildProsbaFormReadiness", () => {
     expect(view.steps.find((s) => s.id === "supplier")?.state).toBe("done");
     expect(view.steps.find((s) => s.id === "supplier")?.detail).toContain("panelu dziennego");
   });
+
+  it("informacja stock out — ścieżka w checklistie", () => {
+    const plan = planSalesRequestSubmit({
+      symbol: "A",
+      product: "Test",
+      requestKind: "informacja",
+    });
+    const view = buildProsbaFormReadiness(
+      [{ symbol: "A", product: "Test" }],
+      "informacja",
+      plan,
+      { informacjaPath: "stock_out" }
+    );
+    expect(view.steps.find((s) => s.id === "path")?.detail).toContain("Brak na stanie");
+    expect(view.subline).toContain("Moje zamówienia");
+  });
 });

@@ -8,11 +8,44 @@ import { prosbaHref } from "./prosba-url";
 export const ZK_PROSBA_PREFILL_STORAGE_KEY = "ontime-prosba-zk-prefill";
 
 export type ZkProsbaPrefill = {
+  zkWatchId: string | null;
   clientName: string;
   clientKhId: number | null;
   zkNumber: string;
   lines: ProductLineDraft[];
 };
+
+function normalizeSubiektTwId(value: unknown): number | null {
+  const n = Math.trunc(Number(value));
+  return Number.isFinite(n) && n > 0 ? n : null;
+}
+
+function normalizePrefillKhId(value: unknown): number | null {
+  const n = Math.trunc(Number(value));
+  return Number.isFinite(n) && n > 0 ? n : null;
+}
+
+/** Bezpieczny payload Server Action → klient (tylko JSON-serializowalne pola). */
+export function zkProsbaPrefillFromWatch(watch: SalesZkWatch): ZkProsbaPrefill {
+  const lines = extractProsbaLinesFromZkWatch(watch).map((line) => ({
+    id: String(line.id),
+    symbol: String(line.symbol ?? ""),
+    mikranCode: String(line.mikranCode ?? ""),
+    product: String(line.product ?? ""),
+    quantity: String(line.quantity ?? "1"),
+    clientName: line.clientName != null ? String(line.clientName) : undefined,
+    clientKhId: normalizePrefillKhId(line.clientKhId),
+    subiektTwId: normalizeSubiektTwId(line.subiektTwId),
+  }));
+
+  return {
+    zkWatchId: watch.id ? String(watch.id) : null,
+    clientName: String(watch.client_label ?? "").trim(),
+    clientKhId: normalizePrefillKhId(watch.client_kh_id),
+    zkNumber: String(watch.zk_number ?? "").trim(),
+    lines,
+  };
+}
 
 export function extractProsbaLinesFromZkWatch(watch: SalesZkWatch): ProductLineDraft[] {
   const snap = watch.subiekt_snapshot as { dok_Pozycja?: SubiektDocumentLine[] } | null;
@@ -32,7 +65,7 @@ export function extractProsbaLinesFromZkWatch(watch: SalesZkWatch): ProductLineD
       quantity: line.ob_Ilosc != null ? String(line.ob_Ilosc) : "1",
       clientName: watch.client_label,
       clientKhId: watch.client_kh_id,
-      subiektTwId: line.ob_TowId ?? null,
+      subiektTwId: normalizeSubiektTwId(line.ob_TowId),
     });
   }
 
@@ -67,12 +100,7 @@ export function extractProsbaLinesFromZkWatch(watch: SalesZkWatch): ProductLineD
 
 export function stashZkProsbaPrefill(watch: SalesZkWatch): void {
   if (typeof sessionStorage === "undefined") return;
-  const payload: ZkProsbaPrefill = {
-    clientName: watch.client_label,
-    clientKhId: watch.client_kh_id,
-    zkNumber: watch.zk_number,
-    lines: extractProsbaLinesFromZkWatch(watch),
-  };
+  const payload = zkProsbaPrefillFromWatch(watch);
   sessionStorage.setItem(ZK_PROSBA_PREFILL_STORAGE_KEY, JSON.stringify(payload));
 }
 
@@ -81,7 +109,15 @@ export function readZkProsbaPrefill(): ZkProsbaPrefill | null {
   const raw = sessionStorage.getItem(ZK_PROSBA_PREFILL_STORAGE_KEY);
   if (!raw) return null;
   try {
-    return JSON.parse(raw) as ZkProsbaPrefill;
+    const parsed = JSON.parse(raw) as Partial<ZkProsbaPrefill>;
+    if (!parsed?.lines?.length) return null;
+    return {
+      zkWatchId: parsed.zkWatchId ?? null,
+      clientName: parsed.clientName ?? "",
+      clientKhId: parsed.clientKhId ?? null,
+      zkNumber: parsed.zkNumber ?? "",
+      lines: parsed.lines,
+    };
   } catch {
     return null;
   }
@@ -102,13 +138,16 @@ export function buildProsbaPrefillFromUrlParams(options: {
   klient?: string | null;
   kh?: string | null;
   zk?: string | null;
+  zkWatch?: string | null;
 }): ZkProsbaPrefill | null {
   const clientName = options.klient?.trim() ?? "";
   const clientKhId = parseProsbaClientKhParam(options.kh ?? null);
   const zkNumber = options.zk?.trim() ?? "";
-  if (!clientName && clientKhId == null && !zkNumber) return null;
+  const zkWatchId = options.zkWatch?.trim() || null;
+  if (!clientName && clientKhId == null && !zkNumber && !zkWatchId) return null;
 
   return {
+    zkWatchId,
     clientName: clientName || zkNumber,
     clientKhId,
     zkNumber,
@@ -130,6 +169,7 @@ export function prosbaHrefFromZkWatch(watch: SalesZkWatch): string {
   return prosbaHref({
     salesPersonId: watch.sales_person_id,
     fromZk: true,
+    zkWatchId: watch.id,
     zk: watch.zk_number,
     klient: watch.client_label,
     clientKhId: watch.client_kh_id,

@@ -109,7 +109,11 @@ export function SummaryWorkspace({
 
   const urgentRemainingTotal = inboxSummary.overdueCount + inboxSummary.todayCount;
   const forSomeoneRemaining = workspace.forSomeoneLeft.length;
-  const dayProgress = useDailyDayProgress(urgentRemainingTotal, forSomeoneRemaining);
+  const stockOutRemaining = workspace.stockOutLeft.length;
+  const dayProgress = useDailyDayProgress(
+    urgentRemainingTotal,
+    forSomeoneRemaining + stockOutRemaining
+  );
 
   const { overdue: urgentOverdue, todayList: urgentToday } = useMemo(
     () => splitUrgentItems(standardUrgentAll),
@@ -118,13 +122,15 @@ export function SummaryWorkspace({
 
   const hasCancelled = workspace.salesCancelledNotices.length > 0;
   const hasForSomeone = workspace.forSomeoneLeft.length > 0;
+  const hasStockOut = workspace.stockOutLeft.length > 0;
   const hasUrgentSchedule = urgentOverdue.length > 0 || urgentToday.length > 0;
-  const hasTodayWork = hasForSomeone || hasUrgentSchedule;
+  const hasTodayWork = hasForSomeone || hasStockOut || hasUrgentSchedule;
 
   const todayQueueCount =
     inboxSummary.overdueCount +
     inboxSummary.todayCount +
     inboxSummary.forSomeoneGroupCount +
+    inboxSummary.stockOutGroupCount +
     (hasCancelled ? workspace.salesCancelledNotices.length : 0);
   const hideVerificationDup =
     panelView === "dzis" && verificationCount > 0;
@@ -134,10 +140,11 @@ export function SummaryWorkspace({
     const next = () => ++step;
     return {
       overdue: urgentOverdue.length > 0 ? next() : undefined,
+      stockOut: hasStockOut ? next() : undefined,
       prosby: hasForSomeone ? next() : undefined,
       today: urgentToday.length > 0 ? next() : undefined,
     };
-  }, [urgentOverdue.length, hasForSomeone, urgentToday.length]);
+  }, [urgentOverdue.length, hasStockOut, hasForSomeone, urgentToday.length]);
 
   const openSupplier = useCallback((id: string) => setDrawerId(id), []);
 
@@ -354,6 +361,7 @@ export function SummaryWorkspace({
             verificationCount={verificationCount}
             hasTodayWork={hasTodayWork}
             hasForSomeone={hasForSomeone}
+            hasStockOut={hasStockOut}
             urgentOverdue={urgentOverdue}
             urgentToday={urgentToday}
             standardUrgentAll={standardUrgentAll}

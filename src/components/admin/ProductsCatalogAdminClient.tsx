@@ -14,6 +14,7 @@ import { Card, CardHeader } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { Input, Select } from "@/components/ui/Field";
 import { Toast } from "@/components/ui/Toast";
+import { FlowSteps } from "@/components/ui/UiGlyphs";
 import { cn } from "@/lib/cn";
 import {
   actionBackfillOrdersSubiektTwIdFromSymbol,
@@ -669,7 +670,9 @@ export function ProductsCatalogAdminClient({
         />
 
         <div className="mt-4 rounded-md border border-slate-200 bg-white p-4">
-          <p className="text-sm font-semibold text-slate-900">Indeks ZD → dostawca</p>
+          <p className="text-sm font-semibold text-slate-900">
+            <FlowSteps steps={["Indeks ZD", "dostawca"]} chevronClassName="text-indigo-300" />
+          </p>
           <p className="mt-0.5 text-xs text-slate-600">
             Jednorazowo przechodzi po wszystkich ZD i przypisuje numer dokumentu do dostawcy (główne i dodatkowe `kh_Id` w kartotece dostawcy).
           </p>

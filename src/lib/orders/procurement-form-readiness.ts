@@ -68,6 +68,7 @@ export function buildProcurementFormReadiness(input: {
   lines: ProsbaReadinessLine[];
   requestKind: IndividualRequestKind;
   informacjaViaDailyPanel?: boolean;
+  informacjaStockOutReorder?: boolean;
 }): ProcurementFormReadinessView {
   const { salesPersonId, supplierId, lines, requestKind } = input;
   const isZamowienie = requestKind === "zamowienie";
@@ -124,9 +125,11 @@ export function buildProcurementFormReadiness(input: {
       headline: "Można zapisać",
       subline:
         requestKind === "informacja"
-          ? input.informacjaViaDailyPanel
-            ? "Informacja trafi najpierw do kolejki „Dla kogoś” — po Główne/Uzupełniające do magazynu."
-            : "Prośba trafi od razu do kolejki informacji (Wyjątki / magazyn)."
+          ? input.informacjaStockOutReorder
+            ? "Sygnał „brak na stanie” w Prośbach handlowców — zamówienie u dostawcy, bez e-maila do handlowca."
+            : input.informacjaViaDailyPanel
+              ? "Informacja trafi najpierw do Prośb handlowców — po Główne/Uzupełniające do magazynu."
+              : "Informacja o dostępności — kolejka magazynu, potem e-mail do handlowca."
           : "Kompletne dane — trafi do panelu dziennego.",
       tone: "ready",
       steps,

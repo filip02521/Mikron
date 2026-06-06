@@ -7,13 +7,24 @@ import {
   type ZkWatchLineView,
 } from "@/lib/sales/zk-watch-lines";
 import { normalizeMyOrderSearchText } from "@/lib/orders/my-order-search";
+import {
+  clientLabelsMatch,
+  clientLabelsMatchExact,
+  clientsMatchForSalesClient,
+  normalizeSalesClientKhId,
+} from "@/lib/orders/sales-client-match";
+import { orderExplicitlyLinkedToZkWatch } from "@/lib/orders/zk-prosba-source";
 import type { SalesZkWatch } from "@/types/database";
+
+export { clientLabelsMatch, clientLabelsMatchExact } from "@/lib/orders/sales-client-match";
 
 export type ZkLinkableOrder = {
   id: string;
   sales_person_id: string;
   sales_client_name: string | null;
   sales_client_kh_id: number | null;
+  source_zk_watch_id: string | null;
+  source_zk_number: string | null;
   subiekt_tw_id: number | null;
   symbol: string | null;
   products: string | null;
@@ -22,6 +33,16 @@ export type ZkLinkableOrder = {
   sales_acknowledged_at: string | null;
   sales_cancelled_at: string | null;
 };
+
+function orderRelevantToZkWatch(
+  order: ZkLinkableOrder,
+  watch: SalesZkWatch
+): boolean {
+  if (order.sales_person_id !== watch.sales_person_id) return false;
+  return (
+    orderExplicitlyLinkedToZkWatch(order, watch) || clientsMatchForZk(watch, order)
+  );
+}
 
 export type ZkWatchOrderHints = {
   /** Aktywne prośby tego klienta z dopasowanym towarem (w toku). */
@@ -41,47 +62,14 @@ const OPEN_PROSBA_STATUSES = new Set([
   "Czesciowo_zrealizowane",
 ]);
 
-function normalizeKhId(value: unknown): number | null {
-  const n = Math.trunc(Number(value));
-  return Number.isFinite(n) && n > 0 ? n : null;
-}
-
-/** Porównanie etykiet klienta (bez polskich znaków, zawiera). */
-export function clientLabelsMatch(
-  a: string | null | undefined,
-  b: string | null | undefined
-): boolean {
-  const na = normalizeMyOrderSearchText(a ?? "");
-  const nb = normalizeMyOrderSearchText(b ?? "");
-  if (!na || !nb) return false;
-  if (na === nb) return true;
-  return na.includes(nb) || nb.includes(na);
-}
-
 export function clientsMatchForZk(
   watch: Pick<SalesZkWatch, "client_kh_id" | "client_label">,
   order: Pick<ZkLinkableOrder, "sales_client_kh_id" | "sales_client_name">
 ): boolean {
-  const watchKh = normalizeKhId(watch.client_kh_id);
-  const orderKh = normalizeKhId(order.sales_client_kh_id);
-  if (watchKh != null && orderKh != null) return watchKh === orderKh;
-  if (watchKh != null && orderKh == null) {
-    return clientLabelsMatchExact(watch.client_label, order.sales_client_name);
-  }
-  if (watchKh == null && orderKh != null) {
-    return clientLabelsMatchExact(watch.client_label, order.sales_client_name);
-  }
-  return clientLabelsMatch(watch.client_label, order.sales_client_name);
-}
-
-/** Dokładne dopasowanie etykiety (bez zawierania) — gdy jedna strona ma kh, a druga nie. */
-export function clientLabelsMatchExact(
-  a: string | null | undefined,
-  b: string | null | undefined
-): boolean {
-  const na = normalizeMyOrderSearchText(a ?? "");
-  const nb = normalizeMyOrderSearchText(b ?? "");
-  return Boolean(na && nb && na === nb);
+  return clientsMatchForSalesClient(
+    { client_kh_id: watch.client_kh_id, client_label: watch.client_label },
+    order
+  );
 }
 
 function normalizeProductToken(value: string | null | undefined): string {
@@ -92,7 +80,7 @@ export function productMatchesZkLine(
   order: ZkLinkableOrder,
   line: ZkWatchLineView
 ): boolean {
-  const orderTw = normalizeKhId(order.subiekt_tw_id);
+  const orderTw = normalizeSalesClientKhId(order.subiekt_tw_id);
   if (line.subiektTwId != null && orderTw != null) {
     return line.subiektTwId === orderTw;
   }
@@ -137,20 +125,19 @@ export function computeZkWatchOrderHints(
   orders: ZkLinkableOrder[]
 ): ZkWatchOrderHints {
   const lineViews = buildZkWatchLineViews(watch);
-  const relevant = orders.filter(
-    (o) => o.sales_person_id === watch.sales_person_id && clientsMatchForZk(watch, o)
-  );
+  const relevant = orders.filter((o) => orderRelevantToZkWatch(o, watch));
 
   let matchingOpenRequestCount = 0;
   const matchedDeliveredLineKeys = new Set<string>();
 
   for (const order of relevant) {
+    const explicitZk = orderExplicitlyLinkedToZkWatch(order, watch);
     const matchedLines = lineViews.filter((line) => productMatchesZkLine(order, line));
-    if (!matchedLines.length) continue;
 
     if (isOpenProsbaOrder(order)) {
-      matchingOpenRequestCount += 1;
+      if (explicitZk || matchedLines.length) matchingOpenRequestCount += 1;
     }
+    if (!matchedLines.length) continue;
     if (isDeliveredOrderStatus(order.status)) {
       for (const line of matchedLines) {
         matchedDeliveredLineKeys.add(line.key);
@@ -181,9 +168,7 @@ export function mergeZkLineChecksFromDeliveredOrders(
 
   const relevantDelivered = orders.filter(
     (o) =>
-      o.sales_person_id === watch.sales_person_id &&
-      clientsMatchForZk(watch, o) &&
-      isDeliveredOrderStatus(o.status)
+      orderRelevantToZkWatch(o, watch) && isDeliveredOrderStatus(o.status)
   );
 
   for (const line of views) {

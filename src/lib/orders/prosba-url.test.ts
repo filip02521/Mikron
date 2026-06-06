@@ -15,12 +15,13 @@ describe("prosba-url", () => {
       prosbaHref({
         salesPersonId: "sp1",
         fromZk: true,
+        zkWatchId: "watch-uuid",
         zk: "ZK/2026/0138",
         klient: "Klinika Smile",
         clientKhId: 42,
       })
     ).toBe(
-      "/prosba?dla=sp1&fromZk=1&zk=ZK%2F2026%2F0138&klient=Klinika+Smile&kh=42"
+      "/prosba?dla=sp1&fromZk=1&zkWatch=watch-uuid&zk=ZK%2F2026%2F0138&klient=Klinika+Smile&kh=42"
     );
   });
 

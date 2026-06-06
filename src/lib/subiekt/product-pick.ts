@@ -18,7 +18,21 @@ export type SubiektProductPick = {
   mikranCode: string;
 };
 
-export type ProductSearchField = "symbol" | "plu" | "name";
+export type ProductSearchField = "symbol" | "plu" | "name" | "combined";
+
+/** Pole wyszukiwania API dla aktywnego inputu (scalony produkt → combined). */
+export function productSuggestSearchField(
+  activeField: Exclude<ProductSearchField, "combined">
+): ProductSearchField {
+  return activeField === "plu" ? "plu" : "combined";
+}
+
+/** Scalone pole produktu — równoległe wyszukiwanie po symbolu i nazwie. */
+export function isCombinedProductSearchField(
+  field: ProductSearchField
+): field is "combined" {
+  return field === "combined";
+}
 
 /** Minimalna długość frazy — PLU może być jednocyfrowe (np. 1). */
 export function minProductSearchLength(field: ProductSearchField): number {
@@ -31,6 +45,116 @@ export function looksLikeProductSymbol(query: string): boolean {
   if (q.length < 1 || q.length > 32) return false;
   if (/\s/.test(q)) return false;
   return /^[\p{L}\p{N}._\-/]+$/u.test(q);
+}
+
+/** Łączy wyniki wyszukiwań Subiekta (kolejność batchy = priorytet). */
+export function mergeSubiektProductSearchResults(
+  batches: SubiektProduct[][],
+  limit = 12
+): SubiektProduct[] {
+  const out: SubiektProduct[] = [];
+  const seen = new Set<number>();
+
+  for (const batch of batches) {
+    for (const product of batch) {
+      const id = product.tw_Id;
+      if (id == null || !Number.isFinite(id) || seen.has(id)) continue;
+      seen.add(id);
+      out.push(product);
+      if (out.length >= limit) return out;
+    }
+  }
+
+  return out;
+}
+
+/** Pole Subiekta dla scalonego wyszukiwania (symbol vs nazwa). */
+export function inferCombinedProductSearchField(
+  query: string
+): Exclude<ProductSearchField, "plu" | "combined"> {
+  const q = query.trim();
+  if (!q) return "name";
+  if (!looksLikeProductSymbol(q)) return "name";
+  const hasLower = /[a-ząćęłńóśźż]/u.test(q);
+  if (hasLower && !/\d/.test(q)) return "name";
+  if (q.length > 14) return "name";
+  return "symbol";
+}
+
+/** Wartość w jednym polu „produkt” (nazwa ma pierwszeństwo). */
+export function combinedProductSearchDisplay(value: {
+  symbol: string;
+  product: string;
+}): string {
+  const product = value.product.trim();
+  const symbol = value.symbol.trim();
+  if (product) return value.product;
+  if (symbol && symbol !== "-") return value.symbol;
+  return "";
+}
+
+/** Podgląd symbolu pod polem, gdy w inpucie widać głównie nazwę. */
+export function combinedProductSymbolPreview(value: {
+  symbol: string;
+  product: string;
+}): string | null {
+  const symbol = value.symbol.trim();
+  if (!symbol || symbol === "-") return null;
+  const display = combinedProductSearchDisplay(value).trim();
+  if (!display || display === symbol) return null;
+  return symbol;
+}
+
+/** Rozpoznaje wklejkę z listy Subiekta: „SYMBOL — Nazwa”. */
+function parseSubiektPasteLabel(query: string): Pick<SubiektProductPick, "symbol" | "product"> | null {
+  const m = query.trim().match(/^(.+?)\s+[—–-]\s+(.+)$/);
+  if (!m) return null;
+  const symbol = m[1]!.trim();
+  const product = m[2]!.trim();
+  if (!symbol || !product) return null;
+  return { symbol, product };
+}
+
+/** Aktualizacja modelu po wpisie w scalonym polu (bez PLU). */
+export function patchFromCombinedProductInput(
+  query: string,
+  previous?: { symbol: string; product: string }
+): Pick<SubiektProductPick, "symbol" | "product"> {
+  if (!query.trim()) {
+    return { symbol: "", product: "" };
+  }
+
+  const pasted = parseSubiektPasteLabel(query);
+  if (pasted) return pasted;
+
+  const field = inferCombinedProductSearchField(query);
+  if (field === "symbol") {
+    return { symbol: query, product: "" };
+  }
+
+  const prevDisplay = previous
+    ? combinedProductSearchDisplay(previous)
+    : "";
+  const prevField = prevDisplay.trim()
+    ? inferCombinedProductSearchField(prevDisplay)
+    : "name";
+  const prevSymbol = previous?.symbol?.trim() ?? "";
+  const extendingSymbol =
+    prevField === "symbol" &&
+    Boolean(prevSymbol) &&
+    prevSymbol !== "-" &&
+    query.trim().toLowerCase().startsWith(prevSymbol.toLowerCase());
+  const keepSymbol =
+    extendingSymbol ||
+    (prevField === "name" &&
+      Boolean(previous?.product?.trim()) &&
+      Boolean(prevSymbol) &&
+      prevSymbol !== "-");
+
+  return {
+    product: query,
+    symbol: keepSymbol ? previous!.symbol : "",
+  };
 }
 
 /** Parametry wyszukiwania — symbol, Kod Mikran (PLU) lub nazwa. */
@@ -99,7 +223,7 @@ export function formatSubiektProductOption(p: SubiektProduct): {
 
   if (name) {
     return {
-      title: name,
+      title: sym ? `${sym} — ${name}` : name,
       subtitle: parts.length ? parts.join(" · ") : "Bez symbolu i kodu",
     };
   }

@@ -48,8 +48,24 @@ describe("informacja status copy", () => {
     expect(row.statusTitle).toBe("Zamówione — czekamy na magazyn");
   });
 
-  it("bez panelu — tylko magazyn", () => {
+  it("bez panelu — informacja o dostępności", () => {
     const row = presentMyOrders([informacjaOrder()], []).informacje[0]!;
-    expect(row.statusTitle).toBe("Oczekuje na magazyn");
+    expect(row.statusTitle).toBe("Informacja o dostępności");
+  });
+
+  it("brak na stanie — ukryte przed handlowcem w Moje zamówienia", () => {
+    const result = presentMyOrders(
+      [
+        informacjaOrder({
+          informacja_stock_out_reorder: true,
+          status: "Zamowione",
+          ordered_at: "2026-05-12T10:00:00Z",
+        }),
+      ],
+      []
+    );
+    expect(result.informacje).toHaveLength(0);
+    expect(result.zamowienia).toHaveLength(0);
+    expect(result.productLineCount).toBe(0);
   });
 });

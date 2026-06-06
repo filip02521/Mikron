@@ -6,6 +6,7 @@ import type {
 } from "@/lib/orders/daily-panel-undo";
 import { recalcSupplierSchedule } from "@/lib/services/orders";
 import { buildScheduleFeedback } from "@/lib/orders/daily-panel-action-feedback";
+import { glowneScheduleSupplierIds } from "@/lib/orders/glowne-supplier-placement";
 
 export { buildScheduleFeedback } from "@/lib/orders/daily-panel-action-feedback";
 
@@ -128,16 +129,13 @@ export async function supplierIdsForGlownePlacement(
   const supabase = createAdminClient();
   const { data } = await supabase
     .from("individual_orders")
-    .select("id, supplier_id, status, request_kind")
+    .select(
+      "id, supplier_id, status, request_kind, informacja_queue_via_daily_panel"
+    )
     .in("id", orderIds);
 
-  const ids = new Set<string>();
-  for (const row of data ?? []) {
-    if (row.status !== "Nowe") continue;
-    if ((row.request_kind ?? "zamowienie") !== "zamowienie") continue;
-    if (row.supplier_id) ids.add(row.supplier_id);
-  }
-  return [...ids];
+  const eligible = (data ?? []).filter((row) => row.status === "Nowe");
+  return [...glowneScheduleSupplierIds(eligible, "GLOWNE")];
 }
 
 export async function supplierIdsFromIndividualOrders(

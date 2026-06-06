@@ -22,6 +22,7 @@ import { Button } from "@/components/ui/Button";
 import { Alert } from "@/components/ui/Alert";
 import { MojeOrdersShell } from "@/components/moje/MojeOrdersShell";
 import { MojePageSalesToolbar } from "@/components/moje/MojePageSalesToolbar";
+import { pageToolbarSizingClass } from "@/lib/ui/ontime-theme";
 import { SalesAccountLinkRequired } from "@/components/sales/SalesAccountLinkRequired";
 import { ManagerPreviewBanner } from "@/components/sales/ManagerPreviewBanner";
 import type { DeliveryStats, IndividualOrder } from "@/types/database";
@@ -30,14 +31,33 @@ import { autoAssignMissingSuppliersFromCatalog } from "@/lib/services/auto-assig
 export default async function MojePage({
   searchParams,
 }: {
-  searchParams: Promise<{ dla?: string; klient?: string; q?: string; kh?: string }>;
+  searchParams: Promise<{
+    dla?: string;
+    klient?: string;
+    q?: string;
+    kh?: string;
+    zkWatch?: string;
+    zk?: string;
+  }>;
 }) {
-  const { dla: previewSalesPersonId, klient: clientQuery, q: searchQuery, kh: khParam } =
-    await searchParams;
-  const initialSearchQuery = (searchQuery ?? clientQuery)?.trim() || null;
+  const {
+    dla: previewSalesPersonId,
+    klient: clientQuery,
+    q: searchQuery,
+    kh: khParam,
+    zkWatch: zkWatchParam,
+    zk: zkNumberParam,
+  } = await searchParams;
   const parsedKh = khParam ? Math.trunc(Number(khParam)) : null;
   const initialClientKhId =
     parsedKh != null && Number.isFinite(parsedKh) && parsedKh > 0 ? parsedKh : null;
+  const hasNotepadClientLink =
+    initialClientKhId != null ||
+    Boolean(zkWatchParam?.trim()) ||
+    Boolean(zkNumberParam?.trim());
+  const initialSearchQuery = hasNotepadClientLink
+    ? (searchQuery?.trim() || null)
+    : (searchQuery ?? clientQuery)?.trim() || null;
   const role = await getAppRole();
   let salesPersonId: string | null = null;
   let salesPersonName: string | null = null;
@@ -184,8 +204,13 @@ export default async function MojePage({
       <>
         <MojePageSalesToolbar />
         {!isTeamPreview ? (
-          <Link href="/prosba" className="hidden sm:inline-flex">
-            <Button size="sm">Zgłoś prośbę</Button>
+          <Link
+            href="/prosba"
+            className="hidden sm:inline-flex sm:items-center"
+          >
+            <Button size="sm" className={pageToolbarSizingClass}>
+              Zgłoś prośbę
+            </Button>
           </Link>
         ) : null}
       </>
@@ -235,6 +260,8 @@ export default async function MojePage({
         initialSearchQuery={initialSearchQuery}
         initialClientKhId={initialClientKhId}
         initialClientKhLabel={clientQuery?.trim() || null}
+        initialClientZkWatchId={zkWatchParam?.trim() || null}
+        initialClientZkNumber={zkNumberParam?.trim() || null}
         syncSearchUrl={!isTeamPreview}
       />
     </div>

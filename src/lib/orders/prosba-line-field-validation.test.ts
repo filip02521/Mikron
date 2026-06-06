@@ -48,7 +48,8 @@ describe("assessProsbaLineFields", () => {
   it("oznacza brak produktu jako błąd w trybie strict", () => {
     const fields = assessProsbaLineFields(baseLine, "zamowienie", "strict");
     expect(fields.symbol.state).toBe("error");
-    expect(fields.product.message).toContain("symbol");
+    expect(fields.product.message).toContain("nazwę lub symbol");
+    expect(fields.mikranCode.state).toBe("default");
   });
 
   it("oznacza brak ilości przy zamówieniu", () => {

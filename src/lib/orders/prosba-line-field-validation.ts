@@ -72,11 +72,8 @@ export function assessProsbaLineFields(
   const severity: ProsbaFieldVisualState = mode === "strict" ? "error" : "warning";
 
   if (!hasAnyProductHint(draft)) {
-    const message =
-      requestKind === "informacja"
-        ? "Podaj symbol, kod Mikran lub opis produktu."
-        : "Podaj symbol, kod Mikran lub opis produktu.";
-    for (const key of ["symbol", "mikranCode", "product"] as const) {
+    const message = "Wpisz nazwę lub symbol produktu (kod Mikran obok).";
+    for (const key of ["symbol", "product"] as const) {
       fields[key] = { state: severity, message };
     }
     return fields;

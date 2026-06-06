@@ -1,5 +1,6 @@
 "use client";
 
+import { FlowChevron } from "@/components/ui/UiGlyphs";
 import { cn } from "@/lib/cn";
 import type { SalesOnboardingStep } from "@/lib/sales/sales-onboarding-steps";
 import { NavIcon, navIconTileIdleClass } from "@/components/icons/NavIcon";
@@ -86,11 +87,17 @@ export function SalesOnboardingPanelPreview({ stepId }: { stepId: string }) {
           <div className="space-y-1.5">
             <div className="rounded-md border border-slate-200 bg-white px-2.5 py-1.5 text-[11px] text-slate-700">
               <span className="font-medium text-slate-900">Straumann · implant</span>
-              <span className="text-slate-500"> → Straumann</span>
+              <span className="inline-flex items-center gap-0.5 text-slate-500">
+                <FlowChevron size={10} className="text-slate-300" />
+                Straumann
+              </span>
             </div>
             <div className="rounded-md border border-slate-200 bg-white px-2.5 py-1.5 text-[11px] text-slate-700">
               <span className="font-medium text-slate-900">Ivoclar · cement</span>
-              <span className="text-slate-500"> → Ivoclar</span>
+              <span className="inline-flex items-center gap-0.5 text-slate-500">
+                <FlowChevron size={10} className="text-slate-300" />
+                Ivoclar
+              </span>
             </div>
           </div>
           <p className="text-center text-[10px] font-medium text-indigo-700">+ Kolejny produkt</p>

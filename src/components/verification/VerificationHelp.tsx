@@ -12,12 +12,16 @@ export function VerificationHelp() {
     >
       <p>
         Tu trafiają <strong>niekompletne prośby</strong> od handlowców — brakuje dostawcy,
-        produktu lub ilości. Uzupełnij pola i zatwierdź; prośba pojawi się w panelu dziennym
-        jako „Nowe”.
+        produktu lub ilości. Uzupełnij pola i zatwierdź.
       </p>
       <p className="mt-2">
-        Możesz też otworzyć weryfikację z panelu dziennego (baner przy prośbach). Anulowanie
-        usuwa prośbę — używaj tylko gdy zgłoszenie było błędne.
+        Przy <strong>„Brak na stanie”</strong> ścieżka jest zablokowana — po zatwierdzeniu trafi
+        do osobnej sekcji w panelu Dziś, nie do magazynu ani listy handlowca. Przy zwykłej
+        informacji o dostępności wybierz ścieżkę przed zapisem.
+      </p>
+      <p className="mt-2">
+        Możesz też otworzyć weryfikację z panelu dziennego (baner). Anulowanie usuwa prośbę —
+        używaj tylko gdy zgłoszenie było błędne.
       </p>
     </HelpPopover>
   );

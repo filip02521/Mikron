@@ -282,6 +282,33 @@ describe("filterMyOrderRowsByClientKh", () => {
     expect(filterMyOrderRowsByClientKh(rows, 10).map((r) => r.id)).toEqual(["a"]);
     expect(filterMyOrderRowsByClientKh(rows, null)).toEqual(rows);
   });
+
+  it("łączy kh z etykietą klienta (link z ZK)", () => {
+    const rows = [
+      row({
+        id: "a",
+        lines: [
+          {
+            id: "l1",
+            product: "P",
+            symbol: null,
+            subiektTwId: null,
+            mikranCode: null,
+            quantity: "1",
+            quantityLabel: "1",
+            progressLabel: null,
+            stockStatus: "waiting",
+            canAcknowledgePickup: false,
+            clientName: "Klinika Smile",
+            clientKhId: null,
+          },
+        ],
+      }),
+    ];
+    expect(
+      filterMyOrderRowsByClientKh(rows, 42, { clientLabel: "Klinika Smile" }).map((r) => r.id)
+    ).toEqual(["a"]);
+  });
 });
 
 describe("myOrderRowSearchText", () => {

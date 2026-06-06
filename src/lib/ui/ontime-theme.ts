@@ -58,6 +58,13 @@ export const surfaceCardClass =
 export const buttonPrimaryClass =
   "bg-gradient-to-b from-indigo-600 to-indigo-700 text-white shadow-sm shadow-indigo-600/15 hover:from-[var(--primary-hover)] hover:to-indigo-800 active:from-indigo-800 active:to-indigo-900";
 
+/** Wspólna wysokość kontrolek w pasku akcji nagłówka (checkbox, CTA, pomoc). */
+export const pageToolbarSizingClass = "h-10 min-h-10 shrink-0 px-3 py-0 text-xs leading-none";
+
+/** Ramka pomocnicza — toggle / drugorzędny przycisk w toolbarze. */
+export const pageToolbarSurfaceClass =
+  "inline-flex items-center justify-center gap-2 rounded-md border border-slate-200 bg-white font-medium text-slate-700 shadow-sm";
+
 /** Ikona nagłówka panelu / sekcji marki */
 export const brandIconTileClass =
   "bg-gradient-to-br from-indigo-600 to-sky-600 text-white shadow-[var(--shadow-brand)] ring-1 ring-sky-500/30";
@@ -217,7 +224,7 @@ export const panelMutedToggleClass =
 export const panelMenuItemClass =
   "block w-full cursor-pointer px-3 py-2 text-left text-sm text-slate-700 transition hover:bg-indigo-50/80 hover:text-indigo-950";
 
-/** Segmenty w grupie akcji panelu (Zamówione, Przesuń, ⋮) — h-7, zaokrąglenia na końcach. */
+/** Segmenty w grupie akcji panelu (Zamówione, Przesuń, Więcej) — h-7, zaokrąglenia na końcach. */
 export const panelSegmentPrimaryClass =
   "flex h-7 min-h-7 max-h-7 shrink-0 items-center justify-center rounded-none rounded-l-md border-0 bg-indigo-600 px-2.5 text-xs font-semibold leading-none text-white shadow-none transition-colors duration-150 hover:bg-indigo-700 active:bg-indigo-800";
 

@@ -68,10 +68,10 @@ export function RequestKindToggle({
         </SectionHeadingIcon>
         <span className="min-w-0 pt-0.5">
           <span className="block text-sm font-semibold text-slate-900">
-            Tylko dostępność na magazynie
+            Informacja o towarze
           </span>
           <span className="mt-0.5 block text-xs leading-relaxed text-slate-600">
-            Bez zamówienia u dostawcy — powiadomimy, gdy towar będzie.
+            Wybierz ścieżkę poniżej — informacja o dostępności albo brak na stanie.
           </span>
         </span>
       </button>

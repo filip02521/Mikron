@@ -35,6 +35,18 @@ describe("informacja-warehouse-queue", () => {
     ).toBe(true);
   });
 
+  it("nie pokazuje sygnału brak na stanie (tylko panel zakupów)", () => {
+    expect(
+      isInformacjaWarehouseQueueOrder(
+        row({
+          status: "Nowe",
+          informacja_queue_via_daily_panel: false,
+          informacja_stock_out_reorder: true,
+        } as IndividualOrder)
+      )
+    ).toBe(false);
+  });
+
   it("ukrywa informację Nowe czekającą na zamówienie w panelu Dziś", () => {
     expect(
       isInformacjaWarehouseQueueOrder(

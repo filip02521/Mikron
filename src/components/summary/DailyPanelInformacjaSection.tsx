@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { FlowChevron, LinkChevron } from "@/components/ui/UiGlyphs";
 import type { SummaryInformacjaEnriched } from "@/lib/orders/summary-workspace";
 import {
   enrichInformacjaGroup,
@@ -76,9 +77,12 @@ export function DailyPanelInformacjaSection({
       <div className="border-t border-slate-100 px-3 py-2 sm:px-4">
         <Link
           href="/kolejka#kolejka-przyjecie"
-          className="text-xs font-medium text-slate-600 transition-colors hover:text-slate-800"
+          className="inline-flex items-center gap-1 text-xs font-medium text-sky-700 transition-colors hover:text-sky-900"
         >
-          Kolejka magazynu → Informacja
+          <span>Kolejka magazynu</span>
+          <FlowChevron size={12} className="text-sky-400" />
+          <span>Informacja</span>
+          <LinkChevron size={13} tone="sky" className="ml-0.5" />
         </Link>
       </div>
     </section>

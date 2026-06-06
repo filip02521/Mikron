@@ -1,9 +1,15 @@
+import { FlowSteps, HelpMenuGlyph } from "@/components/ui/UiGlyphs";
+
 export function HowItWorksContent() {
   return (
     <ol className="list-decimal space-y-2 pl-4 text-sm leading-relaxed text-slate-600">
       <li>
-        <strong className="text-slate-800">Dziś</strong> — kolejka: zaległe → prośby → na dziś.
-        Pasek postępu sumuje harmonogram i prośby.
+        <strong className="text-slate-800">Dziś</strong> — kolejka:{" "}
+        <FlowSteps
+          steps={["zaległe", "prośby", "na dziś"]}
+          chevronClassName="text-indigo-300"
+        />
+        . Pasek postępu sumuje harmonogram i prośby.
       </li>
       <li>
         <strong className="text-slate-800">Tydzień</strong> — plan pon.–pt., to samo kliknięcie{" "}
@@ -19,11 +25,12 @@ export function HowItWorksContent() {
         <kbd className="rounded border border-slate-200 bg-slate-50 px-1 font-mono text-[11px]">
           /
         </kbd>
-        , nowa prośba, menu ⋯) są zawsze u góry karty.
+        , nowa prośba, menu <HelpMenuGlyph className="align-[-2px]" />) są zawsze u góry karty.
       </li>
       <li>
         <strong className="text-slate-800">Harmonogram</strong> —{" "}
-        <strong>Przesuń</strong> przy zmianie daty u dostawcy; menu Więcej (⋮) — urlop i edycja.
+        <strong>Przesuń</strong> przy zmianie daty u dostawcy; menu Więcej (
+        <HelpMenuGlyph className="align-[-2px]" />) — urlop i edycja.
       </li>
       <li>
         Po każdej zmianie masz <strong>5 sekund na cofnięcie</strong>.

@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { LinkChevron } from "@/components/ui/UiGlyphs";
 import { useMemo, useState, useTransition, useCallback, useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { actionUpdateScheduleDates } from "@/app/actions/admin";
@@ -281,9 +282,10 @@ export function LocationScheduleClient({
                       ) : null}
                       <Link
                         href={cardHref(cardsBasePath, row.name)}
-                        className="mt-1 inline-block text-xs font-medium text-sky-700 hover:text-sky-900 hover:underline"
+                        className="mt-1 inline-flex items-center gap-1 text-xs font-medium text-sky-700 hover:text-sky-900 hover:underline"
                       >
-                        Karta dostawcy →
+                        Karta dostawcy
+                        <LinkChevron size={13} tone="sky" />
                       </Link>
                       {savedId === row.id ? (
                         <span className="ml-2 text-xs font-normal text-emerald-700">

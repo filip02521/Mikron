@@ -96,6 +96,29 @@ async function main() {
     ok.push(`EMAIL_OVERRIDE_TO (${env.EMAIL_OVERRIDE_TO}) — wszystkie maile na ten adres`);
   }
 
+  const appUrl = env.NEXT_PUBLIC_APP_URL?.trim();
+  if (!appUrl) {
+    issues.push("Brak NEXT_PUBLIC_APP_URL — linki resetu hasła i maile będą niepoprawne");
+  } else if (appUrl.includes("192.168.10.173")) {
+    issues.push(
+      "NEXT_PUBLIC_APP_URL wskazuje stary adres dev (192.168.10.173) — ustaw http://ontime.mikran.pl:3000"
+    );
+  } else if (appUrl.includes("localhost") && process.env.NODE_ENV === "production") {
+    issues.push("NEXT_PUBLIC_APP_URL=localhost w produkcji — ustaw http://ontime.mikran.pl:3000");
+  } else {
+    ok.push(`NEXT_PUBLIC_APP_URL (${appUrl})`);
+    process.env.NEXT_PUBLIC_APP_URL = appUrl;
+    process.env.APP_SERVER_HOST = env.APP_SERVER_HOST;
+    process.env.APP_PORT = env.APP_PORT;
+    process.env.APP_EXTRA_REDIRECT_URLS = env.APP_EXTRA_REDIRECT_URLS;
+    const { getSupabaseAuthRedirectUrls } = await import("../src/lib/env/app-config");
+    console.log("\nSupabase → Authentication → Redirect URLs (dopisz wszystkie):");
+    for (const redirect of getSupabaseAuthRedirectUrls()) {
+      console.log(`  ${redirect}`);
+    }
+    console.log(`  Site URL: ${appUrl}\n`);
+  }
+
   if (env.NEXT_PUBLIC_SUPABASE_URL && env.SUPABASE_SERVICE_ROLE_KEY) {
     try {
       const { createClient } = await import("@supabase/supabase-js");

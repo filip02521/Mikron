@@ -2,11 +2,14 @@ import {
   fetchSuppliersWithSchedules,
   fetchVerificationOrders,
 } from "@/lib/data/queries";
+import { runOrderMaintenanceBeforePageLoad } from "@/lib/services/deferred-order-maintenance";
 import { fetchSalesPeopleForPicker } from "@/lib/data/sales-people-admin";
 import { VerificationClient } from "@/components/verification/VerificationClient";
 import type { IndividualOrder } from "@/types/database";
 
 export default async function WeryfikacjaPage() {
+  await runOrderMaintenanceBeforePageLoad({ autoAssign: true });
+
   let orders: IndividualOrder[] = [];
   let suppliers: { id: string; name: string }[] = [];
   let salesPeople: { id: string; name: string }[] = [];

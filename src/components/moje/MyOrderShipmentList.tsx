@@ -59,6 +59,7 @@ export function MyOrderShipmentList({
   continuation = false,
   searchQuery,
   tourPreview = false,
+  compactActionLayout = false,
 }: {
   rows: MyOrderRow[];
   listKind: "zamowienie" | "informacja";
@@ -72,6 +73,7 @@ export function MyOrderShipmentList({
   continuation?: boolean;
   searchQuery?: string | null;
   tourPreview?: boolean;
+  compactActionLayout?: boolean;
 }) {
   const router = useRouter();
   const sortedRows = useMemo(() => sortMyOrderRows(rows), [rows]);
@@ -428,6 +430,7 @@ export function MyOrderShipmentList({
             }
             searchQuery={searchQuery}
             tourPreview={tourPreview}
+            compactActionLayout={compactActionLayout}
           />
         ))}
       </ul>

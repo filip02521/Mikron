@@ -42,6 +42,7 @@ import {
   dailyPanelQueueShellClass,
   type DailyPanelSubsectionTone,
 } from "@/components/summary/DailyPanelSubsectionBar";
+import { HelpMenuGlyph, PanelQueueStatDot } from "@/components/ui/UiGlyphs";
 
 export type UrgentQueuePart = "full" | "overdue" | "today";
 
@@ -53,13 +54,21 @@ const QUEUE_SECTION_ID: Record<Exclude<UrgentQueuePart, "full">, string> = {
 function SectionHelp() {
   return (
     <HelpPopover label="Pomoc" title="Zaległe i na dziś" shortLabel="Pomoc">
-      <p className="mb-2">
-        <strong className="font-medium text-slate-800">Zaległe</strong> — minął planowany termin.
-        <strong className="font-medium text-slate-800"> Na dziś</strong> — zamówienie na bieżący
-        dzień.
+      <p className="mb-2 inline-flex flex-wrap items-center gap-x-2 gap-y-1">
+        <span className="inline-flex items-center gap-1">
+          <PanelQueueStatDot tone="overdue" />
+          <strong className="font-medium text-slate-800">Zaległe</strong>
+        </span>
+        <span>— minął planowany termin.</span>
+        <span className="inline-flex items-center gap-1">
+          <PanelQueueStatDot tone="today" />
+          <strong className="font-medium text-slate-800">Na dziś</strong>
+        </span>
+        <span>— zamówienie na bieżący dzień.</span>
       </p>
       <p className="mb-2">
-        Na komputerze najedź na wiersz — pojawią się przyciski Zamówione / Przesuń / Więcej.
+        Na komputerze najedź na wiersz — pojawią się przyciski Zamówione / Przesuń / Więcej{" "}
+        <HelpMenuGlyph className="align-[-2px]" />.
         Na tablecie i telefonie są widoczne cały czas.
       </p>
       <p>

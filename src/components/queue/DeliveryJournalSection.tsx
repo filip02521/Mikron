@@ -26,6 +26,7 @@ import { Field, Input, Select, fieldControlClass } from "@/components/ui/Field";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { Toast } from "@/components/ui/Toast";
 import { cn } from "@/lib/cn";
+import { IconChevronLeft, IconChevronRight } from "@/components/icons/StrokeIcons";
 
 type SupplierOption = { id: string; name: string; subiektKhId: number | null };
 
@@ -586,7 +587,7 @@ export function DeliveryJournalSection({
                 title="Poprzedni dzień"
                 aria-label="Poprzedni dzień"
               >
-                ←
+                <IconChevronLeft size={18} strokeWidth={2.25} aria-hidden />
               </JournalDateStepButton>
               <Input
                 type="date"
@@ -605,7 +606,7 @@ export function DeliveryJournalSection({
                 title="Następny dzień"
                 aria-label="Następny dzień"
               >
-                →
+                <IconChevronRight size={18} strokeWidth={2.25} aria-hidden />
               </JournalDateStepButton>
             </div>
           </Field>

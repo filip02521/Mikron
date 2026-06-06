@@ -1,30 +1,30 @@
 import { createAdminClient, hasSupabaseConfig } from "@/lib/supabase/admin";
+import { filterIndividualOrdersForSalesMyOrders } from "@/lib/orders/informacja-stock-out-reorder";
+import type { IndividualOrder } from "@/types/database";
 
-type OrderRow = {
-  action_at: string;
-  ordered_at: string | null;
-  delivery_at: string | null;
-  status: string;
-  sales_acknowledged_at: string | null;
-};
+export type SalesActivityRow = Pick<
+  IndividualOrder,
+  | "action_at"
+  | "ordered_at"
+  | "delivery_at"
+  | "status"
+  | "sales_acknowledged_at"
+  | "request_kind"
+  | "informacja_stock_out_reorder"
+>;
 
-/**
- * Skrót stanu listy handlowca — zmiana = nowa prośba, status, dostawa lub potwierdzenie.
- */
-export async function computeSalesActivityVersion(
-  salesPersonId: string
-): Promise<string> {
-  if (!hasSupabaseConfig()) return "0";
+type ActivityRow = Pick<
+  SalesActivityRow,
+  "action_at" | "ordered_at" | "delivery_at" | "status" | "sales_acknowledged_at"
+>;
 
-  const supabase = createAdminClient();
-  const { data, error } = await supabase
-    .from("individual_orders")
-    .select("action_at, ordered_at, delivery_at, status, sales_acknowledged_at")
-    .eq("sales_person_id", salesPersonId);
+/** Wiersze widoczne dla handlowca — bez sygnałów stock_out (tylko zakupy). */
+export function filterSalesActivityRows(rows: SalesActivityRow[]): SalesActivityRow[] {
+  return filterIndividualOrdersForSalesMyOrders(rows);
+}
 
-  if (error) throw new Error(error.message);
-
-  const rows = (data ?? []) as OrderRow[];
+/** Ten sam skrót co computeSalesActivityVersion — z już pobranych wierszy. */
+export function computeSalesActivityVersionFromRows(rows: ActivityRow[]): string {
   let activeCount = 0;
   let maxAction = "";
   let maxOrdered = "";
@@ -45,4 +45,27 @@ export async function computeSalesActivityVersion(
     .join(",");
 
   return `${activeCount}|${maxAction}|${maxOrdered}|${maxDelivery}|${statusPart}`;
+}
+
+/**
+ * Skrót stanu listy handlowca — zmiana = nowa prośba, status, dostawa lub potwierdzenie.
+ */
+export async function computeSalesActivityVersion(
+  salesPersonId: string
+): Promise<string> {
+  if (!hasSupabaseConfig()) return "0";
+
+  const supabase = createAdminClient();
+  const { data, error } = await supabase
+    .from("individual_orders")
+    .select(
+      "action_at, ordered_at, delivery_at, status, sales_acknowledged_at, request_kind, informacja_stock_out_reorder"
+    )
+    .eq("sales_person_id", salesPersonId);
+
+  if (error) throw new Error(error.message);
+
+  return computeSalesActivityVersionFromRows(
+    filterSalesActivityRows((data ?? []) as SalesActivityRow[])
+  );
 }

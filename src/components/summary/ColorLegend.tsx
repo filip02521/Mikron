@@ -1,4 +1,5 @@
 import { SUMMARY_COLORS } from "@/types/database";
+import { GuideIcon } from "@/components/ui/HelpPopover";
 
 export const LEGEND_ITEMS = [
   { label: "Po terminie", color: SUMMARY_COLORS.expired },
@@ -31,8 +32,8 @@ export function ColorLegend({ className = "" }: { className?: string }) {
     <details className={`group rounded-md border border-slate-200/90 bg-white ${className}`}>
       <summary className="cursor-pointer list-none px-3 py-2 text-xs font-semibold text-slate-600 marker:content-none [&::-webkit-details-marker]:hidden">
         <span className="inline-flex items-center gap-1.5">
-          <span className="flex h-5 w-5 items-center justify-center rounded-full border border-slate-200 text-[10px] font-bold text-slate-500">
-            ?
+          <span className="flex h-5 w-5 items-center justify-center rounded-full border border-slate-200 bg-slate-50 text-slate-500">
+            <GuideIcon />
           </span>
           Legenda kolorów
         </span>

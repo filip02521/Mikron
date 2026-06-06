@@ -29,9 +29,12 @@ export function assertProcurementEntryComplete(
       throw new Error(`${prefix}podaj ilość (liczba sztuk, np. 1).`);
     }
   }
-  if (kind === "informacja" && draft.informacjaQueueViaDailyPanel) {
+  if (
+    kind === "informacja" &&
+    (draft.informacjaQueueViaDailyPanel || draft.informacjaStockOutReorder)
+  ) {
     if (!draft.supplierId?.trim()) {
-      throw new Error(`${prefix}wybierz dostawcę — informacja w kolejce Dziś wymaga dostawcy.`);
+      throw new Error(`${prefix}wybierz dostawcę — ta ścieżka wymaga dostawcy w panelu Dziś.`);
     }
   }
   if (assessRequestCompleteness({ ...draft, requestKind: kind }) !== "complete") {

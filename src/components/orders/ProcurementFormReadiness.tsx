@@ -60,6 +60,7 @@ export function ProcurementFormReadiness({
   lines,
   requestKind,
   informacjaViaDailyPanel = false,
+  informacjaStockOutReorder = false,
   formMessage,
   resolvingSupplier = false,
   subiektFeedbacks = [],
@@ -70,6 +71,7 @@ export function ProcurementFormReadiness({
   lines: ProsbaReadinessLine[];
   requestKind: IndividualRequestKind;
   informacjaViaDailyPanel?: boolean;
+  informacjaStockOutReorder?: boolean;
   formMessage?: { text: string; tone: "error" | "warning" | "success" } | null;
   resolvingSupplier?: boolean;
   subiektFeedbacks?: Array<SubiektFeedback | null | undefined>;
@@ -81,6 +83,7 @@ export function ProcurementFormReadiness({
     lines,
     requestKind,
     informacjaViaDailyPanel,
+    informacjaStockOutReorder,
   });
 
   const actionAlerts = dedupeFeedbacks(

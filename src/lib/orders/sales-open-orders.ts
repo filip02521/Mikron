@@ -1,10 +1,12 @@
 import { presentMyOrders } from "@/lib/orders/my-order-presenter";
+import { isInformacjaStockOutHiddenFromSales } from "@/lib/orders/informacja-stock-out-reorder";
 import type { DeliveryStats, IndividualOrder } from "@/types/database";
 
 /**
  * Prośba widoczna dla handlowca (jak w „Moje zamówienia”) — liczy się przy „Twoich dostawcach”.
  */
 export function isOpenSalesSupplierOrder(order: IndividualOrder): boolean {
+  if (isInformacjaStockOutHiddenFromSales(order)) return false;
   if (!order.supplier_id) return false;
   if (order.sales_acknowledged_at) return false;
   if (order.status === "Anulowane") return false;

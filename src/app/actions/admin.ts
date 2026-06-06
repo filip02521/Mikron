@@ -38,11 +38,16 @@ import {
   updateIndividualRequestGroup,
 } from "@/lib/services/orders";
 import type { IndividualRequestEditPayload } from "@/lib/orders/individual-request-edit";
+import type { InformacjaFlowPath } from "@/lib/orders/informacja-stock-out-reorder";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { intervalWeeksForStorage, parseInterval } from "@/lib/orders/dates";
 import { resolveOrderOnDemandForSave } from "@/lib/orders/supplier-on-demand";
 import { WAREHOUSE_SHELF_DEFAULT } from "@/lib/orders/warehouse-inventory";
 import { validateSupplierContactFields } from "@/lib/orders/validate-supplier-contact";
+import {
+  parseWarehouseCarrier,
+  parseWarehouseShipmentForm,
+} from "@/lib/warehouse/delivery-carriers";
 import type { IndividualRequestKind, SupplierLocation, StatsMode } from "@/types/database";
 import {
   clampOptionalText,
@@ -71,6 +76,7 @@ import {
 } from "@/lib/services/daily-panel-undo";
 
 function revalidateAll() {
+  revalidatePath("/", "layout");
   revalidatePath("/");
   revalidatePath("/podsumowanie");
   revalidatePath("/kolejka");
@@ -309,8 +315,12 @@ export async function actionAddIndividualOrders(
     quantity?: string;
     requestKind?: IndividualRequestKind;
     clientName?: string;
+    clientKhId?: number | null;
     subiektTwId?: number | null;
+    sourceZkWatchId?: string | null;
+    sourceZkNumber?: string | null;
     informacjaQueueViaDailyPanel?: boolean;
+    informacjaStockOutReorder?: boolean;
   }>
 ) {
   const user = await getSessionUser();
@@ -363,6 +373,9 @@ export async function actionAddIndividualOrders(
     revalidatePath("/moje");
     revalidatePath("/prosba");
     revalidatePath("/podsumowanie");
+    revalidatePath("/notatnik");
+    revalidatePath("/weryfikacja");
+    revalidatePath("/", "layout");
   } else {
     revalidateAll();
   }
@@ -390,6 +403,7 @@ export async function actionCompleteVerification(
     quantity?: string;
     requestKind?: IndividualRequestKind;
     subiektTwId?: number | null;
+    informacjaPath?: InformacjaFlowPath;
   }
 ) {
   await requireOperations();
@@ -505,6 +519,7 @@ export async function actionMarkProcurementRequestsSeen(
     );
   if (updErr) throw new Error(updErr.message);
 
+  revalidateAll();
   return { success: true };
 }
 
@@ -714,8 +729,12 @@ export async function actionUpsertSupplier(form: {
       interval_raw: intervalRaw,
       extra_info: extraInfo,
     }),
-    default_delivery_carrier: form.default_delivery_carrier || null,
-    default_delivery_shipment_form: form.default_delivery_shipment_form || null,
+    default_delivery_carrier: form.default_delivery_carrier?.trim()
+      ? parseWarehouseCarrier(form.default_delivery_carrier)
+      : null,
+    default_delivery_shipment_form: form.default_delivery_shipment_form?.trim()
+      ? parseWarehouseShipmentForm(form.default_delivery_shipment_form)
+      : null,
     is_active: form.is_active,
     updated_at: new Date().toISOString(),
   };
@@ -1039,7 +1058,9 @@ export async function actionGetSystemStatus() {
 
   if (isProductionRuntime()) {
     if (!isAppUrlProductionReady()) {
-      issues.push("NEXT_PUBLIC_APP_URL musi wskazywać produkcyjną domenę https://");
+      issues.push(
+        "NEXT_PUBLIC_APP_URL musi być https:// lub wewnętrzna domena HTTP (np. ontime.mikran.pl)"
+      );
     }
     if (!getCronSecret()) {
       issues.push("Ustaw silny CRON_SECRET (nie change-me-in-production)");

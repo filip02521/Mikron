@@ -1,5 +1,6 @@
 "use client";
 
+import { FlowChevron } from "@/components/ui/UiGlyphs";
 import { cn } from "@/lib/cn";
 import { panelQueueStepsShellClass } from "@/lib/ui/ontime-theme";
 
@@ -66,7 +67,7 @@ function QueueStepChip({
   );
 }
 
-/** Skrócona nawigacja po kolejce Dziś (zaległe → prośby → harmonogram). */
+/** Skrócona nawigacja po kolejce Dziś (zaległe, prośby, harmonogram). */
 export function DailyPanelQueueSteps({
   overdueCount,
   forSomeoneGroupCount,
@@ -98,9 +99,7 @@ export function DailyPanelQueueSteps({
       {steps.map((item, index) => (
         <span key={item.kind} className="inline-flex items-center gap-2">
           {index > 0 ? (
-            <span className="text-slate-300" aria-hidden>
-              →
-            </span>
+            <FlowChevron className="text-indigo-200" />
           ) : null}
           <QueueStepChip step={index + 1} kind={item.kind} count={item.count} />
         </span>

@@ -21,8 +21,23 @@ import { IconClipboardList, IconClipboardPen } from "@/components/icons/StrokeIc
 import { VerificationHelp } from "@/components/verification/VerificationHelp";
 import { formatPlDate } from "@/lib/display-labels";
 import { verificationDraftMissingLabels, verificationQueueMissingLabels } from "@/lib/orders/verification-gaps";
+import {
+  resolveVerificationInformacjaFlags,
+  verificationInformacjaUiForDraft,
+  verificationInformacjaUiForOrder,
+} from "@/lib/orders/verification-informacja-ui";
+import {
+  informacjaFlowPathFromOrder,
+  type InformacjaFlowPath,
+} from "@/lib/orders/informacja-stock-out-reorder";
+import {
+  VerificationInformacjaPathPanel,
+  VerificationPathBadge,
+} from "@/components/verification/VerificationInformacjaPathPanel";
 import { RequestFormStatusPanel } from "@/components/orders/RequestFormStatusPanel";
 import { ProsbaFormSection } from "@/components/orders/ProsbaFormSection";
+import { MyOrderAssignedClient } from "@/components/moje/MyOrderAssignedClient";
+import { normalizeSalesClientName } from "@/lib/orders/sales-client-label";
 import { RequestKindToggle } from "@/components/orders/RequestKindToggle";
 import { ActionLoadingOverlay } from "@/components/ui/ActionLoadingOverlay";
 import { SupplierPickerField } from "@/components/orders/SupplierPickerField";
@@ -40,7 +55,7 @@ import {
 } from "@/lib/orders/procurement-prosba-keyboard";
 
 const VERIFICATION_INTRO =
-  "Niekompletne prośby handlowców — uzupełnij dostawcę i produkt. Po zatwierdzeniu trafiają do panelu dziennego jako „Nowe”.";
+  "Niekompletne prośby handlowców — uzupełnij dostawcę i produkt. Po zatwierdzeniu trafiają do panelu dziennego; ścieżka informacji (dostępność / brak na stanie) jest zachowana.";
 
 function orderToForm(o: IndividualOrder) {
   return {
@@ -52,6 +67,10 @@ function orderToForm(o: IndividualOrder) {
     quantity: o.quantity !== "-" ? o.quantity : "",
     requestKind: (o.request_kind ?? "zamowienie") as IndividualRequestKind,
     subiektTwId: o.subiekt_tw_id ?? null,
+    informacjaPath:
+      o.request_kind === "informacja"
+        ? (informacjaFlowPathFromOrder(o) ?? "direct")
+        : null,
   };
 }
 
@@ -117,6 +136,7 @@ export function VerificationWorkspace({
           quantity: "",
           requestKind: "zamowienie" as IndividualRequestKind,
           subiektTwId: null as number | null,
+          informacjaPath: null as InformacjaFlowPath | null,
         }
   );
 
@@ -168,6 +188,18 @@ export function VerificationWorkspace({
     if (o) applyOrder(o);
   }, [activeId, orders, applyOrder]);
 
+  const informacjaFlags =
+    form.requestKind === "informacja" && active
+      ? resolveVerificationInformacjaFlags({
+          requestKind: "informacja",
+          informacjaPath: form.informacjaPath,
+          priorOrder: active,
+        })
+      : {
+          informacjaQueueViaDailyPanel: false,
+          informacjaStockOutReorder: false,
+        };
+
   const draft = {
     supplierId: form.supplierId,
     symbol: form.symbol,
@@ -175,8 +207,15 @@ export function VerificationWorkspace({
     product: form.product,
     quantity: form.quantity,
     requestKind: form.requestKind,
+    ...informacjaFlags,
   };
   const assessment = assessRequestCompleteness(draft);
+
+  const informacjaUi = verificationInformacjaUiForDraft({
+    requestKind: form.requestKind,
+    informacjaPath: form.informacjaPath,
+    sourceOrder: active,
+  });
 
   const lineDraft = {
     id: active?.id ?? "verification-line",
@@ -226,9 +265,15 @@ export function VerificationWorkspace({
           quantity: form.requestKind === "informacja" ? undefined : form.quantity,
           requestKind: form.requestKind,
           subiektTwId: form.subiektTwId,
+          informacjaPath:
+            form.requestKind === "informacja" && form.informacjaPath
+              ? form.informacjaPath
+              : undefined,
         });
         setToast({
-          text: "Uzupełniono — prośba trafiła do panelu dziennego jako „Nowe”.",
+          text:
+            informacjaUi?.completeSuccessMessage ??
+            "Uzupełniono — prośba trafiła do panelu dziennego jako „Nowe”.",
           tone: "success",
         });
         router.refresh();
@@ -254,6 +299,11 @@ export function VerificationWorkspace({
             ...f,
             requestKind: kind,
             quantity: kind === "informacja" ? "" : f.quantity,
+            informacjaPath:
+              kind === "informacja"
+                ? (f.informacjaPath ??
+                  (active ? (informacjaFlowPathFromOrder(active) ?? "direct") : "direct"))
+                : null,
           })),
       });
     };
@@ -318,8 +368,9 @@ export function VerificationWorkspace({
             {orders.map((o) => {
               const missing =
                 o.id === activeId
-                  ? verificationDraftMissingLabels(form)
+                  ? verificationDraftMissingLabels(draft)
                   : verificationQueueMissingLabels(o);
+              const pathUi = verificationInformacjaUiForOrder(o);
               const supplierLabel =
                 o.id === activeId && form.supplierId
                   ? (suppliers.find((s) => s.id === form.supplierId)?.name ??
@@ -333,19 +384,30 @@ export function VerificationWorkspace({
                     onClick={() => setActiveId(o.id)}
                     className={`w-full px-4 py-3 text-left transition hover:bg-amber-50/80 ${
                       activeId === o.id ? "bg-amber-50" : ""
-                    }`}
+                    } ${pathUi?.path === "stock_out" ? "border-l-4 border-l-amber-400" : ""}`}
                   >
                     <div className="flex items-start justify-between gap-2">
                       <div className="min-w-0">
-                        <p className="font-medium text-slate-900">
-                          {o.sales_person?.name ?? "Handlowiec"}
-                        </p>
+                        <div className="flex flex-wrap items-center gap-1.5">
+                          <p className="font-medium text-slate-900">
+                            {o.sales_person?.name ?? "Handlowiec"}
+                          </p>
+                          {pathUi ? (
+                            <VerificationPathBadge ui={pathUi} className="text-[10px]" />
+                          ) : null}
+                        </div>
                         <p className="truncate text-sm text-slate-600">
                           {supplierLabel} · {o.products}
                         </p>
+                        {normalizeSalesClientName(o.sales_client_name) ? (
+                          <MyOrderAssignedClient
+                            name={normalizeSalesClientName(o.sales_client_name)!}
+                            className="mt-1"
+                          />
+                        ) : null}
                         <p className="mt-1 text-xs text-slate-500">
                           {formatPlDate(o.action_at.slice(0, 10))}
-                          {o.request_kind === "informacja" ? " · informacja" : ""}
+                          {pathUi ? ` · ${pathUi.queueHint}` : ""}
                           {o.subiekt_tw_id ? " · Subiekt" : ""}
                         </p>
                         {missing.length ? (
@@ -404,15 +466,48 @@ export function VerificationWorkspace({
               >
                 <RequestKindToggle
                   value={form.requestKind}
-                  onChange={(requestKind) =>
+                  onChange={(requestKind) => {
+                    if (
+                      requestKind === "zamowienie" &&
+                      active &&
+                      verificationInformacjaUiForOrder(active)?.pathLocked
+                    ) {
+                      const label =
+                        verificationInformacjaUiForOrder(active)?.badgeLabel ??
+                        "informacja";
+                      if (
+                        !confirm(
+                          `Handlowiec zgłosił „${label}”. Zmiana na zamówienie u dostawcy usunie tę ścieżkę. Kontynuować?`
+                        )
+                      ) {
+                        return;
+                      }
+                    }
                     setForm((f) => ({
                       ...f,
                       requestKind,
                       quantity: requestKind === "informacja" ? "" : f.quantity,
-                    }))
-                  }
+                      informacjaPath:
+                        requestKind === "informacja"
+                          ? (f.informacjaPath ??
+                            (active
+                              ? (informacjaFlowPathFromOrder(active) ?? "direct")
+                              : "direct"))
+                          : null,
+                    }));
+                  }}
                 />
               </ProsbaFormSection>
+
+              {form.requestKind === "informacja" && informacjaUi && form.informacjaPath ? (
+                <VerificationInformacjaPathPanel
+                  ui={informacjaUi}
+                  path={form.informacjaPath}
+                  onPathChange={(informacjaPath) =>
+                    setForm((f) => ({ ...f, informacjaPath }))
+                  }
+                />
+              ) : null}
 
               <ProsbaFormSection
                 title="Dla kogo i u kogo?"
@@ -448,16 +543,23 @@ export function VerificationWorkspace({
                     </Select>
                   </Field>
                 </div>
+                {normalizeSalesClientName(active.sales_client_name) ? (
+                  <MyOrderAssignedClient
+                    name={normalizeSalesClientName(active.sales_client_name)!}
+                    className="mt-3"
+                  />
+                ) : null}
               </ProsbaFormSection>
 
               <ProsbaFormSection
                 title="Produkt"
                 hint={
                   form.subiektTwId
-                    ? "Towar powiązany z Subiektem — możesz wyszukać inny wpisując symbol, kod Mikran lub nazwę."
+                    ? "Towar z Subiekta — wyszukaj inną pozycję: nazwa lub symbol w dużym polu, kod Mikran obok."
                     : form.requestKind === "informacja"
-                      ? "Wystarczy symbol, kod Mikran lub opis — bez ilości."
-                      : "Podaj symbol, kod Mikran lub opis oraz ilość."
+                      ? (informacjaUi?.productSectionHint ??
+                        "Wystarczy nazwa lub symbol produktu — bez ilości.")
+                      : "Podaj nazwę lub symbol oraz ilość."
                 }
               >
                 <div className="rounded-md border border-slate-200 bg-white p-4 shadow-sm">

@@ -2,6 +2,8 @@
 
 import Link from "next/link";
 import { Button } from "@/components/ui/Button";
+import { IconClipboardPen } from "@/components/icons/StrokeIcons";
+import { LinkChevron } from "@/components/ui/UiGlyphs";
 
 export function DailyPanelVerificationBanner({
   count,
@@ -19,22 +21,28 @@ export function DailyPanelVerificationBanner({
 
   return (
     <div
-      className="flex flex-wrap items-center justify-between gap-2 rounded-md border border-slate-200/90 bg-white px-3 py-2.5 sm:px-4"
+      className="flex flex-wrap items-center justify-between gap-3 rounded-md border border-amber-200/90 bg-amber-50/60 px-3 py-2.5 sm:px-4"
       role="status"
     >
-      <p className="min-w-0 text-sm text-slate-800">
-        <span className="font-semibold">{label}</span>
-        <span className="text-slate-500"> — brak danych blokuje kolejkę prośb.</span>
-      </p>
+      <div className="flex min-w-0 items-start gap-2.5">
+        <span className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-amber-100 text-amber-800">
+          <IconClipboardPen size={17} strokeWidth={2.25} aria-hidden />
+        </span>
+        <p className="min-w-0 text-sm text-slate-800">
+          <span className="font-semibold text-amber-950">{label}</span>
+          <span className="text-slate-600"> — brak danych blokuje kolejkę prośb.</span>
+        </p>
+      </div>
       <div className="flex shrink-0 flex-wrap gap-1.5">
         <Button variant="primary" size="sm" className="h-8" onClick={onOpenModal}>
           Uzupełnij
         </Button>
         <Link
           href="/weryfikacja"
-          className="inline-flex h-8 items-center rounded-md border border-slate-200 bg-white px-2.5 text-xs font-medium text-slate-700 transition hover:bg-slate-50"
+          className="inline-flex h-8 items-center gap-1 rounded-md border border-amber-200/90 bg-white px-2.5 text-xs font-medium text-amber-950 transition hover:bg-amber-50"
         >
           Pełny widok
+          <LinkChevron size={13} tone="muted" />
         </Link>
       </div>
     </div>

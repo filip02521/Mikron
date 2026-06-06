@@ -20,6 +20,7 @@ export function DailyTodayView({
   verificationCount,
   hasTodayWork,
   hasForSomeone,
+  hasStockOut,
   urgentOverdue,
   urgentToday,
   standardUrgentAll,
@@ -46,11 +47,13 @@ export function DailyTodayView({
   verificationCount: number;
   hasTodayWork: boolean;
   hasForSomeone: boolean;
+  hasStockOut: boolean;
   urgentOverdue: SummaryStandardItem[];
   urgentToday: SummaryStandardItem[];
   standardUrgentAll: SummaryStandardItem[];
   queueStepBySection: {
     overdue?: number;
+    stockOut?: number;
     prosby?: number;
     today?: number;
   };
@@ -121,6 +124,23 @@ export function DailyTodayView({
                   />
                 ) : null}
 
+                {hasStockOut ? (
+                  <ForSomeoneRequests
+                    embedded
+                    variant="stockOut"
+                    queueStep={queueStepBySection.stockOut}
+                    groups={workspace.stockOutLeft}
+                    isScopePending={isScopePending}
+                    run={run}
+                    onOpenSupplier={onOpenSupplier}
+                    statsBySupplierId={statsBySupplierId}
+                    supplierStatsMode={supplierStatsMode}
+                    suppliers={suppliers}
+                    salesPeople={salesPeople}
+                    sectionId="kolejka-brak-na-stanie"
+                  />
+                ) : null}
+
                 {hasForSomeone ? (
                   <ForSomeoneRequests
                     embedded
@@ -163,6 +183,7 @@ export function DailyTodayView({
         ) : (
           <>
             <EmptyState
+              brandAccent
               title="Nic pilnego na dziś"
               description="Brak prośb i harmonogramu na dziś. Sprawdź zakładkę Tydzień lub terminy w kalendarzu."
               icon={<DailySectionIcon kind="dzis" size={28} />}

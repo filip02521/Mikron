@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   clientNamesSummary,
+  clientNamesSummaryFromLines,
   formatDeliveryEmailLine,
   formatInformacjaEmailLine,
   normalizeSalesClientName,
@@ -50,6 +51,16 @@ describe("sales-client-label", () => {
         { sales_client_name: "B" },
       ])
     ).toBe("2 różnych klientów");
+  });
+
+  it("clientNamesSummaryFromLines", () => {
+    expect(
+      clientNamesSummaryFromLines([
+        { clientName: "A" },
+        { clientName: "B" },
+      ])
+    ).toBe("2 różnych klientów");
+    expect(clientNamesSummaryFromLines([{ clientName: "Klinika" }])).toBe("Klinika");
   });
 
   it("formatInformacjaEmailLine", () => {

@@ -37,7 +37,8 @@ describe("sales onboarding steps", () => {
   it("prosba step describes form flow in screen order", () => {
     const prosba = getSalesOnboardingSteps("sales").find((s) => s.id === "prosba");
     expect(prosba?.bullets[0]).toMatch(/Na początku wybierasz rodzaj/i);
-    expect(prosba?.bullets[1]).toMatch(/Potem dodajesz produkty/i);
+    expect(prosba?.bullets[1]).toMatch(/Przy informacji wybierasz ścieżkę/i);
+    expect(prosba?.bullets[2]).toMatch(/jednym polu/i);
   });
 
   it("notatnik step describes page top-to-bottom", () => {

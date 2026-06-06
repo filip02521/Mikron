@@ -9,6 +9,7 @@ import {
   type MyOrderRow,
 } from "@/lib/orders/my-order-presenter";
 import { groupOrdersForMyView } from "@/lib/orders/my-order-groups";
+import { filterIndividualOrdersForSalesMyOrders } from "@/lib/orders/informacja-stock-out-reorder";
 import {
   warsawDateKeyDaysAgo,
   warsawDateKeyFromIso,
@@ -121,7 +122,10 @@ export function presentArchivedMyOrders(
     statsRows.map((s) => [s.supplier_id, s])
   );
 
-  const acknowledged = filterAcknowledgedSince(orders, acknowledgedSince).sort(
+  const acknowledged = filterAcknowledgedSince(
+    filterIndividualOrdersForSalesMyOrders(orders),
+    acknowledgedSince
+  ).sort(
     (a, b) =>
       (archiveActivityAt(b) ?? "").localeCompare(archiveActivityAt(a) ?? "")
   );

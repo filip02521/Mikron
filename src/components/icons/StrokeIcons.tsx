@@ -322,6 +322,82 @@ export function IconChevronDown({
   );
 }
 
+export function IconChevronRight(props: StrokeIconProps) {
+  return (
+    <Svg {...props}>
+      <path d="M9 6l6 6-6 6" />
+    </Svg>
+  );
+}
+
+export function IconChevronLeft(props: StrokeIconProps) {
+  return (
+    <Svg {...props}>
+      <path d="M15 6l-6 6 6 6" />
+    </Svg>
+  );
+}
+
+/** Przypięta notatka / priorytet (pinezka) */
+export function IconPin(props: StrokeIconProps) {
+  return (
+    <Svg {...props}>
+      <path d="M12 17v5" />
+      <path d="M5 17h14v-1.76a2 2 0 0 0-1.11-1.79l-1.78-.9A2 2 0 0 1 15 10.76V6a1 1 0 0 0-1-1h-4a1 1 0 0 0-1 1v4.76a2 2 0 0 1-1.11 1.79l-1.78.9A2 2 0 0 0 5 15.24Z" />
+    </Svg>
+  );
+}
+
+/** Lupa wyszukiwania */
+export function IconSearch(props: StrokeIconProps) {
+  return (
+    <Svg {...props}>
+      <circle cx="11" cy="11" r="7" />
+      <path d="M20 20l-3.5-3.5" />
+    </Svg>
+  );
+}
+
+/** Pomoc / instrukcja (okrąg z „?”) */
+export function IconHelpCircle(props: StrokeIconProps) {
+  return (
+    <Svg {...props}>
+      <circle cx="12" cy="12" r="9" />
+      <path d="M9.5 9.5a2.5 2.5 0 114.5 1.5c0 2-2.5 2-2.5 3.5" />
+      <path d="M12 17h.01" />
+    </Svg>
+  );
+}
+
+/** Klawiatura — skróty klawiszowe */
+export function IconKeyboard(props: StrokeIconProps) {
+  return (
+    <Svg {...props} viewBox="0 0 24 24">
+      <rect x="3" y="6" width="18" height="12" rx="2" />
+      <path d="M7 10h.01M11 10h.01M15 10h.01M19 10h.01M7 14h10" />
+    </Svg>
+  );
+}
+
+/** Legenda kolorów — cztery próbki (terminy / harmonogram). */
+export function IconColorLegendSample({ className, size = 14 }: StrokeIconProps) {
+  return (
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 14 14"
+      fill="none"
+      className={cn("shrink-0", className)}
+      aria-hidden
+    >
+      <rect x="1" y="1" width="5" height="5" rx="1" fill="#eff6ff" stroke="#94a3b8" />
+      <rect x="8" y="1" width="5" height="5" rx="1" fill="#fffde7" stroke="#94a3b8" />
+      <rect x="1" y="8" width="5" height="5" rx="1" fill="#ffebee" stroke="#94a3b8" />
+      <rect x="8" y="8" width="5" height="5" rx="1" fill="#e8f5e9" stroke="#94a3b8" />
+    </svg>
+  );
+}
+
 export type MojeSectionIconKind = "action" | "zamowienie" | "informacja" | "archive";
 
 export type PlanSectionIconKind = "calendar" | "prosby" | "search";

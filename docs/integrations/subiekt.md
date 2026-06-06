@@ -103,7 +103,7 @@ Przy składaniu i uzupełnianiu próśb (gdy `SUBIEKT_API_BASE_URL` jest ustawio
 
 | Pole | Zachowanie |
 |------|------------|
-| **Symbol lub nazwa** | Wpisz ≥2 znaki w polu symbol **lub** produkt → lista z Subiekta; wybór uzupełnia **symbol**, **produkt** i **ilość** (zamówienie: domyślnie 1; informacja: bez ilości). |
+| **Produkt (symbol lub nazwa)** | Wpisz ≥2 znaki w scalonym polu produktu → równoległe wyszukiwanie po symbolu i nazwie w Subiekcie; wybór uzupełnia **symbol**, **produkt** i **ilość** (zamówienie: domyślnie 1; informacja: bez ilości). Kod Mikran — osobne pole obok. |
 | **Dostawca** | Wyszukiwarka z listy aplikacji (natychmiast, bez czekania na Subiekt przy każdym znaku). Opcjonalnie — można wysłać prośbę bez dostawcy, jeśli wybrano towar z Subiekta. |
 | **Dostawca z ZD (prośba handlowca)** | Po **wysłaniu** prośby serwer w tle szuka dostawcy w ZD (`supplier_resolve_pending`). Sukces → status **Nowe** (panel dzienny); brak dopasowania → **Weryfikacja**. Handlowiec nie czeka przy wyborze towaru. |
 

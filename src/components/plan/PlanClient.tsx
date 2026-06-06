@@ -11,6 +11,7 @@ import { DataTable, TableScroll } from "@/components/ui/DataTable";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { Badge } from "@/components/ui/Badge";
 import Link from "next/link";
+import { LinkChevron } from "@/components/ui/UiGlyphs";
 import {
   buildSupplierPlanInsight,
   matchSuppliersByQuery,
@@ -263,10 +264,14 @@ function SupplierPlanSearchCard({
           {openOrderCount && openOrderCount > 0 ? (
             <Link
               href="/moje"
-              className="mt-1 inline-block text-xs font-semibold text-indigo-700 underline"
+              className="mt-1 inline-flex items-center gap-1 text-xs font-semibold text-indigo-700 underline"
             >
-              Masz {openOrderCount}{" "}
-              {openOrderCount === 1 ? "otwartą prośbę" : "otwarte prośby"} → Moje zamówienia
+              <span>
+                Masz {openOrderCount}{" "}
+                {openOrderCount === 1 ? "otwartą prośbę" : "otwarte prośby"}
+              </span>
+              <LinkChevron size={13} tone="brand" />
+              <span>Moje zamówienia</span>
             </Link>
           ) : null}
         </div>

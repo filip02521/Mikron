@@ -24,6 +24,15 @@ import { toAppSupplierRefs } from "@/lib/subiekt/match-supplier";
 import { buildProcurementFormReadiness } from "@/lib/orders/procurement-form-readiness";
 import { InformacjaFlowPicker } from "@/components/orders/InformacjaFlowPicker";
 import {
+  DEFAULT_INFORMACJA_FLOW_PATH,
+  INFORMACJA_FLOW_PICKER_SECTION_DAILY,
+  informacjaProductsFormHint,
+} from "@/lib/orders/informacja-flow-ui";
+import {
+  flagsFromInformacjaFlowPath,
+  type InformacjaFlowPath,
+} from "@/lib/orders/informacja-stock-out-reorder";
+import {
   handleProcurementProsbaKeyboardEvent,
   PROCUREMENT_PROSBA_KEYBOARD_HINTS,
 } from "@/lib/orders/procurement-prosba-keyboard";
@@ -44,7 +53,9 @@ export function QuickOrderModal({
   const [pending, start] = useTransition();
   const [pendingMessage, setPendingMessage] = useState<string | null>(null);
   const [requestKind, setRequestKind] = useState<IndividualRequestKind>("zamowienie");
-  const [informacjaViaDailyPanel, setInformacjaViaDailyPanel] = useState(false);
+  const [informacjaPath, setInformacjaPath] = useState<InformacjaFlowPath>(
+    DEFAULT_INFORMACJA_FLOW_PATH
+  );
   const [supplierId, setSupplierId] = useState("");
   const [salesPersonId, setSalesPersonId] = useState("");
   const [lines, setLines] = useState(initialProductLines);
@@ -79,6 +90,17 @@ export function QuickOrderModal({
     [lines, supplierId]
   );
 
+  const informacjaFlags = useMemo(
+    () =>
+      requestKind === "informacja"
+        ? flagsFromInformacjaFlowPath(informacjaPath)
+        : {
+            informacjaQueueViaDailyPanel: false,
+            informacjaStockOutReorder: false,
+          },
+    [requestKind, informacjaPath]
+  );
+
   const readinessView = useMemo(
     () =>
       buildProcurementFormReadiness({
@@ -86,9 +108,9 @@ export function QuickOrderModal({
         supplierId,
         lines: readinessLines,
         requestKind,
-        informacjaViaDailyPanel,
+        ...informacjaFlags,
       }),
-    [salesPersonId, supplierId, readinessLines, requestKind, informacjaViaDailyPanel]
+    [salesPersonId, supplierId, readinessLines, requestKind, informacjaFlags]
   );
 
   const submitLabel =
@@ -107,7 +129,7 @@ export function QuickOrderModal({
     setProductLineFeedback(null);
     setConfigFeedback(null);
     setResolvingSupplier(false);
-    setInformacjaViaDailyPanel(false);
+    setInformacjaPath(DEFAULT_INFORMACJA_FLOW_PATH);
   };
 
   const submitRef = useRef<() => void>(() => {});
@@ -132,8 +154,8 @@ export function QuickOrderModal({
         quantity: requestKind === "informacja" ? undefined : l.quantity,
         requestKind,
         subiektTwId: l.subiektTwId,
-        informacjaQueueViaDailyPanel:
-          requestKind === "informacja" && informacjaViaDailyPanel,
+        informacjaQueueViaDailyPanel: informacjaFlags.informacjaQueueViaDailyPanel,
+        informacjaStockOutReorder: informacjaFlags.informacjaStockOutReorder,
       }));
     if (!entries.length) {
       setValidationAttempted(true);
@@ -164,8 +186,8 @@ export function QuickOrderModal({
             quantity: e.quantity,
             requestKind,
             subiektTwId: e.subiektTwId,
-            informacjaQueueViaDailyPanel:
-              requestKind === "informacja" && informacjaViaDailyPanel,
+            informacjaQueueViaDailyPanel: informacjaFlags.informacjaQueueViaDailyPanel,
+            informacjaStockOutReorder: informacjaFlags.informacjaStockOutReorder,
           },
           entries.length > 1 ? `Pozycja ${lineNo}` : undefined
         );
@@ -185,9 +207,11 @@ export function QuickOrderModal({
         setFormNotice({
           text:
             requestKind === "informacja"
-              ? informacjaViaDailyPanel
-                ? `Dodano ${r.count} prośb(y) informacyjn(e) — najpierw kolejka Dziś (Główne/Uzupełniające).`
-                : `Dodano ${r.count} prośb(y) informacyjn(e) — od razu do kolejki magazynu.`
+              ? informacjaFlags.informacjaStockOutReorder
+                ? `Dodano ${r.count} sygnał(ów) „brak na stanie” — w panelu Dziś (Prośby handlowców).`
+                : informacjaFlags.informacjaQueueViaDailyPanel
+                  ? `Dodano ${r.count} prośb(y) informacyjn(e) — najpierw kolejka Dziś (Główne/Uzupełniające).`
+                  : `Dodano ${r.count} prośb(y) informacyjn(e) — od razu do kolejki magazynu.`
               : `Dodano ${r.count} pozycji do panelu dziennego.`,
           tone: "success",
         });
@@ -217,7 +241,8 @@ export function QuickOrderModal({
         onSubmit: () => submitRef.current(),
         onSetRequestKind: (kind) => {
           setRequestKind(kind);
-          if (kind !== "informacja") setInformacjaViaDailyPanel(false);
+          if (kind === "informacja") setInformacjaPath(DEFAULT_INFORMACJA_FLOW_PATH);
+          else setInformacjaPath("direct");
         },
         onAddProductLine: () => addLineRef.current(),
       });
@@ -263,17 +288,24 @@ export function QuickOrderModal({
             value={requestKind}
             onChange={(kind) => {
               setRequestKind(kind);
-              if (kind !== "informacja") setInformacjaViaDailyPanel(false);
+              if (kind === "informacja") setInformacjaPath(DEFAULT_INFORMACJA_FLOW_PATH);
+          else setInformacjaPath("direct");
             }}
           />
         </ProsbaFormSection>
 
         {requestKind === "informacja" ? (
-          <InformacjaFlowPicker
-            viaDailyPanel={informacjaViaDailyPanel}
-            onChange={setInformacjaViaDailyPanel}
-            disabled={pending}
-          />
+          <ProsbaFormSection
+            title={INFORMACJA_FLOW_PICKER_SECTION_DAILY.title}
+            hint={INFORMACJA_FLOW_PICKER_SECTION_DAILY.hint}
+          >
+            <InformacjaFlowPicker
+              path={informacjaPath}
+              onChange={setInformacjaPath}
+              disabled={pending}
+              includeViaPanel
+            />
+          </ProsbaFormSection>
         ) : null}
 
         <ProsbaFormSection
@@ -318,8 +350,8 @@ export function QuickOrderModal({
           title="Produkty"
           hint={
             requestKind === "informacja"
-              ? "Wystarczy symbol, kod Mikran lub opis — bez ilości."
-              : "Podaj symbol, kod Mikran lub opis oraz ilość przy każdej pozycji."
+              ? informacjaProductsFormHint(informacjaPath)
+              : "Podaj nazwę lub symbol w jednym polu, kod Mikran obok oraz ilość przy każdej pozycji."
           }
         >
           <div className="space-y-4">
@@ -352,7 +384,8 @@ export function QuickOrderModal({
               supplierId={supplierId}
               lines={readinessLines}
               requestKind={requestKind}
-              informacjaViaDailyPanel={informacjaViaDailyPanel}
+              informacjaViaDailyPanel={informacjaFlags.informacjaQueueViaDailyPanel}
+              informacjaStockOutReorder={informacjaFlags.informacjaStockOutReorder}
               formMessage={formNotice}
               resolvingSupplier={resolvingSupplier}
               subiektFeedbacks={[

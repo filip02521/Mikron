@@ -1,4 +1,5 @@
 import type { IndividualOrder } from "@/types/database";
+import { isInformacjaStockOutReorder } from "@/lib/orders/informacja-stock-out-reorder";
 import { isInformacjaQueueViaDailyPanel } from "@/lib/orders/informacja-via-daily-panel";
 
 /** Pozycja informacyjna widoczna w kolejce przyjęcia magazynu. */
@@ -9,6 +10,7 @@ export function isInformacjaWarehouseQueueOrder(
   >
 ): boolean {
   if (order.request_kind !== "informacja") return false;
+  if (isInformacjaStockOutReorder(order)) return false;
   if (order.sales_cancelled_at) return false;
 
   if (order.status === "Zamowione" || order.status === "Czesciowo_zrealizowane") {

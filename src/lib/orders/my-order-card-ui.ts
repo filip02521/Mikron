@@ -1,4 +1,5 @@
 import type { MyOrderRow } from "@/lib/orders/my-order-presenter";
+import { isInformacjaAvailabilityPendingStatusTitle } from "@/lib/orders/informacja-flow-copy";
 import { isProsbaHandoffStatus } from "@/lib/orders/my-order-sales-ui";
 
 /** Badge statusu — ukryty, gdy kolorowy pasek już mówi to samo. */
@@ -20,7 +21,7 @@ export function shouldShowOrderStatusDetail(row: MyOrderRow): boolean {
   if (row.statusTitle === "Zamówione" && row.headlineTone === "info") return false;
   if (row.statusTitle === "Przed zamówieniem") return false;
   if (
-    row.statusTitle === "Oczekuje na magazyn" ||
+    isInformacjaAvailabilityPendingStatusTitle(row.statusTitle) ||
     row.statusTitle === "Czekamy na zamówienie u dostawcy" ||
     row.statusTitle === "Zamówione — czekamy na magazyn"
   ) {

@@ -3,6 +3,7 @@ import {
   type RequestDraft,
 } from "@/lib/orders/request-completeness";
 import { isInformacjaRequest } from "@/lib/orders/individual";
+import { isInformacjaStockOutReorder } from "@/lib/orders/informacja-stock-out-reorder";
 import { isIndividualOrderProcurementReady } from "@/lib/orders/procurement-readiness";
 import type { IndividualOrder } from "@/types/database";
 
@@ -33,7 +34,7 @@ export function canShowInForSomeoneLeft(order: IndividualOrder): boolean {
   if (kind === "zamowienie") {
     return isIndividualOrderProcurementReady(order);
   }
-  if (isInformacjaQueueViaDailyPanel(order)) {
+  if (isInformacjaQueueViaDailyPanel(order) || isInformacjaStockOutReorder(order)) {
     return isInformacjaProcurementPanelReady({
       supplierId: order.supplier_id ?? undefined,
       symbol: order.symbol,

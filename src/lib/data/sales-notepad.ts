@@ -14,7 +14,7 @@ export type SalesNotepadData = {
 };
 
 const ZK_LINK_ORDER_SELECT =
-  "id, sales_person_id, sales_client_name, sales_client_kh_id, subiekt_tw_id, symbol, products, mikran_code, status, sales_acknowledged_at, sales_cancelled_at";
+  "id, sales_person_id, sales_client_name, sales_client_kh_id, source_zk_watch_id, source_zk_number, subiekt_tw_id, symbol, products, mikran_code, status, sales_acknowledged_at, sales_cancelled_at";
 
 export async function fetchZkLinkableOrdersForSalesPerson(
   salesPersonId: string
@@ -29,7 +29,10 @@ export async function fetchZkLinkableOrdersForSalesPerson(
     .limit(400);
 
   if (error) {
-    if (error.message.includes("sales_client_kh_id")) {
+    if (
+      error.message.includes("sales_client_kh_id") ||
+      error.message.includes("source_zk")
+    ) {
       return { orders: [], migrationMissing: true };
     }
     throw new Error(error.message);

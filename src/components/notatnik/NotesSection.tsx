@@ -25,6 +25,8 @@ import {
   NOTATNIK_TEXTAREA_CLASS,
 } from "./notatnik-layout";
 import { NOTE_COLOR_CARD } from "./note-styles";
+import { DragHandleGlyph, PinGlyph } from "@/components/ui/UiGlyphs";
+import { IconGripVertical } from "@/components/icons/StrokeIcons";
 
 export const NOTATNIK_KEYBOARD_HINTS = [
   { keys: ["N"], label: "nowa notatka" },
@@ -218,21 +220,17 @@ function NoteCard({
     >
       {draggable && !editing && !readOnly ? (
         <span
-          className="absolute left-1.5 top-1.5 cursor-grab text-[10px] text-slate-400 opacity-0 transition group-hover:opacity-100 active:cursor-grabbing"
+          className="absolute left-1.5 top-1.5 cursor-grab text-slate-400 opacity-0 transition group-hover:opacity-100 active:cursor-grabbing"
           aria-hidden
           title="Przeciągnij, aby zmienić kolejność"
         >
-          ⠿
+          <IconGripVertical size={14} strokeWidth={2.5} />
         </span>
       ) : null}
 
       {pinned && !editing ? (
-        <span
-          className="absolute right-2 top-2 text-[10px] text-indigo-600"
-          title="Przypięta"
-          aria-label="Przypięta"
-        >
-          📌
+        <span className="absolute right-2 top-2" title="Przypięta" aria-label="Przypięta">
+          <PinGlyph size={13} />
         </span>
       ) : null}
 
@@ -667,9 +665,10 @@ export function NotesSection({
       ) : null}
 
       {canDrag && filtered.length > 1 ? (
-        <p className="text-[10px] text-slate-400">
-          Przeciągnij kartę (⠿) w sekcji przypiętych lub zwykłych — między sekcjami nie da się
-          przenieść.
+        <p className="inline-flex flex-wrap items-center gap-1 text-[10px] text-slate-400">
+          Przeciągnij kartę (
+          <DragHandleGlyph />
+          ) w sekcji przypiętych lub zwykłych — między sekcjami nie da się przenieść.
         </p>
       ) : null}
 

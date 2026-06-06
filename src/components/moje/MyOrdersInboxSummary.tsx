@@ -192,8 +192,8 @@ export function MyOrdersInboxSummary({
 
       {!showActionSub && !showWatchSub && actionCount > 0 ? (
         <p className="text-xs leading-relaxed text-slate-600">
-          <strong className="font-semibold text-emerald-900">Wymaga reakcji</strong> — prośby z
-          zielonym przyciskiem: odbiór towaru, potwierdzenie dostępności lub anulowania.
+          <strong className="font-semibold text-emerald-900">Wymaga reakcji</strong> — zielony
+          przycisk przy wierszu w sekcji poniżej.
         </p>
       ) : null}
 

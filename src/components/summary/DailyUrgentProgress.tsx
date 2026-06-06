@@ -1,5 +1,6 @@
 "use client";
 
+import { IconCircleCheck } from "@/components/icons/StrokeIcons";
 import { cn } from "@/lib/cn";
 import type { DailyUrgentProgress as Progress } from "@/lib/orders/daily-urgent-progress";
 
@@ -46,11 +47,17 @@ export function DailyUrgentProgressBar({
         </div>
         <p
           className={cn(
-            "shrink-0 text-2xl font-semibold tabular-nums tracking-tight",
+            "flex shrink-0 items-center justify-end gap-1 text-2xl font-semibold tabular-nums tracking-tight",
             progress.complete ? "text-emerald-700" : "text-slate-900"
           )}
         >
-          {progress.complete ? "✓" : `${progress.percent}%`}
+          {progress.complete ? (
+            <span className="flex size-9 items-center justify-center rounded-full bg-emerald-100">
+              <IconCircleCheck size={22} strokeWidth={2.25} aria-hidden />
+            </span>
+          ) : (
+            `${progress.percent}%`
+          )}
         </p>
       </div>
       <div className="mt-3 h-2 overflow-hidden rounded-full bg-slate-100">

@@ -2,6 +2,7 @@
 
 import type { KeyboardEvent } from "react";
 import type { IndividualOrder } from "@/types/database";
+import { FlowChevron, InlineCheck } from "@/components/ui/UiGlyphs";
 import { cn } from "@/lib/cn";
 import { checkboxBrandClass, controlFocusClass } from "@/lib/ui/ontime-theme";
 import { getDeliveryProgress, parseOrderQuantity } from "@/lib/orders/individual";
@@ -243,8 +244,8 @@ export function ReceiveQueueRow({
             >
               {ordered ?? order.quantity}
             </button>
-            <span className="text-slate-300" aria-hidden>
-              →
+            <span className="inline-flex items-center text-slate-300" aria-hidden>
+              <FlowChevron size={12} />
             </span>
             <input
               type="text"
@@ -270,7 +271,11 @@ export function ReceiveQueueRow({
                 )}
                 title="Brakuje"
               >
-                {progress.remaining === 0 ? "✓" : `−${progress.remaining}`}
+                {progress.remaining === 0 ? (
+                  <InlineCheck size={13} />
+                ) : (
+                  `−${progress.remaining}`
+                )}
               </span>
             ) : null}
             <button

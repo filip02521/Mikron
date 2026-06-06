@@ -12,6 +12,7 @@ import {
 } from "react";
 import { createPortal } from "react-dom";
 import { Button } from "@/components/ui/Button";
+import { IconMoreVertical } from "@/components/icons/StrokeIcons";
 import { cn } from "@/lib/cn";
 import {
   panelDropdownShellClass,
@@ -26,16 +27,12 @@ const CloseMenuContext = createContext<() => void>(() => {});
 
 function MoreIcon({ className }: { className?: string }) {
   return (
-    <svg
-      viewBox="0 0 24 24"
-      fill="currentColor"
-      className={cn("block h-4 w-4 shrink-0", className)}
+    <IconMoreVertical
+      size={16}
+      strokeWidth={2.25}
+      className={cn("block shrink-0", className)}
       aria-hidden
-    >
-      <circle cx="12" cy="6" r="1.75" />
-      <circle cx="12" cy="12" r="1.75" />
-      <circle cx="12" cy="18" r="1.75" />
-    </svg>
+    />
   );
 }
 

@@ -17,6 +17,17 @@ import { RequestFormStatusPanel } from "@/components/orders/RequestFormStatusPan
 import { RequestProductLinesEditor } from "@/components/orders/RequestProductLinesEditor";
 import { newProductLine, appendProductLine, type ProductLineDraft } from "@/components/orders/request-product-lines";
 import { RequestKindToggle } from "@/components/orders/RequestKindToggle";
+import { InformacjaFlowPicker } from "@/components/orders/InformacjaFlowPicker";
+import {
+  DEFAULT_INFORMACJA_FLOW_PATH,
+  INFORMACJA_FLOW_PICKER_SECTION,
+  INFORMACJA_FLOW_PICKER_SECTION_DAILY,
+  informacjaProductsFormHint,
+} from "@/lib/orders/informacja-flow-ui";
+import {
+  flagsFromInformacjaFlowPath,
+  type InformacjaFlowPath,
+} from "@/lib/orders/informacja-stock-out-reorder";
 import { ModalShell } from "@/components/ui/ModalShell";
 import { Button } from "@/components/ui/Button";
 import { Field, Select } from "@/components/ui/Field";
@@ -34,6 +45,7 @@ export type EditIndividualRequestInitial = {
   supplierId: string;
   salesPersonId: string;
   requestKind: IndividualRequestKind;
+  informacjaPath?: InformacjaFlowPath;
   lines: ProductLineDraft[];
 };
 
@@ -60,6 +72,9 @@ export function EditIndividualRequestModal({
   const [supplierId, setSupplierId] = useState("");
   const [salesPersonId, setSalesPersonId] = useState("");
   const [requestKind, setRequestKind] = useState<IndividualRequestKind>("zamowienie");
+  const [informacjaPath, setInformacjaPath] = useState<InformacjaFlowPath>(
+    DEFAULT_INFORMACJA_FLOW_PATH
+  );
   const [lines, setLines] = useState<ProductLineDraft[]>([newProductLine()]);
   const [validationAttempted, setValidationAttempted] = useState(false);
   const [formNotice, setFormNotice] = useState<{
@@ -80,11 +95,23 @@ export function EditIndividualRequestModal({
     return assessSalesGroupSubmittable(lines, "", requestKind);
   }, [mode, lines, requestKind]);
 
+  const informacjaFlags = useMemo(
+    () =>
+      requestKind === "informacja"
+        ? flagsFromInformacjaFlowPath(informacjaPath)
+        : {
+            informacjaQueueViaDailyPanel: false,
+            informacjaStockOutReorder: false,
+          },
+    [requestKind, informacjaPath]
+  );
+
   useEffect(() => {
     if (!open || !initial) return;
     setSupplierId(initial.supplierId);
     setSalesPersonId(initial.salesPersonId);
     setRequestKind(initial.requestKind);
+    setInformacjaPath(initial.informacjaPath ?? DEFAULT_INFORMACJA_FLOW_PATH);
     setLines(
       initial.lines.length > 0
         ? initial.lines.map((l) => ({ ...l }))
@@ -102,8 +129,8 @@ export function EditIndividualRequestModal({
     setFormNotice(null);
     setValidationAttempted(false);
 
-    if (mode === "procurement" && requestKind === "zamowienie") {
-      if (!supplierId.trim()) {
+    if (mode === "procurement") {
+      if (requestKind === "zamowienie" && !supplierId.trim()) {
         setValidationAttempted(true);
         setFormNotice({ text: "Wybierz dostawcę.", tone: "error" });
         return;
@@ -118,6 +145,7 @@ export function EditIndividualRequestModal({
             quantity: line.quantity,
             requestKind,
             subiektTwId: line.subiektTwId,
+            ...informacjaFlags,
           });
         }
       } catch (e) {
@@ -166,6 +194,10 @@ export function EditIndividualRequestModal({
           supplierId: mode === "sales" ? "" : supplierId,
           salesPersonId,
           requestKind,
+          informacjaPath:
+            mode === "procurement" && requestKind === "informacja"
+              ? informacjaPath
+              : undefined,
           lines: lines.map((l) => ({
             id: l.id,
             symbol: l.symbol,
@@ -285,14 +317,39 @@ export function EditIndividualRequestModal({
           title="Co chcesz zgłosić?"
           hint="Rodzaj prośby decyduje o wymaganych polach produktu."
         >
-          <RequestKindToggle value={requestKind} onChange={setRequestKind} />
+          <RequestKindToggle
+            value={requestKind}
+            onChange={(kind) => {
+              setRequestKind(kind);
+              if (kind === "informacja") setInformacjaPath(DEFAULT_INFORMACJA_FLOW_PATH);
+              else setInformacjaPath("direct");
+            }}
+          />
         </ProsbaFormSection>
+
+        {mode === "procurement" && requestKind === "informacja" ? (
+          <ProsbaFormSection
+            title={INFORMACJA_FLOW_PICKER_SECTION.title}
+            hint={
+              informacjaPath === "via_panel"
+                ? INFORMACJA_FLOW_PICKER_SECTION_DAILY.hint
+                : INFORMACJA_FLOW_PICKER_SECTION.hint
+            }
+          >
+            <InformacjaFlowPicker
+              path={informacjaPath}
+              onChange={setInformacjaPath}
+              disabled={pending}
+              includeViaPanel={informacjaPath === "via_panel"}
+            />
+          </ProsbaFormSection>
+        ) : null}
 
         <ProsbaFormSection
           title="Produkty"
           hint={
             requestKind === "informacja"
-              ? "Symbol, kod Mikran lub opis — bez ilości."
+              ? informacjaProductsFormHint(informacjaPath)
               : "Symbol, kod Mikran lub opis oraz ilość przy każdej pozycji."
           }
         >
@@ -333,6 +390,7 @@ export function EditIndividualRequestModal({
                 requestKind={requestKind}
                 salesSubmitPlan={salesSubmitPlan}
                 formMessage={formNotice}
+                informacjaPath={informacjaPath}
               />
             ) : (
               <RequestFormStatusPanel
@@ -345,6 +403,7 @@ export function EditIndividualRequestModal({
                   product: lines.find((l) => l.product.trim())?.product,
                   quantity: lines.find((l) => l.quantity.trim())?.quantity,
                   requestKind,
+                  ...informacjaFlags,
                 }}
                 forcedAssessment={
                   requestKind === "zamowienie"

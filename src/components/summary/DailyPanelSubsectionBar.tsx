@@ -4,6 +4,7 @@ export type DailyPanelSubsectionTone =
   | "default"
   | "overdue"
   | "prosby"
+  | "stockOut"
   | "today"
   | "cancel";
 
@@ -17,10 +18,16 @@ export type DailyPanelCountUnit = {
 const TONE_DOT: Record<DailyPanelSubsectionTone, string> = {
   overdue: "bg-amber-500",
   prosby: "bg-indigo-500",
+  stockOut: "bg-amber-600",
   today: "bg-sky-500",
   cancel: "bg-amber-500",
   default: "bg-slate-400",
 };
+
+/** Kropka koloru sekcji — ten sam token co w nagłówkach kolejki Dziś. */
+export function dailyPanelToneDotClass(tone: DailyPanelSubsectionTone): string {
+  return TONE_DOT[tone];
+}
 
 export function formatDailyPanelCount(n: number, unit: DailyPanelCountUnit): string {
   if (n === 1) return `${n} ${unit.one}`;
@@ -32,8 +39,11 @@ export function formatDailyPanelCount(n: number, unit: DailyPanelCountUnit): str
   return `${n} ${unit.many}`;
 }
 
-/** Obudowa bloku kolejki w zakładce Dziś — neutralna, bez kolorowych ramek. */
-export function dailyPanelQueueShellClass(_tone?: DailyPanelSubsectionTone): string {
+/** Obudowa bloku kolejki w zakładce Dziś. */
+export function dailyPanelQueueShellClass(tone?: DailyPanelSubsectionTone): string {
+  if (tone === "stockOut") {
+    return "overflow-hidden rounded-md border border-amber-300/90 bg-amber-50/40 shadow-sm ring-1 ring-amber-200/50";
+  }
   return "overflow-hidden rounded-md border border-slate-200/90 bg-white shadow-sm";
 }
 

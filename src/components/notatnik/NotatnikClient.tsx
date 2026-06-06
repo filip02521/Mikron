@@ -332,9 +332,10 @@ export function NotatnikClient({
 
         {source.zkOrdersMigrationMissing && !tourDemo ? (
           <Alert tone="warning" className="mx-3 mt-3 sm:mx-4">
-            Powiązanie ZK z prośbami (dostawa, podpowiedzi) wymaga migracji bazy{" "}
-            <code className="text-[0.85em]">052_individual_orders_sales_client_kh_id</code>.
-            Uruchom migracje Supabase — bez niej lista prośb do dopasowania pozostaje pusta.
+            Powiązanie ZK z prośbami wymaga migracji bazy:{" "}
+            <code className="text-[0.85em]">052_individual_orders_sales_client_kh_id</code>,{" "}
+            <code className="text-[0.85em]">055_individual_orders_source_zk</code>.
+            Uruchom migracje Supabase — bez nich podpowiedzi i badge „Prośba w toku” mogą nie działać.
           </Alert>
         ) : null}
 

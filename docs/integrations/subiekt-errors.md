@@ -49,6 +49,6 @@ UI: `SubiektFeedbackAlert` (ton: info / warning / error)
 
 ## Gdzie w UI
 
-- `SubiektProductLineFields` — towar (symbol + nazwa) w formularzach próśb
+- `SubiektProductLineFields` — towar (jedno pole: symbol lub nazwa + kod Mikran obok) w formularzach próśb
 - `SupplierPickerField` — dostawca
 - `SubiektIntegrationPanel` — test połączenia i wyszukiwanie admina

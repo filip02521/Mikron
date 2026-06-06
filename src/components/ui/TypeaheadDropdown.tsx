@@ -31,7 +31,7 @@ export function TypeaheadDropdown({
         "absolute left-0 right-0 top-full z-[80] mt-1 w-full overflow-auto rounded-lg border border-indigo-200/80 bg-white py-1 shadow-xl shadow-indigo-900/10 ring-1 ring-indigo-100",
         size === "comfortable"
           ? "max-h-[min(22rem,52dvh)]"
-          : "max-h-72",
+          : "max-h-[min(18rem,45dvh)] sm:max-h-72",
         className
       )}
     >

@@ -11,11 +11,14 @@ import type { MyOrderHeadlineTone } from "@/lib/orders/my-order-sales-ui";
 import {
   INFORMACJA_FLOW_PROCUREMENT_GROUP_BANNER,
   INFORMACJA_VIA_PANEL_STATUS_TITLE,
+  INFORMACJA_STOCK_OUT_PANEL_BADGE,
+  INFORMACJA_STOCK_OUT_PANEL_BANNER,
 } from "@/lib/orders/informacja-flow-copy";
 import {
   compareProcurementSubmittedAt,
   formatProcurementGroupSubmittedLabel,
 } from "@/lib/orders/procurement-request-timing";
+import { clientNamesSummaryFromLines } from "@/lib/orders/sales-client-label";
 
 export type ProcurementHeadlineTone = MyOrderHeadlineTone;
 
@@ -37,19 +40,23 @@ export type DailyInboxSummary = {
   forSomeoneGroupCount: number;
   forSomeoneLineCount: number;
   forSomeoneUnseenGroupCount: number;
+  stockOutGroupCount: number;
+  stockOutLineCount: number;
+  stockOutUnseenGroupCount: number;
   weekPlanCount: number;
   onDemandCount: number;
   vacationSupplierCount: number;
   hiddenScheduleCount: number;
 };
 
-/** Licznik menu: pozycje w kolejce Dziś (zaległe + harmonogram na dziś + grupy prośb + rezygnacje). */
+/** Licznik menu: pozycje w kolejce Dziś (zaległe + harmonogram na dziś + grupy prośb + sygnały stanu + rezygnacje). */
 export function countDailyPanelNavBadge(workspace: SummaryWorkspaceData): number {
   const s = summarizeDailyInbox(workspace);
   return (
     s.overdueCount +
     s.todayCount +
     s.forSomeoneGroupCount +
+    s.stockOutGroupCount +
     workspace.salesCancelledNotices.length
   );
 }
@@ -84,6 +91,10 @@ export function summarizeDailyInbox(workspace: SummaryWorkspaceData): DailyInbox
     (n, g) => n + g.lines.length,
     0
   );
+  const stockOutLineCount = workspace.stockOutLeft.reduce(
+    (n, g) => n + g.lines.length,
+    0
+  );
   const weekPlanCount = workspace.thisWeekDays.reduce((n, d) => n + d.items.length, 0);
   const vacationSupplierCount = Object.values(workspace.supplierMeta).filter(
     (m) => m.vacation_note
@@ -95,6 +106,10 @@ export function summarizeDailyInbox(workspace: SummaryWorkspaceData): DailyInbox
     forSomeoneGroupCount: workspace.forSomeoneLeft.length,
     forSomeoneLineCount,
     forSomeoneUnseenGroupCount: workspace.forSomeoneLeft.filter((g) => g.hasUnseen)
+      .length,
+    stockOutGroupCount: workspace.stockOutLeft.length,
+    stockOutLineCount,
+    stockOutUnseenGroupCount: workspace.stockOutLeft.filter((g) => g.hasUnseen)
       .length,
     weekPlanCount,
     onDemandCount: workspace.onDemandSuppliers.length,
@@ -170,6 +185,37 @@ export function enrichUrgentItem(item: SummaryStandardItem): ProcurementRequestU
   };
 }
 
+export function enrichStockOutSignalGroup(
+  group: SummaryForSomeoneEnriched,
+  at: Date = todayInWarsaw()
+): ProcurementRequestUi {
+  const count = group.lines.length;
+  const countLabel =
+    count === 1 ? "1 pozycja" : count < 5 ? `${count} pozycje` : `${count} pozycji`;
+  const submittedLabel = formatProcurementGroupSubmittedLabel(
+    group.submittedAt,
+    group.submittedAtLatest,
+    at
+  );
+  const clientLabel = clientNamesSummaryFromLines(group.lines);
+  const primaryProduct =
+    count === 1 ? group.lines[0]!.products.trim() || group.lines[0]!.symbol : null;
+
+  return {
+    headline: primaryProduct ?? group.supplierName,
+    subline: primaryProduct
+      ? `${group.supplierName} · zgłosił ${group.person}${clientLabel ? ` · ${clientLabel}` : ""}`
+      : `${group.person} · ${countLabel} · ${group.supplierName}${clientLabel ? ` · ${clientLabel}` : ""}`,
+    headlineTone: "warning",
+    statusTitle: INFORMACJA_STOCK_OUT_PANEL_BADGE,
+    statusDetail: INFORMACJA_STOCK_OUT_PANEL_BANNER,
+    submittedLabel,
+    submittedTitle: `Zgłoszono ${submittedLabel}`,
+    isUnseen: group.hasUnseen,
+    unseenCount: group.unseenCount,
+  };
+}
+
 export function enrichForSomeoneGroup(
   group: SummaryForSomeoneEnriched,
   at: Date = todayInWarsaw()
@@ -183,12 +229,15 @@ export function enrichForSomeoneGroup(
     group.submittedAtLatest,
     at
   );
+  const clientLabel = clientNamesSummaryFromLines(group.lines);
 
   return {
     headline: group.person,
-    subline: `${group.supplierName} · ${countLabel}`,
+    subline: `${group.supplierName} · ${countLabel}${clientLabel ? ` · ${clientLabel}` : ""}`,
     headlineTone: infoViaPanel ? "info" : "neutral",
-    statusTitle: infoViaPanel ? INFORMACJA_VIA_PANEL_STATUS_TITLE : "Do zamówienia",
+    statusTitle: infoViaPanel
+      ? INFORMACJA_VIA_PANEL_STATUS_TITLE
+      : "Do zamówienia",
     statusDetail: infoViaPanel ? INFORMACJA_FLOW_PROCUREMENT_GROUP_BANNER : null,
     submittedLabel,
     submittedTitle: `Zgłoszono ${submittedLabel}`,
@@ -219,6 +268,12 @@ export function enrichInformacjaGroup(
     isUnseen: group.hasUnseen,
     unseenCount: group.unseenCount,
   };
+}
+
+export function sortStockOutGroups(
+  groups: SummaryForSomeoneEnriched[]
+): SummaryForSomeoneEnriched[] {
+  return sortForSomeoneGroups(groups);
 }
 
 export function sortForSomeoneGroups(

@@ -65,11 +65,18 @@ export function followUpQuickDates(): { label: string; value: string }[] {
 export function buildMojeClientLink(
   salesPersonId: string,
   clientLabel: string,
-  options?: { preview?: boolean; clientKhId?: number | null }
+  options?: {
+    preview?: boolean;
+    clientKhId?: number | null;
+    zkWatchId?: string | null;
+    zkNumber?: string | null;
+  }
 ): string {
   const primary = clientLabel.split(/[·(,]/)[0]?.trim() || clientLabel.trim();
   const params = new URLSearchParams();
   if (options?.preview) params.set("dla", salesPersonId);
+  if (options?.zkWatchId?.trim()) params.set("zkWatch", options.zkWatchId.trim());
+  if (options?.zkNumber?.trim()) params.set("zk", options.zkNumber.trim().slice(0, 80));
   if (primary) params.set("klient", primary.slice(0, 60));
   const kh = options?.clientKhId;
   if (kh != null && Number.isFinite(kh) && kh > 0) {

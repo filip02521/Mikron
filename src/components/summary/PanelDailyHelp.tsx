@@ -6,6 +6,7 @@ import { HowItWorksContent } from "@/components/summary/HowItWorks";
 import { IconCalendarRange } from "@/components/icons/StrokeIcons";
 
 import { panelToolbarTextButtonClass } from "@/lib/ui/ontime-theme";
+import { LinkChevron } from "@/components/ui/UiGlyphs";
 import { cn } from "@/lib/cn";
 
 /** Pomoc przy tytule strony — zwarte przyciski z opisem. */
@@ -34,7 +35,10 @@ export function PanelDailyHelp({
             Terminy
           </>
         ) : (
-          "Terminy zamówień"
+          <span className="inline-flex items-center gap-1">
+            Terminy zamówień
+            <LinkChevron size={14} tone="brand" />
+          </span>
         )}
       </Link>
       <HelpPopover

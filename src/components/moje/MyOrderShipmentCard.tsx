@@ -157,6 +157,8 @@ export function MyOrderShipmentCard({
   onEditRequest,
   searchQuery,
   tourPreview = false,
+  /** W sekcji „Do potwierdzenia” — bez osobnego zielonego paska nad wierszem. */
+  compactActionLayout = false,
 }: {
   row: MyOrderRow;
   listKind: MyOrderListKind;
@@ -174,6 +176,7 @@ export function MyOrderShipmentCard({
   onEditRequest?: (row: MyOrderRow) => void;
   searchQuery?: string | null;
   tourPreview?: boolean;
+  compactActionLayout?: boolean;
 }) {
   const panelId = useId();
   const searchActive = searchQueryTokens(searchQuery).length > 0;
@@ -330,7 +333,14 @@ export function MyOrderShipmentCard({
   const kindShort = row.kind === "informacja" ? "Info." : "Zam.";
   const statusHint = myOrderFriendlyStatusHint(row.statusTitle);
 
+  const compactPickupOrAvailability =
+    compactActionLayout &&
+    !expanded &&
+    (row.acknowledgeMode === "pickup" || row.acknowledgeMode === "availability") &&
+    needsAck;
+
   const showHeadlineBanner =
+    !compactPickupOrAvailability &&
     !expanded &&
     (headlineTone === "action" ||
       headlineTone === "warning" ||
@@ -479,7 +489,7 @@ export function MyOrderShipmentCard({
               {kindShort}
             </span>
           </div>
-          {!showHeadlineBanner ? (
+          {!showHeadlineBanner || compactPickupOrAvailability ? (
             <SearchHighlightText
               text={headline}
               searchQuery={searchQuery}
@@ -500,6 +510,14 @@ export function MyOrderShipmentCard({
               name={row.clientLabel}
               searchQuery={searchQuery}
               className="mt-0.5 max-w-full truncate"
+            />
+          ) : null}
+          {!expanded && row.sourceZkNumber ? (
+            <SearchHighlightText
+              text={`ZK ${row.sourceZkNumber}`}
+              searchQuery={searchQuery}
+              className="mt-0.5 truncate text-[0.65rem] font-medium tabular-nums text-slate-600"
+              as="p"
             />
           ) : null}
         </button>

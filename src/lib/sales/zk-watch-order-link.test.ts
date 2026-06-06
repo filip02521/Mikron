@@ -5,8 +5,29 @@ import {
   filterZkWatchesByClientQuery,
   mergeZkLineChecksFromDeliveredOrders,
   productMatchesZkLine,
+  type ZkLinkableOrder,
 } from "./zk-watch-order-link";
 import type { SalesZkWatch } from "@/types/database";
+
+function linkOrder(
+  partial: Partial<ZkLinkableOrder> & Pick<ZkLinkableOrder, "id">
+): ZkLinkableOrder {
+  return {
+    sales_person_id: "sp1",
+    sales_client_kh_id: 42,
+    sales_client_name: "Klinika Smile",
+    source_zk_watch_id: null,
+    source_zk_number: null,
+    subiekt_tw_id: 100,
+    symbol: "ABC",
+    products: "Implant X",
+    mikran_code: null,
+    status: "Zamowione",
+    sales_acknowledged_at: null,
+    sales_cancelled_at: null,
+    ...partial,
+  };
+}
 
 function watch(partial: Partial<SalesZkWatch> & Pick<SalesZkWatch, "id">): SalesZkWatch {
   return {
@@ -91,39 +112,12 @@ describe("productMatchesZkLine + merge checks", () => {
       subiektTwId: 100,
       arrived: false,
     };
-    expect(
-      productMatchesZkLine(
-        {
-          id: "o1",
-          sales_person_id: "sp1",
-          sales_client_kh_id: 42,
-          sales_client_name: "Klinika Smile",
-          subiekt_tw_id: 100,
-          symbol: "ABC",
-          products: "Implant X",
-          mikran_code: null,
-          status: "Zrealizowane",
-          sales_acknowledged_at: null,
-          sales_cancelled_at: null,
-        },
-        line
-      )
-    ).toBe(true);
+    expect(productMatchesZkLine(linkOrder({ id: "o1", status: "Zrealizowane" }), line)).toBe(
+      true
+    );
 
     const { checks, changed } = mergeZkLineChecksFromDeliveredOrders(w, [
-      {
-        id: "o1",
-        sales_person_id: "sp1",
-        sales_client_kh_id: 42,
-        sales_client_name: "Klinika Smile",
-        subiekt_tw_id: 100,
-        symbol: "ABC",
-        products: "Implant X",
-        mikran_code: null,
-        status: "Zrealizowane",
-        sales_acknowledged_at: null,
-        sales_cancelled_at: null,
-      },
+      linkOrder({ id: "o1", status: "Zrealizowane" }),
     ]);
     expect(changed).toBe(true);
     expect(checks.find((c) => c.key === "ob:1")?.arrived).toBe(true);
@@ -134,36 +128,29 @@ describe("computeZkWatchOrderHints", () => {
   it("liczy aktywne prośby i dopasowane linie", () => {
     const w = watch({ id: "w1" });
     const hints = computeZkWatchOrderHints(w, [
-      {
-        id: "open",
-        sales_person_id: "sp1",
-        sales_client_kh_id: 42,
-        sales_client_name: "Klinika Smile",
-        subiekt_tw_id: 100,
-        symbol: "ABC",
-        products: "Implant X",
-        mikran_code: null,
-        status: "Zamowione",
-        sales_acknowledged_at: null,
-        sales_cancelled_at: null,
-      },
-      {
-        id: "done",
-        sales_person_id: "sp1",
-        sales_client_kh_id: 42,
-        sales_client_name: "Klinika Smile",
-        subiekt_tw_id: 100,
-        symbol: "ABC",
-        products: "Implant X",
-        mikran_code: null,
-        status: "Zrealizowane",
-        sales_acknowledged_at: null,
-        sales_cancelled_at: null,
-      },
+      linkOrder({ id: "open", status: "Zamowione" }),
+      linkOrder({ id: "done", status: "Zrealizowane" }),
     ]);
     expect(hints.matchingOpenRequestCount).toBe(1);
     expect(hints.matchedDeliveredLineKeys).toContain("ob:1");
     expect(hints.allLinesMatchedByOrders).toBe(true);
+  });
+
+  it("liczy otwartą prośbę powiązaną po source_zk_watch_id bez dopasowania towaru", () => {
+    const w = watch({ id: "w-zk" });
+    const hints = computeZkWatchOrderHints(w, [
+      linkOrder({
+        id: "from-zk-btn",
+        status: "Weryfikacja",
+        source_zk_watch_id: "w-zk",
+        source_zk_number: "ZK/1",
+        subiekt_tw_id: null,
+        symbol: "INNY",
+        products: "Inny produkt",
+      }),
+    ]);
+    expect(hints.matchingOpenRequestCount).toBe(1);
+    expect(hints.matchedDeliveredLineKeys).toEqual([]);
   });
 });
 

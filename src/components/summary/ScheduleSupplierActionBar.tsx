@@ -10,7 +10,7 @@ import { cn } from "@/lib/cn";
 import { panelSegmentPrimaryClass } from "@/lib/ui/ontime-theme";
 import { buttonGroupItemClass, panelActionBarShellClass } from "@/lib/ui/surfaces";
 
-/** Zamówione + Przesuń + ⋮ — jeden segment wizualnie, osobne cele kliknięcia. */
+/** Zamówione + Przesuń + menu Więcej — jeden segment wizualnie, osobne cele kliknięcia. */
 export function ScheduleSupplierActionBar({
   supplierId,
   supplierName,

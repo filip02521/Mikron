@@ -7,7 +7,7 @@ import {
   panelRowActionsInlineEndInnerClass,
 } from "@/lib/ui/panel-row-actions-reveal";
 
-/** Akcje po prawej z animacją hover — fade + slide + grid 0fr → 1fr. */
+/** Akcje po prawej z animacją hover — fade + slide + grid 0fr–1fr. */
 export function PanelRowActionsInlineEnd({
   forceVisible = false,
   className,

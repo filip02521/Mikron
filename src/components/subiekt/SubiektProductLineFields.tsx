@@ -5,6 +5,7 @@ import type { KeyboardEvent, ReactNode } from "react";
 import { actionSubiektSuggestProducts } from "@/app/actions/subiekt";
 import type { IndividualRequestKind } from "@/types/database";
 import { Field, Input } from "@/components/ui/Field";
+import { Button } from "@/components/ui/Button";
 import { Spinner } from "@/components/ui/Spinner";
 import { IconCircleCheck } from "@/components/icons/StrokeIcons";
 import { SubiektFeedbackAlert } from "@/components/subiekt/SubiektFeedbackAlert";
@@ -18,10 +19,20 @@ import type { SubiektFeedback } from "@/lib/subiekt/feedback";
 import { getSubiektFeedback } from "@/lib/subiekt/feedback";
 import {
   buildProductPickFromSubiekt,
+  combinedProductSearchDisplay,
+  combinedProductSymbolPreview,
   formatSubiektProductOption,
+  inferCombinedProductSearchField,
   minProductSearchLength,
+  patchFromCombinedProductInput,
+  productSuggestSearchField,
   type ProductSearchField,
 } from "@/lib/subiekt/product-pick";
+import {
+  mergeCombinedProductFieldProps,
+  mikranFieldProps,
+  quantityFieldProps,
+} from "@/lib/subiekt/subiekt-product-line-field-props";
 import { cn } from "@/lib/cn";
 import {
   ProsbaLineFieldMessages,
@@ -32,7 +43,6 @@ import {
   MAX_MIKRAN_CODE_LEN,
   MAX_PRODUCT_TEXT_LEN,
   MAX_QUANTITY_LEN,
-  MAX_SYMBOL_LEN,
 } from "@/lib/security/text-limits";
 import type { AppSupplierRef } from "@/lib/subiekt/match-supplier";
 import type { SubiektProduct } from "@/lib/subiekt/types";
@@ -45,46 +55,89 @@ export type SubiektProductLineValue = {
   subiektTwId?: number | null;
 };
 
-type ActiveField = ProductSearchField;
+type ActiveField = Exclude<ProductSearchField, "combined">;
 
-function SubiektFieldAdornment({
-  linked,
+function inputLoadingPadding(loading: boolean): string {
+  return loading ? "pr-10" : "";
+}
+
+type FieldVisualProps = {
+  state?: "default" | "warning" | "error" | "success";
+  error?: string;
+  hint?: string;
+};
+
+/** Po picku z Subiekta — jeden komunikat zamiast haczyków w każdym polu. */
+function withoutSuccessWhenLinked(props: FieldVisualProps, linked: boolean): FieldVisualProps {
+  if (!linked || props.state !== "success") return props;
+  const { state: _s, error, ...rest } = props;
+  return error ? { error } : {};
+}
+
+function SubiektInputLoadingSpinner({ loading }: { loading: boolean }) {
+  if (!loading) return null;
+  return (
+    <span className="pointer-events-none absolute right-2.5 top-1/2 z-[1] -translate-y-1/2">
+      <Spinner size="sm" />
+    </span>
+  );
+}
+
+function SubiektInputShell({
+  children,
   loading,
 }: {
-  linked: boolean;
+  children: React.ReactNode;
   loading: boolean;
 }) {
-  if (linked) {
-    return (
-      <span
-        className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-emerald-600"
-        title="Wybrano z Subiekta"
-        aria-label="Wybrano z Subiekta"
-      >
-        <IconCircleCheck size={18} strokeWidth={2.25} />
-      </span>
-    );
-  }
-  if (loading) {
-    return (
-      <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2">
-        <Spinner size="sm" />
-      </span>
-    );
-  }
-  return null;
+  return (
+    <div className="relative w-full">
+      {children}
+      <SubiektInputLoadingSpinner loading={loading} />
+    </div>
+  );
+}
+
+function SubiektLinkedLineBanner({
+  symbol,
+  mikranCode,
+}: {
+  symbol: string | null;
+  mikranCode: string;
+}) {
+  const meta: string[] = [];
+  if (symbol) meta.push(`Symbol: ${symbol}`);
+  if (mikranCode.trim()) meta.push(`Kod Mikran: ${mikranCode.trim()}`);
+
+  return (
+    <div
+      className="flex items-start gap-2 rounded-md border border-emerald-200/90 bg-emerald-50/70 px-3 py-2"
+      role="status"
+      aria-label="Powiązano z Subiektem"
+    >
+      <IconCircleCheck
+        size={18}
+        strokeWidth={2.25}
+        className="mt-0.5 shrink-0 text-emerald-600"
+      />
+      <div className="min-w-0 text-xs leading-snug text-emerald-900">
+        <p className="font-semibold">Powiązano z Subiektem</p>
+        {meta.length ? (
+          <p className="mt-0.5 text-emerald-800">{meta.join(" · ")}</p>
+        ) : null}
+      </div>
+    </div>
+  );
 }
 
 function activeFieldQuery(value: SubiektProductLineValue, field: ActiveField): string {
-  if (field === "symbol") return value.symbol;
   if (field === "plu") return value.mikranCode;
-  return value.product;
+  return combinedProductSearchDisplay(value);
 }
 
 function typeaheadSectionLabel(field: ActiveField): string {
   if (field === "plu") return "po kodzie Mikran";
-  if (field === "name") return "po nazwie";
-  return "po symbolu";
+  return "po symbolu i nazwie";
 }
 
 function subiektFieldLabel(field: ActiveField): string {
@@ -94,48 +147,6 @@ function subiektFieldLabel(field: ActiveField): string {
 }
 
 const TYPEAHEAD_KEYBOARD_HINT = "↑↓ wybierz · Enter zatwierdź · Esc zamknij";
-
-function SubiektSearchFieldSlot({
-  field,
-  activeField,
-  panelVisible,
-  panel,
-  children,
-}: {
-  field: ActiveField;
-  activeField: ActiveField;
-  panelVisible: boolean;
-  panel: React.ReactNode;
-  children: ReactNode;
-}) {
-  const isActive = activeField === field;
-  const showChrome = isActive && panelVisible;
-
-  return (
-    <div
-      className={cn(
-        "relative rounded-md transition-[box-shadow]",
-        showChrome && "z-30 ring-2 ring-indigo-400/80 ring-offset-2"
-      )}
-    >
-      {children}
-      {isActive ? panel : null}
-    </div>
-  );
-}
-
-function prosbaFieldProps(
-  key: keyof ProsbaLineFieldMap,
-  validation?: ProsbaLineFieldMap
-): { state?: "default" | "warning" | "error" | "success"; error?: string; hint?: string } {
-  const v = validation?.[key];
-  if (!v || v.state === "default") return {};
-  const sharedProductMessage = v.message?.includes("symbol, kod Mikran");
-  if (sharedProductMessage && key !== "product") {
-    return { state: v.state };
-  }
-  return { state: v.state, error: v.message };
-}
 
 export function SubiektProductLineFields({
   value,
@@ -187,7 +198,7 @@ export function SubiektProductLineFields({
   const [enabled, setEnabled] = useState(false);
   const [highlightedIndex, setHighlightedIndex] = useState(0);
   const [configFeedback, setConfigFeedback] = useState<SubiektFeedback | null>(null);
-  const [activeField, setActiveField] = useState<ActiveField>("symbol");
+  const [activeField, setActiveField] = useState<ActiveField>("name");
   const [open, setOpen] = useState(false);
   const [items, setItems] = useState<SubiektProduct[]>([]);
   const [status, setStatus] = useState<"idle" | "loading">("idle");
@@ -198,12 +209,18 @@ export function SubiektProductLineFields({
   const [resolvingSupplier, setResolvingSupplier] = useState(false);
   const [, startTransition] = useTransition();
 
-  const querySource = activeFieldQuery(value, activeField);
-  const debounced = useDebouncedValue(querySource.trim(), 320);
   const prosba = appearance === "prosba";
+  const querySource = activeFieldQuery(value, activeField);
+  const symbolPreview = combinedProductSymbolPreview(value);
+  const debounced = useDebouncedValue(querySource.trim(), 320);
   const isInformacja = requestKind === "informacja";
   const linkedFromSubiekt = value.subiektTwId != null;
   const minQueryLen = minProductSearchLength(activeField);
+  const productDisplay = combinedProductSearchDisplay(value);
+  const mikranOnlyHint =
+    !productDisplay.trim() && value.mikranCode.trim() && !linkedFromSubiekt
+      ? "Kod Mikran wystarczy — opis uzupełni się przy wysłaniu."
+      : null;
 
   useEffect(() => {
     void (async () => {
@@ -267,7 +284,10 @@ export function SubiektProductLineFields({
     setFeedback(null);
     startTransition(async () => {
       try {
-        const res = await actionSubiektSuggestProducts(debounced, activeField);
+        const res = await actionSubiektSuggestProducts(
+          debounced,
+          productSuggestSearchField(activeField)
+        );
         if (!res.ok) {
           setItems([]);
           setFeedback(res.feedback);
@@ -371,6 +391,11 @@ export function SubiektProductLineFields({
     onChange(clearSubiekt ? { ...patch, subiektTwId: null } : patch);
   };
 
+  const unlinkSubiektForEdit = () => {
+    onChange({ subiektTwId: null });
+    setOpen(true);
+  };
+
   const handleTypeaheadKeyDown = useCallback(
     (e: KeyboardEvent<HTMLInputElement>) => {
       if (!enabled || linkedFromSubiekt) return;
@@ -430,8 +455,9 @@ export function SubiektProductLineFields({
     };
   };
 
-  const renderTypeaheadPanel = (field: ActiveField) => {
-    if (activeField !== field || !typeaheadPanelVisible) return null;
+  const renderTypeaheadPanel = (anchorField?: ActiveField) => {
+    if (anchorField != null && activeField !== anchorField) return null;
+    if (!typeaheadPanelVisible) return null;
 
     const resultLabel =
       items.length === 1 ? "1 wynik" : `${items.length} wyników`;
@@ -441,13 +467,14 @@ export function SubiektProductLineFields({
         open
         size={typeaheadSize}
         listboxId={listboxId}
+        className="left-0 right-0"
         emptyMessage={status === "loading" ? "Szukam w Subiekcie…" : undefined}
         footer={typeaheadListVisible ? TYPEAHEAD_KEYBOARD_HINT : undefined}
       >
         {typeaheadListVisible ? (
           <>
             <TypeaheadSectionLabel>
-              Subiekt — {typeaheadSectionLabel(field)} · {resultLabel}
+              Subiekt — {typeaheadSectionLabel(activeField)} · {resultLabel}
             </TypeaheadSectionLabel>
             {items.map((p, index) => {
               const { title, subtitle } = formatSubiektProductOption(p);
@@ -476,10 +503,18 @@ export function SubiektProductLineFields({
   const productFieldFeedback =
     feedback && (showError || showInfo) && !linkedFromSubiekt ? feedback : null;
 
-  const symbolField = prosbaFieldProps("symbol", fieldValidation);
-  const mikranField = prosbaFieldProps("mikranCode", fieldValidation);
-  const productField = prosbaFieldProps("product", fieldValidation);
-  const quantityField = prosbaFieldProps("quantity", fieldValidation);
+  const mergedProductField = withoutSuccessWhenLinked(
+    mergeCombinedProductFieldProps(fieldValidation),
+    linkedFromSubiekt
+  );
+  const mikranField = withoutSuccessWhenLinked(
+    mikranFieldProps(fieldValidation),
+    linkedFromSubiekt
+  );
+  const quantityField = quantityFieldProps(fieldValidation);
+  const productInputLoading = activeField !== "plu" && status === "loading";
+  const mikranInputLoading = activeField === "plu" && status === "loading";
+  const linkedBannerSymbol = symbolPreview;
 
   const prosbaMessageItems: ProsbaLineMessageItem[] = [];
   if (prosba) {
@@ -505,324 +540,201 @@ export function SubiektProductLineFields({
     ) {
       prosbaMessageItems.push({
         kind: "hint",
-        text: "Wpisz symbol, kod Mikran lub nazwę — lista pojawi się pod polem. Strzałki ↑↓ i Enter wybierają towar z Subiekta.",
+        text: "Wpisz nazwę lub symbol — lista Subiekta pojawi się pod polem. Kod Mikran wpisz obok. Strzałki ↑↓ i Enter wybierają towar.",
       });
     }
   }
 
-  const symbolPluRow = (
-    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+  const productSearchRow = (
+    <div className="flex flex-col gap-3 sm:flex-row sm:items-start">
       <Field
-        label="Symbol"
-        {...symbolField}
+        label={
+          isInformacja
+            ? "Produkt (symbol lub nazwa)"
+            : "Produkt — symbol lub nazwa"
+        }
+        className={cn("min-w-0 flex-1", productFieldClassName)}
+        {...mergedProductField}
         hint={
-          prosba && !symbolField.error && !symbolField.state
-            ? enabled
-              ? "Symbol z kartoteki Subiekta (min. 2 znaki)"
-              : "Symbol towaru (wpis ręczny)"
+          !mergedProductField.error && !mergedProductField.state
+            ? mikranOnlyHint ??
+              (enabled
+                ? "Wpisz nazwę lub krótki symbol — wyniki z Subiekta pod polem"
+                : "Nazwa lub symbol towaru (wpis ręczny)")
             : undefined
         }
       >
-        <SubiektSearchFieldSlot
-          field="symbol"
-          activeField={activeField}
-          panelVisible={typeaheadPanelVisible}
-          panel={renderTypeaheadPanel("symbol")}
+        <div
+          className={cn(
+            "relative rounded-md transition-[box-shadow]",
+            typeaheadPanelVisible &&
+              activeField !== "plu" &&
+              "z-30 ring-2 ring-indigo-400/80 ring-offset-2"
+          )}
         >
-          <Input
-            disabled={disabled}
-            placeholder="np. ABC"
-            maxLength={MAX_SYMBOL_LEN}
-            value={value.symbol}
-            autoComplete="off"
-            state={symbolField.state}
-            onKeyDown={handleTypeaheadKeyDown}
-            {...typeaheadInputA11y("symbol")}
-            onChange={(e) => {
-              manualPatch({ symbol: e.target.value }, true);
-              setActiveField("symbol");
-              setOpen(true);
-            }}
-            onFocus={() => {
-              if (linkedFromSubiekt) return;
-              setActiveField("symbol");
-              setOpen(true);
-            }}
-          />
-          <SubiektFieldAdornment
-            linked={linkedFromSubiekt}
-            loading={activeField === "symbol" && status === "loading"}
-          />
-        </SubiektSearchFieldSlot>
+          <SubiektInputShell loading={productInputLoading}>
+            <Input
+              disabled={disabled}
+              placeholder={
+                isInformacja
+                  ? "np. Śruba M6 lub ABC-12"
+                  : enabled
+                    ? "Szukaj w Subiekcie: nazwa lub symbol…"
+                    : "Nazwa lub symbol produktu"
+              }
+              maxLength={MAX_PRODUCT_TEXT_LEN}
+              value={combinedProductSearchDisplay(value)}
+              autoComplete="off"
+              state={mergedProductField.state}
+              className={cn(
+                "min-h-12 py-3 text-base sm:min-h-[2.75rem]",
+                inputLoadingPadding(productInputLoading)
+              )}
+              onKeyDown={handleTypeaheadKeyDown}
+              {...(activeField === "plu"
+                ? {}
+                : typeaheadInputA11y(activeField))}
+              onChange={(e) => {
+                const q = e.target.value;
+                const field = inferCombinedProductSearchField(q);
+                manualPatch(
+                  patchFromCombinedProductInput(q, {
+                    symbol: value.symbol,
+                    product: value.product,
+                  }),
+                  true
+                );
+                setActiveField(field);
+                setOpen(true);
+              }}
+              onFocus={() => {
+                if (linkedFromSubiekt) return;
+                const q = combinedProductSearchDisplay(value);
+                setActiveField(
+                  q.trim() ? inferCombinedProductSearchField(q) : "name"
+                );
+                setOpen(true);
+              }}
+            />
+          </SubiektInputShell>
+          {renderTypeaheadPanel()}
+          {!linkedFromSubiekt && symbolPreview ? (
+            <p className="mt-1.5 text-xs text-slate-500">
+              Symbol w Subiekcie:{" "}
+              <span className="font-medium text-slate-700">{symbolPreview}</span>
+            </p>
+          ) : null}
+        </div>
       </Field>
 
       <Field
-        label="Kod mikran"
+        label="Mikran"
+        className="w-full shrink-0 sm:w-[6.75rem]"
         {...mikranField}
         hint={
-          prosba && !mikranField.error && !mikranField.state
+          !mikranField.error && !mikranField.state
             ? enabled
-              ? "Numer PLU / tw_PLU (min. 1 cyfra)"
-              : "Numer PLU / kod Mikran (wpis ręczny)"
+              ? "PLU (min. 1 cyfra)"
+              : "Kod PLU"
             : undefined
         }
       >
-        <SubiektSearchFieldSlot
-          field="plu"
-          activeField={activeField}
-          panelVisible={typeaheadPanelVisible}
-          panel={renderTypeaheadPanel("plu")}
+        <div
+          className={cn(
+            "relative rounded-md transition-[box-shadow]",
+            typeaheadPanelVisible &&
+              activeField === "plu" &&
+              "z-30 ring-2 ring-indigo-400/80 ring-offset-2"
+          )}
         >
-          <Input
-            disabled={disabled}
-            placeholder="np. 896"
-            inputMode="numeric"
-            maxLength={MAX_MIKRAN_CODE_LEN}
-            value={value.mikranCode}
-            autoComplete="off"
-            state={mikranField.state}
-            onKeyDown={handleTypeaheadKeyDown}
-            {...typeaheadInputA11y("plu")}
-            onChange={(e) => {
-              manualPatch({ mikranCode: e.target.value }, true);
-              setActiveField("plu");
-              setOpen(true);
-            }}
-            onFocus={() => {
-              if (linkedFromSubiekt) return;
-              setActiveField("plu");
-              setOpen(true);
-            }}
-          />
-          <SubiektFieldAdornment
-            linked={linkedFromSubiekt}
-            loading={activeField === "plu" && status === "loading"}
-          />
-        </SubiektSearchFieldSlot>
+          <SubiektInputShell loading={mikranInputLoading}>
+            <Input
+              disabled={disabled}
+              placeholder="896"
+              inputMode="numeric"
+              maxLength={MAX_MIKRAN_CODE_LEN}
+              value={value.mikranCode}
+              autoComplete="off"
+              state={mikranField.state}
+              className={cn(
+                "min-h-12 px-2.5 text-base tabular-nums sm:min-h-[2.75rem] sm:text-sm",
+                mikranInputLoading ? "pr-9 text-left" : "text-center"
+              )}
+              onKeyDown={handleTypeaheadKeyDown}
+              {...typeaheadInputA11y("plu")}
+              onChange={(e) => {
+                manualPatch({ mikranCode: e.target.value }, true);
+                setActiveField("plu");
+                setOpen(true);
+              }}
+              onFocus={() => {
+                if (linkedFromSubiekt) return;
+                setActiveField("plu");
+                setOpen(true);
+              }}
+            />
+          </SubiektInputShell>
+        </div>
       </Field>
     </div>
   );
 
+  const showQuantityValidation = prosba || Boolean(fieldValidation);
+
   return (
     <div ref={ref} className="relative space-y-3">
-      {prosba ? (
-        <>
-          {symbolPluRow}
-          <Field
-            label={isInformacja ? "Produkt (co ma być na stanie)" : "Produkty"}
-            className={productFieldClassName}
-            {...productField}
-            hint={
-              prosba && !productField.error && !productField.state
-                ? enabled
-                  ? "Nazwa lub opis produktu (min. 2 znaki do wyszukiwania)"
-                  : "Nazwa lub opis produktu (wpis ręczny)"
-                : undefined
-            }
+      {productSearchRow}
+
+      {linkedFromSubiekt ? (
+        <div className="space-y-2">
+          <SubiektLinkedLineBanner
+            symbol={linkedBannerSymbol}
+            mikranCode={value.mikranCode}
+          />
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            disabled={disabled}
+            className="text-emerald-800 hover:bg-emerald-50"
+            onClick={unlinkSubiektForEdit}
           >
-            <SubiektSearchFieldSlot
-              field="name"
-              activeField={activeField}
-              panelVisible={typeaheadPanelVisible}
-              panel={renderTypeaheadPanel("name")}
-            >
-              <Input
-                disabled={disabled}
-                placeholder={
-                  isInformacja
-                    ? "Nazwa z Subiekta…"
-                    : enabled
-                      ? "Nazwa z Subiekta…"
-                      : "Opis produktów"
-                }
-                maxLength={MAX_PRODUCT_TEXT_LEN}
-                value={value.product}
-                autoComplete="off"
-                state={productField.state}
-                onKeyDown={handleTypeaheadKeyDown}
-                {...typeaheadInputA11y("name")}
-                onChange={(e) => {
-                  manualPatch({ product: e.target.value }, true);
-                  setActiveField("name");
-                  setOpen(true);
-                }}
-                onFocus={() => {
-                  if (linkedFromSubiekt) return;
-                  setActiveField("name");
-                  setOpen(true);
-                }}
-              />
-              <SubiektFieldAdornment
-                linked={linkedFromSubiekt}
-                loading={activeField === "name" && status === "loading"}
-              />
-            </SubiektSearchFieldSlot>
-          </Field>
-          {!isInformacja ? (
-            <Field
-              label="Ilość (wymagane)"
-              {...quantityField}
-              hint={
-                prosba && !quantityField.error && !quantityField.state
-                  ? "Liczba sztuk do zamówienia u dostawcy"
-                  : undefined
-              }
-            >
-              <Input
-                type="number"
-                min={1}
-                step={1}
-                required
-                disabled={disabled}
-                maxLength={MAX_QUANTITY_LEN}
-                placeholder="np. 1"
-                value={value.quantity}
-                state={quantityField.state}
-                onChange={(e) => onChange({ quantity: e.target.value })}
-              />
-            </Field>
-          ) : null}
-
-          {prosbaMessageItems.length > 0 ? (
-            <ProsbaLineFieldMessages
-              lineLabel={`Informacje — produkt ${lineIndex + 1}`}
-              items={prosbaMessageItems}
-            />
-          ) : null}
-        </>
-      ) : (
-        <div
-          className={cn(
-            "grid gap-3",
-            isInformacja ? "sm:grid-cols-3" : "sm:grid-cols-2 lg:grid-cols-4"
-          )}
-        >
-          <Field label="Symbol">
-            <SubiektSearchFieldSlot
-              field="symbol"
-              activeField={activeField}
-              panelVisible={typeaheadPanelVisible}
-              panel={renderTypeaheadPanel("symbol")}
-            >
-              <Input
-                disabled={disabled}
-                placeholder="np. ABC"
-                maxLength={MAX_SYMBOL_LEN}
-                value={value.symbol}
-                autoComplete="off"
-                onKeyDown={handleTypeaheadKeyDown}
-                {...typeaheadInputA11y("symbol")}
-                onChange={(e) => {
-                  manualPatch({ symbol: e.target.value }, true);
-                  setActiveField("symbol");
-                  setOpen(true);
-                }}
-                onFocus={() => {
-                  if (linkedFromSubiekt) return;
-                  setActiveField("symbol");
-                  setOpen(true);
-                }}
-              />
-              <SubiektFieldAdornment
-                linked={linkedFromSubiekt}
-                loading={activeField === "symbol" && status === "loading"}
-              />
-            </SubiektSearchFieldSlot>
-          </Field>
-
-          <Field label="Kod mikran">
-            <SubiektSearchFieldSlot
-              field="plu"
-              activeField={activeField}
-              panelVisible={typeaheadPanelVisible}
-              panel={renderTypeaheadPanel("plu")}
-            >
-              <Input
-                disabled={disabled}
-                placeholder="np. 896"
-                inputMode="numeric"
-                maxLength={MAX_MIKRAN_CODE_LEN}
-                value={value.mikranCode}
-                autoComplete="off"
-                onKeyDown={handleTypeaheadKeyDown}
-                {...typeaheadInputA11y("plu")}
-                onChange={(e) => {
-                  manualPatch({ mikranCode: e.target.value }, true);
-                  setActiveField("plu");
-                  setOpen(true);
-                }}
-                onFocus={() => {
-                  if (linkedFromSubiekt) return;
-                  setActiveField("plu");
-                  setOpen(true);
-                }}
-              />
-              <SubiektFieldAdornment
-                linked={linkedFromSubiekt}
-                loading={activeField === "plu" && status === "loading"}
-              />
-            </SubiektSearchFieldSlot>
-          </Field>
-
-          <Field
-            label={isInformacja ? "Produkt (co ma być na stanie)" : "Produkty"}
-            className={cn(productFieldClassName, "sm:col-span-2 lg:col-span-1")}
-          >
-            <SubiektSearchFieldSlot
-              field="name"
-              activeField={activeField}
-              panelVisible={typeaheadPanelVisible}
-              panel={renderTypeaheadPanel("name")}
-            >
-              <Input
-                disabled={disabled}
-                placeholder={
-                  isInformacja
-                    ? "Nazwa z Subiekta…"
-                    : enabled
-                      ? "Nazwa z Subiekta…"
-                      : "Opis produktów"
-                }
-                maxLength={MAX_PRODUCT_TEXT_LEN}
-                value={value.product}
-                autoComplete="off"
-                onKeyDown={handleTypeaheadKeyDown}
-                {...typeaheadInputA11y("name")}
-                onChange={(e) => {
-                  manualPatch({ product: e.target.value }, true);
-                  setActiveField("name");
-                  setOpen(true);
-                }}
-                onFocus={() => {
-                  if (linkedFromSubiekt) return;
-                  setActiveField("name");
-                  setOpen(true);
-                }}
-              />
-              <SubiektFieldAdornment
-                linked={linkedFromSubiekt}
-                loading={activeField === "name" && status === "loading"}
-              />
-            </SubiektSearchFieldSlot>
-          </Field>
-
-          {!isInformacja ? (
-            <Field label="Ilość (wymagane)">
-              <Input
-                type="number"
-                min={1}
-                step={1}
-                required
-                disabled={disabled}
-                maxLength={MAX_QUANTITY_LEN}
-                placeholder="np. 1"
-                value={value.quantity}
-                onChange={(e) => onChange({ quantity: e.target.value })}
-              />
-            </Field>
-          ) : null}
+            Zmień towar
+          </Button>
         </div>
-      )}
+      ) : null}
+
+      {!isInformacja ? (
+        <Field
+          label="Ilość (wymagane)"
+          {...(showQuantityValidation ? quantityField : {})}
+          hint={
+            prosba && !quantityField.error && !quantityField.state
+              ? "Liczba sztuk do zamówienia u dostawcy"
+              : undefined
+          }
+        >
+          <Input
+            type="number"
+            min={1}
+            step={1}
+            required
+            disabled={disabled}
+            maxLength={MAX_QUANTITY_LEN}
+            placeholder="np. 1"
+            value={value.quantity}
+            state={showQuantityValidation ? quantityField.state : undefined}
+            onChange={(e) => onChange({ quantity: e.target.value })}
+          />
+        </Field>
+      ) : null}
+
+      {prosba && prosbaMessageItems.length > 0 ? (
+        <ProsbaLineFieldMessages
+          lineLabel={`Informacje — produkt ${lineIndex + 1}`}
+          items={prosbaMessageItems}
+        />
+      ) : null}
 
       {!enabled && configFeedback && !delegateAlerts && !prosba ? (
         <SubiektFeedbackAlert feedback={configFeedback} compact />
@@ -832,7 +744,8 @@ export function SubiektProductLineFields({
         <>
           {!delegateAlerts && !prosba && !feedback && !resolvingSupplier && !linkedFromSubiekt ? (
             <p className="text-xs text-slate-400">
-              Wpisz symbol, kod Mikran lub nazwę, aby wyszukać w Subiekcie.
+              Wpisz nazwę lub symbol w dużym polu, kod Mikran obok — lista Subiekta
+              pojawi się pod produktem.
             </p>
           ) : null}
 

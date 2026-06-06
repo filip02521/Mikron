@@ -35,6 +35,7 @@ import {
   surfaceCardClass,
 } from "@/lib/ui/ontime-theme";
 import { PanelRowActionsInlineEnd } from "@/components/summary/PanelRowActionsInlineEnd";
+import { FlowChevron } from "@/components/ui/UiGlyphs";
 import { panelRowClearFocusOnLeave, panelRowGroupClass } from "@/lib/ui/panel-row-actions-reveal";
 
 function PlanSectionHelp({ planning }: { planning: boolean }) {
@@ -331,6 +332,7 @@ function WeekPlanEmptyCalendar({
       </div>
       <div className="bg-slate-50/35">
         <EmptyState
+          brandAccent
           icon={<DailySectionIcon kind="plan" size={28} />}
           title="Brak zaplanowanych zamówień w tym tygodniu"
           description={
@@ -559,7 +561,11 @@ function PlannerCard({
         <p className="mt-0.5 line-clamp-2 text-xs leading-snug text-slate-500">{note}</p>
       ) : null}
       {isMoved && movedLabel ? (
-        <p className="mt-0.5 text-[10px] font-medium text-amber-800">Przeniesiono → {movedLabel}</p>
+        <p className="mt-0.5 inline-flex flex-wrap items-center gap-1 text-[10px] font-medium text-amber-800">
+          Przeniesiono
+          <FlowChevron size={10} className="text-amber-500/80" />
+          {movedLabel}
+        </p>
       ) : null}
     </>
   );

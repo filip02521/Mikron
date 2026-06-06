@@ -1,6 +1,7 @@
 "use client";
 
 import { HelpPopover, GuideIcon } from "@/components/ui/HelpPopover";
+import { InlineCheck } from "@/components/ui/UiGlyphs";
 
 export function QueuePanelHelp() {
   return (
@@ -12,7 +13,8 @@ export function QueuePanelHelp() {
     >
       <p>
         <strong>Kolejka przyjęcia</strong> — jedna lista pogrupowana po dostawcy (domyślnie zwinięta).
-        Wiersze z zieloną kropką: kliknij ilość zamówioną lub wpisz dostawę, Enter lub ✓.
+        Wiersze z zieloną kropką: kliknij ilość zamówioną lub wpisz dostawę, Enter lub{" "}
+        <InlineCheck size={12} className="align-[-2px]" />.
         Niebieska kropka (informacja): przycisk Powiadom po dotarciu towaru.
         Zaznacz wiele pozycji — pasek akcji u góry tabeli.
       </p>
