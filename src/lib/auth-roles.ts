@@ -63,7 +63,7 @@ const OPERATIONS_PATH_PREFIXES = [
   ...PROCUREMENT_PREFIXES,
 ];
 
-const SALES_PATH_PREFIXES = ["/moje", "/plan", "/prosba", "/notatnik"];
+const SALES_PATH_PREFIXES = ["/moje", "/plan", "/prosba", "/notatnik", "/tablica"];
 
 export function homePathForRole(role: UserRole): string {
   if (isMagazyn(role)) return "/kolejka";

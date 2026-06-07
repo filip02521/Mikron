@@ -164,6 +164,41 @@ export interface OperationsNote {
   author?: { email: string | null } | null;
 }
 
+export type DepartmentBoardKind = "announcement" | "question";
+export type DepartmentBoardStatus = "open" | "answered" | "archived";
+
+export interface DepartmentBoardThread {
+  id: string;
+  kind: DepartmentBoardKind;
+  status: DepartmentBoardStatus;
+  created_by: string;
+  sales_person_id: string | null;
+  title: string;
+  body: string;
+  color: SalesNoteColor;
+  pinned: boolean;
+  published_at: string;
+  expires_at: string | null;
+  answered_at: string | null;
+  archived_at: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface DepartmentBoardPost {
+  id: string;
+  thread_id: string;
+  created_by: string;
+  body: string;
+  created_at: string;
+}
+
+export interface DepartmentBoardRead {
+  thread_id: string;
+  profile_id: string;
+  read_at: string;
+}
+
 export interface SalesNote {
   id: string;
   sales_person_id: string;
