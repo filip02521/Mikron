@@ -23,7 +23,7 @@ export default defineConfig({
   webServer: process.env.PLAYWRIGHT_SKIP_WEBSERVER
     ? undefined
     : {
-        command: `npm run build && E2E_LAB=1 npx next start -H 127.0.0.1 -p ${port}`,
+        command: `E2E_LAB=1 npm run build && E2E_LAB=1 npx next start -H 127.0.0.1 -p ${port}`,
         url: `${baseURL}/e2e-lab`,
         reuseExistingServer: !process.env.CI,
         timeout: 300_000,

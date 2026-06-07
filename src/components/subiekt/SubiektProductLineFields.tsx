@@ -515,6 +515,7 @@ export function SubiektProductLineFields({
     linkedFromSubiekt
   );
   const quantityField = quantityFieldProps(fieldValidation);
+  const showQuantityValidation = prosba || Boolean(fieldValidation);
   const productInputLoading = activeField !== "plu" && status === "loading";
   const mikranInputLoading = activeField === "plu" && status === "loading";
   const linkedBannerSymbol = symbolPreview;
@@ -543,7 +544,7 @@ export function SubiektProductLineFields({
     ) {
       prosbaMessageItems.push({
         kind: "hint",
-        text: "Wpisz nazwę lub symbol — lista Subiekta pojawi się pod polem. Kod Mikran wpisz obok. Strzałki ↑↓ i Enter wybierają towar.",
+        text: "Wpisz nazwę lub symbol — lista Subiekta pojawi się pod polem. Kod Mikran i ilość obok.",
       });
     }
   }
@@ -683,10 +684,41 @@ export function SubiektProductLineFields({
           </SubiektInputShell>
         </div>
       </Field>
+
+      {!isInformacja ? (
+        <Field
+          label="Ilość"
+          className="w-[5.5rem] shrink-0"
+          {...(showQuantityValidation ? quantityField : {})}
+          hint={
+            prosba && !quantityField.error && !quantityField.state
+              ? "Sztuk"
+              : undefined
+          }
+        >
+          <Input
+            type="number"
+            min={1}
+            step={1}
+            required
+            disabled={disabled}
+            maxLength={MAX_QUANTITY_LEN}
+            placeholder="1"
+            inputMode="numeric"
+            aria-label="Ilość sztuk"
+            value={value.quantity}
+            state={showQuantityValidation ? quantityField.state : undefined}
+            className={cn(
+              compactControls
+                ? "min-h-11 px-2 text-center text-base tabular-nums sm:min-h-[2.5rem] sm:text-sm"
+                : "min-h-12 px-2 text-center text-base tabular-nums sm:min-h-[2.75rem] sm:text-sm"
+            )}
+            onChange={(e) => onChange({ quantity: e.target.value })}
+          />
+        </Field>
+      ) : null}
     </div>
   );
-
-  const showQuantityValidation = prosba || Boolean(fieldValidation);
 
   return (
     <div ref={ref} className="relative space-y-3">
@@ -711,31 +743,6 @@ export function SubiektProductLineFields({
         </div>
       ) : null}
 
-      {!isInformacja ? (
-        <Field
-          label="Ilość (wymagane)"
-          {...(showQuantityValidation ? quantityField : {})}
-          hint={
-            prosba && !quantityField.error && !quantityField.state
-              ? "Liczba sztuk do zamówienia u dostawcy"
-              : undefined
-          }
-        >
-          <Input
-            type="number"
-            min={1}
-            step={1}
-            required
-            disabled={disabled}
-            maxLength={MAX_QUANTITY_LEN}
-            placeholder="np. 1"
-            value={value.quantity}
-            state={showQuantityValidation ? quantityField.state : undefined}
-            onChange={(e) => onChange({ quantity: e.target.value })}
-          />
-        </Field>
-      ) : null}
-
       {prosba && prosbaMessageItems.length > 0 ? (
         <ProsbaLineFieldMessages
           lineLabel={`Informacje — produkt ${lineIndex + 1}`}
@@ -751,8 +758,8 @@ export function SubiektProductLineFields({
         <>
           {!delegateAlerts && !prosba && !feedback && !resolvingSupplier && !linkedFromSubiekt ? (
             <p className="text-xs text-slate-400">
-              Wpisz nazwę lub symbol w dużym polu, kod Mikran obok — lista Subiekta
-              pojawi się pod produktem.
+              Wpisz nazwę lub symbol w dużym polu, kod Mikran i ilość obok — lista
+              Subiekta pojawi się pod produktem.
             </p>
           ) : null}
 

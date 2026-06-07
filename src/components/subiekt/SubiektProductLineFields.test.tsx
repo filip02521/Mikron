@@ -2,8 +2,21 @@
  * @vitest-environment happy-dom
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { cleanup, fireEvent, render, screen, within } from "@testing-library/react";
+import {
+  cleanup,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+  within,
+} from "@testing-library/react";
+import { useState, type ComponentProps } from "react";
 import { SubiektProductLineFields } from "./SubiektProductLineFields";
+import type { SubiektProductLineValue } from "./SubiektProductLineFields";
+import {
+  actionSubiektSuggestProducts,
+  actionSubiektSuggestionsEnabled,
+} from "@/app/actions/subiekt";
 
 vi.mock("@/hooks/useDebouncedValue", () => ({
   useDebouncedValue: (value: string) => value,
@@ -26,9 +39,38 @@ const baseValue = {
   quantity: "1",
 };
 
+const subiektProduct = {
+  tw_Id: 1001,
+  tw_Symbol: "4200",
+  tw_Nazwa: "Gumka test",
+  tw_PLU: "789",
+};
+
+function ControlledSubiektLine({
+  initialValue = baseValue,
+  ...props
+}: Omit<
+  ComponentProps<typeof SubiektProductLineFields>,
+  "value" | "onChange"
+> & { initialValue?: SubiektProductLineValue }) {
+  const [value, setValue] = useState(initialValue);
+  return (
+    <SubiektProductLineFields
+      {...props}
+      value={value}
+      onChange={(patch) => setValue((prev) => ({ ...prev, ...patch }))}
+    />
+  );
+}
+
 describe("SubiektProductLineFields", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    vi.mocked(actionSubiektSuggestionsEnabled).mockResolvedValue({ enabled: false });
+    vi.mocked(actionSubiektSuggestProducts).mockResolvedValue({
+      ok: true,
+      items: [],
+    });
   });
 
   afterEach(() => {
@@ -123,7 +165,8 @@ describe("SubiektProductLineFields", () => {
       />
     );
 
-    expect(within(view.container).getByText("Ilość (wymagane)")).toBeTruthy();
+    expect(within(view.container).getByText("Ilość")).toBeTruthy();
+    expect(within(view.container).getByLabelText("Ilość sztuk")).toBeTruthy();
   });
 
   it("pokazuje hint gdy wypełniono tylko kod Mikran", () => {
@@ -158,5 +201,168 @@ describe("SubiektProductLineFields", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "Zmień towar" }));
     expect(onChange).toHaveBeenCalledWith({ subiektTwId: null });
+  });
+
+  it("nie renderuje ilości przy prośbie typu informacja", () => {
+    render(
+      <SubiektProductLineFields
+        appearance="prosba"
+        requestKind="informacja"
+        value={{ ...baseValue, quantity: "" }}
+        onChange={vi.fn()}
+      />
+    );
+
+    expect(screen.queryByLabelText("Ilość sztuk")).toBeNull();
+    expect(screen.queryByText("Ilość")).toBeNull();
+  });
+
+  it("aktualizuje ilość niezależnie od pól Subiekta", () => {
+    const onChange = vi.fn();
+    render(
+      <SubiektProductLineFields
+        appearance="prosba"
+        requestKind="zamowienie"
+        value={{ ...baseValue, quantity: "1" }}
+        onChange={onChange}
+      />
+    );
+
+    fireEvent.change(screen.getByLabelText("Ilość sztuk"), {
+      target: { value: "5" },
+    });
+
+    expect(onChange).toHaveBeenCalledWith({ quantity: "5" });
+  });
+
+  it("pokazuje typeahead Subiekta pod polem produktu", async () => {
+    vi.mocked(actionSubiektSuggestionsEnabled).mockResolvedValue({ enabled: true });
+    vi.mocked(actionSubiektSuggestProducts).mockResolvedValue({
+      ok: true,
+      items: [subiektProduct],
+    });
+
+    render(
+      <ControlledSubiektLine
+        appearance="prosba"
+        requestKind="zamowienie"
+        initialValue={baseValue}
+      />
+    );
+
+    await waitFor(() =>
+      expect(
+        screen.getByPlaceholderText("Szukaj w Subiekcie: nazwa lub symbol…")
+      ).toBeTruthy()
+    );
+
+    fireEvent.change(
+      screen.getByPlaceholderText("Szukaj w Subiekcie: nazwa lub symbol…"),
+      { target: { value: "gum" } }
+    );
+
+    await waitFor(() => {
+      expect(actionSubiektSuggestProducts).toHaveBeenCalledWith("gum", "combined");
+    });
+    expect(screen.getByText(/Subiekt — po symbolu i nazwie/)).toBeTruthy();
+    expect(screen.getByText(/4200 — Gumka test/)).toBeTruthy();
+  });
+
+  it("zachowuje ilość po wyborze towaru z Subiekta", async () => {
+    vi.mocked(actionSubiektSuggestionsEnabled).mockResolvedValue({ enabled: true });
+    vi.mocked(actionSubiektSuggestProducts).mockResolvedValue({
+      ok: true,
+      items: [subiektProduct],
+    });
+
+    const onChange = vi.fn();
+    function PickHarness() {
+      const [value, setValue] = useState({ ...baseValue, quantity: "3" });
+      return (
+        <SubiektProductLineFields
+          appearance="prosba"
+          requestKind="zamowienie"
+          value={value}
+          onChange={(patch) => {
+            setValue((prev) => ({ ...prev, ...patch }));
+            onChange(patch);
+          }}
+        />
+      );
+    }
+
+    render(<PickHarness />);
+
+    await waitFor(() =>
+      expect(
+        screen.getByPlaceholderText("Szukaj w Subiekcie: nazwa lub symbol…")
+      ).toBeTruthy()
+    );
+
+    fireEvent.change(
+      screen.getByPlaceholderText("Szukaj w Subiekcie: nazwa lub symbol…"),
+      { target: { value: "gum" } }
+    );
+
+    await waitFor(() => screen.getByText(/4200 — Gumka test/));
+    fireEvent.click(screen.getByText(/4200 — Gumka test/));
+
+    expect(onChange).toHaveBeenCalledWith(
+      expect.objectContaining({
+        symbol: "4200",
+        product: "Gumka test",
+        mikranCode: "789",
+        quantity: "3",
+        subiektTwId: 1001,
+      })
+    );
+  });
+
+  it("po powiązaniu z Subiektem ukrywa podgląd symbolu i listę wyników", async () => {
+    vi.mocked(actionSubiektSuggestionsEnabled).mockResolvedValue({ enabled: true });
+
+    render(
+      <SubiektProductLineFields
+        appearance="prosba"
+        requestKind="zamowienie"
+        value={{
+          ...baseValue,
+          symbol: "4200",
+          product: "Gumka test",
+          mikranCode: "789",
+          subiektTwId: 1001,
+        }}
+        onChange={vi.fn()}
+      />
+    );
+
+    await waitFor(() =>
+      expect(actionSubiektSuggestionsEnabled).toHaveBeenCalled()
+    );
+
+    expect(screen.queryByText(/Symbol w Subiekcie:/)).toBeNull();
+    expect(actionSubiektSuggestProducts).not.toHaveBeenCalled();
+    expect(screen.getByLabelText("Powiązano z Subiektem")).toBeTruthy();
+  });
+
+  it("w trybie prośby pokazuje hint o układzie pól obok siebie", async () => {
+    vi.mocked(actionSubiektSuggestionsEnabled).mockResolvedValue({ enabled: true });
+
+    render(
+      <SubiektProductLineFields
+        appearance="prosba"
+        requestKind="zamowienie"
+        value={baseValue}
+        onChange={vi.fn()}
+      />
+    );
+
+    await waitFor(() =>
+      expect(actionSubiektSuggestionsEnabled).toHaveBeenCalled()
+    );
+
+    expect(
+      screen.getByText(/Kod Mikran i ilość obok/)
+    ).toBeTruthy();
   });
 });
