@@ -22,8 +22,11 @@ import { MyOrderShipmentOverflowMenu } from "@/components/moje/MyOrderShipmentOv
 import { MyOrderHeadlineBanner } from "@/components/moje/MyOrderHeadlineBanner";
 import { MyOrderStatusPill } from "@/components/moje/MyOrderStatusPill";
 import { cn } from "@/lib/cn";
-import { brandLinkSubtleClass } from "@/lib/ui/ontime-theme";
+import { brandLinkSubtleClass, panelSegmentLastClass, salesTypography } from "@/lib/ui/ontime-theme";
 import {
+  mojeQueueRowActionsClass,
+  mojeQueueRowLayoutClass,
+  mojeQueueRowMainClass,
   mojeShipmentExpandedActionsClass,
   mojeShipmentExpandedClientsClass,
   mojeShipmentExpandedNotesClass,
@@ -33,6 +36,7 @@ import {
   mojeShipmentLinesShellClass,
   mojeShipmentRowClass,
 } from "@/lib/ui/moje-shipment-row-styles";
+import { mojeActionBarShellClass } from "@/lib/ui/surfaces";
 import { SearchHighlightText } from "@/components/moje/SearchHighlightText";
 import {
   rowSearchHighlightsProductLines,
@@ -99,43 +103,69 @@ function ShipmentToolbar({
     (showSinglePickup && !hideSinglePickup);
   if (!hasToolbar) return null;
 
-  return (
-    <div className="flex shrink-0 items-center gap-1 sm:gap-1.5">
-      {overflowMenu}
+  const ackButtonCount =
+    (showDismissAck ? 1 : 0) +
+    (showSinglePickup && !hideSinglePickup ? 1 : 0) +
+    (showBulkPickup ? 1 : 0);
+  const groupedAcks = ackButtonCount > 1;
+
+  const ackButtons = (
+    <>
       {showDismissAck ? (
         <MyOrderAckButton
-          variant={isAction ? "action" : "inline"}
+          variant={groupedAcks ? "segmentOutline" : isAction ? "action" : "inline"}
           disabled={pending}
           preview={tourPreview}
           title={dismissAckTitle}
           onClick={() => onAcknowledgeDismiss(dismissAckIds)}
+          className={cn(groupedAcks && ackButtonCount === 1 && panelSegmentLastClass)}
         >
           {dismissAckLabel}
         </MyOrderAckButton>
       ) : null}
       {showSinglePickup && !hideSinglePickup ? (
         <MyOrderAckButton
-          variant={isAction ? "action" : "inline"}
+          variant={
+            groupedAcks
+              ? showDismissAck
+                ? "segmentPrimary"
+                : "segmentOutline"
+              : isAction
+                ? "action"
+                : "inline"
+          }
           disabled={pending}
           preview={tourPreview}
           title={ackFullTitle}
           onClick={() => onAcknowledgePickup(pickupIds)}
+          className={cn(groupedAcks && !showBulkPickup && panelSegmentLastClass)}
         >
           {ackShortLabel}
         </MyOrderAckButton>
       ) : null}
       {showBulkPickup ? (
         <MyOrderAckButton
-          variant={isAction ? "action" : "inline"}
+          variant={groupedAcks ? "segmentPrimary" : isAction ? "action" : "inline"}
           disabled={pending}
           preview={tourPreview}
           title={ackFullTitle}
           onClick={() => onAcknowledgePickup(pickupIds)}
-          className="whitespace-nowrap"
+          className={cn(groupedAcks && panelSegmentLastClass, "whitespace-nowrap")}
         >
           {pickupCount} do odbioru
         </MyOrderAckButton>
       ) : null}
+    </>
+  );
+
+  return (
+    <div className="flex w-full shrink-0 flex-wrap items-stretch justify-end gap-1.5 sm:w-auto sm:gap-1.5">
+      {overflowMenu}
+      {groupedAcks ? (
+        <div className={cn(mojeActionBarShellClass, "w-full sm:w-auto")}>{ackButtons}</div>
+      ) : (
+        ackButtons
+      )}
     </div>
   );
 }
@@ -417,7 +447,8 @@ export function MyOrderShipmentCard({
   });
 
   const headlineClass = cn(
-    "truncate text-xs font-medium sm:text-[0.8125rem]",
+    salesTypography.rowBody,
+    "truncate",
     isAction && "text-emerald-800",
     isUrgent && "text-amber-900",
     !isAction && !isUrgent && "text-slate-600"
@@ -441,7 +472,8 @@ export function MyOrderShipmentCard({
           action={bannerAction}
         />
       ) : null}
-      <div className="flex min-h-[2.75rem] items-center gap-1 px-2 py-1.5 sm:min-h-[3rem] sm:gap-2 sm:px-3 sm:py-2">
+      <div className={cn("px-2 py-1.5 sm:px-3 sm:py-2", mojeQueueRowLayoutClass)}>
+        <div className={mojeQueueRowMainClass}>
         <button
           type="button"
           data-moje-row-toggle=""
@@ -455,7 +487,7 @@ export function MyOrderShipmentCard({
               : row.supplierName
           }
           className={cn(
-            "flex h-10 w-10 shrink-0 items-center justify-center text-slate-500 sm:h-8 sm:w-8",
+            "flex h-11 w-11 shrink-0 items-center justify-center text-slate-500 sm:h-8 sm:w-8",
             needsExpand && "hover:bg-slate-100 hover:text-indigo-700"
           )}
         >
@@ -476,11 +508,12 @@ export function MyOrderShipmentCard({
             <SearchHighlightText
               text={row.supplierName}
               searchQuery={searchQuery}
-              className="truncate text-sm font-semibold text-slate-900"
+              className={cn("truncate", salesTypography.rowTitle)}
             />
             <span
               className={cn(
-                "shrink-0 rounded px-1 py-0.5 text-[0.65rem] font-semibold uppercase tracking-wide",
+                "shrink-0 rounded px-1 py-0.5",
+                salesTypography.kindTag,
                 isInformacja
                   ? "bg-violet-100 text-violet-800"
                   : "bg-slate-100 text-slate-600"
@@ -501,7 +534,7 @@ export function MyOrderShipmentCard({
             <SearchHighlightText
               text={collapsedSubline}
               searchQuery={searchQuery}
-              className="mt-0.5 truncate text-[0.68rem] leading-snug text-slate-500"
+              className={cn("mt-0.5 truncate", salesTypography.rowMeta)}
               as="p"
             />
           ) : null}
@@ -516,7 +549,7 @@ export function MyOrderShipmentCard({
             <SearchHighlightText
               text={`ZK ${row.sourceZkNumber}`}
               searchQuery={searchQuery}
-              className="mt-0.5 truncate text-[0.65rem] font-medium tabular-nums text-slate-600"
+              className={cn("mt-0.5 truncate font-medium tabular-nums text-slate-600", salesTypography.rowMeta)}
               as="p"
             />
           ) : null}
@@ -535,13 +568,14 @@ export function MyOrderShipmentCard({
               <SearchHighlightText
                 text={productSummary}
                 searchQuery={searchQuery}
-                className="text-[0.65rem] font-medium tabular-nums text-slate-500"
+                className={cn("font-medium tabular-nums text-slate-500", salesTypography.rowMeta)}
               />
             ) : null}
           </div>
         ) : null}
+        </div>
 
-        <div className="shrink-0" onClick={(e) => e.stopPropagation()}>
+        <div className={mojeQueueRowActionsClass} onClick={(e) => e.stopPropagation()}>
           {toolbar}
         </div>
       </div>
@@ -559,7 +593,7 @@ export function MyOrderShipmentCard({
             <SearchHighlightText
               text={productSummary}
               searchQuery={searchQuery}
-              className="text-[0.65rem] font-medium text-slate-500"
+              className={cn("font-medium text-slate-500", salesTypography.rowMeta)}
             />
           ) : null}
         </div>

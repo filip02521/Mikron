@@ -19,7 +19,13 @@ import {
 } from "@/lib/orders/plan-preview";
 import { SalesPlanView } from "@/components/plan/SalesPlanView";
 import type { DeliveryStats } from "@/types/database";
+import { Alert } from "@/components/ui/Alert";
 import { cn } from "@/lib/cn";
+import {
+  panelChromeInsetClass,
+  panelPageShellClass,
+  panelSectionInsetClass,
+} from "@/lib/ui/ontime-theme";
 import { useSalesOnboardingDemo } from "@/components/sales/SalesOnboardingContext";
 import { buildOnboardingPlanDemo } from "@/lib/sales/sales-onboarding-demo-data";
 
@@ -32,6 +38,7 @@ export function PlanClient(props: {
   prioritySupplierIds?: string[];
   openOrderCountBySupplier?: Record<string, number>;
   statsBySupplierId?: Record<string, DeliveryStats>;
+  error?: string | null;
 }) {
   const tourDemo = useSalesOnboardingDemo("plan");
   const demo = useMemo(() => buildOnboardingPlanDemo(), []);
@@ -55,20 +62,23 @@ export function PlanClient(props: {
         prioritySupplierIds={resolved.prioritySupplierIds ?? []}
         openOrderCountBySupplier={resolved.openOrderCountBySupplier ?? {}}
         tourPreview={tourDemo}
+        error={tourDemo ? null : props.error}
       />
     );
   }
-  return <PlanPreviewClient {...resolved} />;
+  return <PlanPreviewClient {...resolved} error={props.error} />;
 }
 
 function PlanPreviewClient({
   workspace,
   suppliers,
   openOrderCountBySupplier = {},
+  error = null,
 }: {
   workspace: SummaryWorkspaceData;
   suppliers: SupplierWithSchedule[];
   openOrderCountBySupplier?: Record<string, number>;
+  error?: string | null;
 }) {
   const [query, setQuery] = useState("");
   const searchQuery = query.trim();
@@ -118,21 +128,24 @@ function PlanPreviewClient({
     "Pełny harmonogram zakupów — poniedziałek–piątek (tylko podgląd)";
 
   return (
-    <div className="space-y-8">
+    <div className={panelPageShellClass}>
+      {error ? <Alert tone="warning">{error}</Alert> : null}
       <WeekPlanner
         title={weekTitle}
         description={weekDescription}
         days={workspace.thisWeekDays}
         readOnly
+        density="compact"
       />
 
-      <Card padding={false}>
+      <Card padding={false} className="overflow-hidden">
         <CardHeader
           inset
+          density="compact"
           title="Harmonogram dostawców"
           description="Wyszukaj dostawcę i zobacz planowaną datę zamówienia"
         />
-        <div className="space-y-4 border-b border-slate-100 px-4 pb-4 sm:px-6">
+        <div className={cn("space-y-4 border-b border-slate-100 pb-4", panelSectionInsetClass)}>
           <label className="block max-w-md">
             <span className="mb-1.5 block text-xs font-semibold text-slate-600">
               Szukaj dostawcy
@@ -148,11 +161,12 @@ function PlanPreviewClient({
         </div>
 
         {searchQuery && searchInsights.length > 0 ? (
-          <ul className="space-y-3 border-b border-slate-100 px-6 py-4">
+          <ul className={cn("space-y-3 border-b border-slate-100 py-4", panelChromeInsetClass)}>
             {searchInsights.map((insight) => (
               <SupplierPlanSearchCard
                 key={insight.supplierId}
                 insight={insight}
+                compact
                 openOrderCount={openOrderCountBySupplier[insight.supplierId]}
               />
             ))}
@@ -160,7 +174,7 @@ function PlanPreviewClient({
         ) : null}
 
         {searchQuery && !searchInsights.length ? (
-          <div className="mx-6 my-4">
+          <div className={cn("my-4", panelChromeInsetClass)}>
             <EmptyState
               title="Nie znaleziono dostawcy"
               description="Sprawdź pisownię lub wpisz krótszy fragment nazwy."
@@ -175,7 +189,7 @@ function PlanPreviewClient({
         {scheduleRows.length > 0 ? (
           <>
             {searchQuery && searchMatches.length > SEARCH_TABLE_LIMIT ? (
-              <p className="px-6 pt-4 text-xs text-slate-500">
+              <p className={cn("pt-4 text-xs text-slate-500", panelChromeInsetClass)}>
                 Tabela: pierwsze {SEARCH_TABLE_LIMIT} z {searchMatches.length} dopasowań.
               </p>
             ) : null}

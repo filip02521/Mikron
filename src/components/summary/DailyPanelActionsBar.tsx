@@ -21,6 +21,8 @@ import {
   panelToolbarShellClass,
 } from "@/lib/ui/ontime-theme";
 import { cn } from "@/lib/cn";
+import { useSupplierHubContext } from "@/components/layout/AppRoleContext";
+import { supplierHubPaths, supplierVacationsHref } from "@/lib/supplier-hub";
 
 export function DailyPanelActionsBar({
   summary,
@@ -38,12 +40,14 @@ export function DailyPanelActionsBar({
   onOpenOnDemand?: () => void;
 }) {
   const router = useRouter();
+  const hubContext = useSupplierHubContext();
   const { pending: syncPending, pendingMessage, run: runSync } = useActionPending();
 
   const runSyncSchedules = () => {
     runSync(async () => {
       const r = await actionSyncData();
       if (r.error) throw new Error(r.error);
+      router.refresh();
     }, "Przeliczanie terminów wszystkich dostawców…");
   };
 
@@ -67,7 +71,7 @@ export function DailyPanelActionsBar({
         <div className={panelToolbarActionsClass}>
           <Button
             size="sm"
-            className="h-10 min-h-10 shrink-0 gap-1.5 px-3.5 py-0 text-xs"
+            className="h-11 min-h-11 flex-1 gap-1.5 px-3 py-0 text-xs md:h-9 md:min-h-9 md:flex-none"
             onClick={onNewRequest}
           >
             <IconPlusCircle size={15} />
@@ -76,13 +80,15 @@ export function DailyPanelActionsBar({
           <Button
             size="sm"
             variant="outline"
-            className="h-10 min-h-10 shrink-0 gap-1.5 px-3 py-0 text-xs"
+            className="hidden h-9 min-h-9 shrink-0 gap-1.5 px-3 py-0 text-xs md:inline-flex"
             onClick={runSyncSchedules}
             disabled={syncPending}
           >
             {syncPending ? "Przeliczanie…" : "Przelicz terminy"}
           </Button>
-          <PanelDailyHelp density="toolbar" />
+          <div className="hidden md:block">
+            <PanelDailyHelp density="toolbar" />
+          </div>
           <OverflowMenu
             label="Więcej akcji panelu"
             iconOnly
@@ -98,10 +104,16 @@ export function DailyPanelActionsBar({
                 Lista na żądanie ({summary.onDemandCount})
               </OverflowMenuItem>
             ) : null}
+            <OverflowMenuItem onClick={() => router.push(supplierHubPaths(hubContext).cards)}>
+              Karty dostawców
+            </OverflowMenuItem>
+            <OverflowMenuItem onClick={() => router.push("/lokalizacje/POLSKA")}>
+              Terminy zamówień
+            </OverflowMenuItem>
             <OverflowMenuItem onClick={runSyncSchedules} disabled={syncPending}>
               {syncPending ? "Przeliczanie terminów…" : "Przelicz terminy (menu)"}
             </OverflowMenuItem>
-            <OverflowMenuItem onClick={() => router.push("/zakupy/urlopy")}>
+            <OverflowMenuItem onClick={() => router.push(supplierVacationsHref(hubContext))}>
               Urlopy
               {summary.vacationSupplierCount > 0
                 ? ` (${summary.vacationSupplierCount})`

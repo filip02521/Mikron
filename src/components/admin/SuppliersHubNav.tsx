@@ -46,6 +46,7 @@ export function SuppliersHubNav({
       tabs={tabs}
       contextHint={supplierHubHint(activeTab)}
       ariaLabel="Zakładki sekcji dostawców"
+      embedded
     />
   );
 }

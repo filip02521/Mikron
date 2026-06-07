@@ -51,15 +51,13 @@ export default async function OperationsNotatkiPage({
   }
 
   return (
-    <>
-      {loadError ? <Alert tone="error">{loadError}</Alert> : null}
-      <OperationsNotepadClient
-        key={department}
-        initial={initial}
-        department={department}
-        userId={user.id}
-        role={user.role}
-      />
-    </>
+    <OperationsNotepadClient
+      key={department}
+      initial={initial}
+      department={department}
+      userId={user.id}
+      role={user.role}
+      loadError={loadError}
+    />
   );
 }

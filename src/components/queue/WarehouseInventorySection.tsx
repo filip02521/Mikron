@@ -13,7 +13,7 @@ import { SegmentedControl } from "@/components/ui/SegmentedControl";
 import { SupplierFilterChips } from "@/components/queue/SupplierFilterChips";
 import { SupplierGroupHeaderRow } from "@/components/queue/SupplierGroupHeaderRow";
 import { cn } from "@/lib/cn";
-import { controlFocusClass, panelContactLinkClass } from "@/lib/ui/ontime-theme";
+import { controlFocusClass, panelContactLinkClass, panelSectionInsetClass, panelTypography } from "@/lib/ui/ontime-theme";
 import type { IndividualOrder } from "@/types/database";
 import {
   buildWarehouseInventoryRows,
@@ -337,6 +337,7 @@ export function WarehouseInventorySection({
       {toast ? <Toast message={toast.text} tone={toast.tone} onDismiss={() => setToast(null)} /> : null}
 
       <SectionListLabel
+        domain="panel"
         title="Inwentaryzacja regału"
         hint="Co leży na magazynie — pogrupowane po dostawcy, regale lub handlowcu"
         count={rows.length}
@@ -344,14 +345,14 @@ export function WarehouseInventorySection({
         tileClassName="bg-sky-100 text-sky-800"
       />
 
-      <div className="space-y-4 border-b border-slate-100 px-4 py-4 sm:px-6">
-        <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
+      <div className={cn("space-y-4 border-b border-slate-100", panelSectionInsetClass)}>
+        <div className="grid grid-cols-2 gap-2 sm:grid-cols-2">
           <div className="rounded-md border border-slate-200 bg-white px-3 py-2.5 shadow-[var(--shadow-card)]">
-            <p className="text-2xl font-semibold tabular-nums text-slate-900">{summary.total}</p>
+            <p className={panelTypography.statValue}>{summary.total}</p>
             <p className="text-xs font-medium text-slate-700">Pozycji na magazynie</p>
           </div>
           <div className="rounded-md border border-slate-200 bg-white px-3 py-2.5 shadow-[var(--shadow-card)]">
-            <p className="text-2xl font-semibold tabular-nums text-slate-900">
+            <p className={panelTypography.statValue}>
               {supplierChips.length}
             </p>
             <p className="text-xs font-medium text-slate-700">Dostawców na regale</p>
@@ -368,7 +369,7 @@ export function WarehouseInventorySection({
                 : "border-amber-200/90 bg-amber-50/60 hover:border-amber-300"
             )}
           >
-            <p className="text-2xl font-semibold tabular-nums text-amber-900">
+            <p className={cn(panelTypography.statValue, "text-amber-900")}>
               {summary.staleWarn + summary.staleCritical}
             </p>
             <p className="text-xs font-medium text-amber-800">≥ 3 dni rob. bez odbioru</p>
@@ -383,7 +384,7 @@ export function WarehouseInventorySection({
                 : "border-sky-200/90 bg-sky-50/50 hover:border-sky-300"
             )}
           >
-            <p className="text-2xl font-semibold tabular-nums text-sky-900">{summary.unassignedShelf}</p>
+            <p className={cn(panelTypography.statValue, "text-sky-900")}>{summary.unassignedShelf}</p>
             <p className="text-xs font-medium text-sky-800">Bez wpisanego regału (pokaże Odbiór)</p>
           </button>
         </div>

@@ -21,6 +21,7 @@ import {
 import { appendProductLine } from "@/components/orders/request-product-lines";
 import type { SubiektFeedback } from "@/lib/subiekt/feedback";
 import { toAppSupplierRefs } from "@/lib/subiekt/match-supplier";
+import type { OrderFormSupplierOption } from "@/lib/orders/order-form-suppliers";
 import { buildProcurementFormReadiness } from "@/lib/orders/procurement-form-readiness";
 import { InformacjaFlowPicker } from "@/components/orders/InformacjaFlowPicker";
 import {
@@ -45,7 +46,7 @@ export function QuickOrderModal({
 }: {
   open: boolean;
   onClose: () => void;
-  suppliers: { id: string; name: string; subiekt_kh_id?: number | null }[];
+  suppliers: OrderFormSupplierOption[];
   /** Wyłącznie karty z Admin → Handlowcy (fetchSalesPeopleForPicker). */
   salesPeople: { id: string; name: string; email: string }[];
 }) {

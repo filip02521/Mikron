@@ -34,7 +34,7 @@ function GroupChip({
       aria-pressed={active}
       onClick={onClick}
       className={cn(
-        "inline-flex min-h-10 cursor-pointer items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-semibold transition-shadow",
+        "inline-flex min-h-11 cursor-pointer items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-semibold transition-shadow sm:min-h-9",
         "focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-500",
         active
           ? "bg-indigo-600 text-white shadow-sm ring-2 ring-indigo-300/80"
@@ -71,7 +71,7 @@ function SubChip({
       aria-pressed={active}
       onClick={() => onSelect(active ? groupFilter : filter)}
       className={cn(
-        "inline-flex min-h-9 cursor-pointer items-center gap-1 rounded-full px-2.5 py-1 text-xs font-semibold transition-shadow",
+        "inline-flex min-h-11 cursor-pointer items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-semibold transition-shadow sm:min-h-8",
         "focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-500",
         tone === "action" && "bg-emerald-600 text-white",
         tone === "success" && mojeFilterChipSuccessClass,
@@ -138,7 +138,7 @@ export function MyOrdersInboxSummary({
   };
 
   return (
-    <div className="space-y-2 border-b border-slate-100 bg-slate-50/80 px-4 py-3 sm:px-6">
+    <div className="space-y-2 border-b border-slate-100 bg-slate-50/80 px-3 py-2.5 sm:px-4 lg:px-6">
       <div className="flex flex-wrap items-center gap-2">
         <GroupChip
           count={actionCount}

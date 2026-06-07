@@ -7,9 +7,13 @@ import { Button } from "@/components/ui/Button";
 import type { DailyPanelRunFn } from "@/components/summary/useDailyPanelRunner";
 import { LinkChevron } from "@/components/ui/UiGlyphs";
 import { cn } from "@/lib/cn";
-import { panelNameLinkClass, panelTextLinkClass } from "@/lib/ui/ontime-theme";
+import { panelNameLinkClass, panelTextLinkClass, panelTypography } from "@/lib/ui/ontime-theme";
 import { PanelRowActionsInlineEnd } from "@/components/summary/PanelRowActionsInlineEnd";
 import { panelRowClearFocusOnLeave, panelRowGroupClass } from "@/lib/ui/panel-row-actions-reveal";
+import {
+  panelQueueRowActionsClass,
+  panelQueueRowLayoutClass,
+} from "@/lib/ui/surfaces";
 import {
   DailyPanelSubsectionBar,
   dailyPanelQueueShellClass,
@@ -43,7 +47,7 @@ export function DailyPanelOnDemandSection({
         compact
         action={
           onOpenFullList ? (
-            <Button variant="ghost" size="sm" className="h-8 px-2 text-xs" onClick={onOpenFullList}>
+            <Button variant="ghost" size="sm" className="h-10 min-h-10 px-2 text-xs sm:h-8 sm:min-h-8" onClick={onOpenFullList}>
               Pełna lista
             </Button>
           ) : null
@@ -55,31 +59,35 @@ export function DailyPanelOnDemandSection({
           return (
             <li
               key={row.supplierId}
-              className={panelRowGroupClass(
-                "flex items-start justify-between gap-2 px-3 py-2 sm:px-4"
-              )}
+              className={panelRowGroupClass("px-3 py-2 sm:px-4")}
               onMouseLeave={panelRowClearFocusOnLeave}
             >
-              <div className="min-w-0 flex-1">
-                <button
-                  type="button"
-                  className={cn("text-sm font-semibold", panelNameLinkClass)}
-                  onClick={() => onOpenSupplier(row.supplierId)}
-                >
-                  {row.supplierName}
-                </button>
-                <p className="text-[11px] text-slate-500">
-                  {row.locationLabel}
-                  {row.stockLabel ? ` · ${row.stockLabel}` : ""}
-                </p>
-              </div>
-              <PanelRowActionsInlineEnd forceVisible={rowPending}>
-                <div className="flex flex-wrap items-center justify-end gap-1">
+              <div className={panelQueueRowLayoutClass}>
+                <div className="min-w-0 flex-1">
+                  <button
+                    type="button"
+                    className={cn(panelTypography.rowTitle, panelNameLinkClass)}
+                    onClick={() => onOpenSupplier(row.supplierId)}
+                  >
+                    {row.supplierName}
+                  </button>
+                  <p className={panelTypography.caption}>
+                    {row.locationLabel}
+                    {row.stockLabel ? ` · ${row.stockLabel}` : ""}
+                  </p>
+                </div>
+              <PanelRowActionsInlineEnd
+                forceVisible={rowPending}
+                className={panelQueueRowActionsClass}
+                contentClassName="w-full sm:w-max"
+              >
+                <div className="flex w-full flex-col gap-1.5 sm:w-auto sm:flex-row sm:flex-wrap sm:items-center sm:justify-end sm:gap-1">
                   <SupplierContactActions notes={row.notes} mails={row.mails} />
                   <Button
                     size="sm"
                     variant="primary"
                     disabled={rowPending}
+                    className="h-10 min-h-10 w-full sm:h-9 sm:min-h-9 sm:w-auto"
                     onClick={() =>
                       run(
                         () => actionMarkOrdered(row.supplierId),
@@ -93,6 +101,7 @@ export function DailyPanelOnDemandSection({
                   </Button>
                 </div>
               </PanelRowActionsInlineEnd>
+              </div>
             </li>
           );
         })}

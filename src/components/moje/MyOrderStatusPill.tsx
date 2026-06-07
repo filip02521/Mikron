@@ -1,6 +1,7 @@
 import type { MyOrderRow } from "@/lib/orders/my-order-presenter";
 import { myOrderFriendlyStatusLabel } from "@/lib/orders/my-order-friendly-status";
 import { cn } from "@/lib/cn";
+import { salesTypography } from "@/lib/ui/ontime-theme";
 import { SearchHighlightText } from "@/components/moje/SearchHighlightText";
 
 const variantStyles: Record<
@@ -31,7 +32,8 @@ export function MyOrderStatusPill({
   return (
     <span
       className={cn(
-        "inline-flex max-w-full shrink-0 items-center rounded-md px-1.5 py-0.5 text-xs font-semibold leading-snug ring-1",
+        "inline-flex max-w-full shrink-0 items-center rounded-md px-1.5 py-0.5 ring-1",
+        salesTypography.pill,
         "whitespace-normal text-right sm:max-w-[14rem]",
         variantStyles[variant],
         className

@@ -25,16 +25,14 @@ export function SupplierLocationFilters({
   return (
     <div className={className}>
       <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-500">
-        Filtr listy
-        <span className="ml-1.5 font-normal normal-case tracking-normal text-slate-400">
-          (bez zmiany strony)
-        </span>
+        Lokalizacja
       </p>
       <SegmentedControl
         className="w-full max-w-full flex-wrap"
         value={value}
         onChange={onChange}
         ariaLabel="Filtr lokalizacji na liście kart"
+        touchFriendly
         options={[
         {
           value: "all" as const,

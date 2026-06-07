@@ -1,31 +1,30 @@
 import { fetchSalesGroups } from "@/lib/data/sales-groups";
 import { fetchSalesPeopleAdmin } from "@/lib/data/sales-people-admin";
 import { SalesAdminClient } from "@/components/admin/SalesAdminClient";
-import { AdminHubNav } from "@/components/admin/AdminHubNav";
-import { PageHeader } from "@/components/ui/PageHeader";
+import { AdminHubShell } from "@/components/admin/AdminHubShell";
+import { Alert } from "@/components/ui/Alert";
 import Link from "next/link";
 
 export default async function HandlowcyPage() {
   let people: Awaited<ReturnType<typeof fetchSalesPeopleAdmin>> = [];
   let groups: Awaited<ReturnType<typeof fetchSalesGroups>> = [];
+  let loadError: string | null = null;
+
   try {
     [people, groups] = await Promise.all([
       fetchSalesPeopleAdmin(),
       fetchSalesGroups(),
     ]);
-  } catch {
+  } catch (e) {
+    loadError = e instanceof Error ? e.message : "Nie udało się wczytać listy handlowców.";
     people = [];
     groups = [];
   }
 
   return (
-    <>
-      <PageHeader
-        title="Handlowcy"
-        description="Osoby kontaktowe, powiadomienia e-mail i linki zaproszeń do zakładania kont."
-      />
-      <AdminHubNav activeTab="sales" />
-      <p className="mb-4 rounded-md border border-indigo-100 bg-indigo-50/70 px-4 py-3 text-sm text-indigo-950">
+    <AdminHubShell activeTab="sales">
+      {loadError ? <Alert tone="error">{loadError}</Alert> : null}
+      <Alert tone="info">
         Brak grupy na liście?{" "}
         <Link href="/zespol/grupy" className="font-semibold text-indigo-800 underline underline-offset-2">
           Utwórz grupę zespołu
@@ -35,8 +34,8 @@ export default async function HandlowcyPage() {
           Konta
         </Link>
         .
-      </p>
+      </Alert>
       <SalesAdminClient initial={people} groups={groups} />
-    </>
+    </AdminHubShell>
   );
 }

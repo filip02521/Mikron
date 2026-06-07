@@ -12,6 +12,7 @@ import {
 import { PageHeader } from "@/components/ui/PageHeader";
 import { SalesAccountLinkRequired } from "@/components/sales/SalesAccountLinkRequired";
 import { Alert } from "@/components/ui/Alert";
+import { salesPageShellClass } from "@/lib/ui/ontime-theme";
 
 export default async function ProsbaPage({
   searchParams,
@@ -90,7 +91,7 @@ export default async function ProsbaPage({
 
   if (isManager && delegateId && !lockedSalesPerson) {
     return (
-      <>
+      <div className={salesPageShellClass}>
         <PageHeader title="Nowa prośba" description="Nie znaleziono wybranego handlowca." />
         <Alert tone="error">
           Sprawdź link lub wybierz osobę z{" "}
@@ -99,13 +100,13 @@ export default async function ProsbaPage({
           </a>
           .
         </Alert>
-      </>
+      </div>
     );
   }
 
   if (isManager && !lockedSalesPerson) {
     return (
-      <>
+      <div className={salesPageShellClass}>
         <PageHeader
           title="Nowa prośba"
           description="Wybierz handlowca z zespołu lub powiąż swoje konto z kartą handlowca."
@@ -118,19 +119,25 @@ export default async function ProsbaPage({
           </a>
           .
         </Alert>
-      </>
+      </div>
     );
   }
 
   const delegatePeople = isManager ? salesPeople : [];
 
   return (
-    <div className="mx-auto max-w-3xl">
+    <div className={salesPageShellClass}>
       <Suspense
         fallback={
-          <p className="rounded-md border border-slate-200 bg-white px-6 py-12 text-center text-sm text-slate-500">
-            Ładowanie formularza…
-          </p>
+          <div className="overflow-hidden rounded-md border border-slate-200/80 bg-white shadow-[var(--shadow-card-elevated)]">
+            <div className="border-b border-slate-100 px-3 pb-3 pt-4 sm:px-4">
+              <div className="h-5 w-40 animate-pulse rounded bg-slate-100" />
+              <div className="mt-2 h-3 w-full max-w-md animate-pulse rounded bg-slate-100" />
+            </div>
+            <p className="px-3 py-12 text-center text-xs text-slate-500 sm:px-4">
+              Ładowanie formularza…
+            </p>
+          </div>
         }
       >
       {lockedSalesPerson ? (

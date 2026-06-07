@@ -149,7 +149,7 @@ export function DeliveryJournalInsightsPanel({
           }))}
         />
 
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-2">
           <Field label="Od">
             <Input
               type="date"
@@ -214,7 +214,7 @@ export function DeliveryJournalInsightsPanel({
             Podsumowanie ({formatDateLabel(dateFrom)}
             {dateFrom !== dateTo ? ` – ${formatDateLabel(dateTo)}` : ""})
           </h3>
-          <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
+          <div className="grid grid-cols-2 gap-2 sm:grid-cols-2">
             <SummaryStat label="Dostawy" value={summary.receiptCount} />
             <SummaryStat label="Paczki" value={summary.packageCount} />
             <SummaryStat label="Palety" value={summary.palletCount} />

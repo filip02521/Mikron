@@ -1,5 +1,4 @@
-import { PageHeader } from "@/components/ui/PageHeader";
-import { AdminHubNav } from "@/components/admin/AdminHubNav";
+import { AdminSecondaryShell } from "@/components/admin/AdminSecondaryShell";
 import { ProductsCatalogAdminClient } from "@/components/admin/ProductsCatalogAdminClient";
 import {
   actionListCatalogAssignSuppliers,
@@ -19,22 +18,19 @@ export default async function AdminProduktyPage() {
     actionListSubiektLinkedSuppliers(),
     actionListCatalogAssignSuppliers(),
   ]);
+
   return (
-    <>
-      <PageHeader
-        title="Produkty"
-        description="Własna baza powiązań produkt → dostawca (Subiekt tw_Id). Źródła: historia prośb, weryfikacja zakupów, import z ZD."
+    <AdminSecondaryShell
+      title="Katalog produktów"
+      description="Własna baza powiązań produkt → dostawca (Subiekt tw_Id). Źródła: historia prośb, weryfikacja zakupów, import z ZD."
+      iconKey="groupOrder"
+    >
+      <ProductsCatalogAdminClient
+        initial={page}
+        coverage={coverage}
+        suppliers={suppliers}
+        assignSuppliers={assignSuppliers}
       />
-      <AdminHubNav activeTab="system" />
-      <div className="mb-8">
-        <ProductsCatalogAdminClient
-          initial={page}
-          coverage={coverage}
-          suppliers={suppliers}
-          assignSuppliers={assignSuppliers}
-        />
-      </div>
-    </>
+    </AdminSecondaryShell>
   );
 }
-

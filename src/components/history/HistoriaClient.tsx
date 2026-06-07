@@ -22,6 +22,8 @@ import { SectionListLabel } from "@/components/ui/SectionListLabel";
 import { SectionHeadingIcon } from "@/components/icons/SectionHeadingIcon";
 import { IconArchive, IconClipboardList } from "@/components/icons/StrokeIcons";
 import { HistoriaHelp } from "@/components/history/HistoriaHelp";
+import { cn } from "@/lib/cn";
+import { panelChromeInsetClass, panelPageShellClass } from "@/lib/ui/ontime-theme";
 
 export function HistoriaClient({
   individual,
@@ -81,7 +83,7 @@ export function HistoriaClient({
   };
 
   return (
-    <div className="relative mx-auto max-w-6xl">
+    <div className={panelPageShellClass}>
       {msg ? (
         <Toast message={msg.text} tone={msg.tone} onDismiss={() => setMsg(null)} />
       ) : null}
@@ -89,6 +91,7 @@ export function HistoriaClient({
       <Card padding={false} className="overflow-hidden">
         <CardHeader
           inset
+          density="compact"
           leading={
             <SectionHeadingIcon tileClassName="bg-slate-100 text-slate-600">
               <IconArchive size={20} />
@@ -100,6 +103,7 @@ export function HistoriaClient({
         />
 
         <SectionListLabel
+          domain="panel"
           title="Historia indywidualna"
           hint="Bez pozycji informacyjnych"
           count={individual.length}
@@ -117,7 +121,7 @@ export function HistoriaClient({
               onRemove={removeIndividual}
             />
             {individual.length > HISTORY_PREVIEW_COUNT ? (
-              <div className="border-t border-slate-100 px-4 py-4 sm:px-6">
+              <div className={cn("border-t border-slate-100 py-4", panelChromeInsetClass)}>
                 <Button variant="outline" size="sm" onClick={() => setSheet("individual")}>
                   Pokaż pełną historię ({individual.length} wpisów)
                 </Button>
@@ -128,6 +132,7 @@ export function HistoriaClient({
 
         <div className="border-t border-slate-100">
           <SectionListLabel
+            domain="panel"
             title="Zamówienia standardowe"
             hint="Akcje zbiorcze w panelu dziennym"
             count={normal.length}
@@ -146,7 +151,7 @@ export function HistoriaClient({
               onRemove={removeNormal}
             />
             {normal.length > HISTORY_PREVIEW_COUNT ? (
-              <div className="border-t border-slate-100 px-4 py-4 sm:px-6">
+              <div className={cn("border-t border-slate-100 py-4", panelChromeInsetClass)}>
                 <Button variant="outline" size="sm" onClick={() => setSheet("normal")}>
                   Pokaż pełną historię ({normal.length} wpisów)
                 </Button>

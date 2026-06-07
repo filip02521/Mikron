@@ -45,3 +45,28 @@ export function supplierToAdminForm(s: SupplierWithSchedule): SupplierAdminFormS
     default_delivery_shipment_form: s.default_delivery_shipment_form ?? "",
   };
 }
+
+/** Lokalna aktualizacja wiersza listy po zapisie formularza (bez pełnego refresh). */
+export function applyAdminFormToSupplierRow(
+  existing: SupplierWithSchedule,
+  form: SupplierAdminFormState
+): SupplierWithSchedule {
+  return {
+    ...existing,
+    name: form.name.trim(),
+    location: form.location,
+    pickup_mikran: form.pickup_mikran,
+    pickup_pallet: form.pickup_pallet,
+    notes: form.notes,
+    mails: form.mails,
+    extra_info: form.extra_info,
+    interval_raw: form.interval_raw.trim() || null,
+    stock_raw: form.stock_raw.trim() || null,
+    stats_mode: form.stats_mode,
+    order_on_demand: form.order_on_demand,
+    is_active: form.is_active,
+    subiekt_kh_id: form.subiekt_kh_id,
+    default_delivery_carrier: form.default_delivery_carrier.trim() || null,
+    default_delivery_shipment_form: form.default_delivery_shipment_form.trim() || null,
+  };
+}

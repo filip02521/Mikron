@@ -3,6 +3,7 @@
 import Link from "next/link";
 import type { IndividualOrder } from "@/types/database";
 import { VerificationWorkspace } from "@/components/verification/VerificationWorkspace";
+import type { VerificationSupplierOption } from "@/lib/orders/verification-form";
 import { ModalShell } from "@/components/ui/ModalShell";
 
 export function VerificationModal({
@@ -15,7 +16,7 @@ export function VerificationModal({
   open: boolean;
   onClose: () => void;
   orders: IndividualOrder[];
-  suppliers: { id: string; name: string }[];
+  suppliers: VerificationSupplierOption[];
   salesPeople: { id: string; name: string }[];
 }) {
   const description = `${orders.length} ${

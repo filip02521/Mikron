@@ -19,6 +19,8 @@ import type { DailyPanelRunFn } from "@/components/summary/useDailyPanelRunner";
 import { cn } from "@/lib/cn";
 import { FlowChevron } from "@/components/ui/UiGlyphs";
 import { SupplierSubiektLinkIndicator } from "@/components/admin/SupplierSubiektLinkIndicator";
+import { useSupplierHubContext } from "@/components/layout/AppRoleContext";
+import { supplierCardsHref } from "@/lib/supplier-hub";
 
 type HistoryRow = {
   action_at: string;
@@ -42,6 +44,7 @@ export function SupplierDrawer({
   onVacation: () => void;
   onEdit: () => void;
 }) {
+  const hubContext = useSupplierHubContext();
   const [history, setHistory] = useState<HistoryRow[]>([]);
   const [historyLoading, setHistoryLoading] = useState(false);
 
@@ -72,7 +75,10 @@ export function SupplierDrawer({
   const rowPending = isScopePending(supplier.id);
   const scope = { scope: supplier.id };
   const scheduleHref = `/lokalizacje/${supplier.location}?q=${encodeURIComponent(supplier.name)}`;
-  const cardsHref = `/zakupy/dostawcy?q=${encodeURIComponent(supplier.name)}&powiaz=1`;
+  const cardsHref = supplierCardsHref(hubContext, {
+    q: supplier.name,
+    ...(supplier.subiekt_kh_id == null ? { powiaz: true as const } : {}),
+  });
 
   return (
     <>

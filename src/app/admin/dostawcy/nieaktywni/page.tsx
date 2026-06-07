@@ -1,27 +1,32 @@
 import { countInactiveSuppliers, fetchSuppliersWithSchedules } from "@/lib/data/queries";
 import { InactiveSuppliersAdminClient } from "@/components/admin/InactiveSuppliersAdminClient";
 import { SuppliersHubShell } from "@/components/admin/SuppliersHubShell";
+import { Alert } from "@/components/ui/Alert";
+import { supplierHubShellDescription } from "@/lib/supplier-hub";
 
 export default async function NieaktywniAdminPage() {
   let suppliers: Awaited<ReturnType<typeof fetchSuppliersWithSchedules>> = [];
   let inactiveCount = 0;
+  let loadError: string | null = null;
   try {
     [suppliers, inactiveCount] = await Promise.all([
       fetchSuppliersWithSchedules(undefined, { inactiveOnly: true }),
       countInactiveSuppliers(),
     ]);
-  } catch {
+  } catch (e) {
+    loadError = e instanceof Error ? e.message : "Nie udało się wczytać listy nieaktywnych dostawców.";
     suppliers = [];
   }
 
   return (
     <SuppliersHubShell
       title="Nieaktywni dostawcy"
-      description="Ukryci w panelu dziennym. Przywróć aktywność lub edytuj terminy w harmonogramie."
+      description={supplierHubShellDescription("inactive", "admin")}
       activeTab="inactive"
       context="admin"
       inactiveCount={inactiveCount}
     >
+      {loadError ? <Alert tone="error">{loadError}</Alert> : null}
       <InactiveSuppliersAdminClient initial={suppliers} context="admin" />
     </SuppliersHubShell>
   );

@@ -36,6 +36,8 @@ import {
 } from "@/components/icons/StrokeIcons";
 import { SectionHeadingIcon } from "@/components/icons/SectionHeadingIcon";
 import { cn } from "@/lib/cn";
+import { salesPageShellClass, salesChromeInsetClass, salesTypography } from "@/lib/ui/ontime-theme";
+import { Alert } from "@/components/ui/Alert";
 
 const PLAN_INTRO =
   "Otwarte prośby, terminy u dostawców i wyszukiwarka — w jednym miejscu. Kalendarz działu dostaw to kiedy składamy zamówienia, nie kiedy towar jest na magazynie.";
@@ -116,7 +118,7 @@ function SalesSupplierRow({
           type="button"
           onClick={() => setExpanded((v) => !v)}
           className={cn(
-            "flex min-h-[3.25rem] min-w-0 flex-1 items-center gap-2 px-3 py-2.5 text-left transition-colors sm:gap-3 sm:px-4 sm:py-3",
+            "flex min-h-[2.75rem] min-w-0 flex-1 items-center gap-2 px-3 py-2 text-left transition-colors sm:gap-2.5 sm:px-4",
             expanded ? "hover:bg-indigo-100/40" : "hover:bg-white/80"
           )}
           aria-expanded={expanded}
@@ -129,27 +131,24 @@ function SalesSupplierRow({
           />
           <div className="min-w-0 flex-1">
             <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5">
-              <span
-                className={cn(
-                  "truncate text-slate-900",
-                  expanded ? "font-semibold" : "font-medium"
-                )}
-              >
+              <span className={cn("truncate", salesTypography.rowTitle, !expanded && "font-medium")}>
                 {insight.name}
               </span>
-              <span className="text-xs text-slate-500">{locationLabel(insight.location)}</span>
+              <span className={salesTypography.rowMeta}>{locationLabel(insight.location)}</span>
             </div>
-            <p className="mt-0.5 truncate text-sm text-slate-600 sm:hidden">{summary}</p>
+            <p className={cn("mt-0.5 truncate sm:hidden", salesTypography.rowBody)}>{summary}</p>
           </div>
           <div className="hidden shrink-0 text-right sm:block">
-            <p className="max-w-[11rem] truncate text-sm font-medium text-slate-800">{summary}</p>
+            <p className={cn("max-w-[11rem] truncate font-medium text-slate-800", salesTypography.rowBody)}>
+              {summary}
+            </p>
             {hasOpenRequests ? (
-              <p className="mt-0.5 text-xs font-medium text-indigo-700">
+              <p className={cn("mt-0.5 font-medium text-indigo-700", salesTypography.rowMeta)}>
                 {openOrderCount}{" "}
                 {openOrderCount === 1 ? "otwarta prośba" : "otwarte prośby"}
               </p>
             ) : variant === "search" ? (
-              <p className="mt-0.5 text-xs text-slate-500">Harmonogram</p>
+              <p className={cn("mt-0.5", salesTypography.rowMeta, "text-slate-500")}>Harmonogram</p>
             ) : null}
           </div>
           <div className="flex shrink-0 flex-wrap justify-end gap-1 sm:hidden">
@@ -179,14 +178,12 @@ function SalesSupplierRow({
         <div className="border-t border-indigo-200/50 bg-white/60 px-3 pb-3 pt-2 sm:px-4 sm:pb-3.5">
           <div className="rounded-md border border-slate-200 bg-white p-3 shadow-sm">
             <div className="border-b border-slate-100 pb-2.5">
-              <p className="text-[0.65rem] font-semibold uppercase tracking-wide text-slate-500">
+              <p className={cn(salesTypography.sectionLabel, "normal-case tracking-normal text-slate-500")}>
                 Kolejne zamówienie u dostawcy
               </p>
-              <p className="mt-0.5 text-sm font-semibold leading-snug text-slate-900">
-                {next.primary}
-              </p>
+              <p className={cn("mt-0.5 leading-snug", salesTypography.rowTitle)}>{next.primary}</p>
               {next.secondary ? (
-                <p className="mt-0.5 text-xs leading-snug text-slate-600">{next.secondary}</p>
+                <p className={cn("mt-0.5 leading-snug", salesTypography.rowBody)}>{next.secondary}</p>
               ) : null}
             </div>
 
@@ -245,7 +242,7 @@ function ProcurementPlanBlock({
   days: WeekDayPlan[];
 }) {
   return (
-    <div className="border-b border-slate-100 px-4 py-5 sm:px-6">
+    <div className={cn("border-b border-slate-100 py-3", salesChromeInsetClass)}>
       <button
         type="button"
         onClick={() => onOpenChange(!open)}
@@ -256,10 +253,10 @@ function ProcurementPlanBlock({
           <IconCalendar size={18} />
         </SectionHeadingIcon>
         <span className="min-w-0 flex-1">
-          <span className="block text-sm font-semibold text-slate-900">
+          <span className={cn("block", salesTypography.blockTitle)}>
             Plan zamówień działu dostaw
           </span>
-          <span className="mt-0.5 block text-xs leading-relaxed text-slate-500">
+          <span className={cn("mt-0.5 block", salesTypography.sectionHint)}>
             Kalendarz pon.–pt. — kiedy dział składa zamówienia (nie termin towaru na magazynie).
           </span>
         </span>
@@ -269,6 +266,7 @@ function ProcurementPlanBlock({
         <div className="mt-4">
           <WeekPlanner
             embedded
+            density="compact"
             title="Ten tydzień"
             days={days}
             readOnly
@@ -286,6 +284,7 @@ export function SalesPlanView({
   prioritySupplierIds,
   openOrderCountBySupplier,
   tourPreview = false,
+  error = null,
 }: {
   workspace: SummaryWorkspaceData;
   suppliers: SupplierWithSchedule[];
@@ -293,6 +292,7 @@ export function SalesPlanView({
   prioritySupplierIds: string[];
   openOrderCountBySupplier: Record<string, number>;
   tourPreview?: boolean;
+  error?: string | null;
 }) {
   const [query, setQuery] = useState("");
   const [showProcurementPlan, setShowProcurementPlan] = useState(false);
@@ -333,10 +333,14 @@ export function SalesPlanView({
   const openRequestCount = myInsights.length;
 
   return (
-    <div className="mx-auto max-w-3xl">
+    <div className={salesPageShellClass}>
+      {error ? (
+        <Alert tone="warning">{error}</Alert>
+      ) : null}
       <Card padding={false} className="overflow-hidden">
         <CardHeader
           inset
+          density="compact"
           leading={
             <SectionHeadingIcon tileClassName="bg-indigo-100 text-indigo-800">
               <IconCalendar size={20} />
@@ -355,7 +359,7 @@ export function SalesPlanView({
           />
         ) : null}
 
-        <div className="border-b border-slate-100 px-4 py-5 sm:px-6">
+        <div className={cn("border-b border-slate-100", salesChromeInsetClass, "py-3")}>
           <ProsbaFormSection
             title="Szukaj dostawcy"
             hint="Każdy dostawca z bazy — ten sam układ szczegółów po rozwinięciu wiersza."
@@ -407,7 +411,7 @@ export function SalesPlanView({
                 ))}
               </ul>
             ) : (
-              <div className="px-4 py-10 sm:px-6">
+              <div className={cn("py-10", salesChromeInsetClass)}>
                 <EmptyState
                   title="Nie znaleziono dostawcy"
                   description="Sprawdź pisownię lub wpisz krótszy fragment nazwy."
@@ -415,7 +419,7 @@ export function SalesPlanView({
                 />
               </div>
             )}
-            <div className="border-t border-slate-100 bg-slate-50/80 px-4 py-2.5 sm:px-6">
+            <div className={cn("border-t border-slate-100 bg-slate-50/80 py-2.5", salesChromeInsetClass)}>
               <button
                 type="button"
                 onClick={() => setQuery("")}
@@ -449,7 +453,7 @@ export function SalesPlanView({
                 ))}
               </ul>
             ) : (
-              <div className="px-4 py-10 text-center sm:px-6">
+              <div className={cn("py-10 text-center", salesChromeInsetClass)}>
                 <EmptyState
                   title="Brak otwartych prośb"
                   description="Gdy zgłosisz prośbę, dostawca pojawi się tutaj z terminem planowego zakupu. Innego dostawcę znajdziesz w wyszukiwarce powyżej."
@@ -460,7 +464,7 @@ export function SalesPlanView({
           </section>
         )}
 
-        <div className="flex flex-col gap-3 border-t border-slate-100 bg-slate-50/90 px-4 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-6">
+        <div className={cn("flex flex-col gap-2.5 border-t border-slate-100 bg-slate-50/90 py-3 sm:flex-row sm:items-center sm:justify-between", salesChromeInsetClass)}>
           <p className="text-xs leading-relaxed text-slate-500">
             Zgłoś nową prośbę lub sprawdź status w{" "}
             <Link href="/moje" className="font-medium text-indigo-700 hover:underline">

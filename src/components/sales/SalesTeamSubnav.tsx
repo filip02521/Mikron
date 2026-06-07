@@ -31,7 +31,7 @@ export function SalesTeamSubnav() {
           <Link
             key={item.href}
             href={item.href}
-            className={`rounded-md px-3 py-1.5 text-sm font-medium transition-colors ${
+            className={`rounded-md px-2.5 py-2 text-xs font-medium transition-colors ${
               active
                 ? "bg-white text-slate-900 shadow-sm ring-1 ring-slate-200/80"
                 : "text-slate-600 hover:bg-white/60 hover:text-slate-900"

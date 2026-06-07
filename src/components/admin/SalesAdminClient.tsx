@@ -295,8 +295,10 @@ export function SalesAdminClient({
         ) : null}
 
         {formOpen ? (
-          <Card>
+          <Card padding={false} className="overflow-hidden">
             <CardHeader
+              inset
+              density="compact"
               title={form.id ? "Edytuj handlowca" : "Dodaj handlowca"}
               description={
                 managerMode && !form.id
@@ -305,7 +307,7 @@ export function SalesAdminClient({
               }
             />
             <form
-              className="grid gap-4 sm:grid-cols-2"
+              className="grid gap-4 px-3 pb-4 sm:grid-cols-2 sm:px-4 lg:px-5"
               onSubmit={(e) => {
                 e.preventDefault();
                 save();
@@ -358,9 +360,10 @@ export function SalesAdminClient({
           </Card>
         ) : null}
 
-        <Card padding={false}>
+        <Card padding={false} className="overflow-hidden">
           <CardHeader
             inset
+            density="compact"
             title={`Handlowcy (${rows.length})`}
             description={
               managerMode

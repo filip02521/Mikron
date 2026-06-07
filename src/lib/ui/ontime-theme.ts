@@ -11,6 +11,9 @@ export const appShellClass = "min-h-screen bg-transparent";
 /** Obszar treści — lekki kontrast względem sidebara */
 export const appMainClass = "min-h-screen overflow-y-auto bg-transparent";
 
+/** Padding main — bez max-width; szerokość ustawia shell każdej strony. */
+export const appMainInsetClass = "mx-auto w-full px-3 py-5 sm:px-4 sm:py-6 lg:px-5";
+
 /** Sidebar — biała powierzchnia, spójna z kartami logowania */
 export const sidebarShellClass =
   "border-r border-[var(--card-border)] bg-[var(--card)] text-slate-900 shadow-[2px_0_24px_-12px_rgba(15,23,42,0.1)]";
@@ -70,8 +73,98 @@ export const brandIconTileClass =
   "bg-gradient-to-br from-indigo-600 to-sky-600 text-white shadow-[var(--shadow-brand)] ring-1 ring-sky-500/30";
 
 /** Sticky zakładki panelu dziennego */
-export const panelStickyTabsClass =
+export const panelStickyChromeClass =
   "sticky top-0 z-20 border-b border-indigo-100/75 bg-[var(--card)]/95 shadow-[var(--shadow-card-elevated)] backdrop-blur-sm";
+
+/** @deprecated Alias — użyj {@link panelStickyChromeClass}. */
+export const panelStickyTabsClass = panelStickyChromeClass;
+
+/** Panel dzienny / operacje zakupów — wąska kolumna; lekko szersza tylko na 2xl+. */
+export const panelWorkspaceShellClass = "relative mx-auto w-full max-w-3xl 2xl:max-w-4xl";
+
+/** Strony operacji z odstępem między blokami (toast, karta, alert). */
+export const panelPageShellClass = cn(panelWorkspaceShellClass, "space-y-4");
+
+/** Siatka kalendarza tygodnia — dopasowana do wąskiej kolumny panelu. */
+export const weekPlannerGridClass =
+  "grid grid-cols-2 gap-0 border-t border-slate-100 divide-x divide-y divide-slate-100 sm:grid-cols-3 sm:divide-y-0 2xl:grid-cols-5";
+
+/** Nagłówki dni w pustym kalendarzu — ta sama siatka co {@link weekPlannerGridClass}. */
+export const weekPlannerEmptyHeaderGridClass =
+  "grid grid-cols-2 divide-x divide-y divide-slate-100 border-b border-slate-100 sm:grid-cols-3 sm:divide-y-0 2xl:grid-cols-5";
+
+/** Panel handlowca — wąska kolumna treści (listy, formularze); lekko szersza tylko na 2xl+. */
+export const salesWorkspaceShellClass = "relative mx-auto w-full max-w-3xl 2xl:max-w-4xl";
+
+/** Podgląd zespołu — szerszy niż pozostałe zakładki (siatka kart). */
+export const salesTeamShellClass = "relative mx-auto w-full max-w-4xl xl:max-w-5xl 2xl:max-w-6xl";
+
+/** Obudowa stron handlowca (/moje, /prosba, /plan, /notatnik). */
+export const salesPageShellClass = cn(salesWorkspaceShellClass, "space-y-4");
+
+/** Obudowa zakładek zespołu (/zespol/*). */
+export const salesTeamPageShellClass = cn(salesTeamShellClass, "space-y-4");
+
+/** Administracja — tabele i formularze (szersza kolumna niż panel dzienny). */
+export const adminPageShellClass = salesTeamPageShellClass;
+
+/** Treść wewnątrz karty huba administracji / dostawców. */
+export const adminHubBodyClass = "min-w-0 space-y-4 p-3 sm:p-4 lg:p-5";
+
+/** Padding chrome panelu handlowca — nieco ciaśniej niż panel dzienny. */
+export const salesChromeInsetClass = "px-3 sm:px-4 lg:px-5";
+
+/** Treść wewnątrz karty handlowca. */
+export const salesCardBodyClass = "space-y-3 p-3 sm:p-4";
+
+/** Min. obszar dotyku — 44px mobile, kompakt od sm (WCAG / Apple HIG). */
+export const salesTouchTargetClass = "min-h-11 sm:min-h-8";
+
+/**
+ * Typografia panelu handlowca — płaska skala, bez powiększania na lg+.
+ * Hierarchia: pageTitle → blockTitle/rowTitle → rowBody/chrome → rowMeta/sectionLabel.
+ */
+export const salesTypography = {
+  pageTitle: "text-base font-semibold tracking-tight text-slate-900",
+  pageDesc: "text-xs leading-relaxed text-slate-500",
+  blockTitle: "text-sm font-semibold text-slate-900",
+  sectionLabel: "text-[11px] font-semibold uppercase tracking-wide text-slate-600",
+  sectionLabelAccent: "text-[11px] font-semibold uppercase tracking-wide text-emerald-900",
+  sectionHint: "text-xs leading-relaxed text-slate-500",
+  rowTitle: "text-sm font-semibold leading-snug text-slate-900",
+  rowBody: "text-xs font-medium leading-snug text-slate-600",
+  rowMeta: "text-[11px] leading-snug text-slate-500",
+  chrome: "text-xs leading-snug text-slate-600",
+  statValue: "text-sm font-semibold tabular-nums text-slate-900",
+  statLabel: "text-xs text-slate-500",
+  kindTag: "text-[10px] font-semibold uppercase tracking-wide",
+  pill: "text-[11px] font-semibold leading-snug",
+} as const;
+
+/** Wewnętrzny padding sekcji panelu. */
+export const panelSectionInsetClass = "px-3 py-3 sm:px-4 sm:py-4 lg:px-5 lg:py-4";
+
+/** Padding poziomy chrome (tabs, status, toolbar pod tytułem). */
+export const panelChromeInsetClass = "px-3 sm:px-4 lg:px-5";
+
+/** Wewnętrzny padding podsekcji (nagłówki list w karcie). */
+export const panelSubsectionInsetClass = "px-3 sm:px-4 lg:px-5";
+
+/**
+ * Skala typografii panelu dziennego — płaska, bez powiększania na lg+ (wąska kolumna).
+ */
+export const panelTypography = {
+  sectionTitle: "text-sm font-semibold text-slate-900",
+  sectionLabel: "text-[11px] font-semibold uppercase tracking-wide text-slate-600",
+  rowTitle: "text-sm font-semibold leading-snug text-slate-900",
+  rowMeta: "text-xs leading-snug text-slate-500",
+  caption: "text-[11px] leading-snug text-slate-500",
+  chrome: "text-xs leading-snug text-slate-600",
+  sectionDesc: "text-xs leading-relaxed text-slate-500",
+  tab: "text-sm font-medium",
+  tabBadge: "text-xs font-semibold tabular-nums",
+  statValue: "text-xl font-semibold tabular-nums tracking-tight text-slate-900",
+} as const;
 
 /** Wypełnienie paska postępu */
 export const progressFillUrgentClass = "bg-gradient-to-r from-sky-400 to-sky-600";
@@ -154,7 +247,7 @@ export const mobileSalesNavClass =
   "fixed inset-x-0 bottom-0 z-50 border-t border-slate-200/80 bg-[var(--card)]/95 shadow-[var(--shadow-card-elevated)] backdrop-blur-md md:hidden";
 
 export const mobileNavLinkBaseClass =
-  "relative flex min-h-[3.25rem] flex-col items-center justify-center gap-0.5 px-2 py-2 text-[10px] font-semibold transition-colors";
+  "relative flex min-h-[3.25rem] flex-col items-center justify-center gap-0.5 px-2 py-2 text-[11px] font-semibold transition-colors lg:text-xs";
 
 export const mobileNavLinkActiveClass =
   "text-indigo-700 before:absolute before:inset-x-3 before:top-0 before:h-0.5 before:rounded-full before:bg-gradient-to-r before:from-indigo-500 before:to-sky-400 before:content-['']";
@@ -162,10 +255,12 @@ export const mobileNavLinkActiveClass =
 export const mobileNavLinkIdleClass = "text-slate-500";
 
 export const mobileNavBadgeClass =
-  "bg-gradient-to-br from-indigo-600 to-sky-600 text-white shadow-sm shadow-indigo-600/20";
+  "bg-gradient-to-br from-indigo-600 to-sky-600 text-[9px] font-bold text-white shadow-sm shadow-indigo-600/20 lg:text-[10px]";
 
-export const salesUpdatesBannerClass =
-  "mb-4 flex flex-col gap-3 rounded-md border border-indigo-200/80 bg-gradient-to-br from-indigo-50/90 via-white to-sky-50/40 px-3 py-3 text-sm text-indigo-950 shadow-[var(--shadow-card-elevated)] sm:mb-6 sm:flex-row sm:items-center sm:justify-between sm:px-4";
+export const salesUpdatesBannerClass = cn(
+  panelWorkspaceShellClass,
+  "mb-4 flex flex-col gap-3 rounded-md border border-indigo-200/80 bg-gradient-to-br from-indigo-50/90 via-white to-sky-50/40 px-3 py-3 text-sm text-indigo-950 shadow-[var(--shadow-card-elevated)] sm:mb-6 sm:flex-row sm:items-center sm:justify-between sm:px-4"
+);
 
 /** Delikatna powierzchnia z akcentem marki (kolejka, stopki podsekcji). */
 export const panelMutedSurfaceClass =
@@ -175,13 +270,15 @@ export const panelMutedSurfaceClass =
 export const panelDropdownShellClass =
   "rounded-md border border-indigo-100/85 bg-white py-1 shadow-lg shadow-indigo-950/5 ring-1 ring-sky-100/35";
 
-/** Skrócona nawigacja po kolejce dnia. */
 export const panelQueueStepsShellClass = cn(
   panelMutedSurfaceClass,
-  "flex flex-wrap items-center gap-2 rounded-md border px-3 py-2.5"
+  "flex flex-nowrap items-center gap-2 overflow-x-auto rounded-md border px-3 py-2.5 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
 );
 
-/** Panel dzienny — kafelki, zakładki, linki i przyciski pomocnicze */
+/** Podświetlenie świeżo zsynchronizowanych, nieprzeczytanych prośb. */
+export const dailyPanelFreshHighlightClass =
+  "ring-2 ring-indigo-400/60 ring-offset-1 shadow-sm shadow-indigo-200/40";
+
 export const panelMetricTileClass =
   "rounded-md border border-indigo-100/70 bg-white px-3 py-2.5 text-left shadow-[var(--shadow-card)] transition";
 
@@ -224,14 +321,25 @@ export const panelMutedToggleClass =
 export const panelMenuItemClass =
   "block w-full cursor-pointer px-3 py-2 text-left text-sm text-slate-700 transition hover:bg-indigo-50/80 hover:text-indigo-950";
 
-/** Segmenty w grupie akcji panelu (Zamówione, Przesuń, Więcej) — h-7, zaokrąglenia na końcach. */
+/** Segmenty w grupie akcji panelu — h-full wypełnia obudowę (bez białego paska). */
 export const panelSegmentPrimaryClass =
-  "flex h-7 min-h-7 max-h-7 shrink-0 items-center justify-center rounded-none rounded-l-md border-0 bg-indigo-600 px-2.5 text-xs font-semibold leading-none text-white shadow-none transition-colors duration-150 hover:bg-indigo-700 active:bg-indigo-800";
+  "flex h-full min-h-0 shrink-0 items-center justify-center rounded-none rounded-l-md border-0 bg-indigo-600 px-2.5 text-xs font-semibold leading-none text-white shadow-none transition-colors duration-150 hover:bg-indigo-700 active:bg-indigo-800 sm:px-3";
 
 export const panelSegmentControlClass =
-  "flex h-7 min-h-7 max-h-7 shrink-0 items-center justify-center rounded-none border-0 border-l border-slate-200/90 px-2 text-xs font-medium leading-none text-slate-700 shadow-none transition-colors duration-150 hover:bg-slate-50";
+  "flex h-full min-h-0 shrink-0 items-center justify-center rounded-none border-0 border-l border-slate-200/90 px-2 text-xs font-medium leading-none text-slate-700 shadow-none transition-colors duration-150 hover:bg-slate-50 sm:px-2.5";
+
+/** Outline (Uzupełniające) — ten sam layout co panelSegmentControlClass. */
+export const panelSegmentOutlineClass =
+  "flex h-full min-h-0 shrink-0 items-center justify-center rounded-none border-0 border-l border-indigo-200/90 bg-[var(--primary-muted)]/60 px-2 text-xs font-semibold leading-none text-indigo-800 shadow-none transition-colors duration-150 hover:bg-[var(--primary-muted)] disabled:cursor-not-allowed disabled:opacity-50 sm:px-2.5";
 
 export const panelSegmentLastClass = "rounded-r-md";
+
+/** Segment potwierdzenia w grupie akcji /moje — h-full wypełnia obudowę. */
+export const mojeAckSegmentPrimaryClass =
+  "flex h-full min-h-0 shrink-0 items-center justify-center rounded-none border-0 bg-emerald-600 px-2.5 text-xs font-semibold leading-none text-white shadow-none transition-colors duration-150 hover:bg-emerald-700 active:bg-emerald-800 disabled:cursor-not-allowed disabled:opacity-50 sm:px-2";
+
+export const mojeAckSegmentOutlineClass =
+  "flex h-full min-h-0 shrink-0 items-center justify-center rounded-none border-0 border-l border-emerald-200/90 bg-white px-2 text-xs font-semibold leading-none text-emerald-800 shadow-none transition-colors duration-150 hover:bg-emerald-50 disabled:cursor-not-allowed disabled:opacity-50 sm:px-2";
 
 /** Segment outline w środku grupy (HoldToConfirm — Uzupełniające). */
 export const panelHoldOutlineSegmentClass =
@@ -260,19 +368,19 @@ export const panelToolbarShellClass =
   "flex w-full min-w-0 items-center rounded-md border border-indigo-100/75 bg-gradient-to-b from-indigo-50/35 via-white to-white p-2 shadow-sm";
 
 export const panelToolbarRowClass =
-  "flex w-full min-w-0 flex-col gap-2 lg:flex-row lg:items-center";
+  "flex w-full min-w-0 flex-col gap-2 md:flex-row md:items-center";
 
 export const panelToolbarSearchWrapClass =
-  "flex min-w-0 flex-1 items-center px-0.5 lg:min-w-[16rem]";
+  "flex min-w-0 flex-1 items-center px-0.5 md:min-w-[12rem]";
 
 export const panelToolbarSearchInputClass =
-  "h-10 w-full rounded-md border border-indigo-100/80 bg-white px-3.5 text-sm text-slate-900 shadow-sm placeholder:text-slate-400 focus:border-indigo-300 focus:outline-none focus:ring-2 focus:ring-indigo-100/90";
+  "h-9 w-full rounded-md border border-indigo-100/80 bg-white px-3 text-sm text-slate-900 shadow-sm placeholder:text-slate-400 focus:border-indigo-300 focus:outline-none focus:ring-2 focus:ring-indigo-100/90";
 
 export const panelToolbarActionsClass =
-  "flex shrink-0 flex-wrap items-center justify-end gap-1.5 lg:border-l lg:border-indigo-100/75 lg:pl-2.5";
+  "flex shrink-0 flex-wrap items-center justify-stretch gap-1.5 md:justify-end md:border-l md:border-indigo-100/75 md:pl-2.5";
 
 export const panelToolbarTextButtonClass =
-  "inline-flex h-10 cursor-pointer items-center gap-1.5 rounded-md border border-indigo-100/80 bg-white px-2.5 text-xs font-medium text-indigo-800/85 shadow-sm transition hover:border-indigo-200/80 hover:bg-indigo-50/45 hover:text-indigo-950";
+  "inline-flex h-9 cursor-pointer items-center gap-1.5 rounded-md border border-indigo-100/80 bg-white px-2.5 text-xs font-medium text-indigo-800/85 shadow-sm transition hover:border-indigo-200/80 hover:bg-indigo-50/45 hover:text-indigo-950";
 
 export const panelToolbarIconButtonClass =
-  "inline-flex h-10 w-10 shrink-0 cursor-pointer items-center justify-center rounded-md border border-indigo-100/80 bg-white text-indigo-800/85 shadow-sm transition hover:border-indigo-200/80 hover:bg-indigo-50/45 hover:text-indigo-950 disabled:cursor-not-allowed disabled:opacity-50";
+  "inline-flex h-9 w-9 shrink-0 cursor-pointer items-center justify-center rounded-md border border-indigo-100/80 bg-white text-indigo-800/85 shadow-sm transition hover:border-indigo-200/80 hover:bg-indigo-50/45 hover:text-indigo-950 disabled:cursor-not-allowed disabled:opacity-50";

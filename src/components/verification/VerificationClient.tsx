@@ -2,6 +2,7 @@
 
 import type { IndividualOrder } from "@/types/database";
 import { VerificationWorkspace } from "@/components/verification/VerificationWorkspace";
+import type { VerificationSupplierOption } from "@/lib/orders/verification-form";
 
 export function VerificationClient({
   orders,
@@ -9,7 +10,7 @@ export function VerificationClient({
   salesPeople,
 }: {
   orders: IndividualOrder[];
-  suppliers: { id: string; name: string }[];
+  suppliers: VerificationSupplierOption[];
   salesPeople: { id: string; name: string }[];
 }) {
   return (

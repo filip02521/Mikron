@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { isNavItemActive, navForRole, type NavGroup, type NavItem } from "@/lib/nav";
 import { useSalesUpdates } from "@/components/sales/SalesUpdatesContext";
+import { useOperationsUpdates } from "@/components/operations/OperationsUpdatesContext";
 import { SidebarBrandBlock } from "@/components/layout/SidebarBrandBlock";
 import {
   brandSidebarFooter,
@@ -138,6 +139,7 @@ function NavSection({
 }) {
   const pathname = usePathname();
   const salesUpdates = useSalesUpdates();
+  const operationsUpdates = useOperationsUpdates();
 
   return (
     <section className={cn(!isFirst && "mt-3 border-t border-slate-100 pt-3")}>
@@ -149,7 +151,10 @@ function NavSection({
           const siblingHrefs = group.items.map((i) => i.href);
           const active = isNavItemActive(pathname, item.href, siblingHrefs);
           const showDot =
-            item.href === "/moje" && Boolean(salesUpdates?.hasUpdates) && !active;
+            (item.href === "/moje" && Boolean(salesUpdates?.hasUpdates) && !active) ||
+            (item.href === "/podsumowanie" &&
+              Boolean(operationsUpdates?.hasUpdates) &&
+              !active);
 
           return (
             <li key={item.href}>

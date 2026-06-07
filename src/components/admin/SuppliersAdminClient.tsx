@@ -2,8 +2,8 @@
 
 import Link from "next/link";
 import { LinkChevron } from "@/components/ui/UiGlyphs";
-import { useRouter, useSearchParams } from "next/navigation";
-import { useEffect, useMemo, useState, useTransition, useCallback } from "react";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { useEffect, useMemo, useState, useTransition, useCallback, useRef } from "react";
 import { useLatest } from "@/hooks/useLatest";
 import type { SupplierLocation, SupplierWithSchedule } from "@/types/database";
 import {
@@ -12,41 +12,60 @@ import {
   actionSetSupplierActive,
 } from "@/app/actions/admin";
 import { isSupplierActive, inactiveSupplierRowClass } from "@/lib/suppliers/active";
-import { formatStockPeriod, locationLabel } from "@/lib/display-labels";
+import { formatSupplierCycleSummary, formatSupplierListMeta } from "@/lib/suppliers/supplier-list-labels";
 import { Card, CardHeader } from "@/components/ui/Card";
-import { Input } from "@/components/ui/Field";
 import { Button } from "@/components/ui/Button";
 import { Toast } from "@/components/ui/Toast";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
-import { DataTable, TableScroll } from "@/components/ui/DataTable";
-import { OrderMethodBadge } from "@/components/targets/OrderMethodBadge";
-import { SupplierLocationFilters } from "@/components/admin/SupplierLocationFilters";
+import { SupplierAdminCardsFilterBar } from "@/components/admin/SupplierHubListFilters";
+import { SupplierAdminRowMenu } from "@/components/admin/SupplierAdminRowMenu";
 import { EmptyState } from "@/components/ui/EmptyState";
 import {
   countSuppliersByLocation,
+  countSuppliersBySubiektLink,
   filterSuppliersForAdmin,
   type SupplierLocationFilter,
+  type SupplierSubiektFilter,
 } from "@/lib/supplier-locations";
+import { suggestOrderOnDemandAfterFieldChange } from "@/lib/orders/supplier-on-demand";
 import {
-  isSupplierOrderOnDemand,
-  suggestOrderOnDemandAfterFieldChange,
-} from "@/lib/orders/supplier-on-demand";
-import {
+  applyAdminFormToSupplierRow,
   emptySupplierAdminForm,
   supplierToAdminForm,
 } from "@/lib/suppliers/admin-form";
-import { Badge } from "@/components/ui/Badge";
-import { SupplierSubiektLinkIndicator } from "@/components/admin/SupplierSubiektLinkIndicator";
+import { SupplierAdminNameCell } from "@/components/admin/SupplierAdminNameCell";
 import {
   SupplierAdminForm,
   type SupplierAdminFormState,
 } from "@/components/admin/SupplierAdminForm";
 import { SupplierEditSheet } from "@/components/admin/SupplierEditSheet";
+import { SUPPLIER_HUB_LIST_META_DESCRIPTION } from "@/lib/supplier-hub";
 import { cn } from "@/lib/cn";
 
 function scheduleHref(location: SupplierLocation, name: string): string {
   const q = encodeURIComponent(name);
   return `/lokalizacje/${location}?q=${q}`;
+}
+
+function parseLocationFilter(raw: string | null): SupplierLocationFilter {
+  if (raw === "POLSKA" || raw === "ZAGRANICA" || raw === "IMPORT") return raw;
+  return "all";
+}
+
+function parseSubiektFilter(raw: string | null): SupplierSubiektFilter {
+  if (raw === "unlinked" || raw === "linked") return raw;
+  return "all";
+}
+
+function supplierRowClass(
+  s: SupplierWithSchedule,
+  isEditing: boolean
+): string {
+  return cn(
+    inactiveSupplierRowClass(isSupplierActive(s)),
+    s.subiekt_kh_id == null && "bg-amber-50/40",
+    isEditing && "bg-indigo-50/80 ring-1 ring-inset ring-indigo-200"
+  );
 }
 
 export function SuppliersAdminClient({
@@ -57,6 +76,7 @@ export function SuppliersAdminClient({
   allowDelete?: boolean;
 }) {
   const router = useRouter();
+  const pathname = usePathname();
   const searchParams = useSearchParams();
   const [rows, setRows] = useState(initial);
   const [pending, start] = useTransition();
@@ -66,6 +86,7 @@ export function SuppliersAdminClient({
   const dismiss = useCallback(() => setToast(null), []);
   const [search, setSearch] = useState("");
   const [locationFilter, setLocationFilter] = useState<SupplierLocationFilter>("all");
+  const [subiektFilter, setSubiektFilter] = useState<SupplierSubiektFilter>("all");
   const [formOpen, setFormOpen] = useState(false);
   const [form, setForm] = useState<SupplierAdminFormState>(emptySupplierAdminForm);
   const formRef = useLatest(form);
@@ -73,17 +94,57 @@ export function SuppliersAdminClient({
   const [deactivateTarget, setDeactivateTarget] = useState<SupplierWithSchedule | null>(
     null
   );
+  const powiazHandledRef = useRef(false);
 
   useEffect(() => {
-    const q = searchParams.get("q")?.trim();
-    if (q) setSearch(q);
+    setRows(initial);
+  }, [initial]);
+
+  useEffect(() => {
+    setSearch(searchParams.get("q")?.trim() ?? "");
+    setLocationFilter(parseLocationFilter(searchParams.get("location")));
+    setSubiektFilter(parseSubiektFilter(searchParams.get("subiekt")));
   }, [searchParams]);
 
+  useEffect(() => {
+    const timer = window.setTimeout(() => {
+      const params = new URLSearchParams(searchParams.toString());
+      const q = search.trim();
+      if (q) params.set("q", q);
+      else params.delete("q");
+      if (locationFilter !== "all") params.set("location", locationFilter);
+      else params.delete("location");
+      if (subiektFilter !== "all") params.set("subiekt", subiektFilter);
+      else params.delete("subiekt");
+      const next = params.toString();
+      if (next !== searchParams.toString()) {
+        router.replace(next ? `${pathname}?${next}` : pathname, { scroll: false });
+      }
+    }, 300);
+    return () => window.clearTimeout(timer);
+  }, [search, locationFilter, subiektFilter, pathname, router, searchParams]);
+
+  const locationScopedRows = useMemo(() => {
+    if (locationFilter === "all") return rows;
+    return rows.filter((s) => s.location === locationFilter);
+  }, [rows, locationFilter]);
+
   const locationCounts = useMemo(() => countSuppliersByLocation(rows), [rows]);
+  const subiektCounts = useMemo(
+    () => countSuppliersBySubiektLink(locationScopedRows),
+    [locationScopedRows]
+  );
 
   const filtered = useMemo(
-    () => filterSuppliersForAdmin(rows, locationFilter, search),
-    [rows, locationFilter, search]
+    () =>
+      filterSuppliersForAdmin(
+        rows,
+        locationFilter,
+        search,
+        subiektFilter,
+        subiektFilter === "all"
+      ),
+    [rows, locationFilter, search, subiektFilter]
   );
 
   const startEdit = (s: SupplierWithSchedule) => {
@@ -98,13 +159,19 @@ export function SuppliersAdminClient({
 
   useEffect(() => {
     const q = searchParams.get("q")?.trim();
-    if (searchParams.get("powiaz") !== "1" || !q || formOpen) return;
+    if (searchParams.get("powiaz") !== "1" || !q || formOpen || powiazHandledRef.current) return;
     const match =
       rows.find((r) => r.name.toLowerCase() === q.toLowerCase()) ??
       rows.find((r) => r.name.toLowerCase().includes(q.toLowerCase()));
-    if (match) startEdit(match);
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- tylko wejście z linku ?powiaz=1
-  }, [searchParams, rows, formOpen]);
+    if (!match) return;
+    powiazHandledRef.current = true;
+    startEdit(match);
+    const params = new URLSearchParams(searchParams.toString());
+    params.delete("powiaz");
+    const next = params.toString();
+    router.replace(next ? `${pathname}?${next}` : pathname, { scroll: false });
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- jednorazowe wejście z linku ?powiaz=1
+  }, [searchParams, rows, formOpen, pathname, router]);
 
   useEffect(() => {
     if (!formOpen || !form.id) return;
@@ -164,8 +231,16 @@ export function SuppliersAdminClient({
       const snapshot = { ...formRef.current };
       try {
         await actionUpsertSupplier(snapshot);
-        if (snapshot.id && !snapshot.is_active) {
-          setRows((list) => list.filter((x) => x.id !== snapshot.id));
+        if (snapshot.id) {
+          if (!snapshot.is_active) {
+            setRows((list) => list.filter((x) => x.id !== snapshot.id));
+          } else {
+            setRows((list) =>
+              list.map((r) =>
+                r.id === snapshot.id ? applyAdminFormToSupplierRow(r, snapshot) : r
+              )
+            );
+          }
         }
         setToast({
           text: snapshot.id
@@ -187,6 +262,9 @@ export function SuppliersAdminClient({
   const sheetDescription = form.id
     ? "Pola poniżej — zapis na dole panelu. Lista kart zostaje widoczna po lewej."
     : "Zapas = na jaki okres robisz większe zamówienie (np. 2 miesiące).";
+
+  const filterActive =
+    locationFilter !== "all" || subiektFilter !== "all" || search.trim().length > 0;
 
   return (
     <>
@@ -276,156 +354,122 @@ export function SuppliersAdminClient({
         </form>
       </SupplierEditSheet>
 
-      <section className="space-y-6 p-4 sm:p-5">
-        <Button variant="outline" onClick={openNew}>
-          + Dodaj dostawcę
-        </Button>
+      <section className="space-y-4">
+        {!formOpen ? (
+          <Button variant="outline" onClick={openNew}>
+            + Dodaj dostawcę
+          </Button>
+        ) : null}
 
-        <Card padding={false}>
+        <Card padding={false} className="overflow-hidden">
           <CardHeader
             inset
-            title={`Karty (${filtered.length}${locationFilter !== "all" || search.trim() ? ` z ${rows.length}` : ""})`}
-            description="Edycja otwiera panel z boku — bez przewijania do góry strony."
+            density="compact"
+            title={`Karty (${filtered.length}${filterActive ? ` z ${rows.length}` : ""})`}
+            description={SUPPLIER_HUB_LIST_META_DESCRIPTION}
           />
-          <div className="space-y-3 border-b border-slate-100 px-6 pb-4">
-            <p className="text-xs text-slate-500">
-              <span className="inline-flex items-center gap-1.5">
-                <SupplierSubiektLinkIndicator subiektKhId={1} className="scale-90" />
-                powiązany z Subiektem
-              </span>
-              <span className="mx-2 text-slate-300">·</span>
-              <span className="inline-flex items-center gap-1.5">
-                <SupplierSubiektLinkIndicator subiektKhId={null} className="scale-90" />
-                brak powiązania — ustaw w panelu edycji
-              </span>
-            </p>
-            <SupplierLocationFilters
-              value={locationFilter}
-              onChange={setLocationFilter}
-              counts={locationCounts}
-              className="w-full max-w-full flex-wrap"
-            />
-            <Input
-              type="search"
-              placeholder="Szukaj dostawcy…"
-              className="max-w-sm py-2 text-sm"
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-            />
-          </div>
+
+          <SupplierAdminCardsFilterBar
+            locationFilter={locationFilter}
+            onLocationFilterChange={setLocationFilter}
+            locationCounts={locationCounts}
+            subiektFilter={subiektFilter}
+            onSubiektFilterChange={setSubiektFilter}
+            subiektCounts={subiektCounts}
+            search={search}
+            onSearchChange={setSearch}
+            searchId="supplier-card-search"
+          />
+
           {filtered.length === 0 ? (
             <EmptyState
               title="Brak dostawców w tym widoku"
               description={
-                search.trim()
-                  ? "Zmień wyszukiwanie lub wybierz inną lokalizację."
+                search.trim() || subiektFilter !== "all"
+                  ? "Zmień wyszukiwanie lub filtry."
                   : "Wybierz inną lokalizację albo dodaj nowego dostawcę."
               }
             />
           ) : (
-            <TableScroll>
-              <DataTable>
-                <thead>
-                  <tr>
-                    <th className="w-14 text-center">Subiekt</th>
-                    <th>Nazwa</th>
-                    <th>Lokalizacja</th>
-                    <th>Sposób</th>
-                    <th>Zapas</th>
-                    <th>Częstotliwość</th>
-                    <th>Terminy</th>
-                    <th />
-                  </tr>
-                </thead>
-                <tbody>
-                  {filtered.map((s) => {
-                    const isEditing = formOpen && form.id === s.id;
-                    return (
-                      <tr
-                        key={s.id}
-                        id={`supplier-row-${s.id}`}
-                        className={cn(
-                          inactiveSupplierRowClass(isSupplierActive(s)),
-                          isEditing && "bg-indigo-50/80 ring-1 ring-inset ring-indigo-200"
-                        )}
-                      >
-                        <td className="w-14 text-center">
-                          <SupplierSubiektLinkIndicator subiektKhId={s.subiekt_kh_id} />
-                        </td>
-                        <td>
-                          <span className="flex flex-wrap items-center gap-2">
-                            <span className="font-medium text-slate-900">{s.name}</span>
-                            {isSupplierOrderOnDemand(s) ? (
-                              <Badge variant="purple" className="text-[10px]">
-                                Na żądanie
-                              </Badge>
-                            ) : null}
-                            {isEditing ? (
-                              <Badge variant="info" className="text-[10px]">
-                                Edycja
-                              </Badge>
-                            ) : null}
-                          </span>
-                        </td>
-                        <td>{locationLabel(s.location)}</td>
-                        <td>
-                          <OrderMethodBadge notes={s.notes} />
-                        </td>
-                        <td className="max-w-[140px] text-sm text-slate-700">
-                          {formatStockPeriod(s.stock_raw, s.stock != null ? Number(s.stock) : null)}
-                        </td>
-                        <td className="text-sm text-slate-700">
-                          {s.interval_raw?.trim() || s.interval_weeks || "—"}
-                        </td>
-                        <td>
+            <>
+              <div
+                className="hidden border-b border-slate-100 bg-slate-50/90 px-4 py-2 text-[11px] font-semibold uppercase tracking-wide text-slate-500 md:grid md:grid-cols-[minmax(0,1.6fr)_minmax(120px,180px)_minmax(88px,100px)_minmax(120px,160px)] md:gap-3 lg:px-5"
+                aria-hidden
+              >
+                <span>Dostawca</span>
+                <span>Cykl</span>
+                <span>Terminy</span>
+                <span className="text-right">Akcje</span>
+              </div>
+              <ul className="divide-y divide-slate-100">
+                {filtered.map((s) => {
+                  const isEditing = formOpen && form.id === s.id;
+                  const cycleSummary = formatSupplierCycleSummary(s);
+                  const cycleIncomplete = cycleSummary === "Uzupełnij cykl";
+                  return (
+                    <li
+                      key={s.id}
+                      id={`supplier-row-${s.id}`}
+                      className={cn(
+                        "px-3 py-3 sm:px-4 lg:px-5",
+                        supplierRowClass(s, isEditing)
+                      )}
+                    >
+                      <div className="flex items-start gap-2 md:grid md:grid-cols-[minmax(0,1.6fr)_minmax(120px,180px)_minmax(88px,100px)_minmax(120px,160px)] md:items-center md:gap-3">
+                        <div className="min-w-0 flex-1 md:contents">
+                          <div className="min-w-0 md:block">
+                            <SupplierAdminNameCell
+                              supplier={s}
+                              isEditing={isEditing}
+                              onEdit={() => startEdit(s)}
+                            />
+                            <p className="mt-1 text-xs text-slate-500 md:mt-0.5">
+                              {formatSupplierListMeta(s)}
+                            </p>
+                          </div>
+                          <p
+                            className={cn(
+                              "mt-2 text-sm md:mt-0",
+                              cycleIncomplete
+                                ? "font-medium text-amber-800"
+                                : "text-slate-700"
+                            )}
+                          >
+                            {cycleSummary}
+                          </p>
                           <Link
                             href={scheduleHref(s.location, s.name)}
-                            className="inline-flex items-center gap-1 text-sm font-medium text-sky-700 hover:text-sky-900 hover:underline"
+                            className="mt-2 inline-flex items-center gap-1 text-xs font-medium text-sky-700 hover:text-sky-900 hover:underline md:mt-0 md:text-sm"
                           >
                             Terminy
-                            <LinkChevron size={14} tone="sky" />
+                            <LinkChevron size={12} tone="sky" className="md:hidden" />
+                            <LinkChevron size={14} tone="sky" className="hidden md:inline" />
                           </Link>
-                        </td>
-                        <td>
-                          <p className="flex justify-end gap-1">
-                            {s.subiekt_kh_id == null ? (
-                              <Button
-                                variant="secondary"
-                                size="sm"
-                                onClick={() => startEdit(s)}
-                              >
-                                Powiąż
-                              </Button>
-                            ) : null}
-                            <Button variant="ghost" size="sm" onClick={() => startEdit(s)}>
-                              Edytuj
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              className="text-amber-800"
-                              onClick={() => setDeactivateTarget(s)}
-                            >
-                              Dezaktywuj
-                            </Button>
-                            {allowDelete ? (
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                className="text-red-600"
-                                onClick={() => setDeleteTarget(s)}
-                              >
-                                Usuń
-                              </Button>
-                            ) : null}
-                          </p>
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </DataTable>
-            </TableScroll>
+                        </div>
+                        <div className="flex shrink-0 items-center gap-1 md:justify-end">
+                          <Button
+                            variant="secondary"
+                            size="sm"
+                            className="hidden md:inline-flex"
+                            onClick={() => startEdit(s)}
+                          >
+                            Edytuj
+                          </Button>
+                          <SupplierAdminRowMenu
+                            supplier={s}
+                            allowDelete={allowDelete}
+                            disabled={pending}
+                            onEdit={() => startEdit(s)}
+                            onDeactivate={() => setDeactivateTarget(s)}
+                            onDelete={() => setDeleteTarget(s)}
+                          />
+                        </div>
+                      </div>
+                    </li>
+                  );
+                })}
+              </ul>
+            </>
           )}
         </Card>
       </section>

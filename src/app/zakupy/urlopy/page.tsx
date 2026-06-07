@@ -5,11 +5,14 @@ import {
 } from "@/lib/data/queries";
 import { VacationsAdminClient } from "@/components/admin/VacationsAdminClient";
 import { SuppliersHubShell } from "@/components/admin/SuppliersHubShell";
+import { Alert } from "@/components/ui/Alert";
+import { supplierHubShellDescription } from "@/lib/supplier-hub";
 
 export default async function ZakupyUrlopyPage() {
   let vacations: Awaited<ReturnType<typeof fetchVacations>> = [];
   let suppliers: { id: string; name: string }[] = [];
   let inactiveCount = 0;
+  let loadError: string | null = null;
   try {
     const [v, s, inactive] = await Promise.all([
       fetchVacations(),
@@ -19,18 +22,19 @@ export default async function ZakupyUrlopyPage() {
     vacations = v;
     suppliers = s.map((x) => ({ id: x.id, name: x.name }));
     inactiveCount = inactive;
-  } catch {
-    /* empty */
+  } catch (e) {
+    loadError = e instanceof Error ? e.message : "Nie udało się wczytać urlopów dostawców.";
   }
 
   return (
     <SuppliersHubShell
       title="Urlopy dostawców"
-      description="Okresy niedostępności — po zapisie system przelicza terminy w panelu dziennym i w Terminach zamówień."
+      description={supplierHubShellDescription("vacations", "zakupy")}
       activeTab="vacations"
       context="zakupy"
       inactiveCount={inactiveCount}
     >
+      {loadError ? <Alert tone="error">{loadError}</Alert> : null}
       <VacationsAdminClient vacations={vacations} suppliers={suppliers} />
     </SuppliersHubShell>
   );

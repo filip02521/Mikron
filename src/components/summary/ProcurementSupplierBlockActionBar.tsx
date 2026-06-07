@@ -16,19 +16,20 @@ import {
   type ProcurementSupplierBlock,
 } from "@/lib/orders/procurement-supplier-groups";
 import { cn } from "@/lib/cn";
-import { panelSegmentPrimaryClass } from "@/lib/ui/ontime-theme";
+import { panelSegmentOutlineClass, panelSegmentPrimaryClass } from "@/lib/ui/ontime-theme";
 import { buttonGroupItemClass, panelActionBarShellClass } from "@/lib/ui/surfaces";
 
-const outlineSegmentClass = cn(
-  "flex h-7 min-h-7 max-h-7 shrink-0 items-center justify-center px-2.5 text-xs font-semibold leading-none",
-  "border-0 border-l border-indigo-200/90 bg-[var(--primary-muted)]/60 text-indigo-800",
-  "transition-colors duration-150 hover:bg-[var(--primary-muted)] disabled:cursor-not-allowed disabled:opacity-50"
-);
-
-function ActionCount({ n }: { n: number }) {
+function ActionCount({ n, variant }: { n: number; variant: "primary" | "outline" }) {
   if (n < 2) return null;
   return (
-    <span className="ml-1 inline-flex min-w-[1.1rem] justify-center rounded bg-indigo-900/10 px-1 text-[10px] font-bold tabular-nums text-indigo-900">
+    <span
+      className={cn(
+        "ml-1 inline-flex min-w-[1.15rem] justify-center rounded px-1 text-[10px] font-bold tabular-nums",
+        variant === "primary"
+          ? "bg-white/25 text-white ring-1 ring-inset ring-white/35"
+          : "bg-indigo-600/15 text-indigo-900 ring-1 ring-inset ring-indigo-300/40"
+      )}
+    >
       {n}
     </span>
   );
@@ -160,21 +161,21 @@ export function ProcurementSupplierBlockActionBar({
             onClick={() => setConfirmMode("GLOWNE")}
           >
             {hasInfoViaPanel ? "Główne (info)" : "Główne"}
-            <ActionCount n={groupCount} />
+            <ActionCount n={groupCount} variant="primary" />
           </button>
           <button
             type="button"
             disabled={disabled}
             className={cn(
               buttonGroupItemClass,
-              outlineSegmentClass,
+              panelSegmentOutlineClass,
               "min-w-0 flex-1 px-2 sm:flex-none",
               hasInfoViaPanel && "px-1.5"
             )}
             onClick={() => setConfirmMode("POBOCZNE")}
           >
             {hasInfoViaPanel ? "Uzupełn." : "Uzupełniające"}
-            <ActionCount n={groupCount} />
+            <ActionCount n={groupCount} variant="outline" />
           </button>
         </ButtonGroup>
       </div>

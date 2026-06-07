@@ -10,7 +10,13 @@ import { SectionTabNav, type SectionTab } from "@/components/ui/SectionTabNav";
 
 const TAB_ORDER: AdminHubTab[] = ["system", "users", "sales"];
 
-export function AdminHubNav({ activeTab }: { activeTab: AdminHubTab }) {
+export function AdminHubNav({
+  activeTab,
+  embedded = false,
+}: {
+  activeTab: AdminHubTab;
+  embedded?: boolean;
+}) {
   const paths = adminHubPaths();
   const tabs: SectionTab<AdminHubTab>[] = TAB_ORDER.map((id) => ({
     id,
@@ -25,6 +31,7 @@ export function AdminHubNav({ activeTab }: { activeTab: AdminHubTab }) {
       tabs={tabs}
       contextHint={adminHubHint(activeTab)}
       ariaLabel="Zakładki administracji"
+      embedded={embedded}
     />
   );
 }

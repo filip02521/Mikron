@@ -1,9 +1,12 @@
 import { Suspense } from "react";
+import { cn } from "@/lib/cn";
 import { fetchSummaryWorkspace, fetchVerificationOrders } from "@/lib/data/queries";
 import { runOrderMaintenanceBeforePageLoad } from "@/lib/services/deferred-order-maintenance";
 import { SummaryWorkspace } from "@/components/summary/SummaryWorkspace";
 import { Alert } from "@/components/ui/Alert";
 import { buildSummaryWorkspace } from "@/lib/orders/summary-workspace";
+import { panelWorkspaceShellClass } from "@/lib/ui/ontime-theme";
+import type { OrderFormSupplierOption } from "@/lib/orders/order-form-suppliers";
 import type { IndividualOrder } from "@/types/database";
 
 const emptyWorkspace = buildSummaryWorkspace([], []);
@@ -11,7 +14,7 @@ const emptyWorkspace = buildSummaryWorkspace([], []);
 function PanelLoadingFallback() {
   return (
     <div
-      className="mx-auto max-w-6xl animate-pulse rounded-lg border border-slate-200 bg-white p-8"
+      className={cn(panelWorkspaceShellClass, "animate-pulse rounded-lg border border-slate-200 bg-white p-6 sm:p-8")}
       aria-busy
       aria-label="Ładowanie panelu dziennego"
     >
@@ -30,7 +33,7 @@ export default async function PodsumowaniePage() {
   await runOrderMaintenanceBeforePageLoad();
 
   let workspace = emptyWorkspace;
-  let suppliers: { id: string; name: string }[] = [];
+  let suppliers: OrderFormSupplierOption[] = [];
   let supplierDirectory: Awaited<
     ReturnType<typeof fetchSummaryWorkspace>
   >["supplierDirectory"] = [];
@@ -60,7 +63,7 @@ export default async function PodsumowaniePage() {
   return (
     <>
       {error ? (
-        <Alert tone="warning" className="mb-4">
+        <Alert tone="warning" className={cn(panelWorkspaceShellClass, "mb-4")}>
           {error}. Sprawdź połączenie z Supabase.
         </Alert>
       ) : null}

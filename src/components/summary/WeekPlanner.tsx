@@ -32,11 +32,18 @@ import {
   plannerModeTextClass,
   plannerHintMutedClass,
   plannerHintMutedFaintClass,
+  panelTypography,
   surfaceCardClass,
+  weekPlannerEmptyHeaderGridClass,
+  weekPlannerGridClass,
 } from "@/lib/ui/ontime-theme";
 import { PanelRowActionsInlineEnd } from "@/components/summary/PanelRowActionsInlineEnd";
 import { FlowChevron } from "@/components/ui/UiGlyphs";
 import { panelRowClearFocusOnLeave, panelRowGroupClass } from "@/lib/ui/panel-row-actions-reveal";
+import {
+  panelQueueRowActionsClass,
+  panelQueueRowLayoutClass,
+} from "@/lib/ui/surfaces";
 
 function PlanSectionHelp({ planning }: { planning: boolean }) {
   return (
@@ -75,6 +82,7 @@ export function WeekPlanner({
   isPlanPending = false,
   embedded = false,
   emptyContext,
+  density = "default",
 }: {
   title: string;
   description?: string;
@@ -89,6 +97,8 @@ export function WeekPlanner({
   isPlanPending?: boolean;
   /** Bez zewnętrznej karty — do osadzenia w większej sekcji (np. /plan handlowiec). */
   embedded?: boolean;
+  /** Kompaktowa typografia i nagłówki — wąska kolumna (sales / plan). */
+  density?: "default" | "compact";
   /** Gdy tydzień pusty — kontekst do wyśrodkowanego komunikatu w siatce kalendarza. */
   emptyContext?: {
     onDemandCount?: number;
@@ -164,6 +174,7 @@ export function WeekPlanner({
       size="sm"
       variant={planningMode ? "primary" : "outline"}
       disabled={isPlanPending}
+      className="h-11 min-h-11 w-full sm:h-9 sm:min-h-9 sm:w-auto"
       onClick={() => {
         if (planningMode) {
           if (pendingChanges.length > 0) {
@@ -186,13 +197,15 @@ export function WeekPlanner({
     <WeekPlanEmptyCalendar
       days={displayDays}
       emptyContext={emptyContext}
+      density={density}
     />
   ) : (
-    <div className="grid gap-0 border-t border-slate-100 max-lg:divide-y lg:grid-cols-5 lg:divide-x lg:divide-slate-100">
+    <div className={weekPlannerGridClass}>
       {displayDays.map((day) => (
         <DayColumn
           key={day.dateKey}
           day={day}
+          density={density}
           planningMode={planningMode}
           originalPlacement={originalPlacement}
           dropActive={dropTargetKey === day.dateKey}
@@ -221,12 +234,13 @@ export function WeekPlanner({
             <span className="font-semibold">Zatwierdź plan</span> (przeliczenie jak przy ręcznym
             przesunięciu).
           </p>
-          <div className="mt-3 flex flex-wrap items-center gap-2">
+          <div className="mt-3 flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center">
             <Button
               type="button"
               size="sm"
               variant="ghost"
               disabled={isPlanPending}
+              className="h-11 min-h-11 w-full sm:h-9 sm:min-h-9 sm:w-auto"
               onClick={cancelPlanning}
             >
               Anuluj
@@ -236,6 +250,7 @@ export function WeekPlanner({
               size="sm"
               variant="primary"
               disabled={isPlanPending || pendingChanges.length === 0}
+              className="h-11 min-h-11 w-full sm:h-9 sm:min-h-9 sm:w-auto"
               onClick={confirmPlanning}
             >
               Zatwierdź plan
@@ -264,9 +279,10 @@ export function WeekPlanner({
   }
 
   return (
-    <Card padding={false} className={cn(total > 0 && "overflow-hidden")}>
+    <Card padding={false} className={cn(total > 0 && "overflow-x-clip")}>
       <CardHeader
         inset
+        density={density === "compact" ? "compact" : "default"}
         title={title}
         description={description ?? `${total} pozycji`}
         action={
@@ -288,12 +304,14 @@ export function WeekPlanner({
 function WeekPlanEmptyCalendar({
   days,
   emptyContext,
+  density = "default",
 }: {
   days: WeekDayPlan[];
   emptyContext?: {
     onDemandCount?: number;
     onOpenOnDemand?: () => void;
   };
+  density?: "default" | "compact";
 }) {
   const onDemandCount = emptyContext?.onDemandCount ?? 0;
   const onOpenOnDemand = emptyContext?.onOpenOnDemand;
@@ -307,21 +325,24 @@ function WeekPlanEmptyCalendar({
 
   return (
     <div className="border-t border-slate-100">
-      <div className="grid grid-cols-2 divide-x divide-y divide-slate-100 border-b border-slate-100 sm:grid-cols-3 lg:grid-cols-5 lg:divide-y-0">
+      <div className={weekPlannerEmptyHeaderGridClass}>
         {days.map((day) => (
           <div
             key={day.dateKey}
-            className={cn("px-3 py-3 text-center", day.isToday && "bg-slate-50")}
+            className={cn("px-3 py-3 text-center", day.isToday && "bg-slate-50", density === "compact" && "px-2 py-2")}
           >
             <p
               className={cn(
-                "text-[10px] font-semibold uppercase tracking-wider",
+                "font-semibold uppercase tracking-wider",
+                density === "compact" ? "text-[10px]" : "text-[10px]",
                 day.isToday ? "text-slate-800" : "text-slate-500"
               )}
             >
               {day.weekdayLabel}
             </p>
-            <p className="mt-0.5 text-sm font-semibold text-slate-900">{day.dateLabel}</p>
+            <p className={cn("mt-0.5 font-semibold text-slate-900", density === "compact" ? "text-xs" : "text-sm")}>
+              {day.dateLabel}
+            </p>
             {day.isToday ? (
               <span className="mt-1.5 inline-block rounded-full border border-slate-300 bg-white px-2 py-0.5 text-[9px] font-semibold uppercase text-slate-700">
                 Dziś
@@ -365,6 +386,7 @@ function WeekPlanEmptyCalendar({
 
 function DayColumn({
   day,
+  density = "default",
   planningMode,
   originalPlacement,
   dropActive,
@@ -383,6 +405,7 @@ function DayColumn({
   onDragEndItem,
 }: {
   day: WeekDayPlan;
+  density?: "default" | "compact";
   planningMode: boolean;
   originalPlacement: Map<string, string> | null;
   dropActive: boolean;
@@ -405,7 +428,8 @@ function DayColumn({
   return (
     <section
       className={cn(
-        "flex min-h-[140px] flex-col transition-colors",
+        "flex flex-col transition-colors",
+        density === "compact" ? "min-h-[7.5rem]" : "min-h-[140px]",
         day.isToday && "bg-slate-50",
         day.isPast && !day.isToday && "bg-slate-50/40",
         dropActive && droppable && plannerDropActiveClass
@@ -431,20 +455,24 @@ function DayColumn({
     >
       <header
         className={cn(
-          "flex items-start justify-between gap-2 border-b border-slate-100 px-3 py-2.5",
+          "flex items-start justify-between gap-2 border-b border-slate-100",
+          density === "compact" ? "px-2 py-2" : "px-3 py-2.5",
           day.isToday && "border-slate-200 bg-slate-100/80"
         )}
       >
         <div>
           <p
             className={cn(
-              "text-xs font-semibold uppercase tracking-wider",
+              "font-semibold uppercase tracking-wider",
+              density === "compact" ? "text-[10px]" : "text-xs",
               day.isToday ? "text-slate-800" : "text-slate-500"
             )}
           >
             {day.weekdayLabel}
           </p>
-          <p className="text-sm font-semibold text-slate-900">{day.dateLabel}</p>
+          <p className={cn("font-semibold text-slate-900", density === "compact" ? "text-xs" : "text-sm")}>
+            {day.dateLabel}
+          </p>
         </div>
         <div className="flex flex-col items-end gap-1">
           {day.isToday ? (
@@ -556,9 +584,9 @@ function PlannerCard({
 
   const mainContent = (
     <>
-      <span className="block font-semibold leading-snug text-slate-900">{item.supplierName}</span>
+      <span className={cn("block font-semibold leading-snug text-slate-900", panelTypography.rowTitle)}>{item.supplierName}</span>
       {note ? (
-        <p className="mt-0.5 line-clamp-2 text-xs leading-snug text-slate-500">{note}</p>
+        <p className={cn("mt-0.5 line-clamp-2 leading-snug", panelTypography.rowMeta)}>{note}</p>
       ) : null}
       {isMoved && movedLabel ? (
         <p className="mt-0.5 inline-flex flex-wrap items-center gap-1 text-[10px] font-medium text-amber-800">
@@ -570,21 +598,19 @@ function PlannerCard({
     </>
   );
 
-  const actionBar =
+  const scheduleActions =
     canOrder && run && onVacation && onEdit ? (
-      <PanelRowActionsInlineEnd forceVisible={rowPending}>
-        <ScheduleSupplierActionBar
-          compact
-          supplierId={item.supplierId}
-          supplierName={item.supplierName}
-          location={item.location}
-          pending={rowPending}
-          run={run}
-          onOpenSupplier={onOpen}
-          onVacation={() => onVacation(item.supplierId)}
-          onEdit={() => onEdit(item.supplierId)}
-        />
-      </PanelRowActionsInlineEnd>
+      <ScheduleSupplierActionBar
+        compact
+        supplierId={item.supplierId}
+        supplierName={item.supplierName}
+        location={item.location}
+        pending={rowPending}
+        run={run}
+        onOpenSupplier={onOpen}
+        onVacation={() => onVacation(item.supplierId)}
+        onEdit={() => onEdit(item.supplierId)}
+      />
     ) : null;
 
   return (
@@ -609,28 +635,40 @@ function PlannerCard({
         )}
         onMouseLeave={panelRowClearFocusOnLeave}
       >
-        <div className="flex items-start gap-1 px-2 py-1.5">
-          {planningMode ? (
+        {planningMode ? (
+          <div className="flex items-start gap-1 px-2 py-1.5">
             <span
               className="mt-0.5 cursor-grab text-slate-400 active:cursor-grabbing"
               title="Przeciągnij"
             >
               <IconGripVertical size={16} aria-hidden />
             </span>
-          ) : null}
-          {onOpen ? (
-            <button
-              type="button"
-              onClick={onOpen}
-              className="min-w-0 flex-1 cursor-pointer rounded-md text-left transition hover:bg-indigo-50/35"
-            >
-              {mainContent}
-            </button>
-          ) : (
             <div className="min-w-0 flex-1">{mainContent}</div>
-          )}
-          {actionBar}
-        </div>
+          </div>
+        ) : (
+          <div className={cn("px-2 py-2", panelQueueRowLayoutClass)}>
+            {onOpen ? (
+              <button
+                type="button"
+                onClick={onOpen}
+                className="min-w-0 flex-1 cursor-pointer rounded-md text-left transition hover:bg-indigo-50/35"
+              >
+                {mainContent}
+              </button>
+            ) : (
+              <div className="min-w-0 flex-1">{mainContent}</div>
+            )}
+            {scheduleActions ? (
+              <PanelRowActionsInlineEnd
+                forceVisible={rowPending}
+                className={panelQueueRowActionsClass}
+                contentClassName="w-full sm:w-max [&>*]:w-full sm:[&>*]:w-auto"
+              >
+                {scheduleActions}
+              </PanelRowActionsInlineEnd>
+            ) : null}
+          </div>
+        )}
       </article>
     </li>
   );

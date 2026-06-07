@@ -110,14 +110,14 @@ export function MyOrderLineItem({
               searchQuery={searchQuery}
               className={cn(
                 "min-w-0 font-medium text-slate-900",
-                compact ? "text-sm leading-snug" : "text-sm text-slate-800"
+                compact ? "text-xs leading-snug" : "text-sm text-slate-800"
               )}
             />
             {line.symbol?.trim() ? (
               <SearchHighlightText
                 text={line.symbol.trim()}
                 searchQuery={searchQuery}
-                className="shrink-0 rounded bg-slate-100 px-1.5 py-0.5 font-mono text-[0.68rem] font-semibold text-slate-600"
+                className="shrink-0 rounded bg-slate-100 px-1 py-0.5 font-mono text-[10px] font-semibold text-slate-600"
               />
             ) : null}
           </div>
@@ -125,7 +125,7 @@ export function MyOrderLineItem({
           {detailParts.length > 0 ? (
             <p
               className={cn(
-                "mt-1 text-xs leading-relaxed text-slate-500",
+                "mt-0.5 text-[11px] leading-relaxed text-slate-500",
                 !compact && "pl-5",
                 emphasizeStock && onStock && "font-medium text-emerald-800",
                 emphasizeStock && partial && "font-medium text-amber-900"
@@ -156,7 +156,7 @@ export function MyOrderLineItem({
         {badge ? (
           <span
             className={cn(
-              "inline-flex shrink-0 items-center gap-1 rounded-md px-2 py-0.5 text-[0.68rem] font-semibold ring-1",
+              "inline-flex shrink-0 items-center gap-1 rounded-md px-1.5 py-0.5 text-[10px] font-semibold ring-1",
               badge.className
             )}
           >

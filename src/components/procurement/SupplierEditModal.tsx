@@ -14,6 +14,12 @@ import {
   suggestOrderOnDemandAfterFieldChange,
 } from "@/lib/orders/supplier-on-demand";
 import { SupplierSubiektLinkField } from "@/components/admin/SupplierSubiektLinkField";
+import { SupplierCycleField } from "@/components/admin/SupplierCycleField";
+import { FieldHintButton } from "@/components/admin/FieldHintButton";
+import {
+  SUPPLIER_INTERVAL_PRESETS,
+  SUPPLIER_STOCK_PRESETS,
+} from "@/lib/suppliers/cycle-presets";
 
 const LOCATIONS: { value: SupplierLocation; label: string }[] = [
   { value: "POLSKA", label: "Polska" },
@@ -85,6 +91,7 @@ function SupplierEditModalInner({
   const isNew = !supplier;
   const { pending, pendingMessage, run } = useActionPending();
   const [form, setForm] = useState(() => formFromSupplier(supplier));
+  const [saveError, setSaveError] = useState<string | null>(null);
   const formRef = useLatest(form);
 
   const patchCycleFields = (
@@ -104,7 +111,11 @@ function SupplierEditModalInner({
   };
 
   const save = () => {
-    if (!form.name.trim()) return;
+    if (!form.name.trim()) {
+      setSaveError("Podaj nazwę dostawcy");
+      return;
+    }
+    setSaveError(null);
     run(
       async () => {
         const snapshot = { ...formRef.current };
@@ -148,6 +159,11 @@ function SupplierEditModalInner({
       }
     >
       <div className="grid gap-3 sm:grid-cols-2">
+        {saveError ? (
+          <p className="text-sm text-red-700 sm:col-span-2" role="alert">
+            {saveError}
+          </p>
+        ) : null}
         {!isNew && form.id ? (
           <div className="sm:col-span-2">
             <SupplierSubiektLinkField
@@ -180,13 +196,53 @@ function SupplierEditModalInner({
             ))}
           </Select>
         </Field>
-        <Field label="Częstotliwość">
-          <Input
-            disabled={pending}
-            value={form.interval_raw}
-            onChange={(e) => patchCycleFields({ interval_raw: e.target.value })}
-          />
-        </Field>
+        <div className="rounded-md border border-indigo-100 bg-indigo-50/40 p-3 sm:col-span-2">
+          <div className="mb-3 flex flex-wrap items-start justify-between gap-2">
+            <p className="text-xs font-semibold uppercase tracking-wide text-indigo-900">
+              Cykl zamówień
+            </p>
+            <FieldHintButton label="Pomoc: cykl zamówień" title="Jak ustawić cykl?">
+              <p className="text-xs leading-relaxed">
+                Wybierz częstotliwość i zapas z listy albo „Inne” i wpisz jak w arkuszu:{" "}
+                <span className="font-mono">6</span>,{" "}
+                <span className="font-mono">2 MIESIĄCE</span>,{" "}
+                <span className="font-mono">W RAZIE POTRZEBY</span>.
+              </p>
+            </FieldHintButton>
+          </div>
+          <div className="grid gap-3 sm:grid-cols-2">
+            <SupplierCycleField
+              label="Częstotliwość"
+              hintLabel="Co oznacza częstotliwość"
+              hintTitle="Częstotliwość zamówień"
+              hintContent={
+                <p className="text-xs leading-relaxed">
+                  Określa, co ile czasu wracasz do tego dostawcy w cyklu.
+                </p>
+              }
+              value={form.interval_raw}
+              onChange={(raw) => patchCycleFields({ interval_raw: raw })}
+              presets={SUPPLIER_INTERVAL_PRESETS}
+              customPlaceholder="np. 6, 6 tyg., 2 miesiące"
+              disabled={pending}
+            />
+            <SupplierCycleField
+              label="Zapas (okres)"
+              hintLabel="Co oznacza zapas"
+              hintTitle="Zapas — okres zamówienia"
+              hintContent={
+                <p className="text-xs leading-relaxed">
+                  Na jaki horyzont planujesz większe zamówienie — nie data, tylko skala.
+                </p>
+              }
+              value={form.stock_raw}
+              onChange={(raw) => patchCycleFields({ stock_raw: raw })}
+              presets={SUPPLIER_STOCK_PRESETS}
+              customPlaceholder="np. 2 MIESIĄCE, W RAZIE POTRZEBY"
+              disabled={pending}
+            />
+          </div>
+        </div>
         <Field label="Sposób zamówienia" className="sm:col-span-2">
           <Select
             disabled={pending}
@@ -204,14 +260,6 @@ function SupplierEditModalInner({
             disabled={pending}
             value={form.mails}
             onChange={(e) => setForm({ ...form, mails: e.target.value })}
-          />
-        </Field>
-        <Field label="Zapas (okres)" className="sm:col-span-2">
-          <Input
-            disabled={pending}
-            value={form.stock_raw}
-            onChange={(e) => patchCycleFields({ stock_raw: e.target.value })}
-            placeholder="np. 2 MIESIĄCE lub W RAZIE POTRZEBY"
           />
         </Field>
         <label className="flex cursor-pointer items-start gap-2 sm:col-span-2">

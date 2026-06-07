@@ -22,6 +22,7 @@ import { cn } from "@/lib/cn";
 import {
   checkboxBrandClass,
   panelNameLinkClass,
+  panelTypography,
   rowPendingRingClass,
 } from "@/lib/ui/ontime-theme";
 import {
@@ -43,12 +44,17 @@ import {
   type DailyPanelSubsectionTone,
 } from "@/components/summary/DailyPanelSubsectionBar";
 import { HelpMenuGlyph, PanelQueueStatDot } from "@/components/ui/UiGlyphs";
+import { DAILY_PANEL_QUEUE_SECTION, dailyPanelQueueSectionScrollClass } from "@/lib/orders/daily-panel-section-anchors";
+import {
+  panelQueueRowActionsClass,
+  panelQueueRowLayoutClass,
+} from "@/lib/ui/surfaces";
 
 export type UrgentQueuePart = "full" | "overdue" | "today";
 
 const QUEUE_SECTION_ID: Record<Exclude<UrgentQueuePart, "full">, string> = {
-  overdue: "kolejka-zalegle",
-  today: "kolejka-harmonogram-dzis",
+  overdue: DAILY_PANEL_QUEUE_SECTION.overdue,
+  today: DAILY_PANEL_QUEUE_SECTION.today,
 };
 
 function SectionHelp() {
@@ -113,10 +119,11 @@ function UrgentCard({
       aria-busy={rowPending}
       onMouseLeave={panelRowClearFocusOnLeave}
     >
-      <div className="flex items-start gap-2 px-2 py-1.5">
+      <div className={cn("px-2 py-2", panelQueueRowLayoutClass)}>
+        <div className="flex min-w-0 flex-1 items-start gap-2">
         <input
           type="checkbox"
-          className={cn("mt-0.5 h-4 w-4 shrink-0", checkboxBrandClass)}
+          className={cn("mt-0.5 h-5 w-5 shrink-0 sm:h-4 sm:w-4", checkboxBrandClass)}
           checked={checked}
           disabled={rowPending}
           onChange={onToggle}
@@ -126,7 +133,7 @@ function UrgentCard({
           <div className="flex flex-wrap items-center gap-x-1.5 gap-y-0.5">
             <button
               type="button"
-              className={cn("text-sm font-semibold leading-tight", panelNameLinkClass)}
+              className={cn(panelTypography.rowTitle, panelNameLinkClass)}
               onClick={() => onOpenSupplier(item.supplierId)}
             >
               {item.supplierName}
@@ -140,12 +147,13 @@ function UrgentCard({
                 {vacationNoteLabel(item.vacationNote)}
               </Badge>
             ) : null}
-            <span className="text-xs text-slate-500">{locationLabel(item.location)}</span>
+            <span className={panelTypography.rowMeta}>{locationLabel(item.location)}</span>
           </div>
           {ui.statusDetail ? (
             <p
               className={cn(
-                "mt-0.5 line-clamp-2 text-xs leading-snug",
+                "mt-0.5 line-clamp-2 leading-snug",
+                panelTypography.rowMeta,
                 item.vacationNote ? "text-amber-900/90" : "text-slate-500"
               )}
             >
@@ -161,7 +169,12 @@ function UrgentCard({
             />
           ) : null}
         </div>
-        <PanelRowActionsInlineEnd forceVisible={rowPending}>
+        </div>
+        <PanelRowActionsInlineEnd
+          forceVisible={rowPending}
+          className={panelQueueRowActionsClass}
+          contentClassName="w-full sm:w-max [&>*]:w-full sm:[&>*]:w-auto"
+        >
           <ScheduleSupplierActionBar
             supplierId={item.supplierId}
             supplierName={item.supplierName}
@@ -438,7 +451,7 @@ export function UrgentOrdersSection({
   return (
     <section
       id={anchorId}
-      className={cn("scroll-mt-24", dailyPanelQueueShellClass(subsectionTone))}
+      className={cn(dailyPanelQueueSectionScrollClass, dailyPanelQueueShellClass(subsectionTone))}
     >
       {inner}
     </section>

@@ -1,19 +1,25 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useState, useCallback } from "react";
+import { useCallback, useEffect, useState } from "react";
+import { useLatest } from "@/hooks/useLatest";
 import { actionUpsertVacation } from "@/app/actions/admin";
 import { formatPlDate, vacationNoteLabel } from "@/lib/display-labels";
 import { useActionPending } from "@/hooks/useActionPending";
 import { Card, CardHeader } from "@/components/ui/Card";
-import { Field, Input, Select } from "@/components/ui/Field";
 import { Button } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/Badge";
 import { Toast } from "@/components/ui/Toast";
-import { DataTable, TableScroll } from "@/components/ui/DataTable";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { ActionLoadingOverlay } from "@/components/ui/ActionLoadingOverlay";
 import { Spinner } from "@/components/ui/Spinner";
+import { SupplierEditSheet } from "@/components/admin/SupplierEditSheet";
+import {
+  VacationAdminForm,
+  emptyVacationAdminForm,
+  type VacationAdminFormState,
+} from "@/components/admin/VacationAdminForm";
+import { OverflowMenu, OverflowMenuItem } from "@/components/ui/OverflowMenu";
 import { cn } from "@/lib/cn";
 
 type VacationRow = {
@@ -25,23 +31,6 @@ type VacationRow = {
   active: boolean;
   suppliers?: { name: string };
 };
-
-type FormState = {
-  id?: string;
-  supplier_id: string;
-  start_date: string;
-  end_date: string;
-  last_order_date: string;
-  active: boolean;
-};
-
-const emptyForm = (): FormState => ({
-  supplier_id: "",
-  start_date: "",
-  end_date: "",
-  last_order_date: "",
-  active: true,
-});
 
 function buildVacationSuccessToast(result: Awaited<ReturnType<typeof actionUpsertVacation>>) {
   const parts: string[] = [];
@@ -68,8 +57,35 @@ function buildVacationSuccessToast(result: Awaited<ReturnType<typeof actionUpser
   return parts.join(" ");
 }
 
+function vacationToForm(v: VacationRow): VacationAdminFormState {
+  return {
+    id: v.id,
+    supplier_id: v.supplier_id,
+    start_date: v.start_date,
+    end_date: v.end_date,
+    last_order_date: v.last_order_date,
+    active: v.active,
+  };
+}
+
+function applyFormToVacationRow(
+  existing: VacationRow,
+  form: VacationAdminFormState,
+  supplierName: string
+): VacationRow {
+  return {
+    ...existing,
+    supplier_id: form.supplier_id,
+    start_date: form.start_date,
+    end_date: form.end_date,
+    last_order_date: form.last_order_date,
+    active: form.active,
+    suppliers: { name: supplierName },
+  };
+}
+
 export function VacationsAdminClient({
-  vacations,
+  vacations: initialVacations,
   suppliers,
 }: {
   vacations: VacationRow[];
@@ -77,39 +93,68 @@ export function VacationsAdminClient({
 }) {
   const router = useRouter();
   const { pending, pendingMessage, run } = useActionPending();
+  const [rows, setRows] = useState(initialVacations);
   const [toast, setToast] = useState<{ text: string; tone: "success" | "error" } | null>(
     null
   );
   const dismiss = useCallback(() => setToast(null), []);
-  const [form, setForm] = useState<FormState>(emptyForm);
+  const [formOpen, setFormOpen] = useState(false);
+  const [form, setForm] = useState<VacationAdminFormState>(emptyVacationAdminForm);
+  const formRef = useLatest(form);
+
+  useEffect(() => {
+    setRows(initialVacations);
+  }, [initialVacations]);
+
+  const resetForm = () => {
+    setForm(emptyVacationAdminForm());
+    setFormOpen(false);
+  };
+
+  const openCreate = () => {
+    setForm(emptyVacationAdminForm());
+    setFormOpen(true);
+  };
 
   const startEdit = (v: VacationRow) => {
     if (pending) return;
-    setForm({
-      id: v.id,
-      supplier_id: v.supplier_id,
-      start_date: v.start_date,
-      end_date: v.end_date,
-      last_order_date: v.last_order_date,
-      active: v.active,
-    });
-    window.scrollTo({ top: 0, behavior: "smooth" });
+    setForm(vacationToForm(v));
+    setFormOpen(true);
   };
 
-  const resetForm = () => setForm(emptyForm());
+  useEffect(() => {
+    if (!formOpen || !form.id) return;
+    const row = document.getElementById(`vacation-row-${form.id}`);
+    row?.scrollIntoView({ block: "nearest", behavior: "smooth" });
+  }, [formOpen, form.id]);
 
   const save = () => {
-    if (!form.supplier_id || !form.start_date || !form.end_date || !form.last_order_date) {
+    const snapshot = formRef.current;
+    if (
+      !snapshot.supplier_id ||
+      !snapshot.start_date ||
+      !snapshot.end_date ||
+      !snapshot.last_order_date
+    ) {
       setToast({ text: "Uzupełnij wszystkie pola urlopu.", tone: "error" });
       return;
     }
 
     const supplierName =
-      suppliers.find((s) => s.id === form.supplier_id)?.name ?? "dostawcy";
+      suppliers.find((s) => s.id === snapshot.supplier_id)?.name ?? "dostawcy";
 
     run(
       async () => {
-        const result = await actionUpsertVacation(form);
+        const result = await actionUpsertVacation(snapshot);
+        if (snapshot.id) {
+          setRows((list) =>
+            list.map((r) =>
+              r.id === snapshot.id
+                ? applyFormToVacationRow(r, snapshot, supplierName)
+                : r
+            )
+          );
+        }
         resetForm();
         setToast({
           text: buildVacationSuccessToast(result),
@@ -117,14 +162,18 @@ export function VacationsAdminClient({
         });
         router.refresh();
       },
-      form.id
+      snapshot.id
         ? `Aktualizacja urlopu (${supplierName})…`
         : `Zapis urlopu (${supplierName})…`
     );
   };
 
+  const sheetTitle = form.id
+    ? suppliers.find((s) => s.id === form.supplier_id)?.name ?? "Edytuj urlop"
+    : "Nowy urlop dostawcy";
+
   return (
-    <section className="relative space-y-6 p-4 sm:p-5">
+    <section className="relative space-y-4">
       {pendingMessage ? (
         <ActionLoadingOverlay
           variant="viewport"
@@ -135,140 +184,143 @@ export function VacationsAdminClient({
 
       {toast ? <Toast message={toast.text} tone={toast.tone} onDismiss={dismiss} /> : null}
 
-      <Card className={cn(pending && "pointer-events-none select-none opacity-75")}>
-        <CardHeader
-          title={form.id ? "Edytuj urlop" : "Dodaj urlop dostawcy"}
-          description="Po zapisie system od razu przelicza harmonogramy wszystkich dostawców. Nowe zamówienia na panelu dziennym uwzględniają aktywne urlopy."
-        />
-        <div className="grid gap-4 sm:grid-cols-2">
-          <Field label="Dostawca" className="sm:col-span-2">
-            <Select
-              value={form.supplier_id}
-              disabled={pending}
-              onChange={(e) => setForm({ ...form, supplier_id: e.target.value })}
-            >
-              <option value="">Wybierz dostawcę…</option>
-              {suppliers.map((s) => (
-                <option key={s.id} value={s.id}>
-                  {s.name}
-                </option>
-              ))}
-            </Select>
-          </Field>
-          <Field label="Urlop od">
-            <Input
-              type="date"
-              disabled={pending}
-              value={form.start_date}
-              onChange={(e) => setForm({ ...form, start_date: e.target.value })}
-            />
-          </Field>
-          <Field label="Urlop do">
-            <Input
-              type="date"
-              disabled={pending}
-              value={form.end_date}
-              onChange={(e) => setForm({ ...form, end_date: e.target.value })}
-            />
-          </Field>
-          <Field label="Ostatnie zamówienie przed urlopem" className="sm:col-span-2">
-            <Input
-              type="date"
-              disabled={pending}
-              value={form.last_order_date}
-              onChange={(e) =>
-                setForm({ ...form, last_order_date: e.target.value })
-              }
-            />
-          </Field>
-          <label className="flex items-center gap-2 text-sm text-slate-700 sm:col-span-2">
-            <input
-              type="checkbox"
-              className="h-4 w-4 rounded border-slate-300"
-              disabled={pending}
-              checked={form.active}
-              onChange={(e) => setForm({ ...form, active: e.target.checked })}
-            />
-            Urlop aktywny (uwzględniany w terminach i przy „Zamówione”)
-          </label>
-        </div>
-        <p className="mt-4 flex flex-wrap gap-2">
-          <Button disabled={pending} onClick={save}>
-            {pending ? (
-              <>
-                <Spinner size="sm" />
-                Zapis i przeliczanie…
-              </>
-            ) : form.id ? (
-              "Zapisz zmiany"
-            ) : (
-              "Zapisz urlop"
-            )}
-          </Button>
-          {form.id ? (
-            <Button variant="ghost" disabled={pending} onClick={resetForm}>
-              Anuluj edycję
+      <SupplierEditSheet
+        open={formOpen}
+        title={sheetTitle}
+        description="Po zapisie system przelicza harmonogramy. Lista urlopów zostaje widoczna po lewej."
+        onClose={resetForm}
+        pending={pending}
+        footer={
+          <>
+            <Button disabled={pending} onClick={save}>
+              {pending ? (
+                <>
+                  <Spinner size="sm" />
+                  Zapis i przeliczanie…
+                </>
+              ) : form.id ? (
+                "Zapisz zmiany"
+              ) : (
+                "Zapisz urlop"
+              )}
             </Button>
-          ) : null}
-        </p>
-      </Card>
+            <Button type="button" variant="ghost" disabled={pending} onClick={resetForm}>
+              Anuluj
+            </Button>
+          </>
+        }
+      >
+        <VacationAdminForm
+          form={form}
+          suppliers={suppliers}
+          disabled={pending}
+          onChange={setForm}
+        />
+      </SupplierEditSheet>
+
+      {!formOpen ? (
+        <Button variant="outline" onClick={openCreate} disabled={pending}>
+          + Dodaj urlop
+        </Button>
+      ) : null}
 
       <Card
         padding={false}
-        className={cn(pending && "pointer-events-none select-none opacity-75")}
+        className={cn("overflow-hidden", pending && "pointer-events-none select-none opacity-75")}
       >
         <CardHeader
           inset
-          title={`Aktywne i archiwalne urlopy (${vacations.length})`}
+          density="compact"
+          title={`Urlopy (${rows.length})`}
+          description="Kliknij wiersz lub Edytuj, aby zmienić okres. Po zapisie system przelicza terminy."
         />
-        {!vacations.length ? (
+        {!rows.length ? (
           <EmptyState title="Brak zdefiniowanych urlopów" />
         ) : (
-          <TableScroll>
-            <DataTable>
-              <thead>
-                <tr>
-                  <th>Dostawca</th>
-                  <th>Od</th>
-                  <th>Do</th>
-                  <th>Ostatnie zamówienie</th>
-                  <th>Status</th>
-                  <th />
-                </tr>
-              </thead>
-              <tbody>
-                {vacations.map((v) => (
-                  <tr key={v.id}>
-                    <td className="font-medium text-slate-900">
-                      {v.suppliers?.name ?? "—"}
-                    </td>
-                    <td className="tabular-nums">{formatPlDate(v.start_date)}</td>
-                    <td className="tabular-nums">{formatPlDate(v.end_date)}</td>
-                    <td className="tabular-nums">
-                      {formatPlDate(v.last_order_date)}
-                    </td>
-                    <td>
-                      {v.active ? (
-                        <Badge variant="success">Aktywny</Badge>
-                      ) : (
-                        <span className="text-slate-400">Nieaktywny</span>
-                      )}
-                    </td>
-                    <td>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        disabled={pending}
+          <>
+            <div
+              className="hidden border-b border-slate-100 bg-slate-50/90 px-4 py-2 text-[11px] font-semibold uppercase tracking-wide text-slate-500 md:grid md:grid-cols-[minmax(0,1.2fr)_repeat(3,minmax(88px,120px))_minmax(88px,100px)_minmax(88px,120px)] md:gap-3 lg:px-5"
+              aria-hidden
+            >
+              <span>Dostawca</span>
+              <span>Od</span>
+              <span>Do</span>
+              <span>Ostatnie zam.</span>
+              <span>Status</span>
+              <span className="text-right">Akcje</span>
+            </div>
+            <ul className="divide-y divide-slate-100">
+              {rows.map((v) => {
+                const isEditing = formOpen && form.id === v.id;
+                const name = v.suppliers?.name ?? "—";
+                return (
+                  <li
+                    key={v.id}
+                    id={`vacation-row-${v.id}`}
+                    className={cn(
+                      "px-3 py-3 sm:px-4 lg:px-5",
+                      isEditing && "bg-indigo-50/80 ring-1 ring-inset ring-indigo-200"
+                    )}
+                  >
+                    <div className="flex items-start gap-2 md:grid md:grid-cols-[minmax(0,1.2fr)_repeat(3,minmax(88px,120px))_minmax(88px,100px)_minmax(88px,120px)] md:items-center md:gap-3">
+                      <button
+                        type="button"
                         onClick={() => startEdit(v)}
+                        className="min-w-0 flex-1 text-left md:contents"
                       >
-                        Edytuj
-                      </Button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </DataTable>
-          </TableScroll>
+                        <span className="block font-medium text-slate-900 hover:text-indigo-800 hover:underline md:truncate">
+                          {name}
+                          {isEditing ? (
+                            <Badge variant="info" className="ml-2 text-[10px]">
+                              Edycja
+                            </Badge>
+                          ) : null}
+                        </span>
+                        <span className="mt-1 block text-sm tabular-nums text-slate-600 md:mt-0">
+                          {formatPlDate(v.start_date)}
+                        </span>
+                        <span className="mt-0.5 block text-sm tabular-nums text-slate-600 md:mt-0">
+                          {formatPlDate(v.end_date)}
+                        </span>
+                        <span className="mt-0.5 block text-sm tabular-nums text-slate-600 md:mt-0">
+                          {formatPlDate(v.last_order_date)}
+                        </span>
+                        <span className="mt-1 block md:mt-0">
+                          {v.active ? (
+                            <Badge variant="success">Aktywny</Badge>
+                          ) : (
+                            <span className="text-sm text-slate-400">Nieaktywny</span>
+                          )}
+                        </span>
+                      </button>
+                      <div className="flex shrink-0 items-center gap-1 md:justify-end">
+                        <Button
+                          variant="secondary"
+                          size="sm"
+                          className="hidden md:inline-flex"
+                          disabled={pending}
+                          onClick={() => startEdit(v)}
+                        >
+                          Edytuj
+                        </Button>
+                        <OverflowMenu
+                          label={`Akcje urlopu: ${name}`}
+                          align="end"
+                          disabled={pending}
+                          iconOnly
+                          variant="segment"
+                        >
+                          <OverflowMenuItem onClick={() => startEdit(v)}>
+                            Edytuj urlop
+                          </OverflowMenuItem>
+                        </OverflowMenu>
+                      </div>
+                    </div>
+                  </li>
+                );
+              })}
+            </ul>
+          </>
         )}
       </Card>
     </section>

@@ -7,6 +7,7 @@ import {
   brandGradientTextClass,
   legendDotForSomeoneClass,
   legendDotUrgentClass,
+  panelTypography,
   progressFillForSomeoneClass,
   progressFillUrgentClass,
 } from "@/lib/ui/ontime-theme";
@@ -58,11 +59,11 @@ export function DailyDayProgressBar({
             <IconCircleCheck size={16} strokeWidth={2.5} />
           </span>
         ) : (
-          <span className="shrink-0 text-[11px] font-semibold tabular-nums text-slate-700">
+          <span className={cn("shrink-0 font-semibold tabular-nums text-slate-700", panelTypography.caption)}>
             {combined.percent}%
           </span>
         )}
-        <span className="hidden min-w-0 truncate text-[11px] text-slate-500 sm:inline">
+        <span className={cn("hidden min-w-0 truncate sm:inline", panelTypography.caption)}>
           harm. {urgent.done}/{urgent.total} · prośby {forSomeone.done}/{forSomeone.total}
         </span>
       </div>
@@ -97,10 +98,10 @@ export function DailyDayProgressBar({
     >
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div className="min-w-0">
-          <p className="text-sm font-semibold text-slate-900">
+          <p className={panelTypography.sectionTitle}>
             {combined.complete ? "Dzień domknięty" : "Postęp dnia"}
           </p>
-          <p className="mt-0.5 text-xs text-slate-500">
+          <p className={cn("mt-0.5", panelTypography.sectionDesc)}>
             {combined.complete
               ? `Obsłużono ${combined.total} pozycji (harmonogram i prośby).`
               : `Zostało ${combined.remaining} z ${combined.total} · harmonogram ${urgent.remaining} · prośby ${forSomeone.remaining}`}
@@ -111,7 +112,7 @@ export function DailyDayProgressBar({
             <IconCircleCheck size={28} />
           </span>
         ) : (
-          <p className={cn("shrink-0 text-2xl font-semibold tabular-nums tracking-tight", brandGradientTextClass)}>
+          <p className={cn("shrink-0", panelTypography.statValue, brandGradientTextClass)}>
             {combined.percent}%
           </p>
         )}

@@ -4,6 +4,13 @@ import type { SupplierLocation, StatsMode } from "@/types/database";
 import { Field, Input, Select } from "@/components/ui/Field";
 import { SUPPLIER_LOCATION_OPTIONS } from "@/lib/supplier-locations";
 import { SupplierSubiektLinkField } from "@/components/admin/SupplierSubiektLinkField";
+import { SupplierCycleField } from "@/components/admin/SupplierCycleField";
+import { SupplierFormSection } from "@/components/admin/SupplierFormSection";
+import { FieldHintButton } from "@/components/admin/FieldHintButton";
+import {
+  SUPPLIER_INTERVAL_PRESETS,
+  SUPPLIER_STOCK_PRESETS,
+} from "@/lib/suppliers/cycle-presets";
 import {
   WAREHOUSE_CARRIERS,
   WAREHOUSE_SHIPMENT_FORMS,
@@ -55,6 +62,7 @@ export function SupplierAdminForm({
           />
         </div>
       ) : null}
+
       <Field label="Nazwa dostawcy">
         <Input
           disabled={disabled}
@@ -77,69 +85,147 @@ export function SupplierAdminForm({
           ))}
         </Select>
       </Field>
-      <p className="text-xs font-semibold uppercase tracking-wide text-slate-500 sm:col-span-2">
-        Kontakt i sposób zamówienia
-      </p>
-      <Field label="Sposób zamówienia" className="sm:col-span-2">
-        <Select
-          disabled={disabled}
-          value={form.notes}
-          onChange={(e) => onChange({ ...form, notes: e.target.value })}
+
+      <SupplierFormSection
+        title="Kontakt i zamówienie"
+        description="Sposób składania zamówienia i dane kontaktowe"
+        defaultOpen
+      >
+        <Field label="Sposób zamówienia" className="sm:col-span-2">
+          <Select
+            disabled={disabled}
+            value={form.notes}
+            onChange={(e) => onChange({ ...form, notes: e.target.value })}
+          >
+            <option value="">— wybierz —</option>
+            <option value="MAILOWO">Mail</option>
+            <option value="TELEFONICZNIE">Telefon</option>
+            <option value="PRZEZ INTERNET">Internet / portal</option>
+          </Select>
+        </Field>
+        <Field label="E-mail i strony www" className="sm:col-span-2">
+          <Input
+            disabled={disabled}
+            placeholder="adres@firma.pl, https://…"
+            value={form.mails}
+            onChange={(e) => onChange({ ...form, mails: e.target.value })}
+          />
+        </Field>
+        <Field
+          label="Uwagi do kontaktu"
+          className="sm:col-span-2"
+          hint="Np. osoba kontaktowa, godziny, minimalna kwota zamówienia."
         >
-          <option value="">—</option>
-          <option value="MAILOWO">Mail</option>
-          <option value="TELEFONICZNIE">Telefon</option>
-          <option value="PRZEZ INTERNET">Internet</option>
-        </Select>
-      </Field>
-      <Field label="E-mail i strony" className="sm:col-span-2">
-        <Input
-          disabled={disabled}
-          value={form.mails}
-          onChange={(e) => onChange({ ...form, mails: e.target.value })}
-        />
-      </Field>
-      <Field label="Dodatkowe informacje" className="sm:col-span-2">
-        <Input
-          disabled={disabled}
-          value={form.extra_info}
-          onChange={(e) => onPatchCycleFields({ extra_info: e.target.value })}
-        />
-      </Field>
-      <p className="text-xs font-semibold uppercase tracking-wide text-slate-500 sm:col-span-2">
-        Cykl zamówień
-        <span className="ml-2 font-normal normal-case tracking-normal text-slate-400">
-          (wpływa na przeliczanie terminów)
-        </span>
-      </p>
-      <Field label="Zapas (okres zamówienia)">
-        <Input
-          disabled={disabled}
-          placeholder="np. 2 miesiące, 6 tyg., w razie potrzeby"
-          value={form.stock_raw}
-          onChange={(e) => onPatchCycleFields({ stock_raw: e.target.value })}
-        />
-      </Field>
-      <Field label="Częstotliwość zamówień">
-        <Input
-          disabled={disabled}
-          placeholder="np. 6 tyg. lub 1 miesiąc"
-          value={form.interval_raw}
-          onChange={(e) => onPatchCycleFields({ interval_raw: e.target.value })}
-        />
-      </Field>
-      <Field label="Statystyki dostaw">
-        <Select
-          disabled={disabled}
-          value={form.stats_mode}
-          onChange={(e) =>
-            onChange({ ...form, stats_mode: e.target.value as StatsMode })
-          }
-        >
-          <option value="LACZNIE">Łącznie</option>
-          <option value="OSOBNO">Osobno</option>
-        </Select>
-      </Field>
+          <Input
+            disabled={disabled}
+            value={form.extra_info}
+            onChange={(e) => onPatchCycleFields({ extra_info: e.target.value })}
+          />
+        </Field>
+      </SupplierFormSection>
+
+      <div className="rounded-md border border-indigo-100 bg-indigo-50/40 p-3 sm:col-span-2">
+        <div className="mb-3 flex flex-wrap items-start justify-between gap-2">
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-wide text-indigo-900">
+              Cykl zamówień
+            </p>
+            <p className="mt-0.5 text-xs leading-relaxed text-indigo-900/80">
+              Te pola przeliczają terminy w harmonogramie. Daty w cyklu edytujesz osobno w
+              zakładce Terminy.
+            </p>
+          </div>
+          <FieldHintButton label="Pomoc: cykl zamówień" title="Jak ustawić cykl?">
+            <ul className="list-disc space-y-2 pl-4 text-xs leading-relaxed">
+              <li>
+                <strong>Częstotliwość</strong> — jak często zamawiasz u dostawcy (np. co 6 tyg.).
+                System na tej podstawie liczy kolejne terminy.
+              </li>
+              <li>
+                <strong>Zapas</strong> — na jaki okres robisz jednorazowo większe zamówienie (np.
+                2 miesiące). Opisuje skalę zamówienia, nie datę.
+              </li>
+              <li>
+                Wybierz wartość z listy albo „Inne” i wpisz jak w arkuszu:{" "}
+                <span className="font-mono">6</span>,{" "}
+                <span className="font-mono">2 MIESIĄCE</span>,{" "}
+                <span className="font-mono">W RAZIE POTRZEBY</span>.
+              </li>
+            </ul>
+          </FieldHintButton>
+        </div>
+        <div className="grid gap-4 sm:grid-cols-2">
+          <SupplierCycleField
+            label="Częstotliwość"
+            hintLabel="Co oznacza częstotliwość"
+            hintTitle="Częstotliwość zamówień"
+            hintContent={
+              <p className="text-xs leading-relaxed">
+                Określa, co ile czasu wracasz do tego dostawcy w cyklu. Po zapisie system
+                przelicza następne daty w harmonogramie.
+              </p>
+            }
+            value={form.interval_raw}
+            onChange={(raw) => onPatchCycleFields({ interval_raw: raw })}
+            presets={SUPPLIER_INTERVAL_PRESETS}
+            customPlaceholder="np. 6, 6 tyg., 2 miesiące, kwartał"
+            disabled={disabled}
+          />
+          <SupplierCycleField
+            label="Zapas (okres zamówienia)"
+            hintLabel="Co oznacza zapas"
+            hintTitle="Zapas — okres zamówienia"
+            hintContent={
+              <p className="text-xs leading-relaxed">
+                Na jaki horyzont czasu planujesz większe zamówienie (np. zapas na 2 miesiące).
+                To nie jest data — tylko opis skali zamówienia w Twoim procesie.
+              </p>
+            }
+            value={form.stock_raw}
+            onChange={(raw) => onPatchCycleFields({ stock_raw: raw })}
+            presets={SUPPLIER_STOCK_PRESETS}
+            customPlaceholder="np. 2 MIESIĄCE, 6 tyg., W RAZIE POTRZEBY"
+            disabled={disabled}
+          />
+          <Field
+            label={
+              <span className="inline-flex items-center gap-1">
+                Statystyki dostaw
+                <FieldHintButton label="Statystyki dostaw" title="Łącznie vs osobno">
+                  <p className="text-xs leading-relaxed">
+                    Łącznie — jedna statystyka dla wszystkich produktów u dostawcy. Osobno —
+                    liczniki per produkt (rzadziej).
+                  </p>
+                </FieldHintButton>
+              </span>
+            }
+          >
+            <Select
+              disabled={disabled}
+              value={form.stats_mode}
+              onChange={(e) =>
+                onChange({ ...form, stats_mode: e.target.value as StatsMode })
+              }
+            >
+              <option value="LACZNIE">Łącznie</option>
+              <option value="OSOBNO">Osobno</option>
+            </Select>
+          </Field>
+        </div>
+        <label className="mt-4 flex cursor-pointer items-start gap-2">
+          <input
+            type="checkbox"
+            className="mt-0.5 h-4 w-4 rounded border-slate-300"
+            checked={form.order_on_demand}
+            disabled={disabled}
+            onChange={(e) => onChange({ ...form, order_on_demand: e.target.checked })}
+          />
+          <span className="text-sm text-slate-700">
+            Tylko w razie potrzeby — bez stałego terminu w panelu dziennym
+          </span>
+        </label>
+      </div>
+
       <label className="flex cursor-pointer items-start gap-2 sm:col-span-2">
         <input
           type="checkbox"
@@ -151,82 +237,68 @@ export function SupplierAdminForm({
         <span className="text-sm text-slate-700">
           <span className="font-medium text-slate-900">Aktywny dostawca</span>
           {" — "}
-          widoczny w panelu dziennym i planie tygodnia. Odznacz, aby ukryć (lista
-          Nieaktywni).
+          widoczny w panelu dziennym. Odznacz, aby przenieść na listę Nieaktywni.
         </span>
       </label>
-      <label className="flex cursor-pointer items-start gap-2 sm:col-span-2">
-        <input
-          type="checkbox"
-          className="mt-0.5 h-4 w-4 rounded border-slate-300"
-          checked={form.order_on_demand}
-          disabled={disabled}
-          onChange={(e) => onChange({ ...form, order_on_demand: e.target.checked })}
-        />
-        <span className="text-sm text-slate-700">
-          Tylko w razie potrzeby — bez stałego terminu w panelu dziennym
-        </span>
-      </label>
-      <p className="text-xs font-semibold uppercase tracking-wide text-slate-500 sm:col-span-2">
-        Dziennik dostaw (magazyn)
-      </p>
-      <Field label="Domyślny kurier">
-        <Select
-          disabled={disabled}
-          value={form.default_delivery_carrier}
-          onChange={(e) =>
-            onChange({ ...form, default_delivery_carrier: e.target.value })
-          }
-        >
-          <option value="">— z historii wpisów —</option>
-          {WAREHOUSE_CARRIERS.map((c) => (
-            <option key={c.value} value={c.value}>
-              {c.label}
-            </option>
-          ))}
-        </Select>
-      </Field>
-      <Field label="Domyślna forma">
-        <Select
-          disabled={disabled}
-          value={form.default_delivery_shipment_form}
-          onChange={(e) =>
-            onChange({ ...form, default_delivery_shipment_form: e.target.value })
-          }
-        >
-          <option value="">— z historii —</option>
-          {WAREHOUSE_SHIPMENT_FORMS.map((f) => (
-            <option key={f.value} value={f.value}>
-              {f.label}
-            </option>
-          ))}
-        </Select>
-      </Field>
-      <p className="text-xs leading-snug text-slate-500 sm:col-span-2">
-        Ustaw np. DHL dla dostawcy, który zawsze jedzie tym kurierem. Puste pola — system uczy się z
-        wpisów magazynu.
-      </p>
-      <p className="text-xs font-semibold uppercase tracking-wide text-slate-500 sm:col-span-2">
-        Odbiór
-      </p>
-      <label className="flex items-center gap-2 text-sm sm:col-span-2">
-        <input
-          type="checkbox"
-          disabled={disabled}
-          checked={form.pickup_mikran}
-          onChange={(e) => onChange({ ...form, pickup_mikran: e.target.checked })}
-        />
-        Kierowca Mikran
-      </label>
-      <label className="flex items-center gap-2 text-sm sm:col-span-2">
-        <input
-          type="checkbox"
-          disabled={disabled}
-          checked={form.pickup_pallet}
-          onChange={(e) => onChange({ ...form, pickup_pallet: e.target.checked })}
-        />
-        Zlecamy odbiór palety
-      </label>
+
+      <SupplierFormSection
+        title="Magazyn — domyślny kurier"
+        description="Opcjonalnie; puste = system uczy się z wpisów magazynu"
+      >
+        <Field label="Kurier">
+          <Select
+            disabled={disabled}
+            value={form.default_delivery_carrier}
+            onChange={(e) =>
+              onChange({ ...form, default_delivery_carrier: e.target.value })
+            }
+          >
+            <option value="">— z historii wpisów —</option>
+            {WAREHOUSE_CARRIERS.map((c) => (
+              <option key={c.value} value={c.value}>
+                {c.label}
+              </option>
+            ))}
+          </Select>
+        </Field>
+        <Field label="Forma przesyłki">
+          <Select
+            disabled={disabled}
+            value={form.default_delivery_shipment_form}
+            onChange={(e) =>
+              onChange({ ...form, default_delivery_shipment_form: e.target.value })
+            }
+          >
+            <option value="">— z historii —</option>
+            {WAREHOUSE_SHIPMENT_FORMS.map((f) => (
+              <option key={f.value} value={f.value}>
+                {f.label}
+              </option>
+            ))}
+          </Select>
+        </Field>
+      </SupplierFormSection>
+
+      <SupplierFormSection title="Odbiór u dostawcy" description="Kierowca / paleta">
+        <label className="flex items-center gap-2 text-sm sm:col-span-2">
+          <input
+            type="checkbox"
+            disabled={disabled}
+            checked={form.pickup_mikran}
+            onChange={(e) => onChange({ ...form, pickup_mikran: e.target.checked })}
+          />
+          Kierowca Mikran odbiera towar
+        </label>
+        <label className="flex items-center gap-2 text-sm sm:col-span-2">
+          <input
+            type="checkbox"
+            disabled={disabled}
+            checked={form.pickup_pallet}
+            onChange={(e) => onChange({ ...form, pickup_pallet: e.target.checked })}
+          />
+          Zlecamy odbiór palety
+        </label>
+      </SupplierFormSection>
     </div>
   );
 }

@@ -11,7 +11,7 @@ import { Button } from "@/components/ui/Button";
 import { Alert } from "@/components/ui/Alert";
 import { KeyboardShortcutsHint } from "@/components/ui/KeyboardShortcutsHint";
 import { cn } from "@/lib/cn";
-import { controlFocusClass } from "@/lib/ui/ontime-theme";
+import { controlFocusClass, salesTypography } from "@/lib/ui/ontime-theme";
 import { reorderNoteIds, sortSalesNotes, notesInSamePinBand } from "@/lib/sales/notepad-note-sort";
 import type { SalesNote, SalesNoteColor } from "@/types/database";
 import { isFollowUpDue } from "@/lib/sales/notepad-follow-up";
@@ -549,7 +549,7 @@ export function NotesSection({
       {!embedded ? (
         <div className="flex flex-wrap items-end justify-between gap-2">
           <div>
-            <h2 className="text-base font-semibold text-slate-900">Notatki</h2>
+            <h2 className={salesTypography.blockTitle}>Notatki</h2>
             <KeyboardShortcutsHint items={[...NOTATNIK_KEYBOARD_HINTS]} className="mt-1" compact />
           </div>
         </div>

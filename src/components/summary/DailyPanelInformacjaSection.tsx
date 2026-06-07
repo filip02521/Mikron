@@ -9,10 +9,12 @@ import {
 } from "@/lib/orders/procurement-daily-ui";
 import { Badge } from "@/components/ui/Badge";
 import { InformacjaFlowLegend } from "@/components/orders/InformacjaFlowLegend";
+import { cn } from "@/lib/cn";
 import {
   DailyPanelSubsectionBar,
   dailyPanelQueueShellClass,
 } from "@/components/summary/DailyPanelSubsectionBar";
+import { panelTypography } from "@/lib/ui/ontime-theme";
 
 export function DailyPanelInformacjaSection({
   groups,
@@ -39,12 +41,12 @@ export function DailyPanelInformacjaSection({
           const ui = enrichInformacjaGroup(g);
           return (
             <li key={`${g.supplierId}-${g.salesPersonId}`} className="px-3 py-2.5 sm:px-4">
-              <div className="flex flex-wrap items-start justify-between gap-2">
+              <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
                 <div className="min-w-0 flex-1">
-                  <p className="text-sm font-medium text-slate-900">{g.person}</p>
-                  <p className="text-xs text-slate-600">{g.supplierName}</p>
+                  <p className={panelTypography.rowTitle}>{g.person}</p>
+                  <p className={panelTypography.rowMeta}>{g.supplierName}</p>
                   {ui.statusDetail ?? ui.subline ? (
-                    <p className="mt-0.5 text-[11px] text-slate-500">
+                    <p className={cn("mt-0.5", panelTypography.caption)}>
                       {ui.statusDetail ?? ui.subline}
                     </p>
                   ) : null}
@@ -52,7 +54,7 @@ export function DailyPanelInformacjaSection({
                     {g.lines.map((line) => (
                       <li
                         key={line.id}
-                        className="text-[11px] leading-snug text-slate-700"
+                        className={cn("leading-snug text-slate-700", panelTypography.caption)}
                       >
                         {line.symbol && line.symbol !== "-" ? (
                           <span className="font-medium text-slate-900">{line.symbol}</span>
@@ -66,7 +68,7 @@ export function DailyPanelInformacjaSection({
                     ))}
                   </ul>
                 </div>
-                <Badge variant="default" className="shrink-0 text-[10px]">
+                <Badge variant="default" className="shrink-0 self-start text-[10px] sm:self-auto">
                   Informacja
                 </Badge>
               </div>

@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { isNavItemActive, navForRole } from "@/lib/nav";
+import { useOperationsUpdates } from "@/components/operations/OperationsUpdatesContext";
 import { cn } from "@/lib/cn";
 import { NavIcon } from "@/components/icons/NavIcon";
 import {
@@ -27,6 +28,7 @@ export function MobileOperationsNav({
   };
 }) {
   const pathname = usePathname();
+  const operationsUpdates = useOperationsUpdates();
   const groups = navForRole(role, navBadges);
   const items =
     groups.find((g) => g.title === "Dzień roboczy")?.items ??
@@ -45,6 +47,10 @@ export function MobileOperationsNav({
           const siblingHrefs = items.map((i) => i.href);
           const active = isNavItemActive(pathname, item.href, siblingHrefs);
           const attentionBadge = item.badge != null && item.badge > 0 ? item.badge : 0;
+          const showLiveDot =
+            item.href === "/podsumowanie" &&
+            Boolean(operationsUpdates?.hasUpdates) &&
+            !active;
           const label = item.mobileLabel ?? item.label;
           return (
             <li key={item.href} className="min-w-0 flex-1">
@@ -69,6 +75,15 @@ export function MobileOperationsNav({
                     >
                       {attentionBadge > 9 ? "9+" : attentionBadge}
                     </span>
+                  ) : null}
+                  {showLiveDot ? (
+                    <span
+                      className={cn(
+                        "absolute h-2 w-2 rounded-full bg-amber-400 ring-2 ring-white",
+                        attentionBadge > 0 && !active ? "-left-1 top-0" : "-right-1.5 -top-1"
+                      )}
+                      title="Nowe zmiany w panelu"
+                    />
                   ) : null}
                 </span>
                 <span className="max-w-full truncate leading-tight">{label}</span>

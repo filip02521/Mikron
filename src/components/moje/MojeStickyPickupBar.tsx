@@ -18,19 +18,19 @@ export function MojeStickyPickupBar({
   return (
     <div
       className={cn(
-        "sticky top-0 z-20 flex items-center justify-between gap-3 border-b border-emerald-700/30 bg-emerald-600 px-3 py-2.5 text-white shadow-md sm:px-4",
+        "sticky top-0 z-20 flex items-center justify-between gap-2 border-b border-emerald-700/30 bg-emerald-600 px-3 py-2 text-white shadow-md sm:px-4",
         className
       )}
       role="status"
     >
-      <div className="flex min-w-0 items-center gap-2 text-sm font-medium">
-        <IconPackageCheck size={18} strokeWidth={2.25} className="shrink-0" aria-hidden />
+      <div className="flex min-w-0 items-center gap-2 text-xs font-medium">
+        <IconPackageCheck size={16} strokeWidth={2.25} className="shrink-0" aria-hidden />
         <span className="truncate">{formatPickupBarLabel(count)}</span>
       </div>
       <button
         type="button"
         onClick={onShowPickup}
-        className="min-h-10 shrink-0 rounded-md bg-white px-3 py-2 text-xs font-semibold text-emerald-800 shadow-sm transition hover:bg-emerald-50"
+        className="min-h-8 shrink-0 rounded-md bg-white px-2.5 py-1 text-xs font-semibold text-emerald-800 shadow-sm transition hover:bg-emerald-50"
       >
         Pokaż
       </button>

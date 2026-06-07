@@ -2,6 +2,8 @@
 
 import Link from "next/link";
 import type { DailyInboxSummary } from "@/lib/orders/procurement-daily-ui";
+import { useSupplierHubContext } from "@/components/layout/AppRoleContext";
+import { supplierVacationsHref } from "@/lib/supplier-hub";
 import {
   DailySectionIcon,
   IconCalendar,
@@ -12,9 +14,11 @@ import {
 import { SectionHeadingIcon } from "@/components/icons/SectionHeadingIcon";
 import { cn } from "@/lib/cn";
 import {
+  panelSectionInsetClass,
   panelTextLinkClass,
   panelMetricTileClass,
   panelMetricTileInteractiveClass,
+  panelTypography,
   sectionIconTileBrandClass,
   sectionIconTileBrandSoftClass,
 } from "@/lib/ui/ontime-theme";
@@ -41,9 +45,7 @@ function MetricTile({
       <SectionHeadingIcon tileClassName={tileClassName} className="mb-2 h-7 w-7">
         {icon}
       </SectionHeadingIcon>
-      <p className="text-2xl font-semibold tabular-nums tracking-tight text-slate-900">
-        {value}
-      </p>
+      <p className={panelTypography.statValue}>{value}</p>
       <p className="mt-0.5 text-xs font-medium text-slate-700">{label}</p>
       {hint ? <p className="mt-0.5 text-[11px] leading-snug text-slate-500">{hint}</p> : null}
     </>
@@ -101,6 +103,8 @@ export function DailyPanelMetricsOverview({
   /** Ukryj zaległe / na dziś / prośby — gdy te same liczby są w pasku u góry. */
   hideQueueMetrics?: boolean;
 }) {
+  const hubContext = useSupplierHubContext();
+  const vacationsHref = supplierVacationsHref(hubContext);
   const mobileSummary = buildMetricsSummary(summary);
 
   const queueTiles = hideQueueMetrics ? null : (
@@ -196,15 +200,14 @@ export function DailyPanelMetricsOverview({
 
   const grid = hideQueueMetrics ? (
     hasSupplementaryTiles ? (
-      <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-3">
+      <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-3">
         {supplementaryTiles}
       </div>
     ) : null
   ) : (
     <div
       className={cn(
-        "mt-3 grid grid-cols-2 gap-2 sm:grid-cols-3",
-        !hideVerificationMetric && verificationCount > 0 ? "lg:grid-cols-6" : "lg:grid-cols-5"
+        "mt-3 grid grid-cols-2 gap-2 sm:grid-cols-3"
       )}
     >
       {queueTiles}
@@ -228,7 +231,7 @@ export function DailyPanelMetricsOverview({
         <p className="mt-0.5 text-xs leading-relaxed text-amber-900/90">
           Szczegóły przy każdej karcie harmonogramu.{" "}
           <Link
-            href="/zakupy/urlopy"
+            href={vacationsHref}
             className="font-medium underline hover:text-amber-950"
           >
             Urlopy
@@ -244,7 +247,7 @@ export function DailyPanelMetricsOverview({
 
   if (hideQueueMetrics && !grid && vacationBanner) {
     return (
-      <div className="border-t border-indigo-100/70 px-4 py-4 sm:px-6">
+      <div className={cn("border-t border-indigo-100/70", panelSectionInsetClass)}>
         {vacationBanner}
       </div>
     );
@@ -262,7 +265,7 @@ export function DailyPanelMetricsOverview({
     : mobileSummary;
 
   return (
-    <div className="border-t border-indigo-100/70 px-4 py-4 sm:px-6">
+    <div className={cn("border-t border-indigo-100/70", panelSectionInsetClass)}>
       {/* Mobile: zwijany przegląd */}
       <details className="group sm:hidden">
         <summary className="flex cursor-pointer list-none items-center justify-between gap-2 marker:content-none [&::-webkit-details-marker]:hidden">

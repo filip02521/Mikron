@@ -24,14 +24,14 @@ export function AdminToolsPanel() {
     <>
       {toast ? <Toast message={toast.text} tone={toast.tone} onDismiss={dismiss} /> : null}
 
-      <details className="group mb-6 rounded-md border border-slate-200/90 bg-white shadow-sm open:shadow-md">
-        <summary className="cursor-pointer list-none px-6 py-4 text-sm font-semibold text-slate-900 marker:content-none [&::-webkit-details-marker]:hidden">
+      <details className="group overflow-hidden rounded-md border border-slate-200/90 bg-white shadow-sm open:shadow-md">
+        <summary className="cursor-pointer list-none px-3 py-3 text-sm font-semibold text-slate-900 marker:content-none sm:px-4 [&::-webkit-details-marker]:hidden">
           <span className="flex items-center justify-between gap-2">
             Automatyka (Vercel Cron)
             <span className="text-slate-400 transition group-open:rotate-180">▾</span>
           </span>
         </summary>
-        <div className="border-t border-slate-100 px-6 py-4 text-sm leading-relaxed text-slate-600">
+        <div className="border-t border-slate-100 px-3 py-3 text-sm leading-relaxed text-slate-600 sm:px-4">
           <ul className="list-inside list-disc space-y-2">
             <li>
               <strong className="text-slate-800">6:00 (Europe/Warsaw)</strong> w dni robocze —{" "}
@@ -53,13 +53,15 @@ export function AdminToolsPanel() {
         </div>
       </details>
 
-      <div className="grid gap-6 lg:grid-cols-2">
-        <Card>
+      <div className="grid gap-4 lg:grid-cols-2">
+        <Card padding={false} className="overflow-hidden">
           <CardHeader
+            inset
+            density="compact"
             title="Harmonogramy"
             description="Po urlopach, imporcie lub gdy panel dzienny pokazuje złe daty."
           />
-          <div className="space-y-3">
+          <div className="space-y-3 px-3 pb-4 sm:px-4">
             <SyncButton
               action={actionSyncData}
               label="Przelicz wszystkie terminy"
@@ -73,12 +75,14 @@ export function AdminToolsPanel() {
           </div>
         </Card>
 
-        <Card>
+        <Card padding={false} className="overflow-hidden">
           <CardHeader
+            inset
+            density="compact"
             title="Realizacja i statystyki"
             description="Gdy kolejka „wisi” lub ETA wymaga pełnego przebiegu historii."
           />
-          <div className="flex flex-col gap-2">
+          <div className="flex flex-col gap-2 px-3 pb-4 sm:px-4">
             <AdminActionButton
               action={actionProcessDeliveries}
               label="Przetwórz kolejkę dostaw"

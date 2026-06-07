@@ -10,7 +10,6 @@ import { CatalogZdSyncStatusPanel } from "@/components/admin/CatalogZdSyncStatus
 import { ZdUnmappedKhPanel } from "@/components/admin/ZdUnmappedKhPanel";
 import type { ZdUnmappedKhReport } from "@/lib/subiekt/zd-unmapped-kh";
 import { ProductCatalogSupplierAssign } from "@/components/admin/ProductCatalogSupplierAssign";
-import { Card, CardHeader } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { Input, Select } from "@/components/ui/Field";
 import { Toast } from "@/components/ui/Toast";
@@ -641,24 +640,25 @@ export function ProductsCatalogAdminClient({
   };
 
   return (
-    <Card padding={false}>
-      <CardHeader
-        inset
-        title="Produkty (baza własna)"
-        description="Źródło: historia prośb + weryfikacja zakupów + import z ZD (nocny cron na serwerze w firmie). Każdy produkt to Subiekt tw_Id."
-        action={
-          <div className="flex flex-wrap gap-2">
-            <Button variant="secondary" onClick={backfillFromSymbol} disabled={pending}>
-              Uzupełnij z symbolu (Subiekt)
-            </Button>
-            <Button variant="secondary" onClick={rebuild} disabled={pending}>
-              Odbuduj z historii
-            </Button>
-          </div>
-        }
-      />
+    <>
+      {toast ? (
+        <Toast
+          tone={toast.tone}
+          message={toast.text}
+          onDismiss={() => setToast(null)}
+        />
+      ) : null}
 
-      <div className="px-6 pb-5">
+      <div className="flex flex-wrap items-center justify-end gap-2 border-b border-slate-100 pb-3">
+        <Button variant="secondary" onClick={backfillFromSymbol} disabled={pending}>
+          Uzupełnij z symbolu (Subiekt)
+        </Button>
+        <Button variant="secondary" onClick={rebuild} disabled={pending}>
+          Odbuduj z historii
+        </Button>
+      </div>
+
+      <div className="space-y-4">
         <CatalogZdSyncStatusPanel
           catalogSync={catalogSync}
           pending={pending}
@@ -1121,15 +1121,7 @@ export function ProductsCatalogAdminClient({
           <div className="px-4 py-8 text-sm text-slate-600">Brak wyników.</div>
         ) : null}
       </div>
-
-      {toast ? (
-        <Toast
-          tone={toast.tone}
-          message={toast.text}
-          onDismiss={() => setToast(null)}
-        />
-      ) : null}
-    </Card>
+    </>
   );
 }
 

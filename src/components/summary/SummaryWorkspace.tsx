@@ -24,9 +24,10 @@ import {
 import { DailyPanelToolbar } from "@/components/summary/DailyPanelToolbar";
 import { DailyPanelTabs } from "@/components/summary/DailyPanelTabs";
 import { useDailyPanelView } from "@/hooks/useDailyPanelView";
+import { useDailyPanelFreshHighlight } from "@/hooks/useDailyPanelFreshHighlight";
 import { dailyPanelIntroDescription } from "@/lib/orders/daily-panel-view";
 import { useDailyPanelRunner } from "@/components/summary/useDailyPanelRunner";
-import { DailyPanelStatusBand } from "@/components/summary/DailyPanelStatusBand";
+import { DailyPanelStickyFooter } from "@/components/summary/DailyPanelStickyFooter";
 import { DailyTodayView } from "@/components/summary/DailyTodayView";
 import { DailyWeekView } from "@/components/summary/DailyWeekView";
 import { ActionLoadingOverlay } from "@/components/ui/ActionLoadingOverlay";
@@ -37,13 +38,15 @@ import { VerificationModal } from "@/components/verification/VerificationModal";
 import { OnDemandSuppliersSheet } from "@/components/summary/OnDemandSuppliersSheet";
 import { DailyPanelActionsBar } from "@/components/summary/DailyPanelActionsBar";
 import { DailyPanelExceptionsView } from "@/components/summary/DailyPanelExceptionsView";
+import { OperationsPanelRefreshStrip } from "@/components/operations/OperationsUpdatesContext";
 import {
   IconLayoutPanel,
 } from "@/components/icons/StrokeIcons";
 import { undoShortcutLabel } from "@/lib/platform/keyboard-shortcut-label";
 import { SectionHeadingIcon } from "@/components/icons/SectionHeadingIcon";
-import { brandIconTileClass, sidebarBrandAccentClass } from "@/lib/ui/ontime-theme";
+import { brandIconTileClass, panelChromeInsetClass, panelSectionInsetClass, panelWorkspaceShellClass, sidebarBrandAccentClass } from "@/lib/ui/ontime-theme";
 import { cn } from "@/lib/cn";
+import type { OrderFormSupplierOption } from "@/lib/orders/order-form-suppliers";
 
 export function SummaryWorkspace({
   workspace,
@@ -55,7 +58,7 @@ export function SummaryWorkspace({
   verificationOrders = [],
 }: {
   workspace: SummaryWorkspaceData;
-  suppliers: { id: string; name: string }[];
+  suppliers: OrderFormSupplierOption[];
   supplierDirectory: SupplierDirectoryEntry[];
   salesPeople: { id: string; name: string; email: string }[];
   statsBySupplierId?: Record<string, DeliveryStats>;
@@ -77,6 +80,7 @@ export function SummaryWorkspace({
 
   const { view: panelView, setView: setPanelView } = useDailyPanelView();
   const panelIntro = dailyPanelIntroDescription(panelView);
+  const highlightFresh = useDailyPanelFreshHighlight();
 
   const [selected, setSelected] = useState<Record<string, boolean>>({});
   const [drawerId, setDrawerId] = useState<string | null>(null);
@@ -282,7 +286,7 @@ export function SummaryWorkspace({
   };
 
   return (
-    <div className="relative mx-auto max-w-6xl">
+    <div className={panelWorkspaceShellClass}>
       {pendingMessage ? (
         <ActionLoadingOverlay message={pendingMessage} variant="viewport" />
       ) : null}
@@ -300,10 +304,11 @@ export function SummaryWorkspace({
         />
       ) : null}
 
-      <Card padding={false} className="overflow-hidden">
+      <Card padding={false} className="overflow-x-clip">
         <div className={cn(sidebarBrandAccentClass, "rounded-none opacity-75")} aria-hidden />
         <CardHeader
           inset
+          density="compact"
           leading={
             <SectionHeadingIcon tileClassName={brandIconTileClass}>
               <IconLayoutPanel size={20} />
@@ -313,7 +318,7 @@ export function SummaryWorkspace({
           description={panelIntro}
         />
 
-        <div className="flex items-center border-b border-slate-100 px-4 py-3 sm:px-6">
+        <div className={cn(panelChromeInsetClass, "flex items-center border-b border-slate-100 py-2.5 sm:py-3")}>
           <DailyPanelActionsBar
             summary={inboxSummary}
             suppliers={supplierDirectory}
@@ -332,16 +337,18 @@ export function SummaryWorkspace({
           exceptionsCount={exceptionsCount}
           hideVerificationBadge={hideVerificationDup}
           onChange={setPanelView}
-        />
-
-        <DailyPanelStatusBand
-          view={panelView}
-          summary={inboxSummary}
-          dayProgress={dayProgress}
-          verificationCount={verificationCount}
-          showVerification={!hideVerificationDup}
-          urgentVacationCount={urgentVacationCount}
-          onOpenOnDemand={() => setOnDemandOpen(true)}
+          footer={<OperationsPanelRefreshStrip />}
+          afterFooter={
+            <DailyPanelStickyFooter
+              view={panelView}
+              summary={inboxSummary}
+              dayProgress={dayProgress}
+              verificationCount={verificationCount}
+              showVerification={!hideVerificationDup}
+              urgentVacationCount={urgentVacationCount}
+              onOpenOnDemand={() => setOnDemandOpen(true)}
+            />
+          }
         />
 
         <DailyPanelToolbar
@@ -383,6 +390,7 @@ export function SummaryWorkspace({
             onBulkOrdered={processBulk}
             onOpenVerification={() => setVerificationModalOpen(true)}
             onOpenWeek={() => setPanelView("tydzien")}
+            highlightFresh={highlightFresh}
           />
         ) : null}
 
@@ -404,7 +412,7 @@ export function SummaryWorkspace({
             id="panel-view-wyjatki"
             role="tabpanel"
             aria-labelledby="panel-tab-wyjatki"
-            className="space-y-3 px-4 py-4 sm:px-6"
+            className={cn("space-y-3", panelSectionInsetClass)}
           >
             <DailyPanelExceptionsView
                 workspace={workspace}

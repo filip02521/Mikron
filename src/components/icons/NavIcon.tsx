@@ -61,8 +61,10 @@ const HREF_TO_NAV_ICON: Record<string, NavIconKey> = {
   "/kolejka": "warehouse",
   "/historia": "history",
   "/zakupy/dostawcy": "suppliers",
+  "/admin/dostawcy": "suppliers",
   "/lokalizacje/POLSKA": "schedule",
   "/zakupy/urlopy": "vacation",
+  "/admin/urlopy": "vacation",
   "/zamowienia/nowe": "groupOrder",
   "/admin": "admin",
   "/moje": "myOrders",
@@ -78,6 +80,9 @@ const HREF_TO_NAV_ICON: Record<string, NavIconKey> = {
 export function navIconKeyFromHref(href: string): NavIconKey {
   if (HREF_TO_NAV_ICON[href]) return HREF_TO_NAV_ICON[href]!;
   if (href.startsWith("/lokalizacje/")) return "schedule";
+  if (href.startsWith("/admin/dostawcy") || href.startsWith("/admin/urlopy")) {
+    return href.includes("/urlopy") ? "vacation" : "suppliers";
+  }
   if (href.startsWith("/zespol/handlowcy")) return "teamAccounts";
   if (href.startsWith("/zespol")) return "team";
   if (href.startsWith("/admin")) return "admin";

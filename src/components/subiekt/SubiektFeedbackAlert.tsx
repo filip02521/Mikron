@@ -1,6 +1,8 @@
 "use client";
 
 import { Alert } from "@/components/ui/Alert";
+import { FormStatusAlert } from "@/components/orders/FormStatusAlert";
+import { subiektFeedbackBody } from "@/lib/orders/consolidate-form-status";
 import type { SubiektFeedback } from "@/lib/subiekt/feedback";
 import { cn } from "@/lib/cn";
 
@@ -8,23 +10,29 @@ import { cn } from "@/lib/cn";
 export function SubiektFeedbackAlert({
   feedback,
   compact = false,
+  embedded = false,
   className,
 }: {
   feedback: SubiektFeedback;
   compact?: boolean;
+  /** W panelu statusu — ta sama skala co FormStatusAlert. */
+  embedded?: boolean;
   className?: string;
 }) {
+  const body = subiektFeedbackBody(feedback);
+
+  if (embedded || compact) {
+    return (
+      <FormStatusAlert tone={feedback.tone} title={feedback.title} className={className}>
+        {body}
+      </FormStatusAlert>
+    );
+  }
+
   return (
-    <Alert tone={feedback.tone} className={cn(compact && "py-2", className)}>
-      <p className={cn("font-medium", compact && "text-xs")}>{feedback.title}</p>
-      <p className={cn(compact ? "text-xs" : "text-sm", "mt-0.5 opacity-90")}>
-        {feedback.message}
-      </p>
-      {feedback.hint ? (
-        <p className={cn("mt-1.5 opacity-80", compact ? "text-[11px]" : "text-xs")}>
-          {feedback.hint}
-        </p>
-      ) : null}
+    <Alert tone={feedback.tone} className={className}>
+      <p className="font-medium">{feedback.title}</p>
+      <p className="mt-0.5 opacity-90">{body}</p>
     </Alert>
   );
 }

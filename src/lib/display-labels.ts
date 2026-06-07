@@ -87,16 +87,31 @@ export function formatStockPeriod(
   stockRaw: string | null | undefined,
   stockWeeks: number | null | undefined
 ): string {
+  const compact = formatStockPeriodCompact(stockRaw, stockWeeks);
+  if (compact === "—") return compact;
+  if (/w razie potrzeby/i.test(compact)) return "W razie potrzeby";
+  const resolved = resolveSupplierInterval(stockRaw, stockWeeks);
+  if (resolved || (stockWeeks != null && stockWeeks > 0 && !stockRaw?.trim())) {
+    return `Zapas na ${compact}`;
+  }
+  return compact;
+}
+
+/** Krótka etykieta okresu zapasu bez prefiksu — do list i skrótów cyklu. */
+export function formatStockPeriodCompact(
+  stockRaw: string | null | undefined,
+  stockWeeks: number | null | undefined
+): string {
   const v = stockRaw?.trim();
   if (!v) {
     if (stockWeeks != null && stockWeeks > 0) {
-      return `Zapas na ${formatIntervalLabel({ unit: "weeks", value: Math.round(stockWeeks) })}`;
+      return formatIntervalLabel({ unit: "weeks", value: Math.round(stockWeeks) });
     }
     return "—";
   }
-  if (/w razie potrzeby/i.test(v)) return "W razie potrzeby";
+  if (/w razie potrzeby/i.test(v)) return "w razie potrzeby";
   const resolved = resolveSupplierInterval(v, stockWeeks);
-  if (resolved) return `Zapas na ${formatIntervalLabel(resolved)}`;
+  if (resolved) return formatIntervalLabel(resolved);
   return v;
 }
 

@@ -3,6 +3,7 @@
 import { IconCircleCheck } from "@/components/icons/StrokeIcons";
 import { cn } from "@/lib/cn";
 import type { DailyUrgentProgress as Progress } from "@/lib/orders/daily-urgent-progress";
+import { panelTypography } from "@/lib/ui/ontime-theme";
 
 export function DailyUrgentProgressBar({
   progress,
@@ -47,7 +48,8 @@ export function DailyUrgentProgressBar({
         </div>
         <p
           className={cn(
-            "flex shrink-0 items-center justify-end gap-1 text-2xl font-semibold tabular-nums tracking-tight",
+            "flex shrink-0 items-center justify-end gap-1",
+            panelTypography.statValue,
             progress.complete ? "text-emerald-700" : "text-slate-900"
           )}
         >

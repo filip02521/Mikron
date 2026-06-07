@@ -10,9 +10,10 @@ export function AdminSystemStatus({
   issues: string[];
 }) {
   return (
-    <Card padding={false} className="mb-6">
+    <Card padding={false} className="overflow-hidden">
       <CardHeader
         inset
+        density="compact"
         title="Stan systemu"
         description="Szybki przegląd połączenia z bazą i spójności danych."
         action={
@@ -21,7 +22,7 @@ export function AdminSystemStatus({
           </Badge>
         }
       />
-      <div className="px-6 pb-6">
+      <div className="px-3 pb-4 sm:px-4 lg:px-5">
         <Alert tone={isHealthy ? "success" : "warning"}>
           <span className="font-medium">
             {isHealthy

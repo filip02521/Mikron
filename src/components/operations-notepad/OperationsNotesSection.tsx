@@ -11,7 +11,7 @@ import { Button } from "@/components/ui/Button";
 import { Alert } from "@/components/ui/Alert";
 import { KeyboardShortcutsHint } from "@/components/ui/KeyboardShortcutsHint";
 import { cn } from "@/lib/cn";
-import { controlFocusClass } from "@/lib/ui/ontime-theme";
+import { controlFocusClass, panelTypography } from "@/lib/ui/ontime-theme";
 import {
   reorderOperationsNoteIds,
   sortOperationsNotes,
@@ -330,7 +330,6 @@ export function OperationsNotesSection({
   department,
   visibility,
   currentUserId,
-  sectionTitle,
   readOnly,
   embedded,
   onNoteCreated,
@@ -343,7 +342,6 @@ export function OperationsNotesSection({
   department: OperationsDepartment;
   visibility: OperationsNoteVisibility;
   currentUserId: string;
-  sectionTitle?: string;
   readOnly?: boolean;
   embedded?: boolean;
   allowReorder?: boolean;
@@ -572,22 +570,15 @@ export function OperationsNotesSection({
   }
 
   return (
-    <div className={embedded ? "space-y-3" : "space-y-3"}>
-      {!embedded && sectionTitle ? (
-        <h2 className="text-base font-semibold text-slate-900">{sectionTitle}</h2>
-      ) : null}
-      {!embedded && !sectionTitle ? (
+    <div className="space-y-3">
+      {!embedded ? (
         <div className="flex flex-wrap items-end justify-between gap-2">
           <div>
-            <h2 className="text-base font-semibold text-slate-900">Notatki</h2>
+            <h2 className={panelTypography.sectionTitle}>Notatki</h2>
             <KeyboardShortcutsHint items={[...NOTATNIK_KEYBOARD_HINTS]} className="mt-1" compact />
           </div>
         </div>
-      ) : embedded ? (
-        <KeyboardShortcutsHint items={[...NOTATNIK_KEYBOARD_HINTS]} compact />
-      ) : (
-        <KeyboardShortcutsHint items={[...NOTATNIK_KEYBOARD_HINTS]} className="mt-1" compact />
-      )}
+      ) : null}
 
       {canCompose ? (
         composeExpanded ? (
@@ -667,7 +658,7 @@ export function OperationsNotesSection({
           <button
             type="button"
             onClick={() => setComposeOpen(true)}
-            className="flex w-full items-center gap-2 rounded-md border border-dashed border-slate-200 bg-slate-50/60 px-3 py-2.5 text-left text-xs text-slate-500 transition hover:border-indigo-200 hover:bg-indigo-50/40 hover:text-indigo-800"
+            className="flex w-full items-center gap-2 rounded-md border border-dashed border-slate-200 bg-slate-50/60 px-3 py-2.5 text-left text-xs text-slate-500 transition hover:border-indigo-200 hover:bg-indigo-50/40 hover:text-indigo-800 min-h-11 sm:min-h-0"
           >
             <span className="text-base leading-none text-indigo-600" aria-hidden>
               +

@@ -6,8 +6,11 @@ import { parseDateOnly } from "@/lib/orders/dates";
 import { locationLabel } from "@/lib/display-labels";
 import { LocationScheduleClient } from "@/components/targets/LocationScheduleClient";
 import { SuppliersHubShell } from "@/components/admin/SuppliersHubShell";
-import { ScheduleLocationNav } from "@/components/admin/ScheduleLocationNav";
-import { supplierHubPaths } from "@/lib/supplier-hub";
+import {
+  supplierHubContextForRole,
+  supplierHubPaths,
+  supplierHubShellDescription,
+} from "@/lib/supplier-hub";
 
 const VALID: SupplierLocation[] = ["POLSKA", "ZAGRANICA", "IMPORT"];
 
@@ -24,7 +27,7 @@ export default async function LocationPage({
 
   const label = locationLabel(location);
   const session = await getSessionUser();
-  const hubContext = session?.role === "admin" ? "admin" : "zakupy";
+  const hubContext = supplierHubContextForRole(session?.role);
   const cardsPath = supplierHubPaths(hubContext).cards;
 
   let rows: Awaited<ReturnType<typeof fetchSuppliersWithSchedules>> = [];
@@ -41,17 +44,17 @@ export default async function LocationPage({
   return (
     <SuppliersHubShell
       title={`Terminy zamówień · ${label}`}
-      description="Daty w cyklu zamówień (ostatnie, następne, przesunięcie). Kontakt i zapas — w Kartach dostawców."
+      description={supplierHubShellDescription("schedules", hubContext)}
       activeTab="schedules"
       context={hubContext}
       scheduleLocation={location}
       inactiveCount={inactiveCount}
-      locationNav={<ScheduleLocationNav value={location} context={hubContext} />}
     >
       <LocationScheduleClient
         location={location}
         cardsBasePath={cardsPath}
         inHubShell
+        hubContext={hubContext}
         initialRows={rows.map((s) => ({
           id: s.id,
           name: s.name,

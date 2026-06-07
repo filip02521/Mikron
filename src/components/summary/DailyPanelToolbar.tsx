@@ -3,6 +3,8 @@
 import type { DailyInboxSummary } from "@/lib/orders/procurement-daily-ui";
 import type { DailyDayProgress } from "@/lib/orders/daily-day-progress";
 import type { DailyPanelView } from "@/lib/orders/daily-panel-view";
+import { panelChromeInsetClass, panelTypography } from "@/lib/ui/ontime-theme";
+import { cn } from "@/lib/cn";
 
 export function DailyPanelToolbar({
   view,
@@ -29,9 +31,9 @@ export function DailyPanelToolbar({
     }
 
     return (
-      <div className="border-b border-slate-100 px-4 py-3 sm:px-6">
-        <p className="text-sm font-semibold text-slate-900">Plan tygodnia</p>
-        <p className="mt-0.5 text-xs text-slate-500">
+      <div className={cn("border-b border-slate-100 py-2.5 sm:py-3", panelChromeInsetClass)}>
+        <p className={panelTypography.sectionTitle}>Plan tygodnia</p>
+        <p className={cn("mt-0.5", panelTypography.sectionDesc)}>
           {summary.weekPlanCount}{" "}
           {summary.weekPlanCount === 1 ? "pozycja" : "pozycje"}
           {summary.onDemandCount > 0 ? ` · ${summary.onDemandCount} na żądanie` : ""}. Karty
@@ -46,9 +48,9 @@ export function DailyPanelToolbar({
 
   if (view === "wyjatki") {
     return (
-      <div className="border-b border-slate-100 px-4 py-3 sm:px-6">
-        <p className="text-sm font-semibold text-slate-900">Wyjątki</p>
-        <p className="mt-0.5 text-xs text-slate-500">
+      <div className={cn("border-b border-slate-100 py-2.5 sm:py-3", panelChromeInsetClass)}>
+        <p className={panelTypography.sectionTitle}>Wyjątki</p>
+        <p className={cn("mt-0.5", panelTypography.sectionDesc)}>
           {exceptionsCount > 0
             ? `${exceptionsCount} ${
                 exceptionsCount === 1 ? "pozycja poza" : "pozycji poza"

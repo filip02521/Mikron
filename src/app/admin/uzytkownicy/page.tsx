@@ -4,8 +4,8 @@ import { fetchSalesGroups } from "@/lib/data/sales-groups";
 import { fetchManagerGroupIdsByProfile } from "@/lib/data/sales-group-access";
 import { getSessionUser } from "@/lib/auth";
 import { UsersAdminClient } from "@/components/admin/UsersAdminClient";
-import { AdminHubNav } from "@/components/admin/AdminHubNav";
-import { PageHeader } from "@/components/ui/PageHeader";
+import { AdminHubShell } from "@/components/admin/AdminHubShell";
+import { Alert } from "@/components/ui/Alert";
 import { redirect } from "next/navigation";
 
 export default async function UzytkownicyPage({
@@ -45,17 +45,8 @@ export default async function UzytkownicyPage({
   }
 
   return (
-    <>
-      <PageHeader
-        title="Konta użytkowników"
-        description="Logowanie do systemu, role i hasła. Handlowiec musi mieć kartę w zakładce Handlowcy."
-      />
-      <AdminHubNav activeTab="users" />
-      {loadError ? (
-        <p className="mb-4 rounded-md border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">
-          {loadError}
-        </p>
-      ) : null}
+    <AdminHubShell activeTab="users">
+      {loadError ? <Alert tone="error">{loadError}</Alert> : null}
       <UsersAdminClient
         initialUsers={users}
         salesPeople={salesPeople}
@@ -64,6 +55,6 @@ export default async function UzytkownicyPage({
         currentUserId={session.id}
         prefillSalesPersonId={prefillSalesPersonId}
       />
-    </>
+    </AdminHubShell>
   );
 }

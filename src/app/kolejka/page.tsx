@@ -9,7 +9,6 @@ import { actionFetchTodayDeliveryJournal, actionListWarehouseAssignSuppliers } f
 import { getSessionUser } from "@/lib/auth";
 import { isMagazyn } from "@/lib/auth-roles";
 import { QueueClient } from "@/components/queue/QueueClient";
-import { Alert } from "@/components/ui/Alert";
 import type { IndividualOrder } from "@/types/database";
 
 export default async function KolejkaPage() {
@@ -52,22 +51,15 @@ export default async function KolejkaPage() {
   }
 
   return (
-    <>
-      {error ? (
-        <Alert tone="error" className="mx-auto mb-4 max-w-6xl">
-          {error}
-        </Alert>
-      ) : null}
-
-      <QueueClient
-        orders={orders}
-        informacjaOrders={informacjaOrders}
-        pickupReadyCount={pickupReadyCount}
-        warehouseInventory={warehouseInventory}
-        deliveryJournal={deliveryJournal}
-        journalSuppliers={journalSuppliers}
-        isMagazynRole={role != null && isMagazyn(role)}
-      />
-    </>
+    <QueueClient
+      orders={orders}
+      informacjaOrders={informacjaOrders}
+      pickupReadyCount={pickupReadyCount}
+      warehouseInventory={warehouseInventory}
+      deliveryJournal={deliveryJournal}
+      journalSuppliers={journalSuppliers}
+      isMagazynRole={role != null && isMagazyn(role)}
+      loadError={error}
+    />
   );
 }

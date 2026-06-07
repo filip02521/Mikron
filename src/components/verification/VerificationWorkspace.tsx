@@ -2,7 +2,13 @@
 
 import { useState, useTransition, useCallback, useEffect, useMemo, useRef } from "react";
 import { useRouter } from "next/navigation";
-import type { IndividualOrder, IndividualRequestKind } from "@/types/database";
+import type { IndividualOrder } from "@/types/database";
+import {
+  emptyVerificationForm,
+  orderToVerificationForm,
+  shouldLookupSupplierFromCatalog,
+  type VerificationSupplierOption,
+} from "@/lib/orders/verification-form";
 import {
   actionCancelVerification,
   actionCompleteVerification,
@@ -13,12 +19,15 @@ import { Card, CardHeader } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { Field, Select } from "@/components/ui/Field";
 import { Toast } from "@/components/ui/Toast";
-import { Badge } from "@/components/ui/Badge";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { SectionListLabel } from "@/components/ui/SectionListLabel";
 import { SectionHeadingIcon } from "@/components/icons/SectionHeadingIcon";
-import { IconClipboardList, IconClipboardPen } from "@/components/icons/StrokeIcons";
+import { IconClipboardPen } from "@/components/icons/StrokeIcons";
 import { VerificationHelp } from "@/components/verification/VerificationHelp";
+import {
+  VerificationQueuePicker,
+  type VerificationQueueItemMeta,
+} from "@/components/verification/VerificationQueuePicker";
 import { formatPlDate } from "@/lib/display-labels";
 import { verificationDraftMissingLabels, verificationQueueMissingLabels } from "@/lib/orders/verification-gaps";
 import {
@@ -28,7 +37,6 @@ import {
 } from "@/lib/orders/verification-informacja-ui";
 import {
   informacjaFlowPathFromOrder,
-  type InformacjaFlowPath,
 } from "@/lib/orders/informacja-stock-out-reorder";
 import {
   VerificationInformacjaPathPanel,
@@ -53,26 +61,11 @@ import {
   handleProcurementProsbaKeyboardEvent,
   PROCUREMENT_PROSBA_KEYBOARD_HINTS,
 } from "@/lib/orders/procurement-prosba-keyboard";
+import { panelPageShellClass, panelSectionInsetClass, panelTypography } from "@/lib/ui/ontime-theme";
+import { cn } from "@/lib/cn";
 
 const VERIFICATION_INTRO =
   "Niekompletne prośby handlowców — uzupełnij dostawcę i produkt. Po zatwierdzeniu trafiają do panelu dziennego; ścieżka informacji (dostępność / brak na stanie) jest zachowana.";
-
-function orderToForm(o: IndividualOrder) {
-  return {
-    supplierId: o.supplier_id ?? "",
-    salesPersonId: o.sales_person_id,
-    symbol: o.symbol !== "-" ? o.symbol : "",
-    mikranCode: o.mikran_code?.trim() ?? "",
-    product: o.products !== "Do uzupełnienia" ? o.products : "",
-    quantity: o.quantity !== "-" ? o.quantity : "",
-    requestKind: (o.request_kind ?? "zamowienie") as IndividualRequestKind,
-    subiektTwId: o.subiekt_tw_id ?? null,
-    informacjaPath:
-      o.request_kind === "informacja"
-        ? (informacjaFlowPathFromOrder(o) ?? "direct")
-        : null,
-  };
-}
 
 export function VerificationWorkspace({
   orders,
@@ -82,7 +75,7 @@ export function VerificationWorkspace({
   layout = "page",
 }: {
   orders: IndividualOrder[];
-  suppliers: { id: string; name: string; subiekt_kh_id?: number | null }[];
+  suppliers: VerificationSupplierOption[];
   salesPeople: { id: string; name: string }[];
   onQueueEmpty?: () => void;
   layout?: "page" | "modal";
@@ -125,19 +118,7 @@ export function VerificationWorkspace({
   const catalogLookupGenRef = useRef(0);
 
   const [form, setForm] = useState(() =>
-    orders[0]
-      ? orderToForm(orders[0])
-      : {
-          supplierId: "",
-          salesPersonId: "",
-          symbol: "",
-          mikranCode: "",
-          product: "",
-          quantity: "",
-          requestKind: "zamowienie" as IndividualRequestKind,
-          subiektTwId: null as number | null,
-          informacjaPath: null as InformacjaFlowPath | null,
-        }
+    orders[0] ? orderToVerificationForm(orders[0]) : emptyVerificationForm()
   );
 
   const resetSubiektFeedbacks = useCallback(() => {
@@ -154,10 +135,10 @@ export function VerificationWorkspace({
       const lookupGen = catalogLookupGenRef.current;
       setValidationAttempted(false);
       resetSubiektFeedbacks();
-      setForm(orderToForm(o));
+      setForm(orderToVerificationForm(o));
 
-      const twId = o.subiekt_tw_id;
-      if (!o.supplier_id && twId != null && twId > 0) {
+      if (shouldLookupSupplierFromCatalog(o)) {
+        const twId = o.subiekt_tw_id!;
         setResolvingSupplier(true);
         void actionLookupSupplierFromCatalogTwId(twId, supplierRefs).then((res) => {
           if (lookupGen !== catalogLookupGenRef.current) return;
@@ -289,6 +270,30 @@ export function VerificationWorkspace({
   };
   saveRef.current = save;
 
+  const queueItems = useMemo((): VerificationQueueItemMeta[] => {
+    return orders.map((o) => {
+      const missing =
+        o.id === activeId
+          ? verificationDraftMissingLabels(draft)
+          : verificationQueueMissingLabels(o);
+      const pathUi = verificationInformacjaUiForOrder(o);
+      const supplierLabel =
+        o.id === activeId && form.supplierId
+          ? (suppliers.find((s) => s.id === form.supplierId)?.name ??
+            o.supplier?.name ??
+            "Brak dostawcy")
+          : (o.supplier?.name ?? "Brak dostawcy");
+      return {
+        id: o.id,
+        order: o,
+        supplierLabel,
+        missing,
+        ready: missing.length === 0,
+        pathUi,
+      };
+    });
+  }, [orders, activeId, draft, form.supplierId, suppliers]);
+
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       handleProcurementProsbaKeyboardEvent(e, {
@@ -309,7 +314,7 @@ export function VerificationWorkspace({
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [pending]);
+  }, [pending, active]);
 
   const cancel = (id: string) => {
     if (!confirm("Anulować tę prośbę?")) return;
@@ -340,127 +345,85 @@ export function VerificationWorkspace({
       <div
         className={
           inModal
-            ? "flex min-h-0 flex-1 flex-col lg:grid lg:grid-cols-[minmax(0,0.95fr)_minmax(0,1.05fr)] lg:divide-x lg:divide-slate-100"
-            : "grid lg:grid-cols-[minmax(0,1fr)_minmax(0,1.15fr)] lg:divide-x lg:divide-slate-100"
+            ? "flex min-h-0 flex-1 flex-col lg:grid lg:grid-cols-[minmax(0,0.4fr)_minmax(0,1fr)] lg:divide-x lg:divide-slate-100"
+            : "flex flex-col"
         }
       >
-        <div
-          className={
-            inModal
-              ? "flex min-h-0 shrink-0 flex-col border-b border-slate-100 lg:min-h-0 lg:shrink lg:border-b-0"
-              : "min-w-0"
-          }
-        >
-          <SectionListLabel
-            title="Kolejka"
-            hint="Wybierz prośbę z listy"
-            count={orders.length}
-            icon={<IconClipboardList size={17} />}
-            tileClassName="bg-amber-100 text-amber-800"
-          />
-          <ul
-            className={
-              inModal
-                ? "max-h-[11rem] divide-y divide-amber-100 overflow-y-auto overscroll-contain sm:max-h-[13rem] lg:max-h-none lg:min-h-0 lg:flex-1"
-                : "divide-y divide-amber-100"
-            }
-          >
-            {orders.map((o) => {
-              const missing =
-                o.id === activeId
-                  ? verificationDraftMissingLabels(draft)
-                  : verificationQueueMissingLabels(o);
-              const pathUi = verificationInformacjaUiForOrder(o);
-              const supplierLabel =
-                o.id === activeId && form.supplierId
-                  ? (suppliers.find((s) => s.id === form.supplierId)?.name ??
-                    o.supplier?.name ??
-                    "Brak dostawcy")
-                  : (o.supplier?.name ?? "Brak dostawcy");
-              return (
-                <li key={o.id}>
-                  <button
-                    type="button"
-                    onClick={() => setActiveId(o.id)}
-                    className={`w-full px-4 py-3 text-left transition hover:bg-amber-50/80 ${
-                      activeId === o.id ? "bg-amber-50" : ""
-                    } ${pathUi?.path === "stock_out" ? "border-l-4 border-l-amber-400" : ""}`}
-                  >
-                    <div className="flex items-start justify-between gap-2">
-                      <div className="min-w-0">
-                        <div className="flex flex-wrap items-center gap-1.5">
-                          <p className="font-medium text-slate-900">
-                            {o.sales_person?.name ?? "Handlowiec"}
-                          </p>
-                          {pathUi ? (
-                            <VerificationPathBadge ui={pathUi} className="text-[10px]" />
-                          ) : null}
-                        </div>
-                        <p className="truncate text-sm text-slate-600">
-                          {supplierLabel} · {o.products}
-                        </p>
-                        {normalizeSalesClientName(o.sales_client_name) ? (
-                          <MyOrderAssignedClient
-                            name={normalizeSalesClientName(o.sales_client_name)!}
-                            className="mt-1"
-                          />
-                        ) : null}
-                        <p className="mt-1 text-xs text-slate-500">
-                          {formatPlDate(o.action_at.slice(0, 10))}
-                          {pathUi ? ` · ${pathUi.queueHint}` : ""}
-                          {o.subiekt_tw_id ? " · Subiekt" : ""}
-                        </p>
-                        {missing.length ? (
-                          <p className="mt-1 text-[0.68rem] font-medium text-amber-800">
-                            Brakuje: {missing.join(", ")}
-                          </p>
-                        ) : (
-                          <p className="mt-1 text-[0.68rem] font-medium text-emerald-700">
-                            Gotowe do zatwierdzenia
-                          </p>
-                        )}
-                      </div>
-                      <Badge variant="warning">Weryfikacja</Badge>
-                    </div>
-                  </button>
-                </li>
-              );
-            })}
-          </ul>
-        </div>
+        <VerificationQueuePicker
+          items={queueItems}
+          activeId={activeId}
+          onSelect={setActiveId}
+          layout={inModal ? "modal" : "page"}
+        />
 
         {active ? (
           <div
             className={
-              inModal ? "flex min-h-0 min-w-0 flex-1 flex-col lg:min-h-0" : "min-w-0"
+              inModal
+                ? "flex min-h-0 min-w-0 flex-1 flex-col lg:min-h-0"
+                : "flex min-w-0 flex-col"
             }
           >
-            <SectionListLabel
-              title="Uzupełnij dane"
-              hint={`Zgłoszenie od ${active.sales_person?.name ?? "handlowca"}`}
-              icon={<IconClipboardPen size={17} />}
-              tileClassName="bg-amber-100 text-amber-800"
-            />
+            {inModal ? (
+              <SectionListLabel
+                domain="panel"
+                title="Uzupełnij dane"
+                hint={`Zgłoszenie od ${active.sales_person?.name ?? "handlowca"}`}
+                icon={<IconClipboardPen size={17} />}
+                tileClassName="bg-amber-100 text-amber-800"
+              />
+            ) : (
+              <div className="border-b border-slate-100 bg-white px-3 py-3 sm:px-4">
+                <div className="flex flex-wrap items-start justify-between gap-2">
+                  <div className="min-w-0">
+                    <p className={panelTypography.sectionLabel}>Uzupełnianie prośby</p>
+                    <p className="mt-0.5 text-sm font-semibold text-slate-900">
+                      {active.sales_person?.name ?? "Handlowiec"}
+                    </p>
+                    <p className={cn("mt-0.5", panelTypography.sectionDesc)}>
+                      {formatPlDate(active.action_at.slice(0, 10))}
+                      {informacjaUi ? ` · ${informacjaUi.badgeLabel}` : ""}
+                    </p>
+                  </div>
+                  {informacjaUi ? (
+                    <VerificationPathBadge ui={informacjaUi} className="shrink-0 text-[10px]" />
+                  ) : null}
+                </div>
+                {normalizeSalesClientName(active.sales_client_name) ? (
+                  <MyOrderAssignedClient
+                    name={normalizeSalesClientName(active.sales_client_name)!}
+                    className="mt-2"
+                  />
+                ) : null}
+              </div>
+            )}
+
             <div
               className={
                 inModal
-                  ? "min-h-0 flex-1 space-y-5 overflow-y-auto overscroll-contain px-4 py-4 sm:px-6 sm:py-5 lg:overflow-y-auto"
-                  : "space-y-5 px-4 py-5 sm:px-6"
+                  ? cn(
+                      "min-h-0 flex-1 space-y-4 overflow-y-auto overscroll-contain lg:overflow-y-auto",
+                      panelSectionInsetClass
+                    )
+                  : cn("space-y-4", panelSectionInsetClass, "pb-2")
               }
             >
-              <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5 rounded-md border border-slate-100 bg-slate-50/70 px-3 py-2">
-                <span className="shrink-0 text-xs font-medium text-slate-600">
+              <details className="rounded-md border border-slate-100 bg-slate-50/70 open:shadow-sm">
+                <summary className="cursor-pointer list-none px-3 py-2 text-xs font-medium text-slate-600 marker:content-none [&::-webkit-details-marker]:hidden">
                   Skróty klawiszowe
-                </span>
-                <KeyboardShortcutsHint
-                  items={PROCUREMENT_PROSBA_KEYBOARD_HINTS.filter(
-                    (h) => h.keys[0] !== "+"
-                  )}
-                  compact
-                />
-              </div>
+                </summary>
+                <div className="border-t border-slate-100 px-3 pb-2.5 pt-2">
+                  <KeyboardShortcutsHint
+                    items={PROCUREMENT_PROSBA_KEYBOARD_HINTS.filter(
+                      (h) => h.keys[0] !== "+"
+                    )}
+                    compact
+                  />
+                </div>
+              </details>
 
               <ProsbaFormSection
+                domain="panel"
                 title="Co chcesz zgłosić?"
                 hint="Rodzaj prośby decyduje o wymaganych polach produktu."
               >
@@ -510,10 +473,16 @@ export function VerificationWorkspace({
               ) : null}
 
               <ProsbaFormSection
+                domain="panel"
                 title="Dla kogo i u kogo?"
                 hint="Handlowiec oraz dostawca przypisany do prośby."
               >
-                <div className="grid gap-4 lg:grid-cols-2">
+                <div
+                  className={cn(
+                    "grid gap-4",
+                    inModal ? "sm:grid-cols-2" : "grid-cols-1"
+                  )}
+                >
                   <Field label="Dostawca">
                     <SupplierPickerField
                       suppliers={suppliers}
@@ -524,7 +493,7 @@ export function VerificationWorkspace({
                       allowEmpty={false}
                       emptyLabel="Wybierz dostawcę"
                       showInlineFeedback={false}
-                      dropdownSize="comfortable"
+                      dropdownSize="default"
                       onSubiektFeedbackChange={setSupplierPickerFeedbacks}
                     />
                   </Field>
@@ -543,7 +512,7 @@ export function VerificationWorkspace({
                     </Select>
                   </Field>
                 </div>
-                {normalizeSalesClientName(active.sales_client_name) ? (
+                {inModal && normalizeSalesClientName(active.sales_client_name) ? (
                   <MyOrderAssignedClient
                     name={normalizeSalesClientName(active.sales_client_name)!}
                     className="mt-3"
@@ -552,6 +521,7 @@ export function VerificationWorkspace({
               </ProsbaFormSection>
 
               <ProsbaFormSection
+                domain="panel"
                 title="Produkt"
                 hint={
                   form.subiektTwId
@@ -562,13 +532,14 @@ export function VerificationWorkspace({
                       : "Podaj nazwę lub symbol oraz ilość."
                 }
               >
-                <div className="rounded-md border border-slate-200 bg-white p-4 shadow-sm">
+                <div className="rounded-md border border-slate-200 bg-white p-3 shadow-sm">
                   <SubiektProductLineFields
                     appearance="prosba"
                     requestKind={form.requestKind}
                     suppliers={supplierRefs}
                     delegateAlerts
-                    typeaheadSize="comfortable"
+                    compactControls
+                    typeaheadSize="default"
                     fieldValidation={fieldValidation}
                     onSupplierResolved={({ supplierId }) => {
                       setSupplierSubiektFeedback(null);
@@ -598,6 +569,7 @@ export function VerificationWorkspace({
                 requestKind={form.requestKind}
                 draft={draft}
                 forcedAssessment={assessment}
+                validationAttempted={validationAttempted}
                 subiektFeedbacks={[
                   configFeedback,
                   ...supplierPickerFeedbacks,
@@ -605,35 +577,35 @@ export function VerificationWorkspace({
                   productLineFeedback,
                 ]}
                 resolvingSupplier={resolvingSupplier}
-                formMessage={
-                  validationAttempted && assessment !== "complete"
-                    ? {
-                        text:
-                          form.requestKind === "zamowienie"
-                            ? "Uzupełnij dostawcę, opis produktu i ilość (np. 1)."
-                            : "Uzupełnij dostawcę oraz opis produktu.",
-                        tone: "error",
-                      }
-                    : null
-                }
               />
+            </div>
 
-              <div className="flex flex-wrap gap-2">
-                <Button
-                  disabled={pending || assessment !== "complete"}
-                  onClick={save}
-                >
-                  Zatwierdź i prześlij do panelu
-                </Button>
-                <Button
-                  variant="ghost"
-                  className="text-red-700"
-                  disabled={pending}
-                  onClick={() => cancel(active.id)}
-                >
-                  Anuluj prośbę
-                </Button>
-              </div>
+            <div
+              className={cn(
+                "flex flex-wrap items-center gap-2 border-t border-slate-200 bg-white px-3 py-3 sm:px-4 lg:px-5",
+                !inModal &&
+                  "sticky bottom-[calc(3.5rem+env(safe-area-inset-bottom,0px))] z-10 bg-white/95 shadow-[0_-4px_16px_-8px_rgba(15,23,42,0.12)] backdrop-blur-sm md:bottom-0"
+              )}
+            >
+              <Button
+                disabled={pending || assessment !== "complete"}
+                onClick={save}
+              >
+                Zatwierdź i prześlij do panelu
+              </Button>
+              <Button
+                variant="ghost"
+                className="text-red-700"
+                disabled={pending}
+                onClick={() => cancel(active.id)}
+              >
+                Anuluj prośbę
+              </Button>
+              {!inModal && assessment === "complete" ? (
+                <span className="ml-auto text-xs font-medium text-emerald-700">
+                  Gotowe do zatwierdzenia
+                </span>
+              ) : null}
             </div>
           </div>
         ) : null}
@@ -645,7 +617,7 @@ export function VerificationWorkspace({
       className={
         inModal
           ? "relative flex min-h-0 flex-1 flex-col"
-          : "relative mx-auto max-w-6xl"
+          : panelPageShellClass
       }
     >
       {pendingMessage ? (
@@ -666,6 +638,7 @@ export function VerificationWorkspace({
         <Card padding={false} className="overflow-hidden">
           <CardHeader
             inset
+            density="compact"
             leading={
               <SectionHeadingIcon tileClassName="bg-amber-100 text-amber-800">
                 <IconClipboardPen size={20} />

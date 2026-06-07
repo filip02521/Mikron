@@ -114,6 +114,7 @@ export function MyOrderArchiveSection({
     <Card padding={false} className="border-slate-200/80 bg-slate-50/50">
       <CardHeader
         inset
+        density="compact"
         title="Ostatnio zakończone"
         description={description}
         leading={
@@ -130,7 +131,7 @@ export function MyOrderArchiveSection({
                 return !v;
               });
             }}
-            className="min-h-10 cursor-pointer rounded-md border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50"
+            className="min-h-11 cursor-pointer rounded-md border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50 sm:min-h-8"
             aria-expanded={open}
           >
             {open ? "Zwiń" : "Pokaż"}

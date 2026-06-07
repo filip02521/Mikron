@@ -11,6 +11,7 @@ import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { cn } from "@/lib/cn";
+import { salesTypography } from "@/lib/ui/ontime-theme";
 
 function TeamCardActionLink({
   href,
@@ -41,19 +42,19 @@ function SalesPersonCardActions({
         <Button
           size="sm"
           variant={isSelf ? "primary" : "secondary"}
-          className="h-8 w-full px-2 text-xs"
+          className="h-11 w-full px-2 text-xs sm:h-8"
         >
           {isSelf ? "Moje zamówienia" : "Zobacz prośby"}
         </Button>
       </TeamCardActionLink>
       <TeamCardActionLink href={`/notatnik?dla=${rowId}`}>
-        <Button size="sm" variant="outline" className="h-8 w-full px-2 text-xs">
+        <Button size="sm" variant="outline" className="h-11 w-full px-2 text-xs sm:h-8">
           Notatnik
         </Button>
       </TeamCardActionLink>
       {!isSelf ? (
         <TeamCardActionLink href={`/prosba?dla=${rowId}`} className="col-span-2">
-          <Button size="sm" variant="outline" className="h-8 w-full px-2 text-xs">
+          <Button size="sm" variant="outline" className="h-11 w-full px-2 text-xs sm:h-8">
             Prośba w jego imieniu
           </Button>
         </TeamCardActionLink>
@@ -189,7 +190,7 @@ export function SalesTeamOverview({
   return (
     <div className="space-y-8">
       {totalPending > 0 ? (
-        <div className="flex flex-wrap items-center gap-2 rounded-md border border-amber-100 bg-amber-50/70 px-4 py-3 text-sm text-amber-950">
+        <div className="flex flex-wrap items-center gap-2 rounded-md border border-amber-100 bg-amber-50/70 px-3 py-2.5 text-xs text-amber-950">
           <span className="font-medium">
             Zespół: {totalPending} {totalPending === 1 ? "ZK czeka" : "ZK czeka"} na towar
           </span>
@@ -214,7 +215,7 @@ export function SalesTeamOverview({
           <section key={key} className="space-y-3">
             <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 pb-2">
               <div className="flex flex-wrap items-baseline gap-2">
-                <h2 className="text-sm font-semibold uppercase tracking-wide text-slate-700">
+                <h2 className={cn(salesTypography.sectionLabel, "normal-case tracking-normal text-slate-700")}>
                   {title}
                 </h2>
                 {sectionFollowUpDue > 0 ? (

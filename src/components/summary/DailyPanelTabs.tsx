@@ -7,8 +7,10 @@ import {
   type DailyPanelView,
 } from "@/lib/orders/daily-panel-view";
 import {
-  panelStickyTabsClass,
+  panelChromeInsetClass,
+  panelStickyChromeClass,
   panelTabIdleClass,
+  panelTypography,
   tabBadgeSelectedClass,
   tabSelectedClass,
 } from "@/lib/ui/ontime-theme";
@@ -23,6 +25,8 @@ export function DailyPanelTabs({
   exceptionsCount = 0,
   hideVerificationBadge = false,
   onChange,
+  footer,
+  afterFooter,
 }: {
   active: DailyPanelView;
   todayCount: number;
@@ -31,6 +35,9 @@ export function DailyPanelTabs({
   hideVerificationBadge?: boolean;
   exceptionsCount?: number;
   onChange: (view: DailyPanelView) => void;
+  footer?: React.ReactNode;
+  /** Pod stopką zakładek (np. pasek statusu Dziś) — scrolluje razem ze sticky chrome. */
+  afterFooter?: React.ReactNode;
 }) {
   const tabRefs = useRef<Partial<Record<DailyPanelView, HTMLButtonElement | null>>>({});
 
@@ -83,14 +90,15 @@ export function DailyPanelTabs({
     !hideVerificationBadge && verificationCount > 0;
 
   return (
-    <div
-      role="tablist"
-      aria-label="Widoki panelu dziennego"
-      className={cn(
-        panelStickyTabsClass,
-        "flex gap-2 overflow-x-auto px-4 py-2 [-ms-overflow-style:none] [scrollbar-width:none] sm:px-6 [&::-webkit-scrollbar]:hidden"
-      )}
-    >
+    <div className={panelStickyChromeClass}>
+      <div
+        role="tablist"
+        aria-label="Widoki panelu dziennego"
+        className={cn(
+          "flex gap-2 overflow-x-auto py-2 [-ms-overflow-style:none] [scrollbar-width:none] sm:py-2.5 [&::-webkit-scrollbar]:hidden",
+          panelChromeInsetClass
+        )}
+      >
       {TAB_ORDER.map((id) => {
         const selected = active === id;
         const count = counts[id];
@@ -110,7 +118,8 @@ export function DailyPanelTabs({
             onClick={() => onChange(id)}
             onKeyDown={(e) => handleKeyDown(e, id)}
             className={cn(
-              "flex min-h-9 shrink-0 items-center gap-2 rounded-md border px-3 py-1.5 text-sm font-medium transition",
+              "flex min-h-11 shrink-0 items-center gap-2 rounded-md border px-3 py-2 transition sm:min-h-9 sm:py-1.5",
+              panelTypography.tab,
               selected ? tabSelectedClass : panelTabIdleClass
             )}
           >
@@ -118,7 +127,8 @@ export function DailyPanelTabs({
             {count !== undefined && count > 0 ? (
               <span
                 className={cn(
-                  "rounded-full px-2 py-0.5 text-xs font-semibold tabular-nums",
+                  "rounded-full px-2 py-0.5 tabular-nums",
+                  panelTypography.tabBadge,
                   selected ? tabBadgeSelectedClass : "bg-slate-100 text-slate-700"
                 )}
               >
@@ -139,6 +149,9 @@ export function DailyPanelTabs({
           </button>
         );
       })}
+      </div>
+      {footer}
+      {afterFooter}
     </div>
   );
 }

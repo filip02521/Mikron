@@ -16,10 +16,12 @@ type Presented = {
 export function MojeOrdersShell({
   initial,
   salesPersonId,
+  showSalesSync = false,
   ...viewProps
 }: {
   initial: Presented;
   salesPersonId: string | null;
+  showSalesSync?: boolean;
 } & Omit<
   React.ComponentProps<typeof MojeOrdersView>,
   "zamowienia" | "informacje" | "productLineCount"
@@ -52,6 +54,7 @@ export function MojeOrdersShell({
   return (
     <MojeOrdersView
       {...viewProps}
+      showSalesSync={showSalesSync}
       zamowienia={presented.zamowienia}
       informacje={presented.informacje}
       productLineCount={presented.productLineCount}

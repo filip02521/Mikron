@@ -57,7 +57,7 @@ export function ScheduleSupplierActionBar({
           variant="primary"
           size="sm"
           disabled={pending}
-          className="h-7 w-full rounded-md text-xs font-semibold"
+          className="h-9 w-full rounded-md text-xs font-semibold sm:h-7"
           onClick={markOrdered}
         >
           Zamówione

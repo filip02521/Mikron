@@ -37,6 +37,7 @@ import {
   shouldAutoExpandOrderLinesForSearch,
 } from "@/lib/orders/my-order-search";
 import { cn } from "@/lib/cn";
+import type { OrderFormSupplierOption } from "@/lib/orders/order-form-suppliers";
 
 type UndoState = {
   orderIds: string[];
@@ -66,7 +67,7 @@ export function MyOrderShipmentList({
   showProgress: boolean;
   canAcknowledge: boolean;
   cardIdPrefix?: (rowId: string) => string;
-  suppliers?: { id: string; name: string }[];
+  suppliers?: OrderFormSupplierOption[];
   /** Wewnątrz wspólnej obwódki sekcji (bez drugiego rounded-md). */
   embedded?: boolean;
   /** Kolejna lista w tej samej sekcji — separator u góry. */

@@ -3,11 +3,10 @@ import { resolveSalesPersonForUser } from "@/lib/auth/sales-person";
 import { canAccessOperations, canAccessWarehouse, isAdmin, isSalesAccount } from "@/lib/auth-roles";
 import { canAccessOperationsNotepad, departmentsForRole } from "@/lib/operations/notepad-department";
 import {
-  countVerificationOrders,
   countDeliveryQueue,
   countInformacjaQueue,
 } from "@/lib/data/queries";
-import { countDailyPanelNavBadgeForNav } from "@/lib/orders/daily-panel-nav-badge";
+import { fetchOperationsDailyPanelMetrics } from "@/lib/orders/operations-daily-panel-version";
 import { fetchSalesShellMetrics } from "@/lib/orders/sales-shell-metrics";
 import { countNotepadNavBadge } from "@/lib/data/sales-notepad";
 import { countOpenSalesBugReports } from "@/lib/data/sales-bug-reports";
@@ -26,16 +25,15 @@ export async function AppShell({ children }: { children: React.ReactNode }) {
     adminBugReports?: number;
   } = { nowe: 0, weryfikacja: 0, realizacja: 0 };
   let salesActivityVersion: string | null = null;
+  let operationsDailyPanelVersion: string | null = null;
   let salesPersonName: string | null = null;
 
   if (role && canAccessOperations(role)) {
     try {
-      navBadges.weryfikacja = await countVerificationOrders();
-    } catch {
-      /* badge opcjonalny */
-    }
-    try {
-      navBadges.nowe = await countDailyPanelNavBadgeForNav();
+      const metrics = await fetchOperationsDailyPanelMetrics();
+      navBadges.weryfikacja = metrics.verificationCount;
+      navBadges.nowe = metrics.navBadge;
+      operationsDailyPanelVersion = metrics.version;
     } catch {
       /* badge opcjonalny */
     }
@@ -106,6 +104,7 @@ export async function AppShell({ children }: { children: React.ReactNode }) {
       showLoginLink={!role}
       navBadges={navBadges}
       salesActivityVersion={salesActivityVersion}
+      operationsDailyPanelVersion={operationsDailyPanelVersion}
       salesPersonId={session?.salesPersonId ?? null}
       mustChangePassword={session?.mustChangePassword ?? false}
       salesOnboardingCompletedAt={session?.salesOnboardingCompletedAt ?? null}

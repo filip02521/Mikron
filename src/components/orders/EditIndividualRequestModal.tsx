@@ -35,6 +35,7 @@ import { SupplierPickerField } from "@/components/orders/SupplierPickerField";
 import { KeyboardShortcutsHint } from "@/components/ui/KeyboardShortcutsHint";
 import { useActionPending } from "@/hooks/useActionPending";
 import { toAppSupplierRefs } from "@/lib/subiekt/match-supplier";
+import type { OrderFormSupplierOption } from "@/lib/orders/order-form-suppliers";
 import type { SubiektFeedback } from "@/lib/subiekt/feedback";
 import {
   handleProcurementProsbaKeyboardEvent,
@@ -64,7 +65,7 @@ export function EditIndividualRequestModal({
   mode: "procurement" | "sales";
   orderIds: string[];
   initial: EditIndividualRequestInitial | null;
-  suppliers: { id: string; name: string }[];
+  suppliers: OrderFormSupplierOption[];
   salesPeople?: { id: string; name: string }[];
   onSaved?: (message: string) => void;
 }) {
@@ -87,8 +88,16 @@ export function EditIndividualRequestModal({
     [suppliers]
   );
   const supplierRefs = useMemo(() => toAppSupplierRefs(suppliers), [suppliers]);
-  const [supplierResolveFeedback, setSupplierResolveFeedback] =
+  const [supplierSubiektFeedback, setSupplierSubiektFeedback] =
     useState<SubiektFeedback | null>(null);
+  const [supplierPickerFeedbacks, setSupplierPickerFeedbacks] = useState<SubiektFeedback[]>(
+    []
+  );
+  const [productLineFeedback, setProductLineFeedback] = useState<SubiektFeedback | null>(
+    null
+  );
+  const [configFeedback, setConfigFeedback] = useState<SubiektFeedback | null>(null);
+  const [resolvingSupplier, setResolvingSupplier] = useState(false);
 
   const salesSubmitPlan = useMemo(() => {
     if (mode !== "sales") return null;
@@ -119,6 +128,11 @@ export function EditIndividualRequestModal({
     );
     setValidationAttempted(false);
     setFormNotice(null);
+    setSupplierSubiektFeedback(null);
+    setSupplierPickerFeedbacks([]);
+    setProductLineFeedback(null);
+    setConfigFeedback(null);
+    setResolvingSupplier(false);
   }, [open, initial]);
 
   const saveRef = useRef<() => void>(() => {});
@@ -287,6 +301,8 @@ export function EditIndividualRequestModal({
                   allowEmpty
                   emptyLabel="— wybierz —"
                   dropdownSize="comfortable"
+                  showInlineFeedback={false}
+                  onSubiektFeedbackChange={setSupplierPickerFeedbacks}
                 />
               </Field>
               {salesPeople.length > 0 ? (
@@ -368,11 +384,12 @@ export function EditIndividualRequestModal({
               typeaheadSize="comfortable"
               validationAttempted={validationAttempted}
               suppliers={mode === "procurement" ? supplierRefs : undefined}
+              unifiedFeedback={mode === "procurement"}
               onSupplierResolved={
                 mode === "procurement"
                   ? ({ supplierId: id }) => {
                       setSupplierId(id);
-                      setSupplierResolveFeedback(null);
+                      setSupplierSubiektFeedback(null);
                     }
                   : undefined
               }
@@ -380,7 +397,16 @@ export function EditIndividualRequestModal({
                 mode === "procurement" ? () => setSupplierId("") : undefined
               }
               onSupplierResolveFeedback={
-                mode === "procurement" ? setSupplierResolveFeedback : undefined
+                mode === "procurement" ? setSupplierSubiektFeedback : undefined
+              }
+              onProductFeedbackChange={
+                mode === "procurement" ? setProductLineFeedback : undefined
+              }
+              onConfigFeedbackChange={
+                mode === "procurement" ? setConfigFeedback : undefined
+              }
+              onResolvingSupplierChange={
+                mode === "procurement" ? setResolvingSupplier : undefined
               }
             />
 
@@ -417,7 +443,14 @@ export function EditIndividualRequestModal({
                       })
                     : undefined
                 }
-                subiektFeedbacks={supplierResolveFeedback ? [supplierResolveFeedback] : []}
+                subiektFeedbacks={[
+                  configFeedback,
+                  ...supplierPickerFeedbacks,
+                  supplierSubiektFeedback,
+                  productLineFeedback,
+                ]}
+                resolvingSupplier={resolvingSupplier}
+                validationAttempted={validationAttempted}
                 formMessage={formNotice}
               />
             )}

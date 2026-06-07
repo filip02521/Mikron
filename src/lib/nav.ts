@@ -1,6 +1,7 @@
 import type { UserRole } from "@/types/database";
 import { canManageSalesTeam, isSalesAccount, isSalesManager } from "@/lib/auth-roles";
 import { salesManagerNavTeamDescriptions } from "@/lib/sales/team-ui";
+import { supplierHubPaths } from "@/lib/supplier-hub";
 
 export type NavItem = {
   href: string;
@@ -17,6 +18,18 @@ export type NavGroup = {
 };
 
 /**
+ * Sidebar „Administracja” (/admin) = hub system + konta + handlowcy.
+ * Inne ścieżki /admin/* (dostawcy, urlopy, zgłoszenia…) mają własne pozycje menu.
+ */
+function isAdminSidebarRootActive(pathname: string): boolean {
+  return (
+    pathname === "/admin" ||
+    pathname.startsWith("/admin/uzytkownicy") ||
+    pathname.startsWith("/admin/handlowcy")
+  );
+}
+
+/**
  * Czy punkt menu jest aktywny.
  * Nie podświetla krótszego href (np. /zespol), gdy pathname pasuje do dokładniejszego siblinga (/zespol/handlowcy).
  */
@@ -25,8 +38,12 @@ export function isNavItemActive(
   href: string,
   siblingHrefs: string[] = []
 ): boolean {
+  if (href === "/admin") {
+    return isAdminSidebarRootActive(pathname);
+  }
   if (pathname === href) return true;
   if (!pathname.startsWith(`${href}/`)) return false;
+  if (href.endsWith("/dostawcy") && pathname.includes("/nieaktywni")) return false;
   return !siblingHrefs.some(
     (other) =>
       other !== href &&
@@ -83,7 +100,7 @@ function operationsNavItems(badges: {
   ];
 }
 
-const supplierHubItems: NavItem[] = [
+const supplierHubItemsZakupy: NavItem[] = [
   {
     href: "/zakupy/dostawcy",
     label: "Karty dostawców",
@@ -100,6 +117,28 @@ const supplierHubItems: NavItem[] = [
     description: "Okresy niedostępności",
   },
 ];
+
+function supplierHubItemsForRole(role: UserRole): NavItem[] {
+  if (role !== "admin") return supplierHubItemsZakupy;
+  const paths = supplierHubPaths("admin");
+  return [
+    {
+      href: paths.cards,
+      label: "Karty dostawców",
+      description: "Kontakt, zapas, częstotliwość · usuwanie",
+    },
+    {
+      href: paths.schedule("POLSKA"),
+      label: "Terminy zamówień",
+      description: "Daty cyklu · PL / ZA / Import",
+    },
+    {
+      href: paths.vacations,
+      label: "Urlopy",
+      description: "Okresy niedostępności",
+    },
+  ];
+}
 
 const orderFormItems: NavItem[] = [
   {
@@ -160,7 +199,7 @@ export function navForRole(
   if (role === "admin") {
     return [
       { title: "Dzień roboczy", items: ops },
-      { title: "Dostawcy", items: supplierHubItems },
+      { title: "Dostawcy", items: supplierHubItemsForRole(role) },
       { title: "Formularze", items: orderFormItems },
       { title: "Administracja", items: adminNavItems(badges) },
     ];
@@ -169,7 +208,7 @@ export function navForRole(
   if (role === "zakupy") {
     return [
       { title: "Dzień roboczy", items: ops },
-      { title: "Dostawcy", items: supplierHubItems },
+      { title: "Dostawcy", items: supplierHubItemsForRole(role) },
       { title: "Formularze", items: orderFormItems },
     ];
   }
@@ -261,6 +300,15 @@ export const adminNav = navForRole("admin");
 export const salesNav = navForRole("sales");
 
 export function pageTitle(pathname: string): string {
+  if (pathname.includes("/nieaktywni")) return "Nieaktywni dostawcy";
+  if (pathname.startsWith("/admin/dostawcy") || pathname.startsWith("/zakupy/dostawcy")) {
+    return "Karty dostawców";
+  }
+  if (pathname.startsWith("/admin/urlopy") || pathname.startsWith("/zakupy/urlopy")) {
+    return "Urlopy";
+  }
+  if (pathname.startsWith("/lokalizacje/")) return "Terminy zamówień";
+
   for (const role of ["admin", "zakupy", "magazyn", "sales", "sales_manager"] as const) {
     for (const g of navForRole(role)) {
       const hrefs = g.items.map((i) => i.href);
@@ -269,7 +317,6 @@ export function pageTitle(pathname: string): string {
       if (hit) return hit.label;
     }
   }
-  if (pathname.startsWith("/lokalizacje/")) return "Terminy zamówień";
   if (pathname.startsWith("/notatnik")) return "Notatnik";
   if (pathname.startsWith("/notatki")) return "Notatki";
   if (pathname.startsWith("/zespol")) {
@@ -282,8 +329,6 @@ export function pageTitle(pathname: string): string {
     if (pathname.startsWith("/admin/zgloszenia")) return "Zgłoszenia handlowców";
     if (pathname.startsWith("/admin/handlowcy")) return "Handlowcy";
     if (pathname.startsWith("/admin/produkty")) return "Katalog produktów";
-    if (pathname.startsWith("/admin/dostawcy")) return "Karty dostawców";
-    if (pathname.startsWith("/admin/urlopy")) return "Urlopy";
     return "Administracja";
   }
   if (pathname === "/login") return "Logowanie";

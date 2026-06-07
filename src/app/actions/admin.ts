@@ -710,7 +710,7 @@ export async function actionUpsertSupplier(form: {
   const stockRaw = clampText(form.stock_raw, MAX_INTERVAL_RAW_LEN);
   const intervalParsed = parseInterval(intervalRaw);
   const stockParsed = parseInterval(stockRaw);
-  const payload = {
+  const payload: Record<string, unknown> = {
     name: clampText(form.name, MAX_SUPPLIER_NAME_LEN),
     location: form.location,
     pickup_mikran: form.pickup_mikran,
@@ -729,15 +729,21 @@ export async function actionUpsertSupplier(form: {
       interval_raw: intervalRaw,
       extra_info: extraInfo,
     }),
-    default_delivery_carrier: form.default_delivery_carrier?.trim()
-      ? parseWarehouseCarrier(form.default_delivery_carrier)
-      : null,
-    default_delivery_shipment_form: form.default_delivery_shipment_form?.trim()
-      ? parseWarehouseShipmentForm(form.default_delivery_shipment_form)
-      : null,
     is_active: form.is_active,
     updated_at: new Date().toISOString(),
   };
+
+  // Pola magazynowe pomijamy przy częściowym zapisie (np. modal z panelu dziennego).
+  if (form.default_delivery_carrier !== undefined) {
+    payload.default_delivery_carrier = form.default_delivery_carrier?.trim()
+      ? parseWarehouseCarrier(form.default_delivery_carrier)
+      : null;
+  }
+  if (form.default_delivery_shipment_form !== undefined) {
+    payload.default_delivery_shipment_form = form.default_delivery_shipment_form?.trim()
+      ? parseWarehouseShipmentForm(form.default_delivery_shipment_form)
+      : null;
+  }
 
   if (form.id) {
     const { error } = await supabase.from("suppliers").update(payload).eq("id", form.id);

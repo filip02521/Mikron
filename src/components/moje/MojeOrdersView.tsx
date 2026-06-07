@@ -17,7 +17,7 @@ import { useMojeOrdersSearch } from "@/components/moje/useMojeOrdersSearch";
 import { sortMyOrderRows, summarizeMyOrdersInbox } from "@/lib/orders/my-order-sales-ui";
 import { formatProsbaCount } from "@/lib/orders/my-order-plural";
 import { INFORMACJA_FLOW_MY_ORDERS_HINT } from "@/lib/orders/informacja-flow-copy";
-import { Alert } from "@/components/ui/Alert";
+import { cn } from "@/lib/cn";
 import { MyOrderArchiveSection } from "@/components/moje/MyOrderArchiveSection";
 import { MyOrderShipmentList } from "@/components/moje/MyOrderShipmentList";
 import { MyOrdersInboxSummary } from "@/components/moje/MyOrdersInboxSummary";
@@ -25,6 +25,7 @@ import { MojeStickyPickupBar } from "@/components/moje/MojeStickyPickupBar";
 import { MojeOrdersHelp } from "@/components/moje/MojeOrdersGuide";
 import { MojeOrdersEmptyGuide } from "@/components/moje/MojeOrdersEmptyGuide";
 import { Card, CardHeader } from "@/components/ui/Card";
+import { SectionListLabel } from "@/components/ui/SectionListLabel";
 import { EmptyState } from "@/components/ui/EmptyState";
 import {
   IconClipboardList,
@@ -33,8 +34,10 @@ import {
   mojeSectionIconTileClass,
 } from "@/components/icons/StrokeIcons";
 import { SectionHeadingIcon } from "@/components/icons/SectionHeadingIcon";
-import { brandLinkSubtleClass, sectionIconTileBrandClass } from "@/lib/ui/ontime-theme";
+import { brandLinkSubtleClass, salesTypography, sectionIconTileBrandClass } from "@/lib/ui/ontime-theme";
+import type { OrderFormSupplierOption } from "@/lib/orders/order-form-suppliers";
 import { mojeShipmentSectionShellClass } from "@/lib/ui/moje-shipment-row-styles";
+import { MojeOrdersSyncStrip } from "@/components/moje/MojeOrdersSyncStrip";
 import { SubiektStatusBar } from "@/components/subiekt/SubiektStatusBar";
 import type { SubiektAvailability } from "@/lib/subiekt/availability";
 
@@ -74,20 +77,20 @@ function MojeOrdersOverviewStats({
 }) {
   const narrowed = activeFilter || searchActive;
   return (
-    <div className="flex flex-wrap items-center gap-x-4 gap-y-2 border-b border-slate-100 bg-slate-50/60 px-4 py-3 sm:px-6">
+    <div className="flex flex-wrap items-center gap-x-4 gap-y-2 border-b border-slate-100 bg-slate-50/60 px-3 py-2.5 sm:px-4 lg:px-6">
       {narrowed ? (
-        <p className="text-xs leading-relaxed text-slate-600" aria-live="polite">
+        <p className={cn(salesTypography.chrome, "leading-relaxed")} aria-live="polite">
           Pokazano{" "}
-          <span className="font-semibold tabular-nums text-slate-900">{filteredCount}</span>
+          <span className={salesTypography.statValue}>{filteredCount}</span>
           {" z "}
-          <span className="font-semibold tabular-nums text-slate-900">{shipmentCount}</span>
+          <span className={salesTypography.statValue}>{shipmentCount}</span>
           {activeFilter ? (
-            <span className="ml-2 inline-flex rounded-full bg-indigo-100 px-2 py-0.5 text-[10px] font-semibold text-indigo-900">
+            <span className="ml-2 inline-flex rounded-full bg-indigo-100 px-2 py-0.5 text-[11px] font-semibold text-indigo-900">
               filtr
             </span>
           ) : null}
           {searchActive ? (
-            <span className="ml-2 inline-flex rounded-full bg-sky-100 px-2 py-0.5 text-[10px] font-semibold text-sky-900">
+            <span className="ml-2 inline-flex rounded-full bg-sky-100 px-2 py-0.5 text-[11px] font-semibold text-sky-900">
               szukaj
             </span>
           ) : null}
@@ -100,15 +103,13 @@ function MojeOrdersOverviewStats({
       ) : (
         <div className="flex flex-wrap items-center gap-3">
           <div className="inline-flex items-baseline gap-1.5">
-            <span className="text-base font-semibold tabular-nums text-slate-900">
-              {shipmentCount}
-            </span>
-            <span className="text-xs text-slate-500">{prosbaUnitLabel(shipmentCount)}</span>
+            <span className={salesTypography.statValue}>{shipmentCount}</span>
+            <span className={salesTypography.statLabel}>{prosbaUnitLabel(shipmentCount)}</span>
           </div>
           <span className="hidden h-3.5 w-px bg-slate-200 sm:block" aria-hidden />
           <div className="inline-flex items-baseline gap-1.5">
-            <span className="text-base font-semibold tabular-nums text-slate-900">{lineCount}</span>
-            <span className="text-xs text-slate-500">{lineUnitLabel(lineCount)}</span>
+            <span className={salesTypography.statValue}>{lineCount}</span>
+            <span className={salesTypography.statLabel}>{lineUnitLabel(lineCount)}</span>
           </div>
         </div>
       )}
@@ -116,7 +117,7 @@ function MojeOrdersOverviewStats({
   );
 }
 
-function ListSectionLabel({
+function MojeSectionListLabel({
   title,
   hint,
   count,
@@ -126,57 +127,19 @@ function ListSectionLabel({
   title: string;
   hint?: string;
   count?: number;
-  accent?: "emerald";
+  accent?: "emerald" | "neutral";
   icon: MojeSectionIconKind;
 }) {
   return (
-    <div
-      className={
-        accent === "emerald"
-          ? "flex items-start justify-between gap-2 border-b border-emerald-100 bg-emerald-50/60 px-3 py-2.5 sm:px-4"
-          : "flex items-start justify-between gap-2 border-b border-slate-100 bg-white px-3 py-2.5 sm:px-4"
-      }
-    >
-      <div className="flex min-w-0 items-start gap-2.5">
-        <SectionHeadingIcon tileClassName={mojeSectionIconTileClass(icon)}>
-          <MojeSectionIcon kind={icon} size={17} />
-        </SectionHeadingIcon>
-        <div className="min-w-0">
-        <h3
-          id={`moje-section-${icon}`}
-          className={
-            accent === "emerald"
-              ? "text-xs font-semibold uppercase tracking-wide text-emerald-900"
-              : "text-xs font-semibold uppercase tracking-wide text-slate-600"
-          }
-        >
-          {title}
-        </h3>
-        {hint ? (
-          <p
-            className={
-              accent === "emerald"
-                ? "mt-1 text-xs leading-relaxed text-emerald-800/90"
-                : "mt-1 text-xs leading-relaxed text-slate-500"
-            }
-          >
-            {hint}
-          </p>
-        ) : null}
-        </div>
-      </div>
-      {count !== undefined && count > 0 ? (
-        <span
-          className={
-            accent === "emerald"
-              ? "shrink-0 rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-semibold tabular-nums text-emerald-900"
-              : "shrink-0 rounded-full bg-slate-100 px-2 py-0.5 text-xs font-semibold tabular-nums text-slate-600"
-          }
-        >
-          {count}
-        </span>
-      ) : null}
-    </div>
+    <SectionListLabel
+      id={`moje-section-${icon}`}
+      title={title}
+      hint={hint}
+      count={count}
+      accent={accent ?? "neutral"}
+      icon={<MojeSectionIcon kind={icon} size={17} />}
+      tileClassName={mojeSectionIconTileClass(icon)}
+    />
   );
 }
 
@@ -196,7 +159,7 @@ function MyOrderShipmentBlock({
   listKind: "zamowienie" | "informacja";
   showProgress: boolean;
   canAcknowledge: boolean;
-  suppliers: { id: string; name: string }[];
+  suppliers: OrderFormSupplierOption[];
   searchQuery?: string | null;
   embedded?: boolean;
   continuation?: boolean;
@@ -243,6 +206,7 @@ function MojeOrdersViewContent({
   initialClientZkNumber,
   syncSearchUrl = true,
   tourPreview = false,
+  showSalesSync = false,
 }: {
   zamowienia: MyOrderRow[];
   informacje: MyOrderRow[];
@@ -251,7 +215,7 @@ function MojeOrdersViewContent({
   productLineCount?: number;
   canAcknowledge?: boolean;
   showProsbaCta?: boolean;
-  suppliers?: { id: string; name: string }[];
+  suppliers?: OrderFormSupplierOption[];
   pageTitle?: string;
   pageDescription?: string;
   headerActions?: React.ReactNode;
@@ -265,6 +229,7 @@ function MojeOrdersViewContent({
   initialClientZkNumber?: string | null;
   syncSearchUrl?: boolean;
   tourPreview?: boolean;
+  showSalesSync?: boolean;
 }) {
   const [activeFilter, setActiveFilter] = useState<MyOrderInboxFilter | null>(null);
   const clientKhFilter =
@@ -515,7 +480,9 @@ function MojeOrdersViewContent({
         <Card padding={false} className="overflow-hidden">
           <CardHeader
             inset
+            density="compact"
             title={pageTitle}
+            description={cardDescription}
             leading={
               <SectionHeadingIcon tileClassName={sectionIconTileBrandClass}>
                 <IconClipboardList size={20} />
@@ -523,6 +490,7 @@ function MojeOrdersViewContent({
             }
             action={cardAction}
           />
+          {!tourPreview && showSalesSync ? <MojeOrdersSyncStrip /> : null}
           {subiektAvailability ? (
             <SubiektStatusBar initial={subiektAvailability} embedded />
           ) : null}
@@ -573,6 +541,7 @@ function MojeOrdersViewContent({
       <Card padding={false}>
         <CardHeader
           inset
+          density="compact"
           title={pageTitle}
           description={cardDescription}
           leading={
@@ -582,6 +551,8 @@ function MojeOrdersViewContent({
           }
           action={cardAction}
         />
+
+        {!tourPreview && showSalesSync ? <MojeOrdersSyncStrip /> : null}
 
         <MojeOrdersOverviewStats
           shipmentCount={shipmentCount}
@@ -663,10 +634,10 @@ function MojeOrdersViewContent({
           </p>
         ) : null}
 
-        <div className="space-y-4 p-3 sm:p-4">
+        <div className="space-y-3 p-3 sm:p-4">
         {splitByAction && actionCount > 0 ? (
           <div className={mojeShipmentSectionShellClass} aria-labelledby="moje-section-action">
-            <ListSectionLabel
+            <MojeSectionListLabel
               title="Do potwierdzenia"
               hint="Strzałka — produkty · zielony przycisk — potwierdzenie"
               count={actionCount}
@@ -694,7 +665,7 @@ function MojeOrdersViewContent({
         {zamowieniaListRows.length > 0 ? (
           <div className={mojeShipmentSectionShellClass}>
             {showKindSectionLabels ? (
-              <ListSectionLabel
+              <MojeSectionListLabel
                 title={
                   activeFilter ? "Zamówienia u dostawcy" : "Zamówiliśmy u dostawcy"
                 }
@@ -720,7 +691,7 @@ function MojeOrdersViewContent({
         {informacjeListRows.length > 0 ? (
           <div className={mojeShipmentSectionShellClass}>
             {showKindSectionLabels ? (
-              <ListSectionLabel
+              <MojeSectionListLabel
                 title={
                   activeFilter ? "Informacje o dostępności" : "Tylko sprawdzamy dostępność"
                 }
@@ -762,8 +733,8 @@ export function MojeOrdersView(
       fallback={
         <div className="space-y-5">
           <Card padding={false} className="overflow-hidden">
-            <CardHeader inset title={props.pageTitle ?? "Moje zamówienia"} />
-            <div className="border-b border-slate-100 px-3 py-3 sm:px-4">
+            <CardHeader inset density="compact" title={props.pageTitle ?? "Moje zamówienia"} />
+            <div className="border-b border-slate-100 px-3 py-2.5 sm:px-4 lg:px-6">
               <div className="h-11 animate-pulse rounded-md bg-slate-100" />
             </div>
             <div className="px-4 py-12 text-center text-sm text-slate-500">Ładowanie…</div>

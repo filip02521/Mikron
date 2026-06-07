@@ -22,6 +22,7 @@ import { InformacjaFlowPicker } from "@/components/orders/InformacjaFlowPicker";
 import {
   DEFAULT_INFORMACJA_FLOW_PATH,
   INFORMACJA_FLOW_PICKER_SECTION,
+  INFORMACJA_FLOW_PICKER_SECTION_DAILY,
   informacjaProductsFormHint,
   informacjaSalesFooterNote,
 } from "@/lib/orders/informacja-flow-ui";
@@ -38,6 +39,7 @@ import { RequestProductLinesEditor } from "@/components/orders/RequestProductLin
 import { ActionLoadingOverlay } from "@/components/ui/ActionLoadingOverlay";
 import { newProductLine, appendProductLine } from "@/components/orders/request-product-lines";
 import type { SubiektFeedback } from "@/lib/subiekt/feedback";
+import type { OrderFormSupplierOption } from "@/lib/orders/order-form-suppliers";
 import { toAppSupplierRefs } from "@/lib/subiekt/match-supplier";
 import { KeyboardShortcutsHint } from "@/components/ui/KeyboardShortcutsHint";
 import {
@@ -161,7 +163,7 @@ export function OrderFormClient({
   delegatePeople,
   managerSelfId,
 }: {
-  suppliers: { id: string; name: string; stats_mode?: StatsMode; subiekt_kh_id?: number | null }[];
+  suppliers: OrderFormSupplierOption[];
   salesPeople: { id: string; name: string }[];
   statsBySupplierId?: Record<string, DeliveryStats>;
   /** Zalogowany handlowiec — bez wyboru „dla kogo”. */
@@ -734,6 +736,7 @@ export function OrderFormClient({
           <div className={cn(tourDemo && "pointer-events-none select-none")}>
           <CardHeader
             inset
+            density="compact"
             leading={
               <SectionHeadingIcon tileClassName="bg-indigo-100 text-indigo-800">
                 <IconPlusCircle size={20} />
@@ -760,14 +763,14 @@ export function OrderFormClient({
             />
           ) : null}
 
-          <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5 border-b border-slate-100 bg-slate-50/60 px-4 py-2.5 sm:px-6">
+          <div className="flex flex-wrap items-center gap-x-3 gap-y-1 border-b border-slate-100 bg-slate-50/60 px-3 py-2 sm:px-4">
             <span className="shrink-0 text-xs font-medium text-slate-600">Skróty klawiszowe</span>
             <KeyboardShortcutsHint items={[...SALES_PROSBA_KEYBOARD_HINTS]} compact />
           </div>
 
           <div
             className={cn(
-              "space-y-8 px-4 py-6 sm:px-6",
+              "space-y-5 px-3 py-4 sm:px-4",
               tourDemo && "pointer-events-none select-none"
             )}
           >
@@ -868,7 +871,7 @@ export function OrderFormClient({
             </ProsbaFormSection>
           </div>
 
-          <div className="flex flex-col gap-3 border-t border-slate-100 bg-slate-50/90 px-4 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-6">
+          <div className="flex flex-col gap-2.5 border-t border-slate-100 bg-slate-50/90 px-3 py-3 sm:flex-row sm:items-center sm:justify-between sm:px-4">
             <p className="text-xs leading-relaxed text-slate-500">
               Po wysłaniu sprawdź status w{" "}
               <Link
@@ -942,13 +945,14 @@ export function OrderFormClient({
 
           {requestKind === "informacja" ? (
             <ProsbaFormSection
-              title={INFORMACJA_FLOW_PICKER_SECTION.title}
-              hint={INFORMACJA_FLOW_PICKER_SECTION.hint}
+              title={INFORMACJA_FLOW_PICKER_SECTION_DAILY.title}
+              hint={INFORMACJA_FLOW_PICKER_SECTION_DAILY.hint}
             >
               <InformacjaFlowPicker
                 path={informacjaPath}
                 onChange={setInformacjaPath}
                 disabled={pending}
+                includeViaPanel
               />
             </ProsbaFormSection>
           ) : null}
@@ -1079,6 +1083,7 @@ export function OrderFormClient({
               onProductFeedbackChange={setProductLineFeedback}
               onConfigFeedbackChange={setConfigFeedback}
               onResolvingSupplierChange={setResolvingSupplier}
+              validationAttempted={validationAttempted}
             />
 
             <RequestFormStatusPanel
@@ -1090,6 +1095,8 @@ export function OrderFormClient({
                 product: group.find((r) => r.product.trim())?.product,
                 quantity: group.find((r) => r.quantity.trim())?.quantity,
                 requestKind,
+                informacjaQueueViaDailyPanel: informacjaFlags.informacjaQueueViaDailyPanel,
+                informacjaStockOutReorder: informacjaFlags.informacjaStockOutReorder,
               }}
               forcedAssessment={groupCompletenessAssessment(group, requestKind)}
               subiektFeedbacks={[
@@ -1126,8 +1133,13 @@ export function OrderFormClient({
       <Card padding={false}>
         <div className="flex flex-col gap-3 bg-slate-50/90 px-4 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-6">
           <p className="text-xs leading-relaxed text-slate-500">
-            Zamówienia trafiają do panelu dziennego po zapisie kompletnych danych (dostawca, produkt z
-            Subiekta lub ręcznie, ilość).
+            {requestKind === "informacja"
+              ? informacjaFlags.informacjaStockOutReorder
+                ? "Sygnały „brak na stanie” trafią do Prośb handlowców w panelu Dziś."
+                : informacjaFlags.informacjaQueueViaDailyPanel
+                  ? "Informacja przez panel Dziś — najpierw Główne/Uzupełniające, potem magazyn."
+                  : "Informacja o dostępności trafi od razu do kolejki magazynu."
+              : "Zamówienia trafiają do panelu dziennego po zapisie kompletnych danych (dostawca, produkt z Subiekta lub ręcznie, ilość)."}
           </p>
           <div className="flex flex-wrap gap-2">
             {!singleGroup ? (

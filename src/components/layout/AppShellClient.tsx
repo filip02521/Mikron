@@ -8,13 +8,18 @@ import {
   SalesUpdatesBanner,
   SalesUpdatesProvider,
 } from "@/components/sales/SalesUpdatesContext";
+import {
+  OperationsUpdatesBanner,
+  OperationsUpdatesProvider,
+} from "@/components/operations/OperationsUpdatesContext";
 import { SalesOnboardingGate } from "@/components/sales/SalesOnboardingGate";
+import { AppRoleProvider } from "@/components/layout/AppRoleContext";
 import { useSalesOnboardingOptional } from "@/components/sales/SalesOnboardingContext";
 import { SalesOnboardingTourBanner, SalesOnboardingContentGuard } from "@/components/sales/SalesOnboardingTourBanner";
 import { SalesBugReportTrigger } from "@/components/sales/SalesBugReportTrigger";
 import { cn } from "@/lib/cn";
 import { salesMobileChromeRoot } from "@/lib/ui/sales-mobile-chrome";
-import { appMainClass, appShellClass } from "@/lib/ui/ontime-theme";
+import { appMainClass, appMainInsetClass, appShellClass } from "@/lib/ui/ontime-theme";
 import type { UserRole } from "@/types/database";
 import { canAccessOperations, isSalesAccount } from "@/lib/auth-roles";
 import { MobileOperationsNav } from "./MobileOperationsNav";
@@ -40,7 +45,7 @@ function AppShellMain({
         coachPadding
       )}
     >
-      <div className="mx-auto max-w-7xl px-3 py-5 sm:px-6 sm:py-8 lg:px-8">
+      <div className={appMainInsetClass}>
         <SalesOnboardingTourBanner />
         <SalesOnboardingContentGuard>
           {children}
@@ -57,6 +62,7 @@ export function AppShellClient({
   showLoginLink,
   navBadges = { nowe: 0, weryfikacja: 0, realizacja: 0 },
   salesActivityVersion = null,
+  operationsDailyPanelVersion = null,
   salesPersonId = null,
   mustChangePassword = false,
   salesOnboardingCompletedAt = null,
@@ -76,6 +82,7 @@ export function AppShellClient({
     adminBugReports?: number;
   };
   salesActivityVersion?: string | null;
+  operationsDailyPanelVersion?: string | null;
   salesPersonId?: string | null;
   mustChangePassword?: boolean;
   salesOnboardingCompletedAt?: string | null;
@@ -94,6 +101,11 @@ export function AppShellClient({
   const mobileChrome = salesLive || operationsLive;
 
   return (
+    <AppRoleProvider role={role}>
+    <OperationsUpdatesProvider
+      enabled={operationsLive && !salesLive}
+      initialVersion={operationsDailyPanelVersion}
+    >
     <SalesUpdatesProvider enabled={salesLive} initialVersion={salesActivityVersion}>
       <SalesOnboardingGate
         role={role}
@@ -129,6 +141,7 @@ export function AppShellClient({
         ) : null}
         <AppShellMain mobileChrome={mobileChrome}>
           {salesLive ? <SalesUpdatesBanner /> : null}
+          {operationsLive && !salesLive ? <OperationsUpdatesBanner /> : null}
           {children}
         </AppShellMain>
         {salesLive ? <MobileSalesNav navBadges={navBadges} role={role ?? "sales"} /> : null}
@@ -139,5 +152,7 @@ export function AppShellClient({
       </div>
       </SalesOnboardingGate>
     </SalesUpdatesProvider>
+    </OperationsUpdatesProvider>
+    </AppRoleProvider>
   );
 }

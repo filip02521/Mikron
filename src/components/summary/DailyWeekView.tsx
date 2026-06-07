@@ -4,7 +4,11 @@ import { useState } from "react";
 import type { SummaryWorkspaceData } from "@/lib/orders/summary-workspace";
 import { WeekPlanner } from "@/components/summary/WeekPlanner";
 import { ProsbaFormSection } from "@/components/orders/ProsbaFormSection";
-import { panelDashedActionClass, panelTextLinkClass } from "@/lib/ui/ontime-theme";
+import {
+  panelDashedActionClass,
+  panelSectionInsetClass,
+  panelTextLinkClass,
+} from "@/lib/ui/ontime-theme";
 import { cn } from "@/lib/cn";
 import type { DailyPanelRunFn } from "@/components/summary/useDailyPanelRunner";
 
@@ -37,7 +41,7 @@ export function DailyWeekView({
       id="panel-view-tydzien"
       role="tabpanel"
       aria-labelledby="panel-tab-tydzien"
-      className="space-y-3 px-4 py-4 pb-5 sm:px-6"
+      className={cn("space-y-3", panelSectionInsetClass)}
     >
         {onDemandCount > 0 && !thisWeekEmpty ? (
           <ProsbaFormSection
@@ -59,6 +63,7 @@ export function DailyWeekView({
           title="Ten tydzień"
           description="Poniedziałek–piątek · zamówione z wyprzedzeniem lub szczegóły dostawcy"
           days={workspace.thisWeekDays}
+          density="compact"
           onOpenSupplier={onOpenSupplier}
           onVacation={onVacation}
           onEdit={onEdit}
@@ -78,6 +83,7 @@ export function DailyWeekView({
               title="Następny tydzień"
               description="Ten sam układ co bieżący tydzień"
               days={workspace.nextWeekDays}
+              density="compact"
               onOpenSupplier={onOpenSupplier}
               onVacation={onVacation}
               onEdit={onEdit}
@@ -97,7 +103,7 @@ export function DailyWeekView({
           <button
             type="button"
             onClick={() => setShowNextWeek(true)}
-            className={panelDashedActionClass}
+            className={cn(panelDashedActionClass, "min-h-11 w-full sm:min-h-10 sm:w-auto")}
           >
             Pokaż następny tydzień
           </button>

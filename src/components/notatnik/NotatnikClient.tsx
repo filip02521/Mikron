@@ -10,7 +10,7 @@ import { Badge } from "@/components/ui/Badge";
 import { UndoToast } from "@/components/ui/UndoToast";
 import { IconNotepad, IconPackageCheck, IconArchive, IconClipboardPen } from "@/components/icons/StrokeIcons";
 import { SectionHeadingIcon } from "@/components/icons/SectionHeadingIcon";
-import { sectionIconTileBrandClass } from "@/lib/ui/ontime-theme";
+import { sectionIconTileBrandClass, salesChromeInsetClass } from "@/lib/ui/ontime-theme";
 import { uniqueById } from "@/lib/sales/notepad-list";
 import { sortZkWatches } from "@/lib/sales/zk-watch-sort";
 import { watchNeedsNotepadAttention } from "@/lib/sales/notepad-follow-up";
@@ -35,8 +35,10 @@ import { ArchivedNotesSection } from "./ArchivedNotesSection";
 import { TodayTasksSection } from "./TodayTasksSection";
 import { NotatnikPanel } from "./NotatnikPanel";
 import { NotatnikCollapsible } from "./NotatnikCollapsible";
-import { NOTATNIK_ZK_LIST_CLASS } from "./notatnik-layout";
+import { NOTATNIK_PAGE_CLASS, NOTATNIK_ZK_LIST_CLASS } from "./notatnik-layout";
+import { ManagerPreviewBanner } from "@/components/sales/ManagerPreviewBanner";
 import { mojeShipmentSectionShellClass } from "@/lib/ui/moje-shipment-row-styles";
+import { cn } from "@/lib/cn";
 
 type NotatnikUndoState =
   | { type: "archive"; note: SalesNote }
@@ -84,12 +86,18 @@ export function NotatnikClient({
   pageTitle,
   pageDescription,
   subiektAvailability,
+  linkError = null,
+  loadError = null,
+  teamPreview = null,
 }: {
   initial: SalesNotepadData;
   readOnly?: boolean;
   pageTitle: string;
   pageDescription?: string;
   subiektAvailability?: SubiektAvailability;
+  linkError?: string | null;
+  loadError?: string | null;
+  teamPreview?: { salesPersonId: string; salesPersonName: string } | null;
 }) {
   const router = useRouter();
   const tourDemo = useSalesOnboardingDemo("notatnik");
@@ -310,10 +318,11 @@ export function NotatnikClient({
         : "";
 
   return (
-    <div className="pb-8">
+    <div className={NOTATNIK_PAGE_CLASS}>
       <Card padding={false} className="overflow-hidden">
         <CardHeader
           inset
+          density="compact"
           title={pageTitle}
           description={pageDescription ?? NOTATNIK_INTRO}
           leading={
@@ -322,6 +331,28 @@ export function NotatnikClient({
             </SectionHeadingIcon>
           }
         />
+
+        {teamPreview ? (
+          <ManagerPreviewBanner
+            salesPersonId={teamPreview.salesPersonId}
+            salesPersonName={teamPreview.salesPersonName}
+            notatnikPreview
+            className={cn(salesChromeInsetClass, "mt-3 text-xs leading-relaxed")}
+          />
+        ) : null}
+
+        {linkError ? (
+          <Alert tone="error" className={cn(salesChromeInsetClass, "mt-3")}>
+            {linkError}
+          </Alert>
+        ) : null}
+
+        {loadError ? (
+          <Alert tone="error" className={cn(salesChromeInsetClass, "mt-3")}>
+            {loadError}
+          </Alert>
+        ) : null}
+
         {subiektForNotepad ? (
           <SubiektStatusBar
             initial={subiektForNotepad}
@@ -346,7 +377,7 @@ export function NotatnikClient({
           embedded
         />
 
-        <div className="space-y-4 p-3 sm:p-4">
+        <div className="space-y-3 p-3 sm:p-4">
           <NotatnikPanel
             title="Notatki"
             description="Własne przypomnienia i krótkie wpisy — nie trafiają do działu zakupów."

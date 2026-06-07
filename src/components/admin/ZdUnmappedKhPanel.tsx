@@ -7,6 +7,7 @@ import type { ZdUnmappedKhReport } from "@/lib/subiekt/zd-unmapped-kh";
 import { kontrahentDisplayName } from "@/lib/subiekt/resolve-kontrahent-labels";
 import { Button } from "@/components/ui/Button";
 import { cn } from "@/lib/cn";
+import { supplierCardsHref } from "@/lib/supplier-hub";
 
 function reasonLabel(
   row: ZdUnmappedKhReport["rows"][number]
@@ -73,7 +74,10 @@ export function ZdUnmappedKhPanel({
           <p className="mt-0.5 text-xs leading-relaxed text-slate-600">
             Nazwy z Subiekta. System może zaproponować dostawcę po podobnej nazwie (np. zmiana sp.
             k. → sp. z o.o.). Po zaakceptowaniu uruchom ponowne indeksowanie ZD. Powiązania ręczne:{" "}
-            <Link href="/admin/dostawcy" className="font-medium text-indigo-700 underline">
+            <Link
+              href={supplierCardsHref("admin", { subiekt: "unlinked" })}
+              className="font-medium text-indigo-700 underline"
+            >
               Dostawcy
             </Link>
             .

@@ -2,7 +2,7 @@ import {
   fetchDeliveryStats,
   fetchIndividualOrders,
   fetchSalesAcknowledgedOrders,
-  fetchSuppliersWithSchedules,
+  fetchSuppliersForRequestForms,
 } from "@/lib/data/queries";
 import {
   ARCHIVE_EXPANDED_GROUP_LIMIT,
@@ -21,8 +21,8 @@ import Link from "next/link";
 import { Button } from "@/components/ui/Button";
 import { Alert } from "@/components/ui/Alert";
 import { MojeOrdersShell } from "@/components/moje/MojeOrdersShell";
-import { MojePageSalesToolbar } from "@/components/moje/MojePageSalesToolbar";
-import { pageToolbarSizingClass } from "@/lib/ui/ontime-theme";
+import type { OrderFormSupplierOption } from "@/lib/orders/order-form-suppliers";
+import { salesPageShellClass, pageToolbarSizingClass } from "@/lib/ui/ontime-theme";
 import { SalesAccountLinkRequired } from "@/components/sales/SalesAccountLinkRequired";
 import { ManagerPreviewBanner } from "@/components/sales/ManagerPreviewBanner";
 import type { DeliveryStats, IndividualOrder } from "@/types/database";
@@ -109,7 +109,7 @@ export default async function MojePage({
 
   let orders: IndividualOrder[] = [];
   let stats: DeliveryStats[] = [];
-  let suppliers: { id: string; name: string }[] = [];
+  let suppliers: OrderFormSupplierOption[] = [];
   let archiwumRecent: ReturnType<typeof presentArchivedMyOrders> = [];
   let archiwumExtended: ReturnType<typeof presentArchivedMyOrders> = [];
   let loadError: string | null = null;
@@ -131,11 +131,11 @@ export default async function MojePage({
               limit: 200,
             })
           : Promise.resolve([]),
-        fetchSuppliersWithSchedules(),
+        fetchSuppliersForRequestForms(),
       ]);
       orders = orderRows;
       stats = statsRows as DeliveryStats[];
-      suppliers = supplierRows.map((s) => ({ id: s.id, name: s.name }));
+      suppliers = supplierRows;
 
       // Auto-uzupełnianie dostawcy w tle na podstawie własnej bazy mapowań (product_supplier_links).
       // Robimy to po pobraniu, żeby pierwszy render był szybki.
@@ -170,11 +170,11 @@ export default async function MojePage({
       const [orderRows, statsRows, supplierRows] = await Promise.all([
         fetchIndividualOrders(salesPersonId ? { salesPersonId } : undefined),
         fetchDeliveryStats(),
-        fetchSuppliersWithSchedules(),
+        fetchSuppliersForRequestForms(),
       ]);
       orders = orderRows;
       stats = statsRows as DeliveryStats[];
-      suppliers = supplierRows.map((s) => ({ id: s.id, name: s.name }));
+      suppliers = supplierRows;
 
       const missing = orderRows.filter((o) => !o.supplier_id && o.subiekt_tw_id);
       if (missing.length > 0) {
@@ -201,23 +201,19 @@ export default async function MojePage({
 
   const salesHeaderActions =
     role && !canAccessOperations(role) ? (
-      <>
-        <MojePageSalesToolbar />
-        {!isTeamPreview ? (
-          <Link
-            href="/prosba"
-            className="hidden sm:inline-flex sm:items-center"
-          >
-            <Button size="sm" className={pageToolbarSizingClass}>
-              Zgłoś prośbę
-            </Button>
-          </Link>
-        ) : null}
-      </>
+      !isTeamPreview ? (
+        <Link href="/prosba" className="hidden sm:inline-flex sm:items-center">
+          <Button size="sm" className={pageToolbarSizingClass}>
+            Zgłoś prośbę
+          </Button>
+        </Link>
+      ) : null
     ) : undefined;
 
+  const showSalesSync = Boolean(role && !canAccessOperations(role));
+
   return (
-    <div className="mx-auto max-w-3xl space-y-4">
+    <div className={salesPageShellClass}>
       {linkError && previewSalesPersonId ? (
         <Alert tone="error">
           {linkError}
@@ -263,6 +259,7 @@ export default async function MojePage({
         initialClientZkWatchId={zkWatchParam?.trim() || null}
         initialClientZkNumber={zkNumberParam?.trim() || null}
         syncSearchUrl={!isTeamPreview}
+        showSalesSync={showSalesSync}
       />
     </div>
   );

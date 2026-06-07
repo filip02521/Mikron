@@ -1,5 +1,6 @@
 import { createAdminClient, hasSupabaseConfig } from "@/lib/supabase/admin";
 import { normalizeIndividualOrders } from "@/lib/data/normalize-order";
+import { mapRowToOrderFormSupplier, mapRowsToOrderFormSuppliers } from "@/lib/orders/order-form-suppliers";
 import { buildSummaryWorkspace } from "@/lib/orders/summary-workspace";
 import { sortIndividualOrdersBySupplier } from "@/lib/orders/queue-sort";
 import { sortInformacjaQueueForDisplay } from "@/lib/orders/queue-product-groups";
@@ -364,10 +365,11 @@ export async function fetchSummaryWorkspace(options?: { salesPersonId?: string }
     schedules = allSchedules.filter((s) => allowed.has(s.id));
   }
   const { fetchSalesPeopleForPicker } = await import("@/lib/data/sales-people-admin");
-  const [allNewOrders, salesPeople, statsRows] = await Promise.all([
+  const [allNewOrders, salesPeople, statsRows, formSuppliers] = await Promise.all([
     fetchIndividualOrders({ status: "Nowe", hideSalesAcknowledged: false }),
     fetchSalesPeopleForPicker(),
     fetchDeliveryStats(),
+    fetchSuppliersForRequestForms(),
   ]);
   const newOrders = options?.salesPersonId
     ? allNewOrders.filter((o) => o.sales_person_id === options.salesPersonId)
@@ -391,7 +393,8 @@ export async function fetchSummaryWorkspace(options?: { salesPersonId?: string }
   );
   return {
     workspace,
-    suppliers: schedules.map((s) => ({ id: s.id, name: s.name })),
+    /** Wszyscy dostawcy (także nieaktywni) — formularze prośby / edycja w panelu. */
+    suppliers: formSuppliers,
     supplierDirectory: schedules.map((s) => ({
       id: s.id,
       name: s.name,
@@ -471,30 +474,29 @@ export async function fetchSuppliersForForm() {
     .select("id, name, stats_mode, subiekt_kh_id")
     .order("name");
   if (error) throw new Error(error.message);
-  return (data ?? []).map((s) => ({
-    id: s.id,
-    name: s.name,
-    stats_mode: (s.stats_mode ?? "LACZNIE") as import("@/types/database").StatsMode,
-    subiekt_kh_id: s.subiekt_kh_id ?? null,
-  }));
+  return (data ?? []).map((s) => mapRowToOrderFormSupplier(s));
+}
+
+/** Wszyscy dostawcy do formularzy prośby, edycji i weryfikacji (z subiekt_kh_id). */
+export async function fetchSuppliersForRequestForms() {
+  return fetchSuppliersForForm();
 }
 
 /** Dostawcy + statystyki czasów realizacji (formularze, panel dzienny). */
 export async function fetchSupplierDeliveryContext(options?: { lightSuppliers?: boolean }) {
-  const [supplierRows, statsRows] = await Promise.all([
-    options?.lightSuppliers ? fetchSuppliersForForm() : fetchSuppliersWithSchedules(),
+  const [suppliers, statsRows] = await Promise.all([
+    options?.lightSuppliers
+      ? fetchSuppliersForForm()
+      : mapRowsToOrderFormSuppliers(
+          await fetchSuppliersWithSchedules(undefined, { activeOnly: false })
+        ),
     fetchDeliveryStats(),
   ]);
   const statsBySupplierId = Object.fromEntries(
     statsRows.map((s) => [s.supplier_id, s])
   );
   return {
-    suppliers: supplierRows.map((s) => ({
-      id: s.id,
-      name: s.name,
-      stats_mode: (s.stats_mode ?? "LACZNIE") as import("@/types/database").StatsMode,
-      subiekt_kh_id: s.subiekt_kh_id ?? null,
-    })),
+    suppliers,
     statsBySupplierId,
   };
 }

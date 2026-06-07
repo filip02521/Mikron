@@ -18,6 +18,7 @@ export function SectionTabNav<T extends string>({
   contextHint,
   ariaLabel,
   className,
+  embedded = false,
 }: {
   sectionLabel?: string;
   activeTab: T;
@@ -25,9 +26,14 @@ export function SectionTabNav<T extends string>({
   contextHint?: string;
   ariaLabel: string;
   className?: string;
+  /** Wewnątrz karty huba — bez dolnego marginesu strony. */
+  embedded?: boolean;
 }) {
   return (
-    <nav className={cn("mb-6 space-y-4", className)} aria-label={ariaLabel}>
+    <nav
+      className={cn(embedded ? "space-y-3" : "mb-6 space-y-4", className)}
+      aria-label={ariaLabel}
+    >
       <div>
         <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-500">
           {sectionLabel}

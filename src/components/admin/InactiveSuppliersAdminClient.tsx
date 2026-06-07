@@ -1,41 +1,59 @@
 "use client";
 
 import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { useMemo, useState, useTransition, useCallback } from "react";
+import { LinkChevron } from "@/components/ui/UiGlyphs";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { useEffect, useMemo, useState, useTransition, useCallback } from "react";
 import { useLatest } from "@/hooks/useLatest";
-import type { SupplierWithSchedule } from "@/types/database";
+import type { SupplierLocation, SupplierWithSchedule } from "@/types/database";
 import { actionSetSupplierActive, actionUpsertSupplier } from "@/app/actions/admin";
-import { formatStockPeriod, locationLabel } from "@/lib/display-labels";
+import { formatPlDate } from "@/lib/display-labels";
+import { formatSupplierCycleSummary, formatSupplierListMeta } from "@/lib/suppliers/supplier-list-labels";
 import { Card, CardHeader } from "@/components/ui/Card";
-import { Input } from "@/components/ui/Field";
 import { Button } from "@/components/ui/Button";
 import { Toast } from "@/components/ui/Toast";
-import { DataTable, TableScroll } from "@/components/ui/DataTable";
-import { OrderMethodBadge } from "@/components/targets/OrderMethodBadge";
-import { SupplierLocationFilters } from "@/components/admin/SupplierLocationFilters";
+import { SupplierAdminCardsFilterBar } from "@/components/admin/SupplierHubListFilters";
+import { SupplierAdminNameCell } from "@/components/admin/SupplierAdminNameCell";
+import { InactiveSupplierRowMenu } from "@/components/admin/InactiveSupplierRowMenu";
 import { EmptyState } from "@/components/ui/EmptyState";
 import {
   countSuppliersByLocation,
+  countSuppliersBySubiektLink,
   filterSuppliersForAdmin,
   type SupplierLocationFilter,
+  type SupplierSubiektFilter,
 } from "@/lib/supplier-locations";
 import { InactiveSupplierBadge } from "@/components/suppliers/InactiveSupplierBadge";
-import { supplierHubPaths, type SupplierHubContext } from "@/lib/supplier-hub";
-import type { SupplierLocation } from "@/types/database";
+import { supplierHubPaths, SUPPLIER_HUB_LIST_META_DESCRIPTION, type SupplierHubContext } from "@/lib/supplier-hub";
 import {
   SupplierAdminForm,
   type SupplierAdminFormState,
 } from "@/components/admin/SupplierAdminForm";
 import { SupplierEditSheet } from "@/components/admin/SupplierEditSheet";
 import {
+  applyAdminFormToSupplierRow,
   emptySupplierAdminForm,
   supplierToAdminForm,
 } from "@/lib/suppliers/admin-form";
 import { suggestOrderOnDemandAfterFieldChange } from "@/lib/orders/supplier-on-demand";
+import { cn } from "@/lib/cn";
 
 function scheduleHref(location: SupplierLocation, name: string): string {
   return `/lokalizacje/${location}?q=${encodeURIComponent(name)}`;
+}
+
+function parseLocationFilter(raw: string | null): SupplierLocationFilter {
+  if (raw === "POLSKA" || raw === "ZAGRANICA" || raw === "IMPORT") return raw;
+  return "all";
+}
+
+function parseSubiektFilter(raw: string | null): SupplierSubiektFilter {
+  if (raw === "unlinked" || raw === "linked") return raw;
+  return "all";
+}
+
+function inactiveRowClass(isEditing: boolean): string {
+  return cn("bg-slate-50/80", isEditing && "bg-indigo-50/80 ring-1 ring-inset ring-indigo-200");
 }
 
 export function InactiveSuppliersAdminClient({
@@ -46,6 +64,8 @@ export function InactiveSuppliersAdminClient({
   context: SupplierHubContext;
 }) {
   const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
   const cardsPath = supplierHubPaths(context).cards;
   const [rows, setRows] = useState(initial);
   const [pending, start] = useTransition();
@@ -55,15 +75,63 @@ export function InactiveSuppliersAdminClient({
   const dismiss = useCallback(() => setToast(null), []);
   const [search, setSearch] = useState("");
   const [locationFilter, setLocationFilter] = useState<SupplierLocationFilter>("all");
+  const [subiektFilter, setSubiektFilter] = useState<SupplierSubiektFilter>("all");
   const [formOpen, setFormOpen] = useState(false);
   const [form, setForm] = useState<SupplierAdminFormState>(emptySupplierAdminForm);
   const formRef = useLatest(form);
 
+  useEffect(() => {
+    setRows(initial);
+  }, [initial]);
+
+  useEffect(() => {
+    setSearch(searchParams.get("q")?.trim() ?? "");
+    setLocationFilter(parseLocationFilter(searchParams.get("location")));
+    setSubiektFilter(parseSubiektFilter(searchParams.get("subiekt")));
+  }, [searchParams]);
+
+  useEffect(() => {
+    const timer = window.setTimeout(() => {
+      const params = new URLSearchParams(searchParams.toString());
+      const q = search.trim();
+      if (q) params.set("q", q);
+      else params.delete("q");
+      if (locationFilter !== "all") params.set("location", locationFilter);
+      else params.delete("location");
+      if (subiektFilter !== "all") params.set("subiekt", subiektFilter);
+      else params.delete("subiekt");
+      const next = params.toString();
+      if (next !== searchParams.toString()) {
+        router.replace(next ? `${pathname}?${next}` : pathname, { scroll: false });
+      }
+    }, 300);
+    return () => window.clearTimeout(timer);
+  }, [search, locationFilter, subiektFilter, pathname, router, searchParams]);
+
+  const locationScopedRows = useMemo(() => {
+    if (locationFilter === "all") return rows;
+    return rows.filter((s) => s.location === locationFilter);
+  }, [rows, locationFilter]);
+
   const locationCounts = useMemo(() => countSuppliersByLocation(rows), [rows]);
-  const filtered = useMemo(
-    () => filterSuppliersForAdmin(rows, locationFilter, search),
-    [rows, locationFilter, search]
+  const subiektCounts = useMemo(
+    () => countSuppliersBySubiektLink(locationScopedRows),
+    [locationScopedRows]
   );
+  const filtered = useMemo(
+    () =>
+      filterSuppliersForAdmin(
+        rows,
+        locationFilter,
+        search,
+        subiektFilter,
+        subiektFilter === "all"
+      ),
+    [rows, locationFilter, search, subiektFilter]
+  );
+
+  const filterActive =
+    locationFilter !== "all" || subiektFilter !== "all" || search.trim().length > 0;
 
   const resetForm = () => {
     setForm(emptySupplierAdminForm());
@@ -74,6 +142,12 @@ export function InactiveSuppliersAdminClient({
     setForm(supplierToAdminForm(s));
     setFormOpen(true);
   };
+
+  useEffect(() => {
+    if (!formOpen || !form.id) return;
+    const row = document.getElementById(`inactive-supplier-row-${form.id}`);
+    row?.scrollIntoView({ block: "nearest", behavior: "smooth" });
+  }, [formOpen, form.id]);
 
   const patchCycleFields = (
     patch: Partial<Pick<SupplierAdminFormState, "stock_raw" | "interval_raw" | "extra_info">>
@@ -100,14 +174,21 @@ export function InactiveSuppliersAdminClient({
       const snapshot = { ...formRef.current };
       try {
         await actionUpsertSupplier(snapshot);
-        if (snapshot.is_active) {
-          setRows((list) => list.filter((x) => x.id !== snapshot.id));
-          setToast({
-            text: `„${snapshot.name}” przywrócony — pojawi się w panelu dziennym.`,
-            tone: "success",
-          });
-        } else {
-          setToast({ text: "Zapisano kartę dostawcy", tone: "success" });
+        if (snapshot.id) {
+          if (snapshot.is_active) {
+            setRows((list) => list.filter((x) => x.id !== snapshot.id));
+            setToast({
+              text: `„${snapshot.name}” przywrócony — pojawi się w panelu dziennym.`,
+              tone: "success",
+            });
+          } else {
+            setRows((list) =>
+              list.map((r) =>
+                r.id === snapshot.id ? applyAdminFormToSupplierRow(r, snapshot) : r
+              )
+            );
+            setToast({ text: "Zapisano kartę dostawcy", tone: "success" });
+          }
         }
         resetForm();
         router.refresh();
@@ -125,6 +206,7 @@ export function InactiveSuppliersAdminClient({
       try {
         await actionSetSupplierActive(s.id, true);
         setRows((list) => list.filter((x) => x.id !== s.id));
+        if (form.id === s.id) resetForm();
         setToast({
           text: `„${s.name}” jest znowu aktywny — pojawi się w panelu dziennym.`,
           tone: "success",
@@ -145,7 +227,7 @@ export function InactiveSuppliersAdminClient({
       <SupplierEditSheet
         open={formOpen}
         title={form.name || "Edytuj dostawcę"}
-        description="Możesz przywrócić aktywność checkboxem lub przyciskiem na liście."
+        description="Możesz przywrócić aktywność checkboxem w formularzu lub z menu ⋮ na liście."
         onClose={resetForm}
         pending={pending}
         footer={
@@ -171,49 +253,40 @@ export function InactiveSuppliersAdminClient({
             disabled={pending}
             onChange={setForm}
             onPatchCycleFields={patchCycleFields}
-            onSubiektLinked={(khId) => setForm((f) => ({ ...f, subiekt_kh_id: khId }))}
+            onSubiektLinked={(khId) => {
+              setForm((f) => ({ ...f, subiekt_kh_id: khId }));
+              if (form.id) {
+                setRows((list) =>
+                  list.map((r) => (r.id === form.id ? { ...r, subiekt_kh_id: khId } : r))
+                );
+              }
+            }}
           />
         </form>
       </SupplierEditSheet>
 
-      <section className="space-y-6 p-4 sm:p-5">
-        <p className="text-sm text-slate-600">
-          Nieaktywni dostawcy nie są w cyklu{" "}
-          <Link href="/podsumowanie" className="font-medium text-sky-700 hover:underline">
-            panelu dziennego
-          </Link>
-          , ale nadal można do nich składać{" "}
-          <Link href="/zamowienia/nowe" className="font-medium text-sky-700 hover:underline">
-            prośby o produkty
-          </Link>
-          . Aktywnych zarządzasz w{" "}
-          <Link href={cardsPath} className="font-medium text-sky-700 hover:underline">
-            kartach dostawców
-          </Link>
-          .
-        </p>
-
-        <Card padding={false}>
+      <section className="space-y-4">
+        <Card padding={false} className="overflow-hidden">
           <CardHeader
             inset
-            title={`Nieaktywni (${filtered.length}${locationFilter !== "all" || search.trim() ? ` z ${rows.length}` : ""})`}
-            description="Edycja karty, terminy w harmonogramie lub przywrócenie aktywności."
+            density="compact"
+            title={`Nieaktywni (${filtered.length}${filterActive ? ` z ${rows.length}` : ""})`}
+            description={SUPPLIER_HUB_LIST_META_DESCRIPTION}
           />
-          <div className="space-y-3 border-b border-slate-100 px-6 pb-4">
-            <SupplierLocationFilters
-              value={locationFilter}
-              onChange={setLocationFilter}
-              counts={locationCounts}
-              className="w-full max-w-full flex-wrap"
-            />
-            <Input
-              type="search"
-              placeholder="Szukaj dostawcy…"
-              className="max-w-sm py-2 text-sm"
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-            />
-          </div>
+
+          <SupplierAdminCardsFilterBar
+            locationFilter={locationFilter}
+            onLocationFilterChange={setLocationFilter}
+            locationCounts={locationCounts}
+            subiektFilter={subiektFilter}
+            onSubiektFilterChange={setSubiektFilter}
+            subiektCounts={subiektCounts}
+            search={search}
+            onSearchChange={setSearch}
+            searchId="inactive-supplier-search"
+            searchAriaLabel="Szukaj nieaktywnego dostawcy po nazwie"
+          />
+
           {filtered.length === 0 ? (
             <EmptyState
               title="Brak nieaktywnych dostawców"
@@ -227,64 +300,89 @@ export function InactiveSuppliersAdminClient({
               }
             />
           ) : (
-            <TableScroll>
-              <DataTable>
-                <thead>
-                  <tr>
-                    <th>Nazwa</th>
-                    <th>Lokalizacja</th>
-                    <th>Sposób</th>
-                    <th>Zapas / częstotliwość</th>
-                    <th>Następne</th>
-                    <th />
-                  </tr>
-                </thead>
-                <tbody>
-                  {filtered.map((s) => (
-                    <tr key={s.id} className="bg-slate-50/80">
-                      <td>
-                        <span className="flex flex-wrap items-center gap-2">
-                          <span className="font-medium text-slate-600">{s.name}</span>
-                          <InactiveSupplierBadge className="text-[10px]" />
-                        </span>
-                      </td>
-                      <td>{locationLabel(s.location)}</td>
-                      <td>
-                        <OrderMethodBadge notes={s.notes} />
-                      </td>
-                      <td className="max-w-[160px] text-sm text-slate-600">
-                        {formatStockPeriod(s.stock_raw, s.stock != null ? Number(s.stock) : null)}
-                        <span className="text-slate-300"> · </span>
-                        {s.interval_raw?.trim() || s.interval_weeks || "—"}
-                      </td>
-                      <td className="text-sm text-slate-600">
-                        {s.schedule?.computed_next_date ?? "—"}
-                      </td>
-                      <td>
-                        <p className="flex flex-wrap justify-end gap-1">
-                          <Button variant="ghost" size="sm" onClick={() => startEdit(s)}>
-                            Edytuj
-                          </Button>
-                          <Link href={scheduleHref(s.location, s.name)}>
-                            <Button variant="ghost" size="sm">
-                              Terminy
-                            </Button>
+            <>
+              <div
+                className="hidden border-b border-slate-100 bg-slate-50/90 px-4 py-2 text-[11px] font-semibold uppercase tracking-wide text-slate-500 md:grid md:grid-cols-[minmax(0,1.6fr)_minmax(120px,180px)_minmax(100px,120px)_minmax(88px,100px)_minmax(120px,160px)] md:gap-3 lg:px-5"
+                aria-hidden
+              >
+                <span>Dostawca</span>
+                <span>Cykl</span>
+                <span>Następne</span>
+                <span>Terminy</span>
+                <span className="text-right">Akcje</span>
+              </div>
+              <ul className="divide-y divide-slate-100">
+                {filtered.map((s) => {
+                  const isEditing = formOpen && form.id === s.id;
+                  const cycleSummary = formatSupplierCycleSummary(s);
+                  const cycleIncomplete = cycleSummary === "Uzupełnij cykl";
+                  return (
+                    <li
+                      key={s.id}
+                      id={`inactive-supplier-row-${s.id}`}
+                      className={cn(
+                        "px-3 py-3 sm:px-4 lg:px-5",
+                        inactiveRowClass(isEditing),
+                        s.subiekt_kh_id == null && "bg-amber-50/40"
+                      )}
+                    >
+                      <div className="flex items-start gap-2 md:grid md:grid-cols-[minmax(0,1.6fr)_minmax(120px,180px)_minmax(100px,120px)_minmax(88px,100px)_minmax(120px,160px)] md:items-center md:gap-3">
+                        <div className="min-w-0 flex-1 md:contents">
+                          <div className="min-w-0 md:block">
+                            <SupplierAdminNameCell
+                              supplier={s}
+                              isEditing={isEditing}
+                              onEdit={() => startEdit(s)}
+                              trailingBadge={<InactiveSupplierBadge className="text-[10px]" />}
+                            />
+                            <p className="mt-1 text-xs text-slate-500 md:mt-0.5">
+                              {formatSupplierListMeta(s)}
+                            </p>
+                          </div>
+                          <p
+                            className={cn(
+                              "mt-2 text-sm md:mt-0",
+                              cycleIncomplete
+                                ? "font-medium text-amber-800"
+                                : "text-slate-700"
+                            )}
+                          >
+                            {cycleSummary}
+                          </p>
+                          <p className="mt-2 text-sm tabular-nums text-slate-600 md:mt-0">
+                            {formatPlDate(s.schedule?.computed_next_date)}
+                          </p>
+                          <Link
+                            href={scheduleHref(s.location, s.name)}
+                            className="mt-2 inline-flex items-center gap-1 text-xs font-medium text-sky-700 hover:text-sky-900 hover:underline md:mt-0 md:text-sm"
+                          >
+                            Terminy
+                            <LinkChevron size={12} tone="sky" className="md:hidden" />
+                            <LinkChevron size={14} tone="sky" className="hidden md:inline" />
                           </Link>
+                        </div>
+                        <div className="flex shrink-0 items-center gap-1 md:justify-end">
                           <Button
                             variant="secondary"
                             size="sm"
-                            disabled={pending}
-                            onClick={() => reactivate(s)}
+                            className="hidden md:inline-flex"
+                            onClick={() => startEdit(s)}
                           >
-                            Przywróć
+                            Edytuj
                           </Button>
-                        </p>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </DataTable>
-            </TableScroll>
+                          <InactiveSupplierRowMenu
+                            supplier={s}
+                            disabled={pending}
+                            onEdit={() => startEdit(s)}
+                            onReactivate={() => reactivate(s)}
+                          />
+                        </div>
+                      </div>
+                    </li>
+                  );
+                })}
+              </ul>
+            </>
           )}
         </Card>
       </section>

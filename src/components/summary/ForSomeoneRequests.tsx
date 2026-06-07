@@ -37,7 +37,12 @@ import {
 import { cn } from "@/lib/cn";
 import { PanelRowActionsInlineEnd } from "@/components/summary/PanelRowActionsInlineEnd";
 import { panelRowClearFocusOnLeave, panelRowGroupClass } from "@/lib/ui/panel-row-actions-reveal";
-import { panelNameLinkClass, rowPendingRingClass } from "@/lib/ui/ontime-theme";
+import { panelNameLinkClass, panelTypography, rowPendingRingClass, dailyPanelFreshHighlightClass } from "@/lib/ui/ontime-theme";
+import { dailyPanelQueueSectionScrollClass } from "@/lib/orders/daily-panel-section-anchors";
+import {
+  panelQueueRowActionsClass,
+  panelQueueRowLayoutClass,
+} from "@/lib/ui/surfaces";
 import {
   INFORMACJA_FLOW_PROCUREMENT_GROUP_BANNER,
   INFORMACJA_STOCK_OUT_PANEL_BANNER,
@@ -46,6 +51,7 @@ import {
 import { ProductSourceBadge } from "@/components/orders/ProductSourceBadge";
 import { InformacjaFlowLegend } from "@/components/orders/InformacjaFlowLegend";
 import { PanelQueueStatDot } from "@/components/ui/UiGlyphs";
+import type { OrderFormSupplierOption } from "@/lib/orders/order-form-suppliers";
 
 function groupHasInformacjaFlow(g: SummaryForSomeoneEnriched): boolean {
   return g.lines.some((l) => l.informacjaViaPanel);
@@ -206,6 +212,7 @@ export function ForSomeoneRequests({
   queueStep,
   sectionId = "kolejka-prosby",
   variant = "requests",
+  highlightFresh = false,
 }: {
   groups: SummaryForSomeoneEnriched[];
   isScopePending: (scope: string) => boolean;
@@ -213,12 +220,13 @@ export function ForSomeoneRequests({
   onOpenSupplier: (id: string) => void;
   statsBySupplierId?: Record<string, DeliveryStats>;
   supplierStatsMode?: Record<string, StatsMode>;
-  suppliers?: { id: string; name: string }[];
+  suppliers?: OrderFormSupplierOption[];
   salesPeople?: { id: string; name: string }[];
   embedded?: boolean;
   queueStep?: number;
   sectionId?: string;
   variant?: "requests" | "stockOut";
+  highlightFresh?: boolean;
 }) {
   const isStockOutSection = variant === "stockOut";
   const enrichGroup = isStockOutSection ? enrichStockOutSignalGroup : enrichForSomeoneGroup;
@@ -410,7 +418,7 @@ export function ForSomeoneRequests({
     ? {
         id: sectionId,
         className: cn(
-          "scroll-mt-24",
+          dailyPanelQueueSectionScrollClass,
           dailyPanelQueueShellClass(isStockOutSection ? "stockOut" : "prosby")
         ),
       }
@@ -611,7 +619,8 @@ export function ForSomeoneRequests({
                   isUnseen &&
                     (isStockOutSection
                       ? "border-amber-300/90 bg-amber-50/50"
-                      : "border-violet-200/90 bg-violet-50/30")
+                      : "border-violet-200/90 bg-violet-50/30"),
+                  highlightFresh && isUnseen && dailyPanelFreshHighlightClass
                 )}
                 aria-busy={groupPending}
                 onMouseEnter={() => scheduleMarkSeen(g)}
@@ -629,13 +638,11 @@ export function ForSomeoneRequests({
                   if (focusedGroupKey === key) setFocusedGroupKey(null);
                 }}
               >
-                <div className="px-2 py-1.5">
-                  <div className="flex items-start gap-1.5">
+                <div className="px-2 py-2">
+                  <div className={panelQueueRowLayoutClass}>
                     <div className="min-w-0 flex-1">
                       <div className="flex flex-wrap items-center gap-1.5">
-                        <p className="text-sm font-semibold leading-snug text-slate-900">
-                          {ui.headline}
-                        </p>
+                        <p className={panelTypography.rowTitle}>{ui.headline}</p>
                         {isUnseen ? (
                           <Badge variant={unseenBadgeVariant} className="px-1.5 py-0 text-[10px]">
                             Nowa
@@ -643,7 +650,7 @@ export function ForSomeoneRequests({
                           </Badge>
                         ) : null}
                       </div>
-                      <p className="mt-0.5 text-xs text-slate-500">
+                      <p className={cn("mt-0.5", panelTypography.rowMeta)}>
                         {showSupplierHeader ? (
                           rowSubline
                         ) : (
@@ -673,14 +680,18 @@ export function ForSomeoneRequests({
                       ) : null}
                       {singleLine ? <ProcurementRequestLineInline line={singleLine} /> : null}
                     </div>
-                    <div className="flex shrink-0 flex-col items-end gap-1">
+                    <div className="flex flex-col items-stretch gap-1.5 sm:shrink-0 sm:items-end">
                       <Badge
                         variant={informacjaBadgeVariant}
-                        className="shrink-0 whitespace-normal text-right text-[10px] leading-snug"
+                        className="shrink-0 self-start whitespace-normal text-left text-[10px] leading-snug sm:self-auto sm:text-right"
                       >
                         {ui.statusTitle}
                       </Badge>
-                      <PanelRowActionsInlineEnd forceVisible={groupPending}>
+                      <PanelRowActionsInlineEnd
+                        forceVisible={groupPending}
+                        className={panelQueueRowActionsClass}
+                        contentClassName="w-full sm:w-max [&>*]:w-full sm:[&>*]:w-auto"
+                      >
                         <IndividualRequestActionBar
                           orderIds={g.orderIds}
                           supplierId={g.supplierId}

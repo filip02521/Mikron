@@ -1,24 +1,29 @@
 import Link from "next/link";
 import { LinkChevron } from "@/components/ui/UiGlyphs";
 import { Card, CardHeader } from "@/components/ui/Card";
+import { supplierHubPaths } from "@/lib/supplier-hub";
+
+const adminPaths = supplierHubPaths("admin");
+const zakupyPaths = supplierHubPaths("zakupy");
+
 const shortcuts = [
   {
-    href: "/admin/dostawcy",
-    title: "Karty dostawców (pełne)",
-    description: "Jak w sekcji Dostawcy, z możliwością usuwania rekordów.",
-  },
-  {
-    href: "/zakupy/dostawcy",
+    href: zakupyPaths.cards,
     title: "Karty dostawców (zakupy)",
     description: "Codzienna edycja bez usuwania — ten sam widok co dla działu zakupów.",
   },
   {
-    href: "/lokalizacje/POLSKA",
+    href: adminPaths.cards,
+    title: "Karty dostawców (admin)",
+    description: "Wersja z usuwaniem rekordów — domyślnie w menu Dostawcy dla administratora.",
+  },
+  {
+    href: adminPaths.schedule("POLSKA"),
     title: "Terminy zamówień",
     description: "Daty cyklu — Polska, zagranica, import.",
   },
   {
-    href: "/zakupy/urlopy",
+    href: adminPaths.vacations,
     title: "Urlopy dostawców",
     description: "Okresy niedostępności i przeliczanie harmonogramów.",
   },
@@ -31,18 +36,19 @@ const shortcuts = [
 
 export function AdminDataShortcuts() {
   return (
-    <Card padding={false}>
+    <Card padding={false} className="overflow-hidden">
       <CardHeader
         inset
+        density="compact"
         title="Dane operacyjne"
-        description="Codzienna praca w menu Dostawcy. Poniżej skróty, gdy potrzebujesz wersji z usuwaniem lub pełnego dostępu administratora."
+        description="Skróty do hubu dostawców i katalogu. Administrator domyślnie korzysta z wersji admin w menu po lewej."
       />
       <ul className="divide-y divide-slate-100">
         {shortcuts.map((item) => (
           <li key={item.href}>
             <Link
               href={item.href}
-              className="flex flex-col gap-0.5 px-6 py-4 transition hover:bg-slate-50/80 sm:flex-row sm:items-center sm:justify-between"
+              className="flex flex-col gap-0.5 px-3 py-3 transition hover:bg-slate-50/80 sm:flex-row sm:items-center sm:justify-between sm:px-4 lg:px-5"
             >
               <div className="min-w-0">
                 <p className="font-medium text-slate-900">{item.title}</p>

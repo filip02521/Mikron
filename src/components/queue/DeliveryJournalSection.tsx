@@ -26,6 +26,7 @@ import { Field, Input, Select, fieldControlClass } from "@/components/ui/Field";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { Toast } from "@/components/ui/Toast";
 import { cn } from "@/lib/cn";
+import { panelSectionInsetClass, panelTypography } from "@/lib/ui/ontime-theme";
 import { IconChevronLeft, IconChevronRight } from "@/components/icons/StrokeIcons";
 
 type SupplierOption = { id: string; name: string; subiektKhId: number | null };
@@ -490,10 +491,10 @@ export function DeliveryJournalSection({
 
   return (
     <section className="scroll-mt-20" id="dziennik-dostaw">
-      <div className="border-b border-slate-100 px-4 py-4 sm:px-6">
+      <div className={cn("border-b border-slate-100", panelSectionInsetClass)}>
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div>
-            <h2 className="text-sm font-semibold text-slate-900">Dziennik dostaw</h2>
+            <h2 className={panelTypography.sectionTitle}>Dziennik dostaw</h2>
             {showEntries ? (
               <p className="mt-0.5 text-xs text-slate-600">
                 {isViewingToday ? (

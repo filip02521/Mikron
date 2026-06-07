@@ -258,13 +258,15 @@ export function UsersAdminClient({
         ) : null}
 
         {createOpen ? (
-          <Card>
+          <Card padding={false} className="overflow-hidden">
             <CardHeader
+              inset
+              density="compact"
               title="Nowe konto"
               description="Użytkownik loguje się e-mailem i hasłem. Możesz później wysłać link do zmiany hasła."
             />
             <form
-              className="grid gap-4 sm:grid-cols-2"
+              className="grid gap-4 px-3 pb-4 sm:grid-cols-2 sm:px-4 lg:px-5"
               onSubmit={(e) => {
                 e.preventDefault();
                 start(async () => {
@@ -418,9 +420,10 @@ export function UsersAdminClient({
           </Card>
         ) : null}
 
-        <Card padding={false}>
+        <Card padding={false} className="overflow-hidden">
           <CardHeader
             inset
+            density="compact"
             title={`Użytkownicy (${users.length})`}
             description="Role i powiązania z handlowcami"
           />
@@ -732,9 +735,14 @@ export function UsersAdminClient({
           )}
         </Card>
 
-        <Card>
-          <CardHeader title="Opis ról" description="Kto co widzi w systemie" />
-          <ul className="space-y-2 text-sm text-slate-600">
+        <Card padding={false} className="overflow-hidden">
+          <CardHeader
+            inset
+            density="compact"
+            title="Opis ról"
+            description="Kto co widzi w systemie"
+          />
+          <ul className="space-y-2 px-3 pb-4 text-sm text-slate-600 sm:px-4 lg:px-5">
             <li>
               <Badge variant="info">{ROLE_LABELS.admin}</Badge> — pełny dostęp, historia,
               ten panel.

@@ -3,7 +3,7 @@
 import Link from "next/link";
 import type { QueueInboxSummary } from "@/lib/orders/queue-inbox";
 import { cn } from "@/lib/cn";
-import { brandLinkClass, surfaceCardClass } from "@/lib/ui/ontime-theme";
+import { brandLinkClass, panelSectionInsetClass, panelTypography, surfaceCardClass } from "@/lib/ui/ontime-theme";
 
 function MetricTile({
   value,
@@ -24,7 +24,7 @@ function MetricTile({
     <>
       <p
         className={cn(
-          "text-2xl font-semibold tabular-nums tracking-tight",
+          panelTypography.statValue,
           tone === "amber" ? "text-amber-900" : tone === "sky" ? "text-sky-900" : "text-slate-900"
         )}
       >
@@ -114,19 +114,14 @@ export function QueuePanelToolbar({
   showProcurementLinks?: boolean;
 }) {
   return (
-    <div className="border-b border-slate-100 px-4 py-4 sm:px-6">
-      <p className="text-sm font-semibold text-slate-900">Przegląd magazynu</p>
-      <p className="mt-0.5 text-xs text-slate-500">
+    <div className={cn("border-b border-slate-100", panelSectionInsetClass)}>
+      <p className={panelTypography.sectionTitle}>Przegląd magazynu</p>
+      <p className={cn("mt-0.5", panelTypography.sectionDesc)}>
         Jedna lista przyjęcia: zamówienia (wpisz ilość) i informacje (powiadom handlowca). Towar
         często jeszcze nie dotarł — weryfikujesz wszystko u jednego dostawcy. Rezygnacje w panelu
         dziennym.
       </p>
-      <div
-        className={cn(
-          "mt-3 grid grid-cols-2 gap-2",
-          informacjaCount > 0 ? "sm:grid-cols-2 lg:grid-cols-5" : "sm:grid-cols-2 lg:grid-cols-4"
-        )}
-      >
+      <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-3">
         <MetricTile
           value={journalCount}
           label="Dziennik dziś"

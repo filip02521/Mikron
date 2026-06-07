@@ -127,8 +127,10 @@ export function SubiektIntegrationPanel({
   };
 
   return (
-    <Card className="mb-6">
+    <Card padding={false} className="overflow-hidden">
       <CardHeader
+        inset
+        density="compact"
         title="Integracja Subiekt"
         description="REST API v1 w sieci LAN (odczyt). Komunikaty błędów: src/lib/subiekt/feedback.ts"
         action={
@@ -137,7 +139,7 @@ export function SubiektIntegrationPanel({
           </Badge>
         }
       />
-      <div className="space-y-4">
+      <div className="space-y-4 px-3 pb-4 sm:px-4 lg:px-5">
         {configured ? (
           <dl className="grid gap-2 text-sm sm:grid-cols-2">
             <div>

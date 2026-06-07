@@ -9,7 +9,9 @@ import { IconTruck, IconWarehouse } from "@/components/icons/StrokeIcons";
 import { QueuePanelHelp } from "@/components/queue/QueuePanelHelp";
 import { Toast } from "@/components/ui/Toast";
 import { ActionLoadingOverlay } from "@/components/ui/ActionLoadingOverlay";
+import { Alert } from "@/components/ui/Alert";
 import { QueuePanelToolbar } from "@/components/queue/QueuePanelToolbar";
+import { panelPageShellClass } from "@/lib/ui/ontime-theme";
 import { ReceiveQueueTable, type ReceiveQueueToast } from "@/components/queue/ReceiveQueueTable";
 import { WarehouseInventorySection } from "@/components/queue/WarehouseInventorySection";
 import { DeliveryJournalSection } from "@/components/queue/DeliveryJournalSection";
@@ -29,6 +31,7 @@ export function QueueClient({
   deliveryJournal,
   journalSuppliers,
   isMagazynRole = false,
+  loadError = null,
 }: {
   orders: IndividualOrder[];
   informacjaOrders: IndividualOrder[];
@@ -41,6 +44,7 @@ export function QueueClient({
   };
   journalSuppliers: Array<{ id: string; name: string; subiektKhId: number | null }>;
   isMagazynRole?: boolean;
+  loadError?: string | null;
 }) {
   const [view, setView] = useState<QueueView>("receive");
   const [pendingMessage, setPendingMessage] = useState<string | null>(null);
@@ -120,7 +124,10 @@ export function QueueClient({
     : "Po zamówieniu u dostawcy w panelu dziennym";
 
   return (
-    <div className="relative mx-auto max-w-6xl">
+    <div className={panelPageShellClass}>
+      {loadError ? (
+        <Alert tone="error">{loadError}</Alert>
+      ) : null}
       {pendingMessage ? (
         <ActionLoadingOverlay message={pendingMessage} variant="viewport" />
       ) : null}
@@ -131,6 +138,7 @@ export function QueueClient({
       <Card padding={false} className="overflow-hidden">
         <CardHeader
           inset
+          density="compact"
           leading={
             <SectionHeadingIcon tileClassName="bg-emerald-100 text-emerald-800">
               <IconWarehouse size={20} />
@@ -196,6 +204,7 @@ export function QueueClient({
         ) : (
           <section id="kolejka-przyjecie" className="scroll-mt-20">
             <SectionListLabel
+              domain="panel"
               title="Kolejka przyjęcia"
               hint={receiveHint}
               count={receiveQueue.length}

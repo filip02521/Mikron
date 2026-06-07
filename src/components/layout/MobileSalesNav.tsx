@@ -61,7 +61,7 @@ export function MobileSalesNav({
                 {attentionBadge > 0 && !active ? (
                   <span
                     className={cn(
-                      "absolute -right-1.5 -top-1 flex h-3.5 min-w-3.5 items-center justify-center rounded-full px-0.5 text-[8px] font-bold tabular-nums",
+                      "absolute -right-1.5 -top-1 flex h-4 min-w-4 items-center justify-center rounded-full px-0.5 tabular-nums",
                       mobileNavBadgeClass
                     )}
                   >

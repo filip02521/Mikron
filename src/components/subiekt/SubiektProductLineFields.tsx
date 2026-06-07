@@ -164,6 +164,7 @@ export function SubiektProductLineFields({
   onConfigFeedbackChange,
   onResolvingSupplierChange,
   deferSupplierResolve = false,
+  compactControls = false,
   fieldValidation,
   lineIndex = 0,
   typeaheadSize = "default",
@@ -188,6 +189,8 @@ export function SubiektProductLineFields({
   onConfigFeedbackChange?: (feedback: SubiektFeedback | null) => void;
   onResolvingSupplierChange?: (resolving: boolean) => void;
   deferSupplierResolve?: boolean;
+  /** Mniejsze pola — panel weryfikacji / wąska kolumna. */
+  compactControls?: boolean;
   /** Stany pól (prośba handlowca). */
   fieldValidation?: ProsbaLineFieldMap;
   lineIndex?: number;
@@ -517,7 +520,7 @@ export function SubiektProductLineFields({
   const linkedBannerSymbol = symbolPreview;
 
   const prosbaMessageItems: ProsbaLineMessageItem[] = [];
-  if (prosba) {
+  if (prosba && !delegateAlerts) {
     if (resolvingSupplier) {
       prosbaMessageItems.push({ kind: "resolving" });
     }
@@ -587,7 +590,9 @@ export function SubiektProductLineFields({
               autoComplete="off"
               state={mergedProductField.state}
               className={cn(
-                "min-h-12 py-3 text-base sm:min-h-[2.75rem]",
+                compactControls
+                  ? "min-h-11 py-2.5 text-base sm:min-h-[2.5rem] sm:text-sm"
+                  : "min-h-12 py-3 text-base sm:min-h-[2.75rem]",
                 inputLoadingPadding(productInputLoading)
               )}
               onKeyDown={handleTypeaheadKeyDown}
@@ -657,7 +662,9 @@ export function SubiektProductLineFields({
               autoComplete="off"
               state={mikranField.state}
               className={cn(
-                "min-h-12 px-2.5 text-base tabular-nums sm:min-h-[2.75rem] sm:text-sm",
+                compactControls
+                  ? "min-h-11 px-2.5 text-base tabular-nums sm:min-h-[2.5rem] sm:text-sm"
+                  : "min-h-12 px-2.5 text-base tabular-nums sm:min-h-[2.75rem] sm:text-sm",
                 mikranInputLoading ? "pr-9 text-left" : "text-center"
               )}
               onKeyDown={handleTypeaheadKeyDown}

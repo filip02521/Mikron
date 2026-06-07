@@ -14,6 +14,8 @@ import {
   DailySectionIcon,
 } from "@/components/icons/StrokeIcons";
 import type { DailyPanelRunFn } from "@/components/summary/useDailyPanelRunner";
+import { panelSectionInsetClass } from "@/lib/ui/ontime-theme";
+import type { OrderFormSupplierOption } from "@/lib/orders/order-form-suppliers";
 
 export function DailyTodayView({
   workspace,
@@ -42,6 +44,7 @@ export function DailyTodayView({
   onBulkOrdered,
   onOpenVerification,
   onOpenWeek,
+  highlightFresh = false,
 }: {
   workspace: SummaryWorkspaceData;
   verificationCount: number;
@@ -63,7 +66,7 @@ export function DailyTodayView({
   isBulkPending: boolean;
   statsBySupplierId: Record<string, DeliveryStats>;
   supplierStatsMode: Record<string, StatsMode>;
-  suppliers: { id: string; name: string }[];
+  suppliers: OrderFormSupplierOption[];
   salesPeople: { id: string; name: string; email: string }[];
   run: DailyPanelRunFn;
   onOpenSupplier: (id: string) => void;
@@ -74,6 +77,7 @@ export function DailyTodayView({
   onBulkOrdered: () => void;
   onOpenVerification: () => void;
   onOpenWeek: () => void;
+  highlightFresh?: boolean;
 }) {
   const hasCancelled = workspace.salesCancelledNotices.length > 0;
   const showEmpty = !hasTodayWork && verificationCount === 0 && !hasCancelled;
@@ -83,7 +87,7 @@ export function DailyTodayView({
       id="panel-view-dzis"
       role="tabpanel"
       aria-labelledby="panel-tab-dzis"
-      className="px-4 py-4 sm:px-6"
+      className={panelSectionInsetClass}
     >
         {!showEmpty ? (
           <div className="space-y-3">
@@ -138,6 +142,7 @@ export function DailyTodayView({
                     suppliers={suppliers}
                     salesPeople={salesPeople}
                     sectionId="kolejka-brak-na-stanie"
+                    highlightFresh={highlightFresh}
                   />
                 ) : null}
 
@@ -153,6 +158,7 @@ export function DailyTodayView({
                     supplierStatsMode={supplierStatsMode}
                     suppliers={suppliers}
                     salesPeople={salesPeople}
+                    highlightFresh={highlightFresh}
                   />
                 ) : null}
 

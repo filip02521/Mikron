@@ -4,6 +4,7 @@ import { NavIcon } from "@/components/icons/NavIcon";
 import { navIconTileIdleClass } from "@/components/icons/NavIcon";
 import { SectionHeadingIcon } from "@/components/icons/SectionHeadingIcon";
 import { Card, CardHeader } from "@/components/ui/Card";
+import { salesCardBodyClass, salesTeamPageShellClass } from "@/lib/ui/ontime-theme";
 
 export function SalesTeamWorkspace({
   title,
@@ -19,10 +20,11 @@ export function SalesTeamWorkspace({
   children: React.ReactNode;
 }) {
   return (
-    <div className="mx-auto max-w-6xl">
+    <div className={salesTeamPageShellClass}>
       <Card padding={false} className="overflow-hidden">
         <CardHeader
           inset
+          density="compact"
           leading={
             <SectionHeadingIcon tileClassName={navIconTileIdleClass(iconKey)}>
               <NavIcon navKey={iconKey} size={20} />
@@ -32,7 +34,7 @@ export function SalesTeamWorkspace({
           description={description}
           action={action}
         />
-        <div className="min-w-0 space-y-4 p-4 sm:p-5">{children}</div>
+        <div className={salesCardBodyClass}>{children}</div>
       </Card>
     </div>
   );

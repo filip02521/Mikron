@@ -35,6 +35,11 @@ export function HowItWorksContent() {
       <li>
         Po każdej zmianie masz <strong>5 sekund na cofnięcie</strong>.
       </li>
+      <li>
+        <strong className="text-slate-800">Na bieżąco</strong> — pod zakładkami (Dziś, Tydzień,
+        Wyjątki) widać, kiedy panel sprawdzał kolejkę. Włącz <strong>Auto przy zmianach</strong>, aby przy
+        nowych prośbach widok odświeżał się sam co ok. 3 min.
+      </li>
     </ol>
   );
 }

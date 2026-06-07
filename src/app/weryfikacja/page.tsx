@@ -1,30 +1,24 @@
-import {
-  fetchSuppliersWithSchedules,
-  fetchVerificationOrders,
-} from "@/lib/data/queries";
+import { fetchSuppliersForRequestForms, fetchVerificationOrders } from "@/lib/data/queries";
 import { runOrderMaintenanceBeforePageLoad } from "@/lib/services/deferred-order-maintenance";
 import { fetchSalesPeopleForPicker } from "@/lib/data/sales-people-admin";
 import { VerificationClient } from "@/components/verification/VerificationClient";
+import type { OrderFormSupplierOption } from "@/lib/orders/order-form-suppliers";
 import type { IndividualOrder } from "@/types/database";
 
 export default async function WeryfikacjaPage() {
   await runOrderMaintenanceBeforePageLoad({ autoAssign: true });
 
   let orders: IndividualOrder[] = [];
-  let suppliers: { id: string; name: string }[] = [];
+  let suppliers: OrderFormSupplierOption[] = [];
   let salesPeople: { id: string; name: string }[] = [];
 
   try {
     const [o, s] = await Promise.all([
       fetchVerificationOrders(),
-      fetchSuppliersWithSchedules(undefined, { activeOnly: false }),
+      fetchSuppliersForRequestForms(),
     ]);
     orders = o;
-    suppliers = s.map((x) => ({
-      id: x.id,
-      name: x.name,
-      subiekt_kh_id: x.subiekt_kh_id ?? null,
-    }));
+    suppliers = s;
     salesPeople = await fetchSalesPeopleForPicker();
   } catch {
     /* empty */

@@ -1,4 +1,5 @@
 import { cn } from "@/lib/cn";
+import { panelSubsectionInsetClass, panelTypography } from "@/lib/ui/ontime-theme";
 
 export type DailyPanelSubsectionTone =
   | "default"
@@ -80,7 +81,7 @@ export function DailyPanelSubsectionBar({
   if (countLabel) ariaParts.push(countLabel);
 
   return (
-    <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 bg-slate-50/50 px-3 py-2 sm:px-4">
+    <div className={cn("flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 bg-slate-50/50 py-2 sm:py-2.5", panelSubsectionInsetClass)}>
       <div className="flex min-w-0 items-center gap-2">
         {step != null ? (
           <span
@@ -99,15 +100,15 @@ export function DailyPanelSubsectionBar({
             className="flex flex-wrap items-baseline gap-x-1.5 gap-y-0.5"
             aria-label={ariaParts.join(", ")}
           >
-            <h4 className="text-sm font-semibold text-slate-900">{title}</h4>
+            <h4 className={panelTypography.sectionTitle}>{title}</h4>
             {countLabel ? (
-              <span className="text-xs font-normal tabular-nums text-slate-500">
+              <span className={cn("font-normal tabular-nums text-slate-500", panelTypography.rowMeta)}>
                 · {countLabel}
               </span>
             ) : null}
           </div>
           {!compact && description ? (
-            <p className="mt-0.5 text-[11px] leading-snug text-slate-500">{description}</p>
+            <p className={cn("mt-0.5", panelTypography.caption)}>{description}</p>
           ) : null}
         </div>
       </div>

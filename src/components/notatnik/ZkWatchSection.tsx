@@ -10,6 +10,7 @@ import { Alert } from "@/components/ui/Alert";
 import { validateZkQueryForSubmit } from "@/lib/subiekt/zk-search";
 import type { ZkSearchCandidate } from "@/lib/subiekt/resolve-zk-document";
 import { cn } from "@/lib/cn";
+import { salesTypography } from "@/lib/ui/ontime-theme";
 import { sortZkWatches } from "@/lib/sales/zk-watch-sort";
 import {
   filterZkWatchesByClientQuery,
@@ -129,8 +130,8 @@ export function ZkWatchSection({
     <div className={embedded ? "space-y-3" : "space-y-4"}>
       {!embedded ? (
         <div>
-          <h2 className="text-base font-semibold text-slate-900">Czeka na towar</h2>
-          <p className="mt-1 text-sm text-slate-500">
+          <h2 className={salesTypography.blockTitle}>Czeka na towar</h2>
+          <p className={cn("mt-0.5", salesTypography.sectionHint)}>
             Krótki numer (min. 2 znaki) szuka w ostatnich 30 dniach. Pełny format np.{" "}
             234/M/03/2026 przeszukuje tylko marzec 2026.
           </p>

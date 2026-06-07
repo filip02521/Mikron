@@ -10,6 +10,7 @@ export function NotatnikPanel({
   count,
   icon,
   tileClassName = sectionIconTileBrandClass,
+  domain = "sales",
   children,
   className,
   bodyClassName,
@@ -19,6 +20,7 @@ export function NotatnikPanel({
   count?: number;
   icon: ReactNode;
   tileClassName?: string;
+  domain?: "sales" | "panel";
   children: ReactNode;
   className?: string;
   bodyClassName?: string;
@@ -26,6 +28,7 @@ export function NotatnikPanel({
   return (
     <section className={cn(mojeShipmentSectionShellClass, className)}>
       <SectionListLabel
+        domain={domain}
         title={title}
         hint={description}
         count={count}

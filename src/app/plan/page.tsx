@@ -8,7 +8,6 @@ import { aggregateVisibleMyOrdersBySupplier } from "@/lib/orders/sales-open-orde
 import { buildSummaryWorkspace } from "@/lib/orders/summary-workspace";
 import { PlanClient } from "@/components/plan/PlanClient";
 import { PageHeader } from "@/components/ui/PageHeader";
-import { Alert } from "@/components/ui/Alert";
 import { SalesAccountLinkRequired } from "@/components/sales/SalesAccountLinkRequired";
 import { getAppRole } from "@/lib/auth-dev";
 import { getSessionUser } from "@/lib/auth";
@@ -84,19 +83,27 @@ export default async function PlanPage() {
           description="Podgląd harmonogramu zamówień u dostawców — bez panelu zakupowego."
         />
       ) : null}
-      {error ? (
-        <Alert tone="warning" className={salesMode ? "mb-4" : "mb-6"}>
-          {error}
-        </Alert>
-      ) : null}
-      <PlanClient
-        workspace={workspace}
-        suppliers={suppliers}
-        mode={salesMode ? "sales" : "full"}
-        prioritySupplierIds={prioritySupplierIds}
-        openOrderCountBySupplier={openOrderCountBySupplier}
-        statsBySupplierId={statsBySupplierId}
-      />
+      {salesMode ? (
+        <PlanClient
+          workspace={workspace}
+          suppliers={suppliers}
+          mode="sales"
+          prioritySupplierIds={prioritySupplierIds}
+          openOrderCountBySupplier={openOrderCountBySupplier}
+          statsBySupplierId={statsBySupplierId}
+          error={error}
+        />
+      ) : (
+        <PlanClient
+          workspace={workspace}
+          suppliers={suppliers}
+          mode="full"
+          prioritySupplierIds={prioritySupplierIds}
+          openOrderCountBySupplier={openOrderCountBySupplier}
+          statsBySupplierId={statsBySupplierId}
+          error={error}
+        />
+      )}
     </>
   );
 }

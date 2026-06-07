@@ -6,13 +6,15 @@ export function ManagerPreviewBanner({
   salesPersonName,
   salesPersonId,
   notatnikPreview,
+  className,
 }: {
   salesPersonName: string;
   salesPersonId: string;
   notatnikPreview?: boolean;
+  className?: string;
 }) {
   return (
-    <Alert tone="info" className="mb-6">
+    <Alert tone="info" className={className ?? "mb-4 text-xs leading-relaxed"}>
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <p>
           Podgląd {notatnikPreview ? "notatnika" : "prośb handlowca"}:{" "}

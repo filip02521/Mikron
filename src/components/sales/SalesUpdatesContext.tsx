@@ -21,6 +21,8 @@ type SalesUpdatesContextValue = {
   refreshNow: () => void;
   autoRefresh: boolean;
   setAutoRefresh: (value: boolean) => void;
+  lastSyncedAt: number | null;
+  lastPollAt: number | null;
 };
 
 const SalesUpdatesContext = createContext<SalesUpdatesContextValue | null>(null);
@@ -56,6 +58,10 @@ export function SalesUpdatesProvider({
   const [baseline, setBaseline] = useState(initialVersion);
   const [latest, setLatest] = useState(initialVersion);
   const [autoRefresh, setAutoRefreshState] = useState(false);
+  const [lastSyncedAt, setLastSyncedAt] = useState<number | null>(() =>
+    initialVersion != null ? Date.now() : null
+  );
+  const [lastPollAt, setLastPollAt] = useState<number | null>(null);
   const syncingRef = useRef(false);
 
   useEffect(() => {
@@ -85,15 +91,24 @@ export function SalesUpdatesProvider({
     syncingRef.current = true;
     router.refresh();
     if (latest) setBaseline(latest);
-    void fetchVersion().then((v) => {
-      if (v) syncBaseline(v);
-      syncingRef.current = false;
-    });
+    void fetchVersion()
+      .then((v) => {
+        if (v) syncBaseline(v);
+        const now = Date.now();
+        setLastSyncedAt(now);
+        setLastPollAt(now);
+      })
+      .finally(() => {
+        syncingRef.current = false;
+      });
   }, [router, latest, syncBaseline]);
 
   const poll = useCallback(async () => {
     const v = await fetchVersion();
-    if (v) setLatest(v);
+    if (!v) return;
+    const now = Date.now();
+    setLatest(v);
+    setLastPollAt(now);
   }, []);
 
   useEffect(() => {
@@ -143,7 +158,14 @@ export function SalesUpdatesProvider({
 
   return (
     <SalesUpdatesContext.Provider
-      value={{ hasUpdates, refreshNow, autoRefresh, setAutoRefresh }}
+      value={{
+        hasUpdates,
+        refreshNow,
+        autoRefresh,
+        setAutoRefresh,
+        lastSyncedAt,
+        lastPollAt,
+      }}
     >
       {children}
     </SalesUpdatesContext.Provider>
@@ -152,7 +174,8 @@ export function SalesUpdatesProvider({
 
 export function SalesUpdatesBanner() {
   const ctx = useSalesUpdates();
-  if (!ctx?.hasUpdates) return null;
+  const pathname = usePathname();
+  if (!ctx?.hasUpdates || pathname === "/moje") return null;
 
   return (
     <div role="status" className={salesUpdatesBannerClass}>
@@ -164,7 +187,7 @@ export function SalesUpdatesBanner() {
         </p>
       </div>
       <div className="flex flex-wrap items-center gap-2">
-        <Button type="button" size="sm" className="min-h-10 shrink-0" onClick={ctx.refreshNow}>
+        <Button type="button" size="sm" className="min-h-11 shrink-0" onClick={ctx.refreshNow}>
           Odśwież teraz
         </Button>
       </div>

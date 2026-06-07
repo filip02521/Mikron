@@ -12,7 +12,7 @@ export function SalesOnboardingTourBanner() {
   return (
     <div
       className={cn(
-        "sticky top-0 z-30 -mx-3 mb-4 border border-indigo-300/90 bg-indigo-600 px-3 py-3 text-white shadow-md sm:-mx-6 sm:px-4 md:top-2 md:rounded-md"
+        "sticky top-0 z-30 -mx-3 mb-4 border border-indigo-300/90 bg-indigo-600 px-3 py-3 text-white shadow-md sm:-mx-4 sm:px-4 md:top-2 md:rounded-md"
       )}
       role="status"
       aria-live="polite"

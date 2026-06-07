@@ -5,6 +5,7 @@ import { cn } from "@/lib/cn";
 import { IconHoldPress } from "@/components/icons/StrokeIcons";
 import {
   panelHoldOutlineSegmentClass,
+  panelSegmentOutlineClass,
   panelSegmentPrimaryClass,
 } from "@/lib/ui/ontime-theme";
 import { buttonGroupItemClass } from "@/lib/ui/surfaces";
@@ -23,10 +24,7 @@ const segmentRound: Record<SegmentPosition, string> = {
 
 const variantShell: Record<Variant, string> = {
   primary: panelSegmentPrimaryClass,
-  outline: cn(
-    "flex h-7 min-h-7 max-h-7 items-center justify-center px-2.5",
-    panelHoldOutlineSegmentClass
-  ),
+  outline: cn(panelSegmentOutlineClass, panelHoldOutlineSegmentClass),
   sky: cn(
     panelSegmentPrimaryClass,
     "bg-gradient-to-b from-sky-600 to-sky-700 shadow-sm shadow-sky-600/15 hover:from-sky-600 hover:to-sky-800"

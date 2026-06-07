@@ -28,7 +28,7 @@ export default async function ZespolGrupyPage() {
     <SalesTeamWorkspace title={copy.title} description={copy.description} iconKey="teamAccounts">
       <SalesTeamSubnav />
       {loadError ? (
-        <p className="rounded-md border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+        <p className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2.5 text-xs text-amber-900">
           {loadError}
         </p>
       ) : null}

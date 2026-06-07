@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { LinkChevron } from "@/components/ui/UiGlyphs";
 import { useMemo, useState, useTransition, useCallback, useEffect } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { actionUpdateScheduleDates } from "@/app/actions/admin";
 import { ActionLoadingOverlay } from "@/components/ui/ActionLoadingOverlay";
 import { Card, CardHeader } from "@/components/ui/Card";
@@ -13,6 +13,13 @@ import { EmptyState } from "@/components/ui/EmptyState";
 import { DataTable, TableScroll } from "@/components/ui/DataTable";
 import { Toast } from "@/components/ui/Toast";
 import { ColorLegend } from "@/components/summary/ColorLegend";
+import {
+  ScheduleListFilterBar,
+  type ScheduleTermFilterKey,
+} from "@/components/admin/SupplierHubListFilters";
+import { SUPPLIER_HUB_LIST_META_DESCRIPTION } from "@/lib/supplier-hub";
+import type { SupplierHubContext } from "@/lib/supplier-hub";
+import type { SupplierLocation } from "@/types/database";
 import {
   formatPlDate,
   locationLabel,
@@ -41,7 +48,12 @@ export interface ScheduleRow {
   rowColor: string;
 }
 
-type FilterKey = "all" | "overdue" | "week" | "vacation";
+type FilterKey = ScheduleTermFilterKey;
+
+function parseTermFilter(raw: string | null): FilterKey {
+  if (raw === "overdue" || raw === "week" || raw === "vacation") return raw;
+  return "all";
+}
 
 function isOverdue(next: string | null): boolean {
   if (!next) return false;
@@ -71,13 +83,16 @@ export function LocationScheduleClient({
   cardsBasePath,
   initialRows,
   inHubShell = false,
+  hubContext = "zakupy",
 }: {
   location: string;
   cardsBasePath: string;
   initialRows: ScheduleRow[];
   inHubShell?: boolean;
+  hubContext?: SupplierHubContext;
 }) {
   const router = useRouter();
+  const pathname = usePathname();
   const searchParams = useSearchParams();
   const [pending, start] = useTransition();
   const [pendingMessage, setPendingMessage] = useState<string | null>(null);
@@ -89,9 +104,25 @@ export function LocationScheduleClient({
   const [savedId, setSavedId] = useState<string | null>(null);
 
   useEffect(() => {
-    const q = searchParams.get("q")?.trim();
-    if (q) setSearch(q);
+    setSearch(searchParams.get("q")?.trim() ?? "");
+    setFilter(parseTermFilter(searchParams.get("term")));
   }, [searchParams]);
+
+  useEffect(() => {
+    const timer = window.setTimeout(() => {
+      const params = new URLSearchParams(searchParams.toString());
+      const q = search.trim();
+      if (q) params.set("q", q);
+      else params.delete("q");
+      if (filter !== "all") params.set("term", filter);
+      else params.delete("term");
+      const next = params.toString();
+      if (next !== searchParams.toString()) {
+        router.replace(next ? `${pathname}?${next}` : pathname, { scroll: false });
+      }
+    }, 300);
+    return () => window.clearTimeout(timer);
+  }, [search, filter, pathname, router, searchParams]);
 
   const dismissToast = useCallback(() => setToast(null), []);
 
@@ -156,13 +187,10 @@ export function LocationScheduleClient({
 
   const locLabel = locationLabel(location);
 
+  const filterActive = filter !== "all" || search.trim().length > 0;
+
   return (
-    <div
-      className={cn(
-        "relative space-y-4",
-        inHubShell && "p-4 sm:p-5"
-      )}
-    >
+    <div className="relative space-y-4">
       {pendingMessage ? (
         <ActionLoadingOverlay
           message={pendingMessage}
@@ -174,54 +202,30 @@ export function LocationScheduleClient({
         <Toast message={toast.text} tone={toast.tone} onDismiss={dismissToast} />
       ) : null}
 
-      <ColorLegend />
-
-      <Card padding={false}>
+      <Card padding={false} className="overflow-hidden">
         <CardHeader
           inset
+          density="compact"
           title={
             inHubShell
-              ? `Lista dostawców (${filtered.length}${filter !== "all" || search.trim() ? ` z ${initialRows.length}` : ""})`
-              : `Terminy · ${locLabel} (${filtered.length}${filter !== "all" || search.trim() ? ` z ${initialRows.length}` : ""})`
+              ? `Terminy (${filtered.length}${filterActive ? ` z ${initialRows.length}` : ""})`
+              : `Terminy · ${locLabel} (${filtered.length}${filterActive ? ` z ${initialRows.length}` : ""})`
           }
-          description="Kliknij datę, aby zapisać. Kolory = pilność następnego zamówienia. Ustawienia karty — link przy nazwie."
+          description={`Kliknij datę, aby zapisać. Kolory = pilność. ${SUPPLIER_HUB_LIST_META_DESCRIPTION}`}
         />
 
-        <div className="flex flex-col gap-4 border-b border-slate-100 px-6 py-4">
-          <Input
-            type="search"
-            placeholder="Szukaj dostawcy…"
-            className="max-w-sm py-2 text-sm"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-          />
-          <div>
-            <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-500">
-              Filtr terminów
-              <span className="ml-1.5 font-normal normal-case tracking-normal text-slate-400">
-                (tylko ta lista)
-              </span>
-            </p>
-            <div className="flex flex-wrap gap-2">
-              {(
-                [
-                  ["all", "Wszystkie"],
-                  ["overdue", "Po terminie"],
-                  ["week", "Ten tydzień"],
-                  ["vacation", "Z urlopem"],
-                ] as const
-              ).map(([key, label]) => (
-                <Button
-                  key={key}
-                  size="sm"
-                  variant={filter === key ? "primary" : "secondary"}
-                  onClick={() => setFilter(key)}
-                >
-                  {label} ({counts[key]})
-                </Button>
-              ))}
-            </div>
-          </div>
+        <ScheduleListFilterBar
+          location={location as SupplierLocation}
+          context={hubContext}
+          termFilter={filter}
+          onTermFilterChange={setFilter}
+          termCounts={counts}
+          search={search}
+          onSearchChange={setSearch}
+        />
+
+        <div className="border-b border-slate-100 px-3 pb-3 sm:px-4 lg:px-5">
+          <ColorLegend />
         </div>
 
         {!filtered.length ? (

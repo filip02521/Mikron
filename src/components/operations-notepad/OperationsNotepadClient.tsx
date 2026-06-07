@@ -4,12 +4,17 @@ import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Card, CardHeader } from "@/components/ui/Card";
-import { Badge } from "@/components/ui/Badge";
-import { Button } from "@/components/ui/Button";
+import { Alert } from "@/components/ui/Alert";
 import { UndoToast } from "@/components/ui/UndoToast";
-import { IconClipboardPen, IconArchive } from "@/components/icons/StrokeIcons";
+import { IconNotepad, IconArchive, IconClipboardPen, IconUsers } from "@/components/icons/StrokeIcons";
 import { SectionHeadingIcon } from "@/components/icons/SectionHeadingIcon";
-import { sectionIconTileBrandClass } from "@/lib/ui/ontime-theme";
+import {
+  panelChromeInsetClass,
+  panelChoiceChipClass,
+  panelChoiceChipIdleClass,
+  panelChoiceChipSelectedClass,
+  sectionIconTileBrandClass,
+} from "@/lib/ui/ontime-theme";
 import {
   collectOperationsTodayTasks,
   type OperationsNotepadData,
@@ -20,7 +25,6 @@ import {
 } from "@/lib/operations/notepad-department";
 import { isAdmin } from "@/lib/auth-roles";
 import { sortOperationsNotes } from "@/lib/operations/operations-note-sort";
-import { formatFollowUpLabel } from "@/lib/sales/notepad-follow-up";
 import type { OperationsDepartment, OperationsNote, OperationsNoteVisibility, UserRole } from "@/types/database";
 import {
   actionReorderOperationsNotes,
@@ -30,9 +34,16 @@ import {
   OperationsNotesSection,
   NOTATNIK_KEYBOARD_HINTS,
 } from "@/components/operations-notepad/OperationsNotesSection";
-import { NOTATNIK_PAGE_CLASS, notatnikPanelClass } from "@/components/notatnik/notatnik-layout";
-import { NOTE_COLOR_CARD } from "@/components/notatnik/note-styles";
+import { OperationsTodayTasksSection } from "@/components/operations-notepad/OperationsTodayTasksSection";
+import { OperationsArchivedNotesSection } from "@/components/operations-notepad/OperationsArchivedNotesSection";
+import { OPERATIONS_NOTEPAD_PAGE_CLASS } from "@/components/operations-notepad/operations-notepad-layout";
+import { NotatnikPanel } from "@/components/notatnik/NotatnikPanel";
+import { NotatnikCollapsible } from "@/components/notatnik/NotatnikCollapsible";
+import { KeyboardShortcutsHint } from "@/components/ui/KeyboardShortcutsHint";
 import { cn } from "@/lib/cn";
+
+const OPERATIONS_NOTEPAD_INTRO =
+  "Prywatne karteczki i wspólna tablica działu. Przypomnienia nie trafiają do panelu dziennego.";
 
 type OperationsUndoState =
   | { type: "archive"; note: OperationsNote; visibility: OperationsNoteVisibility }
@@ -59,11 +70,13 @@ export function OperationsNotepadClient({
   department,
   userId,
   role,
+  loadError = null,
 }: {
   initial: OperationsNotepadData;
   department: OperationsDepartment;
   userId: string;
   role: UserRole;
+  loadError?: string | null;
 }) {
   const router = useRouter();
   const allowedDepartments = departmentsForRole(role);
@@ -193,174 +206,144 @@ export function OperationsNotepadClient({
     handleNoteArchived(note, "public");
   }
 
-  async function restoreArchived(note: OperationsNote) {
-    const { note: restored } = await actionRestoreOperationsNote(note.id);
-    setArchivedNotes((prev) => prev.filter((n) => n.id !== note.id));
+  function handleArchivedRestored(restored: OperationsNote) {
+    setArchivedNotes((prev) => prev.filter((n) => n.id !== restored.id));
     if (restored.visibility === "private") {
       setPrivateNotes((prev) => sortOperationsNotes([restored, ...prev]));
     } else {
       setPublicNotes((prev) => sortOperationsNotes([restored, ...prev]));
     }
+    flashNoteAnchor(restored.id);
+    refresh();
   }
 
   const deptLabel = OPERATIONS_DEPARTMENT_LABELS[department];
 
   return (
-    <div className={NOTATNIK_PAGE_CLASS}>
-      <CardHeader
-        title="Notatki"
-        description={`Prywatne i wspólne dla działu: ${deptLabel}. Karteczki i przypomnienia.`}
-      />
+    <div className={OPERATIONS_NOTEPAD_PAGE_CLASS}>
+      <Card padding={false} className="overflow-hidden">
+        <CardHeader
+          inset
+          density="compact"
+          title="Notatki"
+          description={OPERATIONS_NOTEPAD_INTRO}
+          leading={
+            <SectionHeadingIcon tileClassName={sectionIconTileBrandClass}>
+              <IconNotepad size={20} />
+            </SectionHeadingIcon>
+          }
+          action={
+            <KeyboardShortcutsHint items={[...NOTATNIK_KEYBOARD_HINTS]} compact />
+          }
+        />
 
-      <p className="mb-4 text-xs font-medium text-indigo-800">
-        Aktywny dział: {deptLabel}
-      </p>
-
-      {allowedDepartments.length > 1 ? (
-        <div className="mb-4 flex flex-wrap gap-2">
-          {allowedDepartments.map((d) => (
-            <Link
-              key={d}
-              href={`/notatki?dzial=${d}`}
-              className={cn(
-                "inline-flex h-8 items-center rounded-md px-3 text-sm font-medium transition",
-                d === department
-                  ? "bg-indigo-600 text-white"
-                  : "border border-slate-200 bg-white text-slate-700 hover:bg-slate-50"
-              )}
-            >
-              {OPERATIONS_DEPARTMENT_LABELS[d]}
-            </Link>
-          ))}
-        </div>
-      ) : null}
-
-      {todayTasks.length ? (
-        <section className={cn(notatnikPanelClass(), "mb-4 border-violet-200/80 bg-violet-50/40 p-3")}>
-          <h2 className="text-sm font-semibold text-slate-900">Do zrobienia dziś</h2>
-          <ul className="mt-2 space-y-1.5">
-            {todayTasks.map((note) => (
-              <li key={note.id}>
-                <button
-                  type="button"
-                  className="flex w-full items-center justify-between gap-2 rounded-md border border-white/80 bg-white/90 px-3 py-2 text-left text-xs shadow-sm hover:border-violet-200"
-                  onClick={() =>
-                    document.getElementById(`note-${note.id}`)?.scrollIntoView({
-                      behavior: "smooth",
-                      block: "center",
-                    })
-                  }
-                >
-                  <span className="truncate font-medium text-slate-900">
-                    {note.title?.trim() || note.body.slice(0, 80)}
-                  </span>
-                  <Badge variant="purple" className="shrink-0 text-[10px]">
-                    {formatFollowUpLabel(note.follow_up_at)}
-                  </Badge>
-                </button>
-              </li>
+        {allowedDepartments.length > 1 ? (
+          <div
+            className={cn(
+              panelChromeInsetClass,
+              "flex flex-wrap items-center gap-2 border-b border-slate-100 py-2.5 sm:py-3"
+            )}
+            role="group"
+            aria-label="Dział"
+          >
+            <span className="text-xs font-medium text-slate-500">Dział</span>
+            {allowedDepartments.map((d) => (
+              <Link
+                key={d}
+                href={`/notatki?dzial=${d}`}
+                aria-current={d === department ? "page" : undefined}
+                className={cn(
+                  panelChoiceChipClass,
+                  "min-h-9 py-2 sm:min-h-0",
+                  d === department ? panelChoiceChipSelectedClass : panelChoiceChipIdleClass
+                )}
+              >
+                {OPERATIONS_DEPARTMENT_LABELS[d]}
+              </Link>
             ))}
-          </ul>
-        </section>
-      ) : null}
-
-      <div className="space-y-4">
-        <Card className={notatnikPanelClass()}>
-          <div className="mb-3 flex items-center gap-2 border-b border-slate-100 pb-2">
-            <SectionHeadingIcon tileClassName={sectionIconTileBrandClass}>
-              <IconClipboardPen size={20} />
-            </SectionHeadingIcon>
-            <div>
-              <h2 className="text-sm font-semibold text-slate-900">Prywatne</h2>
-              <p className="text-xs text-slate-500">Widzisz tylko Ty</p>
-            </div>
           </div>
-          <OperationsNotesSection
-            notes={privateNotes}
-            department={department}
-            visibility="private"
-            currentUserId={userId}
-            sectionTitle=""
-            embedded
-            onNoteCreated={handlePrivateCreated}
-            onNoteUpdated={handlePrivateUpdated}
-            onNoteArchived={handlePrivateArchived}
-            onNotesReordered={(next, prev) => handleNotesReordered("private", next, prev)}
-            allowReorder
-          />
-        </Card>
-
-        <Card className={notatnikPanelClass()}>
-          <div className="mb-3 flex items-center gap-2 border-b border-slate-100 pb-2">
-            <SectionHeadingIcon tileClassName={sectionIconTileBrandClass}>
-              <IconClipboardPen size={20} />
-            </SectionHeadingIcon>
-            <div>
-              <h2 className="text-sm font-semibold text-slate-900">Publiczne</h2>
-              <p className="text-xs text-slate-500">
-                Wspólna tablica działu {deptLabel} — widoczne tylko w tym dziale
-              </p>
-            </div>
+        ) : (
+          <div className={cn(panelChromeInsetClass, "border-b border-slate-100 py-2 text-xs text-slate-600")}>
+            Dział: <span className="font-medium text-slate-900">{deptLabel}</span>
           </div>
-          <OperationsNotesSection
-            notes={publicNotes}
-            department={department}
-            visibility="public"
-            currentUserId={userId}
-            embedded
-            onNoteCreated={handlePublicCreated}
-            onNoteUpdated={handlePublicUpdated}
-            onNoteArchived={handlePublicArchived}
-            onNotesReordered={(next, prev) => handleNotesReordered("public", next, prev)}
-            allowReorder={isAdmin(role)}
-          />
-        </Card>
+        )}
 
-        {archivedNotes.length ? (
-          <Card className={notatnikPanelClass()}>
-            <button
-              type="button"
-              className="flex w-full items-center gap-2 text-left"
-              onClick={() => setShowArchive((v) => !v)}
-            >
-              <SectionHeadingIcon tileClassName={sectionIconTileBrandClass}>
-                <IconArchive size={20} />
-              </SectionHeadingIcon>
-              <span className="text-sm font-semibold text-slate-900">
-                Archiwum ({archivedNotes.length})
-              </span>
-            </button>
-            {showArchive ? (
-              <div className="mt-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
-                {archivedNotes.map((note) => (
-                  <article
-                    key={note.id}
-                    className={cn(
-                      "rounded-md border p-3 opacity-80",
-                      NOTE_COLOR_CARD[note.color] ?? NOTE_COLOR_CARD.default
-                    )}
-                  >
-                    <p className="text-xs font-medium text-slate-900">
-                      {note.title?.trim() || "Notatka"}
-                    </p>
-                    <p className="mt-1 line-clamp-3 text-xs text-slate-700">{note.body}</p>
-                    {note.created_by === userId || isAdmin(role) ? (
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        className="mt-2 h-7 px-2 text-xs"
-                        onClick={() => void restoreArchived(note)}
-                      >
-                        Przywróć
-                      </Button>
-                    ) : null}
-                  </article>
-                ))}
-              </div>
-            ) : null}
-          </Card>
+        {loadError ? (
+          <Alert tone="error" className="mx-3 mt-3 sm:mx-4">
+            {loadError}
+          </Alert>
         ) : null}
-      </div>
+
+        <OperationsTodayTasksSection
+          notes={todayTasks}
+          onTaskClick={flashNoteAnchor}
+          embedded
+        />
+
+        <div className="space-y-3 p-3 sm:p-4">
+          <NotatnikPanel
+            domain="panel"
+            title="Prywatne"
+            description="Widzisz tylko Ty — karteczki nie są widoczne dla zespołu."
+            count={privateNotes.length || undefined}
+            icon={<IconClipboardPen size={17} />}
+          >
+            <OperationsNotesSection
+              notes={privateNotes}
+              department={department}
+              visibility="private"
+              currentUserId={userId}
+              embedded
+              onNoteCreated={handlePrivateCreated}
+              onNoteUpdated={handlePrivateUpdated}
+              onNoteArchived={handlePrivateArchived}
+              onNotesReordered={(next, prev) => handleNotesReordered("private", next, prev)}
+              allowReorder
+            />
+          </NotatnikPanel>
+
+          <NotatnikPanel
+            domain="panel"
+            title="Wspólne"
+            description={`Tablica działu ${deptLabel} — widoczne dla całego zespołu w tym dziale.`}
+            count={publicNotes.length || undefined}
+            icon={<IconUsers size={17} />}
+            tileClassName="bg-sky-100 text-sky-800"
+          >
+            <OperationsNotesSection
+              notes={publicNotes}
+              department={department}
+              visibility="public"
+              currentUserId={userId}
+              embedded
+              onNoteCreated={handlePublicCreated}
+              onNoteUpdated={handlePublicUpdated}
+              onNoteArchived={handlePublicArchived}
+              onNotesReordered={(next, prev) => handleNotesReordered("public", next, prev)}
+              allowReorder={isAdmin(role)}
+            />
+          </NotatnikPanel>
+
+          {archivedNotes.length > 0 ? (
+            <NotatnikCollapsible
+              domain="panel"
+              title="Archiwum"
+              description="Zarchiwizowane notatki — możesz je przywrócić."
+              count={archivedNotes.length}
+              open={showArchive}
+              onToggle={() => setShowArchive((v) => !v)}
+              icon={<IconArchive size={17} />}
+              tileClassName="bg-slate-100 text-slate-600"
+            >
+              <OperationsArchivedNotesSection
+                notes={archivedNotes}
+                canRestore={(note) => note.created_by === userId || isAdmin(role)}
+                onRestored={handleArchivedRestored}
+              />
+            </NotatnikCollapsible>
+          ) : null}
+        </div>
+      </Card>
 
       {undo ? (
         <UndoToast

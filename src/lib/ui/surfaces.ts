@@ -29,11 +29,24 @@ export const choiceChipClass = {
 export const buttonGroupShellClass =
   "inline-flex items-stretch overflow-hidden rounded-md border border-slate-200 bg-white shadow-sm";
 
-/** Grupa akcji w wierszu panelu dziennego — stała wysokość, zaokrąglona obudowa. */
+/** Grupa akcji w wierszu panelu dziennego — wysokość obudowy; segmenty wypełniają przez h-full. */
 export const panelActionBarShellClass =
-  "inline-flex h-7 items-stretch overflow-hidden rounded-md border border-slate-200 bg-white shadow-sm";
+  "inline-flex h-9 min-h-9 w-full items-stretch overflow-hidden rounded-md border border-slate-200 bg-white shadow-sm sm:h-7 sm:min-h-7 sm:w-auto";
+
+/** Grupa akcji w wierszu /moje — niższa obudowa niż panel zakupów. */
+export const mojeActionBarShellClass =
+  "inline-flex h-11 min-h-11 w-full items-stretch overflow-hidden rounded-md border border-slate-200 bg-white shadow-sm sm:h-8 sm:min-h-8 sm:w-auto";
 
 export const buttonGroupItemClass = "border-0 shadow-none";
 
-/** Stała wysokość segmentów w pasku akcji panelu. */
-export const panelActionSegmentHeightClass = "h-7 min-h-7 max-h-7 shrink-0";
+/** Segment wypełnia wysokość obudowy panelActionBarShellClass. */
+export const panelActionSegmentClass =
+  "flex h-full min-h-0 shrink-0 items-center justify-center leading-none";
+
+/** Układ wiersza kolejki — treść nad akcjami na wąskim ekranie. */
+export const panelQueueRowLayoutClass =
+  "flex flex-col gap-2 sm:flex-row sm:items-start sm:gap-2";
+
+/** Slot akcji w wierszu — pełna szerokość na mobile. */
+export const panelQueueRowActionsClass =
+  "w-full border-t border-slate-100/90 pt-2 sm:w-auto sm:shrink-0 sm:border-0 sm:pt-0 sm:self-start";

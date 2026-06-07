@@ -4,11 +4,8 @@ import { resolveSalesPersonForUser } from "@/lib/auth/sales-person";
 import { resolvePreviewSalesPerson } from "@/lib/auth/resolve-preview-sales-person";
 import { getAppRole } from "@/lib/auth-dev";
 import { isAdmin, isSalesAccount, isSalesManager } from "@/lib/auth-roles";
-import { Alert } from "@/components/ui/Alert";
 import { SalesAccountLinkRequired } from "@/components/sales/SalesAccountLinkRequired";
-import { ManagerPreviewBanner } from "@/components/sales/ManagerPreviewBanner";
 import { NotatnikClient } from "@/components/notatnik/NotatnikClient";
-import { NOTATNIK_PAGE_CLASS } from "@/components/notatnik/notatnik-layout";
 import { getSubiektAvailability } from "@/lib/subiekt/availability";
 
 export default async function NotatnikPage({
@@ -100,32 +97,23 @@ export default async function NotatnikPage({
   const subiektAvailability = await getSubiektAvailability();
 
   return (
-    <div className={NOTATNIK_PAGE_CLASS}>
-      {linkError && (previewSalesPersonId || role === "sales") ? (
-        <Alert tone="error">{linkError}</Alert>
-      ) : null}
-
-      {isTeamPreview && salesPersonId && salesPersonName ? (
-        <ManagerPreviewBanner
-          salesPersonId={salesPersonId}
-          salesPersonName={salesPersonName}
-          notatnikPreview
-        />
-      ) : null}
-
-      {loadError ? <Alert tone="error">{loadError}</Alert> : null}
-
-      <NotatnikClient
-        initial={notepad}
-        readOnly={!!isTeamPreview}
-        subiektAvailability={subiektAvailability}
-        pageTitle={isTeamPreview ? `Notatnik: ${salesPersonName}` : "Notatnik"}
-        pageDescription={
-          isTeamPreview
-            ? "Podgląd notatek i ZK wybranego handlowca. Edycja tylko we własnym notatniku."
-            : "Wpisz numer zamówienia klienta (ZK) — dane wczytają się automatycznie. Notatki i archiwum w jednym miejscu."
-        }
-      />
-    </div>
+    <NotatnikClient
+      initial={notepad}
+      readOnly={!!isTeamPreview}
+      subiektAvailability={subiektAvailability}
+      pageTitle={isTeamPreview ? `Notatnik: ${salesPersonName}` : "Notatnik"}
+      pageDescription={
+        isTeamPreview
+          ? "Podgląd notatek i ZK wybranego handlowca. Edycja tylko we własnym notatniku."
+          : "Wpisz numer zamówienia klienta (ZK) — dane wczytają się automatycznie. Notatki i archiwum w jednym miejscu."
+      }
+      linkError={linkError && (previewSalesPersonId || role === "sales") ? linkError : null}
+      loadError={loadError}
+      teamPreview={
+        isTeamPreview && salesPersonId && salesPersonName
+          ? { salesPersonId, salesPersonName }
+          : null
+      }
+    />
   );
 }

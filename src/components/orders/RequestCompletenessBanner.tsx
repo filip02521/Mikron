@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo } from "react";
+import { FormStatusAlert } from "@/components/orders/FormStatusAlert";
 import {
   assessRequestCompleteness,
   completenessUserHint,
@@ -9,7 +10,6 @@ import {
   type RequestDraft,
 } from "@/lib/orders/request-completeness";
 import type { IndividualRequestKind } from "@/types/database";
-import { cn } from "@/lib/cn";
 
 export function RequestCompletenessBanner({
   draft,
@@ -34,18 +34,11 @@ export function RequestCompletenessBanner({
 
   if (!assessment) {
     return (
-      <p
-        className={cn(
-          "text-sm text-slate-600",
-          embedded
-            ? "rounded-md border border-dashed border-slate-200 bg-white px-3 py-2.5"
-            : "rounded-md border border-dashed border-slate-200 bg-slate-50 px-4 py-3"
-        )}
-      >
+      <FormStatusAlert tone="info">
         {requestKind === "zamowienie"
-          ? "Wpisz symbol lub opis produktu oraz ilość (np. 1) — zobaczysz, czy zgłoszenie jest kompletne."
-          : "Wpisz symbol lub opis produktu — zobaczysz, czy zgłoszenie jest kompletne."}
-      </p>
+          ? "Wpisz symbol lub opis produktu oraz ilość (np. 1), aby sprawdzić kompletność."
+          : "Wpisz symbol lub opis produktu, aby sprawdzić kompletność."}
+      </FormStatusAlert>
     );
   }
 
@@ -54,17 +47,8 @@ export function RequestCompletenessBanner({
   });
 
   return (
-    <div
-      className={cn(
-        "text-sm",
-        embedded ? "rounded-md border px-3 py-2.5" : "rounded-md border px-4 py-3",
-        hint.tone === "success"
-          ? "border-emerald-200 bg-emerald-50 text-emerald-950"
-          : "border-amber-200 bg-amber-50 text-amber-950"
-      )}
-    >
-      <p className="font-semibold">{hint.title}</p>
-      <p className="mt-1 leading-relaxed opacity-90">{hint.detail}</p>
-    </div>
+    <FormStatusAlert tone={hint.tone === "success" ? "success" : "warning"} title={hint.title}>
+      {hint.detail}
+    </FormStatusAlert>
   );
 }

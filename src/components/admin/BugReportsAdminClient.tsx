@@ -163,19 +163,15 @@ export function BugReportsAdminClient({
           "repeating-linear-gradient(transparent, transparent 27px, rgba(0,0,0,0.04) 28px)",
       }}
     >
-      <header className="mb-6 border-b-4 border-neutral-800 pb-4 font-mono">
+      <header className="mb-5 border-b-4 border-neutral-800 pb-3 font-mono">
         <p className="text-[10px] font-bold uppercase tracking-[0.35em] text-red-700">
           /// poza design systemem ///
         </p>
-        <h2 className="mt-1 text-xl font-black uppercase tracking-tight text-neutral-900 sm:text-2xl">
-          Skrzynka wiadomości handlowców
-        </h2>
         <p className="mt-2 max-w-2xl text-xs leading-relaxed text-neutral-700">
-          Karteczki zgłoszeń — celowo brzydkie, żeby nie mylić z resztą panelu.{" "}
           {openCount > 0 ? (
-            <strong className="text-red-800">{openCount} nowych czeka.</strong>
+            <strong className="text-red-800">{openCount} nowych zgłoszeń czeka.</strong>
           ) : (
-            "Brak nowych."
+            "Brak nowych zgłoszeń."
           )}
         </p>
       </header>
