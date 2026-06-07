@@ -5,6 +5,7 @@ Aplikacja webowa zastępująca arkusz Google Sheets — zarządzanie cyklicznymi
 ## Stos
 
 - **Next.js 16** (App Router)
+- **Node.js 24 LTS** (minimum 20.9 — `nvm use` wczytuje wersję z `.nvmrc`)
 - **Supabase** (PostgreSQL, Auth, RLS)
 - **Resend** (e-maile, opcjonalnie)
 
@@ -22,6 +23,7 @@ Aplikacja webowa zastępująca arkusz Google Sheets — zarządzanie cyklicznymi
 3. Zainstaluj zależności i uruchom dev:
 
 ```bash
+nvm use          # opcjonalnie — wersja z .nvmrc (24)
 npm install
 cp .env.example .env.local
 npm run setup-check

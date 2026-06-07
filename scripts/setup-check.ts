@@ -36,10 +36,47 @@ function loadEnvLocal(): Record<string, string> {
   return out;
 }
 
+const MIN_NODE_MAJOR = 20;
+const MIN_NODE_MINOR = 9;
+
+function parseNodeVersion(version: string): [major: number, minor: number, patch: number] {
+  const match = version.replace(/^v/, "").match(/^(\d+)\.(\d+)\.(\d+)/);
+  if (!match) return [0, 0, 0];
+  return [Number(match[1]), Number(match[2]), Number(match[3])];
+}
+
+function readRecommendedNodeMajor(): number {
+  const nvmrcPath = join(root, ".nvmrc");
+  if (!existsSync(nvmrcPath)) return 24;
+  const raw = readFileSync(nvmrcPath, "utf-8").trim();
+  const major = Number.parseInt(raw.split(".")[0] ?? raw, 10);
+  return Number.isFinite(major) && major > 0 ? major : 24;
+}
+
+function assessNodeRuntime(): { ok?: string; issue?: string } {
+  const [major, minor] = parseNodeVersion(process.version);
+  if (major < MIN_NODE_MAJOR || (major === MIN_NODE_MAJOR && minor < MIN_NODE_MINOR)) {
+    return {
+      issue: `Node ${process.version} — wymagane minimum ${MIN_NODE_MAJOR}.${MIN_NODE_MINOR} (zalecany ${readRecommendedNodeMajor()} LTS, plik .nvmrc)`,
+    };
+  }
+  const recommended = readRecommendedNodeMajor();
+  if (major < recommended) {
+    return {
+      ok: `Node ${process.version} (OK; zalecany ${recommended} LTS — nvm use)`,
+    };
+  }
+  return { ok: `Node ${process.version}` };
+}
+
 async function main() {
   const env = { ...process.env, ...loadEnvLocal() };
   const issues: string[] = [];
   const ok: string[] = [];
+
+  const nodeCheck = assessNodeRuntime();
+  if (nodeCheck.issue) issues.push(nodeCheck.issue);
+  else if (nodeCheck.ok) ok.push(nodeCheck.ok);
 
   const required = [
     "NEXT_PUBLIC_SUPABASE_URL",

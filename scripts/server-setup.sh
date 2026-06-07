@@ -201,8 +201,11 @@ check_prerequisites() {
 
   local node_major
   node_major="$(node -p "process.versions.node.split('.')[0]")"
-  if [[ "$node_major" -lt 20 ]]; then
-    warn "Wymagany Node >=20.9 (zalecany 24 LTS), masz $(node -v)"
+  if [[ "$node_major" -lt 20 ]] || [[ "$node_major" -eq 20 && "$(node -p "process.versions.node.split('.')[1]")" -lt 9 ]]; then
+    die "Node $(node -v) — wymagane minimum 20.9 (zalecany 24 LTS, plik .nvmrc)"
+  elif [[ "$node_major" -lt 24 ]]; then
+    warn "Node $(node -v) — działa; zalecany 24 LTS (nvm use / .nvmrc)"
+    log "Node $(node -v) — OK"
   else
     log "Node $(node -v) — OK"
   fi
