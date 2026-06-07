@@ -196,13 +196,13 @@ EOF
 check_prerequisites() {
   log ""
   log "=== 1/6 — Wymagania ==="
-  command -v node >/dev/null 2>&1 || die "Brak Node.js — zainstaluj Node 20+ (https://nodejs.org)"
+  command -v node >/dev/null 2>&1 || die "Brak Node.js — zainstaluj Node 24 LTS (https://nodejs.org)"
   command -v npm >/dev/null 2>&1 || die "Brak npm"
 
   local node_major
   node_major="$(node -p "process.versions.node.split('.')[0]")"
   if [[ "$node_major" -lt 20 ]]; then
-    warn "Zalecany Node 20+, masz $(node -v)"
+    warn "Wymagany Node >=20.9 (zalecany 24 LTS), masz $(node -v)"
   else
     log "Node $(node -v) — OK"
   fi
