@@ -12,7 +12,7 @@ export function DepartmentBoardSalesAttention({
   showPinned?: boolean;
 }) {
   const hasPinned = showPinned && attention.pinnedAnnouncements.length > 0;
-  const hasUnread = attention.unreadAnnouncementCount > 0;
+  const hasUnread = attention.unreadAnnouncementBannerCount > 0;
   const hasAnswers = attention.unseenAnswerCount > 0;
 
   if (!hasPinned && !hasUnread && !hasAnswers) return null;
@@ -24,8 +24,8 @@ export function DepartmentBoardSalesAttention({
       ) : null}
       {hasUnread ? (
         <DepartmentBoardUnreadBanner
-          unreadCount={attention.unreadAnnouncementCount}
-          latestTitle={attention.unreadAnnouncementLatestTitle}
+          unreadCount={attention.unreadAnnouncementBannerCount}
+          latestTitle={attention.unreadAnnouncementBannerLatestTitle}
         />
       ) : null}
       {hasAnswers ? (

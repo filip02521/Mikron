@@ -262,6 +262,11 @@ export const salesUpdatesBannerClass = cn(
   "mb-4 flex flex-col gap-3 rounded-md border border-indigo-200/80 bg-gradient-to-br from-indigo-50/90 via-white to-sky-50/40 px-3 py-3 text-sm text-indigo-950 shadow-[var(--shadow-card-elevated)] sm:mb-6 sm:flex-row sm:items-center sm:justify-between sm:px-4"
 );
 
+/** Kompaktowy pasek przypiętego ogłoszenia — bez duplikowania treści bannera „nowe”. */
+export const salesPinnedNoticeClass = cn(
+  "mb-3 flex flex-wrap items-center justify-between gap-x-3 gap-y-2 rounded-md border border-indigo-100/80 bg-white px-3 py-2 text-sm shadow-[var(--shadow-card)] sm:px-3.5",
+);
+
 /** Delikatna powierzchnia z akcentem marki (kolejka, stopki podsekcji). */
 export const panelMutedSurfaceClass =
   "border-indigo-100/75 bg-gradient-to-r from-indigo-50/35 via-white to-sky-50/25";

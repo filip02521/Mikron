@@ -202,8 +202,12 @@ export async function countOpenDepartmentBoardQuestions(): Promise<number> {
 }
 
 export type SalesBoardAttentionSnapshot = {
+  /** Wszystkie nieprzeczytane — badge w menu. */
   unreadAnnouncementCount: number;
   unreadAnnouncementLatestTitle: string | null;
+  /** Nieprzeczytane poza przypiętymi (banner na /moje — bez duplikatu z paskiem). */
+  unreadAnnouncementBannerCount: number;
+  unreadAnnouncementBannerLatestTitle: string | null;
   unseenAnswerCount: number;
   unseenAnswerPreview: {
     threadId: string;
@@ -247,6 +251,12 @@ export async function fetchSalesBoardAttentionSnapshot(
 
   let unreadAnnouncementCount = 0;
   let unreadAnnouncementLatestTitle: string | null = null;
+  let unreadAnnouncementBannerCount = 0;
+  let unreadAnnouncementBannerLatestTitle: string | null = null;
+
+  const pinnedAnnouncements = announcements.filter((a) => a.pinned);
+  const pinnedIds = new Set(pinnedAnnouncements.map((a) => a.id));
+
   if (announcements.length) {
     const annIds = announcements.map((a) => a.id);
     const { data: reads } = await supabase
@@ -256,11 +266,12 @@ export async function fetchSalesBoardAttentionSnapshot(
       .in("thread_id", annIds);
     const readSet = new Set((reads ?? []).map((r) => r.thread_id));
     const unread = announcements.filter((a) => !readSet.has(a.id));
+    const unreadNotPinned = unread.filter((a) => !pinnedIds.has(a.id));
     unreadAnnouncementCount = unread.length;
     unreadAnnouncementLatestTitle = unread[0]?.title ?? null;
+    unreadAnnouncementBannerCount = unreadNotPinned.length;
+    unreadAnnouncementBannerLatestTitle = unreadNotPinned[0]?.title ?? null;
   }
-
-  const pinnedAnnouncements = announcements.filter((a) => a.pinned);
 
   const questionRows = questionsRes.data ?? [];
   const questionIds = questionRows.map((q) => q.id);
@@ -310,6 +321,8 @@ export async function fetchSalesBoardAttentionSnapshot(
   return {
     unreadAnnouncementCount,
     unreadAnnouncementLatestTitle,
+    unreadAnnouncementBannerCount,
+    unreadAnnouncementBannerLatestTitle,
     unseenAnswerCount: unseenAnswerItems.length,
     unseenAnswerPreview: preview
       ? {

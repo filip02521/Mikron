@@ -30,9 +30,11 @@ import { MobileOperationsHeader } from "./MobileOperationsHeader";
 function AppShellMain({
   children,
   mobileChrome,
+  topNotices,
 }: {
   children: React.ReactNode;
   mobileChrome: boolean;
+  topNotices?: React.ReactNode;
 }) {
   const onboarding = useSalesOnboardingOptional();
   const coachPadding = onboarding?.coachPaddingClass ?? "";
@@ -48,10 +50,9 @@ function AppShellMain({
       )}
     >
       <div className={appMainInsetClass}>
+        {topNotices}
         <SalesOnboardingTourBanner />
-        <SalesOnboardingContentGuard>
-          {children}
-        </SalesOnboardingContentGuard>
+        <SalesOnboardingContentGuard>{children}</SalesOnboardingContentGuard>
       </div>
     </main>
   );
@@ -145,12 +146,23 @@ export function AppShellClient({
         {operationsLive && !salesLive ? (
           <MobileOperationsHeader role={role} userEmail={userEmail} />
         ) : null}
-        <AppShellMain mobileChrome={mobileChrome}>
-          {salesLive && salesBoardAttention?.pinnedAnnouncements.length ? (
-            <DepartmentBoardPinnedStrip pinned={salesBoardAttention.pinnedAnnouncements} />
-          ) : null}
-          {salesLive ? <SalesUpdatesBanner /> : null}
-          {operationsLive && !salesLive ? <OperationsUpdatesBanner /> : null}
+        <AppShellMain
+          mobileChrome={mobileChrome}
+          topNotices={
+            salesLive ? (
+              <>
+                {salesBoardAttention?.pinnedAnnouncements.length ? (
+                  <DepartmentBoardPinnedStrip
+                    pinned={salesBoardAttention.pinnedAnnouncements}
+                  />
+                ) : null}
+                <SalesUpdatesBanner />
+              </>
+            ) : operationsLive && !salesLive ? (
+              <OperationsUpdatesBanner />
+            ) : null
+          }
+        >
           {children}
         </AppShellMain>
         {salesLive ? <MobileSalesNav navBadges={navBadges} role={role ?? "sales"} /> : null}
