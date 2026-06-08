@@ -62,7 +62,7 @@ import {
   MAX_SUPPLIER_NOTES_LEN,
 } from "@/lib/security/text-limits";
 import { dateToIso, parseDateOnly, snapToBusinessDay } from "@/lib/orders/dates";
-import { DAILY_PANEL_UNDO_MS } from "@/lib/orders/daily-panel-undo";
+import { DAILY_PANEL_UNDO_MS, UNDO_WINDOW_MS, undoWindowShortLabel } from "@/lib/orders/daily-panel-undo";
 import type { DailyPanelActionResult } from "@/lib/orders/daily-panel-undo";
 import type { DailyPanelUndoPayload } from "@/lib/orders/daily-panel-undo";
 import {
@@ -299,7 +299,7 @@ export async function actionBulkOrdered(
 export async function actionUndoDailyPanelChange(payload: DailyPanelUndoPayload) {
   await requireOperations();
   if (Date.now() - payload.performedAt > DAILY_PANEL_UNDO_MS) {
-    throw new Error("Minął czas na cofnięcie (5 s). Odśwież panel.");
+    throw new Error(`Minął czas na cofnięcie (${undoWindowShortLabel()}). Odśwież panel.`);
   }
   await revertDailyPanelChange(payload.token);
   revalidateAll();

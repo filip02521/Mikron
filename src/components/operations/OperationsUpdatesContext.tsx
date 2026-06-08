@@ -10,7 +10,9 @@ import {
 } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { Button } from "@/components/ui/Button";
-import { salesUpdatesBannerClass } from "@/lib/ui/ontime-theme";
+import { SystemNotice } from "@/components/ui/SystemNotice";
+import { systemNoticePanelStripClass } from "@/lib/ui/ontime-theme";
+import { MICROCOPY } from "@/lib/ui/microcopy";
 
 const POLL_MS = 25_000;
 const AUTO_REFRESH_MS = 3 * 60_000;
@@ -191,20 +193,17 @@ export function OperationsUpdatesBanner() {
   if (!ctx?.hasUpdates || pathname === "/podsumowanie") return null;
 
   return (
-    <div role="status" aria-live="polite" className={salesUpdatesBannerClass}>
-      <div>
-        <p className="font-semibold">Są nowe prośby lub zmiany w panelu dziennym</p>
-        <p className="mt-0.5 text-xs text-indigo-800/90">
-          Handlowiec mógł dodać prośbę albo zmienić się kolejka — odśwież widok, aby zobaczyć
-          aktualny stan.
-        </p>
-      </div>
-      <div className="flex flex-wrap items-center gap-2">
+    <SystemNotice
+      variant="action"
+      className="mb-4 sm:mb-6"
+      title="Są nowe prośby lub zmiany w panelu dziennym"
+      description={MICROCOPY.notices.operationsUpdates}
+      action={
         <Button type="button" size="sm" className="min-h-10 shrink-0" onClick={ctx.refreshNow}>
-          Odśwież teraz
+          {MICROCOPY.actions.refresh}
         </Button>
-      </div>
-    </div>
+      }
+    />
   );
 }
 
@@ -214,19 +213,15 @@ export function OperationsPanelRefreshStrip() {
   if (!ctx?.hasUpdates) return null;
 
   return (
-    <div
-      role="status"
-      aria-live="polite"
-      className="flex flex-col gap-2.5 border-t border-indigo-200/70 bg-gradient-to-r from-indigo-50/95 via-white to-sky-50/40 px-4 py-3 sm:flex-row sm:items-center sm:justify-between sm:gap-2 sm:py-2.5 sm:px-6"
-    >
-      <p className="text-sm font-medium text-indigo-950">
-        Kolejka się zmieniła — odśwież, aby zobaczyć nowe prośby.
+    <div role="status" aria-live="polite" className={systemNoticePanelStripClass}>
+      <p className="text-sm font-medium text-slate-900">
+        {MICROCOPY.notices.operationsQueueChanged}
       </p>
       <Button
         type="button"
         size="sm"
         variant="outline"
-        className="min-h-10 w-full shrink-0 border-indigo-200 bg-white sm:min-h-9 sm:w-auto"
+        className="min-h-10 w-full shrink-0 border-slate-200 bg-white sm:min-h-9 sm:w-auto"
         onClick={ctx.refreshNow}
       >
         Odśwież panel

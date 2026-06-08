@@ -4,6 +4,11 @@ import { getAppRole } from "@/lib/auth-dev";
 import { isAdmin } from "@/lib/auth-roles";
 import type { IndividualOrder } from "@/types/database";
 
+import type { Metadata } from "next";
+import { pageMetadataFor } from "@/lib/ui/page-metadata";
+
+export const metadata: Metadata = pageMetadataFor("historia");
+
 export default async function HistoriaPage() {
   const role = await getAppRole();
   const canManageHistory = role ? isAdmin(role) : false;

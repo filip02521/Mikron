@@ -383,7 +383,7 @@ export function UrgentOrdersSection({
       <ConfirmDialog
         open={bulkConfirmOpen}
         title="Oznaczyć wielu dostawców?"
-        message={`Oznaczysz ${selectedCount} dostawców jako zamówionych. Po potwierdzeniu masz 5 sekund na cofnięcie całej operacji.`}
+        message={`Oznaczysz ${selectedCount} dostawców jako zamówionych. Po potwierdzeniu masz 10 sekund na cofnięcie całej operacji.`}
         confirmLabel={`Zamówione (${selectedCount})`}
         pending={isBulkPending}
         onCancel={() => setBulkConfirmOpen(false)}

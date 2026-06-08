@@ -17,6 +17,7 @@ import { useMojeOrdersSearch } from "@/components/moje/useMojeOrdersSearch";
 import { sortMyOrderRows, summarizeMyOrdersInbox } from "@/lib/orders/my-order-sales-ui";
 import { formatProsbaCount } from "@/lib/orders/my-order-plural";
 import { INFORMACJA_FLOW_MY_ORDERS_HINT } from "@/lib/orders/informacja-flow-copy";
+import { MICROCOPY } from "@/lib/ui/microcopy";
 import { cn } from "@/lib/cn";
 import { MyOrderArchiveSection } from "@/components/moje/MyOrderArchiveSection";
 import { MyOrderShipmentList } from "@/components/moje/MyOrderShipmentList";
@@ -500,11 +501,11 @@ function MojeOrdersViewContent({
             <MojeOrdersSearchEmptyHint query={searchTrimmed} onClear={() => setSearchQuery("")} />
           ) : null}
           <EmptyState
-            title="Brak aktywnych prośb"
+            title={MICROCOPY.empty.orders.title}
             description={
               hasArchiveData && searchActive && archiveMatchCount > 0
                 ? "Brak aktywnych prośb pasujących do wyszukiwania — zobacz archiwum poniżej."
-                : cardDescription
+                : cardDescription ?? MICROCOPY.empty.orders.description
             }
             icon={<IconClipboardList size={28} strokeWidth={1.75} />}
           />

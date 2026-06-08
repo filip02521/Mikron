@@ -30,7 +30,28 @@ export type DailyPanelUndoPayload = {
   performedAt: number;
 };
 
-export const DAILY_PANEL_UNDO_MS = 5_000;
+/** Wspólne okno cofania — toast UI i walidacja po stronie serwera. */
+export const UNDO_WINDOW_MS = 10_000;
+
+export const DAILY_PANEL_UNDO_MS = UNDO_WINDOW_MS;
+
+/** Krótki opis w toastach: „10 s”. */
+export function undoWindowShortLabel(): string {
+  return `${UNDO_WINDOW_MS / 1000} s`;
+}
+
+/** Dłuższy opis w dialogach: „10 sekund”. */
+export function undoWindowLongLabel(): string {
+  return "10 sekund";
+}
+
+export function undoWindowBannerDescription(hint?: string): string {
+  const windowLabel = undoWindowLongLabel();
+  if (hint?.trim()) {
+    return `${hint.trim()} — masz ${windowLabel} na cofnięcie.`;
+  }
+  return `Masz ${windowLabel} na cofnięcie.`;
+}
 
 export type DailyPanelActionResult = {
   success: true;

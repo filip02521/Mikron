@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Card, CardHeader } from "@/components/ui/Card";
@@ -23,6 +23,7 @@ import {
   OPERATIONS_DEPARTMENT_LABELS,
   departmentsForRole,
 } from "@/lib/operations/notepad-department";
+import { undoWindowBannerDescription } from "@/lib/orders/daily-panel-undo";
 import { isAdmin } from "@/lib/auth-roles";
 import { sortOperationsNotes } from "@/lib/operations/operations-note-sort";
 import type { OperationsDepartment, OperationsNote, OperationsNoteVisibility, UserRole } from "@/types/database";
@@ -86,6 +87,7 @@ export function OperationsNotepadClient({
   const [archivedNotes, setArchivedNotes] = useState(initial.archivedNotes);
   const [showArchive, setShowArchive] = useState(false);
   const [undo, setUndo] = useState<OperationsUndoState | null>(null);
+  const dismissUndo = useCallback(() => setUndo(null), []);
 
   useEffect(() => {
     setPrivateNotes(initial.privateNotes);
@@ -100,12 +102,13 @@ export function OperationsNotepadClient({
     [privateNotes, publicNotes, userId]
   );
 
-  const undoMessage =
+  const undoTitle =
     undo?.type === "archive"
-      ? `Zarchiwizowano: „${undo.note.title?.trim() || undo.note.body.trim().slice(0, 48) || "Notatka"}”. Masz 5 sekund na cofnięcie.`
+      ? `Zarchiwizowano: „${undo.note.title?.trim() || undo.note.body.trim().slice(0, 48) || "Notatka"}”`
       : undo?.type === "reorder"
-        ? "Zmieniono kolejność notatek. Masz 5 sekund na cofnięcie."
+        ? "Zmieniono kolejność notatek"
         : "";
+  const undoDescription = undo ? undoWindowBannerDescription() : "";
 
   useEffect(() => {
     if (!undo) return;
@@ -221,6 +224,16 @@ export function OperationsNotepadClient({
 
   return (
     <div className={OPERATIONS_NOTEPAD_PAGE_CLASS}>
+      {undo ? (
+        <UndoToast
+          title={undoTitle}
+          description={undoDescription}
+          placement="inline"
+          onDismiss={dismissUndo}
+          onUndo={() => void handleUndo()}
+          undoShortcut="Ctrl+Z"
+        />
+      ) : null}
       <Card padding={false} className="overflow-hidden">
         <CardHeader
           inset
@@ -344,15 +357,6 @@ export function OperationsNotepadClient({
           ) : null}
         </div>
       </Card>
-
-      {undo ? (
-        <UndoToast
-          message={undoMessage}
-          onDismiss={() => setUndo(null)}
-          onUndo={() => void handleUndo()}
-          undoShortcut="Ctrl+Z"
-        />
-      ) : null}
     </div>
   );
 }

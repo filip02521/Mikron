@@ -5,6 +5,11 @@ import { AdminHubShell } from "@/components/admin/AdminHubShell";
 import { Alert } from "@/components/ui/Alert";
 import Link from "next/link";
 
+import type { Metadata } from "next";
+import { pageMetadataFor } from "@/lib/ui/page-metadata";
+
+export const metadata: Metadata = pageMetadataFor("adminSales");
+
 export default async function HandlowcyPage() {
   let people: Awaited<ReturnType<typeof fetchSalesPeopleAdmin>> = [];
   let groups: Awaited<ReturnType<typeof fetchSalesGroups>> = [];

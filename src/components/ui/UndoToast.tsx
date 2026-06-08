@@ -1,21 +1,38 @@
 "use client";
 
-import { useEffect } from "react";
-import { cn } from "@/lib/cn";
-import { floatingToastBottomClass } from "@/lib/ui/sales-mobile-chrome";
+import { useEffect, useRef } from "react";
+import { IconCircleCheck } from "@/components/icons/StrokeIcons";
 import { Button } from "@/components/ui/Button";
+import { cn } from "@/lib/cn";
+import { UNDO_WINDOW_MS, undoWindowBannerDescription } from "@/lib/orders/daily-panel-undo";
+import { floatingToastBottomClass } from "@/lib/ui/sales-mobile-chrome";
+import {
+  systemNoticeUndoClass,
+  undoNoticeIconTileClass,
+  undoNoticeProgressFillClass,
+  undoNoticeProgressTrackClass,
+} from "@/lib/ui/ontime-theme";
+
+export type UndoToastPlacement = "inline" | "floating";
 
 export function UndoToast({
   message,
+  title,
+  description,
   detailLines,
   tone = "success",
   onDismiss,
   onUndo,
   undoLabel = "Cofnij",
   undoShortcut,
-  durationMs = 5000,
+  durationMs = UNDO_WINDOW_MS,
+  placement = "floating",
+  className,
 }: {
-  message: string;
+  /** @deprecated Użyj {@link title} + {@link description}. */
+  message?: string;
+  title?: string;
+  description?: string;
   detailLines?: string[];
   tone?: "success" | "error";
   onDismiss: () => void;
@@ -23,85 +40,113 @@ export function UndoToast({
   undoLabel?: string;
   undoShortcut?: string;
   durationMs?: number;
+  /** Inline — w treści panelu; floating — nad dolną nawigacją. */
+  placement?: UndoToastPlacement;
+  className?: string;
 }) {
+  const onDismissRef = useRef(onDismiss);
+  onDismissRef.current = onDismiss;
+
+  const resolvedTitle = title ?? message ?? "Zapisano zmianę";
+  const resolvedDescription =
+    description ??
+    (message && title
+      ? undefined
+      : message && !title && message.includes("cofn")
+        ? undefined
+        : undoWindowBannerDescription());
+
   useEffect(() => {
-    const t = setTimeout(onDismiss, durationMs);
+    const t = setTimeout(() => onDismissRef.current(), durationMs);
     return () => clearTimeout(t);
-  }, [message, durationMs, onDismiss]);
+  }, [resolvedTitle, resolvedDescription, durationMs]);
+
+  const isError = tone === "error";
 
   return (
     <div
       role="status"
       aria-live="polite"
+      aria-atomic="true"
       className={cn(
-        "fixed z-[60] flex max-w-[min(100vw-1.5rem,28rem)] flex-col gap-2 rounded-md border px-4 py-3 text-sm font-medium shadow-lg",
-        floatingToastBottomClass,
-        "left-4 right-4 sm:left-auto sm:right-6",
-        tone === "success"
-          ? "border-emerald-200 bg-emerald-50 text-emerald-900"
-          : "border-red-200 bg-red-50 text-red-900"
+        systemNoticeUndoClass,
+        placement === "inline"
+          ? "mb-4 w-full"
+          : cn(
+              "fixed z-[60] max-w-[min(100vw-1.5rem,26rem)]",
+              floatingToastBottomClass,
+              "left-4 right-4 sm:left-auto sm:right-6"
+            ),
+        isError && "border-red-200/90",
+        className
       )}
+      style={{ ["--undo-duration" as string]: `${durationMs}ms` }}
     >
-      <p className="leading-snug">{message}</p>
-      {detailLines?.length ? (
-        <ul
-          className={cn(
-            "max-h-40 space-y-1.5 overflow-y-auto border-t pt-2 text-xs font-normal leading-snug",
-            tone === "success"
-              ? "border-emerald-200/80 text-emerald-950/90"
-              : "border-red-200/80 text-red-950/90"
-          )}
-        >
-          {detailLines.map((line, i) => (
-            <li key={i}>{line}</li>
-          ))}
-        </ul>
-      ) : null}
-      {onUndo ? (
-        <UndoActions
-          onUndo={onUndo}
-          onDismiss={onDismiss}
-          undoLabel={undoLabel}
-          undoShortcut={undoShortcut}
+      <div className={undoNoticeProgressTrackClass} aria-hidden>
+        <div
+          className={cn(undoNoticeProgressFillClass, isError && "bg-red-500")}
         />
-      ) : null}
-    </div>
-  );
-}
+      </div>
 
-function UndoActions({
-  onUndo,
-  onDismiss,
-  undoLabel,
-  undoShortcut,
-}: {
-  onUndo: () => void;
-  onDismiss: () => void;
-  undoLabel: string;
-  undoShortcut?: string;
-}) {
-  return (
-    <div className="flex flex-col gap-2">
-      {undoShortcut ? (
-        <p className="text-xs font-normal text-emerald-800/80">
-          <kbd className="rounded border border-emerald-200/80 bg-white/70 px-1 font-mono text-[10px]">
-            {undoShortcut}
-          </kbd>{" "}
-          — szybkie cofnięcie
-        </p>
-      ) : null}
-      <div className="flex flex-wrap gap-2">
-        <Button
-          size="sm"
-          variant="secondary"
-          className="min-h-10 flex-1 sm:flex-none"
-          onClick={onUndo}
-        >
-          {undoLabel}
-        </Button>
-        <Button size="sm" variant="ghost" className="min-h-10 text-slate-600" onClick={onDismiss}>
-          Zamknij
-        </Button>
+      <div className="flex flex-col gap-3 px-3 py-3 sm:flex-row sm:items-start sm:justify-between sm:gap-4 sm:px-4">
+        <div className="flex min-w-0 items-start gap-2.5">
+          <span className={cn(undoNoticeIconTileClass, isError && "from-red-600 to-red-700 ring-red-500/30")}>
+            <IconCircleCheck size={18} strokeWidth={2.25} />
+          </span>
+          <div className="min-w-0 space-y-1 pt-0.5">
+            <p className="text-sm font-semibold leading-snug text-slate-900">{resolvedTitle}</p>
+            {resolvedDescription ? (
+              <p className="text-xs leading-relaxed text-slate-600">{resolvedDescription}</p>
+            ) : null}
+            {detailLines?.length ? (
+              <ul className="max-h-36 space-y-1 overflow-y-auto border-t border-slate-100 pt-2 text-xs leading-relaxed text-slate-600">
+                {detailLines.map((line, i) => (
+                  <li key={i}>{line}</li>
+                ))}
+              </ul>
+            ) : null}
+            {undoShortcut ? (
+              <p className="text-[11px] text-slate-500">
+                <kbd className="rounded border border-slate-200 bg-slate-50 px-1 py-0.5 font-mono text-[10px] text-slate-700">
+                  {undoShortcut}
+                </kbd>{" "}
+                — szybkie cofnięcie
+              </p>
+            ) : null}
+          </div>
+        </div>
+
+        {onUndo ? (
+          <div className="flex shrink-0 flex-wrap items-center gap-2 sm:flex-col sm:items-stretch sm:pt-0.5">
+            <Button
+              type="button"
+              size="sm"
+              className="min-h-10 w-full sm:min-w-[7.5rem]"
+              onClick={onUndo}
+            >
+              {undoLabel}
+            </Button>
+            <Button
+              type="button"
+              size="sm"
+              variant="ghost"
+              className="min-h-10 w-full text-slate-600 sm:min-w-[7.5rem]"
+              onClick={onDismiss}
+            >
+              Zamknij
+            </Button>
+          </div>
+        ) : (
+          <Button
+            type="button"
+            size="sm"
+            variant="ghost"
+            className="min-h-10 shrink-0 self-end text-slate-600 sm:self-start"
+            onClick={onDismiss}
+          >
+            Zamknij
+          </Button>
+        )}
       </div>
     </div>
   );

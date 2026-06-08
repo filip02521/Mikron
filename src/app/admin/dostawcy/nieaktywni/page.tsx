@@ -4,6 +4,11 @@ import { SuppliersHubShell } from "@/components/admin/SuppliersHubShell";
 import { Alert } from "@/components/ui/Alert";
 import { supplierHubShellDescription } from "@/lib/supplier-hub";
 
+import type { Metadata } from "next";
+import { pageMetadataFor } from "@/lib/ui/page-metadata";
+
+export const metadata: Metadata = pageMetadataFor("inactiveSuppliers");
+
 export default async function NieaktywniAdminPage() {
   let suppliers: Awaited<ReturnType<typeof fetchSuppliersWithSchedules>> = [];
   let inactiveCount = 0;

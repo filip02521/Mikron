@@ -3,10 +3,7 @@ import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { CryptoPolyfillScript } from "@/components/CryptoPolyfillScript";
 import { AppShell } from "@/components/layout/AppShell";
-import {
-  ONTIME_APP_DESCRIPTION,
-  ONTIME_APP_NAME,
-} from "@/lib/ui/ontime-brand";
+import { defaultAppMetadata } from "@/lib/ui/page-metadata";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -19,13 +16,7 @@ const geistMono = Geist_Mono({
   display: "swap",
 });
 
-export const metadata: Metadata = {
-  title: {
-    default: ONTIME_APP_NAME,
-    template: `%s · ${ONTIME_APP_NAME}`,
-  },
-  description: ONTIME_APP_DESCRIPTION,
-};
+export const metadata: Metadata = defaultAppMetadata;
 
 export const viewport = {
   width: "device-width",

@@ -6,6 +6,11 @@ import { SalesGroupsClient } from "@/components/sales/SalesGroupsClient";
 import { SalesTeamSubnav } from "@/components/sales/SalesTeamSubnav";
 import { SalesTeamWorkspace } from "@/components/sales/SalesTeamWorkspace";
 
+import type { Metadata } from "next";
+import { pageMetadataFor } from "@/lib/ui/page-metadata";
+
+export const metadata: Metadata = pageMetadataFor("teamGroups");
+
 export default async function ZespolGrupyPage() {
   const user = await requireSalesTeamManagement();
   const scope = await getManagedGroupIdsForUser(user);

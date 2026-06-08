@@ -1,4 +1,11 @@
+import type { Metadata } from "next";
 import { BrandMomentCard, BrandMomentHomeActions } from "@/components/brand/BrandMomentLayout";
+import { pageMetadata } from "@/lib/ui/page-metadata";
+
+export const metadata: Metadata = pageMetadata(
+  "Nie znaleziono strony",
+  "Adres mógł się zmienić albo strona została usunięta."
+);
 
 export default function NotFound() {
   return (

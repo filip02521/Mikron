@@ -8,6 +8,11 @@ import { AdminHubShell } from "@/components/admin/AdminHubShell";
 import { Alert } from "@/components/ui/Alert";
 import { redirect } from "next/navigation";
 
+import type { Metadata } from "next";
+import { pageMetadataFor } from "@/lib/ui/page-metadata";
+
+export const metadata: Metadata = pageMetadataFor("adminUsers");
+
 export default async function UzytkownicyPage({
   searchParams,
 }: {

@@ -1,6 +1,7 @@
 import Link from "next/link";
-import { salesUpdatesBannerClass } from "@/lib/ui/ontime-theme";
+import { SystemNotice } from "@/components/ui/SystemNotice";
 import { Button } from "@/components/ui/Button";
+import { MICROCOPY } from "@/lib/ui/microcopy";
 
 export function DepartmentBoardUnreadBanner({
   unreadCount,
@@ -16,21 +17,22 @@ export function DepartmentBoardUnreadBanner({
       ? "1 nowe ogłoszenie od zakupów"
       : `${unreadCount} nowe ogłoszenia od zakupów`;
 
+  const description = latestTitle?.trim()
+    ? `„${latestTitle.trim()}”. ${MICROCOPY.notices.boardHint}`
+    : MICROCOPY.notices.boardHint;
+
   return (
-    <div role="status" className={salesUpdatesBannerClass}>
-      <div>
-        <p className="font-semibold">{label}</p>
-        <p className="mt-0.5 text-xs text-indigo-800/90">
-          {latestTitle?.trim()
-            ? `„${latestTitle.trim()}”. To komunikat — nie odpowiadasz na niego jak na prośbę o towar.`
-            : "Komunikat jednokierunkowy od działu zakupów (nie prośba o zamówienie)."}
-        </p>
-      </div>
-      <Link href="/tablica?widok=ogloszenia" className="shrink-0">
-        <Button type="button" size="sm" className="min-h-11">
-          Komunikacja
-        </Button>
-      </Link>
-    </div>
+    <SystemNotice
+      variant="action"
+      title={label}
+      description={description}
+      action={
+        <Link href="/tablica?widok=ogloszenia" className="shrink-0">
+          <Button type="button" size="sm" className="min-h-11">
+            Komunikacja
+          </Button>
+        </Link>
+      }
+    />
   );
 }

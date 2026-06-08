@@ -32,7 +32,7 @@ import type { DepartmentBoardData } from "@/lib/data/department-board";
 import { countUnreadAnnouncements } from "@/lib/department-board/unread";
 import { cn } from "@/lib/cn";
 import { mojeShipmentListClass } from "@/lib/ui/moje-shipment-row-styles";
-import { salesPageShellClass, salesTypography, sectionIconTileBrandClass, sidebarBrandAccentClass } from "@/lib/ui/ontime-theme";
+import { salesPageShellClass, salesTypography, sectionIconTileBrandClass } from "@/lib/ui/ontime-theme";
 import { actionCreateQuestion } from "@/app/actions/department-board";
 
 type QuestionFilter = "all" | "open" | "answered";
@@ -123,7 +123,6 @@ export function DepartmentBoardSalesClient({
       {loadError ? <Alert tone="error">{loadError}</Alert> : null}
 
       <Card padding={false} className="overflow-hidden">
-        <div className={cn(sidebarBrandAccentClass, "rounded-none opacity-75")} aria-hidden />
         <CardHeader
           inset
           density="compact"

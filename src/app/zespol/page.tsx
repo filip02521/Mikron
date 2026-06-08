@@ -8,6 +8,11 @@ import { SalesTeamOverview } from "@/components/sales/SalesTeamOverview";
 import { SalesTeamSubnav } from "@/components/sales/SalesTeamSubnav";
 import { SalesTeamWorkspace } from "@/components/sales/SalesTeamWorkspace";
 
+import type { Metadata } from "next";
+import { pageMetadataFor } from "@/lib/ui/page-metadata";
+
+export const metadata: Metadata = pageMetadataFor("team");
+
 export default async function ZespolPage() {
   const user = await requireSalesTeamManagement();
   const scope = await getManagedGroupIdsForUser(user);

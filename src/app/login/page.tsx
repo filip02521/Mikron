@@ -4,6 +4,11 @@ import { needsBootstrapSetup } from "@/lib/setup/bootstrap";
 import { AuthScreenLayout } from "@/components/auth/AuthScreenLayout";
 import { LoginForm } from "./LoginForm";
 
+import type { Metadata } from "next";
+import { pageMetadataFor } from "@/lib/ui/page-metadata";
+
+export const metadata: Metadata = pageMetadataFor("login");
+
 export const dynamic = "force-dynamic";
 
 export default async function LoginPage() {

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { cn } from "@/lib/cn";
 import { floatingToastBottomClass } from "@/lib/ui/sales-mobile-chrome";
 
@@ -18,11 +18,13 @@ export function Toast({
   action?: React.ReactNode;
 }) {
   const autoMs = durationMs ?? (action ? 12_000 : 4500);
+  const onDismissRef = useRef(onDismiss);
+  onDismissRef.current = onDismiss;
 
   useEffect(() => {
-    const t = setTimeout(onDismiss, autoMs);
+    const t = setTimeout(() => onDismissRef.current(), autoMs);
     return () => clearTimeout(t);
-  }, [message, autoMs, onDismiss]);
+  }, [message, autoMs]);
 
   return (
     <div

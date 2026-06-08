@@ -14,6 +14,11 @@ import { SalesAccountLinkRequired } from "@/components/sales/SalesAccountLinkReq
 import { Alert } from "@/components/ui/Alert";
 import { salesPageShellClass } from "@/lib/ui/ontime-theme";
 
+import type { Metadata } from "next";
+import { pageMetadataFor } from "@/lib/ui/page-metadata";
+
+export const metadata: Metadata = pageMetadataFor("prosba");
+
 export default async function ProsbaPage({
   searchParams,
 }: {

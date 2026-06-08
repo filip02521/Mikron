@@ -9,6 +9,11 @@ import { SubiektIntegrationPanel } from "@/components/admin/SubiektIntegrationPa
 import { fetchDeliveryStatsDiagnostics } from "@/lib/data/delivery-stats-diagnostics";
 import type { SubiektAuthMode } from "@/lib/subiekt/config";
 
+import type { Metadata } from "next";
+import { pageMetadataFor } from "@/lib/ui/page-metadata";
+
+export const metadata: Metadata = pageMetadataFor("admin");
+
 export default async function AdminPage() {
   let status = { isHealthy: true, issues: [] as string[] };
   try {

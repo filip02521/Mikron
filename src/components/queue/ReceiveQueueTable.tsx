@@ -23,6 +23,7 @@ import {
   parseOrderQuantity,
 } from "@/lib/orders/individual";
 import { checkboxBrandClass } from "@/lib/ui/ontime-theme";
+import { MICROCOPY } from "@/lib/ui/microcopy";
 import { InlineCheck } from "@/components/ui/UiGlyphs";
 import { countOrdersBySupplier, filterOrdersBySupplier } from "@/lib/orders/supplier-filter-summary";
 import {
@@ -332,8 +333,8 @@ export function ReceiveQueueTable({
   if (!receiveQueue.length) {
     return (
       <EmptyState
-        title="Kolejka przyjęcia jest pusta"
-        description="Tu trafiają zamówienia złożone u dostawcy oraz prośby informacyjne. Wpisz ilość dostawy lub powiadom handlowca o informacji."
+        title={MICROCOPY.empty.queue.title}
+        description={MICROCOPY.empty.queue.description}
       />
     );
   }
@@ -350,8 +351,8 @@ export function ReceiveQueueTable({
           />
         </div>
         <EmptyState
-          title="Brak pozycji dla wybranego dostawcy"
-          description="Wybierz innego dostawcę lub pokaż całą kolejkę."
+          title={MICROCOPY.empty.queue.filterTitle}
+          description={MICROCOPY.empty.queue.filterDescription}
         />
       </>
     );

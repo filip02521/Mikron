@@ -44,7 +44,7 @@ import {
 } from "@/components/icons/StrokeIcons";
 import { undoShortcutLabel } from "@/lib/platform/keyboard-shortcut-label";
 import { SectionHeadingIcon } from "@/components/icons/SectionHeadingIcon";
-import { brandIconTileClass, panelChromeInsetClass, panelSectionInsetClass, panelWorkspaceShellClass, sidebarBrandAccentClass } from "@/lib/ui/ontime-theme";
+import { brandIconTileClass, panelChromeInsetClass, panelSectionInsetClass, panelWorkspaceShellClass } from "@/lib/ui/ontime-theme";
 import { cn } from "@/lib/cn";
 import type { OrderFormSupplierOption } from "@/lib/orders/order-form-suppliers";
 
@@ -295,17 +295,17 @@ export function SummaryWorkspace({
       ) : null}
       {undo ? (
         <UndoToast
-          message={undo.message}
+          title={undo.title}
+          description={undo.description}
           detailLines={undo.detailLines}
+          placement="inline"
           onDismiss={dismissUndo}
           onUndo={handleUndo}
           undoShortcut={undoShortcutLabel()}
-          durationMs={5000}
         />
       ) : null}
 
       <Card padding={false} className="overflow-x-clip">
-        <div className={cn(sidebarBrandAccentClass, "rounded-none opacity-75")} aria-hidden />
         <CardHeader
           inset
           density="compact"

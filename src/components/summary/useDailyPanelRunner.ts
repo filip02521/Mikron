@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { actionUndoDailyPanelChange } from "@/app/actions/admin";
 import type { DailyPanelActionResult } from "@/lib/orders/daily-panel-undo";
 import type { DailyPanelUndoPayload } from "@/lib/orders/daily-panel-undo";
+import { undoWindowBannerDescription } from "@/lib/orders/daily-panel-undo";
 
 export const DAILY_PANEL_SCOPE_BULK = "__bulk__";
 export const DAILY_PANEL_SCOPE_GLOBAL = "__global__";
@@ -25,7 +26,8 @@ export type DailyPanelRunFn = (
 ) => void;
 
 type UndoState = {
-  message: string;
+  title: string;
+  description?: string;
   detailLines?: string[];
   payload: DailyPanelUndoPayload;
 };
@@ -69,9 +71,10 @@ export function useDailyPanelRunner() {
           if (result.undo) {
             setFlash(null);
             setUndo({
-              message: result.feedbackLines?.length
-                ? `${successMessage} Sprawdź termin poniżej — masz 5 s na cofnięcie.`
-                : `${successMessage} Masz 5 sekund na cofnięcie.`,
+              title: successMessage,
+              description: undoWindowBannerDescription(
+                result.feedbackLines?.length ? "Sprawdź terminy poniżej" : undefined
+              ),
               detailLines: result.feedbackLines,
               payload: result.undo,
             });

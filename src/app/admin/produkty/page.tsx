@@ -9,6 +9,11 @@ import {
   fetchProductCatalogPage,
 } from "@/lib/data/product-catalog-queries";
 
+import type { Metadata } from "next";
+import { pageMetadataFor } from "@/lib/ui/page-metadata";
+
+export const metadata: Metadata = pageMetadataFor("adminProducts");
+
 export default async function AdminProduktyPage() {
   const [page, coverage] = await Promise.all([
     fetchProductCatalogPage({ limit: 250, offset: 0 }),

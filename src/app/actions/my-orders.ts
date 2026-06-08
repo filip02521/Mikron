@@ -237,9 +237,7 @@ export async function actionAcknowledgePickup(orderIds: string[]) {
   return acknowledgeOrders(orderIds, { allowedStatuses: ["Zrealizowane"] });
 }
 
-const UNDO_WINDOW_MS = 5_000;
-
-/** Cofnięcie odbioru — tylko w ciągu kilku sekund po potwierdzeniu. */
+import { UNDO_WINDOW_MS } from "@/lib/orders/daily-panel-undo";
 export async function actionUnacknowledgePickup(orderIds: string[]) {
   if (!orderIds.length) throw new Error("Brak pozycji do cofnięcia.");
   const salesPersonId = await salesPersonIdForAction();

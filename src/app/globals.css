@@ -264,6 +264,22 @@ button:focus-visible {
   animation: action-loading-shimmer 1.4s ease-in-out infinite;
 }
 
+@keyframes undo-notice-progress {
+  from {
+    transform: scaleX(1);
+  }
+  to {
+    transform: scaleX(0);
+  }
+}
+
+.undo-notice-progress-fill {
+  transform-origin: left center;
+  animation-name: undo-notice-progress;
+  animation-timing-function: linear;
+  animation-fill-mode: forwards;
+}
+
 @keyframes auth-enter {
   from {
     opacity: 0;

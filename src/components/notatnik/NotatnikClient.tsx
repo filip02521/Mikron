@@ -38,6 +38,7 @@ import { NotatnikCollapsible } from "./NotatnikCollapsible";
 import { NOTATNIK_PAGE_CLASS, NOTATNIK_ZK_LIST_CLASS } from "./notatnik-layout";
 import { ManagerPreviewBanner } from "@/components/sales/ManagerPreviewBanner";
 import { mojeShipmentSectionShellClass } from "@/lib/ui/moje-shipment-row-styles";
+import { undoWindowBannerDescription } from "@/lib/orders/daily-panel-undo";
 import { cn } from "@/lib/cn";
 
 type NotatnikUndoState =
@@ -118,6 +119,7 @@ export function NotatnikClient({
   );
   const [showArchive, setShowArchive] = useState(false);
   const [undo, setUndo] = useState<NotatnikUndoState | null>(null);
+  const dismissUndo = useCallback(() => setUndo(null), []);
 
   const zkHintsByWatchId = useMemo(() => {
     const map = new Map<string, ZkWatchOrderHints>();
@@ -310,15 +312,26 @@ export function NotatnikClient({
   const archiveCount = archivedWatches.length + archivedNotes.length;
   const followUpZkCount = zkWatches.filter((w) => watchNeedsNotepadAttention(w)).length;
 
-  const undoMessage =
+  const undoTitle =
     undo?.type === "archive"
-      ? `Zarchiwizowano: „${undo.note.title?.trim() || undo.note.body.trim().slice(0, 48) || "Notatka"}”. Masz 5 sekund na cofnięcie.`
+      ? `Zarchiwizowano: „${undo.note.title?.trim() || undo.note.body.trim().slice(0, 48) || "Notatka"}”`
       : undo?.type === "reorder"
-        ? "Zmieniono kolejność notatek. Masz 5 sekund na cofnięcie."
+        ? "Zmieniono kolejność notatek"
         : "";
+  const undoDescription = undo ? undoWindowBannerDescription() : "";
 
   return (
     <div className={NOTATNIK_PAGE_CLASS}>
+      {undo && !effectiveReadOnly ? (
+        <UndoToast
+          title={undoTitle}
+          description={undoDescription}
+          placement="inline"
+          onDismiss={dismissUndo}
+          onUndo={() => void handleUndo()}
+          undoShortcut="Ctrl+Z"
+        />
+      ) : null}
       <Card padding={false} className="overflow-hidden">
         <CardHeader
           inset
@@ -484,15 +497,6 @@ export function NotatnikClient({
           ) : null}
         </div>
       </Card>
-
-      {undo && !effectiveReadOnly ? (
-        <UndoToast
-          message={undoMessage}
-          onDismiss={() => setUndo(null)}
-          onUndo={() => void handleUndo()}
-          undoShortcut="Ctrl+Z"
-        />
-      ) : null}
     </div>
   );
 }

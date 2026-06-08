@@ -10,7 +10,8 @@ import {
 } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { Button } from "@/components/ui/Button";
-import { salesUpdatesBannerClass } from "@/lib/ui/ontime-theme";
+import { SystemNotice } from "@/components/ui/SystemNotice";
+import { MICROCOPY } from "@/lib/ui/microcopy";
 
 const POLL_MS = 45_000;
 const AUTO_REFRESH_MS = 3 * 60_000;
@@ -178,19 +179,16 @@ export function SalesUpdatesBanner() {
   if (!ctx?.hasUpdates || pathname === "/moje") return null;
 
   return (
-    <div role="status" className={salesUpdatesBannerClass}>
-      <div>
-        <p className="font-semibold">Są nowe informacje o zamówieniach</p>
-        <p className="mt-0.5 text-xs text-indigo-800/90">
-          Status, termin lub dostawa mogły się zmienić — odśwież widok, aby zobaczyć aktualny stan.
-          Automatyczne odświeżanie włączysz na stronie Moje zamówienia.
-        </p>
-      </div>
-      <div className="flex flex-wrap items-center gap-2">
+    <SystemNotice
+      variant="action"
+      className="mb-4 sm:mb-6"
+      title="Są nowe informacje o zamówieniach"
+      description={`${MICROCOPY.notices.updatesAvailable} Automatyczne odświeżanie włączysz na stronie Moje zamówienia.`}
+      action={
         <Button type="button" size="sm" className="min-h-11 shrink-0" onClick={ctx.refreshNow}>
-          Odśwież teraz
+          {MICROCOPY.actions.refresh}
         </Button>
-      </div>
-    </div>
+      }
+    />
   );
 }

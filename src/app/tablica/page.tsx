@@ -10,6 +10,11 @@ import {
 import { SalesAccountLinkRequired } from "@/components/sales/SalesAccountLinkRequired";
 import { DEPARTMENT_BOARD_SALES_PAGE_DESC, DEPARTMENT_BOARD_SALES_PAGE_TITLE } from "@/lib/department-board/copy";
 
+import type { Metadata } from "next";
+import { pageMetadataFor } from "@/lib/ui/page-metadata";
+
+export const metadata: Metadata = pageMetadataFor("tablica");
+
 export default async function SalesBoardPage({
   searchParams,
 }: {

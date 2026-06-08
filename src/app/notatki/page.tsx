@@ -9,6 +9,11 @@ import { fetchOperationsNotepad } from "@/lib/data/operations-notepad";
 import { OperationsNotepadClient } from "@/components/operations-notepad/OperationsNotepadClient";
 import { Alert } from "@/components/ui/Alert";
 
+import type { Metadata } from "next";
+import { pageMetadataFor } from "@/lib/ui/page-metadata";
+
+export const metadata: Metadata = pageMetadataFor("notatki");
+
 export default async function OperationsNotatkiPage({
   searchParams,
 }: {

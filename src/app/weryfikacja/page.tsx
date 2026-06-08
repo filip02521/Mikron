@@ -5,6 +5,11 @@ import { VerificationClient } from "@/components/verification/VerificationClient
 import type { OrderFormSupplierOption } from "@/lib/orders/order-form-suppliers";
 import type { IndividualOrder } from "@/types/database";
 
+import type { Metadata } from "next";
+import { pageMetadataFor } from "@/lib/ui/page-metadata";
+
+export const metadata: Metadata = pageMetadataFor("weryfikacja");
+
 export default async function WeryfikacjaPage() {
   await runOrderMaintenanceBeforePageLoad({ autoAssign: true });
 

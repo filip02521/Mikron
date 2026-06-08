@@ -11,6 +11,11 @@ import { isMagazyn } from "@/lib/auth-roles";
 import { QueueClient } from "@/components/queue/QueueClient";
 import type { IndividualOrder } from "@/types/database";
 
+import type { Metadata } from "next";
+import { pageMetadataFor } from "@/lib/ui/page-metadata";
+
+export const metadata: Metadata = pageMetadataFor("kolejka");
+
 export default async function KolejkaPage() {
   await runOrderMaintenanceBeforePageLoad();
 

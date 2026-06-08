@@ -36,12 +36,13 @@ import {
   searchQueryTokens,
   shouldAutoExpandOrderLinesForSearch,
 } from "@/lib/orders/my-order-search";
+import { undoWindowBannerDescription } from "@/lib/orders/daily-panel-undo";
 import { cn } from "@/lib/cn";
 import type { OrderFormSupplierOption } from "@/lib/orders/order-form-suppliers";
 
 type UndoState = {
   orderIds: string[];
-  message: string;
+  title: string;
 };
 
 type CancelConfirmState = {
@@ -148,6 +149,7 @@ export function MyOrderShipmentList({
   } | null>(null);
   const [errorToast, setErrorToast] = useState<string | null>(null);
   const [successToast, setSuccessToast] = useState<string | null>(null);
+  const dismissUndo = useCallback(() => setUndo(null), []);
 
   const runPickup = useCallback(
     (orderIds: string[]) => {
@@ -159,10 +161,8 @@ export function MyOrderShipmentList({
           await actionAcknowledgePickup(orderIds);
           setUndo({
             orderIds,
-            message:
-              n === 1
-                ? "Odbiór zapisany — masz 5 s na cofnięcie."
-                : `Odbiór ${n} poz. zapisany — masz 5 s na cofnięcie.`,
+            title:
+              n === 1 ? "Odbiór zapisany" : `Odbiór ${n} poz. zapisany`,
           });
           router.refresh();
         } catch (e) {
@@ -307,10 +307,11 @@ export function MyOrderShipmentList({
       ) : null}
       {undo ? (
         <UndoToast
-          message={undo.message}
-          onDismiss={() => setUndo(null)}
+          title={undo.title}
+          description={undoWindowBannerDescription()}
+          placement="inline"
+          onDismiss={dismissUndo}
           onUndo={handleUndo}
-          durationMs={5000}
         />
       ) : null}
       {successToast ? (

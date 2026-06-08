@@ -19,14 +19,12 @@ export const sidebarShellClass =
   "border-r border-[var(--card-border)] bg-[var(--card)] text-slate-900 shadow-[2px_0_24px_-12px_rgba(15,23,42,0.1)]";
 
 export const sidebarHeaderClass =
-  "shrink-0 border-b border-[var(--card-border)] px-4 pb-3 pt-4";
-
-export const sidebarBrandAccentClass = "brand-accent-strip mb-4";
+  "shrink-0 border-b border-slate-100 px-4 pb-4 pt-5";
 
 export const sidebarFooterClass =
   "shrink-0 border-t border-indigo-100/70 bg-gradient-to-b from-indigo-50/25 to-slate-50/80 px-3 py-3";
 
-export const sidebarNavScrollClass = "flex-1 overflow-y-auto px-2.5 py-3";
+export const sidebarNavScrollClass = "flex-1 overflow-y-auto px-2.5 pb-3 pt-4";
 
 /** Logo w aplikacji — gradient jak na logowaniu */
 export const brandMarkAppClass =
@@ -44,6 +42,7 @@ export function roleBadgeClass(role: string): string {
   const accent: Record<string, string> = {
     admin: "border-l-violet-500",
     zakupy: "border-l-amber-500",
+    magazyn: "border-l-emerald-500",
     sales: "border-l-indigo-500",
     sales_manager: "border-l-indigo-400",
   };
@@ -257,15 +256,54 @@ export const mobileNavLinkIdleClass = "text-slate-500";
 export const mobileNavBadgeClass =
   "bg-gradient-to-br from-indigo-600 to-sky-600 text-[9px] font-bold text-white shadow-sm shadow-indigo-600/20 lg:text-[10px]";
 
-export const salesUpdatesBannerClass = cn(
-  panelWorkspaceShellClass,
-  "mb-4 flex flex-col gap-3 rounded-md border border-indigo-200/80 bg-gradient-to-br from-indigo-50/90 via-white to-sky-50/40 px-3 py-3 text-sm text-indigo-950 shadow-[var(--shadow-card-elevated)] sm:mb-6 sm:flex-row sm:items-center sm:justify-between sm:px-4"
+/** Wspólna obudowa komunikatów systemowych. */
+export const systemNoticeShellClass = cn(
+  "flex flex-col gap-3 text-sm sm:flex-row sm:items-center sm:justify-between"
 );
 
-/** Kompaktowy pasek przypiętego ogłoszenia — bez duplikowania treści bannera „nowe”. */
-export const salesPinnedNoticeClass = cn(
-  "mb-3 flex flex-wrap items-center justify-between gap-x-3 gap-y-2 rounded-md border border-indigo-100/80 bg-white px-3 py-2 text-sm shadow-[var(--shadow-card)] sm:px-3.5",
+/** Przypięte ogłoszenie — neutralna karta, bez gradientu. */
+export const systemNoticePinnedClass = cn(
+  systemNoticeShellClass,
+  "mb-3 rounded-md border border-indigo-100/80 bg-white px-3 py-2 shadow-[var(--shadow-card)] sm:px-3.5"
 );
+
+/** Komunikat z akcją (nowe ogłoszenia, odpowiedzi, odświeżenie). */
+export const systemNoticeActionClass = cn(
+  systemNoticeShellClass,
+  "rounded-md border border-slate-200/90 bg-white px-3 py-3 text-slate-900 shadow-[var(--shadow-card)] sm:px-4"
+);
+
+/** Tour onboarding — jedyny mocny akcent indigo w warstwie notice. */
+export const systemNoticeTourClass = cn(
+  systemNoticeShellClass,
+  "mb-4 rounded-md border border-indigo-300/90 bg-indigo-600 px-3 py-3 text-white shadow-md sm:px-4"
+);
+
+/** Sticky pasek odświeżenia w panelu dziennym. */
+export const systemNoticePanelStripClass = cn(
+  systemNoticeShellClass,
+  "border-t border-slate-200/90 bg-white px-4 py-3 sm:flex-row sm:items-center sm:justify-between sm:gap-2 sm:py-2.5 sm:px-6"
+);
+
+/** Toast / banner cofania — spójny z SystemNotice i panelem dziennym. */
+export const systemNoticeUndoClass = cn(
+  "relative overflow-hidden rounded-md border border-slate-200/90 bg-white text-slate-900 shadow-[var(--shadow-card)]"
+);
+
+export const undoNoticeIconTileClass = cn(
+  brandIconTileClass,
+  "flex h-9 w-9 shrink-0 items-center justify-center rounded-md"
+);
+
+export const undoNoticeProgressTrackClass = "absolute inset-x-0 top-0 h-0.5 bg-slate-100";
+
+export const undoNoticeProgressFillClass = "undo-notice-progress-fill h-full bg-indigo-500";
+
+/** @deprecated Użyj {@link systemNoticeActionClass}. */
+export const salesUpdatesBannerClass = cn(systemNoticeActionClass, "mb-4 sm:mb-6");
+
+/** @deprecated Użyj {@link systemNoticePinnedClass}. */
+export const salesPinnedNoticeClass = systemNoticePinnedClass;
 
 /** Delikatna powierzchnia z akcentem marki (kolejka, stopki podsekcji). */
 export const panelMutedSurfaceClass =

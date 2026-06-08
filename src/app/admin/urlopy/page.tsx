@@ -8,6 +8,11 @@ import { SuppliersHubShell } from "@/components/admin/SuppliersHubShell";
 import { Alert } from "@/components/ui/Alert";
 import { supplierHubShellDescription } from "@/lib/supplier-hub";
 
+import type { Metadata } from "next";
+import { pageMetadataFor } from "@/lib/ui/page-metadata";
+
+export const metadata: Metadata = pageMetadataFor("adminVacations");
+
 export default async function UrlopyPage() {
   let vacations: Awaited<ReturnType<typeof fetchVacations>> = [];
   let suppliers: { id: string; name: string }[] = [];

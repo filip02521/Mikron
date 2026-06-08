@@ -5,6 +5,11 @@ import { Alert } from "@/components/ui/Alert";
 import { supplierHubShellDescription } from "@/lib/supplier-hub";
 import type { SupplierWithSchedule } from "@/types/database";
 
+import type { Metadata } from "next";
+import { pageMetadataFor } from "@/lib/ui/page-metadata";
+
+export const metadata: Metadata = pageMetadataFor("procurementSuppliers");
+
 export default async function ZakupyDostawcyPage() {
   let suppliers: SupplierWithSchedule[] = [];
   let inactiveCount = 0;

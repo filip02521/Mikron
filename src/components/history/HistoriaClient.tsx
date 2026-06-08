@@ -23,6 +23,7 @@ import { SectionHeadingIcon } from "@/components/icons/SectionHeadingIcon";
 import { IconArchive, IconClipboardList } from "@/components/icons/StrokeIcons";
 import { HistoriaHelp } from "@/components/history/HistoriaHelp";
 import { cn } from "@/lib/cn";
+import { MICROCOPY } from "@/lib/ui/microcopy";
 import { panelChromeInsetClass, panelPageShellClass } from "@/lib/ui/ontime-theme";
 
 export function HistoriaClient({
@@ -111,7 +112,10 @@ export function HistoriaClient({
           tileClassName="bg-indigo-100 text-indigo-700"
         />
         {!individual.length ? (
-          <EmptyState title="Brak wpisów w historii indywidualnej" />
+          <EmptyState
+            title={MICROCOPY.empty.history.individualTitle}
+            description={MICROCOPY.empty.history.description}
+          />
         ) : (
           <>
             <HistoriaIndividualTable
@@ -141,7 +145,10 @@ export function HistoriaClient({
           />
         </div>
         {!normal.length ? (
-          <EmptyState title="Brak historii zamówień standardowych" />
+          <EmptyState
+            title={MICROCOPY.empty.history.standardTitle}
+            description={MICROCOPY.empty.history.description}
+          />
         ) : (
           <>
             <HistoriaNormalTable

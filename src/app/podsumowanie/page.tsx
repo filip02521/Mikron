@@ -9,6 +9,11 @@ import { panelWorkspaceShellClass } from "@/lib/ui/ontime-theme";
 import type { OrderFormSupplierOption } from "@/lib/orders/order-form-suppliers";
 import type { IndividualOrder } from "@/types/database";
 
+import type { Metadata } from "next";
+import { pageMetadataFor } from "@/lib/ui/page-metadata";
+
+export const metadata: Metadata = pageMetadataFor("podsumowanie");
+
 const emptyWorkspace = buildSummaryWorkspace([], []);
 
 function PanelLoadingFallback() {

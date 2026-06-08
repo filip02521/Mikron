@@ -4,6 +4,11 @@ import { BugReportsAdminClient } from "@/components/admin/BugReportsAdminClient"
 import { AdminSecondaryShell } from "@/components/admin/AdminSecondaryShell";
 import { redirect } from "next/navigation";
 
+import type { Metadata } from "next";
+import { pageMetadataFor } from "@/lib/ui/page-metadata";
+
+export const metadata: Metadata = pageMetadataFor("adminReports");
+
 export default async function AdminZgloszeniaPage() {
   const session = await getSessionUser();
   if (!session || session.role !== "admin") {

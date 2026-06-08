@@ -33,6 +33,11 @@ import {
 import type { DeliveryStats, IndividualOrder } from "@/types/database";
 import { autoAssignMissingSuppliersFromCatalog } from "@/lib/services/auto-assign-suppliers";
 
+import type { Metadata } from "next";
+import { pageMetadataFor } from "@/lib/ui/page-metadata";
+
+export const metadata: Metadata = pageMetadataFor("moje");
+
 export default async function MojePage({
   searchParams,
 }: {

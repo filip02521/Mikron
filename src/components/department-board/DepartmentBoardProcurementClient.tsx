@@ -38,7 +38,6 @@ import {
   brandIconTileClass,
   panelPageShellClass,
   panelTypography,
-  sidebarBrandAccentClass,
 } from "@/lib/ui/ontime-theme";
 import { mojeShipmentListClass } from "@/lib/ui/moje-shipment-row-styles";
 import { actionCreateAnnouncement } from "@/app/actions/department-board";
@@ -109,7 +108,6 @@ export function DepartmentBoardProcurementClient({
       {loadError ? <Alert tone="error">{loadError}</Alert> : null}
 
       <Card padding={false} className="overflow-hidden">
-        <div className={cn(sidebarBrandAccentClass, "rounded-none opacity-75")} aria-hidden />
         <CardHeader
           inset
           density="compact"

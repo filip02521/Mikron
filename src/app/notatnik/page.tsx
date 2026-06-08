@@ -8,6 +8,11 @@ import { SalesAccountLinkRequired } from "@/components/sales/SalesAccountLinkReq
 import { NotatnikClient } from "@/components/notatnik/NotatnikClient";
 import { getSubiektAvailability } from "@/lib/subiekt/availability";
 
+import type { Metadata } from "next";
+import { pageMetadataFor } from "@/lib/ui/page-metadata";
+
+export const metadata: Metadata = pageMetadataFor("notatnik");
+
 export default async function NotatnikPage({
   searchParams,
 }: {

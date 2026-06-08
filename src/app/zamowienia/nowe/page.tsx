@@ -4,6 +4,12 @@ import { OrderFormClient } from "@/components/orders/OrderFormClient";
 import { getAppRole } from "@/lib/auth-dev";
 import { getSessionUser } from "@/lib/auth";
 import { resolveSalesPersonForUser } from "@/lib/auth/sales-person";
+
+import type { Metadata } from "next";
+import { pageMetadataFor } from "@/lib/ui/page-metadata";
+
+export const metadata: Metadata = pageMetadataFor("noweZamowienia");
+
 export default async function NoweZamowieniePage() {
   const role = await getAppRole();
   let suppliers: Awaited<ReturnType<typeof fetchSupplierFormContext>>["suppliers"] = [];

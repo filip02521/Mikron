@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { salesUpdatesBannerClass } from "@/lib/ui/ontime-theme";
+import { SystemNotice } from "@/components/ui/SystemNotice";
 import { Button } from "@/components/ui/Button";
 
 function answerBannerDetail(
@@ -58,16 +58,17 @@ export function DepartmentBoardAnswersBanner({
       : "/tablica?widok=pytania";
 
   return (
-    <div role="status" className={salesUpdatesBannerClass}>
-      <div>
-        <p className="font-semibold">{label}</p>
-        <p className="mt-0.5 text-xs text-indigo-800/90">{answerBannerDetail(count, preview)}</p>
-      </div>
-      <Link href={href} className="shrink-0">
-        <Button type="button" size="sm" className="min-h-11">
-          {count === 1 ? "Zobacz odpowiedź" : "Zobacz odpowiedzi"}
-        </Button>
-      </Link>
-    </div>
+    <SystemNotice
+      variant="action"
+      title={label}
+      description={answerBannerDetail(count, preview)}
+      action={
+        <Link href={href} className="shrink-0">
+          <Button type="button" size="sm" className="min-h-11">
+            {count === 1 ? "Zobacz odpowiedź" : "Zobacz odpowiedzi"}
+          </Button>
+        </Link>
+      }
+    />
   );
 }

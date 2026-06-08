@@ -185,7 +185,7 @@ export function procurementSupplierBlockConfirmCopy(
         : `Uzupełniające u ${block.supplierName}`,
     message: `Oznaczysz ${groupCount} ${
       groupCount === 1 ? "prośbę" : groupCount < 5 ? "prośby" : "prośb"
-    } (${products}) jako ${action}: ${procurementSupplierBlockPeopleLine(block)}. Po potwierdzeniu możesz cofnąć w ciągu 5 sekund.${onDemandNote}`,
+    } (${products}) jako ${action}: ${procurementSupplierBlockPeopleLine(block)}. Po potwierdzeniu możesz cofnąć w ciągu 10 sekund.${onDemandNote}`,
     confirmLabel:
       mode === "GLOWNE"
         ? `${procurementGlowneButtonLabel({

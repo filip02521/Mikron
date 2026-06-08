@@ -44,7 +44,7 @@ function OnTimeWordmark({
   const text =
     size === "sm"
       ? "text-sm font-semibold tracking-tight"
-      : "text-base font-semibold tracking-tight";
+      : "text-[15px] font-semibold tracking-tight";
 
   return (
     <p className={cn(text, className)} aria-label={ONTIME_APP_NAME}>
@@ -58,33 +58,19 @@ function RoleLine({ role, compact = false }: { role: UserRole; compact?: boolean
   return (
     <p
       className={cn(
-        "flex min-w-0 items-start gap-1.5 leading-snug text-slate-600",
-        compact ? "text-[10px]" : "text-[11px]"
+        "flex min-w-0 items-center gap-1.5 leading-none text-slate-500",
+        compact ? "text-[10px]" : "text-xs"
       )}
     >
       <span
         className={cn(
-          "mt-[0.35rem] shrink-0 rounded-full",
+          "shrink-0 rounded-full",
           compact ? "h-1 w-1" : "h-1.5 w-1.5",
           roleDotClass[role]
         )}
         aria-hidden
       />
-      <span className="min-w-0 [overflow-wrap:anywhere]">{ROLE_LABELS[role]}</span>
-    </p>
-  );
-}
-
-function UserEmailLine({ email, className }: { email: string; className?: string }) {
-  return (
-    <p
-      className={cn(
-        "break-all text-[10px] leading-snug text-slate-400 [overflow-wrap:anywhere]",
-        className
-      )}
-      title={email}
-    >
-      {email}
+      <span className="min-w-0 truncate">{ROLE_LABELS[role]}</span>
     </p>
   );
 }
@@ -108,11 +94,16 @@ function SidebarUserRow({
     : userEmail
       ? initialsFromEmail(userEmail)
       : "?";
+  const showEmail = Boolean(userEmail?.trim()) && !displayName;
+  const hoverDetail = [displayName, role ? ROLE_LABELS[role] : null, userEmail]
+    .filter(Boolean)
+    .join(" · ");
 
   if (compact) {
     return (
       <div
-        className="mt-0.5 min-w-0"
+        className="mt-1 min-w-0"
+        title={hoverDetail || undefined}
         {...(displayName ? { "aria-label": `Zalogowany jako ${displayName}` } : {})}
       >
         {displayName ? (
@@ -121,8 +112,8 @@ function SidebarUserRow({
           </p>
         ) : null}
         {role ? <RoleLine role={role} compact /> : null}
-        {!displayName && userEmail ? (
-          <UserEmailLine email={userEmail} className="truncate break-normal" />
+        {showEmail ? (
+          <p className="truncate text-[10px] text-slate-400">{userEmail}</p>
         ) : null}
       </div>
     );
@@ -130,28 +121,33 @@ function SidebarUserRow({
 
   return (
     <div
-      className="border-t border-slate-200/90 pt-3"
+      className="mt-4 border-t border-slate-100 pt-4"
+      title={hoverDetail || undefined}
       {...(displayName ? { "aria-label": `Zalogowany jako ${displayName}` } : {})}
     >
-      <div className="flex min-w-0 items-start gap-2.5">
+      <div className="flex min-w-0 items-center gap-3">
         <span
-          className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-indigo-100 text-xs font-semibold text-indigo-700"
+          className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-slate-100 text-xs font-semibold text-slate-600 ring-1 ring-slate-200/80"
           aria-hidden
         >
           {initials}
         </span>
-        <div className="min-w-0 flex-1 space-y-0.5">
+        <div className="min-w-0 flex-1 space-y-1">
           {displayName ? (
-            <p className="text-sm font-semibold leading-snug text-slate-900 [overflow-wrap:anywhere]">
+            <p className="truncate text-sm font-semibold leading-tight text-slate-900">
               {displayName}
             </p>
+          ) : userEmail ? (
+            <p className="truncate text-sm font-semibold leading-tight text-slate-900">
+              {userEmail}
+            </p>
+          ) : (
+            <p className="text-sm font-medium text-slate-500">Niezalogowany</p>
+          )}
+          {role ? <RoleLine role={role} /> : null}
+          {showEmail ? (
+            <p className="truncate text-[11px] text-slate-400">{userEmail}</p>
           ) : null}
-          {role ? (
-            <RoleLine role={role} />
-          ) : !displayName ? (
-            <p className="text-xs font-medium text-slate-500">Niezalogowany</p>
-          ) : null}
-          {userEmail ? <UserEmailLine email={userEmail} className="pt-0.5" /> : null}
         </div>
       </div>
     </div>
@@ -169,20 +165,17 @@ export function SidebarBrandBlock({
   salesPersonName?: string | null;
 }) {
   return (
-    <div className="space-y-3">
-      <div className="flex items-start gap-3">
-        <AppBrandMark size="sm" variant="light" className="mt-0.5" />
+    <div>
+      <div className="flex items-center gap-2.5">
+        <AppBrandMark size="sm" variant="light" className="shrink-0" />
         <div className="min-w-0 flex-1">
           <OnTimeWordmark />
-          <p className="mt-0.5 text-[11px] leading-snug text-slate-500">
+          <p className="mt-0.5 truncate text-[11px] leading-snug text-slate-500">
             {ONTIME_TAGLINE_SHORT}
           </p>
-          <p className="mt-0.5 text-[10px] font-semibold uppercase tracking-[0.14em] text-sky-700/80">
-            {ONTIME_COMPANY}
-          </p>
+          <p className="truncate text-[10px] font-medium text-slate-400">{ONTIME_COMPANY}</p>
         </div>
       </div>
-      <div className="brand-accent-strip !mb-0 opacity-70" aria-hidden />
       <SidebarUserRow
         role={role}
         userEmail={userEmail}
@@ -204,7 +197,7 @@ export function MobileBrandBlock({
 }) {
   return (
     <div className="flex min-w-0 items-center gap-2.5">
-      <AppBrandMark size="sm" variant="light" />
+      <AppBrandMark size="sm" variant="light" className="shrink-0" />
       <div className="min-w-0 flex-1">
         <OnTimeWordmark size="sm" />
         <SidebarUserRow

@@ -33,7 +33,7 @@ export function HowItWorksContent() {
         <HelpMenuGlyph className="align-[-2px]" />) — urlop i edycja.
       </li>
       <li>
-        Po każdej zmianie masz <strong>5 sekund na cofnięcie</strong>.
+        Po każdej zmianie masz <strong>10 sekund na cofnięcie</strong>.
       </li>
       <li>
         <strong className="text-slate-800">Na bieżąco</strong> — pod zakładkami (Dziś, Tydzień,

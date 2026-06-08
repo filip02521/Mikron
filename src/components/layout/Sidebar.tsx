@@ -14,7 +14,6 @@ import {
 import {
   navLinkActiveClass,
   navLinkIdleClass,
-  sidebarBrandAccentClass,
   sidebarHeaderClass,
 } from "@/lib/ui/ontime-theme";
 import { ONTIME_AUTH_FOOTER } from "@/lib/ui/ontime-brand";
@@ -143,7 +142,7 @@ function NavSection({
 
   return (
     <section className={cn(!isFirst && "mt-3 border-t border-slate-100 pt-3")}>
-      <h2 className="mb-1.5 px-3 text-[11px] font-semibold uppercase tracking-[0.1em] text-indigo-400/90">
+      <h2 className="mb-1.5 px-3 text-[10px] font-semibold uppercase tracking-[0.08em] text-slate-400">
         {group.title}
       </h2>
       <ul className="space-y-0.5">
@@ -206,7 +205,6 @@ export function Sidebar({
       )}
     >
       <header className={sidebarHeaderClass}>
-        <div className={sidebarBrandAccentClass} aria-hidden />
         <SidebarBrandBlock
           role={role}
           userEmail={userEmail}

@@ -11,8 +11,23 @@ import {
   supplierHubPaths,
   supplierHubShellDescription,
 } from "@/lib/supplier-hub";
+import type { Metadata } from "next";
+import { pageMetadata } from "@/lib/ui/page-metadata";
 
 const VALID: SupplierLocation[] = ["POLSKA", "ZAGRANICA", "IMPORT"];
+
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ location: string }>;
+}): Promise<Metadata> {
+  const { location: loc } = await params;
+  const location = loc.toUpperCase() as SupplierLocation;
+  if (!VALID.includes(location)) {
+    return pageMetadata("Nieprawidłowa lokalizacja");
+  }
+  return pageMetadata(locationLabel(location));
+}
 
 export default async function LocationPage({
   params,

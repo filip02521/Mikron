@@ -535,7 +535,7 @@ export function ForSomeoneRequests({
         title="Anulować prośbę?"
         message={
           cancelTarget
-            ? `Czy na pewno anulować: ${cancelTarget.headline}? Możesz cofnąć w ciągu 5 sekund po potwierdzeniu.`
+            ? `Czy na pewno anulować: ${cancelTarget.headline}? Możesz cofnąć w ciągu 10 sekund po potwierdzeniu.`
             : ""
         }
         confirmLabel="Anuluj prośbę"
