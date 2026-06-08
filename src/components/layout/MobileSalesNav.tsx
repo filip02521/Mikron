@@ -18,10 +18,10 @@ import type { UserRole } from "@/types/database";
 import { useSalesOnboardingOptional } from "@/components/sales/SalesOnboardingContext";
 
 export function MobileSalesNav({
-  navBadges = { salesMoje: 0, salesNotatnik: 0 },
+  navBadges = { salesMoje: 0, salesNotatnik: 0, salesTablica: 0 },
   role = "sales",
 }: {
-  navBadges?: { salesMoje?: number; salesNotatnik?: number };
+  navBadges?: { salesMoje?: number; salesNotatnik?: number; salesTablica?: number };
   role?: UserRole;
 }) {
   const pathname = usePathname();

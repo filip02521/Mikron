@@ -9,7 +9,12 @@ import {
 } from "@/components/procurement/SupplierSearchField";
 import { Button } from "@/components/ui/Button";
 import { ActionLoadingOverlay } from "@/components/ui/ActionLoadingOverlay";
-import { OverflowMenu, OverflowMenuItem } from "@/components/ui/OverflowMenu";
+import {
+  OverflowMenu,
+  OverflowMenuItem,
+  OverflowMenuLabel,
+  OverflowMenuSeparator,
+} from "@/components/ui/OverflowMenu";
 import { useActionPending } from "@/hooks/useActionPending";
 import { IconPlusCircle } from "@/components/icons/StrokeIcons";
 import { PanelDailyHelp } from "@/components/summary/PanelDailyHelp";
@@ -51,6 +56,9 @@ export function DailyPanelActionsBar({
     }, "Przeliczanie terminów wszystkich dostawców…");
   };
 
+  const vacationSuffix =
+    summary.vacationSupplierCount > 0 ? ` (${summary.vacationSupplierCount})` : "";
+
   return (
     <div className={cn(panelToolbarShellClass, "relative")}>
       {pendingMessage ? (
@@ -77,47 +85,43 @@ export function DailyPanelActionsBar({
             <IconPlusCircle size={15} />
             Nowa prośba
           </Button>
-          <Button
-            size="sm"
-            variant="outline"
-            className="hidden h-9 min-h-9 shrink-0 gap-1.5 px-3 py-0 text-xs md:inline-flex"
-            onClick={runSyncSchedules}
-            disabled={syncPending}
-          >
-            {syncPending ? "Przeliczanie…" : "Przelicz terminy"}
-          </Button>
-          <div className="hidden md:block">
-            <PanelDailyHelp density="toolbar" />
-          </div>
+          <PanelDailyHelp density="toolbar" />
           <OverflowMenu
-            label="Więcej akcji panelu"
+            label="Narzędzia panelu"
             iconOnly
             align="end"
             triggerClassName={panelToolbarIconButtonClass}
           >
-            <OverflowMenuItem onClick={() => document.getElementById("supplier-search")?.focus()}>
-              Szukaj dostawcy…
+            <OverflowMenuLabel>Panel</OverflowMenuLabel>
+            <OverflowMenuItem onClick={() => router.push("/zakupy/tablica")}>
+              Tablica z handlowcami
             </OverflowMenuItem>
-            <OverflowMenuItem onClick={onNewSupplier}>+ Nowy dostawca</OverflowMenuItem>
             {onOpenOnDemand && summary.onDemandCount > 0 ? (
               <OverflowMenuItem onClick={onOpenOnDemand}>
-                Lista na żądanie ({summary.onDemandCount})
+                Na żądanie ({summary.onDemandCount})
               </OverflowMenuItem>
             ) : null}
-            <OverflowMenuItem onClick={() => router.push(supplierHubPaths(hubContext).cards)}>
-              Karty dostawców
-            </OverflowMenuItem>
-            <OverflowMenuItem onClick={() => router.push("/lokalizacje/POLSKA")}>
+
+            <OverflowMenuSeparator />
+            <OverflowMenuLabel>Harmonogram</OverflowMenuLabel>
+            <OverflowMenuItem
+              onClick={() => router.push("/lokalizacje/POLSKA")}
+              className="md:hidden"
+            >
               Terminy zamówień
             </OverflowMenuItem>
             <OverflowMenuItem onClick={runSyncSchedules} disabled={syncPending}>
-              {syncPending ? "Przeliczanie terminów…" : "Przelicz terminy (menu)"}
+              {syncPending ? "Przeliczanie terminów…" : "Przelicz terminy"}
             </OverflowMenuItem>
             <OverflowMenuItem onClick={() => router.push(supplierVacationsHref(hubContext))}>
-              Urlopy
-              {summary.vacationSupplierCount > 0
-                ? ` (${summary.vacationSupplierCount})`
-                : ""}
+              Urlopy{vacationSuffix}
+            </OverflowMenuItem>
+
+            <OverflowMenuSeparator />
+            <OverflowMenuLabel>Dostawcy</OverflowMenuLabel>
+            <OverflowMenuItem onClick={onNewSupplier}>Nowy dostawca</OverflowMenuItem>
+            <OverflowMenuItem onClick={() => router.push(supplierHubPaths(hubContext).cards)}>
+              Karty dostawców
             </OverflowMenuItem>
           </OverflowMenu>
         </div>

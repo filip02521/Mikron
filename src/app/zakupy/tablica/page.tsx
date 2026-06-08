@@ -1,9 +1,8 @@
 import { redirect } from "next/navigation";
 import { getSessionUser } from "@/lib/auth";
 import { canAccessOperations } from "@/lib/auth-roles";
-import { DepartmentBoardPlaceholder } from "@/components/department-board/DepartmentBoardPlaceholder";
-import { adminPageShellClass } from "@/lib/ui/ontime-theme";
-import { cn } from "@/lib/cn";
+import { DepartmentBoardClient } from "@/components/department-board/DepartmentBoardClient";
+import { fetchDepartmentBoard } from "@/lib/data/department-board";
 
 export default async function ProcurementBoardPage() {
   const user = await getSessionUser();
@@ -11,9 +10,16 @@ export default async function ProcurementBoardPage() {
     redirect("/login");
   }
 
-  return (
-    <div className={cn(adminPageShellClass)}>
-      <DepartmentBoardPlaceholder audience="procurement" />
-    </div>
-  );
+  let loadError: string | null = null;
+  let board = { announcements: [], questions: [], readAnnouncementIds: [] } as Awaited<
+    ReturnType<typeof fetchDepartmentBoard>
+  >;
+
+  try {
+    board = await fetchDepartmentBoard(user.id);
+  } catch (e) {
+    loadError = e instanceof Error ? e.message : "Nie udało się załadować tablicy.";
+  }
+
+  return <DepartmentBoardClient initial={board} audience="procurement" loadError={loadError} />;
 }

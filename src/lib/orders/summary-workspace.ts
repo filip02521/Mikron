@@ -118,6 +118,8 @@ export type SummaryForSomeoneEnriched = {
   hasUnseen: boolean;
   /** Liczba nieprzeczytanych pozycji w grupie. */
   unseenCount: number;
+  /** Dostawca zamawiany na żądanie — Główne bez przesunięcia harmonogramu. */
+  supplierOrderOnDemand: boolean;
 };
 
 export type WeekDayPlan = {
@@ -357,14 +359,16 @@ export function buildSummaryWorkspace(
 
     return Object.values(grouped).map((g) => {
     const supplierId = g.items[0]?.supplier_id ?? "";
+    const orderSupplier = g.items[0]?.supplier;
     const supplierRow = schedules.find(
       (s) => s.id === supplierId || s.name === g.supplier
     );
     const supplierName =
       g.supplier?.trim() ||
       supplierRow?.name ||
+      orderSupplier?.name ||
       "Nieznany dostawca";
-    const loc = supplierRow?.location ?? "POLSKA";
+    const loc = supplierRow?.location ?? orderSupplier?.location ?? "POLSKA";
     const personName = g.person?.trim() || "Handlowiec nieprzypisany";
     const count = g.items.length;
     const countLabel =
@@ -392,6 +396,10 @@ export function buildSummaryWorkspace(
       shift: shiftLabel,
       status: "-",
       nextDate: new Date(8640000000000000),
+      supplierOrderOnDemand:
+        (supplierRow ? isSupplierOrderOnDemand(supplierRow) : false) ||
+        (orderSupplier ? isSupplierOrderOnDemand(orderSupplier) : false) ||
+        Boolean(supplierId && supplierMeta[supplierId]?.order_on_demand),
       ...timing,
     };
     });

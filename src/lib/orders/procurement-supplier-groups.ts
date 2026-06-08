@@ -1,3 +1,7 @@
+import {
+  PROCUREMENT_GLOWNE_ON_DEMAND_HINT,
+  procurementGlowneButtonLabel,
+} from "@/lib/orders/glowne-action-ui";
 import type { SummaryForSomeoneEnriched } from "@/lib/orders/summary-workspace";
 import type { SupplierLocation } from "@/types/database";
 import { sortForSomeoneGroups } from "@/lib/orders/procurement-daily-ui";
@@ -12,6 +16,7 @@ export type ProcurementSupplierBlock = {
   unseenGroupCount: number;
   hasUnseen: boolean;
   earliestSubmittedAt: string;
+  supplierOrderOnDemand: boolean;
 };
 
 function earliestSubmittedInBlock(groups: SummaryForSomeoneEnriched[]): string {
@@ -61,6 +66,7 @@ export function buildProcurementSupplierBlocks(
       unseenGroupCount: requestGroups.filter((g) => g.hasUnseen).length,
       hasUnseen: requestGroups.some((g) => g.hasUnseen),
       earliestSubmittedAt: earliestSubmittedInBlock(requestGroups),
+      supplierOrderOnDemand: first.supplierOrderOnDemand,
     });
   }
 
@@ -166,17 +172,26 @@ export function procurementSupplierBlockConfirmCopy(
   const action =
     mode === "GLOWNE" ? "zamówienie główne" : "uzupełniające";
   const people = block.requestGroups.map((g) => g.person);
+  const onDemandNote =
+    mode === "GLOWNE" && block.supplierOrderOnDemand
+      ? ` ${PROCUREMENT_GLOWNE_ON_DEMAND_HINT}`
+      : "";
   return {
     title:
       mode === "GLOWNE"
-        ? `Główne u ${block.supplierName}`
+        ? block.supplierOrderOnDemand
+          ? `Główne (bez terminu) u ${block.supplierName}`
+          : `Główne u ${block.supplierName}`
         : `Uzupełniające u ${block.supplierName}`,
     message: `Oznaczysz ${groupCount} ${
       groupCount === 1 ? "prośbę" : groupCount < 5 ? "prośby" : "prośb"
-    } (${products}) jako ${action}: ${procurementSupplierBlockPeopleLine(block)}. Po potwierdzeniu możesz cofnąć w ciągu 5 sekund.`,
+    } (${products}) jako ${action}: ${procurementSupplierBlockPeopleLine(block)}. Po potwierdzeniu możesz cofnąć w ciągu 5 sekund.${onDemandNote}`,
     confirmLabel:
       mode === "GLOWNE"
-        ? `Główne · ${groupCount} ${groupCount === 1 ? "osoba" : groupCount < 5 ? "osoby" : "osób"}`
+        ? `${procurementGlowneButtonLabel({
+            hasInfoViaPanel: procurementSupplierBlockHasInfoViaPanel(block),
+            supplierOrderOnDemand: block.supplierOrderOnDemand,
+          })} · ${groupCount} ${groupCount === 1 ? "osoba" : groupCount < 5 ? "osoby" : "osób"}`
         : `Uzupełniające · ${groupCount} ${groupCount === 1 ? "osoba" : groupCount < 5 ? "osoby" : "osób"}`,
     people,
   };

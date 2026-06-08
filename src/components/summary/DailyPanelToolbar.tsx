@@ -26,24 +26,7 @@ export function DailyPanelToolbar({
   }
 
   if (view === "tydzien") {
-    if (summary.weekPlanCount === 0) {
-      return null;
-    }
-
-    return (
-      <div className={cn("border-b border-slate-100 py-2.5 sm:py-3", panelChromeInsetClass)}>
-        <p className={panelTypography.sectionTitle}>Plan tygodnia</p>
-        <p className={cn("mt-0.5", panelTypography.sectionDesc)}>
-          {summary.weekPlanCount}{" "}
-          {summary.weekPlanCount === 1 ? "pozycja" : "pozycje"}
-          {summary.onDemandCount > 0 ? ` · ${summary.onDemandCount} na żądanie` : ""}. Karty
-          dostawców poniżej ·{" "}
-          <a href="/lokalizacje/POLSKA" className="font-medium text-indigo-700 hover:underline">
-            Terminy
-          </a>
-        </p>
-      </div>
-    );
+    return null;
   }
 
   if (view === "wyjatki") {

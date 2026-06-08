@@ -20,8 +20,15 @@ import {
   resolveVacationConflictOnShift,
   type VacationPeriod,
 } from "@/lib/orders/vacations";
-import { calculateBusinessDays } from "@/lib/orders/dates";
-import { isMissingProduct, parseOrderQuantity } from "@/lib/orders/individual";
+import {
+  aggregateDeliveryStatsFromOrders,
+  aggregatedToDeliveryStatsRow,
+  businessDaysForDeliveryStatsSample,
+  DELIVERY_STATS_COMPLETED_STATUS,
+  hasSiblingDeliveryStatsSample,
+  type DeliveryStatsOrderInput,
+} from "@/lib/orders/delivery-stats-aggregation";
+import { parseOrderQuantity } from "@/lib/orders/individual";
 import type {
   IndividualOrder,
   IndividualOrderStatus,
@@ -40,11 +47,10 @@ import {
   flagsFromInformacjaFlowPath,
   isInformacjaStockOutReorder,
 } from "@/lib/orders/informacja-stock-out-reorder";
-import { glowneScheduleSupplierIds } from "@/lib/orders/glowne-supplier-placement";
+import { glowneScheduleSupplierIds, glowneSchedulableSupplierIds } from "@/lib/orders/glowne-supplier-placement";
 import { resolveVerificationInformacjaFlags } from "@/lib/orders/verification-informacja-ui";
 import type { InformacjaFlowPath } from "@/lib/orders/informacja-stock-out-reorder";
 import { shouldTreatAsInformacjaOnly } from "@/lib/orders/informacja-import-rules";
-import { orderPlacementAt } from "@/lib/orders/order-timing";
 import { isProcurementDraftReady } from "@/lib/orders/procurement-readiness";
 import { normalizeSalesClientName } from "@/lib/orders/sales-client-label";
 import {
@@ -1019,7 +1025,19 @@ export async function processIndividualFromSummary(
     if (order) ordersToProcess.push(order);
   }
 
-  const glowneSupplierIds = glowneScheduleSupplierIds(ordersToProcess, action);
+  const glowneCandidateIds = glowneScheduleSupplierIds(ordersToProcess, action);
+  let glowneSupplierIds = glowneCandidateIds;
+  if (action === "GLOWNE" && glowneCandidateIds.size) {
+    const { data: supplierRows, error: supplierError } = await supabase
+      .from("suppliers")
+      .select("id, order_on_demand, stock_raw, interval_raw, extra_info")
+      .in("id", [...glowneCandidateIds]);
+    if (supplierError) throw new Error(supplierError.message);
+    glowneSupplierIds = glowneSchedulableSupplierIds(
+      glowneCandidateIds,
+      supplierRows ?? []
+    );
+  }
   if (action === "GLOWNE") {
     await assertGlowneSuppliersHaveInterval(glowneSupplierIds);
   }
@@ -1265,23 +1283,9 @@ async function applyDeliveredQuantityUpdate(
   }
 
   let statsUpdated = false;
-  if (status === "Zrealizowane" && prevStatus !== "Zrealizowane") {
-    statsUpdated = true;
-    const placement = orderPlacementAt(order);
-    const orderDate = placement ? parseDateOnly(placement) : null;
-    const skipStats = isMissingProduct(order.products);
-    if (
-      orderDate &&
-      !skipStats &&
-      order.supplier_id &&
-      order.supplier &&
-      order.order_type !== "None"
-    ) {
-      const days = calculateBusinessDays(orderDate, toDateOnly(new Date()));
-      if (days >= 0) {
-        await updateSupplierStats(order.supplier_id, days, order.order_type);
-      }
-    }
+  if (status === DELIVERY_STATS_COMPLETED_STATUS && prevStatus !== DELIVERY_STATS_COMPLETED_STATUS) {
+    const deliveryAtIso = String(update.delivery_at ?? new Date().toISOString());
+    statsUpdated = await tryIncrementDeliveryStatsFromOrder(order, deliveryAtIso);
   }
 
   const shouldNotify =
@@ -1438,6 +1442,64 @@ export async function batchUpdateDeliveredQuantities(
   return { saved, savedOrderIds, emailSent, errors, emailError };
 }
 
+async function fetchSupplierCompletedOrdersForStats(
+  supplierId: string,
+  excludeOrderId?: string
+): Promise<DeliveryStatsOrderInput[]> {
+  const supabase = createAdminClient();
+  const { data } = await supabase
+    .from("individual_orders")
+    .select(
+      "id, supplier_id, request_kind, status, ordered_at, action_at, delivery_at, order_type, products"
+    )
+    .eq("supplier_id", supplierId)
+    .eq("request_kind", "zamowienie")
+    .eq("status", DELIVERY_STATS_COMPLETED_STATUS);
+
+  return ((data ?? []) as DeliveryStatsOrderInput[]).filter((row) => row.id !== excludeOrderId);
+}
+
+async function tryIncrementDeliveryStatsFromOrder(
+  order: IndividualOrder,
+  deliveryAtIso: string
+): Promise<boolean> {
+  if (order.request_kind !== "zamowienie") return false;
+  if (!order.supplier_id || !order.supplier || order.order_type === "None") return false;
+
+  const days = businessDaysForDeliveryStatsSample(
+    {
+      id: order.id,
+      supplier_id: order.supplier_id,
+      request_kind: order.request_kind,
+      status: DELIVERY_STATS_COMPLETED_STATUS,
+      ordered_at: order.ordered_at,
+      action_at: order.action_at,
+      delivery_at: deliveryAtIso,
+      order_type: order.order_type,
+      products: order.products,
+    },
+    deliveryAtIso
+  );
+  if (days == null) return false;
+
+  const siblings = await fetchSupplierCompletedOrdersForStats(order.supplier_id, order.id);
+  const candidate: DeliveryStatsOrderInput = {
+    id: order.id,
+    supplier_id: order.supplier_id,
+    request_kind: order.request_kind,
+    status: DELIVERY_STATS_COMPLETED_STATUS,
+    ordered_at: order.ordered_at,
+    action_at: order.action_at,
+    delivery_at: deliveryAtIso,
+    order_type: order.order_type,
+    products: order.products,
+  };
+  if (hasSiblingDeliveryStatsSample(candidate, siblings)) return false;
+
+  await updateSupplierStats(order.supplier_id, days, order.order_type);
+  return true;
+}
+
 export async function updateSupplierStats(
   supplierId: string,
   deliveryDays: number,
@@ -1503,7 +1565,6 @@ export async function processMarkedDeliveries(): Promise<ProcessDeliveriesResult
   };
   if (!queue?.length) return empty;
 
-  const processedGroups = new Set<string>();
   const notifications = new Map<string, SalesPersonEmailBatch>();
   let processed = 0;
 
@@ -1565,23 +1626,11 @@ export async function processMarkedDeliveries(): Promise<ProcessDeliveriesResult
       console.error("[processMarkedDeliveries syncZkWatchLineChecks]", order.id, e);
     }
 
-    const placement = orderPlacementAt(order);
-    const orderDate = placement ? parseDateOnly(placement) : null;
-    const groupKey = `${order.supplier_id}|${orderDate?.toISOString().slice(0, 10)}`;
-    const skipStats = isMissingProduct(order.products);
-
-    if (
-      !skipStats &&
-      !processedGroups.has(groupKey) &&
-      orderDate &&
-      order.supplier_id &&
-      order.supplier
-    ) {
-      const deliveryDate = toDateOnly(new Date());
-      const days = calculateBusinessDays(orderDate, deliveryDate);
-      if (days >= 0 && order.order_type !== "None") {
-        await updateSupplierStats(order.supplier_id, days, order.order_type);
-        processedGroups.add(groupKey);
+    if (status === DELIVERY_STATS_COMPLETED_STATUS) {
+      try {
+        await tryIncrementDeliveryStatsFromOrder(order, updatePayload.delivery_at);
+      } catch (e) {
+        console.error("[processMarkedDeliveries stats]", order.id, e);
       }
     }
 
@@ -1625,52 +1674,17 @@ export async function recalculateAllStats() {
     .from("individual_orders")
     .select("*")
     .eq("request_kind", "zamowienie")
-    .in("status", ["Zrealizowane", "Czesciowo_zrealizowane"]);
+    .eq("status", DELIVERY_STATS_COMPLETED_STATUS)
+    .order("delivery_at", { ascending: true })
+    .order("id", { ascending: true });
 
-  const processed = new Set<string>();
-  const stats: Record<string, { Glowne: { sum: number; count: number }; Poboczne: { sum: number; count: number } }> = {};
+  const { bySupplier } = aggregateDeliveryStatsFromOrders(history ?? []);
 
-  for (const row of history ?? []) {
-    if (row.request_kind === "informacja") continue;
-    if (isMissingProduct(row.products)) continue;
-
-    const placement = orderPlacementAt({
-      ordered_at: row.ordered_at,
-      action_at: row.action_at,
-      status: row.status,
-    });
-    const orderDate = placement ? parseDateOnly(placement) : null;
-    const deliveryDate = parseDateOnly(row.delivery_at);
-    if (!orderDate || !deliveryDate) continue;
-    const key = `${row.supplier_id}|${orderDate.toISOString().slice(0, 10)}`;
-    if (processed.has(key)) continue;
-    const days = calculateBusinessDays(orderDate, deliveryDate);
-    if (days < 0) continue;
-    processed.add(key);
-    if (!stats[row.supplier_id]) {
-      stats[row.supplier_id] = {
-        Glowne: { sum: 0, count: 0 },
-        Poboczne: { sum: 0, count: 0 },
-      };
-    }
-    const type = row.order_type === "Glowne" ? "Glowne" : "Poboczne";
-    stats[row.supplier_id][type].sum += days;
-    stats[row.supplier_id][type].count += 1;
+  for (const [supplierId, agg] of bySupplier) {
+    await supabase.from("delivery_stats").insert(aggregatedToDeliveryStatsRow(supplierId, agg));
   }
 
-  for (const [supplierId, s] of Object.entries(stats)) {
-    await supabase.from("delivery_stats").insert({
-      supplier_id: supplierId,
-      main_sum: s.Glowne.count ? s.Glowne.sum : null,
-      main_count: s.Glowne.count || null,
-      main_avg: s.Glowne.count ? Math.round(s.Glowne.sum / s.Glowne.count) : null,
-      side_sum: s.Poboczne.count ? s.Poboczne.sum : null,
-      side_count: s.Poboczne.count || null,
-      side_avg: s.Poboczne.count ? Math.round(s.Poboczne.sum / s.Poboczne.count) : null,
-    });
-  }
-
-  return Object.keys(stats).length;
+  return bySupplier.size;
 }
 
 export { recalcSupplierSchedule };

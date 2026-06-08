@@ -50,3 +50,10 @@ export const panelQueueRowLayoutClass =
 /** Slot akcji w wierszu — pełna szerokość na mobile. */
 export const panelQueueRowActionsClass =
   "w-full border-t border-slate-100/90 pt-2 sm:w-auto sm:shrink-0 sm:border-0 sm:pt-0 sm:self-start";
+
+/** Karta w kolumnie planu tygodnia — zawsze pionowo (kolumny są wąskie niezależnie od viewportu). */
+export const weekPlannerCardLayoutClass = "flex flex-col gap-1.5";
+
+/** Akcje w karcie planu — pełna szerokość, bez hover-expand (zero layout shift). */
+export const weekPlannerCardActionsClass =
+  "w-full shrink-0 border-t border-slate-100/90 pt-1.5";

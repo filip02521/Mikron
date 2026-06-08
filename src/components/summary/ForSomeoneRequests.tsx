@@ -3,6 +3,7 @@
 import { useMemo, useState, useCallback, useEffect, useRef } from "react";
 import type { SummaryForSomeoneEnriched } from "@/lib/orders/summary-workspace";
 import { enrichForSomeoneGroup, enrichStockOutSignalGroup } from "@/lib/orders/procurement-daily-ui";
+import { useProcurementSupplierCollapse } from "@/components/summary/useProcurementSupplierCollapse";
 import {
   buildProcurementSupplierBlocks,
   filterNavigableProcurementGroups,
@@ -47,10 +48,13 @@ import {
   INFORMACJA_FLOW_PROCUREMENT_GROUP_BANNER,
   INFORMACJA_STOCK_OUT_PANEL_BANNER,
   INFORMACJA_STOCK_OUT_PROCUREMENT_SECTION_HINT,
+  INFORMACJA_VIA_PANEL_BADGE,
 } from "@/lib/orders/informacja-flow-copy";
 import { ProductSourceBadge } from "@/components/orders/ProductSourceBadge";
-import { InformacjaFlowLegend } from "@/components/orders/InformacjaFlowLegend";
+import { InformacjaViaPanelProcurementCallout } from "@/components/orders/InformacjaFlowLegend";
 import { PanelQueueStatDot } from "@/components/ui/UiGlyphs";
+import { clientNamesSummaryFromLines } from "@/lib/orders/sales-client-label";
+import { PROCUREMENT_GLOWNE_ON_DEMAND_HINT } from "@/lib/orders/glowne-action-ui";
 import type { OrderFormSupplierOption } from "@/lib/orders/order-form-suppliers";
 
 function groupHasInformacjaFlow(g: SummaryForSomeoneEnriched): boolean {
@@ -171,7 +175,10 @@ function SectionHelp() {
       <p className="mb-2">
         <strong className="font-medium text-slate-800">Główne</strong> — zamówienie z planem
         dostawcy. <strong className="font-medium text-slate-800">Uzupełniające</strong> — osobne
-        domówienie poza planem.
+        domówienie poza planem. U dostawcy{" "}
+        <strong className="font-medium text-slate-800">na żądanie</strong> przycisk pokazuje{" "}
+        <strong className="font-medium text-slate-800">Główne (bez terminu)</strong> — prośba jest
+        główna, ale harmonogram tygodnia się nie przesuwa.
       </p>
       <p className="mb-2">
         Kliknij <strong className="font-medium text-slate-800">Główne</strong> lub{" "}
@@ -180,6 +187,11 @@ function SectionHelp() {
         <Kbd>↑</Kbd>/<Kbd>↓</Kbd>). Zwinięty blok dostawcy nie jest w nawigacji klawiaturą.
       </p>
       <KeyboardShortcutsHint items={[...FOR_SOMEONE_KEYBOARD_HINTS]} className="mb-2" />
+      <p className="mb-2">
+        Badge <strong className="font-medium text-indigo-800">{INFORMACJA_VIA_PANEL_BADGE}</strong>{" "}
+        — prośba informacyjna: najpierw zamów u dostawcy (Główne/Uzupełniające), potem magazyn
+        wyśle e-mail do handlowca. Zwykłe prośby o towar nie mają tego badge&apos;a.
+      </p>
       <p className="mb-2">
         Badge <strong className="font-medium text-violet-800">Nowa</strong> oznacza prośbę,
         z którą zakupy jeszcze się nie zapoznały. Znika po ok. 1,5 s najechania na wiersz lub po
@@ -194,6 +206,9 @@ function SectionHelp() {
         Przy kilku handlowcach u jednego dostawcy użyj paska{" "}
         <strong className="font-medium text-slate-800">Zamów razem</strong> (wszystkie osoby) albo{" "}
         <strong className="font-medium text-slate-800">Tylko ta osoba</strong> w wierszu poniżej.
+        Przy <strong className="font-medium text-slate-800">3+ osobach</strong> lista domyślnie jest
+        zwinięta (chevron) — rozwija się automatycznie, gdy pojawi się badge{" "}
+        <strong className="font-medium text-slate-800">Nowa</strong>.
       </p>
     </HelpPopover>
   );
@@ -229,27 +244,37 @@ export function ForSomeoneRequests({
   highlightFresh?: boolean;
 }) {
   const isStockOutSection = variant === "stockOut";
+  const showViaPanelSectionCallout =
+    !isStockOutSection && groups.some(groupHasInformacjaFlow);
   const enrichGroup = isStockOutSection ? enrichStockOutSignalGroup : enrichForSomeoneGroup;
   const unseenBadgeVariant = isStockOutSection ? "warning" : "purple";
   const supplierBlocks = useMemo(
     () => buildProcurementSupplierBlocks(groups),
     [groups]
   );
-  const [collapsedSuppliers, setCollapsedSuppliers] = useState<Set<string>>(() => new Set());
+  const { isGroupUnseen, markGroupSeen, scheduleMarkSeen, cancelMarkSeen } =
+    useProcurementSeenTracker();
+  const forceExpandedSupplierIds = useMemo(() => {
+    const ids = new Set<string>();
+    for (const block of supplierBlocks) {
+      if (block.requestGroups.some((g) => isGroupUnseen(g))) {
+        ids.add(block.supplierId);
+      }
+    }
+    return ids;
+  }, [supplierBlocks, isGroupUnseen]);
+  const {
+    collapsibleBlocks,
+    collapsedSuppliers,
+    allSupplierBlocksExpanded,
+    toggleSupplierCollapse,
+    setAllSupplierBlocksExpanded,
+  } = useProcurementSupplierCollapse(supplierBlocks, forceExpandedSupplierIds);
 
   const navigableGroups = useMemo(
     () => filterNavigableProcurementGroups(supplierBlocks, collapsedSuppliers),
     [supplierBlocks, collapsedSuppliers]
   );
-  useEffect(() => {
-    const valid = new Set(supplierBlocks.map((b) => b.supplierId));
-    setCollapsedSuppliers((prev) => {
-      const next = new Set([...prev].filter((id) => valid.has(id)));
-      return next.size === prev.size ? prev : next;
-    });
-  }, [supplierBlocks]);
-  const { isGroupUnseen, markGroupSeen, scheduleMarkSeen, cancelMarkSeen } =
-    useProcurementSeenTracker();
   const unseenGroupCount = useMemo(
     () => groups.filter((g) => isGroupUnseen(g)).length,
     [groups, isGroupUnseen]
@@ -269,6 +294,37 @@ export function ForSomeoneRequests({
       setExpanded(open ? new Set(multiLineKeys) : new Set());
     },
     [multiLineKeys]
+  );
+
+  const queueToolbarActions = (
+    <div className="flex flex-wrap items-center justify-end gap-1">
+      {unseenGroupCount > 0 ? (
+        <Badge variant={unseenBadgeVariant} className="h-7 shrink-0 px-2 text-[11px]">
+          {unseenGroupCount}{" "}
+          {unseenGroupCount === 1
+            ? "nowy"
+            : unseenGroupCount >= 2 && unseenGroupCount <= 4
+              ? "nowe"
+              : "nowych"}
+        </Badge>
+      ) : null}
+      {collapsibleBlocks.length > 0 && !isStockOutSection ? (
+        <Button
+          variant="ghost"
+          size="sm"
+          className="h-8 px-2 text-xs"
+          onClick={() => setAllSupplierBlocksExpanded(!allSupplierBlocksExpanded)}
+        >
+          {allSupplierBlocksExpanded ? "Zwiń dostawców" : "Rozwiń dostawców"}
+        </Button>
+      ) : null}
+      {multiLineKeys.length > 1 ? (
+        <Button variant="ghost" size="sm" className="h-8 px-2 text-xs" onClick={() => setAll(!allExpanded)}>
+          {allExpanded ? "Zwiń produkty" : "Rozwiń produkty"}
+        </Button>
+      ) : null}
+      {isStockOutSection ? <StockOutSectionHelp /> : <SectionHelp />}
+    </div>
   );
 
   const lineCount = groups.reduce((n, g) => n + g.lines.length, 0);
@@ -375,16 +431,17 @@ export function ForSomeoneRequests({
 
       if ((e.key === "g" || e.key === "G") && e.shiftKey) {
         e.preventDefault();
-        if (
-          !window.confirm(
-            `Oznaczyć „${ui.headline}” jako zamówienie główne?`
-          )
-        ) {
+        const glowneConfirm = group.supplierOrderOnDemand
+          ? `Oznaczyć prośbę u ${group.supplierName} (${group.person}) jako główne bez terminu planowego?`
+          : `Oznaczyć „${ui.headline}” jako zamówienie główne?`;
+        if (!window.confirm(glowneConfirm)) {
           return;
         }
         run(
           () => actionProcessIndividual(group.orderIds, "GLOWNE"),
-          "Oznaczono jako zamówienie główne",
+          group.supplierOrderOnDemand
+            ? "Oznaczono jako główne (bez terminu planowego)"
+            : "Oznaczono jako zamówienie główne",
           "Oznaczanie jako główne…",
           { scope: key }
         );
@@ -439,26 +496,7 @@ export function ForSomeoneRequests({
           : { one: "grupa", few: "grupy", many: "grup" }
       }
       compact={!isStockOutSection}
-      action={
-        <div className="flex items-center gap-1">
-          {unseenGroupCount > 0 ? (
-            <Badge variant={unseenBadgeVariant} className="h-7 shrink-0 px-2 text-[11px]">
-              {unseenGroupCount}{" "}
-              {unseenGroupCount === 1
-                ? "nowy"
-                : unseenGroupCount >= 2 && unseenGroupCount <= 4
-                  ? "nowe"
-                  : "nowych"}
-            </Badge>
-          ) : null}
-          {multiLineKeys.length > 1 ? (
-            <Button variant="ghost" size="sm" className="h-8 px-2 text-xs" onClick={() => setAll(!allExpanded)}>
-              {allExpanded ? "Zwiń listy" : "Rozwiń listy"}
-            </Button>
-          ) : null}
-          {isStockOutSection ? <StockOutSectionHelp /> : <SectionHelp />}
-        </div>
-      }
+      action={queueToolbarActions}
     />
   );
 
@@ -467,16 +505,7 @@ export function ForSomeoneRequests({
       inset
       title="Prośby handlowców"
       description={`Prośby w kolejce dnia · ${groups.length} ${groups.length === 1 ? "grupa" : "grup"} · ${lineCount} ${lineCount === 1 ? "produkt" : "produktów"}`}
-      action={
-        <div className="flex items-center gap-2">
-          {multiLineKeys.length > 1 ? (
-            <Button variant="ghost" size="sm" onClick={() => setAll(!allExpanded)}>
-              {allExpanded ? "Zwiń listy" : "Rozwiń listy"}
-            </Button>
-          ) : null}
-          <SectionHelp />
-        </div>
-      }
+      action={queueToolbarActions}
     />
   );
 
@@ -527,16 +556,9 @@ export function ForSomeoneRequests({
       />
       {embedded ? subsectionHeader : legacyHeader}
 
-      {!isStockOutSection && groups.some(groupHasInformacjaFlow) ? (
-        <div className="border-b border-slate-100 bg-slate-50/40 px-2 py-2 sm:px-3">
-          <InformacjaFlowLegend
-            compact
-            showLegacyViaPanel={groups.some((g) =>
-              g.lines.some((l) => l.informacjaViaPanel)
-            )}
-          />
-        </div>
-      ) : null}
+      {!showViaPanelSectionCallout ? null : (
+        <InformacjaViaPanelProcurementCallout className="mx-0" />
+      )}
 
       <ul className="space-y-2 p-2 sm:p-2">
         {supplierBlocks.map((block) => {
@@ -557,9 +579,7 @@ export function ForSomeoneRequests({
               key={block.supplierId}
               className={cn(
                 showSupplierHeader &&
-                  (isStockOutSection
-                    ? "overflow-hidden rounded-md border border-amber-300/80 shadow-sm"
-                    : "overflow-hidden rounded-md border border-indigo-200/90 shadow-sm")
+                  "overflow-hidden rounded-md border border-slate-200 bg-white"
               )}
               aria-label={`Dostawca ${block.supplierName}`}
             >
@@ -570,14 +590,8 @@ export function ForSomeoneRequests({
                   leadTimeBrief={blockLeadTimeBrief}
                   pending={blockPending}
                   run={run}
-                  onToggleCollapse={() =>
-                    setCollapsedSuppliers((prev) => {
-                      const next = new Set(prev);
-                      if (next.has(block.supplierId)) next.delete(block.supplierId);
-                      else next.add(block.supplierId);
-                      return next;
-                    })
-                  }
+                  unseenGroupCount={block.requestGroups.filter((g) => isGroupUnseen(g)).length}
+                  onToggleCollapse={() => toggleSupplierCollapse(block.supplierId)}
                   onOpenSupplier={onOpenSupplier}
                 />
               ) : null}
@@ -585,7 +599,8 @@ export function ForSomeoneRequests({
                 <ul
                   className={cn(
                     "space-y-1",
-                    showSupplierHeader && "divide-y divide-slate-100/90 bg-white/60 p-1.5 sm:p-2"
+                    showSupplierHeader &&
+                      "divide-y divide-slate-100/90 border-t border-slate-100/80 p-1.5 sm:p-2"
                   )}
                 >
                   {block.requestGroups.map((g) => {
@@ -605,6 +620,8 @@ export function ForSomeoneRequests({
           const hasMultiLine = g.lines.length >= 2;
           const isOpen = hasMultiLine && expanded.has(key);
           const countLabel = procurementProductCountLabel(g.lines.length);
+          const clientLabel = clientNamesSummaryFromLines(g.lines);
+          const showSupplierFirst = !showSupplierHeader && !isStockOutSection;
           const rowSubline = showSupplierHeader ? countLabel : ui.subline;
           const showRowLeadTime = !showSupplierHeader || !blockLeadTimeBrief;
 
@@ -642,7 +659,19 @@ export function ForSomeoneRequests({
                   <div className={panelQueueRowLayoutClass}>
                     <div className="min-w-0 flex-1">
                       <div className="flex flex-wrap items-center gap-1.5">
-                        <p className={panelTypography.rowTitle}>{ui.headline}</p>
+                        <p className={panelTypography.rowTitle}>
+                          {showSupplierFirst ? (
+                            <button
+                              type="button"
+                              className={panelNameLinkClass}
+                              onClick={() => onOpenSupplier(g.supplierId)}
+                            >
+                              {g.supplierName}
+                            </button>
+                          ) : (
+                            ui.headline
+                          )}
+                        </p>
                         {isUnseen ? (
                           <Badge variant={unseenBadgeVariant} className="px-1.5 py-0 text-[10px]">
                             Nowa
@@ -653,6 +682,15 @@ export function ForSomeoneRequests({
                       <p className={cn("mt-0.5", panelTypography.rowMeta)}>
                         {showSupplierHeader ? (
                           rowSubline
+                        ) : showSupplierFirst ? (
+                          <>
+                            {g.person}
+                            {" · "}
+                            {countLabel}
+                            {clientLabel ? ` · ${clientLabel}` : ""}
+                            {" · "}
+                            {locationLabel(g.location)}
+                          </>
                         ) : (
                           <>
                             <button
@@ -696,6 +734,7 @@ export function ForSomeoneRequests({
                           orderIds={g.orderIds}
                           supplierId={g.supplierId}
                           hasInfoViaPanel={hasInfoViaPanel}
+                          supplierOrderOnDemand={g.supplierOrderOnDemand}
                           headline={ui.headline}
                           pending={groupPending}
                           scopeKey={key}
@@ -725,8 +764,22 @@ export function ForSomeoneRequests({
                       <p>{ui.statusDetail}</p>
                     </div>
                   ) : hasInfoViaPanel ? (
-                    <div className="mt-1.5 rounded-md border border-indigo-200/90 bg-indigo-50/60 px-2 py-1 text-[11px] leading-snug text-indigo-950">
-                      <p>{INFORMACJA_FLOW_PROCUREMENT_GROUP_BANNER}</p>
+                    g.supplierOrderOnDemand ? (
+                      <div className="mt-1.5 rounded-md border border-slate-200/90 bg-slate-50/90 px-2 py-1 text-[11px] leading-snug text-slate-700">
+                        <p>{PROCUREMENT_GLOWNE_ON_DEMAND_HINT}</p>
+                      </div>
+                    ) : showViaPanelSectionCallout ? null : (
+                      <div className="mt-1.5 rounded-md border border-indigo-200/90 bg-indigo-50/60 px-2 py-1 text-[11px] leading-snug text-indigo-950">
+                        <p>{INFORMACJA_FLOW_PROCUREMENT_GROUP_BANNER}</p>
+                      </div>
+                    )
+                  ) : g.supplierOrderOnDemand && !isStockOutSection ? (
+                    <div className="mt-1.5 rounded-md border border-slate-200/90 bg-slate-50/90 px-2 py-1 text-[11px] leading-snug text-slate-700">
+                      <p>
+                        Dostawca na żądanie —{" "}
+                        <strong className="font-semibold text-slate-900">Główne (bez terminu)</strong>{" "}
+                        nie przesuwa harmonogramu w planie tygodnia.
+                      </p>
                     </div>
                   ) : null}
                   {hasMultiLine ? (

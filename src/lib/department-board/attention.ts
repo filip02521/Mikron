@@ -1,0 +1,41 @@
+import type { DepartmentBoardThreadRow } from "@/lib/data/department-board";
+
+export function isBoardAnswerUnseen(
+  readAt: string | null | undefined,
+  latestActivityAt: string | null | undefined
+): boolean {
+  if (!latestActivityAt) return false;
+  if (!readAt) return true;
+  return readAt < latestActivityAt;
+}
+
+export function latestQuestionActivityAt(
+  answeredAt: string | null | undefined,
+  postTimes: string[]
+): string | null {
+  const candidates = [...postTimes];
+  if (answeredAt) candidates.push(answeredAt);
+  if (!candidates.length) return null;
+  return candidates.reduce((max, t) => (t > max ? t : max));
+}
+
+export type UnseenBoardAnswer = {
+  threadId: string;
+  title: string;
+  isOwnQuestion: boolean;
+  latestActivityAt: string;
+};
+
+export function pickUnseenAnswerPreview(
+  items: UnseenBoardAnswer[]
+): UnseenBoardAnswer | null {
+  if (!items.length) return null;
+  const own = items.find((i) => i.isOwnQuestion);
+  return own ?? items[0] ?? null;
+}
+
+export function mergePinnedAnnouncements(
+  announcements: DepartmentBoardThreadRow[]
+): DepartmentBoardThreadRow[] {
+  return announcements.filter((a) => a.pinned);
+}

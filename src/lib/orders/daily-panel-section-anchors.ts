@@ -6,6 +6,13 @@ export const DAILY_PANEL_QUEUE_SECTION = {
   today: "kolejka-harmonogram-dzis",
 } as const;
 
+/** Kotwice sekcji zakładki Tydzień. */
+export const DAILY_PANEL_WEEK_SECTION = {
+  onDemand: "plan-na-zadanie",
+  thisWeek: "plan-ten-tydzien",
+  nextWeek: "plan-nastepny-tydzien",
+} as const;
+
 export type DailyPanelQueueSectionKey = keyof typeof DAILY_PANEL_QUEUE_SECTION;
 
 export function dailyPanelSectionHref(key: DailyPanelQueueSectionKey): string {

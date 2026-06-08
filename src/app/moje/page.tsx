@@ -25,6 +25,11 @@ import type { OrderFormSupplierOption } from "@/lib/orders/order-form-suppliers"
 import { salesPageShellClass, pageToolbarSizingClass } from "@/lib/ui/ontime-theme";
 import { SalesAccountLinkRequired } from "@/components/sales/SalesAccountLinkRequired";
 import { ManagerPreviewBanner } from "@/components/sales/ManagerPreviewBanner";
+import { DepartmentBoardSalesAttention } from "@/components/department-board/DepartmentBoardSalesAttention";
+import {
+  fetchSalesBoardAttentionSnapshot,
+  type SalesBoardAttentionSnapshot,
+} from "@/lib/data/department-board";
 import type { DeliveryStats, IndividualOrder } from "@/types/database";
 import { autoAssignMissingSuppliersFromCatalog } from "@/lib/services/auto-assign-suppliers";
 
@@ -64,9 +69,12 @@ export default async function MojePage({
   let ownSalesPersonId: string | null = null;
   let linkError: string | null = null;
   let isTeamPreview = false;
+  let sessionUserId: string | null = null;
+  let boardAttention: SalesBoardAttentionSnapshot | null = null;
 
   try {
     const user = await getSessionUser();
+    sessionUserId = user?.id ?? null;
     if (user && isSalesAccount(user.role)) {
       const own = await resolveSalesPersonForUser(user);
       ownSalesPersonId = own?.id ?? null;
@@ -116,6 +124,14 @@ export default async function MojePage({
 
   const viewingOwnPanel =
     isSalesAccount(role ?? "sales") && salesPersonId && salesPersonId === ownSalesPersonId;
+
+  if (viewingOwnPanel && sessionUserId) {
+    try {
+      boardAttention = await fetchSalesBoardAttentionSnapshot(sessionUserId);
+    } catch {
+      /* banner opcjonalny */
+    }
+  }
 
   try {
     if (isSalesAccount(role ?? "sales") && salesPersonId) {
@@ -225,6 +241,10 @@ export default async function MojePage({
           salesPersonId={salesPersonId}
           salesPersonName={salesPersonName}
         />
+      ) : null}
+
+      {viewingOwnPanel && boardAttention ? (
+        <DepartmentBoardSalesAttention attention={boardAttention} showPinned={false} />
       ) : null}
 
       {loadError ? (

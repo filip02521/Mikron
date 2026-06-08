@@ -24,6 +24,7 @@ function forSomeoneGroup(
     submittedAtLatest: "2026-05-01",
     hasUnseen: false,
     unseenCount: 0,
+    supplierOrderOnDemand: false,
   };
 }
 

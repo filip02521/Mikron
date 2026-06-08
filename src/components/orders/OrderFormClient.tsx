@@ -57,6 +57,7 @@ import {
   actionGetZkProsbaPrefill,
   actionGetZkProsbaPrefillByWatchId,
 } from "@/app/actions/sales-notepad";
+import { ProsbaVsBoardHint } from "@/components/department-board/ProsbaVsBoardHint";
 import { ZkProsbaLinkBanner } from "@/components/orders/ZkProsbaLinkBanner";
 import { buildMojeClientLink } from "@/lib/sales/notepad-follow-up";
 import {
@@ -762,6 +763,8 @@ export function OrderFormClient({
               clientLabel={zkProsbaLinkContext.clientLabel}
             />
           ) : null}
+
+          {!tourDemo ? <ProsbaVsBoardHint /> : null}
 
           <div className="flex flex-wrap items-center gap-x-3 gap-y-1 border-b border-slate-100 bg-slate-50/60 px-3 py-2 sm:px-4">
             <span className="shrink-0 text-xs font-medium text-slate-600">Skróty klawiszowe</span>

@@ -17,6 +17,8 @@ import { AppRoleProvider } from "@/components/layout/AppRoleContext";
 import { useSalesOnboardingOptional } from "@/components/sales/SalesOnboardingContext";
 import { SalesOnboardingTourBanner, SalesOnboardingContentGuard } from "@/components/sales/SalesOnboardingTourBanner";
 import { SalesBugReportTrigger } from "@/components/sales/SalesBugReportTrigger";
+import { DepartmentBoardPinnedStrip } from "@/components/department-board/DepartmentBoardPinnedStrip";
+import type { SalesBoardAttentionSnapshot } from "@/lib/data/department-board";
 import { cn } from "@/lib/cn";
 import { salesMobileChromeRoot } from "@/lib/ui/sales-mobile-chrome";
 import { appMainClass, appMainInsetClass, appShellClass } from "@/lib/ui/ontime-theme";
@@ -67,6 +69,7 @@ export function AppShellClient({
   mustChangePassword = false,
   salesOnboardingCompletedAt = null,
   salesPersonName = null,
+  salesBoardAttention = null,
 }: {
   children: React.ReactNode;
   role: UserRole | null;
@@ -78,7 +81,9 @@ export function AppShellClient({
     realizacja?: number;
     salesMoje?: number;
     salesNotatnik?: number;
+    salesTablica?: number;
     operationsNotatki?: number;
+    departmentBoardQuestions?: number;
     adminBugReports?: number;
   };
   salesActivityVersion?: string | null;
@@ -87,6 +92,7 @@ export function AppShellClient({
   mustChangePassword?: boolean;
   salesOnboardingCompletedAt?: string | null;
   salesPersonName?: string | null;
+  salesBoardAttention?: SalesBoardAttentionSnapshot | null;
 }) {
   const pathname = usePathname();
   const isAuthScreen =
@@ -140,6 +146,9 @@ export function AppShellClient({
           <MobileOperationsHeader role={role} userEmail={userEmail} />
         ) : null}
         <AppShellMain mobileChrome={mobileChrome}>
+          {salesLive && salesBoardAttention?.pinnedAnnouncements.length ? (
+            <DepartmentBoardPinnedStrip pinned={salesBoardAttention.pinnedAnnouncements} />
+          ) : null}
           {salesLive ? <SalesUpdatesBanner /> : null}
           {operationsLive && !salesLive ? <OperationsUpdatesBanner /> : null}
           {children}

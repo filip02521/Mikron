@@ -40,6 +40,7 @@ function group(
     submittedAtLatest: "2026-05-28T10:00:00",
     hasUnseen: false,
     unseenCount: 0,
+    supplierOrderOnDemand: false,
     flaggedName: partial.supplierName,
     ...partial,
   };
@@ -199,5 +200,22 @@ describe("zbiorcze akcje bloku", () => {
     expect(copy.message).toContain("A, B");
     expect(copy.confirmLabel).toContain("Główne");
     expect(copy.people).toEqual(["A", "B"]);
+  });
+
+  it("na żądanie — dopisek bez terminu w potwierdzeniu Główne", () => {
+    const block = buildProcurementSupplierBlocks([
+      group({
+        supplierId: "od",
+        supplierName: "On Demand Co",
+        person: "Jan",
+        salesPersonId: "1",
+        supplierOrderOnDemand: true,
+      }),
+    ])[0]!;
+    expect(block.supplierOrderOnDemand).toBe(true);
+    const copy = procurementSupplierBlockConfirmCopy(block, "GLOWNE");
+    expect(copy.title).toContain("bez terminu");
+    expect(copy.message).toContain("bez przesunięcia terminu");
+    expect(copy.confirmLabel).toContain("bez terminu");
   });
 });

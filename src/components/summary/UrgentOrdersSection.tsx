@@ -119,73 +119,84 @@ function UrgentCard({
       aria-busy={rowPending}
       onMouseLeave={panelRowClearFocusOnLeave}
     >
-      <div className={cn("px-2 py-2", panelQueueRowLayoutClass)}>
-        <div className="flex min-w-0 flex-1 items-start gap-2">
-        <input
-          type="checkbox"
-          className={cn("mt-0.5 h-5 w-5 shrink-0 sm:h-4 sm:w-4", checkboxBrandClass)}
-          checked={checked}
-          disabled={rowPending}
-          onChange={onToggle}
-          aria-label={`Zaznacz ${item.supplierName}`}
-        />
-        <div className="min-w-0 flex-1">
-          <div className="flex flex-wrap items-center gap-x-1.5 gap-y-0.5">
-            <button
-              type="button"
-              className={cn(panelTypography.rowTitle, panelNameLinkClass)}
-              onClick={() => onOpenSupplier(item.supplierId)}
-            >
-              {item.supplierName}
-            </button>
-            <Badge variant={urgentStatusBadgeVariant(isOverdue)} className="text-[10px]">
-              {ui.statusTitle}
-              {isOverdue ? ` · ${dateLabel}` : null}
-            </Badge>
-            {item.vacationNote ? (
-              <Badge variant="warning" className="text-[10px]">
-                {vacationNoteLabel(item.vacationNote)}
-              </Badge>
-            ) : null}
-            <span className={panelTypography.rowMeta}>{locationLabel(item.location)}</span>
-          </div>
-          {ui.statusDetail ? (
-            <p
-              className={cn(
-                "mt-0.5 line-clamp-2 leading-snug",
-                panelTypography.rowMeta,
-                item.vacationNote ? "text-amber-900/90" : "text-slate-500"
-              )}
-            >
-              {ui.statusDetail}
-            </p>
-          ) : null}
-          {supplierMeta ? (
-            <SupplierContactActions
-              notes={supplierMeta.notes}
-              mails={supplierMeta.mails}
-              extraInfo={supplierMeta.extra_info}
-              className="mt-0.5"
+      <div className="px-2 py-2">
+        <div className={panelQueueRowLayoutClass}>
+          <div className="flex min-w-0 flex-1 gap-2">
+            <input
+              type="checkbox"
+              className={cn("mt-0.5 h-5 w-5 shrink-0 sm:h-4 sm:w-4", checkboxBrandClass)}
+              checked={checked}
+              disabled={rowPending}
+              onChange={onToggle}
+              aria-label={`Zaznacz ${item.supplierName}`}
             />
-          ) : null}
+            <div className="min-w-0 flex-1">
+              <div className="flex flex-wrap items-center gap-1.5">
+                <button
+                  type="button"
+                  className={cn(panelTypography.rowTitle, panelNameLinkClass, "text-left")}
+                  onClick={() => onOpenSupplier(item.supplierId)}
+                >
+                  {item.supplierName}
+                </button>
+                <Badge variant={urgentStatusBadgeVariant(isOverdue)} className="text-[10px]">
+                  {ui.statusTitle}
+                  {isOverdue ? ` · ${dateLabel}` : null}
+                </Badge>
+                {item.vacationNote ? (
+                  <Badge variant="warning" className="text-[10px]">
+                    {vacationNoteLabel(item.vacationNote)}
+                  </Badge>
+                ) : null}
+              </div>
+              <p className={cn("mt-0.5", panelTypography.rowMeta)}>
+                {locationLabel(item.location)}
+                {supplierMeta ? (
+                  <>
+                    {" · "}
+                    <SupplierContactActions
+                      notes={supplierMeta.notes}
+                      mails={supplierMeta.mails}
+                      extraInfo={supplierMeta.extra_info}
+                      display="rowMeta"
+                    />
+                  </>
+                ) : null}
+              </p>
+              {ui.statusDetail && item.vacationNote ? (
+                <p
+                  className={cn(
+                    "mt-0.5 line-clamp-2",
+                    panelTypography.caption,
+                    "text-amber-900/90"
+                  )}
+                >
+                  {ui.statusDetail}
+                </p>
+              ) : ui.statusDetail && isOverdue ? (
+                <p className={cn("mt-0.5", panelTypography.caption, "text-slate-500")}>
+                  {ui.statusDetail}
+                </p>
+              ) : null}
+            </div>
+          </div>
+          <PanelRowActionsInlineEnd
+            forceVisible={rowPending}
+            className={panelQueueRowActionsClass}
+            contentClassName="w-full sm:w-max [&>*]:w-full sm:[&>*]:w-auto"
+          >
+            <ScheduleSupplierActionBar
+              supplierId={item.supplierId}
+              supplierName={item.supplierName}
+              location={item.location}
+              pending={rowPending}
+              run={run}
+              onOpenSupplier={() => onOpenSupplier(item.supplierId)}
+              onVacation={() => onVacation(item.supplierId)}
+              onEdit={() => onEdit(item.supplierId)}
+            />
+          </PanelRowActionsInlineEnd>
         </div>
-        </div>
-        <PanelRowActionsInlineEnd
-          forceVisible={rowPending}
-          className={panelQueueRowActionsClass}
-          contentClassName="w-full sm:w-max [&>*]:w-full sm:[&>*]:w-auto"
-        >
-          <ScheduleSupplierActionBar
-            supplierId={item.supplierId}
-            supplierName={item.supplierName}
-            location={item.location}
-            pending={rowPending}
-            run={run}
-            onOpenSupplier={() => onOpenSupplier(item.supplierId)}
-            onVacation={() => onVacation(item.supplierId)}
-            onEdit={() => onEdit(item.supplierId)}
-          />
-        </PanelRowActionsInlineEnd>
       </div>
     </article>
   );

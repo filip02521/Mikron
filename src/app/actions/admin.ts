@@ -18,6 +18,7 @@ import {
   assertManagerCanUseGroupId,
   canAccessSalesPerson,
 } from "@/lib/data/sales-group-access";
+import { fetchDeliveryStatsDiagnostics } from "@/lib/data/delivery-stats-diagnostics";
 import { tryAcquireLock, releaseLock } from "@/lib/services/locks";
 import {
   recalcSingleSupplierSchedule,
@@ -678,6 +679,15 @@ export async function actionRecalculateStats() {
   const count = await recalculateAllStats();
   revalidateAll();
   return { success: true, count };
+}
+
+export async function actionFetchDeliveryStatsDiagnostics() {
+  await requireOperations();
+  const data = await fetchDeliveryStatsDiagnostics();
+  if (!data) {
+    return { error: "Brak konfiguracji bazy danych" };
+  }
+  return { success: true, data };
 }
 
 export async function actionUpsertSupplier(form: {

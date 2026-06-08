@@ -198,7 +198,7 @@ export function OverflowMenu({
           ref={menuRef}
           id={menuId}
           role="menu"
-          className={cn("fixed z-[200] min-w-[11rem]", panelDropdownShellClass)}
+          className={cn("fixed z-[200] min-w-[12.5rem]", panelDropdownShellClass)}
           style={{ top: menuPos.top, left: menuPos.left }}
         >
           {children}
@@ -234,11 +234,13 @@ export function OverflowMenuItem({
   onClick,
   danger,
   disabled,
+  className,
 }: {
   children: ReactNode;
   onClick: () => void;
   danger?: boolean;
   disabled?: boolean;
+  className?: string;
 }) {
   const close = useContext(CloseMenuContext);
   return (
@@ -250,7 +252,8 @@ export function OverflowMenuItem({
         "block w-full cursor-pointer px-3 py-2 text-left text-sm disabled:cursor-not-allowed disabled:opacity-50",
         danger
           ? "text-red-700 hover:bg-red-50"
-          : "text-slate-700 hover:bg-indigo-50/80 hover:text-indigo-950"
+          : "text-slate-700 hover:bg-indigo-50/80 hover:text-indigo-950",
+        className
       )}
       onClick={() => {
         onClick();
@@ -260,4 +263,20 @@ export function OverflowMenuItem({
       {children}
     </button>
   );
+}
+
+/** Nagłówek grupy w menu rozwijanym. */
+export function OverflowMenuLabel({ children }: { children: ReactNode }) {
+  return (
+    <p
+      className="px-3 pb-0.5 pt-2 text-[10px] font-semibold uppercase tracking-wide text-slate-400"
+      role="presentation"
+    >
+      {children}
+    </p>
+  );
+}
+
+export function OverflowMenuSeparator() {
+  return <div className="my-1 border-t border-slate-100" role="separator" />;
 }

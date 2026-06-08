@@ -25,7 +25,8 @@ export function PanelDailyHelp({
       <Link
         href="/lokalizacje/POLSKA"
         className={cn(
-          toolbarButton ?? "text-sm font-medium text-indigo-800 underline-offset-2 hover:underline"
+          toolbarButton ?? "text-sm font-medium text-indigo-800 underline-offset-2 hover:underline",
+          density === "toolbar" && "hidden md:inline-flex"
         )}
         title="Harmonogram i legenda kolorów terminów (PL / ZA / Import)"
       >
@@ -47,7 +48,11 @@ export function PanelDailyHelp({
         shortLabel="Instrukcja"
         icon={<GuideIcon />}
         align="right"
-        buttonClassName={toolbarButton}
+        buttonClassName={cn(
+          toolbarButton,
+          density === "toolbar" &&
+            "[&>span:last-child]:hidden md:[&>span:last-child]:inline"
+        )}
       >
         <HowItWorksContent />
       </HelpPopover>

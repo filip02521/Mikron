@@ -7,6 +7,10 @@ import { cn } from "@/lib/cn";
 import { panelSegmentLastClass, panelSegmentOutlineClass, panelSegmentPrimaryClass } from "@/lib/ui/ontime-theme";
 import { buttonGroupItemClass, panelActionBarShellClass, panelActionSegmentClass } from "@/lib/ui/surfaces";
 import { actionProcessIndividual } from "@/app/actions/admin";
+import {
+  procurementGlowneButtonLabel,
+  procurementGlowneButtonTitle,
+} from "@/lib/orders/glowne-action-ui";
 
 const nestedOutlineSegmentClass = cn(
   panelActionSegmentClass,
@@ -30,6 +34,7 @@ export function IndividualRequestActionBar({
   orderIds,
   supplierId,
   hasInfoViaPanel,
+  supplierOrderOnDemand = false,
   headline,
   pending,
   scopeKey,
@@ -41,6 +46,7 @@ export function IndividualRequestActionBar({
   orderIds: string[];
   supplierId: string | null;
   hasInfoViaPanel: boolean;
+  supplierOrderOnDemand?: boolean;
   headline: string;
   pending: boolean;
   scopeKey: string;
@@ -64,6 +70,15 @@ export function IndividualRequestActionBar({
   const outlineClass = nested
     ? nestedOutlineSegmentClass
     : cn(buttonGroupItemClass, panelSegmentOutlineClass);
+  const glowneLabel = procurementGlowneButtonLabel({
+    hasInfoViaPanel,
+    supplierOrderOnDemand,
+    compact: nested,
+  });
+  const glowneTitle = procurementGlowneButtonTitle({
+    hasInfoViaPanel,
+    supplierOrderOnDemand,
+  });
 
   const group = (
     <ButtonGroup
@@ -79,16 +94,19 @@ export function IndividualRequestActionBar({
         type="button"
         disabled={disabled}
         className={primaryClass}
+        title={glowneTitle}
         onClick={() =>
           run(
             () => actionProcessIndividual(orderIds, "GLOWNE"),
-            "Oznaczono jako zamówienie główne",
+            supplierOrderOnDemand
+              ? "Oznaczono jako główne (bez terminu planowego)"
+              : "Oznaczono jako zamówienie główne",
             "Oznaczanie jako główne…",
             scope
           )
         }
       >
-        {hasInfoViaPanel ? "Główne (info)" : "Główne"}
+        {glowneLabel}
       </button>
       <button
         type="button"

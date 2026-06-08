@@ -56,11 +56,15 @@ const OPERATIONS_NOTATKI_PATH = "/notatki";
 /** Magazyn — jawny dział w URL (zakupy/admin domyślnie bez parametru). */
 const OPERATIONS_NOTATKI_MAGAZYN = "/notatki?dzial=magazyn";
 
+const DEPARTMENT_BOARD_PROCUREMENT_PATH = "/zakupy/tablica";
+
 function operationsNavItems(badges: {
   nowe?: number;
   weryfikacja?: number;
   realizacja?: number;
   operationsNotatki?: number;
+  /** Pytania handlowców bez odpowiedzi (/zakupy/tablica). */
+  departmentBoardQuestions?: number;
 }): NavItem[] {
   return [
     {
@@ -76,6 +80,13 @@ function operationsNavItems(badges: {
       mobileLabel: "Notatki",
       description: "Prywatne i wspólne",
       badge: badges.operationsNotatki,
+    },
+    {
+      href: DEPARTMENT_BOARD_PROCUREMENT_PATH,
+      label: "Tablica z handlowcami",
+      mobileLabel: "Handlowcy",
+      description: "Ogłoszenia dla zespołu i odpowiedzi na pytania",
+      badge: badges.departmentBoardQuestions,
     },
     {
       href: "/weryfikacja",
@@ -193,6 +204,10 @@ export function navForRole(
     operationsNotatki?: number;
     /** Otwarte zgłoszenia od handlowców (/admin/zgloszenia). */
     adminBugReports?: number;
+    /** Nieprzeczytane ogłoszenia (/tablica). */
+    salesTablica?: number;
+    /** Pytania handlowców bez odpowiedzi (/zakupy/tablica). */
+    departmentBoardQuestions?: number;
   } = {}
 ): NavGroup[] {
   const ops = operationsNavItems(badges);
@@ -248,13 +263,21 @@ export function navForRole(
       href: "/prosba",
       label: "Nowa prośba",
       mobileLabel: "Prośba",
-      description: "Jedna prośba: zamówienie u dostawcy albo info o dostępności",
+      description:
+        "Zamówienie u dostawcy lub info o dostępności — status w Moje zamówienia (nie pytanie ogólne)",
     },
     {
       href: "/plan",
       label: "Harmonogram zakupów",
       mobileLabel: "Plan",
       description: "Terminy u dostawców, otwarte prośby i wyszukiwarka",
+    },
+    {
+      href: "/tablica",
+      label: "Komunikacja",
+      mobileLabel: "Info",
+      description: "Ogłoszenia i pytania do zakupów — bez składania prośby o towar",
+      badge: badges.salesTablica,
     },
     {
       href: "/notatnik",

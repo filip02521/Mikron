@@ -9,6 +9,12 @@ import {
 import { fetchOperationsDailyPanelMetrics } from "@/lib/orders/operations-daily-panel-version";
 import { fetchSalesShellMetrics } from "@/lib/orders/sales-shell-metrics";
 import { countNotepadNavBadge } from "@/lib/data/sales-notepad";
+import {
+  countOpenDepartmentBoardQuestions,
+  countSalesBoardNavBadge,
+  fetchSalesBoardAttentionSnapshot,
+  type SalesBoardAttentionSnapshot,
+} from "@/lib/data/department-board";
 import { countOpenSalesBugReports } from "@/lib/data/sales-bug-reports";
 import { AppShellClient } from "./AppShellClient";
 
@@ -21,18 +27,25 @@ export async function AppShell({ children }: { children: React.ReactNode }) {
     realizacja: number;
     salesMoje?: number;
     salesNotatnik?: number;
+    salesTablica?: number;
     operationsNotatki?: number;
+    departmentBoardQuestions?: number;
     adminBugReports?: number;
   } = { nowe: 0, weryfikacja: 0, realizacja: 0 };
   let salesActivityVersion: string | null = null;
   let operationsDailyPanelVersion: string | null = null;
   let salesPersonName: string | null = null;
+  let salesBoardAttention: SalesBoardAttentionSnapshot | null = null;
 
   if (role && canAccessOperations(role)) {
     try {
-      const metrics = await fetchOperationsDailyPanelMetrics();
+      const [metrics, openQuestions] = await Promise.all([
+        fetchOperationsDailyPanelMetrics(),
+        countOpenDepartmentBoardQuestions().catch(() => 0),
+      ]);
       navBadges.weryfikacja = metrics.verificationCount;
       navBadges.nowe = metrics.navBadge;
+      navBadges.departmentBoardQuestions = openQuestions;
       operationsDailyPanelVersion = metrics.version;
     } catch {
       /* badge opcjonalny */
@@ -59,15 +72,19 @@ export async function AppShell({ children }: { children: React.ReactNode }) {
       const salesPerson = await resolveSalesPersonForUser(session);
       if (salesPerson) {
         salesPersonName = salesPerson.name;
-        const [metrics, notatnikCount] = await Promise.all([
+        const [metrics, notatnikCount, tablicaCount, boardAttention] = await Promise.all([
           fetchSalesShellMetrics(salesPerson.id),
           countNotepadNavBadge(salesPerson.id).catch(() => 0),
+          countSalesBoardNavBadge(session.id).catch(() => 0),
+          fetchSalesBoardAttentionSnapshot(session.id).catch(() => null),
         ]);
         salesActivityVersion = metrics.activityVersion;
+        salesBoardAttention = boardAttention;
         navBadges = {
           ...navBadges,
           salesMoje: metrics.navAttention,
           salesNotatnik: notatnikCount,
+          salesTablica: tablicaCount,
         };
       }
     } catch {
@@ -109,6 +126,7 @@ export async function AppShell({ children }: { children: React.ReactNode }) {
       mustChangePassword={session?.mustChangePassword ?? false}
       salesOnboardingCompletedAt={session?.salesOnboardingCompletedAt ?? null}
       salesPersonName={salesPersonName}
+      salesBoardAttention={salesBoardAttention}
     >
       {children}
     </AppShellClient>

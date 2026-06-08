@@ -1,12 +1,10 @@
 import { cn } from "@/lib/cn";
 
-/** Karta harmonogramu — neutralna obudowa; zaległe tylko cienkim akcentem. */
+/** Karta harmonogramu — spójna z wierszami Prośb handlowców. */
 export function urgentCardClassName(isOverdue = false) {
   return cn(
-    "rounded-md border bg-white transition",
-    isOverdue
-      ? "border-slate-200 border-l-2 border-l-amber-400 hover:border-slate-300"
-      : "border-slate-200 hover:border-slate-300"
+    "rounded-md border border-slate-200 bg-white transition-shadow hover:border-slate-300",
+    isOverdue && "border-amber-300/90 bg-amber-50/35"
   );
 }
 

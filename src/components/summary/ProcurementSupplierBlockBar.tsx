@@ -11,7 +11,12 @@ import { IconChevronRight } from "@/components/icons/StrokeIcons";
 import { cn } from "@/lib/cn";
 import { ProcurementSupplierBlockActionBar } from "@/components/summary/ProcurementSupplierBlockActionBar";
 import type { DailyPanelRunFn } from "@/components/summary/useDailyPanelRunner";
-import { panelNameLinkClass, rowPendingRingClass } from "@/lib/ui/ontime-theme";
+import {
+  panelNameLinkClass,
+  panelTypography,
+  rowPendingRingClass,
+} from "@/lib/ui/ontime-theme";
+import { panelQueueRowLayoutClass } from "@/lib/ui/surfaces";
 
 function Chevron({ open }: { open: boolean }) {
   return (
@@ -19,7 +24,7 @@ function Chevron({ open }: { open: boolean }) {
       size={16}
       strokeWidth={2.25}
       className={cn(
-        "shrink-0 text-indigo-700 transition-transform",
+        "shrink-0 text-slate-500 transition-transform",
         open && "rotate-90"
       )}
       aria-hidden
@@ -35,6 +40,7 @@ export function ProcurementSupplierBlockBar({
   leadTimeBrief,
   pending = false,
   run,
+  unseenGroupCount,
 }: {
   block: ProcurementSupplierBlock;
   collapsed: boolean;
@@ -43,65 +49,79 @@ export function ProcurementSupplierBlockBar({
   leadTimeBrief?: string | null;
   pending?: boolean;
   run: DailyPanelRunFn;
+  /** Lokalnie nieprzeczytane (domyślnie z serwera). */
+  unseenGroupCount?: number;
 }) {
   const summary = formatProcurementSupplierBlockSummary(block);
+  const groupCount = block.requestGroups.length;
+  const unseenCount = unseenGroupCount ?? block.unseenGroupCount;
 
   return (
     <div
       className={cn(
-        "overflow-hidden rounded-t-md border-b border-indigo-200/70 bg-gradient-to-b from-indigo-50/90 to-indigo-50/50",
+        "border-b border-slate-200/90 bg-slate-50/50",
         pending && rowPendingRingClass
       )}
       aria-busy={pending}
     >
-      <div className="flex items-start gap-2 px-2.5 py-2 sm:px-3">
-        <button
-          type="button"
-          onClick={onToggleCollapse}
-          className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md text-indigo-800 hover:bg-indigo-100/80"
-          aria-expanded={!collapsed}
-          aria-label={
-            collapsed
-              ? `Rozwiń prośby: ${block.supplierName}`
-              : `Zwiń prośby: ${block.supplierName}`
-          }
-        >
-          <Chevron open={!collapsed} />
-        </button>
-        <div className="min-w-0 flex-1">
-          <div className="flex flex-wrap items-center gap-2">
+      <div className="px-2 py-2">
+        <div className={panelQueueRowLayoutClass}>
+          <div className="flex min-w-0 flex-1 gap-2">
             <button
               type="button"
-              className={cn(panelNameLinkClass, "text-sm font-bold text-indigo-950")}
-              onClick={() => onOpenSupplier(block.supplierId)}
+              onClick={onToggleCollapse}
+              className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-md text-slate-600 transition-colors hover:bg-slate-200/60 hover:text-slate-900"
+              aria-expanded={!collapsed}
+              aria-label={
+                collapsed
+                  ? `Rozwiń ${groupCount} ${groupCount === 1 ? "prośbę" : groupCount < 5 ? "prośby" : "prośb"} u ${block.supplierName}`
+                  : `Zwiń listę u ${block.supplierName}`
+              }
             >
-              {block.supplierName}
+              <Chevron open={!collapsed} />
             </button>
-            {block.unseenGroupCount > 0 ? (
-              <Badge variant="purple" className="px-1.5 py-0 text-[10px]">
-                {block.unseenGroupCount}{" "}
-                {procurementUnseenGroupsLabel(block.unseenGroupCount)}
-              </Badge>
-            ) : null}
+            <div className="min-w-0 flex-1">
+              <div className="flex flex-wrap items-center gap-1.5">
+                <button
+                  type="button"
+                  className={cn(panelTypography.rowTitle, panelNameLinkClass, "text-left")}
+                  onClick={() => onOpenSupplier(block.supplierId)}
+                >
+                  {block.supplierName}
+                </button>
+                <Badge variant="default" className="text-[10px]">
+                  {groupCount} {groupCount === 1 ? "osoba" : groupCount < 5 ? "osoby" : "osób"}
+                </Badge>
+                {unseenCount > 0 ? (
+                  <Badge variant="purple" className="px-1.5 py-0 text-[10px]">
+                    {unseenCount}{" "}
+                    {procurementUnseenGroupsLabel(unseenCount)}
+                  </Badge>
+                ) : null}
+                {collapsed ? (
+                  <span className={cn(panelTypography.caption, "text-slate-500")}>
+                    lista zwinięta
+                  </span>
+                ) : null}
+              </div>
+              <p className={cn("mt-0.5", panelTypography.rowMeta)}>
+                {locationLabel(block.location)}
+                {" · "}
+                {summary}
+              </p>
+              {leadTimeBrief ? (
+                <p className={cn("mt-0.5", panelTypography.caption)}>{leadTimeBrief}</p>
+              ) : null}
+            </div>
           </div>
-          <p className="mt-0.5 text-xs leading-snug text-indigo-900/85">
-            {locationLabel(block.location)}
-            {" · "}
-            {summary}
-          </p>
-          {leadTimeBrief ? (
-            <p className="mt-0.5 text-[10px] text-indigo-800/70">{leadTimeBrief}</p>
-          ) : null}
+          <div className="w-full sm:w-auto sm:shrink-0 sm:self-start">
+            <ProcurementSupplierBlockActionBar
+              block={block}
+              pending={pending}
+              run={run}
+            />
+          </div>
         </div>
-      </div>
-
-      <div className="border-t border-indigo-200/60 bg-white/95 px-2.5 py-2 sm:px-3">
-        <ProcurementSupplierBlockActionBar
-          block={block}
-          pending={pending}
-          run={run}
-          collapsed={collapsed}
-        />
       </div>
     </div>
   );

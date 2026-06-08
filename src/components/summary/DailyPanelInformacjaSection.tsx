@@ -3,12 +3,10 @@
 import Link from "next/link";
 import { FlowChevron, LinkChevron } from "@/components/ui/UiGlyphs";
 import type { SummaryInformacjaEnriched } from "@/lib/orders/summary-workspace";
-import {
-  enrichInformacjaGroup,
-  sortInformacjaGroups,
-} from "@/lib/orders/procurement-daily-ui";
+import { sortInformacjaGroups } from "@/lib/orders/procurement-daily-ui";
+import { procurementProductCountLabel } from "@/lib/orders/procurement-supplier-groups";
 import { Badge } from "@/components/ui/Badge";
-import { InformacjaFlowLegend } from "@/components/orders/InformacjaFlowLegend";
+import { InformacjaDirectQueueIntro } from "@/components/orders/InformacjaFlowLegend";
 import { cn } from "@/lib/cn";
 import {
   DailyPanelSubsectionBar,
@@ -33,23 +31,19 @@ export function DailyPanelInformacjaSection({
         countUnit={{ one: "grupa", few: "grupy", many: "grup" }}
         compact
       />
-      <div className="border-b border-slate-100 px-3 py-1.5 sm:px-4">
-        <InformacjaFlowLegend compact />
-      </div>
+      <InformacjaDirectQueueIntro />
       <ul className="divide-y divide-slate-100">
         {sorted.map((g) => {
-          const ui = enrichInformacjaGroup(g);
           return (
             <li key={`${g.supplierId}-${g.salesPersonId}`} className="px-3 py-2.5 sm:px-4">
               <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
                 <div className="min-w-0 flex-1">
-                  <p className={panelTypography.rowTitle}>{g.person}</p>
-                  <p className={panelTypography.rowMeta}>{g.supplierName}</p>
-                  {ui.statusDetail ?? ui.subline ? (
-                    <p className={cn("mt-0.5", panelTypography.caption)}>
-                      {ui.statusDetail ?? ui.subline}
-                    </p>
-                  ) : null}
+                  <p className={panelTypography.rowTitle}>{g.supplierName}</p>
+                  <p className={panelTypography.rowMeta}>
+                    {g.person}
+                    {" · "}
+                    {procurementProductCountLabel(g.lines.length)}
+                  </p>
                   <ul className="mt-1.5 space-y-1">
                     {g.lines.map((line) => (
                       <li

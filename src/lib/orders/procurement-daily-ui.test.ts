@@ -45,6 +45,7 @@ function testForSomeoneGroup(
     submittedAtLatest: "2026-05-28T10:00:00Z",
     hasUnseen: true,
     unseenCount: 1,
+    supplierOrderOnDemand: false,
     ...partial,
   };
 }
@@ -352,5 +353,41 @@ describe("procurement-daily-ui", () => {
     const stockUi = enrichStockOutSignalGroup(ws.stockOutLeft[0]!);
     expect(stockUi.headline).toBe("Towar");
     expect(stockUi.subline).toContain("Jan");
+  });
+
+  it("forSomeoneLeft oznacza dostawcę na żądanie z joinu supplier, nawet bez wpisu w schedules", () => {
+    const ws = buildSummaryWorkspace(
+      [],
+      [
+        {
+          id: "req1",
+          supplier_id: "od-1",
+          sales_person_id: "sp1",
+          symbol: "X",
+          products: "Towar",
+          quantity: "1",
+          delivered_quantity: "-",
+          order_type: "Glowne",
+          request_kind: "zamowienie",
+          status: "Nowe",
+          action_at: "2026-05-28T10:00:00Z",
+          ordered_at: null,
+          delivery_at: null,
+          supplier: {
+            id: "od-1",
+            name: "On Demand Sp",
+            location: "POLSKA",
+            order_on_demand: true,
+            interval_raw: "W RAZIE POTRZEBY",
+            stock_raw: "",
+            extra_info: "",
+          } as never,
+          sales_person: { id: "sp1", name: "Jan" } as never,
+        },
+      ],
+      new Date(2026, 4, 28),
+      [{ id: "sp1", name: "Jan" }]
+    );
+    expect(ws.forSomeoneLeft[0]?.supplierOrderOnDemand).toBe(true);
   });
 });

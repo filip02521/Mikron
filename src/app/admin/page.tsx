@@ -4,7 +4,9 @@ import { AdminHubShell } from "@/components/admin/AdminHubShell";
 import { AdminSystemStatus } from "@/components/admin/AdminSystemStatus";
 import { AdminToolsPanel } from "@/components/admin/AdminToolsPanel";
 import { AdminDataShortcuts } from "@/components/admin/AdminDataShortcuts";
+import { DeliveryStatsDiagnosticsPanel } from "@/components/admin/DeliveryStatsDiagnosticsPanel";
 import { SubiektIntegrationPanel } from "@/components/admin/SubiektIntegrationPanel";
+import { fetchDeliveryStatsDiagnostics } from "@/lib/data/delivery-stats-diagnostics";
 import type { SubiektAuthMode } from "@/lib/subiekt/config";
 
 export default async function AdminPage() {
@@ -26,6 +28,13 @@ export default async function AdminPage() {
     /* brak sesji admin — nie powinno wystąpić na tej stronie */
   }
 
+  let deliveryStatsDiagnostics = null;
+  try {
+    deliveryStatsDiagnostics = await fetchDeliveryStatsDiagnostics();
+  } catch {
+    /* diagnostyka opcjonalna — panel pokaże komunikat */
+  }
+
   return (
     <AdminHubShell activeTab="system">
       <AdminSystemStatus isHealthy={status.isHealthy} issues={status.issues} />
@@ -34,6 +43,7 @@ export default async function AdminPage() {
         initialBaseUrl={subiektStatus.baseUrl}
         initialAuthMode={subiektStatus.authMode}
       />
+      <DeliveryStatsDiagnosticsPanel initialData={deliveryStatsDiagnostics} />
       <AdminToolsPanel />
       <AdminDataShortcuts />
     </AdminHubShell>

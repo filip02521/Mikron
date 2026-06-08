@@ -11,11 +11,14 @@ export function SupplierContactActions({
   mails,
   extraInfo,
   className,
+  display = "block",
 }: {
   notes: string;
   mails: string;
   extraInfo?: string;
   className?: string;
+  /** W linii meta wiersza panelu (kompaktowo, bez dużego badge). */
+  display?: "block" | "rowMeta";
 }) {
   const [copied, setCopied] = useState(false);
   const [copyFailed, setCopyFailed] = useState(false);
@@ -34,6 +37,43 @@ export function SupplierContactActions({
       window.setTimeout(() => setCopyFailed(false), 3000);
     }
   };
+
+  if (display === "rowMeta") {
+    if (!ui.contactLink && !ui.copyText && !notes.trim()) {
+      return <span className="text-slate-400">Brak kontaktu</span>;
+    }
+    return (
+      <>
+        <span className="text-slate-600">{ui.methodLabel}</span>
+        {ui.contactLink ? (
+          <>
+            {" · "}
+            <a
+              href={ui.contactLink.href}
+              target={ui.contactLink.kind === "url" ? "_blank" : undefined}
+              rel={ui.contactLink.kind === "url" ? "noopener noreferrer" : undefined}
+              className={cn(panelContactLinkClass, "inline max-w-[min(100%,14rem)] align-baseline")}
+              title={ui.copyText ?? ui.contactLink.label}
+            >
+              {ui.contactLink.label}
+            </a>
+          </>
+        ) : ui.copyText ? (
+          <>
+            {" · "}
+            <button
+              type="button"
+              onClick={copyContact}
+              className="font-medium text-indigo-700/85 transition-colors hover:text-indigo-950"
+              title={ui.copyText}
+            >
+              {copied ? "Skopiowano" : copyFailed ? "Błąd kopiowania" : "Kopiuj kontakt"}
+            </button>
+          </>
+        ) : null}
+      </>
+    );
+  }
 
   if (!ui.contactLink && !ui.copyText) {
     return (

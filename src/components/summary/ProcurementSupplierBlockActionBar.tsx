@@ -2,19 +2,21 @@
 
 import { useMemo, useState } from "react";
 import { actionProcessIndividual } from "@/app/actions/admin";
-import { IconUsers } from "@/components/icons/StrokeIcons";
 import { ButtonGroup } from "@/components/ui/ButtonGroup";
 import { ModalShell } from "@/components/ui/ModalShell";
 import { Button } from "@/components/ui/Button";
 import type { DailyPanelRunFn } from "@/components/summary/useDailyPanelRunner";
 import {
   collectProcurementSupplierBlockOrderIds,
-  procurementProductCountLabel,
   procurementSupplierBlockConfirmCopy,
   procurementSupplierBlockHasInfoViaPanel,
   procurementSupplierBlockScopeKey,
   type ProcurementSupplierBlock,
 } from "@/lib/orders/procurement-supplier-groups";
+import {
+  procurementGlowneButtonLabel,
+  procurementGlowneButtonTitle,
+} from "@/lib/orders/glowne-action-ui";
 import { cn } from "@/lib/cn";
 import { panelSegmentOutlineClass, panelSegmentPrimaryClass } from "@/lib/ui/ontime-theme";
 import { buttonGroupItemClass, panelActionBarShellClass } from "@/lib/ui/surfaces";
@@ -39,13 +41,10 @@ export function ProcurementSupplierBlockActionBar({
   block,
   pending,
   run,
-  collapsed = false,
 }: {
   block: ProcurementSupplierBlock;
   pending: boolean;
   run: DailyPanelRunFn;
-  /** Lista zwinięta — skrócony opis w pasku akcji. */
-  collapsed?: boolean;
 }) {
   const orderIds = useMemo(
     () => collectProcurementSupplierBlockOrderIds(block),
@@ -55,6 +54,14 @@ export function ProcurementSupplierBlockActionBar({
   const groupCount = block.requestGroups.length;
   const scope = { scope: procurementSupplierBlockScopeKey(block.supplierId) };
   const disabled = pending || orderIds.length === 0;
+  const glowneLabel = procurementGlowneButtonLabel({
+    hasInfoViaPanel,
+    supplierOrderOnDemand: block.supplierOrderOnDemand,
+  });
+  const glowneTitle = procurementGlowneButtonTitle({
+    hasInfoViaPanel,
+    supplierOrderOnDemand: block.supplierOrderOnDemand,
+  });
 
   const [confirmMode, setConfirmMode] = useState<"GLOWNE" | "POBOCZNE" | null>(null);
   const confirmCopy = confirmMode
@@ -66,7 +73,9 @@ export function ProcurementSupplierBlockActionBar({
     run(
       () => actionProcessIndividual(orderIds, mode),
       mode === "GLOWNE"
-        ? `Oznaczono ${groupCount} ${groupCount === 1 ? "prośbę" : "prośby"} u ${block.supplierName} jako główne`
+        ? block.supplierOrderOnDemand
+          ? `Oznaczono ${groupCount} ${groupCount === 1 ? "prośbę" : "prośby"} u ${block.supplierName} jako główne (bez terminu)`
+          : `Oznaczono ${groupCount} ${groupCount === 1 ? "prośbę" : "prośby"} u ${block.supplierName} jako główne`
         : `Oznaczono ${groupCount} ${groupCount === 1 ? "prośbę" : "prośby"} u ${block.supplierName} jako uzupełniające`,
       mode === "GLOWNE"
         ? "Oznaczanie wszystkich jako główne…"
@@ -74,10 +83,6 @@ export function ProcurementSupplierBlockActionBar({
       scope
     );
   };
-
-  const hint = collapsed
-    ? `${groupCount} ${groupCount === 1 ? "osoba" : groupCount < 5 ? "osoby" : "osób"} · zwinięte`
-    : `${groupCount} ${groupCount === 1 ? "osoba" : groupCount < 5 ? "osoby" : "osób"} · ${procurementProductCountLabel(block.lineCount)}`;
 
   return (
     <>
@@ -127,23 +132,10 @@ export function ProcurementSupplierBlockActionBar({
       ) : null}
 
       <div
-        className={cn(
-          "flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between",
-          pending && "opacity-60"
-        )}
+        className={cn(pending && "opacity-60")}
         role="group"
-        aria-label={`Zamówienie zbiorcze u ${block.supplierName}`}
+        aria-label={`Zamów razem u ${block.supplierName} — ${groupCount} ${groupCount === 1 ? "osoba" : groupCount < 5 ? "osoby" : "osób"}`}
       >
-        <div className="flex min-w-0 items-center gap-2 text-indigo-950">
-          <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-indigo-600/10 text-indigo-700">
-            <IconUsers size={17} strokeWidth={2} aria-hidden />
-          </span>
-          <div className="min-w-0">
-            <p className="text-xs font-semibold leading-snug">Zamów razem u dostawcy</p>
-            <p className="text-[11px] leading-snug text-indigo-900/75">{hint}</p>
-          </div>
-        </div>
-
         <ButtonGroup
           ariaLabel={`Główne lub uzupełniające — wszystkie grupy, ${block.supplierName}`}
           className={cn(panelActionBarShellClass, "w-full shrink-0 sm:w-auto")}
@@ -158,9 +150,10 @@ export function ProcurementSupplierBlockActionBar({
               "min-w-0 flex-1 px-2.5 sm:flex-none",
               "transition-colors duration-150 disabled:cursor-not-allowed disabled:opacity-50"
             )}
+            title={glowneTitle}
             onClick={() => setConfirmMode("GLOWNE")}
           >
-            {hasInfoViaPanel ? "Główne (info)" : "Główne"}
+            {glowneLabel}
             <ActionCount n={groupCount} variant="primary" />
           </button>
           <button

@@ -1,41 +1,68 @@
-import { INFORMACJA_FLOW_LEGEND_PANEL } from "@/lib/orders/informacja-flow-copy";
+import { Badge } from "@/components/ui/Badge";
+import {
+  INFORMACJA_FLOW_DIRECT,
+  INFORMACJA_FLOW_LEGEND_PANEL,
+  INFORMACJA_FLOW_PROCUREMENT_GROUP_BANNER,
+  INFORMACJA_VIA_PANEL_BADGE,
+} from "@/lib/orders/informacja-flow-copy";
 import {
   INFORMACJA_FLOW_UI,
   INFORMACJA_VIA_PANEL_UI,
+  type InformacjaFlowUiDef,
 } from "@/lib/orders/informacja-flow-ui";
-import { FlowSteps } from "@/components/ui/UiGlyphs";
 import { cn } from "@/lib/cn";
+
+/** Jednolinijkowy dopisek w sekcji Prośby handlowców — tylko gdy są prośby „Magazyn → info”. */
+export function InformacjaViaPanelProcurementCallout({ className }: { className?: string }) {
+  return (
+    <div
+      className={cn(
+        "border-b border-indigo-100/90 bg-indigo-50/45 px-3 py-2.5 sm:px-4",
+        className
+      )}
+    >
+      <div className="flex flex-wrap items-start gap-2">
+        <Badge variant="default" className="shrink-0 text-[10px]">
+          {INFORMACJA_VIA_PANEL_BADGE}
+        </Badge>
+        <p className="min-w-0 flex-1 text-xs leading-relaxed text-indigo-950">
+          {INFORMACJA_FLOW_PROCUREMENT_GROUP_BANNER}
+        </p>
+      </div>
+    </div>
+  );
+}
+
+/** Wprowadzenie sekcji „Prośby tylko o dostępność” — bez zamawiania u dostawcy. */
+export function InformacjaDirectQueueIntro({ className }: { className?: string }) {
+  return (
+    <div
+      className={cn(
+        "border-b border-violet-100/90 bg-violet-50/40 px-3 py-2.5 sm:px-4",
+        className
+      )}
+    >
+      <p className="text-xs leading-relaxed text-violet-950">
+        <strong className="font-semibold text-violet-950">Tylko dostępność</strong> — handlowiec
+        czeka na e-mail z magazynu po przyjęciu towaru.{" "}
+        <span className="text-violet-900/85">
+          Zamówienia u dostawcy obsługujesz w Prośbach handlowców (badge{" "}
+          <span className="font-medium">{INFORMACJA_VIA_PANEL_BADGE}</span>).
+        </span>
+      </p>
+    </div>
+  );
+}
 
 export function InformacjaFlowLegend({
   className,
-  compact = false,
-  showLegacyViaPanel = false,
+  variant = "full",
 }: {
   className?: string;
-  compact?: boolean;
-  /** Starsze prośby z flagą via_panel — dopisek w legendzie panelu. */
-  showLegacyViaPanel?: boolean;
+  /** Pełna legenda (formularze). Panel Dziś używa wąskich calloutów powyżej. */
+  variant?: "full";
 }) {
-  if (compact) {
-    return (
-      <ul className={cn("space-y-1 text-[11px] leading-relaxed text-slate-600", className)}>
-        {INFORMACJA_FLOW_UI.map((flow) => (
-          <li key={flow.path} className="flex gap-1.5">
-            <span className="font-medium text-slate-800 shrink-0">{flow.label}:</span>
-            <FlowSteps steps={flow.steps} chevronClassName="text-indigo-300" />
-          </li>
-        ))}
-        {showLegacyViaPanel ? (
-          <li className="flex gap-1.5 border-t border-slate-200/80 pt-1 text-slate-500">
-            <span className="font-medium text-slate-700 shrink-0">
-              {INFORMACJA_VIA_PANEL_UI.lineBadge} (starsze):
-            </span>
-            <FlowSteps steps={INFORMACJA_VIA_PANEL_UI.steps} chevronClassName="text-slate-300" />
-          </li>
-        ) : null}
-      </ul>
-    );
-  }
+  if (variant !== "full") return null;
 
   return (
     <div className={cn("space-y-2", className)}>
@@ -51,11 +78,7 @@ export function InformacjaFlowLegend({
   );
 }
 
-function FlowCard({
-  flow,
-}: {
-  flow: (typeof INFORMACJA_FLOW_UI)[number];
-}) {
+function FlowCard({ flow }: { flow: InformacjaFlowUiDef }) {
   const borderTone =
     flow.tone === "amber"
       ? "border-amber-200 bg-amber-50/90"
@@ -72,6 +95,27 @@ function FlowCard({
           <li key={step}>{step}</li>
         ))}
       </ol>
+    </div>
+  );
+}
+
+/** Pełna legenda ze wszystkimi ścieżkami — np. pomoc w formularzu. */
+export function InformacjaFlowLegendDetailed({ className }: { className?: string }) {
+  return (
+    <div className={cn("space-y-2", className)}>
+      <InformacjaFlowLegend variant="full" />
+      <div className="rounded-md border border-indigo-200 bg-indigo-50/90 px-2.5 py-2 text-[11px] leading-relaxed text-slate-700">
+        <p className="font-medium text-slate-900">{INFORMACJA_VIA_PANEL_UI.label}</p>
+        <p className="mt-0.5 text-slate-600">{INFORMACJA_VIA_PANEL_UI.short}</p>
+        <ol className="mt-1.5 list-decimal space-y-0.5 pl-4 text-slate-600">
+          {INFORMACJA_VIA_PANEL_UI.steps.map((step) => (
+            <li key={step}>{step}</li>
+          ))}
+        </ol>
+      </div>
+      <p className="text-[11px] text-slate-500">
+        {INFORMACJA_FLOW_DIRECT.label} — domyślna ścieżka w formularzu handlowca (kolejka magazynu).
+      </p>
     </div>
   );
 }

@@ -25,6 +25,7 @@ export function MobileOperationsNav({
     weryfikacja?: number;
     realizacja?: number;
     operationsNotatki?: number;
+    departmentBoardQuestions?: number;
   };
 }) {
   const pathname = usePathname();

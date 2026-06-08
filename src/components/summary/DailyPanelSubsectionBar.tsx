@@ -7,7 +7,8 @@ export type DailyPanelSubsectionTone =
   | "prosby"
   | "stockOut"
   | "today"
-  | "cancel";
+  | "cancel"
+  | "plan";
 
 /** Formy liczby mnogiej (np. grupa / grupy / grup). */
 export type DailyPanelCountUnit = {
@@ -22,6 +23,7 @@ const TONE_DOT: Record<DailyPanelSubsectionTone, string> = {
   stockOut: "bg-amber-600",
   today: "bg-sky-500",
   cancel: "bg-amber-500",
+  plan: "bg-indigo-500",
   default: "bg-slate-400",
 };
 
