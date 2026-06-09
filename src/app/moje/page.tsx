@@ -25,11 +25,15 @@ import type { OrderFormSupplierOption } from "@/lib/orders/order-form-suppliers"
 import { salesPageShellClass, pageToolbarSizingClass } from "@/lib/ui/ontime-theme";
 import { SalesAccountLinkRequired } from "@/components/sales/SalesAccountLinkRequired";
 import { ManagerPreviewBanner } from "@/components/sales/ManagerPreviewBanner";
-import { DepartmentBoardSalesAttention } from "@/components/department-board/DepartmentBoardSalesAttention";
 import {
   fetchSalesBoardAttentionSnapshot,
   type SalesBoardAttentionSnapshot,
 } from "@/lib/data/department-board";
+import { fetchSalesDayStartNotepadSlice } from "@/lib/data/sales-notepad";
+import {
+  buildSalesDayStartSnapshot,
+  type SalesDayStartSnapshot,
+} from "@/lib/sales/sales-day-start";
 import type { DeliveryStats, IndividualOrder } from "@/types/database";
 import { autoAssignMissingSuppliersFromCatalog } from "@/lib/services/auto-assign-suppliers";
 
@@ -76,6 +80,7 @@ export default async function MojePage({
   let isTeamPreview = false;
   let sessionUserId: string | null = null;
   let boardAttention: SalesBoardAttentionSnapshot | null = null;
+  let dayStartSnapshot: SalesDayStartSnapshot | null = null;
 
   try {
     const user = await getSessionUser();
@@ -139,21 +144,16 @@ export default async function MojePage({
   const viewingOwnPanel =
     isSalesAccount(role ?? "sales") && salesPersonId && salesPersonId === ownSalesPersonId;
 
-  if (viewingOwnPanel && sessionUserId) {
-    try {
-      boardAttention = await fetchSalesBoardAttentionSnapshot(sessionUserId);
-    } catch {
-      /* banner opcjonalny */
-    }
-  }
-
   const adminSalesPreview = Boolean(role === "admin" && previewSalesPersonId && salesPersonId);
   const salesPanelView =
     (isSalesAccount(role ?? "sales") && salesPersonId) || adminSalesPreview;
 
+  let notepadSlice: Awaited<ReturnType<typeof fetchSalesDayStartNotepadSlice>> | null = null;
+
   try {
     if (salesPanelView && salesPersonId) {
-      const [orderRows, statsRows, acknowledgedRows, supplierRows] = await Promise.all([
+      const [orderRows, statsRows, acknowledgedRows, supplierRows, boardSnap, notepadData] =
+        await Promise.all([
         fetchIndividualOrders({
           salesPersonId,
           hideSalesAcknowledged: false,
@@ -166,7 +166,15 @@ export default async function MojePage({
             })
           : Promise.resolve([]),
         fetchSuppliersForRequestForms(),
+        viewingOwnPanel && sessionUserId
+          ? fetchSalesBoardAttentionSnapshot(sessionUserId).catch(() => null)
+          : Promise.resolve(null),
+        viewingOwnPanel
+          ? fetchSalesDayStartNotepadSlice(salesPersonId).catch(() => null)
+          : Promise.resolve(null),
       ]);
+      boardAttention = boardSnap;
+      notepadSlice = notepadData;
       orders = orderRows;
       stats = statsRows as DeliveryStats[];
       suppliers = supplierRows;
@@ -233,6 +241,16 @@ export default async function MojePage({
 
   const { zamowienia, informacje, productLineCount } = presentMyOrders(orders, stats);
 
+  if (viewingOwnPanel && notepadSlice) {
+    dayStartSnapshot = buildSalesDayStartSnapshot({
+      rows: [...zamowienia, ...informacje],
+      watches: notepadSlice.zkWatches,
+      notes: notepadSlice.notes,
+      boardAttention,
+      previewDla: previewSalesPersonId ?? null,
+    });
+  }
+
   const salesHeaderActions =
     role && !canAccessOperations(role) ? (
       !isTeamPreview ? (
@@ -260,10 +278,6 @@ export default async function MojePage({
           salesPersonName={salesPersonName}
           readOnly={adminSalesPreview}
         />
-      ) : null}
-
-      {viewingOwnPanel && boardAttention ? (
-        <DepartmentBoardSalesAttention attention={boardAttention} showPinned={false} />
       ) : null}
 
       {loadError ? (
@@ -299,6 +313,7 @@ export default async function MojePage({
         initialClientZkNumber={zkNumberParam?.trim() || null}
         syncSearchUrl={!isTeamPreview}
         showSalesSync={showSalesSync}
+        dayStartSnapshot={dayStartSnapshot}
       />
     </div>
   );

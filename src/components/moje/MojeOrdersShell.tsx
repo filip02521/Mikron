@@ -5,7 +5,8 @@ import type { MyOrderRow } from "@/lib/orders/my-order-presenter";
 import { mojePresentedSignature } from "@/lib/orders/moje-presented-sync";
 import { MojeOrdersView } from "@/components/moje/MojeOrdersView";
 import { useSalesOnboardingDemo } from "@/components/sales/SalesOnboardingContext";
-import { buildOnboardingMojePresented, buildOnboardingMojeArchiveDemo } from "@/lib/sales/sales-onboarding-demo-data";
+import { buildOnboardingMojePresented, buildOnboardingMojeArchiveDemo, buildOnboardingNotepadDemo } from "@/lib/sales/sales-onboarding-demo-data";
+import { buildSalesDayStartSnapshot, type SalesDayStartSnapshot } from "@/lib/sales/sales-day-start";
 
 type Presented = {
   zamowienia: MyOrderRow[];
@@ -17,18 +18,29 @@ export function MojeOrdersShell({
   initial,
   salesPersonId,
   showSalesSync = false,
+  dayStartSnapshot = null,
   ...viewProps
 }: {
   initial: Presented;
   salesPersonId: string | null;
   showSalesSync?: boolean;
+  dayStartSnapshot?: SalesDayStartSnapshot | null;
 } & Omit<
   React.ComponentProps<typeof MojeOrdersView>,
-  "zamowienia" | "informacje" | "productLineCount"
+  "zamowienia" | "informacje" | "productLineCount" | "dayStartSnapshot"
 >) {
   const tourDemo = useSalesOnboardingDemo("moje");
   const demoPresented = useMemo(() => buildOnboardingMojePresented(), []);
   const demoArchive = useMemo(() => buildOnboardingMojeArchiveDemo(), []);
+  const demoDayStart = useMemo(() => {
+    if (!tourDemo || !salesPersonId) return null;
+    const notepad = buildOnboardingNotepadDemo(salesPersonId);
+    return buildSalesDayStartSnapshot({
+      rows: [...demoPresented.zamowienia, ...demoPresented.informacje],
+      watches: notepad.zkWatches,
+      notes: notepad.notes,
+    });
+  }, [tourDemo, salesPersonId, demoPresented]);
   const effectiveInitial = tourDemo ? demoPresented : initial;
   const [presented, setPresented] = useState(effectiveInitial);
   const inboxSignature = useMemo(
@@ -63,6 +75,7 @@ export function MojeOrdersShell({
       showProsbaCta={tourDemo ? false : viewProps.showProsbaCta}
       archiwumRecent={tourDemo ? demoArchive.archiwumRecent : viewProps.archiwumRecent}
       archiwumExtended={tourDemo ? demoArchive.archiwumExtended : viewProps.archiwumExtended}
+      dayStartSnapshot={tourDemo ? demoDayStart : dayStartSnapshot}
     />
   );
 }

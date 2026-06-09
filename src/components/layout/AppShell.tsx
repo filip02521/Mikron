@@ -16,10 +16,8 @@ import {
 } from "@/lib/data/queries";
 import { fetchOperationsDailyPanelMetrics } from "@/lib/orders/operations-daily-panel-version";
 import { fetchSalesShellMetrics } from "@/lib/orders/sales-shell-metrics";
-import { countNotepadNavBadge } from "@/lib/data/sales-notepad";
 import {
   countOpenDepartmentBoardQuestions,
-  countSalesBoardNavBadge,
   fetchSalesBoardAttentionSnapshot,
   type SalesBoardAttentionSnapshot,
 } from "@/lib/data/department-board";
@@ -100,19 +98,17 @@ export async function AppShell({ children }: { children: React.ReactNode }) {
       const salesPerson = await resolveSalesPersonForUser(session);
       if (salesPerson) {
         salesPersonName = salesPerson.name;
-        const [metrics, notatnikCount, tablicaCount, boardAttention] = await Promise.all([
-          fetchSalesShellMetrics(salesPerson.id),
-          countNotepadNavBadge(salesPerson.id).catch(() => 0),
-          countSalesBoardNavBadge(session.id).catch(() => 0),
+        const [metrics, boardAttention] = await Promise.all([
+          fetchSalesShellMetrics(salesPerson.id, session.id),
           fetchSalesBoardAttentionSnapshot(session.id).catch(() => null),
         ]);
         salesActivityVersion = metrics.activityVersion;
         salesBoardAttention = boardAttention;
         navBadges = {
           ...navBadges,
-          salesMoje: metrics.navAttention,
-          salesNotatnik: notatnikCount,
-          salesTablica: tablicaCount,
+          salesMoje: metrics.dayStartNavCount,
+          salesNotatnik: 0,
+          salesTablica: 0,
         };
       }
     } catch {

@@ -256,7 +256,7 @@ export function navForRole(
       href: "/moje",
       label: "Moje zamówienia",
       mobileLabel: "Moje",
-      description: "Statusy i odbiór",
+      description: "Start dnia, statusy prośb i odbiór",
       badge: badges.salesMoje,
     },
     {
@@ -277,14 +277,12 @@ export function navForRole(
       label: "Komunikacja",
       mobileLabel: "Info",
       description: "Ogłoszenia i pytania do zakupów — bez składania prośby o towar",
-      badge: badges.salesTablica,
     },
     {
       href: "/notatnik",
       label: "Notatnik",
       mobileLabel: "Notatnik",
       description: "ZK czekające na towar i notatki",
-      badge: badges.salesNotatnik,
     },
   ];
 

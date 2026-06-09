@@ -1,6 +1,7 @@
 "use client";
 
-import { Suspense, useEffect, useMemo, useRef, useState, type ComponentProps } from "react";
+import { Suspense, useEffect, useMemo, useRef, useState, useCallback, type ComponentProps } from "react";
+import { useRouter } from "next/navigation";
 import type { MyOrderRow } from "@/lib/orders/my-order-presenter";
 import {
   filterMyOrderRows,
@@ -26,6 +27,8 @@ import {
 } from "@/components/moje/MyOrderShipmentUndoProvider";
 import { MyOrderArchiveSection } from "@/components/moje/MyOrderArchiveSection";
 import { MyOrderBulkPickupBar } from "@/components/moje/MyOrderBulkPickupBar";
+import { SalesDayStartPanel } from "@/components/moje/SalesDayStartPanel";
+import type { SalesDayStartSnapshot } from "@/lib/sales/sales-day-start";
 import { MyOrderShipmentList } from "@/components/moje/MyOrderShipmentList";
 import { MyOrdersInboxSummary } from "@/components/moje/MyOrdersInboxSummary";
 import { MojeStickyPickupBar } from "@/components/moje/MojeStickyPickupBar";
@@ -343,6 +346,7 @@ function MojeOrdersViewContent({
   syncSearchUrl = true,
   tourPreview = false,
   showSalesSync = false,
+  dayStartSnapshot = null,
 }: {
   zamowienia: MyOrderRow[];
   informacje: MyOrderRow[];
@@ -366,7 +370,9 @@ function MojeOrdersViewContent({
   syncSearchUrl?: boolean;
   tourPreview?: boolean;
   showSalesSync?: boolean;
+  dayStartSnapshot?: SalesDayStartSnapshot | null;
 }) {
+  const router = useRouter();
   const [activeFilter, setActiveFilter] = useState<MyOrderInboxFilter | null>(null);
   const clientKhFilter =
     initialClientKhId != null && initialClientKhId > 0 ? initialClientKhId : null;
@@ -547,6 +553,46 @@ function MojeOrdersViewContent({
     () => partitionMyOrderRowsBySalesAction(allRows).needsAction.length,
     [allRows]
   );
+  const dayStartActionCount = dayStartSnapshot?.totalActionCount ?? needsActionTotal;
+
+  const handleDayStartInboxFilter = useCallback(
+    (filter: MyOrderInboxFilter, scrollTarget?: string) => {
+      setActiveFilter(filter);
+      requestAnimationFrame(() => {
+        document
+          .getElementById(scrollTarget ?? "moje-section-action")
+          ?.scrollIntoView({ behavior: "smooth", block: "start" });
+      });
+    },
+    []
+  );
+
+  const handleDayStartBreakdown = useCallback(
+    (key: "orders" | "notepad" | "board") => {
+      if (key === "orders") {
+        handleDayStartInboxFilter("action_group", "moje-section-action");
+        return;
+      }
+      if (key === "notepad") {
+        router.push("/notatnik");
+        return;
+      }
+      router.push("/tablica");
+    },
+    [handleDayStartInboxFilter, router]
+  );
+
+  const dayStartPanel =
+    canAcknowledge && dayStartSnapshot ? (
+      <Suspense fallback={null}>
+        <SalesDayStartPanel
+          snapshot={dayStartSnapshot}
+          onInboxFilter={handleDayStartInboxFilter}
+          onBreakdownSelect={handleDayStartBreakdown}
+          tourPreview={tourPreview}
+        />
+      </Suspense>
+    ) : null;
 
   const shipmentCount = zamowienia.length + informacje.length;
   const filteredCount = filteredZamowienia.length + filteredInformacje.length;
@@ -647,13 +693,13 @@ function MojeOrdersViewContent({
       documentTitleBaseRef.current = document.title.replace(/^\(\d+\)\s*/, "");
     }
     const base = documentTitleBaseRef.current;
-    document.title = needsActionTotal > 0 ? `(${needsActionTotal}) ${base}` : base;
+    document.title = dayStartActionCount > 0 ? `(${dayStartActionCount}) ${base}` : base;
     return () => {
       if (documentTitleBaseRef.current) {
         document.title = documentTitleBaseRef.current;
       }
     };
-  }, [needsActionTotal, tourPreview, canAcknowledge]);
+  }, [dayStartActionCount, tourPreview, canAcknowledge]);
 
   const showSplitSections = splitByAction && !activeFilter && !searchActive;
 
@@ -668,6 +714,7 @@ function MojeOrdersViewContent({
   if (!shipmentCount) {
     return (
       <div className="space-y-5">
+        {dayStartPanel}
         <Card padding={false} className="overflow-hidden">
           <CardHeader
             inset
@@ -729,6 +776,7 @@ function MojeOrdersViewContent({
 
   return (
     <div className="space-y-5">
+      {dayStartPanel}
       <Card padding={false}>
         <CardHeader
           inset
