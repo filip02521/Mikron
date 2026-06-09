@@ -56,6 +56,11 @@ import {
   type MojeShipmentRowVisualTone,
 } from "@/lib/ui/moje-shipment-row-styles";
 import { mojeActionBarShellClass } from "@/lib/ui/surfaces";
+import {
+  myOrderPickupAckLabel,
+  myOrderPickupAckTitle,
+  type MyOrderPickupAckMode,
+} from "@/lib/orders/my-order-pickup-ack-copy";
 import { SearchHighlightText } from "@/components/moje/SearchHighlightText";
 import {
   rowSearchHighlightsProductLines,
@@ -84,8 +89,7 @@ function ShipmentToolbar({
   showBulkPickup,
   showDismissAck,
   hideSinglePickup = false,
-  ackShortLabel,
-  ackFullTitle,
+  ackMode,
   dismissAckLabel,
   dismissAckTitle,
   dismissAckIds,
@@ -103,8 +107,7 @@ function ShipmentToolbar({
   showBulkPickup: boolean;
   showDismissAck: boolean;
   hideSinglePickup?: boolean;
-  ackShortLabel: string;
-  ackFullTitle: string;
+  ackMode: MyOrderPickupAckMode;
   dismissAckLabel: string;
   dismissAckTitle: string;
   dismissAckIds: string[];
@@ -117,6 +120,10 @@ function ShipmentToolbar({
   tourPreview?: boolean;
   shelfPickup?: boolean;
 }) {
+  const pendingForLabel = pickupIds.length || pickupCount;
+  const pickupLabel = myOrderPickupAckLabel(pendingForLabel, ackMode);
+  const pickupTitle = myOrderPickupAckTitle(pendingForLabel, ackMode);
+
   const hasToolbar =
     overflowMenu ||
     showDismissAck ||
@@ -129,6 +136,10 @@ function ShipmentToolbar({
     (showSinglePickup && !hideSinglePickup ? 1 : 0) +
     (showBulkPickup ? 1 : 0);
   const groupedAcks = ackButtonCount > 1;
+  const pickupAckOnlyToolbar =
+    !showDismissAck &&
+    !overflowMenu &&
+    (showBulkPickup || (showSinglePickup && !hideSinglePickup));
 
   const ackButtons = (
     <>
@@ -151,29 +162,37 @@ function ShipmentToolbar({
               ? showDismissAck
                 ? "segmentPrimary"
                 : "segmentOutline"
-              : isAction
-                ? "action"
-                : "inline"
+              : pickupAckOnlyToolbar
+                ? "segmentPrimary"
+                : isAction
+                  ? "action"
+                  : "inline"
           }
           disabled={pending}
           preview={tourPreview}
-          title={ackFullTitle}
+          title={pickupTitle}
           onClick={() => onAcknowledgePickup(pickupIds, shelfPickup)}
-          className={cn(groupedAcks && !showBulkPickup && panelSegmentLastClass)}
+          className={cn(
+            groupedAcks && !showBulkPickup && panelSegmentLastClass,
+            pickupAckOnlyToolbar && panelSegmentLastClass
+          )}
         >
-          {ackShortLabel}
+          {pickupLabel}
         </MyOrderAckButton>
       ) : null}
       {showBulkPickup ? (
         <MyOrderAckButton
-          variant={groupedAcks ? "segmentPrimary" : isAction ? "action" : "inline"}
+          variant={groupedAcks || pickupAckOnlyToolbar ? "segmentPrimary" : "action"}
           disabled={pending}
           preview={tourPreview}
-          title={ackFullTitle}
+          title={pickupTitle}
           onClick={() => onAcknowledgePickup(pickupIds, shelfPickup)}
-          className={cn(groupedAcks && panelSegmentLastClass, "whitespace-nowrap")}
+          className={cn(
+            (groupedAcks || pickupAckOnlyToolbar) && panelSegmentLastClass,
+            "whitespace-nowrap tabular-nums"
+          )}
         >
-          {pickupCount} do odbioru
+          {pickupLabel}
         </MyOrderAckButton>
       ) : null}
     </>
@@ -181,12 +200,12 @@ function ShipmentToolbar({
 
   return (
     <div className="flex w-full shrink-0 flex-wrap items-stretch justify-end gap-1.5 sm:w-auto sm:gap-1.5">
-      {overflowMenu}
-      {groupedAcks ? (
+      {groupedAcks || pickupAckOnlyToolbar ? (
         <div className={cn(mojeActionBarShellClass, "w-full sm:w-auto")}>{ackButtons}</div>
       ) : (
         ackButtons
       )}
+      {overflowMenu}
     </div>
   );
 }
@@ -287,12 +306,10 @@ export function MyOrderShipmentCard({
     ? onAcknowledgeCancelNotice!
     : onAcknowledgeCancelled!;
 
-  const ackShortLabel =
-    row.acknowledgeMode === "availability" ? "Potwierdź" : "Potwierdź odbiór";
-  const ackFullTitle =
-    row.acknowledgeMode === "availability"
-      ? "Potwierdzam, że widziałem/am powiadomienie o dostępności"
-      : "Potwierdzam odbiór towaru z magazynu";
+  const ackMode: MyOrderPickupAckMode =
+    row.acknowledgeMode === "availability" ? "availability" : "pickup";
+  const pickupAckLabel = myOrderPickupAckLabel(row.pickupPendingIds.length, ackMode);
+  const pickupAckTitle = myOrderPickupAckTitle(row.pickupPendingIds.length, ackMode);
   const shelfPickup = row.acknowledgeMode === "pickup";
 
   const showSinglePickup =
@@ -441,11 +458,11 @@ export function MyOrderShipmentCard({
       variant="banner"
       disabled={pending}
       preview={tourPreview}
-      title={ackFullTitle}
-      ariaLabel={ackFullTitle}
+      title={pickupAckTitle}
+      ariaLabel={pickupAckTitle}
       onClick={() => onAcknowledgePickup(row.pickupPendingIds, shelfPickup)}
     >
-      {ackShortLabel}
+      {pickupAckLabel}
     </MyOrderAckButton>
   ) : undefined;
 
@@ -456,8 +473,7 @@ export function MyOrderShipmentCard({
       showBulkPickup={Boolean(showBulkPickup)}
       showDismissAck={Boolean(showDismissAck)}
       hideSinglePickup={bannerAckInHeadline}
-      ackShortLabel={ackShortLabel}
-      ackFullTitle={ackFullTitle}
+      ackMode={ackMode}
       dismissAckLabel={dismissAckLabel}
       dismissAckTitle={dismissAckTitle}
       dismissAckIds={dismissAckIds}
@@ -482,8 +498,8 @@ export function MyOrderShipmentCard({
     hideClientLabel: hideLineClient,
     canAcknowledge: showGroupPickup,
     pending,
-    acknowledgeLineLabel: "Potwierdź" as const,
-    acknowledgeLineTitle: ackFullTitle,
+    acknowledgeLineLabel: myOrderPickupAckLabel(1, ackMode),
+    acknowledgeLineTitle: pickupAckTitle,
     onAcknowledgePickup: showGroupPickup
       ? (id: string) => onAcknowledgePickup([id], shelfPickup)
       : undefined,
@@ -774,18 +790,19 @@ export function MyOrderShipmentCard({
               ) : null}
               {showGroupPickup && row.pickupPendingIds.length ? (
                 <div className={mojeShipmentExpandedActionsClass}>
-                  <MyOrderAckButton
-                    variant="action"
-                    disabled={pending}
-                    preview={tourPreview}
-                    title={ackFullTitle}
-                    ariaLabel={ackFullTitle}
-                    onClick={() => onAcknowledgePickup(row.pickupPendingIds, shelfPickup)}
-                  >
-                    {row.acknowledgeMode === "availability"
-                      ? `Potwierdź wszystkie (${row.pickupPendingCount})`
-                      : `Odbiór wszystkich (${row.pickupPendingCount})`}
-                  </MyOrderAckButton>
+                  <div className={mojeActionBarShellClass}>
+                    <MyOrderAckButton
+                      variant="segmentPrimary"
+                      className={panelSegmentLastClass}
+                      disabled={pending}
+                      preview={tourPreview}
+                      title={pickupAckTitle}
+                      ariaLabel={pickupAckTitle}
+                      onClick={() => onAcknowledgePickup(row.pickupPendingIds, shelfPickup)}
+                    >
+                      {myOrderPickupAckLabel(row.pickupPendingIds.length, ackMode)}
+                    </MyOrderAckButton>
+                  </div>
                 </div>
               ) : null}
             </div>

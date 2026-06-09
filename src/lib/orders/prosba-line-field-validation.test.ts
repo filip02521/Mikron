@@ -20,6 +20,7 @@ describe("shouldShowProsbaLineFieldValidation", () => {
         active: true,
         validationAttempted: false,
         lineCount: 1,
+        requestKind: "zamowienie",
       })
     ).toBe(false);
   });
@@ -30,6 +31,7 @@ describe("shouldShowProsbaLineFieldValidation", () => {
         active: true,
         validationAttempted: true,
         lineCount: 1,
+        requestKind: "zamowienie",
       })
     ).toBe(true);
   });
@@ -38,7 +40,22 @@ describe("shouldShowProsbaLineFieldValidation", () => {
     expect(
       shouldShowProsbaLineFieldValidation(
         { ...baseLine, symbol: "A" },
-        { active: true, validationAttempted: false, lineCount: 1 }
+        { active: true, validationAttempted: false, lineCount: 1, requestKind: "zamowienie" }
+      )
+    ).toBe(true);
+  });
+
+  it("liveValidation — po wpisaniu produktu bez ilości", () => {
+    expect(
+      shouldShowProsbaLineFieldValidation(
+        { ...baseLine, product: "Wkręt", subiektTwId: 1 },
+        {
+          active: false,
+          validationAttempted: false,
+          liveValidation: true,
+          lineCount: 1,
+          requestKind: "zamowienie",
+        }
       )
     ).toBe(true);
   });

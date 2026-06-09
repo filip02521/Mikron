@@ -1,7 +1,8 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { Suspense, useMemo, useState, type ComponentProps } from "react";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import type { SummaryWorkspaceData, WeekDayPlan } from "@/lib/orders/summary-workspace";
 import type { DeliveryStats, SupplierWithSchedule } from "@/types/database";
 import { WeekPlanner } from "@/components/summary/WeekPlanner";
@@ -27,6 +28,7 @@ import {
   type SalesSupplierInsight,
 } from "@/lib/orders/sales-supplier-insight";
 import { prosbaHref } from "@/lib/orders/prosba-url";
+import { useSalesPreviewHref } from "@/lib/nav/use-sales-preview-href";
 import {
   IconCalendar,
   IconChevronDown,
@@ -94,11 +96,15 @@ function SalesSupplierRow({
   openOrderCount,
   defaultOpen = false,
   variant = "list",
+  previewHref,
+  previewDla,
 }: {
   insight: SalesSupplierInsight;
   openOrderCount?: number;
   defaultOpen?: boolean;
   variant?: "list" | "search";
+  previewHref: (href: string) => string;
+  previewDla: string | null;
 }) {
   const [expanded, setExpanded] = useState(defaultOpen);
   const next = describeNextOrderForSales(insight);
@@ -213,16 +219,22 @@ function SalesSupplierRow({
 
             <div className="mt-2.5 flex flex-wrap gap-2 border-t border-slate-100 pt-2.5">
               {hasOpenRequests ? (
-                <Link href="/moje">
+                <Link href={previewHref("/moje")}>
                   <Button size="sm" className="gap-1.5">
                     <IconClipboardList size={14} />
                     Moje prośby ({openOrderCount})
                   </Button>
                 </Link>
               ) : null}
-              <Link href="/prosba">
+              <Link
+                href={prosbaHref({
+                  supplierId: insight.supplierId,
+                  salesPersonId: previewDla ?? undefined,
+                })}
+                title={`Nowa prośba do: ${insight.name}`}
+              >
                 <Button size="sm" variant="secondary">
-                  Zgłoś prośbę
+                  Zgłoś prośbę do dostawcy
                 </Button>
               </Link>
             </div>
@@ -278,7 +290,37 @@ function ProcurementPlanBlock({
   );
 }
 
-export function SalesPlanView({
+export function SalesPlanView(props: {
+  workspace: SummaryWorkspaceData;
+  suppliers: SupplierWithSchedule[];
+  statsBySupplierId: Record<string, DeliveryStats>;
+  prioritySupplierIds: string[];
+  openOrderCountBySupplier: Record<string, number>;
+  tourPreview?: boolean;
+  error?: string | null;
+}) {
+  return (
+    <Suspense fallback={<SalesPlanViewFallback {...props} />}>
+      <SalesPlanViewContent {...props} />
+    </Suspense>
+  );
+}
+
+function SalesPlanViewFallback({
+  error = null,
+}: Pick<ComponentProps<typeof SalesPlanViewContent>, "error">) {
+  return (
+    <div className={salesPageShellClass}>
+      {error ? <Alert tone="warning">{error}</Alert> : null}
+      <Card padding={false} className="overflow-hidden">
+        <CardHeader inset density="compact" title="Harmonogram zakupów" description={PLAN_INTRO} />
+        <div className="px-4 py-12 text-center text-sm text-slate-500">Ładowanie…</div>
+      </Card>
+    </div>
+  );
+}
+
+function SalesPlanViewContent({
   workspace,
   suppliers,
   statsBySupplierId,
@@ -295,6 +337,8 @@ export function SalesPlanView({
   tourPreview?: boolean;
   error?: string | null;
 }) {
+  const previewHref = useSalesPreviewHref();
+  const previewDla = useSearchParams().get("dla");
   const [query, setQuery] = useState("");
   const [showProcurementPlan, setShowProcurementPlan] = useState(false);
 
@@ -408,6 +452,8 @@ export function SalesPlanView({
                     openOrderCount={openOrderCountBySupplier[insight.supplierId]}
                     defaultOpen={i === 0}
                     variant="search"
+                    previewHref={previewHref}
+                    previewDla={previewDla}
                   />
                 ))}
               </ul>
@@ -450,6 +496,8 @@ export function SalesPlanView({
                     insight={insight}
                     openOrderCount={openOrderCountBySupplier[insight.supplierId]}
                     defaultOpen={i === 0 && myInsights.length <= 3}
+                    previewHref={previewHref}
+                    previewDla={previewDla}
                   />
                 ))}
               </ul>
@@ -468,19 +516,19 @@ export function SalesPlanView({
         <div className={cn("flex flex-col gap-2.5 border-t border-slate-100 bg-slate-50/90 py-3 sm:flex-row sm:items-center sm:justify-between", salesChromeInsetClass)}>
           <p className="text-xs leading-relaxed text-slate-500">
             Zgłoś nową prośbę lub sprawdź status w{" "}
-            <Link href="/moje" className="font-medium text-indigo-700 hover:underline">
+            <Link href={previewHref("/moje")} className="font-medium text-indigo-700 hover:underline">
               Moje zamówienia
             </Link>
             .
           </p>
           <div className="flex flex-wrap gap-2">
-            <Link href="/prosba">
+            <Link href={previewHref("/prosba")}>
               <Button className="gap-1.5">
                 <IconPlusCircle size={16} />
                 Nowa prośba
               </Button>
             </Link>
-            <Link href="/moje">
+            <Link href={previewHref("/moje")}>
               <Button variant="secondary" className="gap-1.5">
                 <IconClipboardList size={16} />
                 Moje zamówienia

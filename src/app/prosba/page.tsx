@@ -13,6 +13,7 @@ import {
   getManagedGroupIdsForUser,
 } from "@/lib/data/sales-group-access";
 import { PageHeader } from "@/components/ui/PageHeader";
+import { resolveProsbaSupplierId } from "@/lib/orders/prosba-url";
 import { SalesAccountLinkRequired } from "@/components/sales/SalesAccountLinkRequired";
 import { Alert } from "@/components/ui/Alert";
 import { salesPageShellClass } from "@/lib/ui/ontime-theme";
@@ -25,9 +26,9 @@ export const metadata: Metadata = pageMetadataFor("prosba");
 export default async function ProsbaPage({
   searchParams,
 }: {
-  searchParams: Promise<{ dla?: string }>;
+  searchParams: Promise<{ dla?: string; dostawca?: string }>;
 }) {
-  const { dla: delegateId } = await searchParams;
+  const { dla: delegateId, dostawca } = await searchParams;
   const { panelContext } = await readAdminPanelContextForSession();
   let adminReadOnlyPreview = false;
   let suppliers: Awaited<ReturnType<typeof fetchSupplierFormContext>>["suppliers"] = [];
@@ -169,6 +170,8 @@ export default async function ProsbaPage({
   }
 
   const delegatePeople = isManager ? salesPeople : [];
+  const initialSupplierId =
+    resolveProsbaSupplierId(dostawca, suppliers.map((s) => s.id)) ?? null;
 
   return (
     <div className={salesPageShellClass}>
@@ -193,6 +196,7 @@ export default async function ProsbaPage({
           lockedSalesPerson={lockedSalesPerson}
           singleGroup
           submitForOther={isManager && lockedSalesPerson.id !== managerSelfId}
+          initialSupplierId={initialSupplierId}
           delegatePeople={
             isManager && delegatePeople.length > 0 ? delegatePeople : undefined
           }
@@ -203,6 +207,7 @@ export default async function ProsbaPage({
           suppliers={suppliers}
           statsBySupplierId={statsBySupplierId}
           salesPeople={salesPeople}
+          initialSupplierId={initialSupplierId}
         />
       )}
       </Suspense>

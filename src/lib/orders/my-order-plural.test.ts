@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { formatPickupBarLabel, formatProsbaCount } from "./my-order-plural";
+import { formatPickupBarLabel, formatPickupLineCount, formatProsbaCount } from "./my-order-plural";
 
 describe("formatProsbaCount", () => {
   it("odmienia poprawnie", () => {
@@ -13,5 +13,13 @@ describe("formatProsbaCount", () => {
 describe("formatPickupBarLabel", () => {
   it("używa poprawnej odmiany", () => {
     expect(formatPickupBarLabel(5)).toBe("5 prośb do odbioru");
+  });
+});
+
+describe("formatPickupLineCount", () => {
+  it("odmienia pozycje", () => {
+    expect(formatPickupLineCount(1)).toBe("1 pozycja");
+    expect(formatPickupLineCount(3)).toBe("3 pozycje");
+    expect(formatPickupLineCount(5)).toBe("5 pozycji");
   });
 });

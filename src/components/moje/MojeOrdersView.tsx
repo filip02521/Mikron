@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense, useEffect, useMemo, useState, type ComponentProps } from "react";
+import { Suspense, useEffect, useMemo, useRef, useState, type ComponentProps } from "react";
 import type { MyOrderRow } from "@/lib/orders/my-order-presenter";
 import {
   filterMyOrderRows,
@@ -20,7 +20,12 @@ import { formatProsbaCount } from "@/lib/orders/my-order-plural";
 import { MICROCOPY } from "@/lib/ui/microcopy";
 import { cn } from "@/lib/cn";
 import { MyOrderPickupShelfDialogProvider } from "@/components/moje/MyOrderPickupShelfDialogProvider";
+import {
+  MyOrderShipmentUndoProvider,
+  MyOrderShipmentUndoToast,
+} from "@/components/moje/MyOrderShipmentUndoProvider";
 import { MyOrderArchiveSection } from "@/components/moje/MyOrderArchiveSection";
+import { MyOrderBulkPickupBar } from "@/components/moje/MyOrderBulkPickupBar";
 import { MyOrderShipmentList } from "@/components/moje/MyOrderShipmentList";
 import { MyOrdersInboxSummary } from "@/components/moje/MyOrdersInboxSummary";
 import { MojeStickyPickupBar } from "@/components/moje/MojeStickyPickupBar";
@@ -518,6 +523,13 @@ function MojeOrdersViewContent({
     () => [...actionZamowienia, ...actionInformacje],
     [actionZamowienia, actionInformacje]
   );
+  const bulkPickupRows = useMemo(
+    () =>
+      [...filteredZamowienia, ...filteredInformacje].filter(
+        (r) => r.acknowledgeMode === "pickup" && r.pickupPendingIds.length > 0
+      ),
+    [filteredZamowienia, filteredInformacje]
+  );
   const actionSectionCallouts = useMyOrderSectionCallouts(actionSectionRows, activeFilter);
   const informacjeSectionCallouts = useMyOrderSectionCallouts(
     informacjeListRows,
@@ -529,6 +541,12 @@ function MojeOrdersViewContent({
     [sortedZamowienia, sortedInformacje]
   );
   const inboxSummary = summarizeMyOrdersInbox(allRows);
+
+  /** Pełna liczba pozycji wymagających reakcji — niezależna od filtra/wyszukiwania. */
+  const needsActionTotal = useMemo(
+    () => partitionMyOrderRowsBySalesAction(allRows).needsAction.length,
+    [allRows]
+  );
 
   const shipmentCount = zamowienia.length + informacje.length;
   const filteredCount = filteredZamowienia.length + filteredInformacje.length;
@@ -620,6 +638,24 @@ function MojeOrdersViewContent({
     });
     el.focus({ preventScroll: true });
   }, [activeFilter, filteredCount, filteredZamowienia, filteredInformacje]);
+
+  const documentTitleBaseRef = useRef<string | null>(null);
+
+  useEffect(() => {
+    if (tourPreview || !canAcknowledge) return;
+    if (documentTitleBaseRef.current === null) {
+      documentTitleBaseRef.current = document.title.replace(/^\(\d+\)\s*/, "");
+    }
+    const base = documentTitleBaseRef.current;
+    document.title = needsActionTotal > 0 ? `(${needsActionTotal}) ${base}` : base;
+    return () => {
+      if (documentTitleBaseRef.current) {
+        document.title = documentTitleBaseRef.current;
+      }
+    };
+  }, [needsActionTotal, tourPreview, canAcknowledge]);
+
+  const showSplitSections = splitByAction && !activeFilter && !searchActive;
 
   const cardDescription = pageDescription ?? MOJE_INTRO;
   const cardAction = (
@@ -729,6 +765,7 @@ function MojeOrdersViewContent({
           summary={inboxSummary}
           activeFilter={activeFilter}
           onFilterChange={setActiveFilter}
+          sectionsVisible={showSplitSections}
         />
 
         <MojeStickyPickupBar
@@ -798,6 +835,12 @@ function MojeOrdersViewContent({
         ) : null}
 
         <div className="space-y-3 p-3 sm:p-4">
+        <MyOrderShipmentUndoToast />
+        <MyOrderBulkPickupBar
+          rows={bulkPickupRows}
+          enabled={canAcknowledge}
+          tourPreview={tourPreview}
+        />
         {splitByAction && actionCount > 0 ? (
           <div className={mojeShipmentSectionShellClass} aria-labelledby="moje-section-action">
             <MojeSectionListLabel
@@ -903,9 +946,11 @@ function MojeOrdersViewContent({
 export function MojeOrdersView(
   props: React.ComponentProps<typeof MojeOrdersViewContent>
 ) {
+  const { tourPreview = false, canAcknowledge = false } = props;
   return (
     <MyOrderPickupShelfDialogProvider>
-      <Suspense
+      <MyOrderShipmentUndoProvider disabled={tourPreview || !canAcknowledge}>
+        <Suspense
         fallback={
           <div className="space-y-5">
             <Card padding={false} className="overflow-hidden">
@@ -920,6 +965,7 @@ export function MojeOrdersView(
       >
         <MojeOrdersViewContent {...props} />
       </Suspense>
+      </MyOrderShipmentUndoProvider>
     </MyOrderPickupShelfDialogProvider>
   );
 }

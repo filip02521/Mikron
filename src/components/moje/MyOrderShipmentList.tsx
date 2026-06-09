@@ -10,7 +10,6 @@ import {
   actionAcknowledgeSalesCancelNotice,
   actionSalesCancelOrders,
   actionUpdateSalesClientName,
-  actionUnacknowledgePickup,
 } from "@/app/actions/my-orders";
 import {
   salesCancelConfirmCopy,
@@ -26,7 +25,7 @@ import {
 } from "@/lib/ui/moje-shipment-row-styles";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { useMyOrderPickupShelfDialog } from "@/components/moje/MyOrderPickupShelfDialogProvider";
-import { UndoToast } from "@/components/ui/UndoToast";
+import { useMyOrderShipmentUndo } from "@/components/moje/MyOrderShipmentUndoProvider";
 import { Toast } from "@/components/ui/Toast";
 import { ActionLoadingOverlay } from "@/components/ui/ActionLoadingOverlay";
 import {
@@ -41,15 +40,9 @@ import {
 import {
   markPickupShelfNoticeSeen,
 } from "@/lib/orders/my-order-pickup-shelf-notice";
-import { undoWindowBannerDescription } from "@/lib/orders/daily-panel-undo";
 import { cn } from "@/lib/cn";
 import type { OrderFormSupplierOption } from "@/lib/orders/order-form-suppliers";
 import type { MyOrderSectionPatternId } from "@/lib/orders/my-order-section-callout";
-
-type UndoState = {
-  orderIds: string[];
-  title: string;
-};
 
 type CancelConfirmState = {
   orderIds: string[];
@@ -149,9 +142,9 @@ export function MyOrderShipmentList({
 
   const [pending, start] = useTransition();
   const { shelfNoticeOpen, requestShelfPickupNotice } = useMyOrderPickupShelfDialog();
+  const { reportUndo, clearUndo } = useMyOrderShipmentUndo();
   const ackPending = pending || shelfNoticeOpen;
   const [pendingMessage, setPendingMessage] = useState<string | null>(null);
-  const [undo, setUndo] = useState<UndoState | null>(null);
   const [cancelConfirm, setCancelConfirm] = useState<CancelConfirmState | null>(
     null
   );
@@ -161,7 +154,6 @@ export function MyOrderShipmentList({
   } | null>(null);
   const [errorToast, setErrorToast] = useState<string | null>(null);
   const [successToast, setSuccessToast] = useState<string | null>(null);
-  const dismissUndo = useCallback(() => setUndo(null), []);
 
   const runPickup = useCallback(
     (orderIds: string[], options?: { markShelfNotice?: boolean }) => {
@@ -172,8 +164,9 @@ export function MyOrderShipmentList({
         try {
           await actionAcknowledgePickup(orderIds);
           if (options?.markShelfNotice) markPickupShelfNoticeSeen();
-          setUndo({
+          reportUndo({
             orderIds,
+            kind: "pickup",
             title:
               n === 1 ? "Odbiór zapisany" : `Odbiór ${n} poz. zapisany`,
           });
@@ -187,7 +180,7 @@ export function MyOrderShipmentList({
         }
       });
     },
-    [router, tourPreview]
+    [router, tourPreview, reportUndo]
   );
 
   const requestPickup = useCallback(
@@ -214,6 +207,14 @@ export function MyOrderShipmentList({
       start(async () => {
         try {
           await actionAcknowledgeCancelled(orderIds);
+          reportUndo({
+            orderIds,
+            kind: "dismiss",
+            title:
+              n === 1
+                ? "Anulowanie potwierdzone — ukryto z listy"
+                : `Potwierdzono ${n} poz. — ukryto z listy`,
+          });
           router.refresh();
         } catch (e) {
           setErrorToast(
@@ -224,7 +225,7 @@ export function MyOrderShipmentList({
         }
       });
     },
-    [router, tourPreview]
+    [router, tourPreview, reportUndo]
   );
 
   const runAcknowledgeCancelNotice = useCallback(
@@ -239,6 +240,14 @@ export function MyOrderShipmentList({
       start(async () => {
         try {
           await actionAcknowledgeSalesCancelNotice(orderIds);
+          reportUndo({
+            orderIds,
+            kind: "dismiss",
+            title:
+              n === 1
+                ? "Rezygnacja potwierdzona — ukryto z listy"
+                : `Potwierdzono ${n} poz. — ukryto z listy`,
+          });
           router.refresh();
         } catch (e) {
           setErrorToast(
@@ -251,7 +260,7 @@ export function MyOrderShipmentList({
         }
       });
     },
-    [router, tourPreview]
+    [router, tourPreview, reportUndo]
   );
 
   const saveClient = useCallback(
@@ -281,7 +290,7 @@ export function MyOrderShipmentList({
       start(async () => {
         try {
           await actionSalesCancelOrders(orderIds);
-          setUndo(null);
+          clearUndo();
           setSuccessToast(salesCancelSuccessToast());
           router.refresh();
         } catch (e) {
@@ -293,7 +302,7 @@ export function MyOrderShipmentList({
         }
       });
     },
-    [router, tourPreview]
+    [router, tourPreview, clearUndo]
   );
 
   const requestCancel = useCallback(
@@ -304,42 +313,12 @@ export function MyOrderShipmentList({
     [tourPreview]
   );
 
-  const handleUndo = useCallback(() => {
-    if (!undo || tourPreview) return;
-    const ids = undo.orderIds;
-    setPendingMessage("Cofanie potwierdzenia…");
-    start(async () => {
-      try {
-        await actionUnacknowledgePickup(ids);
-        setUndo(null);
-        router.refresh();
-      } catch (e) {
-        setUndo(null);
-        setErrorToast(
-          e instanceof Error ? e.message : "Nie udało się cofnąć"
-        );
-        router.refresh();
-      } finally {
-        setPendingMessage(null);
-      }
-    });
-  }, [undo, router, tourPreview]);
-
   if (!sortedRows.length) return null;
 
   const listBody = (
     <>
       {pendingMessage ? (
         <ActionLoadingOverlay message={pendingMessage} variant="section" />
-      ) : null}
-      {undo ? (
-        <UndoToast
-          title={undo.title}
-          description={undoWindowBannerDescription()}
-          placement="inline"
-          onDismiss={dismissUndo}
-          onUndo={handleUndo}
-        />
       ) : null}
       {successToast ? (
         <Toast

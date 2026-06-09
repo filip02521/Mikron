@@ -206,6 +206,7 @@ export function Sidebar({
     realizacja?: number;
     salesMoje?: number;
     salesNotatnik?: number;
+    salesTablica?: number;
     adminBugReports?: number;
   };
 }) {

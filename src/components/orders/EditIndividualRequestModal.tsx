@@ -11,6 +11,7 @@ import {
 } from "@/lib/orders/request-completeness";
 import { assertProcurementEntryComplete } from "@/lib/orders/procurement-submit";
 import { PROCUREMENT_TEAM_LABEL } from "@/lib/orders/procurement-copy";
+import { buildProsbaFormReadiness } from "@/lib/orders/prosba-form-readiness";
 import { ProsbaFormReadiness } from "@/components/orders/ProsbaFormReadiness";
 import { ProsbaFormSection } from "@/components/orders/ProsbaFormSection";
 import { RequestFormStatusPanel } from "@/components/orders/RequestFormStatusPanel";
@@ -104,6 +105,16 @@ export function EditIndividualRequestModal({
     return assessSalesGroupSubmittable(lines, "", requestKind);
   }, [mode, lines, requestKind]);
 
+  const salesFormReadiness = useMemo(() => {
+    if (mode !== "sales") return null;
+    return buildProsbaFormReadiness(lines, requestKind, salesSubmitPlan, {
+      informacjaPath,
+      resolvingSupplier,
+    });
+  }, [mode, lines, requestKind, salesSubmitPlan, informacjaPath, resolvingSupplier]);
+
+  const canSaveSales = salesFormReadiness?.canSubmit ?? false;
+
   const informacjaFlags = useMemo(
     () =>
       requestKind === "informacja"
@@ -141,7 +152,6 @@ export function EditIndividualRequestModal({
   const save = () => {
     if (!initial) return;
     setFormNotice(null);
-    setValidationAttempted(false);
 
     if (mode === "procurement") {
       if (requestKind === "zamowienie" && !supplierId.trim()) {
@@ -274,7 +284,15 @@ export function EditIndividualRequestModal({
           <Button variant="ghost" disabled={pending} onClick={onClose}>
             Anuluj
           </Button>
-          <Button disabled={pending || !initial} onClick={save}>
+          <Button
+            disabled={pending || !initial || (mode === "sales" && !canSaveSales)}
+            title={
+              mode === "sales" && !canSaveSales && !pending
+                ? "Uzupełnij wymagane pola przed zapisem"
+                : undefined
+            }
+            onClick={save}
+          >
             Zapisz zmiany
           </Button>
         </>
@@ -385,6 +403,7 @@ export function EditIndividualRequestModal({
               deferSupplierResolve={mode === "sales"}
               typeaheadSize="comfortable"
               validationAttempted={validationAttempted}
+              liveValidation={mode === "sales"}
               suppliers={mode === "procurement" ? supplierRefs : undefined}
               unifiedFeedback={mode === "procurement"}
               onSupplierResolved={

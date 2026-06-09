@@ -13,6 +13,7 @@ import {
   type ZkSearchCandidate,
 } from "@/lib/subiekt/resolve-zk-document";
 import { isSubiektReachable } from "@/lib/subiekt/availability";
+import { UNDO_WINDOW_MS } from "@/lib/orders/daily-panel-undo";
 import {
   buildZkWatchLineViews,
   mergeLineChecksAfterRefresh,
@@ -248,6 +249,43 @@ export async function actionRestoreZkWatch(watchId: string) {
       note: null,
       updated_at: now,
     })
+    .eq("id", watchId)
+    .select("*")
+    .single();
+
+  if (error) throw new Error(error.message);
+  revalidateNotepad();
+  return { watch: data as SalesZkWatch };
+}
+
+/** Cofnięcie zamknięcia ZK (toast undo) — w odróżnieniu od przywrócenia zachowuje notatkę i przypomnienie. */
+export async function actionUndoCloseZkWatch(watchId: string) {
+  const salesPersonId = await salesPersonIdForAction();
+  const supabase = createAdminClient();
+  const now = new Date().toISOString();
+
+  const { data: row, error: fetchError } = await supabase
+    .from("sales_zk_watches")
+    .select("id, sales_person_id, closed_at")
+    .eq("id", watchId)
+    .maybeSingle();
+
+  if (fetchError) throw new Error(fetchError.message);
+  if (!row) throw new Error("Nie znaleziono wpisu.");
+  if (row.sales_person_id !== salesPersonId) {
+    throw new Error("Brak uprawnień do tego wpisu.");
+  }
+  if (!row.closed_at) {
+    throw new Error("Ten ZK jest już na liście oczekujących.");
+  }
+  const closedAt = new Date(row.closed_at).getTime();
+  if (Date.now() - closedAt > UNDO_WINDOW_MS) {
+    throw new Error("Minął czas na cofnięcie — odśwież listę.");
+  }
+
+  const { data, error } = await supabase
+    .from("sales_zk_watches")
+    .update({ closed_at: null, archived_at: null, updated_at: now })
     .eq("id", watchId)
     .select("*")
     .single();

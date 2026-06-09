@@ -13,3 +13,8 @@ export function hrefWithAdminSalesPreview(
   const base = href.split("?")[0] ?? href;
   return `${base}?dla=${encodeURIComponent(previewDla)}`;
 }
+
+/** Zachowuje ?dla= z bieżącego URL (podgląd admina / delegacja kierownika). */
+export function hrefWithSalesPreviewFromUrl(href: string, previewDla: string | null): string {
+  return hrefWithAdminSalesPreview(href, previewDla, Boolean(previewDla));
+}

@@ -20,6 +20,7 @@ import {
 import type { IndividualOrder, IndividualOrderStatus } from "@/types/database";
 import { updateIndividualRequestGroup } from "@/lib/services/orders";
 import type { IndividualRequestEditPayload } from "@/lib/orders/individual-request-edit";
+import { UNDO_WINDOW_MS } from "@/lib/orders/daily-panel-undo";
 
 async function salesPersonIdForAction(): Promise<string> {
   const user = await getSessionUser();
@@ -237,7 +238,6 @@ export async function actionAcknowledgePickup(orderIds: string[]) {
   return acknowledgeOrders(orderIds, { allowedStatuses: ["Zrealizowane"] });
 }
 
-import { UNDO_WINDOW_MS } from "@/lib/orders/daily-panel-undo";
 export async function actionUnacknowledgePickup(orderIds: string[]) {
   if (!orderIds.length) throw new Error("Brak pozycji do cofnięcia.");
   const salesPersonId = await salesPersonIdForAction();
@@ -276,6 +276,79 @@ export async function actionUnacknowledgePickup(orderIds: string[]) {
     .eq("status", "Zrealizowane");
 
   if (error) throw new Error(error.message);
+
+  revalidatePath("/moje");
+  return { success: true, count: orderIds.length };
+}
+
+/** Cofnięcie potwierdzenia anulowania / informacji o rezygnacji (okno undo). */
+export async function actionUnacknowledgeDismiss(orderIds: string[]) {
+  if (!orderIds.length) throw new Error("Brak pozycji do cofnięcia.");
+  const salesPersonId = await salesPersonIdForAction();
+  const supabase = createAdminClient();
+  const caps = await getSalesCancelDbCaps(supabase);
+  const now = Date.now();
+
+  const { data: rowsRaw, error: fetchError } = await supabase
+    .from("individual_orders")
+    .select(salesCancelAckSelect(caps))
+    .in("id", orderIds);
+
+  if (fetchError) throw new Error(fetchError.message);
+  const rows = (rowsRaw ?? []) as unknown as IndividualOrder[];
+  if (!rows.length) throw new Error("Nie znaleziono pozycji.");
+
+  for (const row of rows) {
+    if (row.sales_person_id !== salesPersonId) {
+      throw new Error("Brak uprawnień do tej pozycji.");
+    }
+    if (!row.sales_acknowledged_at) {
+      throw new Error("Ta pozycja nie była jeszcze potwierdzona.");
+    }
+    const isCancelled = row.status === "Anulowane";
+    const isCancelNotice = caps.hasCancelledAt && Boolean(row.sales_cancelled_at);
+    if (!isCancelled && !isCancelNotice) {
+      throw new Error("Cofnięcie dotyczy tylko potwierdzeń anulowania lub rezygnacji.");
+    }
+    const ackAt = new Date(row.sales_acknowledged_at).getTime();
+    if (now - ackAt > UNDO_WINDOW_MS) {
+      throw new Error("Minął czas na cofnięcie — odśwież listę.");
+    }
+  }
+
+  const cancelledIds = rows
+    .filter((row) => row.status === "Anulowane")
+    .map((row) => row.id);
+  const cancelNoticeIds = rows
+    .filter((row) => caps.hasCancelledAt && row.sales_cancelled_at)
+    .map((row) => row.id);
+
+  if (cancelledIds.length) {
+    const { error } = await supabase
+      .from("individual_orders")
+      .update({ sales_acknowledged_at: null })
+      .in("id", cancelledIds)
+      .eq("sales_person_id", salesPersonId)
+      .eq("status", "Anulowane")
+      .not("sales_acknowledged_at", "is", null);
+
+    if (error) throw new Error(error.message);
+  }
+
+  if (cancelNoticeIds.length) {
+    if (!caps.hasCancelledAt) {
+      throw new Error(SALES_CANCEL_MIGRATION_HINT);
+    }
+    const { error } = await supabase
+      .from("individual_orders")
+      .update({ sales_acknowledged_at: null })
+      .in("id", cancelNoticeIds)
+      .eq("sales_person_id", salesPersonId)
+      .not("sales_cancelled_at", "is", null)
+      .not("sales_acknowledged_at", "is", null);
+
+    if (error) throw new Error(error.message);
+  }
 
   revalidatePath("/moje");
   return { success: true, count: orderIds.length };

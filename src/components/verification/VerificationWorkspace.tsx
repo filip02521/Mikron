@@ -213,6 +213,7 @@ export function VerificationWorkspace({
     active: true,
     validationAttempted,
     lineCount: 1,
+    requestKind: form.requestKind,
   });
   const fieldValidation = showFieldValidation
     ? assessProsbaLineFields(

@@ -40,6 +40,18 @@ describe("sales-prosba-keyboard", () => {
     expect(onSubmit).toHaveBeenCalled();
   });
 
+  it("Ctrl+Enter nie wysyła gdy formularz niekompletny", () => {
+    const onSubmit = vi.fn();
+    handleSalesProsbaKeyboardEvent(keyEvent("Enter", { ctrlKey: true }), {
+      pending: false,
+      canSubmit: false,
+      onSubmit,
+      onSetRequestKind: vi.fn(),
+      onAddProductLine: vi.fn(),
+    });
+    expect(onSubmit).not.toHaveBeenCalled();
+  });
+
   it("1 i 2 zmieniają rodzaj prośby poza polem", () => {
     const onSetRequestKind = vi.fn();
     handleSalesProsbaKeyboardEvent(keyEvent("1"), {

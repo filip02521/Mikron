@@ -19,6 +19,7 @@ import { shouldCollapseProsbaLine } from "@/lib/orders/prosba-product-line-ui";
 import {
   assessProsbaLineFields,
   prosbaLineHasFieldIssues,
+  prosbaLineHasSubmitBlockers,
   shouldShowProsbaLineFieldValidation,
 } from "@/lib/orders/prosba-line-field-validation";
 import { MAX_BATCH_ORDER_LINES } from "@/lib/security/text-limits";
@@ -45,6 +46,7 @@ export function RequestProductLinesEditor({
   onResolvingSupplierChange,
   deferSupplierResolve = false,
   validationAttempted = false,
+  liveValidation = false,
   typeaheadSize = "default",
 }: {
   lines: ProductLineDraft[];
@@ -70,6 +72,8 @@ export function RequestProductLinesEditor({
   deferSupplierResolve?: boolean;
   /** Po nieudanej próbie wysłania — podświetlenie braków we wszystkich pozycjach. */
   validationAttempted?: boolean;
+  /** Walidacja na żywo — pola z brakami bez czekania na klik „Wyślij”. */
+  liveValidation?: boolean;
   /** Wyższa lista podpowiedzi Subiekta / dostawcy w modalach. */
   typeaheadSize?: "default" | "comfortable";
 }) {
@@ -181,10 +185,8 @@ export function RequestProductLinesEditor({
                         requestKind={requestKind}
                         canRemove={canRemove}
                         hasFieldIssues={
-                          validationAttempted &&
-                          prosbaLineHasFieldIssues(
-                            assessProsbaLineFields(line, requestKind, "strict")
-                          )
+                          (validationAttempted || liveValidation) &&
+                          prosbaLineHasSubmitBlockers(line, requestKind)
                         }
                         onEdit={() => setActiveLineId(line.id)}
                         onRemove={() => removeLine(index)}
@@ -205,7 +207,9 @@ export function RequestProductLinesEditor({
           shouldShowProsbaLineFieldValidation(line, {
             active: isActive,
             validationAttempted,
+            liveValidation,
             lineCount: lines.length,
+            requestKind,
           });
         const fieldValidation = showFieldValidation
           ? assessProsbaLineFields(
