@@ -4,6 +4,8 @@ import { useState, useTransition, useCallback, useMemo, useEffect, useRef } from
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { actionAddIndividualOrders } from "@/app/actions/admin";
+import { useAdminPanelPreview } from "@/components/layout/AdminPanelPreviewContext";
+import { ADMIN_PANEL_PREVIEW_MUTATION_BLOCKED } from "@/lib/auth/admin-panel-preview-messages";
 import { Card, CardHeader } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { Toast } from "@/components/ui/Toast";
@@ -33,6 +35,7 @@ import {
 import type { RequestCompleteness } from "@/lib/orders/request-completeness";
 import { assertProcurementEntryComplete } from "@/lib/orders/procurement-submit";
 import { assessSalesGroupSubmittable } from "@/lib/orders/sales-request-submit";
+import { buildProsbaFormReadiness } from "@/lib/orders/prosba-form-readiness";
 import { RequestFormStatusPanel } from "@/components/orders/RequestFormStatusPanel";
 import { ProsbaFormReadiness } from "@/components/orders/ProsbaFormReadiness";
 import { RequestProductLinesEditor } from "@/components/orders/RequestProductLinesEditor";
@@ -181,6 +184,7 @@ export function OrderFormClient({
 }) {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const { readOnly } = useAdminPanelPreview();
   const tourDemo = useSalesOnboardingDemo("prosba");
   const lockedId = lockedSalesPerson?.id ?? "";
   const [requestKind, setRequestKind] = useState<IndividualRequestKind>("zamowienie");
@@ -406,6 +410,11 @@ export function OrderFormClient({
 
   const submit = () => {
     setFormNotice(null);
+
+    if (readOnly) {
+      setFormNotice({ text: ADMIN_PANEL_PREVIEW_MUTATION_BLOCKED, tone: "warning" });
+      return;
+    }
 
     if (tourDemo) {
       setFormNotice({
@@ -643,7 +652,8 @@ export function OrderFormClient({
           ...group,
           {
             ...newLine,
-            supplierId: "",
+            // Dziedziczy dostawcę grupy (np. prefill z harmonogramu ?dostawca=).
+            supplierId: group[0]?.supplierId ?? "",
             salesPersonId: lockedId,
             clientName: inheritClient?.clientName,
             clientKhId: inheritClient?.clientKhId ?? null,
@@ -653,12 +663,40 @@ export function OrderFormClient({
     });
   }, [singleGroup, lockedSalesPerson, lockedId, clearFormNotice]);
 
+  const salesProsbaSubmitState = useMemo(() => {
+    if (!singleGroup || !lockedSalesPerson) {
+      return null;
+    }
+    const group = groups[0] ?? emptyGroup(lockedId, initialSupplierId ?? undefined);
+    const salesSubmitPlan = assessSalesGroupSubmittable(group, "", requestKind);
+    const prosbaReadiness = buildProsbaFormReadiness(group, requestKind, salesSubmitPlan, {
+      resolvingSupplier,
+      informacjaPath,
+    });
+    return {
+      group,
+      salesSubmitPlan,
+      prosbaReadiness,
+      canSubmit: prosbaReadiness.canSubmit && !resolvingSupplier,
+    };
+  }, [
+    singleGroup,
+    lockedSalesPerson,
+    groups,
+    lockedId,
+    initialSupplierId,
+    requestKind,
+    resolvingSupplier,
+    informacjaPath,
+  ]);
+
   useEffect(() => {
     if (!singleGroup || !lockedSalesPerson) return;
 
     const onKey = (e: KeyboardEvent) => {
       handleSalesProsbaKeyboardEvent(e, {
         pending,
+        canSubmit: salesProsbaSubmitState?.canSubmit ?? false,
         onSubmit: () => submitRef.current(),
         onSetRequestKind: setRequestKind,
         onAddProductLine: addSalesProductLine,
@@ -667,7 +705,7 @@ export function OrderFormClient({
 
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [singleGroup, lockedSalesPerson, pending, addSalesProductLine]);
+  }, [singleGroup, lockedSalesPerson, pending, addSalesProductLine, salesProsbaSubmitState?.canSubmit]);
 
   useEffect(() => {
     if (singleGroup && lockedSalesPerson) return;
@@ -721,10 +759,21 @@ export function OrderFormClient({
   ) : null;
 
   if (singleGroup && lockedSalesPerson) {
-    const group = groups[0] ?? emptyGroup(lockedId, initialSupplierId ?? undefined);
-    // Prośba handlowca: dostawca nie jest wybierany ręcznie.
+    const group = salesProsbaSubmitState?.group ?? emptyGroup(lockedId, initialSupplierId ?? undefined);
     const supplierId = "";
-    const salesSubmitPlan = assessSalesGroupSubmittable(group, supplierId, requestKind);
+    const salesSubmitPlan = salesProsbaSubmitState?.salesSubmitPlan ?? null;
+    const prosbaReadiness =
+      salesProsbaSubmitState?.prosbaReadiness ??
+      buildProsbaFormReadiness(group, requestKind, salesSubmitPlan, {
+        resolvingSupplier,
+        informacjaPath,
+      });
+    const canSubmitProsba = salesProsbaSubmitState?.canSubmit ?? false;
+    /** Prefill z harmonogramu (?dostawca=) — pokazuj, dopóki Subiekt nie wskaże innego dostawcy. */
+    const scheduleSupplier =
+      initialSupplierId && group[0]?.supplierId === initialSupplierId
+        ? suppliers.find((s) => s.id === initialSupplierId) ?? null
+        : null;
 
     return (
       <div className="relative">
@@ -762,6 +811,25 @@ export function OrderFormClient({
               zkNumber={zkProsbaLinkContext.zkNumber}
               clientLabel={zkProsbaLinkContext.clientLabel}
             />
+          ) : null}
+
+          {scheduleSupplier && !tourDemo ? (
+            <div
+              className="border-b border-indigo-100 bg-indigo-50/90 px-3 py-2.5 text-sm text-indigo-950 sm:px-6"
+              role="status"
+            >
+              <p className="leading-snug">
+                <span className="font-medium">Dostawca z harmonogramu:</span>{" "}
+                <span className="font-semibold text-indigo-900">
+                  {scheduleSupplier.name}
+                </span>
+              </p>
+              <p className="mt-1 text-xs leading-relaxed text-indigo-800/85">
+                Prośba trafi do tego dostawcy. Jeśli wybierzesz produkt z Subiekta
+                przypisany do innego dostawcy, dopasowanie zaktualizuje się
+                automatycznie.
+              </p>
+            </div>
           ) : null}
 
           {!tourDemo ? <ProsbaVsBoardHint /> : null}
@@ -860,6 +928,7 @@ export function OrderFormClient({
                   }
                   onResolvingSupplierChange={setResolvingSupplier}
                   validationAttempted={validationAttempted}
+                  liveValidation={!tourDemo}
                 />
 
                 <ProsbaFormReadiness
@@ -891,12 +960,14 @@ export function OrderFormClient({
               )}
             </p>
             <Button
-              disabled={pending || tourDemo}
+              disabled={pending || tourDemo || !canSubmitProsba}
               onClick={submit}
-              className={cn(
-                "w-full shrink-0 sm:w-auto sm:min-w-[10rem]",
-                !pending && salesSubmitPlan?.submittable === false && "opacity-90"
-              )}
+              title={
+                !canSubmitProsba && !pending && !tourDemo
+                  ? prosbaReadiness.headline
+                  : undefined
+              }
+              className="w-full shrink-0 sm:w-auto sm:min-w-[10rem]"
             >
               {tourDemo ? "Podgląd — bez wysyłki" : pending ? "Wysyłanie…" : "Wyślij prośbę"}
             </Button>
@@ -1154,7 +1225,10 @@ export function OrderFormClient({
                 + Nowa grupa
               </Button>
             ) : null}
-            <Button disabled={pending || !procurementCanSubmit} onClick={submit}>
+            <Button
+              disabled={pending || readOnly || !procurementCanSubmit}
+              onClick={submit}
+            >
               {pending ? "Zapisywanie…" : "Zatwierdź wszystkie"}
             </Button>
           </div>

@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { HelpPopover } from "@/components/ui/HelpPopover";
+import { HelpBlock } from "@/components/ui/HelpBlock";
 import { useAppRole } from "@/components/layout/AppRoleContext";
 import { supplierHubPaths, type SupplierHubContext } from "@/lib/supplier-hub";
 
@@ -12,24 +13,35 @@ export function SupplierCardsHelpButton({ context }: { context: SupplierHubConte
 
   return (
     <HelpPopover
-      label="Pomoc: karty dostawców"
+      label="Pomoc — karty dostawców"
       title="Karty dostawców"
-      shortLabel="?"
+      shortLabel="Pomoc"
       align="right"
     >
-      <ul className="list-disc space-y-2 pl-4 text-xs leading-relaxed">
-        <li>
-          <strong>Karta</strong> — nazwa, kontakt, sposób zamówienia, częstotliwość i zapas (okres
-          większego zamówienia).
-        </li>
-        <li>
-          <strong>Terminy</strong> — konkretne daty w harmonogramie; edycja w zakładce Terminy
-          zamówień.
-        </li>
-        <li>Kliknij nazwę dostawcy, aby edytować kartę z boku.</li>
-        <li>Niepowiązani z Subiektem są podświetleni na żółto — powiąż w formularzu edycji.</li>
-        {context === "admin" ? (
+      <HelpBlock title="Co zawiera karta">
+        <p>
+          Nazwa, kontakt, sposób zamówienia, częstotliwość zamówień i zapas (okres większego
+          domówienia).
+        </p>
+      </HelpBlock>
+
+      <HelpBlock title="Terminy">
+        <p>Konkretne daty w harmonogramie — edycja w zakładce Terminy zamówień.</p>
+      </HelpBlock>
+
+      <HelpBlock title="Edycja">
+        <ul className="list-disc space-y-1.5 pl-4">
+          <li>Kliknij nazwę dostawcy, aby edytować kartę z boku.</li>
           <li>
+            Dostawcy niepowiązani z Subiektem są podświetleni na żółto — powiąż ich w
+            formularzu edycji.
+          </li>
+        </ul>
+      </HelpBlock>
+
+      {context === "admin" ? (
+        <HelpBlock title="Wersja dla zakupów">
+          <p>
             Codzienna edycja bez usuwania rekordów —{" "}
             <Link
               href={zakupyPaths.cards}
@@ -38,9 +50,11 @@ export function SupplierCardsHelpButton({ context }: { context: SupplierHubConte
               karty w sekcji Dostawcy (zakupy)
             </Link>
             .
-          </li>
-        ) : role === "admin" ? (
-          <li>
+          </p>
+        </HelpBlock>
+      ) : role === "admin" ? (
+        <HelpBlock title="Wersja administracyjna">
+          <p>
             Wersja z trwałym usuwaniem rekordów —{" "}
             <Link
               href={adminPaths.cards}
@@ -49,9 +63,9 @@ export function SupplierCardsHelpButton({ context }: { context: SupplierHubConte
               karty w administracji
             </Link>
             .
-          </li>
-        ) : null}
-      </ul>
+          </p>
+        </HelpBlock>
+      ) : null}
     </HelpPopover>
   );
 }

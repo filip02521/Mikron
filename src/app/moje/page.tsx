@@ -14,7 +14,7 @@ import { getSessionUser } from "@/lib/auth";
 import { resolveSalesPersonForUser } from "@/lib/auth/sales-person";
 import { resolvePreviewSalesPerson } from "@/lib/auth/resolve-preview-sales-person";
 import { getAppRole } from "@/lib/auth-dev";
-import { canAccessOperations, isSalesAccount, isSalesManager } from "@/lib/auth-roles";
+import { canAccessOperations, isAdmin, isSalesAccount, isSalesManager } from "@/lib/auth-roles";
 import { presentMyOrders } from "@/lib/orders/my-order-presenter";
 import { getSubiektAvailability } from "@/lib/subiekt/availability";
 import Link from "next/link";
@@ -25,11 +25,14 @@ import type { OrderFormSupplierOption } from "@/lib/orders/order-form-suppliers"
 import { salesPageShellClass, pageToolbarSizingClass } from "@/lib/ui/ontime-theme";
 import { SalesAccountLinkRequired } from "@/components/sales/SalesAccountLinkRequired";
 import { ManagerPreviewBanner } from "@/components/sales/ManagerPreviewBanner";
-import { DepartmentBoardSalesAttention } from "@/components/department-board/DepartmentBoardSalesAttention";
 import {
   fetchSalesBoardAttentionSnapshot,
   type SalesBoardAttentionSnapshot,
 } from "@/lib/data/department-board";
+import { fetchSalesDayStartNotepadSlice } from "@/lib/data/sales-notepad";
+import {
+  type SalesDayStartContext,
+} from "@/lib/sales/sales-day-start";
 import type { DeliveryStats, IndividualOrder } from "@/types/database";
 import { autoAssignMissingSuppliersFromCatalog } from "@/lib/services/auto-assign-suppliers";
 
@@ -76,11 +79,21 @@ export default async function MojePage({
   let isTeamPreview = false;
   let sessionUserId: string | null = null;
   let boardAttention: SalesBoardAttentionSnapshot | null = null;
+  let dayStartContext: SalesDayStartContext | null = null;
 
   try {
     const user = await getSessionUser();
     sessionUserId = user?.id ?? null;
-    if (user && isSalesAccount(user.role)) {
+    if (user && isAdmin(user.role) && previewSalesPersonId) {
+      const preview = await resolvePreviewSalesPerson(previewSalesPersonId, user);
+      if (preview) {
+        salesPersonId = preview.id;
+        salesPersonName = preview.name;
+        isTeamPreview = true;
+      } else {
+        linkError = "Nie znaleziono handlowca do podglądu.";
+      }
+    } else if (user && isSalesAccount(user.role)) {
       const own = await resolveSalesPersonForUser(user);
       ownSalesPersonId = own?.id ?? null;
       if (isSalesManager(user.role) && previewSalesPersonId) {
@@ -130,17 +143,16 @@ export default async function MojePage({
   const viewingOwnPanel =
     isSalesAccount(role ?? "sales") && salesPersonId && salesPersonId === ownSalesPersonId;
 
-  if (viewingOwnPanel && sessionUserId) {
-    try {
-      boardAttention = await fetchSalesBoardAttentionSnapshot(sessionUserId);
-    } catch {
-      /* banner opcjonalny */
-    }
-  }
+  const adminSalesPreview = Boolean(role === "admin" && previewSalesPersonId && salesPersonId);
+  const salesPanelView =
+    (isSalesAccount(role ?? "sales") && salesPersonId) || adminSalesPreview;
+
+  let notepadSlice: Awaited<ReturnType<typeof fetchSalesDayStartNotepadSlice>> | null = null;
 
   try {
-    if (isSalesAccount(role ?? "sales") && salesPersonId) {
-      const [orderRows, statsRows, acknowledgedRows, supplierRows] = await Promise.all([
+    if (salesPanelView && salesPersonId) {
+      const [orderRows, statsRows, acknowledgedRows, supplierRows, boardSnap, notepadData] =
+        await Promise.all([
         fetchIndividualOrders({
           salesPersonId,
           hideSalesAcknowledged: false,
@@ -153,7 +165,15 @@ export default async function MojePage({
             })
           : Promise.resolve([]),
         fetchSuppliersForRequestForms(),
+        viewingOwnPanel && sessionUserId
+          ? fetchSalesBoardAttentionSnapshot(sessionUserId).catch(() => null)
+          : Promise.resolve(null),
+        viewingOwnPanel
+          ? fetchSalesDayStartNotepadSlice(salesPersonId).catch(() => null)
+          : Promise.resolve(null),
       ]);
+      boardAttention = boardSnap;
+      notepadSlice = notepadData;
       orders = orderRows;
       stats = statsRows as DeliveryStats[];
       suppliers = supplierRows;
@@ -161,7 +181,7 @@ export default async function MojePage({
       // Auto-uzupełnianie dostawcy w tle na podstawie własnej bazy mapowań (product_supplier_links).
       // Robimy to po pobraniu, żeby pierwszy render był szybki.
       const missing = orderRows.filter((o) => !o.supplier_id && o.subiekt_tw_id);
-      if (missing.length > 0) {
+      if (missing.length > 0 && !adminSalesPreview) {
         const { after } = await import("next/server");
         after(async () => {
           try {
@@ -220,6 +240,16 @@ export default async function MojePage({
 
   const { zamowienia, informacje, productLineCount } = presentMyOrders(orders, stats);
 
+  if (viewingOwnPanel && notepadSlice) {
+    /** Start dnia = własna kolejka akcji (zamówienia + notatnik + tablica zalogowanego użytkownika). */
+    dayStartContext = {
+      watches: notepadSlice.zkWatches,
+      notes: notepadSlice.notes,
+      boardAttention,
+      previewDla: previewSalesPersonId ?? null,
+    };
+  }
+
   const salesHeaderActions =
     role && !canAccessOperations(role) ? (
       !isTeamPreview ? (
@@ -245,11 +275,8 @@ export default async function MojePage({
         <ManagerPreviewBanner
           salesPersonId={salesPersonId}
           salesPersonName={salesPersonName}
+          readOnly={adminSalesPreview}
         />
-      ) : null}
-
-      {viewingOwnPanel && boardAttention ? (
-        <DepartmentBoardSalesAttention attention={boardAttention} showPinned={false} />
       ) : null}
 
       {loadError ? (
@@ -285,6 +312,7 @@ export default async function MojePage({
         initialClientZkNumber={zkNumberParam?.trim() || null}
         syncSearchUrl={!isTeamPreview}
         showSalesSync={showSalesSync}
+        dayStartContext={dayStartContext}
       />
     </div>
   );

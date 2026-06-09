@@ -337,7 +337,7 @@ export async function actionRecordCatalogFromSubiektPick(input: {
   mikranCode?: string | null;
   supplierId?: string | null;
 }): Promise<{ success: true }> {
-  await requireOperations();
+  await requireOperations("mutate");
   const twId = Math.trunc(Number(input.subiektTwId));
   if (!Number.isFinite(twId) || twId <= 0) {
     throw new Error("Brak ID towaru z Subiekta.");
@@ -584,7 +584,7 @@ export async function actionSetSupplierSubiektKhId(
   supplierId: string,
   subiektKhId: number | null
 ): Promise<{ ok: true } | { ok: false; feedback: SubiektFeedback }> {
-  await requireSupplierManagement();
+  await requireSupplierManagement("mutate");
 
   if (subiektKhId != null && (!Number.isFinite(subiektKhId) || subiektKhId <= 0)) {
     return {
@@ -671,7 +671,7 @@ export async function actionAddSupplierSubiektKhAlias(
   subiektKhId: number,
   options?: { note?: string | null; kontrahentLabel?: string | null }
 ): Promise<{ ok: true } | { ok: false; feedback: SubiektFeedback }> {
-  await requireSupplierManagement();
+  await requireSupplierManagement("mutate");
 
   const kh = Math.trunc(subiektKhId);
   if (!Number.isFinite(kh) || kh <= 0) {
@@ -751,7 +751,7 @@ export async function actionRemoveSupplierSubiektKhAlias(
   supplierId: string,
   subiektKhId: number
 ): Promise<{ ok: true } | { ok: false; feedback: SubiektFeedback }> {
-  await requireSupplierManagement();
+  await requireSupplierManagement("mutate");
 
   const kh = Math.trunc(subiektKhId);
   const supabase = createAdminClient();

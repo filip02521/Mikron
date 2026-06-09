@@ -116,7 +116,11 @@ export default async function NotatnikPage({
       loadError={loadError}
       teamPreview={
         isTeamPreview && salesPersonId && salesPersonName
-          ? { salesPersonId, salesPersonName }
+          ? {
+              salesPersonId,
+              salesPersonName,
+              readOnly: role === "admin",
+            }
           : null
       }
     />

@@ -25,6 +25,7 @@ import { HistoriaHelp } from "@/components/history/HistoriaHelp";
 import { cn } from "@/lib/cn";
 import { MICROCOPY } from "@/lib/ui/microcopy";
 import { panelChromeInsetClass, panelPageShellClass } from "@/lib/ui/ontime-theme";
+import { useAdminPanelPreview } from "@/components/layout/AdminPanelPreviewContext";
 
 export function HistoriaClient({
   individual,
@@ -36,6 +37,8 @@ export function HistoriaClient({
   canManageHistory?: boolean;
 }) {
   const router = useRouter();
+  const { readOnly } = useAdminPanelPreview();
+  const effectiveCanManage = canManageHistory && !readOnly;
   const [pending, start] = useTransition();
   const [msg, setMsg] = useState<{ text: string; tone: "success" | "error" } | null>(
     null
@@ -120,7 +123,7 @@ export function HistoriaClient({
           <>
             <HistoriaIndividualTable
               rows={previewIndividual}
-              canManageHistory={canManageHistory}
+              canManageHistory={effectiveCanManage}
               pending={pending}
               onRemove={removeIndividual}
             />
@@ -153,7 +156,7 @@ export function HistoriaClient({
           <>
             <HistoriaNormalTable
               rows={previewNormal}
-              canManageHistory={canManageHistory}
+              canManageHistory={effectiveCanManage}
               pending={pending}
               onRemove={removeNormal}
             />
@@ -173,7 +176,7 @@ export function HistoriaClient({
         kind={sheet ?? "individual"}
         individual={individual}
         normal={normal}
-        canManageHistory={canManageHistory}
+        canManageHistory={effectiveCanManage}
         pending={pending}
         onClose={() => setSheet(null)}
         onRemoveIndividual={removeIndividual}

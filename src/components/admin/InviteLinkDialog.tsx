@@ -50,6 +50,10 @@ export function InviteLinkDialog({
         {invite.email}
       </p>
       <p className="mt-3 text-sm text-slate-500">{hint}</p>
+      <p className="mt-2 text-sm text-slate-500">
+        Link jest jednorazowy i wygasa po ok. 24 godzinach. Skopiuj cały adres URL —
+        po otwarciu użytkownik trafi na stronę ustawiania hasła.
+      </p>
       <div className="mt-4">
         <Input
           readOnly

@@ -18,6 +18,7 @@ import { SupplierGroupHeaderRow } from "@/components/queue/SupplierGroupHeaderRo
 import { ReceiveQueueGroupMenu } from "@/components/queue/receive-queue/ReceiveQueueGroupMenu";
 import { ReceiveQueueRow } from "@/components/queue/receive-queue/ReceiveQueueRow";
 import { ReceiveQueueSelectionBar } from "@/components/queue/receive-queue/ReceiveQueueSelectionBar";
+import { usePreviewMutationBlocker } from "@/components/layout/usePreviewMutationBlocker";
 import {
   getDeliveryProgress,
   isInformacjaRequest,
@@ -68,6 +69,9 @@ export function ReceiveQueueTable({
   onPendingChange: (message: string | null) => void;
 }) {
   const router = useRouter();
+  const { blockIfReadOnly } = usePreviewMutationBlocker((text) =>
+    onToast({ text, tone: "error" })
+  );
   const [pending, start] = useTransition();
   const [qty, setQty] = useState<Record<string, string>>({});
   const [selected, setSelected] = useState<Record<string, boolean>>({});
@@ -145,6 +149,7 @@ export function ReceiveQueueTable({
   const clearSelection = () => setSelected({});
 
   const saveDelivery = (order: IndividualOrder, value: string) => {
+    if (blockIfReadOnly()) return;
     onPendingChange("Zapisywanie dostawy…");
     start(async () => {
       try {
@@ -200,6 +205,7 @@ export function ReceiveQueueTable({
   };
 
   const saveBatch = (orderIds: string[], opts?: { fullQuantity?: boolean }) => {
+    if (blockIfReadOnly()) return;
     const updates = orderIds
       .map((id) => {
         const order = receiveQueue.find((o) => o.id === id);
@@ -288,6 +294,7 @@ export function ReceiveQueueTable({
   };
 
   const markInformacja = (orderIds: string[]) => {
+    if (blockIfReadOnly()) return;
     onPendingChange(
       orderIds.length > 1 ? "Wysyłanie powiadomień…" : "Powiadamianie handlowca…"
     );

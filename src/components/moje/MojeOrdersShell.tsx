@@ -5,7 +5,12 @@ import type { MyOrderRow } from "@/lib/orders/my-order-presenter";
 import { mojePresentedSignature } from "@/lib/orders/moje-presented-sync";
 import { MojeOrdersView } from "@/components/moje/MojeOrdersView";
 import { useSalesOnboardingDemo } from "@/components/sales/SalesOnboardingContext";
-import { buildOnboardingMojePresented, buildOnboardingMojeArchiveDemo } from "@/lib/sales/sales-onboarding-demo-data";
+import {
+  buildOnboardingDayStartContext,
+  buildOnboardingMojePresented,
+  buildOnboardingMojeArchiveDemo,
+} from "@/lib/sales/sales-onboarding-demo-data";
+import type { SalesDayStartContext } from "@/lib/sales/sales-day-start";
 
 type Presented = {
   zamowienia: MyOrderRow[];
@@ -17,18 +22,24 @@ export function MojeOrdersShell({
   initial,
   salesPersonId,
   showSalesSync = false,
+  dayStartContext = null,
   ...viewProps
 }: {
   initial: Presented;
   salesPersonId: string | null;
   showSalesSync?: boolean;
+  dayStartContext?: SalesDayStartContext | null;
 } & Omit<
   React.ComponentProps<typeof MojeOrdersView>,
-  "zamowienia" | "informacje" | "productLineCount"
+  "zamowienia" | "informacje" | "productLineCount" | "dayStartContext"
 >) {
   const tourDemo = useSalesOnboardingDemo("moje");
   const demoPresented = useMemo(() => buildOnboardingMojePresented(), []);
   const demoArchive = useMemo(() => buildOnboardingMojeArchiveDemo(), []);
+  const demoDayStartContext = useMemo(
+    () => (salesPersonId ? buildOnboardingDayStartContext(salesPersonId) : null),
+    [salesPersonId]
+  );
   const effectiveInitial = tourDemo ? demoPresented : initial;
   const [presented, setPresented] = useState(effectiveInitial);
   const inboxSignature = useMemo(
@@ -63,6 +74,7 @@ export function MojeOrdersShell({
       showProsbaCta={tourDemo ? false : viewProps.showProsbaCta}
       archiwumRecent={tourDemo ? demoArchive.archiwumRecent : viewProps.archiwumRecent}
       archiwumExtended={tourDemo ? demoArchive.archiwumExtended : viewProps.archiwumExtended}
+      dayStartContext={tourDemo ? demoDayStartContext : dayStartContext}
     />
   );
 }

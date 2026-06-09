@@ -18,9 +18,6 @@ import { Card, CardHeader } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/Badge";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
-import { HelpPopover } from "@/components/ui/HelpPopover";
-import { KeyboardShortcutsHint } from "@/components/ui/KeyboardShortcutsHint";
-import { Kbd } from "@/components/ui/Kbd";
 import type { DailyPanelRunFn } from "@/components/summary/useDailyPanelRunner";
 import type { DeliveryStats, StatsMode } from "@/types/database";
 import { formatSupplierLeadTimeBrief } from "@/lib/orders/delivery-eta";
@@ -46,13 +43,13 @@ import {
 } from "@/lib/ui/surfaces";
 import {
   INFORMACJA_FLOW_PROCUREMENT_GROUP_BANNER,
-  INFORMACJA_STOCK_OUT_PANEL_BANNER,
   INFORMACJA_STOCK_OUT_PROCUREMENT_SECTION_HINT,
-  INFORMACJA_VIA_PANEL_BADGE,
 } from "@/lib/orders/informacja-flow-copy";
-import { ProductSourceBadge } from "@/components/orders/ProductSourceBadge";
+import {
+  ForSomeoneRequestsSectionHelp,
+  StockOutSectionHelp,
+} from "@/components/summary/ForSomeoneRequestsHelp";
 import { InformacjaViaPanelProcurementCallout } from "@/components/orders/InformacjaFlowLegend";
-import { PanelQueueStatDot } from "@/components/ui/UiGlyphs";
 import { clientNamesSummaryFromLines } from "@/lib/orders/sales-client-label";
 import { PROCUREMENT_GLOWNE_ON_DEMAND_HINT } from "@/lib/orders/glowne-action-ui";
 import type { OrderFormSupplierOption } from "@/lib/orders/order-form-suppliers";
@@ -135,83 +132,6 @@ function useProcurementSeenTracker() {
   }, []);
 
   return { isGroupUnseen, markGroupSeen, scheduleMarkSeen, cancelMarkSeen };
-}
-
-const FOR_SOMEONE_KEYBOARD_HINTS = [
-  { keys: ["↑", "↓"], label: "grupy" },
-  { keys: ["Enter"], label: "produkty" },
-  { keys: ["Shift", "G"], label: "główne" },
-  { keys: ["Shift", "U"], label: "uzupełniające" },
-  { keys: ["E"], label: "edycja" },
-  { keys: ["/"], label: "wyszukaj dostawcę (panel)" },
-  { keys: ["Ctrl", "Z"], label: "cofnij" },
-] as const;
-
-function StockOutSectionHelp() {
-  return (
-    <HelpPopover label="Co to jest" title="Brak na stanie" shortLabel="Pomoc">
-      <p className="mb-2 inline-flex flex-wrap items-center gap-1.5">
-        <PanelQueueStatDot tone="stockOut" />
-        <span>{INFORMACJA_STOCK_OUT_PROCUREMENT_SECTION_HINT}</span>
-      </p>
-      <p className="mb-2">
-        <strong className="font-medium text-slate-800">Główne</strong> — zamówienie w planie
-        dostawcy (jak zwykłe domówienie).{" "}
-        <strong className="font-medium text-slate-800">Uzupełniające</strong> — poza planem.
-      </p>
-      <p>{INFORMACJA_STOCK_OUT_PANEL_BANNER}</p>
-    </HelpPopover>
-  );
-}
-
-function SectionHelp() {
-  return (
-    <HelpPopover label="Jak obsłużyć" title="Prośby handlowców" shortLabel="Pomoc">
-      <p className="mb-2">
-        Na komputerze najedź na wiersz prośby — pojawią się przyciski Główne / Uzupełniające.
-        Produkty są widoczne cały czas (jeden inline, więcej — przycisk „Produkty”).
-        Na tablecie i telefonie przyciski akcji są widoczne cały czas.
-      </p>
-      <p className="mb-2">
-        <strong className="font-medium text-slate-800">Główne</strong> — zamówienie z planem
-        dostawcy. <strong className="font-medium text-slate-800">Uzupełniające</strong> — osobne
-        domówienie poza planem. U dostawcy{" "}
-        <strong className="font-medium text-slate-800">na żądanie</strong> przycisk pokazuje{" "}
-        <strong className="font-medium text-slate-800">Główne (bez terminu)</strong> — prośba jest
-        główna, ale harmonogram tygodnia się nie przesuwa.
-      </p>
-      <p className="mb-2">
-        Kliknij <strong className="font-medium text-slate-800">Główne</strong> lub{" "}
-        <strong className="font-medium text-slate-800">Uzupełniające</strong> — albo skróty{" "}
-        <Kbd>Shift</Kbd>+<Kbd>G</Kbd> / <Kbd>Shift</Kbd>+<Kbd>U</Kbd> na zaznaczonej grupie (
-        <Kbd>↑</Kbd>/<Kbd>↓</Kbd>). Zwinięty blok dostawcy nie jest w nawigacji klawiaturą.
-      </p>
-      <KeyboardShortcutsHint items={[...FOR_SOMEONE_KEYBOARD_HINTS]} className="mb-2" />
-      <p className="mb-2">
-        Badge <strong className="font-medium text-indigo-800">{INFORMACJA_VIA_PANEL_BADGE}</strong>{" "}
-        — prośba informacyjna: najpierw zamów u dostawcy (Główne/Uzupełniające), potem magazyn
-        wyśle e-mail do handlowca. Zwykłe prośby o towar nie mają tego badge&apos;a.
-      </p>
-      <p className="mb-2">
-        Badge <strong className="font-medium text-violet-800">Nowa</strong> oznacza prośbę,
-        z którą zakupy jeszcze się nie zapoznały. Znika po ok. 1,5 s najechania na wiersz lub po
-        obsłużeniu prośby. Przy każdej grupie widać datę i godzinę zgłoszenia.
-      </p>
-      <p className="mb-2 inline-flex flex-wrap items-center gap-x-1.5 gap-y-1">
-        Przy produkcie:{" "}
-        <ProductSourceBadge fromSubiekt size={12} className="size-5" /> — produkt z bazy;{" "}
-        <ProductSourceBadge fromSubiekt={false} size={12} className="size-5" /> — wpis ręczny.
-      </p>
-      <p>
-        Przy kilku handlowcach u jednego dostawcy użyj paska{" "}
-        <strong className="font-medium text-slate-800">Zamów razem</strong> (wszystkie osoby) albo{" "}
-        <strong className="font-medium text-slate-800">Tylko ta osoba</strong> w wierszu poniżej.
-        Przy <strong className="font-medium text-slate-800">3+ osobach</strong> lista domyślnie jest
-        zwinięta (chevron) — rozwija się automatycznie, gdy pojawi się badge{" "}
-        <strong className="font-medium text-slate-800">Nowa</strong>.
-      </p>
-    </HelpPopover>
-  );
 }
 
 export function ForSomeoneRequests({
@@ -323,7 +243,7 @@ export function ForSomeoneRequests({
           {allExpanded ? "Zwiń produkty" : "Rozwiń produkty"}
         </Button>
       ) : null}
-      {isStockOutSection ? <StockOutSectionHelp /> : <SectionHelp />}
+      {isStockOutSection ? <StockOutSectionHelp /> : <ForSomeoneRequestsSectionHelp />}
     </div>
   );
 

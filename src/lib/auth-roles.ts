@@ -1,3 +1,5 @@
+import type { AdminPanelContext } from "@/lib/auth/admin-panel-context";
+import { homePathForAdminPanelContext } from "@/lib/auth/admin-panel-context";
 import type { UserRole } from "@/types/database";
 
 export function isAdmin(role: UserRole): boolean {
@@ -75,6 +77,8 @@ export function homePathForRole(role: UserRole): string {
 export type CanAccessPathOptions = {
   /** Parametr ?dla= — podgląd notatnika handlowca (admin). */
   previewSalesPersonId?: string | null;
+  /** Tryb podglądu panelu (tylko admin, cookie). */
+  adminPanelContext?: AdminPanelContext | null;
 };
 
 /** Czy rola może wejść na ścieżkę (do przekierowania po logowaniu). */
@@ -83,6 +87,13 @@ export function canAccessPath(
   pathname: string,
   options?: CanAccessPathOptions
 ): boolean {
+  if (isAdmin(role) && options?.adminPanelContext && options.adminPanelContext !== "admin") {
+    if (pathname === "/admin/wybor-handlowca") return true;
+    return canAccessPath(options.adminPanelContext, pathname, {
+      previewSalesPersonId: options.previewSalesPersonId,
+    });
+  }
+
   if (pathname.startsWith("/admin")) return isAdmin(role);
   if (isMagazyn(role)) {
     return WAREHOUSE_PATH_PREFIXES.some(
@@ -111,8 +122,21 @@ export function canAccessPath(
   return pathname === "/" || pathname === "/login" || pathname === "/ustaw-haslo";
 }
 
-export function redirectPathAfterLogin(role: UserRole, next: string | null): string {
+export function redirectPathAfterLogin(
+  role: UserRole,
+  next: string | null,
+  options?: { adminPanelContext?: AdminPanelContext | null }
+): string {
+  const adminPanelContext = options?.adminPanelContext ?? null;
   const target = next?.trim() || "/";
-  if (target !== "/" && canAccessPath(role, target)) return target;
+  if (
+    target !== "/" &&
+    canAccessPath(role, target, { adminPanelContext })
+  ) {
+    return target;
+  }
+  if (isAdmin(role) && adminPanelContext && adminPanelContext !== "admin") {
+    return homePathForAdminPanelContext(adminPanelContext);
+  }
   return homePathForRole(role);
 }

@@ -398,7 +398,12 @@ export function IconColorLegendSample({ className, size = 14 }: StrokeIconProps)
   );
 }
 
-export type MojeSectionIconKind = "action" | "zamowienie" | "informacja" | "archive";
+export type MojeSectionIconKind =
+  | "action"
+  | "zamowienie"
+  | "before_order"
+  | "informacja"
+  | "archive";
 
 export type PlanSectionIconKind = "calendar" | "prosby" | "search";
 
@@ -408,6 +413,7 @@ const MOJE_SECTION_ICON_MAP: Record<
 > = {
   action: IconCircleCheck,
   zamowienie: IconTruck,
+  before_order: IconClipboardList,
   informacja: IconAvailability,
   archive: IconArchive,
 };
@@ -431,6 +437,8 @@ export function mojeSectionIconTileClass(kind: MojeSectionIconKind): string {
       return "bg-emerald-100 text-emerald-800";
     case "zamowienie":
       return "bg-slate-100 text-slate-700";
+    case "before_order":
+      return "bg-indigo-50 text-indigo-800";
     case "informacja":
       return "bg-violet-100 text-violet-800";
     case "archive":

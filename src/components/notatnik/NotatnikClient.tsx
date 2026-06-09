@@ -26,6 +26,7 @@ import type { SalesNote, SalesZkWatch } from "@/types/database";
 import {
   actionReorderSalesNotes,
   actionRestoreSalesNote,
+  actionUndoCloseZkWatch,
 } from "@/app/actions/sales-notepad";
 import { SubiektStatusBar } from "@/components/subiekt/SubiektStatusBar";
 import { ZkWatchSection } from "./ZkWatchSection";
@@ -43,7 +44,8 @@ import { cn } from "@/lib/cn";
 
 type NotatnikUndoState =
   | { type: "archive"; note: SalesNote }
-  | { type: "reorder"; notes: SalesNote[] };
+  | { type: "reorder"; notes: SalesNote[] }
+  | { type: "close-zk"; watch: SalesZkWatch };
 
 const NOTATNIK_INTRO =
   "Wpisz numer zamówienia klienta (ZK) — dane wczytają się automatycznie. Notatki i archiwum w jednym miejscu.";
@@ -98,7 +100,11 @@ export function NotatnikClient({
   subiektAvailability?: SubiektAvailability;
   linkError?: string | null;
   loadError?: string | null;
-  teamPreview?: { salesPersonId: string; salesPersonName: string } | null;
+  teamPreview?: {
+    salesPersonId: string;
+    salesPersonName: string;
+    readOnly?: boolean;
+  } | null;
 }) {
   const router = useRouter();
   const tourDemo = useSalesOnboardingDemo("notatnik");
@@ -208,6 +214,12 @@ export function NotatnikClient({
         setArchivedNotes((prev) => prev.filter((n) => n.id !== snapshot.note.id));
         setNotes((prev) => uniqueById([note, ...prev]));
         flashAnchor(`note-${note.id}`);
+      } else if (snapshot.type === "close-zk") {
+        const { watch } = await actionUndoCloseZkWatch(snapshot.watch.id);
+        setArchivedWatches((prev) => prev.filter((w) => w.id !== watch.id));
+        setZkWatches((prev) => uniqueById(sortZkWatches([watch, ...prev])));
+        setShowZk(true);
+        flashAnchor(`watch-${watch.id}`);
       } else {
         const ids = sortSalesNotes(snapshot.notes).map((n) => n.id);
         await actionReorderSalesNotes(ids);
@@ -236,15 +248,14 @@ export function NotatnikClient({
 
   function handleWatchClosed(watchId: string) {
     const now = new Date().toISOString();
-    setZkWatches((prev) => {
-      const watch = prev.find((w) => w.id === watchId);
-      if (watch) {
-        setArchivedWatches((archived) =>
-          uniqueById([{ ...watch, closed_at: now, updated_at: now }, ...archived])
-        );
-      }
-      return prev.filter((w) => w.id !== watchId);
-    });
+    const watch = zkWatches.find((w) => w.id === watchId);
+    if (watch) {
+      setArchivedWatches((archived) =>
+        uniqueById([{ ...watch, closed_at: now, updated_at: now }, ...archived])
+      );
+      setUndo({ type: "close-zk", watch });
+    }
+    setZkWatches((prev) => prev.filter((w) => w.id !== watchId));
     setShowArchive(true);
     refresh();
   }
@@ -317,7 +328,9 @@ export function NotatnikClient({
       ? `Zarchiwizowano: „${undo.note.title?.trim() || undo.note.body.trim().slice(0, 48) || "Notatka"}”`
       : undo?.type === "reorder"
         ? "Zmieniono kolejność notatek"
-        : "";
+        : undo?.type === "close-zk"
+          ? `Zamknięto sprawę ${undo.watch.zk_number}`
+          : "";
   const undoDescription = undo ? undoWindowBannerDescription() : "";
 
   return (
@@ -350,6 +363,7 @@ export function NotatnikClient({
             salesPersonId={teamPreview.salesPersonId}
             salesPersonName={teamPreview.salesPersonName}
             notatnikPreview
+            readOnly={teamPreview.readOnly}
             className={cn(salesChromeInsetClass, "mt-3 text-xs leading-relaxed")}
           />
         ) : null}

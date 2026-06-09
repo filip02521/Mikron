@@ -22,6 +22,11 @@ const toneStyles: Record<
     title: "text-amber-950",
     sub: "text-amber-800",
   },
+  stock: {
+    wrap: "bg-sky-50 text-sky-950",
+    title: "text-sky-950",
+    sub: "text-sky-800",
+  },
   success: {
     wrap: "bg-emerald-50 text-emerald-950",
     title: "text-emerald-900",

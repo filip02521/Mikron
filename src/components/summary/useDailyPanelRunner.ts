@@ -6,6 +6,8 @@ import { actionUndoDailyPanelChange } from "@/app/actions/admin";
 import type { DailyPanelActionResult } from "@/lib/orders/daily-panel-undo";
 import type { DailyPanelUndoPayload } from "@/lib/orders/daily-panel-undo";
 import { undoWindowBannerDescription } from "@/lib/orders/daily-panel-undo";
+import { useAdminPanelPreview } from "@/components/layout/AdminPanelPreviewContext";
+import { ADMIN_PANEL_PREVIEW_MUTATION_BLOCKED } from "@/lib/auth/admin-panel-preview-messages";
 
 export const DAILY_PANEL_SCOPE_BULK = "__bulk__";
 export const DAILY_PANEL_SCOPE_GLOBAL = "__global__";
@@ -34,6 +36,7 @@ type UndoState = {
 
 export function useDailyPanelRunner() {
   const router = useRouter();
+  const { readOnly } = useAdminPanelPreview();
   const [isPending, start] = useTransition();
   const [pendingScope, setPendingScope] = useState<string | null>(null);
   const [pendingMessage, setPendingMessage] = useState<string | null>(null);
@@ -56,6 +59,11 @@ export function useDailyPanelRunner() {
 
   const run: DailyPanelRunFn = useCallback(
     (action, successMessage, pendingMsg = "Przetwarzanie…", options) => {
+      if (readOnly) {
+        setFlash({ text: ADMIN_PANEL_PREVIEW_MUTATION_BLOCKED, tone: "error" });
+        return;
+      }
+
       const scope = options?.scope ?? DAILY_PANEL_SCOPE_GLOBAL;
       const useOverlay = options?.overlay ?? scope === DAILY_PANEL_SCOPE_GLOBAL;
 
@@ -94,10 +102,14 @@ export function useDailyPanelRunner() {
         }
       });
     },
-    [router]
+    [readOnly, router]
   );
 
   const handleUndo = useCallback(() => {
+    if (readOnly) {
+      setFlash({ text: ADMIN_PANEL_PREVIEW_MUTATION_BLOCKED, tone: "error" });
+      return;
+    }
     if (!undo) return;
     const payload = undo.payload;
     setPendingScope(DAILY_PANEL_SCOPE_GLOBAL);
@@ -120,7 +132,7 @@ export function useDailyPanelRunner() {
         setPendingMessage(null);
       }
     });
-  }, [undo, router]);
+  }, [readOnly, undo, router]);
 
   const notify = useCallback((text: string, tone: "success" | "error" = "success") => {
     setUndo(null);

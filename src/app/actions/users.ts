@@ -14,6 +14,12 @@ import {
   type SalesInviteLinkResult,
 } from "@/lib/users/sales-invite";
 import { getAppUrl } from "@/lib/env/app-config";
+import {
+  buildPasswordConfirmLink,
+  emailOtpTypeFromVerification,
+  passwordSetupConfirmUrl,
+} from "@/lib/auth/password-link-redirect";
+import { passwordValidationError } from "@/lib/auth/password-policy";
 import type { UserRole } from "@/types/database";
 import { isValidEmail } from "@/lib/security/text-limits";
 import {
@@ -48,9 +54,8 @@ export async function actionCreateAppUser(form: {
   const email = form.email.trim().toLowerCase();
   if (!email) return { error: "Podaj adres e-mail." };
   if (!isValidEmail(email)) return { error: "Podaj poprawny adres e-mail." };
-  if (form.password.length < 8) {
-    return { error: "Hasło musi mieć co najmniej 8 znaków." };
-  }
+  const passwordError = passwordValidationError(form.password);
+  if (passwordError) return { error: passwordError };
   if (roleRequiresSalesPerson(form.role) && !form.salesPersonId) {
     return { error: "Dla handlowca wybierz powiązaną osobę z listy handlowców." };
   }
@@ -267,9 +272,8 @@ export async function actionSetUserPassword(
 ): Promise<{ success: true } | { error: string }> {
   await requireAdmin();
 
-  if (password.length < 8) {
-    return { error: "Hasło musi mieć co najmniej 8 znaków." };
-  }
+  const passwordError = passwordValidationError(password);
+  if (passwordError) return { error: passwordError };
 
   const supabase = createAdminClient();
   const { error } = await supabase.auth.admin.updateUserById(userId, { password });
@@ -349,15 +353,21 @@ export async function actionGeneratePasswordResetLink(
     type: "recovery",
     email: normalized,
     options: {
-      redirectTo: `${appUrl()}/ustaw-haslo`,
+      redirectTo: passwordSetupConfirmUrl(),
     },
   });
 
-  if (error || !data.properties?.action_link) {
+  if (error || !data.properties?.hashed_token) {
     return { error: error?.message ?? "Nie udało się wygenerować linku." };
   }
 
-  return { success: true, link: data.properties.action_link };
+  return {
+    success: true,
+    link: buildPasswordConfirmLink(
+      data.properties.hashed_token,
+      emailOtpTypeFromVerification(data.properties.verification_type)
+    ),
+  };
 }
 
 export async function actionDeleteAppUser(

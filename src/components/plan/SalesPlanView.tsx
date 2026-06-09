@@ -1,7 +1,8 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { Suspense, useMemo, useState, type ComponentProps } from "react";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import type { SummaryWorkspaceData, WeekDayPlan } from "@/lib/orders/summary-workspace";
 import type { DeliveryStats, SupplierWithSchedule } from "@/types/database";
 import { WeekPlanner } from "@/components/summary/WeekPlanner";
@@ -12,6 +13,7 @@ import { EmptyState } from "@/components/ui/EmptyState";
 import { BackChevron } from "@/components/ui/UiGlyphs";
 import { Badge } from "@/components/ui/Badge";
 import { HelpPopover, GuideIcon } from "@/components/ui/HelpPopover";
+import { HelpBlock } from "@/components/ui/HelpBlock";
 import { SectionListLabel } from "@/components/ui/SectionListLabel";
 import { ProsbaFormSection } from "@/components/orders/ProsbaFormSection";
 import { locationLabel } from "@/lib/display-labels";
@@ -26,6 +28,7 @@ import {
   type SalesSupplierInsight,
 } from "@/lib/orders/sales-supplier-insight";
 import { prosbaHref } from "@/lib/orders/prosba-url";
+import { useSalesPreviewHref } from "@/lib/nav/use-sales-preview-href";
 import {
   IconCalendar,
   IconChevronDown,
@@ -45,32 +48,32 @@ const PLAN_INTRO =
 function PlanGuide() {
   return (
     <HelpPopover
-      label="Jak korzystać"
+      label="Pomoc — harmonogram zakupów"
       title="Harmonogram zakupów"
       shortLabel="Pomoc"
       icon={<GuideIcon />}
     >
-      <p className="mb-2 flex items-start gap-2">
-        <PlanSectionIcon kind="prosby" size={16} className="mt-0.5 shrink-0 text-indigo-600" />
-        <span>
-          Lista <strong className="font-medium text-slate-800">Z otwartymi prośbami</strong> pokazuje
-          dostawców z aktywnych wpisów w „Moje zamówienia”. Rozwiń wiersz po termin i czas realizacji.
-        </span>
-      </p>
-      <p className="mb-2 flex items-start gap-2">
-        <PlanSectionIcon kind="search" size={16} className="mt-0.5 shrink-0 text-violet-700" />
-        <span>
-          <strong className="font-medium text-slate-800">Wyszukiwarka</strong> służy do każdego innego
-          dostawcy w bazie.
-        </span>
-      </p>
-      <p className="flex items-start gap-2">
-        <PlanSectionIcon kind="calendar" size={16} className="mt-0.5 shrink-0 text-indigo-600" />
-        <span>
-          <strong className="font-medium text-slate-800">Plan działu dostaw</strong> (pon.–pt.) możesz
-          rozwinąć u góry karty — to harmonogram składania zamówień przez zakupy.
-        </span>
-      </p>
+      <HelpBlock title="Co tu jest">
+        <p>{PLAN_INTRO}</p>
+      </HelpBlock>
+
+      <HelpBlock title="Z otwartymi prośbami">
+        <p>
+          Dostawcy z aktywnych wpisów w Moje zamówienia. Rozwiń wiersz po termin i czas
+          realizacji.
+        </p>
+      </HelpBlock>
+
+      <HelpBlock title="Wyszukiwarka">
+        <p>Każdy inny dostawca z bazy — poza listą z otwartymi prośbami.</p>
+      </HelpBlock>
+
+      <HelpBlock title="Plan działu dostaw">
+        <p>
+          Harmonogram składania zamówień pon.–pt. — rozwiń u góry karty. To terminy zamówień u
+          dostawców, nie daty odbioru towaru z magazynu.
+        </p>
+      </HelpBlock>
     </HelpPopover>
   );
 }
@@ -93,11 +96,15 @@ function SalesSupplierRow({
   openOrderCount,
   defaultOpen = false,
   variant = "list",
+  previewHref,
+  previewDla,
 }: {
   insight: SalesSupplierInsight;
   openOrderCount?: number;
   defaultOpen?: boolean;
   variant?: "list" | "search";
+  previewHref: (href: string) => string;
+  previewDla: string | null;
 }) {
   const [expanded, setExpanded] = useState(defaultOpen);
   const next = describeNextOrderForSales(insight);
@@ -212,16 +219,22 @@ function SalesSupplierRow({
 
             <div className="mt-2.5 flex flex-wrap gap-2 border-t border-slate-100 pt-2.5">
               {hasOpenRequests ? (
-                <Link href="/moje">
+                <Link href={previewHref("/moje")}>
                   <Button size="sm" className="gap-1.5">
                     <IconClipboardList size={14} />
                     Moje prośby ({openOrderCount})
                   </Button>
                 </Link>
               ) : null}
-              <Link href="/prosba">
+              <Link
+                href={prosbaHref({
+                  supplierId: insight.supplierId,
+                  salesPersonId: previewDla ?? undefined,
+                })}
+                title={`Nowa prośba do: ${insight.name}`}
+              >
                 <Button size="sm" variant="secondary">
-                  Zgłoś prośbę
+                  Zgłoś prośbę do dostawcy
                 </Button>
               </Link>
             </div>
@@ -277,7 +290,37 @@ function ProcurementPlanBlock({
   );
 }
 
-export function SalesPlanView({
+export function SalesPlanView(props: {
+  workspace: SummaryWorkspaceData;
+  suppliers: SupplierWithSchedule[];
+  statsBySupplierId: Record<string, DeliveryStats>;
+  prioritySupplierIds: string[];
+  openOrderCountBySupplier: Record<string, number>;
+  tourPreview?: boolean;
+  error?: string | null;
+}) {
+  return (
+    <Suspense fallback={<SalesPlanViewFallback {...props} />}>
+      <SalesPlanViewContent {...props} />
+    </Suspense>
+  );
+}
+
+function SalesPlanViewFallback({
+  error = null,
+}: Pick<ComponentProps<typeof SalesPlanViewContent>, "error">) {
+  return (
+    <div className={salesPageShellClass}>
+      {error ? <Alert tone="warning">{error}</Alert> : null}
+      <Card padding={false} className="overflow-hidden">
+        <CardHeader inset density="compact" title="Harmonogram zakupów" description={PLAN_INTRO} />
+        <div className="px-4 py-12 text-center text-sm text-slate-500">Ładowanie…</div>
+      </Card>
+    </div>
+  );
+}
+
+function SalesPlanViewContent({
   workspace,
   suppliers,
   statsBySupplierId,
@@ -294,6 +337,8 @@ export function SalesPlanView({
   tourPreview?: boolean;
   error?: string | null;
 }) {
+  const previewHref = useSalesPreviewHref();
+  const previewDla = useSearchParams().get("dla");
   const [query, setQuery] = useState("");
   const [showProcurementPlan, setShowProcurementPlan] = useState(false);
 
@@ -407,6 +452,8 @@ export function SalesPlanView({
                     openOrderCount={openOrderCountBySupplier[insight.supplierId]}
                     defaultOpen={i === 0}
                     variant="search"
+                    previewHref={previewHref}
+                    previewDla={previewDla}
                   />
                 ))}
               </ul>
@@ -449,6 +496,8 @@ export function SalesPlanView({
                     insight={insight}
                     openOrderCount={openOrderCountBySupplier[insight.supplierId]}
                     defaultOpen={i === 0 && myInsights.length <= 3}
+                    previewHref={previewHref}
+                    previewDla={previewDla}
                   />
                 ))}
               </ul>
@@ -467,19 +516,19 @@ export function SalesPlanView({
         <div className={cn("flex flex-col gap-2.5 border-t border-slate-100 bg-slate-50/90 py-3 sm:flex-row sm:items-center sm:justify-between", salesChromeInsetClass)}>
           <p className="text-xs leading-relaxed text-slate-500">
             Zgłoś nową prośbę lub sprawdź status w{" "}
-            <Link href="/moje" className="font-medium text-indigo-700 hover:underline">
+            <Link href={previewHref("/moje")} className="font-medium text-indigo-700 hover:underline">
               Moje zamówienia
             </Link>
             .
           </p>
           <div className="flex flex-wrap gap-2">
-            <Link href="/prosba">
+            <Link href={previewHref("/prosba")}>
               <Button className="gap-1.5">
                 <IconPlusCircle size={16} />
                 Nowa prośba
               </Button>
             </Link>
-            <Link href="/moje">
+            <Link href={previewHref("/moje")}>
               <Button variant="secondary" className="gap-1.5">
                 <IconClipboardList size={16} />
                 Moje zamówienia

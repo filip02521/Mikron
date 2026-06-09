@@ -1,5 +1,10 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { getAppUrl } from "@/lib/env/app-config";
+import {
+  buildPasswordConfirmLink,
+  emailOtpTypeFromVerification,
+  passwordSetupConfirmUrl,
+} from "@/lib/auth/password-link-redirect";
 import { assertUniqueSalesPersonLink } from "@/lib/users/sales-person-link";
 
 export function appBaseUrl(): string {
@@ -57,7 +62,7 @@ export async function generateSalesPersonInviteLink(
   const linkError = await assertUniqueSalesPersonLink(supabase, salesPersonId);
   if (linkError) return { error: linkError };
 
-  const redirectTo = `${appBaseUrl()}/ustaw-haslo`;
+  const redirectTo = passwordSetupConfirmUrl();
   const existing = await findAuthUserByEmail(supabase, email);
 
   if (existing) {
@@ -83,12 +88,15 @@ export async function generateSalesPersonInviteLink(
       options: { redirectTo },
     });
 
-    if (error || !data.properties?.action_link) {
+    if (error || !data.properties?.hashed_token) {
       return { error: error?.message ?? "Nie udało się wygenerować linku." };
     }
 
     return {
-      link: data.properties.action_link,
+      link: buildPasswordConfirmLink(
+        data.properties.hashed_token,
+        emailOtpTypeFromVerification(data.properties.verification_type)
+      ),
       email,
       salesPersonName: person.name,
       mode: "recovery",
@@ -104,12 +112,15 @@ export async function generateSalesPersonInviteLink(
     },
   });
 
-  if (error || !data.properties?.action_link) {
+  if (error || !data.properties?.hashed_token) {
     return { error: error?.message ?? "Nie udało się wygenerować linku zaproszenia." };
   }
 
   return {
-    link: data.properties.action_link,
+    link: buildPasswordConfirmLink(
+      data.properties.hashed_token,
+      emailOtpTypeFromVerification(data.properties.verification_type)
+    ),
     email,
     salesPersonName: person.name,
     mode: "invite",

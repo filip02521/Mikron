@@ -72,8 +72,28 @@ function row(extra: Partial<MyOrderRow> = {}): MyOrderRow {
 describe("my-order-row-layout", () => {
   it("długi subline zamówienia trafia do metadanych, nie do osobnej notatki", () => {
     const r = row();
-    expect(myOrderCollapsedSubline(r)).toBeNull();
+    expect(myOrderCollapsedSubline(r)).toBe(r.subline);
     expect(myOrderExpandedNotes(r)).toBeNull();
+  });
+
+  it("pokazuje subline przy opóźnieniu i częściowej dostawie", () => {
+    expect(
+      myOrderCollapsedSubline(
+        row({
+          headlineTone: "warning",
+          headline: "Po przewidywanym terminie",
+          subline: "ok. 10.05.2026 (~5 dni rob.)",
+        })
+      )
+    ).toBe("ok. 10.05.2026 (~5 dni rob.)");
+    expect(
+      myOrderCollapsedSubline(
+        row({
+          statusTitle: "Częściowo na magazynie",
+          subline: "Magazyn: 5/8 szt. · 2 prod.",
+        })
+      )
+    ).toBe("Magazyn: 5/8 szt. · 2 prod.");
   });
 
   it("weryfikacja — skrót na liście bez powtórzenia w expanded", () => {
@@ -132,6 +152,29 @@ describe("my-order-row-layout", () => {
     );
   });
 
+  it("„Zamówione” na czas — termin na zwiniętym wierszu", () => {
+    const r = row({
+      statusTitle: "Zamówione",
+      headline: "Zamówione — czekamy na dostawę",
+      headlineTone: "info",
+      timingLabel: "ok. 20.06.2026 (~8 dni rob.)",
+      subline: null,
+    });
+    expect(myOrderCollapsedSubline(r)).toBe("ok. 20.06.2026 (~8 dni rob.)");
+  });
+
+  it("„Zamówione” z ostrzeżeniem o historii — subline ma pierwszeństwo przed terminem", () => {
+    const r = row({
+      statusTitle: "Zamówione",
+      headlineTone: "info",
+      timingLabel: "ok. 20.06.2026 (~8 dni rob.) · mało historii",
+      subline: "Mało dostaw w historii — termin jest orientacyjny",
+    });
+    expect(myOrderCollapsedSubline(r)).toBe(
+      "Mało dostaw w historii — termin jest orientacyjny"
+    );
+  });
+
   it("termin realizacji tylko w metadanych rozwinięcia, nie na zwiniętym wierszu", () => {
     const r = row({
       lineCount: 4,
@@ -143,7 +186,7 @@ describe("my-order-row-layout", () => {
       headlineTone: "warning",
       timingLabel: "ok. 10.05.2026 (~5 dni rob.) · po terminie",
     });
-    expect(myOrderCollapsedSubline(r)).toBeNull();
+    expect(myOrderCollapsedSubline(r)).toBe("ok. 10.05.2026 (~5 dni rob.)");
     const timing = myOrderTimingMetaField(r, true);
     expect(timing?.label).toBe("Termin");
     expect(timing?.value).toContain("10.05");

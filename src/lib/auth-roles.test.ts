@@ -5,6 +5,7 @@ import {
   homePathForRole,
   isSalesAccount,
   isSalesManager,
+  redirectPathAfterLogin,
 } from "./auth-roles";
 
 describe("auth-roles sales_manager", () => {
@@ -34,5 +35,47 @@ describe("auth-roles sales_manager", () => {
     expect(canAccessPath("admin", "/notatnik")).toBe(false);
     expect(canAccessPath("admin", "/notatnik", { previewSalesPersonId: "sp-1" })).toBe(true);
     expect(canAccessPath("sales", "/notatnik")).toBe(true);
+  });
+});
+
+describe("auth-roles admin panel context", () => {
+  it("delegates path access to preview context for admin", () => {
+    expect(
+      canAccessPath("admin", "/kolejka", { adminPanelContext: "magazyn" })
+    ).toBe(true);
+    expect(
+      canAccessPath("admin", "/podsumowanie", { adminPanelContext: "magazyn" })
+    ).toBe(false);
+    expect(
+      canAccessPath("admin", "/admin", { adminPanelContext: "zakupy" })
+    ).toBe(false);
+    expect(
+      canAccessPath("admin", "/moje", { adminPanelContext: "sales" })
+    ).toBe(true);
+    expect(
+      canAccessPath("admin", "/admin/wybor-handlowca", {
+        adminPanelContext: "sales",
+      })
+    ).toBe(true);
+  });
+
+  it("keeps full admin access when context is admin", () => {
+    expect(
+      canAccessPath("admin", "/admin", { adminPanelContext: "admin" })
+    ).toBe(true);
+    expect(
+      canAccessPath("admin", "/podsumowanie", { adminPanelContext: "admin" })
+    ).toBe(true);
+  });
+});
+
+describe("redirectPathAfterLogin admin panel context", () => {
+  it("redirects admin to preview home when cookie context is set", () => {
+    expect(
+      redirectPathAfterLogin("admin", null, { adminPanelContext: "magazyn" })
+    ).toBe("/kolejka");
+    expect(
+      redirectPathAfterLogin("admin", null, { adminPanelContext: "sales" })
+    ).toBe("/admin/wybor-handlowca");
   });
 });

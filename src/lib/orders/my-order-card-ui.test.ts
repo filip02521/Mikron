@@ -1,8 +1,14 @@
 import { describe, expect, it } from "vitest";
 import {
+  myOrderUsesSalesHeadline,
   progressLabelInSubline,
+  rowNeedsSalesAcknowledgement,
+  shouldShowCollapsedProductSummary,
+  shouldShowExpandedOrderStatusBadge,
+  shouldShowMyOrderHeadlineBanner,
   shouldShowOrderStatusBadge,
   shouldShowOrderStatusDetail,
+  filterRedundantExpandedMetaFields,
 } from "./my-order-card-ui";
 import type { MyOrderRow } from "./my-order-presenter";
 
@@ -47,13 +53,100 @@ function row(extra: Partial<MyOrderRow> = {}): MyOrderRow {
 }
 
 describe("my-order-card-ui", () => {
+  it("rozpoznaje nagłówek sales UI", () => {
+    expect(
+      myOrderUsesSalesHeadline(
+        row({ headline: "Czeka na zamówienie u dostawcy", statusTitle: "Przed zamówieniem" })
+      )
+    ).toBe(true);
+    expect(myOrderUsesSalesHeadline(row({ headline: "Zamówione", statusTitle: "Zamówione" }))).toBe(
+      false
+    );
+  });
+
+  it("ukrywa badge przy nagłówku sales UI (neutral)", () => {
+    expect(
+      shouldShowOrderStatusBadge(
+        row({
+          headlineTone: "neutral",
+          headline: "Powiadomimy, gdy towar przyjedzie",
+          statusTitle: "Oczekuje na magazyn",
+        })
+      )
+    ).toBe(false);
+    expect(
+      shouldShowOrderStatusBadge(
+        row({
+          headlineTone: "neutral",
+          headline: "Czeka na zamówienie u dostawcy",
+          statusTitle: "Przed zamówieniem",
+        })
+      )
+    ).toBe(false);
+  });
+
   it("ukrywa badge przy odbiorze", () => {
     expect(
       shouldShowOrderStatusBadge(
         row({ acknowledgeMode: "pickup", headlineTone: "action" })
       )
     ).toBe(false);
-    expect(shouldShowOrderStatusBadge(row())).toBe(true);
+    expect(shouldShowOrderStatusBadge(row())).toBe(false);
+    expect(
+      shouldShowOrderStatusBadge(
+        row({ headlineTone: "warning", headline: "Po przewidywanym terminie" })
+      )
+    ).toBe(false);
+  });
+
+  it("pasek tylko przy potwierdzeniu, nie przy statusie w toku", () => {
+    expect(
+      shouldShowMyOrderHeadlineBanner(
+        row({
+          acknowledgeMode: "pickup",
+          headlineTone: "action",
+          pickupPendingCount: 1,
+        }),
+        { expanded: false, compactActionLayout: false, canAcknowledge: true }
+      )
+    ).toBe(true);
+    expect(
+      shouldShowMyOrderHeadlineBanner(
+        row({ headlineTone: "warning", headline: "Po przewidywanym terminie" }),
+        { expanded: false, compactActionLayout: false, canAcknowledge: true }
+      )
+    ).toBe(false);
+    expect(
+      shouldShowMyOrderHeadlineBanner(
+        row({
+          acknowledgeMode: "pickup",
+          headlineTone: "action",
+          pickupPendingCount: 1,
+        }),
+        { expanded: false, compactActionLayout: true, canAcknowledge: true }
+      )
+    ).toBe(false);
+  });
+
+  it("rowNeedsSalesAcknowledgement rozpoznaje anulowanie", () => {
+    expect(
+      rowNeedsSalesAcknowledgement(
+        row({ acknowledgeMode: "pickup", pickupPendingCount: 1 })
+      )
+    ).toBe(true);
+    expect(
+      rowNeedsSalesAcknowledgement(
+        row({ acknowledgeMode: "pickup", pickupPendingCount: 0 })
+      )
+    ).toBe(false);
+    expect(
+      rowNeedsSalesAcknowledgement(
+        row({ acknowledgeMode: "cancelled", cancelledAckOrderIds: ["x"] })
+      )
+    ).toBe(true);
+    expect(rowNeedsSalesAcknowledgement(row({ headlineTone: "warning" }))).toBe(
+      false
+    );
   });
 
   it("ukrywa statusDetail gdy zbędny", () => {
@@ -72,9 +165,71 @@ describe("my-order-card-ui", () => {
     ).toBe(false);
   });
 
+  it("ukrywa badge przy informacyjnych — wystarczy badge Informacyjna i nagłówek", () => {
+    expect(
+      shouldShowOrderStatusBadge(
+        row({
+          kind: "informacja",
+          requestKind: "informacja",
+          statusTitle: "Informacja o dostępności",
+          headline: "Powiadomimy, gdy towar przyjedzie",
+          headlineTone: "neutral",
+          badgeVariant: "purple",
+        })
+      )
+    ).toBe(false);
+  });
+
+  it("ukrywa badge w rozwinięciu gdy jest pasek postępu", () => {
+    expect(
+      shouldShowExpandedOrderStatusBadge(row(), { hasRequestProgress: true })
+    ).toBe(false);
+  });
+
+  it("filtruje zduplikowane metadane terminu", () => {
+    const fields = filterRedundantExpandedMetaFields(
+      row({
+        statusTitle: "Zamówione",
+        timingLabel: "ok. 10.05.2026 (~5 dni rob.)",
+        subline: "ok. 10.05.2026 (~5 dni rob.)",
+      }),
+      [
+        { label: "Zgłoszono", value: "01.05" },
+        { label: "Szacunek", value: "ok. 10.05.2026 (~5 dni rob.)" },
+      ],
+      { collapsedSubline: "ok. 10.05.2026 (~5 dni rob.)" }
+    );
+    expect(fields.some((f) => f.label === "Szacunek")).toBe(false);
+  });
+
   it("wykrywa postęp w subline", () => {
     expect(progressLabelInSubline(row({ subline: "Magazyn: 1 z 2 szt." }))).toBe(
       true
     );
+  });
+
+  it("ukrywa productSummary na desktopie gdy nagłówek i subline już niosą status", () => {
+    expect(
+      shouldShowCollapsedProductSummary(
+        row({ lineCount: 3, subline: "Magazyn: 1 z 3 szt." }),
+        {
+          expanded: false,
+          showRowHeadline: true,
+          suppressSharedHeadline: false,
+          hasCollapsedSubline: true,
+        }
+      )
+    ).toBe(false);
+    expect(
+      shouldShowCollapsedProductSummary(
+        row({ lineCount: 3, subline: null }),
+        {
+          expanded: false,
+          showRowHeadline: true,
+          suppressSharedHeadline: false,
+          hasCollapsedSubline: false,
+        }
+      )
+    ).toBe(true);
   });
 });

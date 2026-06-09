@@ -312,7 +312,7 @@ export function ZkWatchCard({
           {hasOpenMatchingProsba && !archived ? (
             <Link
               href={mojeClientHref}
-              className="hidden sm:inline-flex"
+              className="inline-flex"
               title="Prośby tego klienta — Moje zamówienia"
             >
               <Badge variant="info" className="text-[9px] transition-opacity hover:opacity-90">
@@ -321,7 +321,7 @@ export function ZkWatchCard({
             </Link>
           ) : null}
           {allLinesFromOrders && !archived ? (
-            <Badge variant="success" className="hidden text-[9px] sm:inline-flex">
+            <Badge variant="success" className="text-[9px]">
               Towar z prośby
             </Badge>
           ) : null}

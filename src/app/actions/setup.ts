@@ -3,6 +3,7 @@
 import { createAdminClient } from "@/lib/supabase/admin";
 import { needsBootstrapSetup } from "@/lib/setup/bootstrap";
 import { isValidEmail } from "@/lib/security/text-limits";
+import { passwordValidationError } from "@/lib/auth/password-policy";
 
 export async function actionBootstrapAdmin(form: {
   email: string;
@@ -17,9 +18,8 @@ export async function actionBootstrapAdmin(form: {
   if (!isValidEmail(email)) {
     return { error: "Podaj poprawny adres e-mail." };
   }
-  if (password.length < 8) {
-    return { error: "Hasło musi mieć co najmniej 8 znaków." };
-  }
+  const policyError = passwordValidationError(password);
+  if (policyError) return { error: policyError };
 
   const allowed = await needsBootstrapSetup();
   if (!allowed) {

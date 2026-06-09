@@ -17,13 +17,13 @@ export type MyOrderInboxFilter =
 
 export const MOJE_INBOX_ACTION_FILTERS = [
   "pickup",
-  "partial",
   "cancel_ack",
   "informacja_ready",
 ] as const satisfies readonly MyOrderInboxFilter[];
 
 export const MOJE_INBOX_WATCH_FILTERS = [
   "overdue",
+  "partial",
   "verification",
   "przed_zamowieniem",
   "zamowione",
@@ -57,7 +57,7 @@ export function inboxFilterLabel(filter: MyOrderInboxFilter): string {
     case "watch_group":
       return "W toku";
     case "pickup":
-      return "Odbiór";
+      return "Gotowe";
     case "partial":
       return "Część na magazynie";
     case "cancel_ack":
@@ -79,6 +79,10 @@ export function inboxFilterLabel(filter: MyOrderInboxFilter): string {
   }
 }
 
+function rowMatchesPartialFilter(row: MyOrderRow): boolean {
+  return row.kind === "zamowienie" && row.statusTitle === "Częściowo na magazynie";
+}
+
 function rowMatchesWatchSubFilter(row: MyOrderRow): boolean {
   return MOJE_INBOX_WATCH_FILTERS.some((filter) => rowMatchesInboxFilter(row, filter));
 }
@@ -96,7 +100,7 @@ export function rowMatchesInboxFilter(
     case "pickup":
       return ui.sortPriority === 1;
     case "partial":
-      return ui.sortPriority === 2;
+      return rowMatchesPartialFilter(row);
     case "cancel_ack":
       return ui.sortPriority === 3;
     case "overdue":
@@ -129,10 +133,10 @@ export function filterMyOrderRows(
   return rows.filter((row) => rowMatchesInboxFilter(row, filter));
 }
 
-/** Prośba wymaga potwierdzenia handlowca (odbiór, część magazynu, anulowanie, informacja gotowa). */
+/** Prośba wymaga potwierdzenia handlowca (odbiór, anulowanie, informacja gotowa). */
 export function rowNeedsSalesAction(row: MyOrderRow): boolean {
   const p = enrichMyOrderSalesUi(row).sortPriority;
-  return p === 1 || p === 2 || p === 3 || p === 10;
+  return p === 1 || p === 3 || p === 10;
 }
 
 export function partitionMyOrderRowsBySalesAction(rows: MyOrderRow[]): {

@@ -1,7 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { getSessionUser } from "@/lib/auth";
+import { getSessionUser, getSessionUserForMutation } from "@/lib/auth";
 import { isAdmin } from "@/lib/auth-roles";
 import { departmentsForRole } from "@/lib/operations/notepad-department";
 import { OPERATIONS_NOTE_SELECT } from "@/lib/data/operations-notepad";
@@ -18,9 +18,8 @@ function revalidateOperationsNotepad() {
   revalidatePath("/", "layout");
 }
 
-async function userIdForAction(): Promise<string> {
-  const user = await getSessionUser();
-  if (!user?.id) throw new Error("Zaloguj się ponownie.");
+async function userIdForMutation(): Promise<string> {
+  const user = await getSessionUserForMutation();
   return user.id;
 }
 
@@ -72,8 +71,7 @@ export async function actionCreateOperationsNote(
   body: string,
   options?: { title?: string | null; color?: SalesNoteColor; follow_up_at?: string | null }
 ) {
-  const user = await getSessionUser();
-  if (!user?.id) throw new Error("Zaloguj się ponownie.");
+  const user = await getSessionUserForMutation();
   assertDepartmentAccess(department, user.role);
 
   const trimmed = body.trim();
@@ -124,7 +122,7 @@ export async function actionUpdateOperationsNote(
     follow_up_at?: string | null;
   }
 ) {
-  const userId = await userIdForAction();
+  const userId = await userIdForMutation();
   await assertNoteAccess(noteId, userId);
 
   const patch: Record<string, unknown> = { updated_at: new Date().toISOString() };
@@ -152,7 +150,7 @@ export async function actionReorderOperationsNotes(
   visibility: OperationsNoteVisibility,
   noteIds: string[]
 ) {
-  const userId = await userIdForAction();
+  const userId = await userIdForMutation();
   const user = await getSessionUser();
   assertDepartmentAccess(department, user?.role);
   if (!noteIds.length) return { success: true };
@@ -197,7 +195,7 @@ export async function actionReorderOperationsNotes(
 }
 
 export async function actionArchiveOperationsNote(noteId: string) {
-  const userId = await userIdForAction();
+  const userId = await userIdForMutation();
   await assertNoteAccess(noteId, userId);
 
   const supabase = createAdminClient();
@@ -212,7 +210,7 @@ export async function actionArchiveOperationsNote(noteId: string) {
 }
 
 export async function actionRestoreOperationsNote(noteId: string) {
-  const userId = await userIdForAction();
+  const userId = await userIdForMutation();
   await assertNoteAccess(noteId, userId);
 
   const supabase = createAdminClient();

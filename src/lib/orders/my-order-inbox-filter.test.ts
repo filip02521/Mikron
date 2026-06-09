@@ -1,5 +1,7 @@
 import { describe, expect, it } from "vitest";
-import type { MyOrderRow } from "@/lib/orders/my-order-presenter";
+import type { MyOrderRow } from "./my-order-presenter";
+import { presentMyOrders } from "./my-order-presenter";
+import type { IndividualOrder } from "@/types/database";
 import {
   filterMyOrderRows,
   partitionMyOrderRowsBySalesAction,
@@ -33,6 +35,39 @@ function row(partial: Partial<MyOrderRow> & Pick<MyOrderRow, "id">): MyOrderRow 
   } as MyOrderRow;
 }
 
+const baseOrder: IndividualOrder = {
+  id: "1",
+  supplier_id: "sup1",
+  sales_person_id: "sp1",
+  symbol: "ABC",
+  products: "Wkręt",
+  quantity: "3",
+  delivered_quantity: "2",
+  order_type: "Glowne",
+  request_kind: "zamowienie",
+  status: "Czesciowo_zrealizowane",
+  action_at: "2026-04-28",
+  ordered_at: "2026-05-01",
+  delivery_at: null,
+  supplier: {
+    id: "sup1",
+    name: "Dostawca X",
+    location: "POLSKA",
+    pickup_mikran: false,
+    pickup_pallet: false,
+    notes: "",
+    mails: "",
+    extra_info: "",
+    interval_raw: null,
+    interval_weeks: null,
+    stock_raw: null,
+    stock: null,
+    stats_mode: "LACZNIE",
+    order_on_demand: false,
+    is_active: true,
+  },
+};
+
 describe("rowNeedsSalesAction", () => {
   it("true przy odbiorze", () => {
     expect(
@@ -49,6 +84,25 @@ describe("rowNeedsSalesAction", () => {
 
   it("false przy zamówionym bez akcji", () => {
     expect(rowNeedsSalesAction(row({ id: "2", statusTitle: "Zamówione" }))).toBe(false);
+  });
+
+  it("false przy częściowej dostawie bez pełnego odbioru", () => {
+    const partial = presentMyOrders([baseOrder], []).zamowienia[0]!;
+    expect(rowNeedsSalesAction(partial)).toBe(false);
+    expect(rowMatchesInboxFilter(partial, "action_group")).toBe(false);
+    expect(rowMatchesInboxFilter(partial, "watch_group")).toBe(true);
+    expect(rowMatchesInboxFilter(partial, "partial")).toBe(true);
+  });
+
+  it("częściowa dostawa w tranzycie trafia do filtra partial i watch_group", () => {
+    const partialTransit = presentMyOrders(
+      [{ ...baseOrder, delivered_quantity: "0" }],
+      []
+    ).zamowienia[0]!;
+    expect(partialTransit.statusTitle).toBe("Częściowo na magazynie");
+    expect(rowNeedsSalesAction(partialTransit)).toBe(false);
+    expect(rowMatchesInboxFilter(partialTransit, "partial")).toBe(true);
+    expect(rowMatchesInboxFilter(partialTransit, "watch_group")).toBe(true);
   });
 });
 

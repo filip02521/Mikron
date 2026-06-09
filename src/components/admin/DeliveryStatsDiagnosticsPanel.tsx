@@ -12,6 +12,7 @@ import { Button } from "@/components/ui/Button";
 import { Card, CardHeader } from "@/components/ui/Card";
 import { Input } from "@/components/ui/Field";
 import { HelpPopover } from "@/components/ui/HelpPopover";
+import { HelpBlock } from "@/components/ui/HelpBlock";
 import { Spinner } from "@/components/ui/Spinner";
 import { Toast } from "@/components/ui/Toast";
 import { cn } from "@/lib/cn";
@@ -375,36 +376,37 @@ export function DeliveryStatsDiagnosticsPanel({
           description="Podgląd statystyk ETA: co jest w bazie, skąd pochodzą próbki i czy dane są spójne z historią zamówień."
           action={
             <HelpPopover
-              label="Jak liczymy ETA"
+              label="Pomoc — statystyki czasu realizacji"
               title="Statystyki czasu realizacji"
               shortLabel="Pomoc"
             >
-              <div className="space-y-3 text-sm leading-relaxed text-slate-700">
+              <HelpBlock title="Skąd biorą się dane">
                 <p>
-                  System zbiera <strong>próbki</strong> z w pełni zrealizowanych zamówień
-                  indywidualnych (<code>request_kind = zamowienie</code>, status{" "}
+                  Z w pełni zrealizowanych zamówień indywidualnych u dostawcy (status{" "}
                   <strong>Zrealizowane</strong>).
                 </p>
-                <ul className="list-inside list-disc space-y-1 text-xs">
+              </HelpBlock>
+
+              <HelpBlock title="Reguły liczenia">
+                <ul className="list-disc space-y-1.5 pl-4 text-xs">
                   <li>Jedna próbka na dostawcę i dzień zamówienia (wcześniejsza dostawa wygrywa).</li>
                   <li>
-                    Dni robocze między datą zamówienia (<code>ordered_at</code> lub{" "}
-                    <code>action_at</code>) a <code>delivery_at</code>.
+                    Liczymy dni robocze między datą zamówienia a datą dostawy na magazyn.
                   </li>
                   <li>
-                    Pomijane: informacje, częściowe realizacje, brak produktu, typ None, brak dat,
-                    ujemne dni, duplikaty dnia.
+                    Pomijamy: informacje, częściowe realizacje, brak produktu, brak dat i
+                    duplikaty.
                   </li>
-                  <li>
-                    Przy zapisie pełnej realizacji statystyki aktualizują się przyrostowo; pełne
-                    przeliczenie jest źródłem prawdy przy rozjazdach.
-                  </li>
+                  <li>Przy zapisie pełnej realizacji statystyki aktualizują się przyrostowo.</li>
                   <li>Poniżej 3 próbek ETA w panelu oznaczone jest jako szacunek.</li>
                 </ul>
+              </HelpBlock>
+
+              <HelpBlock title="Odświeżenie">
                 <p className="text-xs text-slate-500">
                   Ostatnie odświeżenie widoku: {formatTimestamp(data.generatedAt)}
                 </p>
-              </div>
+              </HelpBlock>
             </HelpPopover>
           }
         />

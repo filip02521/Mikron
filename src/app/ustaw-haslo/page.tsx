@@ -1,3 +1,4 @@
+import { Suspense } from "react";
 import { AuthScreenLayout } from "@/components/auth/AuthScreenLayout";
 import { SetPasswordForm } from "./SetPasswordForm";
 
@@ -12,9 +13,11 @@ export default function UstawHasloPage() {
   return (
     <AuthScreenLayout
       title="Ustaw hasło"
-      subtitle="Ustaw hasło do konta OnTime (link od administratora)"
+      subtitle="Wybierz bezpieczne hasło — po zapisaniu od razu przejdziesz do aplikacji OnTime"
     >
-      <SetPasswordForm />
+      <Suspense fallback={<p className="text-sm text-slate-500">Ładowanie…</p>}>
+        <SetPasswordForm />
+      </Suspense>
     </AuthScreenLayout>
   );
 }

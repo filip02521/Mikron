@@ -7,27 +7,26 @@ import { actionBootstrapAdmin } from "@/app/actions/setup";
 import { Button } from "@/components/ui/Button";
 import { Field, Input } from "@/components/ui/Field";
 import { Alert } from "@/components/ui/Alert";
+import { NewPasswordForm } from "@/components/auth/NewPasswordForm";
 import { translateAuthError } from "@/lib/auth-errors";
 
 export function SetupForm() {
   const router = useRouter();
   const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [passwordConfirm, setPasswordConfirm] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
-  async function onSubmit(e: React.FormEvent) {
-    e.preventDefault();
+  async function handlePasswordSubmit(nextPassword: string) {
     setError("");
 
-    if (password !== passwordConfirm) {
-      setError("Hasła nie są identyczne.");
+    if (!email.trim()) {
+      setError("Podaj adres e-mail administratora.");
       return;
     }
 
     setLoading(true);
-    const result = await actionBootstrapAdmin({ email, password });
+
+    const result = await actionBootstrapAdmin({ email, password: nextPassword });
     if ("error" in result) {
       setLoading(false);
       setError(result.error);
@@ -37,7 +36,7 @@ export function SetupForm() {
     const supabase = createClient();
     const { error: signError } = await supabase.auth.signInWithPassword({
       email: email.trim().toLowerCase(),
-      password,
+      password: nextPassword,
     });
     setLoading(false);
 
@@ -54,7 +53,7 @@ export function SetupForm() {
   }
 
   return (
-    <form onSubmit={onSubmit} className="space-y-5">
+    <div className="space-y-5">
       <Alert tone="info">
         To jednorazowa konfiguracja. Po utworzeniu konta administratora ten ekran zniknie.
       </Alert>
@@ -67,36 +66,19 @@ export function SetupForm() {
           value={email}
           onChange={(e) => setEmail(e.target.value)}
           placeholder="admin@firma.pl"
+          autoCapitalize="none"
+          autoCorrect="off"
+          spellCheck={false}
         />
       </Field>
 
-      <Field label="Hasło (min. 8 znaków)">
-        <Input
-          type="password"
-          required
-          autoComplete="new-password"
-          minLength={8}
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-        />
-      </Field>
-
-      <Field label="Powtórz hasło">
-        <Input
-          type="password"
-          required
-          autoComplete="new-password"
-          minLength={8}
-          value={passwordConfirm}
-          onChange={(e) => setPasswordConfirm(e.target.value)}
-        />
-      </Field>
-
-      {error ? <Alert tone="error">{error}</Alert> : null}
-
-      <Button type="submit" size="lg" className="w-full min-h-11" disabled={loading}>
-        {loading ? "Tworzenie konta…" : "Utwórz konto administratora"}
-      </Button>
-    </form>
+      <NewPasswordForm
+        submitLabel="Utwórz konto administratora"
+        loadingLabel="Tworzenie konta…"
+        error={error}
+        loading={loading}
+        onSubmit={handlePasswordSubmit}
+      />
+    </div>
   );
 }

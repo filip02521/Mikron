@@ -490,6 +490,48 @@ export function buildOnboardingTablicaDemo(): DepartmentBoardData {
 
 export const ONBOARDING_TABLICA_UNSEEN_QUESTION_IDS = ["demo-board-question-answered"] as const;
 
+/** Kontekst panelu Start dnia w tourze onboardingowym /moje. */
+export function buildOnboardingDayStartContext(salesPersonId: string) {
+  const notepad = buildOnboardingNotepadDemo(salesPersonId);
+  const now = new Date().toISOString();
+  return {
+    watches: notepad.zkWatches,
+    notes: notepad.notes,
+    boardAttention: {
+      unreadAnnouncementCount: 0,
+      unreadAnnouncementLatestTitle: null,
+      unreadAnnouncementBannerCount: 0,
+      unreadAnnouncementBannerLatestTitle: null,
+      unreadAnnouncementBannerLatestId: null,
+      unseenAnswerCount: 1,
+      unseenAnswerPreview: {
+        threadId: "demo-board-question-answered",
+        title: "Czy można zamówić próbki implantów poza harmonogramem?",
+        isOwnQuestion: false,
+      },
+      unseenQuestionIds: ["demo-board-question-answered"],
+      pinnedAnnouncements: [
+        {
+          id: "demo-board-announcement-pinned",
+          kind: "announcement",
+          title: "Nowy harmonogram dostaw Mikran",
+          body: "Od poniedziałku zamówienia Mikran wysyłamy we wtorki i czwartki.",
+          pinned: true,
+          status: "open",
+          created_by: "demo-procurement",
+          created_at: now,
+          updated_at: now,
+          archived_at: null,
+          expires_at: null,
+          answered_at: null,
+        } as never,
+      ],
+      navBadgeCount: 1,
+    },
+    previewDla: null,
+  };
+}
+
 export function buildOnboardingNotepadDemo(salesPersonId: string): SalesNotepadData {
   const now = new Date().toISOString();
   const today = demoIsoDate(0);

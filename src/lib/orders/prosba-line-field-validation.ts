@@ -42,16 +42,33 @@ export function shouldShowProsbaLineFieldValidation(
   options: {
     active: boolean;
     validationAttempted: boolean;
+    /** Walidacja na żywo — po wpisaniu produktu lub rozpoczęciu edycji. */
+    liveValidation?: boolean;
     lineCount: number;
+    requestKind: IndividualRequestKind;
   }
 ): boolean {
   if (options.validationAttempted) {
     return hasAnyProductHint(line) || options.active || options.lineCount === 1;
   }
+  if (options.liveValidation) {
+    if (hasAnyProductHint(line)) return true;
+    if (options.active && hasPartialLineInput(line)) return true;
+    return false;
+  }
   if (options.active) {
     return hasPartialLineInput(line);
   }
   return false;
+}
+
+/** Czy linia ma braki wymagane do wysłania (do podświetlenia zwiniętej pozycji). */
+export function prosbaLineHasSubmitBlockers(
+  line: ProductLineDraft,
+  requestKind: IndividualRequestKind
+): boolean {
+  const fields = assessProsbaLineFields(line, requestKind, "strict");
+  return prosbaLineHasFieldIssues(fields);
 }
 
 /** Stan wizualny pól pozycji prośby (braki, ilość). */

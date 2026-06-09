@@ -6,11 +6,14 @@ export function ManagerPreviewBanner({
   salesPersonName,
   salesPersonId,
   notatnikPreview,
+  readOnly,
   className,
 }: {
   salesPersonName: string;
   salesPersonId: string;
   notatnikPreview?: boolean;
+  /** Administrator — tylko podgląd, bez składania prośb. */
+  readOnly?: boolean;
   className?: string;
 }) {
   return (
@@ -19,30 +22,47 @@ export function ManagerPreviewBanner({
         <p>
           Podgląd {notatnikPreview ? "notatnika" : "prośb handlowca"}:{" "}
           <span className="font-semibold text-slate-900">{salesPersonName}</span>.
-          {notatnikPreview
-            ? " Edycja dostępna tylko we własnym notatniku."
-            : " Potwierdzenie odbioru i archiwum są dostępne tylko na własnym koncie."}
+          {readOnly
+            ? " Tryb administratora — tylko odczyt."
+            : notatnikPreview
+              ? " Edycja dostępna tylko we własnym notatniku."
+              : " Potwierdzenie odbioru i archiwum są dostępne tylko na własnym koncie."}
         </p>
-        <div className="flex shrink-0 flex-wrap gap-2">
-          {!notatnikPreview ? (
-            <Link href={`/prosba?dla=${salesPersonId}`}>
-              <Button size="sm" variant="secondary">
-                Prośba w jego imieniu
+        {!readOnly ? (
+          <div className="flex shrink-0 flex-wrap gap-2">
+            {!notatnikPreview ? (
+              <Link href={`/prosba?dla=${salesPersonId}`}>
+                <Button size="sm" variant="secondary">
+                  Prośba w jego imieniu
+                </Button>
+              </Link>
+            ) : (
+              <Link href={`/moje?dla=${salesPersonId}`}>
+                <Button size="sm" variant="secondary">
+                  Panel zamówień
+                </Button>
+              </Link>
+            )}
+            <Link href={notatnikPreview ? "/notatnik" : "/moje"}>
+              <Button size="sm" variant="outline">
+                {notatnikPreview ? "Mój notatnik" : "Moje zamówienia"}
               </Button>
             </Link>
-          ) : (
+          </div>
+        ) : (
+          <div className="flex shrink-0 flex-wrap gap-2">
             <Link href={`/moje?dla=${salesPersonId}`}>
               <Button size="sm" variant="secondary">
                 Panel zamówień
               </Button>
             </Link>
-          )}
-          <Link href={notatnikPreview ? "/notatnik" : "/moje"}>
-            <Button size="sm" variant="outline">
-              {notatnikPreview ? "Mój notatnik" : "Moje zamówienia"}
-            </Button>
-          </Link>
-        </div>
+            <Link href={`/notatnik?dla=${salesPersonId}`}>
+              <Button size="sm" variant="outline">
+                Notatnik
+              </Button>
+            </Link>
+          </div>
+        )}
       </div>
     </Alert>
   );

@@ -17,6 +17,8 @@ export function isProsbaFormFieldTarget(target: EventTarget | null): boolean {
 
 export type SalesProsbaKeyboardHandlers = {
   pending: boolean;
+  /** Gdy false — Ctrl+Enter nie wysyła (formularz niekompletny). */
+  canSubmit?: boolean;
   onSubmit: () => void;
   onSetRequestKind: (kind: IndividualRequestKind) => void;
   onAddProductLine: () => void;
@@ -29,7 +31,8 @@ export function handleSalesProsbaKeyboardEvent(
 ): boolean {
   if ((e.metaKey || e.ctrlKey) && e.key === "Enter") {
     e.preventDefault();
-    if (!handlers.pending) handlers.onSubmit();
+    const canSubmit = handlers.canSubmit ?? true;
+    if (!handlers.pending && canSubmit) handlers.onSubmit();
     return true;
   }
 

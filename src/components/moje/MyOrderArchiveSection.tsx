@@ -110,8 +110,8 @@ export function MyOrderArchiveSection({
       : `Odebrane, wycofane i zakończone prośby z ostatnich ${ARCHIVE_RECENT_DAYS} dni`;
 
   return (
-    <div id="moje-ostatnio-zakonczone">
-    <Card padding={false} className="border-slate-200/80 bg-slate-50/50">
+    <div id="moje-ostatnio-zakonczone" className="mt-8 border-t-2 border-dashed border-slate-200/90 pt-6">
+    <Card padding={false} className="border-slate-200/70 bg-slate-50/80 shadow-none">
       <CardHeader
         inset
         density="compact"
@@ -148,6 +148,7 @@ export function MyOrderArchiveSection({
               showProgress={false}
               canAcknowledge={false}
               searchQuery={searchQuery}
+              rowVisualTone="archive"
             />
           ) : (
             <p className="px-4 py-6 text-sm text-slate-500">

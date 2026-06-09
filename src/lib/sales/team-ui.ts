@@ -11,7 +11,22 @@ export type SalesTeamUiContext = {
   hasTeamScope: boolean;
   /** Etykiety grup do podpowiedzi (np. „Sklep, Biuro”) */
   groupNamesLabel: string;
+  /** Administrator w trybie podglądu panelu — bez mutacji w UI */
+  readOnlyPreview?: boolean;
 };
+
+/** Wyłącza akcje tworzenia/edycji w sekcji Zespół podczas podglądu panelu. */
+export function applyAdminPanelReadOnlyTeamUi(
+  ctx: SalesTeamUiContext,
+  readOnlyPreview: boolean
+): SalesTeamUiContext {
+  if (!readOnlyPreview) return ctx;
+  return {
+    ...ctx,
+    readOnlyPreview: true,
+    canCreateGroups: false,
+  };
+}
 
 export async function resolveSalesTeamUiContext(
   user: Pick<SessionUser, "id" | "role">,

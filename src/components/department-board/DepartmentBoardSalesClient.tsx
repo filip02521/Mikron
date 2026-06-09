@@ -49,12 +49,16 @@ export function DepartmentBoardSalesClient({
   unseenQuestionIds = [],
   initialTab,
   focusQuestionId = null,
+  focusAnnouncementId = null,
+  readOnly = false,
 }: {
   initial: DepartmentBoardData;
   loadError?: string | null;
   unseenQuestionIds?: string[];
   initialTab?: BoardTab;
   focusQuestionId?: string | null;
+  focusAnnouncementId?: string | null;
+  readOnly?: boolean;
 }) {
   const router = useRouter();
   const tourDemo = useSalesOnboardingDemo("tablica");
@@ -77,6 +81,7 @@ export function DepartmentBoardSalesClient({
 
   const [activeTab, setActiveTab] = useState<BoardTab>(() => {
     if (initialTab) return initialTab;
+    if (focusAnnouncementId) return "announcements";
     if (focusQuestionId || unseenAnswersCount > 0) return "questions";
     return unreadAnnouncements > 0 ? "announcements" : "questions";
   });
@@ -115,6 +120,16 @@ export function DepartmentBoardSalesClient({
       });
     }, 120);
   }, [focusQuestionId, activeTab]);
+
+  useEffect(() => {
+    if (!focusAnnouncementId) return;
+    window.setTimeout(() => {
+      document.getElementById(`announcement-${focusAnnouncementId}`)?.scrollIntoView({
+        behavior: "smooth",
+        block: "center",
+      });
+    }, 180);
+  }, [focusAnnouncementId, activeTab, board.announcements.length]);
 
   async function submitQuestion() {
     setSaving(true);
@@ -230,6 +245,13 @@ export function DepartmentBoardSalesClient({
               )}
             </NotatnikPanel>
 
+            {readOnly ? (
+              <Alert tone="info" className="text-xs">
+                Podgląd administratora — wysyłanie pytań jest wyłączone.
+              </Alert>
+            ) : null}
+
+            {!readOnly ? (
             <NotatnikPanel
               title="Zadaj pytanie do zakupów"
               description="Odpowiedź zobaczy cały dział handlowy."
@@ -276,6 +298,7 @@ export function DepartmentBoardSalesClient({
                 </div>
               </ProsbaFormSection>
             </NotatnikPanel>
+            ) : null}
           </div>
         ) : null}
       </Card>

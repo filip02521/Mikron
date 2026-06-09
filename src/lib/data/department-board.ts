@@ -201,6 +201,10 @@ export async function countOpenDepartmentBoardQuestions(): Promise<number> {
   return count ?? 0;
 }
 
+export function salesBoardAnnouncementHref(threadId: string): string {
+  return `/tablica?widok=ogloszenia&watek=${encodeURIComponent(threadId)}`;
+}
+
 export type SalesBoardAttentionSnapshot = {
   /** Wszystkie nieprzeczytane — badge w menu. */
   unreadAnnouncementCount: number;
@@ -208,6 +212,7 @@ export type SalesBoardAttentionSnapshot = {
   /** Nieprzeczytane poza przypiętymi (banner na /moje — bez duplikatu z paskiem). */
   unreadAnnouncementBannerCount: number;
   unreadAnnouncementBannerLatestTitle: string | null;
+  unreadAnnouncementBannerLatestId: string | null;
   unseenAnswerCount: number;
   unseenAnswerPreview: {
     threadId: string;
@@ -253,6 +258,7 @@ export async function fetchSalesBoardAttentionSnapshot(
   let unreadAnnouncementLatestTitle: string | null = null;
   let unreadAnnouncementBannerCount = 0;
   let unreadAnnouncementBannerLatestTitle: string | null = null;
+  let unreadAnnouncementBannerLatestId: string | null = null;
 
   const pinnedAnnouncements = announcements.filter((a) => a.pinned);
   const pinnedIds = new Set(pinnedAnnouncements.map((a) => a.id));
@@ -271,6 +277,7 @@ export async function fetchSalesBoardAttentionSnapshot(
     unreadAnnouncementLatestTitle = unread[0]?.title ?? null;
     unreadAnnouncementBannerCount = unreadNotPinned.length;
     unreadAnnouncementBannerLatestTitle = unreadNotPinned[0]?.title ?? null;
+    unreadAnnouncementBannerLatestId = unreadNotPinned[0]?.id ?? null;
   }
 
   const questionRows = questionsRes.data ?? [];
@@ -323,6 +330,7 @@ export async function fetchSalesBoardAttentionSnapshot(
     unreadAnnouncementLatestTitle,
     unreadAnnouncementBannerCount,
     unreadAnnouncementBannerLatestTitle,
+    unreadAnnouncementBannerLatestId,
     unseenAnswerCount: unseenAnswerItems.length,
     unseenAnswerPreview: preview
       ? {

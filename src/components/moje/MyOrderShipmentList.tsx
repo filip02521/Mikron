@@ -10,7 +10,6 @@ import {
   actionAcknowledgeSalesCancelNotice,
   actionSalesCancelOrders,
   actionUpdateSalesClientName,
-  actionUnacknowledgePickup,
 } from "@/app/actions/my-orders";
 import {
   salesCancelConfirmCopy,
@@ -22,9 +21,11 @@ import { Button } from "@/components/ui/Button";
 import {
   mojeShipmentListClass,
   mojeShipmentSectionShellClass,
+  type MojeShipmentRowVisualTone,
 } from "@/lib/ui/moje-shipment-row-styles";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
-import { UndoToast } from "@/components/ui/UndoToast";
+import { useMyOrderPickupShelfDialog } from "@/components/moje/MyOrderPickupShelfDialogProvider";
+import { useMyOrderShipmentUndo } from "@/components/moje/MyOrderShipmentUndoProvider";
 import { Toast } from "@/components/ui/Toast";
 import { ActionLoadingOverlay } from "@/components/ui/ActionLoadingOverlay";
 import {
@@ -36,14 +37,12 @@ import {
   searchQueryTokens,
   shouldAutoExpandOrderLinesForSearch,
 } from "@/lib/orders/my-order-search";
-import { undoWindowBannerDescription } from "@/lib/orders/daily-panel-undo";
+import {
+  markPickupShelfNoticeSeen,
+} from "@/lib/orders/my-order-pickup-shelf-notice";
 import { cn } from "@/lib/cn";
 import type { OrderFormSupplierOption } from "@/lib/orders/order-form-suppliers";
-
-type UndoState = {
-  orderIds: string[];
-  title: string;
-};
+import type { MyOrderSectionPatternId } from "@/lib/orders/my-order-section-callout";
 
 type CancelConfirmState = {
   orderIds: string[];
@@ -62,6 +61,8 @@ export function MyOrderShipmentList({
   searchQuery,
   tourPreview = false,
   compactActionLayout = false,
+  suppressedSectionPatterns,
+  rowVisualTone = "default",
 }: {
   rows: MyOrderRow[];
   listKind: "zamowienie" | "informacja";
@@ -76,6 +77,8 @@ export function MyOrderShipmentList({
   searchQuery?: string | null;
   tourPreview?: boolean;
   compactActionLayout?: boolean;
+  suppressedSectionPatterns?: Set<MyOrderSectionPatternId>;
+  rowVisualTone?: MojeShipmentRowVisualTone;
 }) {
   const router = useRouter();
   const sortedRows = useMemo(() => sortMyOrderRows(rows), [rows]);
@@ -138,8 +141,10 @@ export function MyOrderShipmentList({
   }, [searchActive, searchQuery, sortedRows]);
 
   const [pending, start] = useTransition();
+  const { shelfNoticeOpen, requestShelfPickupNotice } = useMyOrderPickupShelfDialog();
+  const { reportUndo, clearUndo } = useMyOrderShipmentUndo();
+  const ackPending = pending || shelfNoticeOpen;
   const [pendingMessage, setPendingMessage] = useState<string | null>(null);
-  const [undo, setUndo] = useState<UndoState | null>(null);
   const [cancelConfirm, setCancelConfirm] = useState<CancelConfirmState | null>(
     null
   );
@@ -149,18 +154,19 @@ export function MyOrderShipmentList({
   } | null>(null);
   const [errorToast, setErrorToast] = useState<string | null>(null);
   const [successToast, setSuccessToast] = useState<string | null>(null);
-  const dismissUndo = useCallback(() => setUndo(null), []);
 
   const runPickup = useCallback(
-    (orderIds: string[]) => {
-      if (tourPreview) return;
+    (orderIds: string[], options?: { markShelfNotice?: boolean }) => {
+      if (tourPreview || !orderIds.length) return;
       const n = orderIds.length;
       setPendingMessage(n === 1 ? "Potwierdzanie odbioru…" : `Potwierdzanie ${n} pozycji…`);
       start(async () => {
         try {
           await actionAcknowledgePickup(orderIds);
-          setUndo({
+          if (options?.markShelfNotice) markPickupShelfNoticeSeen();
+          reportUndo({
             orderIds,
+            kind: "pickup",
             title:
               n === 1 ? "Odbiór zapisany" : `Odbiór ${n} poz. zapisany`,
           });
@@ -174,7 +180,21 @@ export function MyOrderShipmentList({
         }
       });
     },
-    [router, tourPreview]
+    [router, tourPreview, reportUndo]
+  );
+
+  const requestPickup = useCallback(
+    (orderIds: string[], shelfPickup = false) => {
+      if (tourPreview || !orderIds.length) return;
+      const proceed = () =>
+        runPickup(orderIds, shelfPickup ? { markShelfNotice: true } : undefined);
+      if (shelfPickup) {
+        requestShelfPickupNotice(orderIds, proceed);
+        return;
+      }
+      proceed();
+    },
+    [runPickup, requestShelfPickupNotice, tourPreview]
   );
 
   const runAcknowledgeCancelled = useCallback(
@@ -187,6 +207,14 @@ export function MyOrderShipmentList({
       start(async () => {
         try {
           await actionAcknowledgeCancelled(orderIds);
+          reportUndo({
+            orderIds,
+            kind: "dismiss",
+            title:
+              n === 1
+                ? "Anulowanie potwierdzone — ukryto z listy"
+                : `Potwierdzono ${n} poz. — ukryto z listy`,
+          });
           router.refresh();
         } catch (e) {
           setErrorToast(
@@ -197,7 +225,7 @@ export function MyOrderShipmentList({
         }
       });
     },
-    [router, tourPreview]
+    [router, tourPreview, reportUndo]
   );
 
   const runAcknowledgeCancelNotice = useCallback(
@@ -212,6 +240,14 @@ export function MyOrderShipmentList({
       start(async () => {
         try {
           await actionAcknowledgeSalesCancelNotice(orderIds);
+          reportUndo({
+            orderIds,
+            kind: "dismiss",
+            title:
+              n === 1
+                ? "Rezygnacja potwierdzona — ukryto z listy"
+                : `Potwierdzono ${n} poz. — ukryto z listy`,
+          });
           router.refresh();
         } catch (e) {
           setErrorToast(
@@ -224,7 +260,7 @@ export function MyOrderShipmentList({
         }
       });
     },
-    [router, tourPreview]
+    [router, tourPreview, reportUndo]
   );
 
   const saveClient = useCallback(
@@ -254,7 +290,7 @@ export function MyOrderShipmentList({
       start(async () => {
         try {
           await actionSalesCancelOrders(orderIds);
-          setUndo(null);
+          clearUndo();
           setSuccessToast(salesCancelSuccessToast());
           router.refresh();
         } catch (e) {
@@ -266,7 +302,7 @@ export function MyOrderShipmentList({
         }
       });
     },
-    [router, tourPreview]
+    [router, tourPreview, clearUndo]
   );
 
   const requestCancel = useCallback(
@@ -277,42 +313,12 @@ export function MyOrderShipmentList({
     [tourPreview]
   );
 
-  const handleUndo = useCallback(() => {
-    if (!undo || tourPreview) return;
-    const ids = undo.orderIds;
-    setPendingMessage("Cofanie potwierdzenia…");
-    start(async () => {
-      try {
-        await actionUnacknowledgePickup(ids);
-        setUndo(null);
-        router.refresh();
-      } catch (e) {
-        setUndo(null);
-        setErrorToast(
-          e instanceof Error ? e.message : "Nie udało się cofnąć"
-        );
-        router.refresh();
-      } finally {
-        setPendingMessage(null);
-      }
-    });
-  }, [undo, router, tourPreview]);
-
   if (!sortedRows.length) return null;
 
   const listBody = (
     <>
       {pendingMessage ? (
         <ActionLoadingOverlay message={pendingMessage} variant="section" />
-      ) : null}
-      {undo ? (
-        <UndoToast
-          title={undo.title}
-          description={undoWindowBannerDescription()}
-          placement="inline"
-          onDismiss={dismissUndo}
-          onUndo={handleUndo}
-        />
       ) : null}
       {successToast ? (
         <Toast
@@ -401,10 +407,10 @@ export function MyOrderShipmentList({
             listKind={listKind}
             showProgress={showProgress}
             canAcknowledge={canAcknowledge}
-            pending={pending}
+            pending={ackPending}
             expanded={expandedIds.has(row.id)}
             onToggle={() => toggleExpanded(row.id)}
-            onAcknowledgePickup={runPickup}
+            onAcknowledgePickup={requestPickup}
             onAcknowledgeCancelled={
               canAcknowledge && row.cancelledAckOrderIds.length
                 ? runAcknowledgeCancelled
@@ -433,6 +439,8 @@ export function MyOrderShipmentList({
             searchQuery={searchQuery}
             tourPreview={tourPreview}
             compactActionLayout={compactActionLayout}
+            suppressedSectionPatterns={suppressedSectionPatterns}
+            rowVisualTone={rowVisualTone}
           />
         ))}
       </ul>

@@ -18,7 +18,7 @@ export async function actionUpsertSalesGroup(form: {
   name: string;
   sortOrder?: number;
 }): Promise<{ success: true; id: string } | { error: string }> {
-  const actor = await requireAdminOrSalesTeamManagement();
+  const actor = await requireAdminOrSalesTeamManagement("mutate");
 
   const name = form.name.trim();
   if (!name) return { error: "Podaj nazwę grupy." };
@@ -73,7 +73,7 @@ export async function actionUpsertSalesGroup(form: {
 export async function actionDeleteSalesGroup(
   id: string
 ): Promise<{ success: true } | { error: string }> {
-  const actor = await requireAdminOrSalesTeamManagement();
+  const actor = await requireAdminOrSalesTeamManagement("mutate");
 
   const supabase = createAdminClient();
 

@@ -20,6 +20,7 @@ import { Card, CardHeader } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/Badge";
 import { HelpPopover } from "@/components/ui/HelpPopover";
+import { HelpBlock } from "@/components/ui/HelpBlock";
 import { cn } from "@/lib/cn";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { formatDateString, parseDateOnly } from "@/lib/orders/dates";
@@ -58,22 +59,35 @@ import {
 
 function PlanSectionHelp({ planning }: { planning: boolean }) {
   return (
-    <HelpPopover label="Pomoc" title="Plan tygodnia" shortLabel="Pomoc">
+    <HelpPopover label="Pomoc — plan tygodnia" title="Plan tygodnia" shortLabel="Pomoc">
       {planning ? (
-        <p>
-          <strong className="font-medium text-slate-800">Tryb planowania</strong> — przeciągnij
-          karty między dniami. Dopiero <strong className="font-medium text-slate-800">Zatwierdź plan</strong>{" "}
-          zapisze przesunięcia w harmonogramie (z uwzględnieniem urlopów i przeliczenia terminów).
-        </p>
+        <HelpBlock title="Tryb planowania">
+          <ul className="list-disc space-y-1.5 pl-4">
+            <li>Przeciągnij karty między dniami tygodnia.</li>
+            <li>
+              <strong className="font-medium text-slate-800">Zatwierdź plan</strong> zapisuje
+              przesunięcia w harmonogramie — z uwzględnieniem urlopów i przeliczenia terminów.
+            </li>
+          </ul>
+        </HelpBlock>
       ) : (
-        <p>
-          Karty z przyszłymi terminami — przyciski zamówienia są pod treścią karty (bez
-          przesuwania tekstu przy najechaniu). Możesz{" "}
-          <strong className="font-medium text-slate-800">oznaczyć zamówienie z wyprzedzeniem</strong>
-          , gdy złożysz je wcześniej u dostawcy, albo włączyć{" "}
-          <strong className="font-medium text-slate-800">tryb planowania</strong> i rozłożyć zamówienia
-          na tydzień metodą przeciągnij i upuść.
-        </p>
+        <>
+          <HelpBlock title="Co tu jest">
+            <p>Karty dostawców z przyszłymi terminami zamówień.</p>
+          </HelpBlock>
+          <HelpBlock title="Działania">
+            <ul className="list-disc space-y-1.5 pl-4">
+              <li>
+                Oznacz <strong className="font-medium text-slate-800">Zamówione</strong>, gdy
+                złożysz zamówienie wcześniej u dostawcy.
+              </li>
+              <li>
+                Włącz <strong className="font-medium text-slate-800">tryb planowania</strong>, aby
+                rozłożyć zamówienia na tydzień metodą przeciągnij i upuść.
+              </li>
+            </ul>
+          </HelpBlock>
+        </>
       )}
     </HelpPopover>
   );
