@@ -3,7 +3,10 @@
 import { useEffect, useId, useRef, useState } from "react";
 import type { MyOrderRow } from "@/lib/orders/my-order-presenter";
 import type { SalesCancelPhase } from "@/lib/orders/sales-cancel";
-import { shouldShowOrderStatusBadge } from "@/lib/orders/my-order-card-ui";
+import {
+  shouldShowMyOrderHeadlineBanner,
+  shouldShowOrderStatusBadge,
+} from "@/lib/orders/my-order-card-ui";
 import type { MyOrderListKind } from "@/lib/orders/my-order-row-layout";
 import {
   myOrderCollapsedProductSummary,
@@ -13,7 +16,6 @@ import {
   myOrderNeedsExpand,
 } from "@/lib/orders/my-order-row-layout";
 import { myOrderExpandedMetaFields } from "@/lib/orders/my-order-sales-ui";
-import { myOrderFriendlyStatusHint } from "@/lib/orders/my-order-friendly-status";
 import { MyOrderExpandedMeta } from "@/components/moje/MyOrderExpandedMeta";
 import { MyOrderAckButton } from "@/components/moje/MyOrderAckButton";
 import { MyOrderAssignedClient } from "@/components/moje/MyOrderAssignedClient";
@@ -361,7 +363,6 @@ export function MyOrderShipmentCard({
   ) : null;
 
   const kindShort = row.kind === "informacja" ? "Info." : "Zam.";
-  const statusHint = myOrderFriendlyStatusHint(row.statusTitle);
 
   const compactPickupOrAvailability =
     compactActionLayout &&
@@ -369,14 +370,11 @@ export function MyOrderShipmentCard({
     (row.acknowledgeMode === "pickup" || row.acknowledgeMode === "availability") &&
     needsAck;
 
-  const showHeadlineBanner =
-    !compactPickupOrAvailability &&
-    !expanded &&
-    (headlineTone === "action" ||
-      headlineTone === "warning" ||
-      headlineTone === "success" ||
-      isAction ||
-      isUrgent);
+  const showHeadlineBanner = shouldShowMyOrderHeadlineBanner(row, {
+    expanded,
+    compactActionLayout,
+    canAcknowledge,
+  });
 
   const bannerAckInHeadline = showHeadlineBanner && Boolean(showSinglePickup);
 
@@ -454,10 +452,7 @@ export function MyOrderShipmentCard({
     !isAction && !isUrgent && "text-slate-600"
   );
 
-  const bannerSubline =
-    collapsedSubline && statusHint
-      ? `${collapsedSubline} · ${statusHint}`
-      : collapsedSubline ?? statusHint;
+  const bannerSubline = collapsedSubline;
 
   return (
     <li

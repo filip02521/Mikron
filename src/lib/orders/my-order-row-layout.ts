@@ -28,7 +28,22 @@ export function myOrderCollapsedSubline(row: MyOrderRow): string | null {
     return verificationSublineFromDetail(row.statusDetail);
   }
 
-  if (row.statusTitle === "Częściowo na magazynie" && row.subline) {
+  if (row.statusTitle === "Częściowo na magazynie" && row.subline?.trim()) {
+    return row.subline;
+  }
+
+  if (row.headlineTone === "warning") {
+    if (row.timingLabel?.trim()) {
+      return row.timingLabel.replace(" · po terminie", "").trim();
+    }
+    return row.subline ?? null;
+  }
+
+  if (
+    row.headlineTone === "info" &&
+    row.statusTitle === "Zamówione" &&
+    row.subline?.trim()
+  ) {
     return row.subline;
   }
 

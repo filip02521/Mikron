@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 import {
   progressLabelInSubline,
+  rowNeedsSalesAcknowledgement,
+  shouldShowMyOrderHeadlineBanner,
   shouldShowOrderStatusBadge,
   shouldShowOrderStatusDetail,
 } from "./my-order-card-ui";
@@ -53,7 +55,47 @@ describe("my-order-card-ui", () => {
         row({ acknowledgeMode: "pickup", headlineTone: "action" })
       )
     ).toBe(false);
-    expect(shouldShowOrderStatusBadge(row())).toBe(true);
+    expect(shouldShowOrderStatusBadge(row())).toBe(false);
+    expect(
+      shouldShowOrderStatusBadge(
+        row({ headlineTone: "warning", headline: "Po przewidywanym terminie" })
+      )
+    ).toBe(false);
+  });
+
+  it("pasek tylko przy potwierdzeniu, nie przy statusie w toku", () => {
+    expect(
+      shouldShowMyOrderHeadlineBanner(
+        row({ acknowledgeMode: "pickup", headlineTone: "action" }),
+        { expanded: false, compactActionLayout: false, canAcknowledge: true }
+      )
+    ).toBe(true);
+    expect(
+      shouldShowMyOrderHeadlineBanner(
+        row({ headlineTone: "warning", headline: "Po przewidywanym terminie" }),
+        { expanded: false, compactActionLayout: false, canAcknowledge: true }
+      )
+    ).toBe(false);
+    expect(
+      shouldShowMyOrderHeadlineBanner(
+        row({ acknowledgeMode: "pickup", headlineTone: "action" }),
+        { expanded: false, compactActionLayout: true, canAcknowledge: true }
+      )
+    ).toBe(false);
+  });
+
+  it("rowNeedsSalesAcknowledgement rozpoznaje anulowanie", () => {
+    expect(rowNeedsSalesAcknowledgement(row({ acknowledgeMode: "pickup" }))).toBe(
+      true
+    );
+    expect(
+      rowNeedsSalesAcknowledgement(
+        row({ acknowledgeMode: "cancelled", cancelledAckOrderIds: ["x"] })
+      )
+    ).toBe(true);
+    expect(rowNeedsSalesAcknowledgement(row({ headlineTone: "warning" }))).toBe(
+      false
+    );
   });
 
   it("ukrywa statusDetail gdy zbędny", () => {
