@@ -3,8 +3,22 @@ import {
   formatClientSearchResultCount,
   formatSubiektKontrahentOption,
   mergeKontrahenciUnique,
+  shouldRunSubiektClientSearch,
 } from "./client-pick";
 import type { SubiektKontrahent } from "./types";
+
+describe("shouldRunSubiektClientSearch", () => {
+  it("nie szuka ponownie po wyborze z listy (kh_Id)", () => {
+    expect(
+      shouldRunSubiektClientSearch("BASSEM ALI DENTALART — Bassem Ali Dentalart", 42)
+    ).toBe(false);
+  });
+
+  it("szuka przy ręcznym wpisie bez kh_Id", () => {
+    expect(shouldRunSubiektClientSearch("bassem", null)).toBe(true);
+    expect(shouldRunSubiektClientSearch("b", null)).toBe(false);
+  });
+});
 
 describe("formatClientSearchResultCount", () => {
   it("odmienia liczbę wyników po polsku", () => {

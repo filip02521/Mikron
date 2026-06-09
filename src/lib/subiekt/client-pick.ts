@@ -3,6 +3,15 @@ import type { SubiektKontrahent } from "@/lib/subiekt/types";
 
 export const MIN_CLIENT_SEARCH_LENGTH = 2;
 
+/** Po wyborze z listy (kh_Id) nie szukamy ponownie — pełna etykieta często nie trafia w API. */
+export function shouldRunSubiektClientSearch(
+  query: string,
+  clientKhId: number | null | undefined
+): boolean {
+  if (clientKhId != null && clientKhId > 0) return false;
+  return query.trim().length >= MIN_CLIENT_SEARCH_LENGTH;
+}
+
 export function formatClientSearchResultCount(n: number): string {
   if (n === 1) return "1 wynik";
   const mod10 = n % 10;

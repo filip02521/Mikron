@@ -15,6 +15,7 @@ import {
   formatClientSearchResultCount,
   formatSubiektKontrahentOption,
   MIN_CLIENT_SEARCH_LENGTH,
+  shouldRunSubiektClientSearch,
 } from "@/lib/subiekt/client-pick";
 import { formatSubiektKontrahentLabel } from "@/lib/subiekt/match-supplier";
 import { normalizeSalesClientName } from "@/lib/orders/sales-client-label";
@@ -89,7 +90,7 @@ export function SubiektClientNameField({
       setStatus("idle");
       return;
     }
-    if (debounced.length < MIN_CLIENT_SEARCH_LENGTH) {
+    if (!shouldRunSubiektClientSearch(debounced, clientKhId)) {
       setItems([]);
       setStatus("idle");
       setFeedback(null);
@@ -120,7 +121,7 @@ export function SubiektClientNameField({
         }
       }
     });
-  }, [debounced, enabled]);
+  }, [debounced, enabled, clientKhId]);
 
   useEffect(() => {
     setHighlightedIndex(0);
@@ -128,6 +129,7 @@ export function SubiektClientNameField({
 
   const pick = useCallback(
     (k: SubiektKontrahent) => {
+      searchGenerationRef.current++;
       const label = formatSubiektKontrahentLabel(k);
       const kh = Math.trunc(Number(k.kh_Id));
       onChange({
@@ -138,6 +140,7 @@ export function SubiektClientNameField({
       setItems([]);
       setFeedback(null);
       setHighlightedIndex(0);
+      setStatus("idle");
     },
     [onChange, maxLength]
   );
@@ -178,7 +181,7 @@ export function SubiektClientNameField({
   const showFeedbackBelow =
     feedback &&
     items.length === 0 &&
-    debounced.length >= MIN_CLIENT_SEARCH_LENGTH &&
+    shouldRunSubiektClientSearch(debounced, clientKhId) &&
     status === "idle";
 
   const comboboxA11y = mounted
