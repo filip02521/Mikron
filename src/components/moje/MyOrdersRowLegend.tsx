@@ -4,14 +4,24 @@ import { cn } from "@/lib/cn";
 import { salesTypography } from "@/lib/ui/ontime-theme";
 
 const LEGEND_ITEMS = [
-  { barClass: "bg-emerald-500", label: "Do odbioru" },
-  { barClass: "bg-amber-500", label: "Po terminie" },
-  { barClass: "bg-sky-500", label: "Część na magazynie" },
-  { barClass: "bg-violet-400", label: "Informacyjna" },
+  { id: "pickup", barClass: "bg-emerald-500", label: "Gotowe" },
+  { id: "overdue", barClass: "bg-amber-500", label: "Po terminie" },
+  { id: "partial", barClass: "bg-sky-500", label: "Część na magazynie" },
+  { id: "informacja", barClass: "bg-violet-400", label: "Informacyjna" },
 ] as const;
 
 /** Jednowierszowa legenda kolorów krawędzi wiersza — obok filtrów. */
-export function MyOrdersRowLegend({ className }: { className?: string }) {
+export function MyOrdersRowLegend({
+  className,
+  hidePickup = false,
+}: {
+  className?: string;
+  /** Ukryj „Gotowe”, gdy filtr odbioru jest już aktywny. */
+  hidePickup?: boolean;
+}) {
+  const items = hidePickup ? LEGEND_ITEMS.filter((item) => item.id !== "pickup") : LEGEND_ITEMS;
+  if (!items.length) return null;
+
   return (
     <div
       className={cn(
@@ -21,8 +31,8 @@ export function MyOrdersRowLegend({ className }: { className?: string }) {
       )}
       aria-label="Znaczenie kolorów wierszy"
     >
-      {LEGEND_ITEMS.map((item) => (
-        <span key={item.label} className="inline-flex items-center gap-1.5">
+      {items.map((item) => (
+        <span key={item.id} className="inline-flex items-center gap-1.5">
           <span
             className={cn("h-3 w-1 shrink-0 rounded-full", item.barClass)}
             aria-hidden

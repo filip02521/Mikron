@@ -8,8 +8,8 @@ export function formatProsbaCount(n: number): string {
 }
 
 export function formatPickupBarLabel(count: number): string {
-  if (count === 1) return "1 prośba do odbioru";
-  return `${formatProsbaCount(count)} do odbioru`;
+  if (count === 1) return "1 gotowa na magazynie";
+  return `${formatProsbaCount(count)} gotowych na magazynie`;
 }
 
 /** Odmiana „pozycja / pozycje / pozycji” — liczba linii do odbioru. */

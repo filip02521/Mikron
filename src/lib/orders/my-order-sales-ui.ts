@@ -137,7 +137,7 @@ export function enrichMyOrderSalesUi(row: MyOrderRow): MyOrderSalesUi {
   if (row.acknowledgeMode === "pickup" && row.pickupPendingCount > 0) {
     const n = row.pickupPendingCount;
     return {
-      headline: n === 1 ? "Do odbioru" : `Do odbioru · ${n} poz.`,
+      headline: n === 1 ? "Gotowe na magazynie" : `Gotowe · ${n} poz.`,
       headlineTone: "action",
       subline: null,
       sortPriority: 1,

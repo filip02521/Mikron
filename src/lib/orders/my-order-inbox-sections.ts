@@ -15,8 +15,8 @@ import type { MyOrderSectionAccent } from "@/lib/orders/my-order-section-accent"
 
 /** Sekcja u góry listy — wymaga kliknięcia handlowca. */
 export const MY_ORDER_ACTION_SECTION_COPY = {
-  title: "Do odbioru i potwierdzenia",
-  hint: "Odbiór gotowego towaru, informacja od magazynu albo anulowanie do akceptacji.",
+  title: "Wymaga reakcji",
+  hint: "Gotowy towar, informacja od magazynu lub anulowanie — potwierdź jednym kliknięciem.",
   icon: "action" as const,
   accent: "emerald" as const satisfies MyOrderSectionAccent,
 };

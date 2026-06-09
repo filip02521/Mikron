@@ -51,6 +51,7 @@ describe("buildSalesDayStartSnapshot", () => {
     expect(snapshot.items.filter((i) => i.source === "pickup")).toHaveLength(2);
     expect(snapshot.items[0]?.source).toBe("pickup");
     expect(snapshot.items[0]?.count).toBe(3);
+    expect(snapshot.items[0]?.title).toBe("Mikran");
   });
 
   it("łączy notatnik i tablicę w totalActionCount", () => {

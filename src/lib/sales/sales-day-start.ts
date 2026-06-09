@@ -10,7 +10,6 @@ import {
   enrichMyOrderSalesUi,
   type MyOrdersInboxSummary,
 } from "@/lib/orders/my-order-sales-ui";
-import { myOrderPickupAckLabel } from "@/lib/orders/my-order-pickup-ack-copy";
 import { formatFollowUpLabel } from "@/lib/sales/notepad-follow-up";
 import { sortSalesNotes } from "@/lib/sales/notepad-note-sort";
 import { collectNotepadTodayTasks } from "@/lib/sales/notepad-today-tasks";
@@ -92,14 +91,14 @@ function buildOrderActionItems(rows: MyOrderRow[]): SalesDayStartItem[] {
       id: `pickup-${group.supplierName}`,
       source: "pickup",
       priority: PRIORITY.pickup,
-      title: myOrderPickupAckLabel(group.lineCount),
-      subtitle: group.supplierName,
-      evidence: `${group.lineCount} ${group.lineCount === 1 ? "pozycja" : group.lineCount < 5 ? "pozycje" : "pozycji"} u ${group.supplierName}`,
+      title: group.supplierName,
+      subtitle: `${group.lineCount} ${group.lineCount === 1 ? "pozycja gotowa" : group.lineCount < 5 ? "pozycje gotowe" : "pozycji gotowych"}`,
+      evidence: undefined,
       href: `/moje#${MOJE_ACTION_SECTION}`,
       inboxFilter: "pickup",
       scrollTarget: MOJE_ACTION_SECTION,
       count: group.lineCount,
-      ctaLabel: "Przejdź",
+      ctaLabel: group.lineCount > 1 ? `Potwierdź (${group.lineCount})` : "Potwierdź",
     });
   }
 
@@ -285,7 +284,7 @@ export function salesDayStartBreakdownLabels(
 export function salesDayStartSourceLabel(source: SalesDayStartSource): string {
   switch (source) {
     case "pickup":
-      return inboxFilterLabel("pickup");
+      return "Gotowe";
     case "cancel_ack":
       return inboxFilterLabel("cancel_ack");
     case "informacja_ready":

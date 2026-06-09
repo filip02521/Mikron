@@ -222,7 +222,7 @@ export function MyOrdersInboxSummary({
             <IconCircleCheck size={13} strokeWidth={2.25} aria-hidden />
             Doprecyzuj
           </span>
-          <SubChip count={summary.pickupCount} label="Odbiór" tone="action" filter="pickup" {...chipProps} />
+          <SubChip count={summary.pickupCount} label="Gotowe" tone="action" filter="pickup" {...chipProps} />
           <SubChip count={summary.cancelAckCount} label="Anulowanie" tone="neutral" filter="cancel_ack" {...chipProps} />
           <SubChip count={summary.informacjaReadyCount} label="Informacja gotowa" tone="success" filter="informacja_ready" {...chipProps} />
         </div>
@@ -247,7 +247,10 @@ export function MyOrdersInboxSummary({
         <p className="text-xs leading-snug text-slate-500">{INFORMACJA_FLOW_MY_ORDERS_HINT}</p>
       ) : null}
 
-      <MyOrdersRowLegend className="border-t border-slate-100/80 pt-2" />
+      <MyOrdersRowLegend
+        className="border-t border-slate-100/80 pt-2"
+        hidePickup={activeFilter === "pickup"}
+      />
 
       {activeFilter ? (
         <p className="sr-only" role="status" aria-live="polite">

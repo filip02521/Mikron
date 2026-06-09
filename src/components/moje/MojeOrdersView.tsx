@@ -818,13 +818,13 @@ function MojeOrdersViewContent({
 
         <MojeStickyPickupBar
           count={
-            !activeFilter &&
-            splitByAction &&
-            actionCount > 0
+            activeFilter === "pickup"
               ? 0
-              : !activeFilter || activeFilter === "pickup" || activeFilter === "action_group"
-                ? inboxSummary.pickupCount
-                : 0
+              : !activeFilter && splitByAction && actionCount > 0
+                ? 0
+                : !activeFilter || activeFilter === "action_group"
+                  ? inboxSummary.pickupCount
+                  : 0
           }
           onShowPickup={() => setActiveFilter("pickup")}
         />
@@ -888,6 +888,7 @@ function MojeOrdersViewContent({
           rows={bulkPickupRows}
           enabled={canAcknowledge}
           tourPreview={tourPreview}
+          inPickupFocus={activeFilter === "pickup"}
         />
         {splitByAction && actionCount > 0 ? (
           <div className={mojeShipmentSectionShellClass} aria-labelledby="moje-section-action">

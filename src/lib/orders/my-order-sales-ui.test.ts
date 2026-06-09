@@ -51,7 +51,7 @@ describe("enrichMyOrderSalesUi", () => {
       []
     ).zamowienia[0];
     const ui = enrichMyOrderSalesUi(row);
-    expect(ui.headline).toContain("Do odbioru");
+    expect(ui.headline).toContain("Gotowe");
     expect(ui.headlineTone).toBe("action");
     expect(ui.sortPriority).toBe(1);
     expect(ui.subline).toBeNull();
@@ -68,7 +68,7 @@ describe("enrichMyOrderSalesUi", () => {
       pickupAcknowledgedCount: 9,
       pickupPendingCount: 2,
     });
-    expect(ui.headline).toBe("Do odbioru · 2 poz.");
+    expect(ui.headline).toBe("Gotowe · 2 poz.");
     expect(ui.subline).toBeNull();
   });
 

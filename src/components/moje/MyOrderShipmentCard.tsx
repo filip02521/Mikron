@@ -121,7 +121,8 @@ function ShipmentToolbar({
   shelfPickup?: boolean;
 }) {
   const pendingForLabel = pickupIds.length || pickupCount;
-  const pickupLabel = myOrderPickupAckLabel(pendingForLabel, ackMode);
+  const compactPickup = ackMode === "pickup";
+  const pickupLabel = myOrderPickupAckLabel(pendingForLabel, ackMode, { compact: compactPickup });
   const pickupTitle = myOrderPickupAckTitle(pendingForLabel, ackMode);
 
   const hasToolbar =
@@ -308,7 +309,10 @@ export function MyOrderShipmentCard({
 
   const ackMode: MyOrderPickupAckMode =
     row.acknowledgeMode === "availability" ? "availability" : "pickup";
-  const pickupAckLabel = myOrderPickupAckLabel(row.pickupPendingIds.length, ackMode);
+  const compactPickup = ackMode === "pickup";
+  const pickupAckLabel = myOrderPickupAckLabel(row.pickupPendingIds.length, ackMode, {
+    compact: compactPickup,
+  });
   const pickupAckTitle = myOrderPickupAckTitle(row.pickupPendingIds.length, ackMode);
   const shelfPickup = row.acknowledgeMode === "pickup";
 
@@ -498,7 +502,7 @@ export function MyOrderShipmentCard({
     hideClientLabel: hideLineClient,
     canAcknowledge: showGroupPickup,
     pending,
-    acknowledgeLineLabel: myOrderPickupAckLabel(1, ackMode),
+    acknowledgeLineLabel: myOrderPickupAckLabel(1, ackMode, { compact: compactPickup }),
     acknowledgeLineTitle: pickupAckTitle,
     onAcknowledgePickup: showGroupPickup
       ? (id: string) => onAcknowledgePickup([id], shelfPickup)
@@ -800,7 +804,9 @@ export function MyOrderShipmentCard({
                       ariaLabel={pickupAckTitle}
                       onClick={() => onAcknowledgePickup(row.pickupPendingIds, shelfPickup)}
                     >
-                      {myOrderPickupAckLabel(row.pickupPendingIds.length, ackMode)}
+                      {myOrderPickupAckLabel(row.pickupPendingIds.length, ackMode, {
+                        compact: compactPickup,
+                      })}
                     </MyOrderAckButton>
                   </div>
                 </div>

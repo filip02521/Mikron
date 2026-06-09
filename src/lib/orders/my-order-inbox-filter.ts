@@ -57,7 +57,7 @@ export function inboxFilterLabel(filter: MyOrderInboxFilter): string {
     case "watch_group":
       return "W toku";
     case "pickup":
-      return "Odbiór";
+      return "Gotowe";
     case "partial":
       return "Część na magazynie";
     case "cancel_ack":

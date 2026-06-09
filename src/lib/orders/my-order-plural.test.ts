@@ -12,7 +12,7 @@ describe("formatProsbaCount", () => {
 
 describe("formatPickupBarLabel", () => {
   it("używa poprawnej odmiany", () => {
-    expect(formatPickupBarLabel(5)).toBe("5 prośb do odbioru");
+    expect(formatPickupBarLabel(5)).toBe("5 prośb gotowych na magazynie");
   });
 });
 

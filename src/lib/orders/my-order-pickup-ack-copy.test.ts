@@ -18,6 +18,11 @@ describe("myOrderPickupAckLabel", () => {
   it("informacja o dostępności", () => {
     expect(myOrderPickupAckLabel(5, "availability")).toBe("Potwierdź");
   });
+
+  it("compact — bez słowa odbiór na liście", () => {
+    expect(myOrderPickupAckLabel(1, "pickup", { compact: true })).toBe("Potwierdź");
+    expect(myOrderPickupAckLabel(3, "pickup", { compact: true })).toBe("Potwierdź (3)");
+  });
 });
 
 describe("myOrderPickupAckTitle", () => {
