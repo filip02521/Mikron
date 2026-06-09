@@ -490,6 +490,31 @@ export function buildOnboardingTablicaDemo(): DepartmentBoardData {
 
 export const ONBOARDING_TABLICA_UNSEEN_QUESTION_IDS = ["demo-board-question-answered"] as const;
 
+/** Kontekst panelu Start dnia w tourze onboardingowym /moje. */
+export function buildOnboardingDayStartContext(salesPersonId: string) {
+  const notepad = buildOnboardingNotepadDemo(salesPersonId);
+  return {
+    watches: notepad.zkWatches,
+    notes: notepad.notes,
+    boardAttention: {
+      unreadAnnouncementCount: 0,
+      unreadAnnouncementLatestTitle: null,
+      unreadAnnouncementBannerCount: 0,
+      unreadAnnouncementBannerLatestTitle: null,
+      unseenAnswerCount: 1,
+      unseenAnswerPreview: {
+        threadId: "demo-board-question-answered",
+        title: "Czy można zamówić próbki implantów poza harmonogramem?",
+        isOwnQuestion: false,
+      },
+      unseenQuestionIds: ["demo-board-question-answered"],
+      pinnedAnnouncements: [],
+      navBadgeCount: 1,
+    },
+    previewDla: null,
+  };
+}
+
 export function buildOnboardingNotepadDemo(salesPersonId: string): SalesNotepadData {
   const now = new Date().toISOString();
   const today = demoIsoDate(0);

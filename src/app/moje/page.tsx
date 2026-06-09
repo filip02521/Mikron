@@ -31,8 +31,7 @@ import {
 } from "@/lib/data/department-board";
 import { fetchSalesDayStartNotepadSlice } from "@/lib/data/sales-notepad";
 import {
-  buildSalesDayStartSnapshot,
-  type SalesDayStartSnapshot,
+  type SalesDayStartContext,
 } from "@/lib/sales/sales-day-start";
 import type { DeliveryStats, IndividualOrder } from "@/types/database";
 import { autoAssignMissingSuppliersFromCatalog } from "@/lib/services/auto-assign-suppliers";
@@ -80,7 +79,7 @@ export default async function MojePage({
   let isTeamPreview = false;
   let sessionUserId: string | null = null;
   let boardAttention: SalesBoardAttentionSnapshot | null = null;
-  let dayStartSnapshot: SalesDayStartSnapshot | null = null;
+  let dayStartContext: SalesDayStartContext | null = null;
 
   try {
     const user = await getSessionUser();
@@ -242,13 +241,12 @@ export default async function MojePage({
   const { zamowienia, informacje, productLineCount } = presentMyOrders(orders, stats);
 
   if (viewingOwnPanel && notepadSlice) {
-    dayStartSnapshot = buildSalesDayStartSnapshot({
-      rows: [...zamowienia, ...informacje],
+    dayStartContext = {
       watches: notepadSlice.zkWatches,
       notes: notepadSlice.notes,
       boardAttention,
       previewDla: previewSalesPersonId ?? null,
-    });
+    };
   }
 
   const salesHeaderActions =
@@ -313,7 +311,7 @@ export default async function MojePage({
         initialClientZkNumber={zkNumberParam?.trim() || null}
         syncSearchUrl={!isTeamPreview}
         showSalesSync={showSalesSync}
-        dayStartSnapshot={dayStartSnapshot}
+        dayStartContext={dayStartContext}
       />
     </div>
   );

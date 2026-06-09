@@ -68,6 +68,19 @@ const PRIORITY: Record<SalesDayStartSource, number> = {
 const PINNED_NOTES_LIMIT = 4;
 const MOJE_ACTION_SECTION = "moje-section-action";
 
+/** Maks. zadań w panelu przed „Pokaż wszystkie”. */
+export const SALES_DAY_START_VISIBLE_LIMIT = 6;
+
+export type SalesDayStartBreakdownKey = keyof SalesDayStartBreakdown;
+
+/** Dane spoza listy zamówień — notatnik i tablica z RSC. */
+export type SalesDayStartContext = {
+  watches: SalesZkWatch[];
+  notes: SalesNote[];
+  boardAttention?: SalesBoardAttentionSnapshot | null;
+  previewDla?: string | null;
+};
+
 function groupPickupBySupplier(
   rows: MyOrderRow[]
 ): { supplierName: string; lineCount: number }[] {
@@ -319,4 +332,31 @@ export function pinnedNoteFollowUpHint(note: SalesNote): string | null {
   if (!note.follow_up_at) return null;
   const label = formatFollowUpLabel(note.follow_up_at);
   return label ? `Przypomnienie ${label}` : null;
+}
+
+/** Mapuje aktywny filtr /moje na grupę w panelu Start dnia. */
+export function salesDayStartBreakdownFromFilter(
+  filter: MyOrderInboxFilter | null
+): SalesDayStartBreakdownKey | null {
+  if (!filter) return null;
+  if (
+    filter === "action_group" ||
+    filter === "pickup" ||
+    filter === "cancel_ack" ||
+    filter === "informacja_ready"
+  ) {
+    return "orders";
+  }
+  return null;
+}
+
+export function sliceSalesDayStartItems(
+  items: SalesDayStartItem[],
+  expanded: boolean,
+  limit = SALES_DAY_START_VISIBLE_LIMIT
+): { visible: SalesDayStartItem[]; hiddenCount: number } {
+  if (expanded || items.length <= limit) {
+    return { visible: items, hiddenCount: 0 };
+  }
+  return { visible: items.slice(0, limit), hiddenCount: items.length - limit };
 }

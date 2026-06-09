@@ -28,7 +28,12 @@ import {
 import { MyOrderArchiveSection } from "@/components/moje/MyOrderArchiveSection";
 import { MyOrderBulkPickupBar } from "@/components/moje/MyOrderBulkPickupBar";
 import { SalesDayStartPanel } from "@/components/moje/SalesDayStartPanel";
-import type { SalesDayStartSnapshot } from "@/lib/sales/sales-day-start";
+import type { SalesBoardAttentionSnapshot } from "@/lib/data/department-board";
+import {
+  buildSalesDayStartSnapshot,
+  salesDayStartBreakdownFromFilter,
+  type SalesDayStartContext,
+} from "@/lib/sales/sales-day-start";
 import { MyOrderShipmentList } from "@/components/moje/MyOrderShipmentList";
 import { MyOrdersInboxSummary } from "@/components/moje/MyOrdersInboxSummary";
 import { MojeStickyPickupBar } from "@/components/moje/MojeStickyPickupBar";
@@ -346,7 +351,7 @@ function MojeOrdersViewContent({
   syncSearchUrl = true,
   tourPreview = false,
   showSalesSync = false,
-  dayStartSnapshot = null,
+  dayStartContext = null,
 }: {
   zamowienia: MyOrderRow[];
   informacje: MyOrderRow[];
@@ -370,7 +375,7 @@ function MojeOrdersViewContent({
   syncSearchUrl?: boolean;
   tourPreview?: boolean;
   showSalesSync?: boolean;
-  dayStartSnapshot?: SalesDayStartSnapshot | null;
+  dayStartContext?: SalesDayStartContext | null;
 }) {
   const router = useRouter();
   const [activeFilter, setActiveFilter] = useState<MyOrderInboxFilter | null>(null);
@@ -546,6 +551,18 @@ function MojeOrdersViewContent({
     () => [...sortedZamowienia, ...sortedInformacje],
     [sortedZamowienia, sortedInformacje]
   );
+
+  const dayStartSnapshot = useMemo(() => {
+    if (!dayStartContext) return null;
+    return buildSalesDayStartSnapshot({
+      rows: allRows,
+      watches: dayStartContext.watches,
+      notes: dayStartContext.notes,
+      boardAttention: dayStartContext.boardAttention,
+      previewDla: dayStartContext.previewDla,
+    });
+  }, [allRows, dayStartContext]);
+
   const inboxSummary = summarizeMyOrdersInbox(allRows);
 
   /** Pełna liczba pozycji wymagających reakcji — niezależna od filtra/wyszukiwania. */
@@ -554,6 +571,7 @@ function MojeOrdersViewContent({
     [allRows]
   );
   const dayStartActionCount = dayStartSnapshot?.totalActionCount ?? needsActionTotal;
+  const dayStartActiveBreakdown = salesDayStartBreakdownFromFilter(activeFilter);
 
   const handleDayStartInboxFilter = useCallback(
     (filter: MyOrderInboxFilter, scrollTarget?: string) => {
@@ -573,13 +591,16 @@ function MojeOrdersViewContent({
         handleDayStartInboxFilter("action_group", "moje-section-action");
         return;
       }
+      const previewQs = dayStartContext?.previewDla
+        ? `?dla=${encodeURIComponent(dayStartContext.previewDla)}`
+        : "";
       if (key === "notepad") {
-        router.push("/notatnik");
+        router.push(`/notatnik${previewQs}`);
         return;
       }
-      router.push("/tablica");
+      router.push(`/tablica${previewQs}`);
     },
-    [handleDayStartInboxFilter, router]
+    [handleDayStartInboxFilter, router, dayStartContext?.previewDla]
   );
 
   const dayStartPanel =
@@ -589,6 +610,7 @@ function MojeOrdersViewContent({
           snapshot={dayStartSnapshot}
           onInboxFilter={handleDayStartInboxFilter}
           onBreakdownSelect={handleDayStartBreakdown}
+          activeBreakdown={dayStartActiveBreakdown}
           tourPreview={tourPreview}
         />
       </Suspense>

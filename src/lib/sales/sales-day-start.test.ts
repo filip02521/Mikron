@@ -4,6 +4,8 @@ import type { SalesBoardAttentionSnapshot } from "@/lib/data/department-board";
 import {
   buildSalesDayStartSnapshot,
   salesDayStartNavCount,
+  salesDayStartBreakdownFromFilter,
+  sliceSalesDayStartItems,
 } from "./sales-day-start";
 
 function row(partial: Partial<MyOrderRow> & Pick<MyOrderRow, "id">): MyOrderRow {
@@ -127,5 +129,29 @@ describe("salesDayStartNavCount", () => {
         2
       )
     ).toBe(6);
+  });
+});
+
+describe("salesDayStartBreakdownFromFilter", () => {
+  it("mapuje filtry zamówień", () => {
+    expect(salesDayStartBreakdownFromFilter("pickup")).toBe("orders");
+    expect(salesDayStartBreakdownFromFilter("action_group")).toBe("orders");
+    expect(salesDayStartBreakdownFromFilter("overdue")).toBeNull();
+  });
+});
+
+describe("sliceSalesDayStartItems", () => {
+  it("ogranicza listę przed rozwinięciem", () => {
+    const items = Array.from({ length: 8 }, (_, i) => ({
+      id: String(i),
+      source: "pickup" as const,
+      priority: 1,
+      title: `Item ${i}`,
+      href: "/moje",
+      ctaLabel: "Go",
+    }));
+    const sliced = sliceSalesDayStartItems(items, false, 6);
+    expect(sliced.visible).toHaveLength(6);
+    expect(sliced.hiddenCount).toBe(2);
   });
 });

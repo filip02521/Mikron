@@ -33,8 +33,9 @@ export function MojeOrdersHelp() {
     >
       <HelpBlock title="Co tu jest">
         <p>
-          Status Twoich prośb u dostawców i o dostępność towaru. Jeden wiersz to jedna prośba u
-          jednego dostawcy.
+          U góry strony <strong className="font-medium text-slate-800">Start dnia</strong> — jedna
+          kolejka: gotowy towar, przypomnienia z notatnika i tablica. Poniżej pełna lista prośb u
+          dostawców.
         </p>
       </HelpBlock>
 
