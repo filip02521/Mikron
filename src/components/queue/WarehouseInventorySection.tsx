@@ -11,6 +11,7 @@ import {
   IconPackageCheck,
   IconWarehouse,
 } from "@/components/icons/StrokeIcons";
+import { QueueGroupExpandControl } from "@/components/queue/QueueGroupExpandControl";
 import { QueueMetricTab } from "@/components/queue/QueueMetricTab";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { DataTable, TableScroll } from "@/components/ui/DataTable";
@@ -473,29 +474,12 @@ export function WarehouseInventorySection({
           </div>
         </div>
 
-        <div className="flex flex-wrap items-center gap-2 pb-0.5">
-          <SupplierFilterChips
-            chips={supplierChips}
-            value={supplierFilter}
-            onChange={setSupplierFilter}
-            totalLabel="Wszyscy"
-          />
-          {inventoryGroups.length > 1 ? (
-            <Button
-              type="button"
-              variant="ghost"
-              size="sm"
-              className="ml-auto shrink-0"
-              onClick={() =>
-                inventoryCollapse.allExpanded
-                  ? inventoryCollapse.collapseAll()
-                  : inventoryCollapse.expandAll()
-              }
-            >
-              {inventoryCollapse.allExpanded ? "Zwiń grupy" : "Rozwiń grupy"}
-            </Button>
-          ) : null}
-        </div>
+        <SupplierFilterChips
+          chips={supplierChips}
+          value={supplierFilter}
+          onChange={setSupplierFilter}
+          totalLabel="Wszyscy"
+        />
       </div>
 
       {!filtered.length ? (
@@ -509,6 +493,16 @@ export function WarehouseInventorySection({
         />
       ) : (
         <TableScroll className="px-0 pb-0">
+          {inventoryGroups.length > 1 ? (
+            <div className="flex justify-end border-b border-slate-100 px-4 py-1.5 sm:px-6">
+              <QueueGroupExpandControl
+                groupCount={inventoryGroups.length}
+                allExpanded={inventoryCollapse.allExpanded}
+                onExpandAll={inventoryCollapse.expandAll}
+                onCollapseAll={inventoryCollapse.collapseAll}
+              />
+            </div>
+          ) : null}
           <div className={QUEUE_LIST_BODY_CLASS}>
             <DataTable className="queue-table">
               <thead>

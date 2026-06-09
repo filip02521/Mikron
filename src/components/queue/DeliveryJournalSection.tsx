@@ -21,6 +21,7 @@ import {
   type WarehouseCarrier,
   type WarehouseShipmentForm,
 } from "@/lib/warehouse/delivery-carriers";
+import { QueueSupplierDirectoryField } from "@/components/queue/QueueSupplierDirectoryField";
 import { Button } from "@/components/ui/Button";
 import { Field, Input, Select, fieldControlClass } from "@/components/ui/Field";
 import { EmptyState } from "@/components/ui/EmptyState";
@@ -222,18 +223,12 @@ function ReceiptFormFields({
   return (
     <div className="grid gap-3 sm:grid-cols-2">
       <Field label="Dostawca">
-        <Select
+        <QueueSupplierDirectoryField
+          suppliers={suppliers}
           value={form.supplierId}
-          onChange={(e) => setForm((f) => ({ ...f, supplierId: e.target.value }))}
+          onChange={(supplierId) => setForm((f) => ({ ...f, supplierId }))}
           disabled={disabled}
-        >
-          <option value="">— inny / wpisz poniżej —</option>
-          {suppliers.map((s) => (
-            <option key={s.id} value={s.id}>
-              {s.name}
-            </option>
-          ))}
-        </Select>
+        />
       </Field>
       {!form.supplierId ? (
         <Field label="Nazwa (gdy brak na liście)">

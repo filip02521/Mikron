@@ -19,6 +19,7 @@ import {
   warehouseShipmentFormLabel,
   type WarehouseCarrier,
 } from "@/lib/warehouse/delivery-carriers";
+import { QueueSupplierDirectoryField } from "@/components/queue/QueueSupplierDirectoryField";
 import { Button } from "@/components/ui/Button";
 import { Field, Input, Select } from "@/components/ui/Field";
 import { EmptyState } from "@/components/ui/EmptyState";
@@ -170,18 +171,14 @@ export function DeliveryJournalInsightsPanel({
             />
           </Field>
           <Field label="Dostawca">
-            <Select
+            <QueueSupplierDirectoryField
+              suppliers={suppliers}
               value={supplierId}
+              onChange={setSupplierId}
               disabled={pending}
-              onChange={(e) => setSupplierId(e.target.value)}
-            >
-              <option value="">Wszyscy</option>
-              {suppliers.map((s) => (
-                <option key={s.id} value={s.id}>
-                  {s.name}
-                </option>
-              ))}
-            </Select>
+              includeAllOption
+              placeholder="Wszyscy lub szukaj…"
+            />
           </Field>
           <Field label="Kurier">
             <Select
