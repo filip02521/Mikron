@@ -3,11 +3,17 @@ import type { UserRole } from "@/types/database";
 import { fetchProfileByUserId } from "@/lib/auth/profile";
 import { middlewareNeedsBootstrap } from "@/lib/setup/middleware-bootstrap";
 import {
+  ADMIN_PANEL_COOKIE,
+  homePathForAdminPanelContext,
+  resolveAdminPanelContext,
+} from "@/lib/auth/admin-panel-context";
+import {
   canAccessOperations,
   canAccessPath,
   canAccessWarehouse,
   canManageSalesTeam,
   homePathForRole,
+  isAdmin,
   isSalesAccount,
 } from "@/lib/auth-roles";
 import {
@@ -40,7 +46,7 @@ function matchesPrefix(pathname: string, prefixes: string[]): boolean {
 export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
-  const publicAuthPaths = ["/setup", "/login", "/ustaw-haslo"];
+  const publicAuthPaths = ["/setup", "/login", "/ustaw-haslo", "/auth/confirm"];
 
   const needsSetup = await middlewareNeedsBootstrap();
   if (needsSetup) {
@@ -60,11 +66,19 @@ export async function proxy(request: NextRequest) {
     if (pathname === "/login" && user) {
       const profile = await fetchProfileByUserId(user.id);
       if (profile && !profile.must_change_password) {
-        return redirectWithSession(
-          request,
-          sessionResponse,
-          homePathForRole(profile.role as UserRole)
-        );
+        const loginRole = profile.role as UserRole;
+        const loginPanelContext = isAdmin(loginRole)
+          ? resolveAdminPanelContext(
+              request.cookies.get(ADMIN_PANEL_COOKIE)?.value
+            )
+          : null;
+        const loginHome =
+          isAdmin(loginRole) &&
+          loginPanelContext &&
+          loginPanelContext !== "admin"
+            ? homePathForAdminPanelContext(loginPanelContext)
+            : homePathForRole(loginRole);
+        return redirectWithSession(request, sessionResponse, loginHome);
       }
     }
     return sessionResponse;
@@ -109,12 +123,35 @@ export async function proxy(request: NextRequest) {
   }
 
   const previewSalesPersonId = request.nextUrl.searchParams.get("dla");
-  if (!canAccessPath(role, pathname, { previewSalesPersonId })) {
+  const adminPanelContext = isAdmin(role)
+    ? resolveAdminPanelContext(request.cookies.get(ADMIN_PANEL_COOKIE)?.value)
+    : null;
+
+  if (
+    isAdmin(role) &&
+    adminPanelContext === "sales" &&
+    matchesPrefix(pathname, SALES_PREFIXES) &&
+    !previewSalesPersonId &&
+    pathname !== "/admin/wybor-handlowca"
+  ) {
     return redirectWithSession(
       request,
       sessionResponse,
-      homePathForRole(role)
+      "/admin/wybor-handlowca"
     );
+  }
+
+  if (
+    !canAccessPath(role, pathname, {
+      previewSalesPersonId,
+      adminPanelContext,
+    })
+  ) {
+    const home =
+      isAdmin(role) && adminPanelContext && adminPanelContext !== "admin"
+        ? homePathForAdminPanelContext(adminPanelContext)
+        : homePathForRole(role);
+    return redirectWithSession(request, sessionResponse, home);
   }
 
   if (matchesPrefix(pathname, ADMIN_PREFIXES) && role !== "admin") {
@@ -168,6 +205,13 @@ export async function proxy(request: NextRequest) {
 
   if (isSalesAccount(role) && pathname.startsWith("/zamowienia/nowe")) {
     return redirectWithSession(request, sessionResponse, "/prosba");
+  }
+
+  if (previewSalesPersonId && isAdmin(role)) {
+    sessionResponse.headers.set(
+      "x-preview-sales-person-id",
+      previewSalesPersonId
+    );
   }
 
   return sessionResponse;

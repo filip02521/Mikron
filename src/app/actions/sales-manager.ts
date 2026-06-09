@@ -44,7 +44,7 @@ export async function actionCreateSalesTeamUser(form: {
     }
   | { error: string }
 > {
-  const actor = await requireSalesTeamManagement();
+  const actor = await requireSalesTeamManagement("mutate");
 
   const name = form.name.trim();
   const email = form.email.trim().toLowerCase();
@@ -149,7 +149,7 @@ export async function actionResetSalesTeamUserPassword(
   | { success: true; email: string; salesPersonName: string; tempPassword: string }
   | { error: string }
 > {
-  const current = await requireSalesTeamManagement();
+  const current = await requireSalesTeamManagement("mutate");
   if (!salesPersonId?.trim()) {
     return { error: "Brak identyfikatora handlowca." };
   }
@@ -222,7 +222,7 @@ export async function actionResetSalesTeamUserPassword(
 export async function actionGenerateSalesTeamInviteLink(
   salesPersonId: string
 ): Promise<{ success: true; invite: SalesInviteLinkResult } | { error: string }> {
-  const actor = await requireSalesTeamManagement();
+  const actor = await requireSalesTeamManagement("mutate");
   if (!isAdmin(actor.role)) {
     const allowed = await canAccessSalesPerson(actor, salesPersonId);
     if (!allowed) return { error: "Nie masz uprawnień do tego handlowca." };

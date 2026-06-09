@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useSearchParams } from "next/navigation";
 import { isNavItemActive, navForRole } from "@/lib/nav";
 import { useSalesUpdates } from "@/components/sales/SalesUpdatesContext";
 import { cn } from "@/lib/cn";
@@ -13,18 +13,24 @@ import {
   mobileNavLinkIdleClass,
   mobileSalesNavClass,
 } from "@/lib/ui/ontime-theme";
-import { isSalesManager } from "@/lib/auth-roles";
+import { isAdmin, isSalesManager } from "@/lib/auth-roles";
+import { hrefWithAdminSalesPreview } from "@/lib/nav/sales-preview-href";
 import type { UserRole } from "@/types/database";
 import { useSalesOnboardingOptional } from "@/components/sales/SalesOnboardingContext";
 
 export function MobileSalesNav({
   navBadges = { salesMoje: 0, salesNotatnik: 0, salesTablica: 0 },
   role = "sales",
+  realRole = null,
 }: {
   navBadges?: { salesMoje?: number; salesNotatnik?: number; salesTablica?: number };
   role?: UserRole;
+  realRole?: UserRole | null;
 }) {
   const pathname = usePathname();
+  const searchParams = useSearchParams();
+  const previewDla = searchParams.get("dla");
+  const preservePreviewDla = Boolean(realRole && isAdmin(realRole) && previewDla);
   const navLocked = useSalesOnboardingOptional()?.navLocked ?? false;
   const salesUpdates = useSalesUpdates();
   const navRole = isSalesManager(role) ? "sales_manager" : "sales";
@@ -47,6 +53,7 @@ export function MobileSalesNav({
           const attentionBadge =
             item.badge != null && item.badge > 0 ? item.badge : 0;
           const label = item.mobileLabel ?? item.label;
+          const href = hrefWithAdminSalesPreview(item.href, previewDla, preservePreviewDla);
           const linkClass = cn(
             mobileNavLinkBaseClass,
             "px-1",
@@ -94,7 +101,7 @@ export function MobileSalesNav({
                 </span>
               ) : (
                 <Link
-                  href={item.href}
+                  href={href}
                   className={linkClass}
                   aria-current={active ? "page" : undefined}
                   title={item.label}

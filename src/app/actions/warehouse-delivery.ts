@@ -97,7 +97,7 @@ export async function actionCreateDeliveryReceipt(input: {
   palletCount: number;
   note?: string;
 }) {
-  const user = await requireWarehouse();
+  const user = await requireWarehouse("mutate");
   const carrier = parseWarehouseCarrier(input.carrier);
   const shipmentForm = parseWarehouseShipmentForm(input.shipmentForm);
   const receipt = await createDeliveryReceipt({
@@ -125,7 +125,7 @@ export async function actionUpdateDeliveryReceipt(input: {
   palletCount: number;
   note?: string;
 }) {
-  const user = await requireWarehouse();
+  const user = await requireWarehouse("mutate");
   const carrier = parseWarehouseCarrier(input.carrier);
   const shipmentForm = parseWarehouseShipmentForm(input.shipmentForm);
   const receipt = await updateDeliveryReceipt({
@@ -145,7 +145,7 @@ export async function actionUpdateDeliveryReceipt(input: {
 }
 
 export async function actionDeleteDeliveryReceipt(id: string) {
-  await requireWarehouse();
+  await requireWarehouse("mutate");
   await deleteDeliveryReceipt(id);
   revalidatePath("/kolejka");
   return { success: true as const };

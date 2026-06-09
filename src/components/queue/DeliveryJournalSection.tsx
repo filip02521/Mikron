@@ -13,6 +13,7 @@ import { shiftJournalDateKey } from "@/lib/warehouse/delivery-receipts";
 import { DeliveryJournalInsightsPanel } from "@/components/queue/DeliveryJournalInsightsPanel";
 import { SegmentedControl } from "@/components/ui/SegmentedControl";
 import type { WarehouseDeliveryReceipt } from "@/lib/warehouse/delivery-receipts";
+import { usePreviewMutationBlocker } from "@/components/layout/usePreviewMutationBlocker";
 import {
   WAREHOUSE_CARRIERS,
   WAREHOUSE_SHIPMENT_FORMS,
@@ -335,6 +336,9 @@ export function DeliveryJournalSection({
   todayDateKey: string;
   isMagazynRole?: boolean;
 }) {
+  const { readOnly: previewReadOnly, blockIfReadOnly } = usePreviewMutationBlocker(
+    (text) => setToast({ text, tone: "error" })
+  );
   const [pending, start] = useTransition();
   const [journal, setJournal] = useState(initialJournal);
   const [viewDate, setViewDate] = useState(initialJournal.date);
@@ -430,6 +434,7 @@ export function DeliveryJournalSection({
 
   const submitNew = useCallback(() => {
     if (pending) return;
+    if (blockIfReadOnly()) return;
     const snapshot = form;
     start(async () => {
       try {
@@ -454,7 +459,7 @@ export function DeliveryJournalSection({
         });
       }
     });
-  }, [form, pending, refresh, focusForm]);
+  }, [blockIfReadOnly, form, pending, refresh, focusForm]);
 
   useEffect(() => {
     if (!formOpen || !isViewingToday) return;
@@ -661,7 +666,7 @@ export function DeliveryJournalSection({
             receipt={r}
             suppliers={suppliers}
             pending={pending}
-            readOnly={!isViewingToday}
+            readOnly={previewReadOnly || !isViewingToday}
             onSaved={refresh}
             onDeleted={refresh}
           />

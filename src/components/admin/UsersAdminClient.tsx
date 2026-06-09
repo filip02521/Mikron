@@ -20,6 +20,7 @@ import { DataTable, TableScroll } from "@/components/ui/DataTable";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { Badge } from "@/components/ui/Badge";
 import { formatPlDate } from "@/lib/display-labels";
+import { isPasswordValid } from "@/lib/auth/password-policy";
 import {
   applyUserPermissionSave,
   buildUserEditsFromRows,
@@ -324,7 +325,10 @@ export function UsersAdminClient({
                   </p>
                 ) : null}
               </Field>
-              <Field label="Hasło startowe">
+              <Field
+                label="Hasło startowe"
+                hint="Min. 8 znaków, litera i cyfra — użytkownik może zmienić po zalogowaniu."
+              >
                 <Input
                   type="password"
                   required
@@ -332,7 +336,6 @@ export function UsersAdminClient({
                   autoComplete="new-password"
                   value={createForm.password}
                   onChange={(e) => setCreateForm({ ...createForm, password: e.target.value })}
-                  placeholder="Min. 8 znaków — użytkownik może zmienić"
                 />
               </Field>
               <Field label="Uprawnienia">
@@ -394,7 +397,7 @@ export function UsersAdminClient({
                   disabled={
                     pending ||
                     !createForm.email.trim() ||
-                    createForm.password.length < 8 ||
+                    !isPasswordValid(createForm.password) ||
                     (roleRequiresSalesPerson(createForm.role) && !createForm.salesPersonId)
                   }
                 >
@@ -772,7 +775,11 @@ export function UsersAdminClient({
           <div className="w-full max-w-md rounded-lg bg-white p-6 shadow-xl">
             <h3 className="text-lg font-semibold text-slate-900">Ustaw hasło</h3>
             <p className="mt-1 text-sm text-slate-500">{passwordModal.email}</p>
-            <Field label="Nowe hasło" className="mt-4">
+            <Field
+              label="Nowe hasło"
+              className="mt-4"
+              hint="Min. 8 znaków, litera i cyfra."
+            >
               <Input
                 type="password"
                 minLength={8}
@@ -786,7 +793,7 @@ export function UsersAdminClient({
                 Anuluj
               </Button>
               <Button
-                disabled={pending || newPassword.length < 8}
+                disabled={pending || !isPasswordValid(newPassword)}
                 onClick={() => {
                   start(async () => {
                     const r = await actionSetUserPassword(

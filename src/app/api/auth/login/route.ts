@@ -1,7 +1,11 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 import type { AuthChangeEvent } from "@supabase/supabase-js";
-import { redirectPathAfterLogin } from "@/lib/auth-roles";
+import {
+  ADMIN_PANEL_COOKIE,
+  resolveAdminPanelContext,
+} from "@/lib/auth/admin-panel-context";
+import { isAdmin, redirectPathAfterLogin } from "@/lib/auth-roles";
 import { fetchProfileByUserId } from "@/lib/auth/profile";
 import { translateAuthError } from "@/lib/auth-errors";
 import { supabaseCookieOptions } from "@/lib/supabase/cookie-options";
@@ -135,7 +139,11 @@ export async function POST(request: NextRequest) {
   if (profile.must_change_password) {
     redirectTo = "/ustaw-haslo?wymagane=1";
   } else {
-    redirectTo = redirectPathAfterLogin(profile.role as UserRole, next);
+    const role = profile.role as UserRole;
+    const adminPanelContext = isAdmin(role)
+      ? resolveAdminPanelContext(request.cookies.get(ADMIN_PANEL_COOKIE)?.value)
+      : null;
+    redirectTo = redirectPathAfterLogin(role, next, { adminPanelContext });
   }
 
   const jsonResponse = NextResponse.json({ ok: true as const, redirectTo });

@@ -13,17 +13,33 @@ import { getAppRole } from "@/lib/auth-dev";
 import { getSessionUser } from "@/lib/auth";
 import { resolveSalesPersonForUser } from "@/lib/auth/sales-person";
 import { isSalesAccount } from "@/lib/auth-roles";
+import { resolvePreviewSalesPerson } from "@/lib/auth/resolve-preview-sales-person";
 
 import type { Metadata } from "next";
 import { pageMetadataFor } from "@/lib/ui/page-metadata";
 
 export const metadata: Metadata = pageMetadataFor("plan");
 
-export default async function PlanPage() {
+export default async function PlanPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ dla?: string }>;
+}) {
+  const { dla: previewSalesPersonId } = await searchParams;
   const role = await getAppRole();
   let salesPersonId: string | null = null;
 
-  if (role && isSalesAccount(role)) {
+  if (role === "admin" && previewSalesPersonId) {
+    try {
+      const user = await getSessionUser();
+      if (user) {
+        const preview = await resolvePreviewSalesPerson(previewSalesPersonId, user);
+        salesPersonId = preview?.id ?? null;
+      }
+    } catch {
+      /* dev */
+    }
+  } else if (role && isSalesAccount(role)) {
     try {
       const user = await getSessionUser();
       if (user) {
@@ -62,7 +78,10 @@ export default async function PlanPage() {
     );
     workspace = buildSummaryWorkspace(suppliers, []);
 
-    if (isSalesAccount(role ?? "sales") && salesPersonId) {
+    const salesScoped =
+      (isSalesAccount(role ?? "sales") && salesPersonId) ||
+      (role === "admin" && Boolean(salesPersonId));
+    if (salesScoped && salesPersonId) {
       const openOrders = await fetchIndividualOrders({
         salesPersonId,
         hideSalesAcknowledged: false,

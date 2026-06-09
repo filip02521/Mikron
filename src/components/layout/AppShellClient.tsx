@@ -1,6 +1,9 @@
 "use client";
 
+import { Suspense } from "react";
 import { usePathname } from "next/navigation";
+import { AdminPanelPreviewProvider } from "./AdminPanelPreviewContext";
+import { AdminPreviewBanner } from "./AdminPreviewBanner";
 import { Sidebar } from "./Sidebar";
 import { MobileSalesNav } from "./MobileSalesNav";
 import { MobileSalesHeader } from "./MobileSalesHeader";
@@ -22,6 +25,7 @@ import type { SalesBoardAttentionSnapshot } from "@/lib/data/department-board";
 import { cn } from "@/lib/cn";
 import { salesMobileChromeRoot } from "@/lib/ui/sales-mobile-chrome";
 import { appMainClass, appMainInsetClass, appShellClass } from "@/lib/ui/ontime-theme";
+import type { AdminPanelContext } from "@/lib/auth/admin-panel-context";
 import type { UserRole } from "@/types/database";
 import { canAccessOperations, isSalesAccount } from "@/lib/auth-roles";
 import { MobileOperationsNav } from "./MobileOperationsNav";
@@ -61,6 +65,8 @@ function AppShellMain({
 export function AppShellClient({
   children,
   role,
+  realRole = null,
+  adminPanelPreview = null,
   userEmail,
   showLoginLink,
   navBadges = { nowe: 0, weryfikacja: 0, realizacja: 0 },
@@ -74,6 +80,8 @@ export function AppShellClient({
 }: {
   children: React.ReactNode;
   role: UserRole | null;
+  realRole?: UserRole | null;
+  adminPanelPreview?: AdminPanelContext | null;
   userEmail?: string | null;
   showLoginLink?: boolean;
   navBadges?: {
@@ -108,6 +116,10 @@ export function AppShellClient({
   const mobileChrome = salesLive || operationsLive;
 
   return (
+    <AdminPanelPreviewProvider
+      readOnly={Boolean(adminPanelPreview)}
+      panelContext={adminPanelPreview}
+    >
     <AppRoleProvider role={role}>
     <OperationsUpdatesProvider
       enabled={operationsLive && !salesLive}
@@ -128,13 +140,17 @@ export function AppShellClient({
         )}
       >
         <div className="hidden md:block">
-          <Sidebar
-            role={role}
-            userEmail={userEmail}
-            salesPersonName={salesPersonName}
-            showLoginLink={showLoginLink}
-            navBadges={navBadges}
-          />
+          <Suspense fallback={null}>
+            <Sidebar
+              role={role}
+              realRole={realRole}
+              adminPanelContext={adminPanelPreview ?? "admin"}
+              userEmail={userEmail}
+              salesPersonName={salesPersonName}
+              showLoginLink={showLoginLink}
+              navBadges={navBadges}
+            />
+          </Suspense>
         </div>
         {salesLive ? (
           <MobileSalesHeader
@@ -149,7 +165,9 @@ export function AppShellClient({
         <AppShellMain
           mobileChrome={mobileChrome}
           topNotices={
-            salesLive ? (
+            adminPanelPreview ? (
+              <AdminPreviewBanner panelContext={adminPanelPreview} />
+            ) : salesLive ? (
               <>
                 {salesBoardAttention?.pinnedAnnouncements.length ? (
                   <DepartmentBoardPinnedStrip
@@ -165,8 +183,16 @@ export function AppShellClient({
         >
           {children}
         </AppShellMain>
-        {salesLive ? <MobileSalesNav navBadges={navBadges} role={role ?? "sales"} /> : null}
-        {salesLive ? <SalesBugReportTrigger /> : null}
+        {salesLive ? (
+          <Suspense fallback={null}>
+            <MobileSalesNav
+              navBadges={navBadges}
+              role={role ?? "sales"}
+              realRole={realRole}
+            />
+          </Suspense>
+        ) : null}
+        {salesLive && !adminPanelPreview ? <SalesBugReportTrigger /> : null}
         {operationsLive && !salesLive && role ? (
           <MobileOperationsNav role={role} navBadges={navBadges} />
         ) : null}
@@ -175,5 +201,6 @@ export function AppShellClient({
     </SalesUpdatesProvider>
     </OperationsUpdatesProvider>
     </AppRoleProvider>
+    </AdminPanelPreviewProvider>
   );
 }

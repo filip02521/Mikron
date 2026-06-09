@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { getSessionUser } from "@/lib/auth";
+import { assertAdminNotInReadOnlyPanelPreview } from "@/lib/auth/guard-admin-panel-preview";
 import { resolveSalesPersonForUser } from "@/lib/auth/sales-person";
 import { canAccessOperations, isSalesAccount } from "@/lib/auth-roles";
 import {
@@ -33,6 +34,7 @@ async function assertProcurementAccess(): Promise<string> {
   if (!canAccessOperations(user.role)) {
     throw new Error("Brak uprawnień do tablicy zakupów.");
   }
+  await assertAdminNotInReadOnlyPanelPreview(user);
   return user.id;
 }
 
@@ -42,6 +44,7 @@ async function assertSalesAccess(): Promise<{ userId: string; salesPersonId: str
   if (!isSalesAccount(user.role)) {
     throw new Error("Brak uprawnień do tablicy.");
   }
+  await assertAdminNotInReadOnlyPanelPreview(user);
   const salesPerson = await resolveSalesPersonForUser(user);
   if (!salesPerson?.id) {
     throw new Error(

@@ -14,7 +14,7 @@ import { getSessionUser } from "@/lib/auth";
 import { resolveSalesPersonForUser } from "@/lib/auth/sales-person";
 import { resolvePreviewSalesPerson } from "@/lib/auth/resolve-preview-sales-person";
 import { getAppRole } from "@/lib/auth-dev";
-import { canAccessOperations, isSalesAccount, isSalesManager } from "@/lib/auth-roles";
+import { canAccessOperations, isAdmin, isSalesAccount, isSalesManager } from "@/lib/auth-roles";
 import { presentMyOrders } from "@/lib/orders/my-order-presenter";
 import { getSubiektAvailability } from "@/lib/subiekt/availability";
 import Link from "next/link";
@@ -80,7 +80,16 @@ export default async function MojePage({
   try {
     const user = await getSessionUser();
     sessionUserId = user?.id ?? null;
-    if (user && isSalesAccount(user.role)) {
+    if (user && isAdmin(user.role) && previewSalesPersonId) {
+      const preview = await resolvePreviewSalesPerson(previewSalesPersonId, user);
+      if (preview) {
+        salesPersonId = preview.id;
+        salesPersonName = preview.name;
+        isTeamPreview = true;
+      } else {
+        linkError = "Nie znaleziono handlowca do podglądu.";
+      }
+    } else if (user && isSalesAccount(user.role)) {
       const own = await resolveSalesPersonForUser(user);
       ownSalesPersonId = own?.id ?? null;
       if (isSalesManager(user.role) && previewSalesPersonId) {
@@ -138,8 +147,12 @@ export default async function MojePage({
     }
   }
 
+  const adminSalesPreview = Boolean(role === "admin" && previewSalesPersonId && salesPersonId);
+  const salesPanelView =
+    (isSalesAccount(role ?? "sales") && salesPersonId) || adminSalesPreview;
+
   try {
-    if (isSalesAccount(role ?? "sales") && salesPersonId) {
+    if (salesPanelView && salesPersonId) {
       const [orderRows, statsRows, acknowledgedRows, supplierRows] = await Promise.all([
         fetchIndividualOrders({
           salesPersonId,
@@ -161,7 +174,7 @@ export default async function MojePage({
       // Auto-uzupełnianie dostawcy w tle na podstawie własnej bazy mapowań (product_supplier_links).
       // Robimy to po pobraniu, żeby pierwszy render był szybki.
       const missing = orderRows.filter((o) => !o.supplier_id && o.subiekt_tw_id);
-      if (missing.length > 0) {
+      if (missing.length > 0 && !adminSalesPreview) {
         const { after } = await import("next/server");
         after(async () => {
           try {
@@ -245,6 +258,7 @@ export default async function MojePage({
         <ManagerPreviewBanner
           salesPersonId={salesPersonId}
           salesPersonName={salesPersonName}
+          readOnly={adminSalesPreview}
         />
       ) : null}
 

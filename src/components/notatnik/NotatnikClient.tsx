@@ -98,7 +98,11 @@ export function NotatnikClient({
   subiektAvailability?: SubiektAvailability;
   linkError?: string | null;
   loadError?: string | null;
-  teamPreview?: { salesPersonId: string; salesPersonName: string } | null;
+  teamPreview?: {
+    salesPersonId: string;
+    salesPersonName: string;
+    readOnly?: boolean;
+  } | null;
 }) {
   const router = useRouter();
   const tourDemo = useSalesOnboardingDemo("notatnik");
@@ -350,6 +354,7 @@ export function NotatnikClient({
             salesPersonId={teamPreview.salesPersonId}
             salesPersonName={teamPreview.salesPersonName}
             notatnikPreview
+            readOnly={teamPreview.readOnly}
             className={cn(salesChromeInsetClass, "mt-3 text-xs leading-relaxed")}
           />
         ) : null}

@@ -3,6 +3,7 @@
 import { Fragment, useCallback, useEffect, useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { actionSetWarehouseShelf } from "@/app/actions/admin";
+import { usePreviewMutationBlocker } from "@/components/layout/usePreviewMutationBlocker";
 import { SectionListLabel } from "@/components/ui/SectionListLabel";
 import {
   IconAlertCircle,
@@ -158,6 +159,9 @@ export function WarehouseInventorySection({
   deliveryQueueOrders?: IndividualOrder[];
 }) {
   const router = useRouter();
+  const { blockIfReadOnly } = usePreviewMutationBlocker((text) =>
+    setToast({ text, tone: "error" })
+  );
   const [pending, start] = useTransition();
   const [filter, setFilter] = useState<InventoryFilter>("all");
   const [shelfFilter, setShelfFilter] = useState<string>("");
@@ -249,6 +253,7 @@ export function WarehouseInventorySection({
 
   const saveShelf = useCallback(
     (orderId: string, shelf: string) => {
+      if (blockIfReadOnly()) return;
       start(async () => {
         try {
           await actionSetWarehouseShelf(orderId, shelf);
@@ -262,7 +267,7 @@ export function WarehouseInventorySection({
         }
       });
     },
-    [router]
+    [blockIfReadOnly, router]
   );
 
   const shelfOptions = summary.byShelf.map((s) => s.shelf);

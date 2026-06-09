@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname, useRouter } from "next/navigation";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { isNavItemActive, navForRole, type NavGroup, type NavItem } from "@/lib/nav";
 import { useSalesUpdates } from "@/components/sales/SalesUpdatesContext";
 import { useOperationsUpdates } from "@/components/operations/OperationsUpdatesContext";
@@ -27,17 +27,24 @@ import {
   navIconTileIdleClass,
 } from "@/components/icons/NavIcon";
 import { useSalesOnboardingOptional } from "@/components/sales/SalesOnboardingContext";
+import { AdminPanelContextSwitcher } from "@/components/layout/AdminPanelContextSwitcher";
+import { actionClearAdminPanelContext } from "@/app/actions/admin-panel-context";
+import type { AdminPanelContext } from "@/lib/auth/admin-panel-context";
+import { isAdmin } from "@/lib/auth-roles";
+import { hrefWithAdminSalesPreview } from "@/lib/nav/sales-preview-href";
 
 function NavLink({
   item,
   active,
   showDot,
   locked,
+  href,
 }: {
   item: NavItem;
   active: boolean;
   showDot: boolean;
   locked?: boolean;
+  href: string;
 }) {
   const hasBadge = item.badge != null && item.badge > 0;
   const isVerificationNav = item.href === "/weryfikacja";
@@ -121,7 +128,7 @@ function NavLink({
   }
 
   return (
-    <Link href={item.href} className={className} aria-current={active ? "page" : undefined}>
+    <Link href={href} className={className} aria-current={active ? "page" : undefined}>
       {content}
     </Link>
   );
@@ -131,10 +138,14 @@ function NavSection({
   group,
   isFirst,
   navLocked,
+  previewDla,
+  adminSalesPreview,
 }: {
   group: NavGroup;
   isFirst: boolean;
   navLocked: boolean;
+  previewDla: string | null;
+  adminSalesPreview: boolean;
 }) {
   const pathname = usePathname();
   const salesUpdates = useSalesUpdates();
@@ -155,9 +166,17 @@ function NavSection({
               Boolean(operationsUpdates?.hasUpdates) &&
               !active);
 
+          const href = hrefWithAdminSalesPreview(item.href, previewDla, adminSalesPreview);
+
           return (
             <li key={item.href}>
-              <NavLink item={item} active={active} showDot={showDot} locked={navLocked} />
+              <NavLink
+                item={item}
+                href={href}
+                active={active}
+                showDot={showDot}
+                locked={navLocked}
+              />
             </li>
           );
         })}
@@ -168,12 +187,16 @@ function NavSection({
 
 export function Sidebar({
   role,
+  realRole = null,
+  adminPanelContext = "admin",
   userEmail,
   salesPersonName,
   showLoginLink,
   navBadges = { nowe: 0, weryfikacja: 0, realizacja: 0, salesMoje: 0 },
 }: {
   role: UserRole | null;
+  realRole?: UserRole | null;
+  adminPanelContext?: AdminPanelContext;
   userEmail?: string | null;
   salesPersonName?: string | null;
   showLoginLink?: boolean;
@@ -187,10 +210,16 @@ export function Sidebar({
   };
 }) {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const previewDla = searchParams.get("dla");
+  const adminSalesPreview = Boolean(realRole && isAdmin(realRole) && previewDla);
   const navLocked = useSalesOnboardingOptional()?.navLocked ?? false;
   const groups = role ? navForRole(role, navBadges) : [];
 
   async function signOut() {
+    if (realRole && isAdmin(realRole)) {
+      await actionClearAdminPanelContext();
+    }
     const supabase = createClient();
     await supabase.auth.signOut();
     router.push("/login");
@@ -206,7 +235,7 @@ export function Sidebar({
     >
       <header className={sidebarHeaderClass}>
         <SidebarBrandBlock
-          role={role}
+          role={realRole && isAdmin(realRole) ? realRole : role}
           userEmail={userEmail}
           salesPersonName={salesPersonName}
         />
@@ -214,11 +243,21 @@ export function Sidebar({
 
       <nav className={cn(brandSidebarNavScroll, navLocked && "opacity-80")}>
         {groups.map((g, index) => (
-          <NavSection key={g.title} group={g} isFirst={index === 0} navLocked={navLocked} />
+          <NavSection
+            key={g.title}
+            group={g}
+            isFirst={index === 0}
+            navLocked={navLocked}
+            previewDla={previewDla}
+            adminSalesPreview={adminSalesPreview}
+          />
         ))}
       </nav>
 
       <div className={brandSidebarFooter}>
+        {realRole && isAdmin(realRole) ? (
+          <AdminPanelContextSwitcher current={adminPanelContext} />
+        ) : null}
         {showLoginLink ? (
           <Link
             href="/login"

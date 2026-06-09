@@ -13,6 +13,8 @@ import {
   actionCancelVerification,
   actionCompleteVerification,
 } from "@/app/actions/admin";
+import { useAdminPanelPreview } from "@/components/layout/AdminPanelPreviewContext";
+import { ADMIN_PANEL_PREVIEW_MUTATION_BLOCKED } from "@/lib/auth/admin-panel-preview-messages";
 import { actionLookupSupplierFromCatalogTwId } from "@/app/actions/subiekt";
 import { assessRequestCompleteness } from "@/lib/orders/request-completeness";
 import { Card, CardHeader } from "@/components/ui/Card";
@@ -82,6 +84,7 @@ export function VerificationWorkspace({
 }) {
   const inModal = layout === "modal";
   const router = useRouter();
+  const { readOnly } = useAdminPanelPreview();
   const [pending, start] = useTransition();
   const [pendingMessage, setPendingMessage] = useState<string | null>(null);
   const [toast, setToast] = useState<{ text: string; tone: "success" | "error" } | null>(
@@ -223,6 +226,10 @@ export function VerificationWorkspace({
 
   const save = () => {
     if (!active) return;
+    if (readOnly) {
+      setToast({ text: ADMIN_PANEL_PREVIEW_MUTATION_BLOCKED, tone: "error" });
+      return;
+    }
     setValidationAttempted(true);
     if (assessment !== "complete") {
       setToast({
@@ -317,6 +324,10 @@ export function VerificationWorkspace({
   }, [pending, active]);
 
   const cancel = (id: string) => {
+    if (readOnly) {
+      setToast({ text: ADMIN_PANEL_PREVIEW_MUTATION_BLOCKED, tone: "error" });
+      return;
+    }
     if (!confirm("Anulować tę prośbę?")) return;
     setPendingMessage("Anulowanie prośby…");
     start(async () => {

@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import {
   requireAdmin,
+  requireAdminForMutation,
   requireAdminOrSalesTeamManagement,
   requireOperations,
   requireSupplierManagement,
@@ -93,7 +94,7 @@ function revalidateAll() {
 }
 
 export async function actionDeleteIndividualHistory(orderId: string) {
-  await requireAdmin();
+  await requireAdminForMutation();
   const supabase = createAdminClient();
   await supabase.from("individual_orders").delete().eq("id", orderId);
   revalidateAll();
@@ -101,7 +102,7 @@ export async function actionDeleteIndividualHistory(orderId: string) {
 }
 
 export async function actionDeleteNormalHistory(historyId: string) {
-  await requireAdmin();
+  await requireAdminForMutation();
   const supabase = createAdminClient();
   await supabase.from("normal_order_history").delete().eq("id", historyId);
   revalidateAll();
@@ -109,7 +110,7 @@ export async function actionDeleteNormalHistory(historyId: string) {
 }
 
 export async function actionSyncData() {
-  await requireSupplierManagement();
+  await requireSupplierManagement("mutate");
   const ok = await tryAcquireLock("SCRIPT_BUSY", 60);
   if (!ok) return { error: "Trwa inna operacja" };
   try {
@@ -135,7 +136,7 @@ export async function actionSyncData() {
 export async function actionMarkOrdered(
   supplierId: string
 ): Promise<DailyPanelActionResult> {
-  const user = await requireOperations();
+  const user = await requireOperations("mutate");
   const scheduleBefore = await captureScheduleSnapshot(supplierId);
   await markStandardOrdered(supplierId, user.email);
   const feedbackLines = await buildMarkOrderedFeedback([supplierId]);
@@ -155,7 +156,7 @@ export async function actionShiftOrder(
   weeks: number | null,
   manualDateIso: string | null
 ): Promise<DailyPanelActionResult> {
-  const user = await requireOperations();
+  const user = await requireOperations("mutate");
   const scheduleBefore = await captureScheduleSnapshot(supplierId);
   const manual = manualDateIso
     ? snapToBusinessDay(parseDateOnly(manualDateIso)!)
@@ -177,7 +178,7 @@ export async function actionShiftOrder(
 export async function actionBatchShiftOrder(
   changes: Array<{ supplierId: string; manualDateIso: string }>
 ): Promise<DailyPanelActionResult> {
-  const user = await requireOperations();
+  const user = await requireOperations("mutate");
   const unique = new Map<string, string>();
   for (const c of changes) {
     if (!c.supplierId || !c.manualDateIso) continue;
@@ -214,7 +215,7 @@ export async function actionProcessIndividual(
   orderIds: string[],
   action: "GLOWNE" | "POBOCZNE" | "ANULOWANO"
 ): Promise<DailyPanelActionResult> {
-  const user = await requireOperations();
+  const user = await requireOperations("mutate");
   const individualsBefore = await captureIndividualOrdersSnapshot(orderIds);
   const glowneSupplierIds =
     action === "GLOWNE" ? await supplierIdsForGlownePlacement(orderIds) : [];
@@ -261,7 +262,7 @@ export async function actionMarkInformacjaArrived(
   | { error: string }
 > {
   const { requireWarehouse } = await import("@/lib/auth");
-  await requireWarehouse();
+  await requireWarehouse("mutate");
   if (!orderIds.length) return { error: "Brak pozycji do oznaczenia." };
   try {
     const result = await markInformacjaArrived(orderIds);
@@ -278,7 +279,7 @@ export async function actionMarkInformacjaArrived(
 export async function actionBulkOrdered(
   supplierIds: string[]
 ): Promise<DailyPanelActionResult & { count: number }> {
-  const user = await requireOperations();
+  const user = await requireOperations("mutate");
   const schedulesBefore = await captureScheduleSnapshots(supplierIds);
   for (const id of supplierIds) {
     await markStandardOrdered(id, user.email);
@@ -297,7 +298,7 @@ export async function actionBulkOrdered(
 }
 
 export async function actionUndoDailyPanelChange(payload: DailyPanelUndoPayload) {
-  await requireOperations();
+  await requireOperations("mutate");
   if (Date.now() - payload.performedAt > DAILY_PANEL_UNDO_MS) {
     throw new Error(`Minął czas na cofnięcie (${undoWindowShortLabel()}). Odśwież panel.`);
   }
@@ -387,7 +388,7 @@ export async function actionUpdateIndividualRequest(
   orderIds: string[],
   payload: IndividualRequestEditPayload
 ) {
-  await requireOperations();
+  await requireOperations("mutate");
   const result = await updateIndividualRequestGroup(orderIds, payload, {});
   revalidateAll();
   return { success: true as const, ...result };
@@ -407,14 +408,14 @@ export async function actionCompleteVerification(
     informacjaPath?: InformacjaFlowPath;
   }
 ) {
-  await requireOperations();
+  await requireOperations("mutate");
   await completeVerificationOrder(orderId, data);
   revalidateAll();
   return { success: true };
 }
 
 export async function actionCancelVerification(orderId: string) {
-  await requireOperations();
+  await requireOperations("mutate");
   const supabase = createAdminClient();
   const { error } = await supabase
     .from("individual_orders")
@@ -427,7 +428,7 @@ export async function actionCancelVerification(orderId: string) {
 }
 
 export async function actionCancelOrder(orderId: string) {
-  await requireOperations();
+  await requireOperations("mutate");
   await cancelIndividualOrder(orderId);
   revalidateAll();
   return { success: true };
@@ -437,7 +438,7 @@ export async function actionCancelOrder(orderId: string) {
 export async function actionAcknowledgeProcurementSalesCancel(
   orderIds: string[]
 ): Promise<DailyPanelActionResult> {
-  await requireOperations();
+  await requireOperations("mutate");
   const ids = [...new Set(orderIds.filter(Boolean))];
   if (!ids.length) return { success: true };
 
@@ -485,7 +486,7 @@ export async function actionAcknowledgeProcurementSalesCancel(
 export async function actionMarkProcurementRequestsSeen(
   orderIds: string[]
 ): Promise<DailyPanelActionResult> {
-  await requireOperations();
+  await requireOperations("mutate");
   const ids = [...new Set(orderIds.filter(Boolean))];
   if (!ids.length) return { success: true };
 
@@ -533,7 +534,7 @@ export async function actionSetProcurementCancelDisposition(
   disposition: "to_stock" | "return",
   note?: string
 ): Promise<DailyPanelActionResult> {
-  await requireOperations();
+  await requireOperations("mutate");
   const ids = [...new Set(orderIds.filter(Boolean))];
   if (!ids.length) return { success: true };
 
@@ -593,7 +594,7 @@ export async function actionSetProcurementCancelDisposition(
 
 export async function actionUpdateDelivered(orderId: string, qty: string) {
   const { requireWarehouse } = await import("@/lib/auth");
-  await requireWarehouse();
+  await requireWarehouse("mutate");
   const { emailSent, emailError } = await updateDeliveredQuantity(orderId, qty);
   revalidateAll();
   return { success: true, emailSent, emailError };
@@ -601,7 +602,7 @@ export async function actionUpdateDelivered(orderId: string, qty: string) {
 
 export async function actionSetWarehouseShelf(orderId: string, shelf: string) {
   const { requireWarehouse } = await import("@/lib/auth");
-  await requireWarehouse();
+  await requireWarehouse("mutate");
   const supabase = createAdminClient();
   const trimmed = shelf.trim();
   const { error } = await supabase
@@ -634,7 +635,7 @@ export async function actionBatchUpdateDelivered(
   | { error: string }
 > {
   const { requireWarehouse } = await import("@/lib/auth");
-  await requireWarehouse();
+  await requireWarehouse("mutate");
   if (!updates.length) return { error: "Zaznacz pozycje i wpisz ilości do zapisania." };
 
   try {
@@ -663,7 +664,7 @@ export async function actionBatchUpdateDelivered(
 }
 
 export async function actionProcessDeliveries() {
-  await requireOperations();
+  await requireOperations("mutate");
   const result = await processMarkedDeliveries();
   revalidateAll();
   return {
@@ -675,7 +676,7 @@ export async function actionProcessDeliveries() {
 }
 
 export async function actionRecalculateStats() {
-  await requireOperations();
+  await requireOperations("mutate");
   const count = await recalculateAllStats();
   revalidateAll();
   return { success: true, count };
@@ -707,7 +708,7 @@ export async function actionUpsertSupplier(form: {
   default_delivery_carrier?: string | null;
   default_delivery_shipment_form?: string | null;
 }) {
-  await requireSupplierManagement();
+  await requireSupplierManagement("mutate");
   const notes = clampText(form.notes, MAX_SUPPLIER_NOTES_LEN);
   const mails = clampText(form.mails, MAX_SUPPLIER_MAILS_LEN);
   const extraInfo = clampText(form.extra_info, MAX_SUPPLIER_EXTRA_LEN);
@@ -783,7 +784,7 @@ export async function actionSetSupplierActive(
   id: string,
   isActive: boolean
 ): Promise<{ success: true }> {
-  await requireSupplierManagement();
+  await requireSupplierManagement("mutate");
   const supabase = createAdminClient();
   const { error } = await supabase
     .from("suppliers")
@@ -800,7 +801,7 @@ export async function actionSetSupplierActive(
 export async function actionDeleteSupplier(
   id: string
 ): Promise<{ success: true } | { error: string }> {
-  await requireAdmin();
+  await requireAdminForMutation();
   const supabase = createAdminClient();
 
   const { data: supplier } = await supabase
@@ -849,7 +850,7 @@ export async function actionUpsertVacation(form: {
   last_order_date: string;
   active: boolean;
 }) {
-  await requireSupplierManagement();
+  await requireSupplierManagement("mutate");
 
   const start = parseDateOnly(form.start_date);
   const end = parseDateOnly(form.end_date);
@@ -911,7 +912,7 @@ export async function actionUpsertSalesPerson(form: {
   email: string;
   groupId?: string | null;
 }): Promise<{ success: true; id: string } | { error: string }> {
-  const actor = await requireAdminOrSalesTeamManagement();
+  const actor = await requireAdminOrSalesTeamManagement("mutate");
 
   const name = form.name.trim();
   const email = form.email.trim().toLowerCase();
@@ -981,7 +982,7 @@ export async function actionUpsertSalesPerson(form: {
 export async function actionDeleteSalesPerson(
   id: string
 ): Promise<{ success: true } | { error: string }> {
-  const actor = await requireAdminOrSalesTeamManagement();
+  const actor = await requireAdminOrSalesTeamManagement("mutate");
   const supabase = createAdminClient();
 
   const { data: person } = await supabase
@@ -1041,7 +1042,7 @@ export async function actionUpdateScheduleDates(
   nextDate: string | null,
   shiftDate: string | null
 ) {
-  await requireOperations();
+  await requireOperations("mutate");
   const supabase = createAdminClient();
   await supabase.from("supplier_schedules").upsert(
     {

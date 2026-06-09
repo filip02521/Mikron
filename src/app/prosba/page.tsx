@@ -4,7 +4,10 @@ import { OrderFormClient } from "@/components/orders/OrderFormClient";
 import { getSessionUser } from "@/lib/auth";
 import { resolveSalesPersonForUser } from "@/lib/auth/sales-person";
 import { resolvePreviewSalesPerson } from "@/lib/auth/resolve-preview-sales-person";
+import { isAdminReadOnlyPanelPreview } from "@/lib/auth/admin-panel-context";
 import { isSalesManager } from "@/lib/auth-roles";
+import { readAdminPanelContextForSession } from "@/lib/auth/read-admin-panel-context";
+import { ManagerPreviewBanner } from "@/components/sales/ManagerPreviewBanner";
 import {
   filterRowsByGroupScope,
   getManagedGroupIdsForUser,
@@ -25,6 +28,8 @@ export default async function ProsbaPage({
   searchParams: Promise<{ dla?: string }>;
 }) {
   const { dla: delegateId } = await searchParams;
+  const { panelContext } = await readAdminPanelContextForSession();
+  let adminReadOnlyPreview = false;
   let suppliers: Awaited<ReturnType<typeof fetchSupplierFormContext>>["suppliers"] = [];
   let statsBySupplierId: Awaited<
     ReturnType<typeof fetchSupplierFormContext>
@@ -45,7 +50,13 @@ export default async function ProsbaPage({
 
   try {
     const user = await getSessionUser();
-    if (user?.role === "sales" || user?.role === "sales_manager") {
+    adminReadOnlyPreview = isAdminReadOnlyPanelPreview(user?.role ?? null, panelContext);
+
+    if (adminReadOnlyPreview && user) {
+      if (delegateId) {
+        lockedSalesPerson = await resolvePreviewSalesPerson(delegateId, user);
+      }
+    } else if (user?.role === "sales" || user?.role === "sales_manager") {
       isSales = user.role === "sales";
       isManager = isSalesManager(user.role);
       const own = await resolveSalesPersonForUser(user);
@@ -83,6 +94,35 @@ export default async function ProsbaPage({
     }
   } catch {
     /* empty */
+  }
+
+  if (adminReadOnlyPreview) {
+    return (
+      <div className={salesPageShellClass}>
+        <PageHeader
+          title="Nowa prośba"
+          description="Podgląd formularza handlowca — składanie prośb jest wyłączone dla administratora."
+        />
+        {lockedSalesPerson ? (
+          <ManagerPreviewBanner
+            salesPersonId={lockedSalesPerson.id}
+            salesPersonName={lockedSalesPerson.name}
+            readOnly
+          />
+        ) : (
+          <Alert tone="info">
+            Wybierz handlowca z{" "}
+            <a href="/admin/wybor-handlowca" className="font-medium text-indigo-700 underline">
+              listy podglądu
+            </a>
+            , aby zobaczyć jego panel zamówień.
+          </Alert>
+        )}
+        <Alert tone="warning" className="mt-4">
+          W trybie podglądu administrator nie składa prośb — użyj panelu zamówień handlowca.
+        </Alert>
+      </div>
+    );
   }
 
   if (isSales && !lockedSalesPerson) {

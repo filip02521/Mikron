@@ -32,9 +32,11 @@ function TeamCardActionLink({
 function SalesPersonCardActions({
   rowId,
   isSelf,
+  readOnlyPreview = false,
 }: {
   rowId: string;
   isSelf: boolean;
+  readOnlyPreview?: boolean;
 }) {
   return (
     <div className="grid grid-cols-2 gap-2 border-t border-slate-100 pt-2.5">
@@ -52,7 +54,7 @@ function SalesPersonCardActions({
           Notatnik
         </Button>
       </TeamCardActionLink>
-      {!isSelf ? (
+      {!isSelf && !readOnlyPreview ? (
         <TeamCardActionLink href={`/prosba?dla=${rowId}`} className="col-span-2">
           <Button size="sm" variant="outline" className="h-11 w-full px-2 text-xs sm:h-8">
             Prośba w jego imieniu
@@ -66,9 +68,11 @@ function SalesPersonCardActions({
 function SalesPersonCard({
   row,
   isSelf,
+  readOnlyPreview = false,
 }: {
   row: SalesPersonAdminRow;
   isSelf: boolean;
+  readOnlyPreview?: boolean;
 }) {
   return (
     <Card key={row.id} padding={false} className={isSelf ? "ring-1 ring-indigo-200" : ""}>
@@ -144,7 +148,11 @@ function SalesPersonCard({
             </dd>
           </div>
         </dl>
-        <SalesPersonCardActions rowId={row.id} isSelf={isSelf} />
+        <SalesPersonCardActions
+          rowId={row.id}
+          isSelf={isSelf}
+          readOnlyPreview={readOnlyPreview}
+        />
       </div>
     </Card>
   );
@@ -173,7 +181,7 @@ export function SalesTeamOverview({
         title="Brak handlowców"
         description={emptyDescription}
         action={
-          teamUi?.isManager && !teamUi.hasTeamScope ? undefined : (
+          teamUi?.readOnlyPreview || (teamUi?.isManager && !teamUi.hasTeamScope) ? undefined : (
             <Link href="/zespol/handlowcy">
               <Button>Dodaj handlowca</Button>
             </Link>
@@ -241,6 +249,7 @@ export function SalesTeamOverview({
                     key={row.id}
                     row={row}
                     isSelf={managerSalesPersonId === row.id}
+                    readOnlyPreview={teamUi?.readOnlyPreview}
                   />
                 ))}
               </div>

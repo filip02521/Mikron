@@ -11,6 +11,7 @@ export function DepartmentBoardClient({
   unseenQuestionIds = [],
   initialTab,
   focusQuestionId = null,
+  readOnly = false,
 }: {
   initial: DepartmentBoardData;
   audience: "sales" | "procurement";
@@ -18,6 +19,7 @@ export function DepartmentBoardClient({
   unseenQuestionIds?: string[];
   initialTab?: "announcements" | "questions";
   focusQuestionId?: string | null;
+  readOnly?: boolean;
 }) {
   if (audience === "sales") {
     return (
@@ -27,6 +29,7 @@ export function DepartmentBoardClient({
         unseenQuestionIds={unseenQuestionIds}
         initialTab={initialTab}
         focusQuestionId={focusQuestionId}
+        readOnly={readOnly}
       />
     );
   }

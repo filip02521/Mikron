@@ -49,12 +49,14 @@ export function DepartmentBoardSalesClient({
   unseenQuestionIds = [],
   initialTab,
   focusQuestionId = null,
+  readOnly = false,
 }: {
   initial: DepartmentBoardData;
   loadError?: string | null;
   unseenQuestionIds?: string[];
   initialTab?: BoardTab;
   focusQuestionId?: string | null;
+  readOnly?: boolean;
 }) {
   const router = useRouter();
   const tourDemo = useSalesOnboardingDemo("tablica");
@@ -230,6 +232,13 @@ export function DepartmentBoardSalesClient({
               )}
             </NotatnikPanel>
 
+            {readOnly ? (
+              <Alert tone="info" className="text-xs">
+                Podgląd administratora — wysyłanie pytań jest wyłączone.
+              </Alert>
+            ) : null}
+
+            {!readOnly ? (
             <NotatnikPanel
               title="Zadaj pytanie do zakupów"
               description="Odpowiedź zobaczy cały dział handlowy."
@@ -276,6 +285,7 @@ export function DepartmentBoardSalesClient({
                 </div>
               </ProsbaFormSection>
             </NotatnikPanel>
+            ) : null}
           </div>
         ) : null}
       </Card>

@@ -1,4 +1,12 @@
+import { headers } from "next/headers";
 import { getSessionUser } from "@/lib/auth";
+import { resolvePreviewSalesPerson } from "@/lib/auth/resolve-preview-sales-person";
+import {
+  effectiveNavRole,
+  isAdminPanelPreview,
+  type AdminPanelContext,
+} from "@/lib/auth/admin-panel-context";
+import { readAdminPanelContextForSession } from "@/lib/auth/read-admin-panel-context";
 import { resolveSalesPersonForUser } from "@/lib/auth/sales-person";
 import { canAccessOperations, canAccessWarehouse, isAdmin, isSalesAccount } from "@/lib/auth-roles";
 import { canAccessOperationsNotepad, departmentsForRole } from "@/lib/operations/notepad-department";
@@ -20,7 +28,15 @@ import { AppShellClient } from "./AppShellClient";
 
 export async function AppShell({ children }: { children: React.ReactNode }) {
   const session = await getSessionUser();
-  const role = session?.role ?? null;
+  const realRole = session?.role ?? null;
+  const { panelContext } = await readAdminPanelContextForSession();
+  const role = realRole
+    ? effectiveNavRole(realRole, panelContext)
+    : null;
+  const adminPanelPreview =
+    realRole && isAdminPanelPreview(realRole, panelContext) && panelContext
+      ? panelContext
+      : null;
   let navBadges: {
     nowe: number;
     weryfikacja: number;
@@ -67,7 +83,19 @@ export async function AppShell({ children }: { children: React.ReactNode }) {
     }
   }
 
-  if (role && isSalesAccount(role) && session) {
+  if (realRole && isAdmin(realRole) && session) {
+    try {
+      const previewId = (await headers()).get("x-preview-sales-person-id");
+      if (previewId) {
+        const preview = await resolvePreviewSalesPerson(previewId, session);
+        if (preview) salesPersonName = preview.name;
+      }
+    } catch {
+      /* opcjonalny podgląd */
+    }
+  }
+
+  if (role && isSalesAccount(role) && session && !salesPersonName) {
     try {
       const salesPerson = await resolveSalesPersonForUser(session);
       if (salesPerson) {
@@ -105,7 +133,7 @@ export async function AppShell({ children }: { children: React.ReactNode }) {
     }
   }
 
-  if (role && isAdmin(role)) {
+  if (realRole && isAdmin(realRole)) {
     try {
       const openReports = await countOpenSalesBugReports();
       navBadges = { ...navBadges, adminBugReports: openReports };
@@ -117,8 +145,10 @@ export async function AppShell({ children }: { children: React.ReactNode }) {
   return (
     <AppShellClient
       role={role}
+      realRole={realRole}
+      adminPanelPreview={adminPanelPreview as AdminPanelContext | null}
       userEmail={session?.email ?? null}
-      showLoginLink={!role}
+      showLoginLink={!realRole}
       navBadges={navBadges}
       salesActivityVersion={salesActivityVersion}
       operationsDailyPanelVersion={operationsDailyPanelVersion}

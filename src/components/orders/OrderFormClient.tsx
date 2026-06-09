@@ -4,6 +4,8 @@ import { useState, useTransition, useCallback, useMemo, useEffect, useRef } from
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { actionAddIndividualOrders } from "@/app/actions/admin";
+import { useAdminPanelPreview } from "@/components/layout/AdminPanelPreviewContext";
+import { ADMIN_PANEL_PREVIEW_MUTATION_BLOCKED } from "@/lib/auth/admin-panel-preview-messages";
 import { Card, CardHeader } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { Toast } from "@/components/ui/Toast";
@@ -181,6 +183,7 @@ export function OrderFormClient({
 }) {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const { readOnly } = useAdminPanelPreview();
   const tourDemo = useSalesOnboardingDemo("prosba");
   const lockedId = lockedSalesPerson?.id ?? "";
   const [requestKind, setRequestKind] = useState<IndividualRequestKind>("zamowienie");
@@ -406,6 +409,11 @@ export function OrderFormClient({
 
   const submit = () => {
     setFormNotice(null);
+
+    if (readOnly) {
+      setFormNotice({ text: ADMIN_PANEL_PREVIEW_MUTATION_BLOCKED, tone: "warning" });
+      return;
+    }
 
     if (tourDemo) {
       setFormNotice({
@@ -1154,7 +1162,10 @@ export function OrderFormClient({
                 + Nowa grupa
               </Button>
             ) : null}
-            <Button disabled={pending || !procurementCanSubmit} onClick={submit}>
+            <Button
+              disabled={pending || readOnly || !procurementCanSubmit}
+              onClick={submit}
+            >
               {pending ? "Zapisywanie…" : "Zatwierdź wszystkie"}
             </Button>
           </div>
