@@ -152,6 +152,29 @@ describe("my-order-row-layout", () => {
     );
   });
 
+  it("„Zamówione” na czas — termin na zwiniętym wierszu", () => {
+    const r = row({
+      statusTitle: "Zamówione",
+      headline: "Zamówione — czekamy na dostawę",
+      headlineTone: "info",
+      timingLabel: "ok. 20.06.2026 (~8 dni rob.)",
+      subline: null,
+    });
+    expect(myOrderCollapsedSubline(r)).toBe("ok. 20.06.2026 (~8 dni rob.)");
+  });
+
+  it("„Zamówione” z ostrzeżeniem o historii — subline ma pierwszeństwo przed terminem", () => {
+    const r = row({
+      statusTitle: "Zamówione",
+      headlineTone: "info",
+      timingLabel: "ok. 20.06.2026 (~8 dni rob.) · mało historii",
+      subline: "Mało dostaw w historii — termin jest orientacyjny",
+    });
+    expect(myOrderCollapsedSubline(r)).toBe(
+      "Mało dostaw w historii — termin jest orientacyjny"
+    );
+  });
+
   it("termin realizacji tylko w metadanych rozwinięcia, nie na zwiniętym wierszu", () => {
     const r = row({
       lineCount: 4,

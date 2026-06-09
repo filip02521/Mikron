@@ -39,6 +39,7 @@ import {
 import { undoWindowBannerDescription } from "@/lib/orders/daily-panel-undo";
 import { cn } from "@/lib/cn";
 import type { OrderFormSupplierOption } from "@/lib/orders/order-form-suppliers";
+import type { MyOrderSectionPatternId } from "@/lib/orders/my-order-section-callout";
 
 type UndoState = {
   orderIds: string[];
@@ -62,6 +63,7 @@ export function MyOrderShipmentList({
   searchQuery,
   tourPreview = false,
   compactActionLayout = false,
+  suppressedSectionPatterns,
 }: {
   rows: MyOrderRow[];
   listKind: "zamowienie" | "informacja";
@@ -76,6 +78,7 @@ export function MyOrderShipmentList({
   searchQuery?: string | null;
   tourPreview?: boolean;
   compactActionLayout?: boolean;
+  suppressedSectionPatterns?: Set<MyOrderSectionPatternId>;
 }) {
   const router = useRouter();
   const sortedRows = useMemo(() => sortMyOrderRows(rows), [rows]);
@@ -433,6 +436,7 @@ export function MyOrderShipmentList({
             searchQuery={searchQuery}
             tourPreview={tourPreview}
             compactActionLayout={compactActionLayout}
+            suppressedSectionPatterns={suppressedSectionPatterns}
           />
         ))}
       </ul>

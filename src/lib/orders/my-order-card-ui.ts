@@ -28,11 +28,18 @@ export function shouldShowMyOrderHeadlineBanner(
   return rowNeedsSalesAcknowledgement(row);
 }
 
+/** Nagłówek z enrichMyOrderSalesUi zamiast surowego statusTitle. */
+export function myOrderUsesSalesHeadline(row: MyOrderRow): boolean {
+  const h = row.headline?.trim();
+  return Boolean(h && h !== row.statusTitle);
+}
+
 /** Badge statusu — ukryty, gdy nagłówek wiersza już niesie ten sam komunikat. */
 export function shouldShowOrderStatusBadge(row: MyOrderRow): boolean {
   if (rowNeedsSalesAcknowledgement(row)) return false;
   if (row.headlineTone === "action" || row.headlineTone === "success") return false;
   if (row.headlineTone === "warning" || row.headlineTone === "info") return false;
+  if (myOrderUsesSalesHeadline(row)) return false;
   return true;
 }
 

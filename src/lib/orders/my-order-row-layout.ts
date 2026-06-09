@@ -39,9 +39,16 @@ export function myOrderCollapsedSubline(row: MyOrderRow): string | null {
     return row.subline ?? null;
   }
 
+  if (row.headlineTone === "info" && row.statusTitle === "Zamówione") {
+    if (row.subline?.trim()) return row.subline;
+    if (row.timingLabel?.trim()) {
+      return row.timingLabel.replace(" · po terminie", "").trim();
+    }
+  }
+
   if (
     row.headlineTone === "info" &&
-    row.statusTitle === "Zamówione" &&
+    row.statusTitle !== "Zamówione" &&
     row.subline?.trim()
   ) {
     return row.subline;

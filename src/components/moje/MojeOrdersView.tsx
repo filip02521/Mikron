@@ -38,6 +38,11 @@ import { SectionHeadingIcon } from "@/components/icons/SectionHeadingIcon";
 import { brandLinkSubtleClass, salesTypography, sectionIconTileBrandClass } from "@/lib/ui/ontime-theme";
 import type { OrderFormSupplierOption } from "@/lib/orders/order-form-suppliers";
 import { mojeShipmentSectionShellClass } from "@/lib/ui/moje-shipment-row-styles";
+import {
+  deriveMyOrderSectionDisplayState,
+  type MyOrderSectionPatternId,
+} from "@/lib/orders/my-order-section-callout";
+import { MyOrderSectionCalloutList } from "@/components/moje/MyOrderSectionCallout";
 import { MojeOrdersSyncStrip } from "@/components/moje/MojeOrdersSyncStrip";
 import { SubiektStatusBar } from "@/components/subiekt/SubiektStatusBar";
 import type { SubiektAvailability } from "@/lib/subiekt/availability";
@@ -155,6 +160,7 @@ function MyOrderShipmentBlock({
   continuation = false,
   tourPreview = false,
   compactActionLayout = false,
+  suppressedSectionPatterns,
 }: {
   rows: MyOrderRow[];
   listKind: "zamowienie" | "informacja";
@@ -166,6 +172,7 @@ function MyOrderShipmentBlock({
   continuation?: boolean;
   tourPreview?: boolean;
   compactActionLayout?: boolean;
+  suppressedSectionPatterns?: Set<MyOrderSectionPatternId>;
 }) {
   if (rows.length === 0) return null;
   return (
@@ -181,7 +188,18 @@ function MyOrderShipmentBlock({
       continuation={continuation}
       tourPreview={tourPreview}
       compactActionLayout={compactActionLayout}
+      suppressedSectionPatterns={suppressedSectionPatterns}
     />
+  );
+}
+
+function useMyOrderSectionCallouts(
+  rows: MyOrderRow[],
+  activeFilter: MyOrderInboxFilter | null
+) {
+  return useMemo(
+    () => deriveMyOrderSectionDisplayState(rows, activeFilter),
+    [rows, activeFilter]
   );
 }
 
@@ -369,6 +387,20 @@ function MojeOrdersViewContent({
   const showKindSectionLabels =
     !activeFilter ||
     (zamowieniaListRows.length > 0 && informacjeListRows.length > 0);
+
+  const actionSectionRows = useMemo(
+    () => [...actionZamowienia, ...actionInformacje],
+    [actionZamowienia, actionInformacje]
+  );
+  const actionSectionCallouts = useMyOrderSectionCallouts(actionSectionRows, activeFilter);
+  const zamowieniaSectionCallouts = useMyOrderSectionCallouts(
+    zamowieniaListRows,
+    activeFilter
+  );
+  const informacjeSectionCallouts = useMyOrderSectionCallouts(
+    informacjeListRows,
+    activeFilter
+  );
 
   const allRows = useMemo(
     () => [...sortedZamowienia, ...sortedInformacje],
@@ -645,11 +677,13 @@ function MojeOrdersViewContent({
               accent="emerald"
               icon="action"
             />
+            <MyOrderSectionCalloutList callouts={actionSectionCallouts.callouts} />
             <MyOrderShipmentBlock
               embedded
               rows={actionZamowienia}
               listKind="zamowienie"
               showProgress
+              suppressedSectionPatterns={actionSectionCallouts.suppressedPatterns}
               {...listProps}
             />
             <MyOrderShipmentBlock
@@ -658,6 +692,7 @@ function MojeOrdersViewContent({
               rows={actionInformacje}
               listKind="informacja"
               showProgress={false}
+              suppressedSectionPatterns={actionSectionCallouts.suppressedPatterns}
               {...listProps}
             />
           </div>
@@ -679,11 +714,13 @@ function MojeOrdersViewContent({
                 icon="zamowienie"
               />
             ) : null}
+            <MyOrderSectionCalloutList callouts={zamowieniaSectionCallouts.callouts} />
             <MyOrderShipmentBlock
               embedded
               rows={zamowieniaListRows}
               listKind="zamowienie"
               showProgress
+              suppressedSectionPatterns={zamowieniaSectionCallouts.suppressedPatterns}
               {...listProps}
             />
           </div>
@@ -703,11 +740,13 @@ function MojeOrdersViewContent({
                 icon="informacja"
               />
             ) : null}
+            <MyOrderSectionCalloutList callouts={informacjeSectionCallouts.callouts} />
             <MyOrderShipmentBlock
               embedded
               rows={informacjeListRows}
               listKind="informacja"
               showProgress={false}
+              suppressedSectionPatterns={informacjeSectionCallouts.suppressedPatterns}
               {...listProps}
             />
           </div>

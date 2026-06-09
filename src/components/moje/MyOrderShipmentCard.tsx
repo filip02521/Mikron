@@ -7,6 +7,11 @@ import {
   shouldShowMyOrderHeadlineBanner,
   shouldShowOrderStatusBadge,
 } from "@/lib/orders/my-order-card-ui";
+import {
+  EMPTY_MY_ORDER_SECTION_PATTERNS,
+  myOrderRowSuppressesSharedHeadline,
+  type MyOrderSectionPatternId,
+} from "@/lib/orders/my-order-section-callout";
 import type { MyOrderListKind } from "@/lib/orders/my-order-row-layout";
 import {
   myOrderCollapsedProductSummary,
@@ -191,6 +196,7 @@ export function MyOrderShipmentCard({
   tourPreview = false,
   /** W sekcji „Do potwierdzenia” — bez osobnego zielonego paska nad wierszem. */
   compactActionLayout = false,
+  suppressedSectionPatterns,
 }: {
   row: MyOrderRow;
   listKind: MyOrderListKind;
@@ -209,6 +215,7 @@ export function MyOrderShipmentCard({
   searchQuery?: string | null;
   tourPreview?: boolean;
   compactActionLayout?: boolean;
+  suppressedSectionPatterns?: Set<MyOrderSectionPatternId>;
 }) {
   const panelId = useId();
   const searchActive = searchQueryTokens(searchQuery).length > 0;
@@ -235,6 +242,11 @@ export function MyOrderShipmentCard({
 
   const headline = row.headline ?? row.statusTitle;
   const headlineTone = row.headlineTone ?? "neutral";
+  const suppressSharedHeadline = myOrderRowSuppressesSharedHeadline(
+    row,
+    suppressedSectionPatterns ?? EMPTY_MY_ORDER_SECTION_PATTERNS
+  );
+  const showRowHeadline = !suppressSharedHeadline;
 
   const needsAck =
     row.acknowledgeMode === "pickup" || row.acknowledgeMode === "availability";
@@ -449,7 +461,8 @@ export function MyOrderShipmentCard({
     "truncate",
     isAction && "text-emerald-800",
     isUrgent && "text-amber-900",
-    !isAction && !isUrgent && "text-slate-600"
+    headlineTone === "info" && !isAction && !isUrgent && "text-indigo-800",
+    !isAction && !isUrgent && headlineTone !== "info" && "text-slate-600"
   );
 
   const bannerSubline = collapsedSubline;
@@ -517,7 +530,10 @@ export function MyOrderShipmentCard({
               {kindShort}
             </span>
           </div>
-          {!showHeadlineBanner || compactPickupOrAvailability ? (
+          {suppressSharedHeadline ? (
+            <span className="sr-only">{headline}</span>
+          ) : null}
+          {showRowHeadline && (!showHeadlineBanner || compactPickupOrAvailability) ? (
             <SearchHighlightText
               text={headline}
               searchQuery={searchQuery}
@@ -529,7 +545,16 @@ export function MyOrderShipmentCard({
             <SearchHighlightText
               text={collapsedSubline}
               searchQuery={searchQuery}
-              className={cn("mt-0.5 truncate", salesTypography.rowMeta)}
+              className={cn(
+                "mt-0.5 truncate",
+                salesTypography.rowMeta,
+                suppressSharedHeadline &&
+                  isUrgent &&
+                  "font-medium text-amber-900",
+                suppressSharedHeadline &&
+                  headlineTone === "info" &&
+                  "font-medium text-indigo-800"
+              )}
               as="p"
             />
           ) : null}

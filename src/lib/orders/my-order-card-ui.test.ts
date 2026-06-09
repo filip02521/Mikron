@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  myOrderUsesSalesHeadline,
   progressLabelInSubline,
   rowNeedsSalesAcknowledgement,
   shouldShowMyOrderHeadlineBanner,
@@ -49,6 +50,38 @@ function row(extra: Partial<MyOrderRow> = {}): MyOrderRow {
 }
 
 describe("my-order-card-ui", () => {
+  it("rozpoznaje nagłówek sales UI", () => {
+    expect(
+      myOrderUsesSalesHeadline(
+        row({ headline: "Czeka na zamówienie u dostawcy", statusTitle: "Przed zamówieniem" })
+      )
+    ).toBe(true);
+    expect(myOrderUsesSalesHeadline(row({ headline: "Zamówione", statusTitle: "Zamówione" }))).toBe(
+      false
+    );
+  });
+
+  it("ukrywa badge przy nagłówku sales UI (neutral)", () => {
+    expect(
+      shouldShowOrderStatusBadge(
+        row({
+          headlineTone: "neutral",
+          headline: "Powiadomimy, gdy towar przyjedzie",
+          statusTitle: "Oczekuje na magazyn",
+        })
+      )
+    ).toBe(false);
+    expect(
+      shouldShowOrderStatusBadge(
+        row({
+          headlineTone: "neutral",
+          headline: "Czeka na zamówienie u dostawcy",
+          statusTitle: "Przed zamówieniem",
+        })
+      )
+    ).toBe(false);
+  });
+
   it("ukrywa badge przy odbiorze", () => {
     expect(
       shouldShowOrderStatusBadge(
