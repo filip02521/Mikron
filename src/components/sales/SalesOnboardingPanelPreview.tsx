@@ -91,6 +91,7 @@ export function SalesOnboardingPanelPreview({ stepId }: { stepId: string }) {
                 <FlowChevron size={10} className="text-slate-300" />
                 Straumann
               </span>
+              <p className="mt-1 text-[10px] text-indigo-800/90">Klient: Klinika Smile</p>
             </div>
             <div className="rounded-md border border-slate-200 bg-white px-2.5 py-1.5 text-[11px] text-slate-700">
               <span className="font-medium text-slate-900">Ivoclar · cement</span>
@@ -98,6 +99,7 @@ export function SalesOnboardingPanelPreview({ stepId }: { stepId: string }) {
                 <FlowChevron size={10} className="text-slate-300" />
                 Ivoclar
               </span>
+              <p className="mt-1 text-[10px] text-indigo-800/90">Klient: Serwis AutoMax</p>
             </div>
           </div>
           <p className="text-center text-[10px] font-medium text-indigo-700">+ Kolejny produkt</p>
@@ -118,6 +120,27 @@ export function SalesOnboardingPanelPreview({ stepId }: { stepId: string }) {
               <span className="text-indigo-600">rozwiń</span>
             </div>
           ))}
+        </div>
+      );
+    case "tablica":
+      return (
+        <div className="space-y-2">
+          <div className="grid grid-cols-2 gap-2">
+            <div className="rounded-md border-2 border-sky-400 bg-sky-50 px-2 py-1.5 text-center text-[10px] font-semibold text-sky-900">
+              Ogłoszenia · 1 nowe
+            </div>
+            <div className="rounded-md border border-slate-200 bg-white px-2 py-1.5 text-center text-[10px] font-medium text-slate-600">
+              Pytania
+            </div>
+          </div>
+          <div className="rounded-md border border-sky-200 bg-sky-50/80 px-2.5 py-2 text-[11px] text-sky-950">
+            <p className="font-semibold">Nowa procedura zamówień importowych</p>
+            <p className="mt-0.5 text-[10px] text-sky-900/90">Od zakupów · tylko do odczytu</p>
+          </div>
+          <div className="rounded-md border border-amber-200 bg-amber-50 px-2.5 py-2 text-[11px] text-amber-950">
+            <p className="font-semibold">Pytanie: próbki implantów poza harmonogramem?</p>
+            <p className="mt-0.5 text-[10px] text-emerald-800">Odpowiedź zakupów · widoczna dla wszystkich</p>
+          </div>
         </div>
       );
     case "notatnik":
@@ -157,7 +180,7 @@ export function SalesOnboardingPanelPreview({ stepId }: { stepId: string }) {
         <div className="flex flex-col items-center gap-2 py-3 text-center">
           <p className="text-sm font-semibold text-indigo-900">Wszystko jasne?</p>
           <p className="text-xs text-slate-500">
-            Przechodzisz do panelu — możesz wrócić do pomocy w każdej chwili.
+            Za chwilę zobaczysz swoje dane — kliknij „Zakończ tour”, aby wejść do panelu.
           </p>
         </div>
       );

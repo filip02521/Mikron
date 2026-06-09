@@ -1,6 +1,11 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { useSalesOnboardingDemo } from "@/components/sales/SalesOnboardingContext";
+import {
+  buildOnboardingTablicaDemo,
+  ONBOARDING_TABLICA_UNSEEN_QUESTION_IDS,
+} from "@/lib/sales/sales-onboarding-demo-data";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { Alert } from "@/components/ui/Alert";
@@ -52,11 +57,23 @@ export function DepartmentBoardSalesClient({
   focusQuestionId?: string | null;
 }) {
   const router = useRouter();
-  const readSet = useMemo(() => new Set(initial.readAnnouncementIds), [initial.readAnnouncementIds]);
-  const unseenSet = useMemo(() => new Set(unseenQuestionIds), [unseenQuestionIds]);
-  const unreadAnnouncements = useMemo(() => countUnreadAnnouncements(initial), [initial]);
-  const openQuestionsCount = initial.questions.filter((q) => q.status === "open").length;
-  const unseenAnswersCount = unseenQuestionIds.length;
+  const tourDemo = useSalesOnboardingDemo("tablica");
+  const demoBoard = useMemo(() => buildOnboardingTablicaDemo(), []);
+  const board = tourDemo ? demoBoard : initial;
+  const effectiveUnseenQuestionIds = tourDemo
+    ? [...ONBOARDING_TABLICA_UNSEEN_QUESTION_IDS]
+    : unseenQuestionIds;
+  const readSet = useMemo(
+    () => new Set(board.readAnnouncementIds),
+    [board.readAnnouncementIds]
+  );
+  const unseenSet = useMemo(
+    () => new Set(effectiveUnseenQuestionIds),
+    [effectiveUnseenQuestionIds]
+  );
+  const unreadAnnouncements = useMemo(() => countUnreadAnnouncements(board), [board]);
+  const openQuestionsCount = board.questions.filter((q) => q.status === "open").length;
+  const unseenAnswersCount = effectiveUnseenQuestionIds.length;
 
   const [activeTab, setActiveTab] = useState<BoardTab>(() => {
     if (initialTab) return initialTab;
@@ -71,13 +88,13 @@ export function DepartmentBoardSalesClient({
 
   const filteredQuestions = useMemo(() => {
     if (questionFilter === "open") {
-      return initial.questions.filter((q) => q.status === "open");
+      return board.questions.filter((q) => q.status === "open");
     }
     if (questionFilter === "answered") {
-      return initial.questions.filter((q) => q.status === "answered");
+      return board.questions.filter((q) => q.status === "answered");
     }
-    return initial.questions;
-  }, [initial.questions, questionFilter]);
+    return board.questions;
+  }, [board.questions, questionFilter]);
 
   function refresh() {
     router.refresh();
@@ -117,10 +134,12 @@ export function DepartmentBoardSalesClient({
   }
 
   const pageDescription = `${DEPARTMENT_BOARD_SALES_PAGE_DESC} ${DEPARTMENT_BOARD_NOTES_DISTINCTION_SALES}`;
+  const showAnnouncements = tourDemo || activeTab === "announcements";
+  const showQuestions = tourDemo || activeTab === "questions";
 
   return (
     <div className={salesPageShellClass}>
-      {loadError ? <Alert tone="error">{loadError}</Alert> : null}
+      {loadError && !tourDemo ? <Alert tone="error">{loadError}</Alert> : null}
 
       <Card padding={false} className="overflow-hidden">
         <CardHeader
@@ -136,7 +155,7 @@ export function DepartmentBoardSalesClient({
           }
         />
 
-        <DepartmentBoardIntroBanner />
+        {tourDemo ? null : <DepartmentBoardIntroBanner />}
 
         <DepartmentBoardTabBar
           domain="sales"
@@ -147,25 +166,25 @@ export function DepartmentBoardSalesClient({
           unseenAnswers={unseenAnswersCount}
         />
 
-        {activeTab === "announcements" ? (
+        {showAnnouncements ? (
           <div className="space-y-3 p-3 sm:p-4">
             <NotatnikPanel
               title="Ogłoszenia od zakupów"
               description="Komunikaty jednokierunkowe — bez odpowiedzi w tej sekcji."
-              count={initial.announcements.length || undefined}
+              count={board.announcements.length || undefined}
               icon={<IconInbox size={17} />}
             >
-              {initial.announcements.length === 0 ? (
+              {board.announcements.length === 0 ? (
                 <DepartmentBoardAnnouncementsEmpty domain="sales" />
               ) : (
                 <div className={cn(mojeShipmentListClass, "-mx-3 -mb-3 sm:-mx-4 sm:-mb-4")}>
-                  {initial.announcements.map((thread) => (
+                  {board.announcements.map((thread) => (
                     <AnnouncementCard
                       key={thread.id}
                       thread={thread}
                       embedded
                       unread={!readSet.has(thread.id)}
-                      autoMarkRead
+                      autoMarkRead={!tourDemo}
                       onChanged={refresh}
                     />
                   ))}
@@ -175,12 +194,12 @@ export function DepartmentBoardSalesClient({
           </div>
         ) : null}
 
-        {activeTab === "questions" ? (
+        {showQuestions ? (
           <div className="space-y-3 p-3 sm:p-4">
             <NotatnikPanel
               title="Pytania zespołu"
               description="Wspólna lista — pytania kolegów i odpowiedzi zakupów. Filtr „Bez odpowiedzi” pokazuje tylko te, na które zakupy jeszcze nie odpisały."
-              count={initial.questions.length || undefined}
+              count={board.questions.length || undefined}
               icon={<IconClipboardPen size={17} />}
               tileClassName="bg-amber-100 text-amber-800"
             >
@@ -198,9 +217,11 @@ export function DepartmentBoardSalesClient({
                       question={question}
                       embedded
                       unseenReply={unseenSet.has(question.id)}
-                      autoMarkSeen={question.status === "answered"}
+                      autoMarkSeen={!tourDemo && question.status === "answered"}
                       defaultExpanded={
-                        focusQuestionId === question.id || unseenSet.has(question.id)
+                        tourDemo ||
+                        focusQuestionId === question.id ||
+                        unseenSet.has(question.id)
                       }
                       onChanged={refresh}
                     />
@@ -245,10 +266,12 @@ export function DepartmentBoardSalesClient({
                 ) : null}
                 <div className="mt-3">
                   <Button
-                    disabled={saving || !questionTitle.trim() || !questionBody.trim()}
+                    disabled={
+                      tourDemo || saving || !questionTitle.trim() || !questionBody.trim()
+                    }
                     onClick={() => void submitQuestion()}
                   >
-                    {saving ? "Wysyłanie…" : "Wyślij pytanie"}
+                    {tourDemo ? "Podgląd — bez wysyłki" : saving ? "Wysyłanie…" : "Wyślij pytanie"}
                   </Button>
                 </div>
               </ProsbaFormSection>

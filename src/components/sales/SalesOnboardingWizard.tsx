@@ -14,6 +14,19 @@ import { LinkChevron } from "@/components/ui/UiGlyphs";
 import { cn } from "@/lib/cn";
 import type { SalesOnboardingStep } from "@/lib/sales/sales-onboarding-steps";
 
+function polishCountLabel(
+  n: number,
+  forms: [string, string, string]
+): string {
+  if (n === 1) return `${n} ${forms[0]}`;
+  const mod10 = n % 10;
+  const mod100 = n % 100;
+  if (mod10 >= 2 && mod10 <= 4 && (mod100 < 12 || mod100 > 14)) {
+    return `${n} ${forms[1]}`;
+  }
+  return `${n} ${forms[2]}`;
+}
+
 function subscribeMediaQuery(query: string, callback: () => void) {
   const mq = window.matchMedia(query);
   mq.addEventListener("change", callback);
@@ -204,11 +217,7 @@ export function SalesOnboardingWizard() {
     [stepIndex, steps]
   );
 
-  function handleNext() {
-    if (!isLast) {
-      goNext();
-      return;
-    }
+  function finishOnboarding() {
     setError(null);
     startTransition(async () => {
       const result = await completeSalesOnboarding();
@@ -220,6 +229,14 @@ export function SalesOnboardingWizard() {
       router.push("/moje");
       router.refresh();
     });
+  }
+
+  function handleNext() {
+    if (!isLast) {
+      goNext();
+      return;
+    }
+    finishOnboarding();
   }
 
   if (isWelcomeStep) {
@@ -260,7 +277,17 @@ export function SalesOnboardingWizard() {
             {error ? <p className="mt-4 text-sm text-red-600">{error}</p> : null}
           </div>
 
-          <div className="relative z-[1] flex flex-col-reverse gap-2 border-t border-slate-100 bg-white/90 px-4 py-4 sm:flex-row sm:justify-end sm:px-6">
+          <div className="relative z-[1] flex flex-col-reverse gap-2 border-t border-slate-100 bg-white/90 px-4 py-4 sm:flex-row sm:justify-end sm:gap-3 sm:px-6">
+            <Button
+              type="button"
+              variant="ghost"
+              size="md"
+              className="min-h-11"
+              disabled={pending}
+              onClick={finishOnboarding}
+            >
+              Pomiń wprowadzenie
+            </Button>
             <Button
               type="button"
               size="md"
@@ -342,7 +369,11 @@ export function SalesOnboardingWizard() {
           >
             {mobileDetailsOpen
               ? "Zwiń opis kroku"
-              : `Pokaż pełny opis (${step.bullets.length} wskazówki${step.tip ? " + wskazówka" : ""})`}
+              : `Pokaż pełny opis (${polishCountLabel(step.bullets.length, [
+                  "punkt",
+                  "punkty",
+                  "punktów",
+                ])}${step.tip ? " + wskazówka" : ""})`}
           </button>
         ) : null}
 

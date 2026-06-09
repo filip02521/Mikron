@@ -3,6 +3,7 @@ import type { MyOrderRow } from "@/lib/orders/my-order-presenter";
 import { addDays } from "date-fns";
 import { formatDateString } from "@/lib/orders/dates";
 import { todayInWarsaw } from "@/lib/time/warsaw";
+import type { DepartmentBoardData } from "@/lib/data/department-board";
 import type { SalesNotepadData } from "@/lib/data/sales-notepad";
 import { SUMMARY_COLORS } from "@/types/database";
 import type { SupplierWithSchedule } from "@/types/database";
@@ -404,6 +405,90 @@ export function buildOnboardingPlanDemo() {
     },
   };
 }
+
+export function buildOnboardingTablicaDemo(): DepartmentBoardData {
+  const now = new Date().toISOString();
+  const announcementId = "demo-board-announcement";
+  const answeredQuestionId = "demo-board-question-answered";
+  const openQuestionId = "demo-board-question-open";
+
+  return {
+    announcements: [
+      {
+        id: announcementId,
+        kind: "announcement",
+        status: "open",
+        created_by: "demo-procurement",
+        sales_person_id: null,
+        title: "Nowa procedura zamówień importowych",
+        body: "Od poniedziałku zamówienia importowe przyjmujemy tylko z pełnym kodem Mikran w prośbie.",
+        color: "default",
+        pinned: true,
+        published_at: now,
+        expires_at: null,
+        answered_at: null,
+        archived_at: null,
+        created_at: now,
+        updated_at: now,
+        author: { email: "zakupy@firma.pl", role: "zakupy" },
+      },
+    ],
+    questions: [
+      {
+        id: answeredQuestionId,
+        kind: "question",
+        status: "answered",
+        created_by: "demo-sales-peer",
+        sales_person_id: DEMO_SALES_PERSON_ID,
+        title: "Czy można zamówić próbki implantów poza harmonogramem?",
+        body: "Klient pyta o pilne próbki przed wizytą w przyszłym tygodniu.",
+        color: "default",
+        pinned: false,
+        published_at: now,
+        expires_at: null,
+        answered_at: now,
+        archived_at: null,
+        created_at: now,
+        updated_at: now,
+        author: { email: "anna@firma.pl", role: "sales" },
+        sales_person: { id: DEMO_SALES_PERSON_ID, name: "Anna K." },
+        posts: [
+          {
+            id: "demo-board-post-1",
+            thread_id: answeredQuestionId,
+            created_by: "demo-procurement",
+            body: "Tak, ale tylko po potwierdzeniu dostępności u dostawcy — złóż normalną prośbę z adnotacją „próbki”.",
+            created_at: now,
+            author: { email: "zakupy@firma.pl", role: "zakupy" },
+          },
+        ],
+      },
+      {
+        id: openQuestionId,
+        kind: "question",
+        status: "open",
+        created_by: "demo-sales-peer-2",
+        sales_person_id: "demo-sales-peer-2",
+        title: "Jaki jest aktualny czas realizacji u Dental Supply?",
+        body: "Mam klienta, który czeka na potwierdzenie terminu.",
+        color: "default",
+        pinned: false,
+        published_at: now,
+        expires_at: null,
+        answered_at: null,
+        archived_at: null,
+        created_at: now,
+        updated_at: now,
+        author: { email: "piotr@firma.pl", role: "sales" },
+        sales_person: { id: "demo-sales-peer-2", name: "Piotr M." },
+        posts: [],
+      },
+    ],
+    readAnnouncementIds: [],
+  };
+}
+
+export const ONBOARDING_TABLICA_UNSEEN_QUESTION_IDS = ["demo-board-question-answered"] as const;
 
 export function buildOnboardingNotepadDemo(salesPersonId: string): SalesNotepadData {
   const now = new Date().toISOString();

@@ -5,6 +5,7 @@ import {
   buildOnboardingNotepadDemo,
   buildOnboardingPlanDemo,
   buildOnboardingProsbaLines,
+  buildOnboardingTablicaDemo,
 } from "@/lib/sales/sales-onboarding-demo-data";
 
 describe("sales onboarding demo data", () => {
@@ -28,6 +29,14 @@ describe("sales onboarding demo data", () => {
     const lines = buildOnboardingProsbaLines("sp-1");
     expect(lines).toHaveLength(2);
     expect(lines.every((l) => l.salesPersonId === "sp-1")).toBe(true);
+  });
+
+  it("includes announcements and questions in tablica demo", () => {
+    const board = buildOnboardingTablicaDemo();
+    expect(board.announcements).toHaveLength(1);
+    expect(board.questions).toHaveLength(2);
+    expect(board.questions.some((q) => q.status === "answered")).toBe(true);
+    expect(board.questions.some((q) => q.status === "open")).toBe(true);
   });
 
   it("uses relative dates in plan and notepad demos", () => {
