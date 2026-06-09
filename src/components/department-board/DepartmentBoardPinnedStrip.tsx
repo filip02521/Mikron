@@ -1,6 +1,7 @@
 import { IconPin } from "@/components/icons/StrokeIcons";
 import { SystemNotice } from "@/components/ui/SystemNotice";
 import type { DepartmentBoardThreadRow } from "@/lib/data/department-board";
+import { salesBoardAnnouncementHref } from "@/lib/data/department-board";
 import { MICROCOPY } from "@/lib/ui/microcopy";
 
 export function DepartmentBoardPinnedStrip({
@@ -30,7 +31,7 @@ export function DepartmentBoardPinnedStrip({
           ) : null}
         </span>
       }
-      href="/tablica?widok=ogloszenia"
+      href={salesBoardAnnouncementHref(primary.id)}
       actionLabel={MICROCOPY.actions.readMore}
     />
   );

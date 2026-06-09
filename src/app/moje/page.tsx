@@ -241,6 +241,7 @@ export default async function MojePage({
   const { zamowienia, informacje, productLineCount } = presentMyOrders(orders, stats);
 
   if (viewingOwnPanel && notepadSlice) {
+    /** Start dnia = własna kolejka akcji (zamówienia + notatnik + tablica zalogowanego użytkownika). */
     dayStartContext = {
       watches: notepadSlice.zkWatches,
       notes: notepadSlice.notes,

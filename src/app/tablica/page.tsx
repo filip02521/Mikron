@@ -22,6 +22,10 @@ export default async function SalesBoardPage({
   searchParams: Promise<{ widok?: string; watek?: string }>;
 }) {
   const { widok, watek } = await searchParams;
+  const focusThreadId = watek?.trim() || null;
+  /** watek + widok=ogloszenia → scroll do ogłoszenia; watek + widok=pytania (lub brak) → pytanie. */
+  const focusQuestionId = widok === "ogloszenia" ? null : focusThreadId;
+  const focusAnnouncementId = widok === "ogloszenia" ? focusThreadId : null;
   const user = await getSessionUser();
   const { panelContext } = await readAdminPanelContextForSession();
   const adminSalesPreview = Boolean(
@@ -60,7 +64,8 @@ export default async function SalesBoardPage({
         loadError={loadError}
         unseenQuestionIds={unseenQuestionIds}
         initialTab={initialTab}
-        focusQuestionId={watek?.trim() || null}
+        focusQuestionId={focusQuestionId}
+        focusAnnouncementId={focusAnnouncementId}
         readOnly
       />
     );
@@ -103,7 +108,8 @@ export default async function SalesBoardPage({
       loadError={loadError}
       unseenQuestionIds={unseenQuestionIds}
       initialTab={initialTab}
-      focusQuestionId={watek?.trim() || null}
+      focusQuestionId={focusQuestionId}
+      focusAnnouncementId={focusAnnouncementId}
     />
   );
 }

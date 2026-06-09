@@ -4,19 +4,17 @@ import { useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import type {
-  SalesDayStartBreakdownKey,
   SalesDayStartItem,
   SalesDayStartSnapshot,
 } from "@/lib/sales/sales-day-start";
 import {
-  salesDayStartBreakdownLabels,
   salesDayStartSourceLabel,
   sliceSalesDayStartItems,
 } from "@/lib/sales/sales-day-start";
 import type { MyOrderInboxFilter } from "@/lib/orders/my-order-inbox-filter";
 import { hrefWithSalesPreviewFromUrl } from "@/lib/nav/sales-preview-href";
 import { useSalesDayStartPanelCollapse } from "@/lib/sales/use-sales-day-start-panel-collapse";
-import { SalesDayStartPinnedNotes } from "@/components/moje/SalesDayStartPinnedNotes";
+import { SalesDayStartPinnedContext } from "@/components/moje/SalesDayStartPinnedContext";
 import { SalesDayStartHelp } from "@/components/moje/SalesDayStartHelp";
 import { Badge } from "@/components/ui/Badge";
 import { Card, CardHeader } from "@/components/ui/Card";
@@ -110,18 +108,28 @@ function DayStartItemRow({
   );
 }
 
+function clearedPinnedDescription(snapshot: SalesDayStartSnapshot): string {
+  const hasAnnouncements =
+    snapshot.pinnedAnnouncements.length > 0 || snapshot.pinnedAnnouncementOverflow > 0;
+  const hasNotes = snapshot.pinnedNotes.length > 0 || snapshot.pinnedNoteOverflow > 0;
+  if (hasAnnouncements && hasNotes) {
+    return "Brak pilnych akcji — poniżej kontekst z tablicy i notatnika.";
+  }
+  if (hasAnnouncements) {
+    return "Brak pilnych akcji — poniżej przypięte ogłoszenia od zakupów.";
+  }
+  if (hasNotes) {
+    return "Brak pilnych akcji — poniżej przypięte notatki.";
+  }
+  return "Brak pilnych akcji.";
+}
+
 export function SalesDayStartPanel({
   snapshot,
   onInboxFilter,
-  onBreakdownSelect,
-  activeBreakdown = null,
-  tourPreview = false,
 }: {
   snapshot: SalesDayStartSnapshot;
   onInboxFilter?: (filter: MyOrderInboxFilter, scrollTarget?: string) => void;
-  onBreakdownSelect?: (key: SalesDayStartBreakdownKey) => void;
-  activeBreakdown?: SalesDayStartBreakdownKey | null;
-  tourPreview?: boolean;
 }) {
   const searchParams = useSearchParams();
   const previewDla = searchParams.get("dla");
@@ -131,9 +139,11 @@ export function SalesDayStartPanel({
   const { collapsed, toggleCollapsed } = useSalesDayStartPanelCollapse(hasOpenTasks);
   const [itemsExpanded, setItemsExpanded] = useState(false);
 
-  const breakdownChips = salesDayStartBreakdownLabels(snapshot.breakdown);
-  const hasPinned =
-    snapshot.pinnedNotes.length > 0 || snapshot.pinnedNoteOverflow > 0;
+  const hasPinnedContext =
+    snapshot.pinnedNotes.length > 0 ||
+    snapshot.pinnedNoteOverflow > 0 ||
+    snapshot.pinnedAnnouncements.length > 0 ||
+    snapshot.pinnedAnnouncementOverflow > 0;
   const { visible: visibleItems, hiddenCount } = sliceSalesDayStartItems(
     snapshot.items,
     itemsExpanded
@@ -156,7 +166,7 @@ export function SalesDayStartPanel({
     </div>
   );
 
-  if (snapshot.cleared && !hasPinned) {
+  if (snapshot.cleared && !hasPinnedContext) {
     if (collapsed) {
       return (
         <Card padding={false} className="overflow-hidden border-emerald-200/60 bg-emerald-50/20">
@@ -223,7 +233,7 @@ export function SalesDayStartPanel({
           collapsed && !hasOpenTasks
             ? undefined
             : snapshot.cleared
-              ? "Brak pilnych akcji — poniżej kontekst z przypiętych notatek."
+              ? clearedPinnedDescription(snapshot)
               : snapshot.totalActionCount === 1
                 ? "1 rzecz wymaga reakcji — od najpilniejszych."
                 : `${snapshot.totalActionCount} rzeczy wymaga reakcji — od najpilniejszych.`
@@ -233,33 +243,6 @@ export function SalesDayStartPanel({
 
       {!collapsed && !snapshot.cleared ? (
         <div className={cn("border-b border-slate-100 pb-3", salesChromeInsetClass)}>
-          {breakdownChips.length > 1 ? (
-            <div className="mb-3 flex flex-wrap gap-1.5">
-              {breakdownChips.map((chip) => {
-                const active = activeBreakdown === chip.key;
-                return (
-                  <button
-                    key={chip.key}
-                    type="button"
-                    disabled={tourPreview}
-                    onClick={() => onBreakdownSelect?.(chip.key)}
-                    className={cn(
-                      "inline-flex min-h-9 items-center gap-1 rounded-full px-2.5 py-1 text-[11px] font-semibold transition",
-                      active
-                        ? "bg-indigo-600 text-white ring-2 ring-indigo-300/80"
-                        : "bg-white text-slate-800 ring-1 ring-slate-200 hover:bg-slate-50"
-                    )}
-                    aria-pressed={active}
-                  >
-                    <span className={cn("tabular-nums", active ? "text-white" : "text-indigo-700")}>
-                      {chip.count}
-                    </span>
-                    {chip.label}
-                  </button>
-                );
-              })}
-            </div>
-          ) : null}
           <ul className="flex flex-col gap-1.5">
             {visibleItems.map((item) => (
               <DayStartItemRow
@@ -283,10 +266,12 @@ export function SalesDayStartPanel({
         </div>
       ) : null}
 
-      {!collapsed && hasPinned ? (
-        <SalesDayStartPinnedNotes
+      {hasPinnedContext && (!collapsed || snapshot.cleared) ? (
+        <SalesDayStartPinnedContext
+          announcements={snapshot.pinnedAnnouncements}
+          announcementOverflow={snapshot.pinnedAnnouncementOverflow}
           notes={snapshot.pinnedNotes}
-          overflow={snapshot.pinnedNoteOverflow}
+          noteOverflow={snapshot.pinnedNoteOverflow}
           previewHref={previewHref}
         />
       ) : null}

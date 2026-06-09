@@ -39,19 +39,14 @@ export type SalesDayStartItem = {
   ctaLabel: string;
 };
 
-export type SalesDayStartBreakdown = {
-  orders: number;
-  notepad: number;
-  board: number;
-};
-
 export type SalesDayStartSnapshot = {
   items: SalesDayStartItem[];
   totalActionCount: number;
   pinnedNotes: SalesNote[];
   pinnedNoteOverflow: number;
+  pinnedAnnouncements: SalesDayStartPinnedAnnouncement[];
+  pinnedAnnouncementOverflow: number;
   cleared: boolean;
-  breakdown: SalesDayStartBreakdown;
   inboxSummary: MyOrdersInboxSummary;
 };
 
@@ -66,12 +61,17 @@ const PRIORITY: Record<SalesDayStartSource, number> = {
 };
 
 const PINNED_NOTES_LIMIT = 4;
+const PINNED_ANNOUNCEMENTS_LIMIT = 3;
 const MOJE_ACTION_SECTION = "moje-section-action";
 
 /** Maks. zadań w panelu przed „Pokaż wszystkie”. */
 export const SALES_DAY_START_VISIBLE_LIMIT = 6;
 
-export type SalesDayStartBreakdownKey = keyof SalesDayStartBreakdown;
+export type SalesDayStartPinnedAnnouncement = {
+  id: string;
+  title: string;
+  body: string;
+};
 
 /** Dane spoza listy zamówień — notatnik i tablica z RSC. */
 export type SalesDayStartContext = {
@@ -215,6 +215,12 @@ function buildBoardItems(
   }
 
   if (board.unreadAnnouncementBannerCount > 0) {
+    const latestId = board.unreadAnnouncementBannerLatestId;
+    const href =
+      board.unreadAnnouncementBannerCount === 1 && latestId
+        ? `/tablica${previewQs}${previewQs ? "&" : "?"}widok=ogloszenia&watek=${encodeURIComponent(latestId)}`
+        : `/tablica${previewQs}${previewQs ? "&" : "?"}widok=ogloszenia`;
+
     items.push({
       id: "board-announcements",
       source: "board_announcement",
@@ -224,7 +230,7 @@ function buildBoardItems(
           ? "Nowe ogłoszenie od zakupów"
           : `${board.unreadAnnouncementBannerCount} nowe ogłoszenia`,
       subtitle: board.unreadAnnouncementBannerLatestTitle ?? undefined,
-      href: `/tablica${previewQs}${previewQs ? "&" : "?"}widok=ogloszenia`,
+      href,
       count: board.unreadAnnouncementBannerCount,
       ctaLabel: "Przeczytaj",
     });
@@ -251,47 +257,38 @@ export function buildSalesDayStartSnapshot(input: {
     (a, b) => a.priority - b.priority || (b.count ?? 0) - (a.count ?? 0)
   );
 
-  const breakdown: SalesDayStartBreakdown = {
-    orders:
-      inboxSummary.pickupCount +
-      inboxSummary.cancelAckCount +
-      inboxSummary.informacjaReadyCount,
-    notepad: notepadItems.length,
-    board: boardItems.reduce((sum, i) => sum + (i.count ?? 1), 0),
-  };
-
-  const totalActionCount = breakdown.orders + breakdown.notepad + breakdown.board;
+  const totalActionCount =
+    inboxSummary.pickupCount +
+    inboxSummary.cancelAckCount +
+    inboxSummary.informacjaReadyCount +
+    notepadItems.length +
+    boardItems.reduce((sum, i) => sum + (i.count ?? 1), 0);
 
   const sortedPinned = sortSalesNotes(notes.filter((n) => n.pinned && !n.archived_at));
   const pinnedNotes = sortedPinned.slice(0, PINNED_NOTES_LIMIT);
   const pinnedNoteOverflow = Math.max(0, sortedPinned.length - PINNED_NOTES_LIMIT);
+
+  const pinnedBoard = boardAttention?.pinnedAnnouncements ?? [];
+  const pinnedAnnouncements = pinnedBoard.slice(0, PINNED_ANNOUNCEMENTS_LIMIT).map((a) => ({
+    id: a.id,
+    title: a.title,
+    body: a.body,
+  }));
+  const pinnedAnnouncementOverflow = Math.max(
+    0,
+    pinnedBoard.length - PINNED_ANNOUNCEMENTS_LIMIT
+  );
 
   return {
     items,
     totalActionCount,
     pinnedNotes,
     pinnedNoteOverflow,
+    pinnedAnnouncements,
+    pinnedAnnouncementOverflow,
     cleared: totalActionCount === 0,
-    breakdown,
     inboxSummary,
   };
-}
-
-/** Etykiety breakdown chipów w panelu Start dnia. */
-export function salesDayStartBreakdownLabels(
-  breakdown: SalesDayStartBreakdown
-): { key: keyof SalesDayStartBreakdown; label: string; count: number }[] {
-  const out: { key: keyof SalesDayStartBreakdown; label: string; count: number }[] = [];
-  if (breakdown.orders > 0) {
-    out.push({ key: "orders", label: "Zamówienia", count: breakdown.orders });
-  }
-  if (breakdown.notepad > 0) {
-    out.push({ key: "notepad", label: "Notatnik", count: breakdown.notepad });
-  }
-  if (breakdown.board > 0) {
-    out.push({ key: "board", label: "Tablica", count: breakdown.board });
-  }
-  return out;
 }
 
 export function salesDayStartSourceLabel(source: SalesDayStartSource): string {
@@ -332,22 +329,6 @@ export function pinnedNoteFollowUpHint(note: SalesNote): string | null {
   if (!note.follow_up_at) return null;
   const label = formatFollowUpLabel(note.follow_up_at);
   return label ? `Przypomnienie ${label}` : null;
-}
-
-/** Mapuje aktywny filtr /moje na grupę w panelu Start dnia. */
-export function salesDayStartBreakdownFromFilter(
-  filter: MyOrderInboxFilter | null
-): SalesDayStartBreakdownKey | null {
-  if (!filter) return null;
-  if (
-    filter === "action_group" ||
-    filter === "pickup" ||
-    filter === "cancel_ack" ||
-    filter === "informacja_ready"
-  ) {
-    return "orders";
-  }
-  return null;
 }
 
 export function sliceSalesDayStartItems(

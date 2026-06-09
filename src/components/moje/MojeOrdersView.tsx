@@ -31,7 +31,6 @@ import { SalesDayStartPanel } from "@/components/moje/SalesDayStartPanel";
 import type { SalesBoardAttentionSnapshot } from "@/lib/data/department-board";
 import {
   buildSalesDayStartSnapshot,
-  salesDayStartBreakdownFromFilter,
   type SalesDayStartContext,
 } from "@/lib/sales/sales-day-start";
 import { MyOrderShipmentList } from "@/components/moje/MyOrderShipmentList";
@@ -571,7 +570,6 @@ function MojeOrdersViewContent({
     [allRows]
   );
   const dayStartActionCount = dayStartSnapshot?.totalActionCount ?? needsActionTotal;
-  const dayStartActiveBreakdown = salesDayStartBreakdownFromFilter(activeFilter);
 
   const handleDayStartInboxFilter = useCallback(
     (filter: MyOrderInboxFilter, scrollTarget?: string) => {
@@ -585,33 +583,12 @@ function MojeOrdersViewContent({
     []
   );
 
-  const handleDayStartBreakdown = useCallback(
-    (key: "orders" | "notepad" | "board") => {
-      if (key === "orders") {
-        handleDayStartInboxFilter("action_group", "moje-section-action");
-        return;
-      }
-      const previewQs = dayStartContext?.previewDla
-        ? `?dla=${encodeURIComponent(dayStartContext.previewDla)}`
-        : "";
-      if (key === "notepad") {
-        router.push(`/notatnik${previewQs}`);
-        return;
-      }
-      router.push(`/tablica${previewQs}`);
-    },
-    [handleDayStartInboxFilter, router, dayStartContext?.previewDla]
-  );
-
   const dayStartPanel =
     canAcknowledge && dayStartSnapshot ? (
       <Suspense fallback={null}>
         <SalesDayStartPanel
           snapshot={dayStartSnapshot}
           onInboxFilter={handleDayStartInboxFilter}
-          onBreakdownSelect={handleDayStartBreakdown}
-          activeBreakdown={dayStartActiveBreakdown}
-          tourPreview={tourPreview}
         />
       </Suspense>
     ) : null;
@@ -905,7 +882,6 @@ function MojeOrdersViewContent({
         ) : null}
 
         <div className="space-y-3 p-3 sm:p-4">
-        <MyOrderShipmentUndoToast />
         <MyOrderBulkPickupBar
           rows={bulkPickupRows}
           enabled={canAcknowledge}
@@ -1021,6 +997,7 @@ export function MojeOrdersView(
   return (
     <MyOrderPickupShelfDialogProvider>
       <MyOrderShipmentUndoProvider disabled={tourPreview || !canAcknowledge}>
+        <MyOrderShipmentUndoToast />
         <Suspense
         fallback={
           <div className="space-y-5">

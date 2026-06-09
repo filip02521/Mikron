@@ -4,7 +4,6 @@ import type { SalesBoardAttentionSnapshot } from "@/lib/data/department-board";
 import {
   buildSalesDayStartSnapshot,
   salesDayStartNavCount,
-  salesDayStartBreakdownFromFilter,
   sliceSalesDayStartItems,
 } from "./sales-day-start";
 
@@ -49,11 +48,11 @@ describe("buildSalesDayStartSnapshot", () => {
       ],
     });
 
-    expect(snapshot.breakdown.orders).toBe(3);
     expect(snapshot.items.filter((i) => i.source === "pickup")).toHaveLength(2);
     expect(snapshot.items[0]?.source).toBe("pickup");
     expect(snapshot.items[0]?.count).toBe(3);
     expect(snapshot.items[0]?.title).toBe("Mikran");
+    expect(snapshot.totalActionCount).toBe(3);
   });
 
   it("łączy notatnik i tablicę w totalActionCount", () => {
@@ -62,6 +61,7 @@ describe("buildSalesDayStartSnapshot", () => {
       unreadAnnouncementLatestTitle: "Urlop",
       unreadAnnouncementBannerCount: 1,
       unreadAnnouncementBannerLatestTitle: "Urlop",
+      unreadAnnouncementBannerLatestId: "ann-1",
       unseenAnswerCount: 1,
       unseenAnswerPreview: {
         threadId: "t1",
@@ -97,16 +97,81 @@ describe("buildSalesDayStartSnapshot", () => {
       boardAttention: board,
     });
 
-    expect(snapshot.breakdown.orders).toBe(1);
-    expect(snapshot.breakdown.notepad).toBe(1);
-    expect(snapshot.breakdown.board).toBe(2);
     expect(snapshot.totalActionCount).toBe(4);
+    const announcementItem = snapshot.items.find((i) => i.source === "board_announcement");
+    expect(announcementItem?.href).toContain("watek=ann-1");
   });
 
   it("cleared gdy brak akcji", () => {
     const snapshot = buildSalesDayStartSnapshot({ rows: [] });
     expect(snapshot.cleared).toBe(true);
     expect(snapshot.items).toHaveLength(0);
+  });
+
+  it("udostępnia przypięte ogłoszenia z tablicy", () => {
+    const snapshot = buildSalesDayStartSnapshot({
+      rows: [],
+      boardAttention: {
+        unreadAnnouncementCount: 0,
+        unreadAnnouncementLatestTitle: null,
+        unreadAnnouncementBannerCount: 0,
+        unreadAnnouncementBannerLatestTitle: null,
+        unreadAnnouncementBannerLatestId: null,
+        unseenAnswerCount: 0,
+        unseenAnswerPreview: null,
+        unseenQuestionIds: [],
+        pinnedAnnouncements: [
+          {
+            id: "a1",
+            title: "Urlop w zakupach",
+            body: "Biuro zamknięte w piątek",
+            kind: "announcement",
+            pinned: true,
+          } as never,
+          {
+            id: "a2",
+            title: "Nowy dostawca",
+            body: "Procedura zamówień",
+            kind: "announcement",
+            pinned: true,
+          } as never,
+        ],
+        navBadgeCount: 0,
+      },
+    });
+
+    expect(snapshot.pinnedAnnouncements).toHaveLength(2);
+    expect(snapshot.pinnedAnnouncements[0]?.title).toBe("Urlop w zakupach");
+    expect(snapshot.pinnedAnnouncementOverflow).toBe(0);
+  });
+
+  it("ogranicza liczbę przypiętych ogłoszeń", () => {
+    const pinned = Array.from({ length: 5 }, (_, i) => ({
+      id: `a${i}`,
+      title: `Ogłoszenie ${i}`,
+      body: "Treść",
+      kind: "announcement",
+      pinned: true,
+    }));
+
+    const snapshot = buildSalesDayStartSnapshot({
+      rows: [],
+      boardAttention: {
+        unreadAnnouncementCount: 0,
+        unreadAnnouncementLatestTitle: null,
+        unreadAnnouncementBannerCount: 0,
+        unreadAnnouncementBannerLatestTitle: null,
+        unreadAnnouncementBannerLatestId: null,
+        unseenAnswerCount: 0,
+        unseenAnswerPreview: null,
+        unseenQuestionIds: [],
+        pinnedAnnouncements: pinned as never,
+        navBadgeCount: 0,
+      },
+    });
+
+    expect(snapshot.pinnedAnnouncements).toHaveLength(3);
+    expect(snapshot.pinnedAnnouncementOverflow).toBe(2);
   });
 });
 
@@ -129,14 +194,6 @@ describe("salesDayStartNavCount", () => {
         2
       )
     ).toBe(6);
-  });
-});
-
-describe("salesDayStartBreakdownFromFilter", () => {
-  it("mapuje filtry zamówień", () => {
-    expect(salesDayStartBreakdownFromFilter("pickup")).toBe("orders");
-    expect(salesDayStartBreakdownFromFilter("action_group")).toBe("orders");
-    expect(salesDayStartBreakdownFromFilter("overdue")).toBeNull();
   });
 });
 

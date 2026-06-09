@@ -1,7 +1,7 @@
 "use client";
 
 import { Suspense } from "react";
-import { usePathname } from "next/navigation";
+import { usePathname, useSearchParams } from "next/navigation";
 import { AdminPanelPreviewProvider } from "./AdminPanelPreviewContext";
 import { AdminPreviewBanner } from "./AdminPreviewBanner";
 import { Sidebar } from "./Sidebar";
@@ -30,6 +30,22 @@ import type { UserRole } from "@/types/database";
 import { canAccessOperations, isSalesAccount } from "@/lib/auth-roles";
 import { MobileOperationsNav } from "./MobileOperationsNav";
 import { MobileOperationsHeader } from "./MobileOperationsHeader";
+
+function SalesGlobalPinnedStrip({
+  attention,
+}: {
+  attention: SalesBoardAttentionSnapshot;
+}) {
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+  const previewDla = searchParams.get("dla");
+
+  /** Ukryj globalny pasek tylko na własnym /moje — panel Start dnia pokazuje przypięte. */
+  const hideForDayStartPanel = pathname === "/moje" && !previewDla;
+  if (hideForDayStartPanel || !attention.pinnedAnnouncements.length) return null;
+
+  return <DepartmentBoardPinnedStrip pinned={attention.pinnedAnnouncements} />;
+}
 
 function AppShellMain({
   children,
@@ -169,10 +185,10 @@ export function AppShellClient({
               <AdminPreviewBanner panelContext={adminPanelPreview} />
             ) : salesLive ? (
               <>
-                {salesBoardAttention?.pinnedAnnouncements.length ? (
-                  <DepartmentBoardPinnedStrip
-                    pinned={salesBoardAttention.pinnedAnnouncements}
-                  />
+                {salesBoardAttention ? (
+                  <Suspense fallback={null}>
+                    <SalesGlobalPinnedStrip attention={salesBoardAttention} />
+                  </Suspense>
                 ) : null}
                 <SalesUpdatesBanner />
               </>

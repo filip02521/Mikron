@@ -27,9 +27,10 @@ export function SalesDayStartHelp() {
         </ol>
       </HelpBlock>
 
-      <HelpBlock title="Przypięte notatki">
+      <HelpBlock title="Przypięty kontekst">
         <p>
-          To kontekst roboczy — nie zadania. Kliknij kartę, żeby przejść do wpisu w notatniku.
+          Ogłoszenia od zakupów i Twoje notatki — baza robocza, nie zadania. Kliknij kartę, żeby
+          przejść do tablicy lub wpisu w notatniku.
         </p>
       </HelpBlock>
     </HelpPopover>
