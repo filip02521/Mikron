@@ -54,6 +54,22 @@ describe("enrichMyOrderSalesUi", () => {
     expect(ui.headline).toContain("Do odbioru");
     expect(ui.headlineTone).toBe("action");
     expect(ui.sortPriority).toBe(1);
+    expect(ui.subline).toBeNull();
+  });
+
+  it("odbiór części grupy — tylko liczba pozostałych, bez subline X/Y", () => {
+    const row = presentMyOrders(
+      [{ ...baseOrder, status: "Zrealizowane" }],
+      []
+    ).zamowienia[0]!;
+    const ui = enrichMyOrderSalesUi({
+      ...row,
+      pickupReadyTotal: 11,
+      pickupAcknowledgedCount: 9,
+      pickupPendingCount: 2,
+    });
+    expect(ui.headline).toBe("Do odbioru · 2 poz.");
+    expect(ui.subline).toBeNull();
   });
 
   it("oznacza opóźnienie po terminie", () => {
@@ -71,6 +87,16 @@ describe("enrichMyOrderSalesUi", () => {
     const withUi = { ...row, ...enrichMyOrderSalesUi(row) };
     expect(withUi.headline).toBe("Po przewidywanym terminie");
     expect(withUi.headlineTone).toBe("warning");
+  });
+
+  it("część na magazynie ma ton stock, nie warning jak po terminie", () => {
+    const partial = presentMyOrders(
+      [{ ...baseOrder, status: "Czesciowo_zrealizowane", delivered_quantity: "2" }],
+      []
+    ).zamowienia[0]!;
+    const ui = enrichMyOrderSalesUi(partial);
+    expect(ui.headline).toBe("Część towaru dotarła na magazyn");
+    expect(ui.headlineTone).toBe("stock");
   });
 });
 

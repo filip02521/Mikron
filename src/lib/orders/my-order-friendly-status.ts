@@ -5,7 +5,7 @@ const FRIENDLY_STATUS: Record<string, string> = {
   "Uzupełnianie danych": "Uzupełniamy brakujące dane",
   "Przed zamówieniem": "Czeka, aż zamówimy u dostawcy",
   Zamówione: "Zamówione — czekamy na dostawę",
-  "Częściowo na magazynie": "Część towaru jest już u nas",
+  "Częściowo na magazynie": "Część dotarła — reszta w drodze",
   "Do odbioru": "Gotowe do odbioru z magazynu",
   "Informacja o dostępności": "Magazyn sprawdza dostępność",
   "Oczekuje na magazyn": "Magazyn sprawdza dostępność",

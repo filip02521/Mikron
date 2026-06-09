@@ -3,7 +3,23 @@ import type { MyOrderRow } from "@/lib/orders/my-order-presenter";
 import { isInformacjaAvailabilityPendingStatusTitle } from "@/lib/orders/informacja-flow-copy";
 import { progressLabelInSubline } from "@/lib/orders/my-order-card-ui";
 
-export type MyOrderHeadlineTone = "action" | "warning" | "success" | "info" | "neutral";
+export type MyOrderHeadlineTone =
+  | "action"
+  | "warning"
+  | "stock"
+  | "success"
+  | "info"
+  | "neutral";
+
+/** Nagłówek wiersza przy częściowej dostawie z towarem na magazynie (bez potwierdzenia odbioru). */
+export const MY_ORDER_PARTIAL_STOCK_HEADLINE = "Część towaru dotarła na magazyn";
+
+export function isMyOrderPartialStockRow(row: MyOrderRow): boolean {
+  if (row.kind !== "zamowienie" || row.statusTitle !== "Częściowo na magazynie") {
+    return false;
+  }
+  return enrichMyOrderSalesUi(row).headlineTone === "stock";
+}
 
 /** Status otwartej prośby przekazanej do działu dostaw (nie wymaga akcji handlowca). */
 export function isProsbaHandoffStatus(statusTitle: string): boolean {
@@ -82,7 +98,9 @@ export function summarizeMyOrdersInbox(rows: MyOrderRow[]): MyOrdersInboxSummary
   for (const row of rows) {
     const ui = enrichMyOrderSalesUi(row);
     if (ui.sortPriority === 1) s.pickupCount++;
-    else if (ui.sortPriority === 2) s.partialReadyCount++;
+    else if (row.kind === "zamowienie" && row.statusTitle === "Częściowo na magazynie") {
+      s.partialReadyCount++;
+    }
     else if (ui.sortPriority === 3) s.cancelAckCount++;
     else if (ui.sortPriority === 4) s.overdueCount++;
     else if (ui.sortPriority === 5) s.verificationCount++;
@@ -118,14 +136,10 @@ export function enrichMyOrderSalesUi(row: MyOrderRow): MyOrderSalesUi {
 
   if (row.acknowledgeMode === "pickup" && row.pickupPendingCount > 0) {
     const n = row.pickupPendingCount;
-    const progress =
-      row.pickupReadyTotal > 1 && row.pickupAcknowledgedCount > 0
-        ? `${row.pickupAcknowledgedCount}/${row.pickupReadyTotal} już odebrane`
-        : null;
     return {
       headline: n === 1 ? "Do odbioru" : `Do odbioru · ${n} poz.`,
       headlineTone: "action",
-      subline: progress,
+      subline: null,
       sortPriority: 1,
     };
   }
@@ -158,11 +172,11 @@ export function enrichMyOrderSalesUi(row: MyOrderRow): MyOrderSalesUi {
     return {
       headline:
         onStock > 0
-          ? "Część towaru możesz już odebrać"
+          ? MY_ORDER_PARTIAL_STOCK_HEADLINE
           : "Częściowa dostawa w toku",
-      headlineTone: onStock > 0 ? "warning" : "info",
+      headlineTone: onStock > 0 ? "stock" : "info",
       subline: row.progressLabel
-        ? `Magazyn: ${row.progressLabel.replace(" na magazynie", "")}`
+        ? `Magazyn: ${row.progressLabel.replace(" na magazynie", "")} · reszta w drodze`
         : "Reszta czeka u dostawcy",
       sortPriority: onStock > 0 ? 2 : 6,
     };

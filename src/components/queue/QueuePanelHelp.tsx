@@ -1,28 +1,36 @@
 "use client";
 
 import { HelpPopover, GuideIcon } from "@/components/ui/HelpPopover";
+import { HelpBlock } from "@/components/ui/HelpBlock";
 import { InlineCheck } from "@/components/ui/UiGlyphs";
 
 export function QueuePanelHelp() {
   return (
     <HelpPopover
-      label="Jak wpisywać dostawy"
+      label="Pomoc — magazyn i regał"
       title="Magazyn i regał"
       shortLabel="Pomoc"
       icon={<GuideIcon />}
     >
-      <p>
-        <strong>Kolejka przyjęcia</strong> — jedna lista pogrupowana po dostawcy (domyślnie zwinięta).
-        Wiersze z zieloną kropką: kliknij ilość zamówioną lub wpisz dostawę, Enter lub{" "}
-        <InlineCheck size={12} className="align-[-2px]" />.
-        Niebieska kropka (informacja): przycisk Powiadom po dotarciu towaru.
-        Zaznacz wiele pozycji — pasek akcji u góry tabeli.
-      </p>
-      <p className="mt-2">
-        <strong>Inwentaryzacja regału</strong> — co czeka na odbiór, sortowanie po dostawcy / regale /
-        handlowcu, filtry dostawcy. Dostawca przy produkcie; przy częściowej dostawie widać resztę u
-        dostawcy. Pozycje ≥3 dni roboczych bez odbioru podświetlamy.
-      </p>
+      <HelpBlock title="Kolejka przyjęcia">
+        <ul className="list-disc space-y-1.5 pl-4">
+          <li>Lista pogrupowana po dostawcy (domyślnie zwinięta).</li>
+          <li>
+            Zielona kropka — wpisz ilość dostawy, potwierdź Enterem lub{" "}
+            <InlineCheck size={12} className="align-[-2px]" />.
+          </li>
+          <li>Niebieska kropka (informacja) — przycisk Powiadom po dotarciu towaru.</li>
+          <li>Zaznacz wiele pozycji — pasek akcji u góry tabeli.</li>
+        </ul>
+      </HelpBlock>
+
+      <HelpBlock title="Inwentaryzacja regału">
+        <ul className="list-disc space-y-1.5 pl-4">
+          <li>Towar czekający na odbiór — sortowanie po dostawcy, regale albo handlowcu.</li>
+          <li>Przy częściowej dostawie widać resztę u dostawcy.</li>
+          <li>Pozycje ≥3 dni roboczych bez odbioru są podświetlone.</li>
+        </ul>
+      </HelpBlock>
     </HelpPopover>
   );
 }

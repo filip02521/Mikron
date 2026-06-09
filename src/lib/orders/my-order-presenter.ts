@@ -614,8 +614,8 @@ function presentZamowienie(
         statusTitle: "Częściowo na magazynie",
         statusDetail: [
           progress.remaining != null && progress.remaining > 0
-            ? `Część sztuk jest już u nas — możesz odebrać. U dostawcy brakuje jeszcze ${progress.remaining} szt.`
-            : "Część towaru jest do odbioru, reszta czeka u dostawcy.",
+            ? `Magazyn przyjął część dostawy (${progress.delivered} z ${progress.ordered} szt.). U dostawcy brakuje jeszcze ${progress.remaining} szt.`
+            : "Magazyn przyjął część towaru. Reszta zamówienia czeka u dostawcy.",
         ]
           .filter(Boolean)
           .join(" · "),

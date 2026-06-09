@@ -12,6 +12,7 @@ import { Card, CardHeader } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/Badge";
 import { HelpPopover } from "@/components/ui/HelpPopover";
+import { HelpBlock } from "@/components/ui/HelpBlock";
 import { ScheduleSupplierActionBar } from "@/components/summary/ScheduleSupplierActionBar";
 import { vacationNoteLabel } from "@/lib/display-labels";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
@@ -59,28 +60,48 @@ const QUEUE_SECTION_ID: Record<Exclude<UrgentQueuePart, "full">, string> = {
 
 function SectionHelp() {
   return (
-    <HelpPopover label="Pomoc" title="Zaległe i na dziś" shortLabel="Pomoc">
-      <p className="mb-2 inline-flex flex-wrap items-center gap-x-2 gap-y-1">
-        <span className="inline-flex items-center gap-1">
-          <PanelQueueStatDot tone="overdue" />
-          <strong className="font-medium text-slate-800">Zaległe</strong>
-        </span>
-        <span>— minął planowany termin.</span>
-        <span className="inline-flex items-center gap-1">
-          <PanelQueueStatDot tone="today" />
-          <strong className="font-medium text-slate-800">Na dziś</strong>
-        </span>
-        <span>— zamówienie na bieżący dzień.</span>
-      </p>
-      <p className="mb-2">
-        Na komputerze najedź na wiersz — pojawią się przyciski Zamówione / Przesuń / Więcej{" "}
-        <HelpMenuGlyph className="align-[-2px]" />.
-        Na tablecie i telefonie są widoczne cały czas.
-      </p>
-      <p>
-        Po złożeniu u dostawcy kliknij <strong className="font-medium text-slate-800">Zamówione</strong>.
-        Przesuń i menu Więcej otwierają dodatkowe opcje.
-      </p>
+    <HelpPopover label="Pomoc — zaległe i na dziś" title="Zaległe i na dziś" shortLabel="Pomoc">
+      <HelpBlock title="Co oznaczają sekcje">
+        <ul className="list-disc space-y-1.5 pl-4">
+          <li className="inline-flex flex-wrap items-center gap-1.5">
+            <PanelQueueStatDot tone="overdue" />
+            <span>
+              <strong className="font-medium text-slate-800">Zaległe</strong> — minął planowany
+              termin zamówienia.
+            </span>
+          </li>
+          <li className="inline-flex flex-wrap items-center gap-1.5">
+            <PanelQueueStatDot tone="today" />
+            <span>
+              <strong className="font-medium text-slate-800">Na dziś</strong> — harmonogram na
+              bieżący dzień.
+            </span>
+          </li>
+        </ul>
+      </HelpBlock>
+
+      <HelpBlock title="Akcje">
+        <ul className="list-disc space-y-1.5 pl-4">
+          <li>
+            Po złożeniu zamówienia u dostawcy kliknij{" "}
+            <strong className="font-medium text-slate-800">Zamówione</strong>.
+          </li>
+          <li>
+            <strong className="font-medium text-slate-800">Przesuń</strong> — zmiana daty u
+            dostawcy.
+          </li>
+          <li>
+            Menu <HelpMenuGlyph className="align-[-2px]" /> — urlop i edycja karty dostawcy.
+          </li>
+        </ul>
+      </HelpBlock>
+
+      <HelpBlock title="Komputer i mobile">
+        <p>
+          Na komputerze przyciski pojawiają się po najechaniu na wiersz. Na tablecie i telefonie
+          są widoczne cały czas.
+        </p>
+      </HelpBlock>
     </HelpPopover>
   );
 }

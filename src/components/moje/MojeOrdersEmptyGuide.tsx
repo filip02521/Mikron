@@ -13,22 +13,28 @@ import {
 } from "@/components/icons/StrokeIcons";
 import { SectionHeadingIcon } from "@/components/icons/SectionHeadingIcon";
 import { sectionIconTileBrandClass } from "@/lib/ui/ontime-theme";
+import { MY_ORDER_ACTION_SECTION_COPY } from "@/lib/orders/my-order-inbox-sections";
 
 function GuidePoint({
   icon,
   tileClassName,
+  title,
   children,
 }: {
   icon: React.ReactNode;
   tileClassName: string;
+  title: string;
   children: React.ReactNode;
 }) {
   return (
     <li className="flex gap-3 text-sm leading-relaxed text-slate-600">
-      <SectionHeadingIcon tileClassName={tileClassName} className="mt-0.5 h-7 w-7">
+      <SectionHeadingIcon tileClassName={tileClassName} className="mt-0.5 h-7 w-7 shrink-0">
         {icon}
       </SectionHeadingIcon>
-      <span className="min-w-0 pt-0.5">{children}</span>
+      <div className="min-w-0 pt-0.5">
+        <p className="font-medium text-slate-800">{title}</p>
+        <p className="mt-0.5">{children}</p>
+      </div>
     </li>
   );
 }
@@ -41,20 +47,24 @@ function GuideContent({ showActions = true }: { showActions?: boolean }) {
         <GuidePoint
           icon={<IconPlusCircle size={15} />}
           tileClassName={sectionIconTileBrandClass}
+          title="Zgłoś prośbę"
         >
-          Po zgłoszeniu prośby w <strong className="font-medium text-slate-800">Zgłoś prośbę</strong>{" "}
-          zobaczysz tutaj status i kolejne kroki.
+          Po złożeniu prośby w formularzu Zgłoś prośbę status i kolejne kroki zobaczysz tutaj.
         </GuidePoint>
         <GuidePoint
           icon={<IconPackageCheck size={15} />}
           tileClassName="bg-emerald-100 text-emerald-800"
+          title={MY_ORDER_ACTION_SECTION_COPY.title}
         >
-          <strong className="font-medium text-slate-800">Zielony przycisk</strong> oznacza odbiór z
-          magazynu — potwierdź, gdy odbierzesz towar (lub gdy chcesz zamknąć powiadomienie o
-          dostępności).
+          {MY_ORDER_ACTION_SECTION_COPY.hint}
         </GuidePoint>
-        <GuidePoint icon={<IconMail size={15} />} tileClassName="bg-slate-100 text-slate-600">
-          O ważnych zmianach dostaniesz też e-mail — lista tutaj jest na co dzień w aplikacji.
+        <GuidePoint
+          icon={<IconMail size={15} />}
+          tileClassName="bg-slate-100 text-slate-600"
+          title="E-mail"
+        >
+          O ważnych zmianach dostaniesz też wiadomość e-mail — na co dzień sprawdzaj listę w
+          aplikacji.
         </GuidePoint>
       </ul>
       {showActions ? (

@@ -44,9 +44,6 @@ export async function fetchSalesShellMetrics(
   return {
     activityVersion: computeSalesActivityVersionFromRows(activityRows),
     navAttention:
-      inbox.pickupCount +
-      inbox.partialReadyCount +
-      inbox.cancelAckCount +
-      inbox.informacjaReadyCount,
+      inbox.pickupCount + inbox.cancelAckCount + inbox.informacjaReadyCount,
   };
 }

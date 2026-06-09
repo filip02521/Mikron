@@ -22,7 +22,7 @@ function stockBadge(status: MyOrderLineStockStatus): { label: string; className:
     case "partial":
       return {
         label: "Częściowo",
-        className: "bg-amber-50 text-amber-900 ring-amber-200/90",
+        className: "bg-sky-50 text-sky-900 ring-sky-200/90",
       };
     case "waiting":
       return {
@@ -83,7 +83,7 @@ export function MyOrderLineItem({
       className={cn(
         compact ? mojeShipmentLineRowClass : "py-1.5 px-0.5",
         !compact && emphasizeStock && onStock && "border-l-2 border-emerald-500 pl-2",
-        !compact && emphasizeStock && partial && "border-l-2 border-amber-400 pl-2",
+        !compact && emphasizeStock && partial && "border-l-2 border-sky-400 pl-2",
         compact &&
           emphasizeStock &&
           onStock &&
@@ -91,7 +91,7 @@ export function MyOrderLineItem({
         compact &&
           emphasizeStock &&
           partial &&
-          "border-l-[3px] border-l-amber-400 bg-amber-50/20"
+          "border-l-[3px] border-l-sky-400 bg-sky-50/20"
       )}
     >
       <div className="flex items-start justify-between gap-3">
@@ -128,7 +128,7 @@ export function MyOrderLineItem({
                 "mt-0.5 text-[11px] leading-relaxed text-slate-500",
                 !compact && "pl-5",
                 emphasizeStock && onStock && "font-medium text-emerald-800",
-                emphasizeStock && partial && "font-medium text-amber-900"
+                emphasizeStock && partial && "font-medium text-sky-900"
               )}
             >
               <SearchHighlightJoined parts={detailParts} searchQuery={searchQuery} />

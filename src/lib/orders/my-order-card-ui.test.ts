@@ -3,9 +3,12 @@ import {
   myOrderUsesSalesHeadline,
   progressLabelInSubline,
   rowNeedsSalesAcknowledgement,
+  shouldShowCollapsedProductSummary,
+  shouldShowExpandedOrderStatusBadge,
   shouldShowMyOrderHeadlineBanner,
   shouldShowOrderStatusBadge,
   shouldShowOrderStatusDetail,
+  filterRedundantExpandedMetaFields,
 } from "./my-order-card-ui";
 import type { MyOrderRow } from "./my-order-presenter";
 
@@ -162,9 +165,71 @@ describe("my-order-card-ui", () => {
     ).toBe(false);
   });
 
+  it("ukrywa badge przy informacyjnych — wystarczy badge Informacyjna i nagłówek", () => {
+    expect(
+      shouldShowOrderStatusBadge(
+        row({
+          kind: "informacja",
+          requestKind: "informacja",
+          statusTitle: "Informacja o dostępności",
+          headline: "Powiadomimy, gdy towar przyjedzie",
+          headlineTone: "neutral",
+          badgeVariant: "purple",
+        })
+      )
+    ).toBe(false);
+  });
+
+  it("ukrywa badge w rozwinięciu gdy jest pasek postępu", () => {
+    expect(
+      shouldShowExpandedOrderStatusBadge(row(), { hasRequestProgress: true })
+    ).toBe(false);
+  });
+
+  it("filtruje zduplikowane metadane terminu", () => {
+    const fields = filterRedundantExpandedMetaFields(
+      row({
+        statusTitle: "Zamówione",
+        timingLabel: "ok. 10.05.2026 (~5 dni rob.)",
+        subline: "ok. 10.05.2026 (~5 dni rob.)",
+      }),
+      [
+        { label: "Zgłoszono", value: "01.05" },
+        { label: "Szacunek", value: "ok. 10.05.2026 (~5 dni rob.)" },
+      ],
+      { collapsedSubline: "ok. 10.05.2026 (~5 dni rob.)" }
+    );
+    expect(fields.some((f) => f.label === "Szacunek")).toBe(false);
+  });
+
   it("wykrywa postęp w subline", () => {
     expect(progressLabelInSubline(row({ subline: "Magazyn: 1 z 2 szt." }))).toBe(
       true
     );
+  });
+
+  it("ukrywa productSummary na desktopie gdy nagłówek i subline już niosą status", () => {
+    expect(
+      shouldShowCollapsedProductSummary(
+        row({ lineCount: 3, subline: "Magazyn: 1 z 3 szt." }),
+        {
+          expanded: false,
+          showRowHeadline: true,
+          suppressSharedHeadline: false,
+          hasCollapsedSubline: true,
+        }
+      )
+    ).toBe(false);
+    expect(
+      shouldShowCollapsedProductSummary(
+        row({ lineCount: 3, subline: null }),
+        {
+          expanded: false,
+          showRowHeadline: true,
+          suppressSharedHeadline: false,
+          hasCollapsedSubline: false,
+        }
+      )
+    ).toBe(true);
   });
 });

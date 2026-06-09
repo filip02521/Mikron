@@ -1,9 +1,10 @@
 "use client";
 
-import { Suspense, useEffect, useMemo, useState } from "react";
+import { Suspense, useEffect, useMemo, useState, type ComponentProps } from "react";
 import type { MyOrderRow } from "@/lib/orders/my-order-presenter";
 import {
   filterMyOrderRows,
+  inboxFilterLabel,
   partitionMyOrderRowsBySalesAction,
   type MyOrderInboxFilter,
 } from "@/lib/orders/my-order-inbox-filter";
@@ -16,9 +17,9 @@ import { MojeOrdersSearchBar, MojeOrdersSearchEmptyHint } from "@/components/moj
 import { useMojeOrdersSearch } from "@/components/moje/useMojeOrdersSearch";
 import { sortMyOrderRows, summarizeMyOrdersInbox } from "@/lib/orders/my-order-sales-ui";
 import { formatProsbaCount } from "@/lib/orders/my-order-plural";
-import { INFORMACJA_FLOW_MY_ORDERS_HINT } from "@/lib/orders/informacja-flow-copy";
 import { MICROCOPY } from "@/lib/ui/microcopy";
 import { cn } from "@/lib/cn";
+import { MyOrderPickupShelfDialogProvider } from "@/components/moje/MyOrderPickupShelfDialogProvider";
 import { MyOrderArchiveSection } from "@/components/moje/MyOrderArchiveSection";
 import { MyOrderShipmentList } from "@/components/moje/MyOrderShipmentList";
 import { MyOrdersInboxSummary } from "@/components/moje/MyOrdersInboxSummary";
@@ -42,7 +43,16 @@ import {
   deriveMyOrderSectionDisplayState,
   type MyOrderSectionPatternId,
 } from "@/lib/orders/my-order-section-callout";
-import { MyOrderSectionCalloutList } from "@/components/moje/MyOrderSectionCallout";
+import {
+  MY_ORDER_ACTION_SECTION_COPY,
+  MY_ORDER_INFORMACJA_SECTION_COPY,
+  MY_ORDER_PROGRESS_SECTION_COPY,
+  MY_ORDER_PROGRESS_SECTION_EMPTY,
+  partitionMyOrderProgressRows,
+  type MyOrderProgressSectionId,
+} from "@/lib/orders/my-order-inbox-sections";
+import { MyOrderSectionNoticeList } from "@/components/moje/MyOrderSectionCallout";
+import { MyOrderSectionEmptyState } from "@/components/moje/MyOrderSectionEmptyState";
 import { MojeOrdersSyncStrip } from "@/components/moje/MojeOrdersSyncStrip";
 import { SubiektStatusBar } from "@/components/subiekt/SubiektStatusBar";
 import type { SubiektAvailability } from "@/lib/subiekt/availability";
@@ -123,6 +133,13 @@ function MojeOrdersOverviewStats({
   );
 }
 
+import type { SectionListAccent } from "@/components/ui/SectionListLabel";
+import type { MyOrderSectionAccent } from "@/lib/orders/my-order-section-accent";
+
+function toSectionListAccent(accent: MyOrderSectionAccent): SectionListAccent {
+  return accent;
+}
+
 function MojeSectionListLabel({
   title,
   hint,
@@ -133,7 +150,7 @@ function MojeSectionListLabel({
   title: string;
   hint?: string;
   count?: number;
-  accent?: "emerald" | "neutral";
+  accent: MyOrderSectionAccent;
   icon: MojeSectionIconKind;
 }) {
   return (
@@ -142,7 +159,7 @@ function MojeSectionListLabel({
       title={title}
       hint={hint}
       count={count}
-      accent={accent ?? "neutral"}
+      accent={toSectionListAccent(accent)}
       icon={<MojeSectionIcon kind={icon} size={17} />}
       tileClassName={mojeSectionIconTileClass(icon)}
     />
@@ -200,6 +217,101 @@ function useMyOrderSectionCallouts(
   return useMemo(
     () => deriveMyOrderSectionDisplayState(rows, activeFilter),
     [rows, activeFilter]
+  );
+}
+
+function MyOrderZamowieniaProgressSection({
+  sectionId,
+  rows,
+  showSectionLabel,
+  showWhenEmpty,
+  listProps,
+}: {
+  sectionId: MyOrderProgressSectionId;
+  rows: MyOrderRow[];
+  showSectionLabel: boolean;
+  showWhenEmpty?: boolean;
+  listProps: Omit<
+    ComponentProps<typeof MyOrderShipmentBlock>,
+    "rows" | "listKind" | "showProgress" | "embedded" | "suppressedSectionPatterns"
+  >;
+}) {
+  const sectionCallouts = useMyOrderSectionCallouts(rows, null);
+  if (rows.length === 0 && !showWhenEmpty) return null;
+
+  const copy = MY_ORDER_PROGRESS_SECTION_COPY[sectionId];
+
+  return (
+    <div className={mojeShipmentSectionShellClass}>
+      {showSectionLabel ? (
+        <MojeSectionListLabel
+          title={copy.title}
+          hint={copy.hint}
+          count={rows.length}
+          icon={copy.icon}
+          accent={copy.accent}
+        />
+      ) : null}
+      <MyOrderSectionNoticeList
+        callouts={sectionCallouts.callouts}
+        singleHints={sectionCallouts.singleHints}
+      />
+      {rows.length > 0 ? (
+        <MyOrderShipmentBlock
+          embedded
+          rows={rows}
+          listKind="zamowienie"
+          showProgress
+          suppressedSectionPatterns={sectionCallouts.suppressedPatterns}
+          {...listProps}
+        />
+      ) : (
+        <MyOrderSectionEmptyState message={MY_ORDER_PROGRESS_SECTION_EMPTY[sectionId]} />
+      )}
+    </div>
+  );
+}
+
+function MyOrderFilteredZamowieniaSection({
+  rows,
+  activeFilter,
+  showSectionLabel,
+  listProps,
+}: {
+  rows: MyOrderRow[];
+  activeFilter: MyOrderInboxFilter | null;
+  showSectionLabel: boolean;
+  listProps: Omit<
+    ComponentProps<typeof MyOrderShipmentBlock>,
+    "rows" | "listKind" | "showProgress" | "embedded" | "suppressedSectionPatterns"
+  >;
+}) {
+  const sectionCallouts = useMyOrderSectionCallouts(rows, activeFilter);
+  if (rows.length === 0) return null;
+
+  return (
+    <div className={mojeShipmentSectionShellClass}>
+      {showSectionLabel ? (
+        <MojeSectionListLabel
+          title={activeFilter ? inboxFilterLabel(activeFilter) : "Zamówienia u dostawcy"}
+          count={rows.length}
+          icon="zamowienie"
+          accent="slate"
+        />
+      ) : null}
+      <MyOrderSectionNoticeList
+        callouts={sectionCallouts.callouts}
+        singleHints={sectionCallouts.singleHints}
+      />
+      <MyOrderShipmentBlock
+        embedded
+        rows={rows}
+        listKind="zamowienie"
+        showProgress
+        suppressedSectionPatterns={sectionCallouts.suppressedPatterns}
+        {...listProps}
+      />
+    </div>
   );
 }
 
@@ -371,7 +483,10 @@ function MojeOrdersViewContent({
       return { actionZamowienia: [] as MyOrderRow[], progressZamowienia: filteredZamowienia };
     }
     const { needsAction, inProgress } = partitionMyOrderRowsBySalesAction(filteredZamowienia);
-    return { actionZamowienia: needsAction, progressZamowienia: inProgress };
+    return {
+      actionZamowienia: sortMyOrderRows(needsAction),
+      progressZamowienia: sortMyOrderRows(inProgress),
+    };
   }, [splitByAction, filteredZamowienia]);
 
   const { actionInformacje, progressInformacje } = useMemo(() => {
@@ -379,24 +494,31 @@ function MojeOrdersViewContent({
       return { actionInformacje: [] as MyOrderRow[], progressInformacje: filteredInformacje };
     }
     const { needsAction, inProgress } = partitionMyOrderRowsBySalesAction(filteredInformacje);
-    return { actionInformacje: needsAction, progressInformacje: inProgress };
+    return {
+      actionInformacje: sortMyOrderRows(needsAction),
+      progressInformacje: sortMyOrderRows(inProgress),
+    };
   }, [splitByAction, filteredInformacje]);
 
   const zamowieniaListRows = splitByAction ? progressZamowienia : filteredZamowienia;
   const informacjeListRows = splitByAction ? progressInformacje : filteredInformacje;
+  const { beforeOrder: beforeOrderZamowienia, orderedProgress: orderedProgressZamowienia } =
+    useMemo(
+      () => partitionMyOrderProgressRows(zamowieniaListRows),
+      [zamowieniaListRows]
+    );
+  const showZamowieniaProgressSplit =
+    splitByAction && !activeFilter && zamowieniaListRows.length > 0;
   const showKindSectionLabels =
     !activeFilter ||
     (zamowieniaListRows.length > 0 && informacjeListRows.length > 0);
+  const showProgressSectionLabels = showZamowieniaProgressSplit || showKindSectionLabels;
 
   const actionSectionRows = useMemo(
     () => [...actionZamowienia, ...actionInformacje],
     [actionZamowienia, actionInformacje]
   );
   const actionSectionCallouts = useMyOrderSectionCallouts(actionSectionRows, activeFilter);
-  const zamowieniaSectionCallouts = useMyOrderSectionCallouts(
-    zamowieniaListRows,
-    activeFilter
-  );
   const informacjeSectionCallouts = useMyOrderSectionCallouts(
     informacjeListRows,
     activeFilter
@@ -642,8 +764,12 @@ function MojeOrdersViewContent({
         ) : null}
 
         {activeFilter && filteredCount === 0 && !searchActive ? (
-          <p className="border-b border-slate-100 px-3 py-3 text-sm text-slate-600 sm:px-4">
-            Brak w tej kategorii.{" "}
+          <p className="border-b border-slate-100 px-3 py-4 text-sm text-slate-600 sm:px-4">
+            Brak pozycji w kategorii{" "}
+            <span className="font-medium text-slate-800">
+              „{inboxFilterLabel(activeFilter)}”
+            </span>
+            .{" "}
             <button
               type="button"
               className={brandLinkSubtleClass}
@@ -655,8 +781,12 @@ function MojeOrdersViewContent({
         ) : null}
 
         {activeFilter && filteredCount === 0 && searchActive && searchMatchCount > 0 ? (
-          <p className="border-b border-slate-100 px-3 py-3 text-sm text-slate-600 sm:px-4">
-            Brak w tej kategorii przy aktywnym wyszukiwaniu.{" "}
+          <p className="border-b border-slate-100 px-3 py-4 text-sm text-slate-600 sm:px-4">
+            Brak pozycji w kategorii{" "}
+            <span className="font-medium text-slate-800">
+              „{inboxFilterLabel(activeFilter)}”
+            </span>{" "}
+            przy aktywnym wyszukiwaniu.{" "}
             <button
               type="button"
               className={brandLinkSubtleClass}
@@ -671,13 +801,16 @@ function MojeOrdersViewContent({
         {splitByAction && actionCount > 0 ? (
           <div className={mojeShipmentSectionShellClass} aria-labelledby="moje-section-action">
             <MojeSectionListLabel
-              title="Do potwierdzenia"
-              hint="Strzałka — produkty · zielony przycisk — potwierdzenie"
+              title={MY_ORDER_ACTION_SECTION_COPY.title}
+              hint={MY_ORDER_ACTION_SECTION_COPY.hint}
               count={actionCount}
-              accent="emerald"
-              icon="action"
+              accent={MY_ORDER_ACTION_SECTION_COPY.accent}
+              icon={MY_ORDER_ACTION_SECTION_COPY.icon}
             />
-            <MyOrderSectionCalloutList callouts={actionSectionCallouts.callouts} />
+            <MyOrderSectionNoticeList
+              callouts={actionSectionCallouts.callouts}
+              singleHints={actionSectionCallouts.singleHints}
+            />
             <MyOrderShipmentBlock
               embedded
               rows={actionZamowienia}
@@ -698,49 +831,51 @@ function MojeOrdersViewContent({
           </div>
         ) : null}
 
-        {zamowieniaListRows.length > 0 ? (
-          <div className={mojeShipmentSectionShellClass}>
-            {showKindSectionLabels ? (
-              <MojeSectionListLabel
-                title={
-                  activeFilter ? "Zamówienia u dostawcy" : "Zamówiliśmy u dostawcy"
-                }
-                hint={
-                  activeFilter
-                    ? undefined
-                    : "Składamy zamówienie — dostaniesz informację o odbiorze, gdy towar będzie na magazynie."
-                }
-                count={zamowieniaListRows.length}
-                icon="zamowienie"
-              />
-            ) : null}
-            <MyOrderSectionCalloutList callouts={zamowieniaSectionCallouts.callouts} />
-            <MyOrderShipmentBlock
-              embedded
-              rows={zamowieniaListRows}
-              listKind="zamowienie"
-              showProgress
-              suppressedSectionPatterns={zamowieniaSectionCallouts.suppressedPatterns}
-              {...listProps}
+        {showZamowieniaProgressSplit ? (
+          <>
+            <MyOrderZamowieniaProgressSection
+              sectionId="ordered_progress"
+              rows={orderedProgressZamowienia}
+              showSectionLabel={showProgressSectionLabels}
+              showWhenEmpty={showZamowieniaProgressSplit}
+              listProps={listProps}
             />
-          </div>
-        ) : null}
+            <MyOrderZamowieniaProgressSection
+              sectionId="before_order"
+              rows={beforeOrderZamowienia}
+              showSectionLabel={showProgressSectionLabels}
+              showWhenEmpty={showZamowieniaProgressSplit}
+              listProps={listProps}
+            />
+          </>
+        ) : (
+          <MyOrderFilteredZamowieniaSection
+            rows={zamowieniaListRows}
+            activeFilter={activeFilter}
+            showSectionLabel={showKindSectionLabels}
+            listProps={listProps}
+          />
+        )}
 
         {informacjeListRows.length > 0 ? (
           <div className={mojeShipmentSectionShellClass}>
             {showKindSectionLabels ? (
               <MojeSectionListLabel
                 title={
-                  activeFilter ? "Informacje o dostępności" : "Tylko sprawdzamy dostępność"
+                  activeFilter
+                    ? MY_ORDER_INFORMACJA_SECTION_COPY.titleFiltered
+                    : MY_ORDER_INFORMACJA_SECTION_COPY.title
                 }
-                hint={
-                  activeFilter ? undefined : INFORMACJA_FLOW_MY_ORDERS_HINT
-                }
+                hint={activeFilter ? undefined : MY_ORDER_INFORMACJA_SECTION_COPY.hint}
                 count={informacjeListRows.length}
-                icon="informacja"
+                icon={MY_ORDER_INFORMACJA_SECTION_COPY.icon}
+                accent={MY_ORDER_INFORMACJA_SECTION_COPY.accent}
               />
             ) : null}
-            <MyOrderSectionCalloutList callouts={informacjeSectionCallouts.callouts} />
+            <MyOrderSectionNoticeList
+              callouts={informacjeSectionCallouts.callouts}
+              singleHints={informacjeSectionCallouts.singleHints}
+            />
             <MyOrderShipmentBlock
               embedded
               rows={informacjeListRows}
@@ -769,20 +904,22 @@ export function MojeOrdersView(
   props: React.ComponentProps<typeof MojeOrdersViewContent>
 ) {
   return (
-    <Suspense
-      fallback={
-        <div className="space-y-5">
-          <Card padding={false} className="overflow-hidden">
-            <CardHeader inset density="compact" title={props.pageTitle ?? "Moje zamówienia"} />
-            <div className="border-b border-slate-100 px-3 py-2.5 sm:px-4 lg:px-6">
-              <div className="h-11 animate-pulse rounded-md bg-slate-100" />
-            </div>
-            <div className="px-4 py-12 text-center text-sm text-slate-500">Ładowanie…</div>
-          </Card>
-        </div>
-      }
-    >
-      <MojeOrdersViewContent {...props} />
-    </Suspense>
+    <MyOrderPickupShelfDialogProvider>
+      <Suspense
+        fallback={
+          <div className="space-y-5">
+            <Card padding={false} className="overflow-hidden">
+              <CardHeader inset density="compact" title={props.pageTitle ?? "Moje zamówienia"} />
+              <div className="border-b border-slate-100 px-3 py-2.5 sm:px-4 lg:px-6">
+                <div className="h-11 animate-pulse rounded-md bg-slate-100" />
+              </div>
+              <div className="px-4 py-12 text-center text-sm text-slate-500">Ładowanie…</div>
+            </Card>
+          </div>
+        }
+      >
+        <MojeOrdersViewContent {...props} />
+      </Suspense>
+    </MyOrderPickupShelfDialogProvider>
   );
 }

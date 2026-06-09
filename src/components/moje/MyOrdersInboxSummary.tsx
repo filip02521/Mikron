@@ -12,9 +12,12 @@ import {
   mojeFilterChipActiveClass,
   mojeFilterChipInfoClass,
   mojeFilterChipSuccessClass,
+  mojeFilterChipStockClass,
 } from "@/lib/ui/ontime-theme";
 import { IconCircleCheck, IconClock } from "@/components/icons/StrokeIcons";
 import { INFORMACJA_FLOW_MY_ORDERS_HINT } from "@/lib/orders/informacja-flow-copy";
+import { MY_ORDER_ACTION_SECTION_COPY } from "@/lib/orders/my-order-inbox-sections";
+import { MyOrdersRowLegend } from "@/components/moje/MyOrdersRowLegend";
 
 function GroupChip({
   count,
@@ -57,7 +60,7 @@ function SubChip({
 }: {
   count: number;
   label: string;
-  tone: "action" | "warning" | "info" | "neutral" | "success" | "purple";
+  tone: "action" | "warning" | "info" | "stock" | "neutral" | "success" | "purple";
   filter: MyOrderInboxFilter;
   activeFilter: MyOrderInboxFilter | null;
   onSelect: (filter: MyOrderInboxFilter | null) => void;
@@ -76,6 +79,7 @@ function SubChip({
         tone === "action" && "bg-emerald-600 text-white",
         tone === "success" && mojeFilterChipSuccessClass,
         tone === "warning" && "bg-amber-100 text-amber-900",
+        tone === "stock" && mojeFilterChipStockClass,
         tone === "info" && mojeFilterChipInfoClass,
         tone === "neutral" && "bg-slate-100 text-slate-700",
         tone === "purple" && "bg-violet-100 text-violet-900",
@@ -98,12 +102,10 @@ export function MyOrdersInboxSummary({
   onFilterChange: (filter: MyOrderInboxFilter | null) => void;
 }) {
   const actionCount =
-    summary.pickupCount +
-    summary.partialReadyCount +
-    summary.cancelAckCount +
-    summary.informacjaReadyCount;
+    summary.pickupCount + summary.cancelAckCount + summary.informacjaReadyCount;
 
   const watchCount =
+    summary.partialReadyCount +
     summary.overdueCount +
     summary.verificationCount +
     summary.przedZamowieniemCount +
@@ -167,12 +169,11 @@ export function MyOrdersInboxSummary({
         <div className="flex flex-wrap items-center gap-1.5">
           <span className="inline-flex items-center gap-1 text-xs font-medium text-emerald-800">
             <IconCircleCheck size={13} strokeWidth={2.25} aria-hidden />
-            Do potwierdzenia
+            {MY_ORDER_ACTION_SECTION_COPY.title}
           </span>
           <SubChip count={summary.pickupCount} label="Odbiór" tone="action" filter="pickup" {...chipProps} />
-          <SubChip count={summary.partialReadyCount} label="Część na magazynie" tone="warning" filter="partial" {...chipProps} />
           <SubChip count={summary.cancelAckCount} label="Anulowanie" tone="neutral" filter="cancel_ack" {...chipProps} />
-          <SubChip count={summary.informacjaReadyCount} label="Info gotowa" tone="success" filter="informacja_ready" {...chipProps} />
+          <SubChip count={summary.informacjaReadyCount} label="Informacja gotowa" tone="success" filter="informacja_ready" {...chipProps} />
         </div>
       ) : null}
 
@@ -182,24 +183,29 @@ export function MyOrdersInboxSummary({
             <IconClock size={13} strokeWidth={2.25} aria-hidden />
             Doprecyzuj status
           </span>
+          <SubChip count={summary.partialReadyCount} label="Część na magazynie" tone="stock" filter="partial" {...chipProps} />
           <SubChip count={summary.overdueCount} label="Po terminie" tone="warning" filter="overdue" {...chipProps} />
-          <SubChip count={summary.verificationCount} label="Sprawdzamy dane" tone="info" filter="verification" {...chipProps} />
-          <SubChip count={summary.przedZamowieniemCount} label="Czeka na zamówienie" tone="purple" filter="przed_zamowieniem" {...chipProps} />
           <SubChip count={summary.zamowioneCount} label="Zamówione" tone="info" filter="zamowione" {...chipProps} />
+          <SubChip count={summary.przedZamowieniemCount} label="Czeka na zamówienie" tone="purple" filter="przed_zamowieniem" {...chipProps} />
+          <SubChip count={summary.verificationCount} label="Sprawdzamy dane" tone="info" filter="verification" {...chipProps} />
           <SubChip count={summary.availabilityPendingCount} label="Czeka na magazyn" tone="purple" filter="availability_pending" {...chipProps} />
         </div>
       ) : null}
 
       {!showActionSub && !showWatchSub && actionCount > 0 ? (
         <p className="text-xs leading-relaxed text-slate-600">
-          <strong className="font-semibold text-emerald-900">Wymaga reakcji</strong> — zielony
-          przycisk przy wierszu w sekcji poniżej.
+          <strong className="font-semibold text-emerald-900">
+            {MY_ORDER_ACTION_SECTION_COPY.title}
+          </strong>{" "}
+          — {MY_ORDER_ACTION_SECTION_COPY.hint.toLowerCase()}
         </p>
       ) : null}
 
       {summary.availabilityPendingCount > 0 ? (
         <p className="text-xs leading-snug text-slate-500">{INFORMACJA_FLOW_MY_ORDERS_HINT}</p>
       ) : null}
+
+      <MyOrdersRowLegend className="border-t border-slate-100/80 pt-2" />
 
       {activeFilter ? (
         <p className="sr-only" role="status" aria-live="polite">

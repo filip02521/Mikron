@@ -1,11 +1,11 @@
 import type { MyOrderInboxFilter } from "@/lib/orders/my-order-inbox-filter";
 import type { MyOrderRow } from "@/lib/orders/my-order-presenter";
-import { enrichMyOrderSalesUi } from "@/lib/orders/my-order-sales-ui";
+import { enrichMyOrderSalesUi, isMyOrderPartialStockRow } from "@/lib/orders/my-order-sales-ui";
 
 /** Wzorzec statusu wspólny dla wielu wierszy w jednej sekcji listy. */
 export type MyOrderSectionPatternId = "overdue" | "partial_ready" | "verification";
 
-export type MyOrderSectionCalloutTone = "warning" | "emerald" | "indigo";
+export type MyOrderSectionCalloutTone = "warning" | "sky" | "indigo";
 
 export type MyOrderSectionCallout = {
   pattern: MyOrderSectionPatternId;
@@ -13,6 +13,13 @@ export type MyOrderSectionCallout = {
   title: string;
   detail: string;
   tone: MyOrderSectionCalloutTone;
+};
+
+/** Jednowierszowy hint sekcji — gdy dany wzorzec występuje tylko raz. */
+export type MyOrderSectionSingleHint = {
+  pattern: MyOrderSectionPatternId;
+  tone: MyOrderSectionCalloutTone;
+  message: string;
 };
 
 const MIN_ROWS_FOR_SECTION_CALLOUT = 2;
@@ -35,7 +42,7 @@ function countByPattern(rows: MyOrderRow[]): Map<MyOrderSectionPatternId, number
     const ui = enrichMyOrderSalesUi(row);
     if (ui.sortPriority === 4) {
       counts.set("overdue", (counts.get("overdue") ?? 0) + 1);
-    } else if (ui.sortPriority === 2 && ui.headline === "Część towaru możesz już odebrać") {
+    } else if (isMyOrderPartialStockRow(row)) {
       counts.set("partial_ready", (counts.get("partial_ready") ?? 0) + 1);
     } else if (ui.sortPriority === 5) {
       counts.set("verification", (counts.get("verification") ?? 0) + 1);
@@ -56,16 +63,15 @@ function calloutForPattern(
         count,
         tone: "warning",
         title: `Po przewidywanym terminie — ${label}`,
-        detail:
-          "Poniżej terminy u dostawców. Magazyn powiadomi, gdy towar będzie do odbioru.",
+        detail: "Termin u dostawcy minął — czekamy na dostawę.",
       };
     case "partial_ready":
       return {
         pattern,
         count,
-        tone: "emerald",
-        title: `Część towaru na magazynie — ${label}`,
-        detail: "Przy każdej pozycji sprawdź, co możesz już odebrać — zielony przycisk.",
+        tone: "sky",
+        title: `Częściowa dostawa — ${label}`,
+        detail: "Część towaru jest na magazynie, reszta w drodze od dostawcy.",
       };
     case "verification":
       return {
@@ -73,7 +79,7 @@ function calloutForPattern(
         count,
         tone: "indigo",
         title: `Zakupy sprawdzają szczegóły — ${label}`,
-        detail: "Nie musisz nic robić — damy znać, gdy ruszy zamówienie u dostawcy.",
+        detail: "Dział dostaw uzupełnia dane przed zamówieniem u dostawcy.",
       };
   }
 }
@@ -84,7 +90,43 @@ const CALLOUT_ORDER: MyOrderSectionPatternId[] = [
   "verification",
 ];
 
-/** Callouty sekcji — tylko gdy ten sam wzorzec powtarza się w ≥2 wierszach. */
+function singleHintMessage(pattern: MyOrderSectionPatternId): string {
+  switch (pattern) {
+    case "overdue":
+      return "Termin u dostawcy minął — czekamy na dostawę.";
+    case "partial_ready":
+      return "Część towaru jest na magazynie, reszta w drodze od dostawcy.";
+    case "verification":
+      return "Dział dostaw uzupełnia dane przed zamówieniem u dostawcy.";
+  }
+}
+
+function deriveMyOrderSectionSingleHints(
+  rows: MyOrderRow[],
+  calloutPatterns: Set<MyOrderSectionPatternId>,
+  activeFilter: MyOrderInboxFilter | null
+): MyOrderSectionSingleHint[] {
+  const counts = countByPattern(rows);
+  const hints: MyOrderSectionSingleHint[] = [];
+
+  for (const pattern of CALLOUT_ORDER) {
+    const count = counts.get(pattern) ?? 0;
+    if (count !== 1 || calloutPatterns.has(pattern)) continue;
+
+    const hidden = activeFilter ? FILTER_HIDES_PATTERN[activeFilter] : undefined;
+    if (hidden === pattern) continue;
+
+    hints.push({
+      pattern,
+      tone: calloutForPattern(pattern, 1).tone,
+      message: singleHintMessage(pattern),
+    });
+  }
+
+  return hints;
+}
+
+/** Callouty sekcji — gdy ten sam wzorzec powtarza się w ≥2 wierszach. */
 export function deriveMyOrderSectionCallouts(rows: MyOrderRow[]): MyOrderSectionCallout[] {
   const counts = countByPattern(rows);
   const callouts: MyOrderSectionCallout[] = [];
@@ -131,7 +173,7 @@ function rowMatchesSectionPattern(
     case "overdue":
       return ui.sortPriority === 4;
     case "partial_ready":
-      return ui.sortPriority === 2 && ui.headline === "Część towaru możesz już odebrać";
+      return isMyOrderPartialStockRow(row);
     case "verification":
       return ui.sortPriority === 5;
   }
@@ -146,24 +188,30 @@ export function deriveMyOrderSectionDisplayState(
   activeFilter: MyOrderInboxFilter | null
 ): {
   callouts: MyOrderSectionCallout[];
+  singleHints: MyOrderSectionSingleHint[];
   suppressedPatterns: Set<MyOrderSectionPatternId>;
 } {
   const callouts = filterSectionCalloutsForInboxFilter(
     deriveMyOrderSectionCallouts(rows),
     activeFilter
   );
-  const suppressedPatterns = myOrderSectionSuppressedPatterns(callouts);
+  const calloutPatterns = myOrderSectionSuppressedPatterns(callouts);
+  const singleHints = deriveMyOrderSectionSingleHints(rows, calloutPatterns, activeFilter);
+  const suppressedPatterns = new Set(calloutPatterns);
+  for (const hint of singleHints) {
+    suppressedPatterns.add(hint.pattern);
+  }
 
   const filterPattern = activeFilter ? FILTER_HIDES_PATTERN[activeFilter] : undefined;
   if (
     filterPattern &&
-    rows.length >= MIN_ROWS_FOR_SECTION_CALLOUT &&
+    rows.length > 0 &&
     rows.every((row) => rowMatchesSectionPattern(row, filterPattern))
   ) {
     suppressedPatterns.add(filterPattern);
   }
 
-  return { callouts, suppressedPatterns };
+  return { callouts, singleHints, suppressedPatterns };
 }
 
 /** Ukryj powtarzający się nagłówek wiersza, gdy sekcja ma callout dla tego wzorca. */

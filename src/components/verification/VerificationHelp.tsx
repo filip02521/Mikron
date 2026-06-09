@@ -1,28 +1,38 @@
 "use client";
 
 import { HelpPopover, GuideIcon } from "@/components/ui/HelpPopover";
+import { HelpBlock } from "@/components/ui/HelpBlock";
 
 export function VerificationHelp() {
   return (
     <HelpPopover
-      label="Jak uzupełniać"
+      label="Pomoc — weryfikacja prośb"
       title="Weryfikacja zgłoszeń"
       shortLabel="Pomoc"
       icon={<GuideIcon />}
     >
-      <p>
-        Tu trafiają <strong>niekompletne prośby</strong> od handlowców — brakuje dostawcy,
-        produktu lub ilości. Uzupełnij pola i zatwierdź.
-      </p>
-      <p className="mt-2">
-        Przy <strong>„Brak na stanie”</strong> ścieżka jest zablokowana — po zatwierdzeniu trafi
-        do osobnej sekcji w panelu Dziś, nie do magazynu ani listy handlowca. Przy zwykłej
-        informacji o dostępności wybierz ścieżkę przed zapisem.
-      </p>
-      <p className="mt-2">
-        Możesz też otworzyć weryfikację z panelu dziennego (baner). Anulowanie usuwa prośbę —
-        używaj tylko gdy zgłoszenie było błędne.
-      </p>
+      <HelpBlock title="Co tu jest">
+        <p>
+          Niekompletne prośby handlowców — brakuje dostawcy, produktu albo ilości. Weryfikację
+          możesz też otworzyć z banera w panelu Dziś.
+        </p>
+      </HelpBlock>
+
+      <HelpBlock title="Co zrobić">
+        <p>Uzupełnij brakujące pola i zatwierdź prośbę.</p>
+      </HelpBlock>
+
+      <HelpBlock title="Prośby informacyjne">
+        <p>
+          Przy zwykłej informacji o dostępności wybierz ścieżkę przed zapisem. Przy „Brak na
+          stanie” ścieżka jest ustalona — po zatwierdzeniu prośba trafi do panelu Dziś, nie do
+          magazynu ani listy handlowca.
+        </p>
+      </HelpBlock>
+
+      <HelpBlock title="Anulowanie">
+        <p>Usuwa prośbę z systemu — używaj tylko wtedy, gdy zgłoszenie było błędne.</p>
+      </HelpBlock>
     </HelpPopover>
   );
 }

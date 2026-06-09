@@ -22,8 +22,10 @@ import { Button } from "@/components/ui/Button";
 import {
   mojeShipmentListClass,
   mojeShipmentSectionShellClass,
+  type MojeShipmentRowVisualTone,
 } from "@/lib/ui/moje-shipment-row-styles";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
+import { useMyOrderPickupShelfDialog } from "@/components/moje/MyOrderPickupShelfDialogProvider";
 import { UndoToast } from "@/components/ui/UndoToast";
 import { Toast } from "@/components/ui/Toast";
 import { ActionLoadingOverlay } from "@/components/ui/ActionLoadingOverlay";
@@ -36,6 +38,9 @@ import {
   searchQueryTokens,
   shouldAutoExpandOrderLinesForSearch,
 } from "@/lib/orders/my-order-search";
+import {
+  markPickupShelfNoticeSeen,
+} from "@/lib/orders/my-order-pickup-shelf-notice";
 import { undoWindowBannerDescription } from "@/lib/orders/daily-panel-undo";
 import { cn } from "@/lib/cn";
 import type { OrderFormSupplierOption } from "@/lib/orders/order-form-suppliers";
@@ -64,6 +69,7 @@ export function MyOrderShipmentList({
   tourPreview = false,
   compactActionLayout = false,
   suppressedSectionPatterns,
+  rowVisualTone = "default",
 }: {
   rows: MyOrderRow[];
   listKind: "zamowienie" | "informacja";
@@ -79,6 +85,7 @@ export function MyOrderShipmentList({
   tourPreview?: boolean;
   compactActionLayout?: boolean;
   suppressedSectionPatterns?: Set<MyOrderSectionPatternId>;
+  rowVisualTone?: MojeShipmentRowVisualTone;
 }) {
   const router = useRouter();
   const sortedRows = useMemo(() => sortMyOrderRows(rows), [rows]);
@@ -141,6 +148,8 @@ export function MyOrderShipmentList({
   }, [searchActive, searchQuery, sortedRows]);
 
   const [pending, start] = useTransition();
+  const { shelfNoticeOpen, requestShelfPickupNotice } = useMyOrderPickupShelfDialog();
+  const ackPending = pending || shelfNoticeOpen;
   const [pendingMessage, setPendingMessage] = useState<string | null>(null);
   const [undo, setUndo] = useState<UndoState | null>(null);
   const [cancelConfirm, setCancelConfirm] = useState<CancelConfirmState | null>(
@@ -155,13 +164,14 @@ export function MyOrderShipmentList({
   const dismissUndo = useCallback(() => setUndo(null), []);
 
   const runPickup = useCallback(
-    (orderIds: string[]) => {
-      if (tourPreview) return;
+    (orderIds: string[], options?: { markShelfNotice?: boolean }) => {
+      if (tourPreview || !orderIds.length) return;
       const n = orderIds.length;
       setPendingMessage(n === 1 ? "Potwierdzanie odbioru…" : `Potwierdzanie ${n} pozycji…`);
       start(async () => {
         try {
           await actionAcknowledgePickup(orderIds);
+          if (options?.markShelfNotice) markPickupShelfNoticeSeen();
           setUndo({
             orderIds,
             title:
@@ -178,6 +188,20 @@ export function MyOrderShipmentList({
       });
     },
     [router, tourPreview]
+  );
+
+  const requestPickup = useCallback(
+    (orderIds: string[], shelfPickup = false) => {
+      if (tourPreview || !orderIds.length) return;
+      const proceed = () =>
+        runPickup(orderIds, shelfPickup ? { markShelfNotice: true } : undefined);
+      if (shelfPickup) {
+        requestShelfPickupNotice(orderIds, proceed);
+        return;
+      }
+      proceed();
+    },
+    [runPickup, requestShelfPickupNotice, tourPreview]
   );
 
   const runAcknowledgeCancelled = useCallback(
@@ -404,10 +428,10 @@ export function MyOrderShipmentList({
             listKind={listKind}
             showProgress={showProgress}
             canAcknowledge={canAcknowledge}
-            pending={pending}
+            pending={ackPending}
             expanded={expandedIds.has(row.id)}
             onToggle={() => toggleExpanded(row.id)}
-            onAcknowledgePickup={runPickup}
+            onAcknowledgePickup={requestPickup}
             onAcknowledgeCancelled={
               canAcknowledge && row.cancelledAckOrderIds.length
                 ? runAcknowledgeCancelled
@@ -437,6 +461,7 @@ export function MyOrderShipmentList({
             tourPreview={tourPreview}
             compactActionLayout={compactActionLayout}
             suppressedSectionPatterns={suppressedSectionPatterns}
+            rowVisualTone={rowVisualTone}
           />
         ))}
       </ul>

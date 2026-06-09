@@ -12,6 +12,7 @@ import { EmptyState } from "@/components/ui/EmptyState";
 import { BackChevron } from "@/components/ui/UiGlyphs";
 import { Badge } from "@/components/ui/Badge";
 import { HelpPopover, GuideIcon } from "@/components/ui/HelpPopover";
+import { HelpBlock } from "@/components/ui/HelpBlock";
 import { SectionListLabel } from "@/components/ui/SectionListLabel";
 import { ProsbaFormSection } from "@/components/orders/ProsbaFormSection";
 import { locationLabel } from "@/lib/display-labels";
@@ -45,32 +46,32 @@ const PLAN_INTRO =
 function PlanGuide() {
   return (
     <HelpPopover
-      label="Jak korzystać"
+      label="Pomoc — harmonogram zakupów"
       title="Harmonogram zakupów"
       shortLabel="Pomoc"
       icon={<GuideIcon />}
     >
-      <p className="mb-2 flex items-start gap-2">
-        <PlanSectionIcon kind="prosby" size={16} className="mt-0.5 shrink-0 text-indigo-600" />
-        <span>
-          Lista <strong className="font-medium text-slate-800">Z otwartymi prośbami</strong> pokazuje
-          dostawców z aktywnych wpisów w „Moje zamówienia”. Rozwiń wiersz po termin i czas realizacji.
-        </span>
-      </p>
-      <p className="mb-2 flex items-start gap-2">
-        <PlanSectionIcon kind="search" size={16} className="mt-0.5 shrink-0 text-violet-700" />
-        <span>
-          <strong className="font-medium text-slate-800">Wyszukiwarka</strong> służy do każdego innego
-          dostawcy w bazie.
-        </span>
-      </p>
-      <p className="flex items-start gap-2">
-        <PlanSectionIcon kind="calendar" size={16} className="mt-0.5 shrink-0 text-indigo-600" />
-        <span>
-          <strong className="font-medium text-slate-800">Plan działu dostaw</strong> (pon.–pt.) możesz
-          rozwinąć u góry karty — to harmonogram składania zamówień przez zakupy.
-        </span>
-      </p>
+      <HelpBlock title="Co tu jest">
+        <p>{PLAN_INTRO}</p>
+      </HelpBlock>
+
+      <HelpBlock title="Z otwartymi prośbami">
+        <p>
+          Dostawcy z aktywnych wpisów w Moje zamówienia. Rozwiń wiersz po termin i czas
+          realizacji.
+        </p>
+      </HelpBlock>
+
+      <HelpBlock title="Wyszukiwarka">
+        <p>Każdy inny dostawca z bazy — poza listą z otwartymi prośbami.</p>
+      </HelpBlock>
+
+      <HelpBlock title="Plan działu dostaw">
+        <p>
+          Harmonogram składania zamówień pon.–pt. — rozwiń u góry karty. To terminy zamówień u
+          dostawców, nie daty odbioru towaru z magazynu.
+        </p>
+      </HelpBlock>
     </HelpPopover>
   );
 }

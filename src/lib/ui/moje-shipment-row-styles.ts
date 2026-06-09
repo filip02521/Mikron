@@ -19,29 +19,45 @@ export const mojeQueueRowMainClass = "flex min-w-0 flex-1 items-center gap-1 sm:
 /** Wiersze wewnątrz sekcji — bez własnych rogów. */
 export const mojeShipmentListClass = "divide-y divide-slate-100";
 
+export type MojeShipmentRowVisualTone = "default" | "archive";
+
 export function mojeShipmentRowClass({
   expanded,
   isAction,
   isUrgent,
+  isStock,
   isInformacja,
+  visualTone = "default",
 }: {
   expanded: boolean;
   isAction: boolean;
   isUrgent: boolean;
+  isStock?: boolean;
   isInformacja: boolean;
+  visualTone?: MojeShipmentRowVisualTone;
 }): string {
+  if (visualTone === "archive") {
+    return cn(
+      "border-l-[3px] border-l-slate-200/70 transition-colors duration-150",
+      expanded ? "bg-slate-50/70" : "bg-slate-50/45 hover:bg-slate-50/65"
+    );
+  }
+
   const accent = isAction
     ? "border-l-emerald-500"
     : isUrgent
       ? "border-l-amber-500"
-      : isInformacja
-        ? "border-l-violet-400"
-        : "border-l-slate-200";
+      : isStock
+        ? "border-l-sky-500"
+        : isInformacja
+          ? "border-l-violet-400"
+          : "border-l-slate-200";
 
   return cn(
     "border-l-[3px] transition-colors duration-150",
     accent,
-    expanded ? "bg-slate-50/40" : "bg-white hover:bg-slate-50/50"
+    isAction && !expanded && "bg-emerald-50/35",
+    expanded ? "bg-slate-50/40" : isAction ? "hover:bg-emerald-50/50" : "bg-white hover:bg-slate-50/50"
   );
 }
 

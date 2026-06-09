@@ -1,9 +1,19 @@
 "use client";
 
-import { useEffect, useId, useRef, useState } from "react";
+import { useEffect, useId, useMemo, useRef, useState } from "react";
 import type { MyOrderRow } from "@/lib/orders/my-order-presenter";
 import type { SalesCancelPhase } from "@/lib/orders/sales-cancel";
+import { MyOrderKindBadge } from "@/components/moje/MyOrderKindBadge";
+import { MyOrderRequestProgressBar } from "@/components/moje/MyOrderRequestProgressBar";
 import {
+  deriveMyOrderRequestProgress,
+  shouldShowMyOrderRequestProgress,
+} from "@/lib/orders/my-order-request-progress";
+import {
+  filterRedundantExpandedMetaFields,
+  shouldShowCollapsedProductSummary,
+  shouldShowCollapsedSubline,
+  shouldShowExpandedOrderStatusBadge,
   shouldShowMyOrderHeadlineBanner,
   shouldShowOrderStatusBadge,
 } from "@/lib/orders/my-order-card-ui";
@@ -13,6 +23,7 @@ import {
   type MyOrderSectionPatternId,
 } from "@/lib/orders/my-order-section-callout";
 import type { MyOrderListKind } from "@/lib/orders/my-order-row-layout";
+import { myOrderCollapsedMobileTiming } from "@/lib/orders/my-order-collapsed-mobile-timing";
 import {
   myOrderCollapsedProductSummary,
   myOrderCollapsedSubline,
@@ -42,6 +53,7 @@ import {
   mojeShipmentLinesHeaderTitleClass,
   mojeShipmentLinesShellClass,
   mojeShipmentRowClass,
+  type MojeShipmentRowVisualTone,
 } from "@/lib/ui/moje-shipment-row-styles";
 import { mojeActionBarShellClass } from "@/lib/ui/surfaces";
 import { SearchHighlightText } from "@/components/moje/SearchHighlightText";
@@ -84,6 +96,7 @@ function ShipmentToolbar({
   onAcknowledgePickup,
   onAcknowledgeDismiss,
   tourPreview = false,
+  shelfPickup = false,
 }: {
   overflowMenu: React.ReactNode;
   showSinglePickup: boolean;
@@ -99,9 +112,10 @@ function ShipmentToolbar({
   pickupIds: string[];
   pickupCount: number;
   isAction: boolean;
-  onAcknowledgePickup: (ids: string[]) => void;
+  onAcknowledgePickup: (ids: string[], shelfPickup?: boolean) => void;
   onAcknowledgeDismiss: (ids: string[]) => void;
   tourPreview?: boolean;
+  shelfPickup?: boolean;
 }) {
   const hasToolbar =
     overflowMenu ||
@@ -144,7 +158,7 @@ function ShipmentToolbar({
           disabled={pending}
           preview={tourPreview}
           title={ackFullTitle}
-          onClick={() => onAcknowledgePickup(pickupIds)}
+          onClick={() => onAcknowledgePickup(pickupIds, shelfPickup)}
           className={cn(groupedAcks && !showBulkPickup && panelSegmentLastClass)}
         >
           {ackShortLabel}
@@ -156,7 +170,7 @@ function ShipmentToolbar({
           disabled={pending}
           preview={tourPreview}
           title={ackFullTitle}
-          onClick={() => onAcknowledgePickup(pickupIds)}
+          onClick={() => onAcknowledgePickup(pickupIds, shelfPickup)}
           className={cn(groupedAcks && panelSegmentLastClass, "whitespace-nowrap")}
         >
           {pickupCount} do odbioru
@@ -197,6 +211,7 @@ export function MyOrderShipmentCard({
   /** W sekcji „Do potwierdzenia” — bez osobnego zielonego paska nad wierszem. */
   compactActionLayout = false,
   suppressedSectionPatterns,
+  rowVisualTone = "default",
 }: {
   row: MyOrderRow;
   listKind: MyOrderListKind;
@@ -206,7 +221,7 @@ export function MyOrderShipmentCard({
   pending: boolean;
   expanded: boolean;
   onToggle: () => void;
-  onAcknowledgePickup: (orderIds: string[]) => void;
+  onAcknowledgePickup: (orderIds: string[], shelfPickup?: boolean) => void;
   onAcknowledgeCancelled?: (orderIds: string[]) => void;
   onAcknowledgeCancelNotice?: (orderIds: string[]) => void;
   onCancelRequest?: (orderIds: string[], phase: SalesCancelPhase) => void;
@@ -216,6 +231,7 @@ export function MyOrderShipmentCard({
   tourPreview?: boolean;
   compactActionLayout?: boolean;
   suppressedSectionPatterns?: Set<MyOrderSectionPatternId>;
+  rowVisualTone?: MojeShipmentRowVisualTone;
 }) {
   const panelId = useId();
   const searchActive = searchQueryTokens(searchQuery).length > 0;
@@ -277,6 +293,7 @@ export function MyOrderShipmentCard({
     row.acknowledgeMode === "availability"
       ? "Potwierdzam, że widziałem/am powiadomienie o dostępności"
       : "Potwierdzam odbiór towaru z magazynu";
+  const shelfPickup = row.acknowledgeMode === "pickup";
 
   const showSinglePickup =
     canAcknowledge &&
@@ -303,7 +320,8 @@ export function MyOrderShipmentCard({
     row.acknowledgeMode === "availability" ||
     showDismissAck;
   const isUrgent = headlineTone === "warning";
-  const isInformacja = listKind === "informacja" || row.kind === "informacja";
+  const isStock = headlineTone === "stock";
+  const isInformacja = row.kind === "informacja";
 
   const emphasizeStock =
     showProgress &&
@@ -313,12 +331,48 @@ export function MyOrderShipmentCard({
   const expandCtx = { listKind, showGroupPickup };
   const needsExpand = myOrderNeedsExpand(row, expandCtx);
   const collapsedSubline = myOrderCollapsedSubline(row);
+  const showHeadlineBanner = shouldShowMyOrderHeadlineBanner(row, {
+    expanded,
+    compactActionLayout,
+    canAcknowledge,
+  });
+  const mobileTiming = myOrderCollapsedMobileTiming(row, {
+    expanded,
+    showProgress,
+    collapsedSubline,
+  });
   const expandedNotes = myOrderExpandedNotes(row);
-  const expandedMeta = myOrderExpandedMetaFields(row, showProgress).filter(
-    (f) => !(f.label === "Klient" && canEditClient)
+  const requestProgress = useMemo(
+    () =>
+      rowVisualTone !== "archive" && shouldShowMyOrderRequestProgress(row)
+        ? deriveMyOrderRequestProgress(row)
+        : null,
+    [row, rowVisualTone]
+  );
+  const expandedMeta = filterRedundantExpandedMetaFields(
+    row,
+    myOrderExpandedMetaFields(row, showProgress).filter(
+      (f) => !(f.label === "Klient" && canEditClient)
+    ),
+    { collapsedSubline }
   );
   const expandHint = myOrderExpandHint(row, expandCtx);
-  const productSummary = myOrderCollapsedProductSummary(row, listKind);
+  const productSummaryRaw = myOrderCollapsedProductSummary(row, listKind);
+  const showCollapsedProductSummary = shouldShowCollapsedProductSummary(row, {
+    expanded,
+    showRowHeadline,
+    suppressSharedHeadline,
+    hasCollapsedSubline: Boolean(collapsedSubline),
+  });
+  const productSummary = showCollapsedProductSummary ? productSummaryRaw : null;
+  const showCollapsedSublineText = shouldShowCollapsedSubline(collapsedSubline, {
+    showHeadlineBanner,
+    showRowHeadline,
+    suppressSharedHeadline,
+  });
+  const showExpandedStatusBadge = shouldShowExpandedOrderStatusBadge(row, {
+    hasRequestProgress: Boolean(requestProgress),
+  });
 
   const showAllProductLines = linesOpen || searchShowsProductLines;
   const visibleLines = showAllProductLines ? row.lines : row.lines.slice(0, 8);
@@ -359,7 +413,7 @@ export function MyOrderShipmentCard({
   const overflowMenu = canAcknowledge && !tourPreview ? (
     <MyOrderShipmentOverflowMenu
       supplierName={row.supplierName}
-      listKind={listKind}
+      listKind={row.kind}
       disabled={pending}
       hasClient={hasClient}
       canAssignClient={canEditClient && row.lineCount > 0}
@@ -374,19 +428,11 @@ export function MyOrderShipmentCard({
     />
   ) : null;
 
-  const kindShort = row.kind === "informacja" ? "Info." : "Zam.";
-
   const compactPickupOrAvailability =
     compactActionLayout &&
     !expanded &&
     (row.acknowledgeMode === "pickup" || row.acknowledgeMode === "availability") &&
     needsAck;
-
-  const showHeadlineBanner = shouldShowMyOrderHeadlineBanner(row, {
-    expanded,
-    compactActionLayout,
-    canAcknowledge,
-  });
 
   const bannerAckInHeadline = showHeadlineBanner && Boolean(showSinglePickup);
 
@@ -397,7 +443,7 @@ export function MyOrderShipmentCard({
       preview={tourPreview}
       title={ackFullTitle}
       ariaLabel={ackFullTitle}
-      onClick={() => onAcknowledgePickup(row.pickupPendingIds)}
+      onClick={() => onAcknowledgePickup(row.pickupPendingIds, shelfPickup)}
     >
       {ackShortLabel}
     </MyOrderAckButton>
@@ -422,6 +468,7 @@ export function MyOrderShipmentCard({
       onAcknowledgePickup={onAcknowledgePickup}
       onAcknowledgeDismiss={onAcknowledgeDismiss}
       tourPreview={tourPreview}
+      shelfPickup={shelfPickup}
     />
   );
 
@@ -438,7 +485,7 @@ export function MyOrderShipmentCard({
     acknowledgeLineLabel: "Potwierdź" as const,
     acknowledgeLineTitle: ackFullTitle,
     onAcknowledgePickup: showGroupPickup
-      ? (id: string) => onAcknowledgePickup([id])
+      ? (id: string) => onAcknowledgePickup([id], shelfPickup)
       : undefined,
     canEditClient,
     onSaveClient: onSaveClient
@@ -461,8 +508,19 @@ export function MyOrderShipmentCard({
     "truncate",
     isAction && "text-emerald-800",
     isUrgent && "text-amber-900",
-    headlineTone === "info" && !isAction && !isUrgent && "text-indigo-800",
-    !isAction && !isUrgent && headlineTone !== "info" && "text-slate-600"
+    isStock && "text-sky-900",
+    isInformacja &&
+      !isAction &&
+      !isUrgent &&
+      !isStock &&
+      "font-medium text-violet-900",
+    headlineTone === "info" &&
+      !isAction &&
+      !isUrgent &&
+      !isStock &&
+      !isInformacja &&
+      "text-indigo-800",
+    !isAction && !isUrgent && !isStock && headlineTone !== "info" && !isInformacja && "text-slate-600"
   );
 
   const bannerSubline = collapsedSubline;
@@ -470,7 +528,14 @@ export function MyOrderShipmentCard({
   return (
     <li
       id={domId}
-      className={mojeShipmentRowClass({ expanded, isAction, isUrgent, isInformacja })}
+      className={mojeShipmentRowClass({
+        expanded,
+        isAction,
+        isUrgent,
+        isStock,
+        isInformacja,
+        visualTone: rowVisualTone,
+      })}
     >
       {showHeadlineBanner ? (
         <MyOrderHeadlineBanner
@@ -518,17 +583,7 @@ export function MyOrderShipmentCard({
               searchQuery={searchQuery}
               className={cn("truncate", salesTypography.rowTitle)}
             />
-            <span
-              className={cn(
-                "shrink-0 rounded px-1 py-0.5",
-                salesTypography.kindTag,
-                isInformacja
-                  ? "bg-violet-100 text-violet-800"
-                  : "bg-slate-100 text-slate-600"
-              )}
-            >
-              {kindShort}
-            </span>
+            <MyOrderKindBadge row={row} />
           </div>
           {suppressSharedHeadline ? (
             <span className="sr-only">{headline}</span>
@@ -541,19 +596,41 @@ export function MyOrderShipmentCard({
               as="p"
             />
           ) : null}
-          {!showHeadlineBanner && !expanded && collapsedSubline ? (
+          {!showHeadlineBanner && !expanded && showCollapsedSublineText && collapsedSubline ? (
             <SearchHighlightText
               text={collapsedSubline}
               searchQuery={searchQuery}
               className={cn(
                 "mt-0.5 truncate",
                 salesTypography.rowMeta,
+                isStock && "font-medium text-sky-800",
                 suppressSharedHeadline &&
                   isUrgent &&
                   "font-medium text-amber-900",
                 suppressSharedHeadline &&
+                  isStock &&
+                  "font-medium text-sky-900",
+                suppressSharedHeadline &&
                   headlineTone === "info" &&
-                  "font-medium text-indigo-800"
+                  !isInformacja &&
+                  "font-medium text-indigo-800",
+                suppressSharedHeadline &&
+                  isInformacja &&
+                  "font-medium text-violet-900"
+              )}
+              as="p"
+            />
+          ) : null}
+          {!showHeadlineBanner && mobileTiming ? (
+            <SearchHighlightText
+              text={mobileTiming}
+              searchQuery={searchQuery}
+              className={cn(
+                "mt-0.5 truncate font-medium tabular-nums sm:hidden",
+                salesTypography.rowMeta,
+                isUrgent && "text-amber-900",
+                isStock && "text-sky-800",
+                !isUrgent && !isStock && "text-slate-600"
               )}
               as="p"
             />
@@ -626,9 +703,11 @@ export function MyOrderShipmentCard({
           aria-label={`Szczegóły: ${row.supplierName}`}
           className={mojeShipmentExpandedPanelClass}
         >
-          {(showStatusBadge || expandedNotes) && (
+          {requestProgress ? <MyOrderRequestProgressBar track={requestProgress} /> : null}
+
+          {(showExpandedStatusBadge || expandedNotes) && (
             <div className="space-y-2">
-              {showStatusBadge ? (
+              {showExpandedStatusBadge ? (
                 <MyOrderStatusPill
                   label={row.statusTitle}
                   variant={row.badgeVariant}
@@ -664,7 +743,7 @@ export function MyOrderShipmentCard({
             <div className={mojeShipmentLinesShellClass}>
               <div className={mojeShipmentLinesHeaderClass}>
                 <p className={mojeShipmentLinesHeaderTitleClass}>
-                  {row.lineCount > 1 ? productSummary ?? "Produkty" : "Produkt"}
+                  {row.lineCount > 1 ? productSummaryRaw ?? "Produkty" : "Produkt"}
                 </p>
                 {row.lineCount > 8 ? (
                   <button
@@ -701,7 +780,7 @@ export function MyOrderShipmentCard({
                     preview={tourPreview}
                     title={ackFullTitle}
                     ariaLabel={ackFullTitle}
-                    onClick={() => onAcknowledgePickup(row.pickupPendingIds)}
+                    onClick={() => onAcknowledgePickup(row.pickupPendingIds, shelfPickup)}
                   >
                     {row.acknowledgeMode === "availability"
                       ? `Potwierdź wszystkie (${row.pickupPendingCount})`

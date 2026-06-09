@@ -2,40 +2,39 @@
 
 import Link from "next/link";
 import { HelpPopover, GuideIcon } from "@/components/ui/HelpPopover";
-import { IconClipboardList, IconInbox } from "@/components/icons/StrokeIcons";
+import { HelpBlock } from "@/components/ui/HelpBlock";
 
 export function DepartmentBoardGuide() {
   return (
     <HelpPopover
-      label="Czym różni się od prośby"
+      label="Pomoc — komunikacja z działem zakupów"
       title="Komunikacja z działem zakupów"
       shortLabel="Pomoc"
       icon={<GuideIcon />}
     >
-      <p className="mb-2 flex items-start gap-2">
-        <IconClipboardList size={16} className="mt-0.5 shrink-0 text-indigo-600" />
-        <span>
+      <HelpBlock title="Nowa prośba">
+        <p>
           <Link href="/prosba" className="font-medium text-indigo-800 hover:underline">
-            Nowa prośba
+            Zgłoś prośbę
           </Link>{" "}
-          — gdy chcesz <strong className="font-medium text-slate-800">zamówić towar</strong> u
-          dostawcy lub sprawdzić dostępność w procesie. Status śledzisz w Moje zamówienia.
-        </span>
-      </p>
-      <p className="mb-2 flex items-start gap-2">
-        <IconInbox size={16} className="mt-0.5 shrink-0 text-sky-700" />
-        <span>
-          <strong className="font-medium text-slate-800">Ogłoszenia</strong> — jednokierunkowy
-          komunikat od zakupów (np. zmiana procedury). Nie odpowiadasz na ogłoszenie w tej sekcji.
-        </span>
-      </p>
-      <p className="flex items-start gap-2">
-        <IconInbox size={16} className="mt-0.5 shrink-0 text-amber-700" />
-        <span>
-          <strong className="font-medium text-slate-800">Pytania zespołu</strong> — ogólne pytanie
-          do zakupów; odpowiedź widzą wszyscy handlowcy (żeby nie powtarzać tego samego w mailu).
-        </span>
-      </p>
+          — gdy chcesz zamówić towar u dostawcy albo sprawdzić dostępność w procesie. Status
+          śledzisz w Moje zamówienia.
+        </p>
+      </HelpBlock>
+
+      <HelpBlock title="Ogłoszenia">
+        <p>
+          Komunikat od działu zakupów (np. zmiana procedury). W tej sekcji nie odpowiadasz na
+          ogłoszenie.
+        </p>
+      </HelpBlock>
+
+      <HelpBlock title="Pytania zespołu">
+        <p>
+          Ogólne pytanie do zakupów — odpowiedź widzą wszyscy handlowcy, żeby nie powtarzać tego
+          samego w mailu.
+        </p>
+      </HelpBlock>
     </HelpPopover>
   );
 }

@@ -27,6 +27,7 @@ export function ModalShell({
   title,
   description,
   titleId = "modal-title",
+  describedById,
   children,
   footer,
   size = "md",
@@ -42,6 +43,7 @@ export function ModalShell({
   title?: string;
   description?: string;
   titleId?: string;
+  describedById?: string;
   children: React.ReactNode;
   footer?: React.ReactNode;
   size?: ModalSize;
@@ -78,6 +80,7 @@ export function ModalShell({
         role={role}
         aria-modal="true"
         aria-labelledby={hasHeader ? titleId : undefined}
+        aria-describedby={describedById}
         className={cn(
           modalPanelClass,
           "fixed left-1/2 top-1/2 max-h-[min(calc(100dvh-env(safe-area-inset-top)-env(safe-area-inset-bottom)-2rem),880px)] w-[min(100%-1rem,100%)] -translate-x-1/2 -translate-y-1/2 sm:w-full",

@@ -232,6 +232,8 @@ export const mojeFilterChipActiveClass = "ring-2 ring-indigo-400 ring-offset-1";
 
 export const mojeFilterChipInfoClass = "bg-indigo-100 text-indigo-900";
 
+export const mojeFilterChipStockClass = "bg-sky-100 text-sky-900";
+
 export const mojeFilterChipSuccessClass = "bg-indigo-50 text-indigo-900";
 
 /** Sekcja informacja (magazyn) — sky pozostaje semantyczny */

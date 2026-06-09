@@ -43,9 +43,9 @@ export function PanelDailyHelp({
         )}
       </Link>
       <HelpPopover
-        label="Instrukcja obsługi panelu dziennego"
-        title="Jak działa panel dzienny"
-        shortLabel="Instrukcja"
+        label="Pomoc — panel dzienny"
+        title="Panel dzienny"
+        shortLabel="Pomoc"
         icon={<GuideIcon />}
         align="right"
         buttonClassName={cn(
