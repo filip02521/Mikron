@@ -63,4 +63,23 @@ describe("editInitialFromForSomeoneGroup", () => {
     expect(initial.requestKind).toBe("zamowienie");
     expect(initial.informacjaPath).toBeUndefined();
   });
+
+  it("mapuje klienta końcowego z linii panelu dziennego", () => {
+    const initial = editInitialFromForSomeoneGroup(
+      forSomeoneGroup([
+        {
+          id: "3",
+          products: "Towar",
+          symbol: "Z",
+          quantity: "1",
+          fromSubiekt: true,
+          submittedAt: "2026-05-01",
+          clientName: "Klinika ABC",
+          clientKhId: 42,
+        },
+      ])
+    );
+    expect(initial.lines[0]?.clientName).toBe("Klinika ABC");
+    expect(initial.lines[0]?.clientKhId).toBe(42);
+  });
 });

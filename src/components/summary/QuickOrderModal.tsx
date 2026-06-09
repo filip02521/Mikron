@@ -87,6 +87,8 @@ export function QuickOrderModal({
         quantity: l.quantity,
         supplierId,
         subiektTwId: l.subiektTwId,
+        clientName: l.clientName,
+        clientKhId: l.clientKhId,
       })),
     [lines, supplierId]
   );
@@ -157,6 +159,8 @@ export function QuickOrderModal({
         subiektTwId: l.subiektTwId,
         informacjaQueueViaDailyPanel: informacjaFlags.informacjaQueueViaDailyPanel,
         informacjaStockOutReorder: informacjaFlags.informacjaStockOutReorder,
+        clientName: l.clientName,
+        clientKhId: l.clientKhId,
       }));
     if (!entries.length) {
       setValidationAttempted(true);
@@ -352,7 +356,7 @@ export function QuickOrderModal({
           hint={
             requestKind === "informacja"
               ? informacjaProductsFormHint(informacjaPath)
-              : "Podaj nazwę lub symbol w jednym polu, kod Mikran obok oraz ilość przy każdej pozycji."
+              : "Podaj nazwę lub symbol w jednym polu, kod Mikran obok oraz ilość. Opcjonalnie klient końcowy — z podpowiedzi Subiekta, jak u handlowców."
           }
         >
           <div className="space-y-4">
@@ -364,6 +368,7 @@ export function QuickOrderModal({
               }}
               requestKind={requestKind}
               appearance="prosba"
+              showClientField
               addLabel="+ Kolejny produkt"
               suppliers={supplierRefs}
               unifiedFeedback

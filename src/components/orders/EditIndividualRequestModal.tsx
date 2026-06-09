@@ -366,7 +366,9 @@ export function EditIndividualRequestModal({
           hint={
             requestKind === "informacja"
               ? informacjaProductsFormHint(informacjaPath)
-              : "Symbol, kod Mikran lub opis oraz ilość przy każdej pozycji."
+              : mode === "sales"
+                ? "Symbol, kod Mikran lub opis oraz ilość przy każdej pozycji."
+                : "Symbol, kod Mikran lub opis, ilość oraz opcjonalnie klient końcowy (Subiekt) przy każdej pozycji."
           }
         >
           <div className="space-y-4">
@@ -379,7 +381,7 @@ export function EditIndividualRequestModal({
               requestKind={requestKind}
               appearance="prosba"
               addLabel="+ Kolejny produkt"
-              showClientField={mode === "sales"}
+              showClientField
               deferSupplierResolve={mode === "sales"}
               typeaheadSize="comfortable"
               validationAttempted={validationAttempted}

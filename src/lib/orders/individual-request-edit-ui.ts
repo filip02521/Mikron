@@ -41,6 +41,8 @@ export function editInitialFromForSomeoneGroup(
       mikranCode: l.mikranCode ?? "",
       product: l.products,
       quantity: l.quantity === "-" ? "" : l.quantity,
+      clientName: l.clientName ?? "",
+      clientKhId: l.clientKhId ?? null,
       subiektTwId: l.subiektTwId ?? null,
     })),
   };
