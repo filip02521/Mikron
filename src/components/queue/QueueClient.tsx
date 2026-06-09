@@ -10,18 +10,27 @@ import { QueuePanelHelp } from "@/components/queue/QueuePanelHelp";
 import { Toast } from "@/components/ui/Toast";
 import { ActionLoadingOverlay } from "@/components/ui/ActionLoadingOverlay";
 import { Alert } from "@/components/ui/Alert";
-import { QueuePanelToolbar } from "@/components/queue/QueuePanelToolbar";
+import { QueuePanelToolbar, type QueueView } from "@/components/queue/QueuePanelToolbar";
 import { panelPageShellClass } from "@/lib/ui/ontime-theme";
 import { ReceiveQueueTable, type ReceiveQueueToast } from "@/components/queue/ReceiveQueueTable";
 import { WarehouseInventorySection } from "@/components/queue/WarehouseInventorySection";
 import { DeliveryJournalSection } from "@/components/queue/DeliveryJournalSection";
 import type { WarehouseDeliveryReceipt } from "@/lib/warehouse/delivery-receipts";
-import { SegmentedControl } from "@/components/ui/SegmentedControl";
 import { buildWarehouseInventoryRows } from "@/lib/orders/warehouse-inventory";
 import { summarizeQueueInbox } from "@/lib/orders/queue-inbox";
 import { mergeReceiveQueueOrders } from "@/lib/orders/receive-queue";
 
-type QueueView = "receive" | "journal" | "inventory";
+const RECEIVE_SCROLL_HASHES = new Set([
+  "#kolejka-przyjecie",
+  "#informacja",
+  "#dostawy-handlowcy",
+]);
+
+function queueViewHash(view: QueueView): string {
+  if (view === "inventory") return "#inwentaryzacja";
+  if (view === "journal") return "#dziennik-dostaw";
+  return "#kolejka-przyjecie";
+}
 
 export function QueueClient({
   orders,
@@ -73,7 +82,13 @@ export function QueueClient({
       let next: QueueView = "receive";
       if (hash === "#inwentaryzacja") next = "inventory";
       else if (hash === "#dziennik-dostaw") next = "journal";
-      else if (hash === "#informacja" || hash === "#dostawy-handlowcy") next = "receive";
+      else if (
+        hash === "#informacja" ||
+        hash === "#dostawy-handlowcy" ||
+        hash === "#kolejka-przyjecie"
+      ) {
+        next = "receive";
+      }
       setView(next);
     };
     sync();
@@ -84,7 +99,7 @@ export function QueueClient({
   useEffect(() => {
     if (view !== "receive") return;
     const hash = window.location.hash;
-    if (hash !== "#informacja" && hash !== "#dostawy-handlowcy") return;
+    if (!RECEIVE_SCROLL_HASHES.has(hash)) return;
     const frame = requestAnimationFrame(() => {
       document.getElementById("kolejka-przyjecie")?.scrollIntoView({
         behavior: "smooth",
@@ -94,23 +109,10 @@ export function QueueClient({
     return () => cancelAnimationFrame(frame);
   }, [view, receiveQueue.length]);
 
-  useEffect(() => {
-    if (view !== "inventory") return;
-    const frame = requestAnimationFrame(() => {
-      document
-        .getElementById("inwentaryzacja")
-        ?.scrollIntoView({ behavior: "smooth", block: "start" });
-    });
-    return () => cancelAnimationFrame(frame);
-  }, [view]);
-
   const setQueueView = useCallback((next: QueueView) => {
     setView(next);
-    const hash =
-      next === "inventory" ? "#inwentaryzacja" : next === "journal" ? "#dziennik-dostaw" : "";
-    const target = hash
-      ? `${window.location.pathname}${window.location.search}${hash}`
-      : `${window.location.pathname}${window.location.search}`;
+    const hash = queueViewHash(next);
+    const target = `${window.location.pathname}${window.location.search}${hash}`;
     if (`${window.location.pathname}${window.location.search}${window.location.hash}` !== target) {
       window.history.replaceState(null, "", target);
     }
@@ -150,58 +152,22 @@ export function QueueClient({
         />
 
         <QueuePanelToolbar
+          view={view}
+          onViewChange={setQueueView}
           summary={inboxSummary}
-          informacjaCount={inboxSummary.informacjaCount}
           pickupReadyCount={pickupReadyCount}
           inventoryCount={inventoryCount}
           journalCount={deliveryJournal.summary.receiptCount}
-          onOpenInventory={() => setQueueView("inventory")}
-          onOpenJournal={() => setQueueView("journal")}
           showProcurementLinks={!isMagazynRole}
         />
 
-        <div className="border-b border-slate-100 px-4 py-3 sm:px-6">
-          <SegmentedControl<QueueView>
-            ariaLabel="Widok magazynu"
-            value={view}
-            onChange={setQueueView}
-            touchFriendly
-            className="w-full sm:w-auto"
-            options={[
-              { value: "receive", label: "Przyjęcie towaru" },
-              {
-                value: "journal",
-                label:
-                  deliveryJournal.summary.receiptCount > 0
-                    ? `Dziennik dostaw (${deliveryJournal.summary.receiptCount})`
-                    : "Dziennik dostaw",
-                title: "Kurier, paczki, palety — zamiast Excela",
-              },
-              {
-                value: "inventory",
-                label:
-                  inventoryCount > 0
-                    ? `Inwentaryzacja regału (${inventoryCount})`
-                    : "Inwentaryzacja regału",
-                title: "Co leży na magazynie i kto nie odbiera towaru",
-              },
-            ]}
-          />
-        </div>
-
-        {view === "journal" ? (
-          <DeliveryJournalSection
-            suppliers={journalSuppliers}
-            initialJournal={deliveryJournal}
-            todayDateKey={deliveryJournal.date}
-            isMagazynRole={isMagazynRole}
-          />
-        ) : view === "inventory" ? (
-          <WarehouseInventorySection
-            orders={warehouseInventory}
-            deliveryQueueOrders={orders}
-          />
-        ) : (
+        {/* Widoki pozostają zamontowane — filtry, zaznaczenia i formularze nie giną przy zmianie zakładki. */}
+        <div
+          role="tabpanel"
+          id="queue-panel-receive"
+          aria-labelledby="queue-tab-receive"
+          hidden={view !== "receive"}
+        >
           <section id="kolejka-przyjecie" className="scroll-mt-20">
             <SectionListLabel
               domain="panel"
@@ -220,7 +186,33 @@ export function QueueClient({
               onPendingChange={setPendingMessage}
             />
           </section>
-        )}
+        </div>
+
+        <div
+          role="tabpanel"
+          id="queue-panel-journal"
+          aria-labelledby="queue-tab-journal"
+          hidden={view !== "journal"}
+        >
+          <DeliveryJournalSection
+            suppliers={journalSuppliers}
+            initialJournal={deliveryJournal}
+            todayDateKey={deliveryJournal.date}
+            isMagazynRole={isMagazynRole}
+          />
+        </div>
+
+        <div
+          role="tabpanel"
+          id="queue-panel-inventory"
+          aria-labelledby="queue-tab-inventory"
+          hidden={view !== "inventory"}
+        >
+          <WarehouseInventorySection
+            orders={warehouseInventory}
+            deliveryQueueOrders={orders}
+          />
+        </div>
       </Card>
     </div>
   );

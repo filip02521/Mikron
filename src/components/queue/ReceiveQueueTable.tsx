@@ -24,6 +24,7 @@ import {
 } from "@/lib/orders/individual";
 import { checkboxBrandClass } from "@/lib/ui/ontime-theme";
 import { MICROCOPY } from "@/lib/ui/microcopy";
+import { QUEUE_LIST_BODY_CLASS } from "@/lib/ui/queue-panel-styles";
 import { InlineCheck } from "@/components/ui/UiGlyphs";
 import { countOrdersBySupplier, filterOrdersBySupplier } from "@/lib/orders/supplier-filter-summary";
 import {
@@ -416,39 +417,41 @@ export function ReceiveQueueTable({
         }}
       />
 
-      <div className="space-y-2 border-b border-slate-100 px-4 py-3 sm:px-6">
-        <SupplierFilterChips
-          chips={supplierChips}
-          value={supplierFilter}
-          onChange={setSupplierFilter}
-          totalLabel="Kolejka — wszyscy"
-        />
-        <div className="flex flex-wrap items-center justify-between gap-2">
-          <p className="max-w-xl text-[11px] leading-relaxed text-slate-500">
-            <span className="inline-flex items-center gap-1">
-              <span className="size-1.5 rounded-full bg-emerald-500" />
-              zamówienie: kliknij ilość zamówioną lub wpisz dostawę, Enter lub{" "}
-              <InlineCheck size={11} className="align-[-2px]" />
-            </span>
-            <span className="mx-2 text-slate-300">·</span>
-            <span className="inline-flex items-center gap-1">
-              <span className="size-1.5 rounded-full bg-sky-500" />
-              informacja: przycisk powiadomienia lub zaznaczenie wielu
-            </span>
-          </p>
+      <div className="border-b border-slate-100 px-4 py-2 sm:px-6">
+        <div className="flex flex-wrap items-center gap-2">
+          <SupplierFilterChips
+            chips={supplierChips}
+            value={supplierFilter}
+            onChange={setSupplierFilter}
+            totalLabel="Wszyscy"
+          />
           {supplierGroups.length > 1 ? (
             <Button
               type="button"
               variant="ghost"
               size="sm"
+              className="ml-auto shrink-0"
               onClick={() =>
                 collapse.allExpanded ? collapse.collapseAll() : collapse.expandAll()
               }
             >
-              {collapse.allExpanded ? "Zwiń dostawców" : "Rozwiń dostawców"}
+              {collapse.allExpanded ? "Zwiń grupy" : "Rozwiń grupy"}
             </Button>
           ) : null}
         </div>
+        <p className="mt-2 text-[10px] leading-relaxed text-slate-500">
+          <span className="inline-flex items-center gap-1">
+            <span className="size-1.5 shrink-0 rounded-full bg-emerald-500" aria-hidden />
+            zamówienie: wpisz ilość, Enter lub <InlineCheck size={10} className="inline align-[-2px]" />
+          </span>
+          <span className="mx-1.5 text-slate-300" aria-hidden>
+            ·
+          </span>
+          <span className="inline-flex items-center gap-1">
+            <span className="size-1.5 shrink-0 rounded-full bg-sky-500" aria-hidden />
+            informacja: przycisk powiadomienia lub zaznaczenie wielu
+          </span>
+        </p>
       </div>
 
       <ReceiveQueueSelectionBar
@@ -465,9 +468,10 @@ export function ReceiveQueueTable({
       />
 
       <TableScroll className="px-0 pb-0">
-        <DataTable className="queue-table receive-queue-table text-sm">
-          <thead>
-            <tr>
+        <div className={QUEUE_LIST_BODY_CLASS}>
+          <DataTable className="queue-table receive-queue-table">
+            <thead>
+              <tr>
               <th className="w-9">
                 <input
                   type="checkbox"
@@ -580,8 +584,9 @@ export function ReceiveQueueTable({
                 </Fragment>
               );
             })}
-          </tbody>
-        </DataTable>
+            </tbody>
+          </DataTable>
+        </div>
       </TableScroll>
     </>
   );

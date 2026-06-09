@@ -50,7 +50,7 @@ export function SupplierGroupHeaderRow({
         colSpan={colSpan}
         className={cn(
           queueSupplierLeadingCellClass(groupIndex, { variant }),
-          "!py-2 !pl-3"
+          "!py-1.5 !pl-2.5"
         )}
       >
         <div className="flex flex-wrap items-center justify-between gap-2">
@@ -62,8 +62,12 @@ export function SupplierGroupHeaderRow({
           >
             <Chevron open={isOpen} />
             <span className="min-w-0">
-              <span className="block font-semibold text-slate-900">{group.supplierKey}</span>
-              <span className="block text-[11px] font-medium text-slate-600">{summary}</span>
+              <span className="block text-sm font-semibold leading-tight text-slate-900">
+                {group.supplierKey}
+              </span>
+              <span className="block text-[10px] font-medium leading-snug text-slate-600">
+                {summary}
+              </span>
             </span>
           </button>
           {actions ? (

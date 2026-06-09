@@ -1,10 +1,17 @@
 "use client";
 
-import { Fragment, useCallback, useMemo, useState, useTransition } from "react";
+import { Fragment, useCallback, useEffect, useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { actionSetWarehouseShelf } from "@/app/actions/admin";
 import { SectionListLabel } from "@/components/ui/SectionListLabel";
-import { IconClipboardList } from "@/components/icons/StrokeIcons";
+import {
+  IconAlertCircle,
+  IconClipboardList,
+  IconClock,
+  IconPackageCheck,
+  IconWarehouse,
+} from "@/components/icons/StrokeIcons";
+import { QueueMetricTab } from "@/components/queue/QueueMetricTab";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { DataTable, TableScroll } from "@/components/ui/DataTable";
 import { Button } from "@/components/ui/Button";
@@ -13,7 +20,13 @@ import { SegmentedControl } from "@/components/ui/SegmentedControl";
 import { SupplierFilterChips } from "@/components/queue/SupplierFilterChips";
 import { SupplierGroupHeaderRow } from "@/components/queue/SupplierGroupHeaderRow";
 import { cn } from "@/lib/cn";
-import { controlFocusClass, panelContactLinkClass, panelSectionInsetClass, panelTypography } from "@/lib/ui/ontime-theme";
+import {
+  QUEUE_LIST_BODY_CLASS,
+  queueToolbarFieldLabelClass,
+  queueToolbarInputClass,
+  queueToolbarShellClass,
+} from "@/lib/ui/queue-panel-styles";
+import { controlFocusClass, panelSectionInsetClass } from "@/lib/ui/ontime-theme";
 import type { IndividualOrder } from "@/types/database";
 import {
   buildWarehouseInventoryRows,
@@ -66,7 +79,7 @@ function ShelfEditor({
         disabled={disabled}
         onClick={() => setEditing(true)}
         className={cn(
-          "max-w-[8rem] truncate text-left text-sm underline-offset-2 hover:underline",
+          "max-w-[5.5rem] truncate text-left text-xs font-semibold underline-offset-2 hover:underline",
           initial === WAREHOUSE_SHELF_DEFAULT ? "text-emerald-800" : "text-slate-800"
         )}
         title="Kliknij, aby zmienić regał"
@@ -77,13 +90,13 @@ function ShelfEditor({
   }
 
   return (
-    <div className="flex min-w-[10rem] flex-col gap-1 sm:flex-row sm:items-center">
+    <div className="flex min-w-[8rem] flex-col gap-1 sm:flex-row sm:items-center">
       <input
         type="text"
         value={value}
         onChange={(e) => setValue(e.target.value)}
         placeholder={WAREHOUSE_SHELF_DEFAULT}
-        className={cn("w-full rounded-md border border-slate-200 px-2 py-1 text-sm", controlFocusClass)}
+        className={cn("w-full rounded-md border border-slate-200 px-1.5 py-0.5 text-xs", controlFocusClass)}
         autoFocus
         disabled={disabled}
         onKeyDown={(e) => {
@@ -111,7 +124,7 @@ function WaitingBadge({ row }: { row: WarehouseInventoryRow }) {
         ? "bg-amber-100 text-amber-900"
         : "bg-slate-100 text-slate-700";
   return (
-    <span className={cn("inline-block rounded-md px-2 py-0.5 text-xs font-medium tabular-nums", tone)}>
+    <span className={cn("inline-block rounded px-1.5 py-0.5 text-[11px] font-medium tabular-nums", tone)}>
       {waitingLabel(row)}
     </span>
   );
@@ -160,6 +173,19 @@ export function WarehouseInventorySection({
   const summary = useMemo(() => summarizeWarehouseInventory(rows), [rows]);
   const supplierChips = useMemo(() => countOrdersBySupplier(rows.map((r) => r.order)), [rows]);
 
+  const setInventoryFilter = useCallback((next: InventoryFilter) => {
+    setFilter((prev) => (prev === next && next !== "all" ? "all" : next));
+  }, []);
+
+  useEffect(() => {
+    setFilter((prev) => {
+      if (prev === "stale" && summary.staleWarn + summary.staleCritical === 0) return "all";
+      if (prev === "critical" && summary.staleCritical === 0) return "all";
+      if (prev === "unassigned" && summary.unassignedShelf === 0) return "all";
+      return prev;
+    });
+  }, [summary.staleWarn, summary.staleCritical, summary.unassignedShelf]);
+
   const sortedRows = useMemo(
     () => sortWarehouseInventoryRows(rows, sortMode),
     [rows, sortMode]
@@ -207,7 +233,7 @@ export function WarehouseInventorySection({
   }, [filtered, sortMode]);
 
   const groupBySupplier = sortMode === "supplier";
-  const tableColSpan = groupBySupplier ? 7 : 8;
+  const tableColSpan = groupBySupplier ? 5 : 6;
 
   const inventoryGroupsAsSupplier = useMemo((): SupplierOrderGroup[] => {
     return inventoryGroups.map((g) => ({
@@ -290,43 +316,47 @@ export function WarehouseInventorySection({
             <span className="line-clamp-2">{supplierName}</span>
           </td>
         ) : null}
-        <td className="align-top">
-          <p className="font-medium text-slate-900" title={productTitle}>
+        <td className="align-top min-w-[8rem] max-w-[14rem]">
+          <p className="line-clamp-2 font-medium text-slate-900" title={productTitle}>
             {o.products}
           </p>
           {o.symbol && o.symbol !== "-" ? (
-            <p className="text-xs text-slate-500">{o.symbol}</p>
+            <p className="truncate text-[11px] text-slate-500">{o.symbol}</p>
           ) : null}
           {crossLabel ? (
-            <p className="mt-1 text-[11px] font-medium text-amber-800">{crossLabel}</p>
+            <p className="mt-0.5 line-clamp-1 text-[10px] font-medium text-amber-800">{crossLabel}</p>
           ) : null}
         </td>
-        <td className="align-top">
-          <p className="font-medium text-slate-900">{person?.name ?? "—"}</p>
-          {person?.email ? (
-            <a href={`mailto:${person.email}`} className={panelContactLinkClass}>
-              {person.email}
-            </a>
+        <td className="align-top min-w-[6rem] max-w-[10rem]">
+          <p className="truncate font-medium text-slate-900" title={person?.name ?? undefined}>
+            {person?.name ?? "—"}
+          </p>
+          {o.sales_client_name?.trim() ? (
+            <p
+              className="truncate text-[11px] text-slate-600"
+              title={o.sales_client_name.trim()}
+            >
+              {o.sales_client_name.trim()}
+            </p>
           ) : null}
         </td>
-        <td className="align-top text-slate-700">{o.sales_client_name?.trim() || "—"}</td>
-        <td className="align-top tabular-nums font-medium">{row.quantityLabel}</td>
+        <td className="align-top whitespace-nowrap tabular-nums font-medium">{row.quantityLabel}</td>
         <td className="align-top">
-          <WaitingBadge row={row} />
-        </td>
-        <td className="align-top">
-          <span
-            className={cn(
-              "inline-block rounded-md px-2 py-0.5 text-xs font-medium",
-              row.kind === "pickup_full"
-                ? "bg-emerald-100 text-emerald-900"
-                : row.kind === "pickup_partial"
-                  ? "bg-amber-100 text-amber-900"
-                  : "bg-sky-100 text-sky-900"
-            )}
-          >
-            {kindLabel(row.kind)}
-          </span>
+          <div className="flex flex-col items-start gap-1">
+            <WaitingBadge row={row} />
+            <span
+              className={cn(
+                "inline-block rounded px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide",
+                row.kind === "pickup_full"
+                  ? "bg-emerald-100 text-emerald-900"
+                  : row.kind === "pickup_partial"
+                    ? "bg-amber-100 text-amber-900"
+                    : "bg-sky-100 text-sky-900"
+              )}
+            >
+              {kindLabel(row.kind)}
+            </span>
+          </div>
         </td>
       </tr>
     );
@@ -339,119 +369,101 @@ export function WarehouseInventorySection({
       <SectionListLabel
         domain="panel"
         title="Inwentaryzacja regału"
-        hint="Co leży na magazynie — pogrupowane po dostawcy, regale lub handlowcu"
+        hint="Co czeka na odbiór — grupy po dostawcy, regale lub handlowcu"
         count={rows.length}
+        accent="emerald"
         icon={<IconClipboardList size={17} />}
-        tileClassName="bg-sky-100 text-sky-800"
+        tileClassName="bg-emerald-100 text-emerald-800"
       />
 
-      <div className={cn("space-y-4 border-b border-slate-100", panelSectionInsetClass)}>
-        <div className="grid grid-cols-2 gap-2 sm:grid-cols-2">
-          <div className="rounded-md border border-slate-200 bg-white px-3 py-2.5 shadow-[var(--shadow-card)]">
-            <p className={panelTypography.statValue}>{summary.total}</p>
-            <p className="text-xs font-medium text-slate-700">Pozycji na magazynie</p>
-          </div>
-          <div className="rounded-md border border-slate-200 bg-white px-3 py-2.5 shadow-[var(--shadow-card)]">
-            <p className={panelTypography.statValue}>
-              {supplierChips.length}
-            </p>
-            <p className="text-xs font-medium text-slate-700">Dostawców na regale</p>
-          </div>
-          <button
-            type="button"
-            onClick={() =>
-              setFilter(filter === "stale" || filter === "critical" ? "all" : "stale")
+      <div className={cn("space-y-2.5 border-b border-slate-100", panelSectionInsetClass)}>
+        <div
+          role="tablist"
+          aria-label="Filtr inwentaryzacji"
+          className="grid grid-cols-2 gap-1.5 sm:grid-cols-4 sm:gap-2"
+        >
+          <QueueMetricTab
+            active={filter === "all"}
+            count={summary.total}
+            label="Wszystkie"
+            hint={
+              supplierChips.length > 0
+                ? `${supplierChips.length} ${supplierChips.length === 1 ? "dostawca" : "dostawców"}`
+                : "pełna lista"
             }
-            className={cn(
-              "rounded-md border px-3 py-2.5 text-left shadow-[var(--shadow-card)] transition",
-              filter === "stale" || filter === "critical"
-                ? "border-amber-300 bg-amber-50/80"
-                : "border-amber-200/90 bg-amber-50/60 hover:border-amber-300"
-            )}
-          >
-            <p className={cn(panelTypography.statValue, "text-amber-900")}>
-              {summary.staleWarn + summary.staleCritical}
-            </p>
-            <p className="text-xs font-medium text-amber-800">≥ 3 dni rob. bez odbioru</p>
-          </button>
-          <button
-            type="button"
-            onClick={() => setFilter(filter === "unassigned" ? "all" : "unassigned")}
-            className={cn(
-              "rounded-md border px-3 py-2.5 text-left shadow-[var(--shadow-card)] transition",
-              filter === "unassigned"
-                ? "border-sky-300 bg-sky-50/80"
-                : "border-sky-200/90 bg-sky-50/50 hover:border-sky-300"
-            )}
-          >
-            <p className={cn(panelTypography.statValue, "text-sky-900")}>{summary.unassignedShelf}</p>
-            <p className="text-xs font-medium text-sky-800">Bez wpisanego regału (pokaże Odbiór)</p>
-          </button>
+            icon={<IconPackageCheck size={14} />}
+            tileClassName="bg-emerald-100 text-emerald-800"
+            title="Wszystkie pozycje na regale"
+            onClick={() => setInventoryFilter("all")}
+          />
+          <QueueMetricTab
+            active={filter === "stale"}
+            count={summary.staleWarn + summary.staleCritical}
+            label="≥ 3 dni"
+            hint="czeka na odbiór"
+            icon={<IconClock size={14} />}
+            tileClassName="bg-amber-100 text-amber-800"
+            title="Pozycje czekające co najmniej 3 dni robocze"
+            onClick={() => setInventoryFilter("stale")}
+            disabled={summary.staleWarn + summary.staleCritical === 0}
+          />
+          <QueueMetricTab
+            active={filter === "critical"}
+            count={summary.staleCritical}
+            label="≥ 7 dni"
+            hint="pilne do odbioru"
+            icon={<IconAlertCircle size={14} />}
+            tileClassName="bg-rose-100 text-rose-800"
+            title="Pozycje czekające co najmniej 7 dni roboczych"
+            onClick={() => setInventoryFilter("critical")}
+            disabled={summary.staleCritical === 0}
+          />
+          <QueueMetricTab
+            active={filter === "unassigned"}
+            count={summary.unassignedShelf}
+            label="Bez regału"
+            hint="brak lokalizacji"
+            icon={<IconWarehouse size={14} />}
+            tileClassName="bg-sky-100 text-sky-800"
+            title="Pozycje bez przypisanego regału"
+            onClick={() => setInventoryFilter("unassigned")}
+            disabled={summary.unassignedShelf === 0}
+          />
         </div>
 
-        <SupplierFilterChips
-          chips={supplierChips}
-          value={supplierFilter}
-          onChange={setSupplierFilter}
-          totalLabel="Wszyscy"
-        />
-        {inventoryGroups.length > 1 ? (
-          <div className="flex justify-end">
-            <Button
-              type="button"
-              variant="ghost"
-              size="sm"
-              onClick={() =>
-                inventoryCollapse.allExpanded
-                  ? inventoryCollapse.collapseAll()
-                  : inventoryCollapse.expandAll()
-              }
+        <div className={queueToolbarShellClass}>
+          <label className="min-w-0 flex-1">
+            <span className={queueToolbarFieldLabelClass}>Szukaj</span>
+            <input
+              type="search"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Produkt, handlowiec, klient…"
+              className={cn(queueToolbarInputClass, controlFocusClass)}
+            />
+          </label>
+          <label className="w-full sm:w-36">
+            <span className={queueToolbarFieldLabelClass}>Regał</span>
+            <select
+              value={shelfFilter}
+              onChange={(e) => setShelfFilter(e.target.value)}
+              className={cn(queueToolbarInputClass, controlFocusClass)}
             >
-              {inventoryCollapse.allExpanded ? "Zwiń dostawców" : "Rozwiń dostawców"}
-            </Button>
-          </div>
-        ) : null}
-
-        <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
-          <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-end">
-            <label className="min-w-0 flex-1 sm:min-w-[12rem]">
-              <span className="mb-1 block text-xs font-medium text-slate-600">Szukaj</span>
-              <input
-                type="search"
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                placeholder="Dostawca, produkt, symbol, handlowiec…"
-                className={cn(
-                  "w-full rounded-md border border-slate-200 px-3 py-2 text-sm",
-                  controlFocusClass
-                )}
-              />
-            </label>
-            <label className="w-full sm:w-44">
-              <span className="mb-1 block text-xs font-medium text-slate-600">Regał</span>
-              <select
-                value={shelfFilter}
-                onChange={(e) => setShelfFilter(e.target.value)}
-                className={cn(
-                  "w-full rounded-md border border-slate-200 px-3 py-2 text-sm",
-                  controlFocusClass
-                )}
-              >
-                <option value="">Wszystkie regały</option>
-                {shelfOptions.map((s) => (
-                  <option key={s} value={s}>
-                    {s} ({summary.byShelf.find((x) => x.shelf === s)?.count ?? 0})
-                  </option>
-                ))}
-              </select>
-            </label>
-          </div>
-          <div>
-            <span className="mb-1 block text-xs font-medium text-slate-600">Sortuj</span>
+              <option value="">Wszystkie</option>
+              {shelfOptions.map((s) => (
+                <option key={s} value={s}>
+                  {s} ({summary.byShelf.find((x) => x.shelf === s)?.count ?? 0})
+                </option>
+              ))}
+            </select>
+          </label>
+          <div className="w-full sm:w-auto sm:shrink-0">
+            <span className={queueToolbarFieldLabelClass}>Grupuj</span>
             <SegmentedControl<WarehouseInventorySortMode>
-              ariaLabel="Sortowanie inwentaryzacji"
+              ariaLabel="Grupowanie inwentaryzacji"
               value={sortMode}
               onChange={setSortMode}
+              className="w-full sm:w-auto"
               options={[
                 { value: "supplier", label: "Dostawca" },
                 { value: "shelf", label: "Regał" },
@@ -461,36 +473,29 @@ export function WarehouseInventorySection({
           </div>
         </div>
 
-        <div className="flex flex-wrap gap-2">
-          {(
-            [
-              ["all", "Wszystkie"],
-              ["stale", "Długo czeka (≥3 dni)"],
-              ["critical", "Krytyczne (≥7 dni)"],
-              ["unassigned", "Bez regału"],
-            ] as const
-          ).map(([id, label]) => (
-            <button
-              key={id}
+        <div className="flex flex-wrap items-center gap-2 pb-0.5">
+          <SupplierFilterChips
+            chips={supplierChips}
+            value={supplierFilter}
+            onChange={setSupplierFilter}
+            totalLabel="Wszyscy"
+          />
+          {inventoryGroups.length > 1 ? (
+            <Button
               type="button"
-              onClick={() => setFilter(id)}
-              className={cn(
-                "rounded-md border px-2.5 py-1.5 text-xs font-medium transition",
-                filter === id
-                  ? "border-sky-300 bg-sky-100 text-sky-900"
-                  : "border-slate-200 bg-white text-slate-600 hover:bg-slate-50"
-              )}
+              variant="ghost"
+              size="sm"
+              className="ml-auto shrink-0"
+              onClick={() =>
+                inventoryCollapse.allExpanded
+                  ? inventoryCollapse.collapseAll()
+                  : inventoryCollapse.expandAll()
+              }
             >
-              {label}
-            </button>
-          ))}
+              {inventoryCollapse.allExpanded ? "Zwiń grupy" : "Rozwiń grupy"}
+            </Button>
+          ) : null}
         </div>
-
-        <p className="text-[11px] leading-relaxed text-slate-500">
-          Całość przyjęta, <strong>część na magazynie</strong> lub <strong>informacja</strong> do
-          potwierdzenia. Przy częściowych dostawach badge pokazuje, ile sztuk nadal czeka u dostawcy.
-          Sortowanie <strong>dostawca</strong> grupuje wizualnie jak w kolejce przyjęcia.
-        </p>
       </div>
 
       {!filtered.length ? (
@@ -504,20 +509,19 @@ export function WarehouseInventorySection({
         />
       ) : (
         <TableScroll className="px-0 pb-0">
-          <DataTable className="queue-table text-sm">
-            <thead>
-              <tr>
-                <th>Regał</th>
-                {!groupBySupplier ? <th className="min-w-[6.5rem]">Dostawca</th> : null}
-                <th className="min-w-[10rem]">Produkt</th>
-                <th>Handlowiec</th>
-                <th>Klient</th>
-                <th>Ilość</th>
-                <th>Czeka na odbiór</th>
-                <th>Status</th>
-              </tr>
-            </thead>
-            <tbody>
+          <div className={QUEUE_LIST_BODY_CLASS}>
+            <DataTable className="queue-table">
+              <thead>
+                <tr>
+                  <th className="w-[5.5rem]">Regał</th>
+                  {!groupBySupplier ? <th className="min-w-[5.5rem]">Dostawca</th> : null}
+                  <th>Produkt</th>
+                  <th className="min-w-[6rem]">Dla kogo</th>
+                  <th className="w-14">Ilość</th>
+                  <th className="min-w-[5.5rem]">Odbiór</th>
+                </tr>
+              </thead>
+              <tbody>
               {inventoryGroups.length > 0
                 ? inventoryGroups.map((group, groupIndex) => {
                     const isOpen = inventoryCollapse.isExpanded(group.supplierKey);
@@ -552,8 +556,9 @@ export function WarehouseInventorySection({
                     );
                   })
                 : null}
-            </tbody>
-          </DataTable>
+              </tbody>
+            </DataTable>
+          </div>
         </TableScroll>
       )}
     </section>
