@@ -16,6 +16,7 @@ import {
 import { getAppUrl } from "@/lib/env/app-config";
 import {
   buildPasswordConfirmLink,
+  emailOtpTypeFromVerification,
   passwordSetupConfirmUrl,
 } from "@/lib/auth/password-link-redirect";
 import { passwordValidationError } from "@/lib/auth/password-policy";
@@ -362,7 +363,10 @@ export async function actionGeneratePasswordResetLink(
 
   return {
     success: true,
-    link: buildPasswordConfirmLink(data.properties.hashed_token, "recovery"),
+    link: buildPasswordConfirmLink(
+      data.properties.hashed_token,
+      emailOtpTypeFromVerification(data.properties.verification_type)
+    ),
   };
 }
 

@@ -39,6 +39,14 @@ export function SetPasswordForm() {
     if (linkError) {
       setSessionError(linkError);
       setPhase("error");
+      const clean = scrubPasswordLinkFromLocation(
+        window.location.pathname,
+        window.location.search,
+        window.location.hash
+      );
+      if (clean !== `${window.location.pathname}${window.location.search}`) {
+        router.replace(clean);
+      }
       return;
     }
 
@@ -121,7 +129,7 @@ export function SetPasswordForm() {
   }
 
   if (phase === "checking") {
-    return <AuthFormStatus label="Weryfikacja linku zaproszenia…" />;
+    return <AuthFormStatus label="Weryfikacja linku…" />;
   }
 
   if (phase === "error") {

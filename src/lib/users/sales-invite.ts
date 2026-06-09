@@ -2,6 +2,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { getAppUrl } from "@/lib/env/app-config";
 import {
   buildPasswordConfirmLink,
+  emailOtpTypeFromVerification,
   passwordSetupConfirmUrl,
 } from "@/lib/auth/password-link-redirect";
 import { assertUniqueSalesPersonLink } from "@/lib/users/sales-person-link";
@@ -92,7 +93,10 @@ export async function generateSalesPersonInviteLink(
     }
 
     return {
-      link: buildPasswordConfirmLink(data.properties.hashed_token, "recovery"),
+      link: buildPasswordConfirmLink(
+        data.properties.hashed_token,
+        emailOtpTypeFromVerification(data.properties.verification_type)
+      ),
       email,
       salesPersonName: person.name,
       mode: "recovery",
@@ -113,7 +117,10 @@ export async function generateSalesPersonInviteLink(
   }
 
   return {
-    link: buildPasswordConfirmLink(data.properties.hashed_token, "invite"),
+    link: buildPasswordConfirmLink(
+      data.properties.hashed_token,
+      emailOtpTypeFromVerification(data.properties.verification_type)
+    ),
     email,
     salesPersonName: person.name,
     mode: "invite",

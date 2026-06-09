@@ -89,7 +89,14 @@ export function scrubPasswordLinkFromUrl(
   search: string
 ): string {
   const params = new URLSearchParams(search.startsWith("?") ? search.slice(1) : search);
-  for (const key of ["code", "token_hash", "type", "error", "error_description"]) {
+  for (const key of [
+    "code",
+    "token_hash",
+    "type",
+    "error",
+    "error_description",
+    "blad",
+  ]) {
     params.delete(key);
   }
   const q = params.toString();

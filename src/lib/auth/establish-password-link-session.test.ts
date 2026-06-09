@@ -46,6 +46,10 @@ describe("parsePasswordLinkFromLocation", () => {
     ).toBe("/ustaw-haslo?wymagane=1");
   });
 
+  it("scrubPasswordLinkFromUrl removes blad param", () => {
+    expect(scrubPasswordLinkFromUrl("/ustaw-haslo", "?blad=wygasl")).toBe("/ustaw-haslo");
+  });
+
   it("locationHadPasswordLinkTokens detects hash tokens", () => {
     expect(locationHadPasswordLinkTokens("", "#access_token=a&refresh_token=b")).toBe(
       true

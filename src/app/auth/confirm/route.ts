@@ -19,25 +19,24 @@ export async function GET(request: NextRequest) {
 
   const { supabase, cookiesToAttach } = createSupabaseRouteHandlerClient(request);
 
-  function redirectWithSession(): NextResponse {
-    const response = NextResponse.redirect(destination);
-    return attachRouteAuthCookies(response, cookiesToAttach);
-  }
-
   if (code) {
     const { error } = await supabase.auth.exchangeCodeForSession(code);
     if (error) {
       destination.searchParams.set("blad", translatePasswordLinkError(error.message));
+      return NextResponse.redirect(destination);
     }
-    return redirectWithSession();
+    const response = NextResponse.redirect(destination);
+    return attachRouteAuthCookies(response, cookiesToAttach);
   }
 
   if (token_hash && type) {
     const { error } = await supabase.auth.verifyOtp({ token_hash, type });
     if (error) {
       destination.searchParams.set("blad", translatePasswordLinkError(error.message));
+      return NextResponse.redirect(destination);
     }
-    return redirectWithSession();
+    const response = NextResponse.redirect(destination);
+    return attachRouteAuthCookies(response, cookiesToAttach);
   }
 
   destination.searchParams.set(
