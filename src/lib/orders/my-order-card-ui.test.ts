@@ -66,7 +66,11 @@ describe("my-order-card-ui", () => {
   it("pasek tylko przy potwierdzeniu, nie przy statusie w toku", () => {
     expect(
       shouldShowMyOrderHeadlineBanner(
-        row({ acknowledgeMode: "pickup", headlineTone: "action" }),
+        row({
+          acknowledgeMode: "pickup",
+          headlineTone: "action",
+          pickupPendingCount: 1,
+        }),
         { expanded: false, compactActionLayout: false, canAcknowledge: true }
       )
     ).toBe(true);
@@ -78,16 +82,27 @@ describe("my-order-card-ui", () => {
     ).toBe(false);
     expect(
       shouldShowMyOrderHeadlineBanner(
-        row({ acknowledgeMode: "pickup", headlineTone: "action" }),
+        row({
+          acknowledgeMode: "pickup",
+          headlineTone: "action",
+          pickupPendingCount: 1,
+        }),
         { expanded: false, compactActionLayout: true, canAcknowledge: true }
       )
     ).toBe(false);
   });
 
   it("rowNeedsSalesAcknowledgement rozpoznaje anulowanie", () => {
-    expect(rowNeedsSalesAcknowledgement(row({ acknowledgeMode: "pickup" }))).toBe(
-      true
-    );
+    expect(
+      rowNeedsSalesAcknowledgement(
+        row({ acknowledgeMode: "pickup", pickupPendingCount: 1 })
+      )
+    ).toBe(true);
+    expect(
+      rowNeedsSalesAcknowledgement(
+        row({ acknowledgeMode: "pickup", pickupPendingCount: 0 })
+      )
+    ).toBe(false);
     expect(
       rowNeedsSalesAcknowledgement(
         row({ acknowledgeMode: "cancelled", cancelledAckOrderIds: ["x"] })

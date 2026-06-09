@@ -5,7 +5,7 @@ import { isProsbaHandoffStatus } from "@/lib/orders/my-order-sales-ui";
 /** Czy wiersz wymaga potwierdzenia od handlowca (odbiór, anulowanie, informacja). */
 export function rowNeedsSalesAcknowledgement(row: MyOrderRow): boolean {
   if (row.acknowledgeMode === "pickup" || row.acknowledgeMode === "availability") {
-    return true;
+    return row.pickupPendingCount > 0;
   }
   if (row.acknowledgeMode === "cancelled") {
     return row.cancelledAckOrderIds.length > 0;
