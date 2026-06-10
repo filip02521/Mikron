@@ -14,7 +14,7 @@ describe("formatProsbaZkLinkNumber", () => {
 describe("buildNotatnikZkWatchHref", () => {
   it("linkuje do karty ZK w notatniku z parametrem focusWatch", () => {
     expect(buildNotatnikZkWatchHref({ zkWatchId: "w-1" })).toBe(
-      "/notatnik?focusWatch=w-1#watch-w-1"
+      "/zk?focusWatch=w-1#watch-w-1"
     );
     expect(
       buildNotatnikZkWatchHref({
@@ -22,6 +22,6 @@ describe("buildNotatnikZkWatchHref", () => {
         salesPersonId: "sp-9",
         preview: true,
       })
-    ).toBe("/notatnik?dla=sp-9&focusWatch=w-1#watch-w-1");
+    ).toBe("/zk?dla=sp-9&focusWatch=w-1#watch-w-1");
   });
 });

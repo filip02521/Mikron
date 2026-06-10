@@ -1,11 +1,15 @@
 import { isPastExpectedDate } from "@/lib/orders/delivery-eta";
 import type { MyOrderRow } from "@/lib/orders/my-order-presenter";
 import { formatProsbaZkLinkNumber } from "@/lib/orders/zk-prosba-link-display";
-import { isInformacjaAvailabilityPendingStatusTitle } from "@/lib/orders/informacja-flow-copy";
+import {
+  INFORMACJA_FLOW_SALES_READY_ACK_HEADLINE,
+  isInformacjaAvailabilityPendingStatusTitle,
+} from "@/lib/orders/informacja-flow-copy";
 import { progressLabelInSubline } from "@/lib/orders/my-order-card-ui";
 
 export type MyOrderHeadlineTone =
   | "action"
+  | "informacja"
   | "warning"
   | "stock"
   | "success"
@@ -128,9 +132,9 @@ export function enrichMyOrderSalesUi(row: MyOrderRow): MyOrderSalesUi {
 
   if (row.acknowledgeMode === "availability" && row.pickupPendingCount > 0) {
     return {
-      headline: "Na magazynie",
-      headlineTone: "action",
-      subline: null,
+      headline: INFORMACJA_FLOW_SALES_READY_ACK_HEADLINE,
+      headlineTone: "informacja",
+      subline: "Potwierdź, że widziałeś/aś e-mail od magazynu",
       sortPriority: 10,
     };
   }

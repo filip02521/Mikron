@@ -78,6 +78,9 @@ export const INFORMACJA_FLOW_SALES_DIRECT = {
     "Magazyn obserwuje, czy towar dotrze na magazyn. Powiadomimy e-mailem po przyjęciu.",
 };
 
+/** Nagłówek wiersza, gdy magazyn wysłał e-mail i handlowiec ma potwierdzić odczytanie. */
+export const INFORMACJA_FLOW_SALES_READY_ACK_HEADLINE = "Powiadomienie o dostępności";
+
 /** Poprzedni tytuł statusu — zostaje w starych wpisach / testach. */
 export const INFORMACJA_AVAILABILITY_STATUS_TITLE_LEGACY = "Oczekuje na magazyn";
 

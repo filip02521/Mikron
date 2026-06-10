@@ -60,6 +60,11 @@ describe("pageTitle", () => {
     expect(pageTitle("/admin/dostawcy/nieaktywni")).toBe("Nieaktywni dostawcy");
     expect(pageTitle("/admin/urlopy")).toBe("Urlopy");
   });
+
+  it("zwraca ZK czekające dla /notatnik i /zk", () => {
+    expect(pageTitle("/notatnik")).toBe("ZK czekające");
+    expect(pageTitle("/zk")).toBe("ZK czekające");
+  });
 });
 
 describe("navForRole admin dostawcy", () => {

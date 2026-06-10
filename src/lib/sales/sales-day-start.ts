@@ -14,6 +14,7 @@ import { formatFollowUpLabel } from "@/lib/sales/notepad-follow-up";
 import { sortSalesNotes } from "@/lib/sales/notepad-note-sort";
 import { collectNotepadTodayTasks } from "@/lib/sales/notepad-today-tasks";
 import { formatProsbaZkLinkNumber } from "@/lib/orders/zk-prosba-link-display";
+import { buildNotatnikPageHref } from "@/lib/sales/notepad-page-tabs";
 import type { SalesNote, SalesZkWatch } from "@/types/database";
 
 export type SalesDayStartSource =
@@ -162,7 +163,6 @@ function buildNotepadItems(
   notes: SalesNote[],
   previewDla?: string | null
 ): SalesDayStartItem[] {
-  const previewQs = previewDla ? `?dla=${encodeURIComponent(previewDla)}` : "";
   const tasks = collectNotepadTodayTasks(watches, notes);
 
   return tasks.map((task) => {
@@ -176,11 +176,13 @@ function buildNotepadItems(
         : task.title,
       subtitle: task.subtitle ?? undefined,
       evidence: task.subtitle ?? undefined,
-      href: isZk
-        ? `/notatnik${previewQs}#${task.anchor}`
-        : `/notatnik${previewQs}#${task.anchor}`,
+      href: buildNotatnikPageHref({
+        tab: isZk ? "zk" : "notes",
+        hash: task.anchor,
+        extraParams: previewDla ? { dla: previewDla } : undefined,
+      }),
       count: 1,
-      ctaLabel: "Notatnik",
+      ctaLabel: isZk ? "ZK czekające" : "Notatki",
     };
   });
 }

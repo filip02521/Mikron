@@ -112,7 +112,7 @@ function clearedPinnedDescription(snapshot: SalesDayStartSnapshot): string {
     snapshot.pinnedAnnouncements.length > 0 || snapshot.pinnedAnnouncementOverflow > 0;
   const hasNotes = snapshot.pinnedNotes.length > 0 || snapshot.pinnedNoteOverflow > 0;
   if (hasAnnouncements && hasNotes) {
-    return "Brak pilnych akcji — poniżej kontekst z tablicy i notatnika.";
+    return "Brak pilnych akcji — poniżej kontekst z tablicy i ZK.";
   }
   if (hasAnnouncements) {
     return "Brak pilnych akcji — poniżej przypięte ogłoszenia od zakupów.";

@@ -35,7 +35,7 @@ export function SalesPanelSyncControl({
       role="group"
       aria-label={
         isNotatnik
-          ? "Synchronizacja notatnika z serwerem"
+          ? "Synchronizacja listy ZK z serwerem"
           : "Synchronizacja listy zamówień z serwerem"
       }
     >

@@ -537,8 +537,8 @@ function MojeOrdersViewContent({
     }
     const { needsAction, inProgress } = partitionMyOrderRowsBySalesAction(filteredInformacje);
     return {
-      actionInformacje: sortMyOrderRows(needsAction),
-      progressInformacje: sortMyOrderRows(inProgress),
+      actionInformacje: [] as MyOrderRow[],
+      progressInformacje: sortMyOrderRows([...needsAction, ...inProgress]),
     };
   }, [splitByAction, filteredInformacje]);
 
@@ -852,7 +852,8 @@ function MojeOrdersViewContent({
     );
   }
 
-  const compactActionRows = splitByAction || activeFilter === "pickup";
+  const compactActionRows =
+    splitByAction || activeFilter === "pickup" || activeFilter === "informacja_ready";
 
   const listProps = {
     canAcknowledge,

@@ -21,9 +21,7 @@ const NOTATNIK_AUTO_REFRESH_COOLDOWN_MS = 15_000;
 const STORAGE_KEY = "sales-auto-refresh";
 const autoRefreshStore = createPersistedFlagStore(STORAGE_KEY);
 
-function isNotatnikPath(pathname: string): boolean {
-  return pathname === "/notatnik" || pathname.startsWith("/notatnik/");
-}
+import { isSalesZkNavPath } from "@/lib/sales/notepad-page-tabs";
 
 type SalesUpdatesContextValue = {
   hasUpdates: boolean;
@@ -139,7 +137,7 @@ export function SalesUpdatesProvider({
   }, [enabled, poll]);
 
   useEffect(() => {
-    if (!enabled || !autoRefresh || isNotatnikPath(pathname)) return;
+    if (!enabled || !autoRefresh || isSalesZkNavPath(pathname)) return;
     const id = window.setInterval(() => {
       if (document.visibilityState === "hidden") return;
       if (latest && baseline && latest !== baseline) {
@@ -153,7 +151,7 @@ export function SalesUpdatesProvider({
   useEffect(() => {
     if (!enabled || syncingRef.current) return;
     if (!latest || !baseline || latest === baseline) return;
-    if (!isNotatnikPath(pathname)) return;
+    if (!isSalesZkNavPath(pathname)) return;
 
     const now = Date.now();
     if (now - lastNotatnikAutoRefreshAtRef.current < NOTATNIK_AUTO_REFRESH_COOLDOWN_MS) {
@@ -186,7 +184,7 @@ export function SalesUpdatesProvider({
 export function SalesUpdatesBanner() {
   const ctx = useSalesUpdates();
   const pathname = usePathname();
-  if (!ctx?.hasUpdates || pathname === "/moje" || isNotatnikPath(pathname)) return null;
+  if (!ctx?.hasUpdates || pathname === "/moje" || isSalesZkNavPath(pathname)) return null;
 
   return (
     <SystemNotice

@@ -17,7 +17,7 @@ export const PAGE_TITLES = {
   moje: "Moje zamówienia",
   prosba: "Nowa prośba",
   plan: "Plan zamówień",
-  notatnik: "Notatnik",
+  notatnik: "ZK czekające",
   tablica: "Komunikacja z zakupami",
   podsumowanie: "Panel dzienny",
   kolejka: "Kolejka magazynu",

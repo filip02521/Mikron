@@ -1,5 +1,5 @@
 /** Kapitalizacja słowa — np. stupczynska → Stupczynska */
-function capitalizeNamePart(part: string): string {
+export function capitalizeNamePart(part: string): string {
   const trimmed = part.trim();
   if (!trimmed) return "";
   const lower = trimmed.toLocaleLowerCase("pl-PL");
@@ -32,4 +32,40 @@ export function resolveUserDisplayName(input: {
   const fromCard = input.salesPersonName?.trim();
   if (fromCard) return fromCard;
   return displayNameFromEmail(input.email);
+}
+
+function titleCaseWords(value: string): string {
+  return value
+    .split(/\s+/)
+    .map((part) => capitalizeNamePart(part))
+    .filter(Boolean)
+    .join(" ");
+}
+
+/** Imię/nazwa z lokalnej części e-maila (kropki, _ i -). */
+export function formatPersonNameFromEmailLocal(email: string | null | undefined): string | null {
+  const normalized = email?.trim().toLowerCase();
+  if (!normalized) return null;
+
+  const local = normalized.split("@")[0]?.trim();
+  if (!local) return null;
+
+  const parts = local
+    .split(/[._-]+/)
+    .map((part) => part.trim())
+    .filter(Boolean);
+  if (!parts.length) return null;
+
+  return parts.map(capitalizeNamePart).join(" ");
+}
+
+/** Etykieta konta na ekranie logowania. */
+export function resolveLoginDisplayName(input: {
+  salesPersonName?: string | null;
+  email: string;
+}): string {
+  const fromCard = input.salesPersonName?.trim();
+  if (fromCard) return titleCaseWords(fromCard);
+
+  return formatPersonNameFromEmailLocal(input.email) ?? titleCaseWords(input.email.trim()) ?? "Konto";
 }

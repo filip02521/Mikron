@@ -89,6 +89,25 @@ describe("enrichMyOrderSalesUi", () => {
     expect(withUi.headlineTone).toBe("warning");
   });
 
+  it("informacja do potwierdzenia ma fioletowy ton, nie zielony odbiór", () => {
+    const row = presentMyOrders(
+      [
+        {
+          ...baseOrder,
+          request_kind: "informacja",
+          status: "Zrealizowane",
+          quantity: "-",
+        },
+      ],
+      []
+    ).informacje[0]!;
+    const ui = enrichMyOrderSalesUi(row);
+    expect(ui.headline).toBe("Powiadomienie o dostępności");
+    expect(ui.headline).not.toBe("Na magazynie");
+    expect(ui.headlineTone).toBe("informacja");
+    expect(ui.sortPriority).toBe(10);
+  });
+
   it("część na magazynie ma ton stock, nie warning jak po terminie", () => {
     const partial = presentMyOrders(
       [{ ...baseOrder, status: "Czesciowo_zrealizowane", delivered_quantity: "2" }],

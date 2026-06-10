@@ -103,6 +103,7 @@ function ShipmentToolbar({
   pickupIds,
   pickupCount,
   isAction,
+  isInformacjaAck,
   onAcknowledgePickup,
   onAcknowledgeDismiss,
   tourPreview = false,
@@ -121,6 +122,7 @@ function ShipmentToolbar({
   pickupIds: string[];
   pickupCount: number;
   isAction: boolean;
+  isInformacjaAck: boolean;
   onAcknowledgePickup: (ids: string[], shelfPickup?: boolean) => void;
   onAcknowledgeDismiss: (ids: string[]) => void;
   tourPreview?: boolean;
@@ -130,6 +132,8 @@ function ShipmentToolbar({
   const compactPickup = ackMode === "pickup";
   const pickupLabel = myOrderPickupAckLabel(pendingForLabel, ackMode, { compact: compactPickup });
   const pickupTitle = myOrderPickupAckTitle(pendingForLabel, ackMode);
+  const ackPrimaryVariant = isInformacjaAck ? "segmentInformacja" : "segmentPrimary";
+  const ackActionVariant = isInformacjaAck ? "informacjaAck" : "action";
 
   const hasToolbar =
     overflowMenu ||
@@ -152,7 +156,7 @@ function ShipmentToolbar({
     <>
       {showDismissAck ? (
         <MyOrderAckButton
-          variant={groupedAcks ? "segmentOutline" : isAction ? "action" : "inline"}
+          variant={groupedAcks ? "segmentOutline" : isAction ? ackActionVariant : "inline"}
           disabled={pending}
           preview={tourPreview}
           title={dismissAckTitle}
@@ -167,12 +171,12 @@ function ShipmentToolbar({
           variant={
             groupedAcks
               ? showDismissAck
-                ? "segmentPrimary"
+                ? ackPrimaryVariant
                 : "segmentOutline"
               : pickupAckOnlyToolbar
-                ? "segmentPrimary"
-                : isAction
-                  ? "action"
+                ? ackPrimaryVariant
+                : isAction || isInformacjaAck
+                  ? ackActionVariant
                   : "inline"
           }
           disabled={pending}
@@ -189,7 +193,9 @@ function ShipmentToolbar({
       ) : null}
       {showBulkPickup ? (
         <MyOrderAckButton
-          variant={groupedAcks || pickupAckOnlyToolbar ? "segmentPrimary" : "action"}
+          variant={
+            groupedAcks || pickupAckOnlyToolbar ? ackPrimaryVariant : ackActionVariant
+          }
           disabled={pending}
           preview={tourPreview}
           title={pickupTitle}
@@ -343,10 +349,11 @@ export function MyOrderShipmentCard({
   const showStatusBadge = shouldShowOrderStatusBadge(row);
   const canEditClient = canAcknowledge && Boolean(onSaveClient);
 
+  const isInformacjaAck =
+    row.acknowledgeMode === "availability" && row.pickupPendingCount > 0;
   const isAction =
     headlineTone === "action" ||
     row.acknowledgeMode === "pickup" ||
-    row.acknowledgeMode === "availability" ||
     showDismissAck;
   const isUrgent = headlineTone === "warning";
   const isStock = headlineTone === "stock";
@@ -482,7 +489,7 @@ export function MyOrderShipmentCard({
 
   const bannerAction = bannerAckInHeadline ? (
     <MyOrderAckButton
-      variant="banner"
+      variant={isInformacjaAck ? "bannerInformacja" : "banner"}
       disabled={pending}
       preview={tourPreview}
       title={pickupAckTitle}
@@ -501,6 +508,7 @@ export function MyOrderShipmentCard({
       showDismissAck={Boolean(showDismissAck)}
       hideSinglePickup={bannerAckInHeadline}
       ackMode={ackMode}
+      isInformacjaAck={isInformacjaAck}
       dismissAckLabel={dismissAckLabel}
       dismissAckTitle={dismissAckTitle}
       dismissAckIds={dismissAckIds}
@@ -550,10 +558,12 @@ export function MyOrderShipmentCard({
     salesTypography.rowBody,
     "truncate",
     isAction && "text-emerald-800",
+    isInformacjaAck && "font-medium text-violet-900",
     isUrgent && "text-amber-900",
     isStock && "text-sky-900",
     isInformacja &&
       !isAction &&
+      !isInformacjaAck &&
       !isUrgent &&
       !isStock &&
       "font-medium text-violet-900",
@@ -575,6 +585,7 @@ export function MyOrderShipmentCard({
         mojeShipmentRowClass({
           expanded,
           isAction,
+          isInformacjaAck,
           isUrgent,
           isStock,
           isInformacja,

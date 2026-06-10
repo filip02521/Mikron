@@ -39,7 +39,13 @@ export function myOrderUsesSalesHeadline(row: MyOrderRow): boolean {
 export function shouldShowOrderStatusBadge(row: MyOrderRow): boolean {
   if (rowNeedsSalesAcknowledgement(row)) return false;
   if (row.kind === "informacja") return false;
-  if (row.headlineTone === "action" || row.headlineTone === "success") return false;
+  if (
+    row.headlineTone === "action" ||
+    row.headlineTone === "informacja" ||
+    row.headlineTone === "success"
+  ) {
+    return false;
+  }
   if (
     row.headlineTone === "warning" ||
     row.headlineTone === "stock" ||

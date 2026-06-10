@@ -7,18 +7,25 @@ import { isAdmin, isSalesAccount, isSalesManager } from "@/lib/auth-roles";
 import { SalesAccountLinkRequired } from "@/components/sales/SalesAccountLinkRequired";
 import { NotatnikClient } from "@/components/notatnik/NotatnikClient";
 import { getSubiektAvailability } from "@/lib/subiekt/availability";
+import { parseNotatnikPageTab } from "@/lib/sales/notepad-page-tabs";
 
 import type { Metadata } from "next";
 import { pageMetadataFor } from "@/lib/ui/page-metadata";
 
 export const metadata: Metadata = pageMetadataFor("notatnik");
 
+type NotatnikSearchParams = {
+  dla?: string;
+  focusWatch?: string;
+  tab?: string;
+};
+
 export default async function NotatnikPage({
   searchParams,
 }: {
-  searchParams: Promise<{ dla?: string; focusWatch?: string }>;
+  searchParams: Promise<NotatnikSearchParams>;
 }) {
-  const { dla: previewSalesPersonId, focusWatch } = await searchParams;
+  const { dla: previewSalesPersonId, focusWatch, tab } = await searchParams;
   const role = await getAppRole();
   let salesPersonId: string | null = null;
   let salesPersonName: string | null = null;
@@ -57,7 +64,7 @@ export default async function NotatnikPage({
           previewSalesPersonId &&
           previewSalesPersonId !== ownSalesPersonId
         ) {
-          linkError = "Możesz przeglądać tylko własny notatnik — parametr ?dla= został zignorowany.";
+          linkError = "Możesz przeglądać tylko własne ZK — parametr ?dla= został zignorowany.";
         }
       }
       if (!ownSalesPersonId && user.role === "sales") {
@@ -76,8 +83,8 @@ export default async function NotatnikPage({
   if (role && isSalesAccount(role) && linkError && !previewSalesPersonId) {
     return (
       <SalesAccountLinkRequired
-        title="Notatnik"
-        description="Twoje notatki i zamówienia klienta (ZK) czekające na towar. Konto musi być przypisane do profilu handlowca."
+        title="ZK czekające"
+        description="ZK czekające na towar i własne notatki. Konto musi być przypisane do profilu handlowca."
       />
     );
   }
@@ -95,23 +102,25 @@ export default async function NotatnikPage({
     try {
       notepad = await fetchSalesNotepad(salesPersonId);
     } catch (e) {
-      loadError = e instanceof Error ? e.message : "Nie udało się załadować notatnika.";
+      loadError = e instanceof Error ? e.message : "Nie udało się załadować listy ZK.";
     }
   }
 
   const subiektAvailability = await getSubiektAvailability();
+  const initialTab = parseNotatnikPageTab(tab) ?? undefined;
 
   return (
     <NotatnikClient
       initial={notepad}
       initialFocusWatchId={focusWatch?.trim() || null}
+      initialTab={initialTab}
       readOnly={!!isTeamPreview}
       subiektAvailability={subiektAvailability}
-      pageTitle={isTeamPreview ? `Notatnik: ${salesPersonName}` : "Notatnik"}
+      pageTitle={isTeamPreview ? `ZK czekające: ${salesPersonName}` : "ZK czekające"}
       pageDescription={
         isTeamPreview
-          ? "Podgląd notatek i ZK wybranego handlowca. Edycja tylko we własnym notatniku."
-          : "Wpisz numer zamówienia klienta (ZK) — dane wczytają się automatycznie. Notatki i archiwum w jednym miejscu."
+          ? "Podgląd ZK czekających i notatek wybranego handlowca. Edycja tylko we własnej zakładce ZK czekające."
+          : undefined
       }
       linkError={linkError && (previewSalesPersonId || role === "sales") ? linkError : null}
       loadError={loadError}

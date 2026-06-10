@@ -59,8 +59,10 @@ describe("sales onboarding steps", () => {
 
   it("notatnik step describes page top-to-bottom", () => {
     const notatnik = getSalesOnboardingSteps("sales").find((s) => s.id === "notatnik");
+    expect(notatnik?.title).toBe("ZK czekające");
     expect(notatnik?.bullets[0]).toMatch(/Do zrobienia dziś/i);
-    expect(notatnik?.bullets[2]).toMatch(/Czeka na towar/i);
+    expect(notatnik?.bullets[1]).toMatch(/Zakładka „ZK”/i);
+    expect(notatnik?.bullets[4]).toMatch(/Zakładka „Notatki”/i);
   });
 
   it("plan step describes open requests before procurement calendar", () => {

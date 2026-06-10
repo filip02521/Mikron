@@ -1,4 +1,4 @@
-const SALES_PREVIEW_PATHS = ["/moje", "/prosba", "/plan", "/tablica", "/notatnik"];
+const SALES_PREVIEW_PATHS = ["/moje", "/prosba", "/plan", "/tablica", "/notatnik", "/zk"];
 
 function isSalesPreviewPath(href: string): boolean {
   const hashIndex = href.indexOf("#");

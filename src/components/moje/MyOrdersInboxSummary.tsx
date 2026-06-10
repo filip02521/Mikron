@@ -225,7 +225,7 @@ export function MyOrdersInboxSummary({
           </span>
           <SubChip count={summary.pickupCount} label="Gotowe" tone="action" filter="pickup" {...chipProps} />
           <SubChip count={summary.cancelAckCount} label="Anulowanie" tone="neutral" filter="cancel_ack" {...chipProps} />
-          <SubChip count={summary.informacjaReadyCount} label="Informacja gotowa" tone="success" filter="informacja_ready" {...chipProps} />
+          <SubChip count={summary.informacjaReadyCount} label="Informacja gotowa" tone="purple" filter="informacja_ready" {...chipProps} />
         </div>
       ) : null}
 

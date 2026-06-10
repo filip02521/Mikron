@@ -19,8 +19,10 @@ import type { DeliveryStats } from "@/types/database";
 export type SalesShellMetrics = {
   activityVersion: string;
   navAttention: number;
-  /** Zsumowany Start dnia — zamówienia + notatnik + tablica. */
+  /** Zsumowany Start dnia — zamówienia + ZK/notatki + tablica. */
   dayStartNavCount: number;
+  /** Badge na zakładce ZK czekające — zaległe przypomnienia ZK i notatek. */
+  notepadNavBadge: number;
 };
 
 /** Jedno pobranie listy + statystyk dla badge i wersji aktywności (AppShell). */
@@ -67,5 +69,6 @@ export async function fetchSalesShellMetrics(
     navAttention:
       inbox.pickupCount + inbox.cancelAckCount + inbox.informacjaReadyCount,
     dayStartNavCount: salesDayStartNavCount(inbox, notepadDue, boardNav),
+    notepadNavBadge: notepadDue,
   };
 }

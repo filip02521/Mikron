@@ -15,6 +15,7 @@ import {
   IconWarehouse,
   IconInbox,
   IconNotepad,
+  IconPackageCheck,
   type StrokeIconProps,
 } from "@/components/icons/StrokeIcons";
 
@@ -32,6 +33,7 @@ export type NavIconKey =
   | "newRequest"
   | "plan"
   | "notepad"
+  | "clientZk"
   | "board"
   | "team"
   | "teamAccounts";
@@ -53,6 +55,7 @@ const NAV_ICON_BY_KEY: Record<
   newRequest: IconPlusCircle,
   plan: IconCalendar,
   notepad: IconNotepad,
+  clientZk: IconPackageCheck,
   board: IconInbox,
   team: IconUsers,
   teamAccounts: IconUserCog,
@@ -73,7 +76,8 @@ const HREF_TO_NAV_ICON: Record<string, NavIconKey> = {
   "/moje": "myOrders",
   "/prosba": "newRequest",
   "/plan": "plan",
-  "/notatnik": "notepad",
+  "/notatnik": "clientZk",
+  "/zk": "clientZk",
   "/notatki": "notepad",
   "/tablica": "board",
   "/zakupy/tablica": "board",
@@ -101,6 +105,7 @@ export function navIconTileIdleClass(key: NavIconKey): string {
     case "newRequest":
     case "plan":
     case "notepad":
+    case "clientZk":
     case "board":
     case "schedule":
     case "team":

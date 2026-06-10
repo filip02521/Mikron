@@ -53,7 +53,7 @@ export function ZkProsbaLinkChip({
     <Link
       href={resolvedHref}
       className="inline max-w-full min-w-0 truncate text-inherit hover:text-indigo-800 hover:underline"
-      title={`Otwórz ZK ${nr} w notatniku`}
+      title={`Otwórz ZK ${nr} w ZK czekających`}
     >
       {numberEl}
     </Link>

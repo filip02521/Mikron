@@ -42,6 +42,7 @@ async function salesPersonIdForAction(): Promise<string> {
 
 function revalidateNotepad() {
   revalidatePath("/notatnik");
+  revalidatePath("/zk");
   revalidatePath("/", "layout");
 }
 

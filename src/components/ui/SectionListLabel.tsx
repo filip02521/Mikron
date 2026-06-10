@@ -1,4 +1,5 @@
 import { cn } from "@/lib/cn";
+import type { ReactNode } from "react";
 import { SectionHeadingIcon } from "@/components/icons/SectionHeadingIcon";
 import { panelTypography, salesTypography } from "@/lib/ui/ontime-theme";
 
@@ -57,6 +58,7 @@ export function SectionListLabel({
   title,
   hint,
   count,
+  badges,
   accent = "neutral",
   domain = "sales",
   icon,
@@ -66,6 +68,7 @@ export function SectionListLabel({
   title: string;
   hint?: string;
   count?: number;
+  badges?: ReactNode;
   accent?: SectionListAccent;
   /** sales — panel handlowca; panel — zakupy / magazyn / operacje. */
   domain?: "sales" | "panel";
@@ -87,9 +90,12 @@ export function SectionListLabel({
       <div className="flex min-w-0 items-start gap-2.5">
         <SectionHeadingIcon tileClassName={tileClassName}>{icon}</SectionHeadingIcon>
         <div className="min-w-0">
-          <h3 id={id} className={cn(titleClass, id && "scroll-mt-24")}>
-            {title}
-          </h3>
+          <div className="flex flex-wrap items-center gap-2">
+            <h3 id={id} className={cn(titleClass, id && "scroll-mt-24")}>
+              {title}
+            </h3>
+            {badges}
+          </div>
           {hint ? <p className={hintClass}>{hint}</p> : null}
         </div>
       </div>

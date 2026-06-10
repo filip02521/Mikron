@@ -137,6 +137,13 @@ export const mojePickupControlClass = cn(
   mojeControlHeightClass
 );
 
+/** Potwierdzenie powiadomienia informacyjnego od magazynu. */
+export const mojeInformacjaAckControlClass = cn(
+  "inline-flex items-center justify-center gap-0.5 rounded-md border border-violet-700 bg-violet-600 px-3 text-xs font-semibold text-white shadow-sm transition",
+  "hover:bg-violet-700 active:bg-violet-800 disabled:cursor-not-allowed disabled:opacity-50",
+  mojeControlHeightClass
+);
+
 /** Nawigacja z panelu Start dnia (Tablica, Notatnik). */
 export const mojeBrandOutlineControlClass = cn(
   "inline-flex items-center justify-center gap-0.5 rounded-md border border-indigo-200 bg-white px-3 text-xs font-semibold text-indigo-800 shadow-sm transition",
@@ -422,6 +429,9 @@ export const panelSegmentLastClass = "rounded-r-md";
 /** Segment potwierdzenia w grupie akcji /moje — h-full wypełnia obudowę. */
 export const mojeAckSegmentPrimaryClass =
   "flex h-full min-h-0 shrink-0 items-center justify-center rounded-none border-0 bg-emerald-600 px-2.5 text-xs font-semibold leading-none text-white shadow-none transition-colors duration-150 hover:bg-emerald-700 active:bg-emerald-800 disabled:cursor-not-allowed disabled:opacity-50 sm:px-2";
+
+export const mojeAckSegmentInformacjaClass =
+  "flex h-full min-h-0 shrink-0 items-center justify-center rounded-none border-0 bg-violet-600 px-2.5 text-xs font-semibold leading-none text-white shadow-none transition-colors duration-150 hover:bg-violet-700 active:bg-violet-800 disabled:cursor-not-allowed disabled:opacity-50 sm:px-2";
 
 export const mojeAckSegmentOutlineClass =
   "flex h-full min-h-0 shrink-0 items-center justify-center rounded-none border-0 border-l border-emerald-200/90 bg-white px-2 text-xs font-semibold leading-none text-emerald-800 shadow-none transition-colors duration-150 hover:bg-emerald-50 disabled:cursor-not-allowed disabled:opacity-50 sm:px-2";

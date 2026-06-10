@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { buildNotatnikPageHref } from "@/lib/sales/notepad-page-tabs";
 import type { SalesDayStartPinnedAnnouncement } from "@/lib/sales/sales-day-start";
 import { pinnedNoteFollowUpHint } from "@/lib/sales/sales-day-start";
 import { salesBoardAnnouncementHref } from "@/lib/data/department-board";
@@ -43,7 +44,7 @@ export function SalesDayStartPinnedContext({
   if (!hasAnnouncements && !hasNotes) return null;
 
   const boardHref = previewHref("/tablica?widok=ogloszenia");
-  const notepadHref = previewHref("/notatnik");
+  const notepadHref = previewHref(buildNotatnikPageHref({ tab: "notes" }));
 
   return (
     <div className={cn("border-t border-slate-100 bg-slate-50/60 py-3", salesChromeInsetClass)}>
@@ -123,7 +124,7 @@ export function SalesDayStartPinnedContext({
                 </p>
               </div>
               <Link href={notepadHref} className="text-xs font-semibold text-indigo-700 hover:underline">
-                Notatnik
+                Notatki
               </Link>
             </div>
             <PinnedScrollCards>
@@ -132,7 +133,9 @@ export function SalesDayStartPinnedContext({
                 return (
                   <li key={note.id} className="w-[min(100%,14rem)] shrink-0 snap-start">
                     <Link
-                      href={previewHref(`/notatnik#note-${note.id}`)}
+                      href={previewHref(
+                        buildNotatnikPageHref({ tab: "notes", hash: `note-${note.id}` })
+                      )}
                       className={cn(
                         "block min-h-[4.5rem] rounded-md border p-2.5 shadow-sm transition hover:shadow-md",
                         NOTE_COLOR_CARD[note.color]

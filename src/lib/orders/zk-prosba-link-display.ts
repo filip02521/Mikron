@@ -1,5 +1,7 @@
 import { formatZkWatchDisplayNumber } from "@/lib/sales/notepad-format";
 
+import { buildNotatnikPageHref } from "@/lib/sales/notepad-page-tabs";
+
 /** Numer ZK bez prefiksu — do etykiet typu „ZK 153157/M/04/2026”. */
 export function formatProsbaZkLinkNumber(zkNumber: string | null | undefined): string {
   const raw = zkNumber?.trim();
@@ -12,11 +14,10 @@ export function buildNotatnikZkWatchHref(options: {
   salesPersonId?: string;
   preview?: boolean;
 }): string {
-  const watchId = options.zkWatchId.trim();
-  const params = new URLSearchParams();
-  if (options.preview && options.salesPersonId?.trim()) {
-    params.set("dla", options.salesPersonId.trim());
-  }
-  params.set("focusWatch", watchId);
-  return `/notatnik?${params.toString()}#watch-${watchId}`;
+  return buildNotatnikPageHref({
+    tab: "zk",
+    focusWatch: options.zkWatchId,
+    salesPersonId: options.salesPersonId,
+    preview: options.preview,
+  });
 }

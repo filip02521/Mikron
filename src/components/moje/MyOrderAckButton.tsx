@@ -3,9 +3,11 @@
 import { Button } from "@/components/ui/Button";
 import { cn } from "@/lib/cn";
 import {
+  mojeAckSegmentInformacjaClass,
   mojeAckSegmentOutlineClass,
   mojeAckSegmentPrimaryClass,
   mojeControlHeightClass,
+  mojeInformacjaAckControlClass,
   mojePickupControlClass,
   mojeSecondaryControlClass,
   panelSegmentLastClass,
@@ -25,7 +27,15 @@ export function MyOrderAckButton({
   children: React.ReactNode;
   onClick: () => void;
   disabled?: boolean;
-  variant?: "banner" | "inline" | "action" | "segmentPrimary" | "segmentOutline";
+  variant?:
+    | "banner"
+    | "bannerInformacja"
+    | "inline"
+    | "action"
+    | "informacjaAck"
+    | "segmentPrimary"
+    | "segmentInformacja"
+    | "segmentOutline";
   className?: string;
   title?: string;
   ariaLabel?: string;
@@ -55,6 +65,18 @@ export function MyOrderAckButton({
           aria-label={previewTitle}
           title={previewTitle}
           className={cn(mojePickupControlClass, className)}
+        >
+          {children}
+        </span>
+      );
+    }
+    if (variant === "informacjaAck" || variant === "segmentInformacja") {
+      return (
+        <span
+          role="img"
+          aria-label={previewTitle}
+          title={previewTitle}
+          className={cn(mojeInformacjaAckControlClass, className)}
         >
           {children}
         </span>
@@ -99,6 +121,21 @@ export function MyOrderAckButton({
     );
   }
 
+  if (variant === "bannerInformacja") {
+    return (
+      <button
+        type="button"
+        disabled={disabled}
+        title={title}
+        aria-label={accessibleName}
+        onClick={onClick}
+        className={cn(mojeSecondaryControlClass, "text-violet-800", className)}
+      >
+        {children}
+      </button>
+    );
+  }
+
   if (variant === "segmentPrimary") {
     return (
       <button
@@ -114,6 +151,21 @@ export function MyOrderAckButton({
     );
   }
 
+  if (variant === "segmentInformacja") {
+    return (
+      <button
+        type="button"
+        disabled={disabled}
+        title={title}
+        aria-label={accessibleName}
+        onClick={onClick}
+        className={cn(mojeAckSegmentInformacjaClass, className)}
+      >
+        {children}
+      </button>
+    );
+  }
+
   if (variant === "segmentOutline") {
     return (
       <button
@@ -123,6 +175,21 @@ export function MyOrderAckButton({
         aria-label={accessibleName}
         onClick={onClick}
         className={cn(mojeAckSegmentOutlineClass, className)}
+      >
+        {children}
+      </button>
+    );
+  }
+
+  if (variant === "informacjaAck") {
+    return (
+      <button
+        type="button"
+        disabled={disabled}
+        title={title}
+        aria-label={accessibleName}
+        onClick={onClick}
+        className={cn(mojeInformacjaAckControlClass, className)}
       >
         {children}
       </button>

@@ -149,9 +149,6 @@ export function SalesOnboardingPanelPreview({ stepId }: { stepId: string }) {
           <div className="rounded-md border border-violet-200 bg-violet-50/80 px-2.5 py-1.5 text-[10px] text-violet-900">
             Do zrobienia dziś · przypomnienie przy ZK
           </div>
-          <div className="rounded-md border border-slate-200 bg-white px-2.5 py-2 text-[11px] text-slate-700">
-            Notatka: oddzwonić do kliniki w piątek
-          </div>
           <div className="rounded-md border border-amber-200 bg-amber-50 px-2.5 py-2 text-[11px] text-amber-950">
             <p className="font-semibold">ZK/2026/0138 · Gabinet Dr Kowalski</p>
             <p className="mt-0.5 text-[10px] font-medium text-amber-800">Czeka na towar</p>
@@ -159,6 +156,9 @@ export function SalesOnboardingPanelPreview({ stepId }: { stepId: string }) {
             <span className="mt-1.5 inline-block rounded bg-indigo-600 px-1.5 py-0.5 text-[9px] font-semibold text-white">
               Zgłoś prośbę
             </span>
+          </div>
+          <div className="rounded-md border border-slate-200 bg-white px-2.5 py-2 text-[11px] text-slate-700">
+            Notatki · oddzwonić do kliniki w piątek
           </div>
         </div>
       );

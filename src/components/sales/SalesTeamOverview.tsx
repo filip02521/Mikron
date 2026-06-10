@@ -6,6 +6,7 @@ import { formatSalesPersonAccountStatus } from "@/lib/data/sales-people-admin";
 import type { SalesGroupRow } from "@/lib/data/sales-groups";
 import type { SalesTeamUiContext } from "@/lib/sales/team-ui";
 import { groupSalesPeopleForTeamView } from "@/lib/sales/team-grouping";
+import { buildNotatnikPageHref } from "@/lib/sales/notepad-page-tabs";
 import { Card } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
@@ -49,9 +50,11 @@ function SalesPersonCardActions({
           {isSelf ? "Moje zamówienia" : "Zobacz prośby"}
         </Button>
       </TeamCardActionLink>
-      <TeamCardActionLink href={`/notatnik?dla=${rowId}`}>
+      <TeamCardActionLink
+        href={buildNotatnikPageHref({ extraParams: { dla: rowId } })}
+      >
         <Button size="sm" variant="outline" className="h-11 w-full px-2 text-xs sm:h-8">
-          Notatnik
+          ZK czekające
         </Button>
       </TeamCardActionLink>
       {!isSelf && !readOnlyPreview ? (
@@ -104,7 +107,7 @@ function SalesPersonCard({
             <dd className="font-semibold tabular-nums text-slate-900">
               {row.pendingZkCount > 0 ? (
                 <Link
-                  href={`/notatnik?dla=${row.id}`}
+                  href={buildNotatnikPageHref({ extraParams: { dla: row.id } })}
                   className="text-amber-800 underline decoration-amber-300 underline-offset-2 hover:text-amber-950"
                 >
                   {row.pendingZkCount}
@@ -119,7 +122,7 @@ function SalesPersonCard({
             <dd className="font-semibold tabular-nums text-slate-900">
               {row.followUpDueZkCount > 0 ? (
                 <Link
-                  href={`/notatnik?dla=${row.id}`}
+                  href={buildNotatnikPageHref({ extraParams: { dla: row.id } })}
                   className="text-violet-800 underline decoration-violet-200 underline-offset-2 hover:text-violet-950"
                 >
                   {row.followUpDueZkCount}

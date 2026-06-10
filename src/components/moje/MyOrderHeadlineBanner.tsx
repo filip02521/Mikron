@@ -17,6 +17,11 @@ const toneStyles: Record<
     title: "text-white",
     sub: "text-emerald-100",
   },
+  informacja: {
+    wrap: "bg-violet-600 text-white",
+    title: "text-white",
+    sub: "text-violet-100",
+  },
   warning: {
     wrap: "bg-amber-50 text-amber-950",
     title: "text-amber-950",

@@ -307,7 +307,7 @@ describe("resolveZkWatchIdsForOrderSync", () => {
     expect(resolveZkWatchIdsForOrderSync(order, [watchA, watchB])).toEqual(["w-a"]);
   });
 
-  it("sync wszystkich ZK klienta bez jawnego powiązania", () => {
+  it("sync wszystkich ZK czekających bez jawnego powiązania", () => {
     const watchA = watch({ id: "w-a", client_kh_id: 42, zk_number: "ZK/1" });
     const watchB = watch({ id: "w-b", client_kh_id: 42, zk_number: "ZK/2" });
     const watchOther = watch({ id: "w-c", client_kh_id: 99, zk_number: "ZK/3" });
@@ -344,7 +344,7 @@ describe("resolveZkWatchIdsForOrderSync", () => {
     expect(resolveZkWatchIdsForOrderSync(order, [watchA, watchB])).toEqual(["w-a"]);
   });
 
-  it("nie sync innego ZK klienta gdy prośba ma jawny numer ZK", () => {
+  it("nie sync innego ZK czekającego gdy prośba ma jawny numer ZK", () => {
     const watchA = watch({ id: "w-a", client_kh_id: 42, zk_number: "234/M/03/2026" });
     const watchB = watch({ id: "w-b", client_kh_id: 42, zk_number: "235/M/03/2026" });
     const order = linkOrder({

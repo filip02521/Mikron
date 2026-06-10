@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useSalesOnboardingDemo } from "@/components/sales/SalesOnboardingContext";
 import { buildOnboardingNotepadDemo } from "@/lib/sales/sales-onboarding-demo-data";
 import { Card, CardHeader } from "@/components/ui/Card";
@@ -9,9 +9,9 @@ import { Alert } from "@/components/ui/Alert";
 import { Badge } from "@/components/ui/Badge";
 import { UndoToast } from "@/components/ui/UndoToast";
 import { Toast } from "@/components/ui/Toast";
-import { IconNotepad, IconPackageCheck, IconArchive, IconClipboardPen } from "@/components/icons/StrokeIcons";
+import { IconPackageCheck, IconArchive, IconClipboardPen } from "@/components/icons/StrokeIcons";
 import { SectionHeadingIcon } from "@/components/icons/SectionHeadingIcon";
-import { sectionIconTileBrandClass, salesChromeInsetClass } from "@/lib/ui/ontime-theme";
+import { salesChromeInsetClass } from "@/lib/ui/ontime-theme";
 import { mergeRecordsByUpdatedAt, uniqueById } from "@/lib/sales/notepad-list";
 import { sortZkWatches } from "@/lib/sales/zk-watch-sort";
 import { ZkWatchGroupedList } from "./ZkWatchGroupedList";
@@ -45,7 +45,7 @@ import { NotesSection } from "./NotesSection";
 import { ArchivedNotesSection } from "./ArchivedNotesSection";
 import { TodayTasksSection } from "./TodayTasksSection";
 import { NotatnikPanel } from "./NotatnikPanel";
-import { NotatnikCollapsible } from "./NotatnikCollapsible";
+import { NotatnikTabBar } from "./NotatnikTabBar";
 import { NOTATNIK_PAGE_CLASS } from "./notatnik-layout";
 import { ManagerPreviewBanner } from "@/components/sales/ManagerPreviewBanner";
 import { SalesPanelSyncControl } from "@/components/sales/SalesPanelSyncControl";
@@ -60,6 +60,11 @@ import {
   resolveWatchFocusRequest,
   watchFocusOpensSections,
 } from "@/lib/sales/notepad-watch-focus";
+import {
+  notatnikPagePathForTab,
+  resolveNotatnikPageTab,
+  type NotatnikPageTab,
+} from "@/lib/sales/notepad-page-tabs";
 import { cn } from "@/lib/cn";
 
 type NotatnikUndoState =
@@ -67,8 +72,8 @@ type NotatnikUndoState =
   | { type: "reorder"; notes: SalesNote[] }
   | { type: "close-zk"; watch: SalesZkWatch };
 
-const NOTATNIK_INTRO =
-  "Wpisz numer zamówienia klienta (ZK) — dane wczytają się automatycznie. Notatki i archiwum w jednym miejscu.";
+const PAGE_INTRO =
+  "Zakładka ZK to lista zamówień klientów z Subiekta. Notatki i archiwum są w sąsiednich zakładkach.";
 
 function contextualizeSubiektMessage(message: string): string {
   return message
@@ -94,6 +99,7 @@ function contextualizeSubiektMessage(message: string): string {
 export function NotatnikClient({
   initial,
   initialFocusWatchId = null,
+  initialTab,
   readOnly,
   pageTitle,
   pageDescription,
@@ -104,6 +110,7 @@ export function NotatnikClient({
 }: {
   initial: SalesNotepadData;
   initialFocusWatchId?: string | null;
+  initialTab?: NotatnikPageTab;
   readOnly?: boolean;
   pageTitle: string;
   pageDescription?: string;
@@ -117,6 +124,7 @@ export function NotatnikClient({
   } | null;
 }) {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const tourDemo = useSalesOnboardingDemo("notatnik");
   const demoInitial = useMemo(
     () => buildOnboardingNotepadDemo(initial.notes[0]?.sales_person_id ?? "onboarding-demo"),
@@ -134,13 +142,14 @@ export function NotatnikClient({
   const [archivedWatches, setArchivedWatches] = useState(source.archivedZkWatches);
   const [notes, setNotes] = useState(source.notes);
   const [archivedNotes, setArchivedNotes] = useState(source.archivedNotes);
-  const [showZk, setShowZk] = useState(
-    () =>
-      tourDemo ||
-      initialFocusSections.showZk ||
-      source.zkWatches.some((watch) => watchNeedsNotepadAttention(watch))
+  const [activeTab, setActiveTab] = useState<NotatnikPageTab>(() =>
+    resolveNotatnikPageTab({
+      tabParam: initialTab ?? searchParams.get("tab"),
+      focusWatchId: initialFocus,
+      watchInOpen: initialFocusSections.showZk,
+      watchInArchive: initialFocusSections.showArchive,
+    })
   );
-  const [showArchive, setShowArchive] = useState(() => initialFocusSections.showArchive);
   const [focusWatchId, setFocusWatchId] = useState<string | null>(initialFocus);
   const [focusWatchError, setFocusWatchError] = useState<string | null>(null);
   const [liveAnnouncement, setLiveAnnouncement] = useState("");
@@ -152,6 +161,41 @@ export function NotatnikClient({
   const zkWatchesRef = useRef(zkWatches);
   const archivedWatchesRef = useRef(archivedWatches);
   const dismissUndo = useCallback(() => setUndo(null), []);
+
+  const navigateToTab = useCallback(
+    (tab: NotatnikPageTab, options?: { hash?: string; focusWatch?: string | null }) => {
+      setActiveTab(tab);
+      if (tourDemo) return;
+
+      const path = notatnikPagePathForTab(tab);
+      const params = new URLSearchParams(searchParams.toString());
+
+      if (options?.focusWatch?.trim()) {
+        params.set("focusWatch", options.focusWatch.trim());
+      } else if (tab !== "zk") {
+        params.delete("focusWatch");
+      }
+
+      if (tab === "zk" && path === "/zk") {
+        params.delete("tab");
+      } else {
+        params.set("tab", tab);
+      }
+
+      const hashRaw = options?.hash?.trim() ?? "";
+      const hash = hashRaw
+        ? hashRaw.startsWith("#")
+          ? hashRaw
+          : `#${hashRaw}`
+        : options?.focusWatch?.trim()
+          ? `#watch-${options.focusWatch.trim()}`
+          : "";
+
+      const qs = params.toString();
+      router.replace(qs ? `${path}?${qs}${hash}` : `${path}${hash}`, { scroll: false });
+    },
+    [router, searchParams, tourDemo]
+  );
 
   useEffect(() => {
     zkWatchesRef.current = zkWatches;
@@ -169,14 +213,14 @@ export function NotatnikClient({
     );
     if (result.kind === "missing") {
       setFocusWatchError(
-        "Nie znaleziono tej ZK w notatniku — sprawdź, czy sprawa nie została zamknięta lub usunięta."
+        "Nie znaleziono tej ZK — sprawdź, czy sprawa nie została zamknięta lub usunięta."
       );
       return false;
     }
 
     setFocusWatchError(null);
-    if (result.showZk) setShowZk(true);
-    if (result.showArchive) setShowArchive(true);
+    const tab: NotatnikPageTab = result.showArchive && !result.showZk ? "archive" : "zk";
+    setActiveTab(tab);
     if (focusHandledWatchRef.current !== watchId.trim()) {
       setFocusWatchId(watchId.trim());
     }
@@ -196,6 +240,7 @@ export function NotatnikClient({
 
     const anchor = parseNotepadHashAnchor(window.location.hash);
     if (anchor?.startsWith("note-")) {
+      setActiveTab("notes");
       flashNotepadAnchor(anchor);
     }
   }, [applyWatchFocus]);
@@ -212,6 +257,28 @@ export function NotatnikClient({
     window.addEventListener("hashchange", syncWatchFocusFromLocation);
     return () => window.removeEventListener("hashchange", syncWatchFocusFromLocation);
   }, [syncWatchFocusFromLocation]);
+
+  useEffect(() => {
+    if (tourDemo) return;
+    const focusParam = searchParams.get("focusWatch")?.trim() || null;
+    const hash = typeof window !== "undefined" ? window.location.hash : "";
+    const nextTab = resolveNotatnikPageTab({
+      tabParam: searchParams.get("tab"),
+      hash,
+      focusWatchId: focusParam ?? focusWatchId,
+      watchInOpen: focusParam ? zkWatches.some((w) => w.id === focusParam) : undefined,
+      watchInArchive: focusParam ? archivedWatches.some((w) => w.id === focusParam) : undefined,
+    });
+    setActiveTab(nextTab);
+  }, [archivedWatches, focusWatchId, searchParams, tourDemo, zkWatches]);
+
+  useEffect(() => {
+    if (tourDemo) return;
+    const hasArchiveContent = archivedWatches.length > 0 || archivedNotes.length > 0;
+    if (activeTab === "archive" && !hasArchiveContent) {
+      navigateToTab("zk");
+    }
+  }, [activeTab, archivedNotes.length, archivedWatches.length, navigateToTab, tourDemo]);
 
   const handleFocusWatchHandled = useCallback((watchId: string) => {
     focusHandledWatchRef.current = watchId;
@@ -295,7 +362,7 @@ export function NotatnikClient({
     );
     setNotes((prev) => uniqueById(mergeRecordsByUpdatedAt(prev, next.notes)));
     setArchivedNotes((prev) => uniqueById(mergeRecordsByUpdatedAt(prev, next.archivedNotes)));
-    if (tourDemo) setShowZk(true);
+    if (tourDemo) setActiveTab("notes");
   }, [
     demoInitial,
     initial,
@@ -321,7 +388,6 @@ export function NotatnikClient({
       const unseen = detectUnseenZkWarehouseArrivals(zkWatches, snapshot);
       if (unseen.length) {
         setUnseenWatchIds(new Set(unseen));
-        setShowZk(true);
         setWarehouseToast(
           unseen.length === 1
             ? "Towar z ZK jest na magazynie — pozycja odhaczona automatycznie."
@@ -336,7 +402,6 @@ export function NotatnikClient({
     if (!unseen.length) return;
 
     setUnseenWatchIds((prev) => new Set([...prev, ...unseen]));
-    setShowZk(true);
     const n = unseen.length;
     setWarehouseToast(
       n === 1
@@ -373,12 +438,13 @@ export function NotatnikClient({
         setArchivedNotes((prev) => prev.filter((n) => n.id !== snapshot.note.id));
         setNotes((prev) => uniqueById([note, ...prev]));
         flashNotepadAnchor(`note-${note.id}`);
+        navigateToTab("notes", { hash: `note-${note.id}` });
       } else if (snapshot.type === "close-zk") {
         const { watch } = await actionUndoCloseZkWatch(snapshot.watch.id);
         setArchivedWatches((prev) => prev.filter((w) => w.id !== watch.id));
         setZkWatches((prev) => uniqueById(sortZkWatches([watch, ...prev])));
-        setShowZk(true);
         flashNotepadAnchor(`watch-${watch.id}`);
+        navigateToTab("zk", { hash: `watch-${watch.id}`, focusWatch: watch.id });
       } else {
         const ids = sortSalesNotes(snapshot.notes).map((n) => n.id);
         await actionReorderSalesNotes(ids);
@@ -391,8 +457,12 @@ export function NotatnikClient({
   }
 
   function handleTodayTaskClick(anchor: string, kind: NotepadTodayTaskKind) {
+    if (kind === "note-follow-up") {
+      navigateToTab("notes", { hash: anchor });
+      return;
+    }
     if (kind === "zk-follow-up" || kind === "zk-warehouse-arrival") {
-      setShowZk(true);
+      navigateToTab("zk", { hash: anchor });
     }
     const watchId = anchor.startsWith("watch-") ? anchor.slice(6) : null;
     if (watchId && kind === "zk-warehouse-arrival") {
@@ -404,7 +474,6 @@ export function NotatnikClient({
   function handleWatchAdded(watch: SalesZkWatch) {
     setZkWatches((prev) => uniqueById(sortZkWatches([watch, ...prev])));
     setArchivedWatches((prev) => prev.filter((w) => w.id !== watch.id));
-    setShowZk(true);
     refresh();
     flashNotepadAnchor(`watch-${watch.id}`);
   }
@@ -419,14 +488,13 @@ export function NotatnikClient({
       setUndo({ type: "close-zk", watch });
     }
     setZkWatches((prev) => prev.filter((w) => w.id !== watchId));
-    setShowArchive(true);
+    navigateToTab("archive");
     refresh();
   }
 
   function handleWatchRestored(watch: SalesZkWatch) {
     setArchivedWatches((prev) => prev.filter((w) => w.id !== watch.id));
     setZkWatches((prev) => uniqueById(sortZkWatches([watch, ...prev])));
-    setShowZk(true);
     refresh();
   }
 
@@ -479,7 +547,6 @@ export function NotatnikClient({
     setArchivedNotes((archived) =>
       uniqueById([{ ...note, archived_at: now, updated_at: now }, ...archived])
     );
-    setShowArchive(false);
     setUndo({ type: "archive", note });
     refresh();
   }
@@ -538,10 +605,10 @@ export function NotatnikClient({
           inset
           density="compact"
           title={pageTitle}
-          description={pageDescription ?? NOTATNIK_INTRO}
+          description={pageDescription ?? PAGE_INTRO}
           leading={
-            <SectionHeadingIcon tileClassName={sectionIconTileBrandClass}>
-              <IconNotepad size={20} />
+            <SectionHeadingIcon tileClassName="bg-amber-100 text-amber-800">
+              <IconPackageCheck size={20} />
             </SectionHeadingIcon>
           }
         />
@@ -605,86 +672,95 @@ export function NotatnikClient({
           embedded
         />
 
+        <NotatnikTabBar
+          value={activeTab}
+          onChange={(tab) => navigateToTab(tab)}
+          zkCount={zkWatches.length}
+          notesCount={notes.length}
+          archiveCount={archiveCount}
+          showArchive={hasArchive}
+        />
+
         <div className="space-y-3 p-3 sm:p-4">
-          <NotatnikPanel
-            title="Notatki"
-            description="Własne przypomnienia i krótkie wpisy — nie trafiają do działu zakupów."
-            count={notes.length || undefined}
-            icon={<IconClipboardPen size={17} />}
-          >
-            <NotesSection
-              notes={notes}
-              readOnly={effectiveReadOnly}
-              embedded
-              onNoteCreated={handleNoteCreated}
-              onNoteUpdated={handleNoteUpdated}
-              onNoteArchived={handleNoteArchived}
-              onNotesReordered={handleNotesReordered}
-            />
-          </NotatnikPanel>
-
-          <NotatnikCollapsible
-            title="Czeka na towar"
-            description="Krótki numer (min. 2 znaki) szuka w ostatnich 30 dniach; pełny np. 234/M/03/2026 — tylko dany miesiąc."
-            count={zkWatches.length || undefined}
-            open={showZk}
-            highlight={followUpZkCount > 0 || warehouseArrivalCount > 0}
-            icon={<IconPackageCheck size={17} />}
-            tileClassName="bg-amber-100 text-amber-800"
-            badge={
-              warehouseArrivalCount > 0 || followUpZkCount > 0 ? (
-                <span className="flex flex-wrap items-center gap-1">
-                  {warehouseArrivalCount > 0 ? (
-                    <Badge variant="success" className="text-[10px]">
-                      {warehouseArrivalCount} na magazynie
-                    </Badge>
-                  ) : null}
-                  {followUpZkCount > 0 ? (
-                    <Badge variant="purple" className="text-[10px]">
-                      {followUpZkCount}{" "}
-                      {followUpZkCount === 1
-                        ? "przypomnienie"
-                        : followUpZkCount < 5
-                          ? "przypomnienia"
-                          : "przypomnień"}
-                    </Badge>
-                  ) : null}
-                </span>
-              ) : null
-            }
-            onToggle={() => setShowZk((v) => !v)}
-          >
-            <ZkWatchSection
-              watches={zkWatches}
-              zkHintsByWatchId={zkHintsByWatchId}
-              unseenWatchIds={unseenWatchIds}
-              onWatchSeen={markWatchSeen}
-              readOnly={effectiveReadOnly}
-              tourPreview={tourDemo}
-              embedded
-              compact={!tourDemo}
-              subiektReachable={tourDemo ? true : (subiektStatus?.reachable ?? false)}
-              subiektBlockedHint={
-                subiektStatus && !subiektStatus.reachable
-                  ? `${contextualizeSubiektMessage(subiektStatus.message)} Dodawanie ZK będzie możliwe po przywróceniu połączenia.`
-                  : undefined
+          {activeTab === "zk" ? (
+            <NotatnikPanel
+              title="Czeka na towar"
+              description="Krótki numer (min. 2 znaki) szuka w ostatnich 30 dniach; pełny np. 234/M/03/2026 — tylko dany miesiąc."
+              count={zkWatches.length || undefined}
+              icon={<IconPackageCheck size={17} />}
+              tileClassName="bg-amber-100 text-amber-800"
+              accent="indigo"
+              badges={
+                warehouseArrivalCount > 0 || followUpZkCount > 0 ? (
+                  <span className="flex flex-wrap items-center gap-1">
+                    {warehouseArrivalCount > 0 ? (
+                      <Badge variant="success" className="text-[10px]">
+                        {warehouseArrivalCount} na magazynie
+                      </Badge>
+                    ) : null}
+                    {followUpZkCount > 0 ? (
+                      <Badge variant="purple" className="text-[10px]">
+                        {followUpZkCount}{" "}
+                        {followUpZkCount === 1
+                          ? "przypomnienie"
+                          : followUpZkCount < 5
+                            ? "przypomnienia"
+                            : "przypomnień"}
+                      </Badge>
+                    ) : null}
+                  </span>
+                ) : null
               }
-              onWatchAdded={tourDemo ? undefined : handleWatchAdded}
-              onWatchClosed={tourDemo ? undefined : handleWatchClosed}
-              onWatchRefreshed={tourDemo ? undefined : handleWatchRefreshed}
-              focusWatchId={focusWatchId}
-              onFocusWatchHandled={handleFocusWatchHandled}
-              onLiveAnnounce={announceLive}
-            />
-          </NotatnikCollapsible>
+            >
+              <ZkWatchSection
+                watches={zkWatches}
+                zkHintsByWatchId={zkHintsByWatchId}
+                unseenWatchIds={unseenWatchIds}
+                onWatchSeen={markWatchSeen}
+                readOnly={effectiveReadOnly}
+                tourPreview={tourDemo}
+                embedded
+                compact={!tourDemo}
+                subiektReachable={tourDemo ? true : (subiektStatus?.reachable ?? false)}
+                subiektBlockedHint={
+                  subiektStatus && !subiektStatus.reachable
+                    ? `${contextualizeSubiektMessage(subiektStatus.message)} Dodawanie ZK będzie możliwe po przywróceniu połączenia.`
+                    : undefined
+                }
+                onWatchAdded={tourDemo ? undefined : handleWatchAdded}
+                onWatchClosed={tourDemo ? undefined : handleWatchClosed}
+                onWatchRefreshed={tourDemo ? undefined : handleWatchRefreshed}
+                focusWatchId={focusWatchId}
+                onFocusWatchHandled={handleFocusWatchHandled}
+                onLiveAnnounce={announceLive}
+              />
+            </NotatnikPanel>
+          ) : null}
 
-          {hasArchive ? (
-            <NotatnikCollapsible
+          {activeTab === "notes" ? (
+            <NotatnikPanel
+              title="Notatki"
+              description="Własne przypomnienia — nie trafiają do działu zakupów."
+              count={notes.length || undefined}
+              icon={<IconClipboardPen size={17} />}
+            >
+              <NotesSection
+                notes={notes}
+                readOnly={effectiveReadOnly}
+                embedded
+                onNoteCreated={handleNoteCreated}
+                onNoteUpdated={handleNoteUpdated}
+                onNoteArchived={handleNoteArchived}
+                onNotesReordered={handleNotesReordered}
+              />
+            </NotatnikPanel>
+          ) : null}
+
+          {activeTab === "archive" && hasArchive ? (
+            <NotatnikPanel
               title="Archiwum"
               description="Zamknięte ZK i zarchiwizowane notatki."
               count={archiveCount || undefined}
-              open={showArchive}
-              onToggle={() => setShowArchive((v) => !v)}
               icon={<IconArchive size={17} />}
               tileClassName="bg-slate-100 text-slate-600"
             >
@@ -719,7 +795,7 @@ export function NotatnikClient({
                   </div>
                 ) : null}
               </div>
-            </NotatnikCollapsible>
+            </NotatnikPanel>
           ) : null}
         </div>
       </Card>

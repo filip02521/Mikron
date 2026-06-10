@@ -19,7 +19,7 @@ export const DEPARTMENT_BOARD_QUESTIONS_EXPLAINER = {
 };
 
 export const DEPARTMENT_BOARD_NOTES_DISTINCTION_SALES =
-  "To nie jest Notatnik (Twoje ZK) ani wewnętrzne notatki zakupów — tu rozmawiacie z działem zakupów.";
+  "To nie jest ZK czekające (Twoje zamówienia z Subiekta) ani wewnętrzne notatki zakupów — tu rozmawiacie z działem zakupów.";
 
 export const DEPARTMENT_BOARD_NOTES_DISTINCTION_PROCUREMENT =
   "Wewnętrzne notatki działu (prywatne/wspólne) nadal są w Notatki — ta strona dotyczy komunikacji z handlowcami.";

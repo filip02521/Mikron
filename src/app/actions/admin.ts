@@ -376,6 +376,7 @@ export async function actionAddIndividualOrders(
     revalidatePath("/prosba");
     revalidatePath("/podsumowanie");
     revalidatePath("/notatnik");
+    revalidatePath("/zk");
     revalidatePath("/weryfikacja");
     revalidatePath("/", "layout");
   } else {

@@ -3,7 +3,7 @@ import { notatnikZkWatchHref } from "./notatnik-zk-watch-href";
 
 describe("notatnikZkWatchHref", () => {
   it("dodaje focusWatch i hash", () => {
-    expect(notatnikZkWatchHref("w-1")).toBe("/notatnik?focusWatch=w-1#watch-w-1");
+    expect(notatnikZkWatchHref("w-1")).toBe("/zk?focusWatch=w-1#watch-w-1");
   });
 
   it("zachowuje podgląd ?dla=", () => {

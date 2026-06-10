@@ -35,7 +35,7 @@ export function MojeOrdersHelp() {
       <HelpBlock title="Co tu jest">
         <p>
           U góry strony <strong className="font-medium text-slate-800">Start dnia</strong> — jedna
-          kolejka: gotowy towar, przypomnienia z notatnika i tablica. Poniżej pełna lista prośb u
+          kolejka: gotowy towar, przypomnienia ZK i tablica. Poniżej pełna lista prośb u
           dostawców.
         </p>
       </HelpBlock>

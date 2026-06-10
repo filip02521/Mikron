@@ -21,6 +21,7 @@ describe("sales onboarding nav", () => {
     expect(resolveTourStepIndexFromPathname(handlowiecSteps, "/prosba")).toBe(2);
     expect(resolveTourStepIndexFromPathname(handlowiecSteps, "/tablica")).toBe(4);
     expect(resolveTourStepIndexFromPathname(handlowiecSteps, "/notatnik")).toBe(5);
+    expect(resolveTourStepIndexFromPathname(handlowiecSteps, "/zk")).toBe(5);
     expect(resolveTourStepIndexFromPathname(handlowiecSteps, "/nieznane")).toBeNull();
   });
 

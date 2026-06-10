@@ -93,7 +93,7 @@ export async function AppShell({ children }: { children: React.ReactNode }) {
           navBadges = {
             ...navBadges,
             salesMoje: metrics.dayStartNavCount,
-            salesNotatnik: 0,
+            salesNotatnik: metrics.notepadNavBadge,
             salesTablica: 0,
           };
         }
@@ -117,7 +117,7 @@ export async function AppShell({ children }: { children: React.ReactNode }) {
         navBadges = {
           ...navBadges,
           salesMoje: metrics.dayStartNavCount,
-          salesNotatnik: 0,
+          salesNotatnik: metrics.notepadNavBadge,
           salesTablica: 0,
         };
       }

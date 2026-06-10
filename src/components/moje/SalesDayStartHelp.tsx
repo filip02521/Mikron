@@ -16,7 +16,7 @@ export function SalesDayStartHelp() {
     >
       <HelpBlock title="Co tu jest">
         <p>
-          Jedna kolejka na rano: gotowy towar, przypomnienia z notatnika i nowości z tablicy — bez
+          Jedna kolejka na rano: gotowy towar, przypomnienia ZK i nowości z tablicy — bez
           skakania między zakładkami.
         </p>
       </HelpBlock>
@@ -33,7 +33,7 @@ export function SalesDayStartHelp() {
       <HelpBlock title="Przypięty kontekst">
         <p>
           Ogłoszenia od zakupów i Twoje notatki — baza robocza, nie zadania. Kliknij kartę, żeby
-          przejść do tablicy lub wpisu w notatniku.
+          przejść do tablicy, ZK czekających lub wpisu w notatkach.
         </p>
       </HelpBlock>
     </HelpPopover>

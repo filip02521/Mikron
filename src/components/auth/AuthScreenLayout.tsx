@@ -60,11 +60,14 @@ export function AuthScreenLayout({
   subtitle,
   children,
   className,
+  hideCompactQuote = false,
 }: {
   title: string;
   subtitle?: string;
   children: React.ReactNode;
   className?: string;
+  /** Ukryj cytat na mobile — np. po wygaśnięciu sesji, gdy liczy się szybki powrót. */
+  hideCompactQuote?: boolean;
 }) {
   const minimal = isAuthVisualVariant('minimal');
 
@@ -83,6 +86,7 @@ export function AuthScreenLayout({
       <main
         className={cn(
           "relative isolate flex min-h-0 min-w-0 flex-1 flex-col overflow-y-auto overscroll-y-contain",
+          "scroll-smooth [scroll-padding-top:max(0.75rem,env(safe-area-inset-top))] [scroll-padding-bottom:max(1rem,env(safe-area-inset-bottom))]",
           minimal
             ? "bg-white"
             : "bg-gradient-to-br from-indigo-50/40 via-white to-sky-50/50"
@@ -92,16 +96,16 @@ export function AuthScreenLayout({
         {minimal ? <AuthMainBackdropGeometric /> : <AuthMainBackdropRich />}
         <div
           className={cn(
-            "mx-auto flex w-full max-w-md flex-1 flex-col justify-start sm:justify-center",
-            "px-4 py-6",
-            "pt-[max(1rem,env(safe-area-inset-top))]",
-            "pb-[max(1.25rem,env(safe-area-inset-bottom))]",
-            "sm:px-6 sm:py-10"
+            "mx-auto flex w-full max-w-md flex-1 flex-col",
+            "px-4 py-5",
+            "pt-[max(0.75rem,env(safe-area-inset-top))]",
+            "pb-[max(1rem,env(safe-area-inset-bottom))]",
+            "sm:px-6 sm:py-8"
           )}
         >
-          <div className="auth-enter relative z-[1] w-full">
-            <header className="mb-5 sm:mb-6 lg:mb-8">
-              <AuthBrandHeader className="mb-5 sm:mb-6" />
+          <div className="auth-enter relative z-[1] my-auto w-full min-h-0">
+            <header className="mb-4 sm:mb-5 lg:mb-8">
+              <AuthBrandHeader className="mb-4 sm:mb-5" />
               <div className="text-center">
                 <h1 className="text-lg font-semibold tracking-tight text-slate-900 sm:text-xl">
                   {title}
@@ -114,13 +118,15 @@ export function AuthScreenLayout({
               </div>
             </header>
 
-            <AuthQuotePanel compact className="mb-4 max-sm:mb-3 lg:hidden" />
+            {hideCompactQuote ? null : (
+              <AuthQuotePanel compact className="mb-3 max-sm:mb-2.5 lg:hidden" />
+            )}
 
-            <div className="auth-card-enter rounded-lg border border-slate-200/80 bg-white/95 p-5 shadow-xl shadow-slate-200/40 backdrop-blur-sm sm:p-8">
+            <div className="auth-card-enter min-h-0 rounded-lg border border-slate-200/80 bg-white/95 p-4 shadow-xl shadow-slate-200/40 backdrop-blur-sm sm:p-6">
               {children}
             </div>
 
-            <p className="mt-6 text-center text-xs leading-relaxed text-slate-400 lg:hidden">
+            <p className="mt-4 text-center text-xs leading-relaxed text-slate-400 sm:mt-5 lg:hidden">
               {ONTIME_AUTH_FOOTER}
             </p>
           </div>

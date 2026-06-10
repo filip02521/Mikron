@@ -1,3 +1,4 @@
+import { buildNotatnikPageHref } from "@/lib/sales/notepad-page-tabs";
 import Link from "next/link";
 import { Alert } from "@/components/ui/Alert";
 import { Button } from "@/components/ui/Button";
@@ -43,7 +44,7 @@ export function ManagerPreviewBanner({
                 </Button>
               </Link>
             )}
-            <Link href={notatnikPreview ? "/notatnik" : "/moje"}>
+            <Link href={notatnikPreview ? buildNotatnikPageHref() : "/moje"}>
               <Button size="sm" variant="outline">
                 {notatnikPreview ? "Mój notatnik" : "Moje zamówienia"}
               </Button>
@@ -56,7 +57,7 @@ export function ManagerPreviewBanner({
                 Panel zamówień
               </Button>
             </Link>
-            <Link href={`/notatnik?dla=${salesPersonId}`}>
+            <Link href={buildNotatnikPageHref({ extraParams: { dla: salesPersonId } })}>
               <Button size="sm" variant="outline">
                 Notatnik
               </Button>

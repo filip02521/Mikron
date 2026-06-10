@@ -41,6 +41,13 @@ export function isNavItemActive(
   if (href === "/admin") {
     return isAdminSidebarRootActive(pathname);
   }
+  if (href === "/zk") {
+    return (
+      pathname === "/zk" ||
+      pathname === "/notatnik" ||
+      pathname.startsWith("/notatnik/")
+    );
+  }
   if (pathname === href) return true;
   if (!pathname.startsWith(`${href}/`)) return false;
   if (href.endsWith("/dostawcy") && pathname.includes("/nieaktywni")) return false;
@@ -267,6 +274,13 @@ export function navForRole(
         "Zamówienie u dostawcy lub info o dostępności — status w Moje zamówienia (nie pytanie ogólne)",
     },
     {
+      href: "/zk",
+      label: "ZK czekające",
+      mobileLabel: "ZK",
+      description: "ZK czekające na towar z Subiekta — śledzenie dostaw i prośby z pozycji",
+      badge: badges.salesNotatnik,
+    },
+    {
       href: "/plan",
       label: "Harmonogram zakupów",
       mobileLabel: "Plan",
@@ -277,12 +291,6 @@ export function navForRole(
       label: "Komunikacja",
       mobileLabel: "Info",
       description: "Ogłoszenia i pytania do zakupów — bez składania prośby o towar",
-    },
-    {
-      href: "/notatnik",
-      label: "Notatnik",
-      mobileLabel: "Notatnik",
-      description: "ZK czekające na towar i notatki",
     },
   ];
 
@@ -338,7 +346,7 @@ export function pageTitle(pathname: string): string {
       if (hit) return hit.label;
     }
   }
-  if (pathname.startsWith("/notatnik")) return "Notatnik";
+  if (pathname.startsWith("/notatnik") || pathname.startsWith("/zk")) return "ZK czekające";
   if (pathname.startsWith("/notatki")) return "Notatki";
   if (pathname.startsWith("/zespol")) {
     if (pathname.startsWith("/zespol/handlowcy")) return "Handlowcy i konta";

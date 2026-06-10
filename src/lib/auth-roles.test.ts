@@ -34,12 +34,15 @@ describe("auth-roles sales_manager", () => {
   it("allows admin sales preview with ?dla=", () => {
     expect(canAccessPath("admin", "/notatnik")).toBe(false);
     expect(canAccessPath("admin", "/notatnik", { previewSalesPersonId: "sp-1" })).toBe(true);
+    expect(canAccessPath("admin", "/zk")).toBe(false);
+    expect(canAccessPath("admin", "/zk", { previewSalesPersonId: "sp-1" })).toBe(true);
     expect(canAccessPath("admin", "/moje")).toBe(false);
     expect(canAccessPath("admin", "/moje", { previewSalesPersonId: "sp-1" })).toBe(true);
     expect(canAccessPath("admin", "/plan", { previewSalesPersonId: "sp-1" })).toBe(true);
     expect(canAccessPath("admin", "/prosba", { previewSalesPersonId: "sp-1" })).toBe(true);
     expect(canAccessPath("admin", "/tablica", { previewSalesPersonId: "sp-1" })).toBe(true);
     expect(canAccessPath("sales", "/notatnik")).toBe(true);
+    expect(canAccessPath("sales", "/zk")).toBe(true);
   });
 });
 
