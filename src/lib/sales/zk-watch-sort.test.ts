@@ -1,5 +1,8 @@
 import { describe, expect, it } from "vitest";
-import { sortZkWatches } from "./zk-watch-sort";
+import {
+  groupZkWatchesByMonth,
+  sortZkWatches,
+} from "./zk-watch-sort";
 import type { SalesZkWatch } from "@/types/database";
 
 function watch(partial: Partial<SalesZkWatch> & Pick<SalesZkWatch, "id">): SalesZkWatch {
@@ -26,16 +29,46 @@ function watch(partial: Partial<SalesZkWatch> & Pick<SalesZkWatch, "id">): Sales
 }
 
 describe("sortZkWatches", () => {
-  it("stawia przypomnienia na dziś/wcześniej na górze, potem rosnąco po dacie przypomnienia", () => {
+  it("sortuje po miesiącu rosnąco, wewnątrz miesiąca po numerze seryjnym rosnąco", () => {
+    const sorted = sortZkWatches([
+      watch({ id: "a", zk_number: "100/M/03/2026" }),
+      watch({ id: "b", zk_number: "200/M/04/2026" }),
+      watch({ id: "c", zk_number: "150/M/04/2026" }),
+      watch({ id: "d", zk_number: "50/M/03/2026" }),
+    ]);
+    expect(sorted.map((w) => w.id)).toEqual(["d", "a", "c", "b"]);
+  });
+
+  it("przy tym samym numerze preferuje przypomnienia na dziś/wcześniej", () => {
     const sorted = sortZkWatches(
       [
-        watch({ id: "a", follow_up_at: "2026-06-01", created_at: "2026-05-01T00:00:00Z" }),
-        watch({ id: "b", follow_up_at: "2026-05-10", created_at: "2026-05-02T00:00:00Z" }),
-        watch({ id: "c", follow_up_at: null, created_at: "2026-05-03T00:00:00Z" }),
-        watch({ id: "d", follow_up_at: "2026-05-20", created_at: "2026-05-04T00:00:00Z" }),
+        watch({
+          id: "a",
+          zk_number: "100/M/05/2026",
+          follow_up_at: "2026-06-01",
+        }),
+        watch({
+          id: "b",
+          zk_number: "100/M/05/2026",
+          follow_up_at: "2026-05-10",
+        }),
+        watch({ id: "c", zk_number: "200/M/05/2026", follow_up_at: null }),
       ],
       Date.parse("2026-05-28T00:00:00")
     );
-    expect(sorted.map((w) => w.id)).toEqual(["b", "d", "a", "c"]);
+    expect(sorted.map((w) => w.id)).toEqual(["b", "a", "c"]);
+  });
+});
+
+describe("groupZkWatchesByMonth", () => {
+  it("tworzy separatory po miesiącach", () => {
+    const groups = groupZkWatchesByMonth([
+      watch({ id: "a", zk_number: "100/M/03/2026" }),
+      watch({ id: "b", zk_number: "200/M/04/2026" }),
+      watch({ id: "c", zk_number: "150/M/04/2026" }),
+    ]);
+    expect(groups.map((g) => g.label)).toEqual(["marzec 2026", "kwiecień 2026"]);
+    expect(groups[0]?.watches.map((w) => w.id)).toEqual(["a"]);
+    expect(groups[1]?.watches.map((w) => w.id)).toEqual(["c", "b"]);
   });
 });

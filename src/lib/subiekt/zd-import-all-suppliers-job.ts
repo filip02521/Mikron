@@ -2,15 +2,15 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { isSubiektReachable } from "@/lib/subiekt/availability";
 import {
   countPendingZdImports,
-  importZdDocumentToCatalog,
-  markZdCatalogImported,
+  importAndMarkZdDocumentToCatalog,
   pendingZdImportRowsQuery,
+  zdImportSupplierLockKey,
   type PendingZdIndexRow,
 } from "@/lib/subiekt/zd-catalog-import";
 import { tryAcquireLock, releaseLock } from "@/lib/services/locks";
 
 export type ZdImportAllSuppliersJobState = {
-  status: "idle" | "running" | "done" | "failed";
+  status: "idle" | "running" | "paused" | "done" | "failed";
   dataOd: string;
   // supplier cursor
   supplierIds: string[];
@@ -94,10 +94,38 @@ export async function startZdImportAllSuppliersJob(options: {
   return state;
 }
 
+export function isZdImportAllSuppliersJobResumable(
+  state: ZdImportAllSuppliersJobState | null
+): boolean {
+  if (!state) return false;
+  if (state.status === "done") return false;
+  if (state.status === "idle") return false;
+  return Boolean(state.supplierIds?.length);
+}
+
 export async function stopZdImportAllSuppliersJob(): Promise<ZdImportAllSuppliersJobState | null> {
   const current = await readZdImportAllSuppliersJobState();
   if (!current) return null;
-  const next: ZdImportAllSuppliersJobState = { ...current, status: "idle", lastUpdatedAt: nowIso() };
+  if (current.status === "done") return current;
+  const next: ZdImportAllSuppliersJobState = {
+    ...current,
+    status: "paused",
+    lastUpdatedAt: nowIso(),
+  };
+  await writeState(next);
+  return next;
+}
+
+/** Wznawia autopilot od zapisanego dostawcy (po Stop lub błędzie). */
+export async function continueZdImportAllSuppliersJob(): Promise<ZdImportAllSuppliersJobState | null> {
+  const current = await readZdImportAllSuppliersJobState();
+  if (!current || !isZdImportAllSuppliersJobResumable(current)) return current;
+  const next: ZdImportAllSuppliersJobState = {
+    ...current,
+    status: "running",
+    lastError: null,
+    lastUpdatedAt: nowIso(),
+  };
   await writeState(next);
   return next;
 }
@@ -203,60 +231,64 @@ export async function tickZdImportAllSuppliersJob(options?: { maxDocs?: number }
     const maxDocs = options?.maxDocs ?? state.batchDocs ?? 3;
     const scope = { supplierId: state.supplierId, dataOd: state.dataOd };
 
-    const { data: indexRows, error: idxErr } = await pendingZdImportRowsQuery(
-      supabase,
-      scope
-    ).limit(Math.max(1, maxDocs));
-    if (idxErr) throw new Error(idxErr.message);
+    const supplierLockKey = zdImportSupplierLockKey(state.supplierId);
+    const supplierLock = await tryAcquireLock(supplierLockKey, 60, "zd-import-all-suppliers");
+    if (!supplierLock) return state;
 
-    const slice = (indexRows ?? []) as PendingZdIndexRow[];
-    const validSlice = slice
-      .map((r) => ({
-        dokId: Number(r.dok_id),
-        nr: r.dok_nr_pelny != null ? String(r.dok_nr_pelny) : null,
-      }))
-      .filter((r) => Number.isFinite(r.dokId));
+    try {
+      const { data: indexRows, error: idxErr } = await pendingZdImportRowsQuery(
+        supabase,
+        scope
+      ).limit(Math.max(1, maxDocs));
+      if (idxErr) throw new Error(idxErr.message);
 
-    if (!validSlice.length) {
-      const next = await advanceSupplier(state);
-      await writeState(next);
-      return next;
+      const slice = (indexRows ?? []) as PendingZdIndexRow[];
+      const validSlice = slice
+        .map((r) => ({
+          dokId: Number(r.dok_id),
+          nr: r.dok_nr_pelny != null ? String(r.dok_nr_pelny) : null,
+        }))
+        .filter((r) => Number.isFinite(r.dokId));
+
+      if (!validSlice.length) {
+        const next = await advanceSupplier(state);
+        await writeState(next);
+        return next;
+      }
+
+      let processedDocs = 0;
+      let processedLines = 0;
+      let linksUpserted = 0;
+      let lastDocNumber: string | null = null;
+
+      for (const brief of validSlice) {
+        const imported = await importAndMarkZdDocumentToCatalog(brief.dokId, state.supplierId);
+        processedDocs += 1;
+        processedLines += imported.processedLines;
+        linksUpserted += imported.linksUpserted;
+        lastDocNumber = brief.nr ?? lastDocNumber;
+      }
+
+      const supplierDocsDone = (await countPendingZdImports(scope)) === 0;
+      const supplierProcessedDocs = state.indexOffset + processedDocs;
+
+      const nextState: ZdImportAllSuppliersJobState = {
+        ...state,
+        indexOffset: supplierProcessedDocs,
+        processedDocs: state.processedDocs + processedDocs,
+        processedLines: state.processedLines + processedLines,
+        linksUpserted: state.linksUpserted + linksUpserted,
+        lastDocNumber,
+        lastUpdatedAt: nowIso(),
+        lastError: null,
+      };
+
+      const finalState = supplierDocsDone ? await advanceSupplier(nextState) : nextState;
+      await writeState(finalState);
+      return finalState;
+    } finally {
+      await releaseLock(supplierLockKey);
     }
-
-    let processedDocs = 0;
-    let processedLines = 0;
-    let linksUpserted = 0;
-    let lastDocNumber: string | null = null;
-    const importedIds: number[] = [];
-
-    for (const brief of validSlice) {
-      const imported = await importZdDocumentToCatalog(brief.dokId, state.supplierId);
-      importedIds.push(brief.dokId);
-      processedDocs += 1;
-      processedLines += imported.processedLines;
-      linksUpserted += imported.linksUpserted;
-      lastDocNumber = brief.nr ?? lastDocNumber;
-    }
-
-    await markZdCatalogImported(importedIds);
-
-    const supplierDocsDone = (await countPendingZdImports(scope)) === 0;
-    const supplierProcessedDocs = state.indexOffset + processedDocs;
-
-    const nextState: ZdImportAllSuppliersJobState = {
-      ...state,
-      indexOffset: supplierProcessedDocs,
-      processedDocs: state.processedDocs + processedDocs,
-      processedLines: state.processedLines + processedLines,
-      linksUpserted: state.linksUpserted + linksUpserted,
-      lastDocNumber,
-      lastUpdatedAt: nowIso(),
-      lastError: null,
-    };
-
-    const finalState = supplierDocsDone ? await advanceSupplier(nextState) : nextState;
-    await writeState(finalState);
-    return finalState;
   } catch (e) {
     const current = await readZdImportAllSuppliersJobState();
     const next: ZdImportAllSuppliersJobState = current

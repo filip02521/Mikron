@@ -6,6 +6,7 @@ import {
 } from "@/lib/sales/notepad-today-tasks";
 import type { SalesNote, SalesZkWatch } from "@/types/database";
 import { Badge } from "@/components/ui/Badge";
+import { formatProsbaZkLinkNumber } from "@/lib/orders/zk-prosba-link-display";
 import { surfaceCardClass } from "@/lib/ui/ontime-theme";
 import { LinkChevron } from "@/components/ui/UiGlyphs";
 import { cn } from "@/lib/cn";
@@ -15,7 +16,13 @@ function taskBadge(kind: NotepadTodayTaskKind) {
     case "zk-follow-up":
       return (
         <Badge variant="purple" className="text-[10px]">
-          ZK · przypomnienie
+          Przypomnienie
+        </Badge>
+      );
+    case "zk-warehouse-arrival":
+      return (
+        <Badge variant="success" className="text-[10px]">
+          Na magazynie
         </Badge>
       );
     case "note-follow-up":
@@ -32,14 +39,16 @@ export function TodayTasksSection({
   notes,
   onTaskClick,
   embedded = false,
+  unseenWarehouseWatchIds,
 }: {
   watches: SalesZkWatch[];
   notes: SalesNote[];
   onTaskClick?: (anchor: string, kind: NotepadTodayTaskKind) => void;
   /** Wewnątrz głównej karty — bez osobnego „kartonu”. */
   embedded?: boolean;
+  unseenWarehouseWatchIds?: Set<string>;
 }) {
-  const tasks = collectNotepadTodayTasks(watches, notes);
+  const tasks = collectNotepadTodayTasks(watches, notes, { unseenWarehouseWatchIds });
   if (!tasks.length) return null;
 
   function navigate(anchor: string, kind: NotepadTodayTaskKind) {
@@ -74,7 +83,13 @@ export function TodayTasksSection({
               <div className="min-w-0 flex-1">
                 <div className="flex flex-wrap items-center gap-2">
                   {taskBadge(task.kind)}
-                  <span className="truncate text-xs font-semibold text-slate-900">{task.title}</span>
+                  {task.kind === "zk-follow-up" || task.kind === "zk-warehouse-arrival" ? (
+                    <span className="truncate text-xs font-semibold tabular-nums text-slate-800">
+                      {formatProsbaZkLinkNumber(task.title)}
+                    </span>
+                  ) : (
+                    <span className="truncate text-xs font-semibold text-slate-900">{task.title}</span>
+                  )}
                 </div>
                 {task.subtitle ? (
                   <p className="mt-0.5 truncate text-[11px] text-slate-500">{task.subtitle}</p>

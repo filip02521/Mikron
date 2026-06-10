@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   actionAddZkWatchByNumber,
   actionAddZkWatchBySubiektDokId,
@@ -11,18 +11,17 @@ import { validateZkQueryForSubmit } from "@/lib/subiekt/zk-search";
 import type { ZkSearchCandidate } from "@/lib/subiekt/resolve-zk-document";
 import { cn } from "@/lib/cn";
 import { salesTypography } from "@/lib/ui/ontime-theme";
-import { sortZkWatches } from "@/lib/sales/zk-watch-sort";
+import { sortZkWatches, compareZkWatches } from "@/lib/sales/zk-watch-sort";
 import {
   filterZkWatchesByClientQuery,
   type ZkWatchOrderHints,
 } from "@/lib/sales/zk-watch-order-link";
 import type { SalesZkWatch } from "@/types/database";
-import { ZkWatchCard } from "./ZkWatchCard";
+import { ZkWatchGroupedList } from "./ZkWatchGroupedList";
 import {
   NOTATNIK_INPUT_CLASS,
   NOTATNIK_INPUT_NARROW_CLASS,
   NOTATNIK_SEARCH_CLASS,
-  NOTATNIK_ZK_LIST_CLASS,
 } from "./notatnik-layout";
 import { mojeShipmentSectionShellClass } from "@/lib/ui/moje-shipment-row-styles";
 
@@ -45,9 +44,19 @@ export function ZkWatchSection({
   onWatchAdded,
   onWatchClosed,
   onWatchRefreshed,
+  unseenWatchIds,
+  onWatchSeen,
+  focusWatchId,
+  onFocusWatchHandled,
+  onLiveAnnounce,
 }: {
   watches: SalesZkWatch[];
   zkHintsByWatchId?: Map<string, ZkWatchOrderHints>;
+  unseenWatchIds?: Set<string>;
+  onWatchSeen?: (watchId: string) => void;
+  focusWatchId?: string | null;
+  onFocusWatchHandled?: (watchId: string) => void;
+  onLiveAnnounce?: (message: string) => void;
   readOnly?: boolean;
   tourPreview?: boolean;
   embedded?: boolean;
@@ -70,6 +79,33 @@ export function ZkWatchSection({
   const filteredWatches = useMemo(
     () => filterZkWatchesByClientQuery(watches, listFilter),
     [watches, listFilter]
+  );
+
+  useEffect(() => {
+    if (!focusWatchId) return;
+    if (!watches.some((watch) => watch.id === focusWatchId)) return;
+    if (listFilter.trim()) setListFilter("");
+  }, [focusWatchId, watches, listFilter]);
+
+  const sortedCandidates = useMemo(
+    () =>
+      [...candidates].sort((a, b) =>
+        compareZkWatches(
+          {
+            zk_number: a.zkNumber,
+            zk_issued_at: a.issuedAt,
+            created_at: a.issuedAt ?? "",
+            follow_up_at: null,
+          },
+          {
+            zk_number: b.zkNumber,
+            zk_issued_at: b.issuedAt,
+            created_at: b.issuedAt ?? "",
+            follow_up_at: null,
+          }
+        )
+      ),
+    [candidates]
   );
   const listFilterActive = listFilter.trim().length > 0;
 
@@ -193,7 +229,7 @@ export function ZkWatchSection({
             <div className="rounded-md border border-indigo-200 bg-indigo-50/60 p-2.5">
               <p className="text-xs font-medium text-indigo-950">{chooseHint}</p>
               <ul className="mt-2 space-y-1.5">
-                {candidates.map((candidate) => {
+                {sortedCandidates.map((candidate) => {
                   const issued = formatIssuedAt(candidate.issuedAt);
                   return (
                     <li key={candidate.subiektDokId}>
@@ -266,22 +302,21 @@ export function ZkWatchSection({
         </p>
       ) : (
         <div className={embedded ? undefined : mojeShipmentSectionShellClass}>
-          <ul className={NOTATNIK_ZK_LIST_CLASS}>
-            {sortZkWatches(filteredWatches).map((watch) => (
-              <li key={watch.id} id={`watch-${watch.id}`}>
-                <ZkWatchCard
-                  watch={watch}
-                  orderHints={zkHintsByWatchId?.get(watch.id)}
-                  readOnly={readOnly}
-                  tourPreview={tourPreview}
-                  compact={compact}
-                  subiektReachable={subiektReachable}
-                  onClosed={() => onWatchClosed?.(watch.id)}
-                  onRefreshed={onWatchRefreshed}
-                />
-              </li>
-            ))}
-          </ul>
+        <ZkWatchGroupedList
+          watches={filteredWatches}
+          zkHintsByWatchId={zkHintsByWatchId}
+          unseenWatchIds={unseenWatchIds}
+          onWatchSeen={onWatchSeen}
+          focusWatchId={focusWatchId}
+          onFocusWatchHandled={onFocusWatchHandled}
+          onLiveAnnounce={onLiveAnnounce}
+          readOnly={readOnly}
+            tourPreview={tourPreview}
+            compact={compact}
+            subiektReachable={subiektReachable}
+            onClosed={onWatchClosed}
+            onRefreshed={onWatchRefreshed}
+          />
         </div>
       )}
     </div>

@@ -1,5 +1,6 @@
 import { cn } from "@/lib/cn";
 import { controlFocusClass, salesPageShellClass, surfaceCardClass } from "@/lib/ui/ontime-theme";
+import { mojeShipmentListClass } from "@/lib/ui/moje-shipment-row-styles";
 
 /** Domyślna szerokość stron handlowca (= {@link salesPageShellClass}). */
 export const NOTATNIK_PAGE_CLASS = salesPageShellClass;
@@ -7,8 +8,8 @@ export const NOTATNIK_PAGE_CLASS = salesPageShellClass;
 /** Siatka 2 kolumn — przewidywalny drag & drop (bez CSS columns). */
 export const NOTATNIK_NOTES_GRID_CLASS = "grid grid-cols-2 gap-2";
 
-/** Lista ZK — wspólny wzorzec z wierszami /moje (bez odstępów między kartami). */
-export const NOTATNIK_ZK_LIST_CLASS = "divide-y divide-slate-100";
+/** Lista ZK — ten sam wzorzec co /moje (divide-y, bez odstępów). */
+export const NOTATNIK_ZK_LIST_CLASS = mojeShipmentListClass;
 
 export function zkWatchRowClass({
   followUpDue,

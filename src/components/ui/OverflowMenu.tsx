@@ -255,7 +255,8 @@ export function OverflowMenuItem({
           : "text-slate-700 hover:bg-indigo-50/80 hover:text-indigo-950",
         className
       )}
-      onClick={() => {
+      onClick={(event) => {
+        event.stopPropagation();
         onClick();
         close();
       }}

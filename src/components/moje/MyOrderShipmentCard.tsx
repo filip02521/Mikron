@@ -44,6 +44,7 @@ import { MyOrderLineItem } from "@/components/moje/MyOrderLineItem";
 import { MyOrderShipmentOverflowMenu } from "@/components/moje/MyOrderShipmentOverflowMenu";
 import { MyOrderHeadlineBanner } from "@/components/moje/MyOrderHeadlineBanner";
 import { MyOrderStatusPill } from "@/components/moje/MyOrderStatusPill";
+import { ZkProsbaLinkChip } from "@/components/orders/ZkProsbaLinkChip";
 import { cn } from "@/lib/cn";
 import { brandLinkSubtleClass, panelSegmentLastClass, salesTypography } from "@/lib/ui/ontime-theme";
 import {
@@ -237,6 +238,7 @@ export function MyOrderShipmentCard({
   compactActionLayout = false,
   suppressedSectionPatterns,
   rowVisualTone = "default",
+  highlighted = false,
 }: {
   row: MyOrderRow;
   listKind: MyOrderListKind;
@@ -257,6 +259,7 @@ export function MyOrderShipmentCard({
   compactActionLayout?: boolean;
   suppressedSectionPatterns?: Set<MyOrderSectionPatternId>;
   rowVisualTone?: MojeShipmentRowVisualTone;
+  highlighted?: boolean;
 }) {
   const panelId = useId();
   const searchActive = searchQueryTokens(searchQuery).length > 0;
@@ -377,9 +380,9 @@ export function MyOrderShipmentCard({
   );
   const expandedMeta = filterRedundantExpandedMetaFields(
     row,
-    myOrderExpandedMetaFields(row, showProgress).filter(
-      (f) => !(f.label === "Klient" && canEditClient)
-    ),
+    myOrderExpandedMetaFields(row, showProgress)
+      .filter((field) => !(field.label === "Klient" && canEditClient))
+      .filter((field) => field.label !== "ZK"),
     { collapsedSubline }
   );
   const expandHint = myOrderExpandHint(row, expandCtx);
@@ -568,14 +571,17 @@ export function MyOrderShipmentCard({
   return (
     <li
       id={domId}
-      className={mojeShipmentRowClass({
-        expanded,
-        isAction,
-        isUrgent,
-        isStock,
-        isInformacja,
-        visualTone: rowVisualTone,
-      })}
+      className={cn(
+        mojeShipmentRowClass({
+          expanded,
+          isAction,
+          isUrgent,
+          isStock,
+          isInformacja,
+          visualTone: rowVisualTone,
+        }),
+        highlighted && "ring-2 ring-inset ring-indigo-300/80"
+      )}
     >
       {showHeadlineBanner ? (
         <MyOrderHeadlineBanner
@@ -682,12 +688,13 @@ export function MyOrderShipmentCard({
               className="mt-0.5 max-w-full truncate"
             />
           ) : null}
-          {!expanded && row.sourceZkNumber ? (
-            <SearchHighlightText
-              text={`ZK ${row.sourceZkNumber}`}
+          {row.sourceZkNumber ? (
+            <ZkProsbaLinkChip
+              zkNumber={row.sourceZkNumber}
+              zkWatchId={row.sourceZkWatchId}
+              salesPersonId={row.salesPersonId}
               searchQuery={searchQuery}
-              className={cn("mt-0.5 truncate font-medium tabular-nums text-slate-600", salesTypography.rowMeta)}
-              as="p"
+              className="mt-0.5 max-w-full truncate"
             />
           ) : null}
         </button>

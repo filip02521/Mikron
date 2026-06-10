@@ -1,5 +1,6 @@
 import { createAdminClient, hasSupabaseConfig } from "@/lib/supabase/admin";
 import { filterIndividualOrdersForSalesMyOrders } from "@/lib/orders/informacja-stock-out-reorder";
+import { computeZkWatchActivityVersion } from "@/lib/sales/zk-watch-warehouse-notify";
 import type { IndividualOrder } from "@/types/database";
 
 export type SalesActivityRow = Pick<
@@ -47,6 +48,14 @@ export function computeSalesActivityVersionFromRows(rows: ActivityRow[]): string
   return `${activeCount}|${maxAction}|${maxOrdered}|${maxDelivery}|${statusPart}`;
 }
 
+/** Pełna wersja aktywności (prośby + otwarte ZK) — ten sam format co API poll. */
+export function composeSalesActivityVersion(
+  ordersPart: string,
+  watches: Parameters<typeof computeZkWatchActivityVersion>[0]
+): string {
+  return `${ordersPart}::${computeZkWatchActivityVersion(watches)}`;
+}
+
 /**
  * Skrót stanu listy handlowca — zmiana = nowa prośba, status, dostawa lub potwierdzenie.
  */
@@ -65,7 +74,18 @@ export async function computeSalesActivityVersion(
 
   if (error) throw new Error(error.message);
 
-  return computeSalesActivityVersionFromRows(
+  const ordersPart = computeSalesActivityVersionFromRows(
     filterSalesActivityRows((data ?? []) as SalesActivityRow[])
   );
+
+  const { data: watchesRaw, error: watchesError } = await supabase
+    .from("sales_zk_watches")
+    .select("updated_at, line_checks")
+    .eq("sales_person_id", salesPersonId)
+    .is("closed_at", null)
+    .is("archived_at", null);
+
+  if (watchesError) throw new Error(watchesError.message);
+
+  return composeSalesActivityVersion(ordersPart, watchesRaw ?? []);
 }

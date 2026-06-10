@@ -13,6 +13,7 @@ import {
 import { formatFollowUpLabel } from "@/lib/sales/notepad-follow-up";
 import { sortSalesNotes } from "@/lib/sales/notepad-note-sort";
 import { collectNotepadTodayTasks } from "@/lib/sales/notepad-today-tasks";
+import { formatProsbaZkLinkNumber } from "@/lib/orders/zk-prosba-link-display";
 import type { SalesNote, SalesZkWatch } from "@/types/database";
 
 export type SalesDayStartSource =
@@ -170,7 +171,9 @@ function buildNotepadItems(
       id: `${task.kind}-${task.id}`,
       source: isZk ? "zk_follow_up" : "note_follow_up",
       priority: isZk ? PRIORITY.zk_follow_up : PRIORITY.note_follow_up,
-      title: isZk ? `Przypomnienie ZK ${task.title}` : task.title,
+      title: isZk
+        ? `Przypomnienie · ${formatProsbaZkLinkNumber(task.title)}`
+        : task.title,
       subtitle: task.subtitle ?? undefined,
       evidence: task.subtitle ?? undefined,
       href: isZk

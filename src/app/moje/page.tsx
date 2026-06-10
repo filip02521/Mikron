@@ -51,6 +51,7 @@ export default async function MojePage({
     kh?: string;
     zkWatch?: string;
     zk?: string;
+    focusOrders?: string;
   }>;
 }) {
   const {
@@ -60,6 +61,7 @@ export default async function MojePage({
     kh: khParam,
     zkWatch: zkWatchParam,
     zk: zkNumberParam,
+    focusOrders: focusOrdersParam,
   } = await searchParams;
   const parsedKh = khParam ? Math.trunc(Number(khParam)) : null;
   const initialClientKhId =
@@ -312,6 +314,7 @@ export default async function MojePage({
         initialClientKhLabel={clientQuery?.trim() || null}
         initialClientZkWatchId={zkWatchParam?.trim() || null}
         initialClientZkNumber={zkNumberParam?.trim() || null}
+        initialFocusOrderIds={focusOrdersParam?.trim() || null}
         syncSearchUrl={!isTeamPreview}
         showSalesSync={showSalesSync}
         dayStartContext={dayStartContext}

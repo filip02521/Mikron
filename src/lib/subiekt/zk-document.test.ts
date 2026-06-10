@@ -5,6 +5,7 @@ import {
   formatZkKontrahentLabel,
   normalizeZkNumberKey,
   normalizeZkQuery,
+  parseZkNumberSortParts,
   pickBestZkMatch,
   zkDocumentStatusLabel,
   zkNumbersEquivalent,
@@ -33,6 +34,7 @@ const SAMPLE_ZK: SubiektDocument = {
 describe("normalizeZkQuery", () => {
   it("usuwa prefiks ZK", () => {
     expect(normalizeZkQuery("ZK 153157/M/04/2026")).toBe("153157/M/04/2026");
+    expect(normalizeZkQuery("ZK/2026/0138")).toBe("2026/0138");
   });
 });
 
@@ -40,6 +42,23 @@ describe("extractZkSerial", () => {
   it("wyciąga numer seryjny", () => {
     expect(extractZkSerial("ZK 153157/M/04/2026")).toBe("153157");
     expect(extractZkPathSuffix("ZK 153157/M/04/2026")).toBe("/m/04/2026");
+  });
+});
+
+describe("parseZkNumberSortParts", () => {
+  it("parsuje pełny numer Mikron", () => {
+    const parts = parseZkNumberSortParts("153157/M/04/2026");
+    expect(parts).toEqual({
+      serial: 153157,
+      month: 4,
+      year: 2026,
+      sortKey: "2026-04",
+    });
+  });
+
+  it("używa daty wystawienia gdy brak /M/ w numerze", () => {
+    const parts = parseZkNumberSortParts("ZK/2026/0999", "2026-03-15");
+    expect(parts.sortKey).toBe("2026-03");
   });
 });
 

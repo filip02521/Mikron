@@ -9,9 +9,11 @@ import { salesDayStartNavCount } from "@/lib/sales/sales-day-start";
 import { countNotepadNavBadge } from "@/lib/data/sales-notepad";
 import { countSalesBoardNavBadge } from "@/lib/data/department-board";
 import {
+  composeSalesActivityVersion,
   computeSalesActivityVersionFromRows,
   type SalesActivityRow,
 } from "@/lib/orders/sales-activity-version";
+import { createAdminClient } from "@/lib/supabase/admin";
 import type { DeliveryStats } from "@/types/database";
 
 export type SalesShellMetrics = {
@@ -37,9 +39,15 @@ export async function fetchSalesShellMetrics(
   );
   const inbox = summarizeMyOrdersInbox([...zamowienia, ...informacje]);
 
-  const [notepadDue, boardNav] = await Promise.all([
+  const [notepadDue, boardNav, watchesRes] = await Promise.all([
     countNotepadNavBadge(salesPersonId).catch(() => 0),
     profileId ? countSalesBoardNavBadge(profileId).catch(() => 0) : Promise.resolve(0),
+    createAdminClient()
+      .from("sales_zk_watches")
+      .select("updated_at, line_checks")
+      .eq("sales_person_id", salesPersonId)
+      .is("closed_at", null)
+      .is("archived_at", null),
   ]);
 
   const activityRows: SalesActivityRow[] = salesVisibleOrders.map((o) => ({
@@ -52,8 +60,10 @@ export async function fetchSalesShellMetrics(
     informacja_stock_out_reorder: o.informacja_stock_out_reorder,
   }));
 
+  const ordersPart = computeSalesActivityVersionFromRows(activityRows);
+
   return {
-    activityVersion: computeSalesActivityVersionFromRows(activityRows),
+    activityVersion: composeSalesActivityVersion(ordersPart, watchesRes.data ?? []),
     navAttention:
       inbox.pickupCount + inbox.cancelAckCount + inbox.informacjaReadyCount,
     dayStartNavCount: salesDayStartNavCount(inbox, notepadDue, boardNav),

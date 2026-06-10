@@ -49,4 +49,19 @@ describe("collectNotepadTodayTasks", () => {
     );
     expect(tasks.map((t) => t.kind)).toEqual(["zk-follow-up", "note-follow-up"]);
   });
+
+  it("priorytetyzuje nowy towar na magazynie przed przypomnieniami", () => {
+    const tasks = collectNotepadTodayTasks(
+      [
+        watch({
+          id: "w-wh",
+          follow_up_at: "2020-01-01",
+          line_checks: [{ key: "a", arrived: true }],
+        }),
+      ],
+      [],
+      { unseenWarehouseWatchIds: ["w-wh"] }
+    );
+    expect(tasks[0]?.kind).toBe("zk-warehouse-arrival");
+  });
 });

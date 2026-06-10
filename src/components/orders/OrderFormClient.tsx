@@ -813,6 +813,9 @@ export function OrderFormClient({
           {zkProsbaLinkContext && !tourDemo ? (
             <ZkProsbaLinkBanner
               zkNumber={zkProsbaLinkContext.zkNumber}
+              zkWatchId={zkProsbaLinkContext.zkWatchId}
+              salesPersonId={lockedId}
+              previewDla={searchParams.get("dla")}
               clientLabel={zkProsbaLinkContext.clientLabel}
             />
           ) : null}

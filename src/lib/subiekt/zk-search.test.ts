@@ -81,7 +81,7 @@ describe("collectMatchingZkDocuments", () => {
 
   it("krótki prefiks może zwrócić wiele wyników", () => {
     const hits = collectMatchingZkDocuments([DOC_A, DOC_B], "23");
-    expect(hits.map((d) => d.dok_Id)).toEqual([2, 1]);
+    expect(hits.map((d) => d.dok_Id)).toEqual([1, 2]);
   });
 
   it("nie traktuje cyfr z miesiąca/roku jako trafienia (np. 04, 20)", () => {

@@ -12,8 +12,6 @@ export function ZkWatchOverflowMenu({
   onRefresh,
   refreshDisabled,
   mojeClientHref,
-  onNote,
-  noteLabel,
   onClose,
   closeDisabled,
   onRestore,
@@ -31,8 +29,6 @@ export function ZkWatchOverflowMenu({
   onRefresh?: () => void;
   refreshDisabled?: boolean;
   mojeClientHref: string;
-  onNote?: () => void;
-  noteLabel: string;
   onClose?: () => void;
   closeDisabled?: boolean;
   onRestore?: () => void;
@@ -44,66 +40,54 @@ export function ZkWatchOverflowMenu({
 }) {
   const router = useRouter();
 
-  const menu = (
-    triggerClassName: string
-  ) => (
+  return (
     <OverflowMenu
       label={label}
       disabled={disabled}
       align="end"
       iconOnly
-      triggerClassName={triggerClassName}
+      triggerClassName="h-10 w-10 sm:h-7 sm:w-7"
     >
-        {archived ? (
-          <>
-            {hasLines ? (
-              <OverflowMenuItem disabled={disabled} onClick={onOpenLines}>
-                Lista towaru ({linesLabel})
-              </OverflowMenuItem>
-            ) : null}
-            {onRestore ? (
-              <OverflowMenuItem disabled={restoreDisabled} onClick={onRestore}>
-                Przywróć na listę
-              </OverflowMenuItem>
-            ) : null}
-            {onDelete ? (
-              <OverflowMenuItem danger disabled={deleteDisabled} onClick={onDelete}>
-                Usuń na stałe
-              </OverflowMenuItem>
-            ) : null}
-          </>
-        ) : (
-          <>
-            {hasLines ? (
-              <OverflowMenuItem disabled={disabled} onClick={onOpenLines}>
-                Lista towaru ({linesLabel})
-              </OverflowMenuItem>
-            ) : null}
-            {!readOnly && onRefresh ? (
-              <OverflowMenuItem disabled={refreshDisabled || disabled} onClick={onRefresh}>
-                Odśwież z Subiekta
-              </OverflowMenuItem>
-            ) : null}
-            <OverflowMenuItem
-              disabled={disabled}
-              onClick={() => router.push(mojeClientHref)}
-            >
-              Prośby klienta
+      {archived ? (
+        <>
+          {hasLines ? (
+            <OverflowMenuItem disabled={disabled} onClick={onOpenLines}>
+              Szczegóły i towar ({linesLabel})
             </OverflowMenuItem>
-            {!readOnly && onNote ? (
-              <OverflowMenuItem disabled={disabled} onClick={onNote}>
-                {noteLabel}
-              </OverflowMenuItem>
-            ) : null}
-            {!readOnly && onClose ? (
-              <OverflowMenuItem danger disabled={closeDisabled || disabled} onClick={onClose}>
-                Zamknij sprawę
-              </OverflowMenuItem>
-            ) : null}
-          </>
-        )}
+          ) : null}
+          {onRestore ? (
+            <OverflowMenuItem disabled={restoreDisabled} onClick={onRestore}>
+              Przywróć na listę
+            </OverflowMenuItem>
+          ) : null}
+          {onDelete ? (
+            <OverflowMenuItem danger disabled={deleteDisabled} onClick={onDelete}>
+              Usuń na stałe
+            </OverflowMenuItem>
+          ) : null}
+        </>
+      ) : (
+        <>
+          {hasLines ? (
+            <OverflowMenuItem disabled={disabled} onClick={onOpenLines}>
+              Lista towaru ({linesLabel})
+            </OverflowMenuItem>
+          ) : null}
+          {!readOnly && onRefresh ? (
+            <OverflowMenuItem disabled={refreshDisabled || disabled} onClick={onRefresh}>
+              Odśwież z Subiekta
+            </OverflowMenuItem>
+          ) : null}
+          <OverflowMenuItem disabled={disabled} onClick={() => router.push(mojeClientHref)}>
+            Prośby klienta
+          </OverflowMenuItem>
+          {!readOnly && onClose ? (
+            <OverflowMenuItem danger disabled={closeDisabled || disabled} onClick={onClose}>
+              Zamknij sprawę
+            </OverflowMenuItem>
+          ) : null}
+        </>
+      )}
     </OverflowMenu>
   );
-
-  return menu("h-7 w-7");
 }

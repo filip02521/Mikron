@@ -63,6 +63,7 @@ export function MyOrderShipmentList({
   compactActionLayout = false,
   suppressedSectionPatterns,
   rowVisualTone = "default",
+  focusRowIds,
 }: {
   rows: MyOrderRow[];
   listKind: "zamowienie" | "informacja";
@@ -79,6 +80,7 @@ export function MyOrderShipmentList({
   compactActionLayout?: boolean;
   suppressedSectionPatterns?: Set<MyOrderSectionPatternId>;
   rowVisualTone?: MojeShipmentRowVisualTone;
+  focusRowIds?: ReadonlySet<string>;
 }) {
   const router = useRouter();
   const sortedRows = useMemo(() => sortMyOrderRows(rows), [rows]);
@@ -102,6 +104,21 @@ export function MyOrderShipmentList({
   const collapseAll = useCallback(() => {
     setExpandedIds(new Set());
   }, []);
+
+  useEffect(() => {
+    if (!focusRowIds?.size) return;
+    setExpandedIds((prev) => {
+      const next = new Set(prev);
+      let changed = false;
+      for (const row of sortedRows) {
+        if (focusRowIds.has(row.id) && !next.has(row.id)) {
+          next.add(row.id);
+          changed = true;
+        }
+      }
+      return changed ? next : prev;
+    });
+  }, [focusRowIds, sortedRows]);
 
   const searchActive = searchQueryTokens(searchQuery).length > 0;
   /** Stan rozwinięć sprzed pierwszego znaku wyszukiwania — przywracany po wyczyszczeniu. */
@@ -455,6 +472,7 @@ export function MyOrderShipmentList({
             compactActionLayout={compactActionLayout}
             suppressedSectionPatterns={suppressedSectionPatterns}
             rowVisualTone={rowVisualTone}
+            highlighted={focusRowIds?.has(row.id) ?? false}
           />
         ))}
       </ul>

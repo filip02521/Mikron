@@ -1,7 +1,14 @@
 import type { SalesNote, SalesZkWatch } from "@/types/database";
 import { isFollowUpDue, formatFollowUpLabel } from "@/lib/sales/notepad-follow-up";
+import {
+  countArrivedZkLinesFromWatch,
+  detectUnseenZkWarehouseArrivals,
+} from "@/lib/sales/zk-watch-warehouse-notify";
 
-export type NotepadTodayTaskKind = "zk-follow-up" | "note-follow-up";
+export type NotepadTodayTaskKind =
+  | "zk-follow-up"
+  | "zk-warehouse-arrival"
+  | "note-follow-up";
 
 export type NotepadTodayTask = {
   kind: NotepadTodayTaskKind;
@@ -14,6 +21,8 @@ export type NotepadTodayTask = {
 
 function taskPriority(kind: NotepadTodayTaskKind): number {
   switch (kind) {
+    case "zk-warehouse-arrival":
+      return -1;
     case "zk-follow-up":
       return 0;
     case "note-follow-up":
@@ -23,9 +32,26 @@ function taskPriority(kind: NotepadTodayTaskKind): number {
 
 export function collectNotepadTodayTasks(
   watches: SalesZkWatch[],
-  notes: SalesNote[]
+  notes: SalesNote[],
+  options?: { unseenWarehouseWatchIds?: Set<string> | string[] }
 ): NotepadTodayTask[] {
   const tasks: NotepadTodayTask[] = [];
+  const unseenWarehouse = new Set(options?.unseenWarehouseWatchIds ?? []);
+
+  for (const watch of watches) {
+    if (watch.closed_at || watch.archived_at) continue;
+    if (unseenWarehouse.has(watch.id)) {
+      const arrived = countArrivedZkLinesFromWatch(watch);
+      tasks.push({
+        kind: "zk-warehouse-arrival",
+        id: watch.id,
+        anchor: `watch-${watch.id}`,
+        title: watch.zk_number,
+        subtitle: `${watch.client_label} · ${arrived} ${arrived === 1 ? "pozycja" : arrived < 5 ? "pozycje" : "pozycji"} na magazynie`,
+        priority: taskPriority("zk-warehouse-arrival"),
+      });
+    }
+  }
 
   for (const watch of watches) {
     if (watch.closed_at || watch.archived_at) continue;
@@ -59,7 +85,8 @@ export function collectNotepadTodayTasks(
 
 export function hasNotepadTodayTasks(
   watches: SalesZkWatch[],
-  notes: SalesNote[]
+  notes: SalesNote[],
+  options?: { unseenWarehouseWatchIds?: Set<string> | string[] }
 ): boolean {
-  return collectNotepadTodayTasks(watches, notes).length > 0;
+  return collectNotepadTodayTasks(watches, notes, options).length > 0;
 }

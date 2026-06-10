@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 import {
+  allZkWatchLinesArrived,
   buildZkWatchLineViews,
+  formatZkLinesPreview,
   formatZkLinesShort,
   isZkWatchShippingCostLine,
   mergeLineChecksAfterRefresh,
@@ -49,6 +51,7 @@ describe("zk-watch-lines", () => {
     expect(views[0]?.arrived).toBe(true);
     expect(views[1]?.arrived).toBe(false);
     expect(views[0]?.quantityLabel).toBe("2 szt.");
+    expect(views[0]?.quantity).toBe(2);
   });
 
   it("scala stan po odświeżeniu", () => {
@@ -107,6 +110,28 @@ describe("zk-watch-lines", () => {
     expect(isZkWatchShippingCostLine({ tw_Nazwa: "Filtr", tw_Symbol: "F-1" })).toBe(false);
   });
 
+  it("allZkWatchLinesArrived wymaga wszystkich pozycji na miejscu", () => {
+    const partial = buildZkWatchLineViews(
+      watch({
+        subiekt_snapshot: { dok_Pozycja: [{ ob_Id: 1 }, { ob_Id: 2 }] },
+        line_checks: [{ key: "ob:1", arrived: true }],
+      })
+    );
+    expect(allZkWatchLinesArrived(partial)).toBe(false);
+
+    const complete = buildZkWatchLineViews(
+      watch({
+        subiekt_snapshot: { dok_Pozycja: [{ ob_Id: 1 }, { ob_Id: 2 }] },
+        line_checks: [
+          { key: "ob:1", arrived: true },
+          { key: "ob:2", arrived: true },
+        ],
+      })
+    );
+    expect(allZkWatchLinesArrived(complete)).toBe(true);
+    expect(allZkWatchLinesArrived([])).toBe(false);
+  });
+
   it("formatZkLinesShort zwraca arrived/total", () => {
     const views = buildZkWatchLineViews(
       watch({
@@ -116,5 +141,20 @@ describe("zk-watch-lines", () => {
     );
     expect(formatZkLinesShort(views)).toBe("1/3");
     expect(formatZkLinesShort([])).toBeNull();
+  });
+
+  it("formatZkLinesPreview pokazuje pierwszą brakującą pozycję i licznik", () => {
+    const views = buildZkWatchLineViews(
+      watch({
+        subiekt_snapshot: {
+          dok_Pozycja: [
+            { ob_Id: 1, tw_Nazwa: "Filtr ABC" },
+            { ob_Id: 2, tw_Nazwa: "Bonding" },
+          ],
+        },
+        line_checks: [{ key: "ob:1", arrived: true }],
+      })
+    );
+    expect(formatZkLinesPreview(views)).toBe("Bonding · 1/2");
   });
 });

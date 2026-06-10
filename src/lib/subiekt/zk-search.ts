@@ -9,6 +9,7 @@ import {
   normalizeZkNumberKey,
   normalizeZkQuery,
   parseSubiektDocDate,
+  parseZkNumberSortParts,
   resolveZkClientLabel,
   zkNumbersEquivalent,
 } from "@/lib/subiekt/zk-document";
@@ -187,6 +188,14 @@ export function collectMatchingZkDocuments(
   }
 
   return [...byId.values()].sort((a, b) => {
+    const nrA = a.dok_NrPelny?.trim() ?? "";
+    const nrB = b.dok_NrPelny?.trim() ?? "";
+    const partsA = parseZkNumberSortParts(nrA, parseSubiektDocDate(a.dok_DataWyst));
+    const partsB = parseZkNumberSortParts(nrB, parseSubiektDocDate(b.dok_DataWyst));
+    if (partsA.sortKey !== partsB.sortKey) {
+      return partsA.sortKey.localeCompare(partsB.sortKey);
+    }
+    if (partsA.serial !== partsB.serial) return partsA.serial - partsB.serial;
     const da = parseSubiektDocDate(a.dok_DataWyst) ?? "";
     const db = parseSubiektDocDate(b.dok_DataWyst) ?? "";
     return db.localeCompare(da) || Number(b.dok_Id) - Number(a.dok_Id);

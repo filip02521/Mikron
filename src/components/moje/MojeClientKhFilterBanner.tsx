@@ -1,94 +1,94 @@
 "use client";
 
-import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { Button } from "@/components/ui/Button";
+import { ZkProsbaLinkChip } from "@/components/orders/ZkProsbaLinkChip";
 import { cn } from "@/lib/cn";
-import { brandLinkSubtleClass } from "@/lib/ui/ontime-theme";
+import { salesTypography } from "@/lib/ui/ontime-theme";
+import { formatProsbaCount } from "@/lib/orders/my-order-plural";
 
 export function MojeClientKhFilterBanner({
-  clientKhId,
   clientLabel,
   zkNumber,
+  zkWatchId,
+  salesPersonId,
   matchCount,
-  syncUrl = true,
+  totalCount,
+  onClear,
 }: {
-  clientKhId?: number | null;
   clientLabel?: string | null;
   zkNumber?: string | null;
+  zkWatchId?: string | null;
+  salesPersonId?: string | null;
   matchCount?: number;
-  syncUrl?: boolean;
+  totalCount: number;
+  onClear: () => void;
 }) {
-  const router = useRouter();
-  const pathname = usePathname();
-  const searchParams = useSearchParams();
-
-  const displayName = clientLabel?.trim() || "klient z Subiekta";
+  const displayName = clientLabel?.trim() || null;
   const zk = zkNumber?.trim();
-  const countSuffix =
-    matchCount != null
-      ? matchCount === 0
-        ? " — brak pasujących prośb"
-        : matchCount === 1
-          ? " — 1 prośba"
-          : matchCount >= 2 && matchCount <= 4
-            ? ` — ${matchCount} prośby`
-            : ` — ${matchCount} prośb`
-      : "";
+  const matched = matchCount ?? 0;
 
-  function clearFilter() {
-    if (!syncUrl) return;
-    const params = new URLSearchParams(searchParams.toString());
-    params.delete("kh");
-    params.delete("klient");
-    params.delete("zkWatch");
-    params.delete("zk");
-    const qs = params.toString();
-    router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false });
-  }
+  const matchLabel =
+    matched === 0
+      ? "Brak pasujących prośb na liście"
+      : matched === 1
+        ? "1 prośba na liście"
+        : formatProsbaCount(matched);
+
+  const scopeLabel = zk
+    ? null
+    : displayName
+      ? `Prośby klienta: ${displayName}`
+      : "Prośby powiązane z notatnikiem";
 
   return (
     <div
       className={cn(
-        "flex flex-wrap items-start justify-between gap-2 border-b border-indigo-100",
-        "bg-indigo-50/90 px-3 py-2.5 text-sm text-indigo-950 sm:px-4"
+        "border-b border-slate-200/80 bg-slate-50/90 px-3 py-2.5 sm:px-4 lg:px-6",
+        "flex flex-col gap-2.5 sm:flex-row sm:items-center sm:justify-between"
       )}
       role="status"
     >
-      <p className="min-w-0 flex-1 leading-snug">
-        {zk ? (
-          <>
-            <span className="font-medium">Prośby z ZK:</span>{" "}
-            <span className="font-semibold tabular-nums text-indigo-900">{zk}</span>
-            {displayName !== "klient z Subiekta" ? (
-              <span className="text-indigo-800/90"> · {displayName}</span>
-            ) : null}
-          </>
+      <div className="min-w-0">
+        {scopeLabel ? (
+          <p className={cn(salesTypography.rowTitle, "text-slate-900")}>{scopeLabel}</p>
         ) : (
-          <>
-            <span className="font-medium">Filtr klienta:</span>{" "}
-            <span className="text-indigo-900">{displayName}</span>
-          </>
+          <p className={cn(salesTypography.rowTitle, "text-slate-900")}>
+            <span className="font-medium text-slate-700">Prośby · </span>
+            <ZkProsbaLinkChip
+              zkNumber={zk!}
+              zkWatchId={zkWatchId}
+              salesPersonId={salesPersonId}
+              inline
+            />
+            {displayName ? (
+              <span className="font-medium text-slate-700"> · {displayName}</span>
+            ) : null}
+          </p>
         )}
-        <span className="text-indigo-800/80">
-          {countSuffix}
-          <span className="hidden sm:inline">
-            {" "}
-            · w tym prośby powiązane z notatnikiem
-            {clientKhId != null ? ` (kh ${clientKhId})` : ""}
-          </span>
-        </span>
-      </p>
-      {syncUrl ? (
-        <button
-          type="button"
-          onClick={clearFilter}
-          className={cn(
-            "shrink-0 text-xs font-medium underline-offset-2 hover:underline",
-            brandLinkSubtleClass
-          )}
-        >
-          Pokaż wszystkich klientów
-        </button>
-      ) : null}
+        <p className={cn("mt-0.5", salesTypography.rowMeta, "text-slate-600")}>
+          {matchLabel}
+          {totalCount > 0 ? (
+            <>
+              {" "}
+              · pełna lista ma{" "}
+              <span className="font-semibold tabular-nums">{totalCount}</span>{" "}
+              {totalCount === 1 ? "prośbę" : totalCount < 5 ? "prośby" : "prośb"}
+            </>
+          ) : null}
+        </p>
+      </div>
+      <Button
+        type="button"
+        variant="secondary"
+        size="sm"
+        onClick={onClear}
+        className="shrink-0"
+      >
+        Pokaż całą listę
+        {totalCount > 0 ? (
+          <span className="ml-1 tabular-nums text-slate-500">({totalCount})</span>
+        ) : null}
+      </Button>
     </div>
   );
 }

@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useSalesOnboardingDemo } from "@/components/sales/SalesOnboardingContext";
 import { buildOnboardingNotepadDemo } from "@/lib/sales/sales-onboarding-demo-data";
@@ -8,16 +8,27 @@ import { Card, CardHeader } from "@/components/ui/Card";
 import { Alert } from "@/components/ui/Alert";
 import { Badge } from "@/components/ui/Badge";
 import { UndoToast } from "@/components/ui/UndoToast";
+import { Toast } from "@/components/ui/Toast";
 import { IconNotepad, IconPackageCheck, IconArchive, IconClipboardPen } from "@/components/icons/StrokeIcons";
 import { SectionHeadingIcon } from "@/components/icons/SectionHeadingIcon";
 import { sectionIconTileBrandClass, salesChromeInsetClass } from "@/lib/ui/ontime-theme";
-import { uniqueById } from "@/lib/sales/notepad-list";
+import { mergeRecordsByUpdatedAt, uniqueById } from "@/lib/sales/notepad-list";
 import { sortZkWatches } from "@/lib/sales/zk-watch-sort";
+import { ZkWatchGroupedList } from "./ZkWatchGroupedList";
 import { watchNeedsNotepadAttention } from "@/lib/sales/notepad-follow-up";
 import {
   computeZkWatchOrderHints,
   type ZkWatchOrderHints,
 } from "@/lib/sales/zk-watch-order-link";
+import {
+  buildZkArrivedSnapshot,
+  countArrivedZkLinesFromWatch,
+  detectUnseenZkWarehouseArrivals,
+} from "@/lib/sales/zk-watch-warehouse-notify";
+import {
+  loadZkArrivedSnapshot,
+  saveZkArrivedSnapshot,
+} from "@/lib/client/zk-watch-arrived-snapshot";
 import { sortSalesNotes } from "@/lib/sales/notepad-note-sort";
 import type { NotepadTodayTaskKind } from "@/lib/sales/notepad-today-tasks";
 import type { SalesNotepadData } from "@/lib/data/sales-notepad";
@@ -30,16 +41,25 @@ import {
 } from "@/app/actions/sales-notepad";
 import { SubiektStatusBar } from "@/components/subiekt/SubiektStatusBar";
 import { ZkWatchSection } from "./ZkWatchSection";
-import { ZkWatchCard } from "./ZkWatchCard";
 import { NotesSection } from "./NotesSection";
 import { ArchivedNotesSection } from "./ArchivedNotesSection";
 import { TodayTasksSection } from "./TodayTasksSection";
 import { NotatnikPanel } from "./NotatnikPanel";
 import { NotatnikCollapsible } from "./NotatnikCollapsible";
-import { NOTATNIK_PAGE_CLASS, NOTATNIK_ZK_LIST_CLASS } from "./notatnik-layout";
+import { NOTATNIK_PAGE_CLASS } from "./notatnik-layout";
 import { ManagerPreviewBanner } from "@/components/sales/ManagerPreviewBanner";
+import { SalesPanelSyncControl } from "@/components/sales/SalesPanelSyncControl";
 import { mojeShipmentSectionShellClass } from "@/lib/ui/moje-shipment-row-styles";
 import { undoWindowBannerDescription } from "@/lib/orders/daily-panel-undo";
+import {
+  flashNotepadAnchor,
+  parseNotepadHashAnchor,
+  resolveNotepadWatchFocusId,
+} from "@/lib/sales/notepad-anchor";
+import {
+  resolveWatchFocusRequest,
+  watchFocusOpensSections,
+} from "@/lib/sales/notepad-watch-focus";
 import { cn } from "@/lib/cn";
 
 type NotatnikUndoState =
@@ -71,20 +91,9 @@ function contextualizeSubiektMessage(message: string): string {
     );
 }
 
-function flashAnchor(anchor: string) {
-  window.setTimeout(() => {
-    const el = document.getElementById(anchor);
-    if (!el) return;
-    el.scrollIntoView({ behavior: "smooth", block: "center" });
-    el.classList.add("ring-2", "ring-indigo-400/70", "ring-offset-2", "rounded-md");
-    window.setTimeout(() => {
-      el.classList.remove("ring-2", "ring-indigo-400/70", "ring-offset-2", "rounded-md");
-    }, 1200);
-  }, 120);
-}
-
 export function NotatnikClient({
   initial,
+  initialFocusWatchId = null,
   readOnly,
   pageTitle,
   pageDescription,
@@ -94,6 +103,7 @@ export function NotatnikClient({
   teamPreview = null,
 }: {
   initial: SalesNotepadData;
+  initialFocusWatchId?: string | null;
   readOnly?: boolean;
   pageTitle: string;
   pageDescription?: string;
@@ -116,16 +126,122 @@ export function NotatnikClient({
   const zkLinkableOrders = source.zkLinkableOrders;
   /** W tourze pokazujemy pełny UI kart ZK (kliknięcia i tak blokuje warstwa touru). */
   const effectiveReadOnly = tourDemo ? false : Boolean(readOnly);
+  const initialFocus = initialFocusWatchId?.trim() || null;
+  const initialFocusSections = initialFocus
+    ? watchFocusOpensSections(initialFocus, source.zkWatches, source.archivedZkWatches)
+    : { showZk: false, showArchive: false };
   const [zkWatches, setZkWatches] = useState(source.zkWatches);
   const [archivedWatches, setArchivedWatches] = useState(source.archivedZkWatches);
   const [notes, setNotes] = useState(source.notes);
   const [archivedNotes, setArchivedNotes] = useState(source.archivedNotes);
   const [showZk, setShowZk] = useState(
-    () => tourDemo || source.zkWatches.some((w) => watchNeedsNotepadAttention(w))
+    () =>
+      tourDemo ||
+      initialFocusSections.showZk ||
+      source.zkWatches.some((watch) => watchNeedsNotepadAttention(watch))
   );
-  const [showArchive, setShowArchive] = useState(false);
+  const [showArchive, setShowArchive] = useState(() => initialFocusSections.showArchive);
+  const [focusWatchId, setFocusWatchId] = useState<string | null>(initialFocus);
+  const [focusWatchError, setFocusWatchError] = useState<string | null>(null);
+  const [liveAnnouncement, setLiveAnnouncement] = useState("");
   const [undo, setUndo] = useState<NotatnikUndoState | null>(null);
+  const [unseenWatchIds, setUnseenWatchIds] = useState<Set<string>>(() => new Set());
+  const [warehouseToast, setWarehouseToast] = useState<string | null>(null);
+  const snapshotReadyRef = useRef(false);
+  const focusHandledWatchRef = useRef<string | null>(null);
+  const zkWatchesRef = useRef(zkWatches);
+  const archivedWatchesRef = useRef(archivedWatches);
   const dismissUndo = useCallback(() => setUndo(null), []);
+
+  useEffect(() => {
+    zkWatchesRef.current = zkWatches;
+  }, [zkWatches]);
+
+  useEffect(() => {
+    archivedWatchesRef.current = archivedWatches;
+  }, [archivedWatches]);
+
+  const applyWatchFocus = useCallback((watchId: string) => {
+    const result = resolveWatchFocusRequest(
+      watchId,
+      zkWatchesRef.current,
+      archivedWatchesRef.current
+    );
+    if (result.kind === "missing") {
+      setFocusWatchError(
+        "Nie znaleziono tej ZK w notatniku — sprawdź, czy sprawa nie została zamknięta lub usunięta."
+      );
+      return false;
+    }
+
+    setFocusWatchError(null);
+    if (result.showZk) setShowZk(true);
+    if (result.showArchive) setShowArchive(true);
+    if (focusHandledWatchRef.current !== watchId.trim()) {
+      setFocusWatchId(watchId.trim());
+    }
+    return true;
+  }, []);
+
+  const syncWatchFocusFromLocation = useCallback(() => {
+    const watchId = resolveNotepadWatchFocusId(
+      window.location.hash,
+      new URLSearchParams(window.location.search).get("focusWatch")
+    );
+    if (watchId) {
+      if (focusHandledWatchRef.current === watchId) return;
+      applyWatchFocus(watchId);
+      return;
+    }
+
+    const anchor = parseNotepadHashAnchor(window.location.hash);
+    if (anchor?.startsWith("note-")) {
+      flashNotepadAnchor(anchor);
+    }
+  }, [applyWatchFocus]);
+
+  useLayoutEffect(() => {
+    if (initialFocus && focusHandledWatchRef.current !== initialFocus) {
+      applyWatchFocus(initialFocus);
+      return;
+    }
+    syncWatchFocusFromLocation();
+  }, [applyWatchFocus, initialFocus, syncWatchFocusFromLocation]);
+
+  useEffect(() => {
+    window.addEventListener("hashchange", syncWatchFocusFromLocation);
+    return () => window.removeEventListener("hashchange", syncWatchFocusFromLocation);
+  }, [syncWatchFocusFromLocation]);
+
+  const handleFocusWatchHandled = useCallback((watchId: string) => {
+    focusHandledWatchRef.current = watchId;
+    setFocusWatchId(null);
+  }, []);
+
+  const announceLive = useCallback((message: string) => {
+    setLiveAnnouncement(message);
+  }, []);
+
+  const salesPersonId =
+    source.zkWatches[0]?.sales_person_id ?? source.notes[0]?.sales_person_id ?? null;
+
+  const markWatchSeen = useCallback(
+    (watchId: string) => {
+      if (!salesPersonId) return;
+      const watch = zkWatches.find((w) => w.id === watchId);
+      if (!watch) return;
+      const snapshot = loadZkArrivedSnapshot(salesPersonId);
+      snapshot[watchId] = countArrivedZkLinesFromWatch(watch);
+      saveZkArrivedSnapshot(salesPersonId, snapshot);
+      setUnseenWatchIds((prev) => {
+        if (!prev.has(watchId)) return prev;
+        const next = new Set(prev);
+        next.delete(watchId);
+        return next;
+      });
+    },
+    [salesPersonId, zkWatches]
+  );
 
   const zkHintsByWatchId = useMemo(() => {
     const map = new Map<string, ZkWatchOrderHints>();
@@ -171,10 +287,14 @@ export function NotatnikClient({
 
   useEffect(() => {
     const next = tourDemo ? demoInitial : initial;
-    setZkWatches(uniqueById(sortZkWatches(next.zkWatches)));
-    setArchivedWatches(uniqueById(next.archivedZkWatches));
-    setNotes(uniqueById(next.notes));
-    setArchivedNotes(uniqueById(next.archivedNotes));
+    setZkWatches((prev) =>
+      uniqueById(sortZkWatches(mergeRecordsByUpdatedAt(prev, next.zkWatches)))
+    );
+    setArchivedWatches((prev) =>
+      uniqueById(sortZkWatches(mergeRecordsByUpdatedAt(prev, next.archivedZkWatches)))
+    );
+    setNotes((prev) => uniqueById(mergeRecordsByUpdatedAt(prev, next.notes)));
+    setArchivedNotes((prev) => uniqueById(mergeRecordsByUpdatedAt(prev, next.archivedNotes)));
     if (tourDemo) setShowZk(true);
   }, [
     demoInitial,
@@ -185,6 +305,45 @@ export function NotatnikClient({
     initial.notes,
     initial.archivedNotes,
   ]);
+
+  useEffect(() => {
+    if (!salesPersonId || tourDemo) return;
+
+    const snapshot = loadZkArrivedSnapshot(salesPersonId);
+    const isFirstVisit = Object.keys(snapshot).length === 0;
+
+    if (!snapshotReadyRef.current) {
+      if (isFirstVisit) {
+        saveZkArrivedSnapshot(salesPersonId, buildZkArrivedSnapshot(zkWatches));
+        snapshotReadyRef.current = true;
+        return;
+      }
+      const unseen = detectUnseenZkWarehouseArrivals(zkWatches, snapshot);
+      if (unseen.length) {
+        setUnseenWatchIds(new Set(unseen));
+        setShowZk(true);
+        setWarehouseToast(
+          unseen.length === 1
+            ? "Towar z ZK jest na magazynie — pozycja odhaczona automatycznie."
+            : `${unseen.length} spraw ZK ma nowy towar na magazynie.`
+        );
+      }
+      snapshotReadyRef.current = true;
+      return;
+    }
+
+    const unseen = detectUnseenZkWarehouseArrivals(zkWatches, snapshot);
+    if (!unseen.length) return;
+
+    setUnseenWatchIds((prev) => new Set([...prev, ...unseen]));
+    setShowZk(true);
+    const n = unseen.length;
+    setWarehouseToast(
+      n === 1
+        ? "Towar z ZK jest na magazynie — pozycja odhaczona automatycznie."
+        : `${n} spraw ZK ma nowy towar na magazynie.`
+    );
+  }, [salesPersonId, tourDemo, zkWatches]);
 
   useEffect(() => {
     if (!undo || effectiveReadOnly) return;
@@ -213,13 +372,13 @@ export function NotatnikClient({
         const { note } = await actionRestoreSalesNote(snapshot.note.id);
         setArchivedNotes((prev) => prev.filter((n) => n.id !== snapshot.note.id));
         setNotes((prev) => uniqueById([note, ...prev]));
-        flashAnchor(`note-${note.id}`);
+        flashNotepadAnchor(`note-${note.id}`);
       } else if (snapshot.type === "close-zk") {
         const { watch } = await actionUndoCloseZkWatch(snapshot.watch.id);
         setArchivedWatches((prev) => prev.filter((w) => w.id !== watch.id));
         setZkWatches((prev) => uniqueById(sortZkWatches([watch, ...prev])));
         setShowZk(true);
-        flashAnchor(`watch-${watch.id}`);
+        flashNotepadAnchor(`watch-${watch.id}`);
       } else {
         const ids = sortSalesNotes(snapshot.notes).map((n) => n.id);
         await actionReorderSalesNotes(ids);
@@ -232,10 +391,14 @@ export function NotatnikClient({
   }
 
   function handleTodayTaskClick(anchor: string, kind: NotepadTodayTaskKind) {
-    if (kind === "zk-follow-up") {
+    if (kind === "zk-follow-up" || kind === "zk-warehouse-arrival") {
       setShowZk(true);
     }
-    flashAnchor(anchor);
+    const watchId = anchor.startsWith("watch-") ? anchor.slice(6) : null;
+    if (watchId && kind === "zk-warehouse-arrival") {
+      markWatchSeen(watchId);
+    }
+    flashNotepadAnchor(anchor);
   }
 
   function handleWatchAdded(watch: SalesZkWatch) {
@@ -243,7 +406,7 @@ export function NotatnikClient({
     setArchivedWatches((prev) => prev.filter((w) => w.id !== watch.id));
     setShowZk(true);
     refresh();
-    flashAnchor(`watch-${watch.id}`);
+    flashNotepadAnchor(`watch-${watch.id}`);
   }
 
   function handleWatchClosed(watchId: string) {
@@ -268,16 +431,34 @@ export function NotatnikClient({
   }
 
   function handleWatchRefreshed(watch: SalesZkWatch) {
+    const previous = zkWatches.find((w) => w.id === watch.id);
+    const lineChecksChanged =
+      previous != null &&
+      JSON.stringify(previous.line_checks) !== JSON.stringify(watch.line_checks);
+
     setZkWatches((prev) =>
       uniqueById(sortZkWatches(prev.map((w) => (w.id === watch.id ? watch : w))))
     );
+    if (salesPersonId) {
+      const snapshot = loadZkArrivedSnapshot(salesPersonId);
+      snapshot[watch.id] = countArrivedZkLinesFromWatch(watch);
+      saveZkArrivedSnapshot(salesPersonId, snapshot);
+    }
+    if (lineChecksChanged) {
+      setUnseenWatchIds((prev) => {
+        if (!prev.has(watch.id)) return prev;
+        const next = new Set(prev);
+        next.delete(watch.id);
+        return next;
+      });
+    }
     refresh();
   }
 
   function handleNoteCreated(note: SalesNote) {
     setNotes((prev) => uniqueById([note, ...prev]));
     refresh();
-    flashAnchor(`note-${note.id}`);
+    flashNotepadAnchor(`note-${note.id}`);
   }
 
   function handleNoteUpdated(note: SalesNote) {
@@ -322,6 +503,7 @@ export function NotatnikClient({
   const hasArchive = archivedWatches.length > 0 || archivedNotes.length > 0;
   const archiveCount = archivedWatches.length + archivedNotes.length;
   const followUpZkCount = zkWatches.filter((w) => watchNeedsNotepadAttention(w)).length;
+  const warehouseArrivalCount = unseenWatchIds.size;
 
   const undoTitle =
     undo?.type === "archive"
@@ -335,6 +517,9 @@ export function NotatnikClient({
 
   return (
     <div className={NOTATNIK_PAGE_CLASS}>
+      {warehouseToast && !effectiveReadOnly ? (
+        <Toast message={warehouseToast} onDismiss={() => setWarehouseToast(null)} />
+      ) : null}
       {undo && !effectiveReadOnly ? (
         <UndoToast
           title={undoTitle}
@@ -345,6 +530,9 @@ export function NotatnikClient({
           undoShortcut="Ctrl+Z"
         />
       ) : null}
+      <div aria-live="polite" aria-atomic="true" className="sr-only">
+        {liveAnnouncement}
+      </div>
       <Card padding={false} className="overflow-hidden">
         <CardHeader
           inset
@@ -380,12 +568,24 @@ export function NotatnikClient({
           </Alert>
         ) : null}
 
+        {focusWatchError ? (
+          <Alert tone="warning" className={cn(salesChromeInsetClass, "mt-3")}>
+            {focusWatchError}
+          </Alert>
+        ) : null}
+
         {subiektForNotepad ? (
           <SubiektStatusBar
             initial={subiektForNotepad}
             onStatusChange={handleSubiektStatusChange}
             embedded
           />
+        ) : null}
+
+        {!effectiveReadOnly && !tourDemo ? (
+          <div className={cn(salesChromeInsetClass, "mt-3")}>
+            <SalesPanelSyncControl embedded variant="notatnik" />
+          </div>
         ) : null}
 
         {source.zkOrdersMigrationMissing && !tourDemo ? (
@@ -401,6 +601,7 @@ export function NotatnikClient({
           watches={zkWatches}
           notes={notes}
           onTaskClick={handleTodayTaskClick}
+          unseenWarehouseWatchIds={unseenWatchIds}
           embedded
         />
 
@@ -427,19 +628,28 @@ export function NotatnikClient({
             description="Krótki numer (min. 2 znaki) szuka w ostatnich 30 dniach; pełny np. 234/M/03/2026 — tylko dany miesiąc."
             count={zkWatches.length || undefined}
             open={showZk}
-            highlight={followUpZkCount > 0}
+            highlight={followUpZkCount > 0 || warehouseArrivalCount > 0}
             icon={<IconPackageCheck size={17} />}
             tileClassName="bg-amber-100 text-amber-800"
             badge={
-              followUpZkCount > 0 ? (
-                <Badge variant="purple" className="text-[10px]">
-                  {followUpZkCount}{" "}
-                  {followUpZkCount === 1
-                    ? "przypomnienie"
-                    : followUpZkCount < 5
-                      ? "przypomnienia"
-                      : "przypomnień"}
-                </Badge>
+              warehouseArrivalCount > 0 || followUpZkCount > 0 ? (
+                <span className="flex flex-wrap items-center gap-1">
+                  {warehouseArrivalCount > 0 ? (
+                    <Badge variant="success" className="text-[10px]">
+                      {warehouseArrivalCount} na magazynie
+                    </Badge>
+                  ) : null}
+                  {followUpZkCount > 0 ? (
+                    <Badge variant="purple" className="text-[10px]">
+                      {followUpZkCount}{" "}
+                      {followUpZkCount === 1
+                        ? "przypomnienie"
+                        : followUpZkCount < 5
+                          ? "przypomnienia"
+                          : "przypomnień"}
+                    </Badge>
+                  ) : null}
+                </span>
               ) : null
             }
             onToggle={() => setShowZk((v) => !v)}
@@ -447,6 +657,8 @@ export function NotatnikClient({
             <ZkWatchSection
               watches={zkWatches}
               zkHintsByWatchId={zkHintsByWatchId}
+              unseenWatchIds={unseenWatchIds}
+              onWatchSeen={markWatchSeen}
               readOnly={effectiveReadOnly}
               tourPreview={tourDemo}
               embedded
@@ -460,6 +672,9 @@ export function NotatnikClient({
               onWatchAdded={tourDemo ? undefined : handleWatchAdded}
               onWatchClosed={tourDemo ? undefined : handleWatchClosed}
               onWatchRefreshed={tourDemo ? undefined : handleWatchRefreshed}
+              focusWatchId={focusWatchId}
+              onFocusWatchHandled={handleFocusWatchHandled}
+              onLiveAnnounce={announceLive}
             />
           </NotatnikCollapsible>
 
@@ -478,20 +693,17 @@ export function NotatnikClient({
                   <div className="space-y-2">
                     <p className="text-xs font-medium text-slate-600">ZK zamknięte</p>
                     <div className={mojeShipmentSectionShellClass}>
-                      <ul className={NOTATNIK_ZK_LIST_CLASS}>
-                        {archivedWatches.map((watch) => (
-                          <li key={watch.id} id={`watch-${watch.id}`}>
-                            <ZkWatchCard
-                              watch={watch}
-                              readOnly={effectiveReadOnly}
-                              archived
-                              compact
-                              onRestored={handleWatchRestored}
-                              onDeleted={() => handleWatchDeleted(watch.id)}
-                            />
-                          </li>
-                        ))}
-                      </ul>
+                      <ZkWatchGroupedList
+                        watches={archivedWatches}
+                        readOnly={effectiveReadOnly}
+                        archived
+                        compact
+                        focusWatchId={focusWatchId}
+                        onFocusWatchHandled={handleFocusWatchHandled}
+                        onLiveAnnounce={announceLive}
+                        onRestored={handleWatchRestored}
+                        onDeleted={handleWatchDeleted}
+                      />
                     </div>
                   </div>
                 ) : null}

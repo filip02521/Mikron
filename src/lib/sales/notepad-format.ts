@@ -1,5 +1,5 @@
 import type { SalesZkWatch } from "@/types/database";
-import { zkDocumentStatusLabel } from "@/lib/subiekt/zk-document";
+import { normalizeZkQuery, zkDocumentStatusLabel } from "@/lib/subiekt/zk-document";
 
 export function formatPln(value: number | string | null | undefined): string {
   if (value == null || value === "") return "—";
@@ -18,6 +18,11 @@ export function formatShortDate(value: string | null | undefined): string | null
   const [y, m, day] = d.split("-");
   if (!y || !m || !day) return d;
   return `${day}.${m}.${y}`;
+}
+
+/** Numer ZK bez prefiksu — czytelniejszy w wąskiej liście. */
+export function formatZkWatchDisplayNumber(zkNumber: string): string {
+  return normalizeZkQuery(zkNumber).replace(/\s+/g, " ").trim() || zkNumber.trim();
 }
 
 function readSnapshotStatusLabel(watch: SalesZkWatch): string | null {

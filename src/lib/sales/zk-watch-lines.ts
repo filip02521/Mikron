@@ -11,6 +11,8 @@ export type ZkWatchLineView = {
   product: string;
   symbol: string | null;
   quantityLabel: string | null;
+  /** Ilość sztuk z pozycji ZK (Subiekt ob_Ilosc). */
+  quantity: number | null;
   subiektTwId: number | null;
   arrived: boolean;
 };
@@ -48,6 +50,13 @@ function formatLineQuantity(qty: number | null | undefined): string | null {
   return `${label} szt.`;
 }
 
+function parseLineQuantity(qty: number | null | undefined): number | null {
+  if (qty == null || !Number.isFinite(Number(qty))) return null;
+  const n = Number(qty);
+  if (n <= 0) return null;
+  return n === Math.trunc(n) ? Math.trunc(n) : n;
+}
+
 function lineViewFromSubiekt(
   line: SubiektDocumentLine,
   index: number,
@@ -56,11 +65,13 @@ function lineViewFromSubiekt(
   const key = zkLineKey(line, index);
   const product = (line.tw_Nazwa ?? line.tw_Symbol ?? "Pozycja").trim();
   const symbol = line.tw_Symbol?.trim() || null;
+  const quantity = parseLineQuantity(line.ob_Ilosc);
   return {
     key,
     product,
     symbol: symbol && symbol !== product ? symbol : null,
     quantityLabel: formatLineQuantity(line.ob_Ilosc),
+    quantity,
     subiektTwId:
       line.ob_TowId != null && Number.isFinite(Number(line.ob_TowId))
         ? Math.trunc(Number(line.ob_TowId))
@@ -107,6 +118,7 @@ export function buildZkWatchLineViews(watch: SalesZkWatch): ZkWatchLineView[] {
         product: watch.line_summary.trim(),
         symbol: null,
         quantityLabel: null,
+        quantity: null,
         subiektTwId: null,
         arrived: arrivedByKey.get(key) ?? false,
       },
@@ -126,6 +138,12 @@ export function summarizeZkWatchLines(views: ZkWatchLineView[]): {
   return { total, arrived, pending: total - arrived };
 }
 
+/** Wszystkie pozycje towarowe oznaczone jako „na miejscu”. */
+export function allZkWatchLinesArrived(views: ZkWatchLineView[]): boolean {
+  const { total, arrived } = summarizeZkWatchLines(views);
+  return total > 0 && arrived === total;
+}
+
 export function formatZkLinesProgress(views: ZkWatchLineView[]): string | null {
   const { total, arrived } = summarizeZkWatchLines(views);
   if (!total) return null;
@@ -133,11 +151,23 @@ export function formatZkLinesProgress(views: ZkWatchLineView[]): string | null {
   return `${arrived}/${total} na miejscu`;
 }
 
-/** Krótki licznik na przycisku w wierszu ZK. */
+/** Krótki licznik na wierszu ZK. */
 export function formatZkLinesShort(views: ZkWatchLineView[]): string | null {
   const { total, arrived } = summarizeZkWatchLines(views);
   if (!total) return null;
   return `${arrived}/${total}`;
+}
+
+/** Jedna linia podglądu na zwiniętej karcie. */
+export function formatZkLinesPreview(views: ZkWatchLineView[]): string | null {
+  const { total, arrived } = summarizeZkWatchLines(views);
+  if (!total) return null;
+  const firstPending = views.find((v) => !v.arrived);
+  const first = firstPending ?? views[0];
+  if (!first) return `${arrived}/${total}`;
+  const name =
+    first.product.length > 42 ? `${first.product.slice(0, 41).trim()}…` : first.product;
+  return `${name} · ${arrived}/${total}`;
 }
 
 export function checksFromLineViews(views: ZkWatchLineView[]): ZkWatchLineCheckStored[] {

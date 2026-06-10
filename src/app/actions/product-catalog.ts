@@ -24,6 +24,8 @@ import {
   type ProductCatalogRow,
 } from "@/lib/data/product-catalog-queries";
 import {
+  clearZdImportSupplierJobState,
+  continueZdImportForSupplier,
   readZdImportSupplierJobState,
   startZdImportForSupplier,
   stopZdImportForSupplier,
@@ -34,6 +36,7 @@ import {
   readZdIndexJobState,
   startZdIndexJob,
   stopZdIndexJob,
+  continueZdIndexJob,
   tickZdIndexJob,
   type ZdIndexJobState,
 } from "@/lib/subiekt/zd-index-job";
@@ -42,6 +45,7 @@ import {
   type ZdUnmappedKhReport,
 } from "@/lib/subiekt/zd-unmapped-kh";
 import {
+  continueZdImportAllSuppliersJob,
   readZdImportAllSuppliersJobState,
   startZdImportAllSuppliersJob,
   stopZdImportAllSuppliersJob,
@@ -514,8 +518,20 @@ export async function actionStopZdImportSupplierJob(supplierId: string) {
   return next;
 }
 
+export async function actionContinueZdImportSupplierJob(
+  supplierId: string
+): Promise<ZdImportSupplierJobState | null> {
+  await requireAdmin();
+  const next = await continueZdImportForSupplier(supplierId);
+  revalidatePath("/admin/produkty");
+  return next;
+}
+
 /** Usuwa mapowania ZD i resetuje flagi importu — przygotowanie do ponownego importu. */
-export async function actionCleanupZdImportForSupplier(supplierId: string): Promise<{
+export async function actionCleanupZdImportForSupplier(
+  supplierId: string,
+  options?: { monthsBack?: number }
+): Promise<{
   success: true;
   removedLinks: number;
   resetZdFlags: number;
@@ -529,10 +545,13 @@ export async function actionCleanupZdImportForSupplier(supplierId: string): Prom
     .eq("last_source", "zd_import");
   if (error) throw new Error(error.message);
 
+  const { defaultZdSearchDataOd } = await import("@/lib/subiekt/subiekt-runtime-cache");
   const { resetZdCatalogImportFlagsForSupplier } = await import(
     "@/lib/subiekt/zd-catalog-import"
   );
-  const resetZdFlags = await resetZdCatalogImportFlagsForSupplier(supplierId);
+  const dataOd = defaultZdSearchDataOd(options?.monthsBack ?? 60);
+  const resetZdFlags = await resetZdCatalogImportFlagsForSupplier(supplierId, dataOd);
+  await clearZdImportSupplierJobState(supplierId);
 
   revalidatePath("/admin/produkty");
   return { success: true, removedLinks: count ?? 0, resetZdFlags };
@@ -545,7 +564,7 @@ export async function actionReadZdIndexJob(): Promise<ZdIndexJobState | null> {
 
 export async function actionStartZdIndexJob(options?: { monthsBack?: number }) {
   await requireAdmin();
-  return startZdIndexJob({ monthsBack: options?.monthsBack ?? 18, pageSize: 25 });
+  return startZdIndexJob({ monthsBack: options?.monthsBack ?? 60, pageSize: 25 });
 }
 
 export async function actionTickZdIndexJob(options?: { maxDocs?: number }): Promise<ZdIndexJobState> {
@@ -558,6 +577,13 @@ export async function actionTickZdIndexJob(options?: { maxDocs?: number }): Prom
 export async function actionStopZdIndexJob() {
   await requireAdmin();
   const next = await stopZdIndexJob();
+  revalidatePath("/admin/produkty");
+  return next;
+}
+
+export async function actionContinueZdIndexJob(): Promise<ZdIndexJobState | null> {
+  await requireAdmin();
+  const next = await continueZdIndexJob();
   revalidatePath("/admin/produkty");
   return next;
 }
@@ -594,6 +620,13 @@ export async function actionTickZdImportAllSuppliersJob(): Promise<ZdImportAllSu
 export async function actionStopZdImportAllSuppliersJob() {
   await requireAdmin();
   const next = await stopZdImportAllSuppliersJob();
+  revalidatePath("/admin/produkty");
+  return next;
+}
+
+export async function actionContinueZdImportAllSuppliersJob(): Promise<ZdImportAllSuppliersJobState | null> {
+  await requireAdmin();
+  const next = await continueZdImportAllSuppliersJob();
   revalidatePath("/admin/produkty");
   return next;
 }

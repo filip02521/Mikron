@@ -36,7 +36,10 @@ import {
   actionStartZdIndexJob,
   actionStopZdIndexJob,
   actionTickZdIndexJob,
+  actionContinueZdIndexJob,
   actionListZdUnmappedKh,
+  actionContinueZdImportAllSuppliersJob,
+  actionContinueZdImportSupplierJob,
   actionReadZdImportAllSuppliersJob,
   actionStartZdImportAllSuppliersJob,
   actionStopZdImportAllSuppliersJob,
@@ -83,6 +86,9 @@ export function ProductsCatalogAdminClient({
   const [allState, setAllState] = useState<any | null>(null);
   const [allRunning, setAllRunning] = useState(false);
   const allTimer = useRef<number | null>(null);
+  const tickImportInFlight = useRef(false);
+  const tickAllInFlight = useRef(false);
+  const tickIndexInFlight = useRef(false);
   const [zdMonthsBack, setZdMonthsBack] = useState<number>(60);
   const [indexMonthsBack, setIndexMonthsBack] = useState<number>(60);
   const MONTHS_OPTIONS = [30, 60, 120, 240] as const;
@@ -102,12 +108,30 @@ export function ProductsCatalogAdminClient({
     setImportRunning(false);
   };
 
+  const startImportTickLoop = () => {
+    setImportRunning(true);
+    if (tickTimer.current == null) {
+      tickTimer.current = window.setInterval(() => {
+        void tickImport();
+      }, 1500);
+    }
+  };
+
   const stopIndexLoop = () => {
     if (indexTimer.current != null) {
       window.clearInterval(indexTimer.current);
       indexTimer.current = null;
     }
     setIndexRunning(false);
+  };
+
+  const startIndexTickLoop = () => {
+    setIndexRunning(true);
+    if (indexTimer.current == null) {
+      indexTimer.current = window.setInterval(() => {
+        void tickIndex();
+      }, 1500);
+    }
   };
 
   const stopAllLoop = () => {
@@ -118,12 +142,39 @@ export function ProductsCatalogAdminClient({
     setAllRunning(false);
   };
 
+  const startAllTickLoop = () => {
+    setAllRunning(true);
+    if (allTimer.current == null) {
+      allTimer.current = window.setInterval(() => {
+        void tickAll();
+      }, 1500);
+    }
+  };
+
+  const allJobResumable =
+    allState?.status === "paused" ||
+    allState?.status === "failed" ||
+    allState?.status === "running";
+
+  const importJobResumable =
+    importState?.status === "paused" ||
+    importState?.status === "failed" ||
+    importState?.status === "running";
+
+  const indexJobResumable =
+    indexState?.status === "paused" ||
+    indexState?.status === "failed" ||
+    indexState?.status === "running";
+
   const refreshImportState = () => {
     if (!importSupplierId) return;
     start(async () => {
       try {
         const state = await actionReadZdImportSupplierJob(importSupplierId);
         setImportState(state);
+        if (state?.status === "running" && tickTimer.current == null) {
+          startImportTickLoop();
+        }
       } catch (e) {
         setToast({ text: e instanceof Error ? e.message : "Błąd odczytu joba", tone: "error" });
       }
@@ -209,7 +260,9 @@ export function ProductsCatalogAdminClient({
       try {
         const state = await actionReadZdIndexJob();
         setIndexState(state);
-        if (state?.status !== "running") {
+        if (state?.status === "running" && indexTimer.current == null) {
+          startIndexTickLoop();
+        } else if (state?.status !== "running") {
           stopIndexLoop();
         }
       } catch (e) {
@@ -223,6 +276,9 @@ export function ProductsCatalogAdminClient({
       try {
         const state = await actionReadZdImportAllSuppliersJob();
         setAllState(state);
+        if (state?.status === "running" && allTimer.current == null) {
+          startAllTickLoop();
+        }
       } catch (e) {
         setToast({ text: e instanceof Error ? e.message : "Błąd odczytu autopilota", tone: "error" });
       }
@@ -381,8 +437,42 @@ export function ProductsCatalogAdminClient({
     });
   };
 
+  const continueImport = () => {
+    if (!importSupplierId) return;
+    start(async () => {
+      try {
+        const s = await actionContinueZdImportSupplierJob(importSupplierId);
+        if (!s) {
+          setToast({ text: "Brak wstrzymanego importu do wznowienia.", tone: "error" });
+          return;
+        }
+        setImportState(s);
+        setToast({ text: "Wznawiam import ZD dla wybranego dostawcy…", tone: "success" });
+        startImportTickLoop();
+      } catch (e) {
+        setToast({ text: e instanceof Error ? e.message : "Błąd wznowienia importu", tone: "error" });
+      }
+    });
+  };
+
   const startImport = () => {
     if (!importSupplierId) return;
+    if (importJobResumable && importState?.status === "paused") {
+      setToast({
+        text: "Import jest wstrzymany — użyj Kontynuuj, żeby nie stracić postępu.",
+        tone: "error",
+      });
+      return;
+    }
+    if (
+      importJobResumable &&
+      importState?.status === "failed" &&
+      !confirm(
+        "Jest niedokończony import. Start od nowa go nadpisze — na pewno zacząć od początku?"
+      )
+    ) {
+      return;
+    }
     start(async () => {
       try {
         const s = await actionStartZdImportSupplierJob({
@@ -391,12 +481,7 @@ export function ProductsCatalogAdminClient({
         });
         setImportState(s);
         setToast({ text: "Start importu z ZD — uruchamiam przetwarzanie…", tone: "success" });
-        setImportRunning(true);
-        if (tickTimer.current == null) {
-          tickTimer.current = window.setInterval(() => {
-            void tickImport();
-          }, 1500);
-        }
+        startImportTickLoop();
       } catch (e) {
         setToast({ text: e instanceof Error ? e.message : "Błąd startu importu", tone: "error" });
       }
@@ -411,7 +496,10 @@ export function ProductsCatalogAdminClient({
       try {
         const s = await actionStopZdImportSupplierJob(importSupplierId);
         setImportState(s);
-        setToast({ text: "Import zatrzymany.", tone: "success" });
+        setToast({
+          text: "Import wstrzymany — jutro użyj Kontynuuj (postęp zostaje w bazie).",
+          tone: "success",
+        });
       } catch (e) {
         setToast({ text: e instanceof Error ? e.message : "Błąd zatrzymania importu", tone: "error" });
       }
@@ -430,12 +518,16 @@ export function ProductsCatalogAdminClient({
     stopTickLoop();
     start(async () => {
       try {
-        const res = await actionCleanupZdImportForSupplier(importSupplierId);
+        const res = await actionCleanupZdImportForSupplier(importSupplierId, {
+          monthsBack: zdMonthsBack,
+        });
+        setImportState(null);
         setToast({
           text: `Usunięto ${res.removedLinks} mapowań i zresetowano ${res.resetZdFlags} flag ZD — możesz uruchomić import od nowa.`,
           tone: "success",
         });
-        window.location.reload();
+        refreshImportState();
+        refreshCoverage();
       } catch (e) {
         setToast({ text: e instanceof Error ? e.message : "Błąd czyszczenia", tone: "error" });
       }
@@ -443,31 +535,70 @@ export function ProductsCatalogAdminClient({
   };
 
   const tickImport = async () => {
-    if (!importSupplierId) return;
+    if (!importSupplierId || tickImportInFlight.current) return;
+    tickImportInFlight.current = true;
     try {
       const s = await actionTickZdImportSupplierJob({ supplierId: importSupplierId, maxDocs: 3 });
       setImportState(s);
-      if (s?.status === "done" || s?.status === "failed" || s?.status === "idle") {
+      if (
+        s?.status === "done" ||
+        s?.status === "failed" ||
+        s?.status === "paused" ||
+        s?.status === "idle"
+      ) {
         stopTickLoop();
       }
     } catch (e) {
       stopTickLoop();
       setToast({ text: e instanceof Error ? e.message : "Błąd tick", tone: "error" });
+    } finally {
+      tickImportInFlight.current = false;
     }
   };
 
+  const continueIndex = () => {
+    start(async () => {
+      try {
+        const s = await actionContinueZdIndexJob();
+        if (!s) {
+          setToast({ text: "Brak wstrzymanego indeksowania do wznowienia.", tone: "error" });
+          return;
+        }
+        setIndexState(s);
+        setToast({
+          text: `Wznawiam indeksowanie od strony ${s.page ?? "?"}…`,
+          tone: "success",
+        });
+        startIndexTickLoop();
+      } catch (e) {
+        setToast({ text: e instanceof Error ? e.message : "Błąd wznowienia indeksowania", tone: "error" });
+      }
+    });
+  };
+
   const startIndex = () => {
+    if (indexJobResumable && indexState?.status === "paused") {
+      setToast({
+        text: "Indeksowanie jest wstrzymane — użyj Kontynuuj, żeby nie stracić postępu.",
+        tone: "error",
+      });
+      return;
+    }
+    if (
+      indexJobResumable &&
+      indexState?.status === "failed" &&
+      !confirm(
+        "Jest niedokończone indeksowanie. Start od nowa nadpisze postęp — na pewno zacząć od strony 1?"
+      )
+    ) {
+      return;
+    }
     start(async () => {
       try {
         const s = await actionStartZdIndexJob({ monthsBack: indexMonthsBack });
         setIndexState(s);
         setToast({ text: "Start indeksowania ZD — uruchamiam…", tone: "success" });
-        setIndexRunning(true);
-        if (indexTimer.current == null) {
-          indexTimer.current = window.setInterval(() => {
-            void tickIndex();
-          }, 1500);
-        }
+        startIndexTickLoop();
       } catch (e) {
         setToast({ text: e instanceof Error ? e.message : "Błąd startu indeksowania", tone: "error" });
       }
@@ -480,7 +611,10 @@ export function ProductsCatalogAdminClient({
       try {
         const s = await actionStopZdIndexJob();
         setIndexState(s);
-        setToast({ text: "Indeksowanie zatrzymane.", tone: "success" });
+        setToast({
+          text: "Indeksowanie wstrzymane — użyj Kontynuuj, żeby wznowić od bieżącej strony.",
+          tone: "success",
+        });
       } catch (e) {
         setToast({ text: e instanceof Error ? e.message : "Błąd stop indeksowania", tone: "error" });
       }
@@ -488,11 +622,16 @@ export function ProductsCatalogAdminClient({
   };
 
   const tickIndex = async () => {
+    if (tickIndexInFlight.current) return;
+    tickIndexInFlight.current = true;
     try {
       const s = await actionTickZdIndexJob({ maxDocs: 3 });
       setIndexState(s);
       const indexFinished =
-        s?.status === "done" || s?.status === "failed" || s?.status === "idle";
+        s?.status === "done" ||
+        s?.status === "failed" ||
+        s?.status === "paused" ||
+        s?.status === "idle";
       if (indexFinished) {
         stopIndexLoop();
         if (zdUnmapped != null) {
@@ -502,21 +641,55 @@ export function ProductsCatalogAdminClient({
     } catch (e) {
       stopIndexLoop();
       setToast({ text: e instanceof Error ? e.message : "Błąd tick indeksu", tone: "error" });
+    } finally {
+      tickIndexInFlight.current = false;
     }
   };
 
+  const continueAll = () => {
+    start(async () => {
+      try {
+        const s = await actionContinueZdImportAllSuppliersJob();
+        if (!s) {
+          setToast({ text: "Brak wstrzymanego autopilota do wznowienia.", tone: "error" });
+          return;
+        }
+        setAllState(s);
+        const at =
+          s.supplierIds?.length != null
+            ? `${(s.processedSuppliers ?? 0) + 1}/${s.supplierIds.length}`
+            : "?";
+        setToast({ text: `Wznawiam autopilot od dostawcy ${at}…`, tone: "success" });
+        startAllTickLoop();
+      } catch (e) {
+        setToast({ text: e instanceof Error ? e.message : "Błąd wznowienia autopilota", tone: "error" });
+      }
+    });
+  };
+
   const startAll = () => {
+    if (allJobResumable && allState?.status === "paused") {
+      setToast({
+        text: "Autopilot jest wstrzymany — użyj Kontynuuj, żeby nie stracić postępu.",
+        tone: "error",
+      });
+      return;
+    }
+    if (
+      allJobResumable &&
+      allState?.status === "failed" &&
+      !confirm(
+        "Jest niedokończony import. Start od nowa go nadpisze — na pewno zacząć od pierwszego dostawcy?"
+      )
+    ) {
+      return;
+    }
     start(async () => {
       try {
         const s = await actionStartZdImportAllSuppliersJob({ monthsBack: zdMonthsBack, batchDocs: 3 });
         setAllState(s);
         setToast({ text: "Autopilot: start importu po dostawcach…", tone: "success" });
-        setAllRunning(true);
-        if (allTimer.current == null) {
-          allTimer.current = window.setInterval(() => {
-            void tickAll();
-          }, 1500);
-        }
+        startAllTickLoop();
       } catch (e) {
         setToast({ text: e instanceof Error ? e.message : "Błąd startu autopilota", tone: "error" });
       }
@@ -529,7 +702,10 @@ export function ProductsCatalogAdminClient({
       try {
         const s = await actionStopZdImportAllSuppliersJob();
         setAllState(s);
-        setToast({ text: "Autopilot zatrzymany.", tone: "success" });
+        setToast({
+          text: "Autopilot wstrzymany — jutro użyj Kontynuuj (postęp zostaje w bazie).",
+          tone: "success",
+        });
       } catch (e) {
         setToast({ text: e instanceof Error ? e.message : "Błąd stop autopilota", tone: "error" });
       }
@@ -537,15 +713,24 @@ export function ProductsCatalogAdminClient({
   };
 
   const tickAll = async () => {
+    if (tickAllInFlight.current) return;
+    tickAllInFlight.current = true;
     try {
       const s = await actionTickZdImportAllSuppliersJob();
       setAllState(s);
-      if (s?.status === "done" || s?.status === "failed" || s?.status === "idle") {
+      if (
+        s?.status === "done" ||
+        s?.status === "failed" ||
+        s?.status === "paused" ||
+        s?.status === "idle"
+      ) {
         stopAllLoop();
       }
     } catch (e) {
       stopAllLoop();
       setToast({ text: e instanceof Error ? e.message : "Błąd tick autopilota", tone: "error" });
+    } finally {
+      tickAllInFlight.current = false;
     }
   };
 
@@ -701,13 +886,32 @@ export function ProductsCatalogAdminClient({
           </div>
 
           <div className="mt-3 flex flex-wrap gap-2">
-            <Button variant="secondary" onClick={startIndex} disabled={pending}>
+            <Button
+              variant="secondary"
+              onClick={continueIndex}
+              disabled={
+                pending ||
+                !indexJobResumable ||
+                (indexState?.status === "running" && indexRunning)
+              }
+            >
+              Kontynuuj
+            </Button>
+            <Button
+              variant="secondary"
+              onClick={startIndex}
+              disabled={pending || indexState?.status === "paused"}
+            >
               Start indeksowania
             </Button>
             <Button variant="secondary" onClick={() => void tickIndex()} disabled={pending}>
               Tick
             </Button>
-            <Button variant="secondary" onClick={stopIndex} disabled={pending}>
+            <Button
+              variant="secondary"
+              onClick={stopIndex}
+              disabled={pending || indexState?.status !== "running"}
+            >
               Stop
             </Button>
             <Button variant="secondary" onClick={refreshIndexState} disabled={pending}>
@@ -799,18 +1003,31 @@ export function ProductsCatalogAdminClient({
                           setImportSupplierId(s.id);
                           start(async () => {
                             try {
+                              const existing = await actionReadZdImportSupplierJob(s.id);
+                              if (existing?.status === "paused") {
+                                setImportState(existing);
+                                setToast({
+                                  text: "Import wstrzymany — użyj Kontynuuj w sekcji importu.",
+                                  tone: "error",
+                                });
+                                return;
+                              }
+                              if (
+                                existing?.status === "failed" &&
+                                !confirm(
+                                  "Jest niedokończony import dla tego dostawcy. Start od nowa go nadpisze — kontynuować?"
+                                )
+                              ) {
+                                setImportState(existing);
+                                return;
+                              }
                               const st = await actionStartZdImportSupplierJob({
                                 supplierId: s.id,
                                 monthsBack: zdMonthsBack,
                               });
                               setImportState(st);
                               setToast({ text: `Start importu ZD dla: ${s.name}`, tone: "success" });
-                              setImportRunning(true);
-                              if (tickTimer.current == null) {
-                                tickTimer.current = window.setInterval(() => {
-                                  void tickImport();
-                                }, 1500);
-                              }
+                              startImportTickLoop();
                             } catch (e) {
                               setToast({ text: e instanceof Error ? e.message : "Błąd startu importu", tone: "error" });
                             }
@@ -853,13 +1070,28 @@ export function ProductsCatalogAdminClient({
             </p>
           </div>
           <div className="mt-3 flex flex-wrap gap-2">
-            <Button variant="secondary" onClick={startAll} disabled={pending}>
+            <Button
+              variant="secondary"
+              onClick={continueAll}
+              disabled={
+                pending ||
+                !allJobResumable ||
+                (allState?.status === "running" && allRunning)
+              }
+            >
+              Kontynuuj
+            </Button>
+            <Button
+              variant="secondary"
+              onClick={startAll}
+              disabled={pending || allState?.status === "paused"}
+            >
               Start autopilota
             </Button>
             <Button variant="secondary" onClick={() => void tickAll()} disabled={pending}>
               Tick
             </Button>
-            <Button variant="secondary" onClick={stopAll} disabled={pending}>
+            <Button variant="secondary" onClick={stopAll} disabled={pending || allState?.status !== "running"}>
               Stop
             </Button>
             <Button variant="secondary" onClick={refreshAllState} disabled={pending}>
@@ -949,13 +1181,33 @@ export function ProductsCatalogAdminClient({
             </select>
 
             <div className="flex flex-wrap gap-2">
-              <Button variant="secondary" onClick={startImport} disabled={pending || !importSupplierId}>
+              <Button
+                variant="secondary"
+                onClick={continueImport}
+                disabled={
+                  pending ||
+                  !importSupplierId ||
+                  !importJobResumable ||
+                  (importState?.status === "running" && importRunning)
+                }
+              >
+                Kontynuuj
+              </Button>
+              <Button
+                variant="secondary"
+                onClick={startImport}
+                disabled={pending || !importSupplierId || importState?.status === "paused"}
+              >
                 Start
               </Button>
               <Button variant="secondary" onClick={() => void tickImport()} disabled={pending || !importSupplierId}>
                 Tick
               </Button>
-              <Button variant="secondary" onClick={stopImport} disabled={pending || !importSupplierId}>
+              <Button
+                variant="secondary"
+                onClick={stopImport}
+                disabled={pending || !importSupplierId || importState?.status !== "running"}
+              >
                 Stop
               </Button>
               <Button variant="secondary" onClick={cleanupImport} disabled={pending || !importSupplierId}>
@@ -973,9 +1225,11 @@ export function ProductsCatalogAdminClient({
                 Status: <span className="font-semibold">{importState?.status ?? "—"}</span>
               </span>
               <span className="rounded-full bg-slate-100 px-2 py-0.5">
-                Strona:{" "}
+                Pozostało:{" "}
                 <span className="font-semibold tabular-nums">
-                  {importState?.page ?? "—"}/{importState?.totalPages ?? "?"}
+                  {importState?.indexTotalDocs != null
+                    ? Math.max(0, importState.indexTotalDocs - (importState.processedDocs ?? 0))
+                    : "?"}
                 </span>
               </span>
               <span className="rounded-full bg-slate-100 px-2 py-0.5">

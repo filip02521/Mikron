@@ -245,7 +245,7 @@ describe("parseStatusDetailMetaParts", () => {
       ],
       []
     ).zamowienia[0];
-    expect(myOrderMetaFields(row, false).some((f) => f.label === "ZK" && f.value === "ZK/2026/0138")).toBe(
+    expect(myOrderMetaFields(row, false).some((f) => f.label === "ZK" && f.value === "2026/0138")).toBe(
       true
     );
   });

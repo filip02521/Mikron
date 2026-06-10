@@ -1,7 +1,7 @@
 "use client";
 
 import { Suspense, useEffect, useMemo, useRef, useState, useCallback, type ComponentProps } from "react";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import type { MyOrderRow } from "@/lib/orders/my-order-presenter";
 import {
   filterMyOrderRows,
@@ -57,6 +57,10 @@ import {
   type MyOrderSectionPatternId,
 } from "@/lib/orders/my-order-section-callout";
 import {
+  findMyOrderRowIdsForFocusOrderIds,
+  parseMojeFocusOrderIds,
+} from "@/lib/orders/moje-order-focus";
+import {
   MY_ORDER_ACTION_SECTION_COPY,
   MY_ORDER_INFORMACJA_SECTION_COPY,
   MY_ORDER_PROGRESS_SECTION_COPY,
@@ -95,6 +99,7 @@ function MojeOrdersOverviewStats({
   activeFilter,
   filteredCount,
   searchActive,
+  clientLinkFilterActive = false,
   archiveMatchCount = 0,
 }: {
   shipmentCount: number;
@@ -102,9 +107,11 @@ function MojeOrdersOverviewStats({
   activeFilter: MyOrderInboxFilter | null;
   filteredCount: number;
   searchActive: boolean;
+  clientLinkFilterActive?: boolean;
   archiveMatchCount?: number;
 }) {
   const narrowed = activeFilter || searchActive;
+  if (clientLinkFilterActive && !narrowed) return null;
   return (
     <div className="flex flex-wrap items-center gap-x-4 gap-y-2 border-b border-slate-100 bg-slate-50/60 px-3 py-2.5 sm:px-4 lg:px-6">
       {narrowed ? (
@@ -179,6 +186,14 @@ function MojeSectionListLabel({
   );
 }
 
+function flashMojeCard(card: HTMLElement | null) {
+  if (!card) return;
+  card.classList.add("ring-2", "ring-indigo-400/70", "ring-offset-2", "rounded-md");
+  window.setTimeout(() => {
+    card.classList.remove("ring-2", "ring-indigo-400/70", "ring-offset-2", "rounded-md");
+  }, 3200);
+}
+
 function MyOrderShipmentBlock({
   rows,
   listKind,
@@ -191,6 +206,7 @@ function MyOrderShipmentBlock({
   tourPreview = false,
   compactActionLayout = false,
   suppressedSectionPatterns,
+  focusRowIds,
 }: {
   rows: MyOrderRow[];
   listKind: "zamowienie" | "informacja";
@@ -203,6 +219,7 @@ function MyOrderShipmentBlock({
   tourPreview?: boolean;
   compactActionLayout?: boolean;
   suppressedSectionPatterns?: Set<MyOrderSectionPatternId>;
+  focusRowIds?: ReadonlySet<string>;
 }) {
   if (rows.length === 0) return null;
   return (
@@ -219,6 +236,7 @@ function MyOrderShipmentBlock({
       tourPreview={tourPreview}
       compactActionLayout={compactActionLayout}
       suppressedSectionPatterns={suppressedSectionPatterns}
+      focusRowIds={focusRowIds}
     />
   );
 }
@@ -348,6 +366,7 @@ function MojeOrdersViewContent({
   initialClientKhLabel,
   initialClientZkWatchId,
   initialClientZkNumber,
+  initialFocusOrderIds,
   syncSearchUrl = true,
   tourPreview = false,
   showSalesSync = false,
@@ -372,18 +391,25 @@ function MojeOrdersViewContent({
   initialClientKhLabel?: string | null;
   initialClientZkWatchId?: string | null;
   initialClientZkNumber?: string | null;
+  initialFocusOrderIds?: string | null;
   syncSearchUrl?: boolean;
   tourPreview?: boolean;
   showSalesSync?: boolean;
   dayStartContext?: SalesDayStartContext | null;
 }) {
   const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
   const [activeFilter, setActiveFilter] = useState<MyOrderInboxFilter | null>(null);
   const clientKhFilter =
     initialClientKhId != null && initialClientKhId > 0 ? initialClientKhId : null;
   const clientLinkLabel = (initialClientKhLabel ?? initialClientQuery ?? "").trim() || null;
   const clientZkWatchId = initialClientZkWatchId?.trim() || null;
   const clientZkNumber = initialClientZkNumber?.trim() || null;
+  const focusOrderIds = useMemo(
+    () => parseMojeFocusOrderIds(initialFocusOrderIds),
+    [initialFocusOrderIds]
+  );
   const clientLinkFilterActive =
     clientKhFilter != null ||
     Boolean(clientLinkLabel) ||
@@ -607,6 +633,24 @@ function MojeOrdersViewContent({
     () => filterMyOrderRowsByClientKh(archiwumExtended, clientKhFilter, clientLinkFilterOpts),
     [archiwumExtended, clientKhFilter, clientLinkFilterOpts]
   );
+
+  const focusRowIds = useMemo(() => {
+    if (!focusOrderIds.length) return new Set<string>();
+    const sourceRows = [
+      ...searchFilteredZamowienia,
+      ...searchFilteredInformacje,
+      ...archiwumRecentFiltered,
+      ...archiwumExtendedFiltered,
+    ];
+    return new Set(findMyOrderRowIdsForFocusOrderIds(sourceRows, focusOrderIds));
+  }, [
+    focusOrderIds,
+    searchFilteredZamowienia,
+    searchFilteredInformacje,
+    archiwumRecentFiltered,
+    archiwumExtendedFiltered,
+  ]);
+
   const openArchiveForSearch =
     (searchActive || clientKhFilterActive) &&
     searchMatchCount === 0 &&
@@ -639,14 +683,33 @@ function MojeOrdersViewContent({
     archiwumExtendedFiltered,
   ]);
 
+  const clearNotepadClientFilter = useCallback(() => {
+    if (tourPreview) return;
+    setSearchQuery("");
+    setActiveFilter(null);
+    if (syncSearchUrl) {
+      const params = new URLSearchParams(searchParams.toString());
+      params.delete("kh");
+      params.delete("klient");
+      params.delete("zkWatch");
+      params.delete("zk");
+      params.delete("focusOrders");
+      params.delete("q");
+      const qs = params.toString();
+      router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false });
+    }
+  }, [tourPreview, setSearchQuery, syncSearchUrl, searchParams, router, pathname]);
+
   const clientKhBanner = clientLinkFilterActive ? (
     <Suspense fallback={null}>
       <MojeClientKhFilterBanner
-        clientKhId={clientKhFilter}
-        clientLabel={clientKhDisplayLabel}
+        clientLabel={clientKhDisplayLabel ?? clientLinkLabel}
         zkNumber={clientZkNumber}
+        zkWatchId={clientZkWatchId}
+        salesPersonId={zamowienia[0]?.salesPersonId ?? informacje[0]?.salesPersonId ?? null}
         matchCount={searchMatchCount}
-        syncUrl={syncSearchUrl && !tourPreview}
+        totalCount={shipmentCount}
+        onClear={clearNotepadClientFilter}
       />
     </Suspense>
   ) : null;
@@ -684,6 +747,30 @@ function MojeOrdersViewContent({
     });
     el.focus({ preventScroll: true });
   }, [activeFilter, filteredCount, filteredZamowienia, filteredInformacje]);
+
+  const focusScrollDoneRef = useRef(false);
+
+  useEffect(() => {
+    if (focusScrollDoneRef.current || focusRowIds.size === 0) return;
+
+    const visibleRows = [...filteredZamowienia, ...filteredInformacje];
+    const targetRowId = visibleRows.find((row) => focusRowIds.has(row.id))?.id;
+    if (!targetRowId) return;
+
+    focusScrollDoneRef.current = true;
+    window.setTimeout(() => {
+      const card = document.getElementById(cardDomId(targetRowId));
+      if (!card) return;
+      card.scrollIntoView({ behavior: "smooth", block: "center" });
+      flashMojeCard(card);
+      const toggle = card.querySelector<HTMLElement>("[data-moje-row-toggle]");
+      toggle?.focus({ preventScroll: true });
+    }, 120);
+  }, [focusRowIds, filteredZamowienia, filteredInformacje]);
+
+  useEffect(() => {
+    focusScrollDoneRef.current = false;
+  }, [initialFocusOrderIds]);
 
   const documentTitleBaseRef = useRef<string | null>(null);
 
@@ -773,6 +860,7 @@ function MojeOrdersViewContent({
     searchQuery,
     tourPreview,
     compactActionLayout: compactActionRows,
+    focusRowIds: focusRowIds.size > 0 ? focusRowIds : undefined,
   };
 
   return (
@@ -792,6 +880,8 @@ function MojeOrdersViewContent({
           }
         />
 
+        {clientKhBanner}
+
         {!tourPreview && showSalesSync ? <MojeOrdersSyncStrip /> : null}
 
         <MojeOrdersOverviewStats
@@ -800,6 +890,7 @@ function MojeOrdersViewContent({
           activeFilter={activeFilter}
           filteredCount={filteredCount}
           searchActive={searchActive}
+          clientLinkFilterActive={clientLinkFilterActive}
           archiveMatchCount={archiveMatchCount}
         />
 
@@ -808,7 +899,6 @@ function MojeOrdersViewContent({
         ) : null}
 
         {searchBar}
-        {clientKhBanner}
 
         <MyOrdersInboxSummary
           summary={inboxSummary}

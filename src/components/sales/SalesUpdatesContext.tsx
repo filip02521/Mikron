@@ -17,8 +17,13 @@ import { MICROCOPY } from "@/lib/ui/microcopy";
 
 const POLL_MS = 45_000;
 const AUTO_REFRESH_MS = 3 * 60_000;
+const NOTATNIK_AUTO_REFRESH_COOLDOWN_MS = 15_000;
 const STORAGE_KEY = "sales-auto-refresh";
 const autoRefreshStore = createPersistedFlagStore(STORAGE_KEY);
+
+function isNotatnikPath(pathname: string): boolean {
+  return pathname === "/notatnik" || pathname.startsWith("/notatnik/");
+}
 
 type SalesUpdatesContextValue = {
   hasUpdates: boolean;
@@ -67,6 +72,7 @@ export function SalesUpdatesProvider({
   );
   const [lastPollAt, setLastPollAt] = useState<number | null>(null);
   const syncingRef = useRef(false);
+  const lastNotatnikAutoRefreshAtRef = useRef(0);
 
   const setAutoRefresh = useCallback((value: boolean) => {
     autoRefreshStore.setValue(value);
@@ -133,7 +139,7 @@ export function SalesUpdatesProvider({
   }, [enabled, poll]);
 
   useEffect(() => {
-    if (!enabled || !autoRefresh) return;
+    if (!enabled || !autoRefresh || isNotatnikPath(pathname)) return;
     const id = window.setInterval(() => {
       if (document.visibilityState === "hidden") return;
       if (latest && baseline && latest !== baseline) {
@@ -142,6 +148,20 @@ export function SalesUpdatesProvider({
     }, AUTO_REFRESH_MS);
     return () => window.clearInterval(id);
   }, [enabled, autoRefresh, latest, baseline, refreshNow]);
+
+  /** Notatnik: odśwież widok od razu po wykryciu zmian (ZK, prośby). */
+  useEffect(() => {
+    if (!enabled || syncingRef.current) return;
+    if (!latest || !baseline || latest === baseline) return;
+    if (!isNotatnikPath(pathname)) return;
+
+    const now = Date.now();
+    if (now - lastNotatnikAutoRefreshAtRef.current < NOTATNIK_AUTO_REFRESH_COOLDOWN_MS) {
+      return;
+    }
+    lastNotatnikAutoRefreshAtRef.current = now;
+    refreshNow();
+  }, [enabled, latest, baseline, pathname, refreshNow]);
 
   const hasUpdates = Boolean(
     enabled && baseline && latest && latest !== baseline
@@ -166,7 +186,7 @@ export function SalesUpdatesProvider({
 export function SalesUpdatesBanner() {
   const ctx = useSalesUpdates();
   const pathname = usePathname();
-  if (!ctx?.hasUpdates || pathname === "/moje") return null;
+  if (!ctx?.hasUpdates || pathname === "/moje" || isNotatnikPath(pathname)) return null;
 
   return (
     <SystemNotice

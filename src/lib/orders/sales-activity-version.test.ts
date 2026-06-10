@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  composeSalesActivityVersion,
   computeSalesActivityVersionFromRows,
   filterSalesActivityRows,
 } from "./sales-activity-version";
@@ -61,5 +62,24 @@ describe("computeSalesActivityVersionFromRows", () => {
     expect(computeSalesActivityVersionFromRows(all)).not.toBe(
       computeSalesActivityVersionFromRows(filtered)
     );
+  });
+});
+
+describe("composeSalesActivityVersion", () => {
+  it("dopasowuje format SSR i API", () => {
+    const ordersPart = computeSalesActivityVersionFromRows([
+      {
+        action_at: "2026-06-01T10:00:00Z",
+        ordered_at: null,
+        delivery_at: null,
+        status: "Nowe",
+        sales_acknowledged_at: null,
+      },
+    ]);
+    const full = composeSalesActivityVersion(ordersPart, [
+      { updated_at: "2026-06-09T12:00:00Z", line_checks: [{ key: "a", arrived: true }] },
+    ]);
+    expect(full).toContain("::");
+    expect(full.startsWith(ordersPart)).toBe(true);
   });
 });

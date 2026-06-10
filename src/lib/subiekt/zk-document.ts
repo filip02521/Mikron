@@ -4,7 +4,7 @@ import type { SubiektDocument, SubiektKontrahent } from "@/lib/subiekt/types";
 export function normalizeZkQuery(input: string): string {
   return input
     .trim()
-    .replace(/^zk\s*[:#]?\s*/i, "")
+    .replace(/^zk\s*[:#]?\s*\/?/i, "")
     .trim();
 }
 
@@ -27,6 +27,57 @@ export function extractZkSerial(dokNrPelny: string): string | null {
 export function extractZkPathSuffix(dokNrPelny: string): string | null {
   const m = dokNrPelny.match(/(\/M\/\d+\/\d{4})/i);
   return m?.[1]?.replace(/\s+/g, "").toLowerCase() ?? null;
+}
+
+export type ZkNumberSortParts = {
+  year: number;
+  month: number;
+  serial: number;
+  /** YYYY-MM — klucz grupowania po miesiącu. */
+  sortKey: string;
+};
+
+/** Parsuje numer Mikron (153157/M/04/2026) do sortowania i grup po miesiącach. */
+export function parseZkNumberSortParts(
+  zkNumber: string,
+  fallbackDate?: string | null
+): ZkNumberSortParts {
+  const compact = normalizeZkQuery(zkNumber).replace(/\s+/g, "");
+  const full = compact.match(/^(\d+)\/M\/(\d{1,2})\/(\d{4})$/i);
+  if (full) {
+    const serial = Number(full[1]);
+    const month = Number(full[2]);
+    const year = Number(full[3]);
+    return {
+      serial: Number.isFinite(serial) ? serial : 0,
+      month: Number.isFinite(month) ? month : 0,
+      year: Number.isFinite(year) ? year : 0,
+      sortKey: `${year}-${String(month).padStart(2, "0")}`,
+    };
+  }
+
+  const serialRaw = extractZkSerial(zkNumber) ?? compact.match(/^(\d+)/)?.[1] ?? null;
+  const serial = serialRaw ? Number(serialRaw) : 0;
+
+  const dateStr = fallbackDate?.slice(0, 10) ?? null;
+  if (dateStr) {
+    const [y, m] = dateStr.split("-").map(Number);
+    if (Number.isFinite(y) && Number.isFinite(m) && y > 0 && m >= 1 && m <= 12) {
+      return {
+        year: y,
+        month: m,
+        serial: Number.isFinite(serial) ? serial : 0,
+        sortKey: `${y}-${String(m).padStart(2, "0")}`,
+      };
+    }
+  }
+
+  return {
+    year: 0,
+    month: 0,
+    serial: Number.isFinite(serial) ? serial : 0,
+    sortKey: "0000-00",
+  };
 }
 
 /** Pełny numer Mikron: 153157/M/04/2026 */

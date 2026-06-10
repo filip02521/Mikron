@@ -16,9 +16,9 @@ export const metadata: Metadata = pageMetadataFor("notatnik");
 export default async function NotatnikPage({
   searchParams,
 }: {
-  searchParams: Promise<{ dla?: string }>;
+  searchParams: Promise<{ dla?: string; focusWatch?: string }>;
 }) {
-  const { dla: previewSalesPersonId } = await searchParams;
+  const { dla: previewSalesPersonId, focusWatch } = await searchParams;
   const role = await getAppRole();
   let salesPersonId: string | null = null;
   let salesPersonName: string | null = null;
@@ -104,6 +104,7 @@ export default async function NotatnikPage({
   return (
     <NotatnikClient
       initial={notepad}
+      initialFocusWatchId={focusWatch?.trim() || null}
       readOnly={!!isTeamPreview}
       subiektAvailability={subiektAvailability}
       pageTitle={isTeamPreview ? `Notatnik: ${salesPersonName}` : "Notatnik"}

@@ -14,6 +14,8 @@ import {
   normalizeSalesClientKhId,
 } from "@/lib/orders/sales-client-match";
 import { orderExplicitlyLinkedToZkWatch } from "@/lib/orders/zk-prosba-source";
+import { isZkWatchArchived } from "@/lib/data/sales-notepad";
+import { getDeliveryProgress } from "@/lib/orders/individual";
 import type { SalesZkWatch } from "@/types/database";
 
 export { clientLabelsMatch, clientLabelsMatchExact } from "@/lib/orders/sales-client-match";
@@ -29,24 +31,58 @@ export type ZkLinkableOrder = {
   symbol: string | null;
   products: string | null;
   mikran_code: string | null;
+  quantity: string;
+  delivered_quantity: string;
   status: string;
   sales_acknowledged_at: string | null;
   sales_cancelled_at: string | null;
 };
+
+function orderHasExplicitZkLink(
+  order: Pick<ZkLinkableOrder, "source_zk_watch_id" | "source_zk_number">
+): boolean {
+  return Boolean(order.source_zk_watch_id?.trim() || order.source_zk_number?.trim());
+}
+
+export { orderHasExplicitZkLink };
 
 function orderRelevantToZkWatch(
   order: ZkLinkableOrder,
   watch: SalesZkWatch
 ): boolean {
   if (order.sales_person_id !== watch.sales_person_id) return false;
-  return (
-    orderExplicitlyLinkedToZkWatch(order, watch) || clientsMatchForZk(watch, order)
-  );
+  if (orderHasExplicitZkLink(order)) {
+    return orderExplicitlyLinkedToZkWatch(order, watch);
+  }
+  return clientsMatchForZk(watch, order);
+}
+
+/** Czy zmiana tej prośby może wpłynąć na line_checks danego ZK. */
+export function isOrderRelevantToZkWatch(
+  order: ZkLinkableOrder,
+  watch: SalesZkWatch
+): boolean {
+  return orderRelevantToZkWatch(order, watch);
+}
+
+/** Z listy otwartych ZK zwraca te, które wymagają sync po zmianie prośby. */
+export function resolveZkWatchIdsForOrderSync(
+  order: ZkLinkableOrder,
+  watches: SalesZkWatch[]
+): string[] {
+  const ids: string[] = [];
+  for (const watch of watches) {
+    if (isZkWatchArchived(watch)) continue;
+    if (orderRelevantToZkWatch(order, watch)) ids.push(watch.id);
+  }
+  return ids;
 }
 
 export type ZkWatchOrderHints = {
   /** Aktywne prośby tego klienta z dopasowanym towarem (w toku). */
   matchingOpenRequestCount: number;
+  /** ID aktywnych prośb powiązanych z tym ZK (do focusu na /moje). */
+  matchingOpenRequestIds: string[];
   /** Pozycje ZK, dla których jest już zrealizowana prośba (do podświetlenia). */
   matchedDeliveredLineKeys: string[];
   /** Czy wszystkie pozycje towarowe są „na miejscu” wg prośb. */
@@ -102,6 +138,39 @@ export function isDeliveredOrderStatus(status: string): boolean {
   return DELIVERED_STATUSES.has(status);
 }
 
+/** Suma dostarczonych sztuk z prośb dopasowanych do pozycji ZK. */
+export function totalDeliveredQtyForZkLineFromOrders(
+  orders: ZkLinkableOrder[],
+  line: ZkWatchLineView
+): number {
+  let total = 0;
+  for (const order of orders) {
+    if (!isDeliveredOrderStatus(order.status)) continue;
+    if (!productMatchesZkLine(order, line)) continue;
+    const progress = getDeliveryProgress(order.quantity, order.delivered_quantity);
+    total += progress.delivered;
+  }
+  return total;
+}
+
+/** Czy łączna dostawa prośb pokrywa wymaganą ilość pozycji ZK. */
+export function isZkLineFullyDeliveredByOrders(
+  orders: ZkLinkableOrder[],
+  line: ZkWatchLineView
+): boolean {
+  const matchingDelivered = orders.filter(
+    (order) => isDeliveredOrderStatus(order.status) && productMatchesZkLine(order, line)
+  );
+  if (!matchingDelivered.length) return false;
+
+  const required = line.quantity;
+  if (required == null || required <= 0) {
+    return matchingDelivered.some((order) => order.status === "Zrealizowane");
+  }
+
+  return totalDeliveredQtyForZkLineFromOrders(orders, line) >= required;
+}
+
 export function isOpenProsbaOrder(order: ZkLinkableOrder): boolean {
   if (order.sales_acknowledged_at || order.sales_cancelled_at) return false;
   return OPEN_PROSBA_STATUSES.has(order.status);
@@ -128,6 +197,7 @@ export function computeZkWatchOrderHints(
   const relevant = orders.filter((o) => orderRelevantToZkWatch(o, watch));
 
   let matchingOpenRequestCount = 0;
+  const matchingOpenRequestIds: string[] = [];
   const matchedDeliveredLineKeys = new Set<string>();
 
   for (const order of relevant) {
@@ -135,12 +205,17 @@ export function computeZkWatchOrderHints(
     const matchedLines = lineViews.filter((line) => productMatchesZkLine(order, line));
 
     if (isOpenProsbaOrder(order)) {
-      if (explicitZk || matchedLines.length) matchingOpenRequestCount += 1;
+      if (explicitZk || matchedLines.length) {
+        matchingOpenRequestCount += 1;
+        matchingOpenRequestIds.push(order.id);
+      }
     }
     if (!matchedLines.length) continue;
     if (isDeliveredOrderStatus(order.status)) {
       for (const line of matchedLines) {
-        matchedDeliveredLineKeys.add(line.key);
+        if (isZkLineFullyDeliveredByOrders(relevant, line)) {
+          matchedDeliveredLineKeys.add(line.key);
+        }
       }
     }
   }
@@ -148,16 +223,17 @@ export function computeZkWatchOrderHints(
   const productLines = lineViews.filter((l) => l.key !== "summary");
   const allLinesMatchedByOrders =
     productLines.length > 0 &&
-    productLines.every((l) => matchedDeliveredLineKeys.has(l.key));
+    productLines.every((line) => isZkLineFullyDeliveredByOrders(relevant, line));
 
   return {
     matchingOpenRequestCount,
+    matchingOpenRequestIds,
     matchedDeliveredLineKeys: [...matchedDeliveredLineKeys],
     allLinesMatchedByOrders,
   };
 }
 
-/** Po dostawie — zaznacz pozycje ZK jako „na miejscu”. */
+/** Po dostawie / cofnięciu dostawy — przelicz pozycje ZK wg prośb. */
 export function mergeZkLineChecksFromDeliveredOrders(
   watch: SalesZkWatch,
   orders: ZkLinkableOrder[]
@@ -166,16 +242,16 @@ export function mergeZkLineChecksFromDeliveredOrders(
   const previous = parseZkWatchLineChecks(watch.line_checks);
   const arrived = arrivedByKeyFromChecks(previous);
 
-  const relevantDelivered = orders.filter(
-    (o) =>
-      orderRelevantToZkWatch(o, watch) && isDeliveredOrderStatus(o.status)
+  const relevantAll = orders.filter((order) => orderRelevantToZkWatch(order, watch));
+  const relevantDelivered = relevantAll.filter((order) =>
+    isDeliveredOrderStatus(order.status)
   );
 
   for (const line of views) {
-    if (arrived.get(line.key)) continue;
-    if (relevantDelivered.some((order) => productMatchesZkLine(order, line))) {
-      arrived.set(line.key, true);
-    }
+    const hasLinkedProsba = relevantAll.some((order) => productMatchesZkLine(order, line));
+    if (!hasLinkedProsba) continue;
+
+    arrived.set(line.key, isZkLineFullyDeliveredByOrders(relevantDelivered, line));
   }
 
   const next = views.map((v) => ({
@@ -183,8 +259,11 @@ export function mergeZkLineChecksFromDeliveredOrders(
     arrived: arrived.get(v.key) ?? false,
   }));
 
-  const changed =
-    JSON.stringify(previous) !== JSON.stringify(next);
+  const changed = views.some((v) => {
+    const wasArrived = previous.find((c) => c.key === v.key)?.arrived ?? false;
+    const nowArrived = arrived.get(v.key) ?? false;
+    return wasArrived !== nowArrived;
+  });
 
   return { checks: next, changed };
 }

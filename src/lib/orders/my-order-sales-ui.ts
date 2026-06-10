@@ -1,5 +1,6 @@
 import { isPastExpectedDate } from "@/lib/orders/delivery-eta";
 import type { MyOrderRow } from "@/lib/orders/my-order-presenter";
+import { formatProsbaZkLinkNumber } from "@/lib/orders/zk-prosba-link-display";
 import { isInformacjaAvailabilityPendingStatusTitle } from "@/lib/orders/informacja-flow-copy";
 import { progressLabelInSubline } from "@/lib/orders/my-order-card-ui";
 
@@ -291,7 +292,7 @@ export function myOrderMetaFields(
   if (row.sourceZkNumber?.trim()) {
     fields.push({
       label: "ZK",
-      value: row.sourceZkNumber.trim(),
+      value: formatProsbaZkLinkNumber(row.sourceZkNumber),
     });
   }
 

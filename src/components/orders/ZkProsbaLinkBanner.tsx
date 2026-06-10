@@ -1,33 +1,43 @@
 import { cn } from "@/lib/cn";
+import { ZkProsbaLinkChip } from "@/components/orders/ZkProsbaLinkChip";
+import { notatnikZkWatchHref } from "@/lib/orders/notatnik-zk-watch-href";
+import { salesTypography } from "@/lib/ui/ontime-theme";
 
 export function ZkProsbaLinkBanner({
   zkNumber,
+  zkWatchId,
+  salesPersonId,
+  previewDla,
   clientLabel,
 }: {
   zkNumber: string;
+  zkWatchId?: string | null;
+  salesPersonId?: string | null;
+  previewDla?: string | null;
   clientLabel?: string | null;
 }) {
   const nr = zkNumber.trim();
   if (!nr) return null;
 
   const client = clientLabel?.trim();
+  const href = notatnikZkWatchHref(zkWatchId, { salesPersonId, previewDla });
 
   return (
     <div
       className={cn(
-        "border-b border-indigo-100 bg-indigo-50/90 px-3 py-2.5 text-sm text-indigo-950 sm:px-6"
+        "border-b border-slate-200/80 bg-slate-50/80 px-3 py-2 text-sm text-slate-700 sm:px-6"
       )}
       role="status"
     >
-      <p className="leading-snug">
-        <span className="font-medium">Powiązanie z notatnikiem:</span>{" "}
-        zamówienie klienta{" "}
-        <span className="font-semibold tabular-nums text-indigo-900">{nr}</span>
-        {client ? <span className="text-indigo-800/90"> · {client}</span> : null}
-      </p>
-      <p className="mt-1 text-xs leading-relaxed text-indigo-800/85">
-        Po wysłaniu prośba zostaje przypisana do tej ZK — zmiana nazwy klienta w formularzu nie
-        usuwa powiązania. Zobaczysz ją w notatniku („Prośba w toku”) i w „Moje zamówienia”.
+      <p className={cn("leading-snug", salesTypography.rowMeta)}>
+        <span className="text-slate-600">Powiązana z</span>{" "}
+        <ZkProsbaLinkChip
+          zkNumber={nr}
+          href={href}
+          inline
+          className="text-sm"
+        />
+        {client ? <span className="text-slate-600"> · {client}</span> : null}
       </p>
     </div>
   );

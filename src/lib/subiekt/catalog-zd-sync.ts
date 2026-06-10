@@ -7,8 +7,7 @@ import {
   searchSubiektZdCached,
 } from "@/lib/subiekt/subiekt-runtime-cache";
 import {
-  importZdDocumentToCatalog,
-  markZdCatalogImported,
+  importAndMarkZdDocumentToCatalog,
 } from "@/lib/subiekt/zd-catalog-import";
 import { warsawNowParts } from "@/lib/time/warsaw";
 import { resolveKhLabelForZdDocument } from "@/lib/subiekt/kontrahent-from-document";
@@ -295,21 +294,17 @@ async function importBatch(
 
   let importProducts = 0;
   let importLinks = 0;
-  const importedIds: number[] = [];
   let lastDocNumber: string | null = null;
 
   for (const row of slice) {
     const dokId = Math.trunc(Number(row.dok_id));
     const supplierId = String(row.supplier_id);
     if (!Number.isFinite(dokId) || !supplierId) continue;
-    const result = await importZdDocumentToCatalog(dokId, supplierId);
+    const result = await importAndMarkZdDocumentToCatalog(dokId, supplierId);
     importProducts += result.uniqueProducts;
     importLinks += result.linksUpserted;
-    importedIds.push(dokId);
     lastDocNumber = row.dok_nr_pelny ?? lastDocNumber;
   }
-
-  await markZdCatalogImported(importedIds);
 
   const pending = await countPendingImports(state.dataOd);
   const importComplete = pending === 0;

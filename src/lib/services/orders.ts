@@ -94,6 +94,7 @@ import {
   formatGlowneMissingIntervalError,
   supplierNamesWithoutOrderInterval,
 } from "@/lib/orders/glowne-interval-validation";
+import { shouldSyncZkWatchLineChecksAfterDeliveryChange } from "@/lib/sales/zk-watch-order-sync";
 
 async function getVacationsForSupplier(supplierId: string): Promise<VacationPeriod[]> {
   const supabase = createAdminClient();
@@ -1264,21 +1265,23 @@ async function applyDeliveredQuantityUpdate(
 
   await supabase.from("individual_orders").update(update).eq("id", orderId);
 
-  const deliveredNow =
-    (status === "Zrealizowane" || status === "Czesciowo_zrealizowane") &&
-    prevStatus !== status;
-  if (deliveredNow) {
+  if (shouldSyncZkWatchLineChecksAfterDeliveryChange(
+    prevStatus,
+    status,
+    order.delivered_quantity,
+    finalDelivered
+  )) {
     try {
-      const { syncZkWatchLineChecksFromDeliveredOrder } = await import(
+      const { syncZkWatchLineChecksFromOrder } = await import(
         "@/lib/sales/zk-watch-order-sync"
       );
-      await syncZkWatchLineChecksFromDeliveredOrder({
+      await syncZkWatchLineChecksFromOrder({
         ...order,
         status,
         delivered_quantity: finalDelivered,
       });
     } catch (e) {
-      console.error("[syncZkWatchLineChecksFromDeliveredOrder]", e);
+      console.error("[syncZkWatchLineChecksFromOrder]", e);
     }
   }
 
@@ -1612,10 +1615,10 @@ export async function processMarkedDeliveries(): Promise<ProcessDeliveriesResult
     const finalQty =
       status === "Zrealizowane" && !isNaN(ordered) ? String(ordered) : deliveredQty;
     try {
-      const { syncZkWatchLineChecksFromDeliveredOrder } = await import(
+      const { syncZkWatchLineChecksFromOrder } = await import(
         "@/lib/sales/zk-watch-order-sync"
       );
-      await syncZkWatchLineChecksFromDeliveredOrder({
+      await syncZkWatchLineChecksFromOrder({
         ...order,
         status,
         delivered_quantity: finalQty,

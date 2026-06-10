@@ -6,8 +6,14 @@ import { useSyncRelativeTime } from "@/hooks/useSyncRelativeTime";
 import { cn } from "@/lib/cn";
 import { salesTypography } from "@/lib/ui/ontime-theme";
 
-/** Stan live sync + auto-odświeżanie listy Moje zamówienia. */
-export function SalesPanelSyncControl({ embedded = false }: { embedded?: boolean }) {
+/** Stan live sync + auto-odświeżanie listy Moje zamówienia / notatnika. */
+export function SalesPanelSyncControl({
+  embedded = false,
+  variant = "orders",
+}: {
+  embedded?: boolean;
+  variant?: "orders" | "notatnik";
+}) {
   const ctx = useSalesUpdates();
   const hydrated = useClientHydrated();
   const autoRefresh = hydrated && ctx ? ctx.autoRefresh : false;
@@ -18,6 +24,8 @@ export function SalesPanelSyncControl({ embedded = false }: { embedded?: boolean
 
   if (!ctx) return null;
 
+  const isNotatnik = variant === "notatnik";
+
   return (
     <div
       className={cn(
@@ -25,7 +33,11 @@ export function SalesPanelSyncControl({ embedded = false }: { embedded?: boolean
         embedded ? "border-t border-slate-200/60 pt-2" : ""
       )}
       role="group"
-      aria-label="Synchronizacja listy zamówień z serwerem"
+      aria-label={
+        isNotatnik
+          ? "Synchronizacja notatnika z serwerem"
+          : "Synchronizacja listy zamówień z serwerem"
+      }
     >
       <div className={cn("flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1", salesTypography.chrome)}>
         <span
@@ -50,30 +62,39 @@ export function SalesPanelSyncControl({ embedded = false }: { embedded?: boolean
           <span aria-live="polite">
             Na bieżąco · {syncLabel}
             <span className="text-slate-400"> · co 45 s</span>
+            {isNotatnik ? (
+              <span className="text-slate-400"> · auto przy zmianach</span>
+            ) : null}
           </span>
         )}
       </div>
 
-      <label
-        className={cn(
-          "inline-flex min-h-11 w-full cursor-pointer items-center justify-between gap-3 rounded-md border px-3 py-2 font-medium shadow-sm transition-colors sm:min-h-0 sm:w-fit sm:justify-start sm:gap-2 sm:px-2.5 sm:py-1.5",
-          salesTypography.chrome,
-          autoRefresh
-            ? "border-indigo-200/90 bg-indigo-50/50 text-indigo-900"
-            : "border-slate-200/80 bg-white/80 text-slate-600 hover:border-indigo-100 hover:bg-indigo-50/30"
-        )}
-      >
-        <span className="whitespace-nowrap">Auto przy zmianach</span>
-        <input
-          type="checkbox"
-          role="switch"
-          aria-checked={autoRefresh}
-          aria-label="Automatyczne odświeżanie listy przy wykrytych zmianach co 3 minuty"
-          checked={autoRefresh}
-          onChange={(e) => ctx.setAutoRefresh(e.target.checked)}
-          className="size-5 shrink-0 rounded border-slate-300 text-indigo-600 focus:ring-indigo-300 sm:size-4"
-        />
-      </label>
+      {isNotatnik ? (
+        <p className={cn(salesTypography.chrome, "text-slate-500 sm:text-right")}>
+          Odświeża automatycznie, gdy magazyn odhaczy towar w ZK.
+        </p>
+      ) : (
+        <label
+          className={cn(
+            "inline-flex min-h-11 w-full cursor-pointer items-center justify-between gap-3 rounded-md border px-3 py-2 font-medium shadow-sm transition-colors sm:min-h-0 sm:w-fit sm:justify-start sm:gap-2 sm:px-2.5 sm:py-1.5",
+            salesTypography.chrome,
+            autoRefresh
+              ? "border-indigo-200/90 bg-indigo-50/50 text-indigo-900"
+              : "border-slate-200/80 bg-white/80 text-slate-600 hover:border-indigo-100 hover:bg-indigo-50/30"
+          )}
+        >
+          <span className="whitespace-nowrap">Auto przy zmianach</span>
+          <input
+            type="checkbox"
+            role="switch"
+            aria-checked={autoRefresh}
+            aria-label="Automatyczne odświeżanie listy przy wykrytych zmianach co 3 minuty"
+            checked={autoRefresh}
+            onChange={(e) => ctx.setAutoRefresh(e.target.checked)}
+            className="size-5 shrink-0 rounded border-slate-300 text-indigo-600 focus:ring-indigo-300 sm:size-4"
+          />
+        </label>
+      )}
     </div>
   );
 }
