@@ -51,6 +51,7 @@ import {
   notFoundProductFeedback,
   notFoundSupplierFeedback,
   type SubiektFeedback,
+  catalogSupplierUnmappedFeedback,
 } from "@/lib/subiekt/feedback";
 import {
   formatSubiektKontrahentLabel,
@@ -235,7 +236,7 @@ async function lookupSupplierFromCatalogTwId(
   if (!Number.isFinite(twId) || twId <= 0) {
     return {
       ok: false,
-      feedback: getSubiektFeedback("not_found_supplier", {
+      feedback: catalogSupplierUnmappedFeedback({
         message: "Brak ID towaru (tw_Id) — wybierz dostawcę ręcznie.",
       }),
     };
@@ -259,7 +260,7 @@ async function lookupSupplierFromCatalogTwId(
   if (!links.length) {
     return {
       ok: false,
-      feedback: getSubiektFeedback("not_found_supplier", {
+      feedback: catalogSupplierUnmappedFeedback({
         message:
           "Brak przypisanego dostawcy w naszej bazie dla tego towaru — wybierz dostawcę ręcznie (powstanie powiązanie po zapisie).",
       }),
@@ -279,7 +280,7 @@ async function lookupSupplierFromCatalogTwId(
   if (appSuppliers?.length && !appSuppliers.some((s) => s.id === best.supplierId)) {
     return {
       ok: false,
-      feedback: getSubiektFeedback("not_found_supplier", {
+      feedback: catalogSupplierUnmappedFeedback({
         message:
           "Dostawca z naszej bazy nie jest dostępny na liście dostawców — wybierz ręcznie.",
       }),
@@ -317,7 +318,7 @@ export async function actionSubiektResolveSupplierForProduct(
   if (!Number.isFinite(twId) || twId <= 0) {
     return {
       ok: false,
-      feedback: getSubiektFeedback("not_found_supplier", {
+      feedback: catalogSupplierUnmappedFeedback({
         message: "Brak ID towaru (tw_Id) — wybierz dostawcę ręcznie lub zostaw puste.",
       }),
     };

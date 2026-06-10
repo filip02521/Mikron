@@ -1,6 +1,5 @@
 import {
-  hasAnyProductHint,
-  hasValidOrderQuantity,
+  requestDraftMissingLabels,
   type RequestDraft,
 } from "@/lib/orders/request-completeness";
 import { isInformacjaRequest } from "@/lib/orders/individual";
@@ -23,15 +22,12 @@ export function describeVerificationGaps(order: IndividualOrder): string {
   const draft = orderToDraft(order);
   const procurementTodo: string[] = [];
 
-  if (!order.supplier_id) procurementTodo.push("dostawcę");
-  if (!hasAnyProductHint(draft)) {
-    procurementTodo.push("opis produktu (symbol, kod Mikran lub nazwa)");
-  }
-  if (
-    !isInformacjaRequest(order) &&
-    !hasValidOrderQuantity(order.quantity, "zamowienie")
-  ) {
-    procurementTodo.push("ilość (szt.)");
+  for (const label of requestDraftMissingLabels(draft)) {
+    if (label === "dostawca") procurementTodo.push("dostawcę");
+    if (label === "produkt") {
+      procurementTodo.push("opis produktu (symbol, kod Mikran lub nazwa)");
+    }
+    if (label === "ilość") procurementTodo.push("ilość (szt.)");
   }
 
   const footer = "Prośba jest zapisana — nie musisz nic uzupełniać.";
@@ -56,32 +52,10 @@ export function verificationQueueMissingLabels(order: IndividualOrder): string[]
   const draft = orderToDraft(order);
   const labels: string[] = [];
 
-  if (!order.supplier_id) labels.push("dostawca");
-  if (!hasAnyProductHint(draft)) labels.push("produkt");
-  if (
-    !isInformacjaRequest(order) &&
-    !hasValidOrderQuantity(order.quantity, "zamowienie")
-  ) {
-    labels.push("ilość");
-  }
-
-  return labels;
+  return requestDraftMissingLabels(draft);
 }
 
 /** Braki w bieżącym szkicu formularza (aktywna pozycja w weryfikacji). */
-export function verificationDraftMissingLabels(
-  draft: RequestDraft
-): string[] {
-  const labels: string[] = [];
-
-  if (!draft.supplierId?.trim()) labels.push("dostawca");
-  if (!hasAnyProductHint(draft)) labels.push("produkt");
-  if (
-    draft.requestKind !== "informacja" &&
-    !hasValidOrderQuantity(draft.quantity, "zamowienie")
-  ) {
-    labels.push("ilość");
-  }
-
-  return labels;
+export function verificationDraftMissingLabels(draft: RequestDraft): string[] {
+  return requestDraftMissingLabels(draft);
 }

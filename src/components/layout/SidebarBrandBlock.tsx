@@ -4,6 +4,7 @@ import {
   ONTIME_COMPANY,
   ONTIME_TAGLINE_SHORT,
 } from "@/lib/ui/ontime-brand";
+import { resolveUserDisplayName } from "@/lib/users/display-name";
 import { ROLE_LABELS } from "@/lib/users/labels";
 import type { UserRole } from "@/types/database";
 import { cn } from "@/lib/cn";
@@ -88,14 +89,19 @@ function SidebarUserRow({
 }) {
   if (!role && !userEmail && !salesPersonName) return null;
 
-  const displayName = salesPersonName?.trim() || null;
-  const initials = displayName
-    ? initialsFromName(displayName)
-    : userEmail
-      ? initialsFromEmail(userEmail)
-      : "?";
-  const showEmail = Boolean(userEmail?.trim()) && !displayName;
-  const hoverDetail = [displayName, role ? ROLE_LABELS[role] : null, userEmail]
+  const displayName = resolveUserDisplayName({
+    salesPersonName,
+    email: userEmail,
+  });
+  const primaryLabel = displayName || userEmail?.trim() || null;
+  const initials = primaryLabel
+    ? displayName
+      ? initialsFromName(displayName)
+      : userEmail
+        ? initialsFromEmail(userEmail)
+        : initialsFromName(primaryLabel)
+    : "?";
+  const hoverDetail = [primaryLabel, role ? ROLE_LABELS[role] : null, userEmail]
     .filter(Boolean)
     .join(" · ");
 
@@ -104,17 +110,14 @@ function SidebarUserRow({
       <div
         className="mt-1 min-w-0"
         title={hoverDetail || undefined}
-        {...(displayName ? { "aria-label": `Zalogowany jako ${displayName}` } : {})}
+        {...(primaryLabel ? { "aria-label": `Zalogowany jako ${primaryLabel}` } : {})}
       >
-        {displayName ? (
+        {primaryLabel ? (
           <p className="truncate text-[11px] font-semibold leading-tight text-slate-900">
-            {displayName}
+            {primaryLabel}
           </p>
         ) : null}
         {role ? <RoleLine role={role} compact /> : null}
-        {showEmail ? (
-          <p className="truncate text-[10px] text-slate-400">{userEmail}</p>
-        ) : null}
       </div>
     );
   }
@@ -123,7 +126,7 @@ function SidebarUserRow({
     <div
       className="mt-4 border-t border-slate-100 pt-4"
       title={hoverDetail || undefined}
-      {...(displayName ? { "aria-label": `Zalogowany jako ${displayName}` } : {})}
+      {...(primaryLabel ? { "aria-label": `Zalogowany jako ${primaryLabel}` } : {})}
     >
       <div className="flex min-w-0 items-center gap-3">
         <span
@@ -133,21 +136,14 @@ function SidebarUserRow({
           {initials}
         </span>
         <div className="min-w-0 flex-1 space-y-1">
-          {displayName ? (
+          {primaryLabel ? (
             <p className="truncate text-sm font-semibold leading-tight text-slate-900">
-              {displayName}
-            </p>
-          ) : userEmail ? (
-            <p className="truncate text-sm font-semibold leading-tight text-slate-900">
-              {userEmail}
+              {primaryLabel}
             </p>
           ) : (
             <p className="text-sm font-medium text-slate-500">Niezalogowany</p>
           )}
           {role ? <RoleLine role={role} /> : null}
-          {showEmail ? (
-            <p className="truncate text-[11px] text-slate-400">{userEmail}</p>
-          ) : null}
         </div>
       </div>
     </div>

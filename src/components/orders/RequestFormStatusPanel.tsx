@@ -15,7 +15,10 @@ import {
   salesSubmitUserHint,
   type SalesRequestSubmitPlan,
 } from "@/lib/orders/sales-request-submit";
-import { consolidateSubiektFeedbacks } from "@/lib/orders/consolidate-form-status";
+import {
+  consolidateSubiektFeedbacks,
+  shouldSuppressCompletenessBanner,
+} from "@/lib/orders/consolidate-form-status";
 import { cn } from "@/lib/cn";
 
 export function RequestFormStatusPanel({
@@ -54,9 +57,11 @@ export function RequestFormStatusPanel({
     subiektFeedbacks.filter(Boolean) as SubiektFeedback[]
   );
 
+  const suppressCompleteness = shouldSuppressCompletenessBanner(alerts, draft);
   const showCompleteness =
     !salesSubmitPlan &&
-    !(validationAttempted && forcedAssessment === "incomplete");
+    !(validationAttempted && forcedAssessment === "incomplete") &&
+    !suppressCompleteness;
 
   return (
     <div

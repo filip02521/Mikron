@@ -1,5 +1,6 @@
 import { createAdminClient, hasSupabaseConfig } from "@/lib/supabase/admin";
 import { normalizeIndividualOrders } from "@/lib/data/normalize-order";
+import { runRepairIncompleteIndividualOrders } from "@/lib/services/repair-incomplete-orders-runner";
 import { mapRowToOrderFormSupplier, mapRowsToOrderFormSuppliers } from "@/lib/orders/order-form-suppliers";
 import { buildSummaryWorkspace } from "@/lib/orders/summary-workspace";
 import { sortIndividualOrdersBySupplier } from "@/lib/orders/queue-sort";
@@ -149,9 +150,38 @@ export async function fetchSalesCancelledOrders(
   return normalizeIndividualOrders(data ?? []);
 }
 
+/** TTL w obrębie procesu — ogranicza koszt przy pollingu badge (co ~25 s). */
+const VERIFICATION_SYNC_TTL_MS = 20_000;
+let verificationSyncExpiresAt = 0;
+let verificationSyncInFlight: Promise<void> | null = null;
+
+/**
+ * Niekompletne prośby → status Weryfikacja (jak przed fetch na /weryfikacja).
+ * Bez tego badge w menu liczy tylko rekordy już oznaczone w DB.
+ */
+async function syncVerificationQueueStatuses(): Promise<void> {
+  if (!hasSupabaseConfig()) return;
+
+  const now = Date.now();
+  if (now < verificationSyncExpiresAt) return;
+
+  if (!verificationSyncInFlight) {
+    verificationSyncInFlight = (async () => {
+      const supabase = createAdminClient();
+      await runRepairIncompleteIndividualOrders(supabase);
+      verificationSyncExpiresAt = Date.now() + VERIFICATION_SYNC_TTL_MS;
+    })().finally(() => {
+      verificationSyncInFlight = null;
+    });
+  }
+
+  await verificationSyncInFlight;
+}
+
 /** Historia audytu — bez pozycji informacyjnych (tylko powiadomienie, bez rezerwacji). */
 export async function fetchVerificationOrders(): Promise<IndividualOrder[]> {
   if (!hasSupabaseConfig()) return [];
+  await syncVerificationQueueStatuses();
   const supabase = createAdminClient();
 
   const { data, error } = await supabase
@@ -165,6 +195,7 @@ export async function fetchVerificationOrders(): Promise<IndividualOrder[]> {
 
 export async function countVerificationOrders(): Promise<number> {
   if (!hasSupabaseConfig()) return 0;
+  await syncVerificationQueueStatuses();
   const supabase = createAdminClient();
   const { count, error } = await supabase
     .from("individual_orders")

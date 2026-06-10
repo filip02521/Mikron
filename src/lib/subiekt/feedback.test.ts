@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  catalogSupplierUnmappedFeedback,
   classifySubiektException,
   getSubiektFeedback,
   notFoundProductFeedback,
@@ -47,5 +48,13 @@ describe("getSubiektFeedback", () => {
 
   it("timeout ma ton warning", () => {
     expect(getSubiektFeedback("timeout").tone).toBe("warning");
+  });
+
+  it("catalog_supplier_unmapped nie sugeruje braku towaru w Subiekcie", () => {
+    const f = catalogSupplierUnmappedFeedback();
+    expect(f.code).toBe("catalog_supplier_unmapped");
+    expect(f.title).toBe("Brak przypisanego dostawcy");
+    expect(f.title).not.toContain("Subiekt");
+    expect(f.message).toContain("Subiekcie");
   });
 });

@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   assessRequestCompleteness,
+  completenessUserHint,
   hasAnyProductHint,
   hasValidOrderQuantity,
   normalizeDraftProducts,
@@ -79,6 +80,23 @@ describe("assessRequestCompleteness", () => {
     expect(assessRequestCompleteness({ supplierId: "sup-1" })).toBe("incomplete");
     expect(hasAnyProductHint({ supplierId: "sup-1" })).toBe(false);
     expect(hasAnyProductHint({ mikranCode: "896" })).toBe(true);
+  });
+});
+
+describe("completenessUserHint", () => {
+  it("wymienia tylko brakujące pola (zakupy)", () => {
+    const hint = completenessUserHint(
+      "incomplete",
+      "zamowienie",
+      {
+        supplierId: "",
+        product: "Aplodent Cold",
+        quantity: "1",
+      },
+      { audience: "procurement" }
+    );
+    expect(hint.detail).toBe("Wybierz dostawcę.");
+    expect(hint.detail).not.toContain("produkt");
   });
 });
 

@@ -13,6 +13,7 @@ export type SubiektErrorCode =
   | "empty_query"
   | "not_found_product"
   | "not_found_supplier"
+  | "catalog_supplier_unmapped"
   | "not_found_app_supplier"
   | "timeout"
   | "network"
@@ -65,6 +66,13 @@ const TEMPLATES: Record<SubiektErrorCode, FeedbackTemplate> = {
     title: "Nie znaleziono w Subiekcie",
     message: "Brak kontrahenta (dostawcy) pasującego do wyszukiwania.",
     hint: `Wybierz dostawcę z listy w systemie lub zostaw pole puste do uzupełnienia przez ${PROCUREMENT_TEAM_LABEL}.`,
+    tone: "info",
+  },
+  catalog_supplier_unmapped: {
+    title: "Brak przypisanego dostawcy",
+    message:
+      "Towar jest w Subiekcie, ale nie mamy jeszcze powiązania z dostawcą w naszej bazie.",
+    hint: "Wybierz dostawcę ręcznie — po zapisie powstanie powiązanie.",
     tone: "info",
   },
   not_found_app_supplier: {
@@ -223,6 +231,12 @@ export function notFoundSupplierFeedback(query: string): SubiektFeedback {
   return getSubiektFeedback("not_found_supplier", {
     message: `Brak dostawcy w Subiekcie dla „${query}”.`,
   });
+}
+
+export function catalogSupplierUnmappedFeedback(
+  overrides?: Partial<Pick<SubiektFeedback, "message" | "hint" | "title">>
+): SubiektFeedback {
+  return getSubiektFeedback("catalog_supplier_unmapped", overrides);
 }
 
 export function notFoundClientFeedback(query: string): SubiektFeedback {

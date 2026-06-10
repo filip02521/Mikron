@@ -373,7 +373,7 @@ export function VerificationWorkspace({
             className={
               inModal
                 ? "flex min-h-0 min-w-0 flex-1 flex-col lg:min-h-0"
-                : "flex min-w-0 flex-col"
+                : "flex min-w-0 flex-col border-t border-slate-200/90 bg-white"
             }
           >
             {inModal ? (
@@ -385,7 +385,7 @@ export function VerificationWorkspace({
                 tileClassName="bg-amber-100 text-amber-800"
               />
             ) : (
-              <div className="border-b border-slate-100 bg-white px-3 py-3 sm:px-4">
+              <div className="border-b border-slate-100 bg-slate-50/40 px-3 py-3 sm:px-4">
                 <div className="flex flex-wrap items-start justify-between gap-2">
                   <div className="min-w-0">
                     <p className={panelTypography.sectionLabel}>Uzupełnianie prośby</p>

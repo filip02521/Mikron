@@ -1,3 +1,5 @@
+import type { RequestDraft } from "@/lib/orders/request-completeness";
+import { requestDraftMissingLabels } from "@/lib/orders/request-completeness";
 import type { SubiektFeedback, SubiektErrorCode } from "@/lib/subiekt/feedback";
 
 const SUBIEKT_UNAVAILABLE_CODES = new Set<SubiektErrorCode>([
@@ -16,6 +18,12 @@ const SUBIEKT_SEARCH_NOISE_CODES = new Set<SubiektErrorCode>([
   "not_found_app_supplier",
   "short_query",
   "empty_query",
+]);
+
+const SUPPLIER_GUIDANCE_CODES = new Set<SubiektErrorCode>([
+  "catalog_supplier_unmapped",
+  "not_found_supplier",
+  "not_found_app_supplier",
 ]);
 
 export function dedupeSubiektFeedbacks(items: SubiektFeedback[]): SubiektFeedback[] {
@@ -47,6 +55,18 @@ export function consolidateSubiektFeedbacks(items: SubiektFeedback[]): SubiektFe
   });
 
   return filtered.length ? filtered : [unavailable];
+}
+
+/**
+ * Gdy Subiekt już prosi o wybór dostawcy, nie duplikuj tego w banerze kompletności.
+ */
+export function shouldSuppressCompletenessBanner(
+  alerts: SubiektFeedback[],
+  draft: RequestDraft
+): boolean {
+  if (!alerts.some((f) => SUPPLIER_GUIDANCE_CODES.has(f.code))) return false;
+  const missing = requestDraftMissingLabels(draft);
+  return missing.length === 1 && missing[0] === "dostawca";
 }
 
 function normalizeForCompare(text: string): string {

@@ -56,6 +56,45 @@ export function assessRequestCompleteness(draft: RequestDraft): RequestCompleten
   return "complete";
 }
 
+/** Krótkie etykiety braków w szkicu (kolejka weryfikacji, status formularza). */
+export function requestDraftMissingLabels(draft: RequestDraft): string[] {
+  const kind = draft.requestKind ?? "zamowienie";
+  const labels: string[] = [];
+
+  if (!hasText(draft.supplierId)) labels.push("dostawca");
+  if (!hasAnyProductHint(draft)) labels.push("produkt");
+  if (kind !== "informacja" && !hasValidOrderQuantity(draft.quantity, kind)) {
+    labels.push("ilość");
+  }
+
+  return labels;
+}
+
+function joinPolishList(parts: string[]): string {
+  if (parts.length <= 1) return parts[0] ?? "";
+  if (parts.length === 2) return `${parts[0]} oraz ${parts[1]}`;
+  return `${parts.slice(0, -1).join(", ")} oraz ${parts[parts.length - 1]}`;
+}
+
+function procurementMissingDetail(missing: string[]): string {
+  const parts: string[] = [];
+  if (missing.includes("dostawca")) parts.push("dostawcę");
+  if (missing.includes("produkt")) {
+    parts.push("opis produktu (najlepiej z Subiekta po symbolu lub kodzie Mikran)");
+  }
+  if (missing.includes("ilość")) parts.push("ilość (np. 1)");
+  return `Wybierz ${joinPolishList(parts)}.`;
+}
+
+function defaultMissingDetail(missing: string[]): string {
+  const parts: string[] = [];
+  if (missing.includes("dostawca")) parts.push("dostawcę");
+  if (missing.includes("produkt")) parts.push("opis produktu (symbol lub nazwa)");
+  if (missing.includes("ilość")) parts.push("ilość sztuk (np. 1)");
+  const joined = joinPolishList(parts);
+  return `Podaj ${joined}. Dział zakupów uzupełni brakujące dane.`;
+}
+
 export function completenessUserHint(
   assessment: RequestCompleteness,
   requestKind: IndividualRequestKind,
@@ -84,20 +123,17 @@ export function completenessUserHint(
             : "Dostawca, produkt i ilość są podane — trafia od razu do realizacji.",
     };
   }
-  const missingQty =
-    requestKind === "zamowienie" &&
-    !hasValidOrderQuantity(draft.quantity, requestKind);
   const dashAsZamowienie =
     requestKind === "zamowienie" && isInformacjaQuantityMarker(draft.quantity);
+  const missing = requestDraftMissingLabels({ ...draft, requestKind });
+
   if (options?.audience === "procurement") {
     return {
       tone: "warning",
       title: "Uzupełnij przed zapisem",
       detail: dashAsZamowienie
         ? "Ilość „-” oznacza prośbę informacyjną — wybierz typ „Informacja” zamiast zamówienia u dostawcy."
-        : missingQty
-          ? "Wybierz dostawcę, produkt oraz ilość (np. 1)."
-          : "Wybierz dostawcę oraz opis produktu (najlepiej z Subiekta po symbolu lub kodzie Mikran).",
+        : procurementMissingDetail(missing),
     };
   }
   return {
@@ -105,9 +141,7 @@ export function completenessUserHint(
     title: "Wymaga weryfikacji przez dział zakupów",
     detail: dashAsZamowienie
       ? "Ilość „-” to prośba informacyjna — wybierz typ „Informacja” (bez zamawiania u dostawcy)."
-      : missingQty
-        ? "Podaj ilość sztuk (np. 1) oraz dostawcę i opis produktu."
-        : "Podaj dostawcę oraz opis produktu (symbol lub nazwa). Dział zakupów uzupełni brakujące dane.",
+      : defaultMissingDetail(missing),
   };
 }
 
