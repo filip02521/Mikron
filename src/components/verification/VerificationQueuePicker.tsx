@@ -170,7 +170,7 @@ export function VerificationQueuePicker({
   return (
     <section
       aria-label="Kolejka do weryfikacji"
-      className="mx-3 mt-3 overflow-hidden rounded-lg border border-amber-200/90 bg-white shadow-sm ring-1 ring-amber-100/50 sm:mx-4"
+      className="mx-3 my-3 overflow-hidden rounded-lg border border-amber-200/90 bg-white shadow-sm ring-1 ring-amber-100/50 sm:mx-4"
     >
       <div className="relative border-b border-amber-200/80 bg-gradient-to-b from-amber-50 to-amber-50/30">
         <div className={items.length > 1 ? "pr-[7.5rem] sm:pr-[8rem]" : undefined}>
