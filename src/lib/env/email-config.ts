@@ -4,9 +4,11 @@ import { loadEnvConfig } from "@next/env";
 
 let envLoaded = false;
 
-function readEnvLocalVar(name: string): string | undefined {
-  const path = join(process.cwd(), ".env.local");
-  if (!existsSync(path)) return undefined;
+function readEnvFileVar(name: string): string | undefined {
+  const path = [join(process.cwd(), ".env"), join(process.cwd(), ".env.local")].find((p) =>
+    existsSync(p)
+  );
+  if (!path) return undefined;
   for (const line of readFileSync(path, "utf-8").split("\n")) {
     const t = line.trim();
     if (!t || t.startsWith("#")) continue;
@@ -25,7 +27,7 @@ function readEnvLocalVar(name: string): string | undefined {
   return undefined;
 }
 
-/** Gwarantuje wczytanie .env.local */
+/** Gwarantuje wczytanie .env / .env.local przez Next.js */
 function ensureEnvLoaded() {
   if (envLoaded) return;
   loadEnvConfig(process.cwd());
@@ -34,13 +36,13 @@ function ensureEnvLoaded() {
 
 /**
  * RESEND_API_KEY — jeśli w shellu jest pusta zmienna, dotenv jej nie nadpisuje;
- * wtedy czytamy bezpośrednio z .env.local.
+ * wtedy czytamy bezpośrednio z pliku .env.
  */
 export function getResendApiKey(): string | undefined {
   ensureEnvLoaded();
   const fromProcess = process.env.RESEND_API_KEY?.trim();
   if (fromProcess) return fromProcess;
-  return readEnvLocalVar("RESEND_API_KEY");
+  return readEnvFileVar("RESEND_API_KEY");
 }
 
 /** Zweryfikowana domena w Resend (np. projektorowo.pl). */
@@ -48,7 +50,7 @@ export function getEmailDomain(): string | undefined {
   ensureEnvLoaded();
   const fromProcess = process.env.EMAIL_DOMAIN?.trim();
   if (fromProcess) return fromProcess;
-  return readEnvLocalVar("EMAIL_DOMAIN");
+  return readEnvFileVar("EMAIL_DOMAIN");
 }
 
 /** Lokalna część nadawcy przy składaniu z EMAIL_DOMAIN (domyślnie OnTime@). */
@@ -56,7 +58,7 @@ function getEmailFromLocalPart(): string {
   ensureEnvLoaded();
   return (
     process.env.EMAIL_FROM_LOCAL?.trim() ||
-    readEnvLocalVar("EMAIL_FROM_LOCAL") ||
+    readEnvFileVar("EMAIL_FROM_LOCAL") ||
     "OnTime"
   );
 }
@@ -84,7 +86,7 @@ function normalizeEmailFrom(raw: string | undefined): string {
 export function getEmailFromAddress(): string {
   ensureEnvLoaded();
   const fromProcess = process.env.EMAIL_FROM?.trim();
-  const fromFile = readEnvLocalVar("EMAIL_FROM");
+  const fromFile = readEnvFileVar("EMAIL_FROM");
   return normalizeEmailFrom(fromProcess || fromFile);
 }
 

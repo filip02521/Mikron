@@ -15,9 +15,9 @@ import {
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
 
-function loadEnvLocal(): Record<string, string> {
-  const path = join(root, ".env.local");
-  if (!existsSync(path)) return {};
+function loadEnvFile(): Record<string, string> {
+  const path = [join(root, ".env"), join(root, ".env.local")].find((p) => existsSync(p));
+  if (!path) return {};
   const out: Record<string, string> = {};
   for (const line of readFileSync(path, "utf-8").split("\n")) {
     const t = line.trim();
@@ -70,7 +70,7 @@ function assessNodeRuntime(): { ok?: string; issue?: string } {
 }
 
 async function main() {
-  const env = { ...process.env, ...loadEnvLocal() };
+  const env = { ...process.env, ...loadEnvFile() };
   const issues: string[] = [];
   const ok: string[] = [];
 
@@ -203,11 +203,11 @@ async function main() {
     console.log("\nDo poprawy:");
     issues.forEach((l) => console.log("  ✗", l));
     console.log("\nKroki:");
-    console.log("  1. cp .env.example .env.local");
+    console.log("  1. cp .env.example .env");
     console.log(
-      "  2. SQL Editor: migracje z supabase/migrations/ (min. 001, 002, 004–006)"
+      "  2. SQL Editor: migracje z supabase/migrations/ (min. 001, 002, 004-006)"
     );
-    console.log("  3. echo DEV_ADMIN_MODE=true >> .env.local  (dev)");
+    console.log("  3. echo DEV_ADMIN_MODE=true >> .env  (dev)");
     console.log("  4. npm run seed  lub  npm run migrate -- ./data");
     process.exit(1);
   }
