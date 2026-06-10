@@ -7,7 +7,10 @@ import {
 } from "@/lib/warehouse/delivery-receipts";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { todayInWarsaw } from "@/lib/time/warsaw";
-import type { WarehouseCarrier } from "@/lib/warehouse/delivery-carriers";
+import {
+  normalizeShipmentCounts,
+  type WarehouseCarrier,
+} from "@/lib/warehouse/delivery-carriers";
 
 export type DeliveryJournalDatePreset = "today" | "week" | "last7" | "month";
 
@@ -77,6 +80,13 @@ function mapSearchRow(row: Record<string, unknown>): WarehouseDeliveryReceipt {
       ? String(suppliers.name)
       : String(row.supplier_label ?? "").trim() || "—";
 
+  const shipmentForm = String(row.shipment_form) as WarehouseDeliveryReceipt["shipmentForm"];
+  const counts = normalizeShipmentCounts(
+    shipmentForm,
+    Number(row.package_count ?? 0),
+    Number(row.pallet_count ?? 0)
+  );
+
   return {
     id: String(row.id),
     receivedDate: String(row.received_date),
@@ -84,9 +94,9 @@ function mapSearchRow(row: Record<string, unknown>): WarehouseDeliveryReceipt {
     supplierLabel: String(row.supplier_label ?? ""),
     supplierName,
     carrier: String(row.carrier) as WarehouseDeliveryReceipt["carrier"],
-    shipmentForm: String(row.shipment_form) as WarehouseDeliveryReceipt["shipmentForm"],
-    packageCount: Number(row.package_count ?? 0),
-    palletCount: Number(row.pallet_count ?? 0),
+    shipmentForm,
+    packageCount: counts.packageCount,
+    palletCount: counts.palletCount,
     note: String(row.note ?? ""),
     createdAt: String(row.created_at),
     updatedAt: String(row.updated_at),

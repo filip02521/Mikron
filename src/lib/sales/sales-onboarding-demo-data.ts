@@ -56,6 +56,8 @@ function demoLine(
     progressLabel: extra.progressLabel ?? null,
     stockStatus: extra.stockStatus ?? "waiting",
     canAcknowledgePickup: extra.canAcknowledgePickup ?? false,
+    canCancelBySales: extra.canCancelBySales ?? false,
+    salesCancelPhase: extra.salesCancelPhase ?? null,
     clientName: extra.clientName ?? null,
     clientKhId: extra.clientKhId ?? null,
   };

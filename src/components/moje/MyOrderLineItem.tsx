@@ -1,9 +1,11 @@
 "use client";
 
 import type { MyOrderLine, MyOrderLineStockStatus } from "@/lib/orders/my-order-presenter";
+import type { SalesCancelPhase } from "@/lib/orders/sales-cancel";
 import { MyOrderAssignedClient } from "@/components/moje/MyOrderAssignedClient";
 import { MyOrderLineClientField } from "@/components/moje/MyOrderLineClientField";
 import { MyOrderAckButton } from "@/components/moje/MyOrderAckButton";
+import { MyOrderCancelButton } from "@/components/moje/MyOrderCancelButton";
 import { IconCircleCheck } from "@/components/icons/StrokeIcons";
 import { cn } from "@/lib/cn";
 import { mojeShipmentLineRowClass } from "@/lib/ui/moje-shipment-row-styles";
@@ -45,6 +47,10 @@ export function MyOrderLineItem({
   acknowledgeLineLabel = "Potwierdź",
   acknowledgeLineTitle,
   onAcknowledgePickup,
+  canCancelLine,
+  cancelLineLabel = "Anuluj",
+  cancelLineAriaLabel,
+  onCancelLine,
   canEditClient,
   onSaveClient,
   openClientEditor = false,
@@ -62,6 +68,10 @@ export function MyOrderLineItem({
   acknowledgeLineLabel?: string;
   acknowledgeLineTitle?: string;
   onAcknowledgePickup?: (orderId: string) => void;
+  canCancelLine?: boolean;
+  cancelLineLabel?: string;
+  cancelLineAriaLabel?: string;
+  onCancelLine?: (orderId: string, phase: SalesCancelPhase) => void;
   canEditClient?: boolean;
   onSaveClient?: (orderId: string, name: string | null) => void | Promise<void>;
   openClientEditor?: boolean;
@@ -81,6 +91,7 @@ export function MyOrderLineItem({
   return (
     <li
       className={cn(
+        "group/line",
         compact ? mojeShipmentLineRowClass : "py-1.5 px-0.5",
         !compact && emphasizeStock && onStock && "border-l-2 border-emerald-500 pl-2",
         !compact && emphasizeStock && partial && "border-l-2 border-sky-400 pl-2",
@@ -153,19 +164,36 @@ export function MyOrderLineItem({
           ) : null}
         </div>
 
-        {badge ? (
-          <span
-            className={cn(
-              "inline-flex shrink-0 items-center gap-1 rounded-md px-1.5 py-0.5 text-[10px] font-semibold ring-1",
-              badge.className
-            )}
-          >
-            {onStock ? (
-              <IconCircleCheck size={12} strokeWidth={2.5} className="shrink-0" aria-hidden />
-            ) : null}
-            {badge.label}
-          </span>
-        ) : null}
+        <div className="flex shrink-0 flex-col items-end gap-0.5">
+          {badge ? (
+            <span
+              className={cn(
+                "inline-flex shrink-0 items-center gap-1 rounded-md px-1.5 py-0.5 text-[10px] font-semibold ring-1",
+                badge.className
+              )}
+            >
+              {onStock ? (
+                <IconCircleCheck size={12} strokeWidth={2.5} className="shrink-0" aria-hidden />
+              ) : null}
+              {badge.label}
+            </span>
+          ) : null}
+          {canCancelLine &&
+          line.canCancelBySales &&
+          line.salesCancelPhase &&
+          onCancelLine ? (
+            <MyOrderCancelButton
+              disabled={pending}
+              ariaLabel={
+                cancelLineAriaLabel ?? `${cancelLineLabel}: ${line.product}`
+              }
+              onClick={() => onCancelLine(line.id, line.salesCancelPhase!)}
+              className="opacity-70 transition-opacity group-hover/line:opacity-100 group-focus-within/line:opacity-100 focus-visible:opacity-100"
+            >
+              {cancelLineLabel}
+            </MyOrderCancelButton>
+          ) : null}
+        </div>
       </div>
 
       {canAcknowledge && line.canAcknowledgePickup && onAcknowledgePickup ? (

@@ -261,7 +261,9 @@ export default async function MojePage({
       ) : null
     ) : undefined;
 
-  const showSalesSync = Boolean(role && !canAccessOperations(role));
+  const showSalesSync = Boolean(
+    adminSalesPreview || (role && !canAccessOperations(role))
+  );
 
   return (
     <div className={salesPageShellClass}>

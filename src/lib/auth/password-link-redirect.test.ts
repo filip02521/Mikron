@@ -25,8 +25,14 @@ describe("password-link-redirect", () => {
   });
 
   it("buildPasswordConfirmLink encodes token_hash and type", () => {
-    const link = buildPasswordConfirmLink("hash123", "invite");
+    const link = buildPasswordConfirmLink(
+      "hash123",
+      "invite",
+      "/ustaw-haslo",
+      "http://ontime.mikran.pl:3000"
+    );
     const url = new URL(link);
+    expect(url.origin).toBe("http://ontime.mikran.pl:3000");
     expect(url.pathname).toBe("/auth/confirm");
     expect(url.searchParams.get("token_hash")).toBe("hash123");
     expect(url.searchParams.get("type")).toBe("invite");

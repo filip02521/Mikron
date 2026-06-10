@@ -14,6 +14,7 @@ import {
   type SalesInviteLinkResult,
 } from "@/lib/users/sales-invite";
 import { getAppUrl } from "@/lib/env/app-config";
+import { resolveAppUrl } from "@/lib/env/resolve-app-url.server";
 import {
   buildPasswordConfirmLink,
   emailOtpTypeFromVerification,
@@ -349,11 +350,12 @@ export async function actionGeneratePasswordResetLink(
   }
 
   const supabase = createAdminClient();
+  const appUrl = await resolveAppUrl();
   const { data, error } = await supabase.auth.admin.generateLink({
     type: "recovery",
     email: normalized,
     options: {
-      redirectTo: passwordSetupConfirmUrl(),
+      redirectTo: passwordSetupConfirmUrl(appUrl),
     },
   });
 
@@ -365,7 +367,9 @@ export async function actionGeneratePasswordResetLink(
     success: true,
     link: buildPasswordConfirmLink(
       data.properties.hashed_token,
-      emailOtpTypeFromVerification(data.properties.verification_type)
+      emailOtpTypeFromVerification(data.properties.verification_type),
+      undefined,
+      appUrl
     ),
   };
 }

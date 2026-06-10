@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { requireAdmin } from "@/lib/auth";
 import { fetchSalesPeopleForPicker } from "@/lib/data/sales-people-admin";
+import { SalesPersonPreviewLink } from "@/components/admin/SalesPersonPreviewLink";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { Alert } from "@/components/ui/Alert";
 import { salesPageShellClass } from "@/lib/ui/ontime-theme";
@@ -45,18 +46,11 @@ export default async function WyborHandlowcaPage() {
       <ul className="divide-y divide-slate-100 overflow-hidden rounded-md border border-slate-200/80 bg-white shadow-[var(--shadow-card-elevated)]">
         {people.map((person) => (
           <li key={person.id}>
-            <Link
-              href={`/moje?dla=${person.id}`}
-              className="flex items-center justify-between gap-3 px-4 py-3.5 transition hover:bg-slate-50"
-            >
-              <span>
-                <span className="block text-sm font-semibold text-slate-900">{person.name}</span>
-                {person.email ? (
-                  <span className="mt-0.5 block text-xs text-slate-500">{person.email}</span>
-                ) : null}
-              </span>
-              <span className="shrink-0 text-xs font-medium text-indigo-600">Podgląd →</span>
-            </Link>
+            <SalesPersonPreviewLink
+              salesPersonId={person.id}
+              name={person.name}
+              email={person.email}
+            />
           </li>
         ))}
       </ul>

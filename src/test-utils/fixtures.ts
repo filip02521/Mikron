@@ -73,6 +73,8 @@ export function testMyOrderLine(
     progressLabel: null,
     stockStatus: "waiting",
     canAcknowledgePickup: false,
+    canCancelBySales: false,
+    salesCancelPhase: null,
     clientName: null,
     clientKhId: null,
     ...partial,

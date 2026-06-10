@@ -5,7 +5,7 @@ import { getSessionUser } from "@/lib/auth";
 import { resolveSalesPersonForUser } from "@/lib/auth/sales-person";
 import { resolvePreviewSalesPerson } from "@/lib/auth/resolve-preview-sales-person";
 import { isAdminReadOnlyPanelPreview } from "@/lib/auth/admin-panel-context";
-import { isSalesManager } from "@/lib/auth-roles";
+import { isAdmin, isSalesManager } from "@/lib/auth-roles";
 import { readAdminPanelContextForSession } from "@/lib/auth/read-admin-panel-context";
 import { ManagerPreviewBanner } from "@/components/sales/ManagerPreviewBanner";
 import {
@@ -51,7 +51,9 @@ export default async function ProsbaPage({
 
   try {
     const user = await getSessionUser();
-    adminReadOnlyPreview = isAdminReadOnlyPanelPreview(user?.role ?? null, panelContext);
+    adminReadOnlyPreview =
+      isAdminReadOnlyPanelPreview(user?.role ?? null, panelContext) ||
+      Boolean(user?.role && isAdmin(user.role) && delegateId?.trim());
 
     if (adminReadOnlyPreview && user) {
       if (delegateId) {
@@ -98,30 +100,57 @@ export default async function ProsbaPage({
   }
 
   if (adminReadOnlyPreview) {
-    return (
-      <div className={salesPageShellClass}>
-        <PageHeader
-          title="Nowa prośba"
-          description="Podgląd formularza handlowca — składanie prośb jest wyłączone dla administratora."
-        />
-        {lockedSalesPerson ? (
-          <ManagerPreviewBanner
-            salesPersonId={lockedSalesPerson.id}
-            salesPersonName={lockedSalesPerson.name}
-            readOnly
+    if (!lockedSalesPerson) {
+      return (
+        <div className={salesPageShellClass}>
+          <PageHeader
+            title="Nowa prośba"
+            description="Podgląd formularza handlowca — składanie prośb jest wyłączone dla administratora."
           />
-        ) : (
           <Alert tone="info">
             Wybierz handlowca z{" "}
             <a href="/admin/wybor-handlowca" className="font-medium text-indigo-700 underline">
               listy podglądu
             </a>
-            , aby zobaczyć jego panel zamówień.
+            , aby zobaczyć jego formularz i panel zamówień.
           </Alert>
-        )}
-        <Alert tone="warning" className="mt-4">
-          W trybie podglądu administrator nie składa prośb — użyj panelu zamówień handlowca.
-        </Alert>
+        </div>
+      );
+    }
+
+    const initialSupplierId =
+      resolveProsbaSupplierId(dostawca, suppliers.map((s) => s.id)) ?? null;
+
+    return (
+      <div className={salesPageShellClass}>
+        <ManagerPreviewBanner
+          salesPersonId={lockedSalesPerson.id}
+          salesPersonName={lockedSalesPerson.name}
+          readOnly
+        />
+        <Suspense
+          fallback={
+            <div className="overflow-hidden rounded-md border border-slate-200/80 bg-white shadow-[var(--shadow-card-elevated)]">
+              <div className="border-b border-slate-100 px-3 pb-3 pt-4 sm:px-4">
+                <div className="h-5 w-40 animate-pulse rounded bg-slate-100" />
+                <div className="mt-2 h-3 w-full max-w-md animate-pulse rounded bg-slate-100" />
+              </div>
+              <p className="px-3 py-12 text-center text-xs text-slate-500 sm:px-4">
+                Ładowanie formularza…
+              </p>
+            </div>
+          }
+        >
+          <OrderFormClient
+            suppliers={suppliers}
+            statsBySupplierId={statsBySupplierId}
+            salesPeople={[]}
+            lockedSalesPerson={lockedSalesPerson}
+            singleGroup
+            initialSupplierId={initialSupplierId}
+            forceReadOnly
+          />
+        </Suspense>
       </div>
     );
   }

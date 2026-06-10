@@ -97,7 +97,9 @@ export default async function PlanPage({
     error = e instanceof Error ? e.message : "Błąd ładowania";
   }
 
-  const salesMode = role ? isSalesAccount(role) : false;
+  const salesMode = Boolean(
+    role && (isSalesAccount(role) || (role === "admin" && salesPersonId))
+  );
 
   return (
     <>

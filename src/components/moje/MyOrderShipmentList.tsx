@@ -12,9 +12,8 @@ import {
   actionUpdateSalesClientName,
 } from "@/app/actions/my-orders";
 import {
-  salesCancelConfirmCopy,
-  salesCancelSuccessToast,
-  type SalesCancelPhase,
+  salesCancelConfirmForLines,
+  type SalesCancelLineContext,
 } from "@/lib/orders/sales-cancel";
 import { MyOrderShipmentCard } from "@/components/moje/MyOrderShipmentCard";
 import { Button } from "@/components/ui/Button";
@@ -47,7 +46,7 @@ import type { MyOrderSectionPatternId } from "@/lib/orders/my-order-section-call
 
 type CancelConfirmState = {
   orderIds: string[];
-  phase: SalesCancelPhase;
+  lines: SalesCancelLineContext[];
 };
 
 export function MyOrderShipmentList({
@@ -287,29 +286,37 @@ export function MyOrderShipmentList({
   const runCancel = useCallback(
     (orderIds: string[]) => {
       if (tourPreview) return;
-      setPendingMessage("Anulowanie prośby…");
+      const n = orderIds.length;
+      setPendingMessage(n === 1 ? "Anulowanie pozycji…" : `Anulowanie ${n} pozycji…`);
       start(async () => {
         try {
           await actionSalesCancelOrders(orderIds);
-          clearUndo();
-          setSuccessToast(salesCancelSuccessToast());
+          reportUndo({
+            orderIds,
+            kind: "cancel",
+            title: n === 1 ? "Pozycja wycofana" : `${n} poz. wycofane`,
+          });
           router.refresh();
         } catch (e) {
           setErrorToast(
-            e instanceof Error ? e.message : "Nie udało się anulować prośby"
+            e instanceof Error
+              ? e.message
+              : n === 1
+                ? "Nie udało się anulować pozycji"
+                : "Nie udało się anulować wybranych pozycji"
           );
         } finally {
           setPendingMessage(null);
         }
       });
     },
-    [router, tourPreview, clearUndo]
+    [router, tourPreview, reportUndo]
   );
 
   const requestCancel = useCallback(
-    (orderIds: string[], phase: SalesCancelPhase) => {
+    (orderIds: string[], lines: SalesCancelLineContext[]) => {
       if (tourPreview) return;
-      setCancelConfirm({ orderIds, phase });
+      setCancelConfirm({ orderIds, lines });
     },
     [tourPreview]
   );
@@ -368,9 +375,14 @@ export function MyOrderShipmentList({
           open
           danger
           pending={pending}
-          title={salesCancelConfirmCopy(cancelConfirm.phase).title}
-          message={salesCancelConfirmCopy(cancelConfirm.phase).message}
-          confirmLabel={salesCancelConfirmCopy(cancelConfirm.phase).confirmLabel}
+          {...(() => {
+            const copy = salesCancelConfirmForLines(cancelConfirm.lines);
+            return {
+              title: copy.title,
+              message: copy.message,
+              confirmLabel: copy.confirmLabel,
+            };
+          })()}
           cancelLabel="Zostaw bez zmian"
           onCancel={() => {
             if (!pending) setCancelConfirm(null);
@@ -425,7 +437,7 @@ export function MyOrderShipmentList({
             }
             onCancelRequest={
               canAcknowledge && row.salesCancelOrderIds.length && row.salesCancelPhase
-                ? (ids, phase) => requestCancel(ids, phase)
+                ? (ids, lines) => requestCancel(ids, lines)
                 : undefined
             }
             onSaveClient={canAcknowledge ? saveClient : undefined}

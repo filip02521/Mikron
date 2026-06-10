@@ -14,6 +14,7 @@ import { useRouter } from "next/navigation";
 import {
   actionUnacknowledgeDismiss,
   actionUnacknowledgePickup,
+  actionUnacknowledgeSalesCancel,
 } from "@/app/actions/my-orders";
 import { UndoToast } from "@/components/ui/UndoToast";
 import { Toast } from "@/components/ui/Toast";
@@ -23,7 +24,7 @@ import { undoShortcutLabel } from "@/lib/platform/keyboard-shortcut-label";
 export type ShipmentUndoState = {
   orderIds: string[];
   title: string;
-  kind: "pickup" | "dismiss";
+  kind: "pickup" | "dismiss" | "cancel";
 };
 
 type ShipmentUndoContextValue = {
@@ -48,6 +49,12 @@ function shipmentUndoCopy(state: ShipmentUndoState): {
       description: undoWindowBannerDescription("Towar wróci na listę gotowych"),
     };
   }
+  if (state.kind === "cancel") {
+    return {
+      undoLabel: "Cofnij anulowanie",
+      description: undoWindowBannerDescription("Pozycja wróci na listę"),
+    };
+  }
   return {
     undoLabel: "Cofnij ukrycie",
     description: undoWindowBannerDescription("Prośba wróci na listę"),
@@ -55,9 +62,13 @@ function shipmentUndoCopy(state: ShipmentUndoState): {
 }
 
 function undoFailureMessage(kind: ShipmentUndoState["kind"]): string {
-  return kind === "pickup"
-    ? "Nie udało się cofnąć odbioru. Spróbuj ponownie."
-    : "Nie udało się cofnąć ukrycia. Spróbuj ponownie.";
+  if (kind === "pickup") {
+    return "Nie udało się cofnąć odbioru. Spróbuj ponownie.";
+  }
+  if (kind === "cancel") {
+    return "Nie udało się cofnąć anulowania. Spróbuj ponownie.";
+  }
+  return "Nie udało się cofnąć ukrycia. Spróbuj ponownie.";
 }
 
 /** Jeden toast cofnięcia na widoku /moje — unika duplikatów z wielu list. */
@@ -97,6 +108,8 @@ export function MyOrderShipmentUndoProvider({
       try {
         if (snapshot.kind === "dismiss") {
           await actionUnacknowledgeDismiss(snapshot.orderIds);
+        } else if (snapshot.kind === "cancel") {
+          await actionUnacknowledgeSalesCancel(snapshot.orderIds);
         } else {
           await actionUnacknowledgePickup(snapshot.orderIds);
         }

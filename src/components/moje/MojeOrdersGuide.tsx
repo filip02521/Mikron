@@ -63,7 +63,18 @@ export function MojeOrdersHelp() {
           </li>
           <li>
             <strong className="font-medium text-slate-800">Menu</strong>{" "}
-            <HelpMenuGlyph className="align-[-2px]" /> — klient, edycja prośby, anulowanie
+            <HelpMenuGlyph className="align-[-2px]" /> — klient, edycja prośby, anulowanie całej
+            grupy
+          </li>
+          <li>
+            <strong className="font-medium text-slate-800">Anuluj</strong> — dyskretny link po
+            prawej przy linii; przy rozwiniętej karcie z wieloma produktami u tego samego
+            dostawcy możesz wycofać tylko wybraną pozycję
+          </li>
+          <li>
+            <strong className="font-medium text-slate-800">Cofnij</strong> — po anulowaniu,
+            odbiorze lub ukryciu masz kilka sekund na cofnięcie (toast u dołu ekranu lub skrót
+            klawiszowy)
           </li>
           <li>
             <strong className="font-medium text-slate-800">Rozwiń</strong> — produkty i dodatkowe

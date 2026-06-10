@@ -4,6 +4,7 @@ import {
   hasSalesCancelledAtColumn,
 } from "@/lib/supabase/schema-check";
 import type { SalesCancelPhase } from "@/lib/orders/sales-cancel";
+import type { IndividualOrderStatus } from "@/types/database";
 
 export type SalesCancelDbCaps = {
   hasCancelledAt: boolean;
@@ -63,6 +64,26 @@ export function buildSalesCancelUpdate(
   }
   if (phase === "before_order") {
     update.status = "Anulowane";
+  }
+  return update;
+}
+
+/** Cofnięcie wycofania prośby w oknie undo — przywraca aktywną pozycję na liście. */
+export function buildSalesCancelUndoUpdate(
+  caps: SalesCancelDbCaps,
+  restoreStatus: IndividualOrderStatus | null
+): Record<string, unknown> {
+  const update: Record<string, unknown> = {
+    sales_acknowledged_at: null,
+  };
+  if (caps.hasCancelledAt) {
+    update.sales_cancelled_at = null;
+  }
+  if (caps.hasCancelPhase) {
+    update.sales_cancel_phase = null;
+  }
+  if (restoreStatus) {
+    update.status = restoreStatus;
   }
   return update;
 }

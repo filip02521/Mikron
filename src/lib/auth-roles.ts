@@ -75,7 +75,7 @@ export function homePathForRole(role: UserRole): string {
 }
 
 export type CanAccessPathOptions = {
-  /** Parametr ?dla= — podgląd notatnika handlowca (admin). */
+  /** Parametr ?dla= — podgląd panelu handlowca (admin / kierownik). */
   previewSalesPersonId?: string | null;
   /** Tryb podglądu panelu (tylko admin, cookie). */
   adminPanelContext?: AdminPanelContext | null;
@@ -106,18 +106,15 @@ export function canAccessPath(
   if (SALES_TEAM_PREFIXES.some((p) => pathname === p || pathname.startsWith(`${p}/`))) {
     return canManageSalesTeam(role);
   }
-  if (pathname === "/notatnik" || pathname.startsWith("/notatnik/")) {
-    if (isSalesAccount(role)) return true;
-    if (isAdmin(role) && options?.previewSalesPersonId?.trim()) return true;
-    return false;
-  }
   if (pathname === "/notatki" || pathname.startsWith("/notatki/")) {
     return isAdmin(role) || isZakupy(role) || isMagazyn(role);
   }
   if (
     SALES_PATH_PREFIXES.some((p) => pathname === p || pathname.startsWith(`${p}/`))
   ) {
-    return isSalesAccount(role);
+    if (isSalesAccount(role)) return true;
+    if (isAdmin(role) && options?.previewSalesPersonId?.trim()) return true;
+    return false;
   }
   return pathname === "/" || pathname === "/login" || pathname === "/ustaw-haslo";
 }

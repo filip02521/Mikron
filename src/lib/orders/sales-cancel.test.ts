@@ -7,6 +7,8 @@ import {
   resolveSalesCancelPhase,
   resolveGroupSalesCancelPhase,
   salesCancelConfirmCopy,
+  salesCancelConfirmForLines,
+  salesCancelOverflowLabel,
 } from "./sales-cancel";
 import type { IndividualOrder } from "@/types/database";
 
@@ -115,6 +117,31 @@ describe("sales-cancel", () => {
     expect(salesCancelConfirmCopy("before_order").confirmLabel).toContain("Wycofaj");
     expect(salesCancelConfirmCopy("in_transit").title).toContain("Rezygnujesz");
     expect(salesCancelConfirmCopy("on_stock").title).toContain("towaru");
+  });
+
+  it("salesCancelConfirmCopy — pojedyncza pozycja z nazwą produktu", () => {
+    const copy = salesCancelConfirmCopy("before_order", {
+      productName: "Ivoclar Variolink",
+    });
+    expect(copy.title).toContain("pozycję");
+    expect(copy.message).toContain("Ivoclar Variolink");
+    expect(copy.confirmLabel).toBe("Wycofaj pozycję");
+  });
+
+  it("salesCancelConfirmForLines — mieszane fazy w grupie", () => {
+    const copy = salesCancelConfirmForLines([
+      { product: "Produkt A", phase: "before_order" },
+      { product: "Produkt B", phase: "in_transit" },
+    ]);
+    expect(copy.title).toContain("wybrane");
+    expect(copy.message).toContain("Produkt A");
+    expect(copy.message).toContain("etapu");
+  });
+
+  it("salesCancelOverflowLabel rozróżnia jedną i wiele pozycji", () => {
+    expect(salesCancelOverflowLabel("zamowienie", 1)).toBe("Anuluj prośbę");
+    expect(salesCancelOverflowLabel("zamowienie", 2)).toContain("wszystkie");
+    expect(salesCancelOverflowLabel("informacja", 1)).toBe("Anuluj informację");
   });
 
   it("effectiveSalesCancelPhase — wywnioskowanie bez kolumny phase", () => {

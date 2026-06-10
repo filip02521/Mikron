@@ -2,7 +2,11 @@ import { addDays } from "date-fns";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { formatDateString, parseDateOnly } from "@/lib/orders/dates";
 import { warsawNowParts } from "@/lib/time/warsaw";
-import type { WarehouseCarrier, WarehouseShipmentForm } from "@/lib/warehouse/delivery-carriers";
+import {
+  normalizeShipmentCounts,
+  type WarehouseCarrier,
+  type WarehouseShipmentForm,
+} from "@/lib/warehouse/delivery-carriers";
 
 export type WarehouseDeliveryReceipt = {
   id: string;
@@ -42,6 +46,13 @@ function mapRow(row: Record<string, unknown>): WarehouseDeliveryReceipt {
       ? String(suppliers.name)
       : String(row.supplier_label ?? "").trim() || "—";
 
+  const shipmentForm = String(row.shipment_form) as WarehouseShipmentForm;
+  const counts = normalizeShipmentCounts(
+    shipmentForm,
+    Number(row.package_count ?? 0),
+    Number(row.pallet_count ?? 0)
+  );
+
   return {
     id: String(row.id),
     receivedDate: String(row.received_date),
@@ -49,9 +60,9 @@ function mapRow(row: Record<string, unknown>): WarehouseDeliveryReceipt {
     supplierLabel: String(row.supplier_label ?? ""),
     supplierName,
     carrier: String(row.carrier) as WarehouseCarrier,
-    shipmentForm: String(row.shipment_form) as WarehouseShipmentForm,
-    packageCount: Number(row.package_count ?? 0),
-    palletCount: Number(row.pallet_count ?? 0),
+    shipmentForm,
+    packageCount: counts.packageCount,
+    palletCount: counts.palletCount,
     note: String(row.note ?? ""),
     createdAt: String(row.created_at),
     updatedAt: String(row.updated_at),
@@ -245,7 +256,12 @@ export async function createDeliveryReceipt(input: {
   note?: string;
   createdBy: string;
 }): Promise<WarehouseDeliveryReceipt> {
-  if (input.packageCount <= 0 && input.palletCount <= 0) {
+  const counts = normalizeShipmentCounts(
+    input.shipmentForm,
+    input.packageCount,
+    input.palletCount
+  );
+  if (counts.packageCount <= 0 && counts.palletCount <= 0) {
     throw new Error("Podaj liczbę paczek lub palet (co najmniej 1).");
   }
   if (!input.supplierId && !input.supplierLabel?.trim()) {
@@ -262,8 +278,8 @@ export async function createDeliveryReceipt(input: {
       supplier_label: input.supplierLabel?.trim() ?? "",
       carrier: input.carrier,
       shipment_form: input.shipmentForm,
-      package_count: Math.max(0, Math.trunc(input.packageCount)),
-      pallet_count: Math.max(0, Math.trunc(input.palletCount)),
+      package_count: counts.packageCount,
+      pallet_count: counts.palletCount,
       note: input.note?.trim() ?? "",
       created_by: input.createdBy,
       updated_by: input.createdBy,
@@ -281,8 +297,8 @@ export async function createDeliveryReceipt(input: {
       supplierId: input.supplierId,
       carrier: input.carrier,
       shipmentForm: input.shipmentForm,
-      packageCount: input.packageCount,
-      palletCount: input.palletCount,
+      packageCount: counts.packageCount,
+      palletCount: counts.palletCount,
     });
   }
 
@@ -305,7 +321,12 @@ export async function updateDeliveryReceipt(input: {
   if (input.receivedDate !== today) {
     throw new Error("Można edytować tylko wpisy z dzisiejszej daty.");
   }
-  if (input.packageCount <= 0 && input.palletCount <= 0) {
+  const counts = normalizeShipmentCounts(
+    input.shipmentForm,
+    input.packageCount,
+    input.palletCount
+  );
+  if (counts.packageCount <= 0 && counts.palletCount <= 0) {
     throw new Error("Podaj liczbę paczek lub palet (co najmniej 1).");
   }
 
@@ -317,8 +338,8 @@ export async function updateDeliveryReceipt(input: {
       supplier_label: input.supplierLabel?.trim() ?? "",
       carrier: input.carrier,
       shipment_form: input.shipmentForm,
-      package_count: Math.max(0, Math.trunc(input.packageCount)),
-      pallet_count: Math.max(0, Math.trunc(input.palletCount)),
+      package_count: counts.packageCount,
+      pallet_count: counts.palletCount,
       note: input.note?.trim() ?? "",
       updated_by: input.updatedBy,
       updated_at: new Date().toISOString(),
@@ -337,8 +358,8 @@ export async function updateDeliveryReceipt(input: {
       supplierId: input.supplierId,
       carrier: input.carrier,
       shipmentForm: input.shipmentForm,
-      packageCount: input.packageCount,
-      palletCount: input.palletCount,
+      packageCount: counts.packageCount,
+      palletCount: counts.palletCount,
     });
   }
 

@@ -7,9 +7,9 @@ import {
   useEffect,
   useRef,
   useState,
-  useSyncExternalStore,
 } from "react";
 import { createPersistedFlagStore } from "@/lib/client/persisted-flag-store";
+import { usePersistedFlag } from "@/lib/client/use-persisted-flag";
 import { usePathname, useRouter } from "next/navigation";
 import { Button } from "@/components/ui/Button";
 import { SystemNotice } from "@/components/ui/SystemNotice";
@@ -61,11 +61,7 @@ export function SalesUpdatesProvider({
   const pathname = usePathname();
   const [baseline, setBaseline] = useState(initialVersion);
   const [latest, setLatest] = useState(initialVersion);
-  const autoRefresh = useSyncExternalStore(
-    autoRefreshStore.subscribe,
-    autoRefreshStore.getSnapshot,
-    autoRefreshStore.getServerSnapshot
-  );
+  const autoRefresh = usePersistedFlag(autoRefreshStore);
   const [lastSyncedAt, setLastSyncedAt] = useState<number | null>(() =>
     initialVersion != null ? Date.now() : null
   );

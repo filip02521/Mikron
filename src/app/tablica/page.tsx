@@ -19,9 +19,9 @@ export const metadata: Metadata = pageMetadataFor("tablica");
 export default async function SalesBoardPage({
   searchParams,
 }: {
-  searchParams: Promise<{ widok?: string; watek?: string }>;
+  searchParams: Promise<{ widok?: string; watek?: string; dla?: string }>;
 }) {
-  const { widok, watek } = await searchParams;
+  const { widok, watek, dla: previewSalesPersonId } = await searchParams;
   const focusThreadId = watek?.trim() || null;
   /** watek + widok=ogloszenia → scroll do ogłoszenia; watek + widok=pytania (lub brak) → pytanie. */
   const focusQuestionId = widok === "ogloszenia" ? null : focusThreadId;
@@ -29,7 +29,9 @@ export default async function SalesBoardPage({
   const user = await getSessionUser();
   const { panelContext } = await readAdminPanelContextForSession();
   const adminSalesPreview = Boolean(
-    user?.role && isAdmin(user.role) && panelContext === "sales"
+    user?.role &&
+      isAdmin(user.role) &&
+      (panelContext === "sales" || Boolean(previewSalesPersonId?.trim()))
   );
 
   if (!user?.role || (!isSalesAccount(user.role) && !adminSalesPreview)) {

@@ -11,6 +11,7 @@ export function MyOrderShipmentOverflowMenu({
   canAssignClient,
   canEdit,
   canCancel,
+  cancelLabel,
   assignClientLabel,
   onAssignClient,
   onEdit,
@@ -23,6 +24,8 @@ export function MyOrderShipmentOverflowMenu({
   canAssignClient: boolean;
   canEdit: boolean;
   canCancel: boolean;
+  /** Np. „Anuluj wszystkie pozycje (2 pozycje)” przy grupie. */
+  cancelLabel?: string;
   /** Np. przy wielu produktach — otwiera listę pozycji. */
   assignClientLabel?: string;
   onAssignClient: () => void;
@@ -55,7 +58,7 @@ export function MyOrderShipmentOverflowMenu({
       ) : null}
       {canCancel ? (
         <OverflowMenuItem danger disabled={disabled} onClick={onCancel}>
-          {isInformacja ? "Anuluj informację" : "Anuluj prośbę"}
+          {cancelLabel ?? (isInformacja ? "Anuluj informację" : "Anuluj prośbę")}
         </OverflowMenuItem>
       ) : null}
     </OverflowMenu>

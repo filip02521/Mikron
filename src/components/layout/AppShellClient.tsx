@@ -148,6 +148,7 @@ export function AppShellClient({
         mustChangePassword={mustChangePassword}
         salesOnboardingCompletedAt={salesOnboardingCompletedAt}
         salesPersonName={salesPersonName}
+        adminPanelPreview={Boolean(adminPanelPreview)}
       >
       <div
         className={cn(

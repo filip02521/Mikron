@@ -15,6 +15,7 @@ import {
 } from "@/lib/warehouse/delivery-journal-insights";
 import {
   WAREHOUSE_CARRIERS,
+  formatShipmentQuantitySuffix,
   warehouseCarrierLabel,
   warehouseShipmentFormLabel,
   type WarehouseCarrier,
@@ -45,8 +46,11 @@ function InsightReceiptRow({ receipt }: { receipt: WarehouseDeliveryReceipt }) {
           <p className="mt-1 text-sm text-slate-600">
             {warehouseCarrierLabel(receipt.carrier)} ·{" "}
             {warehouseShipmentFormLabel(receipt.shipmentForm)}
-            {receipt.packageCount > 0 ? ` · ${receipt.packageCount} pacz.` : ""}
-            {receipt.palletCount > 0 ? ` · ${receipt.palletCount} pal.` : ""}
+            {formatShipmentQuantitySuffix(
+              receipt.shipmentForm,
+              receipt.packageCount,
+              receipt.palletCount
+            )}
           </p>
           {receipt.note ? (
             <p className="mt-1 text-xs text-slate-500">{receipt.note}</p>

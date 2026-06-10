@@ -11,6 +11,7 @@ export function SalesOnboardingGate({
   mustChangePassword,
   salesOnboardingCompletedAt,
   salesPersonName,
+  adminPanelPreview = false,
   children,
 }: {
   role: UserRole | null;
@@ -18,9 +19,12 @@ export function SalesOnboardingGate({
   mustChangePassword: boolean;
   salesOnboardingCompletedAt: string | null;
   salesPersonName?: string | null;
+  /** Administrator ogląda panel handlowca — nie uruchamiaj touru. */
+  adminPanelPreview?: boolean;
   children: React.ReactNode;
 }) {
   const showWizard =
+    !adminPanelPreview &&
     Boolean(role && isSalesAccount(role)) &&
     Boolean(salesPersonId) &&
     !mustChangePassword &&

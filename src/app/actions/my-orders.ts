@@ -6,11 +6,14 @@ import { resolveSalesPersonForUser } from "@/lib/auth/sales-person";
 import { isSalesAccount } from "@/lib/auth-roles";
 import { createAdminClient } from "@/lib/supabase/admin";
 import {
+  effectiveSalesCancelPhase,
   isSalesCancelNoticePending,
   resolveSalesCancelPhase,
+  salesCancelUndoRestoreStatus,
 } from "@/lib/orders/sales-cancel";
 import { normalizeSalesClientName } from "@/lib/orders/sales-client-label";
 import {
+  buildSalesCancelUndoUpdate,
   buildSalesCancelUpdate,
   getSalesCancelDbCaps,
   SALES_CANCEL_MIGRATION_HINT,
@@ -279,6 +282,85 @@ export async function actionUnacknowledgePickup(orderIds: string[]) {
 
   revalidatePath("/moje");
   return { success: true, count: orderIds.length };
+}
+
+/** Cofnięcie wycofania prośby (okno undo po actionSalesCancelOrders). */
+export async function actionUnacknowledgeSalesCancel(orderIds: string[]) {
+  if (!orderIds.length) throw new Error("Brak pozycji do cofnięcia.");
+  const salesPersonId = await salesPersonIdForAction();
+  const supabase = createAdminClient();
+  const caps = await getSalesCancelDbCaps(supabase);
+  const now = Date.now();
+
+  const { data: rowsRaw, error: fetchError } = await supabase
+    .from("individual_orders")
+    .select(salesCancelAckSelect(caps))
+    .in("id", orderIds);
+
+  if (fetchError) throw new Error(fetchError.message);
+  const rows = (rowsRaw ?? []) as unknown as IndividualOrder[];
+  if (!rows.length) throw new Error("Nie znaleziono pozycji.");
+
+  for (const row of rows) {
+    if (row.sales_person_id !== salesPersonId) {
+      throw new Error("Brak uprawnień do tej pozycji.");
+    }
+    if (!row.sales_acknowledged_at) {
+      throw new Error("Ta pozycja nie była jeszcze zamknięta.");
+    }
+    const cancelledAt = row.sales_cancelled_at;
+    const legacyCancel = !caps.hasCancelledAt && row.status === "Anulowane";
+    if (!cancelledAt && !legacyCancel) {
+      throw new Error("Cofnięcie dotyczy tylko właśnie wycofanych pozycji.");
+    }
+    const undoAnchor = cancelledAt ?? row.sales_acknowledged_at;
+    if (!undoAnchor) {
+      throw new Error("Brak znacznika czasu do cofnięcia.");
+    }
+    const anchorMs = new Date(undoAnchor).getTime();
+    if (now - anchorMs > UNDO_WINDOW_MS) {
+      throw new Error("Minął czas na cofnięcie — odśwież listę.");
+    }
+  }
+
+  let restoredCount = 0;
+
+  for (const row of rows) {
+    const phase =
+      effectiveSalesCancelPhase(row) ??
+      (row.sales_cancel_phase as ReturnType<typeof resolveSalesCancelPhase>) ??
+      (row.status === "Anulowane" ? "before_order" : null);
+    if (!phase) {
+      throw new Error("Nie można cofnąć tej pozycji.");
+    }
+    const restoreStatus = salesCancelUndoRestoreStatus(row, phase);
+    const update = buildSalesCancelUndoUpdate(caps, restoreStatus);
+
+    let q = supabase
+      .from("individual_orders")
+      .update(update)
+      .eq("id", row.id)
+      .eq("sales_person_id", salesPersonId);
+
+    if (caps.hasCancelledAt) {
+      q = q.not("sales_cancelled_at", "is", null);
+    } else {
+      q = q.eq("status", "Anulowane");
+    }
+
+    const { data: updated, error } = await q.select("id");
+    if (error) throw new Error(error.message);
+    restoredCount += updated?.length ?? 0;
+  }
+
+  if (restoredCount !== rows.length) {
+    throw new Error("Nie udało się cofnąć — odśwież listę i spróbuj ponownie.");
+  }
+
+  revalidatePath("/moje");
+  revalidatePath("/podsumowanie");
+  revalidatePath("/kolejka");
+  return { success: true, count: restoredCount };
 }
 
 /** Cofnięcie potwierdzenia anulowania / informacji o rezygnacji (okno undo). */

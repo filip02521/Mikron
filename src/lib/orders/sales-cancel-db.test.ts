@@ -1,8 +1,10 @@
 import { describe, expect, it } from "vitest";
 import {
+  buildSalesCancelUndoUpdate,
   buildSalesCancelUpdate,
   salesCancelOrderSelect,
 } from "./sales-cancel-db";
+import { salesCancelUndoRestoreStatus } from "./sales-cancel";
 
 describe("sales-cancel-db", () => {
   it("salesCancelOrderSelect bez kolumn rezygnacji", () => {
@@ -54,5 +56,38 @@ describe("sales-cancel-db", () => {
       "2026-05-01T12:00:00Z"
     );
     expect(before?.status).toBe("Anulowane");
+  });
+
+  it("buildSalesCancelUndoUpdate — czyści rezygnację i przywraca status", () => {
+    expect(
+      buildSalesCancelUndoUpdate({ hasCancelledAt: true, hasCancelPhase: true }, "Nowe")
+    ).toEqual({
+      sales_acknowledged_at: null,
+      sales_cancelled_at: null,
+      sales_cancel_phase: null,
+      status: "Nowe",
+    });
+    expect(
+      buildSalesCancelUndoUpdate({ hasCancelledAt: true, hasCancelPhase: true }, null)
+    ).toEqual({
+      sales_acknowledged_at: null,
+      sales_cancelled_at: null,
+      sales_cancel_phase: null,
+    });
+  });
+
+  it("salesCancelUndoRestoreStatus — tylko before_order z Anulowane", () => {
+    expect(
+      salesCancelUndoRestoreStatus(
+        { status: "Anulowane", request_kind: "zamowienie" },
+        "before_order"
+      )
+    ).toBe("Nowe");
+    expect(
+      salesCancelUndoRestoreStatus(
+        { status: "Zamowione", request_kind: "zamowienie" },
+        "in_transit"
+      )
+    ).toBeNull();
   });
 });

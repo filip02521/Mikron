@@ -1,6 +1,7 @@
 "use client";
 
 import { useOperationsUpdates } from "@/components/operations/OperationsUpdatesContext";
+import { useClientHydrated } from "@/lib/client/use-client-hydrated";
 import { useSyncRelativeTime } from "@/hooks/useSyncRelativeTime";
 import { cn } from "@/lib/cn";
 import { panelTypography } from "@/lib/ui/ontime-theme";
@@ -8,6 +9,8 @@ import { panelTypography } from "@/lib/ui/ontime-theme";
 /** Stan live sync + auto-odświeżanie — sticky chrome na wszystkich zakładkach panelu. */
 export function DailyPanelSyncControl({ embedded = false }: { embedded?: boolean }) {
   const ctx = useOperationsUpdates();
+  const hydrated = useClientHydrated();
+  const autoRefresh = hydrated && ctx ? ctx.autoRefresh : false;
   const syncLabel = useSyncRelativeTime(
     ctx?.lastSyncedAt ?? null,
     ctx?.lastPollAt ?? null
@@ -55,7 +58,7 @@ export function DailyPanelSyncControl({ embedded = false }: { embedded?: boolean
         className={cn(
           "inline-flex min-h-11 w-full cursor-pointer items-center justify-between gap-3 rounded-md border px-3 py-2 font-medium shadow-sm transition-colors sm:min-h-0 sm:w-fit sm:justify-start sm:gap-2 sm:px-2.5 sm:py-1.5",
           panelTypography.chrome,
-          ctx.autoRefresh
+          autoRefresh
             ? "border-indigo-200/90 bg-indigo-50/50 text-indigo-900"
             : "border-slate-200/80 bg-white/80 text-slate-600 hover:border-indigo-100 hover:bg-indigo-50/30"
         )}
@@ -64,9 +67,9 @@ export function DailyPanelSyncControl({ embedded = false }: { embedded?: boolean
         <input
           type="checkbox"
           role="switch"
-          aria-checked={ctx.autoRefresh}
+          aria-checked={autoRefresh}
           aria-label="Automatyczne odświeżanie panelu przy wykrytych zmianach co 3 minuty"
-          checked={ctx.autoRefresh}
+          checked={autoRefresh}
           onChange={(e) => ctx.setAutoRefresh(e.target.checked)}
           className="size-5 shrink-0 rounded border-slate-300 text-indigo-600 focus:ring-indigo-300 sm:size-4"
         />

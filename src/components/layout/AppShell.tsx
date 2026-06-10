@@ -86,14 +86,24 @@ export async function AppShell({ children }: { children: React.ReactNode }) {
       const previewId = (await headers()).get("x-preview-sales-person-id");
       if (previewId) {
         const preview = await resolvePreviewSalesPerson(previewId, session);
-        if (preview) salesPersonName = preview.name;
+        if (preview) {
+          salesPersonName = preview.name;
+          const metrics = await fetchSalesShellMetrics(preview.id, null);
+          salesActivityVersion = metrics.activityVersion;
+          navBadges = {
+            ...navBadges,
+            salesMoje: metrics.dayStartNavCount,
+            salesNotatnik: 0,
+            salesTablica: 0,
+          };
+        }
       }
     } catch {
       /* opcjonalny podgląd */
     }
   }
 
-  if (role && isSalesAccount(role) && session && !salesPersonName) {
+  if (role && isSalesAccount(role) && session && !salesPersonName && !adminPanelPreview) {
     try {
       const salesPerson = await resolveSalesPersonForUser(session);
       if (salesPerson) {

@@ -7,6 +7,20 @@ import type { IndividualOrder, IndividualOrderStatus } from "@/types/database";
 
 export type SalesCancelPhase = "before_order" | "in_transit" | "on_stock";
 
+const SALES_CANCEL_UNDO_HINT =
+  "Przez kilka sekund możesz cofnąć tę operację (toast u dołu ekranu lub skrót ⌘Z / Ctrl+Z).";
+
+/** Status po cofnięciu anulowania (before_order → było Anulowane). */
+export function salesCancelUndoRestoreStatus(
+  order: Pick<IndividualOrder, "status" | "request_kind">,
+  phase: SalesCancelPhase
+): IndividualOrderStatus | null {
+  if (phase !== "before_order" || order.status !== "Anulowane") {
+    return null;
+  }
+  return "Nowe";
+}
+
 /** Faza zapisana w DB lub wywnioskowana ze statusu (stare rekordy bez sales_cancel_phase). */
 export function effectiveSalesCancelPhase(
   order: IndividualOrder
@@ -106,31 +120,145 @@ export function resolveGroupSalesCancelPhase(
   return "before_order";
 }
 
-export function salesCancelConfirmCopy(phase: SalesCancelPhase): {
+export type SalesCancelConfirmContext = {
+  /** Jedna pozycja — nazwa produktu w treści dialogu. */
+  productName?: string | null;
+  /** Wiele pozycji — lista nazw (menu „anuluj wszystkie”). */
+  productNames?: string[];
+};
+
+export type SalesCancelLineContext = {
+  product: string;
+  phase: SalesCancelPhase;
+};
+
+function formatProductList(names: string[]): string {
+  const trimmed = names.map((n) => n.trim()).filter(Boolean);
+  if (!trimmed.length) return "";
+  if (trimmed.length === 1) return `„${trimmed[0]}”`;
+  if (trimmed.length === 2) return `„${trimmed[0]}” i „${trimmed[1]}”`;
+  if (trimmed.length === 3) {
+    return `„${trimmed[0]}”, „${trimmed[1]}” i „${trimmed[2]}”`;
+  }
+  return `„${trimmed[0]}”, „${trimmed[1]}” i jeszcze ${trimmed.length - 2}`;
+}
+
+function isSingleLineCancel(context?: SalesCancelConfirmContext): boolean {
+  return Boolean(context?.productName?.trim()) && !context?.productNames?.length;
+}
+
+export function salesCancelOverflowLabel(
+  kind: "zamowienie" | "informacja",
+  cancellableCount: number
+): string {
+  const base = kind === "informacja" ? "Anuluj informację" : "Anuluj prośbę";
+  if (cancellableCount <= 1) return base;
+  const n = cancellableCount;
+  const pozycja = n === 1 ? "pozycję" : n < 5 ? "pozycje" : "pozycji";
+  return `Anuluj wszystkie pozycje (${n} ${pozycja})`;
+}
+
+export function salesCancelLineLabel(kind: "zamowienie" | "informacja"): string {
+  return kind === "informacja" ? "Anuluj informację" : "Anuluj pozycję";
+}
+
+/** Krótka etykieta przy linii produktu — dyskretny link po prawej. */
+export function salesCancelLineShortLabel(_kind: "zamowienie" | "informacja"): string {
+  return "Anuluj";
+}
+
+export function salesCancelLineAriaLabel(
+  kind: "zamowienie" | "informacja",
+  product: string
+): string {
+  return `${salesCancelLineLabel(kind)}: ${product}`;
+}
+
+/** Dialog potwierdzenia — jedna lub wiele pozycji, z obsługą mieszanych faz. */
+export function salesCancelConfirmForLines(lines: SalesCancelLineContext[]): {
   title: string;
   message: string;
   confirmLabel: string;
 } {
+  const valid = lines.filter((l) => l.product.trim() && l.phase);
+  if (!valid.length) {
+    return salesCancelConfirmCopy("before_order");
+  }
+  if (valid.length === 1) {
+    return salesCancelConfirmCopy(valid[0]!.phase, { productName: valid[0]!.product });
+  }
+  const phases = new Set(valid.map((l) => l.phase));
+  if (phases.size === 1) {
+    return salesCancelConfirmCopy(valid[0]!.phase, {
+      productNames: valid.map((l) => l.product),
+    });
+  }
+  const products = formatProductList(valid.map((l) => l.product));
+  return {
+    title: "Wycofać wybrane pozycje?",
+    message: `Pozycje ${products} zostaną wycofane — skutek zależy od etapu każdej z nich (część może być już u dostawcy lub na magazynie). ${SALES_CANCEL_UNDO_HINT}`,
+    confirmLabel: "Wycofaj wybrane",
+  };
+}
+
+export function salesCancelConfirmCopy(
+  phase: SalesCancelPhase,
+  context?: SalesCancelConfirmContext
+): {
+  title: string;
+  message: string;
+  confirmLabel: string;
+} {
+  const single = isSingleLineCancel(context);
+  const product = context?.productName?.trim();
+  const groupProducts = context?.productNames?.length
+    ? formatProductList(context.productNames)
+    : "";
+
   switch (phase) {
     case "before_order":
+      if (single && product) {
+        return {
+          title: "Wycofać tę pozycję?",
+          message: `„${product}” zniknie z Twojej listy i u działu dostaw. ${SALES_CANCEL_UNDO_HINT}`,
+          confirmLabel: "Wycofaj pozycję",
+        };
+      }
       return {
-        title: "Wycofać prośbę?",
-        message:
-          "Prośba zniknie z Twojej listy i u działu dostaw. Tej operacji nie cofniesz samodzielnie.",
-        confirmLabel: "Wycofaj prośbę",
+        title: groupProducts ? "Wycofać wszystkie pozycje?" : "Wycofać prośbę?",
+        message: groupProducts
+          ? `Pozycje ${groupProducts} znikną z Twojej listy i u działu dostaw. ${SALES_CANCEL_UNDO_HINT}`
+          : `Prośba zniknie z Twojej listy i u działu dostaw. ${SALES_CANCEL_UNDO_HINT}`,
+        confirmLabel: groupProducts ? "Wycofaj wszystkie" : "Wycofaj prośbę",
       };
     case "in_transit":
+      if (single && product) {
+        return {
+          title: "Rezygnujesz z tej pozycji?",
+          message: `„${product}” może być już u dostawcy. Jeśli towar dotrze, magazyn rozliczy go poza Twoją rezerwacją.`,
+          confirmLabel: "Rezygnuję z pozycji",
+        };
+      }
       return {
         title: "Rezygnujesz z zamówienia?",
-        message:
-          "Zamówienie może być już u dostawcy. Jeśli towar dotrze, magazyn rozliczy go poza Twoją rezerwacją.",
+        message: groupProducts
+          ? `Pozycje ${groupProducts} mogą być już u dostawcy. Jeśli towar dotrze, magazyn rozliczy go poza Twoją rezerwacją.`
+          : "Zamówienie może być już u dostawcy. Jeśli towar dotrze, magazyn rozliczy go poza Twoją rezerwacją.",
         confirmLabel: "Rezygnuję",
       };
     case "on_stock":
+      if (single && product) {
+        return {
+          title: "Rezygnujesz z tej pozycji?",
+          message: `„${product}” może być już na magazynie. Magazyn rozliczy towar poza Twoją rezerwacją.`,
+          confirmLabel: "Rezygnuję z pozycji",
+        };
+      }
       return {
         title: "Rezygnujesz z towaru?",
-        message:
-          "Część lub całość może być już na magazynie. Magazyn rozliczy towar poza Twoją rezerwacją.",
+        message: groupProducts
+          ? `Pozycje ${groupProducts} mogą być już na magazynie. Magazyn rozliczy towar poza Twoją rezerwacją.`
+          : "Część lub całość może być już na magazynie. Magazyn rozliczy towar poza Twoją rezerwacją.",
         confirmLabel: "Rezygnuję",
       };
   }
@@ -142,8 +270,11 @@ export function isSalesCancelledForQueue(order: IndividualOrder): boolean {
 }
 
 /** Toast po wycofaniu prośby przez handlowca. */
-export function salesCancelSuccessToast(): string {
-  return "Prośba wycofana. Szczegóły znajdziesz w sekcji „Ostatnio zakończone” poniżej.";
+export function salesCancelSuccessToast(lineCount = 1): string {
+  if (lineCount === 1) {
+    return "Pozycja wycofana. Szczegóły znajdziesz w sekcji „Ostatnio zakończone” poniżej.";
+  }
+  return `${lineCount} poz. wycofane. Szczegóły znajdziesz w sekcji „Ostatnio zakończone” poniżej.`;
 }
 
 /** Opis w archiwum dla wycofanych pozycji (wg fazy rezygnacji). */

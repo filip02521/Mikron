@@ -17,6 +17,10 @@ import { usePreviewMutationBlocker } from "@/components/layout/usePreviewMutatio
 import {
   WAREHOUSE_CARRIERS,
   WAREHOUSE_SHIPMENT_FORMS,
+  formatShipmentQuantitySuffix,
+  normalizeShipmentCounts,
+  shipmentFormShowsPackages,
+  shipmentFormShowsPallets,
   warehouseCarrierLabel,
   warehouseShipmentFormLabel,
   type WarehouseCarrier,
@@ -52,6 +56,33 @@ const EMPTY_FORM: FormState = {
   palletCount: "0",
   note: "",
 };
+
+function countsToFormFields(
+  shipmentForm: WarehouseShipmentForm,
+  packageCount: number,
+  palletCount: number
+): Pick<FormState, "packageCount" | "palletCount"> {
+  const counts = normalizeShipmentCounts(shipmentForm, packageCount, palletCount);
+  return {
+    packageCount: String(
+      counts.packageCount || (shipmentFormShowsPackages(shipmentForm) ? 1 : 0)
+    ),
+    palletCount: String(
+      counts.palletCount || (shipmentFormShowsPallets(shipmentForm) ? 1 : 0)
+    ),
+  };
+}
+
+function formCountsForSubmit(form: FormState): {
+  packageCount: number;
+  palletCount: number;
+} {
+  return normalizeShipmentCounts(
+    form.shipmentForm,
+    Number(form.packageCount) || 0,
+    Number(form.palletCount) || 0
+  );
+}
 
 /** Po zapisie zostaw dostawcę i kuriera — szybkie wpisywanie kolejnych dostaw. */
 function formStateForNextEntry(previous: FormState): FormState {
@@ -128,8 +159,7 @@ function ReceiptRow({
       supplierLabel,
       carrier: form.carrier,
       shipmentForm: form.shipmentForm,
-      packageCount: Number(form.packageCount) || 0,
-      palletCount: Number(form.palletCount) || 0,
+      ...formCountsForSubmit(form),
       note: form.note,
     })
       .then(() => {
@@ -150,8 +180,11 @@ function ReceiptRow({
             <p className="mt-1 text-sm text-slate-600">
               {warehouseCarrierLabel(receipt.carrier)} ·{" "}
               {warehouseShipmentFormLabel(receipt.shipmentForm)}
-              {receipt.packageCount > 0 ? ` · ${receipt.packageCount} pacz.` : ""}
-              {receipt.palletCount > 0 ? ` · ${receipt.palletCount} pal.` : ""}
+              {formatShipmentQuantitySuffix(
+                receipt.shipmentForm,
+                receipt.packageCount,
+                receipt.palletCount
+              )}
             </p>
             {receipt.note ? (
               <p className="mt-1 text-xs text-slate-500">{receipt.note}</p>
@@ -216,10 +249,8 @@ function ReceiptFormFields({
   onSubmitShortcut?: () => void;
   carrierHintLabel?: string | null;
 }) {
-  const showPallets =
-    form.shipmentForm === "palety" || form.shipmentForm === "paczki_i_palety";
-  const showPackages =
-    form.shipmentForm === "paczki" || form.shipmentForm === "paczki_i_palety";
+  const showPallets = shipmentFormShowsPallets(form.shipmentForm);
+  const showPackages = shipmentFormShowsPackages(form.shipmentForm);
 
   return (
     <div className="grid gap-3 sm:grid-cols-2">
@@ -264,12 +295,18 @@ function ReceiptFormFields({
       <Field label="Forma">
         <Select
           value={form.shipmentForm}
-          onChange={(e) =>
+          onChange={(e) => {
+            const shipmentForm = e.target.value as WarehouseShipmentForm;
             setForm((f) => ({
               ...f,
-              shipmentForm: e.target.value as WarehouseShipmentForm,
-            }))
-          }
+              shipmentForm,
+              ...countsToFormFields(
+                shipmentForm,
+                Number(f.packageCount) || 0,
+                Number(f.palletCount) || 0
+              ),
+            }));
+          }}
           disabled={disabled}
         >
           {WAREHOUSE_SHIPMENT_FORMS.map((f) => (
@@ -389,8 +426,11 @@ export function DeliveryJournalSection({
         ...f,
         carrier: hint.carrier,
         shipmentForm: hint.shipmentForm,
-        packageCount: String(hint.typicalPackageCount || 1),
-        palletCount: String(hint.typicalPalletCount || 0),
+        ...countsToFormFields(
+          hint.shipmentForm,
+          hint.typicalPackageCount,
+          hint.typicalPalletCount
+        ),
       }));
       const sourceLabel =
         hint.source === "default" ? "Z katalogu dostawcy" : "Z historii wpisów";
@@ -443,8 +483,7 @@ export function DeliveryJournalSection({
           supplierLabel: snapshot.supplierId ? undefined : snapshot.supplierOther,
           carrier: snapshot.carrier,
           shipmentForm: snapshot.shipmentForm,
-          packageCount: Number(snapshot.packageCount) || 0,
-          palletCount: Number(snapshot.palletCount) || 0,
+          ...formCountsForSubmit(snapshot),
           note: snapshot.note,
         });
         setForm(formStateForNextEntry(snapshot));

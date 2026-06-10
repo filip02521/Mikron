@@ -77,3 +77,42 @@ export function parseWarehouseShipmentForm(value: string): WarehouseShipmentForm
   }
   return trimmed;
 }
+
+export function shipmentFormShowsPackages(form: WarehouseShipmentForm): boolean {
+  return form === "paczki" || form === "paczki_i_palety";
+}
+
+export function shipmentFormShowsPallets(form: WarehouseShipmentForm): boolean {
+  return form === "palety" || form === "paczki_i_palety";
+}
+
+/** Zeruje liczniki nieużywane przy danej formie (np. paczki przy samych paletach). */
+export function normalizeShipmentCounts(
+  shipmentForm: WarehouseShipmentForm,
+  packageCount: number,
+  palletCount: number
+): { packageCount: number; palletCount: number } {
+  const pkg = Math.max(0, Math.trunc(packageCount));
+  const pal = Math.max(0, Math.trunc(palletCount));
+
+  switch (shipmentForm) {
+    case "paczki":
+      return { packageCount: pkg, palletCount: 0 };
+    case "palety":
+      return { packageCount: 0, palletCount: pal };
+    case "paczki_i_palety":
+      return { packageCount: pkg, palletCount: pal };
+  }
+}
+
+export function formatShipmentQuantitySuffix(
+  shipmentForm: WarehouseShipmentForm,
+  packageCount: number,
+  palletCount: number
+): string {
+  const counts = normalizeShipmentCounts(shipmentForm, packageCount, palletCount);
+  const parts: string[] = [];
+  if (counts.packageCount > 0) parts.push(`${counts.packageCount} pacz.`);
+  if (counts.palletCount > 0) parts.push(`${counts.palletCount} pal.`);
+  return parts.length ? ` · ${parts.join(" · ")}` : "";
+}

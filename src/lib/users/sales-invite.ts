@@ -1,15 +1,11 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { getAppUrl } from "@/lib/env/app-config";
 import {
   buildPasswordConfirmLink,
   emailOtpTypeFromVerification,
   passwordSetupConfirmUrl,
 } from "@/lib/auth/password-link-redirect";
+import { resolveAppUrl } from "@/lib/env/resolve-app-url.server";
 import { assertUniqueSalesPersonLink } from "@/lib/users/sales-person-link";
-
-export function appBaseUrl(): string {
-  return getAppUrl();
-}
 
 export async function findAuthUserByEmail(
   supabase: SupabaseClient,
@@ -62,7 +58,8 @@ export async function generateSalesPersonInviteLink(
   const linkError = await assertUniqueSalesPersonLink(supabase, salesPersonId);
   if (linkError) return { error: linkError };
 
-  const redirectTo = passwordSetupConfirmUrl();
+  const appUrl = await resolveAppUrl();
+  const redirectTo = passwordSetupConfirmUrl(appUrl);
   const existing = await findAuthUserByEmail(supabase, email);
 
   if (existing) {
@@ -95,7 +92,9 @@ export async function generateSalesPersonInviteLink(
     return {
       link: buildPasswordConfirmLink(
         data.properties.hashed_token,
-        emailOtpTypeFromVerification(data.properties.verification_type)
+        emailOtpTypeFromVerification(data.properties.verification_type),
+        undefined,
+        appUrl
       ),
       email,
       salesPersonName: person.name,
@@ -119,7 +118,9 @@ export async function generateSalesPersonInviteLink(
   return {
     link: buildPasswordConfirmLink(
       data.properties.hashed_token,
-      emailOtpTypeFromVerification(data.properties.verification_type)
+      emailOtpTypeFromVerification(data.properties.verification_type),
+      undefined,
+      appUrl
     ),
     email,
     salesPersonName: person.name,

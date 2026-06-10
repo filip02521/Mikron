@@ -133,18 +133,23 @@ async function main() {
     ok.push(`EMAIL_OVERRIDE_TO (${env.EMAIL_OVERRIDE_TO}) — wszystkie maile na ten adres`);
   }
 
-  const appUrl = env.NEXT_PUBLIC_APP_URL?.trim();
+  const appUrl = env.APP_URL?.trim() || env.NEXT_PUBLIC_APP_URL?.trim();
   if (!appUrl) {
-    issues.push("Brak NEXT_PUBLIC_APP_URL — linki resetu hasła i maile będą niepoprawne");
+    issues.push(
+      "Brak APP_URL / NEXT_PUBLIC_APP_URL — linki resetu hasła i maile będą niepoprawne"
+    );
   } else if (appUrl.includes("192.168.10.173")) {
     issues.push(
       "NEXT_PUBLIC_APP_URL wskazuje stary adres dev (192.168.10.173) — ustaw http://ontime.mikran.pl:3000"
     );
   } else if (appUrl.includes("localhost") && process.env.NODE_ENV === "production") {
-    issues.push("NEXT_PUBLIC_APP_URL=localhost w produkcji — ustaw http://ontime.mikran.pl:3000");
+    issues.push(
+      "APP_URL / NEXT_PUBLIC_APP_URL=localhost w produkcji — ustaw http://ontime.mikran.pl:3000"
+    );
   } else {
-    ok.push(`NEXT_PUBLIC_APP_URL (${appUrl})`);
-    process.env.NEXT_PUBLIC_APP_URL = appUrl;
+    ok.push(`APP_URL (${appUrl})`);
+    process.env.APP_URL = env.APP_URL?.trim() || appUrl;
+    process.env.NEXT_PUBLIC_APP_URL = env.NEXT_PUBLIC_APP_URL?.trim() || appUrl;
     process.env.APP_SERVER_HOST = env.APP_SERVER_HOST;
     process.env.APP_PORT = env.APP_PORT;
     process.env.APP_EXTRA_REDIRECT_URLS = env.APP_EXTRA_REDIRECT_URLS;

@@ -31,9 +31,14 @@ describe("auth-roles sales_manager", () => {
     expect(homePathForRole("sales_manager")).toBe("/zespol");
   });
 
-  it("allows admin notatnik preview with ?dla=", () => {
+  it("allows admin sales preview with ?dla=", () => {
     expect(canAccessPath("admin", "/notatnik")).toBe(false);
     expect(canAccessPath("admin", "/notatnik", { previewSalesPersonId: "sp-1" })).toBe(true);
+    expect(canAccessPath("admin", "/moje")).toBe(false);
+    expect(canAccessPath("admin", "/moje", { previewSalesPersonId: "sp-1" })).toBe(true);
+    expect(canAccessPath("admin", "/plan", { previewSalesPersonId: "sp-1" })).toBe(true);
+    expect(canAccessPath("admin", "/prosba", { previewSalesPersonId: "sp-1" })).toBe(true);
+    expect(canAccessPath("admin", "/tablica", { previewSalesPersonId: "sp-1" })).toBe(true);
     expect(canAccessPath("sales", "/notatnik")).toBe(true);
   });
 });

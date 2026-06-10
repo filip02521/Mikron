@@ -1,7 +1,9 @@
 import { describe, expect, it } from "vitest";
 import {
   WAREHOUSE_CARRIERS,
+  formatShipmentQuantitySuffix,
   isWarehouseCarrier,
+  normalizeShipmentCounts,
   parseWarehouseCarrier,
   parseWarehouseShipmentForm,
   warehouseCarrierLabel,
@@ -53,5 +55,25 @@ describe("parseWarehouseShipmentForm", () => {
     expect(() => parseWarehouseShipmentForm("kontener")).toThrow(
       /Nieprawidłowa forma dostawy/
     );
+  });
+});
+
+describe("normalizeShipmentCounts", () => {
+  it("zeruje paczki przy samej formie palet", () => {
+    expect(normalizeShipmentCounts("palety", 1, 3)).toEqual({
+      packageCount: 0,
+      palletCount: 3,
+    });
+  });
+
+  it("zeruje palety przy samej formie paczek", () => {
+    expect(normalizeShipmentCounts("paczki", 4, 2)).toEqual({
+      packageCount: 4,
+      palletCount: 0,
+    });
+  });
+
+  it("formatShipmentQuantitySuffix nie pokazuje paczek przy paletach", () => {
+    expect(formatShipmentQuantitySuffix("palety", 1, 2)).toBe(" · 2 pal.");
   });
 });

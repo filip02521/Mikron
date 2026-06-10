@@ -3,6 +3,7 @@
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { requireAdmin } from "@/lib/auth";
+import { resolvePreviewSalesPerson } from "@/lib/auth/resolve-preview-sales-person";
 import {
   ADMIN_PANEL_COOKIE,
   type AdminPanelContext,
@@ -32,6 +33,22 @@ export async function actionSetAdminPanelContext(context: AdminPanelContext) {
   const cookieStore = await cookies();
   cookieStore.set(setPanelCookie(context));
   redirect(homePathForAdminPanelContext(context));
+}
+
+/** Ustawia kontekst handlowca i otwiera jego panel zamówień (podgląd tylko do odczytu). */
+export async function actionOpenSalesPersonPreview(salesPersonId: string) {
+  const user = await requireAdmin();
+  const id = salesPersonId?.trim();
+  if (!id) {
+    throw new Error("Brak identyfikatora handlowca");
+  }
+  const preview = await resolvePreviewSalesPerson(id, user);
+  if (!preview) {
+    throw new Error("Nie znaleziono handlowca do podglądu");
+  }
+  const cookieStore = await cookies();
+  cookieStore.set(setPanelCookie("sales"));
+  redirect(`/moje?dla=${encodeURIComponent(preview.id)}`);
 }
 
 export async function actionClearAdminPanelContext() {

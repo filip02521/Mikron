@@ -166,6 +166,7 @@ export function OrderFormClient({
   initialSupplierId,
   delegatePeople,
   managerSelfId,
+  forceReadOnly = false,
 }: {
   suppliers: OrderFormSupplierOption[];
   salesPeople: { id: string; name: string }[];
@@ -181,10 +182,13 @@ export function OrderFormClient({
   /** Kierownik — lista do przełączenia „w czyim imieniu” (formularz /prosba) */
   delegatePeople?: { id: string; name: string }[];
   managerSelfId?: string;
+  /** Wymusza tryb podglądu (np. admin z ?dla= bez cookie panelu). */
+  forceReadOnly?: boolean;
 }) {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { readOnly } = useAdminPanelPreview();
+  const { readOnly: panelReadOnly } = useAdminPanelPreview();
+  const readOnly = forceReadOnly || panelReadOnly;
   const tourDemo = useSalesOnboardingDemo("prosba");
   const lockedId = lockedSalesPerson?.id ?? "";
   const [requestKind, setRequestKind] = useState<IndividualRequestKind>("zamowienie");

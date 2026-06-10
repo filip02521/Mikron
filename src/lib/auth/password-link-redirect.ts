@@ -43,8 +43,8 @@ export function emailOtpTypeFromVerification(
 }
 
 /** redirectTo przekazywany do generateLink (fallback gdy użyty action_link z Supabase). */
-export function passwordSetupConfirmUrl(): string {
-  return `${getAppUrl()}/auth/confirm?next=${encodeURIComponent(PASSWORD_SETUP_PATH)}`;
+export function passwordSetupConfirmUrl(baseUrl: string = getAppUrl()): string {
+  return `${baseUrl}/auth/confirm?next=${encodeURIComponent(PASSWORD_SETUP_PATH)}`;
 }
 
 /**
@@ -55,9 +55,10 @@ export function passwordSetupConfirmUrl(): string {
 export function buildPasswordConfirmLink(
   tokenHash: string,
   type: EmailOtpType,
-  next: string = PASSWORD_SETUP_PATH
+  next: string = PASSWORD_SETUP_PATH,
+  baseUrl: string = getAppUrl()
 ): string {
-  const url = new URL("/auth/confirm", getAppUrl());
+  const url = new URL("/auth/confirm", baseUrl);
   url.searchParams.set("token_hash", tokenHash);
   url.searchParams.set("type", type);
   url.searchParams.set("next", safePasswordSetupNextPath(next));

@@ -93,6 +93,9 @@ export type MyOrderLine = {
   stockStatus: MyOrderLineStockStatus;
   /** Pozycja gotowa do potwierdzenia odbioru / powiadomienia. */
   canAcknowledgePickup: boolean;
+  /** Handlowiec może wycofać tę pozycję (osobno od reszty grupy). */
+  canCancelBySales: boolean;
+  salesCancelPhase: SalesCancelPhase | null;
   clientName: string | null;
   clientKhId: number | null;
 };
@@ -215,6 +218,13 @@ function rowToLine(
     progressLabel: row.progressLabel,
     stockStatus: lineStockStatus(order),
     canAcknowledgePickup: canAcknowledgePickupForOrder(order),
+    ...(() => {
+      const salesCancelPhase = resolveSalesCancelPhase(order);
+      return {
+        canCancelBySales: salesCancelPhase !== null,
+        salesCancelPhase,
+      };
+    })(),
     clientName: order.sales_client_name?.trim() || null,
     clientKhId:
       order.sales_client_kh_id != null && Number.isFinite(Number(order.sales_client_kh_id))

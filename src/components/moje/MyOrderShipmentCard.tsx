@@ -2,7 +2,12 @@
 
 import { useEffect, useId, useMemo, useRef, useState } from "react";
 import type { MyOrderRow } from "@/lib/orders/my-order-presenter";
-import type { SalesCancelPhase } from "@/lib/orders/sales-cancel";
+import {
+  salesCancelLineAriaLabel,
+  salesCancelLineShortLabel,
+  salesCancelOverflowLabel,
+  type SalesCancelLineContext,
+} from "@/lib/orders/sales-cancel";
 import { MyOrderKindBadge } from "@/components/moje/MyOrderKindBadge";
 import { MyOrderRequestProgressBar } from "@/components/moje/MyOrderRequestProgressBar";
 import {
@@ -244,7 +249,7 @@ export function MyOrderShipmentCard({
   onAcknowledgePickup: (orderIds: string[], shelfPickup?: boolean) => void;
   onAcknowledgeCancelled?: (orderIds: string[]) => void;
   onAcknowledgeCancelNotice?: (orderIds: string[]) => void;
-  onCancelRequest?: (orderIds: string[], phase: SalesCancelPhase) => void;
+  onCancelRequest?: (orderIds: string[], lines: SalesCancelLineContext[]) => void;
   onSaveClient?: (orderId: string, name: string | null) => void | Promise<void>;
   onEditRequest?: (row: MyOrderRow) => void;
   searchQuery?: string | null;
@@ -431,6 +436,14 @@ export function MyOrderShipmentCard({
     onToggle();
   };
 
+  const showPerLineCancel =
+    canAcknowledge && !tourPreview && row.lineCount > 1 && Boolean(onCancelRequest);
+  const cancelLineLabel = salesCancelLineShortLabel(row.kind);
+  const cancelOverflowLabel = salesCancelOverflowLabel(
+    row.kind,
+    row.salesCancelOrderIds.length
+  );
+
   const overflowMenu = canAcknowledge && !tourPreview ? (
     <MyOrderShipmentOverflowMenu
       supplierName={row.supplierName}
@@ -441,11 +454,18 @@ export function MyOrderShipmentCard({
       assignClientLabel={assignClientLabel}
       canEdit={Boolean(showEditLink)}
       canCancel={Boolean(showSalesCancelLink)}
+      cancelLabel={row.lineCount > 1 ? cancelOverflowLabel : undefined}
       onAssignClient={handleAssignClient}
       onEdit={() => onEditRequest?.(row)}
-      onCancel={() =>
-        onCancelRequest?.(row.salesCancelOrderIds, row.salesCancelPhase!)
-      }
+      onCancel={() => {
+        const cancellableLines = row.lines
+          .filter(
+            (l) =>
+              row.salesCancelOrderIds.includes(l.id) && l.salesCancelPhase
+          )
+          .map((l) => ({ product: l.product, phase: l.salesCancelPhase! }));
+        onCancelRequest?.(row.salesCancelOrderIds, cancellableLines);
+      }}
     />
   ) : null;
 
@@ -783,6 +803,17 @@ export function MyOrderShipmentCard({
                     index={i}
                     searchQuery={searchQuery}
                     {...lineItemProps(line.id)}
+                    canCancelLine={showPerLineCancel}
+                    cancelLineLabel={cancelLineLabel}
+                    cancelLineAriaLabel={salesCancelLineAriaLabel(row.kind, line.product)}
+                    onCancelLine={
+                      showPerLineCancel
+                        ? (orderId, phase) =>
+                            onCancelRequest?.([orderId], [
+                              { product: line.product, phase },
+                            ])
+                        : undefined
+                    }
                   />
                 ))}
               </ul>

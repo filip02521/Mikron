@@ -14,6 +14,32 @@ export function getAppUrl(): string {
   return normalizeAppBaseUrl(process.env.NEXT_PUBLIC_APP_URL?.trim() || DEFAULT_APP_URL);
 }
 
+function isLoopbackHostname(hostname: string): boolean {
+  const h = hostname.toLowerCase();
+  return h === "localhost" || h === "127.0.0.1" || h === "[::1]";
+}
+
+export function isLoopbackAppUrl(url: string): boolean {
+  try {
+    return isLoopbackHostname(new URL(url).hostname);
+  } catch {
+    return false;
+  }
+}
+
+/** Host z reverse proxy — używane przy generowaniu linków auth na serwerze. */
+export function appUrlFromForwardedHeaders(h: Headers): string | null {
+  const host =
+    h.get("x-forwarded-host")?.split(",")[0]?.trim() || h.get("host")?.trim();
+  if (!host) return null;
+
+  const proto =
+    h.get("x-forwarded-proto")?.split(",")[0]?.trim().toLowerCase() || "http";
+  if (proto !== "http" && proto !== "https") return null;
+
+  return normalizeAppBaseUrl(`${proto}://${host}`);
+}
+
 /** Wewnętrzna sieć firmowa (LAN / domena .mikran.pl) — HTTP jest OK. */
 export function isInternalAppHostname(hostname: string): boolean {
   const h = hostname.toLowerCase();
@@ -45,6 +71,11 @@ export function getSupabaseAuthRedirectUrls(): string[] {
   const urls = new Set<string>();
   const base = getAppUrl();
   urls.add(`${base}/**`);
+
+  const serverAppUrl = process.env.APP_URL?.trim();
+  if (serverAppUrl) {
+    urls.add(`${normalizeAppBaseUrl(serverAppUrl)}/**`);
+  }
 
   const serverHost = process.env.APP_SERVER_HOST?.trim();
   const port = process.env.APP_PORT?.trim() || "3000";

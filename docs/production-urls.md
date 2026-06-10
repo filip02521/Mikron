@@ -5,6 +5,7 @@ Aplikacja OnTime na serwerze **192.168.0.140:3000**, wewnętrzny DNS **http://on
 ## `.env.local` (serwer produkcyjny)
 
 ```env
+APP_URL=http://ontime.mikran.pl:3000
 NEXT_PUBLIC_APP_URL=http://ontime.mikran.pl:3000
 APP_SERVER_HOST=192.168.0.140
 APP_PORT=3000
@@ -41,7 +42,7 @@ Lista wygenerowana z env: `npm run setup-check`
 
 | Funkcja | Źródło URL |
 |---------|------------|
-| Reset hasła / zaproszenie (admin kopiuje link) | `getAppUrl()` → `/ustaw-haslo` |
+| Reset hasła / zaproszenie (admin kopiuje link) | `resolveAppUrl()` → `/auth/confirm` → `/ustaw-haslo` |
 | Przycisk „Moje zamówienia” w mailu Resend | `getAppUrl()` → `/moje` |
 | Ciasteczka sesji | ten sam host co w przeglądarce |
 
