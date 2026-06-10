@@ -115,11 +115,11 @@ export function AuthMainBackdropRich() {
         aria-hidden
       />
       <div
-        className="pointer-events-none absolute -left-20 bottom-[10%] h-72 w-72 rounded-full bg-sky-200/45 blur-3xl motion-safe:animate-auth-float motion-safe:[animation-delay:1.4s]"
+        className="pointer-events-none absolute -left-20 bottom-[10%] h-72 w-72 rounded-full bg-sky-200/45 blur-3xl motion-safe:animate-auth-float-slow motion-safe:[animation-delay:1.4s]"
         aria-hidden
       />
       <div
-        className="pointer-events-none absolute left-1/2 top-[42%] h-56 w-56 -translate-x-1/2 rounded-full bg-indigo-100/35 blur-2xl"
+        className="pointer-events-none absolute left-1/2 top-[42%] h-56 w-56 rounded-full bg-indigo-100/35 blur-2xl motion-safe:animate-auth-float-center motion-safe:[animation-delay:2.8s]"
         aria-hidden
       />
 
@@ -287,12 +287,21 @@ export function AuthMainBackdropGeometric() {
   const bottomLeftTicks = authTickLines(bottomLeftCx, bottomLeftCy, 200, 0.9, 3);
 
   return (
-    <svg
-      className="pointer-events-none absolute inset-0 h-full w-full"
-      aria-hidden
-      viewBox="0 0 800 900"
-      preserveAspectRatio="xMidYMid slice"
-    >
+    <>
+      <div
+        className="pointer-events-none absolute -right-16 top-[12%] h-48 w-48 rounded-full bg-indigo-200/35 blur-3xl motion-safe:animate-auth-float"
+        aria-hidden
+      />
+      <div
+        className="pointer-events-none absolute -left-12 bottom-[14%] h-40 w-40 rounded-full bg-sky-200/30 blur-3xl motion-safe:animate-auth-float-slow motion-safe:[animation-delay:1.6s]"
+        aria-hidden
+      />
+      <svg
+        className="pointer-events-none absolute inset-0 h-full w-full"
+        aria-hidden
+        viewBox="0 0 800 900"
+        preserveAspectRatio="xMidYMid slice"
+      >
       {/* Prawy górny róg — widać tylko wycinek tarczy */}
       <circle
         cx={topRightCx}
@@ -345,6 +354,7 @@ export function AuthMainBackdropGeometric() {
           />
         ))}
     </svg>
+    </>
   );
 }
 

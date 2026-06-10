@@ -319,6 +319,17 @@ button:focus-visible {
   }
 }
 
+/** Centralny blob za formularzem — zachowuje wyśrodkowanie (translate -50%). */
+@keyframes auth-float-center {
+  0%,
+  100% {
+    transform: translate(-50%, 0) scale(1);
+  }
+  50% {
+    transform: translate(calc(-50% + 5px), -10px) scale(1.03);
+  }
+}
+
 .auth-enter {
   animation: auth-enter 0.55s cubic-bezier(0.22, 1, 0.36, 1) both;
 }
@@ -330,6 +341,14 @@ button:focus-visible {
 @media (prefers-reduced-motion: no-preference) {
   .animate-auth-float {
     animation: auth-float 9s ease-in-out infinite;
+  }
+
+  .animate-auth-float-slow {
+    animation: auth-float 11s ease-in-out infinite;
+  }
+
+  .animate-auth-float-center {
+    animation: auth-float-center 12s ease-in-out infinite;
   }
 }
 
