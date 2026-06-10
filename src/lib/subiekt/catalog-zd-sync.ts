@@ -1,8 +1,9 @@
 import { createAdminClient } from "@/lib/supabase/admin";
 import { isSubiektReachable } from "@/lib/subiekt/availability";
 import { autoAssignMissingSuppliersFromCatalog } from "@/lib/services/auto-assign-suppliers";
+import { SubiektRequestError } from "@/lib/subiekt/errors";
 import {
-  getSubiektDocumentCached,
+  getSubiektZdDocumentCached,
   searchSubiektZdCached,
 } from "@/lib/subiekt/subiekt-runtime-cache";
 import {
@@ -204,7 +205,13 @@ async function indexBatch(
   for (const brief of slice) {
     const docId = Number((brief as { dok_Id?: unknown }).dok_Id);
     if (!Number.isFinite(docId)) continue;
-    const doc = await getSubiektDocumentCached(docId);
+    let doc: SubiektDocument;
+    try {
+      doc = await getSubiektZdDocumentCached(docId);
+    } catch (e) {
+      if (e instanceof SubiektRequestError && e.status === 404) continue;
+      throw e;
+    }
     lastDocNumber = doc.dok_NrPelny ?? null;
     const khIds = extractDocKhIds(doc);
     const matchedKhId = khIds.find((id) => supplierByKh.has(id)) ?? null;

@@ -69,6 +69,7 @@ Wszystkie listy zwracają envelope:
 | GET | `/documents` | Dokumenty (filtry `typ`, `dataOd`, `dataDo`, …) |
 | GET | `/documents/zk` | Zamówienia od klientów (typ 16) |
 | GET | `/documents/zd` | Zamówienia do dostawców (typ 15) |
+| GET | `/documents/zd/:id` | Jedno ZD (pełne linie) |
 | GET | `/examples` | Przykłady zapytań |
 | GET | `/docs` | Dokumentacja OpenAPI (HTML) |
 

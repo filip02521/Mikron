@@ -1,6 +1,7 @@
 import { createAdminClient } from "@/lib/supabase/admin";
 import { isSubiektReachable } from "@/lib/subiekt/availability";
-import { defaultZdSearchDataOd, getSubiektDocumentCached, searchSubiektZdCached } from "@/lib/subiekt/subiekt-runtime-cache";
+import { SubiektRequestError } from "@/lib/subiekt/errors";
+import { defaultZdSearchDataOd, getSubiektZdDocumentCached, searchSubiektZdCached } from "@/lib/subiekt/subiekt-runtime-cache";
 import { resolveKhLabelForZdDocument } from "@/lib/subiekt/kontrahent-from-document";
 import type { SubiektDocument } from "@/lib/subiekt/types";
 
@@ -149,7 +150,13 @@ export async function tickZdIndexJob(options?: { maxDocs?: number }): Promise<Zd
     for (const brief of slice) {
       const docId = Number((brief as any).dok_Id);
       if (!Number.isFinite(docId)) continue;
-      const doc = await getSubiektDocumentCached(docId);
+      let doc: SubiektDocument;
+      try {
+        doc = await getSubiektZdDocumentCached(docId);
+      } catch (e) {
+        if (e instanceof SubiektRequestError && e.status === 404) continue;
+        throw e;
+      }
       lastDocNumber = doc.dok_NrPelny ?? null;
       const khIds = extractDocKhIds(doc as SubiektDocument);
       // W dokumencie mogą być 2+ identyfikatory kontrahenta (płatnik/odbiorca/kontrahent).

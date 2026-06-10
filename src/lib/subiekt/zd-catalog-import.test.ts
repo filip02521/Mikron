@@ -1,5 +1,36 @@
-import { describe, expect, it } from "vitest";
-import { lineTowId } from "./zd-catalog-import";
+import { describe, expect, it, vi, beforeEach } from "vitest";
+import { SubiektRequestError } from "./errors";
+import { importZdDocumentToCatalog, lineTowId } from "./zd-catalog-import";
+
+const getSubiektZdDocumentCached = vi.fn();
+
+vi.mock("@/lib/subiekt/subiekt-runtime-cache", () => ({
+  getSubiektZdDocumentCached: (...args: unknown[]) => getSubiektZdDocumentCached(...args),
+}));
+
+vi.mock("@/lib/supabase/admin", () => ({
+  createAdminClient: () => ({
+    from: () => ({
+      update: () => ({
+        eq: () => Promise.resolve({ error: null }),
+      }),
+    }),
+  }),
+}));
+
+describe("importZdDocumentToCatalog", () => {
+  beforeEach(() => {
+    getSubiektZdDocumentCached.mockReset();
+  });
+
+  it("pomija dokument usunięty w Subiekcie (404)", async () => {
+    getSubiektZdDocumentCached.mockRejectedValue(new SubiektRequestError(404, "not found"));
+    const res = await importZdDocumentToCatalog(999, "sup-1");
+    expect(res.skipped).toBe(true);
+    expect(res.skipReason).toBe("not_found");
+    expect(res.linksUpserted).toBe(0);
+  });
+});
 
 describe("lineTowId", () => {
   it("zwraca tw_Id z linii dokumentu", () => {

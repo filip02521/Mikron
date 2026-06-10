@@ -1,6 +1,7 @@
 import { createAdminClient } from "@/lib/supabase/admin";
 import { upsertSubiektProduct, bumpProductSupplierLinkBy } from "@/lib/data/product-catalog";
-import { getSubiektDocumentCached } from "@/lib/subiekt/subiekt-runtime-cache";
+import { getSubiektZdDocumentCached } from "@/lib/subiekt/subiekt-runtime-cache";
+import { SubiektRequestError } from "@/lib/subiekt/errors";
 import type { SubiektDocumentLine } from "@/lib/subiekt/types";
 import type { SupabaseClient } from "@supabase/supabase-js";
 
@@ -31,6 +32,8 @@ export type ZdCatalogImportResult = {
   processedLines: number;
   uniqueProducts: number;
   linksUpserted: number;
+  skipped?: boolean;
+  skipReason?: "not_found";
 };
 
 /** Importuje linie jednego ZD do katalogu produktów (produkt + link u dostawcy). */
@@ -38,7 +41,22 @@ export async function importZdDocumentToCatalog(
   dokId: number,
   supplierId: string
 ): Promise<ZdCatalogImportResult> {
-  const doc = await getSubiektDocumentCached(dokId);
+  let doc;
+  try {
+    doc = await getSubiektZdDocumentCached(dokId);
+  } catch (e) {
+    if (e instanceof SubiektRequestError && e.status === 404) {
+      await noteZdCatalogImportSkipped(dokId, "Brak dokumentu w Subiekcie (404) — pominięto.");
+      return {
+        processedLines: 0,
+        uniqueProducts: 0,
+        linksUpserted: 0,
+        skipped: true,
+        skipReason: "not_found",
+      };
+    }
+    throw e;
+  }
   const towAgg = new Map<number, { symbol: string | null; name: string | null; count: number }>();
   let processedLines = 0;
 
@@ -82,6 +100,20 @@ export async function importZdDocumentToCatalog(
     uniqueProducts: towAgg.size,
     linksUpserted,
   };
+}
+
+async function noteZdCatalogImportSkipped(dokId: number, note: string): Promise<void> {
+  const supabase = createAdminClient();
+  const at = nowIso();
+  const { error } = await supabase
+    .from("subiekt_zd_index")
+    .update({
+      catalog_imported_at: at,
+      note,
+      updated_at: at,
+    })
+    .eq("dok_id", Math.trunc(dokId));
+  if (error) throw new Error(error.message);
 }
 
 export async function markZdCatalogImported(dokIds: number[]): Promise<void> {

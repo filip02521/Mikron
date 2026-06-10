@@ -1,5 +1,5 @@
 import {
-  getSubiektDocument,
+  getSubiektZd,
   searchSubiektCustomers,
   searchSubiektKontrahenci,
   searchSubiektSuppliers,
@@ -77,8 +77,8 @@ function listCacheKey(params: SubiektListParams): string {
   });
 }
 
-/** Pełny dokument ZD/TW — cache 2 h (wspólny dla handlowców i modułów). */
-export async function getSubiektDocumentCached(
+/** Pełny dokument ZD — cache 2 h (GET /documents/zd/:id). */
+export async function getSubiektZdDocumentCached(
   dokId: number
 ): Promise<SubiektDocument> {
   const now = Date.now();
@@ -88,7 +88,7 @@ export async function getSubiektDocumentCached(
   const inflight = documentInflight.get(dokId);
   if (inflight) return inflight;
 
-  const load = getSubiektDocument(dokId)
+  const load = getSubiektZd(dokId)
     .then((doc) => {
       documentById.set(dokId, {
         value: doc,
@@ -104,6 +104,9 @@ export async function getSubiektDocumentCached(
   documentInflight.set(dokId, load);
   return load;
 }
+
+/** @deprecated Użyj getSubiektZdDocumentCached — alias dla kompatybilności. */
+export const getSubiektDocumentCached = getSubiektZdDocumentCached;
 
 /** Lista ZD z wyszukiwarki — cache 2 h (ta sama fraza + dostawca + dataOd). */
 export async function searchSubiektZdCached(
