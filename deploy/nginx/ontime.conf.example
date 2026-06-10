@@ -1,0 +1,65 @@
+# OnTime / Mikron — reverse proxy do Next.js (npm run start → port 3000)
+#
+# Linux: skopiuj do /etc/nginx/sites-available/ontime.conf
+#        ln -s .../sites-available/ontime.conf .../sites-enabled/
+#        nginx -t && systemctl reload nginx
+#
+# Windows: include w nginx.conf:
+#   include C:/Users/Administrator/projects/Mikron/deploy/nginx/ontime.conf;
+
+upstream ontime_next {
+    server 127.0.0.1:3000;
+    keepalive 64;
+}
+
+# --- LAN, HTTP na porcie 80 (bez :3000 w adresie) ---
+server {
+    listen 80;
+    listen [::]:80;
+    server_name ontime.mikran.pl ontime.mikran;
+
+    client_max_body_size 20m;
+
+    location / {
+        proxy_pass http://ontime_next;
+        proxy_http_version 1.1;
+
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+
+        # Next.js / długie requesty Server Actions
+        proxy_read_timeout 300s;
+        proxy_send_timeout 300s;
+    }
+}
+
+# --- Produkcja HTTPS (odkomentuj po certyfikacie) ---
+# server {
+#     listen 443 ssl http2;
+#     listen [::]:443 ssl http2;
+#     server_name ontime.firma.pl;
+#
+#     ssl_certificate     /etc/ssl/certs/ontime.pem;
+#     ssl_certificate_key /etc/ssl/private/ontime.key;
+#
+#     client_max_body_size 20m;
+#
+#     location / {
+#         proxy_pass http://ontime_next;
+#         proxy_http_version 1.1;
+#         proxy_set_header Host $host;
+#         proxy_set_header X-Real-IP $remote_addr;
+#         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+#         proxy_set_header X-Forwarded-Proto $scheme;
+#         proxy_read_timeout 300s;
+#         proxy_send_timeout 300s;
+#     }
+# }
+#
+# server {
+#     listen 80;
+#     server_name ontime.firma.pl;
+#     return 301 https://$host$request_uri;
+# }

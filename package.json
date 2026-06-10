@@ -38,6 +38,8 @@
     "setup-check": "tsx scripts/setup-check.ts",
     "verify-bug-reports": "tsx scripts/verify-bug-reports-migration.ts",
     "server-setup": "bash scripts/server-setup.sh",
+    "install-service": "powershell -NoProfile -ExecutionPolicy Bypass -File installer/install-windows-service.ps1",
+    "nightly-deploy": "powershell -NoProfile -ExecutionPolicy Bypass -File installer/nightly-deploy.ps1",
     "db:migrate:sales-cancel": "tsx scripts/apply-sql-migration.ts supabase/migrations/018_sales_cancel_bundle.sql"
   },
   "dependencies": {
