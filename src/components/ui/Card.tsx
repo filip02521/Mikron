@@ -29,6 +29,7 @@ export function CardHeader({
   leading,
   inset = false,
   density = "default",
+  actionAlign = "stacked",
   titleClassName,
   descriptionClassName,
 }: {
@@ -39,10 +40,16 @@ export function CardHeader({
   inset?: boolean;
   /** Ciaśniejszy nagłówek — panel handlowca / listy. */
   density?: "default" | "compact";
+  /** Przy `compact` + opis: `stacked` = akcja pod opisem, `inline` = po prawej od tytułu. */
+  actionAlign?: "inline" | "stacked";
   titleClassName?: string;
   descriptionClassName?: string;
 }) {
-  const stackAction = density === "compact" && Boolean(description) && Boolean(action);
+  const stackAction =
+    density === "compact" &&
+    Boolean(description) &&
+    Boolean(action) &&
+    actionAlign !== "inline";
 
   const titleClass = cn(
     density === "compact"

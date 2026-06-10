@@ -119,6 +119,31 @@ export const salesCardBodyClass = "space-y-3 p-3 sm:p-4";
 /** Min. obszar dotyku — 44px mobile, kompakt od sm (WCAG / Apple HIG). */
 export const salesTouchTargetClass = "min-h-11 sm:min-h-8";
 
+/** Jedna wysokość kontrolek listy /moje — jak toolbar nagłówka (40px). */
+export const mojeControlHeightClass = "h-10 min-h-10";
+
+/** Drugorzędny przycisk / chip akcji na /moje. */
+export const mojeSecondaryControlClass = cn(
+  "inline-flex items-center justify-center gap-1.5 rounded-md border border-slate-200 bg-white px-3 text-xs font-semibold text-slate-700 shadow-sm transition",
+  "hover:bg-slate-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-500",
+  "disabled:cursor-not-allowed disabled:opacity-50",
+  mojeControlHeightClass
+);
+
+/** Potwierdzenie odbioru / akcja wymagająca reakcji. */
+export const mojePickupControlClass = cn(
+  "inline-flex items-center justify-center gap-0.5 rounded-md border border-emerald-700 bg-emerald-600 px-3 text-xs font-semibold text-white shadow-sm transition",
+  "hover:bg-emerald-700 active:bg-emerald-800 disabled:cursor-not-allowed disabled:opacity-50",
+  mojeControlHeightClass
+);
+
+/** Nawigacja z panelu Start dnia (Tablica, Notatnik). */
+export const mojeBrandOutlineControlClass = cn(
+  "inline-flex items-center justify-center gap-0.5 rounded-md border border-indigo-200 bg-white px-3 text-xs font-semibold text-indigo-800 shadow-sm transition",
+  "hover:bg-indigo-50",
+  mojeControlHeightClass
+);
+
 /**
  * Typografia panelu handlowca — płaska skala, bez powiększania na lg+.
  * Hierarchia: pageTitle → blockTitle/rowTitle → rowBody/chrome → rowMeta/sectionLabel.

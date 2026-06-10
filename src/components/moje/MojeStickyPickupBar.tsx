@@ -3,6 +3,7 @@
 import { IconPackageCheck } from "@/components/icons/StrokeIcons";
 import { formatPickupBarLabel } from "@/lib/orders/my-order-plural";
 import { cn } from "@/lib/cn";
+import { mojeSecondaryControlClass } from "@/lib/ui/ontime-theme";
 
 export function MojeStickyPickupBar({
   count,
@@ -30,7 +31,7 @@ export function MojeStickyPickupBar({
       <button
         type="button"
         onClick={onShowPickup}
-        className="min-h-8 shrink-0 rounded-md bg-white px-2.5 py-1 text-xs font-semibold text-emerald-800 shadow-sm transition hover:bg-emerald-50"
+        className={cn(mojeSecondaryControlClass, "shrink-0 text-emerald-800")}
       >
         Pokaż
       </button>

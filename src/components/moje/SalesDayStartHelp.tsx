@@ -2,14 +2,17 @@
 
 import { HelpPopover, GuideIcon } from "@/components/ui/HelpPopover";
 import { HelpBlock } from "@/components/ui/HelpBlock";
+import { pageToolbarSizingClass, pageToolbarSurfaceClass } from "@/lib/ui/ontime-theme";
+import { cn } from "@/lib/cn";
 
 export function SalesDayStartHelp() {
   return (
     <HelpPopover
       label="Pomoc — Start dnia"
       title="Start dnia"
-      shortLabel="Pomoc"
+      shortLabel="Start dnia"
       icon={<GuideIcon />}
+      buttonClassName={cn(pageToolbarSurfaceClass, pageToolbarSizingClass, "px-2.5")}
     >
       <HelpBlock title="Co tu jest">
         <p>

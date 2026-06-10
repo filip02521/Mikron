@@ -11,10 +11,12 @@ import { cn } from "@/lib/cn";
 import {
   brandLinkClass,
   brandLinkSubtleClass,
+  mojeControlHeightClass,
   mojeFilterChipActiveClass,
   mojeFilterChipInfoClass,
   mojeFilterChipSuccessClass,
   mojeFilterChipStockClass,
+  mojeSecondaryControlClass,
 } from "@/lib/ui/ontime-theme";
 import { IconChevronDown, IconCircleCheck, IconClock } from "@/components/icons/StrokeIcons";
 import { INFORMACJA_FLOW_MY_ORDERS_HINT } from "@/lib/orders/informacja-flow-copy";
@@ -39,7 +41,8 @@ function GroupChip({
       aria-pressed={active}
       onClick={onClick}
       className={cn(
-        "inline-flex min-h-11 cursor-pointer items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-semibold transition-shadow sm:min-h-9",
+        "inline-flex cursor-pointer items-center gap-1.5 rounded-full px-3 text-xs font-semibold transition-shadow",
+        mojeControlHeightClass,
         "focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-500",
         active
           ? "bg-indigo-600 text-white shadow-sm ring-2 ring-indigo-300/80"
@@ -76,7 +79,8 @@ function SubChip({
       aria-pressed={active}
       onClick={() => onSelect(active ? groupFilter : filter)}
       className={cn(
-        "inline-flex min-h-11 cursor-pointer items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-semibold transition-shadow sm:min-h-8",
+        "inline-flex cursor-pointer items-center gap-1 rounded-full px-2.5 text-[11px] font-semibold transition-shadow",
+        mojeControlHeightClass,
         "focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-500",
         tone === "action" && "bg-emerald-600 text-white",
         tone === "success" && mojeFilterChipSuccessClass,
@@ -170,10 +174,7 @@ export function MyOrdersInboxSummary({
             <button
               type="button"
               onClick={() => setFiltersExpanded(true)}
-              className={cn(
-                "inline-flex min-h-9 shrink-0 items-center gap-1 rounded-full bg-white px-2.5 py-1 text-xs font-semibold text-indigo-800 ring-1 ring-indigo-200/90 transition hover:bg-indigo-50",
-                brandLinkSubtleClass
-              )}
+              className={cn(mojeSecondaryControlClass, "rounded-full text-indigo-800 ring-1 ring-indigo-200/90 hover:bg-indigo-50")}
             >
               Filtruj listę
               <IconChevronDown size={14} className="text-indigo-600" aria-hidden />

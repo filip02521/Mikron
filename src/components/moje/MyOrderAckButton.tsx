@@ -5,8 +5,10 @@ import { cn } from "@/lib/cn";
 import {
   mojeAckSegmentOutlineClass,
   mojeAckSegmentPrimaryClass,
+  mojeControlHeightClass,
+  mojePickupControlClass,
+  mojeSecondaryControlClass,
   panelSegmentLastClass,
-  salesTouchTargetClass,
 } from "@/lib/ui/ontime-theme";
 
 /** Kompaktowe potwierdzenie odbioru / powiadomienia — spójne z kartami w /moje. */
@@ -40,10 +42,7 @@ export function MyOrderAckButton({
           role="img"
           aria-label={previewTitle}
           title={previewTitle}
-          className={cn(
-            "shrink-0 rounded-md bg-white px-2 py-1 text-xs font-semibold text-emerald-800 shadow-sm ring-1 ring-white/90",
-            className
-          )}
+          className={cn(mojeSecondaryControlClass, "text-emerald-800", className)}
         >
           {children}
         </span>
@@ -55,10 +54,7 @@ export function MyOrderAckButton({
           role="img"
           aria-label={previewTitle}
           title={previewTitle}
-          className={cn(
-            "inline-flex min-h-8 shrink-0 items-center justify-center rounded-md border border-emerald-700 bg-emerald-600 px-2.5 py-1 text-xs font-semibold text-white shadow-sm",
-            className
-          )}
+          className={cn(mojePickupControlClass, className)}
         >
           {children}
         </span>
@@ -81,10 +77,7 @@ export function MyOrderAckButton({
         role="img"
         aria-label={previewTitle}
         title={previewTitle}
-        className={cn(
-          "inline-flex min-h-8 items-center justify-center rounded-md border border-emerald-200 bg-white px-2.5 py-1 text-xs font-semibold text-emerald-800 shadow-sm",
-          className
-        )}
+        className={cn(mojeSecondaryControlClass, "text-emerald-800", className)}
       >
         {children}
       </span>
@@ -99,10 +92,7 @@ export function MyOrderAckButton({
         title={title}
         aria-label={accessibleName}
         onClick={onClick}
-        className={cn(
-          "min-h-11 shrink-0 cursor-pointer rounded-md bg-white px-2.5 py-1 text-xs font-semibold text-emerald-800 shadow-sm ring-1 ring-white/90 transition-colors hover:bg-emerald-50 disabled:cursor-not-allowed disabled:opacity-50 sm:min-h-8",
-          className
-        )}
+        className={cn(mojeSecondaryControlClass, "text-emerald-800", className)}
       >
         {children}
       </button>
@@ -147,10 +137,7 @@ export function MyOrderAckButton({
         title={title}
         aria-label={accessibleName}
         onClick={onClick}
-        className={cn(
-          "inline-flex min-h-11 shrink-0 cursor-pointer items-center justify-center rounded-md border border-emerald-700 bg-emerald-600 px-2.5 py-1.5 text-xs font-semibold text-white shadow-sm transition hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-50 sm:min-h-8",
-          className
-        )}
+        className={cn(mojePickupControlClass, className)}
       >
         {children}
       </button>
@@ -166,7 +153,7 @@ export function MyOrderAckButton({
       title={title}
       aria-label={accessibleName}
       onClick={onClick}
-      className={cn(salesTouchTargetClass, "px-2.5 text-xs font-semibold", className)}
+      className={cn(mojeControlHeightClass, "px-3 text-xs font-semibold text-emerald-800", className)}
     >
       {children}
     </Button>

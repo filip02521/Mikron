@@ -5,6 +5,7 @@ import { actionGetSubiektAvailability } from "@/app/actions/subiekt";
 import { IconAlertCircle, IconLinkOff } from "@/components/icons/StrokeIcons";
 import type { SubiektAvailability } from "@/lib/subiekt/availability";
 import { cn } from "@/lib/cn";
+import { mojeControlHeightClass, mojeSecondaryControlClass } from "@/lib/ui/ontime-theme";
 
 const POLL_MS = 90_000;
 
@@ -114,9 +115,8 @@ export function SubiektStatusBar({
           onClick={() => void refresh(true)}
           disabled={refreshing}
           className={cn(
-            "shrink-0 self-start rounded-md border px-2.5 py-1 text-xs font-medium transition sm:self-center",
-            tone === "warn" &&
-              "border-amber-300/80 bg-white/80 text-amber-900 hover:bg-white",
+            mojeSecondaryControlClass,
+            "shrink-0 self-start border-amber-300/80 text-amber-900 hover:bg-amber-50/80 sm:self-center",
             refreshing && "cursor-wait opacity-60"
           )}
         >

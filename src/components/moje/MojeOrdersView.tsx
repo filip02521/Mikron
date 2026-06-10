@@ -37,6 +37,7 @@ import { MyOrderShipmentList } from "@/components/moje/MyOrderShipmentList";
 import { MyOrdersInboxSummary } from "@/components/moje/MyOrdersInboxSummary";
 import { MojeStickyPickupBar } from "@/components/moje/MojeStickyPickupBar";
 import { MojeOrdersHelp } from "@/components/moje/MojeOrdersGuide";
+import { SalesDayStartHelp } from "@/components/moje/SalesDayStartHelp";
 import { MojeOrdersEmptyGuide } from "@/components/moje/MojeOrdersEmptyGuide";
 import { Card, CardHeader } from "@/components/ui/Card";
 import { SectionListLabel } from "@/components/ui/SectionListLabel";
@@ -703,9 +704,10 @@ function MojeOrdersViewContent({
   const showSplitSections = splitByAction && !activeFilter && !searchActive;
 
   const cardDescription = pageDescription ?? MOJE_INTRO;
-  const cardAction = (
-    <div className="flex w-full flex-wrap items-center gap-2 sm:w-auto sm:justify-end">
+  const pageToolbar = (
+    <div className="flex flex-wrap items-center justify-end gap-2">
       {headerActions}
+      {dayStartPanel ? <SalesDayStartHelp /> : null}
       <MojeOrdersHelp />
     </div>
   );
@@ -713,6 +715,7 @@ function MojeOrdersViewContent({
   if (!shipmentCount) {
     return (
       <div className="space-y-5">
+        {pageToolbar}
         {dayStartPanel}
         <Card padding={false} className="overflow-hidden">
           <CardHeader
@@ -725,7 +728,6 @@ function MojeOrdersViewContent({
                 <IconClipboardList size={20} />
               </SectionHeadingIcon>
             }
-            action={cardAction}
           />
           {!tourPreview && showSalesSync ? <MojeOrdersSyncStrip /> : null}
           {subiektAvailability ? (
@@ -775,6 +777,7 @@ function MojeOrdersViewContent({
 
   return (
     <div className="space-y-5">
+      {pageToolbar}
       {dayStartPanel}
       <Card padding={false}>
         <CardHeader
@@ -787,7 +790,6 @@ function MojeOrdersViewContent({
               <IconClipboardList size={20} />
             </SectionHeadingIcon>
           }
-          action={cardAction}
         />
 
         {!tourPreview && showSalesSync ? <MojeOrdersSyncStrip /> : null}

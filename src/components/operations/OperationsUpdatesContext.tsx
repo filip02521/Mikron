@@ -7,7 +7,9 @@ import {
   useEffect,
   useRef,
   useState,
+  useSyncExternalStore,
 } from "react";
+import { createPersistedFlagStore } from "@/lib/client/persisted-flag-store";
 import { usePathname, useRouter } from "next/navigation";
 import { Button } from "@/components/ui/Button";
 import { SystemNotice } from "@/components/ui/SystemNotice";
@@ -18,6 +20,7 @@ const POLL_MS = 25_000;
 const AUTO_REFRESH_MS = 3 * 60_000;
 const FRESH_HIGHLIGHT_MS = 5_000;
 const STORAGE_KEY = "operations-auto-refresh";
+const autoRefreshStore = createPersistedFlagStore(STORAGE_KEY);
 
 type OperationsUpdatesContextValue = {
   hasUpdates: boolean;
@@ -64,7 +67,11 @@ export function OperationsUpdatesProvider({
   const pathname = usePathname();
   const [baseline, setBaseline] = useState(initialVersion);
   const [latest, setLatest] = useState(initialVersion);
-  const [autoRefresh, setAutoRefreshState] = useState(false);
+  const autoRefresh = useSyncExternalStore(
+    autoRefreshStore.subscribe,
+    autoRefreshStore.getSnapshot,
+    autoRefreshStore.getServerSnapshot
+  );
   const [lastSyncedAt, setLastSyncedAt] = useState<number | null>(() =>
     initialVersion != null ? Date.now() : null
   );
@@ -73,21 +80,8 @@ export function OperationsUpdatesProvider({
   const [freshHighlightUntil, setFreshHighlightUntil] = useState(0);
   const syncingRef = useRef(false);
 
-  useEffect(() => {
-    try {
-      setAutoRefreshState(localStorage.getItem(STORAGE_KEY) === "1");
-    } catch {
-      setAutoRefreshState(false);
-    }
-  }, []);
-
   const setAutoRefresh = useCallback((value: boolean) => {
-    setAutoRefreshState(value);
-    try {
-      localStorage.setItem(STORAGE_KEY, value ? "1" : "0");
-    } catch {
-      /* ignore */
-    }
+    autoRefreshStore.setValue(value);
   }, []);
 
   const syncBaseline = useCallback((version: string | null) => {

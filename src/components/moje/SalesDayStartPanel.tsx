@@ -15,7 +15,6 @@ import type { MyOrderInboxFilter } from "@/lib/orders/my-order-inbox-filter";
 import { hrefWithSalesPreviewFromUrl } from "@/lib/nav/sales-preview-href";
 import { useSalesDayStartPanelCollapse } from "@/lib/sales/use-sales-day-start-panel-collapse";
 import { SalesDayStartPinnedContext } from "@/components/moje/SalesDayStartPinnedContext";
-import { SalesDayStartHelp } from "@/components/moje/SalesDayStartHelp";
 import { Badge } from "@/components/ui/Badge";
 import { Card, CardHeader } from "@/components/ui/Card";
 import { LinkChevron } from "@/components/ui/UiGlyphs";
@@ -149,22 +148,17 @@ export function SalesDayStartPanel({
     itemsExpanded
   );
 
-  const headerAction = (
-    <div className="flex items-center gap-1">
-      <SalesDayStartHelp />
-      {!hasOpenTasks ? (
-        <button
-          type="button"
-          onClick={toggleCollapsed}
-          className="inline-flex min-h-9 min-w-9 items-center justify-center rounded-md text-slate-500 transition hover:bg-slate-100 hover:text-slate-800"
-          aria-expanded={!collapsed}
-          aria-label={collapsed ? "Rozwiń panel Start dnia" : "Zwiń panel Start dnia"}
-        >
-          <IconChevronDown open={!collapsed} size={18} />
-        </button>
-      ) : null}
-    </div>
-  );
+  const headerAction = !hasOpenTasks ? (
+    <button
+      type="button"
+      onClick={toggleCollapsed}
+      className="inline-flex min-h-9 min-w-9 items-center justify-center rounded-md text-slate-500 transition hover:bg-slate-100 hover:text-slate-800"
+      aria-expanded={!collapsed}
+      aria-label={collapsed ? "Rozwiń panel Start dnia" : "Zwiń panel Start dnia"}
+    >
+      <IconChevronDown open={!collapsed} size={18} />
+    </button>
+  ) : undefined;
 
   if (snapshot.cleared && !hasPinnedContext) {
     if (collapsed) {
@@ -201,6 +195,7 @@ export function SalesDayStartPanel({
           title="Start dnia — wszystko ogarnięte"
           description="Brak pilnych akcji — możesz skupić się na nowych prośbach lub harmonogramie."
           action={headerAction}
+          actionAlign="inline"
         />
         <div className={cn("flex flex-wrap gap-2 pb-3.5", salesChromeInsetClass)}>
           <Link href={previewHref("/prosba")}>
@@ -239,6 +234,7 @@ export function SalesDayStartPanel({
                 : `${snapshot.totalActionCount} rzeczy wymaga reakcji — od najpilniejszych.`
         }
         action={headerAction}
+        actionAlign="inline"
       />
 
       {!collapsed && !snapshot.cleared ? (

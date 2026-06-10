@@ -7,7 +7,9 @@ import {
   useEffect,
   useRef,
   useState,
+  useSyncExternalStore,
 } from "react";
+import { createPersistedFlagStore } from "@/lib/client/persisted-flag-store";
 import { usePathname, useRouter } from "next/navigation";
 import { Button } from "@/components/ui/Button";
 import { SystemNotice } from "@/components/ui/SystemNotice";
@@ -16,6 +18,7 @@ import { MICROCOPY } from "@/lib/ui/microcopy";
 const POLL_MS = 45_000;
 const AUTO_REFRESH_MS = 3 * 60_000;
 const STORAGE_KEY = "sales-auto-refresh";
+const autoRefreshStore = createPersistedFlagStore(STORAGE_KEY);
 
 type SalesUpdatesContextValue = {
   hasUpdates: boolean;
@@ -58,28 +61,19 @@ export function SalesUpdatesProvider({
   const pathname = usePathname();
   const [baseline, setBaseline] = useState(initialVersion);
   const [latest, setLatest] = useState(initialVersion);
-  const [autoRefresh, setAutoRefreshState] = useState(false);
+  const autoRefresh = useSyncExternalStore(
+    autoRefreshStore.subscribe,
+    autoRefreshStore.getSnapshot,
+    autoRefreshStore.getServerSnapshot
+  );
   const [lastSyncedAt, setLastSyncedAt] = useState<number | null>(() =>
     initialVersion != null ? Date.now() : null
   );
   const [lastPollAt, setLastPollAt] = useState<number | null>(null);
   const syncingRef = useRef(false);
 
-  useEffect(() => {
-    try {
-      setAutoRefreshState(localStorage.getItem(STORAGE_KEY) === "1");
-    } catch {
-      setAutoRefreshState(false);
-    }
-  }, []);
-
   const setAutoRefresh = useCallback((value: boolean) => {
-    setAutoRefreshState(value);
-    try {
-      localStorage.setItem(STORAGE_KEY, value ? "1" : "0");
-    } catch {
-      /* ignore */
-    }
+    autoRefreshStore.setValue(value);
   }, []);
 
   const syncBaseline = useCallback((version: string | null) => {

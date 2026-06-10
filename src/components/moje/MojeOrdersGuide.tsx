@@ -2,8 +2,9 @@
 
 import { HelpPopover, GuideIcon } from "@/components/ui/HelpPopover";
 import { HelpBlock } from "@/components/ui/HelpBlock";
-import { pageToolbarSizingClass } from "@/lib/ui/ontime-theme";
+import { pageToolbarSizingClass, pageToolbarSurfaceClass } from "@/lib/ui/ontime-theme";
 import { HelpMenuGlyph } from "@/components/ui/UiGlyphs";
+import { cn } from "@/lib/cn";
 import { INFORMACJA_FLOW_DIRECT } from "@/lib/orders/informacja-flow-copy";
 import {
   MY_ORDER_ACTION_SECTION_COPY,
@@ -27,9 +28,9 @@ export function MojeOrdersHelp() {
     <HelpPopover
       label="Pomoc — jak czytać listę Moje zamówienia"
       title="Moje zamówienia"
-      shortLabel="Pomoc"
+      shortLabel="Lista"
       icon={<GuideIcon />}
-      buttonClassName={pageToolbarSizingClass}
+      buttonClassName={cn(pageToolbarSurfaceClass, pageToolbarSizingClass, "px-2.5")}
     >
       <HelpBlock title="Co tu jest">
         <p>

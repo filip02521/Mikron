@@ -41,6 +41,7 @@ import {
   markPickupShelfNoticeSeen,
 } from "@/lib/orders/my-order-pickup-shelf-notice";
 import { cn } from "@/lib/cn";
+import { mojeControlHeightClass } from "@/lib/ui/ontime-theme";
 import type { OrderFormSupplierOption } from "@/lib/orders/order-form-suppliers";
 import type { MyOrderSectionPatternId } from "@/lib/orders/my-order-section-callout";
 
@@ -387,6 +388,7 @@ export function MyOrderShipmentList({
             type="button"
             variant="ghost"
             size="sm"
+            className={cn(mojeControlHeightClass, "px-3 text-xs font-semibold")}
             onClick={() => (allExpanded ? collapseAll() : expandAll())}
           >
             {allExpanded ? "Zwiń wszystkie" : "Rozwiń wszystkie"}
