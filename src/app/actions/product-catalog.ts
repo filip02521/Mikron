@@ -489,7 +489,7 @@ export async function actionStartZdImportSupplierJob(input: {
     supplierId: String((data as any).id),
     supplierName: String((data as any).name ?? "Dostawca"),
     subiektKhId: khId,
-    monthsBack: input.monthsBack ?? 18,
+    monthsBack: input.monthsBack ?? 60,
     batchDocs: 3,
   });
 }
@@ -514,10 +514,11 @@ export async function actionStopZdImportSupplierJob(supplierId: string) {
   return next;
 }
 
-/** Usuwa mapowania dodane przez import ZD dla jednego dostawcy (naprawa po błędnym imporcie). */
+/** Usuwa mapowania ZD i resetuje flagi importu — przygotowanie do ponownego importu. */
 export async function actionCleanupZdImportForSupplier(supplierId: string): Promise<{
   success: true;
   removedLinks: number;
+  resetZdFlags: number;
 }> {
   await requireAdmin();
   const supabase = createAdminClient();
@@ -527,8 +528,14 @@ export async function actionCleanupZdImportForSupplier(supplierId: string): Prom
     .eq("supplier_id", supplierId)
     .eq("last_source", "zd_import");
   if (error) throw new Error(error.message);
+
+  const { resetZdCatalogImportFlagsForSupplier } = await import(
+    "@/lib/subiekt/zd-catalog-import"
+  );
+  const resetZdFlags = await resetZdCatalogImportFlagsForSupplier(supplierId);
+
   revalidatePath("/admin/produkty");
-  return { success: true, removedLinks: count ?? 0 };
+  return { success: true, removedLinks: count ?? 0, resetZdFlags };
 }
 
 export async function actionReadZdIndexJob(): Promise<ZdIndexJobState | null> {

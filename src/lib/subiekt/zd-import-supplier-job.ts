@@ -2,8 +2,11 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { isSubiektReachable } from "@/lib/subiekt/availability";
 import { defaultZdSearchDataOd } from "@/lib/subiekt/subiekt-runtime-cache";
 import {
+  countPendingZdImports,
   importZdDocumentToCatalog,
   markZdCatalogImported,
+  pendingZdImportRowsQuery,
+  type PendingZdIndexRow,
 } from "@/lib/subiekt/zd-catalog-import";
 
 export type ZdImportSupplierJobState = {
@@ -64,7 +67,7 @@ export async function startZdImportForSupplier(input: {
   monthsBack?: number;
   batchDocs?: number;
 }): Promise<ZdImportSupplierJobState> {
-  const dataOd = defaultZdSearchDataOd(input.monthsBack ?? 18);
+  const dataOd = defaultZdSearchDataOd(input.monthsBack ?? 60);
   const state: ZdImportSupplierJobState = {
     status: "running",
     supplierId: input.supplierId,
@@ -120,49 +123,42 @@ export async function tickZdImportForSupplier(input: {
   }
 
   const maxDocs = input.maxDocs ?? current.batchDocs ?? 3;
+  const scope = { supplierId: current.supplierId, dataOd: current.dataOd };
 
   try {
     const supabase = createAdminClient();
 
     if (current.indexTotalDocs == null) {
-      const { count, error } = await supabase
-        .from("subiekt_zd_index")
-        .select("dok_id", { count: "exact", head: true })
-        .eq("supplier_id", current.supplierId)
-        .eq("verified", true)
-        .gte("dok_data_wyst", current.dataOd);
-      if (error) throw new Error(error.message);
+      const pending = await countPendingZdImports(scope);
       const primed: ZdImportSupplierJobState = {
         ...current,
-        indexTotalDocs: count ?? 0,
+        indexTotalDocs: pending,
+        indexOffset: 0,
         lastUpdatedAt: nowIso(),
       };
       await writeState(primed);
       return primed;
     }
 
-    const from = current.indexOffset;
-    const to = current.indexOffset + Math.max(1, maxDocs) - 1;
-    const { data: indexRows, error: idxErr } = await supabase
-      .from("subiekt_zd_index")
-      .select("dok_id, dok_nr_pelny, dok_data_wyst")
-      .eq("supplier_id", current.supplierId)
-      .eq("verified", true)
-      .gte("dok_data_wyst", current.dataOd)
-      .order("dok_data_wyst", { ascending: false })
-      .order("dok_id", { ascending: false })
-      .range(from, to);
+    const { data: indexRows, error: idxErr } = await pendingZdImportRowsQuery(
+      supabase,
+      scope
+    ).limit(Math.max(1, maxDocs));
     if (idxErr) throw new Error(idxErr.message);
 
-    const slice = (indexRows ?? []).map((r) => ({
-      dokId: Number((r as any).dok_id),
-      nr: (r as any).dok_nr_pelny != null ? String((r as any).dok_nr_pelny) : null,
-    })).filter((r) => Number.isFinite(r.dokId));
+    const slice = (indexRows ?? []) as PendingZdIndexRow[];
+    const validSlice = slice
+      .map((r) => ({
+        dokId: Number(r.dok_id),
+        nr: r.dok_nr_pelny != null ? String(r.dok_nr_pelny) : null,
+      }))
+      .filter((r) => Number.isFinite(r.dokId));
 
-    if (!slice.length) {
+    if (!validSlice.length) {
       const done: ZdImportSupplierJobState = {
         ...current,
         status: "done",
+        indexOffset: current.processedDocs,
         lastUpdatedAt: nowIso(),
       };
       await writeState(done);
@@ -176,10 +172,9 @@ export async function tickZdImportForSupplier(input: {
     let linksUpserted = 0;
     const importedIds: number[] = [];
 
-    for (const brief of slice) {
-      const docId = brief.dokId;
-      const imported = await importZdDocumentToCatalog(docId, current.supplierId);
-      importedIds.push(docId);
+    for (const brief of validSlice) {
+      const imported = await importZdDocumentToCatalog(brief.dokId, current.supplierId);
+      importedIds.push(brief.dokId);
       processedDocs += 1;
       processedLines += imported.processedLines;
       uniqueProducts += imported.uniqueProducts;
@@ -189,18 +184,18 @@ export async function tickZdImportForSupplier(input: {
 
     await markZdCatalogImported(importedIds);
 
-    const seenBefore = current.uniqueProductsSeen;
-
-    const nextOffset = current.indexOffset + slice.length;
-    const isDone = current.indexTotalDocs != null && nextOffset >= current.indexTotalDocs;
+    const processedTotal = current.processedDocs + processedDocs;
+    const pendingLeft = await countPendingZdImports(scope);
+    const isDone = pendingLeft === 0;
 
     const next: ZdImportSupplierJobState = {
       ...current,
       status: isDone ? "done" : "running",
-      indexOffset: isDone ? current.indexOffset : nextOffset,
-      processedDocs: current.processedDocs + processedDocs,
+      indexOffset: processedTotal,
+      indexTotalDocs: current.indexTotalDocs,
+      processedDocs: processedTotal,
       processedLines: current.processedLines + processedLines,
-      uniqueProductsSeen: seenBefore + uniqueProducts,
+      uniqueProductsSeen: current.uniqueProductsSeen + uniqueProducts,
       linksUpserted: current.linksUpserted + linksUpserted,
       lastDocNumber,
       lastUpdatedAt: nowIso(),
@@ -219,4 +214,3 @@ export async function tickZdImportForSupplier(input: {
     return next;
   }
 }
-

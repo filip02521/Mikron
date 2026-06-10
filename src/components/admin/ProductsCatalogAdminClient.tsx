@@ -385,7 +385,10 @@ export function ProductsCatalogAdminClient({
     if (!importSupplierId) return;
     start(async () => {
       try {
-        const s = await actionStartZdImportSupplierJob({ supplierId: importSupplierId, monthsBack: 18 });
+        const s = await actionStartZdImportSupplierJob({
+          supplierId: importSupplierId,
+          monthsBack: zdMonthsBack,
+        });
         setImportState(s);
         setToast({ text: "Start importu z ZD — uruchamiam przetwarzanie…", tone: "success" });
         setImportRunning(true);
@@ -419,7 +422,7 @@ export function ProductsCatalogAdminClient({
     if (!importSupplierId) return;
     if (
       !confirm(
-        "Usunąć mapowania dodane przez import ZD dla tego dostawcy? (Naprawa po błędnym imporcie; potem uruchom Start jeszcze raz.)"
+        "Usunąć mapowania z importu ZD dla tego dostawcy i zresetować flagi dokumentów? Potem uruchom Start — zaimportuje tylko ZD jeszcze niezaimportowane."
       )
     ) {
       return;
@@ -429,7 +432,7 @@ export function ProductsCatalogAdminClient({
       try {
         const res = await actionCleanupZdImportForSupplier(importSupplierId);
         setToast({
-          text: `Usunięto ${res.removedLinks} mapowań z importu ZD dla wybranego dostawcy.`,
+          text: `Usunięto ${res.removedLinks} mapowań i zresetowano ${res.resetZdFlags} flag ZD — możesz uruchomić import od nowa.`,
           tone: "success",
         });
         window.location.reload();
@@ -796,7 +799,10 @@ export function ProductsCatalogAdminClient({
                           setImportSupplierId(s.id);
                           start(async () => {
                             try {
-                              const st = await actionStartZdImportSupplierJob({ supplierId: s.id, monthsBack: 60 });
+                              const st = await actionStartZdImportSupplierJob({
+                                supplierId: s.id,
+                                monthsBack: zdMonthsBack,
+                              });
                               setImportState(st);
                               setToast({ text: `Start importu ZD dla: ${s.name}`, tone: "success" });
                               setImportRunning(true);
@@ -823,7 +829,8 @@ export function ProductsCatalogAdminClient({
 
           <p className="text-sm font-semibold text-slate-900">Autopilot: import po dostawcach</p>
           <p className="mt-0.5 text-xs text-slate-600">
-            Sam przechodzi po wszystkich dostawcach z Subiektem i importuje produkty na podstawie `subiekt_zd_index`.
+            Sam przechodzi po wszystkich dostawcach z Subiektem i importuje tylko ZD jeszcze niezaimportowane
+            (`catalog_imported_at` puste) z `subiekt_zd_index`.
           </p>
           <div className="mt-2 flex flex-wrap items-end gap-2">
             <div className="min-w-[10rem]">
@@ -904,8 +911,26 @@ export function ProductsCatalogAdminClient({
 
           <p className="text-sm font-semibold text-slate-900">Import z ZD (per dostawca)</p>
           <p className="mt-0.5 text-xs text-slate-600">
-            Przetwarza dokumenty ZD w Subiekcie dla wybranego dostawcy (po `kh_Id`) i zapisuje mapowania do bazy produktów.
+            Importuje tylko ZD bez flagi `catalog_imported_at` — ponowny Start nie podwaja liczników. Zakres jak w autopilocie.
           </p>
+
+          <div className="mt-2 flex flex-wrap items-end gap-2">
+            <div className="min-w-[10rem]">
+              <label className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">
+                Zakres (mies. wstecz)
+              </label>
+              <Select
+                value={String(zdMonthsBack)}
+                onChange={(e) => setZdMonthsBack(Number(e.target.value))}
+              >
+                {MONTHS_OPTIONS.map((m) => (
+                  <option key={m} value={m}>
+                    {m} miesięcy
+                  </option>
+                ))}
+              </Select>
+            </div>
+          </div>
 
           <div className="mt-3 flex flex-col gap-2 sm:flex-row sm:items-center">
             <select

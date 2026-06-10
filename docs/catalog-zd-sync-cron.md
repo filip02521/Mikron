@@ -44,3 +44,5 @@ Zastosuj `supabase/migrations/035_zd_catalog_imported_at.sql` (kolumna `catalog_
 ## Panel admina
 
 `/admin/produkty` → sekcja **Synchronizacja nocna (cron)** — status, **Kontynuuj** (bez resetu stanu), **Uruchom teraz (test)** oraz **Od nowa (restart)** po zakończonym przebiegu.
+
+Import per dostawca i autopilot przetwarzają tylko ZD z pustym `catalog_imported_at` (idempotentny). **Wyczyść błędny import** usuwa linki `zd_import` i resetuje flagi dokumentów dla dostawcy.

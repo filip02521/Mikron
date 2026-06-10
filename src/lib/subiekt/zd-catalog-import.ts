@@ -1,7 +1,19 @@
 import { createAdminClient } from "@/lib/supabase/admin";
 import { upsertSubiektProduct, bumpProductSupplierLinkBy } from "@/lib/data/product-catalog";
 import { getSubiektDocumentCached } from "@/lib/subiekt/subiekt-runtime-cache";
-import type { SubiektDocument, SubiektDocumentLine } from "@/lib/subiekt/types";
+import type { SubiektDocumentLine } from "@/lib/subiekt/types";
+import type { SupabaseClient } from "@supabase/supabase-js";
+
+export type PendingZdImportScope = {
+  supplierId: string;
+  dataOd: string;
+};
+
+export type PendingZdIndexRow = {
+  dok_id: number;
+  dok_nr_pelny: string | null;
+  dok_data_wyst: string | null;
+};
 
 function nowIso(): string {
   return new Date().toISOString();
@@ -81,4 +93,55 @@ export async function markZdCatalogImported(dokIds: number[]): Promise<void> {
     .update({ catalog_imported_at: at, updated_at: at })
     .in("dok_id", dokIds.map((id) => Math.trunc(id)));
   if (error) throw new Error(error.message);
+}
+
+/** Zweryfikowany ZD z dostawcą, jeszcze niezaimportowany do katalogu. */
+export function pendingZdImportCountQuery(
+  supabase: SupabaseClient,
+  scope: PendingZdImportScope
+) {
+  return supabase
+    .from("subiekt_zd_index")
+    .select("dok_id", { count: "exact", head: true })
+    .eq("supplier_id", scope.supplierId)
+    .eq("verified", true)
+    .is("catalog_imported_at", null)
+    .gte("dok_data_wyst", scope.dataOd);
+}
+
+/** Kolejka pending — zawsze od początku (bez offsetu), żeby po imporcie nie pomijać dokumentów. */
+export function pendingZdImportRowsQuery(
+  supabase: SupabaseClient,
+  scope: PendingZdImportScope
+) {
+  return supabase
+    .from("subiekt_zd_index")
+    .select("dok_id, dok_nr_pelny, dok_data_wyst")
+    .eq("supplier_id", scope.supplierId)
+    .eq("verified", true)
+    .is("catalog_imported_at", null)
+    .gte("dok_data_wyst", scope.dataOd)
+    .order("dok_data_wyst", { ascending: false })
+    .order("dok_id", { ascending: false });
+}
+
+export async function countPendingZdImports(scope: PendingZdImportScope): Promise<number> {
+  const supabase = createAdminClient();
+  const { count, error } = await pendingZdImportCountQuery(supabase, scope);
+  if (error) throw new Error(error.message);
+  return count ?? 0;
+}
+
+/** Czyści flagę importu — pozwala ponownie zaimportować ZD po cleanup linków. */
+export async function resetZdCatalogImportFlagsForSupplier(supplierId: string): Promise<number> {
+  const supabase = createAdminClient();
+  const at = nowIso();
+  const { data, error } = await supabase
+    .from("subiekt_zd_index")
+    .update({ catalog_imported_at: null, updated_at: at })
+    .eq("supplier_id", supplierId)
+    .eq("verified", true)
+    .select("dok_id");
+  if (error) throw new Error(error.message);
+  return data?.length ?? 0;
 }

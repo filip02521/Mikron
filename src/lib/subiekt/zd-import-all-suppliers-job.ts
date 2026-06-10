@@ -1,8 +1,12 @@
 import { createAdminClient } from "@/lib/supabase/admin";
 import { isSubiektReachable } from "@/lib/subiekt/availability";
-import { getSubiektDocumentCached } from "@/lib/subiekt/subiekt-runtime-cache";
-import { bumpProductSupplierLinkBy, upsertSubiektProduct } from "@/lib/data/product-catalog";
-import type { SubiektDocumentLine } from "@/lib/subiekt/types";
+import {
+  countPendingZdImports,
+  importZdDocumentToCatalog,
+  markZdCatalogImported,
+  pendingZdImportRowsQuery,
+  type PendingZdIndexRow,
+} from "@/lib/subiekt/zd-catalog-import";
 import { tryAcquireLock, releaseLock } from "@/lib/services/locks";
 
 export type ZdImportAllSuppliersJobState = {
@@ -32,14 +36,6 @@ const LOCK_KEY = "job_zd_import_all_suppliers_lock";
 
 function nowIso(): string {
   return new Date().toISOString();
-}
-
-function lineTowId(line: SubiektDocumentLine): number | null {
-  const raw = line.ob_TowId;
-  if (raw == null) return null;
-  const n = Number(raw);
-  if (!Number.isFinite(n) || n <= 0) return null;
-  return Math.trunc(n);
 }
 
 async function writeState(state: ZdImportAllSuppliersJobState): Promise<void> {
@@ -73,7 +69,7 @@ export async function startZdImportAllSuppliersJob(options: {
   if (error) throw new Error(error.message);
 
   const supplierIds = (suppliersRaw ?? [])
-    .map((s) => String((s as any).id))
+    .map((s) => String((s as { id: unknown }).id))
     .filter(Boolean);
 
   const state: ZdImportAllSuppliersJobState = {
@@ -82,7 +78,7 @@ export async function startZdImportAllSuppliersJob(options: {
     supplierIds,
     supplierIndex: 0,
     supplierId: supplierIds[0] ?? null,
-    supplierName: (suppliersRaw?.[0] as any)?.name ?? null,
+    supplierName: (suppliersRaw?.[0] as { name?: string } | undefined)?.name ?? null,
     indexOffset: 0,
     indexTotalDocs: null,
     batchDocs: options.batchDocs ?? 3,
@@ -109,13 +105,10 @@ export async function stopZdImportAllSuppliersJob(): Promise<ZdImportAllSupplier
 async function primeSupplierTotals(state: ZdImportAllSuppliersJobState): Promise<ZdImportAllSuppliersJobState> {
   if (!state.supplierId) return state;
   const supabase = createAdminClient();
-  const { count, error } = await supabase
-    .from("subiekt_zd_index")
-    .select("dok_id", { count: "exact", head: true })
-    .eq("supplier_id", state.supplierId)
-    .eq("verified", true)
-    .gte("dok_data_wyst", state.dataOd);
-  if (error) throw new Error(error.message);
+  const pending = await countPendingZdImports({
+    supplierId: state.supplierId,
+    dataOd: state.dataOd,
+  });
 
   const { data: supplierRow, error: sErr } = await supabase
     .from("suppliers")
@@ -127,7 +120,8 @@ async function primeSupplierTotals(state: ZdImportAllSuppliersJobState): Promise
   return {
     ...state,
     supplierName: supplierRow?.name ?? state.supplierName,
-    indexTotalDocs: count ?? 0,
+    indexTotalDocs: pending,
+    indexOffset: 0,
     lastUpdatedAt: nowIso(),
   };
 }
@@ -199,7 +193,6 @@ export async function tickZdImportAllSuppliersJob(options?: { maxDocs?: number }
       return state;
     }
 
-    // jeśli ten dostawca nie ma dokumentów — przejdź dalej
     if (state.indexTotalDocs === 0) {
       const next = await advanceSupplier(state);
       await writeState(next);
@@ -208,68 +201,51 @@ export async function tickZdImportAllSuppliersJob(options?: { maxDocs?: number }
 
     const supabase = createAdminClient();
     const maxDocs = options?.maxDocs ?? state.batchDocs ?? 3;
-    const from = state.indexOffset;
-    const to = state.indexOffset + Math.max(1, maxDocs) - 1;
+    const scope = { supplierId: state.supplierId, dataOd: state.dataOd };
 
-    const { data: indexRows, error: idxErr } = await supabase
-      .from("subiekt_zd_index")
-      .select("dok_id, dok_nr_pelny, dok_data_wyst")
-      .eq("supplier_id", state.supplierId)
-      .eq("verified", true)
-      .gte("dok_data_wyst", state.dataOd)
-      .order("dok_data_wyst", { ascending: false })
-      .order("dok_id", { ascending: false })
-      .range(from, to);
+    const { data: indexRows, error: idxErr } = await pendingZdImportRowsQuery(
+      supabase,
+      scope
+    ).limit(Math.max(1, maxDocs));
     if (idxErr) throw new Error(idxErr.message);
 
-    const slice = (indexRows ?? [])
-      .map((r) => ({ dokId: Number((r as any).dok_id), nr: (r as any).dok_nr_pelny != null ? String((r as any).dok_nr_pelny) : null }))
+    const slice = (indexRows ?? []) as PendingZdIndexRow[];
+    const validSlice = slice
+      .map((r) => ({
+        dokId: Number(r.dok_id),
+        nr: r.dok_nr_pelny != null ? String(r.dok_nr_pelny) : null,
+      }))
       .filter((r) => Number.isFinite(r.dokId));
 
-    if (!slice.length) {
-      // nic więcej dla tego dostawcy — przejdź dalej
+    if (!validSlice.length) {
       const next = await advanceSupplier(state);
       await writeState(next);
       return next;
     }
 
-    const towAgg = new Map<number, { symbol: string | null; name: string | null; count: number }>();
     let processedDocs = 0;
     let processedLines = 0;
-    let lastDocNumber: string | null = null;
-    for (const brief of slice) {
-      const doc = await getSubiektDocumentCached(brief.dokId);
-      lastDocNumber = doc.dok_NrPelny ?? brief.nr ?? null;
-      processedDocs += 1;
-      for (const line of doc.dok_Pozycja ?? []) {
-        const twId = lineTowId(line);
-        if (!twId) continue;
-        processedLines += 1;
-        const prev = towAgg.get(twId);
-        if (!prev) {
-          towAgg.set(twId, {
-            symbol: typeof line.tw_Symbol === "string" ? (line.tw_Symbol.trim() || null) : null,
-            name: typeof line.tw_Nazwa === "string" ? (line.tw_Nazwa.trim() || null) : null,
-            count: 1,
-          });
-        } else {
-          prev.count += 1;
-        }
-      }
-    }
-
     let linksUpserted = 0;
-    for (const [twId, meta] of towAgg.entries()) {
-      await upsertSubiektProduct({ subiektTwId: twId, symbol: meta.symbol, name: meta.name, seenAt: nowIso() });
-      await bumpProductSupplierLinkBy({ subiektTwId: twId, supplierId: state.supplierId, delta: meta.count, lastSource: "zd_import", lastActionAt: nowIso() });
-      linksUpserted += 1;
+    let lastDocNumber: string | null = null;
+    const importedIds: number[] = [];
+
+    for (const brief of validSlice) {
+      const imported = await importZdDocumentToCatalog(brief.dokId, state.supplierId);
+      importedIds.push(brief.dokId);
+      processedDocs += 1;
+      processedLines += imported.processedLines;
+      linksUpserted += imported.linksUpserted;
+      lastDocNumber = brief.nr ?? lastDocNumber;
     }
 
-    const nextOffset = state.indexOffset + slice.length;
-    const supplierDone = nextOffset >= (state.indexTotalDocs ?? 0);
+    await markZdCatalogImported(importedIds);
+
+    const supplierDocsDone = (await countPendingZdImports(scope)) === 0;
+    const supplierProcessedDocs = state.indexOffset + processedDocs;
+
     const nextState: ZdImportAllSuppliersJobState = {
       ...state,
-      indexOffset: supplierDone ? state.indexOffset : nextOffset,
+      indexOffset: supplierProcessedDocs,
       processedDocs: state.processedDocs + processedDocs,
       processedLines: state.processedLines + processedLines,
       linksUpserted: state.linksUpserted + linksUpserted,
@@ -278,7 +254,7 @@ export async function tickZdImportAllSuppliersJob(options?: { maxDocs?: number }
       lastError: null,
     };
 
-    const finalState = supplierDone ? await advanceSupplier(nextState) : nextState;
+    const finalState = supplierDocsDone ? await advanceSupplier(nextState) : nextState;
     await writeState(finalState);
     return finalState;
   } catch (e) {
@@ -309,4 +285,3 @@ export async function tickZdImportAllSuppliersJob(options?: { maxDocs?: number }
     await releaseLock(LOCK_KEY);
   }
 }
-
