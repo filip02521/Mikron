@@ -1,10 +1,10 @@
-# Nocny deploy: git pull → npm ci (gdy trzeba) → build → restart usługi OnTime.
+# Nocny deploy: git pull -> npm ci (gdy trzeba) -> build -> restart uslugi OnTime.
 #
-# Ręcznie:
+# Recznie:
 #   .\installer\nightly-deploy.ps1
 #   .\installer\nightly-deploy.ps1 -Force
 #
-# Harmonogram zadań (PowerShell jako Administrator):
+# Harmonogram zadan (PowerShell jako Administrator):
 #   .\installer\nightly-deploy.ps1 -InstallScheduledTask
 #   .\installer\nightly-deploy.ps1 -InstallScheduledTask -TaskRunAs "DOMAIN\user" -TaskRunAsPassword "..."
 #
@@ -55,7 +55,7 @@ function Invoke-Git {
   param([string[]]$Arguments)
   $output = & git -C $ProjectRoot @Arguments 2>&1
   if ($LASTEXITCODE -ne 0) {
-    throw "git $($Arguments -join ' ') → $output"
+    throw "git $($Arguments -join ' ') -> $output"
   }
   return ($output | Out-String).Trim()
 }
@@ -71,7 +71,7 @@ function Install-NightlyDeployTask {
   $existing = schtasks /Query /TN $TaskName 2>$null
   if ($LASTEXITCODE -eq 0) {
     schtasks /Delete /TN $TaskName /F | Out-Null
-    Write-Log "Usunięto poprzednie zadanie: $TaskName"
+    Write-Log "Usunieto poprzednie zadanie: $TaskName"
   }
 
   $args = @(
@@ -94,12 +94,12 @@ function Install-NightlyDeployTask {
 
   schtasks @args | Out-Null
   if ($LASTEXITCODE -ne 0) {
-    throw "Nie udało się utworzyć zadania harmonogramu: $TaskName"
+    throw "Nie udalo sie utworzyc zadania harmonogramu: $TaskName"
   }
 
   Write-Log "Utworzono zadanie harmonogramu: $TaskName (codziennie $TaskTime)"
   if (-not $TaskRunAsPassword) {
-    Write-Log "UWAGA: ustaw hasło konta w Harmonogramie zadań (właściwości → uruchom niezależnie od logowania)."
+    Write-Log "UWAGA: ustaw haslo konta w Harmonogramie zadan (uruchom niezaleznie od logowania)"
   }
 }
 
@@ -107,7 +107,7 @@ function Uninstall-NightlyDeployTask {
   $existing = schtasks /Query /TN $TaskName 2>$null
   if ($LASTEXITCODE -eq 0) {
     schtasks /Delete /TN $TaskName /F | Out-Null
-    Write-Log "Usunięto zadanie harmonogramu: $TaskName"
+    Write-Log "Usunieto zadanie harmonogramu: $TaskName"
   } else {
     Write-Log "Brak zadania harmonogramu: $TaskName"
   }
@@ -134,22 +134,22 @@ function Invoke-NightlyDeploy {
     try {
       $pullOutput = Invoke-Git @("pull", "--ff-only", $Remote, $Branch)
     } catch {
-      throw "git pull nie powiódł się (sprawdź credentials i konflikty): $_"
+      throw "git pull nie powiodl sie (sprawdz credentials i konflikty): $_"
     }
     if ($pullOutput) {
       Write-Log $pullOutput
     }
   } else {
-    Write-Log "Pominięto git pull (-SkipPull)"
+    Write-Log "Pominieto git pull (-SkipPull)"
   }
 
   $headAfter = Invoke-Git @("rev-parse", "HEAD")
   if ($headBefore -eq $headAfter -and -not $Force) {
-    Write-Log "Brak nowych commitów ($headAfter) — pomijam build i restart"
+    Write-Log "Brak nowych commitow ($headAfter) - pomijam build i restart"
     return
   }
 
-  Write-Log "Zmiana: $headBefore → $headAfter"
+  Write-Log "Zmiana: $headBefore -> $headAfter"
 
   $lockChanged = $false
   try {
@@ -158,7 +158,7 @@ function Invoke-NightlyDeploy {
       $lockChanged = $true
     }
   } catch {
-    Write-Log "Nie udało się sprawdzić diff — uruchamiam npm ci na wszelki wypadek"
+    Write-Log "Nie udalo sie sprawdzic diff - uruchamiam npm ci na wszelki wypadek"
     $lockChanged = $true
   }
 
@@ -167,16 +167,16 @@ function Invoke-NightlyDeploy {
     if ($lockChanged) {
       Write-Log "npm ci (zmiana package.json / package-lock.json)"
       & $npm ci
-      if ($LASTEXITCODE -ne 0) { throw "npm ci nie powiodło się" }
+      if ($LASTEXITCODE -ne 0) { throw "npm ci nie powiodlo sie" }
     }
 
     Write-Log "npm run build"
     $env:NODE_ENV = "production"
     & $npm run build
-    if ($LASTEXITCODE -ne 0) { throw "npm run build nie powiodło się" }
+    if ($LASTEXITCODE -ne 0) { throw "npm run build nie powiodlo sie" }
 
     if (-not (Test-ServiceExists $ServiceName)) {
-      throw "Usługa '$ServiceName' nie istnieje — zainstaluj: .\installer\install-windows-service.ps1"
+      throw "Usluga '$ServiceName' nie istnieje - zainstaluj: .\installer\install-windows-service.ps1"
     }
 
     Write-Log "Restart-Service $ServiceName"
@@ -185,17 +185,17 @@ function Invoke-NightlyDeploy {
 
     $svc = Get-Service $ServiceName
     if ($svc.Status -ne "Running") {
-      throw "Usługa $ServiceName nie działa po restarcie (status: $($svc.Status))"
+      throw "Usluga $ServiceName nie dziala po restarcie (status: $($svc.Status))"
     }
 
     try {
       $probe = Invoke-WebRequest -Uri "http://127.0.0.1:$Port/login" -Method Head -TimeoutSec 30 -UseBasicParsing
       Write-Log "HTTP probe OK: $($probe.StatusCode) http://127.0.0.1:$Port/login"
     } catch {
-      Write-Log "UWAGA: HTTP probe nie powiódł się po restarcie — sprawdź logs\ontime-stderr.log"
+      Write-Log "UWAGA: HTTP probe nie powiodl sie po restarcie - sprawdz logs\ontime-stderr.log"
     }
 
-    Write-Log "Deploy zakończony pomyślnie"
+    Write-Log "Deploy zakonczony pomyslnie"
   } finally {
     Pop-Location
   }
@@ -215,6 +215,6 @@ try {
   Write-Log "=== Nightly deploy start ==="
   Invoke-NightlyDeploy
 } catch {
-  Write-Log "BŁĄD: $_"
+  Write-Log "BLAD: $_"
   exit 1
 }

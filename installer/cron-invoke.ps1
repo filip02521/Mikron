@@ -1,4 +1,4 @@
-# Wywołanie endpointu cron OnTime (używany przez Harmonogram zadań Windows).
+# Wywolanie endpointu cron OnTime (uzywany przez Harmonogram zadan Windows).
 param(
   [Parameter(Mandatory = $true)]
   [ValidateSet("morning", "process-deliveries", "catalog-zd-sync")]
@@ -11,9 +11,9 @@ param(
   [switch]$Force
 )
 
-$envFile = Join-Path $ProjectRoot ".env.local"
+$envFile = Join-Path $ProjectRoot ".env"
 if (-not (Test-Path $envFile)) {
-  Write-Error "Brak pliku .env.local w $ProjectRoot"
+  Write-Error "Brak pliku .env w $ProjectRoot"
   exit 1
 }
 
@@ -26,7 +26,7 @@ foreach ($line in Get-Content $envFile -Encoding UTF8) {
 }
 
 if (-not $cronSecret) {
-  Write-Error "Brak CRON_SECRET w .env.local"
+  Write-Error "Brak CRON_SECRET w .env"
   exit 1
 }
 

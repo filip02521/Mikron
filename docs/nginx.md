@@ -100,12 +100,12 @@ Skrypt instalacyjny (PowerShell **jako Administrator**):
 
 ```powershell
 cd C:\Users\Administrator\projects\ontime
-copy .env.production.example .env.local   # uzupełnij klucze
+copy .env.production.example .env   # uzupełnij klucze
 # NSSM: https://nssm.cc/download → np. C:\tools\nssm\win64\nssm.exe
 
 .\installer\install-windows-service.ps1
-# pełna instalacja (nginx + cron):
-.\installer\install-windows-service.ps1 -WithNginx -NginxPath C:\nginx -WithCron -WithNightlyDeploy -NssmPath C:\tools\nssm\win64\nssm.exe
+# pelna instalacja (cron + nightly deploy):
+.\installer\install-windows-service.ps1 -WithCron -WithNightlyDeploy
 
 # samodzielny nocny deploy (pull + build + restart):
 .\installer\nightly-deploy.ps1
