@@ -2,6 +2,7 @@
 
 import {
   createContext,
+  useCallback,
   useContext,
   useEffect,
   useId,
@@ -64,7 +65,7 @@ export function OverflowMenu({
   const menuId = useId();
   const close = () => setOpen(false);
 
-  const updatePosition = () => {
+  const updatePosition = useCallback(() => {
     const el = triggerRef.current;
     if (!el) return;
     const rect = el.getBoundingClientRect();
@@ -77,7 +78,7 @@ export function OverflowMenu({
       top: rect.bottom + 4,
       left,
     });
-  };
+  }, [align]);
 
   useLayoutEffect(() => {
     if (!open) return;
@@ -90,7 +91,7 @@ export function OverflowMenu({
       window.removeEventListener("resize", updatePosition);
       window.removeEventListener("scroll", updatePosition, true);
     };
-  }, [open, align]);
+  }, [open, updatePosition]);
 
   useEffect(() => {
     if (!open) return;

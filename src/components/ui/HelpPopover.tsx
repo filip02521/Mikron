@@ -1,6 +1,7 @@
 "use client";
 
 import {
+  useCallback,
   useEffect,
   useId,
   useLayoutEffect,
@@ -60,7 +61,7 @@ export function HelpPopover({
     return () => window.removeEventListener("keydown", onKey, true);
   }, [open]);
 
-  const updatePosition = () => {
+  const updatePosition = useCallback(() => {
     const trigger = triggerRef.current;
     if (!trigger) return;
     const rect = trigger.getBoundingClientRect();
@@ -87,7 +88,7 @@ export function HelpPopover({
     }
 
     setPanelPos({ top, left });
-  };
+  }, [align]);
 
   useLayoutEffect(() => {
     if (!open) return;
@@ -100,7 +101,7 @@ export function HelpPopover({
       window.removeEventListener("resize", updatePosition);
       window.removeEventListener("scroll", updatePosition, true);
     };
-  }, [open, align]);
+  }, [open, updatePosition]);
 
   useEffect(() => {
     if (!open) return;

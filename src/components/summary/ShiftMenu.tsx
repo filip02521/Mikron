@@ -78,7 +78,7 @@ export function ShiftMenu({
       window.removeEventListener("scroll", onScroll, true);
       window.removeEventListener("resize", onResize);
     };
-  }, [open, manualOpen, update]);
+  }, [open, manualOpen, update, panelRef]);
 
   useLayoutEffect(() => {
     if (!open || !manualOpen) return;

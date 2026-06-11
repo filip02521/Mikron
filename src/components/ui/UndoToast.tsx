@@ -61,7 +61,7 @@ export function UndoToast({
   useEffect(() => {
     const t = setTimeout(() => onDismissRef.current(), durationMs);
     return () => clearTimeout(t);
-  }, [resolvedTitle, resolvedDescription, durationMs]);
+  }, [durationMs]);
 
   const isError = tone === "error";
 

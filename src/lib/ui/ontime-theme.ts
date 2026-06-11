@@ -446,10 +446,6 @@ export const mojeAckSegmentInformacjaClass =
 export const mojeAckSegmentOutlineClass =
   "flex h-full min-h-0 shrink-0 items-center justify-center rounded-none border-0 border-l border-emerald-200/90 bg-white px-2 text-xs font-semibold leading-none text-emerald-800 shadow-none transition-colors duration-150 hover:bg-emerald-50 disabled:cursor-not-allowed disabled:opacity-50 sm:px-2";
 
-/** Segment outline w środku grupy (HoldToConfirm — Uzupełniające). */
-export const panelHoldOutlineSegmentClass =
-  "border-0 border-l border-indigo-200/90 bg-[var(--primary-muted)]/60 text-indigo-800 transition-colors duration-150 hover:bg-[var(--primary-muted)]";
-
 export const panelSegmentControlOpenClass = "bg-slate-50 text-slate-900";
 
 export const panelCardHitAreaClass =
@@ -463,10 +459,6 @@ export const panelNoticeTriggerUrgentClass =
 
 export const panelNoticeTriggerDefaultClass =
   "border-indigo-100/85 bg-indigo-50/35 hover:border-indigo-200/75 hover:bg-indigo-50/55";
-
-/** Przycisk outline w grupie (HoldToConfirm — Uzupełniające) */
-export const panelHoldOutlineClass =
-  "border border-indigo-200/90 bg-[var(--primary-muted)]/60 text-indigo-800 hover:bg-[var(--primary-muted)]";
 
 /** Pasek akcji w nagłówku panelu dziennego (wyszukiwarka + przyciski) */
 export const panelToolbarShellClass =

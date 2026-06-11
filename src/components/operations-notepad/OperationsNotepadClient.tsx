@@ -87,7 +87,10 @@ export function OperationsNotepadClient({
   const [archivedNotes, setArchivedNotes] = useState(initial.archivedNotes);
   const [showArchive, setShowArchive] = useState(false);
   const [undo, setUndo] = useState<OperationsUndoState | null>(null);
-  const dismissUndo = useCallback(() => setUndo(null), []);
+  const dismissUndo = useCallback(() => {
+    setUndo(null);
+    router.refresh();
+  }, [router]);
 
   const dataSyncKey = `${department}\0${initial.privateNotes.map((n) => n.updated_at).join("\0")}\0${initial.publicNotes.map((n) => n.updated_at).join("\0")}\0${initial.archivedNotes.map((n) => n.updated_at).join("\0")}`;
   const [appliedDataSyncKey, setAppliedDataSyncKey] = useState(dataSyncKey);
@@ -97,7 +100,6 @@ export function OperationsNotepadClient({
     setPublicNotes(initial.publicNotes);
     setArchivedNotes(initial.archivedNotes);
     setShowArchive(false);
-    setUndo(null);
   }
 
   const todayTasks = useMemo(
@@ -113,25 +115,11 @@ export function OperationsNotepadClient({
         : "";
   const undoDescription = undo ? undoWindowBannerDescription() : "";
 
-  useEffect(() => {
-    if (!undo) return;
-    const onKey = (e: KeyboardEvent) => {
-      const tag = (e.target as HTMLElement)?.tagName;
-      if (tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT") return;
-      if ((e.metaKey || e.ctrlKey) && e.key === "z") {
-        e.preventDefault();
-        void handleUndo();
-      }
-    };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [undo]);
-
-  function refresh() {
+  const refresh = useCallback(() => {
     router.refresh();
-  }
+  }, [router]);
 
-  async function handleUndo() {
+  const handleUndo = useCallback(async () => {
     if (!undo) return;
     const snapshot = undo;
     setUndo(null);
@@ -158,7 +146,21 @@ export function OperationsNotepadClient({
     } catch {
       setUndo(snapshot);
     }
-  }
+  }, [undo, department, refresh]);
+
+  useEffect(() => {
+    if (!undo) return;
+    const onKey = (e: KeyboardEvent) => {
+      const tag = (e.target as HTMLElement)?.tagName;
+      if (tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT") return;
+      if ((e.metaKey || e.ctrlKey) && e.key === "z") {
+        e.preventDefault();
+        void handleUndo();
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [undo, handleUndo]);
 
   function handleNotesReordered(
     visibility: OperationsNoteVisibility,
@@ -185,7 +187,6 @@ export function OperationsNotepadClient({
     }
     setArchivedNotes((prev) => [{ ...note, archived_at: now }, ...prev]);
     setUndo({ type: "archive", note, visibility });
-    refresh();
   }
 
   function handlePrivateCreated(note: OperationsNote) {
@@ -231,7 +232,7 @@ export function OperationsNotepadClient({
         <UndoToast
           title={undoTitle}
           description={undoDescription}
-          placement="inline"
+          placement="floating"
           onDismiss={dismissUndo}
           onUndo={() => void handleUndo()}
           undoShortcut="Ctrl+Z"

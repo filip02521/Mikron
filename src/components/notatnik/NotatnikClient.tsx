@@ -165,7 +165,10 @@ export function NotatnikClient({
   const focusHandledWatchRef = useRef<string | null>(null);
   const zkWatchesRef = useRef(zkWatches);
   const archivedWatchesRef = useRef(archivedWatches);
-  const dismissUndo = useCallback(() => setUndo(null), []);
+  const dismissUndo = useCallback(() => {
+    setUndo(null);
+    router.refresh();
+  }, [router]);
 
   const navigateToTab = useCallback(
     (tab: NotatnikPageTab, options?: { hash?: string; focusWatch?: string | null }) => {
@@ -201,6 +204,52 @@ export function NotatnikClient({
     },
     [router, searchParams, tourDemo]
   );
+
+  const refresh = useCallback(() => {
+    router.refresh();
+  }, [router]);
+
+  const handleUndo = useCallback(async () => {
+    if (!undo) return;
+    const snapshot = undo;
+    setUndo(null);
+    try {
+      if (snapshot.type === "archive") {
+        const { note } = await actionRestoreSalesNote(snapshot.note.id);
+        setArchivedNotes((prev) => prev.filter((n) => n.id !== snapshot.note.id));
+        setNotes((prev) => uniqueById([note, ...prev]));
+        flashNotepadAnchor(`note-${note.id}`);
+        navigateToTab("notes", { hash: `note-${note.id}` });
+      } else if (snapshot.type === "close-zk") {
+        const { watch } = await actionUndoCloseZkWatch(snapshot.watch.id);
+        setArchivedWatches((prev) => prev.filter((w) => w.id !== watch.id));
+        setZkWatches((prev) => uniqueById(sortZkWatches([watch, ...prev])));
+        flashNotepadAnchor(`watch-${watch.id}`);
+        navigateToTab("zk", { hash: `watch-${watch.id}`, focusWatch: watch.id });
+      } else {
+        const ids = sortSalesNotes(snapshot.notes).map((n) => n.id);
+        await actionReorderSalesNotes(ids);
+        setNotes(uniqueById(snapshot.notes));
+      }
+      refresh();
+    } catch {
+      setUndo(snapshot);
+    }
+  }, [undo, navigateToTab, refresh]);
+
+  useEffect(() => {
+    if (!undo || effectiveReadOnly) return;
+    const onKey = (e: KeyboardEvent) => {
+      const tag = (e.target as HTMLElement)?.tagName;
+      if (tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT") return;
+      if ((e.metaKey || e.ctrlKey) && e.key === "z") {
+        e.preventDefault();
+        void handleUndo();
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [undo, effectiveReadOnly, handleUndo]);
 
   useEffect(() => {
     zkWatchesRef.current = zkWatches;
@@ -271,7 +320,7 @@ export function NotatnikClient({
     if (tourDemo) return;
     window.addEventListener("hashchange", syncWatchFocusFromLocation);
     return () => window.removeEventListener("hashchange", syncWatchFocusFromLocation);
-  }, [syncWatchFocusFromLocation]);
+  }, [syncWatchFocusFromLocation, tourDemo]);
 
   const salesPersonId =
     source.zkWatches[0]?.sales_person_id ?? source.notes[0]?.sales_person_id ?? null;
@@ -308,13 +357,7 @@ export function NotatnikClient({
       ...subiektAvailability,
       message: contextualizeSubiektMessage(subiektAvailability.message),
     };
-  }, [
-    subiektAvailability?.configured,
-    subiektAvailability?.reachable,
-    subiektAvailability?.checkedAt,
-    subiektAvailability?.shortLabel,
-    subiektAvailability?.message,
-  ]);
+  }, [subiektAvailability]);
   const subiektPropKey = subiektForNotepad
     ? `${subiektForNotepad.configured}\0${subiektForNotepad.reachable}\0${subiektForNotepad.checkedAt}\0${subiektForNotepad.shortLabel}\0${subiektForNotepad.message}`
     : "";
@@ -336,20 +379,6 @@ export function NotatnikClient({
     const snapshot = loadZkArrivedSnapshot(salesPersonId);
     return detectUnseenZkWarehouseArrivals(zkWatches, snapshot).join("\0");
   }, [salesPersonId, tourDemo, warehouseSnapshotReady, zkWatches]);
-
-  useEffect(() => {
-    if (!undo || effectiveReadOnly) return;
-    const onKey = (e: KeyboardEvent) => {
-      const tag = (e.target as HTMLElement)?.tagName;
-      if (tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT") return;
-      if ((e.metaKey || e.ctrlKey) && e.key === "z") {
-        e.preventDefault();
-        void handleUndo();
-      }
-    };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [undo, effectiveReadOnly]);
 
   if (subiektPropKey !== appliedSubiektPropKey) {
     setAppliedSubiektPropKey(subiektPropKey);
@@ -426,38 +455,6 @@ export function NotatnikClient({
     navigateToTab("zk");
   }
 
-  function refresh() {
-    router.refresh();
-  }
-
-  async function handleUndo() {
-    if (!undo) return;
-    const snapshot = undo;
-    setUndo(null);
-    try {
-      if (snapshot.type === "archive") {
-        const { note } = await actionRestoreSalesNote(snapshot.note.id);
-        setArchivedNotes((prev) => prev.filter((n) => n.id !== snapshot.note.id));
-        setNotes((prev) => uniqueById([note, ...prev]));
-        flashNotepadAnchor(`note-${note.id}`);
-        navigateToTab("notes", { hash: `note-${note.id}` });
-      } else if (snapshot.type === "close-zk") {
-        const { watch } = await actionUndoCloseZkWatch(snapshot.watch.id);
-        setArchivedWatches((prev) => prev.filter((w) => w.id !== watch.id));
-        setZkWatches((prev) => uniqueById(sortZkWatches([watch, ...prev])));
-        flashNotepadAnchor(`watch-${watch.id}`);
-        navigateToTab("zk", { hash: `watch-${watch.id}`, focusWatch: watch.id });
-      } else {
-        const ids = sortSalesNotes(snapshot.notes).map((n) => n.id);
-        await actionReorderSalesNotes(ids);
-        setNotes(uniqueById(snapshot.notes));
-      }
-      refresh();
-    } catch {
-      setUndo(snapshot);
-    }
-  }
-
   function handleTodayTaskClick(anchor: string, kind: NotepadTodayTaskKind) {
     if (kind === "note-follow-up") {
       navigateToTab("notes", { hash: anchor });
@@ -491,7 +488,6 @@ export function NotatnikClient({
     }
     setZkWatches((prev) => prev.filter((w) => w.id !== watchId));
     navigateToTab("archive");
-    refresh();
   }
 
   function handleWatchRestored(watch: SalesZkWatch) {
@@ -550,7 +546,6 @@ export function NotatnikClient({
       uniqueById([{ ...note, archived_at: now, updated_at: now }, ...archived])
     );
     setUndo({ type: "archive", note });
-    refresh();
   }
 
   function handleNoteRestored(note: SalesNote) {
@@ -593,7 +588,7 @@ export function NotatnikClient({
         <UndoToast
           title={undoTitle}
           description={undoDescription}
-          placement="inline"
+          placement="floating"
           onDismiss={dismissUndo}
           onUndo={() => void handleUndo()}
           undoShortcut="Ctrl+Z"

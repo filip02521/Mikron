@@ -31,6 +31,7 @@ src/components/summary/ForSomeoneRequests.tsx
 src/components/summary/ProcurementRequestLine.tsx
 src/components/summary/QuickOrderModal.tsx
 src/components/summary/SupplierDrawer.tsx
+src/components/summary/ShiftMenu.tsx
 src/components/summary/useProcurementSupplierCollapse.ts
 src/components/ui/Toast.tsx
 src/components/ui/UndoToast.tsx
@@ -72,7 +73,6 @@ src/components/operations-notepad/OperationsNotesSection.tsx
 src/components/operations/OperationsUpdatesContext.tsx
 src/components/ui/BrandClockHandsAnimated.tsx
 src/components/ui/HelpPopover.tsx
-src/components/ui/HoldToConfirmButton.tsx
 src/components/ui/OverflowMenu.tsx
 src/components/targets/LocationScheduleClient.tsx
 src/lib/orders/use-supplier-group-collapse.ts
