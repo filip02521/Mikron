@@ -10,7 +10,7 @@ import { cn } from "@/lib/cn";
 export function SalesOnboardingTourBanner() {
   const onboarding = useSalesOnboardingOptional();
   const navLocked = useSalesNavLocked();
-  if (!navLocked) return null;
+  if (!navLocked || !onboarding) return null;
 
   const isDemo = onboarding.isLivePreviewStep;
 
