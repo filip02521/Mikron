@@ -120,7 +120,7 @@ function NavLink({
       <span
         className={className}
         aria-disabled="true"
-        title="Dokończ wprowadzenie — użyj przycisku Dalej w panelu touru"
+        title="Dokończ wprowadzenie — użyj „Dalej” w panelu touru"
       >
         {content}
       </span>

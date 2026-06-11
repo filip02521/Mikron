@@ -19,18 +19,18 @@ export function SalesOnboardingTourBanner() {
       description={
         <>
           <span className="hidden md:inline">
-            Przejdź tour w{" "}
-            <strong className="font-semibold text-white">panelu po prawej stronie</strong> — używaj
-            przycisków Dalej i Wstecz. Menu boczne jest na razie wyłączone.
+            Przechodź tour w{" "}
+            <strong className="font-semibold text-white">panelu po prawej</strong>. Używaj „Dalej”
+            i „Wstecz”. Menu boczne jest na razie wyłączone.
           </span>
           <span className="md:hidden">
-            Przejdź tour w{" "}
-            <strong className="font-semibold text-white">panelu na dole ekranu</strong> — używaj
-            Dalej i Wstecz. Dolne menu jest na razie wyłączone.
+            Przechodź tour w{" "}
+            <strong className="font-semibold text-white">panelu na dole ekranu</strong>. Używaj
+            „Dalej” i „Wstecz”. Dolne menu jest na razie wyłączone.
           </span>
           {isDemo ? (
             <span className="mt-1 block text-indigo-200/95">
-              Widzisz przykładowe dane — po zakończeniu touru pojawią się Twoje wpisy.
+              Widzisz przykładowe dane. Po zakończeniu touru pojawią się Twoje wpisy.
             </span>
           ) : null}
         </>

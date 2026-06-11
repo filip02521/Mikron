@@ -46,7 +46,7 @@ export function SalesOnboardingPanelPreview({ stepId }: { stepId: string }) {
           <div className="flex h-14 w-14 items-center justify-center rounded-lg bg-gradient-to-br from-indigo-600 to-sky-600 text-lg font-bold text-white shadow-md">
             OT
           </div>
-          <p className="text-xs text-slate-500">OnTime · handlowiec ↔ zakupy ↔ magazyn</p>
+          <p className="text-xs text-slate-500">Handlowiec · zakupy · magazyn</p>
         </div>
       );
     case "moje":
@@ -54,22 +54,22 @@ export function SalesOnboardingPanelPreview({ stepId }: { stepId: string }) {
         <div className="space-y-2">
           <PreviewRow
             title="Dentsply · 1 produkt"
-            badge="Czekamy u dostawcy"
+            badge="Zamówione u dostawcy"
             badgeClass="bg-slate-100 text-slate-700"
           />
           <PreviewRow
-            title="Ivoclar · informacja"
+            title="Magazyn · informacja"
             badge="Tylko dostępność"
             badgeClass="bg-violet-100 text-violet-800"
           />
           <PreviewRow
-            title="Graphenano Dental · 2 produkty"
+            title="Straumann · 2 produkty"
             badge="Odbiór z magazynu"
             badgeClass="bg-emerald-100 text-emerald-800"
             action="Potwierdź"
           />
           <div className="rounded-md border border-slate-200/90 bg-slate-50 px-2.5 py-2 text-[10px] text-slate-600">
-            Ostatnio zakończone · 2 wpisy (np. odebrane, potwierdzone informacje)
+            Archiwum · zakończone sprawy
           </div>
         </div>
       );
@@ -99,7 +99,7 @@ export function SalesOnboardingPanelPreview({ stepId }: { stepId: string }) {
                 <FlowChevron size={10} className="text-slate-300" />
                 Ivoclar
               </span>
-              <p className="mt-1 text-[10px] text-indigo-800/90">Klient: Serwis AutoMax</p>
+              <p className="mt-1 text-[10px] text-indigo-800/90">Klient: Gabinet Dr Kowalski</p>
             </div>
           </div>
           <p className="text-center text-[10px] font-medium text-indigo-700">+ Kolejny produkt</p>
@@ -111,7 +111,7 @@ export function SalesOnboardingPanelPreview({ stepId }: { stepId: string }) {
           <div className="rounded-md border border-slate-200 bg-white px-2.5 py-1.5 text-[11px] text-slate-500">
             Szukaj dostawcy…
           </div>
-          {["Dental Supply PL · 2 prośby", "Import Medica · 1 prośba"].map((row) => (
+          {["Straumann · 2 prośby", "Dentsply · 1 prośba"].map((row) => (
             <div
               key={row}
               className="flex items-center justify-between rounded-md border border-slate-200 bg-white px-2.5 py-1.5 text-[11px]"
@@ -134,12 +134,12 @@ export function SalesOnboardingPanelPreview({ stepId }: { stepId: string }) {
             </div>
           </div>
           <div className="rounded-md border border-sky-200 bg-sky-50/80 px-2.5 py-2 text-[11px] text-sky-950">
-            <p className="font-semibold">Nowa procedura zamówień importowych</p>
-            <p className="mt-0.5 text-[10px] text-sky-900/90">Od zakupów · tylko do odczytu</p>
+            <p className="font-semibold">Zamówienia importowe — podaj kod Mikran</p>
+            <p className="mt-0.5 text-[10px] text-sky-900/90">Od działu zakupów · tylko do odczytu</p>
           </div>
           <div className="rounded-md border border-amber-200 bg-amber-50 px-2.5 py-2 text-[11px] text-amber-950">
             <p className="font-semibold">Pytanie: próbki implantów poza harmonogramem?</p>
-            <p className="mt-0.5 text-[10px] text-emerald-800">Odpowiedź zakupów · widoczna dla wszystkich</p>
+            <p className="mt-0.5 text-[10px] text-emerald-800">Odpowiedź działu zakupów · widoczna dla wszystkich</p>
           </div>
         </div>
       );
@@ -152,13 +152,13 @@ export function SalesOnboardingPanelPreview({ stepId }: { stepId: string }) {
           <div className="rounded-md border border-amber-200 bg-amber-50 px-2.5 py-2 text-[11px] text-amber-950">
             <p className="font-semibold">ZK/2026/0138 · Gabinet Dr Kowalski</p>
             <p className="mt-0.5 text-[10px] font-medium text-amber-800">Czeka na towar</p>
-            <p className="mt-1 text-[10px] text-amber-900/90">Skaler UDS · końcówki</p>
+            <p className="mt-1 text-[10px] text-amber-900/90">Implant BLX · abutment</p>
             <span className="mt-1.5 inline-block rounded bg-indigo-600 px-1.5 py-0.5 text-[9px] font-semibold text-white">
               Zgłoś prośbę
             </span>
           </div>
           <div className="rounded-md border border-slate-200 bg-white px-2.5 py-2 text-[11px] text-slate-700">
-            Notatki · oddzwonić do kliniki w piątek
+            Notatki · oddzwonić do Gabinetu Dr Kowalski
           </div>
         </div>
       );
@@ -180,7 +180,7 @@ export function SalesOnboardingPanelPreview({ stepId }: { stepId: string }) {
         <div className="flex flex-col items-center gap-2 py-3 text-center">
           <p className="text-sm font-semibold text-indigo-900">Wszystko jasne?</p>
           <p className="text-xs text-slate-500">
-            Za chwilę zobaczysz swoje dane — kliknij „Zakończ tour”, aby wejść do panelu.
+            Kliknij „Zakończ tour”, aby wejść do panelu ze swoimi danymi.
           </p>
         </div>
       );

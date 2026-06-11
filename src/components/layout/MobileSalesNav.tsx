@@ -95,7 +95,7 @@ export function MobileSalesNav({
                 <span
                   className={linkClass}
                   aria-disabled="true"
-                  title="Dokończ wprowadzenie — użyj panelu touru"
+                  title="Dokończ wprowadzenie — użyj „Dalej” w panelu touru"
                 >
                   {inner}
                 </span>
