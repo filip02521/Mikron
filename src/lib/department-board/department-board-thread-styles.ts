@@ -40,6 +40,9 @@ export const boardQuestionBlockClass =
 export const boardAnswerBlockClass =
   "rounded-md border border-indigo-100 border-l-[3px] border-l-indigo-500 bg-indigo-50/45 p-3";
 
+export const boardFollowUpBlockClass =
+  "rounded-md border border-slate-200 border-l-[3px] border-l-slate-300 bg-slate-50/80 p-3";
+
 export const boardQuestionPreviewPrefixClass = "font-semibold text-amber-800";
 
 export const boardAnswerPreviewPrefixClass = "font-semibold text-indigo-700";

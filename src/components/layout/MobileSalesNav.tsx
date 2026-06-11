@@ -16,7 +16,7 @@ import {
 import { isAdmin, isSalesManager } from "@/lib/auth-roles";
 import { hrefWithAdminSalesPreview } from "@/lib/nav/sales-preview-href";
 import type { UserRole } from "@/types/database";
-import { useSalesOnboardingOptional } from "@/components/sales/SalesOnboardingContext";
+import { useSalesNavLocked } from "@/components/sales/SalesOnboardingContext";
 
 export function MobileSalesNav({
   navBadges = { salesMoje: 0, salesNotatnik: 0, salesTablica: 0 },
@@ -31,7 +31,7 @@ export function MobileSalesNav({
   const searchParams = useSearchParams();
   const previewDla = searchParams.get("dla");
   const preservePreviewDla = Boolean(realRole && isAdmin(realRole) && previewDla);
-  const navLocked = useSalesOnboardingOptional()?.navLocked ?? false;
+  const navLocked = useSalesNavLocked();
   const salesUpdates = useSalesUpdates();
   const navRole = isSalesManager(role) ? "sales_manager" : "sales";
   const groups = navForRole(navRole, navBadges);
@@ -89,26 +89,25 @@ export function MobileSalesNav({
             </>
           );
 
+          const isLockedItem = navLocked && !active;
+
           return (
             <li key={item.href} className="min-w-0 flex-1">
-              {navLocked && !active ? (
-                <span
-                  className={linkClass}
-                  aria-disabled="true"
-                  title="Dokończ wprowadzenie — użyj „Dalej” w panelu touru"
-                >
-                  {inner}
-                </span>
-              ) : (
-                <Link
-                  href={href}
-                  className={linkClass}
-                  aria-current={active ? "page" : undefined}
-                  title={item.label}
-                >
-                  {inner}
-                </Link>
-              )}
+              <Link
+                href={href}
+                className={linkClass}
+                aria-current={active ? "page" : undefined}
+                aria-disabled={isLockedItem || undefined}
+                tabIndex={isLockedItem ? -1 : undefined}
+                title={
+                  isLockedItem
+                    ? "Dokończ wprowadzenie — użyj „Dalej” w panelu touru"
+                    : item.label
+                }
+                onClick={isLockedItem ? (e) => e.preventDefault() : undefined}
+              >
+                {inner}
+              </Link>
             </li>
           );
         })}

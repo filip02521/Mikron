@@ -9,6 +9,7 @@ import {
   useMemo,
   useRef,
   useState,
+  useSyncExternalStore,
 } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import {
@@ -226,6 +227,27 @@ export function useSalesOnboarding() {
 
 export function useSalesOnboardingOptional() {
   return useContext(SalesOnboardingContext);
+}
+
+function useSalesOnboardingHydrated(): boolean {
+  return useSyncExternalStore(
+    () => () => {},
+    () => true,
+    () => false
+  );
+}
+
+/** false podczas SSR i pierwszego hydrate — unika mismatch w menu i tour chrome. */
+export function useSalesNavLocked(): boolean {
+  const ctx = useSalesOnboardingOptional();
+  const hydrated = useSalesOnboardingHydrated();
+  return hydrated && Boolean(ctx?.navLocked);
+}
+
+export function useSalesCoachPaddingClass(): string {
+  const ctx = useSalesOnboardingOptional();
+  const hydrated = useSalesOnboardingHydrated();
+  return hydrated ? (ctx?.coachPaddingClass ?? "") : "";
 }
 
 export function useSalesOnboardingDemo(stepId: string) {

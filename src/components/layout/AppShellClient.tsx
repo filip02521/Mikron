@@ -17,7 +17,7 @@ import {
 } from "@/components/operations/OperationsUpdatesContext";
 import { SalesOnboardingGate } from "@/components/sales/SalesOnboardingGate";
 import { AppRoleProvider } from "@/components/layout/AppRoleContext";
-import { useSalesOnboardingOptional } from "@/components/sales/SalesOnboardingContext";
+import { useSalesCoachPaddingClass } from "@/components/sales/SalesOnboardingContext";
 import { SalesOnboardingTourBanner, SalesOnboardingContentGuard } from "@/components/sales/SalesOnboardingTourBanner";
 import { SalesBugReportTrigger } from "@/components/sales/SalesBugReportTrigger";
 import { DepartmentBoardPinnedStrip } from "@/components/department-board/DepartmentBoardPinnedStrip";
@@ -56,8 +56,7 @@ function AppShellMain({
   mobileChrome: boolean;
   topNotices?: React.ReactNode;
 }) {
-  const onboarding = useSalesOnboardingOptional();
-  const coachPadding = onboarding?.coachPaddingClass ?? "";
+  const coachPadding = useSalesCoachPaddingClass();
 
   return (
     <main
@@ -93,6 +92,7 @@ export function AppShellClient({
   salesOnboardingCompletedAt = null,
   salesPersonName = null,
   salesBoardAttention = null,
+  salesOnboardingActive = false,
 }: {
   children: React.ReactNode;
   role: UserRole | null;
@@ -118,6 +118,8 @@ export function AppShellClient({
   salesOnboardingCompletedAt?: string | null;
   salesPersonName?: string | null;
   salesBoardAttention?: SalesBoardAttentionSnapshot | null;
+  /** Tour onboarding — wyłącz live badge i polling zamówień. */
+  salesOnboardingActive?: boolean;
 }) {
   const pathname = usePathname();
   const isAuthScreen =
@@ -141,7 +143,10 @@ export function AppShellClient({
       enabled={operationsLive && !salesLive}
       initialVersion={operationsDailyPanelVersion}
     >
-    <SalesUpdatesProvider enabled={salesLive} initialVersion={salesActivityVersion}>
+    <SalesUpdatesProvider
+      enabled={salesLive && !salesOnboardingActive}
+      initialVersion={salesActivityVersion}
+    >
       <SalesOnboardingGate
         role={role}
         salesPersonId={salesPersonId}

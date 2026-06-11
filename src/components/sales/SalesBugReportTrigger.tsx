@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { usePathname } from "next/navigation";
 import { actionSubmitSalesBugReport } from "@/app/actions/sales-bug-report";
-import { useSalesOnboardingOptional } from "@/components/sales/SalesOnboardingContext";
+import { useSalesNavLocked } from "@/components/sales/SalesOnboardingContext";
 import { Button } from "@/components/ui/Button";
 import { Field } from "@/components/ui/Field";
 import { ModalShell } from "@/components/ui/ModalShell";
@@ -14,8 +14,7 @@ import { cn } from "@/lib/cn";
  */
 export function SalesBugReportTrigger({ className }: { className?: string }) {
   const pathname = usePathname();
-  const onboarding = useSalesOnboardingOptional();
-  const navLocked = onboarding?.navLocked ?? false;
+  const navLocked = useSalesNavLocked();
   const [open, setOpen] = useState(false);
   const [message, setMessage] = useState("");
   const [pending, setPending] = useState(false);

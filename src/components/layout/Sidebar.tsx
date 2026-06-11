@@ -26,7 +26,7 @@ import {
   navIconKeyFromHref,
   navIconTileIdleClass,
 } from "@/components/icons/NavIcon";
-import { useSalesOnboardingOptional } from "@/components/sales/SalesOnboardingContext";
+import { useSalesNavLocked } from "@/components/sales/SalesOnboardingContext";
 import { AdminPanelContextSwitcher } from "@/components/layout/AdminPanelContextSwitcher";
 import { actionClearAdminPanelContext } from "@/app/actions/admin-panel-context";
 import type { AdminPanelContext } from "@/lib/auth/admin-panel-context";
@@ -115,20 +115,22 @@ function NavLink({
       </span>
   );
 
-  if (locked && !active) {
-    return (
-      <span
-        className={className}
-        aria-disabled="true"
-        title="Dokończ wprowadzenie — użyj „Dalej” w panelu touru"
-      >
-        {content}
-      </span>
-    );
-  }
+  const isLockedItem = Boolean(locked && !active);
 
   return (
-    <Link href={href} className={className} aria-current={active ? "page" : undefined}>
+    <Link
+      href={href}
+      className={className}
+      aria-current={active ? "page" : undefined}
+      aria-disabled={isLockedItem || undefined}
+      tabIndex={isLockedItem ? -1 : undefined}
+      title={
+        isLockedItem
+          ? "Dokończ wprowadzenie — użyj „Dalej” w panelu touru"
+          : undefined
+      }
+      onClick={isLockedItem ? (e) => e.preventDefault() : undefined}
+    >
       {content}
     </Link>
   );
@@ -214,7 +216,7 @@ export function Sidebar({
   const searchParams = useSearchParams();
   const previewDla = searchParams.get("dla");
   const adminSalesPreview = Boolean(realRole && isAdmin(realRole) && previewDla);
-  const navLocked = useSalesOnboardingOptional()?.navLocked ?? false;
+  const navLocked = useSalesNavLocked();
   const groups = role ? navForRole(role, navBadges) : [];
 
   async function signOut() {

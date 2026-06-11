@@ -35,6 +35,12 @@ export async function AppShell({ children }: { children: React.ReactNode }) {
     realRole && isAdminPanelPreview(realRole, panelContext) && panelContext
       ? panelContext
       : null;
+  const showSalesOnboarding =
+    !adminPanelPreview &&
+    Boolean(role && isSalesAccount(role)) &&
+    Boolean(session?.salesPersonId) &&
+    !session?.mustChangePassword &&
+    !session?.salesOnboardingCompletedAt;
   let navBadges: {
     nowe: number;
     weryfikacja: number;
@@ -88,13 +94,13 @@ export async function AppShell({ children }: { children: React.ReactNode }) {
         const preview = await resolvePreviewSalesPerson(previewId, session);
         if (preview) {
           salesPersonName = preview.name;
-          const metrics = await fetchSalesShellMetrics(preview.id, session.id);
+          const metrics = await fetchSalesShellMetrics(preview.id, null);
           salesActivityVersion = metrics.activityVersion;
           navBadges = {
             ...navBadges,
             salesMoje: metrics.dayStartNavCount,
             salesNotatnik: metrics.notepadNavBadge,
-            salesTablica: metrics.boardNavBadge,
+            salesTablica: 0,
           };
         }
       }
@@ -108,18 +114,27 @@ export async function AppShell({ children }: { children: React.ReactNode }) {
       const salesPerson = await resolveSalesPersonForUser(session);
       if (salesPerson) {
         salesPersonName = salesPerson.name;
-        const [metrics, boardAttention] = await Promise.all([
-          fetchSalesShellMetrics(salesPerson.id, session.id),
-          fetchSalesBoardAttentionSnapshot(session.id).catch(() => null),
-        ]);
-        salesActivityVersion = metrics.activityVersion;
-        salesBoardAttention = boardAttention;
-        navBadges = {
-          ...navBadges,
-          salesMoje: metrics.dayStartNavCount,
-          salesNotatnik: metrics.notepadNavBadge,
-          salesTablica: metrics.boardNavBadge,
-        };
+        if (showSalesOnboarding) {
+          navBadges = {
+            ...navBadges,
+            salesMoje: 0,
+            salesNotatnik: 0,
+            salesTablica: 0,
+          };
+        } else {
+          const [metrics, boardAttention] = await Promise.all([
+            fetchSalesShellMetrics(salesPerson.id, session.id),
+            fetchSalesBoardAttentionSnapshot(session.id).catch(() => null),
+          ]);
+          salesActivityVersion = metrics.activityVersion;
+          salesBoardAttention = boardAttention;
+          navBadges = {
+            ...navBadges,
+            salesMoje: metrics.dayStartNavCount,
+            salesNotatnik: metrics.notepadNavBadge,
+            salesTablica: metrics.boardNavBadge,
+          };
+        }
       }
     } catch {
       salesActivityVersion = null;
@@ -163,6 +178,7 @@ export async function AppShell({ children }: { children: React.ReactNode }) {
       salesOnboardingCompletedAt={session?.salesOnboardingCompletedAt ?? null}
       salesPersonName={salesPersonName}
       salesBoardAttention={salesBoardAttention}
+      salesOnboardingActive={showSalesOnboarding}
     >
       {children}
     </AppShellClient>

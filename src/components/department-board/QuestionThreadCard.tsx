@@ -16,6 +16,7 @@ import {
   boardAuthorPillClass,
   boardAwaitingReplyClass,
   boardBlockKindLabelClass,
+  boardFollowUpBlockClass,
   boardProcurementPillClass,
   boardQuestionBlockClass,
   boardQuestionEmbeddedShellClass,
@@ -41,24 +42,31 @@ function ThreadMessageBlock({
   shellClass,
   kindLabel,
   body,
+  createdAt,
 }: {
-  kind: "question" | "answer";
+  kind: "question" | "answer" | "followUp";
   authorLabel: string;
   authorPillClass: string;
   shellClass: string;
   kindLabel: string;
   body: string;
+  createdAt?: string;
 }) {
   return (
     <div className={shellClass}>
       <div className="mb-2 flex flex-wrap items-center gap-2">
         <span className={boardBlockKindLabelClass}>{kindLabel}</span>
         <span className={authorPillClass}>{authorLabel}</span>
+        {createdAt ? (
+          <span className={cn(salesTypography.rowMeta, "font-normal normal-case text-slate-400")}>
+            · {formatBoardDate(createdAt)}
+          </span>
+        ) : null}
       </div>
       <p
         className={cn(
           "whitespace-pre-wrap text-sm leading-relaxed",
-          kind === "question" ? "text-slate-800" : "text-indigo-950"
+          kind === "answer" ? "text-indigo-950" : "text-slate-800"
         )}
       >
         {body}
@@ -187,7 +195,15 @@ export function QuestionThreadCard({
               </span>
               {firstAnswerPreview ? (
                 <span className={cn(salesTypography.rowMeta, "block truncate")}>
-                  <span className={boardAnswerPreviewPrefixClass}>O:</span> {firstAnswerPreview.body}
+                  {isOperationsAuthorRole(firstAnswerPreview.author?.role ?? null) ? (
+                    <>
+                      <span className={boardAnswerPreviewPrefixClass}>O:</span> {firstAnswerPreview.body}
+                    </>
+                  ) : (
+                    <>
+                      <span className="font-semibold text-slate-500">D:</span> {firstAnswerPreview.body}
+                    </>
+                  )}
                 </span>
               ) : null}
             </span>
@@ -204,6 +220,7 @@ export function QuestionThreadCard({
             authorPillClass={boardAuthorPillClass}
             shellClass={boardQuestionBlockClass}
             body={question.body}
+            createdAt={question.created_at}
           />
 
           {question.posts.length === 0 ? (
@@ -215,14 +232,15 @@ export function QuestionThreadCard({
             return (
               <ThreadMessageBlock
                 key={post.id}
-                kind="answer"
-                kindLabel="Odpowiedź"
+                kind={fromOps ? "answer" : "followUp"}
+                kindLabel={fromOps ? "Odpowiedź" : "Doprecyzowanie"}
                 authorLabel={
                   fromOps ? BOARD_PROCUREMENT_AUTHOR_LABEL : authorLabelFromProfile(post.author)
                 }
                 authorPillClass={fromOps ? boardProcurementPillClass : boardAuthorPillClass}
-                shellClass={boardAnswerBlockClass}
+                shellClass={fromOps ? boardAnswerBlockClass : boardFollowUpBlockClass}
                 body={post.body}
+                createdAt={post.created_at}
               />
             );
           })}

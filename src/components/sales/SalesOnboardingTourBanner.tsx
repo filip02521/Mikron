@@ -1,12 +1,16 @@
 "use client";
 
-import { useSalesOnboardingOptional } from "@/components/sales/SalesOnboardingContext";
+import {
+  useSalesNavLocked,
+  useSalesOnboardingOptional,
+} from "@/components/sales/SalesOnboardingContext";
 import { SystemNotice } from "@/components/ui/SystemNotice";
 import { cn } from "@/lib/cn";
 
 export function SalesOnboardingTourBanner() {
   const onboarding = useSalesOnboardingOptional();
-  if (!onboarding?.navLocked) return null;
+  const navLocked = useSalesNavLocked();
+  if (!navLocked) return null;
 
   const isDemo = onboarding.isLivePreviewStep;
 
@@ -40,8 +44,8 @@ export function SalesOnboardingTourBanner() {
 }
 
 export function SalesOnboardingContentGuard({ children }: { children: React.ReactNode }) {
-  const onboarding = useSalesOnboardingOptional();
-  if (!onboarding?.navLocked) return children;
+  const navLocked = useSalesNavLocked();
+  if (!navLocked) return children;
 
   return (
     <div className="pointer-events-none select-none" aria-hidden={false}>
