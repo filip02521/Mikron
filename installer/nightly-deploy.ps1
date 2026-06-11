@@ -64,13 +64,46 @@ function Test-ServiceExists([string]$Name) {
   return $null -ne (Get-Service -Name $Name -ErrorAction SilentlyContinue)
 }
 
+function Invoke-SchTasks {
+  param([string[]]$Arguments)
+
+  $prevEa = $ErrorActionPreference
+  $ErrorActionPreference = "Continue"
+  try {
+    $output = & schtasks.exe @Arguments 2>&1
+    return [PSCustomObject]@{
+      ExitCode = $LASTEXITCODE
+      Output = ($output | Out-String).Trim()
+    }
+  } finally {
+    $ErrorActionPreference = $prevEa
+  }
+}
+
+function Test-ScheduledTaskExists([string]$Name) {
+  return (Invoke-SchTasks @("/Query", "/TN", $Name)).ExitCode -eq 0
+}
+
+function Remove-ScheduledTaskIfExists([string]$Name) {
+  if (-not (Test-ScheduledTaskExists $Name)) { return }
+  $result = Invoke-SchTasks @("/Delete", "/TN", $Name, "/F")
+  if ($result.ExitCode -ne 0) {
+    throw "Nie udalo sie usunac zadania $Name : $($result.Output)"
+  }
+}
+
+function Resolve-TaskRunAsUser([string]$User) {
+  if (-not $User) { return "" }
+  if ($User -match '[\\/]') { return $User }
+  return "$env:USERDOMAIN\$User"
+}
+
 function Install-NightlyDeployTask {
   $scriptPath = Join-Path $PSScriptRoot "nightly-deploy.ps1"
   $tr = "powershell.exe -NoProfile -ExecutionPolicy Bypass -File `"$scriptPath`" -ServiceName `"$ServiceName`" -Branch `"$Branch`""
 
-  $existing = schtasks /Query /TN $TaskName 2>$null
-  if ($LASTEXITCODE -eq 0) {
-    schtasks /Delete /TN $TaskName /F | Out-Null
+  if (Test-ScheduledTaskExists $TaskName) {
+    Remove-ScheduledTaskIfExists $TaskName
     Write-Log "Usunieto poprzednie zadanie: $TaskName"
   }
 
@@ -83,8 +116,9 @@ function Install-NightlyDeployTask {
     "/RL", "HIGHEST"
   )
 
-  if ($TaskRunAs) {
-    $args += @("/RU", $TaskRunAs)
+  $runAs = Resolve-TaskRunAsUser $TaskRunAs
+  if ($runAs) {
+    $args += @("/RU", $runAs)
     if ($TaskRunAsPassword) {
       $args += @("/RP", $TaskRunAsPassword)
     }
@@ -92,21 +126,20 @@ function Install-NightlyDeployTask {
     $args += @("/RU", "SYSTEM")
   }
 
-  schtasks @args | Out-Null
-  if ($LASTEXITCODE -ne 0) {
-    throw "Nie udalo sie utworzyc zadania harmonogramu: $TaskName"
+  $result = Invoke-SchTasks $args
+  if ($result.ExitCode -ne 0) {
+    throw "Nie udalo sie utworzyc zadania harmonogramu: $TaskName`n$($result.Output)"
   }
 
-  Write-Log "Utworzono zadanie harmonogramu: $TaskName (codziennie $TaskTime)"
-  if (-not $TaskRunAsPassword) {
+  Write-Log "Utworzono zadanie harmonogramu: $TaskName (codziennie $TaskTime, konto: $(if ($runAs) { $runAs } else { 'SYSTEM' }))"
+  if ($runAs -and -not $TaskRunAsPassword) {
     Write-Log "UWAGA: ustaw haslo konta w Harmonogramie zadan (uruchom niezaleznie od logowania)"
   }
 }
 
 function Uninstall-NightlyDeployTask {
-  $existing = schtasks /Query /TN $TaskName 2>$null
-  if ($LASTEXITCODE -eq 0) {
-    schtasks /Delete /TN $TaskName /F | Out-Null
+  if (Test-ScheduledTaskExists $TaskName) {
+    Remove-ScheduledTaskIfExists $TaskName
     Write-Log "Usunieto zadanie harmonogramu: $TaskName"
   } else {
     Write-Log "Brak zadania harmonogramu: $TaskName"

@@ -164,11 +164,45 @@ function Invoke-NpmInstall {
   Write-Ok "Zaleznosci zainstalowane ($([math]::Round($sw.Elapsed.TotalSeconds)) s)"
 }
 
+function Invoke-SchTasks {
+  param([string[]]$Arguments)
+
+  $prevEa = $ErrorActionPreference
+  $ErrorActionPreference = "Continue"
+  try {
+    $output = & schtasks.exe @Arguments 2>&1
+    return [PSCustomObject]@{
+      ExitCode = $LASTEXITCODE
+      Output = ($output | Out-String).Trim()
+    }
+  } finally {
+    $ErrorActionPreference = $prevEa
+  }
+}
+
+function Test-ScheduledTaskExists([string]$Name) {
+  return (Invoke-SchTasks @("/Query", "/TN", $Name)).ExitCode -eq 0
+}
+
 function Remove-ScheduledTaskIfExists([string]$Name) {
-  $existing = schtasks /Query /TN $Name 2>$null
-  if ($LASTEXITCODE -eq 0) {
-    schtasks /Delete /TN $Name /F | Out-Null
-    Write-Ok "Usunieto zadanie harmonogramu: $Name"
+  if (-not (Test-ScheduledTaskExists $Name)) { return }
+  $result = Invoke-SchTasks @("/Delete", "/TN", $Name, "/F")
+  if ($result.ExitCode -ne 0) {
+    throw "Nie udalo sie usunac zadania $Name : $($result.Output)"
+  }
+  Write-Ok "Usunieto zadanie harmonogramu: $Name"
+}
+
+function New-ScheduledTask {
+  param(
+    [string]$Name,
+    [string[]]$CreateArgs
+  )
+
+  Remove-ScheduledTaskIfExists $Name
+  $result = Invoke-SchTasks $CreateArgs
+  if ($result.ExitCode -ne 0) {
+    throw "Nie udalo sie utworzyc $Name : $($result.Output)"
   }
 }
 
@@ -182,31 +216,33 @@ function Install-CronTasks {
 
   Write-Step "Harmonogram zadan (cron)"
 
-  Remove-ScheduledTaskIfExists "OnTime Cron Morning"
   $trMorning = "powershell.exe -NoProfile -ExecutionPolicy Bypass -File `"$cronScript`" -Job morning"
-  schtasks /Create /F /TN "OnTime Cron Morning" /TR $trMorning /RU SYSTEM /RL HIGHEST `
-    /SC WEEKLY /D MON,TUE,WED,THU,FRI /ST 06:00 | Out-Null
-  if ($LASTEXITCODE -ne 0) { throw "Nie udalo sie utworzyc OnTime Cron Morning" }
+  New-ScheduledTask "OnTime Cron Morning" @(
+    "/Create", "/F", "/TN", "OnTime Cron Morning", "/TR", $trMorning,
+    "/RU", "SYSTEM", "/RL", "HIGHEST", "/SC", "WEEKLY",
+    "/D", "MON,TUE,WED,THU,FRI", "/ST", "06:00"
+  )
   Write-Ok "Utworzono zadanie harmonogramu: OnTime Cron Morning (pn-pt 06:00)"
 
-  Remove-ScheduledTaskIfExists "OnTime Cron Process Deliveries"
   $tr = "powershell.exe -NoProfile -ExecutionPolicy Bypass -File `"$cronScript`" -Job process-deliveries"
-  schtasks /Create /F /TN "OnTime Cron Process Deliveries" /TR $tr /RU SYSTEM /RL HIGHEST `
-    /SC DAILY /ST 08:00 /RI 60 /DU 11:00 /D MON,TUE,WED,THU,FRI | Out-Null
-  if ($LASTEXITCODE -ne 0) { throw "Nie udalo sie utworzyc OnTime Cron Process Deliveries" }
+  New-ScheduledTask "OnTime Cron Process Deliveries" @(
+    "/Create", "/F", "/TN", "OnTime Cron Process Deliveries", "/TR", $tr,
+    "/RU", "SYSTEM", "/RL", "HIGHEST", "/SC", "DAILY",
+    "/ST", "08:00", "/RI", "60", "/DU", "11:00", "/D", "MON,TUE,WED,THU,FRI"
+  )
   Write-Ok "Utworzono zadanie harmonogramu: OnTime Cron Process Deliveries (pn-pt co godz. 8-18)"
 
-  Remove-ScheduledTaskIfExists "OnTime Cron Catalog ZD Sync"
   $trSync = "powershell.exe -NoProfile -ExecutionPolicy Bypass -File `"$cronScript`" -Job catalog-zd-sync"
-  schtasks /Create /F /TN "OnTime Cron Catalog ZD Sync" /TR $trSync /RU SYSTEM /RL HIGHEST `
-    /SC DAILY /ST 02:00 | Out-Null
-  if ($LASTEXITCODE -ne 0) { throw "Nie udalo sie utworzyc OnTime Cron Catalog ZD Sync" }
+  New-ScheduledTask "OnTime Cron Catalog ZD Sync" @(
+    "/Create", "/F", "/TN", "OnTime Cron Catalog ZD Sync", "/TR", $trSync,
+    "/RU", "SYSTEM", "/RL", "HIGHEST", "/SC", "DAILY", "/ST", "02:00"
+  )
   Write-Ok "Utworzono zadanie harmonogramu: OnTime Cron Catalog ZD Sync (02:00)"
 
-  Remove-ScheduledTaskIfExists "OnTime Cron Catalog ZD Sync Continue"
-  schtasks /Create /F /TN "OnTime Cron Catalog ZD Sync Continue" /TR $trSync /RU SYSTEM /RL HIGHEST `
-    /SC DAILY /ST 02:20 | Out-Null
-  if ($LASTEXITCODE -ne 0) { throw "Nie udalo sie utworzyc OnTime Cron Catalog ZD Sync Continue" }
+  New-ScheduledTask "OnTime Cron Catalog ZD Sync Continue" @(
+    "/Create", "/F", "/TN", "OnTime Cron Catalog ZD Sync Continue", "/TR", $trSync,
+    "/RU", "SYSTEM", "/RL", "HIGHEST", "/SC", "DAILY", "/ST", "02:20"
+  )
   Write-Ok "Utworzono zadanie harmonogramu: OnTime Cron Catalog ZD Sync Continue (02:20)"
 }
 

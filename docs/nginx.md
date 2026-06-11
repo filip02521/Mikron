@@ -113,6 +113,10 @@ copy .env.production.example .env   # uzupełnij klucze
 
 # odinstalowanie:
 .\installer\install-windows-service.ps1 -Uninstall -NssmPath C:\tools\nssm\win64\nssm.exe
+
+# start / stop / restart:
+.\installer\service.ps1 status
+.\installer\service.ps1 restart -Probe
 ```
 
 Ręcznie (bez skryptu):
