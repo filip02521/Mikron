@@ -45,9 +45,6 @@ async function main() {
       r.request_kind === "zamowienie" &&
       (r.status === "Zamowione" || r.status === "Czesciowo_zrealizowane")
   );
-  const inInfoNowe = rows.filter(
-    (r) => r.request_kind === "informacja" && r.status === "Nowe"
-  );
   const inInfoZam = rows.filter(
     (r) => r.request_kind === "informacja" && r.status === "Zamowione"
   );

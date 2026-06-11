@@ -11,6 +11,7 @@
     "start": "next start -H 0.0.0.0",
     "lan-check": "bash scripts/lan-check.sh",
     "lint": "eslint",
+    "lint:session": "eslint --no-cache $(grep -v '^#' scripts/eslint-session-paths.txt | tr '\\n' ' ')",
     "test": "vitest run",
     "test:e2e": "playwright test",
     "test:e2e:install": "playwright install chromium",

@@ -72,7 +72,8 @@ export const SUPPLIER_HUB_TAB_COPY: Record<
   },
 };
 
-export function supplierHubHint(_tab: SupplierHubTab): string {
+export function supplierHubHint(tab: SupplierHubTab): string {
+  void tab;
   return "";
 }
 

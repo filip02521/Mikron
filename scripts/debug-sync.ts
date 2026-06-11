@@ -36,7 +36,7 @@ async function main() {
       if (recalc.computedNextDate) {
         formatDateString(recalc.computedNextDate);
       }
-    } catch (e) {
+    } catch {
       console.log("FAIL:", s.name, {
         order_date: sch?.order_date,
         shift_date: sch?.shift_date,

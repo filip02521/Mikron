@@ -1,6 +1,6 @@
 import { formatPlDate } from "@/lib/display-labels";
 import { calculateBusinessDays, parseDateOnly, toDateOnly } from "@/lib/orders/dates";
-import { getDeliveryProgress, parseOrderQuantity } from "@/lib/orders/individual";
+import { getDeliveryProgress } from "@/lib/orders/individual";
 import type { IndividualOrder } from "@/types/database";
 
 export type WarehouseInventoryKind = "pickup_full" | "pickup_partial" | "informacja_ready";

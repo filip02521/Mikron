@@ -3,8 +3,6 @@
  * Uruchom: npx tsx --env-file=.env.local scripts/audit-warehouse-tab.ts
  */
 import {
-  countDeliveryQueue,
-  countInformacjaQueue,
   countPickupReadyForSales,
   fetchDeliveryQueue,
   fetchInformacjaQueue,

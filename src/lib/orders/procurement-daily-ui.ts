@@ -1,4 +1,4 @@
-import { formatDateString, toDateOnly } from "@/lib/orders/dates";
+import { formatDateString } from "@/lib/orders/dates";
 import { vacationNoteLabel } from "@/lib/display-labels";
 import { todayInWarsaw } from "@/lib/time/warsaw";
 import type { SummaryStandardItem } from "@/lib/orders/summary";

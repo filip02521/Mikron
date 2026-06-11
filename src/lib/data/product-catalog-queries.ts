@@ -29,6 +29,18 @@ export type ProductCatalogCoverageStats = {
 /** Limit PostgREST / Supabase na jedną stronę (domyślnie 1000). */
 const SUPABASE_PAGE = 1000;
 
+type SubiektTwIdRow = {
+  subiekt_tw_id: number | string;
+};
+
+function supplierNameFromLinkRow(
+  suppliers: { name?: string | null } | { name?: string | null }[] | null | undefined
+): string {
+  if (suppliers == null) return "Dostawca";
+  const name = Array.isArray(suppliers) ? suppliers[0]?.name : suppliers.name;
+  return name != null ? String(name) : "Dostawca";
+}
+
 /**
  * Wszystkie tw_Id mające choć jeden wiersz w product_supplier_links.
  * Paginujemy po wierszach linków (nie po unikalnych tw_Id) — inaczej przy wielu
@@ -206,8 +218,7 @@ export async function fetchProductCatalogRowsByTwIds(twIds: number[]): Promise<P
     const supplierId = String(row.supplier_id);
     const orderCount = Number(row.order_count ?? 0);
     const lastActionAt = String(row.last_action_at ?? "");
-    const supplierName =
-      (row as any).suppliers?.name != null ? String((row as any).suppliers.name) : "Dostawca";
+    const supplierName = supplierNameFromLinkRow(row.suppliers);
 
     const list = byTwId.get(twId) ?? [];
     list.push({ supplierId, supplierName, orderCount, lastActionAt });
@@ -251,7 +262,7 @@ export async function fetchProductCatalogPage(options?: {
 
   const total = Number(count ?? 0);
 
-  const twIds = (idsRaw ?? []).map((r) => Number((r as any).subiekt_tw_id)).filter((n) => n > 0);
+  const twIds = (idsRaw ?? []).map((r) => Number((r as SubiektTwIdRow).subiekt_tw_id)).filter((n) => n > 0);
   const rows = await fetchProductCatalogRowsByTwIds(twIds);
   return { rows, total, offset, limit };
 }
@@ -288,7 +299,7 @@ export async function searchProductCatalogPage(options: {
   if (error) throw new Error(error.message);
 
   const total = Number(count ?? 0);
-  const twIds = (idsRaw ?? []).map((r) => Number((r as any).subiekt_tw_id)).filter((n) => n > 0);
+  const twIds = (idsRaw ?? []).map((r) => Number((r as SubiektTwIdRow).subiekt_tw_id)).filter((n) => n > 0);
   const rows = await fetchProductCatalogRowsByTwIds(twIds);
   return { rows, total, offset, limit };
 }
@@ -338,8 +349,7 @@ export async function fetchProductCatalogRows(options?: {
     const supplierId = String(row.supplier_id);
     const orderCount = Number(row.order_count ?? 0);
     const lastActionAt = String(row.last_action_at ?? "");
-    const supplierName =
-      (row as any).suppliers?.name != null ? String((row as any).suppliers.name) : "Dostawca";
+    const supplierName = supplierNameFromLinkRow(row.suppliers);
 
     const list = byTwId.get(twId) ?? [];
     list.push({ supplierId, supplierName, orderCount, lastActionAt });

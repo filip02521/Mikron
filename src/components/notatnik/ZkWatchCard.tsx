@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState, type KeyboardEvent, type MouseEvent } from "react";
+import { useState, type KeyboardEvent, type MouseEvent } from "react";
 import {
   actionRefreshZkWatchFromSubiekt,
   actionRestoreZkWatch,
@@ -70,7 +70,8 @@ export function ZkWatchCard({
   const [refreshing, setRefreshing] = useState(false);
   const [linesOpen, setLinesOpen] = useState(false);
   const [focusNoteOnOpen, setFocusNoteOnOpen] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<{ watchId: string; message: string } | null>(null);
+  const displayError = error?.watchId === watch.id ? error.message : null;
 
   const lineViews = buildZkWatchLineViews(watch);
   const linesShort = formatZkLinesShort(lineViews);
@@ -147,10 +148,6 @@ export function ZkWatchCard({
     openLinesModal(true);
   }
 
-  useEffect(() => {
-    setError(null);
-  }, [watch.id]);
-
   async function markClosed() {
     if (!canEdit || closing) return;
     setClosing(true);
@@ -159,7 +156,10 @@ export function ZkWatchCard({
       await actionCloseZkWatch(watch.id);
       onClosed?.();
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Nie udało się zamknąć sprawy.");
+      setError({
+        watchId: watch.id,
+        message: e instanceof Error ? e.message : "Nie udało się zamknąć sprawy.",
+      });
     } finally {
       setClosing(false);
     }
@@ -173,7 +173,10 @@ export function ZkWatchCard({
       const { watch: restored } = await actionRestoreZkWatch(watch.id);
       onRestored?.(restored);
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Nie udało się przywrócić ZK.");
+      setError({
+        watchId: watch.id,
+        message: e instanceof Error ? e.message : "Nie udało się przywrócić ZK.",
+      });
     } finally {
       setRestoring(false);
     }
@@ -187,7 +190,10 @@ export function ZkWatchCard({
       const { watch: refreshed } = await actionRefreshZkWatchFromSubiekt(watch.id);
       onRefreshed?.(refreshed);
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Nie udało się odświeżyć danych z Subiekta.");
+      setError({
+        watchId: watch.id,
+        message: e instanceof Error ? e.message : "Nie udało się odświeżyć danych z Subiekta.",
+      });
     } finally {
       setRefreshing(false);
     }
@@ -204,7 +210,10 @@ export function ZkWatchCard({
       await actionDeleteArchivedZkWatch(watch.id);
       onDeleted?.();
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Nie udało się usunąć wpisu.");
+      setError({
+        watchId: watch.id,
+        message: e instanceof Error ? e.message : "Nie udało się usunąć wpisu.",
+      });
     } finally {
       setDeleting(false);
     }
@@ -362,8 +371,8 @@ export function ZkWatchCard({
         </div>
       ) : null}
 
-      {error ? (
-        <p className="border-t border-slate-100 px-3 py-1.5 text-xs text-red-600">{error}</p>
+      {displayError ? (
+        <p className="border-t border-slate-100 px-3 py-1.5 text-xs text-red-600">{displayError}</p>
       ) : null}
 
       <ZkWatchLinesModal

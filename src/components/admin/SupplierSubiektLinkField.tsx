@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState, useTransition } from "react";
+import { useCallback, useEffect, useState, useTransition } from "react";
 import {
   actionSubiektLookupSupplier,
   actionSetSupplierSubiektKhId,
@@ -35,32 +35,29 @@ export function SupplierSubiektLinkField({
   const [feedback, setFeedback] = useState<SubiektFeedback | null>(null);
   const [linkedLabel, setLinkedLabel] = useState<string | null>(null);
   const [primaryLabel, setPrimaryLabel] = useState<string | null>(null);
+  const [resolvedPrimaryKhId, setResolvedPrimaryKhId] = useState<number | null>(null);
   const [aliases, setAliases] = useState<SupplierSubiektKhAliasRow[]>([]);
   const [pending, start] = useTransition();
-  const primaryLabelKhRef = useRef<number | null>(null);
 
   useEffect(() => {
-    if (subiektKhId == null) {
-      primaryLabelKhRef.current = null;
-      setPrimaryLabel(null);
-      return;
-    }
-    if (linkedLabel) {
-      primaryLabelKhRef.current = subiektKhId;
-      setPrimaryLabel(linkedLabel);
-      return;
-    }
-    if (primaryLabelKhRef.current === subiektKhId) return;
-    primaryLabelKhRef.current = subiektKhId;
+    if (subiektKhId == null || linkedLabel) return;
+    if (resolvedPrimaryKhId === subiektKhId) return;
     start(async () => {
       try {
         const labels = await actionResolveKontrahentLabels([subiektKhId]);
         setPrimaryLabel(labels[subiektKhId] ?? null);
+        setResolvedPrimaryKhId(subiektKhId);
       } catch {
         setPrimaryLabel(null);
+        setResolvedPrimaryKhId(subiektKhId);
       }
     });
-  }, [subiektKhId, linkedLabel]);
+  }, [subiektKhId, linkedLabel, resolvedPrimaryKhId]);
+
+  if (subiektKhId == null && (primaryLabel !== null || resolvedPrimaryKhId !== null)) {
+    setPrimaryLabel(null);
+    setResolvedPrimaryKhId(null);
+  }
 
   const reloadAliases = useCallback(() => {
     start(async () => {
@@ -166,7 +163,7 @@ export function SupplierSubiektLinkField({
         <p className="text-sm text-indigo-800">
           Główne:{" "}
           <span className="font-medium">
-            {kontrahentDisplayName(primaryLabel ?? linkedLabel, subiektKhId)}
+            {kontrahentDisplayName(linkedLabel ?? primaryLabel, subiektKhId)}
           </span>
           <span className="mt-0.5 block text-[11px] font-normal text-indigo-600/90">
             id {subiektKhId}

@@ -126,25 +126,40 @@ export function EditIndividualRequestModal({
     [requestKind, informacjaPath]
   );
 
-  useEffect(() => {
-    if (!open || !initial) return;
-    setSupplierId(initial.supplierId);
-    setSalesPersonId(initial.salesPersonId);
-    setRequestKind(initial.requestKind);
-    setInformacjaPath(initial.informacjaPath ?? DEFAULT_INFORMACJA_FLOW_PATH);
-    setLines(
-      initial.lines.length > 0
-        ? initial.lines.map((l) => ({ ...l }))
-        : [newProductLine()]
-    );
-    setValidationAttempted(false);
-    setFormNotice(null);
-    setSupplierSubiektFeedback(null);
-    setSupplierPickerFeedbacks([]);
-    setProductLineFeedback(null);
-    setConfigFeedback(null);
-    setResolvingSupplier(false);
-  }, [open, initial]);
+  const resetKey =
+    open && initial
+      ? [
+          initial.supplierId,
+          initial.salesPersonId,
+          initial.requestKind,
+          initial.informacjaPath ?? DEFAULT_INFORMACJA_FLOW_PATH,
+          ...initial.lines.map((line) => line.id),
+        ].join("\0")
+      : "";
+  const [appliedResetKey, setAppliedResetKey] = useState("");
+  if (open && initial) {
+    if (resetKey !== appliedResetKey) {
+      setAppliedResetKey(resetKey);
+      setSupplierId(initial.supplierId);
+      setSalesPersonId(initial.salesPersonId);
+      setRequestKind(initial.requestKind);
+      setInformacjaPath(initial.informacjaPath ?? DEFAULT_INFORMACJA_FLOW_PATH);
+      setLines(
+        initial.lines.length > 0
+          ? initial.lines.map((line) => ({ ...line }))
+          : [newProductLine()]
+      );
+      setValidationAttempted(false);
+      setFormNotice(null);
+      setSupplierSubiektFeedback(null);
+      setSupplierPickerFeedbacks([]);
+      setProductLineFeedback(null);
+      setConfigFeedback(null);
+      setResolvingSupplier(false);
+    }
+  } else if (appliedResetKey) {
+    setAppliedResetKey("");
+  }
 
   const saveRef = useRef<() => void>(() => {});
   const addLineRef = useRef<() => void>(() => {});
@@ -244,8 +259,10 @@ export function EditIndividualRequestModal({
       "Zapisywanie prośby…"
     );
   };
-  saveRef.current = save;
-  addLineRef.current = () => setLines((prev) => appendProductLine(prev));
+  useEffect(() => {
+    saveRef.current = save;
+    addLineRef.current = () => setLines((prev) => appendProductLine(prev));
+  });
 
   useEffect(() => {
     if (!open) return;

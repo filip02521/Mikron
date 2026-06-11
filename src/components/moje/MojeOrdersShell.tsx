@@ -1,8 +1,7 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useMemo } from "react";
 import type { MyOrderRow } from "@/lib/orders/my-order-presenter";
-import { mojePresentedSignature } from "@/lib/orders/moje-presented-sync";
 import { MojeOrdersView } from "@/components/moje/MojeOrdersView";
 import { useSalesOnboardingDemo } from "@/components/sales/SalesOnboardingContext";
 import {
@@ -41,26 +40,7 @@ export function MojeOrdersShell({
     [salesPersonId]
   );
   const effectiveInitial = tourDemo ? demoPresented : initial;
-  const [presented, setPresented] = useState(effectiveInitial);
-  const inboxSignature = useMemo(
-    () => mojePresentedSignature(effectiveInitial),
-    [effectiveInitial]
-  );
-  const inboxSignatureRef = useRef(inboxSignature);
-
-  useEffect(() => {
-    setPresented(tourDemo ? demoPresented : initial);
-  }, [demoPresented, initial, tourDemo]);
-
-  // Po router.refresh() (anulowanie, odbiór, edycja) RSC podaje nowe `initial`,
-  // a lokalny stan listy musi się zsynchronizować — inaczej widać stare wiersze.
-  useEffect(() => {
-    if (tourDemo) return;
-    const prev = inboxSignatureRef.current;
-    inboxSignatureRef.current = inboxSignature;
-    if (prev === inboxSignature) return;
-    setPresented(initial);
-  }, [inboxSignature, initial, tourDemo]);
+  const presented = effectiveInitial;
 
   return (
     <MojeOrdersView

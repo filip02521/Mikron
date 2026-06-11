@@ -50,8 +50,6 @@ export function describeVerificationGaps(order: IndividualOrder): string {
 /** Krótkie etykiety braków — lista kolejki w weryfikacji. */
 export function verificationQueueMissingLabels(order: IndividualOrder): string[] {
   const draft = orderToDraft(order);
-  const labels: string[] = [];
-
   return requestDraftMissingLabels(draft);
 }
 

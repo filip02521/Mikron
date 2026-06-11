@@ -74,9 +74,10 @@ export function LoginForm({
     ? manualEmail.trim().toLowerCase()
     : (selectedAccount?.email ?? "");
 
-  useEffect(() => {
-    if (useManualEmail || accounts.length === 0) return;
-
+  const restoreKey = `${useManualEmail}\0${accounts.map((account) => account.id).join(",")}`;
+  const [appliedRestoreKey, setAppliedRestoreKey] = useState("");
+  if (!useManualEmail && accounts.length > 0 && restoreKey !== appliedRestoreKey) {
+    setAppliedRestoreKey(restoreKey);
     const restored = resolveLoginLastAccountId(accounts);
     if (restored) {
       setSelectedAccountId(restored);
@@ -85,7 +86,7 @@ export function LoginForm({
       setSelectedAccountId(null);
       setShowAccountPicker(true);
     }
-  }, [accounts, useManualEmail]);
+  }
 
   useEffect(() => {
     if (!quickLoginActive) return;

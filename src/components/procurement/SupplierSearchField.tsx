@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useId, useMemo, useRef, useState, type KeyboardEvent } from "react";
+import { useClientHydrated } from "@/lib/client/use-client-hydrated";
 import { locationLabel } from "@/lib/display-labels";
 import { panelToolbarSearchInputClass } from "@/lib/ui/ontime-theme";
 import {
@@ -32,7 +33,7 @@ export function SupplierSearchField({
   const [query, setQuery] = useState("");
   const [open, setOpen] = useState(false);
   const [highlightedIndex, setHighlightedIndex] = useState(0);
-  const [mounted, setMounted] = useState(false);
+  const mounted = useClientHydrated();
   const ref = useRef<HTMLDivElement>(null);
   const typeaheadId = useId();
   const listboxId = `${typeaheadId}-listbox`;
@@ -45,15 +46,14 @@ export function SupplierSearchField({
       .slice(0, 12);
   }, [query, suppliers]);
 
-  const listVisible = open && filtered.length > 0;
-
-  useEffect(() => {
-    setMounted(true);
-  }, []);
-
-  useEffect(() => {
+  const filteredKey = filtered.map((supplier) => supplier.id).join("\0");
+  const [appliedFilteredKey, setAppliedFilteredKey] = useState(filteredKey);
+  if (filteredKey !== appliedFilteredKey) {
+    setAppliedFilteredKey(filteredKey);
     setHighlightedIndex(0);
-  }, [filtered]);
+  }
+
+  const listVisible = open && filtered.length > 0;
 
   useEffect(() => {
     const onDoc = (e: MouseEvent) => {

@@ -78,7 +78,7 @@ export function isBusinessDay(date: Date): boolean {
  * Sobota/niedziela/święto → kolejny dzień roboczy.
  */
 export function snapToBusinessDay(date: Date): Date {
-  let result = toDateOnly(date);
+  const result = toDateOnly(date);
   let guard = 0;
   while (!isBusinessDay(result) && guard < 30) {
     result.setDate(result.getDate() + 1);

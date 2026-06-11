@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition, useCallback, useEffect, useMemo, useRef } from "react";
+import { useState, useTransition, useEffect, useMemo, useRef } from "react";
 import { useRouter } from "next/navigation";
 import type { IndividualOrder } from "@/types/database";
 import {
@@ -92,18 +92,17 @@ export function VerificationWorkspace({
   );
   const [activeId, setActiveId] = useState<string | null>(orders[0]?.id ?? null);
   const [validationAttempted, setValidationAttempted] = useState(false);
+  const resolvedActiveId = useMemo(() => {
+    if (!orders.length) return null;
+    if (orders.some((order) => order.id === activeId)) return activeId;
+    return orders[0]?.id ?? null;
+  }, [orders, activeId]);
 
   useEffect(() => {
-    if (!orders.length) {
-      onQueueEmpty?.();
-      return;
-    }
-    if (!orders.some((o) => o.id === activeId)) {
-      setActiveId(orders[0]?.id ?? null);
-    }
-  }, [orders, activeId, onQueueEmpty]);
+    if (!orders.length) onQueueEmpty?.();
+  }, [orders.length, onQueueEmpty]);
 
-  const active = orders.find((o) => o.id === activeId) ?? null;
+  const active = orders.find((order) => order.id === resolvedActiveId) ?? null;
 
   const [supplierSubiektFeedback, setSupplierSubiektFeedback] =
     useState<SubiektFeedback | null>(null);
@@ -117,82 +116,85 @@ export function VerificationWorkspace({
   const [resolvingSupplier, setResolvingSupplier] = useState(false);
 
   const supplierRefs = useMemo(() => toAppSupplierRefs(suppliers), [suppliers]);
-  const loadedOrderIdRef = useRef<string | null>(null);
-  const catalogLookupGenRef = useRef(0);
 
   const [form, setForm] = useState(() =>
     orders[0] ? orderToVerificationForm(orders[0]) : emptyVerificationForm()
   );
+  const [loadedOrderId, setLoadedOrderId] = useState<string | null>(null);
 
-  const resetSubiektFeedbacks = useCallback(() => {
-    setSupplierSubiektFeedback(null);
-    setSupplierPickerFeedbacks([]);
-    setProductLineFeedback(null);
-    setConfigFeedback(null);
-    setResolvingSupplier(false);
-  }, []);
-
-  const applyOrder = useCallback(
-    (o: IndividualOrder) => {
-      catalogLookupGenRef.current += 1;
-      const lookupGen = catalogLookupGenRef.current;
+  if (resolvedActiveId && resolvedActiveId !== loadedOrderId) {
+    setLoadedOrderId(resolvedActiveId);
+    const order = orders.find((item) => item.id === resolvedActiveId);
+    if (order) {
       setValidationAttempted(false);
-      resetSubiektFeedbacks();
-      setForm(orderToVerificationForm(o));
+      setSupplierSubiektFeedback(null);
+      setSupplierPickerFeedbacks([]);
+      setProductLineFeedback(null);
+      setConfigFeedback(null);
+      setResolvingSupplier(shouldLookupSupplierFromCatalog(order));
+      setForm(orderToVerificationForm(order));
+    }
+  }
 
-      if (shouldLookupSupplierFromCatalog(o)) {
-        const twId = o.subiekt_tw_id!;
-        setResolvingSupplier(true);
-        void actionLookupSupplierFromCatalogTwId(twId, supplierRefs).then((res) => {
-          if (lookupGen !== catalogLookupGenRef.current) return;
-          setResolvingSupplier(false);
-          if (res.ok) {
-            setForm((f) => ({ ...f, supplierId: res.supplierId }));
-            setSupplierSubiektFeedback(null);
-          } else {
-            setSupplierSubiektFeedback(res.feedback);
-          }
-        });
+  useEffect(() => {
+    if (!loadedOrderId) return;
+    const order = orders.find((item) => item.id === loadedOrderId);
+    if (!order || !shouldLookupSupplierFromCatalog(order)) return;
+
+    const twId = order.subiekt_tw_id!;
+    let cancelled = false;
+
+    void actionLookupSupplierFromCatalogTwId(twId, supplierRefs).then((res) => {
+      if (cancelled) return;
+      setResolvingSupplier(false);
+      if (res.ok) {
+        setForm((currentForm) => ({ ...currentForm, supplierId: res.supplierId }));
+        setSupplierSubiektFeedback(null);
+      } else {
+        setSupplierSubiektFeedback(res.feedback);
       }
-    },
-    [resetSubiektFeedbacks, supplierRefs]
+    });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [loadedOrderId, orders, supplierRefs]);
+
+  const informacjaFlags = useMemo(
+    () =>
+      form.requestKind === "informacja" && active
+        ? resolveVerificationInformacjaFlags({
+            requestKind: "informacja",
+            informacjaPath: form.informacjaPath,
+            priorOrder: active,
+          })
+        : {
+            informacjaQueueViaDailyPanel: false,
+            informacjaStockOutReorder: false,
+          },
+    [active, form.informacjaPath, form.requestKind]
   );
 
-  useEffect(() => {
-    if (activeId && !orders.some((o) => o.id === activeId)) {
-      loadedOrderIdRef.current = null;
-      setActiveId(orders[0]?.id ?? null);
-    }
-  }, [orders, activeId]);
-
-  useEffect(() => {
-    if (!activeId || loadedOrderIdRef.current === activeId) return;
-    loadedOrderIdRef.current = activeId;
-    const o = orders.find((x) => x.id === activeId);
-    if (o) applyOrder(o);
-  }, [activeId, orders, applyOrder]);
-
-  const informacjaFlags =
-    form.requestKind === "informacja" && active
-      ? resolveVerificationInformacjaFlags({
-          requestKind: "informacja",
-          informacjaPath: form.informacjaPath,
-          priorOrder: active,
-        })
-      : {
-          informacjaQueueViaDailyPanel: false,
-          informacjaStockOutReorder: false,
-        };
-
-  const draft = {
-    supplierId: form.supplierId,
-    symbol: form.symbol,
-    mikranCode: form.mikranCode,
-    product: form.product,
-    quantity: form.quantity,
-    requestKind: form.requestKind,
-    ...informacjaFlags,
-  };
+  const draft = useMemo(
+    () => ({
+      supplierId: form.supplierId,
+      symbol: form.symbol,
+      mikranCode: form.mikranCode,
+      product: form.product,
+      quantity: form.quantity,
+      requestKind: form.requestKind,
+      ...informacjaFlags,
+    }),
+    [
+      form.mikranCode,
+      form.product,
+      form.quantity,
+      form.requestKind,
+      form.supplierId,
+      form.symbol,
+      informacjaFlags,
+    ]
+  );
   const assessment = assessRequestCompleteness(draft);
 
   const informacjaUi = verificationInformacjaUiForDraft({
@@ -276,17 +278,19 @@ export function VerificationWorkspace({
       }
     });
   };
-  saveRef.current = save;
+  useEffect(() => {
+    saveRef.current = save;
+  });
 
   const queueItems = useMemo((): VerificationQueueItemMeta[] => {
     return orders.map((o) => {
       const missing =
-        o.id === activeId
+        o.id === resolvedActiveId
           ? verificationDraftMissingLabels(draft)
           : verificationQueueMissingLabels(o);
       const pathUi = verificationInformacjaUiForOrder(o);
       const supplierLabel =
-        o.id === activeId && form.supplierId
+        o.id === resolvedActiveId && form.supplierId
           ? (suppliers.find((s) => s.id === form.supplierId)?.name ??
             o.supplier?.name ??
             "Brak dostawcy")
@@ -300,7 +304,7 @@ export function VerificationWorkspace({
         pathUi,
       };
     });
-  }, [orders, activeId, draft, form.supplierId, suppliers]);
+  }, [orders, resolvedActiveId, draft, form.supplierId, suppliers]);
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {

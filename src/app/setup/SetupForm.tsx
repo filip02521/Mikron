@@ -4,7 +4,6 @@ import { useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { useRouter } from "next/navigation";
 import { actionBootstrapAdmin } from "@/app/actions/setup";
-import { Button } from "@/components/ui/Button";
 import { Field, Input } from "@/components/ui/Field";
 import { Alert } from "@/components/ui/Alert";
 import { NewPasswordForm } from "@/components/auth/NewPasswordForm";

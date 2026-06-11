@@ -94,6 +94,12 @@ export function VacationsAdminClient({
   const router = useRouter();
   const { pending, pendingMessage, run } = useActionPending();
   const [rows, setRows] = useState(initialVacations);
+  const initialKey = initialVacations.map((row) => `${row.id}\0${row.start_date}`).join("\n");
+  const [appliedInitialKey, setAppliedInitialKey] = useState(initialKey);
+  if (initialKey !== appliedInitialKey) {
+    setAppliedInitialKey(initialKey);
+    setRows(initialVacations);
+  }
   const [toast, setToast] = useState<{ text: string; tone: "success" | "error" } | null>(
     null
   );
@@ -101,10 +107,6 @@ export function VacationsAdminClient({
   const [formOpen, setFormOpen] = useState(false);
   const [form, setForm] = useState<VacationAdminFormState>(emptyVacationAdminForm);
   const formRef = useLatest(form);
-
-  useEffect(() => {
-    setRows(initialVacations);
-  }, [initialVacations]);
 
   const resetForm = () => {
     setForm(emptyVacationAdminForm());

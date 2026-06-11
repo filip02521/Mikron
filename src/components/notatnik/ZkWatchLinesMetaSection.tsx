@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { actionUpdateZkWatchNote } from "@/app/actions/sales-notepad";
 import { Button } from "@/components/ui/Button";
 import { HelpMenuGlyph } from "@/components/ui/UiGlyphs";
@@ -44,11 +44,21 @@ export function ZkWatchLinesMetaSection({
   focusNote?: boolean;
   onSaved?: (watch: SalesZkWatch) => void;
 }) {
-  const [noteOpen, setNoteOpen] = useState(false);
+  const watchMetaKey = `${watch.id}\0${watch.note ?? ""}\0${focusNote}`;
+  const [appliedWatchMetaKey, setAppliedWatchMetaKey] = useState(watchMetaKey);
+  const [noteOpen, setNoteOpen] = useState(focusNote);
   const [noteDraft, setNoteDraft] = useState(watch.note ?? "");
   const [savedNote, setSavedNote] = useState(watch.note ?? "");
   const [savingNote, setSavingNote] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  if (watchMetaKey !== appliedWatchMetaKey) {
+    setAppliedWatchMetaKey(watchMetaKey);
+    setNoteDraft(watch.note ?? "");
+    setSavedNote(watch.note ?? "");
+    setNoteOpen(focusNote);
+    setError(null);
+  }
 
   const canEdit = !readOnly && !tourPreview && !archived;
   const clientContact = extractZkWatchClientContact(watch);
@@ -56,13 +66,6 @@ export function ZkWatchLinesMetaSection({
   const isRealizedInSubiekt = subiektStatus === "Zrealizowane";
   const issued = formatShortDate(watch.zk_issued_at);
   const subtitle = zkWatchSubtitle(watch, { omitLineSummary: true });
-
-  useEffect(() => {
-    setNoteDraft(watch.note ?? "");
-    setSavedNote(watch.note ?? "");
-    setNoteOpen(focusNote);
-    setError(null);
-  }, [watch, focusNote]);
 
   async function saveNote() {
     if (!canEdit || savingNote) return;

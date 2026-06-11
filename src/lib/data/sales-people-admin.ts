@@ -7,7 +7,6 @@ import {
 import { fetchAllAuthUsersLastSignIn } from "@/lib/data/users";
 import { formatPlDate } from "@/lib/display-labels";
 import {
-  isManagedSalesPersonEmail,
   isTeamSalesPerson,
 } from "@/lib/sales/sales-person-catalog";
 import { isFollowUpDue } from "@/lib/sales/notepad-follow-up";

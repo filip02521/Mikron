@@ -15,7 +15,8 @@ export function urgentGroupHeadingClassName(isOverdue = false) {
   );
 }
 
-export function urgentGroupDividerClassName(_isOverdue = false) {
+export function urgentGroupDividerClassName(isOverdue = false) {
+  void isOverdue;
   return "h-px flex-1 bg-slate-200";
 }
 

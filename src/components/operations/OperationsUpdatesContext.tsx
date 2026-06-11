@@ -75,6 +75,13 @@ export function OperationsUpdatesProvider({
   const [refreshGeneration, setRefreshGeneration] = useState(0);
   const [freshHighlightUntil, setFreshHighlightUntil] = useState(0);
   const syncingRef = useRef(false);
+  const versionKey = `${enabled}\0${initialVersion ?? ""}`;
+  const [appliedVersionKey, setAppliedVersionKey] = useState("");
+  if (enabled && initialVersion != null && versionKey !== appliedVersionKey) {
+    setAppliedVersionKey(versionKey);
+    setBaseline(initialVersion);
+    setLatest(initialVersion);
+  }
 
   const setAutoRefresh = useCallback((value: boolean) => {
     autoRefreshStore.setValue(value);
@@ -115,15 +122,11 @@ export function OperationsUpdatesProvider({
 
   useEffect(() => {
     if (!enabled) return;
-    void poll();
+    const timer = window.setTimeout(() => {
+      void poll();
+    }, 0);
+    return () => window.clearTimeout(timer);
   }, [enabled, poll, pathname]);
-
-  useEffect(() => {
-    if (!enabled || initialVersion == null) return;
-    setBaseline(initialVersion);
-    setLatest(initialVersion);
-    setLastSyncedAt(Date.now());
-  }, [enabled, initialVersion]);
 
   useEffect(() => {
     if (!enabled) return;

@@ -249,13 +249,21 @@ async function lookupSupplierFromCatalogTwId(
     .eq("subiekt_tw_id", twId);
   if (error) throw new Error(error.message);
 
-  const links = (linksRaw ?? []).map((row: any) => ({
-    supplierId: String(row.supplier_id),
-    orderCount: Number(row.order_count ?? 0),
-    lastSource: (row.last_source as string | null) ?? null,
-    supplierName:
-      row?.suppliers?.name != null ? String(row.suppliers.name) : "Dostawca",
-  }));
+  const links = (linksRaw ?? []).map((row) => {
+    const supplierRow = row as {
+      supplier_id: string | number;
+      order_count?: number | null;
+      last_source?: string | null;
+      suppliers?: { name?: string | null } | null;
+    };
+    return {
+      supplierId: String(supplierRow.supplier_id),
+      orderCount: Number(supplierRow.order_count ?? 0),
+      lastSource: (supplierRow.last_source as string | null) ?? null,
+      supplierName:
+        supplierRow.suppliers?.name != null ? String(supplierRow.suppliers.name) : "Dostawca",
+    };
+  });
 
   if (!links.length) {
     return {
@@ -544,7 +552,7 @@ export async function actionSubiektLookupSupplier(
       ]);
 
       for (const row of [...(suppliersRes.data ?? []), ...(kontrahenciRes.data ?? [])]) {
-        const khId = Number((row as any).kh_Id);
+        const khId = Number(row.kh_Id);
         if (Number.isFinite(khId)) {
           if (seenKh.has(khId)) continue;
           seenKh.add(khId);

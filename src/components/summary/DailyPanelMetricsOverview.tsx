@@ -86,7 +86,6 @@ function buildMetricsSummary(summary: DailyInboxSummary): string {
 
 export function DailyPanelMetricsOverview({
   summary,
-  urgentTotal,
   onOpenOnDemand,
   urgentVacationCount,
   verificationCount = 0,

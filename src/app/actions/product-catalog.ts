@@ -485,13 +485,14 @@ export async function actionStartZdImportSupplierJob(input: {
     .maybeSingle();
   if (error) throw new Error(error.message);
   if (!data) throw new Error("Nie znaleziono dostawcy.");
-  const khId = Number((data as any).subiekt_kh_id);
+  const supplier = data as { id: string; name: string | null; subiekt_kh_id: number | null };
+  const khId = Number(supplier.subiekt_kh_id);
   if (!Number.isFinite(khId) || khId <= 0) {
     throw new Error("Dostawca nie ma powiązania z Subiektem (subiekt_kh_id).");
   }
   return startZdImportForSupplier({
-    supplierId: String((data as any).id),
-    supplierName: String((data as any).name ?? "Dostawca"),
+    supplierId: String(supplier.id),
+    supplierName: String(supplier.name ?? "Dostawca"),
     subiektKhId: khId,
     monthsBack: input.monthsBack ?? 60,
     batchDocs: 3,

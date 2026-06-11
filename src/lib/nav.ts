@@ -1,5 +1,5 @@
 import type { UserRole } from "@/types/database";
-import { canManageSalesTeam, isSalesAccount, isSalesManager } from "@/lib/auth-roles";
+import { isSalesManager } from "@/lib/auth-roles";
 import { salesManagerNavTeamDescriptions } from "@/lib/sales/team-ui";
 import { supplierHubPaths } from "@/lib/supplier-hub";
 

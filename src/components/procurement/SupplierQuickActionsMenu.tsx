@@ -13,7 +13,7 @@ import type { DailyPanelRunFn } from "@/components/summary/useDailyPanelRunner";
 import type { SupplierLocation } from "@/types/database";
 import { computeAnchoredDropdownPosition } from "@/lib/ui/dropdown-anchor";
 
-function useMenuAnchor() {
+function useMenuAnchor(align: "start" | "end") {
   const anchorRef = useRef<HTMLDivElement>(null);
   const panelRef = useRef<HTMLDivElement>(null);
   const [pos, setPos] = useState<{
@@ -27,11 +27,11 @@ function useMenuAnchor() {
     if (!el) return;
     const r = el.getBoundingClientRect();
     const menuHeight = panelRef.current?.offsetHeight ?? 220;
-    const { top, left, maxHeight } = computeAnchoredDropdownPosition(r, menuHeight, {
+    const { top, left: endLeft, maxHeight } = computeAnchoredDropdownPosition(r, menuHeight, {
       minWidth: 200,
     });
-    setPos({ top, left, maxHeight });
-  }, []);
+    setPos({ top, left: align === "end" ? endLeft : r.left, maxHeight });
+  }, [align]);
 
   return { anchorRef, panelRef, pos, update, clear: () => setPos(null) };
 }
@@ -67,7 +67,7 @@ export function SupplierQuickActionsMenu({
 }) {
   const scopeOpt = runScope ? { scope: runScope } : undefined;
   const [open, setOpen] = useState(false);
-  const { anchorRef, panelRef, pos, update, clear } = useMenuAnchor();
+  const { anchorRef, panelRef, pos, update, clear } = useMenuAnchor(align);
   const scheduleHref = `/lokalizacje/${location}`;
 
   const close = useCallback(() => {
@@ -112,10 +112,7 @@ export function SupplierQuickActionsMenu({
         className="fixed z-[100] min-w-[200px] overflow-y-auto overscroll-y-contain rounded-md border border-slate-200 bg-white py-1 shadow-lg"
         style={{
           top: pos.top,
-          left:
-            align === "end"
-              ? pos.left
-              : (anchorRef.current?.getBoundingClientRect().left ?? pos.left),
+          left: pos.left,
           maxHeight: pos.maxHeight,
         }}
       >

@@ -40,19 +40,14 @@ export function LoginAccountPicker({
     [filtered, value]
   );
 
-  const [focusIndex, setFocusIndex] = useState(() =>
-    selectedIndex >= 0 ? selectedIndex : 0
-  );
-
-  useEffect(() => {
-    if (selectedIndex >= 0) {
-      setFocusIndex(selectedIndex);
-      return;
+  const [keyboardFocusIndex, setKeyboardFocusIndex] = useState(0);
+  const focusIndex = useMemo(() => {
+    if (selectedIndex >= 0) return selectedIndex;
+    if (keyboardFocusIndex >= filtered.length) {
+      return Math.max(0, filtered.length - 1);
     }
-    if (focusIndex >= filtered.length) {
-      setFocusIndex(Math.max(0, filtered.length - 1));
-    }
-  }, [filtered.length, focusIndex, selectedIndex]);
+    return keyboardFocusIndex;
+  }, [selectedIndex, keyboardFocusIndex, filtered.length]);
 
   useEffect(() => {
     if (!value || selectedIndex < 0) return;
@@ -67,7 +62,7 @@ export function LoginAccountPicker({
   const moveFocus = useCallback(
     (delta: number) => {
       if (!filtered.length) return;
-      setFocusIndex((current) => {
+      setKeyboardFocusIndex((current) => {
         const base = selectedIndex >= 0 ? selectedIndex : current;
         return (base + delta + filtered.length) % filtered.length;
       });
@@ -91,12 +86,12 @@ export function LoginAccountPicker({
       }
       if (event.key === "Home") {
         event.preventDefault();
-        setFocusIndex(0);
+        setKeyboardFocusIndex(0);
         return;
       }
       if (event.key === "End") {
         event.preventDefault();
-        setFocusIndex(filtered.length - 1);
+        setKeyboardFocusIndex(filtered.length - 1);
         return;
       }
       if (event.key === "Enter" || event.key === " ") {
@@ -185,7 +180,7 @@ export function LoginAccountPicker({
                   aria-selected={active}
                   disabled={disabled}
                   onClick={() => onChange(account.id)}
-                  onMouseEnter={() => setFocusIndex(index)}
+                  onMouseEnter={() => setKeyboardFocusIndex(index)}
                   className={loginAccountRowClass({ active, focused, disabled })}
                 >
                   <span className={loginAccountAvatarClass(active)} aria-hidden>

@@ -8,7 +8,6 @@ import {
   actionMarkInformacjaArrived,
   actionUpdateDelivered,
 } from "@/app/actions/admin";
-import { Button } from "@/components/ui/Button";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { DataTable, TableScroll } from "@/components/ui/DataTable";

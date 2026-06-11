@@ -53,7 +53,6 @@ async function main() {
   const nextI = headerIndex(h, "DATA KOLEJNEGO", "DATA KOLEJNA", "KOLEJNE");
   const shiftI = headerIndex(h, "PRZESUNIĘCIE", "PRZESUNIECIE");
   const stockI = headerIndex(h, "ZAPAS");
-  const vacI = headerIndex(h, "UWAGI URLOPOWE", "URLOP");
 
   const issues: Issue[] = [];
   let withOrder = 0;
@@ -61,7 +60,6 @@ async function main() {
   let withShift = 0;
   let onDemand = 0;
   let isoDates = 0;
-  let plDates = 0;
   let badDates = 0;
 
   const rows: {
@@ -89,13 +87,12 @@ async function main() {
     if (orderRaw && !order) {
       badDates++;
       issues.push({ row: i + 1, supplier: name, kind: "data_zamówienia", detail: orderRaw });
-    } else if (orderRaw && orderRaw.includes("-") && !orderRaw.startsWith("20")) plDates++;
-    else if (order) isoDates++;
+    } else if (order) isoDates++;
 
     if (nextRaw && !next) {
       badDates++;
       issues.push({ row: i + 1, supplier: name, kind: "data_kolejnego", detail: nextRaw });
-    } else if (nextRaw && nextRaw.includes("-") && !nextRaw.startsWith("20")) plDates++;
+    }
 
     if (shiftRaw && !shift) {
       badDates++;
@@ -172,8 +169,8 @@ async function main() {
 
     const list = suppliers ?? [];
     let matched = 0;
-    let missing: string[] = [];
-    let intervalMismatch: string[] = [];
+    const missing: string[] = [];
+    const intervalMismatch: string[] = [];
 
     for (const r of rows) {
       const id = matchSupplierId(r.name, list);

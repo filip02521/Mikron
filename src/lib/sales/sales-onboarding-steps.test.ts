@@ -1,7 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
   getSalesOnboardingSteps,
-  isManagerOnlyOnboardingStep,
   MANAGER_ONLY_ONBOARDING_STEP_IDS,
   salesOnboardingStepCount,
 } from "@/lib/sales/sales-onboarding-steps";

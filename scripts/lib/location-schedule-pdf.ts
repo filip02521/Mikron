@@ -1,5 +1,5 @@
 import { readFileSync } from "fs";
-import { parseInterval, parseIntervalWeeks } from "../../src/lib/orders/dates";
+import { parseInterval } from "../../src/lib/orders/dates";
 
 export type LocationScheduleRow = {
   name: string;

@@ -10,6 +10,7 @@ import {
 } from "react";
 import { createPortal } from "react-dom";
 import { IconColorLegendSample, IconHelpCircle } from "@/components/icons/StrokeIcons";
+import { useClientHydrated } from "@/lib/client/use-client-hydrated";
 import { cn } from "@/lib/cn";
 
 type PanelPosition = { top: number; left: number };
@@ -39,18 +40,13 @@ export function HelpPopover({
   buttonClassName?: string;
 }) {
   const [open, setOpen] = useState(false);
-  const [mounted, setMounted] = useState(false);
+  const mounted = useClientHydrated();
   const [panelPos, setPanelPos] = useState<PanelPosition | null>(null);
   const rootRef = useRef<HTMLDivElement>(null);
   const triggerRef = useRef<HTMLButtonElement>(null);
   const panelRef = useRef<HTMLDivElement>(null);
   const generatedId = useId();
-  /** useId bywa niespójny między SSR a klientem przy różnej liczbie instancji w drzewie — ustawiamy po mount. */
   const panelId = mounted ? generatedId : undefined;
-
-  useEffect(() => {
-    setMounted(true);
-  }, []);
 
   useEffect(() => {
     if (!open) return;
@@ -94,10 +90,7 @@ export function HelpPopover({
   };
 
   useLayoutEffect(() => {
-    if (!open) {
-      setPanelPos(null);
-      return;
-    }
+    if (!open) return;
     updatePosition();
     const raf = requestAnimationFrame(updatePosition);
     window.addEventListener("resize", updatePosition);

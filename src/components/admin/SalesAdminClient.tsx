@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useEffect, useMemo, useState, useTransition, useCallback } from "react";
+import { useMemo, useState, useTransition, useCallback } from "react";
 import type { SalesPersonAdminRow } from "@/lib/data/sales-people-admin";
 import type { SalesGroupRow } from "@/lib/data/sales-groups";
 import {
@@ -46,9 +46,12 @@ export function SalesAdminClient({
 }) {
   const router = useRouter();
   const [rows, setRows] = useState(initial);
-  useEffect(() => {
+  const initialKey = initial.map((row) => `${row.id}\0${row.email}\0${row.groupId ?? ""}`).join("\n");
+  const [appliedInitialKey, setAppliedInitialKey] = useState(initialKey);
+  if (initialKey !== appliedInitialKey) {
+    setAppliedInitialKey(initialKey);
     setRows(initial);
-  }, [initial]);
+  }
   const [pending, start] = useTransition();
   const [toast, setToast] = useState<{ text: string; tone: "success" | "error" } | null>(
     null

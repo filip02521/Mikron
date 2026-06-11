@@ -6,6 +6,7 @@ export function zkWatchMonthGroupsSignature(groups: ZkWatchMonthGroup[]): string
 
 /** Domyślnie wszystkie miesiące rozwinięte. */
 export function defaultCollapsedZkMonthKeys(_groups: ZkWatchMonthGroup[]): Set<string> {
+  void _groups;
   return new Set();
 }
 
@@ -24,6 +25,7 @@ export function toggleZkMonthGroupCollapsed(
 }
 
 export function expandAllZkMonthGroups(_groups: ZkWatchMonthGroup[]): Set<string> {
+  void _groups;
   return new Set();
 }
 

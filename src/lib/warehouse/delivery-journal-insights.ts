@@ -1,8 +1,7 @@
-import { endOfMonth, startOfMonth, startOfWeek, subDays } from "date-fns";
+import { startOfMonth, startOfWeek, subDays } from "date-fns";
 import { formatDateString, parseDateOnly } from "@/lib/orders/dates";
 import {
   assertJournalDateReadable,
-  fetchDeliveryReceiptsForDate,
   type WarehouseDeliveryReceipt,
 } from "@/lib/warehouse/delivery-receipts";
 import { createAdminClient } from "@/lib/supabase/admin";
@@ -163,7 +162,6 @@ export async function summarizeDeliveryReceiptsRange(
 /** Szybkie podsumowanie jednego dnia (bez filtrów dodatkowych). */
 export async function summarizeDeliveryDay(dateKey: string) {
   assertJournalDateReadable(dateKey);
-  const rows = await fetchDeliveryReceiptsForDate(dateKey);
   return summarizeDeliveryReceiptsRange({
     dateFrom: dateKey,
     dateTo: dateKey,

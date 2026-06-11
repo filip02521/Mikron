@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { Button } from "@/components/ui/Button";
 import { SubiektClientNameField } from "@/components/subiekt/SubiektClientNameField";
 import {
@@ -26,17 +26,6 @@ export function SalesClientNameEditor({
   const [draftName, setDraftName] = useState(value ?? "");
   const [draftKhId, setDraftKhId] = useState<number | null>(clientKhId ?? null);
   const [saving, setSaving] = useState(false);
-
-  useEffect(() => {
-    if (openOnMount) setEditing(true);
-  }, [openOnMount]);
-
-  useEffect(() => {
-    if (!editing) {
-      setDraftName(value ?? "");
-      setDraftKhId(clientKhId ?? null);
-    }
-  }, [value, clientKhId, editing]);
 
   const display = value?.trim() || null;
 

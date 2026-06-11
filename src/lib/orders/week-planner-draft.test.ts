@@ -26,7 +26,6 @@ function item(id: string, name: string): SummaryStandardItem {
 }
 
 function day(dateKey: string, items: SummaryStandardItem[]): WeekDayPlan {
-  const d = new Date(`${dateKey}T12:00:00`);
   return {
     dateKey,
     weekdayLabel: "Pon",

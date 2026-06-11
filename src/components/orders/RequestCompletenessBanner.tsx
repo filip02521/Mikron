@@ -15,7 +15,7 @@ export function RequestCompletenessBanner({
   draft,
   requestKind,
   forcedAssessment,
-  embedded = false,
+  embedded: _embedded = false,
   audience = "default",
 }: {
   draft: RequestDraft;
@@ -26,6 +26,7 @@ export function RequestCompletenessBanner({
   embedded?: boolean;
   audience?: "procurement" | "default";
 }) {
+  void _embedded;
   const assessment = useMemo(() => {
     if (forcedAssessment !== undefined) return forcedAssessment;
     if (!hasAnyProductHint(draft)) return null;

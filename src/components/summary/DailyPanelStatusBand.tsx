@@ -270,6 +270,8 @@ export function DailyPanelStatusBand({
   urgentVacationCount?: number;
   onOpenOnDemand?: () => void;
 }) {
+  const [mobileOpen, setMobileOpen] = useState(false);
+
   if (view !== "dzis") return null;
 
   const queueTotal =
@@ -287,7 +289,6 @@ export function DailyPanelStatusBand({
     Number(summary.forSomeoneGroupCount > 0) +
     Number(summary.todayCount > 0);
   const showQueueSteps = activeSectionCount >= 2;
-  const [mobileOpen, setMobileOpen] = useState(false);
 
   const progressHint = dayProgress.combined.hasWork
     ? dayProgress.combined.complete

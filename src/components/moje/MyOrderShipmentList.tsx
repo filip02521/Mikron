@@ -106,20 +106,26 @@ export function MyOrderShipmentList({
     setExpandedIds(new Set());
   }, []);
 
-  useEffect(() => {
-    if (!focusRowIds?.size) return;
-    setExpandedIds((prev) => {
-      const next = new Set(prev);
-      let changed = false;
-      for (const row of sortedRows) {
-        if (focusRowIds.has(row.id) && !next.has(row.id)) {
-          next.add(row.id);
-          changed = true;
+  const focusRowIdsKey = focusRowIds?.size
+    ? [...focusRowIds].sort().join("\0")
+    : "";
+  const [appliedFocusRowIdsKey, setAppliedFocusRowIdsKey] = useState(focusRowIdsKey);
+  if (focusRowIdsKey !== appliedFocusRowIdsKey) {
+    setAppliedFocusRowIdsKey(focusRowIdsKey);
+    if (focusRowIds?.size) {
+      setExpandedIds((prev) => {
+        const next = new Set(prev);
+        let changed = false;
+        for (const row of sortedRows) {
+          if (focusRowIds.has(row.id) && !next.has(row.id)) {
+            next.add(row.id);
+            changed = true;
+          }
         }
-      }
-      return changed ? next : prev;
-    });
-  }, [focusRowIds, sortedRows]);
+        return changed ? next : prev;
+      });
+    }
+  }
 
   const searchActive = searchQueryTokens(searchQuery).length > 0;
   /** Stan rozwinięć sprzed pierwszego znaku wyszukiwania — przywracany po wyczyszczeniu. */
@@ -160,7 +166,7 @@ export function MyOrderShipmentList({
 
   const [pending, start] = useTransition();
   const { shelfNoticeOpen, requestShelfPickupNotice } = useMyOrderPickupShelfDialog();
-  const { reportUndo, clearUndo } = useMyOrderShipmentUndo();
+  const { reportUndo } = useMyOrderShipmentUndo();
   const ackPending = pending || shelfNoticeOpen;
   const [pendingMessage, setPendingMessage] = useState<string | null>(null);
   const [cancelConfirm, setCancelConfirm] = useState<CancelConfirmState | null>(

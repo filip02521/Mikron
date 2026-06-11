@@ -1,6 +1,6 @@
 "use client";
 
-import { Fragment, useCallback, useEffect, useMemo, useState, useTransition } from "react";
+import { Fragment, useCallback, useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { actionSetWarehouseShelf } from "@/app/actions/admin";
 import { usePreviewMutationBlocker } from "@/components/layout/usePreviewMutationBlocker";
@@ -159,6 +159,7 @@ export function WarehouseInventorySection({
   deliveryQueueOrders?: IndividualOrder[];
 }) {
   const router = useRouter();
+  const [toast, setToast] = useState<{ text: string; tone: "success" | "error" } | null>(null);
   const { blockIfReadOnly } = usePreviewMutationBlocker((text) =>
     setToast({ text, tone: "error" })
   );
@@ -168,7 +169,6 @@ export function WarehouseInventorySection({
   const [supplierFilter, setSupplierFilter] = useState("");
   const [sortMode, setSortMode] = useState<WarehouseInventorySortMode>("supplier");
   const [search, setSearch] = useState("");
-  const [toast, setToast] = useState<{ text: string; tone: "success" | "error" } | null>(null);
 
   const rows = useMemo(() => buildWarehouseInventoryRows(orders), [orders]);
   const supplierMetrics = useMemo(
@@ -182,14 +182,17 @@ export function WarehouseInventorySection({
     setFilter((prev) => (prev === next && next !== "all" ? "all" : next));
   }, []);
 
-  useEffect(() => {
+  const summaryKey = `${summary.staleWarn}:${summary.staleCritical}:${summary.unassignedShelf}`;
+  const [appliedSummaryKey, setAppliedSummaryKey] = useState(summaryKey);
+  if (summaryKey !== appliedSummaryKey) {
+    setAppliedSummaryKey(summaryKey);
     setFilter((prev) => {
       if (prev === "stale" && summary.staleWarn + summary.staleCritical === 0) return "all";
       if (prev === "critical" && summary.staleCritical === 0) return "all";
       if (prev === "unassigned" && summary.unassignedShelf === 0) return "all";
       return prev;
     });
-  }, [summary.staleWarn, summary.staleCritical, summary.unassignedShelf]);
+  }
 
   const sortedRows = useMemo(
     () => sortWarehouseInventoryRows(rows, sortMode),

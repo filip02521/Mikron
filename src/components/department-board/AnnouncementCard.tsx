@@ -36,6 +36,12 @@ export function AnnouncementCard({
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [locallyRead, setLocallyRead] = useState(!unread);
+  const threadSyncKey = `${thread.id}\0${unread}`;
+  const [storedThreadSyncKey, setStoredThreadSyncKey] = useState(threadSyncKey);
+  if (threadSyncKey !== storedThreadSyncKey) {
+    setStoredThreadSyncKey(threadSyncKey);
+    setLocallyRead(!unread);
+  }
   const author = authorLabelFromProfile(thread.author, "Zakupy");
   const cardTone = NOTE_COLOR_CARD[thread.color] ?? NOTE_COLOR_CARD.default;
   const colorSwatch = NOTE_COLOR_SWATCH[thread.color] ?? NOTE_COLOR_SWATCH.default;
@@ -49,7 +55,6 @@ export function AnnouncementCard({
 
   useEffect(() => {
     markedRef.current = false;
-    setLocallyRead(!unread);
   }, [thread.id, unread]);
 
   useEffect(() => {

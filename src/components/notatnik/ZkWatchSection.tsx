@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import {
   actionAddZkWatchByNumber,
   actionAddZkWatchBySubiektDokId,
@@ -11,7 +11,7 @@ import { validateZkQueryForSubmit } from "@/lib/subiekt/zk-search";
 import type { ZkSearchCandidate } from "@/lib/subiekt/resolve-zk-document";
 import { cn } from "@/lib/cn";
 import { salesTypography } from "@/lib/ui/ontime-theme";
-import { sortZkWatches, compareZkWatches } from "@/lib/sales/zk-watch-sort";
+import { compareZkWatches } from "@/lib/sales/zk-watch-sort";
 import {
   filterZkWatchesByClientQuery,
   type ZkWatchOrderHints,
@@ -81,11 +81,13 @@ export function ZkWatchSection({
     [watches, listFilter]
   );
 
-  useEffect(() => {
-    if (!focusWatchId) return;
-    if (!watches.some((watch) => watch.id === focusWatchId)) return;
-    if (listFilter.trim()) setListFilter("");
-  }, [focusWatchId, watches, listFilter]);
+  if (
+    focusWatchId &&
+    watches.some((watch) => watch.id === focusWatchId) &&
+    listFilter.trim()
+  ) {
+    setListFilter("");
+  }
 
   const sortedCandidates = useMemo(
     () =>

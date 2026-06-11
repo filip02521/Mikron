@@ -8,7 +8,6 @@ import { join, dirname } from "path";
 import { fileURLToPath } from "url";
 
 import {
-  getEmailDomain,
   getEmailFromAddress,
   isEmailConfigured,
 } from "../src/lib/env/email-config";

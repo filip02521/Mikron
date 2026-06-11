@@ -4,7 +4,6 @@ import { Alert } from "@/components/ui/Alert";
 import { FormStatusAlert } from "@/components/orders/FormStatusAlert";
 import { subiektFeedbackBody } from "@/lib/orders/consolidate-form-status";
 import type { SubiektFeedback } from "@/lib/subiekt/feedback";
-import { cn } from "@/lib/cn";
 
 /** Spójny komunikat błędu / informacji Subiekt (formularze, panel admina). */
 export function SubiektFeedbackAlert({

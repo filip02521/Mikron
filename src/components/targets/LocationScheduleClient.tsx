@@ -103,10 +103,13 @@ export function LocationScheduleClient({
   );
   const [savedId, setSavedId] = useState<string | null>(null);
 
-  useEffect(() => {
+  const urlFiltersKey = searchParams.toString();
+  const [appliedUrlFiltersKey, setAppliedUrlFiltersKey] = useState(urlFiltersKey);
+  if (urlFiltersKey !== appliedUrlFiltersKey) {
+    setAppliedUrlFiltersKey(urlFiltersKey);
     setSearch(searchParams.get("q")?.trim() ?? "");
     setFilter(parseTermFilter(searchParams.get("term")));
-  }, [searchParams]);
+  }
 
   useEffect(() => {
     const timer = window.setTimeout(() => {

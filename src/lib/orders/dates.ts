@@ -147,7 +147,7 @@ export function calculateBusinessDays(startDate: Date, endDate: Date): number {
   if (start >= end) return 0;
 
   let businessDays = 0;
-  let cursor = new Date(start);
+  const cursor = new Date(start);
   cursor.setDate(cursor.getDate() + 1);
   while (cursor <= end) {
     if (isBusinessDay(cursor)) businessDays++;
@@ -158,7 +158,7 @@ export function calculateBusinessDays(startDate: Date, endDate: Date): number {
 
 export function calculateBusinessDate(startDate: Date, businessDays: number): Date {
   if (businessDays <= 0) return snapToBusinessDay(startDate);
-  let result = toDateOnly(startDate);
+  const result = toDateOnly(startDate);
   let added = 0;
   while (added < businessDays) {
     result.setDate(result.getDate() + 1);

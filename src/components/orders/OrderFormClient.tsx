@@ -11,7 +11,7 @@ import { Button } from "@/components/ui/Button";
 import { Toast } from "@/components/ui/Toast";
 import { Field, Select } from "@/components/ui/Field";
 import { SupplierPickerField } from "@/components/orders/SupplierPickerField";
-import type { DeliveryStats, IndividualRequestKind, StatsMode } from "@/types/database";
+import type { DeliveryStats, IndividualRequestKind } from "@/types/database";
 import { RequestKindToggle } from "@/components/orders/RequestKindToggle";
 import { ProsbaFormSection } from "@/components/orders/ProsbaFormSection";
 import { prosbaHref } from "@/lib/orders/prosba-url";
@@ -234,14 +234,18 @@ export function OrderFormClient({
 
   const clearFormNotice = useCallback(() => setFormNotice(null), []);
 
-  useEffect(() => {
-    if (!tourDemo || !lockedId) return;
+  const tourFormKey = tourDemo && lockedId ? lockedId : "";
+  const [appliedTourFormKey, setAppliedTourFormKey] = useState("");
+  if (tourFormKey && tourFormKey !== appliedTourFormKey) {
+    setAppliedTourFormKey(tourFormKey);
     setGroups([buildOnboardingProsbaLines(lockedId)]);
     setRequestKind("zamowienie");
     setValidationAttempted(false);
     setFormNotice(null);
     setMsg(null);
-  }, [lockedId, tourDemo]);
+  } else if (!tourFormKey && appliedTourFormKey) {
+    setAppliedTourFormKey("");
+  }
 
   useEffect(() => {
     const zkWatchParam = searchParams.get("zkWatch")?.trim();
@@ -640,7 +644,9 @@ export function OrderFormClient({
       }
     });
   };
-  submitRef.current = submit;
+  useEffect(() => {
+    submitRef.current = submit;
+  });
 
   const addSalesProductLine = useCallback(() => {
     if (!singleGroup || !lockedSalesPerson) return;
@@ -764,7 +770,6 @@ export function OrderFormClient({
 
   if (singleGroup && lockedSalesPerson) {
     const group = salesProsbaSubmitState?.group ?? emptyGroup(lockedId, initialSupplierId ?? undefined);
-    const supplierId = "";
     const salesSubmitPlan = salesProsbaSubmitState?.salesSubmitPlan ?? null;
     const prosbaReadiness =
       salesProsbaSubmitState?.prosbaReadiness ??

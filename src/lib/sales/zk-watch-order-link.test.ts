@@ -108,7 +108,6 @@ describe("clientsMatchForZk", () => {
 describe("productMatchesZkLine + merge checks", () => {
   it("zaznacza pozycję ZK po dostawie prośby", () => {
     const w = watch({ id: "w1" });
-    const lineViews = w.subiekt_snapshot!.dok_Pozycja!;
     const line = {
       key: "ob:1",
       product: "Implant X",

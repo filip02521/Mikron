@@ -146,7 +146,7 @@ export function buildSummary(
   const standardLeft: SummaryStandardItem[] = allTarget
     .filter((t) => formatDateString(t.nextDate) <= todayStr)
     .map((t) => {
-      let note =
+      const note =
         getVacationMessage(t.vacationNote as never, t.nextDate) ||
         (formatDateString(t.nextDate) < todayStr
           ? `PO TERMINIE (${formatDateString(t.nextDate, "dd.MM")})`

@@ -92,23 +92,25 @@ export function ZkWatchGroupedList({
     defaultCollapsedZkMonthKeys(groups)
   );
   const [openModalWatchId, setOpenModalWatchId] = useState<string | null>(null);
+  const [appliedGroupsSignature, setAppliedGroupsSignature] = useState(groupsSignature);
+  const [appliedFocusWatchId, setAppliedFocusWatchId] = useState<string | null>(null);
 
-  useEffect(() => {
-    if (openModalWatchId && !watches.some((watch) => watch.id === openModalWatchId)) {
-      setOpenModalWatchId(null);
-    }
-  }, [openModalWatchId, watches]);
+  if (openModalWatchId && !watches.some((watch) => watch.id === openModalWatchId)) {
+    setOpenModalWatchId(null);
+  }
 
-  useEffect(() => {
+  if (groupsSignature !== appliedGroupsSignature) {
+    setAppliedGroupsSignature(groupsSignature);
     setCollapsedMonths((prev) => mergeZkMonthCollapseOnGroupsChange(prev, groups));
-  }, [groupsSignature, groups]);
+  }
 
-  useEffect(() => {
-    if (!focusWatchId) return;
+  if (focusWatchId && focusWatchId !== appliedFocusWatchId) {
     const monthKey = monthKeyForWatchInGroups(groups, focusWatchId);
-    if (!monthKey) return;
-    setCollapsedMonths((prev) => expandMonthGroupKey(prev, monthKey));
-  }, [focusWatchId, groups]);
+    if (monthKey) {
+      setAppliedFocusWatchId(focusWatchId);
+      setCollapsedMonths((prev) => expandMonthGroupKey(prev, monthKey));
+    }
+  }
 
   useEffect(() => {
     if (!focusWatchId) return;

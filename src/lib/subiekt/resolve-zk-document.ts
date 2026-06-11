@@ -4,7 +4,6 @@ import type { SubiektDocument } from "@/lib/subiekt/types";
 import {
   buildZkLineSummary,
   buildZkOrigNote,
-  normalizeZkQuery,
   parseSubiektDocDate,
   resolveZkClientLabel,
   toSubiektAmount,

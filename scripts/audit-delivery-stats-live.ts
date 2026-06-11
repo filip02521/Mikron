@@ -120,7 +120,6 @@ async function main() {
   }
 
   // Czy stats pochodzą z importu czy z live
-  const { data: statsRows } = await supabase.from("delivery_stats").select("updated_at").limit(500);
   const { count: orderCount } = await supabase
     .from("individual_orders")
     .select("id", { count: "exact", head: true })

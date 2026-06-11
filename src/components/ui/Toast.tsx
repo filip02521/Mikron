@@ -19,7 +19,9 @@ export function Toast({
 }) {
   const autoMs = durationMs ?? (action ? 12_000 : 4500);
   const onDismissRef = useRef(onDismiss);
-  onDismissRef.current = onDismiss;
+  useEffect(() => {
+    onDismissRef.current = onDismiss;
+  }, [onDismiss]);
 
   useEffect(() => {
     const t = setTimeout(() => onDismissRef.current(), autoMs);

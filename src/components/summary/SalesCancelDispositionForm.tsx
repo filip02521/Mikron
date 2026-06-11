@@ -27,7 +27,6 @@ export type SalesCancelDispositionFormProps = {
 export function SalesCancelDispositionForm({
   orderIds,
   personName,
-  supplierName,
   phase,
   lines,
   disabled = false,

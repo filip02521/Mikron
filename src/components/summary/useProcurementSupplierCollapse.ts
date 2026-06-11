@@ -15,33 +15,42 @@ export function useProcurementSupplierCollapse(
   blocks: ProcurementSupplierBlock[],
   forceExpandedSupplierIds: ReadonlySet<string> = new Set()
 ) {
-  const [manualOverrides, setManualOverrides] = useState<Map<string, boolean>>(
-    () => new Map()
-  );
-  const [hydrated, setHydrated] = useState(false);
+  const [manualOverrides, setManualOverrides] = useState<Map<string, boolean>>(() => new Map());
+  const [storageLoaded, setStorageLoaded] = useState(false);
 
-  useEffect(() => {
+  if (!storageLoaded && typeof window !== "undefined") {
+    setStorageLoaded(true);
     setManualOverrides(readProcurementSupplierCollapseOverrides());
-    setHydrated(true);
-  }, []);
+  }
 
-  useEffect(() => {
-    if (!hydrated) return;
-    const valid = new Set(blocks.map((b) => b.supplierId));
+  const validSupplierIds = useMemo(
+    () => new Set(blocks.map((block) => block.supplierId)),
+    [blocks]
+  );
+  const blocksKey = useMemo(
+    () => [...validSupplierIds].sort().join("\0"),
+    [validSupplierIds]
+  );
+  const [prunedBlocksKey, setPrunedBlocksKey] = useState(blocksKey);
+  if (storageLoaded && blocksKey !== prunedBlocksKey) {
+    setPrunedBlocksKey(blocksKey);
     setManualOverrides((prev) => {
-      const next = new Map([...prev].filter(([id]) => valid.has(id)));
+      const next = new Map([...prev].filter(([id]) => validSupplierIds.has(id)));
       return next.size === prev.size ? prev : next;
     });
-  }, [blocks, hydrated]);
+  }
 
-  useEffect(() => {
-    if (!hydrated) return;
-    writeProcurementSupplierCollapseOverrides(manualOverrides);
-  }, [manualOverrides, hydrated]);
-
-  /** Po „Nowa” utrzymuj rozwinięcie — nie zwijaj automatycznie po mark seen. */
-  useEffect(() => {
-    if (!hydrated || !forceExpandedSupplierIds.size) return;
+  const forceExpandedKey = useMemo(
+    () => [...forceExpandedSupplierIds].sort().join("\0"),
+    [forceExpandedSupplierIds]
+  );
+  const [appliedForceExpandedKey, setAppliedForceExpandedKey] = useState("");
+  if (
+    storageLoaded &&
+    forceExpandedKey &&
+    forceExpandedKey !== appliedForceExpandedKey
+  ) {
+    setAppliedForceExpandedKey(forceExpandedKey);
     setManualOverrides((prev) => {
       let changed = false;
       const next = new Map(prev);
@@ -53,7 +62,12 @@ export function useProcurementSupplierCollapse(
       }
       return changed ? next : prev;
     });
-  }, [forceExpandedSupplierIds, hydrated]);
+  }
+
+  useEffect(() => {
+    if (!storageLoaded) return;
+    writeProcurementSupplierCollapseOverrides(manualOverrides);
+  }, [manualOverrides, storageLoaded]);
 
   const collapsibleBlocks = useMemo(
     () => listCollapsibleProcurementBlocks(blocks),

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useId, useState } from "react";
+import { useId, useState } from "react";
 import { cn } from "@/lib/cn";
 import { controlFocusClass } from "@/lib/ui/ontime-theme";
 import { formatFollowUpLabel, isFollowUpDue } from "@/lib/sales/notepad-follow-up";
@@ -19,11 +19,13 @@ export function NoteFollowUpControl({
 }) {
   const inputId = useId();
   const [editing, setEditing] = useState(false);
-  const [draft, setDraft] = useState(value ?? "");
-
-  useEffect(() => {
-    setDraft(value ?? "");
-  }, [value]);
+  const valueKey = value ?? "";
+  const [draft, setDraft] = useState(valueKey);
+  const [appliedValueKey, setAppliedValueKey] = useState(valueKey);
+  if (!editing && valueKey !== appliedValueKey) {
+    setAppliedValueKey(valueKey);
+    setDraft(valueKey);
+  }
 
   const label = formatFollowUpLabel(value);
   const due = isFollowUpDue(value);

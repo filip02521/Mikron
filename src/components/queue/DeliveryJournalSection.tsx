@@ -373,6 +373,7 @@ export function DeliveryJournalSection({
   todayDateKey: string;
   isMagazynRole?: boolean;
 }) {
+  const [toast, setToast] = useState<{ text: string; tone: "success" | "error" } | null>(null);
   const { readOnly: previewReadOnly, blockIfReadOnly } = usePreviewMutationBlocker(
     (text) => setToast({ text, tone: "error" })
   );
@@ -384,9 +385,11 @@ export function DeliveryJournalSection({
   const canBrowseDates = !isMagazynRole;
   const isViewingToday = journal.date === todayDateKey;
   const [form, setForm] = useState<FormState>(EMPTY_FORM);
-  const [toast, setToast] = useState<{ text: string; tone: "success" | "error" } | null>(null);
   const [carrierHintLabel, setCarrierHintLabel] = useState<string | null>(null);
+  const [carrierHintForSupplierId, setCarrierHintForSupplierId] = useState<string | null>(null);
   const formPanelRef = useRef<HTMLDivElement>(null);
+  const visibleCarrierHint =
+    form.supplierId && carrierHintForSupplierId === form.supplierId ? carrierHintLabel : null;
 
   const loadJournal = useCallback((dateKey: string) => {
     start(async () => {
@@ -410,15 +413,12 @@ export function DeliveryJournalSection({
   }, [canBrowseDates, viewDate, todayDateKey, loadJournal]);
 
   useEffect(() => {
-    if (!form.supplierId) {
-      setCarrierHintLabel(null);
-      return;
-    }
+    if (!form.supplierId) return;
     let cancelled = false;
-    setCarrierHintLabel(null);
     void actionFetchCarrierHintForSupplier(form.supplierId).then((hint) => {
       if (cancelled) return;
       if (!hint) {
+        setCarrierHintForSupplierId(form.supplierId);
         setCarrierHintLabel(null);
         return;
       }
@@ -434,6 +434,7 @@ export function DeliveryJournalSection({
       }));
       const sourceLabel =
         hint.source === "default" ? "Z katalogu dostawcy" : "Z historii wpisów";
+      setCarrierHintForSupplierId(form.supplierId);
       setCarrierHintLabel(
         `${sourceLabel}: ${warehouseCarrierLabel(hint.carrier)} · ${warehouseShipmentFormLabel(hint.shipmentForm)}`
       );
@@ -678,7 +679,7 @@ export function DeliveryJournalSection({
             suppliers={suppliers}
             disabled={pending}
             onSubmitShortcut={submitNew}
-            carrierHintLabel={carrierHintLabel}
+            carrierHintLabel={visibleCarrierHint}
           />
           <div className="mt-3 flex flex-wrap items-center gap-2">
             <Button variant="primary" size="sm" disabled={pending} onClick={submitNew}>

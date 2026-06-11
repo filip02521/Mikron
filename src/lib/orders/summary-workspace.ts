@@ -440,7 +440,7 @@ export function buildSummaryWorkspace(
   const standardLeft: SummaryStandardItem[] = allTarget
     .filter((t) => formatDateString(t.nextDate) <= todayStr)
     .map((t) => {
-      let note =
+      const note =
         getVacationMessage(t.vacationNote as never, t.nextDate) ||
         (formatDateString(t.nextDate) < todayStr
           ? `PO TERMINIE (${formatDateString(t.nextDate, "dd.MM")})`
@@ -462,7 +462,7 @@ export function buildSummaryWorkspace(
   });
 
   let rightHeader: SummaryView["rightHeader"] = "ZAMÓWIENIA (TEN TYDZIEŃ)";
-  let right: SummaryStandardItem[] = allTarget
+  const right: SummaryStandardItem[] = allTarget
     .filter((t) => {
       if (leftSupplierIds.has(t.supplier.id)) return false;
       const d = toDateOnly(t.nextDate);

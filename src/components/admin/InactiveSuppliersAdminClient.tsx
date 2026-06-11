@@ -80,15 +80,21 @@ export function InactiveSuppliersAdminClient({
   const [form, setForm] = useState<SupplierAdminFormState>(emptySupplierAdminForm);
   const formRef = useLatest(form);
 
-  useEffect(() => {
+  const initialKey = initial.map((row) => `${row.id}\0${row.name}\0${row.subiekt_kh_id ?? ""}`).join("\n");
+  const [appliedInitialKey, setAppliedInitialKey] = useState(initialKey);
+  if (initialKey !== appliedInitialKey) {
+    setAppliedInitialKey(initialKey);
     setRows(initial);
-  }, [initial]);
+  }
 
-  useEffect(() => {
+  const urlFiltersKey = searchParams.toString();
+  const [appliedUrlFiltersKey, setAppliedUrlFiltersKey] = useState(urlFiltersKey);
+  if (urlFiltersKey !== appliedUrlFiltersKey) {
+    setAppliedUrlFiltersKey(urlFiltersKey);
     setSearch(searchParams.get("q")?.trim() ?? "");
     setLocationFilter(parseLocationFilter(searchParams.get("location")));
     setSubiektFilter(parseSubiektFilter(searchParams.get("subiekt")));
-  }, [searchParams]);
+  }
 
   useEffect(() => {
     const timer = window.setTimeout(() => {
