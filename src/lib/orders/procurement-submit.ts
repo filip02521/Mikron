@@ -4,7 +4,7 @@ import {
   hasValidOrderQuantity,
   type RequestDraft,
 } from "@/lib/orders/request-completeness";
-import type { IndividualOrderStatus, IndividualRequestKind } from "@/types/database";
+import type { IndividualOrderStatus } from "@/types/database";
 
 export type ProcurementEntryDraft = RequestDraft & {
   subiektTwId?: number | null;

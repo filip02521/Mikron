@@ -1,8 +1,9 @@
 "use client";
 
-import { useCallback, useEffect, useId, useRef, useState, useTransition } from "react";
+import { useCallback, useEffect, useId, useMemo, useRef, useState, useTransition } from "react";
 import type { KeyboardEvent } from "react";
 import { actionSubiektSuggestClients } from "@/app/actions/subiekt";
+import { useClientHydrated } from "@/lib/client/use-client-hydrated";
 import { Input } from "@/components/ui/Field";
 import { Spinner } from "@/components/ui/Spinner";
 import {
@@ -44,7 +45,7 @@ export function SubiektClientNameField({
   const searchGenerationRef = useRef(0);
   const typeaheadId = useId();
   const listboxId = `${typeaheadId}-listbox`;
-  const [mounted, setMounted] = useState(false);
+  const mounted = useClientHydrated();
 
   const [enabled, setEnabled] = useState(false);
   const [configFeedback, setConfigFeedback] = useState<SubiektFeedback | null>(null);
@@ -53,16 +54,26 @@ export function SubiektClientNameField({
   const [status, setStatus] = useState<"idle" | "loading">("idle");
   const [feedback, setFeedback] = useState<SubiektFeedback | null>(null);
   const [highlightedIndex, setHighlightedIndex] = useState(0);
-  const [, startTransition] = useTransition();
+  const [isPending, startTransition] = useTransition();
 
   const debounced = useDebouncedValue(value.trim(), 320);
-  const typeaheadListVisible = open && items.length > 0;
+  const searchActive =
+    enabled && shouldRunSubiektClientSearch(debounced, clientKhId);
+  const visibleItems = useMemo(
+    () => (searchActive ? items : []),
+    [items, searchActive]
+  );
+  const visibleFeedback = searchActive ? feedback : null;
+  const visibleStatus = searchActive ? (isPending ? "loading" : status) : "idle";
+  const itemsKey = visibleItems.map((item) => item.kh_Id).join("\0");
+  const [appliedItemsKey, setAppliedItemsKey] = useState(itemsKey);
+  if (itemsKey !== appliedItemsKey) {
+    setAppliedItemsKey(itemsKey);
+    setHighlightedIndex(0);
+  }
+  const typeaheadListVisible = open && visibleItems.length > 0;
   const typeaheadPanelVisible =
-    enabled && (status === "loading" || typeaheadListVisible);
-
-  useEffect(() => {
-    setMounted(true);
-  }, []);
+    enabled && (visibleStatus === "loading" || typeaheadListVisible);
 
   useEffect(() => {
     void (async () => {
@@ -84,22 +95,8 @@ export function SubiektClientNameField({
   }, []);
 
   useEffect(() => {
-    if (!enabled) {
-      setItems([]);
-      setFeedback(null);
-      setStatus("idle");
-      return;
-    }
-    if (!shouldRunSubiektClientSearch(debounced, clientKhId)) {
-      setItems([]);
-      setStatus("idle");
-      setFeedback(null);
-      setOpen(false);
-      return;
-    }
+    if (!searchActive) return;
 
-    setStatus("loading");
-    setFeedback(null);
     const generation = ++searchGenerationRef.current;
     startTransition(async () => {
       try {
@@ -121,11 +118,7 @@ export function SubiektClientNameField({
         }
       }
     });
-  }, [debounced, enabled, clientKhId]);
-
-  useEffect(() => {
-    setHighlightedIndex(0);
-  }, [items]);
+  }, [debounced, searchActive, clientKhId]);
 
   const pick = useCallback(
     (k: SubiektKontrahent) => {
@@ -153,7 +146,7 @@ export function SubiektClientNameField({
 
       if (e.key === "ArrowDown" && hasList) {
         e.preventDefault();
-        setHighlightedIndex((i) => Math.min(i + 1, items.length - 1));
+        setHighlightedIndex((i) => Math.min(i + 1, visibleItems.length - 1));
         return;
       }
       if (e.key === "ArrowUp" && hasList) {
@@ -164,25 +157,25 @@ export function SubiektClientNameField({
       if (e.key === "Enter" && hasList) {
         e.preventDefault();
         e.stopPropagation();
-        const chosen = items[highlightedIndex];
+        const chosen = visibleItems[highlightedIndex];
         if (chosen) pick(chosen);
         return;
       }
-      if (e.key === "Escape" && (hasList || status === "loading" || open)) {
+      if (e.key === "Escape" && (hasList || visibleStatus === "loading" || open)) {
         e.preventDefault();
         e.stopPropagation();
         setOpen(false);
         setHighlightedIndex(0);
       }
     },
-    [enabled, typeaheadListVisible, items, highlightedIndex, status, open, pick]
+    [enabled, typeaheadListVisible, visibleItems, highlightedIndex, visibleStatus, open, pick]
   );
 
   const showFeedbackBelow =
-    feedback &&
-    items.length === 0 &&
-    shouldRunSubiektClientSearch(debounced, clientKhId) &&
-    status === "idle";
+    visibleFeedback &&
+    visibleItems.length === 0 &&
+    searchActive &&
+    visibleStatus === "idle";
 
   const comboboxA11y = mounted
     ? {
@@ -217,12 +210,12 @@ export function SubiektClientNameField({
             setOpen(true);
           }}
           onFocus={() => {
-            if (debounced.length >= MIN_CLIENT_SEARCH_LENGTH || items.length > 0) {
+            if (debounced.length >= MIN_CLIENT_SEARCH_LENGTH || visibleItems.length > 0) {
               setOpen(true);
             }
           }}
         />
-        {enabled && status === "loading" ? (
+        {enabled && visibleStatus === "loading" ? (
           <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2">
             <Spinner size="sm" />
           </span>
@@ -240,15 +233,15 @@ export function SubiektClientNameField({
           <TypeaheadDropdown
             open
             listboxId={listboxId}
-            emptyMessage={status === "loading" ? "Szukam klientów w Subiekcie…" : undefined}
+            emptyMessage={visibleStatus === "loading" ? "Szukam klientów w Subiekcie…" : undefined}
             footer={typeaheadListVisible ? KEYBOARD_HINT : undefined}
           >
             {typeaheadListVisible ? (
               <>
                 <TypeaheadSectionLabel>
-                  Subiekt — odbiorcy · {formatClientSearchResultCount(items.length)}
+                  Subiekt — odbiorcy · {formatClientSearchResultCount(visibleItems.length)}
                 </TypeaheadSectionLabel>
-                {items.map((k, index) => {
+                {visibleItems.map((k, index) => {
                   const { title, subtitle } = formatSubiektKontrahentOption(k);
                   return (
                     <TypeaheadOption
@@ -278,18 +271,18 @@ export function SubiektClientNameField({
         <p className="text-xs text-slate-500">{configFeedback.message}</p>
       ) : null}
 
-      {showFeedbackBelow && feedback ? (
+      {showFeedbackBelow && visibleFeedback ? (
         <p
           className={cn(
             "text-xs",
-            feedback.tone === "error" || feedback.tone === "warning"
+            visibleFeedback.tone === "error" || visibleFeedback.tone === "warning"
               ? "text-amber-800"
               : "text-slate-600"
           )}
         >
-          {feedback.message}
-          {feedback.hint ? (
-            <span className="mt-0.5 block text-slate-500">{feedback.hint}</span>
+          {visibleFeedback.message}
+          {visibleFeedback.hint ? (
+            <span className="mt-0.5 block text-slate-500">{visibleFeedback.hint}</span>
           ) : null}
         </p>
       ) : null}

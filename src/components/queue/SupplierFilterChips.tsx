@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { cn } from "@/lib/cn";
 import type { SupplierCountChip } from "@/lib/orders/supplier-filter-summary";
 import {
@@ -78,10 +78,14 @@ export function SupplierFilterChips({
     setExpanded(false);
   }, [onChange]);
 
-  useEffect(() => {
-    if (!value) return;
-    if (!chips.some((c) => c.key === value)) clearFilter();
-  }, [chips, value, clearFilter]);
+  const chipsKey = chips.map((chip) => chip.key).join("\0");
+  const [appliedInvalidClearKey, setAppliedInvalidClearKey] = useState("");
+  const invalidClearKey =
+    value && !chips.some((chip) => chip.key === value) ? `${value}\0${chipsKey}` : "";
+  if (invalidClearKey && invalidClearKey !== appliedInvalidClearKey) {
+    setAppliedInvalidClearKey(invalidClearKey);
+    clearFilter();
+  }
 
   const total = useMemo(() => chips.reduce((n, c) => n + c.count, 0), [chips]);
 

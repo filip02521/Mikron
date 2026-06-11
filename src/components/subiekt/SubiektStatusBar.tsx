@@ -5,7 +5,7 @@ import { actionGetSubiektAvailability } from "@/app/actions/subiekt";
 import { IconAlertCircle, IconLinkOff } from "@/components/icons/StrokeIcons";
 import type { SubiektAvailability } from "@/lib/subiekt/availability";
 import { cn } from "@/lib/cn";
-import { mojeControlHeightClass, mojeSecondaryControlClass } from "@/lib/ui/ontime-theme";
+import { mojeSecondaryControlClass } from "@/lib/ui/ontime-theme";
 
 const POLL_MS = 90_000;
 

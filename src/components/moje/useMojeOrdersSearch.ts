@@ -19,7 +19,10 @@ export function useMojeOrdersSearch(initial: string, syncUrl: boolean) {
   const lastWrittenToUrl = useRef<string | null>(null);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const searchParamsRef = useRef(searchParams);
-  searchParamsRef.current = searchParams;
+
+  useEffect(() => {
+    searchParamsRef.current = searchParams;
+  }, [searchParams]);
 
   const setQuery = useCallback((next: string) => {
     setQueryState(next);

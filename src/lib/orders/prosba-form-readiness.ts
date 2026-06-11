@@ -39,10 +39,6 @@ export type ProsbaFormReadinessOptions = {
   resolvingSupplier?: boolean;
 };
 
-function hasText(value: string | undefined): boolean {
-  return Boolean(value?.trim());
-}
-
 function linesWithProductHint(lines: ProsbaReadinessLine[]): ProsbaReadinessLine[] {
   return lines.filter((line) =>
     hasAnyProductHint({
@@ -64,7 +60,6 @@ export function buildProsbaFormReadiness(
   const isZamowienie = requestKind === "zamowienie";
   const informacjaPath = options?.informacjaPath ?? "direct";
   void options?.resolvingSupplier;
-  const hasResolvedSupplier = filled.some((line) => hasText(line.supplierId));
 
   const productDone = filled.length > 0;
   const quantityDone =

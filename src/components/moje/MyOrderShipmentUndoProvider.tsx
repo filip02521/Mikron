@@ -143,17 +143,12 @@ export function MyOrderShipmentUndoProvider({
 /** Toast cofnięcia — pływający u dołu ekranu, widoczny niezależnie od scrolla listy. */
 export function MyOrderShipmentUndoToast() {
   const ctx = useContext(ShipmentUndoContext);
-  const [mounted, setMounted] = useState(false);
   const undo = ctx?.undo ?? null;
   const undoError = ctx?.undoError ?? null;
   const disabled = ctx?.disabled ?? true;
   const handleUndo = ctx?.handleUndo;
   const clearUndo = ctx?.clearUndo;
   const clearUndoError = ctx?.clearUndoError;
-
-  useEffect(() => {
-    setMounted(true);
-  }, []);
 
   useEffect(() => {
     if (!undo || disabled || !handleUndo) return;
@@ -168,7 +163,7 @@ export function MyOrderShipmentUndoToast() {
     return () => window.removeEventListener("keydown", onKeyDown);
   }, [undo, disabled, handleUndo]);
 
-  if (!mounted || disabled) return null;
+  if (disabled || typeof document === "undefined") return null;
 
   const portals: React.ReactNode[] = [];
 

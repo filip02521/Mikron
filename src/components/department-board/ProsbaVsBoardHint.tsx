@@ -1,22 +1,20 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { Button } from "@/components/ui/Button";
 import { cn } from "@/lib/cn";
 import { salesChromeInsetClass } from "@/lib/ui/ontime-theme";
 import { PROSBA_VS_BOARD_HINT_STORAGE_KEY } from "@/lib/department-board/onboarding-storage";
 
 export function ProsbaVsBoardHint() {
-  const [hidden, setHidden] = useState(true);
-
-  useEffect(() => {
+  const [hidden, setHidden] = useState(() => {
     try {
-      setHidden(localStorage.getItem(PROSBA_VS_BOARD_HINT_STORAGE_KEY) === "1");
+      return localStorage.getItem(PROSBA_VS_BOARD_HINT_STORAGE_KEY) === "1";
     } catch {
-      setHidden(false);
+      return false;
     }
-  }, []);
+  });
 
   if (hidden) return null;
 

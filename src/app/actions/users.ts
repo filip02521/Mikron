@@ -13,7 +13,6 @@ import {
   generateSalesPersonInviteLink,
   type SalesInviteLinkResult,
 } from "@/lib/users/sales-invite";
-import { getAppUrl } from "@/lib/env/app-config";
 import { resolveAppUrl } from "@/lib/env/resolve-app-url.server";
 import {
   buildPasswordConfirmLink,
@@ -38,10 +37,6 @@ function revalidateUsers(opts?: { includeHandlowcy?: boolean; includeTeam?: bool
     revalidatePath("/zespol", "page");
     revalidatePath("/zespol/handlowcy", "page");
   }
-}
-
-function appUrl(): string {
-  return getAppUrl();
 }
 
 export async function actionCreateAppUser(form: {

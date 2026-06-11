@@ -58,7 +58,7 @@ export function SupplierPickerField({
   const [feedback, setFeedback] = useState<SubiektFeedback | null>(null);
   const [subiektWarning, setSubiektWarning] = useState<SubiektFeedback | null>(null);
   const [status, setStatus] = useState<"idle" | "loading" | "error">("idle");
-  const [, startTransition] = useTransition();
+  const [isPending, startTransition] = useTransition();
   const debouncedForSubiekt = useDebouncedValue(query.trim(), SUBIEKT_DEBOUNCE_MS);
 
   const selected = useMemo(
@@ -91,6 +91,16 @@ export function SupplierPickerField({
     return subiektRows.filter((r) => !r.supplierId || !localIds.has(r.supplierId));
   }, [appRows, subiektRows]);
 
+  const subiektQueryActive = debouncedForSubiekt.length >= SUBIEKT_MIN_QUERY_LEN;
+  const visibleSubiektRows = subiektQueryActive ? shownSubiektRows : [];
+  const visibleFeedback = subiektQueryActive ? feedback : null;
+  const visibleSubiektWarning = subiektQueryActive ? subiektWarning : null;
+  const visibleStatus = subiektQueryActive
+    ? isPending
+      ? "loading"
+      : status
+    : "idle";
+
   useEffect(() => {
     const onDoc = (e: MouseEvent) => {
       if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
@@ -100,18 +110,9 @@ export function SupplierPickerField({
   }, []);
 
   useEffect(() => {
-    if (debouncedForSubiekt.length < SUBIEKT_MIN_QUERY_LEN) {
-      setSubiektRows([]);
-      setFeedback(null);
-      setSubiektWarning(null);
-      setStatus("idle");
-      return;
-    }
+    if (!subiektQueryActive) return;
 
     const requestId = ++subiektRequestId.current;
-    setStatus("loading");
-    setFeedback(null);
-    setSubiektWarning(null);
 
     startTransition(async () => {
       const res = await actionSubiektSuggestSuppliers(debouncedForSubiekt);
@@ -128,7 +129,7 @@ export function SupplierPickerField({
       setSubiektWarning(res.subiektWarning ?? null);
       setStatus("idle");
     });
-  }, [debouncedForSubiekt]);
+  }, [debouncedForSubiekt, subiektQueryActive]);
 
   const displayValue = open ? query : (selected?.name ?? "");
 
@@ -153,24 +154,30 @@ export function SupplierPickerField({
     open &&
     (allowEmpty ||
       appRows.length > 0 ||
-      shownSubiektRows.length > 0 ||
-      status === "loading");
+      visibleSubiektRows.length > 0 ||
+      visibleStatus === "loading");
 
   const showInfoFeedback =
-    feedback &&
-    feedback.tone === "info" &&
+    visibleFeedback &&
+    visibleFeedback.tone === "info" &&
     appRows.length === 0 &&
-    shownSubiektRows.length === 0 &&
-    debouncedForSubiekt.length >= SUBIEKT_MIN_QUERY_LEN;
+    visibleSubiektRows.length === 0 &&
+    subiektQueryActive;
 
   const pickerFeedbacks = useMemo(() => {
     if (showInlineFeedback) return [] as SubiektFeedback[];
     return [
-      subiektWarning,
-      status === "error" ? feedback : null,
-      showInfoFeedback ? feedback : null,
+      visibleSubiektWarning,
+      visibleStatus === "error" ? visibleFeedback : null,
+      showInfoFeedback ? visibleFeedback : null,
     ].filter(Boolean) as SubiektFeedback[];
-  }, [showInlineFeedback, subiektWarning, status, feedback, showInfoFeedback]);
+  }, [
+    showInlineFeedback,
+    visibleSubiektWarning,
+    visibleStatus,
+    visibleFeedback,
+    showInfoFeedback,
+  ]);
 
   useEffect(() => {
     onSubiektFeedbackChange?.(pickerFeedbacks);
@@ -195,7 +202,7 @@ export function SupplierPickerField({
             setQuery(selected?.name ?? query);
           }}
         />
-        {status === "loading" && debouncedForSubiekt.length >= SUBIEKT_MIN_QUERY_LEN ? (
+        {visibleStatus === "loading" && subiektQueryActive ? (
           <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2">
             <Spinner size="sm" />
           </span>
@@ -222,9 +229,9 @@ export function SupplierPickerField({
         open={showDropdown}
         size={dropdownSize}
         emptyMessage={
-          status === "loading" && appRows.length === 0
+          visibleStatus === "loading" && appRows.length === 0
             ? "Szukam w Subiekcie…"
-            : query.trim() && appRows.length === 0 && shownSubiektRows.length === 0
+            : query.trim() && appRows.length === 0 && visibleSubiektRows.length === 0
               ? "Brak wyników w systemie"
               : undefined
         }
@@ -254,10 +261,10 @@ export function SupplierPickerField({
           </>
         ) : null}
 
-        {shownSubiektRows.length > 0 ? (
+        {visibleSubiektRows.length > 0 ? (
           <>
             <TypeaheadSectionLabel>Subiekt — brak w bazie</TypeaheadSectionLabel>
-            {shownSubiektRows.map((s, i) => (
+            {visibleSubiektRows.map((s, i) => (
               <TypeaheadOption
                 key={s.supplierId ?? `unmapped-${i}`}
                 title={s.label}
@@ -273,14 +280,14 @@ export function SupplierPickerField({
         ) : null}
       </TypeaheadDropdown>
 
-      {showInlineFeedback && subiektWarning ? (
-        <SubiektFeedbackAlert feedback={subiektWarning} compact />
+      {showInlineFeedback && visibleSubiektWarning ? (
+        <SubiektFeedbackAlert feedback={visibleSubiektWarning} compact />
       ) : null}
-      {showInlineFeedback && status === "error" && feedback ? (
-        <SubiektFeedbackAlert feedback={feedback} compact />
+      {showInlineFeedback && visibleStatus === "error" && visibleFeedback ? (
+        <SubiektFeedbackAlert feedback={visibleFeedback} compact />
       ) : null}
-      {showInlineFeedback && showInfoFeedback && feedback ? (
-        <SubiektFeedbackAlert feedback={feedback} compact />
+      {showInlineFeedback && showInfoFeedback && visibleFeedback ? (
+        <SubiektFeedbackAlert feedback={visibleFeedback} compact />
       ) : null}
     </div>
   );

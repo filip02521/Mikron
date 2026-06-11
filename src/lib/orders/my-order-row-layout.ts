@@ -138,6 +138,8 @@ export function myOrderCollapsedProductMode(
   _row: MyOrderRow,
   _listKind: MyOrderListKind
 ): "full" | "summary" {
+  void _row;
+  void _listKind;
   return "summary";
 }
 

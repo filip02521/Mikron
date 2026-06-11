@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import type { ProductCatalogRow } from "@/lib/data/product-catalog-queries";
 import { Button } from "@/components/ui/Button";
 import { Select } from "@/components/ui/Field";
@@ -20,11 +20,13 @@ export function ProductCatalogSupplierAssign({
   /** Zwarty wiersz na liście katalogu (bez ramki i długich podpowiedzi). */
   compact?: boolean;
 }) {
+  const supplierKey = `${row.subiektTwId}\0${row.topSupplier?.id ?? ""}`;
   const [supplierId, setSupplierId] = useState(row.topSupplier?.id ?? "");
-
-  useEffect(() => {
+  const [appliedSupplierKey, setAppliedSupplierKey] = useState(supplierKey);
+  if (supplierKey !== appliedSupplierKey) {
+    setAppliedSupplierKey(supplierKey);
     setSupplierId(row.topSupplier?.id ?? "");
-  }, [row.subiektTwId, row.topSupplier?.id]);
+  }
 
   const unchanged = Boolean(row.topSupplier?.id && row.topSupplier.id === supplierId);
   const canSave = Boolean(supplierId) && !unchanged;

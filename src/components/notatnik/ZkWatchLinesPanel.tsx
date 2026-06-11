@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { actionUpdateZkWatchLineChecks } from "@/app/actions/sales-notepad";
 import { Button } from "@/components/ui/Button";
 import { cn } from "@/lib/cn";
@@ -46,19 +46,23 @@ export function ZkWatchLinesPanel({
   showSummary?: boolean;
   onSaved?: (watch: SalesZkWatch) => void;
 }) {
+  const watchSyncKey = `${watch.id}\0${JSON.stringify(watch.line_checks ?? null)}`;
+  const [appliedWatchSyncKey, setAppliedWatchSyncKey] = useState(watchSyncKey);
   const [views, setViews] = useState<ZkWatchLineView[]>(() => buildZkWatchLineViews(watch));
   const [filter, setFilter] = useState<LineFilter>("all");
+  const [filterWatchId, setFilterWatchId] = useState(watch.id);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
+  if (watchSyncKey !== appliedWatchSyncKey) {
+    setAppliedWatchSyncKey(watchSyncKey);
     setViews(buildZkWatchLineViews(watch));
     setError(null);
-  }, [watch]);
-
-  useEffect(() => {
+  }
+  if (watch.id !== filterWatchId) {
+    setFilterWatchId(watch.id);
     setFilter("all");
-  }, [watch.id]);
+  }
 
   const summary = useMemo(() => summarizeZkWatchLines(views), [views]);
   const filtered = useMemo(() => filterViews(views, filter), [views, filter]);

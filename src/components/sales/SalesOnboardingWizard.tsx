@@ -192,16 +192,18 @@ export function SalesOnboardingWizard() {
   const isFirst = stepIndex === 0;
   const isLast = stepIndex === steps.length - 1;
   const showFullDetails = isDesktop || mobileDetailsOpen;
-
-  useEffect(() => {
+  const [appliedStepIndex, setAppliedStepIndex] = useState(stepIndex);
+  if (stepIndex !== appliedStepIndex) {
+    setAppliedStepIndex(stepIndex);
     setMobileDetailsOpen(false);
-  }, [stepIndex]);
+    setCoachHighlight(true);
+  }
 
   useEffect(() => {
-    setCoachHighlight(true);
+    if (!coachHighlight) return;
     const timer = window.setTimeout(() => setCoachHighlight(false), 8000);
     return () => window.clearTimeout(timer);
-  }, [stepIndex]);
+  }, [stepIndex, coachHighlight]);
 
   const progressDots = useMemo(
     () =>

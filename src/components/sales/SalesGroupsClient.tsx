@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useEffect, useState, useTransition, useCallback } from "react";
+import { useMemo, useState, useTransition, useCallback } from "react";
 import type { SalesGroupRow } from "@/lib/data/sales-groups";
 import {
   actionDeleteSalesGroup,
@@ -28,10 +28,17 @@ export function SalesGroupsClient({
   canCreateGroups?: boolean;
 }) {
   const router = useRouter();
-  const [groups, setGroups] = useState(initial);
-  useEffect(() => {
-    setGroups(initial);
-  }, [initial]);
+  const [deletedIds, setDeletedIds] = useState<Set<string>>(() => new Set());
+  const initialKey = useMemo(() => initial.map((group) => group.id).join("\0"), [initial]);
+  const [appliedInitialKey, setAppliedInitialKey] = useState(initialKey);
+  if (initialKey !== appliedInitialKey) {
+    setAppliedInitialKey(initialKey);
+    setDeletedIds(new Set());
+  }
+  const groups = useMemo(
+    () => initial.filter((group) => !deletedIds.has(group.id)),
+    [initial, deletedIds]
+  );
   const [pending, start] = useTransition();
   const [toast, setToast] = useState<{ text: string; tone: "success" | "error" } | null>(
     null
@@ -102,7 +109,7 @@ export function SalesGroupsClient({
               setDeleteTarget(null);
               return;
             }
-            setGroups((list) => list.filter((g) => g.id !== deleteTarget.id));
+            setDeletedIds((ids) => new Set(ids).add(deleteTarget.id));
             setDeleteTarget(null);
             setToast({ text: "Grupa usunięta.", tone: "success" });
             router.refresh();

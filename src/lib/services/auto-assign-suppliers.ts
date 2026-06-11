@@ -104,7 +104,7 @@ export async function autoAssignMissingSuppliersFromCatalog(options: {
     if (updErr) throw new Error(updErr.message);
     if (upd) {
       updated += 1;
-      if ((upd as any).status === "Nowe") promoted += 1;
+      if ((upd as { status?: string }).status === "Nowe") promoted += 1;
     }
   }
 

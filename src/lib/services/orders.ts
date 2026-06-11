@@ -10,7 +10,6 @@ import {
   parseDateOnly,
   resolveSupplierInterval,
   snapToBusinessDay,
-  toDateOnly,
 } from "@/lib/orders/dates";
 import { todayInWarsaw } from "@/lib/time/warsaw";
 import { resolveStatusFromDeliveredQuantity } from "@/lib/orders/individual";
@@ -28,7 +27,6 @@ import {
   hasSiblingDeliveryStatsSample,
   type DeliveryStatsOrderInput,
 } from "@/lib/orders/delivery-stats-aggregation";
-import { parseOrderQuantity } from "@/lib/orders/individual";
 import type {
   IndividualOrder,
   IndividualOrderStatus,
@@ -201,7 +199,7 @@ export async function markStandardOrdered(
   const vacationShift =
     applyVacationCorrection && finalDate.getTime() !== baseNext.getTime();
 
-  const { data: schedule } = await supabase
+  await supabase
     .from("supplier_schedules")
     .select("*")
     .eq("supplier_id", supplierId)
@@ -362,7 +360,10 @@ export async function batchAddIndividualOrders(
           .ilike("symbol", pattern)
           .limit(2);
         if (error) throw new Error(error.message);
-        if ((data ?? []).length === 1) return Number((data as any)[0].subiekt_tw_id) || null;
+        if ((data ?? []).length === 1) {
+          const row = (data ?? [])[0] as { subiekt_tw_id: number | string };
+          return Number(row.subiekt_tw_id) || null;
+        }
       }
 
       // 2) PLU (Mikran) exact
@@ -374,7 +375,10 @@ export async function batchAddIndividualOrders(
           .ilike("plu", pattern)
           .limit(2);
         if (error) throw new Error(error.message);
-        if ((data ?? []).length === 1) return Number((data as any)[0].subiekt_tw_id) || null;
+        if ((data ?? []).length === 1) {
+          const row = (data ?? [])[0] as { subiekt_tw_id: number | string };
+          return Number(row.subiekt_tw_id) || null;
+        }
       }
 
       return null;
@@ -784,7 +788,6 @@ export async function updateIndividualRequestGroup(
       catalogSource === "procurement_verification"
         ? procurementStatusForEntry(lineDraft)
         : statusForEditedLine(lineDraft).status;
-    const supplierResolvePending = false;
     const rowPayload = {
       supplier_id: payload.supplierId.trim() || null,
       sales_person_id: payload.salesPersonId,

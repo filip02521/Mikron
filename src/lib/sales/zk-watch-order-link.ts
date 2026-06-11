@@ -8,8 +8,6 @@ import {
 } from "@/lib/sales/zk-watch-lines";
 import { normalizeMyOrderSearchText } from "@/lib/orders/my-order-search";
 import {
-  clientLabelsMatch,
-  clientLabelsMatchExact,
   clientsMatchForSalesClient,
   normalizeSalesClientKhId,
 } from "@/lib/orders/sales-client-match";

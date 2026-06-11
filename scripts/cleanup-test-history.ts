@@ -49,7 +49,7 @@ async function main() {
   const supabase = createClient(url, key);
   const csvIds = loadCsvIds();
   let indDeleted = 0;
-  let normDeleted = 0;
+  const normDeleted = 0;
 
   // 1. Zamówienia indywidualne sprzed importu CSV
   const { data: oldByDate } = await supabase

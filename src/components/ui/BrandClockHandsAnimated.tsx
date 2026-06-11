@@ -77,15 +77,20 @@ export function BrandClockHandsAnimated({
 }) {
   const gradientId = brandClockGradientId(useId());
   const handStroke = `url(#${gradientId})`;
-  const [angles, setAngles] = useState<BrandClockAngles>(BRAND_CLOCK_INTRO_ANGLES);
+  const [angles, setAngles] = useState<BrandClockAngles>(() => {
+    if (
+      typeof window !== "undefined" &&
+      window.matchMedia("(prefers-reduced-motion: reduce)").matches
+    ) {
+      return brandClockAnglesFromDate();
+    }
+    return BRAND_CLOCK_INTRO_ANGLES;
+  });
 
   useEffect(() => {
     const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
-    if (reducedMotion) {
-      setAngles(brandClockAnglesFromDate());
-      return;
-    }
+    if (reducedMotion) return;
 
     const introStart = performance.now();
     const introTarget = brandClockAnglesFromDate();

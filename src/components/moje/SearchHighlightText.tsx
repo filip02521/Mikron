@@ -3,7 +3,6 @@
 import { useMemo } from "react";
 import { splitTextBySearchHighlight } from "@/lib/orders/my-order-search-highlight";
 import { searchQueryTokens } from "@/lib/orders/my-order-search";
-import { cn } from "@/lib/cn";
 
 const markClass =
   "rounded-sm bg-amber-200/90 px-0.5 text-inherit [box-decoration-break:clone]";

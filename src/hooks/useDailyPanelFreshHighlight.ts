@@ -8,18 +8,22 @@ export function useDailyPanelFreshHighlight(): boolean {
   const ops = useOperationsUpdates();
   const until = ops?.freshHighlightUntil ?? 0;
   const generation = ops?.refreshGeneration ?? 0;
-  const [active, setActive] = useState(false);
+  const [now, setNow] = useState(() =>
+    typeof window !== "undefined" ? Date.now() : 0
+  );
 
   useEffect(() => {
-    if (!ops || until <= Date.now()) {
-      setActive(false);
-      return;
-    }
-
-    setActive(true);
-    const timeout = window.setTimeout(() => setActive(false), until - Date.now());
-    return () => window.clearTimeout(timeout);
+    if (!ops) return;
+    const interval = window.setInterval(() => setNow(Date.now()), 200);
+    const timeout =
+      until > Date.now()
+        ? window.setTimeout(() => setNow(Date.now()), until - Date.now() + 50)
+        : undefined;
+    return () => {
+      window.clearInterval(interval);
+      if (timeout !== undefined) window.clearTimeout(timeout);
+    };
   }, [ops, until, generation]);
 
-  return active;
+  return Boolean(ops && until > now);
 }

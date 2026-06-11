@@ -4,7 +4,6 @@ import type { OperationsNote } from "@/types/database";
 import { Badge } from "@/components/ui/Badge";
 import { LinkChevron } from "@/components/ui/UiGlyphs";
 import { formatFollowUpLabel } from "@/lib/sales/notepad-follow-up";
-import { cn } from "@/lib/cn";
 
 export function OperationsTodayTasksSection({
   notes,

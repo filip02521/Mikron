@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useMemo } from "react";
 import { formatDateString } from "@/lib/orders/dates";
 import {
   buildDailyDayProgress,
@@ -40,24 +40,25 @@ export function useDailyDayProgress(
   urgentRemaining: number,
   forSomeoneRemaining: number
 ): DailyDayProgress {
-  const [urgentBaseline, setUrgentBaseline] = useState<number | null>(null);
-  const [forSomeoneBaseline, setForSomeoneBaseline] = useState<number | null>(null);
-
-  useEffect(() => {
+  return useMemo(() => {
+    if (typeof sessionStorage === "undefined") {
+      return buildDailyDayProgress(null, urgentRemaining, null, forSomeoneRemaining);
+    }
     const uKey = storageKey(URGENT_KEY);
     const fKey = storageKey(FOR_SOMEONE_KEY);
-    setUrgentBaseline(persistBaseline(uKey, readBaseline(uKey), urgentRemaining));
-    setForSomeoneBaseline(
-      persistBaseline(fKey, readBaseline(fKey), forSomeoneRemaining)
+    const urgentBaseline = persistBaseline(uKey, readBaseline(uKey), urgentRemaining);
+    const forSomeoneBaseline = persistBaseline(
+      fKey,
+      readBaseline(fKey),
+      forSomeoneRemaining
+    );
+    return buildDailyDayProgress(
+      urgentBaseline,
+      urgentRemaining,
+      forSomeoneBaseline,
+      forSomeoneRemaining
     );
   }, [urgentRemaining, forSomeoneRemaining]);
-
-  return buildDailyDayProgress(
-    urgentBaseline,
-    urgentRemaining,
-    forSomeoneBaseline,
-    forSomeoneRemaining
-  );
 }
 
 export type { DailyDayProgress };

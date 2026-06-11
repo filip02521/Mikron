@@ -63,7 +63,7 @@ import {
   MAX_SUPPLIER_NOTES_LEN,
 } from "@/lib/security/text-limits";
 import { dateToIso, parseDateOnly, snapToBusinessDay } from "@/lib/orders/dates";
-import { DAILY_PANEL_UNDO_MS, UNDO_WINDOW_MS, undoWindowShortLabel } from "@/lib/orders/daily-panel-undo";
+import { DAILY_PANEL_UNDO_MS, undoWindowShortLabel } from "@/lib/orders/daily-panel-undo";
 import type { DailyPanelActionResult } from "@/lib/orders/daily-panel-undo";
 import type { DailyPanelUndoPayload } from "@/lib/orders/daily-panel-undo";
 import {

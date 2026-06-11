@@ -235,8 +235,10 @@ export function QuickOrderModal({
       }
     });
   };
-  submitRef.current = submit;
-  addLineRef.current = () => setLines((prev) => appendProductLine(prev));
+  useEffect(() => {
+    submitRef.current = submit;
+    addLineRef.current = () => setLines((prev) => appendProductLine(prev));
+  });
 
   useEffect(() => {
     if (!open) return;

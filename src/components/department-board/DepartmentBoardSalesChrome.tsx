@@ -120,7 +120,6 @@ export const DepartmentBoardSalesTabBar = (
 export function DepartmentBoardQuestionFilters({
   value,
   onChange,
-  domain = "sales",
 }: {
   value: DepartmentBoardQuestionFilter;
   onChange: (value: DepartmentBoardQuestionFilter) => void;

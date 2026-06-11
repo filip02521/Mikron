@@ -71,6 +71,13 @@ export function SalesUpdatesProvider({
   const [lastPollAt, setLastPollAt] = useState<number | null>(null);
   const syncingRef = useRef(false);
   const lastNotatnikAutoRefreshAtRef = useRef(0);
+  const versionKey = `${enabled}\0${initialVersion ?? ""}`;
+  const [appliedVersionKey, setAppliedVersionKey] = useState("");
+  if (enabled && initialVersion && versionKey !== appliedVersionKey) {
+    setAppliedVersionKey(versionKey);
+    setBaseline(initialVersion);
+    setLatest(initialVersion);
+  }
 
   const setAutoRefresh = useCallback((value: boolean) => {
     autoRefreshStore.setValue(value);
@@ -108,14 +115,11 @@ export function SalesUpdatesProvider({
 
   useEffect(() => {
     if (!enabled) return;
-    void poll();
+    const timer = window.setTimeout(() => {
+      void poll();
+    }, 0);
+    return () => window.clearTimeout(timer);
   }, [enabled, poll, pathname]);
-
-  useEffect(() => {
-    if (!enabled || !initialVersion) return;
-    setBaseline(initialVersion);
-    setLatest(initialVersion);
-  }, [enabled, initialVersion]);
 
   useEffect(() => {
     if (!enabled) return;
@@ -145,7 +149,7 @@ export function SalesUpdatesProvider({
       }
     }, AUTO_REFRESH_MS);
     return () => window.clearInterval(id);
-  }, [enabled, autoRefresh, latest, baseline, refreshNow]);
+  }, [enabled, autoRefresh, latest, baseline, refreshNow, pathname]);
 
   /** Notatnik: odśwież widok od razu po wykryciu zmian (ZK, prośby). */
   useEffect(() => {

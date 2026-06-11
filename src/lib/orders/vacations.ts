@@ -31,7 +31,7 @@ export function applyVacationLogic(input: RecalcInput): RecalcResult {
     (a, b) => dayTs(a.start) - dayTs(b.start)
   );
 
-  let initialDate: Date | null =
+  const initialDate: Date | null =
     shiftDate ??
     (orderDate && interval ? calculateNextOrderDate(orderDate, interval) : null);
 

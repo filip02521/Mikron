@@ -283,7 +283,7 @@ export async function fetchSalesBoardAttentionSnapshot(
   const questionRows = questionsRes.data ?? [];
   const questionIds = questionRows.map((q) => q.id);
 
-  let unseenAnswerItems: UnseenBoardAnswer[] = [];
+  const unseenAnswerItems: UnseenBoardAnswer[] = [];
 
   if (questionIds.length) {
     const { data: posts } = await supabase

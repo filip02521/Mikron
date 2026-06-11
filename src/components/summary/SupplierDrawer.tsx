@@ -45,25 +45,26 @@ export function SupplierDrawer({
   onEdit: () => void;
 }) {
   const hubContext = useSupplierHubContext();
-  const [history, setHistory] = useState<HistoryRow[]>([]);
-  const [historyLoading, setHistoryLoading] = useState(false);
+  const [historyState, setHistoryState] = useState<{
+    supplierId: string | null;
+    rows: HistoryRow[];
+    loading: boolean;
+  }>({ supplierId: null, rows: [], loading: false });
 
   useEffect(() => {
-    if (!supplier?.id) {
-      setHistory([]);
-      return;
-    }
+    if (!supplier?.id) return;
     let cancelled = false;
-    setHistoryLoading(true);
-    actionFetchSupplierRecentHistory(supplier.id)
+    const supplierId = supplier.id;
+    actionFetchSupplierRecentHistory(supplierId)
       .then((rows) => {
-        if (!cancelled) setHistory(rows);
+        if (!cancelled) {
+          setHistoryState({ supplierId, rows, loading: false });
+        }
       })
       .catch(() => {
-        if (!cancelled) setHistory([]);
-      })
-      .finally(() => {
-        if (!cancelled) setHistoryLoading(false);
+        if (!cancelled) {
+          setHistoryState({ supplierId, rows: [], loading: false });
+        }
       });
     return () => {
       cancelled = true;
@@ -71,6 +72,11 @@ export function SupplierDrawer({
   }, [supplier?.id]);
 
   if (!supplier) return null;
+
+  const history =
+    historyState.supplierId === supplier.id ? historyState.rows : [];
+  const historyLoading =
+    historyState.supplierId !== supplier.id || historyState.loading;
 
   const rowPending = isScopePending(supplier.id);
   const scope = { scope: supplier.id };

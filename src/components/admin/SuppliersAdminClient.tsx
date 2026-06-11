@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { LinkChevron } from "@/components/ui/UiGlyphs";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { useEffect, useMemo, useState, useTransition, useCallback, useRef } from "react";
+import { useEffect, useMemo, useState, useTransition, useCallback } from "react";
 import { useLatest } from "@/hooks/useLatest";
 import type { SupplierLocation, SupplierWithSchedule } from "@/types/database";
 import {
@@ -94,17 +94,23 @@ export function SuppliersAdminClient({
   const [deactivateTarget, setDeactivateTarget] = useState<SupplierWithSchedule | null>(
     null
   );
-  const powiazHandledRef = useRef(false);
+  const [powiazHandled, setPowiazHandled] = useState(false);
 
-  useEffect(() => {
+  const initialKey = initial.map((row) => `${row.id}\0${row.name}\0${row.subiekt_kh_id ?? ""}`).join("\n");
+  const [appliedInitialKey, setAppliedInitialKey] = useState(initialKey);
+  if (initialKey !== appliedInitialKey) {
+    setAppliedInitialKey(initialKey);
     setRows(initial);
-  }, [initial]);
+  }
 
-  useEffect(() => {
+  const urlFiltersKey = searchParams.toString();
+  const [appliedUrlFiltersKey, setAppliedUrlFiltersKey] = useState(urlFiltersKey);
+  if (urlFiltersKey !== appliedUrlFiltersKey) {
+    setAppliedUrlFiltersKey(urlFiltersKey);
     setSearch(searchParams.get("q")?.trim() ?? "");
     setLocationFilter(parseLocationFilter(searchParams.get("location")));
     setSubiektFilter(parseSubiektFilter(searchParams.get("subiekt")));
-  }, [searchParams]);
+  }
 
   useEffect(() => {
     const timer = window.setTimeout(() => {
@@ -157,21 +163,25 @@ export function SuppliersAdminClient({
     setFormOpen(true);
   };
 
-  useEffect(() => {
-    const q = searchParams.get("q")?.trim();
-    if (searchParams.get("powiaz") !== "1" || !q || formOpen || powiazHandledRef.current) return;
+  const powiazQuery =
+    searchParams.get("powiaz") === "1" && !formOpen && !powiazHandled
+      ? searchParams.get("q")?.trim() ?? ""
+      : "";
+  const [appliedPowiazQuery, setAppliedPowiazQuery] = useState("");
+  if (powiazQuery && powiazQuery !== appliedPowiazQuery) {
     const match =
-      rows.find((r) => r.name.toLowerCase() === q.toLowerCase()) ??
-      rows.find((r) => r.name.toLowerCase().includes(q.toLowerCase()));
-    if (!match) return;
-    powiazHandledRef.current = true;
-    startEdit(match);
-    const params = new URLSearchParams(searchParams.toString());
-    params.delete("powiaz");
-    const next = params.toString();
-    router.replace(next ? `${pathname}?${next}` : pathname, { scroll: false });
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- jednorazowe wejście z linku ?powiaz=1
-  }, [searchParams, rows, formOpen, pathname, router]);
+      rows.find((row) => row.name.toLowerCase() === powiazQuery.toLowerCase()) ??
+      rows.find((row) => row.name.toLowerCase().includes(powiazQuery.toLowerCase()));
+    if (match) {
+      setAppliedPowiazQuery(powiazQuery);
+      setPowiazHandled(true);
+      startEdit(match);
+      const params = new URLSearchParams(searchParams.toString());
+      params.delete("powiaz");
+      const next = params.toString();
+      router.replace(next ? `${pathname}?${next}` : pathname, { scroll: false });
+    }
+  }
 
   useEffect(() => {
     if (!formOpen || !form.id) return;

@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useState } from "react";
 import type { SupplierOrderGroup } from "@/lib/orders/queue-supplier-groups";
 import {
   collapseAllSupplierGroups,
@@ -31,16 +31,14 @@ export function useSupplierGroupCollapse(
   );
 
   const signature = supplierGroupsSignature(groups);
-
-  useEffect(() => {
-    setCollapsed(() => {
-      const next = defaultCollapsedSupplierKeys(groups, collapseMode);
-      if (supplierFilter) next.delete(supplierFilter);
-      return next;
-    });
-    // groups — tylko przy zmianie signature (lista dostawców), nie przy każdym refreshu wierszy
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- groups zsynchronizowane z signature w rodzicu (useMemo)
-  }, [signature, supplierFilter, collapseMode]);
+  const collapseSyncKey = `${signature}\0${supplierFilter}\0${collapseMode}`;
+  const [appliedCollapseSyncKey, setAppliedCollapseSyncKey] = useState(collapseSyncKey);
+  if (collapseSyncKey !== appliedCollapseSyncKey) {
+    setAppliedCollapseSyncKey(collapseSyncKey);
+    const next = defaultCollapsedSupplierKeys(groups, collapseMode);
+    if (supplierFilter) next.delete(supplierFilter);
+    setCollapsed(next);
+  }
 
   const toggle = useCallback((supplierKey: string) => {
     setCollapsed((prev) => toggleSupplierGroupCollapsed(prev, supplierKey));

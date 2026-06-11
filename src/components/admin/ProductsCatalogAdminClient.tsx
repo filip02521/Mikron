@@ -47,6 +47,9 @@ import {
   actionReadCatalogZdSyncStatus,
   actionRunCatalogZdSyncNow,
 } from "@/app/actions/product-catalog";
+import type { ZdImportAllSuppliersJobState } from "@/lib/subiekt/zd-import-all-suppliers-job";
+import type { ZdImportSupplierJobState } from "@/lib/subiekt/zd-import-supplier-job";
+import type { ZdIndexJobState } from "@/lib/subiekt/zd-index-job";
 
 type CatalogListMode = "all" | "noSupplier";
 
@@ -71,21 +74,24 @@ export function ProductsCatalogAdminClient({
   const [listMode, setListMode] = useState<CatalogListMode>("all");
   const [coverage, setCoverage] = useState<ProductCatalogCoverageStats>(initialCoverage);
   const [importSupplierId, setImportSupplierId] = useState<string>(suppliers[0]?.id ?? "");
-  const [importState, setImportState] = useState<any | null>(null);
+  const [importState, setImportState] = useState<ZdImportSupplierJobState | null>(null);
   const [importRunning, setImportRunning] = useState(false);
   const tickTimer = useRef<number | null>(null);
+  const tickImportRef = useRef<(() => Promise<void>) | null>(null);
   const [catalogSync, setCatalogSync] = useState<{
     state: import("@/lib/subiekt/catalog-zd-sync").CatalogZdSyncState | null;
     lastCron: import("@/lib/services/cron-run-log").CronRunPayload | null;
   } | null>(null);
-  const [indexState, setIndexState] = useState<any | null>(null);
+  const [indexState, setIndexState] = useState<ZdIndexJobState | null>(null);
   const [zdUnmapped, setZdUnmapped] = useState<ZdUnmappedKhReport | null>(null);
   const zdUnmappedFetchRef = useRef(false);
   const [indexRunning, setIndexRunning] = useState(false);
   const indexTimer = useRef<number | null>(null);
-  const [allState, setAllState] = useState<any | null>(null);
+  const tickIndexRef = useRef<(() => Promise<void>) | null>(null);
+  const [allState, setAllState] = useState<ZdImportAllSuppliersJobState | null>(null);
   const [allRunning, setAllRunning] = useState(false);
   const allTimer = useRef<number | null>(null);
+  const tickAllRef = useRef<(() => Promise<void>) | null>(null);
   const tickImportInFlight = useRef(false);
   const tickAllInFlight = useRef(false);
   const tickIndexInFlight = useRef(false);
@@ -112,7 +118,7 @@ export function ProductsCatalogAdminClient({
     setImportRunning(true);
     if (tickTimer.current == null) {
       tickTimer.current = window.setInterval(() => {
-        void tickImport();
+        void tickImportRef.current?.();
       }, 1500);
     }
   };
@@ -129,7 +135,7 @@ export function ProductsCatalogAdminClient({
     setIndexRunning(true);
     if (indexTimer.current == null) {
       indexTimer.current = window.setInterval(() => {
-        void tickIndex();
+        void tickIndexRef.current?.();
       }, 1500);
     }
   };
@@ -146,7 +152,7 @@ export function ProductsCatalogAdminClient({
     setAllRunning(true);
     if (allTimer.current == null) {
       allTimer.current = window.setInterval(() => {
-        void tickAll();
+        void tickAllRef.current?.();
       }, 1500);
     }
   };
@@ -733,6 +739,12 @@ export function ProductsCatalogAdminClient({
       tickAllInFlight.current = false;
     }
   };
+
+  useEffect(() => {
+    tickImportRef.current = tickImport;
+    tickIndexRef.current = tickIndex;
+    tickAllRef.current = tickAll;
+  });
 
   const rebuild = () => {
     if (!confirm("Odbudować bazę produktów z historii individual_orders?")) return;

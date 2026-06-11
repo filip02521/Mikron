@@ -82,17 +82,18 @@ export function RequestProductLinesEditor({
   const showLineLabel = !prosba || lines.length > 1;
   const wrapLine = prosba ? lines.length > 1 : true;
 
-  const [activeLineId, setActiveLineId] = useState(
+  const [focusedLineId, setFocusedLineId] = useState(
     () => lines[lines.length - 1]?.id ?? ""
   );
+  const activeLineId = lines.some((line) => line.id === focusedLineId)
+    ? focusedLineId
+    : (lines[lines.length - 1]?.id ?? "");
   const [subiektOfflineFeedback, setSubiektOfflineFeedback] =
     useState<SubiektFeedback | null>(null);
+  const visibleSubiektOfflineFeedback = prosba ? subiektOfflineFeedback : null;
 
   useEffect(() => {
-    if (!prosba) {
-      setSubiektOfflineFeedback(null);
-      return;
-    }
+    if (!prosba) return;
     void (async () => {
       const { actionSubiektSuggestionsEnabled } = await import("@/app/actions/subiekt");
       const r = await actionSubiektSuggestionsEnabled();
@@ -100,12 +101,21 @@ export function RequestProductLinesEditor({
     })();
   }, [prosba]);
 
-  useEffect(() => {
-    if (!lines.length) return;
-    if (!lines.some((l) => l.id === activeLineId)) {
-      setActiveLineId(lines[lines.length - 1]!.id);
+  const validationFocusKey =
+    validationAttempted && prosba
+      ? `${requestKind}\0${lines.map((line) => line.id).join("\0")}`
+      : "";
+  const [appliedValidationFocusKey, setAppliedValidationFocusKey] = useState("");
+  if (validationFocusKey && validationFocusKey !== appliedValidationFocusKey) {
+    const idx = lines.findIndex((line) => {
+      const fields = assessProsbaLineFields(line, requestKind, "strict");
+      return prosbaLineHasFieldIssues(fields);
+    });
+    if (idx >= 0) {
+      setAppliedValidationFocusKey(validationFocusKey);
+      setFocusedLineId(lines[idx]!.id);
     }
-  }, [lines, activeLineId]);
+  }
 
   useEffect(() => {
     if (requestKind !== "informacja") return;
@@ -113,19 +123,10 @@ export function RequestProductLinesEditor({
     onChange(lines.map((l) => ({ ...l, quantity: "" })));
   }, [requestKind, lines, onChange]);
 
-  useEffect(() => {
-    if (!validationAttempted || !prosba) return;
-    const idx = lines.findIndex((line) => {
-      const fields = assessProsbaLineFields(line, requestKind, "strict");
-      return prosbaLineHasFieldIssues(fields);
-    });
-    if (idx >= 0) setActiveLineId(lines[idx]!.id);
-  }, [validationAttempted, prosba, lines, requestKind]);
-
   const addLine = () => {
     const next = appendProductLine(lines);
     onChange(next);
-    setActiveLineId(next[next.length - 1]!.id);
+    setFocusedLineId(next[next.length - 1]!.id);
   };
 
   const removeLine = (index: number) => {
@@ -133,7 +134,7 @@ export function RequestProductLinesEditor({
     const next = removeProductLineAt(lines, index, minLines);
     onChange(next);
     if (removedId === activeLineId) {
-      setActiveLineId(next[next.length - 1]?.id ?? "");
+      setFocusedLineId(next[next.length - 1]?.id ?? "");
     }
   };
 
@@ -161,9 +162,9 @@ export function RequestProductLinesEditor({
 
   return (
     <div className="space-y-3">
-      {prosba && subiektOfflineFeedback ? (
+      {visibleSubiektOfflineFeedback ? (
         <div className="flex justify-end">
-          <SubiektOfflineHint feedback={subiektOfflineFeedback} />
+          <SubiektOfflineHint feedback={visibleSubiektOfflineFeedback} />
         </div>
       ) : null}
 
@@ -188,7 +189,7 @@ export function RequestProductLinesEditor({
                           (validationAttempted || liveValidation) &&
                           prosbaLineHasSubmitBlockers(line, requestKind)
                         }
-                        onEdit={() => setActiveLineId(line.id)}
+                        onEdit={() => setFocusedLineId(line.id)}
                         onRemove={() => removeLine(index)}
                       />
                     </li>

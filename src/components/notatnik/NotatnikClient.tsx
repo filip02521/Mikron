@@ -156,7 +156,12 @@ export function NotatnikClient({
   const [undo, setUndo] = useState<NotatnikUndoState | null>(null);
   const [unseenWatchIds, setUnseenWatchIds] = useState<Set<string>>(() => new Set());
   const [warehouseToast, setWarehouseToast] = useState<string | null>(null);
-  const snapshotReadyRef = useRef(false);
+  const [subiektStatus, setSubiektStatus] = useState<SubiektAvailability | undefined>(undefined);
+  const [appliedSubiektPropKey, setAppliedSubiektPropKey] = useState("");
+  const [appliedUrlTabKey, setAppliedUrlTabKey] = useState("");
+  const [appliedDataSyncKey, setAppliedDataSyncKey] = useState("");
+  const [warehouseSnapshotReady, setWarehouseSnapshotReady] = useState(false);
+  const [appliedWarehouseUnseenKey, setAppliedWarehouseUnseenKey] = useState("");
   const focusHandledWatchRef = useRef<string | null>(null);
   const zkWatchesRef = useRef(zkWatches);
   const archivedWatchesRef = useRef(archivedWatches);
@@ -245,6 +250,15 @@ export function NotatnikClient({
     }
   }, [applyWatchFocus]);
 
+  const handleFocusWatchHandled = useCallback((watchId: string) => {
+    focusHandledWatchRef.current = watchId;
+    setFocusWatchId(null);
+  }, []);
+
+  const announceLive = useCallback((message: string) => {
+    setLiveAnnouncement(message);
+  }, []);
+
   useLayoutEffect(() => {
     if (initialFocus && focusHandledWatchRef.current !== initialFocus) {
       applyWatchFocus(initialFocus);
@@ -254,40 +268,10 @@ export function NotatnikClient({
   }, [applyWatchFocus, initialFocus, syncWatchFocusFromLocation]);
 
   useEffect(() => {
+    if (tourDemo) return;
     window.addEventListener("hashchange", syncWatchFocusFromLocation);
     return () => window.removeEventListener("hashchange", syncWatchFocusFromLocation);
   }, [syncWatchFocusFromLocation]);
-
-  useEffect(() => {
-    if (tourDemo) return;
-    const focusParam = searchParams.get("focusWatch")?.trim() || null;
-    const hash = typeof window !== "undefined" ? window.location.hash : "";
-    const nextTab = resolveNotatnikPageTab({
-      tabParam: searchParams.get("tab"),
-      hash,
-      focusWatchId: focusParam ?? focusWatchId,
-      watchInOpen: focusParam ? zkWatches.some((w) => w.id === focusParam) : undefined,
-      watchInArchive: focusParam ? archivedWatches.some((w) => w.id === focusParam) : undefined,
-    });
-    setActiveTab(nextTab);
-  }, [archivedWatches, focusWatchId, searchParams, tourDemo, zkWatches]);
-
-  useEffect(() => {
-    if (tourDemo) return;
-    const hasArchiveContent = archivedWatches.length > 0 || archivedNotes.length > 0;
-    if (activeTab === "archive" && !hasArchiveContent) {
-      navigateToTab("zk");
-    }
-  }, [activeTab, archivedNotes.length, archivedWatches.length, navigateToTab, tourDemo]);
-
-  const handleFocusWatchHandled = useCallback((watchId: string) => {
-    focusHandledWatchRef.current = watchId;
-    setFocusWatchId(null);
-  }, []);
-
-  const announceLive = useCallback((message: string) => {
-    setLiveAnnouncement(message);
-  }, []);
 
   const salesPersonId =
     source.zkWatches[0]?.sales_person_id ?? source.notes[0]?.sales_person_id ?? null;
@@ -331,9 +315,9 @@ export function NotatnikClient({
     subiektAvailability?.shortLabel,
     subiektAvailability?.message,
   ]);
-  const [subiektStatus, setSubiektStatus] = useState<SubiektAvailability | undefined>(
-    subiektForNotepad
-  );
+  const subiektPropKey = subiektForNotepad
+    ? `${subiektForNotepad.configured}\0${subiektForNotepad.reachable}\0${subiektForNotepad.checkedAt}\0${subiektForNotepad.shortLabel}\0${subiektForNotepad.message}`
+    : "";
 
   const handleSubiektStatusChange = useCallback((status: SubiektAvailability) => {
     setSubiektStatus({
@@ -342,73 +326,16 @@ export function NotatnikClient({
     });
   }, []);
 
-  useEffect(() => {
-    setSubiektStatus(subiektForNotepad);
-  }, [
-    subiektAvailability?.configured,
-    subiektAvailability?.reachable,
-    subiektAvailability?.checkedAt,
-    subiektAvailability?.shortLabel,
-    subiektAvailability?.message,
-  ]);
+  const dataSource = tourDemo ? demoInitial : initial;
+  const dataSyncKey = tourDemo
+    ? `demo:${demoInitial.zkWatches.map((w) => w.updated_at).join("\0")}`
+    : `init:${initial.zkWatches.map((w) => w.updated_at).join("\0")}:${initial.notes.map((n) => n.updated_at).join("\0")}`;
 
-  useEffect(() => {
-    const next = tourDemo ? demoInitial : initial;
-    setZkWatches((prev) =>
-      uniqueById(sortZkWatches(mergeRecordsByUpdatedAt(prev, next.zkWatches)))
-    );
-    setArchivedWatches((prev) =>
-      uniqueById(sortZkWatches(mergeRecordsByUpdatedAt(prev, next.archivedZkWatches)))
-    );
-    setNotes((prev) => uniqueById(mergeRecordsByUpdatedAt(prev, next.notes)));
-    setArchivedNotes((prev) => uniqueById(mergeRecordsByUpdatedAt(prev, next.archivedNotes)));
-    if (tourDemo) setActiveTab("notes");
-  }, [
-    demoInitial,
-    initial,
-    tourDemo,
-    initial.zkWatches,
-    initial.archivedZkWatches,
-    initial.notes,
-    initial.archivedNotes,
-  ]);
-
-  useEffect(() => {
-    if (!salesPersonId || tourDemo) return;
-
+  const warehouseUnseenKey = useMemo(() => {
+    if (!salesPersonId || tourDemo || !warehouseSnapshotReady) return "";
     const snapshot = loadZkArrivedSnapshot(salesPersonId);
-    const isFirstVisit = Object.keys(snapshot).length === 0;
-
-    if (!snapshotReadyRef.current) {
-      if (isFirstVisit) {
-        saveZkArrivedSnapshot(salesPersonId, buildZkArrivedSnapshot(zkWatches));
-        snapshotReadyRef.current = true;
-        return;
-      }
-      const unseen = detectUnseenZkWarehouseArrivals(zkWatches, snapshot);
-      if (unseen.length) {
-        setUnseenWatchIds(new Set(unseen));
-        setWarehouseToast(
-          unseen.length === 1
-            ? "Towar z ZK jest na magazynie — pozycja odhaczona automatycznie."
-            : `${unseen.length} spraw ZK ma nowy towar na magazynie.`
-        );
-      }
-      snapshotReadyRef.current = true;
-      return;
-    }
-
-    const unseen = detectUnseenZkWarehouseArrivals(zkWatches, snapshot);
-    if (!unseen.length) return;
-
-    setUnseenWatchIds((prev) => new Set([...prev, ...unseen]));
-    const n = unseen.length;
-    setWarehouseToast(
-      n === 1
-        ? "Towar z ZK jest na magazynie — pozycja odhaczona automatycznie."
-        : `${n} spraw ZK ma nowy towar na magazynie.`
-    );
-  }, [salesPersonId, tourDemo, zkWatches]);
+    return detectUnseenZkWarehouseArrivals(zkWatches, snapshot).join("\0");
+  }, [salesPersonId, tourDemo, warehouseSnapshotReady, zkWatches]);
 
   useEffect(() => {
     if (!undo || effectiveReadOnly) return;
@@ -423,6 +350,81 @@ export function NotatnikClient({
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, [undo, effectiveReadOnly]);
+
+  if (subiektPropKey !== appliedSubiektPropKey) {
+    setAppliedSubiektPropKey(subiektPropKey);
+    setSubiektStatus(subiektForNotepad);
+  }
+
+  if (dataSyncKey !== appliedDataSyncKey) {
+    setAppliedDataSyncKey(dataSyncKey);
+    const next = dataSource;
+    setZkWatches((prev) =>
+      uniqueById(sortZkWatches(mergeRecordsByUpdatedAt(prev, next.zkWatches)))
+    );
+    setArchivedWatches((prev) =>
+      uniqueById(sortZkWatches(mergeRecordsByUpdatedAt(prev, next.archivedZkWatches)))
+    );
+    setNotes((prev) => uniqueById(mergeRecordsByUpdatedAt(prev, next.notes)));
+    setArchivedNotes((prev) => uniqueById(mergeRecordsByUpdatedAt(prev, next.archivedNotes)));
+    if (tourDemo) setActiveTab("notes");
+  }
+
+  if (!warehouseSnapshotReady && salesPersonId && !tourDemo) {
+    const snapshot = loadZkArrivedSnapshot(salesPersonId);
+    if (Object.keys(snapshot).length === 0) {
+      saveZkArrivedSnapshot(salesPersonId, buildZkArrivedSnapshot(zkWatches));
+      setWarehouseSnapshotReady(true);
+    } else {
+      const unseen = detectUnseenZkWarehouseArrivals(zkWatches, snapshot);
+      setWarehouseSnapshotReady(true);
+      if (unseen.length) {
+        setUnseenWatchIds(new Set(unseen));
+        setWarehouseToast(
+          unseen.length === 1
+            ? "Towar z ZK jest na magazynie — pozycja odhaczona automatycznie."
+            : `${unseen.length} spraw ZK ma nowy towar na magazynie.`
+        );
+      }
+    }
+  }
+
+  if (
+    warehouseUnseenKey &&
+    warehouseUnseenKey !== appliedWarehouseUnseenKey &&
+    warehouseSnapshotReady
+  ) {
+    setAppliedWarehouseUnseenKey(warehouseUnseenKey);
+    const unseen = warehouseUnseenKey.split("\0").filter(Boolean);
+    setUnseenWatchIds((prev) => new Set([...prev, ...unseen]));
+    const n = unseen.length;
+    setWarehouseToast(
+      n === 1
+        ? "Towar z ZK jest na magazynie — pozycja odhaczona automatycznie."
+        : `${n} spraw ZK ma nowy towar na magazynie.`
+    );
+  }
+
+  const focusParam = searchParams.get("focusWatch")?.trim() || null;
+  const urlTabKey = `${searchParams.toString()}\0${focusWatchId ?? ""}\0${zkWatches.length}\0${archivedWatches.length}`;
+  if (!tourDemo && urlTabKey !== appliedUrlTabKey) {
+    setAppliedUrlTabKey(urlTabKey);
+    const hash = typeof window !== "undefined" ? window.location.hash : "";
+    setActiveTab(
+      resolveNotatnikPageTab({
+        tabParam: searchParams.get("tab"),
+        hash,
+        focusWatchId: focusParam ?? focusWatchId,
+        watchInOpen: focusParam ? zkWatches.some((w) => w.id === focusParam) : undefined,
+        watchInArchive: focusParam ? archivedWatches.some((w) => w.id === focusParam) : undefined,
+      })
+    );
+  }
+
+  const hasArchiveContent = archivedWatches.length > 0 || archivedNotes.length > 0;
+  if (!tourDemo && activeTab === "archive" && !hasArchiveContent) {
+    navigateToTab("zk");
+  }
 
   function refresh() {
     router.refresh();

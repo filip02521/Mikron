@@ -2,7 +2,6 @@ import type { SalesNote, SalesZkWatch } from "@/types/database";
 import { isFollowUpDue, formatFollowUpLabel } from "@/lib/sales/notepad-follow-up";
 import {
   countArrivedZkLinesFromWatch,
-  detectUnseenZkWarehouseArrivals,
 } from "@/lib/sales/zk-watch-warehouse-notify";
 
 export type NotepadTodayTaskKind =

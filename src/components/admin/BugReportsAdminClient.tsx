@@ -165,7 +165,7 @@ export function BugReportsAdminClient({
     >
       <header className="mb-5 border-b-4 border-neutral-800 pb-3 font-mono">
         <p className="text-[10px] font-bold uppercase tracking-[0.35em] text-red-700">
-          /// poza design systemem ///
+          {"/// poza design systemem ///"}
         </p>
         <p className="mt-2 max-w-2xl text-xs leading-relaxed text-neutral-700">
           {openCount > 0 ? (

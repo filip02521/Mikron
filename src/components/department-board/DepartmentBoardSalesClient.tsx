@@ -74,9 +74,10 @@ export function DepartmentBoardSalesClient({
   const tourDemo = useSalesOnboardingDemo("tablica");
   const demoBoard = useMemo(() => buildOnboardingTablicaDemo(), []);
   const board = tourDemo ? demoBoard : initial;
-  const effectiveUnseenQuestionIds = tourDemo
-    ? [...ONBOARDING_TABLICA_UNSEEN_QUESTION_IDS]
-    : unseenQuestionIds;
+  const effectiveUnseenQuestionIds = useMemo(
+    () => (tourDemo ? [...ONBOARDING_TABLICA_UNSEEN_QUESTION_IDS] : unseenQuestionIds),
+    [tourDemo, unseenQuestionIds]
+  );
   const readSet = useMemo(
     () => new Set(board.readAnnouncementIds),
     [board.readAnnouncementIds]
@@ -96,30 +97,26 @@ export function DepartmentBoardSalesClient({
     return unreadAnnouncements > 0 ? "announcements" : "questions";
   });
   const [questionFilter, setQuestionFilter] = useState<QuestionFilter>("all");
+  const forceAllQuestions = Boolean(focusQuestionId) || unseenAnswersCount > 0;
+  const activeQuestionFilter: QuestionFilter = forceAllQuestions ? "all" : questionFilter;
   const [questionTitle, setQuestionTitle] = useState("");
   const [questionBody, setQuestionBody] = useState("");
   const [questionFormError, setQuestionFormError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
 
   const filteredQuestions = useMemo(() => {
-    if (questionFilter === "open") {
+    if (activeQuestionFilter === "open") {
       return board.questions.filter((q) => q.status === "open");
     }
-    if (questionFilter === "answered") {
+    if (activeQuestionFilter === "answered") {
       return board.questions.filter((q) => q.status === "answered");
     }
     return board.questions;
-  }, [board.questions, questionFilter]);
+  }, [board.questions, activeQuestionFilter]);
 
   function refresh() {
     router.refresh();
   }
-
-  useEffect(() => {
-    if (focusQuestionId || unseenAnswersCount > 0) {
-      setQuestionFilter("all");
-    }
-  }, [focusQuestionId, unseenAnswersCount]);
 
   useEffect(() => {
     if (!focusQuestionId) return;
@@ -299,11 +296,11 @@ export function DepartmentBoardSalesClient({
               ) : null}
 
               <DepartmentBoardQuestionFilters
-                value={questionFilter}
+                value={activeQuestionFilter}
                 onChange={setQuestionFilter}
               />
               {filteredQuestions.length === 0 ? (
-                <DepartmentBoardQuestionsEmpty domain="sales" filter={questionFilter} />
+                <DepartmentBoardQuestionsEmpty domain="sales" filter={activeQuestionFilter} />
               ) : (
                 <div className={cn(mojeShipmentListClass, "-mx-3 sm:-mx-4")}>
                   {filteredQuestions.map((question) => (

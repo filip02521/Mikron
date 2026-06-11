@@ -45,7 +45,9 @@ export function UndoToast({
   className?: string;
 }) {
   const onDismissRef = useRef(onDismiss);
-  onDismissRef.current = onDismiss;
+  useEffect(() => {
+    onDismissRef.current = onDismiss;
+  }, [onDismiss]);
 
   const resolvedTitle = title ?? message ?? "Zapisano zmianę";
   const resolvedDescription =

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useMemo } from "react";
 import { formatDateString } from "@/lib/orders/dates";
 import {
   computeDailyUrgentProgress,
@@ -30,23 +30,16 @@ function readBaseline(key: string): number | null {
  * `remaining` powinno być z pełnej listy (bez filtra urlopów) — jak metryki Zaległe/Na dziś.
  */
 export function useDailyUrgentProgress(remaining: number): DailyUrgentProgress {
-  const [baseline, setBaseline] = useState<number | null>(null);
-
-  useEffect(() => {
+  return useMemo(() => {
+    if (typeof sessionStorage === "undefined") {
+      return computeDailyUrgentProgress(null, remaining);
+    }
     const key = storageKeyForToday();
     const stored = readBaseline(key);
     const next = mergeUrgentBaseline(stored, remaining);
-
-    if (next != null) {
-      if (next !== stored) {
-        sessionStorage.setItem(key, String(next));
-      }
-      setBaseline(next);
-      return;
+    if (next != null && next !== stored) {
+      sessionStorage.setItem(key, String(next));
     }
-
-    setBaseline(null);
+    return computeDailyUrgentProgress(next, remaining);
   }, [remaining]);
-
-  return computeDailyUrgentProgress(baseline, remaining);
 }

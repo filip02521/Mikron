@@ -18,7 +18,6 @@ import {
   panelDropdownShellClass,
   panelSegmentControlClass,
   panelSegmentControlOpenClass,
-  panelSegmentLastClass,
   panelToolbarIconButtonClass,
 } from "@/lib/ui/ontime-theme";
 import { buttonGroupItemClass } from "@/lib/ui/surfaces";
@@ -81,10 +80,7 @@ export function OverflowMenu({
   };
 
   useLayoutEffect(() => {
-    if (!open) {
-      setMenuPos(null);
-      return;
-    }
+    if (!open) return;
     updatePosition();
     const raf = requestAnimationFrame(updatePosition);
     window.addEventListener("resize", updatePosition);

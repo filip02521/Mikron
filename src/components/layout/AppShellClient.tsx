@@ -1,7 +1,7 @@
 "use client";
 
 import { Suspense } from "react";
-import { usePathname, useSearchParams } from "next/navigation";
+import { usePathname } from "next/navigation";
 import { AdminPanelPreviewProvider } from "./AdminPanelPreviewContext";
 import { AdminPreviewBanner } from "./AdminPreviewBanner";
 import { Sidebar } from "./Sidebar";

@@ -109,6 +109,7 @@ export function scrubPasswordLinkFromLocation(
   search: string,
   hash: string
 ): string {
+  void hash;
   return scrubPasswordLinkFromUrl(pathname, search);
 }
 

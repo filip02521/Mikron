@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { Button } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/Badge";
 import { ModalShell } from "@/components/ui/ModalShell";
@@ -42,10 +42,9 @@ export function ZkWatchLinesModal({
   onSaved?: (watch: SalesZkWatch) => void;
 }) {
   const [watchKey, setWatchKey] = useState(watch.id);
-
-  useEffect(() => {
-    if (open) setWatchKey(watch.id);
-  }, [open, watch.id]);
+  if (open && watch.id !== watchKey) {
+    setWatchKey(watch.id);
+  }
 
   const lineViews = useMemo(() => buildZkWatchLineViews(watch), [watch]);
   const summary = useMemo(() => summarizeZkWatchLines(lineViews), [lineViews]);

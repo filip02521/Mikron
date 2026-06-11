@@ -13,9 +13,6 @@ export function ProcurementRequestLine({
   line: ForSomeoneLine;
   className?: string;
 }) {
-  const hasMeta =
-    (line.symbol && line.symbol !== "-") || (line.quantity && line.quantity !== "-");
-
   return (
     <li
       className={cn(

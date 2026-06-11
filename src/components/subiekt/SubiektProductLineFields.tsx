@@ -1,7 +1,7 @@
 "use client";
 
-import { useCallback, useEffect, useId, useRef, useState, useTransition } from "react";
-import type { KeyboardEvent, ReactNode } from "react";
+import { useCallback, useEffect, useId, useMemo, useRef, useState, useTransition } from "react";
+import type { KeyboardEvent } from "react";
 import { actionSubiektSuggestProducts } from "@/app/actions/subiekt";
 import type { IndividualRequestKind } from "@/types/database";
 import { Field, Input } from "@/components/ui/Field";
@@ -70,8 +70,9 @@ type FieldVisualProps = {
 /** Po picku z Subiekta — jeden komunikat zamiast haczyków w każdym polu. */
 function withoutSuccessWhenLinked(props: FieldVisualProps, linked: boolean): FieldVisualProps {
   if (!linked || props.state !== "success") return props;
-  const { state: _s, error, ...rest } = props;
-  return error ? { error } : {};
+  const { state: _omitState, error, ...rest } = props;
+  void _omitState;
+  return error ? { error, ...rest } : rest;
 }
 
 function SubiektInputLoadingSpinner({ loading }: { loading: boolean }) {
@@ -197,6 +198,7 @@ export function SubiektProductLineFields({
   typeaheadSize?: "default" | "comfortable";
 }) {
   const ref = useRef<HTMLDivElement>(null);
+  const searchGenerationRef = useRef(0);
   const typeaheadInstanceId = useId();
   const [enabled, setEnabled] = useState(false);
   const [highlightedIndex, setHighlightedIndex] = useState(0);
@@ -210,7 +212,7 @@ export function SubiektProductLineFields({
     null
   );
   const [resolvingSupplier, setResolvingSupplier] = useState(false);
-  const [, startTransition] = useTransition();
+  const [isPending, startTransition] = useTransition();
 
   const prosba = appearance === "prosba";
   const querySource = activeFieldQuery(value, activeField);
@@ -219,6 +221,30 @@ export function SubiektProductLineFields({
   const isInformacja = requestKind === "informacja";
   const linkedFromSubiekt = value.subiektTwId != null;
   const minQueryLen = minProductSearchLength(activeField);
+  const searchActive =
+    enabled && !linkedFromSubiekt && debounced.length >= minQueryLen;
+  const shortQueryFeedback =
+    enabled &&
+    !linkedFromSubiekt &&
+    debounced.length > 0 &&
+    debounced.length < minQueryLen
+      ? getSubiektFeedback("short_query")
+      : null;
+  const visibleItems = useMemo(
+    () => (searchActive ? items : []),
+    [items, searchActive]
+  );
+  const visibleFeedback = searchActive ? feedback : shortQueryFeedback;
+  const visibleStatus = searchActive ? (isPending ? "loading" : status) : "idle";
+  const itemsKey = `${activeField}\0${visibleItems.map((item) => item.tw_Id).join("\0")}`;
+  const [appliedItemsKey, setAppliedItemsKey] = useState(itemsKey);
+  if (itemsKey !== appliedItemsKey) {
+    setAppliedItemsKey(itemsKey);
+    setHighlightedIndex(0);
+  }
+  if (linkedFromSubiekt && open) {
+    setOpen(false);
+  }
   const productDisplay = combinedProductSearchDisplay(value);
   const mikranOnlyHint =
     !productDisplay.trim() && value.mikranCode.trim() && !linkedFromSubiekt
@@ -259,38 +285,16 @@ export function SubiektProductLineFields({
   }, []);
 
   useEffect(() => {
-    if (!enabled) {
-      setItems([]);
-      setFeedback(null);
-      setStatus("idle");
-      return;
-    }
-    if (linkedFromSubiekt) {
-      setStatus("idle");
-      setItems([]);
-      setOpen(false);
-      setFeedback(null);
-      return;
-    }
-    if (debounced.length < minQueryLen) {
-      setItems([]);
-      setStatus("idle");
-      setFeedback(
-        debounced.length > 0 && debounced.length < minQueryLen
-          ? getSubiektFeedback("short_query")
-          : null
-      );
-      return;
-    }
+    if (!searchActive) return;
 
-    setStatus("loading");
-    setFeedback(null);
+    const generation = ++searchGenerationRef.current;
     startTransition(async () => {
       try {
         const res = await actionSubiektSuggestProducts(
           debounced,
           productSuggestSearchField(activeField)
         );
+        if (generation !== searchGenerationRef.current) return;
         if (!res.ok) {
           setItems([]);
           setFeedback(res.feedback);
@@ -302,90 +306,103 @@ export function SubiektProductLineFields({
         setOpen(res.items.length > 0);
         setHighlightedIndex(0);
       } finally {
-        setStatus("idle");
+        if (generation === searchGenerationRef.current) {
+          setStatus("idle");
+        }
       }
     });
-  }, [debounced, enabled, linkedFromSubiekt, activeField, minQueryLen]);
+  }, [debounced, searchActive, activeField]);
 
-  useEffect(() => {
-    setHighlightedIndex(0);
-  }, [items, activeField]);
-
-  const typeaheadListVisible = open && items.length > 0;
+  const typeaheadListVisible = open && visibleItems.length > 0;
   const typeaheadPanelVisible =
     enabled &&
     !linkedFromSubiekt &&
-    (status === "loading" || typeaheadListVisible);
+    (visibleStatus === "loading" || typeaheadListVisible);
 
   const listboxId = `${typeaheadInstanceId}-${activeField}`;
 
-  const pick = (p: SubiektProduct) => {
-    const patch = buildProductPickFromSubiekt(p, requestKind, value.quantity);
-    onChange({ ...patch, subiektTwId: patch.subiektTwId });
-    setFeedback(null);
-    setOpen(false);
-    setItems([]);
-    setStatus("idle");
-    setHighlightedIndex(0);
+  const pick = useCallback(
+    (p: SubiektProduct) => {
+      searchGenerationRef.current++;
+      const patch = buildProductPickFromSubiekt(p, requestKind, value.quantity);
+      onChange({ ...patch, subiektTwId: patch.subiektTwId });
+      setFeedback(null);
+      setOpen(false);
+      setItems([]);
+      setStatus("idle");
+      setHighlightedIndex(0);
 
-    if (!suppliers?.length || !onSupplierResolved) return;
+      if (!suppliers?.length || !onSupplierResolved) return;
 
-    // Nowe podejście: dopasowanie dostawcy robimy po naszej bazie (product_supplier_links),
-    // więc jest szybkie. Dla prośby handlowca robimy to "po cichu" (bez spinnera),
-    // a jeśli nie ma mapowania — pozycja zostaje do weryfikacji.
-    const silentResolve = deferSupplierResolve;
-    if (!silentResolve) {
-      setResolvingSupplier(true);
-      setSupplierFeedback(null);
-      onSupplierResolveFeedback?.(null);
-    }
-    onResolvingSupplierChange?.(true);
-    startTransition(async () => {
-      try {
-        const { actionSubiektResolveSupplierForProduct } = await import(
-          "@/app/actions/subiekt"
-        );
-        const res = await actionSubiektResolveSupplierForProduct(p, suppliers);
-        if (res.ok) {
-          onSupplierResolved({
-            supplierId: res.supplierId,
-            supplierName: res.supplierName,
-            documentNumber: res.documentNumber,
-          });
-          if (!silentResolve) {
-            setSupplierFeedback(null);
-            onSupplierResolveFeedback?.(null);
-            try {
-              const { actionRecordCatalogFromSubiektPick } = await import(
-                "@/app/actions/subiekt"
-              );
-              const twId = Number((p as { tw_Id?: unknown }).tw_Id);
-              if (Number.isFinite(twId) && twId > 0) {
-                await actionRecordCatalogFromSubiektPick({
-                  subiektTwId: twId,
-                  symbol: patch.symbol,
-                  productName: patch.product,
-                  mikranCode: patch.mikranCode,
-                  supplierId: res.supplierId,
-                });
+      // Nowe podejście: dopasowanie dostawcy robimy po naszej bazie (product_supplier_links),
+      // więc jest szybkie. Dla prośby handlowca robimy to "po cichu" (bez spinnera),
+      // a jeśli nie ma mapowania — pozycja zostaje do weryfikacji.
+      const silentResolve = deferSupplierResolve;
+      if (!silentResolve) {
+        setResolvingSupplier(true);
+        setSupplierFeedback(null);
+        onSupplierResolveFeedback?.(null);
+      }
+      onResolvingSupplierChange?.(true);
+      startTransition(async () => {
+        try {
+          const { actionSubiektResolveSupplierForProduct } = await import(
+            "@/app/actions/subiekt"
+          );
+          const res = await actionSubiektResolveSupplierForProduct(p, suppliers);
+          if (res.ok) {
+            onSupplierResolved({
+              supplierId: res.supplierId,
+              supplierName: res.supplierName,
+              documentNumber: res.documentNumber,
+            });
+            if (!silentResolve) {
+              setSupplierFeedback(null);
+              onSupplierResolveFeedback?.(null);
+              try {
+                const { actionRecordCatalogFromSubiektPick } = await import(
+                  "@/app/actions/subiekt"
+                );
+                const twId = Number((p as { tw_Id?: unknown }).tw_Id);
+                if (Number.isFinite(twId) && twId > 0) {
+                  await actionRecordCatalogFromSubiektPick({
+                    subiektTwId: twId,
+                    symbol: patch.symbol,
+                    productName: patch.product,
+                    mikranCode: patch.mikranCode,
+                    supplierId: res.supplierId,
+                  });
+                }
+              } catch {
+                /* katalog — best effort */
               }
-            } catch {
-              /* katalog — best effort */
+            }
+          } else {
+            if (!silentResolve) {
+              onSupplierMappingMissing?.();
+              if (!delegateAlerts) setSupplierFeedback(res.feedback);
+              onSupplierResolveFeedback?.(res.feedback);
             }
           }
-        } else {
-          if (!silentResolve) {
-            onSupplierMappingMissing?.();
-            if (!delegateAlerts) setSupplierFeedback(res.feedback);
-            onSupplierResolveFeedback?.(res.feedback);
-          }
+        } finally {
+          onResolvingSupplierChange?.(false);
+          if (!silentResolve) setResolvingSupplier(false);
         }
-      } finally {
-        onResolvingSupplierChange?.(false);
-        if (!silentResolve) setResolvingSupplier(false);
-      }
-    });
-  };
+      });
+    },
+    [
+      deferSupplierResolve,
+      delegateAlerts,
+      onChange,
+      onResolvingSupplierChange,
+      onSupplierMappingMissing,
+      onSupplierResolveFeedback,
+      onSupplierResolved,
+      requestKind,
+      suppliers,
+      value.quantity,
+    ]
+  );
 
   const manualPatch = (
     patch: Partial<SubiektProductLineValue>,
@@ -407,7 +424,7 @@ export function SubiektProductLineFields({
 
       if (e.key === "ArrowDown" && hasList) {
         e.preventDefault();
-        setHighlightedIndex((i) => Math.min(i + 1, items.length - 1));
+        setHighlightedIndex((i) => Math.min(i + 1, visibleItems.length - 1));
         return;
       }
       if (e.key === "ArrowUp" && hasList) {
@@ -418,13 +435,13 @@ export function SubiektProductLineFields({
       if (e.key === "Enter" && hasList) {
         e.preventDefault();
         e.stopPropagation();
-        const chosen = items[highlightedIndex];
+        const chosen = visibleItems[highlightedIndex];
         if (chosen) pick(chosen);
         return;
       }
       if (
         e.key === "Escape" &&
-        (hasList || status === "loading" || open)
+        (hasList || visibleStatus === "loading" || open)
       ) {
         e.preventDefault();
         e.stopPropagation();
@@ -436,9 +453,9 @@ export function SubiektProductLineFields({
       enabled,
       linkedFromSubiekt,
       typeaheadListVisible,
-      items,
+      visibleItems,
       highlightedIndex,
-      status,
+      visibleStatus,
       open,
       pick,
     ]
@@ -463,7 +480,7 @@ export function SubiektProductLineFields({
     if (!typeaheadPanelVisible) return null;
 
     const resultLabel =
-      items.length === 1 ? "1 wynik" : `${items.length} wyników`;
+      visibleItems.length === 1 ? "1 wynik" : `${visibleItems.length} wyników`;
 
     return (
       <TypeaheadDropdown
@@ -471,7 +488,7 @@ export function SubiektProductLineFields({
         size={typeaheadSize}
         listboxId={listboxId}
         className="left-0 right-0"
-        emptyMessage={status === "loading" ? "Szukam w Subiekcie…" : undefined}
+        emptyMessage={visibleStatus === "loading" ? "Szukam w Subiekcie…" : undefined}
         footer={typeaheadListVisible ? TYPEAHEAD_KEYBOARD_HINT : undefined}
       >
         {typeaheadListVisible ? (
@@ -479,7 +496,7 @@ export function SubiektProductLineFields({
             <TypeaheadSectionLabel>
               Subiekt — {typeaheadSectionLabel(activeField)} · {resultLabel}
             </TypeaheadSectionLabel>
-            {items.map((p, index) => {
+            {visibleItems.map((p, index) => {
               const { title, subtitle } = formatSubiektProductOption(p);
               return (
                 <TypeaheadOption
@@ -501,10 +518,12 @@ export function SubiektProductLineFields({
     );
   };
 
-  const showError = feedback && feedback.tone !== "info";
-  const showInfo = feedback && feedback.tone === "info" && items.length === 0;
+  const showError = visibleFeedback && visibleFeedback.tone !== "info";
+  const showInfo = visibleFeedback && visibleFeedback.tone === "info" && visibleItems.length === 0;
   const productFieldFeedback =
-    feedback && (showError || showInfo) && !linkedFromSubiekt ? feedback : null;
+    visibleFeedback && (showError || showInfo) && !linkedFromSubiekt
+      ? visibleFeedback
+      : null;
 
   const mergedProductField = withoutSuccessWhenLinked(
     mergeCombinedProductFieldProps(fieldValidation),
@@ -516,8 +535,8 @@ export function SubiektProductLineFields({
   );
   const quantityField = quantityFieldProps(fieldValidation);
   const showQuantityValidation = prosba || Boolean(fieldValidation);
-  const productInputLoading = activeField !== "plu" && status === "loading";
-  const mikranInputLoading = activeField === "plu" && status === "loading";
+  const productInputLoading = activeField !== "plu" && visibleStatus === "loading";
+  const mikranInputLoading = activeField === "plu" && visibleStatus === "loading";
   const linkedBannerSymbol = symbolPreview;
 
   const prosbaMessageItems: ProsbaLineMessageItem[] = [];
@@ -756,7 +775,7 @@ export function SubiektProductLineFields({
 
       {enabled ? (
         <>
-          {!delegateAlerts && !prosba && !feedback && !resolvingSupplier && !linkedFromSubiekt ? (
+          {!delegateAlerts && !prosba && !visibleFeedback && !resolvingSupplier && !linkedFromSubiekt ? (
             <p className="text-xs text-slate-400">
               Wpisz nazwę lub symbol w dużym polu, kod Mikran i ilość obok — lista
               Subiekta pojawi się pod produktem.
@@ -768,10 +787,10 @@ export function SubiektProductLineFields({
           ) : null}
 
           {!delegateAlerts && !prosba && showError ? (
-            <SubiektFeedbackAlert feedback={feedback} compact />
+            <SubiektFeedbackAlert feedback={visibleFeedback} compact />
           ) : null}
           {!delegateAlerts && !prosba && showInfo ? (
-            <SubiektFeedbackAlert feedback={feedback} compact />
+            <SubiektFeedbackAlert feedback={visibleFeedback} compact />
           ) : null}
         </>
       ) : null}

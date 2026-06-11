@@ -5,7 +5,6 @@ import {
   useCallback,
   useContext,
   useEffect,
-  useLayoutEffect,
   useMemo,
   useRef,
   useState,
@@ -87,7 +86,7 @@ export function SalesOnboardingProvider({
   const steps = useMemo(() => getSalesOnboardingSteps(role), [role]);
   const [stepIndex, setStepIndexState] = useState(0);
   const stepIndexRef = useRef(stepIndex);
-  const skipPathSyncRef = useRef(false);
+  const [skipPathSync, setSkipPathSync] = useState(false);
 
   useEffect(() => {
     stepIndexRef.current = stepIndex;
@@ -109,7 +108,7 @@ export function SalesOnboardingProvider({
         return;
       }
       if (clamped > 0) markTourStarted();
-      skipPathSyncRef.current = true;
+      setSkipPathSync(true);
       setStepIndexState(clamped);
       const target = stepPathnameForStep(step);
       if (target && target !== pathname) {
@@ -119,35 +118,27 @@ export function SalesOnboardingProvider({
     [pathname, role, router, steps]
   );
 
-  useLayoutEffect(() => {
-    if (!active || isTourStarted(stepIndexRef.current)) return;
+  if (active && !skipPathSync && stepIndex === 0) {
     try {
-      if (sessionStorage.getItem(TOUR_STARTED_STORAGE_KEY) !== "1") return;
+      if (sessionStorage.getItem(TOUR_STARTED_STORAGE_KEY) === "1") {
+        const matched = resolveTourStepIndexFromPathname(steps, pathname, null);
+        if (matched != null && matched > 0 && matched !== stepIndex) {
+          setStepIndexState(matched);
+        }
+      }
     } catch {
-      return;
+      /* private mode */
     }
-    const matched = resolveTourStepIndexFromPathname(steps, pathname, null);
-    if (matched != null && matched > 0) {
+  }
+
+  if (skipPathSync) {
+    setSkipPathSync(false);
+  } else if (active && isTourStarted(stepIndex)) {
+    const matched = resolveTourStepIndexFromPathname(steps, pathname, stepIndex);
+    if (matched != null && matched !== stepIndex) {
       setStepIndexState(matched);
     }
-  }, [active, pathname, steps]);
-
-  useEffect(() => {
-    if (skipPathSyncRef.current) {
-      skipPathSyncRef.current = false;
-      return;
-    }
-    if (!active || !isTourStarted(stepIndexRef.current)) return;
-
-    const matched = resolveTourStepIndexFromPathname(
-      steps,
-      pathname,
-      stepIndexRef.current
-    );
-    if (matched != null && matched !== stepIndexRef.current) {
-      setStepIndexState(matched);
-    }
-  }, [active, pathname, steps]);
+  }
 
   const setStepIndex = useCallback(
     (index: number) => {

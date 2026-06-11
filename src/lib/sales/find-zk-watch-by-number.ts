@@ -1,5 +1,4 @@
 import { zkNumbersEquivalent } from "@/lib/subiekt/zk-document";
-import type { SalesZkWatch } from "@/types/database";
 
 type ZkNumberRow = { zk_number: string; id?: string };
 

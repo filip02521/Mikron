@@ -89,13 +89,16 @@ export function OperationsNotepadClient({
   const [undo, setUndo] = useState<OperationsUndoState | null>(null);
   const dismissUndo = useCallback(() => setUndo(null), []);
 
-  useEffect(() => {
+  const dataSyncKey = `${department}\0${initial.privateNotes.map((n) => n.updated_at).join("\0")}\0${initial.publicNotes.map((n) => n.updated_at).join("\0")}\0${initial.archivedNotes.map((n) => n.updated_at).join("\0")}`;
+  const [appliedDataSyncKey, setAppliedDataSyncKey] = useState(dataSyncKey);
+  if (dataSyncKey !== appliedDataSyncKey) {
+    setAppliedDataSyncKey(dataSyncKey);
     setPrivateNotes(initial.privateNotes);
     setPublicNotes(initial.publicNotes);
     setArchivedNotes(initial.archivedNotes);
     setShowArchive(false);
     setUndo(null);
-  }, [department, initial]);
+  }
 
   const todayTasks = useMemo(
     () => collectOperationsTodayTasks(privateNotes, publicNotes, userId),

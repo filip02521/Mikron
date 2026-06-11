@@ -47,12 +47,12 @@ export function QueueSupplierDirectoryField({
   );
 
   const [query, setQuery] = useState(() => selected?.name ?? "");
-
-  useEffect(() => {
-    if (!open) {
-      setQuery(selected?.name ?? "");
-    }
-  }, [selected, open]);
+  const selectedName = selected?.name ?? "";
+  const [appliedSelectedName, setAppliedSelectedName] = useState(selectedName);
+  if (!open && selectedName !== appliedSelectedName) {
+    setAppliedSelectedName(selectedName);
+    setQuery(selectedName);
+  }
 
   const options = useMemo(() => {
     const q = query.trim();
@@ -71,10 +71,12 @@ export function QueueSupplierDirectoryField({
   }, [allOptionLabel, emptyOptionLabel, includeAllOption, query, sorted]);
 
   const listVisible = open && options.length > 0 && !disabled;
-
-  useEffect(() => {
+  const optionsKey = options.map((option) => option.id).join("\0");
+  const [appliedOptionsKey, setAppliedOptionsKey] = useState(optionsKey);
+  if (optionsKey !== appliedOptionsKey) {
+    setAppliedOptionsKey(optionsKey);
     setHighlightedIndex(0);
-  }, [options]);
+  }
 
   useEffect(() => {
     const onDoc = (e: MouseEvent) => {

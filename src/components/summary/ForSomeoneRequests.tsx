@@ -70,7 +70,10 @@ function useProcurementSeenTracker() {
   /** Klucze, dla których wysłano już zapis do API (poza cyklem renderu). */
   const persistSeenRef = useRef<Set<string>>(new Set());
   const locallySeenRef = useRef(locallySeenKeys);
-  locallySeenRef.current = locallySeenKeys;
+
+  useEffect(() => {
+    locallySeenRef.current = locallySeenKeys;
+  }, [locallySeenKeys]);
 
   useEffect(() => {
     const timers = timersRef.current;
@@ -260,14 +263,17 @@ export function ForSomeoneRequests({
   } | null>(null);
   const [focusedGroupKey, setFocusedGroupKey] = useState<string | null>(null);
 
-  const focusedGroup = useMemo(() => {
+  const resolvedFocusedGroupKey = useMemo(() => {
     if (!focusedGroupKey) return null;
-    return navigableGroups.find((g) => groupKey(g) === focusedGroupKey) ?? null;
+    return navigableGroups.some((g) => groupKey(g) === focusedGroupKey)
+      ? focusedGroupKey
+      : null;
   }, [focusedGroupKey, navigableGroups]);
 
-  useEffect(() => {
-    if (focusedGroupKey && !focusedGroup) setFocusedGroupKey(null);
-  }, [focusedGroupKey, focusedGroup]);
+  const focusedGroup = useMemo(() => {
+    if (!resolvedFocusedGroupKey) return null;
+    return navigableGroups.find((g) => groupKey(g) === resolvedFocusedGroupKey) ?? null;
+  }, [resolvedFocusedGroupKey, navigableGroups]);
 
   useEffect(() => {
     if (!focusedGroup) return;
@@ -275,13 +281,13 @@ export function ForSomeoneRequests({
   }, [focusedGroup, scheduleMarkSeen]);
 
   useEffect(() => {
-    if (!focusedGroupKey) return;
+    if (!resolvedFocusedGroupKey) return;
     document
       .querySelector<HTMLElement>(
-        `[data-procurement-group="${CSS.escape(focusedGroupKey)}"]`
+        `[data-procurement-group="${CSS.escape(resolvedFocusedGroupKey)}"]`
       )
       ?.scrollIntoView({ behavior: "smooth", block: "nearest" });
-  }, [focusedGroupKey]);
+  }, [resolvedFocusedGroupKey]);
 
   useEffect(() => {
     if (editTarget || cancelTarget || !navigableGroups.length) return;
@@ -298,8 +304,8 @@ export function ForSomeoneRequests({
         return;
       }
 
-      const currentIndex = focusedGroupKey
-        ? navigableGroups.findIndex((g) => groupKey(g) === focusedGroupKey)
+      const currentIndex = resolvedFocusedGroupKey
+        ? navigableGroups.findIndex((g) => groupKey(g) === resolvedFocusedGroupKey)
         : -1;
 
       if (e.key === "ArrowDown") {
@@ -388,7 +394,7 @@ export function ForSomeoneRequests({
 
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [navigableGroups, focusedGroup, focusedGroupKey, editTarget, cancelTarget, run, markGroupSeen]);
+  }, [navigableGroups, focusedGroup, resolvedFocusedGroupKey, editTarget, cancelTarget, run, markGroupSeen, enrichGroup]);
 
   const Wrapper = embedded ? "section" : Card;
   const wrapperProps = embedded
@@ -527,7 +533,7 @@ export function ForSomeoneRequests({
                   {block.requestGroups.map((g) => {
           const key = groupKey(g);
           const groupPending = isScopePending(key) || blockPending;
-          const isFocused = focusedGroupKey === key;
+          const isFocused = resolvedFocusedGroupKey === key;
           const ui = enrichGroup(g);
           const isUnseen = isGroupUnseen(g);
           const stats = statsBySupplierId[g.supplierId];
@@ -570,7 +576,7 @@ export function ForSomeoneRequests({
                 onMouseLeave={(e) => {
                   cancelMarkSeen(g);
                   panelRowClearFocusOnLeave(e);
-                  if (focusedGroupKey === key) setFocusedGroupKey(null);
+                  if (resolvedFocusedGroupKey === key) setFocusedGroupKey(null);
                 }}
               >
                 <div className="px-2 py-2">

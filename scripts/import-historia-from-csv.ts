@@ -42,10 +42,6 @@ function isIndividualHistoriaFile(path: string): boolean {
   return /indywidual/i.test(path);
 }
 
-function isStandardHistoriaFile(path: string): boolean {
-  return /historia/i.test(path) && !/indywidual/i.test(path);
-}
-
 function findHistoriaCsv(dir: string, kind: "standard" | "individual"): string | null {
   const names = readdirSync(dir).filter((n) => n.toLowerCase().endsWith(".csv"));
   if (kind === "standard") {
@@ -298,7 +294,6 @@ async function main() {
       h.findIndex((c) => !c.trim()) === 0
         ? 0
         : headerIndex(h, "DATA", "DATA AKCJI", "DATA ZAMÓWIENIA");
-    const userI = headerIndex(h, "UŻYTKOWNIK", "UZYTKOWNIK", "EMAIL", "USER");
     const typeI = headerIndex(h, "TYP ZAMÓWIENIA", "TYP", "ORDER_TYPE");
     const supplierI = headerIndex(h, "DOSTAWCA", "DOSTAWCY");
     const symbolI = headerIndex(h, "SYMBOL");

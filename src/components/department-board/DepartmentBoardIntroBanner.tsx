@@ -1,22 +1,20 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { Button } from "@/components/ui/Button";
 import { cn } from "@/lib/cn";
 import { salesChromeInsetClass, salesTypography } from "@/lib/ui/ontime-theme";
 import { DEPARTMENT_BOARD_INTRO_STORAGE_KEY } from "@/lib/department-board/onboarding-storage";
 
 export function DepartmentBoardIntroBanner() {
-  const [hidden, setHidden] = useState(true);
-
-  useEffect(() => {
+  const [hidden, setHidden] = useState(() => {
     try {
-      setHidden(localStorage.getItem(DEPARTMENT_BOARD_INTRO_STORAGE_KEY) === "1");
+      return localStorage.getItem(DEPARTMENT_BOARD_INTRO_STORAGE_KEY) === "1";
     } catch {
-      setHidden(false);
+      return false;
     }
-  }, []);
+  });
 
   if (hidden) return null;
 

@@ -110,13 +110,12 @@ export function SalesDayStartPanel({
   snapshot: SalesDayStartSnapshot;
   onScrollToSection?: (scrollTarget: string, fallbackHref: string) => void;
 }) {
-  if (snapshot.cleared) return null;
-
   const searchParams = useSearchParams();
   const previewDla = searchParams.get("dla");
   const previewHref = (href: string) => hrefWithSalesPreviewFromUrl(href, previewDla);
-
   const [itemsExpanded, setItemsExpanded] = useState(false);
+
+  if (snapshot.cleared) return null;
 
   const { visible: visibleItems, hiddenCount } = sliceSalesDayStartItems(
     snapshot.items,

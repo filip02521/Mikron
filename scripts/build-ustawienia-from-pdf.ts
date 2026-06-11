@@ -58,14 +58,6 @@ function isIntervalLike(v: string): boolean {
   return /^\d{1,3}$/.test(t);
 }
 
-function isStockLike(v: string): boolean {
-  const t = v.trim();
-  if (!t) return false;
-  if (/w razie potrzeby/i.test(t)) return true;
-  if (parseInterval(t)) return true;
-  return /rok|miesi|tyg|pó[łl]\s*roku|kwartal/i.test(t);
-}
-
 function splitStockInterval(filtered: string[], locIdx: number): {
   stockRaw: string;
   intervalRaw: string;

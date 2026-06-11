@@ -163,7 +163,8 @@ export function salesCancelLineLabel(kind: "zamowienie" | "informacja"): string 
 }
 
 /** Krótka etykieta przy linii produktu — dyskretny link po prawej. */
-export function salesCancelLineShortLabel(_kind: "zamowienie" | "informacja"): string {
+export function salesCancelLineShortLabel(kind: "zamowienie" | "informacja"): string {
+  void kind;
   return "Anuluj";
 }
 

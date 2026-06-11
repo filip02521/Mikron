@@ -1,4 +1,4 @@
-import type { IndividualOrder, IndividualOrderStatus } from "@/types/database";
+import type { IndividualOrder } from "@/types/database";
 
 /** Data zgłoszenia prośby przez handlowca. */
 export function submittedAt(order: Pick<IndividualOrder, "action_at">): string {

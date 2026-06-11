@@ -81,36 +81,33 @@ export function HoldToConfirmButton({
     setProgress(0);
   }, []);
 
-  const tick = useCallback(
-    (now: number) => {
-      const start = startAtRef.current;
-      if (start == null || firedRef.current) return;
+  function tick(now: number) {
+    const start = startAtRef.current;
+    if (start == null || firedRef.current) return;
 
-      const p = Math.min(1, (now - start) / holdMs);
-      setProgress(p);
+    const p = Math.min(1, (now - start) / holdMs);
+    setProgress(p);
 
-      if (p >= 1) {
-        firedRef.current = true;
-        setHolding(false);
-        setProgress(1);
-        if (rafRef.current != null) cancelAnimationFrame(rafRef.current);
-        rafRef.current = null;
-        onConfirm();
-        window.setTimeout(stop, 180);
-        return;
-      }
+    if (p >= 1) {
+      firedRef.current = true;
+      setHolding(false);
+      setProgress(1);
+      if (rafRef.current != null) cancelAnimationFrame(rafRef.current);
+      rafRef.current = null;
+      onConfirm();
+      window.setTimeout(stop, 180);
+      return;
+    }
 
-      rafRef.current = requestAnimationFrame(tick);
-    },
-    [holdMs, onConfirm, stop]
-  );
+    rafRef.current = requestAnimationFrame(tick);
+  }
 
   const start = useCallback(() => {
     if (disabled || firedRef.current) return;
     setHolding(true);
     startAtRef.current = performance.now();
     rafRef.current = requestAnimationFrame(tick);
-  }, [disabled, tick]);
+  }, [disabled]);
 
   return (
     <button

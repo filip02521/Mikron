@@ -71,6 +71,8 @@ function NoteCard({
   onDragOver?: (e: React.DragEvent) => void;
   onDrop?: (e: React.DragEvent) => void;
 }) {
+  const noteSyncKey = `${note.id}\0${note.updated_at}`;
+  const [appliedNoteSyncKey, setAppliedNoteSyncKey] = useState(noteSyncKey);
   const [editing, setEditing] = useState(false);
   const [body, setBody] = useState(note.body);
   const [title, setTitle] = useState(note.title ?? "");
@@ -82,7 +84,8 @@ function NoteCard({
   const [savingFollowUp, setSavingFollowUp] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
+  if (noteSyncKey !== appliedNoteSyncKey) {
+    setAppliedNoteSyncKey(noteSyncKey);
     setBody(note.body);
     setTitle(note.title ?? "");
     setColor(note.color);
@@ -90,24 +93,23 @@ function NoteCard({
     const iso = note.follow_up_at?.slice(0, 10) ?? null;
     setFollowUpAt(iso);
     setFollowUpDraft(iso ?? "");
-  }, [note]);
+  }
 
-  useEffect(() => {
-    if (!pendingKeyboardAction || readOnly) return;
+  const pendingKey = pendingKeyboardAction ? `${note.id}:${pendingKeyboardAction}` : null;
+  const [handledPendingKey, setHandledPendingKey] = useState<string | null>(null);
+  if (pendingKey && pendingKey !== handledPendingKey && !readOnly) {
+    setHandledPendingKey(pendingKey);
+    onConsumeKeyboardAction?.();
     if (pendingKeyboardAction === "edit") {
       setEditing(true);
-      onConsumeKeyboardAction?.();
-      return;
-    }
-    if (pendingKeyboardAction === "pin") {
-      onConsumeKeyboardAction?.();
+    } else if (pendingKeyboardAction === "pin") {
       const nextPinned = !pinned;
       setPinned(nextPinned);
       void actionUpdateSalesNote(note.id, { pinned: nextPinned })
         .then(() => onUpdated?.({ ...note, pinned: nextPinned }))
         .catch(() => setPinned(!nextPinned));
     }
-  }, [pendingKeyboardAction, readOnly, note, pinned, onConsumeKeyboardAction, onUpdated]);
+  }
 
   async function save() {
     setSaving(true);

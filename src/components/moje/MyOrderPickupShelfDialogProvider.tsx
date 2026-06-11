@@ -5,7 +5,6 @@ import {
   useCallback,
   useContext,
   useMemo,
-  useRef,
   useState,
   type ReactNode,
 } from "react";
@@ -27,20 +26,18 @@ const MyOrderPickupShelfDialogContext =
 
 export function MyOrderPickupShelfDialogProvider({ children }: { children: ReactNode }) {
   const [active, setActive] = useState<ShelfNoticeRequest | null>(null);
-  const activeRef = useRef<ShelfNoticeRequest | null>(null);
-  activeRef.current = active;
 
   const requestShelfPickupNotice = useCallback(
     (orderIds: string[], proceed: () => void) => {
       if (!orderIds.length) return;
-      if (activeRef.current) return;
+      if (active) return;
       if (!shouldShowPickupShelfNotice()) {
         proceed();
         return;
       }
       setActive({ orderIds, proceed });
     },
-    []
+    [active]
   );
 
   const close = useCallback(() => {

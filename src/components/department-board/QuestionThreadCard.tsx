@@ -81,6 +81,13 @@ export function QuestionThreadCard({
   const [reply, setReply] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const questionSyncKey = `${question.id}\0${unseenReply}\0${defaultExpanded}`;
+  const [storedQuestionSyncKey, setStoredQuestionSyncKey] = useState(questionSyncKey);
+  if (questionSyncKey !== storedQuestionSyncKey) {
+    setStoredQuestionSyncKey(questionSyncKey);
+    setLocallySeen(!unseenReply);
+    setExpanded(defaultExpanded);
+  }
 
   const author = questionAuthorLabel(question.sales_person, question.author);
   const isOpen = question.status === "open";
@@ -95,11 +102,6 @@ export function QuestionThreadCard({
     if (question.posts[0]) return question.posts[0].body;
     return question.body;
   }, [expanded, question.body, question.posts]);
-
-  useEffect(() => {
-    setLocallySeen(!unseenReply);
-    setExpanded(defaultExpanded);
-  }, [question.id, unseenReply, defaultExpanded]);
 
   useEffect(() => {
     if (!expanded || !autoMarkSeen || !showUnseen || question.posts.length === 0) return;

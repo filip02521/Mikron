@@ -36,7 +36,13 @@ export function ZkWatchFollowUpButton({
 }) {
   const [open, setOpen] = useState(false);
   const [pos, setPos] = useState<PopoverPosition | null>(null);
-  const [followUpDraft, setFollowUpDraft] = useState(watch.follow_up_at?.slice(0, 10) ?? "");
+  const followUpKey = watch.follow_up_at?.slice(0, 10) ?? "";
+  const [followUpDraft, setFollowUpDraft] = useState(followUpKey);
+  const [appliedFollowUpKey, setAppliedFollowUpKey] = useState(followUpKey);
+  if (!open && followUpKey !== appliedFollowUpKey) {
+    setAppliedFollowUpKey(followUpKey);
+    setFollowUpDraft(followUpKey);
+  }
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const triggerRef = useRef<HTMLButtonElement>(null);
@@ -49,15 +55,8 @@ export function ZkWatchFollowUpButton({
   const followUpDay = watch.follow_up_at?.slice(8, 10) ?? null;
   const hasFollowUp = Boolean(followUpLabel);
 
-  useEffect(() => {
-    setFollowUpDraft(watch.follow_up_at?.slice(0, 10) ?? "");
-  }, [watch.follow_up_at]);
-
   useLayoutEffect(() => {
-    if (!open) {
-      setPos(null);
-      return;
-    }
+    if (!open) return;
     const update = () => {
       const el = triggerRef.current;
       if (!el) return;

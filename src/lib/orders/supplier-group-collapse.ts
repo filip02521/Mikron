@@ -46,6 +46,7 @@ export function toggleSupplierGroupCollapsed(
 }
 
 export function expandAllSupplierGroups(groups: SupplierOrderGroup[]): Set<string> {
+  void groups;
   return new Set();
 }
 

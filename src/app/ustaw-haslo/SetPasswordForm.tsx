@@ -30,15 +30,13 @@ export function SetPasswordForm() {
   const forcedChange = searchParams.get("wymagane") === "1";
   const linkError = searchParams.get("blad");
 
-  const [phase, setPhase] = useState<Phase>("checking");
-  const [sessionError, setSessionError] = useState("");
+  const [phase, setPhase] = useState<Phase>(() => (linkError ? "error" : "checking"));
+  const [sessionError, setSessionError] = useState(() => linkError ?? "");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
     if (linkError) {
-      setSessionError(linkError);
-      setPhase("error");
       const clean = scrubPasswordLinkFromLocation(
         window.location.pathname,
         window.location.search,

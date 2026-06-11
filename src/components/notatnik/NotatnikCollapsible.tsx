@@ -2,7 +2,6 @@
 
 import type { ReactNode } from "react";
 import { cn } from "@/lib/cn";
-import { Badge } from "@/components/ui/Badge";
 import { SectionHeadingIcon } from "@/components/icons/SectionHeadingIcon";
 import { IconChevronDown } from "@/components/icons/StrokeIcons";
 import { mojeShipmentSectionShellClass } from "@/lib/ui/moje-shipment-row-styles";
