@@ -5,7 +5,6 @@ import type { IndividualOrder } from "@/types/database";
 import {
   deriveMyOrderSectionCallouts,
   deriveMyOrderSectionDisplayState,
-  filterSectionCalloutsForInboxFilter,
   myOrderRowSuppressesSharedHeadline,
   myOrderSectionSuppressedPatterns,
   polishPozycjaCount,
@@ -117,40 +116,6 @@ describe("my-order-section-callout", () => {
     expect(callouts[0]?.title).toContain("2 pozycje");
   });
 
-  it("ukrywa callout gdy aktywny filtr overdue", () => {
-    const callouts = deriveMyOrderSectionCallouts([
-      row({ timingLabel: "x · po terminie", headlineTone: "warning" }),
-      row({ id: "2", timingLabel: "y · po terminie", headlineTone: "warning" }),
-    ]);
-    expect(filterSectionCalloutsForInboxFilter(callouts, "overdue")).toEqual([]);
-    expect(filterSectionCalloutsForInboxFilter(callouts, null)).toHaveLength(1);
-  });
-
-  it("ukrywa nagłówek przy filtrze overdue bez widocznego calloutu (≥2 wiersze)", () => {
-    const overdue = row({
-      timingLabel: "ok. 10.05 · po terminie",
-      headline: "Po przewidywanym terminie",
-      headlineTone: "warning",
-    });
-    const rows = [overdue, { ...overdue, id: "2" }];
-    const { callouts, suppressedPatterns } = deriveMyOrderSectionDisplayState(
-      rows,
-      "overdue"
-    );
-    expect(callouts).toEqual([]);
-    expect(myOrderRowSuppressesSharedHeadline(overdue, suppressedPatterns)).toBe(true);
-  });
-
-  it("ukrywa nagłówek przy filtrze overdue z jednym wierszem", () => {
-    const overdue = row({
-      timingLabel: "ok. 10.05 · po terminie",
-      headline: "Po przewidywanym terminie",
-      headlineTone: "warning",
-    });
-    const { suppressedPatterns } = deriveMyOrderSectionDisplayState([overdue], "overdue");
-    expect(myOrderRowSuppressesSharedHeadline(overdue, suppressedPatterns)).toBe(true);
-  });
-
   it("callout częściowej dostawy — ton sky, bez obietnicy odbioru teraz", () => {
     const partial = presentMyOrders([partialOrder], []).zamowienia[0]!;
     const rows = [partial, { ...partial, id: "p2", supplierName: "Inny" }];
@@ -165,8 +130,7 @@ describe("my-order-section-callout", () => {
   it("pokazuje hint przy pojedynczej częściowej dostawie", () => {
     const partial = presentMyOrders([partialOrder], []).zamowienia[0]!;
     const { callouts, singleHints, suppressedPatterns } = deriveMyOrderSectionDisplayState(
-      [partial],
-      null
+      [partial]
     );
     expect(callouts).toEqual([]);
     expect(singleHints).toHaveLength(1);

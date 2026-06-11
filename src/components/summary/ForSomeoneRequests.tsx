@@ -35,7 +35,7 @@ import {
 import { cn } from "@/lib/cn";
 import { PanelRowActionsInlineEnd } from "@/components/summary/PanelRowActionsInlineEnd";
 import { panelRowClearFocusOnLeave, panelRowGroupClass } from "@/lib/ui/panel-row-actions-reveal";
-import { panelNameLinkClass, panelTypography, rowPendingRingClass, dailyPanelFreshHighlightClass } from "@/lib/ui/ontime-theme";
+import { panelNameLinkClass, panelTypography, rowPendingRingClass, dailyPanelFreshHighlightClass, dailyPanelUnseenBadgeClass, dailyPanelUnseenRequestRowClass, type DailyPanelUnseenVariant } from "@/lib/ui/ontime-theme";
 import { dailyPanelQueueSectionScrollClass } from "@/lib/orders/daily-panel-section-anchors";
 import {
   panelQueueRowActionsClass,
@@ -167,7 +167,7 @@ export function ForSomeoneRequests({
   const showViaPanelSectionCallout =
     !isStockOutSection && groups.some(groupHasInformacjaFlow);
   const enrichGroup = isStockOutSection ? enrichStockOutSignalGroup : enrichForSomeoneGroup;
-  const unseenBadgeVariant = isStockOutSection ? "warning" : "purple";
+  const unseenVariant: DailyPanelUnseenVariant = isStockOutSection ? "stockOut" : "prosby";
   const supplierBlocks = useMemo(
     () => buildProcurementSupplierBlocks(groups),
     [groups]
@@ -219,7 +219,7 @@ export function ForSomeoneRequests({
   const queueToolbarActions = (
     <div className="flex flex-wrap items-center justify-end gap-1">
       {unseenGroupCount > 0 ? (
-        <Badge variant={unseenBadgeVariant} className="h-7 shrink-0 px-2 text-[11px]">
+        <Badge className={cn("h-7 shrink-0 px-2 text-[11px] font-semibold", dailyPanelUnseenBadgeClass(unseenVariant))}>
           {unseenGroupCount}{" "}
           {unseenGroupCount === 1
             ? "nowy"
@@ -511,6 +511,7 @@ export function ForSomeoneRequests({
                   pending={blockPending}
                   run={run}
                   unseenGroupCount={block.requestGroups.filter((g) => isGroupUnseen(g)).length}
+                  unseenVariant={unseenVariant}
                   onToggleCollapse={() => toggleSupplierCollapse(block.supplierId)}
                   onOpenSupplier={onOpenSupplier}
                 />
@@ -553,10 +554,7 @@ export function ForSomeoneRequests({
                   panelRowGroupClass("rounded-md border border-slate-200 bg-white transition-shadow"),
                   groupPending && rowPendingRingClass,
                   isFocused && (isStockOutSection ? "ring-2 ring-amber-400/70 ring-offset-1" : "ring-2 ring-indigo-400/70 ring-offset-1"),
-                  isUnseen &&
-                    (isStockOutSection
-                      ? "border-amber-300/90 bg-amber-50/50"
-                      : "border-violet-200/90 bg-violet-50/30"),
+                  isUnseen && dailyPanelUnseenRequestRowClass(unseenVariant),
                   highlightFresh && isUnseen && dailyPanelFreshHighlightClass
                 )}
                 aria-busy={groupPending}
@@ -593,7 +591,7 @@ export function ForSomeoneRequests({
                           )}
                         </p>
                         {isUnseen ? (
-                          <Badge variant={unseenBadgeVariant} className="px-1.5 py-0 text-[10px]">
+                          <Badge className={cn("px-1.5 py-0 text-[10px] font-semibold", dailyPanelUnseenBadgeClass(unseenVariant))}>
                             Nowa
                             {ui.unseenCount > 1 ? ` (${ui.unseenCount})` : ""}
                           </Badge>

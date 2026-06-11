@@ -3,9 +3,7 @@ import type { MyOrderRow } from "./my-order-presenter";
 import { presentMyOrders } from "./my-order-presenter";
 import type { IndividualOrder } from "@/types/database";
 import {
-  filterMyOrderRows,
   partitionMyOrderRowsBySalesAction,
-  rowMatchesInboxFilter,
   rowNeedsSalesAction,
 } from "@/lib/orders/my-order-inbox-filter";
 
@@ -89,20 +87,15 @@ describe("rowNeedsSalesAction", () => {
   it("false przy częściowej dostawie bez pełnego odbioru", () => {
     const partial = presentMyOrders([baseOrder], []).zamowienia[0]!;
     expect(rowNeedsSalesAction(partial)).toBe(false);
-    expect(rowMatchesInboxFilter(partial, "action_group")).toBe(false);
-    expect(rowMatchesInboxFilter(partial, "watch_group")).toBe(true);
-    expect(rowMatchesInboxFilter(partial, "partial")).toBe(true);
   });
 
-  it("częściowa dostawa w tranzycie trafia do filtra partial i watch_group", () => {
+  it("false przy częściowej dostawie w tranzycie", () => {
     const partialTransit = presentMyOrders(
       [{ ...baseOrder, delivered_quantity: "0" }],
       []
     ).zamowienia[0]!;
     expect(partialTransit.statusTitle).toBe("Częściowo na magazynie");
     expect(rowNeedsSalesAction(partialTransit)).toBe(false);
-    expect(rowMatchesInboxFilter(partialTransit, "partial")).toBe(true);
-    expect(rowMatchesInboxFilter(partialTransit, "watch_group")).toBe(true);
   });
 });
 
@@ -118,34 +111,5 @@ describe("partitionMyOrderRowsBySalesAction", () => {
     const { needsAction, inProgress } = partitionMyOrderRowsBySalesAction([b, a]);
     expect(needsAction.map((r) => r.id)).toEqual(["a"]);
     expect(inProgress.map((r) => r.id)).toEqual(["b"]);
-  });
-});
-
-describe("action_group / watch_group", () => {
-  it("action_group obejmuje prośby wymagające reakcji", () => {
-    const pickup = row({
-      id: "p",
-      acknowledgeMode: "pickup",
-      pickupPendingCount: 1,
-      statusTitle: "Do odbioru",
-    });
-    const waiting = row({ id: "w", statusTitle: "Zamówione" });
-    expect(rowMatchesInboxFilter(pickup, "action_group")).toBe(true);
-    expect(rowMatchesInboxFilter(waiting, "action_group")).toBe(false);
-    expect(filterMyOrderRows([pickup, waiting], "action_group").map((r) => r.id)).toEqual([
-      "p",
-    ]);
-  });
-
-  it("watch_group obejmuje prośby w toku", () => {
-    const waiting = row({ id: "w", statusTitle: "Zamówione" });
-    const pickup = row({
-      id: "p",
-      acknowledgeMode: "pickup",
-      pickupPendingCount: 1,
-      statusTitle: "Do odbioru",
-    });
-    expect(rowMatchesInboxFilter(waiting, "watch_group")).toBe(true);
-    expect(rowMatchesInboxFilter(pickup, "watch_group")).toBe(false);
   });
 });

@@ -16,17 +16,15 @@ export function MyOrderExpandedMeta({
 
   return (
     <div className={cn(mojeShipmentExpandedMetaShellClass, className)}>
-      <dl className="flex flex-wrap items-baseline gap-x-3 gap-y-1 sm:gap-x-4">
-        {fields.map((f, index) => (
-          <div
-            key={f.label}
-            className={cn(
-              "inline-flex min-w-0 max-w-full items-baseline gap-1",
-              index > 0 &&
-                "before:mr-3 before:text-slate-300 before:content-['·'] sm:before:mr-4"
-            )}
-          >
-            <dt className={cn("shrink-0 font-semibold uppercase tracking-wide text-slate-400", salesTypography.rowMeta)}>
+      <dl className="grid grid-cols-1 gap-x-4 gap-y-2.5 sm:grid-cols-2">
+        {fields.map((f) => (
+          <div key={f.label} className="min-w-0">
+            <dt
+              className={cn(
+                "font-semibold uppercase tracking-wide text-slate-400",
+                salesTypography.rowMeta
+              )}
+            >
               {f.label}
             </dt>
             <SearchHighlightText
@@ -34,7 +32,7 @@ export function MyOrderExpandedMeta({
               searchQuery={searchQuery}
               as="dd"
               className={cn(
-                "min-w-0 font-medium leading-snug text-slate-700",
+                "mt-0.5 min-w-0 font-medium leading-snug text-slate-700",
                 salesTypography.rowBody,
                 f.emphasize && "font-semibold text-amber-900"
               )}

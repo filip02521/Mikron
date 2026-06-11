@@ -5,9 +5,12 @@ import { SalesClientNameEditor } from "@/components/moje/SalesClientNameEditor";
 import { cn } from "@/lib/cn";
 import { brandLinkSubtleClass } from "@/lib/ui/ontime-theme";
 
+import type { SalesClientAssignment } from "@/lib/orders/sales-client-label";
+
 /** Przypisanie klienta do jednej pozycji (produktu) w grupie. */
 export function MyOrderLineClientField({
   clientName,
+  clientKhId = null,
   disabled,
   editing,
   className,
@@ -15,16 +18,18 @@ export function MyOrderLineClientField({
   onSave,
 }: {
   clientName: string | null;
+  clientKhId?: number | null;
   disabled?: boolean;
   editing: boolean;
   className?: string;
   onStartEdit: () => void;
-  onSave: (name: string | null) => void | Promise<void>;
+  onSave: (patch: SalesClientAssignment) => void | Promise<void>;
 }) {
   if (editing) {
     return (
       <SalesClientNameEditor
         value={clientName}
+        clientKhId={clientKhId}
         disabled={disabled}
         openOnMount
         onSave={onSave}
@@ -58,7 +63,7 @@ export function MyOrderLineClientField({
           <button
             type="button"
             disabled={disabled}
-            onClick={() => void onSave(null)}
+            onClick={() => void onSave({ clientName: null, clientKhId: null })}
             className="font-medium text-red-700 hover:text-red-900 disabled:opacity-50"
           >
             Usuń

@@ -275,14 +275,6 @@ export const mojeHeadlineInfoSubClass = "text-indigo-800";
 export const mojeCardHighlightClass =
   "z-[1] my-1 rounded-md border border-indigo-300/90 bg-indigo-50/90 shadow-md shadow-indigo-100/30 ring-1 ring-indigo-200/70";
 
-export const mojeFilterChipActiveClass = "ring-2 ring-indigo-400 ring-offset-1";
-
-export const mojeFilterChipInfoClass = "bg-indigo-100 text-indigo-900";
-
-export const mojeFilterChipStockClass = "bg-sky-100 text-sky-900";
-
-export const mojeFilterChipSuccessClass = "bg-indigo-50 text-indigo-900";
-
 /** Sekcja informacja (magazyn) — sky pozostaje semantyczny */
 export const informacjaSurfaceClass =
   "rounded-md border border-sky-200/90 bg-[var(--card)] shadow-[var(--shadow-card-elevated)]";
@@ -369,7 +361,25 @@ export const panelQueueStepsShellClass = cn(
 
 /** Podświetlenie świeżo zsynchronizowanych, nieprzeczytanych prośb. */
 export const dailyPanelFreshHighlightClass =
-  "ring-2 ring-indigo-400/60 ring-offset-1 shadow-sm shadow-indigo-200/40";
+  "ring-2 ring-violet-500/55 ring-offset-1 shadow-md shadow-violet-200/50";
+
+export type DailyPanelUnseenVariant = "prosby" | "stockOut";
+
+/** Wiersz nieprzeczytanej prośby w panelu dziennym — lewy akcent + mocniejsze tło. */
+export function dailyPanelUnseenRequestRowClass(variant: DailyPanelUnseenVariant): string {
+  if (variant === "stockOut") {
+    return "border-l-[3px] border-l-amber-500 border-amber-300/95 bg-amber-50/85 shadow-sm shadow-amber-100/45";
+  }
+  return "border-l-[3px] border-l-violet-500 border-violet-300/90 bg-violet-50/85 shadow-sm shadow-violet-100/40";
+}
+
+/** Badge „Nowa” / licznik nieprzeczytanych — kontrastowy, dobrze widoczny na liście. */
+export function dailyPanelUnseenBadgeClass(variant: DailyPanelUnseenVariant): string {
+  if (variant === "stockOut") {
+    return "bg-amber-600 text-white ring-1 ring-amber-700/30";
+  }
+  return "bg-violet-600 text-white ring-1 ring-violet-700/30";
+}
 
 export const panelMetricTileClass =
   "rounded-md border border-indigo-100/70 bg-white px-3 py-2.5 text-left shadow-[var(--shadow-card)] transition";

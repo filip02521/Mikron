@@ -2,6 +2,11 @@ import type { IndividualOrder } from "@/types/database";
 
 export const MAX_CLIENT_NAME_LEN = 80;
 
+export type SalesClientAssignment = {
+  clientName: string | null;
+  clientKhId: number | null;
+};
+
 /** Normalizuje etykietę klienta (pusty → null). */
 export function normalizeSalesClientName(
   value: string | null | undefined
@@ -10,6 +15,28 @@ export function normalizeSalesClientName(
   const trimmed = value.trim().replace(/\s+/g, " ");
   if (!trimmed) return null;
   return trimmed.slice(0, MAX_CLIENT_NAME_LEN);
+}
+
+/** kh_Id z Subiekta — tylko gdy jest przypisana nazwa klienta. */
+export function normalizeSalesClientKhId(
+  clientName: string | null,
+  clientKhId: number | null | undefined
+): number | null {
+  if (!clientName) return null;
+  if (clientKhId == null || !Number.isFinite(clientKhId)) return null;
+  const kh = Math.trunc(clientKhId);
+  return kh > 0 ? kh : null;
+}
+
+export function normalizeSalesClientAssignment(input: {
+  clientName: string | null | undefined;
+  clientKhId?: number | null;
+}): SalesClientAssignment {
+  const clientName = normalizeSalesClientName(input.clientName);
+  return {
+    clientName,
+    clientKhId: normalizeSalesClientKhId(clientName, input.clientKhId),
+  };
 }
 
 export function clientNamesSummary(

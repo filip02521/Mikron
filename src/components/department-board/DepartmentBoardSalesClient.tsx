@@ -21,8 +21,6 @@ import { Button } from "@/components/ui/Button";
 import { Card, CardHeader } from "@/components/ui/Card";
 import { SectionHeadingIcon } from "@/components/icons/SectionHeadingIcon";
 import { IconClipboardPen, IconInbox } from "@/components/icons/StrokeIcons";
-import { NotatnikPanel } from "@/components/notatnik/NotatnikPanel";
-import { ProsbaFormSection } from "@/components/orders/ProsbaFormSection";
 import { NOTATNIK_INPUT_CLASS, NOTATNIK_TEXTAREA_CLASS } from "@/components/notatnik/notatnik-layout";
 import { AnnouncementCard } from "@/components/department-board/AnnouncementCard";
 import { QuestionThreadCard } from "@/components/department-board/QuestionThreadCard";
@@ -38,6 +36,7 @@ import { DepartmentBoardGuide } from "@/components/department-board/DepartmentBo
 import { DepartmentBoardIntroBanner } from "@/components/department-board/DepartmentBoardIntroBanner";
 import {
   DEPARTMENT_BOARD_NOTES_DISTINCTION_SALES,
+  DEPARTMENT_BOARD_QUESTIONS_EXPLAINER,
   DEPARTMENT_BOARD_SALES_PAGE_DESC,
   DEPARTMENT_BOARD_SALES_PAGE_TITLE,
 } from "@/lib/department-board/copy";
@@ -46,6 +45,7 @@ import { countUnreadAnnouncements } from "@/lib/department-board/unread";
 import { cn } from "@/lib/cn";
 import { mojeShipmentListClass } from "@/lib/ui/moje-shipment-row-styles";
 import { salesPageShellClass, salesTypography, sectionIconTileBrandClass } from "@/lib/ui/ontime-theme";
+import { NotatnikPanel } from "@/components/notatnik/NotatnikPanel";
 import { actionCreateQuestion } from "@/app/actions/department-board";
 
 type QuestionFilter = "all" | "open" | "answered";
@@ -171,50 +171,39 @@ export function DepartmentBoardSalesClient({
 
   const questionFormPanel =
     readOnly ? null : (
-      <NotatnikPanel
-        title="Zadaj pytanie do zakupów"
-        description="Odpowiedź zobaczy cały dział handlowy."
-        icon={<IconClipboardPen size={17} />}
-        tileClassName="bg-indigo-100 text-indigo-800"
-      >
-        <ProsbaFormSection
-          title="Treść pytania"
-          hint="Pytanie ogólne do działu zakupów — nie zastępuje formularza Nowa prośba przy zamówieniu towaru."
+      <div className="space-y-2 border-b border-slate-100 pb-4">
+        <p className={salesTypography.sectionHint}>
+          {DEPARTMENT_BOARD_QUESTIONS_EXPLAINER.body}{" "}
+          <Link href="/prosba" className="font-medium text-indigo-700 hover:underline">
+            Nowa prośba
+          </Link>{" "}
+          służy do zamówień u dostawcy.
+        </p>
+        <input
+          type="text"
+          value={questionTitle}
+          onChange={(e) => setQuestionTitle(e.target.value)}
+          placeholder="Temat pytania"
+          className={cn(NOTATNIK_INPUT_CLASS, "w-full")}
+        />
+        <textarea
+          rows={2}
+          value={questionBody}
+          onChange={(e) => setQuestionBody(e.target.value)}
+          placeholder="Treść pytania…"
+          className={cn(NOTATNIK_TEXTAREA_CLASS, "w-full")}
+        />
+        {questionFormError ? (
+          <p className="text-xs text-red-600">{questionFormError}</p>
+        ) : null}
+        <Button
+          size="sm"
+          disabled={tourDemo || saving || !questionTitle.trim() || !questionBody.trim()}
+          onClick={() => void submitQuestion()}
         >
-          <p className={cn(salesTypography.sectionHint, "-mt-1 mb-2")}>
-            Zamówienie u dostawcy zgłaszasz w{" "}
-            <Link href="/prosba" className="font-medium text-indigo-700 hover:underline">
-              Nowa prośba
-            </Link>
-            .
-          </p>
-          <input
-            type="text"
-            value={questionTitle}
-            onChange={(e) => setQuestionTitle(e.target.value)}
-            placeholder="Temat pytania"
-            className={cn(NOTATNIK_INPUT_CLASS, "w-full")}
-          />
-          <textarea
-            rows={3}
-            value={questionBody}
-            onChange={(e) => setQuestionBody(e.target.value)}
-            placeholder="Opisz pytanie…"
-            className={cn(NOTATNIK_TEXTAREA_CLASS, "mt-2 w-full")}
-          />
-          {questionFormError ? (
-            <p className="mt-2 text-xs text-red-600">{questionFormError}</p>
-          ) : null}
-          <div className="mt-3">
-            <Button
-              disabled={tourDemo || saving || !questionTitle.trim() || !questionBody.trim()}
-              onClick={() => void submitQuestion()}
-            >
-              {tourDemo ? "Podgląd — bez wysyłki" : saving ? "Wysyłanie…" : "Wyślij pytanie"}
-            </Button>
-          </div>
-        </ProsbaFormSection>
-      </NotatnikPanel>
+          {tourDemo ? "Podgląd — bez wysyłki" : saving ? "Wysyłanie…" : "Wyślij pytanie"}
+        </Button>
+      </div>
     );
 
   return (
@@ -267,9 +256,10 @@ export function DepartmentBoardSalesClient({
           <div className="space-y-3 p-3 sm:p-4">
             <NotatnikPanel
               title="Ogłoszenia od zakupów"
-              description="Komunikaty jednokierunkowe — bez odpowiedzi w tej sekcji."
+              description="Komunikaty do odczytu — bez odpowiedzi w tej sekcji."
               count={board.announcements.length || undefined}
               icon={<IconInbox size={17} />}
+              accent="neutral"
             >
               {board.announcements.length === 0 ? (
                 <DepartmentBoardAnnouncementsEmpty domain="sales" />
@@ -293,21 +283,21 @@ export function DepartmentBoardSalesClient({
 
         {showQuestions ? (
           <div className="space-y-3 p-3 sm:p-4">
-            {questionFormPanel}
-
-            {readOnly ? (
-              <Alert tone="info" className="text-xs">
-                Podgląd administratora — wysyłanie pytań jest wyłączone.
-              </Alert>
-            ) : null}
-
             <NotatnikPanel
               title="Pytania zespołu"
-              description="Wspólna lista — pytania kolegów i odpowiedzi zakupów. Filtr „Bez odpowiedzi” pokazuje tylko te, na które zakupy jeszcze nie odpisały."
+              description="Wspólna lista pytań i odpowiedzi zakupów."
               count={board.questions.length || undefined}
               icon={<IconClipboardPen size={17} />}
-              tileClassName="bg-amber-100 text-amber-800"
+              accent="neutral"
             >
+              {questionFormPanel}
+
+              {readOnly ? (
+                <Alert tone="info" className="mb-4 text-xs">
+                  Podgląd administratora — wysyłanie pytań jest wyłączone.
+                </Alert>
+              ) : null}
+
               <DepartmentBoardQuestionFilters
                 value={questionFilter}
                 onChange={setQuestionFilter}

@@ -1,8 +1,6 @@
 import type { SalesBoardAttentionSnapshot } from "@/lib/data/department-board";
 import {
-  inboxFilterLabel,
   rowNeedsSalesAction,
-  type MyOrderInboxFilter,
 } from "@/lib/orders/my-order-inbox-filter";
 import type { MyOrderRow } from "@/lib/orders/my-order-presenter";
 import {
@@ -10,8 +8,6 @@ import {
   enrichMyOrderSalesUi,
   type MyOrdersInboxSummary,
 } from "@/lib/orders/my-order-sales-ui";
-import { formatFollowUpLabel } from "@/lib/sales/notepad-follow-up";
-import { sortSalesNotes } from "@/lib/sales/notepad-note-sort";
 import { collectNotepadTodayTasks } from "@/lib/sales/notepad-today-tasks";
 import { formatProsbaZkLinkNumber } from "@/lib/orders/zk-prosba-link-display";
 import { buildNotatnikPageHref } from "@/lib/sales/notepad-page-tabs";
@@ -34,8 +30,7 @@ export type SalesDayStartItem = {
   subtitle?: string;
   evidence?: string;
   href: string;
-  /** Filtr inboxu /moje — klik ustawia filtr zamiast nawigacji. */
-  inboxFilter?: MyOrderInboxFilter;
+  /** Sekcja listy /moje — klik przewija i podświetla zamiast nawigacji. */
   scrollTarget?: string;
   count?: number;
   ctaLabel: string;
@@ -44,12 +39,7 @@ export type SalesDayStartItem = {
 export type SalesDayStartSnapshot = {
   items: SalesDayStartItem[];
   totalActionCount: number;
-  pinnedNotes: SalesNote[];
-  pinnedNoteOverflow: number;
-  pinnedAnnouncements: SalesDayStartPinnedAnnouncement[];
-  pinnedAnnouncementOverflow: number;
   cleared: boolean;
-  inboxSummary: MyOrdersInboxSummary;
 };
 
 const PRIORITY: Record<SalesDayStartSource, number> = {
@@ -62,18 +52,13 @@ const PRIORITY: Record<SalesDayStartSource, number> = {
   board_announcement: 70,
 };
 
-const PINNED_NOTES_LIMIT = 4;
-const PINNED_ANNOUNCEMENTS_LIMIT = 3;
 const MOJE_ACTION_SECTION = "moje-section-action";
+
+/** Od tej liczby pozycji odbioru — jedno powiadomienie zbiorcze (jak informacje). */
+const PICKUP_AGGREGATE_FROM = 2;
 
 /** Maks. zadań w panelu przed „Pokaż wszystkie”. */
 export const SALES_DAY_START_VISIBLE_LIMIT = 6;
-
-export type SalesDayStartPinnedAnnouncement = {
-  id: string;
-  title: string;
-  body: string;
-};
 
 /** Dane spoza listy zamówień — notatnik i tablica z RSC. */
 export type SalesDayStartContext = {
@@ -82,6 +67,15 @@ export type SalesDayStartContext = {
   boardAttention?: SalesBoardAttentionSnapshot | null;
   previewDla?: string | null;
 };
+
+function countPickupLines(rows: MyOrderRow[]): number {
+  let total = 0;
+  for (const row of rows) {
+    if (row.acknowledgeMode !== "pickup" || row.pickupPendingIds.length === 0) continue;
+    total += row.pickupPendingIds.length;
+  }
+  return total;
+}
 
 function groupPickupBySupplier(
   rows: MyOrderRow[]
@@ -101,19 +95,33 @@ function buildOrderActionItems(rows: MyOrderRow[]): SalesDayStartItem[] {
   const items: SalesDayStartItem[] = [];
   const actionRows = rows.filter(rowNeedsSalesAction);
 
-  for (const group of groupPickupBySupplier(actionRows)) {
+  const pickupGroups = groupPickupBySupplier(actionRows);
+  const pickupLineCount = countPickupLines(actionRows);
+
+  if (pickupLineCount >= PICKUP_AGGREGATE_FROM) {
+    items.push({
+      id: "pickup-ready",
+      source: "pickup",
+      priority: PRIORITY.pickup,
+      title: `Potwierdź odbiór (${pickupLineCount})`,
+      subtitle: "Produkty gotowe na magazynie — do potwierdzenia",
+      href: `/moje#${MOJE_ACTION_SECTION}`,
+      scrollTarget: MOJE_ACTION_SECTION,
+      count: pickupLineCount,
+      ctaLabel: "Przejdź",
+    });
+  } else if (pickupLineCount === 1 && pickupGroups[0]) {
+    const group = pickupGroups[0];
     items.push({
       id: `pickup-${group.supplierName}`,
       source: "pickup",
       priority: PRIORITY.pickup,
       title: group.supplierName,
-      subtitle: `${group.lineCount} ${group.lineCount === 1 ? "pozycja gotowa" : group.lineCount < 5 ? "pozycje gotowe" : "pozycji gotowych"}`,
-      evidence: undefined,
+      subtitle: "1 pozycja gotowa",
       href: `/moje#${MOJE_ACTION_SECTION}`,
-      inboxFilter: "pickup",
       scrollTarget: MOJE_ACTION_SECTION,
-      count: group.lineCount,
-      ctaLabel: group.lineCount > 1 ? `Potwierdź (${group.lineCount})` : "Potwierdź",
+      count: 1,
+      ctaLabel: "Potwierdź",
     });
   }
 
@@ -129,7 +137,6 @@ function buildOrderActionItems(rows: MyOrderRow[]): SalesDayStartItem[] {
       title: n === 1 ? "Potwierdź anulowanie" : `Potwierdź anulowania (${n})`,
       subtitle: "Ukryj z listy po potwierdzeniu",
       href: `/moje#${MOJE_ACTION_SECTION}`,
-      inboxFilter: "cancel_ack",
       scrollTarget: MOJE_ACTION_SECTION,
       count: n,
       ctaLabel: "Przejdź",
@@ -148,7 +155,6 @@ function buildOrderActionItems(rows: MyOrderRow[]): SalesDayStartItem[] {
       title: n === 1 ? "Potwierdź informację o dostępności" : `Potwierdź informacje (${n})`,
       subtitle: "Towar na magazynie — do potwierdzenia",
       href: `/moje#${MOJE_ACTION_SECTION}`,
-      inboxFilter: "informacja_ready",
       scrollTarget: MOJE_ACTION_SECTION,
       count: n,
       ctaLabel: "Przejdź",
@@ -269,30 +275,10 @@ export function buildSalesDayStartSnapshot(input: {
     notepadItems.length +
     boardItems.reduce((sum, i) => sum + (i.count ?? 1), 0);
 
-  const sortedPinned = sortSalesNotes(notes.filter((n) => n.pinned && !n.archived_at));
-  const pinnedNotes = sortedPinned.slice(0, PINNED_NOTES_LIMIT);
-  const pinnedNoteOverflow = Math.max(0, sortedPinned.length - PINNED_NOTES_LIMIT);
-
-  const pinnedBoard = boardAttention?.pinnedAnnouncements ?? [];
-  const pinnedAnnouncements = pinnedBoard.slice(0, PINNED_ANNOUNCEMENTS_LIMIT).map((a) => ({
-    id: a.id,
-    title: a.title,
-    body: a.body,
-  }));
-  const pinnedAnnouncementOverflow = Math.max(
-    0,
-    pinnedBoard.length - PINNED_ANNOUNCEMENTS_LIMIT
-  );
-
   return {
     items,
     totalActionCount,
-    pinnedNotes,
-    pinnedNoteOverflow,
-    pinnedAnnouncements,
-    pinnedAnnouncementOverflow,
     cleared: totalActionCount === 0,
-    inboxSummary,
   };
 }
 
@@ -301,9 +287,9 @@ export function salesDayStartSourceLabel(source: SalesDayStartSource): string {
     case "pickup":
       return "Gotowe";
     case "cancel_ack":
-      return inboxFilterLabel("cancel_ack");
+      return "Anulowanie";
     case "informacja_ready":
-      return inboxFilterLabel("informacja_ready");
+      return "Do potwierdzenia";
     case "zk_follow_up":
       return "ZK";
     case "note_follow_up":
@@ -327,13 +313,6 @@ export function salesDayStartNavCount(
     notepadDueCount +
     boardNavCount
   );
-}
-
-/** Krótki opis follow-upu do kart przypiętych (gdy mają termin). */
-export function pinnedNoteFollowUpHint(note: SalesNote): string | null {
-  if (!note.follow_up_at) return null;
-  const label = formatFollowUpLabel(note.follow_up_at);
-  return label ? `Przypomnienie ${label}` : null;
 }
 
 export function sliceSalesDayStartItems(

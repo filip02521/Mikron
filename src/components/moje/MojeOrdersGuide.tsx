@@ -98,11 +98,12 @@ export function MojeOrdersHelp() {
         </ul>
       </HelpBlock>
 
-      <HelpBlock title="Filtry">
+      <HelpBlock title="Sekcje listy">
         <p>
-          Chipy <strong className="font-medium text-slate-800">Wymaga reakcji</strong> i{" "}
-          <strong className="font-medium text-slate-800">W toku</strong> zawężają listę do
-          wybranego typu spraw, np. same odbiory albo pozycje po terminie.
+          Prośby są podzielone na sekcje —{" "}
+          <strong className="font-medium text-emerald-900">Wymaga reakcji</strong> u góry, potem
+          zamówienia u dostawcy i informacje o dostępności. Start dnia przewinie Cię do właściwej
+          sekcji.
         </p>
       </HelpBlock>
 

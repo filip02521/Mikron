@@ -133,14 +133,10 @@ export function MojeOrdersSearchBar({
 export function MojeOrdersSearchEmptyHint({
   query,
   onClear,
-  onClearFilter,
-  hasInboxFilter,
   archiveOnly = false,
 }: {
   query: string;
   onClear: () => void;
-  onClearFilter?: () => void;
-  hasInboxFilter?: boolean;
   archiveOnly?: boolean;
 }) {
   return (
@@ -158,15 +154,6 @@ export function MojeOrdersSearchEmptyHint({
       <button type="button" className={brandLinkSubtleClass} onClick={onClear}>
         Wyczyść wyszukiwanie
       </button>
-      {hasInboxFilter && onClearFilter ? (
-        <>
-          {" "}
-          lub{" "}
-          <button type="button" className={brandLinkSubtleClass} onClick={onClearFilter}>
-            usuń filtr kategorii
-          </button>
-        </>
-      ) : null}
     </p>
   );
 }

@@ -50,7 +50,7 @@ export function getSalesOnboardingSteps(role: UserRole): SalesOnboardingStep[] {
         "Zielony przycisk = Twoja akcja: potwierdź odbiór z magazynu albo zamknij powiadomienie.",
         "Na dole strony jest archiwum zakończonych spraw.",
       ],
-      tip: "Przy wielu sprawach użyj filtrów u góry, np. „Do potwierdzenia”.",
+      tip: "Pilne sprawy są u góry w sekcji «Wymaga reakcji» — Start dnia przewinie Cię tam.",
     },
     {
       id: "prosba",

@@ -107,27 +107,13 @@ export function progressLabelInSubline(row: MyOrderRow): boolean {
   return s.includes("Magazyn") || /\d+\s*z\s*\d+/.test(s) || s.includes("szt.");
 }
 
-/** Usuwa pola metadanych powielone w subline / nagłówku wiersza. */
+/** Usuwa pola metadanych powielone w subline wiersza. */
 export function filterRedundantExpandedMetaFields(
   row: MyOrderRow,
-  fields: MyOrderMetaField[],
-  opts: { collapsedSubline: string | null }
+  fields: MyOrderMetaField[]
 ): MyOrderMetaField[] {
-  const subline = opts.collapsedSubline?.trim();
-  if (!subline) return fields;
-
   return fields.filter((field) => {
     if (field.label === "Magazyn" && progressLabelInSubline(row)) {
-      return false;
-    }
-    if (field.label !== "Termin" && field.label !== "Szacunek") {
-      return true;
-    }
-    const value = field.value.replace(" · po terminie", "").trim();
-    if (subline.includes(value) || value.includes(subline)) {
-      return false;
-    }
-    if (row.headlineTone === "warning" && row.timingLabel?.includes(value)) {
       return false;
     }
     return true;

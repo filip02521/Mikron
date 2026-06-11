@@ -94,11 +94,6 @@ export function myOrderCollapsedMetaFields(
 
   if (row.clientLabel && row.lineCount <= 1) pick.add("Klient");
 
-  if (row.timingLabel?.trim()) {
-    pick.add("Termin");
-    pick.add("Szacunek");
-  }
-
   if (
     showProgress &&
     (row.acknowledgeMode === "pickup" ||
@@ -110,14 +105,6 @@ export function myOrderCollapsedMetaFields(
 
   const filtered = all.filter((f) => pick.has(f.label));
   if (filtered.length >= 2) return filtered;
-
-  if (row.lineCount <= 1 && all.some((f) => f.label === "Szacunek" || f.label === "Termin")) {
-    for (const f of all) {
-      if (f.label === "Szacunek" || f.label === "Termin") {
-        if (!filtered.some((x) => x.label === f.label)) filtered.push(f);
-      }
-    }
-  }
 
   return filtered.length ? filtered : all.slice(0, 2);
 }

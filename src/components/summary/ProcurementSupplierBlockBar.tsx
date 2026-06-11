@@ -12,9 +12,11 @@ import { cn } from "@/lib/cn";
 import { ProcurementSupplierBlockActionBar } from "@/components/summary/ProcurementSupplierBlockActionBar";
 import type { DailyPanelRunFn } from "@/components/summary/useDailyPanelRunner";
 import {
+  dailyPanelUnseenBadgeClass,
   panelNameLinkClass,
   panelTypography,
   rowPendingRingClass,
+  type DailyPanelUnseenVariant,
 } from "@/lib/ui/ontime-theme";
 import { panelQueueRowLayoutClass } from "@/lib/ui/surfaces";
 
@@ -41,6 +43,7 @@ export function ProcurementSupplierBlockBar({
   pending = false,
   run,
   unseenGroupCount,
+  unseenVariant = "prosby",
 }: {
   block: ProcurementSupplierBlock;
   collapsed: boolean;
@@ -51,6 +54,7 @@ export function ProcurementSupplierBlockBar({
   run: DailyPanelRunFn;
   /** Lokalnie nieprzeczytane (domyślnie z serwera). */
   unseenGroupCount?: number;
+  unseenVariant?: DailyPanelUnseenVariant;
 }) {
   const summary = formatProcurementSupplierBlockSummary(block);
   const groupCount = block.requestGroups.length;
@@ -93,7 +97,12 @@ export function ProcurementSupplierBlockBar({
                   {groupCount} {groupCount === 1 ? "osoba" : groupCount < 5 ? "osoby" : "osób"}
                 </Badge>
                 {unseenCount > 0 ? (
-                  <Badge variant="purple" className="px-1.5 py-0 text-[10px]">
+                  <Badge
+                    className={cn(
+                      "px-1.5 py-0 text-[10px] font-semibold",
+                      dailyPanelUnseenBadgeClass(unseenVariant)
+                    )}
+                  >
                     {unseenCount}{" "}
                     {procurementUnseenGroupsLabel(unseenCount)}
                   </Badge>

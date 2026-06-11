@@ -186,20 +186,19 @@ describe("my-order-card-ui", () => {
     ).toBe(false);
   });
 
-  it("filtruje zduplikowane metadane terminu", () => {
+  it("filtruje zduplikowane metadane magazynu", () => {
     const fields = filterRedundantExpandedMetaFields(
       row({
-        statusTitle: "Zamówione",
-        timingLabel: "ok. 10.05.2026 (~5 dni rob.)",
-        subline: "ok. 10.05.2026 (~5 dni rob.)",
+        statusTitle: "Częściowo na magazynie",
+        subline: "Magazyn: 1 z 2 szt.",
+        progressLabel: "1 z 2 szt. na magazynie",
       }),
       [
         { label: "Zgłoszono", value: "01.05" },
-        { label: "Szacunek", value: "ok. 10.05.2026 (~5 dni rob.)" },
-      ],
-      { collapsedSubline: "ok. 10.05.2026 (~5 dni rob.)" }
+        { label: "Magazyn", value: "1 z 2 szt." },
+      ]
     );
-    expect(fields.some((f) => f.label === "Szacunek")).toBe(false);
+    expect(fields.some((f) => f.label === "Magazyn")).toBe(false);
   });
 
   it("wykrywa postęp w subline", () => {

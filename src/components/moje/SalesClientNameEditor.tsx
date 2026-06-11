@@ -2,23 +2,29 @@
 
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/Button";
-import { cn } from "@/lib/cn";
-import { controlFocusClass } from "@/lib/ui/ontime-theme";
+import { SubiektClientNameField } from "@/components/subiekt/SubiektClientNameField";
+import {
+  MAX_CLIENT_NAME_LEN,
+  type SalesClientAssignment,
+} from "@/lib/orders/sales-client-label";
 
-/** Formularz przypisania klienta — tylko z menu Więcej lub gdy już otwarty. Bez stanu „nie przypisano” na liście. */
+/** Formularz przypisania klienta — podpowiedzi z Subiekta jak w Nowa prośba. */
 export function SalesClientNameEditor({
   value,
+  clientKhId = null,
   disabled,
   onSave,
   openOnMount = false,
 }: {
   value: string | null;
+  clientKhId?: number | null;
   disabled?: boolean;
-  onSave: (name: string | null) => void | Promise<void>;
+  onSave: (patch: SalesClientAssignment) => void | Promise<void>;
   openOnMount?: boolean;
 }) {
   const [editing, setEditing] = useState(openOnMount);
-  const [draft, setDraft] = useState(value ?? "");
+  const [draftName, setDraftName] = useState(value ?? "");
+  const [draftKhId, setDraftKhId] = useState<number | null>(clientKhId ?? null);
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
@@ -26,8 +32,11 @@ export function SalesClientNameEditor({
   }, [openOnMount]);
 
   useEffect(() => {
-    if (!editing) setDraft(value ?? "");
-  }, [value, editing]);
+    if (!editing) {
+      setDraftName(value ?? "");
+      setDraftKhId(clientKhId ?? null);
+    }
+  }, [value, clientKhId, editing]);
 
   const display = value?.trim() || null;
 
@@ -40,30 +49,31 @@ export function SalesClientNameEditor({
         e.preventDefault();
         setSaving(true);
         try {
-          const next = draft.trim() || null;
-          await onSave(next);
+          const nextName = draftName.trim() || null;
+          await onSave({
+            clientName: nextName,
+            clientKhId: nextName ? draftKhId : null,
+          });
           setEditing(false);
         } finally {
           setSaving(false);
         }
       }}
     >
-      <label className="block text-xs text-slate-500">
-        Klient końcowy
-        <input
-          type="text"
-          maxLength={80}
-          placeholder="np. Kowalski / firma ABC"
+      <div className="space-y-1">
+        <span className="block text-xs text-slate-500">Klient końcowy</span>
+        <SubiektClientNameField
+          value={draftName}
+          clientKhId={draftKhId}
+          maxLength={MAX_CLIENT_NAME_LEN}
           disabled={disabled || saving}
-          value={draft}
-          onChange={(e) => setDraft(e.target.value)}
-          className={cn(
-            "mt-1 w-full rounded-md border border-slate-200 px-2 py-1.5 text-sm text-slate-900",
-            controlFocusClass
-          )}
-          autoFocus
+          placeholder="np. Kowalski / firma ABC"
+          onChange={({ clientName, clientKhId: kh }) => {
+            setDraftName(clientName);
+            setDraftKhId(kh);
+          }}
         />
-      </label>
+      </div>
       <div className="flex flex-wrap gap-2">
         <Button type="submit" disabled={disabled || saving} size="sm" className="min-h-9">
           {saving ? "Zapis…" : "Zapisz"}
@@ -73,7 +83,8 @@ export function SalesClientNameEditor({
           disabled={saving}
           className="min-h-9 rounded-md px-3 py-1.5 text-xs text-slate-600 hover:bg-slate-100"
           onClick={() => {
-            setDraft(value ?? "");
+            setDraftName(value ?? "");
+            setDraftKhId(clientKhId ?? null);
             setEditing(false);
           }}
         >
@@ -87,8 +98,9 @@ export function SalesClientNameEditor({
             onClick={async () => {
               setSaving(true);
               try {
-                await onSave(null);
-                setDraft("");
+                await onSave({ clientName: null, clientKhId: null });
+                setDraftName("");
+                setDraftKhId(null);
                 setEditing(false);
               } finally {
                 setSaving(false);

@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { Button } from "@/components/ui/Button";
+import { IconChevronDown } from "@/components/icons/StrokeIcons";
 import {
   authorLabelFromProfile,
   boardReplyCountLabel,
@@ -11,23 +12,14 @@ import {
 } from "@/lib/department-board/format";
 import {
   BOARD_PROCUREMENT_AUTHOR_LABEL,
-  boardAnswerBlockClass,
-  boardAnswerPreviewPrefixClass,
-  boardAuthorPillClass,
   boardAwaitingReplyClass,
-  boardBlockKindLabelClass,
-  boardFollowUpBlockClass,
-  boardProcurementPillClass,
-  boardQuestionBlockClass,
-  boardQuestionEmbeddedShellClass,
-  boardQuestionPreviewPrefixClass,
-  boardQuestionStatusAnsweredClass,
-  boardQuestionStatusOpenClass,
-  boardQuestionUnseenBadgeClass,
+  boardQuestionRowClass,
+  boardQuestionUnseenDotClass,
 } from "@/lib/department-board/department-board-thread-styles";
 import type { DepartmentBoardQuestion } from "@/lib/data/department-board";
 import { NOTATNIK_TEXTAREA_CLASS } from "@/components/notatnik/notatnik-layout";
 import { cn } from "@/lib/cn";
+import { mojeShipmentExpandedPanelClass } from "@/lib/ui/moje-shipment-row-styles";
 import { salesTypography } from "@/lib/ui/ontime-theme";
 import {
   actionArchiveQuestion,
@@ -35,42 +27,32 @@ import {
   actionReplyToQuestion,
 } from "@/app/actions/department-board";
 
-function ThreadMessageBlock({
-  kind,
+function ThreadMessage({
   authorLabel,
-  authorPillClass,
-  shellClass,
-  kindLabel,
   body,
   createdAt,
+  tone = "default",
 }: {
-  kind: "question" | "answer" | "followUp";
   authorLabel: string;
-  authorPillClass: string;
-  shellClass: string;
-  kindLabel: string;
   body: string;
-  createdAt?: string;
+  createdAt: string;
+  tone?: "default" | "procurement";
 }) {
   return (
-    <div className={shellClass}>
-      <div className="mb-2 flex flex-wrap items-center gap-2">
-        <span className={boardBlockKindLabelClass}>{kindLabel}</span>
-        <span className={authorPillClass}>{authorLabel}</span>
-        {createdAt ? (
-          <span className={cn(salesTypography.rowMeta, "font-normal normal-case text-slate-400")}>
-            · {formatBoardDate(createdAt)}
-          </span>
-        ) : null}
-      </div>
-      <p
-        className={cn(
-          "whitespace-pre-wrap text-sm leading-relaxed",
-          kind === "answer" ? "text-indigo-950" : "text-slate-800"
-        )}
-      >
-        {body}
+    <div className="space-y-1">
+      <p className={salesTypography.rowMeta}>
+        <span
+          className={cn(
+            "font-medium",
+            tone === "procurement" ? "text-indigo-800" : "text-slate-700"
+          )}
+        >
+          {authorLabel}
+        </span>
+        <span className="text-slate-400"> · </span>
+        {formatBoardDate(createdAt)}
       </p>
+      <p className="whitespace-pre-wrap text-sm leading-relaxed text-slate-800">{body}</p>
     </div>
   );
 }
@@ -104,10 +86,15 @@ export function QuestionThreadCard({
   const isOpen = question.status === "open";
   const replyCount = question.posts.length;
   const showUnseen = unseenReply && !locallySeen;
-  const firstAnswerPreview = useMemo(
-    () => question.posts.find((post) => isOperationsAuthorRole(post.author?.role ?? null)) ?? question.posts[0],
-    [question.posts]
-  );
+  const previewLine = useMemo(() => {
+    if (expanded) return null;
+    const answer = question.posts.find((post) =>
+      isOperationsAuthorRole(post.author?.role ?? null)
+    );
+    if (answer) return answer.body;
+    if (question.posts[0]) return question.posts[0].body;
+    return question.body;
+  }, [expanded, question.body, question.posts]);
 
   useEffect(() => {
     setLocallySeen(!unseenReply);
@@ -153,113 +140,112 @@ export function QuestionThreadCard({
     }
   }
 
+  const statusLabel = isOpen
+    ? "Bez odpowiedzi"
+    : showUnseen
+      ? "Nowa odpowiedź"
+      : replyCount > 0
+        ? boardReplyCountLabel(replyCount)
+        : "Odpowiedziano";
+
   return (
     <article
       id={`question-${question.id}`}
       className={cn(
         embedded
-          ? boardQuestionEmbeddedShellClass({ unseen: showUnseen, open: isOpen })
-          : "rounded-md border border-slate-200/90 bg-white shadow-sm",
-        !embedded && isOpen && "ring-1 ring-amber-100"
+          ? boardQuestionRowClass({ unseen: showUnseen, open: isOpen, expanded })
+          : "rounded-md border border-slate-200/90 bg-white shadow-sm"
       )}
     >
       <button
         type="button"
-        className="flex w-full items-start gap-3 p-4 text-left"
+        className="flex w-full items-start gap-2 px-3 py-3 text-left sm:gap-2.5 sm:px-4"
         onClick={() => setExpanded((v) => !v)}
         aria-expanded={expanded}
       >
-        <span
-          className={cn(
-            "mt-0.5 shrink-0",
-            isOpen ? boardQuestionStatusOpenClass : boardQuestionStatusAnsweredClass
-          )}
-        >
-          {isOpen ? "Czeka na odpowiedź" : "Odpowiedziano"}
-        </span>
-        <span className="min-w-0 flex-1 space-y-1.5">
-          <div className="flex flex-wrap items-center gap-2">
+        <IconChevronDown
+          open={expanded}
+          size={16}
+          className="mt-0.5 shrink-0 text-slate-400"
+        />
+        <span className="min-w-0 flex-1 space-y-1">
+          <span className="flex min-w-0 items-center gap-2">
             {showUnseen ? (
-              <span className={boardQuestionUnseenBadgeClass}>Nowa odpowiedź</span>
+              <span className={boardQuestionUnseenDotClass} aria-hidden />
             ) : null}
-            <span className={salesTypography.rowTitle}>{question.title}</span>
-          </div>
-          <span className={cn(salesTypography.rowMeta, "block")}>
-            {author} · {formatBoardDate(question.created_at)}
-            {replyCount > 0 ? ` · ${boardReplyCountLabel(replyCount)}` : null}
-          </span>
-          {!expanded ? (
-            <span className="block space-y-1">
-              <span className={cn(salesTypography.rowMeta, "block truncate")}>
-                <span className={boardQuestionPreviewPrefixClass}>P:</span> {question.body}
-              </span>
-              {firstAnswerPreview ? (
-                <span className={cn(salesTypography.rowMeta, "block truncate")}>
-                  {isOperationsAuthorRole(firstAnswerPreview.author?.role ?? null) ? (
-                    <>
-                      <span className={boardAnswerPreviewPrefixClass}>O:</span> {firstAnswerPreview.body}
-                    </>
-                  ) : (
-                    <>
-                      <span className="font-semibold text-slate-500">D:</span> {firstAnswerPreview.body}
-                    </>
-                  )}
-                </span>
-              ) : null}
+            <span className={cn(salesTypography.rowTitle, "min-w-0 truncate")}>
+              {question.title}
             </span>
+          </span>
+          <span className={cn(salesTypography.rowMeta, "block")}>
+            {author}
+            <span className="text-slate-400"> · </span>
+            {formatBoardDate(question.created_at)}
+            <span className="text-slate-400"> · </span>
+            <span
+              className={cn(
+                isOpen && "font-medium text-amber-800",
+                showUnseen && !isOpen && "font-medium text-sky-700"
+              )}
+            >
+              {statusLabel}
+            </span>
+          </span>
+          {previewLine ? (
+            <span className={cn(salesTypography.rowBody, "block truncate")}>{previewLine}</span>
           ) : null}
         </span>
       </button>
 
       {expanded ? (
-        <div className="space-y-3 border-t border-slate-100 px-4 pb-4 pt-3">
-          <ThreadMessageBlock
-            kind="question"
-            kindLabel="Pytanie"
+        <div className={cn(mojeShipmentExpandedPanelClass, "space-y-4")}>
+          <ThreadMessage
             authorLabel={author}
-            authorPillClass={boardAuthorPillClass}
-            shellClass={boardQuestionBlockClass}
             body={question.body}
             createdAt={question.created_at}
           />
 
           {question.posts.length === 0 ? (
-            <p className={boardAwaitingReplyClass}>Jeszcze bez odpowiedzi działu zakupów.</p>
-          ) : null}
-
-          {question.posts.map((post) => {
-            const fromOps = isOperationsAuthorRole(post.author?.role ?? null);
-            return (
-              <ThreadMessageBlock
-                key={post.id}
-                kind={fromOps ? "answer" : "followUp"}
-                kindLabel={fromOps ? "Odpowiedź" : "Doprecyzowanie"}
-                authorLabel={
-                  fromOps ? BOARD_PROCUREMENT_AUTHOR_LABEL : authorLabelFromProfile(post.author)
-                }
-                authorPillClass={fromOps ? boardProcurementPillClass : boardAuthorPillClass}
-                shellClass={fromOps ? boardAnswerBlockClass : boardFollowUpBlockClass}
-                body={post.body}
-                createdAt={post.created_at}
-              />
-            );
-          })}
+            <p className={boardAwaitingReplyClass}>Zakupy jeszcze nie odpowiedziały.</p>
+          ) : (
+            <div className="space-y-4 border-t border-slate-100 pt-3">
+              {question.posts.map((post) => {
+                const fromOps = isOperationsAuthorRole(post.author?.role ?? null);
+                return (
+                  <ThreadMessage
+                    key={post.id}
+                    authorLabel={
+                      fromOps
+                        ? BOARD_PROCUREMENT_AUTHOR_LABEL
+                        : authorLabelFromProfile(post.author)
+                    }
+                    body={post.body}
+                    createdAt={post.created_at}
+                    tone={fromOps ? "procurement" : "default"}
+                  />
+                );
+              })}
+            </div>
+          )}
 
           {canReply ? (
-            <div className="space-y-2 rounded-md border border-indigo-100 bg-indigo-50/30 p-3">
-              <label className="block text-xs font-medium text-indigo-950" htmlFor={`reply-${question.id}`}>
-                {isOpen ? "Odpowiedź działu zakupów" : "Dodaj doprecyzowanie (widoczne dla wszystkich)"}
+            <div className="space-y-2 border-t border-slate-100 pt-3">
+              <label
+                className={cn(salesTypography.rowMeta, "block font-medium text-slate-600")}
+                htmlFor={`reply-${question.id}`}
+              >
+                {isOpen ? "Odpowiedź zakupów" : "Doprecyzowanie (widoczne dla wszystkich)"}
               </label>
               <textarea
                 id={`reply-${question.id}`}
                 rows={3}
                 value={reply}
                 onChange={(e) => setReply(e.target.value)}
-                placeholder="Odpowiedź widoczna dla wszystkich handlowców…"
+                placeholder="Treść wiadomości…"
                 className={cn(NOTATNIK_TEXTAREA_CLASS, "w-full text-sm")}
               />
               <Button size="sm" disabled={busy || !reply.trim()} onClick={() => void submitReply()}>
-                {busy ? "Wysyłanie…" : "Wyślij odpowiedź"}
+                {busy ? "Wysyłanie…" : "Wyślij"}
               </Button>
             </div>
           ) : null}

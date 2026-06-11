@@ -221,7 +221,7 @@ export function DepartmentBoardProcurementClient({
               description={DEPARTMENT_BOARD_QUESTIONS_EXPLAINER.body}
               count={initial.questions.length || undefined}
               icon={<IconClipboardPen size={17} />}
-              tileClassName="bg-amber-100 text-amber-800"
+              accent="neutral"
             >
               <DepartmentBoardQuestionFilters
                 domain="panel"

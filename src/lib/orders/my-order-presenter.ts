@@ -1,7 +1,6 @@
 import { formatPlDate } from "@/lib/display-labels";
 import {
   estimateDeliveryEta,
-  formatActualDeliveryDays,
   isPastExpectedDate,
 } from "@/lib/orders/delivery-eta";
 import {
@@ -338,7 +337,7 @@ function groupProductSummary(lines: MyOrderLine[]): string {
 function appendGroupDetail(detail: string | null, lineCount: number): string | null {
   if (lineCount <= 1) return detail;
   if (lineCount > 1 && detail && !detail.includes("wspólny termin")) {
-    return `${detail} Wspólny termin dla wszystkich pozycji.`;
+    return `${detail} · Wspólny termin dla wszystkich pozycji.`;
   }
   return detail;
 }
@@ -572,10 +571,7 @@ function presentZamowienie(
     : null;
 
   let timingLabel: string | null = null;
-  if (order.status === "Zrealizowane" && order.delivery_at && placement) {
-    const actual = formatActualDeliveryDays(placement, order.delivery_at);
-    timingLabel = actual ? `Dostawa trwała: ${actual}` : null;
-  } else if (eta) {
+  if (eta) {
     timingLabel = salesTimingLabel(
       eta.expectedDate,
       eta.avgBusinessDays,

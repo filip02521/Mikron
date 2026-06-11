@@ -7,6 +7,7 @@ import { MyOrderLineClientField } from "@/components/moje/MyOrderLineClientField
 import { MyOrderAckButton } from "@/components/moje/MyOrderAckButton";
 import { MyOrderCancelButton } from "@/components/moje/MyOrderCancelButton";
 import { IconCircleCheck } from "@/components/icons/StrokeIcons";
+import type { SalesClientAssignment } from "@/lib/orders/sales-client-label";
 import { cn } from "@/lib/cn";
 import { mojeShipmentLineRowClass } from "@/lib/ui/moje-shipment-row-styles";
 import {
@@ -73,7 +74,7 @@ export function MyOrderLineItem({
   cancelLineAriaLabel?: string;
   onCancelLine?: (orderId: string, phase: SalesCancelPhase) => void;
   canEditClient?: boolean;
-  onSaveClient?: (orderId: string, name: string | null) => void | Promise<void>;
+  onSaveClient?: (orderId: string, patch: SalesClientAssignment) => void | Promise<void>;
   openClientEditor?: boolean;
   onStartEditClient?: () => void;
   /** Gdy klient jest już w MetaGrid (1 produkt, bez edycji). */
@@ -149,11 +150,12 @@ export function MyOrderLineItem({
           {canEditClient && onSaveClient && onStartEditClient ? (
             <MyOrderLineClientField
               clientName={line.clientName}
+              clientKhId={line.clientKhId}
               disabled={pending}
               editing={openClientEditor}
               className={cn("mt-1.5", !compact && "pl-5")}
               onStartEdit={onStartEditClient}
-              onSave={(name) => onSaveClient(line.id, name)}
+              onSave={(patch) => onSaveClient(line.id, patch)}
             />
           ) : !hideClientLabel && line.clientName?.trim() ? (
             <MyOrderAssignedClient

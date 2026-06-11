@@ -21,6 +21,14 @@ export function SalesDayStartHelp() {
         </p>
       </HelpBlock>
 
+      <HelpBlock title="Kliknięcie zadania">
+        <p>
+          Pozycje z zamówień przewijają listę do sekcji{" "}
+          <strong className="font-medium text-slate-800">Wymaga reakcji</strong> i podświetlają ją.
+          Przypomnienia ZK, notatki i tablica otwierają odpowiednią stronę.
+        </p>
+      </HelpBlock>
+
       <HelpBlock title="Kolejność">
         <ol className="list-decimal space-y-1.5 pl-4 text-sm">
           <li>Gotowe na magazynie — najpilniejsze</li>
@@ -28,13 +36,6 @@ export function SalesDayStartHelp() {
           <li>Przypomnienia ZK i notatek</li>
           <li>Odpowiedzi i ogłoszenia od zakupów</li>
         </ol>
-      </HelpBlock>
-
-      <HelpBlock title="Przypięty kontekst">
-        <p>
-          Ogłoszenia od zakupów i Twoje notatki — baza robocza, nie zadania. Kliknij kartę, żeby
-          przejść do tablicy, ZK czekających lub wpisu w notatkach.
-        </p>
       </HelpBlock>
     </HelpPopover>
   );

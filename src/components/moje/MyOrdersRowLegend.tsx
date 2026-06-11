@@ -10,18 +10,8 @@ const LEGEND_ITEMS = [
   { id: "informacja", barClass: "bg-violet-400", label: "Informacyjna" },
 ] as const;
 
-/** Jednowierszowa legenda kolorów krawędzi wiersza — obok filtrów. */
-export function MyOrdersRowLegend({
-  className,
-  hidePickup = false,
-}: {
-  className?: string;
-  /** Ukryj „Gotowe”, gdy filtr odbioru jest już aktywny. */
-  hidePickup?: boolean;
-}) {
-  const items = hidePickup ? LEGEND_ITEMS.filter((item) => item.id !== "pickup") : LEGEND_ITEMS;
-  if (!items.length) return null;
-
+/** Jednowierszowa legenda kolorów krawędzi wiersza. */
+export function MyOrdersRowLegend({ className }: { className?: string }) {
   return (
     <div
       className={cn(
@@ -31,7 +21,7 @@ export function MyOrdersRowLegend({
       )}
       aria-label="Znaczenie kolorów wierszy"
     >
-      {items.map((item) => (
+      {LEGEND_ITEMS.map((item) => (
         <span key={item.id} className="inline-flex items-center gap-1.5">
           <span
             className={cn("h-3 w-1 shrink-0 rounded-full", item.barClass)}

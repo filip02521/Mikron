@@ -15,6 +15,7 @@ import {
   salesCancelConfirmForLines,
   type SalesCancelLineContext,
 } from "@/lib/orders/sales-cancel";
+import type { SalesClientAssignment } from "@/lib/orders/sales-client-label";
 import { MyOrderShipmentCard } from "@/components/moje/MyOrderShipmentCard";
 import { Button } from "@/components/ui/Button";
 import {
@@ -281,12 +282,12 @@ export function MyOrderShipmentList({
   );
 
   const saveClient = useCallback(
-    async (orderId: string, name: string | null) => {
+    async (orderId: string, patch: SalesClientAssignment) => {
       if (tourPreview) return;
       setPendingMessage("Zapisywanie klienta…");
       start(async () => {
         try {
-          await actionUpdateSalesClientName(orderId, name);
+          await actionUpdateSalesClientName(orderId, patch.clientName, patch.clientKhId);
           router.refresh();
         } catch (e) {
           setErrorToast(

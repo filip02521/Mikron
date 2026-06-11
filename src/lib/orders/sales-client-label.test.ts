@@ -4,6 +4,8 @@ import {
   clientNamesSummaryFromLines,
   formatDeliveryEmailLine,
   formatInformacjaEmailLine,
+  normalizeSalesClientAssignment,
+  normalizeSalesClientKhId,
   normalizeSalesClientName,
 } from "./sales-client-label";
 
@@ -12,6 +14,21 @@ describe("sales-client-label", () => {
     expect(normalizeSalesClientName("  Firma   ABC  ")).toBe("Firma ABC");
     expect(normalizeSalesClientName("")).toBeNull();
     expect(normalizeSalesClientName(null)).toBeNull();
+  });
+
+  it("normalizeSalesClientKhId wymaga nazwy klienta", () => {
+    expect(normalizeSalesClientKhId("Klinika", 42)).toBe(42);
+    expect(normalizeSalesClientKhId(null, 42)).toBeNull();
+    expect(normalizeSalesClientKhId("Klinika", 0)).toBeNull();
+  });
+
+  it("normalizeSalesClientAssignment spina nazwę i kh_Id", () => {
+    expect(
+      normalizeSalesClientAssignment({ clientName: " Klinika ", clientKhId: 12.9 })
+    ).toEqual({ clientName: "Klinika", clientKhId: 12 });
+    expect(
+      normalizeSalesClientAssignment({ clientName: "", clientKhId: 12 })
+    ).toEqual({ clientName: null, clientKhId: null });
   });
 
   it("formatDeliveryEmailLine z klientem", () => {

@@ -223,7 +223,7 @@ describe("verificationSublineFromDetail", () => {
 });
 
 describe("myOrderMetaFields", () => {
-  it("ma czytelne etykiety magazyn i szacunek", () => {
+  it("ma czytelne etykiety magazynu", () => {
     const row = presentMyOrders([baseOrder], [
       {
         supplier_id: "sup1",
@@ -238,7 +238,7 @@ describe("myOrderMetaFields", () => {
     const fields = myOrderMetaFields(row, true);
     expect(fields.some((f) => f.label === "Magazyn")).toBe(true);
     expect(fields.some((f) => f.label === "Szacunek" || f.label === "Termin")).toBe(
-      true
+      false
     );
   });
 });
@@ -251,6 +251,15 @@ describe("parseStatusDetailMetaParts", () => {
     expect(parsed.orderTypeLabel).toBe("Poza planem");
     expect(parsed.orderedAtLabel).toBe("06.05.2026");
     expect(parsed.remainder).toBeNull();
+  });
+
+  it("oddziela wspólny termin od daty zamówienia", () => {
+    const parsed = parseStatusDetailMetaParts(
+      "Osobne domówienie tylko na Twoją prośbę — poza planową dostawą · Zamówiono 11.06.2026 · Wspólny termin dla wszystkich pozycji."
+    );
+    expect(parsed.orderTypeLabel).toBe("Poza planem");
+    expect(parsed.orderedAtLabel).toBe("11.06.2026");
+    expect(parsed.remainder).toBe("Wspólny termin dla wszystkich pozycji.");
   });
 
   it("myOrderMetaFields pokazuje ZK gdy prośba z notatnika", () => {

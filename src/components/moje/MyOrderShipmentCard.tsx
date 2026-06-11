@@ -2,6 +2,7 @@
 
 import { useEffect, useId, useMemo, useRef, useState } from "react";
 import type { MyOrderRow } from "@/lib/orders/my-order-presenter";
+import type { SalesClientAssignment } from "@/lib/orders/sales-client-label";
 import {
   salesCancelLineAriaLabel,
   salesCancelLineShortLabel,
@@ -38,6 +39,11 @@ import {
 } from "@/lib/orders/my-order-row-layout";
 import { myOrderExpandedMetaFields } from "@/lib/orders/my-order-sales-ui";
 import { MyOrderExpandedMeta } from "@/components/moje/MyOrderExpandedMeta";
+import { MyOrderExpandedDeliveryTiming } from "@/components/moje/MyOrderExpandedDeliveryTiming";
+import {
+  buildMyOrderDeliveryTimingDisplay,
+  shouldShowMyOrderExpandedDeliveryTiming,
+} from "@/lib/orders/my-order-delivery-timing-display";
 import { MyOrderAckButton } from "@/components/moje/MyOrderAckButton";
 import { MyOrderAssignedClient } from "@/components/moje/MyOrderAssignedClient";
 import { MyOrderLineItem } from "@/components/moje/MyOrderLineItem";
@@ -52,7 +58,6 @@ import {
   mojeQueueRowLayoutClass,
   mojeQueueRowMainClass,
   mojeShipmentExpandedActionsClass,
-  mojeShipmentExpandedClientsClass,
   mojeShipmentExpandedNotesClass,
   mojeShipmentExpandedPanelClass,
   mojeShipmentLinesHeaderClass,
@@ -258,7 +263,7 @@ export function MyOrderShipmentCard({
   onAcknowledgeCancelled?: (orderIds: string[]) => void;
   onAcknowledgeCancelNotice?: (orderIds: string[]) => void;
   onCancelRequest?: (orderIds: string[], lines: SalesCancelLineContext[]) => void;
-  onSaveClient?: (orderId: string, name: string | null) => void | Promise<void>;
+  onSaveClient?: (orderId: string, patch: SalesClientAssignment) => void | Promise<void>;
   onEditRequest?: (row: MyOrderRow) => void;
   searchQuery?: string | null;
   tourPreview?: boolean;
@@ -385,12 +390,21 @@ export function MyOrderShipmentCard({
         : null,
     [row, rowVisualTone]
   );
+  const showCollapsedSublineText = shouldShowCollapsedSubline(collapsedSubline, {
+    showHeadlineBanner,
+    showRowHeadline,
+    suppressSharedHeadline,
+  });
   const expandedMeta = filterRedundantExpandedMetaFields(
     row,
     myOrderExpandedMetaFields(row, showProgress)
       .filter((field) => !(field.label === "Klient" && canEditClient))
-      .filter((field) => field.label !== "ZK"),
-    { collapsedSubline }
+      .filter((field) => field.label !== "ZK")
+  );
+  const expandedDeliveryTiming = buildMyOrderDeliveryTimingDisplay(row);
+  const showExpandedDeliveryTiming = shouldShowMyOrderExpandedDeliveryTiming(
+    row,
+    showProgress
   );
   const expandHint = myOrderExpandHint(row, expandCtx);
   const productSummaryRaw = myOrderCollapsedProductSummary(row, listKind);
@@ -401,11 +415,6 @@ export function MyOrderShipmentCard({
     hasCollapsedSubline: Boolean(collapsedSubline),
   });
   const productSummary = showCollapsedProductSummary ? productSummaryRaw : null;
-  const showCollapsedSublineText = shouldShowCollapsedSubline(collapsedSubline, {
-    showHeadlineBanner,
-    showRowHeadline,
-    suppressSharedHeadline,
-  });
   const showExpandedStatusBadge = shouldShowExpandedOrderStatusBadge(row, {
     hasRequestProgress: Boolean(requestProgress),
   });
@@ -524,7 +533,10 @@ export function MyOrderShipmentCard({
   );
 
   const hideLineClient =
-    row.lineCount === 1 && Boolean(row.clientLabel) && !canEditClient;
+    !expanded &&
+    row.lineCount === 1 &&
+    Boolean(row.clientLabel) &&
+    !canEditClient;
 
   const lineItemProps = (lineId: string) => ({
     showProgress,
@@ -540,8 +552,8 @@ export function MyOrderShipmentCard({
       : undefined,
     canEditClient,
     onSaveClient: onSaveClient
-      ? async (orderId: string, name: string | null) => {
-          await onSaveClient(orderId, name);
+      ? async (orderId: string, patch: SalesClientAssignment) => {
+          await onSaveClient(orderId, patch);
           setClientEditorLineId(null);
         }
       : undefined,
@@ -786,15 +798,11 @@ export function MyOrderShipmentCard({
 
           <MyOrderExpandedMeta fields={expandedMeta} searchQuery={searchQuery} />
 
-          {row.lineCount > 1 && row.clientLabel ? (
-            <p className={mojeShipmentExpandedClientsClass}>
-              <span className="font-semibold text-slate-700">Klienci przy produktach: </span>
-              <SearchHighlightText
-                text={row.clientLabel}
-                searchQuery={searchQuery}
-                className="font-medium text-slate-800"
-              />
-            </p>
+          {showExpandedDeliveryTiming && expandedDeliveryTiming ? (
+            <MyOrderExpandedDeliveryTiming
+              display={expandedDeliveryTiming}
+              searchQuery={searchQuery}
+            />
           ) : null}
 
           {row.lineCount > 0 ? (

@@ -9,7 +9,6 @@ import {
   myOrderExpandHint,
   myOrderNeedsExpand,
 } from "./my-order-row-layout";
-import { myOrderTimingMetaField } from "./my-order-sales-ui";
 import { presentMyOrders } from "./my-order-presenter";
 import type { IndividualOrder } from "@/types/database";
 import { myOrderExpandedMetaFields } from "./my-order-sales-ui";
@@ -175,7 +174,7 @@ describe("my-order-row-layout", () => {
     );
   });
 
-  it("termin realizacji tylko w metadanych rozwinięcia, nie na zwiniętym wierszu", () => {
+  it("termin realizacji na zwiniętym wierszu w subline", () => {
     const r = row({
       lineCount: 4,
       lines: Array.from({ length: 4 }, (_, i) => ({
@@ -187,11 +186,9 @@ describe("my-order-row-layout", () => {
       timingLabel: "ok. 10.05.2026 (~5 dni rob.) · po terminie",
     });
     expect(myOrderCollapsedSubline(r)).toBe("ok. 10.05.2026 (~5 dni rob.)");
-    const timing = myOrderTimingMetaField(r, true);
-    expect(timing?.label).toBe("Termin");
-    expect(timing?.value).toContain("10.05");
     const collapsed = myOrderCollapsedMetaFields(r, true);
-    expect(collapsed.some((f) => f.label === "Termin")).toBe(true);
+    expect(collapsed.some((f) => f.label === "Termin")).toBe(false);
+    expect(collapsed.some((f) => f.label === "Szacunek")).toBe(false);
   });
 
   it("typ i zamówienie ze statusDetail trafiają do metadanych bez powtórzenia w notatce", () => {
@@ -242,7 +239,6 @@ describe("my-order-row-layout", () => {
     const meta = myOrderExpandedMetaFields(r, true);
     expect(meta.some((f) => f.label === "Typ" && f.value === "Poza planem")).toBe(true);
     expect(meta.some((f) => f.label === "Zamówiono" && f.value === "06.05.2026")).toBe(true);
-    expect(meta.some((f) => f.label === "Termin")).toBe(true);
     expect(myOrderExpandedNotes(r)).toBeNull();
   });
 });

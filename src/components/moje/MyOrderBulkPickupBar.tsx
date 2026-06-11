@@ -16,7 +16,6 @@ import { formatPickupLineCount } from "@/lib/orders/my-order-plural";
 import { IconPackageCheck } from "@/components/icons/StrokeIcons";
 import { mojeActionBarShellClass } from "@/lib/ui/surfaces";
 import { panelSegmentLastClass } from "@/lib/ui/ontime-theme";
-import { cn } from "@/lib/cn";
 
 /**
  * Zbiorczy odbiór ponad kartami — jeden klik potwierdza wszystkie prośby
@@ -27,13 +26,10 @@ export function MyOrderBulkPickupBar({
   rows,
   enabled,
   tourPreview = false,
-  inPickupFocus = false,
 }: {
   rows: MyOrderRow[];
   enabled: boolean;
   tourPreview?: boolean;
-  /** Filtr „Gotowe” aktywny — bez powtarzania opisu w pasku. */
-  inPickupFocus?: boolean;
 }) {
   const router = useRouter();
   const { requestShelfPickupNotice } = useMyOrderPickupShelfDialog();
@@ -92,25 +88,20 @@ export function MyOrderBulkPickupBar({
       ) : null}
       {showBar ? (
         <div
-          className={cn(
-            "flex flex-wrap items-center gap-2 rounded-md border border-emerald-200/90 bg-emerald-50/80 px-3 py-2.5 sm:px-4",
-            inPickupFocus ? "justify-end" : "justify-between"
-          )}
+          className="flex flex-wrap items-center justify-between gap-2 rounded-md border border-emerald-200/90 bg-emerald-50/80 px-3 py-2.5 sm:px-4"
         >
-          {!inPickupFocus ? (
-            <p className="flex min-w-0 items-center gap-2 text-xs font-medium text-emerald-950">
-              <IconPackageCheck
-                size={16}
-                strokeWidth={2.25}
-                className="shrink-0 text-emerald-700"
-                aria-hidden
-              />
-              <span className="min-w-0">
-                {formatPickupLineCount(pickupIds.length)} gotowych
-                {pickupRowCount >= 2 ? " — potwierdź wszystkie naraz." : "."}
-              </span>
-            </p>
-          ) : null}
+          <p className="flex min-w-0 items-center gap-2 text-xs font-medium text-emerald-950">
+            <IconPackageCheck
+              size={16}
+              strokeWidth={2.25}
+              className="shrink-0 text-emerald-700"
+              aria-hidden
+            />
+            <span className="min-w-0">
+              {formatPickupLineCount(pickupIds.length)} gotowych
+              {pickupRowCount >= 2 ? " — potwierdź wszystkie naraz." : "."}
+            </span>
+          </p>
           <div className={mojeActionBarShellClass}>
             <MyOrderAckButton
               variant="segmentPrimary"
@@ -121,9 +112,7 @@ export function MyOrderBulkPickupBar({
             >
               {pending
                 ? "Potwierdzanie…"
-                : inPickupFocus
-                  ? `Potwierdź wszystkie (${pickupIds.length})`
-                  : myOrderPickupAckLabel(pickupIds.length, "pickup", { compact: true })}
+                : myOrderPickupAckLabel(pickupIds.length, "pickup", { compact: true })}
             </MyOrderAckButton>
           </div>
         </div>

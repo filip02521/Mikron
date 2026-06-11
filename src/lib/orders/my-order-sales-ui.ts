@@ -308,21 +308,6 @@ export function myOrderMetaFields(
     });
   }
 
-  if (row.timingLabel && row.headlineTone !== "warning") {
-    const overdue = row.timingLabel.includes("po terminie");
-    fields.push({
-      label: overdue ? "Termin" : "Szacunek",
-      value: row.timingLabel.replace(" · po terminie", ""),
-      emphasize: overdue,
-    });
-  } else if (row.timingLabel?.includes("po terminie")) {
-    fields.push({
-      label: "Termin",
-      value: row.timingLabel.replace(" · po terminie", ""),
-      emphasize: true,
-    });
-  }
-
   return fields;
 }
 
@@ -349,7 +334,17 @@ export function parseStatusDetailMetaParts(statusDetail: string | null): {
     } else if (segment.startsWith("W planowej dostawie")) {
       orderTypeLabel = "Planowa dostawa";
     } else if (/^Zamówiono \d/.test(segment)) {
-      orderedAtLabel = segment.slice("Zamówiono ".length);
+      const afterZamowiono = segment.slice("Zamówiono ".length);
+      const dateMatch = afterZamowiono.match(/^(\d{2}\.\d{2}\.\d{4})/);
+      if (dateMatch) {
+        orderedAtLabel = dateMatch[1]!;
+        const rest = afterZamowiono.slice(dateMatch[1].length).trim();
+        if (rest) remainder.push(rest.replace(/^[.\s]+/, ""));
+      } else {
+        orderedAtLabel = afterZamowiono;
+      }
+    } else if (/wspólny termin/i.test(segment)) {
+      remainder.push(segment);
     } else {
       remainder.push(segment);
     }
@@ -407,18 +402,6 @@ export function myOrderExpandedMetaFields(
   }
 
   return fields;
-}
-
-/** Pole terminu / szacunku — zawsze widoczne na liście, także na zwiniętym wierszu. */
-export function myOrderTimingMetaField(
-  row: MyOrderRow,
-  showProgress: boolean
-): { label: string; value: string; emphasize?: boolean } | null {
-  return (
-    myOrderMetaFields(row, showProgress).find(
-      (f) => f.label === "Termin" || f.label === "Szacunek"
-    ) ?? null
-  );
 }
 
 export function isTimingOverdue(timingLabel: string | null): boolean {

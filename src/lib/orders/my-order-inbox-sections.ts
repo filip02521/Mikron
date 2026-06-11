@@ -23,7 +23,6 @@ export const MY_ORDER_ACTION_SECTION_COPY = {
 
 export const MY_ORDER_INFORMACJA_SECTION_COPY = {
   title: "Tylko sprawdzamy dostępność",
-  titleFiltered: "Informacje o dostępności",
   hint: "Prośby o sprawdzenie, czy towar jest na magazynie.",
   icon: "informacja" as const,
   accent: "violet" as const satisfies MyOrderSectionAccent,

@@ -21,7 +21,7 @@ function row(partial: Partial<MyOrderRow> & Pick<MyOrderRow, "id">): MyOrderRow 
 }
 
 describe("buildSalesDayStartSnapshot", () => {
-  it("grupuje odbiór po dostawcy i sumuje priorytety", () => {
+  it("łączy wiele pozycji odbioru w jedno powiadomienie zbiorcze", () => {
     const snapshot = buildSalesDayStartSnapshot({
       rows: [
         row({
@@ -48,11 +48,33 @@ describe("buildSalesDayStartSnapshot", () => {
       ],
     });
 
-    expect(snapshot.items.filter((i) => i.source === "pickup")).toHaveLength(2);
-    expect(snapshot.items[0]?.source).toBe("pickup");
-    expect(snapshot.items[0]?.count).toBe(3);
-    expect(snapshot.items[0]?.title).toBe("Mikran");
+    const pickupItems = snapshot.items.filter((i) => i.source === "pickup");
+    expect(pickupItems).toHaveLength(1);
+    expect(pickupItems[0]?.id).toBe("pickup-ready");
+    expect(pickupItems[0]?.count).toBe(4);
+    expect(pickupItems[0]?.title).toBe("Potwierdź odbiór (4)");
+    expect(pickupItems[0]?.ctaLabel).toBe("Przejdź");
+    expect(pickupItems[0]?.scrollTarget).toBe("moje-section-action");
     expect(snapshot.totalActionCount).toBe(3);
+  });
+
+  it("pokazuje dostawcę gdy jest tylko jedna pozycja odbioru", () => {
+    const snapshot = buildSalesDayStartSnapshot({
+      rows: [
+        row({
+          id: "a",
+          supplierName: "Mikran",
+          acknowledgeMode: "pickup",
+          pickupPendingIds: ["o1"],
+          pickupPendingCount: 1,
+        }),
+      ],
+    });
+
+    const pickupItems = snapshot.items.filter((i) => i.source === "pickup");
+    expect(pickupItems).toHaveLength(1);
+    expect(pickupItems[0]?.title).toBe("Mikran");
+    expect(pickupItems[0]?.ctaLabel).toBe("Potwierdź");
   });
 
   it("łączy notatnik i tablicę w totalActionCount", () => {
@@ -106,72 +128,6 @@ describe("buildSalesDayStartSnapshot", () => {
     const snapshot = buildSalesDayStartSnapshot({ rows: [] });
     expect(snapshot.cleared).toBe(true);
     expect(snapshot.items).toHaveLength(0);
-  });
-
-  it("udostępnia przypięte ogłoszenia z tablicy", () => {
-    const snapshot = buildSalesDayStartSnapshot({
-      rows: [],
-      boardAttention: {
-        unreadAnnouncementCount: 0,
-        unreadAnnouncementLatestTitle: null,
-        unreadAnnouncementBannerCount: 0,
-        unreadAnnouncementBannerLatestTitle: null,
-        unreadAnnouncementBannerLatestId: null,
-        unseenAnswerCount: 0,
-        unseenAnswerPreview: null,
-        unseenQuestionIds: [],
-        pinnedAnnouncements: [
-          {
-            id: "a1",
-            title: "Urlop w zakupach",
-            body: "Biuro zamknięte w piątek",
-            kind: "announcement",
-            pinned: true,
-          } as never,
-          {
-            id: "a2",
-            title: "Nowy dostawca",
-            body: "Procedura zamówień",
-            kind: "announcement",
-            pinned: true,
-          } as never,
-        ],
-        navBadgeCount: 0,
-      },
-    });
-
-    expect(snapshot.pinnedAnnouncements).toHaveLength(2);
-    expect(snapshot.pinnedAnnouncements[0]?.title).toBe("Urlop w zakupach");
-    expect(snapshot.pinnedAnnouncementOverflow).toBe(0);
-  });
-
-  it("ogranicza liczbę przypiętych ogłoszeń", () => {
-    const pinned = Array.from({ length: 5 }, (_, i) => ({
-      id: `a${i}`,
-      title: `Ogłoszenie ${i}`,
-      body: "Treść",
-      kind: "announcement",
-      pinned: true,
-    }));
-
-    const snapshot = buildSalesDayStartSnapshot({
-      rows: [],
-      boardAttention: {
-        unreadAnnouncementCount: 0,
-        unreadAnnouncementLatestTitle: null,
-        unreadAnnouncementBannerCount: 0,
-        unreadAnnouncementBannerLatestTitle: null,
-        unreadAnnouncementBannerLatestId: null,
-        unseenAnswerCount: 0,
-        unseenAnswerPreview: null,
-        unseenQuestionIds: [],
-        pinnedAnnouncements: pinned as never,
-        navBadgeCount: 0,
-      },
-    });
-
-    expect(snapshot.pinnedAnnouncements).toHaveLength(3);
-    expect(snapshot.pinnedAnnouncementOverflow).toBe(2);
   });
 });
 

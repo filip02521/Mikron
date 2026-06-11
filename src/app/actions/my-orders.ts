@@ -11,7 +11,7 @@ import {
   resolveSalesCancelPhase,
   salesCancelUndoRestoreStatus,
 } from "@/lib/orders/sales-cancel";
-import { normalizeSalesClientName } from "@/lib/orders/sales-client-label";
+import { normalizeSalesClientAssignment } from "@/lib/orders/sales-client-label";
 import {
   buildSalesCancelUndoUpdate,
   buildSalesCancelUpdate,
@@ -97,14 +97,18 @@ async function acknowledgeOrders(
   return { success: true, count: orderIds.length };
 }
 
-/** Przypisanie lub zmiana etykiety klienta końcowego (tylko handlowiec). */
+/** Przypisanie lub zmiana klienta końcowego (tylko handlowiec). */
 export async function actionUpdateSalesClientName(
   orderId: string,
-  clientName: string | null
+  clientName: string | null,
+  clientKhId?: number | null
 ) {
   const salesPersonId = await salesPersonIdForAction();
   const supabase = createAdminClient();
-  const normalized = normalizeSalesClientName(clientName);
+  const { clientName: normalized, clientKhId: normalizedKh } = normalizeSalesClientAssignment({
+    clientName,
+    clientKhId,
+  });
 
   const { data: row, error: fetchError } = await supabase
     .from("individual_orders")
@@ -120,7 +124,10 @@ export async function actionUpdateSalesClientName(
 
   const { error } = await supabase
     .from("individual_orders")
-    .update({ sales_client_name: normalized })
+    .update({
+      sales_client_name: normalized,
+      sales_client_kh_id: normalizedKh,
+    })
     .eq("id", orderId)
     .eq("sales_person_id", salesPersonId);
 
@@ -130,11 +137,16 @@ export async function actionUpdateSalesClientName(
         "Brak kolumny sales_client_name — uruchom migrację 017_sales_client_name.sql"
       );
     }
+    if (error.message?.includes("sales_client_kh_id")) {
+      throw new Error(
+        "Brak kolumny sales_client_kh_id — uruchom migrację 052_individual_orders_sales_client_kh_id.sql"
+      );
+    }
     throw new Error(error.message);
   }
 
   revalidatePath("/moje");
-  return { success: true, clientName: normalized };
+  return { success: true, clientName: normalized, clientKhId: normalizedKh };
 }
 
 /** Ukrycie anulowanej prośby / dostawy. */

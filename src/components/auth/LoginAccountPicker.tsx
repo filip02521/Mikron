@@ -3,22 +3,19 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { LoginDirectoryAccount } from "@/lib/auth/login-directory";
 import { filterLoginDirectoryAccounts } from "@/lib/auth/login-directory";
-import { cn } from "@/lib/cn";
-import {
-  panelChoiceChipClass,
-  panelChoiceChipIdleClass,
-  panelChoiceChipSelectedClass,
-} from "@/lib/ui/ontime-theme";
+import { IconCircleCheck, IconSearch } from "@/components/icons/StrokeIcons";
 import { Input } from "@/components/ui/Field";
 import {
   LOGIN_ACCOUNT_LISTBOX_CLASS,
+  LOGIN_ACCOUNT_LIST_WRAPPER_CLASS,
   LOGIN_ACCOUNT_SEARCH_THRESHOLD,
+  loginAccountAvatarClass,
+  loginAccountCountLabel,
+  loginAccountInitials,
+  loginAccountRoleDotClass,
+  loginAccountRowClass,
 } from "@/components/auth/login-account-picker-layout";
-
-const ACCOUNT_CHIP_CLASS = cn(
-  panelChoiceChipClass,
-  "flex w-full min-h-11 cursor-pointer items-center px-3 py-2.5 text-left sm:min-h-10"
-);
+import { cn } from "@/lib/cn";
 
 export function LoginAccountPicker({
   accounts,
@@ -111,6 +108,13 @@ export function LoginAccountPicker({
     [disabled, filtered, focusIndex, moveFocus, onChange]
   );
 
+  const showSearch = accounts.length >= LOGIN_ACCOUNT_SEARCH_THRESHOLD;
+  const showListHeader = accounts.length > 1;
+  const listSummary =
+    filtered.length === accounts.length
+      ? loginAccountCountLabel(accounts.length)
+      : `${loginAccountCountLabel(filtered.length)} z ${accounts.length}`;
+
   if (!accounts.length) {
     return (
       <p className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900">
@@ -122,65 +126,103 @@ export function LoginAccountPicker({
 
   return (
     <div className="min-h-0 space-y-2.5">
-      {accounts.length >= LOGIN_ACCOUNT_SEARCH_THRESHOLD ? (
-        <Input
-          type="search"
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
-          placeholder="Szukaj po imieniu lub nazwisku…"
-          autoComplete="off"
-          disabled={disabled}
-          aria-label="Szukaj konta"
-        />
+      {showSearch ? (
+        <div className="relative">
+          <span
+            className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"
+            aria-hidden
+          >
+            <IconSearch size={18} strokeWidth={2} />
+          </span>
+          <Input
+            type="search"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder="Szukaj po imieniu lub nazwisku…"
+            autoComplete="off"
+            disabled={disabled}
+            aria-label="Szukaj konta"
+            className="pl-10"
+          />
+        </div>
       ) : null}
 
-      <div
-        ref={listRef}
-        role="listbox"
-        aria-label="Wybierz konto"
-        aria-activedescendant={
-          filtered[focusIndex] ? `login-account-${filtered[focusIndex]!.id}` : undefined
-        }
-        tabIndex={0}
-        onKeyDown={handleListKeyDown}
-        className={cn(
-          LOGIN_ACCOUNT_LISTBOX_CLASS,
-          "focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-500"
-        )}
-      >
-        {filtered.length === 0 ? (
-          <p className="px-1 text-sm text-slate-500">Brak kont pasujących do wyszukiwania.</p>
-        ) : (
-          filtered.map((account, index) => {
-            const active = value === account.id;
-            const focused = focusIndex === index;
-            return (
-              <button
-                key={account.id}
-                id={`login-account-${account.id}`}
-                type="button"
-                role="option"
-                aria-selected={active}
-                disabled={disabled}
-                onClick={() => onChange(account.id)}
-                onMouseEnter={() => setFocusIndex(index)}
-                className={cn(
-                  ACCOUNT_CHIP_CLASS,
-                  active || focused
-                    ? panelChoiceChipSelectedClass
-                    : panelChoiceChipIdleClass,
-                  disabled && "cursor-not-allowed opacity-60",
-                  focused && !active && "ring-1 ring-indigo-200/80"
-                )}
-              >
-                <span className="min-w-0 flex-1 truncate text-sm font-semibold text-slate-900">
-                  {account.displayName}
-                </span>
-              </button>
-            );
-          })
-        )}
+      <div className={LOGIN_ACCOUNT_LIST_WRAPPER_CLASS}>
+        {showListHeader ? (
+          <div className="flex items-center justify-between border-b border-slate-100 bg-slate-50/70 px-3 py-2">
+            <span className="text-xs font-medium text-slate-500">{listSummary}</span>
+          </div>
+        ) : null}
+
+        <div
+          ref={listRef}
+          role="listbox"
+          aria-label="Wybierz konto"
+          aria-activedescendant={
+            filtered[focusIndex] ? `login-account-${filtered[focusIndex]!.id}` : undefined
+          }
+          tabIndex={0}
+          onKeyDown={handleListKeyDown}
+          className={cn(
+            LOGIN_ACCOUNT_LISTBOX_CLASS,
+            "divide-y divide-slate-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-indigo-500/70"
+          )}
+        >
+          {filtered.length === 0 ? (
+            <p className="px-4 py-6 text-center text-sm text-slate-500">
+              Brak kont pasujących do wyszukiwania.
+            </p>
+          ) : (
+            filtered.map((account, index) => {
+              const active = value === account.id;
+              const focused = focusIndex === index;
+              return (
+                <button
+                  key={account.id}
+                  id={`login-account-${account.id}`}
+                  type="button"
+                  role="option"
+                  aria-selected={active}
+                  disabled={disabled}
+                  onClick={() => onChange(account.id)}
+                  onMouseEnter={() => setFocusIndex(index)}
+                  className={loginAccountRowClass({ active, focused, disabled })}
+                >
+                  <span className={loginAccountAvatarClass(active)} aria-hidden>
+                    {loginAccountInitials(account.displayName)}
+                  </span>
+                  <span className="min-w-0 flex-1">
+                    <span className="block truncate text-sm font-semibold text-slate-900">
+                      {account.displayName}
+                    </span>
+                    <span className="mt-0.5 flex min-w-0 items-center gap-1.5 text-xs text-slate-500">
+                      <span
+                        className={cn(
+                          "h-1.5 w-1.5 shrink-0 rounded-full",
+                          loginAccountRoleDotClass(account.role)
+                        )}
+                        aria-hidden
+                      />
+                      <span className="truncate">{account.roleLabel}</span>
+                    </span>
+                  </span>
+                  {active ? (
+                    <IconCircleCheck
+                      size={18}
+                      strokeWidth={2}
+                      className="shrink-0 text-indigo-600"
+                      aria-hidden
+                    />
+                  ) : (
+                    <span className="h-[18px] w-[18px] shrink-0" aria-hidden />
+                  )}
+                </button>
+              );
+            })
+          )}
+        </div>
       </div>
+
       <p className="sr-only" role="status" aria-live="polite">
         Podświetlone konto: {filtered[focusIndex]?.displayName ?? "brak"}
       </p>

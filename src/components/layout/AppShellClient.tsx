@@ -36,13 +36,7 @@ function SalesGlobalPinnedStrip({
 }: {
   attention: SalesBoardAttentionSnapshot;
 }) {
-  const pathname = usePathname();
-  const searchParams = useSearchParams();
-  const previewDla = searchParams.get("dla");
-
-  /** Ukryj globalny pasek tylko na własnym /moje — panel Start dnia pokazuje przypięte. */
-  const hideForDayStartPanel = pathname === "/moje" && !previewDla;
-  if (hideForDayStartPanel || !attention.pinnedAnnouncements.length) return null;
+  if (!attention.pinnedAnnouncements.length) return null;
 
   return <DepartmentBoardPinnedStrip pinned={attention.pinnedAnnouncements} />;
 }

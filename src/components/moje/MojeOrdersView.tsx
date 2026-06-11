@@ -1,14 +1,9 @@
 "use client";
 
-import { Suspense, useEffect, useMemo, useRef, useState, useCallback, type ComponentProps } from "react";
+import { Suspense, useEffect, useMemo, useRef, useCallback, type ComponentProps } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import type { MyOrderRow } from "@/lib/orders/my-order-presenter";
-import {
-  filterMyOrderRows,
-  inboxFilterLabel,
-  partitionMyOrderRowsBySalesAction,
-  type MyOrderInboxFilter,
-} from "@/lib/orders/my-order-inbox-filter";
+import { partitionMyOrderRowsBySalesAction } from "@/lib/orders/my-order-inbox-filter";
 import {
   filterMyOrderRowsByClientKh,
   filterMyOrderRowsBySearch,
@@ -28,14 +23,12 @@ import {
 import { MyOrderArchiveSection } from "@/components/moje/MyOrderArchiveSection";
 import { MyOrderBulkPickupBar } from "@/components/moje/MyOrderBulkPickupBar";
 import { SalesDayStartPanel } from "@/components/moje/SalesDayStartPanel";
-import type { SalesBoardAttentionSnapshot } from "@/lib/data/department-board";
 import {
   buildSalesDayStartSnapshot,
   type SalesDayStartContext,
 } from "@/lib/sales/sales-day-start";
 import { MyOrderShipmentList } from "@/components/moje/MyOrderShipmentList";
-import { MyOrdersInboxSummary } from "@/components/moje/MyOrdersInboxSummary";
-import { MojeStickyPickupBar } from "@/components/moje/MojeStickyPickupBar";
+import { MyOrdersRowLegend } from "@/components/moje/MyOrdersRowLegend";
 import { MojeOrdersHelp } from "@/components/moje/MojeOrdersGuide";
 import { SalesDayStartHelp } from "@/components/moje/SalesDayStartHelp";
 import { MojeOrdersEmptyGuide } from "@/components/moje/MojeOrdersEmptyGuide";
@@ -49,9 +42,8 @@ import {
   mojeSectionIconTileClass,
 } from "@/components/icons/StrokeIcons";
 import { SectionHeadingIcon } from "@/components/icons/SectionHeadingIcon";
-import { brandLinkSubtleClass, salesTypography, sectionIconTileBrandClass } from "@/lib/ui/ontime-theme";
+import { salesTypography, sectionIconTileBrandClass } from "@/lib/ui/ontime-theme";
 import type { OrderFormSupplierOption } from "@/lib/orders/order-form-suppliers";
-import { mojeShipmentSectionShellClass } from "@/lib/ui/moje-shipment-row-styles";
 import {
   deriveMyOrderSectionDisplayState,
   type MyOrderSectionPatternId,
@@ -60,6 +52,16 @@ import {
   findMyOrderRowIdsForFocusOrderIds,
   parseMojeFocusOrderIds,
 } from "@/lib/orders/moje-order-focus";
+import { MojeSectionShell } from "@/components/moje/MojeSectionShell";
+import {
+  flashMojeCard,
+  mojeSectionHeadingDomId,
+  parseMojeSectionHash,
+  scrollToMojeSection,
+  scrollToMojeSectionWhenReady,
+} from "@/lib/orders/moje-section-focus";
+import { hrefWithSalesPreviewFromUrl } from "@/lib/nav/sales-preview-href";
+import { INFORMACJA_FLOW_MY_ORDERS_HINT } from "@/lib/orders/informacja-flow-copy";
 import {
   MY_ORDER_ACTION_SECTION_COPY,
   MY_ORDER_INFORMACJA_SECTION_COPY,
@@ -96,7 +98,6 @@ function lineUnitLabel(n: number): string {
 function MojeOrdersOverviewStats({
   shipmentCount,
   lineCount,
-  activeFilter,
   filteredCount,
   searchActive,
   clientLinkFilterActive = false,
@@ -104,13 +105,12 @@ function MojeOrdersOverviewStats({
 }: {
   shipmentCount: number;
   lineCount: number;
-  activeFilter: MyOrderInboxFilter | null;
   filteredCount: number;
   searchActive: boolean;
   clientLinkFilterActive?: boolean;
   archiveMatchCount?: number;
 }) {
-  const narrowed = activeFilter || searchActive;
+  const narrowed = searchActive;
   if (clientLinkFilterActive && !narrowed) return null;
   return (
     <div className="flex flex-wrap items-center gap-x-4 gap-y-2 border-b border-slate-100 bg-slate-50/60 px-3 py-2.5 sm:px-4 lg:px-6">
@@ -120,17 +120,10 @@ function MojeOrdersOverviewStats({
           <span className={salesTypography.statValue}>{filteredCount}</span>
           {" z "}
           <span className={salesTypography.statValue}>{shipmentCount}</span>
-          {activeFilter ? (
-            <span className="ml-2 inline-flex rounded-full bg-indigo-100 px-2 py-0.5 text-[11px] font-semibold text-indigo-900">
-              filtr
-            </span>
-          ) : null}
-          {searchActive ? (
-            <span className="ml-2 inline-flex rounded-full bg-sky-100 px-2 py-0.5 text-[11px] font-semibold text-sky-900">
-              szukaj
-            </span>
-          ) : null}
-          {searchActive && archiveMatchCount ? (
+          <span className="ml-2 inline-flex rounded-full bg-sky-100 px-2 py-0.5 text-[11px] font-semibold text-sky-900">
+            szukaj
+          </span>
+          {archiveMatchCount ? (
             <span className="ml-2 text-slate-500">
               +{archiveMatchCount} w archiwum
             </span>
@@ -175,7 +168,7 @@ function MojeSectionListLabel({
 }) {
   return (
     <SectionListLabel
-      id={`moje-section-${icon}`}
+      id={mojeSectionHeadingDomId(icon)}
       title={title}
       hint={hint}
       count={count}
@@ -186,12 +179,8 @@ function MojeSectionListLabel({
   );
 }
 
-function flashMojeCard(card: HTMLElement | null) {
-  if (!card) return;
-  card.classList.add("ring-2", "ring-indigo-400/70", "ring-offset-2", "rounded-md");
-  window.setTimeout(() => {
-    card.classList.remove("ring-2", "ring-indigo-400/70", "ring-offset-2", "rounded-md");
-  }, 3200);
+function useMyOrderSectionCallouts(rows: MyOrderRow[]) {
+  return useMemo(() => deriveMyOrderSectionDisplayState(rows), [rows]);
 }
 
 function MyOrderShipmentBlock({
@@ -241,16 +230,6 @@ function MyOrderShipmentBlock({
   );
 }
 
-function useMyOrderSectionCallouts(
-  rows: MyOrderRow[],
-  activeFilter: MyOrderInboxFilter | null
-) {
-  return useMemo(
-    () => deriveMyOrderSectionDisplayState(rows, activeFilter),
-    [rows, activeFilter]
-  );
-}
-
 function MyOrderZamowieniaProgressSection({
   sectionId,
   rows,
@@ -267,13 +246,13 @@ function MyOrderZamowieniaProgressSection({
     "rows" | "listKind" | "showProgress" | "embedded" | "suppressedSectionPatterns"
   >;
 }) {
-  const sectionCallouts = useMyOrderSectionCallouts(rows, null);
+  const sectionCallouts = useMyOrderSectionCallouts(rows);
   if (rows.length === 0 && !showWhenEmpty) return null;
 
   const copy = MY_ORDER_PROGRESS_SECTION_COPY[sectionId];
 
   return (
-    <div className={mojeShipmentSectionShellClass}>
+    <MojeSectionShell sectionIcon={copy.icon}>
       {showSectionLabel ? (
         <MojeSectionListLabel
           title={copy.title}
@@ -299,37 +278,31 @@ function MyOrderZamowieniaProgressSection({
       ) : (
         <MyOrderSectionEmptyState message={MY_ORDER_PROGRESS_SECTION_EMPTY[sectionId]} />
       )}
-    </div>
+    </MojeSectionShell>
   );
 }
 
-function MyOrderFilteredZamowieniaSection({
+function MyOrderZamowieniaFlatSection({
   rows,
-  activeFilter,
-  showSectionLabel,
   listProps,
 }: {
   rows: MyOrderRow[];
-  activeFilter: MyOrderInboxFilter | null;
-  showSectionLabel: boolean;
   listProps: Omit<
     ComponentProps<typeof MyOrderShipmentBlock>,
     "rows" | "listKind" | "showProgress" | "embedded" | "suppressedSectionPatterns"
   >;
 }) {
-  const sectionCallouts = useMyOrderSectionCallouts(rows, activeFilter);
+  const sectionCallouts = useMyOrderSectionCallouts(rows);
   if (rows.length === 0) return null;
 
   return (
-    <div className={mojeShipmentSectionShellClass}>
-      {showSectionLabel ? (
-        <MojeSectionListLabel
-          title={activeFilter ? inboxFilterLabel(activeFilter) : "Zamówienia u dostawcy"}
-          count={rows.length}
-          icon="zamowienie"
-          accent="slate"
-        />
-      ) : null}
+    <MojeSectionShell sectionIcon="zamowienie">
+      <MojeSectionListLabel
+        title="Zamówienia u dostawcy"
+        count={rows.length}
+        icon="zamowienie"
+        accent="slate"
+      />
       <MyOrderSectionNoticeList
         callouts={sectionCallouts.callouts}
         singleHints={sectionCallouts.singleHints}
@@ -342,7 +315,7 @@ function MyOrderFilteredZamowieniaSection({
         suppressedSectionPatterns={sectionCallouts.suppressedPatterns}
         {...listProps}
       />
-    </div>
+    </MojeSectionShell>
   );
 }
 
@@ -400,7 +373,6 @@ function MojeOrdersViewContent({
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
-  const [activeFilter, setActiveFilter] = useState<MyOrderInboxFilter | null>(null);
   const clientKhFilter =
     initialClientKhId != null && initialClientKhId > 0 ? initialClientKhId : null;
   const clientLinkLabel = (initialClientKhLabel ?? initialClientQuery ?? "").trim() || null;
@@ -463,14 +435,8 @@ function MojeOrdersViewContent({
     [khFilteredInformacje, searchQuery]
   );
 
-  const filteredZamowienia = useMemo(
-    () => filterMyOrderRows(searchFilteredZamowienia, activeFilter),
-    [searchFilteredZamowienia, activeFilter]
-  );
-  const filteredInformacje = useMemo(
-    () => filterMyOrderRows(searchFilteredInformacje, activeFilter),
-    [searchFilteredInformacje, activeFilter]
-  );
+  const filteredZamowienia = searchFilteredZamowienia;
+  const filteredInformacje = searchFilteredInformacje;
 
   const searchActive = searchTrimmed.length > 0;
   const clientKhFilterActive = clientLinkFilterActive;
@@ -518,43 +484,32 @@ function MojeOrdersViewContent({
     searchFilteredInformacje,
   ]);
 
-  const splitByAction = !activeFilter || activeFilter === "action_group";
-
   const { actionZamowienia, progressZamowienia } = useMemo(() => {
-    if (!splitByAction) {
-      return { actionZamowienia: [] as MyOrderRow[], progressZamowienia: filteredZamowienia };
-    }
     const { needsAction, inProgress } = partitionMyOrderRowsBySalesAction(filteredZamowienia);
     return {
       actionZamowienia: sortMyOrderRows(needsAction),
       progressZamowienia: sortMyOrderRows(inProgress),
     };
-  }, [splitByAction, filteredZamowienia]);
+  }, [filteredZamowienia]);
 
   const { actionInformacje, progressInformacje } = useMemo(() => {
-    if (!splitByAction) {
-      return { actionInformacje: [] as MyOrderRow[], progressInformacje: filteredInformacje };
-    }
     const { needsAction, inProgress } = partitionMyOrderRowsBySalesAction(filteredInformacje);
     return {
       actionInformacje: [] as MyOrderRow[],
       progressInformacje: sortMyOrderRows([...needsAction, ...inProgress]),
     };
-  }, [splitByAction, filteredInformacje]);
+  }, [filteredInformacje]);
 
-  const zamowieniaListRows = splitByAction ? progressZamowienia : filteredZamowienia;
-  const informacjeListRows = splitByAction ? progressInformacje : filteredInformacje;
+  const zamowieniaListRows = progressZamowienia;
+  const informacjeListRows = progressInformacje;
   const { beforeOrder: beforeOrderZamowienia, orderedProgress: orderedProgressZamowienia } =
     useMemo(
       () => partitionMyOrderProgressRows(zamowieniaListRows),
       [zamowieniaListRows]
     );
   const showZamowieniaProgressSplit =
-    splitByAction && !activeFilter && zamowieniaListRows.length > 0;
-  const showKindSectionLabels =
-    !activeFilter ||
-    (zamowieniaListRows.length > 0 && informacjeListRows.length > 0);
-  const showProgressSectionLabels = showZamowieniaProgressSplit || showKindSectionLabels;
+    !searchActive && zamowieniaListRows.length > 0;
+  const showProgressSectionLabels = showZamowieniaProgressSplit;
 
   const actionSectionRows = useMemo(
     () => [...actionZamowienia, ...actionInformacje],
@@ -567,11 +522,8 @@ function MojeOrdersViewContent({
       ),
     [filteredZamowienia, filteredInformacje]
   );
-  const actionSectionCallouts = useMyOrderSectionCallouts(actionSectionRows, activeFilter);
-  const informacjeSectionCallouts = useMyOrderSectionCallouts(
-    informacjeListRows,
-    activeFilter
-  );
+  const actionSectionCallouts = useMyOrderSectionCallouts(actionSectionRows);
+  const informacjeSectionCallouts = useMyOrderSectionCallouts(informacjeListRows);
 
   const allRows = useMemo(
     () => [...sortedZamowienia, ...sortedInformacje],
@@ -591,34 +543,34 @@ function MojeOrdersViewContent({
 
   const inboxSummary = summarizeMyOrdersInbox(allRows);
 
-  /** Pełna liczba pozycji wymagających reakcji — niezależna od filtra/wyszukiwania. */
+  /** Pełna liczba pozycji wymagających reakcji — niezależna od wyszukiwania. */
   const needsActionTotal = useMemo(
     () => partitionMyOrderRowsBySalesAction(allRows).needsAction.length,
     [allRows]
   );
   const dayStartActionCount = dayStartSnapshot?.totalActionCount ?? needsActionTotal;
 
-  const handleDayStartInboxFilter = useCallback(
-    (filter: MyOrderInboxFilter, scrollTarget?: string) => {
-      setActiveFilter(filter);
-      requestAnimationFrame(() => {
-        document
-          .getElementById(scrollTarget ?? "moje-section-action")
-          ?.scrollIntoView({ behavior: "smooth", block: "start" });
+  const handleDayStartScrollToSection = useCallback(
+    (scrollTarget: string, fallbackHref: string) => {
+      const previewDla = searchParams.get("dla");
+      scrollToMojeSectionWhenReady(scrollTarget, () => {
+        router.push(hrefWithSalesPreviewFromUrl(fallbackHref, previewDla));
       });
     },
-    []
+    [router, searchParams]
   );
 
-  const dayStartPanel =
-    canAcknowledge && dayStartSnapshot ? (
-      <Suspense fallback={null}>
-        <SalesDayStartPanel
-          snapshot={dayStartSnapshot}
-          onInboxFilter={handleDayStartInboxFilter}
-        />
-      </Suspense>
-    ) : null;
+  const showDayStart =
+    canAcknowledge && dayStartSnapshot != null && !dayStartSnapshot.cleared;
+
+  const dayStartPanel = showDayStart ? (
+    <Suspense fallback={null}>
+      <SalesDayStartPanel
+        snapshot={dayStartSnapshot}
+        onScrollToSection={handleDayStartScrollToSection}
+      />
+    </Suspense>
+  ) : null;
 
   const shipmentCount = zamowienia.length + informacje.length;
   const filteredCount = filteredZamowienia.length + filteredInformacje.length;
@@ -686,7 +638,6 @@ function MojeOrdersViewContent({
   const clearNotepadClientFilter = useCallback(() => {
     if (tourPreview) return;
     setSearchQuery("");
-    setActiveFilter(null);
     if (syncSearchUrl) {
       const params = new URLSearchParams(searchParams.toString());
       params.delete("kh");
@@ -733,20 +684,24 @@ function MojeOrdersViewContent({
     </Suspense>
   );
 
+  const sectionHashDoneRef = useRef(false);
+
   useEffect(() => {
-    if (!activeFilter || filteredCount === 0) return;
-    const first = filteredZamowienia[0]?.id ?? filteredInformacje[0]?.id;
-    if (!first) return;
-    const card = document.getElementById(cardDomId(first));
-    const el =
-      card?.querySelector<HTMLElement>("[data-moje-row-toggle]") ?? card;
-    if (!(el instanceof HTMLElement)) return;
-    el.scrollIntoView({
-      behavior: "smooth",
-      block: "nearest",
-    });
-    el.focus({ preventScroll: true });
-  }, [activeFilter, filteredCount, filteredZamowienia, filteredInformacje]);
+    if (sectionHashDoneRef.current || focusOrderIds.length > 0) return;
+    const sectionId = parseMojeSectionHash(window.location.hash);
+    if (!sectionId) return;
+
+    const markDoneIfScrolled = () => {
+      if (scrollToMojeSection(sectionId)) {
+        sectionHashDoneRef.current = true;
+        return true;
+      }
+      return false;
+    };
+
+    if (markDoneIfScrolled()) return;
+    window.setTimeout(markDoneIfScrolled, 120);
+  }, [focusOrderIds.length]);
 
   const focusScrollDoneRef = useRef(false);
 
@@ -787,8 +742,6 @@ function MojeOrdersViewContent({
       }
     };
   }, [dayStartActionCount, tourPreview, canAcknowledge]);
-
-  const showSplitSections = splitByAction && !activeFilter && !searchActive;
 
   const cardDescription = pageDescription ?? MOJE_INTRO;
   const pageToolbar = (
@@ -852,15 +805,12 @@ function MojeOrdersViewContent({
     );
   }
 
-  const compactActionRows =
-    splitByAction || activeFilter === "pickup" || activeFilter === "informacja_ready";
-
   const listProps = {
     canAcknowledge,
     suppliers,
     searchQuery,
     tourPreview,
-    compactActionLayout: compactActionRows,
+    compactActionLayout: true,
     focusRowIds: focusRowIds.size > 0 ? focusRowIds : undefined,
   };
 
@@ -888,7 +838,6 @@ function MojeOrdersViewContent({
         <MojeOrdersOverviewStats
           shipmentCount={shipmentCount}
           lineCount={filteredLineCount}
-          activeFilter={activeFilter}
           filteredCount={filteredCount}
           searchActive={searchActive}
           clientLinkFilterActive={clientLinkFilterActive}
@@ -901,77 +850,23 @@ function MojeOrdersViewContent({
 
         {searchBar}
 
-        <MyOrdersInboxSummary
-          summary={inboxSummary}
-          activeFilter={activeFilter}
-          onFilterChange={setActiveFilter}
-          sectionsVisible={showSplitSections}
-        />
-
-        <MojeStickyPickupBar
-          count={
-            activeFilter === "pickup"
-              ? 0
-              : !activeFilter && splitByAction && actionCount > 0
-                ? 0
-                : !activeFilter || activeFilter === "action_group"
-                  ? inboxSummary.pickupCount
-                  : 0
-          }
-          onShowPickup={() => setActiveFilter("pickup")}
-        />
+        <div className="space-y-2 border-b border-slate-100 bg-slate-50/80 px-3 py-2.5 sm:px-4 lg:px-6">
+          <MyOrdersRowLegend />
+          {inboxSummary.availabilityPendingCount > 0 ? (
+            <p className="text-xs leading-snug text-slate-500">{INFORMACJA_FLOW_MY_ORDERS_HINT}</p>
+          ) : null}
+        </div>
 
         {searchActive && searchMatchCount === 0 && !archiveMatchCount ? (
-          <MojeOrdersSearchEmptyHint
-            query={searchTrimmed}
-            onClear={() => setSearchQuery("")}
-            hasInboxFilter={!!activeFilter}
-            onClearFilter={activeFilter ? () => setActiveFilter(null) : undefined}
-          />
+          <MojeOrdersSearchEmptyHint query={searchTrimmed} onClear={() => setSearchQuery("")} />
         ) : null}
 
         {searchActive && searchMatchCount === 0 && archiveMatchCount > 0 ? (
           <MojeOrdersSearchEmptyHint
             query={searchTrimmed}
             onClear={() => setSearchQuery("")}
-            hasInboxFilter={!!activeFilter}
-            onClearFilter={activeFilter ? () => setActiveFilter(null) : undefined}
             archiveOnly
           />
-        ) : null}
-
-        {activeFilter && filteredCount === 0 && !searchActive ? (
-          <p className="border-b border-slate-100 px-3 py-4 text-sm text-slate-600 sm:px-4">
-            Brak pozycji w kategorii{" "}
-            <span className="font-medium text-slate-800">
-              „{inboxFilterLabel(activeFilter)}”
-            </span>
-            .{" "}
-            <button
-              type="button"
-              className={brandLinkSubtleClass}
-              onClick={() => setActiveFilter(null)}
-            >
-              Pokaż wszystkie
-            </button>
-          </p>
-        ) : null}
-
-        {activeFilter && filteredCount === 0 && searchActive && searchMatchCount > 0 ? (
-          <p className="border-b border-slate-100 px-3 py-4 text-sm text-slate-600 sm:px-4">
-            Brak pozycji w kategorii{" "}
-            <span className="font-medium text-slate-800">
-              „{inboxFilterLabel(activeFilter)}”
-            </span>{" "}
-            przy aktywnym wyszukiwaniu.{" "}
-            <button
-              type="button"
-              className={brandLinkSubtleClass}
-              onClick={() => setActiveFilter(null)}
-            >
-              Pokaż wyniki wyszukiwania
-            </button>
-          </p>
         ) : null}
 
         <div className="space-y-3 p-3 sm:p-4">
@@ -979,10 +874,9 @@ function MojeOrdersViewContent({
           rows={bulkPickupRows}
           enabled={canAcknowledge}
           tourPreview={tourPreview}
-          inPickupFocus={activeFilter === "pickup"}
         />
-        {splitByAction && actionCount > 0 ? (
-          <div className={mojeShipmentSectionShellClass} aria-labelledby="moje-section-action">
+        {actionCount > 0 ? (
+          <MojeSectionShell sectionIcon={MY_ORDER_ACTION_SECTION_COPY.icon}>
             <MojeSectionListLabel
               title={MY_ORDER_ACTION_SECTION_COPY.title}
               hint={MY_ORDER_ACTION_SECTION_COPY.hint}
@@ -1011,7 +905,7 @@ function MojeOrdersViewContent({
               suppressedSectionPatterns={actionSectionCallouts.suppressedPatterns}
               {...listProps}
             />
-          </div>
+          </MojeSectionShell>
         ) : null}
 
         {showZamowieniaProgressSplit ? (
@@ -1032,29 +926,18 @@ function MojeOrdersViewContent({
             />
           </>
         ) : (
-          <MyOrderFilteredZamowieniaSection
-            rows={zamowieniaListRows}
-            activeFilter={activeFilter}
-            showSectionLabel={showKindSectionLabels}
-            listProps={listProps}
-          />
+          <MyOrderZamowieniaFlatSection rows={zamowieniaListRows} listProps={listProps} />
         )}
 
         {informacjeListRows.length > 0 ? (
-          <div className={mojeShipmentSectionShellClass}>
-            {showKindSectionLabels ? (
-              <MojeSectionListLabel
-                title={
-                  activeFilter
-                    ? MY_ORDER_INFORMACJA_SECTION_COPY.titleFiltered
-                    : MY_ORDER_INFORMACJA_SECTION_COPY.title
-                }
-                hint={activeFilter ? undefined : MY_ORDER_INFORMACJA_SECTION_COPY.hint}
-                count={informacjeListRows.length}
-                icon={MY_ORDER_INFORMACJA_SECTION_COPY.icon}
-                accent={MY_ORDER_INFORMACJA_SECTION_COPY.accent}
-              />
-            ) : null}
+          <MojeSectionShell sectionIcon={MY_ORDER_INFORMACJA_SECTION_COPY.icon}>
+            <MojeSectionListLabel
+              title={MY_ORDER_INFORMACJA_SECTION_COPY.title}
+              hint={MY_ORDER_INFORMACJA_SECTION_COPY.hint}
+              count={informacjeListRows.length}
+              icon={MY_ORDER_INFORMACJA_SECTION_COPY.icon}
+              accent={MY_ORDER_INFORMACJA_SECTION_COPY.accent}
+            />
             <MyOrderSectionNoticeList
               callouts={informacjeSectionCallouts.callouts}
               singleHints={informacjeSectionCallouts.singleHints}
@@ -1067,7 +950,7 @@ function MojeOrdersViewContent({
               suppressedSectionPatterns={informacjeSectionCallouts.suppressedPatterns}
               {...listProps}
             />
-          </div>
+          </MojeSectionShell>
         ) : null}
         </div>
       </Card>

@@ -1,4 +1,3 @@
-import type { MyOrderInboxFilter } from "@/lib/orders/my-order-inbox-filter";
 import type { MyOrderRow } from "@/lib/orders/my-order-presenter";
 import { enrichMyOrderSalesUi, isMyOrderPartialStockRow } from "@/lib/orders/my-order-sales-ui";
 
@@ -103,8 +102,7 @@ function singleHintMessage(pattern: MyOrderSectionPatternId): string {
 
 function deriveMyOrderSectionSingleHints(
   rows: MyOrderRow[],
-  calloutPatterns: Set<MyOrderSectionPatternId>,
-  activeFilter: MyOrderInboxFilter | null
+  calloutPatterns: Set<MyOrderSectionPatternId>
 ): MyOrderSectionSingleHint[] {
   const counts = countByPattern(rows);
   const hints: MyOrderSectionSingleHint[] = [];
@@ -112,9 +110,6 @@ function deriveMyOrderSectionSingleHints(
   for (const pattern of CALLOUT_ORDER) {
     const count = counts.get(pattern) ?? 0;
     if (count !== 1 || calloutPatterns.has(pattern)) continue;
-
-    const hidden = activeFilter ? FILTER_HIDES_PATTERN[activeFilter] : undefined;
-    if (hidden === pattern) continue;
 
     hints.push({
       pattern,
@@ -141,23 +136,6 @@ export function deriveMyOrderSectionCallouts(rows: MyOrderRow[]): MyOrderSection
   return callouts;
 }
 
-const FILTER_HIDES_PATTERN: Partial<Record<MyOrderInboxFilter, MyOrderSectionPatternId>> = {
-  overdue: "overdue",
-  partial: "partial_ready",
-  verification: "verification",
-};
-
-/** Gdy filtr już zawęża listę do danego wzorca, callout sekcji jest zbędny. */
-export function filterSectionCalloutsForInboxFilter(
-  callouts: MyOrderSectionCallout[],
-  activeFilter: MyOrderInboxFilter | null
-): MyOrderSectionCallout[] {
-  if (!activeFilter) return callouts;
-  const hidden = FILTER_HIDES_PATTERN[activeFilter];
-  if (!hidden) return callouts;
-  return callouts.filter((c) => c.pattern !== hidden);
-}
-
 export function myOrderSectionSuppressedPatterns(
   callouts: MyOrderSectionCallout[]
 ): Set<MyOrderSectionPatternId> {
@@ -181,34 +159,18 @@ function rowMatchesSectionPattern(
 
 /**
  * Callouty widoczne w UI + wzorce z ukrytym nagłówkiem wiersza.
- * Przy filtrze homogenicznym (np. „Po terminie”) nagłówki są ukrywane także bez calloutu.
  */
-export function deriveMyOrderSectionDisplayState(
-  rows: MyOrderRow[],
-  activeFilter: MyOrderInboxFilter | null
-): {
+export function deriveMyOrderSectionDisplayState(rows: MyOrderRow[]): {
   callouts: MyOrderSectionCallout[];
   singleHints: MyOrderSectionSingleHint[];
   suppressedPatterns: Set<MyOrderSectionPatternId>;
 } {
-  const callouts = filterSectionCalloutsForInboxFilter(
-    deriveMyOrderSectionCallouts(rows),
-    activeFilter
-  );
+  const callouts = deriveMyOrderSectionCallouts(rows);
   const calloutPatterns = myOrderSectionSuppressedPatterns(callouts);
-  const singleHints = deriveMyOrderSectionSingleHints(rows, calloutPatterns, activeFilter);
+  const singleHints = deriveMyOrderSectionSingleHints(rows, calloutPatterns);
   const suppressedPatterns = new Set(calloutPatterns);
   for (const hint of singleHints) {
     suppressedPatterns.add(hint.pattern);
-  }
-
-  const filterPattern = activeFilter ? FILTER_HIDES_PATTERN[activeFilter] : undefined;
-  if (
-    filterPattern &&
-    rows.length > 0 &&
-    rows.every((row) => rowMatchesSectionPattern(row, filterPattern))
-  ) {
-    suppressedPatterns.add(filterPattern);
   }
 
   return { callouts, singleHints, suppressedPatterns };
