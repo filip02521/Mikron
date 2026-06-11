@@ -493,6 +493,20 @@ export function buildOnboardingTablicaDemo(): DepartmentBoardData {
 
 export const ONBOARDING_TABLICA_UNSEEN_QUESTION_IDS = ["demo-board-question-answered"] as const;
 
+/** Uwaga tablicy w tourze — banner nowej odpowiedzi. */
+export function buildOnboardingBoardAttention() {
+  return {
+    unseenAnswerCount: 1,
+    unseenAnswerPreview: {
+      threadId: "demo-board-question-answered",
+      title: "Próbki implantów poza harmonogramem?",
+      isOwnQuestion: false,
+    },
+    unreadAnnouncementBannerCount: 0,
+    unreadAnnouncementBannerLatestTitle: null as string | null,
+  };
+}
+
 /** Kontekst panelu Start dnia w tourze onboardingowym /moje. */
 export function buildOnboardingDayStartContext(salesPersonId: string) {
   const notepad = buildOnboardingNotepadDemo(salesPersonId);

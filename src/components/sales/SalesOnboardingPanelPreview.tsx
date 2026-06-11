@@ -130,16 +130,30 @@ export function SalesOnboardingPanelPreview({ stepId }: { stepId: string }) {
               Ogłoszenia · 1 nowe
             </div>
             <div className="rounded-md border border-slate-200 bg-white px-2 py-1.5 text-center text-[10px] font-medium text-slate-600">
-              Pytania
+              Pytania zespołu
             </div>
           </div>
           <div className="rounded-md border border-sky-200 bg-sky-50/80 px-2.5 py-2 text-[11px] text-sky-950">
-            <p className="font-semibold">Zamówienia importowe — podaj kod Mikran</p>
-            <p className="mt-0.5 text-[10px] text-sky-900/90">Od działu zakupów · tylko do odczytu</p>
+            <p className="text-[10px] font-semibold uppercase tracking-wide text-sky-800">Ogłoszenie</p>
+            <p className="mt-0.5 font-semibold">Zamówienia importowe — podaj kod Mikran</p>
           </div>
-          <div className="rounded-md border border-amber-200 bg-amber-50 px-2.5 py-2 text-[11px] text-amber-950">
-            <p className="font-semibold">Pytanie: próbki implantów poza harmonogramem?</p>
-            <p className="mt-0.5 text-[10px] text-emerald-800">Odpowiedź działu zakupów · widoczna dla wszystkich</p>
+          <div className="rounded-md border border-slate-200 border-l-[3px] border-l-sky-500 bg-sky-50/25 px-2.5 py-2 text-[11px]">
+            <div className="flex flex-wrap items-center gap-1.5">
+              <span className="rounded-full bg-emerald-100 px-1.5 py-0.5 text-[9px] font-semibold uppercase text-emerald-900">
+                Odpowiedziano
+              </span>
+              <span className="rounded-full bg-sky-100 px-1.5 py-0.5 text-[9px] font-semibold uppercase text-sky-800">
+                Nowa odpowiedź
+              </span>
+            </div>
+            <p className="mt-1 font-semibold text-slate-900">Próbki implantów poza harmonogramem?</p>
+            <p className="mt-0.5 text-[10px] text-slate-500">Anna K. · 1 odpowiedź</p>
+            <p className="mt-1 truncate text-[10px] text-slate-600">
+              <span className="font-semibold text-amber-800">P:</span> Klient pyta o pilne próbki…
+            </p>
+            <p className="truncate text-[10px] text-slate-600">
+              <span className="font-semibold text-indigo-700">O:</span> Tak — złóż prośbę z adnotacją „próbki”.
+            </p>
           </div>
         </div>
       );

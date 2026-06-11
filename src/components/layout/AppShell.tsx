@@ -88,13 +88,13 @@ export async function AppShell({ children }: { children: React.ReactNode }) {
         const preview = await resolvePreviewSalesPerson(previewId, session);
         if (preview) {
           salesPersonName = preview.name;
-          const metrics = await fetchSalesShellMetrics(preview.id, null);
+          const metrics = await fetchSalesShellMetrics(preview.id, session.id);
           salesActivityVersion = metrics.activityVersion;
           navBadges = {
             ...navBadges,
             salesMoje: metrics.dayStartNavCount,
             salesNotatnik: metrics.notepadNavBadge,
-            salesTablica: 0,
+            salesTablica: metrics.boardNavBadge,
           };
         }
       }
@@ -118,7 +118,7 @@ export async function AppShell({ children }: { children: React.ReactNode }) {
           ...navBadges,
           salesMoje: metrics.dayStartNavCount,
           salesNotatnik: metrics.notepadNavBadge,
-          salesTablica: 0,
+          salesTablica: metrics.boardNavBadge,
         };
       }
     } catch {

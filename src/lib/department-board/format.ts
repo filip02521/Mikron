@@ -26,6 +26,11 @@ export function questionAuthorLabel(
   return authorLabelFromProfile(author, "Handlowiec");
 }
 
+export function boardReplyCountLabel(count: number): string {
+  if (count === 1) return "1 odpowiedź";
+  return `${count} odpowiedzi`;
+}
+
 export function formatBoardDate(iso: string): string {
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return iso;

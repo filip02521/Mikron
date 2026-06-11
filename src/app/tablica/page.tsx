@@ -44,6 +44,7 @@ export default async function SalesBoardPage({
       ReturnType<typeof fetchDepartmentBoard>
     >;
     let unseenQuestionIds: string[] = [];
+    let boardAttention = null;
     let initialTab: "announcements" | "questions" | undefined;
     if (widok === "pytania") initialTab = "questions";
     if (widok === "ogloszenia") initialTab = "announcements";
@@ -55,6 +56,7 @@ export default async function SalesBoardPage({
       ]);
       board = boardData;
       unseenQuestionIds = attention.unseenQuestionIds;
+      boardAttention = attention;
     } catch (e) {
       loadError = e instanceof Error ? e.message : "Nie udało się załadować tablicy.";
     }
@@ -65,6 +67,7 @@ export default async function SalesBoardPage({
         audience="sales"
         loadError={loadError}
         unseenQuestionIds={unseenQuestionIds}
+        boardAttention={boardAttention}
         initialTab={initialTab}
         focusQuestionId={focusQuestionId}
         focusAnnouncementId={focusAnnouncementId}
@@ -88,6 +91,7 @@ export default async function SalesBoardPage({
     ReturnType<typeof fetchDepartmentBoard>
   >;
   let unseenQuestionIds: string[] = [];
+  let boardAttention = null;
   let initialTab: "announcements" | "questions" | undefined;
   if (widok === "pytania") initialTab = "questions";
   if (widok === "ogloszenia") initialTab = "announcements";
@@ -99,6 +103,7 @@ export default async function SalesBoardPage({
     ]);
     board = boardData;
     unseenQuestionIds = attention.unseenQuestionIds;
+    boardAttention = attention;
   } catch (e) {
     loadError = e instanceof Error ? e.message : "Nie udało się załadować tablicy.";
   }
@@ -109,6 +114,7 @@ export default async function SalesBoardPage({
       audience="sales"
       loadError={loadError}
       unseenQuestionIds={unseenQuestionIds}
+      boardAttention={boardAttention}
       initialTab={initialTab}
       focusQuestionId={focusQuestionId}
       focusAnnouncementId={focusAnnouncementId}

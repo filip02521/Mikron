@@ -91,7 +91,7 @@ export function getSalesOnboardingSteps(role: UserRole): SalesOnboardingStep[] {
       bullets: [
         "Dwie zakładki: Ogłoszenia (tylko do odczytu) i Pytania (widoczne dla całego działu handlowego).",
         "Ogłoszenia to komunikaty od zakupów, np. zmiana procedury. Nie odpowiadasz w tej sekcji.",
-        "W Pytaniach zadajesz ogólne pytanie do zakupów. Odpowiedź widzą wszyscy handlowcy — bez powtarzania tych samych maili.",
+        "W Pytaniach zadajesz ogólne pytanie do zakupów. Pytanie i odpowiedź widać osobno — szukaj oznaczeń P: i O: albo bloków „Pytanie” i „Odpowiedź”.",
         "Zamówienie towaru zgłaszasz w „Nowa prośba”, nie tutaj. Status śledzisz w „Moje zamówienia”.",
         "Liczba przy zakładce w menu przypomina o nowych ogłoszeniach lub odpowiedziach na pytania.",
       ],

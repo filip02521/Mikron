@@ -23,6 +23,8 @@ export type SalesShellMetrics = {
   dayStartNavCount: number;
   /** Badge na zakładce ZK czekające — zaległe przypomnienia ZK i notatek. */
   notepadNavBadge: number;
+  /** Badge na Komunikacji — nieprzeczytane ogłoszenia + nowe odpowiedzi. */
+  boardNavBadge: number;
 };
 
 /** Jedno pobranie listy + statystyk dla badge i wersji aktywności (AppShell). */
@@ -70,5 +72,6 @@ export async function fetchSalesShellMetrics(
       inbox.pickupCount + inbox.cancelAckCount + inbox.informacjaReadyCount,
     dayStartNavCount: salesDayStartNavCount(inbox, notepadDue, boardNav),
     notepadNavBadge: notepadDue,
+    boardNavBadge: boardNav,
   };
 }

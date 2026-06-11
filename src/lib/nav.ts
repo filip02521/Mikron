@@ -291,6 +291,7 @@ export function navForRole(
       label: "Komunikacja",
       mobileLabel: "Info",
       description: "Ogłoszenia i pytania do zakupów — bez składania prośby o towar",
+      badge: badges.salesTablica,
     },
   ];
 

@@ -3,9 +3,17 @@
 import { useEffect, useMemo, useState } from "react";
 import { useSalesOnboardingDemo } from "@/components/sales/SalesOnboardingContext";
 import {
+  buildOnboardingBoardAttention,
   buildOnboardingTablicaDemo,
   ONBOARDING_TABLICA_UNSEEN_QUESTION_IDS,
 } from "@/lib/sales/sales-onboarding-demo-data";
+import { DepartmentBoardAnswersBanner } from "@/components/department-board/DepartmentBoardAnswersBanner";
+import { DepartmentBoardUnreadBanner } from "@/components/department-board/DepartmentBoardUnreadBanner";
+import type { DepartmentBoardAttentionBanners } from "@/lib/department-board/board-attention-banners";
+import {
+  shouldShowBoardAnswersBanner,
+  shouldShowBoardUnreadBanner,
+} from "@/lib/department-board/board-attention-banners";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { Alert } from "@/components/ui/Alert";
@@ -47,6 +55,7 @@ export function DepartmentBoardSalesClient({
   initial,
   loadError = null,
   unseenQuestionIds = [],
+  boardAttention = null,
   initialTab,
   focusQuestionId = null,
   focusAnnouncementId = null,
@@ -55,6 +64,7 @@ export function DepartmentBoardSalesClient({
   initial: DepartmentBoardData;
   loadError?: string | null;
   unseenQuestionIds?: string[];
+  boardAttention?: DepartmentBoardAttentionBanners | null;
   initialTab?: BoardTab;
   focusQuestionId?: string | null;
   focusAnnouncementId?: string | null;
@@ -151,6 +161,61 @@ export function DepartmentBoardSalesClient({
   const pageDescription = `${DEPARTMENT_BOARD_SALES_PAGE_DESC} ${DEPARTMENT_BOARD_NOTES_DISTINCTION_SALES}`;
   const showAnnouncements = tourDemo || activeTab === "announcements";
   const showQuestions = tourDemo || activeTab === "questions";
+  const effectiveAttention = tourDemo ? buildOnboardingBoardAttention() : boardAttention;
+  const showUnreadBanner =
+    effectiveAttention != null &&
+    shouldShowBoardUnreadBanner(effectiveAttention, activeTab);
+  const showAnswersBanner =
+    effectiveAttention != null &&
+    shouldShowBoardAnswersBanner(effectiveAttention, activeTab);
+
+  const questionFormPanel =
+    readOnly ? null : (
+      <NotatnikPanel
+        title="Zadaj pytanie do zakupów"
+        description="Odpowiedź zobaczy cały dział handlowy."
+        icon={<IconClipboardPen size={17} />}
+        tileClassName="bg-indigo-100 text-indigo-800"
+      >
+        <ProsbaFormSection
+          title="Treść pytania"
+          hint="Pytanie ogólne do działu zakupów — nie zastępuje formularza Nowa prośba przy zamówieniu towaru."
+        >
+          <p className={cn(salesTypography.sectionHint, "-mt-1 mb-2")}>
+            Zamówienie u dostawcy zgłaszasz w{" "}
+            <Link href="/prosba" className="font-medium text-indigo-700 hover:underline">
+              Nowa prośba
+            </Link>
+            .
+          </p>
+          <input
+            type="text"
+            value={questionTitle}
+            onChange={(e) => setQuestionTitle(e.target.value)}
+            placeholder="Temat pytania"
+            className={cn(NOTATNIK_INPUT_CLASS, "w-full")}
+          />
+          <textarea
+            rows={3}
+            value={questionBody}
+            onChange={(e) => setQuestionBody(e.target.value)}
+            placeholder="Opisz pytanie…"
+            className={cn(NOTATNIK_TEXTAREA_CLASS, "mt-2 w-full")}
+          />
+          {questionFormError ? (
+            <p className="mt-2 text-xs text-red-600">{questionFormError}</p>
+          ) : null}
+          <div className="mt-3">
+            <Button
+              disabled={tourDemo || saving || !questionTitle.trim() || !questionBody.trim()}
+              onClick={() => void submitQuestion()}
+            >
+              {tourDemo ? "Podgląd — bez wysyłki" : saving ? "Wysyłanie…" : "Wyślij pytanie"}
+            </Button>
+          </div>
+        </ProsbaFormSection>
+      </NotatnikPanel>
+    );
 
   return (
     <div className={salesPageShellClass}>
@@ -180,6 +245,23 @@ export function DepartmentBoardSalesClient({
           openQuestions={openQuestionsCount}
           unseenAnswers={unseenAnswersCount}
         />
+
+        {showUnreadBanner || showAnswersBanner ? (
+          <div className="space-y-2 border-b border-slate-100 px-3 py-2.5 sm:px-4">
+            {showUnreadBanner && effectiveAttention ? (
+              <DepartmentBoardUnreadBanner
+                unreadCount={effectiveAttention.unreadAnnouncementBannerCount}
+                latestTitle={effectiveAttention.unreadAnnouncementBannerLatestTitle}
+              />
+            ) : null}
+            {showAnswersBanner && effectiveAttention ? (
+              <DepartmentBoardAnswersBanner
+                count={effectiveAttention.unseenAnswerCount}
+                preview={effectiveAttention.unseenAnswerPreview}
+              />
+            ) : null}
+          </div>
+        ) : null}
 
         {showAnnouncements ? (
           <div className="space-y-3 p-3 sm:p-4">
@@ -211,6 +293,14 @@ export function DepartmentBoardSalesClient({
 
         {showQuestions ? (
           <div className="space-y-3 p-3 sm:p-4">
+            {questionFormPanel}
+
+            {readOnly ? (
+              <Alert tone="info" className="text-xs">
+                Podgląd administratora — wysyłanie pytań jest wyłączone.
+              </Alert>
+            ) : null}
+
             <NotatnikPanel
               title="Pytania zespołu"
               description="Wspólna lista — pytania kolegów i odpowiedzi zakupów. Filtr „Bez odpowiedzi” pokazuje tylko te, na które zakupy jeszcze nie odpisały."
@@ -244,61 +334,6 @@ export function DepartmentBoardSalesClient({
                 </div>
               )}
             </NotatnikPanel>
-
-            {readOnly ? (
-              <Alert tone="info" className="text-xs">
-                Podgląd administratora — wysyłanie pytań jest wyłączone.
-              </Alert>
-            ) : null}
-
-            {!readOnly ? (
-            <NotatnikPanel
-              title="Zadaj pytanie do zakupów"
-              description="Odpowiedź zobaczy cały dział handlowy."
-              icon={<IconClipboardPen size={17} />}
-              tileClassName="bg-indigo-100 text-indigo-800"
-            >
-              <ProsbaFormSection
-                title="Treść pytania"
-                hint="Pytanie ogólne do działu zakupów — nie zastępuje formularza Nowa prośba przy zamówieniu towaru."
-              >
-                <p className={cn(salesTypography.sectionHint, "-mt-1 mb-2")}>
-                  Zamówienie u dostawcy zgłaszasz w{" "}
-                  <Link href="/prosba" className="font-medium text-indigo-700 hover:underline">
-                    Nowa prośba
-                  </Link>
-                  .
-                </p>
-                <input
-                  type="text"
-                  value={questionTitle}
-                  onChange={(e) => setQuestionTitle(e.target.value)}
-                  placeholder="Temat pytania"
-                  className={cn(NOTATNIK_INPUT_CLASS, "w-full")}
-                />
-                <textarea
-                  rows={3}
-                  value={questionBody}
-                  onChange={(e) => setQuestionBody(e.target.value)}
-                  placeholder="Opisz pytanie…"
-                  className={cn(NOTATNIK_TEXTAREA_CLASS, "mt-2 w-full")}
-                />
-                {questionFormError ? (
-                  <p className="mt-2 text-xs text-red-600">{questionFormError}</p>
-                ) : null}
-                <div className="mt-3">
-                  <Button
-                    disabled={
-                      tourDemo || saving || !questionTitle.trim() || !questionBody.trim()
-                    }
-                    onClick={() => void submitQuestion()}
-                  >
-                    {tourDemo ? "Podgląd — bez wysyłki" : saving ? "Wysyłanie…" : "Wyślij pytanie"}
-                  </Button>
-                </div>
-              </ProsbaFormSection>
-            </NotatnikPanel>
-            ) : null}
           </div>
         ) : null}
       </Card>

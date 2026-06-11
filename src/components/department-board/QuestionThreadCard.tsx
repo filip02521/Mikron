@@ -1,21 +1,71 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Button } from "@/components/ui/Button";
 import {
   authorLabelFromProfile,
+  boardReplyCountLabel,
   formatBoardDate,
   isOperationsAuthorRole,
   questionAuthorLabel,
 } from "@/lib/department-board/format";
+import {
+  BOARD_PROCUREMENT_AUTHOR_LABEL,
+  boardAnswerBlockClass,
+  boardAnswerPreviewPrefixClass,
+  boardAuthorPillClass,
+  boardAwaitingReplyClass,
+  boardBlockKindLabelClass,
+  boardProcurementPillClass,
+  boardQuestionBlockClass,
+  boardQuestionEmbeddedShellClass,
+  boardQuestionPreviewPrefixClass,
+  boardQuestionStatusAnsweredClass,
+  boardQuestionStatusOpenClass,
+  boardQuestionUnseenBadgeClass,
+} from "@/lib/department-board/department-board-thread-styles";
 import type { DepartmentBoardQuestion } from "@/lib/data/department-board";
-import { NOTATNIK_INPUT_CLASS, NOTATNIK_TEXTAREA_CLASS } from "@/components/notatnik/notatnik-layout";
+import { NOTATNIK_TEXTAREA_CLASS } from "@/components/notatnik/notatnik-layout";
 import { cn } from "@/lib/cn";
+import { salesTypography } from "@/lib/ui/ontime-theme";
 import {
   actionArchiveQuestion,
   actionMarkQuestionThreadSeen,
   actionReplyToQuestion,
 } from "@/app/actions/department-board";
+
+function ThreadMessageBlock({
+  kind,
+  authorLabel,
+  authorPillClass,
+  shellClass,
+  kindLabel,
+  body,
+}: {
+  kind: "question" | "answer";
+  authorLabel: string;
+  authorPillClass: string;
+  shellClass: string;
+  kindLabel: string;
+  body: string;
+}) {
+  return (
+    <div className={shellClass}>
+      <div className="mb-2 flex flex-wrap items-center gap-2">
+        <span className={boardBlockKindLabelClass}>{kindLabel}</span>
+        <span className={authorPillClass}>{authorLabel}</span>
+      </div>
+      <p
+        className={cn(
+          "whitespace-pre-wrap text-sm leading-relaxed",
+          kind === "question" ? "text-slate-800" : "text-indigo-950"
+        )}
+      >
+        {body}
+      </p>
+    </div>
+  );
+}
 
 export function QuestionThreadCard({
   question,
@@ -46,6 +96,10 @@ export function QuestionThreadCard({
   const isOpen = question.status === "open";
   const replyCount = question.posts.length;
   const showUnseen = unseenReply && !locallySeen;
+  const firstAnswerPreview = useMemo(
+    () => question.posts.find((post) => isOperationsAuthorRole(post.author?.role ?? null)) ?? question.posts[0],
+    [question.posts]
+  );
 
   useEffect(() => {
     setLocallySeen(!unseenReply);
@@ -96,10 +150,7 @@ export function QuestionThreadCard({
       id={`question-${question.id}`}
       className={cn(
         embedded
-          ? cn(
-              "border-l-[3px] bg-white",
-              showUnseen ? "border-l-sky-500 bg-sky-50/25" : "border-l-slate-200"
-            )
+          ? boardQuestionEmbeddedShellClass({ unseen: showUnseen, open: isOpen })
           : "rounded-md border border-slate-200/90 bg-white shadow-sm",
         !embedded && isOpen && "ring-1 ring-amber-100"
       )}
@@ -112,78 +163,74 @@ export function QuestionThreadCard({
       >
         <span
           className={cn(
-            "mt-0.5 shrink-0 rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide",
-            isOpen
-              ? "bg-amber-100 text-amber-900"
-              : "bg-emerald-100 text-emerald-900"
+            "mt-0.5 shrink-0",
+            isOpen ? boardQuestionStatusOpenClass : boardQuestionStatusAnsweredClass
           )}
         >
-          {isOpen ? "Pytanie · czeka" : "Odpowiedziane"}
+          {isOpen ? "Czeka na odpowiedź" : "Odpowiedziano"}
         </span>
-        <span className="min-w-0 flex-1 space-y-1">
-          {showUnseen ? (
-            <span className="rounded-full bg-sky-100 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-sky-800">
-              Nowa odpowiedź
-            </span>
-          ) : null}
-          <span className="block text-sm font-semibold text-slate-900">{question.title}</span>
-          <span className="block text-xs text-slate-600">
+        <span className="min-w-0 flex-1 space-y-1.5">
+          <div className="flex flex-wrap items-center gap-2">
+            {showUnseen ? (
+              <span className={boardQuestionUnseenBadgeClass}>Nowa odpowiedź</span>
+            ) : null}
+            <span className={salesTypography.rowTitle}>{question.title}</span>
+          </div>
+          <span className={cn(salesTypography.rowMeta, "block")}>
             {author} · {formatBoardDate(question.created_at)}
-            {replyCount > 0
-              ? ` · ${replyCount} ${replyCount === 1 ? "odpowiedź" : replyCount < 5 ? "odpowiedzi" : "odpowiedzi"}`
-              : null}
+            {replyCount > 0 ? ` · ${boardReplyCountLabel(replyCount)}` : null}
           </span>
           {!expanded ? (
-            <span className="block truncate text-xs text-slate-500">{question.body}</span>
+            <span className="block space-y-1">
+              <span className={cn(salesTypography.rowMeta, "block truncate")}>
+                <span className={boardQuestionPreviewPrefixClass}>P:</span> {question.body}
+              </span>
+              {firstAnswerPreview ? (
+                <span className={cn(salesTypography.rowMeta, "block truncate")}>
+                  <span className={boardAnswerPreviewPrefixClass}>O:</span> {firstAnswerPreview.body}
+                </span>
+              ) : null}
+            </span>
           ) : null}
         </span>
       </button>
 
       {expanded ? (
         <div className="space-y-3 border-t border-slate-100 px-4 pb-4 pt-3">
-          <div className="rounded-md border border-slate-100 bg-slate-50/80 p-3">
-            <p className="mb-1 text-[11px] font-medium uppercase tracking-wide text-slate-500">
-              Pytanie · {author}
-            </p>
-            <p className="whitespace-pre-wrap text-sm leading-relaxed text-slate-800">
-              {question.body}
-            </p>
-          </div>
+          <ThreadMessageBlock
+            kind="question"
+            kindLabel="Pytanie"
+            authorLabel={author}
+            authorPillClass={boardAuthorPillClass}
+            shellClass={boardQuestionBlockClass}
+            body={question.body}
+          />
+
+          {question.posts.length === 0 ? (
+            <p className={boardAwaitingReplyClass}>Jeszcze bez odpowiedzi działu zakupów.</p>
+          ) : null}
 
           {question.posts.map((post) => {
             const fromOps = isOperationsAuthorRole(post.author?.role ?? null);
             return (
-              <div
+              <ThreadMessageBlock
                 key={post.id}
-                className={cn(
-                  "rounded-md border p-3",
-                  fromOps
-                    ? "border-l-4 border-l-indigo-500 border-indigo-100 bg-indigo-50/50"
-                    : "border-slate-100 bg-white"
-                )}
-              >
-                <p className="mb-1 flex flex-wrap items-center gap-2 text-[11px] font-medium uppercase tracking-wide text-slate-500">
-                  {fromOps ? (
-                    <span className="rounded bg-indigo-100 px-1.5 py-0.5 text-indigo-800">
-                      Zakupy
-                    </span>
-                  ) : null}
-                  <span>{authorLabelFromProfile(post.author)}</span>
-                  <span className="font-normal normal-case text-slate-400">
-                    · {formatBoardDate(post.created_at)}
-                  </span>
-                </p>
-                <p className="whitespace-pre-wrap text-sm leading-relaxed text-slate-800">
-                  {post.body}
-                </p>
-              </div>
+                kind="answer"
+                kindLabel="Odpowiedź"
+                authorLabel={
+                  fromOps ? BOARD_PROCUREMENT_AUTHOR_LABEL : authorLabelFromProfile(post.author)
+                }
+                authorPillClass={fromOps ? boardProcurementPillClass : boardAuthorPillClass}
+                shellClass={boardAnswerBlockClass}
+                body={post.body}
+              />
             );
           })}
 
           {canReply ? (
             <div className="space-y-2 rounded-md border border-indigo-100 bg-indigo-50/30 p-3">
               <label className="block text-xs font-medium text-indigo-950" htmlFor={`reply-${question.id}`}>
-                {isOpen ? "Odpowiedź zakupów" : "Dodaj doprecyzowanie (widoczne dla wszystkich)"}
+                {isOpen ? "Odpowiedź działu zakupów" : "Dodaj doprecyzowanie (widoczne dla wszystkich)"}
               </label>
               <textarea
                 id={`reply-${question.id}`}
