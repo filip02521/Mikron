@@ -5,9 +5,20 @@ import { describe, expect, it } from "vitest";
 import { render, screen } from "@testing-library/react";
 import { ProcurementRequestClientMeta, procurementGroupRequestNote } from "@/components/summary/ProcurementRequestLine";
 import {
+  shouldSuppressProcurementGroupPlannedOrderDate,
   shouldSuppressProcurementLineClient,
   shouldSuppressProcurementLineRequestNote,
 } from "@/components/summary/procurement-request-client-ui";
+
+describe("shouldSuppressProcurementGroupPlannedOrderDate", () => {
+  it("suppresses group date when supplier block header is shown", () => {
+    expect(shouldSuppressProcurementGroupPlannedOrderDate(true)).toBe(true);
+  });
+
+  it("keeps group date when there is no supplier block header", () => {
+    expect(shouldSuppressProcurementGroupPlannedOrderDate(false)).toBe(false);
+  });
+});
 
 describe("shouldSuppressProcurementLineClient", () => {
   it("suppresses per-line client when group has one shared client", () => {

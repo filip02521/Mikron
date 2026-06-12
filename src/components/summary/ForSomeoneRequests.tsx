@@ -8,7 +8,7 @@ import type {
 } from "@/lib/orders/summary-workspace";
 import { PlannedOrderDateMeta } from "@/components/orders/PlannedOrderDateMeta";
 import { parseDateOnly } from "@/lib/orders/dates";
-import { enrichForSomeoneGroup, enrichStockOutSignalGroup } from "@/lib/orders/procurement-daily-ui";
+import { enrichForSomeoneGroup, enrichStockOutSignalGroup, plannedOrderDateForSupplier } from "@/lib/orders/procurement-daily-ui";
 import { todayInWarsaw } from "@/lib/time/warsaw";
 import { useProcurementSupplierCollapse } from "@/components/summary/useProcurementSupplierCollapse";
 import {
@@ -51,7 +51,7 @@ import {
   procurementNestedRowMeta,
   procurementRequestRowClassName,
 } from "@/components/summary/procurement-request-row-styles";
-import { shouldSuppressProcurementLineClient, shouldSuppressProcurementLineRequestNote } from "@/components/summary/procurement-request-client-ui";
+import { shouldSuppressProcurementLineClient, shouldSuppressProcurementLineRequestNote, shouldSuppressProcurementGroupPlannedOrderDate } from "@/components/summary/procurement-request-client-ui";
 import {
   dailyPanelUnseenBadgeClass,
   panelNameLinkClass,
@@ -535,6 +535,14 @@ export function ForSomeoneRequests({
               : null;
           const blockScopeKey = procurementSupplierBlockScopeKey(block.supplierId);
           const blockPending = isScopePending(blockScopeKey);
+          const blockPlannedOrderDate =
+            showSupplierHeader && !isStockOutSection
+              ? plannedOrderDateForSupplier(supplierMeta[block.supplierId] ?? null, {
+                  todayDateKey,
+                  weekDays,
+                  supplierId: block.supplierId,
+                })
+              : null;
 
           return (
             <li
@@ -553,6 +561,7 @@ export function ForSomeoneRequests({
                   run={run}
                   unseenGroupCount={block.requestGroups.filter((g) => isGroupUnseen(g)).length}
                   unseenVariant={unseenVariant}
+                  plannedOrderDate={blockPlannedOrderDate}
                   onToggleCollapse={() => toggleSupplierCollapse(block.supplierId)}
                   onOpenSupplier={onOpenSupplier}
                 />
@@ -590,6 +599,8 @@ export function ForSomeoneRequests({
                     const sharedGroupNote = hasMultiLine ? procurementGroupRequestNote(g.lines) : null;
                     const suppressLineRequestNote = shouldSuppressProcurementLineRequestNote(sharedGroupNote);
                     const suppressLineClient = shouldSuppressProcurementLineClient(clientLabel);
+                    const suppressGroupPlannedOrderDate =
+                      shouldSuppressProcurementGroupPlannedOrderDate(showSupplierHeader);
                     const showSupplierFirst = !showSupplierHeader && !isStockOutSection;
                     const rowSubline = showSupplierHeader
                       ? procurementNestedRowMeta({ countLabel })
@@ -700,7 +711,7 @@ export function ForSomeoneRequests({
                       ) : null}
                     </div>
                     <div className="flex flex-col items-stretch gap-1.5 sm:shrink-0 sm:items-end">
-                      {ui.plannedOrderDate ? (
+                      {ui.plannedOrderDate && !suppressGroupPlannedOrderDate ? (
                         <PlannedOrderDateMeta
                           display={ui.plannedOrderDate}
                           className="self-start sm:self-auto"

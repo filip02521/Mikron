@@ -229,7 +229,7 @@ export function enrichStockOutSignalGroup(
   };
 }
 
-function plannedOrderDateForSupplier(
+export function plannedOrderDateForSupplier(
   supplierMeta: Pick<SupplierSummaryMeta, "computed_next_date" | "order_on_demand"> | null | undefined,
   options?: {
     todayDateKey?: string;

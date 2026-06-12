@@ -7,11 +7,13 @@ import {
   type ProcurementSupplierBlock,
 } from "@/lib/orders/procurement-supplier-groups";
 import { locationLabel } from "@/lib/display-labels";
+import { PlannedOrderDateMeta } from "@/components/orders/PlannedOrderDateMeta";
 import { Badge } from "@/components/ui/Badge";
 import { IconChevronRight } from "@/components/icons/StrokeIcons";
 import { cn } from "@/lib/cn";
 import { ProcurementSupplierBlockActionBar } from "@/components/summary/ProcurementSupplierBlockActionBar";
 import type { DailyPanelRunFn } from "@/components/summary/useDailyPanelRunner";
+import type { PlannedOrderDateDisplay } from "@/lib/orders/planned-order-date-label";
 import {
   controlFocusClass,
   dailyPanelUnseenBadgeClass,
@@ -47,6 +49,7 @@ export function ProcurementSupplierBlockBar({
   run,
   unseenGroupCount,
   unseenVariant = "prosby",
+  plannedOrderDate = null,
 }: {
   block: ProcurementSupplierBlock;
   collapsed: boolean;
@@ -57,6 +60,7 @@ export function ProcurementSupplierBlockBar({
   run: DailyPanelRunFn;
   unseenGroupCount?: number;
   unseenVariant?: DailyPanelUnseenVariant;
+  plannedOrderDate?: PlannedOrderDateDisplay | null;
 }) {
   const summary = formatProcurementSupplierBlockSummary(block);
   const groupCount = block.requestGroups.length;
@@ -129,7 +133,13 @@ export function ProcurementSupplierBlockBar({
               ) : null}
             </div>
           </div>
-          <div className="flex w-full flex-col items-stretch gap-1 sm:w-auto sm:shrink-0 sm:items-end">
+          <div className="flex w-full flex-col items-stretch gap-1.5 sm:w-auto sm:shrink-0 sm:items-end">
+            {plannedOrderDate ? (
+              <PlannedOrderDateMeta
+                display={plannedOrderDate}
+                className="self-start sm:self-auto"
+              />
+            ) : null}
             <span className="text-[10px] font-medium text-slate-500 sm:text-right">
               Zamów razem · {productCount}
             </span>
