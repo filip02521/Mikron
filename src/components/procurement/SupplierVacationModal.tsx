@@ -1,17 +1,26 @@
 "use client";
 
+import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import {
-  actionGetEditableVacationForSupplier,
+  actionListActiveVacationsForSupplier,
   actionUpsertVacation,
 } from "@/app/actions/admin";
+import { VacationSavePreview } from "@/components/admin/VacationSavePreview";
 import { useActionPending } from "@/hooks/useActionPending";
 import { Button } from "@/components/ui/Button";
-import { Field, Input } from "@/components/ui/Field";
+import { Field, Input, Select } from "@/components/ui/Field";
 import { ModalShell } from "@/components/ui/ModalShell";
 import { Spinner } from "@/components/ui/Spinner";
-import { vacationNoteLabel } from "@/lib/display-labels";
-import { formatPlDate } from "@/lib/display-labels";
+import { formatPlDate, vacationNoteLabel } from "@/lib/display-labels";
+
+type VacationRecord = {
+  id: string;
+  start_date: string;
+  end_date: string;
+  last_order_date: string;
+  active: boolean;
+};
 
 type VacationForm = {
   id?: string;
@@ -21,12 +30,28 @@ type VacationForm = {
   active: boolean;
 };
 
+const NEW_VACATION = "__new__";
+
 const emptyForm = (): VacationForm => ({
   start_date: "",
   end_date: "",
   last_order_date: "",
   active: true,
 });
+
+function recordToForm(record: VacationRecord): VacationForm {
+  return {
+    id: record.id,
+    start_date: record.start_date,
+    end_date: record.end_date,
+    last_order_date: record.last_order_date,
+    active: record.active,
+  };
+}
+
+function vacationOptionLabel(record: VacationRecord): string {
+  return `${formatPlDate(record.start_date)} – ${formatPlDate(record.end_date)}`;
+}
 
 export function SupplierVacationModal({
   supplierId,
@@ -41,24 +66,24 @@ export function SupplierVacationModal({
   onSaved?: (message: string) => void;
   onError?: (message: string) => void;
 }) {
+  const router = useRouter();
   const { pending, pendingMessage, run } = useActionPending();
   const [loadingExisting, setLoadingExisting] = useState(true);
+  const [existingVacations, setExistingVacations] = useState<VacationRecord[]>([]);
+  const [selection, setSelection] = useState<string>(NEW_VACATION);
   const [form, setForm] = useState<VacationForm>(emptyForm);
 
   useEffect(() => {
     let cancelled = false;
-    void actionGetEditableVacationForSupplier(supplierId)
-      .then((existing) => {
+    void actionListActiveVacationsForSupplier(supplierId)
+      .then(({ vacations }) => {
         if (cancelled) return;
-        if (existing) {
-          setForm({
-            id: existing.id,
-            start_date: existing.start_date,
-            end_date: existing.end_date,
-            last_order_date: existing.last_order_date,
-            active: existing.active,
-          });
+        setExistingVacations(vacations);
+        if (vacations.length) {
+          setSelection(vacations[0]!.id);
+          setForm(recordToForm(vacations[0]!));
         } else {
+          setSelection(NEW_VACATION);
           setForm(emptyForm());
         }
       })
@@ -67,8 +92,10 @@ export function SupplierVacationModal({
         onError?.(
           error instanceof Error
             ? error.message
-            : "Nie udało się wczytać urlopu dostawcy."
+            : "Nie udało się wczytać urlopów dostawcy."
         );
+        setExistingVacations([]);
+        setSelection(NEW_VACATION);
         setForm(emptyForm());
       })
       .finally(() => {
@@ -78,6 +105,16 @@ export function SupplierVacationModal({
       cancelled = true;
     };
   }, [supplierId, onError]);
+
+  const handleSelectionChange = (value: string) => {
+    setSelection(value);
+    if (value === NEW_VACATION) {
+      setForm(emptyForm());
+      return;
+    }
+    const record = existingVacations.find((row) => row.id === value);
+    if (record) setForm(recordToForm(record));
+  };
 
   const save = () => {
     if (!form.start_date || !form.end_date || !form.last_order_date) {
@@ -95,6 +132,9 @@ export function SupplierVacationModal({
             ? `Urlop zaktualizowany dla ${supplierName}.`
             : `Urlop zapisany dla ${supplierName}.`,
         ];
+        if (!result.active && form.active) {
+          parts.push("Urlop nie został aktywowany — sprawdź daty okresu.");
+        }
         if (result.nextDate) {
           parts.push(`Następne zamówienie: ${formatPlDate(result.nextDate)}`);
         }
@@ -104,6 +144,7 @@ export function SupplierVacationModal({
         if (result.syncErrors.length) {
           parts.push(`Uwagi: ${result.syncErrors.slice(0, 2).join("; ")}`);
         }
+        router.refresh();
         onSaved?.(parts.join(" "));
         onClose();
       },
@@ -118,15 +159,22 @@ export function SupplierVacationModal({
     );
   };
 
+  const previewForm = {
+    ...form,
+    supplier_id: supplierId,
+  };
+
   return (
     <ModalShell
       open
       onClose={onClose}
       title={`Urlop — ${supplierName}`}
       description={
-        form.id
-          ? "Edytujesz aktywny urlop tego dostawcy. Po zapisie termin przeliczy się automatycznie."
-          : "Po zapisie terminy przeliczą się automatycznie w panelu dziennym."
+        existingVacations.length > 1
+          ? `${existingVacations.length} aktywne urlopy — wybierz wpis do edycji lub dodaj nowy (okresy nie mogą się nakładać).`
+          : form.id
+            ? "Edytujesz aktywny urlop. Po zapisie termin przeliczy się automatycznie."
+            : "Po zapisie terminy przeliczą się automatycznie w panelu dziennym."
       }
       titleId="vacation-modal-title"
       size="sm"
@@ -140,7 +188,16 @@ export function SupplierVacationModal({
             Anuluj
           </Button>
           <Button disabled={pending || loadingExisting} onClick={save}>
-            {form.id ? "Zapisz zmiany" : "Zapisz urlop"}
+            {pending ? (
+              <>
+                <Spinner size="sm" />
+                Zapis…
+              </>
+            ) : form.id ? (
+              "Zapisz zmiany"
+            ) : (
+              "Zapisz urlop"
+            )}
           </Button>
         </>
       }
@@ -148,10 +205,26 @@ export function SupplierVacationModal({
       {loadingExisting ? (
         <div className="flex items-center gap-2 py-6 text-sm text-slate-600">
           <Spinner size="sm" />
-          Wczytywanie urlopu…
+          Wczytywanie urlopów…
         </div>
       ) : (
         <div className="grid gap-3">
+          {existingVacations.length ? (
+            <Field label="Edytowany wpis">
+              <Select
+                disabled={pending}
+                value={selection}
+                onChange={(e) => handleSelectionChange(e.target.value)}
+              >
+                {existingVacations.map((record) => (
+                  <option key={record.id} value={record.id}>
+                    {vacationOptionLabel(record)}
+                  </option>
+                ))}
+                <option value={NEW_VACATION}>+ Dodaj nowy urlop</option>
+              </Select>
+            </Field>
+          ) : null}
           <Field label="Urlop od">
             <Input
               type="date"
@@ -179,13 +252,14 @@ export function SupplierVacationModal({
           <label className="flex items-center gap-2 text-sm text-slate-700">
             <input
               type="checkbox"
-              className="rounded border-slate-300"
+              className="h-4 w-4 rounded border-slate-300"
               disabled={pending}
               checked={form.active}
               onChange={(e) => setForm({ ...form, active: e.target.checked })}
             />
-            Urlop aktywny
+            Urlop aktywny (uwzględniany w terminach i przy „Zamówione”)
           </label>
+          <VacationSavePreview form={previewForm} disabled={pending} />
         </div>
       )}
     </ModalShell>
