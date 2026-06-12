@@ -266,9 +266,11 @@ describe("procurement-daily-ui", () => {
       at
     );
     expect(zam.headline).toContain("Anna");
+    expect(zam.subline).not.toContain("uwagi przy produktach");
     expect(zam.statusTitle).toBe("Do zamówienia");
     expect(zam.submittedLabel).toContain("dziś");
     expect(zam.isUnseen).toBe(true);
+    expect(zam.plannedOrderDate).toBeNull();
 
     const info = enrichInformacjaGroup({
       ...testForSomeoneGroup({
@@ -280,6 +282,61 @@ describe("procurement-daily-ui", () => {
     });
     expect(info.headline).toContain("informacja");
     expect(info.statusTitle).toBe("Bez zamówienia");
+  });
+
+  it("enrichForSomeoneGroup dodaje sufiks subline przy różnych uwagach", () => {
+    const ui = enrichForSomeoneGroup(
+      testForSomeoneGroup({
+        supplierId: "a",
+        salesPersonId: "sp",
+        person: "Anna",
+        lines: [
+          {
+            id: "1",
+            products: "A",
+            symbol: "-",
+            quantity: "1",
+            fromSubiekt: false,
+            submittedAt: "2026-05-28T10:00:00Z",
+            procurementSeenAt: null,
+            requestNote: "pilne A",
+          },
+          {
+            id: "2",
+            products: "B",
+            symbol: "-",
+            quantity: "1",
+            fromSubiekt: false,
+            submittedAt: "2026-05-28T10:00:00Z",
+            procurementSeenAt: null,
+            requestNote: "pilne B",
+          },
+        ],
+        orderIds: ["1", "2"],
+      }),
+      new Date(2026, 4, 28, 12)
+    );
+    expect(ui.subline).toContain("uwagi przy produktach");
+  });
+
+  it("enrichForSomeoneGroup dodaje planową datę zamówienia z harmonogramu", () => {
+    const ui = enrichForSomeoneGroup(
+      testForSomeoneGroup({
+        supplierId: "sup-1",
+        salesPersonId: "sp",
+        person: "Anna",
+      }),
+      new Date(2026, 5, 9, 12),
+      {
+        supplierMeta: {
+          computed_next_date: "2026-06-12",
+          order_on_demand: false,
+        },
+        todayDateKey: "2026-06-09",
+      }
+    );
+    expect(ui.plannedOrderDate?.label).toBe("12.06.2026");
+    expect(ui.plannedOrderDate?.caption).toBe("Planowe zamówienie");
   });
 
   it("sortForSomeoneGroups stawia nieprzeczytane na górze", () => {

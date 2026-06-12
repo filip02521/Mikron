@@ -6,6 +6,10 @@ import { FlowChevron, InlineCheck } from "@/components/ui/UiGlyphs";
 import { cn } from "@/lib/cn";
 import { checkboxBrandClass, controlFocusClass } from "@/lib/ui/ontime-theme";
 import { getDeliveryProgress, parseOrderQuantity } from "@/lib/orders/individual";
+import {
+  fulfillmentProgressFor,
+  receiveQueueTargetQuantity,
+} from "@/lib/orders/sales-cancel";
 import { procurementDispositionQueueLabel } from "@/lib/orders/procurement-disposition";
 import { partialReceiveCrossLabel } from "@/lib/orders/warehouse-cross-link";
 import {
@@ -84,10 +88,12 @@ export function ReceiveQueueRow({
   onToggleProductGroup: (checked: boolean) => void;
 }) {
   const personName = order.sales_person?.name?.trim() || "—";
-  const ordered = parseOrderQuantity(order.quantity);
+  const fulfillment = fulfillmentProgressFor(order);
+  const targetQty = receiveQueueTargetQuantity(order);
+  const ordered = targetQty ?? parseOrderQuantity(order.quantity);
   const previewN = inputVal === "" ? 0 : parseInt(inputVal, 10);
   const progress = getDeliveryProgress(
-    order.quantity,
+    ordered != null ? String(ordered) : order.quantity,
     Number.isFinite(previewN) ? String(previewN) : "0"
   );
   const isPartial = !isInfo && order.status === "Czesciowo_zrealizowane";
@@ -153,7 +159,11 @@ export function ReceiveQueueRow({
         </div>
         {(salesCancelRow || isPartial) && (
           <p className="mt-0.5 pl-3 text-[10px] font-bold uppercase tracking-wide text-amber-800">
-            {salesCancelRow ? "rezygnacja" : "częściowo"}
+            {salesCancelRow
+              ? fulfillment.cancelled > 0 && (fulfillment.supplierRemaining ?? 0) > 0
+                ? `częściowa · ${fulfillment.supplierRemaining} szt.`
+                : "rezygnacja"
+              : "częściowo"}
           </p>
         )}
       </td>

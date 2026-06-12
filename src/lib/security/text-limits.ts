@@ -9,6 +9,7 @@ export const MAX_REQUEST_EDIT_LINES = 30;
 /** Zbiorcze operacje w kolejce magazynu (dostawy / informacja). */
 export const MAX_QUEUE_BATCH_SIZE = 30;
 export const MAX_DISPOSITION_NOTE_LEN = 500;
+export const MAX_SALES_REQUEST_NOTE_LEN = 500;
 export const MAX_SUPPLIER_NAME_LEN = 200;
 export const MAX_SUPPLIER_NOTES_LEN = 2000;
 export const MAX_SUPPLIER_MAILS_LEN = 2000;

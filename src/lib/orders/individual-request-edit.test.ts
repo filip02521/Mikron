@@ -1,56 +1,153 @@
 import { describe, expect, it } from "vitest";
 import {
-  canEditIndividualRequestGroup,
+  editRequestNoteForSave,
+  filterIndividualRequestEditLinesForSave,
   isIndividualOrderEditable,
+  resolveIndividualRequestEditLineId,
+  toIndividualRequestEditLinePayload,
 } from "./individual-request-edit";
 import type { IndividualOrder } from "@/types/database";
 
-function order(status: IndividualOrder["status"]): IndividualOrder {
-  return {
-    id: "o1",
-    supplier_id: "s1",
-    sales_person_id: "sp1",
-    symbol: "A",
-    products: "Produkt",
-    quantity: "1",
-    delivered_quantity: "-",
-    order_type: "None",
-    request_kind: "zamowienie",
-    status,
-    action_at: "",
-    ordered_at: null,
-  } as IndividualOrder;
+function order(partial: Partial<IndividualOrder>): IndividualOrder {
+  return partial as IndividualOrder;
 }
 
-describe("individual-request-edit", () => {
-  it("pozwala edytować Nowe i Weryfikacja", () => {
-    expect(isIndividualOrderEditable(order("Nowe"))).toBe(true);
-    expect(isIndividualOrderEditable(order("Weryfikacja"))).toBe(true);
-    expect(isIndividualOrderEditable(order("Zamowione"))).toBe(false);
+describe("isIndividualOrderEditable", () => {
+  it("pozwala edytować częściową rezygnację przed zamówieniem u dostawcy", () => {
+    expect(
+      isIndividualOrderEditable(
+        order({
+          status: "Nowe",
+          ordered_at: null,
+          sales_cancelled_at: "2026-06-09T10:00:00Z",
+          sales_acknowledged_at: null,
+        })
+      )
+    ).toBe(true);
   });
 
-  it("blokuje edycję po wycofaniu przez handlowca", () => {
+  it("blokuje edycję po pełnej rezygnacji zamkniętej u handlowca", () => {
     expect(
-      isIndividualOrderEditable({
-        ...order("Nowe"),
-        sales_cancelled_at: new Date().toISOString(),
-      })
+      isIndividualOrderEditable(
+        order({
+          status: "Zamowione",
+          ordered_at: null,
+          sales_cancelled_at: "2026-06-09T10:00:00Z",
+          sales_acknowledged_at: "2026-06-09T10:00:00Z",
+        })
+      )
     ).toBe(false);
   });
 
-  it("blokuje edycję po złożeniu u dostawcy (ordered_at)", () => {
+  it("blokuje edycję po złożeniu u dostawcy", () => {
     expect(
-      isIndividualOrderEditable({
-        ...order("Nowe"),
-        ordered_at: "2026-05-15T10:00:00Z",
-      })
+      isIndividualOrderEditable(
+        order({
+          status: "Nowe",
+          ordered_at: "2026-06-09",
+          sales_cancelled_at: null,
+          sales_acknowledged_at: null,
+        })
+      )
     ).toBe(false);
   });
+});
 
-  it("grupa edytowalna tylko gdy wszystkie pozycje edytowalne", () => {
-    expect(canEditIndividualRequestGroup([order("Nowe"), order("Nowe")])).toBe(true);
-    expect(canEditIndividualRequestGroup([order("Nowe"), order("Zamowione")])).toBe(
-      false
-    );
+describe("resolveIndividualRequestEditLineId", () => {
+  it("zwraca id tylko dla pozycji z edytowanej prośby", () => {
+    expect(resolveIndividualRequestEditLineId("ord-1", ["ord-1", "ord-2"])).toBe("ord-1");
+    expect(resolveIndividualRequestEditLineId("draft-new", ["ord-1"])).toBeUndefined();
+    expect(resolveIndividualRequestEditLineId("", ["ord-1"])).toBeUndefined();
+    expect(resolveIndividualRequestEditLineId(undefined, ["ord-1"])).toBeUndefined();
+  });
+});
+
+describe("filterIndividualRequestEditLinesForSave", () => {
+  const existing = {
+    id: "ord-1",
+    symbol: "A",
+    mikranCode: "",
+    product: "Produkt A",
+    quantity: "1",
+  };
+  const draftNew = {
+    id: "draft-ui",
+    symbol: "",
+    mikranCode: "",
+    product: "",
+    quantity: "",
+  };
+  const filledNew = {
+    id: "draft-ui-2",
+    symbol: "B",
+    mikranCode: "",
+    product: "Produkt B",
+    quantity: "2",
+  };
+
+  it("pomija puste nowe wiersze z losowym id UI", () => {
+    expect(
+      filterIndividualRequestEditLinesForSave([existing, draftNew], ["ord-1"])
+    ).toEqual([existing]);
+  });
+
+  it("zostawia wypełnione nowe wiersze", () => {
+    expect(
+      filterIndividualRequestEditLinesForSave([existing, filledNew], ["ord-1"])
+    ).toEqual([existing, filledNew]);
+  });
+
+  it("zostawia istniejące wiersze nawet gdy użytkownik je wyczyścił", () => {
+    const clearedExisting = { ...existing, product: "", symbol: "" };
+    expect(
+      filterIndividualRequestEditLinesForSave([clearedExisting], ["ord-1"])
+    ).toEqual([clearedExisting]);
+  });
+});
+
+describe("toIndividualRequestEditLinePayload", () => {
+  it("mapuje nową linię bez id w payloadzie", () => {
+    expect(
+      toIndividualRequestEditLinePayload(
+        {
+          id: "draft-ui",
+          symbol: "X",
+          mikranCode: "",
+          product: "Nowy",
+          quantity: "1",
+        },
+        ["ord-1"]
+      )
+    ).toMatchObject({
+      id: undefined,
+      symbol: "X",
+      product: "Nowy",
+    });
+  });
+});
+
+describe("editRequestNoteForSave", () => {
+  it("zachowuje uwagi per linia gdy mieszane i pole nietknięte", () => {
+    expect(
+      editRequestNoteForSave("", { mixedOnLines: true, touched: false })
+    ).toBeUndefined();
+  });
+
+  it("nadpisuje wspólną notatką po edycji przy mieszanych uwagach", () => {
+    expect(
+      editRequestNoteForSave("wspólna", { mixedOnLines: true, touched: true })
+    ).toBe("wspólna");
+  });
+
+  it("czyści notatkę gdy użytkownik ją wyczyścił przy mieszanych uwagach", () => {
+    expect(
+      editRequestNoteForSave("", { mixedOnLines: true, touched: true })
+    ).toBe("");
+  });
+
+  it("wysyła notatkę normalnie gdy linie mają jedną wspólną", () => {
+    expect(
+      editRequestNoteForSave("pilne", { mixedOnLines: false, touched: false })
+    ).toBe("pilne");
   });
 });

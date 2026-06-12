@@ -9,6 +9,7 @@ export type SupplierCyclePreset = {
 
 export const SUPPLIER_STOCK_PRESETS: SupplierCyclePreset[] = [
   { id: "2m", label: "Zapas na 2 miesiące", raw: "2 MIESIĄCE" },
+  { id: "4m", label: "Zapas na 4 miesiące", raw: "4 MIESIĄCE" },
   { id: "1m", label: "Zapas na 1 miesiąc", raw: "1 MIESIĄC" },
   { id: "6w", label: "Zapas na 6 tygodni", raw: "6" },
   { id: "4w", label: "Zapas na 4 tygodnie", raw: "4" },
@@ -21,6 +22,7 @@ export const SUPPLIER_INTERVAL_PRESETS: SupplierCyclePreset[] = [
   { id: "6w", label: "Co 6 tygodni", raw: "6" },
   { id: "1m", label: "Co miesiąc", raw: "1 MIESIĄC" },
   { id: "2m", label: "Co 2 miesiące", raw: "2 MIESIĄCE" },
+  { id: "4m", label: "Co 4 miesiące", raw: "4 MIESIĄCE" },
   { id: "3m", label: "Co kwartał", raw: "3 MIESIĄCE" },
   { id: "6m", label: "Co pół roku", raw: "6 MIESIĘCY" },
 ];

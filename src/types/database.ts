@@ -116,8 +116,12 @@ export interface IndividualOrder {
   sales_cancelled_at?: string | null;
   /** before_order | in_transit | on_stock */
   sales_cancel_phase?: string | null;
+  /** Ilość wycofana przez handlowca (szt.); NULL = pełna rezygnacja wg dotychczasowych reguł. */
+  sales_cancelled_quantity?: string | null;
   /** Etykieta klienta końcowego (opcjonalnie, ustawia handlowiec). */
   sales_client_name?: string | null;
+  /** Uwagi handlowca do prośby — widoczne w panelu dziennym zakupów. */
+  sales_request_note?: string | null;
   /** kh_Id odbiorcy z Subiekta — powiązanie z ZK / wyszukiwanie. */
   sales_client_kh_id?: number | null;
   /** Karta ZK z notatnika (przycisk Prośba). */

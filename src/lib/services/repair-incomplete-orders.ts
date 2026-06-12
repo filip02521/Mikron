@@ -14,7 +14,7 @@ export async function repairIncompleteIndividualOrders(
 ): Promise<number> {
   const { data, error } = await supabase
     .from("individual_orders")
-    .select("id, supplier_id, symbol, products, quantity, request_kind, status")
+    .select("id, supplier_id, symbol, products, mikran_code, quantity, request_kind, status")
     .eq("request_kind", "zamowienie")
     .in("status", REPAIR_STATUSES);
 
@@ -25,6 +25,7 @@ export async function repairIncompleteIndividualOrders(
     return !isProcurementDraftReady({
       supplierId: r.supplier_id ?? undefined,
       symbol: r.symbol ?? undefined,
+      mikranCode: r.mikran_code ?? undefined,
       product: r.products ?? undefined,
       quantity: r.quantity ?? undefined,
       requestKind: kind,

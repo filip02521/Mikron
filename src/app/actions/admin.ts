@@ -40,6 +40,7 @@ import {
   updateIndividualRequestGroup,
 } from "@/lib/services/orders";
 import type { IndividualRequestEditPayload } from "@/lib/orders/individual-request-edit";
+import type { ProcurementCancelDispositionInput } from "@/lib/orders/procurement-disposition";
 import type { InformacjaFlowPath } from "@/lib/orders/informacja-stock-out-reorder";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { intervalWeeksForStorage, parseInterval } from "@/lib/orders/dates";
@@ -319,6 +320,7 @@ export async function actionAddIndividualOrders(
     requestKind?: IndividualRequestKind;
     clientName?: string;
     clientKhId?: number | null;
+    requestNote?: string | null;
     subiektTwId?: number | null;
     sourceZkWatchId?: string | null;
     sourceZkNumber?: string | null;
@@ -530,65 +532,115 @@ export async function actionMarkProcurementRequestsSeen(
 const DISPOSITION_MIGRATION_HINT =
   "Brak kolumn rozliczenia rezygnacji — uruchom supabase/migrations/021_procurement_cancel_disposition.sql";
 
-/** Magazyn: decyzja po rezygnacji handlowca (stan vs zwrot). */
+/** Zakupy: decyzja po rezygnacji handlowca (stan vs zwrot) — osobno per pozycja. */
 export async function actionSetProcurementCancelDisposition(
-  orderIds: string[],
-  disposition: "to_stock" | "return",
-  note?: string
+  entries: ProcurementCancelDispositionInput[],
+  options?: { acknowledgeOrderIds?: string[] }
 ): Promise<DailyPanelActionResult> {
   await requireOperations("mutate");
-  const ids = [...new Set(orderIds.filter(Boolean))];
-  if (!ids.length) return { success: true };
-
-  if (disposition !== "to_stock" && disposition !== "return") {
-    throw new Error("Nieprawidłowa decyzja magazynu.");
-  }
-
   const supabase = createAdminClient();
   const now = new Date().toISOString();
-  const trimmedNote = clampOptionalText(note, MAX_DISPOSITION_NOTE_LEN);
+  const { isSalesCancelledForQueue } = await import("@/lib/orders/sales-cancel");
 
-  const { data, error } = await supabase
-    .from("individual_orders")
-    .select(
-      "id, sales_cancelled_at, sales_cancel_phase, procurement_cancel_disposition, status"
-    )
-    .in("id", ids);
+  const normalized = entries.filter((e) => e.orderId?.trim());
+  const ids = [...new Set(normalized.map((e) => e.orderId))];
 
-  if (error) {
-    if (error.message?.includes("procurement_cancel_disposition")) {
-      throw new Error(DISPOSITION_MIGRATION_HINT);
+  if (ids.length) {
+    const { data, error } = await supabase
+      .from("individual_orders")
+      .select(
+        "id, sales_cancelled_at, sales_cancel_phase, procurement_cancel_disposition, status, request_kind"
+      )
+      .in("id", ids);
+
+    if (error) {
+      if (error.message?.includes("procurement_cancel_disposition")) {
+        throw new Error(DISPOSITION_MIGRATION_HINT);
+      }
+      throw new Error(error.message);
     }
-    throw new Error(error.message);
+
+    const byId = new Map((data ?? []).map((row) => [row.id, row]));
+
+    for (const entry of normalized) {
+      if (entry.disposition !== "to_stock" && entry.disposition !== "return") {
+        throw new Error("Nieprawidłowa decyzja magazynu.");
+      }
+
+      const row = byId.get(entry.orderId);
+      if (!row) {
+        throw new Error("Nie znaleziono pozycji rezygnacji.");
+      }
+      if (!row.sales_cancelled_at || row.procurement_cancel_disposition) {
+        continue;
+      }
+      if (
+        !isSalesCancelledForQueue(row as import("@/types/database").IndividualOrder)
+      ) {
+        continue;
+      }
+
+      const trimmedNote = clampOptionalText(entry.note, MAX_DISPOSITION_NOTE_LEN);
+      const { data: updated, error: updErr } = await supabase
+        .from("individual_orders")
+        .update({
+          procurement_cancel_disposition: entry.disposition,
+          procurement_cancel_disposition_note: trimmedNote,
+          procurement_cancel_disposition_at: now,
+          procurement_sales_cancel_ack_at: now,
+        })
+        .eq("id", entry.orderId)
+        .is("procurement_cancel_disposition", null)
+        .select("id");
+
+      if (updErr) {
+        if (updErr.message?.includes("procurement_cancel_disposition")) {
+          throw new Error(DISPOSITION_MIGRATION_HINT);
+        }
+        throw new Error(updErr.message);
+      }
+      if (!updated?.length) {
+        throw new Error("Nie udało się zapisać decyzji — odśwież panel i spróbuj ponownie.");
+      }
+    }
   }
 
-  const { isSalesCancelledForQueue } = await import("@/lib/orders/sales-cancel");
-  const toUpdate = (data ?? []).filter((row) => {
-    if (!row.sales_cancelled_at || row.procurement_cancel_disposition) return false;
-    return isSalesCancelledForQueue(row as import("@/types/database").IndividualOrder);
-  });
+  const ackIds = [...new Set((options?.acknowledgeOrderIds ?? []).filter(Boolean))];
+  if (ackIds.length) {
+    const { data: ackRows, error: ackFetchErr } = await supabase
+      .from("individual_orders")
+      .select("id, request_kind, sales_cancelled_at, procurement_sales_cancel_ack_at")
+      .in("id", ackIds);
 
-  if (!toUpdate.length) return { success: true };
+    if (ackFetchErr) {
+      if (ackFetchErr.message?.includes("procurement_sales_cancel_ack_at")) {
+        throw new Error(
+          "Brak kolumny procurement_sales_cancel_ack_at — uruchom supabase/migrations/019_procurement_sales_cancel_ack.sql"
+        );
+      }
+      throw new Error(ackFetchErr.message);
+    }
 
-  const { error: updErr } = await supabase
-    .from("individual_orders")
-    .update({
-      procurement_cancel_disposition: disposition,
-      procurement_cancel_disposition_note: trimmedNote,
-      procurement_cancel_disposition_at: now,
-      procurement_sales_cancel_ack_at: now,
-    })
-    .in(
-      "id",
-      toUpdate.map((r) => r.id)
+    const toAck = (ackRows ?? []).filter(
+      (row) =>
+        row.sales_cancelled_at &&
+        row.request_kind !== "informacja" &&
+        !row.procurement_sales_cancel_ack_at
     );
 
-  if (updErr) {
-    if (updErr.message?.includes("procurement_cancel_disposition")) {
-      throw new Error(DISPOSITION_MIGRATION_HINT);
+    if (toAck.length) {
+      const { error: ackUpdErr } = await supabase
+        .from("individual_orders")
+        .update({ procurement_sales_cancel_ack_at: now })
+        .in(
+          "id",
+          toAck.map((r) => r.id)
+        );
+      if (ackUpdErr) throw new Error(ackUpdErr.message);
     }
-    throw new Error(updErr.message);
   }
+
+  if (!ids.length && !ackIds.length) return { success: true };
 
   revalidateAll();
   return { success: true };

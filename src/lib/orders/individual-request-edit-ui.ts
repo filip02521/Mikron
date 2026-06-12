@@ -1,9 +1,13 @@
-import { randomId } from "@/lib/ensure-crypto";
 import type { SummaryForSomeoneEnriched } from "@/lib/orders/summary-workspace";
 import type { MyOrderRow } from "@/lib/orders/my-order-presenter";
 import type { EditIndividualRequestInitial } from "@/components/orders/EditIndividualRequestModal";
 import type { IndividualOrder } from "@/types/database";
 import { ordersToEditLines } from "@/lib/orders/individual-request-edit";
+import {
+  linesHaveMixedRequestNotes,
+  normalizeSalesRequestNote,
+  sharedRequestNoteFromLines,
+} from "@/lib/orders/sales-request-note";
 import {
   informacjaFlowPathFromOrder,
   type InformacjaFlowPath,
@@ -33,6 +37,8 @@ export function editInitialFromForSomeoneGroup(
     supplierId: g.supplierId,
     salesPersonId: g.salesPersonId,
     requestKind,
+    requestNote: sharedRequestNoteFromLines(g.lines) ?? "",
+    requestNotesMixed: linesHaveMixedRequestNotes(g.lines),
     informacjaPath:
       requestKind === "informacja" ? informacjaPathFromForSomeoneLines(g.lines) : undefined,
     lines: g.lines.map((l) => ({
@@ -53,6 +59,8 @@ export function editInitialFromMyOrderRow(row: MyOrderRow): EditIndividualReques
     supplierId: row.supplierId ?? "",
     salesPersonId: row.salesPersonId,
     requestKind: row.requestKind,
+    requestNote: sharedRequestNoteFromLines(row.lines) ?? "",
+    requestNotesMixed: linesHaveMixedRequestNotes(row.lines),
     lines: row.lines.map((l) => ({
       id: l.id,
       symbol: l.symbol ?? "",
@@ -74,9 +82,20 @@ export function editInitialFromOrders(orders: IndividualOrder[]): EditIndividual
     supplierId: rep.supplier_id ?? "",
     salesPersonId: rep.sales_person_id,
     requestKind,
+    requestNote:
+      sharedRequestNoteFromLines(
+        orders.map((o) => ({
+          requestNote: normalizeSalesRequestNote(o.sales_request_note),
+        }))
+      ) ?? "",
+    requestNotesMixed: linesHaveMixedRequestNotes(
+      orders.map((o) => ({
+        requestNote: normalizeSalesRequestNote(o.sales_request_note),
+      }))
+    ),
     informacjaPath: requestKind === "informacja" ? informacjaPath ?? "direct" : undefined,
     lines: ordersToEditLines(orders).map((l) => ({
-      id: l.id ?? randomId(),
+      id: l.id!,
       symbol: l.symbol ?? "",
       mikranCode: l.mikranCode ?? "",
       product: l.product ?? "",

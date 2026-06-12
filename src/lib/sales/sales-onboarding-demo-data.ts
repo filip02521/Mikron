@@ -58,8 +58,15 @@ function demoLine(
     canAcknowledgePickup: extra.canAcknowledgePickup ?? false,
     canCancelBySales: extra.canCancelBySales ?? false,
     salesCancelPhase: extra.salesCancelPhase ?? null,
+    maxSalesCancelQuantity: extra.maxSalesCancelQuantity ?? null,
+    defaultSalesCancelQuantity: extra.defaultSalesCancelQuantity ?? null,
+    canPartialSalesCancel: extra.canPartialSalesCancel ?? false,
+    showSalesCancelRemainder: extra.showSalesCancelRemainder ?? false,
+    salesCancelDeliveredQty: extra.salesCancelDeliveredQty ?? 0,
+    salesCancelUndoRestore: extra.salesCancelUndoRestore ?? {},
     clientName: extra.clientName ?? null,
     clientKhId: extra.clientKhId ?? null,
+    requestNote: extra.requestNote ?? null,
   };
 }
 
@@ -92,6 +99,7 @@ function demoOrderRow(overrides: Partial<MyOrderRow>): MyOrderRow {
     cancelNoticeOrderIds: [],
     cancelledAckOrderIds: [],
     clientLabel: "Gabinet Dr Kowalski",
+    requestNote: null,
     supplierId: "demo-supplier-a",
     salesPersonId: DEMO_SALES_PERSON_ID,
     requestKind: "zamowienie",

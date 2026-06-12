@@ -93,6 +93,8 @@ export type ForSomeoneLine = {
   /** Klient podany przez handlowca (opcjonalnie). */
   clientName?: string | null;
   clientKhId?: number | null;
+  /** Notatka handlowca do zakupów (opcjonalnie). */
+  requestNote?: string | null;
 };
 
 export type SummaryForSomeoneEnriched = {

@@ -13,28 +13,36 @@ import {
   DailyPanelSubsectionBar,
   dailyPanelQueueShellClass,
 } from "@/components/summary/DailyPanelSubsectionBar";
+import {
+  dailyPanelListBodyClass,
+  dailyPanelCardRowInteractiveClass,
+} from "@/components/summary/daily-panel-list-styles";
 import type { DailyPanelRunFn } from "@/components/summary/useDailyPanelRunner";
 import { cn } from "@/lib/cn";
-import { panelNoticeTriggerBaseClass } from "@/lib/ui/ontime-theme";
+import {
+  panelNoticeTriggerBaseClass,
+  panelNoticeTriggerDefaultClass,
+  panelNoticeTriggerUrgentClass,
+} from "@/lib/ui/ontime-theme";
 
 function noticeCompactSubtitle(notice: SalesCancelledNotice): string {
   const parts: string[] = [];
   if (notice.clientName) parts.push(`klient: ${notice.clientName}`);
   parts.push(locationLabel(notice.location));
   parts.push(notice.cancelledLabel);
-  parts.push(notice.needsDisposition ? "wymaga decyzji" : "do zapoznania");
+  parts.push(notice.needsDisposition ? "czeka na decyzję" : "do zapoznania");
   return parts.join(" · ");
 }
 
 function noticeActionLabel(notice: SalesCancelledNotice): string {
-  return notice.needsDisposition ? "Rozlicz" : "Szczegóły";
+  return notice.needsDisposition ? "Co z towarem?" : "Szczegóły";
 }
 
 function noticeModalDescription(notice: SalesCancelledNotice): string {
   if (!notice.needsDisposition) {
-    return "Handlowiec wycofał zamówienie przed złożeniem u dostawcy. Zapoznaj się z pozycjami i ukryj powiadomienie.";
+    return "Handlowiec zrezygnował przed złożeniem u dostawcy. Zapoznaj się z pozycjami i ukryj powiadomienie.";
   }
-  return "Decyzja trafi do Magazyn i regał.";
+  return "Handlowiec zrezygnował z części zamówienia. Dla każdej pozycji wybierz: na stan magazynu albo zwrot do dostawcy.";
 }
 
 function SalesCancelledNoticeModal({
@@ -79,9 +87,7 @@ function SalesCancelledNoticeModal({
 
         {notice.needsDisposition ? (
           <SalesCancelDispositionForm
-            orderIds={notice.orderIds}
             personName={notice.person}
-            supplierName={notice.supplierName}
             phase={
               notice.phase === "on_stock" || notice.phase === "in_transit"
                 ? notice.phase
@@ -104,10 +110,19 @@ function SalesCancelledNoticeModal({
           <>
             <ul className="space-y-1 text-sm text-slate-700">
               {notice.lines.map((line) => (
-                <li key={line.id}>
+                <li
+                  key={line.id}
+                  className={cn(
+                    dailyPanelCardRowInteractiveClass(),
+                    "px-2.5 py-2 text-sm sm:px-3"
+                  )}
+                >
                   <span className="font-medium text-slate-900">{line.symbol}</span>
                   {" — "}
                   {line.products}
+                  {line.quantity && line.quantity !== "—" ? (
+                    <span className="text-slate-500"> · {line.quantity}</span>
+                  ) : null}
                 </li>
               ))}
             </ul>
@@ -154,7 +169,9 @@ function SalesCancelledNoticeRow({
         onClick={onOpen}
         className={cn(
           panelNoticeTriggerBaseClass,
-          "border-slate-200/90 bg-white hover:border-slate-300 hover:bg-slate-50/80"
+          notice.needsDisposition
+            ? panelNoticeTriggerUrgentClass
+            : panelNoticeTriggerDefaultClass
         )}
       >
         <div className="min-w-0 text-left">
@@ -208,10 +225,12 @@ export function SalesCancelledDailyPanel({
           countUnit={{ one: "pozycja", few: "pozycje", many: "pozycji" }}
           compact
           description={
-            needsAction ? "Kliknij pozycję, aby rozliczyć towar." : undefined
+            needsAction
+              ? "Handlowiec zrezygnował — kliknij i wybierz: na stan albo zwrot."
+              : undefined
           }
         />
-        <ul className="space-y-1 px-2 py-2 sm:px-3">
+        <ul className={dailyPanelListBodyClass}>
           {notices.map((notice) => (
             <SalesCancelledNoticeRow
               key={notice.id}

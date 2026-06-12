@@ -37,6 +37,7 @@ import {
   handleProcurementProsbaKeyboardEvent,
   PROCUREMENT_PROSBA_KEYBOARD_HINTS,
 } from "@/lib/orders/procurement-prosba-keyboard";
+import { SalesRequestNoteField } from "@/components/orders/SalesRequestNoteField";
 
 export function QuickOrderModal({
   open,
@@ -60,6 +61,7 @@ export function QuickOrderModal({
   const [supplierId, setSupplierId] = useState("");
   const [salesPersonId, setSalesPersonId] = useState("");
   const [lines, setLines] = useState(initialProductLines);
+  const [requestNote, setRequestNote] = useState("");
   const [validationAttempted, setValidationAttempted] = useState(false);
   const [formNotice, setFormNotice] = useState<{
     text: string;
@@ -125,6 +127,7 @@ export function QuickOrderModal({
     setSupplierId("");
     setSalesPersonId("");
     setLines(initialProductLines());
+    setRequestNote("");
     setValidationAttempted(false);
     setFormNotice(null);
     setSupplierSubiektFeedback(null);
@@ -161,6 +164,7 @@ export function QuickOrderModal({
         informacjaStockOutReorder: informacjaFlags.informacjaStockOutReorder,
         clientName: l.clientName,
         clientKhId: l.clientKhId,
+        requestNote: requestNote || undefined,
       }));
     if (!entries.length) {
       setValidationAttempted(true);
@@ -385,6 +389,17 @@ export function QuickOrderModal({
               onProductFeedbackChange={setProductLineFeedback}
               onConfigFeedbackChange={setConfigFeedback}
               onResolvingSupplierChange={setResolvingSupplier}
+            />
+
+            <SalesRequestNoteField
+              value={requestNote}
+              onChange={(value) => {
+                setFormNotice(null);
+                setRequestNote(value);
+              }}
+              disabled={pending}
+              audience="procurement"
+              id="quick-order-request-note"
             />
 
             <ProcurementFormReadiness

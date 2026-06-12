@@ -11,6 +11,11 @@ import { cn } from "@/lib/cn";
 import { panelNameLinkClass, panelTextLinkClass } from "@/lib/ui/ontime-theme";
 import { dailyPanelQueueSectionScrollClass } from "@/lib/orders/daily-panel-section-anchors";
 import { dailyPanelQueueShellClass } from "@/components/summary/DailyPanelSubsectionBar";
+import {
+  dailyPanelFlatListClass,
+  dailyPanelListInsetClass,
+  dailyPanelListRowPaddingClass,
+} from "@/components/summary/daily-panel-list-styles";
 
 export function DailyPanelHiddenSuppliers({
   report,
@@ -50,7 +55,7 @@ export function DailyPanelHiddenSuppliers({
         </div>
       </summary>
 
-      <div className="space-y-3 px-3 py-3 sm:px-4">
+      <div className={cn(dailyPanelListInsetClass, "space-y-3")}>
         {groups.map(({ reason, items }) => {
           const meta = DAILY_PANEL_HIDDEN_REASON_META[reason];
           return (
@@ -61,11 +66,14 @@ export function DailyPanelHiddenSuppliers({
                   ({items.length})
                 </span>
               </p>
-              <ul className="mt-1.5 space-y-1">
+              <ul className={cn(dailyPanelFlatListClass(), "overflow-hidden rounded-md border border-slate-200/90 bg-white/90")}>
                 {items.map((row) => (
                   <li
                     key={row.supplierId}
-                    className="flex flex-wrap items-start justify-between gap-2 rounded-md border border-slate-200/90 bg-white px-2.5 py-2"
+                    className={cn(
+                      "flex flex-wrap items-start justify-between gap-2",
+                      dailyPanelListRowPaddingClass
+                    )}
                   >
                     <div className="min-w-0 flex-1">
                       <button

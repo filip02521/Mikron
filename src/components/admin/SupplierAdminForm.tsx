@@ -156,6 +156,7 @@ export function SupplierAdminForm({
         </div>
         <div className="grid gap-4 sm:grid-cols-2">
           <SupplierCycleField
+            key={`interval-${form.id ?? "new"}`}
             label="Częstotliwość"
             hintLabel="Co oznacza częstotliwość"
             hintTitle="Częstotliwość zamówień"
@@ -172,6 +173,7 @@ export function SupplierAdminForm({
             disabled={disabled}
           />
           <SupplierCycleField
+            key={`stock-${form.id ?? "new"}`}
             label="Zapas (okres zamówienia)"
             hintLabel="Co oznacza zapas"
             hintTitle="Zapas — okres zamówienia"
@@ -184,7 +186,7 @@ export function SupplierAdminForm({
             value={form.stock_raw}
             onChange={(raw) => onPatchCycleFields({ stock_raw: raw })}
             presets={SUPPLIER_STOCK_PRESETS}
-            customPlaceholder="np. 2 MIESIĄCE, 6 tyg., W RAZIE POTRZEBY"
+            customPlaceholder="np. 4 miesiące, 2 MIESIĄCE, W RAZIE POTRZEBY"
             disabled={disabled}
           />
           <Field

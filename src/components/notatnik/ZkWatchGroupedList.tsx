@@ -191,9 +191,10 @@ export function ZkWatchGroupedList({
                 if (!monthExpanded && !modalPinned) return null;
 
                 return (
-                  <li key={watch.id} id={`watch-${watch.id}`}>
+                  <li key={watch.id}>
                     <ZkWatchCard
                       watch={watch}
+                      anchorId={`watch-${watch.id}`}
                       orderHints={zkHintsByWatchId?.get(watch.id)}
                       readOnly={readOnly}
                       tourPreview={tourPreview}

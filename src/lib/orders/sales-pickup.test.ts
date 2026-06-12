@@ -35,6 +35,16 @@ describe("sales-pickup", () => {
     expect(isAwaitingSalesPickup(order({ sales_cancelled_at: "2026-05-02" }))).toBe(
       false
     );
+    expect(
+      isAwaitingSalesPickup(
+        order({
+          sales_cancelled_at: "2026-05-02",
+          quantity: "5",
+          delivered_quantity: "2",
+          sales_cancelled_quantity: "3",
+        })
+      )
+    ).toBe(true);
     expect(isAwaitingSalesPickup(order({ request_kind: "informacja" }))).toBe(false);
   });
 

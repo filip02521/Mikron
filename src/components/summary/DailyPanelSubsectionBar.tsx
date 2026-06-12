@@ -1,5 +1,5 @@
 import { cn } from "@/lib/cn";
-import { panelSubsectionInsetClass, panelTypography } from "@/lib/ui/ontime-theme";
+import { panelSubsectionInsetClass, panelTypography, surfaceCardClass } from "@/lib/ui/ontime-theme";
 
 export type DailyPanelSubsectionTone =
   | "default"
@@ -8,7 +8,8 @@ export type DailyPanelSubsectionTone =
   | "stockOut"
   | "today"
   | "cancel"
-  | "plan";
+  | "plan"
+  | "informacja";
 
 /** Formy liczby mnogiej (np. grupa / grupy / grup). */
 export type DailyPanelCountUnit = {
@@ -24,8 +25,26 @@ const TONE_DOT: Record<DailyPanelSubsectionTone, string> = {
   today: "bg-sky-500",
   cancel: "bg-amber-500",
   plan: "bg-indigo-500",
+  informacja: "bg-sky-500",
   default: "bg-slate-400",
 };
+
+function dailyPanelSubsectionBarShellClass(tone: DailyPanelSubsectionTone): string {
+  switch (tone) {
+    case "stockOut":
+    case "cancel":
+    case "overdue":
+      return "border-b border-amber-100/90 bg-amber-50/40";
+    case "today":
+    case "informacja":
+      return "border-b border-sky-100/90 bg-sky-50/35";
+    case "prosby":
+    case "plan":
+      return "border-b border-indigo-100/90 bg-indigo-50/35";
+    default:
+      return "border-b border-slate-100 bg-slate-50/50";
+  }
+}
 
 /** Kropka koloru sekcji — ten sam token co w nagłówkach kolejki Dziś. */
 export function dailyPanelToneDotClass(tone: DailyPanelSubsectionTone): string {
@@ -42,12 +61,24 @@ export function formatDailyPanelCount(n: number, unit: DailyPanelCountUnit): str
   return `${n} ${unit.many}`;
 }
 
-/** Obudowa bloku kolejki w zakładce Dziś. */
+/** Obudowa bloku kolejki — ton sekcji przez delikatne tło i obwódkę (bez lewego paska). */
 export function dailyPanelQueueShellClass(tone?: DailyPanelSubsectionTone): string {
-  if (tone === "stockOut") {
-    return "overflow-hidden rounded-md border border-amber-300/90 bg-amber-50/40 shadow-sm ring-1 ring-amber-200/50";
+  const base = "overflow-hidden rounded-md border shadow-sm";
+  switch (tone) {
+    case "stockOut":
+      return `${base} border-amber-200/85 bg-amber-50/20`;
+    case "cancel":
+    case "overdue":
+      return `${base} border-amber-200/80 bg-amber-50/15`;
+    case "today":
+    case "informacja":
+      return `${base} border-sky-200/75 bg-sky-50/15`;
+    case "prosby":
+    case "plan":
+      return `${base} border-indigo-200/75 bg-indigo-50/10`;
+    default:
+      return cn(surfaceCardClass, "overflow-hidden");
   }
-  return "overflow-hidden rounded-md border border-slate-200/90 bg-white shadow-sm";
 }
 
 /** Nagłówek podsekcji wewnątrz karty panelu dziennego. */
@@ -83,7 +114,7 @@ export function DailyPanelSubsectionBar({
   if (countLabel) ariaParts.push(countLabel);
 
   return (
-    <div className={cn("flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 bg-slate-50/50 py-2 sm:py-2.5", panelSubsectionInsetClass)}>
+    <div className={cn("flex flex-wrap items-center justify-between gap-2 py-2 sm:py-2.5", dailyPanelSubsectionBarShellClass(tone), panelSubsectionInsetClass)}>
       <div className="flex min-w-0 items-center gap-2">
         {step != null ? (
           <span

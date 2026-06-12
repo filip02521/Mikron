@@ -39,6 +39,7 @@ import { buildProsbaFormReadiness } from "@/lib/orders/prosba-form-readiness";
 import { RequestFormStatusPanel } from "@/components/orders/RequestFormStatusPanel";
 import { ProsbaFormReadiness } from "@/components/orders/ProsbaFormReadiness";
 import { RequestProductLinesEditor } from "@/components/orders/RequestProductLinesEditor";
+import { SalesRequestNoteField } from "@/components/orders/SalesRequestNoteField";
 import { ActionLoadingOverlay } from "@/components/ui/ActionLoadingOverlay";
 import { newProductLine, appendProductLine } from "@/components/orders/request-product-lines";
 import type { SubiektFeedback } from "@/lib/subiekt/feedback";
@@ -198,6 +199,7 @@ export function OrderFormClient({
   const [groups, setGroups] = useState<Entry[][]>(() =>
     buildInitialGroups(lockedId, initialSupplierId)
   );
+  const [groupRequestNotes, setGroupRequestNotes] = useState<string[]>([""]);
   const [pending, start] = useTransition();
   const [pendingMessage, setPendingMessage] = useState<string | null>(null);
   const [msg, setMsg] = useState<{
@@ -239,6 +241,7 @@ export function OrderFormClient({
   if (tourFormKey && tourFormKey !== appliedTourFormKey) {
     setAppliedTourFormKey(tourFormKey);
     setGroups([buildOnboardingProsbaLines(lockedId)]);
+    setGroupRequestNotes([""]);
     setRequestKind("zamowienie");
     setValidationAttempted(false);
     setFormNotice(null);
@@ -272,6 +275,7 @@ export function OrderFormClient({
           clientKhId,
         });
       }
+      setGroupRequestNotes([""]);
       setGroups([
         prefill.lines.map((line) => ({
           id: line.id,
@@ -488,11 +492,12 @@ export function OrderFormClient({
       }
     }
 
-    const entries: Entry[] = [];
-    groups.forEach((group) => {
+    const entries: (Entry & { requestNote?: string })[] = [];
+    groups.forEach((group, gi) => {
       const supplierId =
         singleGroup && lockedSalesPerson ? "" : (group[0]?.supplierId ?? "");
       const salesPersonId = lockedId || (group[0]?.salesPersonId ?? "");
+      const requestNote = groupRequestNotes[gi] ?? "";
       group.forEach((e) => {
         const draft = {
           supplierId: supplierId || e.supplierId,
@@ -506,6 +511,7 @@ export function OrderFormClient({
           ...e,
           supplierId: supplierId || e.supplierId,
           salesPersonId,
+          requestNote,
         });
       });
     });
@@ -578,6 +584,7 @@ export function OrderFormClient({
             clientName: e.clientName,
             clientKhId: e.clientKhId,
             subiektTwId: e.subiektTwId,
+            requestNote: e.requestNote || undefined,
             sourceZkWatchId: zkCtx?.zkWatchId ?? undefined,
             sourceZkNumber: zkCtx?.zkNumber ?? undefined,
             informacjaQueueViaDailyPanel: informacjaFlags.informacjaQueueViaDailyPanel,
@@ -634,6 +641,7 @@ export function OrderFormClient({
         setProductLineFeedback(null);
         setZkProsbaLinkContext(null);
         setGroups(buildInitialGroups(lockedId, initialSupplierId));
+        setGroupRequestNotes([""]);
       } catch (e) {
         setMsg({
           text: e instanceof Error ? e.message : "Błąd",
@@ -733,6 +741,7 @@ export function OrderFormClient({
 
   const removeGroup = (gi: number) => {
     setGroups((g) => (g.length <= 1 ? g : g.filter((_, i) => i !== gi)));
+    setGroupRequestNotes((n) => (n.length <= 1 ? n : n.filter((_, i) => i !== gi)));
   };
 
   const updateGroupLines = (gi: number, lines: Entry[]) => {
@@ -941,6 +950,20 @@ export function OrderFormClient({
                   onResolvingSupplierChange={setResolvingSupplier}
                   validationAttempted={validationAttempted}
                   liveValidation={!tourDemo}
+                />
+
+                <SalesRequestNoteField
+                  value={groupRequestNotes[0] ?? ""}
+                  onChange={(value) => {
+                    clearFormNotice();
+                    setGroupRequestNotes((n) => {
+                      const next = [...n];
+                      next[0] = value;
+                      return next;
+                    });
+                  }}
+                  disabled={pending || tourDemo}
+                  audience="sales"
                 />
 
                 <ProsbaFormReadiness
@@ -1172,6 +1195,24 @@ export function OrderFormClient({
               validationAttempted={validationAttempted}
             />
 
+            {!lockedSalesPerson ? (
+              <SalesRequestNoteField
+                value={groupRequestNotes[gi] ?? ""}
+                onChange={(value) => {
+                  clearFormNotice();
+                  setGroupRequestNotes((n) => {
+                    const next = [...n];
+                    while (next.length <= gi) next.push("");
+                    next[gi] = value;
+                    return next;
+                  });
+                }}
+                disabled={pending || readOnly}
+                audience="procurement"
+                id={`procurement-request-note-${gi}`}
+              />
+            ) : null}
+
             <RequestFormStatusPanel
               requestKind={requestKind}
               draft={{
@@ -1232,7 +1273,10 @@ export function OrderFormClient({
               <Button
                 variant="secondary"
                 type="button"
-                onClick={() => setGroups((g) => [...g, emptyGroup(lockedId)])}
+                onClick={() => {
+                  setGroups((g) => [...g, emptyGroup(lockedId)]);
+                  setGroupRequestNotes((n) => [...n, ""]);
+                }}
               >
                 + Nowa grupa
               </Button>

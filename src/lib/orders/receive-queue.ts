@@ -1,5 +1,6 @@
 import type { IndividualOrder } from "@/types/database";
 import { isInformacjaRequest } from "@/lib/orders/individual";
+import { hasActiveSupplierFulfillment } from "@/lib/orders/sales-cancel";
 import { supplierKey, type SupplierOrderGroup } from "@/lib/orders/queue-supplier-groups";
 import type { SupplierGroupMetrics } from "@/lib/orders/supplier-group-metrics";
 
@@ -60,7 +61,10 @@ export function mergeReceiveQueueOrders(
   informacjaOrders: IndividualOrder[]
 ): IndividualOrder[] {
   const delivery = deliveryOrders.filter(
-    (o) => !o.sales_cancelled_at || o.procurement_cancel_disposition
+    (o) =>
+      !o.sales_cancelled_at ||
+      o.procurement_cancel_disposition ||
+      hasActiveSupplierFulfillment(o)
   );
   return sortReceiveQueueForDisplay([...delivery, ...informacjaOrders]);
 }

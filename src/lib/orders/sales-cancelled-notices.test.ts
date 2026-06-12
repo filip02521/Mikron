@@ -82,5 +82,20 @@ describe("buildSalesCancelledNotices", () => {
     expect(notices).toHaveLength(1);
     expect(notices[0].clientName).toBe("Firma ABC");
     expect(notices[0].lines).toHaveLength(2);
+    expect(notices[0].lines.every((l) => l.needsDisposition === false)).toBe(true);
+  });
+
+  it("oznacza pozycje w drodze jako wymagające decyzji", () => {
+    const notices = buildSalesCancelledNotices(
+      [
+        order({ id: "z1", sales_cancel_phase: "in_transit", status: "Zamowione" }),
+        order({ id: "z2", sales_cancel_phase: "before_order", status: "Anulowane" }),
+      ],
+      salesById
+    );
+    expect(notices).toHaveLength(1);
+    expect(notices[0].needsDisposition).toBe(true);
+    expect(notices[0].lines.find((l) => l.id === "z1")?.needsDisposition).toBe(true);
+    expect(notices[0].lines.find((l) => l.id === "z2")?.needsDisposition).toBe(false);
   });
 });

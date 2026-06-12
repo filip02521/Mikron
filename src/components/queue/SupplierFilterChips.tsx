@@ -71,6 +71,11 @@ export function SupplierFilterChips({
 }) {
   const [query, setQuery] = useState("");
   const [expanded, setExpanded] = useState(false);
+  const [appliedValue, setAppliedValue] = useState(value);
+  if (value !== appliedValue) {
+    setAppliedValue(value);
+    if (!value) setQuery("");
+  }
 
   const clearFilter = useCallback(() => {
     onChange("");

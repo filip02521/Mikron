@@ -48,6 +48,8 @@ import { RequestFormStatusPanel } from "@/components/orders/RequestFormStatusPan
 import { ProsbaFormSection } from "@/components/orders/ProsbaFormSection";
 import { MyOrderAssignedClient } from "@/components/moje/MyOrderAssignedClient";
 import { normalizeSalesClientName } from "@/lib/orders/sales-client-label";
+import { normalizeSalesRequestNote } from "@/lib/orders/sales-request-note";
+import { ProcurementSalesRequestNote } from "@/components/orders/ProcurementSalesRequestNote";
 import { RequestKindToggle } from "@/components/orders/RequestKindToggle";
 import { ActionLoadingOverlay } from "@/components/ui/ActionLoadingOverlay";
 import { SupplierPickerField } from "@/components/orders/SupplierPickerField";
@@ -103,6 +105,9 @@ export function VerificationWorkspace({
   }, [orders.length, onQueueEmpty]);
 
   const active = orders.find((order) => order.id === resolvedActiveId) ?? null;
+  const activeRequestNote = active
+    ? normalizeSalesRequestNote(active.sales_request_note)
+    : null;
 
   const [supplierSubiektFeedback, setSupplierSubiektFeedback] =
     useState<SubiektFeedback | null>(null);
@@ -411,6 +416,9 @@ export function VerificationWorkspace({
                     className="mt-2"
                   />
                 ) : null}
+                {activeRequestNote ? (
+                  <ProcurementSalesRequestNote note={activeRequestNote} className="mt-2" />
+                ) : null}
               </div>
             )}
 
@@ -533,6 +541,9 @@ export function VerificationWorkspace({
                     name={normalizeSalesClientName(active.sales_client_name)!}
                     className="mt-3"
                   />
+                ) : null}
+                {inModal && activeRequestNote ? (
+                  <ProcurementSalesRequestNote note={activeRequestNote} className="mt-3" />
                 ) : null}
               </ProsbaFormSection>
 

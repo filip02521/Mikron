@@ -187,6 +187,10 @@ export const salesTypography = {
   pill: "text-[11px] font-semibold leading-snug",
 } as const;
 
+/** Etykieta „Uwagi” przy notatce handlowca — spójna w /moje i panelu dziennym. */
+export const salesRequestNoteLabelClass =
+  "inline-flex items-center rounded bg-indigo-50 px-1 py-0.5 font-semibold uppercase tracking-wide text-indigo-700";
+
 /** Wewnętrzny padding sekcji panelu. */
 export const panelSectionInsetClass = "px-3 py-3 sm:px-4 sm:py-4 lg:px-5 lg:py-4";
 
@@ -243,13 +247,13 @@ export const sectionIconTileBrandClass = "bg-indigo-100 text-indigo-800";
 export const sectionIconTileBrandSoftClass = "bg-indigo-50 text-indigo-800";
 
 /** Wiersz / karta w trakcie akcji */
-export const rowPendingRingClass = "ring-2 ring-indigo-200/80";
+export const rowPendingRingClass = "ring-2 ring-inset ring-indigo-200/80";
 
 /** Zakładki panelu */
 export const tabSelectedClass =
-  "border-indigo-300/90 bg-gradient-to-b from-indigo-50 to-white text-indigo-950 shadow-sm ring-1 ring-indigo-200/50";
+  "border-slate-300/90 bg-white text-slate-900 shadow-sm ring-1 ring-slate-200/80";
 
-export const tabBadgeSelectedClass = "bg-indigo-200/80 text-indigo-900";
+export const tabBadgeSelectedClass = "bg-slate-200/90 text-slate-800";
 
 /** Plan tygodnia — tryb planowania */
 export const plannerModeBannerClass =
@@ -346,31 +350,37 @@ export const salesUpdatesBannerClass = cn(systemNoticeActionClass, "mb-4 sm:mb-6
 /** @deprecated Użyj {@link systemNoticePinnedClass}. */
 export const salesPinnedNoticeClass = systemNoticePinnedClass;
 
-/** Delikatna powierzchnia z akcentem marki (kolejka, stopki podsekcji). */
-export const panelMutedSurfaceClass =
-  "border-indigo-100/75 bg-gradient-to-r from-indigo-50/35 via-white to-sky-50/25";
-
 /** Obudowa menu kontekstowego w panelu dzennym. */
 export const panelDropdownShellClass =
   "rounded-md border border-indigo-100/85 bg-white py-1 shadow-lg shadow-indigo-950/5 ring-1 ring-sky-100/35";
 
 export const panelQueueStepsShellClass = cn(
-  panelMutedSurfaceClass,
-  "flex flex-nowrap items-center gap-2 overflow-x-auto rounded-md border px-3 py-2.5 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+  "flex flex-nowrap items-center gap-2 overflow-x-auto rounded-md border border-slate-200/80 bg-slate-50/40 px-2 py-2 sm:px-2.5 sm:py-2",
+  "[-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
 );
+
+/** Klikalny licznik sekcji w pasku kolejki Dziś. */
+export const panelQueueStatButtonClass =
+  "inline-flex min-h-9 cursor-pointer items-center gap-1.5 rounded-md px-2 py-1.5 -mx-1 transition-colors hover:bg-slate-100/80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-300/80";
 
 /** Podświetlenie świeżo zsynchronizowanych, nieprzeczytanych prośb. */
 export const dailyPanelFreshHighlightClass =
-  "ring-2 ring-violet-500/55 ring-offset-1 shadow-md shadow-violet-200/50";
+  "ring-2 ring-inset ring-violet-500/55 shadow-md shadow-violet-200/50";
 
 export type DailyPanelUnseenVariant = "prosby" | "stockOut";
 
-/** Wiersz nieprzeczytanej prośby w panelu dziennym — lewy akcent + mocniejsze tło. */
-export function dailyPanelUnseenRequestRowClass(variant: DailyPanelUnseenVariant): string {
+/** Wiersz nieprzeczytanej prośby w panelu dziennym — delikatne tło, bez paska bocznego sekcji. */
+export function dailyPanelUnseenRequestRowClass(
+  variant: DailyPanelUnseenVariant,
+  options?: { nestedInBlock?: boolean }
+): string {
+  const nested = options?.nestedInBlock;
   if (variant === "stockOut") {
-    return "border-l-[3px] border-l-amber-500 border-amber-300/95 bg-amber-50/85 shadow-sm shadow-amber-100/45";
+    if (nested) return "bg-amber-50/70 hover:bg-amber-50/85";
+    return "border-amber-200/75 bg-amber-50/55 shadow-sm ring-1 ring-inset ring-amber-100/80";
   }
-  return "border-l-[3px] border-l-violet-500 border-violet-300/90 bg-violet-50/85 shadow-sm shadow-violet-100/40";
+  if (nested) return "bg-violet-50/70 hover:bg-violet-50/85";
+  return "border-violet-200/75 bg-violet-50/55 shadow-sm ring-1 ring-inset ring-violet-100/80";
 }
 
 /** Badge „Nowa” / licznik nieprzeczytanych — kontrastowy, dobrze widoczny na liście. */
@@ -381,6 +391,36 @@ export function dailyPanelUnseenBadgeClass(variant: DailyPanelUnseenVariant): st
   return "bg-violet-600 text-white ring-1 ring-violet-700/30";
 }
 
+/** Obudowa wielu prośb u jednego dostawcy — ton bez lewego paska. */
+export function procurementSupplierBlockShellClass(
+  variant: DailyPanelUnseenVariant = "prosby"
+): string {
+  if (variant === "stockOut") {
+    return "overflow-hidden rounded-md border border-amber-200/85 bg-amber-50/20 shadow-sm";
+  }
+  return "overflow-hidden rounded-md border border-indigo-200/75 bg-indigo-50/15 shadow-sm";
+}
+
+/** Nagłówek bloku dostawcy (wiele osób / grup). */
+export function procurementSupplierBlockHeaderClass(
+  variant: DailyPanelUnseenVariant = "prosby"
+): string {
+  if (variant === "stockOut") {
+    return "border-b border-amber-200/65 bg-amber-50/55";
+  }
+  return "border-b border-indigo-200/60 bg-indigo-50/45";
+}
+
+/** Lista prośb wewnątrz bloku dostawcy — wspólny kontener, bez osobnych ramek. */
+export function procurementSupplierBlockInnerListClass(
+  variant: DailyPanelUnseenVariant = "prosby"
+): string {
+  if (variant === "stockOut") {
+    return "divide-y divide-amber-100/80 bg-amber-50/10";
+  }
+  return "divide-y divide-indigo-100/70 bg-indigo-50/10";
+}
+
 export const panelMetricTileClass =
   "rounded-md border border-indigo-100/70 bg-white px-3 py-2.5 text-left shadow-[var(--shadow-card)] transition";
 
@@ -388,7 +428,7 @@ export const panelMetricTileInteractiveClass =
   "cursor-pointer hover:border-indigo-200/80 hover:bg-indigo-50/45 hover:shadow-[var(--shadow-card-elevated)]";
 
 export const panelTabIdleClass =
-  "border-indigo-100/80 bg-white/95 text-slate-700 hover:border-indigo-200/75 hover:bg-indigo-50/55";
+  "border-slate-200/90 bg-white text-slate-700 hover:border-slate-300/90 hover:bg-slate-50/80";
 
 /** Klikalna nazwa dostawcy — wygląd jak nagłówek, nie jak odwiedzony link */
 export const panelNameLinkClass =

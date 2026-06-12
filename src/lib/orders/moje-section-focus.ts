@@ -1,15 +1,16 @@
+/** Wewnętrzna obwódka — rodzice list (Card, sekcje) mają overflow-hidden. */
 const MOJE_SECTION_FLASH_CLASSES = [
+  "relative",
+  "z-10",
   "ring-2",
+  "ring-inset",
   "ring-indigo-400/70",
-  "ring-offset-2",
   "rounded-md",
 ] as const;
 
-const MOJE_CARD_FLASH_CLASSES = [
-  "ring-2",
-  "ring-indigo-400/70",
-  "ring-offset-2",
-  "rounded-md",
+export const MOJE_CARD_FLASH_CLASSES = [
+  ...MOJE_SECTION_FLASH_CLASSES,
+  "bg-indigo-50/80",
 ] as const;
 
 export function flashMojeElement(

@@ -40,6 +40,7 @@ function row(partial: Partial<MyOrderRow>): MyOrderRow {
     cancelNoticeOrderIds: [],
     cancelledAckOrderIds: [],
     clientLabel: "Klinika Alfa",
+    requestNote: null,
     supplierId: "s1",
     salesPersonId: "sp1",
     requestKind: "zamowienie",
@@ -234,6 +235,14 @@ describe("filterMyOrderRowsBySearch", () => {
       row({ id: "b", supplierName: "B" }),
     ];
     expect(filterMyOrderRowsBySearch(rows, "b").map((r) => r.id)).toEqual(["b"]);
+  });
+
+  it("uwzględnia notatkę do zakupów", () => {
+    const rows = [
+      row({ id: "a", requestNote: "pilny termin piątek" }),
+      row({ id: "b", requestNote: null }),
+    ];
+    expect(filterMyOrderRowsBySearch(rows, "piątek").map((r) => r.id)).toEqual(["a"]);
   });
 });
 

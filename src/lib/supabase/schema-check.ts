@@ -54,6 +54,18 @@ export async function hasSalesClientNameColumn(
   return columnExists(supabase, "sales_client_name");
 }
 
+export async function hasSalesRequestNoteColumn(
+  supabase: SupabaseClient
+): Promise<boolean> {
+  return columnExists(supabase, "sales_request_note");
+}
+
+export async function hasSalesCancelledQuantityColumn(
+  supabase: SupabaseClient
+): Promise<boolean> {
+  return columnExists(supabase, "sales_cancelled_quantity");
+}
+
 export async function hasProcurementSalesCancelAckColumn(
   supabase: SupabaseClient
 ): Promise<boolean> {
@@ -129,6 +141,16 @@ export async function runSchemaChecks(
   if (!(await hasSalesClientNameColumn(supabase))) {
     issues.push(
       "Brak kolumny individual_orders.sales_client_name — uruchom supabase/migrations/017_sales_client_name.sql"
+    );
+  }
+  if (!(await hasSalesRequestNoteColumn(supabase))) {
+    issues.push(
+      "Brak kolumny individual_orders.sales_request_note — uruchom supabase/migrations/058_individual_orders_sales_request_note.sql"
+    );
+  }
+  if (!(await hasSalesCancelledQuantityColumn(supabase))) {
+    issues.push(
+      "Brak kolumny individual_orders.sales_cancelled_quantity — uruchom supabase/migrations/059_individual_orders_sales_cancelled_quantity.sql"
     );
   }
   if (!(await hasProcurementSalesCancelAckColumn(supabase))) {

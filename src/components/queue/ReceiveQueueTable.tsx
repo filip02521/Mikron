@@ -23,6 +23,9 @@ import {
   isInformacjaRequest,
   parseOrderQuantity,
 } from "@/lib/orders/individual";
+import {
+  receiveQueueTargetQuantity,
+} from "@/lib/orders/sales-cancel";
 import { checkboxBrandClass } from "@/lib/ui/ontime-theme";
 import { MICROCOPY } from "@/lib/ui/microcopy";
 import { QUEUE_LIST_BODY_CLASS } from "@/lib/ui/queue-panel-styles";
@@ -115,9 +118,19 @@ export function ReceiveQueueTable({
     if (qty[o.id] !== undefined) return qty[o.id];
     const d = o.delivered_quantity;
     if (d && d !== "-") return d;
+    const target = receiveQueueTargetQuantity(o);
+    if (target != null && target > 0) return String(target);
     const ordered = parseOrderQuantity(o.quantity);
     if (ordered != null && ordered > 0) return String(ordered);
     return "";
+  };
+
+  const deliveryProgressForOrder = (order: IndividualOrder, value: string) => {
+    const target = receiveQueueTargetQuantity(order);
+    return getDeliveryProgress(
+      target != null ? String(target) : order.quantity,
+      value
+    );
   };
 
   const toggleSelected = (orderId: string) => {
@@ -163,7 +176,7 @@ export function ReceiveQueueTable({
           delete next[order.id];
           return next;
         });
-        const progress = getDeliveryProgress(order.quantity, value);
+        const progress = deliveryProgressForOrder(order, value);
         const person = order.sales_person?.name ?? "handlowiec";
 
         if (result.emailError) {
@@ -209,7 +222,7 @@ export function ReceiveQueueTable({
       .map((id) => {
         const order = receiveQueue.find((o) => o.id === id);
         if (!order || isInformacjaRequest(order)) return null;
-        const ordered = parseOrderQuantity(order.quantity);
+        const ordered = receiveQueueTargetQuantity(order);
         const value = opts?.fullQuantity && ordered != null ? String(ordered) : getQty(order);
         if (!value.trim()) return null;
         return { orderId: id, qty: value };
@@ -548,7 +561,7 @@ export function ReceiveQueueTable({
                         const productGroupAllSelected =
                           productGroupIds.length > 0 &&
                           productGroupIds.every((id) => selected[id]);
-                        const ordered = parseOrderQuantity(o.quantity);
+                        const ordered = receiveQueueTargetQuantity(o);
                         const inputVal = getQty(o);
 
                         return (

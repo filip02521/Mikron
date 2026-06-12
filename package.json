@@ -45,7 +45,9 @@
     "service:stop": "powershell -NoProfile -ExecutionPolicy Bypass -File installer/service.ps1 stop",
     "service:restart": "powershell -NoProfile -ExecutionPolicy Bypass -File installer/service.ps1 restart -Probe",
     "nightly-deploy": "powershell -NoProfile -ExecutionPolicy Bypass -File installer/nightly-deploy.ps1",
-    "db:migrate:sales-cancel": "tsx scripts/apply-sql-migration.ts supabase/migrations/018_sales_cancel_bundle.sql"
+    "db:migrate:sales-cancel": "tsx scripts/apply-sql-migration.ts supabase/migrations/018_sales_cancel_bundle.sql",
+    "db:migrate:sales-request-note": "tsx scripts/apply-sql-migration.ts supabase/migrations/058_individual_orders_sales_request_note.sql",
+    "verify-sales-request-note": "tsx scripts/verify-sales-request-note-migration.ts"
   },
   "dependencies": {
     "@supabase/ssr": "^0.10.3",
@@ -72,6 +74,7 @@
     "eslint": "^9",
     "eslint-config-next": "16.2.7",
     "happy-dom": "^20.10.2",
+    "pg": "^8.21.0",
     "tailwindcss": "^4",
     "tsx": "^4.22.4",
     "typescript": "^5",

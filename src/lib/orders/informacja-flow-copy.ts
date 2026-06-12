@@ -30,9 +30,6 @@ export const INFORMACJA_FLOW_STOCK_OUT = {
 
 export const INFORMACJA_STOCK_OUT_PANEL_BADGE = "Brak na stanie";
 
-export const INFORMACJA_STOCK_OUT_PANEL_BANNER =
-  "Koniec stanu magazynowego — zamów u dostawcy (Główne). Handlowiec nie śledzi tej pozycji.";
-
 export const INFORMACJA_STOCK_OUT_PROCUREMENT_SECTION_HINT =
   "To nie są prośby klientów — sygnały, że towar się skończył na magazynie. Po Główne pozycja znika z listy.";
 
@@ -91,5 +88,3 @@ export function isInformacjaAvailabilityPendingStatusTitle(title: string): boole
   );
 }
 
-export const INFORMACJA_FLOW_MY_ORDERS_HINT =
-  "W „Moje zamówienia” widać tylko „Informacja o dostępności” — czekasz na e-mail z magazynu. Sygnały „Brak na stanie” trafiają wyłącznie do działu zakupów.";

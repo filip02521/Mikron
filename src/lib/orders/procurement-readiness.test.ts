@@ -38,4 +38,14 @@ describe("procurement-readiness", () => {
     expect(procurementGateStatus(order({ supplier_id: null }))).toBe("Weryfikacja");
     expect(procurementGateStatus(order())).toBe("Nowe");
   });
+
+  it("uwzględnia kod Mikran przy gotowości do panelu dziennego", () => {
+    const mikranOnly = order({
+      symbol: "-",
+      products: "-",
+      mikran_code: "12345",
+    });
+    expect(isIndividualOrderProcurementReady(mikranOnly)).toBe(true);
+    expect(describeProcurementReadinessGaps(mikranOnly)).toEqual([]);
+  });
 });

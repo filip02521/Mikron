@@ -11,7 +11,12 @@ import { DailyDayProgressBar } from "@/components/summary/DailyDayProgressBar";
 import { DailyPanelQueueSteps } from "@/components/summary/DailyPanelQueueSteps";
 import { DailyPanelShortcutsPopover } from "@/components/summary/DailyPanelShortcutsPopover";
 import { cn } from "@/lib/cn";
-import { panelChromeInsetClass, panelTypography } from "@/lib/ui/ontime-theme";
+import {
+  panelChromeInsetClass,
+  panelQueueStatButtonClass,
+  panelTextLinkClass,
+  panelTypography,
+} from "@/lib/ui/ontime-theme";
 import { PanelQueueStatDot } from "@/components/ui/UiGlyphs";
 import { IconChevronDown, IconClipboardPen } from "@/components/icons/StrokeIcons";
 import {
@@ -58,12 +63,7 @@ function Stat({
     <button
       type="button"
       onClick={() => scrollToDailyPanelSection(sectionKey)}
-      className={cn(
-        "inline-flex items-center gap-1.5 rounded-md px-2 py-1.5 min-h-9 -mx-1",
-        "cursor-pointer transition-colors hover:bg-indigo-50/80",
-        "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-300",
-        "underline decoration-indigo-300/70 decoration-dotted underline-offset-[3px] hover:decoration-indigo-500/80"
-      )}
+      className={panelQueueStatButtonClass}
       title={`Przejdź do sekcji: ${label}`}
     >
       {content}
@@ -89,7 +89,7 @@ function SupplementaryLinks({
       <Link
         key="plan"
         href="/podsumowanie?view=tydzien"
-        className="font-medium text-indigo-700 hover:text-indigo-900 hover:underline"
+        className={cn(panelTextLinkClass, "text-xs")}
       >
         Plan {summary.weekPlanCount}
       </Link>
@@ -100,7 +100,7 @@ function SupplementaryLinks({
       <button
         key="demand"
         type="button"
-        className="font-medium text-violet-800 hover:text-violet-950 hover:underline"
+        className={cn(panelTextLinkClass, "text-xs")}
         onClick={onOpenOnDemand}
       >
         Na żądanie {summary.onDemandCount}
@@ -112,7 +112,7 @@ function SupplementaryLinks({
       <Link
         key="hidden"
         href="/podsumowanie?view=wyjatki#poza-harmonogramem"
-        className="font-medium text-slate-700 hover:text-slate-900 hover:underline"
+        className={cn(panelTypography.caption, "font-medium text-slate-600 hover:text-slate-900 hover:underline")}
       >
         Poza harm. {summary.hiddenScheduleCount}
       </Link>
@@ -204,8 +204,8 @@ function StatusBandBody({
           />
           <StatDivider />
           <span className="inline-flex items-baseline gap-1">
-            <span className="text-sm font-semibold tabular-nums text-indigo-900">{queueTotal}</span>
-            <span className={cn(panelTypography.caption, "text-indigo-700/80")}>w kolejce</span>
+            <span className="text-sm font-semibold tabular-nums text-slate-900">{queueTotal}</span>
+            <span className={panelTypography.caption}>w kolejce</span>
           </span>
         </div>
 
@@ -306,7 +306,7 @@ export function DailyPanelStatusBand({
       : "";
 
   return (
-    <div className={cn("border-b border-slate-100 bg-slate-50/50 py-2.5 sm:py-3", panelChromeInsetClass)}>
+    <div className={cn("border-b border-slate-100 py-2.5 sm:py-3", panelChromeInsetClass)}>
       <button
         type="button"
         className="flex min-h-11 w-full items-center justify-between gap-2 rounded-md text-left transition-colors hover:bg-slate-100/60 sm:hidden"
@@ -317,7 +317,7 @@ export function DailyPanelStatusBand({
         <span className={cn("min-w-0 leading-snug text-slate-700", panelTypography.chrome)}>
           <span className="font-semibold text-slate-900">Kolejka dnia</span>
           {": "}
-          <span className="tabular-nums font-semibold text-indigo-900">{queueTotal}</span>
+          <span className="tabular-nums font-semibold text-slate-900">{queueTotal}</span>
           {progressHint}
           {showVerification && verificationCount > 0 ? (
             <span className="text-amber-900"> · {verificationCount} weryf.</span>

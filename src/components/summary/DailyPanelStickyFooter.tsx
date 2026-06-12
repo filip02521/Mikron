@@ -46,7 +46,7 @@ export function DailyPanelStickyFooter({
       ) : null}
       <div
         className={cn(
-          "border-b border-slate-100 bg-slate-50/50 py-2.5 sm:py-3",
+          "border-b border-slate-100 py-2.5 sm:py-3",
           panelChromeInsetClass,
           showStatusBand && "border-t-0 pt-0"
         )}

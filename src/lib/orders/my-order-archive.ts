@@ -2,8 +2,10 @@ import { formatPlDate } from "@/lib/display-labels";
 import { isInformacjaRequest } from "@/lib/orders/individual";
 import {
   effectiveSalesCancelPhase,
+  effectiveSalesCancelledQuantity,
   salesCancelArchiveDetail,
 } from "@/lib/orders/sales-cancel";
+import { parseOrderQuantity } from "@/lib/orders/individual";
 import {
   presentMyOrderGroup,
   type MyOrderRow,
@@ -66,7 +68,14 @@ function archivedStatusCopy(orders: IndividualOrder[]): {
   if (salesCancelled.length > 0) {
     const phase =
       effectiveSalesCancelPhase(salesCancelled[0]!) ?? "before_order";
-    return salesCancelArchiveDetail(phase, activityLabel);
+    const rep = salesCancelled[0]!;
+    const ordered = parseOrderQuantity(rep.quantity);
+    const cancelled = effectiveSalesCancelledQuantity(rep);
+    const partial =
+      ordered != null && cancelled > 0 && cancelled < ordered
+        ? { cancelledQty: cancelled, orderedQty: ordered }
+        : null;
+    return salesCancelArchiveDetail(phase, activityLabel, partial);
   }
 
   const when = activityLabel ? `Potwierdzono ${activityLabel}` : null;

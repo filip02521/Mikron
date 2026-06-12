@@ -5,10 +5,15 @@ import type { MyOrderRow } from "@/lib/orders/my-order-presenter";
 import type { SalesClientAssignment } from "@/lib/orders/sales-client-label";
 import {
   salesCancelLineAriaLabel,
+  salesCancelLineCustomQtyLabel,
+  salesCancelLineRemainderLabel,
   salesCancelLineShortLabel,
   salesCancelOverflowLabel,
   type SalesCancelLineContext,
+  type SalesCancelPhase,
 } from "@/lib/orders/sales-cancel";
+import type { MyOrderLine } from "@/lib/orders/my-order-presenter";
+import { PlannedOrderDateMeta } from "@/components/orders/PlannedOrderDateMeta";
 import { MyOrderKindBadge } from "@/components/moje/MyOrderKindBadge";
 import { MyOrderRequestProgressBar } from "@/components/moje/MyOrderRequestProgressBar";
 import {
@@ -46,6 +51,8 @@ import {
 } from "@/lib/orders/my-order-delivery-timing-display";
 import { MyOrderAckButton } from "@/components/moje/MyOrderAckButton";
 import { MyOrderAssignedClient } from "@/components/moje/MyOrderAssignedClient";
+import { MyOrderRequestNote } from "@/components/moje/MyOrderRequestNote";
+import { isRequestNotesAggregateSummary } from "@/lib/orders/sales-request-note";
 import { MyOrderLineItem } from "@/components/moje/MyOrderLineItem";
 import { MyOrderShipmentOverflowMenu } from "@/components/moje/MyOrderShipmentOverflowMenu";
 import { MyOrderHeadlineBanner } from "@/components/moje/MyOrderHeadlineBanner";
@@ -241,6 +248,7 @@ export function MyOrderShipmentCard({
   onAcknowledgeCancelled,
   onAcknowledgeCancelNotice,
   onCancelRequest,
+  onPartialCancelRequest,
   onSaveClient,
   onEditRequest,
   searchQuery,
@@ -263,6 +271,16 @@ export function MyOrderShipmentCard({
   onAcknowledgeCancelled?: (orderIds: string[]) => void;
   onAcknowledgeCancelNotice?: (orderIds: string[]) => void;
   onCancelRequest?: (orderIds: string[], lines: SalesCancelLineContext[]) => void;
+  onPartialCancelRequest?: (
+    orderId: string,
+    phase: SalesCancelPhase,
+    opts: {
+      product: string;
+      maxQty: number;
+      defaultQty: number;
+      deliveredQty?: number;
+    }
+  ) => void;
   onSaveClient?: (orderId: string, patch: SalesClientAssignment) => void | Promise<void>;
   onEditRequest?: (row: MyOrderRow) => void;
   searchQuery?: string | null;
@@ -415,6 +433,7 @@ export function MyOrderShipmentCard({
     hasCollapsedSubline: Boolean(collapsedSubline),
   });
   const productSummary = showCollapsedProductSummary ? productSummaryRaw : null;
+  const plannedOrderDate = row.plannedOrderDate ?? null;
   const showExpandedStatusBadge = shouldShowExpandedOrderStatusBadge(row, {
     hasRequestProgress: Boolean(requestProgress),
   });
@@ -455,13 +474,47 @@ export function MyOrderShipmentCard({
     onToggle();
   };
 
+  const soleLine = row.lineCount === 1 ? row.lines[0] : undefined;
+
+  const openPartialCancel = (line: MyOrderLine, defaultQty: number) => {
+    if (!line.salesCancelPhase || !onPartialCancelRequest) return;
+    const partialDefaultQty = line.defaultSalesCancelQuantity;
+    const partialMaxQty = line.maxSalesCancelQuantity ?? partialDefaultQty ?? 1;
+    onPartialCancelRequest(line.id, line.salesCancelPhase, {
+      product: line.product,
+      maxQty: partialMaxQty,
+      defaultQty,
+      deliveredQty: line.salesCancelDeliveredQty,
+    });
+  };
+
+  const partialCustomDefaultQty = (line: MyOrderLine) => {
+    if (line.showSalesCancelRemainder) return 1;
+    if (line.salesCancelPhase === "in_transit") return 1;
+    return line.defaultSalesCancelQuantity ?? 1;
+  };
+
   const showPerLineCancel =
-    canAcknowledge && !tourPreview && row.lineCount > 1 && Boolean(onCancelRequest);
+    canAcknowledge &&
+    !tourPreview &&
+    Boolean(onCancelRequest || onPartialCancelRequest) &&
+    (row.lineCount > 1 || Boolean(soleLine?.canCancelBySales));
   const cancelLineLabel = salesCancelLineShortLabel(row.kind);
   const cancelOverflowLabel = salesCancelOverflowLabel(
     row.kind,
     row.salesCancelOrderIds.length
   );
+
+  const soleOverflowRemainder =
+    Boolean(soleLine?.canCancelBySales) &&
+    Boolean(soleLine?.showSalesCancelRemainder) &&
+    soleLine?.defaultSalesCancelQuantity != null;
+  const soleOverflowCustom = Boolean(soleLine?.canCancelBySales && soleLine?.canPartialSalesCancel);
+  const soleOverflowFull =
+    Boolean(showSalesCancelLink) &&
+    row.lineCount === 1 &&
+    Boolean(soleLine?.canCancelBySales) &&
+    !soleOverflowRemainder;
 
   const overflowMenu = canAcknowledge && !tourPreview ? (
     <MyOrderShipmentOverflowMenu
@@ -472,8 +525,26 @@ export function MyOrderShipmentCard({
       canAssignClient={canEditClient && row.lineCount > 0}
       assignClientLabel={assignClientLabel}
       canEdit={Boolean(showEditLink)}
-      canCancel={Boolean(showSalesCancelLink)}
+      canCancel={row.lineCount > 1 ? Boolean(showSalesCancelLink) : soleOverflowFull}
       cancelLabel={row.lineCount > 1 ? cancelOverflowLabel : undefined}
+      canPartialCancelRemainder={soleOverflowRemainder}
+      partialCancelRemainderLabel={
+        soleLine?.defaultSalesCancelQuantity != null
+          ? salesCancelLineRemainderLabel(soleLine.defaultSalesCancelQuantity)
+          : undefined
+      }
+      onPartialCancelRemainder={
+        soleLine && soleOverflowRemainder
+          ? () => openPartialCancel(soleLine, soleLine.defaultSalesCancelQuantity!)
+          : undefined
+      }
+      canPartialCancelCustom={soleOverflowCustom}
+      partialCancelCustomLabel={salesCancelLineCustomQtyLabel(soleLine?.salesCancelPhase)}
+      onPartialCancelCustom={
+        soleLine && soleOverflowCustom
+          ? () => openPartialCancel(soleLine, partialCustomDefaultQty(soleLine))
+          : undefined
+      }
       onAssignClient={handleAssignClient}
       onEdit={() => onEditRequest?.(row)}
       onCancel={() => {
@@ -537,12 +608,18 @@ export function MyOrderShipmentCard({
     row.lineCount === 1 &&
     Boolean(row.clientLabel) &&
     !canEditClient;
+  const sharedRequestNote =
+    row.requestNote && !isRequestNotesAggregateSummary(row.requestNote)
+      ? row.requestNote
+      : null;
+  const hideLineRequestNote = Boolean(sharedRequestNote);
 
   const lineItemProps = (lineId: string) => ({
     showProgress,
     emphasizeStock,
     compact: true,
     hideClientLabel: hideLineClient,
+    hideRequestNote: hideLineRequestNote,
     canAcknowledge: showGroupPickup,
     pending,
     acknowledgeLineLabel: myOrderPickupAckLabel(1, ackMode, { compact: compactPickup }),
@@ -636,81 +713,90 @@ export function MyOrderShipmentCard({
           {needsExpand ? <ChevronIcon open={expanded} /> : null}
         </button>
 
-        <button
-          type="button"
-          onClick={handleToggle}
-          disabled={!needsExpand}
-          className={cn(
-            "min-w-0 flex-1 text-left",
-            needsExpand &&
-              "hover:bg-black/[0.02] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-indigo-300"
-          )}
-        >
-          <div className="flex min-w-0 items-baseline gap-2">
-            <SearchHighlightText
-              text={row.supplierName}
-              searchQuery={searchQuery}
-              className={cn("truncate", salesTypography.rowTitle)}
-            />
-            <MyOrderKindBadge row={row} />
-          </div>
-          {suppressSharedHeadline ? (
-            <span className="sr-only">{headline}</span>
-          ) : null}
-          {showRowHeadline && (!showHeadlineBanner || compactPickupOrAvailability) ? (
-            <SearchHighlightText
-              text={headline}
-              searchQuery={searchQuery}
-              className={headlineClass}
-              as="p"
-            />
-          ) : null}
-          {!showHeadlineBanner && !expanded && showCollapsedSublineText && collapsedSubline ? (
-            <SearchHighlightText
-              text={collapsedSubline}
-              searchQuery={searchQuery}
-              className={cn(
-                "mt-0.5 truncate",
-                salesTypography.rowMeta,
-                isStock && "font-medium text-sky-800",
-                suppressSharedHeadline &&
-                  isUrgent &&
-                  "font-medium text-amber-900",
-                suppressSharedHeadline &&
-                  isStock &&
-                  "font-medium text-sky-900",
-                suppressSharedHeadline &&
-                  headlineTone === "info" &&
-                  !isInformacja &&
-                  "font-medium text-indigo-800",
-                suppressSharedHeadline &&
-                  isInformacja &&
-                  "font-medium text-violet-900"
-              )}
-              as="p"
-            />
-          ) : null}
-          {!showHeadlineBanner && mobileTiming ? (
-            <SearchHighlightText
-              text={mobileTiming}
-              searchQuery={searchQuery}
-              className={cn(
-                "mt-0.5 truncate font-medium tabular-nums sm:hidden",
-                salesTypography.rowMeta,
-                isUrgent && "text-amber-900",
-                isStock && "text-sky-800",
-                !isUrgent && !isStock && "text-slate-600"
-              )}
-              as="p"
-            />
-          ) : null}
-          {!expanded && row.clientLabel ? (
-            <MyOrderAssignedClient
-              name={row.clientLabel}
-              searchQuery={searchQuery}
-              className="mt-0.5 max-w-full truncate"
-            />
-          ) : null}
+        <div className="min-w-0 flex-1">
+          <button
+            type="button"
+            onClick={handleToggle}
+            disabled={!needsExpand}
+            className={cn(
+              "w-full text-left",
+              needsExpand &&
+                "hover:bg-black/[0.02] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-indigo-300"
+            )}
+          >
+            <div className="flex min-w-0 items-baseline gap-2">
+              <SearchHighlightText
+                text={row.supplierName}
+                searchQuery={searchQuery}
+                className={cn("truncate", salesTypography.rowTitle)}
+              />
+              <MyOrderKindBadge row={row} />
+            </div>
+            {suppressSharedHeadline ? (
+              <span className="sr-only">{headline}</span>
+            ) : null}
+            {showRowHeadline && (!showHeadlineBanner || compactPickupOrAvailability) ? (
+              <SearchHighlightText
+                text={headline}
+                searchQuery={searchQuery}
+                className={headlineClass}
+                as="p"
+              />
+            ) : null}
+            {!showHeadlineBanner && !expanded && showCollapsedSublineText && collapsedSubline ? (
+              <SearchHighlightText
+                text={collapsedSubline}
+                searchQuery={searchQuery}
+                className={cn(
+                  "mt-0.5 truncate",
+                  salesTypography.rowMeta,
+                  isStock && "font-medium text-sky-800",
+                  suppressSharedHeadline &&
+                    isUrgent &&
+                    "font-medium text-amber-900",
+                  suppressSharedHeadline &&
+                    isStock &&
+                    "font-medium text-sky-900",
+                  suppressSharedHeadline &&
+                    headlineTone === "info" &&
+                    !isInformacja &&
+                    "font-medium text-indigo-800",
+                  suppressSharedHeadline &&
+                    isInformacja &&
+                    "font-medium text-violet-900"
+                )}
+                as="p"
+              />
+            ) : null}
+            {!showHeadlineBanner && mobileTiming ? (
+              <SearchHighlightText
+                text={mobileTiming}
+                searchQuery={searchQuery}
+                className={cn(
+                  "mt-0.5 truncate font-medium tabular-nums sm:hidden",
+                  salesTypography.rowMeta,
+                  isUrgent && "text-amber-900",
+                  isStock && "text-sky-800",
+                  !isUrgent && !isStock && "text-slate-600"
+                )}
+                as="p"
+              />
+            ) : null}
+            {!expanded && row.clientLabel ? (
+              <MyOrderAssignedClient
+                name={row.clientLabel}
+                searchQuery={searchQuery}
+                className="mt-0.5 max-w-full truncate"
+              />
+            ) : null}
+            {!expanded && sharedRequestNote ? (
+              <MyOrderRequestNote
+                note={sharedRequestNote}
+                searchQuery={searchQuery}
+                className="mt-0.5 line-clamp-2 max-w-full"
+              />
+            ) : null}
+          </button>
           {row.sourceZkNumber ? (
             <ZkProsbaLinkChip
               zkNumber={row.sourceZkNumber}
@@ -720,10 +806,11 @@ export function MyOrderShipmentCard({
               className="mt-0.5 max-w-full truncate"
             />
           ) : null}
-        </button>
+        </div>
 
         {!expanded ? (
           <div className="hidden min-w-0 max-w-[46%] shrink-0 flex-col items-end gap-1 sm:flex">
+            {plannedOrderDate ? <PlannedOrderDateMeta display={plannedOrderDate} /> : null}
             {showStatusBadge ? (
               <MyOrderStatusPill
                 label={row.statusTitle}
@@ -747,8 +834,9 @@ export function MyOrderShipmentCard({
         </div>
       </div>
 
-      {!expanded && (showStatusBadge || productSummary) ? (
-        <div className="flex flex-wrap items-center gap-2 border-t border-slate-100/80 px-3 pb-1.5 pt-0 sm:hidden">
+      {!expanded && (showStatusBadge || productSummary || plannedOrderDate) ? (
+        <div className="flex flex-wrap items-center justify-end gap-2 border-t border-slate-100/80 px-3 pb-1.5 pt-0 sm:hidden">
+          {plannedOrderDate ? <PlannedOrderDateMeta display={plannedOrderDate} /> : null}
           {showStatusBadge ? (
             <MyOrderStatusPill
               label={row.statusTitle}
@@ -839,6 +927,9 @@ export function MyOrderShipmentCard({
                               { product: line.product, phase },
                             ])
                         : undefined
+                    }
+                    onPartialCancelLine={
+                      showPerLineCancel ? onPartialCancelRequest : undefined
                     }
                   />
                 ))}

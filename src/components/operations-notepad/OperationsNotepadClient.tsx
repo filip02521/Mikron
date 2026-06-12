@@ -19,6 +19,7 @@ import {
   collectOperationsTodayTasks,
   type OperationsNotepadData,
 } from "@/lib/data/operations-notepad";
+import { flashNotepadAnchor } from "@/lib/sales/notepad-anchor";
 import {
   OPERATIONS_DEPARTMENT_LABELS,
   departmentsForRole,
@@ -61,15 +62,7 @@ type OperationsUndoState = (
 ) & { expiresAt: number };
 
 function flashNoteAnchor(noteId: string) {
-  window.setTimeout(() => {
-    const el = document.getElementById(`note-${noteId}`);
-    if (!el) return;
-    el.scrollIntoView({ behavior: "smooth", block: "center" });
-    el.classList.add("ring-2", "ring-indigo-400/70", "ring-offset-2", "rounded-md");
-    window.setTimeout(() => {
-      el.classList.remove("ring-2", "ring-indigo-400/70", "ring-offset-2", "rounded-md");
-    }, 1200);
-  }, 120);
+  flashNotepadAnchor(`note-${noteId}`, { durationMs: 1200 });
 }
 
 export function OperationsNotepadClient({

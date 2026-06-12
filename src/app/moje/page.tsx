@@ -4,6 +4,8 @@ import {
   fetchSalesAcknowledgedOrders,
   fetchSuppliersForRequestForms,
 } from "@/lib/data/queries";
+import { formatDateString } from "@/lib/orders/dates";
+import { todayInWarsaw } from "@/lib/time/warsaw";
 import {
   ARCHIVE_EXPANDED_GROUP_LIMIT,
   archiveAcknowledgedSinceExpanded,
@@ -16,6 +18,7 @@ import { resolvePreviewSalesPerson } from "@/lib/auth/resolve-preview-sales-pers
 import { getAppRole } from "@/lib/auth-dev";
 import { canAccessOperations, isAdmin, isSalesAccount, isSalesManager } from "@/lib/auth-roles";
 import { presentMyOrders } from "@/lib/orders/my-order-presenter";
+import { loadPlannedOrderScheduleContext } from "@/lib/orders/planned-order-schedule";
 import { getSubiektAvailability } from "@/lib/subiekt/availability";
 import Link from "next/link";
 import { Button } from "@/components/ui/Button";
@@ -140,7 +143,14 @@ export default async function MojePage({
   let suppliers: OrderFormSupplierOption[] = [];
   let archiwumRecent: ReturnType<typeof presentArchivedMyOrders> = [];
   let archiwumExtended: ReturnType<typeof presentArchivedMyOrders> = [];
+  let supplierScheduleById: Awaited<
+    ReturnType<typeof loadPlannedOrderScheduleContext>
+  >["supplierScheduleById"] = {};
+  let plannedOrderWeekDays: Awaited<
+    ReturnType<typeof loadPlannedOrderScheduleContext>
+  >["weekDays"] = [];
   let loadError: string | null = null;
+  const todayDateKey = formatDateString(todayInWarsaw());
 
   const viewingOwnPanel =
     isSalesAccount(role ?? "sales") && salesPersonId && salesPersonId === ownSalesPersonId;
@@ -179,6 +189,8 @@ export default async function MojePage({
       orders = orderRows;
       stats = statsRows as DeliveryStats[];
       suppliers = supplierRows;
+      ({ supplierScheduleById, weekDays: plannedOrderWeekDays } =
+        await loadPlannedOrderScheduleContext(orderRows, todayDateKey));
 
       // Auto-uzupełnianie dostawcy w tle na podstawie własnej bazy mapowań (product_supplier_links).
       // Robimy to po pobraniu, żeby pierwszy render był szybki.
@@ -218,6 +230,8 @@ export default async function MojePage({
       orders = orderRows;
       stats = statsRows as DeliveryStats[];
       suppliers = supplierRows;
+      ({ supplierScheduleById, weekDays: plannedOrderWeekDays } =
+        await loadPlannedOrderScheduleContext(orderRows, todayDateKey));
 
       const missing = orderRows.filter((o) => !o.supplier_id && o.subiekt_tw_id);
       if (missing.length > 0) {
@@ -240,7 +254,11 @@ export default async function MojePage({
 
   const subiektAvailability = await getSubiektAvailability();
 
-  const { zamowienia, informacje, productLineCount } = presentMyOrders(orders, stats);
+  const { zamowienia, informacje, productLineCount } = presentMyOrders(orders, stats, {
+    supplierScheduleById,
+    todayDateKey,
+    weekDays: plannedOrderWeekDays,
+  });
 
   if (viewingOwnPanel && notepadSlice) {
     /** Start dnia = własna kolejka akcji (zamówienia + notatnik + tablica zalogowanego użytkownika). */

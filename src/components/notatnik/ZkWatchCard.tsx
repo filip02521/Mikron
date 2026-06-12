@@ -35,6 +35,7 @@ import { buildZkWatchLineViews, formatZkLinesPreview, formatZkLinesShort, allZkW
 
 export function ZkWatchCard({
   watch,
+  anchorId,
   orderHints,
   readOnly,
   tourPreview = false,
@@ -50,6 +51,8 @@ export function ZkWatchCard({
   onWatchSeen,
 }: {
   watch: SalesZkWatch;
+  /** Kotwica #watch-… — na karcie, nie na liście (unika obcinania obwódki). */
+  anchorId?: string;
   orderHints?: ZkWatchOrderHints;
   readOnly?: boolean;
   tourPreview?: boolean;
@@ -221,7 +224,9 @@ export function ZkWatchCard({
 
   return (
     <article
+      id={anchorId}
       className={cn(
+        anchorId && "scroll-mt-3 scroll-mb-3",
         mojeShipmentRowClass({
           expanded: false,
           isAction: readyToClose,

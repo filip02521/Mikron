@@ -12,6 +12,11 @@ import {
   DailyPanelSubsectionBar,
   dailyPanelQueueShellClass,
 } from "@/components/summary/DailyPanelSubsectionBar";
+import {
+  dailyPanelListBodyClass,
+  dailyPanelListRowPaddingClass,
+  dailyPanelCardRowClass,
+} from "@/components/summary/daily-panel-list-styles";
 import { panelTypography } from "@/lib/ui/ontime-theme";
 
 export function DailyPanelInformacjaSection({
@@ -23,19 +28,22 @@ export function DailyPanelInformacjaSection({
   if (!sorted.length) return null;
 
   return (
-    <section className={dailyPanelQueueShellClass()}>
+    <section className={dailyPanelQueueShellClass("informacja")}>
       <DailyPanelSubsectionBar
         title="Prośby tylko o dostępność"
-        tone="default"
+        tone="informacja"
         count={sorted.length}
         countUnit={{ one: "grupa", few: "grupy", many: "grup" }}
         compact
       />
       <InformacjaDirectQueueIntro />
-      <ul className="divide-y divide-slate-100">
+      <ul className={dailyPanelListBodyClass}>
         {sorted.map((g) => {
           return (
-            <li key={`${g.supplierId}-${g.salesPersonId}`} className="px-3 py-2.5 sm:px-4">
+            <li
+              key={`${g.supplierId}-${g.salesPersonId}`}
+              className={cn(dailyPanelCardRowClass("sky"), dailyPanelListRowPaddingClass)}
+            >
               <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
                 <div className="min-w-0 flex-1">
                   <p className={panelTypography.rowTitle}>{g.supplierName}</p>
@@ -70,7 +78,7 @@ export function DailyPanelInformacjaSection({
           );
         })}
       </ul>
-      <div className="border-t border-slate-100 px-3 py-2 sm:px-4">
+      <div className="border-t border-sky-100/80 px-2.5 py-2 sm:px-3">
         <Link
           href="/kolejka#kolejka-przyjecie"
           className="inline-flex items-center gap-1 text-xs font-medium text-sky-700 transition-colors hover:text-sky-900"

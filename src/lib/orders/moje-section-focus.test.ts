@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  MOJE_CARD_FLASH_CLASSES,
   mojeSectionDomId,
   mojeSectionHeadingDomId,
   parseMojeSectionHash,
@@ -21,5 +22,12 @@ describe("parseMojeSectionHash", () => {
   it("ignoruje inne hashe", () => {
     expect(parseMojeSectionHash("#moje-ostatnio-zakonczone")).toBeNull();
     expect(parseMojeSectionHash("")).toBeNull();
+  });
+});
+
+describe("MOJE_CARD_FLASH_CLASSES", () => {
+  it("używa wewnętrznej obwódki (ring-inset)", () => {
+    expect(MOJE_CARD_FLASH_CLASSES).toContain("ring-inset");
+    expect(MOJE_CARD_FLASH_CLASSES).not.toContain("ring-offset-2");
   });
 });

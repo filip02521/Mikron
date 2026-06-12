@@ -11,6 +11,7 @@ export function orderToProcurementDraft(order: IndividualOrder): RequestDraft {
   return {
     supplierId: order.supplier_id ?? undefined,
     symbol: order.symbol,
+    mikranCode: order.mikran_code ?? undefined,
     product: order.products,
     quantity: order.quantity,
     requestKind: order.request_kind ?? "zamowienie",

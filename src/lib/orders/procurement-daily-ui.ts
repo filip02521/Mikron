@@ -12,13 +12,17 @@ import {
   INFORMACJA_FLOW_PROCUREMENT_GROUP_BANNER,
   INFORMACJA_VIA_PANEL_STATUS_TITLE,
   INFORMACJA_STOCK_OUT_PANEL_BADGE,
-  INFORMACJA_STOCK_OUT_PANEL_BANNER,
 } from "@/lib/orders/informacja-flow-copy";
 import {
   compareProcurementSubmittedAt,
   formatProcurementGroupSubmittedLabel,
 } from "@/lib/orders/procurement-request-timing";
-import { clientNamesSummaryFromLines } from "@/lib/orders/sales-client-label";
+import { requestNotesProcurementSublineSuffix } from "@/lib/orders/sales-request-note";
+import {
+  buildPlannedOrderDateDisplay,
+  type PlannedOrderDateDisplay,
+} from "@/lib/orders/planned-order-date-label";
+import type { SupplierSummaryMeta, WeekDayPlan } from "@/lib/orders/summary-workspace";
 
 export type ProcurementHeadlineTone = MyOrderHeadlineTone;
 
@@ -32,6 +36,7 @@ export type ProcurementRequestUi = {
   submittedTitle: string;
   isUnseen: boolean;
   unseenCount: number;
+  plannedOrderDate: PlannedOrderDateDisplay | null;
 };
 
 export type DailyInboxSummary = {
@@ -175,6 +180,7 @@ export function enrichUrgentItem(
       submittedTitle: "",
       isUnseen: false,
       unseenCount: 0,
+      plannedOrderDate: null,
     };
   }
 
@@ -188,6 +194,7 @@ export function enrichUrgentItem(
     submittedTitle: "",
     isUnseen: false,
     unseenCount: 0,
+    plannedOrderDate: null,
   };
 }
 
@@ -203,28 +210,51 @@ export function enrichStockOutSignalGroup(
     group.submittedAtLatest,
     at
   );
-  const clientLabel = clientNamesSummaryFromLines(group.lines);
   const primaryProduct =
     count === 1 ? group.lines[0]!.products.trim() || group.lines[0]!.symbol : null;
 
   return {
     headline: primaryProduct ?? group.supplierName,
     subline: primaryProduct
-      ? `${group.supplierName} · zgłosił ${group.person}${clientLabel ? ` · ${clientLabel}` : ""}`
-      : `${group.person} · ${countLabel} · ${group.supplierName}${clientLabel ? ` · ${clientLabel}` : ""}`,
+      ? `${group.supplierName} · zgłosił ${group.person}`
+      : `${group.person} · ${countLabel} · ${group.supplierName}`,
     headlineTone: "warning",
     statusTitle: INFORMACJA_STOCK_OUT_PANEL_BADGE,
-    statusDetail: INFORMACJA_STOCK_OUT_PANEL_BANNER,
+    statusDetail: null,
     submittedLabel,
     submittedTitle: `Zgłoszono ${submittedLabel}`,
     isUnseen: group.hasUnseen,
     unseenCount: group.unseenCount,
+    plannedOrderDate: null,
   };
+}
+
+function plannedOrderDateForSupplier(
+  supplierMeta: Pick<SupplierSummaryMeta, "computed_next_date" | "order_on_demand"> | null | undefined,
+  options?: {
+    todayDateKey?: string;
+    weekDays?: WeekDayPlan[];
+    supplierId?: string;
+  }
+): PlannedOrderDateDisplay | null {
+  if (!supplierMeta) return null;
+  return buildPlannedOrderDateDisplay({
+    computedNextDate: supplierMeta.computed_next_date,
+    orderOnDemand: supplierMeta.order_on_demand,
+    todayDateKey: options?.todayDateKey,
+    weekDays: options?.weekDays,
+    supplierId: options?.supplierId,
+  });
 }
 
 export function enrichForSomeoneGroup(
   group: SummaryForSomeoneEnriched,
-  at: Date = todayInWarsaw()
+  at: Date = todayInWarsaw(),
+  options?: {
+    supplierMeta?: Pick<SupplierSummaryMeta, "computed_next_date" | "order_on_demand"> | null;
+    todayDateKey?: string;
+    weekDays?: WeekDayPlan[];
+  }
 ): ProcurementRequestUi {
   const count = group.lines.length;
   const countLabel =
@@ -235,11 +265,11 @@ export function enrichForSomeoneGroup(
     group.submittedAtLatest,
     at
   );
-  const clientLabel = clientNamesSummaryFromLines(group.lines);
+  const noteSuffix = requestNotesProcurementSublineSuffix(group.lines);
 
   return {
     headline: group.person,
-    subline: `${group.supplierName} · ${countLabel}${clientLabel ? ` · ${clientLabel}` : ""}`,
+    subline: `${group.supplierName} · ${countLabel}${noteSuffix}`,
     headlineTone: infoViaPanel ? "info" : "neutral",
     statusTitle: infoViaPanel
       ? INFORMACJA_VIA_PANEL_STATUS_TITLE
@@ -249,6 +279,11 @@ export function enrichForSomeoneGroup(
     submittedTitle: `Zgłoszono ${submittedLabel}`,
     isUnseen: group.hasUnseen,
     unseenCount: group.unseenCount,
+    plannedOrderDate: plannedOrderDateForSupplier(options?.supplierMeta, {
+      todayDateKey: options?.todayDateKey,
+      weekDays: options?.weekDays,
+      supplierId: group.supplierId,
+    }),
   };
 }
 
@@ -273,6 +308,7 @@ export function enrichInformacjaGroup(
     submittedTitle: "",
     isUnseen: group.hasUnseen,
     unseenCount: group.unseenCount,
+    plannedOrderDate: null,
   };
 }
 

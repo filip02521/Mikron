@@ -1,8 +1,5 @@
 import type { MyOrderRow } from "@/lib/orders/my-order-presenter";
-import {
-  INFORMACJA_FLOW_MY_ORDERS_HINT,
-  isInformacjaAvailabilityPendingStatusTitle,
-} from "@/lib/orders/informacja-flow-copy";
+import { isInformacjaAvailabilityPendingStatusTitle } from "@/lib/orders/informacja-flow-copy";
 
 export type InformacjaProgressPhase =
   | "awaiting_procurement"
@@ -83,8 +80,3 @@ export function partitionInformacjaProgressRows(
   }));
 }
 
-/** Nagłówek nadrzędny, gdy w jednej liście są różne etapy informacji. */
-export function informacjaCombinedSectionHint(sectionCount: number): string {
-  if (sectionCount <= 1) return "";
-  return INFORMACJA_FLOW_MY_ORDERS_HINT;
-}

@@ -11,7 +11,7 @@ import {
 import { MojeClientKhFilterBanner } from "@/components/moje/MojeClientKhFilterBanner";
 import { MojeOrdersSearchBar, MojeOrdersSearchEmptyHint } from "@/components/moje/MojeOrdersSearchBar";
 import { useMojeOrdersSearch } from "@/components/moje/useMojeOrdersSearch";
-import { sortMyOrderRows, summarizeMyOrdersInbox } from "@/lib/orders/my-order-sales-ui";
+import { sortMyOrderRows } from "@/lib/orders/my-order-sales-ui";
 import { formatProsbaCount } from "@/lib/orders/my-order-plural";
 import { MICROCOPY } from "@/lib/ui/microcopy";
 import { cn } from "@/lib/cn";
@@ -54,14 +54,12 @@ import {
 } from "@/lib/orders/moje-order-focus";
 import { MojeSectionShell } from "@/components/moje/MojeSectionShell";
 import {
-  flashMojeCard,
   mojeSectionHeadingDomId,
   parseMojeSectionHash,
   scrollToMojeSection,
   scrollToMojeSectionWhenReady,
 } from "@/lib/orders/moje-section-focus";
 import { hrefWithSalesPreviewFromUrl } from "@/lib/nav/sales-preview-href";
-import { INFORMACJA_FLOW_MY_ORDERS_HINT } from "@/lib/orders/informacja-flow-copy";
 import {
   MY_ORDER_ACTION_SECTION_COPY,
   MY_ORDER_INFORMACJA_SECTION_COPY,
@@ -541,7 +539,6 @@ function MojeOrdersViewContent({
     });
   }, [allRows, dayStartContext]);
 
-  const inboxSummary = summarizeMyOrdersInbox(allRows);
 
   /** Pełna liczba pozycji wymagających reakcji — niezależna od wyszukiwania. */
   const needsActionTotal = useMemo(
@@ -717,7 +714,6 @@ function MojeOrdersViewContent({
       const card = document.getElementById(cardDomId(targetRowId));
       if (!card) return;
       card.scrollIntoView({ behavior: "smooth", block: "center" });
-      flashMojeCard(card);
       const toggle = card.querySelector<HTMLElement>("[data-moje-row-toggle]");
       toggle?.focus({ preventScroll: true });
     }, 120);
@@ -850,11 +846,8 @@ function MojeOrdersViewContent({
 
         {searchBar}
 
-        <div className="space-y-2 border-b border-slate-100 bg-slate-50/80 px-3 py-2.5 sm:px-4 lg:px-6">
+        <div className="border-b border-slate-100 bg-slate-50/80 px-3 py-2.5 sm:px-4 lg:px-6">
           <MyOrdersRowLegend />
-          {inboxSummary.availabilityPendingCount > 0 ? (
-            <p className="text-xs leading-snug text-slate-500">{INFORMACJA_FLOW_MY_ORDERS_HINT}</p>
-          ) : null}
         </div>
 
         {searchActive && searchMatchCount === 0 && !archiveMatchCount ? (

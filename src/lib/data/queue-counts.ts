@@ -1,6 +1,9 @@
 import { normalizeIndividualOrders } from "@/lib/data/normalize-order";
 import { isInformacjaWarehouseQueueOrder } from "@/lib/orders/informacja-warehouse-queue";
-import { isSalesCancelledForQueue } from "@/lib/orders/sales-cancel";
+import {
+  hasActiveSupplierFulfillment,
+  isSalesCancelledForQueue,
+} from "@/lib/orders/sales-cancel";
 import type { IndividualOrder } from "@/types/database";
 
 export type InformacjaQueueCountRow = Pick<
@@ -15,6 +18,7 @@ export type DeliveryQueueCancelledCountRow = Pick<
   | "sales_cancel_phase"
   | "quantity"
   | "delivered_quantity"
+  | "sales_cancelled_quantity"
   | "procurement_cancel_disposition"
   | "request_kind"
 >;
@@ -35,5 +39,18 @@ export function countDeliveryQueueCancelledRows(
   return normalizeIndividualOrders(rows as IndividualOrder[]).filter(
     (o) =>
       isSalesCancelledForQueue(o) && Boolean(o.procurement_cancel_disposition)
+  ).length;
+}
+
+/** Pozycje częściowo wycofane, ale z resztą u dostawcy — nadal w kolejce dostaw. */
+export function countDeliveryQueueActivePartialRows(
+  rows: DeliveryQueueCancelledCountRow[]
+): number {
+  return normalizeIndividualOrders(rows as IndividualOrder[]).filter(
+    (o) =>
+      o.request_kind === "zamowienie" &&
+      (o.status === "Zamowione" || o.status === "Czesciowo_zrealizowane") &&
+      Boolean(o.sales_cancelled_at) &&
+      hasActiveSupplierFulfillment(o)
   ).length;
 }

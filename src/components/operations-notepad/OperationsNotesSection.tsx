@@ -49,6 +49,7 @@ export const NOTATNIK_KEYBOARD_HINTS = [
 
 function NoteCard({
   note,
+  anchorId,
   readOnly,
   showAuthor,
   focused,
@@ -66,6 +67,7 @@ function NoteCard({
   onDrop,
 }: {
   note: OperationsNote;
+  anchorId?: string;
   readOnly?: boolean;
   showAuthor?: boolean;
   focused?: boolean;
@@ -207,6 +209,7 @@ function NoteCard({
 
   return (
     <article
+      id={anchorId}
       tabIndex={focused ? 0 : -1}
       draggable={draggable && !editing}
       onDragStart={(e) => {
@@ -222,11 +225,12 @@ function NoteCard({
         if (!readOnly && !editing) setEditing(true);
       }}
       className={cn(
+        anchorId && "scroll-mt-3 scroll-mb-3",
         "group relative flex w-full flex-col overflow-visible rounded-md border p-2.5 shadow-sm transition-shadow hover:shadow-md",
         NOTE_COLOR_CARD[displayColor] ?? NOTE_COLOR_CARD.default,
-        pinned && !editing ? "ring-1 ring-indigo-200/80" : undefined,
-        followUpDue && !editing ? "ring-1 ring-violet-200/80" : undefined,
-        focused ? "ring-2 ring-indigo-400/70 ring-offset-1" : undefined,
+        pinned && !editing ? "ring-1 ring-inset ring-indigo-200/80" : undefined,
+        followUpDue && !editing ? "ring-1 ring-inset ring-violet-200/80" : undefined,
+        focused ? "z-10 ring-2 ring-inset ring-indigo-400/70" : undefined,
         dragOver ? "border-indigo-300 bg-white/90" : undefined,
         isDragging ? "opacity-50" : undefined
       )}
@@ -430,9 +434,10 @@ export function OperationsNotesSection({
         ) : null}
         <div className={NOTATNIK_NOTES_GRID_CLASS}>
           {list.map((note) => (
-            <div key={note.id} id={`note-${note.id}`}>
+            <div key={note.id}>
               <NoteCard
                 note={note}
+                anchorId={`note-${note.id}`}
                 readOnly={readOnly || note.created_by !== currentUserId}
                 showAuthor={showAuthor}
                 focused={focusedNoteId === note.id}

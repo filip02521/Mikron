@@ -8,16 +8,19 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { todayInWarsaw } from "@/lib/time/warsaw";
 import {
   normalizeShipmentCounts,
+  warehouseCarrierLabel,
   type WarehouseCarrier,
 } from "@/lib/warehouse/delivery-carriers";
 
-export type DeliveryJournalDatePreset = "today" | "week" | "last7" | "month";
+export type DeliveryJournalDatePreset = "today" | "week" | "last7" | "last30" | "last90" | "month";
 
 export type DeliveryJournalSearchFilters = {
   dateFrom: string;
   dateTo: string;
   supplierId?: string | null;
   carrier?: WarehouseCarrier | null;
+  /** Nr listu, uwagi, dostawca, kurier — weryfikacja paczki w archiwum. */
+  query?: string | null;
 };
 
 export type DeliveryJournalRangeSummary = {
@@ -48,6 +51,10 @@ export function deliveryJournalPresetRange(
     }
     case "last7":
       return { dateFrom: formatDateString(subDays(today, 6)), dateTo };
+    case "last30":
+      return { dateFrom: formatDateString(subDays(today, 29)), dateTo };
+    case "last90":
+      return { dateFrom: formatDateString(subDays(today, 89)), dateTo };
     case "month":
       return {
         dateFrom: formatDateString(startOfMonth(today)),
@@ -58,7 +65,36 @@ export function deliveryJournalPresetRange(
   }
 }
 
-export function assertJournalSearchRange(dateFrom: string, dateTo: string): void {
+export function normalizeJournalSearchQuery(raw: string): string {
+  return raw.trim();
+}
+
+/** Dopasowanie wpisu dziennika do frazy (nr listu, dostawca, kurier, uwagi). */
+export function matchesDeliveryReceiptQuery(
+  receipt: WarehouseDeliveryReceipt,
+  rawQuery: string
+): boolean {
+  const q = normalizeJournalSearchQuery(rawQuery).toLowerCase();
+  if (!q) return true;
+  const haystack = [
+    receipt.note,
+    receipt.supplierLabel,
+    receipt.supplierName,
+    warehouseCarrierLabel(receipt.carrier),
+    receipt.receivedDate,
+    receipt.packageCount > 0 ? `${receipt.packageCount} pacz` : "",
+    receipt.palletCount > 0 ? `${receipt.palletCount} pal` : "",
+  ]
+    .join(" ")
+    .toLowerCase();
+  return haystack.includes(q);
+}
+
+export function assertJournalSearchRange(
+  dateFrom: string,
+  dateTo: string,
+  opts?: { query?: string | null }
+): void {
   assertJournalDateReadable(dateFrom);
   assertJournalDateReadable(dateTo);
   if (dateFrom > dateTo) {
@@ -67,8 +103,14 @@ export function assertJournalSearchRange(dateFrom: string, dateTo: string): void
   const from = parseDateOnly(dateFrom)!;
   const to = parseDateOnly(dateTo)!;
   const spanDays = Math.round((to.getTime() - from.getTime()) / 86_400_000) + 1;
-  if (spanDays > 93) {
-    throw new Error("Maksymalny zakres wyszukiwania to 93 dni.");
+  const hasQuery = normalizeJournalSearchQuery(opts?.query ?? "").length >= 2;
+  const maxDays = hasQuery ? 365 : 93;
+  if (spanDays > maxDays) {
+    throw new Error(
+      hasQuery
+        ? `Przy wyszukiwaniu paczki maksymalny zakres to ${maxDays} dni.`
+        : `Maksymalny zakres wyszukiwania to ${maxDays} dni.`
+    );
   }
 }
 
@@ -106,7 +148,9 @@ function mapSearchRow(row: Record<string, unknown>): WarehouseDeliveryReceipt {
 export async function searchDeliveryReceipts(
   filters: DeliveryJournalSearchFilters
 ): Promise<WarehouseDeliveryReceipt[]> {
-  assertJournalSearchRange(filters.dateFrom, filters.dateTo);
+  assertJournalSearchRange(filters.dateFrom, filters.dateTo, {
+    query: filters.query,
+  });
   const supabase = createAdminClient();
   let q = supabase
     .from("warehouse_delivery_receipts")
@@ -121,7 +165,12 @@ export async function searchDeliveryReceipts(
   if (filters.carrier) q = q.eq("carrier", filters.carrier);
   const { data, error } = await q;
   if (error) throw new Error(error.message);
-  return (data ?? []).map((r) => mapSearchRow(r as Record<string, unknown>));
+  let rows = (data ?? []).map((r) => mapSearchRow(r as Record<string, unknown>));
+  const query = normalizeJournalSearchQuery(filters.query ?? "");
+  if (query) {
+    rows = rows.filter((r) => matchesDeliveryReceiptQuery(r, query));
+  }
+  return rows;
 }
 
 export async function summarizeDeliveryReceiptsRange(
@@ -172,7 +221,9 @@ export function formatJournalPresetLabel(preset: DeliveryJournalDatePreset): str
   const labels: Record<DeliveryJournalDatePreset, string> = {
     today: "Dziś",
     week: "Ten tydzień",
-    last7: "Ostatnie 7 dni",
+    last7: "7 dni",
+    last30: "30 dni",
+    last90: "90 dni",
     month: "Ten miesiąc",
   };
   return labels[preset];

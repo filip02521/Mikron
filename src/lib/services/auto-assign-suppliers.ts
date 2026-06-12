@@ -37,7 +37,7 @@ export async function autoAssignMissingSuppliersFromCatalog(options: {
 
   let q = supabase
     .from("individual_orders")
-    .select("id, supplier_id, sales_person_id, subiekt_tw_id, symbol, products, quantity, request_kind, status")
+    .select("id, supplier_id, sales_person_id, subiekt_tw_id, symbol, products, mikran_code, quantity, request_kind, status")
     .eq("status", "Weryfikacja")
     .is("supplier_id", null)
     .not("subiekt_tw_id", "is", null)
@@ -52,7 +52,7 @@ export async function autoAssignMissingSuppliersFromCatalog(options: {
 
   const rows = (rowsRaw ?? []) as Array<Pick<
     IndividualOrder,
-    "id" | "supplier_id" | "sales_person_id" | "subiekt_tw_id" | "symbol" | "products" | "quantity" | "request_kind" | "status"
+    "id" | "supplier_id" | "sales_person_id" | "subiekt_tw_id" | "symbol" | "products" | "mikran_code" | "quantity" | "request_kind" | "status"
   >>;
 
   const twIds = [...new Set(rows.map((r) => Number(r.subiekt_tw_id)).filter((n) => Number.isFinite(n) && n > 0))];
@@ -86,6 +86,7 @@ export async function autoAssignMissingSuppliersFromCatalog(options: {
     const assessment = assessRequestCompleteness({
       supplierId: best.supplierId,
       symbol: row.symbol ?? undefined,
+      mikranCode: row.mikran_code ?? undefined,
       product: row.products ?? undefined,
       quantity: row.quantity ?? undefined,
       requestKind: kind,

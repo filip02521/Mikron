@@ -24,6 +24,9 @@ import {
   type MojeShipmentRowVisualTone,
 } from "@/lib/ui/moje-shipment-row-styles";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
+import { SalesPartialCancelDialog } from "@/components/moje/SalesPartialCancelDialog";
+import type { SalesCancelPhase } from "@/lib/orders/sales-cancel";
+import type { SalesCancelUndoRestore } from "@/lib/orders/sales-cancel-db";
 import { useMyOrderPickupShelfDialog } from "@/components/moje/MyOrderPickupShelfDialogProvider";
 import { useMyOrderShipmentUndo } from "@/components/moje/MyOrderShipmentUndoProvider";
 import { Toast } from "@/components/ui/Toast";
@@ -48,6 +51,15 @@ import type { MyOrderSectionPatternId } from "@/lib/orders/my-order-section-call
 type CancelConfirmState = {
   orderIds: string[];
   lines: SalesCancelLineContext[];
+};
+
+type PartialCancelConfirmState = {
+  orderId: string;
+  phase: SalesCancelPhase;
+  product: string;
+  maxQty: number;
+  defaultQty: number;
+  deliveredQty: number;
 };
 
 export function MyOrderShipmentList({
@@ -170,6 +182,9 @@ export function MyOrderShipmentList({
   const ackPending = pending || shelfNoticeOpen;
   const [pendingMessage, setPendingMessage] = useState<string | null>(null);
   const [cancelConfirm, setCancelConfirm] = useState<CancelConfirmState | null>(
+    null
+  );
+  const [partialCancel, setPartialCancel] = useState<PartialCancelConfirmState | null>(
     null
   );
   const [editTarget, setEditTarget] = useState<{
@@ -308,17 +323,26 @@ export function MyOrderShipmentList({
   );
 
   const runCancel = useCallback(
-    (orderIds: string[]) => {
+    (orderIds: string[], quantityById?: Record<string, number>) => {
       if (tourPreview) return;
       const n = orderIds.length;
+      const restoreById: Record<string, SalesCancelUndoRestore> = {};
+      for (const row of sortedRows) {
+        for (const line of row.lines) {
+          if (orderIds.includes(line.id)) {
+            restoreById[line.id] = line.salesCancelUndoRestore;
+          }
+        }
+      }
       setPendingMessage(n === 1 ? "Anulowanie pozycji…" : `Anulowanie ${n} pozycji…`);
       start(async () => {
         try {
-          await actionSalesCancelOrders(orderIds);
+          await actionSalesCancelOrders(orderIds, { quantityById });
           reportUndo({
             orderIds,
             kind: "cancel",
             title: n === 1 ? "Pozycja wycofana" : `${n} poz. wycofane`,
+            restoreById,
           });
           router.refresh();
         } catch (e) {
@@ -334,7 +358,29 @@ export function MyOrderShipmentList({
         }
       });
     },
-    [router, tourPreview, reportUndo]
+    [router, tourPreview, reportUndo, sortedRows]
+  );
+
+  const requestPartialCancel = useCallback(
+    (
+      orderId: string,
+      phase: SalesCancelPhase,
+      opts: {
+        product: string;
+        maxQty: number;
+        defaultQty: number;
+        deliveredQty?: number;
+      }
+    ) => {
+      if (tourPreview) return;
+      setPartialCancel({
+        orderId,
+        phase,
+        deliveredQty: opts.deliveredQty ?? 0,
+        ...opts,
+      });
+    },
+    [tourPreview]
   );
 
   const requestCancel = useCallback(
@@ -394,6 +440,26 @@ export function MyOrderShipmentList({
           router.refresh();
         }}
       />
+      {partialCancel ? (
+        <SalesPartialCancelDialog
+          key={`${partialCancel.orderId}-${partialCancel.defaultQty}`}
+          open
+          product={partialCancel.product}
+          phase={partialCancel.phase}
+          maxQty={partialCancel.maxQty}
+          defaultQty={partialCancel.defaultQty}
+          deliveredQty={partialCancel.deliveredQty}
+          pending={pending}
+          onCancel={() => {
+            if (!pending) setPartialCancel(null);
+          }}
+          onConfirm={(quantity) => {
+            const { orderId } = partialCancel;
+            setPartialCancel(null);
+            runCancel([orderId], { [orderId]: quantity });
+          }}
+        />
+      ) : null}
       {cancelConfirm ? (
         <ConfirmDialog
           open
@@ -462,6 +528,11 @@ export function MyOrderShipmentList({
             onCancelRequest={
               canAcknowledge && row.salesCancelOrderIds.length && row.salesCancelPhase
                 ? (ids, lines) => requestCancel(ids, lines)
+                : undefined
+            }
+            onPartialCancelRequest={
+              canAcknowledge && row.salesCancelOrderIds.length
+                ? requestPartialCancel
                 : undefined
             }
             onSaveClient={canAcknowledge ? saveClient : undefined}

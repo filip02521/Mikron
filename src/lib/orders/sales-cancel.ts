@@ -1,7 +1,10 @@
 import {
   getDeliveryProgress,
+  getOrderFulfillmentProgress,
   isInformacjaRequest,
+  parseOrderQuantity,
   type DeliveryProgress,
+  type OrderFulfillmentProgress,
 } from "@/lib/orders/individual";
 import type { IndividualOrder, IndividualOrderStatus } from "@/types/database";
 
@@ -55,14 +58,211 @@ export function deliveryProgressFor(order: IndividualOrder): DeliveryProgress {
   return getDeliveryProgress(order.quantity, deliveredQtyRaw(order));
 }
 
+export function fulfillmentProgressFor(order: IndividualOrder): OrderFulfillmentProgress {
+  const cancelled = effectiveSalesCancelledQuantity(order);
+  return getOrderFulfillmentProgress(
+    order.quantity,
+    deliveredQtyRaw(order),
+    cancelled > 0 ? String(cancelled) : order.sales_cancelled_quantity
+  );
+}
+
+/** Wycofane sztuki (0 gdy brak rezygnacji). */
+export function effectiveSalesCancelledQuantity(order: IndividualOrder): number {
+  const explicit = parseOrderQuantity(order.sales_cancelled_quantity ?? "");
+  if (explicit != null && order.sales_cancelled_at) return explicit;
+  if (!order.sales_cancelled_at) return 0;
+  const ordered = parseOrderQuantity(order.quantity);
+  if (ordered == null) return 0;
+  if (order.status === "Anulowane") return ordered;
+  const delivered = deliveryProgressFor(order).delivered;
+  return Math.max(0, ordered - delivered);
+}
+
+/** Aktywne zamówienie = oryginał − wycofane. */
+export function activeOrderQuantity(order: IndividualOrder): number | null {
+  const ordered = parseOrderQuantity(order.quantity);
+  if (ordered == null) return null;
+  return Math.max(0, ordered - effectiveSalesCancelledQuantity(order));
+}
+
+/** Maks. ilość do wycofania = reszta u dostawcy (minus już wycofane). */
+export function maxSalesCancelQuantity(order: IndividualOrder): number | null {
+  const ordered = parseOrderQuantity(order.quantity);
+  if (ordered == null) return null;
+  const delivered = deliveryProgressFor(order).delivered;
+  const alreadyCancelled = effectiveSalesCancelledQuantity(order);
+  const max = ordered - delivered - alreadyCancelled;
+  return max > 0 ? max : null;
+}
+
+/** Domyślna ilość rezygnacji (reszta u dostawcy). */
+export function defaultSalesCancelQuantity(order: IndividualOrder): number | null {
+  return maxSalesCancelQuantity(order);
+}
+
+export function canPartialSalesCancel(order: IndividualOrder): boolean {
+  const max = maxSalesCancelQuantity(order);
+  return max != null && max > 1;
+}
+
+export function showSalesCancelRemainderAction(order: IndividualOrder): boolean {
+  const delivered = deliveryProgressFor(order).delivered;
+  const remainder = defaultSalesCancelQuantity(order);
+  return delivered > 0 && remainder != null && remainder > 0;
+}
+
+export function salesCancelLineRemainderLabel(remainder: number): string {
+  return `Rezygnuj z reszty (${remainder} szt.)`;
+}
+
+export function salesCancelLineCustomQtyLabel(
+  phase?: SalesCancelPhase | null
+): string {
+  if (phase === "in_transit") return "Rezygnuj z części szt…";
+  return "Inna ilość…";
+}
+
+export type SalesCancelQuantityPlan = {
+  /** Ilość wycofana w tej operacji. */
+  cancelQty: number;
+  /** Suma wycofanych sztuk po tej operacji. */
+  totalCancelledQty: number;
+  /** NULL = pełna rezygnacja wg dotychczasowych reguł (wsteczna kompatybilność). */
+  storedCancelledQuantity: string | null;
+  statusAfter?: IndividualOrderStatus;
+  /** Linia zostaje aktywna u handlowca (bez archiwum / odbioru w toku). */
+  keepLineActiveForSales: boolean;
+};
+
+export function planSalesCancelQuantity(
+  order: IndividualOrder,
+  requestedQty?: number
+): SalesCancelQuantityPlan {
+  const ordered = parseOrderQuantity(order.quantity);
+  if (ordered == null) {
+    throw new Error("Brak ilości liczbowej — możliwa tylko pełna rezygnacja.");
+  }
+  const delivered = deliveryProgressFor(order).delivered;
+  const existingCancelled = effectiveSalesCancelledQuantity(order);
+  const max = ordered - delivered - existingCancelled;
+  const cancelQty = requestedQty ?? max;
+  if (!Number.isInteger(cancelQty) || cancelQty < 1 || cancelQty > max) {
+    throw new Error(`Podaj ilość od 1 do ${max} szt.`);
+  }
+  const phase = resolveSalesCancelPhase(order);
+  if (!phase) {
+    throw new Error("Tej prośby nie można już wycofać.");
+  }
+
+  const totalCancelledQty = existingCancelled + cancelQty;
+  const storedCancelledQuantity =
+    totalCancelledQty >= ordered ? null : String(totalCancelledQty);
+
+  let statusAfter: IndividualOrderStatus | undefined;
+  if (phase === "before_order" && totalCancelledQty >= ordered) {
+    statusAfter = "Anulowane";
+  } else {
+    const activeAfter = ordered - totalCancelledQty;
+    if (delivered > 0 && delivered >= activeAfter) {
+      statusAfter = "Zrealizowane";
+    }
+  }
+
+  const activeAfter = ordered - totalCancelledQty;
+  const keepLineActiveForSales =
+    statusAfter !== "Anulowane" &&
+    (activeAfter > delivered || (delivered > 0 && statusAfter === "Zrealizowane"));
+
+  return {
+    cancelQty,
+    totalCancelledQty,
+    storedCancelledQuantity,
+    statusAfter,
+    keepLineActiveForSales,
+  };
+}
+
+function salesPartialCancelRemainingAfterDelivery(activeAfter: number): string {
+  if (activeAfter === 1) {
+    return "Pozostała 1 szt. będzie na Ciebie czekała po dostawie.";
+  }
+  return `Pozostałe ${activeAfter} szt. będą na Ciebie czekały po dostawie.`;
+}
+
+export function salesPartialCancelConfirmCopy(
+  phase: SalesCancelPhase,
+  product: string,
+  cancelQty: number,
+  maxQty: number,
+  deliveredQty = 0
+): { title: string; message: string; confirmLabel: string } {
+  const base = salesCancelConfirmCopy(phase, { productName: product });
+  const qtyPart =
+    cancelQty >= maxQty
+      ? `${cancelQty} szt.`
+      : `${cancelQty} z ${maxQty} szt.`;
+  const activeAfter = Math.max(0, deliveredQty + maxQty - cancelQty);
+  if (phase === "before_order") {
+    if (cancelQty >= maxQty) return base;
+    return {
+      title: "Wycofać część pozycji?",
+      message: `Wycofasz ${qtyPart} pozycji „${product}”. Reszta zostaje w prośbie. ${SALES_CANCEL_UNDO_HINT}`,
+      confirmLabel: `Wycofaj ${cancelQty} szt.`,
+    };
+  }
+  if (phase === "in_transit" && cancelQty < maxQty && activeAfter > 0) {
+    return {
+      title: "Zmniejszyć ilość w zamówieniu?",
+      message: `Rezygnujesz z ${qtyPart} pozycji „${product}”. ${salesPartialCancelRemainingAfterDelivery(activeAfter)}`,
+      confirmLabel: `Rezygnuję z ${cancelQty} szt.`,
+    };
+  }
+  return {
+    title: base.title,
+    message: `Rezygnujesz z ${qtyPart} pozycji „${product}”. ${base.message}`,
+    confirmLabel: `Rezygnuję z ${cancelQty} szt.`,
+  };
+}
+
+/** Ilość docelowa w kolejce dostaw (aktywne zamówienie, nie oryginał). */
+export function receiveQueueTargetQuantity(order: IndividualOrder): number | null {
+  const progress = fulfillmentProgressFor(order);
+  return progress.activeOrdered ?? progress.ordered;
+}
+
+/** Czy u dostawcy zostaje jeszcze coś do śledzenia. */
+export function hasActiveSupplierFulfillment(order: IndividualOrder): boolean {
+  if (isInformacjaRequest(order)) return false;
+  const remaining = fulfillmentProgressFor(order).supplierRemaining;
+  return remaining != null && remaining > 0;
+}
+
+/** Odbiór z magazynu po częściowej rezygnacji (np. 2/5 — rezygnacja z reszty). */
+export function isPendingSalesPickupAfterPartialCancel(order: IndividualOrder): boolean {
+  if (isInformacjaRequest(order)) return false;
+  if (order.status !== "Zrealizowane" || order.sales_acknowledged_at) return false;
+  if (!order.sales_cancelled_at) return false;
+  const cancelled = effectiveSalesCancelledQuantity(order);
+  if (cancelled <= 0) return false;
+  const delivered = deliveryProgressFor(order).delivered;
+  const active = activeOrderQuantity(order);
+  return delivered > 0 && active != null && delivered >= active;
+}
+
 /** Czy handlowiec może wycofać prośbę w tym statusie. */
 export function resolveSalesCancelPhase(
   order: IndividualOrder
 ): SalesCancelPhase | null {
-  if (order.sales_cancelled_at) return null;
+  if (order.sales_acknowledged_at) return null;
 
   const { status } = order;
   if (status === "Anulowane") return null;
+
+  if (order.sales_cancelled_at) {
+    const max = maxSalesCancelQuantity(order);
+    if (max == null || max <= 0) return null;
+  }
 
   /** Prośba informacyjna — zawsze proste wycofanie (bez kolejki realizacji). */
   if (isInformacjaRequest(order)) {
@@ -94,15 +294,17 @@ export function resolveSalesCancelPhase(
 }
 
 export function canSalesCancelOrders(orders: IndividualOrder[]): boolean {
-  const open = orders.filter(
-    (o) => !o.sales_acknowledged_at && !o.sales_cancelled_at
-  );
+  const open = orders.filter((o) => !o.sales_acknowledged_at);
   if (!open.length) return false;
-  return open.every((o) => resolveSalesCancelPhase(o) !== null);
+  return open.some((o) => resolveSalesCancelPhase(o) !== null);
 }
 
 export function isSalesCancelNoticePending(order: IndividualOrder): boolean {
   if (!order.sales_cancelled_at || order.sales_acknowledged_at) return false;
+  if (isPendingSalesPickupAfterPartialCancel(order)) return false;
+  if (hasActiveSupplierFulfillment(order) && order.status !== "Anulowane") {
+    return false;
+  }
   const phase = effectiveSalesCancelPhase(order);
   return phase === "in_transit" || phase === "on_stock";
 }
@@ -266,6 +468,8 @@ export function salesCancelConfirmCopy(
 }
 
 export function isSalesCancelledForQueue(order: IndividualOrder): boolean {
+  if (!order.sales_cancelled_at) return false;
+  if (hasActiveSupplierFulfillment(order)) return false;
   const phase = effectiveSalesCancelPhase(order);
   return phase === "in_transit" || phase === "on_stock";
 }
@@ -281,25 +485,34 @@ export function salesCancelSuccessToast(lineCount = 1): string {
 /** Opis w archiwum dla wycofanych pozycji (wg fazy rezygnacji). */
 export function salesCancelArchiveDetail(
   phase: SalesCancelPhase,
-  activityLabel: string | null
+  activityLabel: string | null,
+  partial?: { cancelledQty: number; orderedQty: number } | null
 ): { statusTitle: string; statusDetail: string } {
   const when = activityLabel ? `Wycofano ${activityLabel}.` : "Wycofano.";
+  const partialNote =
+    partial && partial.cancelledQty > 0 && partial.cancelledQty < partial.orderedQty
+      ? ` Rezygnacja z ${partial.cancelledQty} z ${partial.orderedQty} szt.`
+      : "";
 
   switch (phase) {
     case "in_transit":
       return {
         statusTitle: "Rezygnacja — towar w drodze",
-        statusDetail: `${when} Jeśli towar dotrze, magazyn rozliczy go w zakładce Magazyn i regał.`,
+        statusDetail: `${when}${partialNote} Jeśli towar dotrze, magazyn rozliczy go w zakładce Magazyn i regał.`,
       };
     case "on_stock":
       return {
         statusTitle: "Rezygnacja — towar na magazynie",
-        statusDetail: `${when} Magazyn rozliczy towar w zakładce Magazyn i regał (stan lub zwrot).`,
+        statusDetail: `${when}${partialNote} Magazyn rozliczy towar w zakładce Magazyn i regał (stan lub zwrot).`,
       };
     default:
       return {
-        statusTitle: "Anulowane",
-        statusDetail: activityLabel ? `Wycofano ${activityLabel}` : "Prośba wycofana",
+        statusTitle: partialNote.trim() ? "Częściowo wycofane" : "Anulowane",
+        statusDetail: partialNote.trim()
+          ? `${when}${partialNote}`
+          : activityLabel
+            ? `Wycofano ${activityLabel}`
+            : "Prośba wycofana",
       };
   }
 }
@@ -311,13 +524,13 @@ export function salesCancelQueueBanner(order: IndividualOrder): string {
 
   if (disposition === "to_stock") {
     return note
-      ? `Rozliczono: na stan magazynu (${person}) — ${note}`
-      : `Rozliczono: na stan magazynu (${person}), poza rezerwacją handlowca.`;
+      ? `Rezygnacja ${person} — na stan magazynu — ${note}`
+      : `Rezygnacja ${person} — na stan magazynu, poza rezerwacją handlowca.`;
   }
   if (disposition === "return") {
     return note
-      ? `Rozliczono: zwrot do dostawcy (${person}) — ${note}`
-      : `Rozliczono: przygotować zwrot do dostawcy (${person}).`;
+      ? `Rezygnacja ${person} — zwrot do dostawcy — ${note}`
+      : `Rezygnacja ${person} — zwrot do dostawcy.`;
   }
 
   const phase =
@@ -328,5 +541,5 @@ export function salesCancelQueueBanner(order: IndividualOrder): string {
   if (phase === "on_stock") {
     return `Rezygnacja ${person} — wybierz: na stan magazynu lub zwrot do dostawcy.`;
   }
-  return `Rezygnacja ${person} — towar może jeszcze przyjechać. Po dostawie rozlicz na stan lub zwrot.`;
+  return `Rezygnacja ${person} — towar może jeszcze dotrzeć. Po dostawie wybierz: na stan albo zwrot.`;
 }

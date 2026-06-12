@@ -8,6 +8,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import {
   effectiveSalesCancelPhase,
   isSalesCancelNoticePending,
+  planSalesCancelQuantity,
   resolveSalesCancelPhase,
   salesCancelUndoRestoreStatus,
 } from "@/lib/orders/sales-cancel";
@@ -17,8 +18,10 @@ import {
   buildSalesCancelUpdate,
   getSalesCancelDbCaps,
   SALES_CANCEL_MIGRATION_HINT,
+  SALES_CANCEL_QUANTITY_MIGRATION_HINT,
   salesCancelAckSelect,
   salesCancelOrderSelect,
+  type SalesCancelUndoRestore,
 } from "@/lib/orders/sales-cancel-db";
 import type { IndividualOrder, IndividualOrderStatus } from "@/types/database";
 import { updateIndividualRequestGroup } from "@/lib/services/orders";
@@ -160,12 +163,16 @@ export async function actionAcknowledgeSalesCancelNotice(orderIds: string[]) {
 }
 
 /** Wycofanie prośby przez handlowca (klient się rozmyślił). */
-export async function actionSalesCancelOrders(orderIds: string[]) {
+export async function actionSalesCancelOrders(
+  orderIds: string[],
+  options?: { quantityById?: Record<string, number> }
+) {
   if (!orderIds.length) throw new Error("Brak pozycji do anulowania.");
   const salesPersonId = await salesPersonIdForAction();
   const supabase = createAdminClient();
   const caps = await getSalesCancelDbCaps(supabase);
   const now = new Date().toISOString();
+  const quantityById = options?.quantityById ?? {};
 
   const { data: rowsRaw, error: fetchError } = await supabase
     .from("individual_orders")
@@ -176,13 +183,19 @@ export async function actionSalesCancelOrders(orderIds: string[]) {
     if (fetchError.message?.includes("sales_cancelled_at")) {
       throw new Error(SALES_CANCEL_MIGRATION_HINT);
     }
+    if (fetchError.message?.includes("sales_cancelled_quantity")) {
+      throw new Error(SALES_CANCEL_QUANTITY_MIGRATION_HINT);
+    }
     throw new Error(fetchError.message);
   }
   const rows = (rowsRaw ?? []) as unknown as IndividualOrder[];
   if (!rows.length) throw new Error("Nie znaleziono pozycji.");
 
-  const toCancel: { id: string; phase: NonNullable<ReturnType<typeof resolveSalesCancelPhase>> }[] =
-    [];
+  const toCancel: {
+    id: string;
+    phase: NonNullable<ReturnType<typeof resolveSalesCancelPhase>>;
+    quantityPlan?: ReturnType<typeof planSalesCancelQuantity>;
+  }[] = [];
 
   for (const row of rows) {
     if (row.sales_person_id !== salesPersonId) {
@@ -191,50 +204,67 @@ export async function actionSalesCancelOrders(orderIds: string[]) {
     if (row.sales_acknowledged_at) {
       throw new Error("Ta pozycja jest już zamknięta.");
     }
-    if (caps.hasCancelledAt && row.sales_cancelled_at) {
-      continue;
-    }
 
     const phase = resolveSalesCancelPhase(row as IndividualOrder);
     if (!phase) {
+      if (caps.hasCancelledAt && row.sales_cancelled_at) {
+        continue;
+      }
       throw new Error("Tej prośby nie można już wycofać.");
     }
     if (!caps.hasCancelledAt && phase !== "before_order") {
       throw new Error(SALES_CANCEL_MIGRATION_HINT);
     }
-    toCancel.push({ id: row.id, phase });
+
+    let quantityPlan: ReturnType<typeof planSalesCancelQuantity> | undefined;
+    const requestedQty = quantityById[row.id];
+    if (requestedQty != null || caps.hasCancelledQuantity) {
+      if (!caps.hasCancelledQuantity && requestedQty != null) {
+        throw new Error(SALES_CANCEL_QUANTITY_MIGRATION_HINT);
+      }
+      if (caps.hasCancelledQuantity) {
+        quantityPlan = planSalesCancelQuantity(row as IndividualOrder, requestedQty);
+      }
+    }
+
+    toCancel.push({ id: row.id, phase, quantityPlan });
   }
 
   if (!toCancel.length) {
     throw new Error("Wybrane pozycje są już wycofane lub zamknięte.");
   }
 
-  for (const { id, phase } of toCancel) {
-    const update = buildSalesCancelUpdate(caps, phase, now);
+  for (const { id, phase, quantityPlan } of toCancel) {
+    const update = buildSalesCancelUpdate(caps, phase, now, quantityPlan);
     if (!update) {
       throw new Error(SALES_CANCEL_MIGRATION_HINT);
     }
 
-    let q = supabase
+    const q = supabase
       .from("individual_orders")
       .update(update)
       .eq("id", id)
-      .eq("sales_person_id", salesPersonId);
+      .eq("sales_person_id", salesPersonId)
+      .is("sales_acknowledged_at", null);
 
-    if (caps.hasCancelledAt) {
-      q = q.is("sales_cancelled_at", null);
-    }
-
-    const { error } = await q;
+    const { data: updated, error } = await q.select("id");
 
     if (error) {
       if (
         error.message?.includes("sales_cancelled_at") ||
-        error.message?.includes("sales_cancel_phase")
+        error.message?.includes("sales_cancel_phase") ||
+        error.message?.includes("sales_cancelled_quantity")
       ) {
-        throw new Error(SALES_CANCEL_MIGRATION_HINT);
+        throw new Error(
+          error.message?.includes("sales_cancelled_quantity")
+            ? SALES_CANCEL_QUANTITY_MIGRATION_HINT
+            : SALES_CANCEL_MIGRATION_HINT
+        );
       }
       throw new Error(error.message);
+    }
+    if (!updated?.length) {
+      throw new Error("Nie udało się wycofać pozycji — odśwież listę i spróbuj ponownie.");
     }
   }
 
@@ -297,7 +327,10 @@ export async function actionUnacknowledgePickup(orderIds: string[]) {
 }
 
 /** Cofnięcie wycofania prośby (okno undo po actionSalesCancelOrders). */
-export async function actionUnacknowledgeSalesCancel(orderIds: string[]) {
+export async function actionUnacknowledgeSalesCancel(
+  orderIds: string[],
+  options?: { restoreById?: Record<string, SalesCancelUndoRestore> }
+) {
   if (!orderIds.length) throw new Error("Brak pozycji do cofnięcia.");
   const salesPersonId = await salesPersonIdForAction();
   const supabase = createAdminClient();
@@ -317,12 +350,12 @@ export async function actionUnacknowledgeSalesCancel(orderIds: string[]) {
     if (row.sales_person_id !== salesPersonId) {
       throw new Error("Brak uprawnień do tej pozycji.");
     }
-    if (!row.sales_acknowledged_at) {
-      throw new Error("Ta pozycja nie była jeszcze zamknięta.");
+    if (!row.sales_cancelled_at && !row.sales_acknowledged_at) {
+      throw new Error("Ta pozycja nie była jeszcze wycofana.");
     }
     const cancelledAt = row.sales_cancelled_at;
     const legacyCancel = !caps.hasCancelledAt && row.status === "Anulowane";
-    if (!cancelledAt && !legacyCancel) {
+    if (!cancelledAt && !legacyCancel && !row.sales_acknowledged_at) {
       throw new Error("Cofnięcie dotyczy tylko właśnie wycofanych pozycji.");
     }
     const undoAnchor = cancelledAt ?? row.sales_acknowledged_at;
@@ -346,7 +379,8 @@ export async function actionUnacknowledgeSalesCancel(orderIds: string[]) {
       throw new Error("Nie można cofnąć tej pozycji.");
     }
     const restoreStatus = salesCancelUndoRestoreStatus(row, phase);
-    const update = buildSalesCancelUndoUpdate(caps, restoreStatus);
+    const restore = options?.restoreById?.[row.id] ?? null;
+    const update = buildSalesCancelUndoUpdate(caps, restoreStatus, restore);
 
     let q = supabase
       .from("individual_orders")

@@ -6,11 +6,16 @@ import { buildSummaryWorkspace } from "@/lib/orders/summary-workspace";
 import { sortIndividualOrdersBySupplier } from "@/lib/orders/queue-sort";
 import { sortInformacjaQueueForDisplay } from "@/lib/orders/queue-product-groups";
 import {
+  countDeliveryQueueActivePartialRows,
   countDeliveryQueueCancelledRows,
   countInformacjaWarehouseQueueRows,
 } from "@/lib/data/queue-counts";
 import { isInformacjaWarehouseQueueOrder } from "@/lib/orders/informacja-warehouse-queue";
-import { isSalesCancelledForQueue } from "@/lib/orders/sales-cancel";
+import {
+  hasActiveSupplierFulfillment,
+  isSalesCancelledForQueue,
+} from "@/lib/orders/sales-cancel";
+import { isAwaitingSalesPickup } from "@/lib/orders/sales-pickup";
 import { historyRetentionCutoffIso } from "@/lib/orders/history-retention";
 import {
   buildWarehouseInventoryRows,
@@ -44,6 +49,8 @@ export type FetchSuppliersOptions = {
   activeOnly?: boolean;
   /** Wyłącznie nieaktywni (lista Nieaktywni). */
   inactiveOnly?: boolean;
+  /** Ogranicz do podanych ID (np. dostawcy z otwartych zamówień na /moje). */
+  supplierIds?: string[];
 };
 
 export async function fetchSuppliersWithSchedules(
@@ -64,6 +71,9 @@ export async function fetchSuppliersWithSchedules(
     q = q.eq("is_active", false);
   } else if (options?.activeOnly !== false) {
     q = q.eq("is_active", true);
+  }
+  if (options?.supplierIds?.length) {
+    q = q.in("id", options.supplierIds);
   }
   const { data, error } = await q;
   if (error) throw new Error(error.message);
@@ -256,7 +266,7 @@ export async function countInformacjaQueue(): Promise<number> {
 }
 
 const DELIVERY_QUEUE_CANCELLED_COUNT_SELECT =
-  "status, sales_cancelled_at, sales_cancel_phase, quantity, delivered_quantity, procurement_cancel_disposition, request_kind";
+  "status, sales_cancelled_at, sales_cancel_phase, quantity, delivered_quantity, sales_cancelled_quantity, procurement_cancel_disposition, request_kind";
 
 /** Liczba pozycji w kolejce dostaw (zamówione u dostawcy, bez informacji). */
 export async function countDeliveryQueue(): Promise<number> {
@@ -291,26 +301,30 @@ export async function countDeliveryQueue(): Promise<number> {
   const cancelledForQueue = countDeliveryQueueCancelledRows(
     (cancelledRes.data ?? []) as import("@/lib/data/queue-counts").DeliveryQueueCancelledCountRow[]
   );
+  const partialActive = countDeliveryQueueActivePartialRows(
+    (cancelledRes.data ?? []) as import("@/lib/data/queue-counts").DeliveryQueueCancelledCountRow[]
+  );
 
-  return (activeRes.count ?? 0) + cancelledForQueue;
+  return (activeRes.count ?? 0) + cancelledForQueue + partialActive;
 }
 
 /** Całość na regale — u handlowców świeci na zielono do odbioru (poza kolejką przyjęcia). */
 export async function countPickupReadyForSales(): Promise<number> {
   if (!hasSupabaseConfig()) return 0;
   const supabase = createAdminClient();
-  const { count, error } = await supabase
+  const { data, error } = await supabase
     .from("individual_orders")
-    .select("id", { count: "exact", head: true })
+    .select("id, status, sales_acknowledged_at, sales_cancelled_at, sales_cancelled_quantity, quantity, delivered_quantity, request_kind")
     .eq("request_kind", "zamowienie")
     .eq("status", "Zrealizowane")
-    .is("sales_acknowledged_at", null)
-    .is("sales_cancelled_at", null);
+    .is("sales_acknowledged_at", null);
   if (error) {
     if (error.message?.includes("sales_acknowledged_at")) return 0;
     throw new Error(error.message);
   }
-  return count ?? 0;
+  return (data ?? []).filter((row) =>
+    isAwaitingSalesPickup(row as IndividualOrder)
+  ).length;
 }
 
 const SUPABASE_PAGE = 1000;
@@ -384,8 +398,20 @@ export async function fetchDeliveryQueue(): Promise<IndividualOrder[]> {
       isSalesCancelledForQueue(o) && Boolean(o.procurement_cancel_disposition)
   );
 
+  const partialActive = normalizeIndividualOrders(cancelledRes.data ?? []).filter(
+    (o) =>
+      o.request_kind === "zamowienie" &&
+      (o.status === "Zamowione" || o.status === "Czesciowo_zrealizowane") &&
+      Boolean(o.sales_cancelled_at) &&
+      hasActiveSupplierFulfillment(o)
+  );
+
   const active = normalizeIndividualOrders(activeRes.data ?? []);
-  return sortIndividualOrdersBySupplier([...cancelledForQueue, ...active]);
+  return sortIndividualOrdersBySupplier([
+    ...cancelledForQueue,
+    ...partialActive,
+    ...active,
+  ]);
 }
 
 export async function fetchSummaryWorkspace(options?: { salesPersonId?: string }) {

@@ -82,4 +82,48 @@ describe("editInitialFromForSomeoneGroup", () => {
     expect(initial.lines[0]?.clientName).toBe("Klinika ABC");
     expect(initial.lines[0]?.clientKhId).toBe(42);
   });
+
+  it("mapuje notatkę handlowca z linii grupy", () => {
+    const initial = editInitialFromForSomeoneGroup(
+      forSomeoneGroup([
+        {
+          id: "4",
+          products: "Towar",
+          symbol: "N",
+          quantity: "1",
+          fromSubiekt: true,
+          submittedAt: "2026-05-01",
+          requestNote: "  pilne — termin piątek  ",
+        },
+      ])
+    );
+    expect(initial.requestNote).toBe("pilne — termin piątek");
+  });
+
+  it("nie wstawia pierwszej notatki gdy linie mają różne uwagi", () => {
+    const initial = editInitialFromForSomeoneGroup(
+      forSomeoneGroup([
+        {
+          id: "5",
+          products: "A",
+          symbol: "A",
+          quantity: "1",
+          fromSubiekt: true,
+          submittedAt: "2026-05-01",
+          requestNote: "notatka A",
+        },
+        {
+          id: "6",
+          products: "B",
+          symbol: "B",
+          quantity: "1",
+          fromSubiekt: true,
+          submittedAt: "2026-05-01",
+          requestNote: "notatka B",
+        },
+      ])
+    );
+    expect(initial.requestNote).toBe("");
+    expect(initial.requestNotesMixed).toBe(true);
+  });
 });

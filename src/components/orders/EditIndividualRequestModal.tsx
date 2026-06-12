@@ -10,12 +10,18 @@ import {
   hasValidOrderQuantity,
 } from "@/lib/orders/request-completeness";
 import { assertProcurementEntryComplete } from "@/lib/orders/procurement-submit";
+import {
+  editRequestNoteForSave,
+  filterIndividualRequestEditLinesForSave,
+  toIndividualRequestEditLinePayload,
+} from "@/lib/orders/individual-request-edit";
 import { PROCUREMENT_TEAM_LABEL } from "@/lib/orders/procurement-copy";
 import { buildProsbaFormReadiness } from "@/lib/orders/prosba-form-readiness";
 import { ProsbaFormReadiness } from "@/components/orders/ProsbaFormReadiness";
 import { ProsbaFormSection } from "@/components/orders/ProsbaFormSection";
 import { RequestFormStatusPanel } from "@/components/orders/RequestFormStatusPanel";
 import { RequestProductLinesEditor } from "@/components/orders/RequestProductLinesEditor";
+import { SalesRequestNoteField } from "@/components/orders/SalesRequestNoteField";
 import { newProductLine, appendProductLine, type ProductLineDraft } from "@/components/orders/request-product-lines";
 import { RequestKindToggle } from "@/components/orders/RequestKindToggle";
 import { InformacjaFlowPicker } from "@/components/orders/InformacjaFlowPicker";
@@ -48,6 +54,8 @@ export type EditIndividualRequestInitial = {
   salesPersonId: string;
   requestKind: IndividualRequestKind;
   informacjaPath?: InformacjaFlowPath;
+  requestNote?: string | null;
+  requestNotesMixed?: boolean;
   lines: ProductLineDraft[];
 };
 
@@ -78,6 +86,8 @@ export function EditIndividualRequestModal({
     DEFAULT_INFORMACJA_FLOW_PATH
   );
   const [lines, setLines] = useState<ProductLineDraft[]>([newProductLine()]);
+  const [requestNote, setRequestNote] = useState("");
+  const [requestNoteTouched, setRequestNoteTouched] = useState(false);
   const [validationAttempted, setValidationAttempted] = useState(false);
   const [formNotice, setFormNotice] = useState<{
     text: string;
@@ -133,6 +143,8 @@ export function EditIndividualRequestModal({
           initial.salesPersonId,
           initial.requestKind,
           initial.informacjaPath ?? DEFAULT_INFORMACJA_FLOW_PATH,
+          initial.requestNote ?? "",
+          String(initial.requestNotesMixed ?? false),
           ...initial.lines.map((line) => line.id),
         ].join("\0")
       : "";
@@ -149,6 +161,8 @@ export function EditIndividualRequestModal({
           ? initial.lines.map((line) => ({ ...line }))
           : [newProductLine()]
       );
+      setRequestNote(initial.requestNote ?? "");
+      setRequestNoteTouched(false);
       setValidationAttempted(false);
       setFormNotice(null);
       setSupplierSubiektFeedback(null);
@@ -168,6 +182,18 @@ export function EditIndividualRequestModal({
     if (!initial) return;
     setFormNotice(null);
 
+    const linesToSave = filterIndividualRequestEditLinesForSave(lines, orderIds, {
+      supplierId: mode === "procurement" ? supplierId : "",
+    });
+    if (!linesToSave.length) {
+      setValidationAttempted(true);
+      setFormNotice({
+        text: "Dodaj co najmniej jedną pozycję z produktem.",
+        tone: "error",
+      });
+      return;
+    }
+
     if (mode === "procurement") {
       if (requestKind === "zamowienie" && !supplierId.trim()) {
         setValidationAttempted(true);
@@ -175,7 +201,7 @@ export function EditIndividualRequestModal({
         return;
       }
       try {
-        for (const line of lines) {
+        for (const line of linesToSave) {
           assertProcurementEntryComplete({
             supplierId,
             symbol: line.symbol,
@@ -198,7 +224,7 @@ export function EditIndividualRequestModal({
     }
 
     if (mode === "sales") {
-      const plan = assessSalesGroupSubmittable(lines, "", requestKind);
+      const plan = assessSalesGroupSubmittable(linesToSave, "", requestKind);
       if (!plan?.submittable) {
         setValidationAttempted(true);
         setFormNotice({
@@ -212,7 +238,7 @@ export function EditIndividualRequestModal({
       }
       if (
         requestKind === "zamowienie" &&
-        lines.some(
+        linesToSave.some(
           (l) =>
             (l.symbol.trim() || l.mikranCode.trim() || l.product.trim()) &&
             !hasValidOrderQuantity(l.quantity, "zamowienie")
@@ -229,32 +255,37 @@ export function EditIndividualRequestModal({
 
     run(
       async () => {
-        const payload = {
-          supplierId: mode === "sales" ? "" : supplierId,
-          salesPersonId,
-          requestKind,
-          informacjaPath:
-            mode === "procurement" && requestKind === "informacja"
-              ? informacjaPath
-              : undefined,
-          lines: lines.map((l) => ({
-            id: l.id,
-            symbol: l.symbol,
-            mikranCode: l.mikranCode,
-            product: l.product,
-            quantity: l.quantity,
-            clientName: l.clientName,
-            clientKhId: l.clientKhId,
-            subiektTwId: l.subiektTwId,
-          })),
-        };
-        if (mode === "procurement") {
-          await actionUpdateIndividualRequest(orderIds, payload);
-        } else {
-          await actionUpdateMyIndividualRequest(orderIds, payload);
+        try {
+          const payload = {
+            supplierId: mode === "sales" ? "" : supplierId,
+            salesPersonId,
+            requestKind,
+            informacjaPath:
+              mode === "procurement" && requestKind === "informacja"
+                ? informacjaPath
+                : undefined,
+            requestNote: editRequestNoteForSave(requestNote, {
+              mixedOnLines: Boolean(initial?.requestNotesMixed),
+              touched: requestNoteTouched,
+            }),
+            lines: linesToSave.map((line) =>
+              toIndividualRequestEditLinePayload(line, orderIds)
+            ),
+          };
+          if (mode === "procurement") {
+            await actionUpdateIndividualRequest(orderIds, payload);
+          } else {
+            await actionUpdateMyIndividualRequest(orderIds, payload);
+          }
+          onSaved?.("Zapisano zmiany w prośbie.");
+          onClose();
+        } catch (e) {
+          setValidationAttempted(true);
+          setFormNotice({
+            text: e instanceof Error ? e.message : "Nie udało się zapisać prośby.",
+            tone: "error",
+          });
         }
-        onSaved?.("Zapisano zmiany w prośbie.");
-        onClose();
       },
       "Zapisywanie prośby…"
     );
@@ -446,6 +477,19 @@ export function EditIndividualRequestModal({
               onResolvingSupplierChange={
                 mode === "procurement" ? setResolvingSupplier : undefined
               }
+            />
+
+            <SalesRequestNoteField
+              value={requestNote}
+              onChange={(value) => {
+                setFormNotice(null);
+                setRequestNoteTouched(true);
+                setRequestNote(value);
+              }}
+              disabled={pending}
+              mixedNotesOnLines={initial?.requestNotesMixed}
+              audience={mode}
+              id={mode === "procurement" ? "procurement-edit-request-note" : "sales-edit-request-note"}
             />
 
             {mode === "sales" ? (

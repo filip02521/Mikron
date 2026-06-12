@@ -131,7 +131,6 @@ export function DailyTodayView({
 
                 {hasStockOut ? (
                   <ForSomeoneRequests
-                    embedded
                     variant="stockOut"
                     queueStep={queueStepBySection.stockOut}
                     groups={workspace.stockOutLeft}
@@ -142,6 +141,9 @@ export function DailyTodayView({
                     supplierStatsMode={supplierStatsMode}
                     suppliers={suppliers}
                     salesPeople={salesPeople}
+                    supplierMeta={workspace.supplierMeta}
+                    todayDateKey={workspace.todayDateKey}
+                    weekDays={workspace.thisWeekDays}
                     sectionId="kolejka-brak-na-stanie"
                     highlightFresh={highlightFresh}
                   />
@@ -149,7 +151,6 @@ export function DailyTodayView({
 
                 {hasForSomeone ? (
                   <ForSomeoneRequests
-                    embedded
                     queueStep={queueStepBySection.prosby}
                     groups={workspace.forSomeoneLeft}
                     isScopePending={isScopePending}
@@ -159,6 +160,9 @@ export function DailyTodayView({
                     supplierStatsMode={supplierStatsMode}
                     suppliers={suppliers}
                     salesPeople={salesPeople}
+                    supplierMeta={workspace.supplierMeta}
+                    todayDateKey={workspace.todayDateKey}
+                    weekDays={workspace.thisWeekDays}
                     highlightFresh={highlightFresh}
                   />
                 ) : null}

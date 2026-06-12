@@ -7,6 +7,7 @@ import {
   isInformacjaAvailabilityPendingStatusTitle,
 } from "@/lib/orders/informacja-flow-copy";
 import { progressLabelInSubline } from "@/lib/orders/my-order-card-ui";
+import { isRequestNotesAggregateSummary } from "@/lib/orders/sales-request-note";
 
 export type MyOrderHeadlineTone =
   | "action"
@@ -290,6 +291,14 @@ export function myOrderMetaFields(
     fields.push({
       label: "Klient",
       value: row.clientLabel,
+      emphasize: true,
+    });
+  }
+
+  if (row.requestNote && !isRequestNotesAggregateSummary(row.requestNote)) {
+    fields.push({
+      label: "Uwagi",
+      value: row.requestNote,
       emphasize: true,
     });
   }

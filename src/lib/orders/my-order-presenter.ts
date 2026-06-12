@@ -9,6 +9,13 @@ import {
   sortMyOrderRows,
   type MyOrderSalesUi,
 } from "@/lib/orders/my-order-sales-ui";
+import { formatDateString } from "@/lib/orders/dates";
+import {
+  buildPlannedOrderDateDisplay,
+  type PlannedOrderDateDisplay,
+} from "@/lib/orders/planned-order-date-label";
+import { todayInWarsaw } from "@/lib/time/warsaw";
+import type { WeekDayPlan } from "@/lib/orders/summary-workspace";
 import {
   formatOrderQuantityLabel,
   getDeliveryProgress,
@@ -46,6 +53,10 @@ import type {
 import { SUMMARY_COLORS } from "@/types/database";
 import { groupOrdersForMyView, myOrderGroupKey } from "@/lib/orders/my-order-groups";
 import { clientNamesSummary } from "@/lib/orders/sales-client-label";
+import {
+  normalizeSalesRequestNote,
+  requestNotesSummary,
+} from "@/lib/orders/sales-request-note";
 import { describeVerificationGaps } from "@/lib/orders/verification-gaps";
 
 function weryfikacjaPresentation(order: IndividualOrder) {
@@ -59,13 +70,21 @@ function weryfikacjaPresentation(order: IndividualOrder) {
   };
 }
 import {
+  canPartialSalesCancel,
   canSalesCancelOrders,
+  defaultSalesCancelQuantity,
+  deliveryProgressFor,
+  fulfillmentProgressFor,
   isSalesCancelNoticePending,
+  maxSalesCancelQuantity,
   resolveGroupSalesCancelPhase,
   resolveSalesCancelPhase,
+  showSalesCancelRemainderAction,
   type SalesCancelPhase,
 } from "@/lib/orders/sales-cancel";
 import { canEditIndividualRequestGroup } from "@/lib/orders/individual-request-edit";
+import { salesCancelUndoRestoreSnapshot } from "@/lib/orders/sales-cancel-db";
+import type { SalesCancelUndoRestore } from "@/lib/orders/sales-cancel-db";
 
 /** Stan pojedynczej pozycji względem magazynu (przy częściowej dostawie grupy). */
 export type MyOrderLineStockStatus = "waiting" | "partial" | "on_stock" | "na";
@@ -95,8 +114,17 @@ export type MyOrderLine = {
   /** Handlowiec może wycofać tę pozycję (osobno od reszty grupy). */
   canCancelBySales: boolean;
   salesCancelPhase: SalesCancelPhase | null;
+  maxSalesCancelQuantity: number | null;
+  defaultSalesCancelQuantity: number | null;
+  canPartialSalesCancel: boolean;
+  showSalesCancelRemainder: boolean;
+  /** Dostarczone szt. — do dialogu częściowej rezygnacji. */
+  salesCancelDeliveredQty: number;
+  /** Stan przed rezygnacją — do cofnięcia w oknie undo. */
+  salesCancelUndoRestore: SalesCancelUndoRestore;
   clientName: string | null;
   clientKhId: number | null;
+  requestNote: string | null;
 };
 
 type MyOrderRowCore = {
@@ -137,6 +165,8 @@ export type MyOrderRow = MyOrderRowCore &
     cancelledAckOrderIds: string[];
     /** Skrót etykiet klientów na karcie (meta). */
     clientLabel: string | null;
+    /** Wspólna notatka do zakupów (meta). */
+    requestNote: string | null;
     /** Powiązanie z kartą ZK w notatniku (przycisk Prośba). */
     sourceZkWatchId?: string | null;
     sourceZkNumber?: string | null;
@@ -144,15 +174,15 @@ export type MyOrderRow = MyOrderRowCore &
     salesPersonId: string;
     requestKind: "zamowienie" | "informacja";
     canEditBySales: boolean;
+    plannedOrderDate?: PlannedOrderDateDisplay | null;
   };
 
-type MyOrderRowDraft = MyOrderRowCore;
+export type SupplierScheduleSnapshot = {
+  computedNextDate: string | null;
+  orderOnDemand: boolean;
+};
 
-function deliveredQty(order: IndividualOrder): string {
-  return order.delivered_quantity && order.delivered_quantity !== "-"
-    ? order.delivered_quantity
-    : "0";
-}
+type MyOrderRowDraft = MyOrderRowCore;
 
 export function lineStockStatus(order: IndividualOrder): MyOrderLineStockStatus {
   if (isInformacjaRequest(order)) {
@@ -160,14 +190,17 @@ export function lineStockStatus(order: IndividualOrder): MyOrderLineStockStatus 
     return "waiting";
   }
 
-  const progress = getDeliveryProgress(order.quantity, deliveredQty(order));
+  const progress = deliveryProgressFor(order);
   if (!progress.hasNumericQty) {
-    return order.status === "Zrealizowane" ? "on_stock" : "na";
+    return order.status === "Zrealizowane" ? "on_stock" : "waiting";
+  }
+  const fulfillment = fulfillmentProgressFor(order);
+  const target = fulfillment.activeOrdered ?? progress.ordered;
+  if (target == null) {
+    return order.status === "Zrealizowane" ? "on_stock" : "waiting";
   }
   if (progress.delivered === 0) return "waiting";
-  if (progress.ordered != null && progress.delivered >= progress.ordered) {
-    return "on_stock";
-  }
+  if (progress.delivered >= target) return "on_stock";
   return "partial";
 }
 
@@ -222,6 +255,12 @@ function rowToLine(
       return {
         canCancelBySales: salesCancelPhase !== null,
         salesCancelPhase,
+        maxSalesCancelQuantity: maxSalesCancelQuantity(order),
+        defaultSalesCancelQuantity: defaultSalesCancelQuantity(order),
+        canPartialSalesCancel: canPartialSalesCancel(order),
+        showSalesCancelRemainder: showSalesCancelRemainderAction(order),
+        salesCancelDeliveredQty: deliveryProgressFor(order).delivered,
+        salesCancelUndoRestore: salesCancelUndoRestoreSnapshot(order),
       };
     })(),
     clientName: order.sales_client_name?.trim() || null,
@@ -229,6 +268,7 @@ function rowToLine(
       order.sales_client_kh_id != null && Number.isFinite(Number(order.sales_client_kh_id))
         ? Math.trunc(Number(order.sales_client_kh_id))
         : null,
+    requestNote: normalizeSalesRequestNote(order.sales_request_note),
   };
 }
 
@@ -267,7 +307,7 @@ function withAckMeta(
     requestKind: (rep?.request_kind ?? "zamowienie") as "zamowienie" | "informacja",
     salesCancelPhase: resolveGroupSalesCancelPhase(visible),
     salesCancelOrderIds: visible
-      .filter((o) => !o.sales_cancelled_at && resolveSalesCancelPhase(o) !== null)
+      .filter((o) => resolveSalesCancelPhase(o) !== null)
       .map((o) => o.id),
     cancelNoticeOrderIds: visible
       .filter(isSalesCancelNoticePending)
@@ -276,6 +316,7 @@ function withAckMeta(
       .filter((o) => o.status === "Anulowane")
       .map((o) => o.id),
     clientLabel: clientNamesSummary(visible),
+    requestNote: requestNotesSummary(visible),
     sourceZkWatchId:
       visible.map((o) => o.source_zk_watch_id).find(Boolean) ??
       orders.map((o) => o.source_zk_watch_id).find(Boolean) ??
@@ -524,12 +565,8 @@ function presentZamowienie(
   stats: DeliveryStats | undefined
 ): MyOrderRow {
   const statsMode = (order.supplier?.stats_mode ?? "LACZNIE") as StatsMode;
-  const progress = getDeliveryProgress(
-    order.quantity,
-    order.delivered_quantity && order.delivered_quantity !== "-"
-      ? order.delivered_quantity
-      : "0"
-  );
+  const progress = fulfillmentProgressFor(order);
+  const displayQty = progress.activeOrdered ?? progress.ordered;
 
   const base = {
     id: order.id,
@@ -540,16 +577,21 @@ function presentZamowienie(
     supplierName: order.supplier?.name ?? "—",
     product: order.products,
     symbol: order.symbol && order.symbol !== "-" ? order.symbol : null,
-    quantityLabel: progress.hasNumericQty
-      ? `${order.quantity} szt.`
-      : formatOrderQuantityLabel(order.quantity, order.request_kind),
+    quantityLabel:
+      progress.hasNumericQty && displayQty != null
+        ? progress.cancelled > 0 && progress.ordered != null
+          ? `${displayQty} szt. (z ${progress.ordered} · ${progress.cancelled} wycofane)`
+          : `${displayQty} szt.`
+        : formatOrderQuantityLabel(order.quantity, order.request_kind),
     progressLabel:
       salesProgressLabel(order.status, progress) ??
-      (order.delivered_quantity && order.delivered_quantity !== "-"
-        ? order.delivered_quantity
-        : progress.hasNumericQty
-          ? `${order.quantity} szt. zamówione`
-          : null),
+      (order.sales_cancelled_at && progress.hasNumericQty
+        ? progress.fractionLabel
+        : order.delivered_quantity && order.delivered_quantity !== "-"
+          ? order.delivered_quantity
+          : progress.hasNumericQty && displayQty != null
+            ? `${displayQty} szt. zamówione`
+            : null),
     rowColor: SUMMARY_COLORS.historyNew,
   };
 
@@ -719,9 +761,64 @@ export function presentMyOrder(
   return presentZamowienie(order, stats);
 }
 
+export function supplierIdsForPlannedOrderSchedule(orders: IndividualOrder[]): string[] {
+  const ids = new Set<string>();
+  for (const order of orders) {
+    if (order.sales_acknowledged_at || !order.supplier_id) continue;
+    if (isInformacjaRequest(order)) {
+      if (
+        order.status === "Nowe" &&
+        isInformacjaQueueViaDailyPanel(order) &&
+        !order.ordered_at?.trim() &&
+        !isInformacjaStockOutReorder(order)
+      ) {
+        ids.add(order.supplier_id);
+      }
+      continue;
+    }
+    if (order.status === "Nowe") {
+      ids.add(order.supplier_id);
+    }
+  }
+  return [...ids];
+}
+
+function attachPlannedOrderDate(
+  row: MyOrderRow,
+  supplierScheduleById?: Record<string, SupplierScheduleSnapshot>,
+  options?: {
+    todayDateKey?: string;
+    weekDays?: WeekDayPlan[];
+  }
+): MyOrderRow {
+  if (!row.supplierId || !supplierScheduleById) return row;
+  const waitingForSupplierOrder =
+    row.statusTitle === "Przed zamówieniem" ||
+    row.statusTitle === INFORMACJA_FLOW_SALES_AWAITING_PROCUREMENT.statusTitle;
+  if (!waitingForSupplierOrder) return row;
+
+  const schedule = supplierScheduleById[row.supplierId];
+  if (!schedule) return row;
+
+  const plannedOrderDate = buildPlannedOrderDateDisplay({
+    computedNextDate: schedule.computedNextDate,
+    orderOnDemand: schedule.orderOnDemand,
+    todayDateKey: options?.todayDateKey,
+    weekDays: options?.weekDays,
+    supplierId: row.supplierId,
+  });
+  if (!plannedOrderDate) return row;
+  return { ...row, plannedOrderDate };
+}
+
 export function presentMyOrders(
   orders: IndividualOrder[],
-  statsRows: DeliveryStats[]
+  statsRows: DeliveryStats[],
+  options?: {
+    supplierScheduleById?: Record<string, SupplierScheduleSnapshot>;
+    todayDateKey?: string;
+    weekDays?: WeekDayPlan[];
+  }
 ): {
   zamowienia: MyOrderRow[];
   informacje: MyOrderRow[];
@@ -730,6 +827,7 @@ export function presentMyOrders(
   const statsBySupplier = Object.fromEntries(
     statsRows.map((s) => [s.supplier_id, s])
   );
+  const todayDateKey = options?.todayDateKey ?? formatDateString(todayInWarsaw());
   const salesVisibleOrders = filterIndividualOrdersForSalesMyOrders(orders);
   const zamowienia: MyOrderRow[] = [];
   const informacje: MyOrderRow[] = [];
@@ -751,10 +849,18 @@ export function presentMyOrders(
   const productLineCount = zamowienia.reduce((n, r) => n + r.lineCount, 0)
     + informacje.reduce((n, r) => n + r.lineCount, 0);
 
-  const attachSalesUi = (row: MyOrderRow): MyOrderRow => ({
-    ...row,
-    ...enrichMyOrderSalesUi(row),
-  });
+  const attachSalesUi = (row: MyOrderRow): MyOrderRow =>
+    attachPlannedOrderDate(
+      {
+        ...row,
+        ...enrichMyOrderSalesUi(row),
+      },
+      options?.supplierScheduleById,
+      {
+        todayDateKey,
+        weekDays: options?.weekDays,
+      }
+    );
 
   return {
     zamowienia: sortMyOrderRows(zamowienia.map(attachSalesUi)),

@@ -2,6 +2,7 @@
 
 import {
   formatProcurementSupplierBlockSummary,
+  procurementProductCountLabel,
   procurementUnseenGroupsLabel,
   type ProcurementSupplierBlock,
 } from "@/lib/orders/procurement-supplier-groups";
@@ -12,9 +13,11 @@ import { cn } from "@/lib/cn";
 import { ProcurementSupplierBlockActionBar } from "@/components/summary/ProcurementSupplierBlockActionBar";
 import type { DailyPanelRunFn } from "@/components/summary/useDailyPanelRunner";
 import {
+  controlFocusClass,
   dailyPanelUnseenBadgeClass,
   panelNameLinkClass,
   panelTypography,
+  procurementSupplierBlockHeaderClass,
   rowPendingRingClass,
   type DailyPanelUnseenVariant,
 } from "@/lib/ui/ontime-theme";
@@ -26,7 +29,7 @@ function Chevron({ open }: { open: boolean }) {
       size={16}
       strokeWidth={2.25}
       className={cn(
-        "shrink-0 text-slate-500 transition-transform",
+        "shrink-0 text-slate-500 transition-transform duration-200",
         open && "rotate-90"
       )}
       aria-hidden
@@ -52,29 +55,33 @@ export function ProcurementSupplierBlockBar({
   leadTimeBrief?: string | null;
   pending?: boolean;
   run: DailyPanelRunFn;
-  /** Lokalnie nieprzeczytane (domyślnie z serwera). */
   unseenGroupCount?: number;
   unseenVariant?: DailyPanelUnseenVariant;
 }) {
   const summary = formatProcurementSupplierBlockSummary(block);
   const groupCount = block.requestGroups.length;
   const unseenCount = unseenGroupCount ?? block.unseenGroupCount;
+  const productCount = procurementProductCountLabel(block.lineCount);
 
   return (
     <div
       className={cn(
-        "border-b border-slate-200/90 bg-slate-50/50",
+        procurementSupplierBlockHeaderClass(unseenVariant),
         pending && rowPendingRingClass
       )}
       aria-busy={pending}
     >
-      <div className="px-2 py-2">
+      <div className="px-2.5 py-2 sm:px-3">
         <div className={panelQueueRowLayoutClass}>
           <div className="flex min-w-0 flex-1 gap-2">
             <button
               type="button"
               onClick={onToggleCollapse}
-              className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-md text-slate-600 transition-colors hover:bg-slate-200/60 hover:text-slate-900"
+              className={cn(
+                "mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-white/60 ring-1 ring-slate-200/70",
+                "text-slate-600 transition-colors hover:bg-white hover:text-slate-900",
+                controlFocusClass
+              )}
               aria-expanded={!collapsed}
               aria-label={
                 collapsed
@@ -93,8 +100,8 @@ export function ProcurementSupplierBlockBar({
                 >
                   {block.supplierName}
                 </button>
-                <Badge variant="default" className="text-[10px]">
-                  {groupCount} {groupCount === 1 ? "osoba" : groupCount < 5 ? "osoby" : "osób"}
+                <Badge variant="default" className="text-[10px] font-medium">
+                  {groupCount} {groupCount === 1 ? "prośba" : groupCount < 5 ? "prośby" : "prośb"}
                 </Badge>
                 {unseenCount > 0 ? (
                   <Badge
@@ -103,13 +110,12 @@ export function ProcurementSupplierBlockBar({
                       dailyPanelUnseenBadgeClass(unseenVariant)
                     )}
                   >
-                    {unseenCount}{" "}
-                    {procurementUnseenGroupsLabel(unseenCount)}
+                    {unseenCount} {procurementUnseenGroupsLabel(unseenCount)}
                   </Badge>
                 ) : null}
                 {collapsed ? (
                   <span className={cn(panelTypography.caption, "text-slate-500")}>
-                    lista zwinięta
+                    zwinięte · {productCount}
                   </span>
                 ) : null}
               </div>
@@ -123,12 +129,11 @@ export function ProcurementSupplierBlockBar({
               ) : null}
             </div>
           </div>
-          <div className="w-full sm:w-auto sm:shrink-0 sm:self-start">
-            <ProcurementSupplierBlockActionBar
-              block={block}
-              pending={pending}
-              run={run}
-            />
+          <div className="flex w-full flex-col items-stretch gap-1 sm:w-auto sm:shrink-0 sm:items-end">
+            <span className="text-[10px] font-medium text-slate-500 sm:text-right">
+              Zamów razem · {productCount}
+            </span>
+            <ProcurementSupplierBlockActionBar block={block} pending={pending} run={run} />
           </div>
         </div>
       </div>

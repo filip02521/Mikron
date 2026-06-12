@@ -1,6 +1,6 @@
 import type { IndividualOrder } from "@/types/database";
 import { isInformacjaRequest } from "@/lib/orders/individual";
-import { isSalesCancelledForQueue } from "@/lib/orders/sales-cancel";
+import { isSalesCancelledForQueue, hasActiveSupplierFulfillment } from "@/lib/orders/sales-cancel";
 import { mergeReceiveQueueOrders } from "@/lib/orders/receive-queue";
 
 export type QueueInboxSummary = {
@@ -18,7 +18,9 @@ export function summarizeQueueInbox(
   informacjaOrders: IndividualOrder[] = []
 ): QueueInboxSummary {
   const receiveQueue = mergeReceiveQueueOrders(deliveryOrders, informacjaOrders);
-  const active = receiveQueue.filter((o) => !o.sales_cancelled_at);
+  const active = receiveQueue.filter(
+    (o) => !o.sales_cancelled_at || hasActiveSupplierFulfillment(o)
+  );
   const cancelLabelled = deliveryOrders.filter(
     (o) => o.sales_cancelled_at && isSalesCancelledForQueue(o)
   );

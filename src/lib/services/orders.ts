@@ -13,6 +13,7 @@ import {
 } from "@/lib/orders/dates";
 import { todayInWarsaw } from "@/lib/time/warsaw";
 import { resolveStatusFromDeliveredQuantity } from "@/lib/orders/individual";
+import { effectiveSalesCancelledQuantity } from "@/lib/orders/sales-cancel";
 import { recalcScheduleRow } from "@/lib/orders/recalc";
 import {
   resolveVacationConflictOnOrder,
@@ -51,6 +52,7 @@ import type { InformacjaFlowPath } from "@/lib/orders/informacja-stock-out-reord
 import { shouldTreatAsInformacjaOnly } from "@/lib/orders/informacja-import-rules";
 import { isProcurementDraftReady } from "@/lib/orders/procurement-readiness";
 import { normalizeSalesClientName } from "@/lib/orders/sales-client-label";
+import { normalizeSalesRequestNote } from "@/lib/orders/sales-request-note";
 import {
   normalizeZkProsbaSourceInput,
   zkProsbaSourceFromOrder,
@@ -70,6 +72,7 @@ import {
 import { planSalesRequestSubmit } from "@/lib/orders/sales-request-submit";
 import {
   canEditIndividualRequestGroup,
+  resolveIndividualRequestEditLineId,
   type IndividualRequestEditPayload,
 } from "@/lib/orders/individual-request-edit";
 import { v4 as uuidv4 } from "uuid";
@@ -301,6 +304,7 @@ export async function batchAddIndividualOrders(
     requestKind?: IndividualRequestKind;
     clientName?: string;
     clientKhId?: number | null;
+    requestNote?: string | null;
     subiektTwId?: number | null;
     sourceZkWatchId?: string | null;
     sourceZkNumber?: string | null;
@@ -469,6 +473,7 @@ export async function batchAddIndividualOrders(
         sales_client_name: normalizeSalesClientName(e.clientName),
         sales_client_kh_id:
           e.clientKhId != null && e.clientKhId > 0 ? Math.trunc(e.clientKhId) : null,
+        sales_request_note: normalizeSalesRequestNote(e.requestNote),
         subiekt_tw_id:
           draft.subiektTwId != null && draft.subiektTwId > 0 ? draft.subiektTwId : null,
         mikran_code: sanitized.mikranCode?.trim() || null,
@@ -491,6 +496,11 @@ export async function batchAddIndividualOrders(
       if (msg.includes("mikran_code")) {
         throw new Error(
           `${msg} — uruchom migrację supabase/migrations/031_mikran_code.sql w bazie.`
+        );
+      }
+      if (msg.includes("sales_request_note")) {
+        throw new Error(
+          `${msg} — uruchom migrację supabase/migrations/058_individual_orders_sales_request_note.sql w bazie.`
         );
       }
       throw new Error(msg);
@@ -756,9 +766,12 @@ export async function updateIndividualRequestGroup(
     };
   };
 
+  const existingOrderIds = existing.map((order) => order.id);
+
   for (const line of payload.lines) {
     const kind = payload.requestKind;
-    const informacjaFlags = resolveInformacjaFlags(line.id);
+    const existingLineId = resolveIndividualRequestEditLineId(line.id, existingOrderIds);
+    const informacjaFlags = resolveInformacjaFlags(existingLineId);
     const sanitized = sanitizeOrderDraftFields({
       symbol: line.symbol,
       mikranCode: line.mikranCode,
@@ -788,6 +801,12 @@ export async function updateIndividualRequestGroup(
       catalogSource === "procurement_verification"
         ? procurementStatusForEntry(lineDraft)
         : statusForEditedLine(lineDraft).status;
+    const salesRequestNote =
+      payload.requestNote !== undefined
+        ? normalizeSalesRequestNote(payload.requestNote)
+        : existingLineId
+          ? undefined
+          : null;
     const rowPayload = {
       supplier_id: payload.supplierId.trim() || null,
       sales_person_id: payload.salesPersonId,
@@ -801,6 +820,7 @@ export async function updateIndividualRequestGroup(
         line.clientKhId != null && line.clientKhId > 0
           ? Math.trunc(line.clientKhId)
           : null,
+      ...(salesRequestNote !== undefined ? { sales_request_note: salesRequestNote } : {}),
       subiekt_tw_id:
         line.subiektTwId != null && line.subiektTwId > 0 ? line.subiektTwId : null,
       mikran_code: sanitized.mikranCode?.trim() || null,
@@ -808,22 +828,19 @@ export async function updateIndividualRequestGroup(
       informacja_stock_out_reorder: informacjaFlags.informacjaStockOutReorder,
     };
 
-    if (line.id) {
-      if (!existing.some((o) => o.id === line.id)) {
-        throw new Error("Pozycja nie należy do tej prośby.");
-      }
+    if (existingLineId) {
       const { error } = await supabase
         .from("individual_orders")
         .update(rowPayload)
-        .eq("id", line.id)
+        .eq("id", existingLineId)
         .in("status", ["Nowe", "Weryfikacja"]);
       if (error) throw new Error(error.message);
-      keptIds.add(line.id);
+      keptIds.add(existingLineId);
       updated++;
 
       try {
         await indexOrderLineToProductCatalog({
-          orderId: line.id,
+          orderId: existingLineId,
           subiektTwId: rowPayload.subiekt_tw_id ?? null,
           symbol: rowPayload.symbol ?? null,
           productName: rowPayload.products ?? null,
@@ -1238,20 +1255,31 @@ async function applyDeliveredQuantityUpdate(
   if (!order) throw new Error("Nie znaleziono zamówienia");
 
   const ordered = parseInt(order.quantity, 10);
+  const cancelled = effectiveSalesCancelledQuantity(order);
+  const activeOrdered =
+    !isNaN(ordered) && ordered > 0 ? Math.max(0, ordered - cancelled) : ordered;
   const delivered = parseInt(qtyInput, 10);
-  if (!isNaN(ordered) && ordered > 0) {
+  if (!isNaN(activeOrdered) && activeOrdered > 0) {
     if (isNaN(delivered) || delivered < 0) {
       throw new Error("Podaj poprawną liczbę dostarczonych sztuk (0 lub więcej)");
     }
-    if (delivered > ordered) {
-      throw new Error(`Nie można dostarczyć więcej niż zamówiono (${ordered} szt.)`);
+    if (delivered > activeOrdered) {
+      throw new Error(
+        `Nie można dostarczyć więcej niż aktywne zamówienie (${activeOrdered} szt.)`
+      );
     }
   }
 
   const prevStatus = order.status;
-  const status = resolveStatusFromDeliveredQuantity(order.quantity, qtyInput);
+  const effectiveOrderedStr =
+    !isNaN(activeOrdered) && activeOrdered > 0 ? String(activeOrdered) : order.quantity;
+  const status = resolveStatusFromDeliveredQuantity(effectiveOrderedStr, qtyInput);
   const finalDelivered =
-    status === "Zrealizowane" && !isNaN(ordered) ? String(ordered) : qtyInput;
+    status === "Zrealizowane" && !isNaN(activeOrdered) && activeOrdered > 0
+      ? String(activeOrdered)
+      : status === "Zrealizowane" && !isNaN(ordered)
+        ? String(ordered)
+        : qtyInput;
 
   const update: Record<string, unknown> = {
     delivered_quantity: finalDelivered,

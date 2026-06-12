@@ -1,7 +1,10 @@
-const FLASH_RING_CLASSES = [
+/** Wewnętrzna obwódka — nie wychodzi poza element (rodzice mają overflow-hidden). */
+export const NOTEPAD_ANCHOR_FLASH_CLASSES = [
+  "relative",
+  "z-10",
   "ring-2",
+  "ring-inset",
   "ring-indigo-400/80",
-  "ring-offset-2",
   "rounded-md",
   "bg-indigo-50/80",
 ] as const;
@@ -50,9 +53,9 @@ export function flashNotepadAnchor(
       onAnnounce(options?.announce ?? "Przewinięto do wskazanej pozycji w notatniku.");
     }
     el.scrollIntoView({ behavior: "smooth", block: "center" });
-    el.classList.add(...FLASH_RING_CLASSES);
+    el.classList.add(...NOTEPAD_ANCHOR_FLASH_CLASSES);
     window.setTimeout(() => {
-      el.classList.remove(...FLASH_RING_CLASSES);
+      el.classList.remove(...NOTEPAD_ANCHOR_FLASH_CLASSES);
     }, durationMs);
   }
 

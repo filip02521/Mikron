@@ -1,8 +1,15 @@
 "use client";
 
 import { useMemo, useState, useCallback, useEffect, useRef } from "react";
-import type { SummaryForSomeoneEnriched } from "@/lib/orders/summary-workspace";
+import type {
+  SummaryForSomeoneEnriched,
+  SupplierSummaryMeta,
+  WeekDayPlan,
+} from "@/lib/orders/summary-workspace";
+import { PlannedOrderDateMeta } from "@/components/orders/PlannedOrderDateMeta";
+import { parseDateOnly } from "@/lib/orders/dates";
 import { enrichForSomeoneGroup, enrichStockOutSignalGroup } from "@/lib/orders/procurement-daily-ui";
+import { todayInWarsaw } from "@/lib/time/warsaw";
 import { useProcurementSupplierCollapse } from "@/components/summary/useProcurementSupplierCollapse";
 import {
   buildProcurementSupplierBlocks,
@@ -14,14 +21,19 @@ import {
 import { ProcurementSupplierBlockBar } from "@/components/summary/ProcurementSupplierBlockBar";
 import { locationLabel } from "@/lib/display-labels";
 import { actionMarkProcurementRequestsSeen, actionProcessIndividual } from "@/app/actions/admin";
-import { Card, CardHeader } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/Badge";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import type { DailyPanelRunFn } from "@/components/summary/useDailyPanelRunner";
 import type { DeliveryStats, StatsMode } from "@/types/database";
 import { formatSupplierLeadTimeBrief } from "@/lib/orders/delivery-eta";
-import { ProcurementRequestLine, ProcurementRequestLineInline } from "@/components/summary/ProcurementRequestLine";
+import {
+  ProcurementRequestLine,
+  ProcurementRequestLineInline,
+  ProcurementRequestClientMeta,
+  procurementGroupRequestNote,
+} from "@/components/summary/ProcurementRequestLine";
+import { ProcurementSalesRequestNote } from "@/components/orders/ProcurementSalesRequestNote";
 import {
   EditIndividualRequestModal,
   type EditIndividualRequestInitial,
@@ -34,8 +46,20 @@ import {
 } from "@/components/summary/DailyPanelSubsectionBar";
 import { cn } from "@/lib/cn";
 import { PanelRowActionsInlineEnd } from "@/components/summary/PanelRowActionsInlineEnd";
-import { panelRowClearFocusOnLeave, panelRowGroupClass } from "@/lib/ui/panel-row-actions-reveal";
-import { panelNameLinkClass, panelTypography, rowPendingRingClass, dailyPanelFreshHighlightClass, dailyPanelUnseenBadgeClass, dailyPanelUnseenRequestRowClass, type DailyPanelUnseenVariant } from "@/lib/ui/ontime-theme";
+import { panelRowClearFocusOnLeave } from "@/lib/ui/panel-row-actions-reveal";
+import {
+  procurementNestedRowMeta,
+  procurementRequestRowClassName,
+} from "@/components/summary/procurement-request-row-styles";
+import { shouldSuppressProcurementLineClient, shouldSuppressProcurementLineRequestNote } from "@/components/summary/procurement-request-client-ui";
+import {
+  dailyPanelUnseenBadgeClass,
+  panelNameLinkClass,
+  panelTypography,
+  procurementSupplierBlockInnerListClass,
+  procurementSupplierBlockShellClass,
+  type DailyPanelUnseenVariant,
+} from "@/lib/ui/ontime-theme";
 import { dailyPanelQueueSectionScrollClass } from "@/lib/orders/daily-panel-section-anchors";
 import {
   panelQueueRowActionsClass,
@@ -50,6 +74,9 @@ import {
   StockOutSectionHelp,
 } from "@/components/summary/ForSomeoneRequestsHelp";
 import { InformacjaViaPanelProcurementCallout } from "@/components/orders/InformacjaFlowLegend";
+import {
+  dailyPanelListBodyClass,
+} from "@/components/summary/daily-panel-list-styles";
 import { clientNamesSummaryFromLines } from "@/lib/orders/sales-client-label";
 import { PROCUREMENT_GLOWNE_ON_DEMAND_HINT } from "@/lib/orders/glowne-action-ui";
 import type { OrderFormSupplierOption } from "@/lib/orders/order-form-suppliers";
@@ -146,7 +173,9 @@ export function ForSomeoneRequests({
   supplierStatsMode = {},
   suppliers = [],
   salesPeople = [],
-  embedded = false,
+  supplierMeta = {},
+  todayDateKey,
+  weekDays = [],
   queueStep,
   sectionId = "kolejka-prosby",
   variant = "requests",
@@ -160,7 +189,9 @@ export function ForSomeoneRequests({
   supplierStatsMode?: Record<string, StatsMode>;
   suppliers?: OrderFormSupplierOption[];
   salesPeople?: { id: string; name: string }[];
-  embedded?: boolean;
+  supplierMeta?: Record<string, SupplierSummaryMeta>;
+  todayDateKey?: string;
+  weekDays?: WeekDayPlan[];
   queueStep?: number;
   sectionId?: string;
   variant?: "requests" | "stockOut";
@@ -169,7 +200,24 @@ export function ForSomeoneRequests({
   const isStockOutSection = variant === "stockOut";
   const showViaPanelSectionCallout =
     !isStockOutSection && groups.some(groupHasInformacjaFlow);
-  const enrichGroup = isStockOutSection ? enrichStockOutSignalGroup : enrichForSomeoneGroup;
+  const enrichAt = useMemo(
+    () =>
+      todayDateKey
+        ? (parseDateOnly(todayDateKey) ?? todayInWarsaw())
+        : todayInWarsaw(),
+    [todayDateKey]
+  );
+  const enrichGroup = useCallback(
+    (group: SummaryForSomeoneEnriched) =>
+      isStockOutSection
+        ? enrichStockOutSignalGroup(group)
+        : enrichForSomeoneGroup(group, enrichAt, {
+            supplierMeta: supplierMeta[group.supplierId] ?? null,
+            todayDateKey,
+            weekDays,
+          }),
+    [enrichAt, isStockOutSection, supplierMeta, todayDateKey, weekDays]
+  );
   const unseenVariant: DailyPanelUnseenVariant = isStockOutSection ? "stockOut" : "prosby";
   const supplierBlocks = useMemo(
     () => buildProcurementSupplierBlocks(groups),
@@ -250,7 +298,6 @@ export function ForSomeoneRequests({
     </div>
   );
 
-  const lineCount = groups.reduce((n, g) => n + g.lines.length, 0);
   const [cancelTarget, setCancelTarget] = useState<{
     orderIds: string[];
     headline: string;
@@ -396,16 +443,14 @@ export function ForSomeoneRequests({
     return () => window.removeEventListener("keydown", onKey);
   }, [navigableGroups, focusedGroup, resolvedFocusedGroupKey, editTarget, cancelTarget, run, markGroupSeen, enrichGroup]);
 
-  const Wrapper = embedded ? "section" : Card;
-  const wrapperProps = embedded
-    ? {
-        id: sectionId,
-        className: cn(
-          dailyPanelQueueSectionScrollClass,
-          dailyPanelQueueShellClass(isStockOutSection ? "stockOut" : "prosby")
-        ),
-      }
-    : { padding: false as const };
+  const Wrapper = "section";
+  const wrapperProps = {
+    id: sectionId,
+    className: cn(
+      dailyPanelQueueSectionScrollClass,
+      dailyPanelQueueShellClass(isStockOutSection ? "stockOut" : "prosby")
+    ),
+  };
 
   const subsectionHeader = (
     <DailyPanelSubsectionBar
@@ -422,15 +467,6 @@ export function ForSomeoneRequests({
           : { one: "grupa", few: "grupy", many: "grup" }
       }
       compact={!isStockOutSection}
-      action={queueToolbarActions}
-    />
-  );
-
-  const legacyHeader = (
-    <CardHeader
-      inset
-      title="Prośby handlowców"
-      description={`Prośby w kolejce dnia · ${groups.length} ${groups.length === 1 ? "grupa" : "grup"} · ${lineCount} ${lineCount === 1 ? "produkt" : "produktów"}`}
       action={queueToolbarActions}
     />
   );
@@ -480,13 +516,13 @@ export function ForSomeoneRequests({
           );
         }}
       />
-      {embedded ? subsectionHeader : legacyHeader}
+      {subsectionHeader}
 
       {!showViaPanelSectionCallout ? null : (
         <InformacjaViaPanelProcurementCallout className="mx-0" />
       )}
 
-      <ul className="space-y-2 p-2 sm:p-2">
+      <ul className={dailyPanelListBodyClass}>
         {supplierBlocks.map((block) => {
           const showSupplierHeader = showProcurementSupplierBlockHeader(block);
           const supplierCollapsed =
@@ -504,8 +540,7 @@ export function ForSomeoneRequests({
             <li
               key={block.supplierId}
               className={cn(
-                showSupplierHeader &&
-                  "overflow-hidden rounded-md border border-slate-200 bg-white"
+                showSupplierHeader && procurementSupplierBlockShellClass(unseenVariant)
               )}
               aria-label={`Dostawca ${block.supplierName}`}
             >
@@ -525,61 +560,75 @@ export function ForSomeoneRequests({
               {!supplierCollapsed ? (
                 <ul
                   className={cn(
-                    "space-y-1",
                     showSupplierHeader &&
-                      "divide-y divide-slate-100/90 border-t border-slate-100/80 p-1.5 sm:p-2"
+                      procurementSupplierBlockInnerListClass(unseenVariant)
                   )}
                 >
                   {block.requestGroups.map((g) => {
-          const key = groupKey(g);
-          const groupPending = isScopePending(key) || blockPending;
-          const isFocused = resolvedFocusedGroupKey === key;
-          const ui = enrichGroup(g);
-          const isUnseen = isGroupUnseen(g);
-          const stats = statsBySupplierId[g.supplierId];
-          const statsMode = supplierStatsMode[g.supplierId] ?? "LACZNIE";
-          const leadTimeBrief = stats
-            ? formatSupplierLeadTimeBrief(stats, statsMode)
-            : null;
-          const hasInfoViaPanel = !isStockOutSection && g.lines.some((l) => l.informacjaViaPanel);
-          const informacjaBadgeVariant = hasInfoViaPanel ? "info" : "default";
-          const singleLine = g.lines.length === 1 ? g.lines[0]! : null;
-          const hasMultiLine = g.lines.length >= 2;
-          const isOpen = hasMultiLine && expanded.has(key);
-          const countLabel = procurementProductCountLabel(g.lines.length);
-          const clientLabel = clientNamesSummaryFromLines(g.lines);
-          const showSupplierFirst = !showSupplierHeader && !isStockOutSection;
-          const rowSubline = showSupplierHeader ? countLabel : ui.subline;
-          const showRowLeadTime = !showSupplierHeader || !blockLeadTimeBrief;
+                    const key = groupKey(g);
+                    const groupPending = isScopePending(key) || blockPending;
+                    const isFocused = resolvedFocusedGroupKey === key;
+                    const ui = enrichGroup(g);
+                    const isUnseen = isGroupUnseen(g);
+                    const stats = statsBySupplierId[g.supplierId];
+                    const statsMode = supplierStatsMode[g.supplierId] ?? "LACZNIE";
+                    const leadTimeBrief = stats
+                      ? formatSupplierLeadTimeBrief(stats, statsMode)
+                      : null;
+                    const hasInfoViaPanel =
+                      !isStockOutSection && g.lines.some((l) => l.informacjaViaPanel);
+                    const statusBadgeVariant = isStockOutSection
+                      ? "warning"
+                      : hasInfoViaPanel
+                        ? "info"
+                        : "default";
+                    const singleLine = g.lines.length === 1 ? g.lines[0]! : null;
+                    const hasMultiLine = g.lines.length >= 2;
+                    const isOpen = hasMultiLine && expanded.has(key);
+                    const countLabel = procurementProductCountLabel(g.lines.length);
+                    const clientLabel = clientNamesSummaryFromLines(g.lines);
+                    const sharedGroupNote = hasMultiLine ? procurementGroupRequestNote(g.lines) : null;
+                    const suppressLineRequestNote = shouldSuppressProcurementLineRequestNote(sharedGroupNote);
+                    const suppressLineClient = shouldSuppressProcurementLineClient(clientLabel);
+                    const showSupplierFirst = !showSupplierHeader && !isStockOutSection;
+                    const rowSubline = showSupplierHeader
+                      ? procurementNestedRowMeta({ countLabel })
+                      : ui.subline;
+                    const showRowLeadTime = !showSupplierHeader || !blockLeadTimeBrief;
+                    const expandDividerClass =
+                      unseenVariant === "stockOut"
+                        ? "border-amber-100/80"
+                        : "border-indigo-100/70";
 
-          return (
-            <li key={key}>
-              <article
-                data-procurement-group={key}
-                className={cn(
-                  panelRowGroupClass("rounded-md border border-slate-200 bg-white transition-shadow"),
-                  groupPending && rowPendingRingClass,
-                  isFocused && (isStockOutSection ? "ring-2 ring-amber-400/70 ring-offset-1" : "ring-2 ring-indigo-400/70 ring-offset-1"),
-                  isUnseen && dailyPanelUnseenRequestRowClass(unseenVariant),
-                  highlightFresh && isUnseen && dailyPanelFreshHighlightClass
-                )}
-                aria-busy={groupPending}
-                onMouseEnter={() => scheduleMarkSeen(g)}
-                onPointerDown={(e) => {
-                  if (e.pointerType === "touch") scheduleMarkSeen(g);
-                }}
-                onClick={(e) => {
-                  const target = e.target as HTMLElement;
-                  if (target.closest("button, a, [role='button']")) return;
-                  scheduleMarkSeen(g);
-                }}
-                onMouseLeave={(e) => {
-                  cancelMarkSeen(g);
-                  panelRowClearFocusOnLeave(e);
-                  if (resolvedFocusedGroupKey === key) setFocusedGroupKey(null);
-                }}
-              >
-                <div className="px-2 py-2">
+                    return (
+                      <li key={key}>
+                        <article
+                          data-procurement-group={key}
+                          className={procurementRequestRowClassName({
+                            variant: unseenVariant,
+                            nestedInBlock: showSupplierHeader,
+                            isUnseen,
+                            isFocused,
+                            highlightFresh,
+                            pending: groupPending,
+                          })}
+                          aria-busy={groupPending}
+                          onMouseEnter={() => scheduleMarkSeen(g)}
+                          onPointerDown={(e) => {
+                            if (e.pointerType === "touch") scheduleMarkSeen(g);
+                          }}
+                          onClick={(e) => {
+                            const target = e.target as HTMLElement;
+                            if (target.closest("button, a, [role='button']")) return;
+                            scheduleMarkSeen(g);
+                          }}
+                          onMouseLeave={(e) => {
+                            cancelMarkSeen(g);
+                            panelRowClearFocusOnLeave(e);
+                            if (resolvedFocusedGroupKey === key) setFocusedGroupKey(null);
+                          }}
+                        >
+                          <div className="px-2.5 py-2 sm:px-3">
                   <div className={panelQueueRowLayoutClass}>
                     <div className="min-w-0 flex-1">
                       <div className="flex flex-wrap items-center gap-1.5">
@@ -611,7 +660,6 @@ export function ForSomeoneRequests({
                             {g.person}
                             {" · "}
                             {countLabel}
-                            {clientLabel ? ` · ${clientLabel}` : ""}
                             {" · "}
                             {locationLabel(g.location)}
                           </>
@@ -631,20 +679,35 @@ export function ForSomeoneRequests({
                           </>
                         )}
                       </p>
+                      <ProcurementRequestClientMeta clientLabel={clientLabel} className="mt-1" />
                       <p
                         className="mt-0.5 text-[11px] text-slate-400"
                         title={ui.submittedTitle}
                       >
                         Zgłoszono {ui.submittedLabel}
+                        {showRowLeadTime && leadTimeBrief ? ` · ${leadTimeBrief}` : ""}
                       </p>
-                      {showRowLeadTime && leadTimeBrief ? (
-                        <p className="mt-0.5 text-[10px] text-slate-400">{leadTimeBrief}</p>
+                      {singleLine ? (
+                        <ProcurementRequestLineInline
+                          line={singleLine}
+                          suppressClient={suppressLineClient}
+                        />
+                      ) : sharedGroupNote ? (
+                        <ProcurementSalesRequestNote
+                          note={sharedGroupNote}
+                          className="mt-1.5"
+                        />
                       ) : null}
-                      {singleLine ? <ProcurementRequestLineInline line={singleLine} /> : null}
                     </div>
                     <div className="flex flex-col items-stretch gap-1.5 sm:shrink-0 sm:items-end">
+                      {ui.plannedOrderDate ? (
+                        <PlannedOrderDateMeta
+                          display={ui.plannedOrderDate}
+                          className="self-start sm:self-auto"
+                        />
+                      ) : null}
                       <Badge
-                        variant={informacjaBadgeVariant}
+                        variant={statusBadgeVariant}
                         className="shrink-0 self-start whitespace-normal text-left text-[10px] leading-snug sm:self-auto sm:text-right"
                       >
                         {ui.statusTitle}
@@ -683,17 +746,13 @@ export function ForSomeoneRequests({
                       </PanelRowActionsInlineEnd>
                     </div>
                   </div>
-                  {isStockOutSection && ui.statusDetail ? (
-                    <div className="mt-1.5 rounded-md border border-amber-200/90 bg-amber-50/80 px-2 py-1 text-[11px] leading-snug text-amber-950">
-                      <p>{ui.statusDetail}</p>
-                    </div>
-                  ) : hasInfoViaPanel ? (
+                  {hasInfoViaPanel ? (
                     g.supplierOrderOnDemand ? (
                       <div className="mt-1.5 rounded-md border border-slate-200/90 bg-slate-50/90 px-2 py-1 text-[11px] leading-snug text-slate-700">
                         <p>{PROCUREMENT_GLOWNE_ON_DEMAND_HINT}</p>
                       </div>
                     ) : showViaPanelSectionCallout ? null : (
-                      <div className="mt-1.5 rounded-md border border-indigo-200/90 bg-indigo-50/60 px-2 py-1 text-[11px] leading-snug text-indigo-950">
+                      <div className="mt-1.5 rounded-md border border-slate-200/90 bg-slate-50/90 px-2 py-1 text-[11px] leading-snug text-slate-700">
                         <p>{INFORMACJA_FLOW_PROCUREMENT_GROUP_BANNER}</p>
                       </div>
                     )
@@ -708,10 +767,10 @@ export function ForSomeoneRequests({
                   ) : null}
                   {hasMultiLine ? (
                     <Button
-                      variant="outline"
+                      variant="ghost"
                       size="sm"
                       disabled={groupPending}
-                      className="mt-1.5 h-7 shrink-0 px-2.5"
+                      className="mt-1.5 h-7 shrink-0 px-2 text-xs font-semibold text-slate-600"
                       onClick={() => {
                         if (!isOpen) markGroupSeen(g);
                         setExpanded((prev) => {
@@ -722,15 +781,20 @@ export function ForSomeoneRequests({
                         });
                       }}
                     >
-                      {isOpen ? "Zwiń" : `Produkty (${g.lines.length})`}
+                      {isOpen ? "Zwiń produkty" : `Pokaż produkty (${g.lines.length})`}
                     </Button>
                   ) : null}
                 </div>
                 {isOpen ? (
-                  <div className="border-t border-slate-100">
-                    <ul className="space-y-1 px-2.5 py-1.5">
+                  <div className={cn("border-t", expandDividerClass)}>
+                    <ul className="space-y-1 px-2.5 py-1.5 sm:px-3">
                       {g.lines.map((line) => (
-                        <ProcurementRequestLine key={line.id} line={line} />
+                        <ProcurementRequestLine
+                          key={line.id}
+                          line={line}
+                          suppressRequestNote={suppressLineRequestNote}
+                          suppressClient={suppressLineClient}
+                        />
                       ))}
                     </ul>
                   </div>

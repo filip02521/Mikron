@@ -14,6 +14,10 @@ import {
 import { orderExplicitlyLinkedToZkWatch } from "@/lib/orders/zk-prosba-source";
 import { isZkWatchArchived } from "@/lib/data/sales-notepad";
 import { getDeliveryProgress } from "@/lib/orders/individual";
+import {
+  activeOrderQuantity,
+  hasActiveSupplierFulfillment,
+} from "@/lib/orders/sales-cancel";
 import type { SalesZkWatch } from "@/types/database";
 
 export { clientLabelsMatch, clientLabelsMatchExact } from "@/lib/orders/sales-client-match";
@@ -170,8 +174,18 @@ export function isZkLineFullyDeliveredByOrders(
 }
 
 export function isOpenProsbaOrder(order: ZkLinkableOrder): boolean {
-  if (order.sales_acknowledged_at || order.sales_cancelled_at) return false;
-  return OPEN_PROSBA_STATUSES.has(order.status);
+  if (order.sales_acknowledged_at) return false;
+  if (!OPEN_PROSBA_STATUSES.has(order.status)) return false;
+  if (order.sales_cancelled_at) {
+    const active = activeOrderQuantity(order as import("@/types/database").IndividualOrder);
+    if (active == null || active <= 0) return false;
+    if (order.status === "Anulowane") return false;
+    if (hasActiveSupplierFulfillment(order as import("@/types/database").IndividualOrder)) {
+      return true;
+    }
+    return false;
+  }
+  return true;
 }
 
 export function filterZkWatchesByClientQuery(

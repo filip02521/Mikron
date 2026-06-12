@@ -9,7 +9,14 @@ import {
   actionFetchTodayDeliveryJournal,
   actionUpdateDeliveryReceipt,
 } from "@/app/actions/warehouse-delivery";
+import {
+  formStateForNextEntry,
+  type DeliveryJournalFormState,
+} from "@/lib/warehouse/delivery-journal-form";
 import { shiftJournalDateKey } from "@/lib/warehouse/delivery-receipts";
+import { matchesDeliveryReceiptQuery } from "@/lib/warehouse/delivery-journal-insights";
+import { DeliveryJournalReceiptCard } from "@/components/queue/delivery-journal/DeliveryJournalReceiptCard";
+import { DeliveryJournalSearchField } from "@/components/queue/delivery-journal/DeliveryJournalSearchField";
 import { DeliveryJournalInsightsPanel } from "@/components/queue/DeliveryJournalInsightsPanel";
 import { SegmentedControl } from "@/components/ui/SegmentedControl";
 import type { WarehouseDeliveryReceipt } from "@/lib/warehouse/delivery-receipts";
@@ -17,7 +24,6 @@ import { usePreviewMutationBlocker } from "@/components/layout/usePreviewMutatio
 import {
   WAREHOUSE_CARRIERS,
   WAREHOUSE_SHIPMENT_FORMS,
-  formatShipmentQuantitySuffix,
   normalizeShipmentCounts,
   shipmentFormShowsPackages,
   shipmentFormShowsPallets,
@@ -32,20 +38,12 @@ import { Field, Input, Select, fieldControlClass } from "@/components/ui/Field";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { Toast } from "@/components/ui/Toast";
 import { cn } from "@/lib/cn";
-import { panelSectionInsetClass, panelTypography } from "@/lib/ui/ontime-theme";
+import { brandLinkClass, panelSectionInsetClass, panelTypography } from "@/lib/ui/ontime-theme";
 import { IconChevronLeft, IconChevronRight } from "@/components/icons/StrokeIcons";
 
 type SupplierOption = { id: string; name: string; subiektKhId: number | null };
 
-type FormState = {
-  supplierId: string;
-  supplierOther: string;
-  carrier: WarehouseCarrier;
-  shipmentForm: WarehouseShipmentForm;
-  packageCount: string;
-  palletCount: string;
-  note: string;
-};
+type FormState = DeliveryJournalFormState;
 
 const EMPTY_FORM: FormState = {
   supplierId: "",
@@ -84,19 +82,6 @@ function formCountsForSubmit(form: FormState): {
   );
 }
 
-/** Po zapisie zostaw dostawcę i kuriera — szybkie wpisywanie kolejnych dostaw. */
-function formStateForNextEntry(previous: FormState): FormState {
-  return {
-    supplierId: previous.supplierId,
-    supplierOther: "",
-    carrier: previous.carrier,
-    shipmentForm: previous.shipmentForm,
-    packageCount: previous.packageCount,
-    palletCount: previous.palletCount,
-    note: "",
-  };
-}
-
 function formatTodayLabel(dateKey: string): string {
   const [y, m, d] = dateKey.split("-");
   return `${d}.${m}.${y}`;
@@ -129,6 +114,7 @@ function ReceiptRow({
   suppliers,
   pending,
   readOnly,
+  highlightQuery,
   onSaved,
   onDeleted,
 }: {
@@ -136,6 +122,7 @@ function ReceiptRow({
   suppliers: SupplierOption[];
   pending: boolean;
   readOnly?: boolean;
+  highlightQuery?: string;
   onSaved: () => void;
   onDeleted: () => void;
 }) {
@@ -173,25 +160,12 @@ function ReceiptRow({
 
   if (!editing) {
     return (
-      <li className="rounded-md border border-slate-200 bg-white px-4 py-3">
-        <div className="flex flex-wrap items-start justify-between gap-2">
-          <div>
-            <p className="font-semibold text-slate-900">{receipt.supplierName}</p>
-            <p className="mt-1 text-sm text-slate-600">
-              {warehouseCarrierLabel(receipt.carrier)} ·{" "}
-              {warehouseShipmentFormLabel(receipt.shipmentForm)}
-              {formatShipmentQuantitySuffix(
-                receipt.shipmentForm,
-                receipt.packageCount,
-                receipt.palletCount
-              )}
-            </p>
-            {receipt.note ? (
-              <p className="mt-1 text-xs text-slate-500">{receipt.note}</p>
-            ) : null}
-          </div>
-          {!readOnly ? (
-            <div className="flex gap-2">
+      <DeliveryJournalReceiptCard
+        receipt={receipt}
+        highlightQuery={highlightQuery}
+        actions={
+          !readOnly ? (
+            <>
               <Button variant="secondary" size="sm" disabled={pending} onClick={() => setEditing(true)}>
                 Edytuj
               </Button>
@@ -207,10 +181,10 @@ function ReceiptRow({
               >
                 Usuń
               </Button>
-            </div>
-          ) : null}
-        </div>
-      </li>
+            </>
+          ) : undefined
+        }
+      />
     );
   }
 
@@ -241,6 +215,7 @@ function ReceiptFormFields({
   disabled,
   onSubmitShortcut,
   carrierHintLabel,
+  supplierFieldKey,
 }: {
   form: FormState;
   setForm: React.Dispatch<React.SetStateAction<FormState>>;
@@ -248,6 +223,8 @@ function ReceiptFormFields({
   disabled?: boolean;
   onSubmitShortcut?: () => void;
   carrierHintLabel?: string | null;
+  /** Remount typeahead — czyści tekst w polu po zapisie. */
+  supplierFieldKey?: number;
 }) {
   const showPallets = shipmentFormShowsPallets(form.shipmentForm);
   const showPackages = shipmentFormShowsPackages(form.shipmentForm);
@@ -256,6 +233,7 @@ function ReceiptFormFields({
     <div className="grid gap-3 sm:grid-cols-2">
       <Field label="Dostawca">
         <QueueSupplierDirectoryField
+          key={supplierFieldKey}
           suppliers={suppliers}
           value={form.supplierId}
           onChange={(supplierId) => setForm((f) => ({ ...f, supplierId }))}
@@ -387,6 +365,9 @@ export function DeliveryJournalSection({
   const [form, setForm] = useState<FormState>(EMPTY_FORM);
   const [carrierHintLabel, setCarrierHintLabel] = useState<string | null>(null);
   const [carrierHintForSupplierId, setCarrierHintForSupplierId] = useState<string | null>(null);
+  const [supplierFieldKey, setSupplierFieldKey] = useState(0);
+  const [entrySearch, setEntrySearch] = useState("");
+  const [archiveSearchSeed, setArchiveSearchSeed] = useState("");
   const formPanelRef = useRef<HTMLDivElement>(null);
   const visibleCarrierHint =
     form.supplierId && carrierHintForSupplierId === form.supplierId ? carrierHintLabel : null;
@@ -399,6 +380,8 @@ export function DeliveryJournalSection({
           : await actionFetchTodayDeliveryJournal();
         setJournal(next);
         setViewDate(next.date);
+        setEntrySearch("");
+        setArchiveSearchSeed("");
       } catch (e) {
         setToast({
           text: e instanceof Error ? e.message : "Błąd ładowania dziennika",
@@ -462,6 +445,17 @@ export function DeliveryJournalSection({
     return parts.join(" · ") || "Brak wpisów";
   }, [journal.summary]);
 
+  const goToArchive = useCallback((query?: string) => {
+    setArchiveSearchSeed(query?.trim() ?? "");
+    setSubView("insights");
+  }, []);
+
+  const filteredReceipts = useMemo(() => {
+    const q = entrySearch.trim();
+    if (!q) return journal.receipts;
+    return journal.receipts.filter((r) => matchesDeliveryReceiptQuery(r, q));
+  }, [journal.receipts, entrySearch]);
+
   const focusForm = useCallback(() => {
     requestAnimationFrame(() => {
       const panel = formPanelRef.current;
@@ -488,6 +482,9 @@ export function DeliveryJournalSection({
           note: snapshot.note,
         });
         setForm(formStateForNextEntry(snapshot));
+        setCarrierHintLabel(null);
+        setCarrierHintForSupplierId(null);
+        setSupplierFieldKey((key) => key + 1);
         setFormOpen(true);
         setToast({ text: "Zapisano — wpisz kolejną dostawę.", tone: "success" });
         refresh();
@@ -605,8 +602,8 @@ export function DeliveryJournalSection({
                 { value: "entries", label: "Wpisy na dziś", title: "Szybkie wpisywanie dostaw" },
                 {
                   value: "insights",
-                  label: "Archiwum i raporty",
-                  title: "Wyszukiwanie i podsumowania",
+                  label: "Archiwum",
+                  title: "Wyszukiwanie paczek i podsumowania",
                 },
               ]}
             />
@@ -615,7 +612,12 @@ export function DeliveryJournalSection({
       </div>
 
       {!showEntries ? (
-        <DeliveryJournalInsightsPanel suppliers={suppliers} todayDateKey={todayDateKey} />
+        <DeliveryJournalInsightsPanel
+          key={archiveSearchSeed || "default"}
+          suppliers={suppliers}
+          todayDateKey={todayDateKey}
+          initialQuery={archiveSearchSeed}
+        />
       ) : (
         <div className="px-4 py-5 sm:px-6">
       {canBrowseDates ? (
@@ -680,6 +682,7 @@ export function DeliveryJournalSection({
             disabled={pending}
             onSubmitShortcut={submitNew}
             carrierHintLabel={visibleCarrierHint}
+            supplierFieldKey={supplierFieldKey}
           />
           <div className="mt-3 flex flex-wrap items-center gap-2">
             <Button variant="primary" size="sm" disabled={pending} onClick={submitNew}>
@@ -699,8 +702,38 @@ export function DeliveryJournalSection({
         </div>
       ) : null}
 
+      {journal.receipts.length > 0 ? (
+        <div className="mb-4 space-y-1.5 rounded-md border border-emerald-100/70 bg-white p-2 shadow-sm">
+          <DeliveryJournalSearchField
+            id="journal-day-search"
+            label="Szukaj w tym dniu"
+            value={entrySearch}
+            disabled={pending}
+            placeholder="Nr listu, dostawca, kurier…"
+            onChange={setEntrySearch}
+          />
+          {entrySearch.trim() ? (
+            <p className={cn(panelTypography.caption, "px-0.5")}>
+              {filteredReceipts.length} z {journal.receipts.length}{" "}
+              {journal.receipts.length === 1 ? "wpisu" : "wpisów"}
+            </p>
+          ) : isMagazynRole ? (
+            <p className={cn(panelTypography.caption, "px-0.5")}>
+              Szukasz wcześniej?{" "}
+              <button
+                type="button"
+                className={brandLinkClass}
+                onClick={() => goToArchive()}
+              >
+                Archiwum
+              </button>
+            </p>
+          ) : null}
+        </div>
+      ) : null}
+
       <ul className="mt-4 space-y-2">
-        {journal.receipts.map((r) => (
+        {filteredReceipts.map((r) => (
           <ReceiptRow
             key={r.id}
             receipt={r}
@@ -709,9 +742,32 @@ export function DeliveryJournalSection({
             readOnly={previewReadOnly || !isViewingToday}
             onSaved={refresh}
             onDeleted={refresh}
+            highlightQuery={entrySearch.trim() || undefined}
           />
         ))}
       </ul>
+
+      {!filteredReceipts.length &&
+      journal.receipts.length > 0 &&
+      entrySearch.trim() ? (
+        <div className="mt-4">
+          <EmptyState
+            title="Brak wyników na ten dzień"
+            description={
+              isMagazynRole
+                ? "Spróbuj innej frazy albo przeszukaj wcześniejsze dni w Archiwum."
+                : "Spróbuj innej frazy albo wybierz inną datę."
+            }
+            action={
+              isMagazynRole ? (
+                <Button variant="secondary" size="sm" onClick={() => goToArchive(entrySearch)}>
+                  Szukaj w Archiwum
+                </Button>
+              ) : undefined
+            }
+          />
+        </div>
+      ) : null}
 
       {!journal.receipts.length && (!formOpen || !isViewingToday || !isMagazynRole) ? (
         <div className="mt-4">

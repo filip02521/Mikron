@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import { Field, Input, Select } from "@/components/ui/Field";
 import { FieldHintButton } from "@/components/admin/FieldHintButton";
 import {
@@ -9,6 +10,10 @@ import {
   supplierCyclePresetById,
 } from "@/lib/suppliers/cycle-presets";
 import { parseInterval } from "@/lib/orders/dates";
+
+function initialCustomMode(value: string, presets: SupplierCyclePreset[]): boolean {
+  return matchSupplierCyclePreset(value, presets) === SUPPLIER_CYCLE_CUSTOM_ID;
+}
 
 export function SupplierCycleField({
   label,
@@ -31,10 +36,20 @@ export function SupplierCycleField({
   customPlaceholder: string;
   disabled?: boolean;
 }) {
-  const selectedId = matchSupplierCyclePreset(value, presets);
-  const isCustom = selectedId === SUPPLIER_CYCLE_CUSTOM_ID;
+  const [customMode, setCustomMode] = useState(() => initialCustomMode(value, presets));
+  const matchedPresetId = matchSupplierCyclePreset(value, presets);
+  const selectedId = customMode ? SUPPLIER_CYCLE_CUSTOM_ID : matchedPresetId;
+  const isCustom = customMode;
   const parsed = value.trim() ? parseInterval(value) : null;
   const parseOk = !value.trim() || parsed != null || /potrzeb/i.test(value);
+  const numericOnly = isCustom && /^\d+$/.test(value.trim());
+
+  const fieldHint =
+    isCustom && value.trim() && !parseOk
+      ? "Nie rozpoznano formatu — użyj np. 6, 6 tyg., 4 miesiące."
+      : numericOnly
+        ? "Sama liczba oznacza tygodnie. Dla miesięcy dopisz „miesiące”, np. 4 miesiące."
+        : undefined;
 
   return (
     <Field
@@ -46,11 +61,7 @@ export function SupplierCycleField({
           </FieldHintButton>
         </span>
       }
-      hint={
-        isCustom && value.trim() && !parseOk
-          ? "Nie rozpoznano formatu — użyj np. 6, 6 tyg., 2 miesiące."
-          : undefined
-      }
+      hint={fieldHint}
       state={isCustom && value.trim() && !parseOk ? "warning" : "default"}
     >
       <Select
@@ -59,9 +70,11 @@ export function SupplierCycleField({
         onChange={(e) => {
           const id = e.target.value;
           if (id === SUPPLIER_CYCLE_CUSTOM_ID) {
+            setCustomMode(true);
             if (!isCustom) onChange("");
             return;
           }
+          setCustomMode(false);
           const preset = supplierCyclePresetById(id, presets);
           if (preset) onChange(preset.raw);
         }}

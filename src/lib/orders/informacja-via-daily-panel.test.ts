@@ -35,6 +35,23 @@ describe("informacja via daily panel", () => {
     ).toBe(false);
   });
 
+  it("pokazuje zamówienie z samym kodem Mikran w Prośbach", () => {
+    expect(
+      canShowInForSomeoneLeft({
+        id: "z1",
+        supplier_id: "s1",
+        sales_person_id: "sp1",
+        symbol: "-",
+        products: "-",
+        mikran_code: "999",
+        quantity: "1",
+        status: "Nowe",
+        order_type: "None",
+        request_kind: "zamowienie",
+      } as IndividualOrder)
+    ).toBe(true);
+  });
+
   it("po zwolnieniu flagi nie blokuje magazynu", () => {
     expect(
       isInformacjaDeferredFromWarehouse({

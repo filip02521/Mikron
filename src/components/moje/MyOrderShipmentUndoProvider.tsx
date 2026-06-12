@@ -23,12 +23,15 @@ import {
   undoExpiresAtNow,
   undoWindowBannerDescription,
 } from "@/lib/orders/daily-panel-undo";
+import type { SalesCancelUndoRestore } from "@/lib/orders/sales-cancel-db";
 import { useUndoShortcutLabel } from "@/lib/platform/keyboard-shortcut-label";
 
 export type ShipmentUndoReport = {
   orderIds: string[];
   title: string;
   kind: "pickup" | "dismiss" | "cancel";
+  /** Migawka przed rezygnacją — przywraca poprzednią częściową rezygnację przy cofnięciu. */
+  restoreById?: Record<string, SalesCancelUndoRestore>;
 };
 
 type ShipmentUndoState = ShipmentUndoReport & { expiresAt: number };
@@ -119,7 +122,9 @@ export function MyOrderShipmentUndoProvider({
         if (snapshot.kind === "dismiss") {
           await actionUnacknowledgeDismiss(snapshot.orderIds);
         } else if (snapshot.kind === "cancel") {
-          await actionUnacknowledgeSalesCancel(snapshot.orderIds);
+          await actionUnacknowledgeSalesCancel(snapshot.orderIds, {
+            restoreById: snapshot.restoreById,
+          });
         } else {
           await actionUnacknowledgePickup(snapshot.orderIds);
         }

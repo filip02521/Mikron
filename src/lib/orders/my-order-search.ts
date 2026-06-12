@@ -41,6 +41,7 @@ export function myOrderRowSearchText(row: MyOrderRow): string {
     row.product,
     row.symbol ?? "",
     row.clientLabel ?? "",
+    row.requestNote ?? "",
     row.sourceZkNumber ?? "",
     row.statusTitle,
     myOrderFriendlyStatusLabel(row.statusTitle),
@@ -55,6 +56,7 @@ export function myOrderRowSearchText(row: MyOrderRow): string {
       line.product,
       line.symbol ?? "",
       line.clientName ?? "",
+      line.requestNote ?? "",
       line.mikranCode ?? "",
       line.quantityLabel
     );
@@ -66,7 +68,14 @@ export function myOrderRowSearchText(row: MyOrderRow): string {
 /** Tekst jednej pozycji produktowej (bez nagłówka grupy). */
 export function myOrderLineSearchText(line: MyOrderLine): string {
   return normalizeMyOrderSearchText(
-    [line.product, line.symbol ?? "", line.clientName ?? "", line.mikranCode ?? "", line.quantityLabel]
+    [
+      line.product,
+      line.symbol ?? "",
+      line.clientName ?? "",
+      line.requestNote ?? "",
+      line.mikranCode ?? "",
+      line.quantityLabel,
+    ]
       .filter(Boolean)
       .join("\n")
   );

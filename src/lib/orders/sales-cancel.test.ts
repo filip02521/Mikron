@@ -1,14 +1,20 @@
 import { describe, expect, it } from "vitest";
 import {
   canSalesCancelOrders,
+  effectiveSalesCancelledQuantity,
   effectiveSalesCancelPhase,
   isSalesCancelNoticePending,
   isSalesCancelledForQueue,
+  maxSalesCancelQuantity,
+  planSalesCancelQuantity,
+  receiveQueueTargetQuantity,
   resolveSalesCancelPhase,
   resolveGroupSalesCancelPhase,
   salesCancelConfirmCopy,
   salesCancelConfirmForLines,
   salesCancelOverflowLabel,
+  salesPartialCancelConfirmCopy,
+  showSalesCancelRemainderAction,
 } from "./sales-cancel";
 import type { IndividualOrder } from "@/types/database";
 
@@ -174,5 +180,130 @@ describe("sales-cancel", () => {
         order("Zamowione"),
       ])
     ).toBe(true);
+  });
+
+  it("canSalesCancelOrders — częściowo wycofana linia nadal anulowalna", () => {
+    expect(
+      canSalesCancelOrders([
+        order("Zamowione", {
+          quantity: "5",
+          sales_cancelled_at: "2026-05-01",
+          sales_cancelled_quantity: "2",
+        }),
+      ])
+    ).toBe(true);
+  });
+
+  it("planSalesCancelQuantity — 2+3=5 częściowa dostawa", () => {
+    const o = order("Czesciowo_zrealizowane", {
+      quantity: "5",
+      delivered_quantity: "2",
+    });
+    expect(maxSalesCancelQuantity(o)).toBe(3);
+    expect(showSalesCancelRemainderAction(o)).toBe(true);
+    const plan = planSalesCancelQuantity(o, 3);
+    expect(plan.cancelQty).toBe(3);
+    expect(plan.totalCancelledQty).toBe(3);
+    expect(plan.storedCancelledQuantity).toBe("3");
+    expect(plan.statusAfter).toBe("Zrealizowane");
+    expect(plan.keepLineActiveForSales).toBe(true);
+  });
+
+  it("planSalesCancelQuantity — przed zamówieniem zostawia aktywną resztę", () => {
+    const o = order("Nowe", { quantity: "5" });
+    const plan = planSalesCancelQuantity(o, 2);
+    expect(plan.storedCancelledQuantity).toBe("2");
+    expect(plan.keepLineActiveForSales).toBe(true);
+    expect(plan.statusAfter).toBeUndefined();
+  });
+
+  it("salesPartialCancelConfirmCopy — częściowa rezygnacja w drodze", () => {
+    const copy = salesPartialCancelConfirmCopy(
+      "in_transit",
+      "Ivoclar Variolink",
+      3,
+      5,
+      0
+    );
+    expect(copy.title).toBe("Zmniejszyć ilość w zamówieniu?");
+    expect(copy.message).toContain("Rezygnujesz z 3 z 5 szt.");
+    expect(copy.message).toContain("Pozostałe 2 szt. będą na Ciebie czekały po dostawie.");
+    expect(copy.confirmLabel).toBe("Rezygnuję z 3 szt.");
+  });
+
+  it("salesPartialCancelConfirmCopy — jedna sztuka zostaje w zamówieniu", () => {
+    const copy = salesPartialCancelConfirmCopy(
+      "in_transit",
+      "Produkt X",
+      4,
+      5,
+      0
+    );
+    expect(copy.message).toContain(
+      "Pozostała 1 szt. będzie na Ciebie czekała po dostawie."
+    );
+  });
+
+  it("planSalesCancelQuantity — Zamowione 5 szt., rezygnacja z 3, zostają 2 u dostawcy", () => {
+    const o = order("Zamowione", { quantity: "5" });
+    expect(maxSalesCancelQuantity(o)).toBe(5);
+    expect(showSalesCancelRemainderAction(o)).toBe(false);
+    const plan = planSalesCancelQuantity(o, 3);
+    expect(plan.cancelQty).toBe(3);
+    expect(plan.storedCancelledQuantity).toBe("3");
+    expect(plan.statusAfter).toBeUndefined();
+    expect(plan.keepLineActiveForSales).toBe(true);
+  });
+
+  it("planSalesCancelQuantity — pełna rezygnacja przed dostawą zapisuje NULL", () => {
+    const o = order("Zamowione");
+    const plan = planSalesCancelQuantity(o);
+    expect(plan.cancelQty).toBe(3);
+    expect(plan.storedCancelledQuantity).toBeNull();
+    expect(plan.keepLineActiveForSales).toBe(false);
+  });
+
+  it("planSalesCancelQuantity — druga rezygnacja na tej samej linii", () => {
+    const o = order("Zamowione", {
+      quantity: "5",
+      sales_cancelled_at: "2026-05-01",
+      sales_cancelled_quantity: "2",
+    });
+    expect(maxSalesCancelQuantity(o)).toBe(3);
+    expect(resolveSalesCancelPhase(o)).toBe("in_transit");
+    const plan = planSalesCancelQuantity(o, 1);
+    expect(plan.totalCancelledQty).toBe(3);
+    expect(plan.storedCancelledQuantity).toBe("3");
+  });
+
+  it("isSalesCancelledForQueue — pomija częściową z resztą u dostawcy", () => {
+    expect(
+      isSalesCancelledForQueue({
+        ...order("Zamowione"),
+        sales_cancelled_at: "t",
+        sales_cancel_phase: "in_transit",
+        sales_cancelled_quantity: "2",
+      })
+    ).toBe(false);
+  });
+
+  it("receiveQueueTargetQuantity — aktywne zamówienie po częściowej rezygnacji", () => {
+    expect(
+      receiveQueueTargetQuantity({
+        ...order("Zamowione", { quantity: "5" }),
+        sales_cancelled_at: "2026-05-01",
+        sales_cancelled_quantity: "3",
+      })
+    ).toBe(2);
+  });
+
+  it("effectiveSalesCancelledQuantity — jawna ilość z kolumny", () => {
+    expect(
+      effectiveSalesCancelledQuantity({
+        ...order("Zamowione"),
+        sales_cancelled_at: "2026-05-01",
+        sales_cancelled_quantity: "3",
+      })
+    ).toBe(3);
   });
 });

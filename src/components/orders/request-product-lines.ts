@@ -2,6 +2,7 @@ import { randomId } from "@/lib/ensure-crypto";
 import { MAX_BATCH_ORDER_LINES } from "@/lib/security/text-limits";
 
 export type ProductLineDraft = {
+  /** Id UI (React). Dla zapisu edycji liczy się tylko id z orderIds — nowe linie dostają losowe id. */
   id: string;
   symbol: string;
   /** Kod Mikran (tw_PLU). */

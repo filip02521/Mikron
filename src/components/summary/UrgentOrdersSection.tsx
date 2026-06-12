@@ -142,7 +142,7 @@ function UrgentCard({
       aria-busy={rowPending}
       onMouseLeave={panelRowClearFocusOnLeave}
     >
-      <div className="px-2 py-2">
+      <div className="px-2.5 py-2 sm:px-3">
         <div className={panelQueueRowLayoutClass}>
           <div className="flex min-w-0 flex-1 gap-2">
             <input
@@ -272,7 +272,7 @@ function UrgentGroup({
           <div className={urgentGroupDividerClassName(isOverdue)} aria-hidden />
         </div>
       ) : null}
-      <ul className="space-y-1">
+      <ul className="space-y-1.5">
         {items.map((item) => (
           <li key={item.supplierId}>
             <UrgentCard

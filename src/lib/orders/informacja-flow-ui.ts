@@ -145,12 +145,3 @@ export const INFORMACJA_FLOW_CARD_STYLES: Record<
     summary: "border-violet-200/90 bg-violet-50/50",
   },
 };
-
-export const INFORMACJA_FLOW_LINE_BADGE_STYLES: Record<
-  InformacjaFlowUiTone,
-  string
-> = {
-  amber: "bg-amber-100 text-amber-900",
-  indigo: "bg-indigo-100 text-indigo-900",
-  violet: "bg-violet-100 text-violet-900",
-};

@@ -212,6 +212,7 @@ function SupplierEditModalInner({
           </div>
           <div className="grid gap-3 sm:grid-cols-2">
             <SupplierCycleField
+              key={`interval-${form.id ?? "new"}`}
               label="Częstotliwość"
               hintLabel="Co oznacza częstotliwość"
               hintTitle="Częstotliwość zamówień"
@@ -227,6 +228,7 @@ function SupplierEditModalInner({
               disabled={pending}
             />
             <SupplierCycleField
+              key={`stock-${form.id ?? "new"}`}
               label="Zapas (okres)"
               hintLabel="Co oznacza zapas"
               hintTitle="Zapas — okres zamówienia"
@@ -238,7 +240,7 @@ function SupplierEditModalInner({
               value={form.stock_raw}
               onChange={(raw) => patchCycleFields({ stock_raw: raw })}
               presets={SUPPLIER_STOCK_PRESETS}
-              customPlaceholder="np. 2 MIESIĄCE, W RAZIE POTRZEBY"
+              customPlaceholder="np. 4 miesiące, 2 MIESIĄCE, W RAZIE POTRZEBY"
               disabled={pending}
             />
           </div>

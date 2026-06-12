@@ -355,7 +355,7 @@ export function WeekPlanner({
       <section
         id={sectionId}
         className={cn(
-          dailyPanelQueueShellClass(),
+          dailyPanelQueueShellClass("plan"),
           dailyPanelTabScrollClass,
           total > 0 && "overflow-x-clip"
         )}

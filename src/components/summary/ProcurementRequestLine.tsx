@@ -2,16 +2,48 @@
 
 import type { ForSomeoneLine } from "@/lib/orders/summary-workspace";
 import { ProductSourceBadge } from "@/components/orders/ProductSourceBadge";
-import { InformacjaFlowLineBadge } from "@/components/orders/InformacjaFlowLineBadge";
 import { MyOrderAssignedClient } from "@/components/moje/MyOrderAssignedClient";
+import { ProcurementSalesRequestNote } from "@/components/orders/ProcurementSalesRequestNote";
+import { sharedRequestNoteFromLines } from "@/lib/orders/sales-request-note";
 import { cn } from "@/lib/cn";
+import { panelTypography } from "@/lib/ui/ontime-theme";
+
+/** Klient prośby — widoczny w wierszu grupy panelu Dziś. */
+export function ProcurementRequestClientMeta({
+  clientLabel,
+  className,
+}: {
+  clientLabel: string | null;
+  className?: string;
+}) {
+  if (!clientLabel) return null;
+
+  if (clientLabel.includes("różnych klientów")) {
+    return (
+      <p className={cn(panelTypography.rowMeta, className)}>
+        <span className="inline-flex items-center rounded bg-slate-100 px-1 py-0.5 font-semibold uppercase tracking-wide text-slate-500">
+          Klienci
+        </span>{" "}
+        <span className="font-medium text-slate-800">{clientLabel}</span>
+      </p>
+    );
+  }
+
+  return <MyOrderAssignedClient name={clientLabel} className={className} />;
+}
 
 export function ProcurementRequestLine({
   line,
   className,
+  suppressRequestNote = false,
+  suppressClient = false,
 }: {
   line: ForSomeoneLine;
   className?: string;
+  /** Gdy notatka jest już w nagłówku grupy — nie duplikuj na każdej pozycji. */
+  suppressRequestNote?: boolean;
+  /** Gdy klient jest już w nagłówku grupy — nie duplikuj na pozycji. */
+  suppressClient?: boolean;
 }) {
   return (
     <li
@@ -20,7 +52,11 @@ export function ProcurementRequestLine({
         className
       )}
     >
-      <ProcurementRequestLineContent line={line} />
+      <ProcurementRequestLineContent
+        line={line}
+        suppressRequestNote={suppressRequestNote}
+        suppressClient={suppressClient}
+      />
     </li>
   );
 }
@@ -29,13 +65,22 @@ export function ProcurementRequestLine({
 export function ProcurementRequestLineInline({
   line,
   className,
+  suppressRequestNote = false,
+  suppressClient = false,
 }: {
   line: ForSomeoneLine;
   className?: string;
+  suppressRequestNote?: boolean;
+  suppressClient?: boolean;
 }) {
   return (
     <div className={cn("mt-1", className)}>
-      <ProcurementRequestLineContent line={line} compact />
+      <ProcurementRequestLineContent
+        line={line}
+        compact
+        suppressRequestNote={suppressRequestNote}
+        suppressClient={suppressClient}
+      />
     </div>
   );
 }
@@ -43,9 +88,13 @@ export function ProcurementRequestLineInline({
 function ProcurementRequestLineContent({
   line,
   compact = false,
+  suppressRequestNote = false,
+  suppressClient = false,
 }: {
   line: ForSomeoneLine;
   compact?: boolean;
+  suppressRequestNote?: boolean;
+  suppressClient?: boolean;
 }) {
   const hasMeta =
     (line.symbol && line.symbol !== "-") || (line.quantity && line.quantity !== "-");
@@ -64,7 +113,6 @@ function ProcurementRequestLineContent({
         />
         <span className="min-w-0 flex-1">
           {line.products}
-          <InformacjaFlowLineBadge line={line} className="ml-1.5" />
         </span>
       </p>
       {hasMeta ? (
@@ -80,12 +128,25 @@ function ProcurementRequestLineContent({
             : null}
         </p>
       ) : null}
-      {line.clientName ? (
+      {line.clientName && !suppressClient ? (
         <MyOrderAssignedClient
           name={line.clientName}
           className={cn(compact ? "mt-1 pl-5" : "mt-1.5")}
         />
       ) : null}
+      {line.requestNote && !suppressRequestNote ? (
+        <ProcurementSalesRequestNote
+          note={line.requestNote}
+          compact={compact}
+          className={cn(compact ? "mt-1 pl-5" : "mt-1.5")}
+        />
+      ) : null}
     </>
   );
+}
+
+export function procurementGroupRequestNote(
+  lines: ForSomeoneLine[]
+): string | null {
+  return sharedRequestNoteFromLines(lines);
 }

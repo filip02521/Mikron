@@ -72,6 +72,54 @@ export function getDeliveryProgress(
   };
 }
 
+export type OrderFulfillmentProgress = DeliveryProgress & {
+  /** Wycofane sztuki (0 gdy brak rezygnacji). */
+  cancelled: number;
+  /** Aktywne zamówienie = ordered − cancelled. */
+  activeOrdered: number | null;
+  /** Szacunek brakujących u dostawcy = activeOrdered − delivered. */
+  supplierRemaining: number | null;
+};
+
+export function getOrderFulfillmentProgress(
+  orderedQuantity: string,
+  deliveredQuantity: string,
+  cancelledQuantity?: string | null
+): OrderFulfillmentProgress {
+  const base = getDeliveryProgress(orderedQuantity, deliveredQuantity);
+  const cancelledRaw = parseOrderQuantity(cancelledQuantity ?? "");
+  const cancelled = cancelledRaw ?? 0;
+
+  if (!base.hasNumericQty || base.ordered == null) {
+    return {
+      ...base,
+      cancelled,
+      activeOrdered: null,
+      supplierRemaining: null,
+    };
+  }
+
+  const activeOrdered = Math.max(0, base.ordered - cancelled);
+  const supplierRemaining = Math.max(0, activeOrdered - base.delivered);
+
+  let fractionLabel = base.fractionLabel;
+  if (cancelled > 0) {
+    if (base.delivered > 0) {
+      fractionLabel = `${base.delivered} na magazynie · ${cancelled} wycofane z ${base.ordered} szt.`;
+    } else {
+      fractionLabel = `${activeOrdered} z ${base.ordered} szt. · ${cancelled} wycofane`;
+    }
+  }
+
+  return {
+    ...base,
+    cancelled,
+    activeOrdered,
+    supplierRemaining,
+    fractionLabel,
+  };
+}
+
 export const INDIVIDUAL_STATUS_LABELS: Record<IndividualOrderStatus, string> = {
   Nowe: "Nowe",
   Weryfikacja: "Weryfikacja danych",

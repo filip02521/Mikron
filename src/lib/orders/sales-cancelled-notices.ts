@@ -26,8 +26,13 @@ export type SalesCancelledNotice = {
   /** Ustawione przez magazyn (stan / zwrot). */
   dispositionSummary: string | null;
   needsDisposition: boolean;
-  lines: ForSomeoneLine[];
+  lines: SalesCancelledNoticeLine[];
   orderIds: string[];
+};
+
+export type SalesCancelledNoticeLine = ForSomeoneLine & {
+  /** Czy ta pozycja wymaga decyzji stan / zwrot (nie dotyczy wycofania przed zamówieniem). */
+  needsDisposition: boolean;
 };
 
 export function procurementSalesCancelPhaseLabel(phase: SalesCancelPhase): string {
@@ -109,8 +114,18 @@ export function buildSalesCancelledNotices(
       phase,
       phaseLabel: procurementSalesCancelPhaseLabel(phase),
       dispositionSummary,
-      needsDisposition: salesCancelPhaseNeedsDisposition(phase),
-      lines: items.map((item) => mapOrderToForSomeoneLine(item)),
+      needsDisposition: items.some((item) => {
+        const itemPhase = effectiveSalesCancelPhase(item);
+        return itemPhase !== null && salesCancelPhaseNeedsDisposition(itemPhase);
+      }),
+      lines: items.map((item) => {
+        const itemPhase = effectiveSalesCancelPhase(item);
+        return {
+          ...mapOrderToForSomeoneLine(item),
+          needsDisposition:
+            itemPhase !== null && salesCancelPhaseNeedsDisposition(itemPhase),
+        };
+      }),
       orderIds: items.map((i) => i.id),
     });
   }

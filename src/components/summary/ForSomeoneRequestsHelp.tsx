@@ -6,7 +6,10 @@ import { KeyboardShortcutsHint } from "@/components/ui/KeyboardShortcutsHint";
 import { Kbd } from "@/components/ui/Kbd";
 import { PanelQueueStatDot } from "@/components/ui/UiGlyphs";
 import { ProductSourceBadge } from "@/components/orders/ProductSourceBadge";
-import { INFORMACJA_VIA_PANEL_BADGE } from "@/lib/orders/informacja-flow-copy";
+import {
+  INFORMACJA_STOCK_OUT_PANEL_BADGE,
+  INFORMACJA_VIA_PANEL_BADGE,
+} from "@/lib/orders/informacja-flow-copy";
 
 const FOR_SOMEONE_KEYBOARD_HINTS = [
   { keys: ["↑", "↓"], label: "grupy" },
@@ -42,6 +45,14 @@ export function StockOutSectionHelp() {
           </li>
           <li>Po Główne pozycja znika z tej listy.</li>
         </ul>
+      </HelpBlock>
+
+      <HelpBlock title="Oznaczenia">
+        <p>
+          Badge{" "}
+          <strong className="font-medium text-amber-800">{INFORMACJA_STOCK_OUT_PANEL_BADGE}</strong>{" "}
+          — w prawym górnym rogu wiersza (bez powtórzenia przy produkcie).
+        </p>
       </HelpBlock>
     </HelpPopover>
   );
@@ -91,8 +102,8 @@ export function ForSomeoneRequestsSectionHelp() {
         <ul className="list-disc space-y-1.5 pl-4">
           <li>
             Badge <strong className="font-medium text-indigo-800">{INFORMACJA_VIA_PANEL_BADGE}</strong>{" "}
-            — prośba informacyjna: najpierw zamów u dostawcy, potem magazyn wyśle e-mail do
-            handlowca.
+            — w prawym górnym rogu wiersza: prośba informacyjna przez panel (najpierw zamów u
+            dostawcy, potem magazyn wyśle e-mail).
           </li>
           <li>
             Badge <strong className="font-medium text-violet-800">Nowa</strong> — zakupy jeszcze

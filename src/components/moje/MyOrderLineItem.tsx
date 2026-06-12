@@ -2,7 +2,12 @@
 
 import type { MyOrderLine, MyOrderLineStockStatus } from "@/lib/orders/my-order-presenter";
 import type { SalesCancelPhase } from "@/lib/orders/sales-cancel";
+import {
+  salesCancelLineCustomQtyLabel,
+  salesCancelLineRemainderLabel,
+} from "@/lib/orders/sales-cancel";
 import { MyOrderAssignedClient } from "@/components/moje/MyOrderAssignedClient";
+import { MyOrderRequestNote } from "@/components/moje/MyOrderRequestNote";
 import { MyOrderLineClientField } from "@/components/moje/MyOrderLineClientField";
 import { MyOrderAckButton } from "@/components/moje/MyOrderAckButton";
 import { MyOrderCancelButton } from "@/components/moje/MyOrderCancelButton";
@@ -52,11 +57,13 @@ export function MyOrderLineItem({
   cancelLineLabel = "Anuluj",
   cancelLineAriaLabel,
   onCancelLine,
+  onPartialCancelLine,
   canEditClient,
   onSaveClient,
   openClientEditor = false,
   onStartEditClient,
   hideClientLabel = false,
+  hideRequestNote = false,
   searchQuery,
 }: {
   line: MyOrderLine;
@@ -73,12 +80,24 @@ export function MyOrderLineItem({
   cancelLineLabel?: string;
   cancelLineAriaLabel?: string;
   onCancelLine?: (orderId: string, phase: SalesCancelPhase) => void;
+  onPartialCancelLine?: (
+    orderId: string,
+    phase: SalesCancelPhase,
+    opts: {
+      product: string;
+      maxQty: number;
+      defaultQty: number;
+      deliveredQty?: number;
+    }
+  ) => void;
   canEditClient?: boolean;
   onSaveClient?: (orderId: string, patch: SalesClientAssignment) => void | Promise<void>;
   openClientEditor?: boolean;
   onStartEditClient?: () => void;
   /** Gdy klient jest już w MetaGrid (1 produkt, bez edycji). */
   hideClientLabel?: boolean;
+  /** Gdy notatka jest już na karcie grupy — nie duplikuj przy produkcie. */
+  hideRequestNote?: boolean;
   searchQuery?: string | null;
 }) {
   const badge = showProgress && emphasizeStock ? stockBadge(line.stockStatus) : null;
@@ -88,6 +107,9 @@ export function MyOrderLineItem({
   const detailParts = [line.quantityLabel, showProgress ? line.progressLabel : null].filter(
     Boolean
   );
+
+  const partialDefaultQty = line.defaultSalesCancelQuantity;
+  const partialMaxQty = line.maxSalesCancelQuantity ?? partialDefaultQty ?? 1;
 
   return (
     <li
@@ -164,6 +186,13 @@ export function MyOrderLineItem({
               className={cn("mt-1.5", !compact && "pl-5")}
             />
           ) : null}
+          {!hideRequestNote && line.requestNote?.trim() ? (
+            <MyOrderRequestNote
+              note={line.requestNote}
+              searchQuery={searchQuery}
+              className={cn("mt-1.5", !compact && "pl-5")}
+            />
+          ) : null}
         </div>
 
         <div className="flex shrink-0 flex-col items-end gap-0.5">
@@ -183,17 +212,78 @@ export function MyOrderLineItem({
           {canCancelLine &&
           line.canCancelBySales &&
           line.salesCancelPhase &&
-          onCancelLine ? (
-            <MyOrderCancelButton
-              disabled={pending}
-              ariaLabel={
-                cancelLineAriaLabel ?? `${cancelLineLabel}: ${line.product}`
-              }
-              onClick={() => onCancelLine(line.id, line.salesCancelPhase!)}
-              className="opacity-70 transition-opacity group-hover/line:opacity-100 group-focus-within/line:opacity-100 focus-visible:opacity-100"
-            >
-              {cancelLineLabel}
-            </MyOrderCancelButton>
+          (onCancelLine || onPartialCancelLine) ? (
+            <div className="flex flex-col items-end gap-0.5">
+              {line.showSalesCancelRemainder &&
+              partialDefaultQty != null &&
+              onPartialCancelLine ? (
+                <MyOrderCancelButton
+                  disabled={pending}
+                  ariaLabel={salesCancelLineRemainderLabel(partialDefaultQty)}
+                  onClick={() =>
+                    onPartialCancelLine(line.id, line.salesCancelPhase!, {
+                      product: line.product,
+                      maxQty: partialMaxQty,
+                      defaultQty: partialDefaultQty,
+                      deliveredQty: line.salesCancelDeliveredQty,
+                    })
+                  }
+                  className="opacity-70 transition-opacity group-hover/line:opacity-100 group-focus-within/line:opacity-100 focus-visible:opacity-100"
+                >
+                  {salesCancelLineRemainderLabel(partialDefaultQty)}
+                </MyOrderCancelButton>
+              ) : line.canPartialSalesCancel &&
+                onPartialCancelLine &&
+                line.salesCancelPhase === "in_transit" ? (
+                <MyOrderCancelButton
+                  disabled={pending}
+                  ariaLabel={`${salesCancelLineCustomQtyLabel(line.salesCancelPhase)} ${line.product}`}
+                  onClick={() =>
+                    onPartialCancelLine(line.id, line.salesCancelPhase!, {
+                      product: line.product,
+                      maxQty: partialMaxQty,
+                      defaultQty: 1,
+                      deliveredQty: line.salesCancelDeliveredQty,
+                    })
+                  }
+                  className="opacity-70 transition-opacity group-hover/line:opacity-100 group-focus-within/line:opacity-100 focus-visible:opacity-100"
+                >
+                  {salesCancelLineCustomQtyLabel(line.salesCancelPhase)}
+                </MyOrderCancelButton>
+              ) : onCancelLine ? (
+                <MyOrderCancelButton
+                  disabled={pending}
+                  ariaLabel={
+                    cancelLineAriaLabel ?? `${cancelLineLabel}: ${line.product}`
+                  }
+                  onClick={() => onCancelLine(line.id, line.salesCancelPhase!)}
+                  className="opacity-70 transition-opacity group-hover/line:opacity-100 group-focus-within/line:opacity-100 focus-visible:opacity-100"
+                >
+                  {cancelLineLabel}
+                </MyOrderCancelButton>
+              ) : null}
+              {line.canPartialSalesCancel &&
+              onPartialCancelLine &&
+              !(line.salesCancelPhase === "in_transit" && !line.showSalesCancelRemainder) ? (
+                <MyOrderCancelButton
+                  disabled={pending}
+                  ariaLabel={`${salesCancelLineCustomQtyLabel(line.salesCancelPhase)} ${line.product}`}
+                  onClick={() =>
+                    onPartialCancelLine(line.id, line.salesCancelPhase!, {
+                      product: line.product,
+                      maxQty: partialMaxQty,
+                      defaultQty: line.showSalesCancelRemainder
+                        ? 1
+                        : (partialDefaultQty ?? 1),
+                      deliveredQty: line.salesCancelDeliveredQty,
+                    })
+                  }
+                  className="opacity-70 transition-opacity group-hover/line:opacity-100 group-focus-within/line:opacity-100 focus-visible:opacity-100"
+                >
+                  {salesCancelLineCustomQtyLabel(line.salesCancelPhase)}
+                </MyOrderCancelButton>
+              ) : null}
+            </div>
           ) : null}
         </div>
       </div>

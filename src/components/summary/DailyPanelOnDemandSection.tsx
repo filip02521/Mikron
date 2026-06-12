@@ -18,6 +18,11 @@ import {
   DailyPanelSubsectionBar,
   dailyPanelQueueShellClass,
 } from "@/components/summary/DailyPanelSubsectionBar";
+import {
+  dailyPanelFlatListClass,
+  dailyPanelListInsetClass,
+  dailyPanelListRowPaddingClass,
+} from "@/components/summary/daily-panel-list-styles";
 
 export function DailyPanelOnDemandSection({
   suppliers,
@@ -53,15 +58,16 @@ export function DailyPanelOnDemandSection({
           ) : null
         }
       />
-      <ul className="divide-y divide-slate-100">
-        {preview.map((row) => {
-          const rowPending = isScopePending(row.supplierId);
-          return (
-            <li
-              key={row.supplierId}
-              className={panelRowGroupClass("px-3 py-2 sm:px-4")}
-              onMouseLeave={panelRowClearFocusOnLeave}
-            >
+      <div className={dailyPanelListInsetClass}>
+        <ul className={dailyPanelFlatListClass()}>
+          {preview.map((row) => {
+            const rowPending = isScopePending(row.supplierId);
+            return (
+              <li
+                key={row.supplierId}
+                className={cn(panelRowGroupClass(dailyPanelListRowPaddingClass))}
+                onMouseLeave={panelRowClearFocusOnLeave}
+              >
               <div className={panelQueueRowLayoutClass}>
                 <div className="min-w-0 flex-1">
                   <button
@@ -105,7 +111,8 @@ export function DailyPanelOnDemandSection({
             </li>
           );
         })}
-      </ul>
+        </ul>
+      </div>
       {rest > 0 && onOpenFullList ? (
         <div className="border-t border-slate-100 px-3 py-2 sm:px-4">
           <button

@@ -75,8 +75,15 @@ export function testMyOrderLine(
     canAcknowledgePickup: false,
     canCancelBySales: false,
     salesCancelPhase: null,
+    maxSalesCancelQuantity: null,
+    defaultSalesCancelQuantity: null,
+    canPartialSalesCancel: false,
+    showSalesCancelRemainder: false,
+    salesCancelDeliveredQty: 0,
+    salesCancelUndoRestore: {},
     clientName: null,
     clientKhId: null,
+    requestNote: null,
     ...partial,
   };
 }
@@ -111,6 +118,7 @@ export function testMyOrderRow(
     cancelNoticeOrderIds: [],
     cancelledAckOrderIds: [],
     clientLabel: null,
+    requestNote: null,
     supplierId: "s1",
     salesPersonId: "sp1",
     requestKind: "zamowienie",

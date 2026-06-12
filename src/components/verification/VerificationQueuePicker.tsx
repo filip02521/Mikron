@@ -13,9 +13,11 @@ import {
 import { VerificationPathBadge } from "@/components/verification/VerificationInformacjaPathPanel";
 import { MyOrderAssignedClient } from "@/components/moje/MyOrderAssignedClient";
 import { normalizeSalesClientName } from "@/lib/orders/sales-client-label";
+import { normalizeSalesRequestNote } from "@/lib/orders/sales-request-note";
 import type { VerificationInformacjaUi } from "@/lib/orders/verification-informacja-ui";
 import { formatPlDate } from "@/lib/display-labels";
 import { cn } from "@/lib/cn";
+import { salesRequestNoteLabelClass } from "@/lib/ui/ontime-theme";
 
 export type VerificationQueueItemMeta = {
   id: string;
@@ -237,6 +239,7 @@ function VerificationQueueRow({
 }) {
   const { order, supplierLabel, missing, ready, pathUi } = item;
   const clientName = normalizeSalesClientName(order.sales_client_name);
+  const requestNote = normalizeSalesRequestNote(order.sales_request_note);
 
   return (
     <li role="presentation">
@@ -308,6 +311,12 @@ function VerificationQueueRow({
             ) : null}
             {density === "comfortable" && clientName ? (
               <MyOrderAssignedClient name={clientName} className="mt-1" />
+            ) : null}
+            {requestNote ? (
+              <p className="mt-1 line-clamp-3 text-[11px] leading-snug text-slate-500">
+                <span className={salesRequestNoteLabelClass}>Uwagi</span>{" "}
+                <span className="font-medium text-slate-800">{requestNote}</span>
+              </p>
             ) : null}
             <p className="mt-1 text-[11px] text-slate-500">
               {formatPlDate(order.action_at.slice(0, 10))}

@@ -2,7 +2,9 @@ import { describe, expect, it } from "vitest";
 import {
   needsProcurementCancelDisposition,
   procurementDispositionQueueLabel,
+  procurementDispositionSaveSummary,
   procurementDispositionSummary,
+  countPendingDispositionChoices,
 } from "./procurement-disposition";
 import type { IndividualOrder } from "@/types/database";
 
@@ -35,5 +37,30 @@ describe("procurement-disposition", () => {
     } as import("@/types/database").IndividualOrder);
     expect(label).toContain("Zakupy:");
     expect(label).toContain("zwrot");
+  });
+
+  it("procurementDispositionSaveSummary — jedna i wiele pozycji", () => {
+    expect(
+      procurementDispositionSaveSummary(
+        [{ orderId: "a", disposition: "to_stock" }],
+        "Jan"
+      )
+    ).toBe("Rezygnacja Jan — na stan magazynu");
+    expect(
+      procurementDispositionSaveSummary(
+        [
+          { orderId: "a", disposition: "to_stock" },
+          { orderId: "b", disposition: "return" },
+          { orderId: "c", disposition: "to_stock" },
+        ],
+        "Jan"
+      )
+    ).toBe("Rezygnacja Jan — 2 na stan, 1 do zwrotu");
+  });
+
+  it("countPendingDispositionChoices", () => {
+    expect(
+      countPendingDispositionChoices(["a", "b"], { a: "to_stock", b: null })
+    ).toEqual({ chosen: 1, total: 2 });
   });
 });
