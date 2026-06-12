@@ -25,7 +25,7 @@ export type NavIconKey =
   | "teamAccounts"
   | "teamGroups";
 
-export type NavTone = "indigo" | "amber" | "emerald" | "sky" | "slate" | "violet";
+export type NavTone = "indigo" | "amber" | "orange" | "emerald" | "sky" | "slate" | "violet";
 
 export type NavTier = "primary" | "compact";
 
@@ -445,7 +445,7 @@ export function navForRole(
       mobileLabel: "ZK",
       description: "Towar z Subiekta",
       icon: "clientZk",
-      tone: "indigo",
+      tone: "violet",
       tier: "primary",
       mobileSlot: "primary",
       badge: badges.salesNotatnik,
@@ -456,7 +456,7 @@ export function navForRole(
       mobileLabel: "Plan",
       description: "Terminy u dostawców",
       icon: "plan",
-      tone: "indigo",
+      tone: "sky",
       tier: "primary",
       mobileSlot: "overflow",
     },
@@ -493,7 +493,7 @@ export function navForRole(
           mobileLabel: "Zespół",
           description: teamNav.overview,
           icon: "team",
-          tone: "indigo",
+          tone: "slate",
           tier: "compact",
           mobileSlot: "overflow",
         },
@@ -502,7 +502,7 @@ export function navForRole(
           label: "Handlowcy",
           description: teamNav.handlowcy,
           icon: "teamAccounts",
-          tone: "indigo",
+          tone: "slate",
           tier: "compact",
           mobileSlot: "overflow",
         },
@@ -511,7 +511,7 @@ export function navForRole(
           label: "Grupy",
           description: teamNav.grupy,
           icon: "teamGroups",
-          tone: "indigo",
+          tone: "slate",
           tier: "compact",
           mobileSlot: "overflow",
         },

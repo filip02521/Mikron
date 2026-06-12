@@ -2,7 +2,13 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { cn } from "@/lib/cn";
 import { isNavItemActive } from "@/lib/nav";
+import {
+  controlFocusClass,
+  navLinkIdleClass,
+  sidebarNavToneActiveClass,
+} from "@/lib/ui/ontime-theme";
 
 const SIBLING_HREFS = ["/zespol", "/zespol/handlowcy", "/zespol/grupy"] as const;
 
@@ -20,7 +26,7 @@ export function SalesTeamSubnav() {
 
   return (
     <nav
-      className="flex flex-wrap gap-1 rounded-md border border-slate-200 bg-slate-50/80 p-1"
+      className="flex flex-wrap gap-1 rounded-md bg-slate-50/35 p-1"
       aria-label="Sekcje zespołu"
     >
       {items.map((item) => {
@@ -29,11 +35,13 @@ export function SalesTeamSubnav() {
           <Link
             key={item.href}
             href={item.href}
-            className={`rounded-md px-2.5 py-2 text-xs font-medium transition-colors ${
+            className={cn(
+              "rounded-md px-2.5 py-2 text-xs font-medium transition-colors",
+              controlFocusClass,
               active
-                ? "bg-white text-slate-900 shadow-sm ring-1 ring-slate-200/80"
-                : "text-slate-600 hover:bg-white/60 hover:text-slate-900"
-            }`}
+                ? sidebarNavToneActiveClass("slate")
+                : cn(navLinkIdleClass, "text-slate-600")
+            )}
           >
             {item.label}
           </Link>

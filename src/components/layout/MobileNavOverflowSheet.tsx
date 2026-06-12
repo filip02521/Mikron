@@ -18,6 +18,7 @@ import {
   mobileNavBadgeClass,
   panelTypography,
   sidebarNavBadgeClassForTone,
+  sidebarNavToneActiveClass,
 } from "@/lib/ui/ontime-theme";
 
 function overflowItemActive(
@@ -112,8 +113,8 @@ export function MobileNavOverflowSheet({
                           "flex items-center gap-3 rounded-md px-3 py-2.5 transition-colors",
                           controlFocusClass,
                           active
-                            ? "border border-slate-200/85 bg-white shadow-sm ring-1 ring-slate-200/75"
-                            : "hover:bg-indigo-50/35",
+                            ? sidebarNavToneActiveClass(item.tone)
+                            : "hover:bg-slate-50/70",
                           locked && "pointer-events-none opacity-40"
                         )}
                         aria-current={active ? "page" : undefined}

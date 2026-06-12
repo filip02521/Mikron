@@ -14,10 +14,10 @@ import { NavIcon, navIconTileActiveClassForTone, navIconTileClassForTone } from 
 import { MobileNavOverflowSheet } from "@/components/layout/MobileNavOverflowSheet";
 import {
   mobileNavBadgeClass,
-  mobileNavLinkActiveClass,
   mobileNavLinkBaseClass,
   mobileNavLinkIdleClass,
   mobileSalesNavClass,
+  sidebarNavToneActiveClass,
 } from "@/lib/ui/ontime-theme";
 import type { UserRole } from "@/types/database";
 
@@ -65,7 +65,7 @@ export function MobileOperationsNav({
                 className={cn(
                   mobileNavLinkBaseClass,
                   "px-1",
-                  active ? mobileNavLinkActiveClass : mobileNavLinkIdleClass
+                  active ? sidebarNavToneActiveClass(item.tone) : mobileNavLinkIdleClass
                 )}
                 aria-current={active ? "page" : undefined}
                 title={item.description ?? item.label}

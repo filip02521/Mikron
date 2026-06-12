@@ -12,13 +12,13 @@ import {
   brandSidebarShell,
 } from "@/lib/ui/brand";
 import {
-  navLinkActiveClass,
   navLinkIdleClass,
   sidebarHeaderClass,
   sidebarNavSectionDividerClass,
   sidebarNavSectionTitleClass,
   sidebarNavCompactPaddingClass,
   sidebarNavBadgeClassForTone,
+  sidebarNavToneActiveClass,
   sidebarNavToneHighlightIdleClass,
   controlFocusClass,
   panelTypography,
@@ -58,7 +58,7 @@ function NavLink({
     compact ? sidebarNavCompactPaddingClass : "px-2.5 py-2",
     controlFocusClass,
     active
-      ? navLinkActiveClass
+      ? sidebarNavToneActiveClass(item.tone)
       : cn(
           navLinkIdleClass,
           item.tier === "primary" && sidebarNavToneHighlightIdleClass(item.tone)
@@ -86,7 +86,7 @@ function NavLink({
           <span
             className={cn(
               compact ? "text-[13px] font-medium leading-snug" : panelTypography.rowTitle,
-              active ? "text-slate-900" : "text-slate-800"
+              active ? "font-semibold text-slate-900" : "text-slate-800"
             )}
           >
             {item.label}

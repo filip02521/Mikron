@@ -27,13 +27,34 @@ export const sidebarFooterClass =
 
 export const sidebarNavScrollClass = "flex-1 overflow-y-auto px-2.5 pb-3 pt-4";
 
-/** Sidebar — aktywny link (jak wybrana zakładka panelu, bez lewego paska). */
-export const navLinkActiveClass =
-  "border border-slate-200/85 bg-white text-slate-900 shadow-sm ring-1 ring-slate-200/75";
+/** Sidebar — aktywny link: mocniejsze tło w tonie, bez obramowania. */
+export function sidebarNavToneActiveClass(tone: NavTone): string {
+  switch (tone) {
+    case "amber":
+      return "border border-transparent bg-amber-100/60 text-slate-900 shadow-sm shadow-amber-900/5";
+    case "orange":
+      return "border border-transparent bg-orange-100/65 text-slate-900 shadow-sm shadow-orange-900/5";
+    case "emerald":
+      return "border border-transparent bg-emerald-100/60 text-slate-900 shadow-sm shadow-emerald-900/5";
+    case "sky":
+      return "border border-transparent bg-sky-100/55 text-slate-900 shadow-sm shadow-sky-900/5";
+    case "slate":
+      return "border border-transparent bg-slate-200/55 text-slate-900 shadow-sm";
+    case "violet":
+      return "border border-transparent bg-violet-100/60 text-slate-900 shadow-sm shadow-violet-900/5";
+    case "indigo":
+    default:
+      return "border border-transparent bg-indigo-100/55 text-slate-900 shadow-sm shadow-indigo-900/5";
+  }
+}
 
-/** Sidebar — link w stanie spoczynku. */
+/** @deprecated Użyj {@link sidebarNavToneActiveClass} z tonem pozycji. */
+export const navLinkActiveClass =
+  "border border-transparent bg-indigo-100/55 text-slate-900 shadow-sm shadow-indigo-900/5";
+
+/** Sidebar — link w stanie spoczynku (bez obramowania). */
 export const navLinkIdleClass =
-  "border border-transparent text-slate-700 hover:border-slate-200/80 hover:bg-white/70 hover:text-slate-900";
+  "border border-transparent text-slate-700 hover:bg-slate-50/70 hover:text-slate-900";
 
 /** Sidebar — nagłówek grupy nawigacji. */
 export const sidebarNavSectionTitleClass =
@@ -44,17 +65,37 @@ export const sidebarNavSectionDividerClass = "mt-3 border-t border-indigo-100/70
 
 /** Sidebar — wyróżniony punkt startowy (Panel / Moje) w stanie spoczynku. */
 export const sidebarNavPrimaryHighlightIdleClass =
-  "border-indigo-100/75 bg-indigo-50/20 hover:border-indigo-200/80 hover:bg-indigo-50/35";
+  "bg-indigo-50/30 hover:bg-indigo-50/45";
+
+/** Delikatne tło powierzchni wg tonu — spoczynek (sidebar). */
+export function navToneSurfaceIdleClass(tone: NavTone): string {
+  switch (tone) {
+    case "amber":
+      return "bg-amber-50/35";
+    case "orange":
+      return "bg-orange-50/40";
+    case "emerald":
+      return "bg-emerald-50/35";
+    case "sky":
+      return "bg-sky-50/35";
+    case "violet":
+      return "bg-violet-50/35";
+    case "slate":
+      return "bg-slate-50/45";
+    case "indigo":
+    default:
+      return "bg-indigo-50/30";
+  }
+}
 
 /** Sidebar — delikatne tło wiersza primary wg tonu semantycznego (Dziś). */
 export function sidebarNavToneHighlightIdleClass(tone: NavTone): string | undefined {
   switch (tone) {
     case "indigo":
-      return sidebarNavPrimaryHighlightIdleClass;
     case "amber":
-      return "border-amber-100/75 bg-amber-50/20 hover:border-amber-200/80 hover:bg-amber-50/35";
+    case "orange":
     case "emerald":
-      return "border-emerald-100/75 bg-emerald-50/20 hover:border-emerald-200/80 hover:bg-emerald-50/35";
+      return cn(navToneSurfaceIdleClass(tone), "hover:opacity-95");
     default:
       return undefined;
   }
@@ -66,6 +107,8 @@ export function sidebarNavBadgeClassForTone(tone: NavTone, active: boolean): str
   switch (tone) {
     case "amber":
       return sidebarNavBadgeWarningClass;
+    case "orange":
+      return "bg-orange-100 text-orange-950 ring-1 ring-orange-200/80";
     case "emerald":
       return "bg-emerald-100 text-emerald-900 ring-1 ring-emerald-200/80";
     case "indigo":
@@ -247,6 +290,18 @@ export const salesTypography = {
 export const salesRequestNoteLabelClass =
   "inline-flex items-center rounded bg-indigo-50 px-1 py-0.5 font-semibold uppercase tracking-wide text-indigo-700";
 
+/** Etykieta klienta końcowego — ten sam układ co „Uwagi”, ton indigo. */
+export const salesClientLabelClass =
+  "inline-flex items-center rounded bg-indigo-50 px-1 py-0.5 font-semibold uppercase tracking-wide text-indigo-700";
+
+export const salesClientNameClass = "font-medium text-indigo-900";
+
+/** Etykieta powiązania ZK — fiolet jak w notatniku, ten sam układ co „Klient”. */
+export const salesZkLabelClass =
+  "inline-flex items-center rounded bg-violet-50 px-1 py-0.5 font-semibold uppercase tracking-wide text-violet-700";
+
+export const salesZkNumberClass = "font-medium text-violet-900";
+
 /** Wewnętrzny padding sekcji panelu. */
 export const panelSectionInsetClass = "px-3 py-3 sm:px-4 sm:py-4 lg:px-5 lg:py-4";
 
@@ -350,7 +405,7 @@ export const mobileNavLinkBaseClass =
   "relative mx-0.5 flex min-h-[3.25rem] flex-col items-center justify-center gap-0.5 rounded-md px-1.5 py-2 text-[11px] font-semibold transition-colors lg:text-xs";
 
 export const mobileNavLinkActiveClass =
-  "border border-slate-200/85 bg-white text-slate-900 shadow-sm ring-1 ring-slate-200/75";
+  "border border-transparent bg-indigo-100/55 text-slate-900 shadow-sm shadow-indigo-900/5";
 
 export const mobileNavLinkIdleClass = "text-slate-500 hover:bg-white/60 hover:text-slate-800";
 

@@ -2,6 +2,11 @@
 
 import Link from "next/link";
 import { cn } from "@/lib/cn";
+import {
+  controlFocusClass,
+  navLinkIdleClass,
+  sidebarNavToneActiveClass,
+} from "@/lib/ui/ontime-theme";
 
 export type SectionTab<T extends string> = {
   id: T;
@@ -41,7 +46,7 @@ export function SectionTabNav<T extends string>({
         <div
           role="tablist"
           aria-label={ariaLabel}
-          className="flex flex-wrap gap-x-1 gap-y-0 border-b border-slate-200"
+          className="flex flex-wrap gap-1 rounded-md bg-slate-50/35 p-1"
         >
           {tabs.map((item) => {
             const active = activeTab === item.id;
@@ -54,10 +59,11 @@ export function SectionTabNav<T extends string>({
                 aria-selected={active}
                 aria-current={active ? "page" : undefined}
                 className={cn(
-                  "-mb-px border-b-2 px-3 py-2.5 text-sm font-medium transition sm:px-4",
+                  "rounded-md px-3 py-2 text-sm font-medium transition-colors sm:px-4",
+                  controlFocusClass,
                   active
-                    ? "border-sky-600 text-sky-800"
-                    : "border-transparent text-slate-500 hover:border-slate-300 hover:text-slate-800"
+                    ? sidebarNavToneActiveClass("indigo")
+                    : cn(navLinkIdleClass, "text-slate-600")
                 )}
               >
                 {item.label}

@@ -42,7 +42,7 @@ import {
   mojeSectionIconTileClass,
 } from "@/components/icons/StrokeIcons";
 import { SectionHeadingIcon } from "@/components/icons/SectionHeadingIcon";
-import { salesTypography, sectionIconTileBrandClass } from "@/lib/ui/ontime-theme";
+import { salesChromeInsetClass, salesTypography, sectionIconTileBrandClass } from "@/lib/ui/ontime-theme";
 import type { OrderFormSupplierOption } from "@/lib/orders/order-form-suppliers";
 import {
   deriveMyOrderSectionDisplayState,
@@ -100,6 +100,7 @@ function MojeOrdersOverviewStats({
   searchActive,
   clientLinkFilterActive = false,
   archiveMatchCount = 0,
+  className,
 }: {
   shipmentCount: number;
   lineCount: number;
@@ -107,11 +108,12 @@ function MojeOrdersOverviewStats({
   searchActive: boolean;
   clientLinkFilterActive?: boolean;
   archiveMatchCount?: number;
+  className?: string;
 }) {
   const narrowed = searchActive;
   if (clientLinkFilterActive && !narrowed) return null;
   return (
-    <div className="flex flex-wrap items-center gap-x-4 gap-y-2 border-b border-slate-100 bg-slate-50/60 px-3 py-2.5 sm:px-4 lg:px-6">
+    <div className={cn("min-w-0 flex-1", className)}>
       {narrowed ? (
         <p className={cn(salesTypography.chrome, "leading-relaxed")} aria-live="polite">
           Pokazano{" "}
@@ -140,6 +142,47 @@ function MojeOrdersOverviewStats({
           </div>
         </div>
       )}
+    </div>
+  );
+}
+
+/** Statystyki listy (lewo) + legenda kolorów wierszy (prawo) w jednym pasku. */
+function MojeOrdersListMetaStrip({
+  shipmentCount,
+  lineCount,
+  filteredCount,
+  searchActive,
+  clientLinkFilterActive = false,
+  archiveMatchCount = 0,
+}: {
+  shipmentCount: number;
+  lineCount: number;
+  filteredCount: number;
+  searchActive: boolean;
+  clientLinkFilterActive?: boolean;
+  archiveMatchCount?: number;
+}) {
+  const stats = (
+    <MojeOrdersOverviewStats
+      shipmentCount={shipmentCount}
+      lineCount={lineCount}
+      filteredCount={filteredCount}
+      searchActive={searchActive}
+      clientLinkFilterActive={clientLinkFilterActive}
+      archiveMatchCount={archiveMatchCount}
+    />
+  );
+
+  return (
+    <div
+      className={cn(
+        salesChromeInsetClass,
+        "flex flex-wrap items-center gap-x-4 gap-y-2 border-t border-slate-200/80 bg-slate-50/35 py-2.5",
+        stats ? "justify-between" : "justify-start"
+      )}
+    >
+      {stats}
+      <MyOrdersRowLegend className={stats ? "shrink-0 sm:justify-end" : undefined} />
     </div>
   );
 }
@@ -831,7 +874,13 @@ function MojeOrdersViewContent({
 
         {!tourPreview && showSalesSync ? <MojeOrdersSyncStrip /> : null}
 
-        <MojeOrdersOverviewStats
+        {subiektAvailability ? (
+          <SubiektStatusBar initial={subiektAvailability} embedded />
+        ) : null}
+
+        {searchBar}
+
+        <MojeOrdersListMetaStrip
           shipmentCount={shipmentCount}
           lineCount={filteredLineCount}
           filteredCount={filteredCount}
@@ -839,16 +888,6 @@ function MojeOrdersViewContent({
           clientLinkFilterActive={clientLinkFilterActive}
           archiveMatchCount={archiveMatchCount}
         />
-
-        {subiektAvailability ? (
-          <SubiektStatusBar initial={subiektAvailability} embedded />
-        ) : null}
-
-        {searchBar}
-
-        <div className="border-b border-slate-100 bg-slate-50/80 px-3 py-2.5 sm:px-4 lg:px-6">
-          <MyOrdersRowLegend />
-        </div>
 
         {searchActive && searchMatchCount === 0 && !archiveMatchCount ? (
           <MojeOrdersSearchEmptyHint query={searchTrimmed} onClear={() => setSearchQuery("")} />

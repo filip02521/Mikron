@@ -17,6 +17,7 @@ import {
 } from "@/app/actions/sales-manager";
 import { TempPasswordDialog } from "@/components/sales/TempPasswordDialog";
 import { InviteLinkDialog } from "@/components/admin/InviteLinkDialog";
+import { SalesAdminHelpPanel } from "@/components/admin/SalesAdminHelpPanel";
 import type { SalesInviteLinkResult } from "@/lib/users/sales-invite";
 import { Card, CardHeader } from "@/components/ui/Card";
 import { Field, Input, Select } from "@/components/ui/Field";
@@ -26,10 +27,27 @@ import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { DataTable, TableScroll } from "@/components/ui/DataTable";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { Badge } from "@/components/ui/Badge";
+import { cn } from "@/lib/cn";
+import { formatPlDate } from "@/lib/display-labels";
+import { brandLinkClass } from "@/lib/ui/ontime-theme";
 
 type FormState = { id?: string; name: string; email: string; groupId: string };
+type GroupFilter = "all" | "none" | string;
 
 const emptyForm = (): FormState => ({ name: "", email: "", groupId: "" });
+
+function filterChipClass(active: boolean): string {
+  return cn(
+    "rounded-full px-2.5 py-1 text-xs font-medium transition-colors",
+    active
+      ? "bg-slate-900 text-white"
+      : "bg-slate-100 text-slate-600 hover:bg-slate-200"
+  );
+}
+
+function groupBadgeClass(): string {
+  return "inline-flex max-w-full items-center rounded-full border border-indigo-200/80 bg-indigo-50/90 px-2.5 py-0.5 text-xs font-medium text-indigo-800";
+}
 
 export function SalesAdminClient({
   initial,
@@ -39,9 +57,7 @@ export function SalesAdminClient({
 }: {
   initial: SalesPersonAdminRow[];
   groups: SalesGroupRow[];
-  /** Kierownik handlowców — bez usuwania, z hasłem jednorazowym */
   managerMode?: boolean;
-  /** Kierownik musi wybrać grupę ze swojego scope */
   requireGroupOnCreate?: boolean;
 }) {
   const router = useRouter();
@@ -58,7 +74,7 @@ export function SalesAdminClient({
   );
   const dismiss = useCallback(() => setToast(null), []);
   const [search, setSearch] = useState("");
-  const [groupFilter, setGroupFilter] = useState<string>("all");
+  const [groupFilter, setGroupFilter] = useState<GroupFilter>("all");
   const [formOpen, setFormOpen] = useState(false);
   const [form, setForm] = useState<FormState>(emptyForm);
   const [deleteTarget, setDeleteTarget] = useState<SalesPersonAdminRow | null>(null);
@@ -71,13 +87,29 @@ export function SalesAdminClient({
   } | null>(null);
   const [resetTarget, setResetTarget] = useState<SalesPersonAdminRow | null>(null);
 
+  const groupCounts = useMemo(() => {
+    const counts: Record<string, number> = { all: rows.length, none: 0 };
+    for (const row of rows) {
+      if (!row.groupId) {
+        counts.none = (counts.none ?? 0) + 1;
+      } else {
+        counts[row.groupId] = (counts[row.groupId] ?? 0) + 1;
+      }
+    }
+    return counts;
+  }, [rows]);
+
+  const linkedCount = useMemo(
+    () => rows.filter((r) => r.linkedUserId).length,
+    [rows]
+  );
+  const unlinkedCount = rows.length - linkedCount;
+
   const filtered = useMemo(() => {
     let list = rows;
     if (groupFilter === "none") {
       list = list.filter((r) => !r.groupId);
-    } else if (groupFilter === "all") {
-      list = list.filter((r) => r.groupId);
-    } else {
+    } else if (groupFilter !== "all") {
       list = list.filter((r) => r.groupId === groupFilter);
     }
     const q = search.trim().toLowerCase();
@@ -193,6 +225,8 @@ export function SalesAdminClient({
     });
   };
 
+  const createDisabled = managerMode && requireGroupOnCreate && !groups.length;
+
   return (
     <>
       {toast ? <Toast message={toast.text} tone={toast.tone} onDismiss={dismiss} /> : null}
@@ -281,22 +315,7 @@ export function SalesAdminClient({
         }}
       />
 
-      <section className="space-y-6">
-        {!formOpen ? (
-          <Button
-            variant="outline"
-            onClick={openCreateForm}
-            disabled={managerMode && requireGroupOnCreate && !groups.length}
-            title={
-              managerMode && requireGroupOnCreate && !groups.length
-                ? "Brak przypisanych grup — poproś administratora"
-                : undefined
-            }
-          >
-            + Dodaj handlowca
-          </Button>
-        ) : null}
-
+      <section className="space-y-4">
         {formOpen ? (
           <Card padding={false} className="overflow-hidden">
             <CardHeader
@@ -305,7 +324,7 @@ export function SalesAdminClient({
               title={form.id ? "Edytuj handlowca" : "Dodaj handlowca"}
               description={
                 managerMode && !form.id
-                  ? "Utworzysz kartę handlowca i konto logowania. Hasło jednorazowe przekażesz osobiście — przy pierwszym logowaniu ustawi własne."
+                  ? "Utworzysz kartę handlowca i konto logowania. Hasło jednorazowe przekażesz osobiście."
                   : "E-mail służy do powiadomień i jako login przy zakładaniu konta."
               }
             />
@@ -348,16 +367,27 @@ export function SalesAdminClient({
                   ))}
                 </Select>
               </Field>
-              <div className="flex flex-wrap gap-2 sm:col-span-2">
-                <Button
-                  type="submit"
-                  disabled={pending || !form.name.trim() || !form.email.trim()}
-                >
-                  {form.id ? "Zapisz zmiany" : "Dodaj handlowca"}
-                </Button>
-                <Button type="button" variant="secondary" onClick={resetForm}>
-                  Anuluj
-                </Button>
+              <div className="space-y-3 sm:col-span-2">
+                {!managerMode && !form.id ? (
+                  <p className="text-xs leading-relaxed text-slate-500">
+                    Po zapisie wygenerujemy link zaproszenia. Ręczne konto zakładasz w{" "}
+                    <Link href="/admin/uzytkownicy" className={brandLinkClass}>
+                      Konta
+                    </Link>
+                    .
+                  </p>
+                ) : null}
+                <div className="flex flex-wrap gap-2">
+                  <Button
+                    type="submit"
+                    disabled={pending || !form.name.trim() || !form.email.trim()}
+                  >
+                    {form.id ? "Zapisz zmiany" : "Dodaj handlowca"}
+                  </Button>
+                  <Button type="button" variant="secondary" onClick={resetForm}>
+                    Anuluj
+                  </Button>
+                </div>
               </div>
             </form>
           </Card>
@@ -370,48 +400,65 @@ export function SalesAdminClient({
             title={`Handlowcy (${rows.length})`}
             description={
               managerMode
-                ? "Nowy handlowiec dostaje hasło jednorazowe. Dla kont z logowaniem — „Reset hasła”. Bez konta — link zaproszenia."
-                : "Wygeneruj link zaproszenia — handlowiec ustawi hasło i konto powiąże się automatycznie."
+                ? "Nowy handlowiec dostaje hasło jednorazowe. Dla kont z logowaniem — reset hasła."
+                : "Link zaproszenia zakłada konto i powiązuje je z kartą handlowca."
+            }
+            action={
+              <div className="flex flex-wrap items-center justify-end gap-2">
+                {unlinkedCount > 0 ? (
+                  <Badge variant="warning">{unlinkedCount} bez konta</Badge>
+                ) : null}
+                {linkedCount > 0 ? (
+                  <Badge variant="success">{linkedCount} z kontem</Badge>
+                ) : null}
+                {!formOpen ? (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={openCreateForm}
+                    disabled={createDisabled}
+                    title={
+                      createDisabled
+                        ? "Brak przypisanych grup — poproś administratora"
+                        : undefined
+                    }
+                  >
+                    + Dodaj handlowca
+                  </Button>
+                ) : null}
+              </div>
             }
           />
-          <div className="space-y-3 border-b border-slate-100 px-4 py-3">
+          <div className="space-y-3 border-b border-slate-100 px-3 py-3 sm:px-4 lg:px-5">
             <div className="flex flex-wrap gap-1.5">
               <button
                 type="button"
                 onClick={() => setGroupFilter("all")}
-                className={`rounded-full px-2.5 py-1 text-xs font-medium ${
-                  groupFilter === "all"
-                    ? "bg-slate-900 text-white"
-                    : "bg-slate-100 text-slate-600 hover:bg-slate-200"
-                }`}
+                className={filterChipClass(groupFilter === "all")}
               >
-                Wszyscy
+                Wszyscy ({groupCounts.all})
               </button>
-              {groups.map((g) => (
-                <button
-                  key={g.id}
-                  type="button"
-                  onClick={() => setGroupFilter(g.id)}
-                  className={`rounded-full px-2.5 py-1 text-xs font-medium ${
-                    groupFilter === g.id
-                      ? "bg-slate-900 text-white"
-                      : "bg-slate-100 text-slate-600 hover:bg-slate-200"
-                  }`}
-                >
-                  {g.name}
-                </button>
-              ))}
-              {!managerMode ? (
+              {groups.map((g) => {
+                const count = groupCounts[g.id] ?? 0;
+                if (!count) return null;
+                return (
+                  <button
+                    key={g.id}
+                    type="button"
+                    onClick={() => setGroupFilter(g.id)}
+                    className={filterChipClass(groupFilter === g.id)}
+                  >
+                    {g.name} ({count})
+                  </button>
+                );
+              })}
+              {!managerMode && (groupCounts.none ?? 0) > 0 ? (
                 <button
                   type="button"
                   onClick={() => setGroupFilter("none")}
-                  className={`rounded-full px-2.5 py-1 text-xs font-medium ${
-                    groupFilter === "none"
-                      ? "bg-slate-900 text-white"
-                      : "bg-slate-100 text-slate-600 hover:bg-slate-200"
-                  }`}
+                  className={filterChipClass(groupFilter === "none")}
                 >
-                  Bez grupy
+                  Bez grupy ({groupCounts.none})
                 </button>
               ) : null}
             </div>
@@ -427,7 +474,7 @@ export function SalesAdminClient({
               title={rows.length ? "Brak wyników" : "Brak handlowców"}
               description={
                 rows.length
-                  ? "Zmień frazę wyszukiwania."
+                  ? "Zmień filtr grupy lub frazę wyszukiwania."
                   : "Dodaj pierwszą osobę z listy sprzedaży."
               }
             />
@@ -448,11 +495,30 @@ export function SalesAdminClient({
                   {filtered.map((p) => (
                     <tr key={p.id}>
                       <td className="font-medium text-slate-900">{p.name}</td>
-                      <td className="text-slate-600">{p.groupName ?? "—"}</td>
+                      <td>
+                        {p.groupName ? (
+                          <span className={groupBadgeClass()}>{p.groupName}</span>
+                        ) : (
+                          <span className="text-slate-400">—</span>
+                        )}
+                      </td>
                       <td className="text-slate-700">{p.email || "—"}</td>
                       <td>
                         {p.linkedUserEmail ? (
-                          <span className="text-sm text-emerald-800">{p.linkedUserEmail}</span>
+                          <div className="space-y-1">
+                            <Badge variant="success" className="text-[10px]">
+                              Ma konto
+                            </Badge>
+                            <p className="text-xs text-slate-600">{p.linkedUserEmail}</p>
+                            {p.linkedUserLastSignInAt ? (
+                              <p className="text-[11px] text-slate-400">
+                                Ostatnio:{" "}
+                                {formatPlDate(p.linkedUserLastSignInAt.slice(0, 10))}
+                              </p>
+                            ) : (
+                              <p className="text-[11px] text-amber-700">Nie logował się</p>
+                            )}
+                          </div>
                         ) : (
                           <Badge variant="warning" className="text-[10px]">
                             Brak konta
@@ -460,76 +526,83 @@ export function SalesAdminClient({
                         )}
                       </td>
                       <td className="text-center tabular-nums text-slate-600">
-                        {p.orderCount}
+                        {p.orderCount > 0 ? p.orderCount : "—"}
                       </td>
                       <td>
-                        <div className="flex flex-wrap justify-end gap-1">
-                          {!p.linkedUserId ? (
-                            <>
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                disabled={pending || !p.email?.trim()}
-                                title={
-                                  !p.email?.trim()
-                                    ? "Uzupełnij e-mail handlowca"
-                                    : undefined
-                                }
-                                onClick={() => openInviteLink(p.id)}
-                              >
-                                Link zaproszenia
-                              </Button>
-                              {!managerMode ? (
-                                <Link
-                                  href={`/admin/uzytkownicy?handlowiec=${p.id}`}
-                                  className="inline-flex items-center rounded-md px-3 py-1.5 text-xs font-medium text-slate-500 hover:bg-slate-100 hover:text-slate-800"
-                                >
-                                  Ręcznie
-                                </Link>
-                              ) : null}
-                            </>
-                          ) : (
-                            <>
-                              {managerMode ? (
+                        <div className="flex flex-col items-end gap-1.5">
+                          <div className="flex flex-wrap justify-end gap-1">
+                            {!p.linkedUserId ? (
+                              <>
                                 <Button
                                   variant="outline"
                                   size="sm"
-                                  disabled={pending}
-                                  onClick={() => setResetTarget(p)}
+                                  disabled={pending || !p.email?.trim()}
+                                  title={
+                                    !p.email?.trim()
+                                      ? "Uzupełnij e-mail handlowca"
+                                      : undefined
+                                  }
+                                  onClick={() => openInviteLink(p.id)}
                                 >
-                                  Reset hasła
+                                  Link zaproszenia
                                 </Button>
-                              ) : (
-                                <Link
-                                  href="/admin/uzytkownicy"
-                                  className="inline-flex items-center rounded-md px-3 py-1.5 text-xs font-medium text-slate-600 hover:bg-slate-100 hover:text-slate-900"
-                                >
-                                  Konto
-                                </Link>
-                              )}
-                            </>
-                          )}
-                          <Button variant="ghost" size="sm" onClick={() => startEdit(p)}>
-                            Edytuj
-                          </Button>
-                          {!managerMode ? (
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              className="text-rose-600 hover:text-rose-700"
-                              disabled={p.orderCount > 0 || !!p.linkedUserId}
-                              title={
-                                p.orderCount > 0
-                                  ? "Nie można usunąć — są zamówienia w historii"
-                                  : p.linkedUserId
-                                    ? "Najpierw usuń powiązane konto użytkownika"
-                                    : undefined
-                              }
-                              onClick={() => setDeleteTarget(p)}
-                            >
-                              Usuń
+                                {!managerMode ? (
+                                  <Link
+                                    href={`/admin/uzytkownicy?handlowiec=${p.id}`}
+                                    className={cn(
+                                      "inline-flex items-center rounded-md px-3 py-1.5 text-xs font-medium",
+                                      "text-slate-600 hover:bg-slate-100 hover:text-slate-900"
+                                    )}
+                                  >
+                                    Ręcznie
+                                  </Link>
+                                ) : null}
+                              </>
+                            ) : managerMode ? (
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                disabled={pending}
+                                onClick={() => setResetTarget(p)}
+                              >
+                                Reset hasła
+                              </Button>
+                            ) : (
+                              <Link
+                                href="/admin/uzytkownicy"
+                                className={cn(
+                                  "inline-flex items-center rounded-md px-3 py-1.5 text-xs font-medium",
+                                  brandLinkClass,
+                                  "no-underline hover:bg-indigo-50/80"
+                                )}
+                              >
+                                Konto
+                              </Link>
+                            )}
+                          </div>
+                          <div className="flex flex-wrap justify-end gap-1">
+                            <Button variant="ghost" size="sm" onClick={() => startEdit(p)}>
+                              Edytuj
                             </Button>
-                          ) : null}
+                            {!managerMode ? (
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className="text-rose-600 hover:text-rose-700"
+                                disabled={p.orderCount > 0 || !!p.linkedUserId}
+                                title={
+                                  p.orderCount > 0
+                                    ? "Nie można usunąć — są zamówienia w historii"
+                                    : p.linkedUserId
+                                      ? "Najpierw usuń powiązane konto użytkownika"
+                                      : undefined
+                                }
+                                onClick={() => setDeleteTarget(p)}
+                              >
+                                Usuń
+                              </Button>
+                            ) : null}
+                          </div>
                         </div>
                       </td>
                     </tr>
@@ -539,6 +612,8 @@ export function SalesAdminClient({
             </TableScroll>
           )}
         </Card>
+
+        <SalesAdminHelpPanel managerMode={managerMode} />
       </section>
     </>
   );

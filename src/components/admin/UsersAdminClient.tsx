@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useMemo, useState, useTransition, useCallback, useEffect, useRef } from "react";
 import type { AppUserRow } from "@/lib/data/users";
 import type { UserRole } from "@/types/database";
@@ -11,6 +12,8 @@ import {
   actionGeneratePasswordResetLink,
   actionDeleteAppUser,
 } from "@/app/actions/users";
+import { SetUserPasswordDialog } from "@/components/admin/SetUserPasswordDialog";
+import { UsersRoleHelpPanel } from "@/components/admin/UsersRoleHelpPanel";
 import { Card, CardHeader } from "@/components/ui/Card";
 import { Field, Input, Select } from "@/components/ui/Field";
 import { Button } from "@/components/ui/Button";
@@ -19,8 +22,10 @@ import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { DataTable, TableScroll } from "@/components/ui/DataTable";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { Badge } from "@/components/ui/Badge";
+import { cn } from "@/lib/cn";
 import { formatPlDate } from "@/lib/display-labels";
 import { isPasswordValid } from "@/lib/auth/password-policy";
+import { brandLinkClass, roleBadgeClass } from "@/lib/ui/ontime-theme";
 import {
   applyUserPermissionSave,
   buildUserEditsFromRows,
@@ -32,6 +37,7 @@ import {
 
 type SalesPerson = { id: string; name: string; email: string };
 type SalesGroupOption = { id: string; name: string };
+type RoleFilter = "all" | UserRole;
 
 function salesPersonLabel(
   salesPeople: SalesPerson[],
@@ -43,6 +49,24 @@ function salesPersonLabel(
     salesPeople.find((p) => p.id === salesPersonId)?.name ??
     salesPersonName ??
     "—"
+  );
+}
+
+function roleFilterChipClass(active: boolean): string {
+  return cn(
+    "rounded-full px-2.5 py-1 text-xs font-medium transition-colors",
+    active
+      ? "bg-slate-900 text-white"
+      : "bg-slate-100 text-slate-600 hover:bg-slate-200"
+  );
+}
+
+function managerGroupToggleClass(active: boolean): string {
+  return cn(
+    "rounded-full border px-2.5 py-1 text-xs font-medium transition-colors",
+    active
+      ? "border-indigo-200 bg-indigo-50 text-indigo-800"
+      : "border-slate-200 bg-white text-slate-600 hover:border-slate-300 hover:bg-slate-50"
   );
 }
 
@@ -68,6 +92,7 @@ export function UsersAdminClient({
   );
   const dismiss = useCallback(() => setToast(null), []);
   const [search, setSearch] = useState("");
+  const [roleFilter, setRoleFilter] = useState<RoleFilter>("all");
   const [createOpen, setCreateOpen] = useState(!!prefillSalesPersonId);
   const [deleteTarget, setDeleteTarget] = useState<AppUserRow | null>(null);
 
@@ -84,7 +109,6 @@ export function UsersAdminClient({
 
   const [managerGroups, setManagerGroups] =
     useState<Record<string, string[]>>(initialManagerGroups);
-  /** Ostatnio zapisane grupy kierowników (serwer + lokalny zapis). */
   const [committedManagerGroups, setCommittedManagerGroups] =
     useState<Record<string, string[]>>(initialManagerGroups);
 
@@ -152,10 +176,31 @@ export function UsersAdminClient({
     [users]
   );
 
-  const filteredUsers = useMemo(() => {
-    const q = search.trim().toLowerCase();
-    if (!q) return users;
+  const roleCounts = useMemo(() => {
+    const counts: Partial<Record<UserRole, number>> = {};
+    for (const u of users) {
+      counts[u.role] = (counts[u.role] ?? 0) + 1;
+    }
+    return counts;
+  }, [users]);
+
+  const unsavedCount = useMemo(() => {
     return users.filter((u) => {
+      const edit = edits[u.id];
+      const savedManagerGroups = committedManagerGroups[u.id] ?? [];
+      const draftManagerGroups = managerGroups[u.id] ?? [];
+      return userRowHasUnsavedChanges(u, edit, draftManagerGroups, savedManagerGroups);
+    }).length;
+  }, [users, edits, managerGroups, committedManagerGroups]);
+
+  const filteredUsers = useMemo(() => {
+    let list = users;
+    if (roleFilter !== "all") {
+      list = list.filter((u) => (edits[u.id]?.role ?? u.role) === roleFilter);
+    }
+    const q = search.trim().toLowerCase();
+    if (!q) return list;
+    return list.filter((u) => {
       const edit = edits[u.id];
       const handlowiec = salesPersonLabel(
         salesPeople,
@@ -171,7 +216,7 @@ export function UsersAdminClient({
         handlowiec.toLowerCase().includes(q)
       );
     });
-  }, [users, search, edits, salesPeople]);
+  }, [users, search, roleFilter, edits, salesPeople]);
 
   const updateEdit = (userId: string, patch: Partial<{ role: UserRole; salesPersonId: string }>) => {
     setEdits((prev) => {
@@ -210,6 +255,72 @@ export function UsersAdminClient({
         tone: "error",
       });
     }
+  };
+
+  const closeCreateForm = () => {
+    setCreateOpen(false);
+    setCreateForm({
+      email: "",
+      role: "zakupy",
+      salesPersonId: "",
+      password: "",
+    });
+  };
+
+  const saveUserPermissions = (u: AppUserRow) => {
+    const edit = edits[u.id];
+    if (!edit) return;
+    start(async () => {
+      const savedRole = edit.role;
+      const savedSalesPersonId = salesPersonIdForSave(savedRole, edit.salesPersonId);
+      const groupIds =
+        savedRole === "sales_manager" ? (managerGroups[u.id] ?? []) : [];
+
+      const r = await actionSaveAppUserPermissions({
+        userId: u.id,
+        role: savedRole,
+        salesPersonId: savedSalesPersonId,
+        managerGroupIds: groupIds,
+      });
+      if ("error" in r) {
+        setToast({ text: r.error, tone: "error" });
+        return;
+      }
+
+      const spName = salesPersonLabel(
+        salesPeople,
+        savedSalesPersonId,
+        u.salesPersonName
+      );
+      const nextUsers = applyUserPermissionSave(
+        users,
+        u.id,
+        savedRole,
+        savedSalesPersonId,
+        spName === "—" ? null : spName
+      );
+      setUsers(nextUsers);
+      usersSignatureRef.current = usersAdminListSignature(nextUsers);
+
+      const nextManagerGroups = { ...managerGroups };
+      if (savedRole === "sales_manager") {
+        nextManagerGroups[u.id] = groupIds;
+      } else {
+        delete nextManagerGroups[u.id];
+      }
+      setManagerGroups(nextManagerGroups);
+      setCommittedManagerGroups(nextManagerGroups);
+      managerSignatureRef.current = usersManagerGroupsSignature(nextManagerGroups);
+
+      setEdits((prev) => ({
+        ...prev,
+        [u.id]: {
+          role: savedRole,
+          salesPersonId: savedSalesPersonId ?? "",
+        },
+      }));
+      setToast({ text: "Zapisano uprawnienia.", tone: "success" });
+    });
   };
 
   return (
@@ -251,13 +362,28 @@ export function UsersAdminClient({
         }}
       />
 
-      <section className="space-y-6">
-        {!createOpen ? (
-          <Button variant="outline" onClick={() => setCreateOpen(true)}>
-            + Nowe konto
-          </Button>
-        ) : null}
+      <SetUserPasswordDialog
+        open={!!passwordModal}
+        email={passwordModal?.email ?? ""}
+        pending={pending}
+        password={newPassword}
+        onPasswordChange={setNewPassword}
+        onClose={() => setPasswordModal(null)}
+        onSave={() => {
+          if (!passwordModal) return;
+          start(async () => {
+            const r = await actionSetUserPassword(passwordModal.userId, newPassword);
+            if ("error" in r) {
+              setToast({ text: r.error, tone: "error" });
+              return;
+            }
+            setToast({ text: "Hasło zaktualizowane.", tone: "success" });
+            setPasswordModal(null);
+          });
+        }}
+      />
 
+      <section className="space-y-4">
         {createOpen ? (
           <Card padding={false} className="overflow-hidden">
             <CardHeader
@@ -294,13 +420,7 @@ export function UsersAdminClient({
                     },
                   }));
                   setToast({ text: "Konto utworzone.", tone: "success" });
-                  setCreateForm({
-                    email: "",
-                    role: "zakupy",
-                    salesPersonId: "",
-                    password: "",
-                  });
-                  setCreateOpen(false);
+                  closeCreateForm();
                   prefillAppliedRef.current = null;
                 });
               }}
@@ -391,33 +511,30 @@ export function UsersAdminClient({
               ) : (
                 <div />
               )}
-              <div className="flex flex-wrap gap-2 sm:col-span-2">
-                <Button
-                  type="submit"
-                  disabled={
-                    pending ||
-                    !createForm.email.trim() ||
-                    !isPasswordValid(createForm.password) ||
-                    (roleRequiresSalesPerson(createForm.role) && !createForm.salesPersonId)
-                  }
-                >
-                  Utwórz konto
-                </Button>
-                <Button
-                  type="button"
-                  variant="secondary"
-                  onClick={() => {
-                    setCreateOpen(false);
-                    setCreateForm({
-                      email: "",
-                      role: "zakupy",
-                      salesPersonId: "",
-                      password: "",
-                    });
-                  }}
-                >
-                  Anuluj
-                </Button>
+              <div className="space-y-3 sm:col-span-2">
+                <p className="text-xs leading-relaxed text-slate-500">
+                  Handlowiec musi mieć kartę w{" "}
+                  <Link href="/admin/handlowcy" className={brandLinkClass}>
+                    zakładce Handlowcy
+                  </Link>
+                  . Zaproszenia z hasłem jednorazowym generujesz stamtąd.
+                </p>
+                <div className="flex flex-wrap gap-2">
+                  <Button
+                    type="submit"
+                    disabled={
+                      pending ||
+                      !createForm.email.trim() ||
+                      !isPasswordValid(createForm.password) ||
+                      (roleRequiresSalesPerson(createForm.role) && !createForm.salesPersonId)
+                    }
+                  >
+                    Utwórz konto
+                  </Button>
+                  <Button type="button" variant="secondary" onClick={closeCreateForm}>
+                    Anuluj
+                  </Button>
+                </div>
               </div>
             </form>
           </Card>
@@ -428,9 +545,45 @@ export function UsersAdminClient({
             inset
             density="compact"
             title={`Użytkownicy (${users.length})`}
-            description="Role i powiązania z handlowcami"
+            description="Role, powiązania z handlowcami i hasła. Zmiany zapisujesz w wierszu — nie ma autozapisu."
+            action={
+              <div className="flex flex-wrap items-center justify-end gap-2">
+                {unsavedCount > 0 ? (
+                  <Badge variant="warning">{unsavedCount} do zapisu</Badge>
+                ) : null}
+                {!createOpen ? (
+                  <Button variant="outline" size="sm" onClick={() => setCreateOpen(true)}>
+                    + Nowe konto
+                  </Button>
+                ) : null}
+              </div>
+            }
           />
-          <div className="border-b border-slate-100 px-4 py-3">
+
+          <div className="space-y-3 border-b border-slate-100 px-3 py-3 sm:px-4 lg:px-5">
+            <div className="flex flex-wrap gap-1.5">
+              <button
+                type="button"
+                onClick={() => setRoleFilter("all")}
+                className={roleFilterChipClass(roleFilter === "all")}
+              >
+                Wszyscy ({users.length})
+              </button>
+              {ROLE_OPTIONS.map((o) => {
+                const count = roleCounts[o.value] ?? 0;
+                if (!count) return null;
+                return (
+                  <button
+                    key={o.value}
+                    type="button"
+                    onClick={() => setRoleFilter(o.value)}
+                    className={roleFilterChipClass(roleFilter === o.value)}
+                  >
+                    {o.label} ({count})
+                  </button>
+                );
+              })}
+            </div>
             <Input
               placeholder="Szukaj po e-mailu, roli lub handlowcu…"
               value={search}
@@ -438,10 +591,15 @@ export function UsersAdminClient({
               aria-label="Szukaj użytkowników"
             />
           </div>
+
           {!filteredUsers.length ? (
             <EmptyState
               title={users.length ? "Brak wyników" : "Brak kont"}
-              description={users.length ? "Zmień frazę wyszukiwania." : undefined}
+              description={
+                users.length
+                  ? "Zmień filtr roli lub frazę wyszukiwania."
+                  : "Utwórz pierwsze konto logowania albo wygeneruj zaproszenie z zakładki Handlowcy."
+              }
             />
           ) : (
             <TableScroll>
@@ -449,7 +607,7 @@ export function UsersAdminClient({
                 <thead>
                   <tr>
                     <th>E-mail</th>
-                    <th>Rola</th>
+                    <th>Uprawnienia</th>
                     <th>Handlowiec</th>
                     <th>Grupy (kierownik)</th>
                     <th>Ostatnie logowanie</th>
@@ -468,6 +626,7 @@ export function UsersAdminClient({
                       savedManagerGroups
                     );
                     const isSelf = u.id === currentUserId;
+                    const displayRole = edit?.role ?? u.role;
                     const salesTakenByOther =
                       edit &&
                       roleRequiresSalesPerson(edit.role) &&
@@ -485,26 +644,42 @@ export function UsersAdminClient({
                         key={u.id}
                         className={isDirty ? "bg-amber-50/60" : undefined}
                       >
-                        <td className="font-medium text-slate-900">
-                          {u.email}
-                          {isSelf ? (
-                            <span className="ml-2 text-xs text-slate-500">(Ty)</span>
-                          ) : null}
+                        <td>
+                          <div className="space-y-1">
+                            <div className="font-medium text-slate-900">
+                              {u.email}
+                              {isSelf ? (
+                                <span className="ml-2 text-xs font-normal text-slate-500">
+                                  (Ty)
+                                </span>
+                              ) : null}
+                            </div>
+                            {isDirty ? (
+                              <Badge variant="warning" className="text-[10px]">
+                                Niezapisane zmiany
+                              </Badge>
+                            ) : null}
+                          </div>
                         </td>
                         <td>
-                          <Select
-                            className="min-w-[10rem]"
-                            value={edit?.role ?? u.role}
-                            onChange={(e) =>
-                              updateEdit(u.id, { role: e.target.value as UserRole })
-                            }
-                          >
-                            {ROLE_OPTIONS.map((o) => (
-                              <option key={o.value} value={o.value}>
-                                {o.label}
-                              </option>
-                            ))}
-                          </Select>
+                          <div className="space-y-2">
+                            <span className={roleBadgeClass(displayRole)}>
+                              {ROLE_LABELS[displayRole]}
+                            </span>
+                            <Select
+                              className="min-w-[10rem]"
+                              value={edit?.role ?? u.role}
+                              onChange={(e) =>
+                                updateEdit(u.id, { role: e.target.value as UserRole })
+                              }
+                            >
+                              {ROLE_OPTIONS.map((o) => (
+                                <option key={o.value} value={o.value}>
+                                  {o.label}
+                                </option>
+                              ))}
+                            </Select>
+                          </div>
                         </td>
                         <td>
                           {edit && roleRequiresSalesPerson(edit.role) ? (
@@ -547,21 +722,18 @@ export function UsersAdminClient({
                         </td>
                         <td>
                           {edit?.role === "sales_manager" && salesGroups.length ? (
-                            <div className="flex flex-wrap gap-2 max-w-xs">
+                            <div className="flex max-w-xs flex-wrap gap-1.5">
                               {salesGroups.map((g) => {
                                 const checked = (managerGroups[u.id] ?? []).includes(g.id);
                                 return (
-                                  <label
+                                  <button
                                     key={g.id}
-                                    className="inline-flex items-center gap-1 text-xs text-slate-700"
+                                    type="button"
+                                    onClick={() => toggleManagerGroup(u.id, g.id)}
+                                    className={managerGroupToggleClass(checked)}
                                   >
-                                    <input
-                                      type="checkbox"
-                                      checked={checked}
-                                      onChange={() => toggleManagerGroup(u.id, g.id)}
-                                    />
                                     {g.name}
-                                  </label>
+                                  </button>
                                 );
                               })}
                             </div>
@@ -579,154 +751,99 @@ export function UsersAdminClient({
                         <td className="whitespace-nowrap text-sm text-slate-600 tabular-nums">
                           {u.lastSignInAt
                             ? formatPlDate(u.lastSignInAt.slice(0, 10))
-                            : "Nigdy"}
+                            : (
+                              <span className="text-slate-400">Nigdy</span>
+                            )}
                         </td>
                         <td>
-                          <div className="flex flex-wrap justify-end gap-1">
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              disabled={
-                                pending ||
-                                !isDirty ||
-                                !!salesTakenByOther ||
-                                managerNeedsGroups
-                              }
-                              onClick={() => {
-                                if (!edit) return;
-                                start(async () => {
-                                  const savedRole = edit.role;
-                                  const savedSalesPersonId = salesPersonIdForSave(
-                                    savedRole,
-                                    edit.salesPersonId
-                                  );
-                                  const groupIds =
-                                    savedRole === "sales_manager"
-                                      ? (managerGroups[u.id] ?? [])
-                                      : [];
-
-                                  const r = await actionSaveAppUserPermissions({
-                                    userId: u.id,
-                                    role: savedRole,
-                                    salesPersonId: savedSalesPersonId,
-                                    managerGroupIds: groupIds,
-                                  });
-                                  if ("error" in r) {
-                                    setToast({ text: r.error, tone: "error" });
-                                    return;
-                                  }
-
-                                  const spName = salesPersonLabel(
-                                    salesPeople,
-                                    savedSalesPersonId,
-                                    u.salesPersonName
-                                  );
-                                  const nextUsers = applyUserPermissionSave(
-                                    users,
-                                    u.id,
-                                    savedRole,
-                                    savedSalesPersonId,
-                                    spName === "—" ? null : spName
-                                  );
-                                  setUsers(nextUsers);
-                                  usersSignatureRef.current =
-                                    usersAdminListSignature(nextUsers);
-
-                                  const nextManagerGroups = { ...managerGroups };
-                                  if (savedRole === "sales_manager") {
-                                    nextManagerGroups[u.id] = groupIds;
-                                  } else {
-                                    delete nextManagerGroups[u.id];
-                                  }
-                                  setManagerGroups(nextManagerGroups);
-                                  setCommittedManagerGroups(nextManagerGroups);
-                                  managerSignatureRef.current =
-                                    usersManagerGroupsSignature(nextManagerGroups);
-
-                                  setEdits((prev) => ({
-                                    ...prev,
-                                    [u.id]: {
-                                      role: savedRole,
-                                      salesPersonId: savedSalesPersonId ?? "",
-                                    },
-                                  }));
-                                  setToast({ text: "Zapisano uprawnienia.", tone: "success" });
-                                });
-                              }}
-                            >
-                              {isDirty ? "Zapisz zmiany" : "Zapisz"}
-                            </Button>
+                          <div className="flex flex-col items-end gap-1.5">
                             {isDirty ? (
+                              <div className="flex flex-wrap justify-end gap-1">
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  disabled={
+                                    pending ||
+                                    !!salesTakenByOther ||
+                                    managerNeedsGroups
+                                  }
+                                  onClick={() => saveUserPermissions(u)}
+                                >
+                                  Zapisz
+                                </Button>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  disabled={pending}
+                                  onClick={() => {
+                                    setEdits((prev) => ({
+                                      ...prev,
+                                      [u.id]: {
+                                        role: u.role,
+                                        salesPersonId: u.salesPersonId ?? "",
+                                      },
+                                    }));
+                                    setManagerGroups((prev) => ({
+                                      ...prev,
+                                      [u.id]: [...savedManagerGroups],
+                                    }));
+                                  }}
+                                >
+                                  Cofnij
+                                </Button>
+                              </div>
+                            ) : null}
+                            <div className="flex flex-wrap justify-end gap-1">
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => {
+                                  setPasswordModal({ userId: u.id, email: u.email });
+                                  setNewPassword("");
+                                }}
+                              >
+                                Hasło
+                              </Button>
                               <Button
                                 variant="ghost"
                                 size="sm"
                                 disabled={pending}
                                 onClick={() => {
-                                  setEdits((prev) => ({
-                                    ...prev,
-                                    [u.id]: {
-                                      role: u.role,
-                                      salesPersonId: u.salesPersonId ?? "",
-                                    },
-                                  }));
-                                  setManagerGroups((prev) => ({
-                                    ...prev,
-                                    [u.id]: [...savedManagerGroups],
-                                  }));
+                                  start(async () => {
+                                    const r = await actionGeneratePasswordResetLink(u.email);
+                                    if ("error" in r) {
+                                      setToast({ text: r.error, tone: "error" });
+                                      return;
+                                    }
+                                    try {
+                                      await navigator.clipboard.writeText(r.link);
+                                      setToast({
+                                        text: "Link do ustawienia hasła skopiowany do schowka.",
+                                        tone: "success",
+                                      });
+                                    } catch {
+                                      setToast({
+                                        text: `Link: ${r.link}`,
+                                        tone: "success",
+                                      });
+                                    }
+                                  });
                                 }}
                               >
-                                Cofnij
+                                Link hasła
                               </Button>
-                            ) : null}
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => {
-                                setPasswordModal({ userId: u.id, email: u.email });
-                                setNewPassword("");
-                              }}
-                            >
-                              Hasło
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              disabled={pending}
-                              onClick={() => {
-                                start(async () => {
-                                  const r = await actionGeneratePasswordResetLink(u.email);
-                                  if ("error" in r) {
-                                    setToast({ text: r.error, tone: "error" });
-                                    return;
-                                  }
-                                  try {
-                                    await navigator.clipboard.writeText(r.link);
-                                    setToast({
-                                      text: "Link do ustawienia hasła skopiowany do schowka.",
-                                      tone: "success",
-                                    });
-                                  } catch {
-                                    setToast({
-                                      text: `Link: ${r.link}`,
-                                      tone: "success",
-                                    });
-                                  }
-                                });
-                              }}
-                            >
-                              Link hasła
-                            </Button>
-                            {!isSelf ? (
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                disabled={pending}
-                                className="text-rose-600 hover:text-rose-700"
-                                onClick={() => setDeleteTarget(u)}
-                              >
-                                Usuń
-                              </Button>
-                            ) : null}
+                              {!isSelf ? (
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  disabled={pending}
+                                  className="text-rose-600 hover:text-rose-700"
+                                  onClick={() => setDeleteTarget(u)}
+                                >
+                                  Usuń
+                                </Button>
+                              ) : null}
+                            </div>
                           </div>
                         </td>
                       </tr>
@@ -738,83 +855,8 @@ export function UsersAdminClient({
           )}
         </Card>
 
-        <Card padding={false} className="overflow-hidden">
-          <CardHeader
-            inset
-            density="compact"
-            title="Opis ról"
-            description="Kto co widzi w systemie"
-          />
-          <ul className="space-y-2 px-3 pb-4 text-sm text-slate-600 sm:px-4 lg:px-5">
-            <li>
-              <Badge variant="info">{ROLE_LABELS.admin}</Badge> — pełny dostęp, historia,
-              ten panel.
-            </li>
-            <li>
-              <Badge variant="info">{ROLE_LABELS.zakupy}</Badge> — panel dzienny, kolejka,
-              harmonogramy, bez administracji.
-            </li>
-            <li>
-              <Badge variant="info">{ROLE_LABELS.magazyn}</Badge> — kolejka magazynu i regał,
-              bez panelu zakupów.
-            </li>
-            <li>
-              <Badge variant="info">{ROLE_LABELS.sales}</Badge> — moje zamówienia, prośby,
-              podgląd planu (bez zamawiania towaru).
-            </li>
-            <li>
-              <Badge variant="info">{ROLE_LABELS.sales_manager}</Badge> — jak handlowiec +
-              zespół; przypisz grupy (Sklep/Biuro), żeby widział tylko swoich ludzi.
-            </li>
-          </ul>
-        </Card>
+        <UsersRoleHelpPanel />
       </section>
-
-      {passwordModal ? (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 p-4">
-          <div className="w-full max-w-md rounded-lg bg-white p-6 shadow-xl">
-            <h3 className="text-lg font-semibold text-slate-900">Ustaw hasło</h3>
-            <p className="mt-1 text-sm text-slate-500">{passwordModal.email}</p>
-            <Field
-              label="Nowe hasło"
-              className="mt-4"
-              hint="Min. 8 znaków, litera i cyfra."
-            >
-              <Input
-                type="password"
-                minLength={8}
-                autoComplete="new-password"
-                value={newPassword}
-                onChange={(e) => setNewPassword(e.target.value)}
-              />
-            </Field>
-            <div className="mt-6 flex justify-end gap-2">
-              <Button variant="secondary" onClick={() => setPasswordModal(null)}>
-                Anuluj
-              </Button>
-              <Button
-                disabled={pending || !isPasswordValid(newPassword)}
-                onClick={() => {
-                  start(async () => {
-                    const r = await actionSetUserPassword(
-                      passwordModal.userId,
-                      newPassword
-                    );
-                    if ("error" in r) {
-                      setToast({ text: r.error, tone: "error" });
-                      return;
-                    }
-                    setToast({ text: "Hasło zaktualizowane.", tone: "success" });
-                    setPasswordModal(null);
-                  });
-                }}
-              >
-                Zapisz hasło
-              </Button>
-            </div>
-          </div>
-        </div>
-      ) : null}
     </>
   );
 }

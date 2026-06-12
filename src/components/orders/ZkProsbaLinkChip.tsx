@@ -8,13 +8,12 @@ import { cn } from "@/lib/cn";
 import { formatProsbaZkLinkNumber } from "@/lib/orders/zk-prosba-link-display";
 import { notatnikZkWatchHref } from "@/lib/orders/notatnik-zk-watch-href";
 import { SearchHighlightText } from "@/components/moje/SearchHighlightText";
-import { salesTypography } from "@/lib/ui/ontime-theme";
+import { salesTypography, salesZkLabelClass, salesZkNumberClass } from "@/lib/ui/ontime-theme";
 
-const ZK_LABEL_CLASS =
-  "inline-flex items-center rounded bg-slate-100 px-1 py-0.5 font-semibold uppercase tracking-wide text-slate-500";
+const ZK_NAV_PENDING_LABEL = "Przechodzę do ZK:";
 
-function zkNavigationMessage(nr: string): string {
-  return `Otwieram ZK ${nr} na liście ZK czekających…`;
+function zkPendingMessage(nr: string): string {
+  return `${ZK_NAV_PENDING_LABEL} ${nr}`;
 }
 
 export function ZkProsbaLinkChip({
@@ -79,44 +78,43 @@ export function ZkProsbaLinkChip({
     [pathname, pending, resolvedHref, router]
   );
 
-  const numberClass = "font-medium tabular-nums text-slate-800";
   const numberEl =
     searchQuery != null ? (
-      <SearchHighlightText text={nr} searchQuery={searchQuery} className={numberClass} />
+      <SearchHighlightText text={nr} searchQuery={searchQuery} className={salesZkNumberClass} />
     ) : (
-      <span className={numberClass}>{nr}</span>
+      <span className={salesZkNumberClass}>{nr}</span>
     );
 
   const linkedNumber = resolvedHref ? (
     <Link
       href={resolvedHref}
       onClick={handleNavigate}
-      className={cn(
-        "inline max-w-full min-w-0 truncate text-inherit",
-        pending
-          ? "pointer-events-none text-indigo-800"
-          : "hover:text-indigo-800 hover:underline"
-      )}
-      aria-busy={pending}
-      title={pending ? zkNavigationMessage(nr) : `Otwórz ZK ${nr} w ZK czekających`}
+      className="inline-flex min-w-0 max-w-full items-center truncate text-inherit hover:text-violet-800 hover:underline"
+      title={`Otwórz ZK ${nr} w ZK czekających`}
     >
-      {pending ? (
-        <span className="inline-flex max-w-full min-w-0 items-center gap-1.5">
-          <Spinner size="sm" className="border-slate-200 border-t-indigo-600" />
-          <span className="truncate font-medium">{zkNavigationMessage(nr)}</span>
-        </span>
-      ) : (
-        numberEl
-      )}
+      {numberEl}
     </Link>
   ) : (
     numberEl
   );
 
-  const content = (
-    <>
-      <span className={ZK_LABEL_CLASS}>ZK</span> {linkedNumber}
-    </>
+  const content = pending ? (
+    <span
+      className="inline-flex min-w-0 max-w-full items-center gap-1.5 text-violet-800"
+      role="status"
+      aria-busy="true"
+      aria-label={zkPendingMessage(nr)}
+      title={zkPendingMessage(nr)}
+    >
+      <Spinner size="sm" className="shrink-0 border-slate-200 border-t-violet-600" />
+      <span className="shrink-0 font-medium leading-none">{ZK_NAV_PENDING_LABEL}</span>
+      <span className={cn(salesZkNumberClass, "min-w-0 truncate tabular-nums")}>{nr}</span>
+    </span>
+  ) : (
+    <span className="inline-flex max-w-full min-w-0 items-center gap-1.5">
+      <span className={salesZkLabelClass}>ZK</span>
+      {linkedNumber}
+    </span>
   );
 
   const wrapperClass = cn(inline ? "inline min-w-0" : salesTypography.rowMeta, "max-w-full", className);
@@ -132,7 +130,10 @@ export function ZkProsbaLinkChip({
   }
 
   return (
-    <p className={cn(wrapperClass, "truncate")} aria-live={pending ? "polite" : undefined}>
+    <p
+      className={cn(wrapperClass, pending ? "min-w-0" : "truncate")}
+      aria-live={pending ? "polite" : undefined}
+    >
       {content}
     </p>
   );

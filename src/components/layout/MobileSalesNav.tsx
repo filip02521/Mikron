@@ -14,10 +14,10 @@ import { NavIcon } from "@/components/icons/NavIcon";
 import { MobileNavOverflowSheet } from "@/components/layout/MobileNavOverflowSheet";
 import {
   mobileNavBadgeClass,
-  mobileNavLinkActiveClass,
   mobileNavLinkBaseClass,
   mobileNavLinkIdleClass,
   mobileSalesNavClass,
+  sidebarNavToneActiveClass,
 } from "@/lib/ui/ontime-theme";
 import { isAdmin, isSalesManager } from "@/lib/auth-roles";
 import { hrefWithAdminSalesPreview } from "@/lib/nav/sales-preview-href";
@@ -61,7 +61,7 @@ export function MobileSalesNav({
           const linkClass = cn(
             mobileNavLinkBaseClass,
             "px-1",
-            active ? mobileNavLinkActiveClass : mobileNavLinkIdleClass,
+            active ? sidebarNavToneActiveClass(item.tone) : mobileNavLinkIdleClass,
             navLocked && !active && "pointer-events-none opacity-40"
           );
 

@@ -98,6 +98,8 @@ export function navIconTileClassForTone(tone: NavTone): string {
   switch (tone) {
     case "amber":
       return "bg-amber-100 text-amber-800";
+    case "orange":
+      return "bg-orange-100 text-orange-900";
     case "emerald":
       return "bg-emerald-100 text-emerald-800";
     case "sky":
@@ -117,6 +119,8 @@ export function navIconTileActiveClassForTone(tone: NavTone): string {
   switch (tone) {
     case "amber":
       return "bg-amber-100 text-amber-900 ring-1 ring-amber-200/80 shadow-sm shadow-amber-900/5";
+    case "orange":
+      return "bg-orange-100 text-orange-950 ring-1 ring-orange-200/80 shadow-sm shadow-orange-900/5";
     case "emerald":
       return "bg-emerald-100 text-emerald-900 ring-1 ring-emerald-200/80 shadow-sm shadow-emerald-900/5";
     case "sky":

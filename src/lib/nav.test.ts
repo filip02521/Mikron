@@ -4,9 +4,12 @@ import {
   navForRole,
   navMobileOverflowItems,
   navMobilePrimaryItems,
+  NAV_SECTION_DAILY,
   NAV_SECTION_SUPPLIERS,
   NAV_SECTION_TODAY,
   NAV_SECTION_TOOLS,
+  NAV_SECTION_ZK,
+  NAV_SECTION_INFO,
   pageTitle,
 } from "./nav";
 
@@ -143,8 +146,25 @@ describe("navForRole struktura zakupów", () => {
 describe("navForRole handlowiec", () => {
   it("używa Tablica zamiast Komunikacja", () => {
     const groups = navForRole("sales");
-    const info = groups.find((g) => g.title === "Informacje");
+    const info = groups.find((g) => g.title === NAV_SECTION_INFO);
     expect(info?.items[0]?.label).toBe("Tablica");
+  });
+
+  it("przypisuje tony semantyczne pozycjom menu", () => {
+    const groups = navForRole("sales");
+    const daily = groups.find((g) => g.title === NAV_SECTION_DAILY);
+    const zk = groups.find((g) => g.title === NAV_SECTION_ZK);
+    const info = groups.find((g) => g.title === NAV_SECTION_INFO);
+
+    expect(daily?.items.map((item) => [item.label, item.tone])).toEqual([
+      ["Moje zamówienia", "indigo"],
+      ["Nowa prośba", "indigo"],
+    ]);
+    expect(zk?.items.map((item) => [item.label, item.tone])).toEqual([
+      ["ZK czekające", "violet"],
+      ["Harmonogram", "sky"],
+    ]);
+    expect(info?.items[0]?.tone).toBe("indigo");
   });
 
   it("mobile primary ma cztery codzienne pozycje", () => {
