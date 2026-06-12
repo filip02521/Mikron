@@ -36,7 +36,7 @@ function buildVacationSuccessToast(result: Awaited<ReturnType<typeof actionUpser
   const parts: string[] = [];
   if (result.active) {
     parts.push(
-      `Urlop zapisany — przeliczono harmonogramy (${result.processed} dostawców).`
+      `Urlop zapisany — przeliczono harmonogram${result.processed === 1 ? "" : "y"} (${result.processed} dostawc${result.processed === 1 ? "y" : "ów"}).`
     );
     if (result.nextDate) {
       parts.push(
@@ -48,7 +48,7 @@ function buildVacationSuccessToast(result: Awaited<ReturnType<typeof actionUpser
     }
   } else {
     parts.push(
-      `Urlop wyłączony — przeliczono harmonogramy (${result.processed} dostawców).`
+      `Urlop wyłączony — przeliczono harmonogram${result.processed === 1 ? "" : "y"} (${result.processed} dostawc${result.processed === 1 ? "y" : "ów"}).`
     );
   }
   if (result.syncErrors.length) {
@@ -166,7 +166,18 @@ export function VacationsAdminClient({
       },
       snapshot.id
         ? `Aktualizacja urlopu (${supplierName})…`
-        : `Zapis urlopu (${supplierName})…`
+        : `Zapis urlopu (${supplierName})…`,
+      {
+        onError: (error) => {
+          setToast({
+            text:
+              error instanceof Error
+                ? error.message
+                : "Nie udało się zapisać urlopu.",
+            tone: "error",
+          });
+        },
+      }
     );
   };
 

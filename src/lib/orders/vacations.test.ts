@@ -1,8 +1,12 @@
 import { describe, it, expect } from "vitest";
 import {
   applyVacationLogic,
+  effectiveShiftDate,
+  filterApplicableVacationPeriods,
+  isDateInVacationWindow,
   resolveVacationConflictOnOrder,
   resolveVacationConflictOnShift,
+  vacationRangesOverlap,
 } from "./vacations";
 import { formatDateString } from "./dates";
 
@@ -26,7 +30,7 @@ describe("applyVacationLogic", () => {
     expect(formatDateString(result.nextDate!)).toBe("2025-08-18");
   });
 
-  it("handles ZAGRANICA vacation rules", () => {
+  it("przyspiesza ZAGRANICA gdy ostatnie zamówienie > tydzień po order_date", () => {
     const result = applyVacationLogic({
       orderDate: new Date("2025-06-01T12:00:00"),
       shiftDate: null,
@@ -34,10 +38,8 @@ describe("applyVacationLogic", () => {
       location: "ZAGRANICA",
       vacations: [vacation],
     });
-    expect(result.nextDate).not.toBeNull();
-    expect(["PRZYSPIESZONE_PRZED", "PRZESUNIETE_PO", null]).toContain(
-      result.vacationNote
-    );
+    expect(result.vacationNote).toBe("PRZYSPIESZONE_PRZED");
+    expect(formatDateString(result.nextDate!)).toBe("2025-07-25");
   });
 
   it("sets OSTATNIE_ZAMOWIENIE when term falls before vacation but next interval would pass last order", () => {
@@ -87,15 +89,57 @@ describe("applyVacationLogic", () => {
   });
 });
 
+describe("vacation policy helpers", () => {
+  const vacation = {
+    start: new Date("2025-08-01"),
+    end: new Date("2025-08-15"),
+    lastOrder: new Date("2025-07-25"),
+  };
+
+  it("isDateInVacationWindow obejmuje okno przed startem urlopu", () => {
+    expect(isDateInVacationWindow(new Date("2025-07-28"), vacation)).toBe(true);
+    expect(isDateInVacationWindow(new Date("2025-07-20"), vacation)).toBe(false);
+  });
+
+  it("vacationRangesOverlap wykrywa nakładanie", () => {
+    const a = { start: new Date("2025-08-01"), end: new Date("2025-08-15") };
+    const b = { start: new Date("2025-08-10"), end: new Date("2025-08-20") };
+    expect(vacationRangesOverlap(a, b)).toBe(true);
+    expect(
+      vacationRangesOverlap(
+        { start: new Date("2025-09-01"), end: new Date("2025-09-10") },
+        b
+      )
+    ).toBe(false);
+  });
+
+  it("filterApplicableVacationPeriods pomija minione urlopy", () => {
+    const today = new Date("2025-09-01");
+    const filtered = filterApplicableVacationPeriods([vacation], today);
+    expect(filtered).toHaveLength(0);
+  });
+
+  it("effectiveShiftDate ignoruje zaległe przesunięcia", () => {
+    const today = new Date("2025-09-01");
+    expect(effectiveShiftDate(new Date("2025-08-10"), today)).toBeNull();
+    expect(effectiveShiftDate(new Date("2025-09-05"), today)).not.toBeNull();
+  });
+});
+
 describe("resolveVacationConflictOnOrder", () => {
+  const vacation = {
+    start: new Date("2025-08-01"),
+    end: new Date("2025-08-15"),
+    lastOrder: new Date("2025-07-25"),
+  };
+
   it("moves order date out of vacation block", () => {
-    const adjusted = resolveVacationConflictOnOrder(new Date("2025-08-10"), [
-      {
-        start: new Date("2025-08-01"),
-        end: new Date("2025-08-15"),
-        lastOrder: new Date("2025-07-25"),
-      },
-    ]);
+    const adjusted = resolveVacationConflictOnOrder(new Date("2025-08-10"), [vacation]);
+    expect(formatDateString(adjusted)).toBe("2025-08-18");
+  });
+
+  it("przesuwa termin z okna przed urlopem tak jak applyVacationLogic", () => {
+    const adjusted = resolveVacationConflictOnOrder(new Date("2025-07-28"), [vacation]);
     expect(formatDateString(adjusted)).toBe("2025-08-18");
   });
 });

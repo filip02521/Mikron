@@ -2,7 +2,12 @@ import type { SupplierLocation, VacationNote } from "@/types/database";
 import { todayInWarsaw } from "@/lib/time/warsaw";
 import { getRowColorForDate, modifyHexColor, type SummaryColorSet } from "./colors";
 import type { OrderInterval } from "./dates";
-import { applyVacationLogic, type VacationPeriod } from "./vacations";
+import {
+  applyVacationLogic,
+  effectiveShiftDate,
+  filterApplicableVacationPeriods,
+  type VacationPeriod,
+} from "./vacations";
 
 export interface ScheduleRowInput {
   orderDate: Date | null;
@@ -25,12 +30,15 @@ export function recalcScheduleRow(
   colors?: SummaryColorSet,
   today = todayInWarsaw()
 ): ScheduleRowOutput {
+  const shiftDate = effectiveShiftDate(input.shiftDate, today);
+  const vacations = filterApplicableVacationPeriods(input.vacations, today);
+
   const { nextDate, vacationNote } = applyVacationLogic({
     orderDate: input.orderDate,
-    shiftDate: input.shiftDate,
+    shiftDate,
     interval: input.interval,
     location: input.location,
-    vacations: input.vacations,
+    vacations,
   });
 
   const standardColor = getRowColorForDate(nextDate, colors, today);

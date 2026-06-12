@@ -76,6 +76,7 @@ export function SummaryWorkspace({
     handleUndo,
     flash,
     dismissFlash,
+    notify,
   } = useDailyPanelRunner();
 
   const { view: panelView, setView: setPanelView } = useDailyPanelView();
@@ -440,10 +441,12 @@ export function SummaryWorkspace({
 
       {vacationModalSupplierId && vacationModalName ? (
         <SupplierVacationModal
+          key={vacationModalSupplierId}
           supplierId={vacationModalSupplierId}
           supplierName={vacationModalName}
           onClose={() => setVacationModalSupplierId(null)}
           onSaved={(msg) => appendFlash(msg)}
+          onError={(msg) => notify(msg, "error")}
         />
       ) : null}
 

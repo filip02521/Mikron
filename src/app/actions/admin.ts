@@ -22,6 +22,7 @@ import {
 import { fetchDeliveryStatsDiagnostics } from "@/lib/data/delivery-stats-diagnostics";
 import { tryAcquireLock, releaseLock } from "@/lib/services/locks";
 import {
+  deactivateExpiredVacations,
   recalcSingleSupplierSchedule,
   syncSuppliersFromSettings,
 } from "@/lib/services/sync";
@@ -64,6 +65,11 @@ import {
   MAX_SUPPLIER_NOTES_LEN,
 } from "@/lib/security/text-limits";
 import { dateToIso, parseDateOnly, snapToBusinessDay } from "@/lib/orders/dates";
+import {
+  parseVacationPeriodRow,
+  vacationRangesOverlap,
+} from "@/lib/orders/vacations";
+import { todayInWarsaw } from "@/lib/time/warsaw";
 import {
   buildDailyPanelUndoPayload,
   isUndoPayloadExpired,
@@ -896,6 +902,23 @@ export async function actionFetchSupplierRecentHistory(supplierId: string) {
   return data ?? [];
 }
 
+export async function actionGetEditableVacationForSupplier(supplierId: string) {
+  await requireSupplierManagement("read");
+  const supabase = createAdminClient();
+  const today = dateToIso(todayInWarsaw());
+  const { data, error } = await supabase
+    .from("vacations")
+    .select("id, start_date, end_date, last_order_date, active")
+    .eq("supplier_id", supplierId)
+    .eq("active", true)
+    .gte("end_date", today)
+    .order("start_date", { ascending: true })
+    .limit(1)
+    .maybeSingle();
+  if (error) throw new Error(error.message);
+  return data;
+}
+
 export async function actionUpsertVacation(form: {
   id?: string;
   supplier_id: string;
@@ -922,6 +945,28 @@ export async function actionUpsertVacation(form: {
   }
 
   const supabase = createAdminClient();
+
+  if (form.active) {
+    const { data: existing, error: existingErr } = await supabase
+      .from("vacations")
+      .select("id, start_date, end_date, last_order_date")
+      .eq("supplier_id", form.supplier_id)
+      .eq("active", true);
+    if (existingErr) throw new Error(existingErr.message);
+
+    const candidate = { start, end };
+    for (const row of existing ?? []) {
+      if (form.id && row.id === form.id) continue;
+      const other = parseVacationPeriodRow(row);
+      if (!other) continue;
+      if (vacationRangesOverlap(candidate, other)) {
+        throw new Error(
+          "Ten dostawca ma już aktywny urlop w tym okresie. Edytuj istniejący wpis zamiast dodawać kolejny."
+        );
+      }
+    }
+  }
+
   const payload = {
     supplier_id: form.supplier_id,
     start_date: form.start_date,
@@ -936,7 +981,18 @@ export async function actionUpsertVacation(form: {
     throw new Error(write.error.message);
   }
 
-  const sync = await syncSuppliersFromSettings();
+  const expiredSupplierIds = await deactivateExpiredVacations();
+  const recalcTargets = new Set([form.supplier_id, ...expiredSupplierIds]);
+  const recalcErrors: string[] = [];
+  for (const supplierId of recalcTargets) {
+    try {
+      await recalcSingleSupplierSchedule(supplierId);
+    } catch (e) {
+      recalcErrors.push(
+        e instanceof Error ? e.message : "Błąd przeliczenia harmonogramu"
+      );
+    }
+  }
 
   const [{ data: supplier }, { data: schedule }] = await Promise.all([
     supabase.from("suppliers").select("name").eq("id", form.supplier_id).single(),
@@ -951,8 +1007,8 @@ export async function actionUpsertVacation(form: {
 
   return {
     success: true as const,
-    processed: sync.processed,
-    syncErrors: sync.errors,
+    processed: recalcTargets.size,
+    syncErrors: recalcErrors,
     supplierName: supplier?.name ?? "Dostawca",
     nextDate: schedule?.computed_next_date ?? null,
     vacationNote: schedule?.vacation_note ?? null,

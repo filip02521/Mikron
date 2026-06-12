@@ -18,8 +18,11 @@ import { recalcScheduleRow } from "@/lib/orders/recalc";
 import {
   resolveVacationConflictOnOrder,
   resolveVacationConflictOnShift,
+  filterApplicableVacationPeriods,
+  parseVacationPeriodRow,
   type VacationPeriod,
 } from "@/lib/orders/vacations";
+import { todayInWarsaw } from "@/lib/time/warsaw";
 import {
   aggregateDeliveryStatsFromOrders,
   aggregatedToDeliveryStatsRow,
@@ -104,17 +107,12 @@ async function getVacationsForSupplier(supplierId: string): Promise<VacationPeri
     .select("*")
     .eq("supplier_id", supplierId)
     .eq("active", true);
+  const today = todayInWarsaw();
   const periods = (data ?? [])
-    .map((v) => {
-      const start = parseDateOnly(v.start_date);
-      const end = parseDateOnly(v.end_date);
-      const lastOrder = parseDateOnly(v.last_order_date);
-      if (!start || !end || !lastOrder) return null;
-      return { start, end, lastOrder };
-    })
+    .map((v) => parseVacationPeriodRow(v))
     .filter((p): p is VacationPeriod => p != null);
   periods.sort((a, b) => a.start.getTime() - b.start.getTime());
-  return periods;
+  return filterApplicableVacationPeriods(periods, today);
 }
 
 async function recalcSupplierSchedule(supplierId: string) {

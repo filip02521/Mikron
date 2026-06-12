@@ -1,8 +1,13 @@
 import { createAdminClient } from "@/lib/supabase/admin";
 import { formatContactHref } from "@/lib/orders/supplier-contact";
 import { recalcScheduleRow } from "@/lib/orders/recalc";
-import type { VacationPeriod } from "@/lib/orders/vacations";
+import {
+  filterApplicableVacationPeriods,
+  parseVacationPeriodRow,
+  type VacationPeriod,
+} from "@/lib/orders/vacations";
 import { dateToIso, parseDateOnly, resolveSupplierInterval } from "@/lib/orders/dates";
+import { todayInWarsaw } from "@/lib/time/warsaw";
 import type { SupplierLocation } from "@/types/database";
 
 type SupplierWithSchedule = {
@@ -37,21 +42,37 @@ function buildVacationsBySupplier(
     start_date: string;
     end_date: string;
     last_order_date: string;
-  }>
+  }>,
+  today = todayInWarsaw()
 ): Record<string, VacationPeriod[]> {
   const vacationsBySupplier: Record<string, VacationPeriod[]> = {};
   for (const v of vacations) {
-    const start = parseDateOnly(v.start_date);
-    const end = parseDateOnly(v.end_date);
-    const lastOrder = parseDateOnly(v.last_order_date);
-    if (!start || !end || !lastOrder) continue;
+    const period = parseVacationPeriodRow(v);
+    if (!period) continue;
     if (!vacationsBySupplier[v.supplier_id]) vacationsBySupplier[v.supplier_id] = [];
-    vacationsBySupplier[v.supplier_id].push({ start, end, lastOrder });
+    vacationsBySupplier[v.supplier_id].push(period);
   }
   for (const id of Object.keys(vacationsBySupplier)) {
-    vacationsBySupplier[id].sort((a, b) => a.start.getTime() - b.start.getTime());
+    vacationsBySupplier[id] = filterApplicableVacationPeriods(
+      vacationsBySupplier[id]!.sort((a, b) => a.start.getTime() - b.start.getTime()),
+      today
+    );
   }
   return vacationsBySupplier;
+}
+
+/** Wyłącza urlopy, których koniec minął — zapobiega wiszącym aktywnym rekordom. */
+export async function deactivateExpiredVacations(): Promise<string[]> {
+  const supabase = createAdminClient();
+  const today = dateToIso(todayInWarsaw());
+  const { data, error } = await supabase
+    .from("vacations")
+    .update({ active: false })
+    .eq("active", true)
+    .lt("end_date", today)
+    .select("supplier_id");
+  if (error) throw new Error(error.message);
+  return [...new Set((data ?? []).map((row) => String(row.supplier_id)))];
 }
 
 /** Przelicza harmonogram jednego dostawcy (szybkie — bez sync całej bazy). */
@@ -64,7 +85,7 @@ export async function recalcSingleSupplierSchedule(supplierId: string): Promise<
       .select("id, name, location, interval_raw, interval_weeks, supplier_schedules(*)")
       .eq("id", supplierId)
       .single(),
-    supabase.from("vacations").select("*").eq("active", true),
+    supabase.from("vacations").select("*").eq("supplier_id", supplierId).eq("active", true),
   ]);
 
   if (supplierErr || !supplier) {
@@ -109,6 +130,8 @@ export async function syncSuppliersFromSettings(): Promise<{
 }> {
   const supabase = createAdminClient();
   const errors: string[] = [];
+
+  await deactivateExpiredVacations();
 
   const { data: suppliers, error } = await supabase
     .from("suppliers")
