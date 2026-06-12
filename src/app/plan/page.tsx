@@ -53,7 +53,7 @@ export default async function PlanPage({
     if (!salesPersonId) {
       return (
         <SalesAccountLinkRequired
-          title="Harmonogram zakupów"
+          title="Harmonogram"
           description="Kalendarz działu dostaw i wyszukiwarka dostawców. Konto musi być przypisane do profilu handlowca."
         />
       );
@@ -105,7 +105,7 @@ export default async function PlanPage({
     <>
       {!salesMode ? (
         <PageHeader
-          title="Harmonogram zakupów"
+          title="Harmonogram"
           description="Podgląd harmonogramu zamówień u dostawców — bez panelu zakupowego."
         />
       ) : null}

@@ -49,7 +49,7 @@ function PlanGuide() {
   return (
     <HelpPopover
       label="Pomoc — harmonogram zakupów"
-      title="Harmonogram zakupów"
+      title="Harmonogram"
       shortLabel="Pomoc"
       icon={<GuideIcon />}
     >
@@ -313,7 +313,7 @@ function SalesPlanViewFallback({
     <div className={salesPageShellClass}>
       {error ? <Alert tone="warning">{error}</Alert> : null}
       <Card padding={false} className="overflow-hidden">
-        <CardHeader inset density="compact" title="Harmonogram zakupów" description={PLAN_INTRO} />
+        <CardHeader inset density="compact" title="Harmonogram" description={PLAN_INTRO} />
         <div className="px-4 py-12 text-center text-sm text-slate-500">Ładowanie…</div>
       </Card>
     </div>
@@ -391,7 +391,7 @@ function SalesPlanViewContent({
               <IconCalendar size={20} />
             </SectionHeadingIcon>
           }
-          title="Harmonogram zakupów"
+          title="Harmonogram"
           description={PLAN_INTRO}
           action={<PlanGuide />}
         />

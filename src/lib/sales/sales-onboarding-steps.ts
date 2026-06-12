@@ -73,7 +73,7 @@ export function getSalesOnboardingSteps(role: UserRole): SalesOnboardingStep[] {
       id: "plan",
       navKey: "plan",
       href: "/plan",
-      title: "Harmonogram zakupów",
+      title: "Harmonogram",
       lead: "Terminy u dostawców — pomaga zaplanować prośbę i powiedzieć klientowi, kiedy realnie można zamówić.",
       bullets: [
         "„Z otwartymi prośbami” — dostawcy z Twoich aktywnych spraw w „Moje zamówienia”. Rozwiń wiersz, aby zobaczyć szczegóły.",
@@ -86,7 +86,7 @@ export function getSalesOnboardingSteps(role: UserRole): SalesOnboardingStep[] {
       id: "tablica",
       navKey: "board",
       href: "/tablica",
-      title: "Komunikacja z zakupami",
+      title: "Tablica",
       lead: "Ogłoszenia od działu zakupów i wspólne pytania zespołu. To nie zastępuje formularza „Nowa prośba” przy zamówieniu towaru.",
       bullets: [
         "Dwie zakładki: Ogłoszenia (tylko do odczytu) i Pytania (widoczne dla całego działu handlowego).",

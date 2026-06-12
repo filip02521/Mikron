@@ -8,7 +8,7 @@ export function QueuePanelHelp() {
   return (
     <HelpPopover
       label="Pomoc — magazyn i regał"
-      title="Magazyn i regał"
+      title="Przyjęcie towaru"
       shortLabel="Pomoc"
       icon={<GuideIcon />}
     >

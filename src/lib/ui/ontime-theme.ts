@@ -56,18 +56,18 @@ export const sidebarNavBadgeWarningClass =
 export const brandMarkAppClass =
   "bg-gradient-to-br from-indigo-600 to-sky-600 text-white shadow-[var(--shadow-brand)] ring-1 ring-sky-500/30";
 
-/** Plakietka roli — neutralna baza + kolorowy akcent */
+/** Plakietka roli — delikatny ton bez lewego paska. */
 export function roleBadgeClass(role: string): string {
-  const accent: Record<string, string> = {
-    admin: "border-l-violet-500",
-    zakupy: "border-l-amber-500",
-    magazyn: "border-l-emerald-500",
-    sales: "border-l-indigo-500",
-    sales_manager: "border-l-indigo-400",
+  const tint: Record<string, string> = {
+    admin: "border-violet-200/80 bg-violet-50/90 text-violet-800",
+    zakupy: "border-amber-200/80 bg-amber-50/90 text-amber-900",
+    magazyn: "border-emerald-200/80 bg-emerald-50/90 text-emerald-800",
+    sales: "border-indigo-200/80 bg-indigo-50/90 text-indigo-800",
+    sales_manager: "border-indigo-200/70 bg-indigo-50/80 text-indigo-800",
   };
   return [
-    "inline-flex max-w-full items-center rounded-md border border-slate-200/90 border-l-[3px] bg-slate-50/80 px-2.5 py-1 text-[10px] font-semibold leading-tight text-slate-700",
-    accent[role] ?? "border-l-slate-400",
+    "inline-flex max-w-full items-center rounded-md border px-2.5 py-1 text-[10px] font-semibold leading-tight",
+    tint[role] ?? "border-slate-200/90 bg-slate-50/80 text-slate-700",
   ].join(" ");
 }
 
@@ -310,15 +310,15 @@ export const mobileSalesNavClass =
   "fixed inset-x-0 bottom-0 z-50 border-t border-slate-200/80 bg-[var(--card)]/95 shadow-[var(--shadow-card-elevated)] backdrop-blur-md md:hidden";
 
 export const mobileNavLinkBaseClass =
-  "relative flex min-h-[3.25rem] flex-col items-center justify-center gap-0.5 px-2 py-2 text-[11px] font-semibold transition-colors lg:text-xs";
+  "relative mx-0.5 flex min-h-[3.25rem] flex-col items-center justify-center gap-0.5 rounded-md px-1.5 py-2 text-[11px] font-semibold transition-colors lg:text-xs";
 
 export const mobileNavLinkActiveClass =
-  "text-indigo-700 before:absolute before:inset-x-3 before:top-0 before:h-0.5 before:rounded-full before:bg-gradient-to-r before:from-indigo-500 before:to-sky-400 before:content-['']";
+  "border border-slate-200/85 bg-white text-slate-900 shadow-sm ring-1 ring-slate-200/75";
 
-export const mobileNavLinkIdleClass = "text-slate-500";
+export const mobileNavLinkIdleClass = "text-slate-500 hover:bg-white/60 hover:text-slate-800";
 
 export const mobileNavBadgeClass =
-  "bg-gradient-to-br from-indigo-600 to-sky-600 text-[9px] font-bold text-white shadow-sm shadow-indigo-600/20 lg:text-[10px]";
+  "bg-slate-700 text-[9px] font-bold text-white shadow-sm lg:text-[10px]";
 
 /** Wspólna obudowa komunikatów systemowych. */
 export const systemNoticeShellClass = cn(

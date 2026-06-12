@@ -498,12 +498,12 @@ export function salesCancelArchiveDetail(
     case "in_transit":
       return {
         statusTitle: "Rezygnacja — towar w drodze",
-        statusDetail: `${when}${partialNote} Jeśli towar dotrze, magazyn rozliczy go w zakładce Magazyn i regał.`,
+        statusDetail: `${when}${partialNote} Jeśli towar dotrze, magazyn rozliczy go w zakładce Przyjęcie towaru.`,
       };
     case "on_stock":
       return {
         statusTitle: "Rezygnacja — towar na magazynie",
-        statusDetail: `${when}${partialNote} Magazyn rozliczy towar w zakładce Magazyn i regał (stan lub zwrot).`,
+        statusDetail: `${when}${partialNote} Magazyn rozliczy towar w zakładce Przyjęcie towaru (stan lub zwrot).`,
       };
     default:
       return {

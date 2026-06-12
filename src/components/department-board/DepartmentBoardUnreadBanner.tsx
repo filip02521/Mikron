@@ -29,7 +29,7 @@ export function DepartmentBoardUnreadBanner({
       action={
         <Link href="/tablica?widok=ogloszenia" className="shrink-0">
           <Button type="button" size="sm" className="min-h-11">
-            Komunikacja
+            Tablica
           </Button>
         </Link>
       }
