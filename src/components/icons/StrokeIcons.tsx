@@ -510,6 +510,38 @@ export function IconNotepad(props: StrokeIconProps) {
   );
 }
 
+/** Zgłoszenia / uwagi od użytkowników */
+export function IconMessageSquare(props: StrokeIconProps) {
+  return (
+    <Svg {...props}>
+      <path d="M21 15a2 2 0 01-2 2H8l-5 3V5a2 2 0 012-2h14a2 2 0 012 2z" />
+      <path d="M8 9h8M8 13h5" />
+    </Svg>
+  );
+}
+
+/** Katalog produktów */
+export function IconPackage(props: StrokeIconProps) {
+  return (
+    <Svg {...props}>
+      <path d="M12 3l8 4.5v9L12 21l-8-4.5v-9L12 3z" />
+      <path d="M12 12l8-4.5M12 12v9M12 12L4 7.5" />
+    </Svg>
+  );
+}
+
+/** Grupy zespołu */
+export function IconUserGroup(props: StrokeIconProps) {
+  return (
+    <Svg {...props}>
+      <path d="M16 21v-2a4 4 0 00-4-4H6a4 4 0 00-4 4v2" />
+      <circle cx="9" cy="7" r="4" />
+      <path d="M22 21v-2a4 4 0 00-3-3.87" />
+      <path d="M16 3.13a4 4 0 010 7.75" />
+    </Svg>
+  );
+}
+
 export type DailySectionIconKind = "dzis" | "prosby" | "harmonogram" | "plan" | "hidden";
 
 const DAILY_SECTION_ICON_MAP: Record<

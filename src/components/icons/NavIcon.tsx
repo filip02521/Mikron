@@ -5,38 +5,25 @@ import {
   IconCalendarRange,
   IconClipboardList,
   IconClipboardPen,
+  IconInbox,
   IconLayers,
   IconLayoutPanel,
+  IconMessageSquare,
+  IconNotepad,
+  IconPackage,
+  IconPackageCheck,
   IconPlusCircle,
   IconSettings,
   IconSun,
   IconUserCog,
+  IconUserGroup,
   IconUsers,
   IconWarehouse,
-  IconInbox,
-  IconNotepad,
-  IconPackageCheck,
   type StrokeIconProps,
 } from "@/components/icons/StrokeIcons";
+import type { NavIconKey, NavTone } from "@/lib/nav";
 
-export type NavIconKey =
-  | "dailyPanel"
-  | "verification"
-  | "warehouse"
-  | "history"
-  | "suppliers"
-  | "schedule"
-  | "vacation"
-  | "groupOrder"
-  | "admin"
-  | "myOrders"
-  | "newRequest"
-  | "plan"
-  | "notepad"
-  | "clientZk"
-  | "board"
-  | "team"
-  | "teamAccounts";
+export type { NavIconKey } from "@/lib/nav";
 
 const NAV_ICON_BY_KEY: Record<
   NavIconKey,
@@ -51,6 +38,8 @@ const NAV_ICON_BY_KEY: Record<
   vacation: IconSun,
   groupOrder: IconLayers,
   admin: IconSettings,
+  bugReport: IconMessageSquare,
+  catalog: IconPackage,
   myOrders: IconClipboardList,
   newRequest: IconPlusCircle,
   plan: IconCalendar,
@@ -59,6 +48,7 @@ const NAV_ICON_BY_KEY: Record<
   board: IconInbox,
   team: IconUsers,
   teamAccounts: IconUserCog,
+  teamGroups: IconUserGroup,
 };
 
 const HREF_TO_NAV_ICON: Record<string, NavIconKey> = {
@@ -73,6 +63,8 @@ const HREF_TO_NAV_ICON: Record<string, NavIconKey> = {
   "/admin/urlopy": "vacation",
   "/zamowienia/nowe": "groupOrder",
   "/admin": "admin",
+  "/admin/zgloszenia": "bugReport",
+  "/admin/produkty": "catalog",
   "/moje": "myOrders",
   "/prosba": "newRequest",
   "/plan": "plan",
@@ -83,48 +75,63 @@ const HREF_TO_NAV_ICON: Record<string, NavIconKey> = {
   "/zakupy/tablica": "board",
   "/zespol": "team",
   "/zespol/handlowcy": "teamAccounts",
-  "/zespol/grupy": "teamAccounts",
+  "/zespol/grupy": "teamGroups",
 };
 
 export function navIconKeyFromHref(href: string): NavIconKey {
+  const path = href.split("?")[0]!;
+  if (HREF_TO_NAV_ICON[path]) return HREF_TO_NAV_ICON[path]!;
   if (HREF_TO_NAV_ICON[href]) return HREF_TO_NAV_ICON[href]!;
-  if (href.startsWith("/lokalizacje/")) return "schedule";
-  if (href.startsWith("/admin/dostawcy") || href.startsWith("/admin/urlopy")) {
-    return href.includes("/urlopy") ? "vacation" : "suppliers";
+  if (path.startsWith("/lokalizacje/")) return "schedule";
+  if (path.startsWith("/admin/dostawcy") || path.startsWith("/admin/urlopy")) {
+    return path.includes("/urlopy") ? "vacation" : "suppliers";
   }
-  if (href.startsWith("/zespol/handlowcy")) return "teamAccounts";
-  if (href.startsWith("/zespol")) return "team";
-  if (href.startsWith("/admin")) return "admin";
+  if (path.startsWith("/zespol/handlowcy")) return "teamAccounts";
+  if (path.startsWith("/zespol/grupy")) return "teamGroups";
+  if (path.startsWith("/zespol")) return "team";
+  if (path.startsWith("/admin")) return "admin";
   return "dailyPanel";
 }
 
+/** Kolor kafelka ikony — semantyka jak w panelu dziennym. */
+export function navIconTileClassForTone(tone: NavTone): string {
+  switch (tone) {
+    case "amber":
+      return "bg-amber-100 text-amber-800";
+    case "emerald":
+      return "bg-emerald-100 text-emerald-800";
+    case "sky":
+      return "bg-sky-50 text-sky-800";
+    case "slate":
+      return "bg-slate-100 text-slate-700";
+    case "violet":
+      return "bg-violet-100 text-violet-800";
+    case "indigo":
+    default:
+      return "bg-indigo-100 text-indigo-700";
+  }
+}
+
+/** @deprecated Użyj {@link navIconTileClassForTone} z tonem z NavItem. */
 export function navIconTileIdleClass(key: NavIconKey): string {
   switch (key) {
-    case "dailyPanel":
-    case "myOrders":
-    case "newRequest":
-    case "plan":
-    case "notepad":
-    case "clientZk":
-    case "board":
-    case "schedule":
-    case "team":
-      return "bg-indigo-100 text-indigo-700";
     case "verification":
-      return "bg-amber-100 text-amber-800";
+      return navIconTileClassForTone("amber");
     case "warehouse":
-      return "bg-emerald-100 text-emerald-800";
-    case "history":
-      return "bg-indigo-50 text-indigo-700";
+      return navIconTileClassForTone("emerald");
     case "suppliers":
-      return "bg-sky-50 text-sky-800";
-    case "teamAccounts":
-      return "bg-indigo-50/90 text-indigo-700";
+    case "schedule":
     case "vacation":
-      return "bg-sky-100 text-sky-800";
+      return navIconTileClassForTone("sky");
+    case "history":
     case "groupOrder":
+      return navIconTileClassForTone("slate");
     case "admin":
-      return "bg-violet-100 text-violet-800";
+    case "bugReport":
+    case "catalog":
+      return navIconTileClassForTone("violet");
+    default:
+      return navIconTileClassForTone("indigo");
   }
 }
 

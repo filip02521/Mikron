@@ -17,20 +17,19 @@ import {
   sidebarHeaderClass,
   sidebarNavSectionDividerClass,
   sidebarNavSectionTitleClass,
+  sidebarNavPrimaryHighlightIdleClass,
+  sidebarNavCompactPaddingClass,
+  sidebarNavBadgeWarningClass,
   controlFocusClass,
   panelTypography,
   sectionIconTileBrandClass,
+  buttonPrimaryClass,
 } from "@/lib/ui/ontime-theme";
 import { ONTIME_AUTH_FOOTER } from "@/lib/ui/ontime-brand";
-import { buttonPrimaryClass } from "@/lib/ui/ontime-theme";
 import type { UserRole } from "@/types/database";
 import { cn } from "@/lib/cn";
 import { createClient } from "@/lib/supabase/client";
-import {
-  NavIcon,
-  navIconKeyFromHref,
-  navIconTileIdleClass,
-} from "@/components/icons/NavIcon";
+import { NavIcon, navIconTileClassForTone } from "@/components/icons/NavIcon";
 import { useSalesNavLocked } from "@/components/sales/SalesOnboardingContext";
 import { AdminPanelContextSwitcher } from "@/components/layout/AdminPanelContextSwitcher";
 import { actionClearAdminPanelContext } from "@/app/actions/admin-panel-context";
@@ -51,40 +50,49 @@ function NavLink({
   locked?: boolean;
   href: string;
 }) {
+  const compact = item.tier === "compact";
   const hasBadge = item.badge != null && item.badge > 0;
-  const isVerificationNav = item.href === "/weryfikacja";
-  const iconKey = navIconKeyFromHref(item.href);
+  const showDescription = Boolean(item.description) && !compact;
 
   const className = cn(
-    "group block rounded-md px-2.5 py-2 transition-colors",
+    "group block rounded-md transition-colors",
+    compact ? sidebarNavCompactPaddingClass : "px-2.5 py-2",
     controlFocusClass,
-    active ? navLinkActiveClass : navLinkIdleClass,
-    locked && !active && "cursor-not-allowed opacity-45 hover:border-transparent hover:bg-transparent hover:text-inherit"
+    active
+      ? navLinkActiveClass
+      : cn(
+          navLinkIdleClass,
+          item.highlight && sidebarNavPrimaryHighlightIdleClass
+        ),
+    locked &&
+      !active &&
+      "cursor-not-allowed opacity-45 hover:border-transparent hover:bg-transparent hover:text-inherit"
   );
 
   const content = (
     <span className="flex items-start justify-between gap-2">
-        <span className="flex min-w-0 flex-1 items-start gap-2.5">
-          <span
-            className={cn(
-              "mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-md transition-colors",
-              active
-                ? cn(sectionIconTileBrandClass, "ring-1 ring-indigo-200/60")
-                : cn(navIconTileIdleClass(iconKey), "group-hover:opacity-90")
-            )}
-          >
-            <NavIcon navKey={iconKey} size={17} />
-          </span>
+      <span className={cn("flex min-w-0 flex-1 items-start", compact ? "gap-2" : "gap-2.5")}>
+        <span
+          className={cn(
+            "mt-0.5 flex shrink-0 items-center justify-center rounded-md transition-colors",
+            compact ? "h-7 w-7" : "h-8 w-8",
+            active
+              ? cn(sectionIconTileBrandClass, "ring-1 ring-indigo-200/60")
+              : cn(navIconTileClassForTone(item.tone), "group-hover:opacity-90")
+          )}
+        >
+          <NavIcon navKey={item.icon} size={compact ? 16 : 17} />
+        </span>
         <span className="min-w-0 flex-1">
           <span
             className={cn(
-              panelTypography.rowTitle,
+              compact ? "text-[13px] font-medium leading-snug" : panelTypography.rowTitle,
               active ? "text-slate-900" : "text-slate-800"
             )}
           >
             {item.label}
           </span>
-          {item.description ? (
+          {showDescription ? (
             <span
               className={cn(
                 panelTypography.caption,
@@ -96,30 +104,30 @@ function NavLink({
             </span>
           ) : null}
         </span>
-        </span>
-        <span className="flex shrink-0 items-center gap-1.5 pt-0.5">
-          {showDot ? (
-            <span
-              className="h-2 w-2 rounded-full bg-amber-400 ring-2 ring-white"
-              title="Nowe zmiany"
-            />
-          ) : null}
-          {hasBadge ? (
-            <span
-              className={cn(
-                "min-w-[1.25rem] rounded-md px-1.5 py-0.5 text-center text-[10px] font-semibold tabular-nums",
-                active
-                  ? "bg-slate-200/90 text-slate-800"
-                  : isVerificationNav
-                    ? "bg-amber-100 text-amber-900 ring-1 ring-amber-200/80"
-                    : "bg-slate-100 text-slate-700 ring-1 ring-slate-200/70"
-              )}
-            >
-              {item.badge! > 99 ? "99+" : item.badge}
-            </span>
-          ) : null}
-        </span>
       </span>
+      <span className="flex shrink-0 items-center gap-1.5 pt-0.5">
+        {showDot ? (
+          <span
+            className="h-2 w-2 rounded-full bg-amber-400 ring-2 ring-white"
+            title="Nowe zmiany"
+          />
+        ) : null}
+        {hasBadge ? (
+          <span
+            className={cn(
+              "min-w-[1.25rem] rounded-md px-1.5 py-0.5 text-center text-[10px] font-semibold tabular-nums",
+              active
+                ? "bg-slate-200/90 text-slate-800"
+                : item.tone === "amber"
+                  ? sidebarNavBadgeWarningClass
+                  : "bg-slate-100 text-slate-700 ring-1 ring-slate-200/70"
+            )}
+          >
+            {item.badge! > 99 ? "99+" : item.badge}
+          </span>
+        ) : null}
+      </span>
+    </span>
   );
 
   const isLockedItem = Boolean(locked && !active);
@@ -134,7 +142,9 @@ function NavLink({
       title={
         isLockedItem
           ? "Dokończ wprowadzenie — użyj „Dalej” w panelu touru"
-          : undefined
+          : compact && item.description
+            ? item.description
+            : undefined
       }
       onClick={isLockedItem ? (e) => e.preventDefault() : undefined}
     >
@@ -159,16 +169,14 @@ function NavSection({
   const pathname = usePathname();
   const salesUpdates = useSalesUpdates();
   const operationsUpdates = useOperationsUpdates();
+  const allHrefs = group.items.map((item) => item.href);
 
   return (
     <section className={cn(!isFirst && sidebarNavSectionDividerClass)}>
-      <h2 className={sidebarNavSectionTitleClass}>
-        {group.title}
-      </h2>
+      <h2 className={sidebarNavSectionTitleClass}>{group.title}</h2>
       <ul className="space-y-0.5">
         {group.items.map((item) => {
-          const siblingHrefs = group.items.map((i) => i.href);
-          const active = isNavItemActive(pathname, item.href, siblingHrefs);
+          const active = isNavItemActive(pathname, item.href, allHrefs);
           const showDot =
             (item.href === "/moje" && Boolean(salesUpdates?.hasUpdates) && !active) ||
             (item.href === "/podsumowanie" &&
@@ -217,6 +225,8 @@ export function Sidebar({
     salesNotatnik?: number;
     salesTablica?: number;
     adminBugReports?: number;
+    operationsNotatki?: number;
+    departmentBoardQuestions?: number;
   };
 }) {
   const router = useRouter();

@@ -2,10 +2,16 @@
 
 import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
-import { isNavItemActive, navForRole } from "@/lib/nav";
+import {
+  isNavItemActive,
+  navForRole,
+  navMobileOverflowItems,
+  navMobilePrimaryItems,
+} from "@/lib/nav";
 import { useSalesUpdates } from "@/components/sales/SalesUpdatesContext";
 import { cn } from "@/lib/cn";
 import { NavIcon } from "@/components/icons/NavIcon";
+import { MobileNavOverflowSheet } from "@/components/layout/MobileNavOverflowSheet";
 import {
   mobileNavBadgeClass,
   mobileNavLinkActiveClass,
@@ -35,10 +41,9 @@ export function MobileSalesNav({
   const salesUpdates = useSalesUpdates();
   const navRole = isSalesManager(role) ? "sales_manager" : "sales";
   const groups = navForRole(navRole, navBadges);
-  const items = [
-    ...(groups[0]?.items ?? []),
-    ...(isSalesManager(role) && groups[1]?.items[0] ? [groups[1].items[0]] : []),
-  ];
+  const primaryItems = navMobilePrimaryItems(groups);
+  const overflowItems = navMobileOverflowItems(groups);
+  const allPrimaryHrefs = primaryItems.map((item) => item.href);
 
   return (
     <nav
@@ -47,9 +52,8 @@ export function MobileSalesNav({
       aria-label="Nawigacja handlowca"
     >
       <ul className="mx-auto flex max-w-lg items-stretch justify-around gap-0.5 px-0.5">
-        {items.map((item) => {
-          const siblingHrefs = items.map((i) => i.href);
-          const active = isNavItemActive(pathname, item.href, siblingHrefs);
+        {primaryItems.map((item) => {
+          const active = isNavItemActive(pathname, item.href, allPrimaryHrefs);
           const attentionBadge =
             item.badge != null && item.badge > 0 ? item.badge : 0;
           const label = item.mobileLabel ?? item.label;
@@ -64,7 +68,7 @@ export function MobileSalesNav({
           const inner = (
             <>
               <span className="relative">
-                <NavIcon href={item.href} size={20} className="text-current" />
+                <NavIcon navKey={item.icon} size={20} className="text-current" />
                 {attentionBadge > 0 && !active ? (
                   <span
                     className={cn(
@@ -111,6 +115,12 @@ export function MobileSalesNav({
             </li>
           );
         })}
+        <MobileNavOverflowSheet
+          items={overflowItems}
+          previewDla={previewDla}
+          adminSalesPreview={preservePreviewDla}
+          navLocked={navLocked}
+        />
       </ul>
     </nav>
   );

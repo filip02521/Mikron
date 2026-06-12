@@ -41,6 +41,17 @@ export const sidebarNavSectionTitleClass =
 /** Sidebar — separator między grupami. */
 export const sidebarNavSectionDividerClass = "mt-3 border-t border-indigo-100/70 pt-3";
 
+/** Sidebar — wyróżniony punkt startowy (Panel / Moje) w stanie spoczynku. */
+export const sidebarNavPrimaryHighlightIdleClass =
+  "border-indigo-100/75 bg-indigo-50/20 hover:border-indigo-200/80 hover:bg-indigo-50/35";
+
+/** Sidebar — kompaktowy wiersz (archiwum, dostawcy, system). */
+export const sidebarNavCompactPaddingClass = "px-2 py-1.5";
+
+/** Sidebar — badge wymagający uwagi (weryfikacja). */
+export const sidebarNavBadgeWarningClass =
+  "bg-amber-100 text-amber-900 ring-1 ring-amber-200/80";
+
 /** Logo w aplikacji — gradient jak na logowaniu */
 export const brandMarkAppClass =
   "bg-gradient-to-br from-indigo-600 to-sky-600 text-white shadow-[var(--shadow-brand)] ring-1 ring-sky-500/30";
