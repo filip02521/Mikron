@@ -1,4 +1,5 @@
 import { calculateBusinessDays, parseDateOnly } from "@/lib/orders/dates";
+import { warsawDateKeyFromIso } from "@/lib/time/warsaw";
 import { isMissingProduct } from "@/lib/orders/individual";
 import { orderPlacementAt } from "@/lib/orders/order-timing";
 
@@ -57,8 +58,8 @@ export function placementDateFromOrder(
     action_at: row.action_at,
     status: row.status as never,
   });
-  const orderDate = placement ? parseDateOnly(placement) : null;
-  return orderDate ? orderDate.toISOString().slice(0, 10) : null;
+  if (!placement) return null;
+  return warsawDateKeyFromIso(placement);
 }
 
 /** Deterministyczny wybór próbki: najwcześniejsza dostawa, potem id. */
@@ -153,7 +154,7 @@ export function aggregateDeliveryStatsFromOrders(orders: DeliveryStatsOrderInput
         status: row.status as never,
       })!
     )!;
-    const deliveryDateKey = deliveryDate.toISOString().slice(0, 10);
+    const deliveryDateKey = warsawDateKeyFromIso(deliveryDate.toISOString());
     const dedupKey = deliveryStatsDedupKey(row.supplier_id, placementDate);
     if (processed.has(dedupKey)) {
       skipped.push({ orderId: row.id, supplierId: row.supplier_id, reason: "duplikat dnia" });

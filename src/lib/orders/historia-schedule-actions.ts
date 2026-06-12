@@ -1,5 +1,6 @@
 import { snapToBusinessDay } from "@/lib/orders/business-calendar";
 import { parseDateOnly } from "@/lib/orders/dates";
+import { warsawDateKeyFromIso } from "@/lib/time/warsaw";
 
 export type HistoriaScheduleActionKind = "ordered" | "shift" | "ignore";
 
@@ -30,6 +31,12 @@ export type HistoriaScheduleEvent = {
   nextDate: Date | null;
 };
 
+function orderDateFromHistoriaActionAt(actionAt: Date): Date {
+  const key = warsawDateKeyFromIso(actionAt.toISOString());
+  const parsed = parseDateOnly(key);
+  return parsed ? snapToBusinessDay(parsed) : snapToBusinessDay(actionAt);
+}
+
 /** Odtwarza order_date / shift_date przez chronologiczną historię (jak serie kliknięć w UI). */
 export function replayHistoriaScheduleState(events: HistoriaScheduleEvent[]): {
   orderDate: Date | null;
@@ -45,7 +52,7 @@ export function replayHistoriaScheduleState(events: HistoriaScheduleEvent[]): {
   for (const e of sorted) {
     const kind = classifyHistoriaAction(e.action);
     if (kind === "ordered") {
-      orderDate = snapToBusinessDay(e.actionAt);
+      orderDate = orderDateFromHistoriaActionAt(e.actionAt);
       shiftDate = null;
       sheetNextDate = e.nextDate ? snapToBusinessDay(e.nextDate) : sheetNextDate;
     } else if (kind === "shift") {

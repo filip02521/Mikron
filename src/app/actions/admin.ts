@@ -1246,18 +1246,36 @@ function snapDateIso(iso: string | null): string | null {
 
 export async function actionUpdateScheduleDates(
   supplierId: string,
-  orderDate: string | null,
-  nextDate: string | null,
-  shiftDate: string | null
+  patch: {
+    orderDate?: string | null;
+    nextDate?: string | null;
+    shiftDate?: string | null;
+  }
 ) {
   await requireOperations("mutate");
   const supabase = createAdminClient();
+
+  const { data: current, error: currentErr } = await supabase
+    .from("supplier_schedules")
+    .select("order_date, shift_date")
+    .eq("supplier_id", supplierId)
+    .maybeSingle();
+  if (currentErr) throw new Error(currentErr.message);
+
+  const orderDate =
+    patch.orderDate !== undefined ? snapDateIso(patch.orderDate) : current?.order_date ?? null;
+  let shiftDate =
+    patch.shiftDate !== undefined ? snapDateIso(patch.shiftDate) : current?.shift_date ?? null;
+
+  if (patch.nextDate !== undefined) {
+    shiftDate = snapDateIso(patch.nextDate);
+  }
+
   await supabase.from("supplier_schedules").upsert(
     {
       supplier_id: supplierId,
-      order_date: snapDateIso(orderDate),
-      computed_next_date: snapDateIso(nextDate),
-      shift_date: snapDateIso(shiftDate),
+      order_date: orderDate,
+      shift_date: shiftDate,
       updated_at: new Date().toISOString(),
     },
     { onConflict: "supplier_id" }

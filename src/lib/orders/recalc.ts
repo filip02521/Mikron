@@ -46,11 +46,16 @@ export function recalcScheduleRow(
   });
 
   if (nextDate && dayTs(nextDate) < dayTs(today) && input.interval) {
-    const shiftFromToday = calculateNextOrderDate(today, input.interval);
-    if (shiftFromToday) {
+    let roll = calculateNextOrderDate(today, input.interval);
+    let guard = 0;
+    while (roll && dayTs(roll) < dayTs(today) && guard < 52) {
+      roll = calculateNextOrderDate(roll, input.interval);
+      guard++;
+    }
+    if (roll) {
       const bumped = applyVacationLogic({
         orderDate: input.orderDate,
-        shiftDate: shiftFromToday,
+        shiftDate: roll,
         interval: input.interval,
         location: input.location,
         vacations,

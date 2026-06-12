@@ -1,6 +1,7 @@
 import { createAdminClient } from "@/lib/supabase/admin";
 import { formatContactHref } from "@/lib/orders/supplier-contact";
 import { recalcScheduleRow } from "@/lib/orders/recalc";
+import { buildScheduleUpsertFromRecalc } from "@/lib/orders/schedule-persist";
 import {
   filterApplicableVacationPeriods,
   parseVacationPeriodRow,
@@ -107,17 +108,13 @@ export async function recalcSingleSupplierSchedule(supplierId: string): Promise<
     vacations: vacationsBySupplier[supplier.id] ?? [],
   });
 
-  const computed_next_date = dateToIso(recalc.computedNextDate);
-
   const { error: upsertErr } = await supabase.from("supplier_schedules").upsert(
-    {
-      supplier_id: supplier.id,
-      order_date: schedule?.order_date ?? null,
-      shift_date: schedule?.shift_date ?? null,
-      computed_next_date,
-      vacation_note: recalc.vacationNote,
-      updated_at: new Date().toISOString(),
-    },
+    buildScheduleUpsertFromRecalc({
+      supplierId: supplier.id,
+      orderDate: schedule?.order_date ?? null,
+      shiftDate: schedule?.shift_date ?? null,
+      recalc,
+    }),
     { onConflict: "supplier_id" }
   );
 
@@ -167,17 +164,13 @@ export async function syncSuppliersFromSettings(): Promise<{
         vacations: vacationsBySupplier[s.id] ?? [],
       });
 
-      const computed_next_date = dateToIso(recalc.computedNextDate);
-
       const { error: upsertErr } = await supabase.from("supplier_schedules").upsert(
-        {
-          supplier_id: s.id,
-          order_date: schedule?.order_date ?? null,
-          shift_date: schedule?.shift_date ?? null,
-          computed_next_date,
-          vacation_note: recalc.vacationNote,
-          updated_at: new Date().toISOString(),
-        },
+        buildScheduleUpsertFromRecalc({
+          supplierId: s.id,
+          orderDate: schedule?.order_date ?? null,
+          shiftDate: schedule?.shift_date ?? null,
+          recalc,
+        }),
         { onConflict: "supplier_id" }
       );
 

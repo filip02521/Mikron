@@ -157,22 +157,17 @@ export function LocationScheduleClient({
 
   const save = (
     row: ScheduleRow,
-    patch: Partial<{
-      order_date: string | null;
-      next_date: string | null;
-      shift_date: string | null;
-    }>,
+    patch: {
+      orderDate?: string | null;
+      nextDate?: string | null;
+      shiftDate?: string | null;
+    },
     pendingLabel = "Zapis i przeliczenie harmonogramu…"
   ) => {
     setPendingMessage(pendingLabel);
     start(async () => {
       try {
-        await actionUpdateScheduleDates(
-          row.id,
-          patch.order_date !== undefined ? patch.order_date : row.order_date,
-          patch.next_date !== undefined ? patch.next_date : row.next_date,
-          patch.shift_date !== undefined ? patch.shift_date : row.shift_date
-        );
+        await actionUpdateScheduleDates(row.id, patch);
         router.refresh();
         setSavedId(row.id);
         setTimeout(() => setSavedId((id) => (id === row.id ? null : id)), 2000);
@@ -305,15 +300,15 @@ export function LocationScheduleClient({
                       disabled={pending}
                       hint={formatPlDate(row.order_date)}
                       onSave={(v) =>
-                        save(row, { order_date: v }, "Zapisywanie daty ostatniego zamówienia…")
+                        save(row, { orderDate: v }, "Zapisywanie daty ostatniego zamówienia…")
                       }
                     />
                     <DateCell
                       value={row.next_date}
                       disabled={pending}
-                      hint={formatPlDate(row.next_date)}
+                      hint={`${formatPlDate(row.next_date)} · zapis jako przesunięcie`}
                       onSave={(v) =>
-                        save(row, { next_date: v }, "Aktualizacja kolejnego zamówienia…")
+                        save(row, { nextDate: v }, "Aktualizacja kolejnego zamówienia…")
                       }
                     />
                     <DateCell
@@ -321,7 +316,7 @@ export function LocationScheduleClient({
                       disabled={pending}
                       hint={formatPlDate(row.shift_date)}
                       onSave={(v) =>
-                        save(row, { shift_date: v }, "Zapisywanie przesunięcia…")
+                        save(row, { shiftDate: v }, "Zapisywanie przesunięcia…")
                       }
                     />
                     <td>

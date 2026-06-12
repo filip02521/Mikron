@@ -24,14 +24,14 @@ export function getRowColorForDate(
   if (rowDateStr < todayStr) return colors.expired;
   if (rowDateStr === todayStr) return colors.today;
 
-  const rowDate = toDateOnly(dateValue);
-  const diffDays =
-    (rowDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24);
-  if (diffDays === 1) return colors.tomorrow;
+  const tomorrow = new Date(today);
+  tomorrow.setDate(tomorrow.getDate() + 1);
+  if (rowDateStr === formatDateString(tomorrow)) return colors.tomorrow;
 
   const monday = getMondayOfWeek(today);
   const sunday = new Date(monday);
   sunday.setDate(monday.getDate() + 6);
+  const rowDate = toDateOnly(dateValue);
   if (rowDate >= monday && rowDate <= sunday) return colors.thisWeek;
   return null;
 }
