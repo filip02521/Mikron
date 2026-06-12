@@ -15,6 +15,11 @@ import {
   navLinkActiveClass,
   navLinkIdleClass,
   sidebarHeaderClass,
+  sidebarNavSectionDividerClass,
+  sidebarNavSectionTitleClass,
+  controlFocusClass,
+  panelTypography,
+  sectionIconTileBrandClass,
 } from "@/lib/ui/ontime-theme";
 import { ONTIME_AUTH_FOOTER } from "@/lib/ui/ontime-brand";
 import { buttonPrimaryClass } from "@/lib/ui/ontime-theme";
@@ -51,9 +56,10 @@ function NavLink({
   const iconKey = navIconKeyFromHref(item.href);
 
   const className = cn(
-    "group block rounded-md px-3 py-2.5 transition-colors",
+    "group block rounded-md px-2.5 py-2 transition-colors",
+    controlFocusClass,
     active ? navLinkActiveClass : navLinkIdleClass,
-    locked && !active && "cursor-not-allowed opacity-45 hover:bg-transparent hover:text-inherit"
+    locked && !active && "cursor-not-allowed opacity-45 hover:border-transparent hover:bg-transparent hover:text-inherit"
   );
 
   const content = (
@@ -61,19 +67,19 @@ function NavLink({
         <span className="flex min-w-0 flex-1 items-start gap-2.5">
           <span
             className={cn(
-              "mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-md transition-colors",
+              "mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-md transition-colors",
               active
-                ? "bg-white/15 text-white"
+                ? cn(sectionIconTileBrandClass, "ring-1 ring-indigo-200/60")
                 : cn(navIconTileIdleClass(iconKey), "group-hover:opacity-90")
             )}
           >
-            <NavIcon navKey={iconKey} size={18} />
+            <NavIcon navKey={iconKey} size={17} />
           </span>
         <span className="min-w-0 flex-1">
           <span
             className={cn(
-              "block text-sm leading-snug",
-              active ? "font-semibold" : "font-medium"
+              panelTypography.rowTitle,
+              active ? "text-slate-900" : "text-slate-800"
             )}
           >
             {item.label}
@@ -81,8 +87,9 @@ function NavLink({
           {item.description ? (
             <span
               className={cn(
-                "mt-0.5 block text-xs leading-snug",
-                active ? "text-indigo-100" : "text-slate-400 group-hover:text-slate-500"
+                panelTypography.caption,
+                "mt-0.5 block",
+                active ? "text-slate-600" : "text-slate-400 group-hover:text-slate-500"
               )}
             >
               {item.description}
@@ -102,10 +109,10 @@ function NavLink({
               className={cn(
                 "min-w-[1.25rem] rounded-md px-1.5 py-0.5 text-center text-[10px] font-semibold tabular-nums",
                 active
-                  ? "bg-white/20 text-white"
+                  ? "bg-slate-200/90 text-slate-800"
                   : isVerificationNav
-                    ? "bg-amber-200 text-amber-950"
-                    : "bg-slate-200 text-slate-700"
+                    ? "bg-amber-100 text-amber-900 ring-1 ring-amber-200/80"
+                    : "bg-slate-100 text-slate-700 ring-1 ring-slate-200/70"
               )}
             >
               {item.badge! > 99 ? "99+" : item.badge}
@@ -154,8 +161,8 @@ function NavSection({
   const operationsUpdates = useOperationsUpdates();
 
   return (
-    <section className={cn(!isFirst && "mt-3 border-t border-slate-100 pt-3")}>
-      <h2 className="mb-1.5 px-3 text-[10px] font-semibold uppercase tracking-[0.08em] text-slate-400">
+    <section className={cn(!isFirst && sidebarNavSectionDividerClass)}>
+      <h2 className={sidebarNavSectionTitleClass}>
         {group.title}
       </h2>
       <ul className="space-y-0.5">

@@ -14,28 +14,36 @@ export const appMainClass = "min-h-screen overflow-y-auto bg-transparent";
 /** Padding main — bez max-width; szerokość ustawia shell każdej strony. */
 export const appMainInsetClass = "mx-auto w-full px-3 py-5 sm:px-4 sm:py-6 lg:px-5";
 
-/** Sidebar — biała powierzchnia, spójna z kartami logowania */
+/** Sidebar — biała powierzchnia, obwódka i cień jak karty panelu dziennego */
 export const sidebarShellClass =
-  "border-r border-[var(--card-border)] bg-[var(--card)] text-slate-900 shadow-[2px_0_24px_-12px_rgba(15,23,42,0.1)]";
+  "border-r border-indigo-100/75 bg-[var(--card)] text-slate-900 shadow-[var(--shadow-card)]";
 
 export const sidebarHeaderClass =
-  "shrink-0 border-b border-slate-100 px-4 pb-4 pt-5";
+  "shrink-0 border-b border-indigo-100/70 px-4 pb-4 pt-5";
 
 export const sidebarFooterClass =
-  "shrink-0 border-t border-indigo-100/70 bg-gradient-to-b from-indigo-50/25 to-slate-50/80 px-3 py-3";
+  "shrink-0 border-t border-indigo-100/70 bg-indigo-50/25 px-3 py-3";
 
 export const sidebarNavScrollClass = "flex-1 overflow-y-auto px-2.5 pb-3 pt-4";
+
+/** Sidebar — aktywny link (jak wybrana zakładka panelu, bez lewego paska). */
+export const navLinkActiveClass =
+  "border border-slate-200/85 bg-white text-slate-900 shadow-sm ring-1 ring-slate-200/75";
+
+/** Sidebar — link w stanie spoczynku. */
+export const navLinkIdleClass =
+  "border border-transparent text-slate-700 hover:border-slate-200/80 hover:bg-white/70 hover:text-slate-900";
+
+/** Sidebar — nagłówek grupy nawigacji. */
+export const sidebarNavSectionTitleClass =
+  "mb-1.5 px-3 text-[11px] font-semibold uppercase tracking-wide text-slate-500";
+
+/** Sidebar — separator między grupami. */
+export const sidebarNavSectionDividerClass = "mt-3 border-t border-indigo-100/70 pt-3";
 
 /** Logo w aplikacji — gradient jak na logowaniu */
 export const brandMarkAppClass =
   "bg-gradient-to-br from-indigo-600 to-sky-600 text-white shadow-[var(--shadow-brand)] ring-1 ring-sky-500/30";
-
-/** Aktywny link — indigo + subtelny akcent sky po lewej */
-export const navLinkActiveClass =
-  "border-l-[3px] border-l-sky-400 bg-indigo-600 pl-[calc(0.75rem-3px)] text-white shadow-sm shadow-indigo-600/12 ring-1 ring-indigo-500/15";
-
-export const navLinkIdleClass =
-  "border-l-[3px] border-l-transparent text-slate-700 hover:bg-indigo-50/70 hover:text-indigo-950";
 
 /** Plakietka roli — neutralna baza + kolorowy akcent */
 export function roleBadgeClass(role: string): string {
