@@ -17,19 +17,18 @@ import {
   sidebarHeaderClass,
   sidebarNavSectionDividerClass,
   sidebarNavSectionTitleClass,
-  sidebarNavPrimaryHighlightIdleClass,
   sidebarNavCompactPaddingClass,
-  sidebarNavBadgeWarningClass,
+  sidebarNavBadgeClassForTone,
+  sidebarNavToneHighlightIdleClass,
   controlFocusClass,
   panelTypography,
-  sectionIconTileBrandClass,
   buttonPrimaryClass,
 } from "@/lib/ui/ontime-theme";
 import { ONTIME_AUTH_FOOTER } from "@/lib/ui/ontime-brand";
 import type { UserRole } from "@/types/database";
 import { cn } from "@/lib/cn";
 import { createClient } from "@/lib/supabase/client";
-import { NavIcon, navIconTileClassForTone } from "@/components/icons/NavIcon";
+import { NavIcon, navIconTileActiveClassForTone, navIconTileClassForTone } from "@/components/icons/NavIcon";
 import { useSalesNavLocked } from "@/components/sales/SalesOnboardingContext";
 import { AdminPanelContextSwitcher } from "@/components/layout/AdminPanelContextSwitcher";
 import { actionClearAdminPanelContext } from "@/app/actions/admin-panel-context";
@@ -62,7 +61,7 @@ function NavLink({
       ? navLinkActiveClass
       : cn(
           navLinkIdleClass,
-          item.highlight && sidebarNavPrimaryHighlightIdleClass
+          item.tier === "primary" && sidebarNavToneHighlightIdleClass(item.tone)
         ),
     locked &&
       !active &&
@@ -77,7 +76,7 @@ function NavLink({
             "mt-0.5 flex shrink-0 items-center justify-center rounded-md transition-colors",
             compact ? "h-7 w-7" : "h-8 w-8",
             active
-              ? cn(sectionIconTileBrandClass, "ring-1 ring-indigo-200/60")
+              ? navIconTileActiveClassForTone(item.tone)
               : cn(navIconTileClassForTone(item.tone), "group-hover:opacity-90")
           )}
         >
@@ -116,11 +115,7 @@ function NavLink({
           <span
             className={cn(
               "min-w-[1.25rem] rounded-md px-1.5 py-0.5 text-center text-[10px] font-semibold tabular-nums",
-              active
-                ? "bg-slate-200/90 text-slate-800"
-                : item.tone === "amber"
-                  ? sidebarNavBadgeWarningClass
-                  : "bg-slate-100 text-slate-700 ring-1 ring-slate-200/70"
+              sidebarNavBadgeClassForTone(item.tone, active)
             )}
           >
             {item.badge! > 99 ? "99+" : item.badge}

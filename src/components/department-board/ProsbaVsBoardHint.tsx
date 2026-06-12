@@ -26,7 +26,7 @@ export function ProsbaVsBoardHint() {
       <div className="flex flex-wrap items-start justify-between gap-2">
         <p>
           To formularz <strong className="font-semibold text-slate-900">prośby o towar</strong> — trafia
-          do procesu zamówień. Ogólne pytanie do działu zakupów (bez zamawiania) zadaj w{" "}
+          do procesu zamówień. Ogólne pytanie do działu zakupów (bez zamawiania) zadaj na{" "}
           <Link href="/tablica" className="font-medium text-indigo-700 hover:underline">
             Tablicy
           </Link>

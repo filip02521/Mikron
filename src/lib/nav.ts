@@ -97,6 +97,9 @@ export function isNavItemActive(
       pathname.startsWith("/notatnik/")
     );
   }
+  if (hrefPath.startsWith("/lokalizacje/") && pathname.startsWith("/lokalizacje/")) {
+    return true;
+  }
   if (pathname === hrefPath) return true;
   if (!pathname.startsWith(`${hrefPath}/`)) return false;
   if (hrefPath.endsWith("/dostawcy") && pathname.includes("/nieaktywni")) return false;

@@ -31,6 +31,13 @@ describe("isNavItemActive", () => {
     expect(isNavItemActive(pathname, "/zespol/grupy", zespolSiblings)).toBe(true);
   });
 
+  it("podświetla Terminy zamówień na każdej lokalizacji", () => {
+    const siblings = ["/zakupy/dostawcy", "/lokalizacje/POLSKA", "/zakupy/urlopy"];
+    expect(isNavItemActive("/lokalizacje/ZAGRANICA", "/lokalizacje/POLSKA", siblings)).toBe(
+      true
+    );
+  });
+
   it("podświetla notatki magazynu na /notatki", () => {
     expect(isNavItemActive("/notatki", "/notatki?dzial=magazyn")).toBe(true);
   });
@@ -112,6 +119,15 @@ describe("navForRole struktura zakupów", () => {
       "Weryfikacja",
       "Przyjęcie towaru",
       "Tablica",
+    ]);
+  });
+
+  it("sekcja Dziś ma rozróżnialne tony semantyczne", () => {
+    const today = navForRole("zakupy").find((g) => g.title === NAV_SECTION_TODAY);
+    expect(today?.items.map((item) => [item.label, item.tone])).toEqual([
+      ["Panel dzienny", "indigo"],
+      ["Weryfikacja", "amber"],
+      ["Przyjęcie towaru", "emerald"],
     ]);
   });
 

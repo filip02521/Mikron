@@ -7,6 +7,7 @@ import { resolveSalesPersonForUser } from "@/lib/auth/sales-person";
 
 import type { Metadata } from "next";
 import { pageMetadataFor } from "@/lib/ui/page-metadata";
+import { procurementArchivePageShellClass } from "@/lib/ui/ontime-theme";
 
 export const metadata: Metadata = pageMetadataFor("noweZamowienia");
 
@@ -37,7 +38,7 @@ export default async function NoweZamowieniePage() {
   }
 
   return (
-    <div className="mx-auto max-w-3xl">
+    <div className={procurementArchivePageShellClass}>
       <OrderFormClient
         suppliers={suppliers}
         statsBySupplierId={statsBySupplierId}

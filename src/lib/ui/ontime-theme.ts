@@ -4,6 +4,7 @@
  */
 
 import { cn } from "@/lib/cn";
+import type { NavTone } from "@/lib/nav";
 
 /** Tło całej aplikacji (main + shell) */
 export const appShellClass = "min-h-screen bg-transparent";
@@ -44,6 +45,39 @@ export const sidebarNavSectionDividerClass = "mt-3 border-t border-indigo-100/70
 /** Sidebar — wyróżniony punkt startowy (Panel / Moje) w stanie spoczynku. */
 export const sidebarNavPrimaryHighlightIdleClass =
   "border-indigo-100/75 bg-indigo-50/20 hover:border-indigo-200/80 hover:bg-indigo-50/35";
+
+/** Sidebar — delikatne tło wiersza primary wg tonu semantycznego (Dziś). */
+export function sidebarNavToneHighlightIdleClass(tone: NavTone): string | undefined {
+  switch (tone) {
+    case "indigo":
+      return sidebarNavPrimaryHighlightIdleClass;
+    case "amber":
+      return "border-amber-100/75 bg-amber-50/20 hover:border-amber-200/80 hover:bg-amber-50/35";
+    case "emerald":
+      return "border-emerald-100/75 bg-emerald-50/20 hover:border-emerald-200/80 hover:bg-emerald-50/35";
+    default:
+      return undefined;
+  }
+}
+
+/** Sidebar — badge licznika dopasowany do tonu pozycji. */
+export function sidebarNavBadgeClassForTone(tone: NavTone, active: boolean): string {
+  if (active) return "bg-slate-200/90 text-slate-800";
+  switch (tone) {
+    case "amber":
+      return sidebarNavBadgeWarningClass;
+    case "emerald":
+      return "bg-emerald-100 text-emerald-900 ring-1 ring-emerald-200/80";
+    case "indigo":
+      return "bg-indigo-100 text-indigo-800 ring-1 ring-indigo-200/70";
+    case "sky":
+      return "bg-sky-100 text-sky-900 ring-1 ring-sky-200/70";
+    case "violet":
+      return "bg-violet-100 text-violet-900 ring-1 ring-violet-200/70";
+    default:
+      return "bg-slate-100 text-slate-700 ring-1 ring-slate-200/70";
+  }
+}
 
 /** Sidebar — kompaktowy wiersz (archiwum, dostawcy, system). */
 export const sidebarNavCompactPaddingClass = "px-2 py-1.5";
@@ -125,6 +159,9 @@ export const salesTeamPageShellClass = cn(salesTeamShellClass, "space-y-4");
 
 /** Administracja — tabele i formularze (szersza kolumna niż panel dzienny). */
 export const adminPageShellClass = salesTeamPageShellClass;
+
+/** Historia, zamówienie grupowe — jak karty dostawców (tabele bez ucinania). */
+export const procurementArchivePageShellClass = adminPageShellClass;
 
 /** Treść wewnątrz karty huba administracji / dostawców. */
 export const adminHubBodyClass = "min-w-0 space-y-4 p-3 sm:p-4 lg:p-5";

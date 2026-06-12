@@ -3,20 +3,18 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { isNavItemActive } from "@/lib/nav";
-import { useSalesTeamUi } from "@/components/sales/SalesTeamUiContext";
 
 const SIBLING_HREFS = ["/zespol", "/zespol/handlowcy", "/zespol/grupy"] as const;
 
 export function SalesTeamSubnav() {
   const pathname = usePathname();
-  const teamUi = useSalesTeamUi();
 
   const items = [
     { href: "/zespol", label: "Podgląd zespołu" },
-    { href: "/zespol/handlowcy", label: "Handlowcy i konta" },
+    { href: "/zespol/handlowcy", label: "Handlowcy" },
     {
       href: "/zespol/grupy",
-      label: teamUi.isManager ? "Przypisane grupy" : "Grupy",
+      label: "Grupy",
     },
   ] as const;
 

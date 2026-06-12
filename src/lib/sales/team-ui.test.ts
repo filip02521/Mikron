@@ -42,7 +42,7 @@ describe("salesTeamPageCopy", () => {
       },
       "grupy"
     );
-    expect(copy.title).toBe("Przypisane grupy");
+    expect(copy.title).toBe("Grupy");
     expect(copy.description).toContain("Nowe grupy zakłada administrator");
   });
 });

@@ -7,11 +7,10 @@ import {
   navForRole,
   navMobileOverflowItems,
   navMobilePrimaryItems,
-  NAV_SECTION_TODAY,
 } from "@/lib/nav";
 import { useOperationsUpdates } from "@/components/operations/OperationsUpdatesContext";
 import { cn } from "@/lib/cn";
-import { NavIcon } from "@/components/icons/NavIcon";
+import { NavIcon, navIconTileActiveClassForTone, navIconTileClassForTone } from "@/components/icons/NavIcon";
 import { MobileNavOverflowSheet } from "@/components/layout/MobileNavOverflowSheet";
 import {
   mobileNavBadgeClass,
@@ -71,8 +70,17 @@ export function MobileOperationsNav({
                 aria-current={active ? "page" : undefined}
                 title={item.description ?? item.label}
               >
-                <span className="relative">
-                  <NavIcon navKey={item.icon} size={20} className="text-current" />
+                <span className="relative flex flex-col items-center gap-0.5">
+                  <span
+                    className={cn(
+                      "flex h-7 w-7 items-center justify-center rounded-md transition-colors",
+                      active
+                        ? navIconTileActiveClassForTone(item.tone)
+                        : navIconTileClassForTone(item.tone)
+                    )}
+                  >
+                    <NavIcon navKey={item.icon} size={18} />
+                  </span>
                   {attentionBadge > 0 && !active ? (
                     <span
                       className={cn(
@@ -103,6 +111,3 @@ export function MobileOperationsNav({
     </nav>
   );
 }
-
-/** @deprecated alias dla testów kompatybilności */
-export const MOBILE_OPERATIONS_SECTION = NAV_SECTION_TODAY;
