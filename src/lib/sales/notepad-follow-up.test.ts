@@ -2,13 +2,13 @@ import { describe, expect, it } from "vitest";
 import {
   buildMojeClientLink,
   isFollowUpDue,
+  todayIso,
   todayStart,
 } from "./notepad-follow-up";
 
 describe("notepad-follow-up", () => {
   it("traktuje follow-up na dziś jako due", () => {
-    const today = new Date();
-    const iso = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`;
+    const iso = todayIso();
     expect(isFollowUpDue(iso, todayStart())).toBe(true);
   });
 

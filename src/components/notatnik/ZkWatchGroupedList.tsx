@@ -80,7 +80,7 @@ export function ZkWatchGroupedList({
   compact?: boolean;
   archived?: boolean;
   subiektReachable?: boolean;
-  onClosed?: (watchId: string) => void;
+  onClosed?: (watchId: string, closedAt: string) => void;
   onRestored?: (watch: SalesZkWatch) => void;
   onRefreshed?: (watch: SalesZkWatch) => void;
   onDeleted?: (watchId: string) => void;
@@ -200,7 +200,7 @@ export function ZkWatchGroupedList({
                       compact={compact}
                       archived={archived}
                       subiektReachable={subiektReachable}
-                      onClosed={() => onClosed?.(watch.id)}
+                      onClosed={(closedAt) => onClosed?.(watch.id, closedAt)}
                       onRestored={onRestored}
                       onRefreshed={onRefreshed}
                       onDeleted={() => onDeleted?.(watch.id)}

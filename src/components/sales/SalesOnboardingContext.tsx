@@ -70,6 +70,14 @@ function isTourStarted(stepIndex: number): boolean {
   }
 }
 
+function useSalesOnboardingHydrated(): boolean {
+  return useSyncExternalStore(
+    () => () => {},
+    () => true,
+    () => false
+  );
+}
+
 export function SalesOnboardingProvider({
   active,
   role,
@@ -84,6 +92,7 @@ export function SalesOnboardingProvider({
   const router = useRouter();
   const pathname = usePathname();
   const steps = useMemo(() => getSalesOnboardingSteps(role), [role]);
+  const hydrated = useSalesOnboardingHydrated();
   const [stepIndex, setStepIndexState] = useState(0);
   const stepIndexRef = useRef(stepIndex);
   const [skipPathSync, setSkipPathSync] = useState(false);
@@ -118,7 +127,7 @@ export function SalesOnboardingProvider({
     [pathname, role, router, steps]
   );
 
-  if (active && !skipPathSync && stepIndex === 0) {
+  if (hydrated && active && !skipPathSync && stepIndex === 0) {
     try {
       if (sessionStorage.getItem(TOUR_STARTED_STORAGE_KEY) === "1") {
         const matched = resolveTourStepIndexFromPathname(steps, pathname, null);
@@ -133,7 +142,7 @@ export function SalesOnboardingProvider({
 
   if (skipPathSync) {
     setSkipPathSync(false);
-  } else if (active && isTourStarted(stepIndex)) {
+  } else if (hydrated && active && isTourStarted(stepIndex)) {
     const matched = resolveTourStepIndexFromPathname(steps, pathname, stepIndex);
     if (matched != null && matched !== stepIndex) {
       setStepIndexState(matched);
@@ -218,14 +227,6 @@ export function useSalesOnboarding() {
 
 export function useSalesOnboardingOptional() {
   return useContext(SalesOnboardingContext);
-}
-
-function useSalesOnboardingHydrated(): boolean {
-  return useSyncExternalStore(
-    () => () => {},
-    () => true,
-    () => false
-  );
 }
 
 /** false podczas SSR i pierwszego hydrate — unika mismatch w menu i tour chrome. */

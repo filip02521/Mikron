@@ -32,12 +32,26 @@ export function computeDailyUrgentProgress(
   };
 }
 
+/**
+ * Aktualizuje baseline sesji: rośnie gdy przybywa pracy (nowe pozycje na liście),
+ * nie maleje po domknięciu dnia.
+ */
 export function mergeUrgentBaseline(
   stored: number | null,
-  remaining: number
+  remaining: number,
+  prevRemaining: number | null = null
 ): number | null {
-  if (stored != null) {
-    return Math.max(stored, remaining);
+  if (remaining <= 0) {
+    return stored;
   }
-  return remaining > 0 ? remaining : null;
+
+  if (stored == null) {
+    return remaining;
+  }
+
+  if (prevRemaining != null && remaining > prevRemaining) {
+    return stored + (remaining - prevRemaining);
+  }
+
+  return Math.max(stored, remaining);
 }

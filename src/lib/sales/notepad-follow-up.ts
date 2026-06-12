@@ -1,4 +1,6 @@
 import type { SalesZkWatch } from "@/types/database";
+import { formatDateString } from "@/lib/orders/dates";
+import { todayInWarsaw } from "@/lib/time/warsaw";
 
 function dateOnlyTimestamp(value: string | null | undefined): number | null {
   if (!value) return null;
@@ -8,23 +10,18 @@ function dateOnlyTimestamp(value: string | null | undefined): number | null {
 }
 
 export function todayStart(referenceMs?: number): number {
-  if (referenceMs != null) return referenceMs;
-  const now = new Date();
-  return Date.parse(
-    `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}T00:00:00`
-  );
+  const iso = todayIso(referenceMs);
+  return Date.parse(`${iso}T00:00:00`);
 }
 
-/** Follow-up przypada dziś lub wcześniej. */
+/** Follow-up przypada dziś lub wcześniej (kalendarz Warszawa). */
 export function isFollowUpDue(
   followUpAt: string | null | undefined,
   referenceMs?: number
 ): boolean {
   if (!followUpAt) return false;
   const d = followUpAt.slice(0, 10);
-  const ref = referenceMs != null ? new Date(referenceMs) : new Date();
-  const todayIso = `${ref.getFullYear()}-${String(ref.getMonth() + 1).padStart(2, "0")}-${String(ref.getDate()).padStart(2, "0")}`;
-  return d <= todayIso;
+  return d <= todayIso(referenceMs);
 }
 
 export function followUpTimestamp(
@@ -42,14 +39,14 @@ export function formatFollowUpLabel(followUpAt: string | null | undefined): stri
 }
 
 export function todayIso(referenceMs?: number): string {
-  const ref = referenceMs != null ? new Date(referenceMs) : new Date();
-  return `${ref.getFullYear()}-${String(ref.getMonth() + 1).padStart(2, "0")}-${String(ref.getDate()).padStart(2, "0")}`;
+  const ref = referenceMs != null ? new Date(referenceMs) : todayInWarsaw();
+  return formatDateString(ref);
 }
 
 export function addDaysToIso(isoDate: string, days: number): string {
   const d = new Date(`${isoDate.slice(0, 10)}T12:00:00`);
   d.setDate(d.getDate() + days);
-  return todayIso(d.getTime());
+  return formatDateString(d);
 }
 
 export function followUpQuickDates(): { label: string; value: string }[] {

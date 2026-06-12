@@ -8,6 +8,7 @@ import {
   toDateOnly,
 } from "./dates";
 import { getVacationMessage } from "./colors";
+import { todayInWarsaw } from "@/lib/time/warsaw";
 
 export interface SummaryStandardItem {
   kind: "standard";
@@ -76,7 +77,7 @@ function toStandardItem(t: TargetRow, note: string): SummaryStandardItem {
 export function buildSummary(
   schedules: SupplierWithSchedule[],
   newOrders: IndividualOrder[],
-  today: Date = toDateOnly(new Date())
+  today: Date = todayInWarsaw()
 ): SummaryView {
   const todayStr = formatDateString(today);
   const monday = getMondayOfWeek(today);

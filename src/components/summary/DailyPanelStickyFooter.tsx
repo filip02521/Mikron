@@ -13,6 +13,7 @@ export function DailyPanelStickyFooter({
   view,
   summary,
   dayProgress,
+  dayProgressReady = true,
   verificationCount = 0,
   showVerification = true,
   urgentVacationCount = 0,
@@ -21,6 +22,7 @@ export function DailyPanelStickyFooter({
   view: DailyPanelView;
   summary: DailyInboxSummary;
   dayProgress: DailyDayProgress;
+  dayProgressReady?: boolean;
   verificationCount?: number;
   showVerification?: boolean;
   urgentVacationCount?: number;
@@ -35,6 +37,7 @@ export function DailyPanelStickyFooter({
           view={view}
           summary={summary}
           dayProgress={dayProgress}
+          dayProgressReady={dayProgressReady}
           verificationCount={verificationCount}
           showVerification={showVerification}
           urgentVacationCount={urgentVacationCount}

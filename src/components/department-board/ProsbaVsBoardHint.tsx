@@ -1,30 +1,19 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
 import { Button } from "@/components/ui/Button";
 import { cn } from "@/lib/cn";
+import { usePersistedFlag } from "@/lib/client/use-persisted-flag";
+import { prosbaVsBoardHintDismissedStore } from "@/lib/department-board/onboarding-storage";
 import { salesChromeInsetClass } from "@/lib/ui/ontime-theme";
-import { PROSBA_VS_BOARD_HINT_STORAGE_KEY } from "@/lib/department-board/onboarding-storage";
 
 export function ProsbaVsBoardHint() {
-  const [hidden, setHidden] = useState(() => {
-    try {
-      return localStorage.getItem(PROSBA_VS_BOARD_HINT_STORAGE_KEY) === "1";
-    } catch {
-      return false;
-    }
-  });
+  const hidden = usePersistedFlag(prosbaVsBoardHintDismissedStore);
 
   if (hidden) return null;
 
   function dismiss() {
-    try {
-      localStorage.setItem(PROSBA_VS_BOARD_HINT_STORAGE_KEY, "1");
-    } catch {
-      /* ignore */
-    }
-    setHidden(true);
+    prosbaVsBoardHintDismissedStore.setValue(true);
   }
 
   return (

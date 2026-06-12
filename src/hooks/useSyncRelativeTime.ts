@@ -8,12 +8,18 @@ export function useSyncRelativeTime(
   lastSyncedAt: number | null,
   lastPollAt: number | null
 ): string {
-  const [, tick] = useState(0);
+  const [now, setNow] = useState(0);
 
   useEffect(() => {
-    const id = window.setInterval(() => tick((n) => n + 1), 30_000);
+    const tick = () => setNow(Date.now());
+    tick();
+    const id = window.setInterval(tick, 30_000);
     return () => window.clearInterval(id);
   }, []);
 
-  return formatDailyPanelSyncLabel(lastSyncedAt, lastPollAt);
+  if (!now) {
+    return formatDailyPanelSyncLabel(lastSyncedAt, lastPollAt, lastSyncedAt ?? lastPollAt ?? 0);
+  }
+
+  return formatDailyPanelSyncLabel(lastSyncedAt, lastPollAt, now);
 }

@@ -2,6 +2,8 @@
 
 import type { DeliveryStats, OrderType, StatsMode } from "@/types/database";
 import { buildSupplierLeadTimeHint } from "@/lib/orders/delivery-eta";
+import { useClientHydrated } from "@/lib/client/use-client-hydrated";
+import { todayInWarsaw } from "@/lib/time/warsaw";
 import { cn } from "@/lib/cn";
 
 export function SupplierLeadTimeHint({
@@ -17,9 +19,11 @@ export function SupplierLeadTimeHint({
   className?: string;
   compact?: boolean;
 }) {
+  const hydrated = useClientHydrated();
   const hint = buildSupplierLeadTimeHint(stats, statsMode, {
     orderType,
-    fromPlacementDate: orderType && orderType !== "None" ? new Date() : undefined,
+    fromPlacementDate:
+      hydrated && orderType && orderType !== "None" ? todayInWarsaw() : undefined,
   });
 
   if (!hint.lines.length) return null;

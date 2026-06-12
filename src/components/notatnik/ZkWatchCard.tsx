@@ -53,7 +53,7 @@ export function ZkWatchCard({
   orderHints?: ZkWatchOrderHints;
   readOnly?: boolean;
   tourPreview?: boolean;
-  onClosed?: () => void;
+  onClosed?: (closedAt: string) => void;
   onRestored?: (watch: SalesZkWatch) => void;
   onRefreshed?: (watch: SalesZkWatch) => void;
   onDeleted?: () => void;
@@ -153,8 +153,8 @@ export function ZkWatchCard({
     setClosing(true);
     setError(null);
     try {
-      await actionCloseZkWatch(watch.id);
-      onClosed?.();
+      const { closedAt } = await actionCloseZkWatch(watch.id);
+      onClosed?.(closedAt);
     } catch (e) {
       setError({
         watchId: watch.id,

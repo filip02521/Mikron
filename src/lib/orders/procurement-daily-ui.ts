@@ -75,8 +75,11 @@ export function countDailyPanelExceptions(
   );
 }
 
-export function summarizeDailyInbox(workspace: SummaryWorkspaceData): DailyInboxSummary {
-  const todayStr = formatDateString(todayInWarsaw());
+export function summarizeDailyInbox(
+  workspace: SummaryWorkspaceData,
+  todayDateKey: string = workspace.todayDateKey
+): DailyInboxSummary {
+  const todayStr = todayDateKey;
   let overdueCount = 0;
   let todayCount = 0;
 
@@ -147,8 +150,11 @@ export function countUrgentItemsWithVacation(items: SummaryStandardItem[]): numb
   return items.filter((i) => i.vacationNote).length;
 }
 
-export function enrichUrgentItem(item: SummaryStandardItem): ProcurementRequestUi {
-  const todayStr = formatDateString(todayInWarsaw());
+export function enrichUrgentItem(
+  item: SummaryStandardItem,
+  todayDateKey?: string
+): ProcurementRequestUi {
+  const todayStr = todayDateKey ?? formatDateString(todayInWarsaw());
   const dateStr = formatDateString(item.nextDate);
   const isOverdue = dateStr < todayStr;
   const dateLabel = formatDateString(item.nextDate, "dd.MM");
@@ -313,8 +319,11 @@ export function formatPlannerNote(notes: string | null | undefined): string | nu
   return cleaned || null;
 }
 
-export function splitUrgentItems(items: SummaryStandardItem[]) {
-  const todayStr = formatDateString(todayInWarsaw());
+export function splitUrgentItems(
+  items: SummaryStandardItem[],
+  todayDateKey?: string
+) {
+  const todayStr = todayDateKey ?? formatDateString(todayInWarsaw());
   const overdue: SummaryStandardItem[] = [];
   const todayList: SummaryStandardItem[] = [];
 

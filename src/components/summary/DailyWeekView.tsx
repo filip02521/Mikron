@@ -82,6 +82,7 @@ export function DailyWeekView({
         title="Ten tydzień"
         description="Poniedziałek–piątek · zamówione z wyprzedzeniem lub szczegóły dostawcy"
         days={workspace.thisWeekDays}
+        todayDateKey={workspace.todayDateKey}
         density="compact"
         onOpenSupplier={onOpenSupplier}
         onVacation={onVacation}
@@ -103,6 +104,7 @@ export function DailyWeekView({
           title="Następny tydzień"
           description="Ten sam układ co bieżący tydzień"
           days={workspace.nextWeekDays}
+          todayDateKey={workspace.todayDateKey}
           density="compact"
           onOpenSupplier={onOpenSupplier}
           onVacation={onVacation}

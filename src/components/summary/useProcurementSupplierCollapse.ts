@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import type { ProcurementSupplierBlock } from "@/lib/orders/procurement-supplier-groups";
+import { useClientHydrated } from "@/lib/client/use-client-hydrated";
 import {
   allCollapsibleProcurementBlocksExpanded,
   collapsedProcurementSupplierIds,
@@ -15,10 +16,11 @@ export function useProcurementSupplierCollapse(
   blocks: ProcurementSupplierBlock[],
   forceExpandedSupplierIds: ReadonlySet<string> = new Set()
 ) {
+  const hydrated = useClientHydrated();
   const [manualOverrides, setManualOverrides] = useState<Map<string, boolean>>(() => new Map());
   const [storageLoaded, setStorageLoaded] = useState(false);
 
-  if (!storageLoaded && typeof window !== "undefined") {
+  if (hydrated && !storageLoaded) {
     setStorageLoaded(true);
     setManualOverrides(readProcurementSupplierCollapseOverrides());
   }
@@ -78,20 +80,20 @@ export function useProcurementSupplierCollapse(
     () =>
       collapsedProcurementSupplierIds(
         blocks,
-        manualOverrides,
+        storageLoaded ? manualOverrides : new Map(),
         forceExpandedSupplierIds
       ),
-    [blocks, manualOverrides, forceExpandedSupplierIds]
+    [blocks, manualOverrides, forceExpandedSupplierIds, storageLoaded]
   );
 
   const allSupplierBlocksExpanded = useMemo(
     () =>
       allCollapsibleProcurementBlocksExpanded(
         blocks,
-        manualOverrides,
+        storageLoaded ? manualOverrides : new Map(),
         forceExpandedSupplierIds
       ),
-    [blocks, manualOverrides, forceExpandedSupplierIds]
+    [blocks, manualOverrides, forceExpandedSupplierIds, storageLoaded]
   );
 
   const toggleSupplierCollapse = useCallback(
@@ -130,6 +132,7 @@ export function useProcurementSupplierCollapse(
     collapsibleBlocks,
     collapsedSuppliers,
     allSupplierBlocksExpanded,
+    storageLoaded,
     toggleSupplierCollapse,
     setAllSupplierBlocksExpanded,
   };

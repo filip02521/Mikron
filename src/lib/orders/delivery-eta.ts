@@ -13,6 +13,7 @@ import {
   totalSampleCount,
 } from "@/lib/orders/delivery-stats-schema";
 import type { DeliveryStats, OrderType, StatsMode } from "@/types/database";
+import { todayInWarsaw } from "@/lib/time/warsaw";
 
 export function avgDaysForOrderType(
   stats: DeliveryStats | null | undefined,
@@ -72,7 +73,7 @@ export function formatEtaLabel(estimate: DeliveryEtaEstimate): string {
 }
 
 export function isPastExpectedDate(expectedDate: Date): boolean {
-  return toDateOnly(expectedDate).getTime() < toDateOnly(new Date()).getTime();
+  return toDateOnly(expectedDate).getTime() < todayInWarsaw().getTime();
 }
 
 export type SupplierLeadTimeHint = {

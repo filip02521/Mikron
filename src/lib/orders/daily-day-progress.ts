@@ -1,6 +1,5 @@
 import {
   computeDailyUrgentProgress,
-  mergeUrgentBaseline,
   type DailyUrgentProgress,
 } from "@/lib/orders/daily-urgent-progress";
 
@@ -50,14 +49,8 @@ export function buildDailyDayProgress(
   forSomeoneBaseline: number | null,
   forSomeoneRemaining: number
 ): DailyDayProgress {
-  const urgent = computeDailyUrgentProgress(
-    mergeUrgentBaseline(urgentBaseline, urgentRemaining),
-    urgentRemaining
-  );
-  const forSomeone = computeDailyUrgentProgress(
-    mergeUrgentBaseline(forSomeoneBaseline, forSomeoneRemaining),
-    forSomeoneRemaining
-  );
+  const urgent = computeDailyUrgentProgress(urgentBaseline, urgentRemaining);
+  const forSomeone = computeDailyUrgentProgress(forSomeoneBaseline, forSomeoneRemaining);
   const combined = combineDayProgress(urgent, forSomeone);
   return {
     urgent,

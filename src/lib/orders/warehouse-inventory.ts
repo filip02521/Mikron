@@ -1,5 +1,6 @@
 import { formatPlDate } from "@/lib/display-labels";
 import { calculateBusinessDays, parseDateOnly, toDateOnly } from "@/lib/orders/dates";
+import { todayInWarsaw } from "@/lib/time/warsaw";
 import { getDeliveryProgress } from "@/lib/orders/individual";
 import type { IndividualOrder } from "@/types/database";
 
@@ -81,7 +82,7 @@ function waitingSinceDate(order: IndividualOrder): string | null {
 function businessDaysWaiting(since: string | null): number {
   const start = parseDateOnly(since);
   if (!start) return 0;
-  const today = toDateOnly(new Date());
+  const today = todayInWarsaw();
   return Math.max(0, calculateBusinessDays(start, today));
 }
 

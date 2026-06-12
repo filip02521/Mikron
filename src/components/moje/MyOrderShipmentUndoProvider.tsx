@@ -18,19 +18,25 @@ import {
 } from "@/app/actions/my-orders";
 import { UndoToast } from "@/components/ui/UndoToast";
 import { Toast } from "@/components/ui/Toast";
-import { undoWindowBannerDescription } from "@/lib/orders/daily-panel-undo";
-import { undoShortcutLabel } from "@/lib/platform/keyboard-shortcut-label";
+import {
+  isUndoExpired,
+  undoExpiresAtNow,
+  undoWindowBannerDescription,
+} from "@/lib/orders/daily-panel-undo";
+import { useUndoShortcutLabel } from "@/lib/platform/keyboard-shortcut-label";
 
-export type ShipmentUndoState = {
+export type ShipmentUndoReport = {
   orderIds: string[];
   title: string;
   kind: "pickup" | "dismiss" | "cancel";
 };
 
+type ShipmentUndoState = ShipmentUndoReport & { expiresAt: number };
+
 type ShipmentUndoContextValue = {
   undo: ShipmentUndoState | null;
   undoError: string | null;
-  reportUndo: (state: ShipmentUndoState) => void;
+  reportUndo: (state: ShipmentUndoReport) => void;
   clearUndo: () => void;
   clearUndoError: () => void;
   handleUndo: () => void;
@@ -92,10 +98,10 @@ export function MyOrderShipmentUndoProvider({
   }, []);
 
   const reportUndo = useCallback(
-    (state: ShipmentUndoState) => {
+    (state: ShipmentUndoReport) => {
       if (disabled) return;
       setUndoError(null);
-      setUndo(state);
+      setUndo({ ...state, expiresAt: undoExpiresAtNow() });
     },
     [disabled]
   );
@@ -103,6 +109,10 @@ export function MyOrderShipmentUndoProvider({
   const handleUndo = useCallback(() => {
     if (!undo || disabled) return;
     const snapshot = undo;
+    if (isUndoExpired(snapshot.expiresAt)) {
+      setUndo(null);
+      return;
+    }
     setUndoError(null);
     start(async () => {
       try {
@@ -116,7 +126,7 @@ export function MyOrderShipmentUndoProvider({
         setUndo(null);
         router.refresh();
       } catch {
-        setUndo(snapshot);
+        if (!isUndoExpired(snapshot.expiresAt)) setUndo(snapshot);
         setUndoError(undoFailureMessage(snapshot.kind));
         router.refresh();
       }
@@ -149,6 +159,7 @@ export function MyOrderShipmentUndoToast() {
   const handleUndo = ctx?.handleUndo;
   const clearUndo = ctx?.clearUndo;
   const clearUndoError = ctx?.clearUndoError;
+  const undoShortcut = useUndoShortcutLabel();
 
   useEffect(() => {
     if (!undo || disabled || !handleUndo) return;
@@ -175,8 +186,9 @@ export function MyOrderShipmentUndoToast() {
         title={undo.title}
         description={copy.description}
         undoLabel={copy.undoLabel}
-        undoShortcut={undoShortcutLabel()}
+        undoShortcut={undoShortcut}
         placement="floating"
+        expiresAt={undo.expiresAt}
         onDismiss={clearUndo}
         onUndo={handleUndo}
       />

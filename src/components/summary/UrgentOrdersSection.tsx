@@ -116,6 +116,7 @@ function UrgentCard({
   onVacation,
   onEdit,
   run,
+  todayDateKey,
 }: {
   item: SummaryStandardItem;
   supplierMeta?: SupplierSummaryMeta | null;
@@ -126,8 +127,9 @@ function UrgentCard({
   onVacation: (id: string) => void;
   onEdit: (id: string) => void;
   run: DailyPanelRunFn;
+  todayDateKey?: string;
 }) {
-  const ui = enrichUrgentItem(item);
+  const ui = enrichUrgentItem(item, todayDateKey);
   const dateLabel = formatDateString(item.nextDate, "dd.MM");
   const isOverdue = ui.statusTitle === "Zaległe";
 
@@ -237,6 +239,7 @@ function UrgentGroup({
   onVacation,
   onEdit,
   run,
+  todayDateKey,
 }: {
   title: string;
   items: SummaryStandardItem[];
@@ -251,6 +254,7 @@ function UrgentGroup({
   onVacation: (id: string) => void;
   onEdit: (id: string) => void;
   run: DailyPanelRunFn;
+  todayDateKey?: string;
 }) {
   if (!items.length) return null;
 
@@ -281,6 +285,7 @@ function UrgentGroup({
               onVacation={onVacation}
               onEdit={onEdit}
               run={run}
+              todayDateKey={todayDateKey}
             />
           </li>
         ))}
@@ -292,6 +297,7 @@ function UrgentGroup({
 export function UrgentOrdersSection({
   items,
   supplierMeta,
+  todayDateKey,
   queuePart = "full",
   run,
   onOpenSupplier,
@@ -311,6 +317,7 @@ export function UrgentOrdersSection({
 }: {
   items: SummaryStandardItem[];
   supplierMeta: Record<string, SupplierSummaryMeta>;
+  todayDateKey?: string;
   queuePart?: UrgentQueuePart;
   run: DailyPanelRunFn;
   onOpenSupplier: (id: string) => void;
@@ -328,7 +335,10 @@ export function UrgentOrdersSection({
   queueStep?: number;
   sectionId?: string;
 }) {
-  const { overdue, todayList } = useMemo(() => splitUrgentItems(items), [items]);
+  const { overdue, todayList } = useMemo(
+    () => splitUrgentItems(items, todayDateKey),
+    [items, todayDateKey]
+  );
   const showOverdue = queuePart === "full" || queuePart === "overdue";
   const showToday = queuePart === "full" || queuePart === "today";
   const overdueItems = showOverdue ? overdue : [];
@@ -447,6 +457,7 @@ export function UrgentOrdersSection({
             onVacation={onVacation}
             onEdit={onEdit}
             run={run}
+            todayDateKey={todayDateKey}
           />
         ) : null}
         {showToday ? (
@@ -464,6 +475,7 @@ export function UrgentOrdersSection({
             onVacation={onVacation}
             onEdit={onEdit}
             run={run}
+            todayDateKey={todayDateKey}
           />
         ) : null}
       </div>

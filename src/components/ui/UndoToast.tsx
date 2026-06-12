@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { IconCircleCheck } from "@/components/icons/StrokeIcons";
 import { Button } from "@/components/ui/Button";
 import { cn } from "@/lib/cn";
@@ -26,6 +26,7 @@ export function UndoToast({
   undoLabel = "Cofnij",
   undoShortcut,
   durationMs = UNDO_WINDOW_MS,
+  expiresAt,
   placement = "floating",
   className,
 }: {
@@ -40,6 +41,8 @@ export function UndoToast({
   undoLabel?: string;
   undoShortcut?: string;
   durationMs?: number;
+  /** Koniec okna cofania (ms) — timer i pasek od tego momentu, nie od mount. */
+  expiresAt?: number;
   /** Inline — w treści panelu; floating — nad dolną nawigacją. */
   placement?: UndoToastPlacement;
   className?: string;
@@ -58,10 +61,26 @@ export function UndoToast({
         ? undefined
         : undoWindowBannerDescription());
 
+  const [remainingMs, setRemainingMs] = useState(durationMs);
+
   useEffect(() => {
-    const t = setTimeout(() => onDismissRef.current(), durationMs);
-    return () => clearTimeout(t);
-  }, [durationMs]);
+    if (expiresAt == null) {
+      const t = setTimeout(() => onDismissRef.current(), durationMs);
+      return () => clearTimeout(t);
+    }
+    const syncRemaining = () => {
+      const next = Math.max(0, expiresAt - Date.now());
+      setRemainingMs(next);
+      if (next <= 0) onDismissRef.current();
+    };
+    syncRemaining();
+    const interval = window.setInterval(syncRemaining, 200);
+    const timeout = window.setTimeout(() => onDismissRef.current(), Math.max(0, expiresAt - Date.now()));
+    return () => {
+      window.clearInterval(interval);
+      window.clearTimeout(timeout);
+    };
+  }, [durationMs, expiresAt]);
 
   const isError = tone === "error";
 
@@ -82,7 +101,7 @@ export function UndoToast({
         isError && "border-red-200/90",
         className
       )}
-      style={{ ["--undo-duration" as string]: `${durationMs}ms` }}
+      style={{ ["--undo-duration" as string]: `${remainingMs}ms` }}
     >
       <div className={undoNoticeProgressTrackClass} aria-hidden>
         <div

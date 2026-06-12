@@ -64,7 +64,7 @@ export function ZkWatchSection({
   subiektReachable?: boolean;
   subiektBlockedHint?: string;
   onWatchAdded?: (watch: SalesZkWatch) => void;
-  onWatchClosed?: (watchId: string) => void;
+  onWatchClosed?: (watchId: string, closedAt: string) => void;
   onWatchRefreshed?: (watch: SalesZkWatch) => void;
 }) {
   const inputRef = useRef<HTMLInputElement>(null);

@@ -26,7 +26,7 @@ export function isDateOnlyTimestamp(iso: string): boolean {
 /** Czytelna etykieta daty i godziny zgłoszenia prośby (dziś / wczoraj / dd.MM.yyyy). */
 export function formatProcurementSubmittedLabel(
   iso: string,
-  at: Date = new Date()
+  at: Date = todayInWarsaw()
 ): string {
   const dateKey = warsawDateKeyFromIso(iso);
   const todayKey = warsawNowParts(at).dateKey;
@@ -52,7 +52,7 @@ export function formatProcurementSubmittedLabel(
 export function formatProcurementGroupSubmittedLabel(
   earliestIso: string,
   latestIso: string,
-  at: Date = new Date()
+  at: Date = todayInWarsaw()
 ): string {
   if (earliestIso === latestIso) {
     return formatProcurementSubmittedLabel(earliestIso, at);

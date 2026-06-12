@@ -112,6 +112,7 @@ export function DailyTodayView({
                     queueStep={queueStepBySection.overdue}
                     queuePart="overdue"
                     items={standardUrgentAll}
+                    todayDateKey={workspace.todayDateKey}
                     supplierMeta={workspace.supplierMeta}
                     showBulkToolbar
                     run={run}
@@ -168,6 +169,7 @@ export function DailyTodayView({
                     queueStep={queueStepBySection.today}
                     queuePart="today"
                     items={standardUrgentAll}
+                    todayDateKey={workspace.todayDateKey}
                     supplierMeta={workspace.supplierMeta}
                     showBulkToolbar={urgentOverdue.length === 0}
                     run={run}

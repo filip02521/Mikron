@@ -1,4 +1,6 @@
+import { formatDateString } from "@/lib/orders/dates";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { todayInWarsaw } from "@/lib/time/warsaw";
 import type { ZkLinkableOrder } from "@/lib/sales/zk-watch-order-link";
 import type { SalesNote, SalesZkWatch } from "@/types/database";
 
@@ -144,7 +146,7 @@ export async function countActiveZkWatches(salesPersonId: string): Promise<numbe
 /** Badge notatnika: ZK i notatki z przypomnieniem na dziś/wcześniej. */
 export async function countNotepadNavBadge(salesPersonId: string): Promise<number> {
   const supabase = createAdminClient();
-  const today = new Date().toISOString().slice(0, 10);
+  const today = formatDateString(todayInWarsaw());
 
   const [watchesDueRes, notesDueRes] = await Promise.all([
     supabase

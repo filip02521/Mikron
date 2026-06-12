@@ -1,11 +1,15 @@
 "use client";
 
-import { useCallback, useState, useTransition } from "react";
+import { useCallback, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { actionUndoDailyPanelChange } from "@/app/actions/admin";
 import type { DailyPanelActionResult } from "@/lib/orders/daily-panel-undo";
 import type { DailyPanelUndoPayload } from "@/lib/orders/daily-panel-undo";
-import { undoWindowBannerDescription } from "@/lib/orders/daily-panel-undo";
+import {
+  isUndoPayloadExpired,
+  undoPayloadExpiresAt,
+  undoWindowBannerDescription,
+} from "@/lib/orders/daily-panel-undo";
 import { useAdminPanelPreview } from "@/components/layout/AdminPanelPreviewContext";
 import { ADMIN_PANEL_PREVIEW_MUTATION_BLOCKED } from "@/lib/auth/admin-panel-preview-messages";
 
@@ -18,6 +22,8 @@ export type DailyPanelRunOptions = {
   scope?: string;
   /** Pełnoekranowy overlay — tylko undo i rzadkie operacje globalne */
   overlay?: boolean;
+  /** Wywołane po udanej akcji (przed refresh). */
+  onSuccess?: () => void;
 };
 
 export type DailyPanelRunFn = (
@@ -32,6 +38,7 @@ type UndoState = {
   description?: string;
   detailLines?: string[];
   payload: DailyPanelUndoPayload;
+  expiresAt: number;
 };
 
 export function useDailyPanelRunner() {
@@ -44,9 +51,13 @@ export function useDailyPanelRunner() {
   const [flash, setFlash] = useState<{ text: string; tone: "success" | "error" } | null>(
     null
   );
+  const undoPayloadRef = useRef<DailyPanelUndoPayload | null>(null);
 
   const dismissFlash = useCallback(() => setFlash(null), []);
-  const dismissUndo = useCallback(() => setUndo(null), []);
+  const dismissUndo = useCallback(() => {
+    setUndo(null);
+    undoPayloadRef.current = null;
+  }, []);
 
   const isScopePending = useCallback(
     (scope: string) => isPending && pendingScope === scope,
@@ -75,8 +86,9 @@ export function useDailyPanelRunner() {
       start(async () => {
         try {
           const result = await action();
-          router.refresh();
           if (result.undo) {
+            const expiresAt = undoPayloadExpiresAt(result.undo);
+            undoPayloadRef.current = result.undo;
             setFlash(null);
             setUndo({
               title: successMessage,
@@ -85,13 +97,18 @@ export function useDailyPanelRunner() {
               ),
               detailLines: result.feedbackLines,
               payload: result.undo,
+              expiresAt,
             });
           } else {
             setUndo(null);
+            undoPayloadRef.current = null;
             setFlash({ text: successMessage, tone: "success" });
           }
+          options?.onSuccess?.();
+          router.refresh();
         } catch (e) {
           setUndo(null);
+          undoPayloadRef.current = null;
           setFlash({
             text: e instanceof Error ? e.message : "Wystąpił błąd",
             tone: "error",
@@ -110,22 +127,33 @@ export function useDailyPanelRunner() {
       setFlash({ text: ADMIN_PANEL_PREVIEW_MUTATION_BLOCKED, tone: "error" });
       return;
     }
-    if (!undo) return;
-    const payload = undo.payload;
+    const payload = undo?.payload ?? undoPayloadRef.current;
+    if (!payload) return;
+    if (isUndoPayloadExpired(payload)) {
+      setUndo(null);
+      undoPayloadRef.current = null;
+      setFlash({
+        text: "Minął czas na cofnięcie — odśwież panel.",
+        tone: "error",
+      });
+      return;
+    }
     setPendingScope(DAILY_PANEL_SCOPE_GLOBAL);
     setPendingMessage("Cofanie ostatniej akcji…");
     start(async () => {
       try {
         await actionUndoDailyPanelChange(payload);
         setUndo(null);
+        undoPayloadRef.current = null;
         setFlash({ text: "Cofnięto ostatnią akcję.", tone: "success" });
         router.refresh();
       } catch (e) {
-        setFlash({
-          text: e instanceof Error ? e.message : "Nie udało się cofnąć",
-          tone: "error",
-        });
-        setUndo(null);
+        const message = e instanceof Error ? e.message : "Nie udało się cofnąć";
+        setFlash({ text: message, tone: "error" });
+        if (isUndoPayloadExpired(payload)) {
+          setUndo(null);
+          undoPayloadRef.current = null;
+        }
         router.refresh();
       } finally {
         setPendingScope(null);
@@ -136,6 +164,7 @@ export function useDailyPanelRunner() {
 
   const notify = useCallback((text: string, tone: "success" | "error" = "success") => {
     setUndo(null);
+    undoPayloadRef.current = null;
     setFlash({ text, tone });
   }, []);
 

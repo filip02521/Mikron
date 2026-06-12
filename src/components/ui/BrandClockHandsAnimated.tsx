@@ -1,7 +1,8 @@
 "use client";
 
-import { useEffect, useId, useState } from "react";
+import { useEffect, useId, useState, useSyncExternalStore } from "react";
 import { cn } from "@/lib/cn";
+import { useClientHydrated } from "@/lib/client/use-client-hydrated";
 import {
   BRAND_CLOCK_HOUR_OUTER_RADIUS,
   BRAND_CLOCK_INNER_RADIUS,
@@ -77,33 +78,35 @@ export function BrandClockHandsAnimated({
 }) {
   const gradientId = brandClockGradientId(useId());
   const handStroke = `url(#${gradientId})`;
-  const [angles, setAngles] = useState<BrandClockAngles>(() => {
-    if (
-      typeof window !== "undefined" &&
-      window.matchMedia("(prefers-reduced-motion: reduce)").matches
-    ) {
-      return brandClockAnglesFromDate();
-    }
-    return BRAND_CLOCK_INTRO_ANGLES;
-  });
+  const hydrated = useClientHydrated();
+  const reducedMotion = useSyncExternalStore(
+    (onChange) => {
+      const mq = window.matchMedia("(prefers-reduced-motion: reduce)");
+      mq.addEventListener("change", onChange);
+      return () => mq.removeEventListener("change", onChange);
+    },
+    () => window.matchMedia("(prefers-reduced-motion: reduce)").matches,
+    () => false
+  );
+  const [introAngles, setIntroAngles] = useState<BrandClockAngles>(BRAND_CLOCK_INTRO_ANGLES);
+  const angles =
+    hydrated && reducedMotion ? brandClockAnglesFromDate() : introAngles;
 
   useEffect(() => {
-    const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-
-    if (reducedMotion) return;
+    if (!hydrated || reducedMotion) return;
 
     const introStart = performance.now();
     const introTarget = brandClockAnglesFromDate();
     let frame = 0;
     let interval = 0;
 
-    const syncLive = () => setAngles(brandClockAnglesFromDate());
+    const syncLive = () => setIntroAngles(brandClockAnglesFromDate());
 
     const runIntro = (now: number) => {
       const progress = Math.min(1, (now - introStart) / INTRO_ANIMATION_MS);
 
       if (progress < 1) {
-        setAngles(
+        setIntroAngles(
           lerpAngles(BRAND_CLOCK_INTRO_ANGLES, introTarget, easeOutCubic(progress))
         );
         frame = requestAnimationFrame(runIntro);
@@ -122,7 +125,7 @@ export function BrandClockHandsAnimated({
       cancelAnimationFrame(frame);
       window.clearInterval(interval);
     };
-  }, []);
+  }, [hydrated, reducedMotion]);
 
   return (
     <svg

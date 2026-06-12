@@ -8,12 +8,14 @@ import {
   DAILY_PANEL_PROSBY_KEYBOARD_HINTS,
 } from "@/lib/orders/daily-panel-keyboard";
 import type { DailyPanelView } from "@/lib/orders/daily-panel-view";
+import { useUndoShortcutLabel } from "@/lib/platform/keyboard-shortcut-label";
 
 export function DailyPanelShortcutsPopover({ view }: { view: DailyPanelView }) {
+  const undoShortcut = useUndoShortcutLabel();
   const items =
     view === "dzis"
-      ? [...dailyPanelKeyboardHints(), ...DAILY_PANEL_PROSBY_KEYBOARD_HINTS]
-      : dailyPanelKeyboardHints();
+      ? [...dailyPanelKeyboardHints(undoShortcut), ...DAILY_PANEL_PROSBY_KEYBOARD_HINTS]
+      : dailyPanelKeyboardHints(undoShortcut);
 
   return (
     <HelpPopover

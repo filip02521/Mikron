@@ -1,11 +1,10 @@
 import type { KeyboardShortcutItem } from "@/components/ui/KeyboardShortcutsHint";
-import { undoShortcutLabel } from "@/lib/platform/keyboard-shortcut-label";
 
-export function dailyPanelKeyboardHints(): KeyboardShortcutItem[] {
+export function dailyPanelKeyboardHints(undoShortcut = "Ctrl+Z"): KeyboardShortcutItem[] {
   return [
     { keys: ["/"], label: "szukaj dostawcę" },
     { keys: ["Z"], label: "zamówione (szuflada)" },
-    { keys: [undoShortcutLabel()], label: "cofnij" },
+    { keys: [undoShortcut], label: "cofnij" },
   ];
 }
 

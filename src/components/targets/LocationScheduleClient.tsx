@@ -29,8 +29,8 @@ import {
   formatDateString,
   getMondayOfWeek,
   parseDateOnly,
-  toDateOnly,
 } from "@/lib/orders/dates";
+import { todayInWarsaw } from "@/lib/time/warsaw";
 import { cn } from "@/lib/cn";
 import { Badge } from "@/components/ui/Badge";
 import { InactiveSupplierBadge } from "@/components/suppliers/InactiveSupplierBadge";
@@ -57,14 +57,14 @@ function parseTermFilter(raw: string | null): FilterKey {
 
 function isOverdue(next: string | null): boolean {
   if (!next) return false;
-  return next < formatDateString(toDateOnly(new Date()));
+  return next < formatDateString(todayInWarsaw());
 }
 
 function isThisWeek(next: string | null): boolean {
   if (!next) return false;
   const d = parseDateOnly(next);
   if (!d) return false;
-  const monday = getMondayOfWeek(new Date());
+  const monday = getMondayOfWeek(todayInWarsaw());
   const sunday = new Date(monday);
   sunday.setDate(monday.getDate() + 6);
   return d >= monday && d <= sunday;

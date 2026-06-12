@@ -16,12 +16,17 @@ export function DailyDayProgressBar({
   progress,
   className,
   variant = "default",
+  ready = true,
 }: {
   progress: DailyDayProgress;
   className?: string;
   variant?: "default" | "compact";
+  /** false — ukryj do odczytu sessionStorage (bez skoku %). */
+  ready?: boolean;
 }) {
   const { combined, urgent, forSomeone } = progress;
+
+  if (!ready) return null;
 
   if (variant === "compact") {
     if (!combined.hasWork) return null;

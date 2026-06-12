@@ -1,6 +1,7 @@
 "use client";
 
-import { useMemo } from "react";
+import { useEffect, useRef, useState } from "react";
+import { useClientHydrated } from "@/lib/client/use-client-hydrated";
 import { formatDateString } from "@/lib/orders/dates";
 import {
   buildDailyDayProgress,
@@ -24,41 +25,71 @@ function readBaseline(key: string): number | null {
   return Number.isFinite(n) && n > 0 ? n : null;
 }
 
-function persistBaseline(key: string, stored: number | null, remaining: number): number | null {
-  const next = mergeUrgentBaseline(stored, remaining);
-  if (next != null) {
-    if (next !== stored) {
-      sessionStorage.setItem(key, String(next));
-    }
-    return next;
-  }
-  return null;
+function writeBaseline(key: string, value: number | null): void {
+  if (typeof sessionStorage === "undefined" || value == null) return;
+  sessionStorage.setItem(key, String(value));
 }
+
+export type DailyDayProgressState = {
+  progress: DailyDayProgress;
+  /** false do pierwszego odczytu sessionStorage — ukryj pasek, żeby uniknąć skoku %. */
+  ready: boolean;
+};
 
 /** Postęp domykania dnia: harmonogram (zaległe + na dziś) oraz prośby handlowców. */
 export function useDailyDayProgress(
   urgentRemaining: number,
   forSomeoneRemaining: number
-): DailyDayProgress {
-  return useMemo(() => {
-    if (typeof sessionStorage === "undefined") {
-      return buildDailyDayProgress(null, urgentRemaining, null, forSomeoneRemaining);
-    }
+): DailyDayProgressState {
+  const hydrated = useClientHydrated();
+  const prevUrgentRef = useRef(urgentRemaining);
+  const prevForSomeoneRef = useRef(forSomeoneRemaining);
+  const [state, setState] = useState<DailyDayProgressState>(() => ({
+    progress: buildDailyDayProgress(null, urgentRemaining, null, forSomeoneRemaining),
+    ready: false,
+  }));
+
+  useEffect(() => {
+    if (!hydrated || typeof sessionStorage === "undefined") return;
+
     const uKey = storageKey(URGENT_KEY);
     const fKey = storageKey(FOR_SOMEONE_KEY);
-    const urgentBaseline = persistBaseline(uKey, readBaseline(uKey), urgentRemaining);
-    const forSomeoneBaseline = persistBaseline(
-      fKey,
-      readBaseline(fKey),
-      forSomeoneRemaining
-    );
-    return buildDailyDayProgress(
-      urgentBaseline,
+    const prevUrgent = prevUrgentRef.current;
+    const prevForSomeone = prevForSomeoneRef.current;
+
+    const urgentBaseline = mergeUrgentBaseline(
+      readBaseline(uKey),
       urgentRemaining,
-      forSomeoneBaseline,
-      forSomeoneRemaining
+      prevUrgent
     );
-  }, [urgentRemaining, forSomeoneRemaining]);
+    const forSomeoneBaseline = mergeUrgentBaseline(
+      readBaseline(fKey),
+      forSomeoneRemaining,
+      prevForSomeone
+    );
+
+    if (urgentBaseline != null) writeBaseline(uKey, urgentBaseline);
+    if (forSomeoneBaseline != null) writeBaseline(fKey, forSomeoneBaseline);
+
+    prevUrgentRef.current = urgentRemaining;
+    prevForSomeoneRef.current = forSomeoneRemaining;
+
+    setState({
+      progress: buildDailyDayProgress(
+        urgentBaseline,
+        urgentRemaining,
+        forSomeoneBaseline,
+        forSomeoneRemaining
+      ),
+      ready: true,
+    });
+  }, [hydrated, urgentRemaining, forSomeoneRemaining]);
+
+  if (!hydrated) {
+    return state;
+  }
+
+  return state;
 }
 
 export type { DailyDayProgress };

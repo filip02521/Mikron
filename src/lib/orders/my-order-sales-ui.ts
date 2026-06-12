@@ -1,3 +1,4 @@
+import { formatDateString } from "@/lib/orders/dates";
 import { isPastExpectedDate } from "@/lib/orders/delivery-eta";
 import type { MyOrderRow } from "@/lib/orders/my-order-presenter";
 import { formatProsbaZkLinkNumber } from "@/lib/orders/zk-prosba-link-display";
@@ -415,11 +416,7 @@ export function salesTimingLabel(
   avgDays: number,
   lowConfidence: boolean
 ): string {
-  const date = expectedDate.toLocaleDateString("pl-PL", {
-    day: "2-digit",
-    month: "2-digit",
-    year: "numeric",
-  });
+  const date = formatDateString(expectedDate, "dd.MM.yyyy");
   const conf = lowConfidence ? " · mało historii" : "";
   const overdue = isPastExpectedDate(expectedDate) ? " · po terminie" : "";
   return `ok. ${date} (~${avgDays} dni rob.)${conf}${overdue}`;

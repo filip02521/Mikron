@@ -42,7 +42,7 @@ import { OperationsPanelRefreshStrip } from "@/components/operations/OperationsU
 import {
   IconLayoutPanel,
 } from "@/components/icons/StrokeIcons";
-import { undoShortcutLabel } from "@/lib/platform/keyboard-shortcut-label";
+import { useUndoShortcutLabel } from "@/lib/platform/keyboard-shortcut-label";
 import { SectionHeadingIcon } from "@/components/icons/SectionHeadingIcon";
 import { brandIconTileClass, panelChromeInsetClass, panelSectionInsetClass, panelWorkspaceShellClass } from "@/lib/ui/ontime-theme";
 import { cn } from "@/lib/cn";
@@ -81,6 +81,7 @@ export function SummaryWorkspace({
   const { view: panelView, setView: setPanelView } = useDailyPanelView();
   const panelIntro = dailyPanelIntroDescription(panelView);
   const highlightFresh = useDailyPanelFreshHighlight();
+  const undoShortcut = useUndoShortcutLabel();
 
   const [selected, setSelected] = useState<Record<string, boolean>>({});
   const [drawerId, setDrawerId] = useState<string | null>(null);
@@ -114,14 +115,14 @@ export function SummaryWorkspace({
   const urgentRemainingTotal = inboxSummary.overdueCount + inboxSummary.todayCount;
   const forSomeoneRemaining = workspace.forSomeoneLeft.length;
   const stockOutRemaining = workspace.stockOutLeft.length;
-  const dayProgress = useDailyDayProgress(
+  const { progress: dayProgress, ready: dayProgressReady } = useDailyDayProgress(
     urgentRemainingTotal,
     forSomeoneRemaining + stockOutRemaining
   );
 
   const { overdue: urgentOverdue, todayList: urgentToday } = useMemo(
-    () => splitUrgentItems(standardUrgentAll),
-    [standardUrgentAll]
+    () => splitUrgentItems(standardUrgentAll, workspace.todayDateKey),
+    [standardUrgentAll, workspace.todayDateKey]
   );
 
   const hasCancelled = workspace.salesCancelledNotices.length > 0;
@@ -298,10 +299,11 @@ export function SummaryWorkspace({
           title={undo.title}
           description={undo.description}
           detailLines={undo.detailLines}
+          expiresAt={undo.expiresAt}
           placement="inline"
           onDismiss={dismissUndo}
           onUndo={handleUndo}
-          undoShortcut={undoShortcutLabel()}
+          undoShortcut={undoShortcut}
         />
       ) : null}
 
@@ -343,6 +345,7 @@ export function SummaryWorkspace({
               view={panelView}
               summary={inboxSummary}
               dayProgress={dayProgress}
+              dayProgressReady={dayProgressReady}
               verificationCount={verificationCount}
               showVerification={!hideVerificationDup}
               urgentVacationCount={urgentVacationCount}

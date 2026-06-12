@@ -1,4 +1,5 @@
 import type { SupplierLocation, VacationNote } from "@/types/database";
+import { todayInWarsaw } from "@/lib/time/warsaw";
 import { getRowColorForDate, modifyHexColor, type SummaryColorSet } from "./colors";
 import type { OrderInterval } from "./dates";
 import { applyVacationLogic, type VacationPeriod } from "./vacations";
@@ -22,7 +23,7 @@ export interface ScheduleRowOutput {
 export function recalcScheduleRow(
   input: ScheduleRowInput,
   colors?: SummaryColorSet,
-  today = new Date()
+  today = todayInWarsaw()
 ): ScheduleRowOutput {
   const { nextDate, vacationNote } = applyVacationLogic({
     orderDate: input.orderDate,

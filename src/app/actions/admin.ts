@@ -63,7 +63,11 @@ import {
   MAX_SUPPLIER_NOTES_LEN,
 } from "@/lib/security/text-limits";
 import { dateToIso, parseDateOnly, snapToBusinessDay } from "@/lib/orders/dates";
-import { DAILY_PANEL_UNDO_MS, undoWindowShortLabel } from "@/lib/orders/daily-panel-undo";
+import {
+  buildDailyPanelUndoPayload,
+  isUndoPayloadExpired,
+  undoWindowShortLabel,
+} from "@/lib/orders/daily-panel-undo";
 import type { DailyPanelActionResult } from "@/lib/orders/daily-panel-undo";
 import type { DailyPanelUndoPayload } from "@/lib/orders/daily-panel-undo";
 import {
@@ -144,10 +148,10 @@ export async function actionMarkOrdered(
   return {
     success: true,
     feedbackLines,
-    undo: {
-      token: { kind: "schedules", snapshots: [scheduleBefore] },
-      performedAt: Date.now(),
-    },
+    undo: buildDailyPanelUndoPayload({
+      kind: "schedules",
+      snapshots: [scheduleBefore],
+    }),
   };
 }
 
@@ -167,10 +171,10 @@ export async function actionShiftOrder(
   return {
     success: true,
     feedbackLines,
-    undo: {
-      token: { kind: "schedules", snapshots: [scheduleBefore] },
-      performedAt: Date.now(),
-    },
+    undo: buildDailyPanelUndoPayload({
+      kind: "schedules",
+      snapshots: [scheduleBefore],
+    }),
   };
 }
 
@@ -204,10 +208,7 @@ export async function actionBatchShiftOrder(
   return {
     success: true,
     feedbackLines,
-    undo: {
-      token: { kind: "schedules", snapshots },
-      performedAt: Date.now(),
-    },
+    undo: buildDailyPanelUndoPayload({ kind: "schedules", snapshots }),
   };
 }
 
@@ -243,7 +244,7 @@ export async function actionProcessIndividual(
 
   return {
     success: true,
-    undo: { token, performedAt: Date.now() },
+    undo: buildDailyPanelUndoPayload(token),
     feedbackLines,
   };
 }
@@ -290,16 +291,16 @@ export async function actionBulkOrdered(
     success: true,
     count: supplierIds.length,
     feedbackLines,
-    undo: {
-      token: { kind: "schedules", snapshots: schedulesBefore },
-      performedAt: Date.now(),
-    },
+    undo: buildDailyPanelUndoPayload({
+      kind: "schedules",
+      snapshots: schedulesBefore,
+    }),
   };
 }
 
 export async function actionUndoDailyPanelChange(payload: DailyPanelUndoPayload) {
   await requireOperations("mutate");
-  if (Date.now() - payload.performedAt > DAILY_PANEL_UNDO_MS) {
+  if (isUndoPayloadExpired(payload)) {
     throw new Error(`Minął czas na cofnięcie (${undoWindowShortLabel()}). Odśwież panel.`);
   }
   await revertDailyPanelChange(payload.token);

@@ -65,9 +65,7 @@ export function SalesUpdatesProvider({
   const [baseline, setBaseline] = useState(initialVersion);
   const [latest, setLatest] = useState(initialVersion);
   const autoRefresh = usePersistedFlag(autoRefreshStore);
-  const [lastSyncedAt, setLastSyncedAt] = useState<number | null>(() =>
-    initialVersion != null ? Date.now() : null
-  );
+  const [lastSyncedAt, setLastSyncedAt] = useState<number | null>(null);
   const [lastPollAt, setLastPollAt] = useState<number | null>(null);
   const syncingRef = useRef(false);
   const lastNotatnikAutoRefreshAtRef = useRef(0);

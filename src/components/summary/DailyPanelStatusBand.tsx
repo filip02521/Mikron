@@ -138,6 +138,7 @@ function StatusBandBody({
   view,
   summary,
   dayProgress,
+  dayProgressReady = true,
   queueTotal,
   showQueueSteps,
   hasSupplementary,
@@ -149,6 +150,7 @@ function StatusBandBody({
   view: DailyPanelView;
   summary: DailyInboxSummary;
   dayProgress: DailyDayProgress;
+  dayProgressReady?: boolean;
   queueTotal: number;
   showQueueSteps: boolean;
   hasSupplementary: boolean;
@@ -231,7 +233,11 @@ function StatusBandBody({
         />
       ) : null}
 
-      <DailyDayProgressBar progress={dayProgress} variant="compact" />
+      <DailyDayProgressBar
+        progress={dayProgress}
+        variant="compact"
+        ready={dayProgressReady}
+      />
 
       {hasSupplementary ? (
         <SupplementaryLinks summary={summary} onOpenOnDemand={onOpenOnDemand} />
@@ -257,6 +263,7 @@ export function DailyPanelStatusBand({
   view,
   summary,
   dayProgress,
+  dayProgressReady = true,
   verificationCount = 0,
   showVerification = true,
   urgentVacationCount = 0,
@@ -265,6 +272,7 @@ export function DailyPanelStatusBand({
   view: DailyPanelView;
   summary: DailyInboxSummary;
   dayProgress: DailyDayProgress;
+  dayProgressReady?: boolean;
   verificationCount?: number;
   showVerification?: boolean;
   urgentVacationCount?: number;
@@ -290,11 +298,12 @@ export function DailyPanelStatusBand({
     Number(summary.todayCount > 0);
   const showQueueSteps = activeSectionCount >= 2;
 
-  const progressHint = dayProgress.combined.hasWork
-    ? dayProgress.combined.complete
-      ? " · domknięte"
-      : ` · ${dayProgress.combined.percent}% postępu`
-    : "";
+  const progressHint =
+    dayProgressReady && dayProgress.combined.hasWork
+      ? dayProgress.combined.complete
+        ? " · domknięte"
+        : ` · ${dayProgress.combined.percent}% postępu`
+      : "";
 
   return (
     <div className={cn("border-b border-slate-100 bg-slate-50/50 py-2.5 sm:py-3", panelChromeInsetClass)}>
@@ -326,6 +335,7 @@ export function DailyPanelStatusBand({
           view={view}
           summary={summary}
           dayProgress={dayProgress}
+          dayProgressReady={dayProgressReady}
           queueTotal={queueTotal}
           showQueueSteps={showQueueSteps}
           hasSupplementary={hasSupplementary}

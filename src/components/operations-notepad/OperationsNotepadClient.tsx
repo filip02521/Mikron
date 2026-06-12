@@ -23,7 +23,11 @@ import {
   OPERATIONS_DEPARTMENT_LABELS,
   departmentsForRole,
 } from "@/lib/operations/notepad-department";
-import { undoWindowBannerDescription } from "@/lib/orders/daily-panel-undo";
+import {
+  isUndoExpired,
+  undoExpiresAtNow,
+  undoWindowBannerDescription,
+} from "@/lib/orders/daily-panel-undo";
 import { isAdmin } from "@/lib/auth-roles";
 import { sortOperationsNotes } from "@/lib/operations/operations-note-sort";
 import type { OperationsDepartment, OperationsNote, OperationsNoteVisibility, UserRole } from "@/types/database";
@@ -42,17 +46,19 @@ import { NotatnikPanel } from "@/components/notatnik/NotatnikPanel";
 import { NotatnikCollapsible } from "@/components/notatnik/NotatnikCollapsible";
 import { KeyboardShortcutsHint } from "@/components/ui/KeyboardShortcutsHint";
 import { cn } from "@/lib/cn";
+import { useUndoShortcutLabel } from "@/lib/platform/keyboard-shortcut-label";
 
 const OPERATIONS_NOTEPAD_INTRO =
   "Prywatne karteczki i wspólna tablica działu. Przypomnienia nie trafiają do panelu dziennego.";
 
-type OperationsUndoState =
+type OperationsUndoState = (
   | { type: "archive"; note: OperationsNote; visibility: OperationsNoteVisibility }
   | {
       type: "reorder";
       visibility: OperationsNoteVisibility;
       notes: OperationsNote[];
-    };
+    }
+) & { expiresAt: number };
 
 function flashNoteAnchor(noteId: string) {
   window.setTimeout(() => {
@@ -80,6 +86,7 @@ export function OperationsNotepadClient({
   loadError?: string | null;
 }) {
   const router = useRouter();
+  const undoShortcut = useUndoShortcutLabel();
   const allowedDepartments = departmentsForRole(role);
 
   const [privateNotes, setPrivateNotes] = useState(initial.privateNotes);
@@ -122,6 +129,10 @@ export function OperationsNotepadClient({
   const handleUndo = useCallback(async () => {
     if (!undo) return;
     const snapshot = undo;
+    if (isUndoExpired(snapshot.expiresAt)) {
+      setUndo(null);
+      return;
+    }
     setUndo(null);
     try {
       if (snapshot.type === "archive") {
@@ -144,7 +155,7 @@ export function OperationsNotepadClient({
       }
       refresh();
     } catch {
-      setUndo(snapshot);
+      if (!isUndoExpired(snapshot.expiresAt)) setUndo(snapshot);
     }
   }, [undo, department, refresh]);
 
@@ -174,7 +185,12 @@ export function OperationsNotepadClient({
       setPublicNotes(sorted);
     }
     if (previousForUndo) {
-      setUndo({ type: "reorder", visibility, notes: previousForUndo });
+      setUndo({
+        type: "reorder",
+        visibility,
+        notes: previousForUndo,
+        expiresAt: undoExpiresAtNow(),
+      });
     }
   }
 
@@ -186,7 +202,7 @@ export function OperationsNotepadClient({
       setPublicNotes((prev) => prev.filter((n) => n.id !== note.id));
     }
     setArchivedNotes((prev) => [{ ...note, archived_at: now }, ...prev]);
-    setUndo({ type: "archive", note, visibility });
+    setUndo({ type: "archive", note, visibility, expiresAt: undoExpiresAtNow() });
   }
 
   function handlePrivateCreated(note: OperationsNote) {
@@ -233,9 +249,10 @@ export function OperationsNotepadClient({
           title={undoTitle}
           description={undoDescription}
           placement="floating"
+          expiresAt={undo.expiresAt}
           onDismiss={dismissUndo}
           onUndo={() => void handleUndo()}
-          undoShortcut="Ctrl+Z"
+          undoShortcut={undoShortcut}
         />
       ) : null}
       <Card padding={false} className="overflow-hidden">

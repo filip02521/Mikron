@@ -1,30 +1,19 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
 import { Button } from "@/components/ui/Button";
 import { cn } from "@/lib/cn";
+import { usePersistedFlag } from "@/lib/client/use-persisted-flag";
+import { departmentBoardIntroDismissedStore } from "@/lib/department-board/onboarding-storage";
 import { salesChromeInsetClass, salesTypography } from "@/lib/ui/ontime-theme";
-import { DEPARTMENT_BOARD_INTRO_STORAGE_KEY } from "@/lib/department-board/onboarding-storage";
 
 export function DepartmentBoardIntroBanner() {
-  const [hidden, setHidden] = useState(() => {
-    try {
-      return localStorage.getItem(DEPARTMENT_BOARD_INTRO_STORAGE_KEY) === "1";
-    } catch {
-      return false;
-    }
-  });
+  const hidden = usePersistedFlag(departmentBoardIntroDismissedStore);
 
   if (hidden) return null;
 
   function dismiss() {
-    try {
-      localStorage.setItem(DEPARTMENT_BOARD_INTRO_STORAGE_KEY, "1");
-    } catch {
-      /* ignore */
-    }
-    setHidden(true);
+    departmentBoardIntroDismissedStore.setValue(true);
   }
 
   return (

@@ -147,6 +147,8 @@ export type OnDemandSupplierRow = {
 };
 
 export type SummaryWorkspaceData = SummaryView & {
+  /** Klucz kalendarzowy „dziś” (Europe/Warsaw) z momentu budowy workspace — spójny SSR/klient. */
+  todayDateKey: string;
   supplierMeta: Record<string, SupplierSummaryMeta>;
   onDemandSuppliers: OnDemandSupplierRow[];
   thisWeekDays: WeekDayPlan[];
@@ -498,6 +500,7 @@ export function buildSummaryWorkspace(
   const panelHidden = buildDailyPanelHiddenReport(schedules, { informacjaLeft });
 
   return {
+    todayDateKey: todayStr,
     left,
     right,
     rightHeader,

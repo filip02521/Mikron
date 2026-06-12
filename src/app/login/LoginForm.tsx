@@ -14,6 +14,7 @@ import { applyLoginFormError } from "@/lib/auth/login-form-errors";
 import type { LoginSubtitleMode } from "@/lib/auth/login-form-copy";
 import { LoginAccountPicker } from "@/components/auth/LoginAccountPicker";
 import { LoginQuickAccountGreeting } from "@/components/auth/LoginQuickAccountGreeting";
+import { useClientHydrated } from "@/lib/client/use-client-hydrated";
 import { Button } from "@/components/ui/Button";
 import { Field, Input } from "@/components/ui/Field";
 import { Alert } from "@/components/ui/Alert";
@@ -32,6 +33,7 @@ export function LoginForm({
   onSubtitleModeChange?: (mode: LoginSubtitleMode) => void;
 }) {
   const searchParams = useSearchParams();
+  const hydrated = useClientHydrated();
   const next = searchParams.get("next");
   const reason = searchParams.get("reason");
   const [selectedAccountId, setSelectedAccountId] = useState<string | null>(null);
@@ -55,6 +57,7 @@ export function LoginForm({
   );
 
   const quickLoginActive =
+    hydrated &&
     !useManualEmail &&
     accounts.length > 0 &&
     Boolean(selectedAccount) &&
@@ -74,9 +77,11 @@ export function LoginForm({
     ? manualEmail.trim().toLowerCase()
     : (selectedAccount?.email ?? "");
 
-  const restoreKey = `${useManualEmail}\0${accounts.map((account) => account.id).join(",")}`;
+  const restoreKey = hydrated
+    ? `${useManualEmail}\0${accounts.map((account) => account.id).join(",")}`
+    : "";
   const [appliedRestoreKey, setAppliedRestoreKey] = useState("");
-  if (!useManualEmail && accounts.length > 0 && restoreKey !== appliedRestoreKey) {
+  if (hydrated && !useManualEmail && accounts.length > 0 && restoreKey !== appliedRestoreKey) {
     setAppliedRestoreKey(restoreKey);
     const restored = resolveLoginLastAccountId(accounts);
     if (restored) {
@@ -216,7 +221,7 @@ export function LoginForm({
         </div>
       ) : null}
 
-      {loginEmail ? (
+      {hydrated && loginEmail ? (
         <input
           type="email"
           name="username"

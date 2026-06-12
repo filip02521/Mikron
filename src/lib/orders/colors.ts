@@ -1,4 +1,5 @@
 import { formatDateString, getMondayOfWeek, toDateOnly } from "./dates";
+import { todayInWarsaw } from "@/lib/time/warsaw";
 import { SUMMARY_COLORS } from "@/types/database";
 
 export interface SummaryColorSet {
@@ -13,7 +14,7 @@ export interface SummaryColorSet {
 export function getRowColorForDate(
   dateValue: Date | null,
   colors: SummaryColorSet = SUMMARY_COLORS,
-  today: Date = toDateOnly(new Date())
+  today: Date = todayInWarsaw()
 ): string | null {
   if (!dateValue || isNaN(dateValue.getTime())) return null;
 

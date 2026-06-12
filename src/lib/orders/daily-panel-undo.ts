@@ -25,15 +25,47 @@ export type DailyPanelUndoToken =
       individuals: IndividualOrderSnapshot[];
     };
 
-export type DailyPanelUndoPayload = {
-  token: DailyPanelUndoToken;
-  performedAt: number;
-};
-
 /** Wspólne okno cofania — toast UI i walidacja po stronie serwera. */
 export const UNDO_WINDOW_MS = 10_000;
 
 export const DAILY_PANEL_UNDO_MS = UNDO_WINDOW_MS;
+
+export type DailyPanelUndoPayload = {
+  token: DailyPanelUndoToken;
+  performedAt: number;
+  /** Koniec okna cofania — ustawiane na serwerze; fallback: performedAt + UNDO_WINDOW_MS. */
+  expiresAt?: number;
+};
+
+export function buildDailyPanelUndoPayload(token: DailyPanelUndoToken): DailyPanelUndoPayload {
+  const performedAt = Date.now();
+  return {
+    token,
+    performedAt,
+    expiresAt: performedAt + UNDO_WINDOW_MS,
+  };
+}
+
+export function undoPayloadExpiresAt(payload: DailyPanelUndoPayload): number {
+  return payload.expiresAt ?? payload.performedAt + UNDO_WINDOW_MS;
+}
+
+export function isUndoPayloadExpired(payload: DailyPanelUndoPayload, at = Date.now()): boolean {
+  return at > undoPayloadExpiresAt(payload);
+}
+
+/** Koniec okna cofania od znacznika czasu (ms) — toast i klawiatura. */
+export function undoExpiresAtFromAnchor(anchorMs: number): number {
+  return anchorMs + UNDO_WINDOW_MS;
+}
+
+export function undoExpiresAtNow(anchorMs = Date.now()): number {
+  return undoExpiresAtFromAnchor(anchorMs);
+}
+
+export function isUndoExpired(expiresAt: number, at = Date.now()): boolean {
+  return at > expiresAt;
+}
 
 /** Krótki opis w toastach: „10 s”. */
 export function undoWindowShortLabel(): string {

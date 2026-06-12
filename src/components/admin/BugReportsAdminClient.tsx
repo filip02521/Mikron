@@ -4,6 +4,7 @@ import { useMemo, useState, useTransition } from "react";
 import { actionUpdateSalesBugReport } from "@/app/actions/sales-bug-report";
 import type { SalesBugReport, SalesBugReportStatus } from "@/types/database";
 import { cn } from "@/lib/cn";
+import { formatWarsawDateTime } from "@/lib/time/warsaw";
 
 const STATUS_LABEL: Record<SalesBugReportStatus, string> = {
   open: "NOWE",
@@ -18,14 +19,7 @@ const STATUS_STAMP: Record<SalesBugReportStatus, string> = {
 };
 
 function formatWhen(iso: string) {
-  try {
-    return new Intl.DateTimeFormat("pl-PL", {
-      dateStyle: "short",
-      timeStyle: "short",
-    }).format(new Date(iso));
-  } catch {
-    return iso;
-  }
+  return formatWarsawDateTime(iso);
 }
 
 function ReportNote({

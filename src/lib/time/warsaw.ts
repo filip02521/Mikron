@@ -16,6 +16,15 @@ const hourFormatter = new Intl.DateTimeFormat("en-GB", {
   hour12: false,
 });
 
+const dateTimeFormatter = new Intl.DateTimeFormat("pl-PL", {
+  timeZone: TZ,
+  day: "2-digit",
+  month: "2-digit",
+  year: "numeric",
+  hour: "2-digit",
+  minute: "2-digit",
+});
+
 export function warsawNowParts(date = new Date()): {
   hour: number;
   weekday: string;
@@ -66,4 +75,11 @@ export function warsawDateKeyFromIso(iso: string): string {
 /** Klucz daty sprzed N dni kalendarzowych (Warszawa), względem dziś. */
 export function warsawDateKeyDaysAgo(days: number, at: Date = new Date()): string {
   return formatDateString(subDays(todayInWarsaw(at), days));
+}
+
+/** Data i godzina w Europe/Warsaw — spójne SSR/klient. */
+export function formatWarsawDateTime(iso: string): string {
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return iso;
+  return dateTimeFormatter.format(d);
 }

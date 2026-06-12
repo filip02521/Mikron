@@ -29,9 +29,19 @@ describe("daily urgent progress", () => {
   });
 
   it("podbija baseline gdy przybywa zaległych", () => {
-    expect(mergeUrgentBaseline(8, 10)).toBe(10);
-    expect(mergeUrgentBaseline(8, 3)).toBe(8);
+    expect(mergeUrgentBaseline(8, 10, 8)).toBe(10);
+    expect(mergeUrgentBaseline(8, 3, 5)).toBe(8);
     expect(mergeUrgentBaseline(null, 0)).toBe(null);
     expect(mergeUrgentBaseline(null, 2)).toBe(2);
+  });
+
+  it("po domknięciu dnia rozszerza baseline o nową pracę", () => {
+    expect(mergeUrgentBaseline(5, 3, 0)).toBe(8);
+    expect(computeDailyUrgentProgress(8, 3).done).toBe(5);
+  });
+
+  it("gdy w trakcie przybywa pozycja — baseline rośnie o deltę", () => {
+    expect(mergeUrgentBaseline(5, 4, 2)).toBe(7);
+    expect(computeDailyUrgentProgress(7, 4).done).toBe(3);
   });
 });

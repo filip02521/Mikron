@@ -218,7 +218,7 @@ export async function actionCloseZkWatch(watchId: string) {
 
   if (error) throw new Error(error.message);
   revalidateNotepad();
-  return { success: true };
+  return { success: true as const, closedAt: now };
 }
 
 export async function actionRestoreZkWatch(watchId: string) {

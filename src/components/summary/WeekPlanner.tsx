@@ -110,10 +110,13 @@ export function WeekPlanner({
   density = "default",
   chrome = "card",
   sectionId,
+  todayDateKey,
 }: {
   title: string;
   description?: string;
   days: WeekDayPlan[];
+  /** Klucz „dziś” z workspace (Warszawa) — spójny SSR z badge Zaległe. */
+  todayDateKey?: string;
   onOpenSupplier?: (supplierId: string) => void;
   onVacation?: (supplierId: string) => void;
   onEdit?: (supplierId: string) => void;
@@ -147,6 +150,7 @@ export function WeekPlanner({
   const [draggingId, setDraggingId] = useState<string | null>(null);
 
   const displayDays = planningMode && draftDays ? draftDays : days;
+  const resolvedTodayKey = todayDateKey ?? formatDateString(todayInWarsaw());
   const total = displayDays.reduce((n, d) => n + d.items.length, 0);
 
   const pendingChanges = useMemo(() => {
@@ -180,11 +184,15 @@ export function WeekPlanner({
         pendingChanges.length === 1 ? "przesunięcie" : "przesunięć"
       }`,
       "Zapisywanie planu tygodnia…",
-      { scope: DAILY_PANEL_SCOPE_PLAN }
+      {
+        scope: DAILY_PANEL_SCOPE_PLAN,
+        onSuccess: () => {
+          setPlanningMode(false);
+          setDraftDays(null);
+          setOriginalPlacement(null);
+        },
+      }
     );
-    setPlanningMode(false);
-    setDraftDays(null);
-    setOriginalPlacement(null);
   }, [run, pendingChanges]);
 
   const handleDrop = useCallback(
@@ -240,6 +248,7 @@ export function WeekPlanner({
         <DayColumn
           key={day.dateKey}
           day={day}
+          todayDateKey={resolvedTodayKey}
           density={density}
           planningMode={planningMode}
           originalPlacement={originalPlacement}
@@ -452,6 +461,7 @@ function WeekPlanEmptyCalendar({
 
 function DayColumn({
   day,
+  todayDateKey,
   density = "default",
   planningMode,
   originalPlacement,
@@ -471,6 +481,7 @@ function DayColumn({
   onDragEndItem,
 }: {
   day: WeekDayPlan;
+  todayDateKey: string;
   density?: "default" | "compact";
   planningMode: boolean;
   originalPlacement: Map<string, string> | null;
@@ -577,6 +588,7 @@ function DayColumn({
               key={`${day.dateKey}-${item.supplierId}`}
               item={item}
               dayDateKey={day.dateKey}
+              todayDateKey={todayDateKey}
               planningMode={planningMode}
               isMoved={
                 Boolean(
@@ -609,6 +621,7 @@ function DayColumn({
 function PlannerCard({
   item,
   dayDateKey,
+  todayDateKey,
   planningMode,
   isMoved,
   isDragging,
@@ -624,6 +637,7 @@ function PlannerCard({
 }: {
   item: SummaryStandardItem;
   dayDateKey: string;
+  todayDateKey: string;
   planningMode: boolean;
   isMoved: boolean;
   isDragging: boolean;
@@ -638,8 +652,7 @@ function PlannerCard({
   onDragEnd: () => void;
 }) {
   const note = formatPlannerNote(item.notes);
-  const todayStr = formatDateString(todayInWarsaw());
-  const isOverdue = formatDateString(item.nextDate) < todayStr;
+  const isOverdue = formatDateString(item.nextDate) < todayDateKey;
   const rowPending = isScopePending(item.supplierId) || isPlanPending;
 
   const movedLabel = useMemo(() => {
