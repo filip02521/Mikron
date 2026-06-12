@@ -1,5 +1,5 @@
 import { snapToBusinessDay } from "@/lib/orders/business-calendar";
-import { parseDateOnly } from "@/lib/orders/dates";
+import { parseDateOnly, formatDateString } from "@/lib/orders/dates";
 import { warsawDateKeyFromIso } from "@/lib/time/warsaw";
 
 export type HistoriaScheduleActionKind = "ordered" | "shift" | "ignore";
@@ -31,10 +31,9 @@ export type HistoriaScheduleEvent = {
   nextDate: Date | null;
 };
 
-function orderDateFromHistoriaActionAt(actionAt: Date): Date {
+function orderDateFromHistoriaActionAt(actionAt: Date): Date | null {
   const key = warsawDateKeyFromIso(actionAt.toISOString());
-  const parsed = parseDateOnly(key);
-  return parsed ? snapToBusinessDay(parsed) : snapToBusinessDay(actionAt);
+  return parseDateOnly(key) ?? parseDateOnly(formatDateString(actionAt));
 }
 
 /** Odtwarza order_date / shift_date przez chronologiczną historię (jak serie kliknięć w UI). */
