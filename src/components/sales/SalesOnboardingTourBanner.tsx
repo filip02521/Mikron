@@ -52,7 +52,12 @@ export function SalesOnboardingContentGuard({ children }: { children: React.Reac
   if (!navLocked) return children;
 
   return (
-    <div className="pointer-events-none select-none" aria-hidden={false}>
+    <div
+      className={cn(
+        "select-none",
+        "[&_a]:pointer-events-none [&_a]:cursor-default"
+      )}
+    >
       {children}
     </div>
   );

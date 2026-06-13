@@ -11,9 +11,7 @@ describe("sales onboarding nav", () => {
 
   it("maps step hrefs to pathnames", () => {
     expect(stepPathnameForStep(handlowiecSteps[1]!)).toBe("/moje");
-    expect(stepPathnameForStep(handlowiecSteps[handlowiecSteps.length - 1]!)).toBe(
-      "/moje"
-    );
+    expect(stepPathnameForStep(handlowiecSteps[handlowiecSteps.length - 1]!)).toBeNull();
     expect(stepPathnameForStep(handlowiecSteps[0]!)).toBeNull();
   });
 
@@ -25,10 +23,10 @@ describe("sales onboarding nav", () => {
     expect(resolveTourStepIndexFromPathname(handlowiecSteps, "/nieznane")).toBeNull();
   });
 
-  it("keeps finish step on /moje when already on finish", () => {
+  it("keeps finish step when already on finish", () => {
     const finishIndex = handlowiecSteps.findIndex((s) => s.id === "finish");
     expect(
-      resolveTourStepIndexFromPathname(handlowiecSteps, "/moje", finishIndex)
+      resolveTourStepIndexFromPathname(handlowiecSteps, "/zk", finishIndex)
     ).toBe(finishIndex);
     expect(resolveTourStepIndexFromPathname(handlowiecSteps, "/moje", 1)).toBe(1);
   });

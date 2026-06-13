@@ -118,6 +118,11 @@ export function DepartmentBoardSalesClient({
     return board.questions;
   }, [board.questions, activeQuestionFilter]);
 
+  useEffect(() => {
+    if (!tourDemo) return;
+    setActiveTab("announcements");
+  }, [tourDemo]);
+
   function refresh() {
     router.refresh();
   }
@@ -160,7 +165,7 @@ export function DepartmentBoardSalesClient({
   }
 
   const pageDescription = `${DEPARTMENT_BOARD_SALES_PAGE_DESC} ${DEPARTMENT_BOARD_NOTES_DISTINCTION_SALES}`;
-  const resolvedTab: BoardTab = tourDemo ? "announcements" : activeTab;
+  const resolvedTab = activeTab;
   const showAnnouncements = resolvedTab === "announcements";
   const showQuestions = resolvedTab === "questions";
   const effectiveAttention = tourDemo ? buildOnboardingBoardAttention() : boardAttention;

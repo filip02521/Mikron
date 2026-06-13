@@ -117,6 +117,7 @@ describe("sales onboarding steps", () => {
     expect(tablica?.bullets.some((b) => /Pytania zespołu/i.test(b))).toBe(true);
     expect(tablica?.bullets.some((b) => /Nowa prośba/i.test(b))).toBe(true);
     expect(tablica?.bullets.some((b) => /P:/i.test(b))).toBe(false);
+    expect(tablica?.tip).toMatch(/Przełącz zakładki/i);
   });
 
   it("finish step aligns email messaging with welcome", () => {

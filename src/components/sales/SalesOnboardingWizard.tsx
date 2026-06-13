@@ -133,9 +133,15 @@ function TourStepContent({
 
       {previewMode === "finish" ? (
         <p className="rounded-md border border-emerald-200/90 bg-emerald-50/80 px-2.5 py-2 text-[11px] leading-relaxed text-emerald-950">
-          Za chwilę zobaczysz <strong className="font-medium">swoje dane</strong>. Kliknij „Zakończ
-          tour”, aby wejść do panelu.
+          Kliknij „Zakończ tour”, aby wejść do panelu ze{" "}
+          <strong className="font-medium">swoimi danymi</strong>. Przykładowe wpisy znikną.
         </p>
+      ) : null}
+
+      {step.id === "zespol" || step.id === "finish" ? (
+        <div className="rounded-md border border-slate-200/90 bg-slate-50/80 p-2.5">
+          <SalesOnboardingPanelPreview stepId={step.id} />
+        </div>
       ) : null}
     </div>
   );

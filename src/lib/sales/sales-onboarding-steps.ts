@@ -42,7 +42,7 @@ export function getSalesOnboardingSteps(role: UserRole): SalesOnboardingStep[] {
       lead:
         "OnTime łączy Cię z działem zakupów i magazynem. Składasz prośby, śledzisz statusy i komunikujesz się z zespołem — bez codziennej obiegówki mailowej.",
       bullets: [
-        "Pięć głównych zakładek: Nowa prośba (zgłoszenie do zakupów), Moje zamówienia (statusy), Harmonogram (terminy u dostawców), Tablica (ogłoszenia i pytania zespołu), ZK czekające (Twoje przypomnienia — nie trafiają do zakupów).",
+        "Pięć głównych zakładek: Moje zamówienia (statusy), Nowa prośba (zgłoszenie do zakupów), Harmonogram (terminy u dostawców), Tablica (ogłoszenia i pytania zespołu), ZK czekające (Twoje przypomnienia — nie trafiają do zakupów).",
         ...(isManager
           ? [
               "Jako kierownik zobaczysz też krok Podgląd zespołu — bez logowania na konta innych handlowców.",
@@ -119,7 +119,7 @@ export function getSalesOnboardingSteps(role: UserRole): SalesOnboardingStep[] {
         "Zamówienie towaru zgłaszasz w „Nowa prośba”, nie tutaj. Status śledzisz w „Moje zamówienia”.",
         "Liczba przy zakładce w menu przypomina o nowych ogłoszeniach lub odpowiedziach na pytania.",
       ],
-      tip: "Zanim wyślesz pytanie, przejrzyj listę — może ktoś z zespołu już zadał to samo.",
+      tip: "Przełącz zakładki na ekranie — zobaczysz ogłoszenia i przykładowe pytania z odpowiedzią.",
     },
     {
       id: "notatnik",
@@ -156,7 +156,7 @@ export function getSalesOnboardingSteps(role: UserRole): SalesOnboardingStep[] {
         "Skróty do kart handlowców i przypisań grup.",
         "W formularzu prośby wybierasz na początku handlowca, dla którego składasz zgłoszenie.",
       ],
-      tip: "Podczas touru zobaczysz przykładowy układ w panelu po prawej. Po zakończeniu lista zespołu będzie rzeczywista.",
+      tip: "Poniżej zobaczysz przykładowy układ zespołu. Po zakończeniu touru lista będzie rzeczywista.",
     });
   }
 

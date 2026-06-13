@@ -7,6 +7,7 @@ import type { DepartmentBoardData } from "@/lib/data/department-board";
 import type { SalesNotepadData } from "@/lib/data/sales-notepad";
 import { SUMMARY_COLORS } from "@/types/database";
 import type { SupplierWithSchedule } from "@/types/database";
+import { INFORMACJA_FLOW_SALES_DIRECT } from "@/lib/orders/informacja-flow-copy";
 
 const DEMO_SALES_PERSON_ID = "onboarding-demo";
 
@@ -178,8 +179,8 @@ export function buildOnboardingMojePresented() {
     product: "Cement Ivoclar Speed",
     symbol: "IVO-CEM",
     quantityLabel: "3 szt.",
-    statusTitle: "Prośba o dostępność",
-    statusDetail: "Powiadomimy e-mailem, gdy towar będzie na magazynie.",
+    statusTitle: INFORMACJA_FLOW_SALES_DIRECT.statusTitle,
+    statusDetail: INFORMACJA_FLOW_SALES_DIRECT.statusDetail,
     timingLabel: null,
     badgeVariant: "purple",
     rowColor: SUMMARY_COLORS.informacja,
@@ -195,7 +196,7 @@ export function buildOnboardingMojePresented() {
         stockStatus: "waiting",
       }),
     ],
-    headline: "Prośba o dostępność",
+    headline: INFORMACJA_FLOW_SALES_DIRECT.statusTitle,
     headlineTone: "info",
     subline: "Gabinet Dr Kowalski · 3 szt.",
     canCancelBySales: true,

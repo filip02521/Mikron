@@ -17,6 +17,7 @@ import {
   type SalesOnboardingStep,
 } from "@/lib/sales/sales-onboarding-steps";
 import {
+  pathnameMatchesOnboardingStep,
   resolveTourStepIndexFromPathname,
   stepPathnameForStep,
 } from "@/lib/sales/sales-onboarding-nav";
@@ -142,7 +143,7 @@ export function SalesOnboardingProvider({
 
   if (skipPathSync) {
     setSkipPathSync(false);
-  } else if (hydrated && active && isTourStarted(stepIndex)) {
+  } else if (hydrated && active && isTourStarted(stepIndex) && !isFinishStep) {
     const matched = resolveTourStepIndexFromPathname(steps, pathname, stepIndex);
     if (matched != null && matched !== stepIndex) {
       setStepIndexState(matched);
@@ -165,8 +166,16 @@ export function SalesOnboardingProvider({
   }, [navigateToStep, stepIndex]);
 
   const isDemoForStep = useCallback(
-    (stepId: string) => active && currentStepId === stepId && isLivePreviewStep,
-    [active, currentStepId, isLivePreviewStep]
+    (stepId: string) => {
+      if (!active) return false;
+      const step = steps.find((s) => s.id === stepId);
+      if (!step) return false;
+      if (isFinishStep) {
+        return Boolean(step.href && pathnameMatchesOnboardingStep(pathname, step));
+      }
+      return currentStepId === stepId && isLivePreviewStep;
+    },
+    [active, currentStepId, isFinishStep, isLivePreviewStep, pathname, steps]
   );
 
   const coachPaddingClass = showCoach

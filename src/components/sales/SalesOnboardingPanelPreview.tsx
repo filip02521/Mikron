@@ -75,13 +75,13 @@ export function SalesOnboardingPanelPreview({ stepId }: { stepId: string }) {
         <div className="space-y-3">
           <div className="grid gap-2 sm:grid-cols-2">
             <WelcomeChannelChip
-              label="Nowa prośba"
-              hint="Formalne zgłoszenie do zakupów"
+              label="Moje zamówienia"
+              hint="Statusy i odbiór z magazynu"
               tone="indigo"
             />
             <WelcomeChannelChip
-              label="Moje zamówienia"
-              hint="Statusy i odbiór z magazynu"
+              label="Nowa prośba"
+              hint="Formalne zgłoszenie do zakupów"
               tone="indigo"
             />
             <WelcomeChannelChip
@@ -190,6 +190,9 @@ export function SalesOnboardingPanelPreview({ stepId }: { stepId: string }) {
               <span className="text-indigo-600">rozwiń</span>
             </div>
           ))}
+          <div className="rounded-md border border-sky-100 bg-sky-50/70 px-2.5 py-1.5 text-[10px] text-sky-900">
+            Plan działu dostaw · pn.–pt. · kiedy składamy zamówienia u dostawców
+          </div>
         </div>
       );
     case "tablica":
