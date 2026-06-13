@@ -6,6 +6,7 @@ import type { LoginDirectoryAccount } from "@/lib/auth/login-directory";
 import {
   LOGIN_SUBTITLE_PICKER,
   loginSubtitleForMode,
+  loginTitleForMode,
   type LoginSubtitleMode,
 } from "@/lib/auth/login-form-copy";
 import { AuthScreenLayout } from "@/components/auth/AuthScreenLayout";
@@ -14,15 +15,17 @@ import { LoginForm } from "./LoginForm";
 function LoginPageClientInner({ accounts }: { accounts: LoginDirectoryAccount[] }) {
   const searchParams = useSearchParams();
   const reason = searchParams.get("reason");
+  const [subtitleMode, setSubtitleMode] = useState<LoginSubtitleMode>("picker");
   const [subtitle, setSubtitle] = useState(LOGIN_SUBTITLE_PICKER);
 
   const handleSubtitleModeChange = (mode: LoginSubtitleMode) => {
+    setSubtitleMode(mode);
     setSubtitle(loginSubtitleForMode(mode));
   };
 
   return (
     <AuthScreenLayout
-      title="Zaloguj się"
+      title={loginTitleForMode(subtitleMode)}
       subtitle={subtitle}
       hideCompactQuote={reason === "session"}
     >

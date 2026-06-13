@@ -12,8 +12,10 @@ import {
 } from "@/lib/auth/login-account-preference";
 import { applyLoginFormError } from "@/lib/auth/login-form-errors";
 import type { LoginSubtitleMode } from "@/lib/auth/login-form-copy";
+import { requestPasswordResetCode } from "@/lib/auth/password-reset-client";
 import { LoginAccountPicker } from "@/components/auth/LoginAccountPicker";
 import { LoginQuickAccountGreeting } from "@/components/auth/LoginQuickAccountGreeting";
+import { PasswordResetPanel } from "@/components/auth/PasswordResetPanel";
 import { useClientHydrated } from "@/lib/client/use-client-hydrated";
 import { Button } from "@/components/ui/Button";
 import { Field, Input } from "@/components/ui/Field";
@@ -44,6 +46,12 @@ export function LoginForm({
   const [bannerError, setBannerError] = useState("");
   const [passwordError, setPasswordError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [resetSending, setResetSending] = useState(false);
+  const [resetSession, setResetSession] = useState<{
+    email: string;
+    maskedEmail: string;
+    resendAvailableAt: string;
+  } | null>(null);
   const errorRef = useRef<HTMLDivElement>(null);
 
   const sessionNotice = useMemo(
@@ -65,13 +73,17 @@ export function LoginForm({
 
   useEffect(() => {
     if (!onSubtitleModeChange) return;
+    if (resetSession) {
+      onSubtitleModeChange("reset");
+      return;
+    }
     const mode: LoginSubtitleMode = useManualEmail
       ? "manual"
       : quickLoginActive
         ? "quick"
         : "picker";
     onSubtitleModeChange(mode);
-  }, [useManualEmail, quickLoginActive, onSubtitleModeChange]);
+  }, [useManualEmail, quickLoginActive, onSubtitleModeChange, resetSession]);
 
   const loginEmail = useManualEmail
     ? manualEmail.trim().toLowerCase()
@@ -126,6 +138,51 @@ export function LoginForm({
     setBannerError("");
     setPasswordError("");
   }, []);
+
+  const canResetPassword =
+    !useManualEmail && Boolean(loginEmail) && Boolean(selectedAccount);
+
+  const exitPasswordReset = useCallback(() => {
+    setResetSession(null);
+    setBannerError("");
+    setPasswordError("");
+    setResetSending(false);
+  }, []);
+
+  const startPasswordReset = useCallback(async () => {
+    if (!canResetPassword || !loginEmail || resetSending) return;
+
+    setResetSending(true);
+    setBannerError("");
+    setPasswordError("");
+
+    const result = await requestPasswordResetCode(loginEmail);
+    setResetSending(false);
+
+    if (!result.ok) {
+      setBannerError(result.error);
+      return;
+    }
+
+    setResetSession({
+      email: loginEmail,
+      maskedEmail: result.maskedEmail,
+      resendAvailableAt: result.resendAvailableAt,
+    });
+  }, [canResetPassword, loginEmail, resetSending]);
+
+  const forgotPasswordLink = canResetPassword ? (
+    <div className="flex justify-end">
+      <button
+        type="button"
+        className={loginAltLinkClass}
+        onClick={() => void startPasswordReset()}
+        disabled={loading || resetSending}
+      >
+        {resetSending ? "Wysyłanie kodu…" : "Nie pamiętam hasła"}
+      </button>
+    </div>
+  ) : null;
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -205,6 +262,17 @@ export function LoginForm({
     </Button>
   );
 
+  if (resetSession) {
+    return (
+      <PasswordResetPanel
+        email={resetSession.email}
+        maskedEmail={resetSession.maskedEmail}
+        resendAvailableAt={resetSession.resendAvailableAt}
+        onBack={exitPasswordReset}
+      />
+    );
+  }
+
   return (
     <form onSubmit={onSubmit} className="flex min-h-0 flex-col gap-4 sm:gap-5" noValidate>
       <noscript>
@@ -238,6 +306,7 @@ export function LoginForm({
         <div className="space-y-4 sm:space-y-5">
           <LoginQuickAccountGreeting displayName={selectedAccount.displayName} />
           {passwordField}
+          {forgotPasswordLink}
           {submitBlock}
           <div className="flex justify-end">
             <button
@@ -324,6 +393,7 @@ export function LoginForm({
 
           <div className="shrink-0 space-y-3 sm:space-y-4">
             {passwordField}
+            {forgotPasswordLink}
             {submitBlock}
           </div>
         </>
