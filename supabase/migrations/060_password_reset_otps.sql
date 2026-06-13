@@ -24,3 +24,5 @@ COMMENT ON TABLE password_reset_otps IS
   'Kody 6-cyfrowe do self-service resetu hasła. Dostęp tylko przez service role.';
 
 ALTER TABLE password_reset_otps ENABLE ROW LEVEL SECURITY;
+
+NOTIFY pgrst, 'reload schema';

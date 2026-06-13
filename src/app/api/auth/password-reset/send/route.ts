@@ -37,25 +37,33 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  const result = await sendPasswordResetOtp({
-    email,
-    requestIp: clientIp(request),
-  });
+  try {
+    const result = await sendPasswordResetOtp({
+      email,
+      requestIp: clientIp(request),
+    });
 
-  if (!result.ok) {
+    if (!result.ok) {
+      return NextResponse.json(
+        {
+          ok: false as const,
+          error: result.error,
+          retryAfterSec: result.retryAfterSec,
+        },
+        { status: result.retryAfterSec ? 429 : 400 }
+      );
+    }
+
+    return NextResponse.json({
+      ok: true as const,
+      maskedEmail: result.maskedEmail,
+      resendAvailableAt: result.resendAvailableAt,
+    });
+  } catch (error) {
+    console.error("[password-reset/send]", error);
     return NextResponse.json(
-      {
-        ok: false as const,
-        error: result.error,
-        retryAfterSec: result.retryAfterSec,
-      },
-      { status: result.retryAfterSec ? 429 : 400 }
+      { ok: false as const, error: "Nie udało się wysłać kodu. Spróbuj ponownie." },
+      { status: 500 }
     );
   }
-
-  return NextResponse.json({
-    ok: true as const,
-    maskedEmail: result.maskedEmail,
-    resendAvailableAt: result.resendAvailableAt,
-  });
 }
