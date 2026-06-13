@@ -74,4 +74,65 @@ describe("buildPlannedOrderDateDisplay", () => {
       badgeVariant: "info",
     });
   });
+
+  it("pokazuje jutro z datą obok", () => {
+    expect(
+      buildPlannedOrderDateDisplay({
+        computedNextDate: "2026-06-10",
+        orderOnDemand: false,
+        todayDateKey: "2026-06-09",
+        supplierId: "sup-1",
+        weekDays: [
+          {
+            dateKey: "2026-06-10",
+            weekdayLabel: "Wt",
+            dateLabel: "10.06",
+            isToday: false,
+            isPast: false,
+            items: [{ supplierId: "sup-1" } as never],
+          },
+        ],
+      })
+    ).toMatchObject({
+      label: "Jutro · 10.06",
+      badgeVariant: "info",
+    });
+  });
+
+  it("pokazuje pojutrze z datą obok", () => {
+    expect(
+      buildPlannedOrderDateDisplay({
+        computedNextDate: "2026-06-11",
+        orderOnDemand: false,
+        todayDateKey: "2026-06-09",
+      })
+    ).toMatchObject({
+      label: "Pojutrze · 11.06",
+      badgeVariant: "info",
+    });
+  });
+
+  it("po pojutrze zostawia etykietę dnia tygodnia gdy jest plan", () => {
+    expect(
+      buildPlannedOrderDateDisplay({
+        computedNextDate: "2026-06-12",
+        orderOnDemand: false,
+        todayDateKey: "2026-06-09",
+        supplierId: "sup-1",
+        weekDays: [
+          {
+            dateKey: "2026-06-12",
+            weekdayLabel: "Pt",
+            dateLabel: "12.06",
+            isToday: false,
+            isPast: false,
+            items: [{ supplierId: "sup-1" } as never],
+          },
+        ],
+      })
+    ).toMatchObject({
+      label: "Pt 12.06",
+      badgeVariant: "info",
+    });
+  });
 });

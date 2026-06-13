@@ -11,6 +11,7 @@ import { UndoToast } from "@/components/ui/UndoToast";
 import { Toast } from "@/components/ui/Toast";
 import { IconPackageCheck, IconArchive, IconClipboardPen } from "@/components/icons/StrokeIcons";
 import { SectionHeadingIcon } from "@/components/icons/SectionHeadingIcon";
+import { AppBrandContentFooter } from "@/components/layout/AppBrandContentFooter";
 import { salesChromeInsetClass } from "@/lib/ui/ontime-theme";
 import { mergeRecordsByUpdatedAt, uniqueById } from "@/lib/sales/notepad-list";
 import { useClientHydrated } from "@/lib/client/use-client-hydrated";
@@ -817,6 +818,8 @@ export function NotatnikClient({
             </NotatnikPanel>
           ) : null}
         </div>
+
+        <AppBrandContentFooter mobileOnly />
       </Card>
     </div>
   );

@@ -7,7 +7,8 @@ import {
 } from "@/lib/auth/admin-panel-context";
 import {
   authRateLimitBucket,
-  consumeAuthRateLimit,
+  checkAuthRateLimit,
+  recordAuthRateLimitEvent,
   sleepMs,
 } from "@/lib/auth/auth-rate-limit";
 import { isAdmin, redirectPathAfterLogin } from "@/lib/auth-roles";
@@ -56,11 +57,17 @@ export async function POST(request: NextRequest) {
   const password = body.password ?? "";
   const next = body.next ?? null;
   let email = body.email?.trim().toLowerCase() ?? "";
+  const ip = clientIp(request);
 
   if (body.accountId?.trim()) {
     const resolved = await resolveLoginEmailFromAccountId(body.accountId.trim());
     if (!resolved) {
       await sleepMs(LOGIN_FAIL_DELAY_MS);
+      if (ip) {
+        await recordAuthRateLimitEvent({
+          bucketKey: authRateLimitBucket("login:ip", ip),
+        });
+      }
       return NextResponse.json(
         { ok: false as const, error: translateAuthError("Invalid login credentials") },
         { status: 401 }
@@ -76,9 +83,8 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  const ip = clientIp(request);
   if (ip) {
-    const ipLimit = await consumeAuthRateLimit({
+    const ipLimit = await checkAuthRateLimit({
       bucketKey: authRateLimitBucket("login:ip", ip),
       maxEvents: 10,
       windowMs: LOGIN_WINDOW_MS,
@@ -94,7 +100,7 @@ export async function POST(request: NextRequest) {
     }
   }
 
-  const emailLimit = await consumeAuthRateLimit({
+  const emailLimit = await checkAuthRateLimit({
     bucketKey: authRateLimitBucket("login:email", email),
     maxEvents: 5,
     windowMs: LOGIN_WINDOW_MS,
@@ -160,6 +166,14 @@ export async function POST(request: NextRequest) {
 
   if (signError) {
     await sleepMs(LOGIN_FAIL_DELAY_MS);
+    if (ip) {
+      await recordAuthRateLimitEvent({
+        bucketKey: authRateLimitBucket("login:ip", ip),
+      });
+    }
+    await recordAuthRateLimitEvent({
+      bucketKey: authRateLimitBucket("login:email", email),
+    });
     return NextResponse.json(
       { ok: false as const, error: translateAuthError(signError.message) },
       { status: 401 }

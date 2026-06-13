@@ -83,7 +83,7 @@ describe("planned order date on /moje", () => {
     }).zamowienia[0]!;
 
     expect(row.statusTitle).toBe("Przed zamówieniem");
-    expect(row.plannedOrderDate?.label).toBe("Czw 11.06");
+    expect(row.plannedOrderDate?.label).toBe("Pojutrze · 11.06");
   });
 
   it("nie pokazuje planowej daty podczas weryfikacji", () => {

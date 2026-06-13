@@ -632,3 +632,14 @@ export const panelToolbarTextButtonClass =
 
 export const panelToolbarIconButtonClass =
   "inline-flex h-9 w-9 shrink-0 cursor-pointer items-center justify-center rounded-md border border-indigo-100/80 bg-white text-indigo-800/85 shadow-sm transition hover:border-indigo-200/80 hover:bg-indigo-50/45 hover:text-indigo-950 disabled:cursor-not-allowed disabled:opacity-50";
+
+/** Stopka treści panelu dziennego — pod listami Dziś / Tydzień / Wyjątki. */
+export const panelContentFooterClass = cn(
+  "border-t border-indigo-100/70 bg-indigo-50/20",
+  panelChromeInsetClass,
+  "py-4 sm:py-5"
+);
+
+/** Linki w stopce panelu dziennego. */
+export const panelContentFooterLinkClass =
+  "text-xs font-medium text-indigo-700 underline-offset-2 transition hover:text-indigo-900 hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-500";

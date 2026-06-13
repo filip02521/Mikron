@@ -33,6 +33,7 @@ import { MojeOrdersHelp } from "@/components/moje/MojeOrdersGuide";
 import { SalesDayStartHelp } from "@/components/moje/SalesDayStartHelp";
 import { MojeOrdersEmptyGuide } from "@/components/moje/MojeOrdersEmptyGuide";
 import { Card, CardHeader } from "@/components/ui/Card";
+import { AppBrandContentFooter } from "@/components/layout/AppBrandContentFooter";
 import { SectionListLabel } from "@/components/ui/SectionListLabel";
 import { EmptyState } from "@/components/ui/EmptyState";
 import {
@@ -840,6 +841,7 @@ function MojeOrdersViewContent({
           forceOpen={openArchiveForSearch}
           searchQuery={searchQuery}
         />
+        <AppBrandContentFooter mobileOnly variant="page" />
       </div>
     );
   }
@@ -994,6 +996,7 @@ function MojeOrdersViewContent({
         forceOpen={openArchiveForSearch}
         searchQuery={searchQuery}
       />
+      <AppBrandContentFooter mobileOnly variant="page" />
     </div>
   );
 }
