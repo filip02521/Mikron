@@ -1,10 +1,23 @@
 import { createAdminClient, hasSupabaseConfig } from "@/lib/supabase/admin";
+import { isProductionRuntime } from "@/lib/env/app-config";
 
 export type RateLimitResult =
   | { ok: true }
-  | { ok: false; retryAfterSec: number };
+  | { ok: false; retryAfterSec: number; unavailable?: boolean };
 
 const CLEANUP_OLDER_THAN_MS = 24 * 60 * 60 * 1000;
+const RATE_LIMIT_UNAVAILABLE_RETRY_SEC = 60;
+
+function rateLimitUnavailable(): RateLimitResult {
+  if (isProductionRuntime()) {
+    return {
+      ok: false,
+      retryAfterSec: RATE_LIMIT_UNAVAILABLE_RETRY_SEC,
+      unavailable: true,
+    };
+  }
+  return { ok: true };
+}
 
 async function cleanupOldRateLimitEvents(supabase: ReturnType<typeof createAdminClient>) {
   const cleanupBeforeIso = new Date(Date.now() - CLEANUP_OLDER_THAN_MS).toISOString();
@@ -21,7 +34,7 @@ export async function checkAuthRateLimit(params: {
   windowMs: number;
 }): Promise<RateLimitResult> {
   if (!hasSupabaseConfig()) {
-    return { ok: true };
+    return rateLimitUnavailable();
   }
 
   const supabase = createAdminClient();
@@ -37,7 +50,7 @@ export async function checkAuthRateLimit(params: {
 
   if (countError) {
     console.error("[auth-rate-limit] count failed:", countError.message);
-    return { ok: true };
+    return rateLimitUnavailable();
   }
 
   if ((count ?? 0) >= params.maxEvents) {
@@ -93,6 +106,25 @@ export async function consumeAuthRateLimit(params: {
 
 export function authRateLimitBucket(prefix: string, part: string): string {
   return `${prefix}:${part.trim().toLowerCase()}`;
+}
+
+export function authRateLimitHttpResponse(
+  limit: Extract<RateLimitResult, { ok: false }>,
+  tooManyMessage = "Zbyt wiele prób logowania. Spróbuj ponownie za chwilę."
+): {
+  error: string;
+  status: 429 | 503;
+} {
+  if (limit.unavailable) {
+    return {
+      error: "Chwilowo nie można zweryfikować limitu prób. Spróbuj za chwilę.",
+      status: 503,
+    };
+  }
+  return {
+    error: tooManyMessage,
+    status: 429,
+  };
 }
 
 export async function sleepMs(ms: number): Promise<void> {

@@ -7,6 +7,7 @@ import {
 } from "@/lib/auth/admin-panel-context";
 import {
   authRateLimitBucket,
+  authRateLimitHttpResponse,
   checkAuthRateLimit,
   recordAuthRateLimitEvent,
   sleepMs,
@@ -90,12 +91,10 @@ export async function POST(request: NextRequest) {
       windowMs: LOGIN_WINDOW_MS,
     });
     if (!ipLimit.ok) {
+      const limited = authRateLimitHttpResponse(ipLimit);
       return NextResponse.json(
-        {
-          ok: false as const,
-          error: "Zbyt wiele prób logowania. Spróbuj ponownie za chwilę.",
-        },
-        { status: 429 }
+        { ok: false as const, error: limited.error },
+        { status: limited.status }
       );
     }
   }
@@ -106,12 +105,10 @@ export async function POST(request: NextRequest) {
     windowMs: LOGIN_WINDOW_MS,
   });
   if (!emailLimit.ok) {
+    const limited = authRateLimitHttpResponse(emailLimit);
     return NextResponse.json(
-      {
-        ok: false as const,
-        error: "Zbyt wiele prób logowania. Spróbuj ponownie za chwilę.",
-      },
-      { status: 429 }
+      { ok: false as const, error: limited.error },
+      { status: limited.status }
     );
   }
 
