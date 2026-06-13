@@ -18,6 +18,7 @@ import { fetchOperationsDailyPanelMetrics } from "@/lib/orders/operations-daily-
 import { fetchSalesShellMetrics } from "@/lib/orders/sales-shell-metrics";
 import {
   countOpenDepartmentBoardQuestions,
+  fetchPinnedActiveAnnouncements,
   fetchSalesBoardAttentionSnapshot,
   type SalesBoardAttentionSnapshot,
 } from "@/lib/data/department-board";
@@ -56,17 +57,22 @@ export async function AppShell({ children }: { children: React.ReactNode }) {
   let operationsDailyPanelVersion: string | null = null;
   let salesPersonName: string | null = null;
   let salesBoardAttention: SalesBoardAttentionSnapshot | null = null;
+  let operationsPinnedAnnouncements: Awaited<
+    ReturnType<typeof fetchPinnedActiveAnnouncements>
+  > = [];
 
   if (role && canAccessOperations(role)) {
     try {
-      const [metrics, openQuestions] = await Promise.all([
+      const [metrics, openQuestions, pinnedAnnouncements] = await Promise.all([
         fetchOperationsDailyPanelMetrics(),
         countOpenDepartmentBoardQuestions().catch(() => 0),
+        fetchPinnedActiveAnnouncements().catch(() => []),
       ]);
       navBadges.weryfikacja = metrics.verificationCount;
       navBadges.nowe = metrics.navBadge;
       navBadges.departmentBoardQuestions = openQuestions;
       operationsDailyPanelVersion = metrics.version;
+      operationsPinnedAnnouncements = pinnedAnnouncements;
     } catch {
       /* badge opcjonalny */
     }
@@ -178,6 +184,7 @@ export async function AppShell({ children }: { children: React.ReactNode }) {
       salesOnboardingCompletedAt={session?.salesOnboardingCompletedAt ?? null}
       salesPersonName={salesPersonName}
       salesBoardAttention={salesBoardAttention}
+      operationsPinnedAnnouncements={operationsPinnedAnnouncements}
       salesOnboardingActive={showSalesOnboarding}
     >
       {children}

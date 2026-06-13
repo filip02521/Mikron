@@ -28,6 +28,7 @@ export function DepartmentBoardTabBar({
   onTabChange,
   domain,
   unreadAnnouncements = 0,
+  activeAnnouncements = 0,
   openQuestions = 0,
   unseenAnswers = 0,
 }: {
@@ -35,6 +36,7 @@ export function DepartmentBoardTabBar({
   onTabChange: (tab: DepartmentBoardTab) => void;
   domain: "sales" | "panel";
   unreadAnnouncements?: number;
+  activeAnnouncements?: number;
   openQuestions?: number;
   unseenAnswers?: number;
 }) {
@@ -68,6 +70,8 @@ export function DepartmentBoardTabBar({
           {
             id: "announcements",
             label: "Ogłoszenia",
+            badge:
+              activeAnnouncements > 0 ? `${activeAnnouncements} aktyw.` : undefined,
           },
           {
             id: "questions",

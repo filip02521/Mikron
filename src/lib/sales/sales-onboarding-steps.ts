@@ -1,10 +1,16 @@
 import type { NavIconKey } from "@/components/icons/NavIcon";
 import { isSalesManager } from "@/lib/auth-roles";
+import {
+  INFORMACJA_FLOW_DIRECT,
+  INFORMACJA_FLOW_STOCK_OUT,
+} from "@/lib/orders/informacja-flow-copy";
 import type { UserRole } from "@/types/database";
 
 export type SalesOnboardingStep = {
   id: string;
   navKey?: NavIconKey;
+  /** Etykieta zakładki w menu — spójna z nav.ts, nie surowy URL. */
+  navLabel?: string;
   href?: string;
   title: string;
   lead: string;
@@ -26,42 +32,56 @@ export function isManagerOnlyOnboardingStep(
 
 export function getSalesOnboardingSteps(role: UserRole): SalesOnboardingStep[] {
   const isManager = isSalesManager(role);
+  const informacjaDirect = INFORMACJA_FLOW_DIRECT.label;
+  const informacjaStockOut = INFORMACJA_FLOW_STOCK_OUT.label;
+
   const steps: SalesOnboardingStep[] = [
     {
       id: "welcome",
       title: "Witaj w OnTime",
-      lead: "OnTime łączy Cię z działem zakupów i magazynem. Zgłaszasz prośbę — reszta zespołu wie, co zrobić, i dostaniesz powiadomienie, gdy coś będzie gotowe.",
+      lead:
+        "OnTime łączy Cię z działem zakupów i magazynem. Składasz prośby, śledzisz statusy i komunikujesz się z zespołem — bez codziennej obiegówki mailowej.",
       bullets: [
-        "Status spraw zobaczysz w aplikacji — bez dzwonienia i maili.",
-        "Przejdziesz po głównych zakładkach. Przy każdej zobaczysz krótki opis i przykładowy ekran.",
-        "Tour uruchamia się raz. Na końcu wracasz do swoich danych.",
+        "Pięć głównych zakładek: Nowa prośba (zgłoszenie do zakupów), Moje zamówienia (statusy), Harmonogram (terminy u dostawców), Tablica (ogłoszenia i pytania zespołu), ZK czekające (Twoje przypomnienia — nie trafiają do zakupów).",
+        ...(isManager
+          ? [
+              "Jako kierownik zobaczysz też krok Podgląd zespołu — bez logowania na konta innych handlowców.",
+            ]
+          : []),
+        "Status spraw zawsze w aplikacji. E-mail dostaniesz przy ważnych zdarzeniach — np. gdy towar jest na magazynie lub gotowy do odbioru.",
+        "Tour przejdzie po głównych zakładkach z przykładowymi danymi. Menu będzie chwilowo wyłączone — używaj panelu „Dalej” po prawej (na telefonie — u dołu).",
+        "Tour uruchamia się raz. Po zakończeniu zobaczysz swoje dane i pełną nawigację.",
       ],
     },
     {
       id: "moje",
       navKey: "myOrders",
+      navLabel: "Moje zamówienia",
       href: "/moje",
       title: "Moje zamówienia",
-      lead: "Tu sprawdzasz status prośb — co czeka u dostawcy i co możesz odebrać z magazynu.",
+      lead:
+        "Tu sprawdzasz status prośb — co czeka u dostawcy, co możesz odebrać z magazynu i co wymaga Twojej reakcji. Sekcja Start dnia u góry zbiera pilne sprawy.",
       bullets: [
         "Jeden wiersz = jedna prośba u jednego dostawcy. Nagłówek mówi, co się dzieje.",
         "Przy wierszu widać klienta końcowego — łatwiej rozróżnisz sprawy różnych gabinetów.",
-        "Fiolet = tylko pytanie o dostępność towaru (bez zamówienia u dostawcy). Dostaniesz e-mail, gdy towar będzie na magazynie.",
-        "Zielony przycisk = Twoja akcja: potwierdź odbiór z magazynu albo zamknij powiadomienie.",
+        "Sekcja „Tylko sprawdzamy dostępność” (fiolet) to informacja o towarze bez zamówienia u dostawcy. Dostaniesz e-mail, gdy towar będzie na magazynie.",
+        "Zielony przycisk oznacza Twoją akcję: potwierdź odbiór z magazynu albo zamknij powiadomienie o dostępności.",
         "Na dole strony jest archiwum zakończonych spraw.",
       ],
-      tip: "Pilne sprawy są u góry w sekcji «Wymaga reakcji» — Start dnia przewinie Cię tam.",
+      tip: "Pilne sprawy są u góry w sekcji „Wymaga reakcji” — Start dnia przewinie Cię tam.",
     },
     {
       id: "prosba",
       navKey: "newRequest",
+      navLabel: "Nowa prośba",
       href: "/prosba",
       title: "Nowa prośba",
-      lead: "Tu zgłaszasz potrzebę do zakupów: zamówienie u dostawcy albo informację o dostępności towaru.",
+      lead:
+        "Tu zgłaszasz potrzebę do zakupów: zamówienie u dostawcy albo informację o dostępności towaru. To nie to samo co pytanie na Tablicy.",
       bullets: [
-        "Krok 1: wybierz rodzaj — zamówienie u dostawcy albo informacja o towarze.",
-        "Przy informacji masz dwie opcje: „Dostępność na magazynie” (e-mail + wpis w „Moje zamówienia”) albo „Brak na stanie — do zamówienia” (tylko sygnał dla zakupów, bez wpisu u Ciebie).",
-        "Krok 2: wpisz produkt w jednym polu (nazwa lub symbol) i kod Mikran obok. Więcej pozycji dodajesz przyciskiem „+ Kolejny produkt”.",
+        "Na górze wybierz rodzaj: Zamówienie u dostawcy albo Informacja o towarze.",
+        `Przy informacji: „${informacjaDirect}” (e-mail do Ciebie + wpis w „Moje zamówienia”) albo „${informacjaStockOut}” (tylko sygnał dla zakupów — bez wpisu u Ciebie).`,
+        "Wpisz produkt w jednym polu (nazwa lub symbol) i kod Mikran obok. Więcej pozycji dodajesz przyciskiem „+ Kolejny produkt”.",
         "Opcjonalnie wskaż klienta końcowego — wpisz kilka liter i wybierz z listy Subiekta albo wpisz nazwę ręcznie.",
         "Dostawcę nie wybierasz — system dopasuje go po symbolu lub kodzie. Zakupy doprecyzują, gdy trzeba.",
         "Po wysłaniu status zobaczysz w „Moje zamówienia”. Każdy dostawca ma osobny wiersz.",
@@ -72,9 +92,11 @@ export function getSalesOnboardingSteps(role: UserRole): SalesOnboardingStep[] {
     {
       id: "plan",
       navKey: "plan",
+      navLabel: "Harmonogram",
       href: "/plan",
       title: "Harmonogram",
-      lead: "Terminy u dostawców — pomaga zaplanować prośbę i powiedzieć klientowi, kiedy realnie można zamówić.",
+      lead:
+        "Terminy u dostawców — pomaga zaplanować prośbę i powiedzieć klientowi, kiedy realnie można zamówić.",
       bullets: [
         "„Z otwartymi prośbami” — dostawcy z Twoich aktywnych spraw w „Moje zamówienia”. Rozwiń wiersz, aby zobaczyć szczegóły.",
         "Wyszukiwarka u góry — każdy inny dostawca z bazy firmy.",
@@ -85,13 +107,15 @@ export function getSalesOnboardingSteps(role: UserRole): SalesOnboardingStep[] {
     {
       id: "tablica",
       navKey: "board",
+      navLabel: "Tablica",
       href: "/tablica",
       title: "Tablica",
-      lead: "Ogłoszenia od działu zakupów i wspólne pytania zespołu. To nie zastępuje formularza „Nowa prośba” przy zamówieniu towaru.",
+      lead:
+        "Ogłoszenia od działu zakupów i wspólne pytania zespołu. To nie zastępuje formularza „Nowa prośba” przy zamówieniu towaru.",
       bullets: [
-        "Dwie zakładki: Ogłoszenia (tylko do odczytu) i Pytania (widoczne dla całego działu handlowego).",
+        "Dwie zakładki: Ogłoszenia od zakupów (tylko do odczytu) i Pytania zespołu (widoczne dla całego działu handlowego).",
         "Ogłoszenia to komunikaty od zakupów, np. zmiana procedury. Nie odpowiadasz w tej sekcji.",
-        "W Pytaniach zadajesz ogólne pytanie do zakupów. Pytanie i odpowiedź widać osobno — szukaj oznaczeń P: i O: albo bloków „Pytanie” i „Odpowiedź”.",
+        "W Pytaniach zadajesz ogólne pytanie do zakupów. W wątku widać autora, datę i odpowiedź zakupów — po odpowiedzi pojawia się oznaczenie „Odpowiedziano”.",
         "Zamówienie towaru zgłaszasz w „Nowa prośba”, nie tutaj. Status śledzisz w „Moje zamówienia”.",
         "Liczba przy zakładce w menu przypomina o nowych ogłoszeniach lub odpowiedziach na pytania.",
       ],
@@ -100,16 +124,18 @@ export function getSalesOnboardingSteps(role: UserRole): SalesOnboardingStep[] {
     {
       id: "notatnik",
       navKey: "clientZk",
+      navLabel: "ZK czekające",
       href: "/zk",
       title: "ZK czekające",
-      lead: "Tu śledzisz zamówienia klientów (ZK) z Subiekta — na co czekasz, co dotarło na magazyn i skąd wysyłasz prośbę do zakupów. Notatki i archiwum są w osobnych zakładkach.",
+      lead:
+        "Tu śledzisz zamówienia klientów (ZK) z Subiekta — na co czekasz, co dotarło na magazyn i skąd wysyłasz prośbę do zakupów. Notatki i archiwum są w osobnych zakładkach.",
       bullets: [
         "„Do zrobienia dziś” u góry — zacznij od przypomnień ZK i notatek.",
         "Zakładka „ZK” — wpisz numer ZK. System wczyta klienta i pozycje z Subiekta.",
         "Przy ZK jest „Zgłoś prośbę” — formularz wypełni się sam klientem i pozycjami.",
         "Po dostawie odhaczasz pozycje. Przy przypomnieniu ustawiasz datę follow-up.",
         "Zakładka „Notatki” — prywatne przypomnienia, bez wysyłki do zakupów.",
-        "Liczba przy zakładce ZK czekające = zaległe przypomnienia (ZK lub notatki).",
+        "Liczba przy zakładce ZK czekające oznacza zaległe przypomnienia (ZK lub notatki).",
       ],
       tip: "Status formalnych prośb jest w „Moje zamówienia”. ZK czekające pomaga pamiętać, które sprawy wymagają Twojej reakcji.",
     },
@@ -119,25 +145,29 @@ export function getSalesOnboardingSteps(role: UserRole): SalesOnboardingStep[] {
     steps.push({
       id: "zespol",
       navKey: "team",
+      navLabel: "Podgląd zespołu",
       href: "/zespol",
       title: "Podgląd zespołu",
-      lead: "Jako kierownik widzisz prośby zespołu, ZK handlowców i możesz złożyć prośbę w ich imieniu.",
+      lead:
+        "Jako kierownik widzisz prośby zespołu, ZK handlowców i możesz złożyć prośbę w ich imieniu.",
       bullets: [
         "Podgląd grup (Sklep / Biuro) bez logowania na konta innych osób.",
         "Widać m.in. ile ZK czeka na towar i kto ma zaległe przypomnienia.",
         "Skróty do kart handlowców i przypisań grup.",
         "W formularzu prośby wybierasz na początku handlowca, dla którego składasz zgłoszenie.",
       ],
+      tip: "Podczas touru zobaczysz przykładowy układ w panelu po prawej. Po zakończeniu lista zespołu będzie rzeczywista.",
     });
   }
 
   steps.push({
     id: "finish",
     title: "Gotowe — możesz zaczynać",
-    lead: "To wszystko na start. Najczęściej zaczyna się od „Moje zamówienia” albo od pierwszej prośby do zakupów.",
+    lead:
+      "To wszystko na start. Najczęściej zaczyna się od „Moje zamówienia” albo od pierwszej prośby do zakupów.",
     bullets: [
       "Menu po lewej (na telefonie — dolny pasek) prowadzi zawsze do tych samych zakładek.",
-      "O ważnych zmianach dostaniesz też e-mail. Na co dzień sprawdzaj aplikację.",
+      "Statusy spraw sprawdzaj w aplikacji na bieżąco. E-mail to uzupełnienie przy ważnych zdarzeniach (dostępność, odbiór).",
       "Gdy coś będzie niejasne — zapytaj kierownika lub dział zakupów.",
     ],
   });

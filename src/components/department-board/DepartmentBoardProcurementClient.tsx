@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Alert } from "@/components/ui/Alert";
 import { Button } from "@/components/ui/Button";
@@ -44,12 +44,20 @@ import { actionCreateAnnouncement } from "@/app/actions/department-board";
 export function DepartmentBoardProcurementClient({
   initial,
   loadError = null,
+  initialTab,
+  focusQuestionId = null,
+  focusAnnouncementId = null,
 }: {
   initial: DepartmentBoardData;
   loadError?: string | null;
+  initialTab?: DepartmentBoardTab;
+  focusQuestionId?: string | null;
+  focusAnnouncementId?: string | null;
 }) {
   const router = useRouter();
-  const [activeTab, setActiveTab] = useState<DepartmentBoardTab>("announcements");
+  const [activeTab, setActiveTab] = useState<DepartmentBoardTab>(
+    () => initialTab ?? (focusQuestionId ? "questions" : "announcements")
+  );
   const [questionFilter, setQuestionFilter] = useState<DepartmentBoardQuestionFilter>("open");
 
   const [announcementTitle, setAnnouncementTitle] = useState("");
@@ -71,6 +79,15 @@ export function DepartmentBoardProcurementClient({
   }, [initial.questions, questionFilter]);
 
   const openQuestionsCount = initial.questions.filter((q) => q.status === "open").length;
+
+  useEffect(() => {
+    if (focusAnnouncementId && activeTab === "announcements") {
+      document.getElementById(`announcement-${focusAnnouncementId}`)?.scrollIntoView({
+        behavior: "smooth",
+        block: "center",
+      });
+    }
+  }, [focusAnnouncementId, activeTab, initial.announcements.length]);
 
   function refresh() {
     router.refresh();
@@ -124,6 +141,7 @@ export function DepartmentBoardProcurementClient({
           domain="panel"
           activeTab={activeTab}
           onTabChange={setActiveTab}
+          activeAnnouncements={initial.announcements.length}
           openQuestions={openQuestionsCount}
         />
 
@@ -194,7 +212,11 @@ export function DepartmentBoardProcurementClient({
               icon={<IconInbox size={17} />}
             >
               {initial.announcements.length === 0 ? (
-                <DepartmentBoardAnnouncementsEmpty domain="panel" />
+                <DepartmentBoardAnnouncementsEmpty
+                  domain="panel"
+                  questionsCount={initial.questions.length}
+                  onShowQuestions={() => setActiveTab("questions")}
+                />
               ) : (
                 <div className={cn(mojeShipmentListClass, "-mx-3 -mb-3 sm:-mx-4 sm:-mb-4")}>
                   {initial.announcements.map((thread) => (
@@ -238,7 +260,9 @@ export function DepartmentBoardProcurementClient({
                       embedded
                       canReply
                       canArchive
-                      defaultExpanded={question.status === "open"}
+                      defaultExpanded={
+                        focusQuestionId === question.id || question.status === "open"
+                      }
                       onChanged={refresh}
                     />
                   ))}

@@ -9,7 +9,15 @@ import { pageMetadataFor } from "@/lib/ui/page-metadata";
 
 export const metadata: Metadata = pageMetadataFor("procurementBoard");
 
-export default async function ProcurementBoardPage() {
+export const dynamic = "force-dynamic";
+
+export default async function ProcurementBoardPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ widok?: string; watek?: string }>;
+}) {
+  const { widok, watek } = await searchParams;
+  const focusThreadId = watek?.trim() || null;
   const user = await getSessionUser();
   if (!user?.role || !canAccessOperations(user.role)) {
     redirect("/login");
@@ -26,5 +34,21 @@ export default async function ProcurementBoardPage() {
     loadError = e instanceof Error ? e.message : "Nie udało się załadować tablicy.";
   }
 
-  return <DepartmentBoardClient initial={board} audience="procurement" loadError={loadError} />;
+  let initialTab: "announcements" | "questions" | undefined;
+  if (widok === "pytania") initialTab = "questions";
+  if (widok === "ogloszenia") initialTab = "announcements";
+
+  const focusQuestionId = widok === "pytania" ? focusThreadId : null;
+  const focusAnnouncementId = widok === "ogloszenia" ? focusThreadId : null;
+
+  return (
+    <DepartmentBoardClient
+      initial={board}
+      audience="procurement"
+      loadError={loadError}
+      initialTab={initialTab}
+      focusQuestionId={focusQuestionId}
+      focusAnnouncementId={focusAnnouncementId}
+    />
+  );
 }

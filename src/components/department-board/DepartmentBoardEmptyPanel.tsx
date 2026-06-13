@@ -6,9 +6,18 @@ import type { DepartmentBoardQuestionFilter } from "@/components/department-boar
 
 export function DepartmentBoardAnnouncementsEmpty({
   domain,
+  questionsCount = 0,
+  onShowQuestions,
 }: {
   domain: "sales" | "panel";
+  questionsCount?: number;
+  onShowQuestions?: () => void;
 }) {
+  const panelDescription =
+    questionsCount > 0
+      ? `Opublikuj ogłoszenie powyżej, aby poinformować cały dział handlowy. Handlowcy mogą też publikować wątki w zakładce Pytania (${questionsCount}) — sprawdź, czy szukany wpis nie jest tam.`
+      : "Opublikuj ogłoszenie powyżej, aby poinformować cały dział handlowy.";
+
   return (
     <EmptyState
       brandAccent
@@ -17,7 +26,18 @@ export function DepartmentBoardAnnouncementsEmpty({
       description={
         domain === "sales"
           ? "Gdy dział zakupów opublikuje komunikat, pojawi się tutaj — bez konieczności sprawdzania maila."
-          : "Opublikuj ogłoszenie powyżej, aby poinformować cały dział handlowy."
+          : panelDescription
+      }
+      action={
+        domain === "panel" && questionsCount > 0 && onShowQuestions ? (
+          <button
+            type="button"
+            className="text-sm font-semibold text-indigo-700 underline-offset-2 hover:underline"
+            onClick={onShowQuestions}
+          >
+            Przejdź do pytań
+          </button>
+        ) : undefined
       }
     />
   );

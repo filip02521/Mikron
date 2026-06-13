@@ -21,7 +21,11 @@ import { useSalesCoachPaddingClass } from "@/components/sales/SalesOnboardingCon
 import { SalesOnboardingTourBanner, SalesOnboardingContentGuard } from "@/components/sales/SalesOnboardingTourBanner";
 import { SalesBugReportTrigger } from "@/components/sales/SalesBugReportTrigger";
 import { DepartmentBoardPinnedStrip } from "@/components/department-board/DepartmentBoardPinnedStrip";
-import type { SalesBoardAttentionSnapshot } from "@/lib/data/department-board";
+import {
+  procurementBoardAnnouncementHref,
+  salesBoardAnnouncementHref,
+  type SalesBoardAttentionSnapshot,
+} from "@/lib/data/department-board";
 import { cn } from "@/lib/cn";
 import { salesMobileChromeRoot } from "@/lib/ui/sales-mobile-chrome";
 import { appMainClass, appMainInsetClass, appShellClass } from "@/lib/ui/ontime-theme";
@@ -38,7 +42,27 @@ function SalesGlobalPinnedStrip({
 }) {
   if (!attention.pinnedAnnouncements.length) return null;
 
-  return <DepartmentBoardPinnedStrip pinned={attention.pinnedAnnouncements} />;
+  return (
+    <DepartmentBoardPinnedStrip
+      pinned={attention.pinnedAnnouncements}
+      announcementHref={salesBoardAnnouncementHref}
+    />
+  );
+}
+
+function OperationsGlobalPinnedStrip({
+  pinned,
+}: {
+  pinned: Pick<SalesBoardAttentionSnapshot["pinnedAnnouncements"][number], "id" | "title" | "body">[];
+}) {
+  if (!pinned.length) return null;
+
+  return (
+    <DepartmentBoardPinnedStrip
+      pinned={pinned}
+      announcementHref={procurementBoardAnnouncementHref}
+    />
+  );
 }
 
 function AppShellMain({
@@ -86,6 +110,7 @@ export function AppShellClient({
   salesOnboardingCompletedAt = null,
   salesPersonName = null,
   salesBoardAttention = null,
+  operationsPinnedAnnouncements = [],
   salesOnboardingActive = false,
 }: {
   children: React.ReactNode;
@@ -112,6 +137,10 @@ export function AppShellClient({
   salesOnboardingCompletedAt?: string | null;
   salesPersonName?: string | null;
   salesBoardAttention?: SalesBoardAttentionSnapshot | null;
+  operationsPinnedAnnouncements?: Pick<
+    SalesBoardAttentionSnapshot["pinnedAnnouncements"][number],
+    "id" | "title" | "body"
+  >[];
   /** Tour onboarding — wyłącz live badge i polling zamówień. */
   salesOnboardingActive?: boolean;
 }) {
@@ -182,12 +211,18 @@ export function AppShellClient({
           mobileChrome={mobileChrome}
           topNotices={
             adminPanelPreview ? (
-              <AdminPreviewBanner
-                panelContext={adminPanelPreview}
-                previewSalesPersonName={
-                  adminPanelPreview === "sales" ? salesPersonName : null
-                }
-              />
+              <>
+                <AdminPreviewBanner
+                  panelContext={adminPanelPreview}
+                  previewSalesPersonName={
+                    adminPanelPreview === "sales" ? salesPersonName : null
+                  }
+                />
+                {operationsPinnedAnnouncements.length > 0 &&
+                (adminPanelPreview === "admin" || adminPanelPreview === "zakupy") ? (
+                  <OperationsGlobalPinnedStrip pinned={operationsPinnedAnnouncements} />
+                ) : null}
+              </>
             ) : salesLive ? (
               <>
                 {salesBoardAttention ? (
@@ -198,7 +233,12 @@ export function AppShellClient({
                 <SalesUpdatesBanner />
               </>
             ) : operationsLive && !salesLive ? (
-              <OperationsUpdatesBanner />
+              <>
+                {operationsPinnedAnnouncements.length > 0 ? (
+                  <OperationsGlobalPinnedStrip pinned={operationsPinnedAnnouncements} />
+                ) : null}
+                <OperationsUpdatesBanner />
+              </>
             ) : null
           }
         >

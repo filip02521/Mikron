@@ -48,6 +48,11 @@ function isAnnouncementActive(row: DepartmentBoardThread): boolean {
   return new Date(row.expires_at).getTime() > Date.now();
 }
 
+/** Filtr ważności ogłoszeń — wartość ISO w cudzysłowie (PostgREST). */
+export function activeAnnouncementExpiryOr(nowIso: string): string {
+  return `expires_at.is.null,expires_at.gt."${nowIso}"`;
+}
+
 export async function fetchDepartmentBoard(
   profileId: string | null
 ): Promise<DepartmentBoardData> {
@@ -60,7 +65,7 @@ export async function fetchDepartmentBoard(
       .select(DEPARTMENT_BOARD_THREAD_SELECT)
       .eq("kind", "announcement")
       .is("archived_at", null)
-      .or(`expires_at.is.null,expires_at.gt.${nowIso}`),
+      .or(activeAnnouncementExpiryOr(nowIso)),
     supabase
       .from("department_board_threads")
       .select(DEPARTMENT_BOARD_THREAD_SELECT)
@@ -133,7 +138,7 @@ export async function countUnreadAnnouncementsForProfile(
     .select("id")
     .eq("kind", "announcement")
     .is("archived_at", null)
-    .or(`expires_at.is.null,expires_at.gt.${nowIso}`);
+    .or(activeAnnouncementExpiryOr(nowIso));
 
   if (annError || !announcements?.length) return 0;
 
@@ -163,7 +168,7 @@ export async function fetchUnreadAnnouncementsPreview(profileId: string): Promis
     .select("id, title, published_at")
     .eq("kind", "announcement")
     .is("archived_at", null)
-    .or(`expires_at.is.null,expires_at.gt.${nowIso}`)
+    .or(activeAnnouncementExpiryOr(nowIso))
     .order("published_at", { ascending: false });
 
   if (annError || !announcements?.length) {
@@ -205,6 +210,39 @@ export function salesBoardAnnouncementHref(threadId: string): string {
   return `/tablica?widok=ogloszenia&watek=${encodeURIComponent(threadId)}`;
 }
 
+export function procurementBoardAnnouncementHref(threadId: string): string {
+  return `/zakupy/tablica?widok=ogloszenia&watek=${encodeURIComponent(threadId)}`;
+}
+
+/** Przypięte, aktywne ogłoszenia — wspólne dla handlowców i panelu zakupów. */
+export async function fetchPinnedActiveAnnouncements(): Promise<
+  Pick<DepartmentBoardThreadRow, "id" | "title" | "body">[]
+> {
+  const supabase = createAdminClient();
+  const { data, error } = await activeAnnouncementsQuery(supabase);
+  if (error) return [];
+
+  return sortAnnouncements(
+    ((data ?? []) as DepartmentBoardThreadRow[]).filter(isAnnouncementActive)
+  )
+    .filter((row) => row.pinned)
+    .map((row) => ({ id: row.id, title: row.title, body: row.body }));
+}
+
+export async function countActiveDepartmentBoardAnnouncements(): Promise<number> {
+  const supabase = createAdminClient();
+  const nowIso = new Date().toISOString();
+  const { count, error } = await supabase
+    .from("department_board_threads")
+    .select("id", { count: "exact", head: true })
+    .eq("kind", "announcement")
+    .is("archived_at", null)
+    .or(activeAnnouncementExpiryOr(nowIso));
+
+  if (error) return 0;
+  return count ?? 0;
+}
+
 export type SalesBoardAttentionSnapshot = {
   /** Wszystkie nieprzeczytane — badge w menu. */
   unreadAnnouncementCount: number;
@@ -231,7 +269,7 @@ async function activeAnnouncementsQuery(supabase: ReturnType<typeof createAdminC
     .select(DEPARTMENT_BOARD_THREAD_SELECT)
     .eq("kind", "announcement")
     .is("archived_at", null)
-    .or(`expires_at.is.null,expires_at.gt.${nowIso}`);
+    .or(activeAnnouncementExpiryOr(nowIso));
 }
 
 /** Podgląd uwagi handlowca: ogłoszenia, odpowiedzi, przypięte. */

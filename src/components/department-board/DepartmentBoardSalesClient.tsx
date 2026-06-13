@@ -160,8 +160,9 @@ export function DepartmentBoardSalesClient({
   }
 
   const pageDescription = `${DEPARTMENT_BOARD_SALES_PAGE_DESC} ${DEPARTMENT_BOARD_NOTES_DISTINCTION_SALES}`;
-  const showAnnouncements = tourDemo || activeTab === "announcements";
-  const showQuestions = tourDemo || activeTab === "questions";
+  const resolvedTab: BoardTab = tourDemo ? "announcements" : activeTab;
+  const showAnnouncements = resolvedTab === "announcements";
+  const showQuestions = resolvedTab === "questions";
   const effectiveAttention = tourDemo ? buildOnboardingBoardAttention() : boardAttention;
   const showUnreadBanner =
     effectiveAttention != null &&
@@ -235,7 +236,7 @@ export function DepartmentBoardSalesClient({
 
         <DepartmentBoardTabBar
           domain="sales"
-          activeTab={activeTab}
+          activeTab={resolvedTab}
           onTabChange={setActiveTab}
           unreadAnnouncements={unreadAnnouncements}
           openQuestions={openQuestionsCount}

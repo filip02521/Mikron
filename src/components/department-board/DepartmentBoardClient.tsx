@@ -46,5 +46,13 @@ export function DepartmentBoardClient({
       />
     );
   }
-  return <DepartmentBoardProcurementClient initial={initial} loadError={loadError} />;
+  return (
+    <DepartmentBoardProcurementClient
+      initial={initial}
+      loadError={loadError}
+      initialTab={initialTab}
+      focusQuestionId={focusQuestionId}
+      focusAnnouncementId={focusAnnouncementId}
+    />
+  );
 }

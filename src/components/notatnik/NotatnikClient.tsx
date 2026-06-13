@@ -410,7 +410,7 @@ export function NotatnikClient({
     );
     setNotes((prev) => uniqueById(mergeRecordsByUpdatedAt(prev, next.notes)));
     setArchivedNotes((prev) => uniqueById(mergeRecordsByUpdatedAt(prev, next.archivedNotes)));
-    if (tourDemo) setActiveTab("notes");
+    if (tourDemo) setActiveTab("zk");
   }
 
   if (hydrated && !warehouseSnapshotReady && salesPersonId && !tourDemo) {

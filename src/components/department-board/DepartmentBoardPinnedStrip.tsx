@@ -1,15 +1,16 @@
 import { IconPin } from "@/components/icons/StrokeIcons";
 import { SystemNotice } from "@/components/ui/SystemNotice";
 import type { DepartmentBoardThreadRow } from "@/lib/data/department-board";
-import { salesBoardAnnouncementHref } from "@/lib/data/department-board";
 import { MICROCOPY } from "@/lib/ui/microcopy";
 
 export function DepartmentBoardPinnedStrip({
   pinned,
   className,
+  announcementHref,
 }: {
   pinned: Pick<DepartmentBoardThreadRow, "id" | "title" | "body">[];
   className?: string;
+  announcementHref: (threadId: string) => string;
 }) {
   if (!pinned.length) return null;
 
@@ -31,7 +32,7 @@ export function DepartmentBoardPinnedStrip({
           ) : null}
         </span>
       }
-      href={salesBoardAnnouncementHref(primary.id)}
+      href={announcementHref(primary.id)}
       actionLabel={MICROCOPY.actions.readMore}
     />
   );

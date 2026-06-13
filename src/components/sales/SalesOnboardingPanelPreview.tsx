@@ -3,6 +3,10 @@
 import { FlowChevron } from "@/components/ui/UiGlyphs";
 import { cn } from "@/lib/cn";
 import type { SalesOnboardingStep } from "@/lib/sales/sales-onboarding-steps";
+import {
+  INFORMACJA_FLOW_DIRECT,
+  INFORMACJA_FLOW_STOCK_OUT,
+} from "@/lib/orders/informacja-flow-copy";
 import { NavIcon, navIconTileIdleClass } from "@/components/icons/NavIcon";
 
 function PreviewRow({
@@ -38,20 +42,83 @@ function PreviewRow({
   );
 }
 
+function WelcomeChannelChip({
+  label,
+  hint,
+  tone,
+}: {
+  label: string;
+  hint: string;
+  tone: "indigo" | "sky" | "violet" | "slate";
+}) {
+  const toneClass =
+    tone === "indigo"
+      ? "border-indigo-200 bg-indigo-50/80 text-indigo-950"
+      : tone === "sky"
+        ? "border-sky-200 bg-sky-50/80 text-sky-950"
+        : tone === "violet"
+          ? "border-violet-200 bg-violet-50/80 text-violet-950"
+          : "border-slate-200 bg-slate-50/80 text-slate-800";
+
+  return (
+    <div className={cn("rounded-md border px-2.5 py-2 text-left", toneClass)}>
+      <p className="text-[11px] font-semibold">{label}</p>
+      <p className="mt-0.5 text-[10px] leading-snug opacity-90">{hint}</p>
+    </div>
+  );
+}
+
 export function SalesOnboardingPanelPreview({ stepId }: { stepId: string }) {
   switch (stepId) {
     case "welcome":
       return (
-        <div className="flex flex-col items-center justify-center gap-3 py-4 text-center">
-          <div className="flex h-14 w-14 items-center justify-center rounded-lg bg-gradient-to-br from-indigo-600 to-sky-600 text-lg font-bold text-white shadow-md">
-            OT
+        <div className="space-y-3">
+          <div className="grid gap-2 sm:grid-cols-2">
+            <WelcomeChannelChip
+              label="Nowa prośba"
+              hint="Formalne zgłoszenie do zakupów"
+              tone="indigo"
+            />
+            <WelcomeChannelChip
+              label="Moje zamówienia"
+              hint="Statusy i odbiór z magazynu"
+              tone="indigo"
+            />
+            <WelcomeChannelChip
+              label="Harmonogram"
+              hint="Terminy u dostawców"
+              tone="sky"
+            />
+            <WelcomeChannelChip
+              label="Tablica"
+              hint="Ogłoszenia zakupów · pytania zespołu"
+              tone="sky"
+            />
+            <WelcomeChannelChip
+              label="ZK czekające"
+              hint="Twoje przypomnienia — nie do zakupów"
+              tone="violet"
+            />
           </div>
-          <p className="text-xs text-slate-500">Handlowiec · zakupy · magazyn</p>
+          <div className="rounded-md border border-violet-100 bg-violet-50/60 px-2.5 py-2 text-left">
+            <p className="text-[10px] font-semibold uppercase tracking-wide text-violet-800">
+              Informacja o towarze — dwa warianty
+            </p>
+            <p className="mt-1 text-[10px] leading-relaxed text-violet-950/90">
+              <span className="font-medium">{INFORMACJA_FLOW_DIRECT.label}</span> → e-mail + wpis
+              w „Moje zamówienia”.{" "}
+              <span className="font-medium">{INFORMACJA_FLOW_STOCK_OUT.label}</span> → tylko sygnał
+              dla zakupów.
+            </p>
+          </div>
         </div>
       );
     case "moje":
       return (
         <div className="space-y-2">
+          <div className="rounded-md border border-indigo-200 bg-indigo-50/70 px-2.5 py-1.5 text-[10px] font-medium text-indigo-900">
+            Start dnia · Wymaga reakcji
+          </div>
           <PreviewRow
             title="Dentsply · 1 produkt"
             badge="Zamówione u dostawcy"
@@ -59,7 +126,7 @@ export function SalesOnboardingPanelPreview({ stepId }: { stepId: string }) {
           />
           <PreviewRow
             title="Magazyn · informacja"
-            badge="Tylko dostępność"
+            badge="Tylko sprawdzamy dostępność"
             badgeClass="bg-violet-100 text-violet-800"
           />
           <PreviewRow
@@ -81,8 +148,11 @@ export function SalesOnboardingPanelPreview({ stepId }: { stepId: string }) {
               Zamówienie u dostawcy
             </div>
             <div className="rounded-md border border-slate-200 bg-white px-2 py-2 text-center text-[11px] font-medium text-slate-600">
-              Tylko dostępność
+              Informacja o towarze
             </div>
+          </div>
+          <div className="rounded-md border border-violet-100 bg-violet-50/70 px-2 py-1.5 text-[10px] text-violet-900">
+            {INFORMACJA_FLOW_DIRECT.label} · e-mail + Moje
           </div>
           <div className="space-y-1.5">
             <div className="rounded-md border border-slate-200 bg-white px-2.5 py-1.5 text-[11px] text-slate-700">
@@ -127,7 +197,7 @@ export function SalesOnboardingPanelPreview({ stepId }: { stepId: string }) {
         <div className="space-y-2">
           <div className="grid grid-cols-2 gap-2">
             <div className="rounded-md border-2 border-sky-400 bg-sky-50 px-2 py-1.5 text-center text-[10px] font-semibold text-sky-900">
-              Ogłoszenia · 1 nowe
+              Ogłoszenia od zakupów
             </div>
             <div className="rounded-md border border-slate-200 bg-white px-2 py-1.5 text-center text-[10px] font-medium text-slate-600">
               Pytania zespołu
@@ -137,24 +207,9 @@ export function SalesOnboardingPanelPreview({ stepId }: { stepId: string }) {
             <p className="text-[10px] font-semibold uppercase tracking-wide text-sky-800">Ogłoszenie</p>
             <p className="mt-0.5 font-semibold">Zamówienia importowe — podaj kod Mikran</p>
           </div>
-          <div className="rounded-md border border-slate-200 border-l-[3px] border-l-sky-500 bg-sky-50/25 px-2.5 py-2 text-[11px]">
-            <div className="flex flex-wrap items-center gap-1.5">
-              <span className="rounded-full bg-emerald-100 px-1.5 py-0.5 text-[9px] font-semibold uppercase text-emerald-900">
-                Odpowiedziano
-              </span>
-              <span className="rounded-full bg-sky-100 px-1.5 py-0.5 text-[9px] font-semibold uppercase text-sky-800">
-                Nowa odpowiedź
-              </span>
-            </div>
-            <p className="mt-1 font-semibold text-slate-900">Próbki implantów poza harmonogramem?</p>
-            <p className="mt-0.5 text-[10px] text-slate-500">Anna K. · 1 odpowiedź</p>
-            <p className="mt-1 truncate text-[10px] text-slate-600">
-              <span className="font-semibold text-amber-800">P:</span> Klient pyta o pilne próbki…
-            </p>
-            <p className="truncate text-[10px] text-slate-600">
-              <span className="font-semibold text-indigo-700">O:</span> Tak — złóż prośbę z adnotacją „próbki”.
-            </p>
-          </div>
+          <p className="text-center text-[10px] text-slate-500">
+            Przełącz zakładkę, aby zobaczyć pytania zespołu
+          </p>
         </div>
       );
     case "notatnik":
@@ -172,21 +227,24 @@ export function SalesOnboardingPanelPreview({ stepId }: { stepId: string }) {
             </span>
           </div>
           <div className="rounded-md border border-slate-200 bg-white px-2.5 py-2 text-[11px] text-slate-700">
-            Notatki · oddzwonić do Gabinetu Dr Kowalski
+            Zakładka Notatki · oddzwonić do gabinetu
           </div>
         </div>
       );
     case "zespol":
       return (
         <div className="space-y-2">
-          {["Anna K. · 2 ZK na towar", "Piotr M. · 1 przypomnienie", "Sklep · 5 prośb"].map((row) => (
-            <div
-              key={row}
-              className="rounded-md border border-indigo-100 bg-indigo-50/50 px-2.5 py-1.5 text-[11px] font-medium text-slate-800"
-            >
-              {row}
-            </div>
-          ))}
+          <p className="text-[10px] text-slate-500">Przykładowy układ zespołu</p>
+          {["Anna K. · 2 ZK na towar", "Piotr M. · 1 przypomnienie", "Sklep · 5 prośb"].map(
+            (row) => (
+              <div
+                key={row}
+                className="rounded-md border border-indigo-100 bg-indigo-50/50 px-2.5 py-1.5 text-[11px] font-medium text-slate-800"
+              >
+                {row}
+              </div>
+            )
+          )}
         </div>
       );
     case "finish":
@@ -211,6 +269,7 @@ export function SalesOnboardingStepHeader({
   compact?: boolean;
 }) {
   if (!step.navKey) return null;
+  const label = step.navLabel ?? step.title;
   return (
     <div className={cn("flex items-center gap-2.5", compact ? "mb-1" : "mb-4")}>
       <div
@@ -222,11 +281,10 @@ export function SalesOnboardingStepHeader({
       >
         <NavIcon navKey={step.navKey} size={compact ? 18 : 22} />
       </div>
-      {step.href ? (
-        <p className="text-[11px] font-medium text-indigo-700/80 md:text-xs">
-          Zakładka: <span className="text-indigo-900">{step.href}</span>
-        </p>
-      ) : null}
+      <div className="min-w-0">
+        <p className="text-[11px] font-medium text-indigo-700/80 md:text-xs">Zakładka</p>
+        <p className="truncate text-xs font-semibold text-indigo-950 md:text-sm">{label}</p>
+      </div>
     </div>
   );
 }

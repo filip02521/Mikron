@@ -163,7 +163,7 @@ function WelcomeStepContent({
       </ul>
       <div className="rounded-lg border border-slate-200/90 bg-slate-50/80 p-3 sm:p-4">
         <p className="mb-2 text-[10px] font-semibold uppercase tracking-wide text-slate-500">
-          OnTime w skrócie
+          Mapa na start
         </p>
         <SalesOnboardingPanelPreview stepId={step.id} />
       </div>
