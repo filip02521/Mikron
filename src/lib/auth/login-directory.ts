@@ -1,4 +1,5 @@
 import { createAdminClient, hasSupabaseConfig } from "@/lib/supabase/admin";
+import type { LoginDirectoryAccountPublic } from "@/lib/auth/login-directory-public";
 import { resolveLoginDisplayName } from "@/lib/users/display-name";
 import { ROLE_LABELS } from "@/lib/users/labels";
 import type { UserRole } from "@/types/database";
@@ -44,9 +45,9 @@ export function sortLoginDirectoryAccounts(
 }
 
 export function filterLoginDirectoryAccounts(
-  accounts: LoginDirectoryAccount[],
+  accounts: LoginDirectoryAccountPublic[],
   query: string
-): LoginDirectoryAccount[] {
+): LoginDirectoryAccountPublic[] {
   const q = query.trim().toLowerCase();
   if (!q) return accounts;
 

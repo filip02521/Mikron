@@ -11,6 +11,7 @@ import {
 } from "@/lib/auth/password-link-redirect";
 import { renderPasswordResetOtpEmail } from "@/lib/email/password-reset-email";
 import { isEmailConfigured } from "@/lib/env/email-config";
+import { isProductionRuntime } from "@/lib/env/app-config";
 import { resolveAppUrl } from "@/lib/env/resolve-app-url.server";
 import { sendHtmlEmail } from "@/lib/services/email";
 import { createAdminClient, hasSupabaseConfig } from "@/lib/supabase/admin";
@@ -46,11 +47,17 @@ export type VerifyPasswordResetOtpResult =
   | { ok: false; error: string; invalidateCode?: boolean };
 
 function otpPepper(): string {
-  return (
+  const secret =
     process.env.PASSWORD_RESET_OTP_SECRET?.trim() ||
-    process.env.SUPABASE_SERVICE_ROLE_KEY?.trim() ||
-    "dev-password-reset-otp-pepper"
-  );
+    process.env.SUPABASE_SERVICE_ROLE_KEY?.trim();
+
+  if (secret) return secret;
+
+  if (isProductionRuntime()) {
+    throw new Error("Brak PASSWORD_RESET_OTP_SECRET w produkcji.");
+  }
+
+  return "dev-password-reset-otp-pepper";
 }
 
 export function hashPasswordResetOtpCode(code: string, userId: string): string {
@@ -125,6 +132,42 @@ export async function findEligiblePasswordResetUser(
   };
 }
 
+export async function findEligiblePasswordResetUserByAccountId(
+  accountId: string
+): Promise<{ id: string; email: string; displayName: string } | null> {
+  if (!hasSupabaseConfig()) return null;
+
+  const id = accountId.trim();
+  if (!id) return null;
+
+  const supabase = createAdminClient();
+  const { data: authData, error: authError } = await supabase.auth.admin.getUserById(id);
+  const user = authData.user;
+  if (authError || !user || !isAuthUserLoginEligible(user)) return null;
+
+  const email = user.email?.trim().toLowerCase() ?? "";
+  if (!email) return null;
+
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("sales_people(name)")
+    .eq("id", id)
+    .maybeSingle();
+
+  const salesPerson = Array.isArray(profile?.sales_people)
+    ? profile.sales_people[0]
+    : profile?.sales_people;
+
+  return {
+    id: user.id,
+    email,
+    displayName: loginDirectoryDisplayName({
+      email,
+      salesPersonName: salesPerson?.name ?? null,
+    }),
+  };
+}
+
 async function countRecentSends(params: {
   userId?: string;
   requestIp?: string | null;
@@ -191,15 +234,10 @@ async function fetchActiveOtp(userId: string): Promise<PasswordResetOtpRow | nul
 }
 
 export async function sendPasswordResetOtp(params: {
-  email: string;
+  accountId: string;
   requestIp?: string | null;
 }): Promise<SendPasswordResetOtpResult> {
-  const normalized = normalizePasswordResetEmail(params.email);
-  const maskedEmail = maskEmailForDisplay(normalized || params.email);
-
-  if (!normalized) {
-    return { ok: true, maskedEmail, resendAvailableAt: new Date(Date.now() + OTP_RESEND_COOLDOWN_MS).toISOString() };
-  }
+  const maskedFallback = "k***@…";
 
   if (!hasSupabaseConfig()) {
     return { ok: false, error: "Reset hasła jest chwilowo niedostępny." };
@@ -212,10 +250,19 @@ export async function sendPasswordResetOtp(params: {
     };
   }
 
-  const user = await findEligiblePasswordResetUser(normalized);
+  let user: Awaited<ReturnType<typeof findEligiblePasswordResetUserByAccountId>> = null;
+  try {
+    user = await findEligiblePasswordResetUserByAccountId(params.accountId);
+  } catch (error) {
+    console.error("[password-reset] eligibility failed:", error);
+    return { ok: false, error: "Nie udało się wysłać kodu. Spróbuj ponownie." };
+  }
+
+  const maskedEmail = user ? maskEmailForDisplay(user.email) : maskedFallback;
+
   if (!user) {
     console.info("[password-reset] send skipped — brak kwalifikującego się konta", {
-      email: maskedEmail,
+      accountId: params.accountId,
     });
     return {
       ok: true,
@@ -316,13 +363,12 @@ export async function sendPasswordResetOtp(params: {
 }
 
 export async function verifyPasswordResetOtp(params: {
-  email: string;
+  accountId: string;
   code: string;
 }): Promise<VerifyPasswordResetOtpResult> {
-  const normalized = normalizePasswordResetEmail(params.email);
   const code = params.code.trim();
 
-  if (!normalized || !isValidPasswordResetOtpCode(code)) {
+  if (!params.accountId.trim() || !isValidPasswordResetOtpCode(code)) {
     return { ok: false, error: "Nieprawidłowy kod. Sprawdź e-mail lub wyślij kod ponownie." };
   }
 
@@ -330,7 +376,7 @@ export async function verifyPasswordResetOtp(params: {
     return { ok: false, error: "Reset hasła jest chwilowo niedostępny." };
   }
 
-  const user = await findEligiblePasswordResetUser(normalized);
+  const user = await findEligiblePasswordResetUserByAccountId(params.accountId);
   if (!user) {
     return { ok: false, error: "Nieprawidłowy kod. Sprawdź e-mail lub wyślij kod ponownie." };
   }

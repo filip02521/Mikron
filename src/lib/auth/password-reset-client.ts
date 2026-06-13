@@ -37,14 +37,14 @@ async function readPasswordResetJson<T>(
 }
 
 export async function requestPasswordResetCode(
-  email: string
+  accountId: string
 ): Promise<PasswordResetSendResponse> {
   let response: Response;
   try {
     response = await fetch("/api/auth/password-reset/send", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ email }),
+      body: JSON.stringify({ accountId }),
     });
   } catch {
     return { ok: false, error: "Brak połączenia z serwerem. Sprawdź sieć i spróbuj ponownie." };
@@ -58,7 +58,7 @@ export async function requestPasswordResetCode(
 }
 
 export async function verifyPasswordResetCode(
-  email: string,
+  accountId: string,
   code: string
 ): Promise<PasswordResetVerifyResponse> {
   let response: Response;
@@ -66,7 +66,7 @@ export async function verifyPasswordResetCode(
     response = await fetch("/api/auth/password-reset/verify", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ email, code }),
+      body: JSON.stringify({ accountId, code }),
     });
   } catch {
     return { ok: false, error: "Brak połączenia z serwerem. Sprawdź sieć i spróbuj ponownie." };

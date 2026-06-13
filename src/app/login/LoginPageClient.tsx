@@ -2,7 +2,7 @@
 
 import { Suspense, useState } from "react";
 import { useSearchParams } from "next/navigation";
-import type { LoginDirectoryAccount } from "@/lib/auth/login-directory";
+import type { LoginDirectoryAccountPublic } from "@/lib/auth/login-directory-public";
 import {
   LOGIN_SUBTITLE_PICKER,
   loginSubtitleForMode,
@@ -12,7 +12,7 @@ import {
 import { AuthScreenLayout } from "@/components/auth/AuthScreenLayout";
 import { LoginForm } from "./LoginForm";
 
-function LoginPageClientInner({ accounts }: { accounts: LoginDirectoryAccount[] }) {
+function LoginPageClientInner({ accounts }: { accounts: LoginDirectoryAccountPublic[] }) {
   const searchParams = useSearchParams();
   const reason = searchParams.get("reason");
   const [subtitleMode, setSubtitleMode] = useState<LoginSubtitleMode>("picker");
@@ -34,7 +34,7 @@ function LoginPageClientInner({ accounts }: { accounts: LoginDirectoryAccount[] 
   );
 }
 
-export function LoginPageClient({ accounts }: { accounts: LoginDirectoryAccount[] }) {
+export function LoginPageClient({ accounts }: { accounts: LoginDirectoryAccountPublic[] }) {
   return (
     <Suspense
       fallback={

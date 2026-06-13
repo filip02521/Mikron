@@ -2,7 +2,7 @@ import { isProductionRuntime } from "@/lib/env/app-config";
 
 const MAP: [RegExp | string, string][] = [
   ["Invalid login credentials", "Nieprawidłowy e-mail lub hasło"],
-  ["Email not confirmed", "Potwierdź adres e-mail przed logowaniem"],
+  ["Email not confirmed", "Nieprawidłowy e-mail lub hasło"],
   ["User not found", "Nieprawidłowy e-mail lub hasło"],
   ["Too many requests", "Zbyt wiele prób — spróbuj za chwilę"],
 ];

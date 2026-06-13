@@ -2,7 +2,6 @@
 const PASSWORD_FIELD_ERROR_FRAGMENTS = [
   "Nieprawidłowy e-mail lub hasło",
   "Nie udało się zalogować. Sprawdź dane",
-  "Potwierdź adres e-mail",
 ] as const;
 
 export type LoginFormErrorPlacement = "password" | "banner";

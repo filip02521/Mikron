@@ -1,20 +1,31 @@
 import { NextResponse, type NextRequest } from "next/server";
-import { isValidEmail } from "@/lib/security/text-limits";
 import {
-  isValidPasswordResetOtpCode,
-  normalizePasswordResetEmail,
-  verifyPasswordResetOtp,
-} from "@/lib/auth/password-reset-otp";
-import { PASSWORD_RESET_SETUP_PATH } from "@/lib/auth/password-reset-constants";
+  authRateLimitBucket,
+  consumeAuthRateLimit,
+} from "@/lib/auth/auth-rate-limit";
+import { isValidPasswordResetOtpCode, verifyPasswordResetOtp } from "@/lib/auth/password-reset-otp";
+import {
+  OTP_MAX_SENDS_WINDOW_MS,
+  PASSWORD_RESET_SETUP_PATH,
+} from "@/lib/auth/password-reset-constants";
 import {
   attachRouteAuthCookies,
   createSupabaseRouteHandlerClient,
 } from "@/lib/supabase/route-auth";
 
 type VerifyBody = {
-  email?: string;
+  accountId?: string;
   code?: string;
 };
+
+function clientIp(request: NextRequest): string | null {
+  const forwarded = request.headers.get("x-forwarded-for");
+  if (forwarded) {
+    const first = forwarded.split(",")[0]?.trim();
+    if (first) return first;
+  }
+  return request.headers.get("x-real-ip")?.trim() || null;
+}
 
 export async function POST(request: NextRequest) {
   let body: VerifyBody;
@@ -27,10 +38,10 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  const email = normalizePasswordResetEmail(body.email ?? "");
+  const accountId = body.accountId?.trim() ?? "";
   const code = body.code?.trim() ?? "";
 
-  if (!email || !isValidEmail(email)) {
+  if (!accountId) {
     return NextResponse.json(
       { ok: false as const, error: "Wybierz konto z listy przed resetem hasła." },
       { status: 400 }
@@ -44,8 +55,41 @@ export async function POST(request: NextRequest) {
     );
   }
 
+  const ip = clientIp(request);
+  if (ip) {
+    const ipLimit = await consumeAuthRateLimit({
+      bucketKey: authRateLimitBucket("reset-verify:ip", ip),
+      maxEvents: 30,
+      windowMs: OTP_MAX_SENDS_WINDOW_MS,
+    });
+    if (!ipLimit.ok) {
+      return NextResponse.json(
+        {
+          ok: false as const,
+          error: "Zbyt wiele prób weryfikacji. Spróbuj ponownie za chwilę.",
+        },
+        { status: 429 }
+      );
+    }
+  }
+
+  const accountLimit = await consumeAuthRateLimit({
+    bucketKey: authRateLimitBucket("reset-verify:account", accountId),
+    maxEvents: 10,
+    windowMs: OTP_MAX_SENDS_WINDOW_MS,
+  });
+  if (!accountLimit.ok) {
+    return NextResponse.json(
+      {
+        ok: false as const,
+        error: "Zbyt wiele prób weryfikacji. Wyślij nowy kod.",
+      },
+      { status: 429 }
+    );
+  }
+
   try {
-    const result = await verifyPasswordResetOtp({ email, code });
+    const result = await verifyPasswordResetOtp({ accountId, code });
     if (!result.ok) {
       return NextResponse.json(
         { ok: false as const, error: result.error },

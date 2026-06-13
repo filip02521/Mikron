@@ -31,14 +31,16 @@ function formatCountdown(totalSeconds: number): string {
 }
 
 export function PasswordResetPanel({
-  email,
+  accountId,
   maskedEmail: initialMaskedEmail,
   resendAvailableAt: initialResendAvailableAt,
+  sessionNotice,
   onBack,
 }: {
-  email: string;
+  accountId: string;
   maskedEmail: string;
   resendAvailableAt: string;
+  sessionNotice?: string;
   onBack: () => void;
 }) {
   const [maskedEmail, setMaskedEmail] = useState(initialMaskedEmail);
@@ -78,7 +80,7 @@ export function PasswordResetPanel({
     setBannerError("");
     setCodeError("");
 
-    const result = await requestPasswordResetCode(email);
+    const result = await requestPasswordResetCode(accountId);
     setSending(false);
 
     if (!result.ok) {
@@ -94,14 +96,15 @@ export function PasswordResetPanel({
     setMaskedEmail(result.maskedEmail);
     setResendAvailableAt(result.resendAvailableAt);
     setCode("");
+    lastAutoSubmittedCodeRef.current = null;
     const stored = readStoredPasswordResetSession();
     writeStoredPasswordResetSession({
-      email,
+      accountId,
       maskedEmail: result.maskedEmail,
       resendAvailableAt: result.resendAvailableAt,
       startedAt: stored?.startedAt ?? new Date().toISOString(),
     });
-  }, [busy, email, resendSeconds]);
+  }, [busy, accountId, resendSeconds]);
 
   const handleVerify = useCallback(async () => {
     if (busy || !codeComplete) return;
@@ -109,7 +112,7 @@ export function PasswordResetPanel({
     setBannerError("");
     setCodeError("");
 
-    const result = await verifyPasswordResetCode(email, code);
+    const result = await verifyPasswordResetCode(accountId, code);
     setVerifying(false);
 
     if (!result.ok) {
@@ -119,7 +122,7 @@ export function PasswordResetPanel({
 
     writeStoredPasswordResetSession(null);
     window.location.assign(result.redirectTo);
-  }, [busy, code, codeComplete, email]);
+  }, [busy, code, codeComplete, accountId]);
 
   useEffect(() => {
     if (code.length < OTP_LENGTH) {
@@ -140,6 +143,8 @@ export function PasswordResetPanel({
 
   return (
     <div className="flex min-h-0 flex-col gap-4 sm:gap-5">
+      {sessionNotice ? <Alert tone="warning">{sessionNotice}</Alert> : null}
+
       <Alert tone="info">
         Wysłaliśmy 6-cyfrowy kod na <strong>{maskedEmail}</strong>. Kod jest ważny 10 minut.
       </Alert>

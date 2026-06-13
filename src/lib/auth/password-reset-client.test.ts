@@ -13,19 +13,7 @@ describe("password-reset-client", () => {
     vi.unstubAllGlobals();
   });
 
-  it("zwraca czytelny błąd przy pustej odpowiedzi serwera", async () => {
-    vi.mocked(fetch).mockResolvedValue(
-      new Response("", { status: 500, headers: { "Content-Type": "application/json" } })
-    );
-
-    const result = await requestPasswordResetCode("jan@firma.pl");
-    expect(result).toEqual({
-      ok: false,
-      error: "Serwer resetu hasła jest chwilowo niedostępny. Spróbuj ponownie.",
-    });
-  });
-
-  it("parsuje poprawną odpowiedź send", async () => {
+  it("wysyła accountId zamiast e-maila", async () => {
     vi.mocked(fetch).mockResolvedValue(
       Response.json({
         ok: true,
@@ -34,20 +22,35 @@ describe("password-reset-client", () => {
       })
     );
 
-    const result = await requestPasswordResetCode("jan@firma.pl");
-    expect(result.ok).toBe(true);
-    if (result.ok) {
-      expect(result.maskedEmail).toBe("j***@firma.pl");
-    }
+    await requestPasswordResetCode("acc-1");
+
+    expect(JSON.parse(String(vi.mocked(fetch).mock.calls[0]?.[1]?.body))).toEqual({
+      accountId: "acc-1",
+    });
   });
 
-  it("zwraca błąd sieci przy fetch exception", async () => {
-    vi.mocked(fetch).mockRejectedValue(new Error("network"));
+  it("zwraca czytelny błąd przy pustej odpowiedzi serwera", async () => {
+    vi.mocked(fetch).mockResolvedValue(
+      new Response("", { status: 500, headers: { "Content-Type": "application/json" } })
+    );
 
-    const result = await verifyPasswordResetCode("jan@firma.pl", "123456");
+    const result = await requestPasswordResetCode("acc-1");
     expect(result).toEqual({
       ok: false,
-      error: "Brak połączenia z serwerem. Sprawdź sieć i spróbuj ponownie.",
+      error: "Serwer resetu hasła jest chwilowo niedostępny. Spróbuj ponownie.",
+    });
+  });
+
+  it("weryfikuje kod z accountId", async () => {
+    vi.mocked(fetch).mockResolvedValue(
+      Response.json({ ok: true, redirectTo: "/ustaw-haslo?reset=otp" })
+    );
+
+    const result = await verifyPasswordResetCode("acc-1", "123456");
+    expect(result.ok).toBe(true);
+    expect(JSON.parse(String(vi.mocked(fetch).mock.calls[0]?.[1]?.body))).toEqual({
+      accountId: "acc-1",
+      code: "123456",
     });
   });
 });

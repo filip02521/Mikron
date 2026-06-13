@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import { needsBootstrapSetup } from "@/lib/setup/bootstrap";
 import { fetchLoginDirectoryAccounts } from "@/lib/auth/login-directory";
+import { toPublicLoginDirectoryAccounts } from "@/lib/auth/login-directory-public";
 import { LoginPageClient } from "./LoginPageClient";
 
 import type { Metadata } from "next";
@@ -13,7 +14,7 @@ export const dynamic = "force-dynamic";
 export default async function LoginPage() {
   if (await needsBootstrapSetup()) redirect("/setup");
 
-  const accounts = await fetchLoginDirectoryAccounts();
+  const accounts = toPublicLoginDirectoryAccounts(await fetchLoginDirectoryAccounts());
 
   return <LoginPageClient accounts={accounts} />;
 }

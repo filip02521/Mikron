@@ -27,21 +27,21 @@ describe("login password reset session storage", () => {
     vi.unstubAllGlobals();
   });
 
-  it("zapisuje i odczytuje aktywną sesję resetu", () => {
+  it("zapisuje i odczytuje aktywną sesję resetu po accountId", () => {
     writeStoredPasswordResetSession({
-      email: "jan@firma.pl",
+      accountId: "acc-1",
       maskedEmail: "j***@firma.pl",
       resendAvailableAt: new Date(Date.now() + 60_000).toISOString(),
       startedAt: new Date().toISOString(),
     });
 
     const stored = readStoredPasswordResetSession();
-    expect(stored?.email).toBe("jan@firma.pl");
+    expect(stored?.accountId).toBe("acc-1");
   });
 
   it("czyści wygasłą sesję resetu", () => {
     writeStoredPasswordResetSession({
-      email: "jan@firma.pl",
+      accountId: "acc-1",
       maskedEmail: "j***@firma.pl",
       resendAvailableAt: new Date().toISOString(),
       startedAt: new Date(Date.now() - 11 * 60_000).toISOString(),

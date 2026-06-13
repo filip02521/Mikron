@@ -12,6 +12,13 @@ export type LoginFlowResult =
   | { ok: true; redirectTo: string }
   | { ok: false; error: string };
 
+export type RunLoginFlowParams = {
+  accountId?: string | null;
+  email?: string;
+  password: string;
+  next: string | null;
+};
+
 async function syncClientSessionAfterServerLogin(
   email: string,
   password: string
@@ -83,23 +90,26 @@ async function resolveRedirect(
 }
 
 /** Logowanie przez API (ciasteczka HTTP) + potwierdzenie w przeglądarce. */
-export async function runLoginFlow(
-  email: string,
-  password: string,
-  next: string | null
-): Promise<LoginFlowResult> {
-  const normalizedEmail = email.trim().toLowerCase();
+export async function runLoginFlow(params: RunLoginFlowParams): Promise<LoginFlowResult> {
+  const normalizedEmail = params.email?.trim().toLowerCase() ?? "";
+  const accountId = params.accountId?.trim() || null;
+
+  const requestBody: Record<string, string | null> = {
+    password: params.password,
+    next: params.next,
+  };
+  if (accountId) {
+    requestBody.accountId = accountId;
+  } else {
+    requestBody.email = normalizedEmail;
+  }
 
   try {
     const res = await fetch("/api/auth/login", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       credentials: "same-origin",
-      body: JSON.stringify({
-        email: normalizedEmail,
-        password,
-        next,
-      }),
+      body: JSON.stringify(requestBody),
     });
 
     let apiBody: { ok?: boolean; error?: string; redirectTo?: string } = {};
@@ -113,12 +123,20 @@ export async function runLoginFlow(
     }
 
     if (res.ok && apiBody.ok && apiBody.redirectTo) {
-      const synced = await syncClientSessionAfterServerLogin(
-        normalizedEmail,
-        password
-      );
-      if (!synced.ok) {
-        return synced;
+      const supabase = createClient();
+      let { data: sessionData } = await supabase.auth.getSession();
+      if (!sessionData.session) {
+        await supabase.auth.refreshSession();
+        ({ data: sessionData } = await supabase.auth.getSession());
+      }
+      if (!sessionData.session && normalizedEmail) {
+        const synced = await syncClientSessionAfterServerLogin(
+          normalizedEmail,
+          params.password
+        );
+        if (!synced.ok) {
+          return synced;
+        }
       }
       return { ok: true, redirectTo: apiBody.redirectTo };
     }
@@ -133,10 +151,14 @@ export async function runLoginFlow(
     };
   }
 
+  if (!normalizedEmail) {
+    return { ok: false, error: "Nie udało się zalogować. Sprawdź dane i spróbuj ponownie." };
+  }
+
   const supabase = createClient();
   const { data: signData, error: signError } = await supabase.auth.signInWithPassword({
     email: normalizedEmail,
-    password,
+    password: params.password,
   });
 
   if (signError) {
@@ -148,7 +170,7 @@ export async function runLoginFlow(
     return { ok: false, error: "Nie udało się odczytać sesji." };
   }
 
-  const redirect = await resolveRedirect(userId, next);
+  const redirect = await resolveRedirect(userId, params.next);
   if (!redirect.ok) {
     if ("signOut" in redirect && redirect.signOut) {
       await supabase.auth.signOut();

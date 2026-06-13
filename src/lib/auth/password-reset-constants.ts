@@ -6,4 +6,4 @@ export const OTP_MAX_SENDS_PER_USER = 3;
 export const OTP_MAX_SENDS_PER_IP = 10;
 export const OTP_MAX_VERIFY_ATTEMPTS = 5;
 
-export const PASSWORD_RESET_SETUP_PATH = "/ustaw-haslo";
+export const PASSWORD_RESET_SETUP_PATH = "/ustaw-haslo?reset=otp";

@@ -40,7 +40,7 @@ describe("runLoginFlow", () => {
     vi.unstubAllGlobals();
   });
 
-  it("nie woła signInWithPassword gdy API ustawiło sesję w cookies", async () => {
+  it("loguje przez accountId bez signInWithPassword gdy cookies API działają", async () => {
     vi.mocked(fetch).mockResolvedValue(
       Response.json({ ok: true, redirectTo: "/podsumowanie" })
     );
@@ -48,11 +48,17 @@ describe("runLoginFlow", () => {
       data: { session: { user: { id: "user-1" } } },
     });
 
-    const result = await runLoginFlow("jan@firma.pl", "secret", null);
+    const result = await runLoginFlow({
+      accountId: "acc-1",
+      password: "secret",
+      next: null,
+    });
 
     expect(result).toEqual({ ok: true, redirectTo: "/podsumowanie" });
     expect(signInWithPassword).not.toHaveBeenCalled();
-    expect(refreshSession).not.toHaveBeenCalled();
+    expect(JSON.parse(String(vi.mocked(fetch).mock.calls[0]?.[1]?.body))).toMatchObject({
+      accountId: "acc-1",
+    });
   });
 
   it("używa signInWithPassword tylko gdy cookies API nie zsynchronizowały sesji", async () => {
@@ -63,7 +69,12 @@ describe("runLoginFlow", () => {
     refreshSession.mockResolvedValue({ error: { message: "no session" } });
     signInWithPassword.mockResolvedValue({ error: null });
 
-    const result = await runLoginFlow("jan@firma.pl", "secret", null);
+    const result = await runLoginFlow({
+      accountId: "acc-1",
+      email: "jan@firma.pl",
+      password: "secret",
+      next: null,
+    });
 
     expect(result).toEqual({ ok: true, redirectTo: "/moje" });
     expect(signInWithPassword).toHaveBeenCalledTimes(1);

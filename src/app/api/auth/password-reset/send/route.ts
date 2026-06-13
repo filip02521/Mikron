@@ -1,12 +1,13 @@
 import { NextResponse, type NextRequest } from "next/server";
-import { isValidEmail } from "@/lib/security/text-limits";
 import {
-  normalizePasswordResetEmail,
-  sendPasswordResetOtp,
-} from "@/lib/auth/password-reset-otp";
+  authRateLimitBucket,
+  consumeAuthRateLimit,
+} from "@/lib/auth/auth-rate-limit";
+import { OTP_MAX_SENDS_WINDOW_MS } from "@/lib/auth/password-reset-constants";
+import { sendPasswordResetOtp } from "@/lib/auth/password-reset-otp";
 
 type SendBody = {
-  email?: string;
+  accountId?: string;
 };
 
 function clientIp(request: NextRequest): string | null {
@@ -29,18 +30,37 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  const email = normalizePasswordResetEmail(body.email ?? "");
-  if (!email || !isValidEmail(email)) {
+  const accountId = body.accountId?.trim() ?? "";
+  if (!accountId) {
     return NextResponse.json(
       { ok: false as const, error: "Wybierz konto z listy przed resetem hasła." },
       { status: 400 }
     );
   }
 
+  const ip = clientIp(request);
+  if (ip) {
+    const ipLimit = await consumeAuthRateLimit({
+      bucketKey: authRateLimitBucket("reset-send:ip", ip),
+      maxEvents: 10,
+      windowMs: OTP_MAX_SENDS_WINDOW_MS,
+    });
+    if (!ipLimit.ok) {
+      return NextResponse.json(
+        {
+          ok: false as const,
+          error: "Zbyt wiele prób resetu z tej sieci. Spróbuj ponownie za chwilę.",
+          retryAfterSec: ipLimit.retryAfterSec,
+        },
+        { status: 429 }
+      );
+    }
+  }
+
   try {
     const result = await sendPasswordResetOtp({
-      email,
-      requestIp: clientIp(request),
+      accountId,
+      requestIp: ip,
     });
 
     if (!result.ok) {

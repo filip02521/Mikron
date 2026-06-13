@@ -3,7 +3,7 @@ import { OTP_TTL_MS } from "@/lib/auth/password-reset-constants";
 export const LOGIN_PASSWORD_RESET_STORAGE_KEY = "mikron.login.passwordReset";
 
 export type StoredPasswordResetSession = {
-  email: string;
+  accountId: string;
   maskedEmail: string;
   resendAvailableAt: string;
   startedAt: string;
@@ -15,7 +15,7 @@ export function readStoredPasswordResetSession(): StoredPasswordResetSession | n
     const raw = window.sessionStorage.getItem(LOGIN_PASSWORD_RESET_STORAGE_KEY);
     if (!raw) return null;
     const parsed = JSON.parse(raw) as StoredPasswordResetSession;
-    if (!parsed.email || !parsed.maskedEmail || !parsed.startedAt) return null;
+    if (!parsed.accountId || !parsed.maskedEmail || !parsed.startedAt) return null;
     const started = Date.parse(parsed.startedAt);
     if (Number.isNaN(started) || Date.now() - started > OTP_TTL_MS) {
       window.sessionStorage.removeItem(LOGIN_PASSWORD_RESET_STORAGE_KEY);

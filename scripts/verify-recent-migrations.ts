@@ -67,6 +67,18 @@ async function main() {
     console.log("✓ migracja 060 — password_reset_otps");
   }
 
+  const { error: rateError } = await supabase.from("auth_rate_limit_events").select("id").limit(0);
+
+  if (rateError?.message?.includes("auth_rate_limit_events")) {
+    console.error("✗ Brak tabeli auth_rate_limit_events — uruchom migrację 061.");
+    failed = true;
+  } else if (rateError) {
+    console.error("✗ Błąd sprawdzania 061:", rateError.message);
+    failed = true;
+  } else {
+    console.log("✓ migracja 061 — auth_rate_limit_events");
+  }
+
   if (failed) process.exit(1);
 }
 
