@@ -1,10 +1,10 @@
 import { requireSalesTeamManagement } from "@/lib/auth";
-import { filterGroupsByScope, getManagedGroupIdsForUser } from "@/lib/data/sales-group-access";
-import { fetchSalesGroups } from "@/lib/data/sales-groups";
-import { resolveSalesTeamUiContext, salesTeamPageCopy } from "@/lib/sales/team-ui";
+import { salesTeamPageCopy } from "@/lib/sales/team-ui";
+import { resolveZespolTeamUiForPage } from "@/lib/sales/resolve-zespol-team-ui";
 import { SalesGroupsClient } from "@/components/sales/SalesGroupsClient";
 import { SalesTeamSubnav } from "@/components/sales/SalesTeamSubnav";
 import { SalesTeamWorkspace } from "@/components/sales/SalesTeamWorkspace";
+import { TeamPanelReadOnlyNotice } from "@/components/sales/TeamPanelReadOnlyNotice";
 
 import type { Metadata } from "next";
 import { pageMetadataFor } from "@/lib/ui/page-metadata";
@@ -13,31 +13,18 @@ export const metadata: Metadata = pageMetadataFor("teamGroups");
 
 export default async function ZespolGrupyPage() {
   const user = await requireSalesTeamManagement();
-  const scope = await getManagedGroupIdsForUser(user);
-  const groups = filterGroupsByScope(await fetchSalesGroups(), scope);
-  const teamUi = await resolveSalesTeamUiContext(
-    user,
-    groups.map((g) => g.name)
-  );
+  const { teamUi, groups, readOnlyPreview } = await resolveZespolTeamUiForPage(user);
   const copy = salesTeamPageCopy(teamUi, "grupy");
-
-  let loadError: string | null = null;
-  try {
-    await fetchSalesGroups();
-  } catch (e) {
-    loadError =
-      e instanceof Error ? e.message : "Nie udało się wczytać grup. Uruchom migrację 028_sales_groups.sql w Supabase.";
-  }
 
   return (
     <SalesTeamWorkspace title={copy.title} description={copy.description} iconKey="teamAccounts">
       <SalesTeamSubnav />
-      {loadError ? (
-        <p className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2.5 text-xs text-amber-900">
-          {loadError}
-        </p>
-      ) : null}
-      <SalesGroupsClient initial={groups} canCreateGroups={teamUi.canCreateGroups} />
+      {readOnlyPreview ? <TeamPanelReadOnlyNotice /> : null}
+      <SalesGroupsClient
+        initial={groups}
+        canCreateGroups={teamUi.canCreateGroups}
+        readOnlyPreview={readOnlyPreview}
+      />
     </SalesTeamWorkspace>
   );
 }

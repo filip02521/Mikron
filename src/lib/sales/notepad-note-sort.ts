@@ -1,5 +1,14 @@
 import type { SalesNote } from "@/types/database";
 
+export function filterSalesNotesByQuery(notes: SalesNote[], query: string): SalesNote[] {
+  const needle = query.trim().toLowerCase();
+  if (!needle) return notes;
+  return notes.filter(
+    (note) =>
+      note.body.toLowerCase().includes(needle) || note.title?.toLowerCase().includes(needle)
+  );
+}
+
 export function sortSalesNotes(notes: SalesNote[]): SalesNote[] {
   return [...notes].sort((a, b) => {
     if (a.pinned !== b.pinned) return a.pinned ? -1 : 1;

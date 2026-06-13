@@ -15,6 +15,8 @@ export function DepartmentBoardClient({
   focusQuestionId = null,
   focusAnnouncementId = null,
   readOnly = false,
+  pageTitle,
+  previewHint,
 }: {
   initial: DepartmentBoardData;
   audience: "sales" | "procurement";
@@ -25,6 +27,8 @@ export function DepartmentBoardClient({
   focusQuestionId?: string | null;
   focusAnnouncementId?: string | null;
   readOnly?: boolean;
+  pageTitle?: string;
+  previewHint?: string;
 }) {
   if (audience === "sales") {
     return (
@@ -37,6 +41,8 @@ export function DepartmentBoardClient({
         focusQuestionId={focusQuestionId}
         focusAnnouncementId={focusAnnouncementId}
         readOnly={readOnly}
+        pageTitle={pageTitle}
+        previewHint={previewHint}
       />
     );
   }

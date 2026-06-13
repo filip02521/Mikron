@@ -22,10 +22,12 @@ const emptyForm = (): FormState => ({ name: "", sortOrder: "0" });
 export function SalesGroupsClient({
   initial,
   canCreateGroups = true,
+  readOnlyPreview = false,
 }: {
   initial: SalesGroupRow[];
   /** false — kierownik: tylko edycja przypisanych grup */
   canCreateGroups?: boolean;
+  readOnlyPreview?: boolean;
 }) {
   const router = useRouter();
   const [deletedIds, setDeletedIds] = useState<Set<string>>(() => new Set());
@@ -124,7 +126,7 @@ export function SalesGroupsClient({
             : "Widzisz tylko grupy przypisane do Twojego konta — możesz zmienić nazwę i kolejność. Nowe grupy zakłada administrator."}
         </p>
 
-        {canCreateGroups && !formOpen ? (
+        {canCreateGroups && !readOnlyPreview && !formOpen ? (
           <Button
             variant="outline"
             onClick={() => {
@@ -143,7 +145,7 @@ export function SalesGroupsClient({
           />
         ) : null}
 
-        {formOpen ? (
+        {formOpen && !readOnlyPreview ? (
           <Card>
             <CardHeader
               title={form.id ? "Edytuj grupę" : "Nowa grupa"}
@@ -208,10 +210,12 @@ export function SalesGroupsClient({
                     </p>
                   </div>
                   <div className="flex gap-1">
-                    <Button variant="ghost" size="sm" onClick={() => startEdit(g)}>
-                      Edytuj
-                    </Button>
-                    {canCreateGroups ? (
+                    {!readOnlyPreview ? (
+                      <Button variant="ghost" size="sm" onClick={() => startEdit(g)}>
+                        Edytuj
+                      </Button>
+                    ) : null}
+                    {canCreateGroups && !readOnlyPreview ? (
                       <Button
                         variant="ghost"
                         size="sm"

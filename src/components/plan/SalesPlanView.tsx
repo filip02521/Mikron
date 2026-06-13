@@ -298,6 +298,7 @@ export function SalesPlanView(props: {
   openOrderCountBySupplier: Record<string, number>;
   tourPreview?: boolean;
   error?: string | null;
+  pageTitle?: string;
 }) {
   return (
     <Suspense fallback={<SalesPlanViewFallback {...props} />}>
@@ -308,12 +309,13 @@ export function SalesPlanView(props: {
 
 function SalesPlanViewFallback({
   error = null,
-}: Pick<ComponentProps<typeof SalesPlanViewContent>, "error">) {
+  pageTitle = "Harmonogram",
+}: Pick<ComponentProps<typeof SalesPlanViewContent>, "error" | "pageTitle">) {
   return (
     <div className={salesPageShellClass}>
       {error ? <Alert tone="warning">{error}</Alert> : null}
       <Card padding={false} className="overflow-hidden">
-        <CardHeader inset density="compact" title="Harmonogram" description={PLAN_INTRO} />
+        <CardHeader inset density="compact" title={pageTitle} description={PLAN_INTRO} />
         <div className="px-4 py-12 text-center text-sm text-slate-500">Ładowanie…</div>
       </Card>
     </div>
@@ -328,6 +330,7 @@ function SalesPlanViewContent({
   openOrderCountBySupplier,
   tourPreview = false,
   error = null,
+  pageTitle = "Harmonogram",
 }: {
   workspace: SummaryWorkspaceData;
   suppliers: SupplierWithSchedule[];
@@ -336,6 +339,7 @@ function SalesPlanViewContent({
   openOrderCountBySupplier: Record<string, number>;
   tourPreview?: boolean;
   error?: string | null;
+  pageTitle?: string;
 }) {
   const previewHref = useSalesPreviewHref();
   const previewDla = useSearchParams().get("dla");
@@ -391,7 +395,7 @@ function SalesPlanViewContent({
               <IconCalendar size={20} />
             </SectionHeadingIcon>
           }
-          title="Harmonogram"
+          title={pageTitle}
           description={PLAN_INTRO}
           action={<PlanGuide />}
         />

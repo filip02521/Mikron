@@ -39,6 +39,7 @@ export function PlanClient(props: {
   openOrderCountBySupplier?: Record<string, number>;
   statsBySupplierId?: Record<string, DeliveryStats>;
   error?: string | null;
+  pageTitle?: string;
 }) {
   const tourDemo = useSalesOnboardingDemo("plan");
   const demo = useMemo(() => buildOnboardingPlanDemo(), []);

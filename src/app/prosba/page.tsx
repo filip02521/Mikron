@@ -16,7 +16,7 @@ import { PageHeader } from "@/components/ui/PageHeader";
 import { resolveProsbaSupplierId } from "@/lib/orders/prosba-url";
 import { SalesAccountLinkRequired } from "@/components/sales/SalesAccountLinkRequired";
 import { Alert } from "@/components/ui/Alert";
-import { salesPageShellClass } from "@/lib/ui/ontime-theme";
+import { salesPageShellClass, brandLinkClass } from "@/lib/ui/ontime-theme";
 
 import type { Metadata } from "next";
 import { pageMetadataFor } from "@/lib/ui/page-metadata";
@@ -109,7 +109,7 @@ export default async function ProsbaPage({
           />
           <Alert tone="info">
             Wybierz handlowca z{" "}
-            <a href="/admin/wybor-handlowca" className="font-medium text-indigo-700 underline">
+            <a href="/admin/wybor-handlowca" className={brandLinkClass}>
               listy podglądu
             </a>
             , aby zobaczyć jego formularz i panel zamówień.
@@ -126,6 +126,7 @@ export default async function ProsbaPage({
         <ManagerPreviewBanner
           salesPersonId={lockedSalesPerson.id}
           salesPersonName={lockedSalesPerson.name}
+          scope="prosba"
           readOnly
         />
         <Suspense
@@ -170,7 +171,7 @@ export default async function ProsbaPage({
         <PageHeader title="Nowa prośba" description="Nie znaleziono wybranego handlowca." />
         <Alert tone="error">
           Sprawdź link lub wybierz osobę z{" "}
-          <a href="/zespol" className="font-medium text-red-800 underline">
+          <a href="/zespol" className={brandLinkClass}>
             podglądu zespołu
           </a>
           .
@@ -189,7 +190,7 @@ export default async function ProsbaPage({
         <Alert tone="warning">
           Aby składać prośby w swoim imieniu, administrator musi przypisać Ci kartę handlowca.
           Możesz od razu złożyć prośbę w imieniu innej osoby z{" "}
-          <a href="/zespol" className="font-medium text-indigo-700 underline">
+          <a href="/zespol" className={brandLinkClass}>
             podglądu zespołu
           </a>
           .
@@ -204,6 +205,13 @@ export default async function ProsbaPage({
 
   return (
     <div className={salesPageShellClass}>
+      {isManager && lockedSalesPerson && lockedSalesPerson.id !== managerSelfId ? (
+        <ManagerPreviewBanner
+          salesPersonId={lockedSalesPerson.id}
+          salesPersonName={lockedSalesPerson.name}
+          scope="prosba"
+        />
+      ) : null}
       <Suspense
         fallback={
           <div className="overflow-hidden rounded-md border border-slate-200/80 bg-white shadow-[var(--shadow-card-elevated)]">

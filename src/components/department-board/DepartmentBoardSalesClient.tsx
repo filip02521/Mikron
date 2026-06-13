@@ -44,7 +44,7 @@ import type { DepartmentBoardData } from "@/lib/data/department-board";
 import { countUnreadAnnouncements } from "@/lib/department-board/unread";
 import { cn } from "@/lib/cn";
 import { mojeShipmentListClass } from "@/lib/ui/moje-shipment-row-styles";
-import { salesPageShellClass, salesTypography, sectionIconTileBrandClass } from "@/lib/ui/ontime-theme";
+import { salesPageShellClass, salesTypography, sectionIconTileBrandClass, brandLinkClass } from "@/lib/ui/ontime-theme";
 import { NotatnikPanel } from "@/components/notatnik/NotatnikPanel";
 import { actionCreateQuestion } from "@/app/actions/department-board";
 
@@ -60,6 +60,8 @@ export function DepartmentBoardSalesClient({
   focusQuestionId = null,
   focusAnnouncementId = null,
   readOnly = false,
+  pageTitle,
+  previewHint,
 }: {
   initial: DepartmentBoardData;
   loadError?: string | null;
@@ -69,6 +71,8 @@ export function DepartmentBoardSalesClient({
   focusQuestionId?: string | null;
   focusAnnouncementId?: string | null;
   readOnly?: boolean;
+  pageTitle?: string;
+  previewHint?: string;
 }) {
   const router = useRouter();
   const tourDemo = useSalesOnboardingDemo("tablica");
@@ -171,7 +175,7 @@ export function DepartmentBoardSalesClient({
       <div className="space-y-2 border-b border-slate-100 pb-4">
         <p className={salesTypography.sectionHint}>
           {DEPARTMENT_BOARD_QUESTIONS_EXPLAINER.body}{" "}
-          <Link href="/prosba" className="font-medium text-indigo-700 hover:underline">
+          <Link href="/prosba" className={brandLinkClass}>
             Nowa prośba
           </Link>{" "}
           służy do zamówień u dostawcy.
@@ -211,7 +215,7 @@ export function DepartmentBoardSalesClient({
         <CardHeader
           inset
           density="compact"
-          title={DEPARTMENT_BOARD_SALES_PAGE_TITLE}
+          title={pageTitle ?? DEPARTMENT_BOARD_SALES_PAGE_TITLE}
           description={pageDescription}
           action={<DepartmentBoardGuide />}
           leading={
@@ -220,6 +224,12 @@ export function DepartmentBoardSalesClient({
             </SectionHeadingIcon>
           }
         />
+
+        {previewHint ? (
+          <div className="border-b border-slate-100 px-3 py-2.5 sm:px-4">
+            <p className={salesTypography.sectionHint}>{previewHint}</p>
+          </div>
+        ) : null}
 
         {tourDemo ? null : <DepartmentBoardIntroBanner />}
 
@@ -268,7 +278,7 @@ export function DepartmentBoardSalesClient({
                       thread={thread}
                       embedded
                       unread={!readSet.has(thread.id)}
-                      autoMarkRead={!tourDemo}
+                      autoMarkRead={!tourDemo && !readOnly}
                       onChanged={refresh}
                     />
                   ))}
@@ -289,12 +299,6 @@ export function DepartmentBoardSalesClient({
             >
               {questionFormPanel}
 
-              {readOnly ? (
-                <Alert tone="info" className="mb-4 text-xs">
-                  Podgląd administratora — wysyłanie pytań jest wyłączone.
-                </Alert>
-              ) : null}
-
               <DepartmentBoardQuestionFilters
                 value={activeQuestionFilter}
                 onChange={setQuestionFilter}
@@ -309,7 +313,7 @@ export function DepartmentBoardSalesClient({
                       question={question}
                       embedded
                       unseenReply={unseenSet.has(question.id)}
-                      autoMarkSeen={!tourDemo && question.status === "answered"}
+                      autoMarkSeen={!tourDemo && !readOnly && question.status === "answered"}
                       defaultExpanded={
                         tourDemo ||
                         focusQuestionId === question.id ||

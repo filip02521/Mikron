@@ -138,7 +138,7 @@ export function AppShellClient({
       initialVersion={operationsDailyPanelVersion}
     >
     <SalesUpdatesProvider
-      enabled={salesLive && !salesOnboardingActive}
+      enabled={salesLive && !salesOnboardingActive && !adminPanelPreview}
       initialVersion={salesActivityVersion}
     >
       <SalesOnboardingGate
@@ -182,7 +182,12 @@ export function AppShellClient({
           mobileChrome={mobileChrome}
           topNotices={
             adminPanelPreview ? (
-              <AdminPreviewBanner panelContext={adminPanelPreview} />
+              <AdminPreviewBanner
+                panelContext={adminPanelPreview}
+                previewSalesPersonName={
+                  adminPanelPreview === "sales" ? salesPersonName : null
+                }
+              />
             ) : salesLive ? (
               <>
                 {salesBoardAttention ? (

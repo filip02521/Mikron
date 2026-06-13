@@ -4,6 +4,7 @@ import { useState, useTransition } from "react";
 import { isRedirectError } from "next/dist/client/components/redirect-error";
 import { actionOpenSalesPersonPreview } from "@/app/actions/admin-panel-context";
 import { cn } from "@/lib/cn";
+import { brandLinkSubtleClass } from "@/lib/ui/ontime-theme";
 
 export function SalesPersonPreviewLink({
   salesPersonId,
@@ -44,7 +45,7 @@ export function SalesPersonPreviewLink({
             <span className="mt-0.5 block text-xs text-slate-500">{email}</span>
           ) : null}
         </span>
-        <span className="shrink-0 text-xs font-medium text-indigo-600">
+        <span className={cn("shrink-0 text-xs font-medium", brandLinkSubtleClass)}>
           {pending ? "Otwieranie…" : "Podgląd →"}
         </span>
       </button>

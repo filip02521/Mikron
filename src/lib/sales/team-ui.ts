@@ -76,6 +76,13 @@ export function salesTeamPageCopy(
   page: SalesTeamPageKey
 ): { title: string; description: string } {
   if (page === "overview") {
+    if (ctx.readOnlyPreview) {
+      return {
+        title: "Podgląd zespołu",
+        description:
+          "Handlowcy w grupach — podgląd prośb i ZK. Zarządzanie w panelu administracji.",
+      };
+    }
     if (ctx.isAdmin) {
       return {
         title: "Podgląd zespołu",
@@ -97,6 +104,12 @@ export function salesTeamPageCopy(
   }
 
   if (page === "handlowcy") {
+    if (ctx.readOnlyPreview) {
+      return {
+        title: "Handlowcy",
+        description: "Podgląd kart handlowców — dodawanie i edycja w panelu administracji.",
+      };
+    }
     if (ctx.isAdmin) {
       return {
         title: "Handlowcy",
@@ -118,6 +131,13 @@ export function salesTeamPageCopy(
   }
 
   if (ctx.isAdmin) {
+    if (ctx.readOnlyPreview) {
+      return {
+        title: "Grupy",
+        description:
+          "Podgląd grup handlowców — tworzenie i edycja w panelu administracji.",
+      };
+    }
     return {
       title: "Grupy",
       description:

@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   actionArchiveSalesNote,
   actionCreateSalesNote,
@@ -12,7 +12,7 @@ import { Alert } from "@/components/ui/Alert";
 import { KeyboardShortcutsHint } from "@/components/ui/KeyboardShortcutsHint";
 import { cn } from "@/lib/cn";
 import { controlFocusClass, salesTypography } from "@/lib/ui/ontime-theme";
-import { reorderNoteIds, sortSalesNotes, notesInSamePinBand } from "@/lib/sales/notepad-note-sort";
+import { reorderNoteIds, sortSalesNotes, notesInSamePinBand, filterSalesNotesByQuery } from "@/lib/sales/notepad-note-sort";
 import type { SalesNote, SalesNoteColor } from "@/types/database";
 import { isFollowUpDue } from "@/lib/sales/notepad-follow-up";
 import { NoteColorPicker, NoteCardToolbar } from "./NoteColorPicker";
@@ -27,6 +27,10 @@ import {
 import { NOTE_COLOR_CARD } from "./note-styles";
 import { DragHandleGlyph, PinGlyph } from "@/components/ui/UiGlyphs";
 import { IconGripVertical } from "@/components/icons/StrokeIcons";
+import {
+  SalesListFilterEmptyHint,
+  SalesSectionEmptyHint,
+} from "@/components/sales/SalesListEmptyHints";
 
 export const NOTATNIK_KEYBOARD_HINTS = [
   { keys: ["N"], label: "nowa notatka" },
@@ -360,14 +364,11 @@ export function NotesSection({
   }, [composeOpen]);
 
   const sorted = sortSalesNotes(notes);
-  const needle = searchQuery.trim().toLowerCase();
-  const filtered = needle
-    ? sorted.filter(
-        (note) =>
-          note.body.toLowerCase().includes(needle) ||
-          note.title?.toLowerCase().includes(needle)
-      )
-    : sorted;
+  const needle = searchQuery.trim();
+  const filtered = useMemo(
+    () => filterSalesNotesByQuery(sorted, searchQuery),
+    [sorted, searchQuery]
+  );
 
   const canDrag = !readOnly && !needle;
 
@@ -404,9 +405,7 @@ export function NotesSection({
     return (
       <div className="space-y-1.5">
         {sectionLabel ? (
-          <p className="text-[10px] font-medium uppercase tracking-wide text-slate-500">
-            {sectionLabel}
-          </p>
+          <p className={salesTypography.sectionLabel}>{sectionLabel}</p>
         ) : null}
         <div className={NOTATNIK_NOTES_GRID_CLASS}>
           {list.map((note) => (
@@ -552,7 +551,7 @@ export function NotesSection({
   }
 
   return (
-    <div className={embedded ? "space-y-3" : "space-y-3"}>
+    <div className={embedded ? "space-y-0" : "space-y-3"}>
       {!embedded ? (
         <div className="flex flex-wrap items-end justify-between gap-2">
           <div>
@@ -560,9 +559,12 @@ export function NotesSection({
             <KeyboardShortcutsHint items={[...NOTATNIK_KEYBOARD_HINTS]} className="mt-1" compact />
           </div>
         </div>
-      ) : (
+      ) : null}
+
+      <div className={cn(embedded && "space-y-3 px-3 sm:px-4 pt-3", !embedded && "space-y-3")}>
+      {embedded ? (
         <KeyboardShortcutsHint items={[...NOTATNIK_KEYBOARD_HINTS]} compact />
-      )}
+      ) : null}
 
       {!readOnly ? (
         composeExpanded ? (
@@ -680,13 +682,20 @@ export function NotesSection({
       ) : null}
 
       {error ? <Alert tone="error">{error}</Alert> : null}
+      </div>
 
       {filtered.length === 0 ? (
-        <p className="rounded-md border border-dashed border-slate-200 bg-slate-50/80 px-3 py-4 text-center text-xs text-slate-500">
-          {needle ? "Brak notatek pasujących do wyszukiwania." : "Brak notatek."}
-        </p>
+        needle ? (
+          <SalesListFilterEmptyHint
+            query={searchQuery.trim()}
+            onClear={() => setSearchQuery("")}
+            entityLabel="notatek"
+          />
+        ) : (
+          <SalesSectionEmptyHint message="Brak notatek." />
+        )
       ) : (
-        <div className="space-y-4">
+        <div className={cn("space-y-4", embedded && "px-3 pb-3 sm:px-4")}>
           {renderNoteGrid(pinnedFiltered, pinnedFiltered.length ? "Przypięte" : undefined)}
           {renderNoteGrid(regularFiltered, pinnedFiltered.length ? "Pozostałe" : undefined)}
         </div>

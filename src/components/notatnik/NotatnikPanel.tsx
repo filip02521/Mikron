@@ -16,6 +16,7 @@ export function NotatnikPanel({
   children,
   className,
   bodyClassName,
+  flushBody = false,
 }: {
   title: string;
   description?: string;
@@ -28,6 +29,8 @@ export function NotatnikPanel({
   children: ReactNode;
   className?: string;
   bodyClassName?: string;
+  /** Lista przy krawędzi sekcji — jak wiersze prośb w /moje. */
+  flushBody?: boolean;
 }) {
   return (
     <section className={cn(mojeShipmentSectionShellClass, className)}>
@@ -41,7 +44,7 @@ export function NotatnikPanel({
         icon={icon}
         tileClassName={tileClassName}
       />
-      <div className={cn("p-3 sm:p-4", bodyClassName)}>{children}</div>
+      <div className={cn(flushBody ? "space-y-3" : "p-3 sm:p-4", bodyClassName)}>{children}</div>
     </section>
   );
 }

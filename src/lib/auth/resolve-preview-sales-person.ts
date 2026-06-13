@@ -25,3 +25,19 @@ export async function resolvePreviewSalesPerson(
   if (!data) return null;
   return { id: data.id, name: data.name };
 }
+
+/** Profil użytkownika powiązany z kartą handlowca — do tablicy i stanu odczytów. */
+export async function resolveProfileIdForSalesPerson(
+  salesPersonId: string
+): Promise<string | null> {
+  if (!hasSupabaseConfig() || !salesPersonId) return null;
+
+  const supabase = createAdminClient();
+  const { data } = await supabase
+    .from("profiles")
+    .select("id")
+    .eq("sales_person_id", salesPersonId)
+    .maybeSingle();
+
+  return data?.id ?? null;
+}

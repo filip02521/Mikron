@@ -1,9 +1,9 @@
 "use client";
 
-import { Fragment, useCallback, useEffect, useMemo, useState } from "react";
+import { Fragment, useCallback, useEffect, useMemo, useReducer } from "react";
 import type { SalesZkWatch } from "@/types/database";
 import type { ZkWatchOrderHints } from "@/lib/sales/zk-watch-order-link";
-import { groupZkWatchesByMonth } from "@/lib/sales/zk-watch-sort";
+import { groupZkWatchesByMonth, type ZkWatchMonthGroup } from "@/lib/sales/zk-watch-sort";
 import {
   collapseAllZkMonthGroups,
   defaultCollapsedZkMonthKeys,
@@ -18,7 +18,7 @@ import {
 import { flashNotepadAnchor } from "@/lib/sales/notepad-anchor";
 import { formatProsbaZkLinkNumber } from "@/lib/orders/zk-prosba-link-display";
 import { cn } from "@/lib/cn";
-import { panelTextLinkClass } from "@/lib/ui/ontime-theme";
+import { panelTextLinkClass, salesTypography } from "@/lib/ui/ontime-theme";
 import { IconChevronRight } from "@/components/icons/StrokeIcons";
 import { ZkWatchCard } from "./ZkWatchCard";
 import { NOTATNIK_ZK_LIST_CLASS } from "./notatnik-layout";
@@ -47,6 +47,60 @@ function ZkWatchMonthExpandControl({
       </button>
     </div>
   );
+}
+
+type ListUiState = {
+  collapsedMonths: Set<string>;
+  groupsSignature: string;
+  openModalWatchId: string | null;
+  appliedFocusWatchId: string | null;
+};
+
+type ListUiAction =
+  | { type: "toggleMonth"; monthKey: string }
+  | { type: "expandAll"; groups: ZkWatchMonthGroup[] }
+  | { type: "collapseAll"; groups: ZkWatchMonthGroup[] }
+  | { type: "syncGroups"; groups: ZkWatchMonthGroup[]; signature: string }
+  | { type: "syncFocus"; focusWatchId: string; groups: ZkWatchMonthGroup[] }
+  | { type: "setModal"; watchId: string | null }
+  | { type: "closeMissingModal"; watchIds: Set<string> };
+
+function listUiReducer(state: ListUiState, action: ListUiAction): ListUiState {
+  switch (action.type) {
+    case "toggleMonth":
+      return {
+        ...state,
+        collapsedMonths: toggleZkMonthGroupCollapsed(state.collapsedMonths, action.monthKey),
+      };
+    case "expandAll":
+      return { ...state, collapsedMonths: expandAllZkMonthGroups(action.groups) };
+    case "collapseAll":
+      return { ...state, collapsedMonths: collapseAllZkMonthGroups(action.groups) };
+    case "syncGroups":
+      if (state.groupsSignature === action.signature) return state;
+      return {
+        ...state,
+        groupsSignature: action.signature,
+        collapsedMonths: mergeZkMonthCollapseOnGroupsChange(state.collapsedMonths, action.groups),
+      };
+    case "syncFocus": {
+      if (state.appliedFocusWatchId === action.focusWatchId) return state;
+      const monthKey = monthKeyForWatchInGroups(action.groups, action.focusWatchId);
+      if (!monthKey) return state;
+      return {
+        ...state,
+        appliedFocusWatchId: action.focusWatchId,
+        collapsedMonths: expandMonthGroupKey(state.collapsedMonths, monthKey),
+      };
+    }
+    case "setModal":
+      return { ...state, openModalWatchId: action.watchId };
+    case "closeMissingModal":
+      if (!state.openModalWatchId || action.watchIds.has(state.openModalWatchId)) return state;
+      return { ...state, openModalWatchId: null };
+    default:
+      return state;
+  }
 }
 
 export function ZkWatchGroupedList({
@@ -87,30 +141,28 @@ export function ZkWatchGroupedList({
 }) {
   const groups = useMemo(() => groupZkWatchesByMonth(watches), [watches]);
   const groupsSignature = useMemo(() => zkWatchMonthGroupsSignature(groups), [groups]);
+  const watchIds = useMemo(() => new Set(watches.map((watch) => watch.id)), [watches]);
 
-  const [collapsedMonths, setCollapsedMonths] = useState<Set<string>>(() =>
-    defaultCollapsedZkMonthKeys(groups)
-  );
-  const [openModalWatchId, setOpenModalWatchId] = useState<string | null>(null);
-  const [appliedGroupsSignature, setAppliedGroupsSignature] = useState(groupsSignature);
-  const [appliedFocusWatchId, setAppliedFocusWatchId] = useState<string | null>(null);
+  const [uiState, dispatchUi] = useReducer(listUiReducer, groups, (initialGroups) => ({
+    collapsedMonths: defaultCollapsedZkMonthKeys(initialGroups),
+    groupsSignature: zkWatchMonthGroupsSignature(initialGroups),
+    openModalWatchId: null,
+    appliedFocusWatchId: null,
+  }));
 
-  if (openModalWatchId && !watches.some((watch) => watch.id === openModalWatchId)) {
-    setOpenModalWatchId(null);
+  if (uiState.groupsSignature !== groupsSignature) {
+    dispatchUi({ type: "syncGroups", groups, signature: groupsSignature });
   }
 
-  if (groupsSignature !== appliedGroupsSignature) {
-    setAppliedGroupsSignature(groupsSignature);
-    setCollapsedMonths((prev) => mergeZkMonthCollapseOnGroupsChange(prev, groups));
+  if (focusWatchId && focusWatchId !== uiState.appliedFocusWatchId) {
+    dispatchUi({ type: "syncFocus", focusWatchId, groups });
   }
 
-  if (focusWatchId && focusWatchId !== appliedFocusWatchId) {
-    const monthKey = monthKeyForWatchInGroups(groups, focusWatchId);
-    if (monthKey) {
-      setAppliedFocusWatchId(focusWatchId);
-      setCollapsedMonths((prev) => expandMonthGroupKey(prev, monthKey));
-    }
+  if (uiState.openModalWatchId && !watchIds.has(uiState.openModalWatchId)) {
+    dispatchUi({ type: "closeMissingModal", watchIds });
   }
+
+  const { collapsedMonths, openModalWatchId } = uiState;
 
   useEffect(() => {
     if (!focusWatchId) return;
@@ -134,15 +186,15 @@ export function ZkWatchGroupedList({
   }, [focusWatchId, watches, groups, collapsedMonths, onFocusWatchHandled, onLiveAnnounce]);
 
   const toggleMonth = useCallback((monthKey: string) => {
-    setCollapsedMonths((prev) => toggleZkMonthGroupCollapsed(prev, monthKey));
+    dispatchUi({ type: "toggleMonth", monthKey });
   }, []);
 
   const expandAll = useCallback(() => {
-    setCollapsedMonths(expandAllZkMonthGroups(groups));
+    dispatchUi({ type: "expandAll", groups });
   }, [groups]);
 
   const collapseAll = useCallback(() => {
-    setCollapsedMonths(collapseAllZkMonthGroups(groups));
+    dispatchUi({ type: "collapseAll", groups });
   }, [groups]);
 
   const allExpanded =
@@ -177,7 +229,7 @@ export function ZkWatchGroupedList({
                       isOpen && "rotate-90"
                     )}
                   />
-                  <span className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">
+                  <span className={salesTypography.sectionLabel}>
                     {group.label}
                     <span className="ml-2 font-normal normal-case tabular-nums text-slate-400">
                       ({group.watches.length})
@@ -206,7 +258,7 @@ export function ZkWatchGroupedList({
                       onRefreshed={onRefreshed}
                       onDeleted={() => onDeleted?.(watch.id)}
                       onLinesModalOpenChange={(open) => {
-                        setOpenModalWatchId(open ? watch.id : null);
+                        dispatchUi({ type: "setModal", watchId: open ? watch.id : null });
                       }}
                       hasNewWarehouseArrival={unseenWatchIds?.has(watch.id) ?? false}
                       onWatchSeen={onWatchSeen}

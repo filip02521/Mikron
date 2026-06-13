@@ -1,10 +1,13 @@
 "use client";
 
 import { NavIcon } from "@/components/icons/NavIcon";
-import { navIconTileIdleClass } from "@/components/icons/NavIcon";
 import { SectionHeadingIcon } from "@/components/icons/SectionHeadingIcon";
 import { Card, CardHeader } from "@/components/ui/Card";
-import { salesCardBodyClass, salesTeamPageShellClass } from "@/lib/ui/ontime-theme";
+import {
+  salesCardBodyClass,
+  salesTeamPageShellClass,
+  sectionIconTileBrandClass,
+} from "@/lib/ui/ontime-theme";
 
 export function SalesTeamWorkspace({
   title,
@@ -26,7 +29,7 @@ export function SalesTeamWorkspace({
           inset
           density="compact"
           leading={
-            <SectionHeadingIcon tileClassName={navIconTileIdleClass(iconKey)}>
+            <SectionHeadingIcon tileClassName={sectionIconTileBrandClass}>
               <NavIcon navKey={iconKey} size={20} />
             </SectionHeadingIcon>
           }

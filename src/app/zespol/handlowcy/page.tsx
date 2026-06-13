@@ -1,18 +1,12 @@
 import { requireSalesTeamManagement } from "@/lib/auth";
-import { isAdminReadOnlyPanelPreview } from "@/lib/auth/admin-panel-context";
-import { readAdminPanelContextForSession } from "@/lib/auth/read-admin-panel-context";
-import { filterGroupsByScope, getManagedGroupIdsForUser } from "@/lib/data/sales-group-access";
-import { fetchSalesGroups } from "@/lib/data/sales-groups";
 import { fetchSalesPeopleAdminForUser } from "@/lib/data/sales-people-admin";
-import {
-  applyAdminPanelReadOnlyTeamUi,
-  resolveSalesTeamUiContext,
-  salesTeamPageCopy,
-} from "@/lib/sales/team-ui";
+import { salesTeamPageCopy } from "@/lib/sales/team-ui";
+import { resolveZespolTeamUiForPage } from "@/lib/sales/resolve-zespol-team-ui";
 import { SalesAdminClient } from "@/components/admin/SalesAdminClient";
 import { SalesTeamOverview } from "@/components/sales/SalesTeamOverview";
 import { SalesTeamSubnav } from "@/components/sales/SalesTeamSubnav";
 import { SalesTeamWorkspace } from "@/components/sales/SalesTeamWorkspace";
+import { TeamPanelReadOnlyNotice } from "@/components/sales/TeamPanelReadOnlyNotice";
 import { Alert } from "@/components/ui/Alert";
 
 import type { Metadata } from "next";
@@ -22,17 +16,7 @@ export const metadata: Metadata = pageMetadataFor("teamSales");
 
 export default async function ZespolHandlowcyPage() {
   const user = await requireSalesTeamManagement();
-  const { panelContext } = await readAdminPanelContextForSession();
-  const readOnlyPreview = isAdminReadOnlyPanelPreview(user.role, panelContext);
-  const scope = await getManagedGroupIdsForUser(user);
-  const groups = filterGroupsByScope(await fetchSalesGroups(), scope);
-  const teamUi = applyAdminPanelReadOnlyTeamUi(
-    await resolveSalesTeamUiContext(
-      user,
-      groups.map((g) => g.name)
-    ),
-    readOnlyPreview
-  );
+  const { teamUi, groups, readOnlyPreview } = await resolveZespolTeamUiForPage(user);
   const copy = salesTeamPageCopy(teamUi, "handlowcy");
 
   let rows: Awaited<ReturnType<typeof fetchSalesPeopleAdminForUser>> = [];
@@ -51,14 +35,10 @@ export default async function ZespolHandlowcyPage() {
       iconKey="teamAccounts"
     >
       <SalesTeamSubnav />
+      {readOnlyPreview ? <TeamPanelReadOnlyNotice /> : null}
       {loadError ? (
-        <p className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2.5 text-xs text-amber-900">
+        <Alert tone="warning" className="mb-4 text-xs leading-relaxed">
           {loadError}
-        </p>
-      ) : null}
-      {readOnlyPreview ? (
-        <Alert tone="info" className="mb-4 text-xs">
-          Podgląd tylko do odczytu — zarządzanie handlowcami w panelu administracji.
         </Alert>
       ) : null}
       {readOnlyPreview ? (

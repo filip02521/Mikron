@@ -28,6 +28,7 @@ import type { OrderFormSupplierOption } from "@/lib/orders/order-form-suppliers"
 import { salesPageShellClass, pageToolbarSizingClass } from "@/lib/ui/ontime-theme";
 import { SalesAccountLinkRequired } from "@/components/sales/SalesAccountLinkRequired";
 import { ManagerPreviewBanner } from "@/components/sales/ManagerPreviewBanner";
+import { SystemNotice } from "@/components/ui/SystemNotice";
 import {
   fetchSalesBoardAttentionSnapshot,
   type SalesBoardAttentionSnapshot,
@@ -282,7 +283,7 @@ export default async function MojePage({
     ) : undefined;
 
   const showSalesSync = Boolean(
-    adminSalesPreview || (role && !canAccessOperations(role))
+    !adminSalesPreview && (role && !canAccessOperations(role))
   );
 
   return (
@@ -305,9 +306,18 @@ export default async function MojePage({
         <Alert tone="error">{loadError}</Alert>
       ) : null}
 
-      {role && canAccessOperations(role) && !salesPersonId ? (
-        <Alert tone="warning">
-          Tryb administratora — widzisz wszystkie zamówienia.
+      {role && canAccessOperations(role) && !salesPersonId && isAdmin(role ?? "admin") ? (
+        <SystemNotice
+          variant="action"
+          className="mb-4"
+          title="Widok wszystkich prośb"
+          description="To lista operacyjna — nie panel pojedynczego handlowca. Aby zobaczyć konto handlowca, użyj podglądu."
+          href="/admin/wybor-handlowca"
+          actionLabel="Wybierz handlowca"
+        />
+      ) : role && canAccessOperations(role) && !salesPersonId ? (
+        <Alert tone="warning" className="mb-4">
+          Tryb operacyjny — widzisz wszystkie zamówienia we wszystkich kontach handlowców.
         </Alert>
       ) : null}
 

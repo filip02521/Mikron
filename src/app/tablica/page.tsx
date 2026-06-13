@@ -1,7 +1,11 @@
 import { redirect } from "next/navigation";
 import { getSessionUser } from "@/lib/auth";
 import { resolveSalesPersonForUser } from "@/lib/auth/sales-person";
-import { isAdmin, isSalesAccount } from "@/lib/auth-roles";
+import {
+  resolvePreviewSalesPerson,
+  resolveProfileIdForSalesPerson,
+} from "@/lib/auth/resolve-preview-sales-person";
+import { isAdmin, isSalesAccount, isSalesManager } from "@/lib/auth-roles";
 import { readAdminPanelContextForSession } from "@/lib/auth/read-admin-panel-context";
 import { DepartmentBoardClient } from "@/components/department-board/DepartmentBoardClient";
 import {
@@ -9,7 +13,12 @@ import {
   fetchSalesBoardAttentionSnapshot,
 } from "@/lib/data/department-board";
 import { SalesAccountLinkRequired } from "@/components/sales/SalesAccountLinkRequired";
-import { DEPARTMENT_BOARD_SALES_PAGE_DESC, DEPARTMENT_BOARD_SALES_PAGE_TITLE } from "@/lib/department-board/copy";
+import { ManagerPreviewBanner } from "@/components/sales/ManagerPreviewBanner";
+import { SalesPreviewPageChrome } from "@/components/sales/SalesPreviewPageChrome";
+import {
+  DEPARTMENT_BOARD_SALES_PAGE_DESC,
+  DEPARTMENT_BOARD_SALES_PAGE_TITLE,
+} from "@/lib/department-board/copy";
 
 import type { Metadata } from "next";
 import { pageMetadataFor } from "@/lib/ui/page-metadata";
@@ -23,64 +32,89 @@ export default async function SalesBoardPage({
 }) {
   const { widok, watek, dla: previewSalesPersonId } = await searchParams;
   const focusThreadId = watek?.trim() || null;
-  /** watek + widok=ogloszenia → scroll do ogłoszenia; watek + widok=pytania (lub brak) → pytanie. */
   const focusQuestionId = widok === "ogloszenia" ? null : focusThreadId;
   const focusAnnouncementId = widok === "ogloszenia" ? focusThreadId : null;
   const user = await getSessionUser();
   const { panelContext } = await readAdminPanelContextForSession();
-  const adminSalesPreview = Boolean(
-    user?.role &&
-      isAdmin(user.role) &&
-      (panelContext === "sales" || Boolean(previewSalesPersonId?.trim()))
-  );
 
-  if (!user?.role || (!isSalesAccount(user.role) && !adminSalesPreview)) {
+  if (!user?.role) {
     redirect("/login");
   }
 
-  if (adminSalesPreview) {
-    let loadError: string | null = null;
-    let board = { announcements: [], questions: [], readAnnouncementIds: [] } as Awaited<
-      ReturnType<typeof fetchDepartmentBoard>
-    >;
-    let unseenQuestionIds: string[] = [];
-    let initialTab: "announcements" | "questions" | undefined;
-    if (widok === "pytania") initialTab = "questions";
-    if (widok === "ogloszenia") initialTab = "announcements";
+  let salesPersonId: string | null = null;
+  let salesPersonName: string | null = null;
+  let isTeamPreview = false;
+  let readOnlyPreview = false;
+  let adminReadOnlyPreview = false;
+  let boardProfileId: string | null = user.id;
+  let linkError: string | null = null;
+  let previewProfileMissing = false;
 
-    try {
-      const [boardData, attention] = await Promise.all([
-        fetchDepartmentBoard(user.id),
-        fetchSalesBoardAttentionSnapshot(user.id),
-      ]);
-      board = boardData;
-      unseenQuestionIds = attention.unseenQuestionIds;
-    } catch (e) {
-      loadError = e instanceof Error ? e.message : "Nie udało się załadować tablicy.";
+  const adminSalesPanelPreview = Boolean(
+    isAdmin(user.role) && panelContext === "sales"
+  );
+
+  if (isAdmin(user.role) && (adminSalesPanelPreview || previewSalesPersonId?.trim())) {
+    readOnlyPreview = true;
+    adminReadOnlyPreview = true;
+    if (previewSalesPersonId?.trim()) {
+      const preview = await resolvePreviewSalesPerson(previewSalesPersonId, user);
+      if (preview) {
+        salesPersonId = preview.id;
+        salesPersonName = preview.name;
+        isTeamPreview = true;
+        const linkedProfileId = await resolveProfileIdForSalesPerson(preview.id);
+        if (linkedProfileId) {
+          boardProfileId = linkedProfileId;
+        } else {
+          previewProfileMissing = true;
+          boardProfileId = user.id;
+        }
+      } else {
+        linkError = "Nie znaleziono handlowca do podglądu.";
+      }
     }
-
-    return (
-      <DepartmentBoardClient
-        initial={board}
-        audience="sales"
-        loadError={loadError}
-        unseenQuestionIds={unseenQuestionIds}
-        initialTab={initialTab}
-        focusQuestionId={focusQuestionId}
-        focusAnnouncementId={focusAnnouncementId}
-        readOnly
-      />
-    );
+  } else if (isSalesManager(user.role) && previewSalesPersonId?.trim()) {
+    const own = await resolveSalesPersonForUser(user);
+    const preview = await resolvePreviewSalesPerson(previewSalesPersonId, user);
+    if (preview) {
+      salesPersonId = preview.id;
+      salesPersonName = preview.name;
+      isTeamPreview = preview.id !== own?.id;
+      if (isTeamPreview) {
+        readOnlyPreview = true;
+        const linkedProfileId = await resolveProfileIdForSalesPerson(preview.id);
+        if (linkedProfileId) {
+          boardProfileId = linkedProfileId;
+        } else {
+          previewProfileMissing = true;
+          boardProfileId = user.id;
+        }
+      } else {
+        boardProfileId = user.id;
+      }
+    } else {
+      linkError = "Nie znaleziono handlowca do podglądu.";
+    }
+  } else if (!isSalesAccount(user.role)) {
+    redirect("/login");
   }
 
-  const salesPerson = await resolveSalesPersonForUser(user);
-  if (!salesPerson?.id) {
-    return (
-      <SalesAccountLinkRequired
-        title={DEPARTMENT_BOARD_SALES_PAGE_TITLE}
-        description={DEPARTMENT_BOARD_SALES_PAGE_DESC}
-      />
-    );
+  if (!readOnlyPreview && !isSalesAccount(user.role)) {
+    redirect("/login");
+  }
+
+  if (!readOnlyPreview) {
+    const salesPerson = await resolveSalesPersonForUser(user);
+    if (!salesPerson?.id) {
+      return (
+        <SalesAccountLinkRequired
+          title={DEPARTMENT_BOARD_SALES_PAGE_TITLE}
+          description={DEPARTMENT_BOARD_SALES_PAGE_DESC}
+        />
+      );
+    }
+    boardProfileId = user.id;
   }
 
   let loadError: string | null = null;
@@ -95,17 +129,24 @@ export default async function SalesBoardPage({
 
   try {
     const [boardData, attention] = await Promise.all([
-      fetchDepartmentBoard(user.id),
-      fetchSalesBoardAttentionSnapshot(user.id),
+      fetchDepartmentBoard(boardProfileId),
+      boardProfileId
+        ? fetchSalesBoardAttentionSnapshot(boardProfileId).catch(() => null)
+        : Promise.resolve(null),
     ]);
     board = boardData;
-    unseenQuestionIds = attention.unseenQuestionIds;
+    unseenQuestionIds = attention?.unseenQuestionIds ?? [];
     boardAttention = attention;
   } catch (e) {
     loadError = e instanceof Error ? e.message : "Nie udało się załadować tablicy.";
   }
 
-  return (
+  const pageTitle =
+    isTeamPreview && salesPersonName
+      ? `Tablica: ${salesPersonName}`
+      : DEPARTMENT_BOARD_SALES_PAGE_TITLE;
+
+  const boardClient = (
     <DepartmentBoardClient
       initial={board}
       audience="sales"
@@ -115,6 +156,33 @@ export default async function SalesBoardPage({
       initialTab={initialTab}
       focusQuestionId={focusQuestionId}
       focusAnnouncementId={focusAnnouncementId}
+      readOnly={readOnlyPreview}
+      pageTitle={pageTitle}
+      previewHint={
+        previewProfileMissing
+          ? "Handlowiec nie ma powiązanego konta — pokazujemy ogólną tablicę bez jego stanu odczytów."
+          : readOnlyPreview
+            ? "Podgląd — wysyłanie pytań i oznaczanie odczytów są wyłączone."
+            : undefined
+      }
     />
+  );
+
+  return (
+    <SalesPreviewPageChrome
+      linkError={linkError}
+      banner={
+        isTeamPreview && salesPersonId && salesPersonName ? (
+          <ManagerPreviewBanner
+            salesPersonId={salesPersonId}
+            salesPersonName={salesPersonName}
+            readOnly={adminReadOnlyPreview}
+            scope="tablica"
+          />
+        ) : null
+      }
+    >
+      {boardClient}
+    </SalesPreviewPageChrome>
   );
 }

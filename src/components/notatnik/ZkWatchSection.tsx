@@ -19,9 +19,14 @@ import {
 import type { SalesZkWatch } from "@/types/database";
 import { ZkWatchGroupedList } from "./ZkWatchGroupedList";
 import {
+  SalesListFilterEmptyHint,
+  SalesSectionEmptyHint,
+} from "@/components/sales/SalesListEmptyHints";
+import { NotatnikListFilterBar } from "./NotatnikListFilterBar";
+import { useNotepadListFilter } from "@/hooks/use-notepad-list-filter";
+import {
   NOTATNIK_INPUT_CLASS,
   NOTATNIK_INPUT_NARROW_CLASS,
-  NOTATNIK_SEARCH_CLASS,
 } from "./notatnik-layout";
 import { mojeShipmentSectionShellClass } from "@/lib/ui/moje-shipment-row-styles";
 
@@ -69,7 +74,9 @@ export function ZkWatchSection({
 }) {
   const inputRef = useRef<HTMLInputElement>(null);
   const [query, setQuery] = useState("");
-  const [listFilter, setListFilter] = useState("");
+  const focusInList =
+    focusWatchId != null && watches.some((watch) => watch.id === focusWatchId);
+  const [listFilter, setListFilter] = useNotepadListFilter(focusWatchId, focusInList);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [chooseHint, setChooseHint] = useState<string | null>(null);
@@ -80,14 +87,6 @@ export function ZkWatchSection({
     () => filterZkWatchesByClientQuery(watches, listFilter),
     [watches, listFilter]
   );
-
-  if (
-    focusWatchId &&
-    watches.some((watch) => watch.id === focusWatchId) &&
-    listFilter.trim()
-  ) {
-    setListFilter("");
-  }
 
   const sortedCandidates = useMemo(
     () =>
@@ -109,7 +108,6 @@ export function ZkWatchSection({
       ),
     [candidates]
   );
-  const listFilterActive = listFilter.trim().length > 0;
 
   function clearChoose() {
     setCandidates([]);
@@ -165,7 +163,7 @@ export function ZkWatchSection({
   }
 
   return (
-    <div className={embedded ? "space-y-3" : "space-y-4"}>
+    <div className={embedded ? "space-y-0" : "space-y-4"}>
       {!embedded ? (
         <div>
           <h2 className={salesTypography.blockTitle}>Czeka na towar</h2>
@@ -176,6 +174,7 @@ export function ZkWatchSection({
         </div>
       ) : null}
 
+      <div className={cn(embedded && "space-y-3 px-3 sm:px-4 pt-3", !embedded && "space-y-3")}>
       {!readOnly && !tourPreview ? (
         <div className="space-y-2">
           <form
@@ -270,38 +269,20 @@ export function ZkWatchSection({
       ) : null}
 
       {watches.length > 0 ? (
-        <div className="flex flex-wrap items-center gap-2">
-          <input
-            type="search"
-            value={listFilter}
-            onChange={(e) => setListFilter(e.target.value)}
-            placeholder="Filtruj po kliencie lub numerze ZK…"
-            className={NOTATNIK_SEARCH_CLASS}
-            autoComplete="off"
-            spellCheck={false}
-          />
-          {listFilterActive ? (
-            <button
-              type="button"
-              className="text-xs text-indigo-700 hover:text-indigo-900"
-              onClick={() => setListFilter("")}
-            >
-              Wyczyść filtr
-            </button>
-          ) : null}
-        </div>
+        <NotatnikListFilterBar value={listFilter} onChange={setListFilter} />
       ) : null}
 
       {error ? <Alert tone="error">{error}</Alert> : null}
+      </div>
 
       {watches.length === 0 ? (
-        <p className="rounded-md border border-dashed border-slate-200 bg-slate-50/80 px-3 py-3 text-center text-xs text-slate-500">
-          Brak zamówień klienta czekających na towar.
-        </p>
+        <SalesSectionEmptyHint message="Brak zamówień klienta czekających na towar." />
       ) : filteredWatches.length === 0 ? (
-        <p className="rounded-md border border-dashed border-slate-200 bg-slate-50/80 px-3 py-3 text-center text-xs text-slate-500">
-          Brak ZK pasujących do filtra „{listFilter.trim()}”.
-        </p>
+        <SalesListFilterEmptyHint
+          query={listFilter.trim()}
+          onClear={() => setListFilter("")}
+          entityLabel="ZK"
+        />
       ) : (
         <div className={embedded ? undefined : mojeShipmentSectionShellClass}>
         <ZkWatchGroupedList

@@ -9,10 +9,12 @@ import { buildSummaryWorkspace } from "@/lib/orders/summary-workspace";
 import { PlanClient } from "@/components/plan/PlanClient";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { SalesAccountLinkRequired } from "@/components/sales/SalesAccountLinkRequired";
+import { ManagerPreviewBanner } from "@/components/sales/ManagerPreviewBanner";
+import { SalesPreviewPageChrome } from "@/components/sales/SalesPreviewPageChrome";
 import { getAppRole } from "@/lib/auth-dev";
 import { getSessionUser } from "@/lib/auth";
 import { resolveSalesPersonForUser } from "@/lib/auth/sales-person";
-import { isSalesAccount } from "@/lib/auth-roles";
+import { isAdmin, isSalesAccount, isSalesManager } from "@/lib/auth-roles";
 import { resolvePreviewSalesPerson } from "@/lib/auth/resolve-preview-sales-person";
 
 import type { Metadata } from "next";
@@ -28,36 +30,52 @@ export default async function PlanPage({
   const { dla: previewSalesPersonId } = await searchParams;
   const role = await getAppRole();
   let salesPersonId: string | null = null;
+  let salesPersonName: string | null = null;
+  let isTeamPreview = false;
+  let adminReadOnlyPreview = false;
+  let linkError: string | null = null;
 
-  if (role === "admin" && previewSalesPersonId) {
-    try {
-      const user = await getSessionUser();
-      if (user) {
-        const preview = await resolvePreviewSalesPerson(previewSalesPersonId, user);
-        salesPersonId = preview?.id ?? null;
+  try {
+    const user = await getSessionUser();
+    if (user && isAdmin(user.role) && previewSalesPersonId) {
+      adminReadOnlyPreview = true;
+      const preview = await resolvePreviewSalesPerson(previewSalesPersonId, user);
+      if (preview) {
+        salesPersonId = preview.id;
+        salesPersonName = preview.name;
+        isTeamPreview = true;
+      } else {
+        linkError = "Nie znaleziono handlowca do podglądu.";
       }
-    } catch {
-      /* dev */
-    }
-  } else if (role && isSalesAccount(role)) {
-    try {
+    } else if (user && isSalesManager(user.role) && previewSalesPersonId) {
+      const own = await resolveSalesPersonForUser(user);
+      const preview = await resolvePreviewSalesPerson(previewSalesPersonId, user);
+      if (preview) {
+        salesPersonId = preview.id;
+        salesPersonName = preview.name;
+        isTeamPreview = preview.id !== own?.id;
+      } else {
+        linkError = "Nie znaleziono handlowca do podglądu.";
+      }
+    } else if (role && isSalesAccount(role)) {
       const user = await getSessionUser();
       if (user) {
         const resolved = await resolveSalesPersonForUser(user);
         salesPersonId = resolved?.id ?? null;
+        salesPersonName = resolved?.name ?? null;
       }
-    } catch {
-      /* dev */
     }
+  } catch {
+    /* dev */
+  }
 
-    if (!salesPersonId) {
-      return (
-        <SalesAccountLinkRequired
-          title="Harmonogram"
-          description="Kalendarz działu dostaw i wyszukiwarka dostawców. Konto musi być przypisane do profilu handlowca."
-        />
-      );
-    }
+  if (role && isSalesAccount(role) && !salesPersonId && !isTeamPreview && !linkError) {
+    return (
+      <SalesAccountLinkRequired
+        title="Harmonogram"
+        description="Kalendarz działu dostaw i wyszukiwarka dostawców. Konto musi być przypisane do profilu handlowca."
+      />
+    );
   }
 
   let error: string | null = null;
@@ -80,7 +98,8 @@ export default async function PlanPage({
 
     const salesScoped =
       (isSalesAccount(role ?? "sales") && salesPersonId) ||
-      (role === "admin" && Boolean(salesPersonId));
+      (role === "admin" && Boolean(salesPersonId)) ||
+      (isTeamPreview && Boolean(salesPersonId));
     if (salesScoped && salesPersonId) {
       const openOrders = await fetchIndividualOrders({
         salesPersonId,
@@ -98,10 +117,13 @@ export default async function PlanPage({
   }
 
   const salesMode = Boolean(
-    role && (isSalesAccount(role) || (role === "admin" && salesPersonId))
+    role &&
+      (isSalesAccount(role) ||
+        (role === "admin" && salesPersonId) ||
+        (isTeamPreview && salesPersonId))
   );
 
-  return (
+  const content = (
     <>
       {!salesMode ? (
         <PageHeader
@@ -118,6 +140,9 @@ export default async function PlanPage({
           openOrderCountBySupplier={openOrderCountBySupplier}
           statsBySupplierId={statsBySupplierId}
           error={error}
+          pageTitle={
+            isTeamPreview && salesPersonName ? `Harmonogram: ${salesPersonName}` : undefined
+          }
         />
       ) : (
         <PlanClient
@@ -131,5 +156,23 @@ export default async function PlanPage({
         />
       )}
     </>
+  );
+
+  return (
+    <SalesPreviewPageChrome
+      linkError={linkError}
+      banner={
+        isTeamPreview && salesPersonId && salesPersonName ? (
+          <ManagerPreviewBanner
+            salesPersonId={salesPersonId}
+            salesPersonName={salesPersonName}
+            readOnly={adminReadOnlyPreview}
+            scope="plan"
+          />
+        ) : null
+      }
+    >
+      {content}
+    </SalesPreviewPageChrome>
   );
 }

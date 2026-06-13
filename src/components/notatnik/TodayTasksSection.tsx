@@ -7,7 +7,7 @@ import {
 import type { SalesNote, SalesZkWatch } from "@/types/database";
 import { Badge } from "@/components/ui/Badge";
 import { formatProsbaZkLinkNumber } from "@/lib/orders/zk-prosba-link-display";
-import { surfaceCardClass } from "@/lib/ui/ontime-theme";
+import { surfaceCardClass, salesChromeInsetClass, salesTypography } from "@/lib/ui/ontime-theme";
 import { LinkChevron } from "@/components/ui/UiGlyphs";
 import { cn } from "@/lib/cn";
 
@@ -60,14 +60,18 @@ export function TodayTasksSection({
   }
 
   const shellClass = embedded
-    ? "border-b border-violet-100 bg-violet-50/60 px-3 py-3 sm:px-4"
+    ? cn(
+        "border-b border-slate-100 bg-slate-50/35",
+        salesChromeInsetClass,
+        "py-3"
+      )
     : cn(surfaceCardClass, "border-violet-200/80 bg-violet-50/40 p-3 sm:p-4");
 
   return (
     <section className={shellClass}>
       <div className="mb-2">
-        <h2 className="text-sm font-semibold text-slate-900">Do zrobienia dziś</h2>
-        <p className="text-xs text-slate-600">
+        <h2 className={salesTypography.blockTitle}>Do zrobienia dziś</h2>
+        <p className={salesTypography.sectionHint}>
           {tasks.length}{" "}
           {tasks.length === 1 ? "rzecz wymaga uwagi" : "rzeczy wymaga uwagi"}
         </p>
@@ -78,7 +82,7 @@ export function TodayTasksSection({
             <button
               type="button"
               onClick={() => navigate(task.anchor, task.kind)}
-              className="flex w-full items-center justify-between gap-2 rounded-md border border-white/80 bg-white/90 px-3 py-2 text-left shadow-sm transition hover:border-violet-200 hover:bg-white"
+              className="flex w-full items-center justify-between gap-2 rounded-md border border-white/80 bg-white/90 px-3 py-2 text-left shadow-sm transition hover:border-indigo-200 hover:bg-white"
             >
               <div className="min-w-0 flex-1">
                 <div className="flex flex-wrap items-center gap-2">

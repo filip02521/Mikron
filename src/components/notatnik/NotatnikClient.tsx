@@ -16,7 +16,6 @@ import { salesChromeInsetClass } from "@/lib/ui/ontime-theme";
 import { mergeRecordsByUpdatedAt, uniqueById } from "@/lib/sales/notepad-list";
 import { useClientHydrated } from "@/lib/client/use-client-hydrated";
 import { sortZkWatches } from "@/lib/sales/zk-watch-sort";
-import { ZkWatchGroupedList } from "./ZkWatchGroupedList";
 import { watchNeedsNotepadAttention } from "@/lib/sales/notepad-follow-up";
 import {
   computeZkWatchOrderHints,
@@ -44,14 +43,14 @@ import {
 import { SubiektStatusBar } from "@/components/subiekt/SubiektStatusBar";
 import { ZkWatchSection } from "./ZkWatchSection";
 import { NotesSection } from "./NotesSection";
-import { ArchivedNotesSection } from "./ArchivedNotesSection";
+import { NotatnikArchivePanel } from "./NotatnikArchivePanel";
 import { TodayTasksSection } from "./TodayTasksSection";
 import { NotatnikPanel } from "./NotatnikPanel";
 import { NotatnikTabBar } from "./NotatnikTabBar";
 import { NOTATNIK_PAGE_CLASS } from "./notatnik-layout";
 import { ManagerPreviewBanner } from "@/components/sales/ManagerPreviewBanner";
-import { SalesPanelSyncControl } from "@/components/sales/SalesPanelSyncControl";
-import { mojeShipmentSectionShellClass } from "@/lib/ui/moje-shipment-row-styles";
+import { NotatnikSyncStrip } from "./NotatnikSyncStrip";
+import { sectionIconTileBrandClass } from "@/lib/ui/ontime-theme";
 import {
   isUndoExpired,
   undoExpiresAtFromAnchor,
@@ -620,6 +619,22 @@ export function NotatnikClient({
       <div aria-live="polite" aria-atomic="true" className="sr-only">
         {liveAnnouncement}
       </div>
+
+      {teamPreview ? (
+        <ManagerPreviewBanner
+          salesPersonId={teamPreview.salesPersonId}
+          salesPersonName={teamPreview.salesPersonName}
+          scope="notatnik"
+          readOnly={teamPreview.readOnly}
+        />
+      ) : null}
+
+      {linkError ? (
+        <Alert tone="error" className="mb-4">
+          {linkError}
+        </Alert>
+      ) : null}
+
       <Card padding={false} className="overflow-hidden">
         <CardHeader
           inset
@@ -627,27 +642,11 @@ export function NotatnikClient({
           title={pageTitle}
           description={pageDescription ?? PAGE_INTRO}
           leading={
-            <SectionHeadingIcon tileClassName="bg-amber-100 text-amber-800">
+            <SectionHeadingIcon tileClassName={sectionIconTileBrandClass}>
               <IconPackageCheck size={20} />
             </SectionHeadingIcon>
           }
         />
-
-        {teamPreview ? (
-          <ManagerPreviewBanner
-            salesPersonId={teamPreview.salesPersonId}
-            salesPersonName={teamPreview.salesPersonName}
-            notatnikPreview
-            readOnly={teamPreview.readOnly}
-            className={cn(salesChromeInsetClass, "mt-3 text-xs leading-relaxed")}
-          />
-        ) : null}
-
-        {linkError ? (
-          <Alert tone="error" className={cn(salesChromeInsetClass, "mt-3")}>
-            {linkError}
-          </Alert>
-        ) : null}
 
         {loadError ? (
           <Alert tone="error" className={cn(salesChromeInsetClass, "mt-3")}>
@@ -661,18 +660,14 @@ export function NotatnikClient({
           </Alert>
         ) : null}
 
+        {!effectiveReadOnly && !tourDemo ? <NotatnikSyncStrip /> : null}
+
         {subiektForNotepad ? (
           <SubiektStatusBar
             initial={subiektForNotepad}
             onStatusChange={handleSubiektStatusChange}
             embedded
           />
-        ) : null}
-
-        {!effectiveReadOnly && !tourDemo ? (
-          <div className={cn(salesChromeInsetClass, "mt-3")}>
-            <SalesPanelSyncControl embedded variant="notatnik" />
-          </div>
         ) : null}
 
         {source.zkOrdersMigrationMissing && !tourDemo ? (
@@ -701,14 +696,13 @@ export function NotatnikClient({
           showArchive={hasArchive}
         />
 
-        <div className="space-y-3 p-3 sm:p-4">
-          {activeTab === "zk" ? (
+        {activeTab === "zk" ? (
             <NotatnikPanel
+              flushBody
               title="Czeka na towar"
               description="Krótki numer (min. 2 znaki) szuka w ostatnich 30 dniach; pełny np. 234/M/03/2026 — tylko dany miesiąc."
               count={zkWatches.length || undefined}
               icon={<IconPackageCheck size={17} />}
-              tileClassName="bg-amber-100 text-amber-800"
               accent="indigo"
               badges={
                 warehouseArrivalCount > 0 || followUpZkCount > 0 ? (
@@ -759,10 +753,12 @@ export function NotatnikClient({
 
           {activeTab === "notes" ? (
             <NotatnikPanel
+              flushBody
               title="Notatki"
               description="Własne przypomnienia — nie trafiają do działu zakupów."
               count={notes.length || undefined}
               icon={<IconClipboardPen size={17} />}
+              accent="indigo"
             >
               <NotesSection
                 notes={notes}
@@ -778,46 +774,28 @@ export function NotatnikClient({
 
           {activeTab === "archive" && hasArchive ? (
             <NotatnikPanel
+              flushBody
+              bodyClassName="space-y-0"
               title="Archiwum"
               description="Zamknięte ZK i zarchiwizowane notatki."
               count={archiveCount || undefined}
               icon={<IconArchive size={17} />}
               tileClassName="bg-slate-100 text-slate-600"
             >
-              <div className="space-y-4">
-                {archivedWatches.length > 0 ? (
-                  <div className="space-y-2">
-                    <p className="text-xs font-medium text-slate-600">ZK zamknięte</p>
-                    <div className={mojeShipmentSectionShellClass}>
-                      <ZkWatchGroupedList
-                        watches={archivedWatches}
-                        readOnly={effectiveReadOnly}
-                        archived
-                        compact
-                        focusWatchId={focusWatchId}
-                        onFocusWatchHandled={handleFocusWatchHandled}
-                        onLiveAnnounce={announceLive}
-                        onRestored={handleWatchRestored}
-                        onDeleted={handleWatchDeleted}
-                      />
-                    </div>
-                  </div>
-                ) : null}
-                {archivedNotes.length > 0 ? (
-                  <div className="space-y-2">
-                    <p className="text-xs font-medium text-slate-600">Notatki</p>
-                    <ArchivedNotesSection
-                      notes={archivedNotes}
-                      readOnly={effectiveReadOnly}
-                      onRestored={handleNoteRestored}
-                      onDeleted={handleNoteDeleted}
-                    />
-                  </div>
-                ) : null}
-              </div>
+              <NotatnikArchivePanel
+                archivedWatches={archivedWatches}
+                archivedNotes={archivedNotes}
+                readOnly={effectiveReadOnly}
+                focusWatchId={focusWatchId}
+                onFocusWatchHandled={handleFocusWatchHandled}
+                onLiveAnnounce={announceLive}
+                onWatchRestored={handleWatchRestored}
+                onWatchDeleted={handleWatchDeleted}
+                onNoteRestored={handleNoteRestored}
+                onNoteDeleted={handleNoteDeleted}
+              />
             </NotatnikPanel>
           ) : null}
-        </div>
 
         <AppBrandContentFooter mobileOnly />
       </Card>

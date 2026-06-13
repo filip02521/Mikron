@@ -9,10 +9,15 @@ import { SystemNotice } from "@/components/ui/SystemNotice";
 
 export function AdminPreviewBanner({
   panelContext,
+  previewSalesPersonName,
 }: {
   panelContext: AdminPanelContext;
+  previewSalesPersonName?: string | null;
 }) {
   const label = labelForAdminPanelContext(panelContext);
+  const description = previewSalesPersonName?.trim()
+    ? `Handlowiec: ${previewSalesPersonName.trim()}. Tryb tylko do odczytu — zmiany w panelu administracji.`
+    : "Tryb tylko do odczytu. Zmiany w systemie wykonujesz z panelu administracji.";
 
   return (
     <SystemNotice
@@ -20,7 +25,7 @@ export function AdminPreviewBanner({
       sticky
       className="sticky top-0 z-30 mb-4 md:top-2"
       title={`Podgląd panelu: ${label}`}
-      description="Tryb tylko do odczytu. Zmiany w systemie wykonujesz z panelu administracji."
+      description={description}
       actionLabel="Wróć do administracji"
       onAction={() => {
         void actionSetAdminPanelContext("admin");

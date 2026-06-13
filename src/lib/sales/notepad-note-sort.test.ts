@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  filterSalesNotesByQuery,
   notesInSamePinBand,
   reorderNoteIds,
   sortSalesNotes,
@@ -37,5 +38,15 @@ describe("notepad-note-sort", () => {
     const notes = [note("a", 0, true), note("b", 1)];
     expect(reorderNoteIds(notes, "a", "b")).toBeNull();
     expect(notesInSamePinBand(note("a", 0, true), note("b", 1))).toBe(false);
+  });
+
+  it("filtruje notatki po tytule i treści", () => {
+    const notes = [
+      { ...note("a", 0), title: "Faktura", body: "xyz" },
+      { ...note("b", 1), title: null, body: "Oddzwonić do klienta" },
+    ];
+    expect(filterSalesNotesByQuery(notes, "faktura").map((n) => n.id)).toEqual(["a"]);
+    expect(filterSalesNotesByQuery(notes, "klient").map((n) => n.id)).toEqual(["b"]);
+    expect(filterSalesNotesByQuery(notes, "")).toHaveLength(2);
   });
 });

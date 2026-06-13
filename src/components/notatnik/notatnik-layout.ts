@@ -11,31 +11,6 @@ export const NOTATNIK_NOTES_GRID_CLASS = "grid grid-cols-2 gap-2";
 /** Lista ZK — ten sam wzorzec co /moje (divide-y, bez odstępów). */
 export const NOTATNIK_ZK_LIST_CLASS = mojeShipmentListClass;
 
-export function zkWatchRowClass({
-  followUpDue,
-  archived,
-  orderDelivered,
-}: {
-  followUpDue?: boolean;
-  archived?: boolean;
-  /** Wszystkie pozycje towarowe dopasowane do dostarczonych prośb. */
-  orderDelivered?: boolean;
-}): string {
-  const accent = archived
-    ? "border-l-slate-300"
-    : followUpDue
-      ? "border-l-violet-500"
-      : orderDelivered
-        ? "border-l-emerald-500"
-        : "border-l-amber-400";
-
-  return cn(
-    "border-l-[3px] bg-white transition-colors",
-    accent,
-    !archived && "hover:bg-slate-50/50"
-  );
-}
-
 export const NOTATNIK_ZK_ACTIONS_CLASS =
   "grid grid-cols-2 gap-1.5 border-t border-slate-100 pt-2 sm:grid-cols-3";
 
