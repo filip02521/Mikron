@@ -1,4 +1,5 @@
 import { createClient, SupabaseClient } from "@supabase/supabase-js";
+import { isE2ELab } from "@/lib/e2e-lab/mode";
 
 let _client: SupabaseClient | null = null;
 
@@ -18,6 +19,7 @@ export function createAdminClient(): SupabaseClient {
 }
 
 export function hasSupabaseConfig(): boolean {
+  if (isE2ELab()) return false;
   return Boolean(
     process.env.NEXT_PUBLIC_SUPABASE_URL &&
       process.env.SUPABASE_SERVICE_ROLE_KEY

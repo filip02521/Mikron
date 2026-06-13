@@ -1,4 +1,5 @@
 import { createAdminClient, hasSupabaseConfig } from "@/lib/supabase/admin";
+import { isE2ELab, E2E_LOGIN_DIRECTORY_FIXTURE } from "@/lib/e2e-lab/mode";
 import type { LoginDirectoryAccountPublic } from "@/lib/auth/login-directory-public";
 import { resolveLoginDisplayName } from "@/lib/users/display-name";
 import { ROLE_LABELS } from "@/lib/users/labels";
@@ -98,6 +99,10 @@ async function fetchLoginEligibleUserIds(
 
 /** Katalog kont do ekranu logowania (tylko sieć firmowa — service role). */
 export async function fetchLoginDirectoryAccounts(): Promise<LoginDirectoryAccount[]> {
+  if (isE2ELab()) {
+    return sortLoginDirectoryAccounts(E2E_LOGIN_DIRECTORY_FIXTURE);
+  }
+
   if (!hasSupabaseConfig()) return [];
 
   const supabase = createAdminClient();

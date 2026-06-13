@@ -1,6 +1,7 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 import type { User } from "@supabase/supabase-js";
+import { isE2ELab } from "@/lib/e2e-lab/mode";
 import { supabaseCookieOptions } from "@/lib/supabase/cookie-options";
 
 /**
@@ -13,6 +14,10 @@ export async function refreshSupabaseSession(request: NextRequest): Promise<{
   user: User | null;
 }> {
   const response = NextResponse.next({ request });
+
+  if (isE2ELab()) {
+    return { response, user: null };
+  }
 
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
