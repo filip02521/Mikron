@@ -28,6 +28,7 @@ import { useDailyPanelFreshHighlight } from "@/hooks/useDailyPanelFreshHighlight
 import { dailyPanelIntroDescription } from "@/lib/orders/daily-panel-view";
 import { useDailyPanelRunner } from "@/components/summary/useDailyPanelRunner";
 import { DailyPanelStickyFooter } from "@/components/summary/DailyPanelStickyFooter";
+import { DailyPanelContentFooter } from "@/components/summary/DailyPanelContentFooter";
 import { DailyTodayView } from "@/components/summary/DailyTodayView";
 import { DailyWeekView } from "@/components/summary/DailyWeekView";
 import { ActionLoadingOverlay } from "@/components/ui/ActionLoadingOverlay";
@@ -428,6 +429,8 @@ export function SummaryWorkspace({
             />
           </div>
         ) : null}
+
+        <DailyPanelContentFooter />
       </Card>
 
       <SupplierDrawer

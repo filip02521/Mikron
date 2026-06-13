@@ -1,6 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server";
 import {
   authRateLimitBucket,
+  authRateLimitHttpResponse,
   consumeAuthRateLimit,
 } from "@/lib/auth/auth-rate-limit";
 import { isValidPasswordResetOtpCode, verifyPasswordResetOtp } from "@/lib/auth/password-reset-otp";
@@ -63,12 +64,13 @@ export async function POST(request: NextRequest) {
       windowMs: OTP_MAX_SENDS_WINDOW_MS,
     });
     if (!ipLimit.ok) {
+      const limited = authRateLimitHttpResponse(
+        ipLimit,
+        "Zbyt wiele prób weryfikacji. Spróbuj ponownie za chwilę."
+      );
       return NextResponse.json(
-        {
-          ok: false as const,
-          error: "Zbyt wiele prób weryfikacji. Spróbuj ponownie za chwilę.",
-        },
-        { status: 429 }
+        { ok: false as const, error: limited.error },
+        { status: limited.status }
       );
     }
   }
@@ -79,12 +81,13 @@ export async function POST(request: NextRequest) {
     windowMs: OTP_MAX_SENDS_WINDOW_MS,
   });
   if (!accountLimit.ok) {
+    const limited = authRateLimitHttpResponse(
+      accountLimit,
+      "Zbyt wiele prób weryfikacji. Wyślij nowy kod."
+    );
     return NextResponse.json(
-      {
-        ok: false as const,
-        error: "Zbyt wiele prób weryfikacji. Wyślij nowy kod.",
-      },
-      { status: 429 }
+      { ok: false as const, error: limited.error },
+      { status: limited.status }
     );
   }
 

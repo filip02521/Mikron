@@ -11,6 +11,7 @@ import { Toast } from "@/components/ui/Toast";
 import { ActionLoadingOverlay } from "@/components/ui/ActionLoadingOverlay";
 import { Alert } from "@/components/ui/Alert";
 import { QueuePanelToolbar, type QueueView } from "@/components/queue/QueuePanelToolbar";
+import { AppBrandContentFooter } from "@/components/layout/AppBrandContentFooter";
 import { panelPageShellClass } from "@/lib/ui/ontime-theme";
 import { ReceiveQueueTable, type ReceiveQueueToast } from "@/components/queue/ReceiveQueueTable";
 import { WarehouseInventorySection } from "@/components/queue/WarehouseInventorySection";
@@ -213,6 +214,8 @@ export function QueueClient({
             deliveryQueueOrders={orders}
           />
         </div>
+
+        <AppBrandContentFooter />
       </Card>
     </div>
   );

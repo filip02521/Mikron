@@ -1,3 +1,4 @@
+import { addDays } from "date-fns";
 import { formatDateString, getMondayOfWeek, parseDateOnly } from "@/lib/orders/dates";
 import { todayInWarsaw } from "@/lib/time/warsaw";
 import type { WeekDayPlan } from "@/lib/orders/summary-workspace";
@@ -10,6 +11,12 @@ export type PlannedOrderDateDisplay = {
   badgeVariant: "default" | "info" | "warning";
   title?: string;
 };
+
+function dateKeyOffset(fromDateKey: string, dayOffset: number): string | null {
+  const base = parseDateOnly(fromDateKey);
+  if (!base) return null;
+  return formatDateString(addDays(base, dayOffset));
+}
 
 export function buildPlannedOrderDateDisplay(input: {
   computedNextDate: string | null;
@@ -65,6 +72,26 @@ export function buildPlannedOrderDateDisplay(input: {
       label: `Dziś · ${dateLabel}`,
       badgeVariant: "info",
       title: "Dziś przypada planowe zamówienie u tego dostawcy.",
+    };
+  }
+
+  const tomorrowKey = dateKeyOffset(todayStr, 1);
+  if (tomorrowKey && nextDate === tomorrowKey) {
+    return {
+      caption: "Planowe zamówienie",
+      label: `Jutro · ${dateLabel}`,
+      badgeVariant: "info",
+      title: `Planowe zamówienie jutro u dostawcy · ${dateLabel}.`,
+    };
+  }
+
+  const dayAfterTomorrowKey = dateKeyOffset(todayStr, 2);
+  if (dayAfterTomorrowKey && nextDate === dayAfterTomorrowKey) {
+    return {
+      caption: "Planowe zamówienie",
+      label: `Pojutrze · ${dateLabel}`,
+      badgeVariant: "info",
+      title: `Planowe zamówienie pojutrze u dostawcy · ${dateLabel}.`,
     };
   }
 

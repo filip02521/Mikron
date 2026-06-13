@@ -1,6 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server";
 import {
   authRateLimitBucket,
+  authRateLimitHttpResponse,
   consumeAuthRateLimit,
 } from "@/lib/auth/auth-rate-limit";
 import { OTP_MAX_SENDS_WINDOW_MS } from "@/lib/auth/password-reset-constants";
@@ -46,13 +47,17 @@ export async function POST(request: NextRequest) {
       windowMs: OTP_MAX_SENDS_WINDOW_MS,
     });
     if (!ipLimit.ok) {
+      const limited = authRateLimitHttpResponse(
+        ipLimit,
+        "Zbyt wiele prób resetu z tej sieci. Spróbuj ponownie za chwilę."
+      );
       return NextResponse.json(
         {
           ok: false as const,
-          error: "Zbyt wiele prób resetu z tej sieci. Spróbuj ponownie za chwilę.",
+          error: limited.error,
           retryAfterSec: ipLimit.retryAfterSec,
         },
-        { status: 429 }
+        { status: limited.status }
       );
     }
   }
