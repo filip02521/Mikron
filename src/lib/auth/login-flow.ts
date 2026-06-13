@@ -1,17 +1,45 @@
 import { ensureCryptoRandomUUID } from "@/lib/ensure-crypto";
 import { redirectPathAfterLogin } from "@/lib/auth-roles";
+import { readAdminPanelContextFromDocument } from "@/lib/auth/admin-panel-context-client";
 
 ensureCryptoRandomUUID();
 import { translateAuthError } from "@/lib/auth-errors";
-import {
-  loginServerResponseErrorMessage,
-} from "@/lib/auth/login-messages";
+import { loginServerResponseErrorMessage } from "@/lib/auth/login-messages";
 import { createClient } from "@/lib/supabase/client";
 import type { UserRole } from "@/types/database";
 
 export type LoginFlowResult =
   | { ok: true; redirectTo: string }
   | { ok: false; error: string };
+
+async function syncClientSessionAfterServerLogin(
+  email: string,
+  password: string
+): Promise<{ ok: true } | { ok: false; error: string }> {
+  const supabase = createClient();
+  const { data: initialSession } = await supabase.auth.getSession();
+  if (initialSession.session) {
+    return { ok: true };
+  }
+
+  const { error: refreshError } = await supabase.auth.refreshSession();
+  if (!refreshError) {
+    const { data: refreshedSession } = await supabase.auth.getSession();
+    if (refreshedSession.session) {
+      return { ok: true };
+    }
+  }
+
+  const { error: signError } = await supabase.auth.signInWithPassword({
+    email,
+    password,
+  });
+  if (signError) {
+    return { ok: false, error: translateAuthError(signError.message) };
+  }
+
+  return { ok: true };
+}
 
 async function resolveRedirect(
   userId: string,
@@ -44,9 +72,13 @@ async function resolveRedirect(
     return { ok: true, redirectTo: "/ustaw-haslo?wymagane=1" };
   }
 
+  const adminPanelContext = readAdminPanelContextFromDocument();
+
   return {
     ok: true,
-    redirectTo: redirectPathAfterLogin(profile.role as UserRole, next),
+    redirectTo: redirectPathAfterLogin(profile.role as UserRole, next, {
+      adminPanelContext,
+    }),
   };
 }
 
@@ -81,11 +113,13 @@ export async function runLoginFlow(
     }
 
     if (res.ok && apiBody.ok && apiBody.redirectTo) {
-      const supabase = createClient();
-      await supabase.auth.signInWithPassword({
-        email: normalizedEmail,
-        password,
-      });
+      const synced = await syncClientSessionAfterServerLogin(
+        normalizedEmail,
+        password
+      );
+      if (!synced.ok) {
+        return synced;
+      }
       return { ok: true, redirectTo: apiBody.redirectTo };
     }
 

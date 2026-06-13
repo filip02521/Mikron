@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Alert } from "@/components/ui/Alert";
 import { Button } from "@/components/ui/Button";
 import { OtpCodeInput } from "@/components/auth/OtpCodeInput";
@@ -9,6 +9,10 @@ import {
   requestPasswordResetCode,
   verifyPasswordResetCode,
 } from "@/lib/auth/password-reset-client";
+import {
+  readStoredPasswordResetSession,
+  writeStoredPasswordResetSession,
+} from "@/lib/auth/login-password-reset-session";
 import { cn } from "@/lib/cn";
 
 const loginAltLinkClass = cn(
@@ -45,6 +49,7 @@ export function PasswordResetPanel({
   const [sending, setSending] = useState(false);
   const [verifying, setVerifying] = useState(false);
   const [countdownTick, setCountdownTick] = useState(0);
+  const lastAutoSubmittedCodeRef = useRef<string | null>(null);
 
   const busy = sending || verifying;
   const codeComplete = code.length === OTP_LENGTH;
@@ -89,6 +94,13 @@ export function PasswordResetPanel({
     setMaskedEmail(result.maskedEmail);
     setResendAvailableAt(result.resendAvailableAt);
     setCode("");
+    const stored = readStoredPasswordResetSession();
+    writeStoredPasswordResetSession({
+      email,
+      maskedEmail: result.maskedEmail,
+      resendAvailableAt: result.resendAvailableAt,
+      startedAt: stored?.startedAt ?? new Date().toISOString(),
+    });
   }, [busy, email, resendSeconds]);
 
   const handleVerify = useCallback(async () => {
@@ -105,16 +117,26 @@ export function PasswordResetPanel({
       return;
     }
 
+    writeStoredPasswordResetSession(null);
     window.location.assign(result.redirectTo);
   }, [busy, code, codeComplete, email]);
 
   useEffect(() => {
+    if (code.length < OTP_LENGTH) {
+      lastAutoSubmittedCodeRef.current = null;
+    }
+  }, [code]);
+
+  useEffect(() => {
     if (!codeComplete || busy) return;
+    if (lastAutoSubmittedCodeRef.current === code) return;
+
+    lastAutoSubmittedCodeRef.current = code;
     const frame = requestAnimationFrame(() => {
       void handleVerify();
     });
     return () => cancelAnimationFrame(frame);
-  }, [codeComplete, busy, handleVerify]);
+  }, [codeComplete, busy, code, handleVerify]);
 
   return (
     <div className="flex min-h-0 flex-col gap-4 sm:gap-5">

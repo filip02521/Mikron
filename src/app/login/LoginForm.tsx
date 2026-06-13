@@ -13,6 +13,10 @@ import {
 import { applyLoginFormError } from "@/lib/auth/login-form-errors";
 import type { LoginSubtitleMode } from "@/lib/auth/login-form-copy";
 import { requestPasswordResetCode } from "@/lib/auth/password-reset-client";
+import {
+  readStoredPasswordResetSession,
+  writeStoredPasswordResetSession,
+} from "@/lib/auth/login-password-reset-session";
 import { LoginAccountPicker } from "@/components/auth/LoginAccountPicker";
 import { LoginQuickAccountGreeting } from "@/components/auth/LoginQuickAccountGreeting";
 import { PasswordResetPanel } from "@/components/auth/PasswordResetPanel";
@@ -51,7 +55,16 @@ export function LoginForm({
     email: string;
     maskedEmail: string;
     resendAvailableAt: string;
-  } | null>(null);
+  } | null>(() => {
+    if (typeof window === "undefined") return null;
+    const stored = readStoredPasswordResetSession();
+    if (!stored) return null;
+    return {
+      email: stored.email,
+      maskedEmail: stored.maskedEmail,
+      resendAvailableAt: stored.resendAvailableAt,
+    };
+  });
   const errorRef = useRef<HTMLDivElement>(null);
 
   const sessionNotice = useMemo(
@@ -89,21 +102,22 @@ export function LoginForm({
     ? manualEmail.trim().toLowerCase()
     : (selectedAccount?.email ?? "");
 
-  const restoreKey = hydrated
-    ? `${useManualEmail}\0${accounts.map((account) => account.id).join(",")}`
-    : "";
-  const [appliedRestoreKey, setAppliedRestoreKey] = useState("");
-  if (hydrated && !useManualEmail && accounts.length > 0 && restoreKey !== appliedRestoreKey) {
-    setAppliedRestoreKey(restoreKey);
-    const restored = resolveLoginLastAccountId(accounts);
-    if (restored) {
-      setSelectedAccountId(restored);
-      setShowAccountPicker(false);
-    } else {
-      setSelectedAccountId(null);
-      setShowAccountPicker(true);
-    }
-  }
+  useEffect(() => {
+    if (!hydrated || useManualEmail || accounts.length === 0) return;
+
+    const frame = requestAnimationFrame(() => {
+      const restored = resolveLoginLastAccountId(accounts);
+      if (restored) {
+        setSelectedAccountId(restored);
+        setShowAccountPicker(false);
+      } else {
+        setSelectedAccountId(null);
+        setShowAccountPicker(true);
+      }
+    });
+
+    return () => cancelAnimationFrame(frame);
+  }, [hydrated, useManualEmail, accounts]);
 
   useEffect(() => {
     if (!quickLoginActive) return;
@@ -126,6 +140,7 @@ export function LoginForm({
     writeLoginLastAccountId(accountId);
     setSelectedAccountId(accountId);
     setShowAccountPicker(false);
+    setPassword("");
     setBannerError("");
     setPasswordError("");
     requestAnimationFrame(() => {
@@ -135,6 +150,7 @@ export function LoginForm({
 
   const showOtherAccountPicker = useCallback(() => {
     setShowAccountPicker(true);
+    setPassword("");
     setBannerError("");
     setPasswordError("");
   }, []);
@@ -144,10 +160,22 @@ export function LoginForm({
 
   const exitPasswordReset = useCallback(() => {
     setResetSession(null);
+    writeStoredPasswordResetSession(null);
     setBannerError("");
     setPasswordError("");
     setResetSending(false);
   }, []);
+
+  const persistResetSession = useCallback(
+    (session: { email: string; maskedEmail: string; resendAvailableAt: string }) => {
+      setResetSession(session);
+      writeStoredPasswordResetSession({
+        ...session,
+        startedAt: new Date().toISOString(),
+      });
+    },
+    []
+  );
 
   const startPasswordReset = useCallback(async () => {
     if (!canResetPassword || !loginEmail || resetSending) return;
@@ -164,12 +192,12 @@ export function LoginForm({
       return;
     }
 
-    setResetSession({
+    persistResetSession({
       email: loginEmail,
       maskedEmail: result.maskedEmail,
       resendAvailableAt: result.resendAvailableAt,
     });
-  }, [canResetPassword, loginEmail, resetSending]);
+  }, [canResetPassword, loginEmail, resetSending, persistResetSession]);
 
   const forgotPasswordLink = canResetPassword ? (
     <div className="flex justify-end">
@@ -304,20 +332,22 @@ export function LoginForm({
 
       {quickLoginActive && selectedAccount ? (
         <div className="space-y-4 sm:space-y-5">
-          <LoginQuickAccountGreeting displayName={selectedAccount.displayName} />
-          {passwordField}
-          {forgotPasswordLink}
-          {submitBlock}
-          <div className="flex justify-end">
-            <button
-              type="button"
-              className={loginAltLinkClass}
-              onClick={showOtherAccountPicker}
-              disabled={loading}
-            >
-              To nie Ty? Wybierz inne konto
-            </button>
+          <div className="space-y-2">
+            <LoginQuickAccountGreeting displayName={selectedAccount.displayName} />
+            <div className="flex justify-end">
+              <button
+                type="button"
+                className={loginAltLinkClass}
+                onClick={showOtherAccountPicker}
+                disabled={loading}
+              >
+                To nie Ty? Wybierz inne konto
+              </button>
+            </div>
           </div>
+          {passwordField}
+          {submitBlock}
+          {forgotPasswordLink}
         </div>
       ) : (
         <>
@@ -357,6 +387,7 @@ export function LoginForm({
                     setUseManualEmail(true);
                     setSelectedAccountId(null);
                     setShowAccountPicker(true);
+                    setPassword("");
                     setBannerError("");
                     setPasswordError("");
                   }}
@@ -393,8 +424,8 @@ export function LoginForm({
 
           <div className="shrink-0 space-y-3 sm:space-y-4">
             {passwordField}
-            {forgotPasswordLink}
             {submitBlock}
+            {forgotPasswordLink}
           </div>
         </>
       )}
