@@ -22,6 +22,7 @@ import {
 import { fetchDeliveryStatsDiagnostics } from "@/lib/data/delivery-stats-diagnostics";
 import { tryAcquireLock, releaseLock } from "@/lib/services/locks";
 import {
+  deactivateExpiredVacations,
   recalcSingleSupplierSchedule,
   syncSuppliersFromSettings,
 } from "@/lib/services/sync";
@@ -64,6 +65,15 @@ import {
   MAX_SUPPLIER_NOTES_LEN,
 } from "@/lib/security/text-limits";
 import { dateToIso, parseDateOnly, snapToBusinessDay } from "@/lib/orders/dates";
+import {
+  validateVacationFormInput,
+  validateVacationOverlap,
+} from "@/lib/orders/vacation-form-validation";
+import {
+  computeVacationSchedulePreview,
+  supplierScheduleForPreview,
+} from "@/lib/orders/vacation-preview";
+import { todayDateKeyInWarsaw } from "@/lib/time/warsaw";
 import {
   buildDailyPanelUndoPayload,
   isUndoPayloadExpired,
@@ -896,6 +906,27 @@ export async function actionFetchSupplierRecentHistory(supplierId: string) {
   return data ?? [];
 }
 
+export async function actionListActiveVacationsForSupplier(supplierId: string) {
+  await requireSupplierManagement("read");
+  const supabase = createAdminClient();
+  const todayKey = todayDateKeyInWarsaw();
+  const { data, error } = await supabase
+    .from("vacations")
+    .select("id, start_date, end_date, last_order_date, active")
+    .eq("supplier_id", supplierId)
+    .eq("active", true)
+    .gte("end_date", todayKey)
+    .order("start_date", { ascending: true });
+  if (error) throw new Error(error.message);
+  return { vacations: data ?? [], todayKey };
+}
+
+/** @deprecated Użyj actionListActiveVacationsForSupplier — zwraca tylko pierwszy wpis. */
+export async function actionGetEditableVacationForSupplier(supplierId: string) {
+  const { vacations } = await actionListActiveVacationsForSupplier(supplierId);
+  return vacations[0] ?? null;
+}
+
 export async function actionUpsertVacation(form: {
   id?: string;
   supplier_id: string;
@@ -906,22 +937,26 @@ export async function actionUpsertVacation(form: {
 }) {
   await requireSupplierManagement("mutate");
 
-  const start = parseDateOnly(form.start_date);
-  const end = parseDateOnly(form.end_date);
-  const lastOrder = parseDateOnly(form.last_order_date);
-  if (!start || !end || !lastOrder) {
-    throw new Error("Podaj poprawne daty urlopu (od, do, ostatnie zamówienie).");
-  }
-  if (start > end) {
-    throw new Error("Data „urlop od” nie może być późniejsza niż „urlop do”.");
-  }
-  if (lastOrder > start) {
-    throw new Error(
-      "„Ostatnie zamówienie przed urlopem” powinno być w dniu rozpoczęcia urlopu lub wcześniej."
-    );
+  const todayKey = todayDateKeyInWarsaw();
+  const validation = validateVacationFormInput(form, todayKey);
+  if (validation.error) {
+    throw new Error(validation.error);
   }
 
   const supabase = createAdminClient();
+
+  const { data: existing, error: existingErr } = await supabase
+    .from("vacations")
+    .select("id, start_date, end_date, last_order_date, active")
+    .eq("supplier_id", form.supplier_id)
+    .eq("active", true);
+  if (existingErr) throw new Error(existingErr.message);
+
+  const overlapError = validateVacationOverlap(form, existing ?? []);
+  if (overlapError) {
+    throw new Error(overlapError);
+  }
+
   const payload = {
     supplier_id: form.supplier_id,
     start_date: form.start_date,
@@ -930,13 +965,35 @@ export async function actionUpsertVacation(form: {
     active: form.active,
   };
   const write = form.id
-    ? await supabase.from("vacations").update(payload).eq("id", form.id)
-    : await supabase.from("vacations").insert(payload);
+    ? await supabase.from("vacations").update(payload).eq("id", form.id).select("id, active").single()
+    : await supabase.from("vacations").insert(payload).select("id, active").single();
   if (write.error) {
     throw new Error(write.error.message);
   }
 
-  const sync = await syncSuppliersFromSettings();
+  const expiredSupplierIds = await deactivateExpiredVacations();
+  const recalcTargets = new Set([form.supplier_id, ...expiredSupplierIds]);
+  const recalcErrors: string[] = [];
+  for (const supplierId of recalcTargets) {
+    try {
+      await recalcSingleSupplierSchedule(supplierId);
+    } catch (e) {
+      recalcErrors.push(
+        e instanceof Error ? e.message : "Błąd przeliczenia harmonogramu"
+      );
+    }
+  }
+
+  const savedId = form.id ?? write.data?.id;
+  let persistedActive = write.data?.active ?? form.active;
+  if (savedId) {
+    const { data: savedRow } = await supabase
+      .from("vacations")
+      .select("active")
+      .eq("id", savedId)
+      .maybeSingle();
+    if (savedRow) persistedActive = savedRow.active;
+  }
 
   const [{ data: supplier }, { data: schedule }] = await Promise.all([
     supabase.from("suppliers").select("name").eq("id", form.supplier_id).single(),
@@ -951,13 +1008,110 @@ export async function actionUpsertVacation(form: {
 
   return {
     success: true as const,
-    processed: sync.processed,
-    syncErrors: sync.errors,
+    processed: recalcTargets.size,
+    syncErrors: recalcErrors,
     supplierName: supplier?.name ?? "Dostawca",
     nextDate: schedule?.computed_next_date ?? null,
     vacationNote: schedule?.vacation_note ?? null,
-    active: form.active,
+    active: persistedActive,
+    id: savedId ?? null,
   };
+}
+
+export async function actionPreviewVacationImpact(form: {
+  id?: string;
+  supplier_id: string;
+  start_date: string;
+  end_date: string;
+  last_order_date: string;
+  active: boolean;
+}) {
+  await requireSupplierManagement("read");
+
+  if (
+    !form.supplier_id ||
+    !form.start_date ||
+    !form.end_date ||
+    !form.last_order_date
+  ) {
+    return { preview: null, validationError: null };
+  }
+
+  const supabase = createAdminClient();
+  const [{ data: supplier, error: supplierErr }, { data: vacations, error: vacErr }] =
+    await Promise.all([
+      supabase
+        .from("suppliers")
+        .select("location, interval_raw, interval_weeks, supplier_schedules(order_date, shift_date)")
+        .eq("id", form.supplier_id)
+        .single(),
+      supabase
+        .from("vacations")
+        .select("id, start_date, end_date, last_order_date, active")
+        .eq("supplier_id", form.supplier_id),
+    ]);
+
+  if (supplierErr || !supplier) {
+    throw new Error(supplierErr?.message ?? "Nie znaleziono dostawcy.");
+  }
+  if (vacErr) throw new Error(vacErr.message);
+
+  const todayKey = todayDateKeyInWarsaw();
+  const validation = validateVacationFormInput(form, todayKey);
+  if (validation.error) {
+    return { preview: null, validationError: validation.error };
+  }
+
+  const activeRows = (vacations ?? []).filter((row) => row.active);
+  const overlapError = validateVacationOverlap(form, activeRows);
+  if (overlapError) {
+    return { preview: null, validationError: overlapError };
+  }
+
+  const schedule = supplierScheduleForPreview(supplier);
+  const preview = computeVacationSchedulePreview({
+    ...schedule,
+    dbVacationRows: vacations ?? [],
+    proposed: form,
+  });
+
+  return { preview, validationError: null };
+}
+
+export async function actionDeleteVacation(id: string) {
+  await requireSupplierManagement("mutate");
+
+  const supabase = createAdminClient();
+  const todayKey = todayDateKeyInWarsaw();
+
+  const { data: row, error } = await supabase
+    .from("vacations")
+    .select("id, supplier_id, active, end_date")
+    .eq("id", id)
+    .single();
+
+  if (error || !row) {
+    throw new Error("Nie znaleziono urlopu.");
+  }
+  if (row.active && row.end_date >= todayKey) {
+    throw new Error(
+      "Nie można usunąć aktywnego urlopu. Wyłącz go lub poczekaj do końca okresu."
+    );
+  }
+
+  const { error: deleteErr } = await supabase.from("vacations").delete().eq("id", id);
+  if (deleteErr) throw new Error(deleteErr.message);
+
+  try {
+    await recalcSingleSupplierSchedule(row.supplier_id);
+  } catch (e) {
+    throw new Error(
+      e instanceof Error ? e.message : "Urlop usunięty, ale przeliczenie harmonogramu nie powiodło się."
+    );
+  }
+
+  revalidateAll();
+  return { success: true as const, supplierId: row.supplier_id };
 }
 
 export async function actionUpsertSalesPerson(form: {
@@ -1092,18 +1246,36 @@ function snapDateIso(iso: string | null): string | null {
 
 export async function actionUpdateScheduleDates(
   supplierId: string,
-  orderDate: string | null,
-  nextDate: string | null,
-  shiftDate: string | null
+  patch: {
+    orderDate?: string | null;
+    nextDate?: string | null;
+    shiftDate?: string | null;
+  }
 ) {
   await requireOperations("mutate");
   const supabase = createAdminClient();
+
+  const { data: current, error: currentErr } = await supabase
+    .from("supplier_schedules")
+    .select("order_date, shift_date")
+    .eq("supplier_id", supplierId)
+    .maybeSingle();
+  if (currentErr) throw new Error(currentErr.message);
+
+  const orderDate =
+    patch.orderDate !== undefined ? snapDateIso(patch.orderDate) : current?.order_date ?? null;
+  let shiftDate =
+    patch.shiftDate !== undefined ? snapDateIso(patch.shiftDate) : current?.shift_date ?? null;
+
+  if (patch.nextDate !== undefined) {
+    shiftDate = snapDateIso(patch.nextDate);
+  }
+
   await supabase.from("supplier_schedules").upsert(
     {
       supplier_id: supplierId,
-      order_date: snapDateIso(orderDate),
-      computed_next_date: snapDateIso(nextDate),
-      shift_date: snapDateIso(shiftDate),
+      order_date: orderDate,
+      shift_date: shiftDate,
       updated_at: new Date().toISOString(),
     },
     { onConflict: "supplier_id" }

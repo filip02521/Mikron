@@ -2,7 +2,7 @@
 
 import { HelpPopover, GuideIcon } from "@/components/ui/HelpPopover";
 import { HelpBlock } from "@/components/ui/HelpBlock";
-import { HISTORY_RETENTION_MONTHS } from "@/lib/orders/history-retention";
+import { HISTORY_PREVIEW_COUNT, HISTORY_RETENTION_MONTHS } from "@/lib/orders/history-retention";
 
 export function HistoriaHelp() {
   return (
@@ -12,10 +12,18 @@ export function HistoriaHelp() {
       shortLabel="Pomoc"
       icon={<GuideIcon />}
     >
-      <HelpBlock title="Lista">
+      <HelpBlock title="Dwie sekcje">
         <p>
-          Na ekranie widać kilka ostatnich wpisów. Pełną historię otworzysz przyciskiem „Pokaż
-          pełną historię” — z wyszukiwaniem.
+          <strong>Indywidualna</strong> — zrealizowane prośby handlowców (bez samych
+          informacji). <strong>Standardowa</strong> — kliknięcia „Zamówione” i przesunięcia
+          terminów z panelu dziennego.
+        </p>
+      </HelpBlock>
+
+      <HelpBlock title="Lista i wyszukiwanie">
+        <p>
+          Na ekranie widać {HISTORY_PREVIEW_COUNT} najnowszych wpisów w każdej sekcji. Pełną
+          historię otworzysz przyciskiem „Pokaż pełną historię” — z filtrem tekstowym.
         </p>
       </HelpBlock>
 
@@ -24,6 +32,10 @@ export function HistoriaHelp() {
           Dane starsze niż {HISTORY_RETENTION_MONTHS} miesięcy są usuwane automatycznie, około
           raz na dobę.
         </p>
+      </HelpBlock>
+
+      <HelpBlock title="Administrator">
+        <p>Administrator może ręcznie usunąć pojedynczy wpis — np. po błędnym imporcie.</p>
       </HelpBlock>
     </HelpPopover>
   );

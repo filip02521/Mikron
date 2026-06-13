@@ -16,15 +16,17 @@ Tło aplikacji: subtelny gradient na `body` (fixed), bez ciężkich animacji.
 ## Klasy (`ontime-theme.ts`)
 
 - `brandMarkAppClass` — logo w sidebarze (gradient)
-- `navLinkActiveClass` — aktywna nawigacja: indigo + pasek sky po lewej
+- `navLinkActiveClass` — aktywna nawigacja sidebar: biała karta + ring (bez lewego paska)
+- `mobileNavLinkActiveClass` — aktywna zakładka dolnego paska: ten sam język co sidebar
 - `buttonPrimaryClass` — lekki gradient na primary
 - `surfaceCardClass` — karty sekcji
 
 ## Zasady
 
 1. **Semantyka statusów** (amber zaległe, red błąd, emerald sukces) — bez zmian pod markę.
-2. **Gradient** — logo, primary button, pas w sidebarze, tło strony; nie na całych tabelach.
+2. **Gradient** — logo, primary button, tło strony; nie na całych tabelach ani aktywnych linkach menu.
 3. Nowe ekrany — preferuj tokeny CSS i `ontime-theme`, nie losowe `indigo-600`.
+4. **Menu i nagłówki stron** — ta sama nazwa dla tej samej funkcji (Tablica, Harmonogram, Przyjęcie towaru).
 
 ## Panel dzienny (Faza 4)
 
@@ -38,14 +40,14 @@ Tło aplikacji: subtelny gradient na `body` (fixed), bez ciężkich animacji.
 
 W `ontime-theme.ts`: linki (`brandLinkClass`), checkboxy, zakładki, plan tygodnia, filtry „Moje”, karty wyróżnione.
 
-Zaktualizowane obszary: `summary/` (panel, plan, prośby), `queue/`, `moje/`, kafelki ikon w `StrokeIcons`.
+Zaktualizowane obszary: `summary/` (panel, plan, prośby), `queue/`, `moje/`, kafelki ikon w `StrokeIcons`, sidebar + mobile nav.
 
 Semantyka bez zmian: amber (zaległe), emerald (sukces), sky (informacja magazyn), violet (informacja handlowca).
 
-## Mobile handlowca
+## Mobile
 
 - `MobileSalesHeader` — pas marki, cień jak karty
-- `MobileSalesNav` — aktywna zakładka: pasek gradient u góry, badge w kolorze marki
+- `MobileSalesNav` / `MobileOperationsNav` — 4 główne pozycje + „Więcej”; aktywna zakładka jak wybrany link sidebara
 - `SalesUpdatesBanner` — delikatne tło indigo→sky, przycisk primary
 
 ## Kolejne kroki (opcjonalnie)

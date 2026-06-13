@@ -1,13 +1,19 @@
 import { createAdminClient } from "@/lib/supabase/admin";
-import { snapToBusinessDay } from "@/lib/orders/business-calendar";
+import { recalcScheduleRow } from "@/lib/orders/recalc";
+import { buildScheduleUpsertFromRecalc } from "@/lib/orders/schedule-persist";
+import {
+  filterApplicableVacationPeriods,
+  parseVacationPeriodRow,
+  type VacationPeriod,
+} from "@/lib/orders/vacations";
 import { dateToIso, parseDateOnly, resolveSupplierInterval } from "@/lib/orders/dates";
+import { todayInWarsaw } from "@/lib/time/warsaw";
+import type { SupplierLocation } from "@/types/database";
 import {
   parseHistoriaActionAt,
   replayHistoriaScheduleState,
 } from "@/lib/orders/historia-schedule-actions";
-import { recalcScheduleRow } from "@/lib/orders/recalc";
-import type { SupplierLocation } from "@/types/database";
-import type { VacationPeriod } from "@/lib/orders/vacations";
+import { deactivateExpiredVacations } from "@/lib/services/sync";
 
 type HistoryRow = {
   supplier_id: string;
@@ -48,19 +54,21 @@ function buildVacationsBySupplier(
     start_date: string;
     end_date: string;
     last_order_date: string;
-  }>
+  }>,
+  today = todayInWarsaw()
 ): Record<string, VacationPeriod[]> {
   const out: Record<string, VacationPeriod[]> = {};
   for (const v of vacations) {
-    const start = parseDateOnly(v.start_date);
-    const end = parseDateOnly(v.end_date);
-    const lastOrder = parseDateOnly(v.last_order_date);
-    if (!start || !end || !lastOrder) continue;
+    const period = parseVacationPeriodRow(v);
+    if (!period) continue;
     if (!out[v.supplier_id]) out[v.supplier_id] = [];
-    out[v.supplier_id].push({ start, end, lastOrder });
+    out[v.supplier_id].push(period);
   }
   for (const id of Object.keys(out)) {
-    out[id].sort((a, b) => a.start.getTime() - b.start.getTime());
+    out[id] = filterApplicableVacationPeriods(
+      out[id]!.sort((a, b) => a.start.getTime() - b.start.getTime()),
+      today
+    );
   }
   return out;
 }
@@ -72,6 +80,8 @@ export async function rebuildAllSupplierSchedulesFromHistoria(): Promise<{
 }> {
   const supabase = createAdminClient();
   const errors: string[] = [];
+
+  await deactivateExpiredVacations();
 
   const [history, { data: suppliers, error: supErr }, { data: vacations }] = await Promise.all([
     fetchAllNormalOrderHistory(supabase),
@@ -114,7 +124,7 @@ export async function rebuildAllSupplierSchedulesFromHistoria(): Promise<{
         })
         .filter((e): e is NonNullable<typeof e> => e != null);
 
-      const { orderDate, shiftDate, sheetNextDate } = replayHistoriaScheduleState(events);
+      const { orderDate, shiftDate } = replayHistoriaScheduleState(events);
       const interval = resolveSupplierInterval(
         supplier.interval_raw as string | null,
         supplier.interval_weeks != null ? Number(supplier.interval_weeks) : null
@@ -128,20 +138,13 @@ export async function rebuildAllSupplierSchedulesFromHistoria(): Promise<{
         vacations: vacationsBySupplier[supplierId] ?? [],
       });
 
-      const computedNext =
-        sheetNextDate != null
-          ? snapToBusinessDay(sheetNextDate)
-          : recalc.computedNextDate;
-
       const { error: upsertErr } = await supabase.from("supplier_schedules").upsert(
-        {
-          supplier_id: supplierId,
-          order_date: dateToIso(orderDate),
-          shift_date: dateToIso(shiftDate),
-          computed_next_date: dateToIso(computedNext),
-          vacation_note: recalc.vacationNote,
-          updated_at: new Date().toISOString(),
-        },
+        buildScheduleUpsertFromRecalc({
+          supplierId,
+          orderDate: dateToIso(orderDate),
+          shiftDate: dateToIso(shiftDate),
+          recalc,
+        }),
         { onConflict: "supplier_id" }
       );
 

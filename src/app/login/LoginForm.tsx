@@ -4,7 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { runLoginFlow } from "@/lib/auth/login-flow";
 import { loginSessionLostMessage } from "@/lib/auth/login-messages";
-import type { LoginDirectoryAccount } from "@/lib/auth/login-directory";
+import type { LoginDirectoryAccountPublic } from "@/lib/auth/login-directory-public";
 import {
   readLoginLastAccountId,
   resolveLoginLastAccountId,
@@ -12,8 +12,14 @@ import {
 } from "@/lib/auth/login-account-preference";
 import { applyLoginFormError } from "@/lib/auth/login-form-errors";
 import type { LoginSubtitleMode } from "@/lib/auth/login-form-copy";
+import { requestPasswordResetCode } from "@/lib/auth/password-reset-client";
+import {
+  readStoredPasswordResetSession,
+  writeStoredPasswordResetSession,
+} from "@/lib/auth/login-password-reset-session";
 import { LoginAccountPicker } from "@/components/auth/LoginAccountPicker";
 import { LoginQuickAccountGreeting } from "@/components/auth/LoginQuickAccountGreeting";
+import { PasswordResetPanel } from "@/components/auth/PasswordResetPanel";
 import { useClientHydrated } from "@/lib/client/use-client-hydrated";
 import { Button } from "@/components/ui/Button";
 import { Field, Input } from "@/components/ui/Field";
@@ -25,26 +31,70 @@ const loginAltLinkClass = cn(
   "focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-500"
 );
 
+type AccountSelection = {
+  selectedAccountId: string | null;
+  showAccountPicker: boolean;
+};
+
+function deriveAccountSelection(
+  hydrated: boolean,
+  useManualEmail: boolean,
+  accounts: LoginDirectoryAccountPublic[]
+): AccountSelection {
+  if (!hydrated || useManualEmail || accounts.length === 0) {
+    return { selectedAccountId: null, showAccountPicker: true };
+  }
+
+  const restored = resolveLoginLastAccountId(accounts);
+  if (restored) {
+    return { selectedAccountId: restored, showAccountPicker: false };
+  }
+
+  return { selectedAccountId: null, showAccountPicker: true };
+}
+
 export function LoginForm({
   accounts,
   onSubtitleModeChange,
 }: {
-  accounts: LoginDirectoryAccount[];
+  accounts: LoginDirectoryAccountPublic[];
   onSubtitleModeChange?: (mode: LoginSubtitleMode) => void;
 }) {
   const searchParams = useSearchParams();
   const hydrated = useClientHydrated();
   const next = searchParams.get("next");
   const reason = searchParams.get("reason");
-  const [selectedAccountId, setSelectedAccountId] = useState<string | null>(null);
-  const [showAccountPicker, setShowAccountPicker] = useState(true);
+  const [accountSelectionOverride, setAccountSelectionOverride] =
+    useState<AccountSelection | null>(null);
   const [manualEmail, setManualEmail] = useState("");
   const [useManualEmail, setUseManualEmail] = useState(() => accounts.length === 0);
   const [password, setPassword] = useState("");
   const [bannerError, setBannerError] = useState("");
   const [passwordError, setPasswordError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [resetSending, setResetSending] = useState(false);
+  const [resetSession, setResetSession] = useState<{
+    accountId: string;
+    maskedEmail: string;
+    resendAvailableAt: string;
+  } | null>(() => {
+    if (typeof window === "undefined") return null;
+    const stored = readStoredPasswordResetSession();
+    if (!stored) return null;
+    return {
+      accountId: stored.accountId,
+      maskedEmail: stored.maskedEmail,
+      resendAvailableAt: stored.resendAvailableAt,
+    };
+  });
   const errorRef = useRef<HTMLDivElement>(null);
+
+  const derivedAccountSelection = useMemo(
+    () => deriveAccountSelection(hydrated, useManualEmail, accounts),
+    [hydrated, useManualEmail, accounts]
+  );
+  const { selectedAccountId, showAccountPicker } =
+    accountSelectionOverride ?? derivedAccountSelection;
 
   const sessionNotice = useMemo(
     () => (reason === "session" ? loginSessionLostMessage() : ""),
@@ -65,33 +115,19 @@ export function LoginForm({
 
   useEffect(() => {
     if (!onSubtitleModeChange) return;
+    if (resetSession) {
+      onSubtitleModeChange("reset");
+      return;
+    }
     const mode: LoginSubtitleMode = useManualEmail
       ? "manual"
       : quickLoginActive
         ? "quick"
         : "picker";
     onSubtitleModeChange(mode);
-  }, [useManualEmail, quickLoginActive, onSubtitleModeChange]);
+  }, [useManualEmail, quickLoginActive, onSubtitleModeChange, resetSession]);
 
-  const loginEmail = useManualEmail
-    ? manualEmail.trim().toLowerCase()
-    : (selectedAccount?.email ?? "");
-
-  const restoreKey = hydrated
-    ? `${useManualEmail}\0${accounts.map((account) => account.id).join(",")}`
-    : "";
-  const [appliedRestoreKey, setAppliedRestoreKey] = useState("");
-  if (hydrated && !useManualEmail && accounts.length > 0 && restoreKey !== appliedRestoreKey) {
-    setAppliedRestoreKey(restoreKey);
-    const restored = resolveLoginLastAccountId(accounts);
-    if (restored) {
-      setSelectedAccountId(restored);
-      setShowAccountPicker(false);
-    } else {
-      setSelectedAccountId(null);
-      setShowAccountPicker(true);
-    }
-  }
+  const loginReady = useManualEmail ? Boolean(manualEmail.trim()) : Boolean(selectedAccountId);
 
   useEffect(() => {
     if (!quickLoginActive) return;
@@ -112,8 +148,11 @@ export function LoginForm({
 
   const handleAccountChange = useCallback((accountId: string) => {
     writeLoginLastAccountId(accountId);
-    setSelectedAccountId(accountId);
-    setShowAccountPicker(false);
+    setAccountSelectionOverride({
+      selectedAccountId: accountId,
+      showAccountPicker: false,
+    });
+    setPassword("");
     setBannerError("");
     setPasswordError("");
     requestAnimationFrame(() => {
@@ -122,19 +161,87 @@ export function LoginForm({
   }, []);
 
   const showOtherAccountPicker = useCallback(() => {
-    setShowAccountPicker(true);
+    setAccountSelectionOverride((current) => {
+      const selection = current ?? derivedAccountSelection;
+      return {
+        selectedAccountId: selection.selectedAccountId,
+        showAccountPicker: true,
+      };
+    });
+    setPassword("");
     setBannerError("");
     setPasswordError("");
+  }, [derivedAccountSelection]);
+
+  const canResetPassword = !useManualEmail && Boolean(selectedAccountId);
+
+  const exitPasswordReset = useCallback(() => {
+    setResetSession(null);
+    writeStoredPasswordResetSession(null);
+    setBannerError("");
+    setPasswordError("");
+    setResetSending(false);
   }, []);
+
+  const persistResetSession = useCallback(
+    (session: { accountId: string; maskedEmail: string; resendAvailableAt: string }) => {
+      setResetSession(session);
+      writeStoredPasswordResetSession({
+        ...session,
+        startedAt: new Date().toISOString(),
+      });
+    },
+    []
+  );
+
+  const startPasswordReset = useCallback(async () => {
+    if (!canResetPassword || !selectedAccountId || resetSending) return;
+
+    setResetSending(true);
+    setBannerError("");
+    setPasswordError("");
+
+    const result = await requestPasswordResetCode(selectedAccountId);
+    setResetSending(false);
+
+    if (!result.ok) {
+      setBannerError(result.error);
+      return;
+    }
+
+    persistResetSession({
+      accountId: selectedAccountId,
+      maskedEmail: result.maskedEmail,
+      resendAvailableAt: result.resendAvailableAt,
+    });
+  }, [canResetPassword, selectedAccountId, resetSending, persistResetSession]);
+
+  const forgotPasswordLink = canResetPassword ? (
+    <div className="flex justify-end">
+      <button
+        type="button"
+        className={loginAltLinkClass}
+        onClick={() => void startPasswordReset()}
+        disabled={loading || resetSending}
+      >
+        {resetSending ? "Wysyłanie kodu…" : "Nie pamiętam hasła"}
+      </button>
+    </div>
+  ) : null;
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
     setBannerError("");
     setPasswordError("");
 
-    if (!loginEmail) {
+    if (!loginReady) {
       setBannerError(useManualEmail ? "Podaj adres e-mail." : "Wybierz konto z listy.");
-      if (!useManualEmail) setShowAccountPicker(true);
+      if (!useManualEmail) {
+        setAccountSelectionOverride({
+          selectedAccountId: null,
+          showAccountPicker: true,
+        });
+      }
       return;
     }
 
@@ -148,7 +255,12 @@ export function LoginForm({
 
     setLoading(true);
 
-    const result = await runLoginFlow(loginEmail, password, next);
+    const result = await runLoginFlow({
+      accountId: useManualEmail ? null : selectedAccountId,
+      email: useManualEmail ? manualEmail.trim().toLowerCase() : undefined,
+      password,
+      next,
+    });
 
     if (!result.ok) {
       setLoading(false);
@@ -188,7 +300,7 @@ export function LoginForm({
           setPassword(e.target.value);
           if (passwordError) setPasswordError("");
         }}
-        disabled={!loginEmail || loading}
+        disabled={!loginReady || loading}
         state={passwordError ? "error" : "default"}
       />
     </Field>
@@ -199,11 +311,23 @@ export function LoginForm({
       type="submit"
       size="lg"
       className="w-full min-h-11 transition-opacity"
-      disabled={loading || !loginEmail}
+      disabled={loading || !loginReady}
     >
       {loading ? "Logowanie…" : "Zaloguj się"}
     </Button>
   );
+
+  if (resetSession) {
+    return (
+      <PasswordResetPanel
+        accountId={resetSession.accountId}
+        maskedEmail={resetSession.maskedEmail}
+        resendAvailableAt={resetSession.resendAvailableAt}
+        sessionNotice={sessionNotice || undefined}
+        onBack={exitPasswordReset}
+      />
+    );
+  }
 
   return (
     <form onSubmit={onSubmit} className="flex min-h-0 flex-col gap-4 sm:gap-5" noValidate>
@@ -221,12 +345,12 @@ export function LoginForm({
         </div>
       ) : null}
 
-      {hydrated && loginEmail ? (
+      {useManualEmail && hydrated && manualEmail.trim() ? (
         <input
           type="email"
           name="username"
           autoComplete="username"
-          value={loginEmail}
+          value={manualEmail.trim().toLowerCase()}
           readOnly
           tabIndex={-1}
           aria-hidden
@@ -236,19 +360,22 @@ export function LoginForm({
 
       {quickLoginActive && selectedAccount ? (
         <div className="space-y-4 sm:space-y-5">
-          <LoginQuickAccountGreeting displayName={selectedAccount.displayName} />
+          <div className="space-y-2">
+            <LoginQuickAccountGreeting displayName={selectedAccount.displayName} />
+            <div className="flex justify-end">
+              <button
+                type="button"
+                className={loginAltLinkClass}
+                onClick={showOtherAccountPicker}
+                disabled={loading}
+              >
+                To nie Ty? Wybierz inne konto
+              </button>
+            </div>
+          </div>
           {passwordField}
           {submitBlock}
-          <div className="flex justify-end">
-            <button
-              type="button"
-              className={loginAltLinkClass}
-              onClick={showOtherAccountPicker}
-              disabled={loading}
-            >
-              To nie Ty? Wybierz inne konto
-            </button>
-          </div>
+          {forgotPasswordLink}
         </div>
       ) : (
         <>
@@ -286,8 +413,11 @@ export function LoginForm({
                   className={loginAltLinkClass}
                   onClick={() => {
                     setUseManualEmail(true);
-                    setSelectedAccountId(null);
-                    setShowAccountPicker(true);
+                    setAccountSelectionOverride({
+                      selectedAccountId: null,
+                      showAccountPicker: true,
+                    });
+                    setPassword("");
                     setBannerError("");
                     setPasswordError("");
                   }}
@@ -308,9 +438,12 @@ export function LoginForm({
                       accounts,
                       readLoginLastAccountId()
                     );
-                    setSelectedAccountId(restored);
-                    setShowAccountPicker(!restored);
+                    setAccountSelectionOverride({
+                      selectedAccountId: restored,
+                      showAccountPicker: !restored,
+                    });
                     setUseManualEmail(false);
+                    setPassword("");
                     setBannerError("");
                     setPasswordError("");
                   }}
@@ -325,6 +458,7 @@ export function LoginForm({
           <div className="shrink-0 space-y-3 sm:space-y-4">
             {passwordField}
             {submitBlock}
+            {forgotPasswordLink}
           </div>
         </>
       )}

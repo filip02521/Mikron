@@ -36,6 +36,28 @@ describe("replayHistoriaScheduleState", () => {
     expect(formatDateString(state.sheetNextDate!)).toBe("2026-06-17");
   });
 
+  it("używa kalendarza Warszawy dla order_date z timestampu UTC", () => {
+    const state = replayHistoriaScheduleState([
+      {
+        actionAt: new Date("2026-06-11T10:00:00.000Z"),
+        action: "Zamówione",
+        nextDate: new Date("2026-07-10"),
+      },
+    ]);
+    expect(formatDateString(state.orderDate!)).toBe("2026-06-11");
+  });
+
+  it("zachowuje sobotę jako order_date — jak live markStandardOrdered", () => {
+    const state = replayHistoriaScheduleState([
+      {
+        actionAt: new Date("2026-06-13T10:00:00.000+02:00"),
+        action: "Zamówione",
+        nextDate: null,
+      },
+    ]);
+    expect(formatDateString(state.orderDate!)).toBe("2026-06-13");
+  });
+
   it("przesunięcie po zamówieniu ustawia shift_date z kolumny następnej daty", () => {
     const state = replayHistoriaScheduleState([
       {

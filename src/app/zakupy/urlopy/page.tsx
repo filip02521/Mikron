@@ -7,6 +7,8 @@ import { VacationsAdminClient } from "@/components/admin/VacationsAdminClient";
 import { SuppliersHubShell } from "@/components/admin/SuppliersHubShell";
 import { Alert } from "@/components/ui/Alert";
 import { supplierHubShellDescription } from "@/lib/supplier-hub";
+import { deactivateExpiredVacations } from "@/lib/services/sync";
+import { todayDateKeyInWarsaw } from "@/lib/time/warsaw";
 
 import type { Metadata } from "next";
 import { pageMetadataFor } from "@/lib/ui/page-metadata";
@@ -19,6 +21,7 @@ export default async function ZakupyUrlopyPage() {
   let inactiveCount = 0;
   let loadError: string | null = null;
   try {
+    await deactivateExpiredVacations();
     const [v, s, inactive] = await Promise.all([
       fetchVacations(),
       fetchSuppliersWithSchedules(undefined, { activeOnly: false }),
@@ -40,7 +43,11 @@ export default async function ZakupyUrlopyPage() {
       inactiveCount={inactiveCount}
     >
       {loadError ? <Alert tone="error">{loadError}</Alert> : null}
-      <VacationsAdminClient vacations={vacations} suppliers={suppliers} />
+      <VacationsAdminClient
+        vacations={vacations}
+        suppliers={suppliers}
+        todayDateKey={todayDateKeyInWarsaw()}
+      />
     </SuppliersHubShell>
   );
 }

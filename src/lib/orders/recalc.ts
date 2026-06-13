@@ -1,8 +1,17 @@
 import type { SupplierLocation, VacationNote } from "@/types/database";
 import { todayInWarsaw } from "@/lib/time/warsaw";
 import { getRowColorForDate, modifyHexColor, type SummaryColorSet } from "./colors";
-import type { OrderInterval } from "./dates";
-import { applyVacationLogic, type VacationPeriod } from "./vacations";
+import { calculateNextOrderDate, toDateOnly, type OrderInterval } from "./dates";
+import {
+  applyVacationLogic,
+  effectiveShiftDate,
+  filterApplicableVacationPeriods,
+  type VacationPeriod,
+} from "./vacations";
+
+function dayTs(d: Date): number {
+  return toDateOnly(d).getTime();
+}
 
 export interface ScheduleRowInput {
   orderDate: Date | null;
@@ -25,13 +34,36 @@ export function recalcScheduleRow(
   colors?: SummaryColorSet,
   today = todayInWarsaw()
 ): ScheduleRowOutput {
-  const { nextDate, vacationNote } = applyVacationLogic({
+  const shiftDate = effectiveShiftDate(input.shiftDate, today);
+  const vacations = filterApplicableVacationPeriods(input.vacations, today);
+
+  let { nextDate, vacationNote } = applyVacationLogic({
     orderDate: input.orderDate,
-    shiftDate: input.shiftDate,
+    shiftDate,
     interval: input.interval,
     location: input.location,
-    vacations: input.vacations,
+    vacations,
   });
+
+  if (nextDate && dayTs(nextDate) < dayTs(today) && input.interval) {
+    let roll = calculateNextOrderDate(today, input.interval);
+    let guard = 0;
+    while (roll && dayTs(roll) < dayTs(today) && guard < 52) {
+      roll = calculateNextOrderDate(roll, input.interval);
+      guard++;
+    }
+    if (roll) {
+      const bumped = applyVacationLogic({
+        orderDate: input.orderDate,
+        shiftDate: roll,
+        interval: input.interval,
+        location: input.location,
+        vacations,
+      });
+      nextDate = bumped.nextDate;
+      vacationNote = bumped.vacationNote;
+    }
+  }
 
   const standardColor = getRowColorForDate(nextDate, colors, today);
   let nextDateCellColor = standardColor;

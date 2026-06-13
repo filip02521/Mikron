@@ -3,6 +3,34 @@ import { isSalesManager } from "@/lib/auth-roles";
 import { salesManagerNavTeamDescriptions } from "@/lib/sales/team-ui";
 import { supplierHubPaths } from "@/lib/supplier-hub";
 
+export type NavIconKey =
+  | "dailyPanel"
+  | "verification"
+  | "warehouse"
+  | "history"
+  | "suppliers"
+  | "schedule"
+  | "vacation"
+  | "groupOrder"
+  | "admin"
+  | "bugReport"
+  | "catalog"
+  | "myOrders"
+  | "newRequest"
+  | "plan"
+  | "notepad"
+  | "clientZk"
+  | "board"
+  | "team"
+  | "teamAccounts"
+  | "teamGroups";
+
+export type NavTone = "indigo" | "amber" | "orange" | "emerald" | "sky" | "slate" | "violet";
+
+export type NavTier = "primary" | "compact";
+
+export type NavMobileSlot = "primary" | "overflow";
+
 export type NavItem = {
   href: string;
   label: string;
@@ -10,12 +38,27 @@ export type NavItem = {
   mobileLabel?: string;
   description?: string;
   badge?: number;
+  icon: NavIconKey;
+  tone: NavTone;
+  tier?: NavTier;
+  /** Delikatne wyróżnienie punktu startowego (Panel / Moje). */
+  highlight?: boolean;
+  mobileSlot?: NavMobileSlot;
 };
 
 export type NavGroup = {
   title: string;
   items: NavItem[];
 };
+
+export const NAV_SECTION_TODAY = "Dziś";
+export const NAV_SECTION_TEAM = "Zespół";
+export const NAV_SECTION_SUPPLIERS = "Dostawcy";
+export const NAV_SECTION_TOOLS = "Archiwum i narzędzia";
+export const NAV_SECTION_SYSTEM = "System";
+export const NAV_SECTION_DAILY = "Codziennie";
+export const NAV_SECTION_ZK = "ZK i terminy";
+export const NAV_SECTION_INFO = "Informacje";
 
 /**
  * Sidebar „Administracja” (/admin) = hub system + konta + handlowcy.
@@ -29,6 +72,10 @@ function isAdminSidebarRootActive(pathname: string): boolean {
   );
 }
 
+function navHrefPath(href: string): string {
+  return href.split("?")[0]!;
+}
+
 /**
  * Czy punkt menu jest aktywny.
  * Nie podświetla krótszego href (np. /zespol), gdy pathname pasuje do dokładniejszego siblinga (/zespol/handlowcy).
@@ -38,24 +85,29 @@ export function isNavItemActive(
   href: string,
   siblingHrefs: string[] = []
 ): boolean {
-  if (href === "/admin") {
+  const hrefPath = navHrefPath(href);
+
+  if (hrefPath === "/admin") {
     return isAdminSidebarRootActive(pathname);
   }
-  if (href === "/zk") {
+  if (hrefPath === "/zk") {
     return (
       pathname === "/zk" ||
       pathname === "/notatnik" ||
       pathname.startsWith("/notatnik/")
     );
   }
-  if (pathname === href) return true;
-  if (!pathname.startsWith(`${href}/`)) return false;
-  if (href.endsWith("/dostawcy") && pathname.includes("/nieaktywni")) return false;
+  if (hrefPath.startsWith("/lokalizacje/") && pathname.startsWith("/lokalizacje/")) {
+    return true;
+  }
+  if (pathname === hrefPath) return true;
+  if (!pathname.startsWith(`${hrefPath}/`)) return false;
+  if (hrefPath.endsWith("/dostawcy") && pathname.includes("/nieaktywni")) return false;
   return !siblingHrefs.some(
     (other) =>
       other !== href &&
-      other.startsWith(`${href}/`) &&
-      (pathname === other || pathname.startsWith(`${other}/`))
+      navHrefPath(other).startsWith(`${hrefPath}/`) &&
+      (pathname === navHrefPath(other) || pathname.startsWith(`${navHrefPath(other)}/`))
   );
 }
 
@@ -65,136 +117,243 @@ const OPERATIONS_NOTATKI_MAGAZYN = "/notatki?dzial=magazyn";
 
 const DEPARTMENT_BOARD_PROCUREMENT_PATH = "/zakupy/tablica";
 
-function operationsNavItems(badges: {
+function operationsTodayItems(badges: {
   nowe?: number;
   weryfikacja?: number;
   realizacja?: number;
-  operationsNotatki?: number;
-  /** Pytania handlowców bez odpowiedzi (/zakupy/tablica). */
-  departmentBoardQuestions?: number;
 }): NavItem[] {
   return [
     {
       href: "/podsumowanie",
       label: "Panel dzienny",
       mobileLabel: "Panel",
-      description: "Zacznij tu — kolejka dnia, prośby i harmonogram",
+      description: "Kolejka dnia",
+      icon: "dailyPanel",
+      tone: "indigo",
+      tier: "primary",
+      highlight: true,
+      mobileSlot: "primary",
       badge: badges.nowe,
-    },
-    {
-      href: OPERATIONS_NOTATKI_PATH,
-      label: "Notatki",
-      mobileLabel: "Notatki",
-      description: "Prywatne i wspólne",
-      badge: badges.operationsNotatki,
-    },
-    {
-      href: DEPARTMENT_BOARD_PROCUREMENT_PATH,
-      label: "Tablica z handlowcami",
-      mobileLabel: "Handlowcy",
-      description: "Ogłoszenia dla zespołu i odpowiedzi na pytania",
-      badge: badges.departmentBoardQuestions,
     },
     {
       href: "/weryfikacja",
       label: "Weryfikacja",
       mobileLabel: "Weryfik.",
-      description: "Uzupełnij brakujące dane prośby",
+      description: "Brakujące dane prośby",
+      icon: "verification",
+      tone: "amber",
+      tier: "primary",
+      mobileSlot: "primary",
       badge: badges.weryfikacja,
     },
     {
       href: "/kolejka",
-      label: "Magazyn i regał",
+      label: "Przyjęcie towaru",
       mobileLabel: "Magazyn",
-      description: "Po zamówieniu u dostawcy — przyjęcie towaru",
+      description: "Przyjęcie i dziennik dostaw",
+      icon: "warehouse",
+      tone: "emerald",
+      tier: "primary",
+      mobileSlot: "primary",
       badge: badges.realizacja,
-    },
-    {
-      href: "/historia",
-      label: "Historia",
-      mobileLabel: "Historia",
-      description: "Archiwum złożonych zamówień",
     },
   ];
 }
 
-const supplierHubItemsZakupy: NavItem[] = [
-  {
-    href: "/zakupy/dostawcy",
-    label: "Karty dostawców",
-    description: "Kontakt, zapas, częstotliwość",
-  },
-  {
-    href: "/lokalizacje/POLSKA",
-    label: "Terminy zamówień",
-    description: "Daty cyklu · PL / ZA / Import",
-  },
-  {
-    href: "/zakupy/urlopy",
-    label: "Urlopy",
-    description: "Okresy niedostępności",
-  },
-];
+function operationsTeamItems(badges: {
+  operationsNotatki?: number;
+  departmentBoardQuestions?: number;
+}): NavItem[] {
+  return [
+    {
+      href: DEPARTMENT_BOARD_PROCUREMENT_PATH,
+      label: "Tablica",
+      mobileLabel: "Tablica",
+      description: "Ogłoszenia i pytania handlowców",
+      icon: "board",
+      tone: "indigo",
+      tier: "primary",
+      mobileSlot: "primary",
+      badge: badges.departmentBoardQuestions,
+    },
+    {
+      href: OPERATIONS_NOTATKI_PATH,
+      label: "Notatki",
+      mobileLabel: "Notatki",
+      description: "Notatki zespołu zakupów",
+      icon: "notepad",
+      tone: "indigo",
+      tier: "primary",
+      mobileSlot: "overflow",
+      badge: badges.operationsNotatki,
+    },
+  ];
+}
 
 function supplierHubItemsForRole(role: UserRole): NavItem[] {
-  if (role !== "admin") return supplierHubItemsZakupy;
+  const compact = {
+    tier: "compact" as const,
+    mobileSlot: "overflow" as const,
+  };
+
+  if (role !== "admin") {
+    return [
+      {
+        href: "/zakupy/dostawcy",
+        label: "Karty dostawców",
+        description: "Kontakt, zapas, cykl",
+        icon: "suppliers",
+        tone: "sky",
+        ...compact,
+      },
+      {
+        href: "/lokalizacje/POLSKA",
+        label: "Terminy zamówień",
+        description: "PL / ZA / Import",
+        icon: "schedule",
+        tone: "sky",
+        ...compact,
+      },
+      {
+        href: "/zakupy/urlopy",
+        label: "Urlopy",
+        description: "Niedostępność dostawcy",
+        icon: "vacation",
+        tone: "sky",
+        ...compact,
+      },
+    ];
+  }
+
   const paths = supplierHubPaths("admin");
   return [
     {
       href: paths.cards,
       label: "Karty dostawców",
-      description: "Kontakt, zapas, częstotliwość · usuwanie",
+      description: "Kontakt, zapas, cykl",
+      icon: "suppliers",
+      tone: "sky",
+      ...compact,
     },
     {
       href: paths.schedule("POLSKA"),
       label: "Terminy zamówień",
-      description: "Daty cyklu · PL / ZA / Import",
+      description: "PL / ZA / Import",
+      icon: "schedule",
+      tone: "sky",
+      ...compact,
     },
     {
       href: paths.vacations,
       label: "Urlopy",
-      description: "Okresy niedostępności",
+      description: "Niedostępność dostawcy",
+      icon: "vacation",
+      tone: "sky",
+      ...compact,
     },
   ];
 }
 
-const orderFormItems: NavItem[] = [
+const archiveToolItems: NavItem[] = [
+  {
+    href: "/historia",
+    label: "Historia",
+    mobileLabel: "Historia",
+    description: "Archiwum zamówień",
+    icon: "history",
+    tone: "slate",
+    tier: "compact",
+    mobileSlot: "overflow",
+  },
   {
     href: "/zamowienia/nowe",
     label: "Zamówienie grupowe",
     description: "Formularz zbiorczy",
+    icon: "groupOrder",
+    tone: "slate",
+    tier: "compact",
+    mobileSlot: "overflow",
   },
 ];
 
-const adminOnlyItemsBase: NavItem[] = [
-  {
-    href: "/admin",
-    label: "Administracja",
-    description: "System, konta, handlowcy",
-  },
-  {
-    href: "/admin/zgloszenia",
-    label: "Zgłoszenia handlowców",
-    description: "Błędy i uwagi od zespołu sprzedaży",
-  },
-  {
-    href: "/admin/produkty",
-    label: "Katalog produktów",
-    description: "Towar Subiekt → dostawca",
-  },
-  {
-    href: "/zespol/grupy",
-    label: "Grupy zespołu",
-    description: "Sklep, Biuro — tworzenie i kolejność",
-  },
-];
+function adminSystemItems(badges: { adminBugReports?: number }): NavItem[] {
+  const compact = {
+    tier: "compact" as const,
+    mobileSlot: "overflow" as const,
+  };
 
-function adminNavItems(badges: { adminBugReports?: number }): NavItem[] {
-  return adminOnlyItemsBase.map((item) =>
-    item.href === "/admin/zgloszenia"
-      ? { ...item, badge: badges.adminBugReports }
-      : item
-  );
+  return [
+    {
+      href: "/admin",
+      label: "Administracja",
+      description: "System, konta, handlowcy",
+      icon: "admin",
+      tone: "violet",
+      ...compact,
+    },
+    {
+      href: "/admin/zgloszenia",
+      label: "Zgłoszenia",
+      description: "Uwagi od handlowców",
+      icon: "bugReport",
+      tone: "violet",
+      badge: badges.adminBugReports,
+      ...compact,
+    },
+    {
+      href: "/admin/produkty",
+      label: "Katalog produktów",
+      description: "Towar Subiekt → dostawca",
+      icon: "catalog",
+      tone: "violet",
+      ...compact,
+    },
+    {
+      href: "/zespol/grupy",
+      label: "Grupy",
+      description: "Sklep, Biuro — kolejność",
+      icon: "teamGroups",
+      tone: "violet",
+      ...compact,
+    },
+  ];
+}
+
+function operationsNavGroups(
+  role: UserRole,
+  badges: {
+    nowe?: number;
+    weryfikacja?: number;
+    realizacja?: number;
+    operationsNotatki?: number;
+    departmentBoardQuestions?: number;
+    adminBugReports?: number;
+  }
+): NavGroup[] {
+  const groups: NavGroup[] = [
+    { title: NAV_SECTION_TODAY, items: operationsTodayItems(badges) },
+    { title: NAV_SECTION_TEAM, items: operationsTeamItems(badges) },
+    { title: NAV_SECTION_SUPPLIERS, items: supplierHubItemsForRole(role) },
+    { title: NAV_SECTION_TOOLS, items: archiveToolItems },
+  ];
+
+  if (role === "admin") {
+    groups.push({ title: NAV_SECTION_SYSTEM, items: adminSystemItems(badges) });
+  }
+
+  return groups;
+}
+
+export function flattenNavGroups(groups: NavGroup[]): NavItem[] {
+  return groups.flatMap((group) => group.items);
+}
+
+export function navMobilePrimaryItems(groups: NavGroup[]): NavItem[] {
+  return flattenNavGroups(groups).filter((item) => item.mobileSlot === "primary");
+}
+
+export function navMobileOverflowItems(groups: NavGroup[]): NavItem[] {
+  return flattenNavGroups(groups).filter((item) => item.mobileSlot === "overflow");
 }
 
 export function navForRole(
@@ -217,40 +376,36 @@ export function navForRole(
     departmentBoardQuestions?: number;
   } = {}
 ): NavGroup[] {
-  const ops = operationsNavItems(badges);
-  if (role === "admin") {
-    return [
-      { title: "Dzień roboczy", items: ops },
-      { title: "Dostawcy", items: supplierHubItemsForRole(role) },
-      { title: "Formularze", items: orderFormItems },
-      { title: "Administracja", items: adminNavItems(badges) },
-    ];
-  }
-
-  if (role === "zakupy") {
-    return [
-      { title: "Dzień roboczy", items: ops },
-      { title: "Dostawcy", items: supplierHubItemsForRole(role) },
-      { title: "Formularze", items: orderFormItems },
-    ];
+  if (role === "admin" || role === "zakupy") {
+    return operationsNavGroups(role, badges);
   }
 
   if (role === "magazyn") {
     return [
       {
-        title: "Magazyn",
+        title: NAV_SECTION_TODAY,
         items: [
           {
             href: "/kolejka",
-            label: "Magazyn i regał",
-            description: "Przyjęcie towaru i dziennik dostaw",
+            label: "Przyjęcie towaru",
+            mobileLabel: "Magazyn",
+            description: "Przyjęcie i dziennik dostaw",
+            icon: "warehouse",
+            tone: "emerald",
+            tier: "primary",
+            highlight: true,
+            mobileSlot: "primary",
             badge: badges.realizacja,
           },
           {
             href: OPERATIONS_NOTATKI_MAGAZYN,
             label: "Notatki",
             mobileLabel: "Notatki",
-            description: "Prywatne i wspólne dla magazynu",
+            description: "Notatki magazynu",
+            icon: "notepad",
+            tone: "indigo",
+            tier: "primary",
+            mobileSlot: "primary",
             badge: badges.operationsNotatki,
           },
         ],
@@ -258,65 +413,107 @@ export function navForRole(
     ];
   }
 
-  const handlowiecItems: NavItem[] = [
+  const dailyItems: NavItem[] = [
     {
       href: "/moje",
       label: "Moje zamówienia",
       mobileLabel: "Moje",
-      description: "Start dnia, statusy prośb i odbiór",
+      description: "Statusy prośb i odbiór",
+      icon: "myOrders",
+      tone: "indigo",
+      tier: "primary",
+      highlight: true,
+      mobileSlot: "primary",
       badge: badges.salesMoje,
     },
     {
       href: "/prosba",
       label: "Nowa prośba",
       mobileLabel: "Prośba",
-      description:
-        "Zamówienie u dostawcy lub info o dostępności — status w Moje zamówienia (nie pytanie ogólne)",
+      description: "Zamówienie lub info o dostępności",
+      icon: "newRequest",
+      tone: "indigo",
+      tier: "primary",
+      mobileSlot: "primary",
     },
+  ];
+
+  const zkItems: NavItem[] = [
     {
       href: "/zk",
       label: "ZK czekające",
       mobileLabel: "ZK",
-      description: "ZK czekające na towar z Subiekta — śledzenie dostaw i prośby z pozycji",
+      description: "Towar z Subiekta",
+      icon: "clientZk",
+      tone: "violet",
+      tier: "primary",
+      mobileSlot: "primary",
       badge: badges.salesNotatnik,
     },
     {
       href: "/plan",
-      label: "Harmonogram zakupów",
+      label: "Harmonogram",
       mobileLabel: "Plan",
-      description: "Terminy u dostawców, otwarte prośby i wyszukiwarka",
+      description: "Terminy u dostawców",
+      icon: "plan",
+      tone: "sky",
+      tier: "primary",
+      mobileSlot: "overflow",
     },
+  ];
+
+  const infoItems: NavItem[] = [
     {
       href: "/tablica",
-      label: "Komunikacja",
-      mobileLabel: "Info",
-      description: "Ogłoszenia i pytania do zakupów — bez składania prośby o towar",
+      label: "Tablica",
+      mobileLabel: "Tablica",
+      description: "Ogłoszenia i pytania do zakupów",
+      icon: "board",
+      tone: "indigo",
+      tier: "primary",
+      mobileSlot: "primary",
       badge: badges.salesTablica,
     },
   ];
 
-  const groups: NavGroup[] = [{ title: "Handlowiec", items: handlowiecItems }];
+  const groups: NavGroup[] = [
+    { title: NAV_SECTION_DAILY, items: dailyItems },
+    { title: NAV_SECTION_ZK, items: zkItems },
+    { title: NAV_SECTION_INFO, items: infoItems },
+  ];
 
   if (isSalesManager(role)) {
     const teamNav = salesManagerNavTeamDescriptions();
     groups.push({
-      title: "Zespół",
+      title: NAV_SECTION_TEAM,
       items: [
         {
           href: "/zespol",
           label: "Podgląd zespołu",
           mobileLabel: "Zespół",
           description: teamNav.overview,
+          icon: "team",
+          tone: "slate",
+          tier: "compact",
+          mobileSlot: "overflow",
         },
         {
           href: "/zespol/handlowcy",
-          label: "Handlowcy i konta",
+          label: "Handlowcy",
           description: teamNav.handlowcy,
+          icon: "teamAccounts",
+          tone: "slate",
+          tier: "compact",
+          mobileSlot: "overflow",
         },
         {
           href: "/zespol/grupy",
-          label: "Przypisane grupy",
+          label: "Grupy",
           description: teamNav.grupy,
+          icon: "teamGroups",
+          tone: "slate",
+          tier: "compact",
+          mobileSlot: "overflow",
         },
       ],
     });
@@ -350,13 +547,13 @@ export function pageTitle(pathname: string): string {
   if (pathname.startsWith("/notatnik") || pathname.startsWith("/zk")) return "ZK czekające";
   if (pathname.startsWith("/notatki")) return "Notatki";
   if (pathname.startsWith("/zespol")) {
-    if (pathname.startsWith("/zespol/handlowcy")) return "Handlowcy i konta";
-    if (pathname.startsWith("/zespol/grupy")) return "Grupy zespołu";
+    if (pathname.startsWith("/zespol/handlowcy")) return "Handlowcy";
+    if (pathname.startsWith("/zespol/grupy")) return "Grupy";
     return "Podgląd zespołu";
   }
   if (pathname.startsWith("/admin")) {
     if (pathname.startsWith("/admin/uzytkownicy")) return "Konta";
-    if (pathname.startsWith("/admin/zgloszenia")) return "Zgłoszenia handlowców";
+    if (pathname.startsWith("/admin/zgloszenia")) return "Zgłoszenia";
     if (pathname.startsWith("/admin/handlowcy")) return "Handlowcy";
     if (pathname.startsWith("/admin/produkty")) return "Katalog produktów";
     return "Administracja";

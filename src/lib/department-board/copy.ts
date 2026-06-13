@@ -1,10 +1,10 @@
 import { PROCUREMENT_TEAM_LABEL_TITLE } from "@/lib/orders/procurement-copy";
 
-export const DEPARTMENT_BOARD_SALES_PAGE_TITLE = "Komunikacja z zakupami";
+export const DEPARTMENT_BOARD_SALES_PAGE_TITLE = "Tablica";
 export const DEPARTMENT_BOARD_SALES_PAGE_DESC =
   "Ogłoszenia od zakupów (tylko do odczytu) oraz wspólne pytania zespołu z odpowiedziami. To nie zastępuje formularza Nowa prośba.";
 
-export const DEPARTMENT_BOARD_PROCUREMENT_PAGE_TITLE = "Tablica z handlowcami";
+export const DEPARTMENT_BOARD_PROCUREMENT_PAGE_TITLE = "Tablica";
 export const DEPARTMENT_BOARD_PROCUREMENT_PAGE_DESC =
   "Ogłoszenia dla handlowców (jednokierunkowo) oraz pytania zespołu sprzedaży z odpowiedziami widocznymi dla wszystkich.";
 

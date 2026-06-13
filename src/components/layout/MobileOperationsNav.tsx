@@ -2,16 +2,22 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { isNavItemActive, navForRole } from "@/lib/nav";
+import {
+  isNavItemActive,
+  navForRole,
+  navMobileOverflowItems,
+  navMobilePrimaryItems,
+} from "@/lib/nav";
 import { useOperationsUpdates } from "@/components/operations/OperationsUpdatesContext";
 import { cn } from "@/lib/cn";
-import { NavIcon } from "@/components/icons/NavIcon";
+import { NavIcon, navIconTileActiveClassForTone, navIconTileClassForTone } from "@/components/icons/NavIcon";
+import { MobileNavOverflowSheet } from "@/components/layout/MobileNavOverflowSheet";
 import {
   mobileNavBadgeClass,
-  mobileNavLinkActiveClass,
   mobileNavLinkBaseClass,
   mobileNavLinkIdleClass,
   mobileSalesNavClass,
+  sidebarNavToneActiveClass,
 } from "@/lib/ui/ontime-theme";
 import type { UserRole } from "@/types/database";
 
@@ -31,22 +37,21 @@ export function MobileOperationsNav({
   const pathname = usePathname();
   const operationsUpdates = useOperationsUpdates();
   const groups = navForRole(role, navBadges);
-  const items =
-    groups.find((g) => g.title === "Dzień roboczy")?.items ??
-    groups.find((g) => g.title === "Magazyn")?.items ??
-    groups[0]?.items ??
-    [];
+  const primaryItems = navMobilePrimaryItems(groups);
+  const overflowItems = navMobileOverflowItems(groups);
+  const allPrimaryHrefs = primaryItems.map((item) => item.href);
 
   return (
     <nav
       className={mobileSalesNavClass}
       style={{ paddingBottom: "env(safe-area-inset-bottom, 0px)" }}
-      aria-label="Nawigacja działu zakupów"
+      aria-label={
+        role === "magazyn" ? "Nawigacja magazynu" : "Nawigacja działu zakupów"
+      }
     >
       <ul className="mx-auto flex max-w-lg items-stretch justify-around gap-0.5 px-0.5">
-        {items.map((item) => {
-          const siblingHrefs = items.map((i) => i.href);
-          const active = isNavItemActive(pathname, item.href, siblingHrefs);
+        {primaryItems.map((item) => {
+          const active = isNavItemActive(pathname, item.href, allPrimaryHrefs);
           const attentionBadge = item.badge != null && item.badge > 0 ? item.badge : 0;
           const showLiveDot =
             item.href === "/podsumowanie" &&
@@ -60,13 +65,22 @@ export function MobileOperationsNav({
                 className={cn(
                   mobileNavLinkBaseClass,
                   "px-1",
-                  active ? mobileNavLinkActiveClass : mobileNavLinkIdleClass
+                  active ? sidebarNavToneActiveClass(item.tone) : mobileNavLinkIdleClass
                 )}
                 aria-current={active ? "page" : undefined}
                 title={item.description ?? item.label}
               >
-                <span className="relative">
-                  <NavIcon href={item.href} size={20} className="text-current" />
+                <span className="relative flex flex-col items-center gap-0.5">
+                  <span
+                    className={cn(
+                      "flex h-7 w-7 items-center justify-center rounded-md transition-colors",
+                      active
+                        ? navIconTileActiveClassForTone(item.tone)
+                        : navIconTileClassForTone(item.tone)
+                    )}
+                  >
+                    <NavIcon navKey={item.icon} size={18} />
+                  </span>
                   {attentionBadge > 0 && !active ? (
                     <span
                       className={cn(
@@ -92,6 +106,7 @@ export function MobileOperationsNav({
             </li>
           );
         })}
+        <MobileNavOverflowSheet items={overflowItems} />
       </ul>
     </nav>
   );

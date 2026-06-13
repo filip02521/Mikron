@@ -4,6 +4,7 @@
  */
 
 import { cn } from "@/lib/cn";
+import type { NavTone } from "@/lib/nav";
 
 /** Tło całej aplikacji (main + shell) */
 export const appShellClass = "min-h-screen bg-transparent";
@@ -14,41 +15,136 @@ export const appMainClass = "min-h-screen overflow-y-auto bg-transparent";
 /** Padding main — bez max-width; szerokość ustawia shell każdej strony. */
 export const appMainInsetClass = "mx-auto w-full px-3 py-5 sm:px-4 sm:py-6 lg:px-5";
 
-/** Sidebar — biała powierzchnia, spójna z kartami logowania */
+/** Sidebar — biała powierzchnia, obwódka i cień jak karty panelu dziennego */
 export const sidebarShellClass =
-  "border-r border-[var(--card-border)] bg-[var(--card)] text-slate-900 shadow-[2px_0_24px_-12px_rgba(15,23,42,0.1)]";
+  "border-r border-indigo-100/75 bg-[var(--card)] text-slate-900 shadow-[var(--shadow-card)]";
 
 export const sidebarHeaderClass =
-  "shrink-0 border-b border-slate-100 px-4 pb-4 pt-5";
+  "shrink-0 border-b border-indigo-100/70 px-4 pb-4 pt-5";
 
 export const sidebarFooterClass =
-  "shrink-0 border-t border-indigo-100/70 bg-gradient-to-b from-indigo-50/25 to-slate-50/80 px-3 py-3";
+  "shrink-0 border-t border-indigo-100/70 bg-indigo-50/25 px-3 py-3";
 
 export const sidebarNavScrollClass = "flex-1 overflow-y-auto px-2.5 pb-3 pt-4";
+
+/** Sidebar — aktywny link: mocniejsze tło w tonie, bez obramowania. */
+export function sidebarNavToneActiveClass(tone: NavTone): string {
+  switch (tone) {
+    case "amber":
+      return "border border-transparent bg-amber-100/60 text-slate-900 shadow-sm shadow-amber-900/5";
+    case "orange":
+      return "border border-transparent bg-orange-100/65 text-slate-900 shadow-sm shadow-orange-900/5";
+    case "emerald":
+      return "border border-transparent bg-emerald-100/60 text-slate-900 shadow-sm shadow-emerald-900/5";
+    case "sky":
+      return "border border-transparent bg-sky-100/55 text-slate-900 shadow-sm shadow-sky-900/5";
+    case "slate":
+      return "border border-transparent bg-slate-200/55 text-slate-900 shadow-sm";
+    case "violet":
+      return "border border-transparent bg-violet-100/60 text-slate-900 shadow-sm shadow-violet-900/5";
+    case "indigo":
+    default:
+      return "border border-transparent bg-indigo-100/55 text-slate-900 shadow-sm shadow-indigo-900/5";
+  }
+}
+
+/** @deprecated Użyj {@link sidebarNavToneActiveClass} z tonem pozycji. */
+export const navLinkActiveClass =
+  "border border-transparent bg-indigo-100/55 text-slate-900 shadow-sm shadow-indigo-900/5";
+
+/** Sidebar — link w stanie spoczynku (bez obramowania). */
+export const navLinkIdleClass =
+  "border border-transparent text-slate-700 hover:bg-slate-50/70 hover:text-slate-900";
+
+/** Sidebar — nagłówek grupy nawigacji. */
+export const sidebarNavSectionTitleClass =
+  "mb-1.5 px-3 text-[11px] font-semibold uppercase tracking-wide text-slate-500";
+
+/** Sidebar — separator między grupami. */
+export const sidebarNavSectionDividerClass = "mt-3 border-t border-indigo-100/70 pt-3";
+
+/** Sidebar — wyróżniony punkt startowy (Panel / Moje) w stanie spoczynku. */
+export const sidebarNavPrimaryHighlightIdleClass =
+  "bg-indigo-50/30 hover:bg-indigo-50/45";
+
+/** Delikatne tło powierzchni wg tonu — spoczynek (sidebar). */
+export function navToneSurfaceIdleClass(tone: NavTone): string {
+  switch (tone) {
+    case "amber":
+      return "bg-amber-50/35";
+    case "orange":
+      return "bg-orange-50/40";
+    case "emerald":
+      return "bg-emerald-50/35";
+    case "sky":
+      return "bg-sky-50/35";
+    case "violet":
+      return "bg-violet-50/35";
+    case "slate":
+      return "bg-slate-50/45";
+    case "indigo":
+    default:
+      return "bg-indigo-50/30";
+  }
+}
+
+/** Sidebar — delikatne tło wiersza primary wg tonu semantycznego (Dziś). */
+export function sidebarNavToneHighlightIdleClass(tone: NavTone): string | undefined {
+  switch (tone) {
+    case "indigo":
+    case "amber":
+    case "orange":
+    case "emerald":
+      return cn(navToneSurfaceIdleClass(tone), "hover:opacity-95");
+    default:
+      return undefined;
+  }
+}
+
+/** Sidebar — badge licznika dopasowany do tonu pozycji. */
+export function sidebarNavBadgeClassForTone(tone: NavTone, active: boolean): string {
+  if (active) return "bg-slate-200/90 text-slate-800";
+  switch (tone) {
+    case "amber":
+      return sidebarNavBadgeWarningClass;
+    case "orange":
+      return "bg-orange-100 text-orange-950 ring-1 ring-orange-200/80";
+    case "emerald":
+      return "bg-emerald-100 text-emerald-900 ring-1 ring-emerald-200/80";
+    case "indigo":
+      return "bg-indigo-100 text-indigo-800 ring-1 ring-indigo-200/70";
+    case "sky":
+      return "bg-sky-100 text-sky-900 ring-1 ring-sky-200/70";
+    case "violet":
+      return "bg-violet-100 text-violet-900 ring-1 ring-violet-200/70";
+    default:
+      return "bg-slate-100 text-slate-700 ring-1 ring-slate-200/70";
+  }
+}
+
+/** Sidebar — kompaktowy wiersz (archiwum, dostawcy, system). */
+export const sidebarNavCompactPaddingClass = "px-2 py-1.5";
+
+/** Sidebar — badge wymagający uwagi (weryfikacja). */
+export const sidebarNavBadgeWarningClass =
+  "bg-amber-100 text-amber-900 ring-1 ring-amber-200/80";
 
 /** Logo w aplikacji — gradient jak na logowaniu */
 export const brandMarkAppClass =
   "bg-gradient-to-br from-indigo-600 to-sky-600 text-white shadow-[var(--shadow-brand)] ring-1 ring-sky-500/30";
 
-/** Aktywny link — indigo + subtelny akcent sky po lewej */
-export const navLinkActiveClass =
-  "border-l-[3px] border-l-sky-400 bg-indigo-600 pl-[calc(0.75rem-3px)] text-white shadow-sm shadow-indigo-600/12 ring-1 ring-indigo-500/15";
-
-export const navLinkIdleClass =
-  "border-l-[3px] border-l-transparent text-slate-700 hover:bg-indigo-50/70 hover:text-indigo-950";
-
-/** Plakietka roli — neutralna baza + kolorowy akcent */
+/** Plakietka roli — delikatny ton bez lewego paska. */
 export function roleBadgeClass(role: string): string {
-  const accent: Record<string, string> = {
-    admin: "border-l-violet-500",
-    zakupy: "border-l-amber-500",
-    magazyn: "border-l-emerald-500",
-    sales: "border-l-indigo-500",
-    sales_manager: "border-l-indigo-400",
+  const tint: Record<string, string> = {
+    admin: "border-violet-200/80 bg-violet-50/90 text-violet-800",
+    zakupy: "border-amber-200/80 bg-amber-50/90 text-amber-900",
+    magazyn: "border-emerald-200/80 bg-emerald-50/90 text-emerald-800",
+    sales: "border-indigo-200/80 bg-indigo-50/90 text-indigo-800",
+    sales_manager: "border-indigo-200/70 bg-indigo-50/80 text-indigo-800",
   };
   return [
-    "inline-flex max-w-full items-center rounded-md border border-slate-200/90 border-l-[3px] bg-slate-50/80 px-2.5 py-1 text-[10px] font-semibold leading-tight text-slate-700",
-    accent[role] ?? "border-l-slate-400",
+    "inline-flex max-w-full items-center rounded-md border px-2.5 py-1 text-[10px] font-semibold leading-tight",
+    tint[role] ?? "border-slate-200/90 bg-slate-50/80 text-slate-700",
   ].join(" ");
 }
 
@@ -106,6 +202,9 @@ export const salesTeamPageShellClass = cn(salesTeamShellClass, "space-y-4");
 
 /** Administracja — tabele i formularze (szersza kolumna niż panel dzienny). */
 export const adminPageShellClass = salesTeamPageShellClass;
+
+/** Historia, zamówienie grupowe — jak karty dostawców (tabele bez ucinania). */
+export const procurementArchivePageShellClass = adminPageShellClass;
 
 /** Treść wewnątrz karty huba administracji / dostawców. */
 export const adminHubBodyClass = "min-w-0 space-y-4 p-3 sm:p-4 lg:p-5";
@@ -190,6 +289,18 @@ export const salesTypography = {
 /** Etykieta „Uwagi” przy notatce handlowca — spójna w /moje i panelu dziennym. */
 export const salesRequestNoteLabelClass =
   "inline-flex items-center rounded bg-indigo-50 px-1 py-0.5 font-semibold uppercase tracking-wide text-indigo-700";
+
+/** Etykieta klienta końcowego — ten sam układ co „Uwagi”, ton indigo. */
+export const salesClientLabelClass =
+  "inline-flex items-center rounded bg-indigo-50 px-1 py-0.5 font-semibold uppercase tracking-wide text-indigo-700";
+
+export const salesClientNameClass = "font-medium text-indigo-900";
+
+/** Etykieta powiązania ZK — fiolet jak w notatniku, ten sam układ co „Klient”. */
+export const salesZkLabelClass =
+  "inline-flex items-center rounded bg-violet-50 px-1 py-0.5 font-semibold uppercase tracking-wide text-violet-700";
+
+export const salesZkNumberClass = "font-medium text-violet-900";
 
 /** Wewnętrzny padding sekcji panelu. */
 export const panelSectionInsetClass = "px-3 py-3 sm:px-4 sm:py-4 lg:px-5 lg:py-4";
@@ -291,15 +402,15 @@ export const mobileSalesNavClass =
   "fixed inset-x-0 bottom-0 z-50 border-t border-slate-200/80 bg-[var(--card)]/95 shadow-[var(--shadow-card-elevated)] backdrop-blur-md md:hidden";
 
 export const mobileNavLinkBaseClass =
-  "relative flex min-h-[3.25rem] flex-col items-center justify-center gap-0.5 px-2 py-2 text-[11px] font-semibold transition-colors lg:text-xs";
+  "relative mx-0.5 flex min-h-[3.25rem] flex-col items-center justify-center gap-0.5 rounded-md px-1.5 py-2 text-[11px] font-semibold transition-colors lg:text-xs";
 
 export const mobileNavLinkActiveClass =
-  "text-indigo-700 before:absolute before:inset-x-3 before:top-0 before:h-0.5 before:rounded-full before:bg-gradient-to-r before:from-indigo-500 before:to-sky-400 before:content-['']";
+  "border border-transparent bg-indigo-100/55 text-slate-900 shadow-sm shadow-indigo-900/5";
 
-export const mobileNavLinkIdleClass = "text-slate-500";
+export const mobileNavLinkIdleClass = "text-slate-500 hover:bg-white/60 hover:text-slate-800";
 
 export const mobileNavBadgeClass =
-  "bg-gradient-to-br from-indigo-600 to-sky-600 text-[9px] font-bold text-white shadow-sm shadow-indigo-600/20 lg:text-[10px]";
+  "bg-slate-700 text-[9px] font-bold text-white shadow-sm lg:text-[10px]";
 
 /** Wspólna obudowa komunikatów systemowych. */
 export const systemNoticeShellClass = cn(

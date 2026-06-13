@@ -146,7 +146,7 @@ export function QueueClient({
               <IconWarehouse size={20} />
             </SectionHeadingIcon>
           }
-          title="Magazyn i regał"
+          title="Przyjęcie towaru"
           description="Jedna lista przyjęcia: zamówienia i informacje u tego samego dostawcy."
           action={<QueuePanelHelp />}
         />

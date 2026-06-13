@@ -99,40 +99,40 @@ export function salesTeamPageCopy(
   if (page === "handlowcy") {
     if (ctx.isAdmin) {
       return {
-        title: "Handlowcy i konta",
+        title: "Handlowcy",
         description:
           "Dodawaj handlowców, przypisuj grupy, zakładaj konta i generuj linki zaproszenia.",
       };
     }
     if (!ctx.hasTeamScope) {
       return {
-        title: "Handlowcy i konta",
+        title: "Handlowcy",
         description:
           "Po przypisaniu grup przez administratora dodasz tu handlowców i założysz im konta.",
       };
     }
     return {
-      title: "Handlowcy i konta",
+      title: "Handlowcy",
       description: `Dodawaj i edytuj handlowców w grupach: ${ctx.groupNamesLabel}. Konta, hasła startowe i zaproszenia.`,
     };
   }
 
   if (ctx.isAdmin) {
     return {
-      title: "Grupy zespołu",
+      title: "Grupy",
       description:
         "Twórz grupy (Sklep, Biuro itd.) i sprawdzaj liczbę handlowców. Kierowników przypisujesz w Admin → Użytkownicy.",
     };
   }
   if (!ctx.hasTeamScope) {
     return {
-      title: "Grupy zespołu",
+      title: "Grupy",
       description:
         "Nie masz przypisanych grup — poproś administratora o zaznaczenie ich przy Twoim koncie (rola kierownika).",
     };
   }
   return {
-    title: "Przypisane grupy",
+    title: "Grupy",
     description: `Możesz edytować nazwę i kolejność grup: ${ctx.groupNamesLabel}. Nowe grupy zakłada administrator.`,
   };
 }

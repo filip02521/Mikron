@@ -175,9 +175,9 @@ export function SalesTeamOverview({
   if (!rows.length) {
     const emptyDescription = teamUi?.isManager
       ? teamUi.hasTeamScope
-        ? `Dodaj pierwszą osobę w sekcji Handlowcy i konta i przypisz do grupy (${teamUi.groupNamesLabel}).`
+        ? `Dodaj pierwszą osobę w sekcji Handlowcy i przypisz do grupy (${teamUi.groupNamesLabel}).`
         : "Po przypisaniu grup przez administratora dodasz tu handlowców."
-      : "Dodaj pierwszą osobę w sekcji Handlowcy i konta oraz przypisz grupę (Sklep / Biuro).";
+      : "Dodaj pierwszą osobę w sekcji Handlowcy oraz przypisz grupę (Sklep / Biuro).";
 
     return (
       <EmptyState

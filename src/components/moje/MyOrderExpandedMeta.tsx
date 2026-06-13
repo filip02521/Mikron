@@ -1,5 +1,5 @@
 import { cn } from "@/lib/cn";
-import { salesTypography } from "@/lib/ui/ontime-theme";
+import { salesClientNameClass, salesTypography } from "@/lib/ui/ontime-theme";
 import { SearchHighlightText } from "@/components/moje/SearchHighlightText";
 import { mojeShipmentExpandedMetaShellClass } from "@/lib/ui/moje-shipment-row-styles";
 
@@ -34,7 +34,8 @@ export function MyOrderExpandedMeta({
               className={cn(
                 "mt-0.5 min-w-0 font-medium leading-snug text-slate-700",
                 salesTypography.rowBody,
-                f.emphasize && "font-semibold text-amber-900"
+                f.label === "Klient" && salesClientNameClass,
+                f.emphasize && f.label !== "Klient" && "font-semibold text-amber-900"
               )}
             />
           </div>

@@ -94,7 +94,7 @@ export function DailyPanelActionsBar({
           >
             <OverflowMenuLabel>Panel</OverflowMenuLabel>
             <OverflowMenuItem onClick={() => router.push("/zakupy/tablica")}>
-              Tablica z handlowcami
+              Tablica
             </OverflowMenuItem>
             {onOpenOnDemand && summary.onDemandCount > 0 ? (
               <OverflowMenuItem onClick={onOpenOnDemand}>

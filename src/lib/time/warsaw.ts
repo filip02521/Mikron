@@ -67,6 +67,11 @@ export function todayInWarsaw(at: Date = new Date()): Date {
   return parseDateOnly(warsawNowParts(at).dateKey)!;
 }
 
+/** Klucz daty YYYY-MM-DD dla dziś w Warszawie (zawsze string). */
+export function todayDateKeyInWarsaw(at: Date = new Date()): string {
+  return warsawNowParts(at).dateKey;
+}
+
 /** Klucz daty YYYY-MM-DD w Warszawie dla znacznika czasu ISO. */
 export function warsawDateKeyFromIso(iso: string): string {
   return warsawNowParts(new Date(iso)).dateKey;

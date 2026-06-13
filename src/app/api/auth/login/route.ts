@@ -5,13 +5,20 @@ import {
   ADMIN_PANEL_COOKIE,
   resolveAdminPanelContext,
 } from "@/lib/auth/admin-panel-context";
+import {
+  authRateLimitBucket,
+  consumeAuthRateLimit,
+  sleepMs,
+} from "@/lib/auth/auth-rate-limit";
 import { isAdmin, redirectPathAfterLogin } from "@/lib/auth-roles";
 import { fetchProfileByUserId } from "@/lib/auth/profile";
+import { resolveLoginEmailFromAccountId } from "@/lib/auth/resolve-login-account";
 import { translateAuthError } from "@/lib/auth-errors";
 import { supabaseCookieOptions } from "@/lib/supabase/cookie-options";
 import type { UserRole } from "@/types/database";
 
 type LoginBody = {
+  accountId?: string;
   email?: string;
   password?: string;
   next?: string | null;
@@ -22,6 +29,18 @@ type CookieToSet = {
   value: string;
   options?: Parameters<NextResponse["cookies"]["set"]>[2];
 };
+
+const LOGIN_WINDOW_MS = 15 * 60 * 1000;
+const LOGIN_FAIL_DELAY_MS = 300;
+
+function clientIp(request: NextRequest): string | null {
+  const forwarded = request.headers.get("x-forwarded-for");
+  if (forwarded) {
+    const first = forwarded.split(",")[0]?.trim();
+    if (first) return first;
+  }
+  return request.headers.get("x-real-ip")?.trim() || null;
+}
 
 export async function POST(request: NextRequest) {
   let body: LoginBody;
@@ -34,14 +53,59 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  const email = body.email?.trim().toLowerCase() ?? "";
   const password = body.password ?? "";
   const next = body.next ?? null;
+  let email = body.email?.trim().toLowerCase() ?? "";
+
+  if (body.accountId?.trim()) {
+    const resolved = await resolveLoginEmailFromAccountId(body.accountId.trim());
+    if (!resolved) {
+      await sleepMs(LOGIN_FAIL_DELAY_MS);
+      return NextResponse.json(
+        { ok: false as const, error: translateAuthError("Invalid login credentials") },
+        { status: 401 }
+      );
+    }
+    email = resolved.email;
+  }
 
   if (!email || !password) {
     return NextResponse.json(
       { ok: false as const, error: "Podaj e-mail i hasło." },
       { status: 400 }
+    );
+  }
+
+  const ip = clientIp(request);
+  if (ip) {
+    const ipLimit = await consumeAuthRateLimit({
+      bucketKey: authRateLimitBucket("login:ip", ip),
+      maxEvents: 10,
+      windowMs: LOGIN_WINDOW_MS,
+    });
+    if (!ipLimit.ok) {
+      return NextResponse.json(
+        {
+          ok: false as const,
+          error: "Zbyt wiele prób logowania. Spróbuj ponownie za chwilę.",
+        },
+        { status: 429 }
+      );
+    }
+  }
+
+  const emailLimit = await consumeAuthRateLimit({
+    bucketKey: authRateLimitBucket("login:email", email),
+    maxEvents: 5,
+    windowMs: LOGIN_WINDOW_MS,
+  });
+  if (!emailLimit.ok) {
+    return NextResponse.json(
+      {
+        ok: false as const,
+        error: "Zbyt wiele prób logowania. Spróbuj ponownie za chwilę.",
+      },
+      { status: 429 }
     );
   }
 
@@ -95,6 +159,7 @@ export async function POST(request: NextRequest) {
   });
 
   if (signError) {
+    await sleepMs(LOGIN_FAIL_DELAY_MS);
     return NextResponse.json(
       { ok: false as const, error: translateAuthError(signError.message) },
       { status: 401 }

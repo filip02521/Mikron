@@ -72,15 +72,20 @@ export function VacationAdminForm({
           onChange={(e) => onChange({ ...form, last_order_date: e.target.value })}
         />
       </Field>
-      <label className="flex items-center gap-2 text-sm text-slate-700 sm:col-span-2">
-        <input
-          type="checkbox"
-          className="h-4 w-4 rounded border-slate-300"
-          disabled={disabled}
-          checked={form.active}
-          onChange={(e) => onChange({ ...form, active: e.target.checked })}
-        />
-        Urlop aktywny (uwzględniany w terminach i przy „Zamówione”)
+      <label className="flex flex-col gap-1 sm:col-span-2">
+        <span className="flex items-center gap-2 text-sm text-slate-700">
+          <input
+            type="checkbox"
+            className="h-4 w-4 rounded border-slate-300"
+            disabled={disabled}
+            checked={form.active}
+            onChange={(e) => onChange({ ...form, active: e.target.checked })}
+          />
+          Urlop aktywny (uwzględniany w terminach i przy „Zamówione”)
+        </span>
+        <span className="text-xs text-slate-500">
+          Aktywne okresy jednego dostawcy nie mogą się nakładać (włącznie z granicą dat).
+        </span>
       </label>
     </div>
   );

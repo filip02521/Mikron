@@ -120,7 +120,7 @@ export function SalesGroupsClient({
       <section className="space-y-6">
         <p className="text-sm text-slate-600">
           {canCreateGroups
-            ? "Grupy porządkują podgląd zespołu (np. Sklep i Biuro). Przypisanie handlowca ustawiasz w Handlowcy i konta. Kierowników grup przypisujesz w Admin → Użytkownicy."
+            ? "Grupy porządkują podgląd zespołu (np. Sklep i Biuro). Przypisanie handlowca ustawiasz w Handlowcy. Kierowników grup przypisujesz w Admin → Użytkownicy."
             : "Widzisz tylko grupy przypisane do Twojego konta — możesz zmienić nazwę i kolejność. Nowe grupy zakłada administrator."}
         </p>
 

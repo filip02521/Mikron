@@ -28,6 +28,7 @@ export function SetPasswordForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const forcedChange = searchParams.get("wymagane") === "1";
+  const otpReset = searchParams.get("reset") === "otp";
   const linkError = searchParams.get("blad");
 
   const [phase, setPhase] = useState<Phase>(() => (linkError ? "error" : "checking"));
@@ -212,6 +213,10 @@ export function SetPasswordForm() {
             <Alert tone="info">
               Ostatni krok bezpieczeństwa — ustaw hasło, którego będziesz używać na co dzień
               zamiast hasła tymczasowego.
+            </Alert>
+          ) : otpReset ? (
+            <Alert tone="info">
+              Kod z e-maila został zweryfikowany. Ustaw nowe hasło do logowania w OnTime.
             </Alert>
           ) : (
             <Alert tone="info">

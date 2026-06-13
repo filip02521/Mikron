@@ -8,7 +8,7 @@ export function DepartmentBoardGuide() {
   return (
     <HelpPopover
       label="Pomoc — komunikacja z działem zakupów"
-      title="Komunikacja z działem zakupów"
+      title="Tablica"
       shortLabel="Pomoc"
       icon={<GuideIcon />}
     >

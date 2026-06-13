@@ -3,26 +3,15 @@
 import type { IndividualOrder } from "@/types/database";
 import { formatPlDate } from "@/lib/display-labels";
 import { getDeliveryProgress } from "@/lib/orders/individual";
-import { SUMMARY_COLORS } from "@/types/database";
+import {
+  individualHistoryRowClass,
+  individualHistoryStatusBadgeVariant,
+  individualHistoryStatusLabel,
+} from "@/lib/orders/history-ui";
 import { DataTable, TableScroll } from "@/components/ui/DataTable";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
-
-const STATUS_COLORS: Record<string, string> = {
-  Nowe: SUMMARY_COLORS.historyNew,
-  Zamowione: SUMMARY_COLORS.historyPending,
-  Czesciowo_zrealizowane: SUMMARY_COLORS.historyPartial,
-  Zrealizowane: SUMMARY_COLORS.historyCompleted,
-  Anulowane: SUMMARY_COLORS.historyCancelled,
-};
-
-const STATUS_LABELS: Record<string, string> = {
-  Nowe: "Nowe",
-  Zamowione: "Zamówione",
-  Czesciowo_zrealizowane: "Częściowo",
-  Zrealizowane: "Zrealizowane",
-  Anulowane: "Anulowane",
-};
+import { cn } from "@/lib/cn";
 
 export function HistoriaIndividualTable({
   rows,
@@ -47,7 +36,7 @@ export function HistoriaIndividualTable({
             <th>Ilość</th>
             <th>Dostawa</th>
             <th>Status</th>
-            {canManageHistory ? <th /> : null}
+            {canManageHistory ? <th aria-label="Akcje" /> : null}
           </tr>
         </thead>
         <tbody>
@@ -59,30 +48,30 @@ export function HistoriaIndividualTable({
                 : "0"
             );
             return (
-              <tr
-                key={o.id}
-                style={{
-                  backgroundColor: STATUS_COLORS[o.status] ?? "#fff",
-                }}
-              >
+              <tr key={o.id} className={cn(individualHistoryRowClass(o.status))}>
                 <td className="whitespace-nowrap text-slate-800 tabular-nums">
                   {formatPlDate(o.action_at?.slice(0, 10))}
                 </td>
                 <td className="font-medium text-slate-900">
                   {o.supplier?.name ?? "—"}
                 </td>
-                <td>{o.sales_person?.name ?? "—"}</td>
+                <td className="text-slate-700">{o.sales_person?.name ?? "—"}</td>
                 <td className="max-w-[280px]">
-                  <span className="line-clamp-2">{o.products}</span>
+                  <span className="line-clamp-2 text-slate-800">{o.products}</span>
+                  {o.symbol ? (
+                    <span className="mt-0.5 block text-xs text-slate-500">{o.symbol}</span>
+                  ) : null}
                 </td>
-                <td className="tabular-nums">{o.quantity}</td>
-                <td className="tabular-nums text-sm">
+                <td className="tabular-nums text-slate-800">{o.quantity}</td>
+                <td className="tabular-nums text-sm text-slate-700">
                   {progress.hasNumericQty
                     ? progress.fractionLabel
                     : o.delivered_quantity || "—"}
                 </td>
                 <td>
-                  <Badge variant="info">{STATUS_LABELS[o.status] ?? o.status}</Badge>
+                  <Badge variant={individualHistoryStatusBadgeVariant(o.status)}>
+                    {individualHistoryStatusLabel(o.status)}
+                  </Badge>
                 </td>
                 {canManageHistory ? (
                   <td>

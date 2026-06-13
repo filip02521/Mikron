@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import type { LoginDirectoryAccount } from "@/lib/auth/login-directory";
+import type { LoginDirectoryAccountPublic } from "@/lib/auth/login-directory-public";
 import { filterLoginDirectoryAccounts } from "@/lib/auth/login-directory";
 import { IconCircleCheck, IconSearch } from "@/components/icons/StrokeIcons";
 import { Input } from "@/components/ui/Field";
@@ -23,7 +23,7 @@ export function LoginAccountPicker({
   onChange,
   disabled = false,
 }: {
-  accounts: LoginDirectoryAccount[];
+  accounts: LoginDirectoryAccountPublic[];
   value: string | null;
   onChange: (accountId: string) => void;
   disabled?: boolean;

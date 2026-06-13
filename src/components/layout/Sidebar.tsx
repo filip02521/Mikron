@@ -12,20 +12,23 @@ import {
   brandSidebarShell,
 } from "@/lib/ui/brand";
 import {
-  navLinkActiveClass,
   navLinkIdleClass,
   sidebarHeaderClass,
+  sidebarNavSectionDividerClass,
+  sidebarNavSectionTitleClass,
+  sidebarNavCompactPaddingClass,
+  sidebarNavBadgeClassForTone,
+  sidebarNavToneActiveClass,
+  sidebarNavToneHighlightIdleClass,
+  controlFocusClass,
+  panelTypography,
+  buttonPrimaryClass,
 } from "@/lib/ui/ontime-theme";
 import { ONTIME_AUTH_FOOTER } from "@/lib/ui/ontime-brand";
-import { buttonPrimaryClass } from "@/lib/ui/ontime-theme";
 import type { UserRole } from "@/types/database";
 import { cn } from "@/lib/cn";
 import { createClient } from "@/lib/supabase/client";
-import {
-  NavIcon,
-  navIconKeyFromHref,
-  navIconTileIdleClass,
-} from "@/components/icons/NavIcon";
+import { NavIcon, navIconTileActiveClassForTone, navIconTileClassForTone } from "@/components/icons/NavIcon";
 import { useSalesNavLocked } from "@/components/sales/SalesOnboardingContext";
 import { AdminPanelContextSwitcher } from "@/components/layout/AdminPanelContextSwitcher";
 import { actionClearAdminPanelContext } from "@/app/actions/admin-panel-context";
@@ -46,73 +49,80 @@ function NavLink({
   locked?: boolean;
   href: string;
 }) {
+  const compact = item.tier === "compact";
   const hasBadge = item.badge != null && item.badge > 0;
-  const isVerificationNav = item.href === "/weryfikacja";
-  const iconKey = navIconKeyFromHref(item.href);
+  const showDescription = Boolean(item.description) && !compact;
 
   const className = cn(
-    "group block rounded-md px-3 py-2.5 transition-colors",
-    active ? navLinkActiveClass : navLinkIdleClass,
-    locked && !active && "cursor-not-allowed opacity-45 hover:bg-transparent hover:text-inherit"
+    "group block rounded-md transition-colors",
+    compact ? sidebarNavCompactPaddingClass : "px-2.5 py-2",
+    controlFocusClass,
+    active
+      ? sidebarNavToneActiveClass(item.tone)
+      : cn(
+          navLinkIdleClass,
+          item.tier === "primary" && sidebarNavToneHighlightIdleClass(item.tone)
+        ),
+    locked &&
+      !active &&
+      "cursor-not-allowed opacity-45 hover:border-transparent hover:bg-transparent hover:text-inherit"
   );
 
   const content = (
     <span className="flex items-start justify-between gap-2">
-        <span className="flex min-w-0 flex-1 items-start gap-2.5">
-          <span
-            className={cn(
-              "mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-md transition-colors",
-              active
-                ? "bg-white/15 text-white"
-                : cn(navIconTileIdleClass(iconKey), "group-hover:opacity-90")
-            )}
-          >
-            <NavIcon navKey={iconKey} size={18} />
-          </span>
+      <span className={cn("flex min-w-0 flex-1 items-start", compact ? "gap-2" : "gap-2.5")}>
+        <span
+          className={cn(
+            "mt-0.5 flex shrink-0 items-center justify-center rounded-md transition-colors",
+            compact ? "h-7 w-7" : "h-8 w-8",
+            active
+              ? navIconTileActiveClassForTone(item.tone)
+              : cn(navIconTileClassForTone(item.tone), "group-hover:opacity-90")
+          )}
+        >
+          <NavIcon navKey={item.icon} size={compact ? 16 : 17} />
+        </span>
         <span className="min-w-0 flex-1">
           <span
             className={cn(
-              "block text-sm leading-snug",
-              active ? "font-semibold" : "font-medium"
+              compact ? "text-[13px] font-medium leading-snug" : panelTypography.rowTitle,
+              active ? "font-semibold text-slate-900" : "text-slate-800"
             )}
           >
             {item.label}
           </span>
-          {item.description ? (
+          {showDescription ? (
             <span
               className={cn(
-                "mt-0.5 block text-xs leading-snug",
-                active ? "text-indigo-100" : "text-slate-400 group-hover:text-slate-500"
+                panelTypography.caption,
+                "mt-0.5 block",
+                active ? "text-slate-600" : "text-slate-400 group-hover:text-slate-500"
               )}
             >
               {item.description}
             </span>
           ) : null}
         </span>
-        </span>
-        <span className="flex shrink-0 items-center gap-1.5 pt-0.5">
-          {showDot ? (
-            <span
-              className="h-2 w-2 rounded-full bg-amber-400 ring-2 ring-white"
-              title="Nowe zmiany"
-            />
-          ) : null}
-          {hasBadge ? (
-            <span
-              className={cn(
-                "min-w-[1.25rem] rounded-md px-1.5 py-0.5 text-center text-[10px] font-semibold tabular-nums",
-                active
-                  ? "bg-white/20 text-white"
-                  : isVerificationNav
-                    ? "bg-amber-200 text-amber-950"
-                    : "bg-slate-200 text-slate-700"
-              )}
-            >
-              {item.badge! > 99 ? "99+" : item.badge}
-            </span>
-          ) : null}
-        </span>
       </span>
+      <span className="flex shrink-0 items-center gap-1.5 pt-0.5">
+        {showDot ? (
+          <span
+            className="h-2 w-2 rounded-full bg-amber-400 ring-2 ring-white"
+            title="Nowe zmiany"
+          />
+        ) : null}
+        {hasBadge ? (
+          <span
+            className={cn(
+              "min-w-[1.25rem] rounded-md px-1.5 py-0.5 text-center text-[10px] font-semibold tabular-nums",
+              sidebarNavBadgeClassForTone(item.tone, active)
+            )}
+          >
+            {item.badge! > 99 ? "99+" : item.badge}
+          </span>
+        ) : null}
+      </span>
+    </span>
   );
 
   const isLockedItem = Boolean(locked && !active);
@@ -127,7 +137,9 @@ function NavLink({
       title={
         isLockedItem
           ? "Dokończ wprowadzenie — użyj „Dalej” w panelu touru"
-          : undefined
+          : compact && item.description
+            ? item.description
+            : undefined
       }
       onClick={isLockedItem ? (e) => e.preventDefault() : undefined}
     >
@@ -152,16 +164,14 @@ function NavSection({
   const pathname = usePathname();
   const salesUpdates = useSalesUpdates();
   const operationsUpdates = useOperationsUpdates();
+  const allHrefs = group.items.map((item) => item.href);
 
   return (
-    <section className={cn(!isFirst && "mt-3 border-t border-slate-100 pt-3")}>
-      <h2 className="mb-1.5 px-3 text-[10px] font-semibold uppercase tracking-[0.08em] text-slate-400">
-        {group.title}
-      </h2>
+    <section className={cn(!isFirst && sidebarNavSectionDividerClass)}>
+      <h2 className={sidebarNavSectionTitleClass}>{group.title}</h2>
       <ul className="space-y-0.5">
         {group.items.map((item) => {
-          const siblingHrefs = group.items.map((i) => i.href);
-          const active = isNavItemActive(pathname, item.href, siblingHrefs);
+          const active = isNavItemActive(pathname, item.href, allHrefs);
           const showDot =
             (item.href === "/moje" && Boolean(salesUpdates?.hasUpdates) && !active) ||
             (item.href === "/podsumowanie" &&
@@ -210,6 +220,8 @@ export function Sidebar({
     salesNotatnik?: number;
     salesTablica?: number;
     adminBugReports?: number;
+    operationsNotatki?: number;
+    departmentBoardQuestions?: number;
   };
 }) {
   const router = useRouter();

@@ -9,7 +9,7 @@ export function DepartmentBoardProcurementGuide() {
   return (
     <HelpPopover
       label="Pomoc — tablica z handlowcami"
-      title="Tablica z handlowcami"
+      title="Tablica"
       shortLabel="Pomoc"
       icon={<GuideIcon />}
       buttonClassName={panelToolbarTextButtonClass}

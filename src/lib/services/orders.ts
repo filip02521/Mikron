@@ -14,12 +14,7 @@ import {
 import { todayInWarsaw } from "@/lib/time/warsaw";
 import { resolveStatusFromDeliveredQuantity } from "@/lib/orders/individual";
 import { effectiveSalesCancelledQuantity } from "@/lib/orders/sales-cancel";
-import { recalcScheduleRow } from "@/lib/orders/recalc";
-import {
-  resolveVacationConflictOnOrder,
-  resolveVacationConflictOnShift,
-  type VacationPeriod,
-} from "@/lib/orders/vacations";
+import { recalcSingleSupplierSchedule } from "@/lib/services/sync";
 import {
   aggregateDeliveryStatsFromOrders,
   aggregatedToDeliveryStatsRow,
@@ -32,7 +27,6 @@ import type {
   IndividualOrder,
   IndividualOrderStatus,
   OrderType,
-  SupplierLocation,
 } from "@/types/database";
 import { scheduleHistoryRetentionPurge } from "@/lib/services/history-cleanup";
 import {
@@ -97,62 +91,8 @@ import {
 } from "@/lib/orders/glowne-interval-validation";
 import { shouldSyncZkWatchLineChecksAfterDeliveryChange } from "@/lib/sales/zk-watch-order-sync";
 
-async function getVacationsForSupplier(supplierId: string): Promise<VacationPeriod[]> {
-  const supabase = createAdminClient();
-  const { data } = await supabase
-    .from("vacations")
-    .select("*")
-    .eq("supplier_id", supplierId)
-    .eq("active", true);
-  const periods = (data ?? [])
-    .map((v) => {
-      const start = parseDateOnly(v.start_date);
-      const end = parseDateOnly(v.end_date);
-      const lastOrder = parseDateOnly(v.last_order_date);
-      if (!start || !end || !lastOrder) return null;
-      return { start, end, lastOrder };
-    })
-    .filter((p): p is VacationPeriod => p != null);
-  periods.sort((a, b) => a.start.getTime() - b.start.getTime());
-  return periods;
-}
-
 async function recalcSupplierSchedule(supplierId: string) {
-  const supabase = createAdminClient();
-  const { data: supplier } = await supabase
-    .from("suppliers")
-    .select("*, supplier_schedules(*)")
-    .eq("id", supplierId)
-    .single();
-  if (!supplier) return;
-
-  const schedule = Array.isArray(supplier.supplier_schedules)
-    ? supplier.supplier_schedules[0]
-    : supplier.supplier_schedules;
-
-  const vacations = await getVacationsForSupplier(supplierId);
-  const recalc = recalcScheduleRow({
-    orderDate: parseDateOnly(schedule?.order_date ?? null),
-    shiftDate: parseDateOnly(schedule?.shift_date ?? null),
-    interval: resolveSupplierInterval(
-      supplier.interval_raw as string | null,
-      supplier.interval_weeks != null ? Number(supplier.interval_weeks) : null
-    ),
-    location: supplier.location as SupplierLocation,
-    vacations,
-  });
-
-  await supabase.from("supplier_schedules").upsert(
-    {
-      supplier_id: supplierId,
-      order_date: schedule?.order_date,
-      shift_date: schedule?.shift_date,
-      computed_next_date: dateToIso(recalc.computedNextDate),
-      vacation_note: recalc.vacationNote,
-      updated_at: new Date().toISOString(),
-    },
-    { onConflict: "supplier_id" }
-  );
+  await recalcSingleSupplierSchedule(supplierId);
 }
 
 export async function logNormalHistory(
@@ -173,8 +113,7 @@ export async function logNormalHistory(
 
 export async function markStandardOrdered(
   supplierId: string,
-  userEmail: string,
-  applyVacationCorrection = true
+  userEmail: string
 ) {
   const supabase = createAdminClient();
   const { data: supplier } = await supabase
@@ -190,29 +129,16 @@ export async function markStandardOrdered(
     throw new Error(`Brak interwału dla dostawcy`);
   }
 
-  const today = snapToBusinessDay(todayInWarsaw());
-  const baseNext = calculateNextOrderDate(today, interval);
-  if (!baseNext) throw new Error("Nie można obliczyć daty");
-
-  const vacations = await getVacationsForSupplier(supplierId);
-  let finalDate = snapToBusinessDay(baseNext);
-  if (applyVacationCorrection) {
-    finalDate = snapToBusinessDay(resolveVacationConflictOnOrder(finalDate, vacations));
+  const orderDateKey = dateToIso(todayInWarsaw());
+  if (!orderDateKey) {
+    throw new Error("Nie udało się ustalić daty bieżącej.");
   }
-  const vacationShift =
-    applyVacationCorrection && finalDate.getTime() !== baseNext.getTime();
-
-  await supabase
-    .from("supplier_schedules")
-    .select("*")
-    .eq("supplier_id", supplierId)
-    .maybeSingle();
 
   await supabase.from("supplier_schedules").upsert(
     {
       supplier_id: supplierId,
-      order_date: dateToIso(today),
-      shift_date: vacationShift ? dateToIso(finalDate) : null,
+      order_date: orderDateKey,
+      shift_date: null,
       updated_at: new Date().toISOString(),
     },
     { onConflict: "supplier_id" }
@@ -225,8 +151,7 @@ export async function markStandardOrdered(
     .select("computed_next_date")
     .eq("supplier_id", supplierId)
     .maybeSingle();
-  const historyDate =
-    parseDateOnly(updatedSchedule?.computed_next_date ?? null) ?? finalDate;
+  const historyDate = parseDateOnly(updatedSchedule?.computed_next_date ?? null);
   await logNormalHistory(supplierId, "Zamówione", historyDate, userEmail);
 }
 
@@ -264,16 +189,6 @@ export async function shiftSupplierOrder(
     throw new Error("Brak parametrów przesunięcia");
   }
 
-  const vacations = await getVacationsForSupplier(supplierId);
-  newShift = snapToBusinessDay(
-    resolveVacationConflictOnShift(
-      newShift,
-      supplier.location as SupplierLocation,
-      vacations,
-      schedule?.vacation_note ?? null
-    )
-  );
-
   await supabase.from("supplier_schedules").upsert(
     {
       supplier_id: supplierId,
@@ -285,10 +200,16 @@ export async function shiftSupplierOrder(
   );
 
   await recalcSupplierSchedule(supplierId);
+  const { data: updatedSchedule } = await supabase
+    .from("supplier_schedules")
+    .select("computed_next_date")
+    .eq("supplier_id", supplierId)
+    .maybeSingle();
+  const historyDate = parseDateOnly(updatedSchedule?.computed_next_date ?? null) ?? newShift;
   await logNormalHistory(
     supplierId,
     manualDate ? "Ręcznie przesunięte" : `Przesunięte o ${weeks} tyg.`,
-    newShift,
+    historyDate,
     userEmail
   );
 }
@@ -1116,7 +1037,7 @@ export async function processIndividualFromSummary(
   if (glowneSupplierIds.size) {
     try {
       for (const supplierId of glowneSupplierIds) {
-        await markStandardOrdered(supplierId, userEmail, true);
+        await markStandardOrdered(supplierId, userEmail);
       }
     } catch (e) {
       await rollbackIndividualOrderProcessSnapshots(processSnapshots);

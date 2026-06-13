@@ -17,6 +17,10 @@ export const modalBackdropClass =
 export const modalPanelClass =
   "relative flex flex-col overflow-hidden rounded-md border border-slate-200/80 bg-white shadow-[var(--shadow-card-elevated)] ring-1 ring-slate-900/5";
 
+/** Prawy panel z tabelą — szerokość jak ModalShell xl / karty dostawców. */
+export const sideSheetWidePanelClass =
+  "flex w-full max-w-none flex-col border-l border-slate-200/90 bg-[var(--card)] shadow-[var(--shadow-card-elevated)] sm:w-[min(calc(100%-0.75rem),72rem)]";
+
 export const choiceChipClass = {
   order:
     "flex cursor-pointer items-center gap-2 rounded-md border border-slate-200 text-sm transition has-[:checked]:border-indigo-500 has-[:checked]:bg-indigo-50",
