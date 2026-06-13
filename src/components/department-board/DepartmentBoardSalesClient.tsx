@@ -100,6 +100,7 @@ export function DepartmentBoardSalesClient({
     if (focusQuestionId || unseenAnswersCount > 0) return "questions";
     return unreadAnnouncements > 0 ? "announcements" : "questions";
   });
+  const [tourDemoTab, setTourDemoTab] = useState<BoardTab>("announcements");
   const [questionFilter, setQuestionFilter] = useState<QuestionFilter>("all");
   const forceAllQuestions = Boolean(focusQuestionId) || unseenAnswersCount > 0;
   const activeQuestionFilter: QuestionFilter = forceAllQuestions ? "all" : questionFilter;
@@ -117,11 +118,6 @@ export function DepartmentBoardSalesClient({
     }
     return board.questions;
   }, [board.questions, activeQuestionFilter]);
-
-  useEffect(() => {
-    if (!tourDemo) return;
-    setActiveTab("announcements");
-  }, [tourDemo]);
 
   function refresh() {
     router.refresh();
@@ -165,16 +161,17 @@ export function DepartmentBoardSalesClient({
   }
 
   const pageDescription = `${DEPARTMENT_BOARD_SALES_PAGE_DESC} ${DEPARTMENT_BOARD_NOTES_DISTINCTION_SALES}`;
-  const resolvedTab = activeTab;
+  const resolvedTab = tourDemo ? tourDemoTab : activeTab;
+  const handleTabChange = tourDemo ? setTourDemoTab : setActiveTab;
   const showAnnouncements = resolvedTab === "announcements";
   const showQuestions = resolvedTab === "questions";
   const effectiveAttention = tourDemo ? buildOnboardingBoardAttention() : boardAttention;
   const showUnreadBanner =
     effectiveAttention != null &&
-    shouldShowBoardUnreadBanner(effectiveAttention, activeTab);
+    shouldShowBoardUnreadBanner(effectiveAttention, resolvedTab);
   const showAnswersBanner =
     effectiveAttention != null &&
-    shouldShowBoardAnswersBanner(effectiveAttention, activeTab);
+    shouldShowBoardAnswersBanner(effectiveAttention, resolvedTab);
 
   const questionFormPanel =
     readOnly ? null : (
@@ -242,7 +239,7 @@ export function DepartmentBoardSalesClient({
         <DepartmentBoardTabBar
           domain="sales"
           activeTab={resolvedTab}
-          onTabChange={setActiveTab}
+          onTabChange={handleTabChange}
           unreadAnnouncements={unreadAnnouncements}
           openQuestions={openQuestionsCount}
           unseenAnswers={unseenAnswersCount}
