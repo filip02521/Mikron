@@ -49,7 +49,7 @@ test.describe("Login auth API contracts", () => {
 
     await page.goto("/login");
     await page.getByRole("option").first().click();
-    await page.getByRole("button", { name: "Nie pamiętam hasła" }).click();
+    await page.getByRole("button", { name: "Reset hasła" }).click();
     await expect(page.getByText("Wysłaliśmy 6-cyfrowy kod")).toBeVisible();
 
     expect(sendBody).toMatchObject({ accountId: expect.any(String) });

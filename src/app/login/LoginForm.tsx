@@ -12,6 +12,11 @@ import {
 } from "@/lib/auth/login-account-preference";
 import { applyLoginFormError } from "@/lib/auth/login-form-errors";
 import type { LoginSubtitleMode } from "@/lib/auth/login-form-copy";
+import {
+  LOGIN_RESET_LINK_HINT,
+  LOGIN_RESET_LINK_LABEL,
+  LOGIN_RESET_LINK_SENDING,
+} from "@/lib/auth/login-form-copy";
 import { requestPasswordResetCode } from "@/lib/auth/password-reset-client";
 import {
   readStoredPasswordResetSession,
@@ -217,15 +222,18 @@ export function LoginForm({
   }, [canResetPassword, selectedAccountId, resetSending, persistResetSession]);
 
   const forgotPasswordLink = canResetPassword ? (
-    <div className="flex justify-end">
-      <button
-        type="button"
-        className={loginAltLinkClass}
-        onClick={() => void startPasswordReset()}
-        disabled={loading || resetSending}
-      >
-        {resetSending ? "Wysyłanie kodu…" : "Nie pamiętam hasła"}
-      </button>
+    <div className="space-y-1">
+      <div className="flex justify-end">
+        <button
+          type="button"
+          className={loginAltLinkClass}
+          onClick={() => void startPasswordReset()}
+          disabled={loading || resetSending}
+        >
+          {resetSending ? LOGIN_RESET_LINK_SENDING : LOGIN_RESET_LINK_LABEL}
+        </button>
+      </div>
+      <p className="text-right text-xs text-slate-500">{LOGIN_RESET_LINK_HINT}</p>
     </div>
   ) : null;
 

@@ -5,6 +5,10 @@ export const LOGIN_SUBTITLE_PICKER = "Wybierz swoje konto firmowe i podaj hasło
 export const LOGIN_SUBTITLE_MANUAL = "Podaj adres e-mail firmowy i hasło.";
 export const LOGIN_SUBTITLE_RESET = "Wpisz 6-cyfrowy kod wysłany na adres powiązany z kontem.";
 
+export const LOGIN_RESET_LINK_LABEL = "Reset hasła";
+export const LOGIN_RESET_LINK_SENDING = "Wysyłanie kodu…";
+export const LOGIN_RESET_LINK_HINT = "Kod wyślemy na adres powiązany z kontem.";
+
 export function loginSubtitleForMode(mode: LoginSubtitleMode): string {
   switch (mode) {
     case "quick":
