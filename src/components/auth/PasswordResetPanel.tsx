@@ -9,6 +9,7 @@ import {
   requestPasswordResetCode,
   verifyPasswordResetCode,
 } from "@/lib/auth/password-reset-client";
+import { postLoginEnteringUrl } from "@/lib/auth/post-login-entering";
 import {
   readStoredPasswordResetSession,
   writeStoredPasswordResetSession,
@@ -121,7 +122,7 @@ export function PasswordResetPanel({
     }
 
     writeStoredPasswordResetSession(null);
-    window.location.assign(result.redirectTo);
+    window.location.assign(postLoginEnteringUrl(result.redirectTo));
   }, [busy, code, codeComplete, accountId]);
 
   useEffect(() => {

@@ -5,6 +5,7 @@ import { runOrderMaintenanceBeforePageLoad } from "@/lib/services/deferred-order
 import { SummaryWorkspace } from "@/components/summary/SummaryWorkspace";
 import { Alert } from "@/components/ui/Alert";
 import { buildSummaryWorkspace } from "@/lib/orders/summary-workspace";
+import { PanelDailyRouteLoadingSkeleton } from "@/components/layout/PanelRouteLoading";
 import { panelWorkspaceShellClass } from "@/lib/ui/ontime-theme";
 import type { OrderFormSupplierOption } from "@/lib/orders/order-form-suppliers";
 import type { IndividualOrder } from "@/types/database";
@@ -15,24 +16,6 @@ import { pageMetadataFor } from "@/lib/ui/page-metadata";
 export const metadata: Metadata = pageMetadataFor("podsumowanie");
 
 const emptyWorkspace = buildSummaryWorkspace([], []);
-
-function PanelLoadingFallback() {
-  return (
-    <div
-      className={cn(panelWorkspaceShellClass, "animate-pulse rounded-lg border border-slate-200 bg-white p-6 sm:p-8")}
-      aria-busy
-      aria-label="Ładowanie panelu dziennego"
-    >
-      <div className="h-6 w-48 rounded bg-slate-200" />
-      <div className="mt-3 h-4 max-w-lg rounded bg-slate-100" />
-      <div className="mt-6 flex gap-2">
-        <div className="h-10 w-24 rounded-md bg-slate-100" />
-        <div className="h-10 w-24 rounded-md bg-slate-100" />
-        <div className="h-10 w-24 rounded-md bg-slate-100" />
-      </div>
-    </div>
-  );
-}
 
 export default async function PodsumowaniePage() {
   await runOrderMaintenanceBeforePageLoad();
@@ -73,7 +56,7 @@ export default async function PodsumowaniePage() {
         </Alert>
       ) : null}
 
-      <Suspense fallback={<PanelLoadingFallback />}>
+      <Suspense fallback={<PanelDailyRouteLoadingSkeleton />}>
         <SummaryWorkspace
           workspace={workspace}
           suppliers={suppliers}

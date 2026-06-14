@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { runLoginFlow } from "@/lib/auth/login-flow";
+import { postLoginEnteringUrl } from "@/lib/auth/post-login-entering";
 import { loginSessionLostMessage } from "@/lib/auth/login-messages";
 import type { LoginDirectoryAccountPublic } from "@/lib/auth/login-directory-public";
 import {
@@ -284,7 +285,7 @@ export function LoginForm({
       return;
     }
 
-    window.location.assign(result.redirectTo);
+    window.location.assign(postLoginEnteringUrl(result.redirectTo));
   }
 
   const passwordField = (

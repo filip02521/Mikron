@@ -1,0 +1,34 @@
+import type { SalesBoardAttentionSnapshot } from "@/lib/data/department-board";
+
+export type AppShellNavBadges = {
+  nowe: number;
+  weryfikacja: number;
+  realizacja: number;
+  salesMoje?: number;
+  salesNotatnik?: number;
+  salesTablica?: number;
+  operationsNotatki?: number;
+  departmentBoardQuestions?: number;
+  adminBugReports?: number;
+};
+
+export type AppShellMetrics = {
+  navBadges: AppShellNavBadges;
+  salesActivityVersion: string | null;
+  operationsDailyPanelVersion: string | null;
+  salesPersonName: string | null;
+  salesBoardAttention: SalesBoardAttentionSnapshot | null;
+  operationsPinnedAnnouncements: Pick<
+    SalesBoardAttentionSnapshot["pinnedAnnouncements"][number],
+    "id" | "title" | "body"
+  >[];
+};
+
+export const EMPTY_APP_SHELL_METRICS: AppShellMetrics = {
+  navBadges: { nowe: 0, weryfikacja: 0, realizacja: 0 },
+  salesActivityVersion: null,
+  operationsDailyPanelVersion: null,
+  salesPersonName: null,
+  salesBoardAttention: null,
+  operationsPinnedAnnouncements: [],
+};

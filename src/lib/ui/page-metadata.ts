@@ -12,6 +12,7 @@ export function pageMetadata(title: string, description?: string): Metadata {
 export const PAGE_TITLES = {
   home: "Start",
   login: "Logowanie",
+  entering: "Wejście do panelu",
   setup: "Konfiguracja",
   setPassword: "Ustaw hasło",
   moje: "Moje zamówienia",

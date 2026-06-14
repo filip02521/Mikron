@@ -2,7 +2,8 @@
 
 import { revalidatePath } from "next/cache";
 import { getSessionUser, requireSalesTeamManagement } from "@/lib/auth";
-import { isAdmin } from "@/lib/auth-roles";
+import { readAdminPanelContextForSession } from "@/lib/auth/read-admin-panel-context";
+import { isAdmin, redirectPathAfterLogin } from "@/lib/auth-roles";
 import {
   assertManagerCanUseGroupId,
   canAccessSalesPerson,
@@ -235,7 +236,7 @@ export async function actionGenerateSalesTeamInviteLink(
 }
 
 export async function actionClearMustChangePassword(): Promise<
-  { success: true } | { error: string }
+  { success: true; redirectTo: string } | { error: string }
 > {
   const user = await getSessionUser();
   if (!user) return { error: "Brak sesji." };
@@ -247,7 +248,14 @@ export async function actionClearMustChangePassword(): Promise<
     .eq("id", user.id);
 
   if (error) return { error: error.message };
+
+  const { panelContext } = await readAdminPanelContextForSession();
+  const redirectTo = redirectPathAfterLogin(user.role, null, {
+    adminPanelContext: panelContext,
+  });
+
   revalidatePath("/");
   revalidatePath("/moje");
-  return { success: true };
+  revalidatePath(redirectTo.split("?")[0] ?? redirectTo);
+  return { success: true, redirectTo };
 }

@@ -18,6 +18,10 @@ import {
   isSalesAccount,
 } from "@/lib/auth-roles";
 import {
+  postLoginEnteringUrl,
+  splitInternalRedirectPath,
+} from "@/lib/auth/post-login-entering";
+import {
   redirectWithSession,
   refreshSupabaseSession,
 } from "@/lib/supabase/middleware";
@@ -62,6 +66,17 @@ export async function proxy(request: NextRequest) {
   }
 
   const { response: sessionResponse, user } = await refreshSupabaseSession(request);
+  sessionResponse.headers.set("x-pathname", pathname);
+
+  if (pathname === "/auth/entering") {
+    if (!user) {
+      const next = request.nextUrl.searchParams.get("next");
+      return redirectWithSession(request, sessionResponse, "/login", {
+        ...(next ? { next } : {}),
+      });
+    }
+    return sessionResponse;
+  }
 
   if (publicAuthPaths.includes(pathname)) {
     if (pathname === "/login" && user) {
@@ -79,7 +94,13 @@ export async function proxy(request: NextRequest) {
           loginPanelContext !== "admin"
             ? homePathForAdminPanelContext(loginPanelContext)
             : homePathForRole(loginRole);
-        return redirectWithSession(request, sessionResponse, loginHome);
+        const entering = splitInternalRedirectPath(postLoginEnteringUrl(loginHome));
+        return redirectWithSession(
+          request,
+          sessionResponse,
+          entering.pathname,
+          entering.searchParams
+        );
       }
     }
     return sessionResponse;

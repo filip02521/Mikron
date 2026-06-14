@@ -17,6 +17,7 @@ import {
   locationHadPasswordLinkTokens,
   scrubPasswordLinkFromLocation,
 } from "@/lib/auth/establish-password-link-session";
+import { postLoginEnteringUrl } from "@/lib/auth/post-login-entering";
 import {
   translatePasswordLinkError,
   translatePasswordUpdateError,
@@ -123,8 +124,7 @@ export function SetPasswordForm() {
       return;
     }
 
-    router.push("/");
-    router.refresh();
+    window.location.assign(postLoginEnteringUrl(cleared.redirectTo));
   }
 
   if (phase === "checking") {

@@ -1,202 +1,81 @@
 import { headers } from "next/headers";
+import { Suspense } from "react";
 import { getSessionUser } from "@/lib/auth";
-import { resolvePreviewSalesPerson } from "@/lib/auth/resolve-preview-sales-person";
+import { isAuthLayoutPath } from "@/lib/auth/auth-layout-paths";
 import {
   effectiveNavRole,
   isAdminPanelPreview,
-  shouldApplyAdminSalesPreviewHeader,
   type AdminPanelContext,
 } from "@/lib/auth/admin-panel-context";
 import { readAdminPanelContextForSession } from "@/lib/auth/read-admin-panel-context";
-import { resolveSalesPersonForUser } from "@/lib/auth/sales-person";
-import { canAccessOperations, canAccessWarehouse, isAdmin, isSalesAccount } from "@/lib/auth-roles";
-import { canAccessOperationsNotepad, departmentsForRole } from "@/lib/operations/notepad-department";
-import {
-  countDeliveryQueue,
-  countInformacjaQueue,
-} from "@/lib/data/queries";
-import { fetchOperationsDailyPanelMetrics } from "@/lib/orders/operations-daily-panel-version";
-import { fetchSalesShellMetrics } from "@/lib/orders/sales-shell-metrics";
-import {
-  countOpenDepartmentBoardQuestions,
-  fetchPinnedActiveAnnouncements,
-  fetchSalesBoardAttentionSnapshot,
-  type SalesBoardAttentionSnapshot,
-} from "@/lib/data/department-board";
-import { countOpenSalesBugReports } from "@/lib/data/sales-bug-reports";
+import { isSalesAccount } from "@/lib/auth-roles";
 import { AppShellClient } from "./AppShellClient";
+import { AppShellMetricsProvider } from "./AppShellMetricsContext";
+import { AppShellMetricsLoader } from "./AppShellMetricsLoader";
 
 export async function AppShell({ children }: { children: React.ReactNode }) {
+  const pathname = (await headers()).get("x-pathname") ?? "";
+  const lightShell = isAuthLayoutPath(pathname);
+
   const session = await getSessionUser();
   const realRole = session?.role ?? null;
-  const { panelContext } = await readAdminPanelContextForSession();
-  const role = realRole
-    ? effectiveNavRole(realRole, panelContext)
-    : null;
+  const { panelContext } = lightShell
+    ? { panelContext: null as AdminPanelContext | null }
+    : await readAdminPanelContextForSession();
+  const role = realRole ? effectiveNavRole(realRole, panelContext) : null;
   const adminPanelPreview =
-    realRole && isAdminPanelPreview(realRole, panelContext) && panelContext
+    !lightShell &&
+    realRole &&
+    isAdminPanelPreview(realRole, panelContext) &&
+    panelContext
       ? panelContext
       : null;
   const showSalesOnboarding =
+    !lightShell &&
     !adminPanelPreview &&
     Boolean(role && isSalesAccount(role)) &&
     Boolean(session?.salesPersonId) &&
     !session?.mustChangePassword &&
     !session?.salesOnboardingCompletedAt;
-  let navBadges: {
-    nowe: number;
-    weryfikacja: number;
-    realizacja: number;
-    salesMoje?: number;
-    salesNotatnik?: number;
-    salesTablica?: number;
-    operationsNotatki?: number;
-    departmentBoardQuestions?: number;
-    adminBugReports?: number;
-  } = { nowe: 0, weryfikacja: 0, realizacja: 0 };
-  let salesActivityVersion: string | null = null;
-  let operationsDailyPanelVersion: string | null = null;
-  let salesPersonName: string | null = null;
-  let salesBoardAttention: SalesBoardAttentionSnapshot | null = null;
-  let operationsPinnedAnnouncements: Awaited<
-    ReturnType<typeof fetchPinnedActiveAnnouncements>
-  > = [];
 
-  if (role && canAccessOperations(role)) {
-    try {
-      const [metrics, openQuestions, pinnedAnnouncements] = await Promise.all([
-        fetchOperationsDailyPanelMetrics(),
-        countOpenDepartmentBoardQuestions().catch(() => 0),
-        fetchPinnedActiveAnnouncements().catch(() => []),
-      ]);
-      navBadges.weryfikacja = metrics.verificationCount;
-      navBadges.nowe = metrics.navBadge;
-      navBadges.departmentBoardQuestions = openQuestions;
-      operationsDailyPanelVersion = metrics.version;
-      operationsPinnedAnnouncements = pinnedAnnouncements;
-    } catch {
-      /* badge opcjonalny */
-    }
-  }
-
-  if (role && canAccessWarehouse(role)) {
-    try {
-      const [realizacjaCount, informacjaCount] = await Promise.all([
-        countDeliveryQueue(),
-        countInformacjaQueue().catch(() => 0),
-      ]);
-      navBadges = {
-        ...navBadges,
-        realizacja: realizacjaCount + informacjaCount,
-      };
-    } catch {
-      /* badge opcjonalny */
-    }
-  }
-
-  if (realRole && isAdmin(realRole) && session) {
-    try {
-      const previewHeaderId = (await headers()).get("x-preview-sales-person-id");
-      const previewId = shouldApplyAdminSalesPreviewHeader(panelContext, previewHeaderId)
-        ? previewHeaderId
-        : null;
-      if (previewId) {
-        const preview = await resolvePreviewSalesPerson(previewId, session);
-        if (preview) {
-          salesPersonName = preview.name;
-          const metrics = await fetchSalesShellMetrics(preview.id, null);
-          salesActivityVersion = metrics.activityVersion;
-          navBadges = {
-            ...navBadges,
-            salesMoje: metrics.dayStartNavCount,
-            salesNotatnik: metrics.notepadNavBadge,
-            salesTablica: 0,
-          };
-        }
-      } else if (!adminPanelPreview) {
-        const own = await resolveSalesPersonForUser(session);
-        if (own) {
-          salesPersonName = own.name;
-        }
-      }
-    } catch {
-      /* opcjonalny podgląd */
-    }
-  }
-
-  if (role && isSalesAccount(role) && session && !salesPersonName && !adminPanelPreview) {
-    try {
-      const salesPerson = await resolveSalesPersonForUser(session);
-      if (salesPerson) {
-        salesPersonName = salesPerson.name;
-        if (showSalesOnboarding) {
-          navBadges = {
-            ...navBadges,
-            salesMoje: 0,
-            salesNotatnik: 0,
-            salesTablica: 0,
-          };
-        } else {
-          const [metrics, boardAttention] = await Promise.all([
-            fetchSalesShellMetrics(salesPerson.id, session.id),
-            fetchSalesBoardAttentionSnapshot(session.id).catch(() => null),
-          ]);
-          salesActivityVersion = metrics.activityVersion;
-          salesBoardAttention = boardAttention;
-          navBadges = {
-            ...navBadges,
-            salesMoje: metrics.dayStartNavCount,
-            salesNotatnik: metrics.notepadNavBadge,
-            salesTablica: metrics.boardNavBadge,
-          };
-        }
-      }
-    } catch {
-      salesActivityVersion = null;
-    }
-  }
-
-  if (role && session?.id && canAccessOperationsNotepad(role)) {
-    try {
-      const { countOperationsNotepadBadge } = await import("@/lib/data/operations-notepad");
-      const count = await countOperationsNotepadBadge(
-        session.id,
-        departmentsForRole(role)
-      );
-      navBadges = { ...navBadges, operationsNotatki: count };
-    } catch {
-      /* empty */
-    }
-  }
-
-  if (realRole && isAdmin(realRole)) {
-    try {
-      const openReports = await countOpenSalesBugReports();
-      navBadges = { ...navBadges, adminBugReports: openReports };
-    } catch {
-      /* empty */
-    }
-  }
-
-  return (
+  const shell = (
     <AppShellClient
       role={role}
       realRole={realRole}
       adminPanelPreview={adminPanelPreview as AdminPanelContext | null}
       userEmail={session?.email ?? null}
       showLoginLink={!realRole}
-      navBadges={navBadges}
-      salesActivityVersion={salesActivityVersion}
-      operationsDailyPanelVersion={operationsDailyPanelVersion}
       salesPersonId={session?.salesPersonId ?? null}
       mustChangePassword={session?.mustChangePassword ?? false}
       salesOnboardingCompletedAt={session?.salesOnboardingCompletedAt ?? null}
-      salesPersonName={salesPersonName}
-      salesBoardAttention={salesBoardAttention}
-      operationsPinnedAnnouncements={operationsPinnedAnnouncements}
       salesOnboardingActive={showSalesOnboarding}
     >
       {children}
     </AppShellClient>
+  );
+
+  if (lightShell || !session) {
+    return shell;
+  }
+
+  const previewHeaderId = (await headers()).get("x-preview-sales-person-id");
+
+  return (
+    <AppShellMetricsProvider>
+      <Suspense fallback={null}>
+        <AppShellMetricsLoader
+          input={{
+            realRole,
+            role,
+            session,
+            panelContext,
+            adminPanelPreview,
+            showSalesOnboarding,
+            previewHeaderId,
+          }}
+        />
+      </Suspense>
+      {shell}
+    </AppShellMetricsProvider>
   );
 }

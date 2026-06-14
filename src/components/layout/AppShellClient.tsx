@@ -34,6 +34,7 @@ import type { UserRole } from "@/types/database";
 import { canAccessOperations, isSalesAccount } from "@/lib/auth-roles";
 import { MobileOperationsNav } from "./MobileOperationsNav";
 import { MobileOperationsHeader } from "./MobileOperationsHeader";
+import { useAppShellMetrics } from "./AppShellMetricsContext";
 
 function SalesGlobalPinnedStrip({
   attention,
@@ -102,15 +103,9 @@ export function AppShellClient({
   adminPanelPreview = null,
   userEmail,
   showLoginLink,
-  navBadges = { nowe: 0, weryfikacja: 0, realizacja: 0 },
-  salesActivityVersion = null,
-  operationsDailyPanelVersion = null,
   salesPersonId = null,
   mustChangePassword = false,
   salesOnboardingCompletedAt = null,
-  salesPersonName = null,
-  salesBoardAttention = null,
-  operationsPinnedAnnouncements = [],
   salesOnboardingActive = false,
 }: {
   children: React.ReactNode;
@@ -119,34 +114,26 @@ export function AppShellClient({
   adminPanelPreview?: AdminPanelContext | null;
   userEmail?: string | null;
   showLoginLink?: boolean;
-  navBadges?: {
-    nowe?: number;
-    weryfikacja?: number;
-    realizacja?: number;
-    salesMoje?: number;
-    salesNotatnik?: number;
-    salesTablica?: number;
-    operationsNotatki?: number;
-    departmentBoardQuestions?: number;
-    adminBugReports?: number;
-  };
-  salesActivityVersion?: string | null;
-  operationsDailyPanelVersion?: string | null;
   salesPersonId?: string | null;
   mustChangePassword?: boolean;
   salesOnboardingCompletedAt?: string | null;
-  salesPersonName?: string | null;
-  salesBoardAttention?: SalesBoardAttentionSnapshot | null;
-  operationsPinnedAnnouncements?: Pick<
-    SalesBoardAttentionSnapshot["pinnedAnnouncements"][number],
-    "id" | "title" | "body"
-  >[];
   /** Tour onboarding — wyłącz live badge i polling zamówień. */
   salesOnboardingActive?: boolean;
 }) {
+  const {
+    navBadges,
+    salesActivityVersion,
+    operationsDailyPanelVersion,
+    salesPersonName,
+    salesBoardAttention,
+    operationsPinnedAnnouncements,
+  } = useAppShellMetrics();
   const pathname = usePathname();
   const isAuthScreen =
-    pathname === "/login" || pathname === "/setup" || pathname === "/ustaw-haslo";
+    pathname === "/login" ||
+    pathname === "/setup" ||
+    pathname === "/ustaw-haslo" ||
+    pathname === "/auth/entering";
 
   if (isAuthScreen) {
     return <div className="min-h-dvh overflow-x-hidden">{children}</div>;
