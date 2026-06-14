@@ -216,8 +216,8 @@ export function enrichStockOutSignalGroup(
   return {
     headline: primaryProduct ?? group.supplierName,
     subline: primaryProduct
-      ? `${group.supplierName} · zgłosił ${group.person}`
-      : `${group.person} · ${countLabel} · ${group.supplierName}`,
+      ? `zgłosił ${group.person}`
+      : `${group.person} · ${countLabel}`,
     headlineTone: "warning",
     statusTitle: INFORMACJA_STOCK_OUT_PANEL_BADGE,
     statusDetail: null,
@@ -269,7 +269,7 @@ export function enrichForSomeoneGroup(
 
   return {
     headline: group.person,
-    subline: `${group.supplierName} · ${countLabel}${noteSuffix}`,
+    subline: `${countLabel}${noteSuffix}`,
     headlineTone: infoViaPanel ? "info" : "neutral",
     statusTitle: infoViaPanel
       ? INFORMACJA_VIA_PANEL_STATUS_TITLE

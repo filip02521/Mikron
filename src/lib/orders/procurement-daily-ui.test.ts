@@ -266,6 +266,8 @@ describe("procurement-daily-ui", () => {
       at
     );
     expect(zam.headline).toContain("Anna");
+    expect(zam.subline).toBe("1 produkt");
+    expect(zam.subline).not.toContain("Dostawca");
     expect(zam.subline).not.toContain("uwagi przy produktach");
     expect(zam.statusTitle).toBe("Do zamówienia");
     expect(zam.submittedLabel).toContain("dziś");
@@ -409,7 +411,8 @@ describe("procurement-daily-ui", () => {
     expect(countDailyPanelNavBadge(ws)).toBe(2);
     const stockUi = enrichStockOutSignalGroup(ws.stockOutLeft[0]!);
     expect(stockUi.headline).toBe("Towar");
-    expect(stockUi.subline).toContain("Jan");
+    expect(stockUi.subline).toBe("zgłosił Jan");
+    expect(stockUi.subline).not.toContain(" · A");
   });
 
   it("forSomeoneLeft oznacza dostawcę na żądanie z joinu supplier, nawet bez wpisu w schedules", () => {
