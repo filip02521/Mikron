@@ -48,6 +48,19 @@ describe("queue-batch-notify", () => {
     });
     expect(t.text).toContain("2 maile");
     expect(t.tone).toBe("success");
+    expect(t.durationMs).toBeUndefined();
+  });
+
+  it("formatDeliveryBatchToast — błąd e-maila wydłuża toast", () => {
+    const t = formatDeliveryBatchToast({
+      saved: 1,
+      emailSent: 0,
+      errors: [],
+      emailError: "Resend timeout",
+    });
+    expect(t.tone).toBe("error");
+    expect(t.text).toContain("e-mail");
+    expect(t.durationMs).toBe(15_000);
   });
 
   it("selectedSaveButtonLabel", () => {

@@ -87,7 +87,16 @@ export function batchInformacjaConfirmMessage(
 export type BatchOperationToast = {
   text: string;
   tone: "success" | "error";
+  /** Dłuższy toast gdy zapis OK, ale mail do handlowca nie poszedł. */
+  durationMs?: number;
 };
+
+export const QUEUE_EMAIL_WARNING_TOAST_MS = 15_000;
+
+function withEmailWarningDuration(toast: BatchOperationToast): BatchOperationToast {
+  if (toast.tone !== "error" || !/e-mail|mail/i.test(toast.text)) return toast;
+  return { ...toast, durationMs: QUEUE_EMAIL_WARNING_TOAST_MS };
+}
 
 /** Spójny komunikat po zbiorczym zapisie dostaw. */
 export function formatDeliveryBatchToast(result: {
@@ -108,10 +117,10 @@ export function formatDeliveryBatchToast(result: {
     ? ` Uwagi (${result.errors.length}): ${result.errors.slice(0, 2).join("; ")}${result.errors.length > 2 ? "…" : ""}`
     : "";
 
-  return {
+  return withEmailWarningDuration({
     text: `Zapisano ${polishPozycjeLabel(result.saved)}${emailPart}${errPart}`,
     tone: partial || result.emailError ? "error" : "success",
-  };
+  });
 }
 
 /** Spójny komunikat po zbiorczym powiadomieniu informacyjnym. */
@@ -136,8 +145,8 @@ export function formatInformacjaBatchToast(result: {
 
   const partialSkip = (result.skipped ?? 0) > 0;
 
-  return {
+  return withEmailWarningDuration({
     text: `Powiadomiono: ${polishPozycjeLabel(result.updated)}${emailPart}${skipPart}`,
     tone: result.emailError || partialSkip ? "error" : "success",
-  };
+  });
 }

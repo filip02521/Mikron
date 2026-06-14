@@ -11,6 +11,7 @@ import {
   receiveQueueTargetQuantity,
 } from "@/lib/orders/sales-cancel";
 import { procurementDispositionQueueLabel } from "@/lib/orders/procurement-disposition";
+import { informacjaWarehouseQueueActionLabel } from "@/lib/orders/informacja-warehouse-queue";
 import { partialReceiveCrossLabel } from "@/lib/orders/warehouse-cross-link";
 import {
   queueSupplierLeadingCellClass,
@@ -105,6 +106,17 @@ export function ReceiveQueueRow({
     .join(" · ");
   const canSave = !isInfo && inputVal.trim() !== "";
   const showProductGroupLink = isInfo && isFirstInProductGroup && productGroupIds.length > 1;
+  const informacjaActionLabel = isInfo
+    ? informacjaWarehouseQueueActionLabel(order.status)
+    : null;
+  const informacjaButtonLabel =
+    isInfo && productGroupIds.length > 1 && isFirstInProductGroup
+      ? `Powiadom (${productGroupIds.length})`
+      : isInfo && order.status === "Nowe"
+        ? "Wyślij e-mail"
+        : isInfo
+          ? "Powiadom"
+          : null;
 
   const onQtyKeyDown = (e: KeyboardEvent<HTMLInputElement>) => {
     if (e.key === "Enter" && canSave) {
@@ -213,12 +225,12 @@ export function ReceiveQueueRow({
             title={
               productGroupIds.length > 1 && isFirstInProductGroup
                 ? `Powiadom ${productGroupIds.length} handlowców o tym towarze`
-                : "Powiadom handlowca"
+                : informacjaActionLabel ?? "Powiadom handlowca"
             }
             aria-label={
               productGroupIds.length > 1 && isFirstInProductGroup
                 ? `Powiadom ${productGroupIds.length} handlowców`
-                : `Powiadom ${personName}`
+                : informacjaActionLabel ?? `Powiadom ${personName}`
             }
             onClick={() =>
               onNotifyInformacja(
@@ -234,11 +246,7 @@ export function ReceiveQueueRow({
             )}
           >
             <NotifyIcon className="size-4 shrink-0" />
-            <span className="hidden sm:inline">
-              {productGroupIds.length > 1 && isFirstInProductGroup
-                ? `Powiadom (${productGroupIds.length})`
-                : "Powiadom"}
-            </span>
+            <span className="hidden sm:inline">{informacjaButtonLabel}</span>
           </button>
         ) : (
           <div className="inline-flex items-center justify-end gap-1 tabular-nums">

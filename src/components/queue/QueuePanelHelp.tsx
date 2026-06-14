@@ -24,6 +24,13 @@ export function QueuePanelHelp() {
         </ul>
       </HelpBlock>
 
+      <HelpBlock title="Dziennik dostaw">
+        <ul className="list-disc space-y-1.5 pl-4">
+          <li>Fizyczne przyjęcie kuriera — paczki, palety, przewoźnik (niezależnie od linii zamówień).</li>
+          <li>Magazyn może przeglądać archiwum i raporty z poprzednich dni.</li>
+        </ul>
+      </HelpBlock>
+
       <HelpBlock title="Inwentaryzacja regału">
         <ul className="list-disc space-y-1.5 pl-4">
           <li>Towar czekający na odbiór — sortowanie po dostawcy, regale albo handlowcu.</li>

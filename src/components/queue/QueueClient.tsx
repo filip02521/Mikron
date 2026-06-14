@@ -80,13 +80,21 @@ export function QueueClient({
   useEffect(() => {
     const sync = () => {
       const hash = window.location.hash;
+      if (hash === "#informacja" || hash === "#dostawy-handlowcy") {
+        const canonical = `${window.location.pathname}${window.location.search}#kolejka-przyjecie`;
+        window.history.replaceState(null, "", canonical);
+      }
+      const effectiveHash =
+        hash === "#informacja" || hash === "#dostawy-handlowcy"
+          ? "#kolejka-przyjecie"
+          : hash;
       let next: QueueView = "receive";
-      if (hash === "#inwentaryzacja") next = "inventory";
-      else if (hash === "#dziennik-dostaw") next = "journal";
+      if (effectiveHash === "#inwentaryzacja") next = "inventory";
+      else if (effectiveHash === "#dziennik-dostaw") next = "journal";
       else if (
-        hash === "#informacja" ||
-        hash === "#dostawy-handlowcy" ||
-        hash === "#kolejka-przyjecie"
+        effectiveHash === "#kolejka-przyjecie" ||
+        effectiveHash === "#informacja" ||
+        effectiveHash === "#dostawy-handlowcy"
       ) {
         next = "receive";
       }
@@ -135,7 +143,12 @@ export function QueueClient({
         <ActionLoadingOverlay message={pendingMessage} variant="viewport" />
       ) : null}
       {toast ? (
-        <Toast message={toast.text} tone={toast.tone} onDismiss={dismissToast} />
+        <Toast
+          message={toast.text}
+          tone={toast.tone}
+          durationMs={toast.durationMs}
+          onDismiss={dismissToast}
+        />
       ) : null}
 
       <Card padding={false} className="overflow-hidden">

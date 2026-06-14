@@ -8,6 +8,7 @@ import { selectedSaveButtonLabel } from "@/lib/orders/queue-batch-notify";
 export function ReceiveQueueSelectionBar({
   zamowienie,
   informacja,
+  canSaveZamowienie = true,
   pending,
   onSaveZamowienie,
   onNotifyInformacja,
@@ -15,6 +16,7 @@ export function ReceiveQueueSelectionBar({
 }: {
   zamowienie: IndividualOrder[];
   informacja: IndividualOrder[];
+  canSaveZamowienie?: boolean;
   pending: boolean;
   onSaveZamowienie: () => void;
   onNotifyInformacja: () => void;
@@ -35,7 +37,17 @@ export function ReceiveQueueSelectionBar({
         Zaznaczono: {total}
       </span>
       {zamowienie.length > 0 ? (
-        <Button variant="primary" size="sm" disabled={pending} onClick={onSaveZamowienie}>
+        <Button
+          variant="primary"
+          size="sm"
+          disabled={pending || !canSaveZamowienie}
+          title={
+            canSaveZamowienie
+              ? undefined
+              : "Wpisz ilość dostawy przy zaznaczonych zamówieniach"
+          }
+          onClick={onSaveZamowienie}
+        >
           {selectedSaveButtonLabel(zamowienie.length)}
         </Button>
       ) : null}

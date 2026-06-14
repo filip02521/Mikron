@@ -1,6 +1,6 @@
 "use client";
 
-import { Fragment, useMemo, useState, useTransition } from "react";
+import { Fragment, useCallback, useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import type { IndividualOrder } from "@/types/database";
 import {
@@ -49,13 +49,18 @@ import {
   batchNotifyButtonLabel,
   formatDeliveryBatchToast,
   formatInformacjaBatchToast,
+  QUEUE_EMAIL_WARNING_TOAST_MS,
   requiresQueueBatchConfirm,
   selectedSaveButtonLabel,
 } from "@/lib/orders/queue-batch-notify";
 
 const COL_COUNT = 4;
 
-export type ReceiveQueueToast = { text: string; tone: "success" | "error" };
+export type ReceiveQueueToast = {
+  text: string;
+  tone: "success" | "error";
+  durationMs?: number;
+};
 
 export function ReceiveQueueTable({
   deliveryOrders,
@@ -114,7 +119,7 @@ export function ReceiveQueueTable({
     [filtered, selectedIds]
   );
 
-  const getQty = (o: IndividualOrder) => {
+  const getQty = useCallback((o: IndividualOrder) => {
     if (qty[o.id] !== undefined) return qty[o.id];
     const d = o.delivered_quantity;
     if (d && d !== "-") return d;
@@ -123,7 +128,12 @@ export function ReceiveQueueTable({
     const ordered = parseOrderQuantity(o.quantity);
     if (ordered != null && ordered > 0) return String(ordered);
     return "";
-  };
+  }, [qty]);
+
+  const selectedZamowienieWithQty = useMemo(
+    () => selectionParts.zamowienie.filter((o) => getQty(o).trim() !== ""),
+    [selectionParts.zamowienie, getQty]
+  );
 
   const deliveryProgressForOrder = (order: IndividualOrder, value: string) => {
     const target = receiveQueueTargetQuantity(order);
@@ -183,6 +193,7 @@ export function ReceiveQueueTable({
           onToast({
             text: `Zapisano dostawę, ale e-mail nie poszedł: ${result.emailError}`,
             tone: "error",
+            durationMs: QUEUE_EMAIL_WARNING_TOAST_MS,
           });
         } else if (progress.remaining === 0 && progress.hasNumericQty) {
           onToast({
@@ -261,6 +272,7 @@ export function ReceiveQueueTable({
                 ? `Zapisano · ${person} · wysłano mail`
                 : `Zapisano · ${person}`,
             tone: result.emailError ? "error" : "success",
+            durationMs: result.emailError ? QUEUE_EMAIL_WARNING_TOAST_MS : undefined,
           });
         } else {
           const result = await actionBatchUpdateDelivered(updates);
@@ -470,6 +482,7 @@ export function ReceiveQueueTable({
       <ReceiveQueueSelectionBar
         zamowienie={selectionParts.zamowienie}
         informacja={selectionParts.informacja}
+        canSaveZamowienie={selectedZamowienieWithQty.length > 0}
         pending={pending}
         onSaveZamowienie={() =>
           requestSaveBatch(selectionParts.zamowienie.map((o) => o.id))
