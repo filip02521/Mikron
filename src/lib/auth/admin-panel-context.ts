@@ -98,6 +98,17 @@ export function isAdminReadOnlyPanelPreview(
   return isAdminPanelPreview(realRole, panelContext);
 }
 
+/**
+ * Podgląd handlowca w sidebarze / nagłówku — tylko gdy cookie panelu to „sales”
+ * i w URL jest ?dla= (nagłówek ustawia proxy).
+ */
+export function shouldApplyAdminSalesPreviewHeader(
+  panelContext: AdminPanelContext | null | undefined,
+  previewSalesPersonId: string | null | undefined
+): boolean {
+  return panelContext === "sales" && Boolean(previewSalesPersonId?.trim());
+}
+
 export const ADMIN_PANEL_CONTEXT_OPTIONS: {
   value: AdminPanelContext;
   label: string;

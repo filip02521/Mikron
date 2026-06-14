@@ -1016,7 +1016,7 @@ export function OrderFormClient({
             <p className="text-xs leading-relaxed text-slate-500">
               {requestKind === "informacja"
                 ? informacjaSalesFooterNote(informacjaPath)
-                : "O ważnych zmianach dostaniesz też e-mail."}
+                : "Po wysłaniu status w Moje zamówienia. O ważnych zmianach dostaniesz też e-mail."}
             </p>
             <Button
               disabled={pending || tourDemo || readOnly || !canSubmitProsba}

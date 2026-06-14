@@ -34,7 +34,7 @@ import { AdminPanelContextSwitcher } from "@/components/layout/AdminPanelContext
 import { actionClearAdminPanelContext } from "@/app/actions/admin-panel-context";
 import type { AdminPanelContext } from "@/lib/auth/admin-panel-context";
 import { isAdmin } from "@/lib/auth-roles";
-import { hrefWithAdminSalesPreview } from "@/lib/nav/sales-preview-href";
+import { hrefWithAdminSalesPreview, shouldPreserveAdminSalesPreviewInNav } from "@/lib/nav/sales-preview-href";
 
 function NavLink({
   item,
@@ -227,7 +227,11 @@ export function Sidebar({
   const router = useRouter();
   const searchParams = useSearchParams();
   const previewDla = searchParams.get("dla");
-  const adminSalesPreview = Boolean(realRole && isAdmin(realRole) && previewDla);
+  const adminSalesPreview = shouldPreserveAdminSalesPreviewInNav(
+    realRole,
+    adminPanelContext,
+    previewDla
+  );
   const navLocked = useSalesNavLocked();
   const groups = role ? navForRole(role, navBadges) : [];
 

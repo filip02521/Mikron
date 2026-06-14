@@ -6,6 +6,7 @@ import {
   ADMIN_PANEL_COOKIE,
   homePathForAdminPanelContext,
   resolveAdminPanelContext,
+  shouldApplyAdminSalesPreviewHeader,
 } from "@/lib/auth/admin-panel-context";
 import {
   canAccessOperations,
@@ -207,10 +208,13 @@ export async function proxy(request: NextRequest) {
     return redirectWithSession(request, sessionResponse, "/prosba");
   }
 
-  if (previewSalesPersonId && isAdmin(role)) {
+  if (
+    shouldApplyAdminSalesPreviewHeader(adminPanelContext, previewSalesPersonId) &&
+    isAdmin(role)
+  ) {
     sessionResponse.headers.set(
       "x-preview-sales-person-id",
-      previewSalesPersonId
+      previewSalesPersonId!
     );
   }
 

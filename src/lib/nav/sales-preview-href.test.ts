@@ -1,5 +1,22 @@
 import { describe, expect, it } from "vitest";
-import { hrefWithAdminSalesPreview } from "./sales-preview-href";
+import {
+  hrefWithAdminSalesPreview,
+  shouldPreserveAdminSalesPreviewInNav,
+} from "./sales-preview-href";
+
+describe("shouldPreserveAdminSalesPreviewInNav", () => {
+  it("włącza ?dla= tylko w podglądzie handlowca", () => {
+    expect(
+      shouldPreserveAdminSalesPreviewInNav("admin", "sales", "sp-1")
+    ).toBe(true);
+    expect(
+      shouldPreserveAdminSalesPreviewInNav("admin", "admin", "sp-1")
+    ).toBe(false);
+    expect(
+      shouldPreserveAdminSalesPreviewInNav("sales", "sales", "sp-1")
+    ).toBe(false);
+  });
+});
 
 describe("hrefWithAdminSalesPreview", () => {
   it("dodaje ?dla= do prostego linku", () => {

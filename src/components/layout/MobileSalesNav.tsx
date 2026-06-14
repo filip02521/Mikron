@@ -19,8 +19,9 @@ import {
   mobileSalesNavClass,
   sidebarNavToneActiveClass,
 } from "@/lib/ui/ontime-theme";
-import { isAdmin, isSalesManager } from "@/lib/auth-roles";
-import { hrefWithAdminSalesPreview } from "@/lib/nav/sales-preview-href";
+import { isSalesManager } from "@/lib/auth-roles";
+import { hrefWithAdminSalesPreview, shouldPreserveAdminSalesPreviewInNav } from "@/lib/nav/sales-preview-href";
+import type { AdminPanelContext } from "@/lib/auth/admin-panel-context";
 import type { UserRole } from "@/types/database";
 import { useSalesNavLocked } from "@/components/sales/SalesOnboardingContext";
 
@@ -28,15 +29,21 @@ export function MobileSalesNav({
   navBadges = { salesMoje: 0, salesNotatnik: 0, salesTablica: 0 },
   role = "sales",
   realRole = null,
+  adminPanelContext = "admin",
 }: {
   navBadges?: { salesMoje?: number; salesNotatnik?: number; salesTablica?: number };
   role?: UserRole;
   realRole?: UserRole | null;
+  adminPanelContext?: AdminPanelContext;
 }) {
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const previewDla = searchParams.get("dla");
-  const preservePreviewDla = Boolean(realRole && isAdmin(realRole) && previewDla);
+  const preservePreviewDla = shouldPreserveAdminSalesPreviewInNav(
+    realRole,
+    adminPanelContext,
+    previewDla
+  );
   const navLocked = useSalesNavLocked();
   const salesUpdates = useSalesUpdates();
   const navRole = isSalesManager(role) ? "sales_manager" : "sales";

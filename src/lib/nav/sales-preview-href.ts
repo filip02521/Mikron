@@ -1,3 +1,7 @@
+import { shouldApplyAdminSalesPreviewHeader, type AdminPanelContext } from "@/lib/auth/admin-panel-context";
+import { isAdmin } from "@/lib/auth-roles";
+import type { UserRole } from "@/types/database";
+
 const SALES_PREVIEW_PATHS = ["/moje", "/prosba", "/plan", "/tablica", "/notatnik", "/zk"];
 
 function isSalesPreviewPath(href: string): boolean {
@@ -6,6 +10,19 @@ function isSalesPreviewPath(href: string): boolean {
   const qIndex = pathAndQuery.indexOf("?");
   const path = qIndex >= 0 ? pathAndQuery.slice(0, qIndex) : pathAndQuery;
   return SALES_PREVIEW_PATHS.includes(path);
+}
+
+/** Czy menu admina ma doklejać ?dla= (tylko cookie „sales”, nie po powrocie do administracji). */
+export function shouldPreserveAdminSalesPreviewInNav(
+  realRole: UserRole | null | undefined,
+  panelContext: AdminPanelContext,
+  previewDla: string | null | undefined
+): boolean {
+  return Boolean(
+    realRole &&
+      isAdmin(realRole) &&
+      shouldApplyAdminSalesPreviewHeader(panelContext, previewDla)
+  );
 }
 
 /** Zachowuje ?dla= w linkach menu podczas podglądu handlowca przez administratora. */

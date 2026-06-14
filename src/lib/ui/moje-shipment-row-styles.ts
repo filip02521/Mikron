@@ -16,8 +16,8 @@ export const mojeQueueRowActionsClass =
 /** Główna treść wiersza (chevron + opis). */
 export const mojeQueueRowMainClass = "flex min-w-0 flex-1 items-center gap-1 sm:gap-2";
 
-/** Wiersze wewnątrz sekcji — bez własnych rogów. */
-export const mojeShipmentListClass = "divide-y divide-slate-100";
+/** Wiersze wewnątrz sekcji — bez własnych rogów; lekki dół pod ostatnim rozwiniętym wierszem. */
+export const mojeShipmentListClass = "divide-y divide-slate-100 pb-0.5";
 
 export type MojeShipmentRowVisualTone = "default" | "archive";
 

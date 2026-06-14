@@ -4,6 +4,7 @@ import { resolvePreviewSalesPerson } from "@/lib/auth/resolve-preview-sales-pers
 import {
   effectiveNavRole,
   isAdminPanelPreview,
+  shouldApplyAdminSalesPreviewHeader,
   type AdminPanelContext,
 } from "@/lib/auth/admin-panel-context";
 import { readAdminPanelContextForSession } from "@/lib/auth/read-admin-panel-context";
@@ -95,7 +96,10 @@ export async function AppShell({ children }: { children: React.ReactNode }) {
 
   if (realRole && isAdmin(realRole) && session) {
     try {
-      const previewId = (await headers()).get("x-preview-sales-person-id");
+      const previewHeaderId = (await headers()).get("x-preview-sales-person-id");
+      const previewId = shouldApplyAdminSalesPreviewHeader(panelContext, previewHeaderId)
+        ? previewHeaderId
+        : null;
       if (previewId) {
         const preview = await resolvePreviewSalesPerson(previewId, session);
         if (preview) {
@@ -108,6 +112,11 @@ export async function AppShell({ children }: { children: React.ReactNode }) {
             salesNotatnik: metrics.notepadNavBadge,
             salesTablica: 0,
           };
+        }
+      } else if (!adminPanelPreview) {
+        const own = await resolveSalesPersonForUser(session);
+        if (own) {
+          salesPersonName = own.name;
         }
       }
     } catch {

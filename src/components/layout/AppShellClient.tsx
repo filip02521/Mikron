@@ -250,6 +250,7 @@ export function AppShellClient({
               navBadges={navBadges}
               role={role ?? "sales"}
               realRole={realRole}
+              adminPanelContext={adminPanelPreview ?? "admin"}
             />
           </Suspense>
         ) : null}
