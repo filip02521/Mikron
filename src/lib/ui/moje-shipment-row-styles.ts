@@ -63,7 +63,7 @@ export function mojeShipmentRowClass({
     isAction && !expanded && "bg-emerald-50/35",
     isInformacjaAck && !expanded && "bg-violet-50/40",
     expanded
-      ? "bg-slate-50/40"
+      ? "bg-slate-50/50"
       : isAction
         ? "hover:bg-emerald-50/50"
         : isInformacjaAck
@@ -72,11 +72,14 @@ export function mojeShipmentRowClass({
   );
 }
 
+export const mojeShipmentExpandedRowShellClass =
+  "relative z-[1] mb-2.5 shadow-sm ring-1 ring-inset ring-slate-200/70";
+
 export const mojeShipmentExpandedMetaShellClass =
   "rounded-md border border-slate-200/80 bg-slate-50/70 px-2.5 py-1.5";
 
 export const mojeShipmentExpandedPanelClass =
-  "space-y-2.5 border-t border-slate-200/80 bg-gradient-to-b from-slate-50/90 to-white px-3 py-2.5 sm:px-4 sm:py-3";
+  "space-y-2.5 border-t border-slate-200/80 bg-gradient-to-b from-slate-50/90 to-white px-3 pt-2.5 pb-3.5 sm:px-4 sm:pt-3 sm:pb-4";
 
 export const mojeShipmentExpandedNotesClass =
   "rounded-md border border-indigo-100/90 bg-indigo-50/60 px-3 py-2 text-xs leading-relaxed text-indigo-950";

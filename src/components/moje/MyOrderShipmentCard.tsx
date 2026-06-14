@@ -67,6 +67,7 @@ import {
   mojeShipmentExpandedActionsClass,
   mojeShipmentExpandedNotesClass,
   mojeShipmentExpandedPanelClass,
+  mojeShipmentExpandedRowShellClass,
   mojeShipmentLinesHeaderClass,
   mojeShipmentLinesHeaderTitleClass,
   mojeShipmentLinesShellClass,
@@ -680,7 +681,8 @@ export function MyOrderShipmentCard({
           isInformacja,
           visualTone: rowVisualTone,
         }),
-        highlighted && "ring-2 ring-inset ring-indigo-300/80"
+        expanded && needsExpand && mojeShipmentExpandedRowShellClass,
+        highlighted && "z-[2] ring-2 ring-inset ring-indigo-300/80"
       )}
     >
       {showHeadlineBanner ? (

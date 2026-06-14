@@ -52,6 +52,29 @@ describe("sales-prosba-keyboard", () => {
     expect(onSubmit).not.toHaveBeenCalled();
   });
 
+  it("Ctrl+Enter i skróty 1/2/+ są zablokowane w trybie locked", () => {
+    const onSubmit = vi.fn();
+    const onSetRequestKind = vi.fn();
+    const onAddProductLine = vi.fn();
+    const handlers = {
+      pending: false,
+      canSubmit: true,
+      locked: true,
+      onSubmit,
+      onSetRequestKind,
+      onAddProductLine,
+    };
+
+    handleSalesProsbaKeyboardEvent(keyEvent("Enter", { ctrlKey: true }), handlers);
+    handleSalesProsbaKeyboardEvent(keyEvent("1"), handlers);
+    handleSalesProsbaKeyboardEvent(keyEvent("2"), handlers);
+    handleSalesProsbaKeyboardEvent(keyEvent("+"), handlers);
+
+    expect(onSubmit).not.toHaveBeenCalled();
+    expect(onSetRequestKind).not.toHaveBeenCalled();
+    expect(onAddProductLine).not.toHaveBeenCalled();
+  });
+
   it("1 i 2 zmieniają rodzaj prośby poza polem", () => {
     const onSetRequestKind = vi.fn();
     handleSalesProsbaKeyboardEvent(keyEvent("1"), {

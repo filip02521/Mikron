@@ -15,9 +15,13 @@ import type { DeliveryStats, IndividualRequestKind } from "@/types/database";
 import { RequestKindToggle } from "@/components/orders/RequestKindToggle";
 import { ProsbaFormSection } from "@/components/orders/ProsbaFormSection";
 import { prosbaHref } from "@/lib/orders/prosba-url";
-import { IconLayers, IconPlusCircle } from "@/components/icons/StrokeIcons";
+import { IconLayers, IconPlusCircle, IconAvailability, IconPackageCheck, IconUserCog } from "@/components/icons/StrokeIcons";
 import { SectionHeadingIcon } from "@/components/icons/SectionHeadingIcon";
 import { cn } from "@/lib/cn";
+import { sectionIconTileBrandClass } from "@/lib/ui/ontime-theme";
+import { AppBrandContentFooter } from "@/components/layout/AppBrandContentFooter";
+import { ProsbaFormMetaStrip } from "@/components/orders/ProsbaFormMetaStrip";
+import { ProsbaPageToolbar } from "@/components/orders/ProsbaPageToolbar";
 import { hasAnyProductHint, hasValidOrderQuantity } from "@/lib/orders/request-completeness";
 import { assessProcurementGroupCompleteness, buildProcurementFormReadiness } from "@/lib/orders/procurement-form-readiness";
 import { InformacjaFlowPicker } from "@/components/orders/InformacjaFlowPicker";
@@ -149,6 +153,9 @@ function emptyGroup(salesPersonId = "", supplierId = ""): Entry[] {
   if (supplierId) row.supplierId = supplierId;
   return [row];
 }
+
+const SALES_PROSBA_INTRO =
+  "Formalne zgłoszenie do działu zakupów — po wysłaniu status i kolejne kroki zobaczysz w Moje zamówienia.";
 
 function buildInitialGroups(
   lockedId: string,
@@ -715,6 +722,7 @@ export function OrderFormClient({
       handleSalesProsbaKeyboardEvent(e, {
         pending,
         canSubmit: salesProsbaSubmitState?.canSubmit ?? false,
+        locked: readOnly || tourDemo,
         onSubmit: () => submitRef.current(),
         onSetRequestKind: setRequestKind,
         onAddProductLine: addSalesProductLine,
@@ -723,7 +731,15 @@ export function OrderFormClient({
 
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [singleGroup, lockedSalesPerson, pending, addSalesProductLine, salesProsbaSubmitState?.canSubmit]);
+  }, [
+    singleGroup,
+    lockedSalesPerson,
+    pending,
+    readOnly,
+    tourDemo,
+    addSalesProductLine,
+    salesProsbaSubmitState?.canSubmit,
+  ]);
 
   useEffect(() => {
     if (singleGroup && lockedSalesPerson) return;
@@ -793,20 +809,25 @@ export function OrderFormClient({
         ? suppliers.find((s) => s.id === initialSupplierId) ?? null
         : null;
 
+    const mojeHref = submitForOther ? `/moje?dla=${lockedSalesPerson.id}` : "/moje";
+    const mojeLabel = submitForOther ? "Prośby handlowca" : "Moje zamówienia";
+
     return (
-      <div className="relative">
+      <div className="relative space-y-5">
         {pendingMessage ? (
           <ActionLoadingOverlay message={pendingMessage} variant="viewport" />
         ) : null}
         {toastSlot}
 
-        <Card padding={false}>
+        <ProsbaPageToolbar mojeHref={mojeHref} mojeLabel={mojeLabel} />
+
+        <Card padding={false} className="overflow-hidden">
           <div className={cn(tourDemo && "pointer-events-none select-none")}>
           <CardHeader
             inset
             density="compact"
             leading={
-              <SectionHeadingIcon tileClassName="bg-indigo-100 text-indigo-800">
+              <SectionHeadingIcon tileClassName={sectionIconTileBrandClass}>
                 <IconPlusCircle size={20} />
               </SectionHeadingIcon>
             }
@@ -814,12 +835,12 @@ export function OrderFormClient({
             description={
               submitForOther
                 ? `Zgłaszasz w imieniu: ${lockedSalesPerson.name}. Po wysłaniu prośba pojawi się w jego liście „Moje zamówienia”.`
-                : "Jeden formularz — wybierz rodzaj prośby i produkty. Dostawcę dobierzemy automatycznie albo uzupełni dział zakupów."
+                : SALES_PROSBA_INTRO
             }
           />
 
           {tourDemo ? (
-            <div className="border-b border-amber-200/90 bg-amber-50 px-4 py-2.5 text-xs leading-relaxed text-amber-950 sm:px-6">
+            <div className="border-b border-amber-200/90 bg-amber-50 px-3 py-2.5 text-xs leading-relaxed text-amber-950 sm:px-4">
               Podgląd formularza z przykładowymi pozycjami — edycja i wysyłka są wyłączone.
             </div>
           ) : null}
@@ -836,7 +857,7 @@ export function OrderFormClient({
 
           {scheduleSupplier && !tourDemo ? (
             <div
-              className="border-b border-indigo-100 bg-indigo-50/90 px-3 py-2.5 text-sm text-indigo-950 sm:px-6"
+              className="border-b border-indigo-100 bg-indigo-50/90 px-3 py-2.5 text-sm text-indigo-950 sm:px-4"
               role="status"
             >
               <p className="leading-snug">
@@ -855,14 +876,11 @@ export function OrderFormClient({
 
           {!tourDemo ? <ProsbaVsBoardHint /> : null}
 
-          <div className="flex flex-wrap items-center gap-x-3 gap-y-1 border-b border-slate-100 bg-slate-50/60 px-3 py-2 sm:px-4">
-            <span className="shrink-0 text-xs font-medium text-slate-600">Skróty klawiszowe</span>
-            <KeyboardShortcutsHint items={[...SALES_PROSBA_KEYBOARD_HINTS]} compact />
-          </div>
+          <ProsbaFormMetaStrip keyboardHints={SALES_PROSBA_KEYBOARD_HINTS} />
 
           <div
             className={cn(
-              "space-y-5 px-3 py-4 sm:px-4",
+              "space-y-3 p-3 sm:p-4",
               tourDemo && "pointer-events-none select-none"
             )}
           >
@@ -870,6 +888,9 @@ export function OrderFormClient({
               <ProsbaFormSection
                 title="W czyim imieniu?"
                 hint="Kierownik może złożyć prośbę dla handlowca z zespołu."
+                accent="indigo"
+                icon={<IconUserCog size={17} />}
+                tileClassName="bg-indigo-100 text-indigo-800"
               >
                 <Field label="Handlowiec">
                   <Select
@@ -899,6 +920,9 @@ export function OrderFormClient({
             <ProsbaFormSection
               title="Co chcesz zgłosić?"
               hint="Wybierz jedną opcję — pola poniżej dopasują się do rodzaju prośby."
+              accent="indigo"
+              icon={<IconPlusCircle size={17} />}
+              tileClassName={sectionIconTileBrandClass}
             >
               <RequestKindToggle
                 value={requestKind}
@@ -914,6 +938,9 @@ export function OrderFormClient({
               <ProsbaFormSection
                 title={INFORMACJA_FLOW_PICKER_SECTION.title}
                 hint={INFORMACJA_FLOW_PICKER_SECTION.hint}
+                accent="violet"
+                icon={<IconAvailability size={17} />}
+                tileClassName="bg-violet-100 text-violet-800"
               >
                 <InformacjaFlowPicker
                   path={informacjaPath}
@@ -929,6 +956,13 @@ export function OrderFormClient({
                 requestKind === "informacja"
                   ? informacjaProductsFormHint(informacjaPath)
                   : "Podaj nazwę lub symbol oraz ilość. Dostawcę dobierzemy automatycznie albo uzupełni dział zakupów."
+              }
+              accent={requestKind === "informacja" ? "violet" : "slate"}
+              icon={<IconPackageCheck size={17} />}
+              tileClassName={
+                requestKind === "informacja"
+                  ? "bg-violet-100 text-violet-800"
+                  : "bg-slate-100 text-slate-700"
               }
             >
               <div className="space-y-4">
@@ -978,24 +1012,14 @@ export function OrderFormClient({
             </ProsbaFormSection>
           </div>
 
-          <div className="flex flex-col gap-2.5 border-t border-slate-100 bg-slate-50/90 px-3 py-3 sm:flex-row sm:items-center sm:justify-between sm:px-4">
+          <div className="flex flex-col gap-2.5 border-t border-slate-200/80 bg-slate-50/35 px-3 py-3 sm:flex-row sm:items-center sm:justify-between sm:px-4">
             <p className="text-xs leading-relaxed text-slate-500">
-              Po wysłaniu sprawdź status w{" "}
-              <Link
-                href={submitForOther ? `/moje?dla=${lockedSalesPerson.id}` : "/moje"}
-                className="font-medium text-indigo-700 hover:underline"
-              >
-                {submitForOther ? "Prośby handlowca" : "Moje zamówienia"}
-              </Link>
-              .
-              {requestKind === "informacja" ? (
-                <> {informacjaSalesFooterNote(informacjaPath)}</>
-              ) : (
-                <> O ważnych zmianach dostaniesz też e-mail.</>
-              )}
+              {requestKind === "informacja"
+                ? informacjaSalesFooterNote(informacjaPath)
+                : "O ważnych zmianach dostaniesz też e-mail."}
             </p>
             <Button
-              disabled={pending || tourDemo || !canSubmitProsba}
+              disabled={pending || tourDemo || readOnly || !canSubmitProsba}
               onClick={submit}
               title={
                 !canSubmitProsba && !pending && !tourDemo
@@ -1009,6 +1033,8 @@ export function OrderFormClient({
           </div>
           </div>
         </Card>
+
+        <AppBrandContentFooter mobileOnly variant="page" />
       </div>
     );
   }

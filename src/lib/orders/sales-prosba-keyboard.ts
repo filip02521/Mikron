@@ -19,6 +19,8 @@ export type SalesProsbaKeyboardHandlers = {
   pending: boolean;
   /** Gdy false — Ctrl+Enter nie wysyła (formularz niekompletny). */
   canSubmit?: boolean;
+  /** Podgląd admina / tour — bez wysyłki i zmian rodzaju skrótami. */
+  locked?: boolean;
   onSubmit: () => void;
   onSetRequestKind: (kind: IndividualRequestKind) => void;
   onAddProductLine: () => void;
@@ -31,6 +33,7 @@ export function handleSalesProsbaKeyboardEvent(
 ): boolean {
   if ((e.metaKey || e.ctrlKey) && e.key === "Enter") {
     e.preventDefault();
+    if (handlers.locked) return true;
     const canSubmit = handlers.canSubmit ?? true;
     if (!handlers.pending && canSubmit) handlers.onSubmit();
     return true;
@@ -43,6 +46,8 @@ export function handleSalesProsbaKeyboardEvent(
     }
     return false;
   }
+
+  if (handlers.locked) return false;
 
   if (e.metaKey || e.ctrlKey || e.altKey) return false;
 

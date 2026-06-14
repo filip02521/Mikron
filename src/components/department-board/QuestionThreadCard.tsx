@@ -19,7 +19,7 @@ import {
 import type { DepartmentBoardQuestion } from "@/lib/data/department-board";
 import { NOTATNIK_TEXTAREA_CLASS } from "@/components/notatnik/notatnik-layout";
 import { cn } from "@/lib/cn";
-import { mojeShipmentExpandedPanelClass } from "@/lib/ui/moje-shipment-row-styles";
+import { mojeShipmentExpandedPanelClass, mojeShipmentExpandedRowShellClass } from "@/lib/ui/moje-shipment-row-styles";
 import { salesTypography } from "@/lib/ui/ontime-theme";
 import {
   actionArchiveQuestion,
@@ -156,7 +156,8 @@ export function QuestionThreadCard({
       className={cn(
         embedded
           ? boardQuestionRowClass({ unseen: showUnseen, open: isOpen, expanded })
-          : "rounded-md border border-slate-200/90 bg-white shadow-sm"
+          : "rounded-md border border-slate-200/90 bg-white shadow-sm",
+        embedded && expanded && mojeShipmentExpandedRowShellClass
       )}
     >
       <button
