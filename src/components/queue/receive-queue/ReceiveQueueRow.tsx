@@ -11,6 +11,12 @@ import {
   receiveQueueTargetQuantity,
 } from "@/lib/orders/sales-cancel";
 import { procurementDispositionQueueLabel } from "@/lib/orders/procurement-disposition";
+import {
+  canAcknowledgeWarehouseCancelDisposition,
+  isCancelledDispositionInReceiveQueue,
+  needsReceiveBeforeWarehouseCancelAck,
+  warehouseCancelFulfillButtonLabel,
+} from "@/lib/orders/warehouse-cancel-fulfillment";
 import { informacjaWarehouseQueueActionLabel } from "@/lib/orders/informacja-warehouse-queue";
 import { partialReceiveCrossLabel } from "@/lib/orders/warehouse-cross-link";
 import {
@@ -70,6 +76,7 @@ export function ReceiveQueueRow({
   onFillFullQty,
   onNotifyInformacja,
   onToggleProductGroup,
+  onAckCancelDisposition,
 }: {
   order: IndividualOrder;
   groupIndex: number;
@@ -87,6 +94,7 @@ export function ReceiveQueueRow({
   onFillFullQty: () => void;
   onNotifyInformacja: (ids: string[]) => void;
   onToggleProductGroup: (checked: boolean) => void;
+  onAckCancelDisposition: () => void;
 }) {
   const personName = order.sales_person?.name?.trim() || "—";
   const fulfillment = fulfillmentProgressFor(order);
@@ -99,6 +107,10 @@ export function ReceiveQueueRow({
   );
   const isPartial = !isInfo && order.status === "Czesciowo_zrealizowane";
   const salesCancelRow = Boolean(order.sales_cancelled_at);
+  const cancelDisposition = isCancelledDispositionInReceiveQueue(order);
+  const needsReceiveForCancel = needsReceiveBeforeWarehouseCancelAck(order);
+  const canAckCancel = canAcknowledgeWarehouseCancelDisposition(order);
+  const cancelAckLabel = warehouseCancelFulfillButtonLabel(order);
   const partialCross = partialReceiveCrossLabel(order);
   const zakupyLabel = procurementDispositionQueueLabel(order);
   const productTitle = [order.products, order.symbol && order.symbol !== "-" ? order.symbol : null]
@@ -217,7 +229,7 @@ export function ReceiveQueueRow({
         )}
       </td>
 
-      <td className="w-[9.5rem] whitespace-nowrap text-right">
+      <td className={cn("whitespace-nowrap text-right", cancelDisposition ? "w-[12rem]" : "w-[9.5rem]")}>
         {isInfo ? (
           <button
             type="button"
@@ -248,6 +260,75 @@ export function ReceiveQueueRow({
             <NotifyIcon className="size-4 shrink-0" />
             <span className="hidden sm:inline">{informacjaButtonLabel}</span>
           </button>
+        ) : cancelDisposition ? (
+          <div className="flex flex-col items-end gap-1.5">
+            {needsReceiveForCancel ? (
+              <div className="inline-flex items-center justify-end gap-1 tabular-nums">
+                <button
+                  type="button"
+                  disabled={pending || ordered == null}
+                  title="Przyjmij całą ilość z rezygnacji"
+                  onClick={onFillFullQty}
+                  className={cn(
+                    "min-w-[1.75rem] rounded px-1 py-0.5 text-sm font-medium text-slate-600",
+                    ordered != null && "hover:bg-slate-100 hover:text-slate-900"
+                  )}
+                >
+                  {ordered ?? order.quantity}
+                </button>
+                <span className="inline-flex items-center text-slate-300" aria-hidden>
+                  <FlowChevron size={12} />
+                </span>
+                <input
+                  type="text"
+                  inputMode="numeric"
+                  placeholder="0"
+                  disabled={pending}
+                  value={inputVal}
+                  onChange={(e) => onQtyChange(e.target.value)}
+                  onKeyDown={onQtyKeyDown}
+                  className={cn(
+                    "w-11 rounded-md border border-slate-200 px-1 py-1 text-center text-sm font-semibold",
+                    controlFocusClass
+                  )}
+                  aria-label={`Przyjęto z rezygnacji dla ${personName}`}
+                />
+                <button
+                  type="button"
+                  disabled={pending || !canSave}
+                  title="Zapisz przyjęcie (Enter)"
+                  aria-label="Zapisz przyjęcie"
+                  onClick={onSaveDelivery}
+                  className={cn(
+                    "inline-flex size-8 items-center justify-center rounded-lg border transition",
+                    canSave
+                      ? "border-violet-200 bg-violet-600 text-white hover:bg-violet-700"
+                      : "border-slate-200 bg-slate-50 text-slate-300"
+                  )}
+                >
+                  <SaveIcon className="size-4" />
+                </button>
+              </div>
+            ) : null}
+            <button
+              type="button"
+              disabled={pending || !canAckCancel}
+              title={
+                needsReceiveForCancel
+                  ? "Najpierw przyjmij towar, gdy dotrze od dostawcy"
+                  : cancelAckLabel
+              }
+              onClick={onAckCancelDisposition}
+              className={cn(
+                "inline-flex max-w-full items-center justify-center rounded-lg border px-2.5 py-1.5 text-[11px] font-semibold leading-tight transition",
+                canAckCancel
+                  ? "border-amber-300 bg-amber-100 text-amber-950 hover:border-amber-400 hover:bg-amber-200"
+                  : "border-slate-200 bg-slate-50 text-slate-400"
+              )}
+            >
+              {cancelAckLabel}
+            </button>
+          </div>
         ) : (
           <div className="inline-flex items-center justify-end gap-1 tabular-nums">
             <button

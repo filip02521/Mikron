@@ -1,7 +1,7 @@
 import { fetchIndividualHistory, fetchNormalHistory } from "@/lib/data/queries";
 import { HistoriaClient } from "@/components/history/HistoriaClient";
 import { getAppRole } from "@/lib/auth-dev";
-import { isAdmin } from "@/lib/auth-roles";
+import { canAccessOperations, isAdmin } from "@/lib/auth-roles";
 import type { IndividualOrder } from "@/types/database";
 
 import type { Metadata } from "next";
@@ -12,6 +12,7 @@ export const metadata: Metadata = pageMetadataFor("historia");
 export default async function HistoriaPage() {
   const role = await getAppRole();
   const canManageHistory = role ? isAdmin(role) : false;
+  const canOperateOrders = role ? canAccessOperations(role) : false;
   let individual: IndividualOrder[] = [];
   let normal: Awaited<ReturnType<typeof fetchNormalHistory>> = [];
   try {
@@ -28,6 +29,7 @@ export default async function HistoriaPage() {
       individual={individual}
       normal={normal}
       canManageHistory={canManageHistory}
+      canOperateOrders={canOperateOrders}
     />
   );
 }

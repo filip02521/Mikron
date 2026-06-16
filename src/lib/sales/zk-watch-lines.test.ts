@@ -74,6 +74,29 @@ describe("zk-watch-lines", () => {
     ]);
   });
 
+  it("scala stan po odświeżeniu — zachowuje needs_prosba", () => {
+    const merged = mergeLineChecksAfterRefresh(
+      [
+        { key: "ob:10", arrived: true, needs_prosba: false },
+        { key: "ob:11", arrived: false, needs_prosba: true },
+      ],
+      buildZkWatchLineViews(
+        watch({
+          subiekt_snapshot: {
+            dok_Pozycja: [
+              { ob_Id: 10, tw_Nazwa: "A" },
+              { ob_Id: 11, tw_Nazwa: "B" },
+            ],
+          },
+        })
+      )
+    );
+    expect(merged).toEqual([
+      { key: "ob:10", arrived: true, needs_prosba: false },
+      { key: "ob:11", arrived: false, needs_prosba: true },
+    ]);
+  });
+
   it("zkLineKey jest stabilny dla ob_Id", () => {
     expect(zkLineKey({ ob_Id: 99, tw_Nazwa: "X" }, 0)).toBe("ob:99");
   });

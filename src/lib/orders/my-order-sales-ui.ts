@@ -8,6 +8,10 @@ import {
 } from "@/lib/orders/informacja-flow-copy";
 import { progressLabelInSubline } from "@/lib/orders/my-order-card-ui";
 import { isRequestNotesAggregateSummary } from "@/lib/orders/sales-request-note";
+import {
+  isProcurementCancelNotesAggregateSummary,
+  procurementCancelNotesMojeSublineSuffix,
+} from "@/lib/orders/procurement-cancel-note";
 
 export type MyOrderHeadlineTone =
   | "action"
@@ -164,10 +168,11 @@ export function enrichMyOrderSalesUi(row: MyOrderRow): MyOrderSalesUi {
   }
 
   if (row.acknowledgeMode === "cancelled") {
+    const noteSuffix = procurementCancelNotesMojeSublineSuffix(row.lines);
     return {
       headline: "Potwierdź anulowanie prośby",
       headlineTone: "neutral",
-      subline: "Po potwierdzeniu wpis zniknie z listy",
+      subline: `Po potwierdzeniu wpis zniknie z listy${noteSuffix}`,
       sortPriority: 3,
     };
   }
@@ -299,6 +304,14 @@ export function myOrderMetaFields(
     fields.push({
       label: "Uwagi",
       value: row.requestNote,
+      emphasize: true,
+    });
+  }
+
+  if (row.procurementCancelNote && !isProcurementCancelNotesAggregateSummary(row.procurementCancelNote)) {
+    fields.push({
+      label: "Od dostaw",
+      value: row.procurementCancelNote,
       emphasize: true,
     });
   }

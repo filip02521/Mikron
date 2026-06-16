@@ -5,6 +5,10 @@ import {
   effectiveSalesCancelledQuantity,
   salesCancelArchiveDetail,
 } from "@/lib/orders/sales-cancel";
+import {
+  isProcurementInitiatedCancel,
+  procurementInitiatedCancelStatusCopy,
+} from "@/lib/orders/procurement-cancel-note";
 import { parseOrderQuantity } from "@/lib/orders/individual";
 import {
   presentMyOrderGroup,
@@ -79,6 +83,16 @@ function archivedStatusCopy(orders: IndividualOrder[]): {
   }
 
   const when = activityLabel ? `Potwierdzono ${activityLabel}` : null;
+
+  const procurementCancelled = orders.filter((o) => isProcurementInitiatedCancel(o));
+  if (procurementCancelled.length > 0) {
+    const kind = isInformacjaRequest(procurementCancelled[0]!) ? "informacja" : "zamowienie";
+    const copy = procurementInitiatedCancelStatusCopy(kind);
+    return {
+      statusTitle: copy.statusTitle,
+      statusDetail: when ?? copy.statusDetail,
+    };
+  }
 
   if (orders.some((o) => isInformacjaRequest(o))) {
     return {

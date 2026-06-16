@@ -122,6 +122,8 @@ export interface IndividualOrder {
   sales_client_name?: string | null;
   /** Uwagi handlowca do prośby — widoczne w panelu dziennym zakupów. */
   sales_request_note?: string | null;
+  /** Wiadomość od działu dostaw przy anulowaniu — widoczna u handlowca w Moje zamówienia. */
+  procurement_cancel_note?: string | null;
   /** kh_Id odbiorcy z Subiekta — powiązanie z ZK / wyszukiwanie. */
   sales_client_kh_id?: number | null;
   /** Karta ZK z notatnika (przycisk Prośba). */
@@ -136,6 +138,8 @@ export interface IndividualOrder {
   procurement_cancel_disposition?: string | null;
   procurement_cancel_disposition_note?: string | null;
   procurement_cancel_disposition_at?: string | null;
+  /** Magazyn rozliczył rezygnację (stan / zwrot / zdjęcie z regału). */
+  warehouse_cancel_fulfilled_at?: string | null;
   /** Fizyczna lokalizacja na magazynie (regał / strefa). */
   warehouse_shelf?: string | null;
   /** ID towaru w Subiekcie (tw_Id) — wybor z kartoteki; brak = wpis ręczny. */

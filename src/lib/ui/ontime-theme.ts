@@ -52,9 +52,22 @@ export function sidebarNavToneActiveClass(tone: NavTone): string {
 export const navLinkActiveClass =
   "border border-transparent bg-indigo-100/55 text-slate-900 shadow-sm shadow-indigo-900/5";
 
+/** Ogranicza :hover do precyzyjnego wskaźnika (mysz) — mniej artefaktów w Chrome przy szybkim ruchu. */
+const navFineHover =
+  "[@media(hover:hover)_and_(pointer:fine)]:hover:" as const;
+
+const navFineGroupHover =
+  "[@media(hover:hover)_and_(pointer:fine)]:group-hover:" as const;
+
+/** Opis pod pozycją menu — tylko przy hover myszą. */
+export const navLinkDescriptionHoverClass = `${navFineGroupHover}text-slate-500`;
+
 /** Sidebar — link w stanie spoczynku (bez obramowania). */
-export const navLinkIdleClass =
-  "border border-transparent text-slate-700 hover:bg-slate-50/70 hover:text-slate-900";
+export const navLinkIdleClass = cn(
+  "border border-transparent text-slate-700",
+  `${navFineHover}bg-slate-50/70`,
+  `${navFineHover}text-slate-900`
+);
 
 /** Sidebar — nagłówek grupy nawigacji. */
 export const sidebarNavSectionTitleClass =
@@ -64,8 +77,9 @@ export const sidebarNavSectionTitleClass =
 export const sidebarNavSectionDividerClass = "mt-3 border-t border-indigo-100/70 pt-3";
 
 /** Sidebar — wyróżniony punkt startowy (Panel / Moje) w stanie spoczynku. */
-export const sidebarNavPrimaryHighlightIdleClass =
-  "bg-indigo-50/30 hover:bg-indigo-50/45";
+export const sidebarNavPrimaryHighlightIdleClass = cn(
+  `${navFineHover}bg-indigo-50/45`
+);
 
 /** Delikatne tło powierzchni wg tonu — spoczynek (sidebar). */
 export function navToneSurfaceIdleClass(tone: NavTone): string {
@@ -88,14 +102,17 @@ export function navToneSurfaceIdleClass(tone: NavTone): string {
   }
 }
 
-/** Sidebar — delikatne tło wiersza primary wg tonu semantycznego (Dziś). */
+/** Sidebar — delikatne tło wiersza primary wg tonu semantycznego (Dziś). Tylko na hover. */
 export function sidebarNavToneHighlightIdleClass(tone: NavTone): string | undefined {
   switch (tone) {
     case "indigo":
+      return cn(`${navFineHover}bg-indigo-50/45`, `${navFineHover}text-slate-900`);
     case "amber":
+      return cn(`${navFineHover}bg-amber-50/55`, `${navFineHover}text-slate-900`);
     case "orange":
+      return cn(`${navFineHover}bg-orange-50/55`, `${navFineHover}text-slate-900`);
     case "emerald":
-      return cn(navToneSurfaceIdleClass(tone), "hover:opacity-95");
+      return cn(`${navFineHover}bg-emerald-50/50`, `${navFineHover}text-slate-900`);
     default:
       return undefined;
   }
@@ -290,6 +307,10 @@ export const salesTypography = {
 export const salesRequestNoteLabelClass =
   "inline-flex items-center rounded bg-indigo-50 px-1 py-0.5 font-semibold uppercase tracking-wide text-indigo-700";
 
+/** Etykieta wiadomości od zakupów przy anulowaniu — widoczna u handlowca. */
+export const procurementCancelNoteLabelClass =
+  "inline-flex items-center rounded bg-amber-50 px-1 py-0.5 font-semibold uppercase tracking-wide text-amber-800";
+
 /** Etykieta klienta końcowego — ten sam układ co „Uwagi”, ton indigo. */
 export const salesClientLabelClass =
   "inline-flex items-center rounded bg-indigo-50 px-1 py-0.5 font-semibold uppercase tracking-wide text-indigo-700";
@@ -402,12 +423,16 @@ export const mobileSalesNavClass =
   "fixed inset-x-0 bottom-0 z-50 border-t border-slate-200/80 bg-[var(--card)]/95 shadow-[var(--shadow-card-elevated)] backdrop-blur-md md:hidden";
 
 export const mobileNavLinkBaseClass =
-  "relative mx-0.5 flex min-h-[3.25rem] flex-col items-center justify-center gap-0.5 rounded-md px-1.5 py-2 text-[11px] font-semibold transition-colors lg:text-xs";
+  "relative mx-0.5 flex min-h-[3.25rem] flex-col items-center justify-center gap-0.5 rounded-md px-1.5 py-2 text-[11px] font-semibold lg:text-xs";
 
 export const mobileNavLinkActiveClass =
   "border border-transparent bg-indigo-100/55 text-slate-900 shadow-sm shadow-indigo-900/5";
 
-export const mobileNavLinkIdleClass = "text-slate-500 hover:bg-white/60 hover:text-slate-800";
+export const mobileNavLinkIdleClass = cn(
+  "text-slate-500",
+  `${navFineHover}bg-white/60`,
+  `${navFineHover}text-slate-800`
+);
 
 export const mobileNavBadgeClass =
   "bg-slate-700 text-[9px] font-bold text-white shadow-sm lg:text-[10px]";

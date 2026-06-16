@@ -19,9 +19,20 @@ export type SalesInformacjaNotificationItem = {
   clientName: string | null;
 };
 
+/** Anulowanie prośby przez dział dostaw. */
+export type SalesProcurementCancelNotificationItem = {
+  kind: "procurement_cancel";
+  supplierName: string;
+  products: string;
+  symbol: string | null;
+  clientName: string | null;
+  procurementCancelNote: string | null;
+};
+
 export type SalesNotificationItem =
   | SalesDeliveryNotificationItem
-  | SalesInformacjaNotificationItem;
+  | SalesInformacjaNotificationItem
+  | SalesProcurementCancelNotificationItem;
 
 export type SalesPersonEmailBatch = {
   email: string;

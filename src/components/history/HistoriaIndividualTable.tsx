@@ -8,22 +8,36 @@ import {
   individualHistoryStatusBadgeVariant,
   individualHistoryStatusLabel,
 } from "@/lib/orders/history-ui";
+import {
+  canEditProcurementCancelNote,
+  canOperationsCancelIndividualOrder,
+  normalizeProcurementCancelNote,
+} from "@/lib/orders/procurement-cancel-note";
 import { DataTable, TableScroll } from "@/components/ui/DataTable";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { cn } from "@/lib/cn";
+import { procurementCancelNoteLabelClass } from "@/lib/ui/ontime-theme";
 
 export function HistoriaIndividualTable({
   rows,
+  canOperateOrders,
   canManageHistory,
   pending,
+  onCancel,
+  onEditNote,
   onRemove,
 }: {
   rows: IndividualOrder[];
+  canOperateOrders: boolean;
   canManageHistory: boolean;
   pending: boolean;
+  onCancel?: (order: IndividualOrder) => void;
+  onEditNote?: (order: IndividualOrder) => void;
   onRemove: (id: string) => void;
 }) {
+  const showActions = canOperateOrders || canManageHistory;
+
   return (
     <TableScroll>
       <DataTable>
@@ -36,7 +50,7 @@ export function HistoriaIndividualTable({
             <th>Ilość</th>
             <th>Dostawa</th>
             <th>Status</th>
-            {canManageHistory ? <th aria-label="Akcje" /> : null}
+            {showActions ? <th aria-label="Akcje" /> : null}
           </tr>
         </thead>
         <tbody>
@@ -47,6 +61,10 @@ export function HistoriaIndividualTable({
                 ? o.delivered_quantity
                 : "0"
             );
+            const procurementNote = normalizeProcurementCancelNote(o.procurement_cancel_note);
+            const canCancel = canOperateOrders && canOperationsCancelIndividualOrder(o);
+            const canEditNote = canOperateOrders && canEditProcurementCancelNote(o);
+
             return (
               <tr key={o.id} className={cn(individualHistoryRowClass(o.status))}>
                 <td className="whitespace-nowrap text-slate-800 tabular-nums">
@@ -61,6 +79,14 @@ export function HistoriaIndividualTable({
                   {o.symbol ? (
                     <span className="mt-0.5 block text-xs text-slate-500">{o.symbol}</span>
                   ) : null}
+                  {procurementNote ? (
+                    <p className="mt-1 text-xs leading-snug text-slate-700">
+                      <span className={procurementCancelNoteLabelClass}>Od dostaw</span>{" "}
+                      <span className="whitespace-pre-wrap font-medium text-slate-800">
+                        {procurementNote}
+                      </span>
+                    </p>
+                  ) : null}
                 </td>
                 <td className="tabular-nums text-slate-800">{o.quantity}</td>
                 <td className="tabular-nums text-sm text-slate-700">
@@ -73,16 +99,40 @@ export function HistoriaIndividualTable({
                     {individualHistoryStatusLabel(o.status)}
                   </Badge>
                 </td>
-                {canManageHistory ? (
+                {showActions ? (
                   <td>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      disabled={pending}
-                      onClick={() => onRemove(o.id)}
-                    >
-                      Usuń
-                    </Button>
+                    <div className="flex flex-col items-end gap-1">
+                      {canCancel ? (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          disabled={pending}
+                          onClick={() => onCancel?.(o)}
+                        >
+                          Anuluj
+                        </Button>
+                      ) : null}
+                      {canEditNote ? (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          disabled={pending}
+                          onClick={() => onEditNote?.(o)}
+                        >
+                          Edytuj wiadomość
+                        </Button>
+                      ) : null}
+                      {canManageHistory ? (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          disabled={pending}
+                          onClick={() => onRemove(o.id)}
+                        >
+                          Usuń
+                        </Button>
+                      ) : null}
+                    </div>
                   </td>
                 ) : null}
               </tr>

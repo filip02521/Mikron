@@ -86,18 +86,41 @@ export function activeOrderQuantity(order: IndividualOrder): number | null {
   return Math.max(0, ordered - effectiveSalesCancelledQuantity(order));
 }
 
-/** Maks. ilość do wycofania = reszta u dostawcy (minus już wycofane). */
-export function maxSalesCancelQuantity(order: IndividualOrder): number | null {
+/** Ilość jeszcze u dostawcy (bez tego, co już na magazynie). */
+export function maxSupplierCancelQuantity(order: IndividualOrder): number {
   const ordered = parseOrderQuantity(order.quantity);
-  if (ordered == null) return null;
+  if (ordered == null) return 0;
   const delivered = deliveryProgressFor(order).delivered;
   const alreadyCancelled = effectiveSalesCancelledQuantity(order);
-  const max = ordered - delivered - alreadyCancelled;
+  return Math.max(0, ordered - delivered - alreadyCancelled);
+}
+
+/** Maks. ilość do wycofania w bieżącej fazie. */
+export function maxSalesCancelQuantity(order: IndividualOrder): number | null {
+  const phase = resolveSalesCancelPhase(order);
+  if (!phase) return null;
+
+  if (phase === "on_stock") {
+    const active = activeOrderQuantity(order);
+    if (active == null || active <= 0) return null;
+    const supplierRemainder = maxSupplierCancelQuantity(order);
+    if (supplierRemainder > 0) {
+      return active;
+    }
+    return active;
+  }
+
+  const max = maxSupplierCancelQuantity(order);
   return max > 0 ? max : null;
 }
 
-/** Domyślna ilość rezygnacji (reszta u dostawcy). */
+/** Domyślna ilość rezygnacji (dla „reszty u dostawcy” lub pełnego wycofania). */
 export function defaultSalesCancelQuantity(order: IndividualOrder): number | null {
+  const phase = resolveSalesCancelPhase(order);
+  if (phase === "on_stock") {
+    const supplierRemainder = maxSupplierCancelQuantity(order);
+    if (supplierRemainder > 0) return supplierRemainder;
+  }
   return maxSalesCancelQuantity(order);
 }
 
@@ -139,13 +162,12 @@ export function planSalesCancelQuantity(
   order: IndividualOrder,
   requestedQty?: number
 ): SalesCancelQuantityPlan {
-  const ordered = parseOrderQuantity(order.quantity);
-  if (ordered == null) {
-    throw new Error("Brak ilości liczbowej — możliwa tylko pełna rezygnacja.");
-  }
   const delivered = deliveryProgressFor(order).delivered;
   const existingCancelled = effectiveSalesCancelledQuantity(order);
-  const max = ordered - delivered - existingCancelled;
+  const max = maxSalesCancelQuantity(order);
+  if (max == null || max < 1) {
+    throw new Error("Tej prośby nie można już wycofać.");
+  }
   const cancelQty = requestedQty ?? max;
   if (!Number.isInteger(cancelQty) || cancelQty < 1 || cancelQty > max) {
     throw new Error(`Podaj ilość od 1 do ${max} szt.`);
@@ -153,6 +175,11 @@ export function planSalesCancelQuantity(
   const phase = resolveSalesCancelPhase(order);
   if (!phase) {
     throw new Error("Tej prośby nie można już wycofać.");
+  }
+
+  const ordered = parseOrderQuantity(order.quantity);
+  if (ordered == null) {
+    throw new Error("Brak ilości liczbowej — możliwa tylko pełna rezygnacja.");
   }
 
   const totalCancelledQty = existingCancelled + cancelQty;
@@ -225,10 +252,36 @@ export function salesPartialCancelConfirmCopy(
   };
 }
 
-/** Ilość docelowa w kolejce dostaw (aktywne zamówienie, nie oryginał). */
+/** Pełna ilość rezygnacji do przyjęcia (łącznie), gdy zakupy wydały decyzję. */
+export function receiveQueueCancelDispositionTotal(order: IndividualOrder): number | null {
+  if (
+    !order.sales_cancelled_at ||
+    !order.procurement_cancel_disposition ||
+    !isSalesCancelledForQueue(order) ||
+    order.warehouse_cancel_fulfilled_at
+  ) {
+    return null;
+  }
+  const cancelled = effectiveSalesCancelledQuantity(order);
+  return cancelled > 0 ? cancelled : null;
+}
+
+/** Ilość docelowa w kolejce dostaw (aktywne zamówienie lub pełna rezygnacja). */
 export function receiveQueueTargetQuantity(order: IndividualOrder): number | null {
+  const cancelTotal = receiveQueueCancelDispositionTotal(order);
+  if (cancelTotal != null) return cancelTotal;
   const progress = fulfillmentProgressFor(order);
   return progress.activeOrdered ?? progress.ordered;
+}
+
+/** Brakująca ilość do przyjęcia (rezygnacja w drodze po częściowym przyjęciu). */
+export function receiveQueueRemainingQuantity(order: IndividualOrder): number | null {
+  const cancelTotal = receiveQueueCancelDispositionTotal(order);
+  if (cancelTotal == null) return null;
+  if (effectiveSalesCancelPhase(order) !== "in_transit") return null;
+  const delivered = deliveryProgressFor(order).delivered;
+  const remaining = Math.max(0, cancelTotal - delivered);
+  return remaining > 0 ? remaining : 0;
 }
 
 /** Czy u dostawcy zostaje jeszcze coś do śledzenia. */
@@ -250,6 +303,19 @@ export function isPendingSalesPickupAfterPartialCancel(order: IndividualOrder): 
   return delivered > 0 && active != null && delivered >= active;
 }
 
+/** Pozostała ilość do wycofania (bez rekurencji z resolveSalesCancelPhase). */
+function remainingCancelQuantity(order: IndividualOrder): number {
+  if (!order.sales_cancelled_at) {
+    return maxSalesCancelQuantity(order) ?? 0;
+  }
+  const storedPhase = effectiveSalesCancelPhase(order);
+  if (storedPhase === "on_stock") {
+    const active = activeOrderQuantity(order);
+    return active ?? 0;
+  }
+  return maxSupplierCancelQuantity(order);
+}
+
 /** Czy handlowiec może wycofać prośbę w tym statusie. */
 export function resolveSalesCancelPhase(
   order: IndividualOrder
@@ -260,8 +326,7 @@ export function resolveSalesCancelPhase(
   if (status === "Anulowane") return null;
 
   if (order.sales_cancelled_at) {
-    const max = maxSalesCancelQuantity(order);
-    if (max == null || max <= 0) return null;
+    if (remainingCancelQuantity(order) <= 0) return null;
   }
 
   /** Prośba informacyjna — zawsze proste wycofanie (bez kolejki realizacji). */
@@ -287,6 +352,8 @@ export function resolveSalesCancelPhase(
   }
 
   if (status === "Zrealizowane") {
+    const active = activeOrderQuantity(order);
+    if (active == null || active <= 0) return null;
     return "on_stock";
   }
 

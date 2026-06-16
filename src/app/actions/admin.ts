@@ -39,9 +39,16 @@ import {
   recalculateAllStats,
   completeVerificationOrder,
   updateIndividualRequestGroup,
+  notifyProcurementCancelForOrders,
 } from "@/lib/services/orders";
 import type { IndividualRequestEditPayload } from "@/lib/orders/individual-request-edit";
 import type { ProcurementCancelDispositionInput } from "@/lib/orders/procurement-disposition";
+import {
+  canEditProcurementCancelNote,
+  normalizeProcurementCancelNote,
+  throwIfProcurementCancelNoteColumnMissing,
+  buildProcurementCancelUpdate,
+} from "@/lib/orders/procurement-cancel-note";
 import type { InformacjaFlowPath } from "@/lib/orders/informacja-stock-out-reorder";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { intervalWeeksForStorage, parseInterval } from "@/lib/orders/dates";
@@ -225,7 +232,8 @@ export async function actionBatchShiftOrder(
 
 export async function actionProcessIndividual(
   orderIds: string[],
-  action: "GLOWNE" | "POBOCZNE" | "ANULOWANO"
+  action: "GLOWNE" | "POBOCZNE" | "ANULOWANO",
+  procurementCancelNote?: string | null
 ): Promise<DailyPanelActionResult> {
   const user = await requireOperations("mutate");
   const individualsBefore = await captureIndividualOrdersSnapshot(orderIds);
@@ -236,7 +244,12 @@ export async function actionProcessIndividual(
       ? await captureScheduleSnapshots(glowneSupplierIds)
       : [];
 
-  await processIndividualFromSummary(orderIds, action, user.email);
+  await processIndividualFromSummary(
+    orderIds,
+    action,
+    user.email,
+    procurementCancelNote
+  );
   revalidateAll();
 
   const token =
@@ -428,24 +441,83 @@ export async function actionCompleteVerification(
   return { success: true };
 }
 
-export async function actionCancelVerification(orderId: string) {
+export async function actionCancelVerification(
+  orderId: string,
+  procurementCancelNote?: string | null
+) {
   await requireOperations("mutate");
   const supabase = createAdminClient();
-  const { error } = await supabase
+  const { data, error } = await supabase
     .from("individual_orders")
-    .update({ status: "Anulowane" })
+    .update(buildProcurementCancelUpdate(procurementCancelNote))
     .eq("id", orderId)
-    .eq("status", "Weryfikacja");
-  if (error) throw new Error(error.message);
+    .eq("status", "Weryfikacja")
+    .select("id");
+  if (error) {
+    throwIfProcurementCancelNoteColumnMissing(error);
+    throw new Error(error.message);
+  }
+  if (!data?.length) {
+    throw new Error("Nie znaleziono prośby do anulowania — odśwież listę i spróbuj ponownie.");
+  }
+  const emailResult = await notifyProcurementCancelForOrders([orderId]);
   revalidateAll();
-  return { success: true };
+  return { success: true, ...emailResult };
 }
 
-export async function actionCancelOrder(orderId: string) {
+export async function actionCancelOrder(
+  orderId: string,
+  procurementCancelNote?: string | null
+) {
   await requireOperations("mutate");
-  await cancelIndividualOrder(orderId);
+  const emailResult = await cancelIndividualOrder(orderId, procurementCancelNote);
   revalidateAll();
-  return { success: true };
+  return { success: true, ...emailResult };
+}
+
+export async function actionUpdateProcurementCancelNote(
+  orderId: string,
+  note: string | null | undefined
+) {
+  await requireOperations("mutate");
+  const supabase = createAdminClient();
+  const { data: raw, error: fetchErr } = await supabase
+    .from("individual_orders")
+    .select(
+      "id, status, sales_cancelled_at, sales_acknowledged_at, procurement_cancel_note"
+    )
+    .eq("id", orderId)
+    .single();
+  if (fetchErr) throw new Error(fetchErr.message);
+  if (!raw || !canEditProcurementCancelNote(raw)) {
+    throw new Error("Nie można edytować wiadomości dla tej pozycji.");
+  }
+
+  const normalizedNote = normalizeProcurementCancelNote(note);
+  const previousNote = normalizeProcurementCancelNote(raw.procurement_cancel_note);
+  const { data, error } = await supabase
+    .from("individual_orders")
+    .update({ procurement_cancel_note: normalizedNote })
+    .eq("id", orderId)
+    .select("id");
+  if (error) {
+    throwIfProcurementCancelNoteColumnMissing(error);
+    throw new Error(error.message);
+  }
+  if (!data?.length) {
+    throw new Error("Nie znaleziono pozycji — odśwież listę i spróbuj ponownie.");
+  }
+
+  if (normalizedNote === previousNote) {
+    revalidateAll();
+    return { success: true, emailSent: 0 };
+  }
+
+  const emailResult = await notifyProcurementCancelForOrders([orderId], {
+    noteUpdated: true,
+  });
+  revalidateAll();
+  return { success: true, ...emailResult };
 }
 
 /** Zakupy: ukrycie rezygnacji / wycofania zamówienia dla klienta w panelu dziennym. */
@@ -662,6 +734,65 @@ export async function actionUpdateDelivered(orderId: string, qty: string) {
   const { emailSent, emailError } = await updateDeliveredQuantity(orderId, qty);
   revalidateAll();
   return { success: true, emailSent, emailError };
+}
+
+const WAREHOUSE_CANCEL_FULFILLED_MIGRATION_HINT =
+  "Brak kolumny warehouse_cancel_fulfilled_at — uruchom supabase/migrations/062_warehouse_cancel_fulfilled.sql";
+
+/** Magazyn: rozliczenie rezygnacji (na stan / zwrot / zdjęcie z regału) — pozycja znika z kolejki. */
+export async function actionAcknowledgeWarehouseCancelDisposition(
+  orderIds: string[]
+): Promise<{ success: true; count: number }> {
+  const { requireWarehouse } = await import("@/lib/auth");
+  await requireWarehouse("mutate");
+  const ids = [...new Set(orderIds.filter(Boolean))];
+  if (!ids.length) return { success: true, count: 0 };
+
+  const supabase = createAdminClient();
+  const now = new Date().toISOString();
+  const { canAcknowledgeWarehouseCancelDisposition } = await import(
+    "@/lib/orders/warehouse-cancel-fulfillment"
+  );
+
+  const { data, error } = await supabase
+    .from("individual_orders")
+    .select(
+      "id, sales_cancelled_at, sales_cancel_phase, procurement_cancel_disposition, warehouse_cancel_fulfilled_at, quantity, delivered_quantity, sales_cancelled_quantity, status, request_kind"
+    )
+    .in("id", ids);
+
+  if (error) {
+    if (error.message?.includes("warehouse_cancel_fulfilled_at")) {
+      throw new Error(WAREHOUSE_CANCEL_FULFILLED_MIGRATION_HINT);
+    }
+    throw new Error(error.message);
+  }
+
+  const toAck = (data ?? []).filter((row) =>
+    canAcknowledgeWarehouseCancelDisposition(row as import("@/types/database").IndividualOrder)
+  );
+  if (!toAck.length) {
+    throw new Error("Brak pozycji do rozliczenia — przyjmij towar lub sprawdź status rezygnacji.");
+  }
+
+  const { error: updErr } = await supabase
+    .from("individual_orders")
+    .update({ warehouse_cancel_fulfilled_at: now })
+    .in(
+      "id",
+      toAck.map((r) => r.id)
+    )
+    .is("warehouse_cancel_fulfilled_at", null);
+
+  if (updErr) {
+    if (updErr.message?.includes("warehouse_cancel_fulfilled_at")) {
+      throw new Error(WAREHOUSE_CANCEL_FULFILLED_MIGRATION_HINT);
+    }
+    throw new Error(updErr.message);
+  }
+
+  revalidateAll();
+  return { success: true, count: toAck.length };
 }
 
 export async function actionSetWarehouseShelf(orderId: string, shelf: string) {

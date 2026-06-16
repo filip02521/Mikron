@@ -8,6 +8,7 @@ import {
 } from "@/lib/orders/sales-cancel";
 import { MyOrderAssignedClient } from "@/components/moje/MyOrderAssignedClient";
 import { MyOrderRequestNote } from "@/components/moje/MyOrderRequestNote";
+import { MyOrderProcurementCancelNote } from "@/components/moje/MyOrderProcurementCancelNote";
 import { MyOrderLineClientField } from "@/components/moje/MyOrderLineClientField";
 import { MyOrderAckButton } from "@/components/moje/MyOrderAckButton";
 import { MyOrderCancelButton } from "@/components/moje/MyOrderCancelButton";
@@ -64,6 +65,7 @@ export function MyOrderLineItem({
   onStartEditClient,
   hideClientLabel = false,
   hideRequestNote = false,
+  hideProcurementCancelNote = false,
   searchQuery,
 }: {
   line: MyOrderLine;
@@ -98,6 +100,8 @@ export function MyOrderLineItem({
   hideClientLabel?: boolean;
   /** Gdy notatka jest już na karcie grupy — nie duplikuj przy produkcie. */
   hideRequestNote?: boolean;
+  /** Gdy wiadomość od zakupów jest już na karcie grupy — nie duplikuj przy produkcie. */
+  hideProcurementCancelNote?: boolean;
   searchQuery?: string | null;
 }) {
   const badge = showProgress && emphasizeStock ? stockBadge(line.stockStatus) : null;
@@ -154,6 +158,15 @@ export function MyOrderLineItem({
                 className="shrink-0 rounded bg-slate-100 px-1 py-0.5 font-mono text-[10px] font-semibold text-slate-600"
               />
             ) : null}
+            {line.mikranCode?.trim() ? (
+              <span title="Kod Mikran (PLU)">
+                <SearchHighlightText
+                  text={`PLU ${line.mikranCode.trim()}`}
+                  searchQuery={searchQuery}
+                  className="shrink-0 rounded bg-violet-50 px-1 py-0.5 font-mono text-[10px] font-semibold text-violet-800 ring-1 ring-violet-200/80"
+                />
+              </span>
+            ) : null}
           </div>
 
           {detailParts.length > 0 ? (
@@ -189,6 +202,13 @@ export function MyOrderLineItem({
           {!hideRequestNote && line.requestNote?.trim() ? (
             <MyOrderRequestNote
               note={line.requestNote}
+              searchQuery={searchQuery}
+              className={cn("mt-1.5", !compact && "pl-5")}
+            />
+          ) : null}
+          {!hideProcurementCancelNote && line.procurementCancelNote?.trim() ? (
+            <MyOrderProcurementCancelNote
+              note={line.procurementCancelNote}
               searchQuery={searchQuery}
               className={cn("mt-1.5", !compact && "pl-5")}
             />

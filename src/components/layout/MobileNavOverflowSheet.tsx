@@ -16,6 +16,7 @@ import {
   mobileNavLinkBaseClass,
   mobileNavLinkIdleClass,
   mobileNavBadgeClass,
+  navLinkIdleClass,
   panelTypography,
   sidebarNavBadgeClassForTone,
   sidebarNavToneActiveClass,
@@ -110,11 +111,11 @@ export function MobileNavOverflowSheet({
                       <Link
                         href={href}
                         className={cn(
-                          "flex items-center gap-3 rounded-md px-3 py-2.5 transition-colors",
+                          "flex items-center gap-3 rounded-md px-3 py-2.5",
                           controlFocusClass,
                           active
                             ? sidebarNavToneActiveClass(item.tone)
-                            : "hover:bg-slate-50/70",
+                            : navLinkIdleClass,
                           locked && "pointer-events-none opacity-40"
                         )}
                         aria-current={active ? "page" : undefined}

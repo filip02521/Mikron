@@ -50,7 +50,12 @@ export function ZkWatchSection({
   onWatchClosed,
   onWatchRefreshed,
   unseenWatchIds,
-  onWatchSeen,
+  newLineKeysByWatchId,
+  onWarehouseArrivalSeen,
+  onNewZkLinesSeen,
+  onWatchDetailOpen,
+  prosbaScopeWatchId,
+  onProsbaScopeConfigured,
   focusWatchId,
   onFocusWatchHandled,
   onLiveAnnounce,
@@ -58,7 +63,12 @@ export function ZkWatchSection({
   watches: SalesZkWatch[];
   zkHintsByWatchId?: Map<string, ZkWatchOrderHints>;
   unseenWatchIds?: Set<string>;
-  onWatchSeen?: (watchId: string) => void;
+  newLineKeysByWatchId?: Record<string, string[]>;
+  onWarehouseArrivalSeen?: (watchId: string) => void;
+  onNewZkLinesSeen?: (watchId: string) => void;
+  onWatchDetailOpen?: (watchId: string) => void;
+  prosbaScopeWatchId?: string | null;
+  onProsbaScopeConfigured?: (watchId: string) => void;
   focusWatchId?: string | null;
   onFocusWatchHandled?: (watchId: string) => void;
   onLiveAnnounce?: (message: string) => void;
@@ -70,7 +80,7 @@ export function ZkWatchSection({
   subiektBlockedHint?: string;
   onWatchAdded?: (watch: SalesZkWatch) => void;
   onWatchClosed?: (watchId: string, closedAt: string) => void;
-  onWatchRefreshed?: (watch: SalesZkWatch) => void;
+  onWatchRefreshed?: (watch: SalesZkWatch, refreshDiff?: import("@/lib/sales/zk-watch-refresh-diff").ZkWatchRefreshDiff) => void;
 }) {
   const inputRef = useRef<HTMLInputElement>(null);
   const [query, setQuery] = useState("");
@@ -289,7 +299,12 @@ export function ZkWatchSection({
           watches={filteredWatches}
           zkHintsByWatchId={zkHintsByWatchId}
           unseenWatchIds={unseenWatchIds}
-          onWatchSeen={onWatchSeen}
+          newLineKeysByWatchId={newLineKeysByWatchId}
+          onWarehouseArrivalSeen={onWarehouseArrivalSeen}
+          onNewZkLinesSeen={onNewZkLinesSeen}
+          onWatchDetailOpen={onWatchDetailOpen}
+          prosbaScopeWatchId={prosbaScopeWatchId}
+          onProsbaScopeConfigured={onProsbaScopeConfigured}
           focusWatchId={focusWatchId}
           onFocusWatchHandled={onFocusWatchHandled}
           onLiveAnnounce={onLiveAnnounce}

@@ -42,6 +42,7 @@ export function myOrderRowSearchText(row: MyOrderRow): string {
     row.symbol ?? "",
     row.clientLabel ?? "",
     row.requestNote ?? "",
+    row.procurementCancelNote ?? "",
     row.sourceZkNumber ?? "",
     row.statusTitle,
     myOrderFriendlyStatusLabel(row.statusTitle),
@@ -57,6 +58,7 @@ export function myOrderRowSearchText(row: MyOrderRow): string {
       line.symbol ?? "",
       line.clientName ?? "",
       line.requestNote ?? "",
+      line.procurementCancelNote ?? "",
       line.mikranCode ?? "",
       line.quantityLabel
     );
@@ -73,6 +75,7 @@ export function myOrderLineSearchText(line: MyOrderLine): string {
       line.symbol ?? "",
       line.clientName ?? "",
       line.requestNote ?? "",
+      line.procurementCancelNote ?? "",
       line.mikranCode ?? "",
       line.quantityLabel,
     ]

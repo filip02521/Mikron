@@ -60,6 +60,12 @@ export async function hasSalesRequestNoteColumn(
   return columnExists(supabase, "sales_request_note");
 }
 
+export async function hasProcurementCancelNoteColumn(
+  supabase: SupabaseClient
+): Promise<boolean> {
+  return columnExists(supabase, "procurement_cancel_note");
+}
+
 export async function hasSalesCancelledQuantityColumn(
   supabase: SupabaseClient
 ): Promise<boolean> {
@@ -82,6 +88,12 @@ export async function hasProcurementCancelDispositionColumn(
   supabase: SupabaseClient
 ): Promise<boolean> {
   return columnExists(supabase, "procurement_cancel_disposition");
+}
+
+export async function hasWarehouseCancelFulfilledColumn(
+  supabase: SupabaseClient
+): Promise<boolean> {
+  return columnExists(supabase, "warehouse_cancel_fulfilled_at");
 }
 
 export async function hasJobLockRpc(supabase: SupabaseClient): Promise<boolean> {
@@ -148,6 +160,11 @@ export async function runSchemaChecks(
       "Brak kolumny individual_orders.sales_request_note — uruchom supabase/migrations/058_individual_orders_sales_request_note.sql"
     );
   }
+  if (!(await hasProcurementCancelNoteColumn(supabase))) {
+    issues.push(
+      "Brak kolumny individual_orders.procurement_cancel_note — uruchom supabase/migrations/063_procurement_cancel_note.sql"
+    );
+  }
   if (!(await hasSalesCancelledQuantityColumn(supabase))) {
     issues.push(
       "Brak kolumny individual_orders.sales_cancelled_quantity — uruchom supabase/migrations/059_individual_orders_sales_cancelled_quantity.sql"
@@ -156,6 +173,11 @@ export async function runSchemaChecks(
   if (!(await hasProcurementSalesCancelAckColumn(supabase))) {
     issues.push(
       "Brak kolumny individual_orders.procurement_sales_cancel_ack_at — uruchom supabase/migrations/019_procurement_sales_cancel_ack.sql"
+    );
+  }
+  if (!(await hasWarehouseCancelFulfilledColumn(supabase))) {
+    issues.push(
+      "Brak kolumny individual_orders.warehouse_cancel_fulfilled_at — uruchom supabase/migrations/062_warehouse_cancel_fulfilled.sql"
     );
   }
   if (!(await hasJobLockRpc(supabase))) {

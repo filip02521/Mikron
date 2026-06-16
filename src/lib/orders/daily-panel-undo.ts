@@ -14,6 +14,8 @@ export type IndividualOrderSnapshot = {
   placementGroupId: string | null;
   procurementSeenAt: string | null;
   informacjaQueueViaDailyPanel: boolean | null;
+  informacjaStockOutReorder: boolean | null;
+  procurementCancelNote: string | null;
 };
 
 export type DailyPanelUndoToken =

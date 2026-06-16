@@ -60,12 +60,14 @@ export function mergeReceiveQueueOrders(
   deliveryOrders: IndividualOrder[],
   informacjaOrders: IndividualOrder[]
 ): IndividualOrder[] {
-  const delivery = deliveryOrders.filter(
-    (o) =>
+  const delivery = deliveryOrders.filter((o) => {
+    if (o.warehouse_cancel_fulfilled_at) return false;
+    return (
       !o.sales_cancelled_at ||
       o.procurement_cancel_disposition ||
       hasActiveSupplierFulfillment(o)
-  );
+    );
+  });
   return sortReceiveQueueForDisplay([...delivery, ...informacjaOrders]);
 }
 

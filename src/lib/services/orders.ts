@@ -32,6 +32,7 @@ import { scheduleHistoryRetentionPurge } from "@/lib/services/history-cleanup";
 import {
   sendDeliveryNotificationEmails,
   sendInformacjaArrivedEmails,
+  sendProcurementCancelEmails,
 } from "@/lib/services/email";
 import type { IndividualRequestKind } from "@/types/database";
 import { INFORMACJA_NO_QUANTITY, quantityForRequestKind } from "@/lib/orders/individual";
@@ -48,6 +49,13 @@ import { isProcurementDraftReady } from "@/lib/orders/procurement-readiness";
 import { normalizeSalesClientName } from "@/lib/orders/sales-client-label";
 import { normalizeSalesRequestNote } from "@/lib/orders/sales-request-note";
 import {
+  normalizeProcurementCancelNote,
+  throwIfProcurementCancelNoteColumnMissing,
+  buildProcurementCancelUpdate,
+  isProcurementInitiatedCancel,
+  canEditProcurementCancelNote,
+} from "@/lib/orders/procurement-cancel-note";
+import {
   normalizeZkProsbaSourceInput,
   zkProsbaSourceFromOrder,
 } from "@/lib/orders/zk-prosba-source";
@@ -56,6 +64,7 @@ import type { SalesPersonEmailBatch } from "@/lib/email/sales-notification-types
 import {
   buildDeliveryNotificationItem,
   buildInformacjaNotificationItem,
+  buildProcurementCancelNotificationItem,
 } from "@/lib/email/sales-notification-items";
 import {
   assessRequestCompleteness,
@@ -896,7 +905,8 @@ async function assertGlowneSuppliersHaveInterval(supplierIds: Set<string>): Prom
 export async function processIndividualFromSummary(
   orderIds: string[],
   action: "GLOWNE" | "POBOCZNE" | "ANULOWANO",
-  userEmail: string
+  userEmail: string,
+  procurementCancelNote?: string | null
 ) {
   const supabase = createAdminClient();
   const { data: statusRows } = await supabase
@@ -988,20 +998,27 @@ export async function processIndividualFromSummary(
     ordersToProcess.map((o) => o.id)
   );
 
+  const normalizedCancelNote =
+    action === "ANULOWANO"
+      ? normalizeProcurementCancelNote(procurementCancelNote)
+      : null;
+
   for (const order of ordersToProcess) {
     const id = order.id;
     const seenPatch = { procurement_seen_at: batchOrderedAt };
 
     if (action === "ANULOWANO") {
-      await supabase
+      const { error: cancelErr } = await supabase
         .from("individual_orders")
         .update({
-          status: "Anulowane",
-          informacja_queue_via_daily_panel: false,
-          informacja_stock_out_reorder: false,
+          ...buildProcurementCancelUpdate(normalizedCancelNote),
           ...seenPatch,
         })
         .eq("id", id);
+      if (cancelErr) {
+        throwIfProcurementCancelNoteColumnMissing(cancelErr);
+        throw new Error(cancelErr.message);
+      }
       continue;
     }
 
@@ -1044,6 +1061,97 @@ export async function processIndividualFromSummary(
       throw e;
     }
   }
+
+  if (action === "ANULOWANO") {
+    const cancelledIds = ordersToProcess.map((o) => o.id);
+    if (cancelledIds.length) {
+      scheduleHistoryRetentionPurge();
+      await notifyProcurementCancelForOrders(cancelledIds);
+    }
+  }
+}
+
+export type ProcurementCancelEmailResult = {
+  emailSent: number;
+  emailError?: string;
+};
+
+/** Powiadomienia e-mail po anulowaniu prośby przez dział dostaw. */
+export async function notifyProcurementCancelForOrders(
+  orderIds: string[],
+  opts?: { noteUpdated?: boolean }
+): Promise<ProcurementCancelEmailResult> {
+  const uniqueIds = [...new Set(orderIds)];
+  if (!uniqueIds.length) {
+    return { emailSent: 0 };
+  }
+
+  const supabase = createAdminClient();
+  const personEmailCache = new Map<string, Awaited<ReturnType<typeof resolveSalesPersonEmail>>>();
+  const notifications = new Map<string, SalesPersonEmailBatch>();
+  const notifySkipped: string[] = [];
+  let loaded = 0;
+
+  for (const id of uniqueIds) {
+    const { data: raw } = await supabase
+      .from("individual_orders")
+      .select("*, supplier:suppliers(*), sales_person:sales_people(*)")
+      .eq("id", id)
+      .single();
+    const order = raw ? normalizeIndividualOrder(raw) : null;
+    if (!order) continue;
+    if (opts?.noteUpdated) {
+      if (!canEditProcurementCancelNote(order)) continue;
+    } else if (!isProcurementInitiatedCancel(order)) {
+      continue;
+    }
+    loaded++;
+
+    let person = personEmailCache.get(order.sales_person_id);
+    if (person === undefined) {
+      person = await resolveSalesPersonEmail(supabase, order);
+      personEmailCache.set(order.sales_person_id, person);
+    }
+
+    if (person) {
+      const item = buildProcurementCancelNotificationItem(order);
+      const existing = notifications.get(person.personId);
+      if (existing) {
+        existing.items.push(item);
+      } else {
+        notifications.set(person.personId, {
+          email: person.email,
+          name: person.name,
+          items: [item],
+        });
+      }
+    } else if (order.sales_person_id) {
+      notifySkipped.push(order.sales_person?.name?.trim() ?? "Handlowiec");
+    }
+  }
+
+  let emailSent = 0;
+  let emailError: string | undefined;
+  if (notifications.size) {
+    const mailResult = await sendProcurementCancelEmails(notifications, {
+      noteUpdated: opts?.noteUpdated,
+    });
+    emailSent = mailResult.sent;
+    if (mailResult.failures.length) {
+      emailError = `${mailResult.failures[0].to}: ${mailResult.failures[0].error}`;
+    }
+  } else if (loaded > 0) {
+    emailError = "Brak adresu e-mail handlowca — zapisano bez powiadomienia";
+  }
+  if (notifySkipped.length) {
+    const skipNote =
+      notifySkipped.length === 1
+        ? `${notifySkipped[0]}: brak e-maila — zapisano bez powiadomienia`
+        : `${notifySkipped.length} handlowców bez e-maila — zapisano bez powiadomienia`;
+    emailError = emailError ? `${emailError}; ${skipNote}` : skipNote;
+  }
+
+  return { emailSent, emailError };
 }
 
 export async function markInformacjaArrived(
@@ -1134,13 +1242,29 @@ export async function markInformacjaArrived(
   return { updated, skipped, requested: uniqueIds.length, emailSent, emailError };
 }
 
-export async function cancelIndividualOrder(orderId: string) {
+export async function cancelIndividualOrder(
+  orderId: string,
+  procurementCancelNote?: string | null
+): Promise<ProcurementCancelEmailResult> {
   const supabase = createAdminClient();
-  await supabase
+  const { data, error } = await supabase
     .from("individual_orders")
-    .update({ status: "Anulowane" })
-    .eq("id", orderId);
+    .update(buildProcurementCancelUpdate(procurementCancelNote))
+    .eq("id", orderId)
+    .in("status", ["Nowe", "Weryfikacja"])
+    .is("sales_cancelled_at", null)
+    .select("id");
+  if (error) {
+    throwIfProcurementCancelNoteColumnMissing(error);
+    throw new Error(error.message);
+  }
+  if (!data?.length) {
+    throw new Error(
+      "Nie można anulować tej prośby — sprawdź status (tylko Nowe lub Weryfikacja, bez rezygnacji handlowca)."
+    );
+  }
   scheduleHistoryRetentionPurge();
+  return notifyProcurementCancelForOrders([orderId]);
 }
 
 type DeliveryNotifyPayload = {
@@ -1180,7 +1304,19 @@ async function applyDeliveredQuantityUpdate(
   const activeOrdered =
     !isNaN(ordered) && ordered > 0 ? Math.max(0, ordered - cancelled) : ordered;
   const delivered = parseInt(qtyInput, 10);
-  if (!isNaN(activeOrdered) && activeOrdered > 0) {
+  const isCancelDispositionReceive =
+    Boolean(order.sales_cancelled_at && order.procurement_cancel_disposition) &&
+    cancelled > 0 &&
+    (activeOrdered === 0 || isNaN(activeOrdered));
+
+  if (isCancelDispositionReceive) {
+    if (isNaN(delivered) || delivered < 0) {
+      throw new Error("Podaj poprawną liczbę dostarczonych sztuk (0 lub więcej)");
+    }
+    if (delivered > cancelled) {
+      throw new Error(`Nie można przyjąć więcej niż ${cancelled} szt. z rezygnacji`);
+    }
+  } else if (!isNaN(activeOrdered) && activeOrdered > 0) {
     if (isNaN(delivered) || delivered < 0) {
       throw new Error("Podaj poprawną liczbę dostarczonych sztuk (0 lub więcej)");
     }
@@ -1192,15 +1328,20 @@ async function applyDeliveredQuantityUpdate(
   }
 
   const prevStatus = order.status;
-  const effectiveOrderedStr =
-    !isNaN(activeOrdered) && activeOrdered > 0 ? String(activeOrdered) : order.quantity;
+  const effectiveOrderedStr = isCancelDispositionReceive
+    ? String(cancelled)
+    : !isNaN(activeOrdered) && activeOrdered > 0
+      ? String(activeOrdered)
+      : order.quantity;
   const status = resolveStatusFromDeliveredQuantity(effectiveOrderedStr, qtyInput);
   const finalDelivered =
-    status === "Zrealizowane" && !isNaN(activeOrdered) && activeOrdered > 0
-      ? String(activeOrdered)
-      : status === "Zrealizowane" && !isNaN(ordered)
-        ? String(ordered)
-        : qtyInput;
+    status === "Zrealizowane" && isCancelDispositionReceive
+      ? String(cancelled)
+      : status === "Zrealizowane" && !isNaN(activeOrdered) && activeOrdered > 0
+        ? String(activeOrdered)
+        : status === "Zrealizowane" && !isNaN(ordered)
+          ? String(ordered)
+          : qtyInput;
 
   const update: Record<string, unknown> = {
     delivered_quantity: finalDelivered,

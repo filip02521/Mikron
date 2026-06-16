@@ -2,6 +2,7 @@ import { getAppUrl } from "@/lib/env/app-config";
 import type {
   SalesDeliveryNotificationItem,
   SalesInformacjaNotificationItem,
+  SalesProcurementCancelNotificationItem,
 } from "@/lib/email/sales-notification-types";
 import {
   polishPozycjeLabel,
@@ -288,6 +289,106 @@ export function renderInformacjaArrivedEmail(params: {
       preheader,
       headerTitle: "Informacja o towarze",
       headerSubtitle: "Prośba bez zamówienia u dostawcy",
+      bodyHtml: body,
+    }),
+  };
+}
+
+function renderProcurementCancelItem(
+  item: SalesProcurementCancelNotificationItem,
+  cardOpts?: ItemCardOpts
+): string {
+  const rows: string[] = [];
+  if (item.clientName) rows.push(emailDataRow("Klient", item.clientName));
+  rows.push(emailDataRow("Produkt", item.products));
+  if (item.symbol) rows.push(emailDataRow("Symbol", item.symbol));
+  if (item.procurementCancelNote) {
+    rows.push(emailDataRow("Wiadomość od działu dostaw", item.procurementCancelNote));
+  }
+  rows.push(
+    emailDataRow(
+      "Co dalej",
+      "Prośba została anulowana przez dział dostaw. Potwierdź anulowanie w sekcji Moje zamówienia — wpis zniknie z listy."
+    )
+  );
+
+  return emailItemCard(
+    {
+      label: "Anulowano",
+      bg: EMAIL_THEME.warningBg,
+      color: EMAIL_THEME.warning,
+      border: EMAIL_THEME.warningBorder,
+    },
+    rows.join(""),
+    {
+      positionLabel: positionLabel(cardOpts),
+      supplierName: item.supplierName,
+    }
+  );
+}
+
+function renderProcurementCancelItems(
+  items: SalesProcurementCancelNotificationItem[]
+): string {
+  const sorted = sortBySupplierThenProduct(items);
+  return sorted
+    .map((item, i) => renderProcurementCancelItem(item, itemCardOpts(i, sorted.length)))
+    .join("");
+}
+
+export function renderProcurementCancelEmail(params: {
+  recipientName: string;
+  items: SalesProcurementCancelNotificationItem[];
+  /** Zaktualizowano wiadomość po anulowaniu. */
+  noteUpdated?: boolean;
+}): { subject: string; html: string } {
+  const sorted = sortBySupplierThenProduct(params.items);
+  const count = sorted.length;
+  const suppliers = uniqueSupplierCount(sorted);
+  const noteUpdated = params.noteUpdated ?? false;
+
+  const leadFixed = noteUpdated
+    ? count === 1
+      ? "Dział dostaw zaktualizował wiadomość do anulowanej prośby."
+      : `Dział dostaw zaktualizował wiadomości do <strong>${polishPozycjeLabel(count)}</strong> anulowanych prośb.`
+    : count === 1
+      ? "Dział dostaw anulował Twoją prośbę indywidualną."
+      : `Dział dostaw anulował <strong>${polishPozycjeLabel(count)}</strong> z Twoich prośb.`;
+
+  const body = [
+    emailGreeting(firstName(params.recipientName)),
+    emailParagraph(leadFixed),
+    suppliers > 1
+      ? emailMutedParagraph(
+          `Poniżej ${polishPozycjeLabel(count)} od <strong>${suppliers}</strong> dostawców.`
+        )
+      : "",
+    emailMutedParagraph(
+      "Szczegóły i ewentualną wiadomość od działu dostaw zobaczysz poniżej. Pełny status jest w aplikacji OnTime."
+    ),
+    renderProcurementCancelItems(sorted),
+    emailButton(mojeUrl(), "Otwórz Moje zamówienia"),
+    emailMutedParagraph(
+      "To automatyczna wiadomość z systemu OnTime (Mikran). Nie odpowiadaj na ten e-mail."
+    ),
+  ].join("");
+
+  const subjectPrefix = noteUpdated
+    ? "OnTime · Zaktualizowano wiadomość"
+    : "OnTime · Prośba anulowana";
+
+  const preheader =
+    count === 1
+      ? `${sorted[0]!.supplierName} — anulowano`
+      : `${polishPozycjeLabel(count)} anulowane`;
+
+  return {
+    subject: subjectForItems(subjectPrefix, sorted),
+    html: emailDocument({
+      preheader,
+      headerTitle: noteUpdated ? "Zaktualizowano wiadomość" : "Prośba anulowana",
+      headerSubtitle: "Dział dostaw",
+      accentColor: EMAIL_THEME.warning,
       bodyHtml: body,
     }),
   };

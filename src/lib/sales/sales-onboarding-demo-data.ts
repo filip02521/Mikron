@@ -68,6 +68,7 @@ function demoLine(
     clientName: extra.clientName ?? null,
     clientKhId: extra.clientKhId ?? null,
     requestNote: extra.requestNote ?? null,
+    procurementCancelNote: extra.procurementCancelNote ?? null,
   };
 }
 
@@ -101,6 +102,7 @@ function demoOrderRow(overrides: Partial<MyOrderRow>): MyOrderRow {
     cancelledAckOrderIds: [],
     clientLabel: "Gabinet Dr Kowalski",
     requestNote: null,
+    procurementCancelNote: null,
     supplierId: "demo-supplier-a",
     salesPersonId: DEMO_SALES_PERSON_ID,
     requestKind: "zamowienie",

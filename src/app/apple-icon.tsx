@@ -1,9 +1,10 @@
 import { ImageResponse } from "next/og";
+import { brandAppIconDataUri } from "@/lib/ui/brand-app-icon-svg";
 
 export const size = { width: 180, height: 180 };
 export const contentType = "image/png";
 
-/** Apple touch icon — PNG wymagany przez konwencję Next.js (SVG nie jest wspierany). */
+/** Apple touch icon — ten sam znak co AppBrandMark (gradient, tarcza, OT). */
 export default function AppleIcon() {
   return new ImageResponse(
     (
@@ -14,21 +15,10 @@ export default function AppleIcon() {
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
-          background: "linear-gradient(135deg, #4f46e5 0%, #0284c7 100%)",
-          borderRadius: 40,
-          fontFamily: "ui-sans-serif, system-ui, sans-serif",
+          background: "transparent",
         }}
       >
-        <div
-          style={{
-            fontSize: 56,
-            fontWeight: 700,
-            color: "#ffffff",
-            letterSpacing: "-0.04em",
-          }}
-        >
-          OT
-        </div>
+        <img src={brandAppIconDataUri()} width={180} height={180} alt="" />
       </div>
     ),
     { ...size }

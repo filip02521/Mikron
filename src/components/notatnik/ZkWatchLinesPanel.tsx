@@ -18,12 +18,27 @@ import {
   summarizeZkWatchLines,
   type ZkWatchLineView,
 } from "@/lib/sales/zk-watch-lines";
+import {
+  resolveZkWatchLineUiState,
+  zkWatchLineUiStateMeta,
+} from "@/lib/sales/zk-watch-line-ui-state";
+import type { ZkWatchLineCoverage } from "@/lib/sales/zk-watch-order-link";
 import type { SalesZkWatch } from "@/types/database";
+import { ZkWatchLineStatusChip } from "./ZkWatchLineStatusChip";
 import { ZkWatchModalSection } from "./ZkWatchModalSection";
 
-type LineFilter = "all" | "pending" | "arrived";
+type LineFilter = "all" | "pending" | "arrived" | "new" | "in_request";
 
-function filterViews(views: ZkWatchLineView[], filter: LineFilter): ZkWatchLineView[] {
+function filterViews(
+  views: ZkWatchLineView[],
+  filter: LineFilter,
+  newLineKeys: Set<string>,
+  lineCoverageByKey?: Record<string, ZkWatchLineCoverage>
+): ZkWatchLineView[] {
+  if (filter === "new") return views.filter((v) => newLineKeys.has(v.key));
+  if (filter === "in_request") {
+    return views.filter((v) => lineCoverageByKey?.[v.key] === "open");
+  }
   if (filter === "pending") return views.filter((v) => !v.arrived);
   if (filter === "arrived") return views.filter((v) => v.arrived);
   return views;
@@ -34,6 +49,9 @@ export function ZkWatchLinesPanel({
   readOnly,
   tourPreview = false,
   matchedDeliveredLineKeys,
+  newLineKeys,
+  lineCoverageByKey,
+  inStockLineKeys,
   compact = false,
   showSummary = true,
   onSaved,
@@ -42,6 +60,9 @@ export function ZkWatchLinesPanel({
   readOnly?: boolean;
   tourPreview?: boolean;
   matchedDeliveredLineKeys?: string[];
+  newLineKeys?: string[];
+  lineCoverageByKey?: Record<string, ZkWatchLineCoverage>;
+  inStockLineKeys?: string[];
   compact?: boolean;
   showSummary?: boolean;
   onSaved?: (watch: SalesZkWatch) => void;
@@ -65,7 +86,17 @@ export function ZkWatchLinesPanel({
   }
 
   const summary = useMemo(() => summarizeZkWatchLines(views), [views]);
-  const filtered = useMemo(() => filterViews(views, filter), [views, filter]);
+  const newLineKeySet = useMemo(() => new Set(newLineKeys ?? []), [newLineKeys]);
+  const inStockKeySet = useMemo(() => new Set(inStockLineKeys ?? []), [inStockLineKeys]);
+  const inRequestCount = useMemo(
+    () =>
+      views.filter((v) => lineCoverageByKey?.[v.key] === "open").length,
+    [views, lineCoverageByKey]
+  );
+  const filtered = useMemo(
+    () => filterViews(views, filter, newLineKeySet, lineCoverageByKey),
+    [views, filter, newLineKeySet, lineCoverageByKey]
+  );
   const matchedFromProsba = useMemo(
     () => new Set(matchedDeliveredLineKeys ?? []),
     [matchedDeliveredLineKeys]
@@ -104,6 +135,12 @@ export function ZkWatchLinesPanel({
 
   const filterChips: { id: LineFilter; label: string; count: number }[] = [
     { id: "all", label: "Wszystkie", count: summary.total },
+    ...(newLineKeySet.size > 0
+      ? [{ id: "new" as const, label: "Nowe", count: newLineKeySet.size }]
+      : []),
+    ...(inRequestCount > 0
+      ? [{ id: "in_request" as const, label: "W prośbie", count: inRequestCount }]
+      : []),
     { id: "pending", label: "Brakuje", count: summary.pending },
     { id: "arrived", label: "Na miejscu", count: summary.arrived },
   ];
@@ -117,14 +154,25 @@ export function ZkWatchLinesPanel({
   ) : (
     <ul className="divide-y divide-slate-100">
       {filtered.map((line) => {
+        const isNewLine = newLineKeySet.has(line.key);
+        const coverage = lineCoverageByKey?.[line.key];
+        const uiState = resolveZkWatchLineUiState({
+          coverage,
+          isNewLine,
+          arrived: line.arrived,
+          inStock: inStockKeySet.has(line.key),
+        });
+        const meta = zkWatchLineUiStateMeta(uiState);
         const fromProsba = matchedFromProsba.has(line.key);
+
         return (
           <li key={line.key} className={mojeShipmentLineRowClass}>
             <label
               className={cn(
-                "flex cursor-pointer items-start gap-3",
-                line.arrived && "opacity-90",
-                fromProsba && !line.arrived && "rounded-sm bg-indigo-50/40 -mx-1 px-1",
+                "flex cursor-pointer items-start gap-3 py-0.5",
+                line.arrived && uiState !== "arrived" && "opacity-90",
+                meta.rowTintClass && `rounded-md ${meta.rowTintClass} -mx-1 px-1`,
+                fromProsba && !meta.rowTintClass && "rounded-md bg-indigo-50/25 -mx-1 px-1",
                 !canEdit && "cursor-default"
               )}
             >
@@ -134,6 +182,7 @@ export function ZkWatchLinesPanel({
                 disabled={!canEdit || saving}
                 onChange={() => toggleLine(line.key)}
                 className="mt-0.5 size-4 shrink-0 rounded border-slate-300 text-emerald-600 focus:ring-indigo-500"
+                aria-label={`Oznacz jako dotarło: ${line.product}`}
               />
               <span className="min-w-0 flex-1">
                 <span
@@ -151,16 +200,7 @@ export function ZkWatchLinesPanel({
                   </span>
                 ) : null}
               </span>
-              {fromProsba ? (
-                <span
-                  className={cn(
-                    salesTypography.kindTag,
-                    "shrink-0 rounded-full bg-indigo-100 px-1.5 py-0.5 text-indigo-800"
-                  )}
-                >
-                  Prośba
-                </span>
-              ) : null}
+              <ZkWatchLineStatusChip state={uiState} />
             </label>
           </li>
         );
@@ -193,7 +233,7 @@ export function ZkWatchLinesPanel({
         </div>
       ) : null}
 
-      {views.length > 3 ? (
+      {views.length > 3 || newLineKeySet.size > 0 || inRequestCount > 0 ? (
         <div className="flex flex-wrap gap-1 border-b border-slate-100 bg-slate-50/50 px-3 py-2">
           {filterChips.map((chip) => (
             <button
@@ -204,7 +244,11 @@ export function ZkWatchLinesPanel({
               className={cn(
                 "rounded-full px-2 py-0.5 text-[0.68rem] font-semibold transition",
                 filter === chip.id
-                  ? "bg-indigo-100 text-indigo-900 ring-1 ring-indigo-200/80"
+                  ? chip.id === "in_request"
+                    ? "bg-indigo-100 text-indigo-900 ring-1 ring-indigo-200/80"
+                    : chip.id === "new"
+                      ? "bg-amber-100 text-amber-950 ring-1 ring-amber-200/80"
+                      : "bg-indigo-100 text-indigo-900 ring-1 ring-indigo-200/80"
                   : "bg-white text-slate-600 ring-1 ring-slate-200/90 hover:bg-slate-50",
                 chip.count === 0 && chip.id !== "all" && "opacity-40"
               )}
@@ -226,7 +270,7 @@ export function ZkWatchLinesPanel({
     return (
       <ZkWatchModalSection
         title="Lista towaru"
-        hint="Zaznacz pozycje, które już dotarły do klienta."
+        hint="Zaznacz pozycje, które już dotarły do klienta. Status obok pozycji pokazuje powiązanie z prośbą."
       >
         {canEdit && views.length > 0 ? (
           <div className="flex justify-end">

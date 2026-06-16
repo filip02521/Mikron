@@ -124,6 +124,24 @@ describe("productMatchesZkLine + merge checks", () => {
       )
     ).toBe(true);
 
+    expect(
+      productMatchesZkLine(
+        linkOrder({
+          id: "o2",
+          status: "Zrealizowane",
+          products: "Filtr XYZ",
+          symbol: "FIL-XYZ",
+          subiekt_tw_id: 999,
+        }),
+        {
+          ...line,
+          product: "Filtr",
+          symbol: "FIL",
+          subiektTwId: 200,
+        }
+      )
+    ).toBe(false);
+
     const { checks, changed } = mergeZkLineChecksFromDeliveredOrders(w, [
       linkOrder({ id: "o1", status: "Zrealizowane", quantity: "2", delivered_quantity: "2" }),
     ]);
@@ -240,6 +258,83 @@ describe("computeZkWatchOrderHints", () => {
     expect(hints.matchingOpenRequestIds).toEqual(["open"]);
     expect(hints.matchedDeliveredLineKeys).toContain("ob:1");
     expect(hints.allLinesMatchedByOrders).toBe(true);
+    expect(hints.lineCoverageByKey["ob:1"]).toBe("delivered");
+    expect(hints.uncoveredLineKeys).toEqual([]);
+  });
+
+  it("oznacza niepokryte pozycje ZK", () => {
+    const w = watch({
+      id: "w2",
+      subiekt_snapshot: {
+        dok_Pozycja: [
+          {
+            ob_Id: 1,
+            ob_TowId: 100,
+            tw_Symbol: "ABC",
+            tw_Nazwa: "Implant X",
+            ob_Ilosc: 2,
+          },
+          {
+            ob_Id: 2,
+            ob_TowId: 200,
+            tw_Symbol: "DEF",
+            tw_Nazwa: "Filtr",
+            ob_Ilosc: 1,
+          },
+        ],
+      },
+    });
+    const hints = computeZkWatchOrderHints(w, [
+      linkOrder({ id: "open", status: "Zamowione", subiekt_tw_id: 100 }),
+    ]);
+    expect(hints.uncoveredLineKeys).toEqual(["ob:2"]);
+    expect(hints.openProsbaCoveredLineKeys).toContain("ob:1");
+    expect(hints.lineCoverageByKey["ob:2"]).toBe("uncovered");
+  });
+
+  it("nie uznaje podobnej nazwy za pokrycie innej pozycji ZK", () => {
+    const w = watch({
+      id: "w-similar",
+      subiekt_snapshot: {
+        dok_Pozycja: [
+          {
+            ob_Id: 1,
+            ob_TowId: 100,
+            tw_Symbol: "FIL",
+            tw_Nazwa: "Filtr",
+            ob_Ilosc: 1,
+          },
+          {
+            ob_Id: 2,
+            ob_TowId: 200,
+            tw_Symbol: "FIL-XYZ",
+            tw_Nazwa: "Filtr XYZ",
+            ob_Ilosc: 1,
+          },
+        ],
+      },
+    });
+    const hints = computeZkWatchOrderHints(w, [
+      linkOrder({
+        id: "partial-name",
+        status: "Zamowione",
+        subiekt_tw_id: null,
+        symbol: "FIL-XYZ",
+        products: "Filtr XYZ",
+      }),
+    ]);
+    expect(hints.uncoveredLineKeys).toEqual(["ob:1"]);
+    expect(hints.openProsbaCoveredLineKeys).toEqual(["ob:2"]);
+  });
+
+  it("nie zostawia niepokrytych pozycji gdy wszystko jest dostarczone", () => {
+    const w = watch({ id: "w-delivered" });
+    const hints = computeZkWatchOrderHints(w, [
+      linkOrder({ id: "done", status: "Zrealizowane", quantity: "2", delivered_quantity: "2" }),
+    ]);
+    expect(hints.uncoveredLineKeys).toEqual([]);
+    expect(hints.matchingOpenRequestCount).toBe(0);
+    expect(hints.lineCoverageByKey["ob:1"]).toBe("delivered");
   });
 
   it("liczy otwartą prośbę powiązaną po source_zk_watch_id bez dopasowania towaru", () => {
@@ -258,6 +353,24 @@ describe("computeZkWatchOrderHints", () => {
     expect(hints.matchingOpenRequestCount).toBe(1);
     expect(hints.matchingOpenRequestIds).toEqual(["from-zk-btn"]);
     expect(hints.matchedDeliveredLineKeys).toEqual([]);
+    expect(hints.uncoveredLineKeys).toContain("ob:1");
+  });
+
+  it("pokrywa linię ZK luźnym dopasowaniem tylko dla jawnej otwartej prośby ZK", () => {
+    const w = watch({ id: "w-zk" });
+    const hints = computeZkWatchOrderHints(w, [
+      linkOrder({
+        id: "from-zk-btn",
+        status: "Weryfikacja",
+        source_zk_watch_id: "w-zk",
+        source_zk_number: "ZK/1",
+        subiekt_tw_id: null,
+        symbol: "ABC",
+        products: "Implant X dodatkowy opis",
+      }),
+    ]);
+    expect(hints.uncoveredLineKeys).toEqual([]);
+    expect(hints.openProsbaCoveredLineKeys).toContain("ob:1");
   });
 });
 

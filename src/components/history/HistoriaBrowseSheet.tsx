@@ -29,21 +29,27 @@ export function HistoriaBrowseSheet({
   kind,
   individual,
   normal,
+  canOperateOrders,
   canManageHistory,
   pending,
   onClose,
   onRemoveIndividual,
   onRemoveNormal,
+  onCancelIndividual,
+  onEditNoteIndividual,
 }: {
   open: boolean;
   kind: "individual" | "normal";
   individual: IndividualOrder[];
   normal: NormalHistoryRow[];
+  canOperateOrders: boolean;
   canManageHistory: boolean;
   pending: boolean;
   onClose: () => void;
   onRemoveIndividual: (id: string) => void;
   onRemoveNormal: (id: string) => void;
+  onCancelIndividual?: (order: IndividualOrder) => void;
+  onEditNoteIndividual?: (order: IndividualOrder) => void;
 }) {
   const hydrated = useClientHydrated();
   const [query, setQuery] = useState("");
@@ -170,8 +176,11 @@ export function HistoriaBrowseSheet({
             ) : (
               <HistoriaIndividualTable
                 rows={filteredIndividual}
+                canOperateOrders={canOperateOrders}
                 canManageHistory={canManageHistory}
                 pending={pending}
+                onCancel={onCancelIndividual}
+                onEditNote={onEditNoteIndividual}
                 onRemove={onRemoveIndividual}
               />
             )

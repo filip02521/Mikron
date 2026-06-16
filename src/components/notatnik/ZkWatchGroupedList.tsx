@@ -3,6 +3,7 @@
 import { Fragment, useCallback, useEffect, useMemo, useReducer } from "react";
 import type { SalesZkWatch } from "@/types/database";
 import type { ZkWatchOrderHints } from "@/lib/sales/zk-watch-order-link";
+import type { ZkWatchRefreshDiff } from "@/lib/sales/zk-watch-refresh-diff";
 import { groupZkWatchesByMonth, type ZkWatchMonthGroup } from "@/lib/sales/zk-watch-sort";
 import {
   collapseAllZkMonthGroups,
@@ -116,7 +117,12 @@ export function ZkWatchGroupedList({
   onRefreshed,
   onDeleted,
   unseenWatchIds,
-  onWatchSeen,
+  newLineKeysByWatchId,
+  onWarehouseArrivalSeen,
+  onNewZkLinesSeen,
+  onWatchDetailOpen,
+  prosbaScopeWatchId,
+  onProsbaScopeConfigured,
   focusWatchId,
   onFocusWatchHandled,
   onLiveAnnounce,
@@ -124,7 +130,12 @@ export function ZkWatchGroupedList({
   watches: SalesZkWatch[];
   zkHintsByWatchId?: Map<string, ZkWatchOrderHints>;
   unseenWatchIds?: Set<string>;
-  onWatchSeen?: (watchId: string) => void;
+  newLineKeysByWatchId?: Record<string, string[]>;
+  onWarehouseArrivalSeen?: (watchId: string) => void;
+  onNewZkLinesSeen?: (watchId: string) => void;
+  onWatchDetailOpen?: (watchId: string) => void;
+  prosbaScopeWatchId?: string | null;
+  onProsbaScopeConfigured?: (watchId: string) => void;
   /** Po wejściu z linku (#watch-…) — rozwiń miesiąc i podświetl kartę. */
   focusWatchId?: string | null;
   onFocusWatchHandled?: (watchId: string) => void;
@@ -136,7 +147,7 @@ export function ZkWatchGroupedList({
   subiektReachable?: boolean;
   onClosed?: (watchId: string, closedAt: string) => void;
   onRestored?: (watch: SalesZkWatch) => void;
-  onRefreshed?: (watch: SalesZkWatch) => void;
+  onRefreshed?: (watch: SalesZkWatch, refreshDiff?: ZkWatchRefreshDiff) => void;
   onDeleted?: (watchId: string) => void;
 }) {
   const groups = useMemo(() => groupZkWatchesByMonth(watches), [watches]);
@@ -261,7 +272,13 @@ export function ZkWatchGroupedList({
                         dispatchUi({ type: "setModal", watchId: open ? watch.id : null });
                       }}
                       hasNewWarehouseArrival={unseenWatchIds?.has(watch.id) ?? false}
-                      onWatchSeen={onWatchSeen}
+                      hasNewZkLines={(newLineKeysByWatchId?.[watch.id]?.length ?? 0) > 0}
+                      newLineKeys={newLineKeysByWatchId?.[watch.id]}
+                      onWarehouseArrivalSeen={onWarehouseArrivalSeen}
+                      onNewZkLinesSeen={onNewZkLinesSeen}
+                      onWatchDetailOpen={onWatchDetailOpen}
+                      prosbaScopeRequired={prosbaScopeWatchId === watch.id}
+                      onProsbaScopeConfigured={onProsbaScopeConfigured}
                     />
                   </li>
                 );

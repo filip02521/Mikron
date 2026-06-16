@@ -6,6 +6,7 @@ import {
   isSalesCancelNoticePending,
   isSalesCancelledForQueue,
   maxSalesCancelQuantity,
+  defaultSalesCancelQuantity,
   planSalesCancelQuantity,
   receiveQueueTargetQuantity,
   resolveSalesCancelPhase,
@@ -199,7 +200,8 @@ describe("sales-cancel", () => {
       quantity: "5",
       delivered_quantity: "2",
     });
-    expect(maxSalesCancelQuantity(o)).toBe(3);
+    expect(maxSalesCancelQuantity(o)).toBe(5);
+    expect(defaultSalesCancelQuantity(o)).toBe(3);
     expect(showSalesCancelRemainderAction(o)).toBe(true);
     const plan = planSalesCancelQuantity(o, 3);
     expect(plan.cancelQty).toBe(3);
@@ -263,6 +265,17 @@ describe("sales-cancel", () => {
     expect(plan.keepLineActiveForSales).toBe(false);
   });
 
+  it("planSalesCancelQuantity — pełny magazyn (Zrealizowane)", () => {
+    const o = order("Zrealizowane", {
+      quantity: "4",
+      delivered_quantity: "4",
+    });
+    expect(maxSalesCancelQuantity(o)).toBe(4);
+    const plan = planSalesCancelQuantity(o);
+    expect(plan.cancelQty).toBe(4);
+    expect(plan.storedCancelledQuantity).toBeNull();
+  });
+
   it("planSalesCancelQuantity — druga rezygnacja na tej samej linii", () => {
     const o = order("Zamowione", {
       quantity: "5",
@@ -295,6 +308,20 @@ describe("sales-cancel", () => {
         sales_cancelled_quantity: "3",
       })
     ).toBe(2);
+  });
+
+  it("receiveQueueCancelDispositionTotal — pełna ilość rezygnacji, nie reszta", () => {
+    const cancelledOrder = {
+      ...order("Czesciowo_zrealizowane", {
+        quantity: "5",
+        delivered_quantity: "3",
+      }),
+      sales_cancelled_at: "2026-05-01",
+      sales_cancel_phase: "in_transit" as const,
+      procurement_cancel_disposition: "return",
+      sales_cancelled_quantity: "5",
+    };
+    expect(receiveQueueTargetQuantity(cancelledOrder)).toBe(5);
   });
 
   it("effectiveSalesCancelledQuantity — jawna ilość z kolumny", () => {

@@ -378,27 +378,41 @@ export async function fetchDeliveryQueue(): Promise<IndividualOrder[]> {
       .select("*, supplier:suppliers(*), sales_person:sales_people(*)")
       .eq("request_kind", "zamowienie")
       .not("sales_cancelled_at", "is", null)
+      .is("warehouse_cancel_fulfilled_at", null)
       .order("sales_cancelled_at", { ascending: false }),
   ]);
 
   if (activeRes.error) throw new Error(activeRes.error.message);
+
+  let cancelledRows = cancelledRes.data ?? [];
   if (cancelledRes.error) {
     if (cancelledRes.error.message?.includes("sales_cancelled_at")) {
       return sortIndividualOrdersBySupplier(
         normalizeIndividualOrders(activeRes.data ?? [])
       );
     }
-    throw new Error(cancelledRes.error.message);
+    if (cancelledRes.error.message?.includes("warehouse_cancel_fulfilled_at")) {
+      const fallback = await supabase
+        .from("individual_orders")
+        .select("*, supplier:suppliers(*), sales_person:sales_people(*)")
+        .eq("request_kind", "zamowienie")
+        .not("sales_cancelled_at", "is", null)
+        .order("sales_cancelled_at", { ascending: false });
+      if (fallback.error) throw new Error(fallback.error.message);
+      cancelledRows = fallback.data ?? [];
+    } else {
+      throw new Error(cancelledRes.error.message);
+    }
   }
 
-  const cancelledForQueue = normalizeIndividualOrders(
-    cancelledRes.data ?? []
-  ).filter(
+  const cancelledForQueue = normalizeIndividualOrders(cancelledRows).filter(
     (o) =>
-      isSalesCancelledForQueue(o) && Boolean(o.procurement_cancel_disposition)
+      !o.warehouse_cancel_fulfilled_at &&
+      isSalesCancelledForQueue(o) &&
+      Boolean(o.procurement_cancel_disposition)
   );
 
-  const partialActive = normalizeIndividualOrders(cancelledRes.data ?? []).filter(
+  const partialActive = normalizeIndividualOrders(cancelledRows).filter(
     (o) =>
       o.request_kind === "zamowienie" &&
       (o.status === "Zamowione" || o.status === "Czesciowo_zrealizowane") &&

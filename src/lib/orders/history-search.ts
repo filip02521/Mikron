@@ -1,4 +1,5 @@
 import type { IndividualOrder } from "@/types/database";
+import { normalizeProcurementCancelNote } from "@/lib/orders/procurement-cancel-note";
 
 function normalizeSearch(s: string) {
   return s.trim().toLocaleLowerCase("pl");
@@ -13,6 +14,7 @@ export function matchesIndividualSearch(order: IndividualOrder, query: string): 
     order.symbol,
     order.supplier?.name,
     order.sales_person?.name,
+    normalizeProcurementCancelNote(order.procurement_cancel_note),
   ]
     .filter(Boolean)
     .join(" ")

@@ -23,7 +23,7 @@ import { locationLabel } from "@/lib/display-labels";
 import { actionMarkProcurementRequestsSeen, actionProcessIndividual } from "@/app/actions/admin";
 import { Button } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/Badge";
-import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
+import { ProcurementCancelDialog } from "@/components/procurement/ProcurementCancelDialog";
 import type { DailyPanelRunFn } from "@/components/summary/useDailyPanelRunner";
 import type { DeliveryStats, StatsMode } from "@/types/database";
 import { formatSupplierLeadTimeBrief } from "@/lib/orders/delivery-eta";
@@ -492,27 +492,22 @@ export function ForSomeoneRequests({
           )
         }
       />
-      <ConfirmDialog
+      <ProcurementCancelDialog
         open={cancelTarget !== null}
         title="Anulować prośbę?"
-        message={
-          cancelTarget
-            ? `Czy na pewno anulować: ${cancelTarget.headline}? Możesz cofnąć w ciągu 10 sekund po potwierdzeniu.`
-            : ""
-        }
+        headline={cancelTarget?.headline}
+        message="Cofnięcie przywraca status w systemie. E-mail do handlowca mógł już zostać wysłany."
         confirmLabel="Anuluj prośbę"
-        danger
         pending={cancelTarget ? isScopePending(cancelTarget.scopeKey) : false}
         onCancel={() => setCancelTarget(null)}
-        onConfirm={() => {
+        onConfirm={(note) => {
           if (!cancelTarget) return;
           const { orderIds, scopeKey } = cancelTarget;
-          setCancelTarget(null);
           run(
-            () => actionProcessIndividual(orderIds, "ANULOWANO"),
+            () => actionProcessIndividual(orderIds, "ANULOWANO", note),
             "Anulowano prośbę",
             "Anulowanie prośby…",
-            { scope: scopeKey }
+            { scope: scopeKey, onSuccess: () => setCancelTarget(null) }
           );
         }}
       />

@@ -1,5 +1,5 @@
 import { randomId } from "@/lib/ensure-crypto";
-import { isZkWatchShippingCostLine } from "@/lib/sales/zk-watch-lines";
+import { isZkWatchShippingCostLine, zkLineKey } from "@/lib/sales/zk-watch-lines";
 import type { SubiektDocumentLine } from "@/lib/subiekt/types";
 import type { ProductLineDraft } from "@/components/orders/request-product-lines";
 import type { SalesZkWatch } from "@/types/database";
@@ -7,12 +7,22 @@ import { prosbaHref } from "./prosba-url";
 
 export const ZK_PROSBA_PREFILL_STORAGE_KEY = "ontime-prosba-zk-prefill";
 
+export type ZkProsbaPrefillMode = "full" | "supplement";
+
 export type ZkProsbaPrefill = {
   zkWatchId: string | null;
   clientName: string;
   clientKhId: number | null;
   zkNumber: string;
   lines: ProductLineDraft[];
+  mode?: ZkProsbaPrefillMode;
+  supplementLineCount?: number;
+  lineKeys?: string[];
+};
+
+export type ZkProsbaPrefillOptions = {
+  lineKeys?: string[];
+  mode?: ZkProsbaPrefillMode;
 };
 
 function normalizeSubiektTwId(value: unknown): number | null {
@@ -26,8 +36,11 @@ function normalizePrefillKhId(value: unknown): number | null {
 }
 
 /** Bezpieczny payload Server Action → klient (tylko JSON-serializowalne pola). */
-export function zkProsbaPrefillFromWatch(watch: SalesZkWatch): ZkProsbaPrefill {
-  const lines = extractProsbaLinesFromZkWatch(watch).map((line) => ({
+export function zkProsbaPrefillFromWatch(
+  watch: SalesZkWatch,
+  options?: ZkProsbaPrefillOptions
+): ZkProsbaPrefill {
+  const lines = extractProsbaLinesFromZkWatch(watch, options).map((line) => ({
     id: String(line.id),
     symbol: String(line.symbol ?? ""),
     mikranCode: String(line.mikranCode ?? ""),
@@ -38,25 +51,38 @@ export function zkProsbaPrefillFromWatch(watch: SalesZkWatch): ZkProsbaPrefill {
     subiektTwId: normalizeSubiektTwId(line.subiektTwId),
   }));
 
+  const mode = options?.mode ?? (options?.lineKeys?.length ? "supplement" : "full");
+
   return {
     zkWatchId: watch.id ? String(watch.id) : null,
     clientName: String(watch.client_label ?? "").trim(),
     clientKhId: normalizePrefillKhId(watch.client_kh_id),
     zkNumber: String(watch.zk_number ?? "").trim(),
     lines,
+    mode,
+    supplementLineCount: mode === "supplement" ? lines.length : undefined,
+    lineKeys: options?.lineKeys?.length ? [...options.lineKeys] : undefined,
   };
 }
 
-export function extractProsbaLinesFromZkWatch(watch: SalesZkWatch): ProductLineDraft[] {
+export function extractProsbaLinesFromZkWatch(
+  watch: SalesZkWatch,
+  options?: Pick<ZkProsbaPrefillOptions, "lineKeys">
+): ProductLineDraft[] {
+  const lineKeyFilter =
+    options?.lineKeys?.length ? new Set(options.lineKeys) : null;
   const snap = watch.subiekt_snapshot as { dok_Pozycja?: SubiektDocumentLine[] } | null;
   const pozycje = snap?.dok_Pozycja ?? [];
 
   const fromSnapshot: ProductLineDraft[] = [];
-  for (const line of pozycje) {
+  for (let index = 0; index < pozycje.length; index += 1) {
+    const line = pozycje[index]!;
     if (isZkWatchShippingCostLine(line)) continue;
     const product = (line.tw_Nazwa ?? line.tw_Symbol ?? "").trim();
     const symbol = (line.tw_Symbol ?? "").trim();
     if (!product && !symbol) continue;
+    const lineKey = zkLineKey(line, index);
+    if (lineKeyFilter && !lineKeyFilter.has(lineKey)) continue;
     fromSnapshot.push({
       id: randomId(),
       symbol,
@@ -70,6 +96,8 @@ export function extractProsbaLinesFromZkWatch(watch: SalesZkWatch): ProductLineD
   }
 
   if (fromSnapshot.length > 0) return fromSnapshot;
+
+  if (lineKeyFilter) return [];
 
   if (watch.line_summary?.trim()) {
     return [
@@ -98,10 +126,15 @@ export function extractProsbaLinesFromZkWatch(watch: SalesZkWatch): ProductLineD
   ];
 }
 
-export function stashZkProsbaPrefill(watch: SalesZkWatch): void {
-  if (typeof sessionStorage === "undefined") return;
-  const payload = zkProsbaPrefillFromWatch(watch);
+export function stashZkProsbaPrefill(
+  watch: SalesZkWatch,
+  options?: ZkProsbaPrefillOptions
+): boolean {
+  const payload = zkProsbaPrefillFromWatch(watch, options);
+  if (!payload.lines.length) return false;
+  if (typeof sessionStorage === "undefined") return false;
   sessionStorage.setItem(ZK_PROSBA_PREFILL_STORAGE_KEY, JSON.stringify(payload));
+  return true;
 }
 
 export function readZkProsbaPrefill(): ZkProsbaPrefill | null {
@@ -117,6 +150,9 @@ export function readZkProsbaPrefill(): ZkProsbaPrefill | null {
       clientKhId: parsed.clientKhId ?? null,
       zkNumber: parsed.zkNumber ?? "",
       lines: parsed.lines,
+      mode: parsed.mode,
+      supplementLineCount: parsed.supplementLineCount,
+      lineKeys: parsed.lineKeys,
     };
   } catch {
     return null;
@@ -131,6 +167,15 @@ export function clearZkProsbaPrefill(): void {
 export function parseProsbaClientKhParam(value: string | null | undefined): number | null {
   const n = value ? Math.trunc(Number(value)) : NaN;
   return Number.isFinite(n) && n > 0 ? n : null;
+}
+
+export function parseProsbaZkLineKeysParam(value: string | null | undefined): string[] | undefined {
+  if (!value?.trim()) return undefined;
+  const keys = value
+    .split(",")
+    .map((key) => key.trim())
+    .filter(Boolean);
+  return keys.length ? keys : undefined;
 }
 
 /** Minimalny prefill z URL (nowa karta / brak sessionStorage), gdy serwer nie zwróci ZK. */
@@ -165,7 +210,10 @@ export function buildProsbaPrefillFromUrlParams(options: {
   };
 }
 
-export function prosbaHrefFromZkWatch(watch: SalesZkWatch): string {
+export function prosbaHrefFromZkWatch(
+  watch: SalesZkWatch,
+  options?: Pick<ZkProsbaPrefillOptions, "lineKeys">
+): string {
   return prosbaHref({
     salesPersonId: watch.sales_person_id,
     fromZk: true,
@@ -173,5 +221,6 @@ export function prosbaHrefFromZkWatch(watch: SalesZkWatch): string {
     zk: watch.zk_number,
     klient: watch.client_label,
     clientKhId: watch.client_kh_id,
+    zkLineKeys: options?.lineKeys,
   });
 }

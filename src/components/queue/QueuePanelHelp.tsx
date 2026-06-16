@@ -27,7 +27,11 @@ export function QueuePanelHelp() {
       <HelpBlock title="Dziennik dostaw">
         <ul className="list-disc space-y-1.5 pl-4">
           <li>Fizyczne przyjęcie kuriera — paczki, palety, przewoźnik (niezależnie od linii zamówień).</li>
-          <li>Magazyn może przeglądać archiwum i raporty z poprzednich dni.</li>
+          <li>
+            Zakładki <strong>Dzień</strong> (wpisy z wybranej daty) i <strong>Archiwum</strong> (wyszukiwanie i
+            podsumowania) są dostępne dla każdego konta magazynu i zakupów.
+          </li>
+          <li>Nowe wpisy dodaje magazyn — tylko na bieżący dzień.</li>
         </ul>
       </HelpBlock>
 

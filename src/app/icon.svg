@@ -1,11 +1,27 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" role="img" aria-label="OnTime">
   <defs>
-    <linearGradient id="ontime-g" x1="0%" y1="0%" x2="100%" y2="100%">
+    <linearGradient id="ontime-bg" x1="0%" y1="0%" x2="100%" y2="100%">
       <stop offset="0%" stop-color="#4f46e5"/>
       <stop offset="100%" stop-color="#0284c7"/>
     </linearGradient>
+    <linearGradient id="ontime-hand" gradientUnits="userSpaceOnUse" x1="9" y1="5" x2="23" y2="27">
+      <stop offset="0%" stop-color="#e0e7ff" stop-opacity="0.28"/>
+      <stop offset="100%" stop-color="#e0f2fe" stop-opacity="0.22"/>
+    </linearGradient>
   </defs>
-  <circle cx="16" cy="16" r="16" fill="url(#ontime-g)"/>
-  <circle cx="16" cy="16" r="13.5" fill="none" stroke="rgba(255,255,255,0.22)" stroke-width="1"/>
+  <circle cx="16" cy="16" r="16" fill="url(#ontime-bg)"/>
+  <g transform="translate(16 16)" stroke-linecap="round" opacity="0.68">
+    <circle cx="0" cy="-12.85" r="0.42" fill="rgba(255, 255, 255, 0.1)"/>
+    <circle cx="0" cy="-12.85" r="0.42" fill="rgba(255, 255, 255, 0.1)" transform="rotate(90)"/>
+    <circle cx="0" cy="-12.85" r="0.42" fill="rgba(255, 255, 255, 0.1)" transform="rotate(180)"/>
+    <circle cx="0" cy="-12.85" r="0.42" fill="rgba(255, 255, 255, 0.1)" transform="rotate(270)"/>
+    <g transform="rotate(180)">
+      <line x1="0" y1="-7.25" x2="0" y2="-10.25" stroke="url(#ontime-hand)" stroke-width="1.7"/>
+    </g>
+    <g transform="rotate(315)">
+      <line x1="0" y1="-7.25" x2="0" y2="-8.75" stroke="url(#ontime-hand)" stroke-width="1.55"/>
+    </g>
+  </g>
+  <circle cx="16" cy="16" r="13.5" fill="none" stroke="rgba(255,255,255,0.25)" stroke-width="1"/>
   <text x="16" y="20.5" text-anchor="middle" fill="#ffffff" font-family="ui-sans-serif, system-ui, sans-serif" font-size="10.5" font-weight="700" letter-spacing="-0.04em">OT</text>
 </svg>

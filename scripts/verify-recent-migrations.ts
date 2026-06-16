@@ -1,5 +1,5 @@
 /**
- * Weryfikuje migracje 059 (sales_cancelled_quantity) i 060 (password_reset_otps).
+ * Weryfikuje migracje 059–063 (ostatnie kolumny individual_orders i tabele auth).
  * Użycie: npx tsx scripts/verify-recent-migrations.ts
  */
 
@@ -77,6 +77,36 @@ async function main() {
     failed = true;
   } else {
     console.log("✓ migracja 061 — auth_rate_limit_events");
+  }
+
+  const { error: warehouseCancelError } = await supabase
+    .from("individual_orders")
+    .select("warehouse_cancel_fulfilled_at")
+    .limit(0);
+
+  if (warehouseCancelError?.message?.includes("warehouse_cancel_fulfilled_at")) {
+    console.error("✗ Brak kolumny warehouse_cancel_fulfilled_at — uruchom migrację 062.");
+    failed = true;
+  } else if (warehouseCancelError) {
+    console.error("✗ Błąd sprawdzania 062:", warehouseCancelError.message);
+    failed = true;
+  } else {
+    console.log("✓ migracja 062 — individual_orders.warehouse_cancel_fulfilled_at");
+  }
+
+  const { error: procurementNoteError } = await supabase
+    .from("individual_orders")
+    .select("procurement_cancel_note")
+    .limit(0);
+
+  if (procurementNoteError?.message?.includes("procurement_cancel_note")) {
+    console.error("✗ Brak kolumny procurement_cancel_note — uruchom migrację 063.");
+    failed = true;
+  } else if (procurementNoteError) {
+    console.error("✗ Błąd sprawdzania 063:", procurementNoteError.message);
+    failed = true;
+  } else {
+    console.log("✓ migracja 063 — individual_orders.procurement_cancel_note");
   }
 
   if (failed) process.exit(1);

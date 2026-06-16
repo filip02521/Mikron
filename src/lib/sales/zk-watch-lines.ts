@@ -4,6 +4,8 @@ import type { SalesZkWatch } from "@/types/database";
 export type ZkWatchLineCheckStored = {
   key: string;
   arrived: boolean;
+  /** false = mamy na stanie, nie trafia do prośby; true = wymaga zamówienia. */
+  needs_prosba?: boolean;
 };
 
 export type ZkWatchLineView = {
@@ -88,7 +90,11 @@ export function parseZkWatchLineChecks(raw: unknown): ZkWatchLineCheckStored[] {
     const key = "key" in item && typeof item.key === "string" ? item.key.trim() : "";
     if (!key) continue;
     const arrived = "arrived" in item && item.arrived === true;
-    out.push({ key, arrived });
+    const needsProsba =
+      "needs_prosba" in item && typeof item.needs_prosba === "boolean"
+        ? item.needs_prosba
+        : undefined;
+    out.push({ key, arrived, ...(needsProsba !== undefined ? { needs_prosba: needsProsba } : {}) });
   }
   return out;
 }
@@ -174,14 +180,18 @@ export function checksFromLineViews(views: ZkWatchLineView[]): ZkWatchLineCheckS
   return views.map((v) => ({ key: v.key, arrived: v.arrived }));
 }
 
-/** Po odświeżeniu z Subiekta — zachowaj stan dla pozycji o tym samym kluczu. */
+/** Po odświeżeniu z Subiekta — zachowaj stan dla pozycji o tym samym kluczu (arrived + zakres prośby). */
 export function mergeLineChecksAfterRefresh(
   previous: ZkWatchLineCheckStored[],
   nextViews: ZkWatchLineView[]
 ): ZkWatchLineCheckStored[] {
-  const old = arrivedByKeyFromChecks(previous);
-  return nextViews.map((v) => ({
-    key: v.key,
-    arrived: old.get(v.key) ?? false,
-  }));
+  const previousByKey = new Map(previous.map((check) => [check.key, check]));
+  return nextViews.map((view) => {
+    const prev = previousByKey.get(view.key);
+    return {
+      key: view.key,
+      arrived: prev?.arrived ?? false,
+      ...(prev?.needs_prosba !== undefined ? { needs_prosba: prev.needs_prosba } : {}),
+    };
+  });
 }

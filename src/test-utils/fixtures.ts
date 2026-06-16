@@ -84,6 +84,7 @@ export function testMyOrderLine(
     clientName: null,
     clientKhId: null,
     requestNote: null,
+    procurementCancelNote: null,
     ...partial,
   };
 }
@@ -119,6 +120,7 @@ export function testMyOrderRow(
     cancelledAckOrderIds: [],
     clientLabel: null,
     requestNote: null,
+    procurementCancelNote: null,
     supplierId: "s1",
     salesPersonId: "sp1",
     requestKind: "zamowienie",

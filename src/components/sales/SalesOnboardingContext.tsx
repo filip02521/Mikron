@@ -6,7 +6,6 @@ import {
   useContext,
   useEffect,
   useMemo,
-  useRef,
   useState,
   useSyncExternalStore,
 } from "react";
@@ -19,6 +18,7 @@ import {
 import {
   pathnameMatchesOnboardingStep,
   resolveTourStepIndexFromPathname,
+  shouldBlockTourPathSync,
   stepPathnameForStep,
 } from "@/lib/sales/sales-onboarding-nav";
 import type { UserRole } from "@/types/database";
@@ -79,6 +79,37 @@ function useSalesOnboardingHydrated(): boolean {
   );
 }
 
+function resolveDisplayStepIndex(
+  steps: SalesOnboardingStep[],
+  pathname: string,
+  navigatedStepIndex: number,
+  pendingStepIndex: number | null,
+  hydrated: boolean,
+  active: boolean
+): number {
+  if (!hydrated || !active) return navigatedStepIndex;
+
+  if (shouldBlockTourPathSync(steps, pendingStepIndex, pathname)) {
+    const matched = resolveTourStepIndexFromPathname(steps, pathname, null);
+    if (matched != null && pendingStepIndex != null && matched !== pendingStepIndex) {
+      return matched;
+    }
+    return navigatedStepIndex;
+  }
+
+  const step = steps[navigatedStepIndex];
+  if (!step || step.id === "finish") return navigatedStepIndex;
+
+  if (!isTourStarted(navigatedStepIndex)) return navigatedStepIndex;
+
+  const matched = resolveTourStepIndexFromPathname(steps, pathname, navigatedStepIndex);
+  if (matched != null && matched !== navigatedStepIndex) return matched;
+
+  if (navigatedStepIndex === 0 && matched != null && matched > 0) return matched;
+
+  return navigatedStepIndex;
+}
+
 export function SalesOnboardingProvider({
   active,
   role,
@@ -94,15 +125,38 @@ export function SalesOnboardingProvider({
   const pathname = usePathname();
   const steps = useMemo(() => getSalesOnboardingSteps(role), [role]);
   const hydrated = useSalesOnboardingHydrated();
-  const [stepIndex, setStepIndexState] = useState(0);
-  const stepIndexRef = useRef(stepIndex);
-  const [skipPathSync, setSkipPathSync] = useState(false);
+  const [navigatedStepIndex, setNavigatedStepIndex] = useState(0);
+  const [pendingStepIndex, setPendingStepIndex] = useState<number | null>(null);
+
+  const effectivePendingStepIndex =
+    pendingStepIndex !== null &&
+    shouldBlockTourPathSync(steps, pendingStepIndex, pathname)
+      ? pendingStepIndex
+      : null;
+
+  const displayStepIndex = useMemo(
+    () =>
+      resolveDisplayStepIndex(
+        steps,
+        pathname,
+        navigatedStepIndex,
+        effectivePendingStepIndex,
+        hydrated,
+        active
+      ),
+    [steps, pathname, navigatedStepIndex, effectivePendingStepIndex, hydrated, active]
+  );
 
   useEffect(() => {
-    stepIndexRef.current = stepIndex;
-  }, [stepIndex]);
+    if (!active || pendingStepIndex === null) return;
+    if (!shouldBlockTourPathSync(steps, pendingStepIndex, pathname)) return;
+    const timeout = window.setTimeout(() => {
+      setPendingStepIndex(null);
+    }, 12_000);
+    return () => window.clearTimeout(timeout);
+  }, [active, pathname, pendingStepIndex, steps]);
 
-  const currentStep = steps[stepIndex] ?? steps[0]!;
+  const currentStep = steps[displayStepIndex] ?? steps[0]!;
   const currentStepId = currentStep.id;
   const isWelcomeStep = currentStepId === "welcome";
   const isFinishStep = currentStepId === "finish";
@@ -118,37 +172,17 @@ export function SalesOnboardingProvider({
         return;
       }
       if (clamped > 0) markTourStarted();
-      setSkipPathSync(true);
-      setStepIndexState(clamped);
+      setPendingStepIndex(clamped);
+      setNavigatedStepIndex(clamped);
       const target = stepPathnameForStep(step);
       if (target && target !== pathname) {
         router.push(target);
+      } else {
+        setPendingStepIndex(null);
       }
     },
     [pathname, role, router, steps]
   );
-
-  if (hydrated && active && !skipPathSync && stepIndex === 0) {
-    try {
-      if (sessionStorage.getItem(TOUR_STARTED_STORAGE_KEY) === "1") {
-        const matched = resolveTourStepIndexFromPathname(steps, pathname, null);
-        if (matched != null && matched > 0 && matched !== stepIndex) {
-          setStepIndexState(matched);
-        }
-      }
-    } catch {
-      /* private mode */
-    }
-  }
-
-  if (skipPathSync) {
-    setSkipPathSync(false);
-  } else if (hydrated && active && isTourStarted(stepIndex) && !isFinishStep) {
-    const matched = resolveTourStepIndexFromPathname(steps, pathname, stepIndex);
-    if (matched != null && matched !== stepIndex) {
-      setStepIndexState(matched);
-    }
-  }
 
   const setStepIndex = useCallback(
     (index: number) => {
@@ -158,12 +192,12 @@ export function SalesOnboardingProvider({
   );
 
   const goNext = useCallback(() => {
-    navigateToStep(stepIndex + 1);
-  }, [navigateToStep, stepIndex]);
+    navigateToStep(displayStepIndex + 1);
+  }, [navigateToStep, displayStepIndex]);
 
   const goBack = useCallback(() => {
-    navigateToStep(stepIndex - 1);
-  }, [navigateToStep, stepIndex]);
+    navigateToStep(displayStepIndex - 1);
+  }, [navigateToStep, displayStepIndex]);
 
   const isDemoForStep = useCallback(
     (stepId: string) => {
@@ -186,7 +220,7 @@ export function SalesOnboardingProvider({
     () => ({
       active,
       steps,
-      stepIndex,
+      stepIndex: displayStepIndex,
       currentStep,
       currentStepId,
       isWelcomeStep,
@@ -207,6 +241,7 @@ export function SalesOnboardingProvider({
       currentStep,
       currentStepId,
       displayName,
+      displayStepIndex,
       goBack,
       goNext,
       isDemoForStep,
@@ -216,7 +251,6 @@ export function SalesOnboardingProvider({
       navLocked,
       setStepIndex,
       showCoach,
-      stepIndex,
       steps,
     ]
   );

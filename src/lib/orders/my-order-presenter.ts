@@ -57,6 +57,12 @@ import {
   normalizeSalesRequestNote,
   requestNotesSummary,
 } from "@/lib/orders/sales-request-note";
+import {
+  isProcurementInitiatedCancel,
+  normalizeProcurementCancelNote,
+  procurementCancelNotesSummary,
+  procurementInitiatedCancelStatusCopy,
+} from "@/lib/orders/procurement-cancel-note";
 import { describeVerificationGaps } from "@/lib/orders/verification-gaps";
 
 function weryfikacjaPresentation(order: IndividualOrder) {
@@ -125,6 +131,7 @@ export type MyOrderLine = {
   clientName: string | null;
   clientKhId: number | null;
   requestNote: string | null;
+  procurementCancelNote: string | null;
 };
 
 type MyOrderRowCore = {
@@ -167,6 +174,8 @@ export type MyOrderRow = MyOrderRowCore &
     clientLabel: string | null;
     /** Wspólna notatka do zakupów (meta). */
     requestNote: string | null;
+    /** Wspólna wiadomość od zakupów przy anulowaniu (meta). */
+    procurementCancelNote: string | null;
     /** Powiązanie z kartą ZK w notatniku (przycisk Prośba). */
     sourceZkWatchId?: string | null;
     sourceZkNumber?: string | null;
@@ -269,6 +278,7 @@ function rowToLine(
         ? Math.trunc(Number(order.sales_client_kh_id))
         : null,
     requestNote: normalizeSalesRequestNote(order.sales_request_note),
+    procurementCancelNote: normalizeProcurementCancelNote(order.procurement_cancel_note),
   };
 }
 
@@ -317,6 +327,7 @@ function withAckMeta(
       .map((o) => o.id),
     clientLabel: clientNamesSummary(visible),
     requestNote: requestNotesSummary(visible),
+    procurementCancelNote: procurementCancelNotesSummary(visible),
     sourceZkWatchId:
       visible.map((o) => o.source_zk_watch_id).find(Boolean) ??
       orders.map((o) => o.source_zk_watch_id).find(Boolean) ??
@@ -530,6 +541,17 @@ function presentInformacja(order: IndividualOrder): MyOrderRow {
         badgeVariant: "success",
       });
     case "Anulowane":
+      if (isProcurementInitiatedCancel(order)) {
+        const copy = procurementInitiatedCancelStatusCopy("informacja");
+        return finalize({
+          ...base,
+          statusTitle: copy.statusTitle,
+          statusDetail: copy.statusDetail,
+          timingLabel: null,
+          badgeVariant: "default",
+          rowColor: SUMMARY_COLORS.historyCancelled,
+        });
+      }
       return finalize({
         ...base,
         statusTitle: "Anulowano",
@@ -686,6 +708,17 @@ function presentZamowienie(
         rowColor: SUMMARY_COLORS.historyCompleted,
       });
     case "Anulowane":
+      if (isProcurementInitiatedCancel(order)) {
+        const copy = procurementInitiatedCancelStatusCopy("zamowienie");
+        return finalize({
+          ...base,
+          statusTitle: copy.statusTitle,
+          statusDetail: copy.statusDetail,
+          timingLabel: null,
+          badgeVariant: "default",
+          rowColor: SUMMARY_COLORS.historyCancelled,
+        });
+      }
       return finalize({
         ...base,
         statusTitle: "Anulowane",

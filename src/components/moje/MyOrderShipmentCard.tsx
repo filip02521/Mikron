@@ -52,7 +52,9 @@ import {
 import { MyOrderAckButton } from "@/components/moje/MyOrderAckButton";
 import { MyOrderAssignedClient } from "@/components/moje/MyOrderAssignedClient";
 import { MyOrderRequestNote } from "@/components/moje/MyOrderRequestNote";
+import { MyOrderProcurementCancelNote } from "@/components/moje/MyOrderProcurementCancelNote";
 import { isRequestNotesAggregateSummary } from "@/lib/orders/sales-request-note";
+import { isProcurementCancelNotesAggregateSummary } from "@/lib/orders/procurement-cancel-note";
 import { MyOrderLineItem } from "@/components/moje/MyOrderLineItem";
 import { MyOrderShipmentOverflowMenu } from "@/components/moje/MyOrderShipmentOverflowMenu";
 import { MyOrderHeadlineBanner } from "@/components/moje/MyOrderHeadlineBanner";
@@ -614,6 +616,12 @@ export function MyOrderShipmentCard({
       ? row.requestNote
       : null;
   const hideLineRequestNote = Boolean(sharedRequestNote);
+  const sharedProcurementCancelNote =
+    row.procurementCancelNote &&
+    !isProcurementCancelNotesAggregateSummary(row.procurementCancelNote)
+      ? row.procurementCancelNote
+      : null;
+  const hideLineProcurementCancelNote = Boolean(sharedProcurementCancelNote);
 
   const lineItemProps = (lineId: string) => ({
     showProgress,
@@ -621,6 +629,7 @@ export function MyOrderShipmentCard({
     compact: true,
     hideClientLabel: hideLineClient,
     hideRequestNote: hideLineRequestNote,
+    hideProcurementCancelNote: hideLineProcurementCancelNote,
     canAcknowledge: showGroupPickup,
     pending,
     acknowledgeLineLabel: myOrderPickupAckLabel(1, ackMode, { compact: compactPickup }),
@@ -794,6 +803,13 @@ export function MyOrderShipmentCard({
             {!expanded && sharedRequestNote ? (
               <MyOrderRequestNote
                 note={sharedRequestNote}
+                searchQuery={searchQuery}
+                className="mt-0.5 line-clamp-2 max-w-full"
+              />
+            ) : null}
+            {!expanded && sharedProcurementCancelNote ? (
+              <MyOrderProcurementCancelNote
+                note={sharedProcurementCancelNote}
                 searchQuery={searchQuery}
                 className="mt-0.5 line-clamp-2 max-w-full"
               />

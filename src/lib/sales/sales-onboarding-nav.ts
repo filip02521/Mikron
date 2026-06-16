@@ -15,6 +15,20 @@ export function pathnameMatchesOnboardingStep(
   return false;
 }
 
+/** Blokuje sync pathname→krok, dopóki router nie dojedzie do celu nawigacji touru. */
+export function shouldBlockTourPathSync(
+  steps: SalesOnboardingStep[],
+  pendingStepIndex: number | null,
+  pathname: string
+): boolean {
+  if (pendingStepIndex === null) return false;
+  const pendingStep = steps[pendingStepIndex];
+  if (!pendingStep || pendingStep.id === "finish") return false;
+  const target = stepPathnameForStep(pendingStep);
+  if (!target) return false;
+  return !pathnameMatchesOnboardingStep(pathname, pendingStep);
+}
+
 /** Indeks kroku touru pasujący do pathname (null = brak dopasowania). */
 export function resolveTourStepIndexFromPathname(
   steps: SalesOnboardingStep[],

@@ -7,6 +7,9 @@ import type {
 import { recalcSupplierSchedule } from "@/lib/services/orders";
 import { buildScheduleFeedback } from "@/lib/orders/daily-panel-action-feedback";
 import { glowneScheduleSupplierIds, glowneSchedulableSupplierIds } from "@/lib/orders/glowne-supplier-placement";
+import {
+  isProcurementCancelNoteColumnMissing,
+} from "@/lib/orders/procurement-cancel-note";
 
 export { buildScheduleFeedback } from "@/lib/orders/daily-panel-action-feedback";
 
@@ -39,23 +42,45 @@ export async function captureIndividualOrdersSnapshot(
 ): Promise<IndividualOrderSnapshot[]> {
   if (!orderIds.length) return [];
   const supabase = createAdminClient();
-  const { data, error } = await supabase
-    .from("individual_orders")
-    .select(
-      "id, status, order_type, ordered_at, placement_group_id, procurement_seen_at, informacja_queue_via_daily_panel"
-    )
-    .in("id", orderIds);
+  const fullSelect =
+    "id, status, order_type, ordered_at, placement_group_id, procurement_seen_at, informacja_queue_via_daily_panel, informacja_stock_out_reorder, procurement_cancel_note";
+  const legacySelect =
+    "id, status, order_type, ordered_at, placement_group_id, procurement_seen_at, informacja_queue_via_daily_panel, informacja_stock_out_reorder";
 
-  if (error) throw new Error(error.message);
+  let data: Record<string, unknown>[] | null = null;
+  let usedLegacySelect = false;
+
+  const fullRes = await supabase.from("individual_orders").select(fullSelect).in("id", orderIds);
+  if (fullRes.error) {
+    if (isProcurementCancelNoteColumnMissing(fullRes.error.message)) {
+      const legacyRes = await supabase
+        .from("individual_orders")
+        .select(legacySelect)
+        .in("id", orderIds);
+      if (legacyRes.error) throw new Error(legacyRes.error.message);
+      data = legacyRes.data as Record<string, unknown>[] | null;
+      usedLegacySelect = true;
+    } else {
+      throw new Error(fullRes.error.message);
+    }
+  } else {
+    data = fullRes.data as Record<string, unknown>[] | null;
+  }
 
   return (data ?? []).map((row) => ({
-    orderId: row.id,
-    status: row.status,
-    orderType: row.order_type,
-    orderedAt: row.ordered_at,
-    placementGroupId: row.placement_group_id,
-    procurementSeenAt: row.procurement_seen_at ?? null,
-    informacjaQueueViaDailyPanel: row.informacja_queue_via_daily_panel ?? null,
+    orderId: row.id as string,
+    status: row.status as string,
+    orderType: (row.order_type as string | null) ?? null,
+    orderedAt: (row.ordered_at as string | null) ?? null,
+    placementGroupId: (row.placement_group_id as string | null) ?? null,
+    procurementSeenAt: (row.procurement_seen_at as string | null) ?? null,
+    informacjaQueueViaDailyPanel:
+      (row.informacja_queue_via_daily_panel as boolean | null) ?? null,
+    informacjaStockOutReorder:
+      (row.informacja_stock_out_reorder as boolean | null) ?? null,
+    procurementCancelNote: usedLegacySelect
+      ? null
+      : ((row.procurement_cancel_note as string | null) ?? null),
   }));
 }
 
@@ -79,19 +104,34 @@ async function restoreIndividualOrderSnapshot(
   snapshot: IndividualOrderSnapshot
 ): Promise<void> {
   const supabase = createAdminClient();
-  const { error } = await supabase
+  const baseUpdate = {
+    status: snapshot.status,
+    order_type: snapshot.orderType,
+    ordered_at: snapshot.orderedAt,
+    placement_group_id: snapshot.placementGroupId,
+    procurement_seen_at: snapshot.procurementSeenAt,
+    ...(snapshot.informacjaQueueViaDailyPanel !== null
+      ? { informacja_queue_via_daily_panel: snapshot.informacjaQueueViaDailyPanel }
+      : {}),
+    ...(snapshot.informacjaStockOutReorder !== null
+      ? { informacja_stock_out_reorder: snapshot.informacjaStockOutReorder }
+      : {}),
+  };
+
+  let { error } = await supabase
     .from("individual_orders")
     .update({
-      status: snapshot.status,
-      order_type: snapshot.orderType,
-      ordered_at: snapshot.orderedAt,
-      placement_group_id: snapshot.placementGroupId,
-      procurement_seen_at: snapshot.procurementSeenAt,
-      ...(snapshot.informacjaQueueViaDailyPanel !== null
-        ? { informacja_queue_via_daily_panel: snapshot.informacjaQueueViaDailyPanel }
-        : {}),
+      ...baseUpdate,
+      procurement_cancel_note: snapshot.procurementCancelNote,
     })
     .eq("id", snapshot.orderId);
+
+  if (error && isProcurementCancelNoteColumnMissing(error.message)) {
+    ({ error } = await supabase
+      .from("individual_orders")
+      .update(baseUpdate)
+      .eq("id", snapshot.orderId));
+  }
 
   if (error) throw new Error(error.message);
 }

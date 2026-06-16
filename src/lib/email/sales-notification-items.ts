@@ -1,14 +1,22 @@
 import type { IndividualOrder } from "@/types/database";
 import { parseOrderQuantity } from "@/lib/orders/individual";
 import { normalizeSalesClientName } from "@/lib/orders/sales-client-label";
+import { normalizeProcurementCancelNote } from "@/lib/orders/procurement-cancel-note";
 import type {
   SalesDeliveryNotificationItem,
   SalesInformacjaNotificationItem,
+  SalesProcurementCancelNotificationItem,
 } from "@/lib/email/sales-notification-types";
 
 type OrderForEmail = Pick<
   IndividualOrder,
-  "products" | "symbol" | "sales_client_name" | "quantity" | "delivered_quantity" | "status"
+  | "products"
+  | "symbol"
+  | "sales_client_name"
+  | "quantity"
+  | "delivered_quantity"
+  | "status"
+  | "procurement_cancel_note"
 > & {
   supplier?: { name?: string } | null;
 };
@@ -78,5 +86,19 @@ export function buildInformacjaNotificationItem(
     products: productsLabel(order.products),
     symbol: symbolOrNull(order.symbol),
     clientName: clientOrNull(order),
+  };
+}
+
+/** Anulowanie prośby przez dział dostaw — z opcjonalną wiadomością. */
+export function buildProcurementCancelNotificationItem(
+  order: OrderForEmail
+): SalesProcurementCancelNotificationItem {
+  return {
+    kind: "procurement_cancel",
+    supplierName: supplierName(order),
+    products: productsLabel(order.products),
+    symbol: symbolOrNull(order.symbol),
+    clientName: clientOrNull(order),
+    procurementCancelNote: normalizeProcurementCancelNote(order.procurement_cancel_note),
   };
 }

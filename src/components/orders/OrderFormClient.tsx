@@ -71,9 +71,11 @@ import { buildMojeClientLink } from "@/lib/sales/notepad-follow-up";
 import {
   buildProsbaPrefillFromUrlParams,
   clearZkProsbaPrefill,
+  parseProsbaZkLineKeysParam,
   readZkProsbaPrefill,
   type ZkProsbaPrefill,
 } from "@/lib/orders/zk-watch-prosba-prefill";
+import { clearUnseenNewZkLineKeys, removeUnseenNewZkLineKeys } from "@/lib/client/zk-watch-new-lines-snapshot";
 
 function groupCompletenessAssessment(
   group: Entry[],
@@ -237,6 +239,9 @@ export function OrderFormClient({
     zkNumber: string;
     clientLabel: string;
     clientKhId: number | null;
+    mode?: "full" | "supplement";
+    supplementLineCount?: number;
+    lineKeys?: string[];
   } | null>(null);
   const [validationAttempted, setValidationAttempted] = useState(false);
   const submitRef = useRef<() => void>(() => {});
@@ -280,6 +285,9 @@ export function OrderFormClient({
           zkNumber: prefill.zkNumber,
           clientLabel: clientName,
           clientKhId,
+          mode: prefill.mode,
+          supplementLineCount: prefill.supplementLineCount,
+          lineKeys: prefill.lineKeys,
         });
       }
       setGroupRequestNotes([""]);
@@ -312,15 +320,24 @@ export function OrderFormClient({
 
       const zkWatch = searchParams.get("zkWatch")?.trim();
       const zk = searchParams.get("zk")?.trim();
+      const zkLineKeys = parseProsbaZkLineKeysParam(searchParams.get("zkLines"));
 
       try {
         if (zkWatch) {
           const fromWatch = await actionGetZkProsbaPrefillByWatchId(
             zkWatch,
-            delegateId || undefined
+            delegateId || undefined,
+            zkLineKeys
           );
           if (!cancelled && fromWatch?.lines.length) {
             applyZkPrefill(fromWatch);
+            return;
+          }
+          if (!cancelled && zkLineKeys?.length) {
+            setFormNotice({
+              text: "Nie udało się wczytać wybranych pozycji ZK — uzupełnij prośbę ręcznie lub wróć do notatnika.",
+              tone: "warning",
+            });
             return;
           }
         }
@@ -349,7 +366,7 @@ export function OrderFormClient({
         zk: searchParams.get("zk"),
         zkWatch: searchParams.get("zkWatch"),
       });
-      if (!cancelled && fromUrl?.lines.length) {
+      if (!cancelled && fromUrl?.lines.length && !zkLineKeys?.length) {
         applyZkPrefill(fromUrl);
       }
     }
@@ -641,6 +658,13 @@ export function OrderFormClient({
                 ? "Prośby handlowca"
                 : "Moje zamówienia",
         });
+        if (zkCtx?.zkWatchId && lockedId) {
+          if (zkCtx.mode === "supplement" && zkCtx.lineKeys?.length) {
+            removeUnseenNewZkLineKeys(lockedId, zkCtx.zkWatchId, zkCtx.lineKeys);
+          } else {
+            clearUnseenNewZkLineKeys(lockedId, zkCtx.zkWatchId);
+          }
+        }
         setFormNotice(null);
         setValidationAttempted(false);
         setInformacjaPath(DEFAULT_INFORMACJA_FLOW_PATH);
@@ -852,6 +876,8 @@ export function OrderFormClient({
               salesPersonId={lockedId}
               previewDla={searchParams.get("dla")}
               clientLabel={zkProsbaLinkContext.clientLabel}
+              mode={zkProsbaLinkContext.mode}
+              supplementLineCount={zkProsbaLinkContext.supplementLineCount}
             />
           ) : null}
 

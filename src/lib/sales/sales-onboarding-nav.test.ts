@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   resolveTourStepIndexFromPathname,
+  shouldBlockTourPathSync,
   stepPathnameForStep,
 } from "@/lib/sales/sales-onboarding-nav";
 import { getSalesOnboardingSteps } from "@/lib/sales/sales-onboarding-steps";
@@ -39,5 +40,16 @@ describe("sales onboarding nav", () => {
 
   it("does not resolve zespol for handlowiec steps", () => {
     expect(resolveTourStepIndexFromPathname(handlowiecSteps, "/zespol")).toBeNull();
+  });
+
+  it("blocks path sync while pending navigation has not arrived", () => {
+    const planIndex = handlowiecSteps.findIndex((s) => s.id === "plan");
+    expect(shouldBlockTourPathSync(handlowiecSteps, planIndex, "/prosba")).toBe(true);
+    expect(shouldBlockTourPathSync(handlowiecSteps, planIndex, "/plan")).toBe(false);
+  });
+
+  it("does not block path sync for finish step", () => {
+    const finishIndex = handlowiecSteps.findIndex((s) => s.id === "finish");
+    expect(shouldBlockTourPathSync(handlowiecSteps, finishIndex, "/zk")).toBe(false);
   });
 });

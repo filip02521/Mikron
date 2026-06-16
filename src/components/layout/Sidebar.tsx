@@ -20,6 +20,7 @@ import {
   sidebarNavBadgeClassForTone,
   sidebarNavToneActiveClass,
   sidebarNavToneHighlightIdleClass,
+  navLinkDescriptionHoverClass,
   controlFocusClass,
   panelTypography,
   buttonPrimaryClass,
@@ -54,15 +55,17 @@ function NavLink({
   const showDescription = Boolean(item.description) && !compact;
 
   const className = cn(
-    "group block rounded-md transition-colors",
+    "group block rounded-md",
     compact ? sidebarNavCompactPaddingClass : "px-2.5 py-2",
     controlFocusClass,
     active
       ? sidebarNavToneActiveClass(item.tone)
-      : cn(
-          navLinkIdleClass,
-          item.tier === "primary" && sidebarNavToneHighlightIdleClass(item.tone)
-        ),
+      : item.tier === "primary"
+        ? cn(
+            "border border-transparent text-slate-700",
+            sidebarNavToneHighlightIdleClass(item.tone) ?? navLinkIdleClass
+          )
+        : navLinkIdleClass,
     locked &&
       !active &&
       "cursor-not-allowed opacity-45 hover:border-transparent hover:bg-transparent hover:text-inherit"
@@ -73,11 +76,11 @@ function NavLink({
       <span className={cn("flex min-w-0 flex-1 items-start", compact ? "gap-2" : "gap-2.5")}>
         <span
           className={cn(
-            "mt-0.5 flex shrink-0 items-center justify-center rounded-md transition-colors",
+            "mt-0.5 flex shrink-0 items-center justify-center rounded-md",
             compact ? "h-7 w-7" : "h-8 w-8",
             active
               ? navIconTileActiveClassForTone(item.tone)
-              : cn(navIconTileClassForTone(item.tone), "group-hover:opacity-90")
+              : navIconTileClassForTone(item.tone)
           )}
         >
           <NavIcon navKey={item.icon} size={compact ? 16 : 17} />
@@ -96,7 +99,7 @@ function NavLink({
               className={cn(
                 panelTypography.caption,
                 "mt-0.5 block",
-                active ? "text-slate-600" : "text-slate-400 group-hover:text-slate-500"
+                active ? "text-slate-600" : cn("text-slate-400", navLinkDescriptionHoverClass)
               )}
             >
               {item.description}

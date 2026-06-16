@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   buildDeliveryNotificationItem,
   buildInformacjaNotificationItem,
+  buildProcurementCancelNotificationItem,
 } from "@/lib/email/sales-notification-items";
 
 describe("sales notification items", () => {
@@ -63,5 +64,22 @@ describe("sales notification items", () => {
       status: "Zrealizowane",
     });
     expect(item.products).toBe("—");
+  });
+
+  it("buildProcurementCancelNotificationItem", () => {
+    const item = buildProcurementCancelNotificationItem({
+      supplier: { name: "Dostawca" },
+      products: "Wkręt",
+      symbol: "SYM",
+      sales_client_name: "Jan",
+      quantity: "5",
+      delivered_quantity: "-",
+      status: "Anulowane",
+      procurement_cancel_note: "  brak towaru  ",
+    });
+    expect(item.kind).toBe("procurement_cancel");
+    expect(item.symbol).toBe("SYM");
+    expect(item.procurementCancelNote).toBe("brak towaru");
+    expect(item.clientName).toBe("Jan");
   });
 });

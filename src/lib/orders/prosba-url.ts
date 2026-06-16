@@ -8,6 +8,8 @@ export function prosbaHref(options?: {
   zk?: string;
   klient?: string;
   clientKhId?: number | null;
+  /** Klucze linii ZK (uzupełniająca prośba) — przetrwa otwarcie w nowej karcie. */
+  zkLineKeys?: string[];
 }): string {
   const params = new URLSearchParams();
   if (options?.salesPersonId) params.set("dla", options.salesPersonId);
@@ -16,6 +18,9 @@ export function prosbaHref(options?: {
   if (options?.zkWatchId?.trim()) params.set("zkWatch", options.zkWatchId.trim());
   if (options?.zk?.trim()) params.set("zk", options.zk.trim());
   if (options?.klient?.trim()) params.set("klient", options.klient.trim().slice(0, 80));
+  if (options?.zkLineKeys?.length) {
+    params.set("zkLines", options.zkLineKeys.join(","));
+  }
   const kh = options?.clientKhId;
   if (kh != null && Number.isFinite(kh) && kh > 0) {
     params.set("kh", String(Math.trunc(kh)));

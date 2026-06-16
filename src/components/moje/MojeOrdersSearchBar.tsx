@@ -71,7 +71,7 @@ export function MojeOrdersSearchBar({
                 (e.target as HTMLInputElement).blur();
               }
             }}
-            placeholder="Szukaj: produkt, dostawca, klient, symbol…"
+            placeholder="Szukaj: produkt, dostawca, klient, symbol, PLU…"
             className="pl-10"
             autoComplete="off"
             enterKeyHint="search"
@@ -116,7 +116,7 @@ export function MojeOrdersSearchBar({
         </p>
       ) : (
         <p className="mt-2 text-xs text-slate-500">
-          Szukaj po produkcie, dostawcy, kliencie lub symbolu.
+          Szukaj po produkcie, dostawcy, kliencie, symbolu lub kodzie PLU.
           <span className="hidden sm:inline">
             {" "}
             Skrót:{" "}

@@ -38,7 +38,9 @@ export function countDeliveryQueueCancelledRows(
 ): number {
   return normalizeIndividualOrders(rows as IndividualOrder[]).filter(
     (o) =>
-      isSalesCancelledForQueue(o) && Boolean(o.procurement_cancel_disposition)
+      !o.warehouse_cancel_fulfilled_at &&
+      isSalesCancelledForQueue(o) &&
+      Boolean(o.procurement_cancel_disposition)
   ).length;
 }
 

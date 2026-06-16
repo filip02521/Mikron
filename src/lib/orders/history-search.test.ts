@@ -35,6 +35,15 @@ describe("matchesIndividualSearch", () => {
   it("nie dopasowuje nieistniejącego towaru", () => {
     expect(matchesIndividualSearch(base, "xyz brak")).toBe(false);
   });
+
+  it("dopasowuje po wiadomości od działu dostaw", () => {
+    expect(
+      matchesIndividualSearch(
+        { ...base, procurement_cancel_note: "brak w ofercie dostawcy" },
+        "ofercie"
+      )
+    ).toBe(true);
+  });
 });
 
 describe("matchesNormalSearch", () => {

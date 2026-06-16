@@ -66,6 +66,7 @@ import {
   PROCUREMENT_PROSBA_KEYBOARD_HINTS,
 } from "@/lib/orders/procurement-prosba-keyboard";
 import { panelPageShellClass, panelSectionInsetClass, panelTypography } from "@/lib/ui/ontime-theme";
+import { ProcurementCancelDialog } from "@/components/procurement/ProcurementCancelDialog";
 import { cn } from "@/lib/cn";
 
 const VERIFICATION_INTRO =
@@ -94,6 +95,7 @@ export function VerificationWorkspace({
   );
   const [activeId, setActiveId] = useState<string | null>(orders[0]?.id ?? null);
   const [validationAttempted, setValidationAttempted] = useState(false);
+  const [cancelTargetId, setCancelTargetId] = useState<string | null>(null);
   const resolvedActiveId = useMemo(() => {
     if (!orders.length) return null;
     if (orders.some((order) => order.id === activeId)) return activeId;
@@ -105,6 +107,10 @@ export function VerificationWorkspace({
   }, [orders.length, onQueueEmpty]);
 
   const active = orders.find((order) => order.id === resolvedActiveId) ?? null;
+  const cancelTargetOrder = useMemo(
+    () => orders.find((order) => order.id === cancelTargetId) ?? null,
+    [orders, cancelTargetId]
+  );
   const activeRequestNote = active
     ? normalizeSalesRequestNote(active.sales_request_note)
     : null;
@@ -338,12 +344,21 @@ export function VerificationWorkspace({
       setToast({ text: ADMIN_PANEL_PREVIEW_MUTATION_BLOCKED, tone: "error" });
       return;
     }
-    if (!confirm("Anulować tę prośbę?")) return;
+    setCancelTargetId(id);
+  };
+
+  const confirmCancel = (note: string | undefined) => {
+    if (!cancelTargetId) return;
+    const id = cancelTargetId;
     setPendingMessage("Anulowanie prośby…");
     start(async () => {
       try {
-        await actionCancelVerification(id);
-        setToast({ text: "Prośba anulowana.", tone: "success" });
+        const result = await actionCancelVerification(id, note);
+        const emailSuffix = result.emailError ? ` (${result.emailError})` : "";
+        setToast({
+          text: `Prośba anulowana.${emailSuffix}`,
+          tone: result.emailError ? "error" : "success",
+        });
         router.refresh();
       } catch (e) {
         setToast({
@@ -352,6 +367,7 @@ export function VerificationWorkspace({
         });
       } finally {
         setPendingMessage(null);
+        setCancelTargetId(null);
       }
     });
   };
@@ -656,6 +672,16 @@ export function VerificationWorkspace({
       {toast ? (
         <Toast message={toast.text} tone={toast.tone} onDismiss={() => setToast(null)} />
       ) : null}
+      <ProcurementCancelDialog
+        open={cancelTargetId !== null}
+        title="Anulować prośbę?"
+        headline={cancelTargetOrder?.products}
+        message="Prośba zostanie oznaczona jako anulowana i zniknie z kolejki weryfikacji."
+        confirmLabel="Anuluj prośbę"
+        pending={pending && cancelTargetId !== null}
+        onCancel={() => setCancelTargetId(null)}
+        onConfirm={confirmCancel}
+      />
 
       {inModal ? (
         <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-md border border-amber-100 bg-white">

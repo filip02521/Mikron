@@ -6,7 +6,6 @@ import {
   actionDeleteDeliveryReceipt,
   actionFetchCarrierHintForSupplier,
   actionFetchDeliveryJournalForDate,
-  actionFetchTodayDeliveryJournal,
   actionUpdateDeliveryReceipt,
 } from "@/app/actions/warehouse-delivery";
 import {
@@ -360,7 +359,7 @@ export function DeliveryJournalSection({
   const [viewDate, setViewDate] = useState(initialJournal.date);
   const [subView, setSubView] = useState<JournalSubView>("entries");
   const [formOpen, setFormOpen] = useState(true);
-  const canBrowseDates = !isMagazynRole;
+  const canEditTodayEntries = isMagazynRole;
   const isViewingToday = journal.date === todayDateKey;
   const [form, setForm] = useState<FormState>(EMPTY_FORM);
   const [carrierHintLabel, setCarrierHintLabel] = useState<string | null>(null);
@@ -375,9 +374,7 @@ export function DeliveryJournalSection({
   const loadJournal = useCallback((dateKey: string) => {
     start(async () => {
       try {
-        const next = canBrowseDates
-          ? await actionFetchDeliveryJournalForDate(dateKey)
-          : await actionFetchTodayDeliveryJournal();
+        const next = await actionFetchDeliveryJournalForDate(dateKey);
         setJournal(next);
         setViewDate(next.date);
         setEntrySearch("");
@@ -389,11 +386,11 @@ export function DeliveryJournalSection({
         });
       }
     });
-  }, [canBrowseDates]);
+  }, []);
 
   const refresh = useCallback(() => {
-    loadJournal(canBrowseDates ? viewDate : todayDateKey);
-  }, [canBrowseDates, viewDate, todayDateKey, loadJournal]);
+    loadJournal(viewDate);
+  }, [viewDate, loadJournal]);
 
   useEffect(() => {
     if (!form.supplierId) return;
@@ -517,7 +514,7 @@ export function DeliveryJournalSection({
     if (formOpen && isViewingToday) focusForm();
   }, [formOpen, isViewingToday, focusForm]);
 
-  const showEntries = !isMagazynRole || subView === "entries";
+  const showEntries = subView === "entries";
   const goPrevDay = () => loadJournal(shiftJournalDateKey(viewDate, -1));
   const goNextDay = () => {
     if (isViewingToday) return;
@@ -537,7 +534,7 @@ export function DeliveryJournalSection({
                 {isViewingToday ? (
                   <>
                     Dziś ({formatTodayLabel(journal.date)}) — {summaryLine}.{" "}
-                    {isMagazynRole ? (
+                    {canEditTodayEntries ? (
                       <span className="text-slate-500">
                         Skrót:{" "}
                         <kbd className="rounded border border-slate-200 bg-white px-1 font-mono text-[10px]">
@@ -551,7 +548,7 @@ export function DeliveryJournalSection({
                       </span>
                     ) : (
                       <span className="text-slate-500">
-                        Możesz przełączyć datę, aby zobaczyć archiwum (tylko podgląd).
+                        Podgląd dzisiejszych wpisów — nowe dostawy dodaje magazyn.
                       </span>
                     )}
                   </>
@@ -568,7 +565,7 @@ export function DeliveryJournalSection({
               </p>
             )}
           </div>
-          {showEntries && isViewingToday && isMagazynRole ? (
+          {showEntries && isViewingToday && canEditTodayEntries ? (
             <Button
               variant="primary"
               size="sm"
@@ -578,7 +575,7 @@ export function DeliveryJournalSection({
               {formOpen ? "Zwiń formularz" : "+ Dostawa"}
             </Button>
           ) : null}
-          {showEntries && canBrowseDates && !isViewingToday ? (
+          {showEntries && !isViewingToday ? (
             <Button
               variant="primary"
               size="sm"
@@ -590,25 +587,27 @@ export function DeliveryJournalSection({
           ) : null}
         </div>
 
-        {isMagazynRole ? (
-          <div className="mt-3">
-            <SegmentedControl<JournalSubView>
-              ariaLabel="Widok dziennika dostaw"
-              value={subView}
-              onChange={setSubView}
-              touchFriendly
-              className="w-full sm:w-auto"
-              options={[
-                { value: "entries", label: "Wpisy na dziś", title: "Szybkie wpisywanie dostaw" },
-                {
-                  value: "insights",
-                  label: "Archiwum",
-                  title: "Wyszukiwanie paczek i podsumowania",
-                },
-              ]}
-            />
-          </div>
-        ) : null}
+        <div className="mt-3">
+          <SegmentedControl<JournalSubView>
+            ariaLabel="Widok dziennika dostaw"
+            value={subView}
+            onChange={setSubView}
+            touchFriendly
+            className="w-full sm:w-auto"
+            options={[
+              {
+                value: "entries",
+                label: "Dzień",
+                title: "Wpisy z wybranej daty",
+              },
+              {
+                value: "insights",
+                label: "Archiwum",
+                title: "Wyszukiwanie paczek i podsumowania",
+              },
+            ]}
+          />
+        </div>
       </div>
 
       {!showEntries ? (
@@ -620,54 +619,52 @@ export function DeliveryJournalSection({
         />
       ) : (
         <div className="px-4 py-5 sm:px-6">
-      {canBrowseDates ? (
-        <div className="mb-4 flex flex-wrap items-end gap-3 rounded-md border border-slate-200 bg-slate-50/80 p-3">
-          <Field label="Data" className="min-w-[12.5rem] flex-1 sm:max-w-[17rem]">
-            <div className="flex gap-1.5">
-              <JournalDateStepButton
-                disabled={pending}
-                onClick={goPrevDay}
-                title="Poprzedni dzień"
-                aria-label="Poprzedni dzień"
-              >
-                <IconChevronLeft size={18} strokeWidth={2.25} aria-hidden />
-              </JournalDateStepButton>
-              <Input
-                type="date"
-                className="min-w-0 flex-1"
-                value={viewDate}
-                max={todayDateKey}
-                disabled={pending}
-                onChange={(e) => {
-                  const v = e.target.value;
-                  if (v) loadJournal(v);
-                }}
-              />
-              <JournalDateStepButton
-                disabled={pending || isViewingToday}
-                onClick={goNextDay}
-                title="Następny dzień"
-                aria-label="Następny dzień"
-              >
-                <IconChevronRight size={18} strokeWidth={2.25} aria-hidden />
-              </JournalDateStepButton>
-            </div>
-          </Field>
-          {!isViewingToday ? (
-            <Button
-              variant="secondary"
-              size="md"
-              className="min-h-11 shrink-0"
+      <div className="mb-4 flex flex-wrap items-end gap-3 rounded-md border border-slate-200 bg-slate-50/80 p-3">
+        <Field label="Data" className="min-w-[12.5rem] flex-1 sm:max-w-[17rem]">
+          <div className="flex gap-1.5">
+            <JournalDateStepButton
               disabled={pending}
-              onClick={() => loadJournal(todayDateKey)}
+              onClick={goPrevDay}
+              title="Poprzedni dzień"
+              aria-label="Poprzedni dzień"
             >
-              Wróć na dziś
-            </Button>
-          ) : null}
-        </div>
-      ) : null}
+              <IconChevronLeft size={18} strokeWidth={2.25} aria-hidden />
+            </JournalDateStepButton>
+            <Input
+              type="date"
+              className="min-w-0 flex-1"
+              value={viewDate}
+              max={todayDateKey}
+              disabled={pending}
+              onChange={(e) => {
+                const v = e.target.value;
+                if (v) loadJournal(v);
+              }}
+            />
+            <JournalDateStepButton
+              disabled={pending || isViewingToday}
+              onClick={goNextDay}
+              title="Następny dzień"
+              aria-label="Następny dzień"
+            >
+              <IconChevronRight size={18} strokeWidth={2.25} aria-hidden />
+            </JournalDateStepButton>
+          </div>
+        </Field>
+        {!isViewingToday ? (
+          <Button
+            variant="secondary"
+            size="md"
+            className="min-h-11 shrink-0"
+            disabled={pending}
+            onClick={() => loadJournal(todayDateKey)}
+          >
+            Wróć na dziś
+          </Button>
+        ) : null}
+      </div>
 
-      {formOpen && isViewingToday && isMagazynRole ? (
+      {formOpen && isViewingToday && canEditTodayEntries ? (
         <div
           ref={formPanelRef}
           className={cn(
@@ -717,7 +714,7 @@ export function DeliveryJournalSection({
               {filteredReceipts.length} z {journal.receipts.length}{" "}
               {journal.receipts.length === 1 ? "wpisu" : "wpisów"}
             </p>
-          ) : isMagazynRole ? (
+          ) : (
             <p className={cn(panelTypography.caption, "px-0.5")}>
               Szukasz wcześniej?{" "}
               <button
@@ -728,7 +725,7 @@ export function DeliveryJournalSection({
                 Archiwum
               </button>
             </p>
-          ) : null}
+          )}
         </div>
       ) : null}
 
@@ -753,29 +750,23 @@ export function DeliveryJournalSection({
         <div className="mt-4">
           <EmptyState
             title="Brak wyników na ten dzień"
-            description={
-              isMagazynRole
-                ? "Spróbuj innej frazy albo przeszukaj wcześniejsze dni w Archiwum."
-                : "Spróbuj innej frazy albo wybierz inną datę."
-            }
+            description="Spróbuj innej frazy albo przeszukaj wcześniejsze dni w Archiwum."
             action={
-              isMagazynRole ? (
-                <Button variant="secondary" size="sm" onClick={() => goToArchive(entrySearch)}>
-                  Szukaj w Archiwum
-                </Button>
-              ) : undefined
+              <Button variant="secondary" size="sm" onClick={() => goToArchive(entrySearch)}>
+                Szukaj w Archiwum
+              </Button>
             }
           />
         </div>
       ) : null}
 
-      {!journal.receipts.length && (!formOpen || !isViewingToday || !isMagazynRole) ? (
+      {!journal.receipts.length && (!formOpen || !isViewingToday || !canEditTodayEntries) ? (
         <div className="mt-4">
           <EmptyState
             title={isViewingToday ? "Brak wpisów na dziś" : "Brak wpisów w tym dniu"}
             description={
               isViewingToday
-                ? "Magazyn dodaje dostawy w zakładce Wpisy na dziś."
+                ? "Magazyn dodaje dostawy w zakładce Dzień."
                 : "Wybierz inną datę lub wróć na dziś."
             }
           />

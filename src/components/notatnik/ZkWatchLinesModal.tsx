@@ -16,9 +16,25 @@ import {
   formatZkLinesProgress,
   summarizeZkWatchLines,
 } from "@/lib/sales/zk-watch-lines";
+import { formatZkProsbaCoverageSummary } from "@/lib/sales/zk-watch-coverage-summary";
+import { formatZkWatchLineStatusSummary } from "@/lib/sales/zk-watch-line-ui-state";
+import type { ZkWatchLineCoverage } from "@/lib/sales/zk-watch-order-link";
 import type { SalesZkWatch } from "@/types/database";
 import { ZkWatchLinesMetaSection } from "./ZkWatchLinesMetaSection";
 import { ZkWatchLinesPanel } from "./ZkWatchLinesPanel";
+
+function polishCountLabel(
+  n: number,
+  forms: [string, string, string]
+): string {
+  if (n === 1) return `${n} ${forms[0]}`;
+  const mod10 = n % 10;
+  const mod100 = n % 100;
+  if (mod10 >= 2 && mod10 <= 4 && (mod100 < 12 || mod100 > 14)) {
+    return `${n} ${forms[1]}`;
+  }
+  return `${n} ${forms[2]}`;
+}
 
 export function ZkWatchLinesModal({
   watch,
@@ -28,6 +44,11 @@ export function ZkWatchLinesModal({
   archived,
   focusNote = false,
   matchedDeliveredLineKeys,
+  newLineKeys,
+  lineCoverageByKey,
+  uncoveredLineKeys,
+  openProsbaLineKeys,
+  inStockLineKeys,
   onClose,
   onSaved,
 }: {
@@ -38,6 +59,11 @@ export function ZkWatchLinesModal({
   archived?: boolean;
   focusNote?: boolean;
   matchedDeliveredLineKeys?: string[];
+  newLineKeys?: string[];
+  lineCoverageByKey?: Record<string, ZkWatchLineCoverage>;
+  uncoveredLineKeys?: string[];
+  openProsbaLineKeys?: string[];
+  inStockLineKeys?: string[];
   onClose: () => void;
   onSaved?: (watch: SalesZkWatch) => void;
 }) {
@@ -55,6 +81,19 @@ export function ZkWatchLinesModal({
   const followUpLabel = formatFollowUpLabel(watch.follow_up_at);
   const displayNumber = formatZkWatchDisplayNumber(watch.zk_number);
   const progressLabel = formatZkLinesProgress(lineViews);
+  const newLineCount = newLineKeys?.length ?? 0;
+  const deliveredLineCount = lineCoverageByKey
+    ? Object.values(lineCoverageByKey).filter((coverage) => coverage === "delivered").length
+    : 0;
+  const prosbaCoverageSummary = lineCoverageByKey
+    ? formatZkProsbaCoverageSummary({ lineCoverageByKey })
+    : null;
+  const lineStatusSummary = formatZkWatchLineStatusSummary({
+    uncoveredLineKeys: uncoveredLineKeys ?? [],
+    openProsbaLineKeys: openProsbaLineKeys ?? [],
+    newLineKeys: newLineKeys ?? [],
+    deliveredCount: deliveredLineCount,
+  });
 
   return (
     <ModalShell
@@ -111,6 +150,15 @@ export function ZkWatchLinesModal({
                 />
               </div>
             ) : null}
+            {lineStatusSummary ? (
+              <p className={cn("mt-2", salesTypography.rowMeta, "text-slate-600")}>
+                {lineStatusSummary}
+              </p>
+            ) : prosbaCoverageSummary ? (
+              <p className={cn("mt-2", salesTypography.rowMeta, "text-slate-600")}>
+                {prosbaCoverageSummary}
+              </p>
+            ) : null}
             {followUpLabel && !archived ? (
               <p
                 className={cn(
@@ -125,6 +173,18 @@ export function ZkWatchLinesModal({
           </div>
 
           <div className="min-h-0 flex-1 space-y-5 overflow-y-auto px-5 py-4 sm:px-6 sm:py-5">
+            {newLineCount > 0 ? (
+              <div className="rounded-lg border border-amber-200/90 bg-amber-50/80 px-3 py-2.5 text-sm text-amber-950">
+                <p className="font-medium">
+                  {polishCountLabel(newLineCount, ["nowa pozycja", "nowe pozycje", "nowych pozycji"])}{" "}
+                  od ostatniego odświeżenia
+                </p>
+                <p className="mt-1 text-xs leading-relaxed text-amber-900/85">
+                  Pozycje oznaczone „Nowa” nie są jeszcze w prośbie. Użyj przycisku na karcie ZK, aby
+                  wysłać uzupełniającą prośbę tylko dla brakujących pozycji.
+                </p>
+              </div>
+            ) : null}
             <ZkWatchLinesMetaSection
               key={`${watchKey}-meta`}
               watch={watch}
@@ -140,6 +200,9 @@ export function ZkWatchLinesModal({
               readOnly={readOnly}
               tourPreview={tourPreview}
               matchedDeliveredLineKeys={matchedDeliveredLineKeys}
+              newLineKeys={newLineKeys}
+              lineCoverageByKey={lineCoverageByKey}
+              inStockLineKeys={inStockLineKeys}
               onSaved={onSaved}
               showSummary={false}
             />

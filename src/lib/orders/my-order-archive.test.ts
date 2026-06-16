@@ -65,4 +65,23 @@ describe("presentArchivedMyOrders", () => {
     expect(rows[0].id).toBe("new");
     expect(oldAck).toBeTruthy();
   });
+
+  it("archiwum — anulowanie przez zakupy ma właściwy tytuł", () => {
+    const since = warsawDateKeyDaysAgo(ARCHIVE_RECENT_DAYS);
+    const rows = presentArchivedMyOrders(
+      [
+        {
+          ...order("c1", `${since}T12:00:00.000Z`, "Anulowane"),
+          sales_cancelled_at: null,
+          procurement_cancel_note: "brak w ofercie",
+        },
+      ],
+      [] as DeliveryStats[],
+      { acknowledgedSince: since }
+    );
+
+    expect(rows).toHaveLength(1);
+    expect(rows[0].statusTitle).toBe("Anulowane");
+    expect(rows[0].lines[0]?.procurementCancelNote).toBe("brak w ofercie");
+  });
 });

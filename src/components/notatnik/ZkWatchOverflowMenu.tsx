@@ -9,6 +9,7 @@ export function ZkWatchOverflowMenu({
   hasLines,
   linesLabel,
   onOpenLines,
+  onEditProsbaScope,
   onRefresh,
   refreshDisabled,
   mojeClientHref,
@@ -26,6 +27,7 @@ export function ZkWatchOverflowMenu({
   hasLines: boolean;
   linesLabel: string;
   onOpenLines: () => void;
+  onEditProsbaScope?: () => void;
   onRefresh?: () => void;
   refreshDisabled?: boolean;
   mojeClientHref: string;
@@ -71,6 +73,11 @@ export function ZkWatchOverflowMenu({
           {hasLines ? (
             <OverflowMenuItem disabled={disabled} onClick={onOpenLines}>
               Lista towaru ({linesLabel})
+            </OverflowMenuItem>
+          ) : null}
+          {onEditProsbaScope ? (
+            <OverflowMenuItem disabled={disabled} onClick={onEditProsbaScope}>
+              Zakres prośby
             </OverflowMenuItem>
           ) : null}
           {!readOnly && onRefresh ? (

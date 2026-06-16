@@ -20,6 +20,8 @@ import {
   parseZkWatchLineChecks,
   type ZkWatchLineCheckStored,
 } from "@/lib/sales/zk-watch-lines";
+import { mergeZkWatchLineChecksPreservingProsbaScope } from "@/lib/sales/zk-watch-prosba-scope";
+import { computeZkWatchRefreshDiff } from "@/lib/sales/zk-watch-refresh-diff";
 import {
   type ZkProsbaPrefill,
   zkProsbaPrefillFromWatch,
@@ -349,7 +351,9 @@ export async function actionRefreshZkWatchFromSubiekt(watchId: string) {
 
   if (error) throw new Error(error.message);
   revalidateNotepad();
-  return { watch: data as SalesZkWatch };
+  const refreshedWatch = data as SalesZkWatch;
+  const refreshDiff = computeZkWatchRefreshDiff(row as SalesZkWatch, refreshedWatch);
+  return { watch: refreshedWatch, refreshDiff };
 }
 
 export async function actionUpdateZkWatchNote(watchId: string, note: string) {
@@ -406,15 +410,15 @@ export async function actionUpdateZkWatchLineChecks(
 
   const views = buildZkWatchLineViews(row as SalesZkWatch);
   const validKeys = new Set(views.map((v) => v.key));
+  const previousChecks = parseZkWatchLineChecks((row as SalesZkWatch).line_checks);
   const arrivedByKey = new Map(
     checks
       .filter((c) => validKeys.has(c.key))
       .map((c) => [c.key, Boolean(c.arrived)])
   );
-  const sanitized = views.map((v) => ({
-    key: v.key,
-    arrived: arrivedByKey.get(v.key) ?? false,
-  }));
+  const sanitized = mergeZkWatchLineChecksPreservingProsbaScope(views, previousChecks, {
+    arrivedByKey,
+  });
 
   const { data, error } = await supabase
     .from("sales_zk_watches")
@@ -434,6 +438,60 @@ export async function actionUpdateZkWatchLineChecks(
     }
     throw new Error(error.message);
   }
+
+  revalidateNotepad();
+  return { watch: data as SalesZkWatch };
+}
+
+export async function actionUpdateZkWatchProsbaScope(
+  watchId: string,
+  lineKeysToOrder: string[]
+) {
+  const salesPersonId = await salesPersonIdForAction();
+  const supabase = createAdminClient();
+
+  const { data: row, error: fetchError } = await supabase
+    .from("sales_zk_watches")
+    .select("*")
+    .eq("id", watchId)
+    .maybeSingle();
+
+  if (fetchError) throw new Error(fetchError.message);
+  if (!row) throw new Error("Nie znaleziono wpisu.");
+  if (row.sales_person_id !== salesPersonId) {
+    throw new Error("Brak uprawnień do tego wpisu.");
+  }
+  if (row.closed_at || row.archived_at) {
+    throw new Error("Nie można zmieniać zakresu prośby dla zamkniętego ZK.");
+  }
+
+  const views = buildZkWatchLineViews(row as SalesZkWatch);
+  const productViews = views.filter((view) => view.key !== "summary");
+  if (!productViews.length) {
+    throw new Error("Brak pozycji towarowych w tym ZK.");
+  }
+
+  const validKeys = new Set(productViews.map((view) => view.key));
+  const selected = new Set(lineKeysToOrder.filter((key) => validKeys.has(key)));
+  const previousChecks = parseZkWatchLineChecks((row as SalesZkWatch).line_checks);
+  const needsProsbaByKey = new Map<string, boolean>(
+    productViews.map((view) => [view.key, selected.has(view.key)])
+  );
+  const sanitized = mergeZkWatchLineChecksPreservingProsbaScope(views, previousChecks, {
+    needsProsbaByKey,
+  });
+
+  const { data, error } = await supabase
+    .from("sales_zk_watches")
+    .update({
+      line_checks: sanitized,
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", watchId)
+    .select("*")
+    .single();
+
+  if (error) throw new Error(error.message);
 
   revalidateNotepad();
   return { watch: data as SalesZkWatch };
@@ -728,7 +786,8 @@ export async function actionDeleteArchivedSalesNote(noteId: string) {
 /** Prefill prośby z karty ZK (np. link z ?zkWatch=). */
 export async function actionGetZkProsbaPrefillByWatchId(
   watchId: string,
-  salesPersonIdOverride?: string
+  salesPersonIdOverride?: string,
+  lineKeys?: string[]
 ): Promise<ZkProsbaPrefill | null> {
   const trimmed = watchId.trim();
   if (!trimmed) return null;
@@ -759,7 +818,9 @@ export async function actionGetZkProsbaPrefillByWatchId(
   if (error) throw new Error(error.message);
   if (!data) return null;
 
-  return zkProsbaPrefillFromWatch(data as SalesZkWatch);
+  const options =
+    lineKeys?.length ? { lineKeys, mode: "supplement" as const } : undefined;
+  return zkProsbaPrefillFromWatch(data as SalesZkWatch, options);
 }
 
 /** Prefill prośby z ZK po numerze (np. nowa karta — bez sessionStorage). */

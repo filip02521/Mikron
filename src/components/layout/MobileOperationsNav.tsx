@@ -73,7 +73,7 @@ export function MobileOperationsNav({
                 <span className="relative flex flex-col items-center gap-0.5">
                   <span
                     className={cn(
-                      "flex h-7 w-7 items-center justify-center rounded-md transition-colors",
+                      "flex h-7 w-7 items-center justify-center rounded-md",
                       active
                         ? navIconTileActiveClassForTone(item.tone)
                         : navIconTileClassForTone(item.tone)

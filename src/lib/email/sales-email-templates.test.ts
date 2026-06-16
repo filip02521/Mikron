@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   renderDeliveryArrivedEmail,
   renderInformacjaArrivedEmail,
+  renderProcurementCancelEmail,
 } from "@/lib/email/sales-email-templates";
 
 describe("sales email templates", () => {
@@ -110,5 +111,45 @@ describe("sales email templates", () => {
     });
     expect(html).toContain("Pozycja 1 z 2");
     expect(html).toContain("Pozycja 2 z 2");
+  });
+
+  it("procurement cancel template includes note and subject", () => {
+    const { html, subject } = renderProcurementCancelEmail({
+      recipientName: "Jan Kowalski",
+      items: [
+        {
+          kind: "procurement_cancel",
+          supplierName: "Dostawca",
+          products: "Wkręt",
+          symbol: "ABC",
+          clientName: "Firma",
+          procurementCancelNote: "Brak na stanie",
+        },
+      ],
+    });
+    expect(subject).toContain("Prośba anulowana");
+    expect(html).toContain("Brak na stanie");
+    expect(html).toContain("Wiadomość od działu dostaw");
+    expect(html).toContain("/moje");
+  });
+
+  it("procurement cancel noteUpdated variant", () => {
+    const { html, subject } = renderProcurementCancelEmail({
+      recipientName: "Anna",
+      noteUpdated: true,
+      items: [
+        {
+          kind: "procurement_cancel",
+          supplierName: "X",
+          products: "Produkt",
+          symbol: null,
+          clientName: null,
+          procurementCancelNote: "Nowa treść",
+        },
+      ],
+    });
+    expect(subject).toContain("Zaktualizowano wiadomość");
+    expect(html).toContain("zaktualizował wiadomość");
+    expect(html).toContain("Nowa treść");
   });
 });

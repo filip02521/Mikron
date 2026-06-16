@@ -4,6 +4,7 @@ import { Fragment, useCallback, useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import type { IndividualOrder } from "@/types/database";
 import {
+  actionAcknowledgeWarehouseCancelDisposition,
   actionBatchUpdateDelivered,
   actionMarkInformacjaArrived,
   actionUpdateDelivered,
@@ -26,6 +27,7 @@ import {
 import {
   receiveQueueTargetQuantity,
 } from "@/lib/orders/sales-cancel";
+import { warehouseCancelFulfillToast } from "@/lib/orders/warehouse-cancel-fulfillment";
 import { checkboxBrandClass } from "@/lib/ui/ontime-theme";
 import { MICROCOPY } from "@/lib/ui/microcopy";
 import { QUEUE_LIST_BODY_CLASS } from "@/lib/ui/queue-panel-styles";
@@ -219,6 +221,36 @@ export function ReceiveQueueTable({
       } catch (e) {
         onToast({
           text: e instanceof Error ? e.message : "Nie udało się zapisać",
+          tone: "error",
+        });
+      } finally {
+        onPendingChange(null);
+      }
+    });
+  };
+
+  const ackCancelDisposition = (order: IndividualOrder) => {
+    if (blockIfReadOnly()) return;
+    onPendingChange("Rozliczanie rezygnacji…");
+    start(async () => {
+      try {
+        const result = await actionAcknowledgeWarehouseCancelDisposition([order.id]);
+        setSelected((s) => {
+          const next = { ...s };
+          delete next[order.id];
+          return next;
+        });
+        onToast({
+          text:
+            result.count > 0
+              ? warehouseCancelFulfillToast(order)
+              : "Pozycja rozliczona",
+          tone: "success",
+        });
+        router.refresh();
+      } catch (e) {
+        onToast({
+          text: e instanceof Error ? e.message : "Nie udało się rozliczyć",
           tone: "error",
         });
       } finally {
@@ -603,6 +635,7 @@ export function ReceiveQueueTable({
                             onToggleProductGroup={(checked) =>
                               toggleProductGroup(group.orders, rowIndex, checked)
                             }
+                            onAckCancelDisposition={() => ackCancelDisposition(o)}
                           />
                         );
                       })

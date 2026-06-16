@@ -6,6 +6,7 @@ import {
   type ZkWatchLineCheckStored,
   type ZkWatchLineView,
 } from "@/lib/sales/zk-watch-lines";
+import { getZkWatchProsbaScopeLineKeys } from "@/lib/sales/zk-watch-prosba-scope";
 import { normalizeMyOrderSearchText } from "@/lib/orders/my-order-search";
 import {
   clientsMatchForSalesClient,
@@ -80,6 +81,8 @@ export function resolveZkWatchIdsForOrderSync(
   return ids;
 }
 
+export type ZkWatchLineCoverage = "uncovered" | "open" | "partial" | "delivered";
+
 export type ZkWatchOrderHints = {
   /** Aktywne prośby tego klienta z dopasowanym towarem (w toku). */
   matchingOpenRequestCount: number;
@@ -89,6 +92,16 @@ export type ZkWatchOrderHints = {
   matchedDeliveredLineKeys: string[];
   /** Czy wszystkie pozycje towarowe są „na miejscu” wg prośb. */
   allLinesMatchedByOrders: boolean;
+  /** Pokrycie każdej pozycji ZK przez prośby. */
+  lineCoverageByKey: Record<string, ZkWatchLineCoverage>;
+  /** Pozycje bez żadnej powiązanej prośby. */
+  uncoveredLineKeys: string[];
+  /** Pozycje objęte otwartą prośbą. */
+  openProsbaCoveredLineKeys: string[];
+  /** Czy handlowiec ustalił zakres pozycji do prośby. */
+  prosbaScopeConfigured: boolean;
+  /** Pozycje oznaczone jako „na stanie” — wyłączone z prośby. */
+  inStockLineKeys: string[];
 };
 
 const DELIVERED_STATUSES = new Set(["Zrealizowane", "Czesciowo_zrealizowane"]);
@@ -121,6 +134,34 @@ export function productMatchesZkLine(
   const orderTw = normalizeSalesClientKhId(order.subiekt_tw_id);
   if (line.subiektTwId != null && orderTw != null) {
     return line.subiektTwId === orderTw;
+  }
+
+  const sym = normalizeProductToken(order.symbol);
+  const lineSym = normalizeProductToken(line.symbol);
+  if (sym && lineSym && sym === lineSym) {
+    return true;
+  }
+
+  const orderMikran = normalizeProductToken(order.mikran_code);
+  if (orderMikran && lineSym && orderMikran === lineSym) {
+    return true;
+  }
+
+  const orderName = normalizeProductToken(order.products);
+  const lineName = normalizeProductToken(line.product);
+  if (!orderName || !lineName) return false;
+  return orderName === lineName;
+}
+
+/** Luźniejsze dopasowanie tylko dla otwartych prośb jawnie powiązanych z tym ZK (legacy / ręczne opisy). */
+export function productMatchesZkLineForCoverage(
+  order: ZkLinkableOrder,
+  line: ZkWatchLineView,
+  watch: Pick<SalesZkWatch, "id" | "zk_number">
+): boolean {
+  if (productMatchesZkLine(order, line)) return true;
+  if (!orderExplicitlyLinkedToZkWatch(order, watch) || !isOpenProsbaOrder(order)) {
+    return false;
   }
 
   const sym = normalizeProductToken(order.symbol);
@@ -201,16 +242,73 @@ export function filterZkWatchesByClientQuery(
   });
 }
 
+export function computeZkWatchLineCoverage(
+  line: ZkWatchLineView,
+  relevantOrders: ZkLinkableOrder[],
+  watch: Pick<SalesZkWatch, "id" | "zk_number">
+): ZkWatchLineCoverage {
+  const matching = relevantOrders.filter((order) =>
+    productMatchesZkLineForCoverage(order, line, watch)
+  );
+  if (!matching.length) return "uncovered";
+  if (isZkLineFullyDeliveredByOrders(relevantOrders, line)) return "delivered";
+  if (matching.some((order) => isOpenProsbaOrder(order))) return "open";
+  if (matching.some((order) => isDeliveredOrderStatus(order.status))) return "partial";
+  return "uncovered";
+}
+
+export function resolveUncoveredLineKeysForProsba(
+  watch: SalesZkWatch,
+  orders: ZkLinkableOrder[],
+  options?: { onlyKeys?: string[] }
+): string[] {
+  const hints = computeZkWatchOrderHints(watch, orders);
+  let keys = hints.uncoveredLineKeys;
+  if (options?.onlyKeys?.length) {
+    const only = new Set(options.onlyKeys);
+    keys = keys.filter((key) => only.has(key));
+  }
+  return keys;
+}
+
 export function computeZkWatchOrderHints(
   watch: SalesZkWatch,
   orders: ZkLinkableOrder[]
 ): ZkWatchOrderHints {
   const lineViews = buildZkWatchLineViews(watch);
   const relevant = orders.filter((o) => orderRelevantToZkWatch(o, watch));
+  const prosbaScopeKeys = getZkWatchProsbaScopeLineKeys(watch, lineViews);
+  const prosbaScopeConfigured = prosbaScopeKeys !== null;
+  const prosbaScopeSet = prosbaScopeKeys ? new Set(prosbaScopeKeys) : null;
+  const checks = parseZkWatchLineChecks(watch.line_checks);
+  const needsByKey = new Map(
+    checks
+      .filter((check) => check.needs_prosba !== undefined)
+      .map((check) => [check.key, check.needs_prosba === true])
+  );
+  const inStockLineKeys: string[] = [];
 
   let matchingOpenRequestCount = 0;
   const matchingOpenRequestIds: string[] = [];
   const matchedDeliveredLineKeys = new Set<string>();
+  const lineCoverageByKey: Record<string, ZkWatchLineCoverage> = {};
+  const uncoveredLineKeys: string[] = [];
+  const openProsbaCoveredLineKeys: string[] = [];
+
+  for (const line of lineViews) {
+    if (line.key === "summary") continue;
+    if (prosbaScopeSet && !prosbaScopeSet.has(line.key)) {
+      if (needsByKey.get(line.key) === false) {
+        inStockLineKeys.push(line.key);
+      }
+      continue;
+    }
+
+    const coverage = computeZkWatchLineCoverage(line, relevant, watch);
+    lineCoverageByKey[line.key] = coverage;
+    if (coverage === "uncovered") uncoveredLineKeys.push(line.key);
+    if (coverage === "open") openProsbaCoveredLineKeys.push(line.key);
+  }
 
   for (const order of relevant) {
     const explicitZk = orderExplicitlyLinkedToZkWatch(order, watch);
@@ -242,6 +340,11 @@ export function computeZkWatchOrderHints(
     matchingOpenRequestIds,
     matchedDeliveredLineKeys: [...matchedDeliveredLineKeys],
     allLinesMatchedByOrders,
+    lineCoverageByKey,
+    uncoveredLineKeys,
+    openProsbaCoveredLineKeys,
+    prosbaScopeConfigured,
+    inStockLineKeys,
   };
 }
 

@@ -4,6 +4,7 @@ import type { SalesPersonEmailBatch } from "@/lib/email/sales-notification-types
 import {
   renderDeliveryArrivedEmail,
   renderInformacjaArrivedEmail,
+  renderProcurementCancelEmail,
 } from "@/lib/email/sales-email-templates";
 
 function getEmailOverrideTo(): string | undefined {
@@ -108,6 +109,45 @@ export async function sendInformacjaArrivedEmails(
     const { subject, html } = renderInformacjaArrivedEmail({
       recipientName: name,
       items: informacjaItems,
+    });
+
+    const send = await sendHtmlEmail({
+      to,
+      subject,
+      html,
+    });
+
+    if (send.ok) {
+      result.sent++;
+    } else {
+      result.failures.push({ to: send.to, error: send.error });
+    }
+  }
+
+  return result;
+}
+
+/** E-mail do handlowca: anulowanie prośby przez dział dostaw. */
+export async function sendProcurementCancelEmails(
+  notifications: Map<string, SalesPersonEmailBatch>,
+  options?: { noteUpdated?: boolean }
+): Promise<EmailSendResult> {
+  const result: EmailSendResult = { sent: 0, failures: [] };
+  const noteUpdated = options?.noteUpdated ?? false;
+
+  for (const { email, name, items } of notifications.values()) {
+    const cancelItems = items.filter((i) => i.kind === "procurement_cancel");
+    if (!cancelItems.length) continue;
+    const to = email.trim();
+    if (!to) {
+      result.failures.push({ to: "(brak adresu)", error: "Handlowiec bez e-maila w bazie" });
+      continue;
+    }
+
+    const { subject, html } = renderProcurementCancelEmail({
+      recipientName: name,
+      items: cancelItems,
+      noteUpdated,
     });
 
     const send = await sendHtmlEmail({

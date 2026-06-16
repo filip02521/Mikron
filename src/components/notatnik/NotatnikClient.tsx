@@ -18,6 +18,9 @@ import { useClientHydrated } from "@/lib/client/use-client-hydrated";
 import { sortZkWatches } from "@/lib/sales/zk-watch-sort";
 import { watchNeedsNotepadAttention } from "@/lib/sales/notepad-follow-up";
 import {
+  buildZkWatchLineViews,
+} from "@/lib/sales/zk-watch-lines";
+import {
   computeZkWatchOrderHints,
   type ZkWatchOrderHints,
 } from "@/lib/sales/zk-watch-order-link";
@@ -41,6 +44,24 @@ import {
   actionUndoCloseZkWatch,
 } from "@/app/actions/sales-notepad";
 import { SubiektStatusBar } from "@/components/subiekt/SubiektStatusBar";
+import {
+  computeZkWatchRefreshDiff,
+  type ZkWatchRefreshDiff,
+} from "@/lib/sales/zk-watch-refresh-diff";
+import {
+  clearUnseenNewZkLineKeys,
+  loadZkNewLinesSnapshot,
+} from "@/lib/client/zk-watch-new-lines-snapshot";
+import {
+  buildValidLineKeysByWatchId,
+  reconcileZkNewLinesSnapshot,
+  syncZkNewLinesSnapshot,
+} from "@/lib/sales/zk-watch-new-lines-state";
+import {
+  computeZkWatchSupplementSync,
+  detectZkWatchSnapshotSyncChanges,
+} from "@/lib/sales/zk-watch-snapshot-sync";
+import { ZkWatchRefreshPromptModal } from "./ZkWatchRefreshPromptModal";
 import { ZkWatchSection } from "./ZkWatchSection";
 import { NotesSection } from "./NotesSection";
 import { NotatnikArchivePanel } from "./NotatnikArchivePanel";
@@ -169,9 +190,19 @@ export function NotatnikClient({
   const [subiektStatus, setSubiektStatus] = useState<SubiektAvailability | undefined>(undefined);
   const [appliedSubiektPropKey, setAppliedSubiektPropKey] = useState("");
   const [appliedUrlTabKey, setAppliedUrlTabKey] = useState("");
+  const [prosbaScopeWatchId, setProsbaScopeWatchId] = useState<string | null>(null);
   const [appliedDataSyncKey, setAppliedDataSyncKey] = useState("");
   const [warehouseSnapshotReady, setWarehouseSnapshotReady] = useState(false);
   const [appliedWarehouseUnseenKey, setAppliedWarehouseUnseenKey] = useState("");
+  const [newLineKeysByWatchId, setNewLineKeysByWatchId] = useState<Record<string, string[]>>({});
+  const [refreshPromptQueue, setRefreshPromptQueue] = useState<
+    Array<{
+      watch: SalesZkWatch;
+      diff: ZkWatchRefreshDiff;
+      uncoveredAddedKeys: string[];
+    }>
+  >([]);
+  const refreshPrompt = refreshPromptQueue[0] ?? null;
   const focusHandledWatchRef = useRef<string | null>(null);
   const zkWatchesRef = useRef(zkWatches);
   const archivedWatchesRef = useRef(archivedWatches);
@@ -339,7 +370,81 @@ export function NotatnikClient({
   const salesPersonId =
     source.zkWatches[0]?.sales_person_id ?? source.notes[0]?.sales_person_id ?? null;
 
-  const markWatchSeen = useCallback(
+  const processZkWatchSnapshotChange = useCallback(
+    (
+      watch: SalesZkWatch,
+      diff: ZkWatchRefreshDiff,
+      options?: { updateWatchState?: boolean; triggerRouterRefresh?: boolean }
+    ) => {
+      const previous = zkWatchesRef.current.find((row) => row.id === watch.id);
+      const lineChecksChanged =
+        previous != null &&
+        JSON.stringify(previous.line_checks) !== JSON.stringify(watch.line_checks);
+
+      if (options?.updateWatchState !== false) {
+        setZkWatches((prev) =>
+          uniqueById(sortZkWatches(prev.map((row) => (row.id === watch.id ? watch : row))))
+        );
+      }
+
+      if (salesPersonId) {
+        setNewLineKeysByWatchId((prev) => {
+          const sync = computeZkWatchSupplementSync({
+            watch,
+            diff,
+            orders: zkLinkableOrders,
+            salesPersonId,
+            existingNewLineKeys: prev[watch.id] ?? [],
+          });
+
+          if (sync.shouldPrompt) {
+            setRefreshPromptQueue((queue) => {
+              const nextItem = {
+                watch,
+                diff,
+                uncoveredAddedKeys: sync.uncoveredAdded,
+              };
+              const existingIndex = queue.findIndex((item) => item.watch.id === watch.id);
+              if (existingIndex >= 0) {
+                const next = [...queue];
+                next[existingIndex] = nextItem;
+                return next;
+              }
+              return [...queue, nextItem];
+            });
+          }
+
+          if (sync.mergedNewLineKeys.length > 0) {
+            return { ...prev, [watch.id]: sync.mergedNewLineKeys };
+          }
+          if (!(watch.id in prev)) return prev;
+          const next = { ...prev };
+          delete next[watch.id];
+          return next;
+        });
+
+        const snapshot = loadZkArrivedSnapshot(salesPersonId);
+        snapshot[watch.id] = countArrivedZkLinesFromWatch(watch);
+        saveZkArrivedSnapshot(salesPersonId, snapshot);
+      }
+
+      if (lineChecksChanged) {
+        setUnseenWatchIds((prev) => {
+          if (!prev.has(watch.id)) return prev;
+          const next = new Set(prev);
+          next.delete(watch.id);
+          return next;
+        });
+      }
+
+      if (options?.triggerRouterRefresh) {
+        refresh();
+      }
+    },
+    [salesPersonId, zkLinkableOrders, refresh]
+  );
+
+  const markWarehouseArrivalSeen = useCallback(
     (watchId: string) => {
       if (!salesPersonId) return;
       const watch = zkWatches.find((w) => w.id === watchId);
@@ -357,6 +462,20 @@ export function NotatnikClient({
     [salesPersonId, zkWatches]
   );
 
+  const markNewZkLinesSeen = useCallback(
+    (watchId: string) => {
+      if (!salesPersonId) return;
+      clearUnseenNewZkLineKeys(salesPersonId, watchId);
+      setNewLineKeysByWatchId((prev) => {
+        if (!(watchId in prev)) return prev;
+        const next = { ...prev };
+        delete next[watchId];
+        return next;
+      });
+    },
+    [salesPersonId]
+  );
+
   const zkHintsByWatchId = useMemo(() => {
     const map = new Map<string, ZkWatchOrderHints>();
     for (const watch of zkWatches) {
@@ -364,6 +483,41 @@ export function NotatnikClient({
     }
     return map;
   }, [zkWatches, zkLinkableOrders]);
+
+  const validLineKeysByWatchId = useMemo(
+    () => buildValidLineKeysByWatchId(zkWatches),
+    [zkWatches]
+  );
+
+  const reconciledNewLineKeysByWatchId = useMemo(() => {
+    if (!salesPersonId || tourDemo || !warehouseSnapshotReady) return newLineKeysByWatchId;
+    return reconcileZkNewLinesSnapshot({
+      snapshot: newLineKeysByWatchId,
+      watches: zkWatches,
+      hintsByWatchId: zkHintsByWatchId,
+      validLineKeysByWatchId,
+    });
+  }, [
+    salesPersonId,
+    tourDemo,
+    warehouseSnapshotReady,
+    newLineKeysByWatchId,
+    zkWatches,
+    zkHintsByWatchId,
+    validLineKeysByWatchId,
+  ]);
+
+  useEffect(() => {
+    if (!salesPersonId || tourDemo) return;
+    const storageKey = `notatnik-zk-new-lines-${salesPersonId}`;
+    function onStorage(event: StorageEvent) {
+      if (event.key !== storageKey) return;
+      const snapshot = loadZkNewLinesSnapshot(salesPersonId);
+      setNewLineKeysByWatchId(snapshot);
+    }
+    window.addEventListener("storage", onStorage);
+    return () => window.removeEventListener("storage", onStorage);
+  }, [salesPersonId, tourDemo]);
 
   const subiektForNotepad = useMemo(() => {
     if (!subiektAvailability) return undefined;
@@ -413,8 +567,40 @@ export function NotatnikClient({
     if (tourDemo) setActiveTab("zk");
   }
 
+  useEffect(() => {
+    if (tourDemo || !salesPersonId || !warehouseSnapshotReady) return;
+    const changes = detectZkWatchSnapshotSyncChanges(zkWatches, dataSource.zkWatches);
+    for (const change of changes) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- side-effect sync badge ZK
+      processZkWatchSnapshotChange(change.next, change.diff, {
+        updateWatchState: false,
+        triggerRouterRefresh: false,
+      });
+    }
+    // Tylko po sync z serwera (appliedDataSyncKey), nie przy każdej lokalnej edycji ZK.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [appliedDataSyncKey]);
+
   if (hydrated && !warehouseSnapshotReady && salesPersonId && !tourDemo) {
     const snapshot = loadZkArrivedSnapshot(salesPersonId);
+    const newLinesSnapshot = loadZkNewLinesSnapshot(salesPersonId);
+    const hintsMap = new Map(
+      zkWatches.map((watch) => [
+        watch.id,
+        computeZkWatchOrderHints(watch, zkLinkableOrders),
+      ])
+    );
+    const reconciledNewLines = reconcileZkNewLinesSnapshot({
+      snapshot: newLinesSnapshot,
+      watches: zkWatches,
+      hintsByWatchId: hintsMap,
+      validLineKeysByWatchId: buildValidLineKeysByWatchId(zkWatches),
+    });
+    if (JSON.stringify(reconciledNewLines) !== JSON.stringify(newLinesSnapshot)) {
+      syncZkNewLinesSnapshot(salesPersonId, reconciledNewLines);
+    }
+    setNewLineKeysByWatchId(reconciledNewLines);
+
     if (Object.keys(snapshot).length === 0) {
       saveZkArrivedSnapshot(salesPersonId, buildZkArrivedSnapshot(zkWatches));
       setWarehouseSnapshotReady(true);
@@ -430,6 +616,16 @@ export function NotatnikClient({
         );
       }
     }
+  }
+
+  if (
+    salesPersonId &&
+    !tourDemo &&
+    warehouseSnapshotReady &&
+    JSON.stringify(reconciledNewLineKeysByWatchId) !== JSON.stringify(newLineKeysByWatchId)
+  ) {
+    syncZkNewLinesSnapshot(salesPersonId, reconciledNewLineKeysByWatchId);
+    setNewLineKeysByWatchId(reconciledNewLineKeysByWatchId);
   }
 
   if (
@@ -479,7 +675,7 @@ export function NotatnikClient({
     }
     const watchId = anchor.startsWith("watch-") ? anchor.slice(6) : null;
     if (watchId && kind === "zk-warehouse-arrival") {
-      markWatchSeen(watchId);
+      markWarehouseArrivalSeen(watchId);
     }
     flashNotepadAnchor(anchor);
   }
@@ -487,8 +683,16 @@ export function NotatnikClient({
   function handleWatchAdded(watch: SalesZkWatch) {
     setZkWatches((prev) => uniqueById(sortZkWatches([watch, ...prev])));
     setArchivedWatches((prev) => prev.filter((w) => w.id !== watch.id));
+    const hasProductLines = buildZkWatchLineViews(watch).some((line) => line.key !== "summary");
+    if (hasProductLines) {
+      setProsbaScopeWatchId(watch.id);
+    }
     refresh();
     flashNotepadAnchor(`watch-${watch.id}`);
+  }
+
+  function handleProsbaScopeConfigured(watchId: string) {
+    setProsbaScopeWatchId((current) => (current === watchId ? null : current));
   }
 
   function handleWatchClosed(watchId: string, closedAt: string) {
@@ -508,7 +712,15 @@ export function NotatnikClient({
       });
     }
     setZkWatches((prev) => prev.filter((w) => w.id !== watchId));
-    navigateToTab("archive");
+    if (salesPersonId) {
+      clearUnseenNewZkLineKeys(salesPersonId, watchId);
+    }
+    setNewLineKeysByWatchId((prev) => {
+      if (!(watchId in prev)) return prev;
+      const next = { ...prev };
+      delete next[watchId];
+      return next;
+    });
   }
 
   function handleWatchRestored(watch: SalesZkWatch) {
@@ -517,29 +729,29 @@ export function NotatnikClient({
     refresh();
   }
 
-  function handleWatchRefreshed(watch: SalesZkWatch) {
+  function handleWatchRefreshed(watch: SalesZkWatch, refreshDiff?: ZkWatchRefreshDiff) {
     const previous = zkWatches.find((w) => w.id === watch.id);
-    const lineChecksChanged =
-      previous != null &&
-      JSON.stringify(previous.line_checks) !== JSON.stringify(watch.line_checks);
+    const diff =
+      refreshDiff ??
+      (previous
+        ? computeZkWatchRefreshDiff(previous, watch)
+        : { addedLineKeys: [], removedLineKeys: [], quantityChanged: [] });
+    processZkWatchSnapshotChange(watch, diff, {
+      updateWatchState: true,
+      triggerRouterRefresh: true,
+    });
+  }
 
-    setZkWatches((prev) =>
-      uniqueById(sortZkWatches(prev.map((w) => (w.id === watch.id ? watch : w))))
-    );
-    if (salesPersonId) {
-      const snapshot = loadZkArrivedSnapshot(salesPersonId);
-      snapshot[watch.id] = countArrivedZkLinesFromWatch(watch);
-      saveZkArrivedSnapshot(salesPersonId, snapshot);
-    }
-    if (lineChecksChanged) {
-      setUnseenWatchIds((prev) => {
-        if (!prev.has(watch.id)) return prev;
-        const next = new Set(prev);
-        next.delete(watch.id);
-        return next;
-      });
-    }
-    refresh();
+  function handleRefreshPromptLater() {
+    setRefreshPromptQueue((queue) => queue.slice(1));
+  }
+
+  function handleWatchDetailOpen() {
+    // Prośba o uzupełnienie zamyka się tylko przez Potwierdź / Później w ZkWatchRefreshPromptModal.
+  }
+
+  function handleRefreshPromptConfirm() {
+    setRefreshPromptQueue((queue) => queue.slice(1));
   }
 
   function handleNoteCreated(note: SalesNote) {
@@ -577,6 +789,15 @@ export function NotatnikClient({
 
   function handleWatchDeleted(watchId: string) {
     setArchivedWatches((prev) => prev.filter((w) => w.id !== watchId));
+    if (salesPersonId) {
+      clearUnseenNewZkLineKeys(salesPersonId, watchId);
+    }
+    setNewLineKeysByWatchId((prev) => {
+      if (!(watchId in prev)) return prev;
+      const next = { ...prev };
+      delete next[watchId];
+      return next;
+    });
     refresh();
   }
 
@@ -589,6 +810,7 @@ export function NotatnikClient({
   const archiveCount = archivedWatches.length + archivedNotes.length;
   const followUpZkCount = zkWatches.filter((w) => watchNeedsNotepadAttention(w)).length;
   const warehouseArrivalCount = unseenWatchIds.size;
+  const newZkLinesWatchCount = Object.keys(reconciledNewLineKeysByWatchId).length;
 
   const undoTitle =
     undo?.type === "archive"
@@ -705,8 +927,15 @@ export function NotatnikClient({
               icon={<IconPackageCheck size={17} />}
               accent="indigo"
               badges={
-                warehouseArrivalCount > 0 || followUpZkCount > 0 ? (
+                warehouseArrivalCount > 0 || followUpZkCount > 0 || newZkLinesWatchCount > 0 ? (
                   <span className="flex flex-wrap items-center gap-1">
+                    {newZkLinesWatchCount > 0 ? (
+                      <Badge variant="warning" className="text-[10px]">
+                        {newZkLinesWatchCount === 1
+                          ? "1 ZK z nową pozycją"
+                          : `${newZkLinesWatchCount} ZK z nowymi pozycjami`}
+                      </Badge>
+                    ) : null}
                     {warehouseArrivalCount > 0 ? (
                       <Badge variant="success" className="text-[10px]">
                         {warehouseArrivalCount} na magazynie
@@ -730,7 +959,10 @@ export function NotatnikClient({
                 watches={zkWatches}
                 zkHintsByWatchId={zkHintsByWatchId}
                 unseenWatchIds={unseenWatchIds}
-                onWatchSeen={markWatchSeen}
+                newLineKeysByWatchId={reconciledNewLineKeysByWatchId}
+                onWarehouseArrivalSeen={markWarehouseArrivalSeen}
+                onNewZkLinesSeen={markNewZkLinesSeen}
+                onWatchDetailOpen={handleWatchDetailOpen}
                 readOnly={effectiveReadOnly}
                 tourPreview={tourDemo}
                 embedded
@@ -744,6 +976,8 @@ export function NotatnikClient({
                 onWatchAdded={tourDemo ? undefined : handleWatchAdded}
                 onWatchClosed={tourDemo ? undefined : handleWatchClosed}
                 onWatchRefreshed={tourDemo ? undefined : handleWatchRefreshed}
+                prosbaScopeWatchId={prosbaScopeWatchId}
+                onProsbaScopeConfigured={handleProsbaScopeConfigured}
                 focusWatchId={focusWatchId}
                 onFocusWatchHandled={handleFocusWatchHandled}
                 onLiveAnnounce={announceLive}
@@ -799,6 +1033,23 @@ export function NotatnikClient({
 
         <AppBrandContentFooter mobileOnly />
       </Card>
+
+      {refreshPrompt ? (
+        <ZkWatchRefreshPromptModal
+          watch={refreshPrompt.watch}
+          diff={refreshPrompt.diff}
+          uncoveredAddedKeys={refreshPrompt.uncoveredAddedKeys}
+          queuePosition={refreshPromptQueue.length > 1 ? 1 : undefined}
+          queueTotal={refreshPromptQueue.length > 1 ? refreshPromptQueue.length : undefined}
+          orderHints={
+            zkHintsByWatchId.get(refreshPrompt.watch.id) ??
+            computeZkWatchOrderHints(refreshPrompt.watch, zkLinkableOrders)
+          }
+          open
+          onConfirm={handleRefreshPromptConfirm}
+          onLater={handleRefreshPromptLater}
+        />
+      ) : null}
     </div>
   );
 }
