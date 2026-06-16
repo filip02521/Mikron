@@ -124,10 +124,16 @@ export function DepartmentBoardSalesClient({
   }, [board.questions, activeQuestionFilter]);
 
   const questionSearchNeedle = questionSearch.trim();
-  const filteredQuestions = useMemo(
-    () => filterDepartmentBoardQuestionsByQuery(statusFilteredQuestions, questionSearch),
-    [statusFilteredQuestions, questionSearch]
-  );
+  const filteredQuestions = useMemo(() => {
+    const searched = filterDepartmentBoardQuestionsByQuery(statusFilteredQuestions, questionSearch);
+    if (!focusQuestionId || searched.some((q) => q.id === focusQuestionId)) {
+      return searched;
+    }
+    const focused =
+      statusFilteredQuestions.find((q) => q.id === focusQuestionId) ??
+      board.questions.find((q) => q.id === focusQuestionId);
+    return focused ? [focused, ...searched] : searched;
+  }, [board.questions, focusQuestionId, questionSearch, statusFilteredQuestions]);
 
   function refresh() {
     router.refresh();
@@ -141,7 +147,7 @@ export function DepartmentBoardSalesClient({
         block: "center",
       });
     }, 120);
-  }, [focusQuestionId, activeTab]);
+  }, [focusQuestionId, activeTab, filteredQuestions.length]);
 
   useEffect(() => {
     if (!focusAnnouncementId) return;
@@ -316,6 +322,7 @@ export function DepartmentBoardSalesClient({
               <DepartmentBoardQuestionFilters
                 value={activeQuestionFilter}
                 onChange={setQuestionFilter}
+                disabled={forceAllQuestions}
               />
               {board.questions.length > 0 ? (
                 <NotatnikListFilterBar

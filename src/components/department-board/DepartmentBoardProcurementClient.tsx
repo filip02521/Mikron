@@ -63,6 +63,10 @@ export function DepartmentBoardProcurementClient({
   );
   const [questionFilter, setQuestionFilter] = useState<DepartmentBoardQuestionFilter>("all");
   const [questionSearch, setQuestionSearch] = useState("");
+  const forceAllQuestions = Boolean(focusQuestionId);
+  const activeQuestionFilter: DepartmentBoardQuestionFilter = forceAllQuestions
+    ? "all"
+    : questionFilter;
 
   const [announcementTitle, setAnnouncementTitle] = useState("");
   const [announcementBody, setAnnouncementBody] = useState("");
@@ -73,20 +77,26 @@ export function DepartmentBoardProcurementClient({
   const [saving, setSaving] = useState(false);
 
   const statusFilteredQuestions = useMemo(() => {
-    if (questionFilter === "open") {
+    if (activeQuestionFilter === "open") {
       return initial.questions.filter((q) => q.status === "open");
     }
-    if (questionFilter === "answered") {
+    if (activeQuestionFilter === "answered") {
       return initial.questions.filter((q) => q.status === "answered");
     }
     return initial.questions;
-  }, [initial.questions, questionFilter]);
+  }, [initial.questions, activeQuestionFilter]);
 
   const questionSearchNeedle = questionSearch.trim();
-  const filteredQuestions = useMemo(
-    () => filterDepartmentBoardQuestionsByQuery(statusFilteredQuestions, questionSearch),
-    [statusFilteredQuestions, questionSearch]
-  );
+  const filteredQuestions = useMemo(() => {
+    const searched = filterDepartmentBoardQuestionsByQuery(statusFilteredQuestions, questionSearch);
+    if (!focusQuestionId || searched.some((q) => q.id === focusQuestionId)) {
+      return searched;
+    }
+    const focused =
+      statusFilteredQuestions.find((q) => q.id === focusQuestionId) ??
+      initial.questions.find((q) => q.id === focusQuestionId);
+    return focused ? [focused, ...searched] : searched;
+  }, [focusQuestionId, initial.questions, questionSearch, statusFilteredQuestions]);
 
   const openQuestionsCount = initial.questions.filter((q) => q.status === "open").length;
 
@@ -98,6 +108,16 @@ export function DepartmentBoardProcurementClient({
       });
     }
   }, [focusAnnouncementId, activeTab, initial.announcements.length]);
+
+  useEffect(() => {
+    if (!focusQuestionId || activeTab !== "questions") return;
+    window.setTimeout(() => {
+      document.getElementById(`question-${focusQuestionId}`)?.scrollIntoView({
+        behavior: "smooth",
+        block: "center",
+      });
+    }, 120);
+  }, [focusQuestionId, activeTab, filteredQuestions.length]);
 
   function refresh() {
     router.refresh();
@@ -256,9 +276,9 @@ export function DepartmentBoardProcurementClient({
               bodyClassName="space-y-3"
             >
               <DepartmentBoardQuestionFilters
-                domain="panel"
-                value={questionFilter}
+                value={activeQuestionFilter}
                 onChange={setQuestionFilter}
+                disabled={forceAllQuestions}
               />
               {initial.questions.length > 0 ? (
                 <NotatnikListFilterBar
@@ -282,7 +302,7 @@ export function DepartmentBoardProcurementClient({
                   entityLabel="pytań"
                 />
               ) : filteredQuestions.length === 0 ? (
-                <DepartmentBoardQuestionsEmpty domain="panel" filter={questionFilter} />
+                <DepartmentBoardQuestionsEmpty domain="panel" filter={activeQuestionFilter} />
               ) : (
                 <div className={cn(mojeShipmentListClass, "-mx-3 sm:-mx-4")}>
                   {filteredQuestions.map((question) => (

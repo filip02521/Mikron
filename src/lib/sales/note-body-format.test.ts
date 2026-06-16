@@ -1,6 +1,7 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import {
   applyNoteTextFormat,
+  handleNoteFormatKeyDown,
   parseNoteBodyBlocks,
 } from "./note-body-format";
 
@@ -80,5 +81,47 @@ describe("applyNoteTextFormat", () => {
   it("konwertuje punktor na numerację w zaznaczeniu", () => {
     const result = applyNoteTextFormat("- jeden\n- dwa", 0, 12, "number");
     expect(result.text).toBe("1. jeden\n2. dwa");
+  });
+});
+
+describe("handleNoteFormatKeyDown", () => {
+  it("obsługuje Ctrl+B i aktualizuje tekst", () => {
+    const onChange = vi.fn();
+    const handled = handleNoteFormatKeyDown(
+      {
+        key: "b",
+        metaKey: false,
+        ctrlKey: true,
+        shiftKey: false,
+        preventDefault: vi.fn(),
+      },
+      "abc",
+      1,
+      1,
+      onChange
+    );
+
+    expect(handled).toBe(true);
+    expect(onChange).toHaveBeenCalledWith("a****bc", 3, 3);
+  });
+
+  it("ignoruje skrót ze Shift", () => {
+    const onChange = vi.fn();
+    const handled = handleNoteFormatKeyDown(
+      {
+        key: "b",
+        metaKey: true,
+        ctrlKey: false,
+        shiftKey: true,
+        preventDefault: vi.fn(),
+      },
+      "abc",
+      1,
+      1,
+      onChange
+    );
+
+    expect(handled).toBe(false);
+    expect(onChange).not.toHaveBeenCalled();
   });
 });

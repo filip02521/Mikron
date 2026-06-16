@@ -124,10 +124,12 @@ export const DepartmentBoardSalesTabBar = (
 export function DepartmentBoardQuestionFilters({
   value,
   onChange,
+  disabled = false,
 }: {
   value: DepartmentBoardQuestionFilter;
   onChange: (value: DepartmentBoardQuestionFilter) => void;
   domain?: "sales" | "panel";
+  disabled?: boolean;
 }) {
   const filters = [
     ["all", "Wszystkie"],
@@ -148,10 +150,12 @@ export function DepartmentBoardQuestionFilters({
             key={filter}
             type="button"
             aria-pressed={active}
+            disabled={disabled}
             onClick={() => onChange(filter)}
             className={cn(
               FILTER_CHIP_CLASS,
-              active ? panelChoiceChipSelectedClass : panelChoiceChipIdleClass
+              active ? panelChoiceChipSelectedClass : panelChoiceChipIdleClass,
+              disabled && "pointer-events-none opacity-60"
             )}
           >
             {label}

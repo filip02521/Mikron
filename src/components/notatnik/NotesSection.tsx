@@ -722,6 +722,7 @@ export function NotesSection({
           {notes.length > 0 ? (
             <NotatnikListFilterBar
               embedded
+              bleed
               value={searchQuery}
               onChange={setSearchQuery}
               matchCount={filtered.length}

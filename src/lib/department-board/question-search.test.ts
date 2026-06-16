@@ -69,3 +69,16 @@ describe("filterDepartmentBoardQuestionsByQuery", () => {
     expect(haystack).toContain("wyślemy pdf jutro");
   });
 });
+
+describe("filterDepartmentBoardQuestionsByQuery with status subset", () => {
+  const questions = [
+    testQuestion({ id: "q-open", title: "Otwarte", body: "czeka", status: "open" }),
+    testQuestion({ id: "q-done", title: "Zamknięte", body: "gotowe", status: "answered" }),
+  ];
+
+  it("filtruje tylko w obrębie przekazanej listy statusu", () => {
+    const openOnly = questions.filter((q) => q.status === "open");
+    expect(filterDepartmentBoardQuestionsByQuery(openOnly, "gotowe")).toHaveLength(0);
+    expect(filterDepartmentBoardQuestionsByQuery(openOnly, "czeka")).toHaveLength(1);
+  });
+});
