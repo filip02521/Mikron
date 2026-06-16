@@ -309,6 +309,7 @@ export function DepartmentBoardSalesClient({
               count={board.questions.length || undefined}
               icon={<IconClipboardPen size={17} />}
               accent="neutral"
+              bodyClassName="space-y-3"
             >
               {questionFormPanel}
 
@@ -319,6 +320,7 @@ export function DepartmentBoardSalesClient({
               {board.questions.length > 0 ? (
                 <NotatnikListFilterBar
                   embedded
+                  bleed
                   value={questionSearch}
                   onChange={setQuestionSearch}
                   matchCount={filteredQuestions.length}

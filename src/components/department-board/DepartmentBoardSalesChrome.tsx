@@ -137,7 +137,7 @@ export function DepartmentBoardQuestionFilters({
 
   return (
     <div
-      className="flex flex-wrap gap-1.5 pb-3"
+      className="flex flex-wrap gap-1.5"
       role="group"
       aria-label="Filtr pytań"
     >

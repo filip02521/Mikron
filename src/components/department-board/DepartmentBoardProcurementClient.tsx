@@ -253,6 +253,7 @@ export function DepartmentBoardProcurementClient({
               count={initial.questions.length || undefined}
               icon={<IconClipboardPen size={17} />}
               accent="neutral"
+              bodyClassName="space-y-3"
             >
               <DepartmentBoardQuestionFilters
                 domain="panel"
@@ -262,6 +263,7 @@ export function DepartmentBoardProcurementClient({
               {initial.questions.length > 0 ? (
                 <NotatnikListFilterBar
                   embedded
+                  bleed
                   value={questionSearch}
                   onChange={setQuestionSearch}
                   matchCount={filteredQuestions.length}

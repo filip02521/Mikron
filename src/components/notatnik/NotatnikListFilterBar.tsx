@@ -18,6 +18,7 @@ export function NotatnikListFilterBar({
   searchLabel = "Szukaj na liście ZK",
   enableShortcut = true,
   embedded = false,
+  bleed = false,
 }: {
   value: string;
   onChange: (value: string) => void;
@@ -30,6 +31,8 @@ export function NotatnikListFilterBar({
   searchLabel?: string;
   enableShortcut?: boolean;
   embedded?: boolean;
+  /** Pełna szerokość obramowania w panelu z paddingiem (jak lista /moje). */
+  bleed?: boolean;
 }) {
   const inputId = useId();
   const trimmed = value.trim();
@@ -60,7 +63,12 @@ export function NotatnikListFilterBar({
     <div
       className={cn(
         "border-b border-slate-100 bg-white",
-        embedded ? "px-0 py-0" : "px-3 py-2.5 sm:px-4"
+        embedded
+          ? cn(
+              "pb-2.5 pt-0",
+              bleed ? "-mx-3 px-3 sm:-mx-4 sm:px-4" : "px-0"
+            )
+          : "px-3 py-2.5 sm:px-4"
       )}
     >
       <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
