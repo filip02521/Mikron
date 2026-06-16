@@ -1,39 +1,51 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { actionRestoreSalesNote, actionDeleteArchivedSalesNote } from "@/app/actions/sales-notepad";
 import { Button } from "@/components/ui/Button";
 import { cn } from "@/lib/cn";
 import { formatShortDate } from "@/lib/sales/notepad-format";
+import { flashNotepadAnchor, NOTEPAD_ANCHOR_FLASH_CLASSES } from "@/lib/sales/notepad-anchor";
+import { salesTypography } from "@/lib/ui/ontime-theme";
 import type { SalesNote } from "@/types/database";
-import { NOTE_COLOR_CARD } from "./note-styles";
-import { NOTATNIK_NOTES_GRID_CLASS } from "./notatnik-layout";
+import { noteStickyPaperClass } from "./note-styles";
+import { NOTATNIK_NOTES_GRID_CLASS, NOTATNIK_NOTES_WALL_CLASS } from "./notatnik-layout";
+import { NoteBodyDisplay } from "./NoteBodyDisplay";
+import { NoteStickyFrame } from "./NoteStickyFrame";
 
 export function ArchivedNotesSection({
   notes,
   readOnly,
+  focusNoteId,
+  onFocusNoteHandled,
   onRestored,
   onDeleted,
 }: {
   notes: SalesNote[];
   readOnly?: boolean;
+  focusNoteId?: string | null;
+  onFocusNoteHandled?: (noteId: string) => void;
   onRestored?: (note: SalesNote) => void;
   onDeleted?: (noteId: string) => void;
 }) {
   if (!notes.length) return null;
 
   return (
-    <div className={NOTATNIK_NOTES_GRID_CLASS}>
-      {notes.map((note) => (
-        <div key={note.id}>
+    <div className={NOTATNIK_NOTES_WALL_CLASS}>
+      <p className={cn(salesTypography.sectionLabel, "mb-3 px-0.5")}>Zarchiwizowane</p>
+      <div className={NOTATNIK_NOTES_GRID_CLASS}>
+        {notes.map((note) => (
           <ArchivedNoteCard
+            key={note.id}
             note={note}
             readOnly={readOnly}
+            focus={focusNoteId === note.id}
+            onFocusHandled={onFocusNoteHandled}
             onRestored={onRestored}
             onDeleted={onDeleted}
           />
-        </div>
-      ))}
+        ))}
+      </div>
     </div>
   );
 }
@@ -41,17 +53,27 @@ export function ArchivedNotesSection({
 function ArchivedNoteCard({
   note,
   readOnly,
+  focus,
+  onFocusHandled,
   onRestored,
   onDeleted,
 }: {
   note: SalesNote;
   readOnly?: boolean;
+  focus?: boolean;
+  onFocusHandled?: (noteId: string) => void;
   onRestored?: (note: SalesNote) => void;
   onDeleted?: (noteId: string) => void;
 }) {
   const [restoring, setRestoring] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const anchorId = `note-${note.id}`;
+
+  useEffect(() => {
+    if (!focus) return;
+    flashNotepadAnchor(anchorId, { onFound: () => onFocusHandled?.(note.id) });
+  }, [anchorId, focus, note.id, onFocusHandled]);
 
   async function restore() {
     if (readOnly || restoring) return;
@@ -87,36 +109,45 @@ function ArchivedNoteCard({
   const archivedLabel = formatShortDate(note.archived_at);
 
   return (
-    <article
-      className={cn(
-        "flex w-full flex-col rounded-md border p-2.5 text-xs opacity-90 sm:p-3",
-        NOTE_COLOR_CARD[note.color] ?? NOTE_COLOR_CARD.default
-      )}
-    >
-      {note.title?.trim() ? (
-        <p className="mb-0.5 text-xs font-semibold text-slate-800">{note.title}</p>
-      ) : null}
-      <p className="whitespace-pre-wrap leading-snug text-slate-700">{note.body}</p>
-      {archivedLabel ? (
-        <p className="mt-1.5 text-[10px] text-slate-500">Zarchiwizowano {archivedLabel}</p>
-      ) : null}
-      {!readOnly ? (
-        <div className="mt-2 flex flex-wrap gap-1.5 border-t border-black/5 pt-2">
-          <Button size="sm" variant="ghost" disabled={restoring} onClick={() => void restore()}>
-            {restoring ? "Przywracam…" : "Przywróć"}
-          </Button>
-          <Button
-            size="sm"
-            variant="ghost"
-            disabled={deleting}
-            onClick={() => void remove()}
-            className="text-red-700 hover:text-red-900"
-          >
-            {deleting ? "Usuwam…" : "Usuń na stałe"}
-          </Button>
-          {error ? <p className="w-full text-xs text-red-600">{error}</p> : null}
+    <NoteStickyFrame seed={note.id} straight={focus}>
+      <article
+        id={anchorId}
+        className={cn(
+          noteStickyPaperClass(note.color, { archived: true, focused: focus }),
+          ...(focus ? NOTEPAD_ANCHOR_FLASH_CLASSES : [])
+        )}
+      >
+        <div className="px-2.5 py-3 pt-3.5">
+          {note.title?.trim() ? (
+            <h3 className="text-[13px] font-bold text-slate-900">{note.title}</h3>
+          ) : null}
+          <div className={note.title?.trim() ? "mt-1" : undefined}>
+            <NoteBodyDisplay body={note.body} />
+          </div>
+          {archivedLabel ? (
+            <p className={cn(salesTypography.chrome, "mt-2 text-slate-500")}>
+              Zarchiwizowano {archivedLabel}
+            </p>
+          ) : null}
         </div>
-      ) : null}
-    </article>
+        {!readOnly ? (
+          <div className="flex flex-wrap gap-1.5 border-t border-slate-100 px-2.5 py-2">
+            <Button size="sm" variant="ghost" disabled={restoring} onClick={() => void restore()}>
+              {restoring ? "Przywracam…" : "Przywróć"}
+            </Button>
+            <Button
+              size="sm"
+              variant="ghost"
+              disabled={deleting}
+              onClick={() => void remove()}
+              className="text-red-700 hover:text-red-900"
+            >
+              {deleting ? "Usuwam…" : "Usuń na stałe"}
+            </Button>
+            {error ? <p className="w-full text-xs text-red-700">{error}</p> : null}
+          </div>
+        ) : null}
+      </article>
+    </NoteStickyFrame>
   );
 }

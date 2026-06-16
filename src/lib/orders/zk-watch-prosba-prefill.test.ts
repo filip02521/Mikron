@@ -62,6 +62,33 @@ describe("zk-watch-prosba-prefill", () => {
     expect(lines[0]?.product).toBe("Uszczelka");
   });
 
+  it("filtruje linie po lineKeys zgodnie z buildZkWatchLineViews gdy jest koszt przesyłki", () => {
+    const watchWithShipping = {
+      ...baseWatch,
+      subiekt_snapshot: {
+        dok_Pozycja: [
+          { tw_Nazwa: "Szczotka", tw_Symbol: "SZ-1", ob_Ilosc: 1 },
+          {
+            tw_Nazwa: "pakowanie przesyłki/koszty dostawy",
+            tw_Symbol: "KOSZTY/2",
+            ob_Ilosc: 1,
+          },
+          { tw_Nazwa: "Uszczelka", tw_Symbol: "US-1", ob_Ilosc: 2 },
+        ],
+      },
+    };
+    const lines = extractProsbaLinesFromZkWatch(watchWithShipping, { lineKeys: ["idx:1"] });
+    expect(lines).toHaveLength(1);
+    expect(lines[0]?.product).toBe("Uszczelka");
+  });
+
+  it("zkProsbaPrefillFromWatch nie zwraca undefined w payloadzie serwera", () => {
+    const prefill = zkProsbaPrefillFromWatch(baseWatch);
+    expect(JSON.stringify(prefill)).not.toContain("undefined");
+    expect(prefill).not.toHaveProperty("supplementLineCount");
+    expect(prefill).not.toHaveProperty("lineKeys");
+  });
+
   it("zwraca pustą listę gdy lineKeys nie pasują do żadnej pozycji", () => {
     const lines = extractProsbaLinesFromZkWatch(baseWatch, { lineKeys: ["ob:missing"] });
     expect(lines).toEqual([]);

@@ -1,6 +1,5 @@
 import { randomId } from "@/lib/ensure-crypto";
-import { isZkWatchShippingCostLine, zkLineKey } from "@/lib/sales/zk-watch-lines";
-import type { SubiektDocumentLine } from "@/lib/subiekt/types";
+import { buildZkWatchLineViews } from "@/lib/sales/zk-watch-lines";
 import type { ProductLineDraft } from "@/components/orders/request-product-lines";
 import type { SalesZkWatch } from "@/types/database";
 import { prosbaHref } from "./prosba-url";
@@ -46,7 +45,7 @@ export function zkProsbaPrefillFromWatch(
     mikranCode: String(line.mikranCode ?? ""),
     product: String(line.product ?? ""),
     quantity: String(line.quantity ?? "1"),
-    clientName: line.clientName != null ? String(line.clientName) : undefined,
+    ...(line.clientName != null ? { clientName: String(line.clientName) } : {}),
     clientKhId: normalizePrefillKhId(line.clientKhId),
     subiektTwId: normalizeSubiektTwId(line.subiektTwId),
   }));
@@ -60,8 +59,8 @@ export function zkProsbaPrefillFromWatch(
     zkNumber: String(watch.zk_number ?? "").trim(),
     lines,
     mode,
-    supplementLineCount: mode === "supplement" ? lines.length : undefined,
-    lineKeys: options?.lineKeys?.length ? [...options.lineKeys] : undefined,
+    ...(mode === "supplement" ? { supplementLineCount: lines.length } : {}),
+    ...(options?.lineKeys?.length ? { lineKeys: [...options.lineKeys] } : {}),
   };
 }
 
@@ -71,27 +70,21 @@ export function extractProsbaLinesFromZkWatch(
 ): ProductLineDraft[] {
   const lineKeyFilter =
     options?.lineKeys?.length ? new Set(options.lineKeys) : null;
-  const snap = watch.subiekt_snapshot as { dok_Pozycja?: SubiektDocumentLine[] } | null;
-  const pozycje = snap?.dok_Pozycja ?? [];
+  const lineViews = buildZkWatchLineViews(watch);
+  const productViews = lineViews.filter((line) => line.key !== "summary");
 
   const fromSnapshot: ProductLineDraft[] = [];
-  for (let index = 0; index < pozycje.length; index += 1) {
-    const line = pozycje[index]!;
-    if (isZkWatchShippingCostLine(line)) continue;
-    const product = (line.tw_Nazwa ?? line.tw_Symbol ?? "").trim();
-    const symbol = (line.tw_Symbol ?? "").trim();
-    if (!product && !symbol) continue;
-    const lineKey = zkLineKey(line, index);
-    if (lineKeyFilter && !lineKeyFilter.has(lineKey)) continue;
+  for (const view of productViews) {
+    if (lineKeyFilter && !lineKeyFilter.has(view.key)) continue;
     fromSnapshot.push({
       id: randomId(),
-      symbol,
+      symbol: view.symbol ?? "",
       mikranCode: "",
-      product: product || symbol,
-      quantity: line.ob_Ilosc != null ? String(line.ob_Ilosc) : "1",
+      product: view.product,
+      quantity: view.quantity != null ? String(view.quantity) : "1",
       clientName: watch.client_label,
       clientKhId: watch.client_kh_id,
-      subiektTwId: normalizeSubiektTwId(line.ob_TowId),
+      subiektTwId: normalizeSubiektTwId(view.subiektTwId),
     });
   }
 

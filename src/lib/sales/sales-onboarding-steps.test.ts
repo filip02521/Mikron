@@ -19,9 +19,10 @@ describe("sales onboarding steps", () => {
       "plan",
       "tablica",
       "notatnik",
+      "notatnik-notes",
       "finish",
     ]);
-    expect(salesOnboardingStepCount("sales")).toBe(7);
+    expect(salesOnboardingStepCount("sales")).toBe(8);
   });
 
   it("excludes manager-only steps for handlowiec", () => {
@@ -40,10 +41,11 @@ describe("sales onboarding steps", () => {
       "plan",
       "tablica",
       "notatnik",
+      "notatnik-notes",
       "zespol",
       "finish",
     ]);
-    expect(salesOnboardingStepCount("sales_manager")).toBe(8);
+    expect(salesOnboardingStepCount("sales_manager")).toBe(9);
   });
 
   it("welcome orients user in first screen", () => {
@@ -69,6 +71,7 @@ describe("sales onboarding steps", () => {
     expect(hrefs).toContain("/plan");
     expect(hrefs).toContain("/tablica");
     expect(hrefs).toContain("/zk");
+    expect(hrefs).toContain("/notatnik");
   });
 
   it("manager tour adds zespol step with nav label", () => {
@@ -101,7 +104,7 @@ describe("sales onboarding steps", () => {
     expect(notatnik?.navLabel).toBe("ZK czekające");
     expect(notatnik?.bullets[0]).toMatch(/Do zrobienia dziś/i);
     expect(notatnik?.bullets[1]).toMatch(/Zakładka „ZK”/i);
-    expect(notatnik?.bullets[4]).toMatch(/Zakładka „Notatki”/i);
+    expect(notatnik?.bullets[4]).toMatch(/Notatnik/i);
   });
 
   it("plan step describes open requests before procurement calendar", () => {

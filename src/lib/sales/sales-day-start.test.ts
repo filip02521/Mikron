@@ -124,6 +124,57 @@ describe("buildSalesDayStartSnapshot", () => {
     expect(announcementItem?.href).toContain("watek=ann-1");
   });
 
+  it("linkuje przypomnienie ZK do /zk z focusWatch", () => {
+    const snapshot = buildSalesDayStartSnapshot({
+      rows: [],
+      watches: [
+        {
+          id: "w1",
+          sales_person_id: "sp1",
+          subiekt_dok_id: 1,
+          zk_number: "ZK/1",
+          client_label: "Klient",
+          follow_up_at: new Date().toISOString().slice(0, 10),
+          closed_at: null,
+          archived_at: null,
+          created_at: "",
+          updated_at: "",
+        } as never,
+      ],
+    });
+
+    const zkItem = snapshot.items.find((i) => i.source === "zk_follow_up");
+    expect(zkItem?.href).toBe("/zk?focusWatch=w1#watch-w1");
+    expect(zkItem?.ctaLabel).toBe("ZK czekające");
+  });
+
+  it("linkuje przyjście towaru ZK do /zk z focusWatch", () => {
+    const snapshot = buildSalesDayStartSnapshot({
+      rows: [],
+      watches: [
+        {
+          id: "w-wh",
+          sales_person_id: "sp1",
+          subiekt_dok_id: 2,
+          zk_number: "ZK/2",
+          client_label: "Klient",
+          follow_up_at: null,
+          closed_at: null,
+          archived_at: null,
+          line_checks: [{ key: "ob:1", arrived: true }],
+          created_at: "",
+          updated_at: "",
+        } as never,
+      ],
+      unseenWarehouseWatchIds: ["w-wh"],
+    });
+
+    const item = snapshot.items.find((i) => i.id.startsWith("zk-warehouse-arrival"));
+    expect(item?.href).toBe("/zk?focusWatch=w-wh#watch-w-wh");
+    expect(item?.ctaLabel).toBe("ZK czekające");
+    expect(item?.source).toBe("zk_follow_up");
+  });
+
   it("cleared gdy brak akcji", () => {
     const snapshot = buildSalesDayStartSnapshot({ rows: [] });
     expect(snapshot.cleared).toBe(true);

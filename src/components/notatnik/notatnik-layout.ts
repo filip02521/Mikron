@@ -5,8 +5,17 @@ import { mojeShipmentListClass } from "@/lib/ui/moje-shipment-row-styles";
 /** Domyślna szerokość stron handlowca (= {@link salesPageShellClass}). */
 export const NOTATNIK_PAGE_CLASS = salesPageShellClass;
 
-/** Siatka 2 kolumn — przewidywalny drag & drop (bez CSS columns). */
-export const NOTATNIK_NOTES_GRID_CLASS = "grid grid-cols-2 gap-2";
+/** Wewnętrzna tablica karteczek — spójna z panelem Notatnik (indigo / slate). */
+export const NOTATNIK_NOTES_WALL_CLASS = cn(
+  "overflow-visible rounded-md border border-indigo-100/70",
+  "bg-indigo-50/25 bg-[radial-gradient(circle_at_1px_1px,rgba(148,163,184,0.1)_1px,transparent_0)]",
+  "bg-[length:18px_18px]",
+  "shadow-[inset_0_1px_2px_rgba(15,23,42,0.04)]",
+  "px-3 py-4 sm:px-4 sm:py-5"
+);
+
+/** Siatka karteczek na tablicy (2 kolumny, duży odstęp na przechylenie). */
+export const NOTATNIK_NOTES_GRID_CLASS = "grid grid-cols-2 gap-x-3 gap-y-7 sm:gap-x-4 sm:gap-y-9";
 
 /** Lista ZK — ten sam wzorzec co /moje (divide-y, bez odstępów). */
 export const NOTATNIK_ZK_LIST_CLASS = mojeShipmentListClass;

@@ -220,7 +220,8 @@ export function Sidebar({
     weryfikacja?: number;
     realizacja?: number;
     salesMoje?: number;
-    salesNotatnik?: number;
+    salesZkDue?: number;
+    salesNotesDue?: number;
     salesTablica?: number;
     adminBugReports?: number;
     operationsNotatki?: number;

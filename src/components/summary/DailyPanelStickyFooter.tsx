@@ -44,13 +44,7 @@ export function DailyPanelStickyFooter({
           onOpenOnDemand={onOpenOnDemand}
         />
       ) : null}
-      <div
-        className={cn(
-          "border-b border-slate-100 py-2.5 sm:py-3",
-          panelChromeInsetClass,
-          showStatusBand && "border-t-0 pt-0"
-        )}
-      >
+      <div className={cn("py-2.5 sm:py-3", panelChromeInsetClass, showStatusBand && "pt-0")}>
         <DailyPanelSyncControl embedded={showStatusBand} />
       </div>
     </>

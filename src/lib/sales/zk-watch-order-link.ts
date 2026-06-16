@@ -238,7 +238,8 @@ export function filterZkWatchesByClientQuery(
   return watches.filter((w) => {
     const label = normalizeMyOrderSearchText(w.client_label);
     const zk = normalizeMyOrderSearchText(w.zk_number);
-    return label.includes(q) || zk.includes(q);
+    const products = normalizeMyOrderSearchText(w.line_summary ?? "");
+    return label.includes(q) || zk.includes(q) || products.includes(q);
   });
 }
 

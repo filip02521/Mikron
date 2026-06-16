@@ -153,6 +153,7 @@ export function testSalesPersonAdminRow(
     orderCount: 0,
     pendingZkCount: 0,
     followUpDueZkCount: 0,
+    followUpDueNotesCount: 0,
     linkedUserId: null,
     linkedUserEmail: null,
     linkedUserLastSignInAt: null,

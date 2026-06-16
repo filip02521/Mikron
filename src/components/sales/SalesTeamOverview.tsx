@@ -57,6 +57,17 @@ function SalesPersonCardActions({
           ZK czekające
         </Button>
       </TeamCardActionLink>
+      <TeamCardActionLink
+        href={buildNotatnikPageHref({
+          tab: "notes",
+          surface: "notes",
+          extraParams: { dla: rowId },
+        })}
+      >
+        <Button size="sm" variant="outline" className="h-11 w-full px-2 text-xs sm:h-8">
+          Notatnik
+        </Button>
+      </TeamCardActionLink>
       {!isSelf && !readOnlyPreview ? (
         <TeamCardActionLink href={`/prosba?dla=${rowId}`} className="col-span-2">
           <Button size="sm" variant="outline" className="h-11 w-full px-2 text-xs sm:h-8">
@@ -118,7 +129,7 @@ function SalesPersonCard({
             </dd>
           </div>
           <div className="min-w-0">
-            <dt className="text-slate-500">Przypomnienia</dt>
+            <dt className="text-slate-500">Przyp. ZK</dt>
             <dd className="font-semibold tabular-nums text-slate-900">
               {row.followUpDueZkCount > 0 ? (
                 <Link
@@ -133,6 +144,25 @@ function SalesPersonCard({
             </dd>
           </div>
           <div className="min-w-0">
+            <dt className="text-slate-500">Przyp. not.</dt>
+            <dd className="font-semibold tabular-nums text-slate-900">
+              {row.followUpDueNotesCount > 0 ? (
+                <Link
+                  href={buildNotatnikPageHref({
+                    tab: "notes",
+                    surface: "notes",
+                    extraParams: { dla: row.id },
+                  })}
+                  className="text-indigo-800 underline decoration-indigo-200 underline-offset-2 hover:text-indigo-950"
+                >
+                  {row.followUpDueNotesCount}
+                </Link>
+              ) : (
+                row.followUpDueNotesCount
+              )}
+            </dd>
+          </div>
+          <div className="min-w-0 col-span-2 sm:col-span-1">
             <dt className="text-slate-500">Konto</dt>
             <dd
               className={cn(
@@ -196,18 +226,26 @@ export function SalesTeamOverview({
 
   const sections = groupSalesPeopleForTeamView(rows, groups);
   const totalFollowUpDue = rows.reduce((sum, row) => sum + row.followUpDueZkCount, 0);
+  const totalNotesFollowUpDue = rows.reduce((sum, row) => sum + row.followUpDueNotesCount, 0);
   const totalPending = rows.reduce((sum, row) => sum + row.pendingZkCount, 0);
 
   return (
     <div className="space-y-8">
-      {totalPending > 0 ? (
+      {totalPending > 0 || totalFollowUpDue > 0 || totalNotesFollowUpDue > 0 ? (
         <div className="flex flex-wrap items-center gap-2 rounded-md border border-amber-100 bg-amber-50/70 px-3 py-2.5 text-xs text-amber-950">
-          <span className="font-medium">
-            Zespół: {totalPending} {totalPending === 1 ? "ZK czeka" : "ZK czeka"} na towar
-          </span>
+          {totalPending > 0 ? (
+            <span className="font-medium">
+              Zespół: {totalPending} {totalPending === 1 ? "ZK czeka" : "ZK czeka"} na towar
+            </span>
+          ) : null}
           {totalFollowUpDue > 0 ? (
             <Badge variant="purple" className="text-[10px]">
-              {totalFollowUpDue} przypomnienie{totalFollowUpDue === 1 ? "" : totalFollowUpDue < 5 ? "a" : "ń"}
+              {totalFollowUpDue} przyp. ZK
+            </Badge>
+          ) : null}
+          {totalNotesFollowUpDue > 0 ? (
+            <Badge variant="info" className="text-[10px]">
+              {totalNotesFollowUpDue} przyp. notatek
             </Badge>
           ) : null}
         </div>

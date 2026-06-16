@@ -313,8 +313,10 @@ export function OrderFormClient({
 
       const fromStorage = readZkProsbaPrefill();
       if (fromStorage?.lines.length) {
-        clearZkProsbaPrefill();
-        if (!cancelled) applyZkPrefill(fromStorage);
+        if (!cancelled) {
+          applyZkPrefill(fromStorage);
+          clearZkProsbaPrefill();
+        }
         return;
       }
 
@@ -323,6 +325,7 @@ export function OrderFormClient({
       const zkLineKeys = parseProsbaZkLineKeysParam(searchParams.get("zkLines"));
 
       try {
+        if (cancelled) return;
         if (zkWatch) {
           const fromWatch = await actionGetZkProsbaPrefillByWatchId(
             zkWatch,

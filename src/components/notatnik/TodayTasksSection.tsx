@@ -40,6 +40,8 @@ export function TodayTasksSection({
   onTaskClick,
   embedded = false,
   unseenWarehouseWatchIds,
+  kinds,
+  showTopDivider = false,
 }: {
   watches: SalesZkWatch[];
   notes: SalesNote[];
@@ -47,8 +49,14 @@ export function TodayTasksSection({
   /** Wewnątrz głównej karty — bez osobnego „kartonu”. */
   embedded?: boolean;
   unseenWarehouseWatchIds?: Set<string>;
+  /** Ogranicza listę do wybranych typów zadań (np. tylko ZK na /zk). */
+  kinds?: NotepadTodayTaskKind[];
+  /** Jedna linia nad sekcją (np. po sticky sync na /zk). */
+  showTopDivider?: boolean;
 }) {
-  const tasks = collectNotepadTodayTasks(watches, notes, { unseenWarehouseWatchIds });
+  const tasks = collectNotepadTodayTasks(watches, notes, { unseenWarehouseWatchIds }).filter(
+    (task) => !kinds?.length || kinds.includes(task.kind)
+  );
   if (!tasks.length) return null;
 
   function navigate(anchor: string, kind: NotepadTodayTaskKind) {
@@ -62,6 +70,7 @@ export function TodayTasksSection({
   const shellClass = embedded
     ? cn(
         "border-b border-slate-100 bg-slate-50/35",
+        showTopDivider && "border-t border-slate-100",
         salesChromeInsetClass,
         "py-3"
       )

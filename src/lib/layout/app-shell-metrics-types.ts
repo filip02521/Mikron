@@ -5,7 +5,8 @@ export type AppShellNavBadges = {
   weryfikacja: number;
   realizacja: number;
   salesMoje?: number;
-  salesNotatnik?: number;
+  salesZkDue?: number;
+  salesNotesDue?: number;
   salesTablica?: number;
   operationsNotatki?: number;
   departmentBoardQuestions?: number;

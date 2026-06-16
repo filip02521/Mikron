@@ -628,7 +628,28 @@ export function buildOnboardingNotepadDemo(salesPersonId: string): SalesNotepadD
         updated_at: now,
       },
     ],
-    archivedZkWatches: [],
+    archivedZkWatches: [
+      {
+        id: "demo-watch-archived",
+        sales_person_id: salesPersonId,
+        subiekt_dok_id: 8999,
+        zk_number: "ZK/2025/1201",
+        client_label: "Stomatologia Nova",
+        client_kh_id: 8800,
+        amount_net: 890,
+        amount_gross: 1094.7,
+        zk_issued_at: demoIsoDate(-45),
+        closed_at: demoIsoDate(-3),
+        note: "Sprawa zamknięta — klient odebrał towar.",
+        line_summary: "Końcówki · 3 szt.",
+        line_checks: [{ key: "ob:1", arrived: true }],
+        subiekt_snapshot: null,
+        follow_up_at: null,
+        archived_at: null,
+        created_at: now,
+        updated_at: now,
+      },
+    ],
     notes: [
       {
         id: "demo-note-1",
@@ -657,7 +678,21 @@ export function buildOnboardingNotepadDemo(salesPersonId: string): SalesNotepadD
         updated_at: now,
       },
     ],
-    archivedNotes: [],
+    archivedNotes: [
+      {
+        id: "demo-note-archived",
+        sales_person_id: salesPersonId,
+        title: "Oferta Straumann — archiwum",
+        body: "Wysłana oferta na czerwiec — sprawa zakończona.",
+        color: "default",
+        pinned: false,
+        sort_order: 0,
+        archived_at: demoIsoDate(-7),
+        follow_up_at: null,
+        created_at: now,
+        updated_at: now,
+      },
+    ],
     zkLinkableOrders: [
       {
         id: "demo-link-open",

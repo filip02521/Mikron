@@ -42,7 +42,7 @@ export function getSalesOnboardingSteps(role: UserRole): SalesOnboardingStep[] {
       lead:
         "OnTime łączy Cię z działem zakupów i magazynem. Składasz prośby, śledzisz statusy i komunikujesz się z zespołem — bez codziennej obiegówki mailowej.",
       bullets: [
-        "Pięć głównych zakładek: Moje zamówienia (statusy), Nowa prośba (zgłoszenie do zakupów), Harmonogram (terminy u dostawców), Tablica (ogłoszenia i pytania zespołu), ZK czekające (Twoje przypomnienia — nie trafiają do zakupów).",
+        "Sześć głównych zakładek: Moje zamówienia, Nowa prośba, ZK czekające, Notatnik, Harmonogram i Tablica — ZK i Notatnik to osobne pozycje menu.",
         ...(isManager
           ? [
               "Jako kierownik zobaczysz też krok Podgląd zespołu — bez logowania na konta innych handlowców.",
@@ -128,16 +128,32 @@ export function getSalesOnboardingSteps(role: UserRole): SalesOnboardingStep[] {
       href: "/zk",
       title: "ZK czekające",
       lead:
-        "Tu śledzisz zamówienia klientów (ZK) z Subiekta — na co czekasz, co dotarło na magazyn i skąd wysyłasz prośbę do zakupów. Notatki i archiwum są w osobnych zakładkach.",
+        "Tu śledzisz zamówienia klientów (ZK) z Subiekta — na co czekasz, co dotarło na magazyn i skąd wysyłasz prośbę do zakupów. Prywatny Notatnik z przypomnieniami znajdziesz osobno w menu po lewej.",
       bullets: [
-        "„Do zrobienia dziś” u góry — zacznij od przypomnień ZK i notatek.",
+        "„Do zrobienia dziś” u góry — zacznij od przypomnień ZK (notatki są w osobnym Notatniku).",
         "Zakładka „ZK” — wpisz numer ZK. System wczyta klienta i pozycje z Subiekta.",
         "Przy ZK jest „Zgłoś prośbę” — formularz wypełni się sam klientem i pozycjami.",
         "Po dostawie odhaczasz pozycje. Przy przypomnieniu ustawiasz datę follow-up.",
-        "Zakładka „Notatki” — prywatne przypomnienia, bez wysyłki do zakupów.",
-        "Liczba przy zakładce ZK czekające oznacza zaległe przypomnienia (ZK lub notatki).",
+        "„Notatnik” (prywatne przypomnienia) to osobna pozycja w menu — bez wysyłki do zakupów.",
+        "Liczba przy „ZK czekające” w menu oznacza zaległe przypomnienia ZK (oddzielnie licznik Notatnika).",
       ],
       tip: "Status formalnych prośb jest w „Moje zamówienia”. ZK czekające pomaga pamiętać, które sprawy wymagają Twojej reakcji.",
+    },
+    {
+      id: "notatnik-notes",
+      navKey: "notepad",
+      navLabel: "Notatnik",
+      href: "/notatnik",
+      title: "Notatnik",
+      lead:
+        "Prywatne przypomnienia i notatki — tylko dla Ciebie. Nie trafiają do działu zakupów ani na Tablicę.",
+      bullets: [
+        "„Do zrobienia dziś” pokazuje notatki z przypomnieniem na dziś.",
+        "Zakładka Notatki — dodajesz, przypinasz i ustawiasz datę follow-up.",
+        "Archiwum — zarchiwizowane notatki możesz przywrócić lub usunąć.",
+        "Licznik przy „Notatnik” w menu oznacza zaległe przypomnienia notatek (oddzielnie od ZK).",
+      ],
+      tip: "ZK z Subiekta są w osobnej zakładce „ZK czekające” — tam wysyłasz prośby do zakupów.",
     },
   ];
 

@@ -92,41 +92,60 @@ export async function fetchSalesDayStartNotepadSlice(
   };
 }
 
-export async function fetchSalesNotepad(
+/** Dane strony /zk — aktywne ZK, archiwum ZK (undo/focus) i powiązania z prośbami. */
+export async function fetchSalesZkPageData(
   salesPersonId: string
-): Promise<SalesNotepadData> {
+): Promise<
+  Pick<
+    SalesNotepadData,
+    "zkWatches" | "archivedZkWatches" | "zkLinkableOrders" | "zkOrdersMigrationMissing"
+  >
+> {
   const supabase = createAdminClient();
 
-  const [watchesRes, notesRes, linkResult] = await Promise.all([
+  const [watchesRes, linkResult] = await Promise.all([
     supabase
       .from("sales_zk_watches")
       .select("*")
       .eq("sales_person_id", salesPersonId)
       .order("created_at", { ascending: true }),
-    supabase
-      .from("sales_notes")
-      .select("*")
-      .eq("sales_person_id", salesPersonId)
-      .order("pinned", { ascending: false })
-      .order("sort_order", { ascending: true })
-      .order("updated_at", { ascending: false }),
     fetchZkLinkableOrdersForSalesPerson(salesPersonId),
   ]);
 
   if (watchesRes.error) throw new Error(watchesRes.error.message);
-  if (notesRes.error) throw new Error(notesRes.error.message);
 
   const watches = (watchesRes.data ?? []) as SalesZkWatch[];
-  const notes = (notesRes.data ?? []) as SalesNote[];
   const { zkWatches, archivedZkWatches } = partitionSalesZkWatches(watches);
 
   return {
     zkWatches,
     archivedZkWatches,
-    notes: notes.filter((n) => !n.archived_at),
-    archivedNotes: notes.filter((n) => n.archived_at),
     zkLinkableOrders: linkResult.orders,
     zkOrdersMigrationMissing: linkResult.migrationMissing,
+  };
+}
+
+/** Dane strony /notatnik — notatki i archiwum notatek. */
+export async function fetchSalesNotesPageData(
+  salesPersonId: string
+): Promise<Pick<SalesNotepadData, "notes" | "archivedNotes">> {
+  const supabase = createAdminClient();
+
+  const notesRes = await supabase
+    .from("sales_notes")
+    .select("*")
+    .eq("sales_person_id", salesPersonId)
+    .order("pinned", { ascending: false })
+    .order("sort_order", { ascending: true })
+    .order("updated_at", { ascending: false });
+
+  if (notesRes.error) throw new Error(notesRes.error.message);
+
+  const notes = (notesRes.data ?? []) as SalesNote[];
+
+  return {
+    notes: notes.filter((n) => !n.archived_at),
+    archivedNotes: notes.filter((n) => n.archived_at),
   };
 }
 
@@ -143,30 +162,37 @@ export async function countActiveZkWatches(salesPersonId: string): Promise<numbe
   return count ?? 0;
 }
 
-/** Badge notatnika: ZK i notatki z przypomnieniem na dziś/wcześniej. */
-export async function countNotepadNavBadge(salesPersonId: string): Promise<number> {
+/** Badge ZK: follow-up na dziś/wcześniej (tylko aktywne ZK). */
+export async function countZkDueNavBadge(salesPersonId: string): Promise<number> {
   const supabase = createAdminClient();
   const today = formatDateString(todayInWarsaw());
 
-  const [watchesDueRes, notesDueRes] = await Promise.all([
-    supabase
-      .from("sales_zk_watches")
-      .select("id", { count: "exact", head: true })
-      .eq("sales_person_id", salesPersonId)
-      .is("closed_at", null)
-      .is("archived_at", null)
-      .not("follow_up_at", "is", null)
-      .lte("follow_up_at", today),
-    supabase
-      .from("sales_notes")
-      .select("id", { count: "exact", head: true })
-      .eq("sales_person_id", salesPersonId)
-      .is("archived_at", null)
-      .not("follow_up_at", "is", null)
-      .lte("follow_up_at", today),
-  ]);
+  const { count, error } = await supabase
+    .from("sales_zk_watches")
+    .select("id", { count: "exact", head: true })
+    .eq("sales_person_id", salesPersonId)
+    .is("closed_at", null)
+    .is("archived_at", null)
+    .not("follow_up_at", "is", null)
+    .lte("follow_up_at", today);
 
-  if (watchesDueRes.error) throw new Error(watchesDueRes.error.message);
-  if (notesDueRes.error) throw new Error(notesDueRes.error.message);
-  return (watchesDueRes.count ?? 0) + (notesDueRes.count ?? 0);
+  if (error) throw new Error(error.message);
+  return count ?? 0;
+}
+
+/** Badge notatek: follow-up na dziś/wcześniej (tylko aktywne notatki). */
+export async function countNotesDueNavBadge(salesPersonId: string): Promise<number> {
+  const supabase = createAdminClient();
+  const today = formatDateString(todayInWarsaw());
+
+  const { count, error } = await supabase
+    .from("sales_notes")
+    .select("id", { count: "exact", head: true })
+    .eq("sales_person_id", salesPersonId)
+    .is("archived_at", null)
+    .not("follow_up_at", "is", null)
+    .lte("follow_up_at", today);
+
+  if (error) throw new Error(error.message);
+  return count ?? 0;
 }

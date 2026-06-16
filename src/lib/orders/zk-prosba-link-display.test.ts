@@ -24,4 +24,10 @@ describe("buildNotatnikZkWatchHref", () => {
       })
     ).toBe("/zk?dla=sp-9&focusWatch=w-1#watch-w-1");
   });
+
+  it("linkuje do archiwum ZK gdy sprawa zamknięta", () => {
+    expect(buildNotatnikZkWatchHref({ zkWatchId: "w-arch", archived: true })).toBe(
+      "/zk?focusWatch=w-arch&tab=archive#watch-w-arch"
+    );
+  });
 });

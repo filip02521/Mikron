@@ -18,10 +18,12 @@ export type SalesPersonAdminRow = {
   groupId: string | null;
   groupName: string | null;
   orderCount: number;
-  /** Aktywne ZK oczekujące na towar (notatnik). */
+  /** Aktywne ZK oczekujące na towar. */
   pendingZkCount: number;
   /** Aktywne ZK z przypomnieniem na dziś lub wcześniej. */
   followUpDueZkCount: number;
+  /** Aktywne notatki z przypomnieniem na dziś lub wcześniej. */
+  followUpDueNotesCount: number;
   linkedUserId: string | null;
   linkedUserEmail: string | null;
   linkedUserLastSignInAt: string | null;
@@ -41,7 +43,7 @@ export async function fetchSalesPeopleAdmin(): Promise<SalesPersonAdminRow[]> {
 
   const supabase = createAdminClient();
 
-  const [{ data: people, error: peopleError }, { data: profiles, error: profilesError }, { data: watchRows, error: watchesError }] =
+  const [{ data: people, error: peopleError }, { data: profiles, error: profilesError }, { data: watchRows, error: watchesError }, { data: noteRows, error: notesError }] =
     await Promise.all([
       supabase.from("sales_people").select("id, name, email, group_id").order("name"),
       supabase
@@ -53,11 +55,16 @@ export async function fetchSalesPeopleAdmin(): Promise<SalesPersonAdminRow[]> {
         .select("sales_person_id, follow_up_at, closed_at, archived_at")
         .is("closed_at", null)
         .is("archived_at", null),
+      supabase
+        .from("sales_notes")
+        .select("sales_person_id, follow_up_at, archived_at")
+        .is("archived_at", null),
     ]);
 
   if (peopleError) throw new Error(peopleError.message);
   if (profilesError) throw new Error(profilesError.message);
   if (watchesError) throw new Error(watchesError.message);
+  if (notesError) throw new Error(notesError.message);
 
   const lastSignInByUserId = await fetchAllAuthUsersLastSignIn(supabase);
 
@@ -97,6 +104,15 @@ export async function fetchSalesPeopleAdmin(): Promise<SalesPersonAdminRow[]> {
     }
   }
 
+  const followUpDueNotesBySalesId = new Map<string, number>();
+  for (const row of noteRows ?? []) {
+    const id = row.sales_person_id;
+    if (!id) continue;
+    if (isFollowUpDue(row.follow_up_at)) {
+      followUpDueNotesBySalesId.set(id, (followUpDueNotesBySalesId.get(id) ?? 0) + 1);
+    }
+  }
+
   return (people ?? []).map((p) => {
     const linked = linkedBySalesId.get(p.id);
     const groupId = (p.group_id as string | null) ?? null;
@@ -109,6 +125,7 @@ export async function fetchSalesPeopleAdmin(): Promise<SalesPersonAdminRow[]> {
       orderCount: orderCountBySalesId.get(p.id) ?? 0,
       pendingZkCount: pendingZkBySalesId.get(p.id) ?? 0,
       followUpDueZkCount: followUpDueZkBySalesId.get(p.id) ?? 0,
+      followUpDueNotesCount: followUpDueNotesBySalesId.get(p.id) ?? 0,
       linkedUserId: linked?.id ?? null,
       linkedUserEmail: linked?.email ?? null,
       linkedUserLastSignInAt: linked?.id

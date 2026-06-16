@@ -11,7 +11,7 @@ import { Button } from "@/components/ui/Button";
 import { Alert } from "@/components/ui/Alert";
 import { KeyboardShortcutsHint } from "@/components/ui/KeyboardShortcutsHint";
 import { cn } from "@/lib/cn";
-import { controlFocusClass, salesTypography } from "@/lib/ui/ontime-theme";
+import { salesTypography } from "@/lib/ui/ontime-theme";
 import { reorderNoteIds, sortSalesNotes, notesInSamePinBand, filterSalesNotesByQuery } from "@/lib/sales/notepad-note-sort";
 import type { SalesNote, SalesNoteColor } from "@/types/database";
 import { isFollowUpDue } from "@/lib/sales/notepad-follow-up";
@@ -21,16 +21,18 @@ import { FollowUpQuickDates } from "./FollowUpQuickDates";
 import {
   NOTATNIK_INPUT_CLASS,
   NOTATNIK_NOTES_GRID_CLASS,
-  NOTATNIK_SEARCH_CLASS,
+  NOTATNIK_NOTES_WALL_CLASS,
   NOTATNIK_TEXTAREA_CLASS,
 } from "./notatnik-layout";
-import { NOTE_COLOR_CARD } from "./note-styles";
+import { noteStickyBoardDividerClass, noteStickyPaperClass } from "./note-styles";
+import { NoteBodyDisplay } from "./NoteBodyDisplay";
+import { NoteFormatToolbar } from "./NoteFormatToolbar";
+import { NoteStickyFrame } from "./NoteStickyFrame";
+import { handleNoteFormatKeyDown } from "@/lib/sales/note-body-format";
 import { DragHandleGlyph, PinGlyph } from "@/components/ui/UiGlyphs";
 import { IconGripVertical } from "@/components/icons/StrokeIcons";
-import {
-  SalesListFilterEmptyHint,
-  SalesSectionEmptyHint,
-} from "@/components/sales/SalesListEmptyHints";
+import { SalesListFilterEmptyHint, SalesSectionEmptyHint } from "@/components/sales/SalesListEmptyHints";
+import { NotatnikListFilterBar } from "./NotatnikListFilterBar";
 
 export const NOTATNIK_KEYBOARD_HINTS = [
   { keys: ["N"], label: "nowa notatka" },
@@ -38,6 +40,7 @@ export const NOTATNIK_KEYBOARD_HINTS = [
   { keys: ["↑", "↓"], label: "fokus karty" },
   { keys: ["E"], label: "edytuj" },
   { keys: ["P"], label: "przypnij" },
+  { keys: ["Ctrl", "B"], label: "pogrubienie" },
   { keys: ["Ctrl", "Enter"], label: "zapisz" },
   { keys: ["Ctrl", "Z"], label: "cofnij" },
 ] as const;
@@ -89,6 +92,7 @@ function NoteCard({
   const [saving, setSaving] = useState(false);
   const [savingFollowUp, setSavingFollowUp] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const bodyTextareaRef = useRef<HTMLTextAreaElement>(null);
 
   if (noteSyncKey !== appliedNoteSyncKey) {
     setAppliedNoteSyncKey(noteSyncKey);
@@ -199,68 +203,77 @@ function NoteCard({
   const displayTitle = editing ? title : note.title;
   const displayBody = editing ? body : note.body;
   const displayColor = editing ? color : note.color;
+  const straightFrame = editing || focused || isDragging;
 
   return (
-    <article
-      id={anchorId}
-      tabIndex={focused ? 0 : -1}
-      draggable={draggable && !editing}
-      onDragStart={(e) => {
-        if (!draggable || editing) return;
-        e.dataTransfer.effectAllowed = "move";
-        onDragStart?.();
-      }}
-      onDragEnd={onDragEnd}
-      onDragOver={onDragOver}
-      onDrop={onDrop}
-      onFocus={onFocus}
-      onDoubleClick={() => {
-        if (!readOnly && !editing) setEditing(true);
-      }}
-      className={cn(
-        anchorId && "scroll-mt-3 scroll-mb-3",
-        "group relative flex w-full flex-col overflow-visible rounded-md border p-2.5 shadow-sm transition-shadow hover:shadow-md",
-        NOTE_COLOR_CARD[displayColor] ?? NOTE_COLOR_CARD.default,
-        pinned && !editing ? "ring-1 ring-inset ring-indigo-200/80" : undefined,
-        followUpDue && !editing ? "ring-1 ring-inset ring-violet-200/80" : undefined,
-        focused ? "z-10 ring-2 ring-inset ring-indigo-400/70" : undefined,
-        dragOver ? "border-indigo-300 bg-white/90" : undefined,
-        isDragging ? "opacity-50" : undefined
-      )}
-    >
-      {draggable && !editing && !readOnly ? (
-        <span
-          className="absolute left-1.5 top-1.5 cursor-grab text-slate-400 opacity-0 transition group-hover:opacity-100 active:cursor-grabbing"
-          aria-hidden
-          title="Przeciągnij, aby zmienić kolejność"
-        >
-          <IconGripVertical size={14} strokeWidth={2.5} />
-        </span>
-      ) : null}
-
-      {pinned && !editing ? (
-        <span className="absolute right-2 top-2" title="Przypięta" aria-label="Przypięta">
-          <PinGlyph size={13} />
-        </span>
-      ) : null}
-
+    <NoteStickyFrame seed={note.id} straight={straightFrame} showPin={pinned && !editing}>
+      <article
+        id={anchorId}
+        tabIndex={focused ? 0 : -1}
+        draggable={draggable && !editing}
+        onDragStart={(e) => {
+          if (!draggable || editing) return;
+          e.dataTransfer.effectAllowed = "move";
+          onDragStart?.();
+        }}
+        onDragEnd={onDragEnd}
+        onDragOver={onDragOver}
+        onDrop={onDrop}
+        onFocus={onFocus}
+        onDoubleClick={() => {
+          if (!readOnly && !editing) setEditing(true);
+        }}
+        className={cn(
+          anchorId && "scroll-mt-6 scroll-mb-6",
+          noteStickyPaperClass(displayColor, {
+            pinned,
+            followUpDue,
+            focused,
+            dragOver,
+            isDragging,
+            editing,
+          })
+        )}
+      >
       {editing && !readOnly ? (
-        <div className="space-y-2">
+        <div className="space-y-2 p-2.5 pt-3">
           <input
             type="text"
             value={title}
             onChange={(e) => setTitle(e.target.value)}
             placeholder="Tytuł (opcjonalnie)"
-            className={cn(NOTATNIK_INPUT_CLASS, "w-full text-xs")}
+            className={cn(NOTATNIK_INPUT_CLASS, "w-full text-sm font-semibold")}
+          />
+          <NoteFormatToolbar
+            textareaRef={bodyTextareaRef}
+            value={body}
+            onChange={setBody}
+            disabled={saving}
           />
           <textarea
-            rows={3}
+            ref={bodyTextareaRef}
+            rows={4}
             value={body}
             onChange={(e) => setBody(e.target.value)}
-            className={cn(NOTATNIK_TEXTAREA_CLASS, "w-full text-xs")}
+            onKeyDown={(e) => {
+              const el = e.currentTarget;
+              if (
+                handleNoteFormatKeyDown(e, body, el.selectionStart, el.selectionEnd, (next, start, end) => {
+                  setBody(next);
+                  requestAnimationFrame(() => el.setSelectionRange(start, end));
+                })
+              ) {
+                return;
+              }
+              if ((e.metaKey || e.ctrlKey) && e.key === "Enter") {
+                e.preventDefault();
+                void save();
+              }
+            }}
+            className={cn(NOTATNIK_TEXTAREA_CLASS, "min-h-[5.5rem] w-full resize-y text-sm leading-relaxed")}
           />
-          <div className="flex flex-wrap items-center gap-2">
-            <span className="text-[11px] text-slate-600">Przypomnij</span>
+          <div className="flex flex-wrap items-center gap-2 border-t border-slate-100 pt-2">
+            <span className={cn(salesTypography.chrome, "text-slate-600")}>Przypomnij</span>
             <input
               type="date"
               value={followUpDraft}
@@ -269,7 +282,7 @@ function NoteCard({
             />
           </div>
           <NoteColorPicker value={color} onChange={setColor} disabled={saving} size="sm" />
-          <div className="flex flex-wrap gap-1.5">
+          <div className="flex flex-wrap gap-1.5 border-t border-slate-100 pt-2">
             <Button size="sm" disabled={saving} onClick={() => void save()}>
               {saving ? "Zapis…" : "Zapisz"}
             </Button>
@@ -280,21 +293,41 @@ function NoteCard({
         </div>
       ) : (
         <>
-          {displayTitle?.trim() ? (
-            <h3 className="mb-0.5 pr-5 pl-3 text-xs font-semibold leading-snug text-slate-900">
-              {displayTitle}
-            </h3>
-          ) : null}
-          <p className="whitespace-pre-wrap pl-3 text-xs leading-snug text-slate-800">{displayBody}</p>
+          <div className="relative px-2.5 pb-1 pt-3.5">
+            {draggable && !readOnly ? (
+              <span
+                className="absolute left-1 top-2 cursor-grab text-slate-400 opacity-0 transition group-hover/sticky:opacity-100 active:cursor-grabbing"
+                aria-hidden
+                title="Przeciągnij, aby zmienić kolejność"
+              >
+                <IconGripVertical size={14} strokeWidth={2.5} />
+              </span>
+            ) : null}
+            {displayTitle?.trim() ? (
+              <h3 className="pr-4 text-[13px] font-bold leading-snug text-slate-900">{displayTitle}</h3>
+            ) : null}
+            <div className={cn(displayTitle?.trim() && "mt-1", "pr-1")}>
+              <NoteBodyDisplay body={displayBody} />
+            </div>
+            {pinned && !readOnly ? (
+              <span
+                className="absolute right-1.5 top-2 text-indigo-600/80"
+                title="Przypięta"
+                aria-label="Przypięta"
+              >
+                <PinGlyph size={12} />
+              </span>
+            ) : null}
+          </div>
 
           {!readOnly ? (
-            <div className="mt-2 space-y-1.5 overflow-visible border-t border-black/5 pt-2">
+            <div className="mt-auto space-y-1 overflow-visible border-t border-slate-100 px-2.5 py-2">
               <NoteFollowUpControl
                 value={followUpAt}
                 onChange={changeFollowUp}
                 saving={savingFollowUp}
               />
-              <div className="space-y-1.5 overflow-visible py-0.5 transition-opacity lg:opacity-100 lg:group-hover:opacity-100 lg:group-focus-within:opacity-100">
+              <div className="space-y-1 overflow-visible py-0.5 opacity-100 transition-opacity sm:opacity-0 sm:group-hover/sticky:opacity-100 sm:group-focus-within/sticky:opacity-100">
                 <NoteColorPicker
                   value={displayColor}
                   onChange={(c) => void changeColor(c)}
@@ -310,14 +343,15 @@ function NoteCard({
               </div>
             </div>
           ) : followUpAt ? (
-            <div className="mt-2 border-t border-black/5 pt-2">
+            <div className="mt-auto border-t border-slate-100 px-2.5 py-2">
               <NoteFollowUpControl value={followUpAt} onChange={() => {}} disabled />
             </div>
           ) : null}
         </>
       )}
-      {error ? <p className="mt-1 text-[10px] text-red-600">{error}</p> : null}
-    </article>
+      {error ? <p className="px-2.5 pb-2 text-[11px] text-red-700">{error}</p> : null}
+      </article>
+    </NoteStickyFrame>
   );
 }
 
@@ -354,7 +388,7 @@ export function NotesSection({
     action: "edit" | "pin";
   } | null>(null);
   const composeRef = useRef<HTMLDivElement>(null);
-  const searchRef = useRef<HTMLInputElement>(null);
+  const composeTextareaRef = useRef<HTMLTextAreaElement>(null);
 
   const composeExpanded =
     composeOpen || Boolean(draft.trim() || draftTitle.trim() || draftFollowUp);
@@ -398,62 +432,66 @@ export function NotesSection({
     [notes, onNotesReordered]
   );
 
-  function renderNoteGrid(list: SalesNote[], sectionLabel?: string) {
-    if (!list.length) return null;
+  function renderNoteCard(note: SalesNote) {
     const draggingNote = draggingId ? notes.find((n) => n.id === draggingId) : null;
 
     return (
-      <div className="space-y-1.5">
+      <NoteCard
+        key={note.id}
+        note={note}
+        anchorId={`note-${note.id}`}
+        readOnly={readOnly}
+        focused={focusedNoteId === note.id}
+        draggable={canDrag}
+        isDragging={draggingId === note.id}
+        dragOver={
+          dragOverId === note.id &&
+          draggingId !== note.id &&
+          !!draggingNote &&
+          notesInSamePinBand(draggingNote, note)
+        }
+        pendingKeyboardAction={
+          keyboardAction?.noteId === note.id ? keyboardAction.action : null
+        }
+        onConsumeKeyboardAction={() => setKeyboardAction(null)}
+        onFocus={() => setFocusedNoteId(note.id)}
+        onUpdated={onNoteUpdated}
+        onArchived={onNoteArchived}
+        onDragStart={() => setDraggingId(note.id)}
+        onDragEnd={() => {
+          setDraggingId(null);
+          setDragOverId(null);
+        }}
+        onDragOver={(e) => {
+          if (!canDrag || !draggingId || draggingId === note.id) return;
+          const from = notes.find((n) => n.id === draggingId);
+          if (!from || !notesInSamePinBand(from, note)) return;
+          e.preventDefault();
+          setDragOverId(note.id);
+        }}
+        onDrop={(e) => {
+          e.preventDefault();
+          if (!draggingId || draggingId === note.id) return;
+          const nextIds = reorderNoteIds(notes, draggingId, note.id);
+          setDraggingId(null);
+          setDragOverId(null);
+          void persistReorder(nextIds);
+        }}
+      />
+    );
+  }
+
+  function renderNoteWallSection(list: SalesNote[], sectionLabel?: string) {
+    if (!list.length) return null;
+
+    return (
+      <div className="space-y-3">
         {sectionLabel ? (
-          <p className={salesTypography.sectionLabel}>{sectionLabel}</p>
+          <p className={cn(salesTypography.sectionLabel, "px-0.5")}>
+            {sectionLabel}
+          </p>
         ) : null}
-        <div className={NOTATNIK_NOTES_GRID_CLASS}>
-          {list.map((note) => (
-            <div key={note.id}>
-              <NoteCard
-                note={note}
-                anchorId={`note-${note.id}`}
-                readOnly={readOnly}
-                focused={focusedNoteId === note.id}
-                draggable={canDrag}
-                isDragging={draggingId === note.id}
-                dragOver={
-                  dragOverId === note.id &&
-                  draggingId !== note.id &&
-                  !!draggingNote &&
-                  notesInSamePinBand(draggingNote, note)
-                }
-                pendingKeyboardAction={
-                  keyboardAction?.noteId === note.id ? keyboardAction.action : null
-                }
-                onConsumeKeyboardAction={() => setKeyboardAction(null)}
-                onFocus={() => setFocusedNoteId(note.id)}
-                onUpdated={onNoteUpdated}
-                onArchived={onNoteArchived}
-                onDragStart={() => setDraggingId(note.id)}
-                onDragEnd={() => {
-                  setDraggingId(null);
-                  setDragOverId(null);
-                }}
-                onDragOver={(e) => {
-                  if (!canDrag || !draggingId || draggingId === note.id) return;
-                  const from = notes.find((n) => n.id === draggingId);
-                  if (!from || !notesInSamePinBand(from, note)) return;
-                  e.preventDefault();
-                  setDragOverId(note.id);
-                }}
-                onDrop={(e) => {
-                  e.preventDefault();
-                  if (!draggingId || draggingId === note.id) return;
-                  const nextIds = reorderNoteIds(notes, draggingId, note.id);
-                  setDraggingId(null);
-                  setDragOverId(null);
-                  void persistReorder(nextIds);
-                }}
-              />
-            </div>
-          ))}
-        </div>
+        <div className={NOTATNIK_NOTES_GRID_CLASS}>{list.map((note) => renderNoteCard(note))}</div>
       </div>
     );
   }
@@ -475,12 +513,6 @@ export function NotesSection({
 
       if (inField) {
         if (e.key === "Escape") (e.target as HTMLElement).blur();
-        return;
-      }
-
-      if (e.key === "/" && !e.metaKey && !e.ctrlKey) {
-        e.preventDefault();
-        searchRef.current?.focus();
         return;
       }
 
@@ -561,145 +593,188 @@ export function NotesSection({
         </div>
       ) : null}
 
-      <div className={cn(embedded && "space-y-3 px-3 sm:px-4 pt-3", !embedded && "space-y-3")}>
-      {embedded ? (
-        <KeyboardShortcutsHint items={[...NOTATNIK_KEYBOARD_HINTS]} compact />
-      ) : null}
+      <div className={cn(embedded && "px-3 sm:px-4 pb-3 pt-3", !embedded && "space-y-3")}>
+        {embedded ? (
+          <KeyboardShortcutsHint items={[...NOTATNIK_KEYBOARD_HINTS]} compact />
+        ) : null}
 
-      {!readOnly ? (
-        composeExpanded ? (
-          <div
-            ref={composeRef}
-            className={cn(
-              "rounded-md border p-3",
-              NOTE_COLOR_CARD[draftColor] ?? NOTE_COLOR_CARD.default
-            )}
-            onKeyDown={(e) => {
-              if ((e.metaKey || e.ctrlKey) && e.key === "Enter") {
-                e.preventDefault();
-                void createNote();
-              }
-            }}
-          >
-            <div className="space-y-2">
-              <input
-                type="text"
-                value={draftTitle}
-                onChange={(e) => setDraftTitle(e.target.value)}
-                placeholder="Tytuł (opcjonalnie)"
-                className={cn(
-                  "h-8 w-full rounded-md border border-white/80 bg-white/80 px-2 text-xs",
-                  controlFocusClass
-                )}
-              />
-              <textarea
-                rows={2}
-                value={draft}
-                onChange={(e) => setDraft(e.target.value)}
-                placeholder="Wpisz notatkę…"
-                className={cn(
-                  "w-full rounded-md border border-white/80 bg-white px-2 py-1.5 text-xs leading-snug",
-                  controlFocusClass
-                )}
-              />
-              <div className="space-y-1.5">
-                <span className="text-[10px] font-medium text-slate-600">Przypomnij</span>
-                <FollowUpQuickDates
-                  value={draftFollowUp || null}
-                  disabled={saving}
-                  onPick={setDraftFollowUp}
-                />
-                <input
-                  id="note-compose-follow-up"
-                  type="date"
-                  value={draftFollowUp}
-                  onChange={(e) => setDraftFollowUp(e.target.value)}
-                  className={cn(NOTATNIK_INPUT_CLASS, "h-8 w-auto text-xs")}
-                />
-              </div>
-              <div className="flex flex-wrap items-center justify-between gap-2">
-                <NoteColorPicker value={draftColor} onChange={setDraftColor} disabled={saving} size="sm" />
-                <div className="flex gap-1.5">
-                  <Button
-                    size="sm"
-                    variant="ghost"
-                    onClick={() => {
-                      setDraft("");
-                      setDraftTitle("");
-                      setDraftFollowUp("");
-                      setDraftColor("default");
-                      setComposeOpen(false);
-                    }}
-                  >
-                    Anuluj
-                  </Button>
-                  <Button size="sm" disabled={saving || !draft.trim()} onClick={() => void createNote()}>
-                    {saving ? "Zapis…" : "Dodaj"}
-                  </Button>
+        <div className={cn(NOTATNIK_NOTES_WALL_CLASS, "space-y-3")}>
+          {!readOnly ? (
+            composeExpanded ? (
+              <NoteStickyFrame seed="compose-new-note" straight showPin>
+                <div
+                  ref={composeRef}
+                  className={noteStickyPaperClass(draftColor, { editing: true })}
+                  onKeyDown={(e) => {
+                    if ((e.metaKey || e.ctrlKey) && e.key === "Enter") {
+                      e.preventDefault();
+                      void createNote();
+                    }
+                  }}
+                >
+                  <div className="space-y-2 p-2.5 pt-3">
+                    <p className={salesTypography.sectionLabel}>Nowa karteczka</p>
+                    <input
+                      type="text"
+                      value={draftTitle}
+                      onChange={(e) => setDraftTitle(e.target.value)}
+                      placeholder="Tytuł (opcjonalnie)"
+                      className={cn(NOTATNIK_INPUT_CLASS, "w-full text-sm font-semibold")}
+                    />
+                    <NoteFormatToolbar
+                      textareaRef={composeTextareaRef}
+                      value={draft}
+                      onChange={setDraft}
+                      disabled={saving}
+                    />
+                    <textarea
+                      ref={composeTextareaRef}
+                      rows={3}
+                      value={draft}
+                      onChange={(e) => setDraft(e.target.value)}
+                      onKeyDown={(e) => {
+                        const el = e.currentTarget;
+                        if (
+                          handleNoteFormatKeyDown(
+                            e,
+                            draft,
+                            el.selectionStart,
+                            el.selectionEnd,
+                            (next, start, end) => {
+                              setDraft(next);
+                              requestAnimationFrame(() => el.setSelectionRange(start, end));
+                            }
+                          )
+                        ) {
+                          return;
+                        }
+                        if ((e.metaKey || e.ctrlKey) && e.key === "Enter") {
+                          e.preventDefault();
+                          void createNote();
+                        }
+                      }}
+                      placeholder="Wpisz notatkę…"
+                      className={cn(
+                        NOTATNIK_TEXTAREA_CLASS,
+                        "min-h-[5rem] w-full resize-y text-sm leading-relaxed"
+                      )}
+                    />
+                    <div className="space-y-1.5 border-t border-slate-100 pt-2">
+                      <span className={cn(salesTypography.chrome, "text-slate-600")}>Przypomnij</span>
+                      <FollowUpQuickDates
+                        value={draftFollowUp || null}
+                        disabled={saving}
+                        onPick={setDraftFollowUp}
+                      />
+                      <input
+                        id="note-compose-follow-up"
+                        type="date"
+                        value={draftFollowUp}
+                        onChange={(e) => setDraftFollowUp(e.target.value)}
+                        className={cn(NOTATNIK_INPUT_CLASS, "h-8 w-auto text-xs")}
+                      />
+                    </div>
+                    <div className="flex flex-wrap items-center justify-between gap-2 border-t border-slate-100 pt-2">
+                      <NoteColorPicker
+                        value={draftColor}
+                        onChange={setDraftColor}
+                        disabled={saving}
+                        size="sm"
+                      />
+                      <div className="flex gap-1.5">
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={() => {
+                            setDraft("");
+                            setDraftTitle("");
+                            setDraftFollowUp("");
+                            setDraftColor("default");
+                            setComposeOpen(false);
+                          }}
+                        >
+                          Anuluj
+                        </Button>
+                        <Button
+                          size="sm"
+                          disabled={saving || !draft.trim()}
+                          onClick={() => void createNote()}
+                        >
+                          {saving ? "Zapis…" : "Dodaj"}
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
                 </div>
-              </div>
-            </div>
-          </div>
-        ) : (
-          <button
-            type="button"
-            onClick={() => setComposeOpen(true)}
-            className="flex w-full items-center gap-2 rounded-md border border-dashed border-slate-200 bg-slate-50/60 px-3 py-2.5 text-left text-xs text-slate-500 transition hover:border-indigo-200 hover:bg-indigo-50/40 hover:text-indigo-800"
-          >
-            <span className="text-base leading-none text-indigo-600" aria-hidden>
-              +
-            </span>
-            Wpisz notatkę…
-            <span className="ml-auto hidden sm:inline">
-              <KeyboardShortcutsHint items={[{ keys: ["N"], label: "" }]} compact />
-            </span>
-          </button>
-        )
-      ) : null}
-
-      {notes.length > 0 ? (
-        <div className="flex flex-wrap items-center justify-between gap-2">
-          <input
-            ref={searchRef}
-            type="search"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Szukaj…"
-            className={NOTATNIK_SEARCH_CLASS}
-          />
-          {filtered.length > 0 ? (
-            <span className="text-[11px] tabular-nums text-slate-500">{filtered.length} szt.</span>
+              </NoteStickyFrame>
+            ) : (
+              <NoteStickyFrame seed="compose-placeholder" straight={false}>
+                <button
+                  type="button"
+                  onClick={() => setComposeOpen(true)}
+                  className={cn(
+                    noteStickyPaperClass("default", { placeholder: true }),
+                    "flex min-h-[4.5rem] w-full items-center gap-2 px-3 py-3 text-left text-sm text-slate-500 transition hover:text-indigo-800"
+                  )}
+                >
+                  <span className="text-lg leading-none text-indigo-600/80" aria-hidden>
+                    +
+                  </span>
+                  Przypnij nową karteczkę…
+                  <span className="ml-auto hidden sm:inline">
+                    <KeyboardShortcutsHint items={[{ keys: ["N"], label: "" }]} compact />
+                  </span>
+                </button>
+              </NoteStickyFrame>
+            )
           ) : null}
+
+          {notes.length > 0 ? (
+            <NotatnikListFilterBar
+              embedded
+              value={searchQuery}
+              onChange={setSearchQuery}
+              matchCount={filtered.length}
+              totalCount={notes.length}
+              placeholder="Szukaj po tytule lub treści notatki…"
+              searchLabel="Szukaj w notatkach"
+              idleHint="Filtruj notatki po tytule lub treści."
+              activeHint="Wyniki z przypiętych i zwykłych karteczek."
+              emptyMatchHint="Brak dopasowań — sprawdź tytuł lub treść notatki."
+            />
+          ) : null}
+
+          {canDrag && filtered.length > 1 ? (
+            <p className="inline-flex flex-wrap items-center gap-1 text-[10px] text-slate-400">
+              Przeciągnij karteczkę (
+              <DragHandleGlyph />
+              ) w sekcji przypiętych lub zwykłych — między sekcjami nie da się przenieść.
+            </p>
+          ) : null}
+
+          {error ? <Alert tone="error">{error}</Alert> : null}
+
+          {filtered.length === 0 ? (
+            needle ? (
+              <SalesListFilterEmptyHint
+                query={searchQuery.trim()}
+                onClear={() => setSearchQuery("")}
+                entityLabel="notatek"
+              />
+            ) : (
+              <SalesSectionEmptyHint message="Brak notatek — przypnij pierwszą karteczkę powyżej." />
+            )
+          ) : (
+            <>
+              {renderNoteWallSection(pinnedFiltered, pinnedFiltered.length ? "Przypięte" : undefined)}
+              {pinnedFiltered.length > 0 && regularFiltered.length > 0 ? (
+                <div className={cn("my-1", noteStickyBoardDividerClass)} aria-hidden />
+              ) : null}
+              {renderNoteWallSection(regularFiltered, pinnedFiltered.length ? "Pozostałe" : undefined)}
+            </>
+          )}
         </div>
-      ) : null}
-
-      {canDrag && filtered.length > 1 ? (
-        <p className="inline-flex flex-wrap items-center gap-1 text-[10px] text-slate-400">
-          Przeciągnij kartę (
-          <DragHandleGlyph />
-          ) w sekcji przypiętych lub zwykłych — między sekcjami nie da się przenieść.
-        </p>
-      ) : null}
-
-      {error ? <Alert tone="error">{error}</Alert> : null}
       </div>
-
-      {filtered.length === 0 ? (
-        needle ? (
-          <SalesListFilterEmptyHint
-            query={searchQuery.trim()}
-            onClear={() => setSearchQuery("")}
-            entityLabel="notatek"
-          />
-        ) : (
-          <SalesSectionEmptyHint message="Brak notatek." />
-        )
-      ) : (
-        <div className={cn("space-y-4", embedded && "px-3 pb-3 sm:px-4")}>
-          {renderNoteGrid(pinnedFiltered, pinnedFiltered.length ? "Przypięte" : undefined)}
-          {renderNoteGrid(regularFiltered, pinnedFiltered.length ? "Pozostałe" : undefined)}
-        </div>
-      )}
     </div>
   );
 }

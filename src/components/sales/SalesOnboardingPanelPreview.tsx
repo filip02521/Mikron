@@ -96,7 +96,12 @@ export function SalesOnboardingPanelPreview({ stepId }: { stepId: string }) {
             />
             <WelcomeChannelChip
               label="ZK czekające"
-              hint="Twoje przypomnienia — nie do zakupów"
+              hint="ZK z Subiekta — prośby i magazyn"
+              tone="violet"
+            />
+            <WelcomeChannelChip
+              label="Notatnik"
+              hint="Prywatne przypomnienia — nie do zakupów"
               tone="violet"
             />
           </div>
@@ -218,19 +223,42 @@ export function SalesOnboardingPanelPreview({ stepId }: { stepId: string }) {
     case "notatnik":
       return (
         <div className="space-y-2">
+          <div className="flex gap-2">
+            <div className="flex-1 rounded-md border-2 border-indigo-400 bg-indigo-50 px-2 py-1.5 text-center text-[10px] font-semibold text-indigo-900">
+              ZK
+            </div>
+            <div className="flex-1 rounded-md border border-slate-200 bg-white px-2 py-1.5 text-center text-[10px] font-medium text-slate-600">
+              Archiwum
+            </div>
+          </div>
           <div className="rounded-md border border-violet-200 bg-violet-50/80 px-2.5 py-1.5 text-[10px] text-violet-900">
-            Do zrobienia dziś · przypomnienie przy ZK
+            Do zrobienia dziś · przypomnienie ZK
           </div>
           <div className="rounded-md border border-amber-200 bg-amber-50 px-2.5 py-2 text-[11px] text-amber-950">
             <p className="font-semibold">ZK/2026/0138 · Gabinet Dr Kowalski</p>
             <p className="mt-0.5 text-[10px] font-medium text-amber-800">Czeka na towar</p>
-            <p className="mt-1 text-[10px] text-amber-900/90">Implant BLX · abutment</p>
             <span className="mt-1.5 inline-block rounded bg-indigo-600 px-1.5 py-0.5 text-[9px] font-semibold text-white">
               Zgłoś prośbę
             </span>
           </div>
+        </div>
+      );
+    case "notatnik-notes":
+      return (
+        <div className="space-y-2">
+          <div className="flex gap-2">
+            <div className="flex-1 rounded-md border-2 border-indigo-400 bg-indigo-50 px-2 py-1.5 text-center text-[10px] font-semibold text-indigo-900">
+              Notatki
+            </div>
+            <div className="flex-1 rounded-md border border-slate-200 bg-white px-2 py-1.5 text-center text-[10px] font-medium text-slate-600">
+              Archiwum
+            </div>
+          </div>
+          <div className="rounded-md border border-violet-200 bg-violet-50/80 px-2.5 py-1.5 text-[10px] text-violet-900">
+            Do zrobienia dziś · notatka z przypomnieniem
+          </div>
           <div className="rounded-md border border-slate-200 bg-white px-2.5 py-2 text-[11px] text-slate-700">
-            Zakładka Notatki · oddzwonić do gabinetu
+            Oddzwonić do gabinetu — potwierdzić termin
           </div>
         </div>
       );
