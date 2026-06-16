@@ -382,6 +382,16 @@ export function NotesSection({
   const pinnedFiltered = filtered.filter((n) => n.pinned);
   const regularFiltered = filtered.filter((n) => !n.pinned);
 
+  const toggleFocusedNotePin = useCallback(() => {
+    if (!focusedNoteId) return;
+    const note = notes.find((item) => item.id === focusedNoteId);
+    if (!note) return;
+    const nextPinned = !note.pinned;
+    void actionUpdateSalesNote(note.id, { pinned: nextPinned })
+      .then(() => onNoteUpdated?.({ ...note, pinned: nextPinned }))
+      .catch(() => undefined);
+  }, [focusedNoteId, notes, onNoteUpdated]);
+
   const persistReorder = useCallback(
     async (nextIds: string[] | null) => {
       if (!nextIds) {
@@ -524,18 +534,13 @@ export function NotesSection({
 
       if (e.key === "p" || e.key === "P") {
         e.preventDefault();
-        const note = notes.find((item) => item.id === focusedNoteId);
-        if (!note) return;
-        const nextPinned = !note.pinned;
-        void actionUpdateSalesNote(note.id, { pinned: nextPinned })
-          .then(() => onNoteUpdated?.({ ...note, pinned: nextPinned }))
-          .catch(() => undefined);
+        toggleFocusedNotePin();
       }
     };
 
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [readOnly, filtered, focusedNoteId, notes, onNoteUpdated]);
+  }, [readOnly, filtered, focusedNoteId, toggleFocusedNotePin]);
 
   async function createNote() {
     const trimmed = draft.trim();
