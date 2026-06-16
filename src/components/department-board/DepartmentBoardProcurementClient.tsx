@@ -9,6 +9,9 @@ import { SectionHeadingIcon } from "@/components/icons/SectionHeadingIcon";
 import { IconClipboardPen, IconInbox } from "@/components/icons/StrokeIcons";
 import { NoteColorPicker } from "@/components/notatnik/NoteColorPicker";
 import { NotatnikPanel } from "@/components/notatnik/NotatnikPanel";
+import { NotatnikListFilterBar } from "@/components/notatnik/NotatnikListFilterBar";
+import { SalesListFilterEmptyHint } from "@/components/sales/SalesListEmptyHints";
+import { filterDepartmentBoardQuestionsByQuery } from "@/lib/department-board/question-search";
 import { NOTATNIK_INPUT_CLASS, NOTATNIK_TEXTAREA_CLASS } from "@/components/notatnik/notatnik-layout";
 import { AnnouncementCard } from "@/components/department-board/AnnouncementCard";
 import { QuestionThreadCard } from "@/components/department-board/QuestionThreadCard";
@@ -59,6 +62,7 @@ export function DepartmentBoardProcurementClient({
     () => initialTab ?? (focusQuestionId ? "questions" : "announcements")
   );
   const [questionFilter, setQuestionFilter] = useState<DepartmentBoardQuestionFilter>("open");
+  const [questionSearch, setQuestionSearch] = useState("");
 
   const [announcementTitle, setAnnouncementTitle] = useState("");
   const [announcementBody, setAnnouncementBody] = useState("");
@@ -68,7 +72,7 @@ export function DepartmentBoardProcurementClient({
   const [announcementFormError, setAnnouncementFormError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
 
-  const filteredQuestions = useMemo(() => {
+  const statusFilteredQuestions = useMemo(() => {
     if (questionFilter === "open") {
       return initial.questions.filter((q) => q.status === "open");
     }
@@ -77,6 +81,12 @@ export function DepartmentBoardProcurementClient({
     }
     return initial.questions;
   }, [initial.questions, questionFilter]);
+
+  const questionSearchNeedle = questionSearch.trim();
+  const filteredQuestions = useMemo(
+    () => filterDepartmentBoardQuestionsByQuery(statusFilteredQuestions, questionSearch),
+    [statusFilteredQuestions, questionSearch]
+  );
 
   const openQuestionsCount = initial.questions.filter((q) => q.status === "open").length;
 
@@ -249,7 +259,27 @@ export function DepartmentBoardProcurementClient({
                 value={questionFilter}
                 onChange={setQuestionFilter}
               />
-              {filteredQuestions.length === 0 ? (
+              {initial.questions.length > 0 ? (
+                <NotatnikListFilterBar
+                  embedded
+                  value={questionSearch}
+                  onChange={setQuestionSearch}
+                  matchCount={filteredQuestions.length}
+                  totalCount={statusFilteredQuestions.length}
+                  placeholder="Szukaj po temacie, treści, autorze lub odpowiedzi…"
+                  searchLabel="Szukaj w pytaniach handlowców"
+                  idleHint="Filtruj pytania po temacie, treści, autorze lub fragmencie odpowiedzi."
+                  activeHint="Wyniki z aktywnego filtra statusu pytań."
+                  emptyMatchHint="Brak dopasowań — sprawdź temat, treść, autora lub odpowiedź."
+                />
+              ) : null}
+              {questionSearchNeedle && filteredQuestions.length === 0 && statusFilteredQuestions.length > 0 ? (
+                <SalesListFilterEmptyHint
+                  query={questionSearchNeedle}
+                  onClear={() => setQuestionSearch("")}
+                  entityLabel="pytań"
+                />
+              ) : filteredQuestions.length === 0 ? (
                 <DepartmentBoardQuestionsEmpty domain="panel" filter={questionFilter} />
               ) : (
                 <div className={cn(mojeShipmentListClass, "-mx-3 sm:-mx-4")}>

@@ -1,0 +1,71 @@
+import { describe, expect, it } from "vitest";
+import type { DepartmentBoardQuestion } from "@/lib/data/department-board";
+import {
+  departmentBoardQuestionSearchHaystack,
+  filterDepartmentBoardQuestionsByQuery,
+} from "./question-search";
+
+function testQuestion(
+  partial: Partial<DepartmentBoardQuestion> & Pick<DepartmentBoardQuestion, "id" | "title" | "body">
+): DepartmentBoardQuestion {
+  return {
+    kind: "question",
+    status: "open",
+    created_by: "u1",
+    sales_person_id: "sp1",
+    color: "default",
+    pinned: false,
+    published_at: "",
+    expires_at: null,
+    answered_at: null,
+    archived_at: null,
+    created_at: "",
+    updated_at: "",
+    sales_person: { id: "sp1", name: "Anna Kowalska" },
+    author: { email: "anna@firma.pl", role: "sales" },
+    posts: [],
+    ...partial,
+  };
+}
+
+describe("filterDepartmentBoardQuestionsByQuery", () => {
+  const questions = [
+    testQuestion({ id: "q1", title: "Termin dostawy Straumann", body: "Kiedy będzie towar?" }),
+    testQuestion({
+      id: "q2",
+      title: "Cennik Dentsply",
+      body: "Proszę o aktualizację.",
+      sales_person: { id: "sp2", name: "Jan Nowak" },
+      posts: [
+        {
+          id: "p1",
+          thread_id: "q2",
+          body: "Wyślemy PDF jutro.",
+          created_by: "u2",
+          created_at: "",
+          author: { email: "zakupy@firma.pl", role: "zakupy" },
+        },
+      ],
+    }),
+  ];
+
+  it("zwraca pełną listę przy pustym zapytaniu", () => {
+    expect(filterDepartmentBoardQuestionsByQuery(questions, "  ")).toHaveLength(2);
+  });
+
+  it("szuka po tytule i treści pytania", () => {
+    expect(filterDepartmentBoardQuestionsByQuery(questions, "straumann")).toHaveLength(1);
+    expect(filterDepartmentBoardQuestionsByQuery(questions, "aktualizację")[0]?.id).toBe("q2");
+  });
+
+  it("szuka po autorze i treści odpowiedzi", () => {
+    expect(filterDepartmentBoardQuestionsByQuery(questions, "jan nowak")).toHaveLength(1);
+    expect(filterDepartmentBoardQuestionsByQuery(questions, "pdf")).toHaveLength(1);
+  });
+
+  it("buduje haystack z autorem i odpowiedziami", () => {
+    const haystack = departmentBoardQuestionSearchHaystack(questions[1]!);
+    expect(haystack).toContain("jan nowak");
+    expect(haystack).toContain("wyślemy pdf jutro");
+  });
+});

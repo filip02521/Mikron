@@ -46,6 +46,9 @@ import { cn } from "@/lib/cn";
 import { mojeShipmentListClass } from "@/lib/ui/moje-shipment-row-styles";
 import { salesPageShellClass, salesTypography, sectionIconTileBrandClass, brandLinkClass } from "@/lib/ui/ontime-theme";
 import { NotatnikPanel } from "@/components/notatnik/NotatnikPanel";
+import { NotatnikListFilterBar } from "@/components/notatnik/NotatnikListFilterBar";
+import { SalesListFilterEmptyHint } from "@/components/sales/SalesListEmptyHints";
+import { filterDepartmentBoardQuestionsByQuery } from "@/lib/department-board/question-search";
 import { actionCreateQuestion } from "@/app/actions/department-board";
 
 type QuestionFilter = "all" | "open" | "answered";
@@ -107,9 +110,10 @@ export function DepartmentBoardSalesClient({
   const [questionTitle, setQuestionTitle] = useState("");
   const [questionBody, setQuestionBody] = useState("");
   const [questionFormError, setQuestionFormError] = useState<string | null>(null);
+  const [questionSearch, setQuestionSearch] = useState("");
   const [saving, setSaving] = useState(false);
 
-  const filteredQuestions = useMemo(() => {
+  const statusFilteredQuestions = useMemo(() => {
     if (activeQuestionFilter === "open") {
       return board.questions.filter((q) => q.status === "open");
     }
@@ -118,6 +122,12 @@ export function DepartmentBoardSalesClient({
     }
     return board.questions;
   }, [board.questions, activeQuestionFilter]);
+
+  const questionSearchNeedle = questionSearch.trim();
+  const filteredQuestions = useMemo(
+    () => filterDepartmentBoardQuestionsByQuery(statusFilteredQuestions, questionSearch),
+    [statusFilteredQuestions, questionSearch]
+  );
 
   function refresh() {
     router.refresh();
@@ -306,7 +316,27 @@ export function DepartmentBoardSalesClient({
                 value={activeQuestionFilter}
                 onChange={setQuestionFilter}
               />
-              {filteredQuestions.length === 0 ? (
+              {board.questions.length > 0 ? (
+                <NotatnikListFilterBar
+                  embedded
+                  value={questionSearch}
+                  onChange={setQuestionSearch}
+                  matchCount={filteredQuestions.length}
+                  totalCount={statusFilteredQuestions.length}
+                  placeholder="Szukaj po temacie, treści, autorze lub odpowiedzi…"
+                  searchLabel="Szukaj w pytaniach zespołu"
+                  idleHint="Filtruj pytania po temacie, treści, autorze lub fragmencie odpowiedzi."
+                  activeHint="Wyniki z aktywnego filtra statusu pytań."
+                  emptyMatchHint="Brak dopasowań — sprawdź temat, treść, autora lub odpowiedź."
+                />
+              ) : null}
+              {questionSearchNeedle && filteredQuestions.length === 0 && statusFilteredQuestions.length > 0 ? (
+                <SalesListFilterEmptyHint
+                  query={questionSearchNeedle}
+                  onClear={() => setQuestionSearch("")}
+                  entityLabel="pytań"
+                />
+              ) : filteredQuestions.length === 0 ? (
                 <DepartmentBoardQuestionsEmpty domain="sales" filter={activeQuestionFilter} />
               ) : (
                 <div className={cn(mojeShipmentListClass, "-mx-3 sm:-mx-4")}>
