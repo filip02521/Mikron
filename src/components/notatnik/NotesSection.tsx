@@ -53,8 +53,8 @@ function NoteCard({
   draggable,
   isDragging,
   dragOver,
-  pendingKeyboardAction,
-  onConsumeKeyboardAction,
+  startInEditMode,
+  onEditingChange,
   onFocus,
   onUpdated,
   onArchived,
@@ -70,8 +70,8 @@ function NoteCard({
   draggable?: boolean;
   isDragging?: boolean;
   dragOver?: boolean;
-  pendingKeyboardAction?: "edit" | "pin" | null;
-  onConsumeKeyboardAction?: () => void;
+  startInEditMode?: boolean;
+  onEditingChange?: (editing: boolean) => void;
   onFocus?: () => void;
   onUpdated?: (note: SalesNote) => void;
   onArchived?: (note: SalesNote) => void;
@@ -80,9 +80,7 @@ function NoteCard({
   onDragOver?: (e: React.DragEvent) => void;
   onDrop?: (e: React.DragEvent) => void;
 }) {
-  const noteSyncKey = `${note.id}\0${note.updated_at}`;
-  const [appliedNoteSyncKey, setAppliedNoteSyncKey] = useState(noteSyncKey);
-  const [editing, setEditing] = useState(false);
+  const [editing, setEditing] = useState(Boolean(startInEditMode));
   const [body, setBody] = useState(note.body);
   const [title, setTitle] = useState(note.title ?? "");
   const [color, setColor] = useState(note.color);
@@ -94,31 +92,9 @@ function NoteCard({
   const [error, setError] = useState<string | null>(null);
   const bodyTextareaRef = useRef<HTMLTextAreaElement>(null);
 
-  if (noteSyncKey !== appliedNoteSyncKey) {
-    setAppliedNoteSyncKey(noteSyncKey);
-    setBody(note.body);
-    setTitle(note.title ?? "");
-    setColor(note.color);
-    setPinned(note.pinned);
-    const iso = note.follow_up_at?.slice(0, 10) ?? null;
-    setFollowUpAt(iso);
-    setFollowUpDraft(iso ?? "");
-  }
-
-  const pendingKey = pendingKeyboardAction ? `${note.id}:${pendingKeyboardAction}` : null;
-  const [handledPendingKey, setHandledPendingKey] = useState<string | null>(null);
-  if (pendingKey && pendingKey !== handledPendingKey && !readOnly) {
-    setHandledPendingKey(pendingKey);
-    onConsumeKeyboardAction?.();
-    if (pendingKeyboardAction === "edit") {
-      setEditing(true);
-    } else if (pendingKeyboardAction === "pin") {
-      const nextPinned = !pinned;
-      setPinned(nextPinned);
-      void actionUpdateSalesNote(note.id, { pinned: nextPinned })
-        .then(() => onUpdated?.({ ...note, pinned: nextPinned }))
-        .catch(() => setPinned(!nextPinned));
-    }
+  function setEditingState(next: boolean) {
+    setEditing(next);
+    onEditingChange?.(next);
   }
 
   async function save() {
@@ -140,7 +116,7 @@ function NoteCard({
         color,
         follow_up_at: trimmedFollowUp,
       });
-      setEditing(false);
+      setEditingState(false);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Nie udało się zapisać notatki.");
     } finally {
@@ -221,7 +197,7 @@ function NoteCard({
         onDrop={onDrop}
         onFocus={onFocus}
         onDoubleClick={() => {
-          if (!readOnly && !editing) setEditing(true);
+          if (!readOnly && !editing) setEditingState(true);
         }}
         className={cn(
           anchorId && "scroll-mt-6 scroll-mb-6",
@@ -286,7 +262,7 @@ function NoteCard({
             <Button size="sm" disabled={saving} onClick={() => void save()}>
               {saving ? "Zapis…" : "Zapisz"}
             </Button>
-            <Button size="sm" variant="ghost" onClick={() => setEditing(false)}>
+            <Button size="sm" variant="ghost" onClick={() => setEditingState(false)}>
               Anuluj
             </Button>
           </div>
@@ -336,7 +312,7 @@ function NoteCard({
                 <NoteCardToolbar
                   pinned={pinned}
                   saving={saving || savingFollowUp}
-                  onEdit={() => setEditing(true)}
+                  onEdit={() => setEditingState(true)}
                   onTogglePin={() => void togglePin()}
                   onArchive={() => void archive()}
                 />
@@ -383,10 +359,7 @@ export function NotesSection({
   const [draggingId, setDraggingId] = useState<string | null>(null);
   const [dragOverId, setDragOverId] = useState<string | null>(null);
   const [focusedNoteId, setFocusedNoteId] = useState<string | null>(null);
-  const [keyboardAction, setKeyboardAction] = useState<{
-    noteId: string;
-    action: "edit" | "pin";
-  } | null>(null);
+  const [editingNoteId, setEditingNoteId] = useState<string | null>(null);
   const composeRef = useRef<HTMLDivElement>(null);
   const composeTextareaRef = useRef<HTMLTextAreaElement>(null);
 
@@ -434,14 +407,19 @@ export function NotesSection({
 
   function renderNoteCard(note: SalesNote) {
     const draggingNote = draggingId ? notes.find((n) => n.id === draggingId) : null;
+    const startInEditMode = editingNoteId === note.id;
 
     return (
       <NoteCard
-        key={note.id}
+        key={`${note.id}:${note.updated_at}:${startInEditMode ? "edit" : "view"}`}
         note={note}
         anchorId={`note-${note.id}`}
         readOnly={readOnly}
         focused={focusedNoteId === note.id}
+        startInEditMode={startInEditMode}
+        onEditingChange={(editing) => {
+          if (!editing && editingNoteId === note.id) setEditingNoteId(null);
+        }}
         draggable={canDrag}
         isDragging={draggingId === note.id}
         dragOver={
@@ -450,10 +428,6 @@ export function NotesSection({
           !!draggingNote &&
           notesInSamePinBand(draggingNote, note)
         }
-        pendingKeyboardAction={
-          keyboardAction?.noteId === note.id ? keyboardAction.action : null
-        }
-        onConsumeKeyboardAction={() => setKeyboardAction(null)}
         onFocus={() => setFocusedNoteId(note.id)}
         onUpdated={onNoteUpdated}
         onArchived={onNoteArchived}
@@ -544,19 +518,24 @@ export function NotesSection({
 
       if (e.key === "e" || e.key === "E") {
         e.preventDefault();
-        setKeyboardAction({ noteId: focusedNoteId, action: "edit" });
+        setEditingNoteId(focusedNoteId);
         return;
       }
 
       if (e.key === "p" || e.key === "P") {
         e.preventDefault();
-        setKeyboardAction({ noteId: focusedNoteId, action: "pin" });
+        const note = notes.find((item) => item.id === focusedNoteId);
+        if (!note) return;
+        const nextPinned = !note.pinned;
+        void actionUpdateSalesNote(note.id, { pinned: nextPinned })
+          .then(() => onNoteUpdated?.({ ...note, pinned: nextPinned }))
+          .catch(() => undefined);
       }
     };
 
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [readOnly, filtered, focusedNoteId]);
+  }, [readOnly, filtered, focusedNoteId, notes, onNoteUpdated]);
 
   async function createNote() {
     const trimmed = draft.trim();

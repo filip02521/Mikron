@@ -16,6 +16,8 @@ import { NoteStickyFrame } from "./NoteStickyFrame";
 export function ArchivedNotesSection({
   notes,
   readOnly,
+  embedded,
+  className,
   focusNoteId,
   onFocusNoteHandled,
   onRestored,
@@ -23,6 +25,9 @@ export function ArchivedNotesSection({
 }: {
   notes: SalesNote[];
   readOnly?: boolean;
+  /** W panelu archiwum — bez podwójnej etykiety i zewnętrznego paddingu. */
+  embedded?: boolean;
+  className?: string;
   focusNoteId?: string | null;
   onFocusNoteHandled?: (noteId: string) => void;
   onRestored?: (note: SalesNote) => void;
@@ -30,22 +35,28 @@ export function ArchivedNotesSection({
 }) {
   if (!notes.length) return null;
 
+  const grid = (
+    <div className={NOTATNIK_NOTES_GRID_CLASS}>
+      {notes.map((note) => (
+        <ArchivedNoteCard
+          key={note.id}
+          note={note}
+          readOnly={readOnly}
+          focus={focusNoteId === note.id}
+          onFocusHandled={onFocusNoteHandled}
+          onRestored={onRestored}
+          onDeleted={onDeleted}
+        />
+      ))}
+    </div>
+  );
+
   return (
-    <div className={NOTATNIK_NOTES_WALL_CLASS}>
-      <p className={cn(salesTypography.sectionLabel, "mb-3 px-0.5")}>Zarchiwizowane</p>
-      <div className={NOTATNIK_NOTES_GRID_CLASS}>
-        {notes.map((note) => (
-          <ArchivedNoteCard
-            key={note.id}
-            note={note}
-            readOnly={readOnly}
-            focus={focusNoteId === note.id}
-            onFocusHandled={onFocusNoteHandled}
-            onRestored={onRestored}
-            onDeleted={onDeleted}
-          />
-        ))}
-      </div>
+    <div className={cn(NOTATNIK_NOTES_WALL_CLASS, "space-y-3", className)}>
+      {!embedded ? (
+        <p className={cn(salesTypography.sectionLabel, "px-0.5")}>Zarchiwizowane</p>
+      ) : null}
+      {grid}
     </div>
   );
 }

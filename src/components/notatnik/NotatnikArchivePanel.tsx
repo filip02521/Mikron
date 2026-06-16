@@ -133,16 +133,16 @@ export function NotatnikArchivePanel({
             </>
           ) : null}
           {showNotesSection ? (
-            <div className="space-y-2 px-3 pb-3 pt-3 sm:px-4">
-              <ArchivedNotesSection
-                notes={filteredNotes}
-                readOnly={readOnly}
-                focusNoteId={focusNoteId}
-                onFocusNoteHandled={onFocusNoteHandled}
-                onRestored={onNoteRestored}
-                onDeleted={onNoteDeleted}
-              />
-            </div>
+            <ArchivedNotesSection
+              embedded
+              className="mx-3 mb-3 mt-2 sm:mx-4"
+              notes={filteredNotes}
+              readOnly={readOnly}
+              focusNoteId={focusNoteId}
+              onFocusNoteHandled={onFocusNoteHandled}
+              onRestored={onNoteRestored}
+              onDeleted={onNoteDeleted}
+            />
           ) : null}
         </>
       )}
