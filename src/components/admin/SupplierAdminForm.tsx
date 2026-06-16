@@ -11,9 +11,11 @@ import {
   SUPPLIER_INTERVAL_PRESETS,
   SUPPLIER_STOCK_PRESETS,
 } from "@/lib/suppliers/cycle-presets";
+import type { WarehouseCarrierRow } from "@/lib/data/warehouse-carriers";
 import {
   WAREHOUSE_CARRIERS,
   WAREHOUSE_SHIPMENT_FORMS,
+  activeWarehouseCarrierOptions,
 } from "@/lib/warehouse/delivery-carriers";
 
 export type SupplierAdminFormState = {
@@ -41,6 +43,7 @@ export function SupplierAdminForm({
   onChange,
   onPatchCycleFields,
   onSubiektLinked,
+  carrierOptions = [],
 }: {
   form: SupplierAdminFormState;
   disabled?: boolean;
@@ -49,7 +52,18 @@ export function SupplierAdminForm({
     patch: Partial<Pick<SupplierAdminFormState, "stock_raw" | "interval_raw" | "extra_info">>
   ) => void;
   onSubiektLinked?: (khId: number | null) => void;
+  carrierOptions?: WarehouseCarrierRow[];
 }) {
+  const carriers = activeWarehouseCarrierOptions(
+    carrierOptions.length
+      ? carrierOptions
+      : WAREHOUSE_CARRIERS.map((entry, index) => ({
+          slug: entry.value,
+          label: entry.label,
+          sortOrder: (index + 1) * 10,
+          isActive: true,
+        }))
+  );
   return (
     <div className="grid gap-4 sm:grid-cols-2">
       {form.id ? (
@@ -256,9 +270,9 @@ export function SupplierAdminForm({
             }
           >
             <option value="">— z historii wpisów —</option>
-            {WAREHOUSE_CARRIERS.map((c) => (
-              <option key={c.value} value={c.value}>
-                {c.label}
+            {carriers.map((carrier) => (
+              <option key={carrier.slug} value={carrier.slug}>
+                {carrier.label}
               </option>
             ))}
           </Select>

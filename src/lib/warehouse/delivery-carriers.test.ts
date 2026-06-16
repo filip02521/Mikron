@@ -1,13 +1,25 @@
 import { describe, expect, it } from "vitest";
 import {
   WAREHOUSE_CARRIERS,
+  defaultWarehouseCarrierSlug,
   formatShipmentQuantitySuffix,
   isWarehouseCarrier,
   normalizeShipmentCounts,
+  parseActiveWarehouseCarrier,
   parseWarehouseCarrier,
   parseWarehouseShipmentForm,
+  resolveWarehouseFormCarrier,
   warehouseCarrierLabel,
+  warehouseCarrierOptionsForSelect,
 } from "./delivery-carriers";
+import type { WarehouseCarrierRow } from "@/lib/data/warehouse-carriers";
+
+const sampleCatalog: WarehouseCarrierRow[] = WAREHOUSE_CARRIERS.map((entry, index) => ({
+  slug: entry.value,
+  label: entry.label,
+  sortOrder: (index + 1) * 10,
+  isActive: entry.value !== "inne",
+}));
 
 describe("WAREHOUSE_CARRIERS", () => {
   it("ma unikalne wartości enum", () => {
@@ -33,6 +45,42 @@ describe("WAREHOUSE_CARRIERS", () => {
   it("zwraca etykietę lub surową wartość", () => {
     expect(warehouseCarrierLabel("dpd")).toBe("DPD");
     expect(warehouseCarrierLabel("nieznany")).toBe("nieznany");
+  });
+});
+
+describe("resolveWarehouseFormCarrier", () => {
+  it("zachowuje ukryty slug z autouzupełnienia", () => {
+    expect(resolveWarehouseFormCarrier("inne", sampleCatalog, "dpd")).toBe("inne");
+  });
+
+  it("zwraca domyślny slug dla nieznanego kuriera", () => {
+    expect(resolveWarehouseFormCarrier("nieznany", sampleCatalog, "dpd")).toBe("dpd");
+  });
+});
+
+describe("defaultWarehouseCarrierSlug", () => {
+  it("zwraca pierwszego aktywnego kuriera", () => {
+    expect(defaultWarehouseCarrierSlug(sampleCatalog)).toBe("dpd");
+  });
+});
+
+describe("warehouseCarrierOptionsForSelect", () => {
+  it("dołącza ukryty slug bieżącego wyboru", () => {
+    const options = warehouseCarrierOptionsForSelect(sampleCatalog, "inne");
+    expect(options.some((carrier) => carrier.slug === "inne")).toBe(true);
+    expect(options.filter((carrier) => carrier.isActive).length).toBe(
+      sampleCatalog.filter((carrier) => carrier.isActive).length
+    );
+  });
+});
+
+describe("parseActiveWarehouseCarrier", () => {
+  it("akceptuje aktywny kurier z katalogu", () => {
+    expect(parseActiveWarehouseCarrier("dpd", sampleCatalog)).toBe("dpd");
+  });
+
+  it("odrzuca ukryty kurier", () => {
+    expect(() => parseActiveWarehouseCarrier("inne", sampleCatalog)).toThrow(/ukryty/i);
   });
 });
 

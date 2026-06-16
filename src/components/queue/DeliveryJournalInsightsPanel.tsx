@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState, useTransition } from "react";
+import { useCallback, useEffect, useMemo, useState, useTransition } from "react";
 import {
   actionSearchDeliveryJournal,
   actionSummarizeDeliveryJournal,
@@ -13,8 +13,8 @@ import {
   type DeliveryJournalDatePreset,
   type DeliveryJournalRangeSummary,
 } from "@/lib/warehouse/delivery-journal-insights";
+import type { WarehouseCarrierRow } from "@/lib/data/warehouse-carriers";
 import {
-  WAREHOUSE_CARRIERS,
   warehouseCarrierLabel,
   type WarehouseCarrier,
 } from "@/lib/warehouse/delivery-carriers";
@@ -82,10 +82,12 @@ function readInitialArchiveState(initialQuery: string) {
 
 export function DeliveryJournalInsightsPanel({
   suppliers,
+  carriers,
   todayDateKey,
   initialQuery = "",
 }: {
   suppliers: SupplierOption[];
+  carriers: WarehouseCarrierRow[];
   todayDateKey: string;
   /** Fraza przeniesiona z wyszukiwania dnia — wstępne wypełnienie i opcjonalne auto-wyszukiwanie. */
   initialQuery?: string;
@@ -105,6 +107,13 @@ export function DeliveryJournalInsightsPanel({
 
   const hasExtraFilters = Boolean(supplierId || carrier);
   const hasQuery = Boolean(query.trim());
+  const carrierFilterOptions = useMemo(
+    () =>
+      [...carriers].sort(
+        (a, b) => a.sortOrder - b.sortOrder || a.label.localeCompare(b.label, "pl")
+      ),
+    [carriers]
+  );
 
   const applyPreset = useCallback((next: DeliveryJournalDatePreset) => {
     setPreset(next);
@@ -190,7 +199,7 @@ export function DeliveryJournalInsightsPanel({
     <div className="px-4 py-5 sm:px-6">
       <p className={panelTypography.sectionDesc}>
         Sprawdź, czy paczka dotarła — po numerze listu, dostawcy lub kurierze. Edycja wpisów tylko w
-        zakładce <strong className="font-medium text-slate-700">Wpisy na dziś</strong>.
+        zakładce <strong className="font-medium text-slate-700">Dzień</strong> (dziś).
       </p>
 
       <div className="mt-4 space-y-3">
@@ -287,9 +296,9 @@ export function DeliveryJournalInsightsPanel({
                 onChange={(e) => setCarrier(e.target.value as "" | WarehouseCarrier)}
               >
                 <option value="">Wszyscy</option>
-                {WAREHOUSE_CARRIERS.map((c) => (
-                  <option key={c.value} value={c.value}>
-                    {c.label}
+                {carrierFilterOptions.map((entry) => (
+                  <option key={entry.slug} value={entry.slug}>
+                    {entry.label}
                   </option>
                 ))}
               </Select>
@@ -328,7 +337,7 @@ export function DeliveryJournalInsightsPanel({
                   {summary.byCarrier.map((row) => (
                     <tr key={row.carrier} className="border-b border-slate-50 last:border-0">
                       <td className="px-3 py-2 font-medium text-slate-900">
-                        {warehouseCarrierLabel(row.carrier)}
+                        {warehouseCarrierLabel(row.carrier, carriers)}
                       </td>
                       <td className="px-3 py-2 tabular-nums text-slate-700">{row.receiptCount}</td>
                       <td className="px-3 py-2 tabular-nums text-slate-700">{row.packageCount}</td>
@@ -369,6 +378,7 @@ export function DeliveryJournalInsightsPanel({
                   receipt={r}
                   showDate
                   highlightQuery={query.trim() || undefined}
+                  carrierCatalog={carriers}
                 />
               ))}
             </ul>

@@ -15,8 +15,8 @@ import {
   warsawTodayDateKey,
   type WarehouseDeliveryReceipt,
 } from "@/lib/warehouse/delivery-receipts";
+import { assertWarehouseCarrierSlug } from "@/app/actions/warehouse-carriers";
 import {
-  parseWarehouseCarrier,
   parseWarehouseShipmentForm,
 } from "@/lib/warehouse/delivery-carriers";
 import {
@@ -98,7 +98,7 @@ export async function actionCreateDeliveryReceipt(input: {
   note?: string;
 }) {
   const user = await requireWarehouse("mutate");
-  const carrier = parseWarehouseCarrier(input.carrier);
+  const carrier = await assertWarehouseCarrierSlug(input.carrier);
   const shipmentForm = parseWarehouseShipmentForm(input.shipmentForm);
   const receipt = await createDeliveryReceipt({
     receivedDate: warsawTodayDateKey(),
@@ -126,7 +126,7 @@ export async function actionUpdateDeliveryReceipt(input: {
   note?: string;
 }) {
   const user = await requireWarehouse("mutate");
-  const carrier = parseWarehouseCarrier(input.carrier);
+  const carrier = await assertWarehouseCarrierSlug(input.carrier);
   const shipmentForm = parseWarehouseShipmentForm(input.shipmentForm);
   const receipt = await updateDeliveryReceipt({
     id: input.id,

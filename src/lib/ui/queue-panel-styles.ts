@@ -11,3 +11,15 @@ export const queueToolbarFieldLabelClass =
 
 export const queueToolbarInputClass =
   "w-full rounded-md border border-slate-200 bg-white px-2.5 py-1.5 text-sm text-slate-900 shadow-sm placeholder:text-slate-400";
+
+/** Karta narzędzi w dzienniku dostaw (data, filtry). */
+export const journalToolbarCardClass =
+  "rounded-md border border-emerald-100/70 bg-white p-3 shadow-sm";
+
+/** Formularz nowej dostawy w dzienniku. */
+export const journalComposeShellClass =
+  "rounded-md border border-emerald-200/80 bg-white p-4 shadow-sm";
+
+/** Wiersz edycji wpisu w dzienniku. */
+export const journalEditShellClass =
+  "rounded-md border border-indigo-200/70 bg-indigo-50/25 p-4 shadow-sm";

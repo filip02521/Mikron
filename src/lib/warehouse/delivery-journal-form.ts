@@ -24,3 +24,17 @@ export function formStateForNextEntry(
     note: "",
   };
 }
+
+export function createEmptyDeliveryJournalForm(
+  defaultCarrier: WarehouseCarrier
+): DeliveryJournalFormState {
+  return {
+    supplierId: "",
+    supplierOther: "",
+    carrier: defaultCarrier,
+    shipmentForm: "paczki",
+    packageCount: "1",
+    palletCount: "0",
+    note: "",
+  };
+}

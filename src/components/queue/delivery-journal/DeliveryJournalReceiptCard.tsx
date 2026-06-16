@@ -2,6 +2,7 @@
 
 import type { ReactNode } from "react";
 import type { WarehouseDeliveryReceipt } from "@/lib/warehouse/delivery-receipts";
+import type { WarehouseCarrierRow } from "@/lib/data/warehouse-carriers";
 import {
   formatShipmentQuantitySuffix,
   warehouseCarrierLabel,
@@ -37,11 +38,13 @@ export function DeliveryJournalReceiptCard({
   highlightQuery,
   showDate = false,
   actions,
+  carrierCatalog,
 }: {
   receipt: WarehouseDeliveryReceipt;
   highlightQuery?: string;
   showDate?: boolean;
   actions?: ReactNode;
+  carrierCatalog?: WarehouseCarrierRow[];
 }) {
   const note = receipt.note.trim();
   const quantitySuffix = formatShipmentQuantitySuffix(
@@ -62,7 +65,7 @@ export function DeliveryJournalReceiptCard({
           </p>
           <p className={cn(panelTypography.rowMeta, "mt-1")}>
             <span className="font-medium text-slate-700">
-              {warehouseCarrierLabel(receipt.carrier)}
+              {warehouseCarrierLabel(receipt.carrier, carrierCatalog)}
             </span>
             <span aria-hidden className="text-slate-300">
               {" "}
