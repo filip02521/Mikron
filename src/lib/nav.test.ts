@@ -89,7 +89,7 @@ describe("pageTitle", () => {
   });
 
   it("zwraca ZK czekające dla /notatnik i /zk", () => {
-    expect(pageTitle("/notatnik")).toBe("ZK czekające");
+    expect(pageTitle("/notatnik")).toBe("Notatnik");
     expect(pageTitle("/zk")).toBe("ZK czekające");
   });
 });
@@ -150,6 +150,15 @@ describe("navForRole handlowiec", () => {
     expect(info?.items[0]?.label).toBe("Tablica");
   });
 
+  it("umieszcza Notatnik w sekcji Codziennie pod Nową prośbą", () => {
+    const groups = navForRole("sales");
+    const daily = groups.find((g) => g.title === NAV_SECTION_DAILY);
+    const zk = groups.find((g) => g.title === NAV_SECTION_ZK);
+    expect(daily?.items.map((item) => item.href)).toEqual(["/moje", "/prosba", "/notatnik"]);
+    expect(zk?.items.map((item) => item.href)).toEqual(["/zk", "/plan"]);
+    expect(groups.some((g) => g.title === "Notatnik")).toBe(false);
+  });
+
   it("przypisuje tony semantyczne pozycjom menu", () => {
     const groups = navForRole("sales");
     const daily = groups.find((g) => g.title === NAV_SECTION_DAILY);
@@ -159,6 +168,7 @@ describe("navForRole handlowiec", () => {
     expect(daily?.items.map((item) => [item.label, item.tone])).toEqual([
       ["Moje zamówienia", "indigo"],
       ["Nowa prośba", "indigo"],
+      ["Notatnik", "indigo"],
     ]);
     expect(zk?.items.map((item) => [item.label, item.tone])).toEqual([
       ["ZK czekające", "violet"],
@@ -167,11 +177,12 @@ describe("navForRole handlowiec", () => {
     expect(info?.items[0]?.tone).toBe("indigo");
   });
 
-  it("mobile primary ma cztery codzienne pozycje", () => {
+  it("mobile primary ma pięć codziennych pozycji", () => {
     const primary = navMobilePrimaryItems(navForRole("sales"));
     expect(primary.map((item) => item.mobileLabel ?? item.label)).toEqual([
       "Moje",
       "Prośba",
+      "Notatki",
       "ZK",
       "Tablica",
     ]);

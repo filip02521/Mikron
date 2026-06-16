@@ -22,7 +22,7 @@ export function DailyPanelSyncControl({ embedded = false }: { embedded?: boolean
     <div
       className={cn(
         "flex flex-col gap-2.5 sm:flex-row sm:items-center sm:justify-between sm:gap-2",
-        embedded ? "border-t border-slate-200/60 pt-2.5" : ""
+        embedded ? "pt-0.5" : ""
       )}
       role="group"
       aria-label="Synchronizacja panelu z serwerem"

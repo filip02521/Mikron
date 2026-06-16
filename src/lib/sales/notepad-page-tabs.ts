@@ -9,6 +9,12 @@ export function parseNotatnikPageTab(value: string | null | undefined): Notatnik
   return null;
 }
 
+/** Czy param tab w URL jest nieprawidłowy (wymaga kanonicznego przekierowania). */
+export function isInvalidNotatnikTabParam(value: string | null | undefined): boolean {
+  const raw = value?.trim();
+  return Boolean(raw) && parseNotatnikPageTab(raw) === null;
+}
+
 export function isSalesZkNavPath(pathname: string): boolean {
   return pathname === "/zk" || pathname === "/notatnik" || pathname.startsWith("/notatnik/");
 }
@@ -19,9 +25,18 @@ export function resolveNotatnikPageTab(input: {
   focusWatchId?: string | null;
   watchInOpen?: boolean;
   watchInArchive?: boolean;
+  /** Domyślna zakładka gdy brak jawnych wskazówek w URL. */
+  defaultTab?: NotatnikPageTab;
+  /** Gdy false i tab=archive w URL — przełącz na defaultTab. */
+  archiveAvailable?: boolean;
 }): NotatnikPageTab {
   const focus = input.focusWatchId?.trim();
   const hash = input.hash?.trim() ?? "";
+  const parsedTab = parseNotatnikPageTab(input.tabParam);
+
+  if (parsedTab === "archive" && input.archiveAvailable === false) {
+    return input.defaultTab ?? "zk";
+  }
 
   if (focus || hash.startsWith("#watch-") || hash.startsWith("watch-")) {
     if (input.watchInArchive && !input.watchInOpen) return "archive";
@@ -32,15 +47,23 @@ export function resolveNotatnikPageTab(input: {
     return "notes";
   }
 
-  return parseNotatnikPageTab(input.tabParam) ?? "zk";
+  return parseNotatnikPageTab(input.tabParam) ?? input.defaultTab ?? "zk";
 }
 
-export function notatnikPagePathForTab(tab: NotatnikPageTab): "/zk" | "/notatnik" {
-  return tab === "zk" ? "/zk" : "/notatnik";
+export type NotatnikSurface = "zk" | "notes";
+
+export function notatnikPagePathForTab(
+  tab: NotatnikPageTab,
+  surface: NotatnikSurface = tab === "notes" ? "notes" : "zk"
+): "/zk" | "/notatnik" {
+  if (tab === "notes" || (tab === "archive" && surface === "notes")) return "/notatnik";
+  return "/zk";
 }
 
 export type BuildNotatnikPageHrefInput = {
   tab?: NotatnikPageTab;
+  /** Na której podstronie ma być archiwum (domyślnie ZK dla tab=zk/archive, notatnik dla tab=notes). */
+  surface?: NotatnikSurface;
   focusWatch?: string | null;
   salesPersonId?: string | null;
   preview?: boolean;
@@ -51,7 +74,8 @@ export type BuildNotatnikPageHrefInput = {
 /** Buduje URL strony ZK / notatnik z zachowaniem tabów i deep linków. */
 export function buildNotatnikPageHref(input: BuildNotatnikPageHrefInput = {}): string {
   const tab = input.tab ?? (input.focusWatch?.trim() ? "zk" : "zk");
-  const path = notatnikPagePathForTab(tab);
+  const surface = input.surface ?? (tab === "notes" ? "notes" : "zk");
+  const path = notatnikPagePathForTab(tab, surface);
   const params = new URLSearchParams();
 
   if (input.preview && input.salesPersonId?.trim()) {
@@ -70,8 +94,14 @@ export function buildNotatnikPageHref(input: BuildNotatnikPageHrefInput = {}): s
     params.set("focusWatch", focusWatch);
   }
 
-  if (tab !== "zk" || path === "/notatnik") {
+  if (tab === "archive") {
+    params.set("tab", "archive");
+  } else if (tab === "notes" && path === "/notatnik") {
+    params.delete("tab");
+  } else if (tab !== "zk") {
     params.set("tab", tab);
+  } else {
+    params.delete("tab");
   }
 
   const hashRaw = input.hash?.trim() ?? "";

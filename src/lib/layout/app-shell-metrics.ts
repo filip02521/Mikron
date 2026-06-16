@@ -109,7 +109,8 @@ export async function fetchAppShellMetrics(
           navBadges = {
             ...navBadges,
             salesMoje: metrics.dayStartNavCount,
-            salesNotatnik: metrics.notepadNavBadge,
+            salesZkDue: metrics.zkNavBadge,
+            salesNotesDue: metrics.notesNavBadge,
             salesTablica: 0,
           };
         }
@@ -138,7 +139,8 @@ export async function fetchAppShellMetrics(
           navBadges = {
             ...navBadges,
             salesMoje: 0,
-            salesNotatnik: 0,
+            salesZkDue: 0,
+            salesNotesDue: 0,
             salesTablica: 0,
           };
         } else {
@@ -151,7 +153,8 @@ export async function fetchAppShellMetrics(
           navBadges = {
             ...navBadges,
             salesMoje: metrics.dayStartNavCount,
-            salesNotatnik: metrics.notepadNavBadge,
+            salesZkDue: metrics.zkNavBadge,
+            salesNotesDue: metrics.notesNavBadge,
             salesTablica: metrics.boardNavBadge,
           };
         }

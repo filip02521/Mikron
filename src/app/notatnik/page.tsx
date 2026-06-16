@@ -1,13 +1,16 @@
-import { fetchSalesNotepad } from "@/lib/data/sales-notepad";
-import { getSessionUser } from "@/lib/auth";
-import { resolveSalesPersonForUser } from "@/lib/auth/sales-person";
-import { resolvePreviewSalesPerson } from "@/lib/auth/resolve-preview-sales-person";
-import { getAppRole } from "@/lib/auth-dev";
-import { isAdmin, isSalesAccount, isSalesManager } from "@/lib/auth-roles";
+import { redirect } from "next/navigation";
+import { fetchSalesNotesPageData } from "@/lib/data/sales-notepad";
+import { isSalesAccount } from "@/lib/auth-roles";
 import { SalesAccountLinkRequired } from "@/components/sales/SalesAccountLinkRequired";
 import { NotatnikClient } from "@/components/notatnik/NotatnikClient";
 import { getSubiektAvailability } from "@/lib/subiekt/availability";
-import { parseNotatnikPageTab } from "@/lib/sales/notepad-page-tabs";
+import { isInvalidNotatnikTabParam, parseNotatnikPageTab } from "@/lib/sales/notepad-page-tabs";
+import {
+  buildNotatnikRouteRedirectUrl,
+  buildZkRouteRedirectUrl,
+  resolveSalesNotepadPageAccess,
+  shouldRedirectNotatnikRouteToZk,
+} from "@/lib/sales/notepad-page-server";
 
 import type { Metadata } from "next";
 import { pageMetadataFor } from "@/lib/ui/page-metadata";
@@ -25,111 +28,87 @@ export default async function NotatnikPage({
 }: {
   searchParams: Promise<NotatnikSearchParams>;
 }) {
-  const { dla: previewSalesPersonId, focusWatch, tab } = await searchParams;
-  const role = await getAppRole();
-  let salesPersonId: string | null = null;
-  let salesPersonName: string | null = null;
-  let ownSalesPersonId: string | null = null;
-  let linkError: string | null = null;
-  let isTeamPreview = false;
+  const params = await searchParams;
+  const { dla: previewSalesPersonId, focusWatch, tab } = params;
 
-  try {
-    const user = await getSessionUser();
-    if (user && isAdmin(user.role) && previewSalesPersonId) {
-      const preview = await resolvePreviewSalesPerson(previewSalesPersonId, user);
-      if (preview) {
-        salesPersonId = preview.id;
-        salesPersonName = preview.name;
-        isTeamPreview = true;
-      } else {
-        linkError = "Nie znaleziono handlowca do podglądu.";
-      }
-    } else if (user && isSalesAccount(user.role)) {
-      const own = await resolveSalesPersonForUser(user);
-      ownSalesPersonId = own?.id ?? null;
-      if (isSalesManager(user.role) && previewSalesPersonId) {
-        const preview = await resolvePreviewSalesPerson(previewSalesPersonId, user);
-        if (preview) {
-          salesPersonId = preview.id;
-          salesPersonName = preview.name;
-          isTeamPreview = preview.id !== ownSalesPersonId;
-        } else {
-          linkError = "Nie znaleziono handlowca do podglądu.";
-        }
-      } else {
-        salesPersonId = own?.id ?? null;
-        salesPersonName = own?.name ?? null;
-        if (
-          user.role === "sales" &&
-          previewSalesPersonId &&
-          previewSalesPersonId !== ownSalesPersonId
-        ) {
-          linkError = "Możesz przeglądać tylko własne ZK — parametr ?dla= został zignorowany.";
-        }
-      }
-      if (!ownSalesPersonId && user.role === "sales") {
-        linkError =
-          "Twoje konto nie jest przypisane do profilu handlowca. Poproś administratora o link zaproszenia (Admin → Handlowcy).";
-      }
-      if (!ownSalesPersonId && user.role === "sales_manager") {
-        linkError =
-          "Twoje konto kierownika nie jest przypisane do profilu handlowca — poproś administratora o przypisanie w sekcji Użytkownicy.";
-      }
-    }
-  } catch {
-    /* dev */
+  if (shouldRedirectNotatnikRouteToZk({ tab, focusWatch })) {
+    redirect(
+      buildZkRouteRedirectUrl({
+        searchParams: params,
+        focusWatch,
+      })
+    );
   }
 
-  if (role && isSalesAccount(role) && linkError && !previewSalesPersonId) {
+  if (isInvalidNotatnikTabParam(tab)) {
+    redirect(
+      buildNotatnikRouteRedirectUrl({
+        searchParams: params,
+      })
+    );
+  }
+
+  const access = await resolveSalesNotepadPageAccess({
+    previewSalesPersonId,
+  });
+
+  if (access.role && isSalesAccount(access.role) && access.linkError && !access.previewSalesPersonId) {
     return (
       <SalesAccountLinkRequired
-        title="ZK czekające"
-        description="ZK czekające na towar i własne notatki. Konto musi być przypisane do profilu handlowca."
+        title="Notatnik"
+        description="Twoje prywatne przypomnienia i notatki. Konto musi być przypisane do profilu handlowca."
       />
     );
   }
 
   let loadError: string | null = null;
-  let notepad = {
-    zkWatches: [],
-    archivedZkWatches: [],
+  let notesData = {
     notes: [],
     archivedNotes: [],
-    zkLinkableOrders: [],
-  } as Awaited<ReturnType<typeof fetchSalesNotepad>>;
+  } as Awaited<ReturnType<typeof fetchSalesNotesPageData>>;
 
-  if (salesPersonId) {
+  if (access.salesPersonId) {
     try {
-      notepad = await fetchSalesNotepad(salesPersonId);
+      notesData = await fetchSalesNotesPageData(access.salesPersonId);
     } catch (e) {
-      loadError = e instanceof Error ? e.message : "Nie udało się załadować listy ZK.";
+      loadError = e instanceof Error ? e.message : "Nie udało się załadować notatnika.";
     }
   }
 
   const subiektAvailability = await getSubiektAvailability();
-  const initialTab = parseNotatnikPageTab(tab) ?? undefined;
+  const initialTab = parseNotatnikPageTab(tab) ?? "notes";
 
   return (
     <NotatnikClient
-      initial={notepad}
+      surface="notes"
+      initial={{
+        zkWatches: [],
+        archivedZkWatches: [],
+        zkLinkableOrders: [],
+        ...notesData,
+      }}
       initialFocusWatchId={focusWatch?.trim() || null}
       initialTab={initialTab}
-      readOnly={!!isTeamPreview}
+      readOnly={!!access.isTeamPreview}
       subiektAvailability={subiektAvailability}
-      pageTitle={isTeamPreview ? `ZK czekające: ${salesPersonName}` : "ZK czekające"}
+      pageTitle={access.isTeamPreview ? `Notatnik: ${access.salesPersonName}` : "Notatnik"}
       pageDescription={
-        isTeamPreview
-          ? "Podgląd ZK czekających i notatek wybranego handlowca. Edycja tylko we własnej zakładce ZK czekające."
+        access.isTeamPreview
+          ? "Podgląd notatek i archiwum wybranego handlowca. Edycja tylko we własnym Notatniku."
           : undefined
       }
-      linkError={linkError && (previewSalesPersonId || role === "sales") ? linkError : null}
+      linkError={
+        access.linkError && (access.previewSalesPersonId || access.role === "sales")
+          ? access.linkError
+          : null
+      }
       loadError={loadError}
       teamPreview={
-        isTeamPreview && salesPersonId && salesPersonName
+        access.isTeamPreview && access.salesPersonId && access.salesPersonName
           ? {
-              salesPersonId,
-              salesPersonName,
-              readOnly: role === "admin",
+              salesPersonId: access.salesPersonId,
+              salesPersonName: access.salesPersonName,
+              readOnly: access.role === "admin",
             }
           : null
       }

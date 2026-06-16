@@ -6,11 +6,12 @@ import { useAdminPanelPreview } from "@/components/layout/AdminPanelPreviewConte
 import { Button } from "@/components/ui/Button";
 import { SystemNotice } from "@/components/ui/SystemNotice";
 
-export type ManagerPreviewScope = "orders" | "notatnik" | "plan" | "tablica" | "prosba";
+export type ManagerPreviewScope = "orders" | "notatnik" | "zk" | "plan" | "tablica" | "prosba";
 
 const SCOPE_LABEL: Record<ManagerPreviewScope, string> = {
   orders: "prośb handlowca",
   notatnik: "notatnika",
+  zk: "ZK czekających",
   plan: "harmonogramu",
   tablica: "tablicy",
   prosba: "formularza prośby",
@@ -39,9 +40,15 @@ export function ManagerPreviewBanner({
   const scopeLabel = SCOPE_LABEL[scope];
 
   const description = readOnly
-    ? "Tryb administratora — tylko odczyt. Składanie prośb i edycja notatnika są wyłączone."
-    : scope === "notatnik"
-      ? "Tryb podglądu — edycja notatnika tylko we własnej zakładce ZK czekające."
+    ? scope === "zk"
+      ? "Tryb administratora — tylko odczyt. Edycja ZK i składanie prośb są wyłączone."
+      : scope === "notatnik"
+        ? "Tryb administratora — tylko odczyt. Edycja notatek jest wyłączona."
+        : "Tryb administratora — tylko odczyt. Składanie prośb i edycja danych są wyłączone."
+    : scope === "zk"
+      ? "Tryb podglądu — edycja ZK tylko we własnej zakładce ZK czekające."
+      : scope === "notatnik"
+      ? "Tryb podglądu — edycja notatek tylko we własnym Notatniku."
       : scope === "prosba"
         ? "Składasz prośbę w imieniu wybranego handlowca — potwierdzenie odbioru tylko na jego koncie."
         : scope === "plan" || scope === "tablica"
@@ -50,7 +57,7 @@ export function ManagerPreviewBanner({
 
   const actions = !readOnly ? (
     <>
-      {scope === "notatnik" ? (
+      {scope === "notatnik" || scope === "zk" ? (
         <Link href={`/moje?dla=${salesPersonId}`}>
           <Button size="sm" variant="secondary">
             Panel zamówień
@@ -63,10 +70,10 @@ export function ManagerPreviewBanner({
           </Button>
         </Link>
       ) : null}
-      {scope === "notatnik" ? (
-        <Link href={buildNotatnikPageHref()}>
+      {scope === "notatnik" || scope === "zk" ? (
+        <Link href={scope === "zk" ? buildNotatnikPageHref() : buildNotatnikPageHref({ tab: "notes" })}>
           <Button size="sm" variant="outline">
-            Mój notatnik
+            {scope === "zk" ? "Moje ZK" : "Mój notatnik"}
           </Button>
         </Link>
       ) : scope === "orders" ? (
@@ -85,6 +92,11 @@ export function ManagerPreviewBanner({
         </Button>
       </Link>
       <Link href={buildNotatnikPageHref({ preview: true, salesPersonId })}>
+        <Button size="sm" variant="outline">
+          ZK
+        </Button>
+      </Link>
+      <Link href={buildNotatnikPageHref({ preview: true, salesPersonId, tab: "notes" })}>
         <Button size="sm" variant="outline">
           Notatnik
         </Button>

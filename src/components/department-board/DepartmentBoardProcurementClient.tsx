@@ -9,6 +9,9 @@ import { SectionHeadingIcon } from "@/components/icons/SectionHeadingIcon";
 import { IconClipboardPen, IconInbox } from "@/components/icons/StrokeIcons";
 import { NoteColorPicker } from "@/components/notatnik/NoteColorPicker";
 import { NotatnikPanel } from "@/components/notatnik/NotatnikPanel";
+import { NotatnikListFilterBar } from "@/components/notatnik/NotatnikListFilterBar";
+import { SalesListFilterEmptyHint } from "@/components/sales/SalesListEmptyHints";
+import { filterDepartmentBoardQuestionsByQuery } from "@/lib/department-board/question-search";
 import { NOTATNIK_INPUT_CLASS, NOTATNIK_TEXTAREA_CLASS } from "@/components/notatnik/notatnik-layout";
 import { AnnouncementCard } from "@/components/department-board/AnnouncementCard";
 import { QuestionThreadCard } from "@/components/department-board/QuestionThreadCard";
@@ -58,7 +61,12 @@ export function DepartmentBoardProcurementClient({
   const [activeTab, setActiveTab] = useState<DepartmentBoardTab>(
     () => initialTab ?? (focusQuestionId ? "questions" : "announcements")
   );
-  const [questionFilter, setQuestionFilter] = useState<DepartmentBoardQuestionFilter>("open");
+  const [questionFilter, setQuestionFilter] = useState<DepartmentBoardQuestionFilter>("all");
+  const [questionSearch, setQuestionSearch] = useState("");
+  const forceAllQuestions = Boolean(focusQuestionId);
+  const activeQuestionFilter: DepartmentBoardQuestionFilter = forceAllQuestions
+    ? "all"
+    : questionFilter;
 
   const [announcementTitle, setAnnouncementTitle] = useState("");
   const [announcementBody, setAnnouncementBody] = useState("");
@@ -68,15 +76,27 @@ export function DepartmentBoardProcurementClient({
   const [announcementFormError, setAnnouncementFormError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
 
-  const filteredQuestions = useMemo(() => {
-    if (questionFilter === "open") {
+  const statusFilteredQuestions = useMemo(() => {
+    if (activeQuestionFilter === "open") {
       return initial.questions.filter((q) => q.status === "open");
     }
-    if (questionFilter === "answered") {
+    if (activeQuestionFilter === "answered") {
       return initial.questions.filter((q) => q.status === "answered");
     }
     return initial.questions;
-  }, [initial.questions, questionFilter]);
+  }, [initial.questions, activeQuestionFilter]);
+
+  const questionSearchNeedle = questionSearch.trim();
+  const filteredQuestions = useMemo(() => {
+    const searched = filterDepartmentBoardQuestionsByQuery(statusFilteredQuestions, questionSearch);
+    if (!focusQuestionId || searched.some((q) => q.id === focusQuestionId)) {
+      return searched;
+    }
+    const focused =
+      statusFilteredQuestions.find((q) => q.id === focusQuestionId) ??
+      initial.questions.find((q) => q.id === focusQuestionId);
+    return focused ? [focused, ...searched] : searched;
+  }, [focusQuestionId, initial.questions, questionSearch, statusFilteredQuestions]);
 
   const openQuestionsCount = initial.questions.filter((q) => q.status === "open").length;
 
@@ -88,6 +108,16 @@ export function DepartmentBoardProcurementClient({
       });
     }
   }, [focusAnnouncementId, activeTab, initial.announcements.length]);
+
+  useEffect(() => {
+    if (!focusQuestionId || activeTab !== "questions") return;
+    window.setTimeout(() => {
+      document.getElementById(`question-${focusQuestionId}`)?.scrollIntoView({
+        behavior: "smooth",
+        block: "center",
+      });
+    }, 120);
+  }, [focusQuestionId, activeTab, filteredQuestions.length]);
 
   function refresh() {
     router.refresh();
@@ -243,14 +273,36 @@ export function DepartmentBoardProcurementClient({
               count={initial.questions.length || undefined}
               icon={<IconClipboardPen size={17} />}
               accent="neutral"
+              bodyClassName="space-y-3"
             >
               <DepartmentBoardQuestionFilters
-                domain="panel"
-                value={questionFilter}
+                value={activeQuestionFilter}
                 onChange={setQuestionFilter}
+                disabled={forceAllQuestions}
               />
-              {filteredQuestions.length === 0 ? (
-                <DepartmentBoardQuestionsEmpty domain="panel" filter={questionFilter} />
+              {initial.questions.length > 0 ? (
+                <NotatnikListFilterBar
+                  embedded
+                  bleed
+                  value={questionSearch}
+                  onChange={setQuestionSearch}
+                  matchCount={filteredQuestions.length}
+                  totalCount={statusFilteredQuestions.length}
+                  placeholder="Szukaj po temacie, treści, autorze lub odpowiedzi…"
+                  searchLabel="Szukaj w pytaniach handlowców"
+                  idleHint="Filtruj pytania po temacie, treści, autorze lub fragmencie odpowiedzi."
+                  activeHint="Wyniki z aktywnego filtra statusu pytań."
+                  emptyMatchHint="Brak dopasowań — sprawdź temat, treść, autora lub odpowiedź."
+                />
+              ) : null}
+              {questionSearchNeedle && filteredQuestions.length === 0 && statusFilteredQuestions.length > 0 ? (
+                <SalesListFilterEmptyHint
+                  query={questionSearchNeedle}
+                  onClear={() => setQuestionSearch("")}
+                  entityLabel="pytań"
+                />
+              ) : filteredQuestions.length === 0 ? (
+                <DepartmentBoardQuestionsEmpty domain="panel" filter={activeQuestionFilter} />
               ) : (
                 <div className={cn(mojeShipmentListClass, "-mx-3 sm:-mx-4")}>
                   {filteredQuestions.map((question) => (

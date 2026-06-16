@@ -90,13 +90,6 @@ export function isNavItemActive(
   if (hrefPath === "/admin") {
     return isAdminSidebarRootActive(pathname);
   }
-  if (hrefPath === "/zk") {
-    return (
-      pathname === "/zk" ||
-      pathname === "/notatnik" ||
-      pathname.startsWith("/notatnik/")
-    );
-  }
   if (hrefPath.startsWith("/lokalizacje/") && pathname.startsWith("/lokalizacje/")) {
     return true;
   }
@@ -364,8 +357,10 @@ export function navForRole(
     realizacja?: number;
     /** Aktywne karty wymagające uwagi handlowca (/moje). */
     salesMoje?: number;
-    /** ZK i notatki z przypomnieniem (/notatnik). */
-    salesNotatnik?: number;
+    /** Przypomnienia ZK z follow-up na dziś/wcześniej (/zk). */
+    salesZkDue?: number;
+    /** Przypomnienia notatek z follow-up na dziś/wcześniej (/notatnik). */
+    salesNotesDue?: number;
     /** Przypomnienia w notatkach zakupów/magazynu (/notatki). */
     operationsNotatki?: number;
     /** Otwarte zgłoszenia od handlowców (/admin/zgloszenia). */
@@ -418,7 +413,7 @@ export function navForRole(
       href: "/moje",
       label: "Moje zamówienia",
       mobileLabel: "Moje",
-      description: "Statusy prośb i odbiór",
+      description: "Start dnia — prośby, przypomnienia i tablica",
       icon: "myOrders",
       tone: "indigo",
       tier: "primary",
@@ -436,6 +431,17 @@ export function navForRole(
       tier: "primary",
       mobileSlot: "primary",
     },
+    {
+      href: "/notatnik",
+      label: "Notatnik",
+      mobileLabel: "Notatki",
+      description: "Prywatne notatki — licznik: przypomnienia notatek",
+      icon: "notepad",
+      tone: "indigo",
+      tier: "primary",
+      mobileSlot: "primary",
+      badge: badges.salesNotesDue,
+    },
   ];
 
   const zkItems: NavItem[] = [
@@ -443,12 +449,12 @@ export function navForRole(
       href: "/zk",
       label: "ZK czekające",
       mobileLabel: "ZK",
-      description: "Towar z Subiekta",
+      description: "ZK z Subiekta — licznik: przypomnienia ZK",
       icon: "clientZk",
       tone: "violet",
       tier: "primary",
       mobileSlot: "primary",
-      badge: badges.salesNotatnik,
+      badge: badges.salesZkDue,
     },
     {
       href: "/plan",
@@ -544,7 +550,8 @@ export function pageTitle(pathname: string): string {
       if (hit) return hit.label;
     }
   }
-  if (pathname.startsWith("/notatnik") || pathname.startsWith("/zk")) return "ZK czekające";
+  if (pathname.startsWith("/zk")) return "ZK czekające";
+  if (pathname.startsWith("/notatnik")) return "Notatnik";
   if (pathname.startsWith("/notatki")) return "Notatki";
   if (pathname.startsWith("/zespol")) {
     if (pathname.startsWith("/zespol/handlowcy")) return "Handlowcy";

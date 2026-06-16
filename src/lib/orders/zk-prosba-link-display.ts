@@ -13,9 +13,11 @@ export function buildNotatnikZkWatchHref(options: {
   zkWatchId: string;
   salesPersonId?: string;
   preview?: boolean;
+  archived?: boolean;
 }): string {
   return buildNotatnikPageHref({
-    tab: "zk",
+    tab: options.archived ? "archive" : "zk",
+    surface: "zk",
     focusWatch: options.zkWatchId,
     salesPersonId: options.salesPersonId,
     preview: options.preview,

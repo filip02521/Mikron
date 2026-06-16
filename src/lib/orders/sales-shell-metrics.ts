@@ -6,7 +6,10 @@ import { presentMyOrders } from "@/lib/orders/my-order-presenter";
 import { filterIndividualOrdersForSalesMyOrders } from "@/lib/orders/informacja-stock-out-reorder";
 import { summarizeMyOrdersInbox } from "@/lib/orders/my-order-sales-ui";
 import { salesDayStartNavCount } from "@/lib/sales/sales-day-start";
-import { countNotepadNavBadge } from "@/lib/data/sales-notepad";
+import {
+  countNotesDueNavBadge,
+  countZkDueNavBadge,
+} from "@/lib/data/sales-notepad";
 import { countSalesBoardNavBadge } from "@/lib/data/department-board";
 import {
   composeSalesActivityVersion,
@@ -19,10 +22,12 @@ import type { DeliveryStats } from "@/types/database";
 export type SalesShellMetrics = {
   activityVersion: string;
   navAttention: number;
-  /** Zsumowany Start dnia — zamówienia + ZK/notatki + tablica. */
+  /** Badge „Moje zamówienia”: suma Start dnia (prośby + przypomnienia ZK/notatki + tablica). */
   dayStartNavCount: number;
-  /** Badge na zakładce ZK czekające — zaległe przypomnienia ZK i notatek. */
-  notepadNavBadge: number;
+  /** Badge „ZK czekające” — zaległe przypomnienia ZK. */
+  zkNavBadge: number;
+  /** Badge „Notatnik” — zaległe przypomnienia notatek. */
+  notesNavBadge: number;
   /** Badge na Komunikacji — nieprzeczytane ogłoszenia + nowe odpowiedzi. */
   boardNavBadge: number;
 };
@@ -43,8 +48,9 @@ export async function fetchSalesShellMetrics(
   );
   const inbox = summarizeMyOrdersInbox([...zamowienia, ...informacje]);
 
-  const [notepadDue, boardNav, watchesRes] = await Promise.all([
-    countNotepadNavBadge(salesPersonId).catch(() => 0),
+  const [zkDue, notesDue, boardNav, watchesRes] = await Promise.all([
+    countZkDueNavBadge(salesPersonId).catch(() => 0),
+    countNotesDueNavBadge(salesPersonId).catch(() => 0),
     profileId ? countSalesBoardNavBadge(profileId).catch(() => 0) : Promise.resolve(0),
     createAdminClient()
       .from("sales_zk_watches")
@@ -70,8 +76,9 @@ export async function fetchSalesShellMetrics(
     activityVersion: composeSalesActivityVersion(ordersPart, watchesRes.data ?? []),
     navAttention:
       inbox.pickupCount + inbox.cancelAckCount + inbox.informacjaReadyCount,
-    dayStartNavCount: salesDayStartNavCount(inbox, notepadDue, boardNav),
-    notepadNavBadge: notepadDue,
+    dayStartNavCount: salesDayStartNavCount(inbox, zkDue + notesDue, boardNav),
+    zkNavBadge: zkDue,
+    notesNavBadge: notesDue,
     boardNavBadge: boardNav,
   };
 }

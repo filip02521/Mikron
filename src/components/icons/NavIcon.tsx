@@ -68,7 +68,7 @@ const HREF_TO_NAV_ICON: Record<string, NavIconKey> = {
   "/moje": "myOrders",
   "/prosba": "newRequest",
   "/plan": "plan",
-  "/notatnik": "clientZk",
+  "/notatnik": "notepad",
   "/zk": "clientZk",
   "/notatki": "notepad",
   "/tablica": "board",

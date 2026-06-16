@@ -21,7 +21,18 @@ const TAB_META: Record<NotatnikPageTab, { label: string; title: string }> = {
   },
   archive: {
     label: "Archiwum",
-    title: "Zamknięte ZK i zarchiwizowane notatki",
+    title: "Archiwum",
+  },
+};
+
+const ARCHIVE_TAB_META: Record<"zk" | "notes", { label: string; title: string }> = {
+  zk: {
+    label: "Archiwum",
+    title: "Zamknięte sprawy ZK",
+  },
+  notes: {
+    label: "Archiwum",
+    title: "Zarchiwizowane notatki",
   },
 };
 
@@ -37,6 +48,8 @@ export function NotatnikTabBar({
   notesCount,
   archiveCount,
   showArchive,
+  visibleTabs,
+  archiveScope = "all",
   className,
 }: {
   value: NotatnikPageTab;
@@ -45,14 +58,24 @@ export function NotatnikTabBar({
   notesCount: number;
   archiveCount: number;
   showArchive: boolean;
+  visibleTabs?: NotatnikPageTab[];
+  /** Kontekst archiwum — etykiety na /zk vs /notatnik. */
+  archiveScope?: "zk" | "notes" | "all";
   className?: string;
 }) {
-  const tabs: NotatnikPageTab[] = showArchive ? ["zk", "notes", "archive"] : ["zk", "notes"];
+  const allTabs: NotatnikPageTab[] = showArchive ? ["zk", "notes", "archive"] : ["zk", "notes"];
+  const tabs = visibleTabs?.length
+    ? visibleTabs.filter((tab) => tab !== "archive" || showArchive)
+    : allTabs;
   const counts: Record<NotatnikPageTab, number> = {
     zk: zkCount,
     notes: notesCount,
     archive: archiveCount,
   };
+  const activeMeta =
+    value === "archive" && archiveScope !== "all"
+      ? ARCHIVE_TAB_META[archiveScope]
+      : TAB_META[value];
 
   return (
     <>
@@ -63,25 +86,29 @@ export function NotatnikTabBar({
           className
         )}
         role="tablist"
-        aria-label="Sekcje ZK czekające"
+        aria-label={visibleTabs?.includes("zk") === false ? "Sekcje notatnika" : "Sekcje ZK czekające"}
       >
         {tabs.map((tab) => {
           const active = value === tab;
           const count = counts[tab];
+          const meta =
+            tab === "archive" && archiveScope !== "all"
+              ? ARCHIVE_TAB_META[archiveScope]
+              : TAB_META[tab];
           return (
             <button
               key={tab}
               type="button"
               role="tab"
               aria-selected={active}
-              title={TAB_META[tab].title}
+              title={meta.title}
               onClick={() => onChange(tab)}
               className={cn(
                 TAB_CHIP_CLASS,
                 active ? panelChoiceChipSelectedClass : panelChoiceChipIdleClass
               )}
             >
-              <span>{TAB_META[tab].label}</span>
+              <span>{meta.label}</span>
               {count > 0 ? (
                 <span
                   className={cn(
@@ -97,7 +124,8 @@ export function NotatnikTabBar({
         })}
       </div>
       <p className="sr-only" role="status" aria-live="polite">
-        Aktywna sekcja: {TAB_META[value].label}
+        Aktywna sekcja: {activeMeta.label}
+        {activeMeta.title !== activeMeta.label ? ` — ${activeMeta.title}` : ""}
       </p>
     </>
   );

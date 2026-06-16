@@ -1,5 +1,4 @@
 import type { SalesOnboardingStep } from "@/lib/sales/sales-onboarding-steps";
-import { isSalesZkNavPath } from "@/lib/sales/notepad-page-tabs";
 
 export function stepPathnameForStep(step: SalesOnboardingStep): string | null {
   if (step.href) return step.href;
@@ -11,7 +10,7 @@ export function pathnameMatchesOnboardingStep(
   step: SalesOnboardingStep
 ): boolean {
   if (step.href === pathname) return true;
-  if (step.id === "notatnik" && isSalesZkNavPath(pathname)) return true;
+  if (step.id === "notatnik" && pathname === "/zk") return true;
   return false;
 }
 

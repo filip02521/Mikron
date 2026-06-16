@@ -25,12 +25,12 @@ import type {
 } from "@/types/database";
 import { isFollowUpDue } from "@/lib/sales/notepad-follow-up";
 import { NoteColorPicker, NoteCardToolbar } from "@/components/notatnik/NoteColorPicker";
+import { NotatnikListFilterBar } from "@/components/notatnik/NotatnikListFilterBar";
 import { NoteFollowUpControl } from "@/components/notatnik/NoteFollowUpControl";
 import { FollowUpQuickDates } from "@/components/notatnik/FollowUpQuickDates";
 import {
   NOTATNIK_INPUT_CLASS,
   NOTATNIK_NOTES_GRID_CLASS,
-  NOTATNIK_SEARCH_CLASS,
   NOTATNIK_TEXTAREA_CLASS,
 } from "@/components/notatnik/notatnik-layout";
 import { NOTE_COLOR_CARD } from "@/components/notatnik/note-styles";
@@ -374,7 +374,6 @@ export function OperationsNotesSection({
     action: "edit" | "pin";
   } | null>(null);
   const composeRef = useRef<HTMLDivElement>(null);
-  const searchRef = useRef<HTMLInputElement>(null);
 
   const composeExpanded =
     composeOpen || Boolean(draft.trim() || draftTitle.trim() || draftFollowUp);
@@ -501,12 +500,6 @@ export function OperationsNotesSection({
 
       if (inField) {
         if (e.key === "Escape") (e.target as HTMLElement).blur();
-        return;
-      }
-
-      if (e.key === "/" && !e.metaKey && !e.ctrlKey) {
-        e.preventDefault();
-        searchRef.current?.focus();
         return;
       }
 
@@ -679,18 +672,19 @@ export function OperationsNotesSection({
       ) : null}
 
       {notes.length > 0 ? (
-        <div className="flex flex-wrap items-center justify-between gap-2">
-          <input
-            ref={searchRef}
-            type="search"
+        <div className={cn(!readOnly && "mt-3")}>
+          <NotatnikListFilterBar
+            embedded
             value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Szukaj…"
-            className={NOTATNIK_SEARCH_CLASS}
+            onChange={setSearchQuery}
+            matchCount={filtered.length}
+            totalCount={notes.length}
+            placeholder="Szukaj po tytule lub treści notatki…"
+            searchLabel="Szukaj w notatkach"
+            idleHint="Filtruj notatki po tytule lub treści."
+            activeHint="Wyniki z przypiętych i zwykłych notatek na liście."
+            emptyMatchHint="Brak dopasowań — sprawdź tytuł lub treść notatki."
           />
-          {filtered.length > 0 ? (
-            <span className="text-[11px] tabular-nums text-slate-500">{filtered.length} szt.</span>
-          ) : null}
         </div>
       ) : null}
 

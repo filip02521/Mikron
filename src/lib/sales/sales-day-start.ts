@@ -167,28 +167,36 @@ function buildOrderActionItems(rows: MyOrderRow[]): SalesDayStartItem[] {
 function buildNotepadItems(
   watches: SalesZkWatch[],
   notes: SalesNote[],
-  previewDla?: string | null
+  previewDla?: string | null,
+  unseenWarehouseWatchIds?: Set<string> | string[]
 ): SalesDayStartItem[] {
-  const tasks = collectNotepadTodayTasks(watches, notes);
+  const tasks = collectNotepadTodayTasks(watches, notes, { unseenWarehouseWatchIds });
 
   return tasks.map((task) => {
-    const isZk = task.kind === "zk-follow-up";
+    const isZkTask =
+      task.kind === "zk-follow-up" || task.kind === "zk-warehouse-arrival";
+    const watchId =
+      isZkTask && task.anchor.startsWith("watch-") ? task.anchor.slice(6) : null;
     return {
       id: `${task.kind}-${task.id}`,
-      source: isZk ? "zk_follow_up" : "note_follow_up",
-      priority: isZk ? PRIORITY.zk_follow_up : PRIORITY.note_follow_up,
-      title: isZk
-        ? `Przypomnienie · ${formatProsbaZkLinkNumber(task.title)}`
+      source: isZkTask ? "zk_follow_up" : "note_follow_up",
+      priority: isZkTask ? PRIORITY.zk_follow_up : PRIORITY.note_follow_up,
+      title: isZkTask
+        ? task.kind === "zk-warehouse-arrival"
+          ? `Na magazynie · ${formatProsbaZkLinkNumber(task.title)}`
+          : `Przypomnienie · ${formatProsbaZkLinkNumber(task.title)}`
         : task.title,
       subtitle: task.subtitle ?? undefined,
       evidence: task.subtitle ?? undefined,
       href: buildNotatnikPageHref({
-        tab: isZk ? "zk" : "notes",
+        tab: isZkTask ? "zk" : "notes",
+        surface: isZkTask ? "zk" : "notes",
         hash: task.anchor,
+        focusWatch: watchId,
         extraParams: previewDla ? { dla: previewDla } : undefined,
       }),
       count: 1,
-      ctaLabel: isZk ? "ZK czekające" : "Notatki",
+      ctaLabel: isZkTask ? "ZK czekające" : "Notatki",
     };
   });
 }
@@ -256,12 +264,14 @@ export function buildSalesDayStartSnapshot(input: {
   notes?: SalesNote[];
   boardAttention?: SalesBoardAttentionSnapshot | null;
   previewDla?: string | null;
+  unseenWarehouseWatchIds?: Set<string> | string[];
 }): SalesDayStartSnapshot {
-  const { rows, watches = [], notes = [], boardAttention, previewDla } = input;
+  const { rows, watches = [], notes = [], boardAttention, previewDla, unseenWarehouseWatchIds } =
+    input;
   const inboxSummary = summarizeMyOrdersInbox(rows);
 
   const orderItems = buildOrderActionItems(rows);
-  const notepadItems = buildNotepadItems(watches, notes, previewDla);
+  const notepadItems = buildNotepadItems(watches, notes, previewDla, unseenWarehouseWatchIds);
   const boardItems = boardAttention ? buildBoardItems(boardAttention, previewDla) : [];
 
   const items = [...orderItems, ...notepadItems, ...boardItems].sort(

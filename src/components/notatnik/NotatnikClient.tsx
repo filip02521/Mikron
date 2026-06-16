@@ -65,6 +65,7 @@ import { ZkWatchRefreshPromptModal } from "./ZkWatchRefreshPromptModal";
 import { ZkWatchSection } from "./ZkWatchSection";
 import { NotesSection } from "./NotesSection";
 import { NotatnikArchivePanel } from "./NotatnikArchivePanel";
+import { NotatnikArchiveCrossLink } from "./NotatnikArchiveCrossLink";
 import { TodayTasksSection } from "./TodayTasksSection";
 import { NotatnikPanel } from "./NotatnikPanel";
 import { NotatnikTabBar } from "./NotatnikTabBar";
@@ -88,9 +89,12 @@ import {
   watchFocusOpensSections,
 } from "@/lib/sales/notepad-watch-focus";
 import {
+  buildNotatnikPageHref,
   notatnikPagePathForTab,
+  parseNotatnikPageTab,
   resolveNotatnikPageTab,
   type NotatnikPageTab,
+  type NotatnikSurface,
 } from "@/lib/sales/notepad-page-tabs";
 import { cn } from "@/lib/cn";
 import { useUndoShortcutLabel } from "@/lib/platform/keyboard-shortcut-label";
@@ -101,8 +105,12 @@ type NotatnikUndoState = (
   | { type: "close-zk"; watch: SalesZkWatch }
 ) & { expiresAt: number };
 
-const PAGE_INTRO =
-  "Zakładka ZK to lista zamówień klientów z Subiekta. Notatki i archiwum są w sąsiednich zakładkach.";
+const PAGE_INTRO_ZK =
+  "Zamówienia klientów (ZK) z Subiekta — prośby do zakupów, magazyn i przypomnienia. Zamknięte sprawy są w zakładce Archiwum.";
+const PAGE_INTRO_NOTES =
+  "Prywatne notatki i przypomnienia — nie trafiają do działu zakupów. Zarchiwizowane notatki są w zakładce Archiwum.";
+
+export type { NotatnikSurface };
 
 function contextualizeSubiektMessage(message: string): string {
   return message
@@ -129,6 +137,7 @@ export function NotatnikClient({
   initial,
   initialFocusWatchId = null,
   initialTab,
+  surface,
   readOnly,
   pageTitle,
   pageDescription,
@@ -140,6 +149,7 @@ export function NotatnikClient({
   initial: SalesNotepadData;
   initialFocusWatchId?: string | null;
   initialTab?: NotatnikPageTab;
+  surface: NotatnikSurface;
   readOnly?: boolean;
   pageTitle: string;
   pageDescription?: string;
@@ -158,13 +168,24 @@ export function NotatnikClient({
   const undoShortcut = useUndoShortcutLabel();
   const tourDemo = useSalesOnboardingDemo("notatnik");
   const demoInitial = useMemo(
-    () => buildOnboardingNotepadDemo(initial.notes[0]?.sales_person_id ?? "onboarding-demo"),
-    [initial.notes]
+    () =>
+      buildOnboardingNotepadDemo(
+        initial.zkWatches[0]?.sales_person_id ??
+          initial.notes[0]?.sales_person_id ??
+          "onboarding-demo"
+      ),
+    [initial.notes, initial.zkWatches]
   );
   const source = tourDemo ? demoInitial : initial;
   const zkLinkableOrders = source.zkLinkableOrders;
+  const isZkSurface = surface === "zk";
+  const defaultTab: NotatnikPageTab = isZkSurface ? "zk" : "notes";
+  const todayTaskKinds = isZkSurface
+    ? (["zk-follow-up", "zk-warehouse-arrival"] as const)
+    : (["note-follow-up"] as const);
   /** W tourze pokazujemy pełny UI kart ZK (kliknięcia i tak blokuje warstwa touru). */
   const effectiveReadOnly = tourDemo ? false : Boolean(readOnly);
+  const showZkSyncStrip = isZkSurface && !effectiveReadOnly && !tourDemo;
   const initialFocus = initialFocusWatchId?.trim() || null;
   const initialFocusSections = initialFocus
     ? watchFocusOpensSections(initialFocus, source.zkWatches, source.archivedZkWatches)
@@ -179,9 +200,14 @@ export function NotatnikClient({
       focusWatchId: initialFocus,
       watchInOpen: initialFocusSections.showZk,
       watchInArchive: initialFocusSections.showArchive,
+      defaultTab,
+      archiveAvailable: isZkSurface
+        ? source.archivedZkWatches.length > 0
+        : source.archivedNotes.length > 0,
     })
   );
   const [focusWatchId, setFocusWatchId] = useState<string | null>(initialFocus);
+  const [focusNoteId, setFocusNoteId] = useState<string | null>(null);
   const [focusWatchError, setFocusWatchError] = useState<string | null>(null);
   const [liveAnnouncement, setLiveAnnouncement] = useState("");
   const [undo, setUndo] = useState<NotatnikUndoState | null>(null);
@@ -190,6 +216,7 @@ export function NotatnikClient({
   const [subiektStatus, setSubiektStatus] = useState<SubiektAvailability | undefined>(undefined);
   const [appliedSubiektPropKey, setAppliedSubiektPropKey] = useState("");
   const [appliedUrlTabKey, setAppliedUrlTabKey] = useState("");
+  const [appliedArchiveGuardKey, setAppliedArchiveGuardKey] = useState("");
   const [prosbaScopeWatchId, setProsbaScopeWatchId] = useState<string | null>(null);
   const [appliedDataSyncKey, setAppliedDataSyncKey] = useState("");
   const [warehouseSnapshotReady, setWarehouseSnapshotReady] = useState(false);
@@ -204,8 +231,11 @@ export function NotatnikClient({
   >([]);
   const refreshPrompt = refreshPromptQueue[0] ?? null;
   const focusHandledWatchRef = useRef<string | null>(null);
+  const focusHandledNoteRef = useRef<string | null>(null);
   const zkWatchesRef = useRef(zkWatches);
   const archivedWatchesRef = useRef(archivedWatches);
+  const notesRef = useRef(notes);
+  const archivedNotesRef = useRef(archivedNotes);
   const dismissUndo = useCallback(() => {
     setUndo(null);
     router.refresh();
@@ -214,9 +244,11 @@ export function NotatnikClient({
   const navigateToTab = useCallback(
     (tab: NotatnikPageTab, options?: { hash?: string; focusWatch?: string | null }) => {
       setActiveTab(tab);
+      setFocusWatchError(null);
+      setFocusNoteId(null);
       if (tourDemo) return;
 
-      const path = notatnikPagePathForTab(tab);
+      const path = notatnikPagePathForTab(tab, isZkSurface ? "zk" : "notes");
       const params = new URLSearchParams(searchParams.toString());
 
       if (options?.focusWatch?.trim()) {
@@ -227,6 +259,10 @@ export function NotatnikClient({
 
       if (tab === "zk" && path === "/zk") {
         params.delete("tab");
+      } else if (tab === "notes" && path === "/notatnik") {
+        params.delete("tab");
+      } else if (tab === "archive") {
+        params.set("tab", "archive");
       } else {
         params.set("tab", tab);
       }
@@ -243,7 +279,7 @@ export function NotatnikClient({
       const qs = params.toString();
       router.replace(qs ? `${path}?${qs}${hash}` : `${path}${hash}`, { scroll: false });
     },
-    [router, searchParams, tourDemo]
+    [router, searchParams, tourDemo, isZkSurface]
   );
 
   const refresh = useCallback(() => {
@@ -304,6 +340,14 @@ export function NotatnikClient({
     archivedWatchesRef.current = archivedWatches;
   }, [archivedWatches]);
 
+  useEffect(() => {
+    notesRef.current = notes;
+  }, [notes]);
+
+  useEffect(() => {
+    archivedNotesRef.current = archivedNotes;
+  }, [archivedNotes]);
+
   const applyWatchFocus = useCallback((watchId: string) => {
     const result = resolveWatchFocusRequest(
       watchId,
@@ -319,19 +363,39 @@ export function NotatnikClient({
 
     setFocusWatchError(null);
     const tab: NotatnikPageTab = result.showArchive && !result.showZk ? "archive" : "zk";
-    setActiveTab(tab);
+    if (!tourDemo) {
+      navigateToTab(tab, { focusWatch: watchId.trim() });
+    } else {
+      setActiveTab(tab);
+    }
     if (focusHandledWatchRef.current !== watchId.trim()) {
       setFocusWatchId(watchId.trim());
     }
     return true;
-  }, []);
+  }, [navigateToTab, tourDemo]);
 
   const syncWatchFocusFromLocation = useCallback(() => {
+    const params = new URLSearchParams(window.location.search);
+    const previewDla = params.get("dla")?.trim() || null;
+    const extraParams = previewDla ? { dla: previewDla } : undefined;
     const watchId = resolveNotepadWatchFocusId(
       window.location.hash,
-      new URLSearchParams(window.location.search).get("focusWatch")
+      params.get("focusWatch")
     );
     if (watchId) {
+      if (!isZkSurface && !tourDemo) {
+        const tabParam = parseNotatnikPageTab(params.get("tab"));
+        router.replace(
+          buildNotatnikPageHref({
+            tab: tabParam === "archive" ? "archive" : "zk",
+            surface: "zk",
+            focusWatch: watchId,
+            extraParams,
+          }),
+          { scroll: false }
+        );
+        return;
+      }
       if (focusHandledWatchRef.current === watchId) return;
       applyWatchFocus(watchId);
       return;
@@ -339,14 +403,54 @@ export function NotatnikClient({
 
     const anchor = parseNotepadHashAnchor(window.location.hash);
     if (anchor?.startsWith("note-")) {
+      if (isZkSurface && !tourDemo) {
+        router.replace(
+          buildNotatnikPageHref({
+            tab: "notes",
+            surface: "notes",
+            hash: anchor,
+            extraParams,
+          }),
+          { scroll: false }
+        );
+        return;
+      }
+      const noteId = anchor.slice("note-".length);
+      const inArchive = archivedNotesRef.current.some((note) => note.id === noteId);
+      const inActive = notesRef.current.some((note) => note.id === noteId);
+      if (inArchive) {
+        if (!tourDemo) {
+          navigateToTab("archive", { hash: anchor });
+        } else {
+          setActiveTab("archive");
+        }
+        if (focusHandledNoteRef.current !== noteId) {
+          setFocusNoteId(noteId);
+        }
+        return;
+      }
+      if (inActive) {
+        if (!tourDemo) {
+          navigateToTab("notes", { hash: anchor });
+        } else {
+          setActiveTab("notes");
+        }
+        flashNotepadAnchor(anchor);
+        return;
+      }
       setActiveTab("notes");
       flashNotepadAnchor(anchor);
     }
-  }, [applyWatchFocus]);
+  }, [applyWatchFocus, isZkSurface, navigateToTab, router, tourDemo]);
 
   const handleFocusWatchHandled = useCallback((watchId: string) => {
     focusHandledWatchRef.current = watchId;
     setFocusWatchId(null);
+  }, []);
+
+  const handleFocusNoteHandled = useCallback((noteId: string) => {
+    focusHandledNoteRef.current = noteId;
+    setFocusNoteId(null);
   }, []);
 
   const announceLive = useCallback((message: string) => {
@@ -529,6 +633,10 @@ export function NotatnikClient({
   const subiektPropKey = subiektForNotepad
     ? `${subiektForNotepad.configured}\0${subiektForNotepad.reachable}\0${subiektForNotepad.checkedAt}\0${subiektForNotepad.shortLabel}\0${subiektForNotepad.message}`
     : "";
+  const effectiveSubiektStatus = subiektStatus ?? subiektForNotepad;
+  const subiektWarningVisible =
+    isZkSurface && Boolean(subiektForNotepad) && effectiveSubiektStatus?.reachable === false;
+  const showTodayTopDivider = showZkSyncStrip && !subiektWarningVisible;
 
   const handleSubiektStatusChange = useCallback((status: SubiektAvailability) => {
     setSubiektStatus({
@@ -560,7 +668,9 @@ export function NotatnikClient({
       uniqueById(sortZkWatches(mergeRecordsByUpdatedAt(prev, next.zkWatches)))
     );
     setArchivedWatches((prev) =>
-      uniqueById(sortZkWatches(mergeRecordsByUpdatedAt(prev, next.archivedZkWatches)))
+      uniqueById(
+        sortZkWatches(mergeRecordsByUpdatedAt(prev, next.archivedZkWatches ?? []))
+      )
     );
     setNotes((prev) => uniqueById(mergeRecordsByUpdatedAt(prev, next.notes)));
     setArchivedNotes((prev) => uniqueById(mergeRecordsByUpdatedAt(prev, next.archivedNotes)));
@@ -645,7 +755,8 @@ export function NotatnikClient({
   }
 
   const focusParam = searchParams.get("focusWatch")?.trim() || null;
-  const urlTabKey = `${searchParams.toString()}\0${focusWatchId ?? ""}\0${zkWatches.length}\0${archivedWatches.length}`;
+  const hasArchive = isZkSurface ? archivedWatches.length > 0 : archivedNotes.length > 0;
+  const urlTabKey = `${searchParams.toString()}\0${focusWatchId ?? ""}\0${zkWatches.length}\0${archivedWatches.length}\0${archivedNotes.length}\0${hasArchive}`;
   if (!tourDemo && urlTabKey !== appliedUrlTabKey) {
     setAppliedUrlTabKey(urlTabKey);
     const hash = hydrated ? window.location.hash : "";
@@ -656,13 +767,21 @@ export function NotatnikClient({
         focusWatchId: focusParam ?? focusWatchId,
         watchInOpen: focusParam ? zkWatches.some((w) => w.id === focusParam) : undefined,
         watchInArchive: focusParam ? archivedWatches.some((w) => w.id === focusParam) : undefined,
+        defaultTab,
+        archiveAvailable: hasArchive,
       })
     );
   }
 
-  const hasArchiveContent = archivedWatches.length > 0 || archivedNotes.length > 0;
-  if (!tourDemo && activeTab === "archive" && !hasArchiveContent) {
-    navigateToTab("zk");
+  const archiveGuardKey = `${activeTab}\0${hasArchive}\0${defaultTab}`;
+  if (
+    !tourDemo &&
+    activeTab === "archive" &&
+    !hasArchive &&
+    archiveGuardKey !== appliedArchiveGuardKey
+  ) {
+    setAppliedArchiveGuardKey(archiveGuardKey);
+    navigateToTab(defaultTab);
   }
 
   function handleTodayTaskClick(anchor: string, kind: NotepadTodayTaskKind) {
@@ -671,13 +790,16 @@ export function NotatnikClient({
       return;
     }
     if (kind === "zk-follow-up" || kind === "zk-warehouse-arrival") {
-      navigateToTab("zk", { hash: anchor });
+      const watchId = anchor.startsWith("watch-") ? anchor.slice(6) : null;
+      navigateToTab("zk", { hash: anchor, focusWatch: watchId });
+      if (watchId) {
+        setFocusWatchId(watchId);
+      }
+      if (watchId && kind === "zk-warehouse-arrival") {
+        markWarehouseArrivalSeen(watchId);
+      }
+      return;
     }
-    const watchId = anchor.startsWith("watch-") ? anchor.slice(6) : null;
-    if (watchId && kind === "zk-warehouse-arrival") {
-      markWarehouseArrivalSeen(watchId);
-    }
-    flashNotepadAnchor(anchor);
   }
 
   function handleWatchAdded(watch: SalesZkWatch) {
@@ -806,8 +928,8 @@ export function NotatnikClient({
     refresh();
   }
 
-  const hasArchive = archivedWatches.length > 0 || archivedNotes.length > 0;
-  const archiveCount = archivedWatches.length + archivedNotes.length;
+  const hasZkArchive = archivedWatches.length > 0;
+  const hasNotesArchive = archivedNotes.length > 0;
   const followUpZkCount = zkWatches.filter((w) => watchNeedsNotepadAttention(w)).length;
   const warehouseArrivalCount = unseenWatchIds.size;
   const newZkLinesWatchCount = Object.keys(reconciledNewLineKeysByWatchId).length;
@@ -846,7 +968,7 @@ export function NotatnikClient({
         <ManagerPreviewBanner
           salesPersonId={teamPreview.salesPersonId}
           salesPersonName={teamPreview.salesPersonName}
-          scope="notatnik"
+          scope={isZkSurface ? "zk" : "notatnik"}
           readOnly={teamPreview.readOnly}
         />
       ) : null}
@@ -862,10 +984,10 @@ export function NotatnikClient({
           inset
           density="compact"
           title={pageTitle}
-          description={pageDescription ?? PAGE_INTRO}
+          description={pageDescription ?? (isZkSurface ? PAGE_INTRO_ZK : PAGE_INTRO_NOTES)}
           leading={
             <SectionHeadingIcon tileClassName={sectionIconTileBrandClass}>
-              <IconPackageCheck size={20} />
+              {isZkSurface ? <IconPackageCheck size={20} /> : <IconClipboardPen size={20} />}
             </SectionHeadingIcon>
           }
         />
@@ -882,9 +1004,9 @@ export function NotatnikClient({
           </Alert>
         ) : null}
 
-        {!effectiveReadOnly && !tourDemo ? <NotatnikSyncStrip /> : null}
+        {showZkSyncStrip ? <NotatnikSyncStrip /> : null}
 
-        {subiektForNotepad ? (
+        {isZkSurface && subiektForNotepad ? (
           <SubiektStatusBar
             initial={subiektForNotepad}
             onStatusChange={handleSubiektStatusChange}
@@ -892,8 +1014,8 @@ export function NotatnikClient({
           />
         ) : null}
 
-        {source.zkOrdersMigrationMissing && !tourDemo ? (
-          <Alert tone="warning" className="mx-3 mt-3 sm:mx-4">
+        {isZkSurface && source.zkOrdersMigrationMissing && !tourDemo ? (
+          <Alert tone="warning" className={cn(salesChromeInsetClass, "mt-3")}>
             Powiązanie ZK z prośbami wymaga migracji bazy:{" "}
             <code className="text-[0.85em]">052_individual_orders_sales_client_kh_id</code>,{" "}
             <code className="text-[0.85em]">055_individual_orders_source_zk</code>.
@@ -906,19 +1028,36 @@ export function NotatnikClient({
           notes={notes}
           onTaskClick={handleTodayTaskClick}
           unseenWarehouseWatchIds={unseenWatchIds}
+          kinds={[...todayTaskKinds]}
           embedded
+          showTopDivider={showTodayTopDivider}
         />
 
-        <NotatnikTabBar
-          value={activeTab}
-          onChange={(tab) => navigateToTab(tab)}
-          zkCount={zkWatches.length}
-          notesCount={notes.length}
-          archiveCount={archiveCount}
-          showArchive={hasArchive}
-        />
+        {isZkSurface ? (
+          <NotatnikTabBar
+            value={activeTab}
+            onChange={(tab) => navigateToTab(tab)}
+            zkCount={zkWatches.length}
+            notesCount={0}
+            archiveCount={archivedWatches.length}
+            showArchive={hasZkArchive}
+            visibleTabs={["zk", "archive"]}
+            archiveScope="zk"
+          />
+        ) : (
+          <NotatnikTabBar
+            value={activeTab}
+            onChange={(tab) => navigateToTab(tab)}
+            zkCount={0}
+            notesCount={notes.length}
+            archiveCount={archivedNotes.length}
+            showArchive={hasNotesArchive}
+            visibleTabs={["notes", "archive"]}
+            archiveScope="notes"
+          />
+        )}
 
-        {activeTab === "zk" ? (
+        {isZkSurface && activeTab === "zk" ? (
             <NotatnikPanel
               flushBody
               title="Czeka na towar"
@@ -985,7 +1124,32 @@ export function NotatnikClient({
             </NotatnikPanel>
           ) : null}
 
-          {activeTab === "notes" ? (
+          {isZkSurface && activeTab === "archive" && hasZkArchive ? (
+            <NotatnikPanel
+              flushBody
+              bodyClassName="space-y-0"
+              title="Archiwum ZK"
+              description="Zamknięte sprawy ZK — możesz je przywrócić lub usunąć."
+              count={archivedWatches.length || undefined}
+              icon={<IconArchive size={17} />}
+              tileClassName="bg-slate-100 text-slate-600"
+            >
+              <NotatnikArchiveCrossLink surface="zk" />
+              <NotatnikArchivePanel
+                mode="zk"
+                archivedWatches={archivedWatches}
+                archivedNotes={[]}
+                readOnly={effectiveReadOnly}
+                focusWatchId={focusWatchId}
+                onFocusWatchHandled={handleFocusWatchHandled}
+                onLiveAnnounce={announceLive}
+                onWatchRestored={handleWatchRestored}
+                onWatchDeleted={handleWatchDeleted}
+              />
+            </NotatnikPanel>
+          ) : null}
+
+          {!isZkSurface && activeTab === "notes" ? (
             <NotatnikPanel
               flushBody
               title="Notatki"
@@ -1006,25 +1170,24 @@ export function NotatnikClient({
             </NotatnikPanel>
           ) : null}
 
-          {activeTab === "archive" && hasArchive ? (
+          {!isZkSurface && activeTab === "archive" && hasNotesArchive ? (
             <NotatnikPanel
               flushBody
               bodyClassName="space-y-0"
               title="Archiwum"
-              description="Zamknięte ZK i zarchiwizowane notatki."
-              count={archiveCount || undefined}
+              description="Zarchiwizowane notatki — możesz je przywrócić lub usunąć."
+              count={archivedNotes.length || undefined}
               icon={<IconArchive size={17} />}
               tileClassName="bg-slate-100 text-slate-600"
             >
+              <NotatnikArchiveCrossLink surface="notes" />
               <NotatnikArchivePanel
-                archivedWatches={archivedWatches}
+                mode="notes"
+                archivedWatches={[]}
                 archivedNotes={archivedNotes}
                 readOnly={effectiveReadOnly}
-                focusWatchId={focusWatchId}
-                onFocusWatchHandled={handleFocusWatchHandled}
-                onLiveAnnounce={announceLive}
-                onWatchRestored={handleWatchRestored}
-                onWatchDeleted={handleWatchDeleted}
+                focusNoteId={focusNoteId}
+                onFocusNoteHandled={handleFocusNoteHandled}
                 onNoteRestored={handleNoteRestored}
                 onNoteDeleted={handleNoteDeleted}
               />

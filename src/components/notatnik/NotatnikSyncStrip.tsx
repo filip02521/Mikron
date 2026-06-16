@@ -14,12 +14,12 @@ export function NotatnikSyncStrip({ className }: { className?: string }) {
     <div
       className={cn(
         panelStickyChromeClass,
-        "border-t-0 py-2",
+        "border-t-0 border-b-0 py-2 shadow-[var(--shadow-card-elevated)]",
         salesChromeInsetClass,
         className
       )}
     >
-      <SalesPanelSyncControl embedded variant="notatnik" />
+      <SalesPanelSyncControl variant="notatnik" />
     </div>
   );
 }

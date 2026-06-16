@@ -26,12 +26,17 @@ import type { UserRole } from "@/types/database";
 import { useSalesNavLocked } from "@/components/sales/SalesOnboardingContext";
 
 export function MobileSalesNav({
-  navBadges = { salesMoje: 0, salesNotatnik: 0, salesTablica: 0 },
+  navBadges = { salesMoje: 0, salesZkDue: 0, salesNotesDue: 0, salesTablica: 0 },
   role = "sales",
   realRole = null,
   adminPanelContext = "admin",
 }: {
-  navBadges?: { salesMoje?: number; salesNotatnik?: number; salesTablica?: number };
+  navBadges?: {
+    salesMoje?: number;
+    salesZkDue?: number;
+    salesNotesDue?: number;
+    salesTablica?: number;
+  };
   role?: UserRole;
   realRole?: UserRole | null;
   adminPanelContext?: AdminPanelContext;

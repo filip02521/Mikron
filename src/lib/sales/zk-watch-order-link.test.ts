@@ -383,6 +383,14 @@ describe("filterZkWatchesByClientQuery", () => {
     expect(filterZkWatchesByClientQuery(rows, "alfa").map((r) => r.id)).toEqual(["a"]);
     expect(filterZkWatchesByClientQuery(rows, "zk/2").map((r) => r.id)).toEqual(["b"]);
   });
+
+  it("filtruje po skrócie produktu", () => {
+    const rows = [
+      watch({ id: "a", client_label: "Alfa", zk_number: "ZK/1", line_summary: "Implant tytan" }),
+      watch({ id: "b", client_label: "Beta", zk_number: "ZK/2", line_summary: "Śruba" }),
+    ];
+    expect(filterZkWatchesByClientQuery(rows, "implant").map((r) => r.id)).toEqual(["a"]);
+  });
 });
 
 describe("mergeZkLineChecksFromDeliveredOrders — izolacja ZK", () => {

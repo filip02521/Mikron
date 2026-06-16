@@ -4,7 +4,11 @@ import { buildNotatnikZkWatchHref } from "@/lib/orders/zk-prosba-link-display";
 /** Link do karty ZK w notatniku — z zachowaniem podglądu ?dla=. */
 export function notatnikZkWatchHref(
   zkWatchId: string | null | undefined,
-  options?: { salesPersonId?: string | null; previewDla?: string | null }
+  options?: {
+    salesPersonId?: string | null;
+    previewDla?: string | null;
+    archived?: boolean;
+  }
 ): string | null {
   const watchId = zkWatchId?.trim();
   if (!watchId) return null;
@@ -14,6 +18,7 @@ export function notatnikZkWatchHref(
     zkWatchId: watchId,
     salesPersonId: options?.salesPersonId?.trim() || undefined,
     preview: Boolean(previewDla),
+    archived: options?.archived,
   });
   return hrefWithSalesPreviewFromUrl(base, previewDla);
 }
