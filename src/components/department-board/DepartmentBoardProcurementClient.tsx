@@ -61,7 +61,7 @@ export function DepartmentBoardProcurementClient({
   const [activeTab, setActiveTab] = useState<DepartmentBoardTab>(
     () => initialTab ?? (focusQuestionId ? "questions" : "announcements")
   );
-  const [questionFilter, setQuestionFilter] = useState<DepartmentBoardQuestionFilter>("open");
+  const [questionFilter, setQuestionFilter] = useState<DepartmentBoardQuestionFilter>("all");
   const [questionSearch, setQuestionSearch] = useState("");
 
   const [announcementTitle, setAnnouncementTitle] = useState("");
