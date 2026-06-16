@@ -56,9 +56,9 @@ import { resolveOrderOnDemandForSave } from "@/lib/orders/supplier-on-demand";
 import { WAREHOUSE_SHELF_DEFAULT } from "@/lib/orders/warehouse-inventory";
 import { validateSupplierContactFields } from "@/lib/orders/validate-supplier-contact";
 import {
-  parseWarehouseCarrier,
   parseWarehouseShipmentForm,
 } from "@/lib/warehouse/delivery-carriers";
+import { assertWarehouseCarrierSlug } from "@/app/actions/warehouse-carriers";
 import type { IndividualRequestKind, SupplierLocation, StatsMode } from "@/types/database";
 import {
   clampOptionalText,
@@ -942,7 +942,7 @@ export async function actionUpsertSupplier(form: {
   // Pola magazynowe pomijamy przy częściowym zapisie (np. modal z panelu dziennego).
   if (form.default_delivery_carrier !== undefined) {
     payload.default_delivery_carrier = form.default_delivery_carrier?.trim()
-      ? parseWarehouseCarrier(form.default_delivery_carrier)
+      ? await assertWarehouseCarrierSlug(form.default_delivery_carrier)
       : null;
   }
   if (form.default_delivery_shipment_form !== undefined) {

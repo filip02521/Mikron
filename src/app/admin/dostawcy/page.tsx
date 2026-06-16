@@ -1,4 +1,5 @@
 import { countInactiveSuppliers, fetchSuppliersWithSchedules } from "@/lib/data/queries";
+import { fetchWarehouseCarriers } from "@/lib/data/warehouse-carriers";
 import { SuppliersAdminClient } from "@/components/admin/SuppliersAdminClient";
 import { SuppliersHubShell } from "@/components/admin/SuppliersHubShell";
 import { Alert } from "@/components/ui/Alert";
@@ -13,11 +14,13 @@ export const metadata: Metadata = pageMetadataFor("adminSuppliers");
 export default async function DostawcyAdminPage() {
   let suppliers: SupplierWithSchedule[] = [];
   let inactiveCount = 0;
+  let warehouseCarriers: Awaited<ReturnType<typeof fetchWarehouseCarriers>> = [];
   let loadError: string | null = null;
   try {
-    [suppliers, inactiveCount] = await Promise.all([
+    [suppliers, inactiveCount, warehouseCarriers] = await Promise.all([
       fetchSuppliersWithSchedules(),
       countInactiveSuppliers(),
+      fetchWarehouseCarriers(),
     ]);
   } catch (e) {
     loadError = e instanceof Error ? e.message : "Nie udało się wczytać listy dostawców.";
@@ -33,7 +36,7 @@ export default async function DostawcyAdminPage() {
       inactiveCount={inactiveCount}
     >
       {loadError ? <Alert tone="error">{loadError}</Alert> : null}
-      <SuppliersAdminClient initial={suppliers} allowDelete />
+      <SuppliersAdminClient initial={suppliers} allowDelete warehouseCarriers={warehouseCarriers} />
     </SuppliersHubShell>
   );
 }

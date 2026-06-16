@@ -1,26 +1,30 @@
 import { describe, expect, it } from "vitest";
-import { formStateForNextEntry } from "@/lib/warehouse/delivery-journal-form";
+import {
+  createEmptyDeliveryJournalForm,
+  formStateForNextEntry,
+} from "./delivery-journal-form";
+
+describe("createEmptyDeliveryJournalForm", () => {
+  it("ustawia domyślny kurier z katalogu", () => {
+    expect(createEmptyDeliveryJournalForm("dpd").carrier).toBe("dpd");
+  });
+});
 
 describe("formStateForNextEntry", () => {
-  it("czyści dostawcę i notatkę, zostawia kurier i liczby", () => {
-    const previous = {
-      supplierId: "sup-1",
-      supplierOther: "Kurier X",
-      carrier: "dpd" as const,
-      shipmentForm: "paczki" as const,
-      packageCount: "3",
-      palletCount: "0",
-      note: "rampa 2",
-    };
-
-    expect(formStateForNextEntry(previous)).toEqual({
-      supplierId: "",
+  it("czyści dostawcę i notatkę, zachowuje kurier i liczniki", () => {
+    const next = formStateForNextEntry({
+      supplierId: "abc",
       supplierOther: "",
-      carrier: "dpd",
-      shipmentForm: "paczki",
-      packageCount: "3",
-      palletCount: "0",
-      note: "",
+      carrier: "dhl",
+      shipmentForm: "palety",
+      packageCount: "0",
+      palletCount: "2",
+      note: "list 123",
     });
+
+    expect(next.supplierId).toBe("");
+    expect(next.carrier).toBe("dhl");
+    expect(next.palletCount).toBe("2");
+    expect(next.note).toBe("");
   });
 });

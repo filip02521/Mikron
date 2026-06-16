@@ -1,4 +1,5 @@
 import { countInactiveSuppliers, fetchSuppliersWithSchedules } from "@/lib/data/queries";
+import { fetchWarehouseCarriers } from "@/lib/data/warehouse-carriers";
 import { InactiveSuppliersAdminClient } from "@/components/admin/InactiveSuppliersAdminClient";
 import { SuppliersHubShell } from "@/components/admin/SuppliersHubShell";
 import { Alert } from "@/components/ui/Alert";
@@ -12,11 +13,13 @@ export const metadata: Metadata = pageMetadataFor("inactiveSuppliers");
 export default async function NieaktywniAdminPage() {
   let suppliers: Awaited<ReturnType<typeof fetchSuppliersWithSchedules>> = [];
   let inactiveCount = 0;
+  let warehouseCarriers: Awaited<ReturnType<typeof fetchWarehouseCarriers>> = [];
   let loadError: string | null = null;
   try {
-    [suppliers, inactiveCount] = await Promise.all([
+    [suppliers, inactiveCount, warehouseCarriers] = await Promise.all([
       fetchSuppliersWithSchedules(undefined, { inactiveOnly: true }),
       countInactiveSuppliers(),
+      fetchWarehouseCarriers(),
     ]);
   } catch (e) {
     loadError = e instanceof Error ? e.message : "Nie udało się wczytać listy nieaktywnych dostawców.";
@@ -32,7 +35,11 @@ export default async function NieaktywniAdminPage() {
       inactiveCount={inactiveCount}
     >
       {loadError ? <Alert tone="error">{loadError}</Alert> : null}
-      <InactiveSuppliersAdminClient initial={suppliers} context="admin" />
+      <InactiveSuppliersAdminClient
+        initial={suppliers}
+        context="admin"
+        warehouseCarriers={warehouseCarriers}
+      />
     </SuppliersHubShell>
   );
 }

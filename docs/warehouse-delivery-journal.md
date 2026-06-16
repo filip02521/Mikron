@@ -21,9 +21,7 @@ Rola **Dział dostaw** w zakładce **Dziennik dostaw** ma podzakładki:
 
 ## Kurierzy (lista w formularzu)
 
-Katalog: `src/lib/warehouse/delivery-carriers.ts` (musi być zgodny z enum `warehouse_carrier` w bazie).
-
-Po dodaniu nowych wartości uruchom migrację `054_warehouse_carrier_expand.sql` (lub nowszą) na Supabase.
+Katalog: tabela `warehouse_carriers` (edycja z UI w dzienniku — link „Zarządzaj listą” przy polu kuriera). Ukryty kurier znika z wyboru, ale zostaje w historii wpisów. Seed startowy w migracji `064_warehouse_carriers_catalog.sql`.
 
 ## Podpowiedź kuriera
 

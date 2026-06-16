@@ -7,7 +7,8 @@ import {
 import { runOrderMaintenanceBeforePageLoad } from "@/lib/services/deferred-order-maintenance";
 import { actionFetchTodayDeliveryJournal, actionListWarehouseAssignSuppliers } from "@/app/actions/warehouse-delivery";
 import { getSessionUser } from "@/lib/auth";
-import { isMagazyn } from "@/lib/auth-roles";
+import { canAccessWarehouse, isMagazyn } from "@/lib/auth-roles";
+import { fetchWarehouseCarriers } from "@/lib/data/warehouse-carriers";
 import { QueueClient } from "@/components/queue/QueueClient";
 import type { IndividualOrder } from "@/types/database";
 
@@ -33,6 +34,7 @@ export default async function KolejkaPage() {
     summary: { receiptCount: 0, packageCount: 0, palletCount: 0 },
   };
   let journalSuppliers: Awaited<ReturnType<typeof actionListWarehouseAssignSuppliers>> = [];
+  let warehouseCarriers: Awaited<ReturnType<typeof fetchWarehouseCarriers>> = [];
 
   try {
     [orders, informacjaOrders, pickupReadyCount, warehouseInventory] = await Promise.all([
@@ -42,9 +44,10 @@ export default async function KolejkaPage() {
       fetchWarehouseInventory(),
     ]);
     if (session) {
-      [deliveryJournal, journalSuppliers] = await Promise.all([
+      [deliveryJournal, journalSuppliers, warehouseCarriers] = await Promise.all([
         actionFetchTodayDeliveryJournal(),
         actionListWarehouseAssignSuppliers(),
+        fetchWarehouseCarriers(),
       ]);
     }
   } catch (e) {
@@ -63,6 +66,8 @@ export default async function KolejkaPage() {
       warehouseInventory={warehouseInventory}
       deliveryJournal={deliveryJournal}
       journalSuppliers={journalSuppliers}
+      warehouseCarriers={warehouseCarriers}
+      canManageCarriers={role != null && canAccessWarehouse(role)}
       isMagazynRole={role != null && isMagazyn(role)}
       loadError={error}
     />

@@ -1,6 +1,8 @@
+import type { WarehouseCarrierRow } from "@/lib/data/warehouse-carriers";
+
 /**
  * Kurierzy w dzienniku dostaw magazynu (ewidencja).
- * Wartości `value` muszą odpowiadać enum `warehouse_carrier` w Postgres.
+ * Seed startowy — runtime lista z tabeli `warehouse_carriers`.
  */
 export const WAREHOUSE_CARRIERS = [
   { value: "dpd", label: "DPD" },
@@ -29,7 +31,8 @@ export const WAREHOUSE_CARRIERS = [
   { value: "inne", label: "Inne" },
 ] as const;
 
-export type WarehouseCarrier = (typeof WAREHOUSE_CARRIERS)[number]["value"];
+/** Slug kuriera w bazie (TEXT FK → warehouse_carriers). */
+export type WarehouseCarrier = string;
 
 export const WAREHOUSE_SHIPMENT_FORMS = [
   { value: "paczki", label: "Paczki" },
@@ -39,17 +42,70 @@ export const WAREHOUSE_SHIPMENT_FORMS = [
 
 export type WarehouseShipmentForm = (typeof WAREHOUSE_SHIPMENT_FORMS)[number]["value"];
 
-export function warehouseCarrierLabel(value: string): string {
-  return WAREHOUSE_CARRIERS.find((c) => c.value === value)?.label ?? value;
+function carrierCatalogFallback(): WarehouseCarrierRow[] {
+  return WAREHOUSE_CARRIERS.map((carrier, index) => ({
+    slug: carrier.value,
+    label: carrier.label,
+    sortOrder: (index + 1) * 10,
+    isActive: true,
+  }));
+}
+
+export function warehouseCarrierLabel(
+  value: string,
+  catalog?: WarehouseCarrierRow[]
+): string {
+  const list = catalog ?? carrierCatalogFallback();
+  return list.find((carrier) => carrier.slug === value)?.label ?? value;
+}
+
+export function activeWarehouseCarrierOptions(
+  catalog: WarehouseCarrierRow[]
+): WarehouseCarrierRow[] {
+  return catalog.filter((carrier) => carrier.isActive);
+}
+
+/** Slug z formularza: zachowaj wartość z katalogu (także ukrytą — autouzupełnianie z historii). */
+export function resolveWarehouseFormCarrier(
+  selectedSlug: string,
+  catalog: WarehouseCarrierRow[],
+  defaultSlug: WarehouseCarrier
+): WarehouseCarrier {
+  if (catalog.some((carrier) => carrier.slug === selectedSlug)) {
+    return selectedSlug;
+  }
+  return defaultSlug;
+}
+
+export function defaultWarehouseCarrierSlug(
+  catalog: WarehouseCarrierRow[]
+): WarehouseCarrier {
+  return activeWarehouseCarrierOptions(catalog)[0]?.slug ?? "inpost";
+}
+
+/** Aktywne + bieżący wybór (np. z historii / autouzupełnienia), nawet gdy ukryty. */
+export function warehouseCarrierOptionsForSelect(
+  catalog: WarehouseCarrierRow[],
+  selectedSlug?: string
+): WarehouseCarrierRow[] {
+  const active = activeWarehouseCarrierOptions(catalog);
+  const slug = selectedSlug?.trim();
+  if (!slug || active.some((carrier) => carrier.slug === slug)) return active;
+  const extra = catalog.find((carrier) => carrier.slug === slug);
+  return extra ? [...active, extra] : active;
 }
 
 export function warehouseShipmentFormLabel(value: string): string {
   return WAREHOUSE_SHIPMENT_FORMS.find((f) => f.value === value)?.label ?? value;
 }
 
-/** Wszystkie wartości enum — do walidacji zapisu. */
-export function isWarehouseCarrier(value: string): value is WarehouseCarrier {
-  return WAREHOUSE_CARRIERS.some((c) => c.value === value);
+/** Czy slug istnieje w katalogu (aktywny lub historyczny). */
+export function isWarehouseCarrier(
+  value: string,
+  catalog?: WarehouseCarrierRow[]
+): boolean {
+  const list = catalog ?? carrierCatalogFallback();
+  return list.some((carrier) => carrier.slug === value);
 }
 
 export function isWarehouseShipmentForm(
@@ -58,11 +114,31 @@ export function isWarehouseShipmentForm(
   return WAREHOUSE_SHIPMENT_FORMS.some((f) => f.value === value);
 }
 
+/** Walidacja po stronie klienta / testów (statyczny seed). */
 export function parseWarehouseCarrier(value: string): WarehouseCarrier {
   const trimmed = value.trim();
   if (!isWarehouseCarrier(trimmed)) {
     throw new Error(
       `Nieprawidłowy kurier „${value}”. Odśwież stronę i wybierz kuriera z listy.`
+    );
+  }
+  return trimmed;
+}
+
+export function parseActiveWarehouseCarrier(
+  value: string,
+  catalog: WarehouseCarrierRow[]
+): WarehouseCarrier {
+  const trimmed = value.trim();
+  const match = catalog.find((carrier) => carrier.slug === trimmed);
+  if (!match) {
+    throw new Error(
+      `Nieprawidłowy kurier „${value}”. Odśwież stronę i wybierz kuriera z listy.`
+    );
+  }
+  if (!match.isActive) {
+    throw new Error(
+      `Kurier „${match.label}" jest ukryty — wybierz inny z listy.`
     );
   }
   return trimmed;

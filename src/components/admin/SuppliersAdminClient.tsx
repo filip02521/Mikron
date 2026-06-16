@@ -40,6 +40,7 @@ import {
 } from "@/components/admin/SupplierAdminForm";
 import { SupplierEditSheet } from "@/components/admin/SupplierEditSheet";
 import { SUPPLIER_HUB_LIST_META_DESCRIPTION } from "@/lib/supplier-hub";
+import type { WarehouseCarrierRow } from "@/lib/data/warehouse-carriers";
 import { cn } from "@/lib/cn";
 
 function scheduleHref(location: SupplierLocation, name: string): string {
@@ -71,9 +72,11 @@ function supplierRowClass(
 export function SuppliersAdminClient({
   initial,
   allowDelete = true,
+  warehouseCarriers = [],
 }: {
   initial: SupplierWithSchedule[];
   allowDelete?: boolean;
+  warehouseCarriers?: WarehouseCarrierRow[];
 }) {
   const router = useRouter();
   const pathname = usePathname();
@@ -352,6 +355,7 @@ export function SuppliersAdminClient({
             disabled={pending}
             onChange={setForm}
             onPatchCycleFields={patchCycleFields}
+            carrierOptions={warehouseCarriers}
             onSubiektLinked={(khId) => {
               setForm((f) => ({ ...f, subiekt_kh_id: khId }));
               if (form.id) {

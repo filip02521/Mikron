@@ -36,6 +36,7 @@ import {
   supplierToAdminForm,
 } from "@/lib/suppliers/admin-form";
 import { suggestOrderOnDemandAfterFieldChange } from "@/lib/orders/supplier-on-demand";
+import type { WarehouseCarrierRow } from "@/lib/data/warehouse-carriers";
 import { cn } from "@/lib/cn";
 
 function scheduleHref(location: SupplierLocation, name: string): string {
@@ -59,9 +60,11 @@ function inactiveRowClass(isEditing: boolean): string {
 export function InactiveSuppliersAdminClient({
   initial,
   context,
+  warehouseCarriers = [],
 }: {
   initial: SupplierWithSchedule[];
   context: SupplierHubContext;
+  warehouseCarriers?: WarehouseCarrierRow[];
 }) {
   const router = useRouter();
   const pathname = usePathname();
@@ -259,6 +262,7 @@ export function InactiveSuppliersAdminClient({
             disabled={pending}
             onChange={setForm}
             onPatchCycleFields={patchCycleFields}
+            carrierOptions={warehouseCarriers}
             onSubiektLinked={(khId) => {
               setForm((f) => ({ ...f, subiekt_kh_id: khId }));
               if (form.id) {

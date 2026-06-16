@@ -15,6 +15,7 @@ import { AppBrandContentFooter } from "@/components/layout/AppBrandContentFooter
 import { panelPageShellClass } from "@/lib/ui/ontime-theme";
 import { ReceiveQueueTable, type ReceiveQueueToast } from "@/components/queue/ReceiveQueueTable";
 import { WarehouseInventorySection } from "@/components/queue/WarehouseInventorySection";
+import type { WarehouseCarrierRow } from "@/lib/data/warehouse-carriers";
 import { DeliveryJournalSection } from "@/components/queue/DeliveryJournalSection";
 import type { WarehouseDeliveryReceipt } from "@/lib/warehouse/delivery-receipts";
 import { buildWarehouseInventoryRows } from "@/lib/orders/warehouse-inventory";
@@ -40,6 +41,8 @@ export function QueueClient({
   warehouseInventory,
   deliveryJournal,
   journalSuppliers,
+  warehouseCarriers,
+  canManageCarriers = false,
   isMagazynRole = false,
   loadError = null,
 }: {
@@ -53,6 +56,8 @@ export function QueueClient({
     summary: { receiptCount: number; packageCount: number; palletCount: number };
   };
   journalSuppliers: Array<{ id: string; name: string; subiektKhId: number | null }>;
+  warehouseCarriers: WarehouseCarrierRow[];
+  canManageCarriers?: boolean;
   isMagazynRole?: boolean;
   loadError?: string | null;
 }) {
@@ -210,9 +215,11 @@ export function QueueClient({
         >
           <DeliveryJournalSection
             suppliers={journalSuppliers}
+            carriers={warehouseCarriers}
             initialJournal={deliveryJournal}
             todayDateKey={deliveryJournal.date}
             isMagazynRole={isMagazynRole}
+            canManageCarriers={canManageCarriers}
           />
         </div>
 
