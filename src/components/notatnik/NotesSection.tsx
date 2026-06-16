@@ -22,11 +22,10 @@ import {
   NOTATNIK_INPUT_CLASS,
   NOTATNIK_NOTES_GRID_CLASS,
   NOTATNIK_NOTES_WALL_CLASS,
-  NOTATNIK_TEXTAREA_CLASS,
 } from "./notatnik-layout";
 import { noteStickyBoardDividerClass, noteStickyPaperClass } from "./note-styles";
 import { NoteBodyDisplay } from "./NoteBodyDisplay";
-import { NoteFormatToolbar } from "./NoteFormatToolbar";
+import { NoteFormatToolbar, NOTE_COMPOSE_TEXTAREA_INNER_CLASS, NOTE_COMPOSE_TEXTAREA_SHELL_CLASS } from "./NoteFormatToolbar";
 import { NoteStickyFrame } from "./NoteStickyFrame";
 import { handleNoteFormatKeyDown } from "@/lib/sales/note-body-format";
 import { DragHandleGlyph, PinGlyph } from "@/components/ui/UiGlyphs";
@@ -220,34 +219,37 @@ function NoteCard({
             placeholder="Tytuł (opcjonalnie)"
             className={cn(NOTATNIK_INPUT_CLASS, "w-full text-sm font-semibold")}
           />
-          <NoteFormatToolbar
-            textareaRef={bodyTextareaRef}
-            value={body}
-            onChange={setBody}
-            disabled={saving}
-          />
-          <textarea
-            ref={bodyTextareaRef}
-            rows={4}
-            value={body}
-            onChange={(e) => setBody(e.target.value)}
-            onKeyDown={(e) => {
-              const el = e.currentTarget;
-              if (
-                handleNoteFormatKeyDown(e, body, el.selectionStart, el.selectionEnd, (next, start, end) => {
-                  setBody(next);
-                  requestAnimationFrame(() => el.setSelectionRange(start, end));
-                })
-              ) {
-                return;
-              }
-              if ((e.metaKey || e.ctrlKey) && e.key === "Enter") {
-                e.preventDefault();
-                void save();
-              }
-            }}
-            className={cn(NOTATNIK_TEXTAREA_CLASS, "min-h-[5.5rem] w-full resize-y text-sm leading-relaxed")}
-          />
+          <div className={NOTE_COMPOSE_TEXTAREA_SHELL_CLASS}>
+            <textarea
+              ref={bodyTextareaRef}
+              rows={4}
+              value={body}
+              onChange={(e) => setBody(e.target.value)}
+              onKeyDown={(e) => {
+                const el = e.currentTarget;
+                if (
+                  handleNoteFormatKeyDown(e, body, el.selectionStart, el.selectionEnd, (next, start, end) => {
+                    setBody(next);
+                    requestAnimationFrame(() => el.setSelectionRange(start, end));
+                  })
+                ) {
+                  return;
+                }
+                if ((e.metaKey || e.ctrlKey) && e.key === "Enter") {
+                  e.preventDefault();
+                  void save();
+                }
+              }}
+              className={cn(NOTE_COMPOSE_TEXTAREA_INNER_CLASS, "min-h-[5.5rem]")}
+            />
+            <NoteFormatToolbar
+              textareaRef={bodyTextareaRef}
+              value={body}
+              onChange={setBody}
+              disabled={saving}
+              embedded
+            />
+          </div>
           <div className="flex flex-wrap items-center gap-2 border-t border-slate-100 pt-2">
             <span className={cn(salesTypography.chrome, "text-slate-600")}>Przypomnij</span>
             <input
@@ -609,44 +611,44 @@ export function NotesSection({
                       placeholder="Tytuł (opcjonalnie)"
                       className={cn(NOTATNIK_INPUT_CLASS, "w-full text-sm font-semibold")}
                     />
-                    <NoteFormatToolbar
-                      textareaRef={composeTextareaRef}
-                      value={draft}
-                      onChange={setDraft}
-                      disabled={saving}
-                    />
-                    <textarea
-                      ref={composeTextareaRef}
-                      rows={3}
-                      value={draft}
-                      onChange={(e) => setDraft(e.target.value)}
-                      onKeyDown={(e) => {
-                        const el = e.currentTarget;
-                        if (
-                          handleNoteFormatKeyDown(
-                            e,
-                            draft,
-                            el.selectionStart,
-                            el.selectionEnd,
-                            (next, start, end) => {
-                              setDraft(next);
-                              requestAnimationFrame(() => el.setSelectionRange(start, end));
-                            }
-                          )
-                        ) {
-                          return;
-                        }
-                        if ((e.metaKey || e.ctrlKey) && e.key === "Enter") {
-                          e.preventDefault();
-                          void createNote();
-                        }
-                      }}
-                      placeholder="Wpisz notatkę…"
-                      className={cn(
-                        NOTATNIK_TEXTAREA_CLASS,
-                        "min-h-[5rem] w-full resize-y text-sm leading-relaxed"
-                      )}
-                    />
+                    <div className={NOTE_COMPOSE_TEXTAREA_SHELL_CLASS}>
+                      <textarea
+                        ref={composeTextareaRef}
+                        rows={3}
+                        value={draft}
+                        onChange={(e) => setDraft(e.target.value)}
+                        onKeyDown={(e) => {
+                          const el = e.currentTarget;
+                          if (
+                            handleNoteFormatKeyDown(
+                              e,
+                              draft,
+                              el.selectionStart,
+                              el.selectionEnd,
+                              (next, start, end) => {
+                                setDraft(next);
+                                requestAnimationFrame(() => el.setSelectionRange(start, end));
+                              }
+                            )
+                          ) {
+                            return;
+                          }
+                          if ((e.metaKey || e.ctrlKey) && e.key === "Enter") {
+                            e.preventDefault();
+                            void createNote();
+                          }
+                        }}
+                        placeholder="Wpisz notatkę…"
+                        className={cn(NOTE_COMPOSE_TEXTAREA_INNER_CLASS, "min-h-[5rem]")}
+                      />
+                      <NoteFormatToolbar
+                        textareaRef={composeTextareaRef}
+                        value={draft}
+                        onChange={setDraft}
+                        disabled={saving}
+                        embedded
+                      />
+                    </div>
                     <div className="space-y-1.5 border-t border-slate-100 pt-2">
                       <span className={cn(salesTypography.chrome, "text-slate-600")}>Przypomnij</span>
                       <FollowUpQuickDates

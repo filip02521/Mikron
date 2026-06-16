@@ -117,6 +117,43 @@ function lineRange(text: string, start: number, end: number) {
   return { lineStart, lineEnd, safeStart, safeEnd };
 }
 
+function stripListPrefix(line: string): string {
+  return line.replace(BULLET_LINE_RE, "$3").replace(ORDERED_LINE_RE, "$3").trimStart();
+}
+
+function listMarkerLength(line: string): number {
+  if (!line.trim()) return 0;
+  const bullet = line.match(BULLET_LINE_RE);
+  if (bullet) return bullet[0]!.length - bullet[3]!.length;
+  const ordered = line.match(ORDERED_LINE_RE);
+  if (ordered) return ordered[0]!.length - ordered[3]!.length;
+  const indent = line.match(/^(\s*)/)?.[1] ?? "";
+  return indent.length;
+}
+
+function cursorAfterListPrefix(line: string): number {
+  if (!line.length) return 0;
+  if (/^(\s*)([-*•])\s*$/.test(line)) return line.length;
+  if (/^(\s*)\d+\.\s*$/.test(line)) return line.length;
+  return listMarkerLength(line);
+}
+
+function formatBulletLine(line: string): string {
+  const indent = line.match(/^(\s*)/)?.[1] ?? "";
+  if (!line.trim()) return `${indent}- `;
+  if (BULLET_LINE_RE.test(line)) return line;
+  if (ORDERED_LINE_RE.test(line)) {
+    return `${indent}- ${stripListPrefix(line)}`;
+  }
+  return `${indent}- ${line.trimStart()}`;
+}
+
+function formatNumberLine(line: string, number: number): string {
+  const indent = line.match(/^(\s*)/)?.[1] ?? "";
+  if (!line.trim()) return `${indent}${number}. `;
+  return `${indent}${number}. ${stripListPrefix(line)}`;
+}
+
 /** Stosuje formatowanie w polu tekstowym (zaznaczenie lub bieżąca linia). */
 export function applyNoteTextFormat(
   text: string,
@@ -127,7 +164,10 @@ export function applyNoteTextFormat(
   if (action === "bold") {
     const { safeStart, safeEnd } = lineRange(text, selectionStart, selectionEnd);
     if (safeStart === safeEnd) {
-      return { text, selectionStart: safeStart, selectionEnd: safeEnd };
+      const marker = "****";
+      const next = text.slice(0, safeStart) + marker + text.slice(safeEnd);
+      const cursor = safeStart + 2;
+      return { text: next, selectionStart: cursor, selectionEnd: cursor };
     }
     const selected = text.slice(safeStart, safeEnd);
     const wrapped = `**${selected}**`;
@@ -143,29 +183,36 @@ export function applyNoteTextFormat(
   const block = text.slice(lineStart, lineEnd);
   const lines = block.length ? block.split("\n") : [""];
 
+  let nextNumber = 1;
   const formatted =
     action === "bullet"
-      ? lines.map((line) => {
-          if (!line.trim()) return line;
-          if (BULLET_LINE_RE.test(line) || ORDERED_LINE_RE.test(line)) {
-            return line.replace(ORDERED_LINE_RE, "$1- $3").replace(BULLET_LINE_RE, "$1- $3");
-          }
-          const indent = line.match(/^(\s*)/)?.[1] ?? "";
-          return `${indent}- ${line.trimStart()}`;
-        })
-      : lines.map((line, index) => {
-          if (!line.trim()) return line;
-          const indent = line.match(/^(\s*)/)?.[1] ?? "";
-          const content = line.replace(BULLET_LINE_RE, "$3").replace(ORDERED_LINE_RE, "$3").trimStart();
-          return `${indent}${index + 1}. ${content}`;
-        });
+      ? lines.map((line) => formatBulletLine(line))
+      : lines.map((line) => formatNumberLine(line, nextNumber++));
 
   const replacement = formatted.join("\n");
   const next = text.slice(0, lineStart) + replacement + text.slice(lineEnd);
   const delta = replacement.length - block.length;
+
+  let nextStart = safeStart + delta;
+  let nextEnd = safeEnd + delta;
+
+  if (safeStart === safeEnd) {
+    const beforeCursor = text.slice(lineStart, safeStart);
+    const lineIndex = beforeCursor.split("\n").length - 1;
+    const cursorInLine = beforeCursor.split("\n").pop()?.length ?? 0;
+    const originalLine = lines[lineIndex] ?? "";
+    const formattedLine = formatted[lineIndex] ?? "";
+    const contentOffset = Math.max(0, cursorInLine - listMarkerLength(originalLine));
+    const cursorInFormattedLine = cursorAfterListPrefix(formattedLine) + contentOffset;
+    const lineOffset = formatted.slice(0, lineIndex).join("\n").length + (lineIndex > 0 ? 1 : 0);
+    const cursor = lineStart + lineOffset + cursorInFormattedLine;
+    nextStart = cursor;
+    nextEnd = cursor;
+  }
+
   return {
     text: next,
-    selectionStart: safeStart + delta,
-    selectionEnd: safeEnd + delta,
+    selectionStart: nextStart,
+    selectionEnd: nextEnd,
   };
 }

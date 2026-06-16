@@ -3,7 +3,6 @@
 import type { RefObject } from "react";
 import { cn } from "@/lib/cn";
 import { applyNoteTextFormat, type NoteTextFormatAction } from "@/lib/sales/note-body-format";
-import { salesTypography } from "@/lib/ui/ontime-theme";
 
 function FormatButton({
   label,
@@ -21,11 +20,10 @@ function FormatButton({
       type="button"
       disabled={disabled}
       title={title}
+      aria-label={title}
+      onMouseDown={(e) => e.preventDefault()}
       onClick={onClick}
-      className={cn(
-        "inline-flex min-h-8 items-center rounded-md border border-slate-200/90 bg-white px-2 text-[11px] font-medium text-slate-700 shadow-sm transition hover:border-indigo-200 hover:bg-indigo-50/40 hover:text-indigo-900 disabled:opacity-50",
-        salesTypography.chrome
-      )}
+      className="inline-flex h-5 min-w-5 items-center justify-center rounded px-1 text-[10px] font-semibold text-slate-400 transition hover:bg-slate-100/80 hover:text-slate-700 disabled:opacity-40"
     >
       {label}
     </button>
@@ -37,12 +35,14 @@ export function NoteFormatToolbar({
   value,
   onChange,
   disabled,
+  embedded,
   className,
 }: {
   textareaRef: RefObject<HTMLTextAreaElement | null>;
   value: string;
   onChange: (next: string) => void;
   disabled?: boolean;
+  embedded?: boolean;
   className?: string;
 }) {
   function run(action: NoteTextFormatAction) {
@@ -59,29 +59,43 @@ export function NoteFormatToolbar({
   }
 
   return (
-    <div className={cn("flex flex-wrap items-center gap-1.5", className)}>
-      <span className={cn(salesTypography.chrome, "text-slate-500")}>Formatowanie</span>
+    <div
+      className={cn(
+        "flex items-center gap-0.5",
+        embedded
+          ? "border-t border-slate-100/70 bg-slate-50/40 px-1.5 py-0.5"
+          : "border-t border-slate-100/80 pt-1",
+        className
+      )}
+    >
       <FormatButton
-        label="• Lista"
-        title="Lista punktowana (- element)"
+        label="•"
+        title="Lista punktowana"
         disabled={disabled}
         onClick={() => run("bullet")}
       />
       <FormatButton
-        label="1. Lista"
-        title="Lista numerowana (1. element)"
+        label="1."
+        title="Lista numerowana"
         disabled={disabled}
         onClick={() => run("number")}
       />
       <FormatButton
         label="B"
-        title="Pogrubienie (**tekst**)"
+        title="Pogrubienie (Ctrl+B)"
         disabled={disabled}
         onClick={() => run("bold")}
       />
-      <span className={cn(salesTypography.chrome, "hidden text-slate-400 sm:inline")}>
-        lub wpisz: - punkt, 1. numer, **pogrubienie**
-      </span>
     </div>
   );
 }
+
+/** Obramowanie pola tekstowego z wbudowanym paskiem formatowania. */
+export const NOTE_COMPOSE_TEXTAREA_SHELL_CLASS = cn(
+  "overflow-hidden rounded-md border border-slate-200 bg-white shadow-sm",
+  "focus-within:border-indigo-500 focus-within:outline-none focus-within:ring-1 focus-within:ring-sky-500/15"
+);
+
+/** Textarea wewnątrz {@link NOTE_COMPOSE_TEXTAREA_SHELL_CLASS} — bez własnej ramki. */
+export const NOTE_COMPOSE_TEXTAREA_INNER_CLASS =
+  "w-full resize-y border-0 bg-transparent px-2.5 py-1.5 text-sm leading-relaxed text-slate-900 shadow-none focus:outline-none focus:ring-0";

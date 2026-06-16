@@ -34,4 +34,51 @@ describe("applyNoteTextFormat", () => {
     expect(result.selectionStart).toBe(8);
     expect(result.selectionEnd).toBe(13);
   });
+
+  it("na pustej notatce zaczyna listę punktowaną", () => {
+    const result = applyNoteTextFormat("", 0, 0, "bullet");
+    expect(result.text).toBe("- ");
+    expect(result.selectionStart).toBe(2);
+    expect(result.selectionEnd).toBe(2);
+  });
+
+  it("na pustej notatce zaczyna listę numerowaną", () => {
+    const result = applyNoteTextFormat("", 0, 0, "number");
+    expect(result.text).toBe("1. ");
+    expect(result.selectionStart).toBe(3);
+    expect(result.selectionEnd).toBe(3);
+  });
+
+  it("na pustej linii wstawia prefiks listy", () => {
+    const result = applyNoteTextFormat("wiersz\n\nkolejny", 7, 7, "bullet");
+    expect(result.text).toBe("wiersz\n- \nkolejny");
+    expect(result.selectionStart).toBe(9);
+    expect(result.selectionEnd).toBe(9);
+  });
+
+  it("bez zaznaczenia dodaje prefiks na początku bieżącej linii", () => {
+    const result = applyNoteTextFormat("treść", 5, 5, "bullet");
+    expect(result.text).toBe("- treść");
+    expect(result.selectionStart).toBe(7);
+    expect(result.selectionEnd).toBe(7);
+  });
+
+  it("bez zaznaczenia zachowuje pozycję kursora w linii", () => {
+    const result = applyNoteTextFormat("treść", 2, 2, "bullet");
+    expect(result.text).toBe("- treść");
+    expect(result.selectionStart).toBe(4);
+    expect(result.selectionEnd).toBe(4);
+  });
+
+  it("bez zaznaczenia wstawia znaczniki pogrubienia", () => {
+    const result = applyNoteTextFormat("abc", 1, 1, "bold");
+    expect(result.text).toBe("a****bc");
+    expect(result.selectionStart).toBe(3);
+    expect(result.selectionEnd).toBe(3);
+  });
+
+  it("konwertuje punktor na numerację w zaznaczeniu", () => {
+    const result = applyNoteTextFormat("- jeden\n- dwa", 0, 12, "number");
+    expect(result.text).toBe("1. jeden\n2. dwa");
+  });
 });
