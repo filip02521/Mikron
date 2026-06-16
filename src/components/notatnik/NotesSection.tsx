@@ -578,11 +578,15 @@ export function NotesSection({
       ) : null}
 
       <div className={cn(embedded && "px-3 sm:px-4 pb-3 pt-3", !embedded && "space-y-3")}>
-        {embedded ? (
-          <KeyboardShortcutsHint items={[...NOTATNIK_KEYBOARD_HINTS]} compact />
-        ) : null}
-
         <div className={cn(NOTATNIK_NOTES_WALL_CLASS, "space-y-3")}>
+          {embedded ? (
+            <KeyboardShortcutsHint
+              items={[...NOTATNIK_KEYBOARD_HINTS]}
+              compact
+              className="px-0.5"
+            />
+          ) : null}
+
           {!readOnly ? (
             composeExpanded ? (
               <NoteStickyFrame seed="compose-new-note" straight showPin>
