@@ -5,6 +5,8 @@ import {
   estimateDeliveryEta,
   isPastExpectedDate,
 } from "@/lib/orders/delivery-eta";
+import { getDeliveryProgress } from "@/lib/orders/individual";
+import { parseDateOnly } from "@/lib/orders/dates";
 import { canEstimateDeliveryEta, orderPlacementAt } from "@/lib/orders/order-timing";
 import { collectKhIdsForSupplierRef } from "@/lib/data/supplier-subiekt-kh";
 import { getAppSupplierRefsCached } from "@/lib/data/supplier-refs";
@@ -19,7 +21,7 @@ import {
   SubiektRequestError,
   SubiektTimeoutError,
 } from "@/lib/subiekt/errors";
-import { findMatchingZdDocument } from "@/lib/subiekt/match-order-to-zd";
+import { findBestMatchingZdDocument, orderRemainingQuantity } from "@/lib/subiekt/match-order-to-zd";
 import { extractDocKhIds } from "@/lib/subiekt/zd-document-kh";
 import { parseZdFulfillmentDeadline } from "@/lib/subiekt/zd-fulfillment-date";
 import { zdContractorRecentDataOd } from "@/lib/subiekt/zd-search-scope";
@@ -30,7 +32,7 @@ import type { SubiektDocument } from "@/lib/subiekt/types";
 
 export const ZD_ETA_SYNC_LOCK_KEY = "job_zd_eta_sync";
 
-/** Klucz pomocniczy (np. testy); {@link runZdEtaSync} zawsze blokuje globalnie. */
+/** Klucz blokady — per handlowiec na /moje, globalnie dla crona/backupu. */
 export function zdEtaSyncLockKey(salesPersonId?: string): string {
   return salesPersonId
     ? `${ZD_ETA_SYNC_LOCK_KEY}:sp:${salesPersonId}`
@@ -110,7 +112,7 @@ export const ZD_ETA_MOJE_INDEX_LIMIT_PER_SUPPLIER = 20;
 
 /** Globalny backup — stronicowanie zamiast ładowania wszystkich wierszy naraz. */
 export const ZD_ETA_GLOBAL_ORDER_SCAN_PAGE = 100;
-export const ZD_ETA_GLOBAL_ORDER_SCAN_MAX = 500;
+export const ZD_ETA_GLOBAL_ORDER_SCAN_MAX = 2000;
 
 export type ZdEtaSyncOptions = {
   maxDurationMs?: number;
@@ -175,8 +177,29 @@ export function isZdEtaOverdueCandidate(
   const placement = orderPlacementAt(order);
   if (!placement) return false;
 
+  if (
+    order.zd_fulfillment_source === "zd" &&
+    order.zd_fulfillment_deadline?.trim()
+  ) {
+    const zdDeadline = parseDateOnly(order.zd_fulfillment_deadline.trim());
+    if (zdDeadline && isPastExpectedDate(zdDeadline)) return true;
+  }
+
   const eta = estimateDeliveryEta(placement, stats, order.order_type, statsMode);
-  return Boolean(eta && isPastExpectedDate(eta.expectedDate));
+  if (eta && isPastExpectedDate(eta.expectedDate)) return true;
+
+  if (order.status === "Czesciowo_zrealizowane") {
+    const remaining = orderRemainingQuantity(order);
+    if (remaining != null && remaining > 0) {
+      const progress = getDeliveryProgress(
+        order.quantity ?? "-",
+        order.delivered_quantity ?? "-"
+      );
+      if (progress.delivered > 0) return true;
+    }
+  }
+
+  return false;
 }
 
 export function needsZdEtaSync(
@@ -237,7 +260,7 @@ export function selectZdEtaSyncCandidates(
   const candidates = orders.filter((order) => {
     const supplier = order.supplier_id ? supplierById.get(order.supplier_id) : undefined;
     const statsMode = (order.supplier?.stats_mode ?? "LACZNIE") as StatsMode;
-    if (!primaryKhId(supplier)) return false;
+    if (!supplierHasSubiektKh(supplier)) return false;
     return needsZdEtaSync(
       order,
       statsMap[order.supplier_id!],
@@ -280,8 +303,8 @@ export function countZdEtaSyncTriggers(
 }
 
 /**
- * Opóźnione pozycje bez terminu z ZD — klient /moje uruchamia force sync (live search).
- * Obejmuje też świeże „brak dopasowania” w TTL miss, gdy server after() już nie powtórzy próby.
+ * Opóźnione pozycje wymagające sync ZD — klient /moje (force + live search).
+ * Uwzględnia odświeżenie po TTL także gdy termin ZD jest już zapisany.
  */
 export function countZdEtaMojeClientSyncTriggers(
   orders: IndividualOrder[],
@@ -292,16 +315,18 @@ export function countZdEtaMojeClientSyncTriggers(
   if (!subiektReachable) return 0;
   const statsMap = statsBySupplierId(statsRows);
   const supplierById = new Map(suppliers.map((s) => [s.id, s]));
+  const nowMs = Date.now();
   return orders.filter((order) => {
     if (order.sales_acknowledged_at) return false;
-    if (hasPersistedZdFulfillment(order)) return false;
     const supplier = order.supplier_id ? supplierById.get(order.supplier_id) : undefined;
-    if (!primaryKhId(supplier)) return false;
+    if (!supplierHasSubiektKh(supplier)) return false;
     const statsMode = (order.supplier?.stats_mode ?? "LACZNIE") as StatsMode;
-    return isZdEtaOverdueCandidate(
+    return needsZdEtaSync(
       order,
       order.supplier_id ? statsMap[order.supplier_id] : undefined,
-      statsMode
+      statsMode,
+      nowMs,
+      false
     );
   }).length;
 }
@@ -311,8 +336,8 @@ function supplierKhIds(supplier: SupplierRef | undefined): number[] {
   return collectKhIdsForSupplierRef(supplier);
 }
 
-function primaryKhId(supplier: SupplierRef | undefined): number | null {
-  return supplierKhIds(supplier)[0] ?? null;
+function supplierHasSubiektKh(supplier: SupplierRef | undefined): boolean {
+  return supplierKhIds(supplier).length > 0;
 }
 
 function isTimeBudgetExceeded(startedMs: number, maxDurationMs: number): boolean {
@@ -332,7 +357,6 @@ async function loadRecentZdIndexForKhIds(
     .from("subiekt_zd_index")
     .select("dok_id, dok_nr_pelny, dok_data_wyst")
     .in("subiekt_kh_id", scoped)
-    .eq("verified", true)
     .gte("dok_data_wyst", dataOd)
     .order("dok_data_wyst", { ascending: false })
     .order("dok_id", { ascending: false })
@@ -360,7 +384,7 @@ function findMatchingZdDocumentForSupplier(
   khIds: readonly number[]
 ): SubiektDocument | null {
   const scoped = docs.filter((doc) => zdDocumentMatchesSupplierKhIds(doc, khIds));
-  return findMatchingZdDocument(order, sortDocsNewestFirst(scoped));
+  return findBestMatchingZdDocument(order, scoped);
 }
 
 async function fetchZdDocumentSafe(dokId: number): Promise<SubiektDocument | null> {
@@ -418,15 +442,6 @@ export async function liveSearchZdDocsForOrder(
   return { docs, fetched, matched };
 }
 
-function sortDocsNewestFirst(docs: SubiektDocument[]): SubiektDocument[] {
-  return [...docs].sort((a, b) => {
-    const da = (a.dok_DataWyst ?? "").slice(0, 10);
-    const db = (b.dok_DataWyst ?? "").slice(0, 10);
-    if (da !== db) return db.localeCompare(da);
-    return Math.trunc(Number(b.dok_Id)) - Math.trunc(Number(a.dok_Id));
-  });
-}
-
 async function touchZdFulfillmentSync(orderId: string): Promise<void> {
   const supabase = createAdminClient();
   const { error } = await supabase
@@ -453,6 +468,7 @@ async function persistZdFulfillment(
   input: {
     deadline: string | null;
     dokNr: string | null;
+    dokId: number | null;
     source: "zd" | null;
   }
 ): Promise<void> {
@@ -464,6 +480,7 @@ async function persistZdFulfillment(
       zd_fulfillment_deadline: input.deadline,
       zd_fulfillment_source: input.source,
       zd_fulfillment_dok_nr: input.dokNr,
+      zd_fulfillment_dok_id: input.dokId,
       zd_fulfillment_synced_at: now,
     })
     .eq("id", orderId);
@@ -527,9 +544,11 @@ export async function runZdEtaSyncForSalesPerson(
 /** Globalny backup po nocnym catalog-zd-sync (bez nowego crona). */
 export async function runZdEtaSyncGlobalBackup(): Promise<ZdEtaSyncResult> {
   return runZdEtaSync({
-    maxDurationMs: 60_000,
-    maxOrders: 24,
-    allowLiveSearch: false,
+    maxDurationMs: 90_000,
+    maxOrders: 48,
+    maxDocsPerRun: 36,
+    maxDocsPerSupplier: 18,
+    allowLiveSearch: true,
   });
 }
 
@@ -554,7 +573,7 @@ export async function runZdEtaSync(options: ZdEtaSyncOptions = {}): Promise<ZdEt
     return { ...empty, skipped: true, reason: "subiekt_offline", subiektOffline: true };
   }
 
-  const lockKey = ZD_ETA_SYNC_LOCK_KEY;
+  const lockKey = zdEtaSyncLockKey(options.salesPersonId);
   const locked = await tryAcquireLock(lockKey, 240, "zd_eta_sync");
   if (!locked) {
     return { ...empty, skipped: true, reason: "lock_held" };
@@ -601,7 +620,6 @@ export async function runZdEtaSync(options: ZdEtaSyncOptions = {}): Promise<ZdEt
     let docsFetched = 0;
     let subiektOffline = false;
     let timedOut = false;
-    const processedIds = new Set<string>();
 
     const persistOrderMatch = async (
       order: IndividualOrder,
@@ -621,6 +639,7 @@ export async function runZdEtaSync(options: ZdEtaSyncOptions = {}): Promise<ZdEt
           await persistZdFulfillment(order.id, {
             deadline: null,
             dokNr: null,
+            dokId: null,
             source: null,
           });
           cleared++;
@@ -630,6 +649,7 @@ export async function runZdEtaSync(options: ZdEtaSyncOptions = {}): Promise<ZdEt
 
       const deadline = parseZdFulfillmentDeadline(matched);
       const dokNr = matched.dok_NrPelny?.trim() || `ZD #${matched.dok_Id}`;
+      const dokId = Math.trunc(Number(matched.dok_Id));
 
       if (!deadline) {
         if (missAction === "touch") {
@@ -638,6 +658,7 @@ export async function runZdEtaSync(options: ZdEtaSyncOptions = {}): Promise<ZdEt
           await persistZdFulfillment(order.id, {
             deadline: null,
             dokNr: null,
+            dokId: null,
             source: null,
           });
           cleared++;
@@ -648,6 +669,7 @@ export async function runZdEtaSync(options: ZdEtaSyncOptions = {}): Promise<ZdEt
       await persistZdFulfillment(order.id, {
         deadline,
         dokNr,
+        dokId: Number.isFinite(dokId) && dokId > 0 ? dokId : null,
         source: "zd",
       });
       updated++;
@@ -768,16 +790,17 @@ export async function runZdEtaSync(options: ZdEtaSyncOptions = {}): Promise<ZdEt
           }
         }
 
+        const indexNotExhausted = !matched && indexRowCursor < indexRows.length;
         const orderSearchIncomplete =
           subiektOffline ||
           timedOut ||
+          indexNotExhausted ||
           (!matched &&
             (docsFetched >= maxDocsPerRun ||
               supplierDocsFetched >= maxDocsPerSupplier ||
               isTimeBudgetExceeded(started, maxDurationMs)));
 
         await persistOrderMatch(order, matched, orderSearchIncomplete);
-        processedIds.add(order.id);
         processed++;
       }
 

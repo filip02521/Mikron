@@ -3,6 +3,17 @@ import { isPastExpectedDate } from "@/lib/orders/delivery-eta";
 import { isZdEtaOverdueCandidate } from "@/lib/subiekt/zd-eta-sync";
 import type { MyOrderRow } from "@/lib/orders/my-order-presenter";
 import type { DeliveryStats, IndividualOrder, StatsMode } from "@/types/database";
+import { formatProsbaZkLinkNumber } from "@/lib/orders/zk-prosba-link-display";
+import {
+  INFORMACJA_FLOW_SALES_READY_ACK_HEADLINE,
+  isInformacjaAvailabilityPendingStatusTitle,
+} from "@/lib/orders/informacja-flow-copy";
+import { progressLabelInSubline } from "@/lib/orders/my-order-card-ui";
+import { isRequestNotesAggregateSummary } from "@/lib/orders/sales-request-note";
+import {
+  isProcurementCancelNotesAggregateSummary,
+  procurementCancelNotesMojeSublineSuffix,
+} from "@/lib/orders/procurement-cancel-note";
 
 export type SupplierKhIdsLookup = Record<string, readonly number[]>;
 
@@ -15,17 +26,6 @@ function orderSupplierHasSubiektKh(
   const kh = order.supplier?.subiekt_kh_id;
   return kh != null && Number.isFinite(kh) && kh > 0;
 }
-import { formatProsbaZkLinkNumber } from "@/lib/orders/zk-prosba-link-display";
-import {
-  INFORMACJA_FLOW_SALES_READY_ACK_HEADLINE,
-  isInformacjaAvailabilityPendingStatusTitle,
-} from "@/lib/orders/informacja-flow-copy";
-import { progressLabelInSubline } from "@/lib/orders/my-order-card-ui";
-import { isRequestNotesAggregateSummary } from "@/lib/orders/sales-request-note";
-import {
-  isProcurementCancelNotesAggregateSummary,
-  procurementCancelNotesMojeSublineSuffix,
-} from "@/lib/orders/procurement-cancel-note";
 
 export type MyOrderHeadlineTone =
   | "action"
@@ -199,7 +199,8 @@ export function enrichMyOrderSalesUi(row: MyOrderRow): MyOrderSalesUi {
     const zdOverdue =
       row.zdFulfillment &&
       row.timingLabel?.includes("po terminie") &&
-      row.timingLabel.includes(" · ZD/");
+      parseDateOnly(row.zdFulfillment.deadline) != null &&
+      isPastExpectedDate(parseDateOnly(row.zdFulfillment.deadline)!);
     return {
       headline:
         onStock > 0

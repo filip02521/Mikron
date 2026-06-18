@@ -1,7 +1,9 @@
 import type { IndividualOrder } from "@/types/database";
 import type { SubiektDocument, SubiektDocumentLine } from "@/lib/subiekt/types";
+import { getDeliveryProgress } from "@/lib/orders/individual";
 import { lineTowId } from "@/lib/subiekt/zd-catalog-import";
 import { buildZdMatchProfileFromDocument } from "@/lib/warehouse/zd-receive-filter";
+import { parseZdFulfillmentDeadline } from "@/lib/subiekt/zd-fulfillment-date";
 import {
   effectiveProductSymbol,
   extractAlphanumericProductCodeFromName,
@@ -57,11 +59,27 @@ function orderSymbolsMatchLine(orderSymbols: readonly string[], lineSym: string)
   if (!lineSym) return false;
   for (const orderSym of orderSymbols) {
     if (orderSym === lineSym) return true;
-    if (orderSym.startsWith(`${lineSym} `) || lineSym.startsWith(`${orderSym} `)) {
-      return true;
-    }
+    if (orderSym.length >= 4 && orderSym.startsWith(`${lineSym} `)) return true;
+    if (lineSym.length >= 4 && lineSym.startsWith(`${orderSym} `)) return true;
   }
   return false;
+}
+
+function zdLineQuantity(line: SubiektDocumentLine): number | null {
+  const raw = line.ob_Ilosc;
+  const n = typeof raw === "number" ? raw : Number(raw);
+  return Number.isFinite(n) && n > 0 ? n : null;
+}
+
+/** Pozostała ilość u dostawcy (null gdy brak liczbowej ilości w prośbie). */
+export function orderRemainingQuantity(
+  order: Pick<IndividualOrder, "quantity" | "delivered_quantity">
+): number | null {
+  const progress = getDeliveryProgress(
+    order.quantity ?? "-",
+    order.delivered_quantity ?? "-"
+  );
+  return progress.hasNumericQty ? progress.remaining : null;
 }
 
 /** Dopasowanie pozycji prośby do linii ZD (tw_Id, symbol, kod Mikran). */
@@ -117,12 +135,115 @@ export function orderMatchesZdDocument(
   return (doc.dok_Pozycja ?? []).some((line) => matchOrderToZdLine(order, line));
 }
 
+function matchingLineQuantities(
+  order: Pick<
+    IndividualOrder,
+    "subiekt_tw_id" | "symbol" | "products" | "mikran_code" | "quantity" | "delivered_quantity"
+  >,
+  doc: SubiektDocument
+): number[] {
+  const quantities: number[] = [];
+  for (const line of doc.dok_Pozycja ?? []) {
+    if (!matchOrderToZdLine(order, line)) continue;
+    const qty = zdLineQuantity(line);
+    if (qty != null) quantities.push(qty);
+  }
+  return quantities;
+}
+
+function bestMatchingLineQuantity(
+  order: Pick<
+    IndividualOrder,
+    "subiekt_tw_id" | "symbol" | "products" | "mikran_code" | "quantity" | "delivered_quantity"
+  >,
+  doc: SubiektDocument
+): { coversRemaining: boolean; tightness: number | null } {
+  const remaining = orderRemainingQuantity(order);
+  const quantities = matchingLineQuantities(order, doc);
+  if (remaining == null || quantities.length === 0) {
+    return { coversRemaining: true, tightness: null };
+  }
+
+  const covering = quantities.filter((qty) => qty >= remaining);
+  if (covering.length === 0) {
+    return { coversRemaining: false, tightness: null };
+  }
+
+  const tightest = Math.min(...covering.map((qty) => qty - remaining));
+  return { coversRemaining: true, tightness: tightest };
+}
+
+function compareNullableDates(a: string | null, b: string | null): number {
+  if (a && b) return a.localeCompare(b);
+  if (a) return -1;
+  if (b) return 1;
+  return 0;
+}
+
+/** Wybiera najtrafniejszy ZD — ilość reszty, termin, wcześniejszy zapis dok_Id. */
+export function findBestMatchingZdDocument(
+  order: Pick<
+    IndividualOrder,
+    | "subiekt_tw_id"
+    | "symbol"
+    | "products"
+    | "mikran_code"
+    | "quantity"
+    | "delivered_quantity"
+    | "zd_fulfillment_dok_id"
+  >,
+  docs: SubiektDocument[]
+): SubiektDocument | null {
+  const persistedDokId =
+    order.zd_fulfillment_dok_id != null && order.zd_fulfillment_dok_id > 0
+      ? Math.trunc(order.zd_fulfillment_dok_id)
+      : null;
+
+  const candidates = docs.filter((doc) => orderMatchesZdDocument(order, doc));
+  if (!candidates.length) return null;
+
+  const ranked = candidates
+    .map((doc) => {
+      const qty = bestMatchingLineQuantity(order, doc);
+      return {
+        doc,
+        persisted: persistedDokId != null && Math.trunc(Number(doc.dok_Id)) === persistedDokId,
+        coversRemaining: qty.coversRemaining,
+        tightness: qty.tightness,
+        deadline: parseZdFulfillmentDeadline(doc),
+        issueDate: (doc.dok_DataWyst ?? "").slice(0, 10),
+      };
+    })
+    .sort((a, b) => {
+      const aPersist =
+        a.persisted && a.coversRemaining ? 1 : 0;
+      const bPersist =
+        b.persisted && b.coversRemaining ? 1 : 0;
+      if (aPersist !== bPersist) return bPersist - aPersist;
+      if (a.coversRemaining !== b.coversRemaining) return a.coversRemaining ? -1 : 1;
+      if (a.tightness != null && b.tightness != null && a.tightness !== b.tightness) {
+        return a.tightness - b.tightness;
+      }
+      const deadlineCmp = compareNullableDates(a.deadline, b.deadline);
+      if (deadlineCmp !== 0) return deadlineCmp;
+      return b.issueDate.localeCompare(a.issueDate);
+    });
+
+  return ranked[0]?.doc ?? null;
+}
+
 export function findMatchingZdDocument(
-  order: Pick<IndividualOrder, "subiekt_tw_id" | "symbol" | "products" | "mikran_code">,
+  order: Pick<
+    IndividualOrder,
+    | "subiekt_tw_id"
+    | "symbol"
+    | "products"
+    | "mikran_code"
+    | "quantity"
+    | "delivered_quantity"
+    | "zd_fulfillment_dok_id"
+  >,
   docsNewestFirst: SubiektDocument[]
 ): SubiektDocument | null {
-  for (const doc of docsNewestFirst) {
-    if (orderMatchesZdDocument(order, doc)) return doc;
-  }
-  return null;
+  return findBestMatchingZdDocument(order, docsNewestFirst);
 }

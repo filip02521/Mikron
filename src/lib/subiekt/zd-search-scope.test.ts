@@ -6,10 +6,10 @@ import {
 } from "./zd-search-scope";
 
 describe("zd-search-scope", () => {
-  it("zdContractorRecentDataOd — 3 miesiące wstecz", () => {
-    expect(ZD_CONTRACTOR_RECENT_MONTHS).toBe(3);
+  it("zdContractorRecentDataOd — 12 miesięcy wstecz", () => {
+    expect(ZD_CONTRACTOR_RECENT_MONTHS).toBe(12);
     expect(zdContractorRecentDataOd(new Date("2026-06-18T12:00:00+02:00"))).toBe(
-      "2026-03-18"
+      "2025-06-18"
     );
   });
 

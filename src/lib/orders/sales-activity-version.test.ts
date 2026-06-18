@@ -67,6 +67,19 @@ describe("computeSalesActivityVersionFromRows", () => {
     expect(after).toContain("zds:2026-06-18T14:20:40.887Z");
   });
 
+  it("zmienia się po zapisaniu numeru dokumentu ZD", () => {
+    const before = computeSalesActivityVersionFromRows([row({})]);
+    const after = computeSalesActivityVersionFromRows([
+      row({
+        zd_fulfillment_dok_id: 101,
+        zd_fulfillment_dok_nr: "ZD/101/2026",
+      }),
+    ]);
+    expect(before).not.toBe(after);
+    expect(after).toContain("zdk:");
+    expect(after).toContain("ZD/101/2026");
+  });
+
   it("ignoruje stock_out przy filtrowaniu (zgodnie z SSR handlowca)", () => {
     const visible = row({ action_at: "2026-01-01T10:00:00Z", status: "Nowe" });
     const stockOut = row({

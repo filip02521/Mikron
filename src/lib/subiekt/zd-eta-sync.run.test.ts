@@ -146,19 +146,18 @@ vi.mock("@/lib/supabase/admin", () => ({
         };
       }
       if (table === "subiekt_zd_index") {
-        return {
-          select: () => ({
-            in: () => ({
-              eq: () => ({
-                gte: () => ({
-                  order: () => ({
-                    order: () => ({
-                      limit: () => Promise.resolve({ data: mockIndexRows, error: null }),
-                    }),
-                  }),
-                }),
+        const indexQuery = {
+          gte: () => ({
+            order: () => ({
+              order: () => ({
+                limit: () => Promise.resolve({ data: mockIndexRows, error: null }),
               }),
             }),
+          }),
+        };
+        return {
+          select: () => ({
+            in: () => indexQuery,
           }),
         };
       }
@@ -221,6 +220,7 @@ describe("runZdEtaSync (integracja)", () => {
     expect(orderUpdates[0]?.patch.zd_fulfillment_deadline).toBe("2026-08-15");
     expect(orderUpdates[0]?.patch.zd_fulfillment_source).toBe("zd");
     expect(orderUpdates[0]?.patch.zd_fulfillment_dok_nr).toBe("ZD/101/2026");
+    expect(orderUpdates[0]?.patch.zd_fulfillment_dok_id).toBe(101);
   });
 
   it("przy backupie bez dopasowania tylko odświeża synced_at gdy termin już zapisany", async () => {
@@ -276,7 +276,7 @@ describe("runZdEtaSync (integracja)", () => {
     expect(orderUpdates[0]?.patch.zd_fulfillment_source).toBeNull();
   });
 
-  it("wybiera nowszy dokument ZD przy wielu dopasowaniach w indeksie", async () => {
+  it("wybiera najwcześniejszy termin ZD przy wielu dopasowaniach w indeksie", async () => {
     mockIndexRows = [
       { dok_id: 201, dok_nr_pelny: "ZD/201/2026", dok_data_wyst: "2026-05-01" },
       { dok_id: 202, dok_nr_pelny: "ZD/202/2026", dok_data_wyst: "2026-06-15" },
@@ -296,8 +296,9 @@ describe("runZdEtaSync (integracja)", () => {
     });
 
     expect(result.updated).toBe(1);
-    expect(orderUpdates[0]?.patch.zd_fulfillment_deadline).toBe("2026-09-01");
-    expect(orderUpdates[0]?.patch.zd_fulfillment_dok_nr).toBe("ZD/202/2026");
+    expect(orderUpdates[0]?.patch.zd_fulfillment_deadline).toBe("2026-07-01");
+    expect(orderUpdates[0]?.patch.zd_fulfillment_dok_nr).toBe("ZD/201/2026");
+    expect(orderUpdates[0]?.patch.zd_fulfillment_dok_id).toBe(201);
   });
 
   it("liveSearchZdDocsForOrder dopasowuje dokument z wyszukiwania", async () => {

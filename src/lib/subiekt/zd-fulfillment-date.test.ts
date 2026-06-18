@@ -19,4 +19,13 @@ describe("parseZdFulfillmentDeadline", () => {
       })
     ).toBeNull();
   });
+
+  it("odrzuca niepoprawne daty", () => {
+    expect(
+      parseZdFulfillmentDeadline({
+        dok_TerminRealizacji: "not-a-date",
+        dok_DataRealizacji: null,
+      })
+    ).toBeNull();
+  });
 });

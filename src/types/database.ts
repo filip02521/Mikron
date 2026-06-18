@@ -152,6 +152,8 @@ export interface IndividualOrder {
   zd_fulfillment_source?: string | null;
   /** Numer pełny dopasowanego ZD. */
   zd_fulfillment_dok_nr?: string | null;
+  /** Identyfikator dopasowanego dokumentu ZD (dok_Id). */
+  zd_fulfillment_dok_id?: number | null;
   /** Ostatnia synchronizacja terminu z ZD. */
   zd_fulfillment_synced_at?: string | null;
   supplier?: Supplier;

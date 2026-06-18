@@ -55,12 +55,53 @@ const stats = {
 
 describe("isZdEtaOverdueCandidate", () => {
   it("rozpoznaje opóźnione zamówienie z ETA statystycznym", () => {
-    const now = new Date("2026-06-18T12:00:00+02:00").getTime();
     expect(isZdEtaOverdueCandidate(baseOrder(), stats, "LACZNIE")).toBe(true);
     expect(
       isZdEtaOverdueCandidate(baseOrder({ request_kind: "informacja" }), stats, "LACZNIE")
     ).toBe(false);
-    void now;
+  });
+
+  it("kwalifikuje częściowo zrealizowane z resztą do dostawy", () => {
+    const freshStats = {
+      ...stats,
+      main_sum: 5,
+      main_avg: 5,
+      main_count: 1,
+    };
+    expect(
+      isZdEtaOverdueCandidate(
+        baseOrder({
+          status: "Czesciowo_zrealizowane",
+          quantity: "10",
+          delivered_quantity: "3",
+          ordered_at: new Date().toISOString(),
+          action_at: new Date().toISOString(),
+        }),
+        freshStats,
+        "LACZNIE"
+      )
+    ).toBe(true);
+  });
+
+  it("kwalifikuje po minionym terminie z zapisanego ZD", () => {
+    const freshStats = {
+      ...stats,
+      main_sum: 5,
+      main_avg: 5,
+      main_count: 1,
+    };
+    expect(
+      isZdEtaOverdueCandidate(
+        baseOrder({
+          ordered_at: new Date().toISOString(),
+          action_at: new Date().toISOString(),
+          zd_fulfillment_source: "zd",
+          zd_fulfillment_deadline: "2026-01-01",
+        }),
+        freshStats,
+        "LACZNIE"
+      )
+    ).toBe(true);
   });
 });
 
@@ -305,7 +346,7 @@ describe("countZdEtaMojeClientSyncTriggers", () => {
     additionalSubiektKhIds: [],
   } as import("@/lib/data/supplier-refs").AppSupplierRef;
 
-  it("liczy opóźnione pozycje bez terminu ZD nawet w TTL miss", () => {
+  it("nie liczy ponownie w krótkim TTL miss (spójnie z cronem)", () => {
     const orders = [
       baseOrder({
         zd_fulfillment_synced_at: new Date(Date.now() - 60_000).toISOString(),
@@ -313,11 +354,24 @@ describe("countZdEtaMojeClientSyncTriggers", () => {
     ];
     expect(countZdEtaSyncTriggers(orders, [stats])).toBe(0);
     expect(countZdEtaMojeClientSyncTriggers(orders, [stats], [supplier])).toBe(
+      0
+    );
+  });
+
+  it("liczy ponownie po upływie TTL miss", () => {
+    const orders = [
+      baseOrder({
+        zd_fulfillment_synced_at: new Date(
+          Date.now() - ZD_ETA_SYNC_MISS_TTL_MS - 60_000
+        ).toISOString(),
+      }),
+    ];
+    expect(countZdEtaMojeClientSyncTriggers(orders, [stats], [supplier])).toBe(
       1
     );
   });
 
-  it("pomija pozycje z już zapisanym terminem ZD", () => {
+  it("pomija pozycje ze świeżą synchronizacją ZD (TTL)", () => {
     const orders = [
       baseOrder({
         zd_fulfillment_source: "zd",
@@ -328,6 +382,22 @@ describe("countZdEtaMojeClientSyncTriggers", () => {
     ];
     expect(countZdEtaMojeClientSyncTriggers(orders, [stats], [supplier])).toBe(
       0
+    );
+  });
+
+  it("liczy pozycje ze starym terminem ZD po upływie TTL", () => {
+    const orders = [
+      baseOrder({
+        zd_fulfillment_source: "zd",
+        zd_fulfillment_deadline: "2026-07-01",
+        zd_fulfillment_dok_nr: "ZD/1",
+        zd_fulfillment_synced_at: new Date(
+          Date.now() - ZD_ETA_SYNC_TTL_MS - 60_000
+        ).toISOString(),
+      }),
+    ];
+    expect(countZdEtaMojeClientSyncTriggers(orders, [stats], [supplier])).toBe(
+      1
     );
   });
 

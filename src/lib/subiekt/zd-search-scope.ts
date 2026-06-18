@@ -1,7 +1,7 @@
 import { defaultZdSearchDataOd } from "@/lib/subiekt/subiekt-runtime-cache";
 
-/** Live search / lista ZD u kontrahenta — tylko świeże dokumenty (szybsze API + indeks). */
-export const ZD_CONTRACTOR_RECENT_MONTHS = 3;
+/** Live search / lista ZD u kontrahenta — dłuższe otwarte ZD (spójne z ETA sync). */
+export const ZD_CONTRACTOR_RECENT_MONTHS = 12;
 
 /** Dolna granica daty wystawienia ZD dla wyszukiwań scoped per kh_Id / dostawca. */
 export function zdContractorRecentDataOd(at: Date = new Date()): string {

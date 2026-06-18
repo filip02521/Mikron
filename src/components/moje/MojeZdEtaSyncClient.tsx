@@ -16,6 +16,23 @@ const NETWORK_RETRY_MS = 3_000;
 
 const MOJE_ZD_ETA_SESSION_KEY = "moje-zd-eta-client-sync-v1";
 
+function getMojeZdEtaSessionDoneCount(): number | null {
+  if (typeof window === "undefined") return null;
+  try {
+    const raw = sessionStorage.getItem(MOJE_ZD_ETA_SESSION_KEY);
+    if (!raw) return null;
+    const count = Number(raw);
+    return Number.isFinite(count) && count >= 0 ? count : null;
+  } catch {
+    return null;
+  }
+}
+
+function shouldSkipMojeZdEtaSessionSync(syncEligibleCount: number): boolean {
+  const doneCount = getMojeZdEtaSessionDoneCount();
+  return doneCount != null && doneCount >= syncEligibleCount;
+}
+
 export function clearMojeZdEtaSessionSync(): void {
   if (typeof window === "undefined") return;
   try {
@@ -25,9 +42,9 @@ export function clearMojeZdEtaSessionSync(): void {
   }
 }
 
-function markMojeZdEtaSessionDone(): void {
+function markMojeZdEtaSessionDone(syncEligibleCount: number): void {
   try {
-    sessionStorage.setItem(MOJE_ZD_ETA_SESSION_KEY, "1");
+    sessionStorage.setItem(MOJE_ZD_ETA_SESSION_KEY, String(syncEligibleCount));
   } catch {
     /* ignore */
   }
@@ -43,13 +60,7 @@ export function MojeZdEtaSyncClient({ syncEligibleCount }: { syncEligibleCount: 
 
   useEffect(() => {
     if (syncEligibleCount <= 0) return;
-    if (typeof window !== "undefined") {
-      try {
-        if (sessionStorage.getItem(MOJE_ZD_ETA_SESSION_KEY) === "1") return;
-      } catch {
-        /* storage niedostępny — kontynuuj sync */
-      }
-    }
+    if (shouldSkipMojeZdEtaSessionSync(syncEligibleCount)) return;
     if (startedRef.current) return;
     startedRef.current = true;
 
@@ -64,7 +75,7 @@ export function MojeZdEtaSyncClient({ syncEligibleCount }: { syncEligibleCount: 
         return;
       }
       if (body && shouldMarkMojeZdEtaSessionDone(body)) {
-        markMojeZdEtaSessionDone();
+        markMojeZdEtaSessionDone(syncEligibleCount);
       } else {
         startedRef.current = false;
       }

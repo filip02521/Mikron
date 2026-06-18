@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  findBestMatchingZdDocument,
   findMatchingZdDocument,
   matchOrderToZdLine,
   orderMatchesZdDocument,
@@ -11,7 +12,11 @@ import type { SubiektDocument } from "./types";
 const baseOrder = {
   subiekt_tw_id: null as number | null,
   symbol: "ABC-1",
+  products: "Prod",
+  quantity: "10",
+  delivered_quantity: "-",
   mikran_code: null as string | null,
+  zd_fulfillment_dok_id: null as number | null,
 };
 
 describe("matchOrderToZdLine", () => {
@@ -88,32 +93,125 @@ describe("orderMatchesZdDocument", () => {
     ],
   };
 
-  it("znajduje produkt w najświeższym ZD", () => {
+  it("znajduje produkt w dopasowanym ZD", () => {
     expect(
       orderMatchesZdDocument(
-        { subiekt_tw_id: 200, symbol: "X", mikran_code: null },
+        { ...baseOrder, subiekt_tw_id: 200, symbol: "X" },
         doc
       )
     ).toBe(true);
   });
 });
 
-describe("findMatchingZdDocument", () => {
-  it("wybiera najświeższy dokument z listy", () => {
+describe("findBestMatchingZdDocument", () => {
+  it("preferuje najwcześniejszy termin realizacji", () => {
     const older: SubiektDocument = {
       dok_Id: 1,
       dok_DataWyst: "2026-05-01",
-      dok_Pozycja: [{ ob_TowId: 9, tw_Symbol: "OLD" }],
+      dok_TerminRealizacji: "2026-07-01",
+      dok_Pozycja: [{ ob_TowId: 200, tw_Symbol: "ABC-1", ob_Ilosc: 10 }],
     };
     const newer: SubiektDocument = {
       dok_Id: 2,
       dok_DataWyst: "2026-06-01",
+      dok_TerminRealizacji: "2026-09-01",
+      dok_Pozycja: [{ ob_TowId: 200, tw_Symbol: "ABC-1", ob_Ilosc: 10 }],
+    };
+    expect(
+      findBestMatchingZdDocument(
+        { ...baseOrder, subiekt_tw_id: 200 },
+        [newer, older]
+      )?.dok_Id
+    ).toBe(1);
+  });
+
+  it("przy częściowej dostawie preferuje ZD z ilością reszty", () => {
+    const fullOrder: SubiektDocument = {
+      dok_Id: 1,
+      dok_DataWyst: "2026-05-01",
+      dok_TerminRealizacji: "2026-08-01",
+      dok_Pozycja: [{ ob_TowId: 200, tw_Symbol: "ABC-1", ob_Ilosc: 10 }],
+    };
+    const supplement: SubiektDocument = {
+      dok_Id: 2,
+      dok_DataWyst: "2026-06-01",
+      dok_TerminRealizacji: "2026-09-01",
+      dok_Pozycja: [{ ob_TowId: 200, tw_Symbol: "ABC-1", ob_Ilosc: 7 }],
+    };
+    expect(
+      findBestMatchingZdDocument(
+        {
+          ...baseOrder,
+          subiekt_tw_id: 200,
+          quantity: "10",
+          delivered_quantity: "3",
+        },
+        [fullOrder, supplement]
+      )?.dok_Id
+    ).toBe(2);
+  });
+
+  it("utrzymuje wcześniej zapisany dok_Id gdy nadal pasuje", () => {
+    const persisted: SubiektDocument = {
+      dok_Id: 10,
+      dok_DataWyst: "2026-04-01",
+      dok_TerminRealizacji: "2026-10-01",
+      dok_Pozycja: [{ ob_TowId: 200, tw_Symbol: "ABC-1", ob_Ilosc: 10 }],
+    };
+    const newer: SubiektDocument = {
+      dok_Id: 11,
+      dok_DataWyst: "2026-06-01",
+      dok_TerminRealizacji: "2026-08-01",
+      dok_Pozycja: [{ ob_TowId: 200, tw_Symbol: "ABC-1", ob_Ilosc: 10 }],
+    };
+    expect(
+      findBestMatchingZdDocument(
+        { ...baseOrder, subiekt_tw_id: 200, zd_fulfillment_dok_id: 10 },
+        [newer, persisted]
+      )?.dok_Id
+    ).toBe(10);
+  });
+
+  it("porzuca zapisany dok_Id gdy ilość nie pokrywa reszty", () => {
+    const persisted: SubiektDocument = {
+      dok_Id: 10,
+      dok_DataWyst: "2026-04-01",
+      dok_TerminRealizacji: "2026-10-01",
+      dok_Pozycja: [{ ob_TowId: 200, tw_Symbol: "ABC-1", ob_Ilosc: 3 }],
+    };
+    const supplement: SubiektDocument = {
+      dok_Id: 11,
+      dok_DataWyst: "2026-06-01",
+      dok_TerminRealizacji: "2026-08-01",
+      dok_Pozycja: [{ ob_TowId: 200, tw_Symbol: "ABC-1", ob_Ilosc: 5 }],
+    };
+    expect(
+      findBestMatchingZdDocument(
+        {
+          ...baseOrder,
+          subiekt_tw_id: 200,
+          quantity: "10",
+          delivered_quantity: "5",
+          zd_fulfillment_dok_id: 10,
+        },
+        [persisted, supplement]
+      )?.dok_Id
+    ).toBe(11);
+  });
+});
+
+describe("findMatchingZdDocument", () => {
+  it("deleguje do findBestMatchingZdDocument", () => {
+    const doc: SubiektDocument = {
+      dok_Id: 2,
+      dok_DataWyst: "2026-06-01",
+      dok_TerminRealizacji: "2026-08-01",
       dok_Pozycja: [{ ob_TowId: 200, tw_Symbol: "NEW" }],
     };
     expect(
       findMatchingZdDocument(
-        { subiekt_tw_id: 200, symbol: "X", mikran_code: null },
-        [older, newer]
+        { ...baseOrder, subiekt_tw_id: 200, symbol: "X" },
+        [doc]
       )?.dok_Id
     ).toBe(2);
   });
