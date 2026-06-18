@@ -102,6 +102,20 @@ export function navToneSurfaceIdleClass(tone: NavTone): string {
   }
 }
 
+/** Sidebar — trwałe wyróżnienie uwagi (przypomnienia Notatnik / ZK) w spoczynku. */
+export const sidebarNavAttentionIdleClass = cn(
+  "border border-amber-200/45 bg-amber-50/55 text-slate-800",
+  `${navFineHover}bg-amber-50/75`,
+  `${navFineHover}text-slate-900`
+);
+
+/** Mobile — trwałe wyróżnienie uwagi (przypomnienia Notatnik / ZK) w spoczynku. */
+export const mobileNavAttentionIdleClass = cn(
+  "border border-transparent bg-amber-50/60 text-amber-950",
+  `${navFineHover}bg-amber-50/80`,
+  `${navFineHover}text-amber-950`
+);
+
 /** Sidebar — delikatne tło wiersza primary wg tonu semantycznego (Dziś). Tylko na hover. */
 export function sidebarNavToneHighlightIdleClass(tone: NavTone): string | undefined {
   switch (tone) {
@@ -257,6 +271,13 @@ export const mojePickupControlClass = cn(
 export const mojeInformacjaAckControlClass = cn(
   "inline-flex items-center justify-center gap-0.5 rounded-md border border-violet-700 bg-violet-600 px-3 text-xs font-semibold text-white shadow-sm transition",
   "hover:bg-violet-700 active:bg-violet-800 disabled:cursor-not-allowed disabled:opacity-50",
+  mojeControlHeightClass
+);
+
+/** Ukrycie anulowania / informacji o rezygnacji — spójne z amber w magazynie. */
+export const mojeCancelAckControlClass = cn(
+  "inline-flex items-center justify-center gap-0.5 rounded-md border border-amber-700 bg-amber-600 px-3 text-xs font-semibold text-white shadow-sm transition",
+  "hover:bg-amber-700 active:bg-amber-800 disabled:cursor-not-allowed disabled:opacity-50",
   mojeControlHeightClass
 );
 
@@ -618,6 +639,9 @@ export const mojeAckSegmentPrimaryClass =
 
 export const mojeAckSegmentInformacjaClass =
   "flex h-full min-h-0 shrink-0 items-center justify-center rounded-none border-0 bg-violet-600 px-2.5 text-xs font-semibold leading-none text-white shadow-none transition-colors duration-150 hover:bg-violet-700 active:bg-violet-800 disabled:cursor-not-allowed disabled:opacity-50 sm:px-2";
+
+export const mojeAckSegmentCancelClass =
+  "flex h-full min-h-0 shrink-0 items-center justify-center rounded-none border-0 bg-amber-600 px-2.5 text-xs font-semibold leading-none text-white shadow-none transition-colors duration-150 hover:bg-amber-700 active:bg-amber-800 disabled:cursor-not-allowed disabled:opacity-50 sm:px-2";
 
 export const mojeAckSegmentOutlineClass =
   "flex h-full min-h-0 shrink-0 items-center justify-center rounded-none border-0 border-l border-emerald-200/90 bg-white px-2 text-xs font-semibold leading-none text-emerald-800 shadow-none transition-colors duration-150 hover:bg-emerald-50 disabled:cursor-not-allowed disabled:opacity-50 sm:px-2";

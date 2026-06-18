@@ -229,6 +229,7 @@ export function HistoriaClient({
         headline={cancelTarget?.products}
         message="Prośba zostanie oznaczona jako anulowana. Handlowiec otrzyma powiadomienie e-mail."
         confirmLabel="Anuluj prośbę"
+        tier={editNoteTarget ? "stack" : "raised"}
         pending={pending && cancelTarget !== null}
         onCancel={() => setCancelTarget(null)}
         onConfirm={confirmCancelOrder}

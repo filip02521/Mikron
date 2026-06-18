@@ -44,7 +44,6 @@ import {
 import { glowneScheduleSupplierIds, glowneSchedulableSupplierIds } from "@/lib/orders/glowne-supplier-placement";
 import { resolveVerificationInformacjaFlags } from "@/lib/orders/verification-informacja-ui";
 import type { InformacjaFlowPath } from "@/lib/orders/informacja-stock-out-reorder";
-import { shouldTreatAsInformacjaOnly } from "@/lib/orders/informacja-import-rules";
 import { isProcurementDraftReady } from "@/lib/orders/procurement-readiness";
 import { normalizeSalesClientName } from "@/lib/orders/sales-client-label";
 import { normalizeSalesRequestNote } from "@/lib/orders/sales-request-note";
@@ -262,14 +261,6 @@ export async function batchAddIndividualOrders(
     let complete = 0;
     let verification = 0;
 
-    const { data: stanSalesRow } = await supabase
-      .from("sales_people")
-      .select("id")
-      .ilike("name", "STAN")
-      .limit(1)
-      .maybeSingle();
-    const stanSalesPersonId = stanSalesRow?.id ?? null;
-
     // Nowe podejście: jeśli handlowiec wpisał symbol / kod, ale nie wybrał pozycji z podpowiedzi Subiekta,
     // spróbuj dopasować tw_Id po naszej bazie `subiekt_products` (symbol/plu).
     // Dzięki temu dalsze kroki (katalog mapowań produkt→dostawca) działają bez ZD.
@@ -325,25 +316,13 @@ export async function batchAddIndividualOrders(
         product: e.product,
         quantity: e.quantity,
       });
-      let kind = (e.requestKind ?? "zamowienie") as IndividualRequestKind;
+      const kind = (e.requestKind ?? "zamowienie") as IndividualRequestKind;
       let informacjaQueueViaDailyPanel =
         kind === "informacja" && Boolean(e.informacjaQueueViaDailyPanel);
-      let informacjaStockOutReorder =
+      const informacjaStockOutReorder =
         kind === "informacja" && Boolean(e.informacjaStockOutReorder);
       if (informacjaStockOutReorder) {
         informacjaQueueViaDailyPanel = false;
-      }
-      if (
-        kind === "zamowienie" &&
-        shouldTreatAsInformacjaOnly({
-          quantity: sanitized.quantity,
-          salesPersonId: e.salesPersonId,
-          stanSalesPersonId,
-        })
-      ) {
-        kind = "informacja";
-        informacjaQueueViaDailyPanel = false;
-        informacjaStockOutReorder = false;
       }
       const draft = {
         supplierId: e.supplierId,
@@ -635,6 +614,13 @@ export async function updateIndividualRequestGroup(
   if (!orderIds.length) throw new Error("Brak pozycji do edycji.");
   if (!payload.lines.length) throw new Error("Dodaj co najmniej jedną pozycję.");
   assertMaxBatchSize(payload.lines.length, MAX_REQUEST_EDIT_LINES, "pozycji w prośbie");
+
+  const { assertProsbaSubmitStockAllowed } = await import("@/lib/orders/prosba-stock-server");
+  await assertProsbaSubmitStockAllowed({
+    lines: payload.lines,
+    requestKind: payload.requestKind,
+    acknowledgeSufficientStock: payload.acknowledgeSufficientStock,
+  });
 
   const supabase = createAdminClient();
   const { data: rawRows, error: fetchError } = await supabase

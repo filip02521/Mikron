@@ -132,7 +132,7 @@ export const ADMIN_PANEL_CONTEXT_OPTIONS: {
   {
     value: "sales_manager",
     label: "Zespół",
-    title: "Podgląd kierownika handlowców",
+    title: "Podgląd kierownictwa",
   },
   {
     value: "sales",

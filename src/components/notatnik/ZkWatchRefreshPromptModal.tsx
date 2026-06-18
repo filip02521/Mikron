@@ -5,21 +5,30 @@ import { useMemo, useState, type MouseEvent } from "react";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { ModalShell } from "@/components/ui/ModalShell";
+import { Spinner } from "@/components/ui/Spinner";
 import { cn } from "@/lib/cn";
+import {
+  assessProsbaLineStock,
+  formatZkProsbaScopeLineBadge,
+  isZkProsbaScopePartialStock,
+  type ZkProsbaScopeLineInput,
+} from "@/lib/orders/prosba-stock-check";
+import {
+  prosbaHrefFromZkWatch,
+  stashZkProsbaPrefill,
+} from "@/lib/orders/zk-watch-prosba-prefill";
 import { formatZkWatchDisplayNumber } from "@/lib/sales/notepad-format";
+import { formatZkProsbaCoverageSummary } from "@/lib/sales/zk-watch-coverage-summary";
+import { zkWatchLineUiStateMeta } from "@/lib/sales/zk-watch-line-ui-state";
+import type { ZkWatchRefreshDiff } from "@/lib/sales/zk-watch-refresh-diff";
 import {
   buildZkWatchLineViews,
   type ZkWatchLineView,
 } from "@/lib/sales/zk-watch-lines";
 import type { ZkWatchOrderHints } from "@/lib/sales/zk-watch-order-link";
-import { formatZkProsbaCoverageSummary } from "@/lib/sales/zk-watch-coverage-summary";
-import type { ZkWatchRefreshDiff } from "@/lib/sales/zk-watch-refresh-diff";
-import {
-  prosbaHrefFromZkWatch,
-  stashZkProsbaPrefill,
-} from "@/lib/orders/zk-watch-prosba-prefill";
 import { salesTypography } from "@/lib/ui/ontime-theme";
 import type { SalesZkWatch } from "@/types/database";
+import { useZkProsbaLineKeysStockFilter } from "@/hooks/useZkProsbaLineKeysStockFilter";
 
 function polishCountLabel(
   n: number,
@@ -36,6 +45,14 @@ function polishCountLabel(
 
 function lineByKey(views: ZkWatchLineView[], key: string): ZkWatchLineView | undefined {
   return views.find((line) => line.key === key);
+}
+
+function toScopeLine(line: ZkWatchLineView): ZkProsbaScopeLineInput {
+  return {
+    key: line.key,
+    subiektTwId: line.subiektTwId,
+    quantity: line.quantity,
+  };
 }
 
 export function ZkWatchRefreshPromptModal({
@@ -63,14 +80,42 @@ export function ZkWatchRefreshPromptModal({
   const displayNumber = formatZkWatchDisplayNumber(watch.zk_number);
   const addedCount = uncoveredAddedKeys.length;
   const statusSummary = formatZkProsbaCoverageSummary(orderHints);
+
+  const addedScopeLines = useMemo(
+    () =>
+      uncoveredAddedKeys
+        .map((key) => lineByKey(lineViews, key))
+        .filter((line): line is ZkWatchLineView => line != null)
+        .map(toScopeLine),
+    [uncoveredAddedKeys, lineViews]
+  );
+
+  const {
+    stockByTwId,
+    stockLoading,
+    lineKeysToOrder,
+    excludedByStockCount,
+    allOnStock,
+    stockFetchFailed,
+  } = useZkProsbaLineKeysStockFilter(addedScopeLines, uncoveredAddedKeys, open);
+
+  const [prefillError, setPrefillError] = useState<string | null>(null);
+
+  const linesToAddCount = lineKeysToOrder.length;
+  const onStockExcludedCount = excludedByStockCount;
+  const inStockMeta = zkWatchLineUiStateMeta("in_stock");
+
   const supplementOptions = {
-    lineKeys: uncoveredAddedKeys,
+    lineKeys: lineKeysToOrder,
     mode: "supplement" as const,
   };
   const prosbaHref = prosbaHrefFromZkWatch(watch, supplementOptions);
-  const [prefillError, setPrefillError] = useState<string | null>(null);
 
   function handleAddMissing(event: MouseEvent<HTMLAnchorElement>) {
+    if (stockLoading || allOnStock || linesToAddCount === 0) {
+      event.preventDefault();
+      return;
+    }
     const ok = stashZkProsbaPrefill(watch, supplementOptions);
     if (!ok) {
       event.preventDefault();
@@ -80,6 +125,14 @@ export function ZkWatchRefreshPromptModal({
     setPrefillError(null);
     onConfirm();
   }
+
+  const addButtonLabel = stockLoading
+    ? "Sprawdzam stan…"
+    : allOnStock
+      ? "Wszystko na stanie — nie trzeba uzupełniać"
+      : linesToAddCount === addedCount
+        ? "Dodaj brakujące do prośby"
+        : `Dodaj do prośby (${linesToAddCount})`;
 
   const queueLabel =
     queuePosition != null && queueTotal != null && queueTotal > 1
@@ -99,11 +152,22 @@ export function ZkWatchRefreshPromptModal({
           <Button type="button" variant="ghost" size="sm" onClick={onLater}>
             Później
           </Button>
-          <Link href={prosbaHref} onClick={handleAddMissing}>
-            <Button type="button" size="sm" className="w-full sm:w-auto">
-              Dodaj brakujące do prośby
+          {allOnStock ? (
+            <Button type="button" size="sm" disabled className="w-full sm:w-auto">
+              {addButtonLabel}
             </Button>
-          </Link>
+          ) : (
+            <Link href={prosbaHref} onClick={handleAddMissing}>
+              <Button
+                type="button"
+                size="sm"
+                disabled={stockLoading || linesToAddCount === 0}
+                className="w-full sm:w-auto"
+              >
+                {addButtonLabel}
+              </Button>
+            </Link>
+          )}
         </div>
       }
     >
@@ -123,6 +187,37 @@ export function ZkWatchRefreshPromptModal({
         </p>
       </div>
 
+      {stockLoading ? (
+        <p className="flex items-center gap-2 text-xs text-slate-600">
+          <Spinner size="sm" />
+          Sprawdzam stan magazynowy w Subiekcie…
+        </p>
+      ) : null}
+
+      {stockFetchFailed ? (
+        <p className="rounded-md border border-amber-200/90 bg-amber-50/80 px-3 py-2 text-xs leading-relaxed text-amber-950">
+          Nie udało się pobrać stanu z Subiekta — do prośby trafią wszystkie nowe pozycje.
+        </p>
+      ) : null}
+
+      {!stockLoading && onStockExcludedCount > 0 && !allOnStock ? (
+        <p className={cn(salesTypography.rowMeta, "text-slate-600")}>
+          {polishCountLabel(onStockExcludedCount, [
+            "pozycja ma pełny stan",
+            "pozycje mają pełny stan",
+            "pozycji ma pełny stan",
+          ])}{" "}
+          — {onStockExcludedCount === 1 ? "nie trafi" : "nie trafią"} do prośby.
+        </p>
+      ) : null}
+
+      {allOnStock ? (
+        <p className={cn(salesTypography.rowMeta, "text-slate-700")}>
+          Subiekt potwierdza wystarczający stan na wszystkich nowych pozycjach — uzupełnienie
+          prośby nie jest potrzebne.
+        </p>
+      ) : null}
+
       {diff.quantityChanged.length > 0 ? (
         <p className={cn(salesTypography.rowMeta, "text-slate-600")}>
           Uwaga: {diff.quantityChanged.length}{" "}
@@ -137,18 +232,61 @@ export function ZkWatchRefreshPromptModal({
 
       <div>
         <p className={cn(salesTypography.kindTag, "mb-2 text-slate-500")}>
-          Nowe pozycje do dodania
+          Nowe pozycje w ZK
         </p>
-        <ul className="divide-y divide-slate-100 rounded-lg border border-slate-200/90 bg-white">
+        {!stockLoading && onStockExcludedCount > 0 && !allOnStock ? (
+          <p className={cn(salesTypography.rowMeta, "mb-2 text-slate-600")}>
+            {polishCountLabel(linesToAddCount, [
+              "pozycja trafi",
+              "pozycje trafią",
+              "pozycji trafi",
+            ])}{" "}
+            do prośby — pozostałe mają wystarczający stan.
+          </p>
+        ) : null}
+        <ul
+          className={cn(
+            "divide-y divide-slate-100 rounded-lg border border-slate-200/90 bg-white",
+            stockLoading && "pointer-events-none opacity-60"
+          )}
+          aria-busy={stockLoading || undefined}
+        >
           {uncoveredAddedKeys.map((key) => {
             const line = lineByKey(lineViews, key);
             if (!line) return null;
+
+            const twId = line.subiektTwId;
+            const snap = twId ? stockByTwId[twId] : undefined;
+            const sufficient =
+              twId != null &&
+              snap != null &&
+              assessProsbaLineStock({ requestedQty: line.quantity, stock: snap }) ===
+                "sufficient";
+            const partialStock = isZkProsbaScopePartialStock({
+              sufficient,
+              hasStockData: snap != null,
+              available: snap?.available ?? null,
+            });
+            const stockBadgeLabel = formatZkProsbaScopeLineBadge({
+              sufficient,
+              markedInStock: sufficient,
+              available: snap?.available ?? null,
+              hasStockData: snap != null,
+            });
+
             return (
               <li
                 key={key}
-                className="flex items-start justify-between gap-2 px-3 py-2.5 bg-amber-50/50"
+                className={cn(
+                  "flex items-start justify-between gap-2 px-3 py-2.5",
+                  sufficient
+                    ? inStockMeta.rowTintClass
+                    : lineKeysToOrder.includes(key)
+                      ? "bg-indigo-50/40"
+                      : "bg-amber-50/50"
+                )}
               >
-                <div className="min-w-0">
+                <div className="min-w-0 flex-1">
                   <p className={cn(salesTypography.rowTitle, "text-slate-900")}>{line.product}</p>
                   {(line.symbol || line.quantityLabel) && (
                     <p className={cn(salesTypography.rowMeta, "mt-0.5 text-slate-600")}>
@@ -156,9 +294,26 @@ export function ZkWatchRefreshPromptModal({
                     </p>
                   )}
                 </div>
-                <Badge variant="warning" className="shrink-0 text-[9px]">
-                  Nowa
-                </Badge>
+                <div className="flex shrink-0 flex-col items-end gap-1">
+                  <Badge variant="warning" className="text-[9px]">
+                    Nowa
+                  </Badge>
+                  {!stockLoading && (snap != null || sufficient) ? (
+                    <span
+                      className={cn(
+                        salesTypography.kindTag,
+                        "rounded-full px-1.5 py-0.5",
+                        sufficient
+                          ? inStockMeta.badgeClass
+                          : partialStock
+                            ? "bg-amber-100 text-amber-950 ring-1 ring-amber-200/80"
+                            : "bg-indigo-100 text-indigo-900 ring-1 ring-indigo-200/70"
+                      )}
+                    >
+                      {stockBadgeLabel}
+                    </span>
+                  ) : null}
+                </div>
               </li>
             );
           })}

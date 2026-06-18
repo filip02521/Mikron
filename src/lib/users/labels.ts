@@ -5,7 +5,7 @@ export const ROLE_LABELS: Record<UserRole, string> = {
   zakupy: "Dział zakupów",
   magazyn: "Dział dostaw",
   sales: "Handlowiec",
-  sales_manager: "Kierownik handlowców",
+  sales_manager: "Kierownictwo",
 };
 
 export const ROLE_OPTIONS: { value: UserRole; label: string }[] = [

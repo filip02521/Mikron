@@ -47,6 +47,11 @@ const toneStyles: Record<
     title: "text-slate-900",
     sub: "text-slate-600",
   },
+  dismiss: {
+    wrap: "bg-amber-50 text-amber-950",
+    title: "text-amber-950",
+    sub: "text-amber-800",
+  },
 };
 
 export function MyOrderHeadlineBanner({

@@ -41,7 +41,13 @@ import {
   updateIndividualRequestGroup,
   notifyProcurementCancelForOrders,
 } from "@/lib/services/orders";
-import type { IndividualRequestEditPayload } from "@/lib/orders/individual-request-edit";
+import {
+  type AddIndividualOrdersEntry,
+  type AddIndividualOrdersInput,
+  type IndividualRequestEditPayload,
+  normalizeAddIndividualOrdersInput,
+} from "@/lib/orders/individual-request-edit";
+import { assertProsbaSubmitStockAllowed } from "@/lib/orders/prosba-stock-server";
 import type { ProcurementCancelDispositionInput } from "@/lib/orders/procurement-disposition";
 import {
   canEditProcurementCancelNote,
@@ -333,24 +339,9 @@ export async function actionUndoDailyPanelChange(payload: DailyPanelUndoPayload)
 }
 
 export async function actionAddIndividualOrders(
-  entries: Array<{
-    supplierId?: string;
-    salesPersonId: string;
-    symbol?: string;
-    mikranCode?: string;
-    product?: string;
-    quantity?: string;
-    requestKind?: IndividualRequestKind;
-    clientName?: string;
-    clientKhId?: number | null;
-    requestNote?: string | null;
-    subiektTwId?: number | null;
-    sourceZkWatchId?: string | null;
-    sourceZkNumber?: string | null;
-    informacjaQueueViaDailyPanel?: boolean;
-    informacjaStockOutReorder?: boolean;
-  }>
+  input: AddIndividualOrdersInput | AddIndividualOrdersEntry[]
 ) {
+  const { entries, acknowledgeSufficientStock } = normalizeAddIndividualOrdersInput(input);
   const user = await getSessionUser();
   if (!user) throw new Error("Wymagane logowanie");
   if (
@@ -391,6 +382,18 @@ export async function actionAddIndividualOrders(
     ...e,
     salesPersonId: salesPersonIdForSales ?? e.salesPersonId,
   }));
+
+  const zamowienieLines = normalized.filter(
+    (e) => (e.requestKind ?? "zamowienie") === "zamowienie"
+  );
+  if (zamowienieLines.length) {
+    await assertProsbaSubmitStockAllowed({
+      lines: zamowienieLines,
+      requestKind: "zamowienie",
+      acknowledgeSufficientStock,
+    });
+  }
+
   const createdBy = user.id === "dev" ? undefined : user.id;
   const submitMode =
     isSales(user.role) || isSalesManager(user.role) ? "sales" : "procurement";
@@ -433,9 +436,22 @@ export async function actionCompleteVerification(
     requestKind?: IndividualRequestKind;
     subiektTwId?: number | null;
     informacjaPath?: InformacjaFlowPath;
+    onHand?: number | null;
+    reserved?: number | null;
+    available?: number | null;
+    stockSource?: "subiekt" | null;
+    acknowledgeSufficientStock?: boolean;
   }
 ) {
   await requireOperations("mutate");
+  const requestKind = data.requestKind ?? "zamowienie";
+  if (requestKind === "zamowienie") {
+    await assertProsbaSubmitStockAllowed({
+      lines: [data],
+      requestKind,
+      acknowledgeSufficientStock: data.acknowledgeSufficientStock,
+    });
+  }
   await completeVerificationOrder(orderId, data);
   revalidateAll();
   return { success: true };

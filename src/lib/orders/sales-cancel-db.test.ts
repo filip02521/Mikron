@@ -4,7 +4,8 @@ import {
   buildSalesCancelUpdate,
   salesCancelOrderSelect,
 } from "./sales-cancel-db";
-import { salesCancelUndoRestoreStatus } from "./sales-cancel";
+import { planSalesCancelQuantity, salesCancelUndoRestoreStatus } from "./sales-cancel";
+import type { IndividualOrder } from "@/types/database";
 
 describe("sales-cancel-db", () => {
   it("salesCancelOrderSelect bez kolumn rezygnacji", () => {
@@ -63,6 +64,22 @@ describe("sales-cancel-db", () => {
     expect(u?.sales_cancelled_at).toBe("2026-05-01T00:00:00Z");
   });
 
+  it("buildSalesCancelUpdate — pełna rezygnacja z magazynu trafia do archiwum", () => {
+    const plan = {
+      storedCancelledQuantity: null,
+      statusAfter: "Zrealizowane" as const,
+      keepLineActiveForSales: false,
+    };
+    const u = buildSalesCancelUpdate(
+      { hasCancelledAt: true, hasCancelPhase: true, hasCancelledQuantity: true },
+      "on_stock",
+      "2026-05-01T00:00:00Z",
+      plan
+    );
+    expect(u?.sales_acknowledged_at).toBe("2026-05-01T00:00:00Z");
+    expect(u?.status).toBe("Zrealizowane");
+  });
+
   it("buildSalesCancelUpdate — Dentalstore: rezygnacja z reszty bez archiwum", () => {
     const u = buildSalesCancelUpdate(
       { hasCancelledAt: true, hasCancelPhase: true, hasCancelledQuantity: true },
@@ -76,6 +93,34 @@ describe("sales-cancel-db", () => {
     );
     expect(u?.status).toBe("Zrealizowane");
     expect(u?.sales_acknowledged_at).toBeUndefined();
+  });
+
+  it("buildSalesCancelUpdate — informacja z quantity \"-\" bez sales_cancelled_quantity", () => {
+    const order: IndividualOrder = {
+      id: "1",
+      supplier_id: "s",
+      sales_person_id: "sp",
+      symbol: "A",
+      products: "P",
+      quantity: "-",
+      delivered_quantity: "-",
+      order_type: "Glowne",
+      request_kind: "informacja",
+      status: "Nowe",
+      action_at: "2026-05-01",
+      ordered_at: null,
+      delivery_at: null,
+    };
+    const plan = planSalesCancelQuantity(order);
+    const update = buildSalesCancelUpdate(
+      { hasCancelledAt: true, hasCancelPhase: true, hasCancelledQuantity: true },
+      "before_order",
+      "2026-06-01T10:00:00Z",
+      plan
+    );
+    expect(update?.status).toBe("Anulowane");
+    expect(update?.sales_cancelled_quantity).toBeNull();
+    expect(update?.sales_acknowledged_at).toBe("2026-06-01T10:00:00Z");
   });
 
   it("buildSalesCancelUpdate — każda faza trafia od razu do archiwum", () => {

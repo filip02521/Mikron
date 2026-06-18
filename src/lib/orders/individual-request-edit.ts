@@ -33,6 +33,10 @@ type EditLineDraft = {
   clientName?: string;
   clientKhId?: number | null;
   subiektTwId?: number | null;
+  onHand?: number | null;
+  reserved?: number | null;
+  available?: number | null;
+  stockSource?: "subiekt" | null;
 };
 
 /**
@@ -70,6 +74,10 @@ export function toIndividualRequestEditLinePayload(
     clientName: line.clientName,
     clientKhId: line.clientKhId,
     subiektTwId: line.subiektTwId,
+    onHand: line.onHand,
+    reserved: line.reserved,
+    available: line.available,
+    stockSource: line.stockSource,
   };
 }
 
@@ -83,14 +91,24 @@ export type IndividualRequestEditLineInput = {
   clientName?: string;
   clientKhId?: number | null;
   subiektTwId?: number | null;
+  onHand?: number | null;
+  reserved?: number | null;
+  available?: number | null;
+  stockSource?: "subiekt" | null;
 };
 
 /** Notatka w zapisie edycji — `undefined` zachowuje uwagi per linia przy mieszanych notatkach. */
 export function editRequestNoteForSave(
   requestNote: string,
-  options: { mixedOnLines: boolean; touched: boolean }
+  options: { mixedOnLines: boolean; touched: boolean; initialNote?: string }
 ): string | null | undefined {
-  if (options.mixedOnLines && !options.touched) return undefined;
+  const initial = options.initialNote ?? "";
+  const trimmed = requestNote.trim();
+  const initialTrimmed = initial.trim();
+
+  if (options.mixedOnLines && !options.touched && !trimmed) return undefined;
+  if (!options.touched && trimmed === initialTrimmed) return undefined;
+
   return requestNote;
 }
 
@@ -106,7 +124,45 @@ export type IndividualRequestEditPayload = {
    */
   requestNote?: string | null;
   lines: IndividualRequestEditLineInput[];
+  /** Po dialogu „Wyślij mimo to” — serwer przepuszcza zapis mimo pełnego stanu magazynowego. */
+  acknowledgeSufficientStock?: boolean;
 };
+
+export type AddIndividualOrdersEntry = {
+  supplierId?: string;
+  salesPersonId: string;
+  symbol?: string;
+  mikranCode?: string;
+  product?: string;
+  quantity?: string;
+  requestKind?: IndividualRequestKind;
+  clientName?: string;
+  clientKhId?: number | null;
+  requestNote?: string | null;
+  subiektTwId?: number | null;
+  sourceZkWatchId?: string | null;
+  sourceZkNumber?: string | null;
+  informacjaQueueViaDailyPanel?: boolean;
+  informacjaStockOutReorder?: boolean;
+  onHand?: number | null;
+  reserved?: number | null;
+  available?: number | null;
+  stockSource?: "subiekt" | null;
+};
+
+export type AddIndividualOrdersInput = {
+  entries: AddIndividualOrdersEntry[];
+  acknowledgeSufficientStock?: boolean;
+};
+
+export function normalizeAddIndividualOrdersInput(
+  input: AddIndividualOrdersInput | AddIndividualOrdersEntry[]
+): AddIndividualOrdersInput {
+  if (Array.isArray(input)) {
+    return { entries: input, acknowledgeSufficientStock: undefined };
+  }
+  return input;
+}
 
 export function ordersToEditLines(orders: IndividualOrder[]): IndividualRequestEditLineInput[] {
   return orders.map((o) => ({

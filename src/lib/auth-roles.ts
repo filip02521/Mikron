@@ -67,11 +67,14 @@ const OPERATIONS_PATH_PREFIXES = [
 
 const SALES_PATH_PREFIXES = ["/moje", "/plan", "/prosba", "/notatnik", "/zk", "/tablica"];
 
+/** Domyślna strona startowa handlowca po logowaniu. */
+export const SALES_HOME_PATH = "/moje";
+
 export function homePathForRole(role: UserRole): string {
   if (isMagazyn(role)) return "/kolejka";
   if (canAccessOperations(role)) return "/podsumowanie";
   if (isSalesManager(role)) return "/zespol";
-  return "/moje";
+  return SALES_HOME_PATH;
 }
 
 export type CanAccessPathOptions = {
@@ -135,5 +138,6 @@ export function redirectPathAfterLogin(
   if (isAdmin(role) && adminPanelContext && adminPanelContext !== "admin") {
     return homePathForAdminPanelContext(adminPanelContext);
   }
+  if (isSales(role)) return SALES_HOME_PATH;
   return homePathForRole(role);
 }

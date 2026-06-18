@@ -59,6 +59,8 @@ export function editInitialFromMyOrderRow(row: MyOrderRow): EditIndividualReques
     supplierId: row.supplierId ?? "",
     salesPersonId: row.salesPersonId,
     requestKind: row.requestKind,
+    informacjaPath:
+      row.requestKind === "informacja" ? (row.informacjaPath ?? "direct") : undefined,
     requestNote: sharedRequestNoteFromLines(row.lines) ?? "",
     requestNotesMixed: linesHaveMixedRequestNotes(row.lines),
     lines: row.lines.map((l) => ({

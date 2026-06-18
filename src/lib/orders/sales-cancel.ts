@@ -100,6 +100,11 @@ export function maxSalesCancelQuantity(order: IndividualOrder): number | null {
   const phase = resolveSalesCancelPhase(order);
   if (!phase) return null;
 
+  /** Prośba informacyjna — zawsze pełne wycofanie (bez ilości sztuk). */
+  if (isInformacjaRequest(order)) {
+    return 1;
+  }
+
   if (phase === "on_stock") {
     const active = activeOrderQuantity(order);
     if (active == null || active <= 0) return null;
@@ -162,6 +167,25 @@ export function planSalesCancelQuantity(
   order: IndividualOrder,
   requestedQty?: number
 ): SalesCancelQuantityPlan {
+  const phase = resolveSalesCancelPhase(order);
+  if (!phase) {
+    throw new Error("Tej prośby nie można już wycofać.");
+  }
+
+  /** Prośba informacyjna — pełne wycofanie bez śledzenia ilości. */
+  if (isInformacjaRequest(order)) {
+    if (requestedQty != null && requestedQty !== 1) {
+      throw new Error("Prośbę informacyjną można wycofać tylko w całości.");
+    }
+    return {
+      cancelQty: 1,
+      totalCancelledQty: 1,
+      storedCancelledQuantity: null,
+      statusAfter: phase === "before_order" ? "Anulowane" : undefined,
+      keepLineActiveForSales: false,
+    };
+  }
+
   const delivered = deliveryProgressFor(order).delivered;
   const existingCancelled = effectiveSalesCancelledQuantity(order);
   const max = maxSalesCancelQuantity(order);
@@ -171,10 +195,6 @@ export function planSalesCancelQuantity(
   const cancelQty = requestedQty ?? max;
   if (!Number.isInteger(cancelQty) || cancelQty < 1 || cancelQty > max) {
     throw new Error(`Podaj ilość od 1 do ${max} szt.`);
-  }
-  const phase = resolveSalesCancelPhase(order);
-  if (!phase) {
-    throw new Error("Tej prośby nie można już wycofać.");
   }
 
   const ordered = parseOrderQuantity(order.quantity);
@@ -197,7 +217,9 @@ export function planSalesCancelQuantity(
   }
 
   const activeAfter = ordered - totalCancelledQty;
+  const fullyWithdrawn = storedCancelledQuantity === null;
   const keepLineActiveForSales =
+    !fullyWithdrawn &&
     statusAfter !== "Anulowane" &&
     (activeAfter > delivered || (delivered > 0 && statusAfter === "Zrealizowane"));
 
@@ -374,6 +396,26 @@ export function isSalesCancelNoticePending(order: IndividualOrder): boolean {
   }
   const phase = effectiveSalesCancelPhase(order);
   return phase === "in_transit" || phase === "on_stock";
+}
+
+/**
+ * Po rezygnacji z modala handlowiec nie powinien widzieć drugiego kroku
+ * „potwierdź informację o rezygnacji” — ukryj od razu (archiwum).
+ */
+export function mergeSalesCancelUserAutoAck(
+  update: Record<string, unknown>,
+  orderBefore: IndividualOrder,
+  caps: { hasCancelledAt: boolean },
+  now: string
+): void {
+  if (update.sales_acknowledged_at || !caps.hasCancelledAt) return;
+  const simulated = {
+    ...orderBefore,
+    ...update,
+  } as IndividualOrder;
+  if (isSalesCancelNoticePending(simulated)) {
+    update.sales_acknowledged_at = now;
+  }
 }
 
 /** Najostrzejsza faza w grupie (do komunikatu potwierdzenia). */

@@ -109,7 +109,7 @@ export function MyOrderPickupShelfNoticeDialog({
       describedById={bodyDescriptionId}
       role="alertdialog"
       size="sm"
-      tier="raised"
+      tier="stack"
       disableBackdropClose={pending}
       loadingMessage={pending ? "Przetwarzanie…" : null}
       className="overflow-hidden"

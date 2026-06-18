@@ -7,7 +7,7 @@ import { createPortal } from "react-dom";
 import { NavIcon, navIconTileActiveClassForTone, navIconTileClassForTone } from "@/components/icons/NavIcon";
 import { IconMoreVertical } from "@/components/icons/StrokeIcons";
 import { useClientHydrated } from "@/lib/client/use-client-hydrated";
-import { isNavItemActive, type NavItem } from "@/lib/nav";
+import { isNavItemActive, navItemDisplayTone, navItemHasDueReminders, type NavItem } from "@/lib/nav";
 import { hrefWithAdminSalesPreview } from "@/lib/nav/sales-preview-href";
 import { cn } from "@/lib/cn";
 import {
@@ -18,6 +18,7 @@ import {
   mobileNavBadgeClass,
   navLinkIdleClass,
   panelTypography,
+  sidebarNavAttentionIdleClass,
   sidebarNavBadgeClassForTone,
   sidebarNavToneActiveClass,
 } from "@/lib/ui/ontime-theme";
@@ -98,6 +99,8 @@ export function MobileNavOverflowSheet({
               <ul className="space-y-1 p-2">
                 {items.map((item) => {
                   const active = overflowItemActive(pathname, item, allHrefs);
+                  const displayTone = navItemDisplayTone(item, active);
+                  const attentionIdle = navItemHasDueReminders(item) && !active;
                   const href = hrefWithAdminSalesPreview(
                     item.href,
                     previewDla,
@@ -115,7 +118,9 @@ export function MobileNavOverflowSheet({
                           controlFocusClass,
                           active
                             ? sidebarNavToneActiveClass(item.tone)
-                            : navLinkIdleClass,
+                            : attentionIdle
+                              ? sidebarNavAttentionIdleClass
+                              : navLinkIdleClass,
                           locked && "pointer-events-none opacity-40"
                         )}
                         aria-current={active ? "page" : undefined}
@@ -132,7 +137,7 @@ export function MobileNavOverflowSheet({
                             "flex h-8 w-8 shrink-0 items-center justify-center rounded-md",
                             active
                               ? navIconTileActiveClassForTone(item.tone)
-                              : navIconTileClassForTone(item.tone)
+                              : navIconTileClassForTone(displayTone)
                           )}
                         >
                           <NavIcon navKey={item.icon} size={17} />
@@ -149,7 +154,7 @@ export function MobileNavOverflowSheet({
                           <span
                             className={cn(
                               "min-w-[1.25rem] rounded-md px-1.5 py-0.5 text-center text-[10px] font-semibold tabular-nums",
-                              sidebarNavBadgeClassForTone(item.tone, active)
+                              sidebarNavBadgeClassForTone(displayTone, active)
                             )}
                           >
                             {item.badge! > 99 ? "99+" : item.badge}

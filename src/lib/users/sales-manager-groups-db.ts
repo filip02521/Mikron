@@ -28,7 +28,7 @@ export async function replaceSalesManagerGroupsForProfile(
   if (profileError) return profileError.message;
   if (!profile) return "Nie znaleziono użytkownika.";
   if (profile.role !== "sales_manager") {
-    return "Grupy przypisuje się tylko do roli kierownika handlowców.";
+    return "Grupy przypisuje się tylko do roli Kierownictwo.";
   }
 
   if (unique.length) {

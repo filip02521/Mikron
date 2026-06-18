@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { Button } from "@/components/ui/Button";
-import { ModalShell } from "@/components/ui/ModalShell";
+import { ModalShell, type ModalTier } from "@/components/ui/ModalShell";
 import { cn } from "@/lib/cn";
 import {
   controlFocusClass,
@@ -18,6 +18,7 @@ type ProcurementCancelDialogProps = {
   confirmLabel?: string;
   cancelLabel?: string;
   pending?: boolean;
+  tier?: ModalTier;
   onCancel: () => void;
   onConfirm: (note: string | undefined) => void;
 };
@@ -29,6 +30,7 @@ function ProcurementCancelDialogForm({
   confirmLabel = "Potwierdź",
   cancelLabel = "Anuluj",
   pending,
+  tier = "raised",
   onCancel,
   onConfirm,
 }: Omit<ProcurementCancelDialogProps, "open">) {
@@ -53,7 +55,7 @@ function ProcurementCancelDialogForm({
       titleId="procurement-cancel-title"
       role="alertdialog"
       size="sm"
-      tier="raised"
+      tier={tier}
       disableBackdropClose={pending}
       loadingMessage={pending ? "Przetwarzanie…" : null}
       bodyClassName="px-5 py-4 sm:px-6"

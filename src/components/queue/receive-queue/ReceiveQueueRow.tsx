@@ -19,6 +19,7 @@ import {
 } from "@/lib/orders/warehouse-cancel-fulfillment";
 import { informacjaWarehouseQueueActionLabel } from "@/lib/orders/informacja-warehouse-queue";
 import { partialReceiveCrossLabel } from "@/lib/orders/warehouse-cross-link";
+import { SearchHighlightText } from "@/components/moje/SearchHighlightText";
 import {
   queueSupplierLeadingCellClass,
   queueSupplierRowClass,
@@ -70,6 +71,7 @@ export function ReceiveQueueRow({
   selected,
   pending,
   inputVal,
+  searchQuery = null,
   onToggleSelected,
   onQtyChange,
   onSaveDelivery,
@@ -88,6 +90,7 @@ export function ReceiveQueueRow({
   selected: boolean;
   pending: boolean;
   inputVal: string;
+  searchQuery?: string | null;
   onToggleSelected: () => void;
   onQtyChange: (value: string) => void;
   onSaveDelivery: () => void;
@@ -113,9 +116,6 @@ export function ReceiveQueueRow({
   const cancelAckLabel = warehouseCancelFulfillButtonLabel(order);
   const partialCross = partialReceiveCrossLabel(order);
   const zakupyLabel = procurementDispositionQueueLabel(order);
-  const productTitle = [order.products, order.symbol && order.symbol !== "-" ? order.symbol : null]
-    .filter(Boolean)
-    .join(" · ");
   const canSave = !isInfo && inputVal.trim() !== "";
   const showProductGroupLink = isInfo && isFirstInProductGroup && productGroupIds.length > 1;
   const informacjaActionLabel = isInfo
@@ -197,11 +197,19 @@ export function ReceiveQueueRow({
           <p className="truncate pl-3 text-xs text-slate-500">↳ ten sam towar</p>
         ) : (
           <div className="min-w-0">
-            <p className="truncate font-medium text-slate-800" title={productTitle}>
-              {order.products}
-            </p>
+            <SearchHighlightText
+              text={order.products}
+              searchQuery={searchQuery}
+              className="truncate font-medium text-slate-800"
+              as="p"
+            />
             {order.symbol && order.symbol !== "-" ? (
-              <p className="truncate text-[11px] text-slate-500">{order.symbol}</p>
+              <SearchHighlightText
+                text={order.symbol}
+                searchQuery={searchQuery}
+                className="truncate text-[11px] text-slate-500"
+                as="p"
+              />
             ) : null}
             {showProductGroupLink ? (
               <button

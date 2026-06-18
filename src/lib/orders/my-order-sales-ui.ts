@@ -20,7 +20,8 @@ export type MyOrderHeadlineTone =
   | "stock"
   | "success"
   | "info"
-  | "neutral";
+  | "neutral"
+  | "dismiss";
 
 /** Nagłówek wiersza przy częściowej dostawie z towarem na magazynie (bez potwierdzenia odbioru). */
 export const MY_ORDER_PARTIAL_STOCK_HEADLINE = "Część towaru dotarła na magazyn";
@@ -161,7 +162,7 @@ export function enrichMyOrderSalesUi(row: MyOrderRow): MyOrderSalesUi {
   ) {
     return {
       headline: "Potwierdź informację o rezygnacji",
-      headlineTone: "neutral",
+      headlineTone: "dismiss",
       subline: "Po potwierdzeniu wpis zniknie z listy",
       sortPriority: 3,
     };
@@ -171,7 +172,7 @@ export function enrichMyOrderSalesUi(row: MyOrderRow): MyOrderSalesUi {
     const noteSuffix = procurementCancelNotesMojeSublineSuffix(row.lines);
     return {
       headline: "Potwierdź anulowanie prośby",
-      headlineTone: "neutral",
+      headlineTone: "dismiss",
       subline: `Po potwierdzeniu wpis zniknie z listy${noteSuffix}`,
       sortPriority: 3,
     };

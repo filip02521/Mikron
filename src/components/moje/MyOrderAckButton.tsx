@@ -3,9 +3,11 @@
 import { Button } from "@/components/ui/Button";
 import { cn } from "@/lib/cn";
 import {
+  mojeAckSegmentCancelClass,
   mojeAckSegmentInformacjaClass,
   mojeAckSegmentOutlineClass,
   mojeAckSegmentPrimaryClass,
+  mojeCancelAckControlClass,
   mojeControlHeightClass,
   mojeInformacjaAckControlClass,
   mojePickupControlClass,
@@ -35,7 +37,9 @@ export function MyOrderAckButton({
     | "informacjaAck"
     | "segmentPrimary"
     | "segmentInformacja"
-    | "segmentOutline";
+    | "segmentCancel"
+    | "segmentOutline"
+    | "cancelAck";
   className?: string;
   title?: string;
   ariaLabel?: string;
@@ -77,6 +81,18 @@ export function MyOrderAckButton({
           aria-label={previewTitle}
           title={previewTitle}
           className={cn(mojeInformacjaAckControlClass, className)}
+        >
+          {children}
+        </span>
+      );
+    }
+    if (variant === "cancelAck" || variant === "segmentCancel") {
+      return (
+        <span
+          role="img"
+          aria-label={previewTitle}
+          title={previewTitle}
+          className={cn(mojeCancelAckControlClass, className)}
         >
           {children}
         </span>
@@ -160,6 +176,36 @@ export function MyOrderAckButton({
         aria-label={accessibleName}
         onClick={onClick}
         className={cn(mojeAckSegmentInformacjaClass, className)}
+      >
+        {children}
+      </button>
+    );
+  }
+
+  if (variant === "segmentCancel") {
+    return (
+      <button
+        type="button"
+        disabled={disabled}
+        title={title}
+        aria-label={accessibleName}
+        onClick={onClick}
+        className={cn(mojeAckSegmentCancelClass, className)}
+      >
+        {children}
+      </button>
+    );
+  }
+
+  if (variant === "cancelAck") {
+    return (
+      <button
+        type="button"
+        disabled={disabled}
+        title={title}
+        aria-label={accessibleName}
+        onClick={onClick}
+        className={cn(mojeCancelAckControlClass, className)}
       >
         {children}
       </button>

@@ -25,6 +25,7 @@ export function mojeShipmentRowClass({
   expanded,
   isAction,
   isInformacjaAck,
+  isCancelAck,
   isUrgent,
   isStock,
   isInformacja,
@@ -33,6 +34,7 @@ export function mojeShipmentRowClass({
   expanded: boolean;
   isAction: boolean;
   isInformacjaAck?: boolean;
+  isCancelAck?: boolean;
   isUrgent: boolean;
   isStock?: boolean;
   isInformacja: boolean;
@@ -49,26 +51,31 @@ export function mojeShipmentRowClass({
     ? "border-l-emerald-500"
     : isInformacjaAck
       ? "border-l-violet-500"
-      : isUrgent
+      : isCancelAck
         ? "border-l-amber-500"
-        : isStock
-          ? "border-l-sky-500"
-          : isInformacja
-            ? "border-l-violet-400"
-            : "border-l-slate-200";
+        : isUrgent
+          ? "border-l-amber-500"
+          : isStock
+            ? "border-l-sky-500"
+            : isInformacja
+              ? "border-l-violet-400"
+              : "border-l-slate-200";
 
   return cn(
     "border-l-[3px] transition-colors duration-150",
     accent,
     isAction && !expanded && "bg-emerald-50/35",
     isInformacjaAck && !expanded && "bg-violet-50/40",
+    isCancelAck && !expanded && "bg-amber-50/50",
     expanded
       ? "bg-slate-50/50"
       : isAction
         ? "hover:bg-emerald-50/50"
         : isInformacjaAck
           ? "hover:bg-violet-50/55"
-          : "bg-white hover:bg-slate-50/50"
+          : isCancelAck
+            ? "hover:bg-amber-50/65"
+            : "bg-white hover:bg-slate-50/50"
   );
 }
 

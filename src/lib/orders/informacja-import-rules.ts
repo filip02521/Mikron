@@ -28,7 +28,10 @@ export type InformacjaOnlyInput = {
   stanSalesPersonId?: string | null;
 };
 
-/** Wiersz historii / zgłoszenie traktujemy wyłącznie jako informację o dostępności. */
+/**
+ * Wiersz historii / import CSV — traktujemy wyłącznie jako informację o dostępności.
+ * Nie stosować przy żywych zgłoszeniach z formularza (QuickOrderModal, /prosba) — tam obowiązuje wybrany requestKind.
+ */
 export function shouldTreatAsInformacjaOnly(input: InformacjaOnlyInput): boolean {
   if (isInformacjaQuantityMarker(input.quantity)) return true;
   if (isStanSalesPersonLabel(input.personLabel)) return true;

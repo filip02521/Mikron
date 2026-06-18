@@ -97,6 +97,11 @@ describe("my-order-card-ui", () => {
         row({ headlineTone: "warning", headline: "Po przewidywanym terminie" })
       )
     ).toBe(false);
+    expect(
+      shouldShowOrderStatusBadge(
+        row({ headlineTone: "dismiss", headline: "Potwierdź informację o rezygnacji" })
+      )
+    ).toBe(false);
   });
 
   it("pasek tylko przy potwierdzeniu, nie przy statusie w toku", () => {

@@ -2,6 +2,8 @@ import { describe, expect, it } from "vitest";
 import {
   isNavItemActive,
   navForRole,
+  navItemDisplayTone,
+  navItemHasDueReminders,
   navMobileOverflowItems,
   navMobilePrimaryItems,
   NAV_SECTION_DAILY,
@@ -11,6 +13,7 @@ import {
   NAV_SECTION_ZK,
   NAV_SECTION_INFO,
   pageTitle,
+  type NavItem,
 } from "./nav";
 
 describe("isNavItemActive", () => {
@@ -186,5 +189,42 @@ describe("navForRole handlowiec", () => {
       "ZK",
       "Tablica",
     ]);
+  });
+});
+
+function salesNavItem(href: string, badge?: number): NavItem {
+  const groups = navForRole("sales", { salesNotesDue: 0, salesZkDue: 0 });
+  for (const group of groups) {
+    const item = group.items.find((i) => i.href === href);
+    if (item) return { ...item, badge };
+  }
+  throw new Error(`missing nav item ${href}`);
+}
+
+describe("navItemHasDueReminders", () => {
+  it("zwraca true dla Notatnik i ZK z badge > 0", () => {
+    expect(navItemHasDueReminders(salesNavItem("/notatnik", 2))).toBe(true);
+    expect(navItemHasDueReminders(salesNavItem("/zk", 1))).toBe(true);
+  });
+
+  it("zwraca false bez badge lub na innych ścieżkach", () => {
+    expect(navItemHasDueReminders(salesNavItem("/notatnik", 0))).toBe(false);
+    expect(navItemHasDueReminders(salesNavItem("/zk"))).toBe(false);
+    expect(navItemHasDueReminders(salesNavItem("/moje", 3))).toBe(false);
+    expect(navItemHasDueReminders(salesNavItem("/tablica", 2))).toBe(false);
+  });
+});
+
+describe("navItemDisplayTone", () => {
+  it("używa amber w spoczynku przy przypomnieniach", () => {
+    expect(navItemDisplayTone(salesNavItem("/notatnik", 2), false)).toBe("amber");
+    expect(navItemDisplayTone(salesNavItem("/zk", 1), false)).toBe("amber");
+  });
+
+  it("zachowuje ton pozycji gdy aktywna lub brak przypomnień", () => {
+    expect(navItemDisplayTone(salesNavItem("/notatnik", 2), true)).toBe("indigo");
+    expect(navItemDisplayTone(salesNavItem("/zk", 1), true)).toBe("violet");
+    expect(navItemDisplayTone(salesNavItem("/notatnik", 0), false)).toBe("indigo");
+    expect(navItemDisplayTone(salesNavItem("/zk"), false)).toBe("violet");
   });
 });

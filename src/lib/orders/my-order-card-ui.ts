@@ -49,7 +49,8 @@ export function shouldShowOrderStatusBadge(row: MyOrderRow): boolean {
   if (
     row.headlineTone === "warning" ||
     row.headlineTone === "stock" ||
-    row.headlineTone === "info"
+    row.headlineTone === "info" ||
+    row.headlineTone === "dismiss"
   ) {
     return false;
   }

@@ -60,6 +60,8 @@ import {
 } from "@/lib/subiekt/match-supplier";
 import { expandSupplierSearchQueries } from "@/lib/subiekt/supplier-search-tokens";
 import type { SubiektKontrahent, SubiektProduct } from "@/lib/subiekt/types";
+import type { ProsbaLineStockSnapshot } from "@/lib/orders/prosba-stock-check";
+import { fetchProsbaLineStock } from "@/lib/orders/fetch-prosba-line-stock";
 
 export async function actionGetSubiektStatus() {
   await requireAdmin();
@@ -867,4 +869,12 @@ export async function actionSubiektSuggestSuppliers(
   } catch (e) {
     return { ok: false, feedback: feedbackFromException(e) };
   }
+}
+
+/** Stan magazynowy pozycji prośby (batch po tw_Id). */
+export async function actionFetchProsbaLineStock(
+  twIds: number[]
+): Promise<Record<number, ProsbaLineStockSnapshot>> {
+  await requireSubiektLookup();
+  return fetchProsbaLineStock(twIds);
 }

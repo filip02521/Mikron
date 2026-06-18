@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   deriveZkWatchProsbaCardAction,
+  formatZkProsbaCardActionLabelAfterStockFilter,
   resolveZkWatchLineUiState,
   zkWatchLineUiStateMeta,
 } from "./zk-watch-line-ui-state";
@@ -103,6 +104,42 @@ describe("deriveZkWatchProsbaCardAction", () => {
         prosbaScopeConfigured: true,
       })
     ).toMatchObject({ kind: "supplement", label: "Uzupełnij (1)" });
+  });
+});
+
+describe("formatZkProsbaCardActionLabelAfterStockFilter", () => {
+  it("pokazuje stan ładowania i pełny stan", () => {
+    expect(
+      formatZkProsbaCardActionLabelAfterStockFilter({
+        action: { kind: "supplement", label: "Uzupełnij (2)", lineKeys: ["a", "b"] },
+        stockLoading: true,
+        allOnStock: false,
+        filteredCount: 2,
+        sourceCount: 2,
+      })
+    ).toBe("Sprawdzam stan…");
+
+    expect(
+      formatZkProsbaCardActionLabelAfterStockFilter({
+        action: { kind: "supplement", label: "Uzupełnij (2)", lineKeys: ["a", "b"] },
+        stockLoading: false,
+        allOnStock: true,
+        filteredCount: 0,
+        sourceCount: 2,
+      })
+    ).toBe("Na stanie");
+  });
+
+  it("aktualizuje liczbę po filtrze", () => {
+    expect(
+      formatZkProsbaCardActionLabelAfterStockFilter({
+        action: { kind: "supplement", label: "Uzupełnij (3)", lineKeys: ["a", "b", "c"] },
+        stockLoading: false,
+        allOnStock: false,
+        filteredCount: 1,
+        sourceCount: 3,
+      })
+    ).toBe("Uzupełnij (1)");
   });
 });
 

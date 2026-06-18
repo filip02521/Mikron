@@ -48,6 +48,9 @@ import {
   handleProcurementProsbaKeyboardEvent,
   PROCUREMENT_PROSBA_KEYBOARD_HINTS,
 } from "@/lib/orders/procurement-prosba-keyboard";
+import { ProsbaStockConfirmDialog } from "@/components/orders/ProsbaStockConfirmDialog";
+import { buildProsbaSubmitStockConfirm } from "@/lib/orders/prosba-stock-check";
+import { handleProsbaStockSubmitError } from "@/lib/orders/prosba-stock-submit-error";
 
 export type EditIndividualRequestInitial = {
   supplierId: string;
@@ -93,6 +96,9 @@ export function EditIndividualRequestModal({
     text: string;
     tone: "error" | "warning";
   } | null>(null);
+  const [stockConfirmOpen, setStockConfirmOpen] = useState(false);
+  const [stockConfirmMessage, setStockConfirmMessage] = useState("");
+  const pendingSaveLinesRef = useRef<ProductLineDraft[]>([]);
 
   const sortedSuppliers = useMemo(
     () => [...suppliers].sort((a, b) => a.name.localeCompare(b.name, "pl")),
@@ -253,6 +259,22 @@ export function EditIndividualRequestModal({
       }
     }
 
+    const stockConfirm = buildProsbaSubmitStockConfirm(linesToSave, requestKind);
+    if (stockConfirm) {
+      pendingSaveLinesRef.current = linesToSave;
+      setStockConfirmMessage(stockConfirm.message);
+      setStockConfirmOpen(true);
+      return;
+    }
+
+    performSave(linesToSave);
+  };
+
+  const performSave = (
+    linesToSave: ProductLineDraft[],
+    options?: { acknowledgeSufficientStock?: boolean }
+  ) => {
+    if (!initial) return;
     run(
       async () => {
         try {
@@ -261,16 +283,16 @@ export function EditIndividualRequestModal({
             salesPersonId,
             requestKind,
             informacjaPath:
-              mode === "procurement" && requestKind === "informacja"
-                ? informacjaPath
-                : undefined,
+              requestKind === "informacja" ? informacjaPath : undefined,
             requestNote: editRequestNoteForSave(requestNote, {
               mixedOnLines: Boolean(initial?.requestNotesMixed),
               touched: requestNoteTouched,
+              initialNote: initial?.requestNote ?? "",
             }),
             lines: linesToSave.map((line) =>
               toIndividualRequestEditLinePayload(line, orderIds)
             ),
+            acknowledgeSufficientStock: options?.acknowledgeSufficientStock,
           };
           if (mode === "procurement") {
             await actionUpdateIndividualRequest(orderIds, payload);
@@ -279,12 +301,19 @@ export function EditIndividualRequestModal({
           }
           onSaved?.("Zapisano zmiany w prośbie.");
           onClose();
+          setStockConfirmOpen(false);
         } catch (e) {
-          setValidationAttempted(true);
-          setFormNotice({
-            text: e instanceof Error ? e.message : "Nie udało się zapisać prośby.",
-            tone: "error",
-          });
+          handleProsbaStockSubmitError(
+            e,
+            (message) => {
+              setStockConfirmMessage(message);
+              setStockConfirmOpen(true);
+            },
+            (message) => {
+              setValidationAttempted(true);
+              setFormNotice({ text: message, tone: "error" });
+            }
+          );
         }
       },
       "Zapisywanie prośby…"
@@ -312,6 +341,20 @@ export function EditIndividualRequestModal({
   if (!open) return null;
 
   return (
+    <>
+      <ProsbaStockConfirmDialog
+        open={stockConfirmOpen}
+        message={stockConfirmMessage}
+        pending={pending}
+        confirmLabel="Zapisz mimo to"
+        onCancel={() => {
+          setStockConfirmOpen(false);
+          pendingSaveLinesRef.current = [];
+        }}
+        onConfirm={() =>
+          performSave(pendingSaveLinesRef.current, { acknowledgeSufficientStock: true })
+        }
+      />
     <ModalShell
       open
       onClose={onClose}
@@ -409,11 +452,11 @@ export function EditIndividualRequestModal({
           />
         </ProsbaFormSection>
 
-        {mode === "procurement" && requestKind === "informacja" ? (
+        {requestKind === "informacja" ? (
           <ProsbaFormSection
             title={INFORMACJA_FLOW_PICKER_SECTION.title}
             hint={
-              informacjaPath === "via_panel"
+              mode === "procurement" && informacjaPath === "via_panel"
                 ? INFORMACJA_FLOW_PICKER_SECTION_DAILY.hint
                 : INFORMACJA_FLOW_PICKER_SECTION.hint
             }
@@ -422,7 +465,7 @@ export function EditIndividualRequestModal({
               path={informacjaPath}
               onChange={setInformacjaPath}
               disabled={pending}
-              includeViaPanel={informacjaPath === "via_panel"}
+              includeViaPanel={mode === "procurement" && informacjaPath === "via_panel"}
             />
           </ProsbaFormSection>
         ) : null}
@@ -540,5 +583,6 @@ export function EditIndividualRequestModal({
         </ProsbaFormSection>
       </div>
     </ModalShell>
+    </>
   );
 }

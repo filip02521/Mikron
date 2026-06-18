@@ -12,12 +12,13 @@ import { createPortal } from "react-dom";
 import { actionUpdateZkWatchFollowUp } from "@/app/actions/sales-notepad";
 import { IconCalendar } from "@/components/icons/StrokeIcons";
 import { cn } from "@/lib/cn";
+import { computeAnchoredDropdownPosition } from "@/lib/ui/dropdown-anchor";
 import { controlFocusClass, panelDropdownShellClass, panelToolbarIconButtonClass } from "@/lib/ui/ontime-theme";
 import { formatFollowUpLabel, isFollowUpDue } from "@/lib/sales/notepad-follow-up";
 import type { SalesZkWatch } from "@/types/database";
 import { FollowUpQuickDates } from "./FollowUpQuickDates";
 
-type PopoverPosition = { top: number; left: number };
+type PopoverPosition = { top: number; left: number; maxHeight: number };
 
 export function ZkWatchFollowUpButton({
   watch,
@@ -62,15 +63,23 @@ export function ZkWatchFollowUpButton({
       if (!el) return;
       const rect = el.getBoundingClientRect();
       const panelWidth = panelRef.current?.offsetWidth ?? 240;
+      const measured = panelRef.current?.scrollHeight ?? panelRef.current?.offsetHeight;
+      const panelHeight = measured && measured > 0 ? measured : 280;
+      const { top, left: endLeft, maxHeight } = computeAnchoredDropdownPosition(rect, panelHeight, {
+        minWidth: panelWidth,
+      });
       setPos({
-        top: rect.bottom + 4,
-        left: Math.max(8, Math.min(rect.right - panelWidth, window.innerWidth - panelWidth - 8)),
+        top,
+        left: Math.max(8, Math.min(endLeft, window.innerWidth - panelWidth - 8)),
+        maxHeight,
       });
     };
     update();
+    const raf = requestAnimationFrame(update);
     window.addEventListener("resize", update);
     window.addEventListener("scroll", update, true);
     return () => {
+      cancelAnimationFrame(raf);
       window.removeEventListener("resize", update);
       window.removeEventListener("scroll", update, true);
     };
@@ -179,8 +188,11 @@ export function ZkWatchFollowUpButton({
               ref={panelRef}
               role="dialog"
               aria-label="Przypomnienie"
-              className={cn("fixed z-[200] w-60 p-3", panelDropdownShellClass)}
-              style={{ top: pos.top, left: pos.left }}
+              className={cn(
+                "fixed z-[200] w-60 overflow-y-auto overscroll-y-contain p-3",
+                panelDropdownShellClass
+              )}
+              style={{ top: pos.top, left: pos.left, maxHeight: pos.maxHeight }}
               onClick={(event) => event.stopPropagation()}
             >
               <p className="mb-2 text-[0.68rem] font-semibold uppercase tracking-wide text-slate-500">

@@ -1,6 +1,6 @@
 "use client";
 
-import { Fragment, useCallback, useMemo, useState, useTransition } from "react";
+import { Fragment, useCallback, useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import type { IndividualOrder } from "@/types/database";
 import {
@@ -14,6 +14,10 @@ import { EmptyState } from "@/components/ui/EmptyState";
 import { DataTable, TableScroll } from "@/components/ui/DataTable";
 import { QueueGroupExpandControl } from "@/components/queue/QueueGroupExpandControl";
 import { SupplierFilterChips } from "@/components/queue/SupplierFilterChips";
+import { ReceiveQueueSearchField } from "@/components/queue/ReceiveQueueSearchField";
+import { ReceiveQueueActiveFilters } from "@/components/queue/ReceiveQueueActiveFilters";
+import { ZdReceiveFilterModal } from "@/components/queue/ZdReceiveFilterModal";
+import { IconClipboardList } from "@/components/icons/StrokeIcons";
 import { SupplierGroupHeaderRow } from "@/components/queue/SupplierGroupHeaderRow";
 import { ReceiveQueueGroupMenu } from "@/components/queue/receive-queue/ReceiveQueueGroupMenu";
 import { ReceiveQueueRow } from "@/components/queue/receive-queue/ReceiveQueueRow";
@@ -30,9 +34,26 @@ import {
 import { warehouseCancelFulfillToast } from "@/lib/orders/warehouse-cancel-fulfillment";
 import { checkboxBrandClass } from "@/lib/ui/ontime-theme";
 import { MICROCOPY } from "@/lib/ui/microcopy";
-import { QUEUE_LIST_BODY_CLASS } from "@/lib/ui/queue-panel-styles";
+import { QUEUE_LIST_BODY_CLASS, receiveQueueToolbarSectionClass, queueToolbarFieldLabelClass, queueToolbarControlClass } from "@/lib/ui/queue-panel-styles";
 import { InlineCheck } from "@/components/ui/UiGlyphs";
 import { countOrdersBySupplier, filterOrdersBySupplier } from "@/lib/orders/supplier-filter-summary";
+import {
+  filterReceiveQueueTable,
+  receiveQueueProductSearchEmptyTitle,
+  receiveQueueSearchToolbarLabel,
+} from "@/lib/orders/receive-queue-search";
+import { searchQueryTokens } from "@/lib/orders/my-order-search";
+import {
+  countUnmatchedZdLines,
+  type ZdReceiveFilterState,
+  zdFilterToolbarLabel,
+  zdFilterUnmatchedLinesLabel,
+} from "@/lib/warehouse/zd-receive-filter";
+import { cn } from "@/lib/cn";
+import {
+  panelChoiceChipClass,
+  panelChoiceChipSuccessSelectedClass,
+} from "@/lib/ui/ontime-theme";
 import {
   informacjaProductKey,
   orderIdsInProductGroup,
@@ -60,7 +81,7 @@ const COL_COUNT = 4;
 
 export type ReceiveQueueToast = {
   text: string;
-  tone: "success" | "error";
+  tone: "success" | "error" | "warning";
   durationMs?: number;
 };
 
@@ -85,6 +106,11 @@ export function ReceiveQueueTable({
   const [qty, setQty] = useState<Record<string, string>>({});
   const [selected, setSelected] = useState<Record<string, boolean>>({});
   const [supplierFilter, setSupplierFilter] = useState("");
+  const [productSearch, setProductSearch] = useState("");
+  const [productSearchResetToken, setProductSearchResetToken] = useState(0);
+  const [zdFilter, setZdFilter] = useState<ZdReceiveFilterState | null>(null);
+  const [zdModalOpen, setZdModalOpen] = useState(false);
+  const supplierBeforeZdRef = useRef<string | undefined>(undefined);
   const [batchSaveConfirm, setBatchSaveConfirm] = useState<{
     orderIds: string[];
     fullQuantity?: boolean;
@@ -96,10 +122,37 @@ export function ReceiveQueueTable({
     [deliveryOrders, informacjaOrders]
   );
 
-  const filtered = useMemo(
+  const supplierFiltered = useMemo(
     () => filterOrdersBySupplier(receiveQueue, supplierFilter),
     [receiveQueue, supplierFilter]
   );
+
+  const zdScoped = useMemo(
+    () =>
+      filterReceiveQueueTable(receiveQueue, {
+        supplierFilter,
+        zdProfile: zdFilter?.profile ?? null,
+        productSearch: "",
+      }),
+    [receiveQueue, supplierFilter, zdFilter]
+  );
+
+  const filtered = useMemo(
+    () =>
+      filterReceiveQueueTable(receiveQueue, {
+        supplierFilter,
+        zdProfile: zdFilter?.profile ?? null,
+        productSearch,
+      }),
+    [receiveQueue, supplierFilter, zdFilter, productSearch]
+  );
+
+  const productSearchActive = searchQueryTokens(productSearch).length > 0;
+
+  const zdUnmatchedLineCount = useMemo(() => {
+    if (!zdFilter) return 0;
+    return countUnmatchedZdLines(zdFilter.profile, supplierFiltered);
+  }, [supplierFiltered, zdFilter]);
 
   const supplierChips = useMemo(() => countOrdersBySupplier(receiveQueue), [receiveQueue]);
   const supplierGroups = useMemo(() => groupReceiveQueueBySupplier(filtered), [filtered]);
@@ -110,6 +163,17 @@ export function ReceiveQueueTable({
   const collapse = useSupplierGroupCollapse(supplierGroups, supplierFilter, {
     collapseMode: "all",
   });
+
+  const supplierGroupsSignature = useMemo(
+    () => supplierGroups.map((g) => g.supplierKey).join("\0"),
+    [supplierGroups]
+  );
+
+  useEffect(() => {
+    if (!productSearchActive) return;
+    collapse.expandAll();
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- expand when search results set changes
+  }, [productSearchActive, supplierGroupsSignature]);
 
   const selectedIds = useMemo(
     () => filtered.filter((o) => selected[o.id]).map((o) => o.id),
@@ -144,6 +208,63 @@ export function ReceiveQueueTable({
       value
     );
   };
+
+  const clearZdFilter = useCallback(() => {
+    setZdFilter((current) => {
+      if (current && supplierBeforeZdRef.current !== undefined) {
+        setSupplierFilter((supplier) =>
+          supplier === current.supplierName
+            ? supplierBeforeZdRef.current!
+            : supplier
+        );
+      }
+      supplierBeforeZdRef.current = undefined;
+      return null;
+    });
+  }, []);
+  const clearProductSearch = useCallback(() => {
+    setProductSearch("");
+    setProductSearchResetToken((token) => token + 1);
+  }, []);
+
+  const applyZdFilter = useCallback(
+    (next: ZdReceiveFilterState) => {
+      const ordersForSupplier = receiveQueue.filter((o) => o.supplier_id === next.supplierId);
+      const supplierName =
+        ordersForSupplier[0]?.supplier?.name?.trim() ||
+        receiveQueue.find((o) => (o.supplier?.name?.trim() || "—") === next.supplierName)
+          ?.supplier?.name?.trim() ||
+        next.supplierName;
+      setZdFilter({ ...next, supplierName });
+      setSupplierFilter((current) => {
+        if (supplierBeforeZdRef.current === undefined) {
+          supplierBeforeZdRef.current = current;
+        }
+        return supplierName;
+      });
+      setSelected({});
+    },
+    [receiveQueue]
+  );
+
+  const subiektOfflineToast = useCallback(
+    () =>
+      onToast({
+        text: "Subiekt był częściowo niedostępny — użyto danych z lokalnego indeksu.",
+        tone: "warning",
+        durationMs: QUEUE_EMAIL_WARNING_TOAST_MS,
+      }),
+    [onToast]
+  );
+
+  const selectAllZdMatches = useCallback(() => {
+    if (!zdFilter) return;
+    setSelected((current) => {
+      const next = { ...current };
+      for (const order of filtered) next[order.id] = true;
+      return next;
+    });
+  }, [filtered, zdFilter]);
 
   const toggleSelected = (orderId: string) => {
     setSelected((s) => ({ ...s, [orderId]: !s[orderId] }));
@@ -395,6 +516,131 @@ export function ReceiveQueueTable({
 
   const allSelected = filtered.length > 0 && filtered.every((o) => selected[o.id]);
 
+  const zdModal = (
+    <ZdReceiveFilterModal
+      open={zdModalOpen}
+      onClose={() => setZdModalOpen(false)}
+      receiveQueue={receiveQueue}
+      onApply={applyZdFilter}
+      onError={(message) => onToast({ text: message, tone: "error" })}
+      onSubiektOffline={subiektOfflineToast}
+    />
+  );
+
+  const toolbar = (
+    <div className="border-b border-slate-100 px-4 py-3 sm:px-6">
+      <div className="space-y-3">
+        <div className={receiveQueueToolbarSectionClass}>
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-[minmax(0,1fr)_12rem] sm:items-end">
+            <ReceiveQueueSearchField
+              key={`receive-product-search-${productSearchResetToken}`}
+              onDebouncedChange={setProductSearch}
+            />
+            <div className="flex min-w-0 flex-col">
+              <span className={queueToolbarFieldLabelClass}>Dokument ZD</span>
+              <button
+                type="button"
+                onClick={() => setZdModalOpen(true)}
+                className={cn(
+                  panelChoiceChipClass,
+                  queueToolbarControlClass,
+                  zdFilter
+                    ? panelChoiceChipSuccessSelectedClass
+                    : "border-emerald-200/90 bg-emerald-50/60 text-emerald-900 hover:bg-emerald-50",
+                  "inline-flex w-full items-center justify-center gap-2 px-3 font-semibold"
+                )}
+              >
+                <IconClipboardList size={16} className="shrink-0" aria-hidden />
+                <span className="truncate">Szukaj ZD</span>
+              </button>
+            </div>
+          </div>
+
+          {productSearchActive || zdFilter ? (
+            <div className="mt-3 space-y-2 border-t border-slate-100 pt-3">
+              <ReceiveQueueActiveFilters
+                productSearch={productSearch}
+                onClearProductSearch={clearProductSearch}
+                zdFilter={zdFilter}
+                onClearZdFilter={clearZdFilter}
+              />
+              <div className="space-y-0.5">
+                {productSearchActive ? (
+                  <p className="text-[11px] font-medium text-slate-700">
+                    {receiveQueueSearchToolbarLabel(
+                      filtered.length,
+                      zdScoped.length,
+                      productSearch
+                    )}
+                  </p>
+                ) : null}
+                {zdFilter ? (
+                  <>
+                    <p className="text-[11px] font-medium text-emerald-800">
+                      {zdFilterToolbarLabel(filtered.length, supplierFiltered.length)}
+                    </p>
+                    {zdFilterUnmatchedLinesLabel(zdUnmatchedLineCount) ? (
+                      <p className="text-[10px] text-amber-800">
+                        {zdFilterUnmatchedLinesLabel(zdUnmatchedLineCount)}
+                      </p>
+                    ) : null}
+                  </>
+                ) : null}
+              </div>
+            </div>
+          ) : null}
+        </div>
+
+        <div className={receiveQueueToolbarSectionClass}>
+          <SupplierFilterChips
+            chips={supplierChips}
+            value={supplierFilter}
+            onChange={(next) => {
+              setSupplierFilter(next);
+              if (zdFilter && next !== zdFilter.supplierName) {
+                setZdFilter(null);
+              }
+            }}
+            totalLabel="Wszyscy"
+          />
+        </div>
+
+        <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2 rounded-md bg-slate-50/80 px-3 py-2">
+          <p className="min-w-0 text-[10px] leading-relaxed text-slate-500">
+            <span className="inline-flex items-center gap-1">
+              <span className="size-1.5 shrink-0 rounded-full bg-emerald-500" aria-hidden />
+              zamówienie: wpisz ilość, Enter lub <InlineCheck size={10} className="inline align-[-2px]" />
+            </span>
+            <span className="mx-1.5 text-slate-300" aria-hidden>
+              ·
+            </span>
+            <span className="inline-flex items-center gap-1">
+              <span className="size-1.5 shrink-0 rounded-full bg-sky-500" aria-hidden />
+              informacja: przycisk powiadomienia lub zaznaczenie wielu
+            </span>
+          </p>
+          <div className="flex flex-wrap items-center gap-2">
+            {zdFilter && filtered.length > 0 ? (
+              <button
+                type="button"
+                onClick={selectAllZdMatches}
+                className="text-[10px] font-medium text-emerald-700 transition hover:text-emerald-900"
+              >
+                Zaznacz wszystkie pasujące
+              </button>
+            ) : null}
+            <QueueGroupExpandControl
+              groupCount={supplierGroups.length}
+              allExpanded={collapse.allExpanded}
+              onExpandAll={collapse.expandAll}
+              onCollapseAll={collapse.collapseAll}
+            />
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+
   if (!receiveQueue.length) {
     return (
       <EmptyState
@@ -404,29 +650,24 @@ export function ReceiveQueueTable({
     );
   }
 
-  if (!filtered.length) {
-    return (
-      <>
-        <div className="border-b border-slate-100 px-4 py-3 sm:px-6">
-          <SupplierFilterChips
-            chips={supplierChips}
-            value={supplierFilter}
-            onChange={setSupplierFilter}
-            totalLabel="Wszyscy"
-          />
-        </div>
-        <EmptyState
-          title={MICROCOPY.empty.queue.filterTitle}
-          description={MICROCOPY.empty.queue.filterDescription}
-        />
-      </>
-    );
-  }
+  const emptyFilteredTitle = productSearchActive
+    ? receiveQueueProductSearchEmptyTitle(productSearch)
+    : zdFilter
+      ? "Brak pozycji pasujących do ZD"
+      : MICROCOPY.empty.queue.filterTitle;
+
+  const emptyFilteredDescription = productSearchActive
+    ? "Spróbuj innego symbolu, nazwy lub kodu Mikron — albo wyczyść wyszukiwanie."
+    : zdFilter
+      ? `Żadna pozycja w kolejce nie pasuje do ${zdFilter.docNumber}. Sprawdź inny dokument lub wyczyść filtr ZD.`
+      : MICROCOPY.empty.queue.filterDescription;
 
   return (
     <>
+      {zdModal}
       <ConfirmDialog
         open={batchSaveConfirm != null}
+        tier={zdModalOpen ? "stack" : "raised"}
         title={
           batchSaveConfirm?.fullQuantity
             ? "Zapisać całą dostawę grupy?"
@@ -460,6 +701,7 @@ export function ReceiveQueueTable({
 
       <ConfirmDialog
         open={notifyConfirmIds != null}
+        tier={zdModalOpen ? "stack" : "raised"}
         title="Wysłać powiadomienia informacyjne?"
         message={
           notifyConfirmIds
@@ -481,51 +723,27 @@ export function ReceiveQueueTable({
         }}
       />
 
-      <div className="border-b border-slate-100 px-4 py-2 sm:px-6">
-        <SupplierFilterChips
-          chips={supplierChips}
-          value={supplierFilter}
-          onChange={setSupplierFilter}
-          totalLabel="Wszyscy"
-        />
-        <div className="mt-2 flex flex-wrap items-center justify-between gap-x-3 gap-y-1">
-          <p className="min-w-0 text-[10px] leading-relaxed text-slate-500">
-            <span className="inline-flex items-center gap-1">
-              <span className="size-1.5 shrink-0 rounded-full bg-emerald-500" aria-hidden />
-              zamówienie: wpisz ilość, Enter lub <InlineCheck size={10} className="inline align-[-2px]" />
-            </span>
-            <span className="mx-1.5 text-slate-300" aria-hidden>
-              ·
-            </span>
-            <span className="inline-flex items-center gap-1">
-              <span className="size-1.5 shrink-0 rounded-full bg-sky-500" aria-hidden />
-              informacja: przycisk powiadomienia lub zaznaczenie wielu
-            </span>
-          </p>
-          <QueueGroupExpandControl
-            groupCount={supplierGroups.length}
-            allExpanded={collapse.allExpanded}
-            onExpandAll={collapse.expandAll}
-            onCollapseAll={collapse.collapseAll}
+      {toolbar}
+
+      {!filtered.length ? (
+        <EmptyState title={emptyFilteredTitle} description={emptyFilteredDescription} />
+      ) : (
+        <>
+          <ReceiveQueueSelectionBar
+            zamowienie={selectionParts.zamowienie}
+            informacja={selectionParts.informacja}
+            canSaveZamowienie={selectedZamowienieWithQty.length > 0}
+            pending={pending}
+            onSaveZamowienie={() =>
+              requestSaveBatch(selectionParts.zamowienie.map((o) => o.id))
+            }
+            onNotifyInformacja={() =>
+              requestMarkInformacja(selectionParts.informacja.map((o) => o.id))
+            }
+            onClear={clearSelection}
           />
-        </div>
-      </div>
 
-      <ReceiveQueueSelectionBar
-        zamowienie={selectionParts.zamowienie}
-        informacja={selectionParts.informacja}
-        canSaveZamowienie={selectedZamowienieWithQty.length > 0}
-        pending={pending}
-        onSaveZamowienie={() =>
-          requestSaveBatch(selectionParts.zamowienie.map((o) => o.id))
-        }
-        onNotifyInformacja={() =>
-          requestMarkInformacja(selectionParts.informacja.map((o) => o.id))
-        }
-        onClear={clearSelection}
-      />
-
-      <TableScroll className="px-0 pb-0">
+          <TableScroll className="px-0 pb-0">
         <div className={QUEUE_LIST_BODY_CLASS}>
           <DataTable className="queue-table receive-queue-table">
             <thead>
@@ -622,6 +840,7 @@ export function ReceiveQueueTable({
                             selected={!!selected[o.id]}
                             pending={pending}
                             inputVal={inputVal}
+                            searchQuery={productSearchActive ? productSearch : null}
                             onToggleSelected={() => toggleSelected(o.id)}
                             onQtyChange={(value) =>
                               setQty((s) => ({ ...s, [o.id]: value }))
@@ -646,7 +865,9 @@ export function ReceiveQueueTable({
             </tbody>
           </DataTable>
         </div>
-      </TableScroll>
+          </TableScroll>
+        </>
+      )}
     </>
   );
 }

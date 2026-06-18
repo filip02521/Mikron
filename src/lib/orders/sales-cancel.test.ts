@@ -5,6 +5,7 @@ import {
   effectiveSalesCancelPhase,
   isSalesCancelNoticePending,
   isSalesCancelledForQueue,
+  mergeSalesCancelUserAutoAck,
   maxSalesCancelQuantity,
   defaultSalesCancelQuantity,
   planSalesCancelQuantity,
@@ -120,6 +121,27 @@ describe("sales-cancel", () => {
     ).toBe(false);
   });
 
+  it("mergeSalesCancelUserAutoAck — ukrywa informację po rezygnacji z modala", () => {
+    const before = order("Zamowione", { quantity: "5" });
+    const update: Record<string, unknown> = {
+      sales_cancelled_at: "2026-06-01T10:00:00Z",
+      sales_cancel_phase: "in_transit",
+    };
+    mergeSalesCancelUserAutoAck(update, before, { hasCancelledAt: true }, "2026-06-01T10:01:00Z");
+    expect(update.sales_acknowledged_at).toBe("2026-06-01T10:01:00Z");
+  });
+
+  it("mergeSalesCancelUserAutoAck — nie archiwizuje częściowej z resztą u dostawcy", () => {
+    const before = order("Zamowione", { quantity: "5" });
+    const update: Record<string, unknown> = {
+      sales_cancelled_at: "2026-06-01T10:00:00Z",
+      sales_cancel_phase: "in_transit",
+      sales_cancelled_quantity: "2",
+    };
+    mergeSalesCancelUserAutoAck(update, before, { hasCancelledAt: true }, "2026-06-01T10:01:00Z");
+    expect(update.sales_acknowledged_at).toBeUndefined();
+  });
+
   it("salesCancelConfirmCopy ma teksty dla każdej fazy", () => {
     expect(salesCancelConfirmCopy("before_order").confirmLabel).toContain("Wycofaj");
     expect(salesCancelConfirmCopy("in_transit").title).toContain("Rezygnujesz");
@@ -172,6 +194,22 @@ describe("sales-cancel", () => {
     expect(resolveSalesCancelPhase(informacja("Nowe"))).toBe("before_order");
     expect(resolveSalesCancelPhase(informacja("Zrealizowane"))).toBe("before_order");
     expect(resolveSalesCancelPhase(informacja("Weryfikacja"))).toBe("before_order");
+  });
+
+  it("informacja — planSalesCancelQuantity bez ilości liczbowej", () => {
+    const o = informacja("Nowe");
+    expect(maxSalesCancelQuantity(o)).toBe(1);
+    const plan = planSalesCancelQuantity(o);
+    expect(plan.cancelQty).toBe(1);
+    expect(plan.storedCancelledQuantity).toBeNull();
+    expect(plan.statusAfter).toBe("Anulowane");
+    expect(plan.keepLineActiveForSales).toBe(false);
+  });
+
+  it("informacja — odrzuca częściowe wycofanie", () => {
+    expect(() => planSalesCancelQuantity(informacja("Nowe"), 2)).toThrow(
+      /tylko w całości/
+    );
   });
 
   it("canSalesCancelOrders — pomija już wycofane w grupie", () => {
@@ -274,6 +312,7 @@ describe("sales-cancel", () => {
     const plan = planSalesCancelQuantity(o);
     expect(plan.cancelQty).toBe(4);
     expect(plan.storedCancelledQuantity).toBeNull();
+    expect(plan.keepLineActiveForSales).toBe(false);
   });
 
   it("planSalesCancelQuantity — druga rezygnacja na tej samej linii", () => {

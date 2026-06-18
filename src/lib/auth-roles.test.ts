@@ -8,6 +8,49 @@ import {
   redirectPathAfterLogin,
 } from "./auth-roles";
 
+describe("homePathForRole default landing pages", () => {
+  it("kieruje handlowca na Moje zamówienia", () => {
+    expect(homePathForRole("sales")).toBe("/moje");
+  });
+
+  it("kieruje administratora na panel dzienny", () => {
+    expect(homePathForRole("admin")).toBe("/podsumowanie");
+  });
+
+  it("kieruje zakupy na panel dzienny", () => {
+    expect(homePathForRole("zakupy")).toBe("/podsumowanie");
+  });
+});
+
+describe("redirectPathAfterLogin role defaults", () => {
+  it("bez next używa domyślnej strony roli", () => {
+    expect(redirectPathAfterLogin("sales", null)).toBe("/moje");
+    expect(redirectPathAfterLogin("admin", null)).toBe("/podsumowanie");
+    expect(redirectPathAfterLogin("zakupy", null)).toBe("/podsumowanie");
+    expect(redirectPathAfterLogin("sales", "/")).toBe("/moje");
+    expect(redirectPathAfterLogin("admin", "/")).toBe("/podsumowanie");
+  });
+
+  it("honoruje dozwolony next zamiast domyślnej strony", () => {
+    expect(redirectPathAfterLogin("sales", "/plan")).toBe("/plan");
+    expect(redirectPathAfterLogin("admin", "/admin")).toBe("/admin");
+    expect(redirectPathAfterLogin("zakupy", "/kolejka")).toBe("/kolejka");
+  });
+
+  it("odrzuca niedozwolony next i wraca do domyślnej strony roli", () => {
+    expect(redirectPathAfterLogin("sales", "/podsumowanie")).toBe("/moje");
+    expect(redirectPathAfterLogin("zakupy", "/moje")).toBe("/podsumowanie");
+  });
+
+  it("nie psuje domyślnych stron przy podglądzie kierownika (sales_manager)", () => {
+    expect(redirectPathAfterLogin("sales_manager", null)).toBe("/zespol");
+    expect(redirectPathAfterLogin("sales_manager", "/moje")).toBe("/moje");
+    expect(redirectPathAfterLogin("admin", null, { adminPanelContext: "sales_manager" })).toBe(
+      "/zespol"
+    );
+  });
+});
+
 describe("auth-roles sales_manager", () => {
   it("treats sales_manager as sales account for handlowiec routes", () => {
     expect(isSalesAccount("sales_manager")).toBe(true);

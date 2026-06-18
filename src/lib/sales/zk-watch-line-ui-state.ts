@@ -171,6 +171,39 @@ export function deriveZkWatchProsbaCardAction(input: {
   };
 }
 
+/** Etykieta przycisku prośby na karcie ZK po filtrze stanu magazynowego. */
+export function formatZkProsbaCardActionLabelAfterStockFilter(input: {
+  action: ZkWatchProsbaCardAction;
+  stockLoading: boolean;
+  allOnStock: boolean;
+  filteredCount: number;
+  sourceCount: number;
+}): string {
+  const { action, stockLoading, allOnStock, filteredCount, sourceCount } = input;
+
+  if (action.kind === "none") return "";
+
+  if (action.kind !== "supplement" && action.kind !== "new_prosba") {
+    return action.label;
+  }
+
+  if (stockLoading) return "Sprawdzam stan…";
+
+  if (allOnStock) {
+    return action.kind === "supplement" ? "Na stanie" : "Wszystko na stanie";
+  }
+
+  if (filteredCount === sourceCount || !sourceCount) {
+    return action.label;
+  }
+
+  if (action.kind === "supplement") {
+    return filteredCount === 1 ? "Uzupełnij (1)" : `Uzupełnij (${filteredCount})`;
+  }
+
+  return filteredCount === 1 ? "Utwórz prośbę (1)" : `Utwórz prośbę (${filteredCount})`;
+}
+
 export function formatZkWatchLineStatusSummary(input: {
   uncoveredLineKeys: string[];
   openProsbaLineKeys: string[];

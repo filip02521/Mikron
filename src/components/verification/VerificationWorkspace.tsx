@@ -54,6 +54,11 @@ import { RequestKindToggle } from "@/components/orders/RequestKindToggle";
 import { ActionLoadingOverlay } from "@/components/ui/ActionLoadingOverlay";
 import { SupplierPickerField } from "@/components/orders/SupplierPickerField";
 import { SubiektProductLineFields } from "@/components/subiekt/SubiektProductLineFields";
+import { ProsbaStockConfirmDialog } from "@/components/orders/ProsbaStockConfirmDialog";
+import type { ProductLineDraft } from "@/components/orders/request-product-lines";
+import { buildProsbaSubmitStockConfirm } from "@/lib/orders/prosba-stock-check";
+import { handleProsbaStockSubmitError } from "@/lib/orders/prosba-stock-submit-error";
+import { useProsbaLinesStockSync } from "@/hooks/useProsbaLinesStockSync";
 import { KeyboardShortcutsHint } from "@/components/ui/KeyboardShortcutsHint";
 import type { SubiektFeedback } from "@/lib/subiekt/feedback";
 import { toAppSupplierRefs } from "@/lib/subiekt/match-supplier";
@@ -125,6 +130,8 @@ export function VerificationWorkspace({
   );
   const [configFeedback, setConfigFeedback] = useState<SubiektFeedback | null>(null);
   const [resolvingSupplier, setResolvingSupplier] = useState(false);
+  const [stockConfirmOpen, setStockConfirmOpen] = useState(false);
+  const [stockConfirmMessage, setStockConfirmMessage] = useState("");
 
   const supplierRefs = useMemo(() => toAppSupplierRefs(suppliers), [suppliers]);
 
@@ -236,6 +243,90 @@ export function VerificationWorkspace({
       )
     : undefined;
 
+  const verificationProductLines = useMemo((): ProductLineDraft[] => {
+    if (!loadedOrderId) return [];
+    return [
+      {
+        id: loadedOrderId,
+        symbol: form.symbol,
+        mikranCode: form.mikranCode,
+        product: form.product,
+        quantity: form.quantity,
+        subiektTwId: form.subiektTwId,
+        onHand: form.onHand,
+        reserved: form.reserved,
+        available: form.available,
+        stockSource: form.stockSource,
+      },
+    ];
+  }, [loadedOrderId, form]);
+
+  useProsbaLinesStockSync(
+    verificationProductLines,
+    (lines) => {
+      const line = lines[0];
+      if (!line) return;
+      setForm((current) => ({
+        ...current,
+        onHand: line.onHand,
+        reserved: line.reserved,
+        available: line.available,
+        stockSource: line.stockSource,
+      }));
+    },
+    form.requestKind,
+    form.requestKind === "zamowienie"
+  );
+
+  const performSave = (options?: { acknowledgeSufficientStock?: boolean }) => {
+    if (!active) return;
+    setPendingMessage("Zapisywanie i przekazywanie do panelu…");
+    start(async () => {
+      try {
+        await actionCompleteVerification(active.id, {
+          supplierId: form.supplierId,
+          salesPersonId: form.salesPersonId,
+          symbol: form.symbol,
+          mikranCode: form.mikranCode,
+          product: form.product,
+          quantity: form.requestKind === "informacja" ? undefined : form.quantity,
+          requestKind: form.requestKind,
+          subiektTwId: form.subiektTwId,
+          onHand: form.onHand,
+          reserved: form.reserved,
+          available: form.available,
+          stockSource: form.stockSource,
+          informacjaPath:
+            form.requestKind === "informacja" && form.informacjaPath
+              ? form.informacjaPath
+              : undefined,
+          acknowledgeSufficientStock: options?.acknowledgeSufficientStock,
+        });
+        setToast({
+          text:
+            informacjaUi?.completeSuccessMessage ??
+            "Uzupełniono — prośba trafiła do panelu dziennego jako „Nowe”.",
+          tone: "success",
+        });
+        setStockConfirmOpen(false);
+        router.refresh();
+      } catch (e) {
+        handleProsbaStockSubmitError(
+          e,
+          (message) => {
+            setStockConfirmMessage(message);
+            setStockConfirmOpen(true);
+          },
+          (message) => {
+            setToast({ text: message, tone: "error" });
+          }
+        );
+      } finally {
+        setPendingMessage(null);
+      }
+    });
+  };
+
   const saveRef = useRef<() => void>(() => {});
 
   const save = () => {
@@ -255,39 +346,16 @@ export function VerificationWorkspace({
       });
       return;
     }
-    setPendingMessage("Zapisywanie i przekazywanie do panelu…");
-    start(async () => {
-      try {
-        await actionCompleteVerification(active.id, {
-          supplierId: form.supplierId,
-          salesPersonId: form.salesPersonId,
-          symbol: form.symbol,
-          mikranCode: form.mikranCode,
-          product: form.product,
-          quantity: form.requestKind === "informacja" ? undefined : form.quantity,
-          requestKind: form.requestKind,
-          subiektTwId: form.subiektTwId,
-          informacjaPath:
-            form.requestKind === "informacja" && form.informacjaPath
-              ? form.informacjaPath
-              : undefined,
-        });
-        setToast({
-          text:
-            informacjaUi?.completeSuccessMessage ??
-            "Uzupełniono — prośba trafiła do panelu dziennego jako „Nowe”.",
-          tone: "success",
-        });
-        router.refresh();
-      } catch (e) {
-        setToast({
-          text: e instanceof Error ? e.message : "Nie udało się zapisać",
-          tone: "error",
-        });
-      } finally {
-        setPendingMessage(null);
-      }
-    });
+    const stockConfirm = buildProsbaSubmitStockConfirm(
+      verificationProductLines,
+      form.requestKind
+    );
+    if (stockConfirm) {
+      setStockConfirmMessage(stockConfirm.message);
+      setStockConfirmOpen(true);
+      return;
+    }
+    performSave();
   };
   useEffect(() => {
     saveRef.current = save;
@@ -601,6 +669,10 @@ export function VerificationWorkspace({
                       product: form.product,
                       quantity: form.quantity,
                       subiektTwId: form.subiektTwId,
+                      onHand: form.onHand,
+                      reserved: form.reserved,
+                      available: form.available,
+                      stockSource: form.stockSource,
                     }}
                     onChange={(patch) => setForm((f) => ({ ...f, ...patch }))}
                   />
@@ -656,6 +728,14 @@ export function VerificationWorkspace({
     );
 
   return (
+    <>
+      <ProsbaStockConfirmDialog
+        open={stockConfirmOpen}
+        message={stockConfirmMessage}
+        pending={pending}
+        onCancel={() => setStockConfirmOpen(false)}
+        onConfirm={() => performSave({ acknowledgeSufficientStock: true })}
+      />
     <div
       className={
         inModal
@@ -678,6 +758,7 @@ export function VerificationWorkspace({
         headline={cancelTargetOrder?.products}
         message="Prośba zostanie oznaczona jako anulowana i zniknie z kolejki weryfikacji."
         confirmLabel="Anuluj prośbę"
+        tier={inModal ? "stack" : "raised"}
         pending={pending && cancelTargetId !== null}
         onCancel={() => setCancelTargetId(null)}
         onConfirm={confirmCancel}
@@ -705,5 +786,6 @@ export function VerificationWorkspace({
         </Card>
       )}
     </div>
+    </>
   );
 }

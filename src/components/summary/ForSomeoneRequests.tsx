@@ -498,6 +498,7 @@ export function ForSomeoneRequests({
         headline={cancelTarget?.headline}
         message="Cofnięcie przywraca status w systemie. E-mail do handlowca mógł już zostać wysłany."
         confirmLabel="Anuluj prośbę"
+        tier={editTarget ? "stack" : "raised"}
         pending={cancelTarget ? isScopePending(cancelTarget.scopeKey) : false}
         onCancel={() => setCancelTarget(null)}
         onConfirm={(note) => {

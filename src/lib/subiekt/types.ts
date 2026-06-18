@@ -33,6 +33,8 @@ export type SubiektProduct = {
   tw_PLU?: string | null;
   tw_Rodzaj?: number | null;
   tw_Zablokowany?: number | null;
+  tw_Stan?: number | null;
+  tw_StanRez?: number | null;
   [key: string]: unknown;
 };
 
