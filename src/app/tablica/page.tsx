@@ -13,7 +13,6 @@ import {
   fetchSalesBoardAttentionSnapshot,
 } from "@/lib/data/department-board";
 import { SalesAccountLinkRequired } from "@/components/sales/SalesAccountLinkRequired";
-import { ManagerPreviewBanner } from "@/components/sales/ManagerPreviewBanner";
 import { SalesPreviewPageChrome } from "@/components/sales/SalesPreviewPageChrome";
 import {
   DEPARTMENT_BOARD_SALES_PAGE_DESC,
@@ -171,15 +170,15 @@ export default async function SalesBoardPage({
   return (
     <SalesPreviewPageChrome
       linkError={linkError}
-      banner={
-        isTeamPreview && salesPersonId && salesPersonName ? (
-          <ManagerPreviewBanner
-            salesPersonId={salesPersonId}
-            salesPersonName={salesPersonName}
-            readOnly={adminReadOnlyPreview}
-            scope="tablica"
-          />
-        ) : null
+      teamPreview={
+        isTeamPreview && salesPersonId && salesPersonName
+          ? {
+              salesPersonId,
+              salesPersonName,
+              readOnly: adminReadOnlyPreview,
+              scope: "tablica",
+            }
+          : null
       }
     >
       {boardClient}

@@ -153,9 +153,11 @@ export function AppShellClient({
       enabled={operationsLive && !salesLive}
       initialVersion={operationsDailyPanelVersion}
     >
+    <Suspense fallback={null}>
     <SalesUpdatesProvider
       enabled={salesLive && !salesOnboardingActive && !adminPanelPreview}
       initialVersion={salesActivityVersion}
+      sessionSalesPersonId={salesPersonId}
     >
       <SalesOnboardingGate
         role={role}
@@ -248,6 +250,7 @@ export function AppShellClient({
       </div>
       </SalesOnboardingGate>
     </SalesUpdatesProvider>
+    </Suspense>
     </OperationsUpdatesProvider>
     </AppRoleProvider>
     </AdminPanelPreviewProvider>

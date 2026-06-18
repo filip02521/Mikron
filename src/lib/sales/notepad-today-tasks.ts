@@ -1,8 +1,6 @@
 import type { SalesNote, SalesZkWatch } from "@/types/database";
 import { isFollowUpDue, formatFollowUpLabel } from "@/lib/sales/notepad-follow-up";
-import {
-  countArrivedZkLinesFromWatch,
-} from "@/lib/sales/zk-watch-warehouse-notify";
+import { countRegalWaitingZkLines } from "@/lib/sales/zk-watch-warehouse-notify";
 
 export type NotepadTodayTaskKind =
   | "zk-follow-up"
@@ -32,21 +30,31 @@ function taskPriority(kind: NotepadTodayTaskKind): number {
 export function collectNotepadTodayTasks(
   watches: SalesZkWatch[],
   notes: SalesNote[],
-  options?: { unseenWarehouseWatchIds?: Set<string> | string[] }
+  options?: {
+    unseenWarehouseWatchIds?: Set<string> | string[];
+    inStockCountByWatchId?: Record<string, number | string[]>;
+  }
 ): NotepadTodayTask[] {
   const tasks: NotepadTodayTask[] = [];
   const unseenWarehouse = new Set(options?.unseenWarehouseWatchIds ?? []);
 
+  function inStockCountForWatch(watchId: string): number {
+    const raw = options?.inStockCountByWatchId?.[watchId];
+    if (Array.isArray(raw)) return countRegalWaitingZkLines(raw);
+    if (typeof raw === "number") return raw;
+    return 0;
+  }
+
   for (const watch of watches) {
     if (watch.closed_at || watch.archived_at) continue;
     if (unseenWarehouse.has(watch.id)) {
-      const arrived = countArrivedZkLinesFromWatch(watch);
+      const inStock = inStockCountForWatch(watch.id);
       tasks.push({
         kind: "zk-warehouse-arrival",
         id: watch.id,
         anchor: `watch-${watch.id}`,
         title: watch.zk_number,
-        subtitle: `${watch.client_label} · ${arrived} ${arrived === 1 ? "pozycja" : arrived < 5 ? "pozycje" : "pozycji"} na magazynie`,
+        subtitle: `${watch.client_label} · ${inStock} ${inStock === 1 ? "pozycja" : inStock < 5 ? "pozycje" : "pozycji"} na regale`,
         priority: taskPriority("zk-warehouse-arrival"),
       });
     }
@@ -85,7 +93,10 @@ export function collectNotepadTodayTasks(
 export function hasNotepadTodayTasks(
   watches: SalesZkWatch[],
   notes: SalesNote[],
-  options?: { unseenWarehouseWatchIds?: Set<string> | string[] }
+  options?: {
+    unseenWarehouseWatchIds?: Set<string> | string[];
+    inStockCountByWatchId?: Record<string, number | string[]>;
+  }
 ): boolean {
   return collectNotepadTodayTasks(watches, notes, options).length > 0;
 }

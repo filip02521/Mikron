@@ -19,29 +19,91 @@ import {
   type ZkWatchLineView,
 } from "@/lib/sales/zk-watch-lines";
 import {
+  canToggleZkWatchLineCheckbox,
+  isZkWatchLineCheckboxChecked,
+  togglesZkWatchShelfMarked,
+  togglesZkWatchCompletion,
   resolveZkWatchLineUiState,
+  summarizeZkWatchLineCheckboxes,
+  countZkWatchLineUiStates,
+  zkWatchLineCheckboxAriaLabel,
   zkWatchLineUiStateMeta,
+  type ZkWatchLineUiState,
 } from "@/lib/sales/zk-watch-line-ui-state";
 import type { ZkWatchLineCoverage } from "@/lib/sales/zk-watch-order-link";
 import type { SalesZkWatch } from "@/types/database";
 import { ZkWatchLineStatusChip } from "./ZkWatchLineStatusChip";
+import { ZkWatchLineStatusLegendToggle } from "./ZkWatchLineStatusLegendToggle";
+import { ZkWatchLineCheckboxControl } from "./ZkWatchLineCheckboxControl";
 import { ZkWatchModalSection } from "./ZkWatchModalSection";
 
-type LineFilter = "all" | "pending" | "arrived" | "new" | "in_request";
+type LineFilter =
+  | "all"
+  | "pending"
+  | "in_stock"
+  | "at_client"
+  | "delivered"
+  | "partial"
+  | "new"
+  | "in_request"
+  | "scope_excluded";
+
+function resolveLineUiState(
+  line: ZkWatchLineView,
+  newLineKeys: Set<string>,
+  inStockKeySet: Set<string>,
+  scopeExcludedKeySet: Set<string>,
+  lineCoverageByKey?: Record<string, ZkWatchLineCoverage>
+): ZkWatchLineUiState {
+  return resolveZkWatchLineUiState({
+    coverage: lineCoverageByKey?.[line.key],
+    isNewLine: newLineKeys.has(line.key),
+    arrived: line.arrived,
+    completedManually: line.completed_manually,
+    shelfMarked: line.shelf_marked,
+    inStock: inStockKeySet.has(line.key),
+    scopeExcluded: scopeExcludedKeySet.has(line.key),
+  });
+}
 
 function filterViews(
   views: ZkWatchLineView[],
   filter: LineFilter,
   newLineKeys: Set<string>,
+  inStockKeySet: Set<string>,
+  scopeExcludedKeySet: Set<string>,
   lineCoverageByKey?: Record<string, ZkWatchLineCoverage>
 ): ZkWatchLineView[] {
-  if (filter === "new") return views.filter((v) => newLineKeys.has(v.key));
-  if (filter === "in_request") {
-    return views.filter((v) => lineCoverageByKey?.[v.key] === "open");
-  }
-  if (filter === "pending") return views.filter((v) => !v.arrived);
-  if (filter === "arrived") return views.filter((v) => v.arrived);
-  return views;
+  if (filter === "all") return views;
+  return views.filter((line) => {
+    const uiState = resolveLineUiState(
+      line,
+      newLineKeys,
+      inStockKeySet,
+      scopeExcludedKeySet,
+      lineCoverageByKey
+    );
+    switch (filter) {
+      case "new":
+        return uiState === "new";
+      case "in_request":
+        return uiState === "in_request";
+      case "pending":
+        return uiState === "uncovered" || uiState === "new";
+      case "in_stock":
+        return uiState === "in_stock";
+      case "at_client":
+        return uiState === "arrived";
+      case "delivered":
+        return uiState === "delivered";
+      case "partial":
+        return uiState === "partial";
+      case "scope_excluded":
+        return uiState === "scope_excluded";
+      default:
+        return true;
+    }
+  });
 }
 
 export function ZkWatchLinesPanel({
@@ -52,6 +114,7 @@ export function ZkWatchLinesPanel({
   newLineKeys,
   lineCoverageByKey,
   inStockLineKeys,
+  scopeExcludedLineKeys,
   compact = false,
   showSummary = true,
   onSaved,
@@ -63,6 +126,7 @@ export function ZkWatchLinesPanel({
   newLineKeys?: string[];
   lineCoverageByKey?: Record<string, ZkWatchLineCoverage>;
   inStockLineKeys?: string[];
+  scopeExcludedLineKeys?: string[];
   compact?: boolean;
   showSummary?: boolean;
   onSaved?: (watch: SalesZkWatch) => void;
@@ -86,28 +150,165 @@ export function ZkWatchLinesPanel({
   }
 
   const summary = useMemo(() => summarizeZkWatchLines(views), [views]);
+  const checkboxSummary = useMemo(
+    () =>
+      summarizeZkWatchLineCheckboxes({
+        lineViews: views,
+        newLineKeys: newLineKeys ?? [],
+        inStockLineKeys: inStockLineKeys ?? [],
+        scopeExcludedLineKeys: scopeExcludedLineKeys ?? [],
+        lineCoverageByKey,
+      }),
+    [views, newLineKeys, inStockLineKeys, scopeExcludedLineKeys, lineCoverageByKey]
+  );
+  const uiStateCounts = useMemo(
+    () =>
+      countZkWatchLineUiStates({
+        lineViews: views,
+        newLineKeys: newLineKeys ?? [],
+        inStockLineKeys: inStockLineKeys ?? [],
+        scopeExcludedLineKeys: scopeExcludedLineKeys ?? [],
+        lineCoverageByKey,
+      }),
+    [views, newLineKeys, inStockLineKeys, scopeExcludedLineKeys, lineCoverageByKey]
+  );
   const newLineKeySet = useMemo(() => new Set(newLineKeys ?? []), [newLineKeys]);
   const inStockKeySet = useMemo(() => new Set(inStockLineKeys ?? []), [inStockLineKeys]);
+  const scopeExcludedKeySet = useMemo(
+    () => new Set(scopeExcludedLineKeys ?? []),
+    [scopeExcludedLineKeys]
+  );
   const inRequestCount = useMemo(
     () =>
-      views.filter((v) => lineCoverageByKey?.[v.key] === "open").length,
-    [views, lineCoverageByKey]
+      views.filter(
+        (v) =>
+          resolveLineUiState(v, newLineKeySet, inStockKeySet, scopeExcludedKeySet, lineCoverageByKey) ===
+          "in_request"
+      ).length,
+    [views, newLineKeySet, inStockKeySet, scopeExcludedKeySet, lineCoverageByKey]
+  );
+  const inStockCount = useMemo(
+    () =>
+      views.filter(
+        (v) =>
+          resolveLineUiState(v, newLineKeySet, inStockKeySet, scopeExcludedKeySet, lineCoverageByKey) ===
+          "in_stock"
+      ).length,
+    [views, newLineKeySet, inStockKeySet, scopeExcludedKeySet, lineCoverageByKey]
+  );
+  const atClientCount = useMemo(
+    () =>
+      views.filter(
+        (v) =>
+          resolveLineUiState(v, newLineKeySet, inStockKeySet, scopeExcludedKeySet, lineCoverageByKey) ===
+          "arrived"
+      ).length,
+    [views, newLineKeySet, inStockKeySet, scopeExcludedKeySet, lineCoverageByKey]
+  );
+  const deliveredCount = useMemo(
+    () =>
+      views.filter(
+        (v) =>
+          resolveLineUiState(v, newLineKeySet, inStockKeySet, scopeExcludedKeySet, lineCoverageByKey) ===
+          "delivered"
+      ).length,
+    [views, newLineKeySet, inStockKeySet, scopeExcludedKeySet, lineCoverageByKey]
+  );
+  const partialCount = useMemo(
+    () =>
+      views.filter(
+        (v) =>
+          resolveLineUiState(v, newLineKeySet, inStockKeySet, scopeExcludedKeySet, lineCoverageByKey) ===
+          "partial"
+      ).length,
+    [views, newLineKeySet, inStockKeySet, scopeExcludedKeySet, lineCoverageByKey]
+  );
+  const scopeExcludedCount = scopeExcludedLineKeys?.length ?? 0;
+  const pendingCount = useMemo(
+    () =>
+      views.filter((v) => {
+        const state = resolveLineUiState(
+          v,
+          newLineKeySet,
+          inStockKeySet,
+          scopeExcludedKeySet,
+          lineCoverageByKey
+        );
+        return state === "uncovered" || state === "new";
+      }).length,
+    [views, newLineKeySet, inStockKeySet, scopeExcludedKeySet, lineCoverageByKey]
   );
   const filtered = useMemo(
-    () => filterViews(views, filter, newLineKeySet, lineCoverageByKey),
-    [views, filter, newLineKeySet, lineCoverageByKey]
+    () =>
+      filterViews(
+        views,
+        filter,
+        newLineKeySet,
+        inStockKeySet,
+        scopeExcludedKeySet,
+        lineCoverageByKey
+      ),
+    [views, filter, newLineKeySet, inStockKeySet, scopeExcludedKeySet, lineCoverageByKey]
   );
   const matchedFromProsba = useMemo(
     () => new Set(matchedDeliveredLineKeys ?? []),
     [matchedDeliveredLineKeys]
   );
   const canEdit = !readOnly && !tourPreview && !watch.closed_at && !watch.archived_at;
+  const hasBulkMarkWork = useMemo(
+    () =>
+      views.some((line) => {
+        const uiState = resolveLineUiState(
+          line,
+          newLineKeySet,
+          inStockKeySet,
+          scopeExcludedKeySet,
+          lineCoverageByKey
+        );
+        if (!canToggleZkWatchLineCheckbox(uiState)) return false;
+        return !isZkWatchLineCheckboxChecked({
+          uiState,
+          shelfMarked: line.shelf_marked,
+          completedManually: line.completed_manually,
+        });
+      }),
+    [views, newLineKeySet, inStockKeySet, scopeExcludedKeySet, lineCoverageByKey]
+  );
   const progressPct =
-    summary.total > 0 ? Math.round((summary.arrived / summary.total) * 100) : 0;
+    checkboxSummary.total > 0
+      ? Math.round((checkboxSummary.checked / checkboxSummary.total) * 100)
+      : 0;
+
+  function markAllBulk(nextViews: ZkWatchLineView[]): ZkWatchLineView[] {
+    return nextViews.map((line) => {
+      const uiState = resolveLineUiState(
+        line,
+        newLineKeySet,
+        inStockKeySet,
+        scopeExcludedKeySet,
+        lineCoverageByKey
+      );
+      if (!canToggleZkWatchLineCheckbox(uiState)) return line;
+      if (
+        isZkWatchLineCheckboxChecked({
+          uiState,
+          shelfMarked: line.shelf_marked,
+          completedManually: line.completed_manually,
+        })
+      ) {
+        return line;
+      }
+      if (togglesZkWatchCompletion(uiState)) {
+        return { ...line, arrived: true, completed_manually: true };
+      }
+      return { ...line, shelf_marked: true };
+    });
+  }
 
   async function persist(nextViews: ZkWatchLineView[]) {
+    const previousViews = views;
+    setViews(nextViews);
     if (!canEdit) {
-      setViews(nextViews);
       onSaved?.({ ...watch, line_checks: checksFromLineViews(nextViews) });
       return;
     }
@@ -122,6 +323,7 @@ export function ZkWatchLinesPanel({
       setViews(rebuilt);
       onSaved?.(updated);
     } catch (e) {
+      setViews(previousViews);
       setError(e instanceof Error ? e.message : "Nie udało się zapisać.");
     } finally {
       setSaving(false);
@@ -129,20 +331,60 @@ export function ZkWatchLinesPanel({
   }
 
   function toggleLine(key: string) {
-    const next = views.map((v) => (v.key === key ? { ...v, arrived: !v.arrived } : v));
+    const line = views.find((v) => v.key === key);
+    if (!line) return;
+    const uiState = resolveLineUiState(
+      line,
+      newLineKeySet,
+      inStockKeySet,
+      scopeExcludedKeySet,
+      lineCoverageByKey
+    );
+    if (!canToggleZkWatchLineCheckbox(uiState)) return;
+    const next = views.map((v) => {
+      if (v.key !== key) return v;
+      if (togglesZkWatchCompletion(uiState)) {
+        const nextCompleted = !v.completed_manually;
+        return {
+          ...v,
+          arrived: nextCompleted,
+          completed_manually: nextCompleted,
+        };
+      }
+      if (togglesZkWatchShelfMarked(uiState)) {
+        return { ...v, shelf_marked: !v.shelf_marked };
+      }
+      return v;
+    });
     void persist(next);
   }
 
   const filterChips: { id: LineFilter; label: string; count: number }[] = [
-    { id: "all", label: "Wszystkie", count: summary.total },
+    { id: "all", label: "Wszystkie", count: checkboxSummary.total || summary.total },
     ...(newLineKeySet.size > 0
       ? [{ id: "new" as const, label: "Nowe", count: newLineKeySet.size }]
+      : []),
+    ...(pendingCount > 0
+      ? [{ id: "pending" as const, label: "Do prośby", count: pendingCount }]
+      : []),
+    ...(scopeExcludedCount > 0
+      ? [{ id: "scope_excluded" as const, label: "Wykluczone", count: scopeExcludedCount }]
       : []),
     ...(inRequestCount > 0
       ? [{ id: "in_request" as const, label: "W prośbie", count: inRequestCount }]
       : []),
-    { id: "pending", label: "Brakuje", count: summary.pending },
-    { id: "arrived", label: "Na miejscu", count: summary.arrived },
+    ...(partialCount > 0
+      ? [{ id: "partial" as const, label: "Częściowo", count: partialCount }]
+      : []),
+    ...(deliveredCount > 0
+      ? [{ id: "delivered" as const, label: "Na regale", count: deliveredCount }]
+      : []),
+    ...(inStockCount > 0
+      ? [{ id: "in_stock" as const, label: "Odebrane z regału", count: inStockCount }]
+      : []),
+    ...(atClientCount > 0
+      ? [{ id: "at_client" as const, label: "Zakończone", count: atClientCount }]
+      : []),
   ];
 
   const emptyMessage =
@@ -154,42 +396,63 @@ export function ZkWatchLinesPanel({
   ) : (
     <ul className="divide-y divide-slate-100">
       {filtered.map((line) => {
-        const isNewLine = newLineKeySet.has(line.key);
-        const coverage = lineCoverageByKey?.[line.key];
-        const uiState = resolveZkWatchLineUiState({
-          coverage,
-          isNewLine,
-          arrived: line.arrived,
-          inStock: inStockKeySet.has(line.key),
-        });
+        const uiState = resolveLineUiState(
+          line,
+          newLineKeySet,
+          inStockKeySet,
+          scopeExcludedKeySet,
+          lineCoverageByKey
+        );
         const meta = zkWatchLineUiStateMeta(uiState);
         const fromProsba = matchedFromProsba.has(line.key);
+        const strikeThrough = uiState === "arrived";
+        const lineChecked = isZkWatchLineCheckboxChecked({
+          uiState,
+          shelfMarked: line.shelf_marked,
+          completedManually: line.completed_manually,
+        });
+        const lineToggleable =
+          canEdit && !saving && canToggleZkWatchLineCheckbox(uiState);
+        const checkboxToneClass =
+          uiState === "in_stock" || uiState === "arrived"
+            ? uiState === "arrived"
+              ? "bg-emerald-600"
+              : "bg-teal-600"
+            : uiState === "delivered" || uiState === "partial"
+              ? "bg-violet-600"
+              : "bg-indigo-600";
 
         return (
           <li key={line.key} className={mojeShipmentLineRowClass}>
-            <label
+            <div
               className={cn(
-                "flex cursor-pointer items-start gap-3 py-0.5",
-                line.arrived && uiState !== "arrived" && "opacity-90",
+                "flex items-start gap-3 py-0.5",
                 meta.rowTintClass && `rounded-md ${meta.rowTintClass} -mx-1 px-1`,
                 fromProsba && !meta.rowTintClass && "rounded-md bg-indigo-50/25 -mx-1 px-1",
-                !canEdit && "cursor-default"
+                lineToggleable ? "cursor-pointer" : "cursor-default"
               )}
+              onClick={() => {
+                if (lineToggleable) toggleLine(line.key);
+              }}
             >
-              <input
-                type="checkbox"
-                checked={line.arrived}
-                disabled={!canEdit || saving}
-                onChange={() => toggleLine(line.key)}
-                className="mt-0.5 size-4 shrink-0 rounded border-slate-300 text-emerald-600 focus:ring-indigo-500"
-                aria-label={`Oznacz jako dotarło: ${line.product}`}
+              <ZkWatchLineCheckboxControl
+                checked={lineChecked}
+                toggleable={lineToggleable}
+                toneClass={checkboxToneClass}
+                ariaLabel={zkWatchLineCheckboxAriaLabel({
+                  product: line.product,
+                  checked: lineChecked,
+                  uiState,
+                  completedManually: line.completed_manually,
+                })}
+                onToggle={() => toggleLine(line.key)}
               />
               <span className="min-w-0 flex-1">
                 <span
                   className={cn(
                     salesTypography.rowTitle,
                     "block",
-                    line.arrived && "text-slate-500 line-through decoration-slate-400"
+                    strikeThrough && "text-slate-500 line-through decoration-slate-400"
                   )}
                 >
                   {line.product}
@@ -201,7 +464,7 @@ export function ZkWatchLinesPanel({
                 ) : null}
               </span>
               <ZkWatchLineStatusChip state={uiState} />
-            </label>
+            </div>
           </li>
         );
       })}
@@ -213,7 +476,9 @@ export function ZkWatchLinesPanel({
       {showSummary && views.length > 0 ? (
         <div className={mojeShipmentLinesHeaderClass}>
           <p className={mojeShipmentLinesHeaderTitleClass}>
-            {formatZkLinesProgress(views) ?? "Lista towaru"}
+            {checkboxSummary.total > 0
+              ? `${checkboxSummary.checked}/${checkboxSummary.total} zaznaczone`
+              : formatZkLinesProgress(views, { inStockLineKeys }) ?? "Lista towaru"}
           </p>
           <div className="flex items-center gap-2">
             <span className={cn(salesTypography.statValue, "text-sm")}>{progressPct}%</span>
@@ -223,8 +488,8 @@ export function ZkWatchLinesPanel({
                 variant="ghost"
                 size="sm"
                 className="h-7 px-2 text-[0.68rem]"
-                disabled={saving || summary.arrived === summary.total}
-                onClick={() => void persist(views.map((v) => ({ ...v, arrived: true })))}
+                disabled={saving || !hasBulkMarkWork}
+                onClick={() => void persist(markAllBulk(views))}
               >
                 Wszystko OK
               </Button>
@@ -233,30 +498,29 @@ export function ZkWatchLinesPanel({
         </div>
       ) : null}
 
-      {views.length > 3 || newLineKeySet.size > 0 || inRequestCount > 0 ? (
-        <div className="flex flex-wrap gap-1 border-b border-slate-100 bg-slate-50/50 px-3 py-2">
-          {filterChips.map((chip) => (
-            <button
-              key={chip.id}
-              type="button"
-              disabled={chip.count === 0 && chip.id !== "all"}
-              onClick={() => setFilter(chip.id)}
-              className={cn(
-                "rounded-full px-2 py-0.5 text-[0.68rem] font-semibold transition",
-                filter === chip.id
-                  ? chip.id === "in_request"
+      {views.length > 3 || filterChips.length > 2 ? (
+        <div className="space-y-2 border-b border-slate-100 bg-slate-50/50 px-3 py-2">
+          <div className="flex flex-wrap gap-1">
+            {filterChips.map((chip) => (
+              <button
+                key={chip.id}
+                type="button"
+                disabled={chip.count === 0 && chip.id !== "all"}
+                onClick={() => setFilter(chip.id)}
+                className={cn(
+                  "rounded-full px-2 py-0.5 text-[0.68rem] font-semibold transition",
+                  filter === chip.id
                     ? "bg-indigo-100 text-indigo-900 ring-1 ring-indigo-200/80"
-                    : chip.id === "new"
-                      ? "bg-amber-100 text-amber-950 ring-1 ring-amber-200/80"
-                      : "bg-indigo-100 text-indigo-900 ring-1 ring-indigo-200/80"
-                  : "bg-white text-slate-600 ring-1 ring-slate-200/90 hover:bg-slate-50",
-                chip.count === 0 && chip.id !== "all" && "opacity-40"
-              )}
-            >
-              {chip.label}
-              <span className="ml-1 tabular-nums opacity-80">{chip.count}</span>
-            </button>
-          ))}
+                    : "bg-white text-slate-600 ring-1 ring-slate-200/90 hover:bg-slate-50",
+                  chip.count === 0 && chip.id !== "all" && "opacity-40"
+                )}
+              >
+                {chip.label}
+                <span className="ml-1 tabular-nums opacity-80">{chip.count}</span>
+              </button>
+            ))}
+          </div>
+          <ZkWatchLineStatusLegendToggle counts={uiStateCounts} />
         </div>
       ) : null}
 
@@ -270,7 +534,7 @@ export function ZkWatchLinesPanel({
     return (
       <ZkWatchModalSection
         title="Lista towaru"
-        hint="Zaznacz pozycje, które już dotarły do klienta. Status obok pozycji pokazuje powiązanie z prośbą."
+        hint="Na regale pozycje są zaznaczone automatycznie. Po odbiorze w Moje zaznacz checkbox, aby ręcznie oznaczyć jako zakończone."
       >
         {canEdit && views.length > 0 ? (
           <div className="flex justify-end">
@@ -279,10 +543,10 @@ export function ZkWatchLinesPanel({
               variant="secondary"
               size="sm"
               className="h-7 px-2.5 text-[0.68rem]"
-              disabled={saving || summary.arrived === summary.total}
-              onClick={() => void persist(views.map((v) => ({ ...v, arrived: true })))}
+              disabled={saving || !hasBulkMarkWork}
+              onClick={() => void persist(markAllBulk(views))}
             >
-              Oznacz wszystko jako dotarło
+              Oznacz wszystko jako zakończone
             </Button>
           </div>
         ) : null}

@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   getSubiektAvailability,
+  isSubiektAvailableForZdSync,
   resetSubiektAvailabilityCache,
 } from "./availability";
 
@@ -54,5 +55,19 @@ describe("getSubiektAvailability", () => {
     expect(status.configured).toBe(false);
     expect(status.reachable).toBe(false);
     expect(testSubiektConnection).not.toHaveBeenCalled();
+  });
+});
+
+describe("isSubiektAvailableForZdSync", () => {
+  it("wymaga skonfigurowanego i osiągalnego połączenia", () => {
+    expect(
+      isSubiektAvailableForZdSync({ configured: true, reachable: true })
+    ).toBe(true);
+    expect(
+      isSubiektAvailableForZdSync({ configured: true, reachable: false })
+    ).toBe(false);
+    expect(
+      isSubiektAvailableForZdSync({ configured: false, reachable: false })
+    ).toBe(false);
   });
 });

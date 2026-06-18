@@ -4,15 +4,18 @@ import { useSalesUpdates } from "@/components/sales/SalesUpdatesContext";
 import { useClientHydrated } from "@/lib/client/use-client-hydrated";
 import { useSyncRelativeTime } from "@/hooks/useSyncRelativeTime";
 import { cn } from "@/lib/cn";
-import { salesTypography } from "@/lib/ui/ontime-theme";
+import { pageToolbarSizingClass, pageToolbarSurfaceClass, salesTypography } from "@/lib/ui/ontime-theme";
 
 /** Stan live sync + auto-odświeżanie listy Moje zamówienia / notatnika. */
 export function SalesPanelSyncControl({
   embedded = false,
   variant = "orders",
+  compact = false,
 }: {
   embedded?: boolean;
   variant?: "orders" | "notatnik";
+  /** ZK — jedna linia bez drugiego akapitu po prawej. */
+  compact?: boolean;
 }) {
   const ctx = useSalesUpdates();
   const hydrated = useClientHydrated();
@@ -30,7 +33,7 @@ export function SalesPanelSyncControl({
     <div
       className={cn(
         "flex flex-col gap-2.5 sm:flex-row sm:items-center sm:justify-between sm:gap-2",
-        embedded ? "border-t border-slate-200/60 pt-2" : ""
+        embedded && !compact ? "border-t border-slate-200/60 pt-2" : ""
       )}
       role="group"
       aria-label={
@@ -61,22 +64,25 @@ export function SalesPanelSyncControl({
         ) : (
           <span aria-live="polite">
             Na bieżąco · {syncLabel}
-            <span className="text-slate-400"> · co 45 s</span>
-            {isNotatnik ? (
-              <span className="text-slate-400"> · auto przy zmianach</span>
-            ) : null}
+            <span className="text-slate-400">
+              {" "}
+              · co 45 s
+              {isNotatnik ? " · auto przy zmianach w ZK" : null}
+            </span>
           </span>
         )}
       </div>
 
-      {isNotatnik ? (
+      {isNotatnik && !compact ? (
         <p className={cn(salesTypography.chrome, "text-slate-500 sm:text-right")}>
           Odświeża automatycznie, gdy magazyn odhaczy towar w ZK.
         </p>
-      ) : (
+      ) : !isNotatnik ? (
         <label
           className={cn(
-            "inline-flex min-h-11 w-full cursor-pointer items-center justify-between gap-3 rounded-md border px-3 py-2 font-medium shadow-sm transition-colors sm:min-h-0 sm:w-fit sm:justify-start sm:gap-2 sm:px-2.5 sm:py-1.5",
+            pageToolbarSurfaceClass,
+            pageToolbarSizingClass,
+            "min-h-11 w-full cursor-pointer justify-between gap-3 sm:min-h-10 sm:w-fit sm:justify-start",
             salesTypography.chrome,
             autoRefresh
               ? "border-indigo-200/90 bg-indigo-50/50 text-indigo-900"
@@ -94,7 +100,7 @@ export function SalesPanelSyncControl({
             className="size-5 shrink-0 rounded border-slate-300 text-indigo-600 focus:ring-indigo-300 sm:size-4"
           />
         </label>
-      )}
+      ) : null}
     </div>
   );
 }

@@ -44,7 +44,8 @@ import type { DepartmentBoardData } from "@/lib/data/department-board";
 import { countUnreadAnnouncements } from "@/lib/department-board/unread";
 import { cn } from "@/lib/cn";
 import { mojeShipmentListClass } from "@/lib/ui/moje-shipment-row-styles";
-import { salesPageShellClass, salesTypography, sectionIconTileBrandClass, brandLinkClass } from "@/lib/ui/ontime-theme";
+import { AppBrandContentFooter } from "@/components/layout/AppBrandContentFooter";
+import { salesPageShellClass, salesTypography, sectionIconTileBrandClass, brandLinkClass, salesChromeInsetClass } from "@/lib/ui/ontime-theme";
 import { NotatnikPanel } from "@/components/notatnik/NotatnikPanel";
 import { NotatnikListFilterBar } from "@/components/notatnik/NotatnikListFilterBar";
 import { SalesListFilterEmptyHint } from "@/components/sales/SalesListEmptyHints";
@@ -228,8 +229,6 @@ export function DepartmentBoardSalesClient({
 
   return (
     <div className={salesPageShellClass}>
-      {loadError && !tourDemo ? <Alert tone="error">{loadError}</Alert> : null}
-
       <Card padding={false} className="overflow-hidden">
         <CardHeader
           inset
@@ -243,6 +242,12 @@ export function DepartmentBoardSalesClient({
             </SectionHeadingIcon>
           }
         />
+
+        {loadError && !tourDemo ? (
+          <Alert tone="error" className={cn(salesChromeInsetClass, "mt-0")}>
+            {loadError}
+          </Alert>
+        ) : null}
 
         {previewHint ? (
           <div className="border-b border-slate-100 px-3 py-2.5 sm:px-4">
@@ -370,6 +375,7 @@ export function DepartmentBoardSalesClient({
           </div>
         ) : null}
       </Card>
+      <AppBrandContentFooter mobileOnly variant="page" />
     </div>
   );
 }

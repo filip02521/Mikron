@@ -1,12 +1,18 @@
 import type { MyOrderRow } from "@/lib/orders/my-order-presenter";
+import { formatPlDate } from "@/lib/display-labels";
 
-export type MyOrderDeliveryTimingTone = "default" | "overdue" | "low-confidence";
+export type MyOrderDeliveryTimingTone =
+  | "default"
+  | "overdue"
+  | "low-confidence"
+  | "zd-sourced";
 
 export type MyOrderDeliveryTimingDisplay = {
   title: string;
   estimate: string;
   detail: string | null;
   tone: MyOrderDeliveryTimingTone;
+  zdDocNumber?: string | null;
 };
 
 /** Rozbija timingLabel z presentera na czytelne części UI. */
@@ -33,6 +39,41 @@ export function buildMyOrderDeliveryTimingDisplay(
 
   const { estimate, overdue, lowConfidence } = parseMyOrderTimingLabel(raw);
   if (!estimate) return null;
+
+  const zd = row.zdFulfillment;
+
+  if (row.zdEtaPending) {
+    return {
+      title: "Sprawdzamy termin w ZD",
+      estimate: "Trwa synchronizacja z Subiektem…",
+      detail:
+        "Szacowany termin z historii dostaw może zostać zastąpiony datą z dokumentu ZD u dostawcy.",
+      tone: "low-confidence",
+    };
+  }
+
+  if (row.zdEtaNoMatch) {
+    return {
+      title: "Brak terminu w Subiekcie",
+      estimate,
+      detail:
+        "Sprawdziliśmy dokumenty ZD u dostawcy — brak terminu realizacji dla tej pozycji. Poniżej szacunek z historii dostaw.",
+      tone: overdue ? "overdue" : "low-confidence",
+    };
+  }
+
+  if (zd) {
+    const synced = zd.syncedAt ? formatPlDate(zd.syncedAt.slice(0, 10)) : null;
+    return {
+      title: overdue ? "Termin z ZD minął" : "Termin realizacji z ZD",
+      estimate,
+      detail: synced
+        ? `Data z dokumentu ${zd.dokNr} u dostawcy. Zaktualizowano ${synced}.`
+        : `Data z dokumentu ${zd.dokNr} u dostawcy.`,
+      tone: overdue ? "overdue" : "zd-sourced",
+      zdDocNumber: zd.dokNr,
+    };
+  }
 
   if (overdue) {
     return {

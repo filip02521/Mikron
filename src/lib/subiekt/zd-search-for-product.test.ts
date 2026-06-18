@@ -1,8 +1,12 @@
 import { describe, expect, it } from "vitest";
+import { zdContractorRecentDataOd } from "./zd-search-scope";
 import {
   brandTokensFromProductName,
+  effectiveProductSymbol,
+  extractAlphanumericProductCodeFromName,
   zdSearchTokensFromProduct,
   zdSearchPlansForOrderInput,
+  zdSearchPlansForOrderWithKhIds,
   zdSearchPlansForProductSupplierLookup,
 } from "./zd-search-for-product";
 
@@ -85,6 +89,38 @@ describe("zdSearchPlansForOrderInput", () => {
     expect(tokens.some((t) => t.toLowerCase() === "tarcza")).toBe(true);
   });
 
+  it("wyciąga kod alfanumeryczny z nazwy (H364RNF)", () => {
+    expect(extractAlphanumericProductCodeFromName("Komet węglik H364RNF")).toBe(
+      "H364RNF"
+    );
+    expect(
+      effectiveProductSymbol({
+        tw_Id: 0,
+        tw_Symbol: "-",
+        tw_Nazwa: "Komet węglik H364RNF",
+      })
+    ).toBe("H364RNF");
+    expect(
+      zdSearchPlansForOrderInput({
+        symbol: "-",
+        products: "Komet węglik H364RNF",
+      }).some((p) => p.search === "H364RNF")
+    ).toBe(true);
+  });
+
+  it("nie traktuje całej nazwy jako marki bez łącznika", () => {
+    expect(brandTokensFromProductName("Komet węglik H364RNF")).toEqual(["Komet"]);
+  });
+
+  it("ogranicza plany prośby do ostatnich 3 miesięcy u kontrahenta", () => {
+    const plans = zdSearchPlansForOrderInput({
+      symbol: "ABC",
+      products: "Produkt test",
+      subiekt_kh_id: 688,
+    });
+    expect(plans.every((p) => p.dataOd === zdContractorRecentDataOd())).toBe(true);
+  });
+
   it("dodaje khId do planów gdy dostawca jest powiązany", () => {
     const plans = zdSearchPlansForOrderInput({
       symbol: "ABC",
@@ -93,5 +129,51 @@ describe("zdSearchPlansForOrderInput", () => {
     });
     expect(plans.length).toBeGreaterThan(0);
     expect(plans.every((p) => p.khId === 688)).toBe(true);
+  });
+
+  it("łączy plany dla wielu kh_Id dostawcy bez duplikatów", () => {
+    const plans = zdSearchPlansForOrderWithKhIds(
+      {
+        symbol: "ABC",
+        products: "Produkt test",
+      },
+      [100, 200]
+    );
+    expect(plans.length).toBeGreaterThan(0);
+    expect(plans.some((p) => p.khId === 100)).toBe(true);
+    expect(plans.some((p) => p.khId === 200)).toBe(true);
+  });
+
+  it("priorytetyzuje plan po symbolu przed marką z nazwy", () => {
+    const plans = zdSearchPlansForOrderInput({
+      symbol: "-",
+      products: "Komet węglik H364RNF",
+      subiekt_kh_id: 9001,
+    });
+    expect(plans[0]?.symbol).toBe("H364RNF");
+    expect(plans[0]?.search).toBe("H364RNF");
+    expect(plans[0]?.khId).toBe(9001);
+  });
+
+  it("filtruje kontrahenta kh_Id mimo rozjechanej nazwy dostawcy w aplikacji", () => {
+    const plans = zdSearchPlansForOrderWithKhIds(
+      {
+        symbol: "-",
+        products: "Komet węglik H364RNF",
+      },
+      [9001, 9002]
+    );
+    expect(plans.length).toBeGreaterThan(0);
+    expect(plans.every((p) => p.khId === 9001 || p.khId === 9002)).toBe(true);
+    expect(plans.every((p) => p.name == null)).toBe(true);
+  });
+
+  it("nie używa filtra name w planach wyszukiwania ZD", () => {
+    const plans = zdSearchPlansForOrderWithKhIds(
+      { symbol: "ABC", products: "Produkt test" },
+      [688]
+    );
+    expect(plans.every((p) => p.name == null)).toBe(true);
+    expect(plans.some((p) => p.khId === 688)).toBe(true);
   });
 });

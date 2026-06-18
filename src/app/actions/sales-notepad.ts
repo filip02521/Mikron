@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { getSessionUser } from "@/lib/auth";
 import { resolveSalesPersonForUser } from "@/lib/auth/sales-person";
 import { isSalesAccount } from "@/lib/auth-roles";
+import { canAccessSalesPerson } from "@/lib/data/sales-group-access";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getSubiektZk } from "@/lib/subiekt/api";
 import {
@@ -46,6 +47,26 @@ async function salesPersonIdForAction(): Promise<string> {
     throw new Error("Konto nie jest powiązane z kartą handlowca.");
   }
   return resolved.id;
+}
+
+/** ID handlowca dla prefill prośby — z kontrolą dostępu (grupy kierownika). */
+async function resolveSalesPersonIdForProsbaPrefill(
+  user: NonNullable<Awaited<ReturnType<typeof getSessionUser>>>,
+  salesPersonIdOverride?: string
+): Promise<string> {
+  const salesPersonId = salesPersonIdOverride?.trim() || "";
+  if (!salesPersonId) {
+    return salesPersonIdForAction();
+  }
+  const own = await resolveSalesPersonForUser(user);
+  if (user.role === "sales" && own?.id !== salesPersonId) {
+    throw new Error("Brak uprawnień do prośby tego handlowca.");
+  }
+  const allowed = await canAccessSalesPerson(user, salesPersonId);
+  if (!allowed) {
+    throw new Error("Brak uprawnień do prośby tego handlowca.");
+  }
+  return salesPersonId;
 }
 
 function revalidateNotepad() {
@@ -422,8 +443,20 @@ export async function actionUpdateZkWatchLineChecks(
       .filter((c) => validKeys.has(c.key))
       .map((c) => [c.key, Boolean(c.arrived)])
   );
+  const shelfMarkedByKey = new Map(
+    checks
+      .filter((c) => validKeys.has(c.key))
+      .map((c) => [c.key, Boolean(c.shelf_marked)])
+  );
+  const completedManuallyByKey = new Map(
+    checks
+      .filter((c) => validKeys.has(c.key))
+      .map((c) => [c.key, Boolean(c.completed_manually)])
+  );
   const sanitized = mergeZkWatchLineChecksPreservingProsbaScope(views, previousChecks, {
     arrivedByKey,
+    shelfMarkedByKey,
+    completedManuallyByKey,
   });
 
   const { data, error } = await supabase
@@ -803,15 +836,7 @@ export async function actionGetZkProsbaPrefillByWatchId(
     throw new Error("Wymagane logowanie.");
   }
 
-  let salesPersonId = salesPersonIdOverride?.trim() || "";
-  if (!salesPersonId) {
-    salesPersonId = await salesPersonIdForAction();
-  } else {
-    const own = await resolveSalesPersonForUser(user);
-    if (user.role === "sales" && own?.id !== salesPersonId) {
-      throw new Error("Brak uprawnień do prośby tego handlowca.");
-    }
-  }
+  const salesPersonId = await resolveSalesPersonIdForProsbaPrefill(user, salesPersonIdOverride);
 
   const supabase = createAdminClient();
   const { data, error } = await supabase
@@ -866,15 +891,7 @@ export async function actionGetZkProsbaPrefill(
     throw new Error("Wymagane logowanie.");
   }
 
-  let salesPersonId = salesPersonIdOverride?.trim() || "";
-  if (!salesPersonId) {
-    salesPersonId = await salesPersonIdForAction();
-  } else {
-    const own = await resolveSalesPersonForUser(user);
-    if (user.role === "sales" && own?.id !== salesPersonId) {
-      throw new Error("Brak uprawnień do prośby tego handlowca.");
-    }
-  }
+  const salesPersonId = await resolveSalesPersonIdForProsbaPrefill(user, salesPersonIdOverride);
 
   const supabase = createAdminClient();
   const watch = await fetchZkWatchForProsbaPrefill(supabase, salesPersonId, trimmed);

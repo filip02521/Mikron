@@ -7,7 +7,8 @@ import { resolvePreviewSalesPerson } from "@/lib/auth/resolve-preview-sales-pers
 import { isAdminReadOnlyPanelPreview } from "@/lib/auth/admin-panel-context";
 import { isAdmin, isSalesManager } from "@/lib/auth-roles";
 import { readAdminPanelContextForSession } from "@/lib/auth/read-admin-panel-context";
-import { ManagerPreviewBanner } from "@/components/sales/ManagerPreviewBanner";
+import { SalesPageAlerts } from "@/components/sales/SalesPageAlerts";
+import { ProsbaFormSuspenseFallback } from "@/components/orders/ProsbaFormSuspenseFallback";
 import {
   filterRowsByGroupScope,
   getManagedGroupIdsForUser,
@@ -123,25 +124,15 @@ export default async function ProsbaPage({
 
     return (
       <div className={salesPageShellClass}>
-        <ManagerPreviewBanner
-          salesPersonId={lockedSalesPerson.id}
-          salesPersonName={lockedSalesPerson.name}
-          scope="prosba"
-          readOnly
+        <SalesPageAlerts
+          teamPreview={{
+            salesPersonId: lockedSalesPerson.id,
+            salesPersonName: lockedSalesPerson.name,
+            scope: "prosba",
+            readOnly: true,
+          }}
         />
-        <Suspense
-          fallback={
-            <div className="overflow-hidden rounded-md border border-slate-200/80 bg-white shadow-[var(--shadow-card-elevated)]">
-              <div className="border-b border-slate-100 px-3 pb-3 pt-4 sm:px-4">
-                <div className="h-5 w-40 animate-pulse rounded bg-slate-100" />
-                <div className="mt-2 h-3 w-full max-w-md animate-pulse rounded bg-slate-100" />
-              </div>
-              <p className="px-3 py-12 text-center text-xs text-slate-500 sm:px-4">
-                Ładowanie formularza…
-              </p>
-            </div>
-          }
-        >
+        <Suspense fallback={<ProsbaFormSuspenseFallback />}>
           <OrderFormClient
             suppliers={suppliers}
             statsBySupplierId={statsBySupplierId}
@@ -205,26 +196,19 @@ export default async function ProsbaPage({
 
   return (
     <div className={salesPageShellClass}>
-      {isManager && lockedSalesPerson && lockedSalesPerson.id !== managerSelfId ? (
-        <ManagerPreviewBanner
-          salesPersonId={lockedSalesPerson.id}
-          salesPersonName={lockedSalesPerson.name}
-          scope="prosba"
-        />
-      ) : null}
-      <Suspense
-        fallback={
-          <div className="overflow-hidden rounded-md border border-slate-200/80 bg-white shadow-[var(--shadow-card-elevated)]">
-            <div className="border-b border-slate-100 px-3 pb-3 pt-4 sm:px-4">
-              <div className="h-5 w-40 animate-pulse rounded bg-slate-100" />
-              <div className="mt-2 h-3 w-full max-w-md animate-pulse rounded bg-slate-100" />
-            </div>
-            <p className="px-3 py-12 text-center text-xs text-slate-500 sm:px-4">
-              Ładowanie formularza…
-            </p>
-          </div>
+      <SalesPageAlerts
+        teamPreview={
+          isManager && lockedSalesPerson && lockedSalesPerson.id !== managerSelfId
+            ? {
+                salesPersonId: lockedSalesPerson.id,
+                salesPersonName: lockedSalesPerson.name,
+                scope: "prosba",
+              }
+            : null
         }
-      >
+        linkErrorWarningOnIgnored={false}
+      />
+      <Suspense fallback={<ProsbaFormSuspenseFallback />}>
       {lockedSalesPerson ? (
         <OrderFormClient
           suppliers={suppliers}

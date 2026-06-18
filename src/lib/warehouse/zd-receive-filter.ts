@@ -5,6 +5,7 @@ import { findSupplierBySubiektKhId } from "@/lib/subiekt/match-supplier";
 import { extractDocKhIds } from "@/lib/subiekt/zd-document-kh";
 import { lineTowId } from "@/lib/subiekt/zd-catalog-import";
 import { filterOrdersBySupplier } from "@/lib/orders/supplier-filter-summary";
+import { resolveOrderMatchSymbol } from "@/lib/subiekt/match-order-to-zd";
 
 export type ZdMatchLinePreview = {
   towId: number | null;
@@ -74,8 +75,13 @@ export function matchOrderToZdProfile(
     return true;
   }
 
-  const symbol = normalizeSymbol(order.symbol);
+  const symbol = resolveOrderMatchSymbol(order);
   if (symbol && profile.symbols.includes(symbol)) {
+    return true;
+  }
+
+  const mikran = normalizeSymbol(order.mikran_code);
+  if (mikran && profile.symbols.includes(mikran)) {
     return true;
   }
 

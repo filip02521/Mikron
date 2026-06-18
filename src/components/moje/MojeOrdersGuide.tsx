@@ -2,9 +2,9 @@
 
 import { HelpPopover, GuideIcon } from "@/components/ui/HelpPopover";
 import { HelpBlock } from "@/components/ui/HelpBlock";
-import { pageToolbarSizingClass, pageToolbarSurfaceClass } from "@/lib/ui/ontime-theme";
 import { HelpMenuGlyph } from "@/components/ui/UiGlyphs";
 import { cn } from "@/lib/cn";
+import { pageToolbarSizingClass, pageToolbarSurfaceClass } from "@/lib/ui/ontime-theme";
 import { INFORMACJA_FLOW_DIRECT } from "@/lib/orders/informacja-flow-copy";
 import {
   MY_ORDER_ACTION_SECTION_COPY,
@@ -62,14 +62,18 @@ export function MojeOrdersHelp() {
             odbiór, informację od magazynu albo anulowanie
           </li>
           <li>
-            <strong className="font-medium text-slate-800">Menu</strong>{" "}
-            <HelpMenuGlyph className="align-[-2px]" /> — klient, edycja prośby, anulowanie całej
-            grupy
+            <strong className="font-medium text-slate-800">Anuluj</strong> — dyskretny link po
+            prawej przy linii; wycofuje całą pozycję
           </li>
           <li>
-            <strong className="font-medium text-slate-800">Anuluj</strong> — dyskretny link po
-            prawej przy linii; przy rozwiniętej karcie z wieloma produktami u tego samego
-            dostawcy możesz wycofać tylko wybraną pozycję
+            <strong className="font-medium text-slate-800">Zmień ilość</strong> — częściowe
+            wycofanie sztuk (reszta zostaje w prośbie); przy jednym produkcie także w menu{" "}
+            <HelpMenuGlyph className="align-[-2px]" />
+          </li>
+          <li>
+            <strong className="font-medium text-slate-800">Menu</strong>{" "}
+            <HelpMenuGlyph className="align-[-2px]" /> — klient, edycja prośby, anulowanie całej
+            grupy lub zmiana ilości (jedna pozycja)
           </li>
           <li>
             <strong className="font-medium text-slate-800">Cofnij</strong> — po anulowaniu,

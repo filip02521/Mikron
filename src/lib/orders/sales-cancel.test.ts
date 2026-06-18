@@ -15,6 +15,14 @@ import {
   salesCancelConfirmCopy,
   salesCancelConfirmForLines,
   salesCancelOverflowLabel,
+  salesCancelLineRemainderLabel,
+  salesCancelLineRemainderAriaLabel,
+  salesCancelLineCustomQtyLabel,
+  salesCancelLineShortLabel,
+  salesCancelQuickActionLabel,
+  salesCancelSoleOverflowFullLabel,
+  showSalesCancelSupplierQuickAction,
+  shouldShowRemainderSpecificLabel,
   salesPartialCancelConfirmCopy,
   showSalesCancelRemainderAction,
 } from "./sales-cancel";
@@ -81,6 +89,53 @@ describe("sales-cancel", () => {
     ).toBe(false);
   });
 
+  it("salesCancelLineShortLabel i overflow — faza i rodzaj prośby", () => {
+    expect(salesCancelLineShortLabel("zamowienie")).toBe("Anuluj");
+    expect(salesCancelLineShortLabel("informacja")).toBe("Anuluj");
+    expect(salesCancelSoleOverflowFullLabel("zamowienie")).toBe("Anuluj prośbę");
+    expect(salesCancelSoleOverflowFullLabel("informacja")).toBe("Anuluj informację");
+  });
+
+  it("shouldShowRemainderSpecificLabel — tylko częściowa dostawa i reszta > 1", () => {
+    expect(shouldShowRemainderSpecificLabel(3, 2)).toBe(true);
+    expect(shouldShowRemainderSpecificLabel(1, 2)).toBe(false);
+    expect(shouldShowRemainderSpecificLabel(3, 0)).toBe(false);
+  });
+
+  it("salesCancelLineRemainderLabel — czytelna etykieta menu", () => {
+    expect(salesCancelLineRemainderLabel()).toBe("Zmień ilość");
+    expect(salesCancelLineRemainderLabel(3)).toBe("Zmień ilość (3 szt.)");
+  });
+
+  it("salesCancelLineRemainderAriaLabel — liczba sztuk dla czytników", () => {
+    expect(salesCancelLineRemainderAriaLabel(4)).toBe("Zmień ilość (4 szt.)");
+    expect(salesCancelLineRemainderAriaLabel(1)).toBe("Zmień ilość");
+  });
+
+  it("salesCancelLineCustomQtyLabel — zmiana ilości", () => {
+    expect(salesCancelLineCustomQtyLabel()).toBe("Zmień ilość");
+  });
+
+  it("showSalesCancelSupplierQuickAction — 1 szt. u dostawcy po częściowej dostawie", () => {
+    const o = order("Czesciowo_zrealizowane", {
+      quantity: "5",
+      delivered_quantity: "4",
+    });
+    expect(defaultSalesCancelQuantity(o)).toBe(1);
+    expect(showSalesCancelRemainderAction(o)).toBe(false);
+    expect(showSalesCancelSupplierQuickAction(o)).toBe(true);
+    expect(salesCancelQuickActionLabel()).toBe("Zmień ilość");
+  });
+
+  it("showSalesCancelRemainderAction — reszta > 1 przy częściowej dostawie", () => {
+    const o = order("Czesciowo_zrealizowane", {
+      quantity: "5",
+      delivered_quantity: "2",
+    });
+    expect(showSalesCancelRemainderAction(o)).toBe(true);
+    expect(showSalesCancelSupplierQuickAction(o)).toBe(false);
+  });
+
   it("resolveGroupSalesCancelPhase wybiera najostrzejszą fazę", () => {
     expect(
       resolveGroupSalesCancelPhase([order("Nowe"), order("Zrealizowane")])
@@ -144,8 +199,8 @@ describe("sales-cancel", () => {
 
   it("salesCancelConfirmCopy ma teksty dla każdej fazy", () => {
     expect(salesCancelConfirmCopy("before_order").confirmLabel).toContain("Wycofaj");
-    expect(salesCancelConfirmCopy("in_transit").title).toContain("Rezygnujesz");
-    expect(salesCancelConfirmCopy("on_stock").title).toContain("towaru");
+    expect(salesCancelConfirmCopy("in_transit").title).toContain("Anulować");
+    expect(salesCancelConfirmCopy("on_stock").title).toContain("Anulować");
   });
 
   it("salesCancelConfirmCopy — pojedyncza pozycja z nazwą produktu", () => {
@@ -266,9 +321,9 @@ describe("sales-cancel", () => {
       0
     );
     expect(copy.title).toBe("Zmniejszyć ilość w zamówieniu?");
-    expect(copy.message).toContain("Rezygnujesz z 3 z 5 szt.");
+    expect(copy.message).toContain("Wycofasz 3 z 5 szt.");
     expect(copy.message).toContain("Pozostałe 2 szt. będą na Ciebie czekały po dostawie.");
-    expect(copy.confirmLabel).toBe("Rezygnuję z 3 szt.");
+    expect(copy.confirmLabel).toBe("Zmień ilość");
   });
 
   it("salesPartialCancelConfirmCopy — jedna sztuka zostaje w zamówieniu", () => {

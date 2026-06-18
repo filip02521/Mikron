@@ -195,7 +195,7 @@ describe("formatProsbaSufficientStockBanner", () => {
 });
 
 describe("formatZkProsbaScopeLineBadge", () => {
-  it("zaznaczone na stanie — etykieta z ilością", () => {
+  it("zaznaczone wykluczenie — etykieta z ilością Subiekta", () => {
     expect(
       formatZkProsbaScopeLineBadge({
         sufficient: true,
@@ -203,7 +203,7 @@ describe("formatZkProsbaScopeLineBadge", () => {
         available: 12,
         hasStockData: true,
       })
-    ).toBe("Na stanie: 12 szt.");
+    ).toBe("Stan w Subiekcie: 12 szt.");
   });
 
   it("odznaczone do zamówienia", () => {

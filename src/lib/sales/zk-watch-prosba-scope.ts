@@ -61,7 +61,12 @@ export function countZkWatchInStockLines(
 export function mergeZkWatchLineChecksPreservingProsbaScope(
   views: ZkWatchLineView[],
   previousChecks: ZkWatchLineCheckStored[],
-  patch: { arrivedByKey?: Map<string, boolean>; needsProsbaByKey?: Map<string, boolean> }
+  patch: {
+    arrivedByKey?: Map<string, boolean>;
+    shelfMarkedByKey?: Map<string, boolean>;
+    completedManuallyByKey?: Map<string, boolean>;
+    needsProsbaByKey?: Map<string, boolean>;
+  }
 ): ZkWatchLineCheckStored[] {
   const previousByKey = new Map(previousChecks.map((check) => [check.key, check]));
 
@@ -69,12 +74,18 @@ export function mergeZkWatchLineChecksPreservingProsbaScope(
     const previous = previousByKey.get(view.key);
     const arrived =
       patch.arrivedByKey?.get(view.key) ?? previous?.arrived ?? false;
+    const shelfMarked =
+      patch.shelfMarkedByKey?.get(view.key) ?? previous?.shelf_marked ?? false;
+    const completedManually =
+      patch.completedManuallyByKey?.get(view.key) ?? previous?.completed_manually ?? false;
     const needsProsba =
       patch.needsProsbaByKey?.get(view.key) ?? previous?.needs_prosba;
 
     return {
       key: view.key,
       arrived,
+      ...(shelfMarked ? { shelf_marked: true } : {}),
+      ...(completedManually ? { completed_manually: true } : {}),
       ...(needsProsba !== undefined ? { needs_prosba: needsProsba } : {}),
     };
   });
@@ -96,7 +107,7 @@ export function formatZkWatchProsbaScopeSummary(
   const toOrder = productLines.filter((line) => needsByKey.get(line.key) === true).length;
   const inStock = productLines.length - toOrder;
 
-  if (toOrder === 0) return "Wszystko na stanie";
+  if (toOrder === 0) return "Bez prośby — wszystko wykluczone";
   if (inStock === 0) return toOrder === 1 ? "1 do zamówienia" : `${toOrder} do zamówienia`;
-  return `${toOrder} do zamówienia · ${inStock} na stanie`;
+  return `${toOrder} do zamówienia · ${inStock} wykluczone`;
 }

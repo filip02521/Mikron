@@ -104,7 +104,9 @@ describe("sales onboarding steps", () => {
     expect(notatnik?.navLabel).toBe("ZK czekające");
     expect(notatnik?.bullets[0]).toMatch(/Do zrobienia dziś/i);
     expect(notatnik?.bullets[1]).toMatch(/Zakładka „ZK”/i);
-    expect(notatnik?.bullets[4]).toMatch(/Notatnik/i);
+    expect(notatnik?.bullets[3]).toMatch(/Zakończone/i);
+    expect(notatnik?.bullets[5]).toMatch(/Notatnik/i);
+    expect(notatnik?.tip).toMatch(/Rozumiem/i);
   });
 
   it("plan step describes open requests before procurement calendar", () => {

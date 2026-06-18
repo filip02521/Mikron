@@ -77,6 +77,7 @@ export function MyOrderShipmentList({
   suppressedSectionPatterns,
   rowVisualTone = "default",
   focusRowIds,
+  subiektReachable = true,
 }: {
   rows: MyOrderRow[];
   listKind: "zamowienie" | "informacja";
@@ -94,6 +95,7 @@ export function MyOrderShipmentList({
   suppressedSectionPatterns?: Set<MyOrderSectionPatternId>;
   rowVisualTone?: MojeShipmentRowVisualTone;
   focusRowIds?: ReadonlySet<string>;
+  subiektReachable?: boolean;
 }) {
   const router = useRouter();
   const sortedRows = useMemo(() => sortMyOrderRows(rows), [rows]);
@@ -552,6 +554,7 @@ export function MyOrderShipmentList({
             suppressedSectionPatterns={suppressedSectionPatterns}
             rowVisualTone={rowVisualTone}
             highlighted={focusRowIds?.has(row.id) ?? false}
+            subiektReachable={subiektReachable}
           />
         ))}
       </ul>

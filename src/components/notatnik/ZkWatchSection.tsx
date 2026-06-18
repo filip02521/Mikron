@@ -5,6 +5,8 @@ import { actionAddZkWatchByNumber,
   actionAddZkWatchBySubiektDokId,
 } from "@/app/actions/sales-notepad";
 import { Alert } from "@/components/ui/Alert";
+import { Button } from "@/components/ui/Button";
+import { IconPlusCircle } from "@/components/icons/StrokeIcons";
 import { validateZkQueryForSubmit } from "@/lib/subiekt/zk-search";
 import type { ZkSearchCandidate } from "@/lib/subiekt/resolve-zk-document";
 import { cn } from "@/lib/cn";
@@ -17,6 +19,7 @@ import {
 import type { SalesZkWatch } from "@/types/database";
 import { ZkWatchGroupedList } from "./ZkWatchGroupedList";
 import { ZkWatchAddBar } from "./ZkWatchAddBar";
+import { ZkWatchProsbaScopeModal } from "./ZkWatchProsbaScopeModal";
 import {
   SalesListFilterEmptyHint,
   SalesSectionEmptyHint,
@@ -41,9 +44,10 @@ export function ZkWatchSection({
   newLineKeysByWatchId,
   onWarehouseArrivalSeen,
   onNewZkLinesSeen,
-  onWatchDetailOpen,
   prosbaScopeWatchId,
+  prosbaScopeOpenNonce = 0,
   onProsbaScopeConfigured,
+  onProsbaScopeRequested,
   focusWatchId,
   onFocusWatchHandled,
   onLiveAnnounce,
@@ -54,9 +58,10 @@ export function ZkWatchSection({
   newLineKeysByWatchId?: Record<string, string[]>;
   onWarehouseArrivalSeen?: (watchId: string) => void;
   onNewZkLinesSeen?: (watchId: string) => void;
-  onWatchDetailOpen?: (watchId: string) => void;
   prosbaScopeWatchId?: string | null;
+  prosbaScopeOpenNonce?: number;
   onProsbaScopeConfigured?: (watchId: string) => void;
+  onProsbaScopeRequested?: (watchId: string) => void;
   focusWatchId?: string | null;
   onFocusWatchHandled?: (watchId: string) => void;
   onLiveAnnounce?: (message: string) => void;
@@ -68,10 +73,20 @@ export function ZkWatchSection({
   subiektBlockedHint?: string;
   onWatchAdded?: (watch: SalesZkWatch) => void;
   onWatchClosed?: (watchId: string, closedAt: string) => void;
-  onWatchRefreshed?: (watch: SalesZkWatch, refreshDiff?: import("@/lib/sales/zk-watch-refresh-diff").ZkWatchRefreshDiff) => void;
+  onWatchRefreshed?: (
+    watch: SalesZkWatch,
+    refreshDiff?: import("@/lib/sales/zk-watch-refresh-diff").ZkWatchRefreshDiff,
+    options?: { skipRouterRefresh?: boolean }
+  ) => void;
 }) {
   const inputRef = useRef<HTMLInputElement>(null);
   const [query, setQuery] = useState("");
+  const [addPanelOpen, setAddPanelOpen] = useState(false);
+  const [scopeDismissed, setScopeDismissed] = useState<{
+    watchId: string;
+    nonce: number;
+  } | null>(null);
+  const showAddForm = watches.length === 0 || addPanelOpen;
   const focusInList =
     focusWatchId != null && watches.some((watch) => watch.id === focusWatchId);
   const [listFilter, setListFilter] = useNotepadListFilter(focusWatchId, focusInList);
@@ -81,9 +96,45 @@ export function ZkWatchSection({
   const [candidates, setCandidates] = useState<ZkSearchCandidate[]>([]);
   const canAddZk = subiektReachable;
 
+  function collapseAddPanel() {
+    setAddPanelOpen(false);
+    clearChoose();
+    setQuery("");
+    setError(null);
+  }
+
+  function handleWatchAdded(watch: SalesZkWatch) {
+    onWatchAdded?.(watch);
+    if (watches.length > 0) setAddPanelOpen(false);
+  }
+
   const filteredWatches = useMemo(
     () => filterZkWatchesByClientQuery(watches, listFilter),
     [watches, listFilter]
+  );
+
+  const prosbaScopeWatch = useMemo(
+    () =>
+      prosbaScopeWatchId
+        ? watches.find((watch) => watch.id === prosbaScopeWatchId)
+        : undefined,
+    [prosbaScopeWatchId, watches]
+  );
+
+  const prosbaScopeConfigured =
+    prosbaScopeWatch != null
+      ? (zkHintsByWatchId?.get(prosbaScopeWatch.id)?.prosbaScopeConfigured ?? false)
+      : false;
+
+  const prosbaScopeModalOpen = Boolean(
+    prosbaScopeWatch &&
+      !readOnly &&
+      !tourPreview &&
+      !(
+        scopeDismissed?.watchId === prosbaScopeWatch.id &&
+        scopeDismissed.nonce === prosbaScopeOpenNonce
+      ) &&
+      !prosbaScopeConfigured
   );
 
   const sortedCandidates = useMemo(
@@ -134,7 +185,7 @@ export function ZkWatchSection({
         return;
       }
       setQuery("");
-      onWatchAdded?.(result.watch);
+      handleWatchAdded(result.watch);
       inputRef.current?.focus();
     } catch (e) {
       setError(e instanceof Error ? e.message : "Nie udało się dodać zamówienia.");
@@ -151,7 +202,7 @@ export function ZkWatchSection({
       const { watch } = await actionAddZkWatchBySubiektDokId(candidate.subiektDokId);
       setQuery("");
       clearChoose();
-      onWatchAdded?.(watch);
+      handleWatchAdded(watch);
       inputRef.current?.focus();
     } catch (e) {
       setError(e instanceof Error ? e.message : "Nie udało się dodać zamówienia.");
@@ -171,37 +222,58 @@ export function ZkWatchSection({
         </div>
       ) : null}
 
-      <div className={cn(embedded && "space-y-0 px-3 sm:px-4 pt-3", !embedded && "space-y-4")}>
-      {!readOnly && !tourPreview ? (
-        <ZkWatchAddBar
-          inputRef={inputRef}
-          query={query}
-          loading={loading}
-          canAdd={canAddZk}
-          subiektBlockedHint={subiektBlockedHint}
-          chooseHint={chooseHint}
-          candidates={sortedCandidates}
-          onQueryChange={(value) => {
-            setQuery(value);
-            if (error) setError(null);
-            if (candidates.length) clearChoose();
-          }}
-          onSubmit={() => void submit()}
-          onPickCandidate={(candidate) => void pickCandidate(candidate)}
-          onClearChoose={clearChoose}
+      <div className={cn(embedded && "space-y-4 px-3 sm:px-4 pt-3", !embedded && "space-y-4")}>
+      {watches.length > 0 ? (
+        <NotatnikListFilterBar
+          embedded
+          bleed
+          visibleLabel="Szukaj na swojej liście"
+          value={listFilter}
+          onChange={setListFilter}
+          matchCount={filteredWatches.length}
+          totalCount={watches.length}
+          placeholder="Klient, numer ZK lub produkt…"
+          idleHint="Przeszukuje tylko ZK już dodane na liście poniżej — nie szuka w Subiekcie."
+          searchLabel="Szukaj na liście ZK"
         />
       ) : null}
 
-      {watches.length > 0 ? (
-        <div className={cn(!readOnly && !tourPreview && "mt-3")}>
-          <NotatnikListFilterBar
-            embedded
-            value={listFilter}
-            onChange={setListFilter}
-            matchCount={filteredWatches.length}
-            totalCount={watches.length}
+      {!readOnly && !tourPreview ? (
+        showAddForm ? (
+          <ZkWatchAddBar
+            inputRef={inputRef}
+            query={query}
+            loading={loading}
+            canAdd={canAddZk}
+            subiektBlockedHint={subiektBlockedHint}
+            chooseHint={chooseHint}
+            candidates={sortedCandidates}
+            showCollapse={watches.length > 0}
+            onCollapse={collapseAddPanel}
+            onQueryChange={(value) => {
+              setQuery(value);
+              if (error) setError(null);
+              if (candidates.length) clearChoose();
+            }}
+            onSubmit={() => void submit()}
+            onPickCandidate={(candidate) => void pickCandidate(candidate)}
+            onClearChoose={clearChoose}
           />
-        </div>
+        ) : (
+          <Button
+            type="button"
+            variant="secondary"
+            size="sm"
+            className="min-h-11 w-full justify-center sm:w-auto"
+            onClick={() => {
+              setAddPanelOpen(true);
+              window.setTimeout(() => inputRef.current?.focus(), 0);
+            }}
+          >
+            <IconPlusCircle size={16} strokeWidth={2} className="mr-1.5 shrink-0" aria-hidden />
+            Dodaj nowe ZK z Subiekta
+          </Button>
+        )
       ) : null}
 
       {error ? <Alert tone="error">{error}</Alert> : null}
@@ -224,9 +296,6 @@ export function ZkWatchSection({
           newLineKeysByWatchId={newLineKeysByWatchId}
           onWarehouseArrivalSeen={onWarehouseArrivalSeen}
           onNewZkLinesSeen={onNewZkLinesSeen}
-          onWatchDetailOpen={onWatchDetailOpen}
-          prosbaScopeWatchId={prosbaScopeWatchId}
-          onProsbaScopeConfigured={onProsbaScopeConfigured}
           focusWatchId={focusWatchId}
           onFocusWatchHandled={onFocusWatchHandled}
           onLiveAnnounce={onLiveAnnounce}
@@ -236,9 +305,26 @@ export function ZkWatchSection({
             subiektReachable={subiektReachable}
             onClosed={onWatchClosed}
             onRefreshed={onWatchRefreshed}
+            onProsbaScopeRequested={onProsbaScopeRequested}
           />
         </div>
       )}
+
+      {prosbaScopeWatch ? (
+        <ZkWatchProsbaScopeModal
+          watch={prosbaScopeWatch}
+          open={prosbaScopeModalOpen}
+          required
+          onClose={() =>
+            setScopeDismissed({ watchId: prosbaScopeWatch.id, nonce: prosbaScopeOpenNonce })
+          }
+          onSaved={(updated) => {
+            setScopeDismissed(null);
+            onProsbaScopeConfigured?.(prosbaScopeWatch.id);
+            onWatchRefreshed?.(updated, undefined, { skipRouterRefresh: true });
+          }}
+        />
+      ) : null}
     </div>
   );
 }

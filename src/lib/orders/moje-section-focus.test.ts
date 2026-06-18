@@ -26,8 +26,15 @@ describe("parseMojeSectionHash", () => {
 });
 
 describe("MOJE_CARD_FLASH_CLASSES", () => {
-  it("używa wewnętrznej obwódki (ring-inset)", () => {
-    expect(MOJE_CARD_FLASH_CLASSES).toContain("ring-inset");
+  it("używa wewnętrznej obwódki na overlay (::after)", () => {
+    expect(MOJE_CARD_FLASH_CLASSES).toContain("after:ring-inset");
     expect(MOJE_CARD_FLASH_CLASSES).not.toContain("ring-offset-2");
+    expect(MOJE_CARD_FLASH_CLASSES).not.toContain("ring-inset");
+  });
+
+  it("trzyma overlay nad wierszami i sąsiednimi sekcjami", () => {
+    expect(MOJE_CARD_FLASH_CLASSES).toContain("after:z-[5]");
+    expect(MOJE_CARD_FLASH_CLASSES).toContain("z-20");
+    expect(MOJE_CARD_FLASH_CLASSES).toContain("isolate");
   });
 });

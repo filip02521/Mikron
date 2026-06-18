@@ -134,21 +134,52 @@ export function canPartialSalesCancel(order: IndividualOrder): boolean {
   return max != null && max > 1;
 }
 
+/** „Z reszty” tylko przy częściowej dostawie i więcej niż 1 szt. u dostawcy. */
+export function shouldShowRemainderSpecificLabel(
+  remainder: number,
+  delivered: number
+): boolean {
+  return delivered > 0 && remainder > 1;
+}
+
 export function showSalesCancelRemainderAction(order: IndividualOrder): boolean {
   const delivered = deliveryProgressFor(order).delivered;
   const remainder = defaultSalesCancelQuantity(order);
-  return delivered > 0 && remainder != null && remainder > 0;
+  return (
+    remainder != null &&
+    remainder > 0 &&
+    shouldShowRemainderSpecificLabel(remainder, delivered)
+  );
 }
 
-export function salesCancelLineRemainderLabel(remainder: number): string {
-  return `Rezygnuj z reszty (${remainder} szt.)`;
+/** Jedna szt. jeszcze u dostawcy po częściowej dostawie — skrót do „Zmień ilość”. */
+export function showSalesCancelSupplierQuickAction(order: IndividualOrder): boolean {
+  const delivered = deliveryProgressFor(order).delivered;
+  const remainder = defaultSalesCancelQuantity(order);
+  return delivered > 0 && remainder === 1;
 }
 
-export function salesCancelLineCustomQtyLabel(
-  phase?: SalesCancelPhase | null
-): string {
-  if (phase === "in_transit") return "Rezygnuj z części szt…";
-  return "Inna ilość…";
+/** Skrót częściowej zmiany ilości (reszta u dostawcy) — z liczbą sztuk gdy > 1. */
+export function salesCancelLineRemainderLabel(remainder?: number): string {
+  const base = salesCancelLineCustomQtyLabel();
+  const n = remainder != null ? Math.max(1, Math.trunc(remainder)) : 0;
+  return n > 1 ? `${base} (${n} szt.)` : base;
+}
+
+/** Opis dla czytników ekranu — z liczbą sztuk, gdy > 1. */
+export function salesCancelLineRemainderAriaLabel(remainder: number): string {
+  const n = Math.max(1, Math.trunc(remainder));
+  const base = salesCancelLineCustomQtyLabel();
+  return n > 1 ? `${base} (${n} szt.)` : base;
+}
+
+export function salesCancelLineCustomQtyLabel(): string {
+  return "Zmień ilość";
+}
+
+/** Skrót częściowej zmiany ilości (np. ostatnia szt. u dostawcy). */
+export function salesCancelQuickActionLabel(): string {
+  return salesCancelLineCustomQtyLabel();
 }
 
 export type SalesCancelQuantityPlan = {
@@ -257,20 +288,27 @@ export function salesPartialCancelConfirmCopy(
     return {
       title: "Wycofać część pozycji?",
       message: `Wycofasz ${qtyPart} pozycji „${product}”. Reszta zostaje w prośbie. ${SALES_CANCEL_UNDO_HINT}`,
-      confirmLabel: `Wycofaj ${cancelQty} szt.`,
+      confirmLabel: "Zmień ilość",
     };
   }
   if (phase === "in_transit" && cancelQty < maxQty && activeAfter > 0) {
     return {
       title: "Zmniejszyć ilość w zamówieniu?",
-      message: `Rezygnujesz z ${qtyPart} pozycji „${product}”. ${salesPartialCancelRemainingAfterDelivery(activeAfter)}`,
-      confirmLabel: `Rezygnuję z ${cancelQty} szt.`,
+      message: `Wycofasz ${qtyPart} z pozycji „${product}”. ${salesPartialCancelRemainingAfterDelivery(activeAfter)}`,
+      confirmLabel: "Zmień ilość",
+    };
+  }
+  if (cancelQty < maxQty) {
+    return {
+      title: "Zmienić ilość w prośbie?",
+      message: `Wycofasz ${qtyPart} z pozycji „${product}”. Reszta zostaje w prośbie. ${SALES_CANCEL_UNDO_HINT}`,
+      confirmLabel: "Zmień ilość",
     };
   }
   return {
     title: base.title,
-    message: `Rezygnujesz z ${qtyPart} pozycji „${product}”. ${base.message}`,
-    confirmLabel: `Rezygnuję z ${cancelQty} szt.`,
+    message: base.message,
+    confirmLabel: base.confirmLabel,
   };
 }
 
@@ -473,10 +511,15 @@ export function salesCancelLineLabel(kind: "zamowienie" | "informacja"): string 
   return kind === "informacja" ? "Anuluj informację" : "Anuluj pozycję";
 }
 
-/** Krótka etykieta przy linii produktu — dyskretny link po prawej. */
+/** Krótka etykieta przy linii produktu — pełne wycofanie pozycji. */
 export function salesCancelLineShortLabel(kind: "zamowienie" | "informacja"): string {
-  void kind;
-  return "Anuluj";
+  return kind === "informacja" ? "Anuluj" : "Anuluj";
+}
+
+/** Pełne anulowanie w menu overflow (jedna pozycja w prośbie). */
+export function salesCancelSoleOverflowFullLabel(kind: "zamowienie" | "informacja"): string {
+  if (kind === "informacja") return "Anuluj informację";
+  return "Anuluj prośbę";
 }
 
 export function salesCancelLineAriaLabel(
@@ -546,32 +589,32 @@ export function salesCancelConfirmCopy(
     case "in_transit":
       if (single && product) {
         return {
-          title: "Rezygnujesz z tej pozycji?",
+          title: "Anulować tę pozycję?",
           message: `„${product}” może być już u dostawcy. Jeśli towar dotrze, magazyn rozliczy go poza Twoją rezerwacją.`,
-          confirmLabel: "Rezygnuję z pozycji",
+          confirmLabel: "Anuluj pozycję",
         };
       }
       return {
-        title: "Rezygnujesz z zamówienia?",
+        title: groupProducts ? "Anulować wszystkie pozycje?" : "Anulować prośbę?",
         message: groupProducts
           ? `Pozycje ${groupProducts} mogą być już u dostawcy. Jeśli towar dotrze, magazyn rozliczy go poza Twoją rezerwacją.`
           : "Zamówienie może być już u dostawcy. Jeśli towar dotrze, magazyn rozliczy go poza Twoją rezerwacją.",
-        confirmLabel: "Rezygnuję",
+        confirmLabel: groupProducts ? "Anuluj wszystkie" : "Anuluj prośbę",
       };
     case "on_stock":
       if (single && product) {
         return {
-          title: "Rezygnujesz z tej pozycji?",
+          title: "Anulować tę pozycję?",
           message: `„${product}” może być już na magazynie. Magazyn rozliczy towar poza Twoją rezerwacją.`,
-          confirmLabel: "Rezygnuję z pozycji",
+          confirmLabel: "Anuluj pozycję",
         };
       }
       return {
-        title: "Rezygnujesz z towaru?",
+        title: groupProducts ? "Anulować wszystkie pozycje?" : "Anulować prośbę?",
         message: groupProducts
           ? `Pozycje ${groupProducts} mogą być już na magazynie. Magazyn rozliczy towar poza Twoją rezerwacją.`
           : "Część lub całość może być już na magazynie. Magazyn rozliczy towar poza Twoją rezerwacją.",
-        confirmLabel: "Rezygnuję",
+        confirmLabel: groupProducts ? "Anuluj wszystkie" : "Anuluj prośbę",
       };
   }
 }

@@ -63,6 +63,45 @@ describe("my-order-delivery-timing-display", () => {
     expect(display?.tone).toBe("overdue");
   });
 
+  it("buduje blok gdy sync nie znalazł terminu ZD", () => {
+    const display = buildMyOrderDeliveryTimingDisplay(
+      row({
+        timingLabel: "ok. 10.05.2026 (~5 dni rob.) · po terminie",
+        zdEtaNoMatch: true,
+      })
+    );
+    expect(display?.title).toBe("Brak terminu w Subiekcie");
+    expect(display?.detail).toContain("brak terminu");
+  });
+
+  it("buduje blok oczekiwania na sync ZD", () => {
+    const display = buildMyOrderDeliveryTimingDisplay(
+      row({
+        timingLabel: "ok. 10.05.2026 (~5 dni rob.) · po terminie",
+        zdEtaPending: true,
+      })
+    );
+    expect(display?.title).toBe("Sprawdzamy termin w ZD");
+    expect(display?.detail).toContain("dokumentu ZD");
+  });
+
+  it("buduje blok dla terminu z ZD", () => {
+    const display = buildMyOrderDeliveryTimingDisplay(
+      row({
+        timingLabel: "do 03.07.2026 · ZD/81/2026",
+        zdFulfillment: {
+          deadline: "2026-07-03",
+          dokNr: "ZD/81/2026",
+          syncedAt: "2026-06-18T08:00:00Z",
+          source: "zd",
+        },
+      })
+    );
+    expect(display?.title).toBe("Termin realizacji z ZD");
+    expect(display?.tone).toBe("zd-sourced");
+    expect(display?.detail).toContain("ZD/81/2026");
+  });
+
   it("pokazuje blok w rozwinięciu dla zamówienia z ETA", () => {
     expect(shouldShowMyOrderExpandedDeliveryTiming(row(), true)).toBe(true);
     expect(shouldShowMyOrderExpandedDeliveryTiming(row(), false)).toBe(false);

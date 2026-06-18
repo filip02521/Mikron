@@ -1,16 +1,30 @@
-/** Wewnętrzna obwódka — rodzice list (Card, sekcje) mają overflow-hidden. */
+/**
+ * Podświetlenie sekcji Start dnia — obwódka na ::after nad treścią (wiersze, meta ZD,
+ * nagłówki), bo ring-inset na rodzicu chowa się pod nieprzezroczystymi dziećmi.
+ * z-20 wynosi całą sekcję ponad sąsiednie karty (expanded row ma z-[1]/z-[2]).
+ */
+const MOJE_SECTION_FLASH_OVERLAY_CLASSES = [
+  "after:pointer-events-none",
+  "after:absolute",
+  "after:inset-0",
+  "after:z-[5]",
+  "after:rounded-[inherit]",
+  "after:ring-2",
+  "after:ring-inset",
+  "after:ring-indigo-400/70",
+  "after:content-['']",
+] as const;
+
 const MOJE_SECTION_FLASH_CLASSES = [
   "relative",
-  "z-10",
-  "ring-2",
-  "ring-inset",
-  "ring-indigo-400/70",
-  "rounded-md",
+  "z-20",
+  "isolate",
+  ...MOJE_SECTION_FLASH_OVERLAY_CLASSES,
 ] as const;
 
 export const MOJE_CARD_FLASH_CLASSES = [
   ...MOJE_SECTION_FLASH_CLASSES,
-  "bg-indigo-50/80",
+  "after:bg-indigo-50/50",
 ] as const;
 
 export function flashMojeElement(

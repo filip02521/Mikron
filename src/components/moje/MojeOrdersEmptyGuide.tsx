@@ -73,7 +73,7 @@ function GuideContent({ showActions = true }: { showActions?: boolean }) {
             href="/prosba"
             className={cn(
               buttonPrimaryClass,
-              "inline-flex min-h-11 items-center justify-center gap-2 px-5 py-2.5 text-sm font-medium"
+              "inline-flex min-h-11 items-center justify-center gap-2 rounded-md px-5 py-2.5 text-sm font-medium"
             )}
           >
             <IconPlusCircle size={16} className="text-white" />

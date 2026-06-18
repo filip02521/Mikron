@@ -5,6 +5,7 @@ import { cn } from "@/lib/cn";
 import {
   mojeAckSegmentCancelClass,
   mojeAckSegmentInformacjaClass,
+  mojeAckSegmentLabelClass,
   mojeAckSegmentOutlineClass,
   mojeAckSegmentPrimaryClass,
   mojeCancelAckControlClass,
@@ -47,6 +48,10 @@ export function MyOrderAckButton({
   preview?: boolean;
 }) {
   const accessibleName = ariaLabel ?? title;
+
+  const segmentLabel = (content: React.ReactNode) => (
+    <span className={mojeAckSegmentLabelClass}>{content}</span>
+  );
 
   if (preview) {
     const previewTitle = title ?? "Podgląd w tourze — po wprowadzeniu potwierdzisz odbiór tutaj";
@@ -162,7 +167,7 @@ export function MyOrderAckButton({
         onClick={onClick}
         className={cn(mojeAckSegmentPrimaryClass, className)}
       >
-        {children}
+        {segmentLabel(children)}
       </button>
     );
   }
@@ -177,7 +182,7 @@ export function MyOrderAckButton({
         onClick={onClick}
         className={cn(mojeAckSegmentInformacjaClass, className)}
       >
-        {children}
+        {segmentLabel(children)}
       </button>
     );
   }
@@ -192,7 +197,7 @@ export function MyOrderAckButton({
         onClick={onClick}
         className={cn(mojeAckSegmentCancelClass, className)}
       >
-        {children}
+        {segmentLabel(children)}
       </button>
     );
   }
@@ -222,7 +227,7 @@ export function MyOrderAckButton({
         onClick={onClick}
         className={cn(mojeAckSegmentOutlineClass, className)}
       >
-        {children}
+        {segmentLabel(children)}
       </button>
     );
   }

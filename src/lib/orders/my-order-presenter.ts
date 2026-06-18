@@ -5,11 +5,17 @@ import {
 } from "@/lib/orders/delivery-eta";
 import {
   enrichMyOrderSalesUi,
+  aggregateGroupZdEtaState,
+  resolveZdEtaNoMatchFromOrder,
+  resolveZdEtaPendingFromOrder,
+  resolveZdFulfillmentFromOrder,
   salesTimingLabel,
+  salesZdTimingLabel,
   sortMyOrderRows,
   type MyOrderSalesUi,
+  type MyOrderZdFulfillment,
 } from "@/lib/orders/my-order-sales-ui";
-import { formatDateString } from "@/lib/orders/dates";
+import { formatDateString, parseDateOnly } from "@/lib/orders/dates";
 import {
   buildPlannedOrderDateDisplay,
   type PlannedOrderDateDisplay,
@@ -88,6 +94,7 @@ import {
   resolveGroupSalesCancelPhase,
   resolveSalesCancelPhase,
   showSalesCancelRemainderAction,
+  showSalesCancelSupplierQuickAction,
   type SalesCancelPhase,
 } from "@/lib/orders/sales-cancel";
 import { canEditIndividualRequestGroup } from "@/lib/orders/individual-request-edit";
@@ -126,6 +133,8 @@ export type MyOrderLine = {
   defaultSalesCancelQuantity: number | null;
   canPartialSalesCancel: boolean;
   showSalesCancelRemainder: boolean;
+  /** Jedna szt. u dostawcy po częściowej dostawie — skrót „Zmień ilość”. */
+  showSalesCancelSupplierQuick: boolean;
   /** Dostarczone szt. — do dialogu częściowej rezygnacji. */
   salesCancelDeliveredQty: number;
   /** Stan przed rezygnacją — do cofnięcia w oknie undo. */
@@ -134,6 +143,10 @@ export type MyOrderLine = {
   clientKhId: number | null;
   requestNote: string | null;
   procurementCancelNote: string | null;
+  /** Termin z ZD dla tej pozycji (grupy wieloproduktowe). */
+  zdFulfillment?: MyOrderZdFulfillment | null;
+  zdEtaPending?: boolean;
+  zdEtaNoMatch?: boolean;
 };
 
 type MyOrderRowCore = {
@@ -188,6 +201,12 @@ export type MyOrderRow = MyOrderRowCore &
     informacjaPath?: InformacjaFlowPath;
     canEditBySales: boolean;
     plannedOrderDate?: PlannedOrderDateDisplay | null;
+    /** Termin realizacji zsynchronizowany z dokumentu ZD. */
+    zdFulfillment?: MyOrderZdFulfillment | null;
+    /** Trwa pierwsza synchronizacja terminu z dokumentu ZD. */
+    zdEtaPending?: boolean;
+    /** Sync zakończony — brak terminu w ZD u dostawcy. */
+    zdEtaNoMatch?: boolean;
   };
 
 export type SupplierScheduleSnapshot = {
@@ -240,7 +259,14 @@ function resolveAcknowledgeMode(orders: IndividualOrder[]): MyOrderAcknowledgeMo
 }
 
 function rowToLine(
-  row: Pick<MyOrderRowDraft, "product" | "symbol" | "quantityLabel" | "progressLabel">,
+  row: Pick<
+    MyOrderRowDraft,
+    "product" | "symbol" | "quantityLabel" | "progressLabel"
+  > & {
+    zdFulfillment?: MyOrderZdFulfillment | null;
+    zdEtaPending?: boolean;
+    zdEtaNoMatch?: boolean;
+  },
   order: IndividualOrder
 ): MyOrderLine {
   const subiektId = order.subiekt_tw_id;
@@ -272,6 +298,7 @@ function rowToLine(
         defaultSalesCancelQuantity: defaultSalesCancelQuantity(order),
         canPartialSalesCancel: canPartialSalesCancel(order),
         showSalesCancelRemainder: showSalesCancelRemainderAction(order),
+        showSalesCancelSupplierQuick: showSalesCancelSupplierQuickAction(order),
         salesCancelDeliveredQty: deliveryProgressFor(order).delivered,
         salesCancelUndoRestore: salesCancelUndoRestoreSnapshot(order),
       };
@@ -283,6 +310,9 @@ function rowToLine(
         : null,
     requestNote: normalizeSalesRequestNote(order.sales_request_note),
     procurementCancelNote: normalizeProcurementCancelNote(order.procurement_cancel_note),
+    zdFulfillment: row.zdFulfillment ?? null,
+    zdEtaPending: Boolean(row.zdEtaPending && !row.zdFulfillment),
+    zdEtaNoMatch: Boolean(row.zdEtaNoMatch && !row.zdFulfillment && !row.zdEtaPending),
   };
 }
 
@@ -592,7 +622,11 @@ function presentInformacja(order: IndividualOrder): MyOrderRow {
 
 function presentZamowienie(
   order: IndividualOrder,
-  stats: DeliveryStats | undefined
+  stats: DeliveryStats | undefined,
+  options?: {
+    supplierKhIdsBySupplierId?: import("@/lib/orders/my-order-sales-ui").SupplierKhIdsLookup;
+    subiektReachable?: boolean;
+  }
 ): MyOrderRow {
   const statsMode = (order.supplier?.stats_mode ?? "LACZNIE") as StatsMode;
   const progress = fulfillmentProgressFor(order);
@@ -625,15 +659,34 @@ function presentZamowienie(
     rowColor: SUMMARY_COLORS.historyNew,
   };
 
-  const finalize = (row: MyOrderRowDraft): MyOrderRow =>
-    withAckMeta(
+  const zdFulfillment = resolveZdFulfillmentFromOrder(order);
+  const zdEtaPending = resolveZdEtaPendingFromOrder(
+    order,
+    stats,
+    statsMode,
+    options?.supplierKhIdsBySupplierId,
+    options?.subiektReachable ?? true
+  );
+  const zdEtaNoMatch = resolveZdEtaNoMatchFromOrder(
+    order,
+    stats,
+    statsMode,
+    options?.supplierKhIdsBySupplierId
+  );
+
+  const finalize = (row: MyOrderRowDraft): MyOrderRow => ({
+    ...withAckMeta(
       {
         ...row,
         lines: [rowToLine(row, order)],
         lineCount: 1,
       },
       [order]
-    );
+    ),
+    zdFulfillment,
+    zdEtaPending,
+    zdEtaNoMatch,
+  });
 
   const placement = orderPlacementAt(order);
   const eta = canEstimateDeliveryEta(order)
@@ -643,13 +696,29 @@ function presentZamowienie(
     : null;
 
   let timingLabel: string | null = null;
-  if (eta) {
+  if (zdFulfillment) {
+    const deadlineDate = parseDateOnly(zdFulfillment.deadline);
+    const overdue =
+      deadlineDate != null && isPastExpectedDate(deadlineDate);
+    timingLabel = salesZdTimingLabel(
+      zdFulfillment.deadline,
+      zdFulfillment.dokNr,
+      overdue
+    );
+  } else if (eta) {
     timingLabel = salesTimingLabel(
       eta.expectedDate,
       eta.avgBusinessDays,
       eta.lowConfidence
     );
   }
+
+  const timingBadgeOverdue = zdFulfillment
+    ? (() => {
+        const d = parseDateOnly(zdFulfillment.deadline);
+        return d != null && isPastExpectedDate(d);
+      })()
+    : eta && isPastExpectedDate(eta.expectedDate);
 
   switch (order.status) {
     case "Weryfikacja":
@@ -681,7 +750,7 @@ function presentZamowienie(
           .join(" · "),
         timingLabel,
         badgeVariant:
-          eta && isPastExpectedDate(eta.expectedDate)
+          timingBadgeOverdue
             ? "danger"
             : "info",
         rowColor: SUMMARY_COLORS.historyPending,
@@ -698,7 +767,7 @@ function presentZamowienie(
           .filter(Boolean)
           .join(" · "),
         timingLabel,
-        badgeVariant: "warning",
+        badgeVariant: timingBadgeOverdue ? "danger" : "warning",
         rowColor: SUMMARY_COLORS.historyPartial,
       });
     case "Zrealizowane":
@@ -748,50 +817,89 @@ function presentZamowienie(
 
 export function presentMyOrderGroup(
   orders: IndividualOrder[],
-  statsBySupplier: Record<string, DeliveryStats>
+  statsBySupplier: Record<string, DeliveryStats>,
+  options?: {
+    supplierKhIdsBySupplierId?: import("@/lib/orders/my-order-sales-ui").SupplierKhIdsLookup;
+    subiektReachable?: boolean;
+  }
 ): MyOrderRow {
   const visibleOrders = orders.filter((o) => !o.sales_acknowledged_at);
 
   if (orders.length === 1) {
-    const row = presentMyOrder(orders[0], statsBySupplier);
+    const row = presentMyOrder(orders[0], statsBySupplier, options);
     return withAckMeta(row, orders, visibleOrders);
   }
 
   const representative = pickRepresentativeOrder(visibleOrders.length ? visibleOrders : orders);
-  const base = presentMyOrder(representative, statsBySupplier);
+  const base = presentMyOrder(representative, statsBySupplier, options);
+  const ordersForZd = visibleOrders.length ? visibleOrders : orders;
   const lines = visibleOrders.map((o) => {
-    const row = presentMyOrder(o, statsBySupplier);
+    const row = presentMyOrder(o, statsBySupplier, options);
     return rowToLine(row, o);
   });
-
-  return withAckMeta(
-    {
-      ...base,
-      id: myOrderGroupKey(representative),
-      lineCount: lines.length,
-      lines,
-      product: groupProductSummary(lines),
-      symbol: null,
-      progressLabel:
-        aggregateProgressLabel(visibleOrders.length ? visibleOrders : orders) ??
-        base.progressLabel,
-      statusDetail: appendGroupDetail(base.statusDetail, lines.length),
-      submittedLabel: formatPlDate(
-        orders
-          .map((o) => submittedAt(o))
-          .sort()
-          .reverse()[0]
-          .slice(0, 10)
-      ),
-    },
-    orders,
-    visibleOrders
+  const { zdFulfillment, zdEtaPending, zdEtaNoMatch } = aggregateGroupZdEtaState(
+    ordersForZd,
+    statsBySupplier,
+    options?.supplierKhIdsBySupplierId,
+    options?.subiektReachable ?? true
   );
+
+  let timingLabel = base.timingLabel;
+  let badgeVariant = base.badgeVariant;
+  if (zdFulfillment) {
+    const deadlineDate = parseDateOnly(zdFulfillment.deadline);
+    const overdue =
+      deadlineDate != null && isPastExpectedDate(deadlineDate);
+    timingLabel = salesZdTimingLabel(
+      zdFulfillment.deadline,
+      zdFulfillment.dokNr,
+      overdue
+    );
+    if (overdue) {
+      badgeVariant =
+        base.statusTitle === "Częściowo na magazynie" ? "warning" : "danger";
+    }
+  }
+
+  return {
+    ...withAckMeta(
+      {
+        ...base,
+        id: myOrderGroupKey(representative),
+        lineCount: lines.length,
+        lines,
+        product: groupProductSummary(lines),
+        symbol: null,
+        progressLabel:
+          aggregateProgressLabel(visibleOrders.length ? visibleOrders : orders) ??
+          base.progressLabel,
+        statusDetail: appendGroupDetail(base.statusDetail, lines.length),
+        submittedLabel: formatPlDate(
+          orders
+            .map((o) => submittedAt(o))
+            .sort()
+            .reverse()[0]
+            .slice(0, 10)
+        ),
+        timingLabel,
+        badgeVariant,
+      },
+      orders,
+      visibleOrders
+    ),
+    zdFulfillment,
+    zdEtaPending,
+    zdEtaNoMatch,
+  };
 }
 
 export function presentMyOrder(
   order: IndividualOrder,
-  statsBySupplier: Record<string, DeliveryStats>
+  statsBySupplier: Record<string, DeliveryStats>,
+  options?: {
+    supplierKhIdsBySupplierId?: import("@/lib/orders/my-order-sales-ui").SupplierKhIdsLookup;
+    subiektReachable?: boolean;
+  }
 ): MyOrderRow {
   if (isInformacjaRequest(order)) {
     return presentInformacja(order);
@@ -799,7 +907,7 @@ export function presentMyOrder(
   const stats = order.supplier_id
     ? statsBySupplier[order.supplier_id]
     : undefined;
-  return presentZamowienie(order, stats);
+  return presentZamowienie(order, stats, options);
 }
 
 export function supplierIdsForPlannedOrderSchedule(orders: IndividualOrder[]): string[] {
@@ -859,6 +967,8 @@ export function presentMyOrders(
     supplierScheduleById?: Record<string, SupplierScheduleSnapshot>;
     todayDateKey?: string;
     weekDays?: WeekDayPlan[];
+    supplierKhIdsBySupplierId?: import("@/lib/orders/my-order-sales-ui").SupplierKhIdsLookup;
+    subiektReachable?: boolean;
   }
 ): {
   zamowienia: MyOrderRow[];
@@ -879,12 +989,12 @@ export function presentMyOrders(
   for (const group of groupOrdersForMyView(zamowienieOrders)) {
     const open = group.filter((o) => !o.sales_acknowledged_at);
     if (!open.length) continue;
-    zamowienia.push(presentMyOrderGroup(group, statsBySupplier));
+    zamowienia.push(presentMyOrderGroup(group, statsBySupplier, options));
   }
   for (const group of groupOrdersForMyView(informacjaOrders)) {
     const open = group.filter((o) => !o.sales_acknowledged_at);
     if (!open.length) continue;
-    informacje.push(presentMyOrderGroup(group, statsBySupplier));
+    informacje.push(presentMyOrderGroup(group, statsBySupplier, options));
   }
 
   const productLineCount = zamowienia.reduce((n, r) => n + r.lineCount, 0)

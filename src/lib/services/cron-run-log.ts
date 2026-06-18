@@ -12,7 +12,8 @@ export async function recordCronRun(
     | "process_deliveries"
     | "morning_sync"
     | "morning_routine"
-    | "catalog_zd_sync",
+    | "catalog_zd_sync"
+    | "zd_eta_sync",
   payload: Omit<CronRunPayload, "at"> & { at?: string }
 ): Promise<void> {
   try {

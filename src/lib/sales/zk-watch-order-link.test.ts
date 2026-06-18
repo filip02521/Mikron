@@ -106,7 +106,7 @@ describe("clientsMatchForZk", () => {
 });
 
 describe("productMatchesZkLine + merge checks", () => {
-  it("zaznacza pozycję ZK po dostawie prośby", () => {
+  it("nie auto-odhacza po dostawie prośby (odbiór = Moje)", () => {
     const w = watch({ id: "w1" });
     const line = {
       key: "ob:1",
@@ -146,7 +146,7 @@ describe("productMatchesZkLine + merge checks", () => {
       linkOrder({ id: "o1", status: "Zrealizowane", quantity: "2", delivered_quantity: "2" }),
     ]);
     expect(changed).toBe(true);
-    expect(checks.find((c) => c.key === "ob:1")?.arrived).toBe(true);
+    expect(checks.find((c) => c.key === "ob:1")?.arrived).toBe(false);
   });
 
   it("nie odhacza przy częściowej dostawie mniejszej niż ilość ZK", () => {
@@ -172,11 +172,11 @@ describe("productMatchesZkLine + merge checks", () => {
         delivered_quantity: "2",
       }),
     ]);
-    expect(changed).toBe(false);
+    expect(changed).toBe(true);
     expect(checks.find((c) => c.key === "ob:1")?.arrived).toBeFalsy();
   });
 
-  it("odhacza gdy suma częściowych dostaw pokrywa ilość ZK", () => {
+  it("nie auto-odhacza gdy suma częściowych dostaw pokrywa ilość ZK", () => {
     const w = watch({
       id: "w1",
       subiekt_snapshot: {
@@ -206,13 +206,13 @@ describe("productMatchesZkLine + merge checks", () => {
       }),
     ]);
     expect(changed).toBe(true);
-    expect(checks.find((c) => c.key === "ob:1")?.arrived).toBe(true);
+    expect(checks.find((c) => c.key === "ob:1")?.arrived).toBeFalsy();
   });
 
-  it("cofa odhaczenie po cofnięciu dostawy do Zamowione", () => {
+  it("zachowuje ręczne odhaczenie u klienta po cofnięciu dostawy do Zamowione", () => {
     const w = watch({
       id: "w1",
-      line_checks: [{ key: "ob:1", arrived: true }],
+      line_checks: [{ key: "ob:1", arrived: true, completed_manually: true }],
     });
     const { checks, changed } = mergeZkLineChecksFromDeliveredOrders(w, [
       linkOrder({
@@ -222,14 +222,14 @@ describe("productMatchesZkLine + merge checks", () => {
         delivered_quantity: "0",
       }),
     ]);
-    expect(changed).toBe(true);
-    expect(checks.find((c) => c.key === "ob:1")?.arrived).toBe(false);
+    expect(changed).toBe(false);
+    expect(checks.find((c) => c.key === "ob:1")?.arrived).toBe(true);
   });
 
   it("zachowuje ręczne odhaczenie linii bez powiązanej prośby", () => {
     const w = watch({
       id: "w1",
-      line_checks: [{ key: "ob:1", arrived: true }],
+      line_checks: [{ key: "ob:1", arrived: true, completed_manually: true }],
     });
     const { checks, changed } = mergeZkLineChecksFromDeliveredOrders(w, [
       linkOrder({
@@ -244,6 +244,36 @@ describe("productMatchesZkLine + merge checks", () => {
     ]);
     expect(changed).toBe(false);
     expect(checks.find((c) => c.key === "ob:1")?.arrived).toBe(true);
+  });
+
+  it("czyści legacy arrived po odbiorze w Moje bez ręcznego zakończenia", () => {
+    const w = watch({
+      id: "w1",
+      line_checks: [{ key: "ob:1", arrived: true }],
+    });
+    const { checks, changed } = mergeZkLineChecksFromDeliveredOrders(w, [
+      linkOrder({
+        id: "o1",
+        status: "Zrealizowane",
+        quantity: "2",
+        delivered_quantity: "2",
+        sales_acknowledged_at: "2026-06-01T10:00:00Z",
+      }),
+    ]);
+    expect(changed).toBe(true);
+    expect(checks.find((c) => c.key === "ob:1")?.arrived).toBe(false);
+  });
+
+  it("czyści shelf_marked gdy towar zniknął z regału", () => {
+    const w = watch({
+      id: "w1",
+      line_checks: [{ key: "ob:1", arrived: false, shelf_marked: true }],
+    });
+    const { checks, changed } = mergeZkLineChecksFromDeliveredOrders(w, [
+      linkOrder({ id: "o1", status: "Zamowione" }),
+    ]);
+    expect(changed).toBe(true);
+    expect(checks.find((c) => c.key === "ob:1")?.shelf_marked).toBeFalsy();
   });
 });
 
@@ -372,6 +402,36 @@ describe("computeZkWatchOrderHints", () => {
     expect(hints.uncoveredLineKeys).toEqual([]);
     expect(hints.openProsbaCoveredLineKeys).toContain("ob:1");
   });
+
+  it("inStockLineKeys po odbiorze w Moje; regalWaiting bez potwierdzenia", () => {
+    const w = watch({
+      id: "w-scope",
+      line_checks: [{ key: "ob:1", arrived: false, needs_prosba: false }],
+    });
+    const hintsExcluded = computeZkWatchOrderHints(w, []);
+    expect(hintsExcluded.scopeExcludedLineKeys).toContain("ob:1");
+    expect(hintsExcluded.inStockLineKeys).toEqual([]);
+
+    const wDelivered = watch({
+      id: "w-delivered-stock",
+      line_checks: [{ key: "ob:1", arrived: false, needs_prosba: true }],
+    });
+    const orderDelivered = linkOrder({
+      id: "done",
+      status: "Zrealizowane",
+      quantity: "2",
+      delivered_quantity: "2",
+    });
+    const hintsWaiting = computeZkWatchOrderHints(wDelivered, [orderDelivered]);
+    expect(hintsWaiting.regalWaitingLineKeys).toContain("ob:1");
+    expect(hintsWaiting.inStockLineKeys).toEqual([]);
+
+    const hintsPicked = computeZkWatchOrderHints(wDelivered, [
+      { ...orderDelivered, sales_acknowledged_at: "2026-06-01T10:00:00Z" },
+    ]);
+    expect(hintsPicked.inStockLineKeys).toContain("ob:1");
+    expect(hintsPicked.regalWaitingLineKeys).toEqual([]);
+  });
 });
 
 describe("filterZkWatchesByClientQuery", () => {
@@ -410,7 +470,9 @@ describe("mergeZkLineChecksFromDeliveredOrders — izolacja ZK", () => {
     const mergeB = mergeZkLineChecksFromDeliveredOrders(watchB, [delivered]);
 
     expect(mergeA.changed).toBe(true);
-    expect(mergeB.changed).toBe(false);
+    expect(mergeA.checks.find((c) => c.key === "ob:1")?.arrived).toBe(false);
+    expect(mergeB.changed).toBe(true);
+    expect(mergeB.checks.find((c) => c.key === "ob:1")?.arrived).toBe(false);
   });
 });
 

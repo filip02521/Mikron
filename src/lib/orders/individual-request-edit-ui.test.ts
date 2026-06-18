@@ -205,6 +205,7 @@ describe("editInitialFromMyOrderRow", () => {
             defaultSalesCancelQuantity: null,
             canPartialSalesCancel: false,
             showSalesCancelRemainder: false,
+            showSalesCancelSupplierQuick: false,
             salesCancelDeliveredQty: 0,
             salesCancelUndoRestore: { status: "Nowe", quantity: "1", delivered_quantity: "0" },
             clientName: null,

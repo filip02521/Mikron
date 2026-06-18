@@ -19,7 +19,6 @@ export function myOrderPickupAckLabel(
   if (mode === "availability") return MY_ORDER_AVAILABILITY_ACK_LABEL;
   const n = Math.max(0, Math.trunc(pendingCount));
   if (options?.compact) {
-    if (n > 1) return `Potwierdź (${n})`;
     return "Potwierdź";
   }
   if (n > 1) return `${MY_ORDER_PICKUP_ACK_LABEL} (${n})`;

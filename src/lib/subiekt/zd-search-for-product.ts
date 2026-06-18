@@ -1,5 +1,8 @@
 import type { SubiektListParams } from "@/lib/subiekt/api";
-import { defaultZdSearchDataOd } from "@/lib/subiekt/subiekt-runtime-cache";
+import {
+  zdContractorRecentDataOd,
+  zdProductSearchDataOd,
+} from "@/lib/subiekt/zd-search-scope";
 import { parseSubiektKhId } from "@/lib/subiekt/parse-kh-id";
 import { collectKhIdsForSupplierRef } from "@/lib/data/supplier-subiekt-kh";
 import { dedupeAppSuppliersByKhId } from "@/lib/subiekt/dedupe-suppliers-by-kh";
@@ -24,7 +27,29 @@ const STOP_WORDS = new Set([
   "ml",
 ]);
 
-/** Symbol do wyszukiwania ZD — tw_Symbol albo długi kod numeryczny z końca nazwy. */
+/** Kod alfanumeryczny z końca nazwy (np. „Komet węglik H364RNF” → H364RNF). */
+export function extractAlphanumericProductCodeFromName(name: string): string {
+  const tokens = name
+    .trim()
+    .split(/[\s,;/]+/)
+    .map((w) => w.replace(/^[^a-zA-Z0-9ąćęłńóśźżĄĆĘŁŃÓŚŹŻ]+|[^a-zA-Z0-9ąćęłńóśźżĄĆĘŁŃÓŚŹŻ]+$/gi, ""))
+    .filter(Boolean);
+
+  for (let i = tokens.length - 1; i >= 0; i--) {
+    const token = tokens[i]!;
+    if (
+      token.length >= 4 &&
+      token.length <= 32 &&
+      /[a-zA-Ząćęłńóśźż]/i.test(token) &&
+      /\d/.test(token)
+    ) {
+      return token;
+    }
+  }
+  return "";
+}
+
+/** Symbol do wyszukiwania ZD — tw_Symbol albo kod wyciągnięty z nazwy. */
 export function effectiveProductSymbol(product: SubiektProduct): string {
   const sym = (product.tw_Symbol ?? "").trim();
   if (sym && sym !== "-") {
@@ -35,6 +60,8 @@ export function effectiveProductSymbol(product: SubiektProduct): string {
   const name = (product.tw_Nazwa ?? "").trim();
   const fromName = name.match(/\b(\d{6,})\b/g);
   if (fromName?.length) return fromName[fromName.length - 1]!;
+  const alnum = extractAlphanumericProductCodeFromName(name);
+  if (alnum) return alnum;
   return sym && sym !== "-" ? sym : "";
 }
 
@@ -44,9 +71,12 @@ export function brandTokensFromProductName(name: string): string[] {
   if (!trimmed) return [];
 
   const out: string[] = [];
-  const beforeHyphen = trimmed.split("-")[0]?.trim();
-  if (beforeHyphen && beforeHyphen.length >= 3 && !STOP_WORDS.has(beforeHyphen.toLowerCase())) {
-    out.push(beforeHyphen);
+  let beforeHyphen: string | undefined;
+  if (trimmed.includes("-")) {
+    beforeHyphen = trimmed.split("-")[0]?.trim();
+    if (beforeHyphen && beforeHyphen.length >= 3 && !STOP_WORDS.has(beforeHyphen.toLowerCase())) {
+      out.push(beforeHyphen);
+    }
   }
 
   const firstWord = trimmed
@@ -152,7 +182,7 @@ export function zdSearchPlansForProduct(
 }
 
 function dedupeZdSearchPlans(plans: SubiektListParams[]): SubiektListParams[] {
-  const dataOd = defaultZdSearchDataOd();
+  const dataOd = zdProductSearchDataOd();
   const seen = new Set<string>();
   const out: SubiektListParams[] = [];
   for (const plan of plans) {
@@ -172,7 +202,7 @@ export function zdSearchPlansForProductSupplierLookup(
   product: SubiektProduct,
   appSuppliers: AppSupplierRef[]
 ): SubiektListParams[] {
-  const dataOd = defaultZdSearchDataOd();
+  const dataOd = zdContractorRecentDataOd();
   const tokens = zdSearchTokensFromProduct(product, 8);
   const scopedSuppliers = dedupeAppSuppliersByKhId(appSuppliers);
   const linkedKhIds = [
@@ -215,6 +245,21 @@ function withKhId(
   return plans.map((plan) => ({ ...plan, khId }));
 }
 
+function orderInputAsProduct(input: {
+  symbol: string;
+  products: string;
+  subiekt_tw_id?: number | null;
+}): SubiektProduct {
+  return {
+    tw_Id:
+      typeof input.subiekt_tw_id === "number" && input.subiekt_tw_id > 0
+        ? input.subiekt_tw_id
+        : 0,
+    tw_Symbol: input.symbol,
+    tw_Nazwa: input.products,
+  };
+}
+
 /** Plany wyszukiwania ZD dla prośby z listy Moje zamówienia (symbol, nazwa, opcj. tw_Id). */
 export function zdSearchPlansForOrderInput(input: {
   symbol: string;
@@ -224,33 +269,56 @@ export function zdSearchPlansForOrderInput(input: {
 }): SubiektListParams[] {
   const symbol = (input.symbol ?? "").trim();
   const products = (input.products ?? "").trim();
-
+  const dataOd = zdContractorRecentDataOd();
   const listOpts = { maxTokens: ZD_ORDER_SEARCH_MAX_TOKENS, pageSize: 12 };
+  const product = orderInputAsProduct({ symbol, products, subiekt_tw_id: input.subiekt_tw_id });
+  const effectiveSymbol = effectiveProductSymbol(product);
+  const plans: SubiektListParams[] = [];
 
-  const fromProduct = zdSearchPlansForProduct(
-    {
-      tw_Id:
-        typeof input.subiekt_tw_id === "number" && input.subiekt_tw_id > 0
-          ? input.subiekt_tw_id
-          : 0,
-      tw_Symbol: symbol,
-      tw_Nazwa: products,
-    },
-    listOpts
+  // Symbol pierwszy — precyzyjniejszy niż marka z nazwy (np. H364RNF przy symbol „-”).
+  if (effectiveSymbol.length >= 3) {
+    plans.push({
+      symbol: effectiveSymbol,
+      search: effectiveSymbol,
+      dataOd,
+      pageSize: listOpts.pageSize,
+      page: 1,
+    });
+  }
+
+  const effectiveLower = effectiveSymbol.toLowerCase();
+  for (const plan of zdSearchPlansForProduct(product, listOpts)) {
+    const search = plan.search?.trim();
+    if (search && effectiveLower && search.toLowerCase() === effectiveLower) continue;
+    plans.push({ ...plan, dataOd });
+  }
+
+  if (!plans.length) {
+    if (symbol && symbol !== "-") {
+      plans.push({ search: symbol, pageSize: listOpts.pageSize, page: 1, dataOd });
+    } else if (products && products !== "Do uzupełnienia") {
+      plans.push({
+        search: products.slice(0, 48),
+        pageSize: listOpts.pageSize,
+        page: 1,
+        dataOd,
+      });
+    }
+  }
+
+  return withKhId(plans, input.subiekt_kh_id);
+}
+
+/** Jak wyżej, ale dla wielu kh_Id dostawcy (główny + aliasy) — deduplikacja planów. */
+export function zdSearchPlansForOrderWithKhIds(
+  input: Omit<Parameters<typeof zdSearchPlansForOrderInput>[0], "subiekt_kh_id">,
+  khIds: readonly number[]
+): SubiektListParams[] {
+  const scoped = khIds.filter((id) => Number.isFinite(id) && id > 0);
+  if (!scoped.length) return zdSearchPlansForOrderInput({ ...input, subiekt_kh_id: null });
+
+  const plans = scoped.flatMap((khId) =>
+    zdSearchPlansForOrderInput({ ...input, subiekt_kh_id: khId })
   );
-  if (fromProduct.length) return withKhId(fromProduct, input.subiekt_kh_id);
-
-  if (symbol && symbol !== "-") {
-    return withKhId(
-      [{ search: symbol, pageSize: listOpts.pageSize, page: 1 }],
-      input.subiekt_kh_id
-    );
-  }
-  if (products && products !== "Do uzupełnienia") {
-    return withKhId(
-      [{ search: products.slice(0, 48), pageSize: listOpts.pageSize, page: 1 }],
-      input.subiekt_kh_id
-    );
-  }
-  return [];
+  return dedupeZdSearchPlans(plans);
 }

@@ -10,7 +10,7 @@ import {
 } from "react";
 import { createPersistedFlagStore } from "@/lib/client/persisted-flag-store";
 import { usePersistedFlag } from "@/lib/client/use-persisted-flag";
-import { usePathname, useRouter } from "next/navigation";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/Button";
 import { SystemNotice } from "@/components/ui/SystemNotice";
 import { MICROCOPY } from "@/lib/ui/microcopy";
@@ -18,10 +18,12 @@ import { MICROCOPY } from "@/lib/ui/microcopy";
 const POLL_MS = 45_000;
 const AUTO_REFRESH_MS = 3 * 60_000;
 const NOTATNIK_AUTO_REFRESH_COOLDOWN_MS = 15_000;
+const MOJE_AUTO_REFRESH_COOLDOWN_MS = 12_000;
 const STORAGE_KEY = "sales-auto-refresh";
 const autoRefreshStore = createPersistedFlagStore(STORAGE_KEY);
 
 import { isSalesZkNavPath } from "@/lib/sales/notepad-page-tabs";
+import { clearMojeZdEtaSessionSync } from "@/components/moje/MojeZdEtaSyncClient";
 
 type SalesUpdatesContextValue = {
   hasUpdates: boolean;
@@ -55,13 +57,22 @@ export function SalesUpdatesProvider({
   children,
   initialVersion,
   enabled,
+  sessionSalesPersonId = null,
 }: {
   children: React.ReactNode;
   initialVersion: string | null;
   enabled: boolean;
+  /** Własny profil handlowca — do wykrycia podglądu ?dla= innego handlowca. */
+  sessionSalesPersonId?: string | null;
 }) {
   const router = useRouter();
   const pathname = usePathname();
+  const searchParams = useSearchParams();
+  const previewDla = searchParams.get("dla")?.trim() || null;
+  const teamPreviewActive = Boolean(
+    previewDla && sessionSalesPersonId && previewDla !== sessionSalesPersonId
+  );
+  const effectiveEnabled = enabled && !teamPreviewActive;
   const [baseline, setBaseline] = useState(initialVersion);
   const [latest, setLatest] = useState(initialVersion);
   const autoRefresh = usePersistedFlag(autoRefreshStore);
@@ -69,9 +80,10 @@ export function SalesUpdatesProvider({
   const [lastPollAt, setLastPollAt] = useState<number | null>(null);
   const syncingRef = useRef(false);
   const lastNotatnikAutoRefreshAtRef = useRef(0);
-  const versionKey = `${enabled}\0${initialVersion ?? ""}`;
+  const lastMojeAutoRefreshAtRef = useRef(0);
+  const versionKey = `${effectiveEnabled}\0${initialVersion ?? ""}`;
   const [appliedVersionKey, setAppliedVersionKey] = useState("");
-  if (enabled && initialVersion && versionKey !== appliedVersionKey) {
+  if (effectiveEnabled && initialVersion && versionKey !== appliedVersionKey) {
     setAppliedVersionKey(versionKey);
     setBaseline(initialVersion);
     setLatest(initialVersion);
@@ -89,19 +101,30 @@ export function SalesUpdatesProvider({
   const refreshNow = useCallback(() => {
     if (syncingRef.current) return;
     syncingRef.current = true;
-    router.refresh();
-    if (latest) setBaseline(latest);
-    void fetchVersion()
-      .then((v) => {
+
+    const run = async () => {
+      try {
+        if (pathname === "/moje" && !teamPreviewActive) {
+          clearMojeZdEtaSessionSync();
+          try {
+            await fetch("/api/sales/zd-eta-refresh", { method: "POST" });
+          } catch {
+            /* sync opcjonalny — i tak odświeżamy widok */
+          }
+        }
+        router.refresh();
+        const v = await fetchVersion();
         if (v) syncBaseline(v);
         const now = Date.now();
         setLastSyncedAt(now);
         setLastPollAt(now);
-      })
-      .finally(() => {
+      } finally {
         syncingRef.current = false;
-      });
-  }, [router, latest, syncBaseline]);
+      }
+    };
+
+    void run();
+  }, [router, syncBaseline, pathname, teamPreviewActive]);
 
   const poll = useCallback(async () => {
     const v = await fetchVersion();
@@ -112,15 +135,15 @@ export function SalesUpdatesProvider({
   }, []);
 
   useEffect(() => {
-    if (!enabled) return;
+    if (!effectiveEnabled) return;
     const timer = window.setTimeout(() => {
       void poll();
     }, 0);
     return () => window.clearTimeout(timer);
-  }, [enabled, poll, pathname]);
+  }, [effectiveEnabled, poll, pathname]);
 
   useEffect(() => {
-    if (!enabled) return;
+    if (!effectiveEnabled) return;
 
     const id = window.setInterval(() => {
       if (document.visibilityState === "hidden") return;
@@ -136,10 +159,10 @@ export function SalesUpdatesProvider({
       window.clearInterval(id);
       document.removeEventListener("visibilitychange", onVisible);
     };
-  }, [enabled, poll]);
+  }, [effectiveEnabled, poll]);
 
   useEffect(() => {
-    if (!enabled || !autoRefresh || isSalesZkNavPath(pathname)) return;
+    if (!effectiveEnabled || !autoRefresh || isSalesZkNavPath(pathname)) return;
     const id = window.setInterval(() => {
       if (document.visibilityState === "hidden") return;
       if (latest && baseline && latest !== baseline) {
@@ -147,11 +170,11 @@ export function SalesUpdatesProvider({
       }
     }, AUTO_REFRESH_MS);
     return () => window.clearInterval(id);
-  }, [enabled, autoRefresh, latest, baseline, refreshNow, pathname]);
+  }, [effectiveEnabled, autoRefresh, latest, baseline, refreshNow, pathname]);
 
   /** Notatnik: odśwież widok od razu po wykryciu zmian (ZK, prośby). */
   useEffect(() => {
-    if (!enabled || syncingRef.current) return;
+    if (!effectiveEnabled || syncingRef.current) return;
     if (!latest || !baseline || latest === baseline) return;
     if (!isSalesZkNavPath(pathname)) return;
 
@@ -161,10 +184,24 @@ export function SalesUpdatesProvider({
     }
     lastNotatnikAutoRefreshAtRef.current = now;
     refreshNow();
-  }, [enabled, latest, baseline, pathname, refreshNow]);
+  }, [effectiveEnabled, latest, baseline, pathname, refreshNow]);
+
+  /** Moje zamówienia: po sync ZD w tle odśwież listę, gdy wersja aktywności się zmieni. */
+  useEffect(() => {
+    if (!effectiveEnabled || syncingRef.current) return;
+    if (!latest || !baseline || latest === baseline) return;
+    if (pathname !== "/moje") return;
+
+    const now = Date.now();
+    if (now - lastMojeAutoRefreshAtRef.current < MOJE_AUTO_REFRESH_COOLDOWN_MS) {
+      return;
+    }
+    lastMojeAutoRefreshAtRef.current = now;
+    refreshNow();
+  }, [effectiveEnabled, latest, baseline, pathname, refreshNow]);
 
   const hasUpdates = Boolean(
-    enabled && baseline && latest && latest !== baseline
+    effectiveEnabled && baseline && latest && latest !== baseline
   );
 
   return (
@@ -188,12 +225,21 @@ export function SalesUpdatesBanner() {
   const pathname = usePathname();
   if (!ctx?.hasUpdates || pathname === "/moje" || isSalesZkNavPath(pathname)) return null;
 
+  const description =
+    pathname === "/prosba"
+      ? `${MICROCOPY.notices.updatesAvailable} Odśwież, aby zobaczyć aktualne statusy prośb.`
+      : pathname === "/tablica"
+        ? `${MICROCOPY.notices.updatesAvailable} Szczegóły prośb i terminów sprawdzisz w Moje zamówienia po odświeżeniu.`
+        : pathname === "/plan"
+          ? `${MICROCOPY.notices.updatesAvailable} Odśwież plan — statusy prośb są w Moje zamówienia.`
+          : `${MICROCOPY.notices.updatesAvailable} Automatyczne odświeżanie włączysz w panelu synchronizacji na Moje zamówienia.`;
+
   return (
     <SystemNotice
       variant="action"
       className="mb-4 sm:mb-6"
       title="Są nowe informacje o zamówieniach"
-      description={`${MICROCOPY.notices.updatesAvailable} Automatyczne odświeżanie włączysz na stronie Moje zamówienia.`}
+      description={description}
       action={
         <Button type="button" size="sm" className="min-h-11 shrink-0" onClick={ctx.refreshNow}>
           {MICROCOPY.actions.refresh}

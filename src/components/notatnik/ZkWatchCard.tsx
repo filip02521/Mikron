@@ -19,12 +19,12 @@ import {
 import { appendMojeFocusOrderIds } from "@/lib/orders/moje-order-focus";
 import type { ZkWatchOrderHints } from "@/lib/sales/zk-watch-order-link";
 import {
+  allZkWatchLinesCheckboxChecked,
   deriveZkWatchProsbaCardAction,
-  formatZkProsbaCardActionLabelAfterStockFilter,
-  formatZkWatchLineStatusSummary,
+  buildZkWatchLineStatusSummary,
+  formatZkWatchLineCheckboxPreview,
+  formatZkWatchLineCheckboxShort,
 } from "@/lib/sales/zk-watch-line-ui-state";
-import { useZkProsbaLineKeysStockFilter } from "@/hooks/useZkProsbaLineKeysStockFilter";
-import type { ZkProsbaScopeLineInput } from "@/lib/orders/prosba-stock-check";
 import type { ZkWatchRefreshDiff } from "@/lib/sales/zk-watch-refresh-diff";
 import type { SalesZkWatch } from "@/types/database";
 import {
@@ -39,8 +39,7 @@ import { ZkWatchFollowUpButton } from "./ZkWatchFollowUpButton";
 import { ZkWatchLinesModal } from "./ZkWatchLinesModal";
 import { ZkWatchOverflowMenu } from "./ZkWatchOverflowMenu";
 import { ZkWatchProsbaActions } from "./ZkWatchProsbaActions";
-import { ZkWatchProsbaScopeModal } from "./ZkWatchProsbaScopeModal";
-import { buildZkWatchLineViews, formatZkLinesPreview, formatZkLinesShort, allZkWatchLinesArrived } from "@/lib/sales/zk-watch-lines";
+import { buildZkWatchLineViews } from "@/lib/sales/zk-watch-lines";
 
 export function ZkWatchCard({
   watch,
@@ -61,9 +60,7 @@ export function ZkWatchCard({
   newLineKeys,
   onNewZkLinesSeen,
   onWarehouseArrivalSeen,
-  onWatchDetailOpen,
-  prosbaScopeRequired = false,
-  onProsbaScopeConfigured,
+  onProsbaScopeRequested,
 }: {
   watch: SalesZkWatch;
   /** Kotwica #watch-… — na karcie, nie na liście (unika obcinania obwódki). */
@@ -73,7 +70,11 @@ export function ZkWatchCard({
   tourPreview?: boolean;
   onClosed?: (closedAt: string) => void;
   onRestored?: (watch: SalesZkWatch) => void;
-  onRefreshed?: (watch: SalesZkWatch, refreshDiff?: ZkWatchRefreshDiff) => void;
+  onRefreshed?: (
+    watch: SalesZkWatch,
+    refreshDiff?: ZkWatchRefreshDiff,
+    options?: { skipRouterRefresh?: boolean }
+  ) => void;
   onDeleted?: () => void;
   archived?: boolean;
   compact?: boolean;
@@ -84,26 +85,36 @@ export function ZkWatchCard({
   newLineKeys?: string[];
   onNewZkLinesSeen?: (watchId: string) => void;
   onWarehouseArrivalSeen?: (watchId: string) => void;
-  /** Zamyka modal po odświeżeniu ZK, gdy użytkownik otwiera szczegóły. */
-  onWatchDetailOpen?: (watchId: string) => void;
-  /** Otwiera modal wyboru pozycji do prośby (po dodaniu ZK). */
-  prosbaScopeRequired?: boolean;
-  onProsbaScopeConfigured?: (watchId: string) => void;
+  /** Ponowne otwarcie modala zakresu prośby (gdy jeszcze nie skonfigurowano). */
+  onProsbaScopeRequested?: (watchId: string) => void;
 }) {
   const [closing, setClosing] = useState(false);
   const [restoring, setRestoring] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [linesOpen, setLinesOpen] = useState(false);
-  const [scopeManualOpen, setScopeManualOpen] = useState(false);
-  const [scopeDismissedKey, setScopeDismissedKey] = useState<string | null>(null);
   const [focusNoteOnOpen, setFocusNoteOnOpen] = useState(false);
   const [error, setError] = useState<{ watchId: string; message: string } | null>(null);
   const displayError = error?.watchId === watch.id ? error.message : null;
 
   const lineViews = useMemo(() => buildZkWatchLineViews(watch), [watch]);
-  const linesShort = formatZkLinesShort(lineViews);
-  const linesPreview = formatZkLinesPreview(lineViews);
+  const checkboxContext = useMemo(
+    () => ({
+      newLineKeys: newLineKeys ?? [],
+      inStockLineKeys: orderHints?.inStockLineKeys ?? [],
+      scopeExcludedLineKeys: orderHints?.scopeExcludedLineKeys ?? [],
+      lineCoverageByKey: orderHints?.lineCoverageByKey,
+    }),
+    [newLineKeys, orderHints]
+  );
+  const linesShort = formatZkWatchLineCheckboxShort({
+    lineViews,
+    ...checkboxContext,
+  });
+  const linesPreview = formatZkWatchLineCheckboxPreview({
+    lineViews,
+    ...checkboxContext,
+  });
   const hasLines = lineViews.length > 0 || Boolean(watch.line_summary?.trim());
 
   const followUpDue = !archived && isFollowUpDue(watch.follow_up_at);
@@ -119,106 +130,49 @@ export function ZkWatchCard({
     mojeClientHref,
     orderHints?.matchingOpenRequestIds ?? []
   );
-  const allLinesArrived = allZkWatchLinesArrived(lineViews);
-  const allLinesMatchedByOrders = orderHints?.allLinesMatchedByOrders ?? false;
-  const readyToClose = !archived && (allLinesArrived || allLinesMatchedByOrders);
+  const allLinesChecked = allZkWatchLinesCheckboxChecked({
+    lineViews,
+    ...checkboxContext,
+  });
+  const readyToClose = !archived && allLinesChecked;
   const uncoveredLineKeys = orderHints?.uncoveredLineKeys ?? [];
   const openProsbaLineKeys = orderHints?.openProsbaCoveredLineKeys ?? [];
   const productLineCount = lineViews.filter((line) => line.key !== "summary").length;
-  const deliveredLineCount = orderHints?.lineCoverageByKey
-    ? Object.values(orderHints.lineCoverageByKey).filter((coverage) => coverage === "delivered")
-        .length
-    : 0;
-  const prosbaScopeConfigured = orderHints?.prosbaScopeConfigured ?? true;
-  const inStockLineCount = orderHints?.inStockLineKeys.length ?? 0;
+  const prosbaScopeConfigured = orderHints?.prosbaScopeConfigured ?? false;
   const prosbaCardAction = deriveZkWatchProsbaCardAction({
     lineCount: productLineCount,
     uncoveredLineKeys,
     openProsbaLineKeys,
     newLineKeys: newLineKeys ?? [],
     hasOpenMatchingProsba,
-    prosbaScopeConfigured,
-    forceProsbaScopeSetup: prosbaScopeRequired,
   });
-
-  const prefillSourceKeys = useMemo((): string[] => {
-    if (prosbaCardAction.kind === "supplement") return prosbaCardAction.lineKeys;
-    if (prosbaCardAction.kind === "new_prosba" && prosbaCardAction.lineKeys?.length) {
-      return prosbaCardAction.lineKeys;
-    }
-    return [];
-  }, [prosbaCardAction]);
-
-  const stockFilterScopeLines = useMemo((): ZkProsbaScopeLineInput[] => {
-    return prefillSourceKeys
-      .map((key) => lineViews.find((line) => line.key === key))
-      .filter((line) => line != null && line.key !== "summary")
-      .map((line) => ({
-        key: line!.key,
-        subiektTwId: line!.subiektTwId,
-        quantity: line!.quantity,
-      }));
-  }, [prefillSourceKeys, lineViews]);
-
-  const stockFilterEnabled = prefillSourceKeys.length > 0;
-
-  const {
-    stockLoading: prosbaStockLoading,
-    lineKeysToOrder,
-    allOnStock: prosbaAllOnStock,
-  } = useZkProsbaLineKeysStockFilter(
-    stockFilterScopeLines,
-    prefillSourceKeys,
-    stockFilterEnabled
-  );
-
-  const effectivePrefillLineKeys = stockFilterEnabled ? lineKeysToOrder : undefined;
-
-  const lineStatusSummary = orderHints
-    ? formatZkWatchLineStatusSummary({
-        uncoveredLineKeys,
-        openProsbaLineKeys,
-        newLineKeys: newLineKeys ?? [],
-        deliveredCount: deliveredLineCount,
-        inStockCount: inStockLineCount,
-        prosbaScopeConfigured,
-        forceProsbaScopeSetup: prosbaScopeRequired,
-      })
-    : null;
 
   const prosbaPrefillOptions: ZkProsbaPrefillOptions | undefined = useMemo(() => {
     if (prosbaCardAction.kind === "supplement") {
-      return { lineKeys: effectivePrefillLineKeys ?? [], mode: "supplement" };
+      return { lineKeys: prosbaCardAction.lineKeys, mode: "supplement" };
     }
-    if (prosbaCardAction.kind === "new_prosba" && effectivePrefillLineKeys?.length) {
-      return { lineKeys: effectivePrefillLineKeys };
+    if (prosbaCardAction.kind === "new_prosba" && prosbaCardAction.lineKeys?.length) {
+      return { lineKeys: prosbaCardAction.lineKeys };
     }
     return undefined;
-  }, [prosbaCardAction.kind, effectivePrefillLineKeys]);
+  }, [prosbaCardAction]);
 
   const prosbaHref = prosbaHrefFromZkWatch(watch, prosbaPrefillOptions);
 
-  const prosbaActionLabel = formatZkProsbaCardActionLabelAfterStockFilter({
-    action: prosbaCardAction,
-    stockLoading: stockFilterEnabled && prosbaStockLoading,
-    allOnStock: stockFilterEnabled && prosbaAllOnStock,
-    filteredCount: effectivePrefillLineKeys?.length ?? prefillSourceKeys.length,
-    sourceCount: prefillSourceKeys.length,
-  });
+  const lineStatusSummary = orderHints
+    ? buildZkWatchLineStatusSummary({
+        lineViews,
+        newLineKeys: newLineKeys ?? [],
+        inStockLineKeys: orderHints.inStockLineKeys,
+        scopeExcludedLineKeys: orderHints.scopeExcludedLineKeys,
+        lineCoverageByKey: orderHints.lineCoverageByKey,
+        prosbaScopeConfigured,
+      })
+    : null;
 
-  const prosbaActionDisabled =
-    stockFilterEnabled && (prosbaStockLoading || prosbaAllOnStock);
-
-  const prosbaActionLoading = stockFilterEnabled && prosbaStockLoading;
-
-  const prosbaActionCount =
-    stockFilterEnabled && !prosbaStockLoading ? lineKeysToOrder.length : uncoveredLineKeys.length;
+  const prosbaActionCount = uncoveredLineKeys.length;
 
   function handleProsbaClick(event: MouseEvent<HTMLAnchorElement>) {
-    if (prosbaActionDisabled) {
-      event.preventDefault();
-      return;
-    }
     const ok = stashZkProsbaPrefill(watch, prosbaPrefillOptions);
     if (!ok) {
       event.preventDefault();
@@ -230,20 +184,6 @@ export function ZkWatchCard({
   }
   const canEdit = !readOnly && !tourPreview && !archived;
   const pending = closing || restoring || deleting || refreshing;
-
-  const shouldAutoOpenScope =
-    prosbaScopeRequired && canEdit && productLineCount > 0;
-  const prosbaScopePromptKey = `${watch.id}:${(newLineKeys ?? []).join(",")}`;
-  const scopeAutoDismissed = scopeDismissedKey === prosbaScopePromptKey;
-  const scopeOpen =
-    scopeManualOpen || (shouldAutoOpenScope && !scopeAutoDismissed);
-
-  function closeScopeModal() {
-    setScopeManualOpen(false);
-    if (shouldAutoOpenScope) {
-      setScopeDismissedKey(prosbaScopePromptKey);
-    }
-  }
 
   const displayNumber = formatZkWatchDisplayNumber(watch.zk_number);
   const productPreview =
@@ -258,7 +198,6 @@ export function ZkWatchCard({
     setFocusNoteOnOpen(focusNote);
     setLinesOpen(true);
     onLinesModalOpenChange?.(true);
-    onWatchDetailOpen?.(watch.id);
   }
 
   function closeLinesModal() {
@@ -384,7 +323,7 @@ export function ZkWatchCard({
           visualTone: archived ? "archive" : "default",
         }),
         followUpDue && readyToClose && "ring-1 ring-inset ring-amber-300/50",
-        hasNewWarehouseArrival && "ring-1 ring-inset ring-emerald-300/70",
+        hasNewWarehouseArrival && "ring-1 ring-inset ring-teal-300/80",
         hasNewZkLines && !hasNewWarehouseArrival && "ring-1 ring-inset ring-amber-300/70"
       )}
     >
@@ -422,7 +361,7 @@ export function ZkWatchCard({
               </span>
               {hasNewWarehouseArrival ? (
                 <Badge variant="success" className="shrink-0 text-[9px]">
-                  Na magazynie
+                  Na regale
                 </Badge>
               ) : null}
               {hasNewZkLines ? (
@@ -474,11 +413,7 @@ export function ZkWatchCard({
               prosbaHref={prosbaHref}
               prosbaInTokuHref={prosbaInTokuHref}
               onProsbaClick={handleProsbaClick}
-              onSetupScope={() => setScopeManualOpen(true)}
               uncoveredCount={prosbaActionCount}
-              prosbaLabel={prosbaActionLabel}
-              prosbaDisabled={prosbaActionDisabled}
-              prosbaLoading={prosbaActionLoading}
             />
 
             {!archived ? (
@@ -488,7 +423,9 @@ export function ZkWatchCard({
                 tourPreview={tourPreview}
                 archived={archived}
                 disabled={pending}
-                onSaved={onRefreshed}
+                onSaved={(updated) =>
+                  onRefreshed?.(updated, undefined, { skipRouterRefresh: true })
+                }
               />
             ) : null}
 
@@ -501,7 +438,9 @@ export function ZkWatchCard({
               linesLabel={linesShort ?? String(lineViews.length || 1)}
               onOpenLines={() => openLinesModal(false)}
               onEditProsbaScope={
-                canEdit && productLineCount > 0 ? () => setScopeManualOpen(true) : undefined
+                canEdit && !prosbaScopeConfigured && productLineCount > 0
+                  ? () => onProsbaScopeRequested?.(watch.id)
+                  : undefined
               }
               onRefresh={canEdit ? () => void refreshFromSubiekt() : undefined}
               refreshDisabled={refreshing || !subiektReachable}
@@ -533,24 +472,12 @@ export function ZkWatchCard({
         matchedDeliveredLineKeys={orderHints?.matchedDeliveredLineKeys}
         newLineKeys={newLineKeys}
         lineCoverageByKey={orderHints?.lineCoverageByKey}
-        uncoveredLineKeys={orderHints?.uncoveredLineKeys}
-        openProsbaLineKeys={orderHints?.openProsbaCoveredLineKeys}
         inStockLineKeys={orderHints?.inStockLineKeys}
+        scopeExcludedLineKeys={orderHints?.scopeExcludedLineKeys}
         onClose={closeLinesModal}
-        onSaved={(updated) => onRefreshed?.(updated)}
-      />
-
-      <ZkWatchProsbaScopeModal
-        watch={watch}
-        open={scopeOpen}
-        required={prosbaScopeRequired && !orderHints?.prosbaScopeConfigured}
-        onClose={closeScopeModal}
-        onSaved={(updated) => {
-          setScopeDismissedKey(null);
-          setScopeManualOpen(false);
-          onProsbaScopeConfigured?.(watch.id);
-          onRefreshed?.(updated);
-        }}
+        onSaved={(updated) =>
+          onRefreshed?.(updated, undefined, { skipRouterRefresh: true })
+        }
       />
     </article>
   );

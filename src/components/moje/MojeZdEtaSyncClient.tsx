@@ -1,0 +1,126 @@
+"use client";
+
+import { useEffect, useRef } from "react";
+import { useRouter } from "next/navigation";
+import {
+  shouldMarkMojeZdEtaSessionDone,
+  shouldRetryMojeZdEtaSync,
+  type MojeZdEtaRefreshResult,
+  ZD_ETA_MOJE_CLIENT_FETCH_TIMEOUT_MS,
+} from "@/lib/subiekt/zd-eta-sync";
+
+const LOCK_RETRY_MS = 5_000;
+const MAX_LOCK_RETRIES = 2;
+const MAX_NETWORK_RETRIES = 2;
+const NETWORK_RETRY_MS = 3_000;
+
+const MOJE_ZD_ETA_SESSION_KEY = "moje-zd-eta-client-sync-v1";
+
+export function clearMojeZdEtaSessionSync(): void {
+  if (typeof window === "undefined") return;
+  try {
+    sessionStorage.removeItem(MOJE_ZD_ETA_SESSION_KEY);
+  } catch {
+    /* ignore */
+  }
+}
+
+function markMojeZdEtaSessionDone(): void {
+  try {
+    sessionStorage.setItem(MOJE_ZD_ETA_SESSION_KEY, "1");
+  } catch {
+    /* ignore */
+  }
+}
+
+/**
+ * Po wejściu na /moje uruchamia sync terminów ZD (live search) dla opóźnionych pozycji
+ * i odświeża widok po zakończeniu próby (sukces, brak dopasowania, timeout lub Subiekt offline).
+ */
+export function MojeZdEtaSyncClient({ syncEligibleCount }: { syncEligibleCount: number }) {
+  const router = useRouter();
+  const startedRef = useRef(false);
+
+  useEffect(() => {
+    if (syncEligibleCount <= 0) return;
+    if (typeof window !== "undefined") {
+      try {
+        if (sessionStorage.getItem(MOJE_ZD_ETA_SESSION_KEY) === "1") return;
+      } catch {
+        /* storage niedostępny — kontynuuj sync */
+      }
+    }
+    if (startedRef.current) return;
+    startedRef.current = true;
+
+    let cancelled = false;
+
+    const finish = (body: MojeZdEtaRefreshResult | null, networkRetry: number) => {
+      if (cancelled) return;
+      if (shouldRetryMojeZdEtaSync(body, networkRetry, MAX_NETWORK_RETRIES)) {
+        window.setTimeout(() => {
+          void run(0, networkRetry + 1);
+        }, NETWORK_RETRY_MS);
+        return;
+      }
+      if (body && shouldMarkMojeZdEtaSessionDone(body)) {
+        markMojeZdEtaSessionDone();
+      } else {
+        startedRef.current = false;
+      }
+      router.refresh();
+    };
+
+    const run = async (lockRetry = 0, networkRetry = 0) => {
+      const controller = new AbortController();
+      const timeoutId = window.setTimeout(
+        () => controller.abort(),
+        ZD_ETA_MOJE_CLIENT_FETCH_TIMEOUT_MS
+      );
+
+      try {
+        const res = await fetch("/api/sales/zd-eta-refresh", {
+          method: "POST",
+          signal: controller.signal,
+        });
+        if (cancelled) return;
+
+        if (!res.ok) {
+          finish(null, networkRetry);
+          return;
+        }
+
+        const body = (await res.json()) as MojeZdEtaRefreshResult;
+        if (cancelled) return;
+
+        if (body.skipped && body.reason === "lock_held" && lockRetry < MAX_LOCK_RETRIES) {
+          window.setTimeout(() => {
+            void run(lockRetry + 1, networkRetry);
+          }, LOCK_RETRY_MS);
+          return;
+        }
+
+        if (body.skipped && body.reason === "lock_held") {
+          finish(body, networkRetry);
+          return;
+        }
+
+        finish(body, networkRetry);
+      } catch {
+        if (!cancelled) {
+          finish(null, networkRetry);
+        }
+      } finally {
+        window.clearTimeout(timeoutId);
+      }
+    };
+
+    void run();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [syncEligibleCount, router]);
+
+  return null;
+}

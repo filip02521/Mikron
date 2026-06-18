@@ -98,6 +98,23 @@ async function acknowledgeOrders(
 
   revalidatePath("/moje");
   revalidatePath("/zespol");
+  revalidatePath("/notatnik");
+  revalidatePath("/zk");
+
+  try {
+    const { syncZkWatchLineChecksFromOrder } = await import("@/lib/sales/zk-watch-order-sync");
+    await Promise.all(
+      rows.map((row) =>
+        syncZkWatchLineChecksFromOrder({
+          ...(row as IndividualOrder),
+          sales_acknowledged_at: now,
+        })
+      )
+    );
+  } catch (e) {
+    console.error("[acknowledgeOrders syncZkWatchLineChecks]", e);
+  }
+
   return { success: true, count: orderIds.length };
 }
 
@@ -326,6 +343,23 @@ export async function actionUnacknowledgePickup(orderIds: string[]) {
   if (error) throw new Error(error.message);
 
   revalidatePath("/moje");
+  revalidatePath("/notatnik");
+  revalidatePath("/zk");
+
+  try {
+    const { syncZkWatchLineChecksFromOrder } = await import("@/lib/sales/zk-watch-order-sync");
+    await Promise.all(
+      (rows as IndividualOrder[]).map((row) =>
+        syncZkWatchLineChecksFromOrder({
+          ...row,
+          sales_acknowledged_at: null,
+        })
+      )
+    );
+  } catch (e) {
+    console.error("[actionUnacknowledgePickup syncZkWatch]", e);
+  }
+
   return { success: true, count: orderIds.length };
 }
 

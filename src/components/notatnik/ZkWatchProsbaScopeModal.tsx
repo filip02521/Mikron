@@ -21,7 +21,6 @@ import {
 } from "@/lib/orders/prosba-stock-check";
 import { formatZkWatchDisplayNumber } from "@/lib/sales/notepad-format";
 import { buildZkWatchLineViews, parseZkWatchLineChecks } from "@/lib/sales/zk-watch-lines";
-import { zkWatchLineUiStateMeta } from "@/lib/sales/zk-watch-line-ui-state";
 import {
   getZkWatchProsbaScopeLineKeys,
   needsProsbaByKeyFromChecks,
@@ -44,7 +43,7 @@ function useZkProsbaScopeSelection(watch: SalesZkWatch, open: boolean) {
     [watch.line_checks]
   );
 
-  /** Zaznaczone = „na stanie” (nie trafią do prośby). */
+  /** Zaznaczone = wykluczone z prośby. */
   const [inStockMarked, setInStockMarked] = useState<Set<string>>(() => new Set());
   const [stockByTwId, setStockByTwId] = useState<Record<number, ProsbaLineStockSnapshot>>({});
   const [stockLoading, setStockLoading] = useState(false);
@@ -154,7 +153,10 @@ export function ZkWatchProsbaScopeModal({
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const displayNumber = formatZkWatchDisplayNumber(watch.zk_number);
-  const inStockMeta = zkWatchLineUiStateMeta("in_stock");
+  const scopeExcludedMeta = {
+    badgeClass: "bg-slate-100 text-slate-700 ring-1 ring-slate-200/80",
+    rowTintClass: "bg-slate-50/70",
+  } as const;
   const lineKeysToOrder = zkProsbaScopeLineKeysToOrder(productLines, inStockMarked);
   const allLinesSufficient =
     !stockLoading && zkProsbaScopeAllLinesSufficient(productLines, stockByTwId);
@@ -194,18 +196,23 @@ export function ZkWatchProsbaScopeModal({
   return (
     <ModalShell
       open={open}
-      onClose={required ? () => {} : onClose}
+      onClose={onClose}
+      disableBackdropClose={required}
       size="md"
       title={`${displayNumber} — co zamawiamy?`}
       description={watch.client_label}
       bodyClassName="space-y-4"
       footer={
         <div className="flex w-full flex-col-reverse gap-2 sm:flex-row sm:justify-end">
-          {!required ? (
+          {required ? (
+            <Button type="button" variant="ghost" size="sm" onClick={onClose} disabled={saving}>
+              Skonfiguruj później
+            </Button>
+          ) : (
             <Button type="button" variant="ghost" size="sm" onClick={onClose} disabled={saving}>
               Anuluj
             </Button>
-          ) : null}
+          )}
           <Button
             type="button"
             size="sm"
@@ -217,17 +224,18 @@ export function ZkWatchProsbaScopeModal({
               : stockLoading
                 ? "Sprawdzam stan…"
                 : lineKeysToOrder.length === 0
-                  ? "Zapisz — wszystko na stanie"
+                  ? "Zapisz — bez prośby"
                   : `Zapisz (${lineKeysToOrder.length})`}
           </Button>
         </div>
       }
     >
       <div className="rounded-lg border border-indigo-200/80 bg-indigo-50/50 px-3 py-3 text-sm text-indigo-950">
-        <p className="font-medium">Zaznacz pozycje, które macie na stanie.</p>
+        <p className="font-medium">Zaznacz pozycje, które wykluczasz z prośby.</p>
         <p className="mt-1 text-xs leading-relaxed text-indigo-900/85">
-          Zaznaczone pozycje nie trafią do prośby. Odznacz towar, jeśli mimo stanu w Subiekcie chcesz
-          go zamówić (np. gdy dane magazynowe są nieaktualne).
+          Zaznaczone pozycje nie trafią do prośby (np. gdy macie wystarczający stan w Subiekcie).
+          Odznacz towar, jeśli mimo stanu chcesz go zamówić. Oznaczenie „na magazynie” pojawi się
+          dopiero po dostawie z prośby.
         </p>
       </div>
 
@@ -284,7 +292,7 @@ export function ZkWatchProsbaScopeModal({
                   "flex cursor-pointer items-start gap-3 px-3 py-2.5 transition",
                   markedInStock
                     ? sufficient
-                      ? inStockMeta.rowTintClass
+                      ? scopeExcludedMeta.rowTintClass
                       : "bg-slate-50/70"
                     : "bg-indigo-50/40 hover:bg-indigo-50/55"
                 )}
@@ -296,8 +304,8 @@ export function ZkWatchProsbaScopeModal({
                   onChange={() => toggleLine(line.key)}
                   aria-label={
                     markedInStock
-                      ? `${line.product} — na stanie, odznacz aby zamówić`
-                      : `${line.product} — do zamówienia, zaznacz jeśli jest na stanie`
+                      ? `${line.product} — wykluczone z prośby, odznacz aby zamówić`
+                      : `${line.product} — do zamówienia, zaznacz aby wykluczyć z prośby`
                   }
                   className="mt-0.5 size-4 shrink-0 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
                 />
@@ -317,7 +325,7 @@ export function ZkWatchProsbaScopeModal({
                     "shrink-0 rounded-full px-1.5 py-0.5",
                     markedInStock
                       ? sufficient
-                        ? inStockMeta.badgeClass
+                        ? scopeExcludedMeta.badgeClass
                         : "bg-slate-100 text-slate-600 ring-1 ring-slate-200/80"
                       : partialStock
                         ? "bg-amber-100 text-amber-950 ring-1 ring-amber-200/80"
@@ -340,7 +348,7 @@ export function ZkWatchProsbaScopeModal({
           </p>
         ) : (
           <p className={cn(salesTypography.rowMeta, "text-amber-800")}>
-            Wszystkie pozycje oznaczone jako na stanie — odznacz te, które mimo to chcesz zamówić.
+            Wszystkie pozycje wykluczone z prośby — odznacz te, które mimo to chcesz zamówić.
           </p>
         )
       ) : null}

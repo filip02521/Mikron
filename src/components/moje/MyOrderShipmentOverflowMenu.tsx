@@ -3,26 +3,7 @@
 import { OverflowMenu, OverflowMenuItem } from "@/components/ui/OverflowMenu";
 import type { MyOrderListKind } from "@/lib/orders/my-order-row-layout";
 
-export function MyOrderShipmentOverflowMenu({
-  supplierName,
-  listKind,
-  disabled,
-  hasClient,
-  canAssignClient,
-  canEdit,
-  canCancel,
-  cancelLabel,
-  canPartialCancelRemainder,
-  partialCancelRemainderLabel,
-  onPartialCancelRemainder,
-  canPartialCancelCustom,
-  partialCancelCustomLabel,
-  onPartialCancelCustom,
-  assignClientLabel,
-  onAssignClient,
-  onEdit,
-  onCancel,
-}: {
+export type MyOrderShipmentOverflowMenuProps = {
   supplierName: string;
   listKind: MyOrderListKind;
   disabled?: boolean;
@@ -37,6 +18,10 @@ export function MyOrderShipmentOverflowMenu({
   canPartialCancelRemainder?: boolean;
   partialCancelRemainderLabel?: string;
   onPartialCancelRemainder?: () => void;
+  /** Jedna szt. u dostawcy po częściowej dostawie — skrót „Zmień ilość”. */
+  canPartialCancelQuick?: boolean;
+  partialCancelQuickLabel?: string;
+  onPartialCancelQuick?: () => void;
   canPartialCancelCustom?: boolean;
   partialCancelCustomLabel?: string;
   onPartialCancelCustom?: () => void;
@@ -45,12 +30,43 @@ export function MyOrderShipmentOverflowMenu({
   onAssignClient: () => void;
   onEdit: () => void;
   onCancel: () => void;
-}) {
+  variant?: "standalone" | "segment";
+  className?: string;
+  triggerClassName?: string;
+};
+
+export function MyOrderShipmentOverflowMenu({
+  supplierName,
+  listKind,
+  disabled,
+  hasClient,
+  canAssignClient,
+  canEdit,
+  canCancel,
+  cancelLabel,
+  canPartialCancelRemainder,
+  partialCancelRemainderLabel,
+  onPartialCancelRemainder,
+  canPartialCancelQuick,
+  partialCancelQuickLabel,
+  onPartialCancelQuick,
+  canPartialCancelCustom,
+  partialCancelCustomLabel,
+  onPartialCancelCustom,
+  assignClientLabel,
+  onAssignClient,
+  onEdit,
+  onCancel,
+  variant = "standalone",
+  className,
+  triggerClassName,
+}: MyOrderShipmentOverflowMenuProps) {
   const hasAny =
     canAssignClient ||
     canEdit ||
     canCancel ||
     canPartialCancelRemainder ||
+    canPartialCancelQuick ||
     canPartialCancelCustom;
   if (!hasAny) return null;
 
@@ -62,7 +78,9 @@ export function MyOrderShipmentOverflowMenu({
       disabled={disabled}
       align="end"
       iconOnly
-      triggerClassName="h-10 w-10 sm:h-7 sm:w-7"
+      variant={variant}
+      className={className}
+      triggerClassName={triggerClassName}
     >
       {canAssignClient ? (
         <OverflowMenuItem disabled={disabled} onClick={onAssignClient}>
@@ -75,14 +93,19 @@ export function MyOrderShipmentOverflowMenu({
           {isInformacja ? "Popraw informację" : "Popraw prośbę"}
         </OverflowMenuItem>
       ) : null}
+      {canPartialCancelQuick && onPartialCancelQuick ? (
+        <OverflowMenuItem danger disabled={disabled} onClick={onPartialCancelQuick}>
+          {partialCancelQuickLabel ?? "Zmień ilość"}
+        </OverflowMenuItem>
+      ) : null}
       {canPartialCancelRemainder && onPartialCancelRemainder ? (
         <OverflowMenuItem danger disabled={disabled} onClick={onPartialCancelRemainder}>
-          {partialCancelRemainderLabel ?? "Rezygnuj z reszty"}
+          {partialCancelRemainderLabel ?? "Zmień ilość"}
         </OverflowMenuItem>
       ) : null}
       {canPartialCancelCustom && onPartialCancelCustom ? (
-        <OverflowMenuItem disabled={disabled} onClick={onPartialCancelCustom}>
-          {partialCancelCustomLabel ?? "Inna ilość…"}
+        <OverflowMenuItem danger disabled={disabled} onClick={onPartialCancelCustom}>
+          {partialCancelCustomLabel ?? "Zmień ilość"}
         </OverflowMenuItem>
       ) : null}
       {canCancel ? (

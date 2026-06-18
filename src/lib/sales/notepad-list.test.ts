@@ -22,6 +22,12 @@ describe("mergeRecordsByUpdatedAt", () => {
     expect(mergeRecordsByUpdatedAt(local, server)).toEqual(local);
   });
 
+  it("przy tym samym updated_at wygrywa lokalna kopia", () => {
+    const local = [{ id: "a", updated_at: "2026-06-09T12:00:00.000Z", v: 2 }];
+    const server = [{ id: "a", updated_at: "2026-06-09T12:00:00.000Z", v: 1 }];
+    expect(mergeRecordsByUpdatedAt(local, server)).toEqual(local);
+  });
+
   it("bierze serwer gdy jest nowszy", () => {
     const local = [{ id: "a", updated_at: "2026-06-09T11:00:00.000Z", v: 1 }];
     const server = [{ id: "a", updated_at: "2026-06-09T12:00:00.000Z", v: 2 }];

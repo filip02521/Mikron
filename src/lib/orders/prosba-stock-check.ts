@@ -140,21 +140,21 @@ export function formatProsbaSufficientStockBanner(count: number): string {
   return `${count} ${noun} mają wystarczający stan magazynowy — sprawdź, czy prośba jest potrzebna.`;
 }
 
-/** Podpowiedź w modalu ZK po auto-zaznaczeniu pozycji na stanie. */
+/** Podpowiedź w modalu ZK po auto-zaznaczeniu pozycji wykluczonych z prośby. */
 export function formatZkProsbaAutoMarkedHint(count: number): string {
   if (count <= 0) return "";
   if (count === 1) {
-    return "1 pozycja ma pełny stan — zaznaczono jako na stanie. Odznacz, jeśli mimo to chcesz zamówić.";
+    return "1 pozycja ma pełny stan w Subiekcie — zaznaczono jako wykluczoną z prośby. Odznacz, jeśli mimo to chcesz zamówić.";
   }
   const mod10 = count % 10;
   const mod100 = count % 100;
   const few = mod10 >= 2 && mod10 <= 4 && (mod100 < 12 || mod100 > 14);
   const noun = few ? "pozycje" : "pozycji";
   const verb = few ? "mają" : "ma";
-  return `${count} ${noun} ${verb} pełny stan — zaznaczono jako na stanie. Odznacz, jeśli mimo to chcesz zamówić.`;
+  return `${count} ${noun} ${verb} pełny stan w Subiekcie — zaznaczono jako wykluczone z prośby. Odznacz, jeśli mimo to chcesz zamówić.`;
 }
 
-/** Etykieta statusu w modalu zakresu ZK (checkbox = „na stanie”). */
+/** Etykieta statusu w modalu zakresu ZK (checkbox = wykluczenie z prośby). */
 export function formatZkProsbaScopeLineBadge(input: {
   sufficient: boolean;
   markedInStock: boolean;
@@ -163,9 +163,9 @@ export function formatZkProsbaScopeLineBadge(input: {
 }): string {
   if (input.markedInStock) {
     if (input.sufficient && input.available != null) {
-      return `Na stanie: ${input.available} szt.`;
+      return `Stan w Subiekcie: ${input.available} szt.`;
     }
-    return "Na stanie";
+    return "Wykluczone z prośby";
   }
   if (input.hasStockData && input.available != null && input.available > 0 && !input.sufficient) {
     return `Stan: ${input.available} szt.`;

@@ -1,8 +1,9 @@
 "use client";
 
-import { useMemo } from "react";
+import { useCallback, useMemo, useState } from "react";
 import type { MyOrderRow } from "@/lib/orders/my-order-presenter";
 import { MojeOrdersView } from "@/components/moje/MojeOrdersView";
+import { MojeZdEtaSyncClient } from "@/components/moje/MojeZdEtaSyncClient";
 import { useSalesOnboardingDemo } from "@/components/sales/SalesOnboardingContext";
 import {
   buildOnboardingDayStartContext,
@@ -10,6 +11,10 @@ import {
   buildOnboardingMojeArchiveDemo,
 } from "@/lib/sales/sales-onboarding-demo-data";
 import type { SalesDayStartContext } from "@/lib/sales/sales-day-start";
+import {
+  isSubiektAvailableForZdSync,
+  type SubiektAvailability,
+} from "@/lib/subiekt/availability";
 
 type Presented = {
   zamowienia: MyOrderRow[];
@@ -21,12 +26,14 @@ export function MojeOrdersShell({
   initial,
   salesPersonId,
   showSalesSync = false,
+  zdEtaSyncEligibleCount = 0,
   dayStartContext = null,
   ...viewProps
 }: {
   initial: Presented;
   salesPersonId: string | null;
   showSalesSync?: boolean;
+  zdEtaSyncEligibleCount?: number;
   dayStartContext?: SalesDayStartContext | null;
 } & Omit<
   React.ComponentProps<typeof MojeOrdersView>,
@@ -41,10 +48,24 @@ export function MojeOrdersShell({
   );
   const effectiveInitial = tourDemo ? demoPresented : initial;
   const presented = effectiveInitial;
+  const [subiektReachable, setSubiektReachable] = useState(() =>
+    viewProps.subiektAvailability
+      ? isSubiektAvailableForZdSync(viewProps.subiektAvailability)
+      : true
+  );
+  const handleSubiektStatusChange = useCallback((status: SubiektAvailability) => {
+    setSubiektReachable(isSubiektAvailableForZdSync(status));
+  }, []);
 
   return (
-    <MojeOrdersView
+    <>
+      {showSalesSync && zdEtaSyncEligibleCount > 0 && subiektReachable ? (
+        <MojeZdEtaSyncClient syncEligibleCount={zdEtaSyncEligibleCount} />
+      ) : null}
+      <MojeOrdersView
       {...viewProps}
+      onSubiektStatusChange={handleSubiektStatusChange}
+      subiektReachable={subiektReachable}
       showSalesSync={showSalesSync}
       zamowienia={presented.zamowienia}
       informacje={presented.informacje}
@@ -56,5 +77,6 @@ export function MojeOrdersShell({
       archiwumExtended={tourDemo ? demoArchive.archiwumExtended : viewProps.archiwumExtended}
       dayStartContext={tourDemo ? demoDayStartContext : dayStartContext}
     />
+    </>
   );
 }

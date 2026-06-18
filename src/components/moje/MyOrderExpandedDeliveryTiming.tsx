@@ -8,18 +8,21 @@ const toneShellClass = {
   default: "border-indigo-100/80 bg-indigo-50/40",
   overdue: "border-amber-200/80 bg-amber-50/60",
   "low-confidence": "",
+  "zd-sourced": "border-indigo-200/90 bg-indigo-50/70",
 } as const;
 
 const toneTitleClass = {
   default: "text-slate-400",
   overdue: "text-amber-800/80",
   "low-confidence": "text-slate-400",
+  "zd-sourced": "text-indigo-700/90",
 } as const;
 
 const toneEstimateClass = {
   default: "text-slate-700",
   overdue: "font-semibold text-amber-900",
   "low-confidence": "text-slate-700",
+  "zd-sourced": "font-semibold text-indigo-950",
 } as const;
 
 export function MyOrderExpandedDeliveryTiming({

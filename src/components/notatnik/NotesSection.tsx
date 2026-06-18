@@ -723,6 +723,7 @@ export function NotesSection({
             <NotatnikListFilterBar
               embedded
               bleed
+              visibleLabel="Szukaj w notatkach"
               value={searchQuery}
               onChange={setSearchQuery}
               matchCount={filtered.length}

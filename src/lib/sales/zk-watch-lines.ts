@@ -4,8 +4,12 @@ import type { SalesZkWatch } from "@/types/database";
 export type ZkWatchLineCheckStored = {
   key: string;
   arrived: boolean;
-  /** false = mamy na stanie, nie trafia do prośby; true = wymaga zamówienia. */
+  /** false = wykluczone z prośby; true = wymaga zamówienia. */
   needs_prosba?: boolean;
+  /** Towar na regale — odnotowane na liście ZK (osobno od Moje i zakończenia). */
+  shelf_marked?: boolean;
+  /** Checkbox „Zakończone” zaznaczony ręcznie (nie z sync / legacy). */
+  completed_manually?: boolean;
 };
 
 export type ZkWatchLineView = {
@@ -17,6 +21,8 @@ export type ZkWatchLineView = {
   quantity: number | null;
   subiektTwId: number | null;
   arrived: boolean;
+  shelf_marked: boolean;
+  completed_manually: boolean;
 };
 
 /** Pozycje usługowe (pakowanie, koszt dostawy) — nie liczą się w checkliście towaru. */
@@ -62,9 +68,10 @@ function parseLineQuantity(qty: number | null | undefined): number | null {
 function lineViewFromSubiekt(
   line: SubiektDocumentLine,
   index: number,
-  arrivedByKey: Map<string, boolean>
+  checksByKey: Map<string, ZkWatchLineCheckStored>
 ): ZkWatchLineView {
   const key = zkLineKey(line, index);
+  const check = checksByKey.get(key);
   const product = (line.tw_Nazwa ?? line.tw_Symbol ?? "Pozycja").trim();
   const symbol = line.tw_Symbol?.trim() || null;
   const quantity = parseLineQuantity(line.ob_Ilosc);
@@ -78,7 +85,9 @@ function lineViewFromSubiekt(
       line.ob_TowId != null && Number.isFinite(Number(line.ob_TowId))
         ? Math.trunc(Number(line.ob_TowId))
         : null,
-    arrived: arrivedByKey.get(key) ?? false,
+    arrived: check?.arrived ?? false,
+    shelf_marked: check?.shelf_marked === true,
+    completed_manually: check?.completed_manually === true,
   };
 }
 
@@ -90,11 +99,20 @@ export function parseZkWatchLineChecks(raw: unknown): ZkWatchLineCheckStored[] {
     const key = "key" in item && typeof item.key === "string" ? item.key.trim() : "";
     if (!key) continue;
     const arrived = "arrived" in item && item.arrived === true;
+    const shelfMarked = "shelf_marked" in item && item.shelf_marked === true;
+    const completedManually =
+      "completed_manually" in item && item.completed_manually === true;
     const needsProsba =
       "needs_prosba" in item && typeof item.needs_prosba === "boolean"
         ? item.needs_prosba
         : undefined;
-    out.push({ key, arrived, ...(needsProsba !== undefined ? { needs_prosba: needsProsba } : {}) });
+    out.push({
+      key,
+      arrived,
+      ...(shelfMarked ? { shelf_marked: true } : {}),
+      ...(completedManually ? { completed_manually: true } : {}),
+      ...(needsProsba !== undefined ? { needs_prosba: needsProsba } : {}),
+    });
   }
   return out;
 }
@@ -106,18 +124,21 @@ export function arrivedByKeyFromChecks(
 }
 
 export function buildZkWatchLineViews(watch: SalesZkWatch): ZkWatchLineView[] {
-  const arrivedByKey = arrivedByKeyFromChecks(parseZkWatchLineChecks(watch.line_checks));
+  const checksByKey = new Map(
+    parseZkWatchLineChecks(watch.line_checks).map((check) => [check.key, check])
+  );
   const snap = watch.subiekt_snapshot as SubiektDocument | null;
   const pozycje = snap?.dok_Pozycja ?? [];
 
   if (pozycje.length > 0) {
     return pozycje
       .filter((line) => !isZkWatchShippingCostLine(line))
-      .map((line, index) => lineViewFromSubiekt(line, index, arrivedByKey));
+      .map((line, index) => lineViewFromSubiekt(line, index, checksByKey));
   }
 
   if (watch.line_summary?.trim()) {
     const key = "summary";
+    const check = checksByKey.get(key);
     return [
       {
         key,
@@ -126,7 +147,9 @@ export function buildZkWatchLineViews(watch: SalesZkWatch): ZkWatchLineView[] {
         quantityLabel: null,
         quantity: null,
         subiektTwId: null,
-        arrived: arrivedByKey.get(key) ?? false,
+        arrived: check?.arrived ?? false,
+        shelf_marked: check?.shelf_marked === true,
+        completed_manually: check?.completed_manually === true,
       },
     ];
   }
@@ -140,21 +163,42 @@ export function summarizeZkWatchLines(views: ZkWatchLineView[]): {
   pending: number;
 } {
   const total = views.length;
-  const arrived = views.filter((v) => v.arrived).length;
+  const arrived = views.filter((v) => v.arrived && v.completed_manually).length;
   return { total, arrived, pending: total - arrived };
 }
 
-/** Wszystkie pozycje towarowe oznaczone jako „na miejscu”. */
+/** Wszystkie pozycje towarowe odebrane z regału lub przekazane klientowi. */
 export function allZkWatchLinesArrived(views: ZkWatchLineView[]): boolean {
   const { total, arrived } = summarizeZkWatchLines(views);
   return total > 0 && arrived === total;
 }
 
-export function formatZkLinesProgress(views: ZkWatchLineView[]): string | null {
+export function formatZkLinesProgress(
+  views: ZkWatchLineView[],
+  options?: { inStockLineKeys?: string[] }
+): string | null {
   const { total, arrived } = summarizeZkWatchLines(views);
   if (!total) return null;
-  if (arrived === 0) return `${total} ${total === 1 ? "pozycja" : total < 5 ? "pozycje" : "pozycji"}`;
-  return `${arrived}/${total} na miejscu`;
+  if (arrived === 0) {
+    return `${total} ${total === 1 ? "pozycja" : total < 5 ? "pozycje" : "pozycji"}`;
+  }
+
+  const inStockSet = new Set(options?.inStockLineKeys ?? []);
+  const onWarehouse = views.filter((v) => inStockSet.has(v.key)).length;
+  const atClient = views.filter((v) => v.arrived && v.completed_manually && !inStockSet.has(v.key)).length;
+
+  if (onWarehouse > 0 && atClient > 0) {
+    return `${onWarehouse} odebrane z regału · ${atClient} zakończone`;
+  }
+  if (onWarehouse > 0) {
+    return onWarehouse === total
+      ? `${total} odebrane z regału`
+      : `${onWarehouse}/${total} odebrane z regału`;
+  }
+  if (atClient > 0) {
+    return `${atClient}/${total} zakończone`;
+  }
+  return `${arrived}/${total} zakończone`;
 }
 
 /** Krótki licznik na wierszu ZK. */
@@ -177,7 +221,12 @@ export function formatZkLinesPreview(views: ZkWatchLineView[]): string | null {
 }
 
 export function checksFromLineViews(views: ZkWatchLineView[]): ZkWatchLineCheckStored[] {
-  return views.map((v) => ({ key: v.key, arrived: v.arrived }));
+  return views.map((v) => ({
+    key: v.key,
+    arrived: v.arrived,
+    ...(v.shelf_marked ? { shelf_marked: true } : {}),
+    ...(v.completed_manually ? { completed_manually: true } : {}),
+  }));
 }
 
 /** Po odświeżeniu z Subiekta — zachowaj stan dla pozycji o tym samym kluczu (arrived + zakres prośby). */
@@ -191,6 +240,8 @@ export function mergeLineChecksAfterRefresh(
     return {
       key: view.key,
       arrived: prev?.arrived ?? false,
+      ...(prev?.shelf_marked ? { shelf_marked: true } : {}),
+      ...(prev?.completed_manually ? { completed_manually: true } : {}),
       ...(prev?.needs_prosba !== undefined ? { needs_prosba: prev.needs_prosba } : {}),
     };
   });

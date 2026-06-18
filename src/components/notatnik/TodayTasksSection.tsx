@@ -22,7 +22,7 @@ function taskBadge(kind: NotepadTodayTaskKind) {
     case "zk-warehouse-arrival":
       return (
         <Badge variant="success" className="text-[10px]">
-          Na magazynie
+          Na regale
         </Badge>
       );
     case "note-follow-up":
@@ -40,6 +40,7 @@ export function TodayTasksSection({
   onTaskClick,
   embedded = false,
   unseenWarehouseWatchIds,
+  inStockCountByWatchId,
   kinds,
   showTopDivider = false,
 }: {
@@ -49,12 +50,16 @@ export function TodayTasksSection({
   /** Wewnątrz głównej karty — bez osobnego „kartonu”. */
   embedded?: boolean;
   unseenWarehouseWatchIds?: Set<string>;
+  inStockCountByWatchId?: Record<string, number | string[]>;
   /** Ogranicza listę do wybranych typów zadań (np. tylko ZK na /zk). */
   kinds?: NotepadTodayTaskKind[];
   /** Jedna linia nad sekcją (np. po sticky sync na /zk). */
   showTopDivider?: boolean;
 }) {
-  const tasks = collectNotepadTodayTasks(watches, notes, { unseenWarehouseWatchIds }).filter(
+  const tasks = collectNotepadTodayTasks(watches, notes, {
+    unseenWarehouseWatchIds,
+    inStockCountByWatchId,
+  }).filter(
     (task) => !kinds?.length || kinds.includes(task.kind)
   );
   if (!tasks.length) return null;

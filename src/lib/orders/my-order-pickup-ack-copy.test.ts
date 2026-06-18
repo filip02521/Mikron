@@ -19,9 +19,9 @@ describe("myOrderPickupAckLabel", () => {
     expect(myOrderPickupAckLabel(5, "availability")).toBe("Potwierdź");
   });
 
-  it("compact — bez słowa odbiór na liście", () => {
+  it("compact — krótka etykieta bez licznika (liczba w title)", () => {
     expect(myOrderPickupAckLabel(1, "pickup", { compact: true })).toBe("Potwierdź");
-    expect(myOrderPickupAckLabel(3, "pickup", { compact: true })).toBe("Potwierdź (3)");
+    expect(myOrderPickupAckLabel(3, "pickup", { compact: true })).toBe("Potwierdź");
   });
 });
 

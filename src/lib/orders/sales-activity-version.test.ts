@@ -44,6 +44,29 @@ describe("computeSalesActivityVersionFromRows", () => {
     expect(a).not.toBe(b);
   });
 
+  it("zmienia się po synchronizacji terminu z ZD", () => {
+    const before = computeSalesActivityVersionFromRows([row({})]);
+    const after = computeSalesActivityVersionFromRows([
+      row({
+        zd_fulfillment_source: "zd",
+        zd_fulfillment_deadline: "2026-07-03",
+      }),
+    ]);
+    expect(before).not.toBe(after);
+    expect(after).toContain("zd:1:2026-07-03");
+  });
+
+  it("zmienia się po zakończeniu sync ZD bez dopasowania (synced_at)", () => {
+    const before = computeSalesActivityVersionFromRows([row({})]);
+    const after = computeSalesActivityVersionFromRows([
+      row({
+        zd_fulfillment_synced_at: "2026-06-18T14:20:40.887Z",
+      }),
+    ]);
+    expect(before).not.toBe(after);
+    expect(after).toContain("zds:2026-06-18T14:20:40.887Z");
+  });
+
   it("ignoruje stock_out przy filtrowaniu (zgodnie z SSR handlowca)", () => {
     const visible = row({ action_at: "2026-01-01T10:00:00Z", status: "Nowe" });
     const stockOut = row({

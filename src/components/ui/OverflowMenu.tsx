@@ -126,11 +126,13 @@ export function OverflowMenu({
   const segmentTriggerClass = cn(
     buttonGroupItemClass,
     panelSegmentControlClass,
-    "relative flex cursor-pointer select-none items-center justify-center overflow-hidden transition-colors duration-150",
+    "relative flex h-full min-h-0 w-full cursor-pointer select-none items-center justify-center overflow-hidden transition-colors duration-150",
     iconOnly ? "min-w-8 px-1" : "gap-1 px-2",
     open && panelSegmentControlOpenClass,
     triggerClassName
   );
+
+  const toggleOpen = () => setOpen((v) => !v);
 
   const trigger =
     variant === "segment" ? (
@@ -138,12 +140,13 @@ export function OverflowMenu({
         ref={triggerRef}
         type="button"
         disabled={disabled}
-        onClick={() => setOpen((v) => !v)}
+        onMouseDown={(event) => event.stopPropagation()}
+        onClick={toggleOpen}
         aria-expanded={open}
         aria-haspopup="menu"
         aria-controls={open ? menuId : undefined}
         aria-label={label}
-        className={cn(segmentTriggerClass, className)}
+        className={segmentTriggerClass}
       >
         <span className="inline-flex items-center justify-center leading-none">
           <MoreIcon />
@@ -155,7 +158,8 @@ export function OverflowMenu({
         ref={triggerRef}
         type="button"
         disabled={disabled}
-        onClick={() => setOpen((v) => !v)}
+        onMouseDown={(event) => event.stopPropagation()}
+        onClick={toggleOpen}
         aria-expanded={open}
         aria-haspopup="menu"
         aria-controls={open ? menuId : undefined}
@@ -175,7 +179,8 @@ export function OverflowMenu({
         variant="secondary"
         size="sm"
         disabled={disabled}
-        onClick={() => setOpen((v) => !v)}
+        onMouseDown={(event) => event.stopPropagation()}
+        onClick={toggleOpen}
         aria-expanded={open}
         aria-haspopup="menu"
         aria-controls={open ? menuId : undefined}
@@ -212,7 +217,9 @@ export function OverflowMenu({
   if (variant === "segment") {
     return (
       <>
-        {trigger}
+        <div ref={rootRef} className={cn("relative flex h-full shrink-0", className)}>
+          {trigger}
+        </div>
         {typeof document !== "undefined" && menuPanel
           ? createPortal(menuPanel, document.body)
           : null}

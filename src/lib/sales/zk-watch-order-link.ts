@@ -1,5 +1,4 @@
 import {
-  arrivedByKeyFromChecks,
   buildZkWatchLineViews,
   checksFromLineViews,
   parseZkWatchLineChecks,
@@ -83,6 +82,30 @@ export function resolveZkWatchIdsForOrderSync(
 
 export type ZkWatchLineCoverage = "uncovered" | "open" | "partial" | "delivered";
 
+/** Odbiór z regału potwierdzony w Moje zamówienia (sales_acknowledged_at). */
+export function isZkLinePickedFromShelf(
+  line: ZkWatchLineView,
+  coverage: ZkWatchLineCoverage | undefined,
+  relevantOrders: ZkLinkableOrder[]
+): boolean {
+  if (coverage !== "delivered" && coverage !== "partial") return false;
+  const matching = relevantOrders.filter(
+    (order) => isDeliveredOrderStatus(order.status) && productMatchesZkLine(order, line)
+  );
+  if (!matching.length) return false;
+  return matching.every((order) => Boolean(order.sales_acknowledged_at));
+}
+
+/** Towar z prośby dotarł i czeka na odbiór z regału (bez potwierdzenia w Moje). */
+export function isZkLineWaitingOnShelf(
+  line: ZkWatchLineView,
+  coverage: ZkWatchLineCoverage | undefined,
+  relevantOrders: ZkLinkableOrder[]
+): boolean {
+  if (coverage !== "delivered") return false;
+  return !isZkLinePickedFromShelf(line, coverage, relevantOrders);
+}
+
 export type ZkWatchOrderHints = {
   /** Aktywne prośby tego klienta z dopasowanym towarem (w toku). */
   matchingOpenRequestCount: number;
@@ -100,8 +123,12 @@ export type ZkWatchOrderHints = {
   openProsbaCoveredLineKeys: string[];
   /** Czy handlowiec ustalił zakres pozycji do prośby. */
   prosbaScopeConfigured: boolean;
-  /** Pozycje oznaczone jako „na stanie” — wyłączone z prośby. */
+  /** Pozycje odebrane z regału (potwierdzenie odbioru w Moje zamówienia). */
   inStockLineKeys: string[];
+  /** Pozycje czekające na regale — dostawa z prośby bez odbioru w Moje. */
+  regalWaitingLineKeys: string[];
+  /** Pozycje wykluczone z zakresu prośby (needs_prosba: false). */
+  scopeExcludedLineKeys: string[];
 };
 
 const DELIVERED_STATUSES = new Set(["Zrealizowane", "Czesciowo_zrealizowane"]);
@@ -288,6 +315,8 @@ export function computeZkWatchOrderHints(
       .map((check) => [check.key, check.needs_prosba === true])
   );
   const inStockLineKeys: string[] = [];
+  const regalWaitingLineKeys: string[] = [];
+  const scopeExcludedLineKeys: string[] = [];
 
   let matchingOpenRequestCount = 0;
   const matchingOpenRequestIds: string[] = [];
@@ -298,15 +327,26 @@ export function computeZkWatchOrderHints(
 
   for (const line of lineViews) {
     if (line.key === "summary") continue;
-    if (prosbaScopeSet && !prosbaScopeSet.has(line.key)) {
-      if (needsByKey.get(line.key) === false) {
-        inStockLineKeys.push(line.key);
-      }
-      continue;
+
+    const scopeExcluded =
+      prosbaScopeSet != null &&
+      (!prosbaScopeSet.has(line.key) || needsByKey.get(line.key) === false);
+    if (scopeExcluded) {
+      scopeExcludedLineKeys.push(line.key);
     }
 
     const coverage = computeZkWatchLineCoverage(line, relevant, watch);
     lineCoverageByKey[line.key] = coverage;
+
+    if (isZkLinePickedFromShelf(line, coverage, relevant)) {
+      inStockLineKeys.push(line.key);
+    }
+    if (isZkLineWaitingOnShelf(line, coverage, relevant)) {
+      regalWaitingLineKeys.push(line.key);
+    }
+
+    if (scopeExcluded) continue;
+
     if (coverage === "uncovered") uncoveredLineKeys.push(line.key);
     if (coverage === "open") openProsbaCoveredLineKeys.push(line.key);
   }
@@ -346,40 +386,67 @@ export function computeZkWatchOrderHints(
     openProsbaCoveredLineKeys,
     prosbaScopeConfigured,
     inStockLineKeys,
+    regalWaitingLineKeys,
+    scopeExcludedLineKeys,
   };
 }
 
-/** Po dostawie / cofnięciu dostawy — przelicz pozycje ZK wg prośb. */
+/** Po dostawie / odbiorze — czyści legacy arrived bez ręcznego zakończenia. */
 export function mergeZkLineChecksFromDeliveredOrders(
   watch: SalesZkWatch,
   orders: ZkLinkableOrder[]
 ): { checks: ZkWatchLineCheckStored[]; changed: boolean } {
   const views = buildZkWatchLineViews(watch);
+  const relevant = orders.filter((o) => orderRelevantToZkWatch(o, watch));
+  const hints = computeZkWatchOrderHints(watch, orders);
+  const inStockSet = new Set(hints.inStockLineKeys);
   const previous = parseZkWatchLineChecks(watch.line_checks);
-  const arrived = arrivedByKeyFromChecks(previous);
 
-  const relevantAll = orders.filter((order) => orderRelevantToZkWatch(order, watch));
-  const relevantDelivered = relevantAll.filter((order) =>
-    isDeliveredOrderStatus(order.status)
-  );
+  const next = views.map((v) => {
+    const prev = previous.find((c) => c.key === v.key);
+    let arrived = prev?.arrived ?? false;
+    const completedManually = prev?.completed_manually ?? false;
 
-  for (const line of views) {
-    const hasLinkedProsba = relevantAll.some((order) => productMatchesZkLine(order, line));
-    if (!hasLinkedProsba) continue;
+    if (inStockSet.has(v.key) && arrived && !completedManually) {
+      arrived = false;
+    } else if (arrived && !completedManually) {
+      const coverage = computeZkWatchLineCoverage(v, relevant, watch);
+      if (coverage !== undefined && !inStockSet.has(v.key)) {
+        arrived = false;
+      }
+    }
 
-    arrived.set(line.key, isZkLineFullyDeliveredByOrders(relevantDelivered, line));
-  }
+    const coverage = computeZkWatchLineCoverage(v, relevant, watch);
+    const waitingOnShelf = isZkLineWaitingOnShelf(v, coverage, relevant);
+    const pickedFromShelf = inStockSet.has(v.key);
+    let shelfMarked = prev?.shelf_marked ?? false;
+    if (waitingOnShelf || pickedFromShelf) {
+      shelfMarked = true;
+    } else if (!completedManually) {
+      shelfMarked = false;
+    }
 
-  const next = views.map((v) => ({
-    key: v.key,
-    arrived: arrived.get(v.key) ?? false,
-  }));
-
-  const changed = views.some((v) => {
-    const wasArrived = previous.find((c) => c.key === v.key)?.arrived ?? false;
-    const nowArrived = arrived.get(v.key) ?? false;
-    return wasArrived !== nowArrived;
+    return {
+      key: v.key,
+      arrived,
+      ...(completedManually ? { completed_manually: true } : {}),
+      ...(shelfMarked ? { shelf_marked: true } : {}),
+      ...(prev?.needs_prosba !== undefined ? { needs_prosba: prev.needs_prosba } : {}),
+    };
   });
+
+  const changed =
+    next.length !== previous.length ||
+    next.some((check) => {
+      const prev = previous.find((c) => c.key === check.key);
+      return (
+        !prev ||
+        prev.arrived !== check.arrived ||
+        Boolean(prev.shelf_marked) !== Boolean(check.shelf_marked) ||
+        Boolean(prev.completed_manually) !== Boolean(check.completed_manually) ||
+        (prev.needs_prosba ?? undefined) !== (check.needs_prosba ?? undefined)
+      );
+    });
 
   return { checks: next, changed };
 }

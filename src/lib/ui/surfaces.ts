@@ -37,9 +37,9 @@ export const buttonGroupShellClass =
 export const panelActionBarShellClass =
   "inline-flex h-9 min-h-9 w-full items-stretch overflow-hidden rounded-md border border-slate-200 bg-white shadow-sm sm:h-7 sm:min-h-7 sm:w-auto";
 
-/** Grupa akcji w wierszu /moje — ta sama wysokość co toolbar strony. */
+/** Grupa akcji w wierszu /moje — ta sama wysokość co toolbar karty (h-10). */
 export const mojeActionBarShellClass =
-  "inline-flex h-10 min-h-10 w-full items-stretch overflow-hidden rounded-md border border-slate-200 bg-white shadow-sm sm:w-auto";
+  "inline-flex h-10 min-h-10 w-full items-stretch overflow-hidden rounded-md border border-slate-200/90 bg-white shadow-sm sm:w-auto";
 
 export const buttonGroupItemClass = "border-0 shadow-none";
 

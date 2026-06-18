@@ -21,7 +21,6 @@ import {
   MyOrderShipmentUndoToast,
 } from "@/components/moje/MyOrderShipmentUndoProvider";
 import { MyOrderArchiveSection } from "@/components/moje/MyOrderArchiveSection";
-import { MyOrderBulkPickupBar } from "@/components/moje/MyOrderBulkPickupBar";
 import { SalesDayStartPanel } from "@/components/moje/SalesDayStartPanel";
 import {
   buildSalesDayStartSnapshot,
@@ -374,6 +373,8 @@ function MojeOrdersViewContent({
   pageDescription,
   headerActions,
   subiektAvailability,
+  subiektReachable = true,
+  onSubiektStatusChange,
   initialSearchQuery,
   /** @deprecated użyj initialSearchQuery */
   initialClientQuery,
@@ -399,6 +400,8 @@ function MojeOrdersViewContent({
   pageDescription?: string;
   headerActions?: React.ReactNode;
   subiektAvailability?: SubiektAvailability;
+  subiektReachable?: boolean;
+  onSubiektStatusChange?: (status: SubiektAvailability) => void;
   initialSearchQuery?: string | null;
   initialClientQuery?: string | null;
   initialClientKhId?: number | null;
@@ -556,13 +559,6 @@ function MojeOrdersViewContent({
   const actionSectionRows = useMemo(
     () => [...actionZamowienia, ...actionInformacje],
     [actionZamowienia, actionInformacje]
-  );
-  const bulkPickupRows = useMemo(
-    () =>
-      [...filteredZamowienia, ...filteredInformacje].filter(
-        (r) => r.acknowledgeMode === "pickup" && r.pickupPendingIds.length > 0
-      ),
-    [filteredZamowienia, filteredInformacje]
   );
   const actionSectionCallouts = useMyOrderSectionCallouts(actionSectionRows);
   const informacjeSectionCallouts = useMyOrderSectionCallouts(informacjeListRows);
@@ -784,7 +780,7 @@ function MojeOrdersViewContent({
   }, [dayStartActionCount, tourPreview, canAcknowledge]);
 
   const cardDescription = pageDescription ?? MOJE_INTRO;
-  const pageToolbar = (
+  const cardHeaderAction = (
     <div className="flex flex-wrap items-center justify-end gap-2">
       {headerActions}
       {dayStartPanel ? <SalesDayStartHelp /> : null}
@@ -795,7 +791,6 @@ function MojeOrdersViewContent({
   if (!shipmentCount) {
     return (
       <div className="space-y-5">
-        {pageToolbar}
         {dayStartPanel}
         <Card padding={false} className="overflow-hidden">
           <CardHeader
@@ -803,6 +798,7 @@ function MojeOrdersViewContent({
             density="compact"
             title={pageTitle}
             description={cardDescription}
+            action={cardHeaderAction}
             leading={
               <SectionHeadingIcon tileClassName={sectionIconTileBrandClass}>
                 <IconClipboardList size={20} />
@@ -811,7 +807,11 @@ function MojeOrdersViewContent({
           />
           {!tourPreview && showSalesSync ? <MojeOrdersSyncStrip /> : null}
           {subiektAvailability ? (
-            <SubiektStatusBar initial={subiektAvailability} embedded />
+            <SubiektStatusBar
+              initial={subiektAvailability}
+              embedded
+              onStatusChange={onSubiektStatusChange}
+            />
           ) : null}
           {hasArchiveData ? searchBar : null}
           {clientKhBanner}
@@ -853,11 +853,11 @@ function MojeOrdersViewContent({
     tourPreview,
     compactActionLayout: true,
     focusRowIds: focusRowIds.size > 0 ? focusRowIds : undefined,
+    subiektReachable,
   };
 
   return (
     <div className="space-y-5">
-      {pageToolbar}
       {dayStartPanel}
       <Card padding={false}>
         <CardHeader
@@ -865,6 +865,7 @@ function MojeOrdersViewContent({
           density="compact"
           title={pageTitle}
           description={cardDescription}
+          action={cardHeaderAction}
           leading={
             <SectionHeadingIcon tileClassName={sectionIconTileBrandClass}>
               <IconClipboardList size={20} />
@@ -877,7 +878,11 @@ function MojeOrdersViewContent({
         {!tourPreview && showSalesSync ? <MojeOrdersSyncStrip /> : null}
 
         {subiektAvailability ? (
-          <SubiektStatusBar initial={subiektAvailability} embedded />
+          <SubiektStatusBar
+            initial={subiektAvailability}
+            embedded
+            onStatusChange={onSubiektStatusChange}
+          />
         ) : null}
 
         {searchBar}
@@ -904,11 +909,6 @@ function MojeOrdersViewContent({
         ) : null}
 
         <div className="space-y-3 p-3 sm:p-4">
-        <MyOrderBulkPickupBar
-          rows={bulkPickupRows}
-          enabled={canAcknowledge}
-          tourPreview={tourPreview}
-        />
         {actionCount > 0 ? (
           <MojeSectionShell sectionIcon={MY_ORDER_ACTION_SECTION_COPY.icon}>
             <MojeSectionListLabel

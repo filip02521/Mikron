@@ -22,7 +22,11 @@ export function mergeRecordsByUpdatedAt<T extends { id: string; updated_at: stri
     }
     const localTs = Date.parse(item.updated_at);
     const serverTs = Date.parse(existing.updated_at);
-    if (Number.isFinite(localTs) && Number.isFinite(serverTs) && localTs > serverTs) {
+    if (
+      Number.isFinite(localTs) &&
+      Number.isFinite(serverTs) &&
+      localTs >= serverTs
+    ) {
       byId.set(item.id, item);
     }
   }

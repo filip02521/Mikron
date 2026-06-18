@@ -7,16 +7,19 @@ import { Button } from "@/components/ui/Button";
 import { ModalShell } from "@/components/ui/ModalShell";
 import { Spinner } from "@/components/ui/Spinner";
 import { cn } from "@/lib/cn";
+import { buttonPrimaryClass } from "@/lib/ui/ontime-theme";
 import {
   assessProsbaLineStock,
   formatZkProsbaScopeLineBadge,
   isZkProsbaScopePartialStock,
   type ZkProsbaScopeLineInput,
 } from "@/lib/orders/prosba-stock-check";
+import { appendMojeFocusOrderIds } from "@/lib/orders/moje-order-focus";
 import {
   prosbaHrefFromZkWatch,
   stashZkProsbaPrefill,
 } from "@/lib/orders/zk-watch-prosba-prefill";
+import { buildMojeClientLink } from "@/lib/sales/notepad-follow-up";
 import { formatZkWatchDisplayNumber } from "@/lib/sales/notepad-format";
 import { formatZkProsbaCoverageSummary } from "@/lib/sales/zk-watch-coverage-summary";
 import { zkWatchLineUiStateMeta } from "@/lib/sales/zk-watch-line-ui-state";
@@ -103,7 +106,21 @@ export function ZkWatchRefreshPromptModal({
 
   const linesToAddCount = lineKeysToOrder.length;
   const onStockExcludedCount = excludedByStockCount;
-  const inStockMeta = zkWatchLineUiStateMeta("in_stock");
+  const hasOpenMatchingProsba = orderHints.matchingOpenRequestCount > 0;
+  const prosbaInTokuHref = useMemo(
+    () =>
+      appendMojeFocusOrderIds(
+        buildMojeClientLink(watch.sales_person_id, watch.client_label, {
+          clientKhId: watch.client_kh_id,
+          zkWatchId: watch.id,
+          zkNumber: watch.zk_number,
+        }),
+        orderHints.matchingOpenRequestIds
+      ),
+    [watch, orderHints.matchingOpenRequestIds]
+  );
+  const redirectToOpenProsba = allOnStock && hasOpenMatchingProsba;
+  const scopeStockMeta = zkWatchLineUiStateMeta("in_stock");
 
   const supplementOptions = {
     lineKeys: lineKeysToOrder,
@@ -128,12 +145,19 @@ export function ZkWatchRefreshPromptModal({
 
   const addButtonLabel = stockLoading
     ? "Sprawdzam stan…"
-    : allOnStock
-      ? "Wszystko na stanie — nie trzeba uzupełniać"
-      : linesToAddCount === addedCount
-        ? "Dodaj brakujące do prośby"
-        : `Dodaj do prośby (${linesToAddCount})`;
+    : redirectToOpenProsba
+      ? "Otwórz prośbę"
+      : allOnStock
+        ? "Wszystko na stanie — nie trzeba uzupełniać"
+        : linesToAddCount === addedCount
+          ? "Dodaj brakujące do prośby"
+          : `Dodaj do prośby (${linesToAddCount})`;
 
+  const primaryLinkButtonClass = cn(
+    "inline-flex cursor-pointer items-center justify-center gap-2 font-medium transition-colors disabled:cursor-not-allowed disabled:pointer-events-none disabled:opacity-50",
+    buttonPrimaryClass,
+    "px-2.5 py-1.5 text-xs rounded-md leading-none w-full sm:w-auto"
+  );
   const queueLabel =
     queuePosition != null && queueTotal != null && queueTotal > 1
       ? ` (${queuePosition} z ${queueTotal})`
@@ -152,20 +176,25 @@ export function ZkWatchRefreshPromptModal({
           <Button type="button" variant="ghost" size="sm" onClick={onLater}>
             Później
           </Button>
-          {allOnStock ? (
+          {redirectToOpenProsba ? (
+            <Link
+              href={prosbaInTokuHref}
+              onClick={onConfirm}
+              className={primaryLinkButtonClass}
+            >
+              {addButtonLabel}
+            </Link>
+          ) : allOnStock ? (
+            <Button type="button" size="sm" disabled className="w-full sm:w-auto">
+              {addButtonLabel}
+            </Button>
+          ) : stockLoading || linesToAddCount === 0 ? (
             <Button type="button" size="sm" disabled className="w-full sm:w-auto">
               {addButtonLabel}
             </Button>
           ) : (
-            <Link href={prosbaHref} onClick={handleAddMissing}>
-              <Button
-                type="button"
-                size="sm"
-                disabled={stockLoading || linesToAddCount === 0}
-                className="w-full sm:w-auto"
-              >
-                {addButtonLabel}
-              </Button>
+            <Link href={prosbaHref} onClick={handleAddMissing} className={primaryLinkButtonClass}>
+              {addButtonLabel}
             </Link>
           )}
         </div>
@@ -181,10 +210,17 @@ export function ZkWatchRefreshPromptModal({
             Pozostałe pozycje: {statusSummary}.
           </p>
         ) : null}
-        <p className="mt-2 text-xs leading-relaxed text-amber-900/85">
-          Wyślesz uzupełniającą prośbę powiązaną z tym ZK — tylko z nowymi pozycjami.
-          Wcześniejsze pozycje pozostają w dotychczasowych prośbach.
-        </p>
+        {redirectToOpenProsba ? (
+          <p className="mt-2 text-xs leading-relaxed text-amber-900/85">
+            Nowe pozycje mają wystarczający stan w Subiekcie — sprawdź aktywną prośbę powiązaną z
+            tym ZK.
+          </p>
+        ) : (
+          <p className="mt-2 text-xs leading-relaxed text-amber-900/85">
+            Wyślesz uzupełniającą prośbę powiązaną z tym ZK — tylko z nowymi pozycjami.
+            Wcześniejsze pozycje pozostają w dotychczasowych prośbach.
+          </p>
+        )}
       </div>
 
       {stockLoading ? (
@@ -211,10 +247,17 @@ export function ZkWatchRefreshPromptModal({
         </p>
       ) : null}
 
-      {allOnStock ? (
+      {allOnStock && !redirectToOpenProsba ? (
         <p className={cn(salesTypography.rowMeta, "text-slate-700")}>
           Subiekt potwierdza wystarczający stan na wszystkich nowych pozycjach — uzupełnienie
           prośby nie jest potrzebne.
+        </p>
+      ) : null}
+
+      {redirectToOpenProsba ? (
+        <p className={cn(salesTypography.rowMeta, "text-indigo-900/90")}>
+          Nowe pozycje mają wystarczający stan w Subiekcie, ale jest już aktywna prośba powiązana z
+          tym ZK — przejdź do niej, aby sprawdzić status zamówienia.
         </p>
       ) : null}
 
@@ -280,7 +323,7 @@ export function ZkWatchRefreshPromptModal({
                 className={cn(
                   "flex items-start justify-between gap-2 px-3 py-2.5",
                   sufficient
-                    ? inStockMeta.rowTintClass
+                    ? scopeStockMeta.rowTintClass
                     : lineKeysToOrder.includes(key)
                       ? "bg-indigo-50/40"
                       : "bg-amber-50/50"
@@ -304,7 +347,7 @@ export function ZkWatchRefreshPromptModal({
                         salesTypography.kindTag,
                         "rounded-full px-1.5 py-0.5",
                         sufficient
-                          ? inStockMeta.badgeClass
+                          ? scopeStockMeta.badgeClass
                           : partialStock
                             ? "bg-amber-100 text-amber-950 ring-1 ring-amber-200/80"
                             : "bg-indigo-100 text-indigo-900 ring-1 ring-indigo-200/70"

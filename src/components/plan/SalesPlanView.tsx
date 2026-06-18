@@ -8,14 +8,14 @@ import type { DeliveryStats, SupplierWithSchedule } from "@/types/database";
 import { WeekPlanner } from "@/components/summary/WeekPlanner";
 import { Card, CardHeader } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
-import { Input } from "@/components/ui/Field";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { BackChevron } from "@/components/ui/UiGlyphs";
 import { Badge } from "@/components/ui/Badge";
 import { HelpPopover, GuideIcon } from "@/components/ui/HelpPopover";
 import { HelpBlock } from "@/components/ui/HelpBlock";
 import { SectionListLabel } from "@/components/ui/SectionListLabel";
-import { ProsbaFormSection } from "@/components/orders/ProsbaFormSection";
+import { NotatnikListFilterBar } from "@/components/notatnik/NotatnikListFilterBar";
+import { AppBrandContentFooter } from "@/components/layout/AppBrandContentFooter";
 import { locationLabel } from "@/lib/display-labels";
 import {
   matchSuppliersByQuery,
@@ -383,9 +383,6 @@ function SalesPlanViewContent({
 
   return (
     <div className={salesPageShellClass}>
-      {error ? (
-        <Alert tone="warning">{error}</Alert>
-      ) : null}
       <Card padding={false} className="overflow-hidden">
         <CardHeader
           inset
@@ -400,6 +397,12 @@ function SalesPlanViewContent({
           action={<PlanGuide />}
         />
 
+        {error ? (
+          <Alert tone="warning" className={cn(salesChromeInsetClass, "mt-0")}>
+            {error}
+          </Alert>
+        ) : null}
+
         {!tourPreview ? (
           <ProcurementPlanBlock
             open={showProcurementPlan}
@@ -408,29 +411,19 @@ function SalesPlanViewContent({
           />
         ) : null}
 
-        <div className={cn("border-b border-slate-100", salesChromeInsetClass, "py-3")}>
-          <ProsbaFormSection
-            title="Szukaj dostawcy"
-            hint="Każdy dostawca z bazy — ten sam układ szczegółów po rozwinięciu wiersza."
-          >
-            <label className="block">
-              <span className="sr-only">Szukaj dostawcy</span>
-              <div className="relative">
-                <span className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3 text-slate-400">
-                  <PlanSectionIcon kind="search" size={18} />
-                </span>
-                <Input
-                  type="search"
-                  placeholder="Wpisz fragment nazwy…"
-                  value={query}
-                  onChange={(e) => setQuery(e.target.value)}
-                  autoComplete="off"
-                  className="border-slate-200 bg-white pl-10 focus:bg-white"
-                />
-              </div>
-            </label>
-          </ProsbaFormSection>
-        </div>
+        <NotatnikListFilterBar
+          visibleLabel="Szukaj dostawcy"
+          value={query}
+          onChange={setQuery}
+          matchCount={searchQuery ? searchInsights.length : suppliers.length}
+          totalCount={searchQuery ? searchTotalMatches : suppliers.length}
+          placeholder="Fragment nazwy dostawcy…"
+          idleHint="Przeszukuje harmonogramy u dostawców przypisanych do Twoich prośb."
+          activeHint="Dopasowani dostawcy poniżej — rozwiń wiersz po szczegóły."
+          emptyMatchHint="Brak dostawcy o takiej nazwie — sprawdź pisownię lub wyczyść filtr."
+          searchLabel="Szukaj dostawcy w harmonogramie"
+          enableShortcut={false}
+        />
 
         {searchQuery ? (
           <section aria-labelledby="sales-plan-search-results">
@@ -541,6 +534,7 @@ function SalesPlanViewContent({
           </div>
         </div>
       </Card>
+      <AppBrandContentFooter mobileOnly variant="page" />
     </div>
   );
 }

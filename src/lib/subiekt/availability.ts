@@ -94,6 +94,13 @@ export async function isSubiektReachable(options?: {
   force?: boolean;
 }): Promise<boolean> {
   const status = await getSubiektAvailability(options);
+  return isSubiektAvailableForZdSync(status);
+}
+
+/** Połączenie skonfigurowane i odpowiada — wymagane do live search ZD. */
+export function isSubiektAvailableForZdSync(
+  status: Pick<SubiektAvailability, "configured" | "reachable">
+): boolean {
   return status.configured && status.reachable;
 }
 

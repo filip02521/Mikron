@@ -4,7 +4,7 @@ import { useEffect, useId } from "react";
 import { Input } from "@/components/ui/Field";
 import { IconSearch } from "@/components/icons/StrokeIcons";
 import { cn } from "@/lib/cn";
-import { brandLinkSubtleClass } from "@/lib/ui/ontime-theme";
+import { brandLinkSubtleClass, salesChromeInsetClass, salesTypography } from "@/lib/ui/ontime-theme";
 
 export function MojeOrdersSearchBar({
   value,
@@ -47,46 +47,52 @@ export function MojeOrdersSearchBar({
   }, [enableShortcut, inputId]);
 
   return (
-    <div className="border-b border-slate-100 bg-white px-3 py-2.5 sm:px-4 lg:px-6">
-      <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+    <div className={cn("border-b border-slate-100 bg-white py-2.5", salesChromeInsetClass)}>
+      <div className="flex flex-col gap-2">
         <div className="relative min-w-0 flex-1">
-          <label htmlFor={inputId} className="sr-only">
-            Szukaj w moich zamówieniach
-          </label>
-          <span
-            className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"
-            aria-hidden
+          <label
+            htmlFor={inputId}
+            className={cn(salesTypography.sectionLabel, "mb-1 block normal-case text-slate-700")}
           >
-            <IconSearch size={18} strokeWidth={2} />
-          </span>
-          <Input
-            id={inputId}
-            type="search"
-            value={value}
-            onChange={(e) => onChange(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === "Escape" && value) {
-                e.preventDefault();
-                onChange("");
-                (e.target as HTMLInputElement).blur();
-              }
-            }}
-            placeholder="Szukaj: produkt, dostawca, klient, symbol, PLU…"
-            className="pl-10"
-            autoComplete="off"
-            enterKeyHint="search"
-          />
+            Szukaj w prośbach
+          </label>
+          <div className="relative">
+            <span
+              className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"
+              aria-hidden
+            >
+              <IconSearch size={18} strokeWidth={2} />
+            </span>
+            <Input
+              id={inputId}
+              type="search"
+              value={value}
+              onChange={(e) => onChange(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Escape" && value) {
+                  e.preventDefault();
+                  onChange("");
+                  (e.target as HTMLInputElement).blur();
+                }
+              }}
+              placeholder="Produkt, dostawca, klient, symbol, PLU…"
+              className="pl-10"
+              autoComplete="off"
+              spellCheck={false}
+              enterKeyHint="search"
+            />
+          </div>
         </div>
         {active ? (
           <button
             type="button"
             className={cn(
               "shrink-0 self-start rounded-md border border-slate-200 bg-slate-50 px-3 py-2.5 text-xs font-semibold text-slate-700",
-              "hover:bg-slate-100 sm:min-h-[2.5rem]"
+              "hover:bg-slate-100 min-h-11 sm:min-h-[2.5rem]"
             )}
             onClick={() => onChange("")}
           >
-            Wyczyść
+            Wyczyść filtr
           </button>
         ) : null}
       </div>

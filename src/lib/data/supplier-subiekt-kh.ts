@@ -22,6 +22,18 @@ export function collectKhIdsForSupplierRef(s: AppSupplierRef): number[] {
   return [...ids];
 }
 
+/** Mapa supplier_id → kh_Id (główny + aliasy) do UI sync ZD. */
+export function buildSupplierKhIdsBySupplierId(
+  refs: readonly AppSupplierRef[]
+): Record<string, number[]> {
+  const map: Record<string, number[]> = {};
+  for (const ref of refs) {
+    const ids = collectKhIdsForSupplierRef(ref);
+    if (ids.length) map[ref.id] = ids;
+  }
+  return map;
+}
+
 export async function fetchSupplierSubiektKhAliases(
   supplierId: string
 ): Promise<SupplierSubiektKhAliasRow[]> {

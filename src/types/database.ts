@@ -146,6 +146,14 @@ export interface IndividualOrder {
   subiekt_tw_id?: number | null;
   /** Kod Mikran (tw_PLU) — opcjonalnie przy prośbie. */
   mikran_code?: string | null;
+  /** Termin realizacji z dokumentu ZD (YYYY-MM-DD). */
+  zd_fulfillment_deadline?: string | null;
+  /** Źródło terminu: zd = Subiekt ZD. */
+  zd_fulfillment_source?: string | null;
+  /** Numer pełny dopasowanego ZD. */
+  zd_fulfillment_dok_nr?: string | null;
+  /** Ostatnia synchronizacja terminu z ZD. */
+  zd_fulfillment_synced_at?: string | null;
   supplier?: Supplier;
   sales_person?: SalesPerson;
 }
