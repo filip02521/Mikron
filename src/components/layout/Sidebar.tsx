@@ -2,7 +2,14 @@
 
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { isNavItemActive, navForRole, type NavGroup, type NavItem } from "@/lib/nav";
+import {
+  isNavItemActive,
+  navForRole,
+  navItemDisplayTone,
+  navItemHasDueReminders,
+  type NavGroup,
+  type NavItem,
+} from "@/lib/nav";
 import { useSalesUpdates } from "@/components/sales/SalesUpdatesContext";
 import { useOperationsUpdates } from "@/components/operations/OperationsUpdatesContext";
 import { SidebarBrandBlock } from "@/components/layout/SidebarBrandBlock";
@@ -17,6 +24,7 @@ import {
   sidebarNavSectionDividerClass,
   sidebarNavSectionTitleClass,
   sidebarNavCompactPaddingClass,
+  sidebarNavAttentionIdleClass,
   sidebarNavBadgeClassForTone,
   sidebarNavToneActiveClass,
   sidebarNavToneHighlightIdleClass,
@@ -53,6 +61,8 @@ function NavLink({
   const compact = item.tier === "compact";
   const hasBadge = item.badge != null && item.badge > 0;
   const showDescription = Boolean(item.description) && !compact;
+  const displayTone = navItemDisplayTone(item, active);
+  const attentionIdle = navItemHasDueReminders(item) && !active;
 
   const className = cn(
     "group block rounded-md",
@@ -60,12 +70,14 @@ function NavLink({
     controlFocusClass,
     active
       ? sidebarNavToneActiveClass(item.tone)
-      : item.tier === "primary"
-        ? cn(
-            "border border-transparent text-slate-700",
-            sidebarNavToneHighlightIdleClass(item.tone) ?? navLinkIdleClass
-          )
-        : navLinkIdleClass,
+      : attentionIdle
+        ? sidebarNavAttentionIdleClass
+        : item.tier === "primary"
+          ? cn(
+              "border border-transparent text-slate-700",
+              sidebarNavToneHighlightIdleClass(item.tone) ?? navLinkIdleClass
+            )
+          : navLinkIdleClass,
     locked &&
       !active &&
       "cursor-not-allowed opacity-45 hover:border-transparent hover:bg-transparent hover:text-inherit"
@@ -80,7 +92,7 @@ function NavLink({
             compact ? "h-7 w-7" : "h-8 w-8",
             active
               ? navIconTileActiveClassForTone(item.tone)
-              : navIconTileClassForTone(item.tone)
+              : navIconTileClassForTone(displayTone)
           )}
         >
           <NavIcon navKey={item.icon} size={compact ? 16 : 17} />
@@ -118,7 +130,7 @@ function NavLink({
           <span
             className={cn(
               "min-w-[1.25rem] rounded-md px-1.5 py-0.5 text-center text-[10px] font-semibold tabular-nums",
-              sidebarNavBadgeClassForTone(item.tone, active)
+              sidebarNavBadgeClassForTone(displayTone, active)
             )}
           >
             {item.badge! > 99 ? "99+" : item.badge}

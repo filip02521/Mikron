@@ -101,6 +101,7 @@ export function WarehouseCarriersModal({
       {toast ? <Toast message={toast.text} tone={toast.tone} onDismiss={dismiss} /> : null}
       <ConfirmDialog
         open={!!deleteTarget}
+        tier="stack"
         title="Usunąć kuriera?"
         message={
           deleteTarget

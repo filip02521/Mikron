@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
-import { editInitialFromForSomeoneGroup } from "./individual-request-edit-ui";
+import { editInitialFromForSomeoneGroup, editInitialFromMyOrderRow } from "./individual-request-edit-ui";
 import type { SummaryForSomeoneEnriched } from "./summary-workspace";
+import type { MyOrderRow } from "./my-order-presenter";
 
 function forSomeoneGroup(
   lines: SummaryForSomeoneEnriched["lines"]
@@ -125,5 +126,97 @@ describe("editInitialFromForSomeoneGroup", () => {
     );
     expect(initial.requestNote).toBe("");
     expect(initial.requestNotesMixed).toBe(true);
+  });
+});
+
+function myOrderRow(partial: Partial<MyOrderRow>): MyOrderRow {
+  return {
+    id: "row-1",
+    kind: "informacja",
+    lineCount: 1,
+    lines: [],
+    submittedLabel: "01.05.2026",
+    supplierName: "Dostawca",
+    product: "Towar",
+    symbol: "X",
+    quantityLabel: "-",
+    progressLabel: null,
+    statusTitle: "Status",
+    statusDetail: null,
+    timingLabel: null,
+    badgeVariant: "info",
+    rowColor: "#fff",
+    orderIds: ["ord-1"],
+    acknowledgeMode: "none",
+    pickupPendingCount: 0,
+    pickupPendingIds: [],
+    pickupReadyTotal: 0,
+    pickupAcknowledgedCount: 0,
+    canCancelBySales: false,
+    salesCancelPhase: null,
+    salesCancelOrderIds: [],
+    cancelNoticeOrderIds: [],
+    cancelledAckOrderIds: [],
+    clientLabel: null,
+    requestNote: null,
+    procurementCancelNote: null,
+    supplierId: "sup-1",
+    salesPersonId: "sp-1",
+    requestKind: "informacja",
+    canEditBySales: true,
+    ...partial,
+  };
+}
+
+describe("editInitialFromMyOrderRow", () => {
+  it("mapuje ścieżkę informacji z wiersza Moje zamówienia", () => {
+    const initial = editInitialFromMyOrderRow(
+      myOrderRow({ requestKind: "informacja", informacjaPath: "stock_out" })
+    );
+    expect(initial?.requestKind).toBe("informacja");
+    expect(initial?.informacjaPath).toBe("stock_out");
+  });
+
+  it("domyślnie ustawia direct dla prośby informacyjnej bez ścieżki", () => {
+    const initial = editInitialFromMyOrderRow(
+      myOrderRow({ requestKind: "informacja", informacjaPath: undefined })
+    );
+    expect(initial?.informacjaPath).toBe("direct");
+  });
+
+  it("nie ustawia requestNotesMixed gdy linie nie mają notatek", () => {
+    const initial = editInitialFromMyOrderRow(
+      myOrderRow({
+        lines: [
+          {
+            id: "ord-1",
+            product: "Towar A",
+            symbol: "A",
+            subiektTwId: null,
+            mikranCode: null,
+            quantity: "1",
+            quantityLabel: "1 szt.",
+            progressLabel: null,
+            stockStatus: "waiting",
+            canAcknowledgePickup: false,
+            canCancelBySales: false,
+            salesCancelPhase: null,
+            maxSalesCancelQuantity: null,
+            defaultSalesCancelQuantity: null,
+            canPartialSalesCancel: false,
+            showSalesCancelRemainder: false,
+            salesCancelDeliveredQty: 0,
+            salesCancelUndoRestore: { status: "Nowe", quantity: "1", delivered_quantity: "0" },
+            clientName: null,
+            clientKhId: null,
+            requestNote: null,
+            procurementCancelNote: null,
+          },
+        ],
+        lineCount: 1,
+      })
+    );
+    expect(initial?.requestNote).toBe("");
+    expect(initial?.requestNotesMixed).toBe(false);
   });
 });

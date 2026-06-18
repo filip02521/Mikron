@@ -2,6 +2,7 @@ import type { UserRole } from "@/types/database";
 import { isSalesManager } from "@/lib/auth-roles";
 import { salesManagerNavTeamDescriptions } from "@/lib/sales/team-ui";
 import { supplierHubPaths } from "@/lib/supplier-hub";
+import { ROLE_LABELS } from "@/lib/users/labels";
 
 export type NavIconKey =
   | "dailyPanel"
@@ -74,6 +75,20 @@ function isAdminSidebarRootActive(pathname: string): boolean {
 
 function navHrefPath(href: string): string {
   return href.split("?")[0]!;
+}
+
+const SALES_DUE_REMINDER_NAV_PATHS = new Set(["/notatnik", "/zk"]);
+
+/** Notatnik lub ZK czekające z licznikiem przypomnień na dziś/wcześniej. */
+export function navItemHasDueReminders(item: NavItem): boolean {
+  if (!SALES_DUE_REMINDER_NAV_PATHS.has(navHrefPath(item.href))) return false;
+  return (item.badge ?? 0) > 0;
+}
+
+/** Ton wizualny w menu — amber w spoczynku przy przypomnieniach; aktywna strona zachowuje ton pozycji. */
+export function navItemDisplayTone(item: NavItem, active: boolean): NavTone {
+  if (!active && navItemHasDueReminders(item)) return "amber";
+  return item.tone;
 }
 
 /**
@@ -570,9 +585,5 @@ export function pageTitle(pathname: string): string {
 }
 
 export function sidebarSubtitle(role: UserRole): string {
-  if (role === "admin") return "Administrator";
-  if (role === "zakupy") return "Dział zakupów";
-  if (role === "magazyn") return "Dział dostaw";
-  if (isSalesManager(role)) return "Kierownik handlowców";
-  return "Handlowiec";
+  return ROLE_LABELS[role];
 }

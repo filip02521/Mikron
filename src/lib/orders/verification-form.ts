@@ -16,6 +16,10 @@ export type VerificationFormState = {
   requestKind: IndividualRequestKind;
   subiektTwId: number | null;
   informacjaPath: InformacjaFlowPath | null;
+  onHand?: number | null;
+  reserved?: number | null;
+  available?: number | null;
+  stockSource?: "subiekt" | null;
 };
 
 /** Mapuje wiersz kolejki weryfikacji na stan formularza. */

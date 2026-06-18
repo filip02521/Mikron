@@ -145,9 +145,43 @@ describe("editRequestNoteForSave", () => {
     ).toBe("");
   });
 
-  it("wysyła notatkę normalnie gdy linie mają jedną wspólną", () => {
+  it("nie wysyła ponownie niezmienionej wspólnej notatki", () => {
     expect(
-      editRequestNoteForSave("pilne", { mixedOnLines: false, touched: false })
+      editRequestNoteForSave("pilne", {
+        mixedOnLines: false,
+        touched: false,
+        initialNote: "pilne",
+      })
+    ).toBeUndefined();
+  });
+
+  it("zapisuje pierwszą notatkę dodaną przy edycji", () => {
+    expect(
+      editRequestNoteForSave("pilne", {
+        mixedOnLines: false,
+        touched: true,
+        initialNote: "",
+      })
     ).toBe("pilne");
+  });
+
+  it("zapisuje notatkę gdy treść różni się od initial bez touched", () => {
+    expect(
+      editRequestNoteForSave("pilne", {
+        mixedOnLines: false,
+        touched: false,
+        initialNote: "",
+      })
+    ).toBe("pilne");
+  });
+
+  it("zapisuje notatkę przy mieszanych uwagach gdy pole ma treść", () => {
+    expect(
+      editRequestNoteForSave("wspólna", {
+        mixedOnLines: true,
+        touched: false,
+        initialNote: "",
+      })
+    ).toBe("wspólna");
   });
 });

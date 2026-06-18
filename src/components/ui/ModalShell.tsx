@@ -1,17 +1,20 @@
 "use client";
 
 import { useEffect } from "react";
+import { createPortal } from "react-dom";
 import { cn } from "@/lib/cn";
 import { modalBackdropClass, modalPanelClass } from "@/lib/ui/surfaces";
 import { ActionLoadingOverlay } from "@/components/ui/ActionLoadingOverlay";
 
-export type ModalTier = "standard" | "raised" | "top";
+export type ModalTier = "standard" | "raised" | "top" | "stack";
 export type ModalSize = "sm" | "md" | "lg" | "xl";
 
 const tierZ: Record<ModalTier, { backdrop: string; panel: string }> = {
   standard: { backdrop: "z-50", panel: "z-[55]" },
   raised: { backdrop: "z-[60]", panel: "z-[61]" },
   top: { backdrop: "z-[70]", panel: "z-[71]" },
+  /** Potwierdzenia nad innymi modalami (np. stock check w formularzu prośby). */
+  stack: { backdrop: "z-[80]", panel: "z-[81]" },
 };
 
 const sizeClass: Record<ModalSize, string> = {
@@ -68,7 +71,7 @@ export function ModalShell({
   const z = tierZ[tier];
   const hasHeader = Boolean(title || description);
 
-  return (
+  const shell = (
     <>
       <button
         type="button"
@@ -117,4 +120,7 @@ export function ModalShell({
       </div>
     </>
   );
+
+  if (typeof document === "undefined") return shell;
+  return createPortal(shell, document.body);
 }

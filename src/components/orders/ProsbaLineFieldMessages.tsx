@@ -8,7 +8,8 @@ import { cn } from "@/lib/cn";
 export type ProsbaLineMessageItem =
   | { kind: "feedback"; feedback: SubiektFeedback; fieldLabel?: string }
   | { kind: "resolving" }
-  | { kind: "hint"; text: string };
+  | { kind: "hint"; text: string }
+  | { kind: "stock_warning"; text: string };
 
 export function ProsbaLineFieldMessages({
   lineLabel,
@@ -48,6 +49,17 @@ export function ProsbaLineFieldMessages({
         if (item.kind === "hint") {
           return (
             <p key={`hint-${i}`} className="text-xs leading-relaxed text-slate-500">
+              {item.text}
+            </p>
+          );
+        }
+        if (item.kind === "stock_warning") {
+          return (
+            <p
+              key={`stock-${i}`}
+              role="note"
+              className="rounded-md border border-amber-200/90 bg-amber-50 px-2.5 py-2 text-xs leading-relaxed text-amber-950"
+            >
               {item.text}
             </p>
           );

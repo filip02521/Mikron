@@ -3,9 +3,9 @@
 import { useCallback, useMemo, useState } from "react";
 import { cn } from "@/lib/cn";
 import type { SupplierCountChip } from "@/lib/orders/supplier-filter-summary";
+import { DeliveryJournalSearchField } from "@/components/queue/delivery-journal/DeliveryJournalSearchField";
 import {
   queueToolbarFieldLabelClass,
-  queueToolbarInputClass,
 } from "@/lib/ui/queue-panel-styles";
 import {
   panelChoiceChipClass,
@@ -71,26 +71,12 @@ export function SupplierFilterChips({
 }) {
   const [query, setQuery] = useState("");
   const [expanded, setExpanded] = useState(false);
-  const [appliedValue, setAppliedValue] = useState(value);
-  if (value !== appliedValue) {
-    setAppliedValue(value);
-    if (!value) setQuery("");
-  }
 
   const clearFilter = useCallback(() => {
     onChange("");
     setQuery("");
     setExpanded(false);
   }, [onChange]);
-
-  const chipsKey = chips.map((chip) => chip.key).join("\0");
-  const [appliedInvalidClearKey, setAppliedInvalidClearKey] = useState("");
-  const invalidClearKey =
-    value && !chips.some((chip) => chip.key === value) ? `${value}\0${chipsKey}` : "";
-  if (invalidClearKey && invalidClearKey !== appliedInvalidClearKey) {
-    setAppliedInvalidClearKey(invalidClearKey);
-    clearFilter();
-  }
 
   const total = useMemo(() => chips.reduce((n, c) => n + c.count, 0), [chips]);
 
@@ -104,12 +90,26 @@ export function SupplierFilterChips({
   const canCollapse = chips.length > COLLAPSED_VISIBLE && !query.trim();
 
   const visibleChips = useMemo(() => {
-    if (!canCollapse || expanded) return filteredChips;
-    const top = filteredChips.slice(0, COLLAPSED_VISIBLE);
-    if (!value) return top;
-    if (top.some((c) => c.key === value)) return top;
-    const selected = filteredChips.find((c) => c.key === value);
-    return selected ? [...top.slice(0, COLLAPSED_VISIBLE - 1), selected] : top;
+    let list: SupplierCountChip[];
+    if (!canCollapse || expanded) {
+      list = filteredChips;
+    } else {
+      const top = filteredChips.slice(0, COLLAPSED_VISIBLE);
+      if (!value) list = top;
+      else if (top.some((c) => c.key === value)) list = top;
+      else {
+        const selected = filteredChips.find((c) => c.key === value);
+        list = selected ? [...top.slice(0, COLLAPSED_VISIBLE - 1), selected] : top;
+      }
+    }
+    if (value && !list.some((chip) => chip.key === value) && !filteredChips.some((c) => c.key === value)) {
+      return [...list, { key: value, count: 0 }];
+    }
+    if (value && !list.some((chip) => chip.key === value)) {
+      const selected = filteredChips.find((c) => c.key === value);
+      if (selected) return [...list, selected];
+    }
+    return list;
   }, [canCollapse, expanded, filteredChips, value]);
 
   const hiddenCount =
@@ -133,18 +133,23 @@ export function SupplierFilterChips({
       </div>
 
       {showSearch ? (
-        <input
-          type="search"
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
-          placeholder="Filtruj listę dostawców…"
-          className={cn(queueToolbarInputClass, "mt-1.5 h-8 py-1 text-xs")}
-        />
+        <div className="mt-2">
+          <DeliveryJournalSearchField
+            id="receive-supplier-chip-search"
+            label="Filtruj dostawców"
+            hideLabel
+            value={query}
+            onChange={setQuery}
+            placeholder="Filtruj listę dostawców…"
+            className="w-full"
+          />
+        </div>
       ) : null}
 
       <div
         className={cn(
-          "mt-1.5 flex gap-1.5 overflow-x-auto pb-0.5 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden",
+          showSearch ? "mt-2" : "mt-1.5",
+          "flex gap-1.5 overflow-x-auto pb-0.5 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden",
           "sm:flex-wrap sm:overflow-visible"
         )}
         role="group"

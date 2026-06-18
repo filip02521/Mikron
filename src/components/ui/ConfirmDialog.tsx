@@ -1,7 +1,7 @@
 "use client";
 
 import { Button } from "@/components/ui/Button";
-import { ModalShell } from "@/components/ui/ModalShell";
+import { ModalShell, type ModalTier } from "@/components/ui/ModalShell";
 
 export function ConfirmDialog({
   open,
@@ -11,6 +11,7 @@ export function ConfirmDialog({
   cancelLabel = "Anuluj",
   danger,
   pending,
+  tier = "raised",
   onConfirm,
   onCancel,
 }: {
@@ -21,6 +22,7 @@ export function ConfirmDialog({
   cancelLabel?: string;
   danger?: boolean;
   pending?: boolean;
+  tier?: ModalTier;
   onCancel: () => void;
   onConfirm: () => void;
 }) {
@@ -32,7 +34,7 @@ export function ConfirmDialog({
       titleId="confirm-title"
       role="alertdialog"
       size="sm"
-      tier="raised"
+      tier={tier}
       disableBackdropClose={pending}
       loadingMessage={pending ? "Przetwarzanie…" : null}
       bodyClassName="px-5 py-4 sm:px-6"
@@ -57,7 +59,7 @@ export function ConfirmDialog({
         </div>
       }
     >
-      <p className="text-sm leading-relaxed text-slate-600">{message}</p>
+      <p className="whitespace-pre-line text-sm leading-relaxed text-slate-600">{message}</p>
     </ModalShell>
   );
 }

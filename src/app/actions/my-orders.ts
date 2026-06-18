@@ -8,6 +8,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import {
   effectiveSalesCancelPhase,
   isSalesCancelNoticePending,
+  mergeSalesCancelUserAutoAck,
   planSalesCancelQuantity,
   resolveSalesCancelPhase,
   salesCancelUndoRestoreStatus,
@@ -235,10 +236,12 @@ export async function actionSalesCancelOrders(
   }
 
   for (const { id, phase, quantityPlan } of toCancel) {
+    const row = rows.find((r) => r.id === id)!;
     const update = buildSalesCancelUpdate(caps, phase, now, quantityPlan);
     if (!update) {
       throw new Error(SALES_CANCEL_MIGRATION_HINT);
     }
+    mergeSalesCancelUserAutoAck(update, row as IndividualOrder, caps, now);
 
     const q = supabase
       .from("individual_orders")

@@ -26,6 +26,12 @@ import {
   type ZkProsbaPrefill,
   zkProsbaPrefillFromWatch,
 } from "@/lib/orders/zk-watch-prosba-prefill";
+import {
+  collectZkProsbaScopeLineTwIds,
+  filterZkProsbaScopeLineKeysNeedingOrder,
+  type ZkProsbaScopeLineInput,
+} from "@/lib/orders/prosba-stock-check";
+import { actionFetchProsbaLineStock } from "@/app/actions/subiekt";
 import { fetchZkWatchForProsbaPrefill } from "@/lib/sales/fetch-zk-watch-for-prefill";
 import type { SalesNote, SalesNoteColor, SalesZkWatch } from "@/types/database";
 
@@ -818,9 +824,33 @@ export async function actionGetZkProsbaPrefillByWatchId(
   if (error) throw new Error(error.message);
   if (!data) return null;
 
-  const options =
+  const watch = data as SalesZkWatch;
+  let options =
     lineKeys?.length ? { lineKeys, mode: "supplement" as const } : undefined;
-  return zkProsbaPrefillFromWatch(data as SalesZkWatch, options);
+
+  if (options?.lineKeys.length) {
+    const lineViews = buildZkWatchLineViews(watch).filter((line) => line.key !== "summary");
+    const scopeLines: ZkProsbaScopeLineInput[] = options.lineKeys
+      .map((key) => lineViews.find((line) => line.key === key))
+      .filter((line) => line != null)
+      .map((line) => ({
+        key: line!.key,
+        subiektTwId: line!.subiektTwId,
+        quantity: line!.quantity,
+      }));
+    const twIds = collectZkProsbaScopeLineTwIds(scopeLines);
+    if (twIds.length) {
+      const stock = await actionFetchProsbaLineStock(twIds);
+      const filteredKeys = filterZkProsbaScopeLineKeysNeedingOrder(
+        scopeLines,
+        options.lineKeys,
+        stock
+      );
+      options = { ...options, lineKeys: filteredKeys };
+    }
+  }
+
+  return zkProsbaPrefillFromWatch(watch, options);
 }
 
 /** Prefill prośby z ZK po numerze (np. nowa karta — bez sessionStorage). */

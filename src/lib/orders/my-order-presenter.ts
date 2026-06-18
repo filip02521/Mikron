@@ -25,7 +25,9 @@ import {
 import { isInformacjaQueueViaDailyPanel } from "@/lib/orders/informacja-via-daily-panel";
 import {
   filterIndividualOrdersForSalesMyOrders,
+  informacjaFlowPathFromOrder,
   isInformacjaStockOutReorder,
+  type InformacjaFlowPath,
 } from "@/lib/orders/informacja-stock-out-reorder";
 import {
   INFORMACJA_FLOW_SALES_AWAITING_PROCUREMENT,
@@ -182,6 +184,8 @@ export type MyOrderRow = MyOrderRowCore &
     supplierId: string | null;
     salesPersonId: string;
     requestKind: "zamowienie" | "informacja";
+    /** Ścieżka prośby informacyjnej — do formularza edycji. */
+    informacjaPath?: InformacjaFlowPath;
     canEditBySales: boolean;
     plannedOrderDate?: PlannedOrderDateDisplay | null;
   };
@@ -315,6 +319,10 @@ function withAckMeta(
     supplierId: rep?.supplier_id ?? null,
     salesPersonId: rep?.sales_person_id ?? "",
     requestKind: (rep?.request_kind ?? "zamowienie") as "zamowienie" | "informacja",
+    informacjaPath:
+      rep?.request_kind === "informacja"
+        ? (informacjaFlowPathFromOrder(rep) ?? "direct")
+        : undefined,
     salesCancelPhase: resolveGroupSalesCancelPhase(visible),
     salesCancelOrderIds: visible
       .filter((o) => resolveSalesCancelPhase(o) !== null)

@@ -464,6 +464,7 @@ export function MyOrderShipmentList({
         <ConfirmDialog
           open
           danger
+          tier="stack"
           pending={pending}
           {...(() => {
             const copy = salesCancelConfirmForLines(cancelConfirm.lines);

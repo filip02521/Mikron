@@ -6,6 +6,7 @@ import { controlFocusClass } from "@/lib/ui/ontime-theme";
 import {
   queueToolbarFieldLabelClass,
   queueToolbarInputClass,
+  queueToolbarControlClass,
 } from "@/lib/ui/queue-panel-styles";
 
 export function DeliveryJournalSearchField({
@@ -18,6 +19,8 @@ export function DeliveryJournalSearchField({
   onChange,
   onSubmit,
   className,
+  inputClassName,
+  hideLabel = false,
 }: {
   id: string;
   label: string;
@@ -28,10 +31,16 @@ export function DeliveryJournalSearchField({
   onChange: (value: string) => void;
   onSubmit?: () => void;
   className?: string;
+  inputClassName?: string;
+  hideLabel?: boolean;
 }) {
   return (
     <label className={cn("min-w-0 flex-1", className)} htmlFor={id}>
-      <span className={queueToolbarFieldLabelClass}>{label}</span>
+      {hideLabel ? (
+        <span className="sr-only">{label}</span>
+      ) : (
+        <span className={queueToolbarFieldLabelClass}>{label}</span>
+      )}
       <div className="relative">
         <IconSearch
           size={15}
@@ -51,7 +60,9 @@ export function DeliveryJournalSearchField({
           className={cn(
             queueToolbarInputClass,
             controlFocusClass,
-            "w-full py-2 pl-8",
+            "w-full pl-8",
+            queueToolbarControlClass,
+            inputClassName,
             value ? "pr-10" : "pr-3"
           )}
           onChange={(e) => onChange(e.target.value)}

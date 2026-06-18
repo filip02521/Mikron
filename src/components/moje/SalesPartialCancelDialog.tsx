@@ -41,7 +41,7 @@ export function SalesPartialCancelDialog({
       titleId="partial-cancel-title"
       role="alertdialog"
       size="sm"
-      tier="raised"
+      tier="stack"
       disableBackdropClose={pending}
       loadingMessage={pending ? "Przetwarzanie…" : null}
       bodyClassName="px-5 py-4 sm:px-6"

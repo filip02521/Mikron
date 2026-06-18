@@ -46,14 +46,26 @@ import {
 } from "@/lib/security/text-limits";
 import type { AppSupplierRef } from "@/lib/subiekt/match-supplier";
 import type { SubiektProduct } from "@/lib/subiekt/types";
+import {
+  assessProsbaLineStockFromDraft,
+  formatProsbaStockLineHint,
+  mergeStockIntoLinePatch,
+  stockSnapshotFromSubiektProduct,
+} from "@/lib/orders/prosba-stock-check";
+import type { ProductLineDraft } from "@/components/orders/request-product-lines";
 
-export type SubiektProductLineValue = {
-  symbol: string;
-  mikranCode: string;
-  product: string;
-  quantity: string;
-  subiektTwId?: number | null;
-};
+export type SubiektProductLineValue = Pick<
+  ProductLineDraft,
+  | "symbol"
+  | "mikranCode"
+  | "product"
+  | "quantity"
+  | "subiektTwId"
+  | "onHand"
+  | "reserved"
+  | "available"
+  | "stockSource"
+>;
 
 type ActiveField = Exclude<ProductSearchField, "combined">;
 
@@ -325,7 +337,12 @@ export function SubiektProductLineFields({
     (p: SubiektProduct) => {
       searchGenerationRef.current++;
       const patch = buildProductPickFromSubiekt(p, requestKind, value.quantity);
-      onChange({ ...patch, subiektTwId: patch.subiektTwId });
+      const stockSnap = stockSnapshotFromSubiektProduct(p);
+      onChange({
+        ...patch,
+        subiektTwId: patch.subiektTwId,
+        ...mergeStockIntoLinePatch(stockSnap),
+      });
       setFeedback(null);
       setOpen(false);
       setItems([]);
@@ -408,11 +425,11 @@ export function SubiektProductLineFields({
     patch: Partial<SubiektProductLineValue>,
     clearSubiekt = false
   ) => {
-    onChange(clearSubiekt ? { ...patch, subiektTwId: null } : patch);
+    onChange(clearSubiekt ? { ...patch, subiektTwId: null, ...mergeStockIntoLinePatch(null) } : patch);
   };
 
   const unlinkSubiektForEdit = () => {
-    onChange({ subiektTwId: null });
+    onChange({ subiektTwId: null, ...mergeStockIntoLinePatch(null) });
     setOpen(true);
   };
 
@@ -567,6 +584,20 @@ export function SubiektProductLineFields({
       });
     }
   }
+
+  const stockWarningItem: ProsbaLineMessageItem | null =
+    requestKind === "zamowienie" &&
+    assessProsbaLineStockFromDraft(value as ProductLineDraft, requestKind) === "sufficient"
+      ? {
+          kind: "stock_warning",
+          text: formatProsbaStockLineHint(value),
+        }
+      : null;
+
+  const lineFieldMessageItems = [
+    ...prosbaMessageItems,
+    ...(stockWarningItem ? [stockWarningItem] : []),
+  ];
 
   const productSearchRow = (
     <div className="flex flex-col gap-3 sm:flex-row sm:items-start">
@@ -762,10 +793,14 @@ export function SubiektProductLineFields({
         </div>
       ) : null}
 
-      {prosba && prosbaMessageItems.length > 0 ? (
+      {lineFieldMessageItems.length > 0 ? (
         <ProsbaLineFieldMessages
-          lineLabel={`Informacje — produkt ${lineIndex + 1}`}
-          items={prosbaMessageItems}
+          lineLabel={
+            prosba
+              ? `Informacje — produkt ${lineIndex + 1}`
+              : `Stan magazynowy — pozycja ${lineIndex + 1}`
+          }
+          items={lineFieldMessageItems}
         />
       ) : null}
 

@@ -16,6 +16,8 @@ import {
   type ProductLineDraft,
 } from "@/components/orders/request-product-lines";
 import { shouldCollapseProsbaLine } from "@/lib/orders/prosba-product-line-ui";
+import { filterProsbaLinesWithSufficientStock, formatProsbaSufficientStockBanner } from "@/lib/orders/prosba-stock-check";
+import { useProsbaLinesStockSync } from "@/hooks/useProsbaLinesStockSync";
 import {
   assessProsbaLineFields,
   prosbaLineHasFieldIssues,
@@ -91,6 +93,12 @@ export function RequestProductLinesEditor({
   const [subiektOfflineFeedback, setSubiektOfflineFeedback] =
     useState<SubiektFeedback | null>(null);
   const visibleSubiektOfflineFeedback = prosba ? subiektOfflineFeedback : null;
+  const stockChecksEnabled = requestKind === "zamowienie";
+  const sufficientStockCount = stockChecksEnabled
+    ? filterProsbaLinesWithSufficientStock(lines, requestKind).length
+    : 0;
+
+  useProsbaLinesStockSync(lines, onChange, requestKind, stockChecksEnabled);
 
   useEffect(() => {
     if (!prosba) return;
@@ -165,6 +173,16 @@ export function RequestProductLinesEditor({
       {visibleSubiektOfflineFeedback ? (
         <div className="flex justify-end">
           <SubiektOfflineHint feedback={visibleSubiektOfflineFeedback} />
+        </div>
+      ) : null}
+
+      {sufficientStockCount > 0 ? (
+        <div
+          role="status"
+          aria-live="polite"
+          className="rounded-md border border-amber-200/90 bg-amber-50/80 px-3 py-2 text-xs leading-relaxed text-amber-950"
+        >
+          {formatProsbaSufficientStockBanner(sufficientStockCount)}
         </div>
       ) : null}
 
@@ -288,6 +306,10 @@ export function RequestProductLinesEditor({
                 product: line.product,
                 quantity: line.quantity,
                 subiektTwId: line.subiektTwId,
+                onHand: line.onHand,
+                reserved: line.reserved,
+                available: line.available,
+                stockSource: line.stockSource,
               }}
               onChange={(patch) =>
                 onChange(updateProductLine(lines, index, patch))

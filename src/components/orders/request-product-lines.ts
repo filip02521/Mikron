@@ -13,6 +13,10 @@ export type ProductLineDraft = {
   /** kh_Id odbiorcy z Subiekta (opcjonalnie). */
   clientKhId?: number | null;
   subiektTwId?: number | null;
+  onHand?: number | null;
+  reserved?: number | null;
+  available?: number | null;
+  stockSource?: "subiekt" | null;
 };
 
 export function newProductLine(): ProductLineDraft {

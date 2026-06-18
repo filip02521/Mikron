@@ -38,6 +38,10 @@ import {
   PROCUREMENT_PROSBA_KEYBOARD_HINTS,
 } from "@/lib/orders/procurement-prosba-keyboard";
 import { SalesRequestNoteField } from "@/components/orders/SalesRequestNoteField";
+import { ProsbaStockConfirmDialog } from "@/components/orders/ProsbaStockConfirmDialog";
+import { buildProsbaSubmitStockConfirm } from "@/lib/orders/prosba-stock-check";
+import { handleProsbaStockSubmitError } from "@/lib/orders/prosba-stock-submit-error";
+import type { AddIndividualOrdersEntry } from "@/lib/orders/individual-request-edit";
 
 export function QuickOrderModal({
   open,
@@ -77,6 +81,9 @@ export function QuickOrderModal({
   );
   const [configFeedback, setConfigFeedback] = useState<SubiektFeedback | null>(null);
   const [resolvingSupplier, setResolvingSupplier] = useState(false);
+  const [stockConfirmOpen, setStockConfirmOpen] = useState(false);
+  const [stockConfirmMessage, setStockConfirmMessage] = useState("");
+  const pendingSubmitRef = useRef<AddIndividualOrdersEntry[]>([]);
 
   const supplierRefs = toAppSupplierRefs(suppliers);
 
@@ -124,6 +131,7 @@ export function QuickOrderModal({
       : "Dodaj zamówienie";
 
   const reset = () => {
+    setRequestKind("zamowienie");
     setSupplierId("");
     setSalesPersonId("");
     setLines(initialProductLines());
@@ -136,6 +144,14 @@ export function QuickOrderModal({
     setConfigFeedback(null);
     setResolvingSupplier(false);
     setInformacjaPath(DEFAULT_INFORMACJA_FLOW_PATH);
+    setStockConfirmOpen(false);
+    setStockConfirmMessage("");
+    pendingSubmitRef.current = [];
+  };
+
+  const handleClose = () => {
+    reset();
+    onClose();
   };
 
   const submitRef = useRef<() => void>(() => {});
@@ -160,6 +176,10 @@ export function QuickOrderModal({
         quantity: requestKind === "informacja" ? undefined : l.quantity,
         requestKind,
         subiektTwId: l.subiektTwId,
+        onHand: l.onHand,
+        reserved: l.reserved,
+        available: l.available,
+        stockSource: l.stockSource,
         informacjaQueueViaDailyPanel: informacjaFlags.informacjaQueueViaDailyPanel,
         informacjaStockOutReorder: informacjaFlags.informacjaStockOutReorder,
         clientName: l.clientName,
@@ -209,10 +229,27 @@ export function QuickOrderModal({
       });
       return;
     }
+    const stockConfirm = buildProsbaSubmitStockConfirm(lines, requestKind);
+    if (stockConfirm) {
+      pendingSubmitRef.current = entries;
+      setStockConfirmMessage(stockConfirm.message);
+      setStockConfirmOpen(true);
+      return;
+    }
+    performSubmit(entries);
+  };
+
+  const performSubmit = (
+    entries: AddIndividualOrdersEntry[],
+    options?: { acknowledgeSufficientStock?: boolean }
+  ) => {
     setPendingMessage("Zapisywanie prośby…");
     start(async () => {
       try {
-        const r = await actionAddIndividualOrders(entries);
+        const r = await actionAddIndividualOrders({
+          entries,
+          acknowledgeSufficientStock: options?.acknowledgeSufficientStock,
+        });
         setFormNotice({
           text:
             requestKind === "informacja"
@@ -226,19 +263,26 @@ export function QuickOrderModal({
         });
         router.refresh();
         setTimeout(() => {
-          reset();
-          onClose();
+          handleClose();
         }, 600);
+        setStockConfirmOpen(false);
       } catch (e) {
-        setFormNotice({
-          text: e instanceof Error ? e.message : "Błąd zapisu",
-          tone: "error",
-        });
+        handleProsbaStockSubmitError(
+          e,
+          (message) => {
+            setStockConfirmMessage(message);
+            setStockConfirmOpen(true);
+          },
+          (message) => {
+            setFormNotice({ text: message, tone: "error" });
+          }
+        );
       } finally {
         setPendingMessage(null);
       }
     });
   };
+
   useEffect(() => {
     submitRef.current = submit;
     addLineRef.current = () => setLines((prev) => appendProductLine(prev));
@@ -263,9 +307,22 @@ export function QuickOrderModal({
   }, [open, pending]);
 
   return (
+    <>
+      <ProsbaStockConfirmDialog
+        open={stockConfirmOpen}
+        message={stockConfirmMessage}
+        pending={pending}
+        onCancel={() => {
+          setStockConfirmOpen(false);
+          pendingSubmitRef.current = [];
+        }}
+        onConfirm={() =>
+          performSubmit(pendingSubmitRef.current, { acknowledgeSufficientStock: true })
+        }
+      />
     <ModalShell
       open={open}
-      onClose={onClose}
+      onClose={handleClose}
       title="Nowa prośba handlowca"
       description="Zamówienie lub prośba informacyjna — pojawi się w panelu dziennym."
       size="xl"
@@ -276,7 +333,7 @@ export function QuickOrderModal({
       bodyClassName="flex min-h-0 flex-1 flex-col"
       footer={
         <>
-          <Button variant="secondary" onClick={onClose} disabled={pending}>
+          <Button variant="secondary" onClick={handleClose} disabled={pending}>
             Anuluj
           </Button>
           <Button onClick={submit} disabled={pending || !readinessView.canSubmit}>
@@ -422,5 +479,6 @@ export function QuickOrderModal({
         </ProsbaFormSection>
       </div>
     </ModalShell>
+    </>
   );
 }

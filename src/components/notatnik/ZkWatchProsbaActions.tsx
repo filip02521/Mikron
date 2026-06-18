@@ -16,6 +16,9 @@ export function ZkWatchProsbaActions({
   onProsbaClick,
   onSetupScope,
   uncoveredCount,
+  prosbaLabel,
+  prosbaDisabled = false,
+  prosbaLoading = false,
 }: {
   archived?: boolean;
   pending?: boolean;
@@ -25,6 +28,11 @@ export function ZkWatchProsbaActions({
   onProsbaClick: (event: MouseEvent<HTMLAnchorElement>) => void;
   onSetupScope: () => void;
   uncoveredCount: number;
+  /** Nadpisanie etykiety po filtrze stanu magazynowego. */
+  prosbaLabel?: string;
+  prosbaDisabled?: boolean;
+  /** Trwa pobieranie stanu z Subiekta — neutralny wygląd zamiast wyłączonego CTA. */
+  prosbaLoading?: boolean;
 }) {
   if (archived) return null;
 
@@ -76,9 +84,27 @@ export function ZkWatchProsbaActions({
   }
 
   const title =
-    prosbaCardAction.kind === "supplement"
-      ? `${uncoveredCount} pozycji do uzupełnienia w prośbie`
+    prosbaCardAction.kind === "supplement" && uncoveredCount > 0
+      ? `${uncoveredCount} ${uncoveredCount === 1 ? "pozycja" : "pozycji"} do uzupełnienia w prośbie`
       : undefined;
+
+  const label = prosbaLabel ?? prosbaCardAction.label;
+  const disabled = pending || prosbaDisabled;
+
+  if (prosbaDisabled) {
+    return (
+      <Button
+        type="button"
+        size="sm"
+        variant={prosbaLoading ? "secondary" : "primary"}
+        className="h-8 px-2.5 text-[0.68rem] sm:h-7"
+        disabled
+        title={title}
+      >
+        {label}
+      </Button>
+    );
+  }
 
   return (
     <Link href={prosbaHref} onClick={onProsbaClick} title={title}>
@@ -87,9 +113,9 @@ export function ZkWatchProsbaActions({
         size="sm"
         variant="primary"
         className="h-8 px-2.5 text-[0.68rem] sm:h-7"
-        disabled={pending}
+        disabled={disabled}
       >
-        {prosbaCardAction.label}
+        {label}
       </Button>
     </Link>
   );

@@ -21,6 +21,7 @@ import {
   panelSegmentControlOpenClass,
   panelToolbarIconButtonClass,
 } from "@/lib/ui/ontime-theme";
+import { computeAnchoredDropdownPosition } from "@/lib/ui/dropdown-anchor";
 import { buttonGroupItemClass } from "@/lib/ui/surfaces";
 
 const CloseMenuContext = createContext<() => void>(() => {});
@@ -36,7 +37,7 @@ function MoreIcon({ className }: { className?: string }) {
   );
 }
 
-type MenuPosition = { top: number; left: number };
+type MenuPosition = { top: number; left: number; maxHeight: number };
 
 export function OverflowMenu({
   label,
@@ -69,15 +70,17 @@ export function OverflowMenu({
     const el = triggerRef.current;
     if (!el) return;
     const rect = el.getBoundingClientRect();
-    const menuWidth = menuRef.current?.offsetWidth ?? 176;
+    const menuWidth = menuRef.current?.offsetWidth ?? 200;
+    const measured = menuRef.current?.scrollHeight ?? menuRef.current?.offsetHeight;
+    const menuHeight = measured && measured > 0 ? measured : 220;
+    const { top, left: endLeft, maxHeight } = computeAnchoredDropdownPosition(rect, menuHeight, {
+      minWidth: menuWidth,
+    });
     const left =
       align === "end"
-        ? Math.max(8, rect.right - menuWidth)
+        ? endLeft
         : Math.min(rect.left, window.innerWidth - menuWidth - 8);
-    setMenuPos({
-      top: rect.bottom + 4,
-      left,
-    });
+    setMenuPos({ top, left, maxHeight });
   }, [align]);
 
   useLayoutEffect(() => {
@@ -195,8 +198,11 @@ export function OverflowMenu({
           ref={menuRef}
           id={menuId}
           role="menu"
-          className={cn("fixed z-[200] min-w-[12.5rem]", panelDropdownShellClass)}
-          style={{ top: menuPos.top, left: menuPos.left }}
+          className={cn(
+            "fixed z-[200] min-w-[12.5rem] overflow-y-auto overscroll-y-contain",
+            panelDropdownShellClass
+          )}
+          style={{ top: menuPos.top, left: menuPos.left, maxHeight: menuPos.maxHeight }}
         >
           {children}
         </div>

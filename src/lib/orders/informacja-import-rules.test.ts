@@ -20,7 +20,7 @@ describe("informacja-import-rules", () => {
     expect(isStanSalesPersonLabel("Kasia J.")).toBe(false);
   });
 
-  it("łączy ilość „-” lub handlowca STAN", () => {
+  it("łączy ilość „-” lub handlowca STAN (tylko import / backfill)", () => {
     expect(
       shouldTreatAsInformacjaOnly({
         quantity: "2",

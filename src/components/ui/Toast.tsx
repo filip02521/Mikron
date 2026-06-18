@@ -12,7 +12,7 @@ export function Toast({
   action,
 }: {
   message: string;
-  tone?: "success" | "error";
+  tone?: "success" | "error" | "warning";
   onDismiss: () => void;
   durationMs?: number;
   action?: React.ReactNode;
@@ -38,7 +38,9 @@ export function Toast({
         "left-4 right-4 sm:left-auto sm:right-6",
         tone === "success"
           ? "border-emerald-200 bg-emerald-50 text-emerald-900"
-          : "border-red-200 bg-red-50 text-red-900"
+          : tone === "warning"
+            ? "border-amber-200 bg-amber-50 text-amber-950"
+            : "border-red-200 bg-red-50 text-red-900"
       )}
     >
       <p className="font-medium">{message}</p>

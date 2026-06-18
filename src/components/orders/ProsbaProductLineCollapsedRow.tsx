@@ -2,6 +2,8 @@
 
 import type { ProductLineDraft } from "@/components/orders/request-product-lines";
 import { formatProsbaLineSummary } from "@/lib/orders/prosba-product-line-ui";
+import { isProsbaLineStockSufficient } from "@/lib/orders/prosba-stock-check";
+import { zkWatchLineUiStateMeta } from "@/lib/sales/zk-watch-line-ui-state";
 import type { IndividualRequestKind } from "@/types/database";
 import { Button } from "@/components/ui/Button";
 import { IconCircleCheck, IconAlertCircle } from "@/components/icons/StrokeIcons";
@@ -25,12 +27,19 @@ export function ProsbaProductLineCollapsedRow({
   onRemove: () => void;
 }) {
   const summary = formatProsbaLineSummary(line, requestKind);
+  const inStock =
+    requestKind === "zamowienie" && isProsbaLineStockSufficient(line, requestKind);
+  const inStockMeta = zkWatchLineUiStateMeta("in_stock");
 
   return (
     <div
       className={cn(
         "flex items-start gap-3 px-3 py-2.5 sm:items-center sm:px-4",
-        summary.fromSubiekt ? "bg-emerald-50/70" : "bg-white"
+        inStock
+          ? inStockMeta.rowTintClass
+          : summary.fromSubiekt
+            ? "bg-emerald-50/70"
+            : "bg-white"
       )}
     >
       <span
@@ -38,16 +47,20 @@ export function ProsbaProductLineCollapsedRow({
           "mt-0.5 flex size-8 shrink-0 items-center justify-center rounded-full sm:mt-0",
           hasFieldIssues
             ? "bg-amber-100 text-amber-800"
-            : summary.fromSubiekt
-              ? "bg-emerald-100 text-emerald-700"
-              : "bg-indigo-100 text-indigo-700"
+            : inStock
+              ? "bg-slate-100 text-slate-600"
+              : summary.fromSubiekt
+                ? "bg-emerald-100 text-emerald-700"
+                : "bg-indigo-100 text-indigo-700"
         )}
         title={
           hasFieldIssues
             ? "Uzupełnij brakujące pola"
-            : summary.fromSubiekt
-              ? "Powiązano z Subiektem"
-              : "Pozycja gotowa"
+            : inStock
+              ? inStockMeta.label
+              : summary.fromSubiekt
+                ? "Powiązano z Subiektem"
+                : "Pozycja gotowa"
         }
       >
         {hasFieldIssues ? (
@@ -66,6 +79,16 @@ export function ProsbaProductLineCollapsedRow({
           {summary.quantityLabel ? (
             <span className="shrink-0 text-sm font-semibold text-slate-700">
               {summary.quantityLabel}
+            </span>
+          ) : null}
+          {inStock ? (
+            <span
+              className={cn(
+                "shrink-0 rounded-full px-1.5 py-0.5 text-[11px] font-semibold",
+                inStockMeta.badgeClass
+              )}
+            >
+              {inStockMeta.shortLabel}
             </span>
           ) : null}
         </div>

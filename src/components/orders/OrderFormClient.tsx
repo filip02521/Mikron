@@ -76,6 +76,9 @@ import {
   type ZkProsbaPrefill,
 } from "@/lib/orders/zk-watch-prosba-prefill";
 import { clearUnseenNewZkLineKeys, removeUnseenNewZkLineKeys } from "@/lib/client/zk-watch-new-lines-snapshot";
+import { ProsbaStockConfirmDialog } from "@/components/orders/ProsbaStockConfirmDialog";
+import { buildProsbaSubmitStockConfirm } from "@/lib/orders/prosba-stock-check";
+import { handleProsbaStockSubmitError } from "@/lib/orders/prosba-stock-submit-error";
 
 function groupCompletenessAssessment(
   group: Entry[],
@@ -139,6 +142,10 @@ interface Entry {
   clientName?: string;
   clientKhId?: number | null;
   subiektTwId?: number | null;
+  onHand?: number | null;
+  reserved?: number | null;
+  available?: number | null;
+  stockSource?: "subiekt" | null;
 }
 
 function emptyEntry(salesPersonId = ""): Entry {
@@ -244,6 +251,9 @@ export function OrderFormClient({
     lineKeys?: string[];
   } | null>(null);
   const [validationAttempted, setValidationAttempted] = useState(false);
+  const [stockConfirmOpen, setStockConfirmOpen] = useState(false);
+  const [stockConfirmMessage, setStockConfirmMessage] = useState("");
+  const pendingSubmitEntriesRef = useRef<(Entry & { requestNote?: string })[]>([]);
   const submitRef = useRef<() => void>(() => {});
 
   const clearFormNotice = useCallback(() => setFormNotice(null), []);
@@ -291,20 +301,23 @@ export function OrderFormClient({
         });
       }
       setGroupRequestNotes([""]);
-      setGroups([
-        prefill.lines.map((line) => ({
-          id: line.id,
-          supplierId: "",
-          salesPersonId: lockedId,
-          symbol: line.symbol,
-          mikranCode: line.mikranCode,
-          product: line.product,
-          quantity: line.quantity,
-          clientName: clientName || line.clientName,
-          clientKhId: clientKhId ?? line.clientKhId ?? null,
-          subiektTwId: line.subiektTwId ?? null,
-        })),
-      ]);
+      const baseLines = prefill.lines.map((line) => ({
+        id: line.id,
+        supplierId: "",
+        salesPersonId: lockedId,
+        symbol: line.symbol,
+        mikranCode: line.mikranCode,
+        product: line.product,
+        quantity: line.quantity,
+        clientName: clientName || line.clientName,
+        clientKhId: clientKhId ?? line.clientKhId ?? null,
+        subiektTwId: line.subiektTwId ?? null,
+        onHand: line.onHand,
+        reserved: line.reserved,
+        available: line.available,
+        stockSource: line.stockSource,
+      }));
+      setGroups([baseLines]);
     }
 
     async function loadZkPrefill() {
@@ -446,6 +459,116 @@ export function OrderFormClient({
     },
     []
   );
+
+  const performSubmit = (
+    entries: (Entry & { requestNote?: string })[],
+    options?: { acknowledgeSufficientStock?: boolean }
+  ) => {
+    setPendingMessage(
+      singleGroup ? "Wysyłanie prośby…" : "Zapisywanie zamówień…"
+    );
+    start(async () => {
+      const zkCtx = zkProsbaLinkContext;
+      try {
+        const r = await actionAddIndividualOrders({
+          entries: entries.map((e) => ({
+            supplierId: e.supplierId || undefined,
+            salesPersonId: e.salesPersonId,
+            symbol: e.symbol,
+            mikranCode: e.mikranCode,
+            product: e.product,
+            quantity: requestKind === "informacja" ? undefined : e.quantity,
+            requestKind,
+            clientName: e.clientName,
+            clientKhId: e.clientKhId,
+            subiektTwId: e.subiektTwId,
+            onHand: e.onHand,
+            reserved: e.reserved,
+            available: e.available,
+            stockSource: e.stockSource,
+            requestNote: e.requestNote || undefined,
+            sourceZkWatchId: zkCtx?.zkWatchId ?? undefined,
+            sourceZkNumber: zkCtx?.zkNumber ?? undefined,
+            informacjaQueueViaDailyPanel: informacjaFlags.informacjaQueueViaDailyPanel,
+            informacjaStockOutReorder: informacjaFlags.informacjaStockOutReorder,
+          })),
+          acknowledgeSufficientStock: options?.acknowledgeSufficientStock,
+        });
+        const defaultSuccessText =
+          singleGroup && lockedSalesPerson
+            ? requestKind === "informacja" && informacjaFlags.informacjaStockOutReorder
+              ? "Prośba zapisana — sygnał „brak na stanie” trafi do zakupów w panelu Dziś (Prośby handlowców)."
+              : requestKind === "informacja" && informacjaFlags.informacjaQueueViaDailyPanel
+                ? "Prośba zapisana — zakupy najpierw zamówią u dostawcy, potem magazyn wyśle informację e-mailem."
+                : formatSubmitResult(r, requestKind, true)
+            : requestKind === "informacja"
+              ? informacjaFlags.informacjaStockOutReorder
+                ? `Dodano ${r.count} sygnał(ów) „brak na stanie” — w panelu Dziś (Prośby handlowców).`
+                : informacjaFlags.informacjaQueueViaDailyPanel
+                  ? `Dodano ${r.count} prośb(y) informacyjn(e) — najpierw kolejka Dziś (Główne/Uzupełniające).`
+                  : `Dodano ${r.count} prośb(y) informacyjn(e) — od razu do kolejki magazynu.`
+              : `Dodano ${r.count} pozycji do panelu dziennego.`;
+
+        const stockOutHidden =
+          requestKind === "informacja" && informacjaFlags.informacjaStockOutReorder;
+
+        setMsg({
+          text: zkCtx
+            ? `Prośba zapisana i powiązana z ${zkCtx.zkNumber}.`
+            : defaultSuccessText,
+          tone: "success",
+          actionHref: stockOutHidden
+            ? undefined
+            : zkCtx
+              ? buildMojeClientLink(lockedId, zkCtx.clientLabel, {
+                  preview: submitForOther,
+                  clientKhId: zkCtx.clientKhId,
+                  zkWatchId: zkCtx.zkWatchId,
+                  zkNumber: zkCtx.zkNumber,
+                })
+              : submitForOther
+                ? `/moje?dla=${lockedSalesPerson?.id ?? lockedId}`
+                : "/moje",
+          actionLabel: stockOutHidden
+            ? undefined
+            : zkCtx
+              ? "Prośby tego klienta"
+              : submitForOther
+                ? "Prośby handlowca"
+                : "Moje zamówienia",
+        });
+        if (zkCtx?.zkWatchId && lockedId) {
+          if (zkCtx.mode === "supplement" && zkCtx.lineKeys?.length) {
+            removeUnseenNewZkLineKeys(lockedId, zkCtx.zkWatchId, zkCtx.lineKeys);
+          } else {
+            clearUnseenNewZkLineKeys(lockedId, zkCtx.zkWatchId);
+          }
+        }
+        setFormNotice(null);
+        setValidationAttempted(false);
+        setInformacjaPath(DEFAULT_INFORMACJA_FLOW_PATH);
+        setSupplierSubiektFeedback(null);
+        setProductLineFeedback(null);
+        setZkProsbaLinkContext(null);
+        setGroups(buildInitialGroups(lockedId, initialSupplierId));
+        setGroupRequestNotes([""]);
+        setStockConfirmOpen(false);
+      } catch (e) {
+        handleProsbaStockSubmitError(
+          e,
+          (message) => {
+            setStockConfirmMessage(message);
+            setStockConfirmOpen(true);
+          },
+          (message) => {
+            setMsg({ text: message, tone: "error" });
+          }
+        );
+      } finally {
+        setPendingMessage(null);
+      }
+    });
+  };
 
   const submit = () => {
     setFormNotice(null);
@@ -593,98 +716,17 @@ export function OrderFormClient({
       }
     }
 
-    setPendingMessage(
-      singleGroup ? "Wysyłanie prośby…" : "Zapisywanie zamówień…"
-    );
-    start(async () => {
-      const zkCtx = zkProsbaLinkContext;
-      try {
-        const r = await actionAddIndividualOrders(
-          entries.map((e) => ({
-            supplierId: e.supplierId || undefined,
-            salesPersonId: e.salesPersonId,
-            symbol: e.symbol,
-            mikranCode: e.mikranCode,
-            product: e.product,
-            quantity: requestKind === "informacja" ? undefined : e.quantity,
-            requestKind,
-            clientName: e.clientName,
-            clientKhId: e.clientKhId,
-            subiektTwId: e.subiektTwId,
-            requestNote: e.requestNote || undefined,
-            sourceZkWatchId: zkCtx?.zkWatchId ?? undefined,
-            sourceZkNumber: zkCtx?.zkNumber ?? undefined,
-            informacjaQueueViaDailyPanel: informacjaFlags.informacjaQueueViaDailyPanel,
-            informacjaStockOutReorder: informacjaFlags.informacjaStockOutReorder,
-          }))
-        );
-        const defaultSuccessText =
-          singleGroup && lockedSalesPerson
-            ? requestKind === "informacja" && informacjaFlags.informacjaStockOutReorder
-              ? "Prośba zapisana — sygnał „brak na stanie” trafi do zakupów w panelu Dziś (Prośby handlowców)."
-              : requestKind === "informacja" && informacjaFlags.informacjaQueueViaDailyPanel
-                ? "Prośba zapisana — zakupy najpierw zamówią u dostawcy, potem magazyn wyśle informację e-mailem."
-                : formatSubmitResult(r, requestKind, true)
-            : requestKind === "informacja"
-              ? informacjaFlags.informacjaStockOutReorder
-                ? `Dodano ${r.count} sygnał(ów) „brak na stanie” — w panelu Dziś (Prośby handlowców).`
-                : informacjaFlags.informacjaQueueViaDailyPanel
-                  ? `Dodano ${r.count} prośb(y) informacyjn(e) — najpierw kolejka Dziś (Główne/Uzupełniające).`
-                  : `Dodano ${r.count} prośb(y) informacyjn(e) — od razu do kolejki magazynu.`
-              : `Dodano ${r.count} pozycji do panelu dziennego.`;
-
-        const stockOutHidden =
-          requestKind === "informacja" && informacjaFlags.informacjaStockOutReorder;
-
-        setMsg({
-          text: zkCtx
-            ? `Prośba zapisana i powiązana z ${zkCtx.zkNumber}.`
-            : defaultSuccessText,
-          tone: "success",
-          actionHref: stockOutHidden
-            ? undefined
-            : zkCtx
-              ? buildMojeClientLink(lockedId, zkCtx.clientLabel, {
-                  preview: submitForOther,
-                  clientKhId: zkCtx.clientKhId,
-                  zkWatchId: zkCtx.zkWatchId,
-                  zkNumber: zkCtx.zkNumber,
-                })
-              : submitForOther
-                ? `/moje?dla=${lockedSalesPerson?.id ?? lockedId}`
-                : "/moje",
-          actionLabel: stockOutHidden
-            ? undefined
-            : zkCtx
-              ? "Prośby tego klienta"
-              : submitForOther
-                ? "Prośby handlowca"
-                : "Moje zamówienia",
-        });
-        if (zkCtx?.zkWatchId && lockedId) {
-          if (zkCtx.mode === "supplement" && zkCtx.lineKeys?.length) {
-            removeUnseenNewZkLineKeys(lockedId, zkCtx.zkWatchId, zkCtx.lineKeys);
-          } else {
-            clearUnseenNewZkLineKeys(lockedId, zkCtx.zkWatchId);
-          }
-        }
-        setFormNotice(null);
-        setValidationAttempted(false);
-        setInformacjaPath(DEFAULT_INFORMACJA_FLOW_PATH);
-        setSupplierSubiektFeedback(null);
-        setProductLineFeedback(null);
-        setZkProsbaLinkContext(null);
-        setGroups(buildInitialGroups(lockedId, initialSupplierId));
-        setGroupRequestNotes([""]);
-      } catch (e) {
-        setMsg({
-          text: e instanceof Error ? e.message : "Błąd",
-          tone: "error",
-        });
-      } finally {
-        setPendingMessage(null);
+    if (requestKind === "zamowienie") {
+      const stockConfirm = buildProsbaSubmitStockConfirm(entries, "zamowienie");
+      if (stockConfirm) {
+        pendingSubmitEntriesRef.current = entries;
+        setStockConfirmMessage(stockConfirm.message);
+        setStockConfirmOpen(true);
+        return;
       }
-    });
+    }
+
+    performSubmit(entries);
   };
   useEffect(() => {
     submitRef.current = submit;
@@ -820,6 +862,21 @@ export function OrderFormClient({
     />
   ) : null;
 
+  const stockConfirmDialog = (
+    <ProsbaStockConfirmDialog
+      open={stockConfirmOpen}
+      message={stockConfirmMessage}
+      pending={pending}
+      onCancel={() => {
+        setStockConfirmOpen(false);
+        pendingSubmitEntriesRef.current = [];
+      }}
+      onConfirm={() =>
+        performSubmit(pendingSubmitEntriesRef.current, { acknowledgeSufficientStock: true })
+      }
+    />
+  );
+
   if (singleGroup && lockedSalesPerson) {
     const group = salesProsbaSubmitState?.group ?? emptyGroup(lockedId, initialSupplierId ?? undefined);
     const salesSubmitPlan = salesProsbaSubmitState?.salesSubmitPlan ?? null;
@@ -845,6 +902,7 @@ export function OrderFormClient({
           <ActionLoadingOverlay message={pendingMessage} variant="viewport" />
         ) : null}
         {toastSlot}
+        {stockConfirmDialog}
 
         <ProsbaPageToolbar mojeHref={mojeHref} mojeLabel={mojeLabel} />
 
@@ -1074,6 +1132,7 @@ export function OrderFormClient({
         <ActionLoadingOverlay message={pendingMessage} variant="viewport" />
       ) : null}
       {toastSlot}
+      {stockConfirmDialog}
 
       <Card padding={false}>
         <CardHeader

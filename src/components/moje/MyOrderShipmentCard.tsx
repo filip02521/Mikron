@@ -110,6 +110,7 @@ function ShipmentToolbar({
   showBulkPickup,
   showDismissAck,
   hideSinglePickup = false,
+  hideDismissAck = false,
   ackMode,
   dismissAckLabel,
   dismissAckTitle,
@@ -119,6 +120,7 @@ function ShipmentToolbar({
   pickupCount,
   isAction,
   isInformacjaAck,
+  isCancelAck,
   onAcknowledgePickup,
   onAcknowledgeDismiss,
   tourPreview = false,
@@ -129,6 +131,7 @@ function ShipmentToolbar({
   showBulkPickup: boolean;
   showDismissAck: boolean;
   hideSinglePickup?: boolean;
+  hideDismissAck?: boolean;
   ackMode: MyOrderPickupAckMode;
   dismissAckLabel: string;
   dismissAckTitle: string;
@@ -138,6 +141,7 @@ function ShipmentToolbar({
   pickupCount: number;
   isAction: boolean;
   isInformacjaAck: boolean;
+  isCancelAck: boolean;
   onAcknowledgePickup: (ids: string[], shelfPickup?: boolean) => void;
   onAcknowledgeDismiss: (ids: string[]) => void;
   tourPreview?: boolean;
@@ -152,26 +156,33 @@ function ShipmentToolbar({
 
   const hasToolbar =
     overflowMenu ||
-    showDismissAck ||
+    (showDismissAck && !hideDismissAck) ||
     showBulkPickup ||
     (showSinglePickup && !hideSinglePickup);
   if (!hasToolbar) return null;
 
   const ackButtonCount =
-    (showDismissAck ? 1 : 0) +
+    (showDismissAck && !hideDismissAck ? 1 : 0) +
     (showSinglePickup && !hideSinglePickup ? 1 : 0) +
     (showBulkPickup ? 1 : 0);
   const groupedAcks = ackButtonCount > 1;
+  const dismissAckVariant = groupedAcks
+    ? "segmentCancel"
+    : isCancelAck
+      ? "cancelAck"
+      : isAction
+        ? ackActionVariant
+        : "inline";
   const pickupAckOnlyToolbar =
-    !showDismissAck &&
+    !(showDismissAck && !hideDismissAck) &&
     !overflowMenu &&
     (showBulkPickup || (showSinglePickup && !hideSinglePickup));
 
   const ackButtons = (
     <>
-      {showDismissAck ? (
+      {showDismissAck && !hideDismissAck ? (
         <MyOrderAckButton
-          variant={groupedAcks ? "segmentOutline" : isAction ? ackActionVariant : "inline"}
+          variant={dismissAckVariant}
           disabled={pending}
           preview={tourPreview}
           title={dismissAckTitle}
@@ -377,11 +388,12 @@ export function MyOrderShipmentCard({
 
   const isInformacjaAck =
     row.acknowledgeMode === "availability" && row.pickupPendingCount > 0;
+  const isCancelAck = showDismissAck;
   const isAction =
     headlineTone === "action" ||
-    row.acknowledgeMode === "pickup" ||
-    showDismissAck;
+    row.acknowledgeMode === "pickup";
   const isUrgent = headlineTone === "warning";
+  const isDismiss = headlineTone === "dismiss";
   const isStock = headlineTone === "stock";
   const isInformacja = row.kind === "informacja";
 
@@ -567,10 +579,15 @@ export function MyOrderShipmentCard({
     !expanded &&
     (row.acknowledgeMode === "pickup" || row.acknowledgeMode === "availability") &&
     needsAck;
+  const compactCancelAck =
+    compactActionLayout && !expanded && isCancelAck;
 
-  const bannerAckInHeadline = showHeadlineBanner && Boolean(showSinglePickup);
+  const bannerAckInHeadline =
+    showHeadlineBanner && (Boolean(showSinglePickup) || Boolean(showDismissAck));
+  const bannerPickup = bannerAckInHeadline && Boolean(showSinglePickup);
+  const bannerDismiss = bannerAckInHeadline && Boolean(showDismissAck) && !showSinglePickup;
 
-  const bannerAction = bannerAckInHeadline ? (
+  const bannerAction = bannerPickup ? (
     <MyOrderAckButton
       variant={isInformacjaAck ? "bannerInformacja" : "banner"}
       disabled={pending}
@@ -581,6 +598,17 @@ export function MyOrderShipmentCard({
     >
       {pickupAckLabel}
     </MyOrderAckButton>
+  ) : bannerDismiss ? (
+    <MyOrderAckButton
+      variant="cancelAck"
+      disabled={pending}
+      preview={tourPreview}
+      title={dismissAckTitle}
+      ariaLabel={dismissAckTitle}
+      onClick={() => onAcknowledgeDismiss(dismissAckIds)}
+    >
+      {dismissAckLabel}
+    </MyOrderAckButton>
   ) : undefined;
 
   const toolbar = (
@@ -589,7 +617,8 @@ export function MyOrderShipmentCard({
       showSinglePickup={Boolean(showSinglePickup)}
       showBulkPickup={Boolean(showBulkPickup)}
       showDismissAck={Boolean(showDismissAck)}
-      hideSinglePickup={bannerAckInHeadline}
+      hideSinglePickup={bannerPickup}
+      hideDismissAck={bannerDismiss}
       ackMode={ackMode}
       isInformacjaAck={isInformacjaAck}
       dismissAckLabel={dismissAckLabel}
@@ -599,6 +628,7 @@ export function MyOrderShipmentCard({
       pickupIds={row.pickupPendingIds}
       pickupCount={row.pickupPendingCount}
       isAction={isAction}
+      isCancelAck={isCancelAck}
       onAcknowledgePickup={onAcknowledgePickup}
       onAcknowledgeDismiss={onAcknowledgeDismiss}
       tourPreview={tourPreview}
@@ -615,7 +645,7 @@ export function MyOrderShipmentCard({
     row.requestNote && !isRequestNotesAggregateSummary(row.requestNote)
       ? row.requestNote
       : null;
-  const hideLineRequestNote = Boolean(sharedRequestNote);
+  const hideLineRequestNote = Boolean(sharedRequestNote) && !expanded;
   const sharedProcurementCancelNote =
     row.procurementCancelNote &&
     !isProcurementCancelNotesAggregateSummary(row.procurementCancelNote)
@@ -658,6 +688,7 @@ export function MyOrderShipmentCard({
     "truncate",
     isAction && "text-emerald-800",
     isInformacjaAck && "font-medium text-violet-900",
+    isDismiss && "font-semibold text-amber-950",
     isUrgent && "text-amber-900",
     isStock && "text-sky-900",
     isInformacja &&
@@ -665,14 +696,22 @@ export function MyOrderShipmentCard({
       !isInformacjaAck &&
       !isUrgent &&
       !isStock &&
+      !isDismiss &&
       "font-medium text-violet-900",
     headlineTone === "info" &&
       !isAction &&
       !isUrgent &&
       !isStock &&
       !isInformacja &&
+      !isDismiss &&
       "text-indigo-800",
-    !isAction && !isUrgent && !isStock && headlineTone !== "info" && !isInformacja && "text-slate-600"
+    !isAction &&
+      !isUrgent &&
+      !isStock &&
+      headlineTone !== "info" &&
+      !isInformacja &&
+      !isDismiss &&
+      "text-slate-600"
   );
 
   const bannerSubline = collapsedSubline;
@@ -685,6 +724,7 @@ export function MyOrderShipmentCard({
           expanded,
           isAction,
           isInformacjaAck,
+          isCancelAck,
           isUrgent,
           isStock,
           isInformacja,
@@ -746,7 +786,7 @@ export function MyOrderShipmentCard({
             {suppressSharedHeadline ? (
               <span className="sr-only">{headline}</span>
             ) : null}
-            {showRowHeadline && (!showHeadlineBanner || compactPickupOrAvailability) ? (
+            {showRowHeadline && (!showHeadlineBanner || compactPickupOrAvailability || compactCancelAck) ? (
               <SearchHighlightText
                 text={headline}
                 searchQuery={searchQuery}

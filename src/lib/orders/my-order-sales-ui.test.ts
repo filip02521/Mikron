@@ -169,6 +169,7 @@ describe("summarizeMyOrdersInbox", () => {
     const s = summarizeMyOrdersInbox([row]);
     expect(s.cancelAckCount).toBe(1);
     expect(row.acknowledgeMode).toBe("cancelled");
+    expect(enrichMyOrderSalesUi(row).headlineTone).toBe("dismiss");
   });
 
   it("liczy rezygnację do potwierdzenia", () => {
@@ -188,6 +189,7 @@ describe("summarizeMyOrdersInbox", () => {
     expect(s.cancelAckCount).toBe(1);
     expect(row.acknowledgeMode).toBe("cancel_notice");
     expect(row.cancelNoticeOrderIds).toEqual(["cn1"]);
+    expect(enrichMyOrderSalesUi(row).headlineTone).toBe("dismiss");
   });
 });
 

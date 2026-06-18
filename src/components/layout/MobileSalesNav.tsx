@@ -5,6 +5,8 @@ import { usePathname, useSearchParams } from "next/navigation";
 import {
   isNavItemActive,
   navForRole,
+  navItemDisplayTone,
+  navItemHasDueReminders,
   navMobileOverflowItems,
   navMobilePrimaryItems,
 } from "@/lib/nav";
@@ -13,10 +15,11 @@ import { cn } from "@/lib/cn";
 import { NavIcon } from "@/components/icons/NavIcon";
 import { MobileNavOverflowSheet } from "@/components/layout/MobileNavOverflowSheet";
 import {
-  mobileNavBadgeClass,
+  mobileNavAttentionIdleClass,
   mobileNavLinkBaseClass,
   mobileNavLinkIdleClass,
   mobileSalesNavClass,
+  sidebarNavBadgeClassForTone,
   sidebarNavToneActiveClass,
 } from "@/lib/ui/ontime-theme";
 import { isSalesManager } from "@/lib/auth-roles";
@@ -68,12 +71,18 @@ export function MobileSalesNav({
           const active = isNavItemActive(pathname, item.href, allPrimaryHrefs);
           const attentionBadge =
             item.badge != null && item.badge > 0 ? item.badge : 0;
+          const displayTone = navItemDisplayTone(item, active);
+          const attentionIdle = navItemHasDueReminders(item) && !active;
           const label = item.mobileLabel ?? item.label;
           const href = hrefWithAdminSalesPreview(item.href, previewDla, preservePreviewDla);
           const linkClass = cn(
             mobileNavLinkBaseClass,
             "px-1",
-            active ? sidebarNavToneActiveClass(item.tone) : mobileNavLinkIdleClass,
+            active
+              ? sidebarNavToneActiveClass(item.tone)
+              : attentionIdle
+                ? mobileNavAttentionIdleClass
+                : mobileNavLinkIdleClass,
             navLocked && !active && "pointer-events-none opacity-40"
           );
 
@@ -84,8 +93,8 @@ export function MobileSalesNav({
                 {attentionBadge > 0 && !active ? (
                   <span
                     className={cn(
-                      "absolute -right-1.5 -top-1 flex h-4 min-w-4 items-center justify-center rounded-full px-0.5 tabular-nums",
-                      mobileNavBadgeClass
+                      "absolute -right-1.5 -top-1 flex h-4 min-w-4 items-center justify-center rounded-full px-0.5 tabular-nums text-[9px] font-bold lg:text-[10px]",
+                      sidebarNavBadgeClassForTone(displayTone, false)
                     )}
                   >
                     {attentionBadge > 9 ? "9+" : attentionBadge}

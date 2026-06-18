@@ -16,6 +16,7 @@ import {
   homePathForRole,
   isAdmin,
   isSalesAccount,
+  redirectPathAfterLogin,
 } from "@/lib/auth-roles";
 import {
   postLoginEnteringUrl,
@@ -88,12 +89,11 @@ export async function proxy(request: NextRequest) {
               request.cookies.get(ADMIN_PANEL_COOKIE)?.value
             )
           : null;
-        const loginHome =
-          isAdmin(loginRole) &&
-          loginPanelContext &&
-          loginPanelContext !== "admin"
-            ? homePathForAdminPanelContext(loginPanelContext)
-            : homePathForRole(loginRole);
+        const loginHome = redirectPathAfterLogin(
+          loginRole,
+          request.nextUrl.searchParams.get("next"),
+          { adminPanelContext: loginPanelContext }
+        );
         const entering = splitInternalRedirectPath(postLoginEnteringUrl(loginHome));
         return redirectWithSession(
           request,
