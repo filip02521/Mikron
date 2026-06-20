@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useId, useMemo, useState, useTransition } from "react";
 import { actionSubiektSuggestProducts } from "@/app/actions/subiekt";
 import { actionLookupProductZdDelivery } from "@/app/actions/product-zd-lookup";
-import type { ProductZdLookupResult } from "@/app/actions/product-zd-lookup";
+import type { ProductZdLookupResult } from "@/lib/subiekt/product-zd-lookup";
 import { DeliveryDateMetaValue } from "@/components/orders/DeliveryDateMetaValue";
 import { DeliveryTimingMeta } from "@/components/orders/DeliveryTimingMeta";
 import { ZdEtaNoMatchMeta } from "@/components/orders/ZdEtaNoMatchMeta";

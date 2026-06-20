@@ -13,5 +13,3 @@ export async function actionLookupProductZdDelivery(
   await requireSubiektLookup();
   return lookupProductZdDelivery(product);
 }
-
-export type { ProductZdLookupResult };
