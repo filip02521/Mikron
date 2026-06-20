@@ -79,11 +79,14 @@ function listCacheKey(params: SubiektListParams): string {
 
 /** Pełny dokument ZD — cache 2 h (GET /documents/zd/:id). */
 export async function getSubiektZdDocumentCached(
-  dokId: number
+  dokId: number,
+  options?: { forceFresh?: boolean }
 ): Promise<SubiektDocument> {
   const now = Date.now();
-  const hit = documentById.get(dokId);
-  if (hit && hit.expiresAt > now) return hit.value;
+  if (!options?.forceFresh) {
+    const hit = documentById.get(dokId);
+    if (hit && hit.expiresAt > now) return hit.value;
+  }
 
   const inflight = documentInflight.get(dokId);
   if (inflight) return inflight;

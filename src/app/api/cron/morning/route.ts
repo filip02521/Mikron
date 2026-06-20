@@ -19,9 +19,10 @@ export async function GET(request: NextRequest) {
   const denied = authorizeCronRequest(request.headers.get("authorization"));
   if (denied) return denied;
 
+  const force = request.nextUrl.searchParams.get("force") === "1";
   const warsaw = warsawCronContext();
 
-  if (!isWarsawMorningRoutineHour()) {
+  if (!force && !isWarsawMorningRoutineHour()) {
     await recordCronSkipped("morning_routine", "outside_warsaw_6am_window");
     return NextResponse.json({
       success: true,
@@ -31,7 +32,7 @@ export async function GET(request: NextRequest) {
     });
   }
 
-  if (await morningRoutineAlreadyRanToday()) {
+  if (!force && (await morningRoutineAlreadyRanToday())) {
     await recordCronSkipped("morning_routine", "already_ran_today");
     return NextResponse.json({
       success: true,
@@ -64,6 +65,15 @@ export async function GET(request: NextRequest) {
         deliveriesProcessed: result.deliveries.processed,
         historyIndividualDeleted: result.historyCleanup.individualDeleted,
         historyNormalDeleted: result.historyCleanup.normalDeleted,
+        warehouseReceiptsDeleted: result.historyCleanup.warehouseReceiptsDeleted,
+        operationsNotesDeleted: result.historyCleanup.operationsNotesDeleted,
+        productEventsDeleted: result.historyCleanup.productEventsDeleted,
+        salesBugReportsDeleted: result.historyCleanup.salesBugReportsDeleted,
+        departmentBoardThreadsDeleted: result.historyCleanup.departmentBoardThreadsDeleted,
+        passwordResetOtpsDeleted: result.historyCleanup.passwordResetOtpsDeleted,
+        subiektZdIndexDeleted: result.historyCleanup.subiektZdIndexDeleted,
+        authRateLimitEventsDeleted: result.historyCleanup.authRateLimitEventsDeleted,
+        dataRetentionCutoff: result.historyCleanup.cutoffDateOnly,
         issues,
       },
       error: issues.length ? issues.join("; ") : undefined,

@@ -9,14 +9,14 @@ import type { InformacjaFlowPath } from "@/lib/orders/informacja-stock-out-reord
 export const DEFAULT_INFORMACJA_FLOW_PATH: InformacjaFlowPath = "direct";
 
 export const INFORMACJA_FLOW_PICKER_SECTION = {
-  title: "Co dalej z tą informacją?",
-  hint: "Dostępność na magazynie albo sygnał dla zakupów o braku stanu — wybierz jedną opcję.",
+  title: "Co dalej z informacją?",
+  hint: "Bez zamówienia u dostawcy — wybierz, czy czekasz na przyjęcie na magazyn, czy zgłaszasz brak stanu do zakupów.",
 } as const;
 
 /** Panel dzienny → Nowa prośba — dodatkowa ścieżka „najpierw zamówienie u dostawcy”. */
 export const INFORMACJA_FLOW_PICKER_SECTION_DAILY = {
   title: INFORMACJA_FLOW_PICKER_SECTION.title,
-  hint: "Dostępność na magazynie, zamówienie u dostawcy albo brak na stanie — wybierz jedną opcję.",
+  hint: "Dostępność na magazynie, zamówienie u dostawcy albo sygnał o braku na stanie — wybierz jedną opcję.",
 } as const;
 
 export type InformacjaFlowUiTone = "amber" | "indigo" | "violet";
@@ -77,11 +77,11 @@ export function informacjaFlowUiForPath(path: InformacjaFlowPath): InformacjaFlo
 export function informacjaProductsFormHint(path: InformacjaFlowPath): string {
   switch (path) {
     case "stock_out":
-      return "Wystarczy nazwa lub symbol — bez ilości. Sygnał trafi do Prośb handlowców w panelu Dziś (bez wpisu u Ciebie).";
+      return "Wystarczy nazwa lub symbol — bez ilości. Sygnał trafi do panelu Dziś (Prośby handlowców), bez wpisu w „Moje zamówienia”.";
     case "via_panel":
-      return "Wystarczy nazwa lub symbol — bez ilości. Zakupy zamówią u dostawcy, potem magazyn wyśle e-mail.";
+      return "Wystarczy nazwa lub symbol — bez ilości. Najpierw zamówienie u dostawcy, potem magazyn wyśle e-mail po przyjęciu towaru.";
     default:
-      return "Wystarczy nazwa lub symbol — bez ilości. Magazyn obserwuje dostępność i wyśle e-mail po przyjęciu towaru.";
+      return "Wystarczy nazwa lub symbol — bez ilości. Magazyn obserwuje dostępność i powiadomi e-mailem po przyjęciu towaru.";
   }
 }
 

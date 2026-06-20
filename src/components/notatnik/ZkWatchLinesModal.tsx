@@ -13,11 +13,11 @@ import {
 import { formatFollowUpLabel, isFollowUpDue } from "@/lib/sales/notepad-follow-up";
 import {
   buildZkWatchLineViews,
-  formatZkLinesProgress,
-  summarizeZkWatchLines,
 } from "@/lib/sales/zk-watch-lines";
-import { formatZkProsbaCoverageSummary } from "@/lib/sales/zk-watch-coverage-summary";
-import { formatZkWatchLineStatusSummary } from "@/lib/sales/zk-watch-line-ui-state";
+import {
+  buildZkWatchLineStatusSummary,
+  summarizeZkWatchLineCheckboxes,
+} from "@/lib/sales/zk-watch-line-ui-state";
 import type { ZkWatchLineCoverage } from "@/lib/sales/zk-watch-order-link";
 import type { SalesZkWatch } from "@/types/database";
 import { ZkWatchLinesMetaSection } from "./ZkWatchLinesMetaSection";
@@ -46,9 +46,10 @@ export function ZkWatchLinesModal({
   matchedDeliveredLineKeys,
   newLineKeys,
   lineCoverageByKey,
-  uncoveredLineKeys,
-  openProsbaLineKeys,
   inStockLineKeys,
+  informacjaReadyLineKeys,
+  informacjaAcknowledgedLineKeys,
+  scopeExcludedLineKeys,
   onClose,
   onSaved,
 }: {
@@ -61,9 +62,10 @@ export function ZkWatchLinesModal({
   matchedDeliveredLineKeys?: string[];
   newLineKeys?: string[];
   lineCoverageByKey?: Record<string, ZkWatchLineCoverage>;
-  uncoveredLineKeys?: string[];
-  openProsbaLineKeys?: string[];
   inStockLineKeys?: string[];
+  informacjaReadyLineKeys?: string[];
+  informacjaAcknowledgedLineKeys?: string[];
+  scopeExcludedLineKeys?: string[];
   onClose: () => void;
   onSaved?: (watch: SalesZkWatch) => void;
 }) {
@@ -73,26 +75,40 @@ export function ZkWatchLinesModal({
   }
 
   const lineViews = useMemo(() => buildZkWatchLineViews(watch), [watch]);
-  const summary = useMemo(() => summarizeZkWatchLines(lineViews), [lineViews]);
+  const checkboxSummary = useMemo(
+    () =>
+      summarizeZkWatchLineCheckboxes({
+        lineViews,
+        newLineKeys: newLineKeys ?? [],
+        inStockLineKeys: inStockLineKeys ?? [],
+        scopeExcludedLineKeys: scopeExcludedLineKeys ?? [],
+        informacjaReadyLineKeys: informacjaReadyLineKeys ?? [],
+        informacjaAcknowledgedLineKeys: informacjaAcknowledgedLineKeys ?? [],
+        lineCoverageByKey,
+      }),
+    [lineViews, newLineKeys, inStockLineKeys, scopeExcludedLineKeys, informacjaReadyLineKeys, informacjaAcknowledgedLineKeys, lineCoverageByKey]
+  );
   const progressPct =
-    summary.total > 0 ? Math.round((summary.arrived / summary.total) * 100) : 0;
+    checkboxSummary.total > 0
+      ? Math.round((checkboxSummary.checked / checkboxSummary.total) * 100)
+      : 0;
   const subiektStatus = zkWatchStatusLabel(watch);
   const followUpDue = !archived && isFollowUpDue(watch.follow_up_at);
   const followUpLabel = formatFollowUpLabel(watch.follow_up_at);
   const displayNumber = formatZkWatchDisplayNumber(watch.zk_number);
-  const progressLabel = formatZkLinesProgress(lineViews);
+  const progressLabel =
+    checkboxSummary.total > 0
+      ? `${checkboxSummary.checked}/${checkboxSummary.total} zaznaczone`
+      : null;
   const newLineCount = newLineKeys?.length ?? 0;
-  const deliveredLineCount = lineCoverageByKey
-    ? Object.values(lineCoverageByKey).filter((coverage) => coverage === "delivered").length
-    : 0;
-  const prosbaCoverageSummary = lineCoverageByKey
-    ? formatZkProsbaCoverageSummary({ lineCoverageByKey })
-    : null;
-  const lineStatusSummary = formatZkWatchLineStatusSummary({
-    uncoveredLineKeys: uncoveredLineKeys ?? [],
-    openProsbaLineKeys: openProsbaLineKeys ?? [],
+  const lineStatusSummary = buildZkWatchLineStatusSummary({
+    lineViews,
     newLineKeys: newLineKeys ?? [],
-    deliveredCount: deliveredLineCount,
+    inStockLineKeys: inStockLineKeys ?? [],
+    scopeExcludedLineKeys: scopeExcludedLineKeys ?? [],
+    informacjaReadyLineKeys: informacjaReadyLineKeys ?? [],
+    informacjaAcknowledgedLineKeys: informacjaAcknowledgedLineKeys ?? [],
+    lineCoverageByKey,
   });
 
   return (
@@ -115,9 +131,10 @@ export function ZkWatchLinesModal({
           <div className="shrink-0 border-b border-slate-100 bg-slate-50/70 px-5 py-3 sm:px-6">
             <div className="flex flex-wrap items-center justify-between gap-2">
               <div className="flex min-w-0 flex-wrap items-center gap-1.5">
-                {summary.total > 0 ? (
+                {checkboxSummary.total > 0 ? (
                   <span className={cn(salesTypography.rowBody, "font-medium text-slate-700")}>
-                    {progressLabel ?? `${summary.arrived}/${summary.total} na miejscu`}
+                    {progressLabel ??
+                      `${checkboxSummary.checked}/${checkboxSummary.total} zaznaczone`}
                   </span>
                 ) : (
                   <span className={salesTypography.rowMeta}>Brak szczegółowej listy towaru</span>
@@ -133,13 +150,13 @@ export function ZkWatchLinesModal({
                   </Badge>
                 ) : null}
               </div>
-              {summary.total > 0 ? (
+              {checkboxSummary.total > 0 ? (
                 <span className={cn(salesTypography.statValue, "text-indigo-900")}>
                   {progressPct}%
                 </span>
               ) : null}
             </div>
-            {summary.total > 0 ? (
+            {checkboxSummary.total > 0 ? (
               <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-slate-200/80">
                 <div
                   className={cn(
@@ -153,10 +170,6 @@ export function ZkWatchLinesModal({
             {lineStatusSummary ? (
               <p className={cn("mt-2", salesTypography.rowMeta, "text-slate-600")}>
                 {lineStatusSummary}
-              </p>
-            ) : prosbaCoverageSummary ? (
-              <p className={cn("mt-2", salesTypography.rowMeta, "text-slate-600")}>
-                {prosbaCoverageSummary}
               </p>
             ) : null}
             {followUpLabel && !archived ? (
@@ -203,6 +216,9 @@ export function ZkWatchLinesModal({
               newLineKeys={newLineKeys}
               lineCoverageByKey={lineCoverageByKey}
               inStockLineKeys={inStockLineKeys}
+              informacjaReadyLineKeys={informacjaReadyLineKeys}
+              informacjaAcknowledgedLineKeys={informacjaAcknowledgedLineKeys}
+              scopeExcludedLineKeys={scopeExcludedLineKeys}
               onSaved={onSaved}
               showSummary={false}
             />

@@ -9,7 +9,13 @@ import { Alert } from "@/components/ui/Alert";
 import { NewPasswordForm } from "@/components/auth/NewPasswordForm";
 import { translateAuthError } from "@/lib/auth-errors";
 
-export function SetupForm() {
+export function SetupForm({
+  setupToken = "",
+  tokenHint = null,
+}: {
+  setupToken?: string;
+  tokenHint?: string | null;
+}) {
   const router = useRouter();
   const [email, setEmail] = useState("");
   const [error, setError] = useState("");
@@ -25,7 +31,11 @@ export function SetupForm() {
 
     setLoading(true);
 
-    const result = await actionBootstrapAdmin({ email, password: nextPassword });
+    const result = await actionBootstrapAdmin({
+      email,
+      password: nextPassword,
+      setupToken: setupToken || undefined,
+    });
     if ("error" in result) {
       setLoading(false);
       setError(result.error);
@@ -56,6 +66,10 @@ export function SetupForm() {
       <Alert tone="info">
         To jednorazowa konfiguracja. Po utworzeniu konta administratora ten ekran zniknie.
       </Alert>
+
+      {tokenHint ? (
+        <Alert tone="warning">{tokenHint}</Alert>
+      ) : null}
 
       <Field label="E-mail administratora">
         <Input

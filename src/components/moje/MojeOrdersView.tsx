@@ -7,6 +7,7 @@ import { partitionMyOrderRowsBySalesAction } from "@/lib/orders/my-order-inbox-f
 import {
   filterMyOrderRowsByClientKh,
   filterMyOrderRowsBySearch,
+  resolveSingleMyOrderSearchScrollTarget,
 } from "@/lib/orders/my-order-search";
 import { MojeClientKhFilterBanner } from "@/components/moje/MojeClientKhFilterBanner";
 import { MojeOrdersSearchBar, MojeOrdersSearchEmptyHint } from "@/components/moje/MojeOrdersSearchBar";
@@ -21,7 +22,6 @@ import {
   MyOrderShipmentUndoToast,
 } from "@/components/moje/MyOrderShipmentUndoProvider";
 import { MyOrderArchiveSection } from "@/components/moje/MyOrderArchiveSection";
-import { MyOrderBulkPickupBar } from "@/components/moje/MyOrderBulkPickupBar";
 import { SalesDayStartPanel } from "@/components/moje/SalesDayStartPanel";
 import {
   buildSalesDayStartSnapshot,
@@ -30,7 +30,6 @@ import {
 import { MyOrderShipmentList } from "@/components/moje/MyOrderShipmentList";
 import { MyOrdersRowLegend } from "@/components/moje/MyOrdersRowLegend";
 import { MojeOrdersHelp } from "@/components/moje/MojeOrdersGuide";
-import { SalesDayStartHelp } from "@/components/moje/SalesDayStartHelp";
 import { MojeOrdersEmptyGuide } from "@/components/moje/MojeOrdersEmptyGuide";
 import { Card, CardHeader } from "@/components/ui/Card";
 import { AppBrandContentFooter } from "@/components/layout/AppBrandContentFooter";
@@ -45,20 +44,22 @@ import {
 import { SectionHeadingIcon } from "@/components/icons/SectionHeadingIcon";
 import { salesChromeInsetClass, salesTypography, sectionIconTileBrandClass } from "@/lib/ui/ontime-theme";
 import type { OrderFormSupplierOption } from "@/lib/orders/order-form-suppliers";
-import {
-  deriveMyOrderSectionDisplayState,
-  type MyOrderSectionPatternId,
-} from "@/lib/orders/my-order-section-callout";
+import type { MyOrderSectionPatternId } from "@/lib/orders/my-order-section-callout";
+import { deriveMyOrderSectionDisplayState } from "@/lib/orders/my-order-section-callout";
 import {
   findMyOrderRowIdsForFocusOrderIds,
+  MOJE_FOCUS_ORDERS_PARAM,
   parseMojeFocusOrderIds,
 } from "@/lib/orders/moje-order-focus";
+import { sortInformacjaProgressRows } from "@/lib/orders/my-order-informacja-progress-sort";
 import { MojeSectionShell } from "@/components/moje/MojeSectionShell";
 import {
+  flashMojeCard,
   mojeSectionHeadingDomId,
   parseMojeSectionHash,
   scrollToMojeSection,
   scrollToMojeSectionWhenReady,
+  scrollToMojeCardWhenReady,
 } from "@/lib/orders/moje-section-focus";
 import { hrefWithSalesPreviewFromUrl } from "@/lib/nav/sales-preview-href";
 import {
@@ -79,8 +80,7 @@ function cardDomId(rowId: string) {
   return `moje-card-${rowId}`;
 }
 
-const MOJE_INTRO =
-  "Tu śledzisz swoje prośby — co jest do odbioru, co czeka u dostawcy i co obserwujemy na magazynie.";
+import { SALES_PAGE_HEADER_HINTS } from "@/lib/sales/sales-page-ui-copy";
 
 function prosbaUnitLabel(n: number): string {
   return formatProsbaCount(n).replace(/^\d+\s+/, "");
@@ -213,6 +213,7 @@ function MojeSectionListLabel({
       id={mojeSectionHeadingDomId(icon)}
       title={title}
       hint={hint}
+      hintMode="tooltip"
       count={count}
       accent={toSectionListAccent(accent)}
       icon={<MojeSectionIcon kind={icon} size={17} />}
@@ -238,6 +239,7 @@ function MyOrderShipmentBlock({
   compactActionLayout = false,
   suppressedSectionPatterns,
   focusRowIds,
+  preserveRowOrder = false,
 }: {
   rows: MyOrderRow[];
   listKind: "zamowienie" | "informacja";
@@ -251,6 +253,7 @@ function MyOrderShipmentBlock({
   compactActionLayout?: boolean;
   suppressedSectionPatterns?: Set<MyOrderSectionPatternId>;
   focusRowIds?: ReadonlySet<string>;
+  preserveRowOrder?: boolean;
 }) {
   if (rows.length === 0) return null;
   return (
@@ -268,6 +271,7 @@ function MyOrderShipmentBlock({
       compactActionLayout={compactActionLayout}
       suppressedSectionPatterns={suppressedSectionPatterns}
       focusRowIds={focusRowIds}
+      preserveRowOrder={preserveRowOrder}
     />
   );
 }
@@ -314,6 +318,7 @@ function MyOrderZamowieniaProgressSection({
           rows={rows}
           listKind="zamowienie"
           showProgress
+          preserveRowOrder={sectionId === "ordered_progress"}
           suppressedSectionPatterns={sectionCallouts.suppressedPatterns}
           {...listProps}
         />
@@ -340,7 +345,8 @@ function MyOrderZamowieniaFlatSection({
   return (
     <MojeSectionShell sectionIcon="zamowienie">
       <MojeSectionListLabel
-        title="Zamówienia u dostawcy"
+        title="Czekamy na dostawę"
+        hint={MY_ORDER_PROGRESS_SECTION_COPY.ordered_progress.hint}
         count={rows.length}
         icon="zamowienie"
         accent="slate"
@@ -374,6 +380,8 @@ function MojeOrdersViewContent({
   pageDescription,
   headerActions,
   subiektAvailability,
+  subiektReachable = true,
+  onSubiektStatusChange,
   initialSearchQuery,
   /** @deprecated użyj initialSearchQuery */
   initialClientQuery,
@@ -399,6 +407,8 @@ function MojeOrdersViewContent({
   pageDescription?: string;
   headerActions?: React.ReactNode;
   subiektAvailability?: SubiektAvailability;
+  subiektReachable?: boolean;
+  onSubiektStatusChange?: (status: SubiektAvailability) => void;
   initialSearchQuery?: string | null;
   initialClientQuery?: string | null;
   initialClientKhId?: number | null;
@@ -538,7 +548,7 @@ function MojeOrdersViewContent({
     const { needsAction, inProgress } = partitionMyOrderRowsBySalesAction(filteredInformacje);
     return {
       actionInformacje: [] as MyOrderRow[],
-      progressInformacje: sortMyOrderRows([...needsAction, ...inProgress]),
+      progressInformacje: sortInformacjaProgressRows([...needsAction, ...inProgress]),
     };
   }, [filteredInformacje]);
 
@@ -556,13 +566,6 @@ function MojeOrdersViewContent({
   const actionSectionRows = useMemo(
     () => [...actionZamowienia, ...actionInformacje],
     [actionZamowienia, actionInformacje]
-  );
-  const bulkPickupRows = useMemo(
-    () =>
-      [...filteredZamowienia, ...filteredInformacje].filter(
-        (r) => r.acknowledgeMode === "pickup" && r.pickupPendingIds.length > 0
-      ),
-    [filteredZamowienia, filteredInformacje]
   );
   const actionSectionCallouts = useMyOrderSectionCallouts(actionSectionRows);
   const informacjeSectionCallouts = useMyOrderSectionCallouts(informacjeListRows);
@@ -594,11 +597,32 @@ function MojeOrdersViewContent({
   const handleDayStartScrollToSection = useCallback(
     (scrollTarget: string, fallbackHref: string) => {
       const previewDla = searchParams.get("dla");
+      const parsedUrl = new URL(fallbackHref, window.location.origin);
+      const focusIds = parseMojeFocusOrderIds(
+        parsedUrl.searchParams.get(MOJE_FOCUS_ORDERS_PARAM)
+      );
+
+      const scrollToFocusRow = () => {
+        if (!focusIds.length) return;
+        const targetRowId = findMyOrderRowIdsForFocusOrderIds(allRows, focusIds)[0];
+        if (!targetRowId) return;
+        const card = document.getElementById(cardDomId(targetRowId));
+        if (!card) return;
+        card.scrollIntoView({ behavior: "smooth", block: "center" });
+        flashMojeCard(card);
+      };
+
+      if (scrollToMojeSection(scrollTarget)) {
+        if (focusIds.length) window.setTimeout(scrollToFocusRow, 400);
+        return;
+      }
+
       scrollToMojeSectionWhenReady(scrollTarget, () => {
         router.push(hrefWithSalesPreviewFromUrl(fallbackHref, previewDla));
       });
+      if (focusIds.length) window.setTimeout(scrollToFocusRow, 500);
     },
-    [router, searchParams]
+    [router, searchParams, allRows]
   );
 
   const showDayStart =
@@ -767,6 +791,48 @@ function MojeOrdersViewContent({
     focusScrollDoneRef.current = false;
   }, [initialFocusOrderIds]);
 
+  const searchScrollKeyRef = useRef<string | null>(null);
+
+  useEffect(() => {
+    if (!searchActive) {
+      searchScrollKeyRef.current = null;
+      return;
+    }
+    if (focusRowIds.size > 0) return;
+
+    const target = resolveSingleMyOrderSearchScrollTarget({
+      searchActive,
+      searchTrimmed,
+      searchMatchCount,
+      archiveMatchCount,
+      activeRows: [...filteredZamowienia, ...filteredInformacje],
+      archiveRecentRows: filterMyOrderRowsBySearch(archiwumRecentFiltered, searchQuery),
+      archiveExtendedRows: filterMyOrderRowsBySearch(archiwumExtendedFiltered, searchQuery),
+    });
+    if (!target) return;
+    if (searchScrollKeyRef.current === target.scrollKey) return;
+    searchScrollKeyRef.current = target.scrollKey;
+
+    const isArchive = target.kind === "archive";
+    return scrollToMojeCardWhenReady(cardDomId(target.rowId), {
+      flashStyle: "outline",
+      initialDelayMs: isArchive ? 220 : 180,
+      retryDelayMs: isArchive ? 180 : 120,
+      maxAttempts: isArchive ? 5 : 2,
+    });
+  }, [
+    searchActive,
+    searchTrimmed,
+    searchMatchCount,
+    archiveMatchCount,
+    filteredZamowienia,
+    filteredInformacje,
+    archiwumRecentFiltered,
+    archiwumExtendedFiltered,
+    searchQuery,
+    focusRowIds.size,
+  ]);
+
   const documentTitleBaseRef = useRef<string | null>(null);
 
   useEffect(() => {
@@ -783,11 +849,11 @@ function MojeOrdersViewContent({
     };
   }, [dayStartActionCount, tourPreview, canAcknowledge]);
 
-  const cardDescription = pageDescription ?? MOJE_INTRO;
-  const pageToolbar = (
+  const cardDescription = pageDescription;
+  const cardHint = pageDescription ? undefined : SALES_PAGE_HEADER_HINTS.moje;
+  const cardHeaderAction = (
     <div className="flex flex-wrap items-center justify-end gap-2">
       {headerActions}
-      {dayStartPanel ? <SalesDayStartHelp /> : null}
       <MojeOrdersHelp />
     </div>
   );
@@ -795,14 +861,16 @@ function MojeOrdersViewContent({
   if (!shipmentCount) {
     return (
       <div className="space-y-5">
-        {pageToolbar}
         {dayStartPanel}
         <Card padding={false} className="overflow-hidden">
           <CardHeader
             inset
             density="compact"
             title={pageTitle}
+            hint={cardHint}
+            hintAriaLabel="O liście prośb"
             description={cardDescription}
+            action={cardHeaderAction}
             leading={
               <SectionHeadingIcon tileClassName={sectionIconTileBrandClass}>
                 <IconClipboardList size={20} />
@@ -811,7 +879,11 @@ function MojeOrdersViewContent({
           />
           {!tourPreview && showSalesSync ? <MojeOrdersSyncStrip /> : null}
           {subiektAvailability ? (
-            <SubiektStatusBar initial={subiektAvailability} embedded />
+            <SubiektStatusBar
+              initial={subiektAvailability}
+              embedded
+              onStatusChange={onSubiektStatusChange}
+            />
           ) : null}
           {hasArchiveData ? searchBar : null}
           {clientKhBanner}
@@ -823,7 +895,7 @@ function MojeOrdersViewContent({
             description={
               hasArchiveData && searchActive && archiveMatchCount > 0
                 ? "Brak aktywnych prośb pasujących do wyszukiwania — zobacz archiwum poniżej."
-                : cardDescription ?? MICROCOPY.empty.orders.description
+                : SALES_PAGE_HEADER_HINTS.moje
             }
             icon={<IconClipboardList size={28} strokeWidth={1.75} />}
           />
@@ -840,6 +912,7 @@ function MojeOrdersViewContent({
           defaultOpen={tourPreview}
           forceOpen={openArchiveForSearch}
           searchQuery={searchQuery}
+          cardIdPrefix={cardDomId}
         />
         <AppBrandContentFooter mobileOnly variant="page" />
       </div>
@@ -853,18 +926,21 @@ function MojeOrdersViewContent({
     tourPreview,
     compactActionLayout: true,
     focusRowIds: focusRowIds.size > 0 ? focusRowIds : undefined,
+    subiektReachable,
   };
 
   return (
     <div className="space-y-5">
-      {pageToolbar}
       {dayStartPanel}
       <Card padding={false}>
         <CardHeader
           inset
           density="compact"
           title={pageTitle}
+          hint={cardHint}
+          hintAriaLabel="O liście prośb"
           description={cardDescription}
+          action={cardHeaderAction}
           leading={
             <SectionHeadingIcon tileClassName={sectionIconTileBrandClass}>
               <IconClipboardList size={20} />
@@ -877,7 +953,11 @@ function MojeOrdersViewContent({
         {!tourPreview && showSalesSync ? <MojeOrdersSyncStrip /> : null}
 
         {subiektAvailability ? (
-          <SubiektStatusBar initial={subiektAvailability} embedded />
+          <SubiektStatusBar
+            initial={subiektAvailability}
+            embedded
+            onStatusChange={onSubiektStatusChange}
+          />
         ) : null}
 
         {searchBar}
@@ -904,11 +984,6 @@ function MojeOrdersViewContent({
         ) : null}
 
         <div className="space-y-3 p-3 sm:p-4">
-        <MyOrderBulkPickupBar
-          rows={bulkPickupRows}
-          enabled={canAcknowledge}
-          tourPreview={tourPreview}
-        />
         {actionCount > 0 ? (
           <MojeSectionShell sectionIcon={MY_ORDER_ACTION_SECTION_COPY.icon}>
             <MojeSectionListLabel
@@ -981,6 +1056,7 @@ function MojeOrdersViewContent({
               rows={informacjeListRows}
               listKind="informacja"
               showProgress={false}
+              preserveRowOrder
               suppressedSectionPatterns={informacjeSectionCallouts.suppressedPatterns}
               {...listProps}
             />
@@ -995,6 +1071,7 @@ function MojeOrdersViewContent({
         defaultOpen={tourPreview}
         forceOpen={openArchiveForSearch}
         searchQuery={searchQuery}
+        cardIdPrefix={cardDomId}
       />
       <AppBrandContentFooter mobileOnly variant="page" />
     </div>

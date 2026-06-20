@@ -1,6 +1,9 @@
+"use client";
+
 import { cn } from "@/lib/cn";
 import type { ReactNode } from "react";
 import { SectionHeadingIcon } from "@/components/icons/SectionHeadingIcon";
+import { HelpHintBubble, type HelpHintTone } from "@/components/ui/HelpHintBubble";
 import { panelTypography, salesTypography } from "@/lib/ui/ontime-theme";
 
 export type SectionListAccent =
@@ -52,11 +55,17 @@ const ACCENT_COUNT: Record<SectionListAccent, string> = {
   neutral: "bg-slate-100 text-slate-600",
 };
 
+function accentToHintTone(accent: SectionListAccent): HelpHintTone {
+  if (accent === "neutral") return "slate";
+  return accent;
+}
+
 /** Nagłówek podsekcji w jednej karcie (Moje zamówienia, Harmonogram, …). */
 export function SectionListLabel({
   id,
   title,
   hint,
+  hintMode = "inline",
   count,
   badges,
   accent = "neutral",
@@ -67,6 +76,8 @@ export function SectionListLabel({
   id?: string;
   title: string;
   hint?: string;
+  /** inline — opis pod tytułem; tooltip — ikona ? z dymkiem. */
+  hintMode?: "inline" | "tooltip";
   count?: number;
   badges?: ReactNode;
   accent?: SectionListAccent;
@@ -87,16 +98,24 @@ export function SectionListLabel({
 
   return (
     <div className={ACCENT_SHELL[accent]}>
-      <div className="flex min-w-0 items-start gap-2.5">
+      <div className="flex min-w-0 items-center gap-2.5">
         <SectionHeadingIcon tileClassName={tileClassName}>{icon}</SectionHeadingIcon>
         <div className="min-w-0">
-          <div className="flex flex-wrap items-center gap-2">
+          <div className="flex flex-wrap items-center gap-1.5">
             <h3 id={id} className={cn(titleClass, id && "scroll-mt-24")}>
               {title}
             </h3>
+            {hint && hintMode === "tooltip" ? (
+              <HelpHintBubble
+                message={hint}
+                tone={accentToHintTone(accent)}
+                size="md"
+                ariaLabel="O tej sekcji"
+              />
+            ) : null}
             {badges}
           </div>
-          {hint ? <p className={hintClass}>{hint}</p> : null}
+          {hint && hintMode === "inline" ? <p className={hintClass}>{hint}</p> : null}
         </div>
       </div>
       {count !== undefined && count > 0 ? (

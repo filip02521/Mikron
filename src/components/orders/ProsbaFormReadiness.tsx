@@ -10,7 +10,13 @@ import {
 import type { SalesRequestSubmitPlan } from "@/lib/orders/sales-request-submit";
 import type { IndividualRequestKind } from "@/types/database";
 import type { InformacjaFlowPath } from "@/lib/orders/informacja-stock-out-reorder";
-import { IconAlertCircle, IconChevronRight, IconCircleCheck } from "@/components/icons/StrokeIcons";
+import {
+  IconAlertCircle,
+  IconChevronRight,
+  IconCircleCheck,
+} from "@/components/icons/StrokeIcons";
+import { ProsbaOptionalSection } from "@/components/orders/ProsbaOptionalSection";
+import { PROSBA_OPTIONAL_SECTION_COPY } from "@/lib/orders/prosba-optional-section-copy";
 import { SubmitHintChevron } from "@/components/ui/UiGlyphs";
 import { cn } from "@/lib/cn";
 
@@ -92,6 +98,16 @@ function ReadinessStepRow({ step }: { step: ProsbaReadinessStep }) {
   );
 }
 
+function ReadinessStepsList({ steps }: { steps: ProsbaReadinessStep[] }) {
+  return (
+    <ul className="space-y-2.5 pt-2">
+      {steps.map((step) => (
+        <ReadinessStepRow key={step.id} step={step} />
+      ))}
+    </ul>
+  );
+}
+
 export function ProsbaFormReadiness({
   lines,
   requestKind,
@@ -99,6 +115,8 @@ export function ProsbaFormReadiness({
   formMessage,
   resolvingSupplier = false,
   informacjaPath = "direct",
+  validationAttempted = false,
+  compact = true,
   className,
 }: {
   lines: ProsbaReadinessLine[];
@@ -107,6 +125,10 @@ export function ProsbaFormReadiness({
   formMessage?: { text: string; tone: "error" | "warning" | "success" } | null;
   resolvingSupplier?: boolean;
   informacjaPath?: InformacjaFlowPath;
+  /** Po nieudanej próbie wysłania — rozwiń checklistę kroków. */
+  validationAttempted?: boolean;
+  /** Zwarty widok: ukryj gdy gotowe; kroki w rozwijanym panelu. */
+  compact?: boolean;
   className?: string;
 }) {
   const view = buildProsbaFormReadiness(lines, requestKind, salesSubmitPlan, {
@@ -114,6 +136,59 @@ export function ProsbaFormReadiness({
     informacjaPath,
   });
   const styles = toneStyles(view.tone);
+
+  if (compact && view.canSubmit && !formMessage) {
+    return null;
+  }
+
+  if (compact) {
+    const expandSteps = validationAttempted || Boolean(formMessage);
+    const readinessCopy = PROSBA_OPTIONAL_SECTION_COPY.readiness;
+
+    return (
+      <div
+        className={cn("overflow-hidden rounded-md border", styles.shell, className)}
+        aria-live="polite"
+      >
+        {formMessage ? (
+          <div
+            className={cn(
+              "border-b px-3 py-2.5 text-sm",
+              formMessage.tone === "error" && "border-red-200 bg-red-50 text-red-950",
+              formMessage.tone === "warning" && "border-amber-200 bg-amber-50 text-amber-950",
+              formMessage.tone === "success" && "border-emerald-200 bg-emerald-50 text-emerald-950"
+            )}
+          >
+            {formMessage.text}
+          </div>
+        ) : null}
+
+        <div className="px-3 py-2.5 sm:px-4">
+          <p className={cn("text-sm font-semibold leading-snug", styles.headline)}>
+            {view.headline}
+          </p>
+          {view.subline ? (
+            <p className={cn("mt-0.5 text-xs leading-relaxed", styles.subline)}>
+              {view.subline}
+            </p>
+          ) : null}
+
+          <ProsbaOptionalSection
+            kind="readiness"
+            title={readinessCopy.title}
+            showOptionalLabel={false}
+            defaultOpen={expandSteps}
+            detailsKey={expandSteps ? "steps-open" : "steps-collapsed"}
+            className="mt-2 border-black/5 bg-white/50 open:bg-white/80"
+            summaryClassName="px-2.5 py-2"
+            bodyClassName="border-black/5 px-2.5 pb-2.5 pt-0"
+          >
+            <ReadinessStepsList steps={view.steps} />
+          </ProsbaOptionalSection>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div
@@ -152,11 +227,9 @@ export function ProsbaFormReadiness({
           ) : null}
         </div>
 
-        <ul className="mt-3 space-y-2.5 border-t border-black/5 pt-3">
-          {view.steps.map((step) => (
-            <ReadinessStepRow key={step.id} step={step} />
-          ))}
-        </ul>
+        <div className="mt-3 border-t border-black/5 pt-3">
+          <ReadinessStepsList steps={view.steps} />
+        </div>
       </div>
     </div>
   );

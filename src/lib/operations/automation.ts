@@ -1,8 +1,8 @@
 import { syncSuppliersFromSettings } from "@/lib/services/sync";
 import { processMarkedDeliveries } from "@/lib/services/orders";
 import { tryAcquireLock, releaseLock } from "@/lib/services/locks";
-import { purgeHistoryRetention } from "@/lib/services/history-cleanup";
-import type { HistoryCleanupResult } from "@/lib/services/history-cleanup";
+import { purgeDataRetention } from "@/lib/services/history-cleanup";
+import type { DataRetentionResult } from "@/lib/services/history-cleanup";
 
 const MORNING_LOCK = "MORNING_ROUTINE";
 
@@ -31,7 +31,7 @@ export async function runMorningScheduleSync(): Promise<MorningSyncResult> {
 export type MorningRoutineResult = {
   sync: MorningSyncResult;
   deliveries: Awaited<ReturnType<typeof processMarkedDeliveries>>;
-  historyCleanup: HistoryCleanupResult;
+  historyCleanup: DataRetentionResult;
 };
 
 /**
@@ -41,6 +41,6 @@ export type MorningRoutineResult = {
 export async function runMorningRoutine(): Promise<MorningRoutineResult> {
   const sync = await runMorningScheduleSync();
   const deliveries = await processMarkedDeliveries();
-  const historyCleanup = await purgeHistoryRetention();
+  const historyCleanup = await purgeDataRetention();
   return { sync, deliveries, historyCleanup };
 }

@@ -4,9 +4,8 @@ import { useId, type RefObject } from "react";
 import type { ZkSearchCandidate } from "@/lib/subiekt/resolve-zk-document";
 import { Button } from "@/components/ui/Button";
 import { fieldControlClass } from "@/components/ui/Field";
-import { IconSearch } from "@/components/icons/StrokeIcons";
+import { IconPlusCircle } from "@/components/icons/StrokeIcons";
 import { cn } from "@/lib/cn";
-import { salesTypography } from "@/lib/ui/ontime-theme";
 
 function formatIssuedAt(iso: string | null): string | null {
   if (!iso) return null;
@@ -15,6 +14,7 @@ function formatIssuedAt(iso: string | null): string | null {
   return `${d}.${m}.${y}`;
 }
 
+/** Formularz dodawania ZK — treść zwijanej sekcji (bez własnego nagłówka). */
 export function ZkWatchAddBar({
   inputRef,
   query,
@@ -45,49 +45,43 @@ export function ZkWatchAddBar({
   return (
     <div className="space-y-2">
       <form
-        className="flex flex-col gap-2 sm:flex-row sm:items-start"
+        className="flex flex-col gap-2"
         onSubmit={(e) => {
           e.preventDefault();
           onSubmit();
         }}
       >
-        <div className="relative min-w-0 flex-1">
-          <label htmlFor={inputId} className={cn(salesTypography.sectionLabel, "mb-1 block normal-case")}>
-            Dodaj ZK z Subiekta
+        <div className="min-w-0">
+          <label htmlFor={inputId} className="sr-only">
+            Numer ZK z Subiekta
           </label>
-          <div className="relative">
-            <span
-              className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"
-              aria-hidden
-            >
-              <IconSearch size={18} strokeWidth={2} />
-            </span>
-            <input
-              ref={inputRef}
-              id={inputId}
-              type="text"
-              inputMode="text"
-              autoComplete="off"
-              spellCheck={false}
-              placeholder={
-                canAdd ? "np. 23 lub 234/M/03/2026" : "Dodawanie ZK wymaga połączenia z systemem"
-              }
-              value={query}
-              disabled={loading || !canAdd}
-              onChange={(e) => onQueryChange(e.target.value)}
-              className={cn(fieldControlClass("default", "pl-10"), !canAdd && "cursor-not-allowed opacity-60")}
-              aria-disabled={!canAdd}
-            />
-          </div>
+          <input
+            ref={inputRef}
+            id={inputId}
+            type="text"
+            inputMode="text"
+            autoComplete="off"
+            spellCheck={false}
+            placeholder={
+              canAdd ? "np. 234 lub 234/M/03/2026" : "Dodawanie wymaga połączenia z Subiektem"
+            }
+            value={query}
+            disabled={loading || !canAdd}
+            onChange={(e) => onQueryChange(e.target.value)}
+            className={cn(
+              fieldControlClass("default"),
+              !canAdd && "cursor-not-allowed opacity-60"
+            )}
+            aria-disabled={!canAdd}
+          />
           <p className="mt-1.5 text-[11px] leading-relaxed text-slate-500">
-            Krótki numer (min. 2 znaki) szuka w ostatnich 30 dniach. Pełny format np. 234/M/03/2026
-            przeszukuje tylko dany miesiąc.
+            Krótki numer (min. 2 znaki) — ostatnie 30 dni. Pełny format — tylko dany miesiąc.
           </p>
         </div>
         <Button
           type="submit"
           size="sm"
-          className="min-h-11 w-full shrink-0 sm:mt-[1.375rem] sm:min-h-[2.5rem] sm:w-auto"
+          className="min-h-11 w-full sm:min-h-[2.5rem] sm:w-auto sm:self-start"
           disabled={loading || !query.trim() || !canAdd}
           title={
             !canAdd
@@ -95,7 +89,8 @@ export function ZkWatchAddBar({
               : undefined
           }
         >
-          {loading ? "Szukam…" : "Dodaj"}
+          <IconPlusCircle size={16} strokeWidth={2} className="mr-1.5 shrink-0" aria-hidden />
+          {loading ? "Szukam w Subiekcie…" : "Dodaj do listy"}
         </Button>
       </form>
 
@@ -107,8 +102,8 @@ export function ZkWatchAddBar({
       ) : null}
 
       {chooseHint && candidates.length > 0 ? (
-        <div className="rounded-md border border-indigo-200 bg-indigo-50/60 p-2.5">
-          <p className="text-xs font-medium text-indigo-950">{chooseHint}</p>
+        <div className="rounded-md border border-slate-200/90 bg-slate-50/80 p-2.5">
+          <p className="text-xs font-medium text-slate-800">{chooseHint}</p>
           <ul className="mt-2 space-y-1.5">
             {candidates.map((candidate) => {
               const issued = formatIssuedAt(candidate.issuedAt);
@@ -138,7 +133,7 @@ export function ZkWatchAddBar({
           </ul>
           <button
             type="button"
-            className="mt-2 text-xs text-indigo-700 hover:text-indigo-900"
+            className="mt-2 text-xs font-medium text-indigo-700 hover:text-indigo-900"
             onClick={onClearChoose}
           >
             Anuluj wybór

@@ -1,6 +1,7 @@
 import { OTP_TTL_MS } from "@/lib/auth/password-reset-constants";
 
 export const LOGIN_PASSWORD_RESET_STORAGE_KEY = "mikron.login.passwordReset";
+export const LOGIN_PASSWORD_RESET_SESSION_EVENT = "mikron:password-reset-session";
 
 export type StoredPasswordResetSession = {
   accountId: string;
@@ -34,12 +35,13 @@ export function writeStoredPasswordResetSession(
   try {
     if (!session) {
       window.sessionStorage.removeItem(LOGIN_PASSWORD_RESET_STORAGE_KEY);
-      return;
+    } else {
+      window.sessionStorage.setItem(
+        LOGIN_PASSWORD_RESET_STORAGE_KEY,
+        JSON.stringify(session)
+      );
     }
-    window.sessionStorage.setItem(
-      LOGIN_PASSWORD_RESET_STORAGE_KEY,
-      JSON.stringify(session)
-    );
+    window.dispatchEvent(new Event(LOGIN_PASSWORD_RESET_SESSION_EVENT));
   } catch {
     /* prywatny tryb / zablokowany storage */
   }

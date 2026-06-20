@@ -1,7 +1,9 @@
 "use server";
 
+// @service-role-ok — autoryzacja require*(); service role z pełnym scope po warstwie aplikacji.
+
 import { revalidatePath } from "next/cache";
-import { requireAdmin } from "@/lib/auth";
+import { requireAdmin, requireAdminForMutation } from "@/lib/auth";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { clampOptionalText } from "@/lib/security/text-limits";
 import { isSubiektReachable } from "@/lib/subiekt/availability";
@@ -101,7 +103,7 @@ export async function actionSearchProductsWithoutSupplierPage(options: {
 }
 
 export async function actionUpdateSubiektProductNote(subiektTwId: number, note: string) {
-  await requireAdmin();
+  await requireAdminForMutation();
   const supabase = createAdminClient();
   const trimmed = clampOptionalText(note, MAX_NOTE_LEN) ?? "";
   const { error } = await supabase
@@ -132,7 +134,7 @@ export async function actionAssignProductSupplier(
   row: ProductCatalogRow;
   autoAssign: { updated: number; promoted: number };
 }> {
-  await requireAdmin();
+  await requireAdminForMutation();
   const twId = Math.trunc(subiektTwId);
   await assignProductSupplierLinkAdmin({ subiektTwId: twId, supplierId });
 
@@ -162,7 +164,7 @@ export async function actionAssignProductSupplier(
 }
 
 export async function actionRebuildProductCatalogFromOrders(options?: { limit?: number }) {
-  await requireAdmin();
+  await requireAdminForMutation();
   const supabase = createAdminClient();
 
   const limit = options?.limit != null ? Math.max(1, Math.min(5000, options.limit)) : 5000;
@@ -328,7 +330,7 @@ export async function actionBackfillOrdersSubiektTwIdFromSymbol(options?: {
   indexed: number;
   skippedOffline: boolean;
 }> {
-  await requireAdmin();
+  await requireAdminForMutation();
   const supabase = createAdminClient();
 
   const limit = options?.limit != null ? Math.max(1, Math.min(400, options.limit)) : 200;
@@ -476,7 +478,7 @@ export async function actionStartZdImportSupplierJob(input: {
   supplierId: string;
   monthsBack?: number;
 }): Promise<ZdImportSupplierJobState> {
-  await requireAdmin();
+  await requireAdminForMutation();
   const supabase = createAdminClient();
   const { data, error } = await supabase
     .from("suppliers")
@@ -503,7 +505,7 @@ export async function actionTickZdImportSupplierJob(input: {
   supplierId: string;
   maxDocs?: number;
 }): Promise<ZdImportSupplierJobState> {
-  await requireAdmin();
+  await requireAdminForMutation();
   const next = await tickZdImportForSupplier({
     supplierId: input.supplierId,
     maxDocs: input.maxDocs ?? 3,
@@ -513,7 +515,7 @@ export async function actionTickZdImportSupplierJob(input: {
 }
 
 export async function actionStopZdImportSupplierJob(supplierId: string) {
-  await requireAdmin();
+  await requireAdminForMutation();
   const next = await stopZdImportForSupplier(supplierId);
   revalidatePath("/admin/produkty");
   return next;
@@ -522,7 +524,7 @@ export async function actionStopZdImportSupplierJob(supplierId: string) {
 export async function actionContinueZdImportSupplierJob(
   supplierId: string
 ): Promise<ZdImportSupplierJobState | null> {
-  await requireAdmin();
+  await requireAdminForMutation();
   const next = await continueZdImportForSupplier(supplierId);
   revalidatePath("/admin/produkty");
   return next;
@@ -537,7 +539,7 @@ export async function actionCleanupZdImportForSupplier(
   removedLinks: number;
   resetZdFlags: number;
 }> {
-  await requireAdmin();
+  await requireAdminForMutation();
   const supabase = createAdminClient();
   const { error, count } = await supabase
     .from("product_supplier_links")
@@ -564,26 +566,26 @@ export async function actionReadZdIndexJob(): Promise<ZdIndexJobState | null> {
 }
 
 export async function actionStartZdIndexJob(options?: { monthsBack?: number }) {
-  await requireAdmin();
+  await requireAdminForMutation();
   return startZdIndexJob({ monthsBack: options?.monthsBack ?? 60, pageSize: 25 });
 }
 
 export async function actionTickZdIndexJob(options?: { maxDocs?: number }): Promise<ZdIndexJobState> {
-  await requireAdmin();
+  await requireAdminForMutation();
   const next = await tickZdIndexJob({ maxDocs: options?.maxDocs ?? 3 });
   revalidatePath("/admin/produkty");
   return next;
 }
 
 export async function actionStopZdIndexJob() {
-  await requireAdmin();
+  await requireAdminForMutation();
   const next = await stopZdIndexJob();
   revalidatePath("/admin/produkty");
   return next;
 }
 
 export async function actionContinueZdIndexJob(): Promise<ZdIndexJobState | null> {
-  await requireAdmin();
+  await requireAdminForMutation();
   const next = await continueZdIndexJob();
   revalidatePath("/admin/produkty");
   return next;
@@ -603,7 +605,7 @@ export async function actionStartZdImportAllSuppliersJob(options?: {
   monthsBack?: number;
   batchDocs?: number;
 }): Promise<ZdImportAllSuppliersJobState> {
-  await requireAdmin();
+  await requireAdminForMutation();
   // Domyślnie bierzemy szerszy zakres niż dawniej, bo katalog produktów ma być możliwie kompletny.
   const { defaultZdSearchDataOd } = await import("@/lib/subiekt/subiekt-runtime-cache");
   const monthsBack = options?.monthsBack ?? 60;
@@ -612,21 +614,21 @@ export async function actionStartZdImportAllSuppliersJob(options?: {
 }
 
 export async function actionTickZdImportAllSuppliersJob(): Promise<ZdImportAllSuppliersJobState> {
-  await requireAdmin();
+  await requireAdminForMutation();
   const next = await tickZdImportAllSuppliersJob({ maxDocs: 3 });
   revalidatePath("/admin/produkty");
   return next;
 }
 
 export async function actionStopZdImportAllSuppliersJob() {
-  await requireAdmin();
+  await requireAdminForMutation();
   const next = await stopZdImportAllSuppliersJob();
   revalidatePath("/admin/produkty");
   return next;
 }
 
 export async function actionContinueZdImportAllSuppliersJob(): Promise<ZdImportAllSuppliersJobState | null> {
-  await requireAdmin();
+  await requireAdminForMutation();
   const next = await continueZdImportAllSuppliersJob();
   revalidatePath("/admin/produkty");
   return next;
@@ -646,7 +648,7 @@ export async function actionReadCatalogZdSyncStatus(): Promise<{
 
 /** Kontynuacja przerwanego przebiegu (bez resetu stanu). */
 export async function actionContinueCatalogZdSync() {
-  await requireAdmin();
+  await requireAdminForMutation();
   if (!(await isSubiektReachable())) {
     throw new Error("Subiekt niedostępny — synchronizacja wymaga LAN.");
   }
@@ -660,7 +662,7 @@ export async function actionContinueCatalogZdSync() {
 
 /** Test / ponowny przebieg — `reset` tylko gdy jawnie żądany (domyślnie kontynuuje). */
 export async function actionRunCatalogZdSyncNow(options?: { reset?: boolean }) {
-  await requireAdmin();
+  await requireAdminForMutation();
   if (!(await isSubiektReachable())) {
     throw new Error("Subiekt niedostępny — synchronizacja wymaga LAN.");
   }

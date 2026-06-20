@@ -8,14 +8,14 @@ import type { DeliveryStats, SupplierWithSchedule } from "@/types/database";
 import { WeekPlanner } from "@/components/summary/WeekPlanner";
 import { Card, CardHeader } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
-import { Input } from "@/components/ui/Field";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { BackChevron } from "@/components/ui/UiGlyphs";
 import { Badge } from "@/components/ui/Badge";
 import { HelpPopover, GuideIcon } from "@/components/ui/HelpPopover";
 import { HelpBlock } from "@/components/ui/HelpBlock";
 import { SectionListLabel } from "@/components/ui/SectionListLabel";
-import { ProsbaFormSection } from "@/components/orders/ProsbaFormSection";
+import { NotatnikListFilterBar } from "@/components/notatnik/NotatnikListFilterBar";
+import { AppBrandContentFooter } from "@/components/layout/AppBrandContentFooter";
 import { locationLabel } from "@/lib/display-labels";
 import {
   matchSuppliersByQuery,
@@ -39,7 +39,9 @@ import {
 } from "@/components/icons/StrokeIcons";
 import { SectionHeadingIcon } from "@/components/icons/SectionHeadingIcon";
 import { cn } from "@/lib/cn";
-import { salesPageShellClass, salesChromeInsetClass, salesTypography } from "@/lib/ui/ontime-theme";
+import { salesChromeInsetClass, salesPageShellClass, salesTypography } from "@/lib/ui/ontime-theme";
+import { SALES_PAGE_HEADER_HINTS, SALES_SEARCH_COPY } from "@/lib/sales/sales-page-ui-copy";
+import { salesSearchPlaceholder } from "@/lib/sales/sales-search-ui";
 import { Alert } from "@/components/ui/Alert";
 
 const PLAN_INTRO =
@@ -315,7 +317,7 @@ function SalesPlanViewFallback({
     <div className={salesPageShellClass}>
       {error ? <Alert tone="warning">{error}</Alert> : null}
       <Card padding={false} className="overflow-hidden">
-        <CardHeader inset density="compact" title={pageTitle} description={PLAN_INTRO} />
+        <CardHeader inset density="compact" title={pageTitle} hint={SALES_PAGE_HEADER_HINTS.plan} hintAriaLabel="O harmonogramie" />
         <div className="px-4 py-12 text-center text-sm text-slate-500">Ładowanie…</div>
       </Card>
     </div>
@@ -383,9 +385,6 @@ function SalesPlanViewContent({
 
   return (
     <div className={salesPageShellClass}>
-      {error ? (
-        <Alert tone="warning">{error}</Alert>
-      ) : null}
       <Card padding={false} className="overflow-hidden">
         <CardHeader
           inset
@@ -396,9 +395,16 @@ function SalesPlanViewContent({
             </SectionHeadingIcon>
           }
           title={pageTitle}
-          description={PLAN_INTRO}
+          hint={SALES_PAGE_HEADER_HINTS.plan}
+          hintAriaLabel="O harmonogramie"
           action={<PlanGuide />}
         />
+
+        {error ? (
+          <Alert tone="warning" className={cn(salesChromeInsetClass, "mt-0")}>
+            {error}
+          </Alert>
+        ) : null}
 
         {!tourPreview ? (
           <ProcurementPlanBlock
@@ -408,29 +414,19 @@ function SalesPlanViewContent({
           />
         ) : null}
 
-        <div className={cn("border-b border-slate-100", salesChromeInsetClass, "py-3")}>
-          <ProsbaFormSection
-            title="Szukaj dostawcy"
-            hint="Każdy dostawca z bazy — ten sam układ szczegółów po rozwinięciu wiersza."
-          >
-            <label className="block">
-              <span className="sr-only">Szukaj dostawcy</span>
-              <div className="relative">
-                <span className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3 text-slate-400">
-                  <PlanSectionIcon kind="search" size={18} />
-                </span>
-                <Input
-                  type="search"
-                  placeholder="Wpisz fragment nazwy…"
-                  value={query}
-                  onChange={(e) => setQuery(e.target.value)}
-                  autoComplete="off"
-                  className="border-slate-200 bg-white pl-10 focus:bg-white"
-                />
-              </div>
-            </label>
-          </ProsbaFormSection>
-        </div>
+        <NotatnikListFilterBar
+          visibleLabel="Szukaj dostawcy"
+          value={query}
+          onChange={setQuery}
+          matchCount={searchQuery ? searchInsights.length : suppliers.length}
+          totalCount={searchQuery ? searchTotalMatches : suppliers.length}
+          placeholder={salesSearchPlaceholder(SALES_SEARCH_COPY.planSupplier, false)}
+          showIdleHint={false}
+          showActiveDetail={false}
+          emptyMatchHint="Brak dostawcy o takiej nazwie — sprawdź pisownię lub wyczyść filtr."
+          searchLabel="Szukaj dostawcy w harmonogramie"
+          enableShortcut={false}
+        />
 
         {searchQuery ? (
           <section aria-labelledby="sales-plan-search-results">
@@ -438,6 +434,7 @@ function SalesPlanViewContent({
               id="sales-plan-search-results"
               title="Wyniki wyszukiwania"
               hint={`Dla „${searchQuery}”`}
+              hintMode="tooltip"
               count={searchInsights.length || undefined}
               icon={<PlanSectionIcon kind="search" size={17} />}
               tileClassName={planSectionIconTileClass("search")}
@@ -487,6 +484,7 @@ function SalesPlanViewContent({
               id="sales-plan-my-suppliers"
               title="Z otwartymi prośbami"
               hint="Te same dostawcy co w „Moje zamówienia” — rozwiń wiersz po szczegóły."
+              hintMode="tooltip"
               count={openRequestCount || undefined}
               accent="indigo"
               icon={<PlanSectionIcon kind="prosby" size={17} />}
@@ -541,6 +539,7 @@ function SalesPlanViewContent({
           </div>
         </div>
       </Card>
+      <AppBrandContentFooter mobileOnly variant="page" />
     </div>
   );
 }

@@ -19,6 +19,7 @@ export async function middlewareNeedsBootstrap(): Promise<boolean> {
 
   if (error) {
     console.error("middlewareNeedsBootstrap:", error.message);
+    // Przy chwilowym błędzie DB nie przekierowuj całej aplikacji na /setup.
     return false;
   }
   return (count ?? 0) === 0;

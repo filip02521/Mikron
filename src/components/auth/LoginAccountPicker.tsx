@@ -22,13 +22,27 @@ export function LoginAccountPicker({
   value,
   onChange,
   disabled = false,
+  searchRequired = false,
+  query: controlledQuery,
+  onQueryChange,
+  loading = false,
+  minQueryLength = 3,
+  fetchError = "",
 }: {
   accounts: LoginDirectoryAccountPublic[];
   value: string | null;
   onChange: (accountId: string) => void;
   disabled?: boolean;
+  searchRequired?: boolean;
+  query?: string;
+  onQueryChange?: (query: string) => void;
+  loading?: boolean;
+  minQueryLength?: number;
+  fetchError?: string;
 }) {
-  const [query, setQuery] = useState("");
+  const [localQuery, setLocalQuery] = useState("");
+  const query = controlledQuery ?? localQuery;
+  const setQuery = onQueryChange ?? setLocalQuery;
   const listRef = useRef<HTMLDivElement>(null);
   const filtered = useMemo(
     () => filterLoginDirectoryAccounts(accounts, query),
@@ -103,14 +117,18 @@ export function LoginAccountPicker({
     [disabled, filtered, focusIndex, moveFocus, onChange]
   );
 
-  const showSearch = accounts.length >= LOGIN_ACCOUNT_SEARCH_THRESHOLD;
+  const showSearch = searchRequired || accounts.length >= LOGIN_ACCOUNT_SEARCH_THRESHOLD;
   const showListHeader = accounts.length > 1;
+  const queryTooShort =
+    searchRequired && query.trim().length > 0 && query.trim().length < minQueryLength;
+  const awaitingSearch =
+    searchRequired && query.trim().length < minQueryLength && accounts.length === 0;
   const listSummary =
-    filtered.length === accounts.length
-      ? loginAccountCountLabel(accounts.length)
+    filtered.length === accounts.length || searchRequired
+      ? loginAccountCountLabel(filtered.length)
       : `${loginAccountCountLabel(filtered.length)} z ${accounts.length}`;
 
-  if (!accounts.length) {
+  if (!accounts.length && !searchRequired) {
     return (
       <p className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900">
         Brak kont w systemie. Skontaktuj się z administratorem lub użyj konfiguracji
@@ -121,6 +139,12 @@ export function LoginAccountPicker({
 
   return (
     <div className="min-h-0 space-y-2.5">
+      {fetchError ? (
+        <p className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900">
+          {fetchError}
+        </p>
+      ) : null}
+
       {showSearch ? (
         <div className="relative">
           <span
@@ -133,7 +157,11 @@ export function LoginAccountPicker({
             type="search"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            placeholder="Szukaj po imieniu lub nazwisku…"
+            placeholder={
+              searchRequired
+                ? `Szukaj po imieniu lub nazwisku (min. ${minQueryLength} znaki)…`
+                : "Szukaj po imieniu lub nazwisku…"
+            }
             autoComplete="off"
             disabled={disabled}
             aria-label="Szukaj konta"
@@ -163,7 +191,18 @@ export function LoginAccountPicker({
             "divide-y divide-slate-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-indigo-500/70"
           )}
         >
-          {filtered.length === 0 ? (
+          {awaitingSearch ? (
+            <p className="px-4 py-6 text-center text-sm text-slate-500">
+              Wpisz co najmniej {minQueryLength} znaki, aby wyszukać konto.
+            </p>
+          ) : queryTooShort ? (
+            <p className="px-4 py-6 text-center text-sm text-slate-500">
+              Wpisz jeszcze {minQueryLength - query.trim().length}{" "}
+              {minQueryLength - query.trim().length === 1 ? "znak" : "znaki"}.
+            </p>
+          ) : loading ? (
+            <p className="px-4 py-6 text-center text-sm text-slate-500">Wyszukiwanie…</p>
+          ) : filtered.length === 0 ? (
             <p className="px-4 py-6 text-center text-sm text-slate-500">
               Brak kont pasujących do wyszukiwania.
             </p>

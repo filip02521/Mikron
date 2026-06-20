@@ -1,4 +1,5 @@
 import { cn } from "@/lib/cn";
+import { HelpHintBubble } from "@/components/ui/HelpHintBubble";
 
 export function Card({
   children,
@@ -25,6 +26,8 @@ export function Card({
 export function CardHeader({
   title,
   description,
+  hint,
+  hintAriaLabel = "O tej sekcji",
   action,
   leading,
   inset = false,
@@ -35,6 +38,9 @@ export function CardHeader({
 }: {
   title: string;
   description?: string;
+  /** Podpowiedź przy tytule zamiast osobnego opisu. */
+  hint?: string;
+  hintAriaLabel?: string;
   action?: React.ReactNode;
   leading?: React.ReactNode;
   inset?: boolean;
@@ -74,14 +80,23 @@ export function CardHeader({
       : "px-4 pb-4 pt-5 sm:px-6 sm:pb-5 sm:pt-6 lg:px-8 lg:pb-6 lg:pt-7"
     : "mb-6 pb-5";
 
+  const titleNode = (
+    <div className="flex min-w-0 flex-wrap items-center gap-1.5">
+      <h2 className={titleClass}>{title}</h2>
+      {hint ? (
+        <HelpHintBubble message={hint} tone="slate" size="md" ariaLabel={hintAriaLabel} />
+      ) : null}
+    </div>
+  );
+
   if (stackAction) {
     return (
       <div className={cn("border-b border-slate-100", paddingClass)}>
         <div className="flex w-full min-w-0 items-start gap-3">
           {leading ? <div className="shrink-0 pt-0.5">{leading}</div> : null}
           <div className="min-w-0 flex-1">
-            <h2 className={titleClass}>{title}</h2>
-            <p className={descriptionClass}>{description}</p>
+            {titleNode}
+            {description ? <p className={descriptionClass}>{description}</p> : null}
             <div className={cn("mt-2", actionClass)}>{action}</div>
           </div>
         </div>
@@ -95,7 +110,7 @@ export function CardHeader({
         {leading ? <div className="shrink-0 pt-0.5">{leading}</div> : null}
         <div className="min-w-0 flex-1">
           <div className="flex min-w-0 items-start justify-between gap-3">
-            <h2 className={cn("min-w-0 flex-1", titleClass)}>{title}</h2>
+            <div className="min-w-0 flex-1">{titleNode}</div>
             {action ? (
               <div className={cn("max-w-full shrink-0 justify-end sm:max-w-[min(100%,28rem)]", actionClass)}>
                 {action}

@@ -67,4 +67,22 @@ describe("NotesSection", () => {
 
     expect(screen.getByLabelText("Przypięta")).toBeTruthy();
   });
+
+  it("pokazuje czerwoną ikonę usuwania zamiast tekstu Archiwum", () => {
+    render(
+      <NotesSection
+        embedded
+        notes={[
+          testSalesNote({
+            id: "n-del",
+            body: "Do usunięcia",
+            updated_at: "2026-01-01T00:00:00Z",
+          }),
+        ]}
+      />
+    );
+
+    expect(screen.getByLabelText("Usuń notatkę")).toBeTruthy();
+    expect(screen.queryByRole("button", { name: "Archiwum" })).toBeNull();
+  });
 });

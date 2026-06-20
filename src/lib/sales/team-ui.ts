@@ -87,7 +87,7 @@ export function salesTeamPageCopy(
       return {
         title: "Podgląd zespołu",
         description:
-          "Handlowcy w grupach — podgląd prośb i składanie w ich imieniu.",
+          "Handlowcy w grupach — podgląd prośb, ZK i notatnika (składanie prośb tylko przez kierownika).",
       };
     }
     if (!ctx.hasTeamScope) {

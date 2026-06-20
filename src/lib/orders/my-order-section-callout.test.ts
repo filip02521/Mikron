@@ -8,6 +8,7 @@ import {
   myOrderRowSuppressesSharedHeadline,
   myOrderSectionSuppressedPatterns,
   polishPozycjaCount,
+  resolveMyOrderRowPatternHint,
 } from "./my-order-section-callout";
 
 function row(extra: Partial<MyOrderRow> = {}): MyOrderRow {
@@ -102,7 +103,7 @@ describe("my-order-section-callout", () => {
     expect(deriveMyOrderSectionCallouts(rows)).toEqual([]);
   });
 
-  it("callout po terminie przy ≥2 wierszach", () => {
+  it("nie pokazuje calloutu po terminie ani częściowej dostawy", () => {
     const overdue = row({
       id: "a",
       timingLabel: "ok. 10.05 · po terminie",
@@ -110,44 +111,66 @@ describe("my-order-section-callout", () => {
       headlineTone: "warning",
     });
     const rows = [overdue, { ...overdue, id: "b", supplierName: "Inny" }];
+    expect(deriveMyOrderSectionCallouts(rows)).toEqual([]);
+
+    const partial = presentMyOrders([partialOrder], []).zamowienia[0]!;
+    expect(deriveMyOrderSectionCallouts([partial, { ...partial, id: "p2" }])).toEqual([]);
+  });
+
+  it("callout weryfikacji przy ≥2 wierszach", () => {
+    const verification = row({
+      statusTitle: "W dziale dostaw",
+      headline: "Prośba jest weryfikowana",
+      headlineTone: "info",
+    });
+    const rows = [verification, { ...verification, id: "b", supplierName: "Inny" }];
     const callouts = deriveMyOrderSectionCallouts(rows);
     expect(callouts).toHaveLength(1);
-    expect(callouts[0]?.pattern).toBe("overdue");
+    expect(callouts[0]?.pattern).toBe("verification");
     expect(callouts[0]?.title).toContain("2 pozycje");
   });
 
-  it("callout częściowej dostawy — ton sky, bez obietnicy odbioru teraz", () => {
-    const partial = presentMyOrders([partialOrder], []).zamowienia[0]!;
-    const rows = [partial, { ...partial, id: "p2", supplierName: "Inny" }];
-    const callouts = deriveMyOrderSectionCallouts(rows);
-    expect(callouts).toHaveLength(1);
-    expect(callouts[0]?.tone).toBe("sky");
-    expect(callouts[0]?.title).toContain("Częściowa dostawa");
-    expect(callouts[0]?.detail).toContain("Część towaru jest na magazynie");
-    expect(callouts[0]?.detail).toContain("reszta w drodze");
-  });
-
-  it("pokazuje hint przy pojedynczej częściowej dostawie", () => {
+  it("nie pokazuje hintu przy pojedynczej częściowej dostawie", () => {
     const partial = presentMyOrders([partialOrder], []).zamowienia[0]!;
     const { callouts, singleHints, suppressedPatterns } = deriveMyOrderSectionDisplayState(
       [partial]
     );
     expect(callouts).toEqual([]);
-    expect(singleHints).toHaveLength(1);
-    expect(singleHints[0]?.pattern).toBe("partial_ready");
-    expect(singleHints[0]?.message).toContain("Część towaru jest na magazynie");
-    expect(myOrderRowSuppressesSharedHeadline(partial, suppressedPatterns)).toBe(true);
+    expect(singleHints).toEqual([]);
+    expect(myOrderRowSuppressesSharedHeadline(partial, suppressedPatterns)).toBe(false);
   });
 
-  it("ukrywa powtarzający się nagłówek wiersza przy calloucie sekcji", () => {
+  it("ukrywa powtarzający się nagłówek wiersza przy calloucie weryfikacji", () => {
+    const verification = row({
+      statusTitle: "W dziale dostaw",
+      headline: "Prośba jest weryfikowana",
+      headlineTone: "info",
+    });
+    const callouts = deriveMyOrderSectionCallouts([
+      verification,
+      { ...verification, id: "2" },
+    ]);
+    const suppressed = myOrderSectionSuppressedPatterns(callouts);
+    expect(myOrderRowSuppressesSharedHeadline(verification, suppressed)).toBe(true);
+    expect(myOrderRowSuppressesSharedHeadline(row(), suppressed)).toBe(false);
+  });
+
+  it("resolveMyOrderRowPatternHint — tylko weryfikacja", () => {
     const overdue = row({
       timingLabel: "ok. 10.05 · po terminie",
       headline: "Po przewidywanym terminie",
       headlineTone: "warning",
     });
-    const callouts = deriveMyOrderSectionCallouts([overdue, { ...overdue, id: "2" }]);
-    const suppressed = myOrderSectionSuppressedPatterns(callouts);
-    expect(myOrderRowSuppressesSharedHeadline(overdue, suppressed)).toBe(true);
-    expect(myOrderRowSuppressesSharedHeadline(row(), suppressed)).toBe(false);
+    expect(resolveMyOrderRowPatternHint(overdue)).toBeNull();
+
+    const partial = presentMyOrders([partialOrder], []).zamowienia[0]!;
+    expect(resolveMyOrderRowPatternHint(partial)).toBeNull();
+
+    const verification = row({
+      statusTitle: "W dziale dostaw",
+      headline: "Prośba jest weryfikowana",
+      headlineTone: "info",
+    });
+    expect(resolveMyOrderRowPatternHint(verification)?.pattern).toBe("verification");
   });
 });

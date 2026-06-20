@@ -7,7 +7,8 @@ import { resolvePreviewSalesPerson } from "@/lib/auth/resolve-preview-sales-pers
 import { isAdminReadOnlyPanelPreview } from "@/lib/auth/admin-panel-context";
 import { isAdmin, isSalesManager } from "@/lib/auth-roles";
 import { readAdminPanelContextForSession } from "@/lib/auth/read-admin-panel-context";
-import { ManagerPreviewBanner } from "@/components/sales/ManagerPreviewBanner";
+import { SalesPageAlerts } from "@/components/sales/SalesPageAlerts";
+import { ProsbaFormSuspenseFallback } from "@/components/orders/ProsbaFormSuspenseFallback";
 import {
   filterRowsByGroupScope,
   getManagedGroupIdsForUser,
@@ -32,9 +33,6 @@ export default async function ProsbaPage({
   const { panelContext } = await readAdminPanelContextForSession();
   let adminReadOnlyPreview = false;
   let suppliers: Awaited<ReturnType<typeof fetchSupplierFormContext>>["suppliers"] = [];
-  let statsBySupplierId: Awaited<
-    ReturnType<typeof fetchSupplierFormContext>
-  >["statsBySupplierId"] = {};
   let salesPeople: { id: string; name: string }[] = [];
   let lockedSalesPerson: { id: string; name: string } | null = null;
   let isSales = false;
@@ -44,7 +42,6 @@ export default async function ProsbaPage({
   try {
     const ctx = await fetchSupplierFormContext();
     suppliers = ctx.suppliers;
-    statsBySupplierId = ctx.statsBySupplierId;
   } catch {
     /* empty */
   }
@@ -105,7 +102,8 @@ export default async function ProsbaPage({
         <div className={salesPageShellClass}>
           <PageHeader
             title="Nowa prośba"
-            description="Podgląd formularza handlowca — składanie prośb jest wyłączone dla administratora."
+            hint="Podgląd formularza handlowca — składanie prośb jest wyłączone dla administratora."
+            hintAriaLabel="O podglądzie prośby"
           />
           <Alert tone="info">
             Wybierz handlowca z{" "}
@@ -123,28 +121,17 @@ export default async function ProsbaPage({
 
     return (
       <div className={salesPageShellClass}>
-        <ManagerPreviewBanner
-          salesPersonId={lockedSalesPerson.id}
-          salesPersonName={lockedSalesPerson.name}
-          scope="prosba"
-          readOnly
+        <SalesPageAlerts
+          teamPreview={{
+            salesPersonId: lockedSalesPerson.id,
+            salesPersonName: lockedSalesPerson.name,
+            scope: "prosba",
+            readOnly: true,
+          }}
         />
-        <Suspense
-          fallback={
-            <div className="overflow-hidden rounded-md border border-slate-200/80 bg-white shadow-[var(--shadow-card-elevated)]">
-              <div className="border-b border-slate-100 px-3 pb-3 pt-4 sm:px-4">
-                <div className="h-5 w-40 animate-pulse rounded bg-slate-100" />
-                <div className="mt-2 h-3 w-full max-w-md animate-pulse rounded bg-slate-100" />
-              </div>
-              <p className="px-3 py-12 text-center text-xs text-slate-500 sm:px-4">
-                Ładowanie formularza…
-              </p>
-            </div>
-          }
-        >
+        <Suspense fallback={<ProsbaFormSuspenseFallback />}>
           <OrderFormClient
             suppliers={suppliers}
-            statsBySupplierId={statsBySupplierId}
             salesPeople={[]}
             lockedSalesPerson={lockedSalesPerson}
             singleGroup
@@ -160,7 +147,7 @@ export default async function ProsbaPage({
     return (
       <SalesAccountLinkRequired
         title="Nowa prośba"
-        description="Formularz jest dostępny po powiązaniu konta z kartą handlowca."
+        hint="Formularz jest dostępny po powiązaniu konta z kartą handlowca."
       />
     );
   }
@@ -185,7 +172,8 @@ export default async function ProsbaPage({
       <div className={salesPageShellClass}>
         <PageHeader
           title="Nowa prośba"
-          description="Wybierz handlowca z zespołu lub powiąż swoje konto z kartą handlowca."
+          hint="Wybierz handlowca z zespołu lub powiąż swoje konto z kartą handlowca."
+          hintAriaLabel="O formularzu prośby"
         />
         <Alert tone="warning">
           Aby składać prośby w swoim imieniu, administrator musi przypisać Ci kartę handlowca.
@@ -205,30 +193,22 @@ export default async function ProsbaPage({
 
   return (
     <div className={salesPageShellClass}>
-      {isManager && lockedSalesPerson && lockedSalesPerson.id !== managerSelfId ? (
-        <ManagerPreviewBanner
-          salesPersonId={lockedSalesPerson.id}
-          salesPersonName={lockedSalesPerson.name}
-          scope="prosba"
-        />
-      ) : null}
-      <Suspense
-        fallback={
-          <div className="overflow-hidden rounded-md border border-slate-200/80 bg-white shadow-[var(--shadow-card-elevated)]">
-            <div className="border-b border-slate-100 px-3 pb-3 pt-4 sm:px-4">
-              <div className="h-5 w-40 animate-pulse rounded bg-slate-100" />
-              <div className="mt-2 h-3 w-full max-w-md animate-pulse rounded bg-slate-100" />
-            </div>
-            <p className="px-3 py-12 text-center text-xs text-slate-500 sm:px-4">
-              Ładowanie formularza…
-            </p>
-          </div>
+      <SalesPageAlerts
+        teamPreview={
+          isManager && lockedSalesPerson && lockedSalesPerson.id !== managerSelfId
+            ? {
+                salesPersonId: lockedSalesPerson.id,
+                salesPersonName: lockedSalesPerson.name,
+                scope: "prosba",
+              }
+            : null
         }
-      >
+        linkErrorWarningOnIgnored={false}
+      />
+      <Suspense fallback={<ProsbaFormSuspenseFallback />}>
       {lockedSalesPerson ? (
         <OrderFormClient
           suppliers={suppliers}
-          statsBySupplierId={statsBySupplierId}
           salesPeople={salesPeople}
           lockedSalesPerson={lockedSalesPerson}
           singleGroup
@@ -242,7 +222,6 @@ export default async function ProsbaPage({
       ) : (
         <OrderFormClient
           suppliers={suppliers}
-          statsBySupplierId={statsBySupplierId}
           salesPeople={salesPeople}
           initialSupplierId={initialSupplierId}
         />

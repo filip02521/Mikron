@@ -11,6 +11,7 @@ import type { SalesNote } from "@/types/database";
 import { noteStickyPaperClass } from "./note-styles";
 import { NOTATNIK_NOTES_GRID_CLASS, NOTATNIK_NOTES_WALL_CLASS } from "./notatnik-layout";
 import { NoteBodyDisplay } from "./NoteBodyDisplay";
+import { NoteDeleteIconButton } from "./NoteColorPicker";
 import { NoteStickyFrame } from "./NoteStickyFrame";
 
 export function ArchivedNotesSection({
@@ -142,19 +143,18 @@ function ArchivedNoteCard({
           ) : null}
         </div>
         {!readOnly ? (
-          <div className="flex flex-wrap gap-1.5 border-t border-slate-100 px-2.5 py-2">
+          <div className="flex flex-wrap items-center gap-1.5 border-t border-slate-100 px-2.5 py-2">
             <Button size="sm" variant="ghost" disabled={restoring} onClick={() => void restore()}>
               {restoring ? "Przywracam…" : "Przywróć"}
             </Button>
-            <Button
-              size="sm"
-              variant="ghost"
-              disabled={deleting}
+            <NoteDeleteIconButton
               onClick={() => void remove()}
-              className="text-red-700 hover:text-red-900"
-            >
-              {deleting ? "Usuwam…" : "Usuń na stałe"}
-            </Button>
+              disabled={deleting}
+              title="Usuń na stałe"
+              ariaLabel="Usuń notatkę na stałe"
+              className="ml-auto h-8 w-8"
+              iconSize={16}
+            />
             {error ? <p className="w-full text-xs text-red-700">{error}</p> : null}
           </div>
         ) : null}

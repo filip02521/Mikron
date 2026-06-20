@@ -56,7 +56,7 @@ export default async function NotatnikPage({
     return (
       <SalesAccountLinkRequired
         title="Notatnik"
-        description="Twoje prywatne przypomnienia i notatki. Konto musi być przypisane do profilu handlowca."
+        hint="Twoje prywatne przypomnienia i notatki. Konto musi być przypisane do profilu handlowca."
       />
     );
   }

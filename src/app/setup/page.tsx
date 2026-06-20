@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation";
 import { needsBootstrapSetup } from "@/lib/setup/bootstrap";
+import { setupTokenRequiredMessage } from "@/lib/setup/bootstrap-token";
 import { AuthScreenLayout } from "@/components/auth/AuthScreenLayout";
 import { SetupForm } from "./SetupForm";
 import { ClearSessionOnSetup } from "./ClearSessionOnSetup";
@@ -11,9 +12,16 @@ export const metadata: Metadata = pageMetadataFor("setup");
 
 export const dynamic = "force-dynamic";
 
-export default async function SetupPage() {
+export default async function SetupPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ token?: string }>;
+}) {
   const showSetup = await needsBootstrapSetup();
   if (!showSetup) redirect("/login");
+
+  const { token } = await searchParams;
+  const tokenHint = setupTokenRequiredMessage();
 
   return (
     <AuthScreenLayout
@@ -21,7 +29,7 @@ export default async function SetupPage() {
       subtitle="Utwórz pierwsze konto administratora OnTime"
     >
       <ClearSessionOnSetup />
-      <SetupForm />
+      <SetupForm setupToken={token?.trim() ?? ""} tokenHint={tokenHint} />
     </AuthScreenLayout>
   );
 }

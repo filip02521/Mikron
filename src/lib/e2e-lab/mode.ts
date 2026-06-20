@@ -1,7 +1,7 @@
 import type { LoginDirectoryAccount } from "@/lib/auth/login-directory";
 import { ROLE_LABELS } from "@/lib/users/labels";
 
-/** CI / Playwright — serwer bez prawdziwego Supabase. */
+/** CI / Playwright (`next start`) — serwer bez prawdziwego Supabase. Na deployu blokowane przez verify-auth-production-env. */
 export function isE2ELab(): boolean {
   return process.env.E2E_LAB === "1";
 }

@@ -63,6 +63,7 @@ function demoLine(
     defaultSalesCancelQuantity: extra.defaultSalesCancelQuantity ?? null,
     canPartialSalesCancel: extra.canPartialSalesCancel ?? false,
     showSalesCancelRemainder: extra.showSalesCancelRemainder ?? false,
+    showSalesCancelSupplierQuick: extra.showSalesCancelSupplierQuick ?? false,
     salesCancelDeliveredQty: extra.salesCancelDeliveredQty ?? 0,
     salesCancelUndoRestore: extra.salesCancelUndoRestore ?? {},
     clientName: extra.clientName ?? null,

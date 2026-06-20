@@ -3,6 +3,7 @@ import {
   allZkWatchLinesArrived,
   buildZkWatchLineViews,
   formatZkLinesPreview,
+  formatZkLinesProgress,
   formatZkLinesShort,
   isZkWatchShippingCostLine,
   mergeLineChecksAfterRefresh,
@@ -146,8 +147,8 @@ describe("zk-watch-lines", () => {
       watch({
         subiekt_snapshot: { dok_Pozycja: [{ ob_Id: 1 }, { ob_Id: 2 }] },
         line_checks: [
-          { key: "ob:1", arrived: true },
-          { key: "ob:2", arrived: true },
+          { key: "ob:1", arrived: true, completed_manually: true },
+          { key: "ob:2", arrived: true, completed_manually: true },
         ],
       })
     );
@@ -159,11 +160,31 @@ describe("zk-watch-lines", () => {
     const views = buildZkWatchLineViews(
       watch({
         subiekt_snapshot: { dok_Pozycja: [{ ob_Id: 1 }, { ob_Id: 2 }, { ob_Id: 3 }] },
-        line_checks: [{ key: "ob:1", arrived: true }],
+        line_checks: [{ key: "ob:1", arrived: true, completed_manually: true }],
       })
     );
     expect(formatZkLinesShort(views)).toBe("1/3");
     expect(formatZkLinesShort([])).toBeNull();
+  });
+
+  it("formatZkLinesProgress rozróżnia magazyn i klienta", () => {
+    const views = buildZkWatchLineViews(
+      watch({
+        subiekt_snapshot: {
+          dok_Pozycja: [{ ob_Id: 1 }, { ob_Id: 2 }, { ob_Id: 3 }],
+        },
+        line_checks: [
+          { key: "ob:1", arrived: true, completed_manually: true },
+          { key: "ob:2", arrived: true, completed_manually: true },
+        ],
+      })
+    );
+    expect(formatZkLinesProgress(views, { inStockLineKeys: ["ob:1"] })).toBe(
+      "1 odebrane z regału · 1 zakończone"
+    );
+    expect(formatZkLinesProgress(views, { inStockLineKeys: ["ob:1", "ob:2"] })).toBe(
+      "2/3 odebrane z regału"
+    );
   });
 
   it("formatZkLinesPreview pokazuje pierwszą brakującą pozycję i licznik", () => {
@@ -175,7 +196,7 @@ describe("zk-watch-lines", () => {
             { ob_Id: 2, tw_Nazwa: "Bonding" },
           ],
         },
-        line_checks: [{ key: "ob:1", arrived: true }],
+        line_checks: [{ key: "ob:1", arrived: true, completed_manually: true }],
       })
     );
     expect(formatZkLinesPreview(views)).toBe("Bonding · 1/2");

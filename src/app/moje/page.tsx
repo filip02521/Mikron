@@ -20,14 +20,24 @@ import { canAccessOperations, isAdmin, isSalesAccount, isSalesManager } from "@/
 import { presentMyOrders } from "@/lib/orders/my-order-presenter";
 import { loadPlannedOrderScheduleContext } from "@/lib/orders/planned-order-schedule";
 import { getSubiektAvailability } from "@/lib/subiekt/availability";
+import {
+  countZdEtaMojeClientSyncTriggers,
+} from "@/lib/subiekt/zd-eta-sync";
+import { getAppSupplierRefsCached } from "@/lib/data/supplier-refs";
+import { buildSupplierKhIdsBySupplierId } from "@/lib/data/supplier-subiekt-kh";
+import { isSubiektAvailableForZdSync } from "@/lib/subiekt/availability";
 import Link from "next/link";
-import { Button } from "@/components/ui/Button";
 import { Alert } from "@/components/ui/Alert";
 import { MojeOrdersShell } from "@/components/moje/MojeOrdersShell";
 import type { OrderFormSupplierOption } from "@/lib/orders/order-form-suppliers";
-import { salesPageShellClass, pageToolbarSizingClass } from "@/lib/ui/ontime-theme";
+import {
+  buttonPrimaryClass,
+  pageToolbarSizingClass,
+  salesPageShellClass,
+} from "@/lib/ui/ontime-theme";
+import { cn } from "@/lib/cn";
 import { SalesAccountLinkRequired } from "@/components/sales/SalesAccountLinkRequired";
-import { ManagerPreviewBanner } from "@/components/sales/ManagerPreviewBanner";
+import { SalesPageAlerts } from "@/components/sales/SalesPageAlerts";
 import { SystemNotice } from "@/components/ui/SystemNotice";
 import {
   fetchSalesBoardAttentionSnapshot,
@@ -114,6 +124,14 @@ export default async function MojePage({
       } else {
         salesPersonId = own?.id ?? null;
         salesPersonName = own?.name ?? null;
+        if (
+          user.role === "sales" &&
+          previewSalesPersonId &&
+          previewSalesPersonId !== ownSalesPersonId
+        ) {
+          linkError =
+            "Możesz przeglądać tylko własne dane handlowca — parametr ?dla= został zignorowany.";
+        }
       }
       if (!ownSalesPersonId && user.role === "sales") {
         linkError =
@@ -134,7 +152,7 @@ export default async function MojePage({
     return (
       <SalesAccountLinkRequired
         title="Moje zamówienia"
-        description="Tutaj śledzisz status prośb. Konto musi być przypisane do Twojego profilu handlowca."
+        hint="Tutaj śledzisz status prośb. Konto musi być przypisane do Twojego profilu handlowca."
       />
     );
   }
@@ -193,7 +211,7 @@ export default async function MojePage({
       ({ supplierScheduleById, weekDays: plannedOrderWeekDays } =
         await loadPlannedOrderScheduleContext(orderRows, todayDateKey));
 
-      // Auto-uzupełnianie dostawcy w tle na podstawie własnej bazy mapowań (product_supplier_links).
+      // Sync terminów ZD — tylko klient (MojeZdEtaSyncClient, live search + force).
       // Robimy to po pobraniu, żeby pierwszy render był szybki.
       const missing = orderRows.filter((o) => !o.supplier_id && o.subiekt_tw_id);
       if (missing.length > 0 && !adminSalesPreview) {
@@ -222,9 +240,9 @@ export default async function MojePage({
           groupLimit: ARCHIVE_EXPANDED_GROUP_LIMIT,
         });
       }
-    } else if (role && canAccessOperations(role)) {
+    } else if (role && canAccessOperations(role) && salesPersonId) {
       const [orderRows, statsRows, supplierRows] = await Promise.all([
-        fetchIndividualOrders(salesPersonId ? { salesPersonId } : undefined),
+        fetchIndividualOrders({ salesPersonId }),
         fetchDeliveryStats(),
         fetchSuppliersForRequestForms(),
       ]);
@@ -254,11 +272,21 @@ export default async function MojePage({
   }
 
   const subiektAvailability = await getSubiektAvailability();
+  const subiektReachable = isSubiektAvailableForZdSync(subiektAvailability);
+
+  const supplierRefs = viewingOwnPanel ? await getAppSupplierRefsCached() : [];
+  const supplierKhIdsBySupplierId = buildSupplierKhIdsBySupplierId(supplierRefs);
+  const zdEtaSyncEligibleCount =
+    viewingOwnPanel && subiektReachable
+      ? countZdEtaMojeClientSyncTriggers(orders, stats, supplierRefs, subiektReachable)
+      : 0;
 
   const { zamowienia, informacje, productLineCount } = presentMyOrders(orders, stats, {
     supplierScheduleById,
     todayDateKey,
     weekDays: plannedOrderWeekDays,
+    supplierKhIdsBySupplierId,
+    subiektReachable,
   });
 
   if (viewingOwnPanel && notepadSlice) {
@@ -274,10 +302,15 @@ export default async function MojePage({
   const salesHeaderActions =
     role && !canAccessOperations(role) ? (
       !isTeamPreview ? (
-        <Link href="/prosba" className="hidden sm:inline-flex sm:items-center">
-          <Button size="sm" className={pageToolbarSizingClass}>
-            Zgłoś prośbę
-          </Button>
+        <Link
+          href="/prosba"
+          className={cn(
+            buttonPrimaryClass,
+            pageToolbarSizingClass,
+            "hidden rounded-md font-medium no-underline sm:inline-flex"
+          )}
+        >
+          Zgłoś prośbę
         </Link>
       ) : null
     ) : undefined;
@@ -288,19 +321,20 @@ export default async function MojePage({
 
   return (
     <div className={salesPageShellClass}>
-      {linkError && previewSalesPersonId ? (
-        <Alert tone="error">
-          {linkError}
-        </Alert>
-      ) : null}
-
-      {isTeamPreview && salesPersonId && salesPersonName ? (
-        <ManagerPreviewBanner
-          salesPersonId={salesPersonId}
-          salesPersonName={salesPersonName}
-          readOnly={adminSalesPreview}
-        />
-      ) : null}
+      <SalesPageAlerts
+        teamPreview={
+          isTeamPreview && salesPersonId && salesPersonName
+            ? {
+                salesPersonId,
+                salesPersonName,
+                readOnly: adminSalesPreview,
+                scope: "orders",
+              }
+            : null
+        }
+        linkError={linkError}
+        showLinkError={Boolean(linkError && previewSalesPersonId)}
+      />
 
       {loadError ? (
         <Alert tone="error">{loadError}</Alert>
@@ -345,6 +379,7 @@ export default async function MojePage({
         initialFocusOrderIds={focusOrdersParam?.trim() || null}
         syncSearchUrl={!isTeamPreview}
         showSalesSync={showSalesSync}
+        zdEtaSyncEligibleCount={zdEtaSyncEligibleCount}
         dayStartContext={dayStartContext}
       />
     </div>

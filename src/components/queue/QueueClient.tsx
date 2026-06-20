@@ -13,6 +13,7 @@ import { Alert } from "@/components/ui/Alert";
 import { QueuePanelToolbar, type QueueView } from "@/components/queue/QueuePanelToolbar";
 import { AppBrandContentFooter } from "@/components/layout/AppBrandContentFooter";
 import { panelPageShellClass } from "@/lib/ui/ontime-theme";
+import { SALES_PAGE_HEADER_HINTS } from "@/lib/sales/sales-page-ui-copy";
 import { ReceiveQueueTable, type ReceiveQueueToast } from "@/components/queue/ReceiveQueueTable";
 import { WarehouseInventorySection } from "@/components/queue/WarehouseInventorySection";
 import type { WarehouseCarrierRow } from "@/lib/data/warehouse-carriers";
@@ -166,7 +167,8 @@ export function QueueClient({
             </SectionHeadingIcon>
           }
           title="Przyjęcie towaru"
-          description="Jedna lista przyjęcia: zamówienia i informacje u tego samego dostawcy."
+          hint={SALES_PAGE_HEADER_HINTS.queue}
+          hintAriaLabel="O przyjęciu towaru"
           action={<QueuePanelHelp />}
         />
 

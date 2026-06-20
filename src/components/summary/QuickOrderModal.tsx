@@ -5,12 +5,18 @@ import { useRouter } from "next/navigation";
 import { actionAddIndividualOrders } from "@/app/actions/admin";
 import { Button } from "@/components/ui/Button";
 import { Field, Select } from "@/components/ui/Field";
+import { HelpHintBubble } from "@/components/ui/HelpHintBubble";
+import { IconUserGroup } from "@/components/icons/StrokeIcons";
 import { SupplierPickerField } from "@/components/orders/SupplierPickerField";
-import { ProcurementFormReadiness } from "@/components/orders/ProcurementFormReadiness";
+import { ProsbaFormReadiness } from "@/components/orders/ProsbaFormReadiness";
+import {
+  ProsbaFormInformacjaSection,
+  ProsbaFormKeyboardStrip,
+  ProsbaFormProductsSection,
+  ProsbaFormRequestKindSection,
+} from "@/components/orders/ProsbaFormSharedSections";
 import { ProsbaFormSection } from "@/components/orders/ProsbaFormSection";
-import { RequestKindToggle } from "@/components/orders/RequestKindToggle";
 import { ModalShell } from "@/components/ui/ModalShell";
-import { KeyboardShortcutsHint } from "@/components/ui/KeyboardShortcutsHint";
 import type { IndividualRequestKind } from "@/types/database";
 import { hasValidOrderQuantity } from "@/lib/orders/request-completeness";
 import { assertProcurementEntryComplete } from "@/lib/orders/procurement-submit";
@@ -19,16 +25,14 @@ import {
   initialProductLines,
 } from "@/components/orders/RequestProductLinesEditor";
 import { appendProductLine } from "@/components/orders/request-product-lines";
-import type { SubiektFeedback } from "@/lib/subiekt/feedback";
 import { toAppSupplierRefs } from "@/lib/subiekt/match-supplier";
 import type { OrderFormSupplierOption } from "@/lib/orders/order-form-suppliers";
-import { buildProcurementFormReadiness } from "@/lib/orders/procurement-form-readiness";
-import { InformacjaFlowPicker } from "@/components/orders/InformacjaFlowPicker";
+import { buildProsbaFormReadinessWithSupplier } from "@/lib/orders/prosba-form-readiness";
 import {
   DEFAULT_INFORMACJA_FLOW_PATH,
-  INFORMACJA_FLOW_PICKER_SECTION_DAILY,
-  informacjaProductsFormHint,
 } from "@/lib/orders/informacja-flow-ui";
+import { PROSBA_FORM_SECTION_COPY } from "@/lib/orders/prosba-form-section-copy";
+import { PROSBA_PAGE_HEADER_HINTS } from "@/lib/orders/prosba-optional-section-copy";
 import {
   flagsFromInformacjaFlowPath,
   type InformacjaFlowPath,
@@ -37,7 +41,6 @@ import {
   handleProcurementProsbaKeyboardEvent,
   PROCUREMENT_PROSBA_KEYBOARD_HINTS,
 } from "@/lib/orders/procurement-prosba-keyboard";
-import { SalesRequestNoteField } from "@/components/orders/SalesRequestNoteField";
 import { ProsbaStockConfirmDialog } from "@/components/orders/ProsbaStockConfirmDialog";
 import { buildProsbaSubmitStockConfirm } from "@/lib/orders/prosba-stock-check";
 import { handleProsbaStockSubmitError } from "@/lib/orders/prosba-stock-submit-error";
@@ -65,21 +68,11 @@ export function QuickOrderModal({
   const [supplierId, setSupplierId] = useState("");
   const [salesPersonId, setSalesPersonId] = useState("");
   const [lines, setLines] = useState(initialProductLines);
-  const [requestNote, setRequestNote] = useState("");
   const [validationAttempted, setValidationAttempted] = useState(false);
   const [formNotice, setFormNotice] = useState<{
     text: string;
     tone: "error" | "warning" | "success";
   } | null>(null);
-  const [supplierSubiektFeedback, setSupplierSubiektFeedback] =
-    useState<SubiektFeedback | null>(null);
-  const [supplierPickerFeedbacks, setSupplierPickerFeedbacks] = useState<SubiektFeedback[]>(
-    []
-  );
-  const [productLineFeedback, setProductLineFeedback] = useState<SubiektFeedback | null>(
-    null
-  );
-  const [configFeedback, setConfigFeedback] = useState<SubiektFeedback | null>(null);
   const [resolvingSupplier, setResolvingSupplier] = useState(false);
   const [stockConfirmOpen, setStockConfirmOpen] = useState(false);
   const [stockConfirmMessage, setStockConfirmMessage] = useState("");
@@ -113,17 +106,20 @@ export function QuickOrderModal({
     [requestKind, informacjaPath]
   );
 
-  const readinessView = useMemo(
+  const prosbaReadiness = useMemo(
     () =>
-      buildProcurementFormReadiness({
-        salesPersonId,
-        supplierId,
-        lines: readinessLines,
-        requestKind,
-        ...informacjaFlags,
+      buildProsbaFormReadinessWithSupplier(readinessLines, supplierId, requestKind, {
+        informacjaPath,
+        resolvingSupplier,
       }),
-    [salesPersonId, supplierId, readinessLines, requestKind, informacjaFlags]
+    [readinessLines, supplierId, requestKind, informacjaPath, resolvingSupplier]
   );
+
+  const canSubmitProsba =
+    Boolean(salesPersonId.trim()) &&
+    Boolean(supplierId.trim()) &&
+    prosbaReadiness.view.canSubmit &&
+    !resolvingSupplier;
 
   const submitLabel =
     requestKind === "informacja"
@@ -135,13 +131,8 @@ export function QuickOrderModal({
     setSupplierId("");
     setSalesPersonId("");
     setLines(initialProductLines());
-    setRequestNote("");
     setValidationAttempted(false);
     setFormNotice(null);
-    setSupplierSubiektFeedback(null);
-    setSupplierPickerFeedbacks([]);
-    setProductLineFeedback(null);
-    setConfigFeedback(null);
     setResolvingSupplier(false);
     setInformacjaPath(DEFAULT_INFORMACJA_FLOW_PATH);
     setStockConfirmOpen(false);
@@ -184,7 +175,7 @@ export function QuickOrderModal({
         informacjaStockOutReorder: informacjaFlags.informacjaStockOutReorder,
         clientName: l.clientName,
         clientKhId: l.clientKhId,
-        requestNote: requestNote || undefined,
+        requestNote: l.requestNote?.trim() || undefined,
       }));
     if (!entries.length) {
       setValidationAttempted(true);
@@ -324,7 +315,8 @@ export function QuickOrderModal({
       open={open}
       onClose={handleClose}
       title="Nowa prośba handlowca"
-      description="Zamówienie lub prośba informacyjna — pojawi się w panelu dziennym."
+      titleHint={PROSBA_PAGE_HEADER_HINTS.dailyNewRequest}
+      titleHintAriaLabel="O formularzu prośby"
       size="xl"
       tier="raised"
       className="max-h-[min(calc(100dvh-1rem),920px)]"
@@ -336,54 +328,58 @@ export function QuickOrderModal({
           <Button variant="secondary" onClick={handleClose} disabled={pending}>
             Anuluj
           </Button>
-          <Button onClick={submit} disabled={pending || !readinessView.canSubmit}>
+          <Button onClick={submit} disabled={pending || !canSubmitProsba}>
             {pending ? "Zapisywanie…" : submitLabel}
           </Button>
         </>
       }
     >
-      <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5 border-b border-slate-100 bg-slate-50/60 px-5 py-2.5 sm:px-6">
-        <span className="shrink-0 text-xs font-medium text-slate-600">Skróty klawiszowe</span>
-        <KeyboardShortcutsHint items={[...PROCUREMENT_PROSBA_KEYBOARD_HINTS]} compact />
-      </div>
+      <ProsbaFormKeyboardStrip
+        hints={PROCUREMENT_PROSBA_KEYBOARD_HINTS}
+        variant="procurement"
+      />
 
-      <div className="min-h-0 flex-1 space-y-6 overflow-y-auto px-5 py-4 sm:px-6 sm:py-5">
-        <ProsbaFormSection
-          title="Co chcesz zgłosić?"
-          hint="Wybierz jedną opcję — pola poniżej dopasują się do rodzaju prośby."
-        >
-          <RequestKindToggle
-            value={requestKind}
-            onChange={(kind) => {
-              setRequestKind(kind);
-              if (kind === "informacja") setInformacjaPath(DEFAULT_INFORMACJA_FLOW_PATH);
-          else setInformacjaPath("direct");
-            }}
-          />
-        </ProsbaFormSection>
+      <div className="min-h-0 flex-1 space-y-3 overflow-y-auto p-3 sm:p-4">
+        <ProsbaFormRequestKindSection
+          value={requestKind}
+          disabled={pending}
+          onChange={(kind) => {
+            setRequestKind(kind);
+            if (kind === "informacja") setInformacjaPath(DEFAULT_INFORMACJA_FLOW_PATH);
+            else setInformacjaPath("direct");
+          }}
+        />
 
         {requestKind === "informacja" ? (
-          <ProsbaFormSection
-            title={INFORMACJA_FLOW_PICKER_SECTION_DAILY.title}
-            hint={INFORMACJA_FLOW_PICKER_SECTION_DAILY.hint}
-          >
-            <InformacjaFlowPicker
-              path={informacjaPath}
-              onChange={setInformacjaPath}
-              disabled={pending}
-              includeViaPanel
-            />
-          </ProsbaFormSection>
+          <ProsbaFormInformacjaSection
+            path={informacjaPath}
+            onChange={setInformacjaPath}
+            disabled={pending}
+            includeViaPanel
+          />
         ) : null}
 
         <ProsbaFormSection
-          title="Dla kogo i u kogo?"
-          hint="Handlowiec, którego dotyczy prośba, oraz dostawca u którego składamy zamówienie."
+          title={PROSBA_FORM_SECTION_COPY.delegateProcurement.title}
+          hint={PROSBA_FORM_SECTION_COPY.delegateProcurement.hint}
+          accent="indigo"
+          icon={<IconUserGroup size={17} />}
+          tileClassName="bg-indigo-100 text-indigo-800"
         >
-          <div className="grid gap-4 lg:grid-cols-2">
+          <div className="grid gap-4 lg:grid-cols-2 lg:items-start">
             <Field
-              label="Dla kogo (handlowiec)"
-              hint={`Lista z Admin → Handlowcy (${salesPeople.length} ${salesPeople.length === 1 ? "osoba" : "osób"})`}
+              labelClassName="inline-flex min-h-6 items-center gap-1"
+              label={
+                <>
+                  Dla kogo (handlowiec)
+                  <HelpHintBubble
+                    message={`Wybierz handlowca z listy Admin → Handlowcy (${salesPeople.length} ${salesPeople.length === 1 ? "osoba" : "osób"}).`}
+                    tone="slate"
+                    size="md"
+                    ariaLabel="O polu handlowca"
+                  />
+                </>
+              }
             >
               <Select
                 value={salesPersonId}
@@ -398,7 +394,7 @@ export function QuickOrderModal({
                 ))}
               </Select>
             </Field>
-            <Field label="Dostawca">
+            <Field labelClassName="inline-flex min-h-6 items-center" label="Dostawca">
               <SupplierPickerField
                 suppliers={suppliers}
                 value={supplierId}
@@ -408,21 +404,16 @@ export function QuickOrderModal({
                 placeholder="Szukaj dostawcy…"
                 showInlineFeedback={false}
                 dropdownSize="comfortable"
-                onSubiektFeedbackChange={setSupplierPickerFeedbacks}
               />
             </Field>
           </div>
         </ProsbaFormSection>
 
-        <ProsbaFormSection
-          title="Produkty"
-          hint={
-            requestKind === "informacja"
-              ? informacjaProductsFormHint(informacjaPath)
-              : "Podaj nazwę lub symbol w jednym polu, kod Mikran obok oraz ilość. Opcjonalnie klient końcowy — z podpowiedzi Subiekta, jak u handlowców."
-          }
+        <ProsbaFormProductsSection
+          requestKind={requestKind}
+          informacjaPath={informacjaPath}
         >
-          <div className="space-y-4">
+          <div className="space-y-3">
             <RequestProductLinesEditor
               lines={lines}
               onChange={(next) => {
@@ -437,46 +428,25 @@ export function QuickOrderModal({
               unifiedFeedback
               typeaheadSize="comfortable"
               validationAttempted={validationAttempted}
+              liveValidation
               onSupplierResolved={({ supplierId: id }) => {
-                setSupplierSubiektFeedback(null);
                 setSupplierId(id);
               }}
               onSupplierMappingMissing={() => setSupplierId("")}
-              onSupplierResolveFeedback={setSupplierSubiektFeedback}
-              onProductFeedbackChange={setProductLineFeedback}
-              onConfigFeedbackChange={setConfigFeedback}
               onResolvingSupplierChange={setResolvingSupplier}
             />
 
-            <SalesRequestNoteField
-              value={requestNote}
-              onChange={(value) => {
-                setFormNotice(null);
-                setRequestNote(value);
-              }}
-              disabled={pending}
-              audience="procurement"
-              id="quick-order-request-note"
-            />
-
-            <ProcurementFormReadiness
-              salesPersonId={salesPersonId}
-              supplierId={supplierId}
+            <ProsbaFormReadiness
               lines={readinessLines}
               requestKind={requestKind}
-              informacjaViaDailyPanel={informacjaFlags.informacjaQueueViaDailyPanel}
-              informacjaStockOutReorder={informacjaFlags.informacjaStockOutReorder}
+              salesSubmitPlan={prosbaReadiness.plan}
               formMessage={formNotice}
               resolvingSupplier={resolvingSupplier}
-              subiektFeedbacks={[
-                configFeedback,
-                ...supplierPickerFeedbacks,
-                supplierSubiektFeedback,
-                productLineFeedback,
-              ]}
+              informacjaPath={informacjaPath}
+              validationAttempted={validationAttempted}
             />
           </div>
-        </ProsbaFormSection>
+        </ProsbaFormProductsSection>
       </div>
     </ModalShell>
     </>

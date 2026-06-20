@@ -60,8 +60,12 @@ describe("collectNotepadTodayTasks", () => {
         }),
       ],
       [],
-      { unseenWarehouseWatchIds: ["w-wh"] }
+      {
+        unseenWarehouseWatchIds: ["w-wh"],
+        inStockCountByWatchId: { "w-wh": ["a"] },
+      }
     );
     expect(tasks[0]?.kind).toBe("zk-warehouse-arrival");
+    expect(tasks[0]?.subtitle).toContain("1 pozycja na regale");
   });
 });

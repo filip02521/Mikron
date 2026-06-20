@@ -7,6 +7,7 @@ import { Field } from "@/components/ui/Field";
 import { SubiektClientNameField } from "@/components/subiekt/SubiektClientNameField";
 import { SubiektProductLineFields } from "@/components/subiekt/SubiektProductLineFields";
 import { ProsbaProductLineCollapsedRow } from "@/components/orders/ProsbaProductLineCollapsedRow";
+import { ProsbaProductLineNoteField } from "@/components/orders/ProsbaProductLineNoteField";
 import { cn } from "@/lib/cn";
 import {
   appendProductLine,
@@ -16,7 +17,8 @@ import {
   type ProductLineDraft,
 } from "@/components/orders/request-product-lines";
 import { shouldCollapseProsbaLine } from "@/lib/orders/prosba-product-line-ui";
-import { filterProsbaLinesWithSufficientStock, formatProsbaSufficientStockBanner } from "@/lib/orders/prosba-stock-check";
+import { ProsbaProductStockSummary } from "@/components/orders/ProsbaProductStockStatus";
+import { filterProsbaLinesWithSufficientStock } from "@/lib/orders/prosba-stock-check";
 import { useProsbaLinesStockSync } from "@/hooks/useProsbaLinesStockSync";
 import {
   assessProsbaLineFields,
@@ -28,7 +30,12 @@ import { MAX_BATCH_ORDER_LINES } from "@/lib/security/text-limits";
 import { MAX_CLIENT_NAME_LEN } from "@/lib/orders/sales-client-label";
 import type { AppSupplierRef } from "@/lib/subiekt/match-supplier";
 import type { SubiektFeedback } from "@/lib/subiekt/feedback";
+import { ProsbaOptionalSection } from "@/components/orders/ProsbaOptionalSection";
+import { PROSBA_OPTIONAL_SECTION_COPY } from "@/lib/orders/prosba-optional-section-copy";
 import { SubiektOfflineHint } from "@/components/subiekt/SubiektOfflineHint";
+import {
+  copyProsbaLineNoteToAllLines,
+} from "@/lib/orders/prosba-line-note-copy";
 
 export function RequestProductLinesEditor({
   lines,
@@ -49,6 +56,7 @@ export function RequestProductLinesEditor({
   deferSupplierResolve = false,
   validationAttempted = false,
   liveValidation = false,
+  showLineNotes,
   typeaheadSize = "default",
 }: {
   lines: ProductLineDraft[];
@@ -76,11 +84,15 @@ export function RequestProductLinesEditor({
   validationAttempted?: boolean;
   /** Walidacja na żywo — pola z brakami bez czekania na klik „Wyślij”. */
   liveValidation?: boolean;
+  /** Notatka per pozycja (panel dzienny) — domyślnie przy `appearance=prosba`. */
+  showLineNotes?: boolean;
   /** Wyższa lista podpowiedzi Subiekta / dostawcy w modalach. */
   typeaheadSize?: "default" | "comfortable";
 }) {
   const canRemove = lines.length > minLines;
   const prosba = appearance === "prosba";
+  const lineNotes = showLineNotes ?? prosba;
+  const copyNoteLines = prosba ? copyProsbaLineNoteToAllLines(lines) : null;
   const showLineLabel = !prosba || lines.length > 1;
   const wrapLine = prosba ? lines.length > 1 : true;
 
@@ -176,14 +188,8 @@ export function RequestProductLinesEditor({
         </div>
       ) : null}
 
-      {sufficientStockCount > 0 ? (
-        <div
-          role="status"
-          aria-live="polite"
-          className="rounded-md border border-amber-200/90 bg-amber-50/80 px-3 py-2 text-xs leading-relaxed text-amber-950"
-        >
-          {formatProsbaSufficientStockBanner(sufficientStockCount)}
-        </div>
+      {sufficientStockCount > 1 ? (
+        <ProsbaProductStockSummary count={sufficientStockCount} />
       ) : null}
 
       {segments.map((segment) => {
@@ -317,20 +323,68 @@ export function RequestProductLinesEditor({
             />
 
             {showClientField ? (
-              <Field label="Klient (opcjonalnie)" className={wrapLine ? "mt-2" : undefined}>
-                <SubiektClientNameField
-                  maxLength={MAX_CLIENT_NAME_LEN}
-                  value={line.clientName ?? ""}
-                  clientKhId={line.clientKhId ?? null}
-                  onChange={({ clientName, clientKhId }) =>
-                    onChange(updateProductLine(lines, index, { clientName, clientKhId }))
+              prosba && lines.length === 1 ? (
+                <ProsbaOptionalSection
+                  kind="client"
+                  title={PROSBA_OPTIONAL_SECTION_COPY.client.title}
+                  description={PROSBA_OPTIONAL_SECTION_COPY.client.description}
+                  defaultOpen={Boolean(line.clientName?.trim() || line.clientKhId)}
+                  detailsKey={
+                    line.clientName?.trim() || line.clientKhId
+                      ? "client-open"
+                      : "client-collapsed"
                   }
-                />
-              </Field>
+                  teaser={line.clientName?.trim() || null}
+                  className="mt-2"
+                >
+                  <SubiektClientNameField
+                    maxLength={MAX_CLIENT_NAME_LEN}
+                    value={line.clientName ?? ""}
+                    clientKhId={line.clientKhId ?? null}
+                    onChange={({ clientName, clientKhId }) =>
+                      onChange(updateProductLine(lines, index, { clientName, clientKhId }))
+                    }
+                  />
+                </ProsbaOptionalSection>
+              ) : (
+                <Field label="Klient (opcjonalnie)" className={wrapLine ? "mt-2" : undefined}>
+                  <SubiektClientNameField
+                    maxLength={MAX_CLIENT_NAME_LEN}
+                    value={line.clientName ?? ""}
+                    clientKhId={line.clientKhId ?? null}
+                    onChange={({ clientName, clientKhId }) =>
+                      onChange(updateProductLine(lines, index, { clientName, clientKhId }))
+                    }
+                  />
+                </Field>
+              )
+            ) : null}
+
+            {lineNotes ? (
+              <ProsbaProductLineNoteField
+                id={`prosba-line-note-${line.id}`}
+                value={line.requestNote ?? ""}
+                onChange={(requestNote) =>
+                  onChange(updateProductLine(lines, index, { requestNote }))
+                }
+                className={showClientField || wrapLine ? "mt-2" : undefined}
+              />
             ) : null}
           </div>
         );
       })}
+
+      {copyNoteLines ? (
+        <Button
+          type="button"
+          variant="ghost"
+          size="sm"
+          className="h-auto px-0 py-1 text-xs font-medium text-indigo-700 hover:bg-transparent hover:text-indigo-900"
+          onClick={() => onChange(copyNoteLines)}
+        >
+          {PROSBA_OPTIONAL_SECTION_COPY.lineNote.copyToAllLines}
+        </Button>
+      ) : null}
 
       <Button
         type="button"

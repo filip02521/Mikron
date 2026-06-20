@@ -17,6 +17,40 @@ Jedno wywołanie trwa do ok. **4 minut**; jeśli nie skończy, kolejne wywołani
 
 Subiekt API musi być dostępne z hosta aplikacji (LAN).
 
+### Automatyczna instalacja (zalecane)
+
+W katalogu projektu na serwerze Linux:
+
+```bash
+# wygeneruj podgląd
+npm run install-cron
+
+# zainstaluj crona (root)
+sudo npm run install-cron -- --install
+
+# test — pomija okno czasowe
+npm run install-cron -- --test catalog-zd-sync --force
+```
+
+Plik: `/etc/cron.d/system-dostaw` · logi: `/var/log/system-dostaw-cron.log`, `/var/log/system-dostaw-catalog.log`
+
+### Windows (Harmonogram zadań)
+
+PowerShell **jako Administrator**:
+
+```powershell
+npm run install-cron:win -- -Install
+npm run install-cron:win -- -Test -Job catalog-zd-sync -Force
+npm run install-cron:win -- -List
+npm run install-cron:win -- -Uninstall
+```
+
+Logi: `logs\cron-*.log` w katalogu projektu · podgląd: `taskschd.msc`
+
+Upewnij się, że strefa czasowa serwera Windows to **(UTC+01:00) Warszawa** (Panel sterowania → Data i godzina → Strefa czasowa).
+
+### Ręcznie (Linux)
+
 Przykład `/etc/cron.d/system-dostaw` (strefa serwera: `Europe/Warsaw`):
 
 ```bash

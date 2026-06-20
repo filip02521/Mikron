@@ -1,29 +1,32 @@
 import type { ReactNode } from "react";
-import { Alert } from "@/components/ui/Alert";
-import { salesPageShellClass } from "@/lib/ui/ontime-theme";
+import {
+  SalesPageAlerts,
+  type SalesTeamPreview,
+} from "@/components/sales/SalesPageAlerts";
 
-/** Wspólny układ stron podglądu handlowca (?dla=). */
+/** Wspólny układ stron podglądu handlowca (?dla=) — bez drugiego salesPageShellClass. */
 export function SalesPreviewPageChrome({
   linkError,
-  banner,
+  teamPreview,
   children,
 }: {
   linkError?: string | null;
-  banner?: ReactNode;
+  teamPreview?: SalesTeamPreview | null;
   children: ReactNode;
 }) {
-  if (!linkError && !banner) {
+  const hasAlerts = teamPreview || linkError;
+  if (!hasAlerts) {
     return children;
   }
 
   return (
-    <div className={salesPageShellClass}>
-      {banner}
-      {linkError ? (
-        <Alert tone="error" className="mb-4">
-          {linkError}
-        </Alert>
-      ) : null}
+    <div className="space-y-4">
+      <SalesPageAlerts
+        teamPreview={teamPreview}
+        linkError={linkError}
+        linkErrorClassName="mb-0"
+        linkErrorWarningOnIgnored={false}
+      />
       {children}
     </div>
   );

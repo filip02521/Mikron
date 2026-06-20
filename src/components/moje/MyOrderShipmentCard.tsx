@@ -7,13 +7,24 @@ import {
   salesCancelLineAriaLabel,
   salesCancelLineCustomQtyLabel,
   salesCancelLineRemainderLabel,
-  salesCancelLineShortLabel,
+  salesCancelQuickActionLabel,
   salesCancelOverflowLabel,
+  salesCancelSoleOverflowFullLabel,
   type SalesCancelLineContext,
   type SalesCancelPhase,
 } from "@/lib/orders/sales-cancel";
 import type { MyOrderLine } from "@/lib/orders/my-order-presenter";
 import { PlannedOrderDateMeta } from "@/components/orders/PlannedOrderDateMeta";
+import { MyOrderEstimatedDeliveryMeta } from "@/components/moje/MyOrderEstimatedDeliveryMeta";
+import {
+  InformacjaEmailSentMeta,
+  shouldShowInformacjaEmailSentMeta,
+} from "@/components/moje/InformacjaEmailSentMeta";
+import { ZdFulfillmentDateMeta } from "@/components/orders/ZdFulfillmentDateMeta";
+import { ZdFulfillmentDeadlineChangeNotice } from "@/components/orders/ZdFulfillmentDeadlineChangeNotice";
+import { ZdEtaPendingMeta } from "@/components/orders/ZdEtaPendingMeta";
+import { ZdEtaNoMatchMeta } from "@/components/orders/ZdEtaNoMatchMeta";
+import { resolveMyOrderHistoryDeliveryEstimate } from "@/lib/orders/delivery-date-meta-label";
 import { MyOrderKindBadge } from "@/components/moje/MyOrderKindBadge";
 import { MyOrderRequestProgressBar } from "@/components/moje/MyOrderRequestProgressBar";
 import {
@@ -31,6 +42,7 @@ import {
 import {
   EMPTY_MY_ORDER_SECTION_PATTERNS,
   myOrderRowSuppressesSharedHeadline,
+  resolveMyOrderRowPatternHint,
   type MyOrderSectionPatternId,
 } from "@/lib/orders/my-order-section-callout";
 import type { MyOrderListKind } from "@/lib/orders/my-order-row-layout";
@@ -47,8 +59,10 @@ import { MyOrderExpandedMeta } from "@/components/moje/MyOrderExpandedMeta";
 import { MyOrderExpandedDeliveryTiming } from "@/components/moje/MyOrderExpandedDeliveryTiming";
 import {
   buildMyOrderDeliveryTimingDisplay,
+  shouldShowMyOrderCollapsedDeliveryTiming,
   shouldShowMyOrderExpandedDeliveryTiming,
 } from "@/lib/orders/my-order-delivery-timing-display";
+import { resolveMyOrderDeliveryRowVisual } from "@/lib/orders/my-order-delivery-urgency";
 import { MyOrderAckButton } from "@/components/moje/MyOrderAckButton";
 import { MyOrderAssignedClient } from "@/components/moje/MyOrderAssignedClient";
 import { MyOrderRequestNote } from "@/components/moje/MyOrderRequestNote";
@@ -56,12 +70,19 @@ import { MyOrderProcurementCancelNote } from "@/components/moje/MyOrderProcureme
 import { isRequestNotesAggregateSummary } from "@/lib/orders/sales-request-note";
 import { isProcurementCancelNotesAggregateSummary } from "@/lib/orders/procurement-cancel-note";
 import { MyOrderLineItem } from "@/components/moje/MyOrderLineItem";
-import { MyOrderShipmentOverflowMenu } from "@/components/moje/MyOrderShipmentOverflowMenu";
+import { MyOrderShipmentOverflowMenu, type MyOrderShipmentOverflowMenuProps } from "@/components/moje/MyOrderShipmentOverflowMenu";
 import { MyOrderHeadlineBanner } from "@/components/moje/MyOrderHeadlineBanner";
+import { MyOrderRowPatternHint } from "@/components/moje/MyOrderRowPatternHint";
 import { MyOrderStatusPill } from "@/components/moje/MyOrderStatusPill";
 import { ZkProsbaLinkChip } from "@/components/orders/ZkProsbaLinkChip";
 import { cn } from "@/lib/cn";
-import { brandLinkSubtleClass, panelSegmentLastClass, salesTypography } from "@/lib/ui/ontime-theme";
+import {
+  brandLinkSubtleClass,
+  mojeActionOverflowSegmentClass,
+  panelSegmentFirstClass,
+  panelSegmentLastClass,
+  salesTypography,
+} from "@/lib/ui/ontime-theme";
 import {
   mojeQueueRowActionsClass,
   mojeQueueRowLayoutClass,
@@ -105,7 +126,7 @@ function ChevronIcon({ open }: { open?: boolean }) {
 }
 
 function ShipmentToolbar({
-  overflowMenu,
+  overflowMenuProps,
   showSinglePickup,
   showBulkPickup,
   showDismissAck,
@@ -126,7 +147,7 @@ function ShipmentToolbar({
   tourPreview = false,
   shelfPickup = false,
 }: {
-  overflowMenu: React.ReactNode;
+  overflowMenuProps: Omit<MyOrderShipmentOverflowMenuProps, "variant" | "className" | "triggerClassName"> | null;
   showSinglePickup: boolean;
   showBulkPickup: boolean;
   showDismissAck: boolean;
@@ -155,7 +176,7 @@ function ShipmentToolbar({
   const ackActionVariant = isInformacjaAck ? "informacjaAck" : "action";
 
   const hasToolbar =
-    overflowMenu ||
+    overflowMenuProps ||
     (showDismissAck && !hideDismissAck) ||
     showBulkPickup ||
     (showSinglePickup && !hideSinglePickup);
@@ -166,7 +187,10 @@ function ShipmentToolbar({
     (showSinglePickup && !hideSinglePickup ? 1 : 0) +
     (showBulkPickup ? 1 : 0);
   const groupedAcks = ackButtonCount > 1;
-  const dismissAckVariant = groupedAcks
+  const useActionShell = ackButtonCount > 0;
+  /** W obudowie segmentowej zawsze warianty płaskich segmentów — nie standalone z rounded-md. */
+  const shellSegment = useActionShell;
+  const dismissAckVariant = shellSegment || groupedAcks
     ? "segmentCancel"
     : isCancelAck
       ? "cancelAck"
@@ -175,8 +199,42 @@ function ShipmentToolbar({
         : "inline";
   const pickupAckOnlyToolbar =
     !(showDismissAck && !hideDismissAck) &&
-    !overflowMenu &&
+    !overflowMenuProps &&
     (showBulkPickup || (showSinglePickup && !hideSinglePickup));
+  const hasOverflow = Boolean(overflowMenuProps);
+  const showDismiss = showDismissAck && !hideDismissAck;
+  const showSingle = showSinglePickup && !hideSinglePickup;
+  const showBulk = showBulkPickup;
+  const ackSegmentOrder = (
+    [
+      showDismiss ? "dismiss" : null,
+      showSingle ? "single" : null,
+      showBulk ? "bulk" : null,
+    ] as const
+  ).filter((key): key is "dismiss" | "single" | "bulk" => key != null);
+  const ackSegmentRounding = (key: "dismiss" | "single" | "bulk") => {
+    const isFirst = ackSegmentOrder[0] === key;
+    const isLast = ackSegmentOrder[ackSegmentOrder.length - 1] === key;
+    const isSolo = isFirst && isLast && !hasOverflow;
+    return cn(
+      isSolo && "rounded-md",
+      isFirst && !isSolo && panelSegmentFirstClass,
+      isLast && !hasOverflow && !isSolo && panelSegmentLastClass
+    );
+  };
+
+  const overflowMenu = overflowMenuProps ? (
+    <MyOrderShipmentOverflowMenu
+      {...overflowMenuProps}
+      variant={useActionShell ? "segment" : "standalone"}
+      className={
+        useActionShell
+          ? cn(mojeActionOverflowSegmentClass, panelSegmentLastClass)
+          : undefined
+      }
+      triggerClassName={useActionShell ? undefined : "h-10 w-10 sm:h-8 sm:w-8"}
+    />
+  ) : null;
 
   const ackButtons = (
     <>
@@ -187,7 +245,7 @@ function ShipmentToolbar({
           preview={tourPreview}
           title={dismissAckTitle}
           onClick={() => onAcknowledgeDismiss(dismissAckIds)}
-          className={cn(groupedAcks && ackButtonCount === 1 && panelSegmentLastClass)}
+          className={ackSegmentRounding("dismiss")}
         >
           {dismissAckLabel}
         </MyOrderAckButton>
@@ -195,24 +253,21 @@ function ShipmentToolbar({
       {showSinglePickup && !hideSinglePickup ? (
         <MyOrderAckButton
           variant={
-            groupedAcks
-              ? showDismissAck
-                ? ackPrimaryVariant
-                : "segmentOutline"
-              : pickupAckOnlyToolbar
-                ? ackPrimaryVariant
-                : isAction || isInformacjaAck
-                  ? ackActionVariant
-                  : "inline"
+            shellSegment || groupedAcks || pickupAckOnlyToolbar
+              ? groupedAcks
+                ? showDismissAck
+                  ? ackPrimaryVariant
+                  : "segmentOutline"
+                : ackPrimaryVariant
+              : isAction || isInformacjaAck
+                ? ackActionVariant
+                : "inline"
           }
           disabled={pending}
           preview={tourPreview}
           title={pickupTitle}
           onClick={() => onAcknowledgePickup(pickupIds, shelfPickup)}
-          className={cn(
-            groupedAcks && !showBulkPickup && panelSegmentLastClass,
-            pickupAckOnlyToolbar && panelSegmentLastClass
-          )}
+          className={ackSegmentRounding("single")}
         >
           {pickupLabel}
         </MyOrderAckButton>
@@ -220,16 +275,15 @@ function ShipmentToolbar({
       {showBulkPickup ? (
         <MyOrderAckButton
           variant={
-            groupedAcks || pickupAckOnlyToolbar ? ackPrimaryVariant : ackActionVariant
+            shellSegment || groupedAcks || pickupAckOnlyToolbar
+              ? ackPrimaryVariant
+              : ackActionVariant
           }
           disabled={pending}
           preview={tourPreview}
           title={pickupTitle}
           onClick={() => onAcknowledgePickup(pickupIds, shelfPickup)}
-          className={cn(
-            (groupedAcks || pickupAckOnlyToolbar) && panelSegmentLastClass,
-            "whitespace-nowrap tabular-nums"
-          )}
+          className={ackSegmentRounding("bulk")}
         >
           {pickupLabel}
         </MyOrderAckButton>
@@ -239,12 +293,17 @@ function ShipmentToolbar({
 
   return (
     <div className="flex w-full shrink-0 flex-wrap items-stretch justify-end gap-1.5 sm:w-auto sm:gap-1.5">
-      {groupedAcks || pickupAckOnlyToolbar ? (
-        <div className={cn(mojeActionBarShellClass, "w-full sm:w-auto")}>{ackButtons}</div>
+      {useActionShell ? (
+        <div className={cn(mojeActionBarShellClass, "w-full justify-end sm:w-auto")}>
+          {ackButtons}
+          {overflowMenu}
+        </div>
       ) : (
-        ackButtons
+        <>
+          {ackButtons}
+          {overflowMenu}
+        </>
       )}
-      {overflowMenu}
     </div>
   );
 }
@@ -272,6 +331,8 @@ export function MyOrderShipmentCard({
   suppressedSectionPatterns,
   rowVisualTone = "default",
   highlighted = false,
+  subiektReachable = true,
+  onAcknowledgeZdDeadlineChange,
 }: {
   row: MyOrderRow;
   listKind: MyOrderListKind;
@@ -303,6 +364,8 @@ export function MyOrderShipmentCard({
   suppressedSectionPatterns?: Set<MyOrderSectionPatternId>;
   rowVisualTone?: MojeShipmentRowVisualTone;
   highlighted?: boolean;
+  subiektReachable?: boolean;
+  onAcknowledgeZdDeadlineChange?: (orderIds: string[]) => void;
 }) {
   const panelId = useId();
   const searchActive = searchQueryTokens(searchQuery).length > 0;
@@ -329,6 +392,10 @@ export function MyOrderShipmentCard({
 
   const headline = row.headline ?? row.statusTitle;
   const headlineTone = row.headlineTone ?? "neutral";
+  const rowPatternHint = useMemo(
+    () => (showProgress && listKind === "zamowienie" ? resolveMyOrderRowPatternHint(row) : null),
+    [row, showProgress, listKind]
+  );
   const suppressSharedHeadline = myOrderRowSuppressesSharedHeadline(
     row,
     suppressedSectionPatterns ?? EMPTY_MY_ORDER_SECTION_PATTERNS
@@ -396,6 +463,10 @@ export function MyOrderShipmentCard({
   const isDismiss = headlineTone === "dismiss";
   const isStock = headlineTone === "stock";
   const isInformacja = row.kind === "informacja";
+  const deliveryRowVisual =
+    showProgress && listKind === "zamowienie"
+      ? resolveMyOrderDeliveryRowVisual(row)
+      : null;
 
   const emphasizeStock =
     showProgress &&
@@ -448,7 +519,37 @@ export function MyOrderShipmentCard({
     hasCollapsedSubline: Boolean(collapsedSubline),
   });
   const productSummary = showCollapsedProductSummary ? productSummaryRaw : null;
-  const plannedOrderDate = row.plannedOrderDate ?? null;
+  const showCollapsedDeliveryTiming = shouldShowMyOrderCollapsedDeliveryTiming(row);
+  const plannedOrderDate =
+    showCollapsedDeliveryTiming ? (row.plannedOrderDate ?? null) : null;
+  const zdFulfillment =
+    showCollapsedDeliveryTiming ? (row.zdFulfillment ?? null) : null;
+  const zdEtaPending = Boolean(
+    showCollapsedDeliveryTiming && row.zdEtaPending && subiektReachable
+  );
+  const zdEtaNoMatch = Boolean(
+    showCollapsedDeliveryTiming && row.zdEtaNoMatch && !zdEtaPending
+  );
+  const showInformacjaTimingMeta =
+    showCollapsedDeliveryTiming && shouldShowInformacjaEmailSentMeta(row);
+  const historyDeliveryEstimate = resolveMyOrderHistoryDeliveryEstimate(row);
+  const showEstimatedDeliveryMeta =
+    !showInformacjaTimingMeta &&
+    !zdFulfillment &&
+    historyDeliveryEstimate !== null;
+  const showZdEtaPendingMeta = zdEtaPending && !historyDeliveryEstimate && !zdFulfillment;
+  const showZdEtaNoMatchMeta =
+    zdEtaNoMatch && !zdEtaPending && !historyDeliveryEstimate && !zdFulfillment;
+  const zdDeadlineChangeOrderIds = useMemo(() => {
+    const fromLines = row.lines
+      .filter((line) => line.zdFulfillment?.deadlineChange)
+      .map((line) => line.id);
+    if (fromLines.length) return fromLines;
+    if (row.zdFulfillment?.deadlineChange) return row.orderIds;
+    return [];
+  }, [row]);
+  const showZdDeadlineChangeDismiss =
+    canAcknowledge && zdDeadlineChangeOrderIds.length > 0 && Boolean(onAcknowledgeZdDeadlineChange);
   const showExpandedStatusBadge = shouldShowExpandedOrderStatusBadge(row, {
     hasRequestProgress: Boolean(requestProgress),
   });
@@ -504,7 +605,7 @@ export function MyOrderShipmentCard({
   };
 
   const partialCustomDefaultQty = (line: MyOrderLine) => {
-    if (line.showSalesCancelRemainder) return 1;
+    if (line.showSalesCancelRemainder || line.showSalesCancelSupplierQuick) return 1;
     if (line.salesCancelPhase === "in_transit") return 1;
     return line.defaultSalesCancelQuantity ?? 1;
   };
@@ -514,7 +615,6 @@ export function MyOrderShipmentCard({
     !tourPreview &&
     Boolean(onCancelRequest || onPartialCancelRequest) &&
     (row.lineCount > 1 || Boolean(soleLine?.canCancelBySales));
-  const cancelLineLabel = salesCancelLineShortLabel(row.kind);
   const cancelOverflowLabel = salesCancelOverflowLabel(
     row.kind,
     row.salesCancelOrderIds.length
@@ -524,55 +624,70 @@ export function MyOrderShipmentCard({
     Boolean(soleLine?.canCancelBySales) &&
     Boolean(soleLine?.showSalesCancelRemainder) &&
     soleLine?.defaultSalesCancelQuantity != null;
-  const soleOverflowCustom = Boolean(soleLine?.canCancelBySales && soleLine?.canPartialSalesCancel);
+  const soleOverflowQuick =
+    Boolean(soleLine?.canCancelBySales) &&
+    Boolean(soleLine?.showSalesCancelSupplierQuick);
+  const soleOverflowCustom =
+    Boolean(soleLine?.canCancelBySales && soleLine?.canPartialSalesCancel);
   const soleOverflowFull =
     Boolean(showSalesCancelLink) &&
     row.lineCount === 1 &&
     Boolean(soleLine?.canCancelBySales) &&
-    !soleOverflowRemainder;
+    !soleOverflowRemainder &&
+    !soleOverflowQuick;
+  const soleOverflowCancelLabel =
+    soleLine != null ? salesCancelSoleOverflowFullLabel(row.kind) : undefined;
 
-  const overflowMenu = canAcknowledge && !tourPreview ? (
-    <MyOrderShipmentOverflowMenu
-      supplierName={row.supplierName}
-      listKind={row.kind}
-      disabled={pending}
-      hasClient={hasClient}
-      canAssignClient={canEditClient && row.lineCount > 0}
-      assignClientLabel={assignClientLabel}
-      canEdit={Boolean(showEditLink)}
-      canCancel={row.lineCount > 1 ? Boolean(showSalesCancelLink) : soleOverflowFull}
-      cancelLabel={row.lineCount > 1 ? cancelOverflowLabel : undefined}
-      canPartialCancelRemainder={soleOverflowRemainder}
-      partialCancelRemainderLabel={
-        soleLine?.defaultSalesCancelQuantity != null
-          ? salesCancelLineRemainderLabel(soleLine.defaultSalesCancelQuantity)
-          : undefined
-      }
-      onPartialCancelRemainder={
-        soleLine && soleOverflowRemainder
-          ? () => openPartialCancel(soleLine, soleLine.defaultSalesCancelQuantity!)
-          : undefined
-      }
-      canPartialCancelCustom={soleOverflowCustom}
-      partialCancelCustomLabel={salesCancelLineCustomQtyLabel(soleLine?.salesCancelPhase)}
-      onPartialCancelCustom={
-        soleLine && soleOverflowCustom
-          ? () => openPartialCancel(soleLine, partialCustomDefaultQty(soleLine))
-          : undefined
-      }
-      onAssignClient={handleAssignClient}
-      onEdit={() => onEditRequest?.(row)}
-      onCancel={() => {
-        const cancellableLines = row.lines
-          .filter(
-            (l) =>
-              row.salesCancelOrderIds.includes(l.id) && l.salesCancelPhase
-          )
-          .map((l) => ({ product: l.product, phase: l.salesCancelPhase! }));
-        onCancelRequest?.(row.salesCancelOrderIds, cancellableLines);
-      }}
-    />
-  ) : null;
+  const overflowMenuProps: Omit<
+    MyOrderShipmentOverflowMenuProps,
+    "variant" | "className" | "triggerClassName"
+  > | null =
+    canAcknowledge && !tourPreview
+      ? {
+          supplierName: row.supplierName,
+          listKind: row.kind,
+          disabled: pending,
+          hasClient,
+          canAssignClient: canEditClient && row.lineCount > 0,
+          assignClientLabel: assignClientLabel,
+          canEdit: Boolean(showEditLink),
+          canCancel: row.lineCount > 1 ? Boolean(showSalesCancelLink) : soleOverflowFull,
+          cancelLabel:
+            row.lineCount > 1 ? cancelOverflowLabel : soleOverflowCancelLabel,
+          canPartialCancelQuick: soleOverflowQuick,
+          partialCancelQuickLabel: soleLine ? salesCancelQuickActionLabel() : undefined,
+          onPartialCancelQuick:
+            soleLine && soleOverflowQuick
+              ? () => openPartialCancel(soleLine, 1)
+              : undefined,
+          canPartialCancelRemainder: soleOverflowRemainder,
+          partialCancelRemainderLabel:
+            soleLine?.defaultSalesCancelQuantity != null
+              ? salesCancelLineRemainderLabel(soleLine.defaultSalesCancelQuantity)
+              : undefined,
+          onPartialCancelRemainder:
+            soleLine && soleOverflowRemainder
+              ? () => openPartialCancel(soleLine, soleLine.defaultSalesCancelQuantity!)
+              : undefined,
+          canPartialCancelCustom: soleOverflowCustom,
+          partialCancelCustomLabel: salesCancelLineCustomQtyLabel(),
+          onPartialCancelCustom:
+            soleLine && soleOverflowCustom
+              ? () => openPartialCancel(soleLine, partialCustomDefaultQty(soleLine))
+              : undefined,
+          onAssignClient: handleAssignClient,
+          onEdit: () => onEditRequest?.(row),
+          onCancel: () => {
+            const cancellableLines = row.lines
+              .filter(
+                (l) =>
+                  row.salesCancelOrderIds.includes(l.id) && l.salesCancelPhase
+              )
+              .map((l) => ({ product: l.product, phase: l.salesCancelPhase! }));
+            onCancelRequest?.(row.salesCancelOrderIds, cancellableLines);
+          },
+        }
+      : null;
 
   const compactPickupOrAvailability =
     compactActionLayout &&
@@ -613,7 +728,7 @@ export function MyOrderShipmentCard({
 
   const toolbar = (
     <ShipmentToolbar
-      overflowMenu={overflowMenu}
+      overflowMenuProps={overflowMenuProps}
       showSinglePickup={Boolean(showSinglePickup)}
       showBulkPickup={Boolean(showBulkPickup)}
       showDismissAck={Boolean(showDismissAck)}
@@ -729,6 +844,8 @@ export function MyOrderShipmentCard({
           isStock,
           isInformacja,
           visualTone: rowVisualTone,
+          deliveryBorderAccent: deliveryRowVisual?.borderAccent,
+          deliveryCollapsedBg: deliveryRowVisual?.collapsedBg,
         }),
         expanded && needsExpand && mojeShipmentExpandedRowShellClass,
         highlighted && "z-[2] ring-2 ring-inset ring-indigo-300/80"
@@ -764,7 +881,8 @@ export function MyOrderShipmentCard({
           {needsExpand ? <ChevronIcon open={expanded} /> : null}
         </button>
 
-        <div className="min-w-0 flex-1">
+        <div className="flex min-w-0 flex-1 items-start gap-1">
+          <div className="min-w-0 flex-1">
           <button
             type="button"
             onClick={handleToggle}
@@ -781,7 +899,7 @@ export function MyOrderShipmentCard({
                 searchQuery={searchQuery}
                 className={cn("truncate", salesTypography.rowTitle)}
               />
-              <MyOrderKindBadge row={row} />
+              <MyOrderKindBadge row={row} listKind={listKind} />
             </div>
             {suppressSharedHeadline ? (
               <span className="sr-only">{headline}</span>
@@ -864,10 +982,42 @@ export function MyOrderShipmentCard({
               className="mt-0.5 max-w-full truncate"
             />
           ) : null}
+          </div>
+          {rowPatternHint &&
+          showRowHeadline &&
+          (!showHeadlineBanner || compactPickupOrAvailability || compactCancelAck) ? (
+            <MyOrderRowPatternHint
+              message={rowPatternHint.message}
+              tone={rowPatternHint.tone}
+              className="mt-0.5"
+            />
+          ) : null}
         </div>
 
         {!expanded ? (
           <div className="hidden min-w-0 max-w-[46%] shrink-0 flex-col items-end gap-1 sm:flex">
+            {showInformacjaTimingMeta && row.timingLabel ? (
+              <InformacjaEmailSentMeta timingLabel={row.timingLabel} />
+            ) : null}
+            {!showInformacjaTimingMeta && zdFulfillment ? (
+              <ZdFulfillmentDateMeta
+                fulfillment={zdFulfillment}
+                collapsed
+                lines={row.lines}
+                showDeadlineChangeDismiss={showZdDeadlineChangeDismiss}
+                dismissDeadlineChangePending={pending}
+                onDismissDeadlineChange={
+                  showZdDeadlineChangeDismiss
+                    ? () => onAcknowledgeZdDeadlineChange?.(zdDeadlineChangeOrderIds)
+                    : undefined
+                }
+              />
+            ) : null}
+            {!showInformacjaTimingMeta && showEstimatedDeliveryMeta ? (
+              <MyOrderEstimatedDeliveryMeta row={row} />
+            ) : null}
+            {showZdEtaPendingMeta ? <ZdEtaPendingMeta /> : null}
+            {showZdEtaNoMatchMeta ? <ZdEtaNoMatchMeta /> : null}
             {plannedOrderDate ? <PlannedOrderDateMeta display={plannedOrderDate} /> : null}
             {showStatusBadge ? (
               <MyOrderStatusPill
@@ -887,13 +1037,47 @@ export function MyOrderShipmentCard({
         ) : null}
         </div>
 
-        <div className={mojeQueueRowActionsClass} onClick={(e) => e.stopPropagation()}>
+        <div
+          className={mojeQueueRowActionsClass}
+          onClick={(event) => event.stopPropagation()}
+          onMouseDown={(event) => event.stopPropagation()}
+        >
           {toolbar}
         </div>
       </div>
 
-      {!expanded && (showStatusBadge || productSummary || plannedOrderDate) ? (
+      {!expanded &&
+      (showStatusBadge ||
+        productSummary ||
+        plannedOrderDate ||
+        zdFulfillment ||
+        showZdEtaPendingMeta ||
+        showZdEtaNoMatchMeta ||
+        showInformacjaTimingMeta ||
+        showEstimatedDeliveryMeta) ? (
         <div className="flex flex-wrap items-center justify-end gap-2 border-t border-slate-100/80 px-3 pb-1.5 pt-0 sm:hidden">
+          {showInformacjaTimingMeta && row.timingLabel ? (
+            <InformacjaEmailSentMeta timingLabel={row.timingLabel} />
+          ) : null}
+          {!showInformacjaTimingMeta && zdFulfillment ? (
+            <ZdFulfillmentDateMeta
+              fulfillment={zdFulfillment}
+              collapsed
+              lines={row.lines}
+              showDeadlineChangeDismiss={showZdDeadlineChangeDismiss}
+              dismissDeadlineChangePending={pending}
+              onDismissDeadlineChange={
+                showZdDeadlineChangeDismiss
+                  ? () => onAcknowledgeZdDeadlineChange?.(zdDeadlineChangeOrderIds)
+                  : undefined
+              }
+            />
+          ) : null}
+          {!showInformacjaTimingMeta && showEstimatedDeliveryMeta ? (
+            <MyOrderEstimatedDeliveryMeta row={row} />
+          ) : null}
+          {showZdEtaPendingMeta ? <ZdEtaPendingMeta /> : null}
+          {showZdEtaNoMatchMeta ? <ZdEtaNoMatchMeta /> : null}
           {plannedOrderDate ? <PlannedOrderDateMeta display={plannedOrderDate} /> : null}
           {showStatusBadge ? (
             <MyOrderStatusPill
@@ -945,10 +1129,24 @@ export function MyOrderShipmentCard({
           <MyOrderExpandedMeta fields={expandedMeta} searchQuery={searchQuery} />
 
           {showExpandedDeliveryTiming && expandedDeliveryTiming ? (
-            <MyOrderExpandedDeliveryTiming
-              display={expandedDeliveryTiming}
-              searchQuery={searchQuery}
-            />
+            <div className="space-y-2">
+              <MyOrderExpandedDeliveryTiming
+                display={expandedDeliveryTiming}
+                searchQuery={searchQuery}
+              />
+              {row.zdFulfillment?.deadlineChange ? (
+                <ZdFulfillmentDeadlineChangeNotice
+                  change={row.zdFulfillment.deadlineChange}
+                  align="start"
+                  onDismiss={
+                    showZdDeadlineChangeDismiss
+                      ? () => onAcknowledgeZdDeadlineChange?.(zdDeadlineChangeOrderIds)
+                      : undefined
+                  }
+                  dismissPending={pending}
+                />
+              ) : null}
+            </div>
           ) : null}
 
           {row.lineCount > 0 ? (
@@ -974,9 +1172,9 @@ export function MyOrderShipmentCard({
                     line={line}
                     index={i}
                     searchQuery={searchQuery}
+                    listKind={row.kind}
                     {...lineItemProps(line.id)}
                     canCancelLine={showPerLineCancel}
-                    cancelLineLabel={cancelLineLabel}
                     cancelLineAriaLabel={salesCancelLineAriaLabel(row.kind, line.product)}
                     onCancelLine={
                       showPerLineCancel
@@ -1003,7 +1201,7 @@ export function MyOrderShipmentCard({
                   <div className={mojeActionBarShellClass}>
                     <MyOrderAckButton
                       variant="segmentPrimary"
-                      className={panelSegmentLastClass}
+                      className="rounded-md"
                       disabled={pending}
                       preview={tourPreview}
                       title={pickupAckTitle}

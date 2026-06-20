@@ -11,6 +11,8 @@ import {
 import { ZkWatchGroupedList } from "./ZkWatchGroupedList";
 import { ArchivedNotesSection } from "./ArchivedNotesSection";
 import { NotatnikListFilterBar } from "./NotatnikListFilterBar";
+import { salesSearchPlaceholder } from "@/lib/sales/sales-search-ui";
+import { SALES_SEARCH_COPY } from "@/lib/sales/sales-page-ui-copy";
 
 export function NotatnikArchivePanel({
   archivedWatches,
@@ -75,22 +77,8 @@ export function NotatnikArchivePanel({
     filterActive && filteredWatches.length === 0 && filteredNotes.length === 0;
   const filterPlaceholder =
     mode === "zk"
-      ? "Szukaj w archiwum ZK: klient, numer ZK lub produkt…"
-      : mode === "notes"
-        ? "Szukaj w archiwum notatek: tytuł lub treść…"
-        : "Szukaj w archiwum: klient, numer ZK, produkt lub treść notatki…";
-  const filterIdleHint =
-    mode === "zk"
-      ? "Filtruj zamknięte ZK po kliencie, numerze lub produkcie."
-      : mode === "notes"
-        ? "Filtruj zarchiwizowane notatki po tytule lub treści."
-        : "Filtruj archiwum po kliencie, numerze ZK, produkcie lub treści notatki.";
-  const filterActiveHint =
-    mode === "zk"
-      ? "Wyniki z zamkniętych spraw ZK."
-      : mode === "notes"
-        ? "Wyniki ze zarchiwizowanych notatek."
-        : "Wyniki z zamkniętych ZK i zarchiwizowanych notatek.";
+      ? salesSearchPlaceholder(SALES_SEARCH_COPY.archiveZk)
+      : salesSearchPlaceholder(SALES_SEARCH_COPY.archiveNotes);
 
   return (
     <>
@@ -98,13 +86,15 @@ export function NotatnikArchivePanel({
         <div className="px-3 pt-3 sm:px-4">
           <NotatnikListFilterBar
             embedded
+            visibleLabel={mode === "zk" ? "Szukaj w archiwum ZK" : "Szukaj w archiwum"}
             value={listFilter}
             onChange={setListFilter}
             matchCount={filteredWatches.length + filteredNotes.length}
             totalCount={zkWatches.length + notes.length}
             placeholder={filterPlaceholder}
-            idleHint={filterIdleHint}
-            activeHint={filterActiveHint}
+            searchLabel="Szukaj w archiwum"
+            showIdleHint={false}
+            showActiveDetail={false}
           />
         </div>
       ) : null}

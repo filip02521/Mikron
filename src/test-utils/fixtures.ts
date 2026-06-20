@@ -79,6 +79,7 @@ export function testMyOrderLine(
     defaultSalesCancelQuantity: null,
     canPartialSalesCancel: false,
     showSalesCancelRemainder: false,
+    showSalesCancelSupplierQuick: false,
     salesCancelDeliveredQty: 0,
     salesCancelUndoRestore: {},
     clientName: null,
@@ -156,7 +157,9 @@ export function testSalesPersonAdminRow(
     followUpDueNotesCount: 0,
     linkedUserId: null,
     linkedUserEmail: null,
+    linkedUserCreatedAt: null,
     linkedUserLastSignInAt: null,
+    linkedUserLastActivityAt: null,
     ...partial,
   };
 }

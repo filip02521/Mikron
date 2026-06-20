@@ -25,6 +25,20 @@ describe("prosba-url", () => {
     );
   });
 
+  it("prosbaHref przekazuje rodzaj informacji z ZK", () => {
+    expect(
+      prosbaHref({
+        salesPersonId: "sp1",
+        fromZk: true,
+        zkWatchId: "watch-uuid",
+        zkLineKeys: ["a", "b"],
+        requestKind: "informacja",
+      })
+    ).toBe(
+      "/prosba?dla=sp1&fromZk=1&zkWatch=watch-uuid&zkLines=a%2Cb&rodzaj=informacja"
+    );
+  });
+
   it("resolveProsbaSupplierId odrzuca nieznane id", () => {
     expect(resolveProsbaSupplierId("s1", ["s1", "s2"])).toBe("s1");
     expect(resolveProsbaSupplierId("x", ["s1"])).toBeUndefined();

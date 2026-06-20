@@ -2,6 +2,8 @@ import { describe, expect, it, vi, beforeEach } from "vitest";
 import {
   assertAdminNotInReadOnlyPanelPreview,
   assertAdminPanelAllowsProcurementBoardMutations,
+  assertAdminPanelAllowsOperationsMutations,
+  assertAdminPanelAllowsWarehouseMutations,
 } from "@/lib/auth/guard-admin-panel-preview";
 import { ADMIN_PANEL_PREVIEW_MUTATION_BLOCKED } from "@/lib/auth/admin-panel-preview-messages";
 
@@ -43,6 +45,46 @@ describe("guard admin panel preview", () => {
 
     await expect(
       assertAdminPanelAllowsProcurementBoardMutations({ role: "admin" })
+    ).rejects.toThrow(ADMIN_PANEL_PREVIEW_MUTATION_BLOCKED);
+  });
+
+  it("zezwalają na mutacje operacji w podglądzie zakupów", async () => {
+    cookiesMock.mockReturnValue({
+      get: () => ({ value: "zakupy" }),
+    });
+
+    await expect(
+      assertAdminPanelAllowsOperationsMutations({ role: "admin" })
+    ).resolves.toBeUndefined();
+  });
+
+  it("blokują mutacje operacji w podglądzie magazynu", async () => {
+    cookiesMock.mockReturnValue({
+      get: () => ({ value: "magazyn" }),
+    });
+
+    await expect(
+      assertAdminPanelAllowsOperationsMutations({ role: "admin" })
+    ).rejects.toThrow(ADMIN_PANEL_PREVIEW_MUTATION_BLOCKED);
+  });
+
+  it("zezwalają na mutacje magazynu w podglądzie zakupów", async () => {
+    cookiesMock.mockReturnValue({
+      get: () => ({ value: "zakupy" }),
+    });
+
+    await expect(
+      assertAdminPanelAllowsWarehouseMutations({ role: "admin" })
+    ).resolves.toBeUndefined();
+  });
+
+  it("blokują mutacje magazynu w podglądzie magazynu", async () => {
+    cookiesMock.mockReturnValue({
+      get: () => ({ value: "magazyn" }),
+    });
+
+    await expect(
+      assertAdminPanelAllowsWarehouseMutations({ role: "admin" })
     ).rejects.toThrow(ADMIN_PANEL_PREVIEW_MUTATION_BLOCKED);
   });
 });

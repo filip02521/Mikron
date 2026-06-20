@@ -1,6 +1,14 @@
-import { formatDateString } from "@/lib/orders/dates";
+import { parseDateOnly, formatDateString } from "@/lib/orders/dates";
 import { isPastExpectedDate } from "@/lib/orders/delivery-eta";
+import {
+  isZdEtaSyncEligible,
+} from "@/lib/subiekt/zd-eta-sync";
+import { isActiveZdFulfillmentDeadline } from "@/lib/subiekt/zd-fulfillment-date";
+import type { ZdFulfillmentDeadlineChangeDisplay } from "@/lib/orders/zd-fulfillment-deadline-change";
+import { resolveZdFulfillmentDeadlineChangeDisplay } from "@/lib/orders/zd-fulfillment-deadline-change";
+import { pickLatestZdFulfillmentDeadlineChange } from "@/lib/orders/zd-fulfillment-deadline-change";
 import type { MyOrderRow } from "@/lib/orders/my-order-presenter";
+import type { DeliveryStats, IndividualOrder, StatsMode } from "@/types/database";
 import { formatProsbaZkLinkNumber } from "@/lib/orders/zk-prosba-link-display";
 import {
   INFORMACJA_FLOW_SALES_READY_ACK_HEADLINE,
@@ -12,6 +20,22 @@ import {
   isProcurementCancelNotesAggregateSummary,
   procurementCancelNotesMojeSublineSuffix,
 } from "@/lib/orders/procurement-cancel-note";
+import {
+  MY_ORDER_HISTORY_ESTIMATE_LOW_CONFIDENCE_DETAIL,
+  MY_ORDER_NO_HISTORY_ESTIMATE_YET_SUBLINE,
+} from "@/lib/orders/my-order-history-estimate-copy";
+
+export type SupplierKhIdsLookup = Record<string, readonly number[]>;
+
+function orderSupplierHasSubiektKh(
+  order: Pick<IndividualOrder, "supplier_id" | "supplier">,
+  supplierKhIdsBySupplierId?: SupplierKhIdsLookup
+): boolean {
+  const sid = order.supplier_id;
+  if (sid && (supplierKhIdsBySupplierId?.[sid]?.length ?? 0) > 0) return true;
+  const kh = order.supplier?.subiekt_kh_id;
+  return kh != null && Number.isFinite(kh) && kh > 0;
+}
 
 export type MyOrderHeadlineTone =
   | "action"
@@ -182,22 +206,53 @@ export function enrichMyOrderSalesUi(row: MyOrderRow): MyOrderSalesUi {
     const onStock = row.lines.filter(
       (l) => l.stockStatus === "on_stock" || l.stockStatus === "partial"
     ).length;
+    const zdOverdue =
+      row.zdFulfillment &&
+      row.timingLabel?.includes("po terminie") &&
+      parseDateOnly(row.zdFulfillment.deadline) != null &&
+      isPastExpectedDate(parseDateOnly(row.zdFulfillment.deadline)!);
     return {
       headline:
         onStock > 0
           ? MY_ORDER_PARTIAL_STOCK_HEADLINE
           : "Częściowa dostawa w toku",
       headlineTone: onStock > 0 ? "stock" : "info",
-      subline: row.progressLabel
-        ? `Magazyn: ${row.progressLabel.replace(" na magazynie", "")} · reszta w drodze`
-        : "Reszta czeka u dostawcy",
+      subline: zdOverdue
+        ? [
+            row.progressLabel
+              ? `Magazyn: ${row.progressLabel.replace(" na magazynie", "")} · reszta w drodze`
+              : "Reszta czeka u dostawcy",
+            row.timingLabel?.replace(/\s*·\s*po terminie\s*/i, "").trim(),
+          ]
+            .filter(Boolean)
+            .join(" · ")
+        : row.progressLabel
+          ? `Magazyn: ${row.progressLabel.replace(" na magazynie", "")} · reszta w drodze`
+          : "Reszta czeka u dostawcy",
       sortPriority: onStock > 0 ? 2 : 6,
     };
   }
 
   if (overdue) {
+    const zd = row.zdFulfillment;
+    if (row.zdEtaPending) {
+      return {
+        headline: "Po przewidywanym terminie",
+        headlineTone: "warning",
+        subline: "Sprawdzamy termin w ZD u dostawcy…",
+        sortPriority: 4,
+      };
+    }
+    if (row.zdEtaNoMatch) {
+      return {
+        headline: "Po przewidywanym terminie",
+        headlineTone: "warning",
+        subline: "Brak terminu w ZD Subiekta — szacujemy z historii dostaw.",
+        sortPriority: 4,
+      };
+    }
     return {
-      headline: "Po przewidywanym terminie",
+      headline: zd ? "Po terminie u dostawcy" : "Po przewidywanym terminie",
       headlineTone: "warning",
       subline: row.timingLabel?.replace(" · po terminie", "") ?? null,
       sortPriority: 4,
@@ -223,9 +278,9 @@ export function enrichMyOrderSalesUi(row: MyOrderRow): MyOrderSalesUi {
         : "Zamówione u dostawcy",
       headlineTone: "info",
       subline: !hasEstimate
-        ? "Szacowany termin podamy z historii dostaw"
+        ? MY_ORDER_NO_HISTORY_ESTIMATE_YET_SUBLINE
         : lowHistory
-          ? "Mało dostaw w historii — termin jest orientacyjny"
+          ? MY_ORDER_HISTORY_ESTIMATE_LOW_CONFIDENCE_DETAIL
           : null,
       sortPriority: 7,
     };
@@ -431,6 +486,176 @@ export function myOrderExpandedMetaFields(
 export function isTimingOverdue(timingLabel: string | null): boolean {
   if (!timingLabel?.includes("po terminie")) return false;
   return true;
+}
+
+export type MyOrderZdFulfillmentSlot = {
+  deadline: string;
+  dokNr: string;
+  count: number;
+};
+
+export type MyOrderZdFulfillment = {
+  deadline: string;
+  dokNr: string;
+  syncedAt: string | null;
+  source: "zd";
+  /** Różne terminy w grupie u dostawcy — posortowane od najbliższego. */
+  slots?: MyOrderZdFulfillmentSlot[];
+  /** Zmiana terminu wykryta przy ostatnim sync ZD. */
+  deadlineChange?: ZdFulfillmentDeadlineChangeDisplay | null;
+};
+
+export function resolveZdFulfillmentFromOrder(
+  order: Pick<
+    IndividualOrder,
+    | "zd_fulfillment_deadline"
+    | "zd_fulfillment_source"
+    | "zd_fulfillment_dok_nr"
+    | "zd_fulfillment_synced_at"
+    | "zd_fulfillment_previous_deadline"
+    | "zd_fulfillment_deadline_changed_at"
+    | "zd_fulfillment_deadline_change_seen_at"
+  >,
+  at: Date = new Date()
+): MyOrderZdFulfillment | null {
+  if (order.zd_fulfillment_source !== "zd") return null;
+  const deadline = order.zd_fulfillment_deadline?.trim();
+  if (!deadline || !isActiveZdFulfillmentDeadline(deadline, at)) return null;
+  const dokNr = order.zd_fulfillment_dok_nr?.trim();
+  const deadlineChange = resolveZdFulfillmentDeadlineChangeDisplay(order, at);
+  return {
+    deadline,
+    dokNr: dokNr || "ZD",
+    syncedAt: order.zd_fulfillment_synced_at ?? null,
+    source: "zd",
+    deadlineChange,
+  };
+}
+
+function supplierHasPrimarySubiektKh(
+  order: Pick<IndividualOrder, "supplier_id" | "supplier">,
+  supplierKhIdsBySupplierId?: SupplierKhIdsLookup
+): boolean {
+  return orderSupplierHasSubiektKh(order, supplierKhIdsBySupplierId);
+}
+
+/** UI: sync ZD jeszcze nie zakończył się — pokaż stan oczekiwania zamiast samego ETA. */
+export function resolveZdEtaPendingFromOrder(
+  order: IndividualOrder,
+  stats: DeliveryStats | undefined,
+  statsMode: StatsMode,
+  supplierKhIdsBySupplierId?: SupplierKhIdsLookup,
+  subiektReachable = true
+): boolean {
+  if (!subiektReachable) return false;
+  if (resolveZdFulfillmentFromOrder(order)) return false;
+  if (order.zd_fulfillment_synced_at) return false;
+  if (!supplierHasPrimarySubiektKh(order, supplierKhIdsBySupplierId)) return false;
+  return isZdEtaSyncEligible(order);
+}
+
+/** UI: sync zakończony bez dopasowanego ZD — subtelna informacja zamiast ciszy. */
+export function resolveZdEtaNoMatchFromOrder(
+  order: IndividualOrder,
+  stats: DeliveryStats | undefined,
+  statsMode: StatsMode,
+  supplierKhIdsBySupplierId?: SupplierKhIdsLookup
+): boolean {
+  if (resolveZdFulfillmentFromOrder(order)) return false;
+  if (!order.zd_fulfillment_synced_at) return false;
+  if (!supplierHasPrimarySubiektKh(order, supplierKhIdsBySupplierId)) return false;
+  return isZdEtaSyncEligible(order);
+}
+
+/** Etykieta terminu z dopasowanego dokumentu ZD (Moje zamówienia). */
+export function salesZdTimingLabel(
+  deadline: string,
+  dokNr: string,
+  overdue: boolean
+): string {
+  const parsed = parseDateOnly(deadline);
+  const date = parsed
+    ? formatDateString(parsed, "dd.MM.yyyy")
+    : deadline;
+  const overdueSuffix = overdue ? " · po terminie" : "";
+  return `do ${date} · ${dokNr}${overdueSuffix}`;
+}
+
+/** Łączy terminy ZD wielu pozycji grupy — najwcześniejszy termin, pending jeśli któraś czeka. */
+export function aggregateGroupZdEtaState(
+  orders: IndividualOrder[],
+  statsBySupplier: Record<string, DeliveryStats>,
+  supplierKhIdsBySupplierId?: SupplierKhIdsLookup,
+  subiektReachable = true
+): {
+  zdFulfillment: MyOrderZdFulfillment | null;
+  zdEtaPending: boolean;
+  zdEtaNoMatch: boolean;
+} {
+  const fulfillments: MyOrderZdFulfillment[] = [];
+  let anyPending = false;
+  let anyNoMatch = false;
+
+  for (const order of orders) {
+    const stats = order.supplier_id ? statsBySupplier[order.supplier_id] : undefined;
+    const statsMode = (order.supplier?.stats_mode ?? "LACZNIE") as StatsMode;
+    const zd = resolveZdFulfillmentFromOrder(order);
+    if (zd) {
+      fulfillments.push(zd);
+      continue;
+    }
+    if (resolveZdEtaPendingFromOrder(order, stats, statsMode, supplierKhIdsBySupplierId, subiektReachable)) {
+      anyPending = true;
+      continue;
+    }
+    if (resolveZdEtaNoMatchFromOrder(order, stats, statsMode, supplierKhIdsBySupplierId)) {
+      anyNoMatch = true;
+    }
+  }
+
+  if (fulfillments.length === 0) {
+    return { zdFulfillment: null, zdEtaPending: anyPending, zdEtaNoMatch: anyNoMatch };
+  }
+
+  const slotMap = new Map<string, MyOrderZdFulfillmentSlot>();
+  for (const f of fulfillments) {
+    const key = `${f.deadline}|${f.dokNr}`;
+    const existing = slotMap.get(key);
+    if (existing) {
+      existing.count += 1;
+    } else {
+      slotMap.set(key, { deadline: f.deadline, dokNr: f.dokNr, count: 1 });
+    }
+  }
+
+  const slots = [...slotMap.values()].sort((a, b) => {
+    const da = parseDateOnly(a.deadline);
+    const db = parseDateOnly(b.deadline);
+    if (da && db) return da.getTime() - db.getTime();
+    return a.deadline.localeCompare(b.deadline);
+  });
+
+  const primary = slots[0]!;
+  const syncedAt =
+    fulfillments
+      .map((f) => f.syncedAt)
+      .filter((v): v is string => Boolean(v?.trim()))
+      .sort()
+      .reverse()[0] ?? null;
+  const deadlineChange = pickLatestZdFulfillmentDeadlineChange(orders);
+
+  return {
+    zdFulfillment: {
+      deadline: primary.deadline,
+      dokNr: primary.dokNr,
+      syncedAt,
+      source: "zd",
+      slots: slots.length > 1 ? slots : undefined,
+      deadlineChange,
+    },
+    zdEtaPending: anyPending,
+    zdEtaNoMatch: anyNoMatch,
+  };
 }
 
 /** Używane w presenterze przy budowie timingLabel z ETA. */

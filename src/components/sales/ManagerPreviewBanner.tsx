@@ -5,6 +5,7 @@ import { buildNotatnikPageHref } from "@/lib/sales/notepad-page-tabs";
 import { useAdminPanelPreview } from "@/components/layout/AdminPanelPreviewContext";
 import { Button } from "@/components/ui/Button";
 import { SystemNotice } from "@/components/ui/SystemNotice";
+import { salesTouchTargetClass } from "@/lib/ui/ontime-theme";
 
 export type ManagerPreviewScope = "orders" | "notatnik" | "zk" | "plan" | "tablica" | "prosba";
 
@@ -59,26 +60,26 @@ export function ManagerPreviewBanner({
     <>
       {scope === "notatnik" || scope === "zk" ? (
         <Link href={`/moje?dla=${salesPersonId}`}>
-          <Button size="sm" variant="secondary">
+          <Button size="sm" variant="secondary" className={salesTouchTargetClass}>
             Panel zamówień
           </Button>
         </Link>
       ) : scope !== "prosba" ? (
         <Link href={`/prosba?dla=${salesPersonId}`}>
-          <Button size="sm" variant="secondary">
+          <Button size="sm" variant="secondary" className={salesTouchTargetClass}>
             Prośba w jego imieniu
           </Button>
         </Link>
       ) : null}
       {scope === "notatnik" || scope === "zk" ? (
         <Link href={scope === "zk" ? buildNotatnikPageHref() : buildNotatnikPageHref({ tab: "notes" })}>
-          <Button size="sm" variant="outline">
+          <Button size="sm" variant="outline" className={salesTouchTargetClass}>
             {scope === "zk" ? "Moje ZK" : "Mój notatnik"}
           </Button>
         </Link>
       ) : scope === "orders" ? (
         <Link href="/moje">
-          <Button size="sm" variant="outline">
+          <Button size="sm" variant="outline" className={salesTouchTargetClass}>
             Moje zamówienia
           </Button>
         </Link>
@@ -87,27 +88,27 @@ export function ManagerPreviewBanner({
   ) : (
     <>
       <Link href={`/moje?dla=${salesPersonId}`}>
-        <Button size="sm" variant="secondary">
+        <Button size="sm" variant="secondary" className={salesTouchTargetClass}>
           Prośby
         </Button>
       </Link>
       <Link href={buildNotatnikPageHref({ preview: true, salesPersonId })}>
-        <Button size="sm" variant="outline">
+        <Button size="sm" variant="outline" className={salesTouchTargetClass}>
           ZK
         </Button>
       </Link>
       <Link href={buildNotatnikPageHref({ preview: true, salesPersonId, tab: "notes" })}>
-        <Button size="sm" variant="outline">
+        <Button size="sm" variant="outline" className={salesTouchTargetClass}>
           Notatnik
         </Button>
       </Link>
       <Link href={`/plan?dla=${salesPersonId}`}>
-        <Button size="sm" variant="outline">
+        <Button size="sm" variant="outline" className={salesTouchTargetClass}>
           Plan
         </Button>
       </Link>
       <Link href={`/tablica?dla=${salesPersonId}`}>
-        <Button size="sm" variant="outline">
+        <Button size="sm" variant="outline" className={salesTouchTargetClass}>
           Tablica
         </Button>
       </Link>

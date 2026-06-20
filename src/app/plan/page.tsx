@@ -9,7 +9,6 @@ import { buildSummaryWorkspace } from "@/lib/orders/summary-workspace";
 import { PlanClient } from "@/components/plan/PlanClient";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { SalesAccountLinkRequired } from "@/components/sales/SalesAccountLinkRequired";
-import { ManagerPreviewBanner } from "@/components/sales/ManagerPreviewBanner";
 import { SalesPreviewPageChrome } from "@/components/sales/SalesPreviewPageChrome";
 import { getAppRole } from "@/lib/auth-dev";
 import { getSessionUser } from "@/lib/auth";
@@ -73,7 +72,7 @@ export default async function PlanPage({
     return (
       <SalesAccountLinkRequired
         title="Harmonogram"
-        description="Kalendarz działu dostaw i wyszukiwarka dostawców. Konto musi być przypisane do profilu handlowca."
+        hint="Kalendarz działu dostaw i wyszukiwarka dostawców. Konto musi być przypisane do profilu handlowca."
       />
     );
   }
@@ -161,15 +160,15 @@ export default async function PlanPage({
   return (
     <SalesPreviewPageChrome
       linkError={linkError}
-      banner={
-        isTeamPreview && salesPersonId && salesPersonName ? (
-          <ManagerPreviewBanner
-            salesPersonId={salesPersonId}
-            salesPersonName={salesPersonName}
-            readOnly={adminReadOnlyPreview}
-            scope="plan"
-          />
-        ) : null
+      teamPreview={
+        isTeamPreview && salesPersonId && salesPersonName
+          ? {
+              salesPersonId,
+              salesPersonName,
+              readOnly: adminReadOnlyPreview,
+              scope: "plan",
+            }
+          : null
       }
     >
       {content}

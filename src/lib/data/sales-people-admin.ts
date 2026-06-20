@@ -1,5 +1,7 @@
 import { createAdminClient, hasSupabaseConfig } from "@/lib/supabase/admin";
 import type { SessionUser } from "@/lib/auth";
+import { resolveSalesPersonForUser } from "@/lib/auth/sales-person";
+import { isSalesManager } from "@/lib/auth-roles";
 import {
   filterRowsByGroupScope,
   getManagedGroupIdsForUser,
@@ -9,6 +11,11 @@ import { formatPlDate } from "@/lib/display-labels";
 import {
   isTeamSalesPerson,
 } from "@/lib/sales/sales-person-catalog";
+import {
+  fetchLastActivityAtByProfileId,
+  fetchLastActivityAtBySalesPersonId,
+  maxIsoTimestamp,
+} from "@/lib/data/sales-person-activity";
 import { isFollowUpDue } from "@/lib/sales/notepad-follow-up";
 
 export type SalesPersonAdminRow = {
@@ -26,16 +33,61 @@ export type SalesPersonAdminRow = {
   followUpDueNotesCount: number;
   linkedUserId: string | null;
   linkedUserEmail: string | null;
+  /** Data utworzenia profilu / konta w systemie (profiles.created_at). */
+  linkedUserCreatedAt: string | null;
+  /** Ostatnie logowanie (Supabase Auth — tylko nowa sesja, nie każda akcja). */
   linkedUserLastSignInAt: string | null;
+  /** Ostatnia znana aktywność: logowanie, tablica, prośby. */
+  linkedUserLastActivityAt: string | null;
 };
 
-/** Etykieta w kolumnie „Konto” na podglądzie zespołu. */
+function formatAccountDate(iso: string | null | undefined): string | null {
+  if (!iso) return null;
+  return formatPlDate(iso.slice(0, 10)) ?? null;
+}
+
+/** Krótka etykieta kolumny „Konto” na karcie handlowca w podglądzie zespołu. */
 export function formatSalesPersonAccountStatus(
-  row: Pick<SalesPersonAdminRow, "linkedUserEmail" | "linkedUserLastSignInAt">
+  row: Pick<
+    SalesPersonAdminRow,
+    "linkedUserEmail" | "linkedUserLastActivityAt" | "linkedUserLastSignInAt"
+  >
 ): string {
   if (!row.linkedUserEmail) return "Brak konta";
-  if (!row.linkedUserLastSignInAt) return "Nie logował się";
-  return formatPlDate(row.linkedUserLastSignInAt.slice(0, 10)) ?? "—";
+  const activity = formatAccountDate(row.linkedUserLastActivityAt);
+  if (activity) return `Aktyw. ${activity}`;
+  if (row.linkedUserLastSignInAt) {
+    return `Log. ${formatAccountDate(row.linkedUserLastSignInAt) ?? "—"}`;
+  }
+  return "Brak aktywności";
+}
+
+/** Podpowiedź po najechaniu na status konta w podglądzie zespołu. */
+export function formatSalesPersonAccountStatusTitle(
+  row: Pick<
+    SalesPersonAdminRow,
+    | "linkedUserEmail"
+    | "linkedUserCreatedAt"
+    | "linkedUserLastSignInAt"
+    | "linkedUserLastActivityAt"
+  >
+): string | undefined {
+  if (!row.linkedUserEmail) return "Brak powiązanego konta użytkownika";
+  const created = formatAccountDate(row.linkedUserCreatedAt);
+  const activity = formatAccountDate(row.linkedUserLastActivityAt);
+  const signIn = formatAccountDate(row.linkedUserLastSignInAt);
+
+  if (!activity && !signIn) {
+    return created
+      ? `Konto od ${created} — brak zarejestrowanej aktywności`
+      : "Konto aktywne — brak zarejestrowanej aktywności";
+  }
+
+  const parts: string[] = [];
+  if (created) parts.push(`Konto od ${created}`);
+  if (activity) parts.push(`Ostatnia aktywność: ${activity}`);
+  if (signIn && signIn !== activity) parts.push(`Ostatnie logowanie: ${signIn}`);
+  return `${parts.join(". ")}.`;
 }
 
 export async function fetchSalesPeopleAdmin(): Promise<SalesPersonAdminRow[]> {
@@ -48,7 +100,7 @@ export async function fetchSalesPeopleAdmin(): Promise<SalesPersonAdminRow[]> {
       supabase.from("sales_people").select("id, name, email, group_id").order("name"),
       supabase
         .from("profiles")
-        .select("id, email, sales_person_id")
+        .select("id, email, sales_person_id, created_at")
         .not("sales_person_id", "is", null),
       supabase
         .from("sales_zk_watches")
@@ -77,9 +129,18 @@ export async function fetchSalesPeopleAdmin(): Promise<SalesPersonAdminRow[]> {
   const linkedBySalesId = new Map(
     (profiles ?? []).map((p) => [
       p.sales_person_id as string,
-      { id: p.id, email: p.email ?? "—" },
+      { id: p.id, email: p.email ?? "—", createdAt: (p.created_at as string | null) ?? null },
     ])
   );
+
+  const profileIds = [...linkedBySalesId.values()].map((linked) => linked.id);
+  const [activityByProfileId, activityBySalesPersonId] = await Promise.all([
+    fetchLastActivityAtByProfileId(supabase, profileIds),
+    fetchLastActivityAtBySalesPersonId(
+      supabase,
+      (people ?? []).map((person) => person.id as string)
+    ),
+  ]);
 
   const { data: orderRows, error: ordersError } = await supabase
     .from("individual_orders")
@@ -128,19 +189,39 @@ export async function fetchSalesPeopleAdmin(): Promise<SalesPersonAdminRow[]> {
       followUpDueNotesCount: followUpDueNotesBySalesId.get(p.id) ?? 0,
       linkedUserId: linked?.id ?? null,
       linkedUserEmail: linked?.email ?? null,
+      linkedUserCreatedAt: linked?.createdAt ?? null,
       linkedUserLastSignInAt: linked?.id
         ? (lastSignInByUserId.get(linked.id) ?? null)
+        : null,
+      linkedUserLastActivityAt: linked?.id
+        ? maxIsoTimestamp(
+            lastSignInByUserId.get(linked.id) ?? null,
+            activityByProfileId.get(linked.id) ?? null,
+            activityBySalesPersonId.get(p.id) ?? null
+          )
         : null,
     };
   });
 }
 
 export async function fetchSalesPeopleAdminForUser(
-  user: Pick<SessionUser, "id" | "role">
+  user: Pick<SessionUser, "id" | "role" | "email" | "salesPersonId">
 ): Promise<SalesPersonAdminRow[]> {
   const rows = await fetchSalesPeopleAdmin();
-  const scoped = filterRowsByGroupScope(rows, await getManagedGroupIdsForUser(user));
-  return scoped.filter(isTeamSalesPerson);
+  const scope = await getManagedGroupIdsForUser(user);
+  const scoped = filterRowsByGroupScope(rows, scope).filter(isTeamSalesPerson);
+
+  if (isSalesManager(user.role)) {
+    const own = await resolveSalesPersonForUser(user);
+    if (own) {
+      const ownRow = rows.find((row) => row.id === own.id);
+      if (ownRow && !scoped.some((row) => row.id === own.id)) {
+        scoped.push(ownRow);
+      }
+    }
+  }
+
+  return scoped.sort((a, b) => a.name.localeCompare(b.name, "pl"));
 }
 
 /**
@@ -150,12 +231,27 @@ export async function fetchSalesPeopleAdminForUser(
 export async function fetchSalesPeopleForPicker(): Promise<
   Array<{ id: string; name: string; email: string }>
 > {
-  const rows = await fetchSalesPeopleAdmin();
-  return rows
-    .filter((p) => isTeamSalesPerson(p))
-    .map((p) => ({
-      id: p.id,
-      name: p.name,
-      email: p.email,
+  if (!hasSupabaseConfig()) return [];
+
+  const supabase = createAdminClient();
+  const { data, error } = await supabase
+    .from("sales_people")
+    .select("id, name, email, group_id")
+    .order("name");
+
+  if (error) throw new Error(error.message);
+
+  return (data ?? [])
+    .filter((row) =>
+      isTeamSalesPerson({
+        groupId: (row.group_id as string | null) ?? null,
+        email: (row.email as string | null) ?? "",
+        name: (row.name as string | null) ?? "",
+      })
+    )
+    .map((row) => ({
+      id: row.id,
+      name: row.name,
+      email: row.email,
     }));
 }

@@ -8,16 +8,24 @@ import { SectionHeadingIcon } from "@/components/icons/SectionHeadingIcon";
 export function RequestKindToggle({
   value,
   onChange,
+  disabled = false,
 }: {
   value: IndividualRequestKind;
   onChange: (kind: IndividualRequestKind) => void;
+  disabled?: boolean;
 }) {
   return (
-    <div className="grid gap-2 sm:grid-cols-2" role="radiogroup" aria-label="Rodzaj prośby">
+    <div
+      className={cn("grid gap-2 sm:grid-cols-2", disabled && "pointer-events-none opacity-60")}
+      role="radiogroup"
+      aria-label="Rodzaj prośby"
+      aria-disabled={disabled || undefined}
+    >
       <button
         type="button"
         role="radio"
         aria-checked={value === "zamowienie"}
+        disabled={disabled}
         onClick={() => onChange("zamowienie")}
         className={cn(
           "flex min-h-[4.5rem] cursor-pointer items-start gap-3 rounded-md border px-3.5 py-3 text-left transition-shadow",
@@ -48,6 +56,7 @@ export function RequestKindToggle({
         type="button"
         role="radio"
         aria-checked={value === "informacja"}
+        disabled={disabled}
         onClick={() => onChange("informacja")}
         className={cn(
           "flex min-h-[4.5rem] cursor-pointer items-start gap-3 rounded-md border px-3.5 py-3 text-left transition-shadow",

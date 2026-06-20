@@ -1,8 +1,8 @@
 "use client";
 
-import { useState, useTransition, useEffect, useMemo, useRef } from "react";
+import { useState, useTransition, useEffect, useMemo, useRef, useCallback } from "react";
 import { useRouter } from "next/navigation";
-import type { IndividualOrder } from "@/types/database";
+import type { IndividualOrder, IndividualRequestKind } from "@/types/database";
 import {
   emptyVerificationForm,
   orderToVerificationForm,
@@ -40,17 +40,21 @@ import {
 import {
   informacjaFlowPathFromOrder,
 } from "@/lib/orders/informacja-stock-out-reorder";
-import {
-  VerificationInformacjaPathPanel,
-  VerificationPathBadge,
-} from "@/components/verification/VerificationInformacjaPathPanel";
-import { RequestFormStatusPanel } from "@/components/orders/RequestFormStatusPanel";
+import { VerificationInformacjaPathPanel, VerificationPathBadge } from "@/components/verification/VerificationInformacjaPathPanel";
 import { ProsbaFormSection } from "@/components/orders/ProsbaFormSection";
+import { ProsbaFormReadiness } from "@/components/orders/ProsbaFormReadiness";
+import {
+  ProsbaFormKeyboardStrip,
+  ProsbaFormProductsSection,
+  ProsbaFormRequestKindSection,
+} from "@/components/orders/ProsbaFormSharedSections";
+import { PROSBA_FORM_SECTION_COPY } from "@/lib/orders/prosba-form-section-copy";
+import { buildProsbaFormReadinessWithSupplier } from "@/lib/orders/prosba-form-readiness";
+import { IconUserGroup } from "@/components/icons/StrokeIcons";
 import { MyOrderAssignedClient } from "@/components/moje/MyOrderAssignedClient";
 import { normalizeSalesClientName } from "@/lib/orders/sales-client-label";
 import { normalizeSalesRequestNote } from "@/lib/orders/sales-request-note";
 import { ProcurementSalesRequestNote } from "@/components/orders/ProcurementSalesRequestNote";
-import { RequestKindToggle } from "@/components/orders/RequestKindToggle";
 import { ActionLoadingOverlay } from "@/components/ui/ActionLoadingOverlay";
 import { SupplierPickerField } from "@/components/orders/SupplierPickerField";
 import { SubiektProductLineFields } from "@/components/subiekt/SubiektProductLineFields";
@@ -59,7 +63,6 @@ import type { ProductLineDraft } from "@/components/orders/request-product-lines
 import { buildProsbaSubmitStockConfirm } from "@/lib/orders/prosba-stock-check";
 import { handleProsbaStockSubmitError } from "@/lib/orders/prosba-stock-submit-error";
 import { useProsbaLinesStockSync } from "@/hooks/useProsbaLinesStockSync";
-import { KeyboardShortcutsHint } from "@/components/ui/KeyboardShortcutsHint";
 import type { SubiektFeedback } from "@/lib/subiekt/feedback";
 import { toAppSupplierRefs } from "@/lib/subiekt/match-supplier";
 import {
@@ -73,9 +76,7 @@ import {
 import { panelPageShellClass, panelSectionInsetClass, panelTypography } from "@/lib/ui/ontime-theme";
 import { ProcurementCancelDialog } from "@/components/procurement/ProcurementCancelDialog";
 import { cn } from "@/lib/cn";
-
-const VERIFICATION_INTRO =
-  "Niekompletne prośby handlowców — uzupełnij dostawcę i produkt. Po zatwierdzeniu trafiają do panelu dziennego; ścieżka informacji (dostępność / brak na stanie) jest zachowana.";
+import { SALES_PAGE_HEADER_HINTS } from "@/lib/sales/sales-page-ui-copy";
 
 export function VerificationWorkspace({
   orders,
@@ -122,13 +123,6 @@ export function VerificationWorkspace({
 
   const [supplierSubiektFeedback, setSupplierSubiektFeedback] =
     useState<SubiektFeedback | null>(null);
-  const [supplierPickerFeedbacks, setSupplierPickerFeedbacks] = useState<SubiektFeedback[]>(
-    []
-  );
-  const [productLineFeedback, setProductLineFeedback] = useState<SubiektFeedback | null>(
-    null
-  );
-  const [configFeedback, setConfigFeedback] = useState<SubiektFeedback | null>(null);
   const [resolvingSupplier, setResolvingSupplier] = useState(false);
   const [stockConfirmOpen, setStockConfirmOpen] = useState(false);
   const [stockConfirmMessage, setStockConfirmMessage] = useState("");
@@ -146,9 +140,6 @@ export function VerificationWorkspace({
     if (order) {
       setValidationAttempted(false);
       setSupplierSubiektFeedback(null);
-      setSupplierPickerFeedbacks([]);
-      setProductLineFeedback(null);
-      setConfigFeedback(null);
       setResolvingSupplier(shouldLookupSupplierFromCatalog(order));
       setForm(orderToVerificationForm(order));
     }
@@ -214,6 +205,83 @@ export function VerificationWorkspace({
     ]
   );
   const assessment = assessRequestCompleteness(draft);
+
+  const verificationReadiness = useMemo(
+    () =>
+      buildProsbaFormReadinessWithSupplier(
+        [
+          {
+            symbol: form.symbol,
+            mikranCode: form.mikranCode,
+            product: form.product,
+            quantity: form.quantity,
+            supplierId: form.supplierId,
+            subiektTwId: form.subiektTwId,
+          },
+        ],
+        form.supplierId,
+        form.requestKind,
+        {
+          informacjaPath: form.informacjaPath ?? "direct",
+          resolvingSupplier,
+        }
+      ),
+    [
+      form.symbol,
+      form.mikranCode,
+      form.product,
+      form.quantity,
+      form.supplierId,
+      form.subiektTwId,
+      form.requestKind,
+      form.informacjaPath,
+      resolvingSupplier,
+    ]
+  );
+
+  const readinessFormMessage = useMemo(() => {
+    if (supplierSubiektFeedback?.message) {
+      return {
+        text: supplierSubiektFeedback.message,
+        tone:
+          supplierSubiektFeedback.tone === "error"
+            ? ("error" as const)
+            : ("warning" as const),
+      };
+    }
+    return null;
+  }, [supplierSubiektFeedback]);
+
+  const setVerificationRequestKind = useCallback(
+    (requestKind: IndividualRequestKind) => {
+      if (
+        requestKind === "zamowienie" &&
+        active &&
+        verificationInformacjaUiForOrder(active)?.pathLocked
+      ) {
+        const label =
+          verificationInformacjaUiForOrder(active)?.badgeLabel ?? "informacja";
+        if (
+          !confirm(
+            `Handlowiec zgłosił „${label}”. Zmiana na zamówienie u dostawcy usunie tę ścieżkę. Kontynuować?`
+          )
+        ) {
+          return;
+        }
+      }
+      setForm((f) => ({
+        ...f,
+        requestKind,
+        quantity: requestKind === "informacja" ? "" : f.quantity,
+        informacjaPath:
+          requestKind === "informacja"
+            ? (f.informacjaPath ??
+              (active ? (informacjaFlowPathFromOrder(active) ?? "direct") : "direct"))
+            : null,
+      }));
+    },
+    [active]
+  );
 
   const informacjaUi = verificationInformacjaUiForDraft({
     requestKind: form.requestKind,
@@ -390,22 +458,12 @@ export function VerificationWorkspace({
       handleProcurementProsbaKeyboardEvent(e, {
         pending,
         onSubmit: () => saveRef.current(),
-        onSetRequestKind: (kind) =>
-          setForm((f) => ({
-            ...f,
-            requestKind: kind,
-            quantity: kind === "informacja" ? "" : f.quantity,
-            informacjaPath:
-              kind === "informacja"
-                ? (f.informacjaPath ??
-                  (active ? (informacjaFlowPathFromOrder(active) ?? "direct") : "direct"))
-                : null,
-          })),
+        onSetRequestKind: setVerificationRequestKind,
       });
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [pending, active]);
+  }, [pending, setVerificationRequestKind]);
 
   const cancel = (id: string) => {
     if (readOnly) {
@@ -474,6 +532,7 @@ export function VerificationWorkspace({
                 domain="panel"
                 title="Uzupełnij dane"
                 hint={`Zgłoszenie od ${active.sales_person?.name ?? "handlowca"}`}
+                hintMode="tooltip"
                 icon={<IconClipboardPen size={17} />}
                 tileClassName="bg-amber-100 text-amber-800"
               />
@@ -516,59 +575,16 @@ export function VerificationWorkspace({
                   : cn("space-y-4", panelSectionInsetClass, "pb-2")
               }
             >
-              <details className="rounded-md border border-slate-100 bg-slate-50/70 open:shadow-sm">
-                <summary className="cursor-pointer list-none px-3 py-2 text-xs font-medium text-slate-600 marker:content-none [&::-webkit-details-marker]:hidden">
-                  Skróty klawiszowe
-                </summary>
-                <div className="border-t border-slate-100 px-3 pb-2.5 pt-2">
-                  <KeyboardShortcutsHint
-                    items={PROCUREMENT_PROSBA_KEYBOARD_HINTS.filter(
-                      (h) => h.keys[0] !== "+"
-                    )}
-                    compact
-                  />
-                </div>
-              </details>
+              <ProsbaFormKeyboardStrip
+                hints={PROCUREMENT_PROSBA_KEYBOARD_HINTS.filter((h) => h.keys[0] !== "+")}
+                variant="procurement"
+              />
 
-              <ProsbaFormSection
-                domain="panel"
-                title="Co chcesz zgłosić?"
-                hint="Rodzaj prośby decyduje o wymaganych polach produktu."
-              >
-                <RequestKindToggle
-                  value={form.requestKind}
-                  onChange={(requestKind) => {
-                    if (
-                      requestKind === "zamowienie" &&
-                      active &&
-                      verificationInformacjaUiForOrder(active)?.pathLocked
-                    ) {
-                      const label =
-                        verificationInformacjaUiForOrder(active)?.badgeLabel ??
-                        "informacja";
-                      if (
-                        !confirm(
-                          `Handlowiec zgłosił „${label}”. Zmiana na zamówienie u dostawcy usunie tę ścieżkę. Kontynuować?`
-                        )
-                      ) {
-                        return;
-                      }
-                    }
-                    setForm((f) => ({
-                      ...f,
-                      requestKind,
-                      quantity: requestKind === "informacja" ? "" : f.quantity,
-                      informacjaPath:
-                        requestKind === "informacja"
-                          ? (f.informacjaPath ??
-                            (active
-                              ? (informacjaFlowPathFromOrder(active) ?? "direct")
-                              : "direct"))
-                          : null,
-                    }));
-                  }}
-                />
-              </ProsbaFormSection>
+              <ProsbaFormRequestKindSection
+                value={form.requestKind}
+                disabled={pending}
+                onChange={setVerificationRequestKind}
+              />
 
               {form.requestKind === "informacja" && informacjaUi && form.informacjaPath ? (
                 <VerificationInformacjaPathPanel
@@ -581,31 +597,19 @@ export function VerificationWorkspace({
               ) : null}
 
               <ProsbaFormSection
-                domain="panel"
-                title="Dla kogo i u kogo?"
-                hint="Handlowiec oraz dostawca przypisany do prośby."
+                title={PROSBA_FORM_SECTION_COPY.delegateProcurement.title}
+                hint={PROSBA_FORM_SECTION_COPY.delegateProcurement.hint}
+                accent="indigo"
+                icon={<IconUserGroup size={17} />}
+                tileClassName="bg-indigo-100 text-indigo-800"
               >
                 <div
                   className={cn(
-                    "grid gap-4",
+                    "grid gap-4 sm:items-start",
                     inModal ? "sm:grid-cols-2" : "grid-cols-1"
                   )}
                 >
-                  <Field label="Dostawca">
-                    <SupplierPickerField
-                      suppliers={suppliers}
-                      value={form.supplierId}
-                      onChange={(supplierId) =>
-                        setForm((f) => ({ ...f, supplierId }))
-                      }
-                      allowEmpty={false}
-                      emptyLabel="Wybierz dostawcę"
-                      showInlineFeedback={false}
-                      dropdownSize="default"
-                      onSubiektFeedbackChange={setSupplierPickerFeedbacks}
-                    />
-                  </Field>
-                  <Field label="Handlowiec">
+                  <Field labelClassName="inline-flex min-h-6 items-center" label="Dla kogo (handlowiec)">
                     <Select
                       value={form.salesPersonId}
                       onChange={(e) =>
@@ -619,6 +623,20 @@ export function VerificationWorkspace({
                       ))}
                     </Select>
                   </Field>
+                  <Field labelClassName="inline-flex min-h-6 items-center" label="Dostawca">
+                    <SupplierPickerField
+                      suppliers={suppliers}
+                      value={form.supplierId}
+                      onChange={(supplierId) => {
+                        setSupplierSubiektFeedback(null);
+                        setForm((f) => ({ ...f, supplierId }));
+                      }}
+                      allowEmpty={false}
+                      emptyLabel="Wybierz dostawcę"
+                      showInlineFeedback
+                      dropdownSize="default"
+                    />
+                  </Field>
                 </div>
                 {inModal && normalizeSalesClientName(active.sales_client_name) ? (
                   <MyOrderAssignedClient
@@ -631,19 +649,19 @@ export function VerificationWorkspace({
                 ) : null}
               </ProsbaFormSection>
 
-              <ProsbaFormSection
-                domain="panel"
-                title="Produkt"
+              <ProsbaFormProductsSection
+                requestKind={form.requestKind}
+                informacjaPath={form.informacjaPath ?? "direct"}
                 hint={
                   form.subiektTwId
                     ? "Towar z Subiekta — wyszukaj inną pozycję: nazwa lub symbol w dużym polu, kod Mikran obok."
                     : form.requestKind === "informacja"
                       ? (informacjaUi?.productSectionHint ??
                         "Wystarczy nazwa lub symbol produktu — bez ilości.")
-                      : "Podaj nazwę lub symbol oraz ilość."
+                      : PROSBA_FORM_SECTION_COPY.products.orderHint
                 }
               >
-                <div className="rounded-md border border-slate-200 bg-white p-3 shadow-sm">
+                <div className="space-y-3">
                   <SubiektProductLineFields
                     appearance="prosba"
                     requestKind={form.requestKind}
@@ -660,8 +678,6 @@ export function VerificationWorkspace({
                       setForm((f) => ({ ...f, supplierId: "" }))
                     }
                     onSupplierResolveFeedback={setSupplierSubiektFeedback}
-                    onProductFeedbackChange={setProductLineFeedback}
-                    onConfigFeedbackChange={setConfigFeedback}
                     onResolvingSupplierChange={setResolvingSupplier}
                     value={{
                       symbol: form.symbol,
@@ -676,23 +692,27 @@ export function VerificationWorkspace({
                     }}
                     onChange={(patch) => setForm((f) => ({ ...f, ...patch }))}
                   />
-                </div>
-              </ProsbaFormSection>
 
-              <RequestFormStatusPanel
-                audience="procurement"
-                requestKind={form.requestKind}
-                draft={draft}
-                forcedAssessment={assessment}
-                validationAttempted={validationAttempted}
-                subiektFeedbacks={[
-                  configFeedback,
-                  ...supplierPickerFeedbacks,
-                  supplierSubiektFeedback,
-                  productLineFeedback,
-                ]}
-                resolvingSupplier={resolvingSupplier}
-              />
+                  <ProsbaFormReadiness
+                    lines={[
+                      {
+                        symbol: form.symbol,
+                        mikranCode: form.mikranCode,
+                        product: form.product,
+                        quantity: form.quantity,
+                        supplierId: form.supplierId,
+                        subiektTwId: form.subiektTwId,
+                      },
+                    ]}
+                    requestKind={form.requestKind}
+                    salesSubmitPlan={verificationReadiness.plan}
+                    formMessage={readinessFormMessage}
+                    informacjaPath={form.informacjaPath ?? "direct"}
+                    resolvingSupplier={resolvingSupplier}
+                    validationAttempted={validationAttempted}
+                  />
+                </div>
+              </ProsbaFormProductsSection>
             </div>
 
             <div
@@ -779,7 +799,8 @@ export function VerificationWorkspace({
               </SectionHeadingIcon>
             }
             title="Weryfikacja zgłoszeń"
-            description={VERIFICATION_INTRO}
+            hint={SALES_PAGE_HEADER_HINTS.verification}
+            hintAriaLabel="O weryfikacji zgłoszeń"
             action={<VerificationHelp />}
           />
           {workspaceBody}

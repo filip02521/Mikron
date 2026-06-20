@@ -1,11 +1,13 @@
 "use server";
 
+// @service-role-ok — autoryzacja require*(); service role z pełnym scope po warstwie aplikacji.
+
 import { revalidatePath } from "next/cache";
 import { getSessionUser, requireSalesTeamManagement } from "@/lib/auth";
 import { readAdminPanelContextForSession } from "@/lib/auth/read-admin-panel-context";
 import { isAdmin, redirectPathAfterLogin } from "@/lib/auth-roles";
 import {
-  assertManagerCanUseGroupId,
+  assertManagerRequiresGroupInScope,
   canAccessSalesPerson,
 } from "@/lib/data/sales-group-access";
 import { createAdminClient } from "@/lib/supabase/admin";
@@ -15,6 +17,8 @@ import {
   type SalesInviteLinkResult,
 } from "@/lib/users/sales-invite";
 import { isValidEmail } from "@/lib/security/text-limits";
+import { passwordValidationError } from "@/lib/auth/password-policy";
+import { actionFinalizeSalesPersonInvite } from "@/app/actions/users";
 
 function revalidateTeamPaths() {
   revalidatePath("/zespol");
@@ -81,7 +85,7 @@ export async function actionCreateSalesTeamUser(form: {
 
   if (!isAdmin(actor.role)) {
     try {
-      await assertManagerCanUseGroupId(actor, groupId);
+      await assertManagerRequiresGroupInScope(actor, groupId);
     } catch (e) {
       return { error: e instanceof Error ? e.message : "Brak uprawnień do grupy." };
     }
@@ -235,19 +239,29 @@ export async function actionGenerateSalesTeamInviteLink(
   return { success: true, invite: result };
 }
 
-export async function actionClearMustChangePassword(): Promise<
-  { success: true; redirectTo: string } | { error: string }
-> {
+export async function actionCompletePasswordChange(
+  password: string
+): Promise<{ success: true; redirectTo: string } | { error: string }> {
   const user = await getSessionUser();
   if (!user) return { error: "Brak sesji." };
 
+  const passwordError = passwordValidationError(password);
+  if (passwordError) return { error: passwordError };
+
   const supabase = createAdminClient();
-  const { error } = await supabase
+  const { error: updateError } = await supabase.auth.admin.updateUserById(user.id, {
+    password,
+  });
+  if (updateError) return { error: updateError.message };
+
+  const { error: profileError } = await supabase
     .from("profiles")
     .update({ must_change_password: false })
     .eq("id", user.id);
+  if (profileError) return { error: profileError.message };
 
-  if (error) return { error: error.message };
+  const finalize = await actionFinalizeSalesPersonInvite();
+  if ("error" in finalize) return { error: finalize.error };
 
   const { panelContext } = await readAdminPanelContextForSession();
   const redirectTo = redirectPathAfterLogin(user.role, null, {
@@ -258,4 +272,13 @@ export async function actionClearMustChangePassword(): Promise<
   revalidatePath("/moje");
   revalidatePath(redirectTo.split("?")[0] ?? redirectTo);
   return { success: true, redirectTo };
+}
+
+/** Zablokowane — użyj actionCompletePasswordChange (hasło + flaga w jednej operacji). */
+export async function actionClearMustChangePassword(): Promise<
+  { success: true; redirectTo: string } | { error: string }
+> {
+  return {
+    error: "Ustaw hasło przez formularz — osobne czyszczenie flagi nie jest dozwolone.",
+  };
 }

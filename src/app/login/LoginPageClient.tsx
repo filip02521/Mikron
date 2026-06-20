@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense, useState } from "react";
+import { Suspense, useCallback, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import type { LoginDirectoryAccountPublic } from "@/lib/auth/login-directory-public";
 import {
@@ -18,10 +18,10 @@ function LoginPageClientInner({ accounts }: { accounts: LoginDirectoryAccountPub
   const [subtitleMode, setSubtitleMode] = useState<LoginSubtitleMode>("picker");
   const [subtitle, setSubtitle] = useState(LOGIN_SUBTITLE_PICKER);
 
-  const handleSubtitleModeChange = (mode: LoginSubtitleMode) => {
+  const handleSubtitleModeChange = useCallback((mode: LoginSubtitleMode) => {
     setSubtitleMode(mode);
     setSubtitle(loginSubtitleForMode(mode));
-  };
+  }, []);
 
   return (
     <AuthScreenLayout

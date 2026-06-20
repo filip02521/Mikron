@@ -1,8 +1,11 @@
 "use server";
 
+// @service-role-ok — autoryzacja require*(); service role z pełnym scope po warstwie aplikacji.
+
 import { revalidatePath, updateTag } from "next/cache";
 import {
   requireAdmin,
+  requireAdminForMutation,
   requireOperations,
   requireSubiektLookup,
   requireSupplierManagement,
@@ -69,7 +72,7 @@ export async function actionGetSubiektStatus() {
 }
 
 export async function actionTestSubiektConnection(): Promise<SubiektHealthResult> {
-  await requireAdmin();
+  await requireAdminForMutation();
   return testSubiektConnection();
 }
 

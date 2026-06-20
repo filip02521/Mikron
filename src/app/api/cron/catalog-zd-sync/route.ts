@@ -5,6 +5,7 @@ import {
   isWarsawCatalogSyncWindow,
   runCatalogZdSync,
 } from "@/lib/subiekt/catalog-zd-sync";
+import { runZdEtaSyncGlobalBackup } from "@/lib/subiekt/zd-eta-sync";
 import { recordCronSkipped, warsawCronContext } from "@/lib/time/warsaw-cron";
 
 export const dynamic = "force-dynamic";
@@ -57,8 +58,23 @@ export async function GET(request: NextRequest) {
 
     await recordCronRun("catalog_zd_sync", payload);
 
+    let zdEtaBackup: Awaited<ReturnType<typeof runZdEtaSyncGlobalBackup>> | null =
+      null;
+    if (result.ok && !result.skipped && !result.subiektOffline) {
+      try {
+        zdEtaBackup = await runZdEtaSyncGlobalBackup();
+      } catch (e) {
+        console.error("[catalog-zd-sync zd-eta backup]", e);
+      }
+    }
+
     if (result.skipped) {
-      return NextResponse.json({ success: true, skipped: true, ...detail });
+      return NextResponse.json({
+        success: true,
+        skipped: true,
+        ...detail,
+        zdEtaBackup,
+      });
     }
 
     if (result.subiektOffline) {
@@ -72,6 +88,7 @@ export async function GET(request: NextRequest) {
       success: result.ok,
       ...detail,
       status: result.state.status,
+      zdEtaBackup,
     });
   } catch (e) {
     const message = e instanceof Error ? e.message : "Error";

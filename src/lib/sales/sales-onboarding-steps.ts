@@ -64,11 +64,11 @@ export function getSalesOnboardingSteps(role: UserRole): SalesOnboardingStep[] {
       bullets: [
         "Jeden wiersz = jedna prośba u jednego dostawcy. Nagłówek mówi, co się dzieje.",
         "Przy wierszu widać klienta końcowego — łatwiej rozróżnisz sprawy różnych gabinetów.",
-        "Sekcja „Tylko sprawdzamy dostępność” (fiolet) to informacja o towarze bez zamówienia u dostawcy. Dostaniesz e-mail, gdy towar będzie na magazynie.",
+        "Sekcja „Sprawdzamy dostępność” (fiolet) to informacja o towarze bez zamówienia u dostawcy. Dostaniesz e-mail, gdy towar będzie na magazynie.",
         "Zielony przycisk oznacza Twoją akcję: potwierdź odbiór z magazynu albo zamknij powiadomienie o dostępności.",
         "Na dole strony jest archiwum zakończonych spraw.",
       ],
-      tip: "Pilne sprawy są u góry w sekcji „Wymaga reakcji” — Start dnia przewinie Cię tam.",
+      tip: "Pilne sprawy są u góry w sekcji „Potwierdź odbiór z regału” — Start dnia przewinie Cię tam.",
     },
     {
       id: "prosba",
@@ -133,11 +133,12 @@ export function getSalesOnboardingSteps(role: UserRole): SalesOnboardingStep[] {
         "„Do zrobienia dziś” u góry — zacznij od przypomnień ZK (notatki są w osobnym Notatniku).",
         "Zakładka „ZK” — wpisz numer ZK. System wczyta klienta i pozycje z Subiekta.",
         "Przy ZK jest „Zgłoś prośbę” — formularz wypełni się sam klientem i pozycjami.",
-        "Po dostawie odhaczasz pozycje. Przy przypomnieniu ustawiasz datę follow-up.",
+        "W liście pozycji chipy pokazują etap: „Na regale” (auto-zaznaczenie), „Odebrane z regału” (Moje), „Zakończone” (ręczny checkbox po odbiorze).",
+        "Badge „Na regale” na karcie oznacza nowy towar czekający na odbiór. Po obejrzeniu znika z „Do zrobienia dziś”.",
         "„Notatnik” (prywatne przypomnienia) to osobna pozycja w menu — bez wysyłki do zakupów.",
         "Liczba przy „ZK czekające” w menu oznacza zaległe przypomnienia ZK (oddzielnie licznik Notatnika).",
       ],
-      tip: "Status formalnych prośb jest w „Moje zamówienia”. ZK czekające pomaga pamiętać, które sprawy wymagają Twojej reakcji.",
+      tip: "Na górze listy ZK jest skrót statusów — możesz go ukryć przyciskiem „Rozumiem”. Szczegóły też w Pomoc →.",
     },
     {
       id: "notatnik-notes",

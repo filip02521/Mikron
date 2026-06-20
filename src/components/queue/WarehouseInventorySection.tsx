@@ -379,6 +379,7 @@ export function WarehouseInventorySection({
         domain="panel"
         title="Inwentaryzacja regału"
         hint="Co czeka na odbiór — grupy po dostawcy, regale lub handlowcu"
+        hintMode="tooltip"
         count={rows.length}
         accent="emerald"
         icon={<IconClipboardList size={17} />}

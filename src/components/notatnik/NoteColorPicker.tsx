@@ -1,7 +1,7 @@
 "use client";
 
 import type { ReactNode } from "react";
-import { IconPin } from "@/components/icons/StrokeIcons";
+import { IconPin, IconTrash2 } from "@/components/icons/StrokeIcons";
 import { cn } from "@/lib/cn";
 import type { SalesNoteColor } from "@/types/database";
 import { NOTE_COLOR_OPTIONS, NOTE_COLOR_SWATCH } from "./note-styles";
@@ -73,21 +73,82 @@ function NoteAction({
   );
 }
 
+function NoteDeleteAction({
+  onClick,
+  disabled,
+  title,
+  ariaLabel,
+  className,
+  iconSize = 15,
+}: {
+  onClick: () => void;
+  disabled?: boolean;
+  title: string;
+  ariaLabel: string;
+  className?: string;
+  iconSize?: number;
+}) {
+  return (
+    <button
+      type="button"
+      disabled={disabled}
+      onClick={onClick}
+      title={title}
+      aria-label={ariaLabel}
+      className={cn(
+        "inline-flex shrink-0 items-center justify-center rounded-md text-red-600 transition hover:bg-red-50 hover:text-red-700 disabled:opacity-50",
+        className
+      )}
+    >
+      <IconTrash2 size={iconSize} strokeWidth={2.25} aria-hidden />
+    </button>
+  );
+}
+
+export function NoteDeleteIconButton({
+  onClick,
+  disabled,
+  title,
+  ariaLabel,
+  className,
+  iconSize,
+}: {
+  onClick: () => void;
+  disabled?: boolean;
+  title: string;
+  ariaLabel: string;
+  className?: string;
+  iconSize?: number;
+}) {
+  return (
+    <NoteDeleteAction
+      onClick={onClick}
+      disabled={disabled}
+      title={title}
+      ariaLabel={ariaLabel}
+      className={className}
+      iconSize={iconSize}
+    />
+  );
+}
+
 export function NoteCardToolbar({
   pinned,
   saving,
   onEdit,
   onTogglePin,
   onArchive,
+  hideDelete = false,
 }: {
   pinned: boolean;
   saving?: boolean;
   onEdit: () => void;
   onTogglePin: () => void;
   onArchive: () => void;
+  hideDelete?: boolean;
 }) {
   return (
-    <div className="flex flex-wrap items-center gap-0.5">
+    <div className="flex w-full flex-wrap items-center gap-0.5">
       <NoteAction onClick={onEdit} disabled={saving}>
         Edytuj
       </NoteAction>
@@ -105,12 +166,20 @@ export function NoteCardToolbar({
           {pinned ? "Odepnij" : "Przypnij"}
         </span>
       </NoteAction>
-      <span className="text-slate-300" aria-hidden>
-        ·
-      </span>
-      <NoteAction onClick={onArchive} disabled={saving}>
-        Archiwum
-      </NoteAction>
+      {hideDelete ? null : (
+        <>
+          <span className="text-slate-300" aria-hidden>
+            ·
+          </span>
+          <NoteDeleteAction
+            onClick={onArchive}
+            disabled={saving}
+            title="Usuń notatkę (trafi do archiwum)"
+            ariaLabel="Usuń notatkę"
+            className="ml-auto h-7 w-7"
+          />
+        </>
+      )}
     </div>
   );
 }

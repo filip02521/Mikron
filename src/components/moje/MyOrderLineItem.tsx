@@ -1,10 +1,16 @@
 "use client";
 
+import { zdFulfillmentDeadlineChangeShortLabel } from "@/components/orders/ZdFulfillmentDeadlineChangeNotice";
+import { formatPlDate } from "@/lib/display-labels";
+import { formatMyOrderHistoryEstimateLineLabel } from "@/lib/orders/my-order-history-estimate-copy";
 import type { MyOrderLine, MyOrderLineStockStatus } from "@/lib/orders/my-order-presenter";
 import type { SalesCancelPhase } from "@/lib/orders/sales-cancel";
 import {
   salesCancelLineCustomQtyLabel,
   salesCancelLineRemainderLabel,
+  salesCancelLineRemainderAriaLabel,
+  salesCancelLineShortLabel,
+  salesCancelQuickActionLabel,
 } from "@/lib/orders/sales-cancel";
 import { MyOrderAssignedClient } from "@/components/moje/MyOrderAssignedClient";
 import { MyOrderRequestNote } from "@/components/moje/MyOrderRequestNote";
@@ -67,6 +73,8 @@ export function MyOrderLineItem({
   hideRequestNote = false,
   hideProcurementCancelNote = false,
   searchQuery,
+  listKind = "zamowienie",
+  historyEstimateLabel = null,
 }: {
   line: MyOrderLine;
   index: number;
@@ -103,17 +111,54 @@ export function MyOrderLineItem({
   /** Gdy wiadomość od zakupów jest już na karcie grupy — nie duplikuj przy produkcie. */
   hideProcurementCancelNote?: boolean;
   searchQuery?: string | null;
+  listKind?: "zamowienie" | "informacja";
+  /** Szacunek z historii grupy — gdy linia czeka na ZD lub nie ma terminu w Subiekcie. */
+  historyEstimateLabel?: string | null;
 }) {
   const badge = showProgress && emphasizeStock ? stockBadge(line.stockStatus) : null;
   const onStock = line.stockStatus === "on_stock";
   const partial = line.stockStatus === "partial";
 
-  const detailParts = [line.quantityLabel, showProgress ? line.progressLabel : null].filter(
-    Boolean
-  );
+  const historyLabel = line.historyEstimateLabel ?? historyEstimateLabel;
+  const historyLowConfidence =
+    line.historyEstimateLowConfidence ?? /orientacyjnie/i.test(historyLabel ?? "");
+
+  const zdLineDetail = line.zdFulfillment
+    ? line.zdFulfillment.deadlineChange
+      ? zdFulfillmentDeadlineChangeShortLabel(line.zdFulfillment.deadlineChange)
+      : `Planowana dostawa ${formatPlDate(line.zdFulfillment.deadline)}`
+    : line.zdEtaPending
+      ? historyLabel
+        ? formatMyOrderHistoryEstimateLineLabel(historyLabel, {
+            lowConfidence: historyLowConfidence,
+          })
+        : "Sprawdzamy termin w Subiekcie…"
+      : line.zdEtaNoMatch
+        ? historyLabel
+          ? formatMyOrderHistoryEstimateLineLabel(historyLabel, {
+              lowConfidence: historyLowConfidence,
+            })
+          : "Brak terminu w Subiekcie"
+        : null;
+
+  const detailParts = [
+    line.quantityLabel,
+    showProgress ? line.progressLabel : null,
+    zdLineDetail,
+  ].filter(Boolean);
 
   const partialDefaultQty = line.defaultSalesCancelQuantity;
   const partialMaxQty = line.maxSalesCancelQuantity ?? partialDefaultQty ?? 1;
+  const cancelButtonRevealClass =
+    "opacity-70 transition-opacity group-hover/line:opacity-100 group-focus-within/line:opacity-100 focus-visible:opacity-100";
+
+  const showRemainderCancel =
+    Boolean(line.showSalesCancelRemainder && partialDefaultQty != null && onPartialCancelLine);
+  const showSupplierQuickCancel =
+    !showRemainderCancel && Boolean(line.showSalesCancelSupplierQuick && onPartialCancelLine);
+  const showPartialQtyCancel = Boolean(line.canPartialSalesCancel && onPartialCancelLine);
+  const showFullLineCancel =
+    Boolean(onCancelLine) && !showRemainderCancel && !showSupplierQuickCancel;
 
   return (
     <li
@@ -234,73 +279,74 @@ export function MyOrderLineItem({
           line.salesCancelPhase &&
           (onCancelLine || onPartialCancelLine) ? (
             <div className="flex flex-col items-end gap-0.5">
-              {line.showSalesCancelRemainder &&
-              partialDefaultQty != null &&
-              onPartialCancelLine ? (
+              {showRemainderCancel ? (
                 <MyOrderCancelButton
                   disabled={pending}
-                  ariaLabel={salesCancelLineRemainderLabel(partialDefaultQty)}
+                  ariaLabel={salesCancelLineRemainderAriaLabel(partialDefaultQty!)}
                   onClick={() =>
-                    onPartialCancelLine(line.id, line.salesCancelPhase!, {
+                    onPartialCancelLine!(line.id, line.salesCancelPhase!, {
                       product: line.product,
                       maxQty: partialMaxQty,
-                      defaultQty: partialDefaultQty,
+                      defaultQty: partialDefaultQty!,
                       deliveredQty: line.salesCancelDeliveredQty,
                     })
                   }
-                  className="opacity-70 transition-opacity group-hover/line:opacity-100 group-focus-within/line:opacity-100 focus-visible:opacity-100"
+                  className={cancelButtonRevealClass}
                 >
-                  {salesCancelLineRemainderLabel(partialDefaultQty)}
+                  {salesCancelLineRemainderLabel(partialDefaultQty!)}
                 </MyOrderCancelButton>
-              ) : line.canPartialSalesCancel &&
-                onPartialCancelLine &&
-                line.salesCancelPhase === "in_transit" ? (
+              ) : null}
+              {showSupplierQuickCancel ? (
                 <MyOrderCancelButton
                   disabled={pending}
-                  ariaLabel={`${salesCancelLineCustomQtyLabel(line.salesCancelPhase)} ${line.product}`}
+                  ariaLabel={salesCancelQuickActionLabel()}
                   onClick={() =>
-                    onPartialCancelLine(line.id, line.salesCancelPhase!, {
+                    onPartialCancelLine!(line.id, line.salesCancelPhase!, {
                       product: line.product,
                       maxQty: partialMaxQty,
                       defaultQty: 1,
                       deliveredQty: line.salesCancelDeliveredQty,
                     })
                   }
-                  className="opacity-70 transition-opacity group-hover/line:opacity-100 group-focus-within/line:opacity-100 focus-visible:opacity-100"
+                  className={cancelButtonRevealClass}
                 >
-                  {salesCancelLineCustomQtyLabel(line.salesCancelPhase)}
-                </MyOrderCancelButton>
-              ) : onCancelLine ? (
-                <MyOrderCancelButton
-                  disabled={pending}
-                  ariaLabel={
-                    cancelLineAriaLabel ?? `${cancelLineLabel}: ${line.product}`
-                  }
-                  onClick={() => onCancelLine(line.id, line.salesCancelPhase!)}
-                  className="opacity-70 transition-opacity group-hover/line:opacity-100 group-focus-within/line:opacity-100 focus-visible:opacity-100"
-                >
-                  {cancelLineLabel}
+                  {salesCancelQuickActionLabel()}
                 </MyOrderCancelButton>
               ) : null}
-              {line.canPartialSalesCancel &&
-              onPartialCancelLine &&
-              !(line.salesCancelPhase === "in_transit" && !line.showSalesCancelRemainder) ? (
+              {showPartialQtyCancel ? (
                 <MyOrderCancelButton
                   disabled={pending}
-                  ariaLabel={`${salesCancelLineCustomQtyLabel(line.salesCancelPhase)} ${line.product}`}
+                  ariaLabel={`${salesCancelLineCustomQtyLabel()} ${line.product}`}
                   onClick={() =>
-                    onPartialCancelLine(line.id, line.salesCancelPhase!, {
+                    onPartialCancelLine!(line.id, line.salesCancelPhase!, {
                       product: line.product,
                       maxQty: partialMaxQty,
-                      defaultQty: line.showSalesCancelRemainder
-                        ? 1
-                        : (partialDefaultQty ?? 1),
+                      defaultQty:
+                        showRemainderCancel || showSupplierQuickCancel
+                          ? 1
+                          : line.salesCancelPhase === "in_transit"
+                            ? 1
+                            : partialDefaultQty ?? 1,
                       deliveredQty: line.salesCancelDeliveredQty,
                     })
                   }
-                  className="opacity-70 transition-opacity group-hover/line:opacity-100 group-focus-within/line:opacity-100 focus-visible:opacity-100"
+                  className={cancelButtonRevealClass}
                 >
-                  {salesCancelLineCustomQtyLabel(line.salesCancelPhase)}
+                  {salesCancelLineCustomQtyLabel()}
+                </MyOrderCancelButton>
+              ) : null}
+              {showFullLineCancel ? (
+                <MyOrderCancelButton
+                  disabled={pending}
+                  ariaLabel={
+                    cancelLineAriaLabel ??
+                    `${salesCancelLineShortLabel(listKind)}: ${line.product}`
+                  }
+                  onClick={() => onCancelLine!(line.id, line.salesCancelPhase!)}
+                  className={cancelButtonRevealClass}
+                >
+                  {cancelLineLabel ??
+                    salesCancelLineShortLabel(listKind)}
                 </MyOrderCancelButton>
               ) : null}
             </div>

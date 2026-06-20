@@ -2,9 +2,9 @@
 
 import { HelpPopover, GuideIcon } from "@/components/ui/HelpPopover";
 import { HelpBlock } from "@/components/ui/HelpBlock";
-import { pageToolbarSizingClass, pageToolbarSurfaceClass } from "@/lib/ui/ontime-theme";
 import { HelpMenuGlyph } from "@/components/ui/UiGlyphs";
 import { cn } from "@/lib/cn";
+import { pageToolbarSizingClass, pageToolbarSurfaceClass } from "@/lib/ui/ontime-theme";
 import { INFORMACJA_FLOW_DIRECT } from "@/lib/orders/informacja-flow-copy";
 import {
   MY_ORDER_ACTION_SECTION_COPY,
@@ -54,6 +54,10 @@ export function MojeOrdersHelp() {
       <HelpBlock title="Elementy wiersza">
         <ul className="list-disc space-y-1.5 pl-4">
           <li>
+            <strong className="font-medium text-slate-800">Ikona ?</strong> przy nagłówku sekcji
+            lub przy wierszu — najedź lub kliknij, aby zobaczyć wyjaśnienie
+          </li>
+          <li>
             <strong className="font-medium text-slate-800">Nagłówek</strong> — etap prośby w
             prostym języku
           </li>
@@ -62,14 +66,22 @@ export function MojeOrdersHelp() {
             odbiór, informację od magazynu albo anulowanie
           </li>
           <li>
-            <strong className="font-medium text-slate-800">Menu</strong>{" "}
-            <HelpMenuGlyph className="align-[-2px]" /> — klient, edycja prośby, anulowanie całej
-            grupy
+            <strong className="font-medium text-slate-800">Anuluj</strong> — dyskretny link po
+            prawej przy linii; wycofuje całą pozycję
           </li>
           <li>
-            <strong className="font-medium text-slate-800">Anuluj</strong> — dyskretny link po
-            prawej przy linii; przy rozwiniętej karcie z wieloma produktami u tego samego
-            dostawcy możesz wycofać tylko wybraną pozycję
+            <strong className="font-medium text-slate-800">Rezygnuj z reszty</strong> — przy
+            częściowej dostawie wycofuje sztuki jeszcze u dostawcy (to, co nie dotarło na magazyn)
+          </li>
+          <li>
+            <strong className="font-medium text-slate-800">Zmień ilość</strong> — wybierz dowolną
+            liczbę sztuk do wycofania; przy jednym produkcie także w menu{" "}
+            <HelpMenuGlyph className="align-[-2px]" />
+          </li>
+          <li>
+            <strong className="font-medium text-slate-800">Menu</strong>{" "}
+            <HelpMenuGlyph className="align-[-2px]" /> — klient, edycja prośby, anulowanie całej
+            grupy lub zmiana ilości (jedna pozycja)
           </li>
           <li>
             <strong className="font-medium text-slate-800">Cofnij</strong> — po anulowaniu,
@@ -101,7 +113,7 @@ export function MojeOrdersHelp() {
       <HelpBlock title="Sekcje listy">
         <p>
           Prośby są podzielone na sekcje —{" "}
-          <strong className="font-medium text-emerald-900">Wymaga reakcji</strong> u góry, potem
+          <strong className="font-medium text-emerald-900">Potwierdź odbiór z regału</strong> u góry, potem
           zamówienia u dostawcy i informacje o dostępności. Start dnia przewinie Cię do właściwej
           sekcji.
         </p>

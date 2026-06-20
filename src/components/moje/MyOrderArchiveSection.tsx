@@ -19,6 +19,7 @@ export function MyOrderArchiveSection({
   defaultOpen = false,
   forceOpen = false,
   searchQuery = "",
+  cardIdPrefix,
 }: {
   /** Potwierdzenia z ostatnich 7 dni. */
   rowsRecent: MyOrderRow[];
@@ -29,6 +30,8 @@ export function MyOrderArchiveSection({
   /** Rozwiń gdy wynik jest tylko w archiwum. */
   forceOpen?: boolean;
   searchQuery?: string;
+  /** Id karty (np. scroll po wyszukiwaniu) — jak w aktywnej liście. */
+  cardIdPrefix?: (rowId: string) => string;
 }) {
   const [open, setOpen] = useState(defaultOpen || forceOpen);
   const [showMore, setShowMore] = useState(false);
@@ -149,6 +152,7 @@ export function MyOrderArchiveSection({
               canAcknowledge={false}
               searchQuery={searchQuery}
               rowVisualTone="archive"
+              cardIdPrefix={cardIdPrefix}
             />
           ) : (
             <p className="px-4 py-6 text-sm text-slate-500">

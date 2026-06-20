@@ -2,6 +2,8 @@ import { describe, expect, it } from "vitest";
 import {
   filterLoginDirectoryAccounts,
   isAuthUserLoginEligible,
+  isLoginDirectoryAccountId,
+  isLoginDirectoryQueryValid,
   loginDirectoryDisplayName,
   sortLoginDirectoryAccounts,
   type LoginDirectoryAccount,
@@ -129,5 +131,19 @@ describe("filterLoginDirectoryAccounts", () => {
     expect(filterLoginDirectoryAccounts(rows, "zakupy")).toHaveLength(1);
     expect(filterLoginDirectoryAccounts(rows, "dział")).toHaveLength(0);
     expect(filterLoginDirectoryAccounts(rows, "zakupy@mikran.com")).toHaveLength(0);
+  });
+});
+
+describe("login directory search guards", () => {
+  it("wymaga min. 3 znaków zapytania", () => {
+    expect(isLoginDirectoryQueryValid("ab")).toBe(false);
+    expect(isLoginDirectoryQueryValid("ann")).toBe(true);
+  });
+
+  it("waliduje UUID konta", () => {
+    expect(isLoginDirectoryAccountId("not-a-uuid")).toBe(false);
+    expect(
+      isLoginDirectoryAccountId("550e8400-e29b-41d4-a716-446655440000")
+    ).toBe(true);
   });
 });

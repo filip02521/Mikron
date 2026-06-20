@@ -2,21 +2,27 @@
 
 import Link from "next/link";
 import { useMemo, useState, type MouseEvent } from "react";
+import { actionPatchZkWatchProsbaScopeLines } from "@/app/actions/sales-notepad";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { ModalShell } from "@/components/ui/ModalShell";
 import { Spinner } from "@/components/ui/Spinner";
 import { cn } from "@/lib/cn";
+import { buttonPrimaryClass } from "@/lib/ui/ontime-theme";
 import {
   assessProsbaLineStock,
+  deriveZkProsbaScopeSuggestedOrderKeys,
+  formatZkProsbaAutoMarkedHint,
   formatZkProsbaScopeLineBadge,
   isZkProsbaScopePartialStock,
   type ZkProsbaScopeLineInput,
 } from "@/lib/orders/prosba-stock-check";
+import { appendMojeFocusOrderIds } from "@/lib/orders/moje-order-focus";
 import {
   prosbaHrefFromZkWatch,
   stashZkProsbaPrefill,
 } from "@/lib/orders/zk-watch-prosba-prefill";
+import { buildMojeClientLink } from "@/lib/sales/notepad-follow-up";
 import { formatZkWatchDisplayNumber } from "@/lib/sales/notepad-format";
 import { formatZkProsbaCoverageSummary } from "@/lib/sales/zk-watch-coverage-summary";
 import { zkWatchLineUiStateMeta } from "@/lib/sales/zk-watch-line-ui-state";
@@ -65,6 +71,7 @@ export function ZkWatchRefreshPromptModal({
   open,
   onConfirm,
   onLater,
+  onScopePatched,
 }: {
   watch: SalesZkWatch;
   diff: ZkWatchRefreshDiff;
@@ -75,6 +82,7 @@ export function ZkWatchRefreshPromptModal({
   open: boolean;
   onConfirm: () => void;
   onLater: () => void;
+  onScopePatched?: (watch: SalesZkWatch) => void;
 }) {
   const lineViews = useMemo(() => buildZkWatchLineViews(watch), [watch]);
   const displayNumber = formatZkWatchDisplayNumber(watch.zk_number);
@@ -90,20 +98,71 @@ export function ZkWatchRefreshPromptModal({
     [uncoveredAddedKeys, lineViews]
   );
 
+  const uncoveredKeysSig = uncoveredAddedKeys.join(",");
+
+  const [orderMarked, setOrderMarked] = useState<Set<string>>(() => new Set());
+  const [selectionEpoch, setSelectionEpoch] = useState("closed");
+  const orderMarkedKeys = useMemo(() => [...orderMarked], [orderMarked]);
+
   const {
     stockByTwId,
     stockLoading,
     lineKeysToOrder,
-    excludedByStockCount,
+    unmarkedCount,
     allOnStock,
     stockFetchFailed,
-  } = useZkProsbaLineKeysStockFilter(addedScopeLines, uncoveredAddedKeys, open);
+  } = useZkProsbaLineKeysStockFilter(addedScopeLines, uncoveredAddedKeys, open, {
+    orderMarkedKeys,
+  });
+
+  const selectionSessionKey = open
+    ? `${watch.id}:${uncoveredKeysSig}:${
+        stockLoading ? "loading" : stockFetchFailed ? "failed" : "ready"
+      }`
+    : "closed";
+
+  const suggestedOrderKeys = useMemo(() => {
+    if (!open || stockLoading || stockFetchFailed) return [] as string[];
+    return deriveZkProsbaScopeSuggestedOrderKeys(addedScopeLines, stockByTwId);
+  }, [open, stockLoading, stockFetchFailed, addedScopeLines, stockByTwId]);
+
+  if (selectionEpoch !== selectionSessionKey) {
+    setSelectionEpoch(selectionSessionKey);
+    setOrderMarked(
+      selectionSessionKey === "closed" || stockFetchFailed
+        ? new Set()
+        : new Set(suggestedOrderKeys)
+    );
+  }
+
+  const selectionInitialized =
+    selectionSessionKey !== "closed" && !selectionSessionKey.endsWith(":loading");
+  const selectionBusy = stockLoading || !selectionInitialized;
 
   const [prefillError, setPrefillError] = useState<string | null>(null);
+  const [patching, setPatching] = useState(false);
 
   const linesToAddCount = lineKeysToOrder.length;
-  const onStockExcludedCount = excludedByStockCount;
-  const inStockMeta = zkWatchLineUiStateMeta("in_stock");
+  const skippedCount = unmarkedCount;
+  const autoMarkedCount =
+    !stockLoading && selectionInitialized && !stockFetchFailed
+      ? deriveZkProsbaScopeSuggestedOrderKeys(addedScopeLines, stockByTwId).length
+      : 0;
+  const hasOpenMatchingProsba = orderHints.matchingOpenRequestCount > 0;
+  const prosbaInTokuHref = useMemo(
+    () =>
+      appendMojeFocusOrderIds(
+        buildMojeClientLink(watch.sales_person_id, watch.client_label, {
+          clientKhId: watch.client_kh_id,
+          zkWatchId: watch.id,
+          zkNumber: watch.zk_number,
+        }),
+        orderHints.matchingOpenRequestIds
+      ),
+    [watch, orderHints.matchingOpenRequestIds]
+  );
+  const redirectToOpenProsba = allOnStock && hasOpenMatchingProsba;
+  const scopeSkippedMeta = zkWatchLineUiStateMeta("scope_excluded");
 
   const supplementOptions = {
     lineKeys: lineKeysToOrder,
@@ -111,29 +170,68 @@ export function ZkWatchRefreshPromptModal({
   };
   const prosbaHref = prosbaHrefFromZkWatch(watch, supplementOptions);
 
-  function handleAddMissing(event: MouseEvent<HTMLAnchorElement>) {
-    if (stockLoading || allOnStock || linesToAddCount === 0) {
-      event.preventDefault();
-      return;
-    }
-    const ok = stashZkProsbaPrefill(watch, supplementOptions);
-    if (!ok) {
-      event.preventDefault();
-      setPrefillError("Nie udało się przygotować pozycji — odśwież ZK z Subiekta.");
-      return;
-    }
-    setPrefillError(null);
-    onConfirm();
+  function toggleLine(key: string) {
+    setOrderMarked((prev) => {
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
+      return next;
+    });
   }
 
-  const addButtonLabel = stockLoading
-    ? "Sprawdzam stan…"
-    : allOnStock
-      ? "Wszystko na stanie — nie trzeba uzupełniać"
-      : linesToAddCount === addedCount
-        ? "Dodaj brakujące do prośby"
-        : `Dodaj do prośby (${linesToAddCount})`;
+  function handleAddMissing(event: MouseEvent<HTMLAnchorElement>) {
+    if (selectionBusy || patching || linesToAddCount === 0) {
+      event.preventDefault();
+      return;
+    }
+    event.preventDefault();
+    void (async () => {
+      setPatching(true);
+      setPrefillError(null);
+      try {
+        const { watch: updated } = await actionPatchZkWatchProsbaScopeLines(
+          watch.id,
+          lineKeysToOrder,
+          uncoveredAddedKeys
+        );
+        onScopePatched?.(updated);
+        const ok = stashZkProsbaPrefill(updated, supplementOptions);
+        if (!ok) {
+          setPrefillError("Nie udało się przygotować pozycji — odśwież ZK z Subiekta.");
+          return;
+        }
+        onConfirm();
+      } catch (e) {
+        setPrefillError(e instanceof Error ? e.message : "Nie udało się zapisać zakresu pozycji.");
+      } finally {
+        setPatching(false);
+      }
+    })();
+  }
 
+  const canProceedToProsba = !selectionBusy && !patching && linesToAddCount > 0;
+
+  const addButtonLabel = selectionBusy
+    ? stockLoading
+      ? "Sprawdzam stan…"
+      : "Przygotowuję listę…"
+    : patching
+      ? "Zapisuję wybór…"
+      : redirectToOpenProsba
+        ? "Otwórz prośbę"
+        : canProceedToProsba
+          ? linesToAddCount === addedCount
+            ? "Dodaj brakujące do prośby"
+            : `Dodaj do prośby (${linesToAddCount})`
+          : allOnStock
+            ? "Wszystko na stanie — nie trzeba uzupełniać"
+            : "Zaznacz pozycje do prośby";
+
+  const primaryLinkButtonClass = cn(
+    "inline-flex cursor-pointer items-center justify-center gap-2 font-medium transition-colors disabled:cursor-not-allowed disabled:pointer-events-none disabled:opacity-50",
+    buttonPrimaryClass,
+    "px-2.5 py-1.5 text-xs rounded-md leading-none w-full sm:w-auto"
+  );
   const queueLabel =
     queuePosition != null && queueTotal != null && queueTotal > 1
       ? ` (${queuePosition} z ${queueTotal})`
@@ -146,26 +244,31 @@ export function ZkWatchRefreshPromptModal({
       size="md"
       title={`${displayNumber} — nowe pozycje w Subiekcie${queueLabel}`}
       description={watch.client_label}
-      bodyClassName="space-y-4"
+      bodyClassName="space-y-4 px-5 py-4 sm:px-6"
       footer={
         <div className="flex w-full flex-col-reverse gap-2 sm:flex-row sm:justify-end">
           <Button type="button" variant="ghost" size="sm" onClick={onLater}>
             Później
           </Button>
-          {allOnStock ? (
+          {redirectToOpenProsba ? (
+            <Link
+              href={prosbaInTokuHref}
+              onClick={onConfirm}
+              className={primaryLinkButtonClass}
+            >
+              {addButtonLabel}
+            </Link>
+          ) : allOnStock && linesToAddCount === 0 ? (
+            <Button type="button" size="sm" disabled className="w-full sm:w-auto">
+              {addButtonLabel}
+            </Button>
+          ) : !canProceedToProsba ? (
             <Button type="button" size="sm" disabled className="w-full sm:w-auto">
               {addButtonLabel}
             </Button>
           ) : (
-            <Link href={prosbaHref} onClick={handleAddMissing}>
-              <Button
-                type="button"
-                size="sm"
-                disabled={stockLoading || linesToAddCount === 0}
-                className="w-full sm:w-auto"
-              >
-                {addButtonLabel}
-              </Button>
+            <Link href={prosbaHref} onClick={handleAddMissing} className={primaryLinkButtonClass}>
+              {addButtonLabel}
             </Link>
           )}
         </div>
@@ -181,10 +284,17 @@ export function ZkWatchRefreshPromptModal({
             Pozostałe pozycje: {statusSummary}.
           </p>
         ) : null}
-        <p className="mt-2 text-xs leading-relaxed text-amber-900/85">
-          Wyślesz uzupełniającą prośbę powiązaną z tym ZK — tylko z nowymi pozycjami.
-          Wcześniejsze pozycje pozostają w dotychczasowych prośbach.
-        </p>
+        {redirectToOpenProsba ? (
+          <p className="mt-2 text-xs leading-relaxed text-amber-900/85">
+            Nowe pozycje mają wystarczający stan w Subiekcie — sprawdź aktywną prośbę powiązaną z
+            tym ZK.
+          </p>
+        ) : (
+          <p className="mt-2 text-xs leading-relaxed text-amber-900/85">
+            Zaznacz nowe pozycje do uzupełniającej prośby powiązanej z tym ZK. Wcześniejsze pozycje
+            pozostają w dotychczasowych prośbach.
+          </p>
+        )}
       </div>
 
       {stockLoading ? (
@@ -196,25 +306,27 @@ export function ZkWatchRefreshPromptModal({
 
       {stockFetchFailed ? (
         <p className="rounded-md border border-amber-200/90 bg-amber-50/80 px-3 py-2 text-xs leading-relaxed text-amber-950">
-          Nie udało się pobrać stanu z Subiekta — do prośby trafią wszystkie nowe pozycje.
+          Nie udało się pobrać stanu z Subiekta — zaznacz ręcznie pozycje do zamówienia.
         </p>
       ) : null}
 
-      {!stockLoading && onStockExcludedCount > 0 && !allOnStock ? (
+      {!stockLoading && autoMarkedCount > 0 && linesToAddCount > 0 ? (
         <p className={cn(salesTypography.rowMeta, "text-slate-600")}>
-          {polishCountLabel(onStockExcludedCount, [
-            "pozycja ma pełny stan",
-            "pozycje mają pełny stan",
-            "pozycji ma pełny stan",
-          ])}{" "}
-          — {onStockExcludedCount === 1 ? "nie trafi" : "nie trafią"} do prośby.
+          {formatZkProsbaAutoMarkedHint(autoMarkedCount)}
         </p>
       ) : null}
 
-      {allOnStock ? (
+      {allOnStock && linesToAddCount === 0 && !redirectToOpenProsba ? (
         <p className={cn(salesTypography.rowMeta, "text-slate-700")}>
           Subiekt potwierdza wystarczający stan na wszystkich nowych pozycjach — uzupełnienie
           prośby nie jest potrzebne.
+        </p>
+      ) : null}
+
+      {redirectToOpenProsba ? (
+        <p className={cn(salesTypography.rowMeta, "text-indigo-900/90")}>
+          Nowe pozycje mają wystarczający stan w Subiekcie, ale jest już aktywna prośba powiązana z
+          tym ZK — przejdź do niej, aby sprawdzić status zamówienia.
         </p>
       ) : null}
 
@@ -232,29 +344,30 @@ export function ZkWatchRefreshPromptModal({
 
       <div>
         <p className={cn(salesTypography.kindTag, "mb-2 text-slate-500")}>
-          Nowe pozycje w ZK
+          Nowe pozycje w ZK — zaznacz do prośby
         </p>
-        {!stockLoading && onStockExcludedCount > 0 && !allOnStock ? (
+        {!stockLoading && selectionInitialized && skippedCount > 0 && linesToAddCount > 0 ? (
           <p className={cn(salesTypography.rowMeta, "mb-2 text-slate-600")}>
             {polishCountLabel(linesToAddCount, [
               "pozycja trafi",
               "pozycje trafią",
               "pozycji trafi",
             ])}{" "}
-            do prośby — pozostałe mają wystarczający stan.
+            do prośby — pozostałe pominięte.
           </p>
         ) : null}
         <ul
           className={cn(
             "divide-y divide-slate-100 rounded-lg border border-slate-200/90 bg-white",
-            stockLoading && "pointer-events-none opacity-60"
+            selectionBusy && "pointer-events-none opacity-60"
           )}
-          aria-busy={stockLoading || undefined}
+          aria-busy={selectionBusy || undefined}
         >
           {uncoveredAddedKeys.map((key) => {
             const line = lineByKey(lineViews, key);
             if (!line) return null;
 
+            const markedForOrder = orderMarked.has(key);
             const twId = line.subiektTwId;
             const snap = twId ? stockByTwId[twId] : undefined;
             const sufficient =
@@ -269,51 +382,66 @@ export function ZkWatchRefreshPromptModal({
             });
             const stockBadgeLabel = formatZkProsbaScopeLineBadge({
               sufficient,
-              markedInStock: sufficient,
+              markedForOrder,
               available: snap?.available ?? null,
               hasStockData: snap != null,
             });
 
             return (
-              <li
-                key={key}
-                className={cn(
-                  "flex items-start justify-between gap-2 px-3 py-2.5",
-                  sufficient
-                    ? inStockMeta.rowTintClass
-                    : lineKeysToOrder.includes(key)
-                      ? "bg-indigo-50/40"
-                      : "bg-amber-50/50"
-                )}
-              >
-                <div className="min-w-0 flex-1">
-                  <p className={cn(salesTypography.rowTitle, "text-slate-900")}>{line.product}</p>
-                  {(line.symbol || line.quantityLabel) && (
-                    <p className={cn(salesTypography.rowMeta, "mt-0.5 text-slate-600")}>
-                      {[line.symbol, line.quantityLabel].filter(Boolean).join(" · ")}
-                    </p>
+              <li key={key}>
+                <label
+                  className={cn(
+                    "flex cursor-pointer items-start gap-3 px-3 py-2.5 transition",
+                    markedForOrder
+                      ? "bg-indigo-50/40 hover:bg-indigo-50/55"
+                      : sufficient
+                        ? scopeSkippedMeta.rowTintClass
+                        : "bg-slate-50/50 hover:bg-slate-50/70"
                   )}
-                </div>
-                <div className="flex shrink-0 flex-col items-end gap-1">
-                  <Badge variant="warning" className="text-[9px]">
-                    Nowa
-                  </Badge>
-                  {!stockLoading && (snap != null || sufficient) ? (
-                    <span
-                      className={cn(
-                        salesTypography.kindTag,
-                        "rounded-full px-1.5 py-0.5",
-                        sufficient
-                          ? inStockMeta.badgeClass
-                          : partialStock
-                            ? "bg-amber-100 text-amber-950 ring-1 ring-amber-200/80"
-                            : "bg-indigo-100 text-indigo-900 ring-1 ring-indigo-200/70"
-                      )}
-                    >
-                      {stockBadgeLabel}
-                    </span>
-                  ) : null}
-                </div>
+                >
+                  <input
+                    type="checkbox"
+                    checked={markedForOrder}
+                    disabled={selectionBusy || patching}
+                    onChange={() => toggleLine(key)}
+                    aria-label={
+                      markedForOrder
+                        ? `${line.product} — do zamówienia, odznacz aby pominąć`
+                        : `${line.product} — pominięte, zaznacz aby zamówić`
+                    }
+                    className="mt-0.5 size-4 shrink-0 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
+                  />
+                  <div className="min-w-0 flex-1">
+                    <p className={cn(salesTypography.rowTitle, "text-slate-900")}>{line.product}</p>
+                    {(line.symbol || line.quantityLabel) && (
+                      <p className={cn(salesTypography.rowMeta, "mt-0.5 text-slate-600")}>
+                        {[line.symbol, line.quantityLabel].filter(Boolean).join(" · ")}
+                      </p>
+                    )}
+                  </div>
+                  <div className="flex shrink-0 flex-col items-end gap-1">
+                    <Badge variant="warning" className="text-[9px]">
+                      Nowa
+                    </Badge>
+                    {!selectionBusy && (snap != null || sufficient || selectionInitialized) ? (
+                      <span
+                        className={cn(
+                          salesTypography.kindTag,
+                          "rounded-full px-1.5 py-0.5",
+                          markedForOrder
+                            ? partialStock
+                              ? "bg-amber-100 text-amber-950 ring-1 ring-amber-200/80"
+                              : "bg-indigo-100 text-indigo-900 ring-1 ring-indigo-200/70"
+                            : sufficient
+                              ? scopeSkippedMeta.badgeClass
+                              : "bg-slate-100 text-slate-600 ring-1 ring-slate-200/80"
+                        )}
+                      >
+                        {stockBadgeLabel}
+                      </span>
+                    ) : null}
+                  </div>
+                </label>
               </li>
             );
           })}

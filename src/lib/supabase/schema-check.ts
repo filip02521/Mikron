@@ -84,6 +84,20 @@ export async function hasProcurementSeenAtColumn(
   return columnExists(supabase, "procurement_seen_at");
 }
 
+export async function hasZdFulfillmentDeadlineChangeColumns(
+  supabase: SupabaseClient
+): Promise<boolean> {
+  const columns = [
+    "zd_fulfillment_previous_deadline",
+    "zd_fulfillment_deadline_changed_at",
+    "zd_fulfillment_deadline_change_seen_at",
+  ] as const;
+  for (const column of columns) {
+    if (!(await columnExists(supabase, column))) return false;
+  }
+  return true;
+}
+
 export async function hasProcurementCancelDispositionColumn(
   supabase: SupabaseClient
 ): Promise<boolean> {
@@ -178,6 +192,11 @@ export async function runSchemaChecks(
   if (!(await hasWarehouseCancelFulfilledColumn(supabase))) {
     issues.push(
       "Brak kolumny individual_orders.warehouse_cancel_fulfilled_at — uruchom supabase/migrations/062_warehouse_cancel_fulfilled.sql"
+    );
+  }
+  if (!(await hasZdFulfillmentDeadlineChangeColumns(supabase))) {
+    issues.push(
+      "Brak kolumn terminów ZD (067) — uruchom supabase/migrations/067_individual_orders_zd_fulfillment_deadline_change.sql"
     );
   }
   if (!(await hasJobLockRpc(supabase))) {

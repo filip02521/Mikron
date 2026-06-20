@@ -1,6 +1,7 @@
 import { cn } from "@/lib/cn";
 import { panelTypography, salesTypography } from "@/lib/ui/ontime-theme";
 import { SectionListLabel, type SectionListAccent } from "@/components/ui/SectionListLabel";
+import { HelpHintBubble } from "@/components/ui/HelpHintBubble";
 import { mojeShipmentSectionShellClass } from "@/lib/ui/moje-shipment-row-styles";
 import type { ReactNode } from "react";
 
@@ -8,6 +9,7 @@ import type { ReactNode } from "react";
 export function ProsbaFormSection({
   title,
   hint,
+  hintMode = "tooltip",
   children,
   className,
   domain = "sales",
@@ -17,6 +19,8 @@ export function ProsbaFormSection({
 }: {
   title: string;
   hint?: string;
+  /** inline — opis pod tytułem; tooltip — ikona ? z dymkiem (domyślnie). */
+  hintMode?: "inline" | "tooltip";
   children: React.ReactNode;
   className?: string;
   /** sales — panel handlowca; panel — zakupy / weryfikacja. */
@@ -32,6 +36,7 @@ export function ProsbaFormSection({
         <SectionListLabel
           title={title}
           hint={hint}
+          hintMode={hintMode}
           accent={accent}
           domain={domain}
           icon={icon}
@@ -50,8 +55,18 @@ export function ProsbaFormSection({
   return (
     <section className={cn("space-y-2.5", className)}>
       <div>
-        <h3 className={titleClass}>{title}</h3>
-        {hint ? <p className={cn("mt-0.5", hintClass)}>{hint}</p> : null}
+        <div className="flex flex-wrap items-center gap-1.5">
+          <h3 className={titleClass}>{title}</h3>
+          {hint && hintMode === "tooltip" ? (
+            <HelpHintBubble
+              message={hint}
+              tone="slate"
+              size="md"
+              ariaLabel="O tej sekcji"
+            />
+          ) : null}
+        </div>
+        {hint && hintMode === "inline" ? <p className={cn("mt-0.5", hintClass)}>{hint}</p> : null}
       </div>
       {children}
     </section>

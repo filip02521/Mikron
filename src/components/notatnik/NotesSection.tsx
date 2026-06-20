@@ -32,6 +32,8 @@ import { DragHandleGlyph, PinGlyph } from "@/components/ui/UiGlyphs";
 import { IconGripVertical } from "@/components/icons/StrokeIcons";
 import { SalesListFilterEmptyHint, SalesSectionEmptyHint } from "@/components/sales/SalesListEmptyHints";
 import { NotatnikListFilterBar } from "./NotatnikListFilterBar";
+import { SalesKeyboardShortcutsStrip } from "@/components/sales/SalesKeyboardShortcutsStrip";
+import { NOTATNIK_NOTES_SEARCH_PLACEHOLDER } from "@/lib/sales/notatnik-notes-copy";
 
 export const NOTATNIK_KEYBOARD_HINTS = [
   { keys: ["N"], label: "nowa notatka" },
@@ -165,6 +167,13 @@ function NoteCard({
   }
 
   async function archive() {
+    if (
+      !window.confirm(
+        "Usunąć notatkę? Trafia do archiwum — możesz ją przywrócić w zakładce Archiwum."
+      )
+    ) {
+      return;
+    }
     setError(null);
     try {
       await actionArchiveSalesNote(note.id);
@@ -572,22 +581,14 @@ export function NotesSection({
     <div className={embedded ? "space-y-0" : "space-y-3"}>
       {!embedded ? (
         <div className="flex flex-wrap items-end justify-between gap-2">
-          <div>
-            <h2 className={salesTypography.blockTitle}>Notatki</h2>
-            <KeyboardShortcutsHint items={[...NOTATNIK_KEYBOARD_HINTS]} className="mt-1" compact />
-          </div>
+          <h2 className={salesTypography.blockTitle}>Notatki</h2>
         </div>
       ) : null}
 
-      <div className={cn(embedded && "px-3 sm:px-4 pb-3 pt-3", !embedded && "space-y-3")}>
-        <div className={cn(NOTATNIK_NOTES_WALL_CLASS, "space-y-3")}>
-          {embedded ? (
-            <KeyboardShortcutsHint
-              items={[...NOTATNIK_KEYBOARD_HINTS]}
-              compact
-              className="px-0.5"
-            />
-          ) : null}
+      <div className={cn(embedded && "pb-3 pt-0", !embedded && "space-y-3")}>
+        <SalesKeyboardShortcutsStrip items={NOTATNIK_KEYBOARD_HINTS} embedded={embedded} />
+
+        <div className={cn(NOTATNIK_NOTES_WALL_CLASS, "space-y-3", embedded && "px-3 sm:px-4")}>
 
           {!readOnly ? (
             composeExpanded ? (
@@ -723,14 +724,15 @@ export function NotesSection({
             <NotatnikListFilterBar
               embedded
               bleed
+              visibleLabel="Szukaj w notatkach"
               value={searchQuery}
               onChange={setSearchQuery}
               matchCount={filtered.length}
               totalCount={notes.length}
-              placeholder="Szukaj po tytule lub treści notatki…"
+              placeholder={NOTATNIK_NOTES_SEARCH_PLACEHOLDER}
               searchLabel="Szukaj w notatkach"
-              idleHint="Filtruj notatki po tytule lub treści."
-              activeHint="Wyniki z przypiętych i zwykłych karteczek."
+              showIdleHint={false}
+              showActiveDetail={false}
               emptyMatchHint="Brak dopasowań — sprawdź tytuł lub treść notatki."
             />
           ) : null}

@@ -7,7 +7,7 @@ import {
 import { runOrderMaintenanceBeforePageLoad } from "@/lib/services/deferred-order-maintenance";
 import { actionFetchTodayDeliveryJournal, actionListWarehouseAssignSuppliers } from "@/app/actions/warehouse-delivery";
 import { getSessionUser } from "@/lib/auth";
-import { canAccessWarehouse, isMagazyn } from "@/lib/auth-roles";
+import { canManageSuppliers, isMagazyn } from "@/lib/auth-roles";
 import { fetchWarehouseCarriers } from "@/lib/data/warehouse-carriers";
 import { QueueClient } from "@/components/queue/QueueClient";
 import type { IndividualOrder } from "@/types/database";
@@ -67,7 +67,7 @@ export default async function KolejkaPage() {
       deliveryJournal={deliveryJournal}
       journalSuppliers={journalSuppliers}
       warehouseCarriers={warehouseCarriers}
-      canManageCarriers={role != null && canAccessWarehouse(role)}
+      canManageCarriers={role != null && canManageSuppliers(role)}
       isMagazynRole={role != null && isMagazyn(role)}
       loadError={error}
     />

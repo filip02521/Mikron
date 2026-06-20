@@ -11,6 +11,10 @@
     {
       "path": "/api/cron/catalog-zd-sync",
       "schedule": "0 1 * * *"
+    },
+    {
+      "path": "/api/cron/zd-eta-sync",
+      "schedule": "0 8,10,12,14,16,18 * * 1-5"
     }
   ]
 }

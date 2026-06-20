@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation";
 import { needsBootstrapSetup } from "@/lib/setup/bootstrap";
+import { isE2ELab } from "@/lib/e2e-lab/mode";
 import { fetchLoginDirectoryAccounts } from "@/lib/auth/login-directory";
 import { toPublicLoginDirectoryAccounts } from "@/lib/auth/login-directory-public";
 import { LoginPageClient } from "./LoginPageClient";
@@ -14,7 +15,9 @@ export const dynamic = "force-dynamic";
 export default async function LoginPage() {
   if (await needsBootstrapSetup()) redirect("/setup");
 
-  const accounts = toPublicLoginDirectoryAccounts(await fetchLoginDirectoryAccounts());
+  const accounts = isE2ELab()
+    ? toPublicLoginDirectoryAccounts(await fetchLoginDirectoryAccounts())
+    : [];
 
   return <LoginPageClient accounts={accounts} />;
 }

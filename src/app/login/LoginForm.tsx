@@ -19,11 +19,10 @@ import {
   LOGIN_RESET_LINK_SENDING,
 } from "@/lib/auth/login-form-copy";
 import { requestPasswordResetCode } from "@/lib/auth/password-reset-client";
-import {
-  readStoredPasswordResetSession,
-  writeStoredPasswordResetSession,
-} from "@/lib/auth/login-password-reset-session";
+import { writeStoredPasswordResetSession } from "@/lib/auth/login-password-reset-session";
+import { useStoredPasswordResetSession } from "@/lib/auth/use-stored-password-reset-session";
 import { LoginAccountPicker } from "@/components/auth/LoginAccountPicker";
+import { useLoginDirectorySearch } from "@/lib/auth/use-login-directory-search";
 import { LoginQuickAccountGreeting } from "@/components/auth/LoginQuickAccountGreeting";
 import { PasswordResetPanel } from "@/components/auth/PasswordResetPanel";
 import { useClientHydrated } from "@/lib/client/use-client-hydrated";
@@ -60,12 +59,14 @@ function deriveAccountSelection(
 }
 
 export function LoginForm({
-  accounts,
+  accounts: preloadedAccounts,
   onSubtitleModeChange,
 }: {
   accounts: LoginDirectoryAccountPublic[];
   onSubtitleModeChange?: (mode: LoginSubtitleMode) => void;
 }) {
+  const directory = useLoginDirectorySearch(preloadedAccounts);
+  const accounts = directory.accounts;
   const searchParams = useSearchParams();
   const hydrated = useClientHydrated();
   const next = searchParams.get("next");
@@ -73,26 +74,19 @@ export function LoginForm({
   const [accountSelectionOverride, setAccountSelectionOverride] =
     useState<AccountSelection | null>(null);
   const [manualEmail, setManualEmail] = useState("");
-  const [useManualEmail, setUseManualEmail] = useState(() => accounts.length === 0);
+  const [useManualEmail, setUseManualEmail] = useState(false);
   const [password, setPassword] = useState("");
   const [bannerError, setBannerError] = useState("");
   const [passwordError, setPasswordError] = useState("");
   const [loading, setLoading] = useState(false);
   const [resetSending, setResetSending] = useState(false);
-  const [resetSession, setResetSession] = useState<{
+  const [resetSessionOverride, setResetSessionOverride] = useState<{
     accountId: string;
     maskedEmail: string;
     resendAvailableAt: string;
-  } | null>(() => {
-    if (typeof window === "undefined") return null;
-    const stored = readStoredPasswordResetSession();
-    if (!stored) return null;
-    return {
-      accountId: stored.accountId,
-      maskedEmail: stored.maskedEmail,
-      resendAvailableAt: stored.resendAvailableAt,
-    };
-  });
+  } | null>(null);
+  const restoredResetSession = useStoredPasswordResetSession();
+  const resetSession = resetSessionOverride ?? restoredResetSession;
   const errorRef = useRef<HTMLDivElement>(null);
 
   const derivedAccountSelection = useMemo(
@@ -119,19 +113,21 @@ export function LoginForm({
     Boolean(selectedAccount) &&
     !showAccountPicker;
 
-  useEffect(() => {
-    if (!onSubtitleModeChange) return;
-    if (resetSession) {
-      onSubtitleModeChange("reset");
-      return;
-    }
-    const mode: LoginSubtitleMode = useManualEmail
+  const subtitleMode: LoginSubtitleMode = resetSession
+    ? "reset"
+    : useManualEmail
       ? "manual"
       : quickLoginActive
         ? "quick"
         : "picker";
-    onSubtitleModeChange(mode);
-  }, [useManualEmail, quickLoginActive, onSubtitleModeChange, resetSession]);
+  const lastSubtitleModeRef = useRef<LoginSubtitleMode | null>(null);
+
+  useEffect(() => {
+    if (!onSubtitleModeChange) return;
+    if (lastSubtitleModeRef.current === subtitleMode) return;
+    lastSubtitleModeRef.current = subtitleMode;
+    onSubtitleModeChange(subtitleMode);
+  }, [onSubtitleModeChange, subtitleMode]);
 
   const loginReady = useManualEmail ? Boolean(manualEmail.trim()) : Boolean(selectedAccountId);
 
@@ -182,7 +178,7 @@ export function LoginForm({
   const canResetPassword = !useManualEmail && Boolean(selectedAccountId);
 
   const exitPasswordReset = useCallback(() => {
-    setResetSession(null);
+    setResetSessionOverride(null);
     writeStoredPasswordResetSession(null);
     setBannerError("");
     setPasswordError("");
@@ -191,7 +187,7 @@ export function LoginForm({
 
   const persistResetSession = useCallback(
     (session: { accountId: string; maskedEmail: string; resendAvailableAt: string }) => {
-      setResetSession(session);
+      setResetSessionOverride(session);
       writeStoredPasswordResetSession({
         ...session,
         startedAt: new Date().toISOString(),
@@ -411,11 +407,17 @@ export function LoginForm({
                   value={selectedAccountId}
                   onChange={handleAccountChange}
                   disabled={loading}
+                  searchRequired={directory.searchRequired}
+                  query={directory.query}
+                  onQueryChange={directory.setQuery}
+                  loading={directory.loading}
+                  minQueryLength={directory.minQueryLength}
+                  fetchError={directory.fetchError}
                 />
               </Field>
             )}
 
-            {accounts.length > 0 && !useManualEmail ? (
+            {!useManualEmail ? (
               <div className="flex justify-end">
                 <button
                   type="button"
@@ -437,7 +439,7 @@ export function LoginForm({
               </div>
             ) : null}
 
-            {accounts.length > 0 && useManualEmail ? (
+            {useManualEmail ? (
               <div className="flex justify-end">
                 <button
                   type="button"

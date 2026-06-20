@@ -120,9 +120,7 @@ export function ZkWatchGroupedList({
   newLineKeysByWatchId,
   onWarehouseArrivalSeen,
   onNewZkLinesSeen,
-  onWatchDetailOpen,
-  prosbaScopeWatchId,
-  onProsbaScopeConfigured,
+  onProsbaScopeRequested,
   focusWatchId,
   onFocusWatchHandled,
   onLiveAnnounce,
@@ -133,9 +131,7 @@ export function ZkWatchGroupedList({
   newLineKeysByWatchId?: Record<string, string[]>;
   onWarehouseArrivalSeen?: (watchId: string) => void;
   onNewZkLinesSeen?: (watchId: string) => void;
-  onWatchDetailOpen?: (watchId: string) => void;
-  prosbaScopeWatchId?: string | null;
-  onProsbaScopeConfigured?: (watchId: string) => void;
+  onProsbaScopeRequested?: (watchId: string) => void;
   /** Po wejściu z linku (#watch-…) — rozwiń miesiąc i podświetl kartę. */
   focusWatchId?: string | null;
   onFocusWatchHandled?: (watchId: string) => void;
@@ -147,7 +143,11 @@ export function ZkWatchGroupedList({
   subiektReachable?: boolean;
   onClosed?: (watchId: string, closedAt: string) => void;
   onRestored?: (watch: SalesZkWatch) => void;
-  onRefreshed?: (watch: SalesZkWatch, refreshDiff?: ZkWatchRefreshDiff) => void;
+  onRefreshed?: (
+    watch: SalesZkWatch,
+    refreshDiff?: ZkWatchRefreshDiff,
+    options?: { skipRouterRefresh?: boolean }
+  ) => void;
   onDeleted?: (watchId: string) => void;
 }) {
   const groups = useMemo(() => groupZkWatchesByMonth(watches), [watches]);
@@ -276,9 +276,7 @@ export function ZkWatchGroupedList({
                       newLineKeys={newLineKeysByWatchId?.[watch.id]}
                       onWarehouseArrivalSeen={onWarehouseArrivalSeen}
                       onNewZkLinesSeen={onNewZkLinesSeen}
-                      onWatchDetailOpen={onWatchDetailOpen}
-                      prosbaScopeRequired={prosbaScopeWatchId === watch.id}
-                      onProsbaScopeConfigured={onProsbaScopeConfigured}
+                      onProsbaScopeRequested={onProsbaScopeRequested}
                     />
                   </li>
                 );

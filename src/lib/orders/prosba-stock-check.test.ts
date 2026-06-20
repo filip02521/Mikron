@@ -6,10 +6,11 @@ import {
   assessProsbaLineStock,
   assessProsbaLineStockFromDraft,
   buildProsbaSubmitStockConfirm,
-  buildZkProsbaScopeInitialInStockMarked,
+  buildZkProsbaScopeInitialOrderMarked,
   collectProsbaLineTwIdsMissingStock,
   collectZkProsbaScopeLineTwIds,
   deriveZkProsbaScopeInStockKeys,
+  deriveZkProsbaScopeSuggestedOrderKeys,
   filterProsbaLinesWithSufficientStock,
   filterZkProsbaScopeLineKeysNeedingOrder,
   formatProsbaStockLineHint,
@@ -195,37 +196,48 @@ describe("formatProsbaSufficientStockBanner", () => {
 });
 
 describe("formatZkProsbaScopeLineBadge", () => {
-  it("zaznaczone na stanie — etykieta z ilością", () => {
+  it("zaznaczone do zamówienia — etykieta", () => {
     expect(
       formatZkProsbaScopeLineBadge({
         sufficient: true,
-        markedInStock: true,
-        available: 12,
-        hasStockData: true,
-      })
-    ).toBe("Na stanie: 12 szt.");
-  });
-
-  it("odznaczone do zamówienia", () => {
-    expect(
-      formatZkProsbaScopeLineBadge({
-        sufficient: true,
-        markedInStock: false,
+        markedForOrder: true,
         available: 12,
         hasStockData: true,
       })
     ).toBe("Do zamówienia");
   });
 
-  it("częściowy stan bez zaznaczenia — pokazuje stan", () => {
+  it("odznaczone na stanie — pokazuje stan", () => {
+    expect(
+      formatZkProsbaScopeLineBadge({
+        sufficient: true,
+        markedForOrder: false,
+        available: 12,
+        hasStockData: true,
+      })
+    ).toBe("Na stanie: 12 szt.");
+  });
+
+  it("częściowy stan z zaznaczeniem — pokazuje stan", () => {
     expect(
       formatZkProsbaScopeLineBadge({
         sufficient: false,
-        markedInStock: false,
+        markedForOrder: true,
         available: 3,
         hasStockData: true,
       })
-    ).toBe("Stan: 3 szt.");
+    ).toBe("Do zamówienia · stan 3 szt.");
+  });
+
+  it("częściowy stan bez zaznaczenia — pominięte ze stanem", () => {
+    expect(
+      formatZkProsbaScopeLineBadge({
+        sufficient: false,
+        markedForOrder: false,
+        available: 3,
+        hasStockData: true,
+      })
+    ).toBe("Pominięte · stan 3 szt.");
   });
 });
 
@@ -260,7 +272,7 @@ describe("zkProsbaScopeLineNeedsOrdering", () => {
   });
 });
 
-describe("buildZkProsbaScopeInitialInStockMarked", () => {
+describe("buildZkProsbaScopeInitialOrderMarked", () => {
   const lines = [
     { key: "a", subiektTwId: 1, quantity: 2 },
     { key: "b", subiektTwId: 2, quantity: 5 },
@@ -274,13 +286,13 @@ describe("buildZkProsbaScopeInitialInStockMarked", () => {
 
   it("odwzorowuje zapisany zakres", () => {
     expect(
-      buildZkProsbaScopeInitialInStockMarked({
+      buildZkProsbaScopeInitialOrderMarked({
         lines,
         stockByTwId: stock,
         existingScope: ["b"],
         needsProsbaByKey: new Map(),
       })
-    ).toEqual(["a", "c"]);
+    ).toEqual(["b"]);
   });
 
   it("łączy explicit needs_prosba z auto-stanem", () => {
@@ -289,21 +301,21 @@ describe("buildZkProsbaScopeInitialInStockMarked", () => {
       ["c", false],
     ]);
     expect(
-      buildZkProsbaScopeInitialInStockMarked({
+      buildZkProsbaScopeInitialOrderMarked({
         lines,
         stockByTwId: stock,
         existingScope: null,
         needsProsbaByKey: needs,
       })
-    ).toEqual(["a", "c"]);
+    ).toEqual(["b"]);
   });
 });
 
 describe("formatZkProsbaAutoMarkedHint", () => {
   it("odmienia poprawnie", () => {
     expect(formatZkProsbaAutoMarkedHint(1)).toContain("1 pozycja");
-    expect(formatZkProsbaAutoMarkedHint(2)).toContain("2 pozycje mają");
-    expect(formatZkProsbaAutoMarkedHint(5)).toContain("5 pozycji ma");
+    expect(formatZkProsbaAutoMarkedHint(2)).toContain("2 pozycje wymagają");
+    expect(formatZkProsbaAutoMarkedHint(5)).toContain("5 pozycji wymaga");
   });
 });
 
@@ -326,15 +338,35 @@ describe("deriveZkProsbaScopeInStockKeys", () => {
   });
 });
 
+describe("deriveZkProsbaScopeSuggestedOrderKeys", () => {
+  const lines = [
+    { key: "a", subiektTwId: 1, quantity: 2 },
+    { key: "b", subiektTwId: 2, quantity: 5 },
+  ];
+  const stock = {
+    1: { onHand: 10, reserved: 0, available: 10, source: "subiekt" as const },
+    2: { onHand: 2, reserved: 0, available: 2, source: "subiekt" as const },
+  };
+
+  it("zwraca tylko linie wymagające zamówienia", () => {
+    expect(deriveZkProsbaScopeSuggestedOrderKeys(lines, stock)).toEqual(["b"]);
+  });
+
+  it("bez danych magazynowych — nic nie zaznacza", () => {
+    expect(deriveZkProsbaScopeSuggestedOrderKeys(lines, {})).toEqual([]);
+  });
+});
+
 describe("zkProsbaScopeLineKeysToOrder", () => {
   const lines = [
     { key: "a", subiektTwId: 1, quantity: 2 },
     { key: "b", subiektTwId: 2, quantity: 5 },
   ];
 
-  it("pomija pozycje oznaczone na stanie", () => {
-    expect(zkProsbaScopeLineKeysToOrder(lines, ["a"])).toEqual(["b"]);
-    expect(zkProsbaScopeLineKeysToOrder(lines, [])).toEqual(["a", "b"]);
+  it("zwraca tylko pozycje zaznaczone do zamówienia", () => {
+    expect(zkProsbaScopeLineKeysToOrder(lines, ["a"])).toEqual(["a"]);
+    expect(zkProsbaScopeLineKeysToOrder(lines, [])).toEqual([]);
+    expect(zkProsbaScopeLineKeysToOrder(lines, ["a", "b"])).toEqual(["a", "b"]);
   });
 });
 
@@ -490,7 +522,7 @@ describe("uniqueProsbaLineTwIds", () => {
 });
 
 describe("formatProsbaStockLineHint", () => {
-  it("zawiera nazwę, ilość i stan", () => {
+  it("zawiera tytuł, ilość i dostępny stan", () => {
     const hint = formatProsbaStockLineHint({
       product: "Wkręt",
       symbol: "W1",
@@ -498,8 +530,8 @@ describe("formatProsbaStockLineHint", () => {
       available: 10,
     });
     expect(hint).toContain("10 szt.");
-    expect(hint).toContain("Wkręt");
     expect(hint).toContain("3 szt.");
+    expect(hint).toContain("Wystarczający stan magazynowy");
   });
 });
 

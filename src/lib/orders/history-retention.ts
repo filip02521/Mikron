@@ -1,5 +1,11 @@
+import {
+  DATA_RETENTION_MONTHS,
+  dataRetentionCutoffDateOnly,
+  dataRetentionCutoffIso,
+} from "@/lib/data/data-retention";
+
 /** Ile miesięcy historii trzymamy w bazie i na ekranie /historia. */
-export const HISTORY_RETENTION_MONTHS = 6;
+export const HISTORY_RETENTION_MONTHS = DATA_RETENTION_MONTHS;
 
 /** Ile wpisów pokazujemy na stronie przed „Pokaż więcej”. */
 export const HISTORY_PREVIEW_COUNT = 6;
@@ -9,13 +15,11 @@ const TERMINAL_STATUSES = ["Zrealizowane", "Anulowane"] as const;
 export type HistoryTerminalStatus = (typeof TERMINAL_STATUSES)[number];
 
 export function historyRetentionCutoffIso(now = new Date()): string {
-  const d = new Date(now);
-  d.setMonth(d.getMonth() - HISTORY_RETENTION_MONTHS);
-  return d.toISOString();
+  return dataRetentionCutoffIso(now);
 }
 
 export function historyRetentionCutoffDateOnly(now = new Date()): string {
-  return historyRetentionCutoffIso(now).slice(0, 10);
+  return dataRetentionCutoffDateOnly(now);
 }
 
 export function isHistoryTerminalStatus(status: string): status is HistoryTerminalStatus {

@@ -153,7 +153,7 @@ describe("VerificationWorkspace", () => {
 
     expect(screen.getByText("Uzupełnianie prośby")).toBeTruthy();
     expect((screen.getByTestId("supplier-picker") as HTMLSelectElement).value).toBe("sup-b");
-    expect((screen.getByLabelText("Handlowiec") as HTMLSelectElement).value).toBe("sp-1");
+    expect((screen.getByLabelText("Dla kogo (handlowiec)") as HTMLSelectElement).value).toBe("sp-1");
     expect((screen.getByTestId("product-symbol") as HTMLInputElement).value).toBe("SR6");
     expect((screen.getByTestId("product-name") as HTMLInputElement).value).toBe("Śruba M6");
     expect((screen.getByTestId("product-qty") as HTMLInputElement).value).toBe("3");

@@ -1,6 +1,7 @@
 import type { IndividualOrder, IndividualRequestKind } from "@/types/database";
 import type { InformacjaFlowPath } from "@/lib/orders/informacja-stock-out-reorder";
 import { hasAnyProductHint } from "@/lib/orders/request-completeness";
+import { normalizeSalesRequestNote } from "@/lib/orders/sales-request-note";
 
 /** Prośbę można edytować, dopóki dział dostaw jej nie złożył u dostawcy. */
 export function isIndividualOrderEditable(order: IndividualOrder): boolean {
@@ -37,6 +38,7 @@ type EditLineDraft = {
   reserved?: number | null;
   available?: number | null;
   stockSource?: "subiekt" | null;
+  requestNote?: string;
 };
 
 /**
@@ -78,6 +80,7 @@ export function toIndividualRequestEditLinePayload(
     reserved: line.reserved,
     available: line.available,
     stockSource: line.stockSource,
+    requestNote: line.requestNote,
   };
 }
 
@@ -95,9 +98,10 @@ export type IndividualRequestEditLineInput = {
   reserved?: number | null;
   available?: number | null;
   stockSource?: "subiekt" | null;
+  requestNote?: string | null;
 };
 
-/** Notatka w zapisie edycji — `undefined` zachowuje uwagi per linia przy mieszanych notatkach. */
+/** @deprecated Używaj `requestNote` na każdej linii w `lines`. */
 export function editRequestNoteForSave(
   requestNote: string,
   options: { mixedOnLines: boolean; touched: boolean; initialNote?: string }
@@ -174,5 +178,6 @@ export function ordersToEditLines(orders: IndividualOrder[]): IndividualRequestE
     clientName: o.sales_client_name ?? "",
     clientKhId: o.sales_client_kh_id ?? null,
     subiektTwId: o.subiekt_tw_id ?? null,
+    requestNote: normalizeSalesRequestNote(o.sales_request_note) ?? "",
   }));
 }

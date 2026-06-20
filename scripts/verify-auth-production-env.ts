@@ -75,6 +75,24 @@ function main() {
     );
     process.exit(1);
   }
+
+  const e2eLab = env.E2E_LAB?.trim() ?? "";
+  if (e2eLab === "1") {
+    console.error("✗ E2E_LAB=1 jest zabronione na produkcji — wyłącz przed deployem.");
+    process.exit(1);
+  }
+
+  const setupToken = env.SETUP_TOKEN?.trim() ?? "";
+  if (!setupToken) {
+    console.warn(
+      "⚠ Brak SETUP_TOKEN — bootstrap admina na produkcji wymaga tokenu w URL (/setup?token=...)."
+    );
+  } else if (setupToken.length < 16) {
+    console.error("✗ SETUP_TOKEN za krótki — użyj min. 16 znaków (openssl rand -hex 16).");
+    process.exit(1);
+  } else {
+    console.log("✓ SETUP_TOKEN ustawiony");
+  }
 }
 
 main();

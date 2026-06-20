@@ -38,10 +38,17 @@ const watch: SalesZkWatch = {
 const hints: ZkWatchOrderHints = {
   matchingOpenRequestCount: 0,
   matchingOpenRequestIds: [],
+  matchedDeliveredLineKeys: [],
   allLinesMatchedByOrders: false,
   lineCoverageByKey: {},
   uncoveredLineKeys: ["ob:2", "ob:3"],
   openProsbaCoveredLineKeys: [],
+  prosbaScopeConfigured: true,
+  inStockLineKeys: [],
+  regalWaitingLineKeys: [],
+  informacjaReadyLineKeys: [],
+  informacjaAcknowledgedLineKeys: [],
+  scopeExcludedLineKeys: [],
 };
 
 describe("zk-watch-new-lines-state", () => {

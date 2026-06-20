@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { createClient } from "@/lib/supabase/client";
 import { useRouter, useSearchParams } from "next/navigation";
 import { cn } from "@/lib/cn";
 import { Alert } from "@/components/ui/Alert";
@@ -10,18 +9,15 @@ import { buttonPrimaryClass } from "@/lib/ui/ontime-theme";
 import { fieldControlClass } from "@/components/ui/Field";
 import { AuthFormStatus } from "@/components/auth/AuthFormStatus";
 import { NewPasswordForm } from "@/components/auth/NewPasswordForm";
-import { actionFinalizeSalesPersonInvite } from "@/app/actions/users";
-import { actionClearMustChangePassword } from "@/app/actions/sales-manager";
 import {
   establishPasswordLinkSession,
   locationHadPasswordLinkTokens,
   scrubPasswordLinkFromLocation,
 } from "@/lib/auth/establish-password-link-session";
+import { createClient } from "@/lib/supabase/client";
 import { postLoginEnteringUrl } from "@/lib/auth/post-login-entering";
-import {
-  translatePasswordLinkError,
-  translatePasswordUpdateError,
-} from "@/lib/auth/password-link-errors";
+import { translatePasswordLinkError } from "@/lib/auth/password-link-errors";
+import { actionCompletePasswordChange } from "@/app/actions/sales-manager";
 
 type Phase = "checking" | "ready" | "error" | "no_session";
 
@@ -101,30 +97,14 @@ export function SetPasswordForm() {
     setError("");
     setLoading(true);
 
-    const supabase = createClient();
-    const { error: updateError } = await supabase.auth.updateUser({ password });
-
-    if (updateError) {
+    const result = await actionCompletePasswordChange(password);
+    if ("error" in result) {
       setLoading(false);
-      setError(translatePasswordUpdateError(updateError.message));
+      setError(result.error);
       return;
     }
 
-    const finalize = await actionFinalizeSalesPersonInvite();
-    if ("error" in finalize) {
-      setLoading(false);
-      setError(finalize.error);
-      return;
-    }
-
-    const cleared = await actionClearMustChangePassword();
-    if ("error" in cleared) {
-      setLoading(false);
-      setError(cleared.error);
-      return;
-    }
-
-    window.location.assign(postLoginEnteringUrl(cleared.redirectTo));
+    window.location.assign(postLoginEnteringUrl(result.redirectTo));
   }
 
   if (phase === "checking") {

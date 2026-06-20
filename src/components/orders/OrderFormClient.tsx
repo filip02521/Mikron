@@ -11,11 +11,10 @@ import { Button } from "@/components/ui/Button";
 import { Toast } from "@/components/ui/Toast";
 import { Field, Select } from "@/components/ui/Field";
 import { SupplierPickerField } from "@/components/orders/SupplierPickerField";
-import type { DeliveryStats, IndividualRequestKind } from "@/types/database";
-import { RequestKindToggle } from "@/components/orders/RequestKindToggle";
+import type { IndividualRequestKind } from "@/types/database";
 import { ProsbaFormSection } from "@/components/orders/ProsbaFormSection";
 import { prosbaHref } from "@/lib/orders/prosba-url";
-import { IconLayers, IconPlusCircle, IconAvailability, IconPackageCheck, IconUserCog } from "@/components/icons/StrokeIcons";
+import { IconLayers, IconPlusCircle, IconUserCog, IconUserGroup } from "@/components/icons/StrokeIcons";
 import { SectionHeadingIcon } from "@/components/icons/SectionHeadingIcon";
 import { cn } from "@/lib/cn";
 import { sectionIconTileBrandClass } from "@/lib/ui/ontime-theme";
@@ -23,12 +22,9 @@ import { AppBrandContentFooter } from "@/components/layout/AppBrandContentFooter
 import { ProsbaFormMetaStrip } from "@/components/orders/ProsbaFormMetaStrip";
 import { ProsbaPageToolbar } from "@/components/orders/ProsbaPageToolbar";
 import { hasAnyProductHint, hasValidOrderQuantity } from "@/lib/orders/request-completeness";
-import { assessProcurementGroupCompleteness, buildProcurementFormReadiness } from "@/lib/orders/procurement-form-readiness";
-import { InformacjaFlowPicker } from "@/components/orders/InformacjaFlowPicker";
+import { buildProcurementFormReadiness } from "@/lib/orders/procurement-form-readiness";
 import {
   DEFAULT_INFORMACJA_FLOW_PATH,
-  INFORMACJA_FLOW_PICKER_SECTION,
-  INFORMACJA_FLOW_PICKER_SECTION_DAILY,
   informacjaProductsFormHint,
   informacjaSalesFooterNote,
 } from "@/lib/orders/informacja-flow-ui";
@@ -36,20 +32,23 @@ import {
   flagsFromInformacjaFlowPath,
   type InformacjaFlowPath,
 } from "@/lib/orders/informacja-stock-out-reorder";
-import type { RequestCompleteness } from "@/lib/orders/request-completeness";
 import { assertProcurementEntryComplete } from "@/lib/orders/procurement-submit";
 import { assessSalesGroupSubmittable } from "@/lib/orders/sales-request-submit";
-import { buildProsbaFormReadiness } from "@/lib/orders/prosba-form-readiness";
-import { RequestFormStatusPanel } from "@/components/orders/RequestFormStatusPanel";
+import { buildProsbaFormReadiness, buildProsbaFormReadinessWithSupplier } from "@/lib/orders/prosba-form-readiness";
+import { PROSBA_FORM_SECTION_COPY } from "@/lib/orders/prosba-form-section-copy";
+import { PROSBA_PAGE_HEADER_HINTS } from "@/lib/orders/prosba-optional-section-copy";
 import { ProsbaFormReadiness } from "@/components/orders/ProsbaFormReadiness";
+import {
+  ProsbaFormInformacjaSection,
+  ProsbaFormKeyboardStrip,
+  ProsbaFormProductsSection,
+  ProsbaFormRequestKindSection,
+} from "@/components/orders/ProsbaFormSharedSections";
 import { RequestProductLinesEditor } from "@/components/orders/RequestProductLinesEditor";
-import { SalesRequestNoteField } from "@/components/orders/SalesRequestNoteField";
 import { ActionLoadingOverlay } from "@/components/ui/ActionLoadingOverlay";
 import { newProductLine, appendProductLine } from "@/components/orders/request-product-lines";
-import type { SubiektFeedback } from "@/lib/subiekt/feedback";
 import type { OrderFormSupplierOption } from "@/lib/orders/order-form-suppliers";
 import { toAppSupplierRefs } from "@/lib/subiekt/match-supplier";
-import { KeyboardShortcutsHint } from "@/components/ui/KeyboardShortcutsHint";
 import {
   handleSalesProsbaKeyboardEvent,
   SALES_PROSBA_KEYBOARD_HINTS,
@@ -79,24 +78,6 @@ import { clearUnseenNewZkLineKeys, removeUnseenNewZkLineKeys } from "@/lib/clien
 import { ProsbaStockConfirmDialog } from "@/components/orders/ProsbaStockConfirmDialog";
 import { buildProsbaSubmitStockConfirm } from "@/lib/orders/prosba-stock-check";
 import { handleProsbaStockSubmitError } from "@/lib/orders/prosba-stock-submit-error";
-
-function groupCompletenessAssessment(
-  group: Entry[],
-  requestKind: IndividualRequestKind
-): RequestCompleteness | null {
-  return assessProcurementGroupCompleteness(
-    group.map((row) => ({
-      symbol: row.symbol,
-      mikranCode: row.mikranCode,
-      product: row.product,
-      quantity: row.quantity,
-      supplierId: row.supplierId,
-      subiektTwId: row.subiektTwId,
-    })),
-    group[0]?.supplierId ?? "",
-    requestKind
-  );
-}
 
 function formatSubmitResult(
   r: {
@@ -146,6 +127,7 @@ interface Entry {
   reserved?: number | null;
   available?: number | null;
   stockSource?: "subiekt" | null;
+  requestNote?: string;
 }
 
 function emptyEntry(salesPersonId = ""): Entry {
@@ -163,9 +145,6 @@ function emptyGroup(salesPersonId = "", supplierId = ""): Entry[] {
   return [row];
 }
 
-const SALES_PROSBA_INTRO =
-  "Formalne zgłoszenie do działu zakupów — po wysłaniu status i kolejne kroki zobaczysz w Moje zamówienia.";
-
 function buildInitialGroups(
   lockedId: string,
   initialSupplierId?: string | null
@@ -176,7 +155,6 @@ function buildInitialGroups(
 export function OrderFormClient({
   suppliers,
   salesPeople,
-  statsBySupplierId = {},
   lockedSalesPerson,
   singleGroup = false,
   submitForOther = false,
@@ -187,7 +165,6 @@ export function OrderFormClient({
 }: {
   suppliers: OrderFormSupplierOption[];
   salesPeople: { id: string; name: string }[];
-  statsBySupplierId?: Record<string, DeliveryStats>;
   /** Zalogowany handlowiec — bez wyboru „dla kogo”. */
   lockedSalesPerson?: { id: string; name: string } | null;
   /** Uproszczony formularz dla handlowca (jedna grupa produktów) */
@@ -215,7 +192,6 @@ export function OrderFormClient({
   const [groups, setGroups] = useState<Entry[][]>(() =>
     buildInitialGroups(lockedId, initialSupplierId)
   );
-  const [groupRequestNotes, setGroupRequestNotes] = useState<string[]>([""]);
   const [pending, start] = useTransition();
   const [pendingMessage, setPendingMessage] = useState<string | null>(null);
   const [msg, setMsg] = useState<{
@@ -225,15 +201,6 @@ export function OrderFormClient({
     actionLabel?: string;
   } | null>(null);
   const dismissToast = useCallback(() => setMsg(null), []);
-  const [supplierSubiektFeedback, setSupplierSubiektFeedback] =
-    useState<SubiektFeedback | null>(null);
-  const [supplierPickerFeedbacks, setSupplierPickerFeedbacks] = useState<SubiektFeedback[]>(
-    []
-  );
-  const [productLineFeedback, setProductLineFeedback] = useState<SubiektFeedback | null>(
-    null
-  );
-  const [configFeedback, setConfigFeedback] = useState<SubiektFeedback | null>(null);
   const [resolvingSupplier, setResolvingSupplier] = useState(false);
   const deferSupplierResolve = Boolean(singleGroup && lockedSalesPerson);
   const [formNotice, setFormNotice] = useState<{
@@ -263,7 +230,6 @@ export function OrderFormClient({
   if (tourFormKey && tourFormKey !== appliedTourFormKey) {
     setAppliedTourFormKey(tourFormKey);
     setGroups([buildOnboardingProsbaLines(lockedId)]);
-    setGroupRequestNotes([""]);
     setRequestKind("zamowienie");
     setValidationAttempted(false);
     setFormNotice(null);
@@ -285,7 +251,11 @@ export function OrderFormClient({
       if (!prefill.lines.length) return;
       const clientName = prefill.clientName?.trim() || "";
       const clientKhId = prefill.clientKhId ?? null;
-      setRequestKind("zamowienie");
+      const nextRequestKind = prefill.requestKind ?? "zamowienie";
+      setRequestKind(nextRequestKind);
+      if (nextRequestKind === "informacja") {
+        setInformacjaPath(DEFAULT_INFORMACJA_FLOW_PATH);
+      }
       setValidationAttempted(false);
       setFormNotice(null);
       setMsg(null);
@@ -300,7 +270,6 @@ export function OrderFormClient({
           lineKeys: prefill.lineKeys,
         });
       }
-      setGroupRequestNotes([""]);
       const baseLines = prefill.lines.map((line) => ({
         id: line.id,
         supplierId: "",
@@ -308,7 +277,7 @@ export function OrderFormClient({
         symbol: line.symbol,
         mikranCode: line.mikranCode,
         product: line.product,
-        quantity: line.quantity,
+        quantity: nextRequestKind === "informacja" ? "" : line.quantity,
         clientName: clientName || line.clientName,
         clientKhId: clientKhId ?? line.clientKhId ?? null,
         subiektTwId: line.subiektTwId ?? null,
@@ -336,6 +305,8 @@ export function OrderFormClient({
       const zkWatch = searchParams.get("zkWatch")?.trim();
       const zk = searchParams.get("zk")?.trim();
       const zkLineKeys = parseProsbaZkLineKeysParam(searchParams.get("zkLines"));
+      const requestKindFromUrl =
+        searchParams.get("rodzaj") === "informacja" ? ("informacja" as const) : undefined;
 
       try {
         if (cancelled) return;
@@ -343,7 +314,8 @@ export function OrderFormClient({
           const fromWatch = await actionGetZkProsbaPrefillByWatchId(
             zkWatch,
             delegateId || undefined,
-            zkLineKeys
+            zkLineKeys,
+            requestKindFromUrl
           );
           if (!cancelled && fromWatch?.lines.length) {
             applyZkPrefill(fromWatch);
@@ -450,7 +422,6 @@ export function OrderFormClient({
       supplierId: string,
       groupIndex = 0
     ) => {
-      setSupplierSubiektFeedback(null);
       setGroups((g) =>
         g.map((gr, i) =>
           i === groupIndex ? gr.map((row) => ({ ...row, supplierId })) : gr
@@ -547,11 +518,8 @@ export function OrderFormClient({
         setFormNotice(null);
         setValidationAttempted(false);
         setInformacjaPath(DEFAULT_INFORMACJA_FLOW_PATH);
-        setSupplierSubiektFeedback(null);
-        setProductLineFeedback(null);
         setZkProsbaLinkContext(null);
         setGroups(buildInitialGroups(lockedId, initialSupplierId));
-        setGroupRequestNotes([""]);
         setStockConfirmOpen(false);
       } catch (e) {
         handleProsbaStockSubmitError(
@@ -643,11 +611,10 @@ export function OrderFormClient({
     }
 
     const entries: (Entry & { requestNote?: string })[] = [];
-    groups.forEach((group, gi) => {
+    groups.forEach((group) => {
       const supplierId =
         singleGroup && lockedSalesPerson ? "" : (group[0]?.supplierId ?? "");
       const salesPersonId = lockedId || (group[0]?.salesPersonId ?? "");
-      const requestNote = groupRequestNotes[gi] ?? "";
       group.forEach((e) => {
         const draft = {
           supplierId: supplierId || e.supplierId,
@@ -661,7 +628,7 @@ export function OrderFormClient({
           ...e,
           supplierId: supplierId || e.supplierId,
           salesPersonId,
-          requestNote,
+          requestNote: e.requestNote?.trim() || undefined,
         });
       });
     });
@@ -757,6 +724,40 @@ export function OrderFormClient({
     });
   }, [singleGroup, lockedSalesPerson, lockedId, clearFormNotice]);
 
+  const addProcurementProductLine = useCallback(() => {
+    if (singleGroup && lockedSalesPerson) return;
+    clearFormNotice();
+    setGroups((g) => {
+      if (!g.length) return g;
+      const gi = 0;
+      const group = g[gi] ?? emptyGroup(lockedId);
+      const appended = appendProductLine(group);
+      if (appended.length <= group.length) return g;
+      const newLine = appended[appended.length - 1]!;
+      const inheritClient = group[0];
+      return g.map((gr, i) =>
+        i === gi
+          ? [
+              ...group,
+              {
+                ...newLine,
+                supplierId: group[0]?.supplierId ?? "",
+                salesPersonId: group[0]?.salesPersonId ?? lockedId,
+                clientName: inheritClient?.clientName,
+                clientKhId: inheritClient?.clientKhId ?? null,
+              },
+            ]
+          : gr
+      );
+    });
+  }, [singleGroup, lockedSalesPerson, lockedId, clearFormNotice]);
+
+  const setProcurementRequestKind = useCallback((kind: IndividualRequestKind) => {
+    setRequestKind(kind);
+    if (kind === "informacja") setInformacjaPath(DEFAULT_INFORMACJA_FLOW_PATH);
+    else setInformacjaPath("direct");
+  }, []);
+
   const salesProsbaSubmitState = useMemo(() => {
     if (!singleGroup || !lockedSalesPerson) {
       return null;
@@ -817,16 +818,23 @@ export function OrderFormClient({
       handleProcurementProsbaKeyboardEvent(e, {
         pending,
         onSubmit: () => submitRef.current(),
+        onSetRequestKind: setProcurementRequestKind,
+        onAddProductLine: addProcurementProductLine,
       });
     };
 
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [singleGroup, lockedSalesPerson, pending]);
+  }, [
+    singleGroup,
+    lockedSalesPerson,
+    pending,
+    setProcurementRequestKind,
+    addProcurementProductLine,
+  ]);
 
   const removeGroup = (gi: number) => {
     setGroups((g) => (g.length <= 1 ? g : g.filter((_, i) => i !== gi)));
-    setGroupRequestNotes((n) => (n.length <= 1 ? n : n.filter((_, i) => i !== gi)));
   };
 
   const updateGroupLines = (gi: number, lines: Entry[]) => {
@@ -917,10 +925,12 @@ export function OrderFormClient({
               </SectionHeadingIcon>
             }
             title="Nowa prośba"
+            hint={submitForOther ? undefined : PROSBA_PAGE_HEADER_HINTS.newRequest}
+            hintAriaLabel="O formularzu prośby"
             description={
               submitForOther
                 ? `Zgłaszasz w imieniu: ${lockedSalesPerson.name}. Po wysłaniu prośba pojawi się w jego liście „Moje zamówienia”.`
-                : SALES_PROSBA_INTRO
+                : undefined
             }
           />
 
@@ -973,13 +983,13 @@ export function OrderFormClient({
           >
             {delegatePeople && delegatePeople.length > 0 ? (
               <ProsbaFormSection
-                title="W czyim imieniu?"
-                hint="Kierownik może złożyć prośbę dla handlowca z zespołu."
+                title={PROSBA_FORM_SECTION_COPY.delegate.title}
+                hint={PROSBA_FORM_SECTION_COPY.delegate.hint}
                 accent="indigo"
                 icon={<IconUserCog size={17} />}
                 tileClassName="bg-indigo-100 text-indigo-800"
               >
-                <Field label="Handlowiec">
+                <Field labelClassName="inline-flex min-h-6 items-center" label="Handlowiec">
                   <Select
                     value={lockedSalesPerson.id}
                     onChange={(e) => {
@@ -1004,55 +1014,34 @@ export function OrderFormClient({
               </ProsbaFormSection>
             ) : null}
 
-            <ProsbaFormSection
-              title="Co chcesz zgłosić?"
-              hint="Wybierz jedną opcję — pola poniżej dopasują się do rodzaju prośby."
-              accent="indigo"
-              icon={<IconPlusCircle size={17} />}
-              tileClassName={sectionIconTileBrandClass}
-            >
-              <RequestKindToggle
-                value={requestKind}
-                onChange={(kind) => {
-                  setRequestKind(kind);
-                  if (kind === "informacja") setInformacjaPath(DEFAULT_INFORMACJA_FLOW_PATH);
-                  else setInformacjaPath("direct");
-                }}
-              />
-            </ProsbaFormSection>
+            <ProsbaFormRequestKindSection
+              value={requestKind}
+              disabled={pending || tourDemo}
+              onChange={(kind) => {
+                setRequestKind(kind);
+                if (kind === "informacja") setInformacjaPath(DEFAULT_INFORMACJA_FLOW_PATH);
+                else setInformacjaPath("direct");
+              }}
+            />
 
             {requestKind === "informacja" ? (
-              <ProsbaFormSection
-                title={INFORMACJA_FLOW_PICKER_SECTION.title}
-                hint={INFORMACJA_FLOW_PICKER_SECTION.hint}
-                accent="violet"
-                icon={<IconAvailability size={17} />}
-                tileClassName="bg-violet-100 text-violet-800"
-              >
-                <InformacjaFlowPicker
-                  path={informacjaPath}
-                  onChange={setInformacjaPath}
-                  disabled={pending}
-                />
-              </ProsbaFormSection>
+              <ProsbaFormInformacjaSection
+                path={informacjaPath}
+                onChange={setInformacjaPath}
+                disabled={pending || tourDemo}
+              />
             ) : null}
 
-            <ProsbaFormSection
-              title="Produkty"
+            <ProsbaFormProductsSection
+              requestKind={requestKind}
+              informacjaPath={informacjaPath}
               hint={
                 requestKind === "informacja"
                   ? informacjaProductsFormHint(informacjaPath)
-                  : "Podaj nazwę lub symbol oraz ilość. Dostawcę dobierzemy automatycznie albo uzupełni dział zakupów."
-              }
-              accent={requestKind === "informacja" ? "violet" : "slate"}
-              icon={<IconPackageCheck size={17} />}
-              tileClassName={
-                requestKind === "informacja"
-                  ? "bg-violet-100 text-violet-800"
-                  : "bg-slate-100 text-slate-700"
+                  : PROSBA_FORM_SECTION_COPY.products.orderHint
               }
             >
-              <div className="space-y-4">
+              <div className="space-y-3">
                 <RequestProductLinesEditor
                   lines={group}
                   onChange={(lines) => {
@@ -1073,20 +1062,6 @@ export function OrderFormClient({
                   liveValidation={!tourDemo}
                 />
 
-                <SalesRequestNoteField
-                  value={groupRequestNotes[0] ?? ""}
-                  onChange={(value) => {
-                    clearFormNotice();
-                    setGroupRequestNotes((n) => {
-                      const next = [...n];
-                      next[0] = value;
-                      return next;
-                    });
-                  }}
-                  disabled={pending || tourDemo}
-                  audience="sales"
-                />
-
                 <ProsbaFormReadiness
                   lines={group}
                   requestKind={requestKind}
@@ -1094,17 +1069,23 @@ export function OrderFormClient({
                   formMessage={formNotice}
                   resolvingSupplier={resolvingSupplier}
                   informacjaPath={informacjaPath}
+                  validationAttempted={validationAttempted}
                 />
               </div>
-            </ProsbaFormSection>
+            </ProsbaFormProductsSection>
           </div>
 
-          <div className="flex flex-col gap-2.5 border-t border-slate-200/80 bg-slate-50/35 px-3 py-3 sm:flex-row sm:items-center sm:justify-between sm:px-4">
-            <p className="text-xs leading-relaxed text-slate-500">
-              {requestKind === "informacja"
-                ? informacjaSalesFooterNote(informacjaPath)
-                : "Po wysłaniu status w Moje zamówienia. O ważnych zmianach dostaniesz też e-mail."}
-            </p>
+          <div
+            className={cn(
+              "flex flex-col gap-2.5 border-t border-slate-200/80 bg-slate-50/35 px-3 py-3 sm:flex-row sm:items-center sm:px-4",
+              requestKind === "informacja" ? "sm:justify-between" : "sm:justify-end"
+            )}
+          >
+            {requestKind === "informacja" ? (
+              <p className="text-xs leading-relaxed text-slate-500">
+                {informacjaSalesFooterNote(informacjaPath)}
+              </p>
+            ) : null}
             <Button
               disabled={pending || tourDemo || readOnly || !canSubmitProsba}
               onClick={submit}
@@ -1143,41 +1124,29 @@ export function OrderFormClient({
             </SectionHeadingIcon>
           }
           title="Zamówienie grupowe"
-          description="Wiele produktów w jednej lub kilku grupach — jeden dostawca i handlowiec na grupę."
+          hint={PROSBA_PAGE_HEADER_HINTS.groupOrder}
+          hintAriaLabel="O zamówieniu grupowym"
         />
 
-        <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5 border-b border-slate-100 bg-slate-50/60 px-4 py-2.5 sm:px-6">
-          <span className="shrink-0 text-xs font-medium text-slate-600">Skróty klawiszowe</span>
-          <KeyboardShortcutsHint items={[...PROCUREMENT_PROSBA_KEYBOARD_HINTS]} compact />
-        </div>
+        <ProsbaFormKeyboardStrip hints={PROCUREMENT_PROSBA_KEYBOARD_HINTS} variant="procurement" />
 
-        <div className="space-y-6 border-b border-slate-100 px-4 py-5 sm:px-6">
-          <ProsbaFormSection
-            title="Rodzaj prośby"
-            hint="Zamówienie u dostawcy albo tylko informacja o dostępności na magazynie"
-          >
-            <RequestKindToggle
-              value={requestKind}
-              onChange={(kind) => {
-                setRequestKind(kind);
-                if (kind === "informacja") setInformacjaPath(DEFAULT_INFORMACJA_FLOW_PATH);
-                else setInformacjaPath("direct");
-              }}
-            />
-          </ProsbaFormSection>
+        <div className="space-y-3 p-3 sm:p-4">
+          <ProsbaFormRequestKindSection
+            value={requestKind}
+            onChange={(kind) => {
+              setRequestKind(kind);
+              if (kind === "informacja") setInformacjaPath(DEFAULT_INFORMACJA_FLOW_PATH);
+              else setInformacjaPath("direct");
+            }}
+          />
 
           {requestKind === "informacja" ? (
-            <ProsbaFormSection
-              title={INFORMACJA_FLOW_PICKER_SECTION_DAILY.title}
-              hint={INFORMACJA_FLOW_PICKER_SECTION_DAILY.hint}
-            >
-              <InformacjaFlowPicker
-                path={informacjaPath}
-                onChange={setInformacjaPath}
-                disabled={pending}
-                includeViaPanel
-              />
-            </ProsbaFormSection>
+            <ProsbaFormInformacjaSection
+              path={informacjaPath}
+              onChange={setInformacjaPath}
+              disabled={pending}
+              includeViaPanel
+            />
           ) : null}
         </div>
       </Card>
@@ -1193,14 +1162,14 @@ export function OrderFormClient({
                   : "Twoja prośba"
                 : `Grupa ${gi + 1}`
             }
+            hint={PROSBA_PAGE_HEADER_HINTS.groupCard}
+            hintAriaLabel="O grupie produktów"
             description={
               lockedSalesPerson
                 ? requestKind === "informacja"
-                  ? `Zgłaszasz jako ${lockedSalesPerson.name} — powiadomienie o dostępności na magazynie`
-                  : `Zgłaszasz jako ${lockedSalesPerson.name} — wybierz dostawcę i produkty`
-                : requestKind === "informacja"
-                  ? "Powiadomienie — bez składania zamówienia u dostawcy"
-                  : "Jeden dostawca i handlowiec — wiele produktów"
+                  ? `Handlowiec: ${lockedSalesPerson.name} · informacja o dostępności`
+                  : `Handlowiec: ${lockedSalesPerson.name}`
+                : undefined
             }
             action={
               !singleGroup && groups.length > 1 ? (
@@ -1216,7 +1185,7 @@ export function OrderFormClient({
               ) : null
             }
           />
-          <div className="space-y-4 px-6 pb-6">
+          <div className="space-y-3 px-3 pb-4 sm:px-4">
             <div
               className={cn(
                 "grid gap-3",
@@ -1224,18 +1193,74 @@ export function OrderFormClient({
               )}
             >
               {lockedSalesPerson ? (
-                <div className="rounded-md border border-indigo-100 bg-indigo-50/60 px-4 py-3 text-sm text-slate-800">
-                  <span className="font-medium text-slate-900">Dla kogo: </span>
-                  {lockedSalesPerson.name}
-                  <span className="mt-1 block text-xs text-slate-600">
-                    {submitForOther
-                      ? "Prośba pojawi się w liście „Moje zamówienia” tego handlowca."
-                      : "Powiązane z Twoim kontem — nie trzeba wybierać z listy."}
-                  </span>
-                </div>
+                <ProsbaFormSection
+                  title={PROSBA_FORM_SECTION_COPY.delegate.title}
+                  hint={
+                    submitForOther
+                      ? PROSBA_FORM_SECTION_COPY.delegate.hint
+                      : "Prośba powiązana z Twoim kontem — nie trzeba wybierać z listy."
+                  }
+                  accent="indigo"
+                  icon={<IconUserCog size={17} />}
+                  tileClassName="bg-indigo-100 text-indigo-800"
+                >
+                  <p className="text-sm font-medium text-slate-900">{lockedSalesPerson.name}</p>
+                </ProsbaFormSection>
               ) : null}
-              <div className="sm:col-span-2">
-                <Field label="Dostawca">
+              {!lockedSalesPerson ? (
+                <ProsbaFormSection
+                  title={PROSBA_FORM_SECTION_COPY.delegateProcurement.title}
+                  hint={PROSBA_FORM_SECTION_COPY.delegateProcurement.hint}
+                  accent="indigo"
+                  icon={<IconUserGroup size={17} />}
+                  tileClassName="bg-indigo-100 text-indigo-800"
+                  className={lockedSalesPerson ? undefined : "sm:col-span-2"}
+                >
+                  <div className="grid gap-3 sm:grid-cols-2 sm:items-start">
+                    <Field labelClassName="inline-flex min-h-6 items-center" label="Dla kogo (handlowiec)">
+                      <Select
+                        value={group[0]?.salesPersonId ?? ""}
+                        onChange={(e) => {
+                          const v = e.target.value;
+                          setGroups((g) =>
+                            g.map((gr, i) =>
+                              i === gi
+                                ? gr.map((row) => ({ ...row, salesPersonId: v }))
+                                : gr
+                            )
+                          );
+                        }}
+                      >
+                        <option value="">Wybierz osobę</option>
+                        {salesPeople.map((p) => (
+                          <option key={p.id} value={p.id}>
+                            {p.name}
+                          </option>
+                        ))}
+                      </Select>
+                    </Field>
+                    <Field labelClassName="inline-flex min-h-6 items-center" label="Dostawca">
+                      <SupplierPickerField
+                        suppliers={suppliers}
+                        value={group[0]?.supplierId ?? ""}
+                        onChange={(v) => {
+                          clearFormNotice();
+                          setGroups((g) =>
+                            g.map((gr, i) =>
+                              i === gi ? gr.map((row) => ({ ...row, supplierId: v })) : gr
+                            )
+                          );
+                        }}
+                        allowEmpty
+                        emptyLabel="Wybierz dostawcę"
+                        placeholder="Szukaj dostawcy w systemie lub Subiekcie…"
+                        showInlineFeedback={false}
+                      />
+                    </Field>
+                  </div>
+                </ProsbaFormSection>
+              ) : (
+                <Field labelClassName="inline-flex min-h-6 items-center" label="Dostawca">
                   <SupplierPickerField
                     suppliers={suppliers}
                     value={group[0]?.supplierId ?? ""}
@@ -1251,122 +1276,66 @@ export function OrderFormClient({
                     emptyLabel="Wybierz dostawcę"
                     placeholder="Szukaj dostawcy w systemie lub Subiekcie…"
                     showInlineFeedback={false}
-                    onSubiektFeedbackChange={setSupplierPickerFeedbacks}
                   />
                 </Field>
-              </div>
-              {!lockedSalesPerson ? (
-                <Field label="Dla kogo (handlowiec)">
-                  <Select
-                    value={group[0]?.salesPersonId ?? ""}
-                    onChange={(e) => {
-                      const v = e.target.value;
-                      setGroups((g) =>
-                        g.map((gr, i) =>
-                          i === gi
-                            ? gr.map((row) => ({ ...row, salesPersonId: v }))
-                            : gr
-                        )
-                      );
-                    }}
-                  >
-                    <option value="">Wybierz osobę</option>
-                    {salesPeople.map((p) => (
-                      <option key={p.id} value={p.id}>
-                        {p.name}
-                      </option>
-                    ))}
-                  </Select>
-                </Field>
-              ) : null}
+              )}
             </div>
 
-            <RequestProductLinesEditor
-              lines={group}
-              onChange={(lines) => {
-                clearFormNotice();
-                updateGroupLines(gi, lines as Entry[]);
-              }}
+            <ProsbaFormProductsSection
               requestKind={requestKind}
-              addLabel="+ Kolejny produkt w grupie"
-              showClientField={Boolean(lockedSalesPerson)}
-              suppliers={supplierRefs}
-              unifiedFeedback
-              onSupplierResolved={({ supplierId }) =>
-                applySupplierFromSubiekt(supplierId, gi)
+              informacjaPath={informacjaPath}
+              hint={
+                requestKind === "informacja"
+                  ? informacjaProductsFormHint(informacjaPath)
+                  : PROSBA_FORM_SECTION_COPY.products.orderHint
               }
-              onSupplierMappingMissing={() =>
-                setGroups((g) =>
-                  g.map((gr, i) =>
-                    i === gi ? gr.map((row) => ({ ...row, supplierId: "" })) : gr
-                  )
-                )
-              }
-              onSupplierResolveFeedback={setSupplierSubiektFeedback}
-              onProductFeedbackChange={setProductLineFeedback}
-              onConfigFeedbackChange={setConfigFeedback}
-              onResolvingSupplierChange={setResolvingSupplier}
-              validationAttempted={validationAttempted}
-            />
+            >
+              <div className="space-y-3">
+                <RequestProductLinesEditor
+                  lines={group}
+                  onChange={(lines) => {
+                    clearFormNotice();
+                    updateGroupLines(gi, lines as Entry[]);
+                  }}
+                  requestKind={requestKind}
+                  appearance="prosba"
+                  addLabel="+ Kolejny produkt w grupie"
+                  showClientField={Boolean(lockedSalesPerson)}
+                  suppliers={supplierRefs}
+                  unifiedFeedback
+                  onSupplierResolved={({ supplierId }) =>
+                    applySupplierFromSubiekt(supplierId, gi)
+                  }
+                  onSupplierMappingMissing={() =>
+                    setGroups((g) =>
+                      g.map((gr, i) =>
+                        i === gi ? gr.map((row) => ({ ...row, supplierId: "" })) : gr
+                      )
+                    )
+                  }
+                  onResolvingSupplierChange={setResolvingSupplier}
+                  validationAttempted={validationAttempted}
+                  liveValidation
+                />
 
-            {!lockedSalesPerson ? (
-              <SalesRequestNoteField
-                value={groupRequestNotes[gi] ?? ""}
-                onChange={(value) => {
-                  clearFormNotice();
-                  setGroupRequestNotes((n) => {
-                    const next = [...n];
-                    while (next.length <= gi) next.push("");
-                    next[gi] = value;
-                    return next;
-                  });
-                }}
-                disabled={pending || readOnly}
-                audience="procurement"
-                id={`procurement-request-note-${gi}`}
-              />
-            ) : null}
-
-            <RequestFormStatusPanel
-              requestKind={requestKind}
-              draft={{
-                supplierId: group[0]?.supplierId,
-                symbol: group.find((r) => r.symbol.trim())?.symbol,
-                mikranCode: group.find((r) => r.mikranCode.trim())?.mikranCode,
-                product: group.find((r) => r.product.trim())?.product,
-                quantity: group.find((r) => r.quantity.trim())?.quantity,
-                requestKind,
-                informacjaQueueViaDailyPanel: informacjaFlags.informacjaQueueViaDailyPanel,
-                informacjaStockOutReorder: informacjaFlags.informacjaStockOutReorder,
-              }}
-              forcedAssessment={groupCompletenessAssessment(group, requestKind)}
-              subiektFeedbacks={[
-                configFeedback,
-                ...supplierPickerFeedbacks,
-                supplierSubiektFeedback,
-                productLineFeedback,
-              ]}
-              resolvingSupplier={resolvingSupplier}
-              leadTime={
-                requestKind === "zamowienie" && group[0]?.supplierId
-                  ? {
-                      stats: statsBySupplierId[group[0].supplierId],
-                      statsMode:
-                        suppliers.find((s) => s.id === group[0]?.supplierId)?.stats_mode ??
-                        "LACZNIE",
-                    }
-                  : null
-              }
-              scheduleHint={
-                initialSupplierId &&
-                group[0]?.supplierId === initialSupplierId &&
-                suppliers.some((s) => s.id === initialSupplierId)
-                  ? `Wybrany z harmonogramu: ${suppliers.find((s) => s.id === initialSupplierId)?.name ?? ""}`
-                  : null
-              }
-              formMessage={gi === 0 ? formNotice : null}
-              audience="procurement"
-            />
+                <ProsbaFormReadiness
+                  lines={group}
+                  requestKind={requestKind}
+                  salesSubmitPlan={
+                    buildProsbaFormReadinessWithSupplier(
+                      group,
+                      group[0]?.supplierId ?? "",
+                      requestKind,
+                      { informacjaPath, resolvingSupplier }
+                    ).plan
+                  }
+                  formMessage={gi === 0 ? formNotice : null}
+                  informacjaPath={informacjaPath}
+                  resolvingSupplier={resolvingSupplier}
+                  validationAttempted={validationAttempted}
+                />
+              </div>
+            </ProsbaFormProductsSection>
           </div>
         </Card>
       ))}
@@ -1389,7 +1358,6 @@ export function OrderFormClient({
                 type="button"
                 onClick={() => {
                   setGroups((g) => [...g, emptyGroup(lockedId)]);
-                  setGroupRequestNotes((n) => [...n, ""]);
                 }}
               >
                 + Nowa grupa

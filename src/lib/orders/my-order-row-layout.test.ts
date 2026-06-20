@@ -142,6 +142,58 @@ describe("my-order-row-layout", () => {
     expect(myOrderCollapsedSubline(r)).toBeNull();
   });
 
+  it("wielu terminów ZD — podpowiedź rozwinięcia zamiast liczby produktów", () => {
+    const r = row({
+      zdFulfillment: {
+        deadline: "2026-07-15",
+        dokNr: "ZD/1",
+        syncedAt: null,
+        source: "zd",
+        slots: [
+          { deadline: "2026-07-15", dokNr: "ZD/1", count: 1 },
+          { deadline: "2026-07-22", dokNr: "ZD/2", count: 1 },
+        ],
+      },
+    });
+    expect(myOrderExpandHint(r, { listKind: "zamowienie", showGroupPickup: false })).toBe(
+      "Rozwiń po oba terminy"
+    );
+  });
+
+  it("grupa mieszana ZD + brak terminu — podpowiedź o wszystkich terminach", () => {
+    const r = row({
+      zdFulfillment: {
+        deadline: "2026-06-24",
+        dokNr: "ZD/1",
+        syncedAt: null,
+        source: "zd",
+      },
+      lines: [
+        {
+          ...row().lines[0]!,
+          id: "l1",
+          zdEtaNoMatch: true,
+          historyEstimateLabel: "ok. 22.06.2026 (~5 dni rob.)",
+        },
+        {
+          ...row().lines[0]!,
+          id: "l2",
+          product: "B",
+          zdFulfillment: {
+            deadline: "2026-06-24",
+            dokNr: "ZD/1",
+            syncedAt: null,
+            source: "zd",
+          },
+        },
+      ],
+      lineCount: 2,
+    });
+    expect(myOrderExpandHint(r, { listKind: "zamowienie", showGroupPickup: false })).toBe(
+      "Rozwiń po wszystkie terminy"
+    );
+  });
+
   it("pojedyncza prośba — skrót bez nazwy produktu na liście", () => {
     const r = row({ subline: null });
     expect(myOrderCollapsedProductMode(r, "zamowienie")).toBe("summary");

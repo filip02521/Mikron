@@ -7,11 +7,11 @@ import { isAdmin } from "@/lib/auth-roles";
 /** Podgląd panelu handlowca (kierownik / admin). */
 export async function resolvePreviewSalesPerson(
   salesPersonId: string,
-  viewer?: Pick<SessionUser, "id" | "role">
+  viewer: Pick<SessionUser, "id" | "role">
 ): Promise<ResolvedSalesPerson | null> {
-  if (!hasSupabaseConfig() || !salesPersonId) return null;
+  if (!hasSupabaseConfig() || !salesPersonId || !viewer) return null;
 
-  if (viewer && !isAdmin(viewer.role)) {
+  if (!isAdmin(viewer.role)) {
     const allowed = await canAccessSalesPerson(viewer, salesPersonId);
     if (!allowed) return null;
   }

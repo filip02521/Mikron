@@ -94,7 +94,7 @@ describe("sales onboarding steps", () => {
   it("moje step mentions client label and informacja section", () => {
     const moje = getSalesOnboardingSteps("sales").find((s) => s.id === "moje");
     expect(moje?.bullets.some((b) => /klienta końcowego/i.test(b))).toBe(true);
-    expect(moje?.bullets.some((b) => /Tylko sprawdzamy dostępność/i.test(b))).toBe(true);
+    expect(moje?.bullets.some((b) => /Sprawdzamy dostępność/i.test(b))).toBe(true);
     expect(moje?.navLabel).toBe("Moje zamówienia");
   });
 
@@ -104,7 +104,9 @@ describe("sales onboarding steps", () => {
     expect(notatnik?.navLabel).toBe("ZK czekające");
     expect(notatnik?.bullets[0]).toMatch(/Do zrobienia dziś/i);
     expect(notatnik?.bullets[1]).toMatch(/Zakładka „ZK”/i);
-    expect(notatnik?.bullets[4]).toMatch(/Notatnik/i);
+    expect(notatnik?.bullets[3]).toMatch(/Zakończone/i);
+    expect(notatnik?.bullets[5]).toMatch(/Notatnik/i);
+    expect(notatnik?.tip).toMatch(/Rozumiem/i);
   });
 
   it("plan step describes open requests before procurement calendar", () => {

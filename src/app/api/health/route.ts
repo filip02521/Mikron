@@ -8,11 +8,19 @@ import { authorizeCronRequest } from "@/lib/services/cron-auth";
 
 export const dynamic = "force-dynamic";
 
-export async function GET(request: NextRequest) {
-  if (getCronSecret()) {
-    const denied = authorizeCronRequest(request.headers.get("authorization"));
-    if (denied) return denied;
+function authorizeHealthRequest(request: NextRequest): NextResponse | null {
+  if (isProductionRuntime()) {
+    return authorizeCronRequest(request.headers.get("authorization"));
   }
+  if (getCronSecret()) {
+    return authorizeCronRequest(request.headers.get("authorization"));
+  }
+  return null;
+}
+
+export async function GET(request: NextRequest) {
+  const denied = authorizeHealthRequest(request);
+  if (denied) return denied;
 
   const checks: Record<string, boolean | string> = {};
   const issues: string[] = [];

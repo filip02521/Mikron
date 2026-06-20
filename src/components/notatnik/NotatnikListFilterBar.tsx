@@ -4,7 +4,7 @@ import { useEffect, useId } from "react";
 import { Input } from "@/components/ui/Field";
 import { IconSearch } from "@/components/icons/StrokeIcons";
 import { cn } from "@/lib/cn";
-import { brandLinkSubtleClass } from "@/lib/ui/ontime-theme";
+import { brandLinkSubtleClass, salesChromeInsetClass, salesTypography } from "@/lib/ui/ontime-theme";
 
 export function NotatnikListFilterBar({
   value,
@@ -16,9 +16,12 @@ export function NotatnikListFilterBar({
   activeHint = "Wyniki z aktywnej listy ZK.",
   emptyMatchHint = "Brak dopasowań — sprawdź numer ZK, nazwę klienta lub fragment produktu.",
   searchLabel = "Szukaj na liście ZK",
+  visibleLabel,
   enableShortcut = true,
   embedded = false,
   bleed = false,
+  showIdleHint = true,
+  showActiveDetail = true,
 }: {
   value: string;
   onChange: (value: string) => void;
@@ -29,10 +32,16 @@ export function NotatnikListFilterBar({
   activeHint?: string;
   emptyMatchHint?: string;
   searchLabel?: string;
+  /** Widoczny nagłówek nad polem (zamiast samego sr-only) — czytelniejsze dla użytkowników. */
+  visibleLabel?: string;
   enableShortcut?: boolean;
   embedded?: boolean;
-  /** Pełna szerokość obramowania w panelu z paddingiem (jak lista /moje). */
+  /** Pełna szerokość w panelu z paddingiem rodzica — wymaga `px-3 sm:px-4` u nadkomponentu. */
   bleed?: boolean;
+  /** Akapit pod polem gdy brak frazy — domyślnie włączony (ZK, plan). */
+  showIdleHint?: boolean;
+  /** Drugi wiersz pod licznikiem wyników. */
+  showActiveDetail?: boolean;
 }) {
   const inputId = useId();
   const trimmed = value.trim();
@@ -66,51 +75,62 @@ export function NotatnikListFilterBar({
         embedded
           ? cn(
               "pb-2.5 pt-0",
-              bleed ? "-mx-3 px-3 sm:-mx-4 sm:px-4" : "px-0"
+              bleed ? "-mx-3 px-3 sm:-mx-4 sm:px-4" : cn(salesChromeInsetClass, "pt-3")
             )
-          : "px-3 py-2.5 sm:px-4"
+          : cn(salesChromeInsetClass, "py-2.5")
       )}
     >
-      <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+      <div className="flex flex-col gap-2">
         <div className="relative min-w-0 flex-1">
-          <label htmlFor={inputId} className="sr-only">
-            {searchLabel}
-          </label>
-          <span
-            className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"
-            aria-hidden
-          >
-            <IconSearch size={18} strokeWidth={2} />
-          </span>
-          <Input
-            id={inputId}
-            type="search"
-            value={value}
-            onChange={(e) => onChange(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === "Escape" && value) {
-                e.preventDefault();
-                onChange("");
-                (e.target as HTMLInputElement).blur();
-              }
-            }}
-            placeholder={placeholder}
-            className="pl-10"
-            autoComplete="off"
-            spellCheck={false}
-            enterKeyHint="search"
-          />
+          {visibleLabel ? (
+            <label
+              htmlFor={inputId}
+              className={cn(salesTypography.sectionLabel, "mb-1 block normal-case text-slate-700")}
+            >
+              {visibleLabel}
+            </label>
+          ) : (
+            <label htmlFor={inputId} className="sr-only">
+              {searchLabel}
+            </label>
+          )}
+          <div className="relative">
+            <span
+              className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"
+              aria-hidden
+            >
+              <IconSearch size={18} strokeWidth={2} />
+            </span>
+            <Input
+              id={inputId}
+              type="search"
+              value={value}
+              onChange={(e) => onChange(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Escape" && value) {
+                  e.preventDefault();
+                  onChange("");
+                  (e.target as HTMLInputElement).blur();
+                }
+              }}
+              placeholder={placeholder}
+              className="pl-10"
+              autoComplete="off"
+              spellCheck={false}
+              enterKeyHint="search"
+            />
+          </div>
         </div>
         {active ? (
           <button
             type="button"
             className={cn(
               "shrink-0 self-start rounded-md border border-slate-200 bg-slate-50 px-3 py-2.5 text-xs font-semibold text-slate-700",
-              "hover:bg-slate-100 sm:min-h-[2.5rem]"
+              "hover:bg-slate-100 min-h-11 sm:min-h-[2.5rem]"
             )}
             onClick={() => onChange("")}
           >
-            Wyczyść
+            Wyczyść filtr
           </button>
         ) : null}
       </div>
@@ -128,10 +148,12 @@ export function NotatnikListFilterBar({
               </button>
             </span>
           ) : (
-            <span className="mt-1 block text-slate-500">{activeHint}</span>
+            showActiveDetail ? (
+              <span className="mt-1 block text-slate-500">{activeHint}</span>
+            ) : null
           )}
         </p>
-      ) : (
+      ) : showIdleHint ? (
         <p className="mt-2 text-xs text-slate-500">
           {idleHint}
           {enableShortcut ? (
@@ -144,7 +166,7 @@ export function NotatnikListFilterBar({
             </span>
           ) : null}
         </p>
-      )}
+      ) : null}
     </div>
   );
 }

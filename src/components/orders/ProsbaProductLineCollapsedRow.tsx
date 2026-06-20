@@ -2,8 +2,11 @@
 
 import type { ProductLineDraft } from "@/components/orders/request-product-lines";
 import { formatProsbaLineSummary } from "@/lib/orders/prosba-product-line-ui";
-import { isProsbaLineStockSufficient } from "@/lib/orders/prosba-stock-check";
-import { zkWatchLineUiStateMeta } from "@/lib/sales/zk-watch-line-ui-state";
+import {
+  buildProsbaLineStockStatusView,
+  prosbaLineStockBadgeClass,
+  prosbaLineStockRowTintClass,
+} from "@/lib/orders/prosba-line-stock-ui";
 import type { IndividualRequestKind } from "@/types/database";
 import { Button } from "@/components/ui/Button";
 import { IconCircleCheck, IconAlertCircle } from "@/components/icons/StrokeIcons";
@@ -27,19 +30,19 @@ export function ProsbaProductLineCollapsedRow({
   onRemove: () => void;
 }) {
   const summary = formatProsbaLineSummary(line, requestKind);
-  const inStock =
-    requestKind === "zamowienie" && isProsbaLineStockSufficient(line, requestKind);
-  const inStockMeta = zkWatchLineUiStateMeta("in_stock");
+  const stockView = buildProsbaLineStockStatusView(line, requestKind);
 
   return (
     <div
       className={cn(
         "flex items-start gap-3 px-3 py-2.5 sm:items-center sm:px-4",
-        inStock
-          ? inStockMeta.rowTintClass
-          : summary.fromSubiekt
-            ? "bg-emerald-50/70"
-            : "bg-white"
+        hasFieldIssues
+          ? "bg-white"
+          : stockView
+            ? prosbaLineStockRowTintClass(stockView.tone)
+            : summary.fromSubiekt
+              ? "bg-emerald-50/70"
+              : "bg-white"
       )}
     >
       <span
@@ -47,7 +50,7 @@ export function ProsbaProductLineCollapsedRow({
           "mt-0.5 flex size-8 shrink-0 items-center justify-center rounded-full sm:mt-0",
           hasFieldIssues
             ? "bg-amber-100 text-amber-800"
-            : inStock
+            : stockView
               ? "bg-slate-100 text-slate-600"
               : summary.fromSubiekt
                 ? "bg-emerald-100 text-emerald-700"
@@ -56,8 +59,8 @@ export function ProsbaProductLineCollapsedRow({
         title={
           hasFieldIssues
             ? "Uzupełnij brakujące pola"
-            : inStock
-              ? inStockMeta.label
+            : stockView
+              ? stockView.title
               : summary.fromSubiekt
                 ? "Powiązano z Subiektem"
                 : "Pozycja gotowa"
@@ -81,14 +84,14 @@ export function ProsbaProductLineCollapsedRow({
               {summary.quantityLabel}
             </span>
           ) : null}
-          {inStock ? (
+          {stockView ? (
             <span
               className={cn(
                 "shrink-0 rounded-full px-1.5 py-0.5 text-[11px] font-semibold",
-                inStockMeta.badgeClass
+                prosbaLineStockBadgeClass(stockView.tone)
               )}
             >
-              {inStockMeta.shortLabel}
+              {stockView.shortLabel}
             </span>
           ) : null}
         </div>
@@ -98,6 +101,11 @@ export function ProsbaProductLineCollapsedRow({
         {summary.clientName ? (
           <p className="mt-0.5 truncate text-xs text-indigo-800/90">
             Klient: {summary.clientName}
+          </p>
+        ) : null}
+        {line.requestNote?.trim() ? (
+          <p className="mt-0.5 truncate text-xs text-slate-500">
+            Notatka: {line.requestNote.trim()}
           </p>
         ) : null}
       </div>

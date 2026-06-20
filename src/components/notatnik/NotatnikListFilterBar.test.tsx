@@ -10,6 +10,22 @@ describe("NotatnikListFilterBar", () => {
     cleanup();
   });
 
+  it("stosuje inset w trybie embedded bez bleed", () => {
+    const { container } = render(
+      <NotatnikListFilterBar
+        embedded
+        value=""
+        onChange={vi.fn()}
+        matchCount={0}
+        totalCount={3}
+      />
+    );
+
+    const root = container.firstElementChild;
+    expect(root?.className).toContain("px-3");
+    expect(root?.className).not.toContain("-mx-3");
+  });
+
   it("stosuje bleed w trybie embedded", () => {
     const { container } = render(
       <NotatnikListFilterBar
@@ -27,18 +43,17 @@ describe("NotatnikListFilterBar", () => {
     expect(root?.className).toContain("sm:-mx-4");
   });
 
-  it("bez bleed nie dodaje ujemnych marginesów", () => {
-    const { container } = render(
+  it("renderuje widoczny nagłówek gdy podano visibleLabel", () => {
+    const { getByText } = render(
       <NotatnikListFilterBar
-        embedded
+        visibleLabel="Szukaj na swojej liście"
         value=""
         onChange={vi.fn()}
-        matchCount={0}
+        matchCount={2}
         totalCount={3}
       />
     );
 
-    const root = container.firstElementChild;
-    expect(root?.className).not.toContain("-mx-3");
+    expect(getByText("Szukaj na swojej liście")).toBeTruthy();
   });
 });

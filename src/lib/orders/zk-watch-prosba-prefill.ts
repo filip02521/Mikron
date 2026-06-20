@@ -1,7 +1,7 @@
 import { randomId } from "@/lib/ensure-crypto";
 import { buildZkWatchLineViews } from "@/lib/sales/zk-watch-lines";
 import type { ProductLineDraft } from "@/components/orders/request-product-lines";
-import type { SalesZkWatch } from "@/types/database";
+import type { IndividualRequestKind, SalesZkWatch } from "@/types/database";
 import { prosbaHref } from "./prosba-url";
 
 export const ZK_PROSBA_PREFILL_STORAGE_KEY = "ontime-prosba-zk-prefill";
@@ -17,11 +17,13 @@ export type ZkProsbaPrefill = {
   mode?: ZkProsbaPrefillMode;
   supplementLineCount?: number;
   lineKeys?: string[];
+  requestKind?: IndividualRequestKind;
 };
 
 export type ZkProsbaPrefillOptions = {
   lineKeys?: string[];
   mode?: ZkProsbaPrefillMode;
+  requestKind?: IndividualRequestKind;
 };
 
 function normalizeSubiektTwId(value: unknown): number | null {
@@ -50,7 +52,13 @@ export function zkProsbaPrefillFromWatch(
     subiektTwId: normalizeSubiektTwId(line.subiektTwId),
   }));
 
-  const mode = options?.mode ?? (options?.lineKeys?.length ? "supplement" : "full");
+  const mode =
+    options?.mode ??
+    (options?.requestKind === "informacja"
+      ? "full"
+      : options?.lineKeys?.length
+        ? "supplement"
+        : "full");
 
   return {
     zkWatchId: watch.id ? String(watch.id) : null,
@@ -61,6 +69,7 @@ export function zkProsbaPrefillFromWatch(
     mode,
     ...(mode === "supplement" ? { supplementLineCount: lines.length } : {}),
     ...(options?.lineKeys?.length ? { lineKeys: [...options.lineKeys] } : {}),
+    ...(options?.requestKind ? { requestKind: options.requestKind } : {}),
   };
 }
 
@@ -146,6 +155,10 @@ export function readZkProsbaPrefill(): ZkProsbaPrefill | null {
       mode: parsed.mode,
       supplementLineCount: parsed.supplementLineCount,
       lineKeys: parsed.lineKeys,
+      requestKind:
+        parsed.requestKind === "informacja" || parsed.requestKind === "zamowienie"
+          ? parsed.requestKind
+          : undefined,
     };
   } catch {
     return null;
@@ -205,7 +218,7 @@ export function buildProsbaPrefillFromUrlParams(options: {
 
 export function prosbaHrefFromZkWatch(
   watch: SalesZkWatch,
-  options?: Pick<ZkProsbaPrefillOptions, "lineKeys">
+  options?: Pick<ZkProsbaPrefillOptions, "lineKeys" | "requestKind">
 ): string {
   return prosbaHref({
     salesPersonId: watch.sales_person_id,
@@ -215,5 +228,6 @@ export function prosbaHrefFromZkWatch(
     klient: watch.client_label,
     clientKhId: watch.client_kh_id,
     zkLineKeys: options?.lineKeys,
+    requestKind: options?.requestKind,
   });
 }

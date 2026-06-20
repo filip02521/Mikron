@@ -1,6 +1,9 @@
-import { createClient } from "@/lib/supabase/server";
-import { fetchProfileByUserId } from "@/lib/auth/profile";
-import { assertAdminNotInReadOnlyPanelPreview } from "@/lib/auth/guard-admin-panel-preview";
+import { fetchOwnProfileForSession } from "@/lib/auth/profile";
+import {
+  assertAdminNotInReadOnlyPanelPreview,
+  assertAdminPanelAllowsOperationsMutations,
+  assertAdminPanelAllowsWarehouseMutations,
+} from "@/lib/auth/guard-admin-panel-preview";
 import {
   canAccessOperations,
   canAccessWarehouse,
@@ -23,20 +26,12 @@ export interface SessionUser {
 }
 
 export async function getSessionUser(): Promise<SessionUser | null> {
-  const supabase = await createClient();
-  const {
-    data: { user },
-    error: authError,
-  } = await supabase.auth.getUser();
-
-  if (authError || !user) return null;
-
-  const profile = await fetchProfileByUserId(user.id);
+  const profile = await fetchOwnProfileForSession();
   if (!profile) return null;
 
   return {
-    id: user.id,
-    email: profile.email ?? user.email ?? "",
+    id: profile.id,
+    email: profile.email ?? "",
     role: profile.role,
     salesPersonId: profile.sales_person_id,
     mustChangePassword: profile.must_change_password,
@@ -107,7 +102,7 @@ export async function requireOperations(
     throw new Error("Brak uprawnień do operacji zakupowych");
   }
   if (intent === "mutate") {
-    await assertAdminNotInReadOnlyPanelPreview(user);
+    await assertAdminPanelAllowsOperationsMutations(user);
   }
   return user;
 }
@@ -121,7 +116,7 @@ export async function requireWarehouse(
     throw new Error("Brak uprawnień magazynu");
   }
   if (intent === "mutate") {
-    await assertAdminNotInReadOnlyPanelPreview(user);
+    await assertAdminPanelAllowsWarehouseMutations(user);
   }
   return user;
 }
@@ -135,7 +130,7 @@ export async function requireSupplierManagement(
     throw new Error("Brak uprawnień do zarządzania dostawcami");
   }
   if (intent === "mutate") {
-    await assertAdminNotInReadOnlyPanelPreview(user);
+    await assertAdminPanelAllowsOperationsMutations(user);
   }
   return user;
 }
@@ -146,7 +141,7 @@ export async function getSessionUserForMutation(): Promise<SessionUser> {
   if (!user) {
     throw new Error("Brak sesji — zaloguj się ponownie.");
   }
-  await assertAdminNotInReadOnlyPanelPreview(user);
+  await assertAdminPanelAllowsOperationsMutations(user);
   return user;
 }
 

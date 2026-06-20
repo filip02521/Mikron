@@ -4,6 +4,7 @@
  */
 
 import { cn } from "@/lib/cn";
+import { panelActionSegmentClass } from "@/lib/ui/surfaces";
 import type { NavTone } from "@/lib/nav";
 
 /** Tło całej aplikacji (main + shell) */
@@ -260,24 +261,27 @@ export const mojeSecondaryControlClass = cn(
   mojeControlHeightClass
 );
 
-/** Potwierdzenie odbioru / akcja wymagająca reakcji. */
+/** Potwierdzenie odbioru / akcja wymagająca reakcji — outline (spójne z resztą panelu). */
 export const mojePickupControlClass = cn(
-  "inline-flex items-center justify-center gap-0.5 rounded-md border border-emerald-700 bg-emerald-600 px-3 text-xs font-semibold text-white shadow-sm transition",
-  "hover:bg-emerald-700 active:bg-emerald-800 disabled:cursor-not-allowed disabled:opacity-50",
+  "inline-flex min-w-[4.75rem] items-center justify-center rounded-md border border-emerald-200/90 bg-emerald-50/90 px-2.5 py-0 text-center text-xs font-semibold leading-none text-emerald-800 shadow-sm transition sm:min-w-[4.5rem]",
+  "hover:border-emerald-300 hover:bg-emerald-100 active:bg-emerald-100/90 disabled:cursor-not-allowed disabled:opacity-50",
+  "focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-500/40",
   mojeControlHeightClass
 );
 
 /** Potwierdzenie powiadomienia informacyjnego od magazynu. */
 export const mojeInformacjaAckControlClass = cn(
-  "inline-flex items-center justify-center gap-0.5 rounded-md border border-violet-700 bg-violet-600 px-3 text-xs font-semibold text-white shadow-sm transition",
-  "hover:bg-violet-700 active:bg-violet-800 disabled:cursor-not-allowed disabled:opacity-50",
+  "inline-flex items-center justify-center gap-0.5 rounded-md border border-violet-200/90 bg-violet-50/90 px-3 text-xs font-semibold text-violet-800 shadow-sm transition",
+  "hover:border-violet-300 hover:bg-violet-100 active:bg-violet-100/90 disabled:cursor-not-allowed disabled:opacity-50",
+  "focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-violet-500/40",
   mojeControlHeightClass
 );
 
-/** Ukrycie anulowania / informacji o rezygnacji — spójne z amber w magazynie. */
+/** Ukrycie anulowania / informacji o rezygnacji. */
 export const mojeCancelAckControlClass = cn(
-  "inline-flex items-center justify-center gap-0.5 rounded-md border border-amber-700 bg-amber-600 px-3 text-xs font-semibold text-white shadow-sm transition",
-  "hover:bg-amber-700 active:bg-amber-800 disabled:cursor-not-allowed disabled:opacity-50",
+  "inline-flex items-center justify-center gap-0.5 rounded-md border border-amber-200/90 bg-amber-50/90 px-3 text-xs font-semibold text-amber-900 shadow-sm transition",
+  "hover:border-amber-300 hover:bg-amber-100 active:bg-amber-100/90 disabled:cursor-not-allowed disabled:opacity-50",
+  "focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber-500/40",
   mojeControlHeightClass
 );
 
@@ -367,6 +371,26 @@ export const panelTypography = {
   tab: "text-sm font-medium",
   tabBadge: "text-xs font-semibold tabular-nums",
   statValue: "text-xl font-semibold tabular-nums tracking-tight text-slate-900",
+} as const;
+
+/** Meta terminów dostawy / ZD na /moje — spokojna hierarchia jak PlannedOrderDateMeta. */
+export const deliveryMetaTypography = {
+  caption:
+    "text-[11px] font-medium uppercase tracking-wide text-slate-400",
+  captionZd: "text-[11px] font-medium uppercase tracking-wide text-indigo-600/75",
+  captionAvailable: "text-[11px] font-medium uppercase tracking-wide text-sky-700/85",
+  captionOverdue: "text-[11px] font-medium uppercase tracking-wide text-amber-800/85",
+  captionPending: "text-[11px] font-medium text-slate-500 normal-case tracking-normal",
+  dateBadge:
+    "max-w-full whitespace-normal rounded-md bg-slate-50 px-2 py-0.5 text-[10px] font-semibold leading-snug text-slate-700 ring-1 ring-slate-200/90 tabular-nums",
+  dateBadgeAvailable:
+    "max-w-full whitespace-normal rounded-md bg-sky-50 px-2 py-0.5 text-[10px] font-semibold leading-snug text-sky-950 ring-1 ring-sky-200/90 tabular-nums",
+  dateBadgeOverdue:
+    "max-w-full whitespace-normal rounded-md bg-amber-50 px-2 py-0.5 text-[10px] font-semibold leading-snug text-amber-950 ring-1 ring-amber-200/90 tabular-nums",
+  statusBadge:
+    "max-w-full whitespace-normal rounded-md bg-slate-50 px-2 py-0.5 text-[10px] font-semibold leading-snug text-slate-600 ring-1 ring-slate-200/90",
+  statusBadgePending:
+    "max-w-full whitespace-normal rounded-md bg-slate-50 px-2 py-0.5 text-[10px] font-medium leading-snug text-slate-600 ring-1 ring-slate-200/80",
 } as const;
 
 /** Wypełnienie paska postępu */
@@ -631,20 +655,46 @@ export const panelSegmentControlClass =
 export const panelSegmentOutlineClass =
   "flex h-full min-h-0 shrink-0 items-center justify-center rounded-none border-0 border-l border-indigo-200/90 bg-[var(--primary-muted)]/60 px-2 text-xs font-semibold leading-none text-indigo-800 shadow-none transition-colors duration-150 hover:bg-[var(--primary-muted)] disabled:cursor-not-allowed disabled:opacity-50 sm:px-2.5";
 
-export const panelSegmentLastClass = "rounded-r-md";
+export const panelSegmentFirstClass = "rounded-l-md";
+
+export const panelSegmentLastClass = "rounded-l-none rounded-r-md";
+
+/** Etykieta w segmencie paska akcji /moje. */
+export const mojeAckSegmentLabelClass =
+  "pointer-events-none select-none text-xs font-semibold leading-none";
+
+/** Segment „Potwierdź” — stała szerokość, bez rozciągania (w-full obcinało tekst). */
+export const mojeAckToolbarSegmentClass = cn(
+  panelActionSegmentClass,
+  "min-w-[4.75rem] shrink-0 px-2 sm:min-w-[4.5rem] sm:px-2.5"
+);
 
 /** Segment potwierdzenia w grupie akcji /moje — h-full wypełnia obudowę. */
-export const mojeAckSegmentPrimaryClass =
-  "flex h-full min-h-0 shrink-0 items-center justify-center rounded-none border-0 bg-emerald-600 px-2.5 text-xs font-semibold leading-none text-white shadow-none transition-colors duration-150 hover:bg-emerald-700 active:bg-emerald-800 disabled:cursor-not-allowed disabled:opacity-50 sm:px-2";
+export const mojeAckSegmentPrimaryClass = cn(
+  mojeAckToolbarSegmentClass,
+  "rounded-none border-0 bg-emerald-50/95 text-emerald-800 shadow-none transition-colors duration-150 hover:bg-emerald-100 active:bg-emerald-100/90 disabled:cursor-not-allowed disabled:opacity-50"
+);
 
-export const mojeAckSegmentInformacjaClass =
-  "flex h-full min-h-0 shrink-0 items-center justify-center rounded-none border-0 bg-violet-600 px-2.5 text-xs font-semibold leading-none text-white shadow-none transition-colors duration-150 hover:bg-violet-700 active:bg-violet-800 disabled:cursor-not-allowed disabled:opacity-50 sm:px-2";
+export const mojeAckSegmentInformacjaClass = cn(
+  mojeAckToolbarSegmentClass,
+  "rounded-none border-0 bg-violet-50/95 text-violet-800 shadow-none transition-colors duration-150 hover:bg-violet-100 active:bg-violet-100/90 disabled:cursor-not-allowed disabled:opacity-50"
+);
 
-export const mojeAckSegmentCancelClass =
-  "flex h-full min-h-0 shrink-0 items-center justify-center rounded-none border-0 bg-amber-600 px-2.5 text-xs font-semibold leading-none text-white shadow-none transition-colors duration-150 hover:bg-amber-700 active:bg-amber-800 disabled:cursor-not-allowed disabled:opacity-50 sm:px-2";
+export const mojeAckSegmentCancelClass = cn(
+  mojeAckToolbarSegmentClass,
+  "rounded-none border-0 bg-amber-50/95 text-amber-900 shadow-none transition-colors duration-150 hover:bg-amber-100 active:bg-amber-100/90 disabled:cursor-not-allowed disabled:opacity-50"
+);
 
-export const mojeAckSegmentOutlineClass =
-  "flex h-full min-h-0 shrink-0 items-center justify-center rounded-none border-0 border-l border-emerald-200/90 bg-white px-2 text-xs font-semibold leading-none text-emerald-800 shadow-none transition-colors duration-150 hover:bg-emerald-50 disabled:cursor-not-allowed disabled:opacity-50 sm:px-2";
+export const mojeAckSegmentOutlineClass = cn(
+  mojeAckToolbarSegmentClass,
+  "rounded-none border-0 border-l border-emerald-200/90 bg-white text-emerald-800 shadow-none transition-colors duration-150 hover:bg-emerald-50/80 disabled:cursor-not-allowed disabled:opacity-50"
+);
+
+/** Segment menu ⋮ w pasku akcji /moje — bez pionowej kreski między Potwierdź a ⋮. */
+export const mojeActionOverflowSegmentClass = cn(
+  panelActionSegmentClass,
+  "h-full min-h-0 w-10 min-w-10 shrink-0 border-0 border-l-0 px-0 text-slate-600 shadow-none transition-colors duration-150 hover:bg-slate-50 hover:text-slate-800"
+);
 
 export const panelSegmentControlOpenClass = "bg-slate-50 text-slate-900";
 

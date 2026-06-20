@@ -11,7 +11,9 @@ export async function GET(request: NextRequest) {
   const denied = authorizeCronRequest(request.headers.get("authorization"));
   if (denied) return denied;
 
-  if (!isWarsawWorkHours()) {
+  const force = request.nextUrl.searchParams.get("force") === "1";
+
+  if (!force && !isWarsawWorkHours()) {
     await recordCronSkipped("process_deliveries", "outside_warsaw_work_hours");
     return NextResponse.json({
       success: true,
@@ -21,29 +23,25 @@ export async function GET(request: NextRequest) {
     });
   }
 
-  if (isProductionRuntime() && !isEmailConfigured()) {
-    await recordCronRun("process_deliveries", {
-      ok: false,
-      error: "RESEND_API_KEY not configured",
-    });
-    return NextResponse.json(
-      { error: "E-mail nie skonfigurowany — dostawy nie przetworzone" },
-      { status: 503 }
-    );
-  }
-
   try {
     const result = await processMarkedDeliveries();
     const hasEmailIssues = result.emailFailures.length > 0;
+    const emailNotConfigured =
+      isProductionRuntime() && !isEmailConfigured() && result.processed > 0;
 
     await recordCronRun("process_deliveries", {
-      ok: !hasEmailIssues,
+      ok: !hasEmailIssues && !emailNotConfigured,
       detail: {
         processed: result.processed,
         emailSent: result.emailSent,
         emailFailures: result.emailFailures,
+        emailNotConfigured: emailNotConfigured || undefined,
       },
-      error: hasEmailIssues ? result.emailFailures.join("; ") : undefined,
+      error: emailNotConfigured
+        ? "RESEND_API_KEY not configured"
+        : hasEmailIssues
+          ? result.emailFailures.join("; ")
+          : undefined,
     });
 
     if (hasEmailIssues) {
@@ -53,6 +51,18 @@ export async function GET(request: NextRequest) {
           processed: result.processed,
           emailSent: result.emailSent,
           emailFailures: result.emailFailures,
+        },
+        { status: 207 }
+      );
+    }
+
+    if (emailNotConfigured) {
+      return NextResponse.json(
+        {
+          success: false,
+          processed: result.processed,
+          emailSent: result.emailSent,
+          warning: "E-mail nie skonfigurowany — statusy zaktualizowane, powiadomienia nie wysłane",
         },
         { status: 207 }
       );

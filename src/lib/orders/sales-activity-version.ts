@@ -12,11 +12,25 @@ export type SalesActivityRow = Pick<
   | "sales_acknowledged_at"
   | "request_kind"
   | "informacja_stock_out_reorder"
+  | "zd_fulfillment_deadline"
+  | "zd_fulfillment_source"
+  | "zd_fulfillment_synced_at"
+  | "zd_fulfillment_dok_id"
+  | "zd_fulfillment_dok_nr"
 >;
 
 type ActivityRow = Pick<
   SalesActivityRow,
-  "action_at" | "ordered_at" | "delivery_at" | "status" | "sales_acknowledged_at"
+  | "action_at"
+  | "ordered_at"
+  | "delivery_at"
+  | "status"
+  | "sales_acknowledged_at"
+  | "zd_fulfillment_deadline"
+  | "zd_fulfillment_source"
+  | "zd_fulfillment_synced_at"
+  | "zd_fulfillment_dok_id"
+  | "zd_fulfillment_dok_nr"
 >;
 
 /** Wiersze widoczne dla handlowca — bez sygnałów stock_out (tylko zakupy). */
@@ -30,6 +44,10 @@ export function computeSalesActivityVersionFromRows(rows: ActivityRow[]): string
   let maxAction = "";
   let maxOrdered = "";
   let maxDelivery = "";
+  let zdWithDeadlineCount = 0;
+  let maxZdDeadline = "";
+  let maxZdSyncedAt = "";
+  let maxZdDokSignature = "";
   const statusCounts: Record<string, number> = {};
 
   for (const row of rows) {
@@ -38,6 +56,19 @@ export function computeSalesActivityVersionFromRows(rows: ActivityRow[]): string
     if (row.action_at > maxAction) maxAction = row.action_at;
     if (row.ordered_at && row.ordered_at > maxOrdered) maxOrdered = row.ordered_at;
     if (row.delivery_at && row.delivery_at > maxDelivery) maxDelivery = row.delivery_at;
+    if (row.zd_fulfillment_source === "zd" && row.zd_fulfillment_deadline?.trim()) {
+      zdWithDeadlineCount++;
+      const d = row.zd_fulfillment_deadline.trim();
+      if (d > maxZdDeadline) maxZdDeadline = d;
+    }
+    const syncedAt = row.zd_fulfillment_synced_at?.trim();
+    if (syncedAt && syncedAt > maxZdSyncedAt) maxZdSyncedAt = syncedAt;
+    const dokNr = row.zd_fulfillment_dok_nr?.trim();
+    if (dokNr) {
+      const dokId = row.zd_fulfillment_dok_id ?? 0;
+      const signature = `${String(dokId).padStart(12, "0")}:${dokNr}`;
+      if (signature > maxZdDokSignature) maxZdDokSignature = signature;
+    }
   }
 
   const statusPart = Object.entries(statusCounts)
@@ -45,7 +76,7 @@ export function computeSalesActivityVersionFromRows(rows: ActivityRow[]): string
     .map(([s, n]) => `${s}:${n}`)
     .join(",");
 
-  return `${activeCount}|${maxAction}|${maxOrdered}|${maxDelivery}|${statusPart}`;
+  return `${activeCount}|${maxAction}|${maxOrdered}|${maxDelivery}|${statusPart}|zd:${zdWithDeadlineCount}:${maxZdDeadline}|zds:${maxZdSyncedAt}|zdk:${maxZdDokSignature}`;
 }
 
 /** Pełna wersja aktywności (prośby + otwarte ZK) — ten sam format co API poll. */
@@ -68,7 +99,7 @@ export async function computeSalesActivityVersion(
   const { data, error } = await supabase
     .from("individual_orders")
     .select(
-      "action_at, ordered_at, delivery_at, status, sales_acknowledged_at, request_kind, informacja_stock_out_reorder"
+      "action_at, ordered_at, delivery_at, status, sales_acknowledged_at, request_kind, informacja_stock_out_reorder, zd_fulfillment_deadline, zd_fulfillment_source, zd_fulfillment_synced_at, zd_fulfillment_dok_id, zd_fulfillment_dok_nr"
     )
     .eq("sales_person_id", salesPersonId);
 

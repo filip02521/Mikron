@@ -139,15 +139,24 @@ describe("EditIndividualRequestModal", () => {
       />
     );
 
-    fireEvent.change(screen.getByRole("textbox", { name: /Notatka dla zakupów/i }), {
-      target: { value: "pilne — termin piątek" },
-    });
+    fireEvent.click(screen.getByText(/Notatka do tej pozycji/i));
+    fireEvent.change(
+      screen.getByPlaceholderText(/klient czeka na potwierdzenie terminu/i),
+      {
+        target: { value: "pilne — termin piątek" },
+      }
+    );
     fireEvent.click(screen.getByRole("button", { name: /Zapisz zmiany/i }));
 
     expect(actionUpdateMyIndividualRequest).toHaveBeenCalledWith(
       ["ord-1"],
       expect.objectContaining({
-        requestNote: "pilne — termin piątek",
+        lines: [
+          expect.objectContaining({
+            id: "ord-1",
+            requestNote: "pilne — termin piątek",
+          }),
+        ],
       })
     );
   });

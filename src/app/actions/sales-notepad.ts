@@ -1,9 +1,12 @@
 "use server";
 
+// @service-role-ok — autoryzacja require*(); service role z pełnym scope po warstwie aplikacji.
+
 import { revalidatePath } from "next/cache";
 import { getSessionUser } from "@/lib/auth";
 import { resolveSalesPersonForUser } from "@/lib/auth/sales-person";
 import { isSalesAccount } from "@/lib/auth-roles";
+import { canAccessSalesPerson } from "@/lib/data/sales-group-access";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getSubiektZk } from "@/lib/subiekt/api";
 import {
@@ -26,12 +29,6 @@ import {
   type ZkProsbaPrefill,
   zkProsbaPrefillFromWatch,
 } from "@/lib/orders/zk-watch-prosba-prefill";
-import {
-  collectZkProsbaScopeLineTwIds,
-  filterZkProsbaScopeLineKeysNeedingOrder,
-  type ZkProsbaScopeLineInput,
-} from "@/lib/orders/prosba-stock-check";
-import { actionFetchProsbaLineStock } from "@/app/actions/subiekt";
 import { fetchZkWatchForProsbaPrefill } from "@/lib/sales/fetch-zk-watch-for-prefill";
 import type { SalesNote, SalesNoteColor, SalesZkWatch } from "@/types/database";
 
@@ -46,6 +43,26 @@ async function salesPersonIdForAction(): Promise<string> {
     throw new Error("Konto nie jest powiązane z kartą handlowca.");
   }
   return resolved.id;
+}
+
+/** ID handlowca dla prefill prośby — z kontrolą dostępu (grupy kierownika). */
+async function resolveSalesPersonIdForProsbaPrefill(
+  user: NonNullable<Awaited<ReturnType<typeof getSessionUser>>>,
+  salesPersonIdOverride?: string
+): Promise<string> {
+  const salesPersonId = salesPersonIdOverride?.trim() || "";
+  if (!salesPersonId) {
+    return salesPersonIdForAction();
+  }
+  const own = await resolveSalesPersonForUser(user);
+  if (user.role === "sales" && own?.id !== salesPersonId) {
+    throw new Error("Brak uprawnień do prośby tego handlowca.");
+  }
+  const allowed = await canAccessSalesPerson(user, salesPersonId);
+  if (!allowed) {
+    throw new Error("Brak uprawnień do prośby tego handlowca.");
+  }
+  return salesPersonId;
 }
 
 function revalidateNotepad() {
@@ -422,8 +439,20 @@ export async function actionUpdateZkWatchLineChecks(
       .filter((c) => validKeys.has(c.key))
       .map((c) => [c.key, Boolean(c.arrived)])
   );
+  const shelfMarkedByKey = new Map(
+    checks
+      .filter((c) => validKeys.has(c.key))
+      .map((c) => [c.key, Boolean(c.shelf_marked)])
+  );
+  const completedManuallyByKey = new Map(
+    checks
+      .filter((c) => validKeys.has(c.key))
+      .map((c) => [c.key, Boolean(c.completed_manually)])
+  );
   const sanitized = mergeZkWatchLineChecksPreservingProsbaScope(views, previousChecks, {
     arrivedByKey,
+    shelfMarkedByKey,
+    completedManuallyByKey,
   });
 
   const { data, error } = await supabase
@@ -482,6 +511,63 @@ export async function actionUpdateZkWatchProsbaScope(
   const previousChecks = parseZkWatchLineChecks((row as SalesZkWatch).line_checks);
   const needsProsbaByKey = new Map<string, boolean>(
     productViews.map((view) => [view.key, selected.has(view.key)])
+  );
+  const sanitized = mergeZkWatchLineChecksPreservingProsbaScope(views, previousChecks, {
+    needsProsbaByKey,
+  });
+
+  const { data, error } = await supabase
+    .from("sales_zk_watches")
+    .update({
+      line_checks: sanitized,
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", watchId)
+    .select("*")
+    .single();
+
+  if (error) throw new Error(error.message);
+
+  revalidateNotepad();
+  return { watch: data as SalesZkWatch };
+}
+
+/** Ustawia needs_prosba tylko dla wskazanych pozycji (np. nowe linie po odświeżeniu ZK). */
+export async function actionPatchZkWatchProsbaScopeLines(
+  watchId: string,
+  lineKeysToOrder: string[],
+  affectedLineKeys: string[]
+) {
+  const salesPersonId = await salesPersonIdForAction();
+  const supabase = createAdminClient();
+
+  const { data: row, error: fetchError } = await supabase
+    .from("sales_zk_watches")
+    .select("*")
+    .eq("id", watchId)
+    .maybeSingle();
+
+  if (fetchError) throw new Error(fetchError.message);
+  if (!row) throw new Error("Nie znaleziono wpisu.");
+  if (row.sales_person_id !== salesPersonId) {
+    throw new Error("Brak uprawnień do tego wpisu.");
+  }
+  if (row.closed_at || row.archived_at) {
+    throw new Error("Nie można zmieniać zakresu prośby dla zamkniętego ZK.");
+  }
+
+  const views = buildZkWatchLineViews(row as SalesZkWatch);
+  const productViews = views.filter((view) => view.key !== "summary");
+  const validKeys = new Set(productViews.map((view) => view.key));
+  const selected = new Set(lineKeysToOrder.filter((key) => validKeys.has(key)));
+  const affected = affectedLineKeys.filter((key) => validKeys.has(key));
+  if (!affected.length) {
+    return { watch: row as SalesZkWatch };
+  }
+
+  const previousChecks = parseZkWatchLineChecks((row as SalesZkWatch).line_checks);
+  const needsProsbaByKey = new Map<string, boolean>(
+    affected.map((key) => [key, selected.has(key)])
   );
   const sanitized = mergeZkWatchLineChecksPreservingProsbaScope(views, previousChecks, {
     needsProsbaByKey,
@@ -793,7 +879,8 @@ export async function actionDeleteArchivedSalesNote(noteId: string) {
 export async function actionGetZkProsbaPrefillByWatchId(
   watchId: string,
   salesPersonIdOverride?: string,
-  lineKeys?: string[]
+  lineKeys?: string[],
+  requestKind?: ZkProsbaPrefill["requestKind"]
 ): Promise<ZkProsbaPrefill | null> {
   const trimmed = watchId.trim();
   if (!trimmed) return null;
@@ -803,15 +890,7 @@ export async function actionGetZkProsbaPrefillByWatchId(
     throw new Error("Wymagane logowanie.");
   }
 
-  let salesPersonId = salesPersonIdOverride?.trim() || "";
-  if (!salesPersonId) {
-    salesPersonId = await salesPersonIdForAction();
-  } else {
-    const own = await resolveSalesPersonForUser(user);
-    if (user.role === "sales" && own?.id !== salesPersonId) {
-      throw new Error("Brak uprawnień do prośby tego handlowca.");
-    }
-  }
+  const salesPersonId = await resolveSalesPersonIdForProsbaPrefill(user, salesPersonIdOverride);
 
   const supabase = createAdminClient();
   const { data, error } = await supabase
@@ -825,32 +904,13 @@ export async function actionGetZkProsbaPrefillByWatchId(
   if (!data) return null;
 
   const watch = data as SalesZkWatch;
-  let options =
-    lineKeys?.length ? { lineKeys, mode: "supplement" as const } : undefined;
+  const options = {
+    ...(lineKeys?.length ? { lineKeys, mode: "supplement" as const } : {}),
+    ...(requestKind ? { requestKind } : {}),
+  };
+  const hasOptions = Object.keys(options).length > 0;
 
-  if (options?.lineKeys.length) {
-    const lineViews = buildZkWatchLineViews(watch).filter((line) => line.key !== "summary");
-    const scopeLines: ZkProsbaScopeLineInput[] = options.lineKeys
-      .map((key) => lineViews.find((line) => line.key === key))
-      .filter((line) => line != null)
-      .map((line) => ({
-        key: line!.key,
-        subiektTwId: line!.subiektTwId,
-        quantity: line!.quantity,
-      }));
-    const twIds = collectZkProsbaScopeLineTwIds(scopeLines);
-    if (twIds.length) {
-      const stock = await actionFetchProsbaLineStock(twIds);
-      const filteredKeys = filterZkProsbaScopeLineKeysNeedingOrder(
-        scopeLines,
-        options.lineKeys,
-        stock
-      );
-      options = { ...options, lineKeys: filteredKeys };
-    }
-  }
-
-  return zkProsbaPrefillFromWatch(watch, options);
+  return zkProsbaPrefillFromWatch(watch, hasOptions ? options : undefined);
 }
 
 /** Prefill prośby z ZK po numerze (np. nowa karta — bez sessionStorage). */
@@ -866,15 +926,7 @@ export async function actionGetZkProsbaPrefill(
     throw new Error("Wymagane logowanie.");
   }
 
-  let salesPersonId = salesPersonIdOverride?.trim() || "";
-  if (!salesPersonId) {
-    salesPersonId = await salesPersonIdForAction();
-  } else {
-    const own = await resolveSalesPersonForUser(user);
-    if (user.role === "sales" && own?.id !== salesPersonId) {
-      throw new Error("Brak uprawnień do prośby tego handlowca.");
-    }
-  }
+  const salesPersonId = await resolveSalesPersonIdForProsbaPrefill(user, salesPersonIdOverride);
 
   const supabase = createAdminClient();
   const watch = await fetchZkWatchForProsbaPrefill(supabase, salesPersonId, trimmed);

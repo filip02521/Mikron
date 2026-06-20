@@ -15,8 +15,8 @@ import { orderExplicitlyLinkedToZkWatch } from "@/lib/orders/zk-prosba-source";
 import { normalizeSalesClientKhId } from "@/lib/orders/sales-client-match";
 import { searchQueryTokens } from "@/lib/orders/my-order-search";
 import { extractZkSerial } from "@/lib/subiekt/zk-document";
-import type { IndividualOrder } from "@/types/database";
-import type { SalesZkWatch } from "@/types/database";
+import { escapeIlikePattern } from "@/lib/security/ilike-pattern";
+import type { IndividualOrder, SalesZkWatch } from "@/types/database";
 
 const MAX_PERSIST_ATTEMPTS = 6;
 
@@ -61,14 +61,13 @@ export function individualOrderToZkLinkableOrder(
     quantity: order.quantity,
     delivered_quantity: order.delivered_quantity,
     status: order.status,
+    request_kind: order.request_kind ?? null,
     sales_acknowledged_at: order.sales_acknowledged_at ?? null,
     sales_cancelled_at: order.sales_cancelled_at ?? null,
   };
 }
 
-export function escapeIlikePattern(value: string): string {
-  return value.replaceAll("\\", "\\\\").replaceAll("%", "\\%").replaceAll("_", "\\_");
-}
+export { escapeIlikePattern };
 
 /** ZK z client_kh_id=null wymaga nazwy klienta na prośbie (exact label). */
 export function shouldFetchNullKhCompanionWatches(

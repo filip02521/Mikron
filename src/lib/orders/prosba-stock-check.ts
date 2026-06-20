@@ -1,5 +1,6 @@
 import type { ProductLineDraft } from "@/components/orders/request-product-lines";
 import { parseOrderQuantity } from "@/lib/orders/individual";
+import { buildProsbaSufficientStockSummary } from "@/lib/orders/prosba-line-stock-ui";
 import type { SubiektProduct } from "@/lib/subiekt/types";
 import type { IndividualRequestKind } from "@/types/database";
 
@@ -116,61 +117,49 @@ export function buildProsbaSubmitStockConfirm(
   };
 }
 
-export function formatProsbaStockLineHint(
-  line: Pick<ProductLineDraft, "product" | "symbol" | "quantity" | "available">
-): string {
-  const name = line.product.trim() || line.symbol.trim() || "Produkt";
-  const qty = line.quantity.trim();
-  const avail = line.available;
-  const availLabel =
-    avail != null && Number.isFinite(avail) ? `${avail} szt.` : "wystarczająco";
-  return `Na stanie jest ${availLabel} — prośba może być zbędna przy zamówieniu ${qty} szt. (${name}).`;
-}
+export { formatProsbaStockLineHint } from "./prosba-line-stock-ui";
 
 /** Poprawna odmiana „pozycja / pozycje / pozycji” w banerach formularza. */
 export function formatProsbaSufficientStockBanner(count: number): string {
-  if (count <= 0) return "";
-  if (count === 1) {
-    return "1 pozycja ma wystarczający stan magazynowy — sprawdź, czy prośba jest potrzebna.";
-  }
-  const mod10 = count % 10;
-  const mod100 = count % 100;
-  const noun =
-    mod10 >= 2 && mod10 <= 4 && (mod100 < 12 || mod100 > 14) ? "pozycje" : "pozycji";
-  return `${count} ${noun} mają wystarczający stan magazynowy — sprawdź, czy prośba jest potrzebna.`;
+  const summary = buildProsbaSufficientStockSummary(count);
+  if (!summary) return "";
+  return `${summary.title} — ${summary.detail}`;
 }
 
-/** Podpowiedź w modalu ZK po auto-zaznaczeniu pozycji na stanie. */
+/** Podpowiedź w modalu ZK po auto-zaznaczeniu pozycji do zamówienia. */
 export function formatZkProsbaAutoMarkedHint(count: number): string {
   if (count <= 0) return "";
   if (count === 1) {
-    return "1 pozycja ma pełny stan — zaznaczono jako na stanie. Odznacz, jeśli mimo to chcesz zamówić.";
+    return "1 pozycja wymaga zamówienia — zaznaczono do prośby. Odznacz, jeśli macie ją na stanie.";
   }
   const mod10 = count % 10;
   const mod100 = count % 100;
   const few = mod10 >= 2 && mod10 <= 4 && (mod100 < 12 || mod100 > 14);
   const noun = few ? "pozycje" : "pozycji";
-  const verb = few ? "mają" : "ma";
-  return `${count} ${noun} ${verb} pełny stan — zaznaczono jako na stanie. Odznacz, jeśli mimo to chcesz zamówić.`;
+  const verb = few ? "wymagają" : "wymaga";
+  return `${count} ${noun} ${verb} zamówienia — zaznaczono do prośby. Odznacz pozycje, które macie na stanie.`;
 }
 
-/** Etykieta statusu w modalu zakresu ZK (checkbox = „na stanie”). */
+/** Etykieta statusu w modalu zakresu ZK (checkbox = pozycja do zamówienia). */
 export function formatZkProsbaScopeLineBadge(input: {
   sufficient: boolean;
-  markedInStock: boolean;
+  markedForOrder: boolean;
   available: number | null;
   hasStockData: boolean;
 }): string {
-  if (input.markedInStock) {
-    if (input.sufficient && input.available != null) {
-      return `Na stanie: ${input.available} szt.`;
+  if (input.markedForOrder) {
+    if (input.hasStockData && input.available != null && input.available > 0 && !input.sufficient) {
+      return `Do zamówienia · stan ${input.available} szt.`;
     }
-    return "Na stanie";
+    return "Do zamówienia";
   }
-  if (input.hasStockData && input.available != null && input.available > 0 && !input.sufficient) {
-    return `Stan: ${input.available} szt.`;
+  if (input.sufficient && input.available != null) {
+    return `Na stanie: ${input.available} szt.`;
   }
-  return "Do zamówienia";
+  if (input.hasStockData && input.available != null && input.available > 0) {
+    return `Pominięte · stan ${input.available} szt.`;
+  }
+  return "Pominięte";
 }
 
 export function isZkProsbaScopePartialStock(input: {
@@ -199,8 +188,8 @@ export function zkProsbaScopeLineNeedsOrdering(
 }
 
 /**
- * Klucze pozycji oznaczonych jako „na stanie” (checkbox zaznaczony).
- * Gdy brak danych magazynowych — pusta lista (nic nie oznaczamy automatycznie).
+ * Klucze pozycji z pełnym pokryciem stanem (nie wymagają zamówienia).
+ * Gdy brak danych magazynowych — pusta lista.
  */
 export function deriveZkProsbaScopeInStockKeys(
   lines: ZkProsbaScopeLineInput[],
@@ -213,20 +202,36 @@ export function deriveZkProsbaScopeInStockKeys(
     .map((line) => line.key);
 }
 
+/**
+ * Klucze pozycji sugerowanych do zamówienia na podstawie stanu Subiekta.
+ * Gdy brak danych magazynowych — pusta lista (użytkownik wybiera ręcznie).
+ */
+export function deriveZkProsbaScopeSuggestedOrderKeys(
+  lines: ZkProsbaScopeLineInput[],
+  stockByTwId: Record<number, ProsbaLineStockSnapshot>
+): string[] {
+  const hasAnyStock = Object.keys(stockByTwId).length > 0;
+  if (!hasAnyStock) return [];
+  return lines
+    .filter((line) => zkProsbaScopeLineNeedsOrdering(line, stockByTwId))
+    .map((line) => line.key);
+}
+
+/** Klucze pozycji zaznaczonych do zamówienia (checkbox zaznaczony). */
 export function zkProsbaScopeLineKeysToOrder(
   lines: ZkProsbaScopeLineInput[],
-  inStockMarkedKeys: Iterable<string>
+  orderMarkedKeys: Iterable<string>
 ): string[] {
-  const marked = new Set(inStockMarkedKeys);
-  return lines.filter((line) => !marked.has(line.key)).map((line) => line.key);
+  const marked = new Set(orderMarkedKeys);
+  return lines.filter((line) => marked.has(line.key)).map((line) => line.key);
 }
 
 /**
- * Początkowe zaznaczenie „na stanie” przy otwarciu modala.
- * - zapisany zakres → odwzorowanie needs_prosba
- * - pierwsze ustawienie → needs_prosba z checków + auto z Subiekta (tylko pełne pokrycie)
+ * Początkowe zaznaczenie „do zamówienia” przy otwarciu modala.
+ * - zapisany zakres → klucze z needs_prosba: true
+ * - pierwsze ustawienie → needs_prosba z checków + auto z Subiekta (tylko wymagające zamówienia)
  */
-export function buildZkProsbaScopeInitialInStockMarked(input: {
+export function buildZkProsbaScopeInitialOrderMarked(input: {
   lines: ZkProsbaScopeLineInput[];
   stockByTwId: Record<number, ProsbaLineStockSnapshot>;
   existingScope: string[] | null;
@@ -235,18 +240,17 @@ export function buildZkProsbaScopeInitialInStockMarked(input: {
   const { lines, stockByTwId, existingScope, needsProsbaByKey } = input;
 
   if (existingScope !== null) {
-    const orderKeys = new Set(existingScope);
-    return lines.filter((line) => !orderKeys.has(line.key)).map((line) => line.key);
+    return [...existingScope];
   }
 
-  const autoFromStock = new Set(deriveZkProsbaScopeInStockKeys(lines, stockByTwId));
+  const autoFromStock = new Set(deriveZkProsbaScopeSuggestedOrderKeys(lines, stockByTwId));
   const marked = new Set<string>();
 
   for (const line of lines) {
     const explicit = needsProsbaByKey.get(line.key);
-    if (explicit === false) {
+    if (explicit === true) {
       marked.add(line.key);
-    } else if (explicit === true) {
+    } else if (explicit === false) {
       continue;
     } else if (autoFromStock.has(line.key)) {
       marked.add(line.key);
@@ -254,6 +258,16 @@ export function buildZkProsbaScopeInitialInStockMarked(input: {
   }
 
   return [...marked];
+}
+
+/** @deprecated Użyj {@link buildZkProsbaScopeInitialOrderMarked}. */
+export function buildZkProsbaScopeInitialInStockMarked(input: {
+  lines: ZkProsbaScopeLineInput[];
+  stockByTwId: Record<number, ProsbaLineStockSnapshot>;
+  existingScope: string[] | null;
+  needsProsbaByKey: ReadonlyMap<string, boolean>;
+}): string[] {
+  return buildZkProsbaScopeInitialOrderMarked(input);
 }
 
 /** tw_Id pozycji ZK do pobrania stanu z Subiekta. */
