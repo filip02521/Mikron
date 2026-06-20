@@ -1,6 +1,7 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import {
   filterLoginDirectoryAccounts,
+  fetchLoginDirectoryAccountsByIds,
   isAuthUserLoginEligible,
   isLoginDirectoryAccountId,
   isLoginDirectoryQueryValid,
@@ -8,6 +9,28 @@ import {
   sortLoginDirectoryAccounts,
   type LoginDirectoryAccount,
 } from "./login-directory";
+
+vi.mock("@/lib/e2e-lab/mode", () => ({
+  isE2ELab: () => true,
+  E2E_LOGIN_DIRECTORY_FIXTURE: [
+    {
+      id: "550e8400-e29b-41d4-a716-446655440001",
+      email: "anna@mikran.com",
+      role: "sales",
+      roleLabel: "Handlowiec",
+      displayName: "Anna Kowalska",
+      salesPersonName: "Anna Kowalska",
+    },
+    {
+      id: "550e8400-e29b-41d4-a716-446655440002",
+      email: "zakupy@mikran.com",
+      role: "zakupy",
+      roleLabel: "Dział zakupów",
+      displayName: "Zakupy",
+      salesPersonName: null,
+    },
+  ],
+}));
 
 function account(partial: Partial<LoginDirectoryAccount> & Pick<LoginDirectoryAccount, "id" | "email" | "role">): LoginDirectoryAccount {
   return {
@@ -145,5 +168,20 @@ describe("login directory search guards", () => {
     expect(
       isLoginDirectoryAccountId("550e8400-e29b-41d4-a716-446655440000")
     ).toBe(true);
+  });
+});
+
+describe("fetchLoginDirectoryAccountsByIds", () => {
+  it("zwraca konta w kolejności żądanych id", async () => {
+    const accounts = await fetchLoginDirectoryAccountsByIds([
+      "550e8400-e29b-41d4-a716-446655440002",
+      "550e8400-e29b-41d4-a716-446655440001",
+      "550e8400-e29b-41d4-a716-446655440099",
+    ]);
+
+    expect(accounts.map((account) => account.id)).toEqual([
+      "550e8400-e29b-41d4-a716-446655440002",
+      "550e8400-e29b-41d4-a716-446655440001",
+    ]);
   });
 });

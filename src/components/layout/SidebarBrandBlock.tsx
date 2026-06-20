@@ -55,7 +55,15 @@ function OnTimeWordmark({
   );
 }
 
-function RoleLine({ role, compact = false }: { role: UserRole; compact?: boolean }) {
+function RoleLine({
+  role,
+  assignmentLabel,
+  compact = false,
+}: {
+  role: UserRole;
+  assignmentLabel?: string | null;
+  compact?: boolean;
+}) {
   return (
     <p
       className={cn(
@@ -72,6 +80,14 @@ function RoleLine({ role, compact = false }: { role: UserRole; compact?: boolean
         aria-hidden
       />
       <span className="min-w-0 truncate">{ROLE_LABELS[role]}</span>
+      {assignmentLabel ? (
+        <>
+          <span className="shrink-0 text-slate-300" aria-hidden>
+            ·
+          </span>
+          <span className="min-w-0 truncate text-slate-400">{assignmentLabel}</span>
+        </>
+      ) : null}
     </p>
   );
 }
@@ -80,11 +96,13 @@ function SidebarUserRow({
   role,
   userEmail,
   salesPersonName,
+  userAssignmentLabel,
   compact = false,
 }: {
   role: UserRole | null;
   userEmail?: string | null;
   salesPersonName?: string | null;
+  userAssignmentLabel?: string | null;
   compact?: boolean;
 }) {
   if (!role && !userEmail && !salesPersonName) return null;
@@ -101,7 +119,12 @@ function SidebarUserRow({
         ? initialsFromEmail(userEmail)
         : initialsFromName(primaryLabel)
     : "?";
-  const hoverDetail = [primaryLabel, role ? ROLE_LABELS[role] : null, userEmail]
+  const hoverDetail = [
+    primaryLabel,
+    role ? ROLE_LABELS[role] : null,
+    userAssignmentLabel,
+    userEmail,
+  ]
     .filter(Boolean)
     .join(" · ");
 
@@ -117,7 +140,7 @@ function SidebarUserRow({
             {primaryLabel}
           </p>
         ) : null}
-        {role ? <RoleLine role={role} compact /> : null}
+        {role ? <RoleLine role={role} assignmentLabel={userAssignmentLabel} compact /> : null}
       </div>
     );
   }
@@ -143,7 +166,7 @@ function SidebarUserRow({
           ) : (
             <p className="text-sm font-medium text-slate-500">Niezalogowany</p>
           )}
-          {role ? <RoleLine role={role} /> : null}
+          {role ? <RoleLine role={role} assignmentLabel={userAssignmentLabel} /> : null}
         </div>
       </div>
     </div>
@@ -155,10 +178,12 @@ export function SidebarBrandBlock({
   role,
   userEmail,
   salesPersonName,
+  userAssignmentLabel,
 }: {
   role: UserRole | null;
   userEmail?: string | null;
   salesPersonName?: string | null;
+  userAssignmentLabel?: string | null;
 }) {
   return (
     <div>
@@ -176,6 +201,7 @@ export function SidebarBrandBlock({
         role={role}
         userEmail={userEmail}
         salesPersonName={salesPersonName}
+        userAssignmentLabel={userAssignmentLabel}
       />
     </div>
   );
@@ -186,10 +212,12 @@ export function MobileBrandBlock({
   role,
   userEmail,
   salesPersonName,
+  userAssignmentLabel,
 }: {
   role: UserRole | null;
   userEmail?: string | null;
   salesPersonName?: string | null;
+  userAssignmentLabel?: string | null;
 }) {
   return (
     <div className="flex min-w-0 items-center gap-2.5">
@@ -200,6 +228,7 @@ export function MobileBrandBlock({
           role={role}
           userEmail={userEmail}
           salesPersonName={salesPersonName}
+          userAssignmentLabel={userAssignmentLabel}
           compact
         />
       </div>

@@ -218,6 +218,7 @@ export function Sidebar({
   adminPanelContext = "admin",
   userEmail,
   salesPersonName,
+  userAssignmentLabel,
   showLoginLink,
   navBadges = { nowe: 0, weryfikacja: 0, realizacja: 0, salesMoje: 0 },
 }: {
@@ -226,6 +227,7 @@ export function Sidebar({
   adminPanelContext?: AdminPanelContext;
   userEmail?: string | null;
   salesPersonName?: string | null;
+  userAssignmentLabel?: string | null;
   showLoginLink?: boolean;
   navBadges?: {
     nowe?: number;
@@ -273,6 +275,7 @@ export function Sidebar({
           role={realRole && isAdmin(realRole) ? realRole : role}
           userEmail={userEmail}
           salesPersonName={salesPersonName}
+          userAssignmentLabel={userAssignmentLabel}
         />
       </header>
 

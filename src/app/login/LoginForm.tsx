@@ -8,8 +8,10 @@ import { loginSessionLostMessage } from "@/lib/auth/login-messages";
 import type { LoginDirectoryAccountPublic } from "@/lib/auth/login-directory-public";
 import {
   readLoginLastAccountId,
+  readLoginRecentEmails,
+  rememberLoginAccountId,
+  rememberLoginEmail,
   resolveLoginLastAccountId,
-  writeLoginLastAccountId,
 } from "@/lib/auth/login-account-preference";
 import { applyLoginFormError } from "@/lib/auth/login-form-errors";
 import type { LoginSubtitleMode } from "@/lib/auth/login-form-copy";
@@ -131,6 +133,11 @@ export function LoginForm({
 
   const loginReady = useManualEmail ? Boolean(manualEmail.trim()) : Boolean(selectedAccountId);
 
+  const recentEmails = useMemo(
+    () => (hydrated ? readLoginRecentEmails() : []),
+    [hydrated]
+  );
+
   useEffect(() => {
     if (!quickLoginActive) return;
     const frame = requestAnimationFrame(() => {
@@ -149,7 +156,7 @@ export function LoginForm({
   }, [bannerError]);
 
   const handleAccountChange = useCallback((accountId: string) => {
-    writeLoginLastAccountId(accountId);
+    rememberLoginAccountId(accountId);
     setAccountSelectionOverride({
       selectedAccountId: accountId,
       showAccountPicker: false,
@@ -281,6 +288,12 @@ export function LoginForm({
       return;
     }
 
+    if (useManualEmail) {
+      rememberLoginEmail(manualEmail.trim().toLowerCase());
+    } else if (selectedAccountId) {
+      rememberLoginAccountId(selectedAccountId);
+    }
+
     window.location.assign(postLoginEnteringUrl(result.redirectTo));
   }
 
@@ -396,9 +409,17 @@ export function LoginForm({
                   autoCorrect="off"
                   inputMode="email"
                   spellCheck={false}
+                  list={recentEmails.length > 0 ? "login-recent-emails" : undefined}
                   value={manualEmail}
                   onChange={(e) => setManualEmail(e.target.value)}
                 />
+                {recentEmails.length > 0 ? (
+                  <datalist id="login-recent-emails">
+                    {recentEmails.map((email) => (
+                      <option key={email} value={email} />
+                    ))}
+                  </datalist>
+                ) : null}
               </Field>
             ) : (
               <Field label="Konto">

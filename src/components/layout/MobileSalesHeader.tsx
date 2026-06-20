@@ -9,10 +9,12 @@ export function MobileSalesHeader({
   role,
   userEmail,
   salesPersonName,
+  userAssignmentLabel,
 }: {
   role: UserRole | null;
   userEmail?: string | null;
   salesPersonName?: string | null;
+  userAssignmentLabel?: string | null;
 }) {
   async function signOut() {
     const supabase = createClient();
@@ -27,6 +29,7 @@ export function MobileSalesHeader({
           role={role}
           userEmail={userEmail}
           salesPersonName={salesPersonName}
+          userAssignmentLabel={userAssignmentLabel}
         />
       </div>
       <button

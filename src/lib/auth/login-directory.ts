@@ -209,3 +209,24 @@ export async function fetchLoginDirectoryAccountById(
   const all = await fetchLoginDirectoryAccounts();
   return all.find((account) => account.id === accountId) ?? null;
 }
+
+/** Ostatnie konta z przeglądarki (batch) — rate limit w API. */
+export async function fetchLoginDirectoryAccountsByIds(
+  accountIds: string[]
+): Promise<LoginDirectoryAccount[]> {
+  const uniqueIds = [...new Set(accountIds.map((id) => id.trim()).filter(isLoginDirectoryAccountId))];
+  if (uniqueIds.length === 0) return [];
+
+  if (isE2ELab()) {
+    const byId = new Map(E2E_LOGIN_DIRECTORY_FIXTURE.map((account) => [account.id, account]));
+    return uniqueIds
+      .map((id) => byId.get(id) ?? null)
+      .filter((account): account is LoginDirectoryAccount => account != null);
+  }
+
+  const all = await fetchLoginDirectoryAccounts();
+  const byId = new Map(all.map((account) => [account.id, account]));
+  return uniqueIds
+    .map((id) => byId.get(id) ?? null)
+    .filter((account): account is LoginDirectoryAccount => account != null);
+}

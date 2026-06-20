@@ -1,10 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import {
   fetchLoginDirectoryAccountById,
+  fetchLoginDirectoryAccountsByIds,
   isLoginDirectoryAccountId,
   isLoginDirectoryQueryValid,
   searchLoginDirectoryAccounts,
 } from "@/lib/auth/login-directory";
+import { MAX_RECENT_LOGIN_ACCOUNTS } from "@/lib/auth/login-account-preference";
 import { toPublicLoginDirectoryAccounts } from "@/lib/auth/login-directory-public";
 import { consumeAuthRateLimit } from "@/lib/auth/auth-rate-limit";
 
@@ -31,6 +33,20 @@ export async function GET(request: NextRequest) {
       },
       { status: 429 }
     );
+  }
+
+  const idsParam = request.nextUrl.searchParams.get("ids")?.trim() ?? "";
+  if (idsParam) {
+    const ids = idsParam
+      .split(",")
+      .map((value) => value.trim())
+      .filter(isLoginDirectoryAccountId)
+      .slice(0, MAX_RECENT_LOGIN_ACCOUNTS);
+    if (ids.length === 0) {
+      return NextResponse.json({ accounts: [] });
+    }
+    const accounts = toPublicLoginDirectoryAccounts(await fetchLoginDirectoryAccountsByIds(ids));
+    return NextResponse.json({ accounts });
   }
 
   const id = request.nextUrl.searchParams.get("id")?.trim() ?? "";
