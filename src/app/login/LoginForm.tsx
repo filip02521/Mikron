@@ -82,7 +82,6 @@ export function LoginForm({
   const [passwordError, setPasswordError] = useState("");
   const [loading, setLoading] = useState(false);
   const [resetSending, setResetSending] = useState(false);
-  const [recentEmails, setRecentEmails] = useState<string[]>([]);
   const [resetSessionOverride, setResetSessionOverride] = useState<{
     accountId: string;
     maskedEmail: string;
@@ -134,10 +133,10 @@ export function LoginForm({
 
   const loginReady = useManualEmail ? Boolean(manualEmail.trim()) : Boolean(selectedAccountId);
 
-  useEffect(() => {
-    if (!hydrated) return;
-    setRecentEmails(readLoginRecentEmails());
-  }, [hydrated]);
+  const recentEmails = useMemo(
+    () => (hydrated ? readLoginRecentEmails() : []),
+    [hydrated]
+  );
 
   useEffect(() => {
     if (!quickLoginActive) return;
