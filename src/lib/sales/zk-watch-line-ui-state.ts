@@ -13,6 +13,7 @@ export type ZkWatchLineUiState =
   | "scope_excluded"
   | "in_request"
   | "partial"
+  | "informacja_ready"
   | "delivered"
   | "arrived"
   | "in_stock";
@@ -33,9 +34,20 @@ export function resolveZkWatchLineUiState(input: {
   shelfMarked?: boolean;
   /** Odebrano z regału — potwierdzenie odbioru w Moje zamówienia. */
   inStock?: boolean;
-  /** Wykluczone z zakresu prośby (Subiekt / wybór handlowca). */
+  /** Pominięte przy wyborze zakresu prośby (Subiekt / wybór handlowca). */
   scopeExcluded?: boolean;
+  /** Magazyn potwierdził dostępność (prośba informacyjna z ZK). */
+  informacjaReady?: boolean;
+  /** Handlowiec potwierdził odczyt informacji w Moje zamówienia. */
+  informacjaAcknowledged?: boolean;
 }): ZkWatchLineUiState {
+  const physicalActive =
+    input.coverage === "open" ||
+    input.coverage === "partial" ||
+    input.coverage === "delivered";
+
+  if (input.informacjaReady && !physicalActive) return "informacja_ready";
+  if (input.informacjaAcknowledged && !physicalActive) return "arrived";
   switch (input.coverage) {
     case "open":
       return "in_request";
@@ -81,6 +93,15 @@ export function zkWatchLineUiStateMeta(state: ZkWatchLineUiState): ZkWatchLineUi
         rowTintClass: "bg-sky-50/40",
         icon: "truck",
       };
+    case "informacja_ready":
+      return {
+        label:
+          "Magazyn potwierdził dostępność — pozycja jest automatycznie zaznaczona na liście",
+        shortLabel: "Dostępne",
+        badgeClass: "bg-sky-100 text-sky-950 ring-1 ring-sky-200/80",
+        rowTintClass: "bg-sky-50/45",
+        icon: "warehouse",
+      };
     case "delivered":
       return {
         label:
@@ -108,8 +129,8 @@ export function zkWatchLineUiStateMeta(state: ZkWatchLineUiState): ZkWatchLineUi
       };
     case "scope_excluded":
       return {
-        label: "Wykluczone z prośby — nie wymaga zamówienia (nie mylić z „Odebrane z regału”)",
-        shortLabel: "Wykluczone",
+        label: "Pominięte przy wyborze zakresu — nie wymaga zamówienia (nie mylić z „Odebrane z regału”)",
+        shortLabel: "Pominięte",
         badgeClass: "bg-slate-100 text-slate-700 ring-1 ring-slate-200/80",
         rowTintClass: "bg-slate-50/70",
         icon: null,
@@ -244,6 +265,7 @@ const EMPTY_ZK_WATCH_LINE_UI_STATE_COUNTS = (): ZkWatchLineUiStateCounts => ({
   scope_excluded: 0,
   in_request: 0,
   partial: 0,
+  informacja_ready: 0,
   delivered: 0,
   in_stock: 0,
   arrived: 0,
@@ -260,11 +282,15 @@ export function countZkWatchLineUiStates(input: {
   newLineKeys: string[];
   inStockLineKeys: string[];
   scopeExcludedLineKeys: string[];
+  informacjaReadyLineKeys?: string[];
+  informacjaAcknowledgedLineKeys?: string[];
   lineCoverageByKey?: Record<string, ZkWatchLineCoverage>;
 }): ZkWatchLineUiStateCounts {
   const newLineKeySet = new Set(input.newLineKeys);
   const inStockKeySet = new Set(input.inStockLineKeys);
   const scopeExcludedKeySet = new Set(input.scopeExcludedLineKeys);
+  const informacjaReadyKeySet = new Set(input.informacjaReadyLineKeys ?? []);
+  const informacjaAcknowledgedKeySet = new Set(input.informacjaAcknowledgedLineKeys ?? []);
   const counts = EMPTY_ZK_WATCH_LINE_UI_STATE_COUNTS();
 
   for (const line of input.lineViews) {
@@ -277,6 +303,8 @@ export function countZkWatchLineUiStates(input: {
       shelfMarked: line.shelf_marked === true,
       inStock: inStockKeySet.has(line.key),
       scopeExcluded: scopeExcludedKeySet.has(line.key),
+      informacjaReady: informacjaReadyKeySet.has(line.key),
+      informacjaAcknowledged: informacjaAcknowledgedKeySet.has(line.key),
     });
     counts[state] += 1;
   }
@@ -304,6 +332,10 @@ export function formatZkWatchLineStatusSummaryFromCounts(
     const n = counts.partial;
     parts.push(n === 1 ? "1 częściowo" : `${n} częściowo`);
   }
+  if (counts.informacja_ready > 0) {
+    const n = counts.informacja_ready;
+    parts.push(n === 1 ? "1 dostępne" : `${n} dostępne`);
+  }
   if (counts.delivered > 0) {
     const n = counts.delivered;
     parts.push(n === 1 ? "1 na regale" : `${n} na regale`);
@@ -318,7 +350,7 @@ export function formatZkWatchLineStatusSummaryFromCounts(
   }
   if (counts.scope_excluded > 0) {
     const n = counts.scope_excluded;
-    parts.push(n === 1 ? "1 wykluczone" : `${n} wykluczone`);
+    parts.push(n === 1 ? "1 pominięte" : `${n} pominięte`);
   }
   return parts.length ? parts.join(" · ") : null;
 }
@@ -334,6 +366,8 @@ export function buildZkWatchLineStatusSummary(input: {
   newLineKeys: string[];
   inStockLineKeys: string[];
   scopeExcludedLineKeys: string[];
+  informacjaReadyLineKeys?: string[];
+  informacjaAcknowledgedLineKeys?: string[];
   lineCoverageByKey?: Record<string, ZkWatchLineCoverage>;
   prosbaScopeConfigured?: boolean;
 }): string | null {
@@ -348,6 +382,7 @@ export const ZK_WATCH_LINE_FLOW_ORDER: ZkWatchLineUiState[] = [
   "scope_excluded",
   "in_request",
   "partial",
+  "informacja_ready",
   "delivered",
   "in_stock",
   "arrived",
@@ -362,6 +397,7 @@ export const ZK_WATCH_LINE_STATUS_LEGEND: {
   { state: "uncovered", hint: "Brak prośby — zamów z karty ZK" },
   { state: "in_request", hint: "W aktywnej prośbie — czekasz na dostawę" },
   { state: "partial", hint: "Część ilości już dotarła" },
+  { state: "informacja_ready", hint: "Magazyn potwierdził dostępność (informacja)" },
   { state: "delivered", hint: "Na regale — automatycznie zaznaczone na liście" },
   { state: "in_stock", hint: "Odebrane z regału — checkbox = zakończone ręcznie" },
   { state: "arrived", hint: "Zakończone ręcznie" },
@@ -382,7 +418,7 @@ export const ZK_WATCH_STATUS_GUIDE_ITEMS: {
   },
   {
     state: "scope_excluded",
-    hint: "Wykluczone z prośby — nie zamawiasz tej pozycji u zakupów.",
+    hint: "Pominięte przy wyborze zakresu — nie zamawiasz tej pozycji u zakupów.",
   },
   {
     state: "in_request",
@@ -391,6 +427,10 @@ export const ZK_WATCH_STATUS_GUIDE_ITEMS: {
   {
     state: "partial",
     hint: "Część ilości z prośby już dotarła — reszta w drodze.",
+  },
+  {
+    state: "informacja_ready",
+    hint: "Prośba informacyjna — magazyn potwierdził dostępność towaru (nie mylić z „Na regale”).",
   },
   {
     state: "delivered",
@@ -419,13 +459,14 @@ export function isZkWatchLineCheckboxChecked(input: {
   if (input.completedManually) return true;
   if (input.uiState === "in_stock" || input.uiState === "arrived") return true;
   if (input.uiState === "delivered") return true;
+  if (input.uiState === "informacja_ready") return true;
   if (input.shelfMarked) return true;
   return false;
 }
 
 /** Checkbox na liście — interaktywny poza auto-zaznaczonym „Na regale”. */
 export function canToggleZkWatchLineCheckbox(uiState: ZkWatchLineUiState): boolean {
-  if (uiState === "scope_excluded" || uiState === "new" || uiState === "delivered") {
+  if (uiState === "scope_excluded" || uiState === "new" || uiState === "delivered" || uiState === "informacja_ready") {
     return false;
   }
   return true;
@@ -443,6 +484,8 @@ export type ZkWatchLineCheckboxContext = {
   newLineKeys: string[];
   inStockLineKeys: string[];
   scopeExcludedLineKeys: string[];
+  informacjaReadyLineKeys?: string[];
+  informacjaAcknowledgedLineKeys?: string[];
   lineCoverageByKey?: Record<string, ZkWatchLineCoverage>;
 };
 
@@ -463,6 +506,8 @@ function resolveZkWatchLineUiStateFromContext(
     shelfMarked: line.shelf_marked === true,
     inStock: ctx.inStockLineKeys.includes(line.key),
     scopeExcluded: ctx.scopeExcludedLineKeys.includes(line.key),
+    informacjaReady: ctx.informacjaReadyLineKeys?.includes(line.key),
+    informacjaAcknowledged: ctx.informacjaAcknowledgedLineKeys?.includes(line.key),
   });
 }
 
@@ -554,6 +599,8 @@ export function zkWatchLineCheckboxAriaLabel(input: {
         : `Odebrane z regału — kliknij aby oznaczyć jako zakończone: ${product}`;
     case "delivered":
       return `Na regale — zaznaczone automatycznie: ${product}`;
+    case "informacja_ready":
+      return `Dostępne (informacja) — zaznaczone automatycznie: ${product}`;
     case "partial":
       return checked
         ? `Częściowo na regale — odznacz na liście: ${product}`
@@ -568,7 +615,7 @@ export function zkWatchLineCheckboxAriaLabel(input: {
     case "in_request":
       return `Pozycja w prośbie — checkbox gdy towar będzie na regale: ${product}`;
     case "scope_excluded":
-      return `Wykluczone z prośby — checkbox po odbiorze z regału w Moje: ${product}`;
+      return `Pominięte przy wyborze zakresu — checkbox po odbiorze z regału w Moje: ${product}`;
     default:
       return `Checkbox niedostępny w tym stanie: ${product}`;
   }

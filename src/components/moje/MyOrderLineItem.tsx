@@ -1,5 +1,8 @@
 "use client";
 
+import { zdFulfillmentDeadlineChangeShortLabel } from "@/components/orders/ZdFulfillmentDeadlineChangeNotice";
+import { formatPlDate } from "@/lib/display-labels";
+import { formatMyOrderHistoryEstimateLineLabel } from "@/lib/orders/my-order-history-estimate-copy";
 import type { MyOrderLine, MyOrderLineStockStatus } from "@/lib/orders/my-order-presenter";
 import type { SalesCancelPhase } from "@/lib/orders/sales-cancel";
 import {
@@ -71,6 +74,7 @@ export function MyOrderLineItem({
   hideProcurementCancelNote = false,
   searchQuery,
   listKind = "zamowienie",
+  historyEstimateLabel = null,
 }: {
   line: MyOrderLine;
   index: number;
@@ -108,17 +112,33 @@ export function MyOrderLineItem({
   hideProcurementCancelNote?: boolean;
   searchQuery?: string | null;
   listKind?: "zamowienie" | "informacja";
+  /** Szacunek z historii grupy — gdy linia czeka na ZD lub nie ma terminu w Subiekcie. */
+  historyEstimateLabel?: string | null;
 }) {
   const badge = showProgress && emphasizeStock ? stockBadge(line.stockStatus) : null;
   const onStock = line.stockStatus === "on_stock";
   const partial = line.stockStatus === "partial";
 
+  const historyLabel = line.historyEstimateLabel ?? historyEstimateLabel;
+  const historyLowConfidence =
+    line.historyEstimateLowConfidence ?? /orientacyjnie/i.test(historyLabel ?? "");
+
   const zdLineDetail = line.zdFulfillment
-    ? `Termin z ZD ${line.zdFulfillment.dokNr}`
+    ? line.zdFulfillment.deadlineChange
+      ? zdFulfillmentDeadlineChangeShortLabel(line.zdFulfillment.deadlineChange)
+      : `Planowana dostawa ${formatPlDate(line.zdFulfillment.deadline)}`
     : line.zdEtaPending
-      ? "Sprawdzamy termin w ZD…"
+      ? historyLabel
+        ? formatMyOrderHistoryEstimateLineLabel(historyLabel, {
+            lowConfidence: historyLowConfidence,
+          })
+        : "Sprawdzamy termin w Subiekcie…"
       : line.zdEtaNoMatch
-        ? "Brak terminu w ZD Subiekta"
+        ? historyLabel
+          ? formatMyOrderHistoryEstimateLineLabel(historyLabel, {
+              lowConfidence: historyLowConfidence,
+            })
+          : "Brak terminu w Subiekcie"
         : null;
 
   const detailParts = [
@@ -136,12 +156,9 @@ export function MyOrderLineItem({
     Boolean(line.showSalesCancelRemainder && partialDefaultQty != null && onPartialCancelLine);
   const showSupplierQuickCancel =
     !showRemainderCancel && Boolean(line.showSalesCancelSupplierQuick && onPartialCancelLine);
+  const showPartialQtyCancel = Boolean(line.canPartialSalesCancel && onPartialCancelLine);
   const showFullLineCancel =
     Boolean(onCancelLine) && !showRemainderCancel && !showSupplierQuickCancel;
-  const showPartialQtyCancel =
-    Boolean(line.canPartialSalesCancel && onPartialCancelLine) &&
-    !showRemainderCancel &&
-    !showSupplierQuickCancel;
 
   return (
     <li
@@ -296,6 +313,28 @@ export function MyOrderLineItem({
                   {salesCancelQuickActionLabel()}
                 </MyOrderCancelButton>
               ) : null}
+              {showPartialQtyCancel ? (
+                <MyOrderCancelButton
+                  disabled={pending}
+                  ariaLabel={`${salesCancelLineCustomQtyLabel()} ${line.product}`}
+                  onClick={() =>
+                    onPartialCancelLine!(line.id, line.salesCancelPhase!, {
+                      product: line.product,
+                      maxQty: partialMaxQty,
+                      defaultQty:
+                        showRemainderCancel || showSupplierQuickCancel
+                          ? 1
+                          : line.salesCancelPhase === "in_transit"
+                            ? 1
+                            : partialDefaultQty ?? 1,
+                      deliveredQty: line.salesCancelDeliveredQty,
+                    })
+                  }
+                  className={cancelButtonRevealClass}
+                >
+                  {salesCancelLineCustomQtyLabel()}
+                </MyOrderCancelButton>
+              ) : null}
               {showFullLineCancel ? (
                 <MyOrderCancelButton
                   disabled={pending}
@@ -308,23 +347,6 @@ export function MyOrderLineItem({
                 >
                   {cancelLineLabel ??
                     salesCancelLineShortLabel(listKind)}
-                </MyOrderCancelButton>
-              ) : null}
-              {showPartialQtyCancel ? (
-                <MyOrderCancelButton
-                  disabled={pending}
-                  ariaLabel={`${salesCancelLineCustomQtyLabel()} ${line.product}`}
-                  onClick={() =>
-                    onPartialCancelLine!(line.id, line.salesCancelPhase!, {
-                      product: line.product,
-                      maxQty: partialMaxQty,
-                      defaultQty: 1,
-                      deliveredQty: line.salesCancelDeliveredQty,
-                    })
-                  }
-                  className={cancelButtonRevealClass}
-                >
-                  {salesCancelLineCustomQtyLabel()}
                 </MyOrderCancelButton>
               ) : null}
             </div>

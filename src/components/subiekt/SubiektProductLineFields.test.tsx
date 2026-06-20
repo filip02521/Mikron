@@ -345,7 +345,7 @@ describe("SubiektProductLineFields", () => {
     expect(screen.getByLabelText("Powiązano z Subiektem")).toBeTruthy();
   });
 
-  it("w trybie prośby pokazuje hint o układzie pól obok siebie", async () => {
+  it("w trybie prośby nie pokazuje statycznego bloku informacji o polach", async () => {
     vi.mocked(actionSubiektSuggestionsEnabled).mockResolvedValue({ enabled: true });
 
     render(
@@ -361,8 +361,10 @@ describe("SubiektProductLineFields", () => {
       expect(actionSubiektSuggestionsEnabled).toHaveBeenCalled()
     );
 
+    expect(screen.queryByText(/Informacje — produkt/i)).toBeNull();
+    expect(screen.queryByText(/Kod Mikran i ilość obok/)).toBeNull();
     expect(
-      screen.getByText(/Kod Mikran i ilość obok/)
+      screen.getByPlaceholderText(/Szukaj w Subiekcie/i)
     ).toBeTruthy();
   });
 });

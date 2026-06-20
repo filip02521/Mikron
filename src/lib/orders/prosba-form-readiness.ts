@@ -1,6 +1,7 @@
 import { hasAnyProductHint, hasValidOrderQuantity } from "@/lib/orders/request-completeness";
 import { PROCUREMENT_TEAM_LABEL } from "./procurement-copy";
 import type { SalesRequestSubmitPlan } from "@/lib/orders/sales-request-submit";
+import { assessSalesGroupSubmittable } from "@/lib/orders/sales-request-submit";
 import type { IndividualRequestKind } from "@/types/database";
 import type { InformacjaFlowPath } from "@/lib/orders/informacja-stock-out-reorder";
 import {
@@ -183,5 +184,23 @@ export function buildProsbaFormReadiness(
     tone: "handoff",
     steps,
     canSubmit: true,
+  };
+}
+
+/** Gotowość z planem dostawcy (panel dzienny / edycja zakupów). */
+export function buildProsbaFormReadinessWithSupplier(
+  lines: ProsbaReadinessLine[],
+  supplierId: string,
+  requestKind: IndividualRequestKind,
+  options?: ProsbaFormReadinessOptions
+): { plan: SalesRequestSubmitPlan | null; view: ProsbaFormReadinessView } {
+  const plan = assessSalesGroupSubmittable(
+    lines.map((line) => ({ ...line, supplierId: supplierId || line.supplierId })),
+    supplierId,
+    requestKind
+  );
+  return {
+    plan,
+    view: buildProsbaFormReadiness(lines, requestKind, plan, options),
   };
 }

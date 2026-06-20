@@ -1,5 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { parseZdFulfillmentDeadline } from "./zd-fulfillment-date";
+import {
+  isActiveZdFulfillmentDeadline,
+  isActiveZdFulfillmentDocument,
+  parseZdFulfillmentDeadline,
+} from "./zd-fulfillment-date";
 
 describe("parseZdFulfillmentDeadline", () => {
   it("preferuje dok_TerminRealizacji nad dok_DataRealizacji", () => {
@@ -27,5 +31,34 @@ describe("parseZdFulfillmentDeadline", () => {
         dok_DataRealizacji: null,
       })
     ).toBeNull();
+  });
+});
+
+describe("isActiveZdFulfillmentDeadline", () => {
+  const at = new Date("2026-06-18T12:00:00+02:00");
+
+  it("termin dziś lub w przyszłości — aktywny", () => {
+    expect(isActiveZdFulfillmentDeadline("2026-06-18", at)).toBe(true);
+    expect(isActiveZdFulfillmentDeadline("2026-07-15", at)).toBe(true);
+  });
+
+  it("termin w przeszłości — nieaktywny (już zrealizowany)", () => {
+    expect(isActiveZdFulfillmentDeadline("2026-02-27", at)).toBe(false);
+    expect(isActiveZdFulfillmentDeadline(null, at)).toBe(false);
+  });
+
+  it("isActiveZdFulfillmentDocument na dokumencie", () => {
+    expect(
+      isActiveZdFulfillmentDocument(
+        { dok_TerminRealizacji: "2026-07-15" },
+        at
+      )
+    ).toBe(true);
+    expect(
+      isActiveZdFulfillmentDocument(
+        { dok_TerminRealizacji: "2026-02-27" },
+        at
+      )
+    ).toBe(false);
   });
 });

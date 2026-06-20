@@ -10,6 +10,7 @@ export function supabaseCookieOptions(): CookieOptions {
     path: "/",
     sameSite: "lax",
     secure: isHttps && !isDev,
+    // Supabase SSR odświeża sesję w przeglądarce — httpOnly musi pozostać false.
     httpOnly: false,
   };
 }

@@ -33,9 +33,6 @@ export default async function ProsbaPage({
   const { panelContext } = await readAdminPanelContextForSession();
   let adminReadOnlyPreview = false;
   let suppliers: Awaited<ReturnType<typeof fetchSupplierFormContext>>["suppliers"] = [];
-  let statsBySupplierId: Awaited<
-    ReturnType<typeof fetchSupplierFormContext>
-  >["statsBySupplierId"] = {};
   let salesPeople: { id: string; name: string }[] = [];
   let lockedSalesPerson: { id: string; name: string } | null = null;
   let isSales = false;
@@ -45,7 +42,6 @@ export default async function ProsbaPage({
   try {
     const ctx = await fetchSupplierFormContext();
     suppliers = ctx.suppliers;
-    statsBySupplierId = ctx.statsBySupplierId;
   } catch {
     /* empty */
   }
@@ -106,7 +102,8 @@ export default async function ProsbaPage({
         <div className={salesPageShellClass}>
           <PageHeader
             title="Nowa prośba"
-            description="Podgląd formularza handlowca — składanie prośb jest wyłączone dla administratora."
+            hint="Podgląd formularza handlowca — składanie prośb jest wyłączone dla administratora."
+            hintAriaLabel="O podglądzie prośby"
           />
           <Alert tone="info">
             Wybierz handlowca z{" "}
@@ -135,7 +132,6 @@ export default async function ProsbaPage({
         <Suspense fallback={<ProsbaFormSuspenseFallback />}>
           <OrderFormClient
             suppliers={suppliers}
-            statsBySupplierId={statsBySupplierId}
             salesPeople={[]}
             lockedSalesPerson={lockedSalesPerson}
             singleGroup
@@ -151,7 +147,7 @@ export default async function ProsbaPage({
     return (
       <SalesAccountLinkRequired
         title="Nowa prośba"
-        description="Formularz jest dostępny po powiązaniu konta z kartą handlowca."
+        hint="Formularz jest dostępny po powiązaniu konta z kartą handlowca."
       />
     );
   }
@@ -176,7 +172,8 @@ export default async function ProsbaPage({
       <div className={salesPageShellClass}>
         <PageHeader
           title="Nowa prośba"
-          description="Wybierz handlowca z zespołu lub powiąż swoje konto z kartą handlowca."
+          hint="Wybierz handlowca z zespołu lub powiąż swoje konto z kartą handlowca."
+          hintAriaLabel="O formularzu prośby"
         />
         <Alert tone="warning">
           Aby składać prośby w swoim imieniu, administrator musi przypisać Ci kartę handlowca.
@@ -212,7 +209,6 @@ export default async function ProsbaPage({
       {lockedSalesPerson ? (
         <OrderFormClient
           suppliers={suppliers}
-          statsBySupplierId={statsBySupplierId}
           salesPeople={salesPeople}
           lockedSalesPerson={lockedSalesPerson}
           singleGroup
@@ -226,7 +222,6 @@ export default async function ProsbaPage({
       ) : (
         <OrderFormClient
           suppliers={suppliers}
-          statsBySupplierId={statsBySupplierId}
           salesPeople={salesPeople}
           initialSupplierId={initialSupplierId}
         />

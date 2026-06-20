@@ -193,3 +193,55 @@ export function countMyOrderRowsBySearch(
 /** @deprecated Użyj filterMyOrderRowsBySearch — zachowane dla linków ?klient= */
 export const filterMyOrderRowsByClient = filterMyOrderRowsBySearch;
 export const rowMatchesClientQuery = rowMatchesSearchQuery;
+
+export type SingleMyOrderSearchScrollTarget = {
+  rowId: string;
+  kind: "active" | "archive";
+  scrollKey: string;
+};
+
+/** Gdy w wyszukiwaniu zostaje dokładnie jedna prośba — przewiń do niej. */
+export function resolveSingleMyOrderSearchScrollTarget(params: {
+  searchActive: boolean;
+  searchTrimmed: string;
+  searchMatchCount: number;
+  archiveMatchCount: number;
+  activeRows: readonly MyOrderRow[];
+  archiveRecentRows: readonly MyOrderRow[];
+  archiveExtendedRows: readonly MyOrderRow[];
+}): SingleMyOrderSearchScrollTarget | null {
+  if (!params.searchActive || !params.searchTrimmed) return null;
+
+  if (params.searchMatchCount === 1) {
+    const rowId = params.activeRows[0]?.id;
+    if (!rowId) return null;
+    return {
+      rowId,
+      kind: "active",
+      scrollKey: `${params.searchTrimmed}:active:${rowId}`,
+    };
+  }
+
+  if (params.searchMatchCount !== 0 || params.archiveMatchCount !== 1) return null;
+
+  const seen = new Set<string>();
+  const archiveRows: MyOrderRow[] = [];
+  for (const row of params.archiveRecentRows) {
+    if (seen.has(row.id)) continue;
+    seen.add(row.id);
+    archiveRows.push(row);
+  }
+  for (const row of params.archiveExtendedRows) {
+    if (seen.has(row.id)) continue;
+    seen.add(row.id);
+    archiveRows.push(row);
+  }
+  if (archiveRows.length !== 1) return null;
+
+  const rowId = archiveRows[0]!.id;
+  return {
+    rowId,
+    kind: "archive",
+    scrollKey: `${params.searchTrimmed}:archive:${rowId}`,
+  };
+}

@@ -107,7 +107,7 @@ export function formatZkWatchProsbaScopeSummary(
   const toOrder = productLines.filter((line) => needsByKey.get(line.key) === true).length;
   const inStock = productLines.length - toOrder;
 
-  if (toOrder === 0) return "Bez prośby — wszystko wykluczone";
+  if (toOrder === 0) return "Bez prośby — nic nie wybrane";
   if (inStock === 0) return toOrder === 1 ? "1 do zamówienia" : `${toOrder} do zamówienia`;
-  return `${toOrder} do zamówienia · ${inStock} wykluczone`;
+  return `${toOrder} do zamówienia · ${inStock} pominięte`;
 }

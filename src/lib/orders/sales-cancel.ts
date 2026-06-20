@@ -159,27 +159,27 @@ export function showSalesCancelSupplierQuickAction(order: IndividualOrder): bool
   return delivered > 0 && remainder === 1;
 }
 
-/** Skrót częściowej zmiany ilości (reszta u dostawcy) — z liczbą sztuk gdy > 1. */
+/** Skrót rezygnacji z reszty u dostawcy (np. 3 z 5 szt. jeszcze w drodze). */
 export function salesCancelLineRemainderLabel(remainder?: number): string {
-  const base = salesCancelLineCustomQtyLabel();
   const n = remainder != null ? Math.max(1, Math.trunc(remainder)) : 0;
-  return n > 1 ? `${base} (${n} szt.)` : base;
+  return n > 1 ? `Rezygnuj z reszty (${n} szt.)` : "Rezygnuj z reszty";
 }
 
-/** Opis dla czytników ekranu — z liczbą sztuk, gdy > 1. */
+/** Opis dla czytników ekranu — rezygnacja z reszty u dostawcy. */
 export function salesCancelLineRemainderAriaLabel(remainder: number): string {
   const n = Math.max(1, Math.trunc(remainder));
-  const base = salesCancelLineCustomQtyLabel();
-  return n > 1 ? `${base} (${n} szt.)` : base;
+  return n > 1
+    ? `Rezygnuj z reszty u dostawcy: ${n} sztuki`
+    : "Rezygnuj z reszty u dostawcy";
 }
 
 export function salesCancelLineCustomQtyLabel(): string {
   return "Zmień ilość";
 }
 
-/** Skrót częściowej zmiany ilości (np. ostatnia szt. u dostawcy). */
+/** Ostatnia szt. u dostawcy po częściowej dostawie — rezygnacja z reszty. */
 export function salesCancelQuickActionLabel(): string {
-  return salesCancelLineCustomQtyLabel();
+  return "Rezygnuj z reszty";
 }
 
 export type SalesCancelQuantityPlan = {

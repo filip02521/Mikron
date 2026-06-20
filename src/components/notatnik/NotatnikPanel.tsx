@@ -38,6 +38,7 @@ export function NotatnikPanel({
         domain={domain}
         title={title}
         hint={description}
+        hintMode="tooltip"
         count={count}
         badges={badges}
         accent={accent}

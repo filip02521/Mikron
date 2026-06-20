@@ -5,6 +5,7 @@ import { createPortal } from "react-dom";
 import { cn } from "@/lib/cn";
 import { modalBackdropClass, modalPanelClass } from "@/lib/ui/surfaces";
 import { ActionLoadingOverlay } from "@/components/ui/ActionLoadingOverlay";
+import { HelpHintBubble } from "@/components/ui/HelpHintBubble";
 
 export type ModalTier = "standard" | "raised" | "top" | "stack";
 export type ModalSize = "sm" | "md" | "lg" | "xl";
@@ -29,6 +30,8 @@ export function ModalShell({
   onClose,
   title,
   description,
+  titleHint,
+  titleHintAriaLabel = "O tym oknie",
   titleId = "modal-title",
   describedById,
   children,
@@ -45,6 +48,9 @@ export function ModalShell({
   onClose: () => void;
   title?: string;
   description?: string;
+  /** Podpowiedź przy tytule zamiast osobnego opisu. */
+  titleHint?: string;
+  titleHintAriaLabel?: string;
   titleId?: string;
   describedById?: string;
   children: React.ReactNode;
@@ -69,7 +75,7 @@ export function ModalShell({
   if (!open) return null;
 
   const z = tierZ[tier];
-  const hasHeader = Boolean(title || description);
+  const hasHeader = Boolean(title || description || titleHint);
 
   const shell = (
     <>
@@ -98,9 +104,19 @@ export function ModalShell({
         {hasHeader ? (
           <header className="shrink-0 border-b border-slate-100 px-5 py-4 sm:px-6">
             {title ? (
-              <h2 id={titleId} className="text-lg font-semibold text-slate-900">
-                {title}
-              </h2>
+              <div className="flex flex-wrap items-center gap-1.5">
+                <h2 id={titleId} className="text-lg font-semibold text-slate-900">
+                  {title}
+                </h2>
+                {titleHint ? (
+                  <HelpHintBubble
+                    message={titleHint}
+                    tone="slate"
+                    size="md"
+                    ariaLabel={titleHintAriaLabel}
+                  />
+                ) : null}
+              </div>
             ) : null}
             {description ? (
               <p className={cn("text-sm leading-relaxed text-slate-500", title && "mt-1")}>

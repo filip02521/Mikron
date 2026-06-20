@@ -2,43 +2,56 @@
 
 import { NavIcon } from "@/components/icons/NavIcon";
 import { SectionHeadingIcon } from "@/components/icons/SectionHeadingIcon";
+import { AppBrandContentFooter } from "@/components/layout/AppBrandContentFooter";
 import { Card, CardHeader } from "@/components/ui/Card";
 import {
   salesCardBodyClass,
-  salesTeamPageShellClass,
   sectionIconTileBrandClass,
 } from "@/lib/ui/ontime-theme";
 
 export function SalesTeamWorkspace({
   title,
   description,
+  hint,
+  hintAriaLabel = "O tej stronie",
   iconKey = "team",
   action,
+  subnav,
+  notices,
   children,
 }: {
   title: string;
   description: string;
-  iconKey?: "team" | "teamAccounts";
+  hint?: string;
+  hintAriaLabel?: string;
+  iconKey?: "team" | "teamAccounts" | "teamGroups";
   action?: React.ReactNode;
+  subnav?: React.ReactNode;
+  notices?: React.ReactNode;
   children: React.ReactNode;
 }) {
   return (
-    <div className={salesTeamPageShellClass}>
-      <Card padding={false} className="overflow-hidden">
-        <CardHeader
-          inset
-          density="compact"
-          leading={
-            <SectionHeadingIcon tileClassName={sectionIconTileBrandClass}>
-              <NavIcon navKey={iconKey} size={20} />
-            </SectionHeadingIcon>
-          }
-          title={title}
-          description={description}
-          action={action}
-        />
-        <div className={salesCardBodyClass}>{children}</div>
-      </Card>
-    </div>
+    <Card padding={false} className="overflow-hidden">
+      <CardHeader
+        inset
+        density="compact"
+        leading={
+          <SectionHeadingIcon tileClassName={sectionIconTileBrandClass}>
+            <NavIcon navKey={iconKey} size={20} />
+          </SectionHeadingIcon>
+        }
+        title={title}
+        description={description}
+        hint={hint}
+        hintAriaLabel={hintAriaLabel}
+        action={action}
+      />
+      {subnav}
+      <div className={salesCardBodyClass}>
+        {notices}
+        {children}
+      </div>
+      <AppBrandContentFooter mobileOnly variant="page" />
+    </Card>
   );
 }

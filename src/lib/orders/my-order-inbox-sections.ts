@@ -1,6 +1,7 @@
 import type { MyOrderRow } from "@/lib/orders/my-order-presenter";
 import type { MojeSectionIconKind } from "@/components/icons/StrokeIcons";
 import { isProsbaHandoffStatus, sortMyOrderRows } from "@/lib/orders/my-order-sales-ui";
+import { sortOrderedProgressByDelivery } from "@/lib/orders/my-order-delivery-urgency";
 
 /** Sekcja listy „w toku” dla zamówień — przed vs po złożeniu u dostawcy. */
 export type MyOrderProgressSectionId = "before_order" | "ordered_progress";
@@ -15,15 +16,15 @@ import type { MyOrderSectionAccent } from "@/lib/orders/my-order-section-accent"
 
 /** Sekcja u góry listy — wymaga kliknięcia handlowca. */
 export const MY_ORDER_ACTION_SECTION_COPY = {
-  title: "Wymaga reakcji",
-  hint: "Gotowy towar do odbioru lub anulowanie — potwierdź jednym kliknięciem.",
+  title: "Potwierdź odbiór z regału",
+  hint: "Towar gotowy do odbioru albo sprawa do zamknięcia — potwierdź jednym kliknięciem.",
   icon: "action" as const,
   accent: "emerald" as const satisfies MyOrderSectionAccent,
 };
 
 export const MY_ORDER_INFORMACJA_SECTION_COPY = {
-  title: "Tylko sprawdzamy dostępność",
-  hint: "Prośby o sprawdzenie, czy towar jest na magazynie.",
+  title: "Sprawdzamy dostępność",
+  hint: "Prośby informacyjne — bez zamówienia u dostawcy. Czekasz na odpowiedź z magazynu.",
   icon: "informacja" as const,
   accent: "violet" as const satisfies MyOrderSectionAccent,
 };
@@ -33,14 +34,14 @@ export const MY_ORDER_PROGRESS_SECTION_COPY: Record<
   { title: string; hint: string; icon: MojeSectionIconKind; accent: MyOrderSectionAccent }
 > = {
   ordered_progress: {
-    title: "Zamówione — czekamy na dostawę",
-    hint: "Zamówienia u dostawcy — także gdy część towaru dotarła już na magazyn.",
+    title: "Czekamy na dostawę",
+    hint: "Zamówienia już złożone u dostawcy. U góry najbliższy termin — rozwiń wiersz, aby zobaczyć datę z ZD.",
     icon: "zamowienie",
     accent: "slate",
   },
   before_order: {
-    title: "Przed zamówieniem u dostawcy",
-    hint: "Weryfikacja danych albo oczekiwanie na złożenie zamówienia.",
+    title: "Przed zamówieniem",
+    hint: "Weryfikacja w dziale dostaw lub czekamy na złożenie zamówienia u dostawcy. Nie musisz nic robić.",
     icon: "before_order",
     accent: "indigo",
   },
@@ -78,6 +79,6 @@ export function partitionMyOrderProgressRows(rows: MyOrderRow[]): {
   }
   return {
     beforeOrder: sortMyOrderRows(beforeOrder),
-    orderedProgress: sortMyOrderRows(orderedProgress),
+    orderedProgress: sortOrderedProgressByDelivery(orderedProgress),
   };
 }

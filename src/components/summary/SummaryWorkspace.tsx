@@ -25,7 +25,6 @@ import { DailyPanelToolbar } from "@/components/summary/DailyPanelToolbar";
 import { DailyPanelTabs } from "@/components/summary/DailyPanelTabs";
 import { useDailyPanelView } from "@/hooks/useDailyPanelView";
 import { useDailyPanelFreshHighlight } from "@/hooks/useDailyPanelFreshHighlight";
-import { dailyPanelIntroDescription } from "@/lib/orders/daily-panel-view";
 import { useDailyPanelRunner } from "@/components/summary/useDailyPanelRunner";
 import { DailyPanelStickyFooter } from "@/components/summary/DailyPanelStickyFooter";
 import { DailyPanelContentFooter } from "@/components/summary/DailyPanelContentFooter";
@@ -46,6 +45,7 @@ import {
 import { useUndoShortcutLabel } from "@/lib/platform/keyboard-shortcut-label";
 import { SectionHeadingIcon } from "@/components/icons/SectionHeadingIcon";
 import { brandIconTileClass, panelChromeInsetClass, panelSectionInsetClass, panelWorkspaceShellClass } from "@/lib/ui/ontime-theme";
+import { SALES_PAGE_HEADER_HINTS } from "@/lib/sales/sales-page-ui-copy";
 import { cn } from "@/lib/cn";
 import type { OrderFormSupplierOption } from "@/lib/orders/order-form-suppliers";
 
@@ -81,7 +81,6 @@ export function SummaryWorkspace({
   } = useDailyPanelRunner();
 
   const { view: panelView, setView: setPanelView } = useDailyPanelView();
-  const panelIntro = dailyPanelIntroDescription(panelView);
   const highlightFresh = useDailyPanelFreshHighlight();
   const undoShortcut = useUndoShortcutLabel();
 
@@ -319,7 +318,8 @@ export function SummaryWorkspace({
             </SectionHeadingIcon>
           }
           title="Panel dzienny"
-          description={panelIntro}
+          hint={SALES_PAGE_HEADER_HINTS.dailyPanel}
+          hintAriaLabel="O panelu dziennym"
         />
 
         <div className={cn(panelChromeInsetClass, "flex items-center border-b border-slate-100 py-2.5 sm:py-3")}>

@@ -6,31 +6,31 @@ import { actionUpdateIndividualRequest } from "@/app/actions/admin";
 import { actionUpdateMyIndividualRequest } from "@/app/actions/my-orders";
 import { assessSalesGroupSubmittable } from "@/lib/orders/sales-request-submit";
 import {
-  assessRequestCompleteness,
   hasValidOrderQuantity,
 } from "@/lib/orders/request-completeness";
 import { assertProcurementEntryComplete } from "@/lib/orders/procurement-submit";
 import {
-  editRequestNoteForSave,
   filterIndividualRequestEditLinesForSave,
   toIndividualRequestEditLinePayload,
 } from "@/lib/orders/individual-request-edit";
-import { PROCUREMENT_TEAM_LABEL } from "@/lib/orders/procurement-copy";
-import { buildProsbaFormReadiness } from "@/lib/orders/prosba-form-readiness";
+import { buildProsbaFormReadiness, buildProsbaFormReadinessWithSupplier } from "@/lib/orders/prosba-form-readiness";
 import { ProsbaFormReadiness } from "@/components/orders/ProsbaFormReadiness";
+import {
+  ProsbaFormInformacjaSection,
+  ProsbaFormKeyboardStrip,
+  ProsbaFormProductsSection,
+  ProsbaFormRequestKindSection,
+} from "@/components/orders/ProsbaFormSharedSections";
 import { ProsbaFormSection } from "@/components/orders/ProsbaFormSection";
-import { RequestFormStatusPanel } from "@/components/orders/RequestFormStatusPanel";
 import { RequestProductLinesEditor } from "@/components/orders/RequestProductLinesEditor";
-import { SalesRequestNoteField } from "@/components/orders/SalesRequestNoteField";
 import { newProductLine, appendProductLine, type ProductLineDraft } from "@/components/orders/request-product-lines";
-import { RequestKindToggle } from "@/components/orders/RequestKindToggle";
-import { InformacjaFlowPicker } from "@/components/orders/InformacjaFlowPicker";
+import { IconUserGroup } from "@/components/icons/StrokeIcons";
 import {
   DEFAULT_INFORMACJA_FLOW_PATH,
-  INFORMACJA_FLOW_PICKER_SECTION,
-  INFORMACJA_FLOW_PICKER_SECTION_DAILY,
   informacjaProductsFormHint,
 } from "@/lib/orders/informacja-flow-ui";
+import { PROSBA_FORM_SECTION_COPY } from "@/lib/orders/prosba-form-section-copy";
+import { PROSBA_PAGE_HEADER_HINTS } from "@/lib/orders/prosba-optional-section-copy";
 import {
   flagsFromInformacjaFlowPath,
   type InformacjaFlowPath,
@@ -39,15 +39,17 @@ import { ModalShell } from "@/components/ui/ModalShell";
 import { Button } from "@/components/ui/Button";
 import { Field, Select } from "@/components/ui/Field";
 import { SupplierPickerField } from "@/components/orders/SupplierPickerField";
-import { KeyboardShortcutsHint } from "@/components/ui/KeyboardShortcutsHint";
 import { useActionPending } from "@/hooks/useActionPending";
 import { toAppSupplierRefs } from "@/lib/subiekt/match-supplier";
 import type { OrderFormSupplierOption } from "@/lib/orders/order-form-suppliers";
-import type { SubiektFeedback } from "@/lib/subiekt/feedback";
 import {
   handleProcurementProsbaKeyboardEvent,
   PROCUREMENT_PROSBA_KEYBOARD_HINTS,
 } from "@/lib/orders/procurement-prosba-keyboard";
+import {
+  handleSalesProsbaKeyboardEvent,
+  SALES_PROSBA_KEYBOARD_HINTS,
+} from "@/lib/orders/sales-prosba-keyboard";
 import { ProsbaStockConfirmDialog } from "@/components/orders/ProsbaStockConfirmDialog";
 import { buildProsbaSubmitStockConfirm } from "@/lib/orders/prosba-stock-check";
 import { handleProsbaStockSubmitError } from "@/lib/orders/prosba-stock-submit-error";
@@ -57,8 +59,6 @@ export type EditIndividualRequestInitial = {
   salesPersonId: string;
   requestKind: IndividualRequestKind;
   informacjaPath?: InformacjaFlowPath;
-  requestNote?: string | null;
-  requestNotesMixed?: boolean;
   lines: ProductLineDraft[];
 };
 
@@ -89,8 +89,6 @@ export function EditIndividualRequestModal({
     DEFAULT_INFORMACJA_FLOW_PATH
   );
   const [lines, setLines] = useState<ProductLineDraft[]>([newProductLine()]);
-  const [requestNote, setRequestNote] = useState("");
-  const [requestNoteTouched, setRequestNoteTouched] = useState(false);
   const [validationAttempted, setValidationAttempted] = useState(false);
   const [formNotice, setFormNotice] = useState<{
     text: string;
@@ -105,15 +103,6 @@ export function EditIndividualRequestModal({
     [suppliers]
   );
   const supplierRefs = useMemo(() => toAppSupplierRefs(suppliers), [suppliers]);
-  const [supplierSubiektFeedback, setSupplierSubiektFeedback] =
-    useState<SubiektFeedback | null>(null);
-  const [supplierPickerFeedbacks, setSupplierPickerFeedbacks] = useState<SubiektFeedback[]>(
-    []
-  );
-  const [productLineFeedback, setProductLineFeedback] = useState<SubiektFeedback | null>(
-    null
-  );
-  const [configFeedback, setConfigFeedback] = useState<SubiektFeedback | null>(null);
   const [resolvingSupplier, setResolvingSupplier] = useState(false);
 
   const salesSubmitPlan = useMemo(() => {
@@ -130,6 +119,21 @@ export function EditIndividualRequestModal({
   }, [mode, lines, requestKind, salesSubmitPlan, informacjaPath, resolvingSupplier]);
 
   const canSaveSales = salesFormReadiness?.canSubmit ?? false;
+
+  const procurementReadiness = useMemo(() => {
+    if (mode !== "procurement") return null;
+    return buildProsbaFormReadinessWithSupplier(lines, supplierId, requestKind, {
+      informacjaPath,
+      resolvingSupplier,
+    });
+  }, [mode, lines, supplierId, requestKind, informacjaPath, resolvingSupplier]);
+
+  const canSaveProcurement =
+    mode === "procurement" &&
+    Boolean(supplierId.trim()) &&
+    Boolean(salesPersonId.trim()) &&
+    (procurementReadiness?.view.canSubmit ?? false) &&
+    !resolvingSupplier;
 
   const informacjaFlags = useMemo(
     () =>
@@ -149,9 +153,9 @@ export function EditIndividualRequestModal({
           initial.salesPersonId,
           initial.requestKind,
           initial.informacjaPath ?? DEFAULT_INFORMACJA_FLOW_PATH,
-          initial.requestNote ?? "",
-          String(initial.requestNotesMixed ?? false),
-          ...initial.lines.map((line) => line.id),
+          ...initial.lines.map(
+            (line) => `${line.id}\0${line.requestNote ?? ""}\0${line.product}`
+          ),
         ].join("\0")
       : "";
   const [appliedResetKey, setAppliedResetKey] = useState("");
@@ -167,14 +171,8 @@ export function EditIndividualRequestModal({
           ? initial.lines.map((line) => ({ ...line }))
           : [newProductLine()]
       );
-      setRequestNote(initial.requestNote ?? "");
-      setRequestNoteTouched(false);
       setValidationAttempted(false);
       setFormNotice(null);
-      setSupplierSubiektFeedback(null);
-      setSupplierPickerFeedbacks([]);
-      setProductLineFeedback(null);
-      setConfigFeedback(null);
       setResolvingSupplier(false);
     }
   } else if (appliedResetKey) {
@@ -284,11 +282,6 @@ export function EditIndividualRequestModal({
             requestKind,
             informacjaPath:
               requestKind === "informacja" ? informacjaPath : undefined,
-            requestNote: editRequestNoteForSave(requestNote, {
-              mixedOnLines: Boolean(initial?.requestNotesMixed),
-              touched: requestNoteTouched,
-              initialNote: initial?.requestNote ?? "",
-            }),
             lines: linesToSave.map((line) =>
               toIndividualRequestEditLinePayload(line, orderIds)
             ),
@@ -327,16 +320,34 @@ export function EditIndividualRequestModal({
   useEffect(() => {
     if (!open) return;
     const onKey = (e: KeyboardEvent) => {
+      if (mode === "sales") {
+        handleSalesProsbaKeyboardEvent(e, {
+          pending,
+          canSubmit: canSaveSales,
+          onSubmit: () => saveRef.current(),
+          onSetRequestKind: (kind) => {
+            setRequestKind(kind);
+            if (kind === "informacja") setInformacjaPath(DEFAULT_INFORMACJA_FLOW_PATH);
+            else setInformacjaPath("direct");
+          },
+          onAddProductLine: () => addLineRef.current(),
+        });
+        return;
+      }
       handleProcurementProsbaKeyboardEvent(e, {
         pending,
         onSubmit: () => saveRef.current(),
-        onSetRequestKind: mode === "procurement" ? setRequestKind : undefined,
+        onSetRequestKind: (kind) => {
+          setRequestKind(kind);
+          if (kind === "informacja") setInformacjaPath(DEFAULT_INFORMACJA_FLOW_PATH);
+          else setInformacjaPath("direct");
+        },
         onAddProductLine: () => addLineRef.current(),
       });
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [open, pending, mode]);
+  }, [open, pending, mode, canSaveSales]);
 
   if (!open) return null;
 
@@ -359,11 +370,12 @@ export function EditIndividualRequestModal({
       open
       onClose={onClose}
       title={mode === "procurement" ? "Popraw prośbę handlowca" : "Popraw swoją prośbę"}
-      description={
+      titleHint={
         mode === "procurement"
-          ? "Korekta przed złożeniem zamówienia u dostawcy — np. zły dostawca lub opis produktu."
-          : `Możesz poprawić prośbę, dopóki ${PROCUREMENT_TEAM_LABEL} nie oznaczy jej jako zamówionej.`
+          ? PROSBA_PAGE_HEADER_HINTS.editProcurement
+          : PROSBA_PAGE_HEADER_HINTS.editSales
       }
+      titleHintAriaLabel="O edycji prośby"
       size="xl"
       tier="raised"
       className="max-h-[min(calc(100dvh-1rem),920px)]"
@@ -376,11 +388,18 @@ export function EditIndividualRequestModal({
             Anuluj
           </Button>
           <Button
-            disabled={pending || !initial || (mode === "sales" && !canSaveSales)}
+            disabled={
+              pending ||
+              !initial ||
+              (mode === "sales" && !canSaveSales) ||
+              (mode === "procurement" && !canSaveProcurement)
+            }
             title={
               mode === "sales" && !canSaveSales && !pending
                 ? "Uzupełnij wymagane pola przed zapisem"
-                : undefined
+                : mode === "procurement" && !canSaveProcurement && !pending
+                  ? "Uzupełnij wymagane pola przed zapisem"
+                  : undefined
             }
             onClick={save}
           >
@@ -389,33 +408,23 @@ export function EditIndividualRequestModal({
         </>
       }
     >
-      <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5 border-b border-slate-100 bg-slate-50/60 px-5 py-2.5 sm:px-6">
-        <span className="shrink-0 text-xs font-medium text-slate-600">Skróty klawiszowe</span>
-        <KeyboardShortcutsHint items={[...PROCUREMENT_PROSBA_KEYBOARD_HINTS]} compact />
-      </div>
+      <ProsbaFormKeyboardStrip
+        hints={mode === "sales" ? SALES_PROSBA_KEYBOARD_HINTS : PROCUREMENT_PROSBA_KEYBOARD_HINTS}
+        variant={mode === "sales" ? "sales" : "procurement"}
+      />
 
-      <div className="min-h-0 flex-1 space-y-6 overflow-y-auto px-5 py-4 sm:px-6 sm:py-5">
+      <div className="min-h-0 flex-1 space-y-3 overflow-y-auto p-3 sm:p-4">
         {mode === "procurement" ? (
           <ProsbaFormSection
-            title="Dla kogo i u kogo?"
-            hint="Handlowiec i dostawca przypisany do prośby."
+            title={PROSBA_FORM_SECTION_COPY.delegateProcurement.title}
+            hint={PROSBA_FORM_SECTION_COPY.delegateProcurement.hint}
+            accent="indigo"
+            icon={<IconUserGroup size={17} />}
+            tileClassName="bg-indigo-100 text-indigo-800"
           >
-            <div className="grid gap-4 lg:grid-cols-2">
-              <Field label="Dostawca">
-                <SupplierPickerField
-                  suppliers={sortedSuppliers}
-                  value={supplierId}
-                  onChange={setSupplierId}
-                  disabled={pending}
-                  allowEmpty
-                  emptyLabel="— wybierz —"
-                  dropdownSize="comfortable"
-                  showInlineFeedback={false}
-                  onSubiektFeedbackChange={setSupplierPickerFeedbacks}
-                />
-              </Field>
+            <div className="grid gap-4 lg:grid-cols-2 lg:items-start">
               {salesPeople.length > 0 ? (
-                <Field label="Handlowiec">
+                <Field labelClassName="inline-flex min-h-6 items-center" label="Dla kogo (handlowiec)">
                   <Select
                     disabled={pending}
                     value={salesPersonId}
@@ -429,58 +438,52 @@ export function EditIndividualRequestModal({
                   </Select>
                 </Field>
               ) : null}
+              <Field labelClassName="inline-flex min-h-6 items-center" label="Dostawca">
+                <SupplierPickerField
+                  suppliers={sortedSuppliers}
+                  value={supplierId}
+                  onChange={setSupplierId}
+                  disabled={pending}
+                  allowEmpty
+                  emptyLabel="— wybierz —"
+                  dropdownSize="comfortable"
+                  showInlineFeedback={false}
+                />
+              </Field>
             </div>
-          </ProsbaFormSection>
-        ) : (
-          <p className="text-xs leading-relaxed text-slate-500">
-            Dostawcę dopasujemy z Subiekta po zapisie (jeśli wybrałeś towar z katalogu) albo
-            uzupełni go {PROCUREMENT_TEAM_LABEL}.
-          </p>
-        )}
-
-        <ProsbaFormSection
-          title="Co chcesz zgłosić?"
-          hint="Rodzaj prośby decyduje o wymaganych polach produktu."
-        >
-          <RequestKindToggle
-            value={requestKind}
-            onChange={(kind) => {
-              setRequestKind(kind);
-              if (kind === "informacja") setInformacjaPath(DEFAULT_INFORMACJA_FLOW_PATH);
-              else setInformacjaPath("direct");
-            }}
-          />
-        </ProsbaFormSection>
-
-        {requestKind === "informacja" ? (
-          <ProsbaFormSection
-            title={INFORMACJA_FLOW_PICKER_SECTION.title}
-            hint={
-              mode === "procurement" && informacjaPath === "via_panel"
-                ? INFORMACJA_FLOW_PICKER_SECTION_DAILY.hint
-                : INFORMACJA_FLOW_PICKER_SECTION.hint
-            }
-          >
-            <InformacjaFlowPicker
-              path={informacjaPath}
-              onChange={setInformacjaPath}
-              disabled={pending}
-              includeViaPanel={mode === "procurement" && informacjaPath === "via_panel"}
-            />
           </ProsbaFormSection>
         ) : null}
 
-        <ProsbaFormSection
-          title="Produkty"
+        <ProsbaFormRequestKindSection
+          value={requestKind}
+          onChange={(kind) => {
+            setRequestKind(kind);
+            if (kind === "informacja") setInformacjaPath(DEFAULT_INFORMACJA_FLOW_PATH);
+            else setInformacjaPath("direct");
+          }}
+        />
+
+        {requestKind === "informacja" ? (
+          <ProsbaFormInformacjaSection
+            path={informacjaPath}
+            onChange={setInformacjaPath}
+            disabled={pending}
+            includeViaPanel={mode === "procurement"}
+          />
+        ) : null}
+
+        <ProsbaFormProductsSection
+          requestKind={requestKind}
+          informacjaPath={informacjaPath}
           hint={
             requestKind === "informacja"
               ? informacjaProductsFormHint(informacjaPath)
               : mode === "sales"
-                ? "Symbol, kod Mikran lub opis oraz ilość przy każdej pozycji."
-                : "Symbol, kod Mikran lub opis, ilość oraz opcjonalnie klient końcowy (Subiekt) przy każdej pozycji."
+                ? PROSBA_FORM_SECTION_COPY.products.salesEditHint
+                : PROSBA_FORM_SECTION_COPY.products.orderHint
           }
         >
-          <div className="space-y-4">
+          <div className="space-y-3">
             <RequestProductLinesEditor
               lines={lines}
               onChange={(next) => {
@@ -494,93 +497,37 @@ export function EditIndividualRequestModal({
               deferSupplierResolve={mode === "sales"}
               typeaheadSize="comfortable"
               validationAttempted={validationAttempted}
-              liveValidation={mode === "sales"}
+              liveValidation
               suppliers={mode === "procurement" ? supplierRefs : undefined}
               unifiedFeedback={mode === "procurement"}
               onSupplierResolved={
                 mode === "procurement"
                   ? ({ supplierId: id }) => {
                       setSupplierId(id);
-                      setSupplierSubiektFeedback(null);
                     }
                   : undefined
               }
               onSupplierMappingMissing={
                 mode === "procurement" ? () => setSupplierId("") : undefined
               }
-              onSupplierResolveFeedback={
-                mode === "procurement" ? setSupplierSubiektFeedback : undefined
-              }
-              onProductFeedbackChange={
-                mode === "procurement" ? setProductLineFeedback : undefined
-              }
-              onConfigFeedbackChange={
-                mode === "procurement" ? setConfigFeedback : undefined
-              }
               onResolvingSupplierChange={
                 mode === "procurement" ? setResolvingSupplier : undefined
               }
             />
 
-            <SalesRequestNoteField
-              value={requestNote}
-              onChange={(value) => {
-                setFormNotice(null);
-                setRequestNoteTouched(true);
-                setRequestNote(value);
-              }}
-              disabled={pending}
-              mixedNotesOnLines={initial?.requestNotesMixed}
-              audience={mode}
-              id={mode === "procurement" ? "procurement-edit-request-note" : "sales-edit-request-note"}
+            <ProsbaFormReadiness
+              lines={lines}
+              requestKind={requestKind}
+              salesSubmitPlan={
+                mode === "sales" ? salesSubmitPlan : procurementReadiness?.plan ?? null
+              }
+              formMessage={formNotice}
+              informacjaPath={informacjaPath}
+              resolvingSupplier={resolvingSupplier}
+              validationAttempted={validationAttempted}
             />
-
-            {mode === "sales" ? (
-              <ProsbaFormReadiness
-                lines={lines}
-                requestKind={requestKind}
-                salesSubmitPlan={salesSubmitPlan}
-                formMessage={formNotice}
-                informacjaPath={informacjaPath}
-              />
-            ) : (
-              <RequestFormStatusPanel
-                requestKind={requestKind}
-                audience="procurement"
-                draft={{
-                  supplierId,
-                  symbol: lines.find((l) => l.symbol.trim())?.symbol,
-                  mikranCode: lines.find((l) => l.mikranCode.trim())?.mikranCode,
-                  product: lines.find((l) => l.product.trim())?.product,
-                  quantity: lines.find((l) => l.quantity.trim())?.quantity,
-                  requestKind,
-                  ...informacjaFlags,
-                }}
-                forcedAssessment={
-                  requestKind === "zamowienie"
-                    ? assessRequestCompleteness({
-                        supplierId,
-                        symbol: lines.find((l) => l.symbol.trim())?.symbol,
-                        mikranCode: lines.find((l) => l.mikranCode.trim())?.mikranCode,
-                        product: lines.find((l) => l.product.trim())?.product,
-                        quantity: lines.find((l) => l.quantity.trim())?.quantity,
-                        requestKind,
-                      })
-                    : undefined
-                }
-                subiektFeedbacks={[
-                  configFeedback,
-                  ...supplierPickerFeedbacks,
-                  supplierSubiektFeedback,
-                  productLineFeedback,
-                ]}
-                resolvingSupplier={resolvingSupplier}
-                validationAttempted={validationAttempted}
-                formMessage={formNotice}
-              />
-            )}
           </div>
-        </ProsbaFormSection>
+        </ProsbaFormProductsSection>
       </div>
     </ModalShell>
     </>

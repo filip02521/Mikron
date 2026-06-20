@@ -50,4 +50,17 @@ describe("zk-watch-prosba-scope", () => {
     );
     expect(merged[0]).toEqual({ key: "ob:1", arrived: true, needs_prosba: true });
   });
+
+  it("aktualizuje needs_prosba tylko dla wskazanych pozycji", () => {
+    const merged = mergeZkWatchLineChecksPreservingProsbaScope(
+      lines,
+      [
+        { key: "ob:1", arrived: false, needs_prosba: true },
+        { key: "ob:2", arrived: false, needs_prosba: false },
+      ],
+      { needsProsbaByKey: new Map([["ob:2", true]]) }
+    );
+    expect(merged[0]).toEqual({ key: "ob:1", arrived: false, needs_prosba: true });
+    expect(merged[1]).toEqual({ key: "ob:2", arrived: false, needs_prosba: true });
+  });
 });

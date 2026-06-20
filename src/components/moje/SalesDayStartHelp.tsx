@@ -24,7 +24,7 @@ export function SalesDayStartHelp() {
       <HelpBlock title="Kliknięcie zadania">
         <p>
           Pozycje z zamówień przewijają listę do sekcji{" "}
-          <strong className="font-medium text-slate-800">Wymaga reakcji</strong> i podświetlają ją.
+          <strong className="font-medium text-slate-800">Potwierdź odbiór z regału</strong> i podświetlają ją.
           Przypomnienia ZK, notatki i tablica otwierają odpowiednią stronę.
         </p>
       </HelpBlock>

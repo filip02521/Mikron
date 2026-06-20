@@ -109,7 +109,7 @@ export default async function SalesBoardPage({
       return (
         <SalesAccountLinkRequired
           title={DEPARTMENT_BOARD_SALES_PAGE_TITLE}
-          description={DEPARTMENT_BOARD_SALES_PAGE_DESC}
+          hint={DEPARTMENT_BOARD_SALES_PAGE_DESC}
         />
       );
     }

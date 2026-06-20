@@ -15,6 +15,20 @@ export type LoginDirectoryAccount = {
   salesPersonName: string | null;
 };
 
+export const LOGIN_DIRECTORY_MIN_QUERY_LENGTH = 3;
+export const LOGIN_DIRECTORY_MAX_RESULTS = 20;
+
+const UUID_RE =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
+export function isLoginDirectoryQueryValid(query: string): boolean {
+  return query.trim().length >= LOGIN_DIRECTORY_MIN_QUERY_LENGTH;
+}
+
+export function isLoginDirectoryAccountId(value: string): boolean {
+  return UUID_RE.test(value.trim());
+}
+
 const ROLE_SORT_ORDER: UserRole[] = [
   "admin",
   "zakupy",
@@ -52,12 +66,17 @@ export function filterLoginDirectoryAccounts(
   const q = query.trim().toLowerCase();
   if (!q) return accounts;
 
-  return accounts.filter((account) => {
-    const haystack = [account.displayName, account.salesPersonName ?? ""]
-      .join(" ")
-      .toLowerCase();
-    return haystack.includes(q);
-  });
+  return accounts.filter((account) => loginDirectoryAccountMatchesQuery(account, q));
+}
+
+function loginDirectoryAccountMatchesQuery(
+  account: Pick<LoginDirectoryAccount, "displayName" | "salesPersonName">,
+  normalizedQuery: string
+): boolean {
+  const haystack = [account.displayName, account.salesPersonName ?? ""]
+    .join(" ")
+    .toLowerCase();
+  return haystack.includes(normalizedQuery);
 }
 
 /** Czy konto Auth może pojawić się na liście logowania. */
@@ -153,4 +172,40 @@ export async function fetchLoginDirectoryAccounts(): Promise<LoginDirectoryAccou
     .filter((row): row is LoginDirectoryAccount => row != null);
 
   return sortLoginDirectoryAccounts(accounts);
+}
+
+/** Wyszukiwanie kont (min. 3 znaki) — bez pełnej listy w kliencie. */
+export async function searchLoginDirectoryAccounts(
+  query: string
+): Promise<LoginDirectoryAccount[]> {
+  if (!isLoginDirectoryQueryValid(query)) return [];
+
+  if (isE2ELab()) {
+    const q = query.trim().toLowerCase();
+    return sortLoginDirectoryAccounts(
+      E2E_LOGIN_DIRECTORY_FIXTURE.filter((account) =>
+        loginDirectoryAccountMatchesQuery(account, q)
+      )
+    ).slice(0, LOGIN_DIRECTORY_MAX_RESULTS);
+  }
+
+  const all = await fetchLoginDirectoryAccounts();
+  const q = query.trim().toLowerCase();
+  return all
+    .filter((account) => loginDirectoryAccountMatchesQuery(account, q))
+    .slice(0, LOGIN_DIRECTORY_MAX_RESULTS);
+}
+
+/** Pojedyncze konto (np. ostatnie logowanie) — rate limit w API. */
+export async function fetchLoginDirectoryAccountById(
+  accountId: string
+): Promise<LoginDirectoryAccount | null> {
+  if (!isLoginDirectoryAccountId(accountId)) return null;
+
+  if (isE2ELab()) {
+    return E2E_LOGIN_DIRECTORY_FIXTURE.find((account) => account.id === accountId) ?? null;
+  }
+
+  const all = await fetchLoginDirectoryAccounts();
+  return all.find((account) => account.id === accountId) ?? null;
 }

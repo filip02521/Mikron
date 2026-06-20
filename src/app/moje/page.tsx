@@ -152,7 +152,7 @@ export default async function MojePage({
     return (
       <SalesAccountLinkRequired
         title="Moje zamówienia"
-        description="Tutaj śledzisz status prośb. Konto musi być przypisane do Twojego profilu handlowca."
+        hint="Tutaj śledzisz status prośb. Konto musi być przypisane do Twojego profilu handlowca."
       />
     );
   }
@@ -240,9 +240,9 @@ export default async function MojePage({
           groupLimit: ARCHIVE_EXPANDED_GROUP_LIMIT,
         });
       }
-    } else if (role && canAccessOperations(role)) {
+    } else if (role && canAccessOperations(role) && salesPersonId) {
       const [orderRows, statsRows, supplierRows] = await Promise.all([
-        fetchIndividualOrders(salesPersonId ? { salesPersonId } : undefined),
+        fetchIndividualOrders({ salesPersonId }),
         fetchDeliveryStats(),
         fetchSuppliersForRequestForms(),
       ]);

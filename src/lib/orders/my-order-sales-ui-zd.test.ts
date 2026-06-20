@@ -127,6 +127,39 @@ describe("resolveZdFulfillmentFromOrder", () => {
     expect(zd?.deadline).toBe("2026-07-03");
     expect(zd?.dokNr).toBe("ZD");
   });
+
+  it("ignoruje przeterminowany termin ZD w bazie", () => {
+    const at = new Date("2026-06-18T12:00:00+02:00");
+    expect(
+      resolveZdFulfillmentFromOrder(
+        {
+          zd_fulfillment_source: "zd",
+          zd_fulfillment_deadline: "2026-02-27",
+          zd_fulfillment_dok_nr: "ZD 78/M/02/2026",
+          zd_fulfillment_synced_at: "2026-03-01T10:00:00+01:00",
+        },
+        at
+      )
+    ).toBeNull();
+  });
+
+  it("dołącza widoczną zmianę terminu ZD", () => {
+    const at = new Date("2026-06-18T12:00:00+02:00");
+    const zd = resolveZdFulfillmentFromOrder(
+      {
+        zd_fulfillment_source: "zd",
+        zd_fulfillment_deadline: "2026-07-22",
+        zd_fulfillment_dok_nr: "ZD/1",
+        zd_fulfillment_synced_at: "2026-06-18T08:00:00Z",
+        zd_fulfillment_previous_deadline: "2026-07-15",
+        zd_fulfillment_deadline_changed_at: "2026-06-18T08:00:00Z",
+        zd_fulfillment_deadline_change_seen_at: null,
+      },
+      at
+    );
+    expect(zd?.deadlineChange?.title).toBe("Termin przesunięty");
+    expect(zd?.deadlineChange?.detail).toContain("15.07.2026");
+  });
 });
 
 describe("aggregateGroupZdEtaState", () => {

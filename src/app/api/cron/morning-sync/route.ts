@@ -10,7 +10,9 @@ export async function GET(request: NextRequest) {
   const denied = authorizeCronRequest(request.headers.get("authorization"));
   if (denied) return denied;
 
-  if (!isWarsawMorningRoutineHour()) {
+  const force = request.nextUrl.searchParams.get("force") === "1";
+
+  if (!force && !isWarsawMorningRoutineHour()) {
     await recordCronSkipped("morning_sync", "outside_warsaw_6am_window");
     return NextResponse.json({
       success: true,

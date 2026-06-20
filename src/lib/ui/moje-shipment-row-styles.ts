@@ -30,6 +30,8 @@ export function mojeShipmentRowClass({
   isStock,
   isInformacja,
   visualTone = "default",
+  deliveryBorderAccent,
+  deliveryCollapsedBg,
 }: {
   expanded: boolean;
   isAction: boolean;
@@ -39,6 +41,8 @@ export function mojeShipmentRowClass({
   isStock?: boolean;
   isInformacja: boolean;
   visualTone?: MojeShipmentRowVisualTone;
+  deliveryBorderAccent?: string | null;
+  deliveryCollapsedBg?: string | null;
 }): string {
   if (visualTone === "archive") {
     return cn(
@@ -55,11 +59,13 @@ export function mojeShipmentRowClass({
         ? "border-l-amber-500"
         : isUrgent
           ? "border-l-amber-500"
-          : isStock
-            ? "border-l-sky-500"
-            : isInformacja
-              ? "border-l-violet-400"
-              : "border-l-slate-200";
+          : deliveryBorderAccent
+            ? deliveryBorderAccent
+            : isStock
+              ? "border-l-sky-500"
+              : isInformacja
+                ? "border-l-violet-400"
+                : "border-l-slate-200";
 
   return cn(
     "border-l-[3px] transition-colors duration-150",
@@ -67,6 +73,8 @@ export function mojeShipmentRowClass({
     isAction && !expanded && "bg-emerald-50/35",
     isInformacjaAck && !expanded && "bg-violet-50/40",
     isCancelAck && !expanded && "bg-amber-50/50",
+    !expanded && isStock && !deliveryCollapsedBg && "bg-sky-50/35",
+    !expanded && deliveryCollapsedBg,
     expanded
       ? "bg-slate-50/50"
       : isAction
@@ -75,7 +83,9 @@ export function mojeShipmentRowClass({
           ? "hover:bg-violet-50/55"
           : isCancelAck
             ? "hover:bg-amber-50/65"
-            : "bg-white hover:bg-slate-50/50"
+            : deliveryCollapsedBg
+              ? "hover:brightness-[0.98]"
+              : "bg-white hover:bg-slate-50/50"
   );
 }
 

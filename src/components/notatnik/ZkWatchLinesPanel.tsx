@@ -43,6 +43,7 @@ type LineFilter =
   | "in_stock"
   | "at_client"
   | "delivered"
+  | "informacja_ready"
   | "partial"
   | "new"
   | "in_request"
@@ -53,6 +54,8 @@ function resolveLineUiState(
   newLineKeys: Set<string>,
   inStockKeySet: Set<string>,
   scopeExcludedKeySet: Set<string>,
+  informacjaReadyKeySet: Set<string>,
+  informacjaAcknowledgedKeySet: Set<string>,
   lineCoverageByKey?: Record<string, ZkWatchLineCoverage>
 ): ZkWatchLineUiState {
   return resolveZkWatchLineUiState({
@@ -63,6 +66,8 @@ function resolveLineUiState(
     shelfMarked: line.shelf_marked,
     inStock: inStockKeySet.has(line.key),
     scopeExcluded: scopeExcludedKeySet.has(line.key),
+    informacjaReady: informacjaReadyKeySet.has(line.key),
+    informacjaAcknowledged: informacjaAcknowledgedKeySet.has(line.key),
   });
 }
 
@@ -72,6 +77,8 @@ function filterViews(
   newLineKeys: Set<string>,
   inStockKeySet: Set<string>,
   scopeExcludedKeySet: Set<string>,
+  informacjaReadyKeySet: Set<string>,
+  informacjaAcknowledgedKeySet: Set<string>,
   lineCoverageByKey?: Record<string, ZkWatchLineCoverage>
 ): ZkWatchLineView[] {
   if (filter === "all") return views;
@@ -81,6 +88,8 @@ function filterViews(
       newLineKeys,
       inStockKeySet,
       scopeExcludedKeySet,
+      informacjaReadyKeySet,
+      informacjaAcknowledgedKeySet,
       lineCoverageByKey
     );
     switch (filter) {
@@ -96,6 +105,8 @@ function filterViews(
         return uiState === "arrived";
       case "delivered":
         return uiState === "delivered";
+      case "informacja_ready":
+        return uiState === "informacja_ready";
       case "partial":
         return uiState === "partial";
       case "scope_excluded":
@@ -114,6 +125,8 @@ export function ZkWatchLinesPanel({
   newLineKeys,
   lineCoverageByKey,
   inStockLineKeys,
+  informacjaReadyLineKeys,
+  informacjaAcknowledgedLineKeys,
   scopeExcludedLineKeys,
   compact = false,
   showSummary = true,
@@ -126,6 +139,8 @@ export function ZkWatchLinesPanel({
   newLineKeys?: string[];
   lineCoverageByKey?: Record<string, ZkWatchLineCoverage>;
   inStockLineKeys?: string[];
+  informacjaReadyLineKeys?: string[];
+  informacjaAcknowledgedLineKeys?: string[];
   scopeExcludedLineKeys?: string[];
   compact?: boolean;
   showSummary?: boolean;
@@ -157,9 +172,11 @@ export function ZkWatchLinesPanel({
         newLineKeys: newLineKeys ?? [],
         inStockLineKeys: inStockLineKeys ?? [],
         scopeExcludedLineKeys: scopeExcludedLineKeys ?? [],
+        informacjaReadyLineKeys: informacjaReadyLineKeys ?? [],
+        informacjaAcknowledgedLineKeys: informacjaAcknowledgedLineKeys ?? [],
         lineCoverageByKey,
       }),
-    [views, newLineKeys, inStockLineKeys, scopeExcludedLineKeys, lineCoverageByKey]
+    [views, newLineKeys, inStockLineKeys, scopeExcludedLineKeys, informacjaReadyLineKeys, informacjaAcknowledgedLineKeys, lineCoverageByKey]
   );
   const uiStateCounts = useMemo(
     () =>
@@ -168,12 +185,22 @@ export function ZkWatchLinesPanel({
         newLineKeys: newLineKeys ?? [],
         inStockLineKeys: inStockLineKeys ?? [],
         scopeExcludedLineKeys: scopeExcludedLineKeys ?? [],
+        informacjaReadyLineKeys: informacjaReadyLineKeys ?? [],
+        informacjaAcknowledgedLineKeys: informacjaAcknowledgedLineKeys ?? [],
         lineCoverageByKey,
       }),
-    [views, newLineKeys, inStockLineKeys, scopeExcludedLineKeys, lineCoverageByKey]
+    [views, newLineKeys, inStockLineKeys, scopeExcludedLineKeys, informacjaReadyLineKeys, informacjaAcknowledgedLineKeys, lineCoverageByKey]
   );
   const newLineKeySet = useMemo(() => new Set(newLineKeys ?? []), [newLineKeys]);
   const inStockKeySet = useMemo(() => new Set(inStockLineKeys ?? []), [inStockLineKeys]);
+  const informacjaReadyKeySet = useMemo(
+    () => new Set(informacjaReadyLineKeys ?? []),
+    [informacjaReadyLineKeys]
+  );
+  const informacjaAcknowledgedKeySet = useMemo(
+    () => new Set(informacjaAcknowledgedLineKeys ?? []),
+    [informacjaAcknowledgedLineKeys]
+  );
   const scopeExcludedKeySet = useMemo(
     () => new Set(scopeExcludedLineKeys ?? []),
     [scopeExcludedLineKeys]
@@ -182,47 +209,48 @@ export function ZkWatchLinesPanel({
     () =>
       views.filter(
         (v) =>
-          resolveLineUiState(v, newLineKeySet, inStockKeySet, scopeExcludedKeySet, lineCoverageByKey) ===
+          resolveLineUiState(v, newLineKeySet, inStockKeySet, scopeExcludedKeySet, informacjaReadyKeySet, informacjaAcknowledgedKeySet, lineCoverageByKey) ===
           "in_request"
       ).length,
-    [views, newLineKeySet, inStockKeySet, scopeExcludedKeySet, lineCoverageByKey]
+    [views, newLineKeySet, inStockKeySet, scopeExcludedKeySet, informacjaReadyKeySet, informacjaAcknowledgedKeySet, lineCoverageByKey]
   );
   const inStockCount = useMemo(
     () =>
       views.filter(
         (v) =>
-          resolveLineUiState(v, newLineKeySet, inStockKeySet, scopeExcludedKeySet, lineCoverageByKey) ===
+          resolveLineUiState(v, newLineKeySet, inStockKeySet, scopeExcludedKeySet, informacjaReadyKeySet, informacjaAcknowledgedKeySet, lineCoverageByKey) ===
           "in_stock"
       ).length,
-    [views, newLineKeySet, inStockKeySet, scopeExcludedKeySet, lineCoverageByKey]
+    [views, newLineKeySet, inStockKeySet, scopeExcludedKeySet, informacjaReadyKeySet, informacjaAcknowledgedKeySet, lineCoverageByKey]
   );
   const atClientCount = useMemo(
     () =>
       views.filter(
         (v) =>
-          resolveLineUiState(v, newLineKeySet, inStockKeySet, scopeExcludedKeySet, lineCoverageByKey) ===
+          resolveLineUiState(v, newLineKeySet, inStockKeySet, scopeExcludedKeySet, informacjaReadyKeySet, informacjaAcknowledgedKeySet, lineCoverageByKey) ===
           "arrived"
       ).length,
-    [views, newLineKeySet, inStockKeySet, scopeExcludedKeySet, lineCoverageByKey]
+    [views, newLineKeySet, inStockKeySet, scopeExcludedKeySet, informacjaReadyKeySet, informacjaAcknowledgedKeySet, lineCoverageByKey]
   );
   const deliveredCount = useMemo(
     () =>
       views.filter(
         (v) =>
-          resolveLineUiState(v, newLineKeySet, inStockKeySet, scopeExcludedKeySet, lineCoverageByKey) ===
+          resolveLineUiState(v, newLineKeySet, inStockKeySet, scopeExcludedKeySet, informacjaReadyKeySet, informacjaAcknowledgedKeySet, lineCoverageByKey) ===
           "delivered"
       ).length,
-    [views, newLineKeySet, inStockKeySet, scopeExcludedKeySet, lineCoverageByKey]
+    [views, newLineKeySet, inStockKeySet, scopeExcludedKeySet, informacjaReadyKeySet, informacjaAcknowledgedKeySet, lineCoverageByKey]
   );
   const partialCount = useMemo(
     () =>
       views.filter(
         (v) =>
-          resolveLineUiState(v, newLineKeySet, inStockKeySet, scopeExcludedKeySet, lineCoverageByKey) ===
+          resolveLineUiState(v, newLineKeySet, inStockKeySet, scopeExcludedKeySet, informacjaReadyKeySet, informacjaAcknowledgedKeySet, lineCoverageByKey) ===
           "partial"
       ).length,
-    [views, newLineKeySet, inStockKeySet, scopeExcludedKeySet, lineCoverageByKey]
+    [views, newLineKeySet, inStockKeySet, scopeExcludedKeySet, informacjaReadyKeySet, informacjaAcknowledgedKeySet, lineCoverageByKey]
   );
+  const informacjaReadyCount = uiStateCounts.informacja_ready;
   const scopeExcludedCount = scopeExcludedLineKeys?.length ?? 0;
   const pendingCount = useMemo(
     () =>
@@ -232,11 +260,13 @@ export function ZkWatchLinesPanel({
           newLineKeySet,
           inStockKeySet,
           scopeExcludedKeySet,
+          informacjaReadyKeySet,
+          informacjaAcknowledgedKeySet,
           lineCoverageByKey
         );
         return state === "uncovered" || state === "new";
       }).length,
-    [views, newLineKeySet, inStockKeySet, scopeExcludedKeySet, lineCoverageByKey]
+    [views, newLineKeySet, inStockKeySet, scopeExcludedKeySet, informacjaReadyKeySet, informacjaAcknowledgedKeySet, lineCoverageByKey]
   );
   const filtered = useMemo(
     () =>
@@ -246,9 +276,11 @@ export function ZkWatchLinesPanel({
         newLineKeySet,
         inStockKeySet,
         scopeExcludedKeySet,
+        informacjaReadyKeySet,
+        informacjaAcknowledgedKeySet,
         lineCoverageByKey
       ),
-    [views, filter, newLineKeySet, inStockKeySet, scopeExcludedKeySet, lineCoverageByKey]
+    [views, filter, newLineKeySet, inStockKeySet, scopeExcludedKeySet, informacjaReadyKeySet, informacjaAcknowledgedKeySet, lineCoverageByKey]
   );
   const matchedFromProsba = useMemo(
     () => new Set(matchedDeliveredLineKeys ?? []),
@@ -263,6 +295,8 @@ export function ZkWatchLinesPanel({
           newLineKeySet,
           inStockKeySet,
           scopeExcludedKeySet,
+          informacjaReadyKeySet,
+          informacjaAcknowledgedKeySet,
           lineCoverageByKey
         );
         if (!canToggleZkWatchLineCheckbox(uiState)) return false;
@@ -272,7 +306,7 @@ export function ZkWatchLinesPanel({
           completedManually: line.completed_manually,
         });
       }),
-    [views, newLineKeySet, inStockKeySet, scopeExcludedKeySet, lineCoverageByKey]
+    [views, newLineKeySet, inStockKeySet, scopeExcludedKeySet, informacjaReadyKeySet, informacjaAcknowledgedKeySet, lineCoverageByKey]
   );
   const progressPct =
     checkboxSummary.total > 0
@@ -286,6 +320,8 @@ export function ZkWatchLinesPanel({
         newLineKeySet,
         inStockKeySet,
         scopeExcludedKeySet,
+        informacjaReadyKeySet,
+        informacjaAcknowledgedKeySet,
         lineCoverageByKey
       );
       if (!canToggleZkWatchLineCheckbox(uiState)) return line;
@@ -338,6 +374,8 @@ export function ZkWatchLinesPanel({
       newLineKeySet,
       inStockKeySet,
       scopeExcludedKeySet,
+      informacjaReadyKeySet,
+      informacjaAcknowledgedKeySet,
       lineCoverageByKey
     );
     if (!canToggleZkWatchLineCheckbox(uiState)) return;
@@ -368,13 +406,16 @@ export function ZkWatchLinesPanel({
       ? [{ id: "pending" as const, label: "Do prośby", count: pendingCount }]
       : []),
     ...(scopeExcludedCount > 0
-      ? [{ id: "scope_excluded" as const, label: "Wykluczone", count: scopeExcludedCount }]
+      ? [{ id: "scope_excluded" as const, label: "Pominięte", count: scopeExcludedCount }]
       : []),
     ...(inRequestCount > 0
       ? [{ id: "in_request" as const, label: "W prośbie", count: inRequestCount }]
       : []),
     ...(partialCount > 0
       ? [{ id: "partial" as const, label: "Częściowo", count: partialCount }]
+      : []),
+    ...(informacjaReadyCount > 0
+      ? [{ id: "informacja_ready" as const, label: "Dostępne", count: informacjaReadyCount }]
       : []),
     ...(deliveredCount > 0
       ? [{ id: "delivered" as const, label: "Na regale", count: deliveredCount }]
@@ -401,6 +442,8 @@ export function ZkWatchLinesPanel({
           newLineKeySet,
           inStockKeySet,
           scopeExcludedKeySet,
+          informacjaReadyKeySet,
+          informacjaAcknowledgedKeySet,
           lineCoverageByKey
         );
         const meta = zkWatchLineUiStateMeta(uiState);

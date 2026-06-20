@@ -13,6 +13,7 @@ import {
   totalSampleCount,
 } from "@/lib/orders/delivery-stats-schema";
 import type { DeliveryStats, OrderType, StatsMode } from "@/types/database";
+import { MY_ORDER_HISTORY_ESTIMATE_LOW_CONFIDENCE_SUFFIX } from "@/lib/orders/my-order-history-estimate-copy";
 import { todayInWarsaw } from "@/lib/time/warsaw";
 
 export function avgDaysForOrderType(
@@ -68,7 +69,7 @@ export function estimateDeliveryEta(
 
 export function formatEtaLabel(estimate: DeliveryEtaEstimate): string {
   const date = formatDateString(estimate.expectedDate, "dd.MM.yyyy");
-  const conf = estimate.lowConfidence ? " (szacunek — mało historii)" : "";
+  const conf = estimate.lowConfidence ? MY_ORDER_HISTORY_ESTIMATE_LOW_CONFIDENCE_SUFFIX : "";
   return `ok. ${date} · ~${estimate.avgBusinessDays} dni rob.${conf}`;
 }
 

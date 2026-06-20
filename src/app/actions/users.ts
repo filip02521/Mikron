@@ -1,12 +1,16 @@
 "use server";
 
+// @service-role-ok — autoryzacja require*(); service role z pełnym scope po warstwie aplikacji.
+
 import { revalidatePath } from "next/cache";
 import {
-  requireAdmin,
+  requireAdminForMutation,
   requireAdminOrSalesTeamManagement,
   getSessionUser,
 } from "@/lib/auth";
 import { roleRequiresSalesPerson } from "@/lib/users/labels";
+import { isAdmin } from "@/lib/auth-roles";
+import { canAccessSalesPerson } from "@/lib/data/sales-group-access";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { assertUniqueSalesPersonLink } from "@/lib/users/sales-person-link";
 import {
@@ -36,6 +40,7 @@ function revalidateUsers(opts?: { includeHandlowcy?: boolean; includeTeam?: bool
   if (opts?.includeTeam) {
     revalidatePath("/zespol", "page");
     revalidatePath("/zespol/handlowcy", "page");
+    revalidatePath("/zespol/grupy", "page");
   }
 }
 
@@ -45,7 +50,7 @@ export async function actionCreateAppUser(form: {
   salesPersonId: string | null;
   password: string;
 }): Promise<{ success: true; user: AppUserRow } | { error: string }> {
-  await requireAdmin();
+  await requireAdminForMutation();
 
   const email = form.email.trim().toLowerCase();
   if (!email) return { error: "Podaj adres e-mail." };
@@ -118,7 +123,7 @@ export async function actionUpdateAppUser(form: {
   role: UserRole;
   salesPersonId: string | null;
 }): Promise<{ success: true } | { error: string }> {
-  const current = await requireAdmin();
+  const current = await requireAdminForMutation();
 
   if (roleRequiresSalesPerson(form.role) && !form.salesPersonId) {
     return { error: "Handlowiec musi być powiązany z osobą z listy." };
@@ -188,7 +193,7 @@ export async function actionSaveAppUserPermissions(form: {
   salesPersonId: string | null;
   managerGroupIds: string[];
 }): Promise<{ success: true } | { error: string }> {
-  const current = await requireAdmin();
+  const current = await requireAdminForMutation();
 
   if (roleRequiresSalesPerson(form.role) && !form.salesPersonId) {
     return { error: "Handlowiec musi być powiązany z osobą z listy." };
@@ -266,7 +271,7 @@ export async function actionSetUserPassword(
   userId: string,
   password: string
 ): Promise<{ success: true } | { error: string }> {
-  await requireAdmin();
+  await requireAdminForMutation();
 
   const passwordError = passwordValidationError(password);
   if (passwordError) return { error: passwordError };
@@ -282,11 +287,15 @@ export async function actionSetUserPassword(
 export async function actionGenerateSalesPersonInviteLink(
   salesPersonId: string
 ): Promise<{ success: true; invite: SalesInviteLinkResult } | { error: string }> {
-  await requireAdminOrSalesTeamManagement();
+  const actor = await requireAdminOrSalesTeamManagement("mutate");
+  if (!isAdmin(actor.role)) {
+    const allowed = await canAccessSalesPerson(actor, salesPersonId);
+    if (!allowed) return { error: "Nie masz uprawnień do tego handlowca." };
+  }
   const supabase = createAdminClient();
   const result = await generateSalesPersonInviteLink(supabase, salesPersonId);
   if ("error" in result) return { error: result.error };
-  revalidateUsers({ includeHandlowcy: true });
+  revalidateUsers({ includeHandlowcy: true, includeTeam: true });
   return { success: true, invite: result };
 }
 
@@ -337,7 +346,7 @@ export async function actionFinalizeSalesPersonInvite(): Promise<
 export async function actionGeneratePasswordResetLink(
   email: string
 ): Promise<{ success: true; link: string } | { error: string }> {
-  await requireAdmin();
+  await requireAdminForMutation();
 
   const normalized = email.trim().toLowerCase();
   if (!isValidEmail(normalized)) {
@@ -372,7 +381,7 @@ export async function actionGeneratePasswordResetLink(
 export async function actionDeleteAppUser(
   userId: string
 ): Promise<{ success: true } | { error: string }> {
-  const current = await requireAdmin();
+  const current = await requireAdminForMutation();
 
   if (userId === current.id) {
     return { error: "Nie możesz usunąć własnego konta." };

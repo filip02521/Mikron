@@ -95,12 +95,12 @@ export function MyOrderShipmentOverflowMenu({
       ) : null}
       {canPartialCancelQuick && onPartialCancelQuick ? (
         <OverflowMenuItem danger disabled={disabled} onClick={onPartialCancelQuick}>
-          {partialCancelQuickLabel ?? "Zmień ilość"}
+          {partialCancelQuickLabel ?? "Rezygnuj z reszty"}
         </OverflowMenuItem>
       ) : null}
       {canPartialCancelRemainder && onPartialCancelRemainder ? (
         <OverflowMenuItem danger disabled={disabled} onClick={onPartialCancelRemainder}>
-          {partialCancelRemainderLabel ?? "Zmień ilość"}
+          {partialCancelRemainderLabel ?? "Rezygnuj z reszty"}
         </OverflowMenuItem>
       ) : null}
       {canPartialCancelCustom && onPartialCancelCustom ? (

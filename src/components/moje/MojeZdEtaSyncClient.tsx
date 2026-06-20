@@ -7,6 +7,7 @@ import {
   shouldRetryMojeZdEtaSync,
   type MojeZdEtaRefreshResult,
   ZD_ETA_MOJE_CLIENT_FETCH_TIMEOUT_MS,
+  ZD_ETA_MOJE_VISIBILITY_RESYNC_MS,
 } from "@/lib/subiekt/zd-eta-sync";
 
 const LOCK_RETRY_MS = 5_000;
@@ -53,16 +54,16 @@ function markMojeZdEtaSessionDone(syncEligibleCount: number): void {
 /**
  * Po wejściu na /moje uruchamia sync terminów ZD (live search) dla opóźnionych pozycji
  * i odświeża widok po zakończeniu próby (sukces, brak dopasowania, timeout lub Subiekt offline).
+ * Po dłuższej nieobecności na karcie ponawia sync (np. zmiana terminu przez zakupy).
  */
 export function MojeZdEtaSyncClient({ syncEligibleCount }: { syncEligibleCount: number }) {
   const router = useRouter();
   const startedRef = useRef(false);
+  const hiddenAtRef = useRef<number | null>(null);
+  const runSyncRef = useRef<(() => void) | null>(null);
 
   useEffect(() => {
     if (syncEligibleCount <= 0) return;
-    if (shouldSkipMojeZdEtaSessionSync(syncEligibleCount)) return;
-    if (startedRef.current) return;
-    startedRef.current = true;
 
     let cancelled = false;
 
@@ -126,10 +127,40 @@ export function MojeZdEtaSyncClient({ syncEligibleCount }: { syncEligibleCount: 
       }
     };
 
-    void run();
+    const startSync = () => {
+      if (shouldSkipMojeZdEtaSessionSync(syncEligibleCount)) return;
+      if (startedRef.current) return;
+      startedRef.current = true;
+      void run();
+    };
+
+    runSyncRef.current = () => {
+      clearMojeZdEtaSessionSync();
+      startedRef.current = false;
+      startSync();
+    };
+
+    startSync();
+
+    const onVisibilityChange = () => {
+      if (document.visibilityState === "hidden") {
+        hiddenAtRef.current = Date.now();
+        return;
+      }
+      if (document.visibilityState !== "visible") return;
+      const hiddenAt = hiddenAtRef.current;
+      hiddenAtRef.current = null;
+      if (hiddenAt == null) return;
+      if (Date.now() - hiddenAt < ZD_ETA_MOJE_VISIBILITY_RESYNC_MS) return;
+      runSyncRef.current?.();
+    };
+
+    document.addEventListener("visibilitychange", onVisibilityChange);
 
     return () => {
       cancelled = true;
+      runSyncRef.current = null;
+      document.removeEventListener("visibilitychange", onVisibilityChange);
     };
   }, [syncEligibleCount, router]);
 

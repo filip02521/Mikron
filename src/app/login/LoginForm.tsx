@@ -24,6 +24,7 @@ import {
   writeStoredPasswordResetSession,
 } from "@/lib/auth/login-password-reset-session";
 import { LoginAccountPicker } from "@/components/auth/LoginAccountPicker";
+import { useLoginDirectorySearch } from "@/lib/auth/use-login-directory-search";
 import { LoginQuickAccountGreeting } from "@/components/auth/LoginQuickAccountGreeting";
 import { PasswordResetPanel } from "@/components/auth/PasswordResetPanel";
 import { useClientHydrated } from "@/lib/client/use-client-hydrated";
@@ -60,12 +61,14 @@ function deriveAccountSelection(
 }
 
 export function LoginForm({
-  accounts,
+  accounts: preloadedAccounts,
   onSubtitleModeChange,
 }: {
   accounts: LoginDirectoryAccountPublic[];
   onSubtitleModeChange?: (mode: LoginSubtitleMode) => void;
 }) {
+  const directory = useLoginDirectorySearch(preloadedAccounts);
+  const accounts = directory.accounts;
   const searchParams = useSearchParams();
   const hydrated = useClientHydrated();
   const next = searchParams.get("next");
@@ -73,7 +76,9 @@ export function LoginForm({
   const [accountSelectionOverride, setAccountSelectionOverride] =
     useState<AccountSelection | null>(null);
   const [manualEmail, setManualEmail] = useState("");
-  const [useManualEmail, setUseManualEmail] = useState(() => accounts.length === 0);
+  const [useManualEmail, setUseManualEmail] = useState(
+    () => preloadedAccounts.length === 0 && !readLoginLastAccountId()
+  );
   const [password, setPassword] = useState("");
   const [bannerError, setBannerError] = useState("");
   const [passwordError, setPasswordError] = useState("");
@@ -411,11 +416,17 @@ export function LoginForm({
                   value={selectedAccountId}
                   onChange={handleAccountChange}
                   disabled={loading}
+                  searchRequired={directory.searchRequired}
+                  query={directory.query}
+                  onQueryChange={directory.setQuery}
+                  loading={directory.loading}
+                  minQueryLength={directory.minQueryLength}
+                  fetchError={directory.fetchError}
                 />
               </Field>
             )}
 
-            {accounts.length > 0 && !useManualEmail ? (
+            {!useManualEmail ? (
               <div className="flex justify-end">
                 <button
                   type="button"
@@ -437,7 +448,7 @@ export function LoginForm({
               </div>
             ) : null}
 
-            {accounts.length > 0 && useManualEmail ? (
+            {useManualEmail ? (
               <div className="flex justify-end">
                 <button
                   type="button"

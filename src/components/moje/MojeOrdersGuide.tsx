@@ -54,6 +54,10 @@ export function MojeOrdersHelp() {
       <HelpBlock title="Elementy wiersza">
         <ul className="list-disc space-y-1.5 pl-4">
           <li>
+            <strong className="font-medium text-slate-800">Ikona ?</strong> przy nagłówku sekcji
+            lub przy wierszu — najedź lub kliknij, aby zobaczyć wyjaśnienie
+          </li>
+          <li>
             <strong className="font-medium text-slate-800">Nagłówek</strong> — etap prośby w
             prostym języku
           </li>
@@ -66,8 +70,12 @@ export function MojeOrdersHelp() {
             prawej przy linii; wycofuje całą pozycję
           </li>
           <li>
-            <strong className="font-medium text-slate-800">Zmień ilość</strong> — częściowe
-            wycofanie sztuk (reszta zostaje w prośbie); przy jednym produkcie także w menu{" "}
+            <strong className="font-medium text-slate-800">Rezygnuj z reszty</strong> — przy
+            częściowej dostawie wycofuje sztuki jeszcze u dostawcy (to, co nie dotarło na magazyn)
+          </li>
+          <li>
+            <strong className="font-medium text-slate-800">Zmień ilość</strong> — wybierz dowolną
+            liczbę sztuk do wycofania; przy jednym produkcie także w menu{" "}
             <HelpMenuGlyph className="align-[-2px]" />
           </li>
           <li>
@@ -105,7 +113,7 @@ export function MojeOrdersHelp() {
       <HelpBlock title="Sekcje listy">
         <p>
           Prośby są podzielone na sekcje —{" "}
-          <strong className="font-medium text-emerald-900">Wymaga reakcji</strong> u góry, potem
+          <strong className="font-medium text-emerald-900">Potwierdź odbiór z regału</strong> u góry, potem
           zamówienia u dostawcy i informacje o dostępności. Start dnia przewinie Cię do właściwej
           sekcji.
         </p>

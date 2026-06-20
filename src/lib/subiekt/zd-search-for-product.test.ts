@@ -1,10 +1,16 @@
 import { describe, expect, it } from "vitest";
-import { zdContractorRecentDataOd } from "./zd-search-scope";
+import {
+  zdContractorInitialDataOd,
+  zdContractorInitialDataOdForPlacement,
+  zdPlacementListWindowForApi,
+  placementIsOlderThanRollingWindow,
+} from "./zd-search-scope";
 import {
   brandTokensFromProductName,
   effectiveProductSymbol,
   extractAlphanumericProductCodeFromName,
   zdSearchTokensFromProduct,
+  prioritizeZdLiveSearchPlans,
   zdSearchPlansForOrderInput,
   zdSearchPlansForOrderWithKhIds,
   zdSearchPlansForProductSupplierLookup,
@@ -118,7 +124,28 @@ describe("zdSearchPlansForOrderInput", () => {
       products: "Produkt test",
       subiekt_kh_id: 688,
     });
-    expect(plans.every((p) => p.dataOd === zdContractorRecentDataOd())).toBe(true);
+    expect(plans.every((p) => p.dataOd === zdContractorInitialDataOd())).toBe(true);
+  });
+
+  it("stare zgłoszenie — dataOd planu sięga okresu zamówienia", () => {
+    const placementAt = "2026-02-10";
+    const syncAt = new Date("2026-06-18T12:00:00+02:00");
+  const window = placementIsOlderThanRollingWindow(placementAt, syncAt)
+    ? zdPlacementListWindowForApi(placementAt, syncAt)
+    : { dataOd: zdContractorInitialDataOdForPlacement(placementAt, syncAt) };
+    const plans = zdSearchPlansForOrderInput({
+      symbol: "606402",
+      products: "Produkt DFS",
+      subiekt_kh_id: 100,
+      placementAt,
+    });
+    expect(plans.length).toBeGreaterThan(0);
+    expect(plans.every((p) => p.dataOd === window.dataOd && p.dataDo === window.dataDo)).toBe(
+      true
+    );
+    expect(window.dataOd).toBe("2026-01-01");
+    expect(window.dataDo).toBe("2026-05-01");
+    expect(window.dataOd < zdContractorInitialDataOd(syncAt)).toBe(true);
   });
 
   it("dodaje khId do planów gdy dostawca jest powiązany", () => {
@@ -175,5 +202,21 @@ describe("zdSearchPlansForOrderInput", () => {
     );
     expect(plans.every((p) => p.name == null)).toBe(true);
     expect(plans.some((p) => p.khId === 688)).toBe(true);
+  });
+});
+
+describe("prioritizeZdLiveSearchPlans", () => {
+  it("preferuje plan symbol+search z głównym kh_Id", () => {
+    const plans = prioritizeZdLiveSearchPlans(
+      [
+        { search: "Komet", khId: 9002, pageSize: 12, page: 1 },
+        { symbol: "H364RNF", search: "H364RNF", khId: 9001, pageSize: 12, page: 1 },
+        { search: "węglik", khId: 9001, pageSize: 12, page: 1 },
+      ],
+      { primaryKhId: 9001, maxPlans: 2 }
+    );
+    expect(plans).toHaveLength(2);
+    expect(plans[0]?.symbol).toBe("H364RNF");
+    expect(plans[0]?.khId).toBe(9001);
   });
 });

@@ -47,6 +47,8 @@ export function ZkWatchLinesModal({
   newLineKeys,
   lineCoverageByKey,
   inStockLineKeys,
+  informacjaReadyLineKeys,
+  informacjaAcknowledgedLineKeys,
   scopeExcludedLineKeys,
   onClose,
   onSaved,
@@ -61,6 +63,8 @@ export function ZkWatchLinesModal({
   newLineKeys?: string[];
   lineCoverageByKey?: Record<string, ZkWatchLineCoverage>;
   inStockLineKeys?: string[];
+  informacjaReadyLineKeys?: string[];
+  informacjaAcknowledgedLineKeys?: string[];
   scopeExcludedLineKeys?: string[];
   onClose: () => void;
   onSaved?: (watch: SalesZkWatch) => void;
@@ -78,9 +82,11 @@ export function ZkWatchLinesModal({
         newLineKeys: newLineKeys ?? [],
         inStockLineKeys: inStockLineKeys ?? [],
         scopeExcludedLineKeys: scopeExcludedLineKeys ?? [],
+        informacjaReadyLineKeys: informacjaReadyLineKeys ?? [],
+        informacjaAcknowledgedLineKeys: informacjaAcknowledgedLineKeys ?? [],
         lineCoverageByKey,
       }),
-    [lineViews, newLineKeys, inStockLineKeys, scopeExcludedLineKeys, lineCoverageByKey]
+    [lineViews, newLineKeys, inStockLineKeys, scopeExcludedLineKeys, informacjaReadyLineKeys, informacjaAcknowledgedLineKeys, lineCoverageByKey]
   );
   const progressPct =
     checkboxSummary.total > 0
@@ -100,6 +106,8 @@ export function ZkWatchLinesModal({
     newLineKeys: newLineKeys ?? [],
     inStockLineKeys: inStockLineKeys ?? [],
     scopeExcludedLineKeys: scopeExcludedLineKeys ?? [],
+    informacjaReadyLineKeys: informacjaReadyLineKeys ?? [],
+    informacjaAcknowledgedLineKeys: informacjaAcknowledgedLineKeys ?? [],
     lineCoverageByKey,
   });
 
@@ -208,6 +216,8 @@ export function ZkWatchLinesModal({
               newLineKeys={newLineKeys}
               lineCoverageByKey={lineCoverageByKey}
               inStockLineKeys={inStockLineKeys}
+              informacjaReadyLineKeys={informacjaReadyLineKeys}
+              informacjaAcknowledgedLineKeys={informacjaAcknowledgedLineKeys}
               scopeExcludedLineKeys={scopeExcludedLineKeys}
               onSaved={onSaved}
               showSummary={false}

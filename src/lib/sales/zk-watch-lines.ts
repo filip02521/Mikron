@@ -4,7 +4,7 @@ import type { SalesZkWatch } from "@/types/database";
 export type ZkWatchLineCheckStored = {
   key: string;
   arrived: boolean;
-  /** false = wykluczone z prośby; true = wymaga zamówienia. */
+  /** false = pominięte przy wyborze zakresu; true = wymaga zamówienia. */
   needs_prosba?: boolean;
   /** Towar na regale — odnotowane na liście ZK (osobno od Moje i zakończenia). */
   shelf_marked?: boolean;

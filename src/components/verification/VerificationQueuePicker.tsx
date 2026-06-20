@@ -132,6 +132,7 @@ export function VerificationQueuePicker({
               domain="panel"
               title="Kolejka"
               hint="Wybierz prośbę — uzupełnisz ją obok"
+              hintMode="tooltip"
               count={items.length}
               icon={<IconClipboardList size={17} />}
               tileClassName="bg-amber-100 text-amber-800"
@@ -184,6 +185,7 @@ export function VerificationQueuePicker({
                 ? "Jedna prośba — uzupełnij formularz poniżej"
                 : "Kliknij wpis — formularz pod kolejką"
             }
+            hintMode="tooltip"
             count={items.length}
             icon={<IconClipboardList size={17} />}
             tileClassName="bg-amber-100 text-amber-800"

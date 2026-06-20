@@ -156,6 +156,12 @@ export interface IndividualOrder {
   zd_fulfillment_dok_id?: number | null;
   /** Ostatnia synchronizacja terminu z ZD. */
   zd_fulfillment_synced_at?: string | null;
+  /** Poprzedni termin przed zmianą w ZD. */
+  zd_fulfillment_previous_deadline?: string | null;
+  /** Kiedy sync wykrył zmianę terminu ZD. */
+  zd_fulfillment_deadline_changed_at?: string | null;
+  /** Kiedy handlowiec potwierdził zmianę terminu. */
+  zd_fulfillment_deadline_change_seen_at?: string | null;
   supplier?: Supplier;
   sales_person?: SalesPerson;
 }

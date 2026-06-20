@@ -157,7 +157,9 @@ export function testSalesPersonAdminRow(
     followUpDueNotesCount: 0,
     linkedUserId: null,
     linkedUserEmail: null,
+    linkedUserCreatedAt: null,
     linkedUserLastSignInAt: null,
+    linkedUserLastActivityAt: null,
     ...partial,
   };
 }

@@ -1,6 +1,12 @@
-import { formatDateString, parseDateOnly } from "@/lib/orders/dates";
+import { parseDateOnly, formatDateString } from "@/lib/orders/dates";
 import { isPastExpectedDate } from "@/lib/orders/delivery-eta";
-import { isZdEtaOverdueCandidate } from "@/lib/subiekt/zd-eta-sync";
+import {
+  isZdEtaSyncEligible,
+} from "@/lib/subiekt/zd-eta-sync";
+import { isActiveZdFulfillmentDeadline } from "@/lib/subiekt/zd-fulfillment-date";
+import type { ZdFulfillmentDeadlineChangeDisplay } from "@/lib/orders/zd-fulfillment-deadline-change";
+import { resolveZdFulfillmentDeadlineChangeDisplay } from "@/lib/orders/zd-fulfillment-deadline-change";
+import { pickLatestZdFulfillmentDeadlineChange } from "@/lib/orders/zd-fulfillment-deadline-change";
 import type { MyOrderRow } from "@/lib/orders/my-order-presenter";
 import type { DeliveryStats, IndividualOrder, StatsMode } from "@/types/database";
 import { formatProsbaZkLinkNumber } from "@/lib/orders/zk-prosba-link-display";
@@ -14,6 +20,10 @@ import {
   isProcurementCancelNotesAggregateSummary,
   procurementCancelNotesMojeSublineSuffix,
 } from "@/lib/orders/procurement-cancel-note";
+import {
+  MY_ORDER_HISTORY_ESTIMATE_LOW_CONFIDENCE_DETAIL,
+  MY_ORDER_NO_HISTORY_ESTIMATE_YET_SUBLINE,
+} from "@/lib/orders/my-order-history-estimate-copy";
 
 export type SupplierKhIdsLookup = Record<string, readonly number[]>;
 
@@ -242,7 +252,7 @@ export function enrichMyOrderSalesUi(row: MyOrderRow): MyOrderSalesUi {
       };
     }
     return {
-      headline: zd ? "Po terminie z ZD" : "Po przewidywanym terminie",
+      headline: zd ? "Po terminie u dostawcy" : "Po przewidywanym terminie",
       headlineTone: "warning",
       subline: row.timingLabel?.replace(" · po terminie", "") ?? null,
       sortPriority: 4,
@@ -268,9 +278,9 @@ export function enrichMyOrderSalesUi(row: MyOrderRow): MyOrderSalesUi {
         : "Zamówione u dostawcy",
       headlineTone: "info",
       subline: !hasEstimate
-        ? "Szacowany termin podamy z historii dostaw"
+        ? MY_ORDER_NO_HISTORY_ESTIMATE_YET_SUBLINE
         : lowHistory
-          ? "Mało dostaw w historii — termin jest orientacyjny"
+          ? MY_ORDER_HISTORY_ESTIMATE_LOW_CONFIDENCE_DETAIL
           : null,
       sortPriority: 7,
     };
@@ -478,11 +488,21 @@ export function isTimingOverdue(timingLabel: string | null): boolean {
   return true;
 }
 
+export type MyOrderZdFulfillmentSlot = {
+  deadline: string;
+  dokNr: string;
+  count: number;
+};
+
 export type MyOrderZdFulfillment = {
   deadline: string;
   dokNr: string;
   syncedAt: string | null;
   source: "zd";
+  /** Różne terminy w grupie u dostawcy — posortowane od najbliższego. */
+  slots?: MyOrderZdFulfillmentSlot[];
+  /** Zmiana terminu wykryta przy ostatnim sync ZD. */
+  deadlineChange?: ZdFulfillmentDeadlineChangeDisplay | null;
 };
 
 export function resolveZdFulfillmentFromOrder(
@@ -492,17 +512,23 @@ export function resolveZdFulfillmentFromOrder(
     | "zd_fulfillment_source"
     | "zd_fulfillment_dok_nr"
     | "zd_fulfillment_synced_at"
-  >
+    | "zd_fulfillment_previous_deadline"
+    | "zd_fulfillment_deadline_changed_at"
+    | "zd_fulfillment_deadline_change_seen_at"
+  >,
+  at: Date = new Date()
 ): MyOrderZdFulfillment | null {
   if (order.zd_fulfillment_source !== "zd") return null;
   const deadline = order.zd_fulfillment_deadline?.trim();
-  if (!deadline) return null;
+  if (!deadline || !isActiveZdFulfillmentDeadline(deadline, at)) return null;
   const dokNr = order.zd_fulfillment_dok_nr?.trim();
+  const deadlineChange = resolveZdFulfillmentDeadlineChangeDisplay(order, at);
   return {
     deadline,
     dokNr: dokNr || "ZD",
     syncedAt: order.zd_fulfillment_synced_at ?? null,
     source: "zd",
+    deadlineChange,
   };
 }
 
@@ -525,7 +551,7 @@ export function resolveZdEtaPendingFromOrder(
   if (resolveZdFulfillmentFromOrder(order)) return false;
   if (order.zd_fulfillment_synced_at) return false;
   if (!supplierHasPrimarySubiektKh(order, supplierKhIdsBySupplierId)) return false;
-  return isZdEtaOverdueCandidate(order, stats, statsMode);
+  return isZdEtaSyncEligible(order);
 }
 
 /** UI: sync zakończony bez dopasowanego ZD — subtelna informacja zamiast ciszy. */
@@ -538,7 +564,7 @@ export function resolveZdEtaNoMatchFromOrder(
   if (resolveZdFulfillmentFromOrder(order)) return false;
   if (!order.zd_fulfillment_synced_at) return false;
   if (!supplierHasPrimarySubiektKh(order, supplierKhIdsBySupplierId)) return false;
-  return isZdEtaOverdueCandidate(order, stats, statsMode);
+  return isZdEtaSyncEligible(order);
 }
 
 /** Etykieta terminu z dopasowanego dokumentu ZD (Moje zamówienia). */
@@ -591,23 +617,41 @@ export function aggregateGroupZdEtaState(
     return { zdFulfillment: null, zdEtaPending: anyPending, zdEtaNoMatch: anyNoMatch };
   }
 
-  const sorted = [...fulfillments].sort((a, b) => {
+  const slotMap = new Map<string, MyOrderZdFulfillmentSlot>();
+  for (const f of fulfillments) {
+    const key = `${f.deadline}|${f.dokNr}`;
+    const existing = slotMap.get(key);
+    if (existing) {
+      existing.count += 1;
+    } else {
+      slotMap.set(key, { deadline: f.deadline, dokNr: f.dokNr, count: 1 });
+    }
+  }
+
+  const slots = [...slotMap.values()].sort((a, b) => {
     const da = parseDateOnly(a.deadline);
     const db = parseDateOnly(b.deadline);
     if (da && db) return da.getTime() - db.getTime();
     return a.deadline.localeCompare(b.deadline);
   });
 
-  const best = sorted[0]!;
-  const uniqueDocs = new Set(fulfillments.map((f) => f.dokNr));
-  if (uniqueDocs.size <= 1) {
-    return { zdFulfillment: best, zdEtaPending: anyPending, zdEtaNoMatch: anyNoMatch };
-  }
+  const primary = slots[0]!;
+  const syncedAt =
+    fulfillments
+      .map((f) => f.syncedAt)
+      .filter((v): v is string => Boolean(v?.trim()))
+      .sort()
+      .reverse()[0] ?? null;
+  const deadlineChange = pickLatestZdFulfillmentDeadlineChange(orders);
 
   return {
     zdFulfillment: {
-      ...best,
-      dokNr: `${best.dokNr} (+${uniqueDocs.size - 1} poz.)`,
+      deadline: primary.deadline,
+      dokNr: primary.dokNr,
+      syncedAt,
+      source: "zd",
+      slots: slots.length > 1 ? slots : undefined,
+      deadlineChange,
     },
     zdEtaPending: anyPending,
     zdEtaNoMatch: anyNoMatch,

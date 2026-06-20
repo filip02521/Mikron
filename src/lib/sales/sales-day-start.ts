@@ -11,6 +11,8 @@ import {
 import { collectNotepadTodayTasks } from "@/lib/sales/notepad-today-tasks";
 import { formatProsbaZkLinkNumber } from "@/lib/orders/zk-prosba-link-display";
 import { buildNotatnikPageHref } from "@/lib/sales/notepad-page-tabs";
+import { appendMojeFocusOrderIds } from "@/lib/orders/moje-order-focus";
+import { mojeSectionDomId } from "@/lib/orders/moje-section-focus";
 import type { SalesNote, SalesZkWatch } from "@/types/database";
 
 export type SalesDayStartSource =
@@ -52,7 +54,8 @@ const PRIORITY: Record<SalesDayStartSource, number> = {
   board_announcement: 70,
 };
 
-const MOJE_ACTION_SECTION = "moje-section-action";
+const MOJE_ACTION_SECTION = mojeSectionDomId("action");
+const MOJE_INFORMACJA_SECTION = mojeSectionDomId("informacja");
 
 /** Od tej liczby pozycji odbioru — jedno powiadomienie zbiorcze (jak informacje). */
 const PICKUP_AGGREGATE_FROM = 2;
@@ -103,8 +106,8 @@ function buildOrderActionItems(rows: MyOrderRow[]): SalesDayStartItem[] {
       id: "pickup-ready",
       source: "pickup",
       priority: PRIORITY.pickup,
-      title: `Potwierdź odbiór (${pickupLineCount})`,
-      subtitle: "Produkty gotowe na magazynie — do potwierdzenia",
+      title: `Potwierdź odbiór z regału (${pickupLineCount})`,
+      subtitle: "Produkty czekają na regale — potwierdź odbiór",
       href: `/moje#${MOJE_ACTION_SECTION}`,
       scrollTarget: MOJE_ACTION_SECTION,
       count: pickupLineCount,
@@ -117,7 +120,7 @@ function buildOrderActionItems(rows: MyOrderRow[]): SalesDayStartItem[] {
       source: "pickup",
       priority: PRIORITY.pickup,
       title: group.supplierName,
-      subtitle: "1 pozycja gotowa",
+      subtitle: "1 pozycja na regale — potwierdź odbiór",
       href: `/moje#${MOJE_ACTION_SECTION}`,
       scrollTarget: MOJE_ACTION_SECTION,
       count: 1,
@@ -148,14 +151,23 @@ function buildOrderActionItems(rows: MyOrderRow[]): SalesDayStartItem[] {
   );
   if (informacjaRows.length > 0) {
     const n = informacjaRows.length;
+    const firstOrderId = informacjaRows[0]?.orderIds[0];
+    const baseHref = `/moje#${MOJE_INFORMACJA_SECTION}`;
+    const href =
+      n === 1 && firstOrderId
+        ? appendMojeFocusOrderIds(baseHref, [firstOrderId])
+        : baseHref;
     items.push({
       id: "informacja-ready",
       source: "informacja_ready",
       priority: PRIORITY.informacja_ready,
-      title: n === 1 ? "Potwierdź informację o dostępności" : `Potwierdź informacje (${n})`,
-      subtitle: "Towar na magazynie — do potwierdzenia",
-      href: `/moje#${MOJE_ACTION_SECTION}`,
-      scrollTarget: MOJE_ACTION_SECTION,
+      title:
+        n === 1
+          ? "Potwierdź informację o dotarciu produktów"
+          : `Potwierdź informacje o dotarciu produktów (${n})`,
+      subtitle: "Zakupy potwierdziły dotarcie — potwierdź informację",
+      href,
+      scrollTarget: MOJE_INFORMACJA_SECTION,
       count: n,
       ctaLabel: "Przejdź",
     });
@@ -309,6 +321,14 @@ export function salesDayStartSourceLabel(source: SalesDayStartSource): string {
     case "board_announcement":
       return "Ogłoszenie";
   }
+}
+
+/** Opis nagłówka panelu Start dnia — wszystkie typy zadań, nie tylko odbiór z regału. */
+export function salesDayStartPanelDescription(totalActionCount: number): string {
+  if (totalActionCount === 1) {
+    return "1 pilna sprawa — od najważniejszych. Kliknij wiersz, aby przejść do listy lub modułu.";
+  }
+  return `${totalActionCount} pilnych spraw — od najważniejszych. Kliknij wiersz, aby przejść dalej.`;
 }
 
 export function salesDayStartNavCount(

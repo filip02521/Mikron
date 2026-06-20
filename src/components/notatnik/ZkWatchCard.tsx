@@ -102,6 +102,8 @@ export function ZkWatchCard({
     () => ({
       newLineKeys: newLineKeys ?? [],
       inStockLineKeys: orderHints?.inStockLineKeys ?? [],
+      informacjaReadyLineKeys: orderHints?.informacjaReadyLineKeys ?? [],
+      informacjaAcknowledgedLineKeys: orderHints?.informacjaAcknowledgedLineKeys ?? [],
       scopeExcludedLineKeys: orderHints?.scopeExcludedLineKeys ?? [],
       lineCoverageByKey: orderHints?.lineCoverageByKey,
     }),
@@ -135,6 +137,17 @@ export function ZkWatchCard({
     ...checkboxContext,
   });
   const readyToClose = !archived && allLinesChecked;
+  const hasInformacjaReady = (orderHints?.informacjaReadyLineKeys?.length ?? 0) > 0;
+  const hasPhysicalDeliverySignal =
+    (orderHints?.matchedDeliveredLineKeys?.length ?? 0) > 0 ||
+    (orderHints?.inStockLineKeys?.length ?? 0) > 0 ||
+    (orderHints?.regalWaitingLineKeys?.length ?? 0) > 0;
+  const isInformacjaReadyAccent =
+    hasInformacjaReady &&
+    !readyToClose &&
+    !followUpDue &&
+    !hasNewWarehouseArrival &&
+    !hasPhysicalDeliverySignal;
   const uncoveredLineKeys = orderHints?.uncoveredLineKeys ?? [];
   const openProsbaLineKeys = orderHints?.openProsbaCoveredLineKeys ?? [];
   const productLineCount = lineViews.filter((line) => line.key !== "summary").length;
@@ -164,6 +177,8 @@ export function ZkWatchCard({
         lineViews,
         newLineKeys: newLineKeys ?? [],
         inStockLineKeys: orderHints.inStockLineKeys,
+        informacjaReadyLineKeys: orderHints.informacjaReadyLineKeys,
+        informacjaAcknowledgedLineKeys: orderHints.informacjaAcknowledgedLineKeys,
         scopeExcludedLineKeys: orderHints.scopeExcludedLineKeys,
         lineCoverageByKey: orderHints.lineCoverageByKey,
         prosbaScopeConfigured,
@@ -320,9 +335,15 @@ export function ZkWatchCard({
           isAction: readyToClose,
           isUrgent: followUpDue,
           isInformacja: false,
+          deliveryBorderAccent: isInformacjaReadyAccent ? "border-l-sky-500" : undefined,
+          deliveryCollapsedBg: isInformacjaReadyAccent ? "bg-sky-50/35" : undefined,
           visualTone: archived ? "archive" : "default",
         }),
         followUpDue && readyToClose && "ring-1 ring-inset ring-amber-300/50",
+        hasInformacjaReady &&
+          !hasNewWarehouseArrival &&
+          isInformacjaReadyAccent &&
+          "ring-1 ring-inset ring-sky-300/70",
         hasNewWarehouseArrival && "ring-1 ring-inset ring-teal-300/80",
         hasNewZkLines && !hasNewWarehouseArrival && "ring-1 ring-inset ring-amber-300/70"
       )}
@@ -438,7 +459,7 @@ export function ZkWatchCard({
               linesLabel={linesShort ?? String(lineViews.length || 1)}
               onOpenLines={() => openLinesModal(false)}
               onEditProsbaScope={
-                canEdit && !prosbaScopeConfigured && productLineCount > 0
+                canEdit && productLineCount > 0
                   ? () => onProsbaScopeRequested?.(watch.id)
                   : undefined
               }
@@ -473,6 +494,8 @@ export function ZkWatchCard({
         newLineKeys={newLineKeys}
         lineCoverageByKey={orderHints?.lineCoverageByKey}
         inStockLineKeys={orderHints?.inStockLineKeys}
+        informacjaReadyLineKeys={orderHints?.informacjaReadyLineKeys}
+        informacjaAcknowledgedLineKeys={orderHints?.informacjaAcknowledgedLineKeys}
         scopeExcludedLineKeys={orderHints?.scopeExcludedLineKeys}
         onClose={closeLinesModal}
         onSaved={(updated) =>

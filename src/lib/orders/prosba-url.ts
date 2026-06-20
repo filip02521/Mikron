@@ -1,3 +1,5 @@
+import type { IndividualRequestKind } from "@/types/database";
+
 /** Link do formularza prośby z opcjonalnym handlowcem (kierownik) i dostawcą. */
 export function prosbaHref(options?: {
   salesPersonId?: string;
@@ -10,6 +12,7 @@ export function prosbaHref(options?: {
   clientKhId?: number | null;
   /** Klucze linii ZK (uzupełniająca prośba) — przetrwa otwarcie w nowej karcie. */
   zkLineKeys?: string[];
+  requestKind?: IndividualRequestKind;
 }): string {
   const params = new URLSearchParams();
   if (options?.salesPersonId) params.set("dla", options.salesPersonId);
@@ -20,6 +23,9 @@ export function prosbaHref(options?: {
   if (options?.klient?.trim()) params.set("klient", options.klient.trim().slice(0, 80));
   if (options?.zkLineKeys?.length) {
     params.set("zkLines", options.zkLineKeys.join(","));
+  }
+  if (options?.requestKind === "informacja") {
+    params.set("rodzaj", "informacja");
   }
   const kh = options?.clientKhId;
   if (kh != null && Number.isFinite(kh) && kh > 0) {

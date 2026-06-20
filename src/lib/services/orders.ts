@@ -1,3 +1,4 @@
+import type { SupabaseClient } from "@supabase/supabase-js";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { formatDbError } from "@/lib/supabase/db-errors";
 import {
@@ -609,6 +610,8 @@ export async function updateIndividualRequestGroup(
      * - Operacje/zakupy (admin) mogą zapisywać mocny sygnał ("procurement_verification")
      */
     catalogSource?: "order_history" | "procurement_verification";
+    /** Sesja użytkownika (JWT) — np. edycja prośby z /moje; domyślnie service role. */
+    supabase?: SupabaseClient;
   }
 ): Promise<{ updated: number; inserted: number; removed: number }> {
   if (!orderIds.length) throw new Error("Brak pozycji do edycji.");
@@ -622,7 +625,7 @@ export async function updateIndividualRequestGroup(
     acknowledgeSufficientStock: payload.acknowledgeSufficientStock,
   });
 
-  const supabase = createAdminClient();
+  const supabase = options.supabase ?? createAdminClient();
   const { data: rawRows, error: fetchError } = await supabase
     .from("individual_orders")
     .select("*")
@@ -718,11 +721,13 @@ export async function updateIndividualRequestGroup(
         ? procurementStatusForEntry(lineDraft)
         : statusForEditedLine(lineDraft).status;
     const salesRequestNote =
-      payload.requestNote !== undefined
-        ? normalizeSalesRequestNote(payload.requestNote)
-        : existingLineId
-          ? undefined
-          : null;
+      line.requestNote !== undefined
+        ? normalizeSalesRequestNote(line.requestNote)
+        : payload.requestNote !== undefined
+          ? normalizeSalesRequestNote(payload.requestNote)
+          : existingLineId
+            ? undefined
+            : null;
     const rowPayload = {
       supplier_id: payload.supplierId.trim() || null,
       sales_person_id: payload.salesPersonId,
@@ -984,6 +989,8 @@ export async function processIndividualFromSummary(
     ordersToProcess.map((o) => o.id)
   );
 
+  const zdEtaSyncSalesPersonIds: string[] = [];
+
   const normalizedCancelNote =
     action === "ANULOWANO"
       ? normalizeProcurementCancelNote(procurementCancelNote)
@@ -1035,6 +1042,17 @@ export async function processIndividualFromSummary(
         ...seenPatch,
       })
       .eq("id", id);
+
+    if (order.request_kind !== "informacja") {
+      zdEtaSyncSalesPersonIds.push(order.sales_person_id);
+    }
+  }
+
+  if (action !== "ANULOWANO" && zdEtaSyncSalesPersonIds.length) {
+    const { scheduleZdEtaSyncAfterProcurement } = await import(
+      "@/lib/subiekt/zd-eta-procurement-trigger"
+    );
+    await scheduleZdEtaSyncAfterProcurement(zdEtaSyncSalesPersonIds);
   }
 
   if (glowneSupplierIds.size) {

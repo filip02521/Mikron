@@ -46,6 +46,8 @@ const hints: ZkWatchOrderHints = {
   prosbaScopeConfigured: true,
   inStockLineKeys: [],
   regalWaitingLineKeys: [],
+  informacjaReadyLineKeys: [],
+  informacjaAcknowledgedLineKeys: [],
   scopeExcludedLineKeys: [],
 };
 

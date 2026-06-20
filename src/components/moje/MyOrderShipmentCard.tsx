@@ -15,9 +15,16 @@ import {
 } from "@/lib/orders/sales-cancel";
 import type { MyOrderLine } from "@/lib/orders/my-order-presenter";
 import { PlannedOrderDateMeta } from "@/components/orders/PlannedOrderDateMeta";
+import { MyOrderEstimatedDeliveryMeta } from "@/components/moje/MyOrderEstimatedDeliveryMeta";
+import {
+  InformacjaEmailSentMeta,
+  shouldShowInformacjaEmailSentMeta,
+} from "@/components/moje/InformacjaEmailSentMeta";
 import { ZdFulfillmentDateMeta } from "@/components/orders/ZdFulfillmentDateMeta";
+import { ZdFulfillmentDeadlineChangeNotice } from "@/components/orders/ZdFulfillmentDeadlineChangeNotice";
 import { ZdEtaPendingMeta } from "@/components/orders/ZdEtaPendingMeta";
 import { ZdEtaNoMatchMeta } from "@/components/orders/ZdEtaNoMatchMeta";
+import { resolveMyOrderHistoryDeliveryEstimate } from "@/lib/orders/delivery-date-meta-label";
 import { MyOrderKindBadge } from "@/components/moje/MyOrderKindBadge";
 import { MyOrderRequestProgressBar } from "@/components/moje/MyOrderRequestProgressBar";
 import {
@@ -35,6 +42,7 @@ import {
 import {
   EMPTY_MY_ORDER_SECTION_PATTERNS,
   myOrderRowSuppressesSharedHeadline,
+  resolveMyOrderRowPatternHint,
   type MyOrderSectionPatternId,
 } from "@/lib/orders/my-order-section-callout";
 import type { MyOrderListKind } from "@/lib/orders/my-order-row-layout";
@@ -51,8 +59,10 @@ import { MyOrderExpandedMeta } from "@/components/moje/MyOrderExpandedMeta";
 import { MyOrderExpandedDeliveryTiming } from "@/components/moje/MyOrderExpandedDeliveryTiming";
 import {
   buildMyOrderDeliveryTimingDisplay,
+  shouldShowMyOrderCollapsedDeliveryTiming,
   shouldShowMyOrderExpandedDeliveryTiming,
 } from "@/lib/orders/my-order-delivery-timing-display";
+import { resolveMyOrderDeliveryRowVisual } from "@/lib/orders/my-order-delivery-urgency";
 import { MyOrderAckButton } from "@/components/moje/MyOrderAckButton";
 import { MyOrderAssignedClient } from "@/components/moje/MyOrderAssignedClient";
 import { MyOrderRequestNote } from "@/components/moje/MyOrderRequestNote";
@@ -62,6 +72,7 @@ import { isProcurementCancelNotesAggregateSummary } from "@/lib/orders/procureme
 import { MyOrderLineItem } from "@/components/moje/MyOrderLineItem";
 import { MyOrderShipmentOverflowMenu, type MyOrderShipmentOverflowMenuProps } from "@/components/moje/MyOrderShipmentOverflowMenu";
 import { MyOrderHeadlineBanner } from "@/components/moje/MyOrderHeadlineBanner";
+import { MyOrderRowPatternHint } from "@/components/moje/MyOrderRowPatternHint";
 import { MyOrderStatusPill } from "@/components/moje/MyOrderStatusPill";
 import { ZkProsbaLinkChip } from "@/components/orders/ZkProsbaLinkChip";
 import { cn } from "@/lib/cn";
@@ -321,6 +332,7 @@ export function MyOrderShipmentCard({
   rowVisualTone = "default",
   highlighted = false,
   subiektReachable = true,
+  onAcknowledgeZdDeadlineChange,
 }: {
   row: MyOrderRow;
   listKind: MyOrderListKind;
@@ -353,6 +365,7 @@ export function MyOrderShipmentCard({
   rowVisualTone?: MojeShipmentRowVisualTone;
   highlighted?: boolean;
   subiektReachable?: boolean;
+  onAcknowledgeZdDeadlineChange?: (orderIds: string[]) => void;
 }) {
   const panelId = useId();
   const searchActive = searchQueryTokens(searchQuery).length > 0;
@@ -379,6 +392,10 @@ export function MyOrderShipmentCard({
 
   const headline = row.headline ?? row.statusTitle;
   const headlineTone = row.headlineTone ?? "neutral";
+  const rowPatternHint = useMemo(
+    () => (showProgress && listKind === "zamowienie" ? resolveMyOrderRowPatternHint(row) : null),
+    [row, showProgress, listKind]
+  );
   const suppressSharedHeadline = myOrderRowSuppressesSharedHeadline(
     row,
     suppressedSectionPatterns ?? EMPTY_MY_ORDER_SECTION_PATTERNS
@@ -446,6 +463,10 @@ export function MyOrderShipmentCard({
   const isDismiss = headlineTone === "dismiss";
   const isStock = headlineTone === "stock";
   const isInformacja = row.kind === "informacja";
+  const deliveryRowVisual =
+    showProgress && listKind === "zamowienie"
+      ? resolveMyOrderDeliveryRowVisual(row)
+      : null;
 
   const emphasizeStock =
     showProgress &&
@@ -498,10 +519,37 @@ export function MyOrderShipmentCard({
     hasCollapsedSubline: Boolean(collapsedSubline),
   });
   const productSummary = showCollapsedProductSummary ? productSummaryRaw : null;
-  const plannedOrderDate = row.plannedOrderDate ?? null;
-  const zdFulfillment = row.zdFulfillment ?? null;
-  const zdEtaPending = Boolean(row.zdEtaPending && subiektReachable);
-  const zdEtaNoMatch = Boolean(row.zdEtaNoMatch && !zdEtaPending);
+  const showCollapsedDeliveryTiming = shouldShowMyOrderCollapsedDeliveryTiming(row);
+  const plannedOrderDate =
+    showCollapsedDeliveryTiming ? (row.plannedOrderDate ?? null) : null;
+  const zdFulfillment =
+    showCollapsedDeliveryTiming ? (row.zdFulfillment ?? null) : null;
+  const zdEtaPending = Boolean(
+    showCollapsedDeliveryTiming && row.zdEtaPending && subiektReachable
+  );
+  const zdEtaNoMatch = Boolean(
+    showCollapsedDeliveryTiming && row.zdEtaNoMatch && !zdEtaPending
+  );
+  const showInformacjaTimingMeta =
+    showCollapsedDeliveryTiming && shouldShowInformacjaEmailSentMeta(row);
+  const historyDeliveryEstimate = resolveMyOrderHistoryDeliveryEstimate(row);
+  const showEstimatedDeliveryMeta =
+    !showInformacjaTimingMeta &&
+    !zdFulfillment &&
+    historyDeliveryEstimate !== null;
+  const showZdEtaPendingMeta = zdEtaPending && !historyDeliveryEstimate && !zdFulfillment;
+  const showZdEtaNoMatchMeta =
+    zdEtaNoMatch && !zdEtaPending && !historyDeliveryEstimate && !zdFulfillment;
+  const zdDeadlineChangeOrderIds = useMemo(() => {
+    const fromLines = row.lines
+      .filter((line) => line.zdFulfillment?.deadlineChange)
+      .map((line) => line.id);
+    if (fromLines.length) return fromLines;
+    if (row.zdFulfillment?.deadlineChange) return row.orderIds;
+    return [];
+  }, [row]);
+  const showZdDeadlineChangeDismiss =
+    canAcknowledge && zdDeadlineChangeOrderIds.length > 0 && Boolean(onAcknowledgeZdDeadlineChange);
   const showExpandedStatusBadge = shouldShowExpandedOrderStatusBadge(row, {
     hasRequestProgress: Boolean(requestProgress),
   });
@@ -580,9 +628,7 @@ export function MyOrderShipmentCard({
     Boolean(soleLine?.canCancelBySales) &&
     Boolean(soleLine?.showSalesCancelSupplierQuick);
   const soleOverflowCustom =
-    Boolean(soleLine?.canCancelBySales && soleLine?.canPartialSalesCancel) &&
-    !soleOverflowRemainder &&
-    !soleOverflowQuick;
+    Boolean(soleLine?.canCancelBySales && soleLine?.canPartialSalesCancel);
   const soleOverflowFull =
     Boolean(showSalesCancelLink) &&
     row.lineCount === 1 &&
@@ -798,6 +844,8 @@ export function MyOrderShipmentCard({
           isStock,
           isInformacja,
           visualTone: rowVisualTone,
+          deliveryBorderAccent: deliveryRowVisual?.borderAccent,
+          deliveryCollapsedBg: deliveryRowVisual?.collapsedBg,
         }),
         expanded && needsExpand && mojeShipmentExpandedRowShellClass,
         highlighted && "z-[2] ring-2 ring-inset ring-indigo-300/80"
@@ -833,7 +881,8 @@ export function MyOrderShipmentCard({
           {needsExpand ? <ChevronIcon open={expanded} /> : null}
         </button>
 
-        <div className="min-w-0 flex-1">
+        <div className="flex min-w-0 flex-1 items-start gap-1">
+          <div className="min-w-0 flex-1">
           <button
             type="button"
             onClick={handleToggle}
@@ -850,7 +899,7 @@ export function MyOrderShipmentCard({
                 searchQuery={searchQuery}
                 className={cn("truncate", salesTypography.rowTitle)}
               />
-              <MyOrderKindBadge row={row} />
+              <MyOrderKindBadge row={row} listKind={listKind} />
             </div>
             {suppressSharedHeadline ? (
               <span className="sr-only">{headline}</span>
@@ -933,15 +982,42 @@ export function MyOrderShipmentCard({
               className="mt-0.5 max-w-full truncate"
             />
           ) : null}
+          </div>
+          {rowPatternHint &&
+          showRowHeadline &&
+          (!showHeadlineBanner || compactPickupOrAvailability || compactCancelAck) ? (
+            <MyOrderRowPatternHint
+              message={rowPatternHint.message}
+              tone={rowPatternHint.tone}
+              className="mt-0.5"
+            />
+          ) : null}
         </div>
 
         {!expanded ? (
           <div className="hidden min-w-0 max-w-[46%] shrink-0 flex-col items-end gap-1 sm:flex">
-            {zdFulfillment ? <ZdFulfillmentDateMeta fulfillment={zdFulfillment} /> : null}
-            {zdEtaPending ? <ZdEtaPendingMeta /> : null}
-            {!zdEtaPending && zdEtaNoMatch ? (
-              <ZdEtaNoMatchMeta />
+            {showInformacjaTimingMeta && row.timingLabel ? (
+              <InformacjaEmailSentMeta timingLabel={row.timingLabel} />
             ) : null}
+            {!showInformacjaTimingMeta && zdFulfillment ? (
+              <ZdFulfillmentDateMeta
+                fulfillment={zdFulfillment}
+                collapsed
+                lines={row.lines}
+                showDeadlineChangeDismiss={showZdDeadlineChangeDismiss}
+                dismissDeadlineChangePending={pending}
+                onDismissDeadlineChange={
+                  showZdDeadlineChangeDismiss
+                    ? () => onAcknowledgeZdDeadlineChange?.(zdDeadlineChangeOrderIds)
+                    : undefined
+                }
+              />
+            ) : null}
+            {!showInformacjaTimingMeta && showEstimatedDeliveryMeta ? (
+              <MyOrderEstimatedDeliveryMeta row={row} />
+            ) : null}
+            {showZdEtaPendingMeta ? <ZdEtaPendingMeta /> : null}
+            {showZdEtaNoMatchMeta ? <ZdEtaNoMatchMeta /> : null}
             {plannedOrderDate ? <PlannedOrderDateMeta display={plannedOrderDate} /> : null}
             {showStatusBadge ? (
               <MyOrderStatusPill
@@ -970,13 +1046,38 @@ export function MyOrderShipmentCard({
         </div>
       </div>
 
-      {!expanded && (showStatusBadge || productSummary || plannedOrderDate || zdFulfillment || zdEtaPending || zdEtaNoMatch) ? (
+      {!expanded &&
+      (showStatusBadge ||
+        productSummary ||
+        plannedOrderDate ||
+        zdFulfillment ||
+        showZdEtaPendingMeta ||
+        showZdEtaNoMatchMeta ||
+        showInformacjaTimingMeta ||
+        showEstimatedDeliveryMeta) ? (
         <div className="flex flex-wrap items-center justify-end gap-2 border-t border-slate-100/80 px-3 pb-1.5 pt-0 sm:hidden">
-          {zdFulfillment ? <ZdFulfillmentDateMeta fulfillment={zdFulfillment} /> : null}
-          {zdEtaPending ? <ZdEtaPendingMeta /> : null}
-          {!zdEtaPending && zdEtaNoMatch ? (
-            <ZdEtaNoMatchMeta />
+          {showInformacjaTimingMeta && row.timingLabel ? (
+            <InformacjaEmailSentMeta timingLabel={row.timingLabel} />
           ) : null}
+          {!showInformacjaTimingMeta && zdFulfillment ? (
+            <ZdFulfillmentDateMeta
+              fulfillment={zdFulfillment}
+              collapsed
+              lines={row.lines}
+              showDeadlineChangeDismiss={showZdDeadlineChangeDismiss}
+              dismissDeadlineChangePending={pending}
+              onDismissDeadlineChange={
+                showZdDeadlineChangeDismiss
+                  ? () => onAcknowledgeZdDeadlineChange?.(zdDeadlineChangeOrderIds)
+                  : undefined
+              }
+            />
+          ) : null}
+          {!showInformacjaTimingMeta && showEstimatedDeliveryMeta ? (
+            <MyOrderEstimatedDeliveryMeta row={row} />
+          ) : null}
+          {showZdEtaPendingMeta ? <ZdEtaPendingMeta /> : null}
+          {showZdEtaNoMatchMeta ? <ZdEtaNoMatchMeta /> : null}
           {plannedOrderDate ? <PlannedOrderDateMeta display={plannedOrderDate} /> : null}
           {showStatusBadge ? (
             <MyOrderStatusPill
@@ -1028,10 +1129,24 @@ export function MyOrderShipmentCard({
           <MyOrderExpandedMeta fields={expandedMeta} searchQuery={searchQuery} />
 
           {showExpandedDeliveryTiming && expandedDeliveryTiming ? (
-            <MyOrderExpandedDeliveryTiming
-              display={expandedDeliveryTiming}
-              searchQuery={searchQuery}
-            />
+            <div className="space-y-2">
+              <MyOrderExpandedDeliveryTiming
+                display={expandedDeliveryTiming}
+                searchQuery={searchQuery}
+              />
+              {row.zdFulfillment?.deadlineChange ? (
+                <ZdFulfillmentDeadlineChangeNotice
+                  change={row.zdFulfillment.deadlineChange}
+                  align="start"
+                  onDismiss={
+                    showZdDeadlineChangeDismiss
+                      ? () => onAcknowledgeZdDeadlineChange?.(zdDeadlineChangeOrderIds)
+                      : undefined
+                  }
+                  dismissPending={pending}
+                />
+              ) : null}
+            </div>
           ) : null}
 
           {row.lineCount > 0 ? (

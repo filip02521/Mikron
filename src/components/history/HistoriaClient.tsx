@@ -37,6 +37,7 @@ import {
   panelTypography,
 } from "@/lib/ui/ontime-theme";
 import { useAdminPanelPreview } from "@/components/layout/AdminPanelPreviewContext";
+import { salesHistoriaHeaderHint } from "@/lib/sales/sales-page-ui-copy";
 
 function HistorySummaryStrip({
   individualTotal,
@@ -252,7 +253,8 @@ export function HistoriaClient({
             </SectionHeadingIcon>
           }
           title="Historia"
-          description={`Audyt zamówień z ostatnich ${HISTORY_RETENTION_MONTHS} miesięcy. Na liście — ${HISTORY_PREVIEW_COUNT} najnowszych wpisów w każdej sekcji; resztę otworzysz z wyszukiwaniem.`}
+          hint={salesHistoriaHeaderHint(HISTORY_RETENTION_MONTHS, HISTORY_PREVIEW_COUNT)}
+          hintAriaLabel="O historii zamówień"
           action={<HistoriaHelp />}
         />
 
@@ -265,6 +267,7 @@ export function HistoriaClient({
           accent="indigo"
           title="Historia indywidualna"
           hint="Zrealizowane i zarchiwizowane prośby handlowców — bez pozycji informacyjnych"
+          hintMode="tooltip"
           count={individual.length}
           icon={<IconClipboardList size={17} />}
           tileClassName="bg-indigo-100 text-indigo-800"
@@ -299,6 +302,7 @@ export function HistoriaClient({
             accent="slate"
             title="Zamówienia standardowe"
             hint="Kliknięcia „Zamówione” i przesunięcia terminów z panelu dziennego"
+            hintMode="tooltip"
             count={normal.length}
             icon={<IconArchive size={17} />}
             tileClassName="bg-slate-100 text-slate-700"

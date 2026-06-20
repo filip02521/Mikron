@@ -38,6 +38,7 @@ import {
   ProsbaLineFieldMessages,
   type ProsbaLineMessageItem,
 } from "@/components/orders/ProsbaLineFieldMessages";
+import { ProsbaProductStockStatus } from "@/components/orders/ProsbaProductStockStatus";
 import type { ProsbaLineFieldMap } from "@/lib/orders/prosba-line-field-validation";
 import {
   MAX_MIKRAN_CODE_LEN,
@@ -47,8 +48,6 @@ import {
 import type { AppSupplierRef } from "@/lib/subiekt/match-supplier";
 import type { SubiektProduct } from "@/lib/subiekt/types";
 import {
-  assessProsbaLineStockFromDraft,
-  formatProsbaStockLineHint,
   mergeStockIntoLinePatch,
   stockSnapshotFromSubiektProduct,
 } from "@/lib/orders/prosba-stock-check";
@@ -179,7 +178,6 @@ export function SubiektProductLineFields({
   deferSupplierResolve = false,
   compactControls = false,
   fieldValidation,
-  lineIndex = 0,
   typeaheadSize = "default",
 }: {
   value: SubiektProductLineValue;
@@ -571,33 +569,7 @@ export function SubiektProductLineFields({
         fieldLabel: `Subiekt — ${subiektFieldLabel(activeField)}`,
       });
     }
-    if (
-      enabled &&
-      !productFieldFeedback &&
-      !resolvingSupplier &&
-      !linkedFromSubiekt &&
-      !Object.values(fieldValidation ?? {}).some((f) => f.state !== "default")
-    ) {
-      prosbaMessageItems.push({
-        kind: "hint",
-        text: "Wpisz nazwę lub symbol — lista Subiekta pojawi się pod polem. Kod Mikran i ilość obok.",
-      });
-    }
   }
-
-  const stockWarningItem: ProsbaLineMessageItem | null =
-    requestKind === "zamowienie" &&
-    assessProsbaLineStockFromDraft(value as ProductLineDraft, requestKind) === "sufficient"
-      ? {
-          kind: "stock_warning",
-          text: formatProsbaStockLineHint(value),
-        }
-      : null;
-
-  const lineFieldMessageItems = [
-    ...prosbaMessageItems,
-    ...(stockWarningItem ? [stockWarningItem] : []),
-  ];
 
   const productSearchRow = (
     <div className="flex flex-col gap-3 sm:flex-row sm:items-start">
@@ -612,9 +584,11 @@ export function SubiektProductLineFields({
         hint={
           !mergedProductField.error && !mergedProductField.state
             ? mikranOnlyHint ??
-              (enabled
+              (enabled && !prosba
                 ? "Wpisz nazwę lub krótki symbol — wyniki z Subiekta pod polem"
-                : "Nazwa lub symbol towaru (wpis ręczny)")
+                : !enabled
+                  ? "Nazwa lub symbol towaru (wpis ręczny)"
+                  : undefined)
             : undefined
         }
       >
@@ -793,15 +767,12 @@ export function SubiektProductLineFields({
         </div>
       ) : null}
 
-      {lineFieldMessageItems.length > 0 ? (
-        <ProsbaLineFieldMessages
-          lineLabel={
-            prosba
-              ? `Informacje — produkt ${lineIndex + 1}`
-              : `Stan magazynowy — pozycja ${lineIndex + 1}`
-          }
-          items={lineFieldMessageItems}
-        />
+      {prosbaMessageItems.length > 0 ? (
+        <ProsbaLineFieldMessages items={prosbaMessageItems} />
+      ) : null}
+
+      {prosba && requestKind === "zamowienie" ? (
+        <ProsbaProductStockStatus line={value as ProductLineDraft} requestKind={requestKind} />
       ) : null}
 
       {!enabled && configFeedback && !delegateAlerts && !prosba ? (

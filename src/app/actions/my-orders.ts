@@ -1,10 +1,12 @@
 "use server";
 
+// @user-jwt-ok — autoryzacja require*() + RLS individual_orders (071) dla mutacji handlowca.
+
 import { revalidatePath } from "next/cache";
 import { getSessionUser } from "@/lib/auth";
 import { resolveSalesPersonForUser } from "@/lib/auth/sales-person";
 import { isSalesAccount } from "@/lib/auth-roles";
-import { createAdminClient } from "@/lib/supabase/admin";
+import { createClient } from "@/lib/supabase/server";
 import {
   effectiveSalesCancelPhase,
   isSalesCancelNoticePending,
@@ -42,6 +44,10 @@ async function salesPersonIdForAction(): Promise<string> {
   return resolved.id;
 }
 
+async function salesOrderSupabase() {
+  return createClient();
+}
+
 type AckOptions = {
   allowedStatuses?: IndividualOrderStatus[];
   requireSalesCancelled?: boolean;
@@ -53,7 +59,7 @@ async function acknowledgeOrders(
 ) {
   if (!orderIds.length) throw new Error("Brak pozycji do potwierdzenia.");
   const salesPersonId = await salesPersonIdForAction();
-  const supabase = createAdminClient();
+  const supabase = await salesOrderSupabase();
   const caps = await getSalesCancelDbCaps(supabase);
   const now = new Date().toISOString();
 
@@ -125,7 +131,7 @@ export async function actionUpdateSalesClientName(
   clientKhId?: number | null
 ) {
   const salesPersonId = await salesPersonIdForAction();
-  const supabase = createAdminClient();
+  const supabase = await salesOrderSupabase();
   const { clientName: normalized, clientKhId: normalizedKh } = normalizeSalesClientAssignment({
     clientName,
     clientKhId,
@@ -187,7 +193,7 @@ export async function actionSalesCancelOrders(
 ) {
   if (!orderIds.length) throw new Error("Brak pozycji do anulowania.");
   const salesPersonId = await salesPersonIdForAction();
-  const supabase = createAdminClient();
+  const supabase = await salesOrderSupabase();
   const caps = await getSalesCancelDbCaps(supabase);
   const now = new Date().toISOString();
   const quantityById = options?.quantityById ?? {};
@@ -306,7 +312,7 @@ export async function actionAcknowledgePickup(orderIds: string[]) {
 export async function actionUnacknowledgePickup(orderIds: string[]) {
   if (!orderIds.length) throw new Error("Brak pozycji do cofnięcia.");
   const salesPersonId = await salesPersonIdForAction();
-  const supabase = createAdminClient();
+  const supabase = await salesOrderSupabase();
   const now = Date.now();
 
   const { data: rows, error: fetchError } = await supabase
@@ -370,7 +376,7 @@ export async function actionUnacknowledgeSalesCancel(
 ) {
   if (!orderIds.length) throw new Error("Brak pozycji do cofnięcia.");
   const salesPersonId = await salesPersonIdForAction();
-  const supabase = createAdminClient();
+  const supabase = await salesOrderSupabase();
   const caps = await getSalesCancelDbCaps(supabase);
   const now = Date.now();
 
@@ -450,7 +456,7 @@ export async function actionUnacknowledgeSalesCancel(
 export async function actionUnacknowledgeDismiss(orderIds: string[]) {
   if (!orderIds.length) throw new Error("Brak pozycji do cofnięcia.");
   const salesPersonId = await salesPersonIdForAction();
-  const supabase = createAdminClient();
+  const supabase = await salesOrderSupabase();
   const caps = await getSalesCancelDbCaps(supabase);
   const now = Date.now();
 
@@ -524,11 +530,57 @@ export async function actionUpdateMyIndividualRequest(
   payload: IndividualRequestEditPayload
 ) {
   const salesPersonId = await salesPersonIdForAction();
+  const supabase = await salesOrderSupabase();
   const result = await updateIndividualRequestGroup(orderIds, payload, {
     salesPersonIdConstraint: salesPersonId,
+    supabase,
   });
   revalidatePath("/moje");
   revalidatePath("/podsumowanie");
   revalidatePath("/prosba");
   return { success: true as const, ...result };
+}
+
+export async function actionAcknowledgeZdFulfillmentDeadlineChange(orderIds: string[]) {
+  const uniqueIds = [...new Set(orderIds.map((id) => id.trim()).filter(Boolean))];
+  if (!uniqueIds.length) throw new Error("Brak pozycji do potwierdzenia.");
+
+  const salesPersonId = await salesPersonIdForAction();
+  const supabase = await salesOrderSupabase();
+  const now = new Date().toISOString();
+
+  const { data: rowsRaw, error: fetchError } = await supabase
+    .from("individual_orders")
+    .select(
+      "id, sales_person_id, zd_fulfillment_deadline_changed_at, zd_fulfillment_deadline_change_seen_at"
+    )
+    .in("id", uniqueIds);
+
+  if (fetchError) throw new Error(fetchError.message);
+  const rows = rowsRaw ?? [];
+  if (!rows.length) throw new Error("Nie znaleziono pozycji.");
+
+  for (const row of rows) {
+    if (row.sales_person_id !== salesPersonId) {
+      throw new Error("Brak uprawnień do tej pozycji.");
+    }
+    if (!row.zd_fulfillment_deadline_changed_at) {
+      throw new Error("Brak aktywnej informacji o zmianie terminu.");
+    }
+    if (row.zd_fulfillment_deadline_change_seen_at) {
+      throw new Error("Zmiana terminu została już potwierdzona.");
+    }
+  }
+
+  const { error } = await supabase
+    .from("individual_orders")
+    .update({ zd_fulfillment_deadline_change_seen_at: now })
+    .in("id", uniqueIds)
+    .eq("sales_person_id", salesPersonId)
+    .is("zd_fulfillment_deadline_change_seen_at", null);
+
+  if (error) throw new Error(error.message);
+
+  revalidatePath("/moje");
+  return { success: true as const, count: uniqueIds.length };
 }

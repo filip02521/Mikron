@@ -3,11 +3,7 @@ import type { MyOrderRow } from "@/lib/orders/my-order-presenter";
 import type { EditIndividualRequestInitial } from "@/components/orders/EditIndividualRequestModal";
 import type { IndividualOrder } from "@/types/database";
 import { ordersToEditLines } from "@/lib/orders/individual-request-edit";
-import {
-  linesHaveMixedRequestNotes,
-  normalizeSalesRequestNote,
-  sharedRequestNoteFromLines,
-} from "@/lib/orders/sales-request-note";
+import { normalizeSalesRequestNote } from "@/lib/orders/sales-request-note";
 import {
   informacjaFlowPathFromOrder,
   type InformacjaFlowPath,
@@ -37,8 +33,6 @@ export function editInitialFromForSomeoneGroup(
     supplierId: g.supplierId,
     salesPersonId: g.salesPersonId,
     requestKind,
-    requestNote: sharedRequestNoteFromLines(g.lines) ?? "",
-    requestNotesMixed: linesHaveMixedRequestNotes(g.lines),
     informacjaPath:
       requestKind === "informacja" ? informacjaPathFromForSomeoneLines(g.lines) : undefined,
     lines: g.lines.map((l) => ({
@@ -50,6 +44,7 @@ export function editInitialFromForSomeoneGroup(
       clientName: l.clientName ?? "",
       clientKhId: l.clientKhId ?? null,
       subiektTwId: l.subiektTwId ?? null,
+      requestNote: normalizeSalesRequestNote(l.requestNote) ?? "",
     })),
   };
 }
@@ -61,8 +56,6 @@ export function editInitialFromMyOrderRow(row: MyOrderRow): EditIndividualReques
     requestKind: row.requestKind,
     informacjaPath:
       row.requestKind === "informacja" ? (row.informacjaPath ?? "direct") : undefined,
-    requestNote: sharedRequestNoteFromLines(row.lines) ?? "",
-    requestNotesMixed: linesHaveMixedRequestNotes(row.lines),
     lines: row.lines.map((l) => ({
       id: l.id,
       symbol: l.symbol ?? "",
@@ -72,6 +65,7 @@ export function editInitialFromMyOrderRow(row: MyOrderRow): EditIndividualReques
       clientName: l.clientName ?? "",
       clientKhId: l.clientKhId ?? null,
       subiektTwId: l.subiektTwId ?? null,
+      requestNote: normalizeSalesRequestNote(l.requestNote) ?? "",
     })),
   };
 }
@@ -84,17 +78,6 @@ export function editInitialFromOrders(orders: IndividualOrder[]): EditIndividual
     supplierId: rep.supplier_id ?? "",
     salesPersonId: rep.sales_person_id,
     requestKind,
-    requestNote:
-      sharedRequestNoteFromLines(
-        orders.map((o) => ({
-          requestNote: normalizeSalesRequestNote(o.sales_request_note),
-        }))
-      ) ?? "",
-    requestNotesMixed: linesHaveMixedRequestNotes(
-      orders.map((o) => ({
-        requestNote: normalizeSalesRequestNote(o.sales_request_note),
-      }))
-    ),
     informacjaPath: requestKind === "informacja" ? informacjaPath ?? "direct" : undefined,
     lines: ordersToEditLines(orders).map((l) => ({
       id: l.id!,
@@ -105,6 +88,7 @@ export function editInitialFromOrders(orders: IndividualOrder[]): EditIndividual
       clientName: l.clientName ?? "",
       clientKhId: l.clientKhId ?? null,
       subiektTwId: l.subiektTwId ?? null,
+      requestNote: l.requestNote ?? "",
     })),
   };
 }

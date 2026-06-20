@@ -3,7 +3,10 @@ import type { SubiektDocument, SubiektDocumentLine } from "@/lib/subiekt/types";
 import { getDeliveryProgress } from "@/lib/orders/individual";
 import { lineTowId } from "@/lib/subiekt/zd-catalog-import";
 import { buildZdMatchProfileFromDocument } from "@/lib/warehouse/zd-receive-filter";
-import { parseZdFulfillmentDeadline } from "@/lib/subiekt/zd-fulfillment-date";
+import {
+  isActiveZdFulfillmentDocument,
+  parseZdFulfillmentDeadline,
+} from "@/lib/subiekt/zd-fulfillment-date";
 import {
   effectiveProductSymbol,
   extractAlphanumericProductCodeFromName,
@@ -23,11 +26,22 @@ function addMatchSymbol(
   if (normalized) out.add(normalized);
 }
 
-/** Warianty symbolu do dopasowania ZD (pełny symbol, kod bazowy, wyciągnięty z nazwy). */
+/** Czy prośba ma jawny symbol towaru (nie „-” / pusty). */
+function hasExplicitOrderSymbol(symbol: string | null | undefined): boolean {
+  const trimmed = symbol?.trim();
+  return Boolean(trimmed && trimmed !== "-");
+}
+
+/** Warianty symbolu do dopasowania ZD — pełny symbol z prośby lub wyciągnięty z nazwy. */
 export function resolveOrderMatchSymbols(
   order: Pick<IndividualOrder, "symbol" | "products">
 ): string[] {
   const symbols = new Set<string>();
+
+  if (hasExplicitOrderSymbol(order.symbol)) {
+    addMatchSymbol(symbols, order.symbol);
+    return [...symbols];
+  }
 
   addMatchSymbol(symbols, order.symbol);
   addMatchSymbol(
@@ -57,12 +71,8 @@ export function resolveOrderMatchSymbol(
 
 function orderSymbolsMatchLine(orderSymbols: readonly string[], lineSym: string): boolean {
   if (!lineSym) return false;
-  for (const orderSym of orderSymbols) {
-    if (orderSym === lineSym) return true;
-    if (orderSym.length >= 4 && orderSym.startsWith(`${lineSym} `)) return true;
-    if (lineSym.length >= 4 && lineSym.startsWith(`${orderSym} `)) return true;
-  }
-  return false;
+  const normalizedLine = lineSym.toLowerCase();
+  return orderSymbols.some((orderSym) => orderSym === normalizedLine);
 }
 
 function zdLineQuantity(line: SubiektDocumentLine): number | null {
@@ -180,7 +190,12 @@ function compareNullableDates(a: string | null, b: string | null): number {
   return 0;
 }
 
-/** Wybiera najtrafniejszy ZD — ilość reszty, termin, wcześniejszy zapis dok_Id. */
+export type FindBestMatchingZdDocumentOptions = {
+  /** Domyślnie dziś — tylko ZD z terminem realizacji ≥ tej daty. */
+  at?: Date;
+};
+
+/** Wybiera najtrafniejszy aktywny ZD — termin ≥ dziś, ilość reszty, najbliższy termin. */
 export function findBestMatchingZdDocument(
   order: Pick<
     IndividualOrder,
@@ -192,14 +207,19 @@ export function findBestMatchingZdDocument(
     | "delivered_quantity"
     | "zd_fulfillment_dok_id"
   >,
-  docs: SubiektDocument[]
+  docs: SubiektDocument[],
+  options?: FindBestMatchingZdDocumentOptions
 ): SubiektDocument | null {
+  const at = options?.at ?? new Date();
   const persistedDokId =
     order.zd_fulfillment_dok_id != null && order.zd_fulfillment_dok_id > 0
       ? Math.trunc(order.zd_fulfillment_dok_id)
       : null;
 
-  const candidates = docs.filter((doc) => orderMatchesZdDocument(order, doc));
+  const candidates = docs.filter(
+    (doc) =>
+      orderMatchesZdDocument(order, doc) && isActiveZdFulfillmentDocument(doc, at)
+  );
   if (!candidates.length) return null;
 
   const ranked = candidates
@@ -232,6 +252,29 @@ export function findBestMatchingZdDocument(
   return ranked[0]?.doc ?? null;
 }
 
+/** Pewne dopasowanie — można przerwać wczesny odczyt indeksu bez ryzyka gorszego terminu. */
+export function isConfidentZdMatchForOrder(
+  order: Pick<
+    IndividualOrder,
+    | "subiekt_tw_id"
+    | "symbol"
+    | "products"
+    | "mikran_code"
+    | "quantity"
+    | "delivered_quantity"
+    | "zd_fulfillment_dok_id"
+  >,
+  doc: SubiektDocument
+): boolean {
+  const persistedId = order.zd_fulfillment_dok_id;
+  if (persistedId != null && persistedId > 0) {
+    if (Math.trunc(Number(doc.dok_Id)) !== Math.trunc(persistedId)) return false;
+    return bestMatchingLineQuantity(order, doc).coversRemaining;
+  }
+  const qty = bestMatchingLineQuantity(order, doc);
+  return qty.coversRemaining && qty.tightness === 0;
+}
+
 export function findMatchingZdDocument(
   order: Pick<
     IndividualOrder,
@@ -243,7 +286,8 @@ export function findMatchingZdDocument(
     | "delivered_quantity"
     | "zd_fulfillment_dok_id"
   >,
-  docsNewestFirst: SubiektDocument[]
+  docsNewestFirst: SubiektDocument[],
+  options?: FindBestMatchingZdDocumentOptions
 ): SubiektDocument | null {
-  return findBestMatchingZdDocument(order, docsNewestFirst);
+  return findBestMatchingZdDocument(order, docsNewestFirst, options);
 }

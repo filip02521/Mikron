@@ -106,6 +106,37 @@ export async function assertManagerCanUseGroupId(
   }
 }
 
+/** Kierownik musi mieć przypisane grupy, zanim doda lub edytuje handlowców. */
+export async function assertManagerHasTeamScope(
+  user: Pick<SessionUser, "id" | "role">
+): Promise<void> {
+  if (isAdmin(user.role)) return;
+  if (!isSalesManager(user.role)) return;
+
+  const scope = await getManagedGroupIdsForUser(user);
+  if (scope === null) return;
+  if (!scope.length) {
+    throw new Error(
+      "Brak przypisanych grup zespołu — poproś administratora o zaznaczenie ich przy Twoim koncie."
+    );
+  }
+}
+
+/** Kierownik musi przypisać handlowca do grupy ze swojego zakresu. */
+export async function assertManagerRequiresGroupInScope(
+  user: Pick<SessionUser, "id" | "role">,
+  groupId: string | null | undefined
+): Promise<void> {
+  if (isAdmin(user.role)) return;
+  if (!isSalesManager(user.role)) return;
+
+  await assertManagerHasTeamScope(user);
+  if (!groupId?.trim()) {
+    throw new Error("Wybierz grupę z listy przypisanych.");
+  }
+  await assertManagerCanUseGroupId(user, groupId);
+}
+
 export function filterRowsByGroupScope<T extends { groupId: string | null }>(
   rows: T[],
   scope: string[] | null

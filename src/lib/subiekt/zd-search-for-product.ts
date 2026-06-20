@@ -1,6 +1,9 @@
 import type { SubiektListParams } from "@/lib/subiekt/api";
 import {
+  zdContractorInitialDataOdForPlacement,
   zdContractorRecentDataOd,
+  zdPlacementListWindowForApi,
+  placementIsOlderThanRollingWindow,
   zdProductSearchDataOd,
 } from "@/lib/subiekt/zd-search-scope";
 import { parseSubiektKhId } from "@/lib/subiekt/parse-kh-id";
@@ -266,43 +269,60 @@ export function zdSearchPlansForOrderInput(input: {
   products: string;
   subiekt_tw_id?: number | null;
   subiekt_kh_id?: number | null;
+  /** Data zamówienia / zgłoszenia — poszerza dataOd wstecz (np. prośba z lutego). */
+  placementAt?: string | null;
 }): SubiektListParams[] {
   const symbol = (input.symbol ?? "").trim();
   const products = (input.products ?? "").trim();
-  const dataOd = zdContractorRecentDataOd();
+  const listWindow =
+    input.placementAt && placementIsOlderThanRollingWindow(input.placementAt)
+      ? zdPlacementListWindowForApi(input.placementAt)
+      : { dataOd: zdContractorInitialDataOdForPlacement(input.placementAt) };
+  const dataOd = listWindow.dataOd;
+  const dataDo = listWindow.dataDo;
   const listOpts = { maxTokens: ZD_ORDER_SEARCH_MAX_TOKENS, pageSize: 12 };
   const product = orderInputAsProduct({ symbol, products, subiekt_tw_id: input.subiekt_tw_id });
   const effectiveSymbol = effectiveProductSymbol(product);
   const plans: SubiektListParams[] = [];
 
+  const withDateWindow = (plan: SubiektListParams): SubiektListParams => ({
+    ...plan,
+    dataOd,
+    ...(dataDo ? { dataDo } : {}),
+  });
+
   // Symbol pierwszy — precyzyjniejszy niż marka z nazwy (np. H364RNF przy symbol „-”).
   if (effectiveSymbol.length >= 3) {
-    plans.push({
-      symbol: effectiveSymbol,
-      search: effectiveSymbol,
-      dataOd,
-      pageSize: listOpts.pageSize,
-      page: 1,
-    });
+    plans.push(
+      withDateWindow({
+        symbol: effectiveSymbol,
+        search: effectiveSymbol,
+        pageSize: listOpts.pageSize,
+        page: 1,
+      })
+    );
   }
 
   const effectiveLower = effectiveSymbol.toLowerCase();
   for (const plan of zdSearchPlansForProduct(product, listOpts)) {
     const search = plan.search?.trim();
     if (search && effectiveLower && search.toLowerCase() === effectiveLower) continue;
-    plans.push({ ...plan, dataOd });
+    plans.push(withDateWindow(plan));
   }
 
   if (!plans.length) {
     if (symbol && symbol !== "-") {
-      plans.push({ search: symbol, pageSize: listOpts.pageSize, page: 1, dataOd });
+      plans.push(
+        withDateWindow({ search: symbol, pageSize: listOpts.pageSize, page: 1 })
+      );
     } else if (products && products !== "Do uzupełnienia") {
-      plans.push({
-        search: products.slice(0, 48),
-        pageSize: listOpts.pageSize,
-        page: 1,
-        dataOd,
-      });
+      plans.push(
+        withDateWindow({
+          search: products.slice(0, 48),
+          pageSize: listOpts.pageSize,
+          page: 1,
+        })
+      );
     }
   }
 
@@ -321,4 +341,51 @@ export function zdSearchPlansForOrderWithKhIds(
     zdSearchPlansForOrderInput({ ...input, subiekt_kh_id: khId })
   );
   return dedupeZdSearchPlans(plans);
+}
+
+function zdLiveSearchPlanScore(
+  plan: SubiektListParams,
+  primaryKhId: number | null
+): number {
+  let score = 0;
+  const symbol = plan.symbol?.trim() ?? "";
+  const search = plan.search?.trim() ?? "";
+
+  if (symbol.length >= 3) score += 100;
+  if (symbol && search && symbol === search) score += 50;
+  if (primaryKhId != null && plan.khId === primaryKhId) score += 40;
+  else if (plan.khId != null) score += 8;
+
+  if (search.length >= 4 && /[a-zA-Ząćęłńóśźż]/i.test(search) && /\d/.test(search)) {
+    score += 15;
+  }
+
+  return score;
+}
+
+/**
+ * Wybiera najlepsze plany live search (limit np. 3) — symbol + główny kh_Id na początku.
+ */
+export function prioritizeZdLiveSearchPlans(
+  plans: readonly SubiektListParams[],
+  options?: { primaryKhId?: number | null; maxPlans?: number }
+): SubiektListParams[] {
+  const maxPlans = options?.maxPlans ?? plans.length;
+  if (maxPlans <= 0 || !plans.length) return [];
+
+  const primaryKhId =
+    options?.primaryKhId != null && Number.isFinite(options.primaryKhId)
+      ? Math.trunc(options.primaryKhId)
+      : null;
+
+  return [...plans]
+    .sort((a, b) => {
+      const scoreDiff = zdLiveSearchPlanScore(b, primaryKhId) - zdLiveSearchPlanScore(a, primaryKhId);
+      if (scoreDiff !== 0) return scoreDiff;
+      const searchA = a.search ?? "";
+      const searchB = b.search ?? "";
+      if (searchA.length !== searchB.length) return searchA.length - searchB.length;
+      return searchA.localeCompare(searchB, "pl");
+    })
+    .slice(0, maxPlans);
 }

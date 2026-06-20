@@ -1,6 +1,11 @@
 import type { MyOrderRow } from "@/lib/orders/my-order-presenter";
 import { isInformacjaAvailabilityPendingStatusTitle } from "@/lib/orders/informacja-flow-copy";
 import {
+  linesWithoutZdTerm,
+  zdFulfillmentHasMultipleSlots,
+  zdFulfillmentSlots,
+} from "@/lib/orders/my-order-zd-fulfillment-display";
+import {
   shouldShowOrderStatusDetail,
 } from "@/lib/orders/my-order-card-ui";
 import {
@@ -174,6 +179,19 @@ function pluralProdukty(n: number): string {
 
 /** Tekst zachęty przy zwiniętym wierszu z chevronem. */
 export function myOrderExpandHint(row: MyOrderRow, ctx: MyOrderExpandContext): string {
+  if (
+    row.zdFulfillment &&
+    zdFulfillmentHasMultipleSlots(row.zdFulfillment)
+  ) {
+    const n = zdFulfillmentSlots(row.zdFulfillment).length;
+    return n === 2 ? "Rozwiń po oba terminy" : `Rozwiń po ${n} terminy`;
+  }
+  const withoutZd = linesWithoutZdTerm(row.lines);
+  if (row.zdFulfillment && withoutZd.length) {
+    return withoutZd.length === 1
+      ? "Rozwiń po wszystkie terminy"
+      : "Rozwiń po terminy pozycji";
+  }
   const n = row.lineCount;
   if (ctx.listKind === "zamowienie" && n >= 2) {
     return `Rozwiń ${n} ${pluralProdukty(n)}`;

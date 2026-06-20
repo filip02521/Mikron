@@ -13,11 +13,12 @@ import {
 } from "@/lib/orders/sales-client-match";
 import { orderExplicitlyLinkedToZkWatch } from "@/lib/orders/zk-prosba-source";
 import { isZkWatchArchived } from "@/lib/data/sales-notepad";
-import { getDeliveryProgress } from "@/lib/orders/individual";
+import { getDeliveryProgress, INFORMACJA_NO_QUANTITY } from "@/lib/orders/individual";
 import {
   activeOrderQuantity,
   hasActiveSupplierFulfillment,
 } from "@/lib/orders/sales-cancel";
+import type { IndividualRequestKind } from "@/types/database";
 import type { SalesZkWatch } from "@/types/database";
 
 export { clientLabelsMatch, clientLabelsMatchExact } from "@/lib/orders/sales-client-match";
@@ -36,6 +37,7 @@ export type ZkLinkableOrder = {
   quantity: string;
   delivered_quantity: string;
   status: string;
+  request_kind?: IndividualRequestKind | null;
   sales_acknowledged_at: string | null;
   sales_cancelled_at: string | null;
 };
@@ -90,7 +92,7 @@ export function isZkLinePickedFromShelf(
 ): boolean {
   if (coverage !== "delivered" && coverage !== "partial") return false;
   const matching = relevantOrders.filter(
-    (order) => isDeliveredOrderStatus(order.status) && productMatchesZkLine(order, line)
+    (order) => isPhysicalDeliveryOrder(order) && productMatchesZkLine(order, line)
   );
   if (!matching.length) return false;
   return matching.every((order) => Boolean(order.sales_acknowledged_at));
@@ -127,7 +129,11 @@ export type ZkWatchOrderHints = {
   inStockLineKeys: string[];
   /** Pozycje czekające na regale — dostawa z prośby bez odbioru w Moje. */
   regalWaitingLineKeys: string[];
-  /** Pozycje wykluczone z zakresu prośby (needs_prosba: false). */
+  /** Pozycje z potwierdzoną dostępnością (prośba informacyjna, bez „Na regale”). */
+  informacjaReadyLineKeys: string[];
+  /** Pozycje z potwierdzonym odczytem informacji w Moje zamówienia. */
+  informacjaAcknowledgedLineKeys: string[];
+  /** Pozycje pominięte przy wyborze zakresu prośby (needs_prosba: false). */
   scopeExcludedLineKeys: string[];
 };
 
@@ -208,6 +214,25 @@ export function isDeliveredOrderStatus(status: string): boolean {
   return DELIVERED_STATUSES.has(status);
 }
 
+/** Fizyczna dostawa zamówienia — bez sygnału informacyjnego z magazynu. */
+export function isPhysicalDeliveryOrder(
+  order: Pick<ZkLinkableOrder, "request_kind" | "status" | "quantity">
+): boolean {
+  if (isInformacjaWarehouseReadyOrder(order)) return false;
+  return isDeliveredOrderStatus(order.status);
+}
+
+/** Magazyn potwierdził dostępność towaru (prośba informacyjna, bez ilości). */
+export function isInformacjaWarehouseReadyOrder(
+  order: Pick<ZkLinkableOrder, "request_kind" | "status" | "quantity">
+): boolean {
+  if (order.status !== "Zrealizowane") return false;
+  if (order.request_kind === "informacja") return true;
+  const qty = order.quantity?.trim();
+  if (!order.request_kind && (!qty || qty === INFORMACJA_NO_QUANTITY)) return true;
+  return false;
+}
+
 /** Suma dostarczonych sztuk z prośb dopasowanych do pozycji ZK. */
 export function totalDeliveredQtyForZkLineFromOrders(
   orders: ZkLinkableOrder[],
@@ -215,7 +240,7 @@ export function totalDeliveredQtyForZkLineFromOrders(
 ): number {
   let total = 0;
   for (const order of orders) {
-    if (!isDeliveredOrderStatus(order.status)) continue;
+    if (!isPhysicalDeliveryOrder(order)) continue;
     if (!productMatchesZkLine(order, line)) continue;
     const progress = getDeliveryProgress(order.quantity, order.delivered_quantity);
     total += progress.delivered;
@@ -229,7 +254,7 @@ export function isZkLineFullyDeliveredByOrders(
   line: ZkWatchLineView
 ): boolean {
   const matchingDelivered = orders.filter(
-    (order) => isDeliveredOrderStatus(order.status) && productMatchesZkLine(order, line)
+    (order) => isPhysicalDeliveryOrder(order) && productMatchesZkLine(order, line)
   );
   if (!matchingDelivered.length) return false;
 
@@ -239,6 +264,32 @@ export function isZkLineFullyDeliveredByOrders(
   }
 
   return totalDeliveredQtyForZkLineFromOrders(orders, line) >= required;
+}
+
+/** Magazyn potwierdził dostępność — informacja czeka na odczyt w Moje. */
+export function isZkLineInformacjaReady(
+  line: ZkWatchLineView,
+  relevantOrders: ZkLinkableOrder[]
+): boolean {
+  return relevantOrders.some(
+    (order) =>
+      isInformacjaWarehouseReadyOrder(order) &&
+      productMatchesZkLine(order, line) &&
+      !order.sales_acknowledged_at
+  );
+}
+
+/** Handlowiec potwierdził powiadomienie informacyjne w Moje. */
+export function isZkLineInformacjaAcknowledged(
+  line: ZkWatchLineView,
+  relevantOrders: ZkLinkableOrder[]
+): boolean {
+  return relevantOrders.some(
+    (order) =>
+      isInformacjaWarehouseReadyOrder(order) &&
+      productMatchesZkLine(order, line) &&
+      Boolean(order.sales_acknowledged_at)
+  );
 }
 
 export function isOpenProsbaOrder(order: ZkLinkableOrder): boolean {
@@ -281,7 +332,7 @@ export function computeZkWatchLineCoverage(
   if (!matching.length) return "uncovered";
   if (isZkLineFullyDeliveredByOrders(relevantOrders, line)) return "delivered";
   if (matching.some((order) => isOpenProsbaOrder(order))) return "open";
-  if (matching.some((order) => isDeliveredOrderStatus(order.status))) return "partial";
+  if (matching.some((order) => isPhysicalDeliveryOrder(order))) return "partial";
   return "uncovered";
 }
 
@@ -316,6 +367,8 @@ export function computeZkWatchOrderHints(
   );
   const inStockLineKeys: string[] = [];
   const regalWaitingLineKeys: string[] = [];
+  const informacjaReadyLineKeys: string[] = [];
+  const informacjaAcknowledgedLineKeys: string[] = [];
   const scopeExcludedLineKeys: string[] = [];
 
   let matchingOpenRequestCount = 0;
@@ -344,6 +397,12 @@ export function computeZkWatchOrderHints(
     if (isZkLineWaitingOnShelf(line, coverage, relevant)) {
       regalWaitingLineKeys.push(line.key);
     }
+    if (isZkLineInformacjaReady(line, relevant)) {
+      informacjaReadyLineKeys.push(line.key);
+    }
+    if (isZkLineInformacjaAcknowledged(line, relevant)) {
+      informacjaAcknowledgedLineKeys.push(line.key);
+    }
 
     if (scopeExcluded) continue;
 
@@ -362,7 +421,7 @@ export function computeZkWatchOrderHints(
       }
     }
     if (!matchedLines.length) continue;
-    if (isDeliveredOrderStatus(order.status)) {
+    if (isPhysicalDeliveryOrder(order)) {
       for (const line of matchedLines) {
         if (isZkLineFullyDeliveredByOrders(relevant, line)) {
           matchedDeliveredLineKeys.add(line.key);
@@ -387,6 +446,8 @@ export function computeZkWatchOrderHints(
     prosbaScopeConfigured,
     inStockLineKeys,
     regalWaitingLineKeys,
+    informacjaReadyLineKeys,
+    informacjaAcknowledgedLineKeys,
     scopeExcludedLineKeys,
   };
 }
@@ -419,8 +480,10 @@ export function mergeZkLineChecksFromDeliveredOrders(
     const coverage = computeZkWatchLineCoverage(v, relevant, watch);
     const waitingOnShelf = isZkLineWaitingOnShelf(v, coverage, relevant);
     const pickedFromShelf = inStockSet.has(v.key);
+    const informacjaReady = isZkLineInformacjaReady(v, relevant);
+    const informacjaAcked = isZkLineInformacjaAcknowledged(v, relevant);
     let shelfMarked = prev?.shelf_marked ?? false;
-    if (waitingOnShelf || pickedFromShelf) {
+    if (waitingOnShelf || pickedFromShelf || informacjaReady || informacjaAcked) {
       shelfMarked = true;
     } else if (!completedManually) {
       shelfMarked = false;

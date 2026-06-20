@@ -9,7 +9,10 @@ import {
 } from "@/app/actions/operations-notepad";
 import { Button } from "@/components/ui/Button";
 import { Alert } from "@/components/ui/Alert";
+import { SalesKeyboardShortcutsStrip } from "@/components/sales/SalesKeyboardShortcutsStrip";
 import { KeyboardShortcutsHint } from "@/components/ui/KeyboardShortcutsHint";
+import { salesSearchPlaceholder } from "@/lib/sales/sales-search-ui";
+import { SALES_SEARCH_COPY } from "@/lib/sales/sales-page-ui-copy";
 import { cn } from "@/lib/cn";
 import { controlFocusClass, panelTypography } from "@/lib/ui/ontime-theme";
 import {
@@ -573,12 +576,11 @@ export function OperationsNotesSection({
     <div className="space-y-3">
       {!embedded ? (
         <div className="flex flex-wrap items-end justify-between gap-2">
-          <div>
-            <h2 className={panelTypography.sectionTitle}>Notatki</h2>
-            <KeyboardShortcutsHint items={[...NOTATNIK_KEYBOARD_HINTS]} className="mt-1" compact />
-          </div>
+          <h2 className={panelTypography.sectionTitle}>Notatki</h2>
         </div>
       ) : null}
+
+      <SalesKeyboardShortcutsStrip items={NOTATNIK_KEYBOARD_HINTS} embedded={embedded} />
 
       {canCompose ? (
         composeExpanded ? (
@@ -675,14 +677,15 @@ export function OperationsNotesSection({
         <div className={cn(!readOnly && "mt-3")}>
           <NotatnikListFilterBar
             embedded
+            visibleLabel="Szukaj w notatkach"
             value={searchQuery}
             onChange={setSearchQuery}
             matchCount={filtered.length}
             totalCount={notes.length}
-            placeholder="Szukaj po tytule lub treści notatki…"
+            placeholder={salesSearchPlaceholder(SALES_SEARCH_COPY.operationsNotes)}
             searchLabel="Szukaj w notatkach"
-            idleHint="Filtruj notatki po tytule lub treści."
-            activeHint="Wyniki z przypiętych i zwykłych notatek na liście."
+            showIdleHint={false}
+            showActiveDetail={false}
             emptyMatchHint="Brak dopasowań — sprawdź tytuł lub treść notatki."
           />
         </div>

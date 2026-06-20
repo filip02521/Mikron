@@ -1,7 +1,9 @@
 "use server";
 
+// @service-role-ok — autoryzacja require*(); service role z pełnym scope po warstwie aplikacji.
+
 import { revalidatePath } from "next/cache";
-import { requireWarehouse } from "@/lib/auth";
+import { requireWarehouse, requireSupplierManagement } from "@/lib/auth";
 import {
   countWarehouseCarrierUsage,
   fetchWarehouseCarriers,
@@ -29,7 +31,7 @@ export async function actionUpsertWarehouseCarrier(form: {
   sortOrder?: number;
   isActive?: boolean;
 }): Promise<{ success: true; slug: string } | { error: string }> {
-  await requireWarehouse("mutate");
+  await requireSupplierManagement("mutate");
 
   const label = form.label.trim();
   if (!label) return { error: "Podaj nazwę kuriera." };
@@ -93,7 +95,7 @@ export async function actionUpsertWarehouseCarrier(form: {
 export async function actionDeleteWarehouseCarrier(
   slug: string
 ): Promise<{ success: true } | { error: string }> {
-  await requireWarehouse("mutate");
+  await requireSupplierManagement("mutate");
 
   const supabase = createAdminClient();
   const { data: carrier } = await supabase
@@ -122,7 +124,7 @@ export async function actionSetWarehouseCarrierActive(
   slug: string,
   isActive: boolean
 ): Promise<{ success: true } | { error: string }> {
-  await requireWarehouse("mutate");
+  await requireSupplierManagement("mutate");
 
   const supabase = createAdminClient();
   const { data: carrier } = await supabase

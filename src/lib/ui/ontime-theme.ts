@@ -373,6 +373,26 @@ export const panelTypography = {
   statValue: "text-xl font-semibold tabular-nums tracking-tight text-slate-900",
 } as const;
 
+/** Meta terminów dostawy / ZD na /moje — spokojna hierarchia jak PlannedOrderDateMeta. */
+export const deliveryMetaTypography = {
+  caption:
+    "text-[11px] font-medium uppercase tracking-wide text-slate-400",
+  captionZd: "text-[11px] font-medium uppercase tracking-wide text-indigo-600/75",
+  captionAvailable: "text-[11px] font-medium uppercase tracking-wide text-sky-700/85",
+  captionOverdue: "text-[11px] font-medium uppercase tracking-wide text-amber-800/85",
+  captionPending: "text-[11px] font-medium text-slate-500 normal-case tracking-normal",
+  dateBadge:
+    "max-w-full whitespace-normal rounded-md bg-slate-50 px-2 py-0.5 text-[10px] font-semibold leading-snug text-slate-700 ring-1 ring-slate-200/90 tabular-nums",
+  dateBadgeAvailable:
+    "max-w-full whitespace-normal rounded-md bg-sky-50 px-2 py-0.5 text-[10px] font-semibold leading-snug text-sky-950 ring-1 ring-sky-200/90 tabular-nums",
+  dateBadgeOverdue:
+    "max-w-full whitespace-normal rounded-md bg-amber-50 px-2 py-0.5 text-[10px] font-semibold leading-snug text-amber-950 ring-1 ring-amber-200/90 tabular-nums",
+  statusBadge:
+    "max-w-full whitespace-normal rounded-md bg-slate-50 px-2 py-0.5 text-[10px] font-semibold leading-snug text-slate-600 ring-1 ring-slate-200/90",
+  statusBadgePending:
+    "max-w-full whitespace-normal rounded-md bg-slate-50 px-2 py-0.5 text-[10px] font-medium leading-snug text-slate-600 ring-1 ring-slate-200/80",
+} as const;
+
 /** Wypełnienie paska postępu */
 export const progressFillUrgentClass = "bg-gradient-to-r from-sky-400 to-sky-600";
 export const progressFillForSomeoneClass = "bg-gradient-to-r from-indigo-500 to-indigo-700";

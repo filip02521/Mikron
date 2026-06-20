@@ -84,7 +84,7 @@ describe("editInitialFromForSomeoneGroup", () => {
     expect(initial.lines[0]?.clientKhId).toBe(42);
   });
 
-  it("mapuje notatkę handlowca z linii grupy", () => {
+  it("mapuje notatkę handlowca na linię", () => {
     const initial = editInitialFromForSomeoneGroup(
       forSomeoneGroup([
         {
@@ -98,10 +98,10 @@ describe("editInitialFromForSomeoneGroup", () => {
         },
       ])
     );
-    expect(initial.requestNote).toBe("pilne — termin piątek");
+    expect(initial.lines[0]?.requestNote).toBe("pilne — termin piątek");
   });
 
-  it("nie wstawia pierwszej notatki gdy linie mają różne uwagi", () => {
+  it("zachowuje różne notatki na liniach", () => {
     const initial = editInitialFromForSomeoneGroup(
       forSomeoneGroup([
         {
@@ -124,8 +124,8 @@ describe("editInitialFromForSomeoneGroup", () => {
         },
       ])
     );
-    expect(initial.requestNote).toBe("");
-    expect(initial.requestNotesMixed).toBe(true);
+    expect(initial.lines[0]?.requestNote).toBe("notatka A");
+    expect(initial.lines[1]?.requestNote).toBe("notatka B");
   });
 });
 
@@ -184,7 +184,7 @@ describe("editInitialFromMyOrderRow", () => {
     expect(initial?.informacjaPath).toBe("direct");
   });
 
-  it("nie ustawia requestNotesMixed gdy linie nie mają notatek", () => {
+  it("mapuje pustą notatkę na linię gdy brak uwag", () => {
     const initial = editInitialFromMyOrderRow(
       myOrderRow({
         lines: [
@@ -217,7 +217,6 @@ describe("editInitialFromMyOrderRow", () => {
         lineCount: 1,
       })
     );
-    expect(initial?.requestNote).toBe("");
-    expect(initial?.requestNotesMixed).toBe(false);
+    expect(initial?.lines[0]?.requestNote).toBe("");
   });
 });

@@ -69,29 +69,32 @@ describe("my-order-inbox-sections", () => {
     expect(orderedProgress.map((r) => r.id).sort()).toEqual(["o", "p"]);
   });
 
-  it("sortuje w sekcjach według sortPriority (pilniejsze wyżej)", () => {
-    const verify = row({
-      id: "v",
-      statusTitle: "W dziale dostaw",
-      headlineTone: "info",
+  it("sortuje zamówione od najbliższego terminu u góry", () => {
+    const far = row({
+      id: "far",
+      statusTitle: "Zamówione",
+      timingLabel: "do 15.07.2026 · ZD/1",
+      zdFulfillment: {
+        deadline: "2026-07-15",
+        dokNr: "ZD/1",
+        syncedAt: null,
+        source: "zd",
+      },
     });
-    const przed = row({ id: "b", statusTitle: "Przed zamówieniem", headlineTone: "neutral" });
+    const near = row({
+      id: "near",
+      statusTitle: "Zamówione",
+      timingLabel: "ok. 22.06.2026 (~5 dni rob.)",
+    });
     const overdue = row({
       id: "o",
       statusTitle: "Zamówione",
-      timingLabel: "x · po terminie",
+      timingLabel: "ok. 01.03.2026 · po terminie",
       headlineTone: "warning",
     });
-    const zam = row({ id: "z", statusTitle: "Zamówione", headlineTone: "info" });
 
-    const { beforeOrder, orderedProgress } = partitionMyOrderProgressRows([
-      przed,
-      verify,
-      zam,
-      overdue,
-    ]);
-    expect(beforeOrder.map((r) => r.id)).toEqual(["v", "b"]);
-    expect(orderedProgress.map((r) => r.id)).toEqual(["o", "z"]);
+    const { orderedProgress } = partitionMyOrderProgressRows([near, far, overdue]);
+    expect(orderedProgress.map((r) => r.id)).toEqual(["o", "near", "far"]);
   });
 
   it("ma rozróżnialne ikony i akcenty sekcji postępu", () => {

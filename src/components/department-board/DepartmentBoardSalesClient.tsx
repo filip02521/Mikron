@@ -48,6 +48,8 @@ import { AppBrandContentFooter } from "@/components/layout/AppBrandContentFooter
 import { salesPageShellClass, salesTypography, sectionIconTileBrandClass, brandLinkClass, salesChromeInsetClass } from "@/lib/ui/ontime-theme";
 import { NotatnikPanel } from "@/components/notatnik/NotatnikPanel";
 import { NotatnikListFilterBar } from "@/components/notatnik/NotatnikListFilterBar";
+import { salesSearchPlaceholder } from "@/lib/sales/sales-search-ui";
+import { SALES_SEARCH_COPY } from "@/lib/sales/sales-page-ui-copy";
 import { SalesListFilterEmptyHint } from "@/components/sales/SalesListEmptyHints";
 import { filterDepartmentBoardQuestionsByQuery } from "@/lib/department-board/question-search";
 import { actionCreateQuestion } from "@/app/actions/department-board";
@@ -234,7 +236,8 @@ export function DepartmentBoardSalesClient({
           inset
           density="compact"
           title={pageTitle ?? DEPARTMENT_BOARD_SALES_PAGE_TITLE}
-          description={pageDescription}
+          hint={pageDescription}
+          hintAriaLabel="O tablicy"
           action={<DepartmentBoardGuide />}
           leading={
             <SectionHeadingIcon tileClassName={sectionIconTileBrandClass}>
@@ -333,14 +336,15 @@ export function DepartmentBoardSalesClient({
                 <NotatnikListFilterBar
                   embedded
                   bleed
+                  visibleLabel="Szukaj w pytaniach"
                   value={questionSearch}
                   onChange={setQuestionSearch}
                   matchCount={filteredQuestions.length}
                   totalCount={statusFilteredQuestions.length}
-                  placeholder="Szukaj po temacie, treści, autorze lub odpowiedzi…"
+                  placeholder={salesSearchPlaceholder(SALES_SEARCH_COPY.boardQuestions)}
                   searchLabel="Szukaj w pytaniach zespołu"
-                  idleHint="Filtruj pytania po temacie, treści, autorze lub fragmencie odpowiedzi."
-                  activeHint="Wyniki z aktywnego filtra statusu pytań."
+                  showIdleHint={false}
+                  showActiveDetail={false}
                   emptyMatchHint="Brak dopasowań — sprawdź temat, treść, autora lub odpowiedź."
                 />
               ) : null}

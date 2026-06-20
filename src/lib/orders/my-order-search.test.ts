@@ -3,6 +3,7 @@ import {
   filterMyOrderRowsByClientKh,
   filterMyOrderRowsBySearch,
   myOrderRowSearchText,
+  resolveSingleMyOrderSearchScrollTarget,
   rowMatchesSearchQuery,
   rowSearchHighlightsProductLines,
   rowSearchMatchesProductHeader,
@@ -345,5 +346,72 @@ describe("filterMyOrderRowsBySearch friendly status", () => {
   it("znajduje po przyjaznej etykiecie statusu", () => {
     const rows = [row({ id: "v", statusTitle: "W dziale dostaw", supplierName: "Acme" })];
     expect(filterMyOrderRowsBySearch(rows, "sprawdzamy").map((r) => r.id)).toEqual(["v"]);
+  });
+});
+
+describe("resolveSingleMyOrderSearchScrollTarget", () => {
+  it("zwraca jedyny aktywny wynik", () => {
+    const active = [row({ id: "a1" }), row({ id: "a2" })];
+    expect(
+      resolveSingleMyOrderSearchScrollTarget({
+        searchActive: true,
+        searchTrimmed: "implant",
+        searchMatchCount: 1,
+        archiveMatchCount: 0,
+        activeRows: [active[0]!],
+        archiveRecentRows: [],
+        archiveExtendedRows: [],
+      })
+    ).toEqual({
+      rowId: "a1",
+      kind: "active",
+      scrollKey: "implant:active:a1",
+    });
+  });
+
+  it("preferuje aktywną listę gdy jest dokładnie jeden wynik", () => {
+    expect(
+      resolveSingleMyOrderSearchScrollTarget({
+        searchActive: true,
+        searchTrimmed: "alfa",
+        searchMatchCount: 1,
+        archiveMatchCount: 3,
+        activeRows: [row({ id: "live" })],
+        archiveRecentRows: [row({ id: "arch" })],
+        archiveExtendedRows: [],
+      })?.rowId
+    ).toBe("live");
+  });
+
+  it("zwraca jedyny wynik z archiwum", () => {
+    expect(
+      resolveSingleMyOrderSearchScrollTarget({
+        searchActive: true,
+        searchTrimmed: "stary",
+        searchMatchCount: 0,
+        archiveMatchCount: 1,
+        activeRows: [],
+        archiveRecentRows: [row({ id: "arch-1" })],
+        archiveExtendedRows: [row({ id: "arch-1" })],
+      })
+    ).toEqual({
+      rowId: "arch-1",
+      kind: "archive",
+      scrollKey: "stary:archive:arch-1",
+    });
+  });
+
+  it("nie przewija przy wielu wynikach", () => {
+    expect(
+      resolveSingleMyOrderSearchScrollTarget({
+        searchActive: true,
+        searchTrimmed: "x",
+        searchMatchCount: 2,
+        archiveMatchCount: 0,
+        activeRows: [row({ id: "a1" }), row({ id: "a2" })],
+        archiveRecentRows: [],
+        archiveExtendedRows: [],
+      })
+    ).toBeNull();
   });
 });

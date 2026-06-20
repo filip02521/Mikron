@@ -1,29 +1,10 @@
 import { SearchHighlightText } from "@/components/moje/SearchHighlightText";
+import { DeliveryUrgencyBadge } from "@/components/orders/DeliveryUrgencyBadge";
 import { cn } from "@/lib/cn";
 import type { MyOrderDeliveryTimingDisplay } from "@/lib/orders/my-order-delivery-timing-display";
+import { deliveryUrgencyShowsBadge } from "@/lib/orders/my-order-delivery-urgency";
 import { mojeShipmentExpandedMetaShellClass } from "@/lib/ui/moje-shipment-row-styles";
-import { salesTypography } from "@/lib/ui/ontime-theme";
-
-const toneShellClass = {
-  default: "border-indigo-100/80 bg-indigo-50/40",
-  overdue: "border-amber-200/80 bg-amber-50/60",
-  "low-confidence": "",
-  "zd-sourced": "border-indigo-200/90 bg-indigo-50/70",
-} as const;
-
-const toneTitleClass = {
-  default: "text-slate-400",
-  overdue: "text-amber-800/80",
-  "low-confidence": "text-slate-400",
-  "zd-sourced": "text-indigo-700/90",
-} as const;
-
-const toneEstimateClass = {
-  default: "text-slate-700",
-  overdue: "font-semibold text-amber-900",
-  "low-confidence": "text-slate-700",
-  "zd-sourced": "font-semibold text-indigo-950",
-} as const;
+import { deliveryMetaTypography, panelTypography, salesTypography } from "@/lib/ui/ontime-theme";
 
 export function MyOrderExpandedDeliveryTiming({
   display,
@@ -34,25 +15,40 @@ export function MyOrderExpandedDeliveryTiming({
   searchQuery?: string | null;
   className?: string;
 }) {
+  const isOverdue = display.tone === "overdue";
+  const showBadge =
+    display.urgency &&
+    display.urgencyLabel &&
+    deliveryUrgencyShowsBadge(display.urgency);
+
   return (
     <section
       className={cn(
         mojeShipmentExpandedMetaShellClass,
-        toneShellClass[display.tone],
+        isOverdue && "border-amber-200/80 bg-amber-50/50",
         className
       )}
       aria-label={display.title}
     >
       <dl className="min-w-0">
-        <dt
-          className={cn(
-            "font-semibold uppercase tracking-wide",
-            salesTypography.rowMeta,
-            toneTitleClass[display.tone]
-          )}
-        >
-          {display.title}
-        </dt>
+        <div className="flex flex-wrap items-center gap-2">
+          <dt
+            className={cn(
+              panelTypography.caption,
+              "font-medium uppercase tracking-wide",
+              isOverdue ? deliveryMetaTypography.captionOverdue : "text-slate-400"
+            )}
+          >
+            {display.title}
+          </dt>
+          {showBadge && display.urgency && display.urgencyLabel ? (
+            <DeliveryUrgencyBadge
+              urgency={display.urgency}
+              label={display.urgencyLabel}
+              title={display.detail ?? undefined}
+            />
+          ) : null}
+        </div>
         <SearchHighlightText
           text={display.estimate}
           searchQuery={searchQuery}
@@ -60,17 +56,11 @@ export function MyOrderExpandedDeliveryTiming({
           className={cn(
             "mt-0.5 min-w-0 font-medium tabular-nums leading-snug",
             salesTypography.rowBody,
-            toneEstimateClass[display.tone]
+            isOverdue ? "font-semibold text-amber-950" : "text-slate-800"
           )}
         />
         {display.detail ? (
-          <dd
-            className={cn(
-              "mt-1 min-w-0 leading-snug text-slate-500",
-              salesTypography.rowMeta,
-              display.tone === "overdue" && "text-amber-900/80"
-            )}
-          >
+          <dd className={cn("mt-1 min-w-0 leading-snug text-slate-500", salesTypography.rowMeta)}>
             {display.detail}
           </dd>
         ) : null}

@@ -38,6 +38,10 @@ Migracja: `038_supplier_default_delivery.sql` (kolumny `default_delivery_carrier
 
 `supabase/migrations/036_magazyn_role_enum.sql` oraz `037_magazyn_delivery_journal.sql`
 
+## Retencja
+
+Wpisy dziennika starsze niż **3 miesiące** są usuwane automatycznie (wraz z historią zamówień) — ok. raz na dobę przy aktywności lub przez poranny cron.
+
 ## Konta
 
 Administracja → Konta → rola **Dział dostaw**.

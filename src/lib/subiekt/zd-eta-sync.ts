@@ -10,7 +10,7 @@ import { parseDateOnly } from "@/lib/orders/dates";
 import { canEstimateDeliveryEta, orderPlacementAt } from "@/lib/orders/order-timing";
 import { collectKhIdsForSupplierRef } from "@/lib/data/supplier-subiekt-kh";
 import { getAppSupplierRefsCached } from "@/lib/data/supplier-refs";
-import { zdSearchPlansForOrderWithKhIds } from "@/lib/subiekt/zd-search-for-product";
+import { zdSearchPlansForOrderWithKhIds, prioritizeZdLiveSearchPlans } from "@/lib/subiekt/zd-search-for-product";
 import {
   getSubiektZdDocumentCached,
   searchSubiektZdCached,
@@ -21,10 +21,29 @@ import {
   SubiektRequestError,
   SubiektTimeoutError,
 } from "@/lib/subiekt/errors";
-import { findBestMatchingZdDocument, orderRemainingQuantity } from "@/lib/subiekt/match-order-to-zd";
+import { findBestMatchingZdDocument, isConfidentZdMatchForOrder, orderMatchesZdDocument, orderRemainingQuantity } from "@/lib/subiekt/match-order-to-zd";
 import { extractDocKhIds } from "@/lib/subiekt/zd-document-kh";
-import { parseZdFulfillmentDeadline } from "@/lib/subiekt/zd-fulfillment-date";
-import { zdContractorRecentDataOd } from "@/lib/subiekt/zd-search-scope";
+import {
+  isActiveZdFulfillmentDeadline,
+  isActiveZdFulfillmentDocument,
+  parseZdFulfillmentDeadline,
+} from "@/lib/subiekt/zd-fulfillment-date";
+import { buildZdFulfillmentDeadlineChangePersistFields } from "@/lib/orders/zd-fulfillment-deadline-change";
+import { browseZdDocumentsForKhIds } from "@/lib/subiekt/zd-eta-browse";
+import {
+  filterZdIndexRowsForPlacement,
+  loadZdIndexRowsForSupplierSync,
+  searchZdFromIndexForOrder,
+} from "@/lib/subiekt/zd-eta-index-search";
+import {
+  earliestZdContractorExtendedDataOd,
+  earliestZdContractorInitialDataOd,
+  placementIsOlderThanRollingWindow,
+  sortMonthChunksNearPlacement,
+  zdContractorExtendedDataOdForPlacement,
+  zdPlacementBrowseMonthChunks,
+  zdSearchPlacementAt,
+} from "@/lib/subiekt/zd-search-scope";
 import { isSubiektReachable } from "@/lib/subiekt/availability";
 import { tryAcquireLock, releaseLock } from "@/lib/services/locks";
 import type { IndividualOrder, StatsMode } from "@/types/database";
@@ -47,7 +66,14 @@ export type ZdFulfillmentMissContext = {
 
 export type MojeZdEtaRefreshResult = Pick<
   ZdEtaSyncResult,
-  "candidates" | "processed" | "skipped" | "reason" | "subiektOffline" | "timedOut"
+  | "candidates"
+  | "processed"
+  | "updated"
+  | "cleared"
+  | "skipped"
+  | "reason"
+  | "subiektOffline"
+  | "timedOut"
 >;
 
 /** Kiedy sesja przeglądarki może uznać auto-sync za zakończony (bez ponawiania). */
@@ -93,6 +119,8 @@ export function shouldRetryMojeZdEtaSync(
   return false;
 }
 export const ZD_ETA_SYNC_TTL_MS = 6 * 60 * 60 * 1000;
+/** Krótszy TTL gdy ZD jest już znany (zd_fulfillment_dok_id) — szybsze wykrycie zmiany terminu przez zakupy. */
+export const ZD_ETA_SYNC_KNOWN_ZD_TTL_MS = 2 * 60 * 60 * 1000;
 /** Krótszy TTL gdy ostatnio nie znaleziono dopasowanego ZD — szybsza ponowna próba. */
 export const ZD_ETA_SYNC_MISS_TTL_MS = 2 * 60 * 60 * 1000;
 
@@ -100,15 +128,29 @@ export const ZD_ETA_SYNC_MISS_TTL_MS = 2 * 60 * 60 * 1000;
 export const ZD_ETA_MAX_DOCS_PER_RUN = 48;
 export const ZD_ETA_MAX_DOCS_PER_SUPPLIER = 24;
 export const ZD_ETA_INDEX_LIMIT_PER_SUPPLIER = 40;
-export const ZD_ETA_MAX_LIVE_SEARCH_PLANS = 2;
+/** Indeks ZD (tylko dok_id) — rozszerzone okno 3 miesiące na dostawcę. */
+export const ZD_ETA_INDEX_LIMIT_EXTENDED = 120;
+export const ZD_ETA_MAX_LIVE_SEARCH_PLANS = 3;
+export const ZD_ETA_LIVE_SEARCH_MAX_PAGES = 2;
+export const ZD_ETA_INITIAL_BROWSE_MAX_PAGES_PER_KH = 2;
+export const ZD_ETA_EXTENDED_BROWSE_MAX_PAGES_PER_KH = 8;
+export const ZD_ETA_EXTENDED_DOCS_PER_ORDER = 48;
+/** Maks. dokumentów wczytanych z góry na dostawcę (reszta budżetu — per pozycja). */
+export const ZD_ETA_INITIAL_POOL_MAX_DOCS = 10;
 
 /** Limity przy wejściu handlowca na /moje (after, bez crona). */
-export const ZD_ETA_MOJE_MAX_ORDERS = 8;
-export const ZD_ETA_MOJE_MAX_DOCS = 12;
-export const ZD_ETA_MOJE_MAX_DURATION_MS = 15_000;
+export const ZD_ETA_MOJE_MAX_ORDERS = 12;
+export const ZD_ETA_MOJE_MAX_DOCS = 28;
+export const ZD_ETA_MOJE_MAX_DURATION_MS = 35_000;
 /** Limit czasu żądania z /moje — nieco powyżej budżetu serwera. */
-export const ZD_ETA_MOJE_CLIENT_FETCH_TIMEOUT_MS = 20_000;
-export const ZD_ETA_MOJE_INDEX_LIMIT_PER_SUPPLIER = 20;
+export const ZD_ETA_MOJE_CLIENT_FETCH_TIMEOUT_MS = 45_000;
+/** Po tylu ms w tle na /moje — ponowny sync terminów ZD po powrocie do karty. */
+export const ZD_ETA_MOJE_VISIBILITY_RESYNC_MS = 30 * 60 * 1000;
+export const ZD_ETA_MOJE_INDEX_LIMIT_PER_SUPPLIER = 24;
+/** Wyższe limity przy ręcznym POST /api/sales/zd-eta-refresh (force). */
+export const ZD_ETA_MOJE_FORCE_MAX_ORDERS = 24;
+export const ZD_ETA_MOJE_FORCE_MAX_DOCS = 200;
+export const ZD_ETA_MOJE_FORCE_MAX_DURATION_MS = 60_000;
 
 /** Globalny backup — stronicowanie zamiast ładowania wszystkich wierszy naraz. */
 export const ZD_ETA_GLOBAL_ORDER_SCAN_PAGE = 100;
@@ -126,6 +168,8 @@ export type ZdEtaSyncOptions = {
   indexLimitPerSupplier?: number;
   /** Live search w Subiekcie — wyłączony na page load, włączony przy ręcznym odświeżeniu. */
   allowLiveSearch?: boolean;
+  /** Pomiń unstable_cache (skrypty CLI / testy). */
+  supplierRefs?: SupplierRef[];
 };
 
 export type ZdEtaSyncResult = {
@@ -162,7 +206,17 @@ function statsBySupplierId(
   return map;
 }
 
-/** Opóźnione zamówienie kwalifikujące się do dopasowania terminu z ZD (bez TTL). */
+/** Pozycja zamówienia kwalifikująca się do synchronizacji terminu ZD (bez TTL). */
+export function isZdEtaSyncEligible(order: IndividualOrder): boolean {
+  if (order.request_kind === "informacja") return false;
+  if (order.status !== "Zamowione" && order.status !== "Czesciowo_zrealizowane") {
+    return false;
+  }
+  if (!order.supplier_id || !canEstimateDeliveryEta(order)) return false;
+  return Boolean(orderPlacementAt(order));
+}
+
+/** Opóźnione zamówienie — wyższy priorytet sync i stany UI „po terminie”. */
 export function isZdEtaOverdueCandidate(
   order: IndividualOrder,
   stats: ReturnType<typeof statsBySupplierId>[string] | undefined,
@@ -202,6 +256,26 @@ export function isZdEtaOverdueCandidate(
   return false;
 }
 
+export function hasKnownZdFulfillmentDocId(
+  order: Pick<IndividualOrder, "zd_fulfillment_dok_id">
+): boolean {
+  const id = order.zd_fulfillment_dok_id;
+  return id != null && Number.isFinite(id) && Math.trunc(id) > 0;
+}
+
+/** TTL odświeżenia terminu — krótszy gdy znamy dok_id (tanie GET po ZD). */
+export function zdEtaSyncTtlMsForOrder(
+  order: Pick<
+    IndividualOrder,
+    "zd_fulfillment_source" | "zd_fulfillment_dok_id"
+  >
+): number {
+  if (order.zd_fulfillment_source !== "zd") return ZD_ETA_SYNC_MISS_TTL_MS;
+  return hasKnownZdFulfillmentDocId(order)
+    ? ZD_ETA_SYNC_KNOWN_ZD_TTL_MS
+    : ZD_ETA_SYNC_TTL_MS;
+}
+
 export function needsZdEtaSync(
   order: IndividualOrder,
   stats: ReturnType<typeof statsBySupplierId>[string] | undefined,
@@ -209,44 +283,80 @@ export function needsZdEtaSync(
   nowMs: number,
   force = false
 ): boolean {
-  if (!isZdEtaOverdueCandidate(order, stats, statsMode)) return false;
+  if (!isZdEtaSyncEligible(order)) return false;
 
   if (!order.zd_fulfillment_synced_at) return true;
   if (force) return true;
+
+  if (
+    order.zd_fulfillment_source === "zd" &&
+    !hasPersistedZdFulfillment(order, new Date(nowMs))
+  ) {
+    return true;
+  }
+
   const syncedAt = new Date(order.zd_fulfillment_synced_at).getTime();
   if (!Number.isFinite(syncedAt)) return true;
-  const ttl =
-    order.zd_fulfillment_source === "zd"
-      ? ZD_ETA_SYNC_TTL_MS
-      : ZD_ETA_SYNC_MISS_TTL_MS;
+  const ttl = zdEtaSyncTtlMsForOrder(order);
   return nowMs - syncedAt >= ttl;
 }
 
+export type ZdFulfillmentPersistMissAction = "clear" | "touch" | "retain";
+
 /**
- * Przy braku dopasowania: backup odświeża synced_at; force czyści nieaktualny termin
- * tylko po pełnym przeszukaniu — nie przy offline / timeout / limicie dokumentów.
+ * Przy braku dopasowania: zachowaj aktywny termin ZD; czyść tylko gdy brak ważnego zapisu.
+ * retain — nie aktualizuj bazy (offline / timeout przy znanym terminie → szybsza ponowna próba).
  */
 export function zdFulfillmentPersistOnMissAction(
-  force: boolean | undefined,
+  _force: boolean | undefined,
   retainExistingZd: boolean,
   ctx: ZdFulfillmentMissContext = {}
-): "clear" | "touch" {
-  if (retainExistingZd) {
-    if (ctx.subiektOffline || ctx.searchIncomplete) return "touch";
-    if (force) return "clear";
-    return "touch";
-  }
+): ZdFulfillmentPersistMissAction {
+  if (retainExistingZd && (ctx.subiektOffline || ctx.searchIncomplete)) return "retain";
+  if (ctx.subiektOffline || ctx.searchIncomplete) return "touch";
+  if (retainExistingZd) return "touch";
   return "clear";
+}
+
+/** Gwarantowany budżet dokumentów na jedną pozycję w przebiegu sync. */
+export function zdEtaPerOrderDocBudget(
+  globalRemaining: number,
+  ordersRemainingInRun: number
+): number {
+  if (globalRemaining <= 0 || ordersRemainingInRun <= 0) return 0;
+  const fairShare = Math.ceil(globalRemaining / ordersRemainingInRun);
+  const floor = Math.min(ZD_ETA_EXTENDED_DOCS_PER_ORDER, 24);
+  return Math.min(ZD_ETA_EXTENDED_DOCS_PER_ORDER, Math.max(fairShare, floor));
 }
 
 /** Czy zachować wcześniej zsynchronizowany termin ZD przy braku nowego dopasowania. */
 export function hasPersistedZdFulfillment(
-  order: Pick<IndividualOrder, "zd_fulfillment_source" | "zd_fulfillment_deadline">
+  order: Pick<IndividualOrder, "zd_fulfillment_source" | "zd_fulfillment_deadline">,
+  at: Date = new Date()
 ): boolean {
-  return (
-    order.zd_fulfillment_source === "zd" &&
-    Boolean(order.zd_fulfillment_deadline?.trim())
-  );
+  if (order.zd_fulfillment_source !== "zd") return false;
+  const deadline = order.zd_fulfillment_deadline?.trim();
+  if (!deadline) return false;
+  return isActiveZdFulfillmentDeadline(deadline, at);
+}
+
+/** Niższy wynik = wyższy priorytet w sync (przeterminowany ZD przed odświeżeniem aktywnych). */
+export function zdEtaSyncOrderPriority(
+  order: Pick<
+    IndividualOrder,
+    | "zd_fulfillment_source"
+    | "zd_fulfillment_deadline"
+    | "zd_fulfillment_synced_at"
+  >,
+  at: Date = new Date()
+): number {
+  if (order.zd_fulfillment_source === "zd" && !hasPersistedZdFulfillment(order, at)) {
+    return 0;
+  }
+  if (!order.zd_fulfillment_synced_at || !order.zd_fulfillment_source) {
+    return 1;
+  }
+  return 2;
 }
 
 /** Wybór kandydatów do synchronizacji (testowalne). */
@@ -271,9 +381,19 @@ export function selectZdEtaSyncCandidates(
   });
 
   candidates.sort((a, b) => {
-    const pa = orderPlacementAt(a) ?? "";
-    const pb = orderPlacementAt(b) ?? "";
-    return pa.localeCompare(pb);
+    const pa = zdEtaSyncOrderPriority(a, new Date(nowMs));
+    const pb = zdEtaSyncOrderPriority(b, new Date(nowMs));
+    if (pa !== pb) return pa - pb;
+    const retryRank = (o: IndividualOrder) =>
+      o.zd_fulfillment_synced_at && !o.zd_fulfillment_source ? 0 : 1;
+    const ra = retryRank(a);
+    const rb = retryRank(b);
+    if (ra !== rb) return ra - rb;
+    const placementA = orderPlacementAt(a) ?? "";
+    const placementB = orderPlacementAt(b) ?? "";
+    if (!placementA && placementB) return 1;
+    if (placementA && !placementB) return -1;
+    return placementA.localeCompare(placementB);
   });
 
   if (options?.maxOrders != null && options.maxOrders > 0) {
@@ -344,26 +464,40 @@ function isTimeBudgetExceeded(startedMs: number, maxDurationMs: number): boolean
   return Date.now() - startedMs >= maxDurationMs;
 }
 
-async function loadRecentZdIndexForKhIds(
-  khIds: readonly number[],
-  limit: number
-): Promise<Array<{ dok_id: number; dok_nr_pelny: string | null; dok_data_wyst: string | null }>> {
-  const scoped = [...new Set(khIds.map((id) => Math.trunc(id)).filter((id) => id > 0))];
-  if (!scoped.length) return [];
-
+/** kh_Id z indeksu ZD (aliasy kontrahenta widoczne w katalogu, np. dwie nazwy Marrodent). */
+async function loadExtraKhIdsBySupplierIdFromZdIndex(): Promise<Map<string, number[]>> {
   const supabase = createAdminClient();
-  const dataOd = zdContractorRecentDataOd();
   const { data, error } = await supabase
     .from("subiekt_zd_index")
-    .select("dok_id, dok_nr_pelny, dok_data_wyst")
-    .in("subiekt_kh_id", scoped)
-    .gte("dok_data_wyst", dataOd)
-    .order("dok_data_wyst", { ascending: false })
-    .order("dok_id", { ascending: false })
-    .limit(limit);
-
+    .select("supplier_id, subiekt_kh_id")
+    .not("supplier_id", "is", null);
   if (error) throw new Error(error.message);
-  return data ?? [];
+
+  const map = new Map<string, Set<number>>();
+  for (const row of data ?? []) {
+    const supplierId = (row as { supplier_id: string | null }).supplier_id;
+    const kh = Math.trunc(Number((row as { subiekt_kh_id: number }).subiekt_kh_id));
+    if (!supplierId || !Number.isFinite(kh) || kh <= 0) continue;
+    const set = map.get(supplierId) ?? new Set<number>();
+    set.add(kh);
+    map.set(supplierId, set);
+  }
+
+  const out = new Map<string, number[]>();
+  for (const [supplierId, ids] of map) out.set(supplierId, [...ids]);
+  return out;
+}
+
+export function resolveSupplierKhIds(
+  supplier: SupplierRef | undefined,
+  supplierId: string,
+  extraKhBySupplierId: Map<string, number[]>
+): number[] {
+  const ids = new Set(supplierKhIds(supplier));
+  for (const kh of extraKhBySupplierId.get(supplierId) ?? []) {
+    if (Number.isFinite(kh) && kh > 0) ids.add(Math.trunc(kh));
+  }
+  return [...ids];
 }
 
 /** Czy dokument ZD należy do kontrahenta dostawcy (kh_Id główny lub alias). */
@@ -387,13 +521,57 @@ function findMatchingZdDocumentForSupplier(
   return findBestMatchingZdDocument(order, scoped);
 }
 
-async function fetchZdDocumentSafe(dokId: number): Promise<SubiektDocument | null> {
+/** Wczesne zatrzymanie odczytu indeksu — wybór najlepszego z pobranych, stop przy pewnym trafieniu. */
+export function buildZdIndexSearchEarlyStopHandlers(
+  order: IndividualOrder,
+  khIds: readonly number[]
+): Pick<
+  import("@/lib/subiekt/zd-eta-index-search").FetchZdByDokIdsOptions,
+  "selectBestFromDocs" | "shouldStopAfterBest"
+> {
+  return {
+    selectBestFromDocs: (docs) => findMatchingZdDocumentForSupplier(order, docs, khIds),
+    shouldStopAfterBest: (best, ctx) =>
+      isConfidentZdMatchForOrder(order, best) || ctx.fetched >= ctx.listedCount,
+  };
+}
+
+function orderZdConfidentMatchDoc(
+  order: IndividualOrder,
+  khIds: readonly number[]
+): (doc: SubiektDocument) => boolean {
+  return (doc) =>
+    Boolean(findMatchingZdDocumentForSupplier(order, [doc], khIds)) &&
+    isConfidentZdMatchForOrder(order, doc);
+}
+
+async function fetchZdDocumentSafe(
+  dokId: number,
+  options?: { forceFresh?: boolean }
+): Promise<SubiektDocument | null> {
   try {
-    return await getSubiektZdDocumentCached(dokId);
+    return await getSubiektZdDocumentCached(dokId, options);
   } catch (e) {
     if (isSubiektOfflineError(e)) throw e;
     return null;
   }
+}
+
+/** Szybka ścieżka: ponowny odczyt zapisanego dokumentu ZD (zmiana terminu przez zakupy). */
+export async function tryRefreshKnownZdDocumentForOrder(
+  order: IndividualOrder,
+  loadDoc: (dokId: number) => Promise<SubiektDocument | null>,
+  khIds: readonly number[],
+  at: Date = new Date()
+): Promise<SubiektDocument | null> {
+  if (!hasKnownZdFulfillmentDocId(order)) return null;
+  const dokId = Math.trunc(order.zd_fulfillment_dok_id!);
+  const doc = await loadDoc(dokId);
+  if (!doc) return null;
+  if (!zdDocumentMatchesSupplierKhIds(doc, khIds)) return null;
+  if (!orderMatchesZdDocument(order, doc)) return null;
+  if (!isActiveZdFulfillmentDocument(doc, at)) return null;
+  return doc;
 }
 
 export async function liveSearchZdDocsForOrder(
@@ -407,14 +585,19 @@ export async function liveSearchZdDocsForOrder(
 ): Promise<{ docs: SubiektDocument[]; fetched: number; matched: SubiektDocument | null }> {
   const docBudget = Math.min(remainingDocBudget, remainingSupplierDocBudget);
   if (docBudget <= 0) return { docs: [], fetched: 0, matched: null };
-  const plans = zdSearchPlansForOrderWithKhIds(
+  const allPlans = zdSearchPlansForOrderWithKhIds(
     {
       symbol: order.symbol,
       products: order.products,
       subiekt_tw_id: order.subiekt_tw_id,
+      placementAt: zdSearchPlacementAt(order),
     },
     khIds
-  ).slice(0, maxPlans);
+  );
+  const plans = prioritizeZdLiveSearchPlans(allPlans, {
+    primaryKhId: khIds[0] ?? null,
+    maxPlans,
+  });
 
   const docs: SubiektDocument[] = [];
   const seen = new Set<number>();
@@ -422,19 +605,27 @@ export async function liveSearchZdDocsForOrder(
 
   for (const plan of plans) {
     if (fetched >= docBudget) break;
-    const list = await searchSubiektZdCached(plan);
-    for (const item of list.data ?? []) {
+    for (let page = 1; page <= ZD_ETA_LIVE_SEARCH_MAX_PAGES; page++) {
       if (fetched >= docBudget) break;
-      const id = Math.trunc(Number(item.dok_Id));
-      if (!Number.isFinite(id) || id <= 0 || seen.has(id) || knownDocIds.has(id)) {
-        continue;
+      const list = await searchSubiektZdCached({ ...plan, page });
+      const items = list.data ?? [];
+      if (!items.length) break;
+      for (const item of items) {
+        if (fetched >= docBudget) break;
+        const id = Math.trunc(Number(item.dok_Id));
+        if (!Number.isFinite(id) || id <= 0 || seen.has(id) || knownDocIds.has(id)) {
+          continue;
+        }
+        seen.add(id);
+        const full = await loadDoc(id);
+        if (!full) continue;
+        fetched++;
+        if (!zdDocumentMatchesSupplierKhIds(full, khIds)) continue;
+        docs.push(full);
+        const hit = findMatchingZdDocumentForSupplier(order, [full], khIds);
+        if (hit) return { docs, fetched, matched: hit };
       }
-      seen.add(id);
-      const full = await loadDoc(id);
-      if (!full) continue;
-      fetched++;
-      if (!zdDocumentMatchesSupplierKhIds(full, khIds)) continue;
-      docs.push(full);
+      if (items.length < (plan.pageSize ?? 12)) break;
     }
   }
 
@@ -452,19 +643,15 @@ async function touchZdFulfillmentSync(orderId: string): Promise<void> {
   if (error) throw new Error(error.message);
 }
 
-/** Przed wymuszonym sync — czyści znacznik próby bez terminu, żeby UI pokazało oczekiwanie. */
-async function clearZdFulfillmentSyncAttempt(orderId: string): Promise<void> {
-  const supabase = createAdminClient();
-  const { error } = await supabase
-    .from("individual_orders")
-    .update({ zd_fulfillment_synced_at: null })
-    .eq("id", orderId);
-
-  if (error) throw new Error(error.message);
-}
-
 async function persistZdFulfillment(
-  orderId: string,
+  order: Pick<
+    IndividualOrder,
+    | "id"
+    | "zd_fulfillment_deadline"
+    | "zd_fulfillment_previous_deadline"
+    | "zd_fulfillment_deadline_changed_at"
+    | "zd_fulfillment_deadline_change_seen_at"
+  >,
   input: {
     deadline: string | null;
     dokNr: string | null;
@@ -474,6 +661,11 @@ async function persistZdFulfillment(
 ): Promise<void> {
   const supabase = createAdminClient();
   const now = new Date().toISOString();
+  const changeFields = buildZdFulfillmentDeadlineChangePersistFields(
+    order,
+    input.deadline,
+    now
+  );
   const { error } = await supabase
     .from("individual_orders")
     .update({
@@ -482,8 +674,9 @@ async function persistZdFulfillment(
       zd_fulfillment_dok_nr: input.dokNr,
       zd_fulfillment_dok_id: input.dokId,
       zd_fulfillment_synced_at: now,
+      ...changeFields,
     })
-    .eq("id", orderId);
+    .eq("id", order.id);
 
   if (error) throw new Error(error.message);
 }
@@ -529,13 +722,18 @@ export async function runZdEtaSyncForSalesPerson(
   salesPersonId: string,
   options?: Pick<ZdEtaSyncOptions, "force" | "allowLiveSearch">
 ): Promise<ZdEtaSyncResult> {
+  const manualRefresh = Boolean(options?.force);
   return runZdEtaSync({
     salesPersonId,
-    maxOrders: ZD_ETA_MOJE_MAX_ORDERS,
-    maxDocsPerRun: ZD_ETA_MOJE_MAX_DOCS,
-    maxDocsPerSupplier: Math.min(12, ZD_ETA_MOJE_MAX_DOCS),
+    maxOrders: manualRefresh ? ZD_ETA_MOJE_FORCE_MAX_ORDERS : ZD_ETA_MOJE_MAX_ORDERS,
+    maxDocsPerRun: manualRefresh ? ZD_ETA_MOJE_FORCE_MAX_DOCS : ZD_ETA_MOJE_MAX_DOCS,
+    maxDocsPerSupplier: manualRefresh
+      ? Math.min(48, ZD_ETA_MOJE_FORCE_MAX_DOCS)
+      : Math.min(12, ZD_ETA_MOJE_MAX_DOCS),
     indexLimitPerSupplier: ZD_ETA_MOJE_INDEX_LIMIT_PER_SUPPLIER,
-    maxDurationMs: ZD_ETA_MOJE_MAX_DURATION_MS,
+    maxDurationMs: manualRefresh
+      ? ZD_ETA_MOJE_FORCE_MAX_DURATION_MS
+      : ZD_ETA_MOJE_MAX_DURATION_MS,
     allowLiveSearch: options?.allowLiveSearch ?? false,
     force: options?.force,
   });
@@ -544,10 +742,10 @@ export async function runZdEtaSyncForSalesPerson(
 /** Globalny backup po nocnym catalog-zd-sync (bez nowego crona). */
 export async function runZdEtaSyncGlobalBackup(): Promise<ZdEtaSyncResult> {
   return runZdEtaSync({
-    maxDurationMs: 90_000,
+    maxDurationMs: 120_000,
     maxOrders: 48,
-    maxDocsPerRun: 36,
-    maxDocsPerSupplier: 18,
+    maxDocsPerRun: 96,
+    maxDocsPerSupplier: 48,
     allowLiveSearch: true,
   });
 }
@@ -583,7 +781,9 @@ export async function runZdEtaSync(options: ZdEtaSyncOptions = {}): Promise<ZdEt
     const [orders, statsRows, suppliers] = await Promise.all([
       fetchZdEtaSyncOrderPool(options.salesPersonId),
       fetchDeliveryStats(),
-      getAppSupplierRefsCached(),
+      options.supplierRefs
+        ? Promise.resolve(options.supplierRefs)
+        : getAppSupplierRefsCached(),
     ]);
 
     const statsMap = statsBySupplierId(statsRows);
@@ -598,13 +798,8 @@ export async function runZdEtaSync(options: ZdEtaSyncOptions = {}): Promise<ZdEt
       { force: options.force, maxOrders: options.maxOrders }
     );
 
-    if (options.force) {
-      for (const order of candidates) {
-        if (!hasPersistedZdFulfillment(order)) {
-          await clearZdFulfillmentSyncAttempt(order.id);
-        }
-      }
-    }
+    const extraKhBySupplierId = await loadExtraKhIdsBySupplierIdFromZdIndex();
+    const syncAt = new Date(nowMs);
 
     const bySupplier = new Map<string, IndividualOrder[]>();
     for (const order of candidates) {
@@ -614,6 +809,26 @@ export async function runZdEtaSync(options: ZdEtaSyncOptions = {}): Promise<ZdEt
       bySupplier.set(sid, list);
     }
 
+    const fairSupplierDocCap = Math.max(
+      ZD_ETA_INITIAL_POOL_MAX_DOCS + ZD_ETA_EXTENDED_DOCS_PER_ORDER,
+      Math.ceil(maxDocsPerRun / Math.max(1, bySupplier.size))
+    );
+
+    const supplierEntries = [...bySupplier.entries()].sort((a, b) => {
+      const priorityScore = (orders: IndividualOrder[]) =>
+        Math.min(...orders.map((o) => zdEtaSyncOrderPriority(o, syncAt)));
+      const pa = priorityScore(a[1]);
+      const pb = priorityScore(b[1]);
+      if (pa !== pb) return pa - pb;
+      const retryScore = (orders: IndividualOrder[]) =>
+        orders.some((o) => o.zd_fulfillment_synced_at && !o.zd_fulfillment_source) ? 0 : 1;
+      const ra = retryScore(a[1]);
+      const rb = retryScore(b[1]);
+      if (ra !== rb) return ra - rb;
+      return b[1].length - a[1].length;
+    });
+
+    let candidatesRemaining = candidates.length;
     let processed = 0;
     let updated = 0;
     let cleared = 0;
@@ -626,17 +841,23 @@ export async function runZdEtaSync(options: ZdEtaSyncOptions = {}): Promise<ZdEt
       matched: SubiektDocument | null,
       orderSearchIncomplete: boolean
     ): Promise<void> => {
-      const retainExistingZd = hasPersistedZdFulfillment(order);
+      const retainExistingZd = hasPersistedZdFulfillment(order, syncAt);
       const missAction = zdFulfillmentPersistOnMissAction(options.force, retainExistingZd, {
         subiektOffline,
         searchIncomplete: orderSearchIncomplete,
       });
 
       if (!matched) {
-        if (missAction === "touch") {
+        const clearExpiredPersistedZd =
+          order.zd_fulfillment_source === "zd" &&
+          !hasPersistedZdFulfillment(order, syncAt);
+        if (missAction === "retain") {
+          return;
+        }
+        if (missAction === "touch" && !clearExpiredPersistedZd) {
           await touchZdFulfillmentSync(order.id);
         } else {
-          await persistZdFulfillment(order.id, {
+          await persistZdFulfillment(order, {
             deadline: null,
             dokNr: null,
             dokId: null,
@@ -652,10 +873,13 @@ export async function runZdEtaSync(options: ZdEtaSyncOptions = {}): Promise<ZdEt
       const dokId = Math.trunc(Number(matched.dok_Id));
 
       if (!deadline) {
+        if (missAction === "retain") {
+          return;
+        }
         if (missAction === "touch") {
           await touchZdFulfillmentSync(order.id);
         } else {
-          await persistZdFulfillment(order.id, {
+          await persistZdFulfillment(order, {
             deadline: null,
             dokNr: null,
             dokId: null,
@@ -666,7 +890,7 @@ export async function runZdEtaSync(options: ZdEtaSyncOptions = {}): Promise<ZdEt
         return;
       }
 
-      await persistZdFulfillment(order.id, {
+      await persistZdFulfillment(order, {
         deadline,
         dokNr,
         dokId: Number.isFinite(dokId) && dokId > 0 ? dokId : null,
@@ -675,32 +899,60 @@ export async function runZdEtaSync(options: ZdEtaSyncOptions = {}): Promise<ZdEt
       updated++;
     };
 
-    supplierLoop: for (const [supplierId, supplierOrders] of bySupplier) {
+    supplierLoop: for (const [supplierId, supplierOrders] of supplierEntries) {
       if (isTimeBudgetExceeded(started, maxDurationMs)) {
         timedOut = true;
         break;
       }
-      if (docsFetched >= maxDocsPerRun) break;
 
       const supplier = supplierById.get(supplierId);
-      const khIds = supplierKhIds(supplier);
+      const khIds = resolveSupplierKhIds(supplier, supplierId, extraKhBySupplierId);
       if (!khIds.length) continue;
 
-      const indexRows = await loadRecentZdIndexForKhIds(khIds, indexLimitPerSupplier);
+      const supplierPlacements = supplierOrders.map((o) => zdSearchPlacementAt(o));
+      const supplierInitialDataOd = earliestZdContractorInitialDataOd(
+        supplierPlacements,
+        syncAt
+      );
+
+      const supplierExtendedDataOd = earliestZdContractorExtendedDataOd(
+        supplierPlacements,
+        syncAt
+      );
 
       const supplierDocCache = new Map<number, SubiektDocument>();
       let supplierDocsFetched = 0;
-      let indexRowCursor = 0;
-      const indexDocs: SubiektDocument[] = [];
+      let supplierRunDocsFetched = 0;
+      const sharedDocs: SubiektDocument[] = [];
+      const sharedDocIds = new Set<number>();
 
-      const loadDoc = async (dokId: number): Promise<SubiektDocument | null> => {
-        const cached = supplierDocCache.get(dokId);
-        if (cached) return cached;
+      const initialPoolCap = Math.min(
+        ZD_ETA_INITIAL_POOL_MAX_DOCS,
+        maxDocsPerSupplier
+      );
+
+      const loadDoc = async (
+        dokId: number,
+        opts?: { countTowardSupplier?: boolean; forceFresh?: boolean }
+      ): Promise<SubiektDocument | null> => {
+        if (!opts?.forceFresh) {
+          const cached = supplierDocCache.get(dokId);
+          if (cached) return cached;
+        }
         if (docsFetched >= maxDocsPerRun) return null;
-        if (supplierDocsFetched >= maxDocsPerSupplier) return null;
+        if (supplierRunDocsFetched >= fairSupplierDocCap) return null;
+        if (
+          opts?.countTowardSupplier !== false &&
+          supplierDocsFetched >= maxDocsPerSupplier
+        ) {
+          return null;
+        }
         try {
-          const doc = await fetchZdDocumentSafe(dokId);
-          supplierDocsFetched++;
+          const doc = await fetchZdDocumentSafe(dokId, {
+            forceFresh: opts?.forceFresh ?? options.force,
+          });
+          supplierRunDocsFetched++;
+          if (opts?.countTowardSupplier !== false) supplierDocsFetched++;
           docsFetched++;
           if (doc) supplierDocCache.set(dokId, doc);
           return doc;
@@ -713,95 +965,241 @@ export async function runZdEtaSync(options: ZdEtaSyncOptions = {}): Promise<ZdEt
         }
       };
 
-      const loadNextIndexDoc = async (): Promise<SubiektDocument | null> => {
-        while (indexRowCursor < indexRows.length) {
-          if (isTimeBudgetExceeded(started, maxDurationMs)) return null;
-          if (docsFetched >= maxDocsPerRun) return null;
-          if (supplierDocsFetched >= maxDocsPerSupplier) return null;
-          if (subiektOffline) return null;
-          const row = indexRows[indexRowCursor++]!;
-          const doc = await loadDoc(Math.trunc(row.dok_id));
-          if (subiektOffline) return null;
-          if (doc) {
-            indexDocs.push(doc);
-            return doc;
-          }
-        }
-        return null;
+      const shouldStopGlobal = () =>
+        subiektOffline ||
+        isTimeBudgetExceeded(started, maxDurationMs) ||
+        docsFetched >= maxDocsPerRun ||
+        supplierRunDocsFetched >= fairSupplierDocCap;
+
+      const shouldStopInitialPool = () =>
+        shouldStopGlobal() || supplierDocsFetched >= initialPoolCap;
+
+      const loadDocExtended = (dokId: number) =>
+        loadDoc(dokId, { countTowardSupplier: false });
+
+      const addSharedDoc = (doc: SubiektDocument) => {
+        const id = Math.trunc(Number(doc.dok_Id));
+        if (!Number.isFinite(id) || id <= 0 || sharedDocIds.has(id)) return;
+        sharedDocIds.add(id);
+        sharedDocs.push(doc);
       };
 
-      for (const order of supplierOrders) {
+      const indexRows = await loadZdIndexRowsForSupplierSync(
+        khIds,
+        supplierPlacements,
+        supplierExtendedDataOd,
+        syncAt,
+        Math.max(indexLimitPerSupplier, ZD_ETA_INDEX_LIMIT_EXTENDED)
+      );
+
+      const indexInitial = await searchZdFromIndexForOrder(indexRows, {
+        maxDocsToFetch: initialPoolCap,
+        skipDocIds: sharedDocIds,
+        loadDoc: (id) => loadDoc(id),
+        shouldStop: shouldStopInitialPool,
+      });
+      for (const doc of indexInitial.docs) addSharedDoc(doc);
+      const initialIndexExhausted =
+        indexRows.length === 0 ||
+        (!indexInitial.stoppedEarly && indexInitial.fetched >= indexRows.length);
+
+      let initialBrowseStoppedEarly = false;
+      if (indexRows.length === 0 && !shouldStopInitialPool()) {
+        const initialBrowse = await browseZdDocumentsForKhIds({
+          khIds,
+          dataOd: supplierInitialDataOd,
+          pageSize: 25,
+          maxPagesPerKh: ZD_ETA_INITIAL_BROWSE_MAX_PAGES_PER_KH,
+          maxDocsToFetch: Math.max(0, initialPoolCap - supplierDocsFetched),
+          skipDocIds: sharedDocIds,
+          loadDoc: (id) => loadDoc(id),
+          shouldStop: shouldStopInitialPool,
+        });
+        initialBrowseStoppedEarly = initialBrowse.stoppedEarly;
+        for (const doc of initialBrowse.docs) addSharedDoc(doc);
+      }
+
+      for (const order of [...supplierOrders].sort(
+        (a, b) => zdEtaSyncOrderPriority(a, syncAt) - zdEtaSyncOrderPriority(b, syncAt)
+      )) {
         if (isTimeBudgetExceeded(started, maxDurationMs)) {
           timedOut = true;
           break supplierLoop;
         }
-        if (docsFetched >= maxDocsPerRun) break supplierLoop;
 
-        while (
-          !subiektOffline &&
-          indexRowCursor < indexRows.length &&
-          docsFetched < maxDocsPerRun &&
-          supplierDocsFetched < maxDocsPerSupplier &&
-          !isTimeBudgetExceeded(started, maxDurationMs)
-        ) {
-          await loadNextIndexDoc();
-        }
+        let matched: SubiektDocument | null = null;
 
-        let matched = findMatchingZdDocumentForSupplier(order, indexDocs, khIds);
-
-        if (subiektOffline) break supplierLoop;
-
-        if (
-          !matched &&
-          allowLiveSearch &&
-          docsFetched < maxDocsPerRun &&
-          supplierDocsFetched < maxDocsPerSupplier &&
-          !isTimeBudgetExceeded(started, maxDurationMs)
-        ) {
-          try {
-            const { docs: liveDocs, matched: liveMatched } =
-              await liveSearchZdDocsForOrder(
-                order,
-                khIds,
-                ZD_ETA_MAX_LIVE_SEARCH_PLANS,
-                maxDocsPerRun - docsFetched,
-                maxDocsPerSupplier - supplierDocsFetched,
-                new Set(supplierDocCache.keys()),
-                loadDoc
-              );
-            for (const doc of liveDocs) {
-              if (!supplierDocCache.has(Math.trunc(Number(doc.dok_Id)))) {
-                indexDocs.push(doc);
-              }
-            }
-            matched =
-              liveMatched ??
-              findMatchingZdDocumentForSupplier(
-                order,
-                [...indexDocs, ...liveDocs],
-                khIds
-              );
-          } catch (e) {
-            if (isSubiektOfflineError(e)) {
-              subiektOffline = true;
-              break supplierLoop;
-            }
-            throw e;
+        if (hasKnownZdFulfillmentDocId(order)) {
+          const knownDoc = await tryRefreshKnownZdDocumentForOrder(
+            order,
+            (dokId) => loadDoc(dokId, { forceFresh: true }),
+            khIds,
+            syncAt
+          );
+          if (knownDoc) {
+            matched = knownDoc;
+            addSharedDoc(knownDoc);
           }
         }
 
-        const indexNotExhausted = !matched && indexRowCursor < indexRows.length;
+        if (!matched) {
+          matched = findMatchingZdDocumentForSupplier(order, sharedDocs, khIds);
+        }
+
+        if (subiektOffline) break supplierLoop;
+
+        let indexStoppedEarly = false;
+        let indexBudgetExhausted = false;
+        let browseBudgetExhausted = false;
+        let browseStoppedEarly = false;
+        const orderPlacement = zdSearchPlacementAt(order);
+        const orderDocBudget = zdEtaPerOrderDocBudget(
+          maxDocsPerRun - docsFetched,
+          candidatesRemaining
+        );
+        const orderIndexRows = filterZdIndexRowsForPlacement(
+          indexRows,
+          orderPlacement,
+          syncAt
+        );
+        if (!matched && !shouldStopGlobal()) {
+          const indexBudget = Math.min(
+            orderDocBudget,
+            maxDocsPerRun - docsFetched,
+            fairSupplierDocCap - supplierRunDocsFetched
+          );
+          indexBudgetExhausted = indexBudget <= 0;
+          const indexSearch = indexBudgetExhausted
+            ? {
+                docs: [] as SubiektDocument[],
+                stoppedEarly: true,
+                matched: null as SubiektDocument | null,
+                listedCount: orderIndexRows.length,
+                fetched: 0,
+              }
+            : await searchZdFromIndexForOrder(orderIndexRows, {
+                maxDocsToFetch: indexBudget,
+                skipDocIds: sharedDocIds,
+                loadDoc: loadDocExtended,
+                shouldStop: shouldStopGlobal,
+                preferIssueDateNear: orderPlacement ?? undefined,
+                ...buildZdIndexSearchEarlyStopHandlers(order, khIds),
+              });
+          indexStoppedEarly = indexSearch.stoppedEarly;
+          for (const doc of indexSearch.docs) addSharedDoc(doc);
+          matched =
+            indexSearch.matched ??
+            findMatchingZdDocumentForSupplier(order, indexSearch.docs, khIds);
+        }
+
+        const orderPlacementOld = Boolean(
+          orderPlacement && placementIsOlderThanRollingWindow(orderPlacement, syncAt)
+        );
+
+        const runBrowseFallback = async (): Promise<void> => {
+          if (!matched && allowLiveSearch && !shouldStopGlobal()) {
+            const browseBudget = Math.min(
+              orderDocBudget,
+              maxDocsPerRun - docsFetched,
+              fairSupplierDocCap - supplierRunDocsFetched
+            );
+            browseBudgetExhausted = browseBudget <= 0;
+            const orderDataOd = zdContractorExtendedDataOdForPlacement(orderPlacement, syncAt);
+            const orderMonthChunks = orderPlacementOld
+              ? sortMonthChunksNearPlacement(
+                  zdPlacementBrowseMonthChunks(orderPlacement, syncAt),
+                  orderPlacement
+                )
+              : undefined;
+            const browseFallback = browseBudgetExhausted
+              ? {
+                  docs: [] as SubiektDocument[],
+                  stoppedEarly: true,
+                  matched: null as SubiektDocument | null,
+                }
+              : await browseZdDocumentsForKhIds({
+                  khIds,
+                  dataOd: orderMonthChunks?.[0]?.dataOd ?? orderDataOd,
+                  monthChunks: orderMonthChunks,
+                  pageSize: 25,
+                  maxPagesPerKh: ZD_ETA_EXTENDED_BROWSE_MAX_PAGES_PER_KH,
+                  maxDocsToFetch: browseBudget,
+                  skipDocIds: sharedDocIds,
+                  loadDoc: loadDocExtended,
+                  shouldStop: shouldStopGlobal,
+                  preferIssueDateNear: orderPlacement ?? undefined,
+                  matchDoc: orderZdConfidentMatchDoc(order, khIds),
+                });
+            browseStoppedEarly = browseFallback.stoppedEarly;
+            for (const doc of browseFallback.docs) addSharedDoc(doc);
+            matched =
+              browseFallback.matched ??
+              findMatchingZdDocumentForSupplier(order, browseFallback.docs, khIds);
+          }
+        };
+
+        const runLiveSearch = async (): Promise<void> => {
+          if (!matched && allowLiveSearch && !shouldStopGlobal()) {
+            try {
+              const liveBudget = Math.min(
+                orderDocBudget,
+                maxDocsPerRun - docsFetched,
+                fairSupplierDocCap - supplierRunDocsFetched
+              );
+              const { docs: liveDocs, matched: liveMatched } =
+                await liveSearchZdDocsForOrder(
+                  order,
+                  khIds,
+                  ZD_ETA_MAX_LIVE_SEARCH_PLANS,
+                  liveBudget,
+                  liveBudget,
+                  sharedDocIds,
+                  loadDocExtended
+                );
+              for (const doc of liveDocs) addSharedDoc(doc);
+              matched =
+                liveMatched ??
+                findMatchingZdDocumentForSupplier(order, sharedDocs, khIds);
+            } catch (e) {
+              if (isSubiektOfflineError(e)) {
+                subiektOffline = true;
+                throw e;
+              }
+              throw e;
+            }
+          }
+        };
+
+        try {
+          if (orderPlacementOld) {
+            await runBrowseFallback();
+          }
+          await runLiveSearch();
+          if (!orderPlacementOld) {
+            await runBrowseFallback();
+          }
+        } catch (e) {
+          if (subiektOffline) break supplierLoop;
+          throw e;
+        }
+
         const orderSearchIncomplete =
           subiektOffline ||
           timedOut ||
-          indexNotExhausted ||
           (!matched &&
-            (docsFetched >= maxDocsPerRun ||
-              supplierDocsFetched >= maxDocsPerSupplier ||
+            (indexBudgetExhausted ||
+              browseBudgetExhausted ||
+              indexStoppedEarly ||
+              browseStoppedEarly ||
+              initialBrowseStoppedEarly ||
+              !initialIndexExhausted ||
+              docsFetched >= maxDocsPerRun ||
+              supplierRunDocsFetched >= fairSupplierDocCap ||
               isTimeBudgetExceeded(started, maxDurationMs)));
 
         await persistOrderMatch(order, matched, orderSearchIncomplete);
         processed++;
+        candidatesRemaining--;
       }
 
       if (subiektOffline) break;

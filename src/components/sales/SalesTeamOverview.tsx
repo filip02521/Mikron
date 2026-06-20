@@ -2,15 +2,20 @@
 
 import Link from "next/link";
 import type { SalesPersonAdminRow } from "@/lib/data/sales-people-admin";
-import { formatSalesPersonAccountStatus } from "@/lib/data/sales-people-admin";
+import {
+  formatSalesPersonAccountStatus,
+  formatSalesPersonAccountStatusTitle,
+} from "@/lib/data/sales-people-admin";
 import type { SalesGroupRow } from "@/lib/data/sales-groups";
 import type { SalesTeamUiContext } from "@/lib/sales/team-ui";
 import { groupSalesPeopleForTeamView } from "@/lib/sales/team-grouping";
+import { formatPrzypomnienieCount } from "@/lib/sales/team-plural";
 import { buildNotatnikPageHref } from "@/lib/sales/notepad-page-tabs";
-import { Card } from "@/components/ui/Card";
+import { NOTATNIK_ZK_BTN_CLASS } from "@/components/notatnik/notatnik-layout";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { EmptyState } from "@/components/ui/EmptyState";
+import { SystemNotice } from "@/components/ui/SystemNotice";
 import { cn } from "@/lib/cn";
 import { salesTypography } from "@/lib/ui/ontime-theme";
 
@@ -33,11 +38,11 @@ function TeamCardActionLink({
 function SalesPersonCardActions({
   rowId,
   isSelf,
-  readOnlyPreview = false,
+  prosbaReadOnly = false,
 }: {
   rowId: string;
   isSelf: boolean;
-  readOnlyPreview?: boolean;
+  prosbaReadOnly?: boolean;
 }) {
   return (
     <div className="grid grid-cols-2 gap-2 border-t border-slate-100 pt-2.5">
@@ -45,7 +50,7 @@ function SalesPersonCardActions({
         <Button
           size="sm"
           variant={isSelf ? "primary" : "secondary"}
-          className="h-11 w-full px-2 text-xs sm:h-8"
+          className={NOTATNIK_ZK_BTN_CLASS}
         >
           {isSelf ? "Moje zamówienia" : "Zobacz prośby"}
         </Button>
@@ -53,7 +58,7 @@ function SalesPersonCardActions({
       <TeamCardActionLink
         href={buildNotatnikPageHref({ extraParams: { dla: rowId } })}
       >
-        <Button size="sm" variant="outline" className="h-11 w-full px-2 text-xs sm:h-8">
+        <Button size="sm" variant="outline" className={NOTATNIK_ZK_BTN_CLASS}>
           ZK czekające
         </Button>
       </TeamCardActionLink>
@@ -64,14 +69,14 @@ function SalesPersonCardActions({
           extraParams: { dla: rowId },
         })}
       >
-        <Button size="sm" variant="outline" className="h-11 w-full px-2 text-xs sm:h-8">
+        <Button size="sm" variant="outline" className={NOTATNIK_ZK_BTN_CLASS}>
           Notatnik
         </Button>
       </TeamCardActionLink>
-      {!isSelf && !readOnlyPreview ? (
+      {!isSelf ? (
         <TeamCardActionLink href={`/prosba?dla=${rowId}`} className="col-span-2">
-          <Button size="sm" variant="outline" className="h-11 w-full px-2 text-xs sm:h-8">
-            Prośba w jego imieniu
+          <Button size="sm" variant="outline" className={NOTATNIK_ZK_BTN_CLASS}>
+            {prosbaReadOnly ? "Podgląd prośby" : "Prośba w imieniu handlowca"}
           </Button>
         </TeamCardActionLink>
       ) : null}
@@ -82,18 +87,23 @@ function SalesPersonCardActions({
 function SalesPersonCard({
   row,
   isSelf,
-  readOnlyPreview = false,
+  prosbaReadOnly = false,
 }: {
   row: SalesPersonAdminRow;
   isSelf: boolean;
-  readOnlyPreview?: boolean;
+  prosbaReadOnly?: boolean;
 }) {
   return (
-    <Card key={row.id} padding={false} className={isSelf ? "ring-1 ring-indigo-200" : ""}>
+    <div
+      className={cn(
+        "overflow-hidden rounded-md border border-slate-200/80 bg-white",
+        isSelf && "ring-1 ring-indigo-200/80"
+      )}
+    >
       <div className="flex items-start justify-between gap-2 border-b border-slate-100 px-4 py-3">
         <div className="min-w-0 flex-1">
-          <div className="flex min-w-0 items-center gap-2">
-            <h3 className="truncate text-sm font-semibold text-slate-900">{row.name}</h3>
+          <div className="flex min-w-0 items-center gap-2.5">
+            <h3 className={cn(salesTypography.rowTitle, "truncate")}>{row.name}</h3>
             {isSelf ? (
               <Badge variant="info" className="shrink-0 text-[10px]">
                 Ty
@@ -104,18 +114,18 @@ function SalesPersonCard({
               </Badge>
             ) : null}
           </div>
-          <p className="mt-0.5 truncate text-xs text-slate-500">{row.email}</p>
+          <p className={cn(salesTypography.rowMeta, "mt-0.5 truncate")}>{row.email}</p>
         </div>
       </div>
       <div className="space-y-2.5 px-4 py-3">
-        <dl className="grid grid-cols-2 gap-x-3 gap-y-2 text-xs">
+        <dl className="grid grid-cols-2 gap-x-3 gap-y-2">
           <div className="min-w-0">
-            <dt className="text-slate-500">Zamówienia</dt>
-            <dd className="font-semibold tabular-nums text-slate-900">{row.orderCount}</dd>
+            <dt className={salesTypography.statLabel}>Zamówienia</dt>
+            <dd className={salesTypography.statValue}>{row.orderCount}</dd>
           </div>
           <div className="min-w-0">
-            <dt className="text-slate-500">Czeka na towar</dt>
-            <dd className="font-semibold tabular-nums text-slate-900">
+            <dt className={salesTypography.statLabel}>Czeka na towar</dt>
+            <dd className={salesTypography.statValue}>
               {row.pendingZkCount > 0 ? (
                 <Link
                   href={buildNotatnikPageHref({ extraParams: { dla: row.id } })}
@@ -129,8 +139,8 @@ function SalesPersonCard({
             </dd>
           </div>
           <div className="min-w-0">
-            <dt className="text-slate-500">Przyp. ZK</dt>
-            <dd className="font-semibold tabular-nums text-slate-900">
+            <dt className={salesTypography.statLabel}>Przyp. ZK</dt>
+            <dd className={salesTypography.statValue}>
               {row.followUpDueZkCount > 0 ? (
                 <Link
                   href={buildNotatnikPageHref({ extraParams: { dla: row.id } })}
@@ -144,8 +154,8 @@ function SalesPersonCard({
             </dd>
           </div>
           <div className="min-w-0">
-            <dt className="text-slate-500">Przyp. not.</dt>
-            <dd className="font-semibold tabular-nums text-slate-900">
+            <dt className={salesTypography.statLabel}>Przyp. not.</dt>
+            <dd className={salesTypography.statValue}>
               {row.followUpDueNotesCount > 0 ? (
                 <Link
                   href={buildNotatnikPageHref({
@@ -163,19 +173,13 @@ function SalesPersonCard({
             </dd>
           </div>
           <div className="min-w-0 col-span-2 sm:col-span-1">
-            <dt className="text-slate-500">Konto</dt>
+            <dt className={salesTypography.statLabel}>Konto</dt>
             <dd
               className={cn(
-                "font-medium",
+                salesTypography.rowBody,
                 row.linkedUserEmail ? "text-slate-800" : "text-slate-500"
               )}
-              title={
-                row.linkedUserLastSignInAt
-                  ? `Ostatnie logowanie: ${formatSalesPersonAccountStatus(row)}`
-                  : row.linkedUserEmail
-                    ? "Konto aktywne — brak zapisanego logowania"
-                    : "Brak powiązanego konta użytkownika"
-              }
+              title={formatSalesPersonAccountStatusTitle(row)}
             >
               {formatSalesPersonAccountStatus(row)}
             </dd>
@@ -184,10 +188,10 @@ function SalesPersonCard({
         <SalesPersonCardActions
           rowId={row.id}
           isSelf={isSelf}
-          readOnlyPreview={readOnlyPreview}
+          prosbaReadOnly={prosbaReadOnly}
         />
       </div>
-    </Card>
+    </div>
   );
 }
 
@@ -196,12 +200,17 @@ export function SalesTeamOverview({
   groups,
   managerSalesPersonId,
   teamUi,
+  loadError,
 }: {
   rows: SalesPersonAdminRow[];
   groups: SalesGroupRow[];
   managerSalesPersonId: string | null;
   teamUi?: SalesTeamUiContext;
+  loadError?: string | null;
 }) {
+  if (loadError) return null;
+
+  const prosbaReadOnly = Boolean(teamUi?.isAdmin || teamUi?.readOnlyPreview);
   if (!rows.length) {
     const emptyDescription = teamUi?.isManager
       ? teamUi.hasTeamScope
@@ -232,23 +241,30 @@ export function SalesTeamOverview({
   return (
     <div className="space-y-8">
       {totalPending > 0 || totalFollowUpDue > 0 || totalNotesFollowUpDue > 0 ? (
-        <div className="flex flex-wrap items-center gap-2 rounded-md border border-amber-100 bg-amber-50/70 px-3 py-2.5 text-xs text-amber-950">
-          {totalPending > 0 ? (
-            <span className="font-medium">
-              Zespół: {totalPending} {totalPending === 1 ? "ZK czeka" : "ZK czeka"} na towar
+        <SystemNotice
+          variant="pinned"
+          title="Podsumowanie zespołu"
+          description={
+            <span className="flex flex-wrap items-center gap-x-3 gap-y-2 text-xs text-slate-700">
+              {totalPending > 0 ? (
+                <span className="font-medium">
+                  {totalPending}{" "}
+                  {totalPending === 1 ? "ZK czeka na towar" : "ZK czekają na towar"}
+                </span>
+              ) : null}
+              {totalFollowUpDue > 0 ? (
+                <Badge variant="purple" className="text-[10px]">
+                  {totalFollowUpDue} przyp. ZK
+                </Badge>
+              ) : null}
+              {totalNotesFollowUpDue > 0 ? (
+                <Badge variant="info" className="text-[10px]">
+                  {totalNotesFollowUpDue} przyp. notatek
+                </Badge>
+              ) : null}
             </span>
-          ) : null}
-          {totalFollowUpDue > 0 ? (
-            <Badge variant="purple" className="text-[10px]">
-              {totalFollowUpDue} przyp. ZK
-            </Badge>
-          ) : null}
-          {totalNotesFollowUpDue > 0 ? (
-            <Badge variant="info" className="text-[10px]">
-              {totalNotesFollowUpDue} przyp. notatek
-            </Badge>
-          ) : null}
-        </div>
+          }
+        />
       ) : null}
 
       {sections.map((section) => {
@@ -262,15 +278,14 @@ export function SalesTeamOverview({
 
         return (
           <section key={key} className="space-y-3">
-            <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 pb-2">
-              <div className="flex flex-wrap items-baseline gap-2">
+            <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 border-b border-slate-100 pb-2.5 pt-0.5">
+              <div className="flex flex-wrap items-center gap-2.5 sm:gap-3">
                 <h2 className={cn(salesTypography.sectionLabel, "normal-case tracking-normal text-slate-700")}>
                   {title}
                 </h2>
                 {sectionFollowUpDue > 0 ? (
                   <Badge variant="purple" className="text-[10px]">
-                    {sectionFollowUpDue} przypomnienie
-                    {sectionFollowUpDue === 1 ? "" : sectionFollowUpDue < 5 ? "a" : "ń"}
+                    {formatPrzypomnienieCount(sectionFollowUpDue)}
                   </Badge>
                 ) : sectionPending > 0 ? (
                   <Badge variant="warning" className="text-[10px]">
@@ -278,7 +293,7 @@ export function SalesTeamOverview({
                   </Badge>
                 ) : null}
               </div>
-              <span className="text-xs text-slate-500">
+              <span className={salesTypography.rowMeta}>
                 {section.rows.length}{" "}
                 {section.rows.length === 1 ? "osoba" : section.rows.length < 5 ? "osoby" : "osób"}
               </span>
@@ -290,12 +305,12 @@ export function SalesTeamOverview({
                     key={row.id}
                     row={row}
                     isSelf={managerSalesPersonId === row.id}
-                    readOnlyPreview={teamUi?.readOnlyPreview}
+                    prosbaReadOnly={prosbaReadOnly}
                   />
                 ))}
               </div>
             ) : (
-              <p className="text-sm text-slate-500">Brak handlowców w tej grupie.</p>
+              <p className={salesTypography.sectionHint}>Brak handlowców w tej grupie.</p>
             )}
           </section>
         );

@@ -70,9 +70,11 @@ npm run verify-location-schedules -- --dir "/ścieżka/Downloads"
 
 Migracja `039_supplier_is_active.sql` — kolumna `is_active` na `suppliers`.
 
-## Retencja historii (6 miesięcy)
+## Retencja danych (3 miesiące)
 
-- Na ekranie `/historia` widać tylko wpisy z ostatnich **6 miesięcy**.
+- Na ekranie `/historia` widać tylko wpisy z ostatnich **3 miesięcy**.
+- **Dziennik dostaw** (`warehouse_delivery_receipts`) i inne archiwa operacyjne są trzymane przez ten sam okres.
+- Aktywne prośby, katalog produktów, ustawienia i profile **nie są** usuwane przez retencję.
 - **Usuwanie starych danych** działa automatycznie przy normalnej pracy (nowy wpis w historii standardowej, zakończenie/anulowanie prośby indywidualnej) — co najwyżej **raz na 24 h**, bez konfiguracji crona na serwerze aplikacji.
 - Opcjonalnie to samo robi poranny endpoint `/api/cron/morning` (jeśli masz crona — Vercel lub własny).
 
@@ -86,7 +88,23 @@ Nagłówek: `Authorization: Bearer <CRON_SECRET>`
 | **Co godzinę 8:00–18:59** | `/api/cron/process-deliveries` | Zapasowe domknięcie dostaw z kolejki |
 | **Noc (1:00–4:59)** | `/api/cron/catalog-zd-sync` | Indeks ZD + import do katalogu produktów (wymaga Subiekta w LAN) |
 
-**Serwer w firmie:** crona ustawiasz w systemie (patrz [docs/catalog-zd-sync-cron.md](docs/catalog-zd-sync-cron.md)).  
+**Serwer Linux:** na serwerze uruchom:
+
+```bash
+npm run install-cron -- --install   # wymaga sudo — instaluje /etc/cron.d/system-dostaw
+npm run install-cron -- --test morning --force   # test połączenia
+```
+
+**Serwer Windows:** PowerShell **jako Administrator** w katalogu projektu:
+
+```powershell
+npm run install-cron:win -- -Install
+npm run install-cron:win -- -Test -Job morning -Force
+```
+
+Albo razem z usługą Windows: `.\installer\install-windows-service.ps1 -WithCron`
+
+Szczegóły: [docs/catalog-zd-sync-cron.md](docs/catalog-zd-sync-cron.md).  
 **Vercel:** wpisy w `vercel.json` — tylko jeśli produkcja widzi API Subiekta (zwykle nie, bez tunelu).
 
 Vercel uruchamia crony w UTC; w kodzie sprawdzana jest strefa **Europe/Warsaw** (CET/CEST).

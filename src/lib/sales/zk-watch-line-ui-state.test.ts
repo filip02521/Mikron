@@ -201,6 +201,7 @@ describe("zkWatchLineUiStateMeta", () => {
       "scope_excluded",
       "in_request",
       "partial",
+      "informacja_ready",
       "delivered",
       "arrived",
       "in_stock",
@@ -208,11 +209,65 @@ describe("zkWatchLineUiStateMeta", () => {
       expect(zkWatchLineUiStateMeta(state).shortLabel.length).toBeGreaterThan(0);
     }
   });
+  it("informacja_ready gdy brak aktywnej dostawy fizycznej", () => {
+    expect(
+      resolveZkWatchLineUiState({
+        coverage: "uncovered",
+        isNewLine: false,
+        arrived: false,
+        informacjaReady: true,
+      })
+    ).toBe("informacja_ready");
+    expect(zkWatchLineUiStateMeta("informacja_ready").shortLabel).toBe("Dostępne");
+  });
+
+  it("aktywna dostawa fizyczna ma pierwszeństwo nad informacja_ready", () => {
+    expect(
+      resolveZkWatchLineUiState({
+        coverage: "delivered",
+        isNewLine: false,
+        arrived: false,
+        informacjaReady: true,
+      })
+    ).toBe("delivered");
+    expect(
+      resolveZkWatchLineUiState({
+        coverage: "open",
+        isNewLine: false,
+        arrived: false,
+        informacjaReady: true,
+      })
+    ).toBe("in_request");
+  });
+
+  it("informacja_acknowledged gdy brak aktywnej dostawy fizycznej", () => {
+    expect(
+      resolveZkWatchLineUiState({
+        coverage: "uncovered",
+        isNewLine: false,
+        arrived: false,
+        informacjaAcknowledged: true,
+      })
+    ).toBe("arrived");
+  });
+
+  it("aktywna dostawa fizyczna ma pierwszeństwo nad informacja_acknowledged", () => {
+    expect(
+      resolveZkWatchLineUiState({
+        coverage: "delivered",
+        isNewLine: false,
+        arrived: false,
+        inStock: true,
+        informacjaAcknowledged: true,
+      })
+    ).toBe("in_stock");
+  });
 });
 
 describe("canToggleZkWatchLineCheckbox", () => {
   it("pozwala zaznaczyć pozycje po Na regale, blokuje auto-zaznaczone Na regale", () => {
     expect(canToggleZkWatchLineCheckbox("delivered")).toBe(false);
+    expect(canToggleZkWatchLineCheckbox("informacja_ready")).toBe(false);
     expect(canToggleZkWatchLineCheckbox("partial")).toBe(true);
     expect(canToggleZkWatchLineCheckbox("in_request")).toBe(true);
     expect(canToggleZkWatchLineCheckbox("uncovered")).toBe(true);

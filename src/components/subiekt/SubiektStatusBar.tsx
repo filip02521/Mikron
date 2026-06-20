@@ -51,28 +51,28 @@ export function SubiektStatusBar({
     try {
       const next = await actionGetSubiektAvailability({ force });
       setPolledStatus(next);
-      onStatusChange?.(next);
     } catch {
       setPolledStatus((prev) => {
         const base = pickNewerSubiektStatus(initial, prev);
-        const fallback =
-          base.configured
-            ? {
-                ...base,
-                reachable: false,
-                shortLabel: "System magazynowy: niedostępny",
-                message:
-                  "Nie udało się sprawdzić połączenia — szacunki terminów pochodzą z historii dostaw.",
-                checkedAt: Date.now(),
-              }
-            : base;
-        onStatusChange?.(fallback);
-        return fallback;
+        return base.configured
+          ? {
+              ...base,
+              reachable: false,
+              shortLabel: "System magazynowy: niedostępny",
+              message:
+                "Nie udało się sprawdzić połączenia — szacunki terminów pochodzą z historii dostaw.",
+              checkedAt: Date.now(),
+            }
+          : base;
       });
     } finally {
       setRefreshing(false);
     }
-  }, [initial, onStatusChange]);
+  }, [initial]);
+
+  useEffect(() => {
+    onStatusChange?.(status);
+  }, [status, onStatusChange]);
 
   useEffect(() => {
     if (!status.configured) return;

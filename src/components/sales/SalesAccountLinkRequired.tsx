@@ -1,5 +1,6 @@
 import { PageHeader } from "@/components/ui/PageHeader";
 import { Alert } from "@/components/ui/Alert";
+import { SALES_PAGE_HEADER_HINTS } from "@/lib/sales/sales-page-ui-copy";
 
 const STEPS = [
   "Administrator otwiera Admin → Handlowcy i wysyła link zaproszenia na Twój e-mail, lub",
@@ -8,14 +9,14 @@ const STEPS = [
 
 export function SalesAccountLinkRequired({
   title,
-  description = "Aby korzystać z aplikacji jako handlowiec, konto musi być przypisane do Twojego profilu w systemie.",
+  hint = SALES_PAGE_HEADER_HINTS.accountLink,
 }: {
   title: string;
-  description?: string;
+  hint?: string;
 }) {
   return (
     <>
-      <PageHeader title={title} description={description} />
+      <PageHeader title={title} hint={hint} hintAriaLabel="O dostępie handlowca" />
       <Alert tone="warning">
         <p className="mb-2 font-semibold">Konto nie jest jeszcze powiązane</p>
         <p className="mb-3">

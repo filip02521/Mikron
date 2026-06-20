@@ -73,6 +73,7 @@ export function SystemNotice({
       aria-live={variant === "tour" ? "polite" : undefined}
       className={cn(
         VARIANT_CLASS[variant],
+        variant === "pinned" && "sm:items-start",
         sticky && variant === "tour" && "sticky top-0 z-30 md:top-2",
         className
       )}
@@ -95,7 +96,8 @@ export function SystemNotice({
           {description ? (
             <p
               className={cn(
-                "mt-0.5 text-xs leading-relaxed",
+                variant === "pinned" ? "mt-1.5" : "mt-0.5",
+                "text-xs leading-relaxed",
                 variant === "tour" ? "text-indigo-100" : "text-slate-600"
               )}
             >

@@ -16,6 +16,7 @@ import {
   actionResetSalesTeamUserPassword,
 } from "@/app/actions/sales-manager";
 import { TempPasswordDialog } from "@/components/sales/TempPasswordDialog";
+import { SalesPersonAccountCell } from "@/components/sales/SalesPersonAccountCell";
 import { InviteLinkDialog } from "@/components/admin/InviteLinkDialog";
 import { SalesAdminHelpPanel } from "@/components/admin/SalesAdminHelpPanel";
 import type { SalesInviteLinkResult } from "@/lib/users/sales-invite";
@@ -28,20 +29,46 @@ import { DataTable, TableScroll } from "@/components/ui/DataTable";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { Badge } from "@/components/ui/Badge";
 import { cn } from "@/lib/cn";
-import { formatPlDate } from "@/lib/display-labels";
-import { brandLinkClass } from "@/lib/ui/ontime-theme";
+import { brandLinkClass, controlFocusClass, panelChoiceChipClass, panelChoiceChipIdleClass, panelChoiceChipSelectedClass, salesChromeInsetClass } from "@/lib/ui/ontime-theme";
 
 type FormState = { id?: string; name: string; email: string; groupId: string };
 type GroupFilter = "all" | "none" | string;
 
 const emptyForm = (): FormState => ({ name: "", email: "", groupId: "" });
 
-function filterChipClass(active: boolean): string {
-  return cn(
-    "rounded-full px-2.5 py-1 text-xs font-medium transition-colors",
-    active
-      ? "bg-slate-900 text-white"
-      : "bg-slate-100 text-slate-600 hover:bg-slate-200"
+function GroupFilterChip({
+  active,
+  onClick,
+  label,
+  count,
+}: {
+  active: boolean;
+  onClick: () => void;
+  label: string;
+  count: number;
+}) {
+  return (
+    <button
+      type="button"
+      aria-pressed={active}
+      onClick={onClick}
+      className={cn(
+        panelChoiceChipClass,
+        controlFocusClass,
+        "inline-flex shrink-0 items-center gap-1.5 px-2.5 py-1.5",
+        active ? panelChoiceChipSelectedClass : panelChoiceChipIdleClass
+      )}
+    >
+      <span>{label}</span>
+      <span
+        className={cn(
+          "rounded px-1 py-px text-[10px] font-semibold tabular-nums",
+          active ? "bg-indigo-100/80 text-indigo-900" : "bg-slate-100 text-slate-600"
+        )}
+      >
+        {count}
+      </span>
+    </button>
   );
 }
 
@@ -54,11 +81,17 @@ export function SalesAdminClient({
   groups,
   managerMode = false,
   requireGroupOnCreate = false,
+  managerHasTeamScope = true,
+  embeddedInTeamWorkspace = false,
 }: {
   initial: SalesPersonAdminRow[];
   groups: SalesGroupRow[];
   managerMode?: boolean;
   requireGroupOnCreate?: boolean;
+  /** false — kierownik bez przypisanych grup (blokuje dodawanie). */
+  managerHasTeamScope?: boolean;
+  /** W /zespol/handlowcy — bez drugiej karty wokół listy. */
+  embeddedInTeamWorkspace?: boolean;
 }) {
   const router = useRouter();
   const [rows, setRows] = useState(initial);
@@ -179,7 +212,7 @@ export function SalesAdminClient({
 
   const save = () => {
     const wasNew = !form.id;
-    if (requireGroupOnCreate && !form.groupId.trim()) {
+    if ((requireGroupOnCreate || managerMode) && !form.groupId.trim()) {
       setToast({ text: "Wybierz grupę z listy przypisanych.", tone: "error" });
       return;
     }
@@ -225,7 +258,315 @@ export function SalesAdminClient({
     });
   };
 
-  const createDisabled = managerMode && requireGroupOnCreate && !groups.length;
+  const createDisabled = managerMode && (!managerHasTeamScope || !groups.length);
+
+  const salesPeopleListHeader = (
+    <CardHeader
+      inset
+      density="compact"
+      title={`Handlowcy (${rows.length})`}
+      description={
+        managerMode
+          ? "Nowy handlowiec dostaje hasło jednorazowe. Dla kont z logowaniem — reset hasła."
+          : "Link zaproszenia zakłada konto i powiązuje je z kartą handlowca."
+      }
+      action={
+        <div className="flex flex-wrap items-center justify-end gap-2.5">
+          {unlinkedCount > 0 ? (
+            <Badge variant="warning" className="text-[10px]">
+              {unlinkedCount} bez konta
+            </Badge>
+          ) : null}
+          {linkedCount > 0 ? (
+            <Badge variant="success" className="text-[10px]">
+              {linkedCount} z kontem
+            </Badge>
+          ) : null}
+          {!formOpen ? (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={openCreateForm}
+              disabled={createDisabled}
+              title={createDisabled ? "Brak przypisanych grup — poproś administratora" : undefined}
+            >
+              + Dodaj handlowca
+            </Button>
+          ) : null}
+        </div>
+      }
+    />
+  );
+
+  const salesPeopleListBody = (
+    <>
+      <div
+        className={cn(
+          "space-y-3 border-b border-slate-100 py-3",
+          salesChromeInsetClass
+        )}
+      >
+        <div className="flex flex-wrap gap-2">
+          <GroupFilterChip
+            active={groupFilter === "all"}
+            onClick={() => setGroupFilter("all")}
+            label="Wszyscy"
+            count={groupCounts.all}
+          />
+          {groups.map((g) => {
+            const count = groupCounts[g.id] ?? 0;
+            if (!count) return null;
+            return (
+              <GroupFilterChip
+                key={g.id}
+                active={groupFilter === g.id}
+                onClick={() => setGroupFilter(g.id)}
+                label={g.name}
+                count={count}
+              />
+            );
+          })}
+          {!managerMode && (groupCounts.none ?? 0) > 0 ? (
+            <GroupFilterChip
+              active={groupFilter === "none"}
+              onClick={() => setGroupFilter("none")}
+              label="Bez grupy"
+              count={groupCounts.none ?? 0}
+            />
+          ) : null}
+        </div>
+        <Input
+          placeholder="Szukaj po imieniu, e-mailu, grupie lub koncie…"
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          aria-label="Szukaj handlowców"
+        />
+      </div>
+      {!filtered.length ? (
+        <EmptyState
+          title={rows.length ? "Brak wyników" : "Brak handlowców"}
+          description={
+            rows.length
+              ? "Zmień filtr grupy lub frazę wyszukiwania."
+              : "Dodaj pierwszą osobę z listy sprzedaży."
+          }
+        />
+      ) : (
+        <TableScroll>
+          <DataTable>
+            <thead>
+              <tr>
+                <th>Imię i nazwisko</th>
+                <th>Grupa</th>
+                <th>E-mail</th>
+                <th>Konto w systemie</th>
+                <th className="text-center">Zamówienia</th>
+                <th />
+              </tr>
+            </thead>
+            <tbody>
+              {filtered.map((p) => (
+                <tr key={p.id}>
+                  <td className="font-medium text-slate-900">{p.name}</td>
+                  <td>
+                    {p.groupName ? (
+                      <span className={groupBadgeClass()}>{p.groupName}</span>
+                    ) : (
+                      <span className="text-slate-400">—</span>
+                    )}
+                  </td>
+                  <td className="text-slate-700">{p.email || "—"}</td>
+                  <td>
+                    <SalesPersonAccountCell row={p} />
+                  </td>
+                  <td className="text-center tabular-nums text-slate-600">
+                    {p.orderCount > 0 ? p.orderCount : "—"}
+                  </td>
+                  <td>
+                    <div className="flex flex-col items-end gap-1.5">
+                      <div className="flex flex-wrap justify-end gap-1.5">
+                        {!p.linkedUserId ? (
+                          <>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              disabled={pending || !p.email?.trim()}
+                              title={
+                                !p.email?.trim() ? "Uzupełnij e-mail handlowca" : undefined
+                              }
+                              onClick={() => openInviteLink(p.id)}
+                            >
+                              Link zaproszenia
+                            </Button>
+                            {!managerMode ? (
+                              <Link
+                                href={`/admin/uzytkownicy?handlowiec=${p.id}`}
+                                className={cn(
+                                  "inline-flex items-center rounded-md px-3 py-1.5 text-xs font-medium",
+                                  "text-slate-600 hover:bg-slate-100 hover:text-slate-900"
+                                )}
+                              >
+                                Ręcznie
+                              </Link>
+                            ) : null}
+                          </>
+                        ) : managerMode ? (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            disabled={pending}
+                            onClick={() => setResetTarget(p)}
+                          >
+                            Reset hasła
+                          </Button>
+                        ) : (
+                          <Link
+                            href="/admin/uzytkownicy"
+                            className={cn(
+                              "inline-flex items-center rounded-md px-3 py-1.5 text-xs font-medium",
+                              brandLinkClass,
+                              "no-underline hover:bg-indigo-50/80"
+                            )}
+                          >
+                            Konto
+                          </Link>
+                        )}
+                      </div>
+                      <div className="flex flex-wrap justify-end gap-2">
+                        <Button variant="ghost" size="sm" onClick={() => startEdit(p)}>
+                          Edytuj
+                        </Button>
+                        {!managerMode ? (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="text-rose-600 hover:text-rose-700"
+                            disabled={p.orderCount > 0 || !!p.linkedUserId}
+                            title={
+                              p.orderCount > 0
+                                ? "Nie można usunąć — są zamówienia w historii"
+                                : p.linkedUserId
+                                  ? "Najpierw usuń powiązane konto użytkownika"
+                                  : undefined
+                            }
+                            onClick={() => setDeleteTarget(p)}
+                          >
+                            Usuń
+                          </Button>
+                        ) : null}
+                      </div>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </DataTable>
+        </TableScroll>
+      )}
+    </>
+  );
+
+  const salesPeopleListSection = embeddedInTeamWorkspace ? (
+    <div className="border-t border-slate-100">
+      {salesPeopleListHeader}
+      {salesPeopleListBody}
+    </div>
+  ) : (
+    <Card padding={false} className="overflow-hidden">
+      {salesPeopleListHeader}
+      {salesPeopleListBody}
+    </Card>
+  );
+
+  const salesPersonForm = formOpen ? (
+    <>
+      <CardHeader
+        inset
+        density="compact"
+        title={form.id ? "Edytuj handlowca" : "Dodaj handlowca"}
+        description={
+          managerMode && !form.id
+            ? "Utworzysz kartę handlowca i konto logowania. Hasło jednorazowe przekażesz osobiście."
+            : "E-mail służy do powiadomień i jako login przy zakładaniu konta."
+        }
+      />
+      <form
+        className={cn(
+          "grid gap-4 pb-4 sm:grid-cols-2",
+          embeddedInTeamWorkspace ? salesChromeInsetClass : "px-3 sm:px-4 lg:px-5"
+        )}
+        onSubmit={(e) => {
+          e.preventDefault();
+          save();
+        }}
+      >
+        <Field label="Imię i nazwisko">
+          <Input
+            placeholder="np. Jan Kowalski"
+            value={form.name}
+            onChange={(e) => setForm({ ...form, name: e.target.value })}
+          />
+        </Field>
+        <Field label="E-mail">
+          <Input
+            type="email"
+            placeholder="jan@firma.pl"
+            value={form.email}
+            onChange={(e) => setForm({ ...form, email: e.target.value })}
+          />
+        </Field>
+        <Field label="Grupa" className="sm:col-span-2">
+          <Select
+            value={form.groupId}
+            onChange={(e) => setForm({ ...form, groupId: e.target.value })}
+          >
+                  {!managerMode && !requireGroupOnCreate ? (
+                    <option value="">— Bez grupy —</option>
+                  ) : (
+                    <option value="">— Wybierz grupę —</option>
+                  )}
+            {groups.map((g) => (
+              <option key={g.id} value={g.id}>
+                {g.name}
+              </option>
+            ))}
+          </Select>
+        </Field>
+        <div className="space-y-3 sm:col-span-2">
+          {!managerMode && !form.id ? (
+            <p className="text-xs leading-relaxed text-slate-500">
+              Po zapisie wygenerujemy link zaproszenia. Ręczne konto zakładasz w{" "}
+              <Link href="/admin/uzytkownicy" className={brandLinkClass}>
+                Konta
+              </Link>
+              .
+            </p>
+          ) : null}
+          <div className="flex flex-wrap gap-2">
+            <Button
+              type="submit"
+              disabled={pending || !form.name.trim() || !form.email.trim()}
+            >
+              {form.id ? "Zapisz zmiany" : "Dodaj handlowca"}
+            </Button>
+            <Button type="button" variant="secondary" onClick={resetForm}>
+              Anuluj
+            </Button>
+          </div>
+        </div>
+      </form>
+    </>
+  ) : null;
+
+  const salesPersonFormSection = salesPersonForm
+    ? embeddedInTeamWorkspace
+      ? <div className="border-b border-slate-100">{salesPersonForm}</div>
+      : (
+          <Card padding={false} className="overflow-hidden">
+            {salesPersonForm}
+          </Card>
+        )
+    : null;
 
   return (
     <>
@@ -311,309 +652,20 @@ export function SalesAdminClient({
             setRows((list) => list.filter((x) => x.id !== deleteTarget.id));
             setDeleteTarget(null);
             setToast({ text: "Handlowiec usunięty.", tone: "success" });
+            router.refresh();
           });
         }}
       />
 
-      <section className="space-y-4">
-        {formOpen ? (
-          <Card padding={false} className="overflow-hidden">
-            <CardHeader
-              inset
-              density="compact"
-              title={form.id ? "Edytuj handlowca" : "Dodaj handlowca"}
-              description={
-                managerMode && !form.id
-                  ? "Utworzysz kartę handlowca i konto logowania. Hasło jednorazowe przekażesz osobiście."
-                  : "E-mail służy do powiadomień i jako login przy zakładaniu konta."
-              }
-            />
-            <form
-              className="grid gap-4 px-3 pb-4 sm:grid-cols-2 sm:px-4 lg:px-5"
-              onSubmit={(e) => {
-                e.preventDefault();
-                save();
-              }}
-            >
-              <Field label="Imię i nazwisko">
-                <Input
-                  placeholder="np. Jan Kowalski"
-                  value={form.name}
-                  onChange={(e) => setForm({ ...form, name: e.target.value })}
-                />
-              </Field>
-              <Field label="E-mail">
-                <Input
-                  type="email"
-                  placeholder="jan@firma.pl"
-                  value={form.email}
-                  onChange={(e) => setForm({ ...form, email: e.target.value })}
-                />
-              </Field>
-              <Field label="Grupa" className="sm:col-span-2">
-                <Select
-                  value={form.groupId}
-                  onChange={(e) => setForm({ ...form, groupId: e.target.value })}
-                >
-                  {!requireGroupOnCreate ? (
-                    <option value="">— Bez grupy —</option>
-                  ) : (
-                    <option value="">— Wybierz grupę —</option>
-                  )}
-                  {groups.map((g) => (
-                    <option key={g.id} value={g.id}>
-                      {g.name}
-                    </option>
-                  ))}
-                </Select>
-              </Field>
-              <div className="space-y-3 sm:col-span-2">
-                {!managerMode && !form.id ? (
-                  <p className="text-xs leading-relaxed text-slate-500">
-                    Po zapisie wygenerujemy link zaproszenia. Ręczne konto zakładasz w{" "}
-                    <Link href="/admin/uzytkownicy" className={brandLinkClass}>
-                      Konta
-                    </Link>
-                    .
-                  </p>
-                ) : null}
-                <div className="flex flex-wrap gap-2">
-                  <Button
-                    type="submit"
-                    disabled={pending || !form.name.trim() || !form.email.trim()}
-                  >
-                    {form.id ? "Zapisz zmiany" : "Dodaj handlowca"}
-                  </Button>
-                  <Button type="button" variant="secondary" onClick={resetForm}>
-                    Anuluj
-                  </Button>
-                </div>
-              </div>
-            </form>
-          </Card>
-        ) : null}
+      <section className={cn(embeddedInTeamWorkspace ? "space-y-0" : "space-y-4")}>
+        {salesPersonFormSection}
 
-        <Card padding={false} className="overflow-hidden">
-          <CardHeader
-            inset
-            density="compact"
-            title={`Handlowcy (${rows.length})`}
-            description={
-              managerMode
-                ? "Nowy handlowiec dostaje hasło jednorazowe. Dla kont z logowaniem — reset hasła."
-                : "Link zaproszenia zakłada konto i powiązuje je z kartą handlowca."
-            }
-            action={
-              <div className="flex flex-wrap items-center justify-end gap-2">
-                {unlinkedCount > 0 ? (
-                  <Badge variant="warning">{unlinkedCount} bez konta</Badge>
-                ) : null}
-                {linkedCount > 0 ? (
-                  <Badge variant="success">{linkedCount} z kontem</Badge>
-                ) : null}
-                {!formOpen ? (
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={openCreateForm}
-                    disabled={createDisabled}
-                    title={
-                      createDisabled
-                        ? "Brak przypisanych grup — poproś administratora"
-                        : undefined
-                    }
-                  >
-                    + Dodaj handlowca
-                  </Button>
-                ) : null}
-              </div>
-            }
-          />
-          <div className="space-y-3 border-b border-slate-100 px-3 py-3 sm:px-4 lg:px-5">
-            <div className="flex flex-wrap gap-1.5">
-              <button
-                type="button"
-                onClick={() => setGroupFilter("all")}
-                className={filterChipClass(groupFilter === "all")}
-              >
-                Wszyscy ({groupCounts.all})
-              </button>
-              {groups.map((g) => {
-                const count = groupCounts[g.id] ?? 0;
-                if (!count) return null;
-                return (
-                  <button
-                    key={g.id}
-                    type="button"
-                    onClick={() => setGroupFilter(g.id)}
-                    className={filterChipClass(groupFilter === g.id)}
-                  >
-                    {g.name} ({count})
-                  </button>
-                );
-              })}
-              {!managerMode && (groupCounts.none ?? 0) > 0 ? (
-                <button
-                  type="button"
-                  onClick={() => setGroupFilter("none")}
-                  className={filterChipClass(groupFilter === "none")}
-                >
-                  Bez grupy ({groupCounts.none})
-                </button>
-              ) : null}
-            </div>
-            <Input
-              placeholder="Szukaj po imieniu, e-mailu, grupie lub koncie…"
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              aria-label="Szukaj handlowców"
-            />
-          </div>
-          {!filtered.length ? (
-            <EmptyState
-              title={rows.length ? "Brak wyników" : "Brak handlowców"}
-              description={
-                rows.length
-                  ? "Zmień filtr grupy lub frazę wyszukiwania."
-                  : "Dodaj pierwszą osobę z listy sprzedaży."
-              }
-            />
-          ) : (
-            <TableScroll>
-              <DataTable>
-                <thead>
-                  <tr>
-                    <th>Imię i nazwisko</th>
-                    <th>Grupa</th>
-                    <th>E-mail</th>
-                    <th>Konto w systemie</th>
-                    <th className="text-center">Zamówienia</th>
-                    <th />
-                  </tr>
-                </thead>
-                <tbody>
-                  {filtered.map((p) => (
-                    <tr key={p.id}>
-                      <td className="font-medium text-slate-900">{p.name}</td>
-                      <td>
-                        {p.groupName ? (
-                          <span className={groupBadgeClass()}>{p.groupName}</span>
-                        ) : (
-                          <span className="text-slate-400">—</span>
-                        )}
-                      </td>
-                      <td className="text-slate-700">{p.email || "—"}</td>
-                      <td>
-                        {p.linkedUserEmail ? (
-                          <div className="space-y-1">
-                            <Badge variant="success" className="text-[10px]">
-                              Ma konto
-                            </Badge>
-                            <p className="text-xs text-slate-600">{p.linkedUserEmail}</p>
-                            {p.linkedUserLastSignInAt ? (
-                              <p className="text-[11px] text-slate-400">
-                                Ostatnio:{" "}
-                                {formatPlDate(p.linkedUserLastSignInAt.slice(0, 10))}
-                              </p>
-                            ) : (
-                              <p className="text-[11px] text-amber-700">Nie logował się</p>
-                            )}
-                          </div>
-                        ) : (
-                          <Badge variant="warning" className="text-[10px]">
-                            Brak konta
-                          </Badge>
-                        )}
-                      </td>
-                      <td className="text-center tabular-nums text-slate-600">
-                        {p.orderCount > 0 ? p.orderCount : "—"}
-                      </td>
-                      <td>
-                        <div className="flex flex-col items-end gap-1.5">
-                          <div className="flex flex-wrap justify-end gap-1">
-                            {!p.linkedUserId ? (
-                              <>
-                                <Button
-                                  variant="outline"
-                                  size="sm"
-                                  disabled={pending || !p.email?.trim()}
-                                  title={
-                                    !p.email?.trim()
-                                      ? "Uzupełnij e-mail handlowca"
-                                      : undefined
-                                  }
-                                  onClick={() => openInviteLink(p.id)}
-                                >
-                                  Link zaproszenia
-                                </Button>
-                                {!managerMode ? (
-                                  <Link
-                                    href={`/admin/uzytkownicy?handlowiec=${p.id}`}
-                                    className={cn(
-                                      "inline-flex items-center rounded-md px-3 py-1.5 text-xs font-medium",
-                                      "text-slate-600 hover:bg-slate-100 hover:text-slate-900"
-                                    )}
-                                  >
-                                    Ręcznie
-                                  </Link>
-                                ) : null}
-                              </>
-                            ) : managerMode ? (
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                disabled={pending}
-                                onClick={() => setResetTarget(p)}
-                              >
-                                Reset hasła
-                              </Button>
-                            ) : (
-                              <Link
-                                href="/admin/uzytkownicy"
-                                className={cn(
-                                  "inline-flex items-center rounded-md px-3 py-1.5 text-xs font-medium",
-                                  brandLinkClass,
-                                  "no-underline hover:bg-indigo-50/80"
-                                )}
-                              >
-                                Konto
-                              </Link>
-                            )}
-                          </div>
-                          <div className="flex flex-wrap justify-end gap-1">
-                            <Button variant="ghost" size="sm" onClick={() => startEdit(p)}>
-                              Edytuj
-                            </Button>
-                            {!managerMode ? (
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                className="text-rose-600 hover:text-rose-700"
-                                disabled={p.orderCount > 0 || !!p.linkedUserId}
-                                title={
-                                  p.orderCount > 0
-                                    ? "Nie można usunąć — są zamówienia w historii"
-                                    : p.linkedUserId
-                                      ? "Najpierw usuń powiązane konto użytkownika"
-                                      : undefined
-                                }
-                                onClick={() => setDeleteTarget(p)}
-                              >
-                                Usuń
-                              </Button>
-                            ) : null}
-                          </div>
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </DataTable>
-            </TableScroll>
-          )}
-        </Card>
+        {salesPeopleListSection}
 
-        <SalesAdminHelpPanel managerMode={managerMode} />
+        <SalesAdminHelpPanel
+          managerMode={managerMode}
+          embedded={embeddedInTeamWorkspace}
+        />
       </section>
     </>
   );

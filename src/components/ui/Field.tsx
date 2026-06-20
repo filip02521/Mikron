@@ -24,6 +24,7 @@ export function Field({
   label,
   children,
   className,
+  labelClassName,
   hint,
   error,
   state,
@@ -31,6 +32,7 @@ export function Field({
   label?: React.ReactNode;
   children: React.ReactNode;
   className?: string;
+  labelClassName?: string;
   hint?: string;
   error?: string;
   state?: FieldVisualState;
@@ -48,7 +50,12 @@ export function Field({
   return (
     <label className={cn("block space-y-1.5", className)}>
       {label ? (
-        <span className="block text-xs font-semibold tracking-wide text-slate-600">
+        <span
+          className={cn(
+            "text-xs font-semibold tracking-wide text-slate-600",
+            labelClassName ?? "block"
+          )}
+        >
           {label}
         </span>
       ) : null}

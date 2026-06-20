@@ -73,10 +73,17 @@ describe("myOrderGroupKey", () => {
     expect(myOrderGroupKey(a)).toBe(myOrderGroupKey(b));
   });
 
-  it("splits different statuses at same supplier", () => {
+  it("łączy Zamowione i Czesciowo_zrealizowane u tego samego dostawcy", () => {
     const zamowione = order({ id: "1", status: "Zamowione" });
-    const partial = order({ id: "2", status: "Czesciowo_zrealizowane" });
-    expect(myOrderGroupKey(zamowione)).not.toBe(myOrderGroupKey(partial));
+    const partial = order({
+      id: "2",
+      status: "Czesciowo_zrealizowane",
+      delivered_quantity: "2",
+    });
+    expect(myOrderGroupKey(zamowione)).toBe(myOrderGroupKey(partial));
+    const groups = groupOrdersForMyView([zamowione, partial]);
+    expect(groups).toHaveLength(1);
+    expect(groups[0]).toHaveLength(2);
   });
 
   it("splits different suppliers with same status", () => {

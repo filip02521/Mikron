@@ -23,6 +23,9 @@ export type MyOrderSectionSingleHint = {
 
 const MIN_ROWS_FOR_SECTION_CALLOUT = 2;
 
+/** Wzorce wyświetlane jako baner sekcji — bez częściowej dostawy i po terminie (redundantne z wierszem). */
+const ACTIVE_SECTION_CALLOUT_PATTERNS: MyOrderSectionPatternId[] = ["verification"];
+
 export const EMPTY_MY_ORDER_SECTION_PATTERNS = new Set<MyOrderSectionPatternId>();
 
 export function polishPozycjaCount(n: number): string {
@@ -83,11 +86,7 @@ function calloutForPattern(
   }
 }
 
-const CALLOUT_ORDER: MyOrderSectionPatternId[] = [
-  "partial_ready",
-  "overdue",
-  "verification",
-];
+const CALLOUT_ORDER: MyOrderSectionPatternId[] = ACTIVE_SECTION_CALLOUT_PATTERNS;
 
 function singleHintMessage(pattern: MyOrderSectionPatternId): string {
   switch (pattern) {
@@ -126,7 +125,7 @@ export function deriveMyOrderSectionCallouts(rows: MyOrderRow[]): MyOrderSection
   const counts = countByPattern(rows);
   const callouts: MyOrderSectionCallout[] = [];
 
-  for (const pattern of CALLOUT_ORDER) {
+  for (const pattern of ACTIVE_SECTION_CALLOUT_PATTERNS) {
     const count = counts.get(pattern) ?? 0;
     if (count >= MIN_ROWS_FOR_SECTION_CALLOUT) {
       callouts.push(calloutForPattern(pattern, count));
@@ -194,4 +193,27 @@ export function myOrderRowSuppressesSharedHeadline(
   }
 
   return false;
+}
+
+export type MyOrderRowPatternHint = {
+  pattern: MyOrderSectionPatternId;
+  tone: MyOrderSectionCalloutTone;
+  message: string;
+};
+
+function patternTone(pattern: MyOrderSectionPatternId): MyOrderSectionCalloutTone {
+  return calloutForPattern(pattern, 1).tone;
+}
+
+/** Wyjaśnienie wzorca przy pojedynczym wierszu (ikona ?). */
+export function resolveMyOrderRowPatternHint(row: MyOrderRow): MyOrderRowPatternHint | null {
+  const ui = enrichMyOrderSalesUi(row);
+  if (ui.sortPriority === 5) {
+    return {
+      pattern: "verification",
+      tone: patternTone("verification"),
+      message: singleHintMessage("verification"),
+    };
+  }
+  return null;
 }

@@ -46,4 +46,23 @@ describe("ArchivedNotesSection", () => {
 
     expect(screen.getByText("Zarchiwizowane")).toBeTruthy();
   });
+
+  it("pokazuje ikonę kosza do trwałego usunięcia", () => {
+    render(
+      <ArchivedNotesSection
+        embedded
+        notes={[
+          testSalesNote({
+            id: "arch-del",
+            body: "Do skasowania",
+            archived_at: "2026-01-02T00:00:00Z",
+            updated_at: "2026-01-02T00:00:00Z",
+          }),
+        ]}
+      />
+    );
+
+    expect(screen.getByLabelText("Usuń notatkę na stałe")).toBeTruthy();
+    expect(screen.queryByRole("button", { name: "Usuń na stałe" })).toBeNull();
+  });
 });

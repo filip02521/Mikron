@@ -1,30 +1,40 @@
 "use client";
 
 import { useMemo, useRef, useState } from "react";
-import { actionAddZkWatchByNumber,
+import {
+  actionAddZkWatchByNumber,
   actionAddZkWatchBySubiektDokId,
 } from "@/app/actions/sales-notepad";
 import { Alert } from "@/components/ui/Alert";
-import { Button } from "@/components/ui/Button";
-import { IconPlusCircle } from "@/components/icons/StrokeIcons";
+import { IconPackageCheck } from "@/components/icons/StrokeIcons";
 import { validateZkQueryForSubmit } from "@/lib/subiekt/zk-search";
 import type { ZkSearchCandidate } from "@/lib/subiekt/resolve-zk-document";
 import { cn } from "@/lib/cn";
-import { salesTypography } from "@/lib/ui/ontime-theme";
+import { salesChromeInsetClass, salesTypography } from "@/lib/ui/ontime-theme";
 import { compareZkWatches } from "@/lib/sales/zk-watch-sort";
+import { watchNeedsNotepadAttention } from "@/lib/sales/notepad-follow-up";
 import {
   filterZkWatchesByClientQuery,
   type ZkWatchOrderHints,
 } from "@/lib/sales/zk-watch-order-link";
+import { ZK_KEYBOARD_HINTS, ZK_PAGE_SECTION_COPY } from "@/lib/sales/zk-page-copy";
+import { summarizeZkWatchList } from "@/lib/sales/zk-list-stats";
+import { SalesKeyboardShortcutsStrip } from "@/components/sales/SalesKeyboardShortcutsStrip";
 import type { SalesZkWatch } from "@/types/database";
 import { ZkWatchGroupedList } from "./ZkWatchGroupedList";
 import { ZkWatchAddBar } from "./ZkWatchAddBar";
+import { ZkWatchAddSection } from "./ZkWatchAddSection";
 import { ZkWatchProsbaScopeModal } from "./ZkWatchProsbaScopeModal";
 import {
   SalesListFilterEmptyHint,
   SalesSectionEmptyHint,
 } from "@/components/sales/SalesListEmptyHints";
 import { NotatnikListFilterBar } from "./NotatnikListFilterBar";
+import { NotatnikPanel } from "./NotatnikPanel";
+import { ZkListMetaStrip } from "./ZkListMetaStrip";
+import { ZkWatchStatusGuideStrip } from "./ZkWatchStatusGuideStrip";
+import { salesSearchPlaceholder } from "@/lib/sales/sales-search-ui";
+import { SALES_SEARCH_COPY } from "@/lib/sales/sales-page-ui-copy";
 import { useNotepadListFilter } from "@/hooks/use-notepad-list-filter";
 import { mojeShipmentSectionShellClass } from "@/lib/ui/moje-shipment-row-styles";
 
@@ -80,13 +90,13 @@ export function ZkWatchSection({
   ) => void;
 }) {
   const inputRef = useRef<HTMLInputElement>(null);
+  const statusGuideRef = useRef<HTMLDivElement>(null);
   const [query, setQuery] = useState("");
-  const [addPanelOpen, setAddPanelOpen] = useState(false);
   const [scopeDismissed, setScopeDismissed] = useState<{
     watchId: string;
     nonce: number;
   } | null>(null);
-  const showAddForm = watches.length === 0 || addPanelOpen;
+  const [statusGuideOpen, setStatusGuideOpen] = useState(tourPreview);
   const focusInList =
     focusWatchId != null && watches.some((watch) => watch.id === focusWatchId);
   const [listFilter, setListFilter] = useNotepadListFilter(focusWatchId, focusInList);
@@ -94,24 +104,36 @@ export function ZkWatchSection({
   const [error, setError] = useState<string | null>(null);
   const [chooseHint, setChooseHint] = useState<string | null>(null);
   const [candidates, setCandidates] = useState<ZkSearchCandidate[]>([]);
+  const [addSectionNonce, setAddSectionNonce] = useState(0);
   const canAddZk = subiektReachable;
-
-  function collapseAddPanel() {
-    setAddPanelOpen(false);
-    clearChoose();
-    setQuery("");
-    setError(null);
-  }
+  const searchActive = listFilter.trim().length > 0;
 
   function handleWatchAdded(watch: SalesZkWatch) {
     onWatchAdded?.(watch);
-    if (watches.length > 0) setAddPanelOpen(false);
+    if (watches.length > 0) {
+      collapseAddPanel();
+      setAddSectionNonce((value) => value + 1);
+    }
   }
 
   const filteredWatches = useMemo(
     () => filterZkWatchesByClientQuery(watches, listFilter),
     [watches, listFilter]
   );
+
+  const listStats = useMemo(
+    () => summarizeZkWatchList(watches, zkHintsByWatchId),
+    [watches, zkHintsByWatchId]
+  );
+
+  const followUpCount = useMemo(
+    () => watches.filter((watch) => watchNeedsNotepadAttention(watch)).length,
+    [watches]
+  );
+  const unseenRegalWatchCount = unseenWatchIds?.size ?? 0;
+  const newLinesWatchCount = newLineKeysByWatchId
+    ? Object.keys(newLineKeysByWatchId).length
+    : 0;
 
   const prosbaScopeWatch = useMemo(
     () =>
@@ -133,8 +155,7 @@ export function ZkWatchSection({
       !(
         scopeDismissed?.watchId === prosbaScopeWatch.id &&
         scopeDismissed.nonce === prosbaScopeOpenNonce
-      ) &&
-      !prosbaScopeConfigured
+      )
   );
 
   const sortedCandidates = useMemo(
@@ -161,6 +182,12 @@ export function ZkWatchSection({
   function clearChoose() {
     setCandidates([]);
     setChooseHint(null);
+  }
+
+  function collapseAddPanel() {
+    clearChoose();
+    setQuery("");
+    setError(null);
   }
 
   async function submit(nextQuery?: string) {
@@ -211,6 +238,36 @@ export function ZkWatchSection({
     }
   }
 
+  const listBody =
+    watches.length === 0 ? (
+      <SalesSectionEmptyHint message="Brak zamówień klienta czekających na towar." />
+    ) : filteredWatches.length === 0 ? (
+      <SalesListFilterEmptyHint
+        query={listFilter.trim()}
+        onClear={() => setListFilter("")}
+        entityLabel="ZK"
+      />
+    ) : (
+      <ZkWatchGroupedList
+        watches={filteredWatches}
+        zkHintsByWatchId={zkHintsByWatchId}
+        unseenWatchIds={unseenWatchIds}
+        newLineKeysByWatchId={newLineKeysByWatchId}
+        onWarehouseArrivalSeen={onWarehouseArrivalSeen}
+        onNewZkLinesSeen={onNewZkLinesSeen}
+        focusWatchId={focusWatchId}
+        onFocusWatchHandled={onFocusWatchHandled}
+        onLiveAnnounce={onLiveAnnounce}
+        readOnly={readOnly}
+        tourPreview={tourPreview}
+        compact={compact}
+        subiektReachable={subiektReachable}
+        onClosed={onWatchClosed}
+        onRefreshed={onWatchRefreshed}
+        onProsbaScopeRequested={onProsbaScopeRequested}
+      />
+    );
+
   return (
     <div className={embedded ? "space-y-0" : "space-y-4"}>
       {!embedded ? (
@@ -222,99 +279,117 @@ export function ZkWatchSection({
         </div>
       ) : null}
 
-      <div className={cn(embedded && "space-y-4 px-3 sm:px-4 pt-3", !embedded && "space-y-4")}>
-      {watches.length > 0 ? (
-        <NotatnikListFilterBar
-          embedded
-          bleed
-          visibleLabel="Szukaj na swojej liście"
-          value={listFilter}
-          onChange={setListFilter}
-          matchCount={filteredWatches.length}
-          totalCount={watches.length}
-          placeholder="Klient, numer ZK lub produkt…"
-          idleHint="Przeszukuje tylko ZK już dodane na liście poniżej — nie szuka w Subiekcie."
-          searchLabel="Szukaj na liście ZK"
-        />
-      ) : null}
+      <div className={cn(embedded && "space-y-0", !embedded && "space-y-4")}>
+        {embedded ? (
+          <div ref={statusGuideRef}>
+            <ZkWatchStatusGuideStrip
+              embedded
+              open={statusGuideOpen}
+              onOpenChange={setStatusGuideOpen}
+            />
+          </div>
+        ) : null}
 
-      {!readOnly && !tourPreview ? (
-        showAddForm ? (
-          <ZkWatchAddBar
-            inputRef={inputRef}
-            query={query}
-            loading={loading}
-            canAdd={canAddZk}
-            subiektBlockedHint={subiektBlockedHint}
-            chooseHint={chooseHint}
-            candidates={sortedCandidates}
-            showCollapse={watches.length > 0}
-            onCollapse={collapseAddPanel}
-            onQueryChange={(value) => {
-              setQuery(value);
-              if (error) setError(null);
-              if (candidates.length) clearChoose();
-            }}
-            onSubmit={() => void submit()}
-            onPickCandidate={(candidate) => void pickCandidate(candidate)}
-            onClearChoose={clearChoose}
+        {watches.length > 0 ? (
+          <NotatnikListFilterBar
+            embedded
+            visibleLabel="Szukaj na swojej liście"
+            value={listFilter}
+            onChange={setListFilter}
+            matchCount={filteredWatches.length}
+            totalCount={watches.length}
+            placeholder={salesSearchPlaceholder(SALES_SEARCH_COPY.zkList)}
+            searchLabel="Szukaj na liście ZK"
+            showIdleHint={false}
+            showActiveDetail={false}
           />
-        ) : (
-          <Button
-            type="button"
-            variant="secondary"
-            size="sm"
-            className="min-h-11 w-full justify-center sm:w-auto"
-            onClick={() => {
-              setAddPanelOpen(true);
-              window.setTimeout(() => inputRef.current?.focus(), 0);
-            }}
-          >
-            <IconPlusCircle size={16} strokeWidth={2} className="mr-1.5 shrink-0" aria-hidden />
-            Dodaj nowe ZK z Subiekta
-          </Button>
-        )
-      ) : null}
+        ) : null}
 
-      {error ? <Alert tone="error">{error}</Alert> : null}
+        {!readOnly && !tourPreview ? (
+          <ZkWatchAddSection
+            key={`${watches.length === 0 ? "zk-add-empty" : "zk-add-has-items"}-${addSectionNonce}`}
+            defaultOpen={watches.length === 0}
+            showCollapse={watches.length > 0}
+            embedded={embedded}
+            onCollapse={collapseAddPanel}
+          >
+            <ZkWatchAddBar
+              inputRef={inputRef}
+              query={query}
+              loading={loading}
+              canAdd={canAddZk}
+              subiektBlockedHint={subiektBlockedHint}
+              chooseHint={chooseHint}
+              candidates={sortedCandidates}
+              onQueryChange={(value) => {
+                setQuery(value);
+                if (error) setError(null);
+                if (candidates.length) clearChoose();
+              }}
+              onSubmit={() => void submit()}
+              onPickCandidate={(candidate) => void pickCandidate(candidate)}
+              onClearChoose={clearChoose}
+            />
+          </ZkWatchAddSection>
+        ) : null}
+
+        {error ? (
+          <div className={cn(embedded && salesChromeInsetClass)}>
+            <Alert tone="error">{error}</Alert>
+          </div>
+        ) : null}
       </div>
 
-      {watches.length === 0 ? (
-        <SalesSectionEmptyHint message="Brak zamówień klienta czekających na towar." />
-      ) : filteredWatches.length === 0 ? (
-        <SalesListFilterEmptyHint
-          query={listFilter.trim()}
-          onClear={() => setListFilter("")}
-          entityLabel="ZK"
-        />
+      {embedded ? (
+        <NotatnikPanel
+          flushBody
+          bodyClassName="space-y-0"
+          title={ZK_PAGE_SECTION_COPY.listTitle}
+          description={ZK_PAGE_SECTION_COPY.listHint}
+          count={watches.length || undefined}
+          icon={<IconPackageCheck size={17} />}
+          accent="indigo"
+        >
+          <div
+            className={cn(
+              salesChromeInsetClass,
+              "border-b border-slate-100 bg-slate-50/35 py-2.5"
+            )}
+          >
+            <ZkListMetaStrip
+              bare
+              watchCount={listStats.watchCount}
+              lineCount={listStats.lineCount}
+              filteredWatchCount={filteredWatches.length}
+              searchActive={searchActive}
+              regalLineCount={listStats.regalLineCount}
+              informacjaReadyLineCount={listStats.informacjaReadyLineCount}
+              newLinesWatchCount={newLinesWatchCount}
+              unseenRegalWatchCount={unseenRegalWatchCount}
+              followUpCount={followUpCount}
+              onOpenStatusGuide={() => {
+                setStatusGuideOpen(true);
+                statusGuideRef.current?.scrollIntoView({ behavior: "smooth", block: "nearest" });
+              }}
+              trailing={
+                <SalesKeyboardShortcutsStrip
+                  items={[...ZK_KEYBOARD_HINTS]}
+                  layout="toolbar"
+                />
+              }
+            />
+          </div>
+          {listBody}
+        </NotatnikPanel>
       ) : (
-        <div className={embedded ? undefined : mojeShipmentSectionShellClass}>
-        <ZkWatchGroupedList
-          watches={filteredWatches}
-          zkHintsByWatchId={zkHintsByWatchId}
-          unseenWatchIds={unseenWatchIds}
-          newLineKeysByWatchId={newLineKeysByWatchId}
-          onWarehouseArrivalSeen={onWarehouseArrivalSeen}
-          onNewZkLinesSeen={onNewZkLinesSeen}
-          focusWatchId={focusWatchId}
-          onFocusWatchHandled={onFocusWatchHandled}
-          onLiveAnnounce={onLiveAnnounce}
-          readOnly={readOnly}
-            tourPreview={tourPreview}
-            compact={compact}
-            subiektReachable={subiektReachable}
-            onClosed={onWatchClosed}
-            onRefreshed={onWatchRefreshed}
-            onProsbaScopeRequested={onProsbaScopeRequested}
-          />
-        </div>
+        <div className={mojeShipmentSectionShellClass}>{listBody}</div>
       )}
 
       {prosbaScopeWatch ? (
         <ZkWatchProsbaScopeModal
           watch={prosbaScopeWatch}
           open={prosbaScopeModalOpen}
-          required
+          required={!prosbaScopeConfigured}
           onClose={() =>
             setScopeDismissed({ watchId: prosbaScopeWatch.id, nonce: prosbaScopeOpenNonce })
           }

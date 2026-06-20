@@ -48,7 +48,7 @@ export default async function ZkPage({
     return (
       <SalesAccountLinkRequired
         title="ZK czekające"
-        description="Zamówienia klientów (ZK) z towarem na Subiekcie i Twoje prośby. Konto musi być przypisane do profilu handlowca."
+        hint="Zamówienia klientów (ZK) z towarem na Subiekcie i Twoje prośby. Konto musi być przypisane do profilu handlowca."
       />
     );
   }

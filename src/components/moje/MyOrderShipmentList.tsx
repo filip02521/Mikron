@@ -8,6 +8,7 @@ import {
   actionAcknowledgePickup,
   actionAcknowledgeCancelled,
   actionAcknowledgeSalesCancelNotice,
+  actionAcknowledgeZdFulfillmentDeadlineChange,
   actionSalesCancelOrders,
   actionUpdateSalesClientName,
 } from "@/app/actions/my-orders";
@@ -75,6 +76,7 @@ export function MyOrderShipmentList({
   tourPreview = false,
   compactActionLayout = false,
   suppressedSectionPatterns,
+  preserveRowOrder = false,
   rowVisualTone = "default",
   focusRowIds,
   subiektReachable = true,
@@ -93,12 +95,16 @@ export function MyOrderShipmentList({
   tourPreview?: boolean;
   compactActionLayout?: boolean;
   suppressedSectionPatterns?: Set<MyOrderSectionPatternId>;
+  preserveRowOrder?: boolean;
   rowVisualTone?: MojeShipmentRowVisualTone;
   focusRowIds?: ReadonlySet<string>;
   subiektReachable?: boolean;
 }) {
   const router = useRouter();
-  const sortedRows = useMemo(() => sortMyOrderRows(rows), [rows]);
+  const sortedRows = useMemo(
+    () => (preserveRowOrder ? rows : sortMyOrderRows(rows)),
+    [preserveRowOrder, rows]
+  );
   const [expandedIds, setExpandedIds] = useState<Set<string>>(() => new Set());
   const allExpanded =
     sortedRows.length > 0 && sortedRows.every((r) => expandedIds.has(r.id));
@@ -302,6 +308,26 @@ export function MyOrderShipmentList({
       });
     },
     [router, tourPreview, reportUndo]
+  );
+
+  const runAcknowledgeZdDeadlineChange = useCallback(
+    (orderIds: string[]) => {
+      if (tourPreview || !orderIds.length) return;
+      setPendingMessage("Zapisywanie potwierdzenia…");
+      start(async () => {
+        try {
+          await actionAcknowledgeZdFulfillmentDeadlineChange(orderIds);
+          router.refresh();
+        } catch (e) {
+          setErrorToast(
+            e instanceof Error ? e.message : "Nie udało się potwierdzić zmiany terminu"
+          );
+        } finally {
+          setPendingMessage(null);
+        }
+      });
+    },
+    [router, tourPreview]
   );
 
   const saveClient = useCallback(
@@ -555,6 +581,9 @@ export function MyOrderShipmentList({
             rowVisualTone={rowVisualTone}
             highlighted={focusRowIds?.has(row.id) ?? false}
             subiektReachable={subiektReachable}
+            onAcknowledgeZdDeadlineChange={
+              canAcknowledge ? runAcknowledgeZdDeadlineChange : undefined
+            }
           />
         ))}
       </ul>

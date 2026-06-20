@@ -15,6 +15,12 @@ import {
   type MyOrderSalesUi,
   type MyOrderZdFulfillment,
 } from "@/lib/orders/my-order-sales-ui";
+import { resolveLineHistoryEstimateFromTimingLabel } from "@/lib/orders/delivery-date-meta-label";
+import {
+  salesZdPrimarySlotTimingLabel,
+  zdFulfillmentGroupOverdue,
+  zdFulfillmentSlots,
+} from "@/lib/orders/my-order-zd-fulfillment-display";
 import { formatDateString, parseDateOnly } from "@/lib/orders/dates";
 import {
   buildPlannedOrderDateDisplay,
@@ -147,6 +153,9 @@ export type MyOrderLine = {
   zdFulfillment?: MyOrderZdFulfillment | null;
   zdEtaPending?: boolean;
   zdEtaNoMatch?: boolean;
+  /** Szacunek z historii — gdy brak terminu w ZD dla tej pozycji. */
+  historyEstimateLabel?: string | null;
+  historyEstimateLowConfidence?: boolean;
 };
 
 type MyOrderRowCore = {
@@ -261,7 +270,7 @@ function resolveAcknowledgeMode(orders: IndividualOrder[]): MyOrderAcknowledgeMo
 function rowToLine(
   row: Pick<
     MyOrderRowDraft,
-    "product" | "symbol" | "quantityLabel" | "progressLabel"
+    "product" | "symbol" | "quantityLabel" | "progressLabel" | "timingLabel"
   > & {
     zdFulfillment?: MyOrderZdFulfillment | null;
     zdEtaPending?: boolean;
@@ -269,6 +278,16 @@ function rowToLine(
   },
   order: IndividualOrder
 ): MyOrderLine {
+  const lineZdFulfillment = row.zdFulfillment ?? null;
+  const lineZdEtaPending = Boolean(row.zdEtaPending && !lineZdFulfillment);
+  const lineZdEtaNoMatch = Boolean(
+    row.zdEtaNoMatch && !lineZdFulfillment && !lineZdEtaPending
+  );
+  const historyEstimate = resolveLineHistoryEstimateFromTimingLabel(row.timingLabel, {
+    zdFulfillment: lineZdFulfillment,
+    zdEtaPending: lineZdEtaPending,
+    zdEtaNoMatch: lineZdEtaNoMatch,
+  });
   const subiektId = order.subiekt_tw_id;
   const subiektTwId =
     typeof subiektId === "number" && Number.isFinite(subiektId) && subiektId > 0
@@ -310,9 +329,11 @@ function rowToLine(
         : null,
     requestNote: normalizeSalesRequestNote(order.sales_request_note),
     procurementCancelNote: normalizeProcurementCancelNote(order.procurement_cancel_note),
-    zdFulfillment: row.zdFulfillment ?? null,
-    zdEtaPending: Boolean(row.zdEtaPending && !row.zdFulfillment),
-    zdEtaNoMatch: Boolean(row.zdEtaNoMatch && !row.zdFulfillment && !row.zdEtaPending),
+    zdFulfillment: lineZdFulfillment,
+    zdEtaPending: lineZdEtaPending,
+    zdEtaNoMatch: lineZdEtaNoMatch,
+    historyEstimateLabel: historyEstimate?.label ?? null,
+    historyEstimateLowConfidence: historyEstimate?.lowConfidence ?? false,
   };
 }
 
@@ -674,7 +695,10 @@ function presentZamowienie(
     options?.supplierKhIdsBySupplierId
   );
 
-  const finalize = (row: MyOrderRowDraft): MyOrderRow => ({
+  const finalize = (
+    row: MyOrderRowDraft,
+    opts?: { omitDeliveryTiming?: boolean }
+  ): MyOrderRow => ({
     ...withAckMeta(
       {
         ...row,
@@ -683,9 +707,9 @@ function presentZamowienie(
       },
       [order]
     ),
-    zdFulfillment,
-    zdEtaPending,
-    zdEtaNoMatch,
+    zdFulfillment: opts?.omitDeliveryTiming ? null : zdFulfillment,
+    zdEtaPending: opts?.omitDeliveryTiming ? false : zdEtaPending,
+    zdEtaNoMatch: opts?.omitDeliveryTiming ? false : zdEtaNoMatch,
   });
 
   const placement = orderPlacementAt(order);
@@ -771,19 +795,22 @@ function presentZamowienie(
         rowColor: SUMMARY_COLORS.historyPartial,
       });
     case "Zrealizowane":
-      return finalize({
-        ...base,
-        statusTitle: "Do odbioru",
-        statusDetail: [
-          orderTypeHintForSales(order.order_type),
-          "Całość jest na magazynie. Potwierdź odbiór — wtedy wpis zniknie z listy.",
-        ]
-          .filter(Boolean)
-          .join(" · "),
-        timingLabel,
-        badgeVariant: "success",
-        rowColor: SUMMARY_COLORS.historyCompleted,
-      });
+      return finalize(
+        {
+          ...base,
+          statusTitle: "Do odbioru",
+          statusDetail: [
+            orderTypeHintForSales(order.order_type),
+            "Całość jest na magazynie. Potwierdź odbiór — wtedy wpis zniknie z listy.",
+          ]
+            .filter(Boolean)
+            .join(" · "),
+          timingLabel: null,
+          badgeVariant: "success",
+          rowColor: SUMMARY_COLORS.historyCompleted,
+        },
+        { omitDeliveryTiming: true }
+      );
     case "Anulowane":
       if (isProcurementInitiatedCancel(order)) {
         const copy = procurementInitiatedCancelStatusCopy("zamowienie");
@@ -832,7 +859,9 @@ export function presentMyOrderGroup(
 
   const representative = pickRepresentativeOrder(visibleOrders.length ? visibleOrders : orders);
   const base = presentMyOrder(representative, statsBySupplier, options);
-  const ordersForZd = visibleOrders.length ? visibleOrders : orders;
+  const ordersForZd = (visibleOrders.length ? visibleOrders : orders).filter(
+    (order) => !isAwaitingSalesPickup(order) && !isAwaitingInformacjaAck(order)
+  );
   const lines = visibleOrders.map((o) => {
     const row = presentMyOrder(o, statsBySupplier, options);
     return rowToLine(row, o);
@@ -847,14 +876,9 @@ export function presentMyOrderGroup(
   let timingLabel = base.timingLabel;
   let badgeVariant = base.badgeVariant;
   if (zdFulfillment) {
-    const deadlineDate = parseDateOnly(zdFulfillment.deadline);
-    const overdue =
-      deadlineDate != null && isPastExpectedDate(deadlineDate);
-    timingLabel = salesZdTimingLabel(
-      zdFulfillment.deadline,
-      zdFulfillment.dokNr,
-      overdue
-    );
+    const slots = zdFulfillmentSlots(zdFulfillment);
+    const overdue = zdFulfillmentGroupOverdue(slots);
+    timingLabel = salesZdPrimarySlotTimingLabel(zdFulfillment, overdue);
     if (overdue) {
       badgeVariant =
         base.statusTitle === "Częściowo na magazynie" ? "warning" : "danger";

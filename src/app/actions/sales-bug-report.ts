@@ -1,10 +1,13 @@
 "use server";
 
+// @service-role-ok — autoryzacja require*(); service role z pełnym scope po warstwie aplikacji.
+
 import { revalidatePath } from "next/cache";
-import { getSessionUser } from "@/lib/auth";
+import { getSessionUser, requireAdminForMutation } from "@/lib/auth";
 import { resolveSalesPersonForUser } from "@/lib/auth/sales-person";
-import { isAdmin, isSalesAccount } from "@/lib/auth-roles";
+import { isSalesAccount } from "@/lib/auth-roles";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { normalizeSalesBugReportPagePath } from "@/lib/security/app-page-path";
 import type { SalesBugReport, SalesBugReportStatus } from "@/types/database";
 
 async function salesReporterForAction() {
@@ -47,7 +50,7 @@ export async function actionSubmitSalesBugReport(input: {
       sales_person_id: salesPerson.id,
       reporter_name: salesPerson.name,
       reporter_email: user.email ?? null,
-      page_path: input.pagePath.trim() || "/",
+      page_path: normalizeSalesBugReportPagePath(input.pagePath),
       message,
       user_agent: input.userAgent?.trim().slice(0, 500) ?? null,
       status: "open",
@@ -69,9 +72,13 @@ export async function actionUpdateSalesBugReport(input: {
   status: SalesBugReportStatus;
   adminNote?: string | null;
 }): Promise<{ ok: true; report: SalesBugReport } | { ok: false; error: string }> {
-  const user = await getSessionUser();
-  if (!user || !isAdmin(user.role)) {
-    return { ok: false, error: "Brak uprawnień." };
+  try {
+    await requireAdminForMutation();
+  } catch (e) {
+    return {
+      ok: false,
+      error: e instanceof Error ? e.message : "Brak uprawnień.",
+    };
   }
 
   try {

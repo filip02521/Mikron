@@ -97,5 +97,105 @@ describe("presentMyOrders group ZD", () => {
     expect(row.zdFulfillment).toBeNull();
     expect(row.zdEtaPending).toBe(false);
     expect(row.zdEtaNoMatch).toBe(true);
+    expect(row.timingLabel).toMatch(/^ok\./);
+  });
+
+  it("nie duplikuje Marrodent — Zamowione i częściowa dostawa w jednej karcie", () => {
+    const rows = presentMyOrders(
+      [
+        marrodentOrder("a", "H364RNF 103 015", "Komet węglik H364RNF 103 015", {
+          status: "Zamowione",
+          zd_fulfillment_source: "zd",
+          zd_fulfillment_deadline: "2026-07-10",
+          zd_fulfillment_dok_nr: "ZD 31/M/06/2026",
+        }),
+        marrodentOrder("b", "H364RXE 103 015", "Komet węglik H364RXE 103 015", {
+          status: "Czesciowo_zrealizowane",
+          delivered_quantity: "2",
+          zd_fulfillment_source: "zd",
+          zd_fulfillment_deadline: "2026-07-10",
+          zd_fulfillment_dok_nr: "ZD 31/M/06/2026",
+        }),
+      ],
+      stats
+    ).zamowienia;
+
+    expect(rows).toHaveLength(1);
+    expect(rows[0]?.lineCount).toBe(2);
+    expect(rows[0]?.statusTitle).toBe("Częściowo na magazynie");
+    expect(rows[0]?.zdFulfillment?.deadline).toBe("2026-07-10");
+  });
+
+  it("pokazuje oba terminy ZD gdy pozycje mają różne daty", () => {
+    const row = presentMyOrders(
+      [
+        marrodentOrder("a", "A", "Produkt A", {
+          zd_fulfillment_source: "zd",
+          zd_fulfillment_deadline: "2026-07-22",
+          zd_fulfillment_dok_nr: "ZD 78/M/02/2026",
+        }),
+        marrodentOrder("b", "B", "Produkt B", {
+          zd_fulfillment_source: "zd",
+          zd_fulfillment_deadline: "2026-07-15",
+          zd_fulfillment_dok_nr: "ZD 36/M/02/2026",
+        }),
+      ],
+      stats
+    ).zamowienia[0]!;
+
+    expect(row.lineCount).toBe(2);
+    expect(row.zdFulfillment?.slots).toHaveLength(2);
+    expect(row.timingLabel).toContain("15.07.2026");
+    expect(row.timingLabel).toContain("ZD 36/M/02/2026");
+    expect(row.timingLabel).not.toContain("22.07.2026");
+    expect(row.timingLabel).not.toContain("2 terminy");
+  });
+
+  it("nadaje szacunek z historii pozycjom bez terminu ZD w grupie mieszanej", () => {
+    const row = presentMyOrders(
+      [
+        marrodentOrder("a", "A", "Produkt A", {
+          zd_fulfillment_synced_at: "2026-06-18T08:00:00Z",
+        }),
+        marrodentOrder("b", "B", "Produkt B", {
+          zd_fulfillment_source: "zd",
+          zd_fulfillment_deadline: "2026-06-24",
+          zd_fulfillment_dok_nr: "ZD 173/M/06/2026",
+          zd_fulfillment_synced_at: "2026-06-18T08:00:00Z",
+        }),
+      ],
+      stats
+    ).zamowienia[0]!;
+
+    expect(row.zdFulfillment?.deadline).toBe("2026-06-24");
+    expect(row.zdEtaNoMatch).toBe(true);
+    expect(row.lines[0]?.zdEtaNoMatch).toBe(true);
+    expect(row.lines[0]?.zdFulfillment).toBeNull();
+    expect(row.lines[0]?.historyEstimateLabel).toMatch(/^ok\./);
+    expect(row.lines[1]?.zdFulfillment?.deadline).toBe("2026-06-24");
+    expect(row.lines[1]?.historyEstimateLabel).toBeNull();
+  });
+
+  it("nie pokazuje terminu ZD dla pozycji do odbioru z regału", () => {
+    const row = presentMyOrders(
+      [
+        marrodentOrder("pickup", "A", "Produkt A", {
+          status: "Zrealizowane",
+          delivered_quantity: "4",
+          zd_fulfillment_source: "zd",
+          zd_fulfillment_deadline: "2026-07-10",
+          zd_fulfillment_dok_nr: "ZD/31/2026",
+          zd_fulfillment_synced_at: "2026-06-18T08:00:00Z",
+        }),
+      ],
+      stats
+    ).zamowienia[0]!;
+
+    expect(row.statusTitle).toBe("Do odbioru");
+    expect(row.acknowledgeMode).toBe("pickup");
+    expect(row.timingLabel).toBeNull();
+    expect(row.zdFulfillment).toBeNull();
+    expect(row.zdEtaNoMatch).toBe(false);
+    expect(row.zdEtaPending).toBe(false);
   });
 });

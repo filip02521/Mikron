@@ -64,11 +64,11 @@ export function getSalesOnboardingSteps(role: UserRole): SalesOnboardingStep[] {
       bullets: [
         "Jeden wiersz = jedna prośba u jednego dostawcy. Nagłówek mówi, co się dzieje.",
         "Przy wierszu widać klienta końcowego — łatwiej rozróżnisz sprawy różnych gabinetów.",
-        "Sekcja „Tylko sprawdzamy dostępność” (fiolet) to informacja o towarze bez zamówienia u dostawcy. Dostaniesz e-mail, gdy towar będzie na magazynie.",
+        "Sekcja „Sprawdzamy dostępność” (fiolet) to informacja o towarze bez zamówienia u dostawcy. Dostaniesz e-mail, gdy towar będzie na magazynie.",
         "Zielony przycisk oznacza Twoją akcję: potwierdź odbiór z magazynu albo zamknij powiadomienie o dostępności.",
         "Na dole strony jest archiwum zakończonych spraw.",
       ],
-      tip: "Pilne sprawy są u góry w sekcji „Wymaga reakcji” — Start dnia przewinie Cię tam.",
+      tip: "Pilne sprawy są u góry w sekcji „Potwierdź odbiór z regału” — Start dnia przewinie Cię tam.",
     },
     {
       id: "prosba",

@@ -4,6 +4,7 @@ import { useCallback, useMemo, useState } from "react";
 import type { MyOrderRow } from "@/lib/orders/my-order-presenter";
 import { MojeOrdersView } from "@/components/moje/MojeOrdersView";
 import { MojeZdEtaSyncClient } from "@/components/moje/MojeZdEtaSyncClient";
+import { MojeZdEtaDevRefreshButton } from "@/components/moje/MojeZdEtaDevRefreshButton";
 import { useSalesOnboardingDemo } from "@/components/sales/SalesOnboardingContext";
 import {
   buildOnboardingDayStartContext,
@@ -59,6 +60,7 @@ export function MojeOrdersShell({
 
   return (
     <>
+      <MojeZdEtaDevRefreshButton />
       {showSalesSync && zdEtaSyncEligibleCount > 0 && subiektReachable ? (
         <MojeZdEtaSyncClient syncEligibleCount={zdEtaSyncEligibleCount} />
       ) : null}

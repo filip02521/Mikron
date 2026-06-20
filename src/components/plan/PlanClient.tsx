@@ -28,6 +28,8 @@ import {
 } from "@/lib/ui/ontime-theme";
 import { useSalesOnboardingDemo } from "@/components/sales/SalesOnboardingContext";
 import { buildOnboardingPlanDemo } from "@/lib/sales/sales-onboarding-demo-data";
+import { SALES_PAGE_HEADER_HINTS, SALES_SEARCH_COPY } from "@/lib/sales/sales-page-ui-copy";
+import { salesSearchPlaceholder } from "@/lib/sales/sales-search-ui";
 
 const SEARCH_TABLE_LIMIT = 25;
 
@@ -144,16 +146,15 @@ function PlanPreviewClient({
           inset
           density="compact"
           title="Harmonogram dostawców"
-          description="Wyszukaj dostawcę i zobacz planowaną datę zamówienia"
+          hint={SALES_PAGE_HEADER_HINTS.planProcurement}
+          hintAriaLabel="O harmonogramie dostawców"
         />
         <div className={cn("space-y-4 border-b border-slate-100 pb-4", panelSectionInsetClass)}>
           <label className="block max-w-md">
-            <span className="mb-1.5 block text-xs font-semibold text-slate-600">
-              Szukaj dostawcy
-            </span>
+            <span className="sr-only">Szukaj dostawcy</span>
             <Input
               type="search"
-              placeholder="Wpisz nazwę dostawcy…"
+              placeholder={salesSearchPlaceholder(SALES_SEARCH_COPY.planProcurementSupplier, false)}
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               autoComplete="off"

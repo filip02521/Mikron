@@ -1,9 +1,12 @@
 "use server";
 
+// @service-role-ok — autoryzacja require*(); service role z pełnym scope po warstwie aplikacji.
+
 import { revalidatePath } from "next/cache";
 import { requireAdminOrSalesTeamManagement } from "@/lib/auth";
 import { isAdmin } from "@/lib/auth-roles";
 import { assertManagerCanUseGroupId } from "@/lib/data/sales-group-access";
+import { escapeIlikePattern } from "@/lib/security/ilike-pattern";
 import { createAdminClient } from "@/lib/supabase/admin";
 
 function revalidateGroupPaths() {
@@ -42,7 +45,10 @@ export async function actionUpsertSalesGroup(form: {
 
   const supabase = createAdminClient();
 
-  const duplicateQuery = supabase.from("sales_groups").select("id, name").ilike("name", name);
+  const duplicateQuery = supabase
+    .from("sales_groups")
+    .select("id, name")
+    .ilike("name", escapeIlikePattern(name));
   if (form.id) duplicateQuery.neq("id", form.id);
   const { data: duplicate } = await duplicateQuery.maybeSingle();
   if (duplicate) {
@@ -85,11 +91,7 @@ export async function actionDeleteSalesGroup(
   if (!group) return { error: "Nie znaleziono grupy." };
 
   if (!isAdmin(actor.role)) {
-    try {
-      await assertManagerCanUseGroupId(actor, id);
-    } catch (e) {
-      return { error: e instanceof Error ? e.message : "Brak uprawnień." };
-    }
+    return { error: "Usuwanie grup jest dostępne tylko dla administratora." };
   }
 
   const { count } = await supabase

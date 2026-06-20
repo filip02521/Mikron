@@ -4,7 +4,13 @@ import { useEffect, useId } from "react";
 import { Input } from "@/components/ui/Field";
 import { IconSearch } from "@/components/icons/StrokeIcons";
 import { cn } from "@/lib/cn";
-import { brandLinkSubtleClass, salesChromeInsetClass, salesTypography } from "@/lib/ui/ontime-theme";
+import { salesSearchPlaceholder } from "@/lib/sales/sales-search-ui";
+import { SALES_SEARCH_COPY } from "@/lib/sales/sales-page-ui-copy";
+import {
+  brandLinkSubtleClass,
+  salesChromeInsetClass,
+  salesTypography,
+} from "@/lib/ui/ontime-theme";
 
 export function MojeOrdersSearchBar({
   value,
@@ -75,7 +81,7 @@ export function MojeOrdersSearchBar({
                   (e.target as HTMLInputElement).blur();
                 }
               }}
-              placeholder="Produkt, dostawca, klient, symbol, PLU…"
+              placeholder={salesSearchPlaceholder(SALES_SEARCH_COPY.moje)}
               className="pl-10"
               autoComplete="off"
               spellCheck={false}
@@ -120,18 +126,7 @@ export function MojeOrdersSearchBar({
             </span>
           )}
         </p>
-      ) : (
-        <p className="mt-2 text-xs text-slate-500">
-          Szukaj po produkcie, dostawcy, kliencie, symbolu lub kodzie PLU.
-          <span className="hidden sm:inline">
-            {" "}
-            Skrót:{" "}
-            <kbd className="rounded border border-slate-200 bg-slate-50 px-1 font-mono text-[10px]">
-              /
-            </kbd>
-          </span>
-        </p>
-      )}
+      ) : null}
     </div>
   );
 }

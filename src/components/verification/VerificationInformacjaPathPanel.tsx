@@ -1,6 +1,7 @@
 "use client";
 
 import type { VerificationInformacjaUi } from "@/lib/orders/verification-informacja-ui";
+import { IconAvailability } from "@/components/icons/StrokeIcons";
 import { InformacjaFlowPicker } from "@/components/orders/InformacjaFlowPicker";
 import { INFORMACJA_FLOW_PICKER_SECTION_DAILY } from "@/lib/orders/informacja-flow-ui";
 import { ProsbaFormSection } from "@/components/orders/ProsbaFormSection";
@@ -51,6 +52,9 @@ export function VerificationInformacjaPathPanel({
       <ProsbaFormSection
         title="Ścieżka informacji"
         hint="Wybrana przez handlowca — nie zmienia się przy uzupełnianiu."
+        accent="violet"
+        icon={<IconAvailability size={17} />}
+        tileClassName="bg-violet-100 text-violet-800"
       >
         <div className={cn("rounded-md border px-3 py-3 text-sm leading-relaxed", borderTone)}>
           <div className="mb-2 flex flex-wrap items-center gap-2">
@@ -69,7 +73,10 @@ export function VerificationInformacjaPathPanel({
   return (
     <ProsbaFormSection
       title={INFORMACJA_FLOW_PICKER_SECTION_DAILY.title}
-      hint="Decyduje, gdzie prośba trafi po zatwierdzeniu — magazyn, Prośby handlowców albo sygnał braku stanu."
+      hint={INFORMACJA_FLOW_PICKER_SECTION_DAILY.hint}
+      accent="violet"
+      icon={<IconAvailability size={17} />}
+      tileClassName="bg-violet-100 text-violet-800"
     >
       <InformacjaFlowPicker
         path={path}

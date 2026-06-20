@@ -16,7 +16,10 @@ export type ProductLineDraft = {
   onHand?: number | null;
   reserved?: number | null;
   available?: number | null;
+  /** Stan magazynowy z Subiekta (tylko UI / walidacja). */
   stockSource?: "subiekt" | null;
+  /** Uwagi handlowca — zapis per pozycja w `sales_request_note`. */
+  requestNote?: string;
 };
 
 export function newProductLine(): ProductLineDraft {

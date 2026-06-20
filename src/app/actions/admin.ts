@@ -1,5 +1,7 @@
 "use server";
 
+// @service-role-ok — autoryzacja require*(); service role z pełnym scope po warstwie aplikacji.
+
 import { revalidatePath } from "next/cache";
 import {
   requireAdmin,
@@ -9,14 +11,14 @@ import {
   requireSupplierManagement,
   getSessionUser,
 } from "@/lib/auth";
+import { assertCanSubmitIndividualOrders } from "@/lib/auth/assert-order-submit-access";
 import {
-  canAccessOperations,
   isAdmin,
   isSales,
   isSalesManager,
 } from "@/lib/auth-roles";
 import {
-  assertManagerCanUseGroupId,
+  assertManagerRequiresGroupInScope,
   canAccessSalesPerson,
 } from "@/lib/data/sales-group-access";
 import { fetchDeliveryStatsDiagnostics } from "@/lib/data/delivery-stats-diagnostics";
@@ -57,6 +59,7 @@ import {
 } from "@/lib/orders/procurement-cancel-note";
 import type { InformacjaFlowPath } from "@/lib/orders/informacja-stock-out-reorder";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { syncLinkedSalesPersonLoginEmail } from "@/lib/users/sync-sales-person-email";
 import { intervalWeeksForStorage, parseInterval } from "@/lib/orders/dates";
 import { resolveOrderOnDemandForSave } from "@/lib/orders/supplier-on-demand";
 import { WAREHOUSE_SHELF_DEFAULT } from "@/lib/orders/warehouse-inventory";
@@ -119,6 +122,9 @@ function revalidateAll() {
   revalidatePath("/admin");
   revalidatePath("/admin/handlowcy");
   revalidatePath("/admin/uzytkownicy");
+  revalidatePath("/zespol", "page");
+  revalidatePath("/zespol/handlowcy", "page");
+  revalidatePath("/zespol/grupy", "page");
 }
 
 export async function actionDeleteIndividualHistory(orderId: string) {
@@ -344,13 +350,8 @@ export async function actionAddIndividualOrders(
   const { entries, acknowledgeSufficientStock } = normalizeAddIndividualOrdersInput(input);
   const user = await getSessionUser();
   if (!user) throw new Error("Wymagane logowanie");
-  if (
-    !canAccessOperations(user.role) &&
-    !isSales(user.role) &&
-    !isSalesManager(user.role)
-  ) {
-    throw new Error("Brak uprawnień");
-  }
+
+  await assertCanSubmitIndividualOrders(user, entries);
 
   let salesPersonIdForSales: string | null = null;
   if (isSales(user.role)) {
@@ -362,20 +363,6 @@ export async function actionAddIndividualOrders(
       );
     }
     salesPersonIdForSales = resolved.id;
-  }
-
-  if (isSalesManager(user.role)) {
-    for (const e of entries) {
-      if (!e.salesPersonId) {
-        throw new Error("Wybierz handlowca, w imieniu którego składasz prośbę.");
-      }
-      const allowed = await canAccessSalesPerson(user, e.salesPersonId);
-      if (!allowed) {
-        throw new Error(
-          "Nie masz uprawnień do składania prośby dla tego handlowca. Kierownik może składać prośby dla siebie oraz dla osób z przypisanych grup zespołu — poproś administratora o przypisanie grup do Twojego konta."
-        );
-      }
-    }
   }
 
   const normalized = entries.map((e) => ({
@@ -876,14 +863,26 @@ export async function actionBatchUpdateDelivered(
 
 export async function actionProcessDeliveries() {
   await requireOperations("mutate");
-  const result = await processMarkedDeliveries();
-  revalidateAll();
-  return {
-    success: result.emailFailures.length === 0,
-    processed: result.processed,
-    emailSent: result.emailSent,
-    emailFailures: result.emailFailures,
-  };
+
+  const locked = await tryAcquireLock("manual-process-deliveries", 120, "ops-ui");
+  if (!locked) {
+    return {
+      error: "Przetwarzanie dostaw jest już w toku — poczekaj chwilę i spróbuj ponownie.",
+    };
+  }
+
+  try {
+    const result = await processMarkedDeliveries();
+    revalidateAll();
+    return {
+      success: result.emailFailures.length === 0,
+      processed: result.processed,
+      emailSent: result.emailSent,
+      emailFailures: result.emailFailures,
+    };
+  } finally {
+    await releaseLock("manual-process-deliveries");
+  }
 }
 
 export async function actionRecalculateStats() {
@@ -1282,7 +1281,7 @@ export async function actionUpsertSalesPerson(form: {
   const duplicateQuery = supabase
     .from("sales_people")
     .select("id, name")
-    .eq("email", email);
+    .ilike("email", email);
   if (form.id) duplicateQuery.neq("id", form.id);
   const { data: duplicate } = await duplicateQuery.maybeSingle();
   if (duplicate) {
@@ -1300,14 +1299,18 @@ export async function actionUpsertSalesPerson(form: {
   }
 
   if (!isAdmin(actor.role)) {
-    if (form.id) {
-      const allowed = await canAccessSalesPerson(actor, form.id);
-      if (!allowed) {
-        return { error: "Nie masz uprawnień do edycji tego handlowca." };
-      }
+    if (!form.id) {
+      return {
+        error:
+          "Kierownik nie może tworzyć samych kart handlowca — użyj formularza w sekcji Handlowcy (konto zakładane automatycznie).",
+      };
+    }
+    const allowed = await canAccessSalesPerson(actor, form.id);
+    if (!allowed) {
+      return { error: "Nie masz uprawnień do edycji tego handlowca." };
     }
     try {
-      await assertManagerCanUseGroupId(actor, groupId);
+      await assertManagerRequiresGroupInScope(actor, groupId);
     } catch (e) {
       return { error: e instanceof Error ? e.message : "Brak uprawnień do grupy." };
     }
@@ -1319,6 +1322,11 @@ export async function actionUpsertSalesPerson(form: {
       .update({ name, email, group_id: groupId })
       .eq("id", form.id);
     if (error) return { error: error.message };
+
+    const syncError = await syncLinkedSalesPersonLoginEmail(supabase, form.id, email);
+    if (syncError) {
+      return { error: `Zapisano kartę, ale nie udało się zsynchronizować konta: ${syncError}` };
+    }
   } else {
     const { data: inserted, error } = await supabase
       .from("sales_people")
@@ -1348,10 +1356,7 @@ export async function actionDeleteSalesPerson(
   if (!person) return { error: "Nie znaleziono handlowca." };
 
   if (!isAdmin(actor.role)) {
-    const allowed = await canAccessSalesPerson(actor, id);
-    if (!allowed) {
-      return { error: "Nie masz uprawnień do usunięcia tego handlowca." };
-    }
+    return { error: "Usuwanie handlowców jest dostępne tylko dla administratora." };
   }
 
   const { count: orderCount } = await supabase

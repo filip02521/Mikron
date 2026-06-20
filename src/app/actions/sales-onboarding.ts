@@ -1,5 +1,7 @@
 "use server";
 
+// @user-jwt-ok — mutacja własnego profilu; RLS profiles UPDATE dla auth.uid().
+
 import { revalidatePath } from "next/cache";
 import { getSessionUser } from "@/lib/auth";
 import { isSalesAccount } from "@/lib/auth-roles";

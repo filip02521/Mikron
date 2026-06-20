@@ -7,67 +7,41 @@ import { cn } from "@/lib/cn";
 
 export type ProsbaLineMessageItem =
   | { kind: "feedback"; feedback: SubiektFeedback; fieldLabel?: string }
-  | { kind: "resolving" }
-  | { kind: "hint"; text: string }
-  | { kind: "stock_warning"; text: string };
+  | { kind: "resolving" };
 
 export function ProsbaLineFieldMessages({
-  lineLabel,
   items,
   className,
 }: {
-  lineLabel: string;
   items: ProsbaLineMessageItem[];
   className?: string;
 }) {
   if (!items.length) return null;
 
   return (
-    <div
-      className={cn(
-        "space-y-2 rounded-md border border-slate-200 bg-slate-50/90 px-3 py-2.5",
-        className
-      )}
-      aria-live="polite"
-    >
-      <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">
-        {lineLabel}
-      </p>
-
+    <div className={cn("space-y-2", className)} aria-live="polite">
       {items.map((item, i) => {
         if (item.kind === "resolving") {
           return (
-            <p
+            <div
               key={`resolving-${i}`}
-              className="flex items-center gap-2 rounded-md border border-indigo-100 bg-white px-2.5 py-2 text-xs text-indigo-800"
+              className="flex items-start gap-2.5 rounded-md border border-indigo-200/90 bg-indigo-50/70 px-3 py-2.5"
             >
-              <Spinner size="sm" />
-              Sprawdzam dostawcę w naszej bazie…
-            </p>
-          );
-        }
-        if (item.kind === "hint") {
-          return (
-            <p key={`hint-${i}`} className="text-xs leading-relaxed text-slate-500">
-              {item.text}
-            </p>
-          );
-        }
-        if (item.kind === "stock_warning") {
-          return (
-            <p
-              key={`stock-${i}`}
-              role="note"
-              className="rounded-md border border-amber-200/90 bg-amber-50 px-2.5 py-2 text-xs leading-relaxed text-amber-950"
-            >
-              {item.text}
-            </p>
+              <Spinner size="sm" className="mt-0.5 shrink-0" />
+              <div className="min-w-0 text-xs leading-relaxed text-indigo-900">
+                <p className="font-semibold text-indigo-950">Sprawdzam dostawcę</p>
+                <p className="mt-0.5 text-indigo-800/90">Dopasowanie z naszej bazy produktów…</p>
+              </div>
+            </div>
           );
         }
         return (
-          <div key={`fb-${i}`} className="space-y-1">
+          <div
+            key={`fb-${i}`}
+            className="rounded-md border border-slate-200/90 bg-white px-3 py-2.5 shadow-sm"
+          >
             {item.fieldLabel ? (
-              <p className="text-[11px] font-medium text-slate-500">{item.fieldLabel}</p>
+              <p className="mb-1.5 text-[11px] font-medium text-slate-500">{item.fieldLabel}</p>
             ) : null}
             <SubiektFeedbackAlert feedback={item.feedback} compact />
           </div>

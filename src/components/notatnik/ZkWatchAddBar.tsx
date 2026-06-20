@@ -6,7 +6,6 @@ import { Button } from "@/components/ui/Button";
 import { fieldControlClass } from "@/components/ui/Field";
 import { IconPlusCircle } from "@/components/icons/StrokeIcons";
 import { cn } from "@/lib/cn";
-import { salesTypography } from "@/lib/ui/ontime-theme";
 
 function formatIssuedAt(iso: string | null): string | null {
   if (!iso) return null;
@@ -15,6 +14,7 @@ function formatIssuedAt(iso: string | null): string | null {
   return `${d}.${m}.${y}`;
 }
 
+/** Formularz dodawania ZK — treść zwijanej sekcji (bez własnego nagłówka). */
 export function ZkWatchAddBar({
   inputRef,
   query,
@@ -27,8 +27,6 @@ export function ZkWatchAddBar({
   onSubmit,
   onPickCandidate,
   onClearChoose,
-  onCollapse,
-  showCollapse = false,
 }: {
   inputRef?: RefObject<HTMLInputElement | null>;
   query: string;
@@ -41,35 +39,11 @@ export function ZkWatchAddBar({
   onSubmit: () => void;
   onPickCandidate: (candidate: ZkSearchCandidate) => void;
   onClearChoose: () => void;
-  onCollapse?: () => void;
-  showCollapse?: boolean;
 }) {
   const inputId = useId();
 
   return (
-    <div className="rounded-lg border border-indigo-200/80 bg-indigo-50/45 p-3 sm:p-3.5">
-      <div className="mb-2 flex items-start justify-between gap-2">
-        <div>
-          <p className={cn(salesTypography.sectionLabel, "normal-case text-indigo-900/90")}>
-            Dodaj ZK z Subiekta
-          </p>
-          <p className={cn("mt-0.5", salesTypography.sectionHint, "text-indigo-900/75")}>
-            Wpisz numer z systemu magazynowego — to nie filtruje listy poniżej.
-          </p>
-        </div>
-        {showCollapse && onCollapse ? (
-          <Button
-            type="button"
-            variant="ghost"
-            size="sm"
-            className="min-h-9 shrink-0 text-indigo-800 hover:bg-indigo-100/80"
-            onClick={onCollapse}
-          >
-            Zwiń
-          </Button>
-        ) : null}
-      </div>
-
+    <div className="space-y-2">
       <form
         className="flex flex-col gap-2"
         onSubmit={(e) => {
@@ -100,7 +74,7 @@ export function ZkWatchAddBar({
             )}
             aria-disabled={!canAdd}
           />
-          <p className="mt-1.5 text-[11px] leading-relaxed text-indigo-900/70">
+          <p className="mt-1.5 text-[11px] leading-relaxed text-slate-500">
             Krótki numer (min. 2 znaki) — ostatnie 30 dni. Pełny format — tylko dany miesiąc.
           </p>
         </div>
@@ -121,15 +95,15 @@ export function ZkWatchAddBar({
       </form>
 
       {!canAdd ? (
-        <p className="mt-2 text-xs leading-relaxed text-amber-900/90">
+        <p className="text-xs leading-relaxed text-amber-900/90">
           {subiektBlockedHint ??
             "Dodawanie ZK wymaga połączenia z systemem magazynowym — poczekaj na przywrócenie połączenia."}
         </p>
       ) : null}
 
       {chooseHint && candidates.length > 0 ? (
-        <div className="mt-3 rounded-md border border-indigo-200/90 bg-white/90 p-2.5">
-          <p className="text-xs font-medium text-indigo-950">{chooseHint}</p>
+        <div className="rounded-md border border-slate-200/90 bg-slate-50/80 p-2.5">
+          <p className="text-xs font-medium text-slate-800">{chooseHint}</p>
           <ul className="mt-2 space-y-1.5">
             {candidates.map((candidate) => {
               const issued = formatIssuedAt(candidate.issuedAt);
@@ -159,7 +133,7 @@ export function ZkWatchAddBar({
           </ul>
           <button
             type="button"
-            className="mt-2 text-xs text-indigo-700 hover:text-indigo-900"
+            className="mt-2 text-xs font-medium text-indigo-700 hover:text-indigo-900"
             onClick={onClearChoose}
           >
             Anuluj wybór

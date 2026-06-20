@@ -39,6 +39,7 @@ export async function readCronRun(
     | "morning_sync"
     | "morning_routine"
     | "catalog_zd_sync"
+    | "zd_eta_sync"
 ): Promise<CronRunPayload | null> {
   try {
     const supabase = createAdminClient();

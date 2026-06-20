@@ -47,9 +47,7 @@ export type VerifyPasswordResetOtpResult =
   | { ok: false; error: string; invalidateCode?: boolean };
 
 function otpPepper(): string {
-  const secret =
-    process.env.PASSWORD_RESET_OTP_SECRET?.trim() ||
-    process.env.SUPABASE_SERVICE_ROLE_KEY?.trim();
+  const secret = process.env.PASSWORD_RESET_OTP_SECRET?.trim();
 
   if (secret) return secret;
 

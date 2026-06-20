@@ -10,6 +10,22 @@ describe("NotatnikListFilterBar", () => {
     cleanup();
   });
 
+  it("stosuje inset w trybie embedded bez bleed", () => {
+    const { container } = render(
+      <NotatnikListFilterBar
+        embedded
+        value=""
+        onChange={vi.fn()}
+        matchCount={0}
+        totalCount={3}
+      />
+    );
+
+    const root = container.firstElementChild;
+    expect(root?.className).toContain("px-3");
+    expect(root?.className).not.toContain("-mx-3");
+  });
+
   it("stosuje bleed w trybie embedded", () => {
     const { container } = render(
       <NotatnikListFilterBar

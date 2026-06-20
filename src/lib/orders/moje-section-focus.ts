@@ -22,6 +22,12 @@ const MOJE_SECTION_FLASH_CLASSES = [
   ...MOJE_SECTION_FLASH_OVERLAY_CLASSES,
 ] as const;
 
+/** Podświetlenie karty — tylko obwódka, bez półprzezroczystego tła na treści. */
+export const MOJE_CARD_OUTLINE_FLASH_CLASSES = [
+  "relative",
+  ...MOJE_SECTION_FLASH_OVERLAY_CLASSES,
+] as const;
+
 export const MOJE_CARD_FLASH_CLASSES = [
   ...MOJE_SECTION_FLASH_CLASSES,
   "after:bg-indigo-50/50",
@@ -43,6 +49,10 @@ export function flashMojeSection(sectionId: string, durationMs = 3200) {
 
 export function flashMojeCard(card: HTMLElement | null, durationMs = 3200) {
   flashMojeElement(card, MOJE_CARD_FLASH_CLASSES, durationMs);
+}
+
+export function flashMojeCardOutline(card: HTMLElement | null, durationMs = 3200) {
+  flashMojeElement(card, MOJE_CARD_OUTLINE_FLASH_CLASSES, durationMs);
 }
 
 export function scrollToMojeSection(
@@ -67,6 +77,59 @@ export function scrollToMojeSectionWhenReady(
   window.setTimeout(() => {
     if (!attempt()) onGiveUp?.();
   }, delayMs);
+}
+
+/** Przewiń do karty prośby — z krótkim opóźnieniem i ponowieniem (np. po rozwinięciu archiwum). */
+export function scrollToMojeCardWhenReady(
+  domId: string,
+  opts?: {
+    behavior?: ScrollBehavior;
+    flash?: boolean;
+    /** tint — obwódka + delikatne tło (Start dnia); outline — samo obramowanie (np. wyszukiwarka). */
+    flashStyle?: "tint" | "outline";
+    initialDelayMs?: number;
+    retryDelayMs?: number;
+    maxAttempts?: number;
+  }
+): () => void {
+  const behavior = opts?.behavior ?? "smooth";
+  const flash = opts?.flash !== false;
+  const flashStyle = opts?.flashStyle ?? "tint";
+  const initialDelayMs = opts?.initialDelayMs ?? 120;
+  const retryDelayMs = opts?.retryDelayMs ?? 120;
+  const maxAttempts = opts?.maxAttempts ?? 2;
+
+  let cancelled = false;
+  const timers: number[] = [];
+  let attempt = 0;
+
+  const schedule = (fn: () => void, delayMs: number) => {
+    timers.push(window.setTimeout(fn, delayMs));
+  };
+
+  const run = () => {
+    if (cancelled) return;
+    attempt += 1;
+    const card = document.getElementById(domId);
+    if (card) {
+      card.scrollIntoView({ behavior, block: "center" });
+      if (flash) {
+        if (flashStyle === "outline") flashMojeCardOutline(card);
+        else flashMojeCard(card);
+      }
+      return;
+    }
+    if (attempt < maxAttempts) {
+      schedule(run, retryDelayMs);
+    }
+  };
+
+  schedule(run, initialDelayMs);
+
+  return () => {
+    cancelled = true;
+    for (const id of timers) window.clearTimeout(id);
+  };
 }
 
 export function parseMojeSectionHash(hash: string): string | null {

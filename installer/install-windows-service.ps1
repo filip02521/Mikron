@@ -209,41 +209,15 @@ function New-ScheduledTask {
 function Install-CronTasks {
   param([string]$Root)
 
-  $cronScript = Join-Path $PSScriptRoot "cron-invoke.ps1"
-  if (-not (Test-Path $cronScript)) {
-    throw "Brak $cronScript"
+  $cronInstaller = Join-Path $PSScriptRoot "install-cron.ps1"
+  if (-not (Test-Path $cronInstaller)) {
+    throw "Brak $cronInstaller"
   }
 
-  Write-Step "Harmonogram zadan (cron)"
-
-  $trMorning = "powershell.exe -NoProfile -ExecutionPolicy Bypass -File `"$cronScript`" -Job morning"
-  New-ScheduledTask "OnTime Cron Morning" @(
-    "/Create", "/F", "/TN", "OnTime Cron Morning", "/TR", $trMorning,
-    "/RU", "SYSTEM", "/RL", "HIGHEST", "/SC", "WEEKLY",
-    "/D", "MON,TUE,WED,THU,FRI", "/ST", "06:00"
-  )
-  Write-Ok "Utworzono zadanie harmonogramu: OnTime Cron Morning (pn-pt 06:00)"
-
-  $tr = "powershell.exe -NoProfile -ExecutionPolicy Bypass -File `"$cronScript`" -Job process-deliveries"
-  New-ScheduledTask "OnTime Cron Process Deliveries" @(
-    "/Create", "/F", "/TN", "OnTime Cron Process Deliveries", "/TR", $tr,
-    "/RU", "SYSTEM", "/RL", "HIGHEST", "/SC", "DAILY",
-    "/ST", "08:00", "/RI", "60", "/DU", "11:00", "/D", "MON,TUE,WED,THU,FRI"
-  )
-  Write-Ok "Utworzono zadanie harmonogramu: OnTime Cron Process Deliveries (pn-pt co godz. 8-18)"
-
-  $trSync = "powershell.exe -NoProfile -ExecutionPolicy Bypass -File `"$cronScript`" -Job catalog-zd-sync"
-  New-ScheduledTask "OnTime Cron Catalog ZD Sync" @(
-    "/Create", "/F", "/TN", "OnTime Cron Catalog ZD Sync", "/TR", $trSync,
-    "/RU", "SYSTEM", "/RL", "HIGHEST", "/SC", "DAILY", "/ST", "02:00"
-  )
-  Write-Ok "Utworzono zadanie harmonogramu: OnTime Cron Catalog ZD Sync (02:00)"
-
-  New-ScheduledTask "OnTime Cron Catalog ZD Sync Continue" @(
-    "/Create", "/F", "/TN", "OnTime Cron Catalog ZD Sync Continue", "/TR", $trSync,
-    "/RU", "SYSTEM", "/RL", "HIGHEST", "/SC", "DAILY", "/ST", "02:20"
-  )
-  Write-Ok "Utworzono zadanie harmonogramu: OnTime Cron Catalog ZD Sync Continue (02:20)"
+  & powershell.exe -NoProfile -ExecutionPolicy Bypass -File $cronInstaller -Install -ProjectRoot $Root
+  if ($LASTEXITCODE -ne 0) {
+    throw "Nie udalo sie skonfigurowac harmonogramu cron"
+  }
 }
 
 function Install-NightlyDeployTask {
@@ -306,13 +280,19 @@ function Uninstall-All {
     & powershell.exe -NoProfile -ExecutionPolicy Bypass -File $deployScript -UninstallScheduledTask | Out-Null
   }
 
-  foreach ($task in @(
-    "OnTime Cron Morning",
-    "OnTime Cron Process Deliveries",
-    "OnTime Cron Catalog ZD Sync",
-    "OnTime Cron Catalog ZD Sync Continue"
-  )) {
-    Remove-ScheduledTaskIfExists $task
+  $cronInstaller = Join-Path $PSScriptRoot "install-cron.ps1"
+  if (Test-Path $cronInstaller) {
+    & powershell.exe -NoProfile -ExecutionPolicy Bypass -File $cronInstaller -Uninstall -ProjectRoot $Root | Out-Null
+  } else {
+    foreach ($task in @(
+      "OnTime Cron Morning",
+      "OnTime Cron Process Deliveries",
+      "OnTime Cron ZD ETA Sync",
+      "OnTime Cron Catalog ZD Sync",
+      "OnTime Cron Catalog ZD Sync Continue"
+    )) {
+      Remove-ScheduledTaskIfExists $task
+    }
   }
 
   Write-Host ""

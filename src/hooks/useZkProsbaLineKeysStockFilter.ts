@@ -29,7 +29,11 @@ const EMPTY_STOCK_FETCH: StockFetchState = {
 export function useZkProsbaLineKeysStockFilter(
   scopeLines: ZkProsbaScopeLineInput[],
   sourceKeys: string[],
-  enabled: boolean
+  enabled: boolean,
+  options?: {
+    /** Gdy podane — tylko zaznaczone klucze trafiają do prośby (tryb opt-in). */
+    orderMarkedKeys?: string[] | null;
+  }
 ) {
   const [fetchState, setFetchState] = useState<StockFetchState>(EMPTY_STOCK_FETCH);
 
@@ -79,17 +83,26 @@ export function useZkProsbaLineKeysStockFilter(
   );
   const stockLoading = enabled && stockMatches && fetchState.loading;
 
-  const lineKeysToOrder = useMemo(
-    () =>
-      enabled
-        ? filterZkProsbaScopeLineKeysNeedingOrder(scopeLines, sourceKeys, stockByTwId)
-        : [...sourceKeys],
-    [enabled, scopeLines, sourceKeys, stockByTwId]
-  );
+  const orderMarkedKeys = options?.orderMarkedKeys;
+
+  const lineKeysToOrder = useMemo(() => {
+    if (!enabled) return [...sourceKeys];
+    if (orderMarkedKeys != null) {
+      const marked = new Set(orderMarkedKeys);
+      return sourceKeys.filter((key) => marked.has(key));
+    }
+    return filterZkProsbaScopeLineKeysNeedingOrder(scopeLines, sourceKeys, stockByTwId);
+  }, [enabled, orderMarkedKeys, scopeLines, sourceKeys, stockByTwId]);
 
   const sourceCount = sourceKeys.length;
-  const excludedByStockCount = sourceCount - lineKeysToOrder.length;
-  const allOnStock = enabled && !stockLoading && sourceCount > 0 && lineKeysToOrder.length === 0;
+  const unmarkedCount = sourceCount - lineKeysToOrder.length;
+  const allOnStock =
+    enabled &&
+    !stockLoading &&
+    sourceCount > 0 &&
+    (options?.orderMarkedKeys != null
+      ? filterZkProsbaScopeLineKeysNeedingOrder(scopeLines, sourceKeys, stockByTwId).length === 0
+      : lineKeysToOrder.length === 0);
   const stockFetchFailed =
     enabled && !stockLoading && zkProsbaScopeStockFetchFailed(scopeLines, stockByTwId);
 
@@ -97,7 +110,9 @@ export function useZkProsbaLineKeysStockFilter(
     stockByTwId,
     stockLoading,
     lineKeysToOrder,
-    excludedByStockCount,
+    /** @deprecated Użyj {@link unmarkedCount} w trybie opt-in. */
+    excludedByStockCount: unmarkedCount,
+    unmarkedCount,
     allOnStock,
     stockFetchFailed,
   };

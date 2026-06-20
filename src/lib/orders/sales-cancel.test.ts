@@ -102,14 +102,16 @@ describe("sales-cancel", () => {
     expect(shouldShowRemainderSpecificLabel(3, 0)).toBe(false);
   });
 
-  it("salesCancelLineRemainderLabel — czytelna etykieta menu", () => {
-    expect(salesCancelLineRemainderLabel()).toBe("Zmień ilość");
-    expect(salesCancelLineRemainderLabel(3)).toBe("Zmień ilość (3 szt.)");
+  it("salesCancelLineRemainderLabel — rezygnacja z reszty u dostawcy", () => {
+    expect(salesCancelLineRemainderLabel()).toBe("Rezygnuj z reszty");
+    expect(salesCancelLineRemainderLabel(3)).toBe("Rezygnuj z reszty (3 szt.)");
   });
 
   it("salesCancelLineRemainderAriaLabel — liczba sztuk dla czytników", () => {
-    expect(salesCancelLineRemainderAriaLabel(4)).toBe("Zmień ilość (4 szt.)");
-    expect(salesCancelLineRemainderAriaLabel(1)).toBe("Zmień ilość");
+    expect(salesCancelLineRemainderAriaLabel(4)).toBe(
+      "Rezygnuj z reszty u dostawcy: 4 sztuki"
+    );
+    expect(salesCancelLineRemainderAriaLabel(1)).toBe("Rezygnuj z reszty u dostawcy");
   });
 
   it("salesCancelLineCustomQtyLabel — zmiana ilości", () => {
@@ -124,7 +126,7 @@ describe("sales-cancel", () => {
     expect(defaultSalesCancelQuantity(o)).toBe(1);
     expect(showSalesCancelRemainderAction(o)).toBe(false);
     expect(showSalesCancelSupplierQuickAction(o)).toBe(true);
-    expect(salesCancelQuickActionLabel()).toBe("Zmień ilość");
+    expect(salesCancelQuickActionLabel()).toBe("Rezygnuj z reszty");
   });
 
   it("showSalesCancelRemainderAction — reszta > 1 przy częściowej dostawie", () => {

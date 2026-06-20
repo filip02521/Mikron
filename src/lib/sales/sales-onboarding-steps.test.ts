@@ -94,7 +94,7 @@ describe("sales onboarding steps", () => {
   it("moje step mentions client label and informacja section", () => {
     const moje = getSalesOnboardingSteps("sales").find((s) => s.id === "moje");
     expect(moje?.bullets.some((b) => /klienta końcowego/i.test(b))).toBe(true);
-    expect(moje?.bullets.some((b) => /Tylko sprawdzamy dostępność/i.test(b))).toBe(true);
+    expect(moje?.bullets.some((b) => /Sprawdzamy dostępność/i.test(b))).toBe(true);
     expect(moje?.navLabel).toBe("Moje zamówienia");
   });
 

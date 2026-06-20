@@ -72,7 +72,7 @@ export default async function PlanPage({
     return (
       <SalesAccountLinkRequired
         title="Harmonogram"
-        description="Kalendarz działu dostaw i wyszukiwarka dostawców. Konto musi być przypisane do profilu handlowca."
+        hint="Kalendarz działu dostaw i wyszukiwarka dostawców. Konto musi być przypisane do profilu handlowca."
       />
     );
   }

@@ -42,4 +42,31 @@ describe("my-order line cancel flags", () => {
     expect(row.lines[1]?.salesCancelPhase).toBe("in_transit");
     expect(row.salesCancelOrderIds).toEqual(["line-a", "line-b"]);
   });
+
+  it("częściowa dostawa w grupie — per linia różne akcje anulowania", () => {
+    const orders = [
+      order("waiting", "Zamowione", { products: "Produkt A", quantity: "2" }),
+      order("partial", "Czesciowo_zrealizowane", {
+        products: "Produkt B",
+        quantity: "5",
+        delivered_quantity: "2",
+      }),
+    ];
+    const { zamowienia } = presentMyOrders(orders, []);
+    const row = zamowienia[0]!;
+    expect(row.lineCount).toBe(2);
+
+    const waiting = row.lines.find((l) => l.id === "waiting")!;
+    expect(waiting.canCancelBySales).toBe(true);
+    expect(waiting.salesCancelPhase).toBe("in_transit");
+    expect(waiting.showSalesCancelRemainder).toBe(false);
+    expect(waiting.showSalesCancelSupplierQuick).toBe(false);
+
+    const partial = row.lines.find((l) => l.id === "partial")!;
+    expect(partial.canCancelBySales).toBe(true);
+    expect(partial.salesCancelPhase).toBe("on_stock");
+    expect(partial.showSalesCancelRemainder).toBe(true);
+    expect(partial.canPartialSalesCancel).toBe(true);
+    expect(partial.defaultSalesCancelQuantity).toBe(3);
+  });
 });

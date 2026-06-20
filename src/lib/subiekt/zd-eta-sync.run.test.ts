@@ -158,6 +158,11 @@ vi.mock("@/lib/supabase/admin", () => ({
         return {
           select: () => ({
             in: () => indexQuery,
+            not: () =>
+              Promise.resolve({
+                data: [{ supplier_id: "s1", subiekt_kh_id: 9001 }],
+                error: null,
+              }),
           }),
         };
       }
@@ -223,6 +228,35 @@ describe("runZdEtaSync (integracja)", () => {
     expect(orderUpdates[0]?.patch.zd_fulfillment_dok_id).toBe(101);
   });
 
+  it("zapisuje zmianę terminu ZD wykrytą przy ponownym sync", async () => {
+    mockOrders = [
+      overdueOrder({
+        zd_fulfillment_source: "zd",
+        zd_fulfillment_deadline: "2026-07-01",
+        zd_fulfillment_dok_nr: "ZD/101/2026",
+        zd_fulfillment_synced_at: "2026-06-01T00:00:00Z",
+      }),
+    ];
+    getSubiektZdDocumentCached.mockResolvedValue(
+      zdDoc(101, "2026-06-01", "ABC-1", "2026-08-15")
+    );
+
+    const result = await runZdEtaSync({
+      salesPersonId: "sp1",
+      maxOrders: 1,
+      maxDocsPerRun: 4,
+      maxDocsPerSupplier: 4,
+      allowLiveSearch: false,
+      force: true,
+    });
+
+    expect(result.updated).toBe(1);
+    expect(orderUpdates[0]?.patch.zd_fulfillment_deadline).toBe("2026-08-15");
+    expect(orderUpdates[0]?.patch.zd_fulfillment_previous_deadline).toBe("2026-07-01");
+    expect(orderUpdates[0]?.patch.zd_fulfillment_deadline_changed_at).toBeDefined();
+    expect(orderUpdates[0]?.patch.zd_fulfillment_deadline_change_seen_at).toBeNull();
+  });
+
   it("przy backupie bez dopasowania tylko odświeża synced_at gdy termin już zapisany", async () => {
     mockOrders = [
       overdueOrder({
@@ -249,7 +283,7 @@ describe("runZdEtaSync (integracja)", () => {
     expect(orderUpdates[0]?.patch.zd_fulfillment_synced_at).toBeDefined();
   });
 
-  it("przy force i pełnym przeszukaniu czyści nieaktualny termin ZD", async () => {
+  it("przy force zachowuje aktywny termin ZD gdy brak nowego dopasowania", async () => {
     mockOrders = [
       overdueOrder({
         zd_fulfillment_source: "zd",
@@ -271,9 +305,9 @@ describe("runZdEtaSync (integracja)", () => {
       force: true,
     });
 
-    expect(result.cleared).toBe(1);
-    expect(orderUpdates[0]?.patch.zd_fulfillment_deadline).toBeNull();
-    expect(orderUpdates[0]?.patch.zd_fulfillment_source).toBeNull();
+    expect(result.cleared).toBe(0);
+    expect(orderUpdates[0]?.patch.zd_fulfillment_deadline).toBeUndefined();
+    expect(orderUpdates[0]?.patch.zd_fulfillment_synced_at).toBeDefined();
   });
 
   it("wybiera najwcześniejszy termin ZD przy wielu dopasowaniach w indeksie", async () => {

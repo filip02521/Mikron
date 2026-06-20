@@ -14,14 +14,10 @@ export const metadata: Metadata = pageMetadataFor("noweZamowienia");
 export default async function NoweZamowieniePage() {
   const role = await getAppRole();
   let suppliers: Awaited<ReturnType<typeof fetchSupplierFormContext>>["suppliers"] = [];
-  let statsBySupplierId: Awaited<
-    ReturnType<typeof fetchSupplierFormContext>
-  >["statsBySupplierId"] = {};
   let salesPeople: { id: string; name: string }[] = [];
   try {
     const ctx = await fetchSupplierFormContext();
     suppliers = ctx.suppliers;
-    statsBySupplierId = ctx.statsBySupplierId;
     salesPeople = await fetchSalesPeopleForPicker();
   } catch {
     /* empty */
@@ -41,7 +37,6 @@ export default async function NoweZamowieniePage() {
     <div className={procurementArchivePageShellClass}>
       <OrderFormClient
         suppliers={suppliers}
-        statsBySupplierId={statsBySupplierId}
         salesPeople={salesPeople}
         lockedSalesPerson={lockedSalesPerson}
       />

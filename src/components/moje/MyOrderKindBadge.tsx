@@ -6,7 +6,14 @@ import {
 } from "@/lib/orders/my-order-kind-badge";
 import type { MyOrderRow } from "@/lib/orders/my-order-presenter";
 
-export function MyOrderKindBadge({ row }: { row: Pick<MyOrderRow, "kind"> }) {
+export function MyOrderKindBadge({
+  row,
+  listKind,
+}: {
+  row: Pick<MyOrderRow, "kind">;
+  listKind?: "zamowienie" | "informacja";
+}) {
+  if (listKind === "informacja") return null;
   if (!shouldShowMyOrderKindBadge(row)) return null;
 
   return (

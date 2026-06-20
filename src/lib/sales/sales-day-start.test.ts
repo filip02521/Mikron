@@ -4,6 +4,7 @@ import type { SalesBoardAttentionSnapshot } from "@/lib/data/department-board";
 import {
   buildSalesDayStartSnapshot,
   salesDayStartNavCount,
+  salesDayStartPanelDescription,
   sliceSalesDayStartItems,
 } from "./sales-day-start";
 
@@ -52,7 +53,7 @@ describe("buildSalesDayStartSnapshot", () => {
     expect(pickupItems).toHaveLength(1);
     expect(pickupItems[0]?.id).toBe("pickup-ready");
     expect(pickupItems[0]?.count).toBe(4);
-    expect(pickupItems[0]?.title).toBe("Potwierdź odbiór (4)");
+    expect(pickupItems[0]?.title).toBe("Potwierdź odbiór z regału (4)");
     expect(pickupItems[0]?.ctaLabel).toBe("Przejdź");
     expect(pickupItems[0]?.scrollTarget).toBe("moje-section-action");
     expect(snapshot.totalActionCount).toBe(3);
@@ -175,6 +176,26 @@ describe("buildSalesDayStartSnapshot", () => {
     expect(item?.source).toBe("zk_follow_up");
   });
 
+  it("kieruje potwierdzenie informacji do sekcji informacji na dole listy", () => {
+    const snapshot = buildSalesDayStartSnapshot({
+      rows: [
+        row({
+          id: "inf",
+          kind: "informacja",
+          acknowledgeMode: "availability",
+          pickupPendingCount: 1,
+          pickupPendingIds: ["o-inf"],
+          orderIds: ["o-inf"],
+        }),
+      ],
+    });
+
+    const item = snapshot.items.find((i) => i.source === "informacja_ready");
+    expect(item?.scrollTarget).toBe("moje-section-informacja");
+    expect(item?.href).toContain("moje-section-informacja");
+    expect(item?.href).toContain("focusOrders=o-inf");
+  });
+
   it("cleared gdy brak akcji", () => {
     const snapshot = buildSalesDayStartSnapshot({ rows: [] });
     expect(snapshot.cleared).toBe(true);
@@ -217,5 +238,13 @@ describe("sliceSalesDayStartItems", () => {
     const sliced = sliceSalesDayStartItems(items, false, 6);
     expect(sliced.visible).toHaveLength(6);
     expect(sliced.hiddenCount).toBe(2);
+  });
+});
+
+describe("salesDayStartPanelDescription", () => {
+  it("opisuje wszystkie typy zadań, nie tylko odbiór", () => {
+    expect(salesDayStartPanelDescription(1)).toContain("1 pilna sprawa");
+    expect(salesDayStartPanelDescription(8)).toContain("8 pilnych spraw");
+    expect(salesDayStartPanelDescription(8)).not.toContain("regału");
   });
 });

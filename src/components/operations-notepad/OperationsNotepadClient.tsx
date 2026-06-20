@@ -45,12 +45,10 @@ import { OperationsArchivedNotesSection } from "@/components/operations-notepad/
 import { OPERATIONS_NOTEPAD_PAGE_CLASS } from "@/components/operations-notepad/operations-notepad-layout";
 import { NotatnikPanel } from "@/components/notatnik/NotatnikPanel";
 import { NotatnikCollapsible } from "@/components/notatnik/NotatnikCollapsible";
-import { KeyboardShortcutsHint } from "@/components/ui/KeyboardShortcutsHint";
+import { SalesKeyboardShortcutsStrip } from "@/components/sales/SalesKeyboardShortcutsStrip";
+import { SALES_PAGE_HEADER_HINTS } from "@/lib/sales/sales-page-ui-copy";
 import { cn } from "@/lib/cn";
 import { useUndoShortcutLabel } from "@/lib/platform/keyboard-shortcut-label";
-
-const OPERATIONS_NOTEPAD_INTRO =
-  "Prywatne karteczki i wspólna tablica działu. Przypomnienia nie trafiają do panelu dziennego.";
 
 type OperationsUndoState = (
   | { type: "archive"; note: OperationsNote; visibility: OperationsNoteVisibility }
@@ -253,16 +251,16 @@ export function OperationsNotepadClient({
           inset
           density="compact"
           title="Notatki"
-          description={OPERATIONS_NOTEPAD_INTRO}
+          hint={SALES_PAGE_HEADER_HINTS.operationsNotepad}
+          hintAriaLabel="O notatkach operacyjnych"
           leading={
             <SectionHeadingIcon tileClassName={sectionIconTileBrandClass}>
               <IconNotepad size={20} />
             </SectionHeadingIcon>
           }
-          action={
-            <KeyboardShortcutsHint items={[...NOTATNIK_KEYBOARD_HINTS]} compact />
-          }
         />
+
+        <SalesKeyboardShortcutsStrip items={NOTATNIK_KEYBOARD_HINTS} embedded />
 
         {allowedDepartments.length > 1 ? (
           <div

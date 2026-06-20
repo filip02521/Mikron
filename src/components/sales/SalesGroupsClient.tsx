@@ -14,6 +14,8 @@ import { Toast } from "@/components/ui/Toast";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { Badge } from "@/components/ui/Badge";
+import { cn } from "@/lib/cn";
+import { salesChromeInsetClass, salesTypography } from "@/lib/ui/ontime-theme";
 
 type FormState = { id?: string; name: string; sortOrder: string };
 
@@ -23,11 +25,16 @@ export function SalesGroupsClient({
   initial,
   canCreateGroups = true,
   readOnlyPreview = false,
+  embeddedInTeamWorkspace = false,
+  loadError,
 }: {
   initial: SalesGroupRow[];
   /** false — kierownik: tylko edycja przypisanych grup */
   canCreateGroups?: boolean;
   readOnlyPreview?: boolean;
+  /** W /zespol/grupy — bez drugiej karty wokół listy i bez powtarzającego opisu. */
+  embeddedInTeamWorkspace?: boolean;
+  loadError?: string | null;
 }) {
   const router = useRouter();
   const [deletedIds, setDeletedIds] = useState<Set<string>>(() => new Set());
@@ -53,6 +60,11 @@ export function SalesGroupsClient({
   const resetForm = () => {
     setForm(emptyForm());
     setFormOpen(false);
+  };
+
+  const openCreateForm = () => {
+    setForm(emptyForm());
+    setFormOpen(true);
   };
 
   const startEdit = (group: SalesGroupRow) => {
@@ -81,6 +93,170 @@ export function SalesGroupsClient({
       router.refresh();
     });
   };
+
+  const groupsListHeader = (
+    <CardHeader
+      inset
+      density="compact"
+      title={`Grupy (${groups.length})`}
+      description={
+        embeddedInTeamWorkspace
+          ? canCreateGroups
+            ? "Kolejność sortowania — mniejsza liczba wyżej w podglądzie zespołu."
+            : "Możesz edytować nazwę i kolejność przypisanych grup."
+          : undefined
+      }
+      action={
+        canCreateGroups && !readOnlyPreview && !formOpen ? (
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={openCreateForm}
+            className={embeddedInTeamWorkspace ? undefined : "sm:min-h-9"}
+          >
+            + Nowa grupa
+          </Button>
+        ) : null
+      }
+    />
+  );
+
+  const groupsList =
+    !groups.length && canCreateGroups ? (
+      <EmptyState
+        title="Brak grup"
+        description="Dodaj Sklep, Biuro lub własne działy — potem przypisz handlowców."
+      />
+    ) : (
+      <ul className="divide-y divide-slate-100">
+        {groups.map((g) => (
+          <li
+            key={g.id}
+            className={cn(
+              "flex flex-wrap items-center justify-between gap-x-4 gap-y-2 py-3",
+              embeddedInTeamWorkspace ? salesChromeInsetClass : "px-4 sm:px-5"
+            )}
+          >
+            <div className="min-w-0">
+              <p className={salesTypography.rowTitle}>{g.name}</p>
+              <p
+                className={cn(
+                  salesTypography.rowMeta,
+                  "mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-1"
+                )}
+              >
+                <span>Kolejność: {g.sortOrder}</span>
+                <span title="Handlowcy widoczni w podglądzie zespołu">
+                  <Badge variant="default" className="text-[10px]">
+                    {g.memberCount}{" "}
+                    {g.memberCount === 1
+                      ? "handlowiec"
+                      : g.memberCount < 5
+                        ? "handlowcy"
+                        : "handlowców"}
+                  </Badge>
+                </span>
+              </p>
+            </div>
+            <div className="flex shrink-0 gap-2">
+              {!readOnlyPreview ? (
+                <Button variant="ghost" size="sm" onClick={() => startEdit(g)}>
+                  Edytuj
+                </Button>
+              ) : null}
+              {canCreateGroups && !readOnlyPreview ? (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="text-rose-600 hover:text-rose-700"
+                  disabled={g.memberCount > 0}
+                  title={
+                    g.memberCount > 0
+                      ? "Najpierw przenieś handlowców do innej grupy"
+                      : undefined
+                  }
+                  onClick={() => setDeleteTarget(g)}
+                >
+                  Usuń
+                </Button>
+              ) : null}
+            </div>
+          </li>
+        ))}
+      </ul>
+    );
+
+  const groupForm = formOpen && !readOnlyPreview ? (
+    <>
+      <CardHeader
+        inset
+        density="compact"
+        title={form.id ? "Edytuj grupę" : "Nowa grupa"}
+        description="Kolejność sortowania — mniejsza liczba wyżej na liście podglądu."
+      />
+      <form
+        className={cn(
+          "grid gap-4 pb-4 sm:grid-cols-2",
+          embeddedInTeamWorkspace ? salesChromeInsetClass : undefined
+        )}
+        onSubmit={(e) => {
+          e.preventDefault();
+          save();
+        }}
+      >
+        <Field label="Nazwa">
+          <Input
+            placeholder="np. Sklep"
+            value={form.name}
+            onChange={(e) => setForm({ ...form, name: e.target.value })}
+          />
+        </Field>
+        <Field label="Kolejność">
+          <Input
+            type="number"
+            min={0}
+            value={form.sortOrder}
+            onChange={(e) => setForm({ ...form, sortOrder: e.target.value })}
+          />
+        </Field>
+        <div className="flex flex-wrap gap-2 sm:col-span-2">
+          <Button type="submit" disabled={pending || !form.name.trim()}>
+            {form.id ? "Zapisz" : "Dodaj grupę"}
+          </Button>
+          <Button type="button" variant="secondary" onClick={resetForm}>
+            Anuluj
+          </Button>
+        </div>
+      </form>
+    </>
+  ) : null;
+
+  const groupFormSection = groupForm
+    ? embeddedInTeamWorkspace
+      ? <div className="border-b border-slate-100">{groupForm}</div>
+      : (
+          <Card>
+            {groupForm}
+          </Card>
+        )
+    : null;
+
+  const groupsListSection =
+    groups.length > 0 || canCreateGroups ? (
+      embeddedInTeamWorkspace ? (
+        <div className="border-t border-slate-100">
+          {groupsListHeader}
+          {groupsList}
+        </div>
+      ) : (
+        <Card padding={false}>
+          {groupsListHeader}
+          {groupsList}
+        </Card>
+      )
+    ) : null;
+
+  if (loadError) return null;
 
   return (
     <>
@@ -119,23 +295,13 @@ export function SalesGroupsClient({
         }}
       />
 
-      <section className="space-y-6">
-        <p className="text-sm text-slate-600">
-          {canCreateGroups
-            ? "Grupy porządkują podgląd zespołu (np. Sklep i Biuro). Przypisanie handlowca ustawiasz w Handlowcy. Kierowników grup przypisujesz w Admin → Użytkownicy."
-            : "Widzisz tylko grupy przypisane do Twojego konta — możesz zmienić nazwę i kolejność. Nowe grupy zakłada administrator."}
-        </p>
-
-        {canCreateGroups && !readOnlyPreview && !formOpen ? (
-          <Button
-            variant="outline"
-            onClick={() => {
-              setForm(emptyForm());
-              setFormOpen(true);
-            }}
-          >
-            + Nowa grupa
-          </Button>
+      <section className={cn(embeddedInTeamWorkspace ? "space-y-0" : "space-y-6")}>
+        {!embeddedInTeamWorkspace ? (
+          <p className="text-sm text-slate-600">
+            {canCreateGroups
+              ? "Grupy porządkują podgląd zespołu (np. Sklep i Biuro). Przypisanie handlowca ustawiasz w Handlowcy. Kierowników grup przypisujesz w Admin → Użytkownicy."
+              : "Widzisz tylko grupy przypisane do Twojego konta — możesz zmienić nazwę i kolejność. Nowe grupy zakłada administrator."}
+          </p>
         ) : null}
 
         {!canCreateGroups && !groups.length ? (
@@ -145,99 +311,8 @@ export function SalesGroupsClient({
           />
         ) : null}
 
-        {formOpen && !readOnlyPreview ? (
-          <Card>
-            <CardHeader
-              title={form.id ? "Edytuj grupę" : "Nowa grupa"}
-              description="Kolejność sortowania — mniejsza liczba wyżej na liście podglądu."
-            />
-            <form
-              className="grid gap-4 sm:grid-cols-2"
-              onSubmit={(e) => {
-                e.preventDefault();
-                save();
-              }}
-            >
-              <Field label="Nazwa">
-                <Input
-                  placeholder="np. Sklep"
-                  value={form.name}
-                  onChange={(e) => setForm({ ...form, name: e.target.value })}
-                />
-              </Field>
-              <Field label="Kolejność">
-                <Input
-                  type="number"
-                  min={0}
-                  value={form.sortOrder}
-                  onChange={(e) => setForm({ ...form, sortOrder: e.target.value })}
-                />
-              </Field>
-              <div className="flex flex-wrap gap-2 sm:col-span-2">
-                <Button type="submit" disabled={pending || !form.name.trim()}>
-                  {form.id ? "Zapisz" : "Dodaj grupę"}
-                </Button>
-                <Button type="button" variant="secondary" onClick={resetForm}>
-                  Anuluj
-                </Button>
-              </div>
-            </form>
-          </Card>
-        ) : null}
-
-        {groups.length > 0 || canCreateGroups ? (
-        <Card padding={false}>
-          <CardHeader inset title={`Grupy (${groups.length})`} />
-          {!groups.length && canCreateGroups ? (
-            <EmptyState
-              title="Brak grup"
-              description="Dodaj Sklep, Biuro lub własne działy — potem przypisz handlowców."
-            />
-          ) : (
-            <ul className="divide-y divide-slate-100">
-              {groups.map((g) => (
-                <li
-                  key={g.id}
-                  className="flex flex-wrap items-center justify-between gap-3 px-4 py-3 sm:px-5"
-                >
-                  <div>
-                    <p className="font-medium text-slate-900">{g.name}</p>
-                    <p className="text-xs text-slate-500">
-                      Kolejność: {g.sortOrder} ·{" "}
-                      <Badge variant="default" className="ml-0.5 text-[10px]">
-                        {g.memberCount} handlowców
-                      </Badge>
-                    </p>
-                  </div>
-                  <div className="flex gap-1">
-                    {!readOnlyPreview ? (
-                      <Button variant="ghost" size="sm" onClick={() => startEdit(g)}>
-                        Edytuj
-                      </Button>
-                    ) : null}
-                    {canCreateGroups && !readOnlyPreview ? (
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="text-rose-600 hover:text-rose-700"
-                        disabled={g.memberCount > 0}
-                        title={
-                          g.memberCount > 0
-                            ? "Najpierw przenieś handlowców do innej grupy"
-                            : undefined
-                        }
-                        onClick={() => setDeleteTarget(g)}
-                      >
-                        Usuń
-                      </Button>
-                    ) : null}
-                  </div>
-                </li>
-              ))}
-            </ul>
-          )}
-        </Card>
-        ) : null}
+        {groupFormSection}
+        {groupsListSection}
       </section>
     </>
   );

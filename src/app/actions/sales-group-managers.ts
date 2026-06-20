@@ -1,7 +1,9 @@
 "use server";
 
+// @service-role-ok — autoryzacja require*(); service role z pełnym scope po warstwie aplikacji.
+
 import { revalidatePath } from "next/cache";
-import { requireAdmin } from "@/lib/auth";
+import { requireAdminForMutation } from "@/lib/auth";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { replaceSalesManagerGroupsForProfile } from "@/lib/users/sales-manager-groups-db";
 
@@ -16,7 +18,7 @@ export async function actionSetSalesManagerGroups(
   profileId: string,
   groupIds: string[]
 ): Promise<{ success: true } | { error: string }> {
-  await requireAdmin();
+  await requireAdminForMutation();
 
   const pid = profileId?.trim();
   if (!pid) return { error: "Brak identyfikatora użytkownika." };

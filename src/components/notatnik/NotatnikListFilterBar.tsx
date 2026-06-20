@@ -20,6 +20,8 @@ export function NotatnikListFilterBar({
   enableShortcut = true,
   embedded = false,
   bleed = false,
+  showIdleHint = true,
+  showActiveDetail = true,
 }: {
   value: string;
   onChange: (value: string) => void;
@@ -34,8 +36,12 @@ export function NotatnikListFilterBar({
   visibleLabel?: string;
   enableShortcut?: boolean;
   embedded?: boolean;
-  /** Pełna szerokość obramowania w panelu z paddingiem (jak lista /moje). */
+  /** Pełna szerokość w panelu z paddingiem rodzica — wymaga `px-3 sm:px-4` u nadkomponentu. */
   bleed?: boolean;
+  /** Akapit pod polem gdy brak frazy — domyślnie włączony (ZK, plan). */
+  showIdleHint?: boolean;
+  /** Drugi wiersz pod licznikiem wyników. */
+  showActiveDetail?: boolean;
 }) {
   const inputId = useId();
   const trimmed = value.trim();
@@ -142,10 +148,12 @@ export function NotatnikListFilterBar({
               </button>
             </span>
           ) : (
-            <span className="mt-1 block text-slate-500">{activeHint}</span>
+            showActiveDetail ? (
+              <span className="mt-1 block text-slate-500">{activeHint}</span>
+            ) : null
           )}
         </p>
-      ) : (
+      ) : showIdleHint ? (
         <p className="mt-2 text-xs text-slate-500">
           {idleHint}
           {enableShortcut ? (
@@ -158,7 +166,7 @@ export function NotatnikListFilterBar({
             </span>
           ) : null}
         </p>
-      )}
+      ) : null}
     </div>
   );
 }

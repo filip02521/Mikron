@@ -378,33 +378,7 @@ install_cron_jobs() {
     return 0
   fi
 
-  # shellcheck disable=SC1091
-  source "$ROOT/.env.local"
-  local cron_file="/tmp/system-dostaw.cron"
-  local base="http://127.0.0.1:${PORT}"
-
-  cat >"$cron_file" <<EOF
-# OnTime — wygenerowane przez scripts/server-setup.sh
-SHELL=/bin/bash
-PATH=/usr/local/sbin:/usr/local/bin:/sbin:/bin:/usr/sbin:/usr/bin
-CRON_SECRET=${CRON_SECRET}
-BASE=${base}
-
-# Pon–pt 6:00 Warszawa (serwer w Europe/Warsaw)
-0 6 * * 1-5 root curl -fsS -H "Authorization: Bearer \$CRON_SECRET" "\$BASE/api/cron/morning" >> /var/log/system-dostaw-cron.log 2>&1
-
-# Co godzinę 8–18 — zapasowe domknięcie dostaw
-0 8-18 * * 1-5 root curl -fsS -H "Authorization: Bearer \$CRON_SECRET" "\$BASE/api/cron/process-deliveries" >> /var/log/system-dostaw-cron.log 2>&1
-
-# Noc — synchronizacja katalogu ZD (wymaga Subiekta w LAN)
-0 2 * * * root curl -fsS -H "Authorization: Bearer \$CRON_SECRET" "\$BASE/api/cron/catalog-zd-sync" >> /var/log/system-dostaw-catalog.log 2>&1
-20 2 * * * root curl -fsS -H "Authorization: Bearer \$CRON_SECRET" "\$BASE/api/cron/catalog-zd-sync" >> /var/log/system-dostaw-catalog.log 2>&1
-EOF
-
-  log "Wygenerowano ${cron_file}"
-  log "Instalacja (jako root):"
-  log "  sudo cp ${cron_file} /etc/cron.d/system-dostaw"
-  log "  sudo chmod 644 /etc/cron.d/system-dostaw"
+  bash "$ROOT/scripts/install-cron.sh" --output /tmp/system-dostaw.cron
 }
 
 print_summary() {
