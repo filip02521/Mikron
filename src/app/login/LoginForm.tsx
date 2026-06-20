@@ -19,10 +19,8 @@ import {
   LOGIN_RESET_LINK_SENDING,
 } from "@/lib/auth/login-form-copy";
 import { requestPasswordResetCode } from "@/lib/auth/password-reset-client";
-import {
-  readStoredPasswordResetSession,
-  writeStoredPasswordResetSession,
-} from "@/lib/auth/login-password-reset-session";
+import { writeStoredPasswordResetSession } from "@/lib/auth/login-password-reset-session";
+import { useStoredPasswordResetSession } from "@/lib/auth/use-stored-password-reset-session";
 import { LoginAccountPicker } from "@/components/auth/LoginAccountPicker";
 import { useLoginDirectorySearch } from "@/lib/auth/use-login-directory-search";
 import { LoginQuickAccountGreeting } from "@/components/auth/LoginQuickAccountGreeting";
@@ -76,28 +74,19 @@ export function LoginForm({
   const [accountSelectionOverride, setAccountSelectionOverride] =
     useState<AccountSelection | null>(null);
   const [manualEmail, setManualEmail] = useState("");
-  const [useManualEmail, setUseManualEmail] = useState(
-    () => preloadedAccounts.length === 0 && !readLoginLastAccountId()
-  );
+  const [useManualEmail, setUseManualEmail] = useState(false);
   const [password, setPassword] = useState("");
   const [bannerError, setBannerError] = useState("");
   const [passwordError, setPasswordError] = useState("");
   const [loading, setLoading] = useState(false);
   const [resetSending, setResetSending] = useState(false);
-  const [resetSession, setResetSession] = useState<{
+  const [resetSessionOverride, setResetSessionOverride] = useState<{
     accountId: string;
     maskedEmail: string;
     resendAvailableAt: string;
-  } | null>(() => {
-    if (typeof window === "undefined") return null;
-    const stored = readStoredPasswordResetSession();
-    if (!stored) return null;
-    return {
-      accountId: stored.accountId,
-      maskedEmail: stored.maskedEmail,
-      resendAvailableAt: stored.resendAvailableAt,
-    };
-  });
+  } | null>(null);
+  const restoredResetSession = useStoredPasswordResetSession();
+  const resetSession = resetSessionOverride ?? restoredResetSession;
   const errorRef = useRef<HTMLDivElement>(null);
 
   const derivedAccountSelection = useMemo(
@@ -187,7 +176,7 @@ export function LoginForm({
   const canResetPassword = !useManualEmail && Boolean(selectedAccountId);
 
   const exitPasswordReset = useCallback(() => {
-    setResetSession(null);
+    setResetSessionOverride(null);
     writeStoredPasswordResetSession(null);
     setBannerError("");
     setPasswordError("");
@@ -196,7 +185,7 @@ export function LoginForm({
 
   const persistResetSession = useCallback(
     (session: { accountId: string; maskedEmail: string; resendAvailableAt: string }) => {
-      setResetSession(session);
+      setResetSessionOverride(session);
       writeStoredPasswordResetSession({
         ...session,
         startedAt: new Date().toISOString(),
