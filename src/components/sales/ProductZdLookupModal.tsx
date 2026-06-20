@@ -6,16 +6,24 @@ import { actionLookupProductZdDelivery } from "@/app/actions/product-zd-lookup";
 import type { ProductZdLookupResult } from "@/lib/subiekt/product-zd-lookup";
 import { DeliveryDateMetaValue } from "@/components/orders/DeliveryDateMetaValue";
 import { DeliveryTimingMeta } from "@/components/orders/DeliveryTimingMeta";
-import { ZdEtaNoMatchMeta } from "@/components/orders/ZdEtaNoMatchMeta";
 import { SubiektFeedbackAlert } from "@/components/subiekt/SubiektFeedbackAlert";
 import { Button } from "@/components/ui/Button";
 import { Field, Input } from "@/components/ui/Field";
 import { ModalShell } from "@/components/ui/ModalShell";
 import { Alert } from "@/components/ui/Alert";
+import { Spinner } from "@/components/ui/Spinner";
 import {
   TypeaheadDropdown,
   TypeaheadOption,
+  TypeaheadSectionLabel,
 } from "@/components/ui/TypeaheadDropdown";
+import {
+  IconCalendar,
+  IconCircleCheck,
+  IconPackage,
+  IconSearch,
+  IconTruck,
+} from "@/components/icons/StrokeIcons";
 import { useDebouncedValue } from "@/hooks/useDebouncedValue";
 import { cn } from "@/lib/cn";
 import { formatPlDate } from "@/lib/display-labels";
@@ -39,9 +47,30 @@ import {
   minProductSearchLength,
 } from "@/lib/subiekt/product-pick";
 import type { SubiektProduct } from "@/lib/subiekt/types";
-import { brandLinkClass, salesTypography } from "@/lib/ui/ontime-theme";
+import { mojeShipmentSectionShellClass } from "@/lib/ui/moje-shipment-row-styles";
+import { salesTypography } from "@/lib/ui/ontime-theme";
 
 type LookupPhase = "search" | "loading" | "result";
+
+function IntroStepCard({
+  step,
+  title,
+  detail,
+}: {
+  step: number;
+  title: string;
+  detail: string;
+}) {
+  return (
+    <div className="rounded-lg border border-indigo-100/90 bg-indigo-50/35 px-3 py-2.5 text-center">
+      <span className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-indigo-100 text-xs font-bold text-indigo-800">
+        {step}
+      </span>
+      <p className="mt-2 text-xs font-semibold text-slate-900">{title}</p>
+      <p className="mt-0.5 text-[11px] leading-snug text-slate-600">{detail}</p>
+    </div>
+  );
+}
 
 function LookupStep({
   label,
@@ -50,14 +79,33 @@ function LookupStep({
   label: string;
   state: ProductZdLookupStepState;
 }) {
-  const marker =
-    state === "done" ? "✓" : state === "active" ? "…" : state === "skipped" ? "—" : "○";
   return (
-    <li className={cn("flex items-start gap-2 text-sm", productZdLookupStepClass(state))}>
-      <span aria-hidden className="mt-0.5 w-4 shrink-0 text-center font-semibold">
-        {marker}
+    <li
+      className={cn(
+        "flex items-center gap-3 rounded-lg border px-3 py-2.5 transition-colors",
+        productZdLookupStepClass(state)
+      )}
+    >
+      <span
+        className={cn(
+          "flex h-7 w-7 shrink-0 items-center justify-center rounded-full border text-xs font-bold",
+          state === "done"
+            ? "border-emerald-300 bg-white text-emerald-700"
+            : state === "active"
+              ? "border-indigo-300 bg-white text-indigo-700"
+              : "border-slate-200 bg-white text-slate-400"
+        )}
+        aria-hidden
+      >
+        {state === "done" ? (
+          <IconCircleCheck size={16} strokeWidth={2.2} />
+        ) : state === "active" ? (
+          <Spinner size="sm" />
+        ) : (
+          "·"
+        )}
       </span>
-      <span>{label}</span>
+      <span className="min-w-0 text-sm leading-snug">{label}</span>
     </li>
   );
 }
@@ -65,29 +113,42 @@ function LookupStep({
 function ProductSummaryCard({ product }: { product: SubiektProduct }) {
   const symbol = product.tw_Symbol?.trim() || "—";
   const name = product.tw_Nazwa?.trim() || symbol;
+  const initials = name
+    .split(/\s+/)
+    .slice(0, 2)
+    .map((part) => part[0]?.toUpperCase() ?? "")
+    .join("");
   const stock =
     product.tw_Stan != null && product.tw_StanRez != null
       ? Math.max(0, Number(product.tw_Stan) - Number(product.tw_StanRez))
       : null;
 
   return (
-    <div className="rounded-lg border border-indigo-100 bg-indigo-50/60 px-3 py-2.5">
-      <p className="text-sm font-semibold text-slate-900">{name}</p>
-      <p className={cn("mt-0.5 text-xs text-slate-600", salesTypography.rowMeta)}>
-        Symbol: <span className="font-medium text-slate-800">{symbol}</span>
-        {product.tw_PLU?.trim() ? (
-          <>
-            {" "}
-            · Mikran: <span className="font-medium text-slate-800">{product.tw_PLU.trim()}</span>
-          </>
-        ) : null}
-      </p>
-      {stock != null ? (
-        <p className="mt-1 text-xs text-slate-600">
-          Stan magazynowy:{" "}
-          <span className="font-semibold tabular-nums text-slate-900">{stock}</span>
+    <div className="flex items-start gap-3 rounded-xl border border-indigo-100 bg-gradient-to-br from-indigo-50/80 to-white px-4 py-3.5">
+      <span
+        className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-indigo-100 text-sm font-bold text-indigo-800"
+        aria-hidden
+      >
+        {initials || "?"}
+      </span>
+      <div className="min-w-0 flex-1">
+        <p className="truncate text-sm font-semibold text-slate-900">{name}</p>
+        <p className={cn("mt-1 text-xs text-slate-600", salesTypography.rowMeta)}>
+          Symbol <span className="font-medium text-slate-800">{symbol}</span>
+          {product.tw_PLU?.trim() ? (
+            <>
+              {" "}
+              · Mikran <span className="font-medium text-slate-800">{product.tw_PLU.trim()}</span>
+            </>
+          ) : null}
         </p>
-      ) : null}
+        {stock != null ? (
+          <p className="mt-1.5 text-xs text-slate-600">
+            Stan magazynowy:{" "}
+            <span className="font-semibold tabular-nums text-slate-900">{stock}</span>
+          </p>
+        ) : null}
+      </div>
     </div>
   );
 }
@@ -107,25 +168,26 @@ function FoundMatchRow({
   const display = parsed ? buildDeliveryDateMetaDisplay(parsed) : null;
 
   return (
-    <div className="rounded-lg border border-emerald-200/80 bg-emerald-50/70 px-3 py-3">
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div className="min-w-0 space-y-1">
+    <div className="overflow-hidden rounded-xl border border-emerald-200/90 bg-gradient-to-br from-emerald-50/90 to-white shadow-sm shadow-emerald-900/5">
+      <div className="border-b border-emerald-100/90 bg-emerald-100/40 px-4 py-2.5">
+        <div className="flex items-center gap-2">
+          <IconCircleCheck size={18} className="shrink-0 text-emerald-700" aria-hidden />
           <p className="text-sm font-semibold text-emerald-950">Towar zamówiony u dostawcy</p>
-          <p className="text-xs text-emerald-900/85">
-            {supplierName ? (
-              <>
-                Dostawca: <span className="font-medium">{supplierName}</span>
-              </>
-            ) : (
-              "Dopasowany dokument ZD w Subiekcie"
-            )}
-          </p>
+        </div>
+      </div>
+      <div className="flex flex-wrap items-start justify-between gap-4 px-4 py-3.5">
+        <div className="min-w-0 space-y-1.5">
+          {supplierName ? (
+            <p className="text-xs text-emerald-900/85">
+              Dostawca: <span className="font-semibold text-emerald-950">{supplierName}</span>
+            </p>
+          ) : null}
           <p className="text-xs text-emerald-900/80">
-            Dokument: <span className="font-medium">{dokNr}</span>
+            Dokument ZD: <span className="font-semibold text-emerald-950">{dokNr}</span>
             {quantity != null ? (
               <>
                 {" "}
-                · ilość: <span className="font-medium tabular-nums">{quantity}</span>
+                · ilość <span className="font-semibold tabular-nums">{quantity}</span>
               </>
             ) : null}
           </p>
@@ -275,77 +337,127 @@ export function ProductZdLookupModal({
     };
   }, [selectedProduct]);
 
-  const footer =
-    phase === "result" ? (
-      <div className="flex flex-wrap justify-end gap-2">
-        <Button type="button" variant="ghost" onClick={reset}>
-          {PRODUCT_ZD_LOOKUP_MODAL.searchAgain}
-        </Button>
-        <Button type="button" onClick={onClose}>
-          {PRODUCT_ZD_LOOKUP_MODAL.close}
-        </Button>
-      </div>
-    ) : undefined;
+  const typeaheadOpen = suggestions.length > 0 && !selectedProduct && phase === "search";
 
   return (
     <ModalShell
       open={open}
       onClose={onClose}
       title={PRODUCT_ZD_LOOKUP_MODAL.title}
+      description={PRODUCT_ZD_LOOKUP_MODAL.description}
       titleHint={PRODUCT_ZD_LOOKUP_MODAL.titleHint}
-      size="sm"
-      footer={footer}
+      size="md"
+      tier="raised"
+      bodyClassName="px-5 py-5 sm:px-6 sm:py-6"
       loadingMessage={pending && phase === "loading" ? "Sprawdzamy ZD w Subiekcie…" : null}
+      footer={
+        <div className="flex w-full flex-wrap items-center justify-end gap-2">
+          {phase === "result" ? (
+            <Button type="button" variant="ghost" onClick={reset}>
+              {PRODUCT_ZD_LOOKUP_MODAL.searchAgain}
+            </Button>
+          ) : null}
+          <Button type="button" variant="secondary" onClick={onClose}>
+            {phase === "search" ? PRODUCT_ZD_LOOKUP_MODAL.cancel : PRODUCT_ZD_LOOKUP_MODAL.close}
+          </Button>
+        </div>
+      }
     >
-      <div className="space-y-4">
+      <div className="space-y-5">
         {phase === "search" ? (
-          <Field label={PRODUCT_ZD_LOOKUP_MODAL.searchLabel} hint={PRODUCT_ZD_LOOKUP_MODAL.searchHint}>
-            <div className="relative">
-              <Input
-                value={query}
-                onChange={(event) => {
-                  setSelectedProduct(null);
-                  setQuery(event.target.value);
-                }}
-                placeholder={PRODUCT_ZD_LOOKUP_MODAL.searchPlaceholder}
-                autoComplete="off"
-                aria-controls={listboxId}
-              />
-              <TypeaheadDropdown
-                listboxId={listboxId}
-                open={suggestions.length > 0 && !selectedProduct}
-              >
-                {suggestions.map((product) => {
-                  const { title, subtitle } = formatSubiektProductOption(product);
-                  return (
-                    <TypeaheadOption
-                      key={product.tw_Id}
-                      onSelect={() => pickProduct(product)}
-                      title={title}
-                      subtitle={subtitle}
-                    />
-                  );
-                })}
-              </TypeaheadDropdown>
+          <>
+            <div className="grid grid-cols-3 gap-2 sm:gap-3">
+              {PRODUCT_ZD_LOOKUP_MODAL.introSteps.map((step, index) => (
+                <IntroStepCard
+                  key={step.title}
+                  step={index + 1}
+                  title={step.title}
+                  detail={step.detail}
+                />
+              ))}
             </div>
-            {suggestLoading ? (
-              <p className="text-xs text-slate-500">Szukamy w Subiekcie…</p>
-            ) : null}
-            {suggestFeedback ? <SubiektFeedbackAlert feedback={suggestFeedback} /> : null}
-            {suggestError && !suggestFeedback ? (
-              <Alert tone="warning">{suggestError}</Alert>
-            ) : null}
-          </Field>
+
+            <section className={mojeShipmentSectionShellClass}>
+              <div className="flex items-center gap-2 border-b border-slate-100 bg-slate-50/80 px-4 py-3">
+                <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-indigo-100 text-indigo-800">
+                  <IconPackage size={18} strokeWidth={2} aria-hidden />
+                </span>
+                <div>
+                  <h3 className={salesTypography.blockTitle}>{PRODUCT_ZD_LOOKUP_MODAL.searchLabel}</h3>
+                  <p className={cn("mt-0.5", salesTypography.sectionHint)}>
+                    {PRODUCT_ZD_LOOKUP_MODAL.searchHint}
+                  </p>
+                </div>
+              </div>
+              <div className="space-y-3 p-4">
+                <Field label="Produkt z Subiekta" labelClassName="sr-only">
+                  <div className="relative">
+                    <span
+                      className="pointer-events-none absolute left-3 top-1/2 z-[1] -translate-y-1/2 text-slate-400"
+                      aria-hidden
+                    >
+                      {suggestLoading ? <Spinner size="sm" /> : <IconSearch size={18} strokeWidth={2} />}
+                    </span>
+                    <Input
+                      value={query}
+                      onChange={(event) => {
+                        setSelectedProduct(null);
+                        setQuery(event.target.value);
+                      }}
+                      placeholder={PRODUCT_ZD_LOOKUP_MODAL.searchPlaceholder}
+                      autoComplete="off"
+                      aria-controls={listboxId}
+                      className="pl-10"
+                      autoFocus
+                    />
+                    <TypeaheadDropdown
+                      listboxId={listboxId}
+                      open={typeaheadOpen}
+                      size="comfortable"
+                      className="left-0 right-0"
+                      emptyMessage={suggestLoading ? "Szukam w Subiekcie…" : undefined}
+                    >
+                      <TypeaheadSectionLabel>Subiekt — wybierz produkt</TypeaheadSectionLabel>
+                      {suggestions.map((product) => {
+                        const { title, subtitle } = formatSubiektProductOption(product);
+                        return (
+                          <TypeaheadOption
+                            key={product.tw_Id}
+                            onSelect={() => pickProduct(product)}
+                            title={title}
+                            subtitle={subtitle}
+                            size="comfortable"
+                          />
+                        );
+                      })}
+                    </TypeaheadDropdown>
+                  </div>
+                </Field>
+                {suggestFeedback ? <SubiektFeedbackAlert feedback={suggestFeedback} /> : null}
+                {suggestError && !suggestFeedback ? (
+                  <Alert tone="warning">{suggestError}</Alert>
+                ) : null}
+              </div>
+            </section>
+          </>
         ) : null}
 
         {selectedProduct ? <ProductSummaryCard product={selectedProduct} /> : null}
 
         {phase !== "search" ? (
-          <div className="rounded-lg border border-slate-200 bg-slate-50/80 px-3 py-3">
-            <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-              {PRODUCT_ZD_LOOKUP_MODAL.lookupTitle}
-            </p>
-            <ol className="mt-2 space-y-1.5">
+          <section className={mojeShipmentSectionShellClass}>
+            <div className="flex items-center gap-2 border-b border-slate-100 bg-slate-50/80 px-4 py-3">
+              <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-sky-100 text-sky-800">
+                <IconTruck size={18} strokeWidth={2} aria-hidden />
+              </span>
+              <div>
+                <h3 className={salesTypography.blockTitle}>{PRODUCT_ZD_LOOKUP_MODAL.lookupTitle}</h3>
+                <p className={cn("mt-0.5", salesTypography.sectionHint)}>
+                  Łączymy towar z otwartymi dokumentami ZD w Subiekcie.
+                </p>
+              </div>
+            </div>
+            <ol className="space-y-2 p-4">
               <LookupStep label={PRODUCT_ZD_LOOKUP_MODAL.lookupSteps.product} state="done" />
               <LookupStep
                 label={
@@ -360,13 +472,24 @@ export function ProductZdLookupModal({
                 state={phase === "loading" ? "active" : phase === "result" ? "done" : "pending"}
               />
             </ol>
-          </div>
+          </section>
         ) : null}
 
         {lookupError ? <Alert tone="error">{lookupError}</Alert> : null}
 
         {lookupResult?.status === "offline" ? (
-          <Alert tone="warning">{lookupResult.message}</Alert>
+          <Alert tone="warning">
+            <p>{lookupResult.message}</p>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="mt-3"
+              onClick={() => selectedProduct && runLookup(selectedProduct)}
+            >
+              {PRODUCT_ZD_LOOKUP_MODAL.retry}
+            </Button>
+          </Alert>
         ) : null}
 
         {lookupResult?.status === "invalid_product" ? (
@@ -374,7 +497,7 @@ export function ProductZdLookupModal({
         ) : null}
 
         {lookupResult?.status === "found" ? (
-          <div className="space-y-2">
+          <div className="space-y-3">
             {lookupResult.matches.map((match) => (
               <FoundMatchRow
                 key={`${match.dokId}|${match.deadline}`}
@@ -385,7 +508,7 @@ export function ProductZdLookupModal({
               />
             ))}
             {lookupResult.searchIncomplete ? (
-              <p className="text-xs text-amber-800">
+              <p className="rounded-lg border border-amber-200/80 bg-amber-50/70 px-3 py-2 text-xs text-amber-900">
                 Przeszukaliśmy ograniczoną liczbę dokumentów — w Subiekcie mogą być jeszcze inne
                 ZD.
               </p>
@@ -395,32 +518,42 @@ export function ProductZdLookupModal({
 
         {lookupResult?.status === "no_match" ? (
           <div className="space-y-3">
-            <div className="flex flex-wrap items-start justify-between gap-3 rounded-lg border border-amber-200/90 bg-amber-50/80 px-3 py-3">
-              <div className="min-w-0 space-y-1">
-                <p className="text-sm font-semibold text-amber-950">Nie znaleźliśmy otwartego ZD</p>
-                <p className="text-xs leading-relaxed text-amber-900/90">
+            <div className="overflow-hidden rounded-xl border border-amber-200/90 bg-gradient-to-br from-amber-50/90 to-white shadow-sm shadow-amber-900/5">
+              <div className="border-b border-amber-100/90 bg-amber-100/50 px-4 py-2.5">
+                <div className="flex items-center gap-2">
+                  <IconCalendar size={18} className="shrink-0 text-amber-800" aria-hidden />
+                  <p className="text-sm font-semibold text-amber-950">Nie znaleźliśmy otwartego ZD</p>
+                </div>
+              </div>
+              <div className="space-y-2 px-4 py-3.5">
+                <p className="text-sm leading-relaxed text-amber-950/90">
                   {lookupResult.supplierName
                     ? `Sprawdziliśmy dokumenty ZD u dostawcy ${lookupResult.supplierName}.`
                     : "Sprawdziliśmy dokumenty ZD w Subiekcie dla tego towaru."}{" "}
                   Towar może nie być jeszcze zamówiony u dostawcy.
                 </p>
+                <p className="text-xs text-amber-900/75">
+                  Brak terminu w ZD nie oznacza automatycznie dostępności na magazynie — to osobna
+                  informacja.
+                </p>
               </div>
-              <ZdEtaNoMatchMeta className="items-start text-left" />
             </div>
             {lookupResult.searchIncomplete ? (
-              <p className="text-xs text-amber-800">
+              <p className="rounded-lg border border-amber-200/80 bg-amber-50/70 px-3 py-2 text-xs text-amber-900">
                 Wynik może być niepełny — Subiekt zwrócił limit dokumentów do przeszukania.
               </p>
             ) : null}
             {onStockOutPrefill && stockOutPrefill ? (
-              <div className="space-y-2 rounded-lg border border-amber-200/70 bg-white px-3 py-3">
-                <p className="text-sm font-medium text-slate-900">
+              <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+                <p className="text-sm font-semibold text-slate-900">
                   {PRODUCT_ZD_LOOKUP_MODAL.stockOutCta}
                 </p>
-                <p className="text-xs text-slate-600">{PRODUCT_ZD_LOOKUP_MODAL.stockOutHint}</p>
+                <p className="mt-1 text-xs leading-relaxed text-slate-600">
+                  {PRODUCT_ZD_LOOKUP_MODAL.stockOutHint}
+                </p>
                 <Button
                   type="button"
-                  className="w-full sm:w-auto"
+                  className="mt-3 w-full sm:w-auto"
                   onClick={() => {
                     onStockOutPrefill(stockOutPrefill);
                     onClose();
@@ -431,12 +564,6 @@ export function ProductZdLookupModal({
               </div>
             ) : null}
           </div>
-        ) : null}
-
-        {lookupResult?.status === "offline" ? (
-          <button type="button" className={brandLinkClass} onClick={() => selectedProduct && runLookup(selectedProduct)}>
-            {PRODUCT_ZD_LOOKUP_MODAL.retry}
-          </button>
         ) : null}
       </div>
     </ModalShell>
