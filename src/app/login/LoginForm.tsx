@@ -113,19 +113,21 @@ export function LoginForm({
     Boolean(selectedAccount) &&
     !showAccountPicker;
 
-  useEffect(() => {
-    if (!onSubtitleModeChange) return;
-    if (resetSession) {
-      onSubtitleModeChange("reset");
-      return;
-    }
-    const mode: LoginSubtitleMode = useManualEmail
+  const subtitleMode: LoginSubtitleMode = resetSession
+    ? "reset"
+    : useManualEmail
       ? "manual"
       : quickLoginActive
         ? "quick"
         : "picker";
-    onSubtitleModeChange(mode);
-  }, [useManualEmail, quickLoginActive, onSubtitleModeChange, resetSession]);
+  const lastSubtitleModeRef = useRef<LoginSubtitleMode | null>(null);
+
+  useEffect(() => {
+    if (!onSubtitleModeChange) return;
+    if (lastSubtitleModeRef.current === subtitleMode) return;
+    lastSubtitleModeRef.current = subtitleMode;
+    onSubtitleModeChange(subtitleMode);
+  }, [onSubtitleModeChange, subtitleMode]);
 
   const loginReady = useManualEmail ? Boolean(manualEmail.trim()) : Boolean(selectedAccountId);
 

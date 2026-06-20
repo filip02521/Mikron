@@ -1,6 +1,13 @@
 import { expect, test } from "@playwright/test";
 
 test.describe("Login auth API contracts", () => {
+  test.beforeEach(async ({ page }) => {
+    await page.addInitScript(() => {
+      window.localStorage.clear();
+      window.sessionStorage.clear();
+    });
+  });
+
   test("login wysyła accountId bez e-maila w trybie pickera", async ({ page }) => {
     let loginBody: Record<string, unknown> | null = null;
 
@@ -13,7 +20,8 @@ test.describe("Login auth API contracts", () => {
       });
     });
 
-    await page.goto("/login");
+    await page.goto("/login", { waitUntil: "domcontentloaded" });
+    await expect(page.getByRole("option").first()).toBeVisible();
     await page.getByRole("option").first().click();
     await page.getByLabel("Hasło").fill("test-haslo");
     await page.getByRole("button", { name: "Zaloguj się" }).click();
@@ -47,11 +55,14 @@ test.describe("Login auth API contracts", () => {
       });
     });
 
-    await page.goto("/login");
+    await page.goto("/login", { waitUntil: "domcontentloaded" });
+    await expect(page.getByRole("option").first()).toBeVisible();
     await page.getByRole("option").first().click();
+    await expect(page.getByRole("button", { name: "Reset hasła" })).toBeVisible();
     await page.getByRole("button", { name: "Reset hasła" }).click();
     await expect(page.getByText("Wysłaliśmy 6-cyfrowy kod")).toBeVisible();
 
+    await expect.poll(() => sendBody).not.toBeNull();
     expect(sendBody).toMatchObject({ accountId: expect.any(String) });
     expect(sendBody).not.toHaveProperty("email");
   });

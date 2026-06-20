@@ -17,6 +17,12 @@ describe("E2E lab mode", () => {
     expect(isE2ELab()).toBe(false);
   });
 
+  it("działa także przy NODE_ENV=production (next start w Playwright)", () => {
+    vi.stubEnv("NODE_ENV", "production");
+    vi.stubEnv("E2E_LAB", "1");
+    expect(isE2ELab()).toBe(true);
+  });
+
   it("skips live Supabase config in lab mode", () => {
     vi.stubEnv("E2E_LAB", "1");
     vi.stubEnv("NEXT_PUBLIC_SUPABASE_URL", "https://example.supabase.co");
