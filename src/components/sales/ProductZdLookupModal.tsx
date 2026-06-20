@@ -38,6 +38,7 @@ import {
 import {
   PRODUCT_ZD_LOOKUP_MODAL,
   productZdLookupStepClass,
+  productZdLookupSupplierName,
   type ProductZdLookupStepState,
 } from "@/lib/orders/product-zd-lookup-ui";
 import {
@@ -323,9 +324,13 @@ export function ProductZdLookupModal({
   const supplierStepState: ProductZdLookupStepState = useMemo(() => {
     if (phase === "search") return "pending";
     if (phase === "loading") return "active";
-    if (lookupResult?.status === "no_match" && !lookupResult.supplierName) return "skipped";
+    if (lookupResult?.status === "no_match" && !productZdLookupSupplierName(lookupResult)) {
+      return "skipped";
+    }
     return "done";
   }, [lookupResult, phase]);
+
+  const resolvedSupplierName = productZdLookupSupplierName(lookupResult);
 
   const stockOutPrefill = useMemo((): ProductZdLookupStockOutPrefill | null => {
     if (!selectedProduct) return null;
@@ -461,8 +466,8 @@ export function ProductZdLookupModal({
               <LookupStep label={PRODUCT_ZD_LOOKUP_MODAL.lookupSteps.product} state="done" />
               <LookupStep
                 label={
-                  lookupResult?.supplierName
-                    ? `${PRODUCT_ZD_LOOKUP_MODAL.lookupSteps.supplier}: ${lookupResult.supplierName}`
+                  resolvedSupplierName
+                    ? `${PRODUCT_ZD_LOOKUP_MODAL.lookupSteps.supplier}: ${resolvedSupplierName}`
                     : PRODUCT_ZD_LOOKUP_MODAL.lookupSteps.supplier
                 }
                 state={supplierStepState}

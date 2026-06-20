@@ -1,5 +1,4 @@
 import type { IndividualOrder } from "@/types/database";
-import { fetchSupplierSubiektKhAliases } from "@/lib/data/supplier-subiekt-kh";
 import { getAppSupplierRefsCached } from "@/lib/data/supplier-refs";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { isSubiektReachable } from "@/lib/subiekt/availability";
@@ -19,6 +18,7 @@ import {
   searchSubiektZdCached,
 } from "@/lib/subiekt/subiekt-runtime-cache";
 import type { SubiektDocument, SubiektProduct } from "@/lib/subiekt/types";
+import { extractAnyKhLabelFromDocument } from "@/lib/subiekt/kontrahent-from-document";
 import { lineTowId } from "@/lib/subiekt/zd-catalog-import";
 import {
   isActiveZdFulfillmentDocument,
@@ -99,8 +99,8 @@ export function productToZdLookupOrder(
     products: product.tw_Nazwa?.trim() || symbol,
     subiekt_tw_id: Number.isFinite(twId) && twId > 0 ? twId : null,
     mikran_code: product.tw_PLU?.trim() || null,
-    quantity: 1,
-    delivered_quantity: 0,
+    quantity: "1",
+    delivered_quantity: "0",
     zd_fulfillment_dok_id: null,
   };
 }
@@ -127,8 +127,7 @@ function supplierNameForDoc(
   if (supplierId) {
     return appSuppliers.find((supplier) => supplier.id === supplierId)?.name ?? null;
   }
-  const khLabel = doc.kh_Nazwa?.trim();
-  return khLabel || null;
+  return extractAnyKhLabelFromDocument(doc);
 }
 
 function toLookupMatch(
@@ -243,17 +242,26 @@ async function resolveSupplierForProduct(
 }
 
 async function loadExtraKhBySupplierId(): Promise<Map<string, number[]>> {
-  const aliases = await fetchSupplierSubiektKhAliases();
-  const map = new Map<string, number[]>();
-  for (const row of aliases) {
-    const supplierId = String(row.supplier_id);
-    const khId = Math.trunc(Number(row.subiekt_kh_id));
-    if (!Number.isFinite(khId) || khId <= 0) continue;
-    const list = map.get(supplierId) ?? [];
-    list.push(khId);
-    map.set(supplierId, list);
+  const supabase = createAdminClient();
+  const { data, error } = await supabase
+    .from("subiekt_zd_index")
+    .select("supplier_id, subiekt_kh_id")
+    .not("supplier_id", "is", null);
+  if (error) throw new Error(error.message);
+
+  const map = new Map<string, Set<number>>();
+  for (const row of data ?? []) {
+    const supplierId = (row as { supplier_id: string | null }).supplier_id;
+    const kh = Math.trunc(Number((row as { subiekt_kh_id: number }).subiekt_kh_id));
+    if (!supplierId || !Number.isFinite(kh) || kh <= 0) continue;
+    const set = map.get(supplierId) ?? new Set<number>();
+    set.add(kh);
+    map.set(supplierId, set);
   }
-  return map;
+
+  const out = new Map<string, number[]>();
+  for (const [supplierId, ids] of map) out.set(supplierId, [...ids]);
+  return out;
 }
 
 async function fetchZdDocumentSafe(dokId: number): Promise<SubiektDocument | null> {
@@ -293,7 +301,7 @@ async function searchProductZdWithSupplier(
       supplier,
       appSuppliers
     );
-    const searchIncomplete = live.fetched >= PRODUCT_ZD_LOOKUP_MAX_DOCS && matches.length === 0;
+    const searchIncomplete = live.fetched >= PRODUCT_ZD_LOOKUP_MAX_DOCS;
     return { matches, searchIncomplete };
   }
 

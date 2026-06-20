@@ -29,7 +29,14 @@ export function readProductZdLookupLastResult(): ProductZdLookupLastResult | nul
     const raw = window.sessionStorage.getItem(PRODUCT_ZD_LOOKUP_LAST_RESULT_KEY);
     if (!raw) return null;
     const parsed = JSON.parse(raw) as ProductZdLookupLastResult;
-    if (!parsed?.symbol || !parsed?.productName || !parsed?.result) return null;
+    if (
+      !parsed?.symbol ||
+      !parsed?.productName ||
+      !parsed?.result?.status ||
+      !Number.isFinite(parsed.subiektTwId)
+    ) {
+      return null;
+    }
     return parsed;
   } catch {
     return null;

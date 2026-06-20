@@ -29,7 +29,17 @@ export const PRODUCT_ZD_LOOKUP_MODAL = {
   retry: "Spróbuj ponownie",
 } as const;
 
+import type { ProductZdLookupResult } from "@/lib/subiekt/product-zd-lookup";
+
 export type ProductZdLookupStepState = "done" | "active" | "pending" | "skipped";
+
+export function productZdLookupSupplierName(result: ProductZdLookupResult | null): string | null {
+  if (!result) return null;
+  if (result.status === "found" || result.status === "no_match") {
+    return result.supplierName;
+  }
+  return null;
+}
 
 export function productZdLookupStepClass(state: ProductZdLookupStepState): string {
   switch (state) {
