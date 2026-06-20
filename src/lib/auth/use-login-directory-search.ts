@@ -7,7 +7,7 @@ import {
   isLoginDirectoryQueryValid,
   LOGIN_DIRECTORY_MIN_QUERY_LENGTH,
 } from "@/lib/auth/login-directory";
-import { readLoginLastAccountId } from "@/lib/auth/login-account-preference";
+import { readLoginRecentAccountIds } from "@/lib/auth/login-account-preference";
 
 type DirectoryApiResponse = {
   accounts?: LoginDirectoryAccountPublic[];
@@ -24,6 +24,16 @@ async function fetchLoginDirectory(url: string): Promise<DirectoryApiResponse> {
   }
 }
 
+function orderAccountsByIds(
+  accounts: LoginDirectoryAccountPublic[],
+  ids: string[]
+): LoginDirectoryAccountPublic[] {
+  const byId = new Map(accounts.map((account) => [account.id, account]));
+  return ids
+    .map((id) => byId.get(id) ?? null)
+    .filter((account): account is LoginDirectoryAccountPublic => account != null);
+}
+
 /** Katalog kont — preload (E2E) albo wyszukiwanie przez API (produkcja). */
 export function useLoginDirectorySearch(preloadedAccounts: LoginDirectoryAccountPublic[]) {
   const preloadedMode = preloadedAccounts.length > 0;
@@ -32,30 +42,42 @@ export function useLoginDirectorySearch(preloadedAccounts: LoginDirectoryAccount
   const [loading, setLoading] = useState(false);
   const [fetchError, setFetchError] = useState("");
 
-  useEffect(() => {
-    if (preloadedMode) return;
+  const loadRecentAccounts = useCallback(async () => {
+    const storedIds = readLoginRecentAccountIds();
+    if (storedIds.length === 0) {
+      setRemoteAccounts([]);
+      setFetchError("");
+      return;
+    }
 
-    const storedId = readLoginLastAccountId();
-    if (!storedId) return;
+    if (preloadedMode) {
+      setRemoteAccounts(orderAccountsByIds(preloadedAccounts, storedIds));
+      setFetchError("");
+      return;
+    }
+
+    setLoading(true);
+    const data = await fetchLoginDirectory(
+      `/api/auth/login-directory?ids=${storedIds.map((id) => encodeURIComponent(id)).join(",")}`
+    );
+    setRemoteAccounts(orderAccountsByIds(data.accounts ?? [], storedIds));
+    setFetchError(data.error ?? "");
+    setLoading(false);
+  }, [preloadedAccounts, preloadedMode]);
+
+  useEffect(() => {
+    if (!preloadedMode && isLoginDirectoryQueryValid(query)) return;
 
     let cancelled = false;
     void (async () => {
-      setLoading(true);
-      const data = await fetchLoginDirectory(
-        `/api/auth/login-directory?id=${encodeURIComponent(storedId)}`
-      );
+      await loadRecentAccounts();
       if (cancelled) return;
-      if (data.account) {
-        setRemoteAccounts([data.account]);
-      }
-      setFetchError(data.error ?? "");
-      setLoading(false);
     })();
 
     return () => {
       cancelled = true;
     };
-  }, [preloadedMode]);
+  }, [loadRecentAccounts, preloadedMode, query]);
 
   useEffect(() => {
     if (preloadedMode) return;
@@ -86,6 +108,12 @@ export function useLoginDirectorySearch(preloadedAccounts: LoginDirectoryAccount
 
   const accounts = useMemo(() => {
     if (preloadedMode) {
+      if (isLoginDirectoryQueryValid(query)) {
+        return filterLoginDirectoryAccounts(preloadedAccounts, query);
+      }
+      if (remoteAccounts.length > 0) {
+        return filterLoginDirectoryAccounts(remoteAccounts, query);
+      }
       return filterLoginDirectoryAccounts(preloadedAccounts, query);
     }
     if (isLoginDirectoryQueryValid(query)) {
@@ -96,10 +124,7 @@ export function useLoginDirectorySearch(preloadedAccounts: LoginDirectoryAccount
 
   const clearSearch = useCallback(() => {
     setQuery("");
-    if (!preloadedMode && !readLoginLastAccountId()) {
-      setRemoteAccounts([]);
-    }
-  }, [preloadedMode]);
+  }, []);
 
   return {
     accounts,

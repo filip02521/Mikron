@@ -29,6 +29,7 @@ import {
   EMPTY_APP_SHELL_METRICS,
   type AppShellMetrics,
 } from "@/lib/layout/app-shell-metrics-types";
+import { resolveUserAssignmentLabel } from "@/lib/layout/user-assignment-label";
 
 export type AppShellMetricsInput = {
   realRole: UserRole | null;
@@ -57,6 +58,7 @@ export async function fetchAppShellMetrics(
   let salesActivityVersion: string | null = null;
   let operationsDailyPanelVersion: string | null = null;
   let salesPersonName: string | null = null;
+  let headerSalesPersonId: string | null = null;
   let salesBoardAttention = null as AppShellMetrics["salesBoardAttention"];
   let operationsPinnedAnnouncements = EMPTY_APP_SHELL_METRICS.operationsPinnedAnnouncements;
 
@@ -104,6 +106,7 @@ export async function fetchAppShellMetrics(
         const preview = await resolvePreviewSalesPerson(previewId, session);
         if (preview) {
           salesPersonName = preview.name;
+          headerSalesPersonId = preview.id;
           const metrics = await fetchSalesShellMetrics(preview.id, null);
           salesActivityVersion = metrics.activityVersion;
           navBadges = {
@@ -118,6 +121,7 @@ export async function fetchAppShellMetrics(
         const own = await resolveSalesPersonForUser(session);
         if (own) {
           salesPersonName = own.name;
+          headerSalesPersonId = own.id;
         }
       }
     } catch {
@@ -135,6 +139,7 @@ export async function fetchAppShellMetrics(
       const salesPerson = await resolveSalesPersonForUser(session);
       if (salesPerson) {
         salesPersonName = salesPerson.name;
+        headerSalesPersonId = salesPerson.id;
         if (showSalesOnboarding) {
           navBadges = {
             ...navBadges,
@@ -186,11 +191,23 @@ export async function fetchAppShellMetrics(
     }
   }
 
+  let userAssignmentLabel: string | null = null;
+  try {
+    userAssignmentLabel = await resolveUserAssignmentLabel({
+      role: realRole ?? role,
+      session,
+      salesPersonId: headerSalesPersonId,
+    });
+  } catch {
+    /* opcjonalny opis konta */
+  }
+
   return {
     navBadges,
     salesActivityVersion,
     operationsDailyPanelVersion,
     salesPersonName,
+    userAssignmentLabel,
     salesBoardAttention,
     operationsPinnedAnnouncements,
   };

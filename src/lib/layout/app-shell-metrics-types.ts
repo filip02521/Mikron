@@ -18,6 +18,7 @@ export type AppShellMetrics = {
   salesActivityVersion: string | null;
   operationsDailyPanelVersion: string | null;
   salesPersonName: string | null;
+  userAssignmentLabel: string | null;
   salesBoardAttention: SalesBoardAttentionSnapshot | null;
   operationsPinnedAnnouncements: Pick<
     SalesBoardAttentionSnapshot["pinnedAnnouncements"][number],
@@ -30,6 +31,7 @@ export const EMPTY_APP_SHELL_METRICS: AppShellMetrics = {
   salesActivityVersion: null,
   operationsDailyPanelVersion: null,
   salesPersonName: null,
+  userAssignmentLabel: null,
   salesBoardAttention: null,
   operationsPinnedAnnouncements: [],
 };

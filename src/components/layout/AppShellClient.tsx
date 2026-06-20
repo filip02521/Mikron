@@ -125,6 +125,7 @@ export function AppShellClient({
     salesActivityVersion,
     operationsDailyPanelVersion,
     salesPersonName,
+    userAssignmentLabel,
     salesBoardAttention,
     operationsPinnedAnnouncements,
   } = useAppShellMetrics();
@@ -181,6 +182,7 @@ export function AppShellClient({
               adminPanelContext={adminPanelPreview ?? "admin"}
               userEmail={userEmail}
               salesPersonName={salesPersonName}
+              userAssignmentLabel={userAssignmentLabel}
               showLoginLink={showLoginLink}
               navBadges={navBadges}
             />
@@ -191,10 +193,15 @@ export function AppShellClient({
             role={role}
             userEmail={userEmail}
             salesPersonName={salesPersonName}
+            userAssignmentLabel={userAssignmentLabel}
           />
         ) : null}
         {operationsLive && !salesLive ? (
-          <MobileOperationsHeader role={role} userEmail={userEmail} />
+          <MobileOperationsHeader
+            role={role}
+            userEmail={userEmail}
+            userAssignmentLabel={userAssignmentLabel}
+          />
         ) : null}
         <AppShellMain
           mobileChrome={mobileChrome}

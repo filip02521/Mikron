@@ -8,9 +8,11 @@ import { mobileSalesHeaderClass } from "@/lib/ui/ontime-theme";
 export function MobileOperationsHeader({
   role,
   userEmail,
+  userAssignmentLabel,
 }: {
   role: UserRole | null;
   userEmail?: string | null;
+  userAssignmentLabel?: string | null;
 }) {
   async function signOut() {
     const supabase = createClient();
@@ -21,7 +23,11 @@ export function MobileOperationsHeader({
   return (
     <header className={mobileSalesHeaderClass}>
       <div className="flex min-w-0 flex-1 items-center">
-        <MobileBrandBlock role={role} userEmail={userEmail} />
+        <MobileBrandBlock
+          role={role}
+          userEmail={userEmail}
+          userAssignmentLabel={userAssignmentLabel}
+        />
       </div>
       <button
         type="button"

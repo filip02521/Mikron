@@ -1,8 +1,16 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   LOGIN_LAST_ACCOUNT_STORAGE_KEY,
+  LOGIN_RECENT_ACCOUNTS_STORAGE_KEY,
+  LOGIN_RECENT_EMAILS_STORAGE_KEY,
+  MAX_RECENT_LOGIN_ACCOUNTS,
   readLoginLastAccountId,
+  readLoginRecentAccountIds,
+  readLoginRecentEmails,
+  rememberLoginAccountId,
+  rememberLoginEmail,
   resolveLoginLastAccountId,
+  resolveLoginRecentAccountIds,
   writeLoginLastAccountId,
 } from "./login-account-preference";
 
@@ -41,5 +49,64 @@ describe("login-account-preference", () => {
   it("dopasowuje zapisane konto do listy", () => {
     writeLoginLastAccountId("b");
     expect(resolveLoginLastAccountId([{ id: "a" }, { id: "b" }])).toBe("b");
+  });
+
+  it("pamięta wiele kont w kolejności od najnowszego", () => {
+    rememberLoginAccountId("a");
+    rememberLoginAccountId("b");
+    rememberLoginAccountId("c");
+
+    expect(readLoginRecentAccountIds()).toEqual(["c", "b", "a"]);
+    expect(readLoginLastAccountId()).toBe("c");
+  });
+
+  it("przenosi ponownie wybrane konto na początek listy", () => {
+    rememberLoginAccountId("a");
+    rememberLoginAccountId("b");
+    rememberLoginAccountId("a");
+
+    expect(readLoginRecentAccountIds()).toEqual(["a", "b"]);
+  });
+
+  it("ogranicza liczbę zapisanych kont", () => {
+    for (let index = 0; index < MAX_RECENT_LOGIN_ACCOUNTS + 2; index += 1) {
+      rememberLoginAccountId(`user-${index}`);
+    }
+
+    expect(readLoginRecentAccountIds()).toHaveLength(MAX_RECENT_LOGIN_ACCOUNTS);
+    expect(readLoginRecentAccountIds()[0]).toBe(`user-${MAX_RECENT_LOGIN_ACCOUNTS + 1}`);
+  });
+
+  it("migruje stare pojedyncze konto do listy ostatnich", () => {
+    storage[LOGIN_LAST_ACCOUNT_STORAGE_KEY] = "legacy-user";
+    expect(readLoginRecentAccountIds()).toEqual(["legacy-user"]);
+  });
+
+  it("filtruje zapisaną listę kont do dostępnych w katalogu", () => {
+    rememberLoginAccountId("a");
+    rememberLoginAccountId("b");
+    rememberLoginAccountId("c");
+
+    expect(resolveLoginRecentAccountIds([{ id: "b" }, { id: "c" }, { id: "d" }])).toEqual([
+      "c",
+      "b",
+    ]);
+  });
+
+  it("pamięta ostatnie adresy e-mail do logowania ręcznego", () => {
+    rememberLoginEmail("  Anna@Example.com ");
+    rememberLoginEmail("zakupy@mikran.com");
+    rememberLoginEmail("anna@example.com");
+
+    expect(readLoginRecentEmails()).toEqual(["anna@example.com", "zakupy@mikran.com"]);
+    expect(JSON.parse(storage[LOGIN_RECENT_EMAILS_STORAGE_KEY]!)).toEqual([
+      "anna@example.com",
+      "zakupy@mikran.com",
+    ]);
+  });
+
+  it("zapisuje listę kont w localStorage jako JSON", () => {
+    rememberLoginAccountId("user-1");
+    expect(JSON.parse(storage[LOGIN_RECENT_ACCOUNTS_STORAGE_KEY]!)).toEqual(["user-1"]);
   });
 });
