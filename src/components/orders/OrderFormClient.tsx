@@ -21,6 +21,7 @@ import { sectionIconTileBrandClass } from "@/lib/ui/ontime-theme";
 import { AppBrandContentFooter } from "@/components/layout/AppBrandContentFooter";
 import { ProsbaFormMetaStrip } from "@/components/orders/ProsbaFormMetaStrip";
 import { ProsbaPageToolbar } from "@/components/orders/ProsbaPageToolbar";
+import type { ProductZdLookupStockOutPrefill } from "@/lib/orders/product-zd-lookup-session";
 import { hasAnyProductHint, hasValidOrderQuantity } from "@/lib/orders/request-completeness";
 import { buildProcurementFormReadiness } from "@/lib/orders/procurement-form-readiness";
 import {
@@ -224,6 +225,34 @@ export function OrderFormClient({
   const submitRef = useRef<() => void>(() => {});
 
   const clearFormNotice = useCallback(() => setFormNotice(null), []);
+
+  const applyProductZdStockOutPrefill = useCallback(
+    (prefill: ProductZdLookupStockOutPrefill) => {
+      setRequestKind("informacja");
+      setInformacjaPath("stock_out");
+      setValidationAttempted(false);
+      setFormNotice(null);
+      setMsg(null);
+      setZkProsbaLinkContext(null);
+      const line = newProductLine();
+      setGroups([
+        [
+          {
+            ...line,
+            supplierId: "",
+            salesPersonId: lockedId,
+            symbol: prefill.symbol,
+            mikranCode: prefill.mikranCode,
+            product: prefill.product,
+            quantity: "",
+            subiektTwId: prefill.subiektTwId,
+            stockSource: "subiekt",
+          },
+        ],
+      ]);
+    },
+    [lockedId]
+  );
 
   const tourFormKey = tourDemo && lockedId ? lockedId : "";
   const [appliedTourFormKey, setAppliedTourFormKey] = useState("");
@@ -912,7 +941,14 @@ export function OrderFormClient({
         {toastSlot}
         {stockConfirmDialog}
 
-        <ProsbaPageToolbar mojeHref={mojeHref} mojeLabel={mojeLabel} />
+        <ProsbaPageToolbar
+          mojeHref={mojeHref}
+          mojeLabel={mojeLabel}
+          showProductZdLookup={!readOnly && !tourDemo}
+          onProductStockOutPrefill={
+            readOnly || tourDemo ? undefined : applyProductZdStockOutPrefill
+          }
+        />
 
         <Card padding={false} className="overflow-hidden">
           <div className={cn(tourDemo && "pointer-events-none select-none")}>

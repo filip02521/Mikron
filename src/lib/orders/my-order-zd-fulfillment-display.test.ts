@@ -165,6 +165,13 @@ describe("zdFulfillmentCollapsedCaption", () => {
     expect(zdFulfillmentCollapsedCaption(2)).toBe("Planowana dostawa · 2 terminy");
     expect(zdFulfillmentCollapsedCaption(5)).toBe("Planowana dostawa · 5 terminów");
   });
+
+  it("przy przeterminowaniu używa etykiety Termin u dostawcy", () => {
+    expect(zdFulfillmentCollapsedCaption(1, { overdue: true })).toBe("Termin u dostawcy");
+    expect(zdFulfillmentCollapsedCaption(3, { overdue: true })).toBe(
+      "Termin u dostawcy · 3 terminy"
+    );
+  });
 });
 
 describe("salesZdGroupTimingLabel", () => {

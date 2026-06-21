@@ -9,8 +9,9 @@ import {
 } from "./auth-roles";
 
 describe("homePathForRole default landing pages", () => {
-  it("kieruje handlowca na Moje zamówienia", () => {
+  it("kieruje handlowca i kierownika na Moje zamówienia", () => {
     expect(homePathForRole("sales")).toBe("/moje");
+    expect(homePathForRole("sales_manager")).toBe("/moje");
   });
 
   it("kieruje administratora na panel dzienny", () => {
@@ -42,9 +43,10 @@ describe("redirectPathAfterLogin role defaults", () => {
     expect(redirectPathAfterLogin("zakupy", "/moje")).toBe("/podsumowanie");
   });
 
-  it("nie psuje domyślnych stron przy podglądzie kierownika (sales_manager)", () => {
-    expect(redirectPathAfterLogin("sales_manager", null)).toBe("/zespol");
+  it("kieruje kierownika na Moje zamówienia, admin w podglądzie kierownika na Zespół", () => {
+    expect(redirectPathAfterLogin("sales_manager", null)).toBe("/moje");
     expect(redirectPathAfterLogin("sales_manager", "/moje")).toBe("/moje");
+    expect(redirectPathAfterLogin("sales_manager", "/zespol")).toBe("/zespol");
     expect(redirectPathAfterLogin("admin", null, { adminPanelContext: "sales_manager" })).toBe(
       "/zespol"
     );
@@ -68,10 +70,6 @@ describe("auth-roles sales_manager", () => {
     expect(canAccessPath("sales_manager", "/zespol/handlowcy")).toBe(true);
     expect(canAccessPath("sales_manager", "/zespol/grupy")).toBe(true);
     expect(canAccessPath("sales", "/zespol")).toBe(false);
-  });
-
-  it("uses zespol as home for manager", () => {
-    expect(homePathForRole("sales_manager")).toBe("/zespol");
   });
 
   it("allows admin sales preview with ?dla=", () => {

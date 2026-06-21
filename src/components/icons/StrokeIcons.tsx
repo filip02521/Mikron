@@ -84,6 +84,17 @@ export function IconAlertCircle(props: StrokeIconProps) {
   );
 }
 
+/** Informacja — okrąg z „i” */
+export function IconInfoCircle(props: StrokeIconProps) {
+  return (
+    <Svg {...props}>
+      <circle cx="12" cy="12" r="9" />
+      <path d="M12 11v5" />
+      <path d="M12 8h.01" />
+    </Svg>
+  );
+}
+
 /** Zamówienie u dostawcy */
 export function IconTruck(props: StrokeIconProps) {
   return (

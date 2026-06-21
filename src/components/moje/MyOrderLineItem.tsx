@@ -2,7 +2,10 @@
 
 import { zdFulfillmentDeadlineChangeShortLabel } from "@/components/orders/ZdFulfillmentDeadlineChangeNotice";
 import { formatPlDate } from "@/lib/display-labels";
+import { parseDateOnly } from "@/lib/orders/dates";
+import { isPastExpectedDate } from "@/lib/orders/delivery-eta";
 import { formatMyOrderHistoryEstimateLineLabel } from "@/lib/orders/my-order-history-estimate-copy";
+import { salesZdTimingLabel } from "@/lib/orders/my-order-sales-ui";
 import type { MyOrderLine, MyOrderLineStockStatus } from "@/lib/orders/my-order-presenter";
 import type { SalesCancelPhase } from "@/lib/orders/sales-cancel";
 import {
@@ -126,7 +129,12 @@ export function MyOrderLineItem({
   const zdLineDetail = line.zdFulfillment
     ? line.zdFulfillment.deadlineChange
       ? zdFulfillmentDeadlineChangeShortLabel(line.zdFulfillment.deadlineChange)
-      : `Planowana dostawa ${formatPlDate(line.zdFulfillment.deadline)}`
+      : (() => {
+          const deadline = line.zdFulfillment.deadline;
+          const parsed = parseDateOnly(deadline);
+          const overdue = parsed != null && isPastExpectedDate(parsed);
+          return salesZdTimingLabel(deadline, line.zdFulfillment.dokNr, overdue);
+        })()
     : line.zdEtaPending
       ? historyLabel
         ? formatMyOrderHistoryEstimateLineLabel(historyLabel, {

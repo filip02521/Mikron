@@ -285,6 +285,22 @@ describe("needsZdEtaSync", () => {
       needsZdEtaSync(baseOrder({ status: "Nowe" }), stats, "LACZNIE", now)
     ).toBe(false);
   });
+
+  it("ponawia sync gdy zapisany termin ZD wygasł", () => {
+    const now = new Date("2026-06-18T12:00:00+02:00").getTime();
+    expect(
+      needsZdEtaSync(
+        baseOrder({
+          zd_fulfillment_source: "zd",
+          zd_fulfillment_deadline: "2026-02-27",
+          zd_fulfillment_synced_at: "2026-03-01T10:00:00+01:00",
+        }),
+        stats,
+        "LACZNIE",
+        now
+      )
+    ).toBe(true);
+  });
 });
 
 describe("hasPersistedZdFulfillment", () => {

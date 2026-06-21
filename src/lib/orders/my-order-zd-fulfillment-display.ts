@@ -145,11 +145,15 @@ export function salesZdPrimarySlotTimingLabel(
   return `do ${formatPlDate(primary.deadline)} · ${primary.dokNr}${overdueSuffix}`;
 }
 
-export function zdFulfillmentCollapsedCaption(slotCount: number): string {
-  if (slotCount <= 1) return ZD_DELIVERY_META_CAPTION;
+export function zdFulfillmentCollapsedCaption(
+  slotCount: number,
+  options?: { overdue?: boolean }
+): string {
+  const base = options?.overdue ? "Termin u dostawcy" : ZD_DELIVERY_META_CAPTION;
+  if (slotCount <= 1) return base;
   const n = slotCount;
   const word = n === 2 ? "terminy" : n < 5 ? "terminy" : "terminów";
-  return `${ZD_DELIVERY_META_CAPTION} · ${n} ${word}`;
+  return `${base} · ${n} ${word}`;
 }
 
 export function resolveZdFulfillmentUrgency(
