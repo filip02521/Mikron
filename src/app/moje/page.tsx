@@ -151,10 +151,12 @@ export default async function MojePage({
 
   if (role && isSalesAccount(role) && linkError && !previewSalesPersonId) {
     return (
-      <SalesAccountLinkRequired
-        title="Moje zamówienia"
-        hint="Tutaj śledzisz status prośb. Konto musi być przypisane do Twojego profilu handlowca."
-      />
+      <div className={salesPageShellClass}>
+        <SalesAccountLinkRequired
+          title="Moje zamówienia"
+          hint="Tutaj śledzisz status prośb. Konto musi być przypisane do Twojego profilu handlowca."
+        />
+      </div>
     );
   }
 

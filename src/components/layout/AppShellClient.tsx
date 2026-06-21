@@ -36,6 +36,7 @@ import { canAccessOperations, isSalesAccount } from "@/lib/auth-roles";
 import { MobileOperationsNav } from "./MobileOperationsNav";
 import { MobileOperationsHeader } from "./MobileOperationsHeader";
 import { useAppShellMetrics } from "./AppShellMetricsContext";
+import { AppWorkspaceBackdrop } from "./AppWorkspaceBackdrop";
 
 function SalesGlobalPinnedStrip({
   attention,
@@ -82,13 +83,15 @@ function AppShellMain({
     <main
       className={cn(
         appMainClass,
+        "relative isolate",
         mobileChrome
           ? "ml-0 pb-[calc(3.5rem+env(safe-area-inset-bottom,0px))] md:ml-64 md:pb-0"
           : "ml-0 md:ml-64",
         coachPadding
       )}
     >
-      <div className={appMainInsetClass}>
+      <AppWorkspaceBackdrop />
+      <div className={cn(appMainInsetClass, "relative z-[1]")}>
         {topNotices}
         <SalesOnboardingTourBanner />
         <SalesOnboardingContentGuard>{children}</SalesOnboardingContentGuard>
