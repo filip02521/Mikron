@@ -30,6 +30,7 @@ import { cn } from "@/lib/cn";
 import { salesMobileChromeRoot } from "@/lib/ui/sales-mobile-chrome";
 import { appMainClass, appMainInsetClass, appShellClass } from "@/lib/ui/ontime-theme";
 import type { AdminPanelContext } from "@/lib/auth/admin-panel-context";
+import { isAdminOperationsPreviewReadOnly } from "@/lib/auth/admin-panel-context";
 import type { UserRole } from "@/types/database";
 import { canAccessOperations, isSalesAccount } from "@/lib/auth-roles";
 import { MobileOperationsNav } from "./MobileOperationsNav";
@@ -146,7 +147,7 @@ export function AppShellClient({
 
   return (
     <AdminPanelPreviewProvider
-      readOnly={Boolean(adminPanelPreview)}
+      readOnly={isAdminOperationsPreviewReadOnly(realRole, adminPanelPreview)}
       panelContext={adminPanelPreview}
     >
     <AppRoleProvider role={role}>

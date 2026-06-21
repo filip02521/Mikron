@@ -90,12 +90,24 @@ export function isAdminPanelPreview(
   );
 }
 
-/** Alias — tryb podglądu bez mutacji w UI panelu. */
+/** Alias — tryb podglądu bez mutacji w UI panelu handlowca / zespołu / magazynu. */
 export function isAdminReadOnlyPanelPreview(
   realRole: UserRole | null | undefined,
   panelContext: AdminPanelContext | null | undefined
 ): boolean {
   return isAdminPanelPreview(realRole, panelContext);
+}
+
+/**
+ * UI read-only dla operacji zakupowych i magazynu.
+ * Podgląd „Zakupy” to realna praca operacyjna (zgodnie z assertAdminPanelAllowsOperationsMutations).
+ */
+export function isAdminOperationsPreviewReadOnly(
+  realRole: UserRole | null | undefined,
+  panelContext: AdminPanelContext | null | undefined
+): boolean {
+  if (!isAdminPanelPreview(realRole, panelContext)) return false;
+  return panelContext !== "zakupy";
 }
 
 /**

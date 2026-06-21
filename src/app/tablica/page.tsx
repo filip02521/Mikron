@@ -12,6 +12,7 @@ import {
   fetchDepartmentBoard,
   fetchSalesBoardAttentionSnapshot,
 } from "@/lib/data/department-board";
+import { Alert } from "@/components/ui/Alert";
 import { SalesAccountLinkRequired } from "@/components/sales/SalesAccountLinkRequired";
 import { SalesPreviewPageChrome } from "@/components/sales/SalesPreviewPageChrome";
 import {
@@ -158,11 +159,9 @@ export default async function SalesBoardPage({
       readOnly={readOnlyPreview}
       pageTitle={pageTitle}
       previewHint={
-        previewProfileMissing
-          ? "Handlowiec nie ma powiązanego konta — pokazujemy ogólną tablicę bez jego stanu odczytów."
-          : readOnlyPreview
-            ? "Podgląd — wysyłanie pytań i oznaczanie odczytów są wyłączone."
-            : undefined
+        readOnlyPreview && !previewProfileMissing
+          ? "Podgląd — wysyłanie pytań i oznaczanie odczytów są wyłączone."
+          : undefined
       }
     />
   );
@@ -181,6 +180,13 @@ export default async function SalesBoardPage({
           : null
       }
     >
+      {previewProfileMissing ? (
+        <Alert tone="warning" className="mb-4">
+          Handlowiec <strong>{salesPersonName}</strong> nie ma powiązanego konta użytkownika.
+          Pokazujemy ogólną tablicę działu — stan odczytów i powiadomień dotyczy Twojego konta,
+          nie tego handlowca.
+        </Alert>
+      ) : null}
       {boardClient}
     </SalesPreviewPageChrome>
   );

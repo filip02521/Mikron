@@ -42,7 +42,7 @@ describe("runLoginFlow", () => {
 
   it("loguje przez accountId bez signInWithPassword gdy cookies API działają", async () => {
     vi.mocked(fetch).mockResolvedValue(
-      Response.json({ ok: true, redirectTo: "/podsumowanie" })
+      Response.json({ ok: true, redirectTo: "/podsumowanie", accountId: "user-1" })
     );
     getSession.mockResolvedValue({
       data: { session: { user: { id: "user-1" } } },
@@ -54,7 +54,7 @@ describe("runLoginFlow", () => {
       next: null,
     });
 
-    expect(result).toEqual({ ok: true, redirectTo: "/podsumowanie" });
+    expect(result).toEqual({ ok: true, redirectTo: "/podsumowanie", accountId: "user-1" });
     expect(signInWithPassword).not.toHaveBeenCalled();
     expect(JSON.parse(String(vi.mocked(fetch).mock.calls[0]?.[1]?.body))).toMatchObject({
       accountId: "acc-1",
@@ -63,7 +63,7 @@ describe("runLoginFlow", () => {
 
   it("używa signInWithPassword tylko gdy cookies API nie zsynchronizowały sesji", async () => {
     vi.mocked(fetch).mockResolvedValue(
-      Response.json({ ok: true, redirectTo: "/moje" })
+      Response.json({ ok: true, redirectTo: "/moje", accountId: "acc-1" })
     );
     getSession.mockResolvedValue({ data: { session: null } });
     refreshSession.mockResolvedValue({ error: { message: "no session" } });
@@ -76,7 +76,7 @@ describe("runLoginFlow", () => {
       next: null,
     });
 
-    expect(result).toEqual({ ok: true, redirectTo: "/moje" });
+    expect(result).toEqual({ ok: true, redirectTo: "/moje", accountId: "acc-1" });
     expect(signInWithPassword).toHaveBeenCalledTimes(1);
   });
 });

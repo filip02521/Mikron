@@ -72,11 +72,6 @@ export const SUPPLIER_HUB_TAB_COPY: Record<
   },
 };
 
-export function supplierHubHint(tab: SupplierHubTab): string {
-  void tab;
-  return "";
-}
-
 export const SUPPLIER_HUB_LIST_META_DESCRIPTION =
   "Brak Subiekt na górze. Filtry zapisują się w URL.";
 

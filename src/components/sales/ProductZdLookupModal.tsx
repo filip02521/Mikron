@@ -236,32 +236,38 @@ export function ProductZdLookupModal({
     setSuggestions([]);
     setSuggestError(null);
     setSuggestFeedback(null);
+    setSuggestLoading(false);
     setSelectedProduct(null);
     setLookupResult(null);
     setLookupError(null);
   }, []);
 
-  useEffect(() => {
-    if (open) return;
+  const handleClose = useCallback(() => {
     reset();
-  }, [open, reset]);
+    onClose();
+  }, [onClose, reset]);
+
+  const trimmedDebouncedQuery = debouncedQuery.trim();
+  const productSearchField = inferCombinedProductSearchField(trimmedDebouncedQuery);
+  const productSearchActive =
+    open &&
+    phase === "search" &&
+    !selectedProduct &&
+    trimmedDebouncedQuery.length >= minProductSearchLength(productSearchField);
+  const visibleSuggestions = productSearchActive ? suggestions : [];
+  const visibleSuggestError = productSearchActive ? suggestError : null;
+  const visibleSuggestFeedback = productSearchActive ? suggestFeedback : null;
+  const visibleSuggestLoading = productSearchActive && suggestLoading;
 
   useEffect(() => {
-    const q = debouncedQuery.trim();
-    if (!open || phase !== "search" || selectedProduct) return;
-    if (q.length < minProductSearchLength(inferCombinedProductSearchField(q))) {
-      setSuggestions([]);
-      setSuggestError(null);
-      setSuggestFeedback(null);
-      return;
-    }
+    if (!productSearchActive) return;
 
     let cancelled = false;
     void (async () => {
       setSuggestLoading(true);
       setSuggestError(null);
-      const field = inferCombinedProductSearchField(q);
-      const result = await actionSubiektSuggestProducts(q, field);
+      const field = inferCombinedProductSearchField(trimmedDebouncedQuery);
+      const result = await actionSubiektSuggestProducts(trimmedDebouncedQuery, field);
       if (cancelled) return;
       setSuggestLoading(false);
       if (!result.ok) {
@@ -276,8 +282,9 @@ export function ProductZdLookupModal({
 
     return () => {
       cancelled = true;
+      setSuggestLoading(false);
     };
-  }, [debouncedQuery, open, phase, selectedProduct]);
+  }, [productSearchActive, trimmedDebouncedQuery]);
 
   const runLookup = useCallback((product: SubiektProduct) => {
     setPhase("loading");
@@ -342,12 +349,12 @@ export function ProductZdLookupModal({
     };
   }, [selectedProduct]);
 
-  const typeaheadOpen = suggestions.length > 0 && !selectedProduct && phase === "search";
+  const typeaheadOpen = visibleSuggestions.length > 0 && !selectedProduct && phase === "search";
 
   return (
     <ModalShell
       open={open}
-      onClose={onClose}
+      onClose={handleClose}
       title={PRODUCT_ZD_LOOKUP_MODAL.title}
       description={PRODUCT_ZD_LOOKUP_MODAL.description}
       titleHint={PRODUCT_ZD_LOOKUP_MODAL.titleHint}
@@ -362,7 +369,7 @@ export function ProductZdLookupModal({
               {PRODUCT_ZD_LOOKUP_MODAL.searchAgain}
             </Button>
           ) : null}
-          <Button type="button" variant="secondary" onClick={onClose}>
+          <Button type="button" variant="secondary" onClick={handleClose}>
             {phase === "search" ? PRODUCT_ZD_LOOKUP_MODAL.cancel : PRODUCT_ZD_LOOKUP_MODAL.close}
           </Button>
         </div>
@@ -401,7 +408,7 @@ export function ProductZdLookupModal({
                       className="pointer-events-none absolute left-3 top-1/2 z-[1] -translate-y-1/2 text-slate-400"
                       aria-hidden
                     >
-                      {suggestLoading ? <Spinner size="sm" /> : <IconSearch size={18} strokeWidth={2} />}
+                      {visibleSuggestLoading ? <Spinner size="sm" /> : <IconSearch size={18} strokeWidth={2} />}
                     </span>
                     <Input
                       value={query}
@@ -423,7 +430,7 @@ export function ProductZdLookupModal({
                       emptyMessage={suggestLoading ? "Szukam w Subiekcie…" : undefined}
                     >
                       <TypeaheadSectionLabel>Subiekt — wybierz produkt</TypeaheadSectionLabel>
-                      {suggestions.map((product) => {
+                      {visibleSuggestions.map((product) => {
                         const { title, subtitle } = formatSubiektProductOption(product);
                         return (
                           <TypeaheadOption
@@ -438,9 +445,9 @@ export function ProductZdLookupModal({
                     </TypeaheadDropdown>
                   </div>
                 </Field>
-                {suggestFeedback ? <SubiektFeedbackAlert feedback={suggestFeedback} /> : null}
-                {suggestError && !suggestFeedback ? (
-                  <Alert tone="warning">{suggestError}</Alert>
+                {visibleSuggestFeedback ? <SubiektFeedbackAlert feedback={visibleSuggestFeedback} /> : null}
+                {visibleSuggestError && !visibleSuggestFeedback ? (
+                  <Alert tone="warning">{visibleSuggestError}</Alert>
                 ) : null}
               </div>
             </section>
@@ -561,7 +568,7 @@ export function ProductZdLookupModal({
                   className="mt-3 w-full sm:w-auto"
                   onClick={() => {
                     onStockOutPrefill(stockOutPrefill);
-                    onClose();
+                    handleClose();
                   }}
                 >
                   {PRODUCT_ZD_LOOKUP_MODAL.stockOutCta}

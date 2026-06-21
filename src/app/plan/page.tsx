@@ -11,6 +11,7 @@ import { PageHeader } from "@/components/ui/PageHeader";
 import { SalesAccountLinkRequired } from "@/components/sales/SalesAccountLinkRequired";
 import { SalesPreviewPageChrome } from "@/components/sales/SalesPreviewPageChrome";
 import { getAppRole } from "@/lib/auth-dev";
+import { logDevPageError } from "@/lib/dev/log-page-error";
 import { getSessionUser } from "@/lib/auth";
 import { resolveSalesPersonForUser } from "@/lib/auth/sales-person";
 import { isAdmin, isSalesAccount, isSalesManager } from "@/lib/auth-roles";
@@ -55,6 +56,8 @@ export default async function PlanPage({
         isTeamPreview = preview.id !== own?.id;
       } else {
         linkError = "Nie znaleziono handlowca do podglądu.";
+        salesPersonId = own?.id ?? null;
+        salesPersonName = own?.name ?? null;
       }
     } else if (role && isSalesAccount(role)) {
       const user = await getSessionUser();
@@ -64,8 +67,8 @@ export default async function PlanPage({
         salesPersonName = resolved?.name ?? null;
       }
     }
-  } catch {
-    /* dev */
+  } catch (error) {
+    logDevPageError("plan/page", error);
   }
 
   if (role && isSalesAccount(role) && !salesPersonId && !isTeamPreview && !linkError) {

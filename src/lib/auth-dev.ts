@@ -1,4 +1,5 @@
 import { getSessionUser } from "@/lib/auth";
+import { logDevPageError } from "@/lib/dev/log-page-error";
 import { needsBootstrapSetup } from "@/lib/setup/bootstrap";
 import type { UserRole } from "@/types/database";
 
@@ -11,7 +12,8 @@ export async function getAppRole(): Promise<UserRole | null> {
   try {
     const user = await getSessionUser();
     return user?.role ?? null;
-  } catch {
+  } catch (error) {
+    logDevPageError("auth-dev/getAppRole", error);
     return null;
   }
 }

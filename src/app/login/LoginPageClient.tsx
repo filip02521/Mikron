@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense, useCallback, useState } from "react";
+import { Suspense, useCallback, useLayoutEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import type { LoginDirectoryAccountPublic } from "@/lib/auth/login-directory-public";
 import {
@@ -9,14 +9,34 @@ import {
   loginTitleForMode,
   type LoginSubtitleMode,
 } from "@/lib/auth/login-form-copy";
+import { resolveClientLoginSubtitleMode } from "@/lib/auth/login-client-subtitle";
+import { resolveInitialManualEmailLogin } from "@/lib/auth/login-initial-mode";
 import { AuthScreenLayout } from "@/components/auth/AuthScreenLayout";
 import { LoginForm } from "./LoginForm";
 
 function LoginPageClientInner({ accounts }: { accounts: LoginDirectoryAccountPublic[] }) {
   const searchParams = useSearchParams();
   const reason = searchParams.get("reason");
-  const [subtitleMode, setSubtitleMode] = useState<LoginSubtitleMode>("picker");
-  const [subtitle, setSubtitle] = useState(LOGIN_SUBTITLE_PICKER);
+  const modeParam = searchParams.get("mode");
+  const initialSubtitleMode: LoginSubtitleMode = resolveInitialManualEmailLogin({
+    preloadedAccountCount: accounts.length,
+    modeParam,
+  })
+    ? "manual"
+    : "picker";
+  const [subtitleMode, setSubtitleMode] = useState<LoginSubtitleMode>(initialSubtitleMode);
+  const [subtitle, setSubtitle] = useState(loginSubtitleForMode(initialSubtitleMode));
+
+  /* eslint-disable react-hooks/set-state-in-effect -- subtitle z localStorage przed paint */
+  useLayoutEffect(() => {
+    const clientMode = resolveClientLoginSubtitleMode({
+      preloadedAccountCount: accounts.length,
+      modeParam,
+    });
+    setSubtitleMode(clientMode);
+    setSubtitle(loginSubtitleForMode(clientMode));
+  }, [accounts.length, modeParam]);
+  /* eslint-enable react-hooks/set-state-in-effect */
 
   const handleSubtitleModeChange = useCallback((mode: LoginSubtitleMode) => {
     setSubtitleMode(mode);

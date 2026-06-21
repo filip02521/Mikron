@@ -18,6 +18,7 @@ import { resolveProsbaSupplierId } from "@/lib/orders/prosba-url";
 import { SalesAccountLinkRequired } from "@/components/sales/SalesAccountLinkRequired";
 import { Alert } from "@/components/ui/Alert";
 import { salesPageShellClass, brandLinkClass } from "@/lib/ui/ontime-theme";
+import { logDevPageError } from "@/lib/dev/log-page-error";
 
 import type { Metadata } from "next";
 import { pageMetadataFor } from "@/lib/ui/page-metadata";
@@ -42,8 +43,8 @@ export default async function ProsbaPage({
   try {
     const ctx = await fetchSupplierFormContext();
     suppliers = ctx.suppliers;
-  } catch {
-    /* empty */
+  } catch (error) {
+    logDevPageError("prosba/page:suppliers", error);
   }
 
   try {
@@ -92,8 +93,8 @@ export default async function ProsbaPage({
         name: p.name,
       }));
     }
-  } catch {
-    /* empty */
+  } catch (error) {
+    logDevPageError("prosba/page:access", error);
   }
 
   if (adminReadOnlyPreview) {
@@ -167,25 +168,7 @@ export default async function ProsbaPage({
     );
   }
 
-  if (isManager && !lockedSalesPerson) {
-    return (
-      <div className={salesPageShellClass}>
-        <PageHeader
-          title="Nowa prośba"
-          hint="Wybierz handlowca z zespołu lub powiąż swoje konto z kartą handlowca."
-          hintAriaLabel="O formularzu prośby"
-        />
-        <Alert tone="warning">
-          Aby składać prośby w swoim imieniu, administrator musi przypisać Ci kartę handlowca.
-          Możesz od razu złożyć prośbę w imieniu innej osoby z{" "}
-          <a href="/zespol" className={brandLinkClass}>
-            podglądu zespołu
-          </a>
-          .
-        </Alert>
-      </div>
-    );
-  }
+  const managerNeedsOwnCardHint = isManager && !lockedSalesPerson && !managerSelfId;
 
   const delegatePeople = isManager ? salesPeople : [];
   const initialSupplierId =
@@ -205,6 +188,12 @@ export default async function ProsbaPage({
         }
         linkErrorWarningOnIgnored={false}
       />
+      {managerNeedsOwnCardHint ? (
+        <Alert tone="warning">
+          Aby składać prośby w swoim imieniu, administrator musi przypisać Ci kartę handlowca.
+          Możesz złożyć prośbę w imieniu osoby z zespołu — wybierz handlowca poniżej.
+        </Alert>
+      ) : null}
       <Suspense fallback={<ProsbaFormSuspenseFallback />}>
       {lockedSalesPerson ? (
         <OrderFormClient
@@ -224,6 +213,10 @@ export default async function ProsbaPage({
           suppliers={suppliers}
           salesPeople={salesPeople}
           initialSupplierId={initialSupplierId}
+          delegatePeople={
+            isManager && delegatePeople.length > 0 ? delegatePeople : undefined
+          }
+          managerSelfId={managerSelfId ?? undefined}
         />
       )}
       </Suspense>

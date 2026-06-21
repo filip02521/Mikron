@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
+  loginJsRequiredMessage,
   loginServerResponseErrorMessage,
   loginSessionLostMessage,
 } from "@/lib/auth/login-messages";
@@ -22,5 +23,9 @@ describe("login-messages", () => {
     vi.stubEnv("NEXT_PUBLIC_APP_URL", "http://192.168.68.51:3000");
     expect(loginSessionLostMessage()).toContain("192.168.68.51:3000");
     expect(loginSessionLostMessage()).toContain("Supabase");
+  });
+
+  it("komunikat gdy brak JavaScript", () => {
+    expect(loginJsRequiredMessage()).toContain("JavaScript");
   });
 });

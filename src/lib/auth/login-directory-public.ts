@@ -6,11 +6,12 @@ export type LoginDirectoryAccountPublic = Omit<LoginDirectoryAccount, "email">;
 export function toPublicLoginDirectoryAccounts(
   accounts: LoginDirectoryAccount[]
 ): LoginDirectoryAccountPublic[] {
-  return accounts.map(({ id, role, roleLabel, displayName, salesPersonName }) => ({
+  return accounts.map(({ id, role, roleLabel, displayName, salesPersonName, assignmentLabel }) => ({
     id,
     role,
     roleLabel,
     displayName,
     salesPersonName,
+    assignmentLabel,
   }));
 }

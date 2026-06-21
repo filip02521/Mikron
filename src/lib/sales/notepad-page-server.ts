@@ -2,6 +2,7 @@ import { getSessionUser } from "@/lib/auth";
 import { resolveSalesPersonForUser } from "@/lib/auth/sales-person";
 import { resolvePreviewSalesPerson } from "@/lib/auth/resolve-preview-sales-person";
 import { getAppRole } from "@/lib/auth-dev";
+import { logDevPageError } from "@/lib/dev/log-page-error";
 import { isAdmin, isSalesAccount, isSalesManager } from "@/lib/auth-roles";
 import type { UserRole } from "@/types/database";
 
@@ -70,8 +71,8 @@ export async function resolveSalesNotepadPageAccess(input: {
           "Twoje konto kierownika nie jest przypisane do profilu handlowca — poproś administratora o przypisanie w sekcji Użytkownicy.";
       }
     }
-  } catch {
-    /* dev */
+  } catch (error) {
+    logDevPageError("sales/notepad-page-server", error);
   }
 
   return {

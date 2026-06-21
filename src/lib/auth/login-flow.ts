@@ -9,7 +9,7 @@ import { createClient } from "@/lib/supabase/client";
 import type { UserRole } from "@/types/database";
 
 export type LoginFlowResult =
-  | { ok: true; redirectTo: string }
+  | { ok: true; redirectTo: string; accountId: string }
   | { ok: false; error: string };
 
 export type RunLoginFlowParams = {
@@ -76,7 +76,7 @@ async function resolveRedirect(
   }
 
   if (profile.must_change_password) {
-    return { ok: true, redirectTo: "/ustaw-haslo?wymagane=1" };
+    return { ok: true, redirectTo: "/ustaw-haslo?wymagane=1", accountId: userId };
   }
 
   const adminPanelContext = readAdminPanelContextFromDocument();
@@ -86,6 +86,7 @@ async function resolveRedirect(
     redirectTo: redirectPathAfterLogin(profile.role as UserRole, next, {
       adminPanelContext,
     }),
+    accountId: userId,
   };
 }
 
@@ -112,7 +113,7 @@ export async function runLoginFlow(params: RunLoginFlowParams): Promise<LoginFlo
       body: JSON.stringify(requestBody),
     });
 
-    let apiBody: { ok?: boolean; error?: string; redirectTo?: string } = {};
+    let apiBody: { ok?: boolean; error?: string; redirectTo?: string; accountId?: string } = {};
     try {
       apiBody = (await res.json()) as typeof apiBody;
     } catch {
@@ -137,8 +138,24 @@ export async function runLoginFlow(params: RunLoginFlowParams): Promise<LoginFlo
         if (!synced.ok) {
           return synced;
         }
+        ({ data: sessionData } = await supabase.auth.getSession());
       }
-      return { ok: true, redirectTo: apiBody.redirectTo };
+
+      const resolvedAccountId =
+        apiBody.accountId?.trim() ||
+        accountId ||
+        sessionData.session?.user?.id ||
+        "";
+
+      if (!resolvedAccountId) {
+        return { ok: false, error: "Nie udało się odczytać sesji." };
+      }
+
+      return {
+        ok: true,
+        redirectTo: apiBody.redirectTo,
+        accountId: resolvedAccountId,
+      };
     }
 
     if (!res.ok && apiBody.error) {
@@ -178,5 +195,5 @@ export async function runLoginFlow(params: RunLoginFlowParams): Promise<LoginFlo
     return { ok: false, error: redirect.error };
   }
 
-  return redirect;
+  return { ...redirect, accountId: userId };
 }

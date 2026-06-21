@@ -37,6 +37,7 @@ import {
 } from "@/lib/suppliers/admin-form";
 import { suggestOrderOnDemandAfterFieldChange } from "@/lib/orders/supplier-on-demand";
 import type { WarehouseCarrierRow } from "@/lib/data/warehouse-carriers";
+import { usePreviewMutationBlocker } from "@/components/layout/usePreviewMutationBlocker";
 import { cn } from "@/lib/cn";
 
 function scheduleHref(location: SupplierLocation, name: string): string {
@@ -74,6 +75,9 @@ export function InactiveSuppliersAdminClient({
   const [pending, start] = useTransition();
   const [toast, setToast] = useState<{ text: string; tone: "success" | "error" } | null>(
     null
+  );
+  const { readOnly, blockIfReadOnly } = usePreviewMutationBlocker((text) =>
+    setToast({ text, tone: "error" })
   );
   const dismiss = useCallback(() => setToast(null), []);
   const [search, setSearch] = useState("");
@@ -148,6 +152,7 @@ export function InactiveSuppliersAdminClient({
   };
 
   const startEdit = (s: SupplierWithSchedule) => {
+    if (blockIfReadOnly()) return;
     setForm(supplierToAdminForm(s));
     setFormOpen(true);
   };
@@ -175,6 +180,7 @@ export function InactiveSuppliersAdminClient({
   };
 
   const save = () => {
+    if (blockIfReadOnly()) return;
     if (!form.name.trim()) {
       setToast({ text: "Podaj nazwę dostawcy", tone: "error" });
       return;
@@ -211,6 +217,7 @@ export function InactiveSuppliersAdminClient({
   };
 
   const reactivate = (s: SupplierWithSchedule) => {
+    if (blockIfReadOnly()) return;
     start(async () => {
       try {
         await actionSetSupplierActive(s.id, true);
@@ -241,7 +248,7 @@ export function InactiveSuppliersAdminClient({
         pending={pending}
         footer={
           <>
-            <Button type="submit" form="inactive-supplier-form" disabled={pending}>
+            <Button type="submit" form="inactive-supplier-form" disabled={readOnly || pending}>
               Zapisz
             </Button>
             <Button type="button" variant="ghost" disabled={pending} onClick={resetForm}>
@@ -259,7 +266,7 @@ export function InactiveSuppliersAdminClient({
         >
           <SupplierAdminForm
             form={form}
-            disabled={pending}
+            disabled={readOnly || pending}
             onChange={setForm}
             onPatchCycleFields={patchCycleFields}
             carrierOptions={warehouseCarriers}
@@ -376,13 +383,14 @@ export function InactiveSuppliersAdminClient({
                             variant="secondary"
                             size="sm"
                             className="hidden md:inline-flex"
+                            disabled={readOnly || pending}
                             onClick={() => startEdit(s)}
                           >
                             Edytuj
                           </Button>
                           <InactiveSupplierRowMenu
                             supplier={s}
-                            disabled={pending}
+                            disabled={readOnly || pending}
                             onEdit={() => startEdit(s)}
                             onReactivate={() => reactivate(s)}
                           />

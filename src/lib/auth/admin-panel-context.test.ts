@@ -1,5 +1,34 @@
 import { describe, expect, it } from "vitest";
-import { shouldApplyAdminSalesPreviewHeader } from "@/lib/auth/admin-panel-context";
+import {
+  isAdminOperationsPreviewReadOnly,
+  isAdminReadOnlyPanelPreview,
+  shouldApplyAdminSalesPreviewHeader,
+} from "@/lib/auth/admin-panel-context";
+
+describe("isAdminOperationsPreviewReadOnly", () => {
+  it("zezwalają na mutacje w podglądzie zakupów", () => {
+    expect(isAdminOperationsPreviewReadOnly("admin", "zakupy")).toBe(false);
+  });
+
+  it("blokują mutacje w podglądzie magazynu i handlowca", () => {
+    expect(isAdminOperationsPreviewReadOnly("admin", "magazyn")).toBe(true);
+    expect(isAdminOperationsPreviewReadOnly("admin", "sales")).toBe(true);
+    expect(isAdminOperationsPreviewReadOnly("admin", "sales_manager")).toBe(true);
+  });
+
+  it("nie dotyczy roli zakupy ani natywnego panelu admina", () => {
+    expect(isAdminOperationsPreviewReadOnly("zakupy", null)).toBe(false);
+    expect(isAdminOperationsPreviewReadOnly("admin", null)).toBe(false);
+    expect(isAdminOperationsPreviewReadOnly("admin", "admin")).toBe(false);
+  });
+});
+
+describe("isAdminReadOnlyPanelPreview", () => {
+  it("traktuje każdy podgląd panelu admina jako read-only dla stron handlowca", () => {
+    expect(isAdminReadOnlyPanelPreview("admin", "zakupy")).toBe(true);
+    expect(isAdminReadOnlyPanelPreview("admin", "sales")).toBe(true);
+  });
+});
 
 describe("shouldApplyAdminSalesPreviewHeader", () => {
   it("włącza podgląd tylko dla kontekstu sales z ?dla=", () => {

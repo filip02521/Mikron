@@ -2,8 +2,11 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   LOGIN_LAST_ACCOUNT_STORAGE_KEY,
   LOGIN_RECENT_ACCOUNTS_STORAGE_KEY,
+  LOGIN_RECENT_ACCOUNT_LABELS_STORAGE_KEY,
   LOGIN_RECENT_EMAILS_STORAGE_KEY,
   MAX_RECENT_LOGIN_ACCOUNTS,
+  canShowCachedQuickLogin,
+  readLoginAccountDisplayName,
   readLoginLastAccountId,
   readLoginRecentAccountIds,
   readLoginRecentEmails,
@@ -11,6 +14,7 @@ import {
   rememberLoginEmail,
   resolveLoginLastAccountId,
   resolveLoginRecentAccountIds,
+  resolveQuickLoginAccountId,
   writeLoginLastAccountId,
 } from "./login-account-preference";
 
@@ -108,5 +112,28 @@ describe("login-account-preference", () => {
   it("zapisuje listę kont w localStorage jako JSON", () => {
     rememberLoginAccountId("user-1");
     expect(JSON.parse(storage[LOGIN_RECENT_ACCOUNTS_STORAGE_KEY]!)).toEqual(["user-1"]);
+  });
+
+  it("zapisuje etykiety kont do powitania quick login", () => {
+    rememberLoginAccountId("user-1", "Filip");
+    expect(readLoginAccountDisplayName("user-1")).toBe("Filip");
+    expect(canShowCachedQuickLogin()).toBe(true);
+  });
+
+  it("resolveQuickLoginAccountId działa przed fetch katalogu", () => {
+    rememberLoginAccountId("user-1", "Filip");
+    expect(resolveQuickLoginAccountId([])).toBe("user-1");
+  });
+
+  it("przycina etykiety do aktualnej listy kont", () => {
+    rememberLoginAccountId("a", "Anna");
+    rememberLoginAccountId("b", "Bogdan");
+    rememberLoginAccountId("c", "Celina");
+
+    expect(JSON.parse(storage[LOGIN_RECENT_ACCOUNT_LABELS_STORAGE_KEY]!)).toEqual({
+      a: "Anna",
+      b: "Bogdan",
+      c: "Celina",
+    });
   });
 });

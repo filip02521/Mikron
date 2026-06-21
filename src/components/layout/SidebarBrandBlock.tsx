@@ -1,4 +1,5 @@
 import { AppBrandMark } from "@/components/ui/AppBrandMark";
+import { LoginAccountRoleLine } from "@/components/auth/LoginAccountRoleLine";
 import {
   ONTIME_APP_NAME,
   ONTIME_COMPANY,
@@ -8,14 +9,6 @@ import { resolveUserDisplayName } from "@/lib/users/display-name";
 import { ROLE_LABELS } from "@/lib/users/labels";
 import type { UserRole } from "@/types/database";
 import { cn } from "@/lib/cn";
-
-const roleDotClass: Record<UserRole, string> = {
-  admin: "bg-violet-500",
-  zakupy: "bg-amber-500",
-  magazyn: "bg-emerald-500",
-  sales: "bg-indigo-500",
-  sales_manager: "bg-indigo-400",
-};
 
 function initialsFromName(name: string): string {
   const parts = name.trim().split(/\s+/).filter(Boolean);
@@ -65,29 +58,13 @@ function RoleLine({
   compact?: boolean;
 }) {
   return (
-    <p
-      className={cn(
-        "flex min-w-0 items-center gap-1.5 leading-none text-slate-500",
-        compact ? "text-[10px]" : "text-xs"
-      )}
-    >
-      <span
-        className={cn(
-          "shrink-0 rounded-full",
-          compact ? "h-1 w-1" : "h-1.5 w-1.5",
-          roleDotClass[role]
-        )}
-        aria-hidden
+    <p className="min-w-0">
+      <LoginAccountRoleLine
+        role={role}
+        roleLabel={ROLE_LABELS[role]}
+        assignmentLabel={assignmentLabel}
+        compact={compact}
       />
-      <span className="min-w-0 truncate">{ROLE_LABELS[role]}</span>
-      {assignmentLabel ? (
-        <>
-          <span className="shrink-0 text-slate-300" aria-hidden>
-            ·
-          </span>
-          <span className="min-w-0 truncate text-slate-400">{assignmentLabel}</span>
-        </>
-      ) : null}
     </p>
   );
 }

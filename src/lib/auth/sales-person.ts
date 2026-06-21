@@ -33,7 +33,15 @@ export async function resolveSalesPersonForUser(
     .ilike("email", email)
     .maybeSingle();
 
-  if (match) return { id: match.id, name: match.name };
+  if (match) {
+    const { data: linkedProfile } = await admin
+      .from("profiles")
+      .select("id")
+      .eq("sales_person_id", match.id)
+      .maybeSingle();
+    if (linkedProfile && linkedProfile.id !== user.id) return null;
+    return { id: match.id, name: match.name };
+  }
 
   return null;
 }

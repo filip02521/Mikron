@@ -12,9 +12,9 @@ import {
   loginAccountAvatarClass,
   loginAccountCountLabel,
   loginAccountInitials,
-  loginAccountRoleDotClass,
   loginAccountRowClass,
 } from "@/components/auth/login-account-picker-layout";
+import { LoginAccountRoleLine } from "@/components/auth/LoginAccountRoleLine";
 import { cn } from "@/lib/cn";
 
 export function LoginAccountPicker({
@@ -193,7 +193,8 @@ export function LoginAccountPicker({
         >
           {awaitingSearch ? (
             <p className="px-4 py-6 text-center text-sm text-slate-500">
-              Wpisz co najmniej {minQueryLength} znaki, aby wyszukać konto.
+              Wpisz co najmniej {minQueryLength} znaki imienia lub nazwiska, aby wyszukać konto w
+              firmie. Możesz też zalogować się adresem e-mail — link poniżej listy.
             </p>
           ) : queryTooShort ? (
             <p className="px-4 py-6 text-center text-sm text-slate-500">
@@ -229,15 +230,12 @@ export function LoginAccountPicker({
                     <span className="block truncate text-sm font-semibold text-slate-900">
                       {account.displayName}
                     </span>
-                    <span className="mt-0.5 flex min-w-0 items-center gap-1.5 text-xs text-slate-500">
-                      <span
-                        className={cn(
-                          "h-1.5 w-1.5 shrink-0 rounded-full",
-                          loginAccountRoleDotClass(account.role)
-                        )}
-                        aria-hidden
+                    <span className="mt-0.5 block min-w-0">
+                      <LoginAccountRoleLine
+                        role={account.role}
+                        roleLabel={account.roleLabel}
+                        assignmentLabel={account.assignmentLabel}
                       />
-                      <span className="truncate">{account.roleLabel}</span>
                     </span>
                   </span>
                   {active ? (

@@ -10,6 +10,11 @@ export function loginSessionLostMessage(): string {
   return `Sesja wygasła lub nie została zapisana. W trybie developerskim otwieraj aplikację pod stałym adresem (${appUrl}), zezwól na ciasteczka i dodaj ten URL w Supabase → Authentication → URL Configuration. Szczegóły: docs/mobile-lan-dev.md.`;
 }
 
+/** Gdy formularz wysłany bez JS (POST → redirect ?reason=js-required). */
+export function loginJsRequiredMessage(): string {
+  return "Do logowania wymagany jest JavaScript w przeglądarce. Włącz go i odśwież stronę.";
+}
+
 /** Gdy /api/auth/login nie zwróci poprawnego JSON (np. proxy, zły host). */
 export function loginServerResponseErrorMessage(): string {
   if (isProductionRuntime()) {

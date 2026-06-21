@@ -1,18 +1,26 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { useSearchParams } from "next/navigation";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { runLoginFlow } from "@/lib/auth/login-flow";
 import { postLoginEnteringUrl } from "@/lib/auth/post-login-entering";
-import { loginSessionLostMessage } from "@/lib/auth/login-messages";
+import { loginJsRequiredMessage, loginSessionLostMessage } from "@/lib/auth/login-messages";
 import type { LoginDirectoryAccountPublic } from "@/lib/auth/login-directory-public";
 import {
+  readLoginAccountDisplayName,
   readLoginLastAccountId,
+  readLoginRecentAccountIds,
   readLoginRecentEmails,
   rememberLoginAccountId,
   rememberLoginEmail,
   resolveLoginLastAccountId,
+  resolveQuickLoginAccountId,
 } from "@/lib/auth/login-account-preference";
+import {
+  buildLoginPageHref,
+  loginFormModeFromParam,
+  resolveInitialManualEmailLogin,
+} from "@/lib/auth/login-initial-mode";
 import { applyLoginFormError } from "@/lib/auth/login-form-errors";
 import type { LoginSubtitleMode } from "@/lib/auth/login-form-copy";
 import {
@@ -46,15 +54,27 @@ type AccountSelection = {
 function deriveAccountSelection(
   hydrated: boolean,
   useManualEmail: boolean,
+  modeParam: string | null,
   accounts: LoginDirectoryAccountPublic[]
 ): AccountSelection {
-  if (!hydrated || useManualEmail || accounts.length === 0) {
+  const mode = loginFormModeFromParam(modeParam);
+  if (mode === "picker") {
     return { selectedAccountId: null, showAccountPicker: true };
   }
+  if (useManualEmail || mode === "email") {
+    return { selectedAccountId: null, showAccountPicker: false };
+  }
 
-  const restored = resolveLoginLastAccountId(accounts);
-  if (restored) {
-    return { selectedAccountId: restored, showAccountPicker: false };
+  const quickId = resolveQuickLoginAccountId(accounts);
+  if (quickId) {
+    return { selectedAccountId: quickId, showAccountPicker: false };
+  }
+
+  if (!hydrated || accounts.length === 0) {
+    if (readLoginRecentAccountIds().length > 0) {
+      return { selectedAccountId: null, showAccountPicker: true };
+    }
+    return { selectedAccountId: null, showAccountPicker: true };
   }
 
   return { selectedAccountId: null, showAccountPicker: true };
@@ -67,16 +87,23 @@ export function LoginForm({
   accounts: LoginDirectoryAccountPublic[];
   onSubtitleModeChange?: (mode: LoginSubtitleMode) => void;
 }) {
+  const router = useRouter();
   const directory = useLoginDirectorySearch(preloadedAccounts);
   const accounts = directory.accounts;
   const searchParams = useSearchParams();
+  const modeParam = searchParams.get("mode");
   const hydrated = useClientHydrated();
   const next = searchParams.get("next");
   const reason = searchParams.get("reason");
   const [accountSelectionOverride, setAccountSelectionOverride] =
     useState<AccountSelection | null>(null);
   const [manualEmail, setManualEmail] = useState("");
-  const [useManualEmail, setUseManualEmail] = useState(false);
+  const [useManualEmail, setUseManualEmail] = useState(() =>
+    resolveInitialManualEmailLogin({
+      preloadedAccountCount: preloadedAccounts.length,
+      modeParam,
+    })
+  );
   const [password, setPassword] = useState("");
   const [bannerError, setBannerError] = useState("");
   const [passwordError, setPasswordError] = useState("");
@@ -91,29 +118,71 @@ export function LoginForm({
   const resetSession = resetSessionOverride ?? restoredResetSession;
   const errorRef = useRef<HTMLDivElement>(null);
 
+  const syncLoginUrl = useCallback(
+    (mode: "email" | "picker" | null) => {
+      router.replace(buildLoginPageHref(mode, { next, reason }), { scroll: false });
+    },
+    [next, reason, router]
+  );
+
+  /* eslint-disable react-hooks/set-state-in-effect -- localStorage + URL przed paint, bez migania UI */
+  useLayoutEffect(() => {
+    if (preloadedAccounts.length > 0) return;
+
+    const mode = loginFormModeFromParam(modeParam);
+    if (mode === "email") {
+      setUseManualEmail(true);
+      setAccountSelectionOverride(null);
+      return;
+    }
+    if (mode === "picker") {
+      setUseManualEmail(false);
+      setAccountSelectionOverride({ selectedAccountId: null, showAccountPicker: true });
+      return;
+    }
+
+    const quickId = resolveQuickLoginAccountId([]);
+    if (quickId) {
+      setUseManualEmail(false);
+      setAccountSelectionOverride({ selectedAccountId: quickId, showAccountPicker: false });
+      return;
+    }
+
+    if (readLoginRecentAccountIds().length > 0) {
+      setUseManualEmail(false);
+      setAccountSelectionOverride({ selectedAccountId: null, showAccountPicker: true });
+      return;
+    }
+
+    setUseManualEmail(true);
+    setAccountSelectionOverride(null);
+  }, [modeParam, preloadedAccounts.length]);
+  /* eslint-enable react-hooks/set-state-in-effect */
+
   const derivedAccountSelection = useMemo(
-    () => deriveAccountSelection(hydrated, useManualEmail, accounts),
-    [hydrated, useManualEmail, accounts]
+    () => deriveAccountSelection(hydrated, useManualEmail, modeParam, accounts),
+    [hydrated, useManualEmail, modeParam, accounts]
   );
   const { selectedAccountId, showAccountPicker } =
     accountSelectionOverride ?? derivedAccountSelection;
 
-  const sessionNotice = useMemo(
-    () => (reason === "session" ? loginSessionLostMessage() : ""),
-    [reason]
-  );
+  const sessionNotice = useMemo(() => {
+    if (reason === "session") return loginSessionLostMessage();
+    if (reason === "js-required") return loginJsRequiredMessage();
+    return "";
+  }, [reason]);
 
-  const selectedAccount = useMemo(
-    () => accounts.find((account) => account.id === selectedAccountId) ?? null,
-    [accounts, selectedAccountId]
-  );
+  const selectedAccount = useMemo(() => {
+    if (!selectedAccountId) return null;
+    const fromDirectory = accounts.find((account) => account.id === selectedAccountId);
+    if (fromDirectory) return fromDirectory;
+    const cachedName = readLoginAccountDisplayName(selectedAccountId);
+    if (cachedName) return { id: selectedAccountId, displayName: cachedName };
+    return null;
+  }, [accounts, selectedAccountId]);
 
   const quickLoginActive =
-    hydrated &&
-    !useManualEmail &&
-    accounts.length > 0 &&
-    Boolean(selectedAccount) &&
-    !showAccountPicker;
+    hydrated && !useManualEmail && Boolean(selectedAccount) && !showAccountPicker;
 
   const subtitleMode: LoginSubtitleMode = resetSession
     ? "reset"
@@ -132,6 +201,25 @@ export function LoginForm({
   }, [onSubtitleModeChange, subtitleMode]);
 
   const loginReady = useManualEmail ? Boolean(manualEmail.trim()) : Boolean(selectedAccountId);
+  const passwordInputDisabled = loading || (!useManualEmail && !selectedAccountId);
+
+  const resolveManualLoginEmail = useCallback((): string => {
+    const fromState = manualEmail.trim().toLowerCase();
+    if (fromState) return fromState;
+    return (
+      document.querySelector<HTMLInputElement>('input[name="email"]')?.value?.trim().toLowerCase() ??
+      ""
+    );
+  }, [manualEmail]);
+
+  const syncManualEmailFromDom = useCallback(() => {
+    const fromDom =
+      document.querySelector<HTMLInputElement>('input[name="email"]')?.value?.trim().toLowerCase() ??
+      "";
+    if (fromDom && fromDom !== manualEmail.trim().toLowerCase()) {
+      setManualEmail(fromDom);
+    }
+  }, [manualEmail]);
 
   const recentEmails = useMemo(
     () => (hydrated ? readLoginRecentEmails() : []),
@@ -155,19 +243,51 @@ export function LoginForm({
     return () => cancelAnimationFrame(frame);
   }, [bannerError]);
 
-  const handleAccountChange = useCallback((accountId: string) => {
-    rememberLoginAccountId(accountId);
+  const handleAccountChange = useCallback(
+    (accountId: string) => {
+      const account = accounts.find((entry) => entry.id === accountId);
+      rememberLoginAccountId(accountId, account?.displayName);
+      setAccountSelectionOverride({
+        selectedAccountId: accountId,
+        showAccountPicker: false,
+      });
+      setUseManualEmail(false);
+      syncLoginUrl(null);
+      setPassword("");
+      setBannerError("");
+      setPasswordError("");
+      requestAnimationFrame(() => {
+        document.querySelector<HTMLInputElement>('input[name="password"]')?.focus();
+      });
+    },
+    [accounts, syncLoginUrl]
+  );
+
+  const switchToManualEmail = useCallback(() => {
+    directory.clearSearch();
+    setUseManualEmail(true);
     setAccountSelectionOverride({
-      selectedAccountId: accountId,
+      selectedAccountId: null,
       showAccountPicker: false,
     });
     setPassword("");
     setBannerError("");
     setPasswordError("");
-    requestAnimationFrame(() => {
-      document.querySelector<HTMLInputElement>('input[name="password"]')?.focus();
+    syncLoginUrl("email");
+  }, [directory, syncLoginUrl]);
+
+  const switchToAccountPicker = useCallback(() => {
+    const restored = resolveLoginLastAccountId(accounts, readLoginLastAccountId());
+    setAccountSelectionOverride({
+      selectedAccountId: restored,
+      showAccountPicker: true,
     });
-  }, []);
+    setUseManualEmail(false);
+    setPassword("");
+    setBannerError("");
+    setPasswordError("");
+    syncLoginUrl("picker");
+  }, [accounts, syncLoginUrl]);
 
   const showOtherAccountPicker = useCallback(() => {
     setAccountSelectionOverride((current) => {
@@ -177,10 +297,12 @@ export function LoginForm({
         showAccountPicker: true,
       };
     });
+    setUseManualEmail(false);
+    syncLoginUrl("picker");
     setPassword("");
     setBannerError("");
     setPasswordError("");
-  }, [derivedAccountSelection]);
+  }, [derivedAccountSelection, syncLoginUrl]);
 
   const canResetPassword = !useManualEmail && Boolean(selectedAccountId);
 
@@ -246,14 +368,22 @@ export function LoginForm({
     setBannerError("");
     setPasswordError("");
 
-    if (!loginReady) {
-      setBannerError(useManualEmail ? "Podaj adres e-mail." : "Wybierz konto z listy.");
-      if (!useManualEmail) {
-        setAccountSelectionOverride({
-          selectedAccountId: null,
-          showAccountPicker: true,
-        });
+    let emailForLogin: string | undefined;
+    if (useManualEmail) {
+      emailForLogin = resolveManualLoginEmail();
+      if (!emailForLogin) {
+        setBannerError("Podaj adres e-mail.");
+        return;
       }
+      if (emailForLogin !== manualEmail.trim().toLowerCase()) {
+        setManualEmail(emailForLogin);
+      }
+    } else if (!selectedAccountId) {
+      setBannerError("Wybierz konto z listy.");
+      setAccountSelectionOverride({
+        selectedAccountId: null,
+        showAccountPicker: true,
+      });
       return;
     }
 
@@ -269,7 +399,7 @@ export function LoginForm({
 
     const result = await runLoginFlow({
       accountId: useManualEmail ? null : selectedAccountId,
-      email: useManualEmail ? manualEmail.trim().toLowerCase() : undefined,
+      email: emailForLogin,
       password,
       next,
     });
@@ -288,10 +418,14 @@ export function LoginForm({
       return;
     }
 
-    if (useManualEmail) {
-      rememberLoginEmail(manualEmail.trim().toLowerCase());
-    } else if (selectedAccountId) {
-      rememberLoginAccountId(selectedAccountId);
+    if (result.accountId) {
+      const displayName =
+        selectedAccount?.displayName ??
+        accounts.find((account) => account.id === result.accountId)?.displayName;
+      rememberLoginAccountId(result.accountId, displayName);
+    }
+    if (useManualEmail && emailForLogin) {
+      rememberLoginEmail(emailForLogin);
     }
 
     window.location.assign(postLoginEnteringUrl(result.redirectTo));
@@ -318,7 +452,7 @@ export function LoginForm({
           setPassword(e.target.value);
           if (passwordError) setPasswordError("");
         }}
-        disabled={!loginReady || loading}
+        disabled={passwordInputDisabled}
         state={passwordError ? "error" : "default"}
       />
     </Field>
@@ -329,7 +463,7 @@ export function LoginForm({
       type="submit"
       size="lg"
       className="w-full min-h-11 transition-opacity"
-      disabled={loading || !loginReady}
+      disabled={loading || (!useManualEmail && !loginReady)}
     >
       {loading ? "Logowanie…" : "Zaloguj się"}
     </Button>
@@ -348,7 +482,13 @@ export function LoginForm({
   }
 
   return (
-    <form onSubmit={onSubmit} className="flex min-h-0 flex-col gap-4 sm:gap-5" noValidate>
+    <form
+      method="post"
+      action="/api/auth/login-form"
+      onSubmit={onSubmit}
+      className="flex min-h-0 flex-col gap-4 sm:gap-5"
+      noValidate
+    >
       <noscript>
         <p className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900">
           Do logowania wymagany jest JavaScript w przeglądarce.
@@ -412,6 +552,8 @@ export function LoginForm({
                   list={recentEmails.length > 0 ? "login-recent-emails" : undefined}
                   value={manualEmail}
                   onChange={(e) => setManualEmail(e.target.value)}
+                  onInput={syncManualEmailFromDom}
+                  onBlur={syncManualEmailFromDom}
                 />
                 {recentEmails.length > 0 ? (
                   <datalist id="login-recent-emails">
@@ -443,16 +585,7 @@ export function LoginForm({
                 <button
                   type="button"
                   className={loginAltLinkClass}
-                  onClick={() => {
-                    setUseManualEmail(true);
-                    setAccountSelectionOverride({
-                      selectedAccountId: null,
-                      showAccountPicker: true,
-                    });
-                    setPassword("");
-                    setBannerError("");
-                    setPasswordError("");
-                  }}
+                  onClick={switchToManualEmail}
                   disabled={loading}
                 >
                   Zaloguj na inny adres e-mail
@@ -465,20 +598,7 @@ export function LoginForm({
                 <button
                   type="button"
                   className={loginAltLinkClass}
-                  onClick={() => {
-                    const restored = resolveLoginLastAccountId(
-                      accounts,
-                      readLoginLastAccountId()
-                    );
-                    setAccountSelectionOverride({
-                      selectedAccountId: restored,
-                      showAccountPicker: !restored,
-                    });
-                    setUseManualEmail(false);
-                    setPassword("");
-                    setBannerError("");
-                    setPasswordError("");
-                  }}
+                  onClick={switchToAccountPicker}
                   disabled={loading}
                 >
                   Wybierz konto z listy

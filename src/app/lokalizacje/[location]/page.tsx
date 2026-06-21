@@ -5,6 +5,8 @@ import { getRowColorForDate } from "@/lib/orders/colors";
 import { parseDateOnly } from "@/lib/orders/dates";
 import { locationLabel } from "@/lib/display-labels";
 import { LocationScheduleClient } from "@/components/targets/LocationScheduleClient";
+import { Alert } from "@/components/ui/Alert";
+import { logDevPageError } from "@/lib/dev/log-page-error";
 import { SuppliersHubShell } from "@/components/admin/SuppliersHubShell";
 import {
   supplierHubContextForRole,
@@ -47,12 +49,15 @@ export default async function LocationPage({
 
   let rows: Awaited<ReturnType<typeof fetchSuppliersWithSchedules>> = [];
   let inactiveCount = 0;
+  let loadError: string | null = null;
   try {
     [rows, inactiveCount] = await Promise.all([
       fetchSuppliersWithSchedules(location, { activeOnly: false }),
       countInactiveSuppliers(),
     ]);
-  } catch {
+  } catch (error) {
+    loadError = error instanceof Error ? error.message : "Nie udało się wczytać harmonogramów.";
+    logDevPageError("lokalizacje/page", error);
     rows = [];
   }
 
@@ -65,6 +70,7 @@ export default async function LocationPage({
       scheduleLocation={location}
       inactiveCount={inactiveCount}
     >
+      {loadError ? <Alert tone="error">{loadError}</Alert> : null}
       <LocationScheduleClient
         location={location}
         cardsBasePath={cardsPath}
