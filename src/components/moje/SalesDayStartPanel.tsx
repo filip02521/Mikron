@@ -22,13 +22,13 @@ import {
   mojeQueueRowLayoutClass,
   mojeQueueRowMainClass,
   mojeShipmentListClass,
+  mojeShipmentSectionShellClass,
 } from "@/lib/ui/moje-shipment-row-styles";
 import {
   brandLinkClass,
   mojeBrandOutlineControlClass,
   mojeInformacjaAckControlClass,
   mojePickupControlClass,
-  salesChromeInsetClass,
   salesTypography,
   sectionIconTileBrandClass,
 } from "@/lib/ui/ontime-theme";
@@ -36,6 +36,7 @@ import {
 function sourceRowAccent(source: SalesDayStartItem["source"]): string {
   switch (source) {
     case "pickup":
+    case "zk_warehouse":
       return "border-l-emerald-500 hover:bg-emerald-50/35";
     case "cancel_ack":
       return "border-l-amber-500 hover:bg-amber-50/50";
@@ -45,8 +46,9 @@ function sourceRowAccent(source: SalesDayStartItem["source"]): string {
     case "note_follow_up":
       return "border-l-violet-500 hover:bg-violet-50/40";
     case "board_answer":
-    case "board_announcement":
       return "border-l-sky-500 hover:bg-sky-50/35";
+    case "board_announcement":
+      return "border-l-sky-600 hover:bg-sky-50/40";
   }
 }
 
@@ -54,6 +56,8 @@ function sourceTagClass(source: SalesDayStartItem["source"]): string {
   switch (source) {
     case "pickup":
       return "bg-emerald-50 text-emerald-800 ring-emerald-100";
+    case "zk_warehouse":
+      return "bg-emerald-50 text-emerald-900 ring-emerald-100";
     case "cancel_ack":
       return "bg-amber-50 text-amber-900 ring-amber-100";
     case "informacja_ready":
@@ -61,13 +65,18 @@ function sourceTagClass(source: SalesDayStartItem["source"]): string {
     case "zk_follow_up":
     case "note_follow_up":
       return "bg-violet-50 text-violet-900 ring-violet-100";
-    default:
+    case "board_answer":
       return "bg-sky-50 text-sky-900 ring-sky-100";
+    case "board_announcement":
+      return "bg-sky-50 text-sky-950 ring-sky-200/80";
   }
 }
 
 function ctaControlClass(item: SalesDayStartItem): string {
-  if (item.source === "pickup" && item.ctaLabel === "Potwierdź") {
+  if (
+    (item.source === "pickup" || item.source === "zk_warehouse") &&
+    item.ctaLabel === "Potwierdź"
+  ) {
     return mojePickupControlClass;
   }
   if (item.source === "informacja_ready" && item.ctaLabel === "Potwierdź") {
@@ -172,13 +181,8 @@ export function SalesDayStartPanel({
         action={<SalesDayStartHelp />}
       />
 
-      <div className={cn("pb-3", salesChromeInsetClass)}>
-        <ul
-          className={cn(
-            mojeShipmentListClass,
-            "overflow-hidden rounded-md border border-slate-200/90 bg-white shadow-sm"
-          )}
-        >
+      <div className={cn("px-3 pb-3 pt-3 sm:px-4 lg:px-5")}>
+        <ul className={cn(mojeShipmentSectionShellClass, mojeShipmentListClass)}>
           {visibleItems.map((item) => (
             <DayStartItemRow
               key={item.id}

@@ -173,7 +173,7 @@ describe("buildSalesDayStartSnapshot", () => {
     const item = snapshot.items.find((i) => i.id.startsWith("zk-warehouse-arrival"));
     expect(item?.href).toBe("/zk?focusWatch=w-wh#watch-w-wh");
     expect(item?.ctaLabel).toBe("ZK czekające");
-    expect(item?.source).toBe("zk_follow_up");
+    expect(item?.source).toBe("zk_warehouse");
   });
 
   it("kieruje potwierdzenie informacji do sekcji informacji na dole listy", () => {
