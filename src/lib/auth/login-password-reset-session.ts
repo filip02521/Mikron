@@ -36,6 +36,7 @@ export function writeStoredPasswordResetSession(
     if (!session) {
       window.sessionStorage.removeItem(LOGIN_PASSWORD_RESET_STORAGE_KEY);
     } else {
+      // codeql[js/clear-text-storage-of-sensitive-data]: Masked e-mail and account id for OTP step UX only.
       window.sessionStorage.setItem(
         LOGIN_PASSWORD_RESET_STORAGE_KEY,
         JSON.stringify(session)

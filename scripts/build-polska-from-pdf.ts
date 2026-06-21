@@ -134,9 +134,7 @@ function rowFromParts(parts: string[]): PolskaScheduleRow | null {
 
   let notes = "";
   if (idx < filtered.length && METHODS.some((m) => filtered[idx].toUpperCase().includes(m))) {
-    notes = filtered[idx]
-      .replace("INTERNETOWO", "PRZEZ INTERNET")
-      .replace("MAILOWO", "MAILOWO");
+    notes = filtered[idx].replace("INTERNETOWO", "PRZEZ INTERNET");
     if (filtered[idx].toUpperCase().includes("INTERNET")) notes = "PRZEZ INTERNET";
     else if (filtered[idx].toUpperCase().includes("TELEFON")) notes = "TELEFONICZNIE";
     else if (filtered[idx].toUpperCase().includes("MAIL")) notes = "MAILOWO";
