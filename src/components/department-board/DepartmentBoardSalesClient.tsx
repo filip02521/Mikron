@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { useSalesOnboardingDemo } from "@/components/sales/SalesOnboardingContext";
 import {
   buildOnboardingBoardAttention,
@@ -53,6 +53,7 @@ import { SALES_SEARCH_COPY } from "@/lib/sales/sales-page-ui-copy";
 import { SalesListFilterEmptyHint } from "@/components/sales/SalesListEmptyHints";
 import { filterDepartmentBoardQuestionsByQuery } from "@/lib/department-board/question-search";
 import { actionCreateQuestion } from "@/app/actions/department-board";
+import { useDeepLinkScrollOnce } from "@/hooks/use-deep-link-scroll-once";
 
 type QuestionFilter = "all" | "open" | "answered";
 type BoardTab = "announcements" | "questions";
@@ -142,25 +143,15 @@ export function DepartmentBoardSalesClient({
     router.refresh();
   }
 
-  useEffect(() => {
-    if (!focusQuestionId) return;
-    window.setTimeout(() => {
-      document.getElementById(`question-${focusQuestionId}`)?.scrollIntoView({
-        behavior: "smooth",
-        block: "center",
-      });
-    }, 120);
-  }, [focusQuestionId, activeTab, filteredQuestions.length]);
-
-  useEffect(() => {
-    if (!focusAnnouncementId) return;
-    window.setTimeout(() => {
-      document.getElementById(`announcement-${focusAnnouncementId}`)?.scrollIntoView({
-        behavior: "smooth",
-        block: "center",
-      });
-    }, 180);
-  }, [focusAnnouncementId, activeTab, board.announcements.length]);
+  useDeepLinkScrollOnce(
+    focusQuestionId ? `question-${focusQuestionId}` : null,
+    Boolean(focusQuestionId) && activeTab === "questions"
+  );
+  useDeepLinkScrollOnce(
+    focusAnnouncementId ? `announcement-${focusAnnouncementId}` : null,
+    Boolean(focusAnnouncementId) && activeTab === "announcements",
+    180
+  );
 
   async function submitQuestion() {
     setSaving(true);

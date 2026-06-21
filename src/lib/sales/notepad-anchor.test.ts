@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   NOTEPAD_ANCHOR_FLASH_CLASSES,
+  noteIdFromNotepadAnchor,
   parseNotepadHashAnchor,
   resolveNotepadWatchFocusId,
   watchIdFromNotepadAnchor,
@@ -16,6 +17,12 @@ describe("notepad-anchor", () => {
   it("wyciąga id ZK z kotwicy", () => {
     expect(watchIdFromNotepadAnchor("watch-abc")).toBe("abc");
     expect(watchIdFromNotepadAnchor("note-abc")).toBeNull();
+  });
+
+  it("wyciąga id notatki z kotwicy", () => {
+    expect(noteIdFromNotepadAnchor("note-abc")).toBe("abc");
+    expect(noteIdFromNotepadAnchor("#note-n1")).toBe("n1");
+    expect(noteIdFromNotepadAnchor("watch-abc")).toBeNull();
   });
 
   it("preferuje focusWatch z query przed hashem", () => {

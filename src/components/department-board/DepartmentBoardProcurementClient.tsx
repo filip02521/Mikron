@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Alert } from "@/components/ui/Alert";
 import { Button } from "@/components/ui/Button";
@@ -46,6 +46,7 @@ import {
 import { mojeShipmentListClass } from "@/lib/ui/moje-shipment-row-styles";
 import { actionCreateAnnouncement } from "@/app/actions/department-board";
 import { usePreviewMutationBlocker } from "@/components/layout/usePreviewMutationBlocker";
+import { useDeepLinkScrollOnce } from "@/hooks/use-deep-link-scroll-once";
 
 export function DepartmentBoardProcurementClient({
   initial,
@@ -104,24 +105,14 @@ export function DepartmentBoardProcurementClient({
 
   const openQuestionsCount = initial.questions.filter((q) => q.status === "open").length;
 
-  useEffect(() => {
-    if (focusAnnouncementId && activeTab === "announcements") {
-      document.getElementById(`announcement-${focusAnnouncementId}`)?.scrollIntoView({
-        behavior: "smooth",
-        block: "center",
-      });
-    }
-  }, [focusAnnouncementId, activeTab, initial.announcements.length]);
-
-  useEffect(() => {
-    if (!focusQuestionId || activeTab !== "questions") return;
-    window.setTimeout(() => {
-      document.getElementById(`question-${focusQuestionId}`)?.scrollIntoView({
-        behavior: "smooth",
-        block: "center",
-      });
-    }, 120);
-  }, [focusQuestionId, activeTab, filteredQuestions.length]);
+  useDeepLinkScrollOnce(
+    focusAnnouncementId ? `announcement-${focusAnnouncementId}` : null,
+    Boolean(focusAnnouncementId) && activeTab === "announcements"
+  );
+  useDeepLinkScrollOnce(
+    focusQuestionId ? `question-${focusQuestionId}` : null,
+    Boolean(focusQuestionId) && activeTab === "questions"
+  );
 
   function refresh() {
     router.refresh();

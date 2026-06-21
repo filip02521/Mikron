@@ -84,6 +84,7 @@ export function OperationsNotepadClient({
   const [publicNotes, setPublicNotes] = useState(initial.publicNotes);
   const [archivedNotes, setArchivedNotes] = useState(initial.archivedNotes);
   const [showArchive, setShowArchive] = useState(false);
+  const [focusNoteId, setFocusNoteId] = useState<string | null>(null);
   const [undo, setUndo] = useState<OperationsUndoState | null>(null);
   const dismissUndo = useCallback(() => {
     setUndo(null);
@@ -116,6 +117,14 @@ export function OperationsNotepadClient({
   const refresh = useCallback(() => {
     router.refresh();
   }, [router]);
+
+  const handleFocusNoteHandled = useCallback((noteId: string) => {
+    setFocusNoteId((current) => (current === noteId ? null : current));
+  }, []);
+
+  const handleTodayTaskClick = useCallback((noteId: string) => {
+    setFocusNoteId(noteId);
+  }, []);
 
   const handleUndo = useCallback(async () => {
     if (!undo) return;
@@ -301,7 +310,7 @@ export function OperationsNotepadClient({
 
         <OperationsTodayTasksSection
           notes={todayTasks}
-          onTaskClick={flashNoteAnchor}
+          onTaskClick={handleTodayTaskClick}
           embedded
         />
 
@@ -319,6 +328,8 @@ export function OperationsNotepadClient({
               visibility="private"
               currentUserId={userId}
               embedded
+              focusNoteId={focusNoteId}
+              onFocusNoteHandled={handleFocusNoteHandled}
               onNoteCreated={handlePrivateCreated}
               onNoteUpdated={handlePrivateUpdated}
               onNoteArchived={handlePrivateArchived}
@@ -341,6 +352,8 @@ export function OperationsNotepadClient({
               visibility="public"
               currentUserId={userId}
               embedded
+              focusNoteId={focusNoteId}
+              onFocusNoteHandled={handleFocusNoteHandled}
               onNoteCreated={handlePublicCreated}
               onNoteUpdated={handlePublicUpdated}
               onNoteArchived={handlePublicArchived}

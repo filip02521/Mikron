@@ -1,6 +1,6 @@
 "use client";
 
-import { Fragment, useCallback, useEffect, useMemo, useReducer } from "react";
+import { Fragment, useCallback, useEffect, useMemo, useReducer, useRef } from "react";
 import type { SalesZkWatch } from "@/types/database";
 import type { ZkWatchOrderHints, ZkLinkableOrder } from "@/lib/sales/zk-watch-order-link";
 import type { ZkWatchRefreshDiff } from "@/lib/sales/zk-watch-refresh-diff";
@@ -176,13 +176,20 @@ export function ZkWatchGroupedList({
   }
 
   const { collapsedMonths, openModalWatchId } = uiState;
+  const focusFlashHandledRef = useRef<string | null>(null);
 
   useEffect(() => {
-    if (!focusWatchId) return;
+    if (!focusWatchId) {
+      focusFlashHandledRef.current = null;
+      return;
+    }
+    if (focusFlashHandledRef.current === focusWatchId) return;
     if (!watches.some((watch) => watch.id === focusWatchId)) return;
 
     const monthKey = monthKeyForWatchInGroups(groups, focusWatchId);
     if (monthKey && !isZkMonthGroupExpanded(monthKey, collapsedMonths)) return;
+
+    focusFlashHandledRef.current = focusWatchId;
 
     const focusedWatch = watches.find((watch) => watch.id === focusWatchId);
     const announce = focusedWatch

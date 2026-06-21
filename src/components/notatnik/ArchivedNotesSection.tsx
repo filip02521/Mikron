@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { actionRestoreSalesNote, actionDeleteArchivedSalesNote } from "@/app/actions/sales-notepad";
 import { Button } from "@/components/ui/Button";
 import { cn } from "@/lib/cn";
@@ -81,9 +81,15 @@ function ArchivedNoteCard({
   const [deleting, setDeleting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const anchorId = `note-${note.id}`;
+  const flashHandledRef = useRef(false);
 
   useEffect(() => {
-    if (!focus) return;
+    if (!focus) {
+      flashHandledRef.current = false;
+      return;
+    }
+    if (flashHandledRef.current) return;
+    flashHandledRef.current = true;
     flashNotepadAnchor(anchorId, { onFound: () => onFocusHandled?.(note.id) });
   }, [anchorId, focus, note.id, onFocusHandled]);
 

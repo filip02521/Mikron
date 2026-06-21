@@ -39,11 +39,6 @@ export function ZkWatchFollowUpButton({
   const [pos, setPos] = useState<PopoverPosition | null>(null);
   const followUpKey = watch.follow_up_at?.slice(0, 10) ?? "";
   const [followUpDraft, setFollowUpDraft] = useState(followUpKey);
-  const [appliedFollowUpKey, setAppliedFollowUpKey] = useState(followUpKey);
-  if (!open && followUpKey !== appliedFollowUpKey) {
-    setAppliedFollowUpKey(followUpKey);
-    setFollowUpDraft(followUpKey);
-  }
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const triggerRef = useRef<HTMLButtonElement>(null);
@@ -128,7 +123,11 @@ export function ZkWatchFollowUpButton({
   function handleTriggerClick(event: ReactMouseEvent<HTMLButtonElement>) {
     event.stopPropagation();
     if (!canEdit) return;
-    setOpen((value) => !value);
+    setOpen((current) => {
+      const next = !current;
+      if (next) setFollowUpDraft(followUpKey);
+      return next;
+    });
   }
 
   if (!canEdit && !followUpLabel) return null;

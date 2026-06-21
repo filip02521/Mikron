@@ -6,7 +6,12 @@ import { SectionHeadingIcon } from "@/components/icons/SectionHeadingIcon";
 import { IconPlusCircle } from "@/components/icons/StrokeIcons";
 import { ZK_PAGE_SECTION_COPY } from "@/lib/sales/zk-page-copy";
 import { cn } from "@/lib/cn";
-import { salesChromeInsetClass, salesTypography } from "@/lib/ui/ontime-theme";
+import {
+  notatnikAddPanelShellClass,
+  notatnikPrimaryAddButtonClass,
+  salesChromeInsetClass,
+  salesTypography,
+} from "@/lib/ui/ontime-theme";
 
 /** Panel dodawania ZK — akcja funkcjonalna, nie zwijana pomoc jak skróty / legenda. */
 export function ZkWatchAddSection({
@@ -44,7 +49,7 @@ export function ZkWatchAddSection({
           type="button"
           variant="secondary"
           size="sm"
-          className="min-h-11 w-full justify-center border-indigo-200/80 bg-indigo-50/50 text-indigo-950 hover:bg-indigo-100/70 sm:w-auto"
+          className={notatnikPrimaryAddButtonClass}
           onClick={expand}
         >
           <IconPlusCircle size={16} strokeWidth={2} className="mr-1.5 shrink-0" aria-hidden />
@@ -58,7 +63,7 @@ export function ZkWatchAddSection({
     <div className={cn(embedded && cn(salesChromeInsetClass, "pb-2"))}>
       <div
         ref={panelRef}
-        className="overflow-hidden rounded-md border border-indigo-200/90 bg-indigo-50/45 shadow-sm"
+        className={notatnikAddPanelShellClass}
       >
         <div className="flex items-start justify-between gap-2 border-b border-indigo-100/80 px-3 py-2.5 sm:px-3.5">
           <div className="flex min-w-0 items-start gap-2.5">

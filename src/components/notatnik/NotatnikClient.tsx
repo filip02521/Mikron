@@ -80,6 +80,7 @@ import {
 } from "@/lib/orders/daily-panel-undo";
 import {
   flashNotepadAnchor,
+  noteIdFromNotepadAnchor,
   parseNotepadHashAnchor,
   resolveNotepadWatchFocusId,
 } from "@/lib/sales/notepad-anchor";
@@ -227,6 +228,9 @@ export function NotatnikClient({
   const refreshPrompt = refreshPromptQueue[0] ?? null;
   const focusHandledWatchRef = useRef<string | null>(null);
   const focusHandledNoteRef = useRef<string | null>(null);
+  const noteAnchorHandledRef = useRef<string | null>(null);
+  const watchAnchorHandledRef = useRef<string | null>(null);
+  const syncWatchFocusRef = useRef<() => void>(() => {});
   const zkWatchesRef = useRef(zkWatches);
   const archivedWatchesRef = useRef(archivedWatches);
   const notesRef = useRef(notes);
@@ -240,7 +244,15 @@ export function NotatnikClient({
     (tab: NotatnikPageTab, options?: { hash?: string; focusWatch?: string | null }) => {
       setActiveTab(tab);
       setFocusWatchError(null);
-      setFocusNoteId(null);
+
+      const hashRaw = options?.hash?.trim() ?? "";
+      const noteIdFromHash = noteIdFromNotepadAnchor(hashRaw);
+      if (noteIdFromHash) {
+        setFocusNoteId(noteIdFromHash);
+      } else {
+        setFocusNoteId(null);
+      }
+
       if (tourDemo) return;
 
       const path = notatnikPagePathForTab(tab, isZkSurface ? "zk" : "notes");
@@ -262,7 +274,6 @@ export function NotatnikClient({
         params.set("tab", tab);
       }
 
-      const hashRaw = options?.hash?.trim() ?? "";
       const hash = hashRaw
         ? hashRaw.startsWith("#")
           ? hashRaw
@@ -391,14 +402,19 @@ export function NotatnikClient({
         );
         return;
       }
+      if (watchAnchorHandledRef.current === watchId) return;
       if (focusHandledWatchRef.current === watchId) return;
+      watchAnchorHandledRef.current = watchId;
       applyWatchFocus(watchId);
       return;
     }
 
     const anchor = parseNotepadHashAnchor(window.location.hash);
     if (anchor?.startsWith("note-")) {
+      if (noteAnchorHandledRef.current === anchor) return;
+
       if (isZkSurface && !tourDemo) {
+        noteAnchorHandledRef.current = anchor;
         router.replace(
           buildNotatnikPageHref({
             tab: "notes",
@@ -413,6 +429,8 @@ export function NotatnikClient({
       const noteId = anchor.slice("note-".length);
       const inArchive = archivedNotesRef.current.some((note) => note.id === noteId);
       const inActive = notesRef.current.some((note) => note.id === noteId);
+      noteAnchorHandledRef.current = anchor;
+
       if (inArchive) {
         if (!tourDemo) {
           navigateToTab("archive", { hash: anchor });
@@ -420,23 +438,34 @@ export function NotatnikClient({
           setActiveTab("archive");
         }
         if (focusHandledNoteRef.current !== noteId) {
+          focusHandledNoteRef.current = null;
           setFocusNoteId(noteId);
         }
         return;
       }
       if (inActive) {
-        if (!tourDemo) {
+        if (!tourDemo && activeTab !== "notes") {
           navigateToTab("notes", { hash: anchor });
         } else {
-          setActiveTab("notes");
+          if (tourDemo) setActiveTab("notes");
+          if (focusHandledNoteRef.current !== noteId) {
+            focusHandledNoteRef.current = null;
+            setFocusNoteId(noteId);
+          }
         }
-        flashNotepadAnchor(anchor);
         return;
       }
       setActiveTab("notes");
-      flashNotepadAnchor(anchor);
+      if (focusHandledNoteRef.current !== noteId) {
+        focusHandledNoteRef.current = null;
+        setFocusNoteId(noteId);
+      }
     }
-  }, [applyWatchFocus, isZkSurface, navigateToTab, router, tourDemo]);
+  }, [activeTab, applyWatchFocus, isZkSurface, navigateToTab, router, tourDemo]);
+
+  useEffect(() => {
+    syncWatchFocusRef.current = syncWatchFocusFromLocation;
+  }, [syncWatchFocusFromLocation]);
 
   const handleFocusWatchHandled = useCallback((watchId: string) => {
     focusHandledWatchRef.current = watchId;
@@ -457,14 +486,19 @@ export function NotatnikClient({
       applyWatchFocus(initialFocus);
       return;
     }
-    syncWatchFocusFromLocation();
-  }, [applyWatchFocus, initialFocus, syncWatchFocusFromLocation]);
+    syncWatchFocusRef.current();
+  }, [applyWatchFocus, initialFocus]);
 
   useEffect(() => {
     if (tourDemo) return;
-    window.addEventListener("hashchange", syncWatchFocusFromLocation);
-    return () => window.removeEventListener("hashchange", syncWatchFocusFromLocation);
-  }, [syncWatchFocusFromLocation, tourDemo]);
+    const onHashChange = () => {
+      noteAnchorHandledRef.current = null;
+      watchAnchorHandledRef.current = null;
+      syncWatchFocusRef.current();
+    };
+    window.addEventListener("hashchange", onHashChange);
+    return () => window.removeEventListener("hashchange", onHashChange);
+  }, [tourDemo]);
 
   const salesPersonId =
     source.zkWatches[0]?.sales_person_id ?? source.notes[0]?.sales_person_id ?? null;
@@ -1131,6 +1165,8 @@ export function NotatnikClient({
               notes={notes}
               readOnly={effectiveReadOnly}
               embedded
+              focusNoteId={focusNoteId}
+              onFocusNoteHandled={handleFocusNoteHandled}
               onNoteCreated={handleNoteCreated}
               onNoteUpdated={handleNoteUpdated}
               onNoteArchived={handleNoteArchived}
