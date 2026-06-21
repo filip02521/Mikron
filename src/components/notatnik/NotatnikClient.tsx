@@ -8,7 +8,7 @@ import { Card, CardHeader } from "@/components/ui/Card";
 import { Alert } from "@/components/ui/Alert";
 import { UndoToast } from "@/components/ui/UndoToast";
 import { Toast } from "@/components/ui/Toast";
-import { IconPackageCheck, IconArchive, IconClipboardPen } from "@/components/icons/StrokeIcons";
+import { IconPackageCheck, IconClipboardPen } from "@/components/icons/StrokeIcons";
 import { SectionHeadingIcon } from "@/components/icons/SectionHeadingIcon";
 import { AppBrandContentFooter } from "@/components/layout/AppBrandContentFooter";
 import { salesChromeInsetClass } from "@/lib/ui/ontime-theme";
@@ -64,10 +64,9 @@ import { NotesSection } from "./NotesSection";
 import { NotatnikArchivePanel } from "./NotatnikArchivePanel";
 import { NotatnikArchiveCrossLink } from "./NotatnikArchiveCrossLink";
 import { TodayTasksSection } from "./TodayTasksSection";
-import { NotatnikPanel } from "./NotatnikPanel";
 import { NotatnikTabBar } from "./NotatnikTabBar";
 import { NOTATNIK_PAGE_CLASS } from "./notatnik-layout";
-import { NOTATNIK_NOTES_PAGE_HINT, NOTATNIK_NOTES_ARCHIVE_SECTION_COPY, NOTATNIK_NOTES_SECTION_COPY, NOTATNIK_ZK_ARCHIVE_SECTION_COPY } from "@/lib/sales/notatnik-notes-copy";
+import { NOTATNIK_NOTES_PAGE_HINT } from "@/lib/sales/notatnik-notes-copy";
 import { SalesPageAlerts } from "@/components/sales/SalesPageAlerts";
 import { NotatnikZkStatusChrome } from "./NotatnikZkStatusChrome";
 import { NotatnikGuide } from "./NotatnikGuide";
@@ -1111,15 +1110,7 @@ export function NotatnikClient({
         ) : null}
 
           {isZkSurface && activeTab === "archive" && hasZkArchive ? (
-            <NotatnikPanel
-              flushBody
-              bodyClassName="space-y-0"
-              title={NOTATNIK_ZK_ARCHIVE_SECTION_COPY.title}
-              description={NOTATNIK_ZK_ARCHIVE_SECTION_COPY.hint}
-              count={archivedWatches.length || undefined}
-              icon={<IconArchive size={17} />}
-              tileClassName="bg-slate-100 text-slate-600"
-            >
+            <>
               <NotatnikArchiveCrossLink surface="zk" />
               <NotatnikArchivePanel
                 mode="zk"
@@ -1132,40 +1123,23 @@ export function NotatnikClient({
                 onWatchRestored={handleWatchRestored}
                 onWatchDeleted={handleWatchDeleted}
               />
-            </NotatnikPanel>
+            </>
           ) : null}
 
           {!isZkSurface && activeTab === "notes" ? (
-            <NotatnikPanel
-              flushBody
-              title={NOTATNIK_NOTES_SECTION_COPY.title}
-              description={NOTATNIK_NOTES_SECTION_COPY.hint}
-              count={notes.length || undefined}
-              icon={<IconClipboardPen size={17} />}
-              accent="indigo"
-            >
-              <NotesSection
-                notes={notes}
-                readOnly={effectiveReadOnly}
-                embedded
-                onNoteCreated={handleNoteCreated}
-                onNoteUpdated={handleNoteUpdated}
-                onNoteArchived={handleNoteArchived}
-                onNotesReordered={handleNotesReordered}
-              />
-            </NotatnikPanel>
+            <NotesSection
+              notes={notes}
+              readOnly={effectiveReadOnly}
+              embedded
+              onNoteCreated={handleNoteCreated}
+              onNoteUpdated={handleNoteUpdated}
+              onNoteArchived={handleNoteArchived}
+              onNotesReordered={handleNotesReordered}
+            />
           ) : null}
 
           {!isZkSurface && activeTab === "archive" && hasNotesArchive ? (
-            <NotatnikPanel
-              flushBody
-              bodyClassName="space-y-0"
-              title={NOTATNIK_NOTES_ARCHIVE_SECTION_COPY.title}
-              description={NOTATNIK_NOTES_ARCHIVE_SECTION_COPY.hint}
-              count={archivedNotes.length || undefined}
-              icon={<IconArchive size={17} />}
-              tileClassName="bg-slate-100 text-slate-600"
-            >
+            <>
               <NotatnikArchiveCrossLink surface="notes" />
               <NotatnikArchivePanel
                 mode="notes"
@@ -1177,7 +1151,7 @@ export function NotatnikClient({
                 onNoteRestored={handleNoteRestored}
                 onNoteDeleted={handleNoteDeleted}
               />
-            </NotatnikPanel>
+            </>
           ) : null}
 
         <AppBrandContentFooter mobileOnly />
