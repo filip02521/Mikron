@@ -1024,22 +1024,6 @@ export function NotatnikClient({
           </Alert>
         ) : null}
 
-        {showSalesSyncStrip ? (
-          <NotatnikZkStatusChrome
-            subiektInitial={subiektForNotepad ?? undefined}
-            onSubiektStatusChange={handleSubiektStatusChange}
-          />
-        ) : null}
-
-        {isZkSurface && source.zkOrdersMigrationMissing && !tourDemo ? (
-          <Alert tone="warning" className={cn(salesChromeInsetClass, "mt-3")}>
-            Powiązanie ZK z prośbami wymaga migracji bazy:{" "}
-            <code className="text-[0.85em]">052_individual_orders_sales_client_kh_id</code>,{" "}
-            <code className="text-[0.85em]">055_individual_orders_source_zk</code>.
-            Uruchom migracje Supabase — bez nich podpowiedzi i badge „Prośba w toku” mogą nie działać.
-          </Alert>
-        ) : null}
-
         {isZkSurface ? (
           <NotatnikTabBar
             value={activeTab}
@@ -1064,6 +1048,22 @@ export function NotatnikClient({
           />
         )}
 
+        {showSalesSyncStrip ? (
+          <NotatnikZkStatusChrome
+            subiektInitial={subiektForNotepad ?? undefined}
+            onSubiektStatusChange={handleSubiektStatusChange}
+          />
+        ) : null}
+
+        {isZkSurface && source.zkOrdersMigrationMissing && !tourDemo ? (
+          <Alert tone="warning" className={cn(salesChromeInsetClass, "mt-3")}>
+            Powiązanie ZK z prośbami wymaga migracji bazy:{" "}
+            <code className="text-[0.85em]">052_individual_orders_sales_client_kh_id</code>,{" "}
+            <code className="text-[0.85em]">055_individual_orders_source_zk</code>.
+            Uruchom migracje Supabase — bez nich podpowiedzi i badge „Prośba w toku” mogą nie działać.
+          </Alert>
+        ) : null}
+
         {((isZkSurface && activeTab === "zk") || (!isZkSurface && activeTab === "notes")) ? (
           <TodayTasksSection
             watches={zkWatches}
@@ -1080,6 +1080,7 @@ export function NotatnikClient({
           <ZkWatchSection
                 watches={zkWatches}
                 zkHintsByWatchId={zkHintsByWatchId}
+                linkableOrders={zkLinkableOrders}
                 unseenWatchIds={unseenWatchIds}
                 newLineKeysByWatchId={reconciledNewLineKeysByWatchId}
                 onWarehouseArrivalSeen={markWarehouseArrivalSeen}

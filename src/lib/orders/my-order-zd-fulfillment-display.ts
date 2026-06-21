@@ -8,6 +8,9 @@ import {
 } from "@/lib/orders/my-order-delivery-urgency";
 import type { MyOrderLine } from "@/lib/orders/my-order-presenter";
 import type { MyOrderZdFulfillment, MyOrderZdFulfillmentSlot } from "@/lib/orders/my-order-sales-ui";
+import {
+  ZD_FULFILLMENT_PLACEHOLDER_TIMING_LABEL,
+} from "@/lib/orders/zd-fulfillment-placeholder-deadline";
 import { todayInWarsaw } from "@/lib/time/warsaw";
 
 const URGENCY_RANK: Record<DeliveryUrgency, number> = {
@@ -137,9 +140,12 @@ export function buildCollapsedZdMixedNoMatchHint(lines: LineZdTermState[]): stri
 
 /** Zwinięty wiersz / subline — tylko najwcześniejszy termin ZD. */
 export function salesZdPrimarySlotTimingLabel(
-  fulfillment: Pick<MyOrderZdFulfillment, "deadline" | "dokNr" | "slots">,
+  fulfillment: Pick<MyOrderZdFulfillment, "deadline" | "dokNr" | "slots" | "pendingConfirmation">,
   overdue: boolean
 ): string {
+  if (fulfillment.pendingConfirmation) {
+    return ZD_FULFILLMENT_PLACEHOLDER_TIMING_LABEL;
+  }
   const primary = zdFulfillmentPrimarySlot(fulfillment);
   const overdueSuffix = overdue ? " · po terminie" : "";
   return `do ${formatPlDate(primary.deadline)} · ${primary.dokNr}${overdueSuffix}`;
@@ -160,9 +166,19 @@ export function resolveZdFulfillmentUrgency(
   fulfillment: MyOrderZdFulfillment,
   at: Date = todayInWarsaw()
 ): MyOrderDeliveryUrgency {
+  if (fulfillment.pendingConfirmation) {
+    return classifyDeliveryUrgency(null, { pending: true });
+  }
   const slots = zdFulfillmentSlots(fulfillment);
   let worst: MyOrderDeliveryUrgency = classifyDeliveryUrgency(null, { at });
   for (const slot of slots) {
+    if (slot.pendingConfirmation) {
+      const pending = classifyDeliveryUrgency(null, { pending: true });
+      if (URGENCY_RANK[pending.urgency] < URGENCY_RANK[worst.urgency]) {
+        worst = pending;
+      }
+      continue;
+    }
     const next = classifyDeliveryUrgency(parseDateOnly(slot.deadline), { at });
     if (URGENCY_RANK[next.urgency] < URGENCY_RANK[worst.urgency]) {
       worst = next;

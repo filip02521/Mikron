@@ -35,6 +35,7 @@ import type { SalesZkWatch } from "@/types/database";
 import { ZkWatchLineStatusChip } from "./ZkWatchLineStatusChip";
 import { ZkWatchLineStatusLegendToggle } from "./ZkWatchLineStatusLegendToggle";
 import { ZkWatchLineCheckboxControl } from "./ZkWatchLineCheckboxControl";
+import { ZK_MODAL_SECTION_HINTS, ZK_MODAL_SECTION_TITLES } from "@/lib/sales/zk-modal-section-copy";
 import { ZkWatchModalSection } from "./ZkWatchModalSection";
 
 type LineFilter =
@@ -469,7 +470,7 @@ export function ZkWatchLinesPanel({
           <li key={line.key} className={mojeShipmentLineRowClass}>
             <div
               className={cn(
-                "flex items-start gap-3 py-0.5",
+                "flex items-center gap-3 py-0.5",
                 meta.rowTintClass && `rounded-md ${meta.rowTintClass} -mx-1 px-1`,
                 fromProsba && !meta.rowTintClass && "rounded-md bg-indigo-50/25 -mx-1 px-1",
                 lineToggleable ? "cursor-pointer" : "cursor-default"
@@ -575,10 +576,7 @@ export function ZkWatchLinesPanel({
 
   if (!showSummary) {
     return (
-      <ZkWatchModalSection
-        title="Lista towaru"
-        hint="Na regale pozycje są zaznaczone automatycznie. Po odbiorze w Moje zaznacz checkbox, aby ręcznie oznaczyć jako zakończone."
-      >
+      <ZkWatchModalSection title={ZK_MODAL_SECTION_TITLES.lines} hint={ZK_MODAL_SECTION_HINTS.lines}>
         {canEdit && views.length > 0 ? (
           <div className="flex justify-end">
             <Button

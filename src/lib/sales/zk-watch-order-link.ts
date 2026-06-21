@@ -38,6 +38,11 @@ export type ZkLinkableOrder = {
   delivered_quantity: string;
   status: string;
   request_kind?: IndividualRequestKind | null;
+  ordered_at: string | null;
+  action_at: string | null;
+  delivery_at: string | null;
+  zd_fulfillment_deadline: string | null;
+  zd_fulfillment_deadline_changed_at?: string | null;
   sales_acknowledged_at: string | null;
   sales_cancelled_at: string | null;
 };

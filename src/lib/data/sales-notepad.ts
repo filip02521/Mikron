@@ -16,7 +16,7 @@ export type SalesNotepadData = {
 };
 
 const ZK_LINK_ORDER_SELECT =
-  "id, sales_person_id, sales_client_name, sales_client_kh_id, source_zk_watch_id, source_zk_number, subiekt_tw_id, symbol, products, mikran_code, quantity, delivered_quantity, status, request_kind, sales_acknowledged_at, sales_cancelled_at";
+  "id, sales_person_id, sales_client_name, sales_client_kh_id, source_zk_watch_id, source_zk_number, subiekt_tw_id, symbol, products, mikran_code, quantity, delivered_quantity, status, request_kind, ordered_at, action_at, delivery_at, zd_fulfillment_deadline, zd_fulfillment_deadline_changed_at, sales_acknowledged_at, sales_cancelled_at";
 
 export async function fetchZkLinkableOrdersForSalesPerson(
   salesPersonId: string

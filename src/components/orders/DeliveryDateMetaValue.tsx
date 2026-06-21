@@ -11,12 +11,16 @@ export function DeliveryDateMetaValue({
   className?: string;
 }) {
   return (
-    <div className={cn("flex min-w-0 flex-col items-end gap-0.5", className)}>
+    <div
+      className={cn("flex min-w-0 max-w-full flex-col items-end gap-0.5", className)}
+      title={display.title}
+    >
       <span
         className={cn(
-          "max-w-full whitespace-nowrap font-semibold tabular-nums leading-snug",
+          "max-w-full truncate font-semibold leading-snug",
           salesTypography.rowBody,
-          display.overdue ? "text-amber-950" : "text-slate-800"
+          display.overdue ? "text-amber-950" : "text-slate-800",
+          /^\d/.test(display.primaryLabel) ? "tabular-nums" : null
         )}
       >
         {display.primaryLabel}
@@ -24,7 +28,7 @@ export function DeliveryDateMetaValue({
       {display.detailLabel ? (
         <span
           className={cn(
-            "max-w-full truncate font-medium tabular-nums text-slate-500",
+            "max-w-full truncate font-medium text-slate-500 sm:max-w-[14rem]",
             salesTypography.rowMeta
           )}
         >
