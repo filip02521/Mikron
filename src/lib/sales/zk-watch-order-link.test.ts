@@ -4,6 +4,7 @@ import {
   computeZkWatchOrderHints,
   filterZkWatchesByClientQuery,
   isOrderRelevantToZkWatch,
+  isOpenProsbaOrder,
   isZkLineFullyDeliveredByOrders,
   mergeZkLineChecksFromDeliveredOrders,
   productMatchesZkLine,
@@ -294,7 +295,7 @@ describe("computeZkWatchOrderHints", () => {
     expect(hints.matchingOpenRequestIds).toEqual(["open"]);
     expect(hints.matchedDeliveredLineKeys).toContain("ob:1");
     expect(hints.allLinesMatchedByOrders).toBe(true);
-    expect(hints.lineCoverageByKey["ob:1"]).toBe("delivered");
+    expect(hints.lineCoverageByKey["ob:1"]).toBe("open");
     expect(hints.uncoveredLineKeys).toEqual([]);
   });
 
@@ -518,6 +519,23 @@ describe("computeZkWatchOrderHints", () => {
     ]);
     expect(hintsPicked.inStockLineKeys).toContain("ob:1");
     expect(hintsPicked.regalWaitingLineKeys).toEqual([]);
+  });
+
+  it("częściowa dostawa po odbiorze z regału — prośba nadal otwarta, nie Komplet", () => {
+    const w = watch({ id: "w-partial-ack" });
+    const order = linkOrder({
+      id: "partial-ack",
+      status: "Czesciowo_zrealizowane",
+      quantity: "5",
+      delivered_quantity: "3",
+      sales_acknowledged_at: "2026-06-18T10:00:00Z",
+    });
+    expect(isOpenProsbaOrder(order)).toBe(true);
+    const hints = computeZkWatchOrderHints(w, [order]);
+    expect(hints.matchingOpenRequestIds).toEqual(["partial-ack"]);
+    expect(hints.openProsbaCoveredLineKeys).toContain("ob:1");
+    expect(hints.lineCoverageByKey["ob:1"]).toBe("open");
+    expect(hints.inStockLineKeys).not.toContain("ob:1");
   });
 });
 

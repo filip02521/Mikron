@@ -18,7 +18,7 @@ import {
   activeOrderQuantity,
   hasActiveSupplierFulfillment,
 } from "@/lib/orders/sales-cancel";
-import type { IndividualRequestKind } from "@/types/database";
+import type { IndividualOrder, IndividualRequestKind } from "@/types/database";
 import type { SalesZkWatch } from "@/types/database";
 
 export { clientLabelsMatch, clientLabelsMatchExact } from "@/lib/orders/sales-client-match";
@@ -297,14 +297,25 @@ export function isZkLineInformacjaAcknowledged(
   );
 }
 
+/** Częściowa dostawa u dostawcy — prośba nadal aktywna mimo odbioru części z regału. */
+function isPartialProsbaStillActive(order: ZkLinkableOrder): boolean {
+  return (
+    order.status === "Czesciowo_zrealizowane" &&
+    hasActiveSupplierFulfillment(order as IndividualOrder)
+  );
+}
+
 export function isOpenProsbaOrder(order: ZkLinkableOrder): boolean {
-  if (order.sales_acknowledged_at) return false;
+  if (order.sales_acknowledged_at) {
+    if (isPartialProsbaStillActive(order)) return true;
+    return false;
+  }
   if (!OPEN_PROSBA_STATUSES.has(order.status)) return false;
   if (order.sales_cancelled_at) {
-    const active = activeOrderQuantity(order as import("@/types/database").IndividualOrder);
+    const active = activeOrderQuantity(order as IndividualOrder);
     if (active == null || active <= 0) return false;
     if (order.status === "Anulowane") return false;
-    if (hasActiveSupplierFulfillment(order as import("@/types/database").IndividualOrder)) {
+    if (hasActiveSupplierFulfillment(order as IndividualOrder)) {
       return true;
     }
     return false;
@@ -335,10 +346,19 @@ export function computeZkWatchLineCoverage(
     productMatchesZkLineForCoverage(order, line, watch)
   );
   if (!matching.length) return "uncovered";
-  if (isZkLineFullyDeliveredByOrders(relevantOrders, line)) return "delivered";
   if (matching.some((order) => isOpenProsbaOrder(order))) return "open";
+  if (isZkLineFullyDeliveredByOrders(relevantOrders, line)) return "delivered";
   if (matching.some((order) => isPhysicalDeliveryOrder(order))) return "partial";
   return "uncovered";
+}
+
+export function collectPartialLineKeysFromCoverage(
+  lineCoverageByKey: Record<string, ZkWatchLineCoverage> | undefined
+): string[] {
+  if (!lineCoverageByKey) return [];
+  return Object.entries(lineCoverageByKey)
+    .filter(([, coverage]) => coverage === "partial")
+    .map(([key]) => key);
 }
 
 export function resolveUncoveredLineKeysForProsba(

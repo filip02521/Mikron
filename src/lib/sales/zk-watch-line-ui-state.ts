@@ -159,6 +159,7 @@ export function deriveZkWatchProsbaCardAction(input: {
   lineCount: number;
   uncoveredLineKeys: string[];
   openProsbaLineKeys: string[];
+  partialLineKeys?: string[];
   newLineKeys: string[];
   hasOpenMatchingProsba: boolean;
 }): ZkWatchProsbaCardAction {
@@ -166,6 +167,7 @@ export function deriveZkWatchProsbaCardAction(input: {
     lineCount,
     uncoveredLineKeys,
     openProsbaLineKeys,
+    partialLineKeys = [],
     newLineKeys,
     hasOpenMatchingProsba,
   } = input;
@@ -175,7 +177,11 @@ export function deriveZkWatchProsbaCardAction(input: {
   }
 
   if (uncoveredLineKeys.length === 0) {
-    if (hasOpenMatchingProsba || openProsbaLineKeys.length > 0) {
+    if (
+      hasOpenMatchingProsba ||
+      openProsbaLineKeys.length > 0 ||
+      partialLineKeys.length > 0
+    ) {
       return { kind: "view_open", label: "Otwórz prośbę" };
     }
     return { kind: "covered", label: "Komplet" };
