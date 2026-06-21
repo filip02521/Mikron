@@ -2,7 +2,6 @@ import { describe, expect, it } from "vitest";
 import {
   supplierCardsHref,
   supplierHubContextForRole,
-  supplierHubHint,
   supplierHubPaths,
   supplierHubShellDescription,
   supplierVacationsHref,
@@ -25,11 +24,6 @@ describe("supplier hub paths", () => {
     expect(
       supplierCardsHref("admin", { q: "Acme", powiaz: true, subiekt: "unlinked" })
     ).toBe("/admin/dostawcy?q=Acme&powiaz=1&subiekt=unlinked");
-  });
-
-  it("nie duplikuje podpowiedzi pod zakładką kart", () => {
-    expect(supplierHubHint("cards")).toBe("");
-    expect(supplierHubHint("schedules")).toBe("");
   });
 
   it("zwraca krótki opis nagłówka per kontekst", () => {

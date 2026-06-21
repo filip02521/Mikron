@@ -1,6 +1,7 @@
 import { createAdminClient, hasSupabaseConfig } from "@/lib/supabase/admin";
 import { isE2ELab, E2E_LOGIN_DIRECTORY_FIXTURE } from "@/lib/e2e-lab/mode";
 import type { LoginDirectoryAccountPublic } from "@/lib/auth/login-directory-public";
+import { buildLoginDirectoryAssignmentLabelMap } from "@/lib/auth/login-directory-assignment-label";
 import { resolveLoginDisplayName } from "@/lib/users/display-name";
 import { ROLE_LABELS } from "@/lib/users/labels";
 import type { UserRole } from "@/types/database";
@@ -13,6 +14,7 @@ export type LoginDirectoryAccount = {
   roleLabel: string;
   displayName: string;
   salesPersonName: string | null;
+  assignmentLabel: string | null;
 };
 
 export const LOGIN_DIRECTORY_MIN_QUERY_LENGTH = 3;
@@ -139,7 +141,7 @@ export async function fetchLoginDirectoryAccounts(): Promise<LoginDirectoryAccou
 
   const { data: profiles, error } = await supabase
     .from("profiles")
-    .select("id, email, role, sales_people(name)")
+    .select("id, email, role, sales_people(name, sales_groups(name))")
     .order("created_at", { ascending: true });
 
   if (error) {
@@ -147,7 +149,16 @@ export async function fetchLoginDirectoryAccounts(): Promise<LoginDirectoryAccou
     return [];
   }
 
-  const accounts = (profiles ?? [])
+  const profileRows = profiles ?? [];
+  const assignmentLabels = await buildLoginDirectoryAssignmentLabelMap(
+    profileRows.map((profile) => ({
+      id: profile.id,
+      role: profile.role as UserRole,
+      sales_people: profile.sales_people,
+    }))
+  );
+
+  const accounts = profileRows
     .map((profile) => {
       if (!eligibleUserIds.has(profile.id)) return null;
 
@@ -167,6 +178,7 @@ export async function fetchLoginDirectoryAccounts(): Promise<LoginDirectoryAccou
         roleLabel: ROLE_LABELS[role] ?? role,
         salesPersonName,
         displayName: loginDirectoryDisplayName({ email, salesPersonName }),
+        assignmentLabel: assignmentLabels.get(profile.id) ?? null,
       } satisfies LoginDirectoryAccount;
     })
     .filter((row): row is LoginDirectoryAccount => row != null);

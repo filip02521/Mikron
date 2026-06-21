@@ -75,7 +75,7 @@ export function MojeZdEtaSyncClient({ syncEligibleCount }: { syncEligibleCount: 
         }, NETWORK_RETRY_MS);
         return;
       }
-      if (body && shouldMarkMojeZdEtaSessionDone(body)) {
+      if (body && shouldMarkMojeZdEtaSessionDone(body, syncEligibleCount)) {
         markMojeZdEtaSessionDone(syncEligibleCount);
       } else {
         startedRef.current = false;

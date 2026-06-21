@@ -45,6 +45,7 @@ import {
 } from "@/lib/ui/ontime-theme";
 import { mojeShipmentListClass } from "@/lib/ui/moje-shipment-row-styles";
 import { actionCreateAnnouncement } from "@/app/actions/department-board";
+import { usePreviewMutationBlocker } from "@/components/layout/usePreviewMutationBlocker";
 
 export function DepartmentBoardProcurementClient({
   initial,
@@ -60,6 +61,7 @@ export function DepartmentBoardProcurementClient({
   focusAnnouncementId?: string | null;
 }) {
   const router = useRouter();
+  const { readOnly, blockIfReadOnly } = usePreviewMutationBlocker();
   const [activeTab, setActiveTab] = useState<DepartmentBoardTab>(
     () => initialTab ?? (focusQuestionId ? "questions" : "announcements")
   );
@@ -126,6 +128,7 @@ export function DepartmentBoardProcurementClient({
   }
 
   async function submitAnnouncement() {
+    if (blockIfReadOnly()) return;
     setSaving(true);
     setAnnouncementFormError(null);
     try {
@@ -191,6 +194,7 @@ export function DepartmentBoardProcurementClient({
                 value={announcementTitle}
                 onChange={(e) => setAnnouncementTitle(e.target.value)}
                 placeholder="Tytuł ogłoszenia"
+                disabled={readOnly || saving}
                 className={cn(NOTATNIK_INPUT_CLASS, "w-full text-sm")}
               />
               <textarea
@@ -198,19 +202,21 @@ export function DepartmentBoardProcurementClient({
                 value={announcementBody}
                 onChange={(e) => setAnnouncementBody(e.target.value)}
                 placeholder="Treść widoczna dla wszystkich handlowców…"
+                disabled={readOnly || saving}
                 className={cn(NOTATNIK_TEXTAREA_CLASS, "mt-2 w-full text-sm")}
               />
               <div className="mt-3 flex flex-wrap items-center gap-3">
                 <NoteColorPicker
                   value={announcementColor}
                   onChange={setAnnouncementColor}
-                  disabled={saving}
+                  disabled={readOnly || saving}
                   size="sm"
                 />
                 <label className={cn("flex items-center gap-2", panelTypography.caption)}>
                   <input
                     type="checkbox"
                     checked={announcementPinned}
+                    disabled={readOnly || saving}
                     onChange={(e) => setAnnouncementPinned(e.target.checked)}
                   />
                   Przypnij na górze
@@ -220,6 +226,7 @@ export function DepartmentBoardProcurementClient({
                   <input
                     type="date"
                     value={announcementExpires}
+                    disabled={readOnly || saving}
                     onChange={(e) => setAnnouncementExpires(e.target.value)}
                     className={cn(NOTATNIK_INPUT_CLASS, "h-8 w-auto text-xs")}
                   />
@@ -230,7 +237,9 @@ export function DepartmentBoardProcurementClient({
               ) : null}
               <div className="mt-3">
                 <Button
-                  disabled={saving || !announcementTitle.trim() || !announcementBody.trim()}
+                  disabled={
+                    readOnly || saving || !announcementTitle.trim() || !announcementBody.trim()
+                  }
                   onClick={() => void submitAnnouncement()}
                 >
                   {saving ? "Publikowanie…" : "Opublikuj ogłoszenie"}
@@ -257,7 +266,7 @@ export function DepartmentBoardProcurementClient({
                       key={thread.id}
                       thread={thread}
                       embedded
-                      canManage
+                      canManage={!readOnly}
                       onChanged={refresh}
                     />
                   ))}
@@ -314,8 +323,8 @@ export function DepartmentBoardProcurementClient({
                       key={question.id}
                       question={question}
                       embedded
-                      canReply
-                      canArchive
+                      canReply={!readOnly}
+                      canArchive={!readOnly}
                       defaultExpanded={
                         focusQuestionId === question.id || question.status === "open"
                       }

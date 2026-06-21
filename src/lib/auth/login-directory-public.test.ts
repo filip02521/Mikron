@@ -15,6 +15,7 @@ describe("toPublicLoginDirectoryAccounts", () => {
         roleLabel: "Administrator",
         displayName: "Jan",
         salesPersonName: null,
+        assignmentLabel: null,
       },
     ];
 
@@ -26,6 +27,7 @@ describe("toPublicLoginDirectoryAccounts", () => {
         roleLabel: "Administrator",
         displayName: "Jan",
         salesPersonName: null,
+        assignmentLabel: null,
       } satisfies LoginDirectoryAccountPublic,
     ]);
     expect(publicAccounts[0]).not.toHaveProperty("email");

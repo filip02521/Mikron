@@ -72,7 +72,7 @@ export function AuthScreenLayout({
   const minimal = isAuthVisualVariant('minimal');
 
   return (
-    <div className={cn("flex min-h-dvh overflow-x-hidden", className)}>
+    <div className={cn("flex min-h-dvh w-full max-w-full overflow-x-hidden", className)}>
       <aside
         className={cn(
           "relative hidden overflow-hidden bg-gradient-to-br from-indigo-800 via-sky-900 to-slate-950 lg:flex lg:w-[min(42%,28rem)] lg:flex-col lg:px-12 lg:py-14 xl:px-16",
@@ -85,25 +85,27 @@ export function AuthScreenLayout({
 
       <main
         className={cn(
-          "relative isolate flex min-h-0 min-w-0 flex-1 flex-col overflow-y-auto overscroll-y-contain",
+          "relative isolate flex min-h-0 min-w-0 w-full max-w-full flex-1 flex-col overflow-x-hidden overflow-y-auto overscroll-x-none overscroll-y-contain",
           "scroll-smooth [scroll-padding-top:max(0.75rem,env(safe-area-inset-top))] [scroll-padding-bottom:max(1rem,env(safe-area-inset-bottom))]",
           minimal
             ? "bg-white"
             : "bg-gradient-to-br from-indigo-50/40 via-white to-sky-50/50"
         )}
       >
-        {isAuthVisualVariant('bridge') ? <AuthMainBridgeFade /> : null}
-        {minimal ? <AuthMainBackdropGeometric /> : <AuthMainBackdropRich />}
+        <div className="pointer-events-none absolute inset-0 overflow-hidden" aria-hidden>
+          {isAuthVisualVariant('bridge') ? <AuthMainBridgeFade /> : null}
+          {minimal ? <AuthMainBackdropGeometric /> : <AuthMainBackdropRich />}
+        </div>
         <div
           className={cn(
-            "mx-auto flex w-full max-w-md flex-1 flex-col",
+            "relative z-[1] mx-auto flex w-full min-w-0 max-w-md flex-1 flex-col",
             "px-4 py-5",
             "pt-[max(0.75rem,env(safe-area-inset-top))]",
             "pb-[max(1rem,env(safe-area-inset-bottom))]",
             "sm:px-6 sm:py-8"
           )}
         >
-          <div className="auth-enter relative z-[1] my-auto w-full min-h-0">
+          <div className="auth-enter relative z-[1] my-auto w-full min-h-0 min-w-0 max-w-full">
             <header className="mb-4 sm:mb-5 lg:mb-8">
               <AuthBrandHeader className="mb-4 sm:mb-5" />
               <div className="text-center">
@@ -122,7 +124,7 @@ export function AuthScreenLayout({
               <AuthQuotePanel compact className="mb-3 max-sm:mb-2.5 lg:hidden" />
             )}
 
-            <div className="auth-card-enter min-h-0 rounded-lg border border-slate-200/80 bg-white/95 p-4 shadow-xl shadow-slate-200/40 backdrop-blur-sm sm:p-6">
+            <div className="auth-card-enter min-h-0 min-w-0 max-w-full rounded-lg border border-slate-200/80 bg-white/95 p-4 shadow-xl shadow-slate-200/40 backdrop-blur-sm sm:p-6">
               {children}
             </div>
 

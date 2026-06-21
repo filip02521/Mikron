@@ -482,6 +482,21 @@ describe("shouldMarkMojeZdEtaSessionDone", () => {
       })
     ).toBe(true);
   });
+
+  it("nie kończy sesji gdy Subiekt offline przed wczytaniem puli, a klient ma pozycje do sync", () => {
+    expect(
+      shouldMarkMojeZdEtaSessionDone(
+        {
+          skipped: true,
+          reason: "subiekt_offline",
+          subiektOffline: true,
+          candidates: 0,
+          processed: 0,
+        },
+        4
+      )
+    ).toBe(false);
+  });
 });
 
 describe("shouldRetryMojeZdEtaSync", () => {

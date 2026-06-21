@@ -15,6 +15,7 @@ export const E2E_LOGIN_DIRECTORY_FIXTURE: LoginDirectoryAccount[] = [
     roleLabel: "Handlowiec",
     displayName: "Jan Kowalski",
     salesPersonName: "Jan Kowalski",
+    assignmentLabel: "Sklep",
   },
   {
     id: "e2e-login-account-2",
@@ -23,5 +24,6 @@ export const E2E_LOGIN_DIRECTORY_FIXTURE: LoginDirectoryAccount[] = [
     roleLabel: ROLE_LABELS.sales_manager,
     displayName: "Anna Nowak",
     salesPersonName: "Anna Nowak",
+    assignmentLabel: "Biuro",
   },
 ];

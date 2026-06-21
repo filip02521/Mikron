@@ -2,6 +2,7 @@ import type { LoginDirectoryAccount } from "@/lib/auth/login-directory";
 
 export const LOGIN_LAST_ACCOUNT_STORAGE_KEY = "mikron.login.lastAccountId";
 export const LOGIN_RECENT_ACCOUNTS_STORAGE_KEY = "mikron.login.recentAccountIds";
+export const LOGIN_RECENT_ACCOUNT_LABELS_STORAGE_KEY = "mikron.login.recentAccountLabels";
 export const LOGIN_RECENT_EMAILS_STORAGE_KEY = "mikron.login.recentEmails";
 
 export const MAX_RECENT_LOGIN_ACCOUNTS = 8;
@@ -27,6 +28,34 @@ function writeStorageStringArray(key: string, values: string[]): void {
   if (typeof window === "undefined") return;
   try {
     window.localStorage.setItem(key, JSON.stringify(values));
+  } catch {
+    /* prywatny tryb / zablokowany storage */
+  }
+}
+
+function readLoginRecentAccountLabelsMap(): Record<string, string> {
+  if (typeof window === "undefined") return {};
+  try {
+    const raw = window.localStorage.getItem(LOGIN_RECENT_ACCOUNT_LABELS_STORAGE_KEY);
+    if (!raw) return {};
+    const parsed: unknown = JSON.parse(raw);
+    if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) return {};
+    const result: Record<string, string> = {};
+    for (const [key, value] of Object.entries(parsed)) {
+      if (typeof value === "string" && value.trim()) {
+        result[key.trim()] = value.trim();
+      }
+    }
+    return result;
+  } catch {
+    return {};
+  }
+}
+
+function writeLoginRecentAccountLabelsMap(labels: Record<string, string>): void {
+  if (typeof window === "undefined") return;
+  try {
+    window.localStorage.setItem(LOGIN_RECENT_ACCOUNT_LABELS_STORAGE_KEY, JSON.stringify(labels));
   } catch {
     /* prywatny tryb / zablokowany storage */
   }
@@ -61,7 +90,26 @@ export function readLoginRecentAccountIds(): string[] {
   return last ? [last] : [];
 }
 
-export function rememberLoginAccountId(accountId: string): void {
+export function readLoginAccountDisplayName(accountId: string): string | null {
+  const trimmed = accountId.trim();
+  if (!trimmed) return null;
+  return readLoginRecentAccountLabelsMap()[trimmed] ?? null;
+}
+
+/** Etykieta ostatniego konta — do powitania zanim API zwróci katalog. */
+export function readLoginLastAccountDisplayName(
+  accountId: string | null = readLoginLastAccountId()
+): string | null {
+  if (!accountId) return null;
+  return readLoginAccountDisplayName(accountId);
+}
+
+export function canShowCachedQuickLogin(): boolean {
+  const accountId = readLoginLastAccountId();
+  return Boolean(accountId && readLoginAccountDisplayName(accountId));
+}
+
+export function rememberLoginAccountId(accountId: string, displayName?: string): void {
   const trimmed = accountId.trim();
   if (!trimmed) return;
 
@@ -72,6 +120,17 @@ export function rememberLoginAccountId(accountId: string): void {
     MAX_RECENT_LOGIN_ACCOUNTS
   );
   writeStorageStringArray(LOGIN_RECENT_ACCOUNTS_STORAGE_KEY, next);
+
+  const normalizedLabel = displayName?.trim();
+  if (normalizedLabel) {
+    const labels = readLoginRecentAccountLabelsMap();
+    const pruned: Record<string, string> = {};
+    for (const id of next) {
+      const label = id === trimmed ? normalizedLabel : labels[id];
+      if (label) pruned[id] = label;
+    }
+    writeLoginRecentAccountLabelsMap(pruned);
+  }
 }
 
 /** @deprecated Preferuj rememberLoginAccountId — zachowane dla istniejących wywołań. */
@@ -103,6 +162,17 @@ export function resolveLoginLastAccountId(
 ): string | null {
   if (!storedId) return null;
   return accounts.some((account) => account.id === storedId) ? storedId : null;
+}
+
+/** Ostatnie konto — z katalogu albo z cache etykiet (przed fetch API). */
+export function resolveQuickLoginAccountId(
+  accounts: Pick<LoginDirectoryAccount, "id">[],
+  storedId: string | null = readLoginLastAccountId()
+): string | null {
+  const fromDirectory = resolveLoginLastAccountId(accounts, storedId);
+  if (fromDirectory) return fromDirectory;
+  if (!storedId) return null;
+  return readLoginAccountDisplayName(storedId) ? storedId : null;
 }
 
 export function resolveLoginRecentAccountIds(

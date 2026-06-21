@@ -2,7 +2,6 @@
 
 import {
   SUPPLIER_HUB_TAB_COPY,
-  supplierHubHint,
   supplierHubPaths,
   type SupplierHubContext,
   type SupplierHubTab,
@@ -44,7 +43,6 @@ export function SuppliersHubNav({
     <SectionTabNav
       activeTab={activeTab}
       tabs={tabs}
-      contextHint={supplierHubHint(activeTab)}
       ariaLabel="Zakładki sekcji dostawców"
       embedded
     />

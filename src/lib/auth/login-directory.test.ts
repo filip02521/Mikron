@@ -20,6 +20,7 @@ vi.mock("@/lib/e2e-lab/mode", () => ({
       roleLabel: "Handlowiec",
       displayName: "Anna Kowalska",
       salesPersonName: "Anna Kowalska",
+      assignmentLabel: "Sklep",
     },
     {
       id: "550e8400-e29b-41d4-a716-446655440002",
@@ -28,6 +29,7 @@ vi.mock("@/lib/e2e-lab/mode", () => ({
       roleLabel: "Dział zakupów",
       displayName: "Zakupy",
       salesPersonName: null,
+      assignmentLabel: "Zakupy",
     },
   ],
 }));
@@ -37,6 +39,7 @@ function account(partial: Partial<LoginDirectoryAccount> & Pick<LoginDirectoryAc
     roleLabel: partial.role,
     displayName: partial.displayName ?? partial.email,
     salesPersonName: null,
+    assignmentLabel: null,
     ...partial,
   };
 }

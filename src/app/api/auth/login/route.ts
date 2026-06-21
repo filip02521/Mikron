@@ -222,7 +222,7 @@ export async function POST(request: NextRequest) {
     redirectTo = redirectPathAfterLogin(role, next, { adminPanelContext });
   }
 
-  const jsonResponse = NextResponse.json({ ok: true as const, redirectTo });
+  const jsonResponse = NextResponse.json({ ok: true as const, redirectTo, accountId: userId });
   for (const { name, value, options } of cookiesToAttach) {
     jsonResponse.cookies.set(name, value, options);
   }

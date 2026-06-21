@@ -35,6 +35,7 @@ import { cn } from "@/lib/cn";
 import { Badge } from "@/components/ui/Badge";
 import { InactiveSupplierBadge } from "@/components/suppliers/InactiveSupplierBadge";
 import { inactiveSupplierRowClass, inactiveSupplierNameClass } from "@/lib/suppliers/active";
+import { usePreviewMutationBlocker } from "@/components/layout/usePreviewMutationBlocker";
 
 export interface ScheduleRow {
   id: string;
@@ -102,6 +103,10 @@ export function LocationScheduleClient({
     null
   );
   const [savedId, setSavedId] = useState<string | null>(null);
+  const dismissToast = useCallback(() => setToast(null), []);
+  const { readOnly, blockIfReadOnly } = usePreviewMutationBlocker((text) =>
+    setToast({ text, tone: "error" })
+  );
 
   const urlFiltersKey = searchParams.toString();
   const [appliedUrlFiltersKey, setAppliedUrlFiltersKey] = useState(urlFiltersKey);
@@ -126,8 +131,6 @@ export function LocationScheduleClient({
     }, 300);
     return () => window.clearTimeout(timer);
   }, [search, filter, pathname, router, searchParams]);
-
-  const dismissToast = useCallback(() => setToast(null), []);
 
   const filtered = useMemo(() => {
     let rows = [...initialRows];
@@ -164,6 +167,7 @@ export function LocationScheduleClient({
     },
     pendingLabel = "Zapis i przeliczenie harmonogramu…"
   ) => {
+    if (blockIfReadOnly()) return;
     setPendingMessage(pendingLabel);
     start(async () => {
       try {
@@ -297,7 +301,7 @@ export function LocationScheduleClient({
                     </td>
                     <DateCell
                       value={row.order_date}
-                      disabled={pending}
+                      disabled={readOnly || pending}
                       hint={formatPlDate(row.order_date)}
                       onSave={(v) =>
                         save(row, { orderDate: v }, "Zapisywanie daty ostatniego zamówienia…")
@@ -305,7 +309,7 @@ export function LocationScheduleClient({
                     />
                     <DateCell
                       value={row.next_date}
-                      disabled={pending}
+                      disabled={readOnly || pending}
                       hint={`${formatPlDate(row.next_date)} · zapis jako przesunięcie`}
                       onSave={(v) =>
                         save(row, { nextDate: v }, "Aktualizacja kolejnego zamówienia…")
@@ -313,7 +317,7 @@ export function LocationScheduleClient({
                     />
                     <DateCell
                       value={row.shift_date}
-                      disabled={pending}
+                      disabled={readOnly || pending}
                       hint={formatPlDate(row.shift_date)}
                       onSave={(v) =>
                         save(row, { shiftDate: v }, "Zapisywanie przesunięcia…")

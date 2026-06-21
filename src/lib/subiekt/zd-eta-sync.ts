@@ -77,7 +77,10 @@ export type MojeZdEtaRefreshResult = Pick<
 >;
 
 /** Kiedy sesja przeglądarki może uznać auto-sync za zakończony (bez ponawiania). */
-export function shouldMarkMojeZdEtaSessionDone(body: MojeZdEtaRefreshResult): boolean {
+export function shouldMarkMojeZdEtaSessionDone(
+  body: MojeZdEtaRefreshResult,
+  clientEligibleCount = 0
+): boolean {
   if (body.skipped && body.reason === "lock_held") return false;
   if (body.timedOut) {
     const candidates = body.candidates ?? 0;
@@ -88,6 +91,14 @@ export function shouldMarkMojeZdEtaSessionDone(body: MojeZdEtaRefreshResult): bo
     const candidates = body.candidates ?? 0;
     const processed = body.processed ?? 0;
     if (candidates > 0 && processed < candidates) return false;
+    if (
+      body.skipped &&
+      body.reason === "subiekt_offline" &&
+      candidates === 0 &&
+      clientEligibleCount > 0
+    ) {
+      return false;
+    }
     return true;
   }
   if (body.skipped) return true;

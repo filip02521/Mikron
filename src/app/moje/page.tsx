@@ -16,6 +16,7 @@ import { getSessionUser } from "@/lib/auth";
 import { resolveSalesPersonForUser } from "@/lib/auth/sales-person";
 import { resolvePreviewSalesPerson } from "@/lib/auth/resolve-preview-sales-person";
 import { getAppRole } from "@/lib/auth-dev";
+import { logDevPageError } from "@/lib/dev/log-page-error";
 import { canAccessOperations, isAdmin, isSalesAccount, isSalesManager } from "@/lib/auth-roles";
 import { presentMyOrders } from "@/lib/orders/my-order-presenter";
 import { loadPlannedOrderScheduleContext } from "@/lib/orders/planned-order-schedule";
@@ -144,8 +145,8 @@ export default async function MojePage({
     } else {
       salesPersonId = user?.salesPersonId ?? null;
     }
-  } catch {
-    /* dev */
+  } catch (error) {
+    logDevPageError("moje/page", error);
   }
 
   if (role && isSalesAccount(role) && linkError && !previewSalesPersonId) {

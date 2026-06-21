@@ -41,6 +41,7 @@ import {
 import { SupplierEditSheet } from "@/components/admin/SupplierEditSheet";
 import { SUPPLIER_HUB_LIST_META_DESCRIPTION } from "@/lib/supplier-hub";
 import type { WarehouseCarrierRow } from "@/lib/data/warehouse-carriers";
+import { usePreviewMutationBlocker } from "@/components/layout/usePreviewMutationBlocker";
 import { cn } from "@/lib/cn";
 
 function scheduleHref(location: SupplierLocation, name: string): string {
@@ -85,6 +86,9 @@ export function SuppliersAdminClient({
   const [pending, start] = useTransition();
   const [toast, setToast] = useState<{ text: string; tone: "success" | "error" } | null>(
     null
+  );
+  const { readOnly, blockIfReadOnly } = usePreviewMutationBlocker((text) =>
+    setToast({ text, tone: "error" })
   );
   const dismiss = useCallback(() => setToast(null), []);
   const [search, setSearch] = useState("");
@@ -157,11 +161,13 @@ export function SuppliersAdminClient({
   );
 
   const startEdit = (s: SupplierWithSchedule) => {
+    if (blockIfReadOnly()) return;
     setForm(supplierToAdminForm(s));
     setFormOpen(true);
   };
 
   const openNew = () => {
+    if (blockIfReadOnly()) return;
     setForm(emptySupplierAdminForm());
     setFormOpen(true);
   };
@@ -215,7 +221,7 @@ export function SuppliersAdminClient({
 
   const confirmDeactivate = () => {
     const s = deactivateTarget;
-    if (!s) return;
+    if (!s || blockIfReadOnly()) return;
     start(async () => {
       try {
         await actionSetSupplierActive(s.id, false);
@@ -236,6 +242,7 @@ export function SuppliersAdminClient({
   };
 
   const save = () => {
+    if (blockIfReadOnly()) return;
     if (!form.name.trim()) {
       setToast({ text: "Podaj nazwę dostawcy", tone: "error" });
       return;
@@ -310,7 +317,7 @@ export function SuppliersAdminClient({
           pending={pending}
           onCancel={() => setDeleteTarget(null)}
           onConfirm={() => {
-            if (!deleteTarget) return;
+            if (!deleteTarget || blockIfReadOnly()) return;
             start(async () => {
               const r = await actionDeleteSupplier(deleteTarget.id);
               if ("error" in r) {
@@ -334,7 +341,7 @@ export function SuppliersAdminClient({
         pending={pending}
         footer={
           <>
-            <Button type="submit" form="supplier-admin-form" disabled={pending}>
+            <Button type="submit" form="supplier-admin-form" disabled={readOnly || pending}>
               {form.id ? "Zapisz zmiany" : "Dodaj dostawcę"}
             </Button>
             <Button type="button" variant="ghost" disabled={pending} onClick={resetForm}>
@@ -352,7 +359,7 @@ export function SuppliersAdminClient({
         >
           <SupplierAdminForm
             form={form}
-            disabled={pending}
+            disabled={readOnly || pending}
             onChange={setForm}
             onPatchCycleFields={patchCycleFields}
             carrierOptions={warehouseCarriers}
@@ -370,7 +377,7 @@ export function SuppliersAdminClient({
 
       <section className="space-y-4">
         {!formOpen ? (
-          <Button variant="outline" onClick={openNew}>
+          <Button variant="outline" onClick={openNew} disabled={readOnly}>
             + Dodaj dostawcę
           </Button>
         ) : null}
@@ -465,6 +472,7 @@ export function SuppliersAdminClient({
                             variant="secondary"
                             size="sm"
                             className="hidden md:inline-flex"
+                            disabled={readOnly || pending}
                             onClick={() => startEdit(s)}
                           >
                             Edytuj
@@ -472,10 +480,16 @@ export function SuppliersAdminClient({
                           <SupplierAdminRowMenu
                             supplier={s}
                             allowDelete={allowDelete}
-                            disabled={pending}
+                            disabled={readOnly || pending}
                             onEdit={() => startEdit(s)}
-                            onDeactivate={() => setDeactivateTarget(s)}
-                            onDelete={() => setDeleteTarget(s)}
+                            onDeactivate={() => {
+                              if (blockIfReadOnly()) return;
+                              setDeactivateTarget(s);
+                            }}
+                            onDelete={() => {
+                              if (blockIfReadOnly()) return;
+                              setDeleteTarget(s);
+                            }}
                           />
                         </div>
                       </div>

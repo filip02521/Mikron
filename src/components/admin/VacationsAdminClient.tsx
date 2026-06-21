@@ -31,6 +31,7 @@ import {
   isVacationHistorical,
   isVacationScheduledInactive,
 } from "@/lib/orders/vacation-status";
+import { usePreviewMutationBlocker } from "@/components/layout/usePreviewMutationBlocker";
 
 type VacationRow = {
   id: string;
@@ -101,6 +102,7 @@ function VacationRowsTable({
   formOpen,
   pending,
   todayDateKey,
+  readOnly = false,
   allowDelete,
   onEdit,
   onDelete,
@@ -110,6 +112,7 @@ function VacationRowsTable({
   formOpen: boolean;
   pending: boolean;
   todayDateKey: string;
+  readOnly?: boolean;
   allowDelete?: boolean;
   onEdit: (row: VacationRow) => void;
   onDelete?: (row: VacationRow) => void;
@@ -184,7 +187,7 @@ function VacationRowsTable({
                     variant="secondary"
                     size="sm"
                     className="hidden md:inline-flex"
-                    disabled={pending}
+                    disabled={pending || readOnly}
                     onClick={() => onEdit(v)}
                   >
                     Edytuj
@@ -192,7 +195,7 @@ function VacationRowsTable({
                   <OverflowMenu
                     label={`Akcje urlopu: ${name}`}
                     align="end"
-                    disabled={pending}
+                    disabled={pending || readOnly}
                     iconOnly
                     variant="segment"
                   >
@@ -236,6 +239,9 @@ export function VacationsAdminClient({
   const [toast, setToast] = useState<{ text: string; tone: "success" | "error" } | null>(
     null
   );
+  const { readOnly, blockIfReadOnly } = usePreviewMutationBlocker((text) =>
+    setToast({ text, tone: "error" })
+  );
   const dismiss = useCallback(() => setToast(null), []);
   const [formOpen, setFormOpen] = useState(false);
   const [form, setForm] = useState<VacationAdminFormState>(emptyVacationAdminForm);
@@ -266,11 +272,13 @@ export function VacationsAdminClient({
   };
 
   const openCreate = () => {
+    if (blockIfReadOnly()) return;
     setForm(emptyVacationAdminForm());
     setFormOpen(true);
   };
 
   const startEdit = (v: VacationRow) => {
+    if (blockIfReadOnly()) return;
     if (pending) return;
     setForm(vacationToForm(v));
     setFormOpen(true);
@@ -283,6 +291,7 @@ export function VacationsAdminClient({
   }, [formOpen, form.id]);
 
   const save = () => {
+    if (blockIfReadOnly()) return;
     const snapshot = formRef.current;
     if (
       !snapshot.supplier_id ||
@@ -351,7 +360,7 @@ export function VacationsAdminClient({
   };
 
   const confirmDelete = () => {
-    if (!deleteTarget) return;
+    if (!deleteTarget || blockIfReadOnly()) return;
     const name = deleteTarget.suppliers?.name ?? "urlop";
     run(
       async () => {
@@ -416,7 +425,7 @@ export function VacationsAdminClient({
         pending={pending}
         footer={
           <>
-            <Button disabled={pending} onClick={save}>
+            <Button disabled={readOnly || pending} onClick={save}>
               {pending ? (
                 <>
                   <Spinner size="sm" />
@@ -438,15 +447,15 @@ export function VacationsAdminClient({
           <VacationAdminForm
             form={form}
             suppliers={suppliers}
-            disabled={pending}
+            disabled={readOnly || pending}
             onChange={setForm}
           />
-          <VacationSavePreview form={form} disabled={pending} />
+          <VacationSavePreview form={form} disabled={readOnly || pending} />
         </div>
       </SupplierEditSheet>
 
       {!formOpen ? (
-        <Button variant="outline" onClick={openCreate} disabled={pending}>
+        <Button variant="outline" onClick={openCreate} disabled={readOnly || pending}>
           + Dodaj urlop
         </Button>
       ) : null}
@@ -469,6 +478,7 @@ export function VacationsAdminClient({
             form={form}
             formOpen={formOpen}
             pending={pending}
+            readOnly={readOnly}
             todayDateKey={todayDateKey}
             onEdit={startEdit}
           />
@@ -488,10 +498,14 @@ export function VacationsAdminClient({
             form={form}
             formOpen={formOpen}
             pending={pending}
+            readOnly={readOnly}
             todayDateKey={todayDateKey}
             allowDelete
             onEdit={startEdit}
-            onDelete={setDeleteTarget}
+            onDelete={(row) => {
+              if (blockIfReadOnly()) return;
+              setDeleteTarget(row);
+            }}
           />
         </Card>
       ) : null}
@@ -522,10 +536,14 @@ export function VacationsAdminClient({
             form={form}
             formOpen={formOpen}
             pending={pending}
+            readOnly={readOnly}
             todayDateKey={todayDateKey}
             allowDelete
             onEdit={startEdit}
-            onDelete={setDeleteTarget}
+            onDelete={(row) => {
+              if (blockIfReadOnly()) return;
+              setDeleteTarget(row);
+            }}
           />
         </details>
       ) : null}
