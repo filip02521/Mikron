@@ -18,6 +18,8 @@ export type ProductLineDraft = {
   available?: number | null;
   /** Stan magazynowy z Subiekta (tylko UI / walidacja). */
   stockSource?: "subiekt" | null;
+  /** Ilość z pozycji ZK (prefill) — walidacja prośby vs ZK. */
+  zkQuantity?: number | null;
   /** Uwagi handlowca — zapis per pozycja w `sales_request_note`. */
   requestNote?: string;
 };

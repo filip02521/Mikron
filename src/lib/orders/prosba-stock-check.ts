@@ -430,3 +430,181 @@ export function mergeStockIntoLinePatch(
     stockSource: snap.source,
   };
 }
+
+export type ProsbaZkQuantityAssessment =
+  | { kind: "match" }
+  | {
+      kind: "partial_stock";
+      zkQuantity: number;
+      orderQuantity: number;
+      stockGap: number;
+      available: number;
+    }
+  | {
+      kind: "under_zk_no_stock";
+      zkQuantity: number;
+      orderQuantity: number;
+      stockGap: number;
+      available: number | null;
+    }
+  | {
+      kind: "under_zk_insufficient_stock";
+      zkQuantity: number;
+      orderQuantity: number;
+      stockGap: number;
+      available: number;
+    };
+
+/** Różnica między ilością ZK a prośbą — zakładana część ze stanu magazynowego. */
+export function computeZkProsbaQuantityGap(
+  zkQuantity: number,
+  orderQuantity: number
+): number {
+  return Math.max(0, zkQuantity - orderQuantity);
+}
+
+export function assessProsbaLineZkQuantity(input: {
+  zkQuantity: number | null | undefined;
+  orderQuantity: number | null;
+  stock: ProsbaLineStockSnapshot | null;
+}): ProsbaZkQuantityAssessment | null {
+  const { zkQuantity, orderQuantity, stock } = input;
+  if (zkQuantity == null || zkQuantity <= 0) return null;
+  if (orderQuantity == null || orderQuantity <= 0) return null;
+  if (orderQuantity >= zkQuantity) return { kind: "match" };
+
+  const stockGap = computeZkProsbaQuantityGap(zkQuantity, orderQuantity);
+  const available = stock?.available ?? null;
+
+  if (available != null && available >= stockGap) {
+    return {
+      kind: "partial_stock",
+      zkQuantity,
+      orderQuantity,
+      stockGap,
+      available,
+    };
+  }
+  if (available == null || available <= 0) {
+    return {
+      kind: "under_zk_no_stock",
+      zkQuantity,
+      orderQuantity,
+      stockGap,
+      available,
+    };
+  }
+  return {
+    kind: "under_zk_insufficient_stock",
+    zkQuantity,
+    orderQuantity,
+    stockGap,
+    available,
+  };
+}
+
+export function assessProsbaLineZkQuantityFromDraft(
+  line: ProductLineDraft,
+  requestKind: IndividualRequestKind
+): ProsbaZkQuantityAssessment | null {
+  if (requestKind !== "zamowienie") return null;
+  if (line.zkQuantity == null) return null;
+  const orderQuantity = parseOrderQuantity(line.quantity);
+  const stock = stockSnapshotFromLineDraft(line);
+  return assessProsbaLineZkQuantity({
+    zkQuantity: line.zkQuantity,
+    orderQuantity,
+    stock,
+  });
+}
+
+function formatProsbaLineName(line: ProductLineDraft): string {
+  return line.product.trim() || line.symbol.trim() || "Produkt";
+}
+
+function formatProsbaZkQuantityConfirmBullet(
+  line: ProductLineDraft,
+  assessment: Exclude<ProsbaZkQuantityAssessment, { kind: "match" }>
+): string {
+  const name = formatProsbaLineName(line);
+  switch (assessment.kind) {
+    case "partial_stock":
+      return `• ${name} — ZK: ${assessment.zkQuantity} szt., prośba: ${assessment.orderQuantity} szt., ze stanu: ${assessment.stockGap} szt. (dostępne: ${assessment.available} szt.)`;
+    case "under_zk_no_stock":
+      return `• ${name} — ZK: ${assessment.zkQuantity} szt., prośba: ${assessment.orderQuantity} szt. (brak potwierdzonego stanu na brakujące ${assessment.stockGap} szt.)`;
+    case "under_zk_insufficient_stock":
+      return `• ${name} — ZK: ${assessment.zkQuantity} szt., prośba: ${assessment.orderQuantity} szt., brakuje ${assessment.stockGap} szt. względem ZK, na stanie: ${assessment.available} szt.`;
+  }
+}
+
+/** Dialog przed wysyłką prośby z ZK, gdy ilość w prośbie < ilość w ZK. */
+export function buildProsbaSubmitZkQuantityConfirm(
+  lines: ProductLineDraft[],
+  requestKind: IndividualRequestKind
+): { title: string; message: string; confirmLabel: string } | null {
+  if (requestKind !== "zamowienie") return null;
+
+  const items: Array<{
+    line: ProductLineDraft;
+    assessment: Exclude<ProsbaZkQuantityAssessment, { kind: "match" }>;
+  }> = [];
+
+  for (const line of lines) {
+    const assessment = assessProsbaLineZkQuantityFromDraft(line, requestKind);
+    if (!assessment || assessment.kind === "match") continue;
+    items.push({ line, assessment });
+  }
+
+  if (!items.length) return null;
+
+  const hasPartialStock = items.some((item) => item.assessment.kind === "partial_stock");
+  const bullets = items.map((item) =>
+    formatProsbaZkQuantityConfirmBullet(item.line, item.assessment)
+  );
+
+  if (hasPartialStock && items.every((item) => item.assessment.kind === "partial_stock")) {
+    return {
+      title: "Częściowy stan magazynowy",
+      message: `Ilość w prośbie jest mniejsza niż w ZK — reszta powinna być już na stanie:\n\n${bullets.join("\n")}\n\nCzy potwierdzasz podział i wysyłasz prośbę?`,
+      confirmLabel: "Potwierdzam i wysyłam",
+    };
+  }
+
+  return {
+    title: "Ilość mniejsza niż w ZK",
+    message: `Prośba obejmuje mniej sztuk niż pozycja w ZK:\n\n${bullets.join("\n")}\n\nCzy na pewno chcesz złożyć prośbę na taką ilość?`,
+    confirmLabel: "Tak, wyślij prośbę",
+  };
+}
+
+/** Krótka podpowiedź pod polem ilości (prefill z ZK). */
+export function formatProsbaZkQuantityInlineHint(
+  line: ProductLineDraft,
+  requestKind: IndividualRequestKind
+): string | null {
+  const assessment = assessProsbaLineZkQuantityFromDraft(line, requestKind);
+  if (!assessment || assessment.kind === "match") return null;
+
+  switch (assessment.kind) {
+    case "partial_stock":
+      return `W ZK jest ${assessment.zkQuantity} szt. — ${assessment.stockGap} szt. ze stanu (dostępne: ${assessment.available}), reszta w prośbie.`;
+    case "under_zk_no_stock":
+      return `W ZK jest ${assessment.zkQuantity} szt. — prośba na ${assessment.orderQuantity} szt. (brak potwierdzonego stanu na brakujące ${assessment.stockGap} szt.).`;
+    case "under_zk_insufficient_stock":
+      return `W ZK jest ${assessment.zkQuantity} szt. — brakuje ${assessment.stockGap} szt. względem ZK, na stanie tylko ${assessment.available} szt.`;
+  }
+}
+
+/** Baner formularza prośby powiązanej z ZK. */
+export function formatProsbaZkQuantityFormBanner(
+  lines: ProductLineDraft[],
+  requestKind: IndividualRequestKind
+): string | null {
+  if (requestKind !== "zamowienie") return null;
+  const hints = lines
+    .map((line) => formatProsbaZkQuantityInlineHint(line, requestKind))
+    .filter(Boolean);
+  if (!hints.length) return null;
+  if (hints.length === 1) return hints[0]!;
+  return hints.join(" ");
+}

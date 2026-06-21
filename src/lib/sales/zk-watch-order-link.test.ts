@@ -6,6 +6,8 @@ import {
   isOrderRelevantToZkWatch,
   isOpenProsbaOrder,
   isZkLineFullyDeliveredByOrders,
+  buildZkLineProsbaQuantityMeta,
+  effectiveRequiredQtyForZkLine,
   mergeZkLineChecksFromDeliveredOrders,
   productMatchesZkLine,
   resolveZkWatchIdsForOrderSync,
@@ -467,6 +469,7 @@ describe("computeZkWatchOrderHints", () => {
     expect(hints.informacjaReadyLineKeys).toContain("ob:1");
     expect(hints.regalWaitingLineKeys).not.toContain("ob:1");
     expect(hints.lineCoverageByKey["ob:1"]).not.toBe("delivered");
+    expect(hints.uncoveredLineKeys).not.toContain("ob:1");
   });
 
   it("mieszana linia: otwarte zamówienie + informacja ready → W prośbie", () => {
@@ -729,6 +732,179 @@ describe("isZkLineFullyDeliveredByOrders", () => {
         line
       )
     ).toBe(true);
+  });
+
+  it("prośba na mniejszą ilość niż ZK — komplet po dostawie zamówionej ilości", () => {
+    const w = watch({
+      id: "w-less",
+      subiekt_snapshot: {
+        dok_Pozycja: [
+          {
+            ob_Id: 1,
+            ob_TowId: 100,
+            tw_Symbol: "ABC",
+            tw_Nazwa: "Implant X",
+            ob_Ilosc: 3,
+          },
+        ],
+      },
+    });
+    const line = {
+      key: "ob:1",
+      product: "Implant X",
+      symbol: "ABC",
+      quantityLabel: "3 szt.",
+      quantity: 3,
+      subiektTwId: 100,
+      arrived: false,
+    };
+    const order = linkOrder({
+      id: "less-order",
+      status: "Zrealizowane",
+      quantity: "2",
+      delivered_quantity: "2",
+    });
+    expect(effectiveRequiredQtyForZkLine(line, [order], w)).toBe(2);
+    expect(isZkLineFullyDeliveredByOrders([order], line, w)).toBe(true);
+    const hints = computeZkWatchOrderHints(w, [order]);
+    expect(hints.lineCoverageByKey["ob:1"]).toBe("delivered");
+  });
+});
+
+describe("buildZkLineProsbaQuantityMeta", () => {
+  it("pokazuje ilość z prośby gdy jest mniejsza niż ZK", () => {
+    const w = watch({
+      id: "w-qty",
+      subiekt_snapshot: {
+        dok_Pozycja: [
+          {
+            ob_Id: 1,
+            ob_TowId: 100,
+            tw_Symbol: "ABC",
+            tw_Nazwa: "Implant X",
+            ob_Ilosc: 3,
+          },
+        ],
+      },
+    });
+    const line = {
+      key: "ob:1",
+      product: "Implant X",
+      symbol: "ABC",
+      quantityLabel: "3 szt.",
+      quantity: 3,
+      subiektTwId: 100,
+      arrived: false,
+    };
+    const order = linkOrder({
+      id: "o-less",
+      quantity: "2",
+      delivered_quantity: "0",
+    });
+
+    const meta = buildZkLineProsbaQuantityMeta(line, [order], w);
+    expect(meta?.displayLabel).toBe("3 szt. · w prośbie 2 szt. · 1 szt. ze stanu");
+    expect(meta?.title).toContain("w prośbie zamówiono 2 szt.");
+  });
+
+  it("pokazuje ze stanu gdy pozycja bez prośby", () => {
+    const w = watch({
+      id: "w-stock",
+      line_checks: [{ key: "ob:1", arrived: false, needs_prosba: false }],
+    });
+    const line = {
+      key: "ob:1",
+      product: "Implant X",
+      symbol: "ABC",
+      quantityLabel: "2 szt.",
+      quantity: 2,
+      subiektTwId: 100,
+      arrived: false,
+    };
+
+    const meta = buildZkLineProsbaQuantityMeta(line, [], w);
+    expect(meta?.displayLabel).toBe("2 szt. · ze stanu magazynowego");
+  });
+
+  it("ignoruje prośby innego klienta przy tej samej pozycji", () => {
+    const w = watch({
+      id: "w-a",
+      client_kh_id: 42,
+      subiekt_snapshot: {
+        dok_Pozycja: [
+          {
+            ob_Id: 1,
+            ob_TowId: 100,
+            tw_Symbol: "ABC",
+            tw_Nazwa: "Implant X",
+            ob_Ilosc: 3,
+          },
+        ],
+      },
+    });
+    const line = {
+      key: "ob:1",
+      product: "Implant X",
+      symbol: "ABC",
+      quantityLabel: "3 szt.",
+      quantity: 3,
+      subiektTwId: 100,
+      arrived: false,
+    };
+    const otherClientOrder = linkOrder({
+      id: "other",
+      sales_client_kh_id: 99,
+      sales_client_name: "Inna klinika",
+      source_zk_watch_id: null,
+      source_zk_number: null,
+      quantity: "2",
+      status: "Zamowione",
+    });
+
+    expect(buildZkLineProsbaQuantityMeta(line, [otherClientOrder], w)).toBeNull();
+  });
+
+  it("liczy tylko aktywne prośby w etykiecie w prośbie", () => {
+    const w = watch({
+      id: "w-open",
+      subiekt_snapshot: {
+        dok_Pozycja: [
+          {
+            ob_Id: 1,
+            ob_TowId: 100,
+            tw_Symbol: "ABC",
+            tw_Nazwa: "Implant X",
+            ob_Ilosc: 5,
+          },
+        ],
+      },
+    });
+    const line = {
+      key: "ob:1",
+      product: "Implant X",
+      symbol: "ABC",
+      quantityLabel: "5 szt.",
+      quantity: 5,
+      subiektTwId: 100,
+      arrived: false,
+    };
+    const closed = linkOrder({
+      id: "closed",
+      status: "Zrealizowane",
+      quantity: "3",
+      delivered_quantity: "3",
+      source_zk_watch_id: "w-open",
+    });
+    const open = linkOrder({
+      id: "open",
+      status: "Zamowione",
+      quantity: "2",
+      delivered_quantity: "0",
+      source_zk_watch_id: "w-open",
+    });
+
+    const meta = buildZkLineProsbaQuantityMeta(line, [closed, open], w);
+    expect(meta?.displayLabel).toBe("5 szt. · w prośbie 2 szt. · 3 szt. ze stanu");
   });
 });
 

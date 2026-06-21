@@ -5,7 +5,9 @@ import {
   applyProsbaLineStockMap,
   assessProsbaLineStock,
   assessProsbaLineStockFromDraft,
+  assessProsbaLineZkQuantity,
   buildProsbaSubmitStockConfirm,
+  buildProsbaSubmitZkQuantityConfirm,
   buildZkProsbaScopeInitialOrderMarked,
   collectProsbaLineTwIdsMissingStock,
   collectZkProsbaScopeLineTwIds,
@@ -543,5 +545,49 @@ describe("isProsbaStockAckRequiredError", () => {
       )
     ).toBe(true);
     expect(isProsbaStockAckRequiredError("Inny błąd")).toBe(false);
+  });
+});
+
+describe("assessProsbaLineZkQuantity", () => {
+  const stock = { onHand: 1, reserved: 0, available: 1, source: "subiekt" as const };
+
+  it("partial stock — reszta ze stanu", () => {
+    expect(
+      assessProsbaLineZkQuantity({
+        zkQuantity: 3,
+        orderQuantity: 2,
+        stock,
+      })?.kind
+    ).toBe("partial_stock");
+  });
+
+  it("under ZK bez stanu — wymaga potwierdzenia", () => {
+    expect(
+      assessProsbaLineZkQuantity({
+        zkQuantity: 3,
+        orderQuantity: 2,
+        stock: { onHand: 0, reserved: 0, available: 0, source: "subiekt" },
+      })?.kind
+    ).toBe("under_zk_no_stock");
+  });
+
+  it("buildProsbaSubmitZkQuantityConfirm — partial stock", () => {
+    const confirm = buildProsbaSubmitZkQuantityConfirm(
+      [
+        {
+          ...baseLine,
+          id: "1",
+          product: "Implant",
+          quantity: "2",
+          zkQuantity: 3,
+          available: 1,
+          onHand: 1,
+          stockSource: "subiekt",
+        },
+      ],
+      "zamowienie"
+    );
+    expect(confirm?.title).toBe("Częściowy stan magazynowy");
+    expect(confirm?.message).toContain("Implant");
   });
 });

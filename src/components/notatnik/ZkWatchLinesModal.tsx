@@ -241,6 +241,7 @@ export function ZkWatchLinesModal({
               informacjaReadyLineKeys={informacjaReadyLineKeys}
               informacjaAcknowledgedLineKeys={informacjaAcknowledgedLineKeys}
               scopeExcludedLineKeys={scopeExcludedLineKeys}
+              linkableOrders={linkableOrders}
               onSaved={onSaved}
               showSummary={false}
             />

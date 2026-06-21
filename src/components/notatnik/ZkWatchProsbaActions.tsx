@@ -3,9 +3,8 @@
 import Link from "next/link";
 import type { MouseEvent } from "react";
 import { Button } from "@/components/ui/Button";
-import { cn } from "@/lib/cn";
 import type { ZkWatchProsbaCardAction } from "@/lib/sales/zk-watch-line-ui-state";
-import { salesTypography } from "@/lib/ui/ontime-theme";
+import { ZkWatchProsbaCoveredChip } from "./ZkWatchProsbaCoveredChip";
 
 export function ZkWatchProsbaActions({
   archived,
@@ -29,17 +28,7 @@ export function ZkWatchProsbaActions({
   if (prosbaCardAction.kind === "none") return null;
 
   if (prosbaCardAction.kind === "covered") {
-    return (
-      <span
-        className={cn(
-          "px-1 text-[0.68rem] font-medium text-slate-500",
-          salesTypography.rowMeta
-        )}
-        title="Wszystkie pozycje do zamówienia są już obsłużone"
-      >
-        {prosbaCardAction.label}
-      </span>
-    );
+    return <ZkWatchProsbaCoveredChip reason={prosbaCardAction.reason} size="compact" />;
   }
 
   if (prosbaCardAction.kind === "view_open") {

@@ -155,6 +155,44 @@ describe("deriveZkWatchProsbaCardAction", () => {
       })
     ).toEqual({ kind: "view_open", label: "Otwórz prośbę" });
   });
+
+  it("towar na regale bez odbioru — nie pokazuj Komplet", () => {
+    expect(
+      deriveZkWatchProsbaCardAction({
+        lineCount: 1,
+        uncoveredLineKeys: [],
+        openProsbaLineKeys: [],
+        regalWaitingLineKeys: ["ob:1"],
+        newLineKeys: [],
+        hasOpenMatchingProsba: false,
+      })
+    ).toEqual({ kind: "view_open", label: "Otwórz prośbę" });
+  });
+
+  it("wszystkie pozycje pominięte w zakresie — chip Ze stanu", () => {
+    expect(
+      deriveZkWatchProsbaCardAction({
+        lineCount: 2,
+        uncoveredLineKeys: [],
+        openProsbaLineKeys: [],
+        scopeExcludedLineKeys: ["a", "b"],
+        newLineKeys: [],
+        hasOpenMatchingProsba: false,
+      })
+    ).toEqual({ kind: "covered", reason: "scope_excluded" });
+  });
+
+  it("pokryte pozycje — chip Obsłużone", () => {
+    expect(
+      deriveZkWatchProsbaCardAction({
+        lineCount: 2,
+        uncoveredLineKeys: [],
+        openProsbaLineKeys: [],
+        newLineKeys: [],
+        hasOpenMatchingProsba: false,
+      })
+    ).toEqual({ kind: "covered", reason: "complete" });
+  });
 });
 
 describe("formatZkProsbaCardActionLabelAfterStockFilter", () => {

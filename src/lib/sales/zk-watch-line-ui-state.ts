@@ -147,10 +147,39 @@ export function zkWatchLineUiStateMeta(state: ZkWatchLineUiState): ZkWatchLineUi
   }
 }
 
+export type ZkWatchProsbaCoveredReason = "complete" | "scope_excluded";
+
+export function zkWatchProsbaCoveredMeta(reason: ZkWatchProsbaCoveredReason): {
+  shortLabel: string;
+  detail: string;
+  badgeClass: string;
+  panelClass: string;
+  detailClass: string;
+} {
+  if (reason === "scope_excluded") {
+    return {
+      shortLabel: "Ze stanu",
+      detail:
+        "Przy tworzeniu prośby oznaczono pozycje jako dostępne na stanie magazynowym. Nie ma aktywnej prośby o zamówienie u dostawcy.",
+      badgeClass: "bg-slate-100 text-slate-700 ring-1 ring-slate-200/80",
+      panelClass: "border-slate-200/90 bg-slate-50/60",
+      detailClass: "text-slate-600",
+    };
+  }
+  return {
+    shortLabel: "Obsłużone",
+    detail:
+      "Wszystkie pozycje są pokryte stanem magazynowym lub już odebrane. Nie ma otwartej prośby o zamówienie.",
+    badgeClass: "bg-emerald-100 text-emerald-900 ring-1 ring-emerald-200/70",
+    panelClass: "border-emerald-200/80 bg-emerald-50/60",
+    detailClass: "text-emerald-900/90",
+  };
+}
+
 export type ZkWatchProsbaCardAction =
   | { kind: "none" }
   | { kind: "view_open"; label: string }
-  | { kind: "covered"; label: string }
+  | { kind: "covered"; reason: ZkWatchProsbaCoveredReason }
   | { kind: "new_prosba"; label: string; lineKeys?: string[] }
   | { kind: "supplement"; label: string; lineKeys: string[] };
 
@@ -160,6 +189,9 @@ export function deriveZkWatchProsbaCardAction(input: {
   uncoveredLineKeys: string[];
   openProsbaLineKeys: string[];
   partialLineKeys?: string[];
+  regalWaitingLineKeys?: string[];
+  informacjaReadyLineKeys?: string[];
+  scopeExcludedLineKeys?: string[];
   newLineKeys: string[];
   hasOpenMatchingProsba: boolean;
 }): ZkWatchProsbaCardAction {
@@ -168,6 +200,9 @@ export function deriveZkWatchProsbaCardAction(input: {
     uncoveredLineKeys,
     openProsbaLineKeys,
     partialLineKeys = [],
+    regalWaitingLineKeys = [],
+    informacjaReadyLineKeys = [],
+    scopeExcludedLineKeys = [],
     newLineKeys,
     hasOpenMatchingProsba,
   } = input;
@@ -180,11 +215,16 @@ export function deriveZkWatchProsbaCardAction(input: {
     if (
       hasOpenMatchingProsba ||
       openProsbaLineKeys.length > 0 ||
-      partialLineKeys.length > 0
+      partialLineKeys.length > 0 ||
+      regalWaitingLineKeys.length > 0 ||
+      informacjaReadyLineKeys.length > 0
     ) {
       return { kind: "view_open", label: "Otwórz prośbę" };
     }
-    return { kind: "covered", label: "Komplet" };
+    if (scopeExcludedLineKeys.length === lineCount && lineCount > 0) {
+      return { kind: "covered", reason: "scope_excluded" };
+    }
+    return { kind: "covered", reason: "complete" };
   }
 
   const newSet = new Set(newLineKeys);
@@ -227,6 +267,10 @@ export function formatZkProsbaCardActionLabelAfterStockFilter(input: {
     input;
 
   if (action.kind === "none") return "";
+
+  if (action.kind === "covered") {
+    return zkWatchProsbaCoveredMeta(action.reason).shortLabel;
+  }
 
   if (action.kind !== "supplement" && action.kind !== "new_prosba") {
     return action.label;

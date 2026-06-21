@@ -13,7 +13,7 @@ import {
 } from "@/lib/orders/sales-client-match";
 import { orderExplicitlyLinkedToZkWatch } from "@/lib/orders/zk-prosba-source";
 import { isZkWatchArchived } from "@/lib/data/sales-notepad";
-import { getDeliveryProgress, INFORMACJA_NO_QUANTITY } from "@/lib/orders/individual";
+import { getDeliveryProgress, INFORMACJA_NO_QUANTITY, parseOrderQuantity } from "@/lib/orders/individual";
 import {
   activeOrderQuantity,
   hasActiveSupplierFulfillment,
@@ -253,17 +253,167 @@ export function totalDeliveredQtyForZkLineFromOrders(
   return total;
 }
 
+function isLineCoveredByStockScopeOnly(
+  line: ZkWatchLineView,
+  watch: Pick<SalesZkWatch, "line_checks">
+): boolean {
+  const checks = parseZkWatchLineChecks(watch.line_checks);
+  const entry = checks.find((check) => check.key === line.key);
+  return entry?.needs_prosba === false;
+}
+
+function activeOrderedQtyForZkLink(order: ZkLinkableOrder): number {
+  const parsed = parseOrderQuantity(order.quantity);
+  if (parsed == null || parsed <= 0) return 0;
+  if (order.sales_cancelled_at) {
+    const active = activeOrderQuantity(order as IndividualOrder);
+    return active ?? 0;
+  }
+  return parsed;
+}
+
+/** Suma quantity z prośb dopasowanych do pozycji ZK (w tym zrealizowane — do limitu coverage). */
+export function totalOrderedQtyForZkLineFromOrders(
+  orders: ZkLinkableOrder[],
+  line: ZkWatchLineView
+): number {
+  let total = 0;
+  for (const order of orders) {
+    if (!productMatchesZkLine(order, line)) continue;
+    if (order.request_kind === "informacja") continue;
+    const qty = activeOrderedQtyForZkLink(order);
+    if (qty <= 0) continue;
+    total += qty;
+  }
+  return total;
+}
+
+/** Suma quantity z aktywnych (otwartych) prośb — do etykiety „w prośbie X szt.” na liście towaru. */
+export function totalOpenOrderedQtyForZkLineFromOrders(
+  orders: ZkLinkableOrder[],
+  line: ZkWatchLineView
+): number {
+  let total = 0;
+  for (const order of orders) {
+    if (!productMatchesZkLine(order, line)) continue;
+    if (order.request_kind === "informacja") continue;
+    if (!isOpenProsbaOrder(order)) continue;
+    const qty = activeOrderedQtyForZkLink(order);
+    if (qty <= 0) continue;
+    total += qty;
+  }
+  return total;
+}
+
+export type ZkLineProsbaQuantityMeta = {
+  /** Etykieta pod nazwą produktu na liście towaru ZK. */
+  displayLabel: string;
+  title: string;
+};
+
+/**
+ * Gdy ilość w prośbie < ilość ZK — doprecyzuj przy liście towaru,
+ * żeby magazyn nie szukał pełnej ilości ZK na regale.
+ */
+export function buildZkLineProsbaQuantityMeta(
+  line: ZkWatchLineView,
+  orders: ZkLinkableOrder[],
+  watch: Pick<
+    SalesZkWatch,
+    "line_checks" | "id" | "zk_number" | "sales_person_id" | "client_kh_id" | "client_label"
+  >
+): ZkLineProsbaQuantityMeta | null {
+  const zkQty = line.quantity;
+  const zkLabel = line.quantityLabel;
+  if (!zkLabel) return null;
+
+  const relevant = orders.filter((order) => isOrderRelevantToZkWatch(order, watch as SalesZkWatch));
+  const orderedQty = totalOpenOrderedQtyForZkLineFromOrders(relevant, line);
+  const fromStockScope = isLineCoveredByStockScopeOnly(line, watch);
+
+  if (orderedQty > 0 && zkQty != null && orderedQty < zkQty) {
+    const stockGap = zkQty - orderedQty;
+    const stockNote =
+      stockGap > 0 ? ` · ${stockGap} szt. ze stanu` : "";
+    return {
+      displayLabel: `${zkLabel} · w prośbie ${orderedQty} szt.${stockNote}`,
+      title:
+        `W ZK jest ${zkQty} szt., w prośbie zamówiono ${orderedQty} szt.` +
+        (stockGap > 0
+          ? ` Pozostałe ${stockGap} szt. powinny być już na stanie magazynowym.`
+          : "") +
+        " Przy odbiorze z regału licz się na ilość z prośby, nie na pełną ilość ZK.",
+    };
+  }
+
+  if (fromStockScope && orderedQty === 0 && zkQty != null) {
+    return {
+      displayLabel: `${zkLabel} · ze stanu magazynowego`,
+      title: `W ZK jest ${zkQty} szt. — pozycja oznaczona jako dostępna na stanie, bez prośby o zamówienie.`,
+    };
+  }
+
+  return null;
+}
+
+/**
+ * Ile sztuk trzeba domknąć prośbami — suma quantity powiązanych prośb,
+ * albo pełna ilość ZK gdy brak prośby. Pozycja „na stanie” (needs_prosba: false) → 0.
+ */
+export function effectiveRequiredQtyForZkLine(
+  line: ZkWatchLineView,
+  orders: ZkLinkableOrder[],
+  watch: Pick<SalesZkWatch, "line_checks">
+): number | null {
+  if (isLineCoveredByStockScopeOnly(line, watch)) return 0;
+  const orderedTotal = totalOrderedQtyForZkLineFromOrders(orders, line);
+  if (orderedTotal > 0) {
+    const zkQty = line.quantity;
+    if (zkQty != null && zkQty > 0) {
+      return Math.min(orderedTotal, zkQty);
+    }
+    return orderedTotal;
+  }
+  const zkQty = line.quantity;
+  return zkQty != null && zkQty > 0 ? zkQty : null;
+}
+
+/** Pozycja oznaczona „na stanie” bez aktywnej prośby — domknięta bez zamówienia. */
+function isLineFulfilledFromStockScopeOnly(
+  line: ZkWatchLineView,
+  orders: ZkLinkableOrder[],
+  watch: Pick<SalesZkWatch, "line_checks">
+): boolean {
+  if (!isLineCoveredByStockScopeOnly(line, watch)) return false;
+  return !orders.some(
+    (order) =>
+      productMatchesZkLine(order, line) &&
+      (isOpenProsbaOrder(order) ||
+        isInformacjaWarehouseReadyOrder(order) ||
+        isPhysicalDeliveryOrder(order))
+  );
+}
+
 /** Czy łączna dostawa prośb pokrywa wymaganą ilość pozycji ZK. */
 export function isZkLineFullyDeliveredByOrders(
   orders: ZkLinkableOrder[],
-  line: ZkWatchLineView
+  line: ZkWatchLineView,
+  watch?: Pick<SalesZkWatch, "line_checks">
 ): boolean {
+  if (watch && isLineFulfilledFromStockScopeOnly(line, orders, watch)) {
+    return true;
+  }
+
   const matchingDelivered = orders.filter(
     (order) => isPhysicalDeliveryOrder(order) && productMatchesZkLine(order, line)
   );
+
   if (!matchingDelivered.length) return false;
 
-  const required = line.quantity;
+  const required = watch
+    ? effectiveRequiredQtyForZkLine(line, orders, watch)
+    : line.quantity;
+
   if (required == null || required <= 0) {
     return matchingDelivered.some((order) => order.status === "Zrealizowane");
   }
@@ -340,14 +490,14 @@ export function filterZkWatchesByClientQuery(
 export function computeZkWatchLineCoverage(
   line: ZkWatchLineView,
   relevantOrders: ZkLinkableOrder[],
-  watch: Pick<SalesZkWatch, "id" | "zk_number">
+  watch: Pick<SalesZkWatch, "id" | "zk_number" | "line_checks">
 ): ZkWatchLineCoverage {
   const matching = relevantOrders.filter((order) =>
     productMatchesZkLineForCoverage(order, line, watch)
   );
   if (!matching.length) return "uncovered";
   if (matching.some((order) => isOpenProsbaOrder(order))) return "open";
-  if (isZkLineFullyDeliveredByOrders(relevantOrders, line)) return "delivered";
+  if (isZkLineFullyDeliveredByOrders(relevantOrders, line, watch)) return "delivered";
   if (matching.some((order) => isPhysicalDeliveryOrder(order))) return "partial";
   return "uncovered";
 }
@@ -431,7 +581,15 @@ export function computeZkWatchOrderHints(
 
     if (scopeExcluded) continue;
 
-    if (coverage === "uncovered") uncoveredLineKeys.push(line.key);
+    if (coverage === "uncovered") {
+      if (
+        isZkLineInformacjaReady(line, relevant) ||
+        isZkLineInformacjaAcknowledged(line, relevant)
+      ) {
+        continue;
+      }
+      uncoveredLineKeys.push(line.key);
+    }
     if (coverage === "open") openProsbaCoveredLineKeys.push(line.key);
   }
 
@@ -448,7 +606,7 @@ export function computeZkWatchOrderHints(
     if (!matchedLines.length) continue;
     if (isPhysicalDeliveryOrder(order)) {
       for (const line of matchedLines) {
-        if (isZkLineFullyDeliveredByOrders(relevant, line)) {
+        if (isZkLineFullyDeliveredByOrders(relevant, line, watch)) {
           matchedDeliveredLineKeys.add(line.key);
         }
       }
@@ -458,7 +616,7 @@ export function computeZkWatchOrderHints(
   const productLines = lineViews.filter((l) => l.key !== "summary");
   const allLinesMatchedByOrders =
     productLines.length > 0 &&
-    productLines.every((line) => isZkLineFullyDeliveredByOrders(relevant, line));
+    productLines.every((line) => isZkLineFullyDeliveredByOrders(relevant, line, watch));
 
   return {
     matchingOpenRequestCount,
