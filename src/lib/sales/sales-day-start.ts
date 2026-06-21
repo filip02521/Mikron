@@ -17,6 +17,7 @@ import type { SalesNote, SalesZkWatch } from "@/types/database";
 
 export type SalesDayStartSource =
   | "pickup"
+  | "zk_warehouse"
   | "cancel_ack"
   | "informacja_ready"
   | "zk_follow_up"
@@ -46,6 +47,7 @@ export type SalesDayStartSnapshot = {
 
 const PRIORITY: Record<SalesDayStartSource, number> = {
   pickup: 10,
+  zk_warehouse: 15,
   cancel_ack: 20,
   informacja_ready: 30,
   zk_follow_up: 40,
@@ -185,19 +187,27 @@ function buildNotepadItems(
   const tasks = collectNotepadTodayTasks(watches, notes, { unseenWarehouseWatchIds });
 
   return tasks.map((task) => {
-    const isZkTask =
-      task.kind === "zk-follow-up" || task.kind === "zk-warehouse-arrival";
+    const isZkWarehouse = task.kind === "zk-warehouse-arrival";
+    const isZkTask = isZkWarehouse || task.kind === "zk-follow-up";
     const watchId =
       isZkTask && task.anchor.startsWith("watch-") ? task.anchor.slice(6) : null;
     return {
       id: `${task.kind}-${task.id}`,
-      source: isZkTask ? "zk_follow_up" : "note_follow_up",
-      priority: isZkTask ? PRIORITY.zk_follow_up : PRIORITY.note_follow_up,
-      title: isZkTask
-        ? task.kind === "zk-warehouse-arrival"
-          ? `Na magazynie · ${formatProsbaZkLinkNumber(task.title)}`
-          : `Przypomnienie · ${formatProsbaZkLinkNumber(task.title)}`
-        : task.title,
+      source: isZkWarehouse
+        ? "zk_warehouse"
+        : isZkTask
+          ? "zk_follow_up"
+          : "note_follow_up",
+      priority: isZkWarehouse
+        ? PRIORITY.zk_warehouse
+        : isZkTask
+          ? PRIORITY.zk_follow_up
+          : PRIORITY.note_follow_up,
+      title: isZkWarehouse
+        ? `Na magazynie · ${formatProsbaZkLinkNumber(task.title)}`
+        : task.kind === "zk-follow-up"
+          ? `Przypomnienie · ${formatProsbaZkLinkNumber(task.title)}`
+          : task.title,
       subtitle: task.subtitle ?? undefined,
       evidence: task.subtitle ?? undefined,
       href: buildNotatnikPageHref({
@@ -308,6 +318,8 @@ export function salesDayStartSourceLabel(source: SalesDayStartSource): string {
   switch (source) {
     case "pickup":
       return "Gotowe";
+    case "zk_warehouse":
+      return "Na regale";
     case "cancel_ack":
       return "Anulowanie";
     case "informacja_ready":
