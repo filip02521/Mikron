@@ -12,6 +12,7 @@ import {
   formatZkProsbaPreviewMetaTooltip,
 } from "@/lib/sales/zk-watch-prosba-preview";
 import type { ZkLinkableOrder, ZkWatchOrderHints } from "@/lib/sales/zk-watch-order-link";
+import { collectPartialLineKeysFromCoverage } from "@/lib/sales/zk-watch-order-link";
 import { deriveZkWatchProsbaCardAction } from "@/lib/sales/zk-watch-line-ui-state";
 import { buildZkWatchLineViews } from "@/lib/sales/zk-watch-lines";
 import { salesTypography } from "@/lib/ui/ontime-theme";
@@ -47,6 +48,7 @@ export function ZkWatchProsbaSection({
     lineCount: productLineCount,
     uncoveredLineKeys: orderHints?.uncoveredLineKeys ?? [],
     openProsbaLineKeys: orderHints?.openProsbaCoveredLineKeys ?? [],
+    partialLineKeys: collectPartialLineKeysFromCoverage(orderHints?.lineCoverageByKey),
     newLineKeys,
     hasOpenMatchingProsba: (orderHints?.matchingOpenRequestCount ?? 0) > 0,
   });

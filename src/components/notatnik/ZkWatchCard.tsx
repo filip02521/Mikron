@@ -18,6 +18,7 @@ import {
 } from "@/lib/orders/zk-watch-prosba-prefill";
 import { appendMojeFocusOrderIds } from "@/lib/orders/moje-order-focus";
 import type { ZkWatchOrderHints, ZkLinkableOrder } from "@/lib/sales/zk-watch-order-link";
+import { collectPartialLineKeysFromCoverage } from "@/lib/sales/zk-watch-order-link";
 import {
   allZkWatchLinesCheckboxChecked,
   deriveZkWatchProsbaCardAction,
@@ -158,6 +159,7 @@ export function ZkWatchCard({
     lineCount: productLineCount,
     uncoveredLineKeys,
     openProsbaLineKeys,
+    partialLineKeys: collectPartialLineKeysFromCoverage(orderHints?.lineCoverageByKey),
     newLineKeys: newLineKeys ?? [],
     hasOpenMatchingProsba,
   });

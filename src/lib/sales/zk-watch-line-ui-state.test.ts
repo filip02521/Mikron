@@ -142,6 +142,19 @@ describe("deriveZkWatchProsbaCardAction", () => {
       })
     ).toMatchObject({ kind: "supplement", label: "Uzupełnij (1)" });
   });
+
+  it("częściowa dostawa — nie pokazuj Komplet", () => {
+    expect(
+      deriveZkWatchProsbaCardAction({
+        lineCount: 1,
+        uncoveredLineKeys: [],
+        openProsbaLineKeys: [],
+        partialLineKeys: ["ob:1"],
+        newLineKeys: [],
+        hasOpenMatchingProsba: false,
+      })
+    ).toEqual({ kind: "view_open", label: "Otwórz prośbę" });
+  });
 });
 
 describe("formatZkProsbaCardActionLabelAfterStockFilter", () => {

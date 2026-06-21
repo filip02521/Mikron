@@ -52,6 +52,26 @@ describe("buildZkWatchOpenProsbaPreviewEntries", () => {
     expect(entries[0]?.isOpen).toBe(true);
     expect(entries[0]?.deliveryDisplay?.primaryLabel).toBeTruthy();
   });
+
+  it("pokazuje częściową prośbę po odbiorze z regału gdy u dostawcy brakuje sztuk", () => {
+    const orders = [
+      {
+        id: "partial-ack",
+        ...baseOrder,
+        status: "Czesciowo_zrealizowane",
+        quantity: "5",
+        delivered_quantity: "3",
+        sales_acknowledged_at: "2026-06-18T10:00:00Z",
+      },
+    ];
+    const hints = computeZkWatchOrderHints(watch, orders);
+    const entries = buildZkWatchOpenProsbaPreviewEntries(watch, orders, hints);
+
+    expect(hints.matchingOpenRequestIds).toContain("partial-ack");
+    expect(entries).toHaveLength(1);
+    expect(entries[0]?.order.id).toBe("partial-ack");
+    expect(entries[0]?.progressLabel).toBe("3/5 szt.");
+  });
 });
 
 describe("resolveZkProsbaPreviewDelivery", () => {
