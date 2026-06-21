@@ -30,7 +30,8 @@ import {
   zkWatchLineUiStateMeta,
   type ZkWatchLineUiState,
 } from "@/lib/sales/zk-watch-line-ui-state";
-import type { ZkWatchLineCoverage } from "@/lib/sales/zk-watch-order-link";
+import type { ZkLinkableOrder, ZkWatchLineCoverage } from "@/lib/sales/zk-watch-order-link";
+import { buildZkLineProsbaQuantityMeta } from "@/lib/sales/zk-watch-order-link";
 import type { SalesZkWatch } from "@/types/database";
 import { ZkWatchLineStatusChip } from "./ZkWatchLineStatusChip";
 import { ZkWatchLineStatusLegendToggle } from "./ZkWatchLineStatusLegendToggle";
@@ -129,6 +130,7 @@ export function ZkWatchLinesPanel({
   informacjaReadyLineKeys,
   informacjaAcknowledgedLineKeys,
   scopeExcludedLineKeys,
+  linkableOrders = [],
   compact = false,
   showSummary = true,
   onSaved,
@@ -143,6 +145,7 @@ export function ZkWatchLinesPanel({
   informacjaReadyLineKeys?: string[];
   informacjaAcknowledgedLineKeys?: string[];
   scopeExcludedLineKeys?: string[];
+  linkableOrders?: ZkLinkableOrder[];
   compact?: boolean;
   showSummary?: boolean;
   onSaved?: (watch: SalesZkWatch) => void;
@@ -455,6 +458,11 @@ export function ZkWatchLinesPanel({
           shelfMarked: line.shelf_marked,
           completedManually: line.completed_manually,
         });
+        const prosbaQtyMeta = buildZkLineProsbaQuantityMeta(line, linkableOrders, watch);
+        const metaLineParts = prosbaQtyMeta
+          ? [line.symbol, prosbaQtyMeta.displayLabel].filter(Boolean)
+          : [line.symbol, line.quantityLabel].filter(Boolean);
+        const metaLineTitle = prosbaQtyMeta?.title;
         const lineToggleable =
           canEdit && !saving && canToggleZkWatchLineCheckbox(uiState);
         const checkboxToneClass =
@@ -501,9 +509,12 @@ export function ZkWatchLinesPanel({
                 >
                   {line.product}
                 </span>
-                {(line.symbol || line.quantityLabel) && !compact ? (
-                  <span className={cn("mt-0.5 block", salesTypography.rowMeta)}>
-                    {[line.symbol, line.quantityLabel].filter(Boolean).join(" · ")}
+                {(line.symbol || line.quantityLabel || prosbaQtyMeta) && !compact ? (
+                  <span
+                    className={cn("mt-0.5 block", salesTypography.rowMeta)}
+                    title={metaLineTitle}
+                  >
+                    {metaLineParts.join(" · ")}
                   </span>
                 ) : null}
               </span>

@@ -12,6 +12,7 @@ import {
 import { cn } from "@/lib/cn";
 import { IconAlertCircle, IconPackage, IconWarehouse } from "@/components/icons/StrokeIcons";
 import type { IndividualRequestKind } from "@/types/database";
+import { formatProsbaZkQuantityInlineHint } from "@/lib/orders/prosba-stock-check";
 
 function StockStatusIcon({
   tone,
@@ -61,6 +62,38 @@ export function ProsbaProductStockStatus({
           {view.detail}
         </p>
       </div>
+    </div>
+  );
+}
+
+/** Podpowiedź ilości prośby vs pozycja ZK (prefill z notatnika). */
+export function ProsbaZkQuantityHint({
+  line,
+  requestKind,
+  className,
+}: {
+  line: ProductLineDraft;
+  requestKind: IndividualRequestKind;
+  className?: string;
+}) {
+  const hint = formatProsbaZkQuantityInlineHint(line, requestKind);
+  if (!hint) return null;
+
+  return (
+    <div
+      role="status"
+      className={cn(
+        "flex items-start gap-2.5 rounded-md border border-indigo-200/90 bg-indigo-50/70 px-3 py-2.5",
+        className
+      )}
+    >
+      <IconPackage
+        size={18}
+        strokeWidth={2.25}
+        className="mt-0.5 shrink-0 text-indigo-700"
+        aria-hidden
+      />
+      <p className="text-xs leading-relaxed text-indigo-950">{hint}</p>
     </div>
   );
 }

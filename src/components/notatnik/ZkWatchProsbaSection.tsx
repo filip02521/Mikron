@@ -7,9 +7,10 @@ import { cn } from "@/lib/cn";
 import { appendMojeFocusOrderIds } from "@/lib/orders/moje-order-focus";
 import { buildMojeClientLink } from "@/lib/sales/notepad-follow-up";
 import {
-  buildZkWatchOpenProsbaPreviewEntries,
+  buildZkWatchProsbaPreviewEntries,
   formatZkProsbaPreviewMetaLine,
   formatZkProsbaPreviewMetaTooltip,
+  type ZkWatchProsbaPreviewEntry,
 } from "@/lib/sales/zk-watch-prosba-preview";
 import type { ZkLinkableOrder, ZkWatchOrderHints } from "@/lib/sales/zk-watch-order-link";
 import { collectPartialLineKeysFromCoverage } from "@/lib/sales/zk-watch-order-link";
@@ -18,6 +19,7 @@ import { buildZkWatchLineViews } from "@/lib/sales/zk-watch-lines";
 import { salesTypography } from "@/lib/ui/ontime-theme";
 import { ZK_MODAL_PROSBA_COPY, ZK_MODAL_SECTION_HINTS, ZK_MODAL_SECTION_TITLES } from "@/lib/sales/zk-modal-section-copy";
 import type { SalesZkWatch } from "@/types/database";
+import { ZkWatchProsbaCoveredPanel } from "./ZkWatchProsbaCoveredPanel";
 import { ZkWatchModalSection } from "./ZkWatchModalSection";
 
 export function ZkWatchProsbaSection({
@@ -37,9 +39,17 @@ export function ZkWatchProsbaSection({
   archived?: boolean;
   newLineKeys?: string[];
 }) {
-  const openEntries = useMemo(
-    () => buildZkWatchOpenProsbaPreviewEntries(watch, linkableOrders, orderHints),
+  const previewEntries = useMemo(
+    () => buildZkWatchProsbaPreviewEntries(watch, linkableOrders, orderHints),
     [watch, linkableOrders, orderHints]
+  );
+  const openEntries = useMemo(
+    () => previewEntries.filter((entry) => entry.isOpen),
+    [previewEntries]
+  );
+  const closedEntries = useMemo(
+    () => previewEntries.filter((entry) => !entry.isOpen),
+    [previewEntries]
   );
 
   const lineViews = useMemo(() => buildZkWatchLineViews(watch), [watch]);
@@ -49,6 +59,9 @@ export function ZkWatchProsbaSection({
     uncoveredLineKeys: orderHints?.uncoveredLineKeys ?? [],
     openProsbaLineKeys: orderHints?.openProsbaCoveredLineKeys ?? [],
     partialLineKeys: collectPartialLineKeysFromCoverage(orderHints?.lineCoverageByKey),
+    regalWaitingLineKeys: orderHints?.regalWaitingLineKeys ?? [],
+    informacjaReadyLineKeys: orderHints?.informacjaReadyLineKeys ?? [],
+    scopeExcludedLineKeys: orderHints?.scopeExcludedLineKeys ?? [],
     newLineKeys,
     hasOpenMatchingProsba: (orderHints?.matchingOpenRequestCount ?? 0) > 0,
   });
@@ -65,59 +78,78 @@ export function ZkWatchProsbaSection({
   }
 
   if (archived) {
-    if (!openEntries.length) return null;
+    if (!previewEntries.length) return null;
+  }
+
+  function renderProsbaEntry(entry: ZkWatchProsbaPreviewEntry) {
+    return (
+      <li
+        key={entry.order.id}
+        className={cn(
+          "rounded-lg border px-3 py-2.5 shadow-[var(--shadow-card)]",
+          entry.isOpen
+            ? "border-slate-200/90 bg-white"
+            : "border-slate-200/70 bg-slate-50/80"
+        )}
+      >
+        <div className="flex flex-wrap items-start justify-between gap-2">
+          <div className="min-w-0 flex-1">
+            <p className={cn(salesTypography.rowBody, "font-medium text-slate-800")}>
+              {entry.productLabel}
+            </p>
+            <div className="mt-1 flex min-w-0 flex-wrap items-center gap-1.5">
+              <Badge variant={entry.statusBadgeVariant} className="shrink-0 text-[10px]">
+                {entry.statusLabel}
+              </Badge>
+              <span
+                className={cn(
+                  salesTypography.rowMeta,
+                  "min-w-0 max-w-full line-clamp-2 leading-snug"
+                )}
+                title={formatZkProsbaPreviewMetaTooltip(entry)}
+              >
+                {formatZkProsbaPreviewMetaLine(entry)}
+              </span>
+            </div>
+          </div>
+          <div className="flex shrink-0 flex-wrap gap-1.5">
+            <Link
+              href={mojeFocusHref(entry.order.id)}
+              title={ZK_MODAL_PROSBA_COPY.previewLinkTitle}
+              className={cn(
+                "inline-flex cursor-pointer items-center justify-center gap-2 font-medium transition-colors",
+                "border border-[var(--card-border)] bg-[var(--card)] text-slate-700 shadow-sm hover:bg-slate-50",
+                "rounded-md px-2.5 py-1.5 text-xs leading-none"
+              )}
+            >
+              Podgląd
+            </Link>
+          </div>
+        </div>
+      </li>
+    );
   }
 
   return (
     <ZkWatchModalSection title={ZK_MODAL_SECTION_TITLES.prosba} hint={ZK_MODAL_SECTION_HINTS.prosba}>
-      {openEntries.length > 0 ? (
-        <ul className="space-y-2">
-          {openEntries.map((entry) => (
-            <li
-              key={entry.order.id}
-              className="rounded-lg border border-slate-200/90 bg-white px-3 py-2.5 shadow-[var(--shadow-card)]"
-            >
-              <div className="flex flex-wrap items-start justify-between gap-2">
-                <div className="min-w-0 flex-1">
-                  <p className={cn(salesTypography.rowBody, "font-medium text-slate-800")}>
-                    {entry.productLabel}
-                  </p>
-                  <div className="mt-1 flex min-w-0 flex-wrap items-center gap-1.5">
-                    <Badge variant="info" className="shrink-0 text-[10px]">
-                      {entry.statusLabel}
-                    </Badge>
-                    <span
-                      className={cn(
-                        salesTypography.rowMeta,
-                        "min-w-0 max-w-full line-clamp-2 leading-snug"
-                      )}
-                      title={formatZkProsbaPreviewMetaTooltip(entry)}
-                    >
-                      {formatZkProsbaPreviewMetaLine(entry)}
-                    </span>
-                  </div>
-                </div>
-                <div className="flex shrink-0 flex-wrap gap-1.5">
-                  <Link
-                    href={mojeFocusHref(entry.order.id)}
-                    title={ZK_MODAL_PROSBA_COPY.previewLinkTitle}
-                    className={cn(
-                      "inline-flex cursor-pointer items-center justify-center gap-2 font-medium transition-colors",
-                      "border border-[var(--card-border)] bg-[var(--card)] text-slate-700 shadow-sm hover:bg-slate-50",
-                      "rounded-md px-2.5 py-1.5 text-xs leading-none"
-                    )}
-                  >
-                    Podgląd
-                  </Link>
-                </div>
-              </div>
-            </li>
-          ))}
-        </ul>
-      ) : prosbaCardAction.kind === "covered" ? (
-        <div className="rounded-lg border border-emerald-200/80 bg-emerald-50/60 px-3 py-2.5 text-sm text-emerald-950">
-          <p className="font-medium">{ZK_MODAL_PROSBA_COPY.coveredTitle}</p>
+      {previewEntries.length > 0 ? (
+        <div className="space-y-3">
+          {openEntries.length > 0 ? (
+            <ul className="space-y-2">{openEntries.map(renderProsbaEntry)}</ul>
+          ) : null}
+          {closedEntries.length > 0 ? (
+            <div className="space-y-2">
+              {openEntries.length > 0 ? (
+                <p className={cn(salesTypography.rowMeta, "text-slate-500")}>
+                  Wcześniejsze prośby
+                </p>
+              ) : null}
+              <ul className="space-y-2">{closedEntries.map(renderProsbaEntry)}</ul>
+            </div>
+          ) : null}
         </div>
+      ) : prosbaCardAction.kind === "covered" ? (
+        <ZkWatchProsbaCoveredPanel reason={prosbaCardAction.reason} />
       ) : !archived ? (
         <div className="rounded-lg border border-slate-200/90 bg-slate-50/60 px-3 py-2.5">
           <p className={cn(salesTypography.rowBody, "font-medium text-slate-800")}>

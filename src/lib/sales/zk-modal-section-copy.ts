@@ -9,7 +9,7 @@ export const ZK_MODAL_SECTION_TITLES = {
 /** Podpowiedzi (?) sekcji modalu szczegółów ZK. */
 export const ZK_MODAL_SECTION_HINTS = {
   prosba:
-    "Aktywne prośby klienta do pozycji z tego ZK. Podgląd otwiera sprawę w Moje zamówienia z podświetleniem.",
+    "Prośby klienta do pozycji z tego ZK — aktywne u góry, zrealizowane zostają w podglądzie (m.in. dla ilości zamówionej vs ZK).",
   note: "Notatka tylko dla Ciebie — skrót widać na liście ZK. Kliknięcie skrótu otwiera edycję tutaj.",
   details: "Dane klienta i ZK zsynchronizowane z Subiekta.",
   lines:
@@ -22,7 +22,6 @@ export const ZK_MODAL_PROSBA_COPY = {
   emptyHintPrefix: "Użyj przycisku na karcie ZK:",
   createProsbaAction: "Utwórz prośbę",
   supplementAction: "Uzupełnij",
-  coveredTitle: "Pozycje objęte prośbami",
   archivedEmpty: "Brak aktywnych prośb.",
   previewLinkTitle: "Otwórz tę prośbę w Moje zamówienia",
 } as const;

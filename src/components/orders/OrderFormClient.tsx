@@ -77,7 +77,7 @@ import {
 } from "@/lib/orders/zk-watch-prosba-prefill";
 import { clearUnseenNewZkLineKeys, removeUnseenNewZkLineKeys } from "@/lib/client/zk-watch-new-lines-snapshot";
 import { ProsbaStockConfirmDialog } from "@/components/orders/ProsbaStockConfirmDialog";
-import { buildProsbaSubmitStockConfirm } from "@/lib/orders/prosba-stock-check";
+import { buildProsbaSubmitStockConfirm, buildProsbaSubmitZkQuantityConfirm, formatProsbaZkQuantityFormBanner } from "@/lib/orders/prosba-stock-check";
 import { handleProsbaStockSubmitError } from "@/lib/orders/prosba-stock-submit-error";
 
 function formatSubmitResult(
@@ -128,6 +128,7 @@ interface Entry {
   reserved?: number | null;
   available?: number | null;
   stockSource?: "subiekt" | null;
+  zkQuantity?: number | null;
   requestNote?: string;
 }
 
@@ -220,8 +221,15 @@ export function OrderFormClient({
   } | null>(null);
   const [validationAttempted, setValidationAttempted] = useState(false);
   const [stockConfirmOpen, setStockConfirmOpen] = useState(false);
+  const [stockConfirmKind, setStockConfirmKind] = useState<"stock" | "zk_quantity" | null>(null);
   const [stockConfirmMessage, setStockConfirmMessage] = useState("");
+  const [stockConfirmTitle, setStockConfirmTitle] = useState("Towar na stanie");
+  const [stockConfirmConfirmLabel, setStockConfirmConfirmLabel] = useState("Wyślij mimo to");
   const pendingSubmitEntriesRef = useRef<(Entry & { requestNote?: string })[]>([]);
+  const pendingSubmitAckRef = useRef<{
+    acknowledgeSufficientStock?: boolean;
+    acknowledgeZkQuantityMismatch?: boolean;
+  }>({});
   const submitRef = useRef<() => void>(() => {});
 
   const clearFormNotice = useCallback(() => setFormNotice(null), []);
@@ -314,6 +322,7 @@ export function OrderFormClient({
         reserved: line.reserved,
         available: line.available,
         stockSource: line.stockSource,
+        zkQuantity: line.zkQuantity ?? null,
       }));
       setGroups([baseLines]);
     }
@@ -550,11 +559,13 @@ export function OrderFormClient({
         setZkProsbaLinkContext(null);
         setGroups(buildInitialGroups(lockedId, initialSupplierId));
         setStockConfirmOpen(false);
+        setStockConfirmKind(null);
       } catch (e) {
         handleProsbaStockSubmitError(
           e,
           (message) => {
             setStockConfirmMessage(message);
+            setStockConfirmKind("stock");
             setStockConfirmOpen(true);
           },
           (message) => {
@@ -565,6 +576,47 @@ export function OrderFormClient({
         setPendingMessage(null);
       }
     });
+  };
+
+  const runSubmitWithConfirms = (
+    entries: (Entry & { requestNote?: string })[],
+    ack: {
+      acknowledgeSufficientStock?: boolean;
+      acknowledgeZkQuantityMismatch?: boolean;
+    } = {}
+  ) => {
+    const mergedAck = { ...pendingSubmitAckRef.current, ...ack };
+
+    if (requestKind === "zamowienie" && !mergedAck.acknowledgeSufficientStock) {
+      const stockConfirm = buildProsbaSubmitStockConfirm(entries, "zamowienie");
+      if (stockConfirm) {
+        pendingSubmitEntriesRef.current = entries;
+        pendingSubmitAckRef.current = mergedAck;
+        setStockConfirmTitle("Towar na stanie");
+        setStockConfirmConfirmLabel("Wyślij mimo to");
+        setStockConfirmMessage(stockConfirm.message);
+        setStockConfirmKind("stock");
+        setStockConfirmOpen(true);
+        return;
+      }
+    }
+
+    if (requestKind === "zamowienie" && !mergedAck.acknowledgeZkQuantityMismatch) {
+      const zkConfirm = buildProsbaSubmitZkQuantityConfirm(entries, "zamowienie");
+      if (zkConfirm) {
+        pendingSubmitEntriesRef.current = entries;
+        pendingSubmitAckRef.current = mergedAck;
+        setStockConfirmTitle(zkConfirm.title);
+        setStockConfirmConfirmLabel(zkConfirm.confirmLabel);
+        setStockConfirmMessage(zkConfirm.message);
+        setStockConfirmKind("zk_quantity");
+        setStockConfirmOpen(true);
+        return;
+      }
+    }
+
+    pendingSubmitAckRef.current = {};
+    performSubmit(entries, mergedAck);
   };
 
   const submit = () => {
@@ -712,17 +764,7 @@ export function OrderFormClient({
       }
     }
 
-    if (requestKind === "zamowienie") {
-      const stockConfirm = buildProsbaSubmitStockConfirm(entries, "zamowienie");
-      if (stockConfirm) {
-        pendingSubmitEntriesRef.current = entries;
-        setStockConfirmMessage(stockConfirm.message);
-        setStockConfirmOpen(true);
-        return;
-      }
-    }
-
-    performSubmit(entries);
+    runSubmitWithConfirms(entries);
   };
   useEffect(() => {
     submitRef.current = submit;
@@ -814,6 +856,12 @@ export function OrderFormClient({
     informacjaPath,
   ]);
 
+  const zkQuantityFormBanner = useMemo(() => {
+    if (!zkProsbaLinkContext || tourDemo || requestKind !== "zamowienie") return null;
+    const lines = groups[0] ?? [];
+    return formatProsbaZkQuantityFormBanner(lines, requestKind);
+  }, [zkProsbaLinkContext, tourDemo, requestKind, groups]);
+
   useEffect(() => {
     if (!singleGroup || !lockedSalesPerson) return;
 
@@ -902,15 +950,28 @@ export function OrderFormClient({
   const stockConfirmDialog = (
     <ProsbaStockConfirmDialog
       open={stockConfirmOpen}
+      title={stockConfirmTitle}
       message={stockConfirmMessage}
+      confirmLabel={stockConfirmConfirmLabel}
       pending={pending}
       onCancel={() => {
         setStockConfirmOpen(false);
+        setStockConfirmKind(null);
         pendingSubmitEntriesRef.current = [];
+        pendingSubmitAckRef.current = {};
       }}
-      onConfirm={() =>
-        performSubmit(pendingSubmitEntriesRef.current, { acknowledgeSufficientStock: true })
-      }
+      onConfirm={() => {
+        setStockConfirmOpen(false);
+        const entries = pendingSubmitEntriesRef.current;
+        const prevAck = pendingSubmitAckRef.current;
+        const kind = stockConfirmKind;
+        setStockConfirmKind(null);
+        if (kind === "stock") {
+          runSubmitWithConfirms(entries, { ...prevAck, acknowledgeSufficientStock: true });
+          return;
+        }
+        runSubmitWithConfirms(entries, { ...prevAck, acknowledgeZkQuantityMismatch: true });
+      }}
     />
   );
 
@@ -986,6 +1047,15 @@ export function OrderFormClient({
               mode={zkProsbaLinkContext.mode}
               supplementLineCount={zkProsbaLinkContext.supplementLineCount}
             />
+          ) : null}
+
+          {zkQuantityFormBanner ? (
+            <div
+              className="border-b border-indigo-200/80 bg-indigo-50/70 px-3 py-2 text-xs leading-relaxed text-indigo-950 sm:px-4"
+              role="status"
+            >
+              {zkQuantityFormBanner}
+            </div>
           ) : null}
 
           {scheduleSupplier && !tourDemo ? (

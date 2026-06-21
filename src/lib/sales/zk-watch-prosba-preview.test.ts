@@ -2,10 +2,12 @@ import { describe, expect, it } from "vitest";
 import { computeZkWatchOrderHints } from "@/lib/sales/zk-watch-order-link";
 import {
   buildZkWatchOpenProsbaPreviewEntries,
+  buildZkWatchProsbaPreviewEntries,
   formatZkProsbaProductLabel,
   formatZkProsbaPreviewMetaLine,
   formatZkProsbaPreviewMetaTooltip,
   resolveZkProsbaPreviewDelivery,
+  resolveZkProsbaPreviewStatusBadgeVariant,
 } from "@/lib/sales/zk-watch-prosba-preview";
 import type { SalesZkWatch } from "@/types/database";
 
@@ -74,7 +76,87 @@ describe("buildZkWatchOpenProsbaPreviewEntries", () => {
   });
 });
 
+describe("buildZkWatchProsbaPreviewEntries", () => {
+  it("pokazuje też zamknięte prośby (nie tylko otwarte)", () => {
+    const orders = [
+      { id: "order-closed", ...baseOrder, status: "Zrealizowane", delivered_quantity: "2" },
+    ];
+    const hints = computeZkWatchOrderHints(watch, orders);
+    const entries = buildZkWatchProsbaPreviewEntries(watch, orders, hints);
+
+    expect(entries).toHaveLength(1);
+    expect(entries[0]?.order.id).toBe("order-closed");
+    expect(entries[0]?.isOpen).toBe(false);
+  });
+
+  it("otwarte prośby są przed zamkniętymi", () => {
+    const orders = [
+      { id: "closed", ...baseOrder, status: "Zrealizowane", delivered_quantity: "2" },
+      { id: "open", ...baseOrder, status: "Zamowione", delivered_quantity: "0" },
+    ];
+    const hints = computeZkWatchOrderHints(watch, orders);
+    const entries = buildZkWatchProsbaPreviewEntries(watch, orders, hints);
+
+    expect(entries.map((entry) => entry.order.id)).toEqual(["open", "closed"]);
+  });
+
+  it("nie pokazuje prośb innego klienta ani innego towaru", () => {
+    const orders = [
+      { id: "mine", ...baseOrder },
+      {
+        id: "other-client",
+        ...baseOrder,
+        source_zk_watch_id: null,
+        source_zk_number: null,
+        sales_client_kh_id: 999,
+        sales_client_name: "Inna klinika",
+      },
+      {
+        id: "other-product",
+        ...baseOrder,
+        source_zk_watch_id: null,
+        source_zk_number: null,
+        subiekt_tw_id: 999,
+        symbol: "ZZZ",
+        products: "Inny produkt",
+      },
+      {
+        id: "open-everywhere",
+        ...baseOrder,
+        source_zk_watch_id: null,
+        source_zk_number: null,
+        sales_client_kh_id: 999,
+        sales_client_name: "Inna klinika",
+        status: "Zamowione",
+      },
+    ];
+    const hints = computeZkWatchOrderHints(watch, orders);
+    const entries = buildZkWatchProsbaPreviewEntries(watch, orders, hints);
+
+    expect(entries.map((entry) => entry.order.id)).toEqual(["mine"]);
+  });
+});
+
 describe("resolveZkProsbaPreviewDelivery", () => {
+  it("nie pokazuje terminu gdy prośba jest zrealizowana", () => {
+    const delivery = resolveZkProsbaPreviewDelivery({
+      ...baseOrder,
+      status: "Zrealizowane",
+      delivery_at: "2026-07-15",
+      zd_fulfillment_deadline: "2026-07-16",
+    });
+
+    expect(delivery.deliveryDisplay).toBeNull();
+    expect(delivery.deliveryEmptyLabel).toBeNull();
+    expect(
+      formatZkProsbaPreviewMetaLine({
+        quantityLabel: "2 szt.",
+        progressLabel: "2/2 szt.",
+        ...delivery,
+      })
+    ).toBe("Liczba: 2 szt. · 2/2 szt.");
+  });
+
   it("prefers ZD deadline over email estimate", () => {
     const delivery = resolveZkProsbaPreviewDelivery({
       ...baseOrder,
@@ -104,6 +186,14 @@ describe("formatZkProsbaProductLabel", () => {
     expect(formatZkProsbaProductLabel({ products: null, symbol: "XYZ", mikran_code: null })).toBe(
       "XYZ"
     );
+  });
+});
+
+describe("resolveZkProsbaPreviewStatusBadgeVariant", () => {
+  it("oznacza zrealizowane na zielono", () => {
+    expect(resolveZkProsbaPreviewStatusBadgeVariant("Zrealizowane")).toBe("success");
+    expect(resolveZkProsbaPreviewStatusBadgeVariant("Czesciowo_zrealizowane")).toBe("warning");
+    expect(resolveZkProsbaPreviewStatusBadgeVariant("Zamowione")).toBe("info");
   });
 });
 

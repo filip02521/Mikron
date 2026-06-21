@@ -18,13 +18,43 @@ import {
 import { orderExplicitlyLinkedToZkWatch } from "@/lib/orders/zk-prosba-source";
 import {
   isOpenProsbaOrder,
+  isOrderRelevantToZkWatch,
+  productMatchesZkLine,
   type ZkLinkableOrder,
   type ZkWatchOrderHints,
 } from "@/lib/sales/zk-watch-order-link";
+import { buildZkWatchLineViews } from "@/lib/sales/zk-watch-lines";
 import type { IndividualRequestKind } from "@/types/database";
 import type { SalesZkWatch } from "@/types/database";
 
 type DeliveryTone = "default" | "zd" | "available" | "overdue" | "pending";
+
+export type ZkProsbaPreviewStatusBadgeVariant =
+  | "default"
+  | "success"
+  | "warning"
+  | "info"
+  | "purple"
+  | "danger";
+
+export function resolveZkProsbaPreviewStatusBadgeVariant(
+  status: string
+): ZkProsbaPreviewStatusBadgeVariant {
+  switch (status) {
+    case "Zrealizowane":
+      return "success";
+    case "Czesciowo_zrealizowane":
+      return "warning";
+    case "Weryfikacja":
+      return "warning";
+    case "Anulowane":
+      return "default";
+    case "Nowe":
+    case "Zamowione":
+    default:
+      return "info";
+  }
+}
 
 export type ZkWatchProsbaPreviewEntry = {
   order: ZkLinkableOrder;
@@ -36,6 +66,7 @@ export type ZkWatchProsbaPreviewEntry = {
   deliveryDisplay: DeliveryDateMetaDisplay | null;
   deliveryEmptyLabel: string | null;
   statusLabel: string;
+  statusBadgeVariant: ZkProsbaPreviewStatusBadgeVariant;
   requestKind: IndividualRequestKind | null;
   explicitlyLinked: boolean;
   isOpen: boolean;
@@ -132,6 +163,15 @@ export function resolveZkProsbaPreviewDelivery(
     };
   }
 
+  if (order.status === "Zrealizowane") {
+    return {
+      deliveryCaption: "",
+      deliveryTone: "default",
+      deliveryDisplay: null,
+      deliveryEmptyLabel: null,
+    };
+  }
+
   const zdDeadline = order.zd_fulfillment_deadline?.trim();
   if (zdDeadline) {
     const parsed = parseDateOnly(zdDeadline);
@@ -200,6 +240,7 @@ function buildPreviewEntry(
     progressLabel,
     ...delivery,
     statusLabel: formatZkLinkableOrderStatus(order.status),
+    statusBadgeVariant: resolveZkProsbaPreviewStatusBadgeVariant(order.status),
     requestKind: order.request_kind ?? "zamowienie",
     explicitlyLinked: orderExplicitlyLinkedToZkWatch(order, watch),
     isOpen: openIds.has(order.id),
@@ -227,12 +268,17 @@ export function buildZkWatchProsbaPreviewEntries(
   hints?: ZkWatchOrderHints
 ): ZkWatchProsbaPreviewEntry[] {
   const openIds = new Set(hints?.matchingOpenRequestIds ?? []);
-  const relevant = orders.filter(
-    (order) =>
-      orderExplicitlyLinkedToZkWatch(order, watch) ||
-      openIds.has(order.id) ||
-      isOpenProsbaOrder(order)
-  );
+  const lineViews = buildZkWatchLineViews(watch).filter((line) => line.key !== "summary");
+
+  const relevant = orders.filter((order) => {
+    if (!isOrderRelevantToZkWatch(order, watch)) return false;
+    if (orderExplicitlyLinkedToZkWatch(order, watch)) return true;
+    if (openIds.has(order.id)) return true;
+    const matchesLine = lineViews.some((line) => productMatchesZkLine(order, line));
+    if (!matchesLine) return false;
+    if (isOpenProsbaOrder(order)) return false;
+    return true;
+  });
 
   const unique = new Map<string, ZkLinkableOrder>();
   for (const order of relevant) {

@@ -18,6 +18,7 @@ import {
 } from "@/components/orders/request-product-lines";
 import { shouldCollapseProsbaLine } from "@/lib/orders/prosba-product-line-ui";
 import { ProsbaProductStockSummary } from "@/components/orders/ProsbaProductStockStatus";
+import { ProsbaZkQuantityHint } from "@/components/orders/ProsbaProductStockStatus";
 import { filterProsbaLinesWithSufficientStock } from "@/lib/orders/prosba-stock-check";
 import { useProsbaLinesStockSync } from "@/hooks/useProsbaLinesStockSync";
 import {
@@ -321,6 +322,10 @@ export function RequestProductLinesEditor({
                 onChange(updateProductLine(lines, index, patch))
               }
             />
+
+            {prosba ? (
+              <ProsbaZkQuantityHint line={line} requestKind={requestKind} className="mt-2" />
+            ) : null}
 
             {showClientField ? (
               prosba && lines.length === 1 ? (

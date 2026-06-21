@@ -160,6 +160,9 @@ export function ZkWatchCard({
     uncoveredLineKeys,
     openProsbaLineKeys,
     partialLineKeys: collectPartialLineKeysFromCoverage(orderHints?.lineCoverageByKey),
+    regalWaitingLineKeys: orderHints?.regalWaitingLineKeys ?? [],
+    informacjaReadyLineKeys: orderHints?.informacjaReadyLineKeys ?? [],
+    scopeExcludedLineKeys: orderHints?.scopeExcludedLineKeys ?? [],
     newLineKeys: newLineKeys ?? [],
     hasOpenMatchingProsba,
   });

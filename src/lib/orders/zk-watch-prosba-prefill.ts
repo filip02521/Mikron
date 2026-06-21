@@ -47,6 +47,7 @@ export function zkProsbaPrefillFromWatch(
     mikranCode: String(line.mikranCode ?? ""),
     product: String(line.product ?? ""),
     quantity: String(line.quantity ?? "1"),
+    ...(line.zkQuantity != null ? { zkQuantity: line.zkQuantity } : {}),
     ...(line.clientName != null ? { clientName: String(line.clientName) } : {}),
     clientKhId: normalizePrefillKhId(line.clientKhId),
     subiektTwId: normalizeSubiektTwId(line.subiektTwId),
@@ -91,6 +92,7 @@ export function extractProsbaLinesFromZkWatch(
       mikranCode: "",
       product: view.product,
       quantity: view.quantity != null ? String(view.quantity) : "1",
+      zkQuantity: view.quantity != null ? view.quantity : null,
       clientName: watch.client_label,
       clientKhId: watch.client_kh_id,
       subiektTwId: normalizeSubiektTwId(view.subiektTwId),
@@ -151,7 +153,13 @@ export function readZkProsbaPrefill(): ZkProsbaPrefill | null {
       clientName: parsed.clientName ?? "",
       clientKhId: parsed.clientKhId ?? null,
       zkNumber: parsed.zkNumber ?? "",
-      lines: parsed.lines,
+      lines: parsed.lines.map((line) => ({
+        ...line,
+        zkQuantity:
+          typeof line.zkQuantity === "number" && Number.isFinite(line.zkQuantity)
+            ? line.zkQuantity
+            : undefined,
+      })),
       mode: parsed.mode,
       supplementLineCount: parsed.supplementLineCount,
       lineKeys: parsed.lineKeys,
