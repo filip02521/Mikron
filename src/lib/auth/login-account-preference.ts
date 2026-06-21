@@ -27,6 +27,7 @@ function readStorageStringArray(key: string): string[] {
 function writeStorageStringArray(key: string, values: string[]): void {
   if (typeof window === "undefined") return;
   try {
+    // codeql[js/clear-text-storage-of-sensitive-data]: Login UX only — account ids and e-mails, never passwords.
     window.localStorage.setItem(key, JSON.stringify(values));
   } catch {
     /* prywatny tryb / zablokowany storage */
@@ -55,6 +56,7 @@ function readLoginRecentAccountLabelsMap(): Record<string, string> {
 function writeLoginRecentAccountLabelsMap(labels: Record<string, string>): void {
   if (typeof window === "undefined") return;
   try {
+    // codeql[js/clear-text-storage-of-sensitive-data]: Display names for quick login, not credentials.
     window.localStorage.setItem(LOGIN_RECENT_ACCOUNT_LABELS_STORAGE_KEY, JSON.stringify(labels));
   } catch {
     /* prywatny tryb / zablokowany storage */
@@ -76,6 +78,7 @@ function writeLoginLastAccountIdOnly(accountId: string): void {
   const trimmed = accountId.trim();
   if (!trimmed) return;
   try {
+    // codeql[js/clear-text-storage-of-sensitive-data]: Account UUID for quick login picker, not a password.
     window.localStorage.setItem(LOGIN_LAST_ACCOUNT_STORAGE_KEY, trimmed);
   } catch {
     /* prywatny tryb / zablokowany storage */

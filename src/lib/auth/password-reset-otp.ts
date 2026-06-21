@@ -59,6 +59,7 @@ function otpPepper(): string {
 }
 
 export function hashPasswordResetOtpCode(code: string, userId: string): string {
+  // codeql[js/insufficient-password-hash]: Short-lived 6-digit OTP with server pepper — not a user password.
   return createHash("sha256")
     .update(`${otpPepper()}:${userId}:${code}`)
     .digest("hex");

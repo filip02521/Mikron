@@ -31,7 +31,7 @@ export function SalesDayStartHelp() {
 
       <HelpBlock title="Kolejność">
         <ol className="list-decimal space-y-1.5 pl-4 text-sm">
-          <li>Gotowe na magazynie — najpilniejsze</li>
+          <li>Gotowe do odbioru z regału — najpilniejsze</li>
           <li>Anulowania i informacje do potwierdzenia</li>
           <li>Przypomnienia ZK i notatek</li>
           <li>Odpowiedzi i ogłoszenia od zakupów</li>
