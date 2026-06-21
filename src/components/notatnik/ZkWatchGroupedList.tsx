@@ -2,7 +2,7 @@
 
 import { Fragment, useCallback, useEffect, useMemo, useReducer } from "react";
 import type { SalesZkWatch } from "@/types/database";
-import type { ZkWatchOrderHints } from "@/lib/sales/zk-watch-order-link";
+import type { ZkWatchOrderHints, ZkLinkableOrder } from "@/lib/sales/zk-watch-order-link";
 import type { ZkWatchRefreshDiff } from "@/lib/sales/zk-watch-refresh-diff";
 import { groupZkWatchesByMonth, type ZkWatchMonthGroup } from "@/lib/sales/zk-watch-sort";
 import {
@@ -107,6 +107,7 @@ function listUiReducer(state: ListUiState, action: ListUiAction): ListUiState {
 export function ZkWatchGroupedList({
   watches,
   zkHintsByWatchId,
+  linkableOrders = [],
   readOnly,
   tourPreview,
   compact,
@@ -127,6 +128,7 @@ export function ZkWatchGroupedList({
 }: {
   watches: SalesZkWatch[];
   zkHintsByWatchId?: Map<string, ZkWatchOrderHints>;
+  linkableOrders?: ZkLinkableOrder[];
   unseenWatchIds?: Set<string>;
   newLineKeysByWatchId?: Record<string, string[]>;
   onWarehouseArrivalSeen?: (watchId: string) => void;
@@ -259,6 +261,7 @@ export function ZkWatchGroupedList({
                       watch={watch}
                       anchorId={`watch-${watch.id}`}
                       orderHints={zkHintsByWatchId?.get(watch.id)}
+                      linkableOrders={linkableOrders}
                       readOnly={readOnly}
                       tourPreview={tourPreview}
                       compact={compact}

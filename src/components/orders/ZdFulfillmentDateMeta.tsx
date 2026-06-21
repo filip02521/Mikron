@@ -4,7 +4,11 @@ import { DeliveryUrgencyBadge } from "@/components/orders/DeliveryUrgencyBadge";
 import { ZdFulfillmentDeadlineChangeNotice } from "@/components/orders/ZdFulfillmentDeadlineChangeNotice";
 import { cn } from "@/lib/cn";
 import { formatPlDate } from "@/lib/display-labels";
-import { buildDeliveryDateMetaDisplay } from "@/lib/orders/delivery-date-meta-label";
+import {
+  buildPlaceholderZdDeliveryDateMetaDisplay,
+  buildZdDeliveryDateMetaDisplay,
+  ZD_FULFILLMENT_PLACEHOLDER_TITLE,
+} from "@/lib/orders/zd-fulfillment-placeholder-deadline";
 import { parseDateOnly } from "@/lib/orders/dates";
 import { isPastExpectedDate } from "@/lib/orders/delivery-eta";
 import { deliveryUrgencyBadgeLabel } from "@/lib/orders/my-order-delivery-urgency";
@@ -24,7 +28,17 @@ import {
 } from "@/lib/orders/my-order-zd-fulfillment-display";
 import { salesTypography } from "@/lib/ui/ontime-theme";
 
-function ZdSlotDateValue({ slot }: { slot: MyOrderZdFulfillmentSlot }) {
+function ZdSlotDateValue({
+  slot,
+  pendingConfirmation = false,
+}: {
+  slot: MyOrderZdFulfillmentSlot;
+  pendingConfirmation?: boolean;
+}) {
+  if (pendingConfirmation) {
+    return <DeliveryDateMetaValue display={buildPlaceholderZdDeliveryDateMetaDisplay()} />;
+  }
+
   const parsed = parseDateOnly(slot.deadline);
   if (!parsed) {
     return (
@@ -34,7 +48,7 @@ function ZdSlotDateValue({ slot }: { slot: MyOrderZdFulfillmentSlot }) {
     );
   }
 
-  const display = buildDeliveryDateMetaDisplay(parsed);
+  const display = buildZdDeliveryDateMetaDisplay(parsed);
   const countSuffix = slot.count > 1 ? ` · ${slot.count} prod.` : "";
 
   return (
@@ -90,16 +104,21 @@ export function ZdFulfillmentDateMeta({
   const syncedLabel = fulfillment.syncedAt
     ? formatPlDate(fulfillment.syncedAt.slice(0, 10))
     : null;
+  const pendingConfirmation = fulfillment.pendingConfirmation ?? false;
   const urgency = resolveZdFulfillmentUrgency(fulfillment);
   const badgeLabel = deliveryUrgencyBadgeLabel(urgency);
-  const anyOverdue = slots.some((slot) => {
-    const d = parseDateOnly(slot.deadline);
-    return d != null && isPastExpectedDate(d);
-  });
+  const anyOverdue =
+    !pendingConfirmation &&
+    slots.some((slot) => {
+      if (slot.pendingConfirmation) return false;
+      const d = parseDateOnly(slot.deadline);
+      return d != null && isPastExpectedDate(d);
+    });
   const deadlineChange = fulfillment.deadlineChange ?? null;
 
   const withoutZdCount = linesWithoutZdTerm(lines).length;
   const tooltip = [
+    pendingConfirmation ? ZD_FULFILLMENT_PLACEHOLDER_TITLE : null,
     zdFulfillmentSlotsTooltip(slots),
     withoutZdCount
       ? `${myOrderPositionCountLabel(withoutZdCount)} bez terminu w ZD — szczegóły po rozwinięciu`
@@ -110,17 +129,22 @@ export function ZdFulfillmentDateMeta({
     .filter(Boolean)
     .join("\n");
 
-  const primaryDeadline = parseDateOnly(visibleSlots[0]!.deadline);
-  const primaryDisplay = primaryDeadline
-    ? buildDeliveryDateMetaDisplay(primaryDeadline)
-    : null;
+  const primarySlot = visibleSlots[0]!;
+  const primaryPending = primarySlot.pendingConfirmation ?? pendingConfirmation;
+  const primaryDeadline = parseDateOnly(primarySlot.deadline);
+  const primaryDisplay = primaryPending
+    ? buildPlaceholderZdDeliveryDateMetaDisplay()
+    : primaryDeadline
+      ? buildZdDeliveryDateMetaDisplay(primaryDeadline)
+      : null;
 
   return (
-    <div className={cn("flex min-w-0 flex-col items-end gap-1", className)}>
+    <div className={cn("flex min-w-0 max-w-full flex-col items-end gap-1", className)}>
       <DeliveryTimingMeta
         caption={zdFulfillmentCollapsedCaption(slots.length, { overdue: anyOverdue })}
-        captionTone={anyOverdue ? "overdue" : "zd"}
+        captionTone={pendingConfirmation ? "pending" : anyOverdue ? "overdue" : "zd"}
         title={tooltip}
+        className="max-w-full"
         accessory={
           badgeLabel ? (
             <DeliveryUrgencyBadge
@@ -133,9 +157,12 @@ export function ZdFulfillmentDateMeta({
       >
         {showCollapsedSummary && primaryDisplay ? (
           <>
-            <ZdSlotDateValue slot={visibleSlots[0]!} />
+            <ZdSlotDateValue
+              slot={primarySlot}
+              pendingConfirmation={primaryPending}
+            />
             <span className="max-w-full truncate text-[9px] font-medium text-slate-500">
-              {visibleSlots[0]!.dokNr}
+              {primarySlot.dokNr}
             </span>
           </>
         ) : multiple ? (
@@ -145,7 +172,10 @@ export function ZdFulfillmentDateMeta({
                 key={`${slot.deadline}|${slot.dokNr}`}
                 className="flex max-w-full flex-col items-end gap-0.5"
               >
-                <ZdSlotDateValue slot={slot} />
+                <ZdSlotDateValue
+                  slot={slot}
+                  pendingConfirmation={slot.pendingConfirmation ?? pendingConfirmation}
+                />
                 <span className="max-w-full truncate text-[9px] font-medium text-slate-500">
                   {slot.dokNr}
                 </span>
@@ -154,7 +184,7 @@ export function ZdFulfillmentDateMeta({
           </div>
         ) : primaryDisplay ? (
           <>
-            <DeliveryDateMetaValue display={primaryDisplay} />
+            <DeliveryDateMetaValue display={primaryDisplay} className="max-w-full" />
             <span className="max-w-full truncate text-[9px] font-medium text-slate-500">
               {fulfillment.dokNr}
             </span>

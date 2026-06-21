@@ -74,13 +74,30 @@ describe("aggregateGroupZdEtaState slots", () => {
         deadline: "2026-07-15",
         dokNr: "ZD 36/M/02/2026",
         count: 1,
+        pendingConfirmation: false,
       },
       {
         deadline: "2026-07-22",
         dokNr: "ZD 78/M/02/2026",
         count: 1,
+        pendingConfirmation: false,
       },
     ]);
+  });
+
+  it("oznacza placeholder gdy termin ZD = dzień złożenia u dostawcy", () => {
+    const result = aggregateGroupZdEtaState(
+      [
+        order("a", {
+          zd_fulfillment_source: "zd",
+          zd_fulfillment_deadline: "2026-06-05",
+          zd_fulfillment_dok_nr: "ZD 1/M/06/2026",
+        }),
+      ],
+      { s1: stats }
+    );
+
+    expect(result.zdFulfillment?.pendingConfirmation).toBe(true);
   });
 
   it("nie dodaje slots przy jednym terminie", () => {

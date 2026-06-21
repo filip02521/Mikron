@@ -18,10 +18,12 @@ import {
   buildZkWatchLineStatusSummary,
   summarizeZkWatchLineCheckboxes,
 } from "@/lib/sales/zk-watch-line-ui-state";
-import type { ZkWatchLineCoverage } from "@/lib/sales/zk-watch-order-link";
+import type { ZkWatchLineCoverage, ZkLinkableOrder, ZkWatchOrderHints } from "@/lib/sales/zk-watch-order-link";
 import type { SalesZkWatch } from "@/types/database";
 import { ZkWatchLinesMetaSection } from "./ZkWatchLinesMetaSection";
 import { ZkWatchLinesPanel } from "./ZkWatchLinesPanel";
+import { ZkWatchNoteSection } from "./ZkWatchNoteSection";
+import { ZkWatchProsbaSection } from "./ZkWatchProsbaSection";
 
 function polishCountLabel(
   n: number,
@@ -43,6 +45,8 @@ export function ZkWatchLinesModal({
   tourPreview = false,
   archived,
   focusNote = false,
+  linkableOrders = [],
+  orderHints,
   matchedDeliveredLineKeys,
   newLineKeys,
   lineCoverageByKey,
@@ -59,6 +63,8 @@ export function ZkWatchLinesModal({
   tourPreview?: boolean;
   archived?: boolean;
   focusNote?: boolean;
+  linkableOrders?: ZkLinkableOrder[];
+  orderHints?: ZkWatchOrderHints;
   matchedDeliveredLineKeys?: string[];
   newLineKeys?: string[];
   lineCoverageByKey?: Record<string, ZkWatchLineCoverage>;
@@ -198,14 +204,30 @@ export function ZkWatchLinesModal({
                 </p>
               </div>
             ) : null}
-            <ZkWatchLinesMetaSection
-              key={`${watchKey}-meta`}
+            <ZkWatchProsbaSection
+              watch={watch}
+              linkableOrders={linkableOrders}
+              orderHints={orderHints}
+              readOnly={readOnly}
+              tourPreview={tourPreview}
+              archived={archived}
+              newLineKeys={newLineKeys}
+            />
+            <ZkWatchNoteSection
+              key={`${watchKey}-note`}
               watch={watch}
               readOnly={readOnly}
               tourPreview={tourPreview}
               archived={archived}
               focusNote={focusNote}
               onSaved={(updated) => onSaved?.(updated)}
+            />
+            <ZkWatchLinesMetaSection
+              key={`${watchKey}-meta`}
+              watch={watch}
+              readOnly={readOnly}
+              tourPreview={tourPreview}
+              archived={archived}
             />
             <ZkWatchLinesPanel
               key={watchKey}

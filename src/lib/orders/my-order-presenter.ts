@@ -721,14 +721,18 @@ function presentZamowienie(
 
   let timingLabel: string | null = null;
   if (zdFulfillment) {
-    const deadlineDate = parseDateOnly(zdFulfillment.deadline);
-    const overdue =
-      deadlineDate != null && isPastExpectedDate(deadlineDate);
-    timingLabel = salesZdTimingLabel(
-      zdFulfillment.deadline,
-      zdFulfillment.dokNr,
-      overdue
-    );
+    if (zdFulfillment.pendingConfirmation) {
+      timingLabel = salesZdPrimarySlotTimingLabel(zdFulfillment, false);
+    } else {
+      const deadlineDate = parseDateOnly(zdFulfillment.deadline);
+      const overdue =
+        deadlineDate != null && isPastExpectedDate(deadlineDate);
+      timingLabel = salesZdTimingLabel(
+        zdFulfillment.deadline,
+        zdFulfillment.dokNr,
+        overdue
+      );
+    }
   } else if (eta) {
     timingLabel = salesTimingLabel(
       eta.expectedDate,
@@ -738,7 +742,9 @@ function presentZamowienie(
   }
 
   const timingBadgeOverdue = zdFulfillment
-    ? (() => {
+    ? zdFulfillment.pendingConfirmation
+      ? false
+      : (() => {
         const d = parseDateOnly(zdFulfillment.deadline);
         return d != null && isPastExpectedDate(d);
       })()
@@ -877,7 +883,9 @@ export function presentMyOrderGroup(
   let badgeVariant = base.badgeVariant;
   if (zdFulfillment) {
     const slots = zdFulfillmentSlots(zdFulfillment);
-    const overdue = zdFulfillmentGroupOverdue(slots);
+    const overdue = zdFulfillment.pendingConfirmation
+      ? false
+      : zdFulfillmentGroupOverdue(slots);
     timingLabel = salesZdPrimarySlotTimingLabel(zdFulfillment, overdue);
     if (overdue) {
       badgeVariant =

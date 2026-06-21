@@ -22,6 +22,7 @@ export function NotatnikListFilterBar({
   bleed = false,
   showIdleHint = true,
   showActiveDetail = true,
+  compact = false,
 }: {
   value: string;
   onChange: (value: string) => void;
@@ -42,6 +43,8 @@ export function NotatnikListFilterBar({
   showIdleHint?: boolean;
   /** Drugi wiersz pod licznikiem wyników. */
   showActiveDetail?: boolean;
+  /** W pasku narzędzi listy — bez własnego tła i etykiety nad polem. */
+  compact?: boolean;
 }) {
   const inputId = useId();
   const trimmed = value.trim();
@@ -71,18 +74,22 @@ export function NotatnikListFilterBar({
   return (
     <div
       className={cn(
-        "border-b border-slate-100 bg-white",
-        embedded
-          ? cn(
-              "pb-2.5 pt-0",
-              bleed ? "-mx-3 px-3 sm:-mx-4 sm:px-4" : cn(salesChromeInsetClass, "pt-3")
+        compact
+          ? "min-w-0"
+          : cn(
+              "border-b border-slate-100 bg-white",
+              embedded
+                ? cn(
+                    "pb-2.5 pt-0",
+                    bleed ? "-mx-3 px-3 sm:-mx-4 sm:px-4" : cn(salesChromeInsetClass, "pt-3")
+                  )
+                : cn(salesChromeInsetClass, "py-2.5")
             )
-          : cn(salesChromeInsetClass, "py-2.5")
       )}
     >
-      <div className="flex flex-col gap-2">
+      <div className={cn("flex flex-col gap-2", compact && "sm:flex-row sm:items-center")}>
         <div className="relative min-w-0 flex-1">
-          {visibleLabel ? (
+          {visibleLabel && !compact ? (
             <label
               htmlFor={inputId}
               className={cn(salesTypography.sectionLabel, "mb-1 block normal-case text-slate-700")}
@@ -126,15 +133,16 @@ export function NotatnikListFilterBar({
             type="button"
             className={cn(
               "shrink-0 self-start rounded-md border border-slate-200 bg-slate-50 px-3 py-2.5 text-xs font-semibold text-slate-700",
-              "hover:bg-slate-100 min-h-11 sm:min-h-[2.5rem]"
+              "hover:bg-slate-100 min-h-11 sm:min-h-[2.5rem]",
+              compact && "self-stretch sm:self-auto"
             )}
             onClick={() => onChange("")}
           >
-            Wyczyść filtr
+            Wyczyść
           </button>
         ) : null}
       </div>
-      {active ? (
+      {!compact && active ? (
         <p className="mt-2 text-xs leading-relaxed text-slate-600" aria-live="polite">
           Wyniki:{" "}
           <span className="font-semibold tabular-nums text-slate-900">{matchCount}</span>
@@ -153,7 +161,7 @@ export function NotatnikListFilterBar({
             ) : null
           )}
         </p>
-      ) : showIdleHint ? (
+      ) : !compact && showIdleHint ? (
         <p className="mt-2 text-xs text-slate-500">
           {idleHint}
           {enableShortcut ? (

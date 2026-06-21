@@ -6,6 +6,7 @@ import {
 import type { ZdFulfillmentDeadlineChangeDisplay } from "@/lib/orders/zd-fulfillment-deadline-change";
 import { resolveZdFulfillmentDeadlineChangeDisplay } from "@/lib/orders/zd-fulfillment-deadline-change";
 import { pickLatestZdFulfillmentDeadlineChange } from "@/lib/orders/zd-fulfillment-deadline-change";
+import { resolvePlaceholderZdFulfillmentDeadlineFromOrder } from "@/lib/orders/zd-fulfillment-placeholder-deadline";
 import type { MyOrderRow } from "@/lib/orders/my-order-presenter";
 import type { DeliveryStats, IndividualOrder, StatsMode } from "@/types/database";
 import { formatProsbaZkLinkNumber } from "@/lib/orders/zk-prosba-link-display";
@@ -491,6 +492,8 @@ export type MyOrderZdFulfillmentSlot = {
   deadline: string;
   dokNr: string;
   count: number;
+  /** Termin z dnia złożenia — czekamy na korektę działu dostaw. */
+  pendingConfirmation?: boolean;
 };
 
 export type MyOrderZdFulfillment = {
@@ -502,6 +505,8 @@ export type MyOrderZdFulfillment = {
   slots?: MyOrderZdFulfillmentSlot[];
   /** Zmiana terminu wykryta przy ostatnim sync ZD. */
   deadlineChange?: ZdFulfillmentDeadlineChangeDisplay | null;
+  /** Termin ZD = dzień złożenia u dostawcy, jeszcze bez potwierdzenia. */
+  pendingConfirmation?: boolean;
 };
 
 function hasStoredZdFulfillmentDeadline(
@@ -522,6 +527,9 @@ export function resolveZdFulfillmentFromOrder(
     | "zd_fulfillment_previous_deadline"
     | "zd_fulfillment_deadline_changed_at"
     | "zd_fulfillment_deadline_change_seen_at"
+    | "ordered_at"
+    | "action_at"
+    | "status"
   >,
   at: Date = new Date()
 ): MyOrderZdFulfillment | null {
@@ -530,12 +538,14 @@ export function resolveZdFulfillmentFromOrder(
   if (!deadline || !parseDateOnly(deadline)) return null;
   const dokNr = order.zd_fulfillment_dok_nr?.trim();
   const deadlineChange = resolveZdFulfillmentDeadlineChangeDisplay(order, at);
+  const pendingConfirmation = resolvePlaceholderZdFulfillmentDeadlineFromOrder(order);
   return {
     deadline,
     dokNr: dokNr || "ZD",
     syncedAt: order.zd_fulfillment_synced_at ?? null,
     source: "zd",
     deadlineChange,
+    pendingConfirmation,
   };
 }
 
@@ -631,8 +641,14 @@ export function aggregateGroupZdEtaState(
     const existing = slotMap.get(key);
     if (existing) {
       existing.count += 1;
+      if (!f.pendingConfirmation) existing.pendingConfirmation = false;
     } else {
-      slotMap.set(key, { deadline: f.deadline, dokNr: f.dokNr, count: 1 });
+      slotMap.set(key, {
+        deadline: f.deadline,
+        dokNr: f.dokNr,
+        count: 1,
+        pendingConfirmation: f.pendingConfirmation ?? false,
+      });
     }
   }
 
@@ -651,6 +667,8 @@ export function aggregateGroupZdEtaState(
       .sort()
       .reverse()[0] ?? null;
   const deadlineChange = pickLatestZdFulfillmentDeadlineChange(orders);
+  const pendingConfirmation =
+    primary.pendingConfirmation ?? fulfillments.every((f) => f.pendingConfirmation);
 
   return {
     zdFulfillment: {
@@ -660,6 +678,7 @@ export function aggregateGroupZdEtaState(
       source: "zd",
       slots: slots.length > 1 ? slots : undefined,
       deadlineChange,
+      pendingConfirmation,
     },
     zdEtaPending: anyPending,
     zdEtaNoMatch: anyNoMatch,

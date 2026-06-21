@@ -27,7 +27,7 @@ export function ZkWatchLineCheckboxControl({
         if (toggleable) onToggle();
       }}
       className={cn(
-        "mt-0.5 flex size-4 shrink-0 items-center justify-center rounded border transition",
+        "flex size-4 shrink-0 items-center justify-center rounded border transition",
         checked
           ? cn("border-transparent text-white shadow-sm", toneClass)
           : "border-slate-300 bg-white text-slate-300",

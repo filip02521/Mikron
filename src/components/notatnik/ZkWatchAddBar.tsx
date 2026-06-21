@@ -27,6 +27,7 @@ export function ZkWatchAddBar({
   onSubmit,
   onPickCandidate,
   onClearChoose,
+  layout = "stack",
 }: {
   inputRef?: RefObject<HTMLInputElement | null>;
   query: string;
@@ -39,19 +40,25 @@ export function ZkWatchAddBar({
   onSubmit: () => void;
   onPickCandidate: (candidate: ZkSearchCandidate) => void;
   onClearChoose: () => void;
+  /** inline — pole i przycisk w jednym rzędzie (pasek narzędzi listy). */
+  layout?: "stack" | "inline";
 }) {
   const inputId = useId();
+  const inline = layout === "inline";
 
   return (
     <div className="space-y-2">
       <form
-        className="flex flex-col gap-2"
+        className={cn(
+          "flex gap-2",
+          inline ? "flex-col sm:flex-row sm:items-center" : "flex-col"
+        )}
         onSubmit={(e) => {
           e.preventDefault();
           onSubmit();
         }}
       >
-        <div className="min-w-0">
+        <div className={cn("min-w-0", inline && "flex-1")}>
           <label htmlFor={inputId} className="sr-only">
             Numer ZK z Subiekta
           </label>
@@ -65,23 +72,34 @@ export function ZkWatchAddBar({
             placeholder={
               canAdd ? "np. 234 lub 234/M/03/2026" : "Dodawanie wymaga połączenia z Subiektem"
             }
+            title={
+              canAdd
+                ? "Krótki numer (min. 2 znaki) — ostatnie 30 dni. Pełny format — tylko dany miesiąc."
+                : undefined
+            }
             value={query}
             disabled={loading || !canAdd}
             onChange={(e) => onQueryChange(e.target.value)}
             className={cn(
               fieldControlClass("default"),
+              inline && "w-full",
               !canAdd && "cursor-not-allowed opacity-60"
             )}
             aria-disabled={!canAdd}
           />
-          <p className="mt-1.5 text-[11px] leading-relaxed text-slate-500">
-            Krótki numer (min. 2 znaki) — ostatnie 30 dni. Pełny format — tylko dany miesiąc.
-          </p>
+          {!inline ? (
+            <p className="mt-1.5 text-[11px] leading-relaxed text-slate-500">
+              Krótki numer (min. 2 znaki) — ostatnie 30 dni. Pełny format — tylko dany miesiąc.
+            </p>
+          ) : null}
         </div>
         <Button
           type="submit"
           size="sm"
-          className="min-h-11 w-full sm:min-h-[2.5rem] sm:w-auto sm:self-start"
+          className={cn(
+            "min-h-11 shrink-0 sm:min-h-[2.5rem]",
+            inline ? "w-full sm:w-auto" : "w-full sm:w-auto sm:self-start"
+          )}
           disabled={loading || !query.trim() || !canAdd}
           title={
             !canAdd
@@ -90,7 +108,7 @@ export function ZkWatchAddBar({
           }
         >
           <IconPlusCircle size={16} strokeWidth={2} className="mr-1.5 shrink-0" aria-hidden />
-          {loading ? "Szukam w Subiekcie…" : "Dodaj do listy"}
+          {loading ? "Szukam…" : inline ? "Dodaj" : "Dodaj do listy"}
         </Button>
       </form>
 

@@ -1,8 +1,11 @@
 import type { MyOrderRow } from "@/lib/orders/my-order-presenter";
 import {
-  buildDeliveryDateMetaDisplay,
   resolveMyOrderHistoryDeliveryEstimate,
 } from "@/lib/orders/delivery-date-meta-label";
+import {
+  buildZdDeliveryDateMetaDisplay,
+  ZD_FULFILLMENT_PLACEHOLDER_PRIMARY_LABEL,
+} from "@/lib/orders/zd-fulfillment-placeholder-deadline";
 import { buildInformacjaTimingMetaDisplay } from "@/lib/orders/informacja-timing-meta";
 import { shouldShowMyOrderCollapsedDeliveryTiming } from "@/lib/orders/my-order-delivery-timing-display";
 import { parseDateOnly } from "@/lib/orders/dates";
@@ -21,9 +24,12 @@ export function formatCollapsedDeliveryTimingLabel(
 
   const zdDeadline = row.zdFulfillment?.deadline?.trim();
   if (zdDeadline) {
+    if (row.zdFulfillment?.pendingConfirmation) {
+      return ZD_FULFILLMENT_PLACEHOLDER_PRIMARY_LABEL;
+    }
     const parsed = parseDateOnly(zdDeadline);
     if (parsed) {
-      const display = buildDeliveryDateMetaDisplay(parsed);
+      const display = buildZdDeliveryDateMetaDisplay(parsed);
       return display.detailLabel
         ? `${display.primaryLabel} · ${display.detailLabel}`
         : display.primaryLabel;

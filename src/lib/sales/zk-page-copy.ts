@@ -1,9 +1,12 @@
 /** Copy strony ZK czekające — nagłówek, sekcje, skróty. */
 export const ZK_PAGE_SECTION_COPY = {
-  listTitle: "Twoja lista ZK",
-  listHint: "Zamówienia klientów śledzone na tej liście — rozwiń kartę, aby zobaczyć pozycje i statusy.",
+  /** Etykieta ARIA listy (nagłówek strony: „ZK czekające”). */
+  listTitle: "Lista zamówień klientów",
+  listHint:
+    "Rozwiń kartę ZK, aby zobaczyć pozycje i statusy. Szukaj po kliencie, numerze lub produkcie.",
   addTitle: "Dodaj ZK z Subiekta",
-  addDescription: "Numer z dokumentu magazynowego — to nie filtruje listy poniżej.",
+  addDescription:
+    "Krótki numer (min. 2 znaki) — ostatnie 30 dni. Pełny format, np. 234/M/03/2026 — tylko dany miesiąc. Nie filtruje listy poniżej.",
   todayTasksTitle: "Do zrobienia dziś",
 } as const;
 

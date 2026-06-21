@@ -17,7 +17,7 @@ import {
   type ZkProsbaPrefillOptions,
 } from "@/lib/orders/zk-watch-prosba-prefill";
 import { appendMojeFocusOrderIds } from "@/lib/orders/moje-order-focus";
-import type { ZkWatchOrderHints } from "@/lib/sales/zk-watch-order-link";
+import type { ZkWatchOrderHints, ZkLinkableOrder } from "@/lib/sales/zk-watch-order-link";
 import {
   allZkWatchLinesCheckboxChecked,
   deriveZkWatchProsbaCardAction,
@@ -45,6 +45,7 @@ export function ZkWatchCard({
   watch,
   anchorId,
   orderHints,
+  linkableOrders = [],
   readOnly,
   tourPreview = false,
   onClosed,
@@ -66,6 +67,7 @@ export function ZkWatchCard({
   /** Kotwica #watch-… — na karcie, nie na liście (unika obcinania obwódki). */
   anchorId?: string;
   orderHints?: ZkWatchOrderHints;
+  linkableOrders?: ZkLinkableOrder[];
   readOnly?: boolean;
   tourPreview?: boolean;
   onClosed?: (closedAt: string) => void;
@@ -421,6 +423,19 @@ export function ZkWatchCard({
               >
                 {notePreview}
               </button>
+            ) : canEdit ? (
+              <button
+                type="button"
+                data-zk-row-action=""
+                onClick={handleNoteClick}
+                className={cn(
+                  "mt-0.5 block max-w-full truncate text-left",
+                  salesTypography.rowMeta,
+                  "rounded-sm text-indigo-700/90 transition hover:bg-indigo-50/80 hover:text-indigo-900"
+                )}
+              >
+                Dodaj notatkę…
+              </button>
             ) : null}
           </div>
         </div>
@@ -490,6 +505,8 @@ export function ZkWatchCard({
         tourPreview={tourPreview}
         archived={archived}
         focusNote={focusNoteOnOpen}
+        linkableOrders={linkableOrders}
+        orderHints={orderHints}
         matchedDeliveredLineKeys={orderHints?.matchedDeliveredLineKeys}
         newLineKeys={newLineKeys}
         lineCoverageByKey={orderHints?.lineCoverageByKey}

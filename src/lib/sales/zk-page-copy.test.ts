@@ -3,8 +3,8 @@ import { ZK_KEYBOARD_HINTS, ZK_PAGE_SECTION_COPY, formatZkUnseenRegalBadge } fro
 
 describe("zk-page-copy", () => {
   it("ma copy sekcji listy i dodawania", () => {
-    expect(ZK_PAGE_SECTION_COPY.listTitle).toContain("lista");
-    expect(ZK_PAGE_SECTION_COPY.addDescription).toContain("nie filtruje");
+    expect(ZK_PAGE_SECTION_COPY.listTitle).toMatch(/lista/i);
+    expect(ZK_PAGE_SECTION_COPY.addDescription).toMatch(/nie filtruje/i);
   });
 
   it("ma skróty wyszukiwania", () => {

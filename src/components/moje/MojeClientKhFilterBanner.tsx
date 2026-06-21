@@ -38,7 +38,7 @@ export function MojeClientKhFilterBanner({
     ? null
     : displayName
       ? `Prośby klienta: ${displayName}`
-      : "Prośby powiązane z ZK czekającymi";
+      : "Powiązane prośby z czekającymi ZK";
 
   return (
     <div
