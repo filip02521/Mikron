@@ -3,7 +3,6 @@ import { isPastExpectedDate } from "@/lib/orders/delivery-eta";
 import {
   isZdEtaSyncEligible,
 } from "@/lib/subiekt/zd-eta-sync";
-import { isActiveZdFulfillmentDeadline } from "@/lib/subiekt/zd-fulfillment-date";
 import type { ZdFulfillmentDeadlineChangeDisplay } from "@/lib/orders/zd-fulfillment-deadline-change";
 import { resolveZdFulfillmentDeadlineChangeDisplay } from "@/lib/orders/zd-fulfillment-deadline-change";
 import { pickLatestZdFulfillmentDeadlineChange } from "@/lib/orders/zd-fulfillment-deadline-change";
@@ -505,6 +504,14 @@ export type MyOrderZdFulfillment = {
   deadlineChange?: ZdFulfillmentDeadlineChangeDisplay | null;
 };
 
+function hasStoredZdFulfillmentDeadline(
+  order: Pick<IndividualOrder, "zd_fulfillment_source" | "zd_fulfillment_deadline">
+): boolean {
+  if (order.zd_fulfillment_source !== "zd") return false;
+  const deadline = order.zd_fulfillment_deadline?.trim();
+  return Boolean(deadline && parseDateOnly(deadline));
+}
+
 export function resolveZdFulfillmentFromOrder(
   order: Pick<
     IndividualOrder,
@@ -520,7 +527,7 @@ export function resolveZdFulfillmentFromOrder(
 ): MyOrderZdFulfillment | null {
   if (order.zd_fulfillment_source !== "zd") return null;
   const deadline = order.zd_fulfillment_deadline?.trim();
-  if (!deadline || !isActiveZdFulfillmentDeadline(deadline, at)) return null;
+  if (!deadline || !parseDateOnly(deadline)) return null;
   const dokNr = order.zd_fulfillment_dok_nr?.trim();
   const deadlineChange = resolveZdFulfillmentDeadlineChangeDisplay(order, at);
   return {
@@ -562,6 +569,7 @@ export function resolveZdEtaNoMatchFromOrder(
   supplierKhIdsBySupplierId?: SupplierKhIdsLookup
 ): boolean {
   if (resolveZdFulfillmentFromOrder(order)) return false;
+  if (hasStoredZdFulfillmentDeadline(order)) return false;
   if (!order.zd_fulfillment_synced_at) return false;
   if (!supplierHasPrimarySubiektKh(order, supplierKhIdsBySupplierId)) return false;
   return isZdEtaSyncEligible(order);

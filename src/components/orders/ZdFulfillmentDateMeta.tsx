@@ -118,7 +118,7 @@ export function ZdFulfillmentDateMeta({
   return (
     <div className={cn("flex min-w-0 flex-col items-end gap-1", className)}>
       <DeliveryTimingMeta
-        caption={zdFulfillmentCollapsedCaption(slots.length)}
+        caption={zdFulfillmentCollapsedCaption(slots.length, { overdue: anyOverdue })}
         captionTone={anyOverdue ? "overdue" : "zd"}
         title={tooltip}
         accessory={
