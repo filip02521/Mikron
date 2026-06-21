@@ -1,0 +1,12 @@
+name: Mikron CodeQL
+
+query-filters:
+  - exclude:
+      id: js/clear-text-storage-of-sensitive-data
+    paths:
+      - src/lib/auth/login-account-preference.ts
+      - src/lib/auth/login-password-reset-session.ts
+  - exclude:
+      id: js/insufficient-password-hash
+    paths:
+      - src/lib/auth/password-reset-otp.ts
