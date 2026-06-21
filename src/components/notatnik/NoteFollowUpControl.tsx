@@ -19,16 +19,16 @@ export function NoteFollowUpControl({
 }) {
   const inputId = useId();
   const [editing, setEditing] = useState(false);
-  const valueKey = value ?? "";
-  const [draft, setDraft] = useState(valueKey);
-  const [appliedValueKey, setAppliedValueKey] = useState(valueKey);
-  if (!editing && valueKey !== appliedValueKey) {
-    setAppliedValueKey(valueKey);
-    setDraft(valueKey);
-  }
+  const [editDraft, setEditDraft] = useState("");
 
   const label = formatFollowUpLabel(value);
   const due = isFollowUpDue(value);
+
+  function startEditing() {
+    if (disabled) return;
+    setEditDraft(value ?? "");
+    setEditing(true);
+  }
 
   async function commit(next: string | null) {
     await onChange(next);
@@ -39,9 +39,9 @@ export function NoteFollowUpControl({
     return (
       <div className="space-y-1.5">
         <FollowUpQuickDates
-          value={draft || null}
+          value={editDraft || null}
           disabled={saving}
-          onPick={(iso) => setDraft(iso)}
+          onPick={(iso) => setEditDraft(iso)}
         />
         <div className="flex flex-wrap items-center gap-1.5">
           <label htmlFor={inputId} className="sr-only">
@@ -50,9 +50,9 @@ export function NoteFollowUpControl({
           <input
             id={inputId}
             type="date"
-            value={draft}
+            value={editDraft}
             disabled={saving}
-            onChange={(e) => setDraft(e.target.value)}
+            onChange={(e) => setEditDraft(e.target.value)}
             className={cn(
               "rounded border border-slate-200/80 bg-white/90 px-1.5 py-0.5 text-[11px]",
               controlFocusClass
@@ -61,7 +61,7 @@ export function NoteFollowUpControl({
           <button
             type="button"
             disabled={saving}
-            onClick={() => void commit(draft.trim() || null)}
+            onClick={() => void commit(editDraft.trim() || null)}
             className="rounded px-1 py-0.5 text-[11px] font-medium text-indigo-700 hover:bg-indigo-50 disabled:opacity-50"
           >
             OK
@@ -79,10 +79,7 @@ export function NoteFollowUpControl({
           <button
             type="button"
             disabled={saving}
-            onClick={() => {
-              setDraft(value ?? "");
-              setEditing(false);
-            }}
+            onClick={() => setEditing(false)}
             className="rounded px-1 py-0.5 text-[11px] text-slate-500 hover:bg-black/5 disabled:opacity-50"
           >
             Anuluj
@@ -96,7 +93,7 @@ export function NoteFollowUpControl({
     <button
       type="button"
       disabled={disabled || saving}
-      onClick={() => !disabled && setEditing(true)}
+      onClick={startEditing}
       className={cn(
         "inline-flex max-w-full items-center gap-1 rounded px-1 py-0.5 text-left text-[11px] transition hover:bg-black/5 disabled:opacity-50",
         due ? "font-semibold text-violet-800" : "text-slate-500"

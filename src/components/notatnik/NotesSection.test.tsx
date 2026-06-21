@@ -13,9 +13,16 @@ vi.mock("@/app/actions/sales-notepad", () => ({
   actionUpdateSalesNote: vi.fn(),
 }));
 
+vi.mock("@/lib/sales/notepad-anchor", () => ({
+  flashNotepadAnchor: vi.fn(),
+}));
+
+import { flashNotepadAnchor } from "@/lib/sales/notepad-anchor";
+
 describe("NotesSection", () => {
   afterEach(() => {
     cleanup();
+    vi.mocked(flashNotepadAnchor).mockClear();
   });
 
   it("renderuje karteczki z tytułem i treścią", () => {
@@ -37,9 +44,9 @@ describe("NotesSection", () => {
     expect(screen.getByText("Klient czeka na wycenę.")).toBeTruthy();
   });
 
-  it("pokazuje pusty stan z zachętą do dodania karteczki", () => {
+  it("pokazuje wyraźny przycisk dodawania karteczki", () => {
     render(<NotesSection embedded notes={[]} />);
-    expect(screen.getByText(/Brak notatek — przypnij pierwszą karteczkę powyżej/i)).toBeTruthy();
+    expect(screen.queryByText(/Brak notatek — przypnij pierwszą karteczkę powyżej/i)).toBeNull();
     expect(screen.getByRole("button", { name: /Przypnij nową karteczkę/i })).toBeTruthy();
   });
 
@@ -48,6 +55,47 @@ describe("NotesSection", () => {
     fireEvent.click(screen.getByRole("button", { name: /Przypnij nową karteczkę/i }));
     expect(screen.getByText("Nowa karteczka")).toBeTruthy();
     expect(screen.getByPlaceholderText("Wpisz notatkę…")).toBeTruthy();
+  });
+
+  it("podświetla notatkę z deep linku tylko raz", () => {
+    const onFocusNoteHandled = vi.fn();
+    const { rerender } = render(
+      <NotesSection
+        embedded
+        notes={[
+          testSalesNote({
+            id: "n-focus",
+            body: "Przypomnienie",
+            updated_at: "2026-01-01T00:00:00Z",
+          }),
+        ]}
+        focusNoteId="n-focus"
+        onFocusNoteHandled={onFocusNoteHandled}
+      />
+    );
+
+    expect(vi.mocked(flashNotepadAnchor)).toHaveBeenCalledTimes(1);
+    expect(vi.mocked(flashNotepadAnchor)).toHaveBeenCalledWith(
+      "note-n-focus",
+      expect.objectContaining({ onFound: expect.any(Function) })
+    );
+
+    rerender(
+      <NotesSection
+        embedded
+        notes={[
+          testSalesNote({
+            id: "n-focus",
+            body: "Przypomnienie",
+            updated_at: "2026-01-01T00:00:00Z",
+          }),
+        ]}
+        focusNoteId="n-focus"
+        onFocusNoteHandled={onFocusNoteHandled}
+      />
+    );
+
+    expect(vi.mocked(flashNotepadAnchor)).toHaveBeenCalledTimes(1);
   });
 
   it("oznacza przypiętą notatkę", () => {

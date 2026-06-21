@@ -27,6 +27,7 @@ import type {
   SalesNoteColor,
 } from "@/types/database";
 import { isFollowUpDue } from "@/lib/sales/notepad-follow-up";
+import { flashNotepadAnchor } from "@/lib/sales/notepad-anchor";
 import { NoteColorPicker, NoteCardToolbar } from "@/components/notatnik/NoteColorPicker";
 import { NotatnikListFilterBar } from "@/components/notatnik/NotatnikListFilterBar";
 import { NoteFollowUpControl } from "@/components/notatnik/NoteFollowUpControl";
@@ -341,6 +342,8 @@ export function OperationsNotesSection({
   currentUserId,
   readOnly,
   embedded,
+  focusNoteId,
+  onFocusNoteHandled,
   onNoteCreated,
   onNoteUpdated,
   onNoteArchived,
@@ -353,6 +356,8 @@ export function OperationsNotesSection({
   currentUserId: string;
   readOnly?: boolean;
   embedded?: boolean;
+  focusNoteId?: string | null;
+  onFocusNoteHandled?: (noteId: string) => void;
   allowReorder?: boolean;
   onNoteCreated?: (note: OperationsNote) => void;
   onNoteUpdated?: (note: OperationsNote) => void;
@@ -377,6 +382,14 @@ export function OperationsNotesSection({
     action: "edit" | "pin";
   } | null>(null);
   const composeRef = useRef<HTMLDivElement>(null);
+  const focusFlashHandledRef = useRef<string | null>(null);
+
+  const scrollFocusedNoteIntoView = useCallback((noteId: string) => {
+    document.getElementById(`note-${noteId}`)?.scrollIntoView({
+      behavior: "smooth",
+      block: "nearest",
+    });
+  }, []);
 
   const composeExpanded =
     composeOpen || Boolean(draft.trim() || draftTitle.trim() || draftFollowUp);
@@ -384,6 +397,25 @@ export function OperationsNotesSection({
   useEffect(() => {
     if (composeOpen) composeRef.current?.querySelector<HTMLElement>("textarea")?.focus();
   }, [composeOpen]);
+
+  useEffect(() => {
+    if (!focusNoteId || !notes.some((note) => note.id === focusNoteId)) return;
+    if (focusFlashHandledRef.current === focusNoteId) return;
+    setFocusedNoteId(focusNoteId);
+    flashNotepadAnchor(`note-${focusNoteId}`, {
+      onFound: () => {
+        document.getElementById(`note-${focusNoteId}`)?.focus({ preventScroll: true });
+        focusFlashHandledRef.current = focusNoteId;
+        onFocusNoteHandled?.(focusNoteId);
+      },
+    });
+  }, [focusNoteId, notes, onFocusNoteHandled]);
+
+  useEffect(() => {
+    if (!focusNoteId) {
+      focusFlashHandledRef.current = null;
+    }
+  }, [focusNoteId]);
 
   const sorted = sortOperationsNotes(notes);
   const needle = searchQuery.trim().toLowerCase();
@@ -487,14 +519,6 @@ export function OperationsNotesSection({
   }
 
   useEffect(() => {
-    if (!focusedNoteId) return;
-    document.getElementById(`note-${focusedNoteId}`)?.scrollIntoView({
-      behavior: "smooth",
-      block: "nearest",
-    });
-  }, [focusedNoteId]);
-
-  useEffect(() => {
     if (readOnly) return;
 
     const onKey = (e: KeyboardEvent) => {
@@ -519,14 +543,20 @@ export function OperationsNotesSection({
       if (e.key === "ArrowDown") {
         e.preventDefault();
         const nextIdx = idx < 0 ? 0 : Math.min(idx + 1, filtered.length - 1);
-        setFocusedNoteId(filtered[nextIdx]!.id);
+        const nextId = filtered[nextIdx]!.id;
+        setFocusedNoteId(nextId);
+        scrollFocusedNoteIntoView(nextId);
+        document.getElementById(`note-${nextId}`)?.focus({ preventScroll: true });
         return;
       }
 
       if (e.key === "ArrowUp") {
         e.preventDefault();
         const nextIdx = idx < 0 ? 0 : Math.max(idx - 1, 0);
-        setFocusedNoteId(filtered[nextIdx]!.id);
+        const nextId = filtered[nextIdx]!.id;
+        setFocusedNoteId(nextId);
+        scrollFocusedNoteIntoView(nextId);
+        document.getElementById(`note-${nextId}`)?.focus({ preventScroll: true });
         return;
       }
 
@@ -546,7 +576,7 @@ export function OperationsNotesSection({
 
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [readOnly, filtered, focusedNoteId]);
+  }, [readOnly, filtered, focusedNoteId, scrollFocusedNoteIntoView]);
 
   async function createNote() {
     const trimmed = draft.trim();

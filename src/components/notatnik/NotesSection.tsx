@@ -10,8 +10,10 @@ import {
 import { Button } from "@/components/ui/Button";
 import { Alert } from "@/components/ui/Alert";
 import { KeyboardShortcutsHint } from "@/components/ui/KeyboardShortcutsHint";
+import { SectionHeadingIcon } from "@/components/icons/SectionHeadingIcon";
+import { IconGripVertical, IconPlusCircle } from "@/components/icons/StrokeIcons";
 import { cn } from "@/lib/cn";
-import { salesTypography } from "@/lib/ui/ontime-theme";
+import { notatnikAddPanelShellClass, notatnikPrimaryAddButtonClass, salesTypography } from "@/lib/ui/ontime-theme";
 import { reorderNoteIds, sortSalesNotes, notesInSamePinBand, filterSalesNotesByQuery } from "@/lib/sales/notepad-note-sort";
 import type { SalesNote, SalesNoteColor } from "@/types/database";
 import { isFollowUpDue } from "@/lib/sales/notepad-follow-up";
@@ -29,11 +31,11 @@ import { NoteFormatToolbar, NOTE_COMPOSE_TEXTAREA_INNER_CLASS, NOTE_COMPOSE_TEXT
 import { NoteStickyFrame } from "./NoteStickyFrame";
 import { handleNoteFormatKeyDown } from "@/lib/sales/note-body-format";
 import { DragHandleGlyph, PinGlyph } from "@/components/ui/UiGlyphs";
-import { IconGripVertical } from "@/components/icons/StrokeIcons";
 import { SalesListFilterEmptyHint, SalesSectionEmptyHint } from "@/components/sales/SalesListEmptyHints";
 import { NotatnikListFilterBar } from "./NotatnikListFilterBar";
 import { SalesKeyboardShortcutsStrip } from "@/components/sales/SalesKeyboardShortcutsStrip";
-import { NOTATNIK_NOTES_SEARCH_PLACEHOLDER } from "@/lib/sales/notatnik-notes-copy";
+import { NOTATNIK_NOTES_SEARCH_PLACEHOLDER, NOTATNIK_NOTES_SECTION_COPY } from "@/lib/sales/notatnik-notes-copy";
+import { flashNotepadAnchor } from "@/lib/sales/notepad-anchor";
 
 export const NOTATNIK_KEYBOARD_HINTS = [
   { keys: ["N"], label: "nowa notatka" },
@@ -346,6 +348,8 @@ export function NotesSection({
   notes,
   readOnly,
   embedded,
+  focusNoteId,
+  onFocusNoteHandled,
   onNoteCreated,
   onNoteUpdated,
   onNoteArchived,
@@ -354,6 +358,8 @@ export function NotesSection({
   notes: SalesNote[];
   readOnly?: boolean;
   embedded?: boolean;
+  focusNoteId?: string | null;
+  onFocusNoteHandled?: (noteId: string) => void;
   onNoteCreated?: (note: SalesNote) => void;
   onNoteUpdated?: (note: SalesNote) => void;
   onNoteArchived?: (note: SalesNote) => void;
@@ -373,6 +379,14 @@ export function NotesSection({
   const [editingNoteId, setEditingNoteId] = useState<string | null>(null);
   const composeRef = useRef<HTMLDivElement>(null);
   const composeTextareaRef = useRef<HTMLTextAreaElement>(null);
+  const focusFlashHandledRef = useRef<string | null>(null);
+
+  const scrollFocusedNoteIntoView = useCallback((noteId: string) => {
+    document.getElementById(`note-${noteId}`)?.scrollIntoView({
+      behavior: "smooth",
+      block: "nearest",
+    });
+  }, []);
 
   const composeExpanded =
     composeOpen || Boolean(draft.trim() || draftTitle.trim() || draftFollowUp);
@@ -380,6 +394,24 @@ export function NotesSection({
   useEffect(() => {
     if (composeOpen) composeRef.current?.querySelector<HTMLElement>("textarea")?.focus();
   }, [composeOpen]);
+
+  useEffect(() => {
+    if (!focusNoteId || focusFlashHandledRef.current === focusNoteId) return;
+    setFocusedNoteId(focusNoteId);
+    flashNotepadAnchor(`note-${focusNoteId}`, {
+      onFound: () => {
+        document.getElementById(`note-${focusNoteId}`)?.focus({ preventScroll: true });
+        focusFlashHandledRef.current = focusNoteId;
+        onFocusNoteHandled?.(focusNoteId);
+      },
+    });
+  }, [focusNoteId, onFocusNoteHandled]);
+
+  useEffect(() => {
+    if (!focusNoteId) {
+      focusFlashHandledRef.current = null;
+    }
+  }, [focusNoteId]);
 
   const sorted = sortSalesNotes(notes);
   const needle = searchQuery.trim();
@@ -492,14 +524,6 @@ export function NotesSection({
   }
 
   useEffect(() => {
-    if (!focusedNoteId) return;
-    document.getElementById(`note-${focusedNoteId}`)?.scrollIntoView({
-      behavior: "smooth",
-      block: "nearest",
-    });
-  }, [focusedNoteId]);
-
-  useEffect(() => {
     if (readOnly) return;
 
     const onKey = (e: KeyboardEvent) => {
@@ -524,14 +548,20 @@ export function NotesSection({
       if (e.key === "ArrowDown") {
         e.preventDefault();
         const nextIdx = idx < 0 ? 0 : Math.min(idx + 1, filtered.length - 1);
-        setFocusedNoteId(filtered[nextIdx]!.id);
+        const nextId = filtered[nextIdx]!.id;
+        setFocusedNoteId(nextId);
+        scrollFocusedNoteIntoView(nextId);
+        document.getElementById(`note-${nextId}`)?.focus({ preventScroll: true });
         return;
       }
 
       if (e.key === "ArrowUp") {
         e.preventDefault();
         const nextIdx = idx < 0 ? 0 : Math.max(idx - 1, 0);
-        setFocusedNoteId(filtered[nextIdx]!.id);
+        const nextId = filtered[nextIdx]!.id;
+        setFocusedNoteId(nextId);
+        scrollFocusedNoteIntoView(nextId);
+        document.getElementById(`note-${nextId}`)?.focus({ preventScroll: true });
         return;
       }
 
@@ -551,7 +581,7 @@ export function NotesSection({
 
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [readOnly, filtered, focusedNoteId, toggleFocusedNotePin]);
+  }, [readOnly, filtered, focusedNoteId, toggleFocusedNotePin, scrollFocusedNoteIntoView]);
 
   async function createNote() {
     const trimmed = draft.trim();
@@ -564,11 +594,7 @@ export function NotesSection({
         color: draftColor,
         follow_up_at: draftFollowUp.trim() || null,
       });
-      setDraft("");
-      setDraftTitle("");
-      setDraftColor("default");
-      setDraftFollowUp("");
-      setComposeOpen(false);
+      closeCompose();
       onNoteCreated?.(note);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Nie udało się dodać notatki.");
@@ -576,6 +602,108 @@ export function NotesSection({
       setSaving(false);
     }
   }
+
+  function closeCompose() {
+    setDraft("");
+    setDraftTitle("");
+    setDraftFollowUp("");
+    setDraftColor("default");
+    setComposeOpen(false);
+  }
+
+  const composeForm = (
+    <NoteStickyFrame seed="compose-new-note" straight showPin>
+      <div
+        ref={composeRef}
+        className={noteStickyPaperClass(draftColor, { editing: true })}
+        onKeyDown={(e) => {
+          if ((e.metaKey || e.ctrlKey) && e.key === "Enter") {
+            e.preventDefault();
+            void createNote();
+          }
+        }}
+      >
+        <div className="space-y-2 p-2.5 pt-3">
+          <input
+            type="text"
+            value={draftTitle}
+            onChange={(e) => setDraftTitle(e.target.value)}
+            placeholder="Tytuł (opcjonalnie)"
+            className={cn(NOTATNIK_INPUT_CLASS, "w-full text-sm font-semibold")}
+          />
+          <div className={NOTE_COMPOSE_TEXTAREA_SHELL_CLASS}>
+            <textarea
+              ref={composeTextareaRef}
+              rows={3}
+              value={draft}
+              onChange={(e) => setDraft(e.target.value)}
+              onKeyDown={(e) => {
+                const el = e.currentTarget;
+                if (
+                  handleNoteFormatKeyDown(
+                    e,
+                    draft,
+                    el.selectionStart,
+                    el.selectionEnd,
+                    (next, start, end) => {
+                      setDraft(next);
+                      requestAnimationFrame(() => el.setSelectionRange(start, end));
+                    }
+                  )
+                ) {
+                  return;
+                }
+                if ((e.metaKey || e.ctrlKey) && e.key === "Enter") {
+                  e.preventDefault();
+                  void createNote();
+                }
+              }}
+              placeholder="Wpisz notatkę…"
+              className={cn(NOTE_COMPOSE_TEXTAREA_INNER_CLASS, "min-h-[5rem]")}
+            />
+            <NoteFormatToolbar
+              textareaRef={composeTextareaRef}
+              value={draft}
+              onChange={setDraft}
+              disabled={saving}
+              embedded
+            />
+          </div>
+          <div className="space-y-1.5 border-t border-slate-100 pt-2">
+            <span className={cn(salesTypography.chrome, "text-slate-600")}>Przypomnij</span>
+            <FollowUpQuickDates
+              value={draftFollowUp || null}
+              disabled={saving}
+              onPick={setDraftFollowUp}
+            />
+            <input
+              id="note-compose-follow-up"
+              type="date"
+              value={draftFollowUp}
+              onChange={(e) => setDraftFollowUp(e.target.value)}
+              className={cn(NOTATNIK_INPUT_CLASS, "h-8 w-auto text-xs")}
+            />
+          </div>
+          <div className="flex flex-wrap items-center justify-between gap-2 border-t border-slate-100 pt-2">
+            <NoteColorPicker
+              value={draftColor}
+              onChange={setDraftColor}
+              disabled={saving}
+              size="sm"
+            />
+            <div className="flex gap-1.5">
+              <Button size="sm" variant="ghost" onClick={closeCompose}>
+                Anuluj
+              </Button>
+              <Button size="sm" disabled={saving || !draft.trim()} onClick={() => void createNote()}>
+                {saving ? "Zapis…" : "Dodaj"}
+              </Button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </NoteStickyFrame>
+  );
 
   return (
     <div className={embedded ? "space-y-0" : "space-y-3"}>
@@ -592,131 +720,50 @@ export function NotesSection({
 
           {!readOnly ? (
             composeExpanded ? (
-              <NoteStickyFrame seed="compose-new-note" straight showPin>
-                <div
-                  ref={composeRef}
-                  className={noteStickyPaperClass(draftColor, { editing: true })}
-                  onKeyDown={(e) => {
-                    if ((e.metaKey || e.ctrlKey) && e.key === "Enter") {
-                      e.preventDefault();
-                      void createNote();
-                    }
-                  }}
-                >
-                  <div className="space-y-2 p-2.5 pt-3">
-                    <p className={salesTypography.sectionLabel}>Nowa karteczka</p>
-                    <input
-                      type="text"
-                      value={draftTitle}
-                      onChange={(e) => setDraftTitle(e.target.value)}
-                      placeholder="Tytuł (opcjonalnie)"
-                      className={cn(NOTATNIK_INPUT_CLASS, "w-full text-sm font-semibold")}
-                    />
-                    <div className={NOTE_COMPOSE_TEXTAREA_SHELL_CLASS}>
-                      <textarea
-                        ref={composeTextareaRef}
-                        rows={3}
-                        value={draft}
-                        onChange={(e) => setDraft(e.target.value)}
-                        onKeyDown={(e) => {
-                          const el = e.currentTarget;
-                          if (
-                            handleNoteFormatKeyDown(
-                              e,
-                              draft,
-                              el.selectionStart,
-                              el.selectionEnd,
-                              (next, start, end) => {
-                                setDraft(next);
-                                requestAnimationFrame(() => el.setSelectionRange(start, end));
-                              }
-                            )
-                          ) {
-                            return;
-                          }
-                          if ((e.metaKey || e.ctrlKey) && e.key === "Enter") {
-                            e.preventDefault();
-                            void createNote();
-                          }
-                        }}
-                        placeholder="Wpisz notatkę…"
-                        className={cn(NOTE_COMPOSE_TEXTAREA_INNER_CLASS, "min-h-[5rem]")}
-                      />
-                      <NoteFormatToolbar
-                        textareaRef={composeTextareaRef}
-                        value={draft}
-                        onChange={setDraft}
-                        disabled={saving}
-                        embedded
-                      />
-                    </div>
-                    <div className="space-y-1.5 border-t border-slate-100 pt-2">
-                      <span className={cn(salesTypography.chrome, "text-slate-600")}>Przypomnij</span>
-                      <FollowUpQuickDates
-                        value={draftFollowUp || null}
-                        disabled={saving}
-                        onPick={setDraftFollowUp}
-                      />
-                      <input
-                        id="note-compose-follow-up"
-                        type="date"
-                        value={draftFollowUp}
-                        onChange={(e) => setDraftFollowUp(e.target.value)}
-                        className={cn(NOTATNIK_INPUT_CLASS, "h-8 w-auto text-xs")}
-                      />
-                    </div>
-                    <div className="flex flex-wrap items-center justify-between gap-2 border-t border-slate-100 pt-2">
-                      <NoteColorPicker
-                        value={draftColor}
-                        onChange={setDraftColor}
-                        disabled={saving}
-                        size="sm"
-                      />
-                      <div className="flex gap-1.5">
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          onClick={() => {
-                            setDraft("");
-                            setDraftTitle("");
-                            setDraftFollowUp("");
-                            setDraftColor("default");
-                            setComposeOpen(false);
-                          }}
-                        >
-                          Anuluj
-                        </Button>
-                        <Button
-                          size="sm"
-                          disabled={saving || !draft.trim()}
-                          onClick={() => void createNote()}
-                        >
-                          {saving ? "Zapis…" : "Dodaj"}
-                        </Button>
-                      </div>
+              <div className={notatnikAddPanelShellClass}>
+                <div className="flex items-start justify-between gap-2 border-b border-indigo-100/80 px-3 py-2.5 sm:px-3.5">
+                  <div className="flex min-w-0 items-start gap-2.5">
+                    <SectionHeadingIcon
+                      tileClassName="bg-indigo-100 text-indigo-800"
+                      className="mt-0.5 h-8 w-8"
+                    >
+                      <IconPlusCircle size={17} strokeWidth={2.25} />
+                    </SectionHeadingIcon>
+                    <div className="min-w-0">
+                      <p className={cn(salesTypography.sectionLabel, "normal-case text-indigo-950")}>
+                        Nowa karteczka
+                      </p>
+                      <p className={cn("mt-0.5", salesTypography.sectionHint, "text-indigo-950/75")}>
+                        {NOTATNIK_NOTES_SECTION_COPY.hint}
+                      </p>
                     </div>
                   </div>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    className="min-h-9 shrink-0 text-indigo-800 hover:bg-indigo-100/80"
+                    onClick={closeCompose}
+                  >
+                    Zwiń
+                  </Button>
                 </div>
-              </NoteStickyFrame>
+                <div className="px-3 py-3 sm:px-3.5">{composeForm}</div>
+              </div>
             ) : (
-              <NoteStickyFrame seed="compose-placeholder" straight={false}>
-                <button
-                  type="button"
-                  onClick={() => setComposeOpen(true)}
-                  className={cn(
-                    noteStickyPaperClass("default", { placeholder: true }),
-                    "flex min-h-[4.5rem] w-full items-center gap-2 px-3 py-3 text-left text-sm text-slate-500 transition hover:text-indigo-800"
-                  )}
-                >
-                  <span className="text-lg leading-none text-indigo-600/80" aria-hidden>
-                    +
-                  </span>
-                  Przypnij nową karteczkę…
-                  <span className="ml-auto hidden sm:inline">
-                    <KeyboardShortcutsHint items={[{ keys: ["N"], label: "" }]} compact />
-                  </span>
-                </button>
-              </NoteStickyFrame>
+              <Button
+                type="button"
+                variant="secondary"
+                size="sm"
+                className={notatnikPrimaryAddButtonClass}
+                onClick={() => setComposeOpen(true)}
+              >
+                <IconPlusCircle size={16} strokeWidth={2} className="mr-1.5 shrink-0" aria-hidden />
+                Przypnij nową karteczkę
+                <span className="ml-2 hidden sm:inline-flex">
+                  <KeyboardShortcutsHint items={[{ keys: ["N"], label: "" }]} compact />
+                </span>
+              </Button>
             )
           ) : null}
 
@@ -754,9 +801,9 @@ export function NotesSection({
                 onClear={() => setSearchQuery("")}
                 entityLabel="notatek"
               />
-            ) : (
-              <SalesSectionEmptyHint message="Brak notatek — przypnij pierwszą karteczkę powyżej." />
-            )
+            ) : readOnly ? (
+              <SalesSectionEmptyHint message="Brak notatek." />
+            ) : null
           ) : (
             <>
               {renderNoteWallSection(pinnedFiltered, pinnedFiltered.length ? "Przypięte" : undefined)}

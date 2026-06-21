@@ -20,6 +20,11 @@ export function watchIdFromNotepadAnchor(anchor: string): string | null {
   return anchor.startsWith("watch-") ? anchor.slice("watch-".length) : null;
 }
 
+export function noteIdFromNotepadAnchor(anchor: string): string | null {
+  const normalized = anchor.replace(/^#/, "").trim();
+  return normalized.startsWith("note-") ? normalized.slice("note-".length) : null;
+}
+
 /** Przewija do kotwicy w notatniku i krótko podświetla element. */
 export function flashNotepadAnchor(
   anchor: string,
