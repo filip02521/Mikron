@@ -73,7 +73,6 @@ export const SALES_HOME_PATH = "/moje";
 export function homePathForRole(role: UserRole): string {
   if (isMagazyn(role)) return "/kolejka";
   if (canAccessOperations(role)) return "/podsumowanie";
-  if (isSalesManager(role)) return "/zespol";
   return SALES_HOME_PATH;
 }
 
@@ -138,6 +137,6 @@ export function redirectPathAfterLogin(
   if (isAdmin(role) && adminPanelContext && adminPanelContext !== "admin") {
     return homePathForAdminPanelContext(adminPanelContext);
   }
-  if (isSales(role)) return SALES_HOME_PATH;
+  if (isSalesAccount(role)) return SALES_HOME_PATH;
   return homePathForRole(role);
 }

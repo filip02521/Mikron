@@ -46,13 +46,13 @@ describe("product-zd-lookup", () => {
         doc({
           dok_Id: 2,
           dok_NrPelny: "ZD/B",
-          dok_TerminRealizacji: "2026-07-01",
+          dok_TerminRealizacji: "2099-07-01",
           dok_Pozycja: [{ ob_TowId: 10, ob_Ilosc: 5 }],
         }),
         doc({
           dok_Id: 1,
           dok_NrPelny: "ZD/A",
-          dok_TerminRealizacji: "2026-06-20",
+          dok_TerminRealizacji: "2099-06-20",
           dok_Pozycja: [{ ob_TowId: 10, ob_Ilosc: 2 }],
         }),
       ],
@@ -63,8 +63,8 @@ describe("product-zd-lookup", () => {
     expect(matches.map((match) => match.dokNr)).toEqual(["ZD/A", "ZD/B"]);
     expect(matches[0]?.quantity).toBe(2);
     expect(rankProductZdLookupMatches(matches).map((match) => match.deadline)).toEqual([
-      "2026-06-20",
-      "2026-07-01",
+      "2099-06-20",
+      "2099-07-01",
     ]);
   });
 });
