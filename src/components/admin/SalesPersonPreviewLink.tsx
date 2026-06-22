@@ -1,8 +1,8 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { isRedirectError } from "next/dist/client/components/redirect-error";
 import { actionOpenSalesPersonPreview } from "@/app/actions/admin-panel-context";
+import { runServerActionWithRedirect } from "@/lib/client/server-action-redirect";
 import { cn } from "@/lib/cn";
 import { brandLinkSubtleClass } from "@/lib/ui/ontime-theme";
 
@@ -26,12 +26,13 @@ export function SalesPersonPreviewLink({
         onClick={() => {
           setError(null);
           startTransition(() => {
-            void actionOpenSalesPersonPreview(salesPersonId).catch((e: unknown) => {
-              if (isRedirectError(e)) return;
-              setError(
-                e instanceof Error ? e.message : "Nie udało się otworzyć podglądu"
-              );
-            });
+            void runServerActionWithRedirect(
+              () => actionOpenSalesPersonPreview(salesPersonId),
+              (e) =>
+                setError(
+                  e instanceof Error ? e.message : "Nie udało się otworzyć podglądu"
+                )
+            );
           });
         }}
         className={cn(

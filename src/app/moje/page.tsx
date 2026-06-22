@@ -181,6 +181,10 @@ export default async function MojePage({
   const adminSalesPreview = Boolean(role === "admin" && previewSalesPersonId && salesPersonId);
   const salesPanelView =
     (isSalesAccount(role ?? "sales") && salesPersonId) || adminSalesPreview;
+  /** Własny panel lub podgląd cudzego konta (kierownik / admin) — ten sam widok listy + archiwum RO. */
+  const showSalesPersonOrdersPanel = Boolean(
+    salesPanelView && salesPersonId && (viewingOwnPanel || isTeamPreview)
+  );
 
   let notepadSlice: Awaited<ReturnType<typeof fetchSalesDayStartNotepadSlice>> | null = null;
 
@@ -193,7 +197,7 @@ export default async function MojePage({
           hideSalesAcknowledged: false,
         }),
         fetchDeliveryStats(),
-        viewingOwnPanel
+        viewingOwnPanel || isTeamPreview
           ? fetchSalesAcknowledgedOrders(salesPersonId, {
               acknowledgedSince: archiveAcknowledgedSinceExpanded(),
               limit: 200,
@@ -231,7 +235,7 @@ export default async function MojePage({
           }
         });
       }
-      if (viewingOwnPanel) {
+      if (showSalesPersonOrdersPanel) {
         const legacyUnackedCancelled = orderRows.filter(
           (o) => o.status === "Anulowane" && !o.sales_acknowledged_at
         );
@@ -278,7 +282,7 @@ export default async function MojePage({
   const subiektAvailability = await getSubiektAvailability();
   const subiektReachable = isSubiektAvailableForZdSync(subiektAvailability);
 
-  const supplierRefs = viewingOwnPanel ? await getAppSupplierRefsCached() : [];
+  const supplierRefs = showSalesPersonOrdersPanel ? await getAppSupplierRefsCached() : [];
   const supplierKhIdsBySupplierId = buildSupplierKhIdsBySupplierId(supplierRefs);
   const zdEtaSyncMountCount =
     viewingOwnPanel ? countZdEtaMojeClientSyncMount(orders, stats, supplierRefs) : 0;
@@ -371,8 +375,8 @@ export default async function MojePage({
             : undefined
         }
         headerActions={salesHeaderActions}
-        archiwumRecent={viewingOwnPanel ? archiwumRecent : []}
-        archiwumExtended={viewingOwnPanel ? archiwumExtended : []}
+        archiwumRecent={showSalesPersonOrdersPanel ? archiwumRecent : []}
+        archiwumExtended={showSalesPersonOrdersPanel ? archiwumExtended : []}
         canAcknowledge={!!viewingOwnPanel}
         showProsbaCta={isSalesAccount(role ?? "sales") && !isTeamPreview}
         suppliers={suppliers}

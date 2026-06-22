@@ -25,6 +25,10 @@ function setPanelCookie(context: AdminPanelContext) {
   };
 }
 
+/**
+ * Przełącza kontekst podglądu panelu admina i nawiguje do strony startowej.
+ * Po stronie klienta wywołuj przez `runServerActionWithRedirect`.
+ */
 export async function actionSetAdminPanelContext(context: AdminPanelContext) {
   await requireAdmin();
   if (!parseAdminPanelContext(context)) {
@@ -35,7 +39,10 @@ export async function actionSetAdminPanelContext(context: AdminPanelContext) {
   redirect(homePathForAdminPanelContext(context));
 }
 
-/** Ustawia kontekst handlowca i otwiera jego panel zamówień (podgląd tylko do odczytu). */
+/**
+ * Ustawia kontekst handlowca i otwiera jego panel zamówień (podgląd tylko do odczytu).
+ * Po stronie klienta wywołuj przez `runServerActionWithRedirect` — `redirect()` rzuca wyjątek.
+ */
 export async function actionOpenSalesPersonPreview(salesPersonId: string) {
   const user = await requireAdmin();
   const id = salesPersonId?.trim();

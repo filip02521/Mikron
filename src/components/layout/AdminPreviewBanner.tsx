@@ -1,6 +1,7 @@
 "use client";
 
 import { actionSetAdminPanelContext } from "@/app/actions/admin-panel-context";
+import { runServerActionWithRedirect } from "@/lib/client/server-action-redirect";
 import {
   labelForAdminPanelContext,
   type AdminPanelContext,
@@ -28,7 +29,7 @@ export function AdminPreviewBanner({
       description={description}
       actionLabel="Wróć do administracji"
       onAction={() => {
-        void actionSetAdminPanelContext("admin");
+        void runServerActionWithRedirect(() => actionSetAdminPanelContext("admin"));
       }}
     />
   );

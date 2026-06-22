@@ -45,7 +45,9 @@ export function ManagerPreviewBanner({
       ? "Tryb administratora — tylko odczyt. Edycja ZK i składanie prośb są wyłączone."
       : scope === "notatnik"
         ? "Tryb administratora — tylko odczyt. Edycja notatek jest wyłączona."
-        : "Tryb administratora — tylko odczyt. Składanie prośb i edycja danych są wyłączone."
+        : scope === "orders"
+          ? "W podglądzie widać aktywne prośby, archiwum i zapisane terminy ZD — bez odświeżania z Subiekta i bez potwierdzania odbioru."
+          : "Tryb administratora — tylko odczyt. Składanie prośb i edycja danych są wyłączone."
     : scope === "zk"
       ? "Tryb podglądu — edycja ZK tylko we własnej zakładce ZK czekające."
       : scope === "notatnik"
@@ -54,7 +56,9 @@ export function ManagerPreviewBanner({
         ? "Składasz prośbę w imieniu wybranego handlowca — potwierdzenie odbioru tylko na jego koncie."
         : scope === "plan" || scope === "tablica"
           ? "Widok wybranego handlowca — zmiany wprowadzasz tylko we własnym koncie lub przez delegację prośby."
-          : "Potwierdzenie odbioru i archiwum są dostępne tylko na własnym koncie handlowca.";
+          : scope === "orders"
+            ? "Potwierdzenie odbioru tylko na własnym koncie. Archiwum w podglądzie jest tylko do odczytu."
+            : "Potwierdzenie odbioru i archiwum są dostępne tylko na własnym koncie handlowca.";
 
   const actions = !readOnly ? (
     <>

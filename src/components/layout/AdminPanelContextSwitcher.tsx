@@ -2,6 +2,7 @@
 
 import { useTransition } from "react";
 import { actionSetAdminPanelContext } from "@/app/actions/admin-panel-context";
+import { runServerActionWithRedirect } from "@/lib/client/server-action-redirect";
 import {
   ADMIN_PANEL_CONTEXT_OPTIONS,
   type AdminPanelContext,
@@ -30,7 +31,7 @@ export function AdminPanelContextSwitcher({
         onChange={(e) => {
           const next = e.target.value as AdminPanelContext;
           startTransition(() => {
-            void actionSetAdminPanelContext(next);
+            void runServerActionWithRedirect(() => actionSetAdminPanelContext(next));
           });
         }}
         className={cn(

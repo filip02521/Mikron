@@ -69,6 +69,9 @@ jobs:
       - name: Audit service role annotations
         run: npm run audit:service-role
 
+      - name: Audit server action redirect callers
+        run: npm run audit:server-action-redirect
+
   e2e:
     name: Playwright E2E
     runs-on: ubuntu-latest
