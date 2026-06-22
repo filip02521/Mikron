@@ -6,7 +6,6 @@ import {
   allZkWatchLinesCheckboxChecked,
   buildZkWatchLineStatusSummary,
   canMarkZkWatchLineArrived,
-  isZkWatchAllProductLinesScopeExcluded,
   isZkWatchLineCheckboxChecked,
   canToggleZkWatchLineCheckbox,
   countZkWatchLineUiStates,

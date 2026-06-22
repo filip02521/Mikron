@@ -177,7 +177,7 @@ export function ZkWatchLinesPanel({
 
   const hasTrackedScope = useMemo(
     () => hasZkWatchTrackedProsbaScope(watch),
-    [watch.line_checks]
+    [watch]
   );
   const hiddenOutsideScope = useMemo(
     () => countZkWatchLinesOutsideTrackedScope(watch, views),

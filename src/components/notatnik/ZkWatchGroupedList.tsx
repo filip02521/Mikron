@@ -371,13 +371,11 @@ export function ZkWatchGroupedList({
               watch={watch}
               anchorId={`watch-${watch.id}`}
               orderHints={zkHintsByWatchId?.get(watch.id)}
-              linkableOrders={linkableOrders}
               readOnly={readOnly}
               tourPreview={tourPreview}
               compact={compact}
               archived={archived}
               subiektReachable={subiektReachable}
-              linesModalOpen={openModalWatchId === watch.id}
               onRequestCloseWatch={requestCloseWatch}
               closePreviewLoading={closePreviewWatchId === watch.id}
               closeFlowError={closeFlowErrorByWatchId[watch.id]}
@@ -391,8 +389,6 @@ export function ZkWatchGroupedList({
               hasNewWarehouseArrival={unseenWatchIds?.has(watch.id) ?? false}
               hasNewZkLines={(newLineKeysByWatchId?.[watch.id]?.length ?? 0) > 0}
               newLineKeys={newLineKeysByWatchId?.[watch.id]}
-              onWarehouseArrivalSeen={onWarehouseArrivalSeen}
-              onNewZkLinesSeen={onNewZkLinesSeen}
               onProsbaScopeRequested={onProsbaScopeRequested}
             />
           );

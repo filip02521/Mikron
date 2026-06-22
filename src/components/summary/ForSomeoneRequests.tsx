@@ -107,6 +107,8 @@ function useProcurementSeenTracker() {
   }, [locallySeenKeys]);
 
   useEffect(() => {
+    const pendingOrderIds = pendingOrderIdsRef;
+    const pendingGroupKeys = pendingGroupKeysRef;
     const timers = timersRef.current;
     return () => {
       for (const timer of timers.values()) clearTimeout(timer);
@@ -115,10 +117,10 @@ function useProcurementSeenTracker() {
         clearTimeout(batchTimerRef.current);
         batchTimerRef.current = null;
       }
-      const ids = [...pendingOrderIdsRef.current];
+      const ids = [...pendingOrderIds.current];
       if (ids.length) {
-        pendingOrderIdsRef.current.clear();
-        pendingGroupKeysRef.current.clear();
+        pendingOrderIds.current.clear();
+        pendingGroupKeys.current.clear();
         void actionMarkProcurementRequestsSeen(ids).catch(() => {
           /* best effort przy opuszczeniu widoku */
         });

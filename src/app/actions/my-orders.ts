@@ -9,7 +9,6 @@ import { isSalesAccount } from "@/lib/auth-roles";
 import { createClient } from "@/lib/supabase/server";
 import {
   effectiveSalesCancelPhase,
-  isSalesCancelNoticePending,
   mergeSalesCancelUserAutoAck,
   planSalesCancelQuantity,
   resolveSalesCancelPhase,
@@ -26,7 +25,7 @@ import {
   salesCancelOrderSelect,
   type SalesCancelUndoRestore,
 } from "@/lib/orders/sales-cancel-db";
-import type { IndividualOrder, IndividualOrderStatus } from "@/types/database";
+import type { IndividualOrder } from "@/types/database";
 import { updateIndividualRequestGroup } from "@/lib/services/orders";
 import type { IndividualRequestEditPayload } from "@/lib/orders/individual-request-edit";
 import { UNDO_WINDOW_MS } from "@/lib/orders/daily-panel-undo";

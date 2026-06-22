@@ -1,5 +1,5 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
-import type { IndividualOrder, SalesZkWatch } from "@/types/database";
+import { describe, expect, it, vi } from "vitest";
+import type { SalesZkWatch } from "@/types/database";
 import type { ZkLinkableOrder } from "./zk-watch-order-link";
 import {
   collectZkWatchPendingAckItems,

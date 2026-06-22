@@ -41,6 +41,8 @@ export function VirtualList<T>({
   const parentRef = useRef<HTMLDivElement>(null);
   const enabled = enabledOverride ?? items.length >= threshold;
 
+  // TanStack Virtual — znany wyjątek React Compiler (funkcje z useVirtualizer).
+  // eslint-disable-next-line react-hooks/incompatible-library -- biblioteka zewnętrzna
   const virtualizer = useVirtualizer({
     count: enabled ? items.length : 0,
     getScrollElement: () => parentRef.current,

@@ -60,6 +60,7 @@ function ZkWatchClosePendingHostActive({
   const router = useRouter();
   const { requestShelfPickupNotice } = useMyOrderPickupShelfDialog();
   const watch = session.watch;
+  const { linesModalOpen, closeLinesModal } = session;
 
   const [open, setOpen] = useState(false);
   const [previewLoading, setPreviewLoading] = useState(true);
@@ -193,7 +194,7 @@ function ZkWatchClosePendingHostActive({
         if (cancelled || epochRef.current !== epoch) return;
         setItems(preview);
         if (preview.length > 0) {
-          if (session.linesModalOpen) session.closeLinesModal?.();
+          if (linesModalOpen) closeLinesModal?.();
           setOpen(true);
           return;
         }
@@ -223,8 +224,8 @@ function ZkWatchClosePendingHostActive({
     };
   }, [
     watch.id,
-    session.linesModalOpen,
-    session.closeLinesModal,
+    linesModalOpen,
+    closeLinesModal,
     canEdit,
     onClosed,
     onDismiss,

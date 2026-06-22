@@ -24,7 +24,6 @@ import {
   computeAllZkWatchOrderHints,
   indexZkLinkableOrdersBySalesPerson,
   zkWatchOrderHintsForWatch,
-  type ZkWatchOrderHints,
 } from "@/lib/sales/zk-watch-order-link";
 import {
   buildZkArrivedSnapshot,
@@ -623,7 +622,7 @@ export function NotatnikClient({
         refresh();
       }
     },
-    [salesPersonId, zkOrdersBySalesPerson, refresh]
+    [salesPersonId, zkOrdersBySalesPerson, zkLinkableOrders, refresh]
   );
 
   const markWarehouseArrivalSeen = useCallback(

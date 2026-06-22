@@ -1,6 +1,5 @@
 "use client";
 
-import { useRouter } from "next/navigation";
 import { useMemo, useState, type KeyboardEvent, type MouseEvent } from "react";
 import { actionRefreshZkWatchFromSubiekt, actionRestoreZkWatch, actionDeleteArchivedZkWatch } from "@/app/actions/sales-notepad";
 import { Badge } from "@/components/ui/Badge";
@@ -14,7 +13,7 @@ import {
   type ZkProsbaPrefillOptions,
 } from "@/lib/orders/zk-watch-prosba-prefill";
 import { appendMojeFocusOrderIds } from "@/lib/orders/moje-order-focus";
-import type { ZkWatchOrderHints, ZkLinkableOrder } from "@/lib/sales/zk-watch-order-link";
+import type { ZkWatchOrderHints } from "@/lib/sales/zk-watch-order-link";
 import { collectPartialLineKeysFromCoverage } from "@/lib/sales/zk-watch-order-link";
 import {
   allZkWatchLinesCheckboxChecked,
@@ -52,7 +51,6 @@ export function ZkWatchCard({
   watch,
   anchorId,
   orderHints,
-  linkableOrders = [],
   readOnly,
   tourPreview = false,
   onRestored,
@@ -62,12 +60,9 @@ export function ZkWatchCard({
   subiektReachable = true,
   compact = true,
   onLinesModalOpenChange,
-  linesModalOpen = false,
   hasNewWarehouseArrival = false,
   hasNewZkLines = false,
   newLineKeys,
-  onNewZkLinesSeen,
-  onWarehouseArrivalSeen,
   onProsbaScopeRequested,
   onRequestCloseWatch,
   closePreviewLoading = false,
@@ -77,7 +72,6 @@ export function ZkWatchCard({
   /** Kotwica #watch-… — na karcie, nie na liście (unika obcinania obwódki). */
   anchorId?: string;
   orderHints?: ZkWatchOrderHints;
-  linkableOrders?: ZkLinkableOrder[];
   readOnly?: boolean;
   tourPreview?: boolean;
   onRestored?: (watch: SalesZkWatch) => void;
@@ -91,19 +85,15 @@ export function ZkWatchCard({
   compact?: boolean;
   subiektReachable?: boolean;
   onLinesModalOpenChange?: (open: boolean, options?: { focusNote?: boolean }) => void;
-  linesModalOpen?: boolean;
   hasNewWarehouseArrival?: boolean;
   hasNewZkLines?: boolean;
   newLineKeys?: string[];
-  onNewZkLinesSeen?: (watchId: string) => void;
-  onWarehouseArrivalSeen?: (watchId: string) => void;
   /** Ponowne otwarcie modala zakresu prośby (gdy jeszcze nie skonfigurowano). */
   onProsbaScopeRequested?: (watchId: string) => void;
   onRequestCloseWatch?: (watch: SalesZkWatch) => void;
   closePreviewLoading?: boolean;
   closeFlowError?: string;
 }) {
-  const router = useRouter();
   const [restoring, setRestoring] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
@@ -327,16 +317,6 @@ export function ZkWatchCard({
 
   function openLinesModal(focusNote = false) {
     onLinesModalOpenChange?.(true, { focusNote });
-  }
-
-  function closeLinesModal() {
-    onLinesModalOpenChange?.(false);
-    if (hasNewWarehouseArrival) {
-      onWarehouseArrivalSeen?.(watch.id);
-    }
-    if (hasNewZkLines) {
-      onNewZkLinesSeen?.(watch.id);
-    }
   }
 
   const rowAriaLabel = [
