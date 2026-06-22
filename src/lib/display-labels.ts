@@ -4,6 +4,7 @@ import {
   parseDateOnly,
   resolveSupplierInterval,
 } from "@/lib/orders/dates";
+import { warsawDateKeyFromIso } from "@/lib/time/warsaw";
 import type { OrderType, SupplierLocation, VacationNote } from "@/types/database";
 
 const LOCATION_LABELS: Record<SupplierLocation, string> = {
@@ -117,10 +118,12 @@ export function formatStockPeriodCompact(
   return v;
 }
 
-/** ISO yyyy-mm-dd lub pełny timestamp → dd.MM.yyyy */
+/** ISO yyyy-mm-dd lub pełny timestamp → dd.MM.yyyy (kalendarz Europe/Warsaw dla timestampów). */
 export function formatPlDate(iso: string | null | undefined): string {
   if (!iso) return "—";
-  const parsed = parseDateOnly(iso);
+  const normalized =
+    iso.includes("T") || iso.includes(" ") ? warsawDateKeyFromIso(iso) : iso;
+  const parsed = parseDateOnly(normalized);
   if (parsed) return formatDateString(parsed, "dd.MM.yyyy");
   const [y, m, d] = iso.split("-");
   if (!y || !m || !d) return iso;
