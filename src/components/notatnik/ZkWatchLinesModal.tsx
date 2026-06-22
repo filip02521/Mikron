@@ -8,6 +8,7 @@ import { cn } from "@/lib/cn";
 import { salesTypography } from "@/lib/ui/ontime-theme";
 import {
   formatZkWatchDisplayNumber,
+  shouldShowZkWatchSubiektRealizedCloseHint,
   zkWatchStatusLabel,
 } from "@/lib/sales/notepad-format";
 import { formatFollowUpLabel, isFollowUpDue } from "@/lib/sales/notepad-follow-up";
@@ -81,6 +82,28 @@ export function ZkWatchLinesModal({
   }
 
   const lineViews = useMemo(() => buildZkWatchLineViews(watch), [watch]);
+  const showSubiektRealizedCloseHint = useMemo(
+    () =>
+      shouldShowZkWatchSubiektRealizedCloseHint(watch, {
+        lineViews,
+        newLineKeys: newLineKeys ?? [],
+        inStockLineKeys: inStockLineKeys ?? [],
+        scopeExcludedLineKeys: scopeExcludedLineKeys ?? [],
+        informacjaReadyLineKeys: informacjaReadyLineKeys ?? [],
+        informacjaAcknowledgedLineKeys: informacjaAcknowledgedLineKeys ?? [],
+        lineCoverageByKey,
+      }),
+    [
+      watch,
+      lineViews,
+      newLineKeys,
+      inStockLineKeys,
+      scopeExcludedLineKeys,
+      informacjaReadyLineKeys,
+      informacjaAcknowledgedLineKeys,
+      lineCoverageByKey,
+    ]
+  );
   const checkboxSummary = useMemo(
     () =>
       summarizeZkWatchLineCheckboxes({
@@ -228,6 +251,7 @@ export function ZkWatchLinesModal({
               readOnly={readOnly}
               tourPreview={tourPreview}
               archived={archived}
+              showSubiektRealizedCloseHint={showSubiektRealizedCloseHint}
             />
             <ZkWatchLinesPanel
               key={watchKey}

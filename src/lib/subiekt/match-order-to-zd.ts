@@ -92,6 +92,42 @@ export function orderRemainingQuantity(
   return progress.hasNumericQty ? progress.remaining : null;
 }
 
+/** Czy w prośbie została reszta po już dostarczonej części (częściowa realizacja). */
+export function orderHasPartialDeliveryRemaining(
+  order: Pick<IndividualOrder, "quantity" | "delivered_quantity">
+): boolean {
+  const progress = getDeliveryProgress(
+    order.quantity ?? "-",
+    order.delivered_quantity ?? "-"
+  );
+  if (!progress.hasNumericQty) return false;
+  return progress.delivered > 0 && (progress.remaining ?? 0) > 0;
+}
+
+/** Czy dokument ZD nadal opisuje oczekiwaną resztę (nie pierwotne pełne ZD po częściowej dostawie). */
+export function persistedZdFulfillsOrderRemaining(
+  order: Pick<
+    IndividualOrder,
+    | "subiekt_tw_id"
+    | "symbol"
+    | "products"
+    | "mikran_code"
+    | "quantity"
+    | "delivered_quantity"
+  >,
+  doc: SubiektDocument,
+  at: Date = new Date()
+): boolean {
+  if (!isActiveZdFulfillmentDocument(doc, at)) return false;
+  if (!orderMatchesZdDocument(order, doc)) return false;
+  const qty = bestMatchingLineQuantity(order, doc);
+  if (!qty.coversRemaining) return false;
+  if (orderHasPartialDeliveryRemaining(order)) {
+    return qty.tightness === 0;
+  }
+  return true;
+}
+
 /** Dopasowanie pozycji prośby do linii ZD (tw_Id, symbol, kod Mikran). */
 export function matchOrderToZdLine(
   order: Pick<IndividualOrder, "subiekt_tw_id" | "symbol" | "products" | "mikran_code">,
@@ -116,6 +152,15 @@ export function matchOrderToZdLine(
 
   const orderMikran = normalizeSymbol(order.mikran_code);
   if (orderMikran && lineSym && orderMikran === lineSym) {
+    const orderTw = order.subiekt_tw_id;
+    if (
+      orderTw != null &&
+      orderTw > 0 &&
+      orderMikran === String(orderTw) &&
+      (towId == null || Math.trunc(orderTw) !== towId)
+    ) {
+      return false;
+    }
     return true;
   }
 
@@ -139,7 +184,12 @@ export function orderMatchesZdDocument(
 
   const mikran = normalizeSymbol(order.mikran_code);
   if (mikran && profile.symbols.includes(mikran)) {
-    return true;
+    const twId = order.subiekt_tw_id;
+    if (twId != null && twId > 0 && mikran === String(twId)) {
+      if (profile.twIds.includes(Math.trunc(twId))) return true;
+    } else {
+      return true;
+    }
   }
 
   return (doc.dok_Pozycja ?? []).some((line) => matchOrderToZdLine(order, line));
@@ -222,6 +272,8 @@ export function findBestMatchingZdDocument(
   );
   if (!candidates.length) return null;
 
+  const partialRemaining = orderHasPartialDeliveryRemaining(order);
+
   const ranked = candidates
     .map((doc) => {
       const qty = bestMatchingLineQuantity(order, doc);
@@ -236,9 +288,17 @@ export function findBestMatchingZdDocument(
     })
     .sort((a, b) => {
       const aPersist =
-        a.persisted && a.coversRemaining ? 1 : 0;
+        a.persisted &&
+        a.coversRemaining &&
+        (!partialRemaining || a.tightness === 0)
+          ? 1
+          : 0;
       const bPersist =
-        b.persisted && b.coversRemaining ? 1 : 0;
+        b.persisted &&
+        b.coversRemaining &&
+        (!partialRemaining || b.tightness === 0)
+          ? 1
+          : 0;
       if (aPersist !== bPersist) return bPersist - aPersist;
       if (a.coversRemaining !== b.coversRemaining) return a.coversRemaining ? -1 : 1;
       if (a.tightness != null && b.tightness != null && a.tightness !== b.tightness) {
@@ -269,7 +329,10 @@ export function isConfidentZdMatchForOrder(
   const persistedId = order.zd_fulfillment_dok_id;
   if (persistedId != null && persistedId > 0) {
     if (Math.trunc(Number(doc.dok_Id)) !== Math.trunc(persistedId)) return false;
-    return bestMatchingLineQuantity(order, doc).coversRemaining;
+    const qty = bestMatchingLineQuantity(order, doc);
+    if (!qty.coversRemaining) return false;
+    if (orderHasPartialDeliveryRemaining(order)) return qty.tightness === 0;
+    return true;
   }
   const qty = bestMatchingLineQuantity(order, doc);
   return qty.coversRemaining && qty.tightness === 0;

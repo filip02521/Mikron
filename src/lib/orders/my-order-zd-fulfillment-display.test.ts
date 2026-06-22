@@ -174,6 +174,15 @@ describe("buildCollapsedZdMixedNoMatchHint", () => {
     ]);
     expect(hint).toBe("2 pozycje bez terminu w ZD — rozwiń po szacunek z historii");
   });
+
+  it("gdy wszystkie bez ZD czekają na sync — poprawna odmiana", () => {
+    const hint = buildCollapsedZdMixedNoMatchHint([
+      { zdEtaPending: true },
+      { zdEtaPending: true },
+      { zdFulfillment: { deadline: "2026-06-24", dokNr: "ZD/1", syncedAt: null, source: "zd" } },
+    ]);
+    expect(hint).toBe("2 pozycje czekają na termin w ZD — rozwiń po szczegóły");
+  });
 });
 
 describe("zdFulfillmentCollapsedCaption", () => {

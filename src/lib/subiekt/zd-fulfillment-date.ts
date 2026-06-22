@@ -14,14 +14,31 @@ export function isActiveZdFulfillmentDeadline(
   return parsed.getTime() >= today.getTime();
 }
 
-/** Aktywny ZD — ma termin realizacji ≥ dziś. */
+/** Zrealizowany dokument ZD w Subiekcie (dok_Status = 8, jak ZK). */
+export function isFulfilledZdDocumentStatus(
+  doc: Pick<SubiektDocument, "dok_Status">
+): boolean {
+  return doc.dok_Status === 8;
+}
+
+/**
+ * Otwarty ZD do wyszukiwania terminu:
+ * - pomija Zrealizowane (dok_Status 8),
+ * - Aktywne (7) traktuje jako niezrealizowane,
+ * - przy braku statusu — termin realizacji ≥ dziś.
+ */
 export function isActiveZdFulfillmentDocument(
   doc: Pick<
     SubiektDocument,
-    "dok_TerminRealizacji" | "dok_DataRealizacji" | "dok_Termin"
+    | "dok_Status"
+    | "dok_TerminRealizacji"
+    | "dok_DataRealizacji"
+    | "dok_Termin"
   >,
   at: Date = new Date()
 ): boolean {
+  if (isFulfilledZdDocumentStatus(doc)) return false;
+  if (doc.dok_Status === 7) return true;
   return isActiveZdFulfillmentDeadline(parseZdFulfillmentDeadline(doc), at);
 }
 

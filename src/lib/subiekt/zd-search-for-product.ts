@@ -1,9 +1,8 @@
 import type { SubiektListParams } from "@/lib/subiekt/api";
 import {
-  zdContractorInitialDataOdForPlacement,
+  zdContractorInitialDataOd,
   zdContractorRecentDataOd,
   zdPlacementListWindowForApi,
-  placementIsOlderThanRollingWindow,
   zdProductSearchDataOd,
 } from "@/lib/subiekt/zd-search-scope";
 import { parseSubiektKhId } from "@/lib/subiekt/parse-kh-id";
@@ -219,7 +218,10 @@ export function zdSearchPlansForProductSupplierLookup(
   const symbol = effectiveProductSymbol(product);
 
   if (symbol.length >= 3) {
-    plans.push({ symbol, search: symbol, dataOd, pageSize: 25, page: 1 });
+    plans.push({ symbol, dataOd, pageSize: 25, page: 1 });
+    for (const khId of linkedKhIds) {
+      plans.push({ symbol, khId, dataOd, pageSize: 25, page: 1 });
+    }
   }
 
   for (const brand of brandTokens) {
@@ -274,10 +276,9 @@ export function zdSearchPlansForOrderInput(input: {
 }): SubiektListParams[] {
   const symbol = (input.symbol ?? "").trim();
   const products = (input.products ?? "").trim();
-  const listWindow =
-    input.placementAt && placementIsOlderThanRollingWindow(input.placementAt)
-      ? zdPlacementListWindowForApi(input.placementAt)
-      : { dataOd: zdContractorInitialDataOdForPlacement(input.placementAt) };
+  const listWindow = input.placementAt?.trim()
+    ? zdPlacementListWindowForApi(input.placementAt)
+    : { dataOd: zdContractorInitialDataOd() };
   const dataOd = listWindow.dataOd;
   const dataDo = listWindow.dataDo;
   const listOpts = { maxTokens: ZD_ORDER_SEARCH_MAX_TOKENS, pageSize: 12 };
@@ -291,12 +292,22 @@ export function zdSearchPlansForOrderInput(input: {
     ...(dataDo ? { dataDo } : {}),
   });
 
+  const orderTwId = Math.trunc(Number(input.subiekt_tw_id));
+  if (Number.isFinite(orderTwId) && orderTwId > 0) {
+    plans.push(
+      withDateWindow({
+        id: orderTwId,
+        pageSize: 25,
+        page: 1,
+      })
+    );
+  }
+
   // Symbol pierwszy — precyzyjniejszy niż marka z nazwy (np. H364RNF przy symbol „-”).
   if (effectiveSymbol.length >= 3) {
     plans.push(
       withDateWindow({
         symbol: effectiveSymbol,
-        search: effectiveSymbol,
         pageSize: listOpts.pageSize,
         page: 1,
       })
@@ -351,6 +362,7 @@ function zdLiveSearchPlanScore(
   const symbol = plan.symbol?.trim() ?? "";
   const search = plan.search?.trim() ?? "";
 
+  if (plan.id != null && Number(plan.id) > 0) score += 120;
   if (symbol.length >= 3) score += 100;
   if (symbol && search && symbol === search) score += 50;
   if (primaryKhId != null && plan.khId === primaryKhId) score += 40;

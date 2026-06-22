@@ -5,19 +5,79 @@ import {
   combinedProductSymbolPreview,
   formatSubiektProductOption,
   inferCombinedProductSearchField,
+  inferProductZdLookupSearchField,
   looksLikeProductSymbol,
   minProductSearchLength,
   mergeSubiektProductSearchResults,
   patchFromCombinedProductInput,
   productSearchParams,
   productSuggestSearchField,
+  rankSubiektProductsForLookupQuery,
+  filterPluSuggestResultsForZdLookup,
+  expandProductNameSearchQueries,
 } from "./product-pick";
+
+describe("inferProductZdLookupSearchField", () => {
+  it("rozpoznaje kod Mikran po samych cyfrach", () => {
+    expect(inferProductZdLookupSearchField("1")).toBe("plu");
+    expect(inferProductZdLookupSearchField("123456")).toBe("plu");
+  });
+
+  it("używa symbolu lub nazwy dla pozostałych fraz", () => {
+    expect(inferProductZdLookupSearchField("KP-213")).toBe("symbol");
+    expect(inferProductZdLookupSearchField("freza diamentowa")).toBe("name");
+  });
+});
 
 describe("productSuggestSearchField", () => {
   it("używa combined dla scalonego pola produktu", () => {
     expect(productSuggestSearchField("name")).toBe("combined");
     expect(productSuggestSearchField("symbol")).toBe("combined");
     expect(productSuggestSearchField("plu")).toBe("plu");
+  });
+});
+
+describe("filterPluSuggestResultsForZdLookup", () => {
+  it("zostawia wyniki po symbolu gdy PLU się nie zgadza", () => {
+    const products = [
+      { tw_Id: 1, tw_Symbol: "18080500", tw_PLU: "99999" },
+      { tw_Id: 2, tw_Symbol: "16801001", tw_PLU: "896" },
+    ];
+    expect(filterPluSuggestResultsForZdLookup(products, "18080500")).toEqual([products[0]]);
+  });
+
+  it("preferuje dokładny kod Mikran", () => {
+    const products = [
+      { tw_Id: 1, tw_Symbol: "RS-F2-SGAM-01", tw_PLU: "13461" },
+      { tw_Id: 2, tw_Symbol: "OTHER", tw_PLU: "99999" },
+    ];
+    expect(filterPluSuggestResultsForZdLookup(products, "13461")).toEqual([products[0]]);
+  });
+});
+
+describe("expandProductNameSearchQueries", () => {
+  it("normalizuje odmianę rapidu i skraca frazę do rapid 1l", () => {
+    expect(expandProductNameSearchQueries("h rapidu 1l")).toEqual([
+      "h rapidu 1l",
+      "h rapid 1l",
+      "rapid 1l",
+    ]);
+  });
+});
+
+describe("rankSubiektProductsForLookupQuery", () => {
+  it("preferuje dokładny symbol przed wariantem outlet", () => {
+    const ranked = rankSubiektProductsForLookupQuery(
+      [
+        { tw_Id: 4547, tw_Symbol: "OUTLETRS-F2-SGAM-01", tw_Nazwa: "Outlet" },
+        { tw_Id: 13461, tw_Symbol: "RS-F2-SGAM-01", tw_Nazwa: "Formlabs żywica" },
+      ],
+      "RS-F2-SGAM-01"
+    );
+    expect(ranked.map((p) => p.tw_Symbol)).toEqual([
+      "RS-F2-SGAM-01",
+      "OUTLETRS-F2-SGAM-01",
+    ]);
   });
 });
 

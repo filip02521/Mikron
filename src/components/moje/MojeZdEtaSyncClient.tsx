@@ -3,9 +3,12 @@
 import { useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import {
+  buildMojeZdEtaSessionState,
   shouldMarkMojeZdEtaSessionDone,
   shouldRetryMojeZdEtaSync,
+  shouldSkipMojeZdEtaSessionSync,
   type MojeZdEtaRefreshResult,
+  type MojeZdEtaSessionState,
   ZD_ETA_MOJE_CLIENT_FETCH_TIMEOUT_MS,
   ZD_ETA_MOJE_VISIBILITY_RESYNC_MS,
 } from "@/lib/subiekt/zd-eta-sync";
@@ -15,23 +18,26 @@ const MAX_LOCK_RETRIES = 2;
 const MAX_NETWORK_RETRIES = 2;
 const NETWORK_RETRY_MS = 3_000;
 
-const MOJE_ZD_ETA_SESSION_KEY = "moje-zd-eta-client-sync-v1";
+const MOJE_ZD_ETA_SESSION_KEY = "moje-zd-eta-client-sync-v3";
 
-function getMojeZdEtaSessionDoneCount(): number | null {
+function readMojeZdEtaSessionState(): MojeZdEtaSessionState | null {
   if (typeof window === "undefined") return null;
   try {
     const raw = sessionStorage.getItem(MOJE_ZD_ETA_SESSION_KEY);
     if (!raw) return null;
-    const count = Number(raw);
-    return Number.isFinite(count) && count >= 0 ? count : null;
+    const parsed = JSON.parse(raw) as MojeZdEtaSessionState;
+    if (
+      typeof parsed.eligibleAtRun !== "number" ||
+      typeof parsed.candidates !== "number" ||
+      typeof parsed.processed !== "number" ||
+      typeof parsed.at !== "number"
+    ) {
+      return null;
+    }
+    return parsed;
   } catch {
     return null;
   }
-}
-
-function shouldSkipMojeZdEtaSessionSync(syncEligibleCount: number): boolean {
-  const doneCount = getMojeZdEtaSessionDoneCount();
-  return doneCount != null && doneCount >= syncEligibleCount;
 }
 
 export function clearMojeZdEtaSessionSync(): void {
@@ -43,27 +49,33 @@ export function clearMojeZdEtaSessionSync(): void {
   }
 }
 
-function markMojeZdEtaSessionDone(syncEligibleCount: number): void {
+function writeMojeZdEtaSessionState(state: MojeZdEtaSessionState): void {
   try {
-    sessionStorage.setItem(MOJE_ZD_ETA_SESSION_KEY, String(syncEligibleCount));
+    sessionStorage.setItem(MOJE_ZD_ETA_SESSION_KEY, JSON.stringify(state));
   } catch {
     /* ignore */
   }
 }
 
 /**
- * Po wejściu na /moje uruchamia sync terminów ZD (live search) dla opóźnionych pozycji
+ * Po wejściu na /moje uruchamia sync terminów ZD (live search) dla kwalifikujących się pozycji
  * i odświeża widok po zakończeniu próby (sukces, brak dopasowania, timeout lub Subiekt offline).
  * Po dłuższej nieobecności na karcie ponawia sync (np. zmiana terminu przez zakupy).
  */
-export function MojeZdEtaSyncClient({ syncEligibleCount }: { syncEligibleCount: number }) {
+export function MojeZdEtaSyncClient({
+  syncEligibleCount,
+  subiektReachable = true,
+}: {
+  syncEligibleCount: number;
+  subiektReachable?: boolean;
+}) {
   const router = useRouter();
   const startedRef = useRef(false);
   const hiddenAtRef = useRef<number | null>(null);
   const runSyncRef = useRef<(() => void) | null>(null);
 
   useEffect(() => {
-    if (syncEligibleCount <= 0) return;
+    if (syncEligibleCount <= 0 || !subiektReachable) return;
 
     let cancelled = false;
 
@@ -76,7 +88,7 @@ export function MojeZdEtaSyncClient({ syncEligibleCount }: { syncEligibleCount: 
         return;
       }
       if (body && shouldMarkMojeZdEtaSessionDone(body, syncEligibleCount)) {
-        markMojeZdEtaSessionDone(syncEligibleCount);
+        writeMojeZdEtaSessionState(buildMojeZdEtaSessionState(syncEligibleCount, body));
       } else {
         startedRef.current = false;
       }
@@ -91,7 +103,7 @@ export function MojeZdEtaSyncClient({ syncEligibleCount }: { syncEligibleCount: 
       );
 
       try {
-        const res = await fetch("/api/sales/zd-eta-refresh", {
+        const res = await fetch("/api/sales/zd-eta-refresh?auto=1", {
           method: "POST",
           signal: controller.signal,
         });
@@ -128,7 +140,9 @@ export function MojeZdEtaSyncClient({ syncEligibleCount }: { syncEligibleCount: 
     };
 
     const startSync = () => {
-      if (shouldSkipMojeZdEtaSessionSync(syncEligibleCount)) return;
+      if (shouldSkipMojeZdEtaSessionSync(syncEligibleCount, readMojeZdEtaSessionState())) {
+        return;
+      }
       if (startedRef.current) return;
       startedRef.current = true;
       void run();
@@ -162,7 +176,7 @@ export function MojeZdEtaSyncClient({ syncEligibleCount }: { syncEligibleCount: 
       runSyncRef.current = null;
       document.removeEventListener("visibilitychange", onVisibilityChange);
     };
-  }, [syncEligibleCount, router]);
+  }, [syncEligibleCount, subiektReachable, router]);
 
   return null;
 }

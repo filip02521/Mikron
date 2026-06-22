@@ -8,6 +8,7 @@ vi.mock("@/lib/supabase/admin", () => ({
 import {
   fetchZdDocsByDokIds,
   filterZdIndexRowsForPlacement,
+  filterZdIndexRowsForPlacements,
   zdIndexRowsToCandidates,
 } from "./zd-eta-index-search";
 import { sortZdCandidatesByPlacementDate } from "./zd-placement-sort";
@@ -27,6 +28,11 @@ describe("filterZdIndexRowsForPlacement", () => {
   it("zostawia ZD z okna wokół lutowego zgłoszenia", () => {
     const filtered = filterZdIndexRowsForPlacement(rows, "2026-02-10");
     expect(filtered.map((r) => r.dok_id)).toEqual([1, 2]);
+  });
+
+  it("filterZdIndexRowsForPlacements — suma okien wielu dat", () => {
+    const filtered = filterZdIndexRowsForPlacements(rows, ["2026-02-10", "2026-06-15"]);
+    expect(filtered.map((r) => r.dok_id)).toEqual([1, 2, 3]);
   });
 });
 describe("zdIndexRowsToCandidates", () => {

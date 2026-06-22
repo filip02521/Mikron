@@ -16,25 +16,28 @@ export function collectZdEtaSyncSalesPersonIds(
 
 export async function runZdEtaSyncForSalesPeople(
   salesPersonIds: readonly string[]
-): Promise<{ updated: number; processed: number }> {
+): Promise<{ updated: number; processed: number; cleared: number }> {
   const unique = [...new Set(salesPersonIds.map((id) => id.trim()).filter(Boolean))];
   let updated = 0;
   let processed = 0;
+  let cleared = 0;
 
   for (const salesPersonId of unique) {
     try {
       const result = await runZdEtaSyncForSalesPerson(salesPersonId, {
+        force: true,
         allowLiveSearch: true,
       });
       if (result.skipped) continue;
       updated += result.updated;
       processed += result.processed;
+      cleared += result.cleared ?? 0;
     } catch (e) {
       console.error("[runZdEtaSyncForSalesPeople]", salesPersonId, e);
     }
   }
 
-  return { updated, processed };
+  return { updated, processed, cleared };
 }
 
 /** Po oznaczeniu prośb jako Zamowione — sync terminów ZD w tle (live search). */
@@ -46,8 +49,8 @@ export async function scheduleZdEtaSyncAfterProcurement(
 
   const { after } = await import("next/server");
   after(async () => {
-    const { updated } = await runZdEtaSyncForSalesPeople(unique);
-    if (updated > 0) {
+    const { updated, processed, cleared } = await runZdEtaSyncForSalesPeople(unique);
+    if (updated > 0 || processed > 0 || cleared > 0) {
       const { revalidatePath } = await import("next/cache");
       revalidatePath("/moje");
     }

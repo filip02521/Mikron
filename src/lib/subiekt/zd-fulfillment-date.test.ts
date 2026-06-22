@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   isActiveZdFulfillmentDeadline,
   isActiveZdFulfillmentDocument,
+  isFulfilledZdDocumentStatus,
   parseZdFulfillmentDeadline,
 } from "./zd-fulfillment-date";
 
@@ -60,5 +61,24 @@ describe("isActiveZdFulfillmentDeadline", () => {
         at
       )
     ).toBe(false);
+  });
+
+  it("pomija ZD ze statusem Zrealizowane (8), nawet z przyszłym terminem", () => {
+    expect(isFulfilledZdDocumentStatus({ dok_Status: 8 })).toBe(true);
+    expect(
+      isActiveZdFulfillmentDocument(
+        { dok_Status: 8, dok_TerminRealizacji: "2099-01-01" },
+        at
+      )
+    ).toBe(false);
+  });
+
+  it("uwzględnia ZD Aktywne (7) niezależnie od terminu", () => {
+    expect(
+      isActiveZdFulfillmentDocument(
+        { dok_Status: 7, dok_TerminRealizacji: "2020-01-01" },
+        at
+      )
+    ).toBe(true);
   });
 });

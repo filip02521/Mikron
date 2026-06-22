@@ -5,6 +5,7 @@ import {
   ZD_CONTRACTOR_RECENT_MONTHS,
   ZD_PLACEMENT_BROWSE_MONTHS_AFTER,
   ZD_PLACEMENT_BROWSE_MONTHS_BEFORE,
+  buildZdSearchPlacements,
   placementIsOlderThanRollingWindow,
   sortMonthChunksNearPlacement,
   zdContractorExtendedDataOd,
@@ -14,6 +15,7 @@ import {
   zdContractorRecentDataOd,
   zdDataDoFromPlacement,
   zdDataOdFromPlacement,
+  zdMergedPlacementBrowseMonthChunks,
   zdPlacementBrowseMonthChunks,
   zdPlacementIssueDateInBrowseWindow,
   zdPlacementListWindowForApi,
@@ -104,5 +106,32 @@ describe("zd-search-scope", () => {
       { dataOd: "2026-05-01", dataDo: "2026-06-01" },
       { dataOd: "2026-06-01", dataDo: "2026-07-01" },
     ]);
+  });
+
+  it("buildZdSearchPlacements — prośba + historia dostawcy, bez duplikatów", () => {
+    const syncAt = new Date("2026-06-18T12:00:00+02:00");
+    expect(
+      buildZdSearchPlacements("2026-05-12", ["2026-04-14", "2026-05-26", "2026-03-10"], syncAt)
+    ).toEqual(["2026-05-12", "2026-05-26", "2026-04-14", "2026-03-10"]);
+  });
+
+  it("zdMergedPlacementBrowseMonthChunks — łączy okna prośby i zamówień głównych", () => {
+    const syncAt = new Date("2026-06-18T12:00:00+02:00");
+    const merged = zdMergedPlacementBrowseMonthChunks(
+      ["2026-05-12", "2026-04-14"],
+      "2026-05-12",
+      syncAt
+    );
+    expect(merged.some((chunk) => chunk.dataOd === "2026-04-01")).toBe(true);
+    expect(merged.some((chunk) => chunk.dataOd === "2026-05-01")).toBe(true);
+    expect(merged[0]).toEqual({ dataOd: "2026-05-01", dataDo: "2026-06-01" });
+  });
+
+  it("zdMergedPlacementBrowseMonthChunks — bez daty zaczyna od bieżącego miesiąca", () => {
+    const syncAt = new Date("2026-06-18T12:00:00+02:00");
+    expect(zdMergedPlacementBrowseMonthChunks([], null, syncAt)[0]).toEqual({
+      dataOd: "2026-06-01",
+      dataDo: "2026-07-01",
+    });
   });
 });

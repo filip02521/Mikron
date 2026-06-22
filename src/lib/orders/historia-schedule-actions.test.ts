@@ -3,6 +3,7 @@ import { formatDateString } from "@/lib/orders/dates";
 import {
   classifyHistoriaAction,
   replayHistoriaScheduleState,
+  supplierOrderDatesFromHistoria,
 } from "@/lib/orders/historia-schedule-actions";
 
 describe("classifyHistoriaAction", () => {
@@ -56,6 +57,16 @@ describe("replayHistoriaScheduleState", () => {
       },
     ]);
     expect(formatDateString(state.orderDate!)).toBe("2026-06-13");
+  });
+
+  it("supplierOrderDatesFromHistoria — tylko akcje Zamówione", () => {
+    expect(
+      supplierOrderDatesFromHistoria([
+        { action_at: "2026-04-14T08:00:00+02:00", action: "Zamówione" },
+        { action_at: "2026-05-01T10:00:00+02:00", action: "Przesunięte o 2 tyg." },
+        { action_at: "2026-05-26T09:00:00+02:00", action: "Zamówione" },
+      ])
+    ).toEqual(["2026-04-14", "2026-05-26"]);
   });
 
   it("przesunięcie po zamówieniu ustawia shift_date z kolumny następnej daty", () => {

@@ -231,7 +231,7 @@ describe("formatZkProsbaScopeLineBadge", () => {
     ).toBe("Do zamówienia · stan 3 szt.");
   });
 
-  it("częściowy stan bez zaznaczenia — pominięte ze stanem", () => {
+  it("częściowy stan bez zaznaczenia — do zamówienia ze stanem", () => {
     expect(
       formatZkProsbaScopeLineBadge({
         sufficient: false,
@@ -239,7 +239,18 @@ describe("formatZkProsbaScopeLineBadge", () => {
         available: 3,
         hasStockData: true,
       })
-    ).toBe("Pominięte · stan 3 szt.");
+    ).toBe("Do zamówienia · stan 3 szt.");
+  });
+
+  it("brak pokrycia stanem bez zaznaczenia — do zamówienia", () => {
+    expect(
+      formatZkProsbaScopeLineBadge({
+        sufficient: false,
+        markedForOrder: false,
+        available: 0,
+        hasStockData: true,
+      })
+    ).toBe("Do zamówienia");
   });
 });
 

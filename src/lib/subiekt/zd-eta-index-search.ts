@@ -171,9 +171,21 @@ export function filterZdIndexRowsForPlacement(
   placementIso: string | null | undefined,
   at: Date = new Date()
 ): ZdIndexRow[] {
-  if (!placementIso?.trim()) return [...rows];
+  return filterZdIndexRowsForPlacements(rows, placementIso ? [placementIso] : [], at);
+}
+
+/** Wiersze indeksu w oknach wokół dowolnej z wielu dat zamówień. */
+export function filterZdIndexRowsForPlacements(
+  rows: readonly ZdIndexRow[],
+  placements: readonly (string | null | undefined)[],
+  at: Date = new Date()
+): ZdIndexRow[] {
+  const active = placements.filter((placement) => placement?.trim());
+  if (!active.length) return [...rows];
   return rows.filter((row) =>
-    zdPlacementIssueDateInBrowseWindow(row.dok_data_wyst, placementIso, at)
+    active.some((placement) =>
+      zdPlacementIssueDateInBrowseWindow(row.dok_data_wyst, placement, at)
+    )
   );
 }
 

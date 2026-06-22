@@ -1,10 +1,12 @@
 import { describe, expect, it, vi } from "vitest";
 import {
   countZdEtaMojeClientSyncTriggers,
+  countZdEtaMojeClientSyncMount,
   countZdEtaSyncTriggers,
   hasKnownZdFulfillmentDocId,
   hasPersistedZdFulfillment,
   zdEtaSyncOrderPriority,
+  zdEtaSyncSupplierOrderPriority,
   isZdEtaOverdueCandidate,
   isZdEtaSyncEligible,
   needsZdEtaSync,
@@ -12,7 +14,10 @@ import {
   selectZdEtaSyncCandidates,
   shouldMarkMojeZdEtaSessionDone,
   shouldRetryMojeZdEtaSync,
+  shouldSkipMojeZdEtaSessionSync,
+  buildMojeZdEtaSessionState,
   tryRefreshKnownZdDocumentForOrder,
+  refreshKnownZdDocumentForOrder,
   zdDocumentMatchesSupplierKhIds,
   zdEtaSyncLockKey,
   zdEtaSyncTtlMsForOrder,
@@ -301,6 +306,26 @@ describe("needsZdEtaSync", () => {
       )
     ).toBe(true);
   });
+
+  it("wymusza sync przy częściowej dostawie z zapisanym ZD (szukamy ZD z brakami)", () => {
+    const now = new Date("2026-06-18T12:00:00+02:00").getTime();
+    expect(
+      needsZdEtaSync(
+        baseOrder({
+          status: "Czesciowo_zrealizowane",
+          quantity: "5",
+          delivered_quantity: "2",
+          zd_fulfillment_source: "zd",
+          zd_fulfillment_deadline: "2026-07-10",
+          zd_fulfillment_dok_id: 31,
+          zd_fulfillment_synced_at: new Date(now - 60_000).toISOString(),
+        }),
+        stats,
+        "LACZNIE",
+        now
+      )
+    ).toBe(true);
+  });
 });
 
 describe("hasPersistedZdFulfillment", () => {
@@ -356,6 +381,30 @@ describe("zdEtaSyncOrderPriority", () => {
     };
     expect(zdEtaSyncOrderPriority(expired, at)).toBeLessThan(
       zdEtaSyncOrderPriority(active, at)
+    );
+  });
+});
+
+describe("zdEtaSyncSupplierOrderPriority", () => {
+  const at = new Date("2026-06-18T12:00:00+02:00");
+
+  it("najpierw częściowa realizacja ze znanym dok_id", () => {
+    const partialKnown = baseOrder({
+      status: "Czesciowo_zrealizowane",
+      quantity: "4",
+      delivered_quantity: "2",
+      zd_fulfillment_source: "zd",
+      zd_fulfillment_dok_id: 1804208,
+      zd_fulfillment_deadline: "2026-07-10",
+      zd_fulfillment_synced_at: "2026-06-01T10:00:00+02:00",
+    });
+    const fresh = baseOrder({
+      status: "Zamowione",
+      zd_fulfillment_synced_at: null,
+      zd_fulfillment_source: null,
+    });
+    expect(zdEtaSyncSupplierOrderPriority(partialKnown, at)).toBeLessThan(
+      zdEtaSyncSupplierOrderPriority(fresh, at)
     );
   });
 });
@@ -425,6 +474,14 @@ describe("selectZdEtaSyncCandidates", () => {
 });
 
 describe("zdFulfillmentPersistOnMissAction", () => {
+  it("czyści zapis gdy znany ZD jest już nieaktywny", () => {
+    expect(
+      zdFulfillmentPersistOnMissAction(false, true, {
+        knownZdInactive: true,
+      })
+    ).toBe("clear");
+  });
+
   it("przy force zachowuje aktywny termin ZD po pełnym przeszukaniu", () => {
     expect(zdFulfillmentPersistOnMissAction(true, true)).toBe("touch");
   });
@@ -496,6 +553,37 @@ describe("shouldMarkMojeZdEtaSessionDone", () => {
         4
       )
     ).toBe(false);
+  });
+});
+
+describe("shouldSkipMojeZdEtaSessionSync", () => {
+  const now = Date.now();
+
+  it("nie pomija gdy spadła liczba pozycji po częściowym syncu", () => {
+    const state = buildMojeZdEtaSessionState(
+      20,
+      { candidates: 20, processed: 20 },
+      now
+    );
+    expect(shouldSkipMojeZdEtaSessionSync(8, state, now)).toBe(false);
+  });
+
+  it("pomija gdy pełny przebieg i ta sama liczba pozycji", () => {
+    const state = buildMojeZdEtaSessionState(
+      8,
+      { candidates: 8, processed: 8 },
+      now
+    );
+    expect(shouldSkipMojeZdEtaSessionSync(8, state, now)).toBe(true);
+  });
+
+  it("nie pomija gdy wzrosła liczba pozycji", () => {
+    const state = buildMojeZdEtaSessionState(
+      5,
+      { candidates: 5, processed: 5 },
+      now
+    );
+    expect(shouldSkipMojeZdEtaSessionSync(9, state, now)).toBe(false);
   });
 });
 
@@ -637,6 +725,14 @@ describe("countZdEtaMojeClientSyncTriggers", () => {
       0
     );
   });
+
+  it("mount liczy pozycje nawet gdy Subiekt offline", () => {
+    const orders = [baseOrder()];
+    expect(countZdEtaMojeClientSyncMount(orders, [stats], [supplier])).toBe(1);
+    expect(countZdEtaMojeClientSyncTriggers(orders, [stats], [supplier], false)).toBe(
+      0
+    );
+  });
 });
 
 describe("hasKnownZdFulfillmentDocId", () => {
@@ -702,5 +798,45 @@ describe("tryRefreshKnownZdDocumentForOrder", () => {
     await expect(
       tryRefreshKnownZdDocumentForOrder(order, loadDoc, khIds, syncAt)
     ).resolves.toBeNull();
+  });
+
+  it("odrzuca ZD ze statusem Zrealizowane (8), nawet z przyszłym terminem", async () => {
+    const order = baseOrder({
+      symbol: "SYM",
+      products: "Prod A",
+      subiekt_tw_id: 100,
+      zd_fulfillment_dok_id: 503,
+    });
+    const loadDoc = vi.fn().mockResolvedValue({
+      dok_Id: 503,
+      dok_DostawcaId: 9001,
+      dok_Status: 8,
+      dok_TerminRealizacji: "2099-01-01",
+      dok_Pozycja: [{ ob_TowId: 100, tw_Symbol: "SYM", tw_Nazwa: "Prod A" }],
+    });
+    await expect(
+      tryRefreshKnownZdDocumentForOrder(order, loadDoc, khIds, syncAt)
+    ).resolves.toBeNull();
+  });
+
+  it("odrzuca zapisany ZD z luźną ilością po częściowej dostawie", async () => {
+    const order = baseOrder({
+      symbol: "H364RNF 103 015",
+      products: "Komet",
+      subiekt_tw_id: 16893,
+      quantity: "5",
+      delivered_quantity: "2",
+      zd_fulfillment_dok_id: 31,
+    });
+    const loadDoc = vi.fn().mockResolvedValue({
+      dok_Id: 31,
+      dok_DostawcaId: 9001,
+      dok_Status: 6,
+      dok_TerminRealizacji: "2026-07-10",
+      dok_Pozycja: [{ ob_TowId: 16893, tw_Symbol: "H364RNF 103 015", ob_Ilosc: 5 }],
+    });
+    await expect(
+      refreshKnownZdDocumentForOrder(order, loadDoc, khIds, syncAt)
+    ).resolves.toEqual({ kind: "inactive" });
   });
 });

@@ -11,7 +11,10 @@ import {
 } from "@/lib/orders/zd-fulfillment-placeholder-deadline";
 import { parseDateOnly } from "@/lib/orders/dates";
 import { isPastExpectedDate } from "@/lib/orders/delivery-eta";
-import { deliveryUrgencyBadgeLabel } from "@/lib/orders/my-order-delivery-urgency";
+import {
+  deliveryUrgencyBadgeLabel,
+  shouldShowDeliveryUrgencyBadgeBesideDateMeta,
+} from "@/lib/orders/my-order-delivery-urgency";
 import type { MyOrderLine } from "@/lib/orders/my-order-presenter";
 import type { MyOrderZdFulfillment, MyOrderZdFulfillmentSlot } from "@/lib/orders/my-order-sales-ui";
 import {
@@ -137,6 +140,7 @@ export function ZdFulfillmentDateMeta({
     : primaryDeadline
       ? buildZdDeliveryDateMetaDisplay(primaryDeadline)
       : null;
+  const showUrgencyBadge = shouldShowDeliveryUrgencyBadgeBesideDateMeta(primaryDisplay, urgency);
 
   return (
     <div className={cn("flex min-w-0 max-w-full flex-col items-end gap-1", className)}>
@@ -146,7 +150,7 @@ export function ZdFulfillmentDateMeta({
         title={tooltip}
         className="max-w-full"
         accessory={
-          badgeLabel ? (
+          showUrgencyBadge && badgeLabel ? (
             <DeliveryUrgencyBadge
               urgency={urgency.urgency}
               label={badgeLabel}

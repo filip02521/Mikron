@@ -163,6 +163,7 @@ export function ZkWatchRefreshPromptModal({
   );
   const redirectToOpenProsba = allOnStock && hasOpenMatchingProsba;
   const scopeSkippedMeta = zkWatchLineUiStateMeta("scope_excluded");
+  const scopeOrderMeta = zkWatchLineUiStateMeta("uncovered");
 
   const supplementOptions = {
     lineKeys: lineKeysToOrder,
@@ -396,7 +397,7 @@ export function ZkWatchRefreshPromptModal({
                       ? "bg-indigo-50/40 hover:bg-indigo-50/55"
                       : sufficient
                         ? scopeSkippedMeta.rowTintClass
-                        : "bg-slate-50/50 hover:bg-slate-50/70"
+                        : scopeOrderMeta.rowTintClass
                   )}
                 >
                   <input
@@ -434,7 +435,7 @@ export function ZkWatchRefreshPromptModal({
                               : "bg-indigo-100 text-indigo-900 ring-1 ring-indigo-200/70"
                             : sufficient
                               ? scopeSkippedMeta.badgeClass
-                              : "bg-slate-100 text-slate-600 ring-1 ring-slate-200/80"
+                              : scopeOrderMeta.badgeClass
                         )}
                       >
                         {stockBadgeLabel}

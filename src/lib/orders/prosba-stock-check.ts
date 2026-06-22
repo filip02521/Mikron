@@ -156,8 +156,11 @@ export function formatZkProsbaScopeLineBadge(input: {
   if (input.sufficient && input.available != null) {
     return `Na stanie: ${input.available} szt.`;
   }
-  if (input.hasStockData && input.available != null && input.available > 0) {
-    return `Pominięte · stan ${input.available} szt.`;
+  if (!input.sufficient) {
+    if (input.hasStockData && input.available != null && input.available > 0) {
+      return `Do zamówienia · stan ${input.available} szt.`;
+    }
+    return "Do zamówienia";
   }
   return "Pominięte";
 }

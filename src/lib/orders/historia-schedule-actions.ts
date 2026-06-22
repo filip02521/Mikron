@@ -72,3 +72,18 @@ export function parseHistoriaActionAt(isoOrDate: string): Date | null {
   if (!Number.isNaN(d.getTime())) return d;
   return parseDateOnly(isoOrDate.slice(0, 10));
 }
+
+/** Daty kliknięć „Zamówione” w historii dostawcy (kalendarz Warszawy). */
+export function supplierOrderDatesFromHistoria(
+  rows: readonly { action_at: string; action: string }[]
+): string[] {
+  const dates: string[] = [];
+  for (const row of rows) {
+    if (classifyHistoriaAction(row.action) !== "ordered") continue;
+    const actionAt = parseHistoriaActionAt(row.action_at);
+    if (!actionAt) continue;
+    const key = warsawDateKeyFromIso(actionAt.toISOString());
+    if (key) dates.push(key);
+  }
+  return [...new Set(dates)];
+}

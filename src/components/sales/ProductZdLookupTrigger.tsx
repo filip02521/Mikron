@@ -30,9 +30,11 @@ function lastResultSummary(): string | null {
 export function ProductZdLookupTrigger({
   onStockOutPrefill,
   className,
+  suppliers,
 }: {
   onStockOutPrefill?: (prefill: ProductZdLookupStockOutPrefill) => void;
   className?: string;
+  suppliers: import("@/lib/orders/order-form-suppliers").OrderFormSupplierOption[];
 }) {
   const hydrated = useClientHydrated();
   const [open, setOpen] = useState(false);
@@ -111,6 +113,7 @@ export function ProductZdLookupTrigger({
           setRefreshKey((value) => value + 1);
         }}
         onStockOutPrefill={onStockOutPrefill}
+        suppliers={suppliers}
       />
     </>
   );

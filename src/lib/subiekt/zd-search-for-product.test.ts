@@ -1,9 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   zdContractorInitialDataOd,
-  zdContractorInitialDataOdForPlacement,
   zdPlacementListWindowForApi,
-  placementIsOlderThanRollingWindow,
 } from "./zd-search-scope";
 import {
   brandTokensFromProductName,
@@ -24,7 +22,7 @@ describe("zdSearchPlansForOrderInput", () => {
       subiekt_tw_id: 2319,
     });
     expect(plans.length).toBeGreaterThan(0);
-    expect(plans.every((p) => "search" in p && p.search)).toBe(true);
+    expect(plans.some((p) => p.search || p.symbol)).toBe(true);
     expect(plans.some((p) => p.search?.toLowerCase().includes("viva"))).toBe(true);
   });
 
@@ -41,7 +39,7 @@ describe("zdSearchPlansForOrderInput", () => {
       },
       [{ id: "renfert", name: "renfert - excel", subiektKhId: 17465 }]
     );
-    expect(plans.some((p) => p.symbol === "18080500" && p.search === "18080500")).toBe(true);
+    expect(plans.some((p) => p.symbol === "18080500" && !p.search)).toBe(true);
   });
 
   it("planuje wyszukiwanie ZD po marce i kh_Id dostawcy", () => {
@@ -54,6 +52,7 @@ describe("zdSearchPlansForOrderInput", () => {
       [{ id: "renfert", name: "renfert - excel", subiektKhId: 17465 }]
     );
     expect(plans.some((p) => p.search === "Renfert" && p.khId === 17465)).toBe(true);
+    expect(plans.some((p) => p.symbol === "21500000" && p.khId === 17465)).toBe(true);
   });
 
   it("nie ucina długiego numerycznego symbolu przez limit tokenów", () => {
@@ -110,7 +109,7 @@ describe("zdSearchPlansForOrderInput", () => {
       zdSearchPlansForOrderInput({
         symbol: "-",
         products: "Komet węglik H364RNF",
-      }).some((p) => p.search === "H364RNF")
+      }).some((p) => p.symbol === "H364RNF")
     ).toBe(true);
   });
 
@@ -129,10 +128,7 @@ describe("zdSearchPlansForOrderInput", () => {
 
   it("stare zgłoszenie — dataOd planu sięga okresu zamówienia", () => {
     const placementAt = "2026-02-10";
-    const syncAt = new Date("2026-06-18T12:00:00+02:00");
-  const window = placementIsOlderThanRollingWindow(placementAt, syncAt)
-    ? zdPlacementListWindowForApi(placementAt, syncAt)
-    : { dataOd: zdContractorInitialDataOdForPlacement(placementAt, syncAt) };
+    const window = zdPlacementListWindowForApi(placementAt);
     const plans = zdSearchPlansForOrderInput({
       symbol: "606402",
       products: "Produkt DFS",
@@ -145,7 +141,21 @@ describe("zdSearchPlansForOrderInput", () => {
     );
     expect(window.dataOd).toBe("2026-01-01");
     expect(window.dataDo).toBe("2026-05-01");
-    expect(window.dataOd < zdContractorInitialDataOd(syncAt)).toBe(true);
+    expect(window.dataOd < zdContractorInitialDataOd()).toBe(true);
+  });
+
+  it("niedawne zgłoszenie — placementAt zawęża okno miesięczne (dataDo)", () => {
+    const placementAt = "2026-05-12";
+    const window = zdPlacementListWindowForApi(placementAt);
+    const plans = zdSearchPlansForOrderInput({
+      symbol: "KP-213-130-PMK",
+      products: "Kleszcze",
+      subiekt_kh_id: 538,
+      placementAt,
+    });
+    expect(plans.length).toBeGreaterThan(0);
+    expect(plans.every((p) => p.dataOd === window.dataOd && p.dataDo === window.dataDo)).toBe(true);
+    expect(window.dataDo).toBeDefined();
   });
 
   it("dodaje khId do planów gdy dostawca jest powiązany", () => {
@@ -171,6 +181,16 @@ describe("zdSearchPlansForOrderInput", () => {
     expect(plans.some((p) => p.khId === 200)).toBe(true);
   });
 
+  it("dodaje plan po tw_Id gdy znany towar Subiekta", () => {
+    const plans = zdSearchPlansForOrderInput({
+      symbol: "H364RF 103 015",
+      products: "Komet węglik",
+      subiekt_tw_id: 16745,
+      subiekt_kh_id: 2114,
+    });
+    expect(plans.some((p) => p.id === 16745 && p.khId === 2114)).toBe(true);
+  });
+
   it("priorytetyzuje plan po symbolu przed marką z nazwy", () => {
     const plans = zdSearchPlansForOrderInput({
       symbol: "-",
@@ -178,7 +198,6 @@ describe("zdSearchPlansForOrderInput", () => {
       subiekt_kh_id: 9001,
     });
     expect(plans[0]?.symbol).toBe("H364RNF");
-    expect(plans[0]?.search).toBe("H364RNF");
     expect(plans[0]?.khId).toBe(9001);
   });
 

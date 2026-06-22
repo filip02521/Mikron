@@ -34,9 +34,13 @@ import {
 } from "@/lib/subiekt/subiekt-runtime-cache";
 import {
   isCombinedProductSearchField,
+  expandProductNameSearchQueries,
+  filterPluSuggestResultsForZdLookup,
+  inferProductZdLookupSearchField,
   mergeSubiektProductSearchResults,
   minProductSearchLength,
   productSearchParams,
+  rankSubiektProductsForLookupQuery,
   looksLikeProductSymbol,
   type ProductSearchField,
 } from "@/lib/subiekt/product-pick";
@@ -138,6 +142,14 @@ export async function actionSubiektSuggestProducts(
 ): Promise<SubiektLookupResult<SubiektProduct>> {
   await requireSubiektLookup();
   return suggestProducts(query, searchField);
+}
+
+/** Podpowiedzi towaru w modalu „Sprawdź termin dostawy” — symbol i kod Mikran równolegle. */
+export async function actionSubiektSuggestProductsForZdLookup(
+  query: string
+): Promise<SubiektLookupResult<SubiektProduct>> {
+  await requireSubiektLookup();
+  return suggestProductsForZdLookup(query);
 }
 
 /** Podpowiedzi klienta końcowego (odbiorcy) przy prośbach handlowca. */
@@ -401,6 +413,64 @@ async function searchSubiektProductsCombined(
   return { data, totalCount: totalCount || undefined };
 }
 
+async function suggestProductsForZdLookup(
+  query: string
+): Promise<SubiektLookupResult<SubiektProduct>> {
+  const q = query.trim();
+  const field = inferProductZdLookupSearchField(q);
+  const minLen = minProductSearchLength(field);
+  if (q.length < minLen) return validationFailure("short_query");
+  if (!isSubiektConfigured()) {
+    return { ok: false, feedback: getSubiektFeedback("not_configured") };
+  }
+
+  try {
+    const batches: SubiektProduct[][] = [];
+
+    if (looksLikeProductSymbol(q)) {
+      const symbolRes = await searchSubiektProducts(productSearchParams(q, "symbol"));
+      batches.push(symbolRes.data ?? []);
+    }
+
+    if (/^\d{1,12}$/.test(q)) {
+      const pluRes = await searchSubiektProducts(productSearchParams(q, "plu"));
+      batches.push(filterPluSuggestResultsForZdLookup(pluRes.data ?? [], q));
+    }
+
+    if (!looksLikeProductSymbol(q) || batches.every((batch) => !batch.length)) {
+      const nameVariants = expandProductNameSearchQueries(q);
+      const nameResults = await Promise.allSettled(
+        nameVariants.map((variant) =>
+          searchSubiektProducts(productSearchParams(variant, "name"))
+        )
+      );
+      for (const settled of nameResults) {
+        if (settled.status === "fulfilled" && settled.value.data?.length) {
+          batches.push(settled.value.data);
+        }
+      }
+    }
+
+    const rows = rankSubiektProductsForLookupQuery(
+      mergeSubiektProductSearchResults(batches, 12),
+      q
+    );
+
+    if (!rows.length) {
+      return {
+        ok: true,
+        items: [],
+        totalCount: 0,
+        feedback: notFoundProductFeedback(q),
+      };
+    }
+
+    return { ok: true, items: rows };
+  } catch (e) {
+    return lookupFailure(e);
+  }
+}
+
 async function suggestProducts(
   query: string,
   searchField?: ProductSearchField
@@ -470,7 +540,7 @@ async function suggestProducts(
     }
     return {
       ok: true,
-      items: rows,
+      items: rankSubiektProductsForLookupQuery(rows, q),
       totalCount,
     };
   } catch (e) {
