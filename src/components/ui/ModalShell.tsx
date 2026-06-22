@@ -6,6 +6,7 @@ import { cn } from "@/lib/cn";
 import { modalBackdropClass, modalPanelClass } from "@/lib/ui/surfaces";
 import { ActionLoadingOverlay } from "@/components/ui/ActionLoadingOverlay";
 import { HelpHintBubble } from "@/components/ui/HelpHintBubble";
+import { SCROLL_LOCK_ALLOW_ATTR, useBodyScrollLock } from "@/lib/ui/page-scroll-lock";
 
 export type ModalTier = "standard" | "raised" | "top" | "stack";
 export type ModalSize = "sm" | "md" | "lg" | "xl";
@@ -63,6 +64,8 @@ export function ModalShell({
   loadingMessage?: string | null;
   disableBackdropClose?: boolean;
 }) {
+  useBodyScrollLock(open);
+
   useEffect(() => {
     if (!open) return;
     const onKey = (e: KeyboardEvent) => {
@@ -125,7 +128,10 @@ export function ModalShell({
             ) : null}
           </header>
         ) : null}
-        <div className={cn("relative min-h-0 flex-1 overflow-y-auto", bodyClassName)}>
+        <div
+          className={cn("relative min-h-0 flex-1 overflow-y-auto", bodyClassName)}
+          {...{ [SCROLL_LOCK_ALLOW_ATTR]: "" }}
+        >
           {children}
         </div>
         {footer ? (

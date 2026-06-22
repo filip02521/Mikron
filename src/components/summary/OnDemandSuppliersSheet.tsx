@@ -10,6 +10,7 @@ import { cn } from "@/lib/cn";
 import { panelNameLinkClass } from "@/lib/ui/ontime-theme";
 import { PanelRowActionsInlineEnd } from "@/components/summary/PanelRowActionsInlineEnd";
 import { panelRowClearFocusOnLeave, panelRowGroupClass } from "@/lib/ui/panel-row-actions-reveal";
+import { SCROLL_LOCK_ALLOW_ATTR, useBodyScrollLock } from "@/lib/ui/page-scroll-lock";
 
 export function OnDemandSuppliersSheet({
   open,
@@ -26,6 +27,8 @@ export function OnDemandSuppliersSheet({
   onOpenSupplier: (id: string) => void;
   run: DailyPanelRunFn;
 }) {
+  useBodyScrollLock(open);
+
   if (!open) return null;
 
   return (
@@ -60,7 +63,10 @@ export function OnDemandSuppliersSheet({
           </div>
         </header>
 
-        <div className="min-h-0 flex-1 overflow-y-auto px-4 py-3 sm:px-5">
+        <div
+          className="min-h-0 flex-1 overflow-y-auto px-4 py-3 sm:px-5"
+          {...{ [SCROLL_LOCK_ALLOW_ATTR]: "" }}
+        >
           {suppliers.length === 0 ? (
             <EmptyState
               title="Brak dostawców na żądanie"

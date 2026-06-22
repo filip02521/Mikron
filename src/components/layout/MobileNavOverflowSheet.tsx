@@ -22,6 +22,7 @@ import {
   sidebarNavBadgeClassForTone,
   sidebarNavToneActiveClass,
 } from "@/lib/ui/ontime-theme";
+import { SCROLL_LOCK_ALLOW_ATTR, useBodyScrollLock } from "@/lib/ui/page-scroll-lock";
 
 function overflowItemActive(
   pathname: string,
@@ -54,6 +55,8 @@ export function MobileNavOverflowSheet({
     0
   );
 
+  useBodyScrollLock(open);
+
   useEffect(() => {
     if (!open) return;
     const onKey = (event: KeyboardEvent) => {
@@ -61,15 +64,6 @@ export function MobileNavOverflowSheet({
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [open]);
-
-  useEffect(() => {
-    if (!open) return;
-    const prev = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
-    return () => {
-      document.body.style.overflow = prev;
-    };
   }, [open]);
 
   if (items.length === 0) return null;
@@ -89,7 +83,10 @@ export function MobileNavOverflowSheet({
               aria-label="Zamknij menu"
               onClick={() => setOpen(false)}
             />
-            <div className="absolute inset-x-0 bottom-0 max-h-[min(70vh,28rem)] overflow-y-auto rounded-t-xl border border-slate-200/90 bg-[var(--card)] shadow-[var(--shadow-card-elevated)] pb-[max(0.75rem,env(safe-area-inset-bottom,0px))]">
+            <div
+              className="absolute inset-x-0 bottom-0 max-h-[min(70vh,28rem)] overflow-y-auto rounded-t-xl border border-slate-200/90 bg-[var(--card)] shadow-[var(--shadow-card-elevated)] pb-[max(0.75rem,env(safe-area-inset-bottom,0px))]"
+              {...{ [SCROLL_LOCK_ALLOW_ATTR]: "" }}
+            >
               <div className="sticky top-0 z-[1] border-b border-indigo-100/70 bg-indigo-50/30 px-4 py-3">
                 <p className={panelTypography.rowTitle}>Więcej</p>
                 <p className={cn(panelTypography.caption, "mt-0.5")}>

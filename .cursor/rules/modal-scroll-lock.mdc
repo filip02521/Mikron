@@ -1,0 +1,28 @@
+---
+description: Blokada scrolla strony przy modalach, drawerach i sheetach
+globs: src/components/**/*.tsx
+alwaysApply: false
+---
+
+# Modal scroll lock
+
+Aplikacja scrolluje na `<main class="overflow-y-auto">`, nie na `body`. Samo `overflow: hidden` na `body` nie wystarcza.
+
+## Nowy modal / drawer / sheet
+
+1. **Preferuj `ModalShell`** — ma wbudowany `useBodyScrollLock(open)` i `data-scroll-lock-allow` na treści.
+2. **Własny overlay** (`fixed inset-0`, prawy panel): dodaj `useBodyScrollLock(open)` z `@/lib/ui/page-scroll-lock`.
+3. **Scroll wewnątrz overlayu**: oznacz kontener `overflow-y-auto` atrybutem `SCROLL_LOCK_ALLOW_ATTR` (`data-scroll-lock-allow`).
+4. **Zagnieżdżone modale**: licznik referencji w `lockPageScroll` — nie wywołuj ręcznie lock/unlock poza hookiem.
+
+## Kiedy NIE blokować
+
+- Małe popovery zakotwiczone przy przycisku (menu, typeahead, HelpPopover, HelpHintBubble).
+- Pływający panel touru (`aria-modal="false"`), toasty, UndoToast.
+- `ActionLoadingOverlay` tylko dla `variant="viewport"` (ma hook); `section` / `modal` — bez dodatkowego locka.
+
+## Checklist przed merge
+
+- [ ] Otwarty overlay → strona pod spodem nie scrolluje (touch + kółko myszy).
+- [ ] Długa treść w modalu nadal się przewija.
+- [ ] Dwa modale naraz (np. ConfirmDialog nad ModalShell) — scroll nadal zablokowany do zamknięcia obu.

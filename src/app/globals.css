@@ -376,3 +376,20 @@ button:focus-visible {
     );
   }
 }
+
+/** Blokada scrolla tła przy otwartym modalu / drawerze. */
+html.ontime-scroll-locked {
+  overflow: hidden !important;
+  overscroll-behavior: none;
+}
+
+html.ontime-scroll-locked body {
+  overflow: hidden !important;
+  overscroll-behavior: none;
+}
+
+html.ontime-scroll-locked main {
+  overflow: hidden !important;
+  overscroll-behavior: none;
+  touch-action: none;
+}

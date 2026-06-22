@@ -23,6 +23,7 @@ import { useClientHydrated } from "@/lib/client/use-client-hydrated";
 import { cn } from "@/lib/cn";
 import { sideSheetWidePanelClass } from "@/lib/ui/surfaces";
 import { controlFocusClass, panelTypography } from "@/lib/ui/ontime-theme";
+import { SCROLL_LOCK_ALLOW_ATTR, useBodyScrollLock } from "@/lib/ui/page-scroll-lock";
 
 export function HistoriaBrowseSheet({
   open,
@@ -68,14 +69,7 @@ export function HistoriaBrowseSheet({
     return () => window.removeEventListener("keydown", onKey);
   }, [open, handleClose]);
 
-  useEffect(() => {
-    if (!open) return;
-    const prev = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
-    return () => {
-      document.body.style.overflow = prev;
-    };
-  }, [open]);
+  useBodyScrollLock(open);
 
   const filteredIndividual = useMemo(
     () => individual.filter((o) => matchesIndividualSearch(o, query)),
@@ -160,7 +154,10 @@ export function HistoriaBrowseSheet({
           </label>
         </header>
 
-        <div className="min-h-0 flex-1 overflow-y-auto">
+        <div
+          className="min-h-0 flex-1 overflow-y-auto"
+          {...{ [SCROLL_LOCK_ALLOW_ATTR]: "" }}
+        >
           {isIndividual ? (
             !individual.length ? (
               <div className="px-4 py-8 sm:px-5">

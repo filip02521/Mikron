@@ -13,6 +13,7 @@ import { Button } from "@/components/ui/Button";
 import { LinkChevron } from "@/components/ui/UiGlyphs";
 import { cn } from "@/lib/cn";
 import type { SalesOnboardingStep } from "@/lib/sales/sales-onboarding-steps";
+import { SCROLL_LOCK_ALLOW_ATTR, useBodyScrollLock } from "@/lib/ui/page-scroll-lock";
 
 function polishCountLabel(
   n: number,
@@ -198,6 +199,7 @@ export function SalesOnboardingWizard() {
   const isFirst = stepIndex === 0;
   const isLast = stepIndex === steps.length - 1;
   const showFullDetails = isDesktop || mobileDetailsOpen;
+  useBodyScrollLock(isWelcomeStep);
   const [appliedStepIndex, setAppliedStepIndex] = useState(stepIndex);
   if (stepIndex !== appliedStepIndex) {
     setAppliedStepIndex(stepIndex);
@@ -280,7 +282,10 @@ export function SalesOnboardingWizard() {
             </div>
           </div>
 
-          <div className="relative z-[1] flex-1 overflow-y-auto px-4 py-5 sm:px-6 sm:py-6">
+          <div
+            className="relative z-[1] flex-1 overflow-y-auto px-4 py-5 sm:px-6 sm:py-6"
+            {...{ [SCROLL_LOCK_ALLOW_ATTR]: "" }}
+          >
             <WelcomeStepContent step={step} displayName={displayName} />
             {error ? <p className="mt-4 text-sm text-red-600">{error}</p> : null}
           </div>

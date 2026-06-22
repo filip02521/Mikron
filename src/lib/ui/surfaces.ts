@@ -11,6 +11,7 @@ export const surface = {
   control: "rounded-md",
 } as const;
 
+/** Pełnoekranowy backdrop modala. Wymaga `useBodyScrollLock(open)` — sam nie blokuje scrolla `<main>`. */
 export const modalBackdropClass =
   "fixed inset-0 cursor-pointer bg-slate-900/45 backdrop-blur-sm";
 

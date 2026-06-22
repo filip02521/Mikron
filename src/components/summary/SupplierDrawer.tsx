@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import type { ReactNode } from "react";
 import type { SupplierSummaryMeta } from "@/lib/orders/summary-workspace";
@@ -21,6 +21,7 @@ import { FlowChevron } from "@/components/ui/UiGlyphs";
 import { SupplierSubiektLinkIndicator } from "@/components/admin/SupplierSubiektLinkIndicator";
 import { useSupplierHubContext } from "@/components/layout/AppRoleContext";
 import { supplierCardsHref } from "@/lib/supplier-hub";
+import { SCROLL_LOCK_ALLOW_ATTR, useBodyScrollLock } from "@/lib/ui/page-scroll-lock";
 
 type HistoryRow = {
   action_at: string;
@@ -51,6 +52,7 @@ export function SupplierDrawer({
   onEdit: () => void;
 }) {
   const hubContext = useSupplierHubContext();
+  useBodyScrollLock(Boolean(supplier));
   const supplierId = supplier?.id ?? null;
   const [historyState, setHistoryState] = useState<{
     supplierId: string | null;
@@ -193,7 +195,10 @@ export function SupplierDrawer({
           </p>
         </header>
 
-        <div className="flex-1 overflow-y-auto px-5 py-5">
+        <div
+          className="flex-1 overflow-y-auto px-5 py-5"
+          {...{ [SCROLL_LOCK_ALLOW_ATTR]: "" }}
+        >
           <div className="grid gap-3 sm:grid-cols-2">
             <DateCard
               label="Ostatnie zamówienie"

@@ -4,6 +4,7 @@ import { useEffect } from "react";
 import { cn } from "@/lib/cn";
 import { modalBackdropClass } from "@/lib/ui/surfaces";
 import { Button } from "@/components/ui/Button";
+import { SCROLL_LOCK_ALLOW_ATTR, useBodyScrollLock } from "@/lib/ui/page-scroll-lock";
 
 export function SupplierEditSheet({
   open,
@@ -22,6 +23,8 @@ export function SupplierEditSheet({
   footer: React.ReactNode;
   pending?: boolean;
 }) {
+  useBodyScrollLock(open);
+
   useEffect(() => {
     if (!open) return;
     const onKey = (e: KeyboardEvent) => {
@@ -30,15 +33,6 @@ export function SupplierEditSheet({
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, [open, onClose, pending]);
-
-  useEffect(() => {
-    if (!open) return;
-    const prev = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
-    return () => {
-      document.body.style.overflow = prev;
-    };
-  }, [open]);
 
   if (!open) return null;
 
@@ -82,7 +76,12 @@ export function SupplierEditSheet({
           </div>
         </header>
 
-        <div className="min-h-0 flex-1 overflow-y-auto px-5 py-4">{children}</div>
+        <div
+          className="min-h-0 flex-1 overflow-y-auto px-5 py-4"
+          {...{ [SCROLL_LOCK_ALLOW_ATTR]: "" }}
+        >
+          {children}
+        </div>
 
         <footer className="shrink-0 border-t border-slate-100 bg-slate-50/80 px-5 py-4">
           <div className="flex flex-wrap gap-2">{footer}</div>

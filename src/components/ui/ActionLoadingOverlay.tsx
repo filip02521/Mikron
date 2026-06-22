@@ -2,6 +2,7 @@
 
 import { Spinner } from "@/components/ui/Spinner";
 import { cn } from "@/lib/cn";
+import { useBodyScrollLock } from "@/lib/ui/page-scroll-lock";
 
 export function ActionLoadingOverlay({
   message = "Przetwarzanie…",
@@ -15,6 +16,8 @@ export function ActionLoadingOverlay({
   variant?: "section" | "viewport" | "modal";
   className?: string;
 }) {
+  useBodyScrollLock(variant === "viewport");
+
   const position =
     variant === "viewport"
       ? "fixed inset-0 z-[70]"

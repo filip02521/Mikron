@@ -3,6 +3,7 @@
 import { useCallback, useState } from "react";
 import { Button } from "@/components/ui/Button";
 import { Alert } from "@/components/ui/Alert";
+import { useBodyScrollLock } from "@/lib/ui/page-scroll-lock";
 
 export function TempPasswordDialog({
   email,
@@ -18,6 +19,8 @@ export function TempPasswordDialog({
   /** create = nowe konto, reset = zresetowane hasło */
   variant?: "create" | "reset";
 }) {
+  useBodyScrollLock(true);
+
   const isReset = variant === "reset";
   const [copied, setCopied] = useState(false);
 
