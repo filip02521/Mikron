@@ -1,5 +1,15 @@
 import { describe, expect, it } from "vitest";
-import { formatStockPeriod, formatStockPeriodCompact } from "./display-labels";
+import { formatPlDate, formatStockPeriod, formatStockPeriodCompact } from "./display-labels";
+
+describe("formatPlDate", () => {
+  it("formatuje yyyy-MM-dd", () => {
+    expect(formatPlDate("2026-05-12")).toBe("12.05.2026");
+  });
+
+  it("formatuje pełny timestamp ISO", () => {
+    expect(formatPlDate("2026-05-11T22:00:00+00:00")).toBe("12.05.2026");
+  });
+});
 
 describe("formatStockPeriodCompact", () => {
   it("zwraca okres bez prefiksu Zapas na", () => {

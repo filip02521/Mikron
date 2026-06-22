@@ -1,5 +1,15 @@
 import type { SalesZkWatch } from "@/types/database";
 import { normalizeZkQuery, zkDocumentStatusLabel } from "@/lib/subiekt/zk-document";
+import {
+  allZkWatchLinesCheckboxChecked,
+  type ZkWatchLineCheckboxContext,
+} from "@/lib/sales/zk-watch-line-ui-state";
+import { isZkWatchProsbaScopeConfigured } from "@/lib/sales/zk-watch-prosba-scope";
+import {
+  buildZkWatchLineViews,
+  parseZkWatchLineChecks,
+  type ZkWatchLineView,
+} from "@/lib/sales/zk-watch-lines";
 
 export function formatPln(value: number | string | null | undefined): string {
   if (value == null || value === "") return "—";
@@ -49,4 +59,16 @@ export function zkWatchStatusLabel(watch: SalesZkWatch): string | null {
   const label = readSnapshotStatusLabel(watch);
   if (!label || label === "Aktywne") return null;
   return label;
+}
+
+/** Baner „rozważ zamknięcie” tylko gdy Subiekt ma Zrealizowane i sprawa jest domknięta w aplikacji. */
+export function shouldShowZkWatchSubiektRealizedCloseHint(
+  watch: SalesZkWatch,
+  context: ZkWatchLineCheckboxContext & { lineViews?: ZkWatchLineView[] }
+): boolean {
+  if (zkWatchStatusLabel(watch) !== "Zrealizowane") return false;
+  const lineViews = context.lineViews ?? buildZkWatchLineViews(watch);
+  const checks = parseZkWatchLineChecks(watch.line_checks);
+  if (!isZkWatchProsbaScopeConfigured(checks, lineViews)) return false;
+  return allZkWatchLinesCheckboxChecked({ lineViews, ...context });
 }

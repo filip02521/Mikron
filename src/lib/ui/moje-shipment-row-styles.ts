@@ -101,6 +101,30 @@ export const mojeShipmentExpandedPanelClass =
 export const mojeShipmentExpandedNotesClass =
   "rounded-md border border-indigo-100/90 bg-indigo-50/60 px-3 py-2 text-xs leading-relaxed text-indigo-950";
 
+/** Informacja o zmianie terminu ZD — zwinięta karta / rozwinięty panel. */
+export function mojeZdDeadlineChangeNoticeShellClass(
+  variant: "postponed" | "moved_earlier",
+  compact: boolean
+): string {
+  const size = compact ? "px-2 py-1.5" : "px-3 py-2.5 sm:px-3.5";
+  const postponed =
+    "border-amber-200/85 bg-gradient-to-b from-amber-50/90 to-white ring-1 ring-inset ring-amber-100/70";
+  const movedEarlier =
+    "border-indigo-200/80 bg-gradient-to-b from-indigo-50/55 to-white ring-1 ring-inset ring-indigo-100/60";
+  return cn("rounded-md border shadow-sm", size, variant === "postponed" ? postponed : movedEarlier);
+}
+
+export function mojeZdDeadlineChangeNoticeIconWrapClass(
+  variant: "postponed" | "moved_earlier"
+): string {
+  return cn(
+    "inline-flex shrink-0 items-center justify-center rounded-full",
+    variant === "postponed"
+      ? "bg-amber-100 text-amber-800 ring-1 ring-amber-200/80"
+      : "bg-indigo-100 text-indigo-800 ring-1 ring-indigo-200/70"
+  );
+}
+
 export const mojeShipmentExpandedClientsClass =
   "rounded-md border border-slate-200/80 bg-slate-50/80 px-3 py-2 text-xs text-slate-600";
 

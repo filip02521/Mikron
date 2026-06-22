@@ -537,7 +537,9 @@ export function MyOrderShipmentCard({
     !showInformacjaTimingMeta &&
     !zdFulfillment &&
     historyDeliveryEstimate !== null;
-  const showZdEtaPendingMeta = zdEtaPending && !historyDeliveryEstimate && !zdFulfillment;
+  const showZdEtaPendingMeta = zdEtaPending;
+  const showZdEtaPendingWithEstimate =
+    zdEtaPending && (historyDeliveryEstimate !== null || zdFulfillment !== null);
   const showZdEtaNoMatchMeta =
     zdEtaNoMatch && !zdEtaPending && !historyDeliveryEstimate && !zdFulfillment;
   const zdDeadlineChangeOrderIds = useMemo(() => {
@@ -1016,7 +1018,9 @@ export function MyOrderShipmentCard({
             {!showInformacjaTimingMeta && showEstimatedDeliveryMeta ? (
               <MyOrderEstimatedDeliveryMeta row={row} />
             ) : null}
-            {showZdEtaPendingMeta ? <ZdEtaPendingMeta /> : null}
+            {showZdEtaPendingMeta ? (
+              <ZdEtaPendingMeta compact={showZdEtaPendingWithEstimate} />
+            ) : null}
             {showZdEtaNoMatchMeta ? <ZdEtaNoMatchMeta /> : null}
             {plannedOrderDate ? <PlannedOrderDateMeta display={plannedOrderDate} /> : null}
             {showStatusBadge ? (
@@ -1076,7 +1080,9 @@ export function MyOrderShipmentCard({
           {!showInformacjaTimingMeta && showEstimatedDeliveryMeta ? (
             <MyOrderEstimatedDeliveryMeta row={row} />
           ) : null}
-          {showZdEtaPendingMeta ? <ZdEtaPendingMeta /> : null}
+          {showZdEtaPendingMeta ? (
+            <ZdEtaPendingMeta compact={showZdEtaPendingWithEstimate} />
+          ) : null}
           {showZdEtaNoMatchMeta ? <ZdEtaNoMatchMeta /> : null}
           {plannedOrderDate ? <PlannedOrderDateMeta display={plannedOrderDate} /> : null}
           {showStatusBadge ? (
@@ -1138,6 +1144,7 @@ export function MyOrderShipmentCard({
                 <ZdFulfillmentDeadlineChangeNotice
                   change={row.zdFulfillment.deadlineChange}
                   align="start"
+                  className="w-full"
                   onDismiss={
                     showZdDeadlineChangeDismiss
                       ? () => onAcknowledgeZdDeadlineChange?.(zdDeadlineChangeOrderIds)

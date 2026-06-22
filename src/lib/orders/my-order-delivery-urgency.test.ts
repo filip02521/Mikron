@@ -10,6 +10,7 @@ import {
   resolveMyOrderDeliveryRowVisual,
   resolveMyOrderPartialStockRowVisual,
   resolveMyOrderExpectedDeliveryDate,
+  shouldShowDeliveryUrgencyBadgeBesideDateMeta,
   sortOrderedProgressByDelivery,
 } from "./my-order-delivery-urgency";
 
@@ -186,5 +187,23 @@ describe("deliveryUrgencyShowsBadge", () => {
     expect(deliveryUrgencyShowsBadge("today")).toBe(true);
     expect(deliveryUrgencyShowsBadge("tomorrow")).toBe(false);
     expect(deliveryUrgencyShowsBadge("this_week")).toBe(false);
+  });
+});
+
+describe("shouldShowDeliveryUrgencyBadgeBesideDateMeta", () => {
+  it("ukrywa badge gdy primary już mówi Dziś lub Po terminie", () => {
+    const today = classifyDeliveryUrgency(new Date("2026-06-18T12:00:00+02:00"), { at });
+    const overdue = classifyDeliveryUrgency(new Date("2026-06-17T12:00:00+02:00"), { at });
+
+    expect(
+      shouldShowDeliveryUrgencyBadgeBesideDateMeta({ primaryLabel: "Dziś" }, today)
+    ).toBe(false);
+    expect(
+      shouldShowDeliveryUrgencyBadgeBesideDateMeta({ primaryLabel: "Po terminie" }, overdue)
+    ).toBe(false);
+    expect(
+      shouldShowDeliveryUrgencyBadgeBesideDateMeta({ primaryLabel: "18.06.2026" }, today)
+    ).toBe(true);
+    expect(shouldShowDeliveryUrgencyBadgeBesideDateMeta(null, today)).toBe(true);
   });
 });

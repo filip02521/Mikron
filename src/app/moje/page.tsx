@@ -22,6 +22,7 @@ import { presentMyOrders } from "@/lib/orders/my-order-presenter";
 import { loadPlannedOrderScheduleContext } from "@/lib/orders/planned-order-schedule";
 import { getSubiektAvailability } from "@/lib/subiekt/availability";
 import {
+  countZdEtaMojeClientSyncMount,
   countZdEtaMojeClientSyncTriggers,
 } from "@/lib/subiekt/zd-eta-sync";
 import { getAppSupplierRefsCached } from "@/lib/data/supplier-refs";
@@ -279,6 +280,8 @@ export default async function MojePage({
 
   const supplierRefs = viewingOwnPanel ? await getAppSupplierRefsCached() : [];
   const supplierKhIdsBySupplierId = buildSupplierKhIdsBySupplierId(supplierRefs);
+  const zdEtaSyncMountCount =
+    viewingOwnPanel ? countZdEtaMojeClientSyncMount(orders, stats, supplierRefs) : 0;
   const zdEtaSyncEligibleCount =
     viewingOwnPanel && subiektReachable
       ? countZdEtaMojeClientSyncTriggers(orders, stats, supplierRefs, subiektReachable)
@@ -382,6 +385,7 @@ export default async function MojePage({
         initialFocusOrderIds={focusOrdersParam?.trim() || null}
         syncSearchUrl={!isTeamPreview}
         showSalesSync={showSalesSync}
+        zdEtaSyncMountCount={zdEtaSyncMountCount}
         zdEtaSyncEligibleCount={zdEtaSyncEligibleCount}
         dayStartContext={dayStartContext}
       />

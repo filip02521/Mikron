@@ -1,4 +1,5 @@
 import { differenceInCalendarDays, isSameWeek } from "date-fns";
+import type { DeliveryDateMetaDisplay } from "@/lib/orders/delivery-date-meta-label";
 import type { MyOrderRow } from "@/lib/orders/my-order-presenter";
 import { parseDateOnly, toDateOnly } from "@/lib/orders/dates";
 import { isMyOrderPartialStockRow } from "@/lib/orders/my-order-sales-ui";
@@ -119,6 +120,20 @@ export function deliveryUrgencyBadgeLabel(
 ): string | null {
   if (!deliveryUrgencyShowsBadge(meta.urgency)) return null;
   return meta.shortLabel;
+}
+
+/**
+ * Badge pilności obok DeliveryDateMetaValue — ukryj, gdy primary już mówi to samo
+ * (np. badge „Dziś” + primary „Dziś” na zwiniętej karcie ZD).
+ */
+export function shouldShowDeliveryUrgencyBadgeBesideDateMeta(
+  display: Pick<DeliveryDateMetaDisplay, "primaryLabel"> | null | undefined,
+  urgency: Pick<MyOrderDeliveryUrgency, "urgency" | "shortLabel">
+): boolean {
+  const badgeLabel = deliveryUrgencyBadgeLabel(urgency);
+  if (!badgeLabel) return false;
+  if (display?.primaryLabel === badgeLabel) return false;
+  return true;
 }
 
 export function resolveMyOrderDeliveryUrgency(

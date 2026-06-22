@@ -1,5 +1,7 @@
 import {
+  formatDateString,
   formatIntervalLabel,
+  parseDateOnly,
   resolveSupplierInterval,
 } from "@/lib/orders/dates";
 import type { OrderType, SupplierLocation, VacationNote } from "@/types/database";
@@ -115,10 +117,12 @@ export function formatStockPeriodCompact(
   return v;
 }
 
-/** ISO yyyy-mm-dd → dd.MM.yyyy */
+/** ISO yyyy-mm-dd lub pełny timestamp → dd.MM.yyyy */
 export function formatPlDate(iso: string | null | undefined): string {
   if (!iso) return "—";
+  const parsed = parseDateOnly(iso);
+  if (parsed) return formatDateString(parsed, "dd.MM.yyyy");
   const [y, m, d] = iso.split("-");
   if (!y || !m || !d) return iso;
-  return `${d}.${m}.${y}`;
+  return `${d.slice(0, 2)}.${m}.${y}`;
 }

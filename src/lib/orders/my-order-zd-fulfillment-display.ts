@@ -11,6 +11,9 @@ import type { MyOrderZdFulfillment, MyOrderZdFulfillmentSlot } from "@/lib/order
 import {
   ZD_FULFILLMENT_PLACEHOLDER_TIMING_LABEL,
 } from "@/lib/orders/zd-fulfillment-placeholder-deadline";
+import {
+  buildCollapsedZdPendingOnlyHint,
+} from "@/lib/orders/my-order-zd-eta-copy";
 import { todayInWarsaw } from "@/lib/time/warsaw";
 
 const URGENCY_RANK: Record<DeliveryUrgency, number> = {
@@ -130,7 +133,7 @@ export function buildCollapsedZdMixedNoMatchHint(lines: LineZdTermState[]): stri
   const countLabel = polishPositionCount(withoutZd.length);
 
   if (pendingOnly.length === withoutZd.length) {
-    return `${countLabel} czeka na termin w ZD — rozwiń po szczegóły`;
+    return buildCollapsedZdPendingOnlyHint(withoutZd.length);
   }
   if (withHistory.length) {
     return `${countLabel} bez terminu w ZD — rozwiń po szacunek z historii`;

@@ -51,7 +51,7 @@ describe("zd-fulfillment-deadline-change", () => {
       )
     ).toMatchObject({
       title: "Termin przesunięty",
-      detail: "było 15.07.2026 → 22.07.2026",
+      detail: "Poprzednio 15.07.2026 · teraz 22.07.2026",
       variant: "postponed",
     });
 

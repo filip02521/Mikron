@@ -5,7 +5,6 @@ import { brandLinkSubtleClass, salesTypography } from "@/lib/ui/ontime-theme";
 import {
   formatPln,
   formatShortDate,
-  zkWatchStatusLabel,
   zkWatchSubtitle,
 } from "@/lib/sales/notepad-format";
 import {
@@ -30,16 +29,16 @@ export function ZkWatchLinesMetaSection({
   readOnly,
   tourPreview = false,
   archived,
+  showSubiektRealizedCloseHint = false,
 }: {
   watch: SalesZkWatch;
   readOnly?: boolean;
   tourPreview?: boolean;
   archived?: boolean;
+  showSubiektRealizedCloseHint?: boolean;
 }) {
   const canEdit = !readOnly && !tourPreview && !archived;
   const clientContact = extractZkWatchClientContact(watch);
-  const subiektStatus = zkWatchStatusLabel(watch);
-  const isRealizedInSubiekt = subiektStatus === "Zrealizowane";
   const issued = formatShortDate(watch.zk_issued_at);
   const subtitle = zkWatchSubtitle(watch, { omitLineSummary: true });
 
@@ -83,7 +82,7 @@ export function ZkWatchLinesMetaSection({
         </div>
       ) : null}
 
-      {isRealizedInSubiekt && canEdit ? (
+      {showSubiektRealizedCloseHint && canEdit ? (
         <p className="rounded-md border border-emerald-200/80 bg-emerald-50/70 px-3 py-2 text-xs leading-snug text-emerald-900">
           Subiekt: Zrealizowane — rozważ zamknięcie sprawy (menu na karcie ZK).
         </p>

@@ -1,9 +1,13 @@
 "use client";
 
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
 import type { MyOrderRow } from "@/lib/orders/my-order-presenter";
 import { MojeOrdersView } from "@/components/moje/MojeOrdersView";
-import { MojeZdEtaSyncClient } from "@/components/moje/MojeZdEtaSyncClient";
+import {
+  clearMojeZdEtaSessionSync,
+  MojeZdEtaSyncClient,
+} from "@/components/moje/MojeZdEtaSyncClient";
 import { MojeZdEtaDevRefreshButton } from "@/components/moje/MojeZdEtaDevRefreshButton";
 import { useSalesOnboardingDemo } from "@/components/sales/SalesOnboardingContext";
 import {
@@ -27,6 +31,7 @@ export function MojeOrdersShell({
   initial,
   salesPersonId,
   showSalesSync = false,
+  zdEtaSyncMountCount = 0,
   zdEtaSyncEligibleCount = 0,
   dayStartContext = null,
   ...viewProps
@@ -34,6 +39,9 @@ export function MojeOrdersShell({
   initial: Presented;
   salesPersonId: string | null;
   showSalesSync?: boolean;
+  /** Montuj klienta sync (również gdy Subiekt chwilowo offline). */
+  zdEtaSyncMountCount?: number;
+  /** Pozycje wymagające sync przy dostępnym Subiekcie. */
   zdEtaSyncEligibleCount?: number;
   dayStartContext?: SalesDayStartContext | null;
 } & Omit<
@@ -41,6 +49,7 @@ export function MojeOrdersShell({
   "zamowienia" | "informacje" | "productLineCount" | "dayStartContext"
 >) {
   const tourDemo = useSalesOnboardingDemo("moje");
+  const router = useRouter();
   const demoPresented = useMemo(() => buildOnboardingMojePresented(), []);
   const demoArchive = useMemo(() => buildOnboardingMojeArchiveDemo(), []);
   const demoDayStartContext = useMemo(
@@ -54,15 +63,30 @@ export function MojeOrdersShell({
       ? isSubiektAvailableForZdSync(viewProps.subiektAvailability)
       : true
   );
+  const prevSubiektReachableRef = useRef(subiektReachable);
   const handleSubiektStatusChange = useCallback((status: SubiektAvailability) => {
     setSubiektReachable(isSubiektAvailableForZdSync(status));
   }, []);
 
+  useEffect(() => {
+    const wasReachable = prevSubiektReachableRef.current;
+    prevSubiektReachableRef.current = subiektReachable;
+    if (!wasReachable && subiektReachable && showSalesSync && zdEtaSyncMountCount > 0) {
+      clearMojeZdEtaSessionSync();
+      router.refresh();
+    }
+  }, [subiektReachable, showSalesSync, zdEtaSyncMountCount, router]);
+
+  const syncEligibleCount = subiektReachable ? zdEtaSyncEligibleCount : 0;
+
   return (
     <>
       <MojeZdEtaDevRefreshButton />
-      {showSalesSync && zdEtaSyncEligibleCount > 0 && subiektReachable ? (
-        <MojeZdEtaSyncClient syncEligibleCount={zdEtaSyncEligibleCount} />
+      {showSalesSync && zdEtaSyncMountCount > 0 ? (
+        <MojeZdEtaSyncClient
+          syncEligibleCount={syncEligibleCount}
+          subiektReachable={subiektReachable}
+        />
       ) : null}
       <MojeOrdersView
       {...viewProps}

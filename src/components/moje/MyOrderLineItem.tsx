@@ -3,7 +3,13 @@
 import { zdFulfillmentDeadlineChangeShortLabel } from "@/components/orders/ZdFulfillmentDeadlineChangeNotice";
 import { parseDateOnly } from "@/lib/orders/dates";
 import { isPastExpectedDate } from "@/lib/orders/delivery-eta";
-import { formatMyOrderHistoryEstimateLineLabel } from "@/lib/orders/my-order-history-estimate-copy";
+import {
+  formatMyOrderHistoryEstimateLineLabel,
+} from "@/lib/orders/my-order-history-estimate-copy";
+import {
+  ZD_ETA_LINE_NO_MATCH_LABEL,
+  ZD_ETA_LINE_PENDING_LABEL,
+} from "@/lib/orders/my-order-zd-eta-copy";
 import { salesZdTimingLabel } from "@/lib/orders/my-order-sales-ui";
 import type { MyOrderLine, MyOrderLineStockStatus } from "@/lib/orders/my-order-presenter";
 import type { SalesCancelPhase } from "@/lib/orders/sales-cancel";
@@ -114,7 +120,7 @@ export function MyOrderLineItem({
   hideProcurementCancelNote?: boolean;
   searchQuery?: string | null;
   listKind?: "zamowienie" | "informacja";
-  /** Szacunek z historii grupy — gdy linia czeka na ZD lub nie ma terminu w Subiekcie. */
+  /** Szacunek z historii grupy — gdy linia czeka na ZD lub nie ma terminu w ZD u dostawcy. */
   historyEstimateLabel?: string | null;
 }) {
   const badge = showProgress && emphasizeStock ? stockBadge(line.stockStatus) : null;
@@ -139,13 +145,13 @@ export function MyOrderLineItem({
         ? formatMyOrderHistoryEstimateLineLabel(historyLabel, {
             lowConfidence: historyLowConfidence,
           })
-        : "Sprawdzamy termin w Subiekcie…"
+        : ZD_ETA_LINE_PENDING_LABEL
       : line.zdEtaNoMatch
         ? historyLabel
           ? formatMyOrderHistoryEstimateLineLabel(historyLabel, {
               lowConfidence: historyLowConfidence,
             })
-          : "Brak terminu w Subiekcie"
+          : ZD_ETA_LINE_NO_MATCH_LABEL
         : null;
 
   const detailParts = [

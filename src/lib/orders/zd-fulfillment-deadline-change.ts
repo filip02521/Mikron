@@ -5,6 +5,9 @@ import type { IndividualOrder } from "@/types/database";
 /** Informacja o zmianie widoczna przez 7 dni lub do potwierdzenia. */
 export const ZD_FULFILLMENT_DEADLINE_CHANGE_VISIBLE_MS = 7 * 24 * 60 * 60 * 1000;
 
+/** Nagłówek sekcji w UI (caption nad tytułem zmiany). */
+export const ZD_FULFILLMENT_DEADLINE_CHANGE_CAPTION = "Zmiana terminu";
+
 export type ZdFulfillmentDeadlineChangeVariant = "postponed" | "moved_earlier";
 
 export type ZdFulfillmentDeadlineChangeDisplay = {
@@ -46,7 +49,7 @@ export function buildZdFulfillmentDeadlineChangeDisplay(
   const currentLabel = formatPlDate(currentDeadline);
   const title =
     variant === "moved_earlier" ? "Termin przyspieszony" : "Termin przesunięty";
-  const detail = `było ${previousLabel} → ${currentLabel}`;
+  const detail = `Poprzednio ${previousLabel} · teraz ${currentLabel}`;
 
   return {
     previousDeadline,

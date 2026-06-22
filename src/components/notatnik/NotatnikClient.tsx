@@ -227,6 +227,7 @@ export function NotatnikClient({
   >([]);
   const refreshPrompt = refreshPromptQueue[0] ?? null;
   const focusHandledWatchRef = useRef<string | null>(null);
+  const [recentlyClosedWatchId, setRecentlyClosedWatchId] = useState<string | null>(null);
   const focusHandledNoteRef = useRef<string | null>(null);
   const noteAnchorHandledRef = useRef<string | null>(null);
   const watchAnchorHandledRef = useRef<string | null>(null);
@@ -258,8 +259,14 @@ export function NotatnikClient({
       const path = notatnikPagePathForTab(tab, isZkSurface ? "zk" : "notes");
       const params = new URLSearchParams(searchParams.toString());
 
-      if (options?.focusWatch?.trim()) {
-        params.set("focusWatch", options.focusWatch.trim());
+      if (options?.focusWatch !== undefined) {
+        const fw = options.focusWatch?.trim();
+        if (fw) {
+          params.set("focusWatch", fw);
+          setRecentlyClosedWatchId(null);
+        } else {
+          params.delete("focusWatch");
+        }
       } else if (tab !== "zk") {
         params.delete("focusWatch");
       }
@@ -274,13 +281,20 @@ export function NotatnikClient({
         params.set("tab", tab);
       }
 
-      const hash = hashRaw
-        ? hashRaw.startsWith("#")
+      const hash =
+        options?.hash !== undefined
           ? hashRaw
-          : `#${hashRaw}`
-        : options?.focusWatch?.trim()
-          ? `#watch-${options.focusWatch.trim()}`
-          : "";
+            ? hashRaw.startsWith("#")
+              ? hashRaw
+              : `#${hashRaw}`
+            : ""
+          : options?.focusWatch?.trim()
+            ? `#watch-${options.focusWatch.trim()}`
+            : hashRaw
+              ? hashRaw.startsWith("#")
+                ? hashRaw
+                : `#${hashRaw}`
+              : "";
 
       const qs = params.toString();
       router.replace(qs ? `${path}?${qs}${hash}` : `${path}${hash}`, { scroll: false });
@@ -311,6 +325,10 @@ export function NotatnikClient({
         const { watch } = await actionUndoCloseZkWatch(snapshot.watch.id);
         setArchivedWatches((prev) => prev.filter((w) => w.id !== watch.id));
         setZkWatches((prev) => uniqueById(sortZkWatches([watch, ...prev])));
+        setRecentlyClosedWatchId((id) => (id === watch.id ? null : id));
+        focusHandledWatchRef.current = null;
+        watchAnchorHandledRef.current = null;
+        setFocusWatchId(watch.id);
         flashNotepadAnchor(`watch-${watch.id}`);
         navigateToTab("zk", { hash: `watch-${watch.id}`, focusWatch: watch.id });
       } else {
@@ -805,6 +823,9 @@ export function NotatnikClient({
         focusWatchId: focusParam ?? focusWatchId,
         watchInOpen: focusParam ? zkWatches.some((w) => w.id === focusParam) : undefined,
         watchInArchive: focusParam ? archivedWatches.some((w) => w.id === focusParam) : undefined,
+        ignoreArchivedWatchFocus: Boolean(
+          focusParam && recentlyClosedWatchId && focusParam === recentlyClosedWatchId
+        ),
         defaultTab,
         archiveAvailable: hasArchive,
       })
@@ -853,6 +874,11 @@ export function NotatnikClient({
       setProsbaScopeWatchId(watch.id);
       setProsbaScopeOpenNonce((nonce) => nonce + 1);
     }
+    setFocusWatchId(watch.id);
+    if (!tourDemo) {
+      navigateToTab("zk", { focusWatch: watch.id, hash: `watch-${watch.id}` });
+    }
+    refresh();
     flashNotepadAnchor(`watch-${watch.id}`);
   }
 
@@ -866,6 +892,8 @@ export function NotatnikClient({
     const expiresAt = Number.isFinite(closedMs)
       ? undoExpiresAtFromAnchor(closedMs)
       : undoExpiresAtNow();
+    const closingFocusedWatch =
+      focusWatchId === watchId || searchParams.get("focusWatch")?.trim() === watchId;
     if (watch) {
       setArchivedWatches((archived) =>
         uniqueById([{ ...watch, closed_at: closedAt, updated_at: closedAt }, ...archived])
@@ -886,11 +914,27 @@ export function NotatnikClient({
       delete next[watchId];
       return next;
     });
+    if (closingFocusedWatch) {
+      setRecentlyClosedWatchId(watchId);
+      setFocusWatchId(null);
+      if (!tourDemo) {
+        navigateToTab("zk", { focusWatch: null, hash: "" });
+      } else {
+        setActiveTab("zk");
+      }
+    }
   }
 
   function handleWatchRestored(watch: SalesZkWatch) {
     setArchivedWatches((prev) => prev.filter((w) => w.id !== watch.id));
     setZkWatches((prev) => uniqueById(sortZkWatches([watch, ...prev])));
+    setRecentlyClosedWatchId((id) => (id === watch.id ? null : id));
+    focusHandledWatchRef.current = null;
+    watchAnchorHandledRef.current = null;
+    setFocusWatchId(watch.id);
+    if (!tourDemo) {
+      navigateToTab("zk", { focusWatch: watch.id, hash: `watch-${watch.id}` });
+    }
     refresh();
   }
 

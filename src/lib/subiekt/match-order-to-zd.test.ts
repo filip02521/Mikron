@@ -109,6 +109,23 @@ describe("orderMatchesZdDocument", () => {
       )
     ).toBe(true);
   });
+
+  it("nie dopasowuje po samym PLU=tw_Id gdy linia ma inny towId", () => {
+    expect(
+      orderMatchesZdDocument(
+        {
+          subiekt_tw_id: 5412,
+          symbol: "KP-213-130-PMK",
+          products: "Kleszcze",
+          mikran_code: "5412",
+        },
+        {
+          dok_Id: 99,
+          dok_Pozycja: [{ ob_TowId: 100, tw_Symbol: "5412", ob_Ilosc: 1 }],
+        }
+      )
+    ).toBe(false);
+  });
 });
 
 describe("findBestMatchingZdDocument", () => {
@@ -164,6 +181,30 @@ describe("findBestMatchingZdDocument", () => {
         { at }
       )?.dok_NrPelny
     ).toBe("ZD 36/M/02/2026");
+  });
+
+  it("pomija ZD ze statusem Zrealizowane (8), nawet z przyszłym terminem", () => {
+    const fulfilled: SubiektDocument = {
+      dok_Id: 1,
+      dok_NrPelny: "ZD/Z",
+      dok_Status: 8,
+      dok_TerminRealizacji: "2099-01-01",
+      dok_Pozycja: [{ ob_TowId: 7512, tw_Symbol: "606402", ob_Ilosc: 3 }],
+    };
+    const open: SubiektDocument = {
+      dok_Id: 2,
+      dok_NrPelny: "ZD/O",
+      dok_Status: 7,
+      dok_TerminRealizacji: "2026-07-15",
+      dok_Pozycja: [{ ob_TowId: 7512, tw_Symbol: "606402", ob_Ilosc: 2 }],
+    };
+    expect(
+      findBestMatchingZdDocument(
+        { ...baseOrder, symbol: "606402", products: "Prod", quantity: "3" },
+        [fulfilled, open],
+        { at }
+      )?.dok_NrPelny
+    ).toBe("ZD/O");
   });
 
   it("przy częściowej dostawie preferuje ZD z ilością reszty", () => {
@@ -270,14 +311,66 @@ describe("findBestMatchingZdDocument", () => {
       )?.dok_Id
     ).toBe(11);
   });
+
+  it("przy częściowej dostawie wybiera ZD z brakami zamiast zrealizowanego pełnego", () => {
+    const fulfilledFull: SubiektDocument = {
+      dok_Id: 31,
+      dok_NrPelny: "ZD 31/M/06/2026",
+      dok_Status: 8,
+      dok_TerminRealizacji: "2026-07-10",
+      dok_Pozycja: [{ ob_TowId: 16893, tw_Symbol: "H364RNF 103 015", ob_Ilosc: 5 }],
+    };
+    const remainder: SubiektDocument = {
+      dok_Id: 62,
+      dok_NrPelny: "ZD 62/M/06/2026",
+      dok_Status: 6,
+      dok_DataWyst: "2026-06-15",
+      dok_TerminRealizacji: "2026-07-20",
+      dok_Pozycja: [{ ob_TowId: 16893, tw_Symbol: "H364RNF 103 015", ob_Ilosc: 3 }],
+    };
+    expect(
+      findBestMatchingZdDocument(
+        {
+          ...baseOrder,
+          subiekt_tw_id: 16893,
+          symbol: "H364RNF 103 015",
+          quantity: "5",
+          delivered_quantity: "2",
+          zd_fulfillment_dok_id: 31,
+        },
+        [fulfilledFull, remainder],
+        { at }
+      )?.dok_NrPelny
+    ).toBe("ZD 62/M/06/2026");
+  });
 });
 
 describe("isConfidentZdMatchForOrder", () => {
-  it("pewne gdy zapisany dok_id nadal pasuje z resztą ilości", () => {
+  it("nie ufa luźnemu zapisowi po częściowej dostawie — wymaga dokładnej reszty", () => {
     const doc: SubiektDocument = {
       dok_Id: 10,
       dok_TerminRealizacji: "2026-08-01",
       dok_Pozycja: [{ ob_TowId: 200, tw_Symbol: "ABC-1", ob_Ilosc: 10 }],
+    };
+    expect(
+      isConfidentZdMatchForOrder(
+        {
+          ...baseOrder,
+          subiekt_tw_id: 200,
+          quantity: "10",
+          delivered_quantity: "3",
+          zd_fulfillment_dok_id: 10,
+        },
+        doc
+      )
+    ).toBe(false);
+  });
+
+  it("pewne gdy zapisany dok_id ma dokładną resztę ilości", () => {
+    const doc: SubiektDocument = {
+      dok_Id: 10,
+      dok_TerminRealizacji: "2026-08-01",
+      dok_Pozycja: [{ ob_TowId: 200, tw_Symbol: "ABC-1", ob_Ilosc: 7 }],
     };
     expect(
       isConfidentZdMatchForOrder(

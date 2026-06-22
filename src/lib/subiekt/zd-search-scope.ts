@@ -218,6 +218,75 @@ export function zdPlacementBrowseMonthChunks(
   return chunks.length ? chunks : [monthBrowseChunkFromAnchor(placement)];
 }
 
+/** Najpierw bieżący miesiąc — przy lookup bez daty prośby szybciej trafiamy świeże ZD. */
+export function sortMonthChunksNewestFirst(
+  chunks: readonly ZdMonthBrowseChunk[]
+): ZdMonthBrowseChunk[] {
+  return [...chunks].sort((a, b) => b.dataOd.localeCompare(a.dataOd));
+}
+
+/** Łączy okna miesięczne wielu dat zamówień (prośba + historia dostawcy). */
+export function zdMergedPlacementBrowseMonthChunks(
+  placements: readonly (string | null | undefined)[],
+  preferNear: string | null | undefined,
+  at: Date = new Date()
+): ZdMonthBrowseChunk[] {
+  const chunkMap = new Map<string, ZdMonthBrowseChunk>();
+  for (const placement of placements) {
+    for (const chunk of zdPlacementBrowseMonthChunks(placement, at)) {
+      chunkMap.set(`${chunk.dataOd}|${chunk.dataDo}`, chunk);
+    }
+  }
+  if (!chunkMap.size) {
+    const chunks = zdPlacementBrowseMonthChunks(preferNear, at);
+    return preferNear?.trim() ? chunks : sortMonthChunksNewestFirst(chunks);
+  }
+  return sortMonthChunksNearPlacement([...chunkMap.values()], preferNear);
+}
+
+function sortPlacementDatesNearPrimary(
+  dates: readonly string[],
+  primary: string | null | undefined
+): string[] {
+  if (!primary?.trim()) return [...dates].sort((a, b) => b.localeCompare(a));
+  const key = primary.trim().slice(0, 10);
+  const target = new Date(`${key}T12:00:00`).getTime();
+  if (!Number.isFinite(target)) return [...dates].sort((a, b) => b.localeCompare(a));
+  return [...dates].sort((a, b) => {
+    const da = Math.abs(new Date(`${a}T12:00:00`).getTime() - target);
+    const db = Math.abs(new Date(`${b}T12:00:00`).getTime() - target);
+    return da - db || b.localeCompare(a);
+  });
+}
+
+/**
+ * Daty do wyszukiwania ZD: prośba handlowca + momenty zamówień głównych u dostawcy.
+ * Priorytet: data prośby, potem najbliższe daty z historii.
+ */
+export function buildZdSearchPlacements(
+  primaryPlacement: string | null | undefined,
+  supplierOrderDates: readonly string[],
+  at: Date = new Date()
+): string[] {
+  const floor = zdContractorMaxLookbackDataOd(at);
+  const seen = new Set<string>();
+  const out: string[] = [];
+
+  const add = (iso: string | null | undefined) => {
+    const key = iso?.trim().slice(0, 10);
+    if (!key || !/^\d{4}-\d{2}-\d{2}$/.test(key) || key < floor || seen.has(key)) return;
+    seen.add(key);
+    out.push(key);
+  };
+
+  add(primaryPlacement);
+  for (const date of sortPlacementDatesNearPrimary(supplierOrderDates, primaryPlacement)) {
+    add(date);
+  }
+
+  return out;
+}
+
 /** Priorytet: miesiąc zgłoszenia, potem sąsiednie miesiące. */
 export function sortMonthChunksNearPlacement(
   chunks: readonly ZdMonthBrowseChunk[],

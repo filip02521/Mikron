@@ -32,12 +32,14 @@ describe("runZdEtaSyncForSalesPeople", () => {
 
     const result = await runZdEtaSyncForSalesPeople(["sp1", "sp1", "sp2"]);
 
-    expect(result).toEqual({ updated: 1, processed: 2 });
+    expect(result).toEqual({ updated: 1, processed: 2, cleared: 0 });
     expect(runZdEtaSyncForSalesPerson).toHaveBeenCalledTimes(2);
     expect(runZdEtaSyncForSalesPerson).toHaveBeenCalledWith("sp1", {
+      force: true,
       allowLiveSearch: true,
     });
     expect(runZdEtaSyncForSalesPerson).toHaveBeenCalledWith("sp2", {
+      force: true,
       allowLiveSearch: true,
     });
   });

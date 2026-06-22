@@ -1006,6 +1006,7 @@ export function OrderFormClient({
           mojeHref={mojeHref}
           mojeLabel={mojeLabel}
           showProductZdLookup={!readOnly && !tourDemo}
+          suppliers={suppliers}
           onProductStockOutPrefill={
             readOnly || tourDemo ? undefined : applyProductZdStockOutPrefill
           }

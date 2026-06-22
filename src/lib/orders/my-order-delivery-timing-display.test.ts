@@ -5,6 +5,11 @@ import { formatDateString } from "@/lib/orders/dates";
 import { todayInWarsaw } from "@/lib/time/warsaw";
 import { MY_ORDER_HISTORY_ESTIMATE_MIXED_ZD_GROUP_DETAIL, MY_ORDER_HISTORY_ESTIMATE_TITLE, MY_ORDER_HISTORY_ESTIMATE_ZD_PENDING_REPLACE_DETAIL } from "@/lib/orders/my-order-history-estimate-copy";
 import {
+  ZD_ETA_TIMING_SYNC_IN_PROGRESS,
+  ZD_ETA_TIMING_TITLE_NO_MATCH,
+  ZD_ETA_TIMING_TITLE_PENDING,
+} from "@/lib/orders/my-order-zd-eta-copy";
+import {
   buildMyOrderDeliveryTimingDisplay,
   parseMyOrderTimingLabel,
   shouldShowMyOrderCollapsedDeliveryTiming,
@@ -77,7 +82,7 @@ describe("my-order-delivery-timing-display", () => {
         zdEtaNoMatch: true,
       })
     );
-    expect(display?.title).toBe("Brak terminu w Subiekcie");
+    expect(display?.title).toBe(ZD_ETA_TIMING_TITLE_NO_MATCH);
     expect(display?.estimate).toBe("Brak informacji o planowanej dostawie");
     expect(display?.urgency).toBe("overdue");
     expect(display?.urgencyLabel).toBeNull();
@@ -90,7 +95,7 @@ describe("my-order-delivery-timing-display", () => {
         zdEtaPending: true,
       })
     );
-    expect(display?.title).toBe("Sprawdzamy termin w ZD");
+    expect(display?.title).toBe(ZD_ETA_TIMING_TITLE_PENDING);
     expect(display?.detail).toContain(MY_ORDER_HISTORY_ESTIMATE_ZD_PENDING_REPLACE_DETAIL.slice(0, 20));
   });
 
@@ -112,8 +117,8 @@ describe("my-order-delivery-timing-display", () => {
         zdEtaPending: true,
       })
     );
-    expect(display?.title).toBe("Sprawdzamy termin w ZD");
-    expect(display?.estimate).toContain("Subiektem");
+    expect(display?.title).toBe(ZD_ETA_TIMING_TITLE_PENDING);
+    expect(display?.estimate).toContain(ZD_ETA_TIMING_SYNC_IN_PROGRESS.slice(0, 12));
     expect(shouldShowMyOrderExpandedDeliveryTiming(row({ timingLabel: null, zdEtaPending: true }), true)).toBe(
       true
     );

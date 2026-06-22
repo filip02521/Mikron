@@ -25,6 +25,17 @@ describe("notepad-page-tabs", () => {
     ).toBe("archive");
   });
 
+  it("resolveNotatnikPageTab ignoruje archiwum przy ignoreArchivedWatchFocus", () => {
+    expect(
+      resolveNotatnikPageTab({
+        focusWatchId: "w-arch",
+        watchInOpen: false,
+        watchInArchive: true,
+        ignoreArchivedWatchFocus: true,
+      })
+    ).toBe("zk");
+  });
+
   it("buildNotatnikPageHref dla ZK używa /zk", () => {
     expect(
       buildNotatnikPageHref({

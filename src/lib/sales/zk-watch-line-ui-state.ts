@@ -140,8 +140,8 @@ export function zkWatchLineUiStateMeta(state: ZkWatchLineUiState): ZkWatchLineUi
       return {
         label: "Brak prośby — możesz dodać do nowej lub uzupełniającej",
         shortLabel: "Do prośby",
-        badgeClass: "bg-slate-100 text-slate-700 ring-1 ring-slate-200/80",
-        rowTintClass: null,
+        badgeClass: "bg-amber-100 text-amber-950 ring-1 ring-amber-200/80",
+        rowTintClass: "bg-amber-50/45",
         icon: "alert",
       };
   }

@@ -15,6 +15,13 @@ import {
   MY_ORDER_HISTORY_ESTIMATE_ZD_PENDING_REPLACE_DETAIL,
 } from "@/lib/orders/my-order-history-estimate-copy";
 import {
+  ZD_ETA_MIXED_GROUP_PENDING_DETAIL,
+  ZD_ETA_TIMING_DETAIL_PENDING,
+  ZD_ETA_TIMING_SYNC_IN_PROGRESS,
+  ZD_ETA_TIMING_TITLE_NO_MATCH,
+  ZD_ETA_TIMING_TITLE_PENDING,
+} from "@/lib/orders/my-order-zd-eta-copy";
+import {
   resolveMyOrderDeliveryUrgency,
   type DeliveryUrgency,
 } from "@/lib/orders/my-order-delivery-urgency";
@@ -134,7 +141,7 @@ export function buildMyOrderDeliveryTimingDisplay(
     const historyEstimate = resolveMyOrderHistoryDeliveryEstimate(row);
     if (historyEstimate?.display.overdue) {
       return {
-        title: "Sprawdzamy termin w ZD",
+        title: ZD_ETA_TIMING_TITLE_PENDING,
         estimate: MY_ORDER_HISTORY_ESTIMATE_OVERDUE_LABEL,
         detail: MY_ORDER_HISTORY_ESTIMATE_OVERDUE_ZD_PENDING_DETAIL,
         tone: "overdue",
@@ -144,11 +151,11 @@ export function buildMyOrderDeliveryTimingDisplay(
     }
     const statEstimate = raw ? parseMyOrderTimingLabel(raw).estimate : null;
     return {
-      title: "Sprawdzamy termin w ZD",
-      estimate: statEstimate ?? "Trwa synchronizacja z Subiektem…",
+      title: ZD_ETA_TIMING_TITLE_PENDING,
+      estimate: statEstimate ?? ZD_ETA_TIMING_SYNC_IN_PROGRESS,
       detail: statEstimate
         ? MY_ORDER_HISTORY_ESTIMATE_ZD_PENDING_REPLACE_DETAIL
-        : "Szukamy dokumentu ZD u dostawcy w Subiekcie.",
+        : ZD_ETA_TIMING_DETAIL_PENDING,
       tone: "low-confidence",
     };
   }
@@ -170,9 +177,7 @@ export function buildMyOrderDeliveryTimingDisplay(
     const mixedDetail = row.zdEtaNoMatch
       ? [baseDetail, MY_ORDER_HISTORY_ESTIMATE_MIXED_ZD_GROUP_DETAIL].filter(Boolean).join(" · ")
       : row.zdEtaPending
-        ? [baseDetail, "Część pozycji czeka na synchronizację ZD w Subiekcie."]
-            .filter(Boolean)
-            .join(" · ")
+        ? [baseDetail, ZD_ETA_MIXED_GROUP_PENDING_DETAIL].filter(Boolean).join(" · ")
         : baseDetail;
     return withUrgency(
       {
@@ -198,7 +203,7 @@ export function buildMyOrderDeliveryTimingDisplay(
           : estimate;
     if (historyEstimate?.display.overdue || overdue) {
       return {
-        title: "Brak terminu w Subiekcie",
+        title: ZD_ETA_TIMING_TITLE_NO_MATCH,
         estimate: MY_ORDER_HISTORY_ESTIMATE_OVERDUE_LABEL,
         detail: MY_ORDER_HISTORY_ESTIMATE_OVERDUE_ZD_NO_MATCH_DETAIL,
         tone: "overdue",
@@ -208,8 +213,8 @@ export function buildMyOrderDeliveryTimingDisplay(
     }
     return withUrgency(
       {
-        title: "Brak terminu w Subiekcie",
-        estimate: historyEstimateText || "Brak terminu w ZD",
+        title: ZD_ETA_TIMING_TITLE_NO_MATCH,
+        estimate: historyEstimateText || ZD_ETA_TIMING_TITLE_NO_MATCH,
         detail: MY_ORDER_HISTORY_ESTIMATE_BELOW_ZD_NO_MATCH_DETAIL,
         tone: "low-confidence",
       },

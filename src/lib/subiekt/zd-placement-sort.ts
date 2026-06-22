@@ -43,6 +43,13 @@ export function sortZdCandidatesByPlacementDistance(
   });
 }
 
+/** Najświeższe ZD w oknie miesięcznym — przy wyszukiwaniu po symbolu (wiele fałszywych trafień API). */
+export function sortZdCandidatesByNewestIssue(
+  candidates: readonly ZdDateCandidate[]
+): ZdDateCandidate[] {
+  return [...candidates].sort((a, b) => b.issueDate.localeCompare(a.issueDate));
+}
+
 /**
  * Do dopasowania produktu: najpierw ZD tuż przed zgłoszeniem (np. 4 lut),
  * potem tuż po — unika zalewania wieloma ZD z tego samego dnia po zamówieniu.

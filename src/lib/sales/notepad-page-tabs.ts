@@ -25,6 +25,8 @@ export function resolveNotatnikPageTab(input: {
   focusWatchId?: string | null;
   watchInOpen?: boolean;
   watchInArchive?: boolean;
+  /** Gdy true — focusWatch wskazuje archiwum, ale nie przełączaj na tab archiwum (np. tuż po zamknięciu ZK). */
+  ignoreArchivedWatchFocus?: boolean;
   /** Domyślna zakładka gdy brak jawnych wskazówek w URL. */
   defaultTab?: NotatnikPageTab;
   /** Gdy false i tab=archive w URL — przełącz na defaultTab. */
@@ -39,7 +41,13 @@ export function resolveNotatnikPageTab(input: {
   }
 
   if (focus || hash.startsWith("#watch-") || hash.startsWith("watch-")) {
-    if (input.watchInArchive && !input.watchInOpen) return "archive";
+    if (
+      input.watchInArchive &&
+      !input.watchInOpen &&
+      !input.ignoreArchivedWatchFocus
+    ) {
+      return "archive";
+    }
     return "zk";
   }
 

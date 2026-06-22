@@ -13,16 +13,21 @@ export function ProsbaPageToolbar({
   mojeLabel = "Moje zamówienia",
   showProductZdLookup = false,
   onProductStockOutPrefill,
+  suppliers = [],
 }: {
   mojeHref: string;
   mojeLabel?: string;
   showProductZdLookup?: boolean;
   onProductStockOutPrefill?: (prefill: ProductZdLookupStockOutPrefill) => void;
+  suppliers?: import("@/lib/orders/order-form-suppliers").OrderFormSupplierOption[];
 }) {
   return (
     <div className="space-y-2">
       {showProductZdLookup ? (
-        <ProductZdLookupTrigger onStockOutPrefill={onProductStockOutPrefill} />
+        <ProductZdLookupTrigger
+          onStockOutPrefill={onProductStockOutPrefill}
+          suppliers={suppliers}
+        />
       ) : null}
       <div className="flex flex-wrap items-center justify-end gap-2">
         <Link

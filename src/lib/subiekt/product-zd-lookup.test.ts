@@ -1,8 +1,12 @@
 import { describe, expect, it } from "vitest";
 import {
+  buildAppOrderDeliveryEstimate,
   collectActiveProductZdMatches,
+  mergeProductLookupSupplier,
+  productLookupSearchOrder,
   productToZdLookupOrder,
   rankProductZdLookupMatches,
+  resolveProductZdLookupAppOrderHint,
 } from "@/lib/subiekt/product-zd-lookup";
 import type { SubiektDocument } from "@/lib/subiekt/types";
 
@@ -66,5 +70,89 @@ describe("product-zd-lookup", () => {
       "2099-06-20",
       "2099-07-01",
     ]);
+  });
+
+  it("używa wyłącznie dostawcy z katalogu produktu", () => {
+    expect(
+      mergeProductLookupSupplier({ supplierId: "chifa", supplierName: "Chifa" })
+    ).toEqual({ supplierId: "chifa", supplierName: "Chifa" });
+
+    expect(
+      mergeProductLookupSupplier({ supplierId: null, supplierName: null })
+    ).toEqual({ supplierId: null, supplierName: null });
+  });
+
+  it("buduje prośbę syntetyczną z datą zamówienia do wyszukiwania ZD", () => {
+    const order = productLookupSearchOrder(
+      {
+        tw_Id: 42,
+        tw_Symbol: "KP-213-130-PMK",
+        tw_Nazwa: "Kleszcze",
+      },
+      "2026-05-12T10:00:00.000Z"
+    );
+
+    expect(order.symbol).toBe("KP-213-130-PMK");
+    expect(order.subiekt_tw_id).toBe(42);
+    expect(order.ordered_at).toBe("2026-05-12T10:00:00.000Z");
+    expect(order.status).toBe("Zamowione");
+  });
+
+  it("szacuje termin z otwartego zamówienia gdy brak ZD", () => {
+    const estimate = buildAppOrderDeliveryEstimate({
+      placementAt: "2026-05-12",
+      orderType: "Glowne",
+      statsMode: "LACZNIE",
+      supplierId: "chifa",
+      deliveryStats: [
+        {
+          supplier_id: "chifa",
+          main_count: 10,
+          side_count: 2,
+          main_sum: 300,
+          side_sum: 40,
+          main_avg: 30,
+          side_avg: 20,
+        },
+      ],
+    });
+    expect(estimate?.estimatedDeadline).toMatch(/2026-/);
+    expect(estimate?.estimateLabel).toContain("dni rob.");
+  });
+
+  it("resolveProductZdLookupAppOrderHint — tylko przy otwartej prośbie", () => {
+    const hint = resolveProductZdLookupAppOrderHint(
+      {
+        placementAt: "2026-05-12",
+        supplierId: "chifa",
+        supplierName: "Chifa",
+        openOrder: {
+          id: "ord-1",
+          supplierId: "chifa",
+          orderType: "Glowne",
+          orderedAt: "2026-05-12",
+          statsMode: "LACZNIE",
+        },
+      },
+      [
+        {
+          supplier_id: "chifa",
+          main_count: 10,
+          side_count: 2,
+          main_sum: 300,
+          side_sum: 40,
+          main_avg: 30,
+          side_avg: 20,
+        },
+      ]
+    );
+    expect(hint?.orderId).toBe("ord-1");
+    expect(hint?.estimateLabel).toContain("dni rob.");
+    expect(
+      resolveProductZdLookupAppOrderHint(
+        { placementAt: null, supplierId: null, supplierName: null, openOrder: null },
+        []
+      )
+    ).toBeNull();
   });
 });
