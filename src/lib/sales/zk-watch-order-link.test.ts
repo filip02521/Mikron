@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   clientsMatchForZk,
+  computeAllZkWatchOrderHints,
   computeZkWatchOrderHints,
   filterZkWatchesByClientQuery,
   isOrderRelevantToZkWatch,
@@ -905,6 +906,49 @@ describe("buildZkLineProsbaQuantityMeta", () => {
 
     const meta = buildZkLineProsbaQuantityMeta(line, [closed, open], w);
     expect(meta?.displayLabel).toBe("5 szt. · w prośbie 2 szt. · 3 szt. ze stanu");
+  });
+});
+
+describe("computeAllZkWatchOrderHints", () => {
+  it("zwraca te same hinty co pojedyncze wywołanie per ZK", () => {
+    const w1 = watch({ id: "w1", client_label: "Klinika A", client_kh_id: 10 });
+    const w2 = watch({
+      id: "w2",
+      client_label: "Klinika B",
+      client_kh_id: 20,
+      subiekt_snapshot: {
+        dok_Pozycja: [
+          {
+            ob_Id: 2,
+            ob_TowId: 200,
+            tw_Symbol: "XYZ",
+            tw_Nazwa: "Śruba",
+            ob_Ilosc: 1,
+          },
+        ],
+      },
+    });
+    const orders = [
+      linkOrder({ id: "o1", sales_client_kh_id: 10, sales_client_name: "Klinika A" }),
+      linkOrder({
+        id: "o2",
+        sales_person_id: "sp-other",
+        sales_client_kh_id: 10,
+        sales_client_name: "Klinika A",
+      }),
+      linkOrder({
+        id: "o3",
+        sales_client_kh_id: 20,
+        sales_client_name: "Klinika B",
+        subiekt_tw_id: 200,
+        symbol: "XYZ",
+        products: "Śruba",
+      }),
+    ];
+
+    const batch = computeAllZkWatchOrderHints([w1, w2], orders);
+    expect(batch.get("w1")).toEqual(computeZkWatchOrderHints(w1, orders));
+    expect(batch.get("w2")).toEqual(computeZkWatchOrderHints(w2, orders));
   });
 });
 

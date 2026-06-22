@@ -66,7 +66,10 @@ export function individualOrderToZkLinkableOrder(
     action_at: order.action_at ?? null,
     delivery_at: order.delivery_at ?? null,
     zd_fulfillment_deadline: order.zd_fulfillment_deadline ?? null,
+    zd_fulfillment_previous_deadline: order.zd_fulfillment_previous_deadline ?? null,
     zd_fulfillment_deadline_changed_at: order.zd_fulfillment_deadline_changed_at ?? null,
+    zd_fulfillment_deadline_change_seen_at:
+      order.zd_fulfillment_deadline_change_seen_at ?? null,
     sales_acknowledged_at: order.sales_acknowledged_at ?? null,
     sales_cancelled_at: order.sales_cancelled_at ?? null,
   };

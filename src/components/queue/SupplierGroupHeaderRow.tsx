@@ -29,6 +29,8 @@ export function SupplierGroupHeaderRow({
   onToggle,
   variant = "delivery",
   actions,
+  rowRef,
+  dataIndex,
 }: {
   colSpan: number;
   groupIndex: number;
@@ -38,9 +40,13 @@ export function SupplierGroupHeaderRow({
   onToggle: () => void;
   variant?: "delivery" | "informacja";
   actions?: React.ReactNode;
+  rowRef?: (element: Element | null) => void;
+  dataIndex?: number;
 }) {
   return (
     <tr
+      ref={rowRef}
+      data-index={dataIndex}
       className={queueSupplierRowClass(groupIndex, {
         variant,
         isFirstInSupplierGroup: true,

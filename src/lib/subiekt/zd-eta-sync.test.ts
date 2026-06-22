@@ -13,6 +13,7 @@ import {
   zdEtaPerOrderDocBudget,
   selectZdEtaSyncCandidates,
   shouldMarkMojeZdEtaSessionDone,
+  shouldRefreshMojeZdEtaPage,
   shouldRetryMojeZdEtaSync,
   shouldSkipMojeZdEtaSessionSync,
   buildMojeZdEtaSessionState,
@@ -553,6 +554,19 @@ describe("shouldMarkMojeZdEtaSessionDone", () => {
         4
       )
     ).toBe(false);
+  });
+});
+
+describe("shouldRefreshMojeZdEtaPage", () => {
+  it("odświeża tylko gdy zaktualizowano lub wyczyszczono terminy", () => {
+    expect(shouldRefreshMojeZdEtaPage(null)).toBe(false);
+    expect(shouldRefreshMojeZdEtaPage({ candidates: 3, processed: 3 })).toBe(false);
+    expect(shouldRefreshMojeZdEtaPage({ candidates: 2, processed: 2, updated: 1 })).toBe(
+      true
+    );
+    expect(shouldRefreshMojeZdEtaPage({ candidates: 1, processed: 1, cleared: 1 })).toBe(
+      true
+    );
   });
 });
 

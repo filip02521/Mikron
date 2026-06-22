@@ -1,5 +1,6 @@
 "use client";
 
+import { memo } from "react";
 import { zdFulfillmentDeadlineChangeShortLabel } from "@/components/orders/ZdFulfillmentDeadlineChangeNotice";
 import { parseDateOnly } from "@/lib/orders/dates";
 import { isPastExpectedDate } from "@/lib/orders/delivery-eta";
@@ -57,7 +58,7 @@ function stockBadge(status: MyOrderLineStockStatus): { label: string; className:
   }
 }
 
-export function MyOrderLineItem({
+export const MyOrderLineItem = memo(function MyOrderLineItem({
   line,
   index,
   showProgress,
@@ -381,4 +382,4 @@ export function MyOrderLineItem({
       ) : null}
     </li>
   );
-}
+});

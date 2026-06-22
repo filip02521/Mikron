@@ -4,7 +4,12 @@ import { useEffect, useMemo, useRef } from "react";
 import { actionFetchProsbaLineStock } from "@/app/actions/subiekt";
 import type { ProductLineDraft } from "@/components/orders/request-product-lines";
 import {
+  fetchProsbaStockDeduplicated,
+  prosbaStockTwIdsKey,
+} from "@/lib/orders/prosba-stock-fetch-cache";
+import {
   applyProsbaLineStockMap,
+  PROSBA_STOCK_FETCH_UI_TIMEOUT_MS,
   prosbaLinesStockSyncSignature,
   uniqueProsbaLineTwIds,
 } from "@/lib/orders/prosba-stock-check";
@@ -44,13 +49,24 @@ export function useProsbaLinesStockSync(
         const twIds = uniqueProsbaLineTwIds(currentLines);
         if (!twIds.length) return;
 
+        const timeoutId = window.setTimeout(() => {
+          cancelled = true;
+        }, PROSBA_STOCK_FETCH_UI_TIMEOUT_MS);
+
         try {
-          const stock = await actionFetchProsbaLineStock(twIds);
+          const twIdsKey = prosbaStockTwIdsKey(twIds);
+          const stock = await fetchProsbaStockDeduplicated(
+            twIdsKey,
+            twIds,
+            actionFetchProsbaLineStock
+          );
           if (cancelled) return;
           const { next, changed } = applyProsbaLineStockMap(currentLines, stock);
           if (changed) onChangeRef.current(next);
         } catch {
           /* stan — best effort */
+        } finally {
+          window.clearTimeout(timeoutId);
         }
       })();
     }, STOCK_SYNC_DEBOUNCE_MS);
@@ -61,4 +77,3 @@ export function useProsbaLinesStockSync(
     };
   }, [enabled, requestKind, syncSignature]);
 }
-

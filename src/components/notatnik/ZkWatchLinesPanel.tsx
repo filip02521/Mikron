@@ -30,6 +30,11 @@ import {
   zkWatchLineUiStateMeta,
   type ZkWatchLineUiState,
 } from "@/lib/sales/zk-watch-line-ui-state";
+import {
+  countZkWatchLinesOutsideTrackedScope,
+  filterZkWatchProductLineViewsForScope,
+  hasZkWatchTrackedProsbaScope,
+} from "@/lib/sales/zk-watch-prosba-scope";
 import type { ZkLinkableOrder, ZkWatchLineCoverage } from "@/lib/sales/zk-watch-order-link";
 import { buildZkLineProsbaQuantityMeta } from "@/lib/sales/zk-watch-order-link";
 import type { SalesZkWatch } from "@/types/database";
@@ -155,6 +160,7 @@ export function ZkWatchLinesPanel({
   const [views, setViews] = useState<ZkWatchLineView[]>(() => buildZkWatchLineViews(watch));
   const [filter, setFilter] = useState<LineFilter>("all");
   const [filterWatchId, setFilterWatchId] = useState(watch.id);
+  const [showAllZkLines, setShowAllZkLines] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -166,13 +172,28 @@ export function ZkWatchLinesPanel({
   if (watch.id !== filterWatchId) {
     setFilterWatchId(watch.id);
     setFilter("all");
+    setShowAllZkLines(false);
   }
 
-  const summary = useMemo(() => summarizeZkWatchLines(views), [views]);
+  const hasTrackedScope = useMemo(
+    () => hasZkWatchTrackedProsbaScope(watch),
+    [watch.line_checks]
+  );
+  const hiddenOutsideScope = useMemo(
+    () => countZkWatchLinesOutsideTrackedScope(watch, views),
+    [watch, views]
+  );
+  const displayViews = useMemo(
+    () => filterZkWatchProductLineViewsForScope(views, watch, { showAllLines: showAllZkLines }),
+    [views, watch, showAllZkLines]
+  );
+  const scopeToggleVisible = hasTrackedScope && hiddenOutsideScope > 0;
+
+  const summary = useMemo(() => summarizeZkWatchLines(displayViews), [displayViews]);
   const checkboxSummary = useMemo(
     () =>
       summarizeZkWatchLineCheckboxes({
-        lineViews: views,
+        lineViews: displayViews,
         newLineKeys: newLineKeys ?? [],
         inStockLineKeys: inStockLineKeys ?? [],
         scopeExcludedLineKeys: scopeExcludedLineKeys ?? [],
@@ -180,12 +201,12 @@ export function ZkWatchLinesPanel({
         informacjaAcknowledgedLineKeys: informacjaAcknowledgedLineKeys ?? [],
         lineCoverageByKey,
       }),
-    [views, newLineKeys, inStockLineKeys, scopeExcludedLineKeys, informacjaReadyLineKeys, informacjaAcknowledgedLineKeys, lineCoverageByKey]
+    [displayViews, newLineKeys, inStockLineKeys, scopeExcludedLineKeys, informacjaReadyLineKeys, informacjaAcknowledgedLineKeys, lineCoverageByKey]
   );
   const uiStateCounts = useMemo(
     () =>
       countZkWatchLineUiStates({
-        lineViews: views,
+        lineViews: displayViews,
         newLineKeys: newLineKeys ?? [],
         inStockLineKeys: inStockLineKeys ?? [],
         scopeExcludedLineKeys: scopeExcludedLineKeys ?? [],
@@ -193,7 +214,7 @@ export function ZkWatchLinesPanel({
         informacjaAcknowledgedLineKeys: informacjaAcknowledgedLineKeys ?? [],
         lineCoverageByKey,
       }),
-    [views, newLineKeys, inStockLineKeys, scopeExcludedLineKeys, informacjaReadyLineKeys, informacjaAcknowledgedLineKeys, lineCoverageByKey]
+    [displayViews, newLineKeys, inStockLineKeys, scopeExcludedLineKeys, informacjaReadyLineKeys, informacjaAcknowledgedLineKeys, lineCoverageByKey]
   );
   const newLineKeySet = useMemo(() => new Set(newLineKeys ?? []), [newLineKeys]);
   const inStockKeySet = useMemo(() => new Set(inStockLineKeys ?? []), [inStockLineKeys]);
@@ -211,54 +232,57 @@ export function ZkWatchLinesPanel({
   );
   const inRequestCount = useMemo(
     () =>
-      views.filter(
+      displayViews.filter(
         (v) =>
           resolveLineUiState(v, newLineKeySet, inStockKeySet, scopeExcludedKeySet, informacjaReadyKeySet, informacjaAcknowledgedKeySet, lineCoverageByKey) ===
           "in_request"
       ).length,
-    [views, newLineKeySet, inStockKeySet, scopeExcludedKeySet, informacjaReadyKeySet, informacjaAcknowledgedKeySet, lineCoverageByKey]
+    [displayViews, newLineKeySet, inStockKeySet, scopeExcludedKeySet, informacjaReadyKeySet, informacjaAcknowledgedKeySet, lineCoverageByKey]
   );
   const inStockCount = useMemo(
     () =>
-      views.filter(
+      displayViews.filter(
         (v) =>
           resolveLineUiState(v, newLineKeySet, inStockKeySet, scopeExcludedKeySet, informacjaReadyKeySet, informacjaAcknowledgedKeySet, lineCoverageByKey) ===
           "in_stock"
       ).length,
-    [views, newLineKeySet, inStockKeySet, scopeExcludedKeySet, informacjaReadyKeySet, informacjaAcknowledgedKeySet, lineCoverageByKey]
+    [displayViews, newLineKeySet, inStockKeySet, scopeExcludedKeySet, informacjaReadyKeySet, informacjaAcknowledgedKeySet, lineCoverageByKey]
   );
   const atClientCount = useMemo(
     () =>
-      views.filter(
+      displayViews.filter(
         (v) =>
           resolveLineUiState(v, newLineKeySet, inStockKeySet, scopeExcludedKeySet, informacjaReadyKeySet, informacjaAcknowledgedKeySet, lineCoverageByKey) ===
           "arrived"
       ).length,
-    [views, newLineKeySet, inStockKeySet, scopeExcludedKeySet, informacjaReadyKeySet, informacjaAcknowledgedKeySet, lineCoverageByKey]
+    [displayViews, newLineKeySet, inStockKeySet, scopeExcludedKeySet, informacjaReadyKeySet, informacjaAcknowledgedKeySet, lineCoverageByKey]
   );
   const deliveredCount = useMemo(
     () =>
-      views.filter(
+      displayViews.filter(
         (v) =>
           resolveLineUiState(v, newLineKeySet, inStockKeySet, scopeExcludedKeySet, informacjaReadyKeySet, informacjaAcknowledgedKeySet, lineCoverageByKey) ===
           "delivered"
       ).length,
-    [views, newLineKeySet, inStockKeySet, scopeExcludedKeySet, informacjaReadyKeySet, informacjaAcknowledgedKeySet, lineCoverageByKey]
+    [displayViews, newLineKeySet, inStockKeySet, scopeExcludedKeySet, informacjaReadyKeySet, informacjaAcknowledgedKeySet, lineCoverageByKey]
   );
   const partialCount = useMemo(
     () =>
-      views.filter(
+      displayViews.filter(
         (v) =>
           resolveLineUiState(v, newLineKeySet, inStockKeySet, scopeExcludedKeySet, informacjaReadyKeySet, informacjaAcknowledgedKeySet, lineCoverageByKey) ===
           "partial"
       ).length,
-    [views, newLineKeySet, inStockKeySet, scopeExcludedKeySet, informacjaReadyKeySet, informacjaAcknowledgedKeySet, lineCoverageByKey]
+    [displayViews, newLineKeySet, inStockKeySet, scopeExcludedKeySet, informacjaReadyKeySet, informacjaAcknowledgedKeySet, lineCoverageByKey]
   );
   const informacjaReadyCount = uiStateCounts.informacja_ready;
-  const scopeExcludedCount = scopeExcludedLineKeys?.length ?? 0;
+  const scopeExcludedCount = useMemo(
+    () => displayViews.filter((line) => scopeExcludedKeySet.has(line.key)).length,
+    [displayViews, scopeExcludedKeySet]
+  );
   const pendingCount = useMemo(
     () =>
-      views.filter((v) => {
+      displayViews.filter((v) => {
         const state = resolveLineUiState(
           v,
           newLineKeySet,
@@ -270,12 +294,16 @@ export function ZkWatchLinesPanel({
         );
         return state === "uncovered" || state === "new";
       }).length,
-    [views, newLineKeySet, inStockKeySet, scopeExcludedKeySet, informacjaReadyKeySet, informacjaAcknowledgedKeySet, lineCoverageByKey]
+    [displayViews, newLineKeySet, inStockKeySet, scopeExcludedKeySet, informacjaReadyKeySet, informacjaAcknowledgedKeySet, lineCoverageByKey]
+  );
+  const newLineVisibleCount = useMemo(
+    () => displayViews.filter((line) => newLineKeySet.has(line.key)).length,
+    [displayViews, newLineKeySet]
   );
   const filtered = useMemo(
     () =>
       filterViews(
-        views,
+        displayViews,
         filter,
         newLineKeySet,
         inStockKeySet,
@@ -284,7 +312,7 @@ export function ZkWatchLinesPanel({
         informacjaAcknowledgedKeySet,
         lineCoverageByKey
       ),
-    [views, filter, newLineKeySet, inStockKeySet, scopeExcludedKeySet, informacjaReadyKeySet, informacjaAcknowledgedKeySet, lineCoverageByKey]
+    [displayViews, filter, newLineKeySet, inStockKeySet, scopeExcludedKeySet, informacjaReadyKeySet, informacjaAcknowledgedKeySet, lineCoverageByKey]
   );
   const matchedFromProsba = useMemo(
     () => new Set(matchedDeliveredLineKeys ?? []),
@@ -293,7 +321,7 @@ export function ZkWatchLinesPanel({
   const canEdit = !readOnly && !tourPreview && !watch.closed_at && !watch.archived_at;
   const hasBulkMarkWork = useMemo(
     () =>
-      views.some((line) => {
+      displayViews.some((line) => {
         const uiState = resolveLineUiState(
           line,
           newLineKeySet,
@@ -310,7 +338,7 @@ export function ZkWatchLinesPanel({
           completedManually: line.completed_manually,
         });
       }),
-    [views, newLineKeySet, inStockKeySet, scopeExcludedKeySet, informacjaReadyKeySet, informacjaAcknowledgedKeySet, lineCoverageByKey]
+    [displayViews, newLineKeySet, inStockKeySet, scopeExcludedKeySet, informacjaReadyKeySet, informacjaAcknowledgedKeySet, lineCoverageByKey]
   );
   const progressPct =
     checkboxSummary.total > 0
@@ -344,6 +372,29 @@ export function ZkWatchLinesPanel({
       return { ...line, shelf_marked: true };
     });
   }
+
+  function applyBulkMarkToDisplayedLines(allViews: ZkWatchLineView[]): ZkWatchLineView[] {
+    const displayKeys = new Set(displayViews.map((line) => line.key));
+    const marked = markAllBulk(allViews.filter((line) => displayKeys.has(line.key)));
+    const markedByKey = new Map(marked.map((line) => [line.key, line]));
+    return allViews.map((line) => markedByKey.get(line.key) ?? line);
+  }
+
+  const scopeLinesToggle = scopeToggleVisible ? (
+    <div className="flex justify-end">
+      <Button
+        type="button"
+        variant="ghost"
+        size="sm"
+        className="h-7 px-2 text-[0.68rem] font-semibold text-indigo-800 hover:bg-indigo-50/80"
+        onClick={() => setShowAllZkLines((value) => !value)}
+      >
+        {showAllZkLines
+          ? "Pokaż wybrane pozycje"
+          : `Pokaż wszystkie pozycje ZK (+${hiddenOutsideScope})`}
+      </Button>
+    </div>
+  ) : null;
 
   async function persist(nextViews: ZkWatchLineView[]) {
     const previousViews = views;
@@ -403,8 +454,8 @@ export function ZkWatchLinesPanel({
 
   const filterChips: { id: LineFilter; label: string; count: number }[] = [
     { id: "all", label: "Wszystkie", count: checkboxSummary.total || summary.total },
-    ...(newLineKeySet.size > 0
-      ? [{ id: "new" as const, label: "Nowe", count: newLineKeySet.size }]
+    ...(newLineVisibleCount > 0
+      ? [{ id: "new" as const, label: "Nowe", count: newLineVisibleCount }]
       : []),
     ...(pendingCount > 0
       ? [{ id: "pending" as const, label: "Do prośby", count: pendingCount }]
@@ -436,8 +487,12 @@ export function ZkWatchLinesPanel({
     watch.line_summary?.trim() ||
     "Brak pozycji towarowych. Odśwież dane z Subiekta w menu ⋮ przy tym ZK.";
 
-  const listBody = !views.length ? (
-    <p className={cn("px-3 py-4 text-center", salesTypography.sectionHint)}>{emptyMessage}</p>
+  const listBody = !displayViews.length ? (
+    <p className={cn("px-3 py-4 text-center", salesTypography.sectionHint)}>
+      {views.length > 0 && hasTrackedScope && !showAllZkLines
+        ? "Brak wybranych pozycji do wyświetlenia — rozwiń pełne ZK z Subiekta."
+        : emptyMessage}
+    </p>
   ) : (
     <ul className="divide-y divide-slate-100">
       {filtered.map((line) => {
@@ -528,12 +583,12 @@ export function ZkWatchLinesPanel({
 
   const panel = (
     <div className={cn(mojeShipmentLinesShellClass, saving && "pointer-events-none opacity-70")}>
-      {showSummary && views.length > 0 ? (
+      {showSummary && displayViews.length > 0 ? (
         <div className={mojeShipmentLinesHeaderClass}>
           <p className={mojeShipmentLinesHeaderTitleClass}>
             {checkboxSummary.total > 0
               ? `${checkboxSummary.checked}/${checkboxSummary.total} zaznaczone`
-              : formatZkLinesProgress(views, { inStockLineKeys }) ?? "Lista towaru"}
+              : formatZkLinesProgress(displayViews, { inStockLineKeys }) ?? "Lista towaru"}
           </p>
           <div className="flex items-center gap-2">
             <span className={cn(salesTypography.statValue, "text-sm")}>{progressPct}%</span>
@@ -544,7 +599,7 @@ export function ZkWatchLinesPanel({
                 size="sm"
                 className="h-7 px-2 text-[0.68rem]"
                 disabled={saving || !hasBulkMarkWork}
-                onClick={() => void persist(markAllBulk(views))}
+                onClick={() => void persist(applyBulkMarkToDisplayedLines(views))}
               >
                 Wszystko OK
               </Button>
@@ -553,7 +608,9 @@ export function ZkWatchLinesPanel({
         </div>
       ) : null}
 
-      {views.length > 3 || filterChips.length > 2 ? (
+      {showSummary ? scopeLinesToggle : null}
+
+      {displayViews.length > 3 || filterChips.length > 2 ? (
         <div className="space-y-2 border-b border-slate-100 bg-slate-50/50 px-3 py-2">
           <div className="flex flex-wrap gap-1">
             {filterChips.map((chip) => (
@@ -579,7 +636,7 @@ export function ZkWatchLinesPanel({
         </div>
       ) : null}
 
-      <div className={cn(!compact && views.length > 0 && "max-h-[min(40vh,22rem)] overflow-y-auto")}>
+      <div className={cn(!compact && displayViews.length > 0 && "max-h-[min(40vh,22rem)] overflow-y-auto")}>
         {listBody}
       </div>
     </div>
@@ -588,7 +645,8 @@ export function ZkWatchLinesPanel({
   if (!showSummary) {
     return (
       <ZkWatchModalSection title={ZK_MODAL_SECTION_TITLES.lines} hint={ZK_MODAL_SECTION_HINTS.lines}>
-        {canEdit && views.length > 0 ? (
+        {scopeLinesToggle}
+        {canEdit && displayViews.length > 0 ? (
           <div className="flex justify-end">
             <Button
               type="button"
@@ -596,7 +654,7 @@ export function ZkWatchLinesPanel({
               size="sm"
               className="h-7 px-2.5 text-[0.68rem]"
               disabled={saving || !hasBulkMarkWork}
-              onClick={() => void persist(markAllBulk(views))}
+              onClick={() => void persist(applyBulkMarkToDisplayedLines(views))}
             >
               Oznacz wszystko jako zakończone
             </Button>

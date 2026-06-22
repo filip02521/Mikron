@@ -2,6 +2,9 @@ import { formatDateString } from "@/lib/orders/dates";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { todayInWarsaw } from "@/lib/time/warsaw";
 import type { ZkLinkableOrder } from "@/lib/sales/zk-watch-order-link";
+import {
+  fetchAllZkLinkableOrdersForSalesPerson,
+} from "@/lib/sales/zk-watch-close-pending-fetch";
 import type { SalesNote, SalesZkWatch } from "@/types/database";
 
 export type SalesNotepadData = {
@@ -15,32 +18,23 @@ export type SalesNotepadData = {
   zkOrdersMigrationMissing?: boolean;
 };
 
-const ZK_LINK_ORDER_SELECT =
-  "id, sales_person_id, sales_client_name, sales_client_kh_id, source_zk_watch_id, source_zk_number, subiekt_tw_id, symbol, products, mikran_code, quantity, delivered_quantity, status, request_kind, ordered_at, action_at, delivery_at, zd_fulfillment_deadline, zd_fulfillment_deadline_changed_at, sales_acknowledged_at, sales_cancelled_at";
-
 export async function fetchZkLinkableOrdersForSalesPerson(
   salesPersonId: string
 ): Promise<{ orders: ZkLinkableOrder[]; migrationMissing: boolean }> {
   const supabase = createAdminClient();
-  const { data, error } = await supabase
-    .from("individual_orders")
-    .select(ZK_LINK_ORDER_SELECT)
-    .eq("sales_person_id", salesPersonId)
-    .is("sales_cancelled_at", null)
-    .order("action_at", { ascending: false })
-    .limit(400);
-
-  if (error) {
+  try {
+    const orders = await fetchAllZkLinkableOrdersForSalesPerson(supabase, salesPersonId);
+    return { orders, migrationMissing: false };
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
     if (
-      error.message.includes("sales_client_kh_id") ||
-      error.message.includes("source_zk")
+      message.includes("sales_client_kh_id") ||
+      message.includes("source_zk")
     ) {
       return { orders: [], migrationMissing: true };
     }
-    throw new Error(error.message);
+    throw error instanceof Error ? error : new Error(message);
   }
-
-  return { orders: (data ?? []) as ZkLinkableOrder[], migrationMissing: false };
 }
 
 export function isZkWatchArchived(

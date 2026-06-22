@@ -1,5 +1,6 @@
 "use client";
 
+import dynamic from "next/dynamic";
 import { useCallback, useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import type { MyOrderRow } from "@/lib/orders/my-order-presenter";
@@ -32,10 +33,7 @@ import { useMyOrderPickupShelfDialog } from "@/components/moje/MyOrderPickupShel
 import { useMyOrderShipmentUndo } from "@/components/moje/MyOrderShipmentUndoProvider";
 import { Toast } from "@/components/ui/Toast";
 import { ActionLoadingOverlay } from "@/components/ui/ActionLoadingOverlay";
-import {
-  EditIndividualRequestModal,
-  type EditIndividualRequestInitial,
-} from "@/components/orders/EditIndividualRequestModal";
+import type { EditIndividualRequestInitial } from "@/components/orders/EditIndividualRequestModal";
 import { editInitialFromMyOrderRow } from "@/lib/orders/individual-request-edit-ui";
 import {
   searchQueryTokens,
@@ -46,8 +44,21 @@ import {
 } from "@/lib/orders/my-order-pickup-shelf-notice";
 import { cn } from "@/lib/cn";
 import { mojeControlHeightClass } from "@/lib/ui/ontime-theme";
+import {
+  MOJE_SHIPMENT_ROW_ESTIMATE_PX,
+  MOJE_SHIPMENT_VIRTUAL_THRESHOLD,
+} from "@/lib/ui/virtual-list-config";
+import { VirtualList } from "@/components/ui/VirtualList";
 import type { OrderFormSupplierOption } from "@/lib/orders/order-form-suppliers";
 import type { MyOrderSectionPatternId } from "@/lib/orders/my-order-section-callout";
+
+const EditIndividualRequestModal = dynamic(
+  () =>
+    import("@/components/orders/EditIndividualRequestModal").then((mod) => ({
+      default: mod.EditIndividualRequestModal,
+    })),
+  { ssr: false }
+);
 
 type CancelConfirmState = {
   orderIds: string[];
@@ -419,6 +430,103 @@ export function MyOrderShipmentList({
     [tourPreview]
   );
 
+  const handleEditRequest = useCallback((row: MyOrderRow) => {
+    const initial = editInitialFromMyOrderRow(row);
+    if (!initial) return;
+    setEditTarget({ orderIds: row.orderIds, initial });
+  }, []);
+
+  const handleToggleRow = useCallback(
+    (rowId: string) => {
+      toggleExpanded(rowId);
+    },
+    [toggleExpanded]
+  );
+
+  const mojeVirtualEnabled = sortedRows.length >= MOJE_SHIPMENT_VIRTUAL_THRESHOLD;
+  const expandedIdsKey = useMemo(
+    () => [...expandedIds].sort().join("\0"),
+    [expandedIds]
+  );
+  const focusScrollKey = useMemo(() => {
+    if (!focusRowIds?.size) return null;
+    return [...focusRowIds][0] ?? null;
+  }, [focusRowIds]);
+
+  const renderShipmentCard = useCallback(
+    (row: MyOrderRow, as: "li" | "div" = "li") => (
+      <MyOrderShipmentCard
+        as={as}
+        key={row.id}
+        domId={cardIdPrefix?.(row.id)}
+        row={row}
+        listKind={listKind}
+        showProgress={showProgress}
+        canAcknowledge={canAcknowledge}
+        pending={ackPending}
+        expanded={expandedIds.has(row.id)}
+        onToggleRow={handleToggleRow}
+        onAcknowledgePickup={requestPickup}
+        onAcknowledgeCancelled={
+          canAcknowledge && row.cancelledAckOrderIds.length
+            ? runAcknowledgeCancelled
+            : undefined
+        }
+        onAcknowledgeCancelNotice={
+          canAcknowledge && row.cancelNoticeOrderIds.length
+            ? runAcknowledgeCancelNotice
+            : undefined
+        }
+        onCancelRequest={
+          canAcknowledge && row.salesCancelOrderIds.length && row.salesCancelPhase
+            ? requestCancel
+            : undefined
+        }
+        onPartialCancelRequest={
+          canAcknowledge && row.salesCancelOrderIds.length
+            ? requestPartialCancel
+            : undefined
+        }
+        onSaveClient={canAcknowledge ? saveClient : undefined}
+        onEditRequest={canAcknowledge && !tourPreview ? handleEditRequest : undefined}
+        searchQuery={searchQuery}
+        tourPreview={tourPreview}
+        compactActionLayout={compactActionLayout}
+        suppressedSectionPatterns={suppressedSectionPatterns}
+        rowVisualTone={rowVisualTone}
+        highlighted={focusRowIds?.has(row.id) ?? false}
+        subiektReachable={subiektReachable}
+        onAcknowledgeZdDeadlineChange={
+          canAcknowledge ? runAcknowledgeZdDeadlineChange : undefined
+        }
+      />
+    ),
+    [
+      ackPending,
+      canAcknowledge,
+      cardIdPrefix,
+      compactActionLayout,
+      expandedIds,
+      focusRowIds,
+      handleEditRequest,
+      handleToggleRow,
+      listKind,
+      requestCancel,
+      requestPartialCancel,
+      requestPickup,
+      rowVisualTone,
+      runAcknowledgeCancelNotice,
+      runAcknowledgeCancelled,
+      runAcknowledgeZdDeadlineChange,
+      saveClient,
+      searchQuery,
+      showProgress,
+      subiektReachable,
+      suppressedSectionPatterns,
+      tourPreview,
+    ]
+  );
+
   if (!sortedRows.length) return null;
 
   const listBody = (
@@ -526,67 +634,23 @@ export function MyOrderShipmentList({
           </Button>
         </div>
       ) : null}
-      <ul
-        className={cn(
+      <VirtualList
+        items={sortedRows}
+        threshold={MOJE_SHIPMENT_VIRTUAL_THRESHOLD}
+        enabled={mojeVirtualEnabled}
+        bareItems
+        listClassName={cn(
           mojeShipmentListClass,
           continuation && "border-t border-slate-100"
         )}
-      >
-        {sortedRows.map((row) => (
-          <MyOrderShipmentCard
-            key={row.id}
-            domId={cardIdPrefix?.(row.id)}
-            row={row}
-            listKind={listKind}
-            showProgress={showProgress}
-            canAcknowledge={canAcknowledge}
-            pending={ackPending}
-            expanded={expandedIds.has(row.id)}
-            onToggle={() => toggleExpanded(row.id)}
-            onAcknowledgePickup={requestPickup}
-            onAcknowledgeCancelled={
-              canAcknowledge && row.cancelledAckOrderIds.length
-                ? runAcknowledgeCancelled
-                : undefined
-            }
-            onAcknowledgeCancelNotice={
-              canAcknowledge && row.cancelNoticeOrderIds.length
-                ? runAcknowledgeCancelNotice
-                : undefined
-            }
-            onCancelRequest={
-              canAcknowledge && row.salesCancelOrderIds.length && row.salesCancelPhase
-                ? (ids, lines) => requestCancel(ids, lines)
-                : undefined
-            }
-            onPartialCancelRequest={
-              canAcknowledge && row.salesCancelOrderIds.length
-                ? requestPartialCancel
-                : undefined
-            }
-            onSaveClient={canAcknowledge ? saveClient : undefined}
-            onEditRequest={
-              canAcknowledge && !tourPreview
-                ? (r) => {
-                    const initial = editInitialFromMyOrderRow(r);
-                    if (!initial) return;
-                    setEditTarget({ orderIds: r.orderIds, initial });
-                  }
-                : undefined
-            }
-            searchQuery={searchQuery}
-            tourPreview={tourPreview}
-            compactActionLayout={compactActionLayout}
-            suppressedSectionPatterns={suppressedSectionPatterns}
-            rowVisualTone={rowVisualTone}
-            highlighted={focusRowIds?.has(row.id) ?? false}
-            subiektReachable={subiektReachable}
-            onAcknowledgeZdDeadlineChange={
-              canAcknowledge ? runAcknowledgeZdDeadlineChange : undefined
-            }
-          />
-        ))}
-      </ul>
+        estimateSize={(_, row) =>
+          expandedIds.has(row.id) ? 240 : MOJE_SHIPMENT_ROW_ESTIMATE_PX
+        }
+        getItemKey={(row) => row.id}
+        scrollToKey={focusScrollKey}
+        remeasureKey={expandedIdsKey}
+        renderItem={(row) => renderShipmentCard(row, mojeVirtualEnabled ? "div" : "li")}
+      />
     </>
   );
 

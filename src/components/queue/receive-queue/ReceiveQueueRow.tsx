@@ -1,6 +1,6 @@
 "use client";
 
-import type { KeyboardEvent } from "react";
+import { memo, type KeyboardEvent } from "react";
 import type { IndividualOrder } from "@/types/database";
 import { FlowChevron, InlineCheck } from "@/components/ui/UiGlyphs";
 import { cn } from "@/lib/cn";
@@ -60,7 +60,7 @@ function SaveIcon({ className }: { className?: string }) {
   );
 }
 
-export function ReceiveQueueRow({
+export const ReceiveQueueRow = memo(function ReceiveQueueRow({
   order,
   groupIndex,
   rowIndex,
@@ -79,6 +79,8 @@ export function ReceiveQueueRow({
   onNotifyInformacja,
   onToggleProductGroup,
   onAckCancelDisposition,
+  rowRef,
+  dataIndex,
 }: {
   order: IndividualOrder;
   groupIndex: number;
@@ -98,6 +100,8 @@ export function ReceiveQueueRow({
   onNotifyInformacja: (ids: string[]) => void;
   onToggleProductGroup: (checked: boolean) => void;
   onAckCancelDisposition: () => void;
+  rowRef?: (element: Element | null) => void;
+  dataIndex?: number;
 }) {
   const personName = order.sales_person?.name?.trim() || "—";
   const fulfillment = fulfillmentProgressFor(order);
@@ -139,6 +143,8 @@ export function ReceiveQueueRow({
 
   return (
     <tr
+      ref={rowRef}
+      data-index={dataIndex}
       className={cn(
         queueSupplierRowClass(groupIndex, {
           variant: "delivery",
@@ -405,4 +411,4 @@ export function ReceiveQueueRow({
       </td>
     </tr>
   );
-}
+});

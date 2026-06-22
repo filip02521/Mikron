@@ -21,6 +21,7 @@ import { IconClipboardList } from "@/components/icons/StrokeIcons";
 import { SupplierGroupHeaderRow } from "@/components/queue/SupplierGroupHeaderRow";
 import { ReceiveQueueGroupMenu } from "@/components/queue/receive-queue/ReceiveQueueGroupMenu";
 import { ReceiveQueueRow } from "@/components/queue/receive-queue/ReceiveQueueRow";
+import { ReceiveQueueVirtualTbody } from "@/components/queue/receive-queue/ReceiveQueueVirtualTbody";
 import { ReceiveQueueSelectionBar } from "@/components/queue/receive-queue/ReceiveQueueSelectionBar";
 import { usePreviewMutationBlocker } from "@/components/layout/usePreviewMutationBlocker";
 import {
@@ -66,6 +67,8 @@ import {
   mergeReceiveQueueOrders,
   partitionReceiveSelection,
 } from "@/lib/orders/receive-queue";
+import { buildReceiveQueueVirtualItems } from "@/lib/orders/receive-queue-virtual-items";
+import { RECEIVE_QUEUE_VIRTUAL_THRESHOLD } from "@/lib/ui/virtual-list-config";
 import {
   batchDeliveryConfirmMessage,
   batchInformacjaConfirmMessage,
@@ -122,30 +125,23 @@ export function ReceiveQueueTable({
     [deliveryOrders, informacjaOrders]
   );
 
-  const supplierFiltered = useMemo(
-    () => filterOrdersBySupplier(receiveQueue, supplierFilter),
-    [receiveQueue, supplierFilter]
-  );
-
-  const zdScoped = useMemo(
-    () =>
-      filterReceiveQueueTable(receiveQueue, {
-        supplierFilter,
-        zdProfile: zdFilter?.profile ?? null,
-        productSearch: "",
-      }),
-    [receiveQueue, supplierFilter, zdFilter]
-  );
-
-  const filtered = useMemo(
-    () =>
-      filterReceiveQueueTable(receiveQueue, {
-        supplierFilter,
-        zdProfile: zdFilter?.profile ?? null,
-        productSearch,
-      }),
-    [receiveQueue, supplierFilter, zdFilter, productSearch]
-  );
+  const { filtered, supplierFiltered, zdScoped } = useMemo(() => {
+    const supplierFiltered = filterOrdersBySupplier(receiveQueue, supplierFilter);
+    const zdScoped = filterReceiveQueueTable(receiveQueue, {
+      supplierFilter,
+      zdProfile: zdFilter?.profile ?? null,
+      productSearch: "",
+    });
+    const filtered =
+      productSearch.trim().length > 0
+        ? filterReceiveQueueTable(receiveQueue, {
+            supplierFilter,
+            zdProfile: zdFilter?.profile ?? null,
+            productSearch,
+          })
+        : zdScoped;
+    return { filtered, supplierFiltered, zdScoped };
+  }, [receiveQueue, supplierFilter, zdFilter, productSearch]);
 
   const productSearchActive = searchQueryTokens(productSearch).length > 0;
 
@@ -168,6 +164,13 @@ export function ReceiveQueueTable({
     () => supplierGroups.map((g) => g.supplierKey).join("\0"),
     [supplierGroups]
   );
+  const queueTableRef = useRef<HTMLTableElement>(null);
+  const queueVirtualItems = useMemo(
+    () => buildReceiveQueueVirtualItems(supplierGroups, collapse.isExpanded),
+    [supplierGroups, collapse]
+  );
+  const queueVirtualEnabled =
+    queueVirtualItems.length >= RECEIVE_QUEUE_VIRTUAL_THRESHOLD;
 
   useEffect(() => {
     if (!productSearchActive) return;
@@ -745,8 +748,13 @@ export function ReceiveQueueTable({
 
           <TableScroll className="px-0 pb-0">
         <div className={QUEUE_LIST_BODY_CLASS}>
-          <DataTable className="queue-table receive-queue-table">
-            <thead>
+          <DataTable
+            ref={queueTableRef}
+            className="queue-table receive-queue-table"
+          >
+            <thead
+              className={cn(queueVirtualEnabled && "sticky top-0 z-[1] bg-white shadow-sm")}
+            >
               <tr>
               <th className="w-9">
                 <input
@@ -763,106 +771,129 @@ export function ReceiveQueueTable({
               <th className="w-[9.5rem] text-right">Realizacja</th>
             </tr>
           </thead>
-          <tbody>
-            {supplierGroups.map((group, groupIndex) => {
-              const groupIds = group.orders.map((o) => o.id);
-              const groupAllSelected =
-                groupIds.length > 0 && groupIds.every((id) => selected[id]);
-              const isOpen = collapse.isExpanded(group.supplierKey);
-              const summary = formatReceiveGroupHeaderSummary(
-                group.orders,
-                supplierMetrics.get(group.supplierKey)
-              );
-              const zamIds = zamowienieIdsInGroup(group.orders);
-              const infoIds = informacjaIdsInGroup(group.orders);
+          <ReceiveQueueVirtualTbody
+            tableRef={queueTableRef}
+            supplierGroups={supplierGroups}
+            supplierMetrics={supplierMetrics}
+            collapse={collapse}
+            selected={selected}
+            pending={pending}
+            productSearchActive={productSearchActive}
+            productSearch={productSearch}
+            receiveQueue={receiveQueue}
+            getQty={getQty}
+            zamowienieIdsInGroup={zamowienieIdsInGroup}
+            informacjaIdsInGroup={informacjaIdsInGroup}
+            toggleSupplierGroupIds={toggleSupplierGroupIds}
+            requestSaveBatch={requestSaveBatch}
+            requestMarkInformacja={requestMarkInformacja}
+            toggleSelected={toggleSelected}
+            setQty={setQty}
+            saveDelivery={saveDelivery}
+            toggleProductGroup={toggleProductGroup}
+            ackCancelDisposition={ackCancelDisposition}
+            renderClassic={() =>
+              supplierGroups.map((group, groupIndex) => {
+                const groupIds = group.orders.map((o) => o.id);
+                const groupAllSelected =
+                  groupIds.length > 0 && groupIds.every((id) => selected[id]);
+                const isOpen = collapse.isExpanded(group.supplierKey);
+                const summary = formatReceiveGroupHeaderSummary(
+                  group.orders,
+                  supplierMetrics.get(group.supplierKey)
+                );
+                const zamIds = zamowienieIdsInGroup(group.orders);
+                const infoIds = informacjaIdsInGroup(group.orders);
 
-              return (
-                <Fragment key={`receive-group-${groupIndex}`}>
-                  <SupplierGroupHeaderRow
-                    colSpan={COL_COUNT}
-                    groupIndex={groupIndex}
-                    group={group}
-                    summary={summary}
-                    isOpen={isOpen}
-                    onToggle={() => collapse.toggle(group.supplierKey)}
-                    variant="delivery"
-                    actions={
-                      <ReceiveQueueGroupMenu
-                        groupIds={groupIds}
-                        groupAllSelected={groupAllSelected}
-                        zamIds={zamIds}
-                        infoIds={infoIds}
-                        receiveQueue={receiveQueue}
-                        pending={pending}
-                        onToggleSelectAll={(checked) =>
-                          toggleSupplierGroupIds(groupIds, checked)
-                        }
-                        onSaveFullZamowienie={() =>
-                          requestSaveBatch(zamIds, { fullQuantity: true })
-                        }
-                        onNotifyInformacja={() => requestMarkInformacja(infoIds)}
-                      />
-                    }
-                  />
-                  {isOpen
-                    ? group.orders.map((o, rowIndex) => {
-                        const isInfo = isInformacjaRequest(o);
-                        const prevKey =
-                          rowIndex > 0
-                            ? informacjaProductKey(group.orders[rowIndex - 1]!)
-                            : null;
-                        const isFirstInProductGroup =
-                          informacjaProductKey(o) !== prevKey;
-                        const productGroupIds =
-                          isInfo && isFirstInProductGroup
-                            ? orderIdsInProductGroup(group.orders, rowIndex).filter((id) =>
-                                group.orders.find(
-                                  (x) => x.id === id && isInformacjaRequest(x)
+                return (
+                  <Fragment key={`receive-group-${groupIndex}`}>
+                    <SupplierGroupHeaderRow
+                      colSpan={COL_COUNT}
+                      groupIndex={groupIndex}
+                      group={group}
+                      summary={summary}
+                      isOpen={isOpen}
+                      onToggle={() => collapse.toggle(group.supplierKey)}
+                      variant="delivery"
+                      actions={
+                        <ReceiveQueueGroupMenu
+                          groupIds={groupIds}
+                          groupAllSelected={groupAllSelected}
+                          zamIds={zamIds}
+                          infoIds={infoIds}
+                          receiveQueue={receiveQueue}
+                          pending={pending}
+                          onToggleSelectAll={(checked) =>
+                            toggleSupplierGroupIds(groupIds, checked)
+                          }
+                          onSaveFullZamowienie={() =>
+                            requestSaveBatch(zamIds, { fullQuantity: true })
+                          }
+                          onNotifyInformacja={() => requestMarkInformacja(infoIds)}
+                        />
+                      }
+                    />
+                    {isOpen
+                      ? group.orders.map((o, rowIndex) => {
+                          const isInfo = isInformacjaRequest(o);
+                          const prevKey =
+                            rowIndex > 0
+                              ? informacjaProductKey(group.orders[rowIndex - 1]!)
+                              : null;
+                          const isFirstInProductGroup =
+                            informacjaProductKey(o) !== prevKey;
+                          const productGroupIds =
+                            isInfo && isFirstInProductGroup
+                              ? orderIdsInProductGroup(group.orders, rowIndex).filter(
+                                  (id) =>
+                                    group.orders.find(
+                                      (x) => x.id === id && isInformacjaRequest(x)
+                                    )
                                 )
-                              )
-                            : [];
-                        const productGroupAllSelected =
-                          productGroupIds.length > 0 &&
-                          productGroupIds.every((id) => selected[id]);
-                        const ordered = receiveQueueTargetQuantity(o);
-                        const inputVal = getQty(o);
+                              : [];
+                          const productGroupAllSelected =
+                            productGroupIds.length > 0 &&
+                            productGroupIds.every((id) => selected[id]);
+                          const ordered = receiveQueueTargetQuantity(o);
+                          const inputVal = getQty(o);
 
-                        return (
-                          <ReceiveQueueRow
-                            key={o.id}
-                            order={o}
-                            groupIndex={groupIndex}
-                            rowIndex={rowIndex}
-                            isInfo={isInfo}
-                            isFirstInProductGroup={isFirstInProductGroup}
-                            productGroupIds={productGroupIds}
-                            productGroupAllSelected={productGroupAllSelected}
-                            selected={!!selected[o.id]}
-                            pending={pending}
-                            inputVal={inputVal}
-                            searchQuery={productSearchActive ? productSearch : null}
-                            onToggleSelected={() => toggleSelected(o.id)}
-                            onQtyChange={(value) =>
-                              setQty((s) => ({ ...s, [o.id]: value }))
-                            }
-                            onSaveDelivery={() => saveDelivery(o, inputVal)}
-                            onFillFullQty={() => {
-                              if (ordered == null) return;
-                              saveDelivery(o, String(ordered));
-                            }}
-                            onNotifyInformacja={requestMarkInformacja}
-                            onToggleProductGroup={(checked) =>
-                              toggleProductGroup(group.orders, rowIndex, checked)
-                            }
-                            onAckCancelDisposition={() => ackCancelDisposition(o)}
-                          />
-                        );
-                      })
-                    : null}
-                </Fragment>
-              );
-            })}
-            </tbody>
+                          return (
+                            <ReceiveQueueRow
+                              key={o.id}
+                              order={o}
+                              groupIndex={groupIndex}
+                              rowIndex={rowIndex}
+                              isInfo={isInfo}
+                              isFirstInProductGroup={isFirstInProductGroup}
+                              productGroupIds={productGroupIds}
+                              productGroupAllSelected={productGroupAllSelected}
+                              selected={!!selected[o.id]}
+                              pending={pending}
+                              inputVal={inputVal}
+                              searchQuery={productSearchActive ? productSearch : null}
+                              onToggleSelected={() => toggleSelected(o.id)}
+                              onQtyChange={(value) =>
+                                setQty((s) => ({ ...s, [o.id]: value }))
+                              }
+                              onSaveDelivery={() => saveDelivery(o, inputVal)}
+                              onFillFullQty={() => {
+                                if (ordered == null) return;
+                                saveDelivery(o, String(ordered));
+                              }}
+                              onNotifyInformacja={requestMarkInformacja}
+                              onToggleProductGroup={(checked) =>
+                                toggleProductGroup(group.orders, rowIndex, checked)
+                              }
+                              onAckCancelDisposition={() => ackCancelDisposition(o)}
+                            />
+                          );
+                        })
+                      : null}
+                  </Fragment>
+                );
+              })
+            }
+          />
           </DataTable>
         </div>
           </TableScroll>

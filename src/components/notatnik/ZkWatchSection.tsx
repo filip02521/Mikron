@@ -1,5 +1,6 @@
 "use client";
 
+import dynamic from "next/dynamic";
 import { useMemo, useRef, useState } from "react";
 import {
   actionAddZkWatchByNumber,
@@ -11,7 +12,7 @@ import { IconPlusCircle } from "@/components/icons/StrokeIcons";
 import { validateZkQueryForSubmit } from "@/lib/subiekt/zk-search";
 import type { ZkSearchCandidate } from "@/lib/subiekt/resolve-zk-document";
 import { cn } from "@/lib/cn";
-import { brandLinkSubtleClass, salesChromeInsetClass, salesTypography } from "@/lib/ui/ontime-theme";
+import { brandLinkSubtleClass, notatnikPrimaryAddButtonClass, salesChromeInsetClass, salesTypography } from "@/lib/ui/ontime-theme";
 import { compareZkWatches } from "@/lib/sales/zk-watch-sort";
 import { watchNeedsNotepadAttention } from "@/lib/sales/notepad-follow-up";
 import {
@@ -27,11 +28,18 @@ import { ZkWatchGroupedList } from "./ZkWatchGroupedList";
 import { ZkWatchAddBar } from "./ZkWatchAddBar";
 import { ZkWatchAddInlineStrip } from "./ZkWatchAddInlineStrip";
 import { ZkWatchAddSection } from "./ZkWatchAddSection";
-import { ZkWatchProsbaScopeModal } from "./ZkWatchProsbaScopeModal";
 import {
   SalesListFilterEmptyHint,
   SalesSectionEmptyHint,
 } from "@/components/sales/SalesListEmptyHints";
+
+const ZkWatchProsbaScopeModal = dynamic(
+  () =>
+    import("./ZkWatchProsbaScopeModal").then((mod) => ({
+      default: mod.ZkWatchProsbaScopeModal,
+    })),
+  { ssr: false }
+);
 import { NotatnikListFilterBar } from "./NotatnikListFilterBar";
 import { ZkListMetaStrip } from "./ZkListMetaStrip";
 import { ZkWatchStatusGuideStrip } from "./ZkWatchStatusGuideStrip";
@@ -317,6 +325,18 @@ export function ZkWatchSection({
           </div>
         ) : null}
 
+        {!embedded && !readOnly && !tourPreview ? (
+          <ZkWatchAddSection
+            key={`${watches.length === 0 ? "zk-add-empty" : "zk-add-has-items"}-${addSectionNonce}`}
+            defaultOpen={watches.length === 0}
+            showCollapse={watches.length > 0}
+            embedded={embedded}
+            onCollapse={collapseAddPanel}
+          >
+            <ZkWatchAddBar {...addBarProps} layout="stack" />
+          </ZkWatchAddSection>
+        ) : null}
+
         {!embedded && watches.length > 0 ? (
           <NotatnikListFilterBar
             embedded
@@ -332,18 +352,6 @@ export function ZkWatchSection({
           />
         ) : null}
 
-        {!embedded && !readOnly && !tourPreview ? (
-            <ZkWatchAddSection
-            key={`${watches.length === 0 ? "zk-add-empty" : "zk-add-has-items"}-${addSectionNonce}`}
-            defaultOpen={watches.length === 0}
-            showCollapse={watches.length > 0}
-            embedded={embedded}
-            onCollapse={collapseAddPanel}
-          >
-            <ZkWatchAddBar {...addBarProps} layout="stack" />
-          </ZkWatchAddSection>
-        ) : null}
-
         {error && !embedded ? (
           <div className={cn(embedded && salesChromeInsetClass)}>
             <Alert tone="error">{error}</Alert>
@@ -355,7 +363,28 @@ export function ZkWatchSection({
         <section className={mojeShipmentSectionShellClass} aria-label={ZK_PAGE_SECTION_COPY.listTitle}>
           <div className="border-b border-slate-100 bg-slate-50/40">
             <div className={cn(salesChromeInsetClass, "space-y-2.5 py-2.5")}>
+              {!readOnly && !tourPreview && addPanelOpen ? (
+                <ZkWatchAddInlineStrip
+                  showCollapse={watches.length > 0}
+                  onCollapse={collapseAddPanel}
+                >
+                  <ZkWatchAddBar {...addBarProps} layout="inline" />
+                </ZkWatchAddInlineStrip>
+              ) : null}
+
               <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:gap-2">
+                {!readOnly && !tourPreview && watches.length > 0 && !addPanelOpen ? (
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    size="sm"
+                    className={cn(notatnikPrimaryAddButtonClass, "sm:min-h-[2.5rem]")}
+                    onClick={openAddPanel}
+                  >
+                    <IconPlusCircle size={16} strokeWidth={2} className="mr-1.5 shrink-0" aria-hidden />
+                    Dodaj ZK
+                  </Button>
+                ) : null}
                 {watches.length > 0 ? (
                   <div className="min-w-0 flex-1">
                     <NotatnikListFilterBar
@@ -372,28 +401,7 @@ export function ZkWatchSection({
                     />
                   </div>
                 ) : null}
-                {!readOnly && !tourPreview && watches.length > 0 && !addPanelOpen ? (
-                  <Button
-                    type="button"
-                    variant="secondary"
-                    size="sm"
-                    className="min-h-11 shrink-0 justify-center sm:min-h-[2.5rem]"
-                    onClick={openAddPanel}
-                  >
-                    <IconPlusCircle size={16} strokeWidth={2} className="mr-1.5 shrink-0" aria-hidden />
-                    Dodaj ZK
-                  </Button>
-                ) : null}
               </div>
-
-              {!readOnly && !tourPreview && addPanelOpen ? (
-                <ZkWatchAddInlineStrip
-                  showCollapse={watches.length > 0}
-                  onCollapse={collapseAddPanel}
-                >
-                  <ZkWatchAddBar {...addBarProps} layout="inline" />
-                </ZkWatchAddInlineStrip>
-              ) : null}
 
               {watches.length > 0 ? (
                 <ZkListMetaStrip

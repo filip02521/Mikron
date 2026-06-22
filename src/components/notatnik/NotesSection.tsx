@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   actionArchiveSalesNote,
   actionCreateSalesNote,
@@ -48,7 +48,7 @@ export const NOTATNIK_KEYBOARD_HINTS = [
   { keys: ["Ctrl", "Z"], label: "cofnij" },
 ] as const;
 
-function NoteCard({
+const NoteCard = memo(function NoteCard({
   note,
   anchorId,
   readOnly,
@@ -342,7 +342,7 @@ function NoteCard({
       </article>
     </NoteStickyFrame>
   );
-}
+});
 
 export function NotesSection({
   notes,

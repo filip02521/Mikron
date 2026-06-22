@@ -14,6 +14,7 @@ export function ZkWatchProsbaActions({
   prosbaInTokuHref,
   onProsbaClick,
   uncoveredCount,
+  buttonLabel,
 }: {
   archived?: boolean;
   pending?: boolean;
@@ -22,6 +23,8 @@ export function ZkWatchProsbaActions({
   prosbaInTokuHref: string;
   onProsbaClick: (event: MouseEvent<HTMLAnchorElement>) => void;
   uncoveredCount: number;
+  /** Etykieta po filtrze stanu magazynowego (domyślnie z action.label). */
+  buttonLabel?: string;
 }) {
   if (archived) return null;
 
@@ -30,6 +33,8 @@ export function ZkWatchProsbaActions({
   if (prosbaCardAction.kind === "covered") {
     return <ZkWatchProsbaCoveredChip reason={prosbaCardAction.reason} size="compact" />;
   }
+
+  const label = buttonLabel ?? prosbaCardAction.label;
 
   if (prosbaCardAction.kind === "view_open") {
     return (
@@ -41,7 +46,7 @@ export function ZkWatchProsbaActions({
           className="h-8 px-2.5 text-[0.68rem] sm:h-7"
           disabled={pending}
         >
-          {prosbaCardAction.label}
+          {label}
         </Button>
       </Link>
     );
@@ -61,7 +66,7 @@ export function ZkWatchProsbaActions({
         className="h-8 px-2.5 text-[0.68rem] sm:h-7"
         disabled={pending}
       >
-        {prosbaCardAction.label}
+        {label}
       </Button>
     </Link>
   );

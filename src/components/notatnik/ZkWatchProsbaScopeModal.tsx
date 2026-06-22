@@ -1,15 +1,16 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { actionUpdateZkWatchProsbaScope } from "@/app/actions/sales-notepad";
-import { actionFetchProsbaLineStock } from "@/app/actions/subiekt";
 import { Button } from "@/components/ui/Button";
 import { ModalShell } from "@/components/ui/ModalShell";
 import { Spinner } from "@/components/ui/Spinner";
+import { useProsbaLineStockBatchFetch } from "@/hooks/useProsbaLineStockBatchFetch";
 import { cn } from "@/lib/cn";
 import {
   assessProsbaLineStock,
   buildZkProsbaScopeInitialOrderMarked,
+  collectZkProsbaScopeLineTwIds,
   deriveZkProsbaScopeSuggestedOrderKeys,
   formatZkProsbaAutoMarkedHint,
   formatZkProsbaScopeLineBadge,
@@ -17,7 +18,6 @@ import {
   zkProsbaScopeAllLinesSufficient,
   zkProsbaScopeLineKeysToOrder,
   zkProsbaScopeStockFetchFailed,
-  type ProsbaLineStockSnapshot,
 } from "@/lib/orders/prosba-stock-check";
 import { formatZkWatchDisplayNumber } from "@/lib/sales/notepad-format";
 import { zkWatchLineUiStateMeta } from "@/lib/sales/zk-watch-line-ui-state";
@@ -43,94 +43,72 @@ function useZkProsbaScopeSelection(watch: SalesZkWatch, open: boolean) {
     () => needsProsbaByKeyFromChecks(parseZkWatchLineChecks(watch.line_checks)),
     [watch.line_checks]
   );
+  const twIds = useMemo(() => collectZkProsbaScopeLineTwIds(productLines), [productLines]);
+
+  const {
+    stockByTwId,
+    loading: stockLoading,
+    timedOut: stockFetchTimedOut,
+  } = useProsbaLineStockBatchFetch(twIds, open);
 
   /** Zaznaczone = do zamówienia (prośba). */
   const [orderMarked, setOrderMarked] = useState<Set<string>>(() => new Set());
-  const [stockByTwId, setStockByTwId] = useState<Record<number, ProsbaLineStockSnapshot>>({});
-  const [stockLoading, setStockLoading] = useState(false);
-  const [initializedFor, setInitializedFor] = useState<string | null>(null);
-  const wasOpenRef = useRef(false);
+  const [scopeInitDone, setScopeInitDone] = useState(false);
+  const [userTouchedSelection, setUserTouchedSelection] = useState(false);
 
   useEffect(() => {
-    if (!open) {
-      wasOpenRef.current = false;
-      return;
-    }
-    const justOpened = !wasOpenRef.current;
-    wasOpenRef.current = true;
-    if (!justOpened && watch.id === initializedFor) return;
+    if (!open) return;
+    if (userTouchedSelection || stockLoading) return;
 
-    const twIds = productLines
-      .map((line) => line.subiektTwId)
-      .filter((id): id is number => id != null && id > 0);
-
-    let cancelled = false;
-
-    const applyInitialMarked = (stock: Record<number, ProsbaLineStockSnapshot>) => {
+    if (existingScope !== null) {
+      if (scopeInitDone) return;
       const keys = buildZkProsbaScopeInitialOrderMarked({
         lines: productLines,
-        stockByTwId: stock,
+        stockByTwId: {},
         existingScope,
         needsProsbaByKey,
       });
-      setOrderMarked(new Set(keys));
-    };
-
-    if (existingScope !== null) {
-      void (async () => {
-        applyInitialMarked({});
-        setInitializedFor(watch.id);
-        if (!twIds.length) {
-          if (!cancelled) {
-            setStockByTwId({});
-            setStockLoading(false);
-          }
-          return;
-        }
-        setStockLoading(true);
-        try {
-          const stock = await actionFetchProsbaLineStock(twIds);
-          if (!cancelled) setStockByTwId(stock);
-        } catch {
-          if (!cancelled) setStockByTwId({});
-        } finally {
-          if (!cancelled) setStockLoading(false);
-        }
-      })();
-      return () => {
-        cancelled = true;
-      };
+      queueMicrotask(() => {
+        setOrderMarked(new Set(keys));
+        setScopeInitDone(true);
+      });
+      return;
     }
 
-    void (async () => {
-      setStockLoading(true);
-      try {
-        const stock = twIds.length ? await actionFetchProsbaLineStock(twIds) : {};
-        if (cancelled) return;
-        setStockByTwId(stock);
-        applyInitialMarked(stock);
-        setInitializedFor(watch.id);
-      } catch {
-        if (!cancelled) {
-          applyInitialMarked({});
-          setInitializedFor(watch.id);
-        }
-      } finally {
-        if (!cancelled) setStockLoading(false);
-      }
-    })();
+    const hasStockData = Object.keys(stockByTwId).length > 0;
+    if (!hasStockData && !stockFetchTimedOut) return;
 
-    return () => {
-      cancelled = true;
-    };
-  }, [open, watch.id, existingScope, needsProsbaByKey, productLines, initializedFor]);
+    const keys = buildZkProsbaScopeInitialOrderMarked({
+      lines: productLines,
+      stockByTwId,
+      existingScope,
+      needsProsbaByKey,
+    });
+    queueMicrotask(() => setOrderMarked(new Set(keys)));
+  }, [
+    open,
+    existingScope,
+    needsProsbaByKey,
+    productLines,
+    stockByTwId,
+    stockLoading,
+    stockFetchTimedOut,
+    scopeInitDone,
+    userTouchedSelection,
+  ]);
+
+  function setOrderMarkedWithTouch(value: Set<string> | ((prev: Set<string>) => Set<string>)) {
+    setUserTouchedSelection(true);
+    setOrderMarked(value);
+  }
 
   return {
     productLines,
     orderMarked,
-    setOrderMarked,
+    setOrderMarked: setOrderMarkedWithTouch,
     stockByTwId,
     stockLoading,
+    stockFetchTimedOut,
     hasExistingScope: existingScope !== null,
   };
 }
@@ -149,7 +127,7 @@ export function ZkWatchProsbaScopeModal({
   onClose: () => void;
   onSaved: (watch: SalesZkWatch) => void;
 }) {
-  const { productLines, orderMarked, setOrderMarked, stockByTwId, stockLoading, hasExistingScope } =
+  const { productLines, orderMarked, setOrderMarked, stockByTwId, stockLoading, stockFetchTimedOut, hasExistingScope } =
     useZkProsbaScopeSelection(watch, open);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -161,7 +139,9 @@ export function ZkWatchProsbaScopeModal({
     !stockLoading && zkProsbaScopeAllLinesSufficient(productLines, stockByTwId);
   const noneMarkedForOrder = orderMarked.size === 0 && productLines.length > 0;
   const stockUnavailable =
-    !stockLoading && zkProsbaScopeStockFetchFailed(productLines, stockByTwId);
+    !stockLoading &&
+    (stockFetchTimedOut || zkProsbaScopeStockFetchFailed(productLines, stockByTwId));
+  const awaitingAutoMark = stockLoading && !hasExistingScope && !stockFetchTimedOut;
   const autoMarkedCount =
     !stockLoading && !hasExistingScope
       ? deriveZkProsbaScopeSuggestedOrderKeys(productLines, stockByTwId).length
@@ -215,12 +195,12 @@ export function ZkWatchProsbaScopeModal({
           <Button
             type="button"
             size="sm"
-            disabled={saving || stockLoading}
+            disabled={saving}
             onClick={() => void save()}
           >
             {saving
               ? "Zapisuję…"
-              : stockLoading
+              : awaitingAutoMark
                 ? "Sprawdzam stan…"
                 : lineKeysToOrder.length === 0
                   ? "Zapisz — bez prośby"
@@ -244,7 +224,14 @@ export function ZkWatchProsbaScopeModal({
         </p>
       ) : null}
 
-      {stockUnavailable ? (
+      {stockFetchTimedOut ? (
+        <p className="rounded-md border border-amber-200/90 bg-amber-50/80 px-3 py-2 text-xs leading-relaxed text-amber-950">
+          Sprawdzanie stanu trwa zbyt długo — możesz zaznaczyć pozycje ręcznie lub zapisać bez
+          automatycznego podpowiedzenia.
+        </p>
+      ) : null}
+
+      {stockUnavailable && !stockFetchTimedOut ? (
         <p className="rounded-md border border-amber-200/90 bg-amber-50/80 px-3 py-2 text-xs leading-relaxed text-amber-950">
           Nie udało się pobrać stanu z Subiekta — zaznacz ręcznie pozycje do zamówienia.
         </p>
@@ -259,9 +246,9 @@ export function ZkWatchProsbaScopeModal({
       <ul
         className={cn(
           "divide-y divide-slate-100 rounded-lg border border-slate-200/90 bg-white",
-          stockLoading && !hasExistingScope && "pointer-events-none opacity-60"
+          awaitingAutoMark && "pointer-events-none opacity-60"
         )}
-        aria-busy={stockLoading || undefined}
+        aria-busy={awaitingAutoMark || undefined}
       >
         {productLines.map((line) => {
           const markedForOrder = orderMarked.has(line.key);
@@ -298,7 +285,7 @@ export function ZkWatchProsbaScopeModal({
                 <input
                   type="checkbox"
                   checked={markedForOrder}
-                  disabled={saving || stockLoading}
+                  disabled={saving || awaitingAutoMark}
                   onChange={() => toggleLine(line.key)}
                   aria-label={
                     markedForOrder

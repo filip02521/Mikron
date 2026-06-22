@@ -1,6 +1,7 @@
 "use client";
 
-import { Fragment, useCallback, useEffect, useMemo, useReducer, useRef } from "react";
+import dynamic from "next/dynamic";
+import { useCallback, useEffect, useMemo, useReducer, useRef, useState } from "react";
 import type { SalesZkWatch } from "@/types/database";
 import type { ZkWatchOrderHints, ZkLinkableOrder } from "@/lib/sales/zk-watch-order-link";
 import type { ZkWatchRefreshDiff } from "@/lib/sales/zk-watch-refresh-diff";
@@ -22,7 +23,26 @@ import { cn } from "@/lib/cn";
 import { panelTextLinkClass, salesTypography } from "@/lib/ui/ontime-theme";
 import { IconChevronRight } from "@/components/icons/StrokeIcons";
 import { ZkWatchCard } from "./ZkWatchCard";
+import {
+  ZkWatchClosePendingHost,
+  type ZkWatchClosePendingSession,
+} from "./ZkWatchClosePendingHost";
 import { NOTATNIK_ZK_LIST_CLASS } from "./notatnik-layout";
+import {
+  buildZkWatchListVirtualItems,
+  zkWatchListScrollKey,
+} from "@/lib/sales/zk-watch-list-virtual";
+import {
+  ZK_MONTH_HEADER_ESTIMATE_PX,
+  ZK_WATCH_CARD_ESTIMATE_PX,
+  ZK_WATCH_LIST_VIRTUAL_THRESHOLD,
+} from "@/lib/ui/virtual-list-config";
+import { VirtualList } from "@/components/ui/VirtualList";
+
+const ZkWatchLinesModal = dynamic(
+  () => import("./ZkWatchLinesModal").then((mod) => ({ default: mod.ZkWatchLinesModal })),
+  { ssr: false }
+);
 
 function ZkWatchMonthExpandControl({
   groupCount,
@@ -176,6 +196,28 @@ export function ZkWatchGroupedList({
   }
 
   const { collapsedMonths, openModalWatchId } = uiState;
+  const zkVirtualEnabled = watches.length >= ZK_WATCH_LIST_VIRTUAL_THRESHOLD;
+  const virtualItems = useMemo(
+    () =>
+      buildZkWatchListVirtualItems({
+        groups,
+        collapsedMonths,
+        openModalWatchId,
+      }),
+    [groups, collapsedMonths, openModalWatchId]
+  );
+  const focusScrollKey = focusWatchId ? zkWatchListScrollKey(focusWatchId) : null;
+  const virtualLayoutKey = `${virtualItems.length}\0${[...collapsedMonths].sort().join("\0")}\0${openModalWatchId ?? ""}`;
+  const [linesModalFocusNote, setLinesModalFocusNote] = useState(false);
+  const [closeSession, setCloseSession] = useState<ZkWatchClosePendingSession | null>(null);
+  const [closePreviewWatchId, setClosePreviewWatchId] = useState<string | null>(null);
+  const [closeFlowErrorByWatchId, setCloseFlowErrorByWatchId] = useState<
+    Record<string, string>
+  >({});
+  const modalWatch = useMemo(
+    () => (openModalWatchId ? watches.find((watch) => watch.id === openModalWatchId) : undefined),
+    [openModalWatchId, watches]
+  );
   const focusFlashHandledRef = useRef<string | null>(null);
 
   useEffect(() => {
@@ -197,13 +239,13 @@ export function ZkWatchGroupedList({
       : undefined;
 
     flashNotepadAnchor(`watch-${focusWatchId}`, {
-      delayMs: 180,
+      delayMs: zkVirtualEnabled ? 420 : 180,
       durationMs: 2400,
       announce,
       onAnnounce: onLiveAnnounce,
       onFound: () => onFocusWatchHandled?.(focusWatchId),
     });
-  }, [focusWatchId, watches, groups, collapsedMonths, onFocusWatchHandled, onLiveAnnounce]);
+  }, [focusWatchId, watches, groups, collapsedMonths, onFocusWatchHandled, onLiveAnnounce, zkVirtualEnabled]);
 
   const toggleMonth = useCallback((monthKey: string) => {
     dispatchUi({ type: "toggleMonth", monthKey });
@@ -217,6 +259,61 @@ export function ZkWatchGroupedList({
     dispatchUi({ type: "collapseAll", groups });
   }, [groups]);
 
+  const closeLinesModal = useCallback(() => {
+    dispatchUi({ type: "setModal", watchId: null });
+    setLinesModalFocusNote(false);
+  }, []);
+
+  const dismissLinesModal = useCallback(
+    (watchId: string) => {
+      closeLinesModal();
+      if (unseenWatchIds?.has(watchId)) {
+        onWarehouseArrivalSeen?.(watchId);
+      }
+      if ((newLineKeysByWatchId?.[watchId]?.length ?? 0) > 0) {
+        onNewZkLinesSeen?.(watchId);
+      }
+    },
+    [
+      closeLinesModal,
+      newLineKeysByWatchId,
+      onNewZkLinesSeen,
+      onWarehouseArrivalSeen,
+      unseenWatchIds,
+    ]
+  );
+
+  const requestCloseWatch = useCallback(
+    (watch: SalesZkWatch) => {
+      setCloseFlowErrorByWatchId((prev) => {
+        if (!(watch.id in prev)) return prev;
+        const next = { ...prev };
+        delete next[watch.id];
+        return next;
+      });
+      setCloseSession({
+        nonce: Date.now(),
+        watch,
+        linesModalOpen: openModalWatchId === watch.id,
+        closeLinesModal: () => dismissLinesModal(watch.id),
+      });
+    },
+    [dismissLinesModal, openModalWatchId]
+  );
+
+  const handleCloseFlowError = useCallback((watchId: string, message: string | null) => {
+    setCloseFlowErrorByWatchId((prev) => {
+      if (!message) {
+        if (!(watchId in prev)) return prev;
+        const next = { ...prev };
+        delete next[watchId];
+        return next;
+      }
+      if (prev[watchId] === message) return prev;
+      return { ...prev, [watchId]: message };
+    });
+  }, []);
+
   const allExpanded =
     groups.length > 0 && groups.every((g) => isZkMonthGroupExpanded(g.key, collapsedMonths));
 
@@ -228,73 +325,121 @@ export function ZkWatchGroupedList({
         onExpandAll={expandAll}
         onCollapseAll={collapseAll}
       />
-      <ul className={NOTATNIK_ZK_LIST_CLASS}>
-        {groups.map((group) => {
-          const isOpen = isZkMonthGroupExpanded(group.key, collapsedMonths);
-
-          return (
-            <Fragment key={group.key}>
-              <li className="list-none">
-                <button
-                  type="button"
-                  onClick={() => toggleMonth(group.key)}
-                  aria-expanded={isOpen}
-                  aria-label={`${group.label}, ${group.watches.length} ZK, ${isOpen ? "rozwinięte" : "zwinięte"}`}
-                  className="flex w-full items-center gap-2 border-y border-slate-200/90 bg-slate-50/95 px-3 py-1.5 text-left backdrop-blur-sm transition hover:bg-slate-100/90"
-                >
-                  <IconChevronRight
-                    size={14}
-                    className={cn(
-                      "shrink-0 text-slate-500 transition-transform",
-                      isOpen && "rotate-90"
-                    )}
-                  />
-                  <span className={salesTypography.sectionLabel}>
-                    {group.label}
-                    <span className="ml-2 font-normal normal-case tabular-nums text-slate-400">
-                      ({group.watches.length})
-                    </span>
+      <VirtualList
+        items={virtualItems}
+        threshold={ZK_WATCH_LIST_VIRTUAL_THRESHOLD}
+        enabled={zkVirtualEnabled}
+        listClassName={NOTATNIK_ZK_LIST_CLASS}
+        scrollToKey={focusScrollKey}
+        estimateSize={(_, item) =>
+          item.kind === "month" ? ZK_MONTH_HEADER_ESTIMATE_PX : ZK_WATCH_CARD_ESTIMATE_PX
+        }
+        getItemKey={(item) => item.key}
+        remeasureKey={virtualLayoutKey}
+        renderItem={(item) => {
+          if (item.kind === "month") {
+            const group = item.group;
+            const isOpen = item.isOpen;
+            return (
+              <button
+                type="button"
+                onClick={() => toggleMonth(group.key)}
+                aria-expanded={isOpen}
+                aria-label={`${group.label}, ${group.watches.length} ZK, ${isOpen ? "rozwinięte" : "zwinięte"}`}
+                className="flex w-full items-center gap-2 border-y border-slate-200/90 bg-slate-50/95 px-3 py-1.5 text-left backdrop-blur-sm transition hover:bg-slate-100/90"
+              >
+                <IconChevronRight
+                  size={14}
+                  className={cn(
+                    "shrink-0 text-slate-500 transition-transform",
+                    isOpen && "rotate-90"
+                  )}
+                />
+                <span className={salesTypography.sectionLabel}>
+                  {group.label}
+                  <span className="ml-2 font-normal normal-case tabular-nums text-slate-400">
+                    ({group.watches.length})
                   </span>
-                </button>
-              </li>
-              {group.watches.map((watch) => {
-                const monthExpanded = isOpen;
-                const modalPinned = openModalWatchId === watch.id;
-                if (!monthExpanded && !modalPinned) return null;
+                </span>
+              </button>
+            );
+          }
 
-                return (
-                  <li key={watch.id}>
-                    <ZkWatchCard
-                      watch={watch}
-                      anchorId={`watch-${watch.id}`}
-                      orderHints={zkHintsByWatchId?.get(watch.id)}
-                      linkableOrders={linkableOrders}
-                      readOnly={readOnly}
-                      tourPreview={tourPreview}
-                      compact={compact}
-                      archived={archived}
-                      subiektReachable={subiektReachable}
-                      onClosed={(closedAt) => onClosed?.(watch.id, closedAt)}
-                      onRestored={onRestored}
-                      onRefreshed={onRefreshed}
-                      onDeleted={() => onDeleted?.(watch.id)}
-                      onLinesModalOpenChange={(open) => {
-                        dispatchUi({ type: "setModal", watchId: open ? watch.id : null });
-                      }}
-                      hasNewWarehouseArrival={unseenWatchIds?.has(watch.id) ?? false}
-                      hasNewZkLines={(newLineKeysByWatchId?.[watch.id]?.length ?? 0) > 0}
-                      newLineKeys={newLineKeysByWatchId?.[watch.id]}
-                      onWarehouseArrivalSeen={onWarehouseArrivalSeen}
-                      onNewZkLinesSeen={onNewZkLinesSeen}
-                      onProsbaScopeRequested={onProsbaScopeRequested}
-                    />
-                  </li>
-                );
-              })}
-            </Fragment>
+          const watch = item.watch;
+          return (
+            <ZkWatchCard
+              watch={watch}
+              anchorId={`watch-${watch.id}`}
+              orderHints={zkHintsByWatchId?.get(watch.id)}
+              linkableOrders={linkableOrders}
+              readOnly={readOnly}
+              tourPreview={tourPreview}
+              compact={compact}
+              archived={archived}
+              subiektReachable={subiektReachable}
+              linesModalOpen={openModalWatchId === watch.id}
+              onRequestCloseWatch={requestCloseWatch}
+              closePreviewLoading={closePreviewWatchId === watch.id}
+              closeFlowError={closeFlowErrorByWatchId[watch.id]}
+              onRestored={onRestored}
+              onRefreshed={onRefreshed}
+              onDeleted={() => onDeleted?.(watch.id)}
+              onLinesModalOpenChange={(open, options) => {
+                dispatchUi({ type: "setModal", watchId: open ? watch.id : null });
+                setLinesModalFocusNote(open ? (options?.focusNote ?? false) : false);
+              }}
+              hasNewWarehouseArrival={unseenWatchIds?.has(watch.id) ?? false}
+              hasNewZkLines={(newLineKeysByWatchId?.[watch.id]?.length ?? 0) > 0}
+              newLineKeys={newLineKeysByWatchId?.[watch.id]}
+              onWarehouseArrivalSeen={onWarehouseArrivalSeen}
+              onNewZkLinesSeen={onNewZkLinesSeen}
+              onProsbaScopeRequested={onProsbaScopeRequested}
+            />
           );
-        })}
-      </ul>
+        }}
+      />
+      {modalWatch ? (
+        <ZkWatchLinesModal
+          watch={modalWatch}
+          open
+          readOnly={readOnly}
+          tourPreview={tourPreview}
+          archived={archived}
+          focusNote={linesModalFocusNote}
+          linkableOrders={linkableOrders}
+          orderHints={zkHintsByWatchId?.get(modalWatch.id)}
+          matchedDeliveredLineKeys={zkHintsByWatchId?.get(modalWatch.id)?.matchedDeliveredLineKeys}
+          newLineKeys={newLineKeysByWatchId?.[modalWatch.id]}
+          lineCoverageByKey={zkHintsByWatchId?.get(modalWatch.id)?.lineCoverageByKey}
+          inStockLineKeys={zkHintsByWatchId?.get(modalWatch.id)?.inStockLineKeys}
+          informacjaReadyLineKeys={zkHintsByWatchId?.get(modalWatch.id)?.informacjaReadyLineKeys}
+          informacjaAcknowledgedLineKeys={
+            zkHintsByWatchId?.get(modalWatch.id)?.informacjaAcknowledgedLineKeys
+          }
+          scopeExcludedLineKeys={zkHintsByWatchId?.get(modalWatch.id)?.scopeExcludedLineKeys}
+          onClose={() => dismissLinesModal(modalWatch.id)}
+          onSaved={(updated) =>
+            onRefreshed?.(updated, undefined, { skipRouterRefresh: true })
+          }
+        />
+      ) : null}
+      <ZkWatchClosePendingHost
+        session={closeSession}
+        readOnly={readOnly}
+        tourPreview={tourPreview}
+        onDismiss={() => setCloseSession(null)}
+        onPreviewLoadingChange={setClosePreviewWatchId}
+        onFlowError={handleCloseFlowError}
+        onClosed={(watchId, closedAt) => {
+          setCloseFlowErrorByWatchId((prev) => {
+            if (!(watchId in prev)) return prev;
+            const next = { ...prev };
+            delete next[watchId];
+            return next;
+          });
+          onClosed?.(watchId, closedAt);
+        }}
+      />
     </div>
   );
 }

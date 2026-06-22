@@ -47,6 +47,54 @@ export function getZkWatchProsbaScopeLineKeys(
   return productLines.filter((line) => needsByKey.get(line.key) === true).map((line) => line.key);
 }
 
+/** Czy ZK ma zapisany zakres pozycji (przy dodawaniu lub edycji). */
+export function hasZkWatchTrackedProsbaScope(
+  watch: Pick<SalesZkWatch, "line_checks">
+): boolean {
+  return parseZkWatchLineChecks(watch.line_checks).some(
+    (check) => check.needs_prosba !== undefined
+  );
+}
+
+/**
+ * Klucze pozycji objętych zapisanym zakresem (do zamówienia lub świadomie pominięte).
+ * null = brak zakresu — pokazuj wszystkie pozycje z ZK.
+ */
+export function getZkWatchTrackedScopeLineKeys(
+  watch: Pick<SalesZkWatch, "line_checks">,
+  lineViews: ZkWatchLineView[]
+): string[] | null {
+  const needsByKey = needsProsbaByKeyFromChecks(parseZkWatchLineChecks(watch.line_checks));
+  if (needsByKey.size === 0) return null;
+  return productLineViews(lineViews)
+    .filter((line) => needsByKey.has(line.key))
+    .map((line) => line.key);
+}
+
+export function countZkWatchLinesOutsideTrackedScope(
+  watch: Pick<SalesZkWatch, "line_checks">,
+  lineViews: ZkWatchLineView[]
+): number {
+  const tracked = getZkWatchTrackedScopeLineKeys(watch, lineViews);
+  if (tracked === null) return 0;
+  const trackedSet = new Set(tracked);
+  return productLineViews(lineViews).filter((line) => !trackedSet.has(line.key)).length;
+}
+
+/** Filtruje pozycje towarowe do widoku „wybrane” vs pełne ZK z Subiekta. */
+export function filterZkWatchProductLineViewsForScope(
+  lineViews: ZkWatchLineView[],
+  watch: Pick<SalesZkWatch, "line_checks">,
+  options: { showAllLines: boolean }
+): ZkWatchLineView[] {
+  const productLines = productLineViews(lineViews);
+  if (options.showAllLines) return productLines;
+  const tracked = getZkWatchTrackedScopeLineKeys(watch, lineViews);
+  if (tracked === null) return productLines;
+  const trackedSet = new Set(tracked);
+  return productLines.filter((line) => trackedSet.has(line.key));
+}
+
 export function countZkWatchInStockLines(
   watch: Pick<SalesZkWatch, "line_checks">,
   lineViews: ZkWatchLineView[]

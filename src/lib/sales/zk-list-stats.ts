@@ -1,6 +1,18 @@
 import { buildZkWatchLineViews } from "@/lib/sales/zk-watch-lines";
+import {
+  filterZkWatchProductLineViewsForScope,
+  hasZkWatchTrackedProsbaScope,
+} from "@/lib/sales/zk-watch-prosba-scope";
 import type { ZkWatchOrderHints } from "@/lib/sales/zk-watch-order-link";
 import type { SalesZkWatch } from "@/types/database";
+
+function countTrackedProductLines(watch: SalesZkWatch): number {
+  const views = buildZkWatchLineViews(watch);
+  if (hasZkWatchTrackedProsbaScope(watch)) {
+    return filterZkWatchProductLineViewsForScope(views, watch, { showAllLines: false }).length;
+  }
+  return views.filter((line) => line.key !== "summary").length;
+}
 
 export function summarizeZkWatchList(
   watches: SalesZkWatch[],
@@ -16,7 +28,7 @@ export function summarizeZkWatchList(
   let informacjaReadyLineCount = 0;
 
   for (const watch of watches) {
-    lineCount += buildZkWatchLineViews(watch).length;
+    lineCount += countTrackedProductLines(watch);
     const hints = zkHintsByWatchId?.get(watch.id);
     if (hints) {
       regalLineCount += hints.regalWaitingLineKeys.length;

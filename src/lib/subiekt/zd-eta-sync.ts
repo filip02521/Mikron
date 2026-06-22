@@ -170,6 +170,14 @@ export function shouldRetryMojeZdEtaSync(
   if (!body.skipped && candidates > processed) return true;
   return false;
 }
+
+/** Czy po auto-sync warto odświeżyć RSC /moje (tylko gdy dane się zmieniły). */
+export function shouldRefreshMojeZdEtaPage(body: MojeZdEtaRefreshResult | null): boolean {
+  if (!body) return false;
+  if ((body.updated ?? 0) > 0 || (body.cleared ?? 0) > 0) return true;
+  return false;
+}
+
 export const ZD_ETA_SYNC_TTL_MS = 6 * 60 * 60 * 1000;
 /** Krótszy TTL gdy ZD jest już znany (zd_fulfillment_dok_id) — szybsze wykrycie zmiany terminu przez zakupy. */
 export const ZD_ETA_SYNC_KNOWN_ZD_TTL_MS = 2 * 60 * 60 * 1000;

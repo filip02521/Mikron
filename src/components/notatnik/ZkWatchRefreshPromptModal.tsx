@@ -111,6 +111,7 @@ export function ZkWatchRefreshPromptModal({
     unmarkedCount,
     allOnStock,
     stockFetchFailed,
+    stockFetchTimedOut,
   } = useZkProsbaLineKeysStockFilter(addedScopeLines, uncoveredAddedKeys, open, {
     orderMarkedKeys,
   });
@@ -180,6 +181,24 @@ export function ZkWatchRefreshPromptModal({
     });
   }
 
+  async function patchScopeAndFinish(lineKeysToOrder: string[]) {
+    setPatching(true);
+    setPrefillError(null);
+    try {
+      const { watch: updated } = await actionPatchZkWatchProsbaScopeLines(
+        watch.id,
+        lineKeysToOrder,
+        uncoveredAddedKeys
+      );
+      onScopePatched?.(updated);
+      onConfirm();
+    } catch (e) {
+      setPrefillError(e instanceof Error ? e.message : "Nie udało się zapisać zakresu pozycji.");
+    } finally {
+      setPatching(false);
+    }
+  }
+
   function handleAddMissing(event: MouseEvent<HTMLAnchorElement>) {
     if (selectionBusy || patching || linesToAddCount === 0) {
       event.preventDefault();
@@ -210,6 +229,15 @@ export function ZkWatchRefreshPromptModal({
     })();
   }
 
+  function handleMarkAllOnStock() {
+    if (selectionBusy || patching || uncoveredAddedKeys.length === 0) return;
+    void patchScopeAndFinish([]);
+  }
+
+  function handleLater() {
+    onLater();
+  }
+
   const canProceedToProsba = !selectionBusy && !patching && linesToAddCount > 0;
 
   const addButtonLabel = selectionBusy
@@ -225,7 +253,9 @@ export function ZkWatchRefreshPromptModal({
             ? "Dodaj brakujące do prośby"
             : `Dodaj do prośby (${linesToAddCount})`
           : allOnStock
-            ? "Wszystko na stanie — nie trzeba uzupełniać"
+            ? patching
+              ? "Zapisuję…"
+              : "Oznacz na stanie i kontynuuj"
             : "Zaznacz pozycje do prośby";
 
   const primaryLinkButtonClass = cn(
@@ -241,14 +271,14 @@ export function ZkWatchRefreshPromptModal({
   return (
     <ModalShell
       open={open}
-      onClose={onLater}
+      onClose={handleLater}
       size="md"
       title={`${displayNumber} — nowe pozycje w Subiekcie${queueLabel}`}
       description={watch.client_label}
       bodyClassName="space-y-4 px-5 py-4 sm:px-6"
       footer={
         <div className="flex w-full flex-col-reverse gap-2 sm:flex-row sm:justify-end">
-          <Button type="button" variant="ghost" size="sm" onClick={onLater}>
+          <Button type="button" variant="ghost" size="sm" onClick={handleLater} disabled={patching}>
             Później
           </Button>
           {redirectToOpenProsba ? (
@@ -260,7 +290,13 @@ export function ZkWatchRefreshPromptModal({
               {addButtonLabel}
             </Link>
           ) : allOnStock && linesToAddCount === 0 ? (
-            <Button type="button" size="sm" disabled className="w-full sm:w-auto">
+            <Button
+              type="button"
+              size="sm"
+              className="w-full sm:w-auto"
+              disabled={selectionBusy || patching}
+              onClick={handleMarkAllOnStock}
+            >
               {addButtonLabel}
             </Button>
           ) : !canProceedToProsba ? (
@@ -305,7 +341,13 @@ export function ZkWatchRefreshPromptModal({
         </p>
       ) : null}
 
-      {stockFetchFailed ? (
+      {stockFetchTimedOut ? (
+        <p className="rounded-md border border-amber-200/90 bg-amber-50/80 px-3 py-2 text-xs leading-relaxed text-amber-950">
+          Sprawdzanie stanu trwa zbyt długo — zaznacz pozycje ręcznie lub oznacz na stanie.
+        </p>
+      ) : null}
+
+      {stockFetchFailed && !stockFetchTimedOut ? (
         <p className="rounded-md border border-amber-200/90 bg-amber-50/80 px-3 py-2 text-xs leading-relaxed text-amber-950">
           Nie udało się pobrać stanu z Subiekta — zaznacz ręcznie pozycje do zamówienia.
         </p>

@@ -90,6 +90,7 @@ function groupKey(g: SummaryForSomeoneEnriched) {
 }
 
 const MARK_SEEN_DELAY_MS = 1500;
+const MARK_SEEN_BATCH_MS = 400;
 
 function useProcurementSeenTracker() {
   const [locallySeenKeys, setLocallySeenKeys] = useState<Set<string>>(() => new Set());
@@ -97,6 +98,9 @@ function useProcurementSeenTracker() {
   /** Klucze, dla których wysłano już zapis do API (poza cyklem renderu). */
   const persistSeenRef = useRef<Set<string>>(new Set());
   const locallySeenRef = useRef(locallySeenKeys);
+  const pendingOrderIdsRef = useRef<Set<string>>(new Set());
+  const pendingGroupKeysRef = useRef<Set<string>>(new Set());
+  const batchTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     locallySeenRef.current = locallySeenKeys;
@@ -107,7 +111,42 @@ function useProcurementSeenTracker() {
     return () => {
       for (const timer of timers.values()) clearTimeout(timer);
       timers.clear();
+      if (batchTimerRef.current) {
+        clearTimeout(batchTimerRef.current);
+        batchTimerRef.current = null;
+      }
+      const ids = [...pendingOrderIdsRef.current];
+      if (ids.length) {
+        pendingOrderIdsRef.current.clear();
+        pendingGroupKeysRef.current.clear();
+        void actionMarkProcurementRequestsSeen(ids).catch(() => {
+          /* best effort przy opuszczeniu widoku */
+        });
+      }
     };
+  }, []);
+
+  const flushPendingSeen = useCallback(() => {
+    batchTimerRef.current = null;
+    const ids = [...pendingOrderIdsRef.current];
+    const groupKeys = [...pendingGroupKeysRef.current];
+    pendingOrderIdsRef.current.clear();
+    pendingGroupKeysRef.current.clear();
+    if (!ids.length) return;
+
+    void actionMarkProcurementRequestsSeen(ids).catch(() => {
+      for (const id of ids) {
+        persistSeenRef.current.delete(`order:${id}`);
+      }
+      for (const key of groupKeys) {
+        persistSeenRef.current.delete(key);
+      }
+      setLocallySeenKeys((prev) => {
+        const next = new Set(prev);
+        for (const key of groupKeys) next.delete(key);
+        return next.size === prev.size ? prev : next;
+      });
+    });
   }, []);
 
   const isGroupUnseen = useCallback(
@@ -116,24 +155,35 @@ function useProcurementSeenTracker() {
     [locallySeenKeys]
   );
 
-  const markGroupSeen = useCallback((group: SummaryForSomeoneEnriched) => {
-    if (!group.hasUnseen) return;
-    const key = groupKey(group);
-    if (locallySeenRef.current.has(key) || persistSeenRef.current.has(key)) return;
+  const markGroupSeen = useCallback(
+    (group: SummaryForSomeoneEnriched) => {
+      if (!group.hasUnseen) return;
+      const key = groupKey(group);
+      if (locallySeenRef.current.has(key)) return;
 
-    persistSeenRef.current.add(key);
-    setLocallySeenKeys((prev) => new Set(prev).add(key));
+      const orderIdsToQueue: string[] = [];
+      for (const orderId of group.orderIds) {
+        const orderKey = `order:${orderId}`;
+        if (persistSeenRef.current.has(orderKey)) continue;
+        orderIdsToQueue.push(orderId);
+      }
 
-    void actionMarkProcurementRequestsSeen(group.orderIds).catch(() => {
-      persistSeenRef.current.delete(key);
-      setLocallySeenKeys((prev) => {
-        if (!prev.has(key)) return prev;
-        const next = new Set(prev);
-        next.delete(key);
-        return next;
-      });
-    });
-  }, []);
+      persistSeenRef.current.add(key);
+      setLocallySeenKeys((prev) => new Set(prev).add(key));
+      pendingGroupKeysRef.current.add(key);
+
+      for (const orderId of orderIdsToQueue) {
+        persistSeenRef.current.add(`order:${orderId}`);
+        pendingOrderIdsRef.current.add(orderId);
+      }
+
+      if (!orderIdsToQueue.length) return;
+
+      if (batchTimerRef.current) clearTimeout(batchTimerRef.current);
+      batchTimerRef.current = setTimeout(flushPendingSeen, MARK_SEEN_BATCH_MS);
+    },
+    [flushPendingSeen]
+  );
 
   const scheduleMarkSeen = useCallback(
     (group: SummaryForSomeoneEnriched) => {

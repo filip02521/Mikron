@@ -16,7 +16,11 @@ import {
   buildZkWatchLineViews,
 } from "@/lib/sales/zk-watch-lines";
 import {
+  filterZkWatchProductLineViewsForScope,
+} from "@/lib/sales/zk-watch-prosba-scope";
+import {
   buildZkWatchLineStatusSummary,
+  isZkWatchAllProductLinesScopeExcluded,
   summarizeZkWatchLineCheckboxes,
 } from "@/lib/sales/zk-watch-line-ui-state";
 import type { ZkWatchLineCoverage, ZkLinkableOrder, ZkWatchOrderHints } from "@/lib/sales/zk-watch-order-link";
@@ -82,10 +86,14 @@ export function ZkWatchLinesModal({
   }
 
   const lineViews = useMemo(() => buildZkWatchLineViews(watch), [watch]);
+  const scopedLineViews = useMemo(
+    () => filterZkWatchProductLineViewsForScope(lineViews, watch, { showAllLines: false }),
+    [lineViews, watch]
+  );
   const showSubiektRealizedCloseHint = useMemo(
     () =>
       shouldShowZkWatchSubiektRealizedCloseHint(watch, {
-        lineViews,
+        lineViews: scopedLineViews,
         newLineKeys: newLineKeys ?? [],
         inStockLineKeys: inStockLineKeys ?? [],
         scopeExcludedLineKeys: scopeExcludedLineKeys ?? [],
@@ -95,7 +103,7 @@ export function ZkWatchLinesModal({
       }),
     [
       watch,
-      lineViews,
+      scopedLineViews,
       newLineKeys,
       inStockLineKeys,
       scopeExcludedLineKeys,
@@ -107,7 +115,7 @@ export function ZkWatchLinesModal({
   const checkboxSummary = useMemo(
     () =>
       summarizeZkWatchLineCheckboxes({
-        lineViews,
+        lineViews: scopedLineViews,
         newLineKeys: newLineKeys ?? [],
         inStockLineKeys: inStockLineKeys ?? [],
         scopeExcludedLineKeys: scopeExcludedLineKeys ?? [],
@@ -115,12 +123,21 @@ export function ZkWatchLinesModal({
         informacjaAcknowledgedLineKeys: informacjaAcknowledgedLineKeys ?? [],
         lineCoverageByKey,
       }),
-    [lineViews, newLineKeys, inStockLineKeys, scopeExcludedLineKeys, informacjaReadyLineKeys, informacjaAcknowledgedLineKeys, lineCoverageByKey]
+    [scopedLineViews, newLineKeys, inStockLineKeys, scopeExcludedLineKeys, informacjaReadyLineKeys, informacjaAcknowledgedLineKeys, lineCoverageByKey]
   );
   const progressPct =
     checkboxSummary.total > 0
       ? Math.round((checkboxSummary.checked / checkboxSummary.total) * 100)
       : 0;
+  const allScopeExcluded = isZkWatchAllProductLinesScopeExcluded({
+    lineViews: scopedLineViews,
+    scopeExcludedLineKeys: scopeExcludedLineKeys ?? [],
+  });
+  const scopedNewLineKeys = useMemo(() => {
+    const scopedKeys = new Set(scopedLineViews.map((line) => line.key));
+    return (newLineKeys ?? []).filter((key) => scopedKeys.has(key));
+  }, [scopedLineViews, newLineKeys]);
+  const hiddenNewLineCount = (newLineKeys?.length ?? 0) - scopedNewLineKeys.length;
   const subiektStatus = zkWatchStatusLabel(watch);
   const followUpDue = !archived && isFollowUpDue(watch.follow_up_at);
   const followUpLabel = formatFollowUpLabel(watch.follow_up_at);
@@ -129,9 +146,9 @@ export function ZkWatchLinesModal({
     checkboxSummary.total > 0
       ? `${checkboxSummary.checked}/${checkboxSummary.total} zaznaczone`
       : null;
-  const newLineCount = newLineKeys?.length ?? 0;
+  const newLineCount = scopedNewLineKeys.length;
   const lineStatusSummary = buildZkWatchLineStatusSummary({
-    lineViews,
+    lineViews: scopedLineViews,
     newLineKeys: newLineKeys ?? [],
     inStockLineKeys: inStockLineKeys ?? [],
     scopeExcludedLineKeys: scopeExcludedLineKeys ?? [],
@@ -165,6 +182,10 @@ export function ZkWatchLinesModal({
                     {progressLabel ??
                       `${checkboxSummary.checked}/${checkboxSummary.total} zaznaczone`}
                   </span>
+                ) : allScopeExcluded ? (
+                  <span className={cn(salesTypography.rowBody, "font-medium text-slate-700")}>
+                    Wszystkie pozycje pominięte — bez prośby
+                  </span>
                 ) : (
                   <span className={salesTypography.rowMeta}>Brak szczegółowej listy towaru</span>
                 )}
@@ -179,20 +200,20 @@ export function ZkWatchLinesModal({
                   </Badge>
                 ) : null}
               </div>
-              {checkboxSummary.total > 0 ? (
+              {checkboxSummary.total > 0 || allScopeExcluded ? (
                 <span className={cn(salesTypography.statValue, "text-indigo-900")}>
-                  {progressPct}%
+                  {allScopeExcluded ? "100%" : `${progressPct}%`}
                 </span>
               ) : null}
             </div>
-            {checkboxSummary.total > 0 ? (
+            {checkboxSummary.total > 0 || allScopeExcluded ? (
               <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-slate-200/80">
                 <div
                   className={cn(
                     "h-full rounded-full transition-all duration-300",
-                    progressPct === 100 ? "bg-emerald-500" : "bg-indigo-500"
+                    progressPct === 100 || allScopeExcluded ? "bg-emerald-500" : "bg-indigo-500"
                   )}
-                  style={{ width: `${progressPct}%` }}
+                  style={{ width: `${allScopeExcluded ? 100 : progressPct}%` }}
                 />
               </div>
             ) : null}
@@ -215,15 +236,25 @@ export function ZkWatchLinesModal({
           </div>
 
           <div className="min-h-0 flex-1 space-y-5 overflow-y-auto px-5 py-4 sm:px-6 sm:py-5">
-            {newLineCount > 0 ? (
+            {newLineCount > 0 || hiddenNewLineCount > 0 ? (
               <div className="rounded-lg border border-amber-200/90 bg-amber-50/80 px-3 py-2.5 text-sm text-amber-950">
                 <p className="font-medium">
-                  {polishCountLabel(newLineCount, ["nowa pozycja", "nowe pozycje", "nowych pozycji"])}{" "}
+                  {newLineCount > 0
+                    ? polishCountLabel(newLineCount, ["nowa pozycja", "nowe pozycje", "nowych pozycji"])
+                    : polishCountLabel(hiddenNewLineCount, [
+                        "nowa pozycja",
+                        "nowe pozycje",
+                        "nowych pozycji",
+                      ])}{" "}
                   od ostatniego odświeżenia
+                  {hiddenNewLineCount > 0 && newLineCount > 0
+                    ? ` (+${hiddenNewLineCount} poza wybranym zakresem)`
+                    : null}
                 </p>
                 <p className="mt-1 text-xs leading-relaxed text-amber-900/85">
-                  Pozycje oznaczone „Nowa” nie są jeszcze w prośbie. Użyj przycisku na karcie ZK, aby
-                  wysłać uzupełniającą prośbę tylko dla brakujących pozycji.
+                  {hiddenNewLineCount > 0 && newLineCount === 0
+                    ? "Nowe pozycje są poza wybranym zakresem — rozwiń pełne ZK w sekcji „Lista towaru”, aby je zobaczyć i ewentualnie dodać do prośby."
+                    : "Pozycje oznaczone „Nowa” nie są jeszcze w prośbie. Użyj przycisku na karcie ZK, aby wysłać uzupełniającą prośbę tylko dla brakujących pozycji."}
                 </p>
               </div>
             ) : null}

@@ -42,7 +42,9 @@ export type ZkLinkableOrder = {
   action_at: string | null;
   delivery_at: string | null;
   zd_fulfillment_deadline: string | null;
+  zd_fulfillment_previous_deadline?: string | null;
   zd_fulfillment_deadline_changed_at?: string | null;
+  zd_fulfillment_deadline_change_seen_at?: string | null;
   sales_acknowledged_at: string | null;
   sales_cancelled_at: string | null;
 };
@@ -523,6 +525,45 @@ export function resolveUncoveredLineKeysForProsba(
     keys = keys.filter((key) => only.has(key));
   }
   return keys;
+}
+
+/** Indeks prośb po handlowcu — mniejszy podzbiór przy liczeniu hintów per ZK. */
+export function indexZkLinkableOrdersBySalesPerson(
+  orders: ZkLinkableOrder[]
+): Map<string, ZkLinkableOrder[]> {
+  const map = new Map<string, ZkLinkableOrder[]>();
+  for (const order of orders) {
+    const bucket = map.get(order.sales_person_id);
+    if (bucket) bucket.push(order);
+    else map.set(order.sales_person_id, [order]);
+  }
+  return map;
+}
+
+/** Hinty dla wszystkich ZK — ten sam wynik co pętla z pełną listą prośb, mniej pracy CPU. */
+export function computeAllZkWatchOrderHints(
+  watches: SalesZkWatch[],
+  orders: ZkLinkableOrder[]
+): Map<string, ZkWatchOrderHints> {
+  const bySalesPerson = indexZkLinkableOrdersBySalesPerson(orders);
+  const map = new Map<string, ZkWatchOrderHints>();
+  for (const watch of watches) {
+    map.set(
+      watch.id,
+      computeZkWatchOrderHints(watch, bySalesPerson.get(watch.sales_person_id) ?? [])
+    );
+  }
+  return map;
+}
+
+export function zkWatchOrderHintsForWatch(
+  watch: SalesZkWatch,
+  ordersBySalesPerson: Map<string, ZkLinkableOrder[]>
+): ZkWatchOrderHints {
+  return computeZkWatchOrderHints(
+    watch,
+    ordersBySalesPerson.get(watch.sales_person_id) ?? []
+  );
 }
 
 export function computeZkWatchOrderHints(

@@ -1,5 +1,6 @@
 "use client";
 
+import { memo } from "react";
 import type { ForSomeoneLine } from "@/lib/orders/summary-workspace";
 import { ProductSourceBadge } from "@/components/orders/ProductSourceBadge";
 import { MyOrderAssignedClient } from "@/components/moje/MyOrderAssignedClient";
@@ -32,7 +33,7 @@ export function ProcurementRequestClientMeta({
   return <MyOrderAssignedClient name={clientLabel} className={className} />;
 }
 
-export function ProcurementRequestLine({
+export const ProcurementRequestLine = memo(function ProcurementRequestLine({
   line,
   className,
   suppressRequestNote = false,
@@ -59,10 +60,10 @@ export function ProcurementRequestLine({
       />
     </li>
   );
-}
+});
 
 /** Jedna pozycja inline w nagłówku grupy (bez osobnej listy). */
-export function ProcurementRequestLineInline({
+export const ProcurementRequestLineInline = memo(function ProcurementRequestLineInline({
   line,
   className,
   suppressRequestNote = false,
@@ -83,7 +84,7 @@ export function ProcurementRequestLineInline({
       />
     </div>
   );
-}
+});
 
 function ProcurementRequestLineContent({
   line,

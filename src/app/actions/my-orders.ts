@@ -30,6 +30,15 @@ import type { IndividualOrder, IndividualOrderStatus } from "@/types/database";
 import { updateIndividualRequestGroup } from "@/lib/services/orders";
 import type { IndividualRequestEditPayload } from "@/lib/orders/individual-request-edit";
 import { UNDO_WINDOW_MS } from "@/lib/orders/daily-panel-undo";
+import type { SalesZkWatch } from "@/types/database";
+import { resolveZkWatchPendingAckItemsForWatch } from "@/lib/sales/zk-watch-close-pending-fetch";
+import {
+  acknowledgeOrdersWithClient,
+  acknowledgeZdDeadlineWithClient,
+  executeZkWatchPendingAckPlan,
+  type AckOptions,
+} from "@/lib/sales/zk-watch-pending-ack-plan";
+import { actionCloseZkWatch } from "@/app/actions/sales-notepad";
 
 async function salesPersonIdForAction(): Promise<string> {
   const user = await getSessionUser();
@@ -48,11 +57,6 @@ async function salesOrderSupabase() {
   return createClient();
 }
 
-type AckOptions = {
-  allowedStatuses?: IndividualOrderStatus[];
-  requireSalesCancelled?: boolean;
-};
-
 async function acknowledgeOrders(
   orderIds: string[],
   options: AckOptions = {}
@@ -60,68 +64,39 @@ async function acknowledgeOrders(
   if (!orderIds.length) throw new Error("Brak pozycji do potwierdzenia.");
   const salesPersonId = await salesPersonIdForAction();
   const supabase = await salesOrderSupabase();
-  const caps = await getSalesCancelDbCaps(supabase);
-  const now = new Date().toISOString();
+  const { count } = await acknowledgeOrdersWithClient(
+    supabase,
+    salesPersonId,
+    orderIds,
+    options
+  );
+  if (count === 0) {
+    throw new Error("Ta pozycja nie wymaga już potwierdzenia.");
+  }
+  return { success: true, count };
+}
 
-  const { data: rowsRaw, error: fetchError } = await supabase
-    .from("individual_orders")
-    .select(salesCancelAckSelect(caps))
-    .in("id", orderIds);
+async function loadZkWatchForPendingAck(
+  supabase: Awaited<ReturnType<typeof salesOrderSupabase>>,
+  watchId: string,
+  salesPersonId: string
+): Promise<SalesZkWatch> {
+  const { data: watchRaw, error: watchError } = await supabase
+    .from("sales_zk_watches")
+    .select("*")
+    .eq("id", watchId)
+    .maybeSingle();
 
-  if (fetchError) throw new Error(fetchError.message);
-  const rows = (rowsRaw ?? []) as unknown as IndividualOrder[];
-  if (!rows.length) throw new Error("Nie znaleziono pozycji.");
-
-  for (const row of rows) {
-    if (row.sales_person_id !== salesPersonId) {
-      throw new Error("Brak uprawnień do tej pozycji.");
-    }
-    if (row.sales_acknowledged_at) {
-      throw new Error("Pozycja została już potwierdzona.");
-    }
-    if (options.requireSalesCancelled) {
-      if (!caps.hasCancelledAt) {
-        throw new Error(SALES_CANCEL_MIGRATION_HINT);
-      }
-      if (!isSalesCancelNoticePending(row as IndividualOrder)) {
-        throw new Error("Brak rezygnacji do ukrycia.");
-      }
-    } else if (options.allowedStatuses?.length) {
-      if (!options.allowedStatuses.includes(row.status as IndividualOrderStatus)) {
-        throw new Error("Ta pozycja nie wymaga już potwierdzenia.");
-      }
-    }
+  if (watchError) throw new Error(watchError.message);
+  if (!watchRaw) throw new Error("Nie znaleziono wpisu ZK.");
+  if (watchRaw.sales_person_id !== salesPersonId) {
+    throw new Error("Brak uprawnień do tego wpisu.");
+  }
+  if (watchRaw.closed_at) {
+    throw new Error("Ten ZK został już zamknięty.");
   }
 
-  const { error } = await supabase
-    .from("individual_orders")
-    .update({ sales_acknowledged_at: now })
-    .in("id", orderIds)
-    .eq("sales_person_id", salesPersonId)
-    .is("sales_acknowledged_at", null);
-
-  if (error) throw new Error(error.message);
-
-  revalidatePath("/moje");
-  revalidatePath("/zespol");
-  revalidatePath("/notatnik");
-  revalidatePath("/zk");
-
-  try {
-    const { syncZkWatchLineChecksFromOrder } = await import("@/lib/sales/zk-watch-order-sync");
-    await Promise.all(
-      rows.map((row) =>
-        syncZkWatchLineChecksFromOrder({
-          ...(row as IndividualOrder),
-          sales_acknowledged_at: now,
-        })
-      )
-    );
-  } catch (e) {
-    console.error("[acknowledgeOrders syncZkWatchLineChecks]", e);
-  }
-
-  return { success: true, count: orderIds.length };
+  return watchRaw as SalesZkWatch;
 }
 
 /** Przypisanie lub zmiana klienta końcowego (tylko handlowiec). */
@@ -547,40 +522,44 @@ export async function actionAcknowledgeZdFulfillmentDeadlineChange(orderIds: str
 
   const salesPersonId = await salesPersonIdForAction();
   const supabase = await salesOrderSupabase();
-  const now = new Date().toISOString();
+  const { count } = await acknowledgeZdDeadlineWithClient(supabase, salesPersonId, uniqueIds);
+  return { success: true as const, count };
+}
 
-  const { data: rowsRaw, error: fetchError } = await supabase
-    .from("individual_orders")
-    .select(
-      "id, sales_person_id, zd_fulfillment_deadline_changed_at, zd_fulfillment_deadline_change_seen_at"
-    )
-    .in("id", uniqueIds);
+/** Potwierdza wszystkie oczekujące pozycje powiązane z danym ZK (jak ręcznie w /moje). */
+export async function actionAcknowledgeZkWatchPendingOrders(watchId: string) {
+  const salesPersonId = await salesPersonIdForAction();
+  const supabase = await salesOrderSupabase();
+  const watch = await loadZkWatchForPendingAck(supabase, watchId, salesPersonId);
+  const items = await resolveZkWatchPendingAckItemsForWatch(watch, supabase);
+  const count = await executeZkWatchPendingAckPlan(watch, items, supabase, salesPersonId);
+  return { success: true as const, count };
+}
 
-  if (fetchError) throw new Error(fetchError.message);
-  const rows = rowsRaw ?? [];
-  if (!rows.length) throw new Error("Nie znaleziono pozycji.");
+/** Świeża lista niepotwierdzonych pozycji przed zamknięciem ZK (źródło prawdy: serwer). */
+export async function actionFetchZkWatchClosePendingPreview(watchId: string) {
+  const salesPersonId = await salesPersonIdForAction();
+  const supabase = await salesOrderSupabase();
+  const watch = await loadZkWatchForPendingAck(supabase, watchId, salesPersonId);
+  const items = await resolveZkWatchPendingAckItemsForWatch(watch, supabase);
+  return { success: true as const, items };
+}
 
-  for (const row of rows) {
-    if (row.sales_person_id !== salesPersonId) {
-      throw new Error("Brak uprawnień do tej pozycji.");
-    }
-    if (!row.zd_fulfillment_deadline_changed_at) {
-      throw new Error("Brak aktywnej informacji o zmianie terminu.");
-    }
-    if (row.zd_fulfillment_deadline_change_seen_at) {
-      throw new Error("Zmiana terminu została już potwierdzona.");
-    }
+/** Potwierdza wszystkie wiszące pozycje i zamyka sprawę ZK w jednej operacji serwerowej. */
+export async function actionAcknowledgeAndCloseZkWatch(watchId: string) {
+  const salesPersonId = await salesPersonIdForAction();
+  const supabase = await salesOrderSupabase();
+  const watch = await loadZkWatchForPendingAck(supabase, watchId, salesPersonId);
+  const items = await resolveZkWatchPendingAckItemsForWatch(watch, supabase);
+  const ackCount = await executeZkWatchPendingAckPlan(watch, items, supabase, salesPersonId);
+
+  const freshItems = await resolveZkWatchPendingAckItemsForWatch(watch, supabase);
+  if (freshItems.length > 0) {
+    throw new Error(
+      "Nie wszystkie pozycje udało się potwierdzić — odśwież listę i spróbuj ponownie."
+    );
   }
 
-  const { error } = await supabase
-    .from("individual_orders")
-    .update({ zd_fulfillment_deadline_change_seen_at: now })
-    .in("id", uniqueIds)
-    .eq("sales_person_id", salesPersonId)
-    .is("zd_fulfillment_deadline_change_seen_at", null);
-
-  if (error) throw new Error(error.message);
-
-  revalidatePath("/moje");
-  return { success: true as const, count: uniqueIds.length };
+  const { closedAt } = await actionCloseZkWatch(watchId);
+  return { success: true as const, ackCount, closedAt };
 }

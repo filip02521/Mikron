@@ -13,7 +13,7 @@ export const ZK_MODAL_SECTION_HINTS = {
   note: "Notatka tylko dla Ciebie — skrót widać na liście ZK. Kliknięcie skrótu otwiera edycję tutaj.",
   details: "Dane klienta i ZK zsynchronizowane z Subiekta.",
   lines:
-    "Postęp realizacji pozycji. Towar na regale zaznacza się sam; po odbiorze w Moje możesz ręcznie domknąć checkbox.",
+    "Postęp realizacji wybranych pozycji. Domyślnie widać zakres z konfiguracji ZK — pełną listę z Subiekta rozwiniesz przyciskiem w sekcji.",
 } as const;
 
 /** Copy sekcji powiązanych prośb w modalu ZK. */

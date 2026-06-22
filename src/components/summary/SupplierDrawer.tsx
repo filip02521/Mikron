@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import type { ReactNode } from "react";
 import type { SupplierSummaryMeta } from "@/lib/orders/summary-workspace";
@@ -29,6 +29,12 @@ type HistoryRow = {
   next_date: string | null;
 };
 
+const SUPPLIER_HISTORY_CACHE_TTL_MS = 60_000;
+const supplierHistoryCache = new Map<
+  string,
+  { at: number; rows: HistoryRow[] }
+>();
+
 export function SupplierDrawer({
   supplier,
   onClose,
@@ -45,6 +51,7 @@ export function SupplierDrawer({
   onEdit: () => void;
 }) {
   const hubContext = useSupplierHubContext();
+  const supplierId = supplier?.id ?? null;
   const [historyState, setHistoryState] = useState<{
     supplierId: string | null;
     rows: HistoryRow[];
@@ -52,12 +59,27 @@ export function SupplierDrawer({
   }>({ supplierId: null, rows: [], loading: false });
 
   useEffect(() => {
-    if (!supplier?.id) return;
+    if (!supplierId) return;
     let cancelled = false;
-    const supplierId = supplier.id;
+    const cached = supplierHistoryCache.get(supplierId);
+    if (cached && Date.now() - cached.at < SUPPLIER_HISTORY_CACHE_TTL_MS) {
+      queueMicrotask(() => {
+        if (!cancelled) {
+          setHistoryState({ supplierId, rows: cached.rows, loading: false });
+        }
+      });
+      return;
+    }
+
+    queueMicrotask(() => {
+      if (!cancelled) {
+        setHistoryState({ supplierId, rows: [], loading: true });
+      }
+    });
     actionFetchSupplierRecentHistory(supplierId)
       .then((rows) => {
         if (!cancelled) {
+          supplierHistoryCache.set(supplierId, { at: Date.now(), rows });
           setHistoryState({ supplierId, rows, loading: false });
         }
       })
@@ -69,14 +91,12 @@ export function SupplierDrawer({
     return () => {
       cancelled = true;
     };
-  }, [supplier?.id]);
+  }, [supplierId]);
 
   if (!supplier) return null;
 
-  const history =
-    historyState.supplierId === supplier.id ? historyState.rows : [];
-  const historyLoading =
-    historyState.supplierId !== supplier.id || historyState.loading;
+  const history = historyState.supplierId === supplier.id ? historyState.rows : [];
+  const historyLoading = historyState.supplierId === supplier.id && historyState.loading;
 
   const rowPending = isScopePending(supplier.id);
   const scope = { scope: supplier.id };

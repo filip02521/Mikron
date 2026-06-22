@@ -419,7 +419,6 @@ export function buildZkWatchLineStatusSummary(input: {
   informacjaReadyLineKeys?: string[];
   informacjaAcknowledgedLineKeys?: string[];
   lineCoverageByKey?: Record<string, ZkWatchLineCoverage>;
-  prosbaScopeConfigured?: boolean;
 }): string | null {
   const counts = countZkWatchLineUiStates(input);
   return formatZkWatchLineStatusSummaryFromCounts(counts);
@@ -585,6 +584,17 @@ export function summarizeZkWatchLineCheckboxes(input: {
   return { total: trackable.length, checked };
 }
 
+/** Wszystkie widoczne pozycje towarowe są pominięte przy wyborze zakresu (needs_prosba: false). */
+export function isZkWatchAllProductLinesScopeExcluded(input: {
+  lineViews: Array<{ key: string }>;
+  scopeExcludedLineKeys: string[];
+}): boolean {
+  const productLines = input.lineViews.filter((line) => line.key !== "summary");
+  if (!productLines.length) return false;
+  const scopeExcluded = new Set(input.scopeExcludedLineKeys);
+  return productLines.every((line) => scopeExcluded.has(line.key));
+}
+
 /** Całe ZK na zielono — gdy wszystkie śledzone pozycje mają zaznaczony checkbox. */
 export function allZkWatchLinesCheckboxChecked(
   input: {
@@ -598,7 +608,8 @@ export function allZkWatchLinesCheckboxChecked(
   } & ZkWatchLineCheckboxContext
 ): boolean {
   const { total, checked } = summarizeZkWatchLineCheckboxes(input);
-  return total > 0 && checked === total;
+  if (total > 0) return checked === total;
+  return isZkWatchAllProductLinesScopeExcluded(input);
 }
 
 /** Krótki licznik zaznaczeń — spójny z checkboxami na liście. */

@@ -6,6 +6,7 @@ import {
   allZkWatchLinesCheckboxChecked,
   buildZkWatchLineStatusSummary,
   canMarkZkWatchLineArrived,
+  isZkWatchAllProductLinesScopeExcluded,
   isZkWatchLineCheckboxChecked,
   canToggleZkWatchLineCheckbox,
   countZkWatchLineUiStates,
@@ -400,6 +401,21 @@ describe("allZkWatchLinesCheckboxChecked", () => {
         inStockLineKeys: [],
         scopeExcludedLineKeys: ["x"],
         lineCoverageByKey: { a: "delivered", x: "uncovered" },
+      })
+    ).toBe(true);
+  });
+
+  it("true gdy wszystkie pozycje są pominięte w zakresie prośby", () => {
+    expect(
+      allZkWatchLinesCheckboxChecked({
+        lineViews: [
+          { key: "a", arrived: false },
+          { key: "b", arrived: false },
+        ],
+        newLineKeys: [],
+        inStockLineKeys: [],
+        scopeExcludedLineKeys: ["a", "b"],
+        lineCoverageByKey: { a: "uncovered", b: "uncovered" },
       })
     ).toBe(true);
   });

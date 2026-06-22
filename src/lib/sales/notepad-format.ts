@@ -4,7 +4,7 @@ import {
   allZkWatchLinesCheckboxChecked,
   type ZkWatchLineCheckboxContext,
 } from "@/lib/sales/zk-watch-line-ui-state";
-import { isZkWatchProsbaScopeConfigured } from "@/lib/sales/zk-watch-prosba-scope";
+import { isZkWatchProsbaScopeConfigured, hasZkWatchTrackedProsbaScope, filterZkWatchProductLineViewsForScope } from "@/lib/sales/zk-watch-prosba-scope";
 import {
   buildZkWatchLineViews,
   parseZkWatchLineChecks,
@@ -67,8 +67,14 @@ export function shouldShowZkWatchSubiektRealizedCloseHint(
   context: ZkWatchLineCheckboxContext & { lineViews?: ZkWatchLineView[] }
 ): boolean {
   if (zkWatchStatusLabel(watch) !== "Zrealizowane") return false;
-  const lineViews = context.lineViews ?? buildZkWatchLineViews(watch);
+  const fullLineViews = context.lineViews ?? buildZkWatchLineViews(watch);
   const checks = parseZkWatchLineChecks(watch.line_checks);
-  if (!isZkWatchProsbaScopeConfigured(checks, lineViews)) return false;
+  const scopeTracked = hasZkWatchTrackedProsbaScope(watch);
+  if (!isZkWatchProsbaScopeConfigured(checks, fullLineViews) && !scopeTracked) {
+    return false;
+  }
+  const lineViews = scopeTracked
+    ? filterZkWatchProductLineViewsForScope(fullLineViews, watch, { showAllLines: false })
+    : fullLineViews;
   return allZkWatchLinesCheckboxChecked({ lineViews, ...context });
 }

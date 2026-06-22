@@ -777,14 +777,32 @@ function MojeOrdersViewContent({
     const targetRowId = visibleRows.find((row) => focusRowIds.has(row.id))?.id;
     if (!targetRowId) return;
 
-    focusScrollDoneRef.current = true;
-    window.setTimeout(() => {
+    let cancelled = false;
+    let attempts = 0;
+    const maxAttempts = 24;
+
+    const tryScroll = () => {
+      if (cancelled || focusScrollDoneRef.current) return;
       const card = document.getElementById(cardDomId(targetRowId));
-      if (!card) return;
-      card.scrollIntoView({ behavior: "smooth", block: "center" });
-      const toggle = card.querySelector<HTMLElement>("[data-moje-row-toggle]");
-      toggle?.focus({ preventScroll: true });
-    }, 120);
+      if (card) {
+        focusScrollDoneRef.current = true;
+        card.scrollIntoView({ behavior: "smooth", block: "center" });
+        const toggle = card.querySelector<HTMLElement>("[data-moje-row-toggle]");
+        toggle?.focus({ preventScroll: true });
+        return;
+      }
+      attempts += 1;
+      if (attempts < maxAttempts) {
+        window.setTimeout(tryScroll, 100);
+      }
+    };
+
+    const initialTimer = window.setTimeout(tryScroll, 200);
+
+    return () => {
+      cancelled = true;
+      window.clearTimeout(initialTimer);
+    };
   }, [focusRowIds, filteredZamowienia, filteredInformacje]);
 
   useEffect(() => {

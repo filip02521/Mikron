@@ -1,5 +1,6 @@
 "use client";
 
+import dynamic from "next/dynamic";
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useSalesOnboardingDemo } from "@/components/sales/SalesOnboardingContext";
@@ -10,6 +11,7 @@ import { UndoToast } from "@/components/ui/UndoToast";
 import { Toast } from "@/components/ui/Toast";
 import { IconPackageCheck, IconClipboardPen } from "@/components/icons/StrokeIcons";
 import { SectionHeadingIcon } from "@/components/icons/SectionHeadingIcon";
+import { MyOrderPickupShelfDialogProvider } from "@/components/moje/MyOrderPickupShelfDialogProvider";
 import { AppBrandContentFooter } from "@/components/layout/AppBrandContentFooter";
 import { salesChromeInsetClass } from "@/lib/ui/ontime-theme";
 import { mergeRecordsByUpdatedAt, uniqueById } from "@/lib/sales/notepad-list";
@@ -19,7 +21,9 @@ import {
   buildZkWatchLineViews,
 } from "@/lib/sales/zk-watch-lines";
 import {
-  computeZkWatchOrderHints,
+  computeAllZkWatchOrderHints,
+  indexZkLinkableOrdersBySalesPerson,
+  zkWatchOrderHintsForWatch,
   type ZkWatchOrderHints,
 } from "@/lib/sales/zk-watch-order-link";
 import {
@@ -58,14 +62,15 @@ import {
   computeZkWatchSupplementSync,
   detectZkWatchSnapshotSyncChanges,
 } from "@/lib/sales/zk-watch-snapshot-sync";
-import { ZkWatchRefreshPromptModal } from "./ZkWatchRefreshPromptModal";
-import { ZkWatchSection } from "./ZkWatchSection";
 import { NotesSection } from "./NotesSection";
 import { NotatnikArchivePanel } from "./NotatnikArchivePanel";
 import { NotatnikArchiveCrossLink } from "./NotatnikArchiveCrossLink";
 import { TodayTasksSection } from "./TodayTasksSection";
 import { NotatnikTabBar } from "./NotatnikTabBar";
 import { NOTATNIK_PAGE_CLASS } from "./notatnik-layout";
+import { ZkWatchSection } from "./ZkWatchSection";
+import { cn } from "@/lib/cn";
+import { useUndoShortcutLabel } from "@/lib/platform/keyboard-shortcut-label";
 import { NOTATNIK_NOTES_PAGE_HINT } from "@/lib/sales/notatnik-notes-copy";
 import { SalesPageAlerts } from "@/components/sales/SalesPageAlerts";
 import { NotatnikZkStatusChrome } from "./NotatnikZkStatusChrome";
@@ -96,8 +101,14 @@ import {
   type NotatnikPageTab,
   type NotatnikSurface,
 } from "@/lib/sales/notepad-page-tabs";
-import { cn } from "@/lib/cn";
-import { useUndoShortcutLabel } from "@/lib/platform/keyboard-shortcut-label";
+
+const ZkWatchRefreshPromptModal = dynamic(
+  () =>
+    import("./ZkWatchRefreshPromptModal").then((mod) => ({
+      default: mod.ZkWatchRefreshPromptModal,
+    })),
+  { ssr: false }
+);
 
 type NotatnikUndoState = (
   | { type: "archive"; note: SalesNote }
@@ -521,13 +532,15 @@ export function NotatnikClient({
   const salesPersonId =
     source.zkWatches[0]?.sales_person_id ?? source.notes[0]?.sales_person_id ?? null;
 
-  const zkHintsByWatchId = useMemo(() => {
-    const map = new Map<string, ZkWatchOrderHints>();
-    for (const watch of zkWatches) {
-      map.set(watch.id, computeZkWatchOrderHints(watch, zkLinkableOrders));
-    }
-    return map;
-  }, [zkWatches, zkLinkableOrders]);
+  const zkOrdersBySalesPerson = useMemo(
+    () => indexZkLinkableOrdersBySalesPerson(zkLinkableOrders),
+    [zkLinkableOrders]
+  );
+
+  const zkHintsByWatchId = useMemo(
+    () => computeAllZkWatchOrderHints(zkWatches, zkLinkableOrders),
+    [zkWatches, zkLinkableOrders]
+  );
 
   const regalWaitingLineKeysByWatchId = useMemo(() => {
     const out: Record<string, string[]> = {};
@@ -592,7 +605,7 @@ export function NotatnikClient({
 
         const snapshot = loadZkArrivedSnapshot(salesPersonId);
         snapshot[watch.id] = countRegalWaitingZkLines(
-          computeZkWatchOrderHints(watch, zkLinkableOrders).regalWaitingLineKeys
+          zkWatchOrderHintsForWatch(watch, zkOrdersBySalesPerson).regalWaitingLineKeys
         );
         saveZkArrivedSnapshot(salesPersonId, snapshot);
       }
@@ -610,7 +623,7 @@ export function NotatnikClient({
         refresh();
       }
     },
-    [salesPersonId, zkLinkableOrders, refresh]
+    [salesPersonId, zkOrdersBySalesPerson, refresh]
   );
 
   const markWarehouseArrivalSeen = useCallback(
@@ -750,12 +763,7 @@ export function NotatnikClient({
   if (hydrated && !warehouseSnapshotReady && salesPersonId && !tourDemo) {
     const snapshot = loadZkArrivedSnapshot(salesPersonId);
     const newLinesSnapshot = loadZkNewLinesSnapshot(salesPersonId);
-    const hintsMap = new Map(
-      zkWatches.map((watch) => [
-        watch.id,
-        computeZkWatchOrderHints(watch, zkLinkableOrders),
-      ])
-    );
+    const hintsMap = computeAllZkWatchOrderHints(zkWatches, zkLinkableOrders);
     const reconciledNewLines = reconcileZkNewLinesSnapshot({
       snapshot: newLinesSnapshot,
       watches: zkWatches,
@@ -1033,6 +1041,7 @@ export function NotatnikClient({
   const undoDescription = undo ? undoWindowBannerDescription() : "";
 
   return (
+    <MyOrderPickupShelfDialogProvider>
     <div className={NOTATNIK_PAGE_CLASS}>
       {warehouseToast && !effectiveReadOnly ? (
         <Toast message={warehouseToast} onDismiss={() => setWarehouseToast(null)} />
@@ -1246,7 +1255,7 @@ export function NotatnikClient({
           queueTotal={refreshPromptQueue.length > 1 ? refreshPromptQueue.length : undefined}
           orderHints={
             zkHintsByWatchId.get(refreshPrompt.watch.id) ??
-            computeZkWatchOrderHints(refreshPrompt.watch, zkLinkableOrders)
+            zkWatchOrderHintsForWatch(refreshPrompt.watch, zkOrdersBySalesPerson)
           }
           open
           onConfirm={handleRefreshPromptConfirm}
@@ -1255,5 +1264,6 @@ export function NotatnikClient({
         />
       ) : null}
     </div>
+    </MyOrderPickupShelfDialogProvider>
   );
 }

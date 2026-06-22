@@ -167,11 +167,13 @@ export function rowMatchesClientKhFilter(
 export function filterMyOrderRowsByClientKh(
   rows: MyOrderRow[],
   khId: number | null | undefined,
-  options?: Pick<MojeClientLinkFilter, "clientLabel">
+  options?: Pick<MojeClientLinkFilter, "clientLabel" | "zkWatchId" | "zkNumber">
 ): MyOrderRow[] {
   return filterMyOrderRowsByClientLink(rows, {
     khId,
     clientLabel: options?.clientLabel,
+    zkWatchId: options?.zkWatchId,
+    zkNumber: options?.zkNumber,
   });
 }
 

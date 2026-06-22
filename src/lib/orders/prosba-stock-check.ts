@@ -18,6 +18,15 @@ export type ProsbaLineStockAssessment = "unknown" | "unavailable" | "insufficien
 /** Fragment komunikatu błędu serwera — wymagane potwierdzenie w formularzu. */
 export const PROSBA_STOCK_ACK_REQUIRED_HINT = "Potwierdź wysyłkę w formularzu";
 
+/** Po tym czasie UI odblokowuje się i pozwala wybrać pozycje ręcznie (fetch w tle może trwać). */
+export const PROSBA_STOCK_FETCH_UI_TIMEOUT_MS = 12_000;
+
+/** Limit czasu batch fetchu na serwerze (zwraca częściowe wyniki). */
+export const PROSBA_STOCK_FETCH_SERVER_TIMEOUT_MS = 20_000;
+
+/** Maks. równoległych zapytań o stan pojedynczego towaru. */
+export const PROSBA_STOCK_FETCH_MAX_CONCURRENT = 5;
+
 export function isProsbaStockAckRequiredError(message: string): boolean {
   return message.includes(PROSBA_STOCK_ACK_REQUIRED_HINT);
 }
@@ -28,6 +37,18 @@ export type ZkProsbaScopeLineInput = {
   subiektTwId: number | null;
   quantity: number | null;
 };
+
+export function zkWatchLineViewToProsbaScopeLine(line: {
+  key: string;
+  subiektTwId: number | null;
+  quantity: number | null;
+}): ZkProsbaScopeLineInput {
+  return {
+    key: line.key,
+    subiektTwId: line.subiektTwId,
+    quantity: line.quantity,
+  };
+}
 
 function parseStockNumber(value: unknown): number | null {
   if (value == null) return null;

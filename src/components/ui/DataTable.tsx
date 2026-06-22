@@ -1,3 +1,4 @@
+import { forwardRef } from "react";
 import { cn } from "@/lib/cn";
 
 /** Opakowanie tabeli z poprawnym layoutem i paddingiem w kartach */
@@ -15,16 +16,18 @@ export function TableScroll({
   );
 }
 
-export function DataTable({
-  children,
-  className,
-}: {
-  children: React.ReactNode;
-  className?: string;
-}) {
+export const DataTable = forwardRef<
+  HTMLTableElement,
+  {
+    children: React.ReactNode;
+    className?: string;
+  }
+>(function DataTable({ children, className }, ref) {
   return (
-    <table className={cn("data-table", className)}>
+    <table ref={ref} className={cn("data-table", className)}>
       {children}
     </table>
   );
-}
+});
+
+DataTable.displayName = "DataTable";

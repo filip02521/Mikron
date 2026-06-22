@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import {
   buildMojeZdEtaSessionState,
   shouldMarkMojeZdEtaSessionDone,
+  shouldRefreshMojeZdEtaPage,
   shouldRetryMojeZdEtaSync,
   shouldSkipMojeZdEtaSessionSync,
   type MojeZdEtaRefreshResult,
@@ -92,7 +93,9 @@ export function MojeZdEtaSyncClient({
       } else {
         startedRef.current = false;
       }
-      router.refresh();
+      if (shouldRefreshMojeZdEtaPage(body)) {
+        router.refresh();
+      }
     };
 
     const run = async (lockRetry = 0, networkRetry = 0) => {

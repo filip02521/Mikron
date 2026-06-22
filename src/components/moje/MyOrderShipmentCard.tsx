@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useId, useMemo, useRef, useState } from "react";
+import { memo, useEffect, useId, useMemo, useRef, useState } from "react";
 import type { MyOrderRow } from "@/lib/orders/my-order-presenter";
 import type { SalesClientAssignment } from "@/lib/orders/sales-client-label";
 import {
@@ -308,7 +308,7 @@ function ShipmentToolbar({
   );
 }
 
-export function MyOrderShipmentCard({
+export const MyOrderShipmentCard = memo(function MyOrderShipmentCard({
   row,
   listKind,
   domId,
@@ -316,7 +316,7 @@ export function MyOrderShipmentCard({
   canAcknowledge,
   pending,
   expanded,
-  onToggle,
+  onToggleRow,
   onAcknowledgePickup,
   onAcknowledgeCancelled,
   onAcknowledgeCancelNotice,
@@ -333,15 +333,18 @@ export function MyOrderShipmentCard({
   highlighted = false,
   subiektReachable = true,
   onAcknowledgeZdDeadlineChange,
+  as: Root = "li",
 }: {
   row: MyOrderRow;
   listKind: MyOrderListKind;
   domId?: string;
+  /** `div` + role=listitem w wirtualnej liście (unika zagnieżdżonych `<li>`). */
+  as?: "li" | "div";
   showProgress: boolean;
   canAcknowledge: boolean;
   pending: boolean;
   expanded: boolean;
-  onToggle: () => void;
+  onToggleRow?: (rowId: string) => void;
   onAcknowledgePickup: (orderIds: string[], shelfPickup?: boolean) => void;
   onAcknowledgeCancelled?: (orderIds: string[]) => void;
   onAcknowledgeCancelNotice?: (orderIds: string[]) => void;
@@ -561,7 +564,7 @@ export function MyOrderShipmentCard({
   const hasClient = Boolean(row.clientLabel || row.lines.some((l) => l.clientName?.trim()));
 
   const ensureExpanded = () => {
-    if (!expanded && needsExpand) onToggle();
+    if (!expanded && needsExpand) onToggleRow?.(row.id);
   };
 
   const handleAssignClient = () => {
@@ -589,7 +592,7 @@ export function MyOrderShipmentCard({
   const handleToggle = () => {
     if (!needsExpand) return;
     if (expanded) setClientEditorLineId(null);
-    onToggle();
+    onToggleRow?.(row.id);
   };
 
   const soleLine = row.lineCount === 1 ? row.lines[0] : undefined;
@@ -834,8 +837,9 @@ export function MyOrderShipmentCard({
   const bannerSubline = collapsedSubline;
 
   return (
-    <li
+    <Root
       id={domId}
+      {...(Root === "div" ? { role: "listitem" as const } : {})}
       className={cn(
         mojeShipmentRowClass({
           expanded,
@@ -1226,6 +1230,6 @@ export function MyOrderShipmentCard({
           ) : null}
         </div>
       ) : null}
-    </li>
+    </Root>
   );
-}
+});

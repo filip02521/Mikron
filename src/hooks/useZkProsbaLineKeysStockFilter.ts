@@ -1,26 +1,13 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
-import { actionFetchProsbaLineStock } from "@/app/actions/subiekt";
+import { useMemo } from "react";
+import { useProsbaLineStockBatchFetch } from "@/hooks/useProsbaLineStockBatchFetch";
 import {
   collectZkProsbaScopeLineTwIds,
   filterZkProsbaScopeLineKeysNeedingOrder,
   zkProsbaScopeStockFetchFailed,
-  type ProsbaLineStockSnapshot,
   type ZkProsbaScopeLineInput,
 } from "@/lib/orders/prosba-stock-check";
-
-type StockFetchState = {
-  signature: string;
-  stockByTwId: Record<number, ProsbaLineStockSnapshot>;
-  loading: boolean;
-};
-
-const EMPTY_STOCK_FETCH: StockFetchState = {
-  signature: "",
-  stockByTwId: {},
-  loading: false,
-};
 
 /**
  * Pobiera stan z Subiekta i filtruje klucze pozycji ZK — pomija te z pełnym pokryciem magazynowym.
@@ -35,53 +22,10 @@ export function useZkProsbaLineKeysStockFilter(
     orderMarkedKeys?: string[] | null;
   }
 ) {
-  const [fetchState, setFetchState] = useState<StockFetchState>(EMPTY_STOCK_FETCH);
-
-  const scopeSignature = useMemo(
-    () =>
-      scopeLines
-        .map((line) => `${line.key}:${line.subiektTwId ?? ""}:${line.quantity ?? ""}`)
-        .join("|"),
-    [scopeLines]
-  );
-  const sourceKeysSignature = sourceKeys.join(",");
-  const fetchSignature = `${enabled ? "1" : "0"}:${sourceKeysSignature}:${scopeSignature}`;
-
-  useEffect(() => {
-    if (!enabled || !sourceKeys.length) {
-      return;
-    }
-
-    const twIds = collectZkProsbaScopeLineTwIds(scopeLines);
-    if (!twIds.length) {
-      return;
-    }
-
-    let cancelled = false;
-
-    void (async () => {
-      setFetchState({ signature: fetchSignature, stockByTwId: {}, loading: true });
-      try {
-        const stock = await actionFetchProsbaLineStock(twIds);
-        if (cancelled) return;
-        setFetchState({ signature: fetchSignature, stockByTwId: stock, loading: false });
-      } catch {
-        if (cancelled) return;
-        setFetchState({ signature: fetchSignature, stockByTwId: {}, loading: false });
-      }
-    })();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [enabled, fetchSignature, scopeLines, sourceKeys.length]);
-
-  const stockMatches = fetchState.signature === fetchSignature;
-  const stockByTwId = useMemo(
-    () => (stockMatches ? fetchState.stockByTwId : {}),
-    [stockMatches, fetchState.stockByTwId]
-  );
-  const stockLoading = enabled && stockMatches && fetchState.loading;
+  const twIds = useMemo(() => collectZkProsbaScopeLineTwIds(scopeLines), [scopeLines]);
+  const fetchEnabled = enabled && sourceKeys.length > 0 && twIds.length > 0;
+  const { stockByTwId, loading: stockLoading, timedOut: stockFetchTimedOut } =
+    useProsbaLineStockBatchFetch(twIds, fetchEnabled);
 
   const orderMarkedKeys = options?.orderMarkedKeys;
 
@@ -104,11 +48,14 @@ export function useZkProsbaLineKeysStockFilter(
       ? filterZkProsbaScopeLineKeysNeedingOrder(scopeLines, sourceKeys, stockByTwId).length === 0
       : lineKeysToOrder.length === 0);
   const stockFetchFailed =
-    enabled && !stockLoading && zkProsbaScopeStockFetchFailed(scopeLines, stockByTwId);
+    enabled &&
+    !stockLoading &&
+    (stockFetchTimedOut || zkProsbaScopeStockFetchFailed(scopeLines, stockByTwId));
 
   return {
     stockByTwId,
     stockLoading,
+    stockFetchTimedOut,
     lineKeysToOrder,
     /** @deprecated Użyj {@link unmarkedCount} w trybie opt-in. */
     excludedByStockCount: unmarkedCount,
