@@ -864,25 +864,20 @@ export async function actionBatchUpdateDelivered(
 export async function actionProcessDeliveries() {
   await requireOperations("mutate");
 
-  const locked = await tryAcquireLock("manual-process-deliveries", 120, "ops-ui");
-  if (!locked) {
+  const result = await processMarkedDeliveries({ lockedBy: "ops-ui" });
+  if (result.skipped) {
     return {
       error: "Przetwarzanie dostaw jest już w toku — poczekaj chwilę i spróbuj ponownie.",
     };
   }
 
-  try {
-    const result = await processMarkedDeliveries();
-    revalidateAll();
-    return {
-      success: result.emailFailures.length === 0,
-      processed: result.processed,
-      emailSent: result.emailSent,
-      emailFailures: result.emailFailures,
-    };
-  } finally {
-    await releaseLock("manual-process-deliveries");
-  }
+  revalidateAll();
+  return {
+    success: result.emailFailures.length === 0,
+    processed: result.processed,
+    emailSent: result.emailSent,
+    emailFailures: result.emailFailures,
+  };
 }
 
 export async function actionRecalculateStats() {
@@ -1501,4 +1496,10 @@ export async function actionGetSystemStatus() {
   }
 
   return { isHealthy: issues.length === 0, issues };
+}
+
+export async function actionGetCronMonitorStatus() {
+  await requireAdmin();
+  const { fetchCronMonitorSnapshot } = await import("@/lib/services/cron-monitor");
+  return fetchCronMonitorSnapshot();
 }

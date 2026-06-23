@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense, useEffect, useMemo, useRef, useCallback, type ComponentProps } from "react";
+import { Suspense, useEffect, useMemo, useRef, useCallback, useState, type ComponentProps } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import type { MyOrderRow } from "@/lib/orders/my-order-presenter";
 import { partitionMyOrderRowsBySalesAction } from "@/lib/orders/my-order-inbox-filter";
@@ -23,6 +23,8 @@ import {
 } from "@/components/moje/MyOrderShipmentUndoProvider";
 import { MyOrderArchiveSection } from "@/components/moje/MyOrderArchiveSection";
 import { SalesDayStartPanel } from "@/components/moje/SalesDayStartPanel";
+import { MojeAnnouncementsSection } from "@/components/moje/MojeAnnouncementsSection";
+import { ZdFulfillmentDeadlineChangeAutoAck } from "@/components/moje/ZdFulfillmentDeadlineChangeAutoAck";
 import {
   buildSalesDayStartSnapshot,
   type SalesDayStartContext,
@@ -32,6 +34,7 @@ import { MyOrdersRowLegend } from "@/components/moje/MyOrdersRowLegend";
 import { MojeOrdersHelp } from "@/components/moje/MojeOrdersGuide";
 import { MojeOrdersEmptyGuide } from "@/components/moje/MojeOrdersEmptyGuide";
 import { Card, CardHeader } from "@/components/ui/Card";
+import { Alert } from "@/components/ui/Alert";
 import { AppBrandContentFooter } from "@/components/layout/AppBrandContentFooter";
 import { SectionListLabel } from "@/components/ui/SectionListLabel";
 import { EmptyState } from "@/components/ui/EmptyState";
@@ -63,6 +66,10 @@ import {
 } from "@/lib/orders/moje-section-focus";
 import { hrefWithSalesPreviewFromUrl } from "@/lib/nav/sales-preview-href";
 import {
+  MOJE_ANNOUNCEMENT_FOCUS_PARAM,
+  MOJE_ANNOUNCEMENTS_SECTION_ID,
+} from "@/lib/department-board/moje-announcements-ui";
+import {
   MY_ORDER_ACTION_SECTION_COPY,
   MY_ORDER_INFORMACJA_SECTION_COPY,
   MY_ORDER_PROGRESS_SECTION_COPY,
@@ -75,6 +82,7 @@ import { MyOrderSectionEmptyState } from "@/components/moje/MyOrderSectionEmptyS
 import { MojeOrdersSyncStrip } from "@/components/moje/MojeOrdersSyncStrip";
 import { SubiektStatusBar } from "@/components/subiekt/SubiektStatusBar";
 import type { SubiektAvailability } from "@/lib/subiekt/availability";
+import type { DepartmentBoardAnnouncementsSlice } from "@/lib/data/department-board";
 
 function cardDomId(rowId: string) {
   return `moje-card-${rowId}`;
@@ -394,6 +402,9 @@ function MojeOrdersViewContent({
   tourPreview = false,
   showSalesSync = false,
   dayStartContext = null,
+  boardAnnouncements = null,
+  boardAnnouncementsError = null,
+  focusAnnouncementId = null,
 }: {
   zamowienia: MyOrderRow[];
   informacje: MyOrderRow[];
@@ -421,10 +432,23 @@ function MojeOrdersViewContent({
   tourPreview?: boolean;
   showSalesSync?: boolean;
   dayStartContext?: SalesDayStartContext | null;
+  boardAnnouncements?: DepartmentBoardAnnouncementsSlice | null;
+  boardAnnouncementsError?: string | null;
+  focusAnnouncementId?: string | null;
 }) {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
+  const [imperativeAnnouncementId, setImperativeAnnouncementId] = useState<string | null>(
+    null
+  );
+  const validImperativeAnnouncementId =
+    imperativeAnnouncementId &&
+    boardAnnouncements?.announcements.some((row) => row.id === imperativeAnnouncementId)
+      ? imperativeAnnouncementId
+      : null;
+  const effectiveFocusAnnouncementId =
+    focusAnnouncementId ?? validImperativeAnnouncementId;
   const clientKhFilter =
     initialClientKhId != null && initialClientKhId > 0 ? initialClientKhId : null;
   const clientLinkLabel = (initialClientKhLabel ?? initialClientQuery ?? "").trim() || null;
@@ -613,6 +637,10 @@ function MojeOrdersViewContent({
       };
 
       if (scrollToMojeSection(scrollTarget)) {
+        if (scrollTarget === MOJE_ANNOUNCEMENTS_SECTION_ID) {
+          const announcementId = parsedUrl.searchParams.get(MOJE_ANNOUNCEMENT_FOCUS_PARAM);
+          if (announcementId) setImperativeAnnouncementId(announcementId);
+        }
         if (focusIds.length) window.setTimeout(scrollToFocusRow, 400);
         return;
       }
@@ -636,6 +664,22 @@ function MojeOrdersViewContent({
       />
     </Suspense>
   ) : null;
+
+  const announcementsPanel = boardAnnouncementsError ? (
+    <Alert tone="error">{boardAnnouncementsError}</Alert>
+  ) : boardAnnouncements && boardAnnouncements.announcements.length > 0 ? (
+      <MojeAnnouncementsSection
+        announcements={boardAnnouncements.announcements}
+        readAnnouncementIds={boardAnnouncements.readAnnouncementIds}
+        focusAnnouncementId={effectiveFocusAnnouncementId}
+        tourDemo={tourPreview}
+      />
+    ) : null;
+
+  const zdDeadlineAutoAck =
+    canAcknowledge && !tourPreview ? (
+      <ZdFulfillmentDeadlineChangeAutoAck rows={allRows} canAcknowledge={canAcknowledge} />
+    ) : null;
 
   const shipmentCount = zamowienia.length + informacje.length;
   const filteredCount = filteredZamowienia.length + filteredInformacje.length;
@@ -880,6 +924,8 @@ function MojeOrdersViewContent({
     return (
       <div className="space-y-5">
         {dayStartPanel}
+        {announcementsPanel}
+        {zdDeadlineAutoAck}
         <Card padding={false} className="overflow-hidden">
           <CardHeader
             inset
@@ -950,6 +996,8 @@ function MojeOrdersViewContent({
   return (
     <div className="space-y-5">
       {dayStartPanel}
+      {announcementsPanel}
+      {zdDeadlineAutoAck}
       <Card padding={false}>
         <CardHeader
           inset

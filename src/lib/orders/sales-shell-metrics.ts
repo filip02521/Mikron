@@ -10,7 +10,9 @@ import {
   countNotesDueNavBadge,
   countZkDueNavBadge,
 } from "@/lib/data/sales-notepad";
-import { countSalesBoardNavBadge } from "@/lib/data/department-board";
+import {
+  fetchSalesBoardAttentionSnapshot,
+} from "@/lib/data/department-board";
 import {
   composeSalesActivityVersion,
   computeSalesActivityVersionFromRows,
@@ -48,10 +50,12 @@ export async function fetchSalesShellMetrics(
   );
   const inbox = summarizeMyOrdersInbox([...zamowienia, ...informacje]);
 
-  const [zkDue, notesDue, boardNav, watchesRes] = await Promise.all([
+  const [zkDue, notesDue, boardSnapshot, watchesRes] = await Promise.all([
     countZkDueNavBadge(salesPersonId).catch(() => 0),
     countNotesDueNavBadge(salesPersonId).catch(() => 0),
-    profileId ? countSalesBoardNavBadge(profileId).catch(() => 0) : Promise.resolve(0),
+    profileId
+      ? fetchSalesBoardAttentionSnapshot(profileId).catch(() => null)
+      : Promise.resolve(null),
     createAdminClient()
       .from("sales_zk_watches")
       .select("updated_at, line_checks")
@@ -59,6 +63,9 @@ export async function fetchSalesShellMetrics(
       .is("closed_at", null)
       .is("archived_at", null),
   ]);
+
+  const boardNavForMoje = boardSnapshot?.navBadgeCount ?? 0;
+  const boardNavForTablica = boardSnapshot?.unseenAnswerCount ?? 0;
 
   const activityRows: SalesActivityRow[] = salesVisibleOrders.map((o) => ({
     action_at: o.action_at,
@@ -81,9 +88,9 @@ export async function fetchSalesShellMetrics(
     activityVersion: composeSalesActivityVersion(ordersPart, watchesRes.data ?? []),
     navAttention:
       inbox.pickupCount + inbox.cancelAckCount + inbox.informacjaReadyCount,
-    dayStartNavCount: salesDayStartNavCount(inbox, zkDue + notesDue, boardNav),
+    dayStartNavCount: salesDayStartNavCount(inbox, zkDue + notesDue, boardNavForMoje),
     zkNavBadge: zkDue,
     notesNavBadge: notesDue,
-    boardNavBadge: boardNav,
+    boardNavBadge: boardNavForTablica,
   };
 }

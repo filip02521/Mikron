@@ -31,7 +31,7 @@ export async function GET(request: NextRequest) {
 
   try {
     const result = await runZdEtaSync({
-      maxDurationMs: 4 * 60 * 1000,
+      maxDurationMs: 280_000,
       force,
       allowLiveSearch: true,
     });

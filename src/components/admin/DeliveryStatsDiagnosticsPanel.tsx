@@ -13,6 +13,7 @@ import { Card, CardHeader } from "@/components/ui/Card";
 import { Input } from "@/components/ui/Field";
 import { HelpPopover } from "@/components/ui/HelpPopover";
 import { HelpBlock } from "@/components/ui/HelpBlock";
+import { PanelSummaryMetric } from "@/components/ui/PanelSummaryMetric";
 import { Spinner } from "@/components/ui/Spinner";
 import { Toast } from "@/components/ui/Toast";
 import { cn } from "@/lib/cn";
@@ -55,35 +56,6 @@ function healthBadgeVariant(
 function avgCell(avg: number | null, count: number | null): string {
   if (!count) return "—";
   return `${avg ?? "?"} d · n=${count}`;
-}
-
-function SummaryMetric({
-  label,
-  value,
-  hint,
-  tone = "default",
-}: {
-  label: string;
-  value: string | number;
-  hint?: string;
-  tone?: "default" | "success" | "warning" | "danger";
-}) {
-  const toneClass =
-    tone === "success"
-      ? "border-emerald-200/80 bg-emerald-50/40"
-      : tone === "warning"
-        ? "border-amber-200/80 bg-amber-50/40"
-        : tone === "danger"
-          ? "border-red-200/80 bg-red-50/40"
-          : "border-slate-200/90 bg-slate-50/50";
-
-  return (
-    <div className={cn("rounded-md border px-3 py-2.5", toneClass)}>
-      <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">{label}</p>
-      <p className="mt-0.5 text-lg font-semibold tabular-nums text-slate-900">{value}</p>
-      {hint ? <p className="mt-0.5 text-[11px] leading-snug text-slate-600">{hint}</p> : null}
-    </div>
-  );
 }
 
 function ComparisonRow({
@@ -350,7 +322,7 @@ export function DeliveryStatsDiagnosticsPanel({
           title="Czasy realizacji dostawców"
           description="Diagnostyka zbierania statystyk ETA — wymaga połączenia z bazą."
         />
-        <div className="px-3 pb-4 sm:px-4">
+        <div className="px-3 pb-4 sm:px-4 lg:px-5">
           <p className="text-sm text-slate-600">Brak danych — sprawdź konfigurację Supabase.</p>
         </div>
       </Card>
@@ -408,18 +380,18 @@ export function DeliveryStatsDiagnosticsPanel({
 
         <div className="space-y-4 px-3 pb-4 sm:px-4 lg:px-5">
           <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-6">
-            <SummaryMetric
+            <PanelSummaryMetric
               label="Dostawcy z próbkami"
               value={summary.suppliersWithSamples}
               hint={`z ${summary.supplierCount} łącznie`}
               tone={summary.suppliersWithSamples > 0 ? "success" : "default"}
             />
-            <SummaryMetric
+            <PanelSummaryMetric
               label="Próbki łącznie"
               value={summary.totalSamples}
               hint={`${summary.totalHistoryOrders} w historii · ${summary.totalUnusedOrders} pominiętych`}
             />
-            <SummaryMetric
+            <PanelSummaryMetric
               label="Wiersze w delivery_stats"
               value={summary.suppliersWithStoredStats}
               hint={
@@ -428,17 +400,17 @@ export function DeliveryStatsDiagnosticsPanel({
                   : "Brak aktualizacji"
               }
             />
-            <SummaryMetric
+            <PanelSummaryMetric
               label="Mało próbek (&lt;3)"
               value={summary.suppliersLowConfidence}
               tone={summary.suppliersLowConfidence ? "warning" : "default"}
             />
-            <SummaryMetric
+            <PanelSummaryMetric
               label="Rozjazdy / brak wiersza"
               value={summary.suppliersMismatch}
               tone={summary.suppliersMismatch ? "danger" : "default"}
             />
-            <SummaryMetric
+            <PanelSummaryMetric
               label="Brak danych"
               value={summary.suppliersNoData}
               hint="Bez historii i bez wiersza"

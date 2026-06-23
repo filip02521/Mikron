@@ -5,13 +5,15 @@ Nagłówek: `Authorization: Bearer <CRON_SECRET>`
 
 ## Co robi
 
-1. **Indeks** — przeszukuje ZD z ostatnich **21 dni** i zapisuje `subiekt_zd_index` (ZD → dostawca).
+1. **Indeks** — przeszukuje ZD z ostatnich **365 dni** i zapisuje `subiekt_zd_index` (ZD → dostawca).
 2. **Import** — dla ZD bez `catalog_imported_at` pobiera linie i uzupełnia `subiekt_products` + `product_supplier_links`.
 3. **Auto-przypisanie** — uzupełnia `supplier_id` w prośbach „Weryfikacja”, gdy jest mapowanie w katalogu.
 
 Domyślnie działa tylko w oknie **1:00–4:59** (Europe/Warsaw). Poza oknem lub do testu w biurze: `?force=1`.
 
-Jedno wywołanie trwa do ok. **4 minut**; jeśli nie skończy, kolejne wywołanie tej samej nocy **kontynuuje** (stan w `app_settings` → `catalog_zd_sync_state`).
+Jedno wywołanie trwa do ok. **14 minut**; jeśli nie skończy, kolejne wywołanie tej samej nocy **kontynuuje** (stan w `app_settings` → `catalog_zd_sync_state`).
+
+Harmonogram instalatora: **co 20 minut od 2:00 do 4:40** (9 slotów na noc).
 
 ## Serwer w firmie (zalecane)
 
@@ -57,11 +59,8 @@ Przykład `/etc/cron.d/system-dostaw` (strefa serwera: `Europe/Warsaw`):
 CRON_SECRET=twoj-sekret-z-env
 BASE=http://127.0.0.1:3000
 
-# 02:00 — główny przebieg
-0 2 * * * curl -fsS -H "Authorization: Bearer $CRON_SECRET" "$BASE/api/cron/catalog-zd-sync" >> /var/log/system-dostaw-catalog.log 2>&1
-
-# 02:20 — kontynuacja, gdy pierwszy przebieg nie domknął kolejki
-20 2 * * * curl -fsS -H "Authorization: Bearer $CRON_SECRET" "$BASE/api/cron/catalog-zd-sync" >> /var/log/system-dostaw-catalog.log 2>&1
+# 02:00–04:40 co 20 min — główny przebieg + kontynuacje
+0,20,40 2-4 * * * curl -fsS -H "Authorization: Bearer $CRON_SECRET" "$BASE/api/cron/catalog-zd-sync" >> /var/log/system-dostaw-catalog.log 2>&1
 ```
 
 Test w biurze (pomija okno nocne):

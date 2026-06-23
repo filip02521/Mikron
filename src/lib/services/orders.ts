@@ -30,6 +30,7 @@ import type {
   OrderType,
 } from "@/types/database";
 import { scheduleHistoryRetentionPurge } from "@/lib/services/history-cleanup";
+import { releaseLock, tryAcquireLock } from "@/lib/services/locks";
 import {
   sendDeliveryNotificationEmails,
   sendInformacjaArrivedEmails,
@@ -1647,9 +1648,40 @@ export type ProcessDeliveriesResult = {
   processed: number;
   emailSent: number;
   emailFailures: string[];
+  skipped?: boolean;
+  skipReason?: string;
 };
 
-export async function processMarkedDeliveries(): Promise<ProcessDeliveriesResult> {
+const PROCESS_MARKED_DELIVERIES_LOCK = "process-marked-deliveries";
+const PROCESS_MARKED_DELIVERIES_LOCK_TTL_SEC = 300;
+
+export async function processMarkedDeliveries(options?: {
+  lockedBy?: string;
+}): Promise<ProcessDeliveriesResult> {
+  const lockedBy = options?.lockedBy ?? "process-deliveries";
+  const acquired = await tryAcquireLock(
+    PROCESS_MARKED_DELIVERIES_LOCK,
+    PROCESS_MARKED_DELIVERIES_LOCK_TTL_SEC,
+    lockedBy
+  );
+  if (!acquired) {
+    return {
+      processed: 0,
+      emailSent: 0,
+      emailFailures: [],
+      skipped: true,
+      skipReason: "lock_held",
+    };
+  }
+
+  try {
+    return await processMarkedDeliveriesUnlocked();
+  } finally {
+    await releaseLock(PROCESS_MARKED_DELIVERIES_LOCK);
+  }
+}
+
+async function processMarkedDeliveriesUnlocked(): Promise<ProcessDeliveriesResult> {
   const supabase = createAdminClient();
   const { data: queueRaw } = await supabase
     .from("individual_orders")

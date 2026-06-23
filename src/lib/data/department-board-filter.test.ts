@@ -9,3 +9,13 @@ describe("activeAnnouncementExpiryOr", () => {
     );
   });
 });
+
+describe("fetchDepartmentBoard composition", () => {
+  it("eksportuje osobne fetch dla pytań i ogłoszeń", async () => {
+    const { fetchDepartmentBoardQuestions, fetchDepartmentBoardAnnouncements } =
+      await import("@/lib/data/department-board");
+
+    expect(typeof fetchDepartmentBoardQuestions).toBe("function");
+    expect(typeof fetchDepartmentBoardAnnouncements).toBe("function");
+  });
+});

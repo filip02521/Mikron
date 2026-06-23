@@ -2,7 +2,7 @@
 
 import { useEffect, useRef } from "react";
 import { cn } from "@/lib/cn";
-import { floatingToastBottomClass } from "@/lib/ui/sales-mobile-chrome";
+import { floatingToastBottomClass, floatingToastStackAboveClass } from "@/lib/ui/sales-mobile-chrome";
 
 export function Toast({
   message,
@@ -10,12 +10,14 @@ export function Toast({
   onDismiss,
   durationMs,
   action,
+  stacked = false,
 }: {
   message: string;
   tone?: "success" | "error" | "warning";
   onDismiss: () => void;
   durationMs?: number;
   action?: React.ReactNode;
+  stacked?: boolean;
 }) {
   const autoMs = durationMs ?? (action ? 12_000 : 4500);
   const onDismissRef = useRef(onDismiss);
@@ -34,7 +36,7 @@ export function Toast({
       aria-live="polite"
       className={cn(
         "fixed z-[60] max-w-sm rounded-md border px-4 py-3 text-sm shadow-lg",
-        floatingToastBottomClass,
+        stacked ? floatingToastStackAboveClass : floatingToastBottomClass,
         "left-4 right-4 sm:left-auto sm:right-6",
         tone === "success"
           ? "border-emerald-200 bg-emerald-50 text-emerald-900"

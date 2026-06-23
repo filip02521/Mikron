@@ -6,6 +6,7 @@ import {
   type UnseenBoardAnswer,
 } from "@/lib/department-board/attention";
 import { sortAnnouncements, sortQuestions } from "@/lib/department-board/sort";
+import { salesMojeAnnouncementHref } from "@/lib/department-board/moje-announcements-ui";
 import type {
   DepartmentBoardPost,
   DepartmentBoardThread,
@@ -53,33 +54,41 @@ export function activeAnnouncementExpiryOr(nowIso: string): string {
   return `expires_at.is.null,expires_at.gt."${nowIso}"`;
 }
 
-export async function fetchDepartmentBoard(
-  profileId: string | null
-): Promise<DepartmentBoardData> {
+export type DepartmentBoardQuestionsSlice = {
+  questions: DepartmentBoardQuestion[];
+};
+
+export type DepartmentBoardAnnouncementsSlice = {
+  announcements: DepartmentBoardThreadRow[];
+  readAnnouncementIds: string[];
+};
+
+export async function fetchDepartmentBoardThreadKind(
+  threadId: string
+): Promise<DepartmentBoardThread["kind"] | null> {
   const supabase = createAdminClient();
-  const nowIso = new Date().toISOString();
+  const { data, error } = await supabase
+    .from("department_board_threads")
+    .select("kind")
+    .eq("id", threadId)
+    .maybeSingle();
 
-  const [announcementsRes, questionsRes] = await Promise.all([
-    supabase
-      .from("department_board_threads")
-      .select(DEPARTMENT_BOARD_THREAD_SELECT)
-      .eq("kind", "announcement")
-      .is("archived_at", null)
-      .or(activeAnnouncementExpiryOr(nowIso)),
-    supabase
-      .from("department_board_threads")
-      .select(DEPARTMENT_BOARD_THREAD_SELECT)
-      .eq("kind", "question")
-      .is("archived_at", null)
-      .order("created_at", { ascending: false }),
-  ]);
+  if (error || !data?.kind) return null;
+  return data.kind;
+}
 
-  if (announcementsRes.error) throw new Error(announcementsRes.error.message);
+/** Tylko pytania — dla /tablica handlowca (bez ogłoszeń). */
+export async function fetchDepartmentBoardQuestions(): Promise<DepartmentBoardQuestionsSlice> {
+  const supabase = createAdminClient();
+
+  const questionsRes = await supabase
+    .from("department_board_threads")
+    .select(DEPARTMENT_BOARD_THREAD_SELECT)
+    .eq("kind", "question")
+    .is("archived_at", null)
+    .order("created_at", { ascending: false });
+
   if (questionsRes.error) throw new Error(questionsRes.error.message);
-
-  const announcements = sortAnnouncements(
-    (announcementsRes.data ?? []).filter(isAnnouncementActive) as DepartmentBoardThreadRow[]
-  );
 
   const questionRows = (questionsRes.data ?? []) as DepartmentBoardThreadRow[];
   const questionIds = questionRows.map((q) => q.id);
@@ -102,11 +111,34 @@ export async function fetchDepartmentBoard(
     postsByThread.set(post.thread_id, list);
   }
 
-  const questions: DepartmentBoardQuestion[] = sortQuestions(
-    questionRows.map((row) => ({
-      ...row,
-      posts: postsByThread.get(row.id) ?? [],
-    }))
+  return {
+    questions: sortQuestions(
+      questionRows.map((row) => ({
+        ...row,
+        posts: postsByThread.get(row.id) ?? [],
+      }))
+    ),
+  };
+}
+
+/** Tylko ogłoszenia — dla sekcji na /moje (bez pytań). */
+export async function fetchDepartmentBoardAnnouncements(
+  profileId: string | null
+): Promise<DepartmentBoardAnnouncementsSlice> {
+  const supabase = createAdminClient();
+  const nowIso = new Date().toISOString();
+
+  const announcementsRes = await supabase
+    .from("department_board_threads")
+    .select(DEPARTMENT_BOARD_THREAD_SELECT)
+    .eq("kind", "announcement")
+    .is("archived_at", null)
+    .or(activeAnnouncementExpiryOr(nowIso));
+
+  if (announcementsRes.error) throw new Error(announcementsRes.error.message);
+
+  const announcements = sortAnnouncements(
+    (announcementsRes.data ?? []).filter(isAnnouncementActive) as DepartmentBoardThreadRow[]
   );
 
   let readAnnouncementIds: string[] = [];
@@ -123,72 +155,22 @@ export async function fetchDepartmentBoard(
     readAnnouncementIds = (readsRes.data ?? []).map((r) => r.thread_id);
   }
 
-  return { announcements, questions, readAnnouncementIds };
+  return { announcements, readAnnouncementIds };
 }
 
-/** Handlowiec: nieprzeczytane aktywne ogłoszenia. */
-export async function countUnreadAnnouncementsForProfile(
-  profileId: string
-): Promise<number> {
-  const supabase = createAdminClient();
-  const nowIso = new Date().toISOString();
+/** Pełna tablica — zakupy (ogłoszenia + pytania). */
+export async function fetchDepartmentBoard(
+  profileId: string | null
+): Promise<DepartmentBoardData> {
+  const [announcementsSlice, questionsSlice] = await Promise.all([
+    fetchDepartmentBoardAnnouncements(profileId),
+    fetchDepartmentBoardQuestions(),
+  ]);
 
-  const { data: announcements, error: annError } = await supabase
-    .from("department_board_threads")
-    .select("id")
-    .eq("kind", "announcement")
-    .is("archived_at", null)
-    .or(activeAnnouncementExpiryOr(nowIso));
-
-  if (annError || !announcements?.length) return 0;
-
-  const ids = announcements.map((a) => a.id);
-  const { data: reads, error: readError } = await supabase
-    .from("department_board_reads")
-    .select("thread_id")
-    .eq("profile_id", profileId)
-    .in("thread_id", ids);
-
-  if (readError) return 0;
-
-  const readSet = new Set((reads ?? []).map((r) => r.thread_id));
-  return ids.filter((id) => !readSet.has(id)).length;
-}
-
-/** Najnowsze nieprzeczytane ogłoszenie (tytuł do bannera na /moje). */
-export async function fetchUnreadAnnouncementsPreview(profileId: string): Promise<{
-  count: number;
-  latestTitle: string | null;
-}> {
-  const supabase = createAdminClient();
-  const nowIso = new Date().toISOString();
-
-  const { data: announcements, error: annError } = await supabase
-    .from("department_board_threads")
-    .select("id, title, published_at")
-    .eq("kind", "announcement")
-    .is("archived_at", null)
-    .or(activeAnnouncementExpiryOr(nowIso))
-    .order("published_at", { ascending: false });
-
-  if (annError || !announcements?.length) {
-    return { count: 0, latestTitle: null };
-  }
-
-  const ids = announcements.map((a) => a.id);
-  const { data: reads, error: readError } = await supabase
-    .from("department_board_reads")
-    .select("thread_id")
-    .eq("profile_id", profileId)
-    .in("thread_id", ids);
-
-  if (readError) return { count: 0, latestTitle: null };
-
-  const readSet = new Set((reads ?? []).map((r) => r.thread_id));
-  const unread = announcements.filter((a) => !readSet.has(a.id));
   return {
-    count: unread.length,
-    latestTitle: unread[0]?.title ?? null,
+    announcements: announcementsSlice.announcements,
+    readAnnouncementIds: announcementsSlice.readAnnouncementIds,
+    questions: questionsSlice.questions,
   };
 }
 
@@ -207,11 +189,15 @@ export async function countOpenDepartmentBoardQuestions(): Promise<number> {
 }
 
 export function salesBoardAnnouncementHref(threadId: string): string {
-  return `/tablica?widok=ogloszenia&watek=${encodeURIComponent(threadId)}`;
+  return salesMojeAnnouncementHref(threadId);
 }
 
 export function procurementBoardAnnouncementHref(threadId: string): string {
   return `/zakupy/tablica?widok=ogloszenia&watek=${encodeURIComponent(threadId)}`;
+}
+
+export function procurementBoardQuestionHref(threadId: string): string {
+  return `/zakupy/tablica?widok=pytania&watek=${encodeURIComponent(threadId)}`;
 }
 
 /** Przypięte, aktywne ogłoszenia — wspólne dla handlowców i panelu zakupów. */
@@ -383,8 +369,8 @@ export async function fetchSalesBoardAttentionSnapshot(
   };
 }
 
-/** Badge menu handlowca: nieprzeczytane ogłoszenia + nieodczytane odpowiedzi. */
-export async function countSalesBoardNavBadge(profileId: string): Promise<number> {
+/** Badge na /tablica — tylko nowe odpowiedzi (ogłoszenia są na /moje). */
+export async function countSalesTablicaNavBadge(profileId: string): Promise<number> {
   const snapshot = await fetchSalesBoardAttentionSnapshot(profileId);
-  return snapshot.navBadgeCount;
+  return snapshot.unseenAnswerCount;
 }

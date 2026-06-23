@@ -54,7 +54,12 @@ describe("resolveCatalogZdSyncStartState", () => {
 describe("catalogZdSyncNeedsContinue", () => {
   it("wymaga kontynuacji gdy indeks lub import nieukończony", () => {
     expect(catalogZdSyncNeedsContinue(baseState({ status: "idle" }))).toBe(true);
-    expect(catalogZdSyncNeedsContinue(baseState({ status: "running" }))).toBe(false);
+    expect(catalogZdSyncNeedsContinue(baseState({ status: "running" }))).toBe(true);
+    expect(
+      catalogZdSyncNeedsContinue(
+        baseState({ status: "running", indexComplete: true, importComplete: false })
+      )
+    ).toBe(true);
     expect(
       catalogZdSyncNeedsContinue(
         baseState({ status: "idle", indexComplete: true, importComplete: false })
@@ -77,7 +82,7 @@ describe("summarizeCatalogZdSync", () => {
     });
     expect(summary.headline).toContain("W toku");
     expect(summary.detailLines.some((l) => l.includes("Indeks:"))).toBe(true);
-    expect(summary.needsContinue).toBe(false);
+    expect(summary.needsContinue).toBe(true);
     expect(summary.progressPercent).not.toBeNull();
   });
 });

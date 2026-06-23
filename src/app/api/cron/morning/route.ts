@@ -52,17 +52,27 @@ export async function GET(request: NextRequest) {
     revalidatePath("/lokalizacje/[location]", "page");
     revalidatePath("/historia");
 
-    const issues = [
+    const blockingIssues = [
       ...result.sync.scheduleErrors,
       ...result.deliveries.emailFailures,
     ];
+    const notes: string[] = [];
+    if (result.deliveries.skipped) {
+      notes.push(
+        `Dostawy pominięte (${result.deliveries.skipReason ?? "lock_held"}) — przejmie cron godzinowy`
+      );
+    }
+    const issues = [...blockingIssues, ...notes];
 
     await recordCronRun("morning_routine", {
-      ok: issues.length === 0,
+      ok: blockingIssues.length === 0,
       detail: {
         warsawDateKey: warsaw.dateKey,
         schedulesProcessed: result.sync.schedulesProcessed,
         deliveriesProcessed: result.deliveries.processed,
+        deliveriesSkipped: result.deliveries.skipped ?? false,
+        deliveriesSkipReason: result.deliveries.skipReason,
+        historyRetentionSkipped: result.historyRetentionSkipped,
         historyIndividualDeleted: result.historyCleanup.individualDeleted,
         historyNormalDeleted: result.historyCleanup.normalDeleted,
         warehouseReceiptsDeleted: result.historyCleanup.warehouseReceiptsDeleted,
@@ -76,11 +86,11 @@ export async function GET(request: NextRequest) {
         dataRetentionCutoff: result.historyCleanup.cutoffDateOnly,
         issues,
       },
-      error: issues.length ? issues.join("; ") : undefined,
+      error: blockingIssues.length ? blockingIssues.join("; ") : undefined,
     });
 
     return NextResponse.json({
-      success: issues.length === 0,
+      success: blockingIssues.length === 0,
       sync: result.sync,
       deliveries: result.deliveries,
       historyCleanup: result.historyCleanup,

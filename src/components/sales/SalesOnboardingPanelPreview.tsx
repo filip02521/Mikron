@@ -213,20 +213,15 @@ export function SalesOnboardingPanelPreview({ stepId }: { stepId: string }) {
     case "tablica":
       return (
         <div className="space-y-2">
-          <div className="grid grid-cols-2 gap-2">
-            <div className="rounded-md border-2 border-sky-400 bg-sky-50 px-2 py-1.5 text-center text-[10px] font-semibold text-sky-900">
-              Ogłoszenia od zakupów
-            </div>
-            <div className="rounded-md border border-slate-200 bg-white px-2 py-1.5 text-center text-[10px] font-medium text-slate-600">
-              Pytania zespołu
-            </div>
+          <div className="rounded-md border border-indigo-200 bg-indigo-50/80 px-2.5 py-1.5 text-[11px] font-semibold text-indigo-900">
+            Zadaj pytanie
           </div>
-          <div className="rounded-md border border-sky-200 bg-sky-50/80 px-2.5 py-2 text-[11px] text-sky-950">
-            <p className="text-[10px] font-semibold uppercase tracking-wide text-sky-800">Ogłoszenie</p>
-            <p className="mt-0.5 font-semibold">Zamówienia importowe — podaj kod Mikran</p>
+          <div className="rounded-md border border-slate-200 bg-white px-2.5 py-2 text-[11px] text-slate-800">
+            <p className="font-semibold">Próbki implantów poza harmonogramem?</p>
+            <p className="mt-1 text-[10px] text-emerald-700">Odpowiedziano</p>
           </div>
           <p className="text-center text-[10px] text-slate-500">
-            Przełącz zakładkę, aby zobaczyć pytania zespołu
+            Ogłoszenia od zakupów są w Moje zamówienia
           </p>
         </div>
       );

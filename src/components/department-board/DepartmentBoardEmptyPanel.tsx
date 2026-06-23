@@ -5,11 +5,9 @@ import { IconClipboardPen, IconInbox } from "@/components/icons/StrokeIcons";
 import type { DepartmentBoardQuestionFilter } from "@/components/department-board/DepartmentBoardSalesChrome";
 
 export function DepartmentBoardAnnouncementsEmpty({
-  domain,
   questionsCount = 0,
   onShowQuestions,
 }: {
-  domain: "sales" | "panel";
   questionsCount?: number;
   onShowQuestions?: () => void;
 }) {
@@ -22,14 +20,10 @@ export function DepartmentBoardAnnouncementsEmpty({
     <EmptyState
       brandAccent
       icon={<IconInbox size={28} strokeWidth={1.75} />}
-      title={domain === "sales" ? "Brak ogłoszeń od zakupów" : "Brak aktywnych ogłoszeń"}
-      description={
-        domain === "sales"
-          ? "Gdy dział zakupów opublikuje komunikat, pojawi się tutaj — bez konieczności sprawdzania maila."
-          : panelDescription
-      }
+      title="Brak aktywnych ogłoszeń"
+      description={panelDescription}
       action={
-        domain === "panel" && questionsCount > 0 && onShowQuestions ? (
+        questionsCount > 0 && onShowQuestions ? (
           <button
             type="button"
             className="text-sm font-semibold text-indigo-700 underline-offset-2 hover:underline"
@@ -55,9 +49,13 @@ export function DepartmentBoardQuestionsEmpty({
       ? "Brak pytań bez odpowiedzi"
       : filter === "answered"
         ? "Brak pytań z odpowiedzią"
-        : domain === "sales"
-          ? "Brak pytań na tablicy"
-          : "Brak pytań do wyświetlenia";
+        : filter === "unseen"
+          ? "Brak nowych odpowiedzi"
+          : filter === "mine"
+            ? "Nie masz jeszcze pytań na tablicy"
+            : domain === "sales"
+              ? "Brak pytań na tablicy"
+              : "Brak pytań do wyświetlenia";
 
   const description =
     filter === "open"
@@ -66,9 +64,15 @@ export function DepartmentBoardQuestionsEmpty({
         : "Handlowcy nie czekają obecnie na odpowiedź — sprawdź filtr „Wszystkie”."
       : filter === "answered"
         ? "Gdy zakupy odpowiedzą na pytanie, wątek trafi tutaj po wybraniu tego filtra."
-        : domain === "sales"
-          ? "Zadaj pierwsze pytanie w formularzu poniżej — odpowiedź zobaczy cały dział."
-          : "Pytania handlowców pojawią się tutaj automatycznie.";
+        : filter === "unseen"
+          ? "Przejrzałeś już wszystkie nowe odpowiedzi zakupów — świetnie!"
+          : filter === "mine"
+            ? domain === "sales"
+              ? "Kliknij «Zadaj pytanie» powyżej lub użyj przycisku na dole ekranu na telefonie."
+              : "Pytania handlowców pojawią się tutaj automatycznie."
+            : domain === "sales"
+              ? "Kliknij «Zadaj pytanie» powyżej — odpowiedź zobaczy cały dział."
+              : "Pytania handlowców pojawią się tutaj automatycznie.";
 
   return (
     <EmptyState

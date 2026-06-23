@@ -122,7 +122,7 @@ describe("buildSalesDayStartSnapshot", () => {
 
     expect(snapshot.totalActionCount).toBe(4);
     const announcementItem = snapshot.items.find((i) => i.source === "board_announcement");
-    expect(announcementItem?.href).toContain("watek=ann-1");
+    expect(announcementItem?.href).toContain("ogloszenie=ann-1");
   });
 
   it("linkuje przypomnienie ZK do /zk z focusWatch", () => {

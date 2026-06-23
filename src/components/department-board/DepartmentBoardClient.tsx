@@ -1,7 +1,10 @@
 "use client";
 
 import type { DepartmentBoardAttentionBanners } from "@/lib/department-board/board-attention-banners";
-import type { DepartmentBoardData } from "@/lib/data/department-board";
+import type {
+  DepartmentBoardData,
+  DepartmentBoardQuestionsSlice,
+} from "@/lib/data/department-board";
 import { DepartmentBoardSalesClient } from "@/components/department-board/DepartmentBoardSalesClient";
 import { DepartmentBoardProcurementClient } from "@/components/department-board/DepartmentBoardProcurementClient";
 
@@ -17,8 +20,9 @@ export function DepartmentBoardClient({
   readOnly = false,
   pageTitle,
   previewHint,
+  currentSalesPersonId = null,
 }: {
-  initial: DepartmentBoardData;
+  initial: DepartmentBoardData | DepartmentBoardQuestionsSlice;
   audience: "sales" | "procurement";
   loadError?: string | null;
   unseenQuestionIds?: string[];
@@ -29,26 +33,31 @@ export function DepartmentBoardClient({
   readOnly?: boolean;
   pageTitle?: string;
   previewHint?: string;
+  currentSalesPersonId?: string | null;
 }) {
   if (audience === "sales") {
+    const questionsInitial: DepartmentBoardQuestionsSlice =
+      "announcements" in initial
+        ? { questions: initial.questions }
+        : initial;
+
     return (
       <DepartmentBoardSalesClient
-        initial={initial}
+        initial={questionsInitial}
         loadError={loadError}
         unseenQuestionIds={unseenQuestionIds}
         boardAttention={boardAttention}
-        initialTab={initialTab}
         focusQuestionId={focusQuestionId}
-        focusAnnouncementId={focusAnnouncementId}
         readOnly={readOnly}
         pageTitle={pageTitle}
         previewHint={previewHint}
+        currentSalesPersonId={currentSalesPersonId}
       />
     );
   }
   return (
     <DepartmentBoardProcurementClient
-      initial={initial}
+      initial={initial as DepartmentBoardData}
       loadError={loadError}
       initialTab={initialTab}
       focusQuestionId={focusQuestionId}

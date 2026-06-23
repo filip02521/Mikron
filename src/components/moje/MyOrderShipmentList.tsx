@@ -9,7 +9,6 @@ import {
   actionAcknowledgePickup,
   actionAcknowledgeCancelled,
   actionAcknowledgeSalesCancelNotice,
-  actionAcknowledgeZdFulfillmentDeadlineChange,
   actionSalesCancelOrders,
   actionUpdateSalesClientName,
 } from "@/app/actions/my-orders";
@@ -321,26 +320,6 @@ export function MyOrderShipmentList({
     [router, tourPreview, reportUndo]
   );
 
-  const runAcknowledgeZdDeadlineChange = useCallback(
-    (orderIds: string[]) => {
-      if (tourPreview || !orderIds.length) return;
-      setPendingMessage("Zapisywanie potwierdzenia…");
-      start(async () => {
-        try {
-          await actionAcknowledgeZdFulfillmentDeadlineChange(orderIds);
-          router.refresh();
-        } catch (e) {
-          setErrorToast(
-            e instanceof Error ? e.message : "Nie udało się potwierdzić zmiany terminu"
-          );
-        } finally {
-          setPendingMessage(null);
-        }
-      });
-    },
-    [router, tourPreview]
-  );
-
   const saveClient = useCallback(
     async (orderId: string, patch: SalesClientAssignment) => {
       if (tourPreview) return;
@@ -496,9 +475,6 @@ export function MyOrderShipmentList({
         rowVisualTone={rowVisualTone}
         highlighted={focusRowIds?.has(row.id) ?? false}
         subiektReachable={subiektReachable}
-        onAcknowledgeZdDeadlineChange={
-          canAcknowledge ? runAcknowledgeZdDeadlineChange : undefined
-        }
       />
     ),
     [
@@ -517,7 +493,6 @@ export function MyOrderShipmentList({
       rowVisualTone,
       runAcknowledgeCancelNotice,
       runAcknowledgeCancelled,
-      runAcknowledgeZdDeadlineChange,
       saveClient,
       searchQuery,
       showProgress,

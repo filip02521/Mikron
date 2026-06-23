@@ -7,15 +7,25 @@ export type CronRunPayload = {
   error?: string;
 };
 
+export type CronJobId =
+  | "process_deliveries"
+  | "morning_sync"
+  | "morning_routine"
+  | "catalog_zd_sync"
+  | "zd_eta_sync";
+
+export const CRON_JOB_IDS: CronJobId[] = [
+  "morning_routine",
+  "process_deliveries",
+  "zd_eta_sync",
+  "catalog_zd_sync",
+  "morning_sync",
+];
+
 export async function recordCronRun(
-  job:
-    | "process_deliveries"
-    | "morning_sync"
-    | "morning_routine"
-    | "catalog_zd_sync"
-    | "zd_eta_sync",
+  job: CronJobId,
   payload: Omit<CronRunPayload, "at"> & { at?: string }
-): Promise<void> {
+): Promise<boolean> {
   try {
     const supabase = createAdminClient();
     const value: CronRunPayload = {
@@ -24,23 +34,22 @@ export async function recordCronRun(
       detail: payload.detail,
       error: payload.error,
     };
-    await supabase.from("app_settings").upsert({
+    const { error } = await supabase.from("app_settings").upsert({
       key: `cron_last_${job}`,
       value,
     });
+    if (error) {
+      console.error(`recordCronRun(${job}) upsert failed`, error.message);
+      return false;
+    }
+    return true;
   } catch (e) {
     console.error(`recordCronRun(${job}) failed`, e);
+    return false;
   }
 }
 
-export async function readCronRun(
-  job:
-    | "process_deliveries"
-    | "morning_sync"
-    | "morning_routine"
-    | "catalog_zd_sync"
-    | "zd_eta_sync"
-): Promise<CronRunPayload | null> {
+export async function readCronRun(job: CronJobId): Promise<CronRunPayload | null> {
   try {
     const supabase = createAdminClient();
     const { data } = await supabase
@@ -53,4 +62,11 @@ export async function readCronRun(
   } catch {
     return null;
   }
+}
+
+export async function readAllCronRuns(): Promise<Record<CronJobId, CronRunPayload | null>> {
+  const entries = await Promise.all(
+    CRON_JOB_IDS.map(async (id) => [id, await readCronRun(id)] as const)
+  );
+  return Object.fromEntries(entries) as Record<CronJobId, CronRunPayload | null>;
 }

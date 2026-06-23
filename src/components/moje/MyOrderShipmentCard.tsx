@@ -21,7 +21,6 @@ import {
   shouldShowInformacjaEmailSentMeta,
 } from "@/components/moje/InformacjaEmailSentMeta";
 import { ZdFulfillmentDateMeta } from "@/components/orders/ZdFulfillmentDateMeta";
-import { ZdFulfillmentDeadlineChangeNotice } from "@/components/orders/ZdFulfillmentDeadlineChangeNotice";
 import { ZdEtaPendingMeta } from "@/components/orders/ZdEtaPendingMeta";
 import { ZdEtaNoMatchMeta } from "@/components/orders/ZdEtaNoMatchMeta";
 import { resolveMyOrderHistoryDeliveryEstimate } from "@/lib/orders/delivery-date-meta-label";
@@ -332,7 +331,6 @@ export const MyOrderShipmentCard = memo(function MyOrderShipmentCard({
   rowVisualTone = "default",
   highlighted = false,
   subiektReachable = true,
-  onAcknowledgeZdDeadlineChange,
   as: Root = "li",
 }: {
   row: MyOrderRow;
@@ -368,7 +366,6 @@ export const MyOrderShipmentCard = memo(function MyOrderShipmentCard({
   rowVisualTone?: MojeShipmentRowVisualTone;
   highlighted?: boolean;
   subiektReachable?: boolean;
-  onAcknowledgeZdDeadlineChange?: (orderIds: string[]) => void;
 }) {
   const panelId = useId();
   const searchActive = searchQueryTokens(searchQuery).length > 0;
@@ -545,16 +542,6 @@ export const MyOrderShipmentCard = memo(function MyOrderShipmentCard({
     zdEtaPending && (historyDeliveryEstimate !== null || zdFulfillment !== null);
   const showZdEtaNoMatchMeta =
     zdEtaNoMatch && !zdEtaPending && !historyDeliveryEstimate && !zdFulfillment;
-  const zdDeadlineChangeOrderIds = useMemo(() => {
-    const fromLines = row.lines
-      .filter((line) => line.zdFulfillment?.deadlineChange)
-      .map((line) => line.id);
-    if (fromLines.length) return fromLines;
-    if (row.zdFulfillment?.deadlineChange) return row.orderIds;
-    return [];
-  }, [row]);
-  const showZdDeadlineChangeDismiss =
-    canAcknowledge && zdDeadlineChangeOrderIds.length > 0 && Boolean(onAcknowledgeZdDeadlineChange);
   const showExpandedStatusBadge = shouldShowExpandedOrderStatusBadge(row, {
     hasRequestProgress: Boolean(requestProgress),
   });
@@ -1010,13 +997,6 @@ export const MyOrderShipmentCard = memo(function MyOrderShipmentCard({
                 fulfillment={zdFulfillment}
                 collapsed
                 lines={row.lines}
-                showDeadlineChangeDismiss={showZdDeadlineChangeDismiss}
-                dismissDeadlineChangePending={pending}
-                onDismissDeadlineChange={
-                  showZdDeadlineChangeDismiss
-                    ? () => onAcknowledgeZdDeadlineChange?.(zdDeadlineChangeOrderIds)
-                    : undefined
-                }
               />
             ) : null}
             {!showInformacjaTimingMeta && showEstimatedDeliveryMeta ? (
@@ -1072,13 +1052,6 @@ export const MyOrderShipmentCard = memo(function MyOrderShipmentCard({
               fulfillment={zdFulfillment}
               collapsed
               lines={row.lines}
-              showDeadlineChangeDismiss={showZdDeadlineChangeDismiss}
-              dismissDeadlineChangePending={pending}
-              onDismissDeadlineChange={
-                showZdDeadlineChangeDismiss
-                  ? () => onAcknowledgeZdDeadlineChange?.(zdDeadlineChangeOrderIds)
-                  : undefined
-              }
             />
           ) : null}
           {!showInformacjaTimingMeta && showEstimatedDeliveryMeta ? (
@@ -1144,19 +1117,6 @@ export const MyOrderShipmentCard = memo(function MyOrderShipmentCard({
                 display={expandedDeliveryTiming}
                 searchQuery={searchQuery}
               />
-              {row.zdFulfillment?.deadlineChange ? (
-                <ZdFulfillmentDeadlineChangeNotice
-                  change={row.zdFulfillment.deadlineChange}
-                  align="start"
-                  className="w-full"
-                  onDismiss={
-                    showZdDeadlineChangeDismiss
-                      ? () => onAcknowledgeZdDeadlineChange?.(zdDeadlineChangeOrderIds)
-                      : undefined
-                  }
-                  dismissPending={pending}
-                />
-              ) : null}
             </div>
           ) : null}
 

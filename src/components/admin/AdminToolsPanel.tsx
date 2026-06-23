@@ -5,6 +5,10 @@ import { SyncButton } from "@/components/admin/SyncButton";
 import { AdminActionButton } from "@/components/admin/AdminActionButton";
 import { Toast } from "@/components/ui/Toast";
 import { Card, CardHeader } from "@/components/ui/Card";
+import { HelpBlock } from "@/components/ui/HelpBlock";
+import { HelpPopover } from "@/components/ui/HelpPopover";
+import { cn } from "@/lib/cn";
+import { panelTypography } from "@/lib/ui/ontime-theme";
 import {
   actionSyncData,
   actionRecalculateStats,
@@ -24,44 +28,48 @@ export function AdminToolsPanel() {
     <>
       {toast ? <Toast message={toast.text} tone={toast.tone} onDismiss={dismiss} /> : null}
 
-      <details className="group overflow-hidden rounded-md border border-slate-200/90 bg-white shadow-sm open:shadow-md">
-        <summary className="cursor-pointer list-none px-3 py-3 text-sm font-semibold text-slate-900 marker:content-none sm:px-4 [&::-webkit-details-marker]:hidden">
-          <span className="flex items-center justify-between gap-2">
-            Automatyka (Vercel Cron)
-            <span className="text-slate-400 transition group-open:rotate-180">▾</span>
-          </span>
-        </summary>
-        <div className="border-t border-slate-100 px-3 py-3 text-sm leading-relaxed text-slate-600 sm:px-4">
-          <ul className="list-inside list-disc space-y-2">
-            <li>
-              <strong className="text-slate-800">6:00 (Europe/Warsaw)</strong> w dni robocze —{" "}
-              <code className="rounded bg-slate-100 px-1 text-xs">/api/cron/morning</code>:
-              przelicza terminy i domyka kolejkę realizacji.
-            </li>
-            <li>
-              <strong className="text-slate-800">Co godzinę 8:00–18:59</strong> —{" "}
-              <code className="rounded bg-slate-100 px-1 text-xs">
-                /api/cron/process-deliveries
-              </code>
-              : zapasowe domknięcie dostaw z kolejki.
-            </li>
-            <li>
-              <strong className="text-slate-800">„Towar dotarł”</strong> — wysyłany od razu po
-              zapisie w realizacji, nie czeka na cron.
-            </li>
-          </ul>
-        </div>
-      </details>
+      <Card padding={false} className="overflow-hidden">
+        <CardHeader
+          inset
+          density="compact"
+          title="Narzędzia serwisowe"
+          description="Ręczne operacje na żądanie — większość procesów działa automatycznie w tle."
+          action={
+            <HelpPopover
+              label="Pomoc — narzędzia serwisowe"
+              title="Kiedy używać narzędzi"
+              shortLabel="Pomoc"
+            >
+              <HelpBlock title="Harmonogramy">
+                <p>
+                  Po urlopie system przelicza terminy sam. Przycisk „Przelicz wszystkie terminy”
+                  przydaje się po imporcie lub gdy panel dzienny pokazuje złe daty.
+                </p>
+              </HelpBlock>
+              <HelpBlock title="Realizacja i ETA">
+                <p>
+                  Kolejka dostaw domyka się przy zapisie realizacji i w cronie. Ręczne
+                  przetwarzanie — gdy coś „wisi”. Pełne przeliczenie ETA tylko po korekcie
+                  historii zamówień.
+                </p>
+              </HelpBlock>
+              <HelpBlock title="Zadania w tle">
+                <p className="text-xs text-slate-500">
+                  Status automatycznych jobów — w sekcji „Zadania cron” powyżej.
+                </p>
+              </HelpBlock>
+            </HelpPopover>
+          }
+        />
 
-      <div className="grid gap-4 lg:grid-cols-2">
-        <Card padding={false} className="overflow-hidden">
-          <CardHeader
-            inset
-            density="compact"
-            title="Harmonogramy"
-            description="Po urlopach, imporcie lub gdy panel dzienny pokazuje złe daty."
-          />
-          <div className="space-y-3 px-3 pb-4 sm:px-4">
+        <div className="grid gap-4 px-3 pb-4 sm:px-4 lg:grid-cols-2 lg:px-5">
+          <div className="space-y-3 rounded-md border border-slate-200/90 bg-slate-50/30 p-3 sm:p-4">
+            <div>
+              <p className={panelTypography.sectionLabel}>Harmonogramy</p>
+              <p className={cn(panelTypography.sectionDesc, "mt-1")}>
+                Po urlopach, imporcie lub gdy panel dzienny pokazuje złe daty.
+              </p>
+            </div>
             <SyncButton
               action={actionSyncData}
               label="Przelicz wszystkie terminy"
@@ -69,41 +77,41 @@ export function AdminToolsPanel() {
               loadingMessage="Przeliczanie terminów wszystkich dostawców…"
               loadingHint="Urlopy i interwały — panel dzienny i terminy"
             />
-            <p className="text-xs leading-relaxed text-slate-500">
-              Po zapisie urlopu przeliczenie uruchamia się samo. Ten przycisk tylko na żądanie.
+            <p className={cn(panelTypography.caption, "text-slate-500")}>
+              Po zapisie urlopu przeliczenie uruchamia się samo.
             </p>
           </div>
-        </Card>
 
-        <Card padding={false} className="overflow-hidden">
-          <CardHeader
-            inset
-            density="compact"
-            title="Realizacja i statystyki"
-            description="Gdy kolejka „wisi” lub ETA wymaga pełnego przebiegu historii."
-          />
-          <div className="flex flex-col gap-2 px-3 pb-4 sm:px-4">
-            <AdminActionButton
-              action={actionProcessDeliveries}
-              label="Przetwórz kolejkę dostaw"
-              onMessage={notify}
-              loadingMessage="Przetwarzanie kolejki realizacji…"
-              loadingHint="Domknięcie pozycji i e-maile"
-            />
-            <AdminActionButton
-              action={actionRecalculateStats}
-              label="Przelicz statystyki ETA"
-              onMessage={notify}
-              loadingMessage="Przeliczanie statystyk dostaw…"
-              loadingHint="Pełny przebieg historii"
-            />
-            <p className="text-xs leading-relaxed text-slate-500">
-              ETA na co dzień aktualizuje się przy zapisie realizacji — pełne przeliczenie tylko
-              po korekcie historii.
+          <div className="space-y-3 rounded-md border border-slate-200/90 bg-slate-50/30 p-3 sm:p-4">
+            <div>
+              <p className={panelTypography.sectionLabel}>Realizacja i statystyki</p>
+              <p className={cn(panelTypography.sectionDesc, "mt-1")}>
+                Gdy kolejka „wisi” lub ETA wymaga pełnego przebiegu historii.
+              </p>
+            </div>
+            <div className="flex flex-col gap-2">
+              <AdminActionButton
+                action={actionProcessDeliveries}
+                label="Przetwórz kolejkę dostaw"
+                onMessage={notify}
+                loadingMessage="Przetwarzanie kolejki realizacji…"
+                loadingHint="Domknięcie pozycji i e-maile"
+              />
+              <AdminActionButton
+                action={actionRecalculateStats}
+                label="Przelicz statystyki ETA"
+                onMessage={notify}
+                loadingMessage="Przeliczanie statystyk dostaw…"
+                loadingHint="Pełny przebieg historii"
+              />
+            </div>
+            <p className={cn(panelTypography.caption, "text-slate-500")}>
+              ETA aktualizuje się przy zapisie realizacji — pełne przeliczenie tylko po korekcie
+              historii.
             </p>
           </div>
-        </Card>
-      </div>
+        </div>
+      </Card>
     </>
   );
 }

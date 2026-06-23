@@ -35,6 +35,7 @@ export const SALES_SEARCH_COPY = {
   planSupplier: "Fragment nazwy dostawcy w harmonogramie",
   planProcurementSupplier: "Nazwa dostawcy w harmonogramie zakupów",
   boardQuestions: "Temat, treść, autor lub fragment odpowiedzi",
+  boardAnnouncements: "Tytuł, treść lub autor ogłoszenia",
   archiveZk: "Klient, numer ZK lub produkt w archiwum",
   archiveNotes: "Tytuł lub treść w archiwum notatek",
   operationsNotes: "Tytuł lub treść notatki operacyjnej",

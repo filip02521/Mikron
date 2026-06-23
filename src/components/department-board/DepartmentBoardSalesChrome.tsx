@@ -1,17 +1,18 @@
 "use client";
 
-import type { ComponentProps } from "react";
 import { cn } from "@/lib/cn";
+import { DEPARTMENT_BOARD_QUESTIONS_FILTERS } from "@/lib/department-board/copy";
+import type { DepartmentBoardQuestionFilterCounts } from "@/lib/department-board/question-filters";
 import {
   panelChoiceChipClass,
   panelChoiceChipIdleClass,
   panelChoiceChipSelectedClass,
   panelChromeInsetClass,
-  salesChromeInsetClass,
+  salesTypography,
 } from "@/lib/ui/ontime-theme";
 
 export type DepartmentBoardTab = "announcements" | "questions";
-export type DepartmentBoardQuestionFilter = "all" | "open" | "answered";
+export type DepartmentBoardQuestionFilter = "all" | "open" | "answered" | "unseen" | "mine";
 
 const TAB_CHIP_CLASS = cn(
   panelChoiceChipClass,
@@ -20,71 +21,45 @@ const TAB_CHIP_CLASS = cn(
 
 const FILTER_CHIP_CLASS = cn(
   panelChoiceChipClass,
-  "inline-flex min-h-10 shrink-0 cursor-pointer items-center px-2.5 py-1.5 text-[11px] sm:min-h-8"
+  "inline-flex min-h-10 shrink-0 cursor-pointer items-center gap-1 px-2.5 py-1.5 text-[11px] sm:min-h-8"
 );
+
+const FILTER_CHIP_TIPS: Record<DepartmentBoardQuestionFilter, string> =
+  DEPARTMENT_BOARD_QUESTIONS_FILTERS.chips;
 
 export function DepartmentBoardTabBar({
   activeTab,
   onTabChange,
-  domain,
-  unreadAnnouncements = 0,
   activeAnnouncements = 0,
   openQuestions = 0,
-  unseenAnswers = 0,
 }: {
   activeTab: DepartmentBoardTab;
   onTabChange: (tab: DepartmentBoardTab) => void;
-  domain: "sales" | "panel";
-  unreadAnnouncements?: number;
   activeAnnouncements?: number;
   openQuestions?: number;
-  unseenAnswers?: number;
 }) {
-  const inset = domain === "sales" ? salesChromeInsetClass : panelChromeInsetClass;
-
   const tabs: {
     id: DepartmentBoardTab;
     label: string;
     badge?: string;
-  }[] =
-    domain === "sales"
-      ? [
-          {
-            id: "announcements",
-            label: "Ogłoszenia od zakupów",
-            badge:
-              unreadAnnouncements > 0 ? `${unreadAnnouncements} nowe` : undefined,
-          },
-          {
-            id: "questions",
-            label: "Pytania zespołu",
-            badge:
-              unseenAnswers > 0
-                ? `${unseenAnswers} nowe odp.`
-                : openQuestions > 0
-                  ? `${openQuestions} bez odp.`
-                  : undefined,
-          },
-        ]
-      : [
-          {
-            id: "announcements",
-            label: "Ogłoszenia",
-            badge:
-              activeAnnouncements > 0 ? `${activeAnnouncements} aktyw.` : undefined,
-          },
-          {
-            id: "questions",
-            label: "Pytania",
-            badge: openQuestions > 0 ? `${openQuestions} bez odp.` : undefined,
-          },
-        ];
+  }[] = [
+    {
+      id: "announcements",
+      label: "Ogłoszenia",
+      badge: activeAnnouncements > 0 ? `${activeAnnouncements} aktyw.` : undefined,
+    },
+    {
+      id: "questions",
+      label: "Pytania",
+      badge: openQuestions > 0 ? `${openQuestions} bez odp.` : undefined,
+    },
+  ];
 
   return (
     <div
       className={cn(
         "flex flex-wrap gap-2 border-b border-slate-100 bg-slate-50/60 py-2.5",
-        inset
+        panelChromeInsetClass
       )}
       role="tablist"
       aria-label="Rodzaj wpisów na tablicy"
@@ -116,52 +91,87 @@ export function DepartmentBoardTabBar({
   );
 }
 
-/** @deprecated Użyj DepartmentBoardTabBar z domain="sales". */
-export const DepartmentBoardSalesTabBar = (
-  props: Omit<ComponentProps<typeof DepartmentBoardTabBar>, "domain">
-) => <DepartmentBoardTabBar {...props} domain="sales" />;
+type QuestionFilterChip = {
+  id: DepartmentBoardQuestionFilter;
+  label: string;
+  count?: number;
+};
 
 export function DepartmentBoardQuestionFilters({
   value,
   onChange,
   disabled = false,
+  disabledReason = null,
+  domain = "sales",
+  counts,
+  showMine = false,
+  showUnseen = false,
 }: {
   value: DepartmentBoardQuestionFilter;
   onChange: (value: DepartmentBoardQuestionFilter) => void;
   domain?: "sales" | "panel";
   disabled?: boolean;
+  disabledReason?: string | null;
+  counts: DepartmentBoardQuestionFilterCounts;
+  showMine?: boolean;
+  showUnseen?: boolean;
 }) {
-  const filters = [
-    ["all", "Wszystkie"],
-    ["open", "Bez odpowiedzi"],
-    ["answered", "Odpowiedziane"],
-  ] as const;
+  const filters: QuestionFilterChip[] = [
+    { id: "all", label: "Wszystkie", count: counts.all },
+    { id: "open", label: "Bez odpowiedzi", count: counts.open },
+    { id: "answered", label: "Odpowiedziane", count: counts.answered },
+  ];
+
+  if (showUnseen && counts.unseen > 0) {
+    filters.push({ id: "unseen", label: "Nowe odpowiedzi", count: counts.unseen });
+  }
+
+  if (showMine) {
+    filters.push({ id: "mine", label: "Tylko moje", count: counts.mine });
+  }
 
   return (
-    <div
-      className="flex flex-wrap gap-1.5"
-      role="group"
-      aria-label="Filtr pytań"
-    >
-      {filters.map(([filter, label]) => {
-        const active = value === filter;
-        return (
-          <button
-            key={filter}
-            type="button"
-            aria-pressed={active}
-            disabled={disabled}
-            onClick={() => onChange(filter)}
-            className={cn(
-              FILTER_CHIP_CLASS,
-              active ? panelChoiceChipSelectedClass : panelChoiceChipIdleClass,
-              disabled && "pointer-events-none opacity-60"
-            )}
-          >
-            {label}
-          </button>
-        );
-      })}
+    <div className="space-y-2">
+      <div
+        className="flex flex-wrap items-center gap-1.5"
+        role="group"
+        aria-label="Filtr pytań"
+      >
+        {filters.map((filter) => {
+          const active = value === filter.id;
+          const showCount =
+            filter.count != null &&
+            filter.count > 0 &&
+            (active || value === "all" || filter.id === "unseen");
+          return (
+            <button
+              key={filter.id}
+              type="button"
+              aria-pressed={active}
+              disabled={disabled}
+              title={FILTER_CHIP_TIPS[filter.id]}
+              onClick={() => onChange(filter.id)}
+              className={cn(
+                FILTER_CHIP_CLASS,
+                active ? panelChoiceChipSelectedClass : panelChoiceChipIdleClass,
+                disabled && "pointer-events-none opacity-60"
+              )}
+            >
+              <span>{filter.label}</span>
+              {showCount ? (
+                <span className="tabular-nums text-[10px] font-semibold opacity-75">
+                  {filter.count}
+                </span>
+              ) : null}
+            </button>
+          );
+        })}
+      </div>
+      {disabled && disabledReason ? (
+        <p className={cn(salesTypography.sectionHint, domain === "panel" && "text-xs")}>
+          {disabledReason}
+        </p>
+      ) : null}
     </div>
   );
 }

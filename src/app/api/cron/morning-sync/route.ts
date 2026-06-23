@@ -41,14 +41,12 @@ export async function GET(request: NextRequest) {
     });
 
     if (!ok) {
-      return NextResponse.json(
-        {
-          success: false,
-          schedulesProcessed: sync.schedulesProcessed,
-          errors: sync.scheduleErrors,
-        },
-        { status: 207 }
-      );
+      return NextResponse.json({
+        success: false,
+        schedulesProcessed: sync.schedulesProcessed,
+        errors: sync.scheduleErrors,
+        warning: "Część harmonogramów nie została przeliczona",
+      });
     }
 
     return NextResponse.json({

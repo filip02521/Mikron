@@ -238,6 +238,7 @@ describe("my-order-delivery-timing-display", () => {
         pickupPendingCount: 2,
         cancelledAckOrderIds: [],
         cancelNoticeOrderIds: [],
+        zdFulfillment: null,
       })
     ).toBe(false);
     expect(
@@ -246,6 +247,7 @@ describe("my-order-delivery-timing-display", () => {
         pickupPendingCount: 1,
         cancelledAckOrderIds: [],
         cancelNoticeOrderIds: [],
+        zdFulfillment: null,
       })
     ).toBe(false);
     expect(
@@ -254,6 +256,22 @@ describe("my-order-delivery-timing-display", () => {
         pickupPendingCount: 0,
         cancelledAckOrderIds: [],
         cancelNoticeOrderIds: [],
+        zdFulfillment: null,
+      })
+    ).toBe(true);
+  });
+
+  it("pokazuje termin ZD przy zamówieniu oczekującym na dostawę", () => {
+    expect(
+      shouldShowMyOrderCollapsedDeliveryTiming({
+        acknowledgeMode: "none",
+        pickupPendingCount: 0,
+        cancelledAckOrderIds: [],
+        cancelNoticeOrderIds: [],
+        zdFulfillment: {
+          deadline: "2026-06-26",
+          dokNr: "ZD 1/M/06/2026",
+        },
       })
     ).toBe(true);
   });

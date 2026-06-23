@@ -3,7 +3,7 @@ import type { MyOrderRow } from "@/lib/orders/my-order-presenter";
 import { addDays } from "date-fns";
 import { formatDateString } from "@/lib/orders/dates";
 import { todayInWarsaw } from "@/lib/time/warsaw";
-import type { DepartmentBoardData } from "@/lib/data/department-board";
+import type { DepartmentBoardData, DepartmentBoardAnnouncementsSlice } from "@/lib/data/department-board";
 import type { SalesNotepadData } from "@/lib/data/sales-notepad";
 import { SUMMARY_COLORS } from "@/types/database";
 import type { SupplierWithSchedule } from "@/types/database";
@@ -421,6 +421,14 @@ export function buildOnboardingPlanDemo() {
   };
 }
 
+export function buildOnboardingMojeAnnouncements(): DepartmentBoardAnnouncementsSlice {
+  const demo = buildOnboardingTablicaDemo();
+  return {
+    announcements: demo.announcements,
+    readAnnouncementIds: [],
+  };
+}
+
 export function buildOnboardingTablicaDemo(): DepartmentBoardData {
   const now = new Date().toISOString();
   const announcementId = "demo-board-announcement";
@@ -514,8 +522,6 @@ export function buildOnboardingBoardAttention() {
       title: "Próbki implantów poza harmonogramem?",
       isOwnQuestion: false,
     },
-    unreadAnnouncementBannerCount: 0,
-    unreadAnnouncementBannerLatestTitle: null as string | null,
   };
 }
 
@@ -529,9 +535,9 @@ export function buildOnboardingDayStartContext(salesPersonId: string) {
     boardAttention: {
       unreadAnnouncementCount: 0,
       unreadAnnouncementLatestTitle: null,
-      unreadAnnouncementBannerCount: 0,
-      unreadAnnouncementBannerLatestTitle: null,
-      unreadAnnouncementBannerLatestId: null,
+      unreadAnnouncementBannerCount: 1,
+      unreadAnnouncementBannerLatestTitle: "Zamówienia importowe — podaj kod Mikran",
+      unreadAnnouncementBannerLatestId: "demo-board-announcement",
       unseenAnswerCount: 1,
       unseenAnswerPreview: {
         threadId: "demo-board-question-answered",

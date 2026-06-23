@@ -22,6 +22,7 @@ export function SalesBugReportTrigger({ className }: { className?: string }) {
   const [error, setError] = useState<string | null>(null);
 
   if (navLocked) return null;
+  if (pathname === "/tablica") return null;
 
   async function submit() {
     setPending(true);

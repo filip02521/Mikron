@@ -9,16 +9,10 @@ import { SectionHeadingIcon } from "@/components/icons/SectionHeadingIcon";
 import { IconClipboardPen, IconInbox } from "@/components/icons/StrokeIcons";
 import { NoteColorPicker } from "@/components/notatnik/NoteColorPicker";
 import { NotatnikPanel } from "@/components/notatnik/NotatnikPanel";
-import { NotatnikListFilterBar } from "@/components/notatnik/NotatnikListFilterBar";
-import { salesSearchPlaceholder } from "@/lib/sales/sales-search-ui";
-import { SALES_SEARCH_COPY } from "@/lib/sales/sales-page-ui-copy";
-import { SalesListFilterEmptyHint } from "@/components/sales/SalesListEmptyHints";
-import { filterDepartmentBoardQuestionsByQuery } from "@/lib/department-board/question-search";
 import { NOTATNIK_INPUT_CLASS, NOTATNIK_TEXTAREA_CLASS } from "@/components/notatnik/notatnik-layout";
 import { AnnouncementCard } from "@/components/department-board/AnnouncementCard";
 import { QuestionThreadCard } from "@/components/department-board/QuestionThreadCard";
 import {
-  DepartmentBoardQuestionFilters,
   DepartmentBoardTabBar,
   type DepartmentBoardQuestionFilter,
   type DepartmentBoardTab,
@@ -28,13 +22,26 @@ import {
   DepartmentBoardQuestionsEmpty,
 } from "@/components/department-board/DepartmentBoardEmptyPanel";
 import { DepartmentBoardProcurementGuide } from "@/components/department-board/DepartmentBoardProcurementGuide";
+import { DepartmentBoardQuestionToolbar } from "@/components/department-board/DepartmentBoardQuestionToolbar";
 import {
   DEPARTMENT_BOARD_ANNOUNCEMENTS_EXPLAINER,
   DEPARTMENT_BOARD_NOTES_DISTINCTION_PROCUREMENT,
   DEPARTMENT_BOARD_PROCUREMENT_PAGE_DESC,
   DEPARTMENT_BOARD_PROCUREMENT_PAGE_TITLE,
   DEPARTMENT_BOARD_QUESTIONS_EXPLAINER,
+  DEPARTMENT_BOARD_QUESTIONS_FILTERS,
 } from "@/lib/department-board/copy";
+import {
+  departmentBoardQuestionFilterCounts,
+  filterDepartmentBoardQuestions,
+} from "@/lib/department-board/question-filters";
+import { boardQuestionsSectionClass } from "@/lib/department-board/department-board-questions-ui";
+import { filterDepartmentBoardAnnouncementsByQuery } from "@/lib/department-board/announcement-search";
+import { DEPARTMENT_BOARD_ANNOUNCEMENTS_SEARCH } from "@/lib/department-board/copy";
+import { NotatnikListFilterBar } from "@/components/notatnik/NotatnikListFilterBar";
+import { salesSearchPlaceholder } from "@/lib/sales/sales-search-ui";
+import { SALES_SEARCH_COPY } from "@/lib/sales/sales-page-ui-copy";
+import { boardQuestionListClass } from "@/lib/department-board/department-board-thread-styles";
 import type { DepartmentBoardData } from "@/lib/data/department-board";
 import type { SalesNoteColor } from "@/types/database";
 import { cn } from "@/lib/cn";
@@ -47,6 +54,8 @@ import { mojeShipmentListClass } from "@/lib/ui/moje-shipment-row-styles";
 import { actionCreateAnnouncement } from "@/app/actions/department-board";
 import { usePreviewMutationBlocker } from "@/components/layout/usePreviewMutationBlocker";
 import { useDeepLinkScrollOnce } from "@/hooks/use-deep-link-scroll-once";
+import { useDepartmentBoardTabUrl } from "@/hooks/use-department-board-tab-url";
+import { SalesListFilterEmptyHint } from "@/components/sales/SalesListEmptyHints";
 
 export function DepartmentBoardProcurementClient({
   initial,
@@ -66,12 +75,20 @@ export function DepartmentBoardProcurementClient({
   const [activeTab, setActiveTab] = useState<DepartmentBoardTab>(
     () => initialTab ?? (focusQuestionId ? "questions" : "announcements")
   );
-  const [questionFilter, setQuestionFilter] = useState<DepartmentBoardQuestionFilter>("all");
+  const [questionFilter, setQuestionFilter] = useState<DepartmentBoardQuestionFilter>(
+    () => (focusQuestionId ? "all" : "open")
+  );
   const [questionSearch, setQuestionSearch] = useState("");
-  const forceAllQuestions = Boolean(focusQuestionId);
-  const activeQuestionFilter: DepartmentBoardQuestionFilter = forceAllQuestions
+  const [announcementSearch, setAnnouncementSearch] = useState("");
+  const filtersLockedByFocus = Boolean(focusQuestionId);
+  const activeQuestionFilter: DepartmentBoardQuestionFilter = filtersLockedByFocus
     ? "all"
     : questionFilter;
+  const focusThreadMissing = Boolean(
+    (focusQuestionId && !initial.questions.some((question) => question.id === focusQuestionId)) ||
+      (focusAnnouncementId &&
+        !initial.announcements.some((announcement) => announcement.id === focusAnnouncementId))
+  );
 
   const [announcementTitle, setAnnouncementTitle] = useState("");
   const [announcementBody, setAnnouncementBody] = useState("");
@@ -81,29 +98,47 @@ export function DepartmentBoardProcurementClient({
   const [announcementFormError, setAnnouncementFormError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
 
-  const statusFilteredQuestions = useMemo(() => {
-    if (activeQuestionFilter === "open") {
-      return initial.questions.filter((q) => q.status === "open");
-    }
-    if (activeQuestionFilter === "answered") {
-      return initial.questions.filter((q) => q.status === "answered");
-    }
-    return initial.questions;
-  }, [initial.questions, activeQuestionFilter]);
+  const openQuestionsCount = initial.questions.filter((q) => q.status === "open").length;
+
+  const questionFilterCounts = useMemo(
+    () =>
+      departmentBoardQuestionFilterCounts(initial.questions, {
+        search: questionSearch,
+      }),
+    [initial.questions, questionSearch]
+  );
+
+  const announcementSearchNeedle = announcementSearch.trim();
+  const filteredAnnouncements = useMemo(
+    () => filterDepartmentBoardAnnouncementsByQuery(initial.announcements, announcementSearch),
+    [initial.announcements, announcementSearch]
+  );
+
+  const statusFilteredQuestions = useMemo(
+    () =>
+      filterDepartmentBoardQuestions(initial.questions, {
+        filter: activeQuestionFilter,
+        search: "",
+      }),
+    [initial.questions, activeQuestionFilter]
+  );
 
   const questionSearchNeedle = questionSearch.trim();
-  const filteredQuestions = useMemo(() => {
-    const searched = filterDepartmentBoardQuestionsByQuery(statusFilteredQuestions, questionSearch);
-    if (!focusQuestionId || searched.some((q) => q.id === focusQuestionId)) {
-      return searched;
-    }
-    const focused =
-      statusFilteredQuestions.find((q) => q.id === focusQuestionId) ??
-      initial.questions.find((q) => q.id === focusQuestionId);
-    return focused ? [focused, ...searched] : searched;
-  }, [focusQuestionId, initial.questions, questionSearch, statusFilteredQuestions]);
+  const filteredQuestions = useMemo(
+    () =>
+      filterDepartmentBoardQuestions(initial.questions, {
+        filter: activeQuestionFilter,
+        search: questionSearch,
+        focusQuestionId,
+      }),
+    [focusQuestionId, initial.questions, questionSearch, activeQuestionFilter]
+  );
 
-  const openQuestionsCount = initial.questions.filter((q) => q.status === "open").length;
+  const syncTabToUrl = useDepartmentBoardTabUrl();
+  const handleTabChange = (tab: DepartmentBoardTab) => {
+    setActiveTab(tab);
+    syncTabToUrl(tab);
+  };
 
   useDeepLinkScrollOnce(
     focusAnnouncementId ? `announcement-${focusAnnouncementId}` : null,
@@ -144,10 +179,19 @@ export function DepartmentBoardProcurementClient({
   }
 
   const pageDescription = `${DEPARTMENT_BOARD_PROCUREMENT_PAGE_DESC} ${DEPARTMENT_BOARD_NOTES_DISTINCTION_PROCUREMENT}`;
+  const filtersDisabledReason = filtersLockedByFocus
+    ? DEPARTMENT_BOARD_QUESTIONS_FILTERS.focusDisabledHint
+    : null;
 
   return (
     <div className={panelPageShellClass}>
       {loadError ? <Alert tone="error">{loadError}</Alert> : null}
+
+      {focusThreadMissing ? (
+        <Alert tone="warning">
+          Nie znaleziono wskazanego wpisu — mógł zostać zarchiwizowany lub usunięty.
+        </Alert>
+      ) : null}
 
       <Card padding={false} className="overflow-hidden">
         <CardHeader
@@ -165,9 +209,8 @@ export function DepartmentBoardProcurementClient({
         />
 
         <DepartmentBoardTabBar
-          domain="panel"
           activeTab={activeTab}
-          onTabChange={setActiveTab}
+          onTabChange={handleTabChange}
           activeAnnouncements={initial.announcements.length}
           openQuestions={openQuestionsCount}
         />
@@ -243,16 +286,38 @@ export function DepartmentBoardProcurementClient({
               title="Opublikowane ogłoszenia"
               count={initial.announcements.length || undefined}
               icon={<IconInbox size={17} />}
+              bodyClassName="space-y-3"
             >
-              {initial.announcements.length === 0 ? (
+              {initial.announcements.length > 0 ? (
+                <NotatnikListFilterBar
+                  embedded
+                  bleed
+                  visibleLabel={DEPARTMENT_BOARD_ANNOUNCEMENTS_SEARCH.label}
+                  value={announcementSearch}
+                  onChange={setAnnouncementSearch}
+                  matchCount={filteredAnnouncements.length}
+                  totalCount={initial.announcements.length}
+                  placeholder={salesSearchPlaceholder(SALES_SEARCH_COPY.boardAnnouncements)}
+                  searchLabel={DEPARTMENT_BOARD_ANNOUNCEMENTS_SEARCH.label}
+                  showIdleHint={false}
+                  showActiveDetail={false}
+                  emptyMatchHint="Brak dopasowań — sprawdź tytuł lub treść ogłoszenia."
+                />
+              ) : null}
+              {announcementSearchNeedle && filteredAnnouncements.length === 0 ? (
+                <SalesListFilterEmptyHint
+                  query={announcementSearchNeedle}
+                  onClear={() => setAnnouncementSearch("")}
+                  entityLabel="ogłoszeń"
+                />
+              ) : initial.announcements.length === 0 ? (
                 <DepartmentBoardAnnouncementsEmpty
-                  domain="panel"
                   questionsCount={initial.questions.length}
-                  onShowQuestions={() => setActiveTab("questions")}
+                  onShowQuestions={() => handleTabChange("questions")}
                 />
               ) : (
                 <div className={cn(mojeShipmentListClass, "-mx-3 -mb-3 sm:-mx-4 sm:-mb-4")}>
-                  {initial.announcements.map((thread) => (
+                  {filteredAnnouncements.map((thread) => (
                     <AnnouncementCard
                       key={thread.id}
                       thread={thread}
@@ -268,37 +333,33 @@ export function DepartmentBoardProcurementClient({
         ) : null}
 
         {activeTab === "questions" ? (
-          <div className="space-y-3 p-3 sm:p-4">
+          <div className={cn(boardQuestionsSectionClass, "p-3 sm:p-4")}>
             <NotatnikPanel
               domain="panel"
               title="Pytania handlowców"
               description={DEPARTMENT_BOARD_QUESTIONS_EXPLAINER.body}
               count={initial.questions.length || undefined}
               icon={<IconClipboardPen size={17} />}
-              accent="neutral"
-              bodyClassName="space-y-3"
+              accent="indigo"
+              flushBody
+              bodyClassName="space-y-4 p-3 sm:p-4"
             >
-              <DepartmentBoardQuestionFilters
-                value={activeQuestionFilter}
-                onChange={setQuestionFilter}
-                disabled={forceAllQuestions}
+              <DepartmentBoardQuestionToolbar
+                domain="panel"
+                filter={activeQuestionFilter}
+                onFilterChange={setQuestionFilter}
+                filtersDisabled={filtersLockedByFocus}
+                filtersDisabledReason={filtersDisabledReason}
+                search={questionSearch}
+                onSearchChange={setQuestionSearch}
+                matchCount={filteredQuestions.length}
+                totalCount={statusFilteredQuestions.length}
+                showSearch={initial.questions.length > 0}
+                filterCounts={questionFilterCounts}
+                searchLabel="Szukaj w pytaniach handlowców"
+                searchActive={Boolean(questionSearchNeedle)}
               />
-              {initial.questions.length > 0 ? (
-                <NotatnikListFilterBar
-                  embedded
-                  bleed
-                  visibleLabel="Szukaj w pytaniach"
-                  value={questionSearch}
-                  onChange={setQuestionSearch}
-                  matchCount={filteredQuestions.length}
-                  totalCount={statusFilteredQuestions.length}
-                  placeholder={salesSearchPlaceholder(SALES_SEARCH_COPY.boardQuestions)}
-                  searchLabel="Szukaj w pytaniach handlowców"
-                  showIdleHint={false}
-                  showActiveDetail={false}
-                  emptyMatchHint="Brak dopasowań — sprawdź temat, treść, autora lub odpowiedź."
-                />
-              ) : null}
+
               {questionSearchNeedle && filteredQuestions.length === 0 && statusFilteredQuestions.length > 0 ? (
                 <SalesListFilterEmptyHint
                   query={questionSearchNeedle}
@@ -308,7 +369,7 @@ export function DepartmentBoardProcurementClient({
               ) : filteredQuestions.length === 0 ? (
                 <DepartmentBoardQuestionsEmpty domain="panel" filter={activeQuestionFilter} />
               ) : (
-                <div className={cn(mojeShipmentListClass, "-mx-3 sm:-mx-4")}>
+                <div className={cn(boardQuestionListClass, "-mx-1 sm:-mx-0")}>
                   {filteredQuestions.map((question) => (
                     <QuestionThreadCard
                       key={question.id}
@@ -316,9 +377,7 @@ export function DepartmentBoardProcurementClient({
                       embedded
                       canReply={!readOnly}
                       canArchive={!readOnly}
-                      defaultExpanded={
-                        focusQuestionId === question.id || question.status === "open"
-                      }
+                      defaultExpanded={focusQuestionId === question.id}
                       onChanged={refresh}
                     />
                   ))}

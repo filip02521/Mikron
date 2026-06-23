@@ -16,8 +16,16 @@ import type { SubiektDocument } from "@/lib/subiekt/types";
 export const CATALOG_ZD_SYNC_STATE_KEY = "catalog_zd_sync_state";
 export const CATALOG_SYNC_DAYS_BACK = 365;
 export const CATALOG_SYNC_INDEX_PAGE_SIZE = 25;
-export const CATALOG_SYNC_INDEX_BATCH_DOCS = 8;
-export const CATALOG_SYNC_IMPORT_BATCH_DOCS = 12;
+export const CATALOG_SYNC_INDEX_BATCH_DOCS = 10;
+export const CATALOG_SYNC_IMPORT_BATCH_DOCS = 15;
+
+/** Budżet jednego wywołania HTTP crona nocnego (~14 min). Route musi mieć maxDuration ≥ 15 min (on-prem). */
+export const CATALOG_ZD_SYNC_CRON_BUDGET_MS = 14 * 60 * 1000;
+export const CATALOG_ZD_SYNC_CRON_ROUTE_MAX_SEC = 900;
+
+/** Opis harmonogramu w panelu admina (sloty w install-cron.sh / install-cron.ps1). */
+export const CATALOG_ZD_SYNC_CRON_SCHEDULE_LABEL =
+  "codziennie 2:00–4:40 co 20 min (Warszawa)";
 
 function nowIso(): string {
   return new Date().toISOString();

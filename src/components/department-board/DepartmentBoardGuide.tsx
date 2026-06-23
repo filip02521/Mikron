@@ -8,7 +8,7 @@ export function DepartmentBoardGuide() {
   return (
     <HelpPopover
       label="Pomoc — komunikacja z działem zakupów"
-      title="Tablica"
+      title="Pytania zespołu"
       shortLabel="Pomoc"
       icon={<GuideIcon />}
     >
@@ -22,10 +22,13 @@ export function DepartmentBoardGuide() {
         </p>
       </HelpBlock>
 
-      <HelpBlock title="Ogłoszenia">
+      <HelpBlock title="Ogłoszenia od zakupów">
         <p>
-          Komunikat od działu zakupów (np. zmiana procedury). W tej sekcji nie odpowiadasz na
-          ogłoszenie.
+          Komunikaty jednokierunkowe od działu zakupów znajdziesz w{" "}
+          <Link href="/moje" className="font-medium text-indigo-800 hover:underline">
+            Moje zamówienia
+          </Link>
+          , pod Startem dnia.
         </p>
       </HelpBlock>
 

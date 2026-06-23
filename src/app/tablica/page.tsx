@@ -1,4 +1,5 @@
 import { redirect } from "next/navigation";
+import { MOJE_ANNOUNCEMENT_FOCUS_PARAM, MOJE_ANNOUNCEMENTS_SECTION_ID } from "@/lib/department-board/moje-announcements-ui";
 import { getSessionUser } from "@/lib/auth";
 import { resolveSalesPersonForUser } from "@/lib/auth/sales-person";
 import {
@@ -9,7 +10,8 @@ import { isAdmin, isSalesAccount, isSalesManager } from "@/lib/auth-roles";
 import { readAdminPanelContextForSession } from "@/lib/auth/read-admin-panel-context";
 import { DepartmentBoardClient } from "@/components/department-board/DepartmentBoardClient";
 import {
-  fetchDepartmentBoard,
+  fetchDepartmentBoardQuestions,
+  fetchDepartmentBoardThreadKind,
   fetchSalesBoardAttentionSnapshot,
 } from "@/lib/data/department-board";
 import { Alert } from "@/components/ui/Alert";
@@ -21,7 +23,9 @@ import {
 } from "@/lib/department-board/copy";
 
 import type { Metadata } from "next";
+import { Suspense } from "react";
 import { pageMetadataFor } from "@/lib/ui/page-metadata";
+import TablicaLoading from "./loading";
 
 export const metadata: Metadata = pageMetadataFor("tablica");
 
@@ -31,9 +35,17 @@ export default async function SalesBoardPage({
   searchParams: Promise<{ widok?: string; watek?: string; dla?: string }>;
 }) {
   const { widok, watek, dla: previewSalesPersonId } = await searchParams;
+
+  if (widok === "ogloszenia") {
+    const params = new URLSearchParams();
+    if (watek?.trim()) params.set(MOJE_ANNOUNCEMENT_FOCUS_PARAM, watek.trim());
+    if (previewSalesPersonId?.trim()) params.set("dla", previewSalesPersonId.trim());
+    const qs = params.toString();
+    redirect(`/moje${qs ? `?${qs}` : ""}#${MOJE_ANNOUNCEMENTS_SECTION_ID}`);
+  }
+
   const focusThreadId = watek?.trim() || null;
-  const focusQuestionId = widok === "ogloszenia" ? null : focusThreadId;
-  const focusAnnouncementId = widok === "ogloszenia" ? focusThreadId : null;
+  const focusQuestionId = focusThreadId;
   const user = await getSessionUser();
   const { panelContext } = await readAdminPanelContextForSession();
 
@@ -114,48 +126,52 @@ export default async function SalesBoardPage({
         />
       );
     }
+    salesPersonId = salesPerson.id;
     boardProfileId = user.id;
   }
 
   let loadError: string | null = null;
-  let board = { announcements: [], questions: [], readAnnouncementIds: [] } as Awaited<
-    ReturnType<typeof fetchDepartmentBoard>
-  >;
+  let questions = [] as Awaited<ReturnType<typeof fetchDepartmentBoardQuestions>>["questions"];
   let unseenQuestionIds: string[] = [];
   let boardAttention = null;
-  let initialTab: "announcements" | "questions" | undefined;
-  if (widok === "pytania") initialTab = "questions";
-  if (widok === "ogloszenia") initialTab = "announcements";
 
   try {
-    const [boardData, attention] = await Promise.all([
-      fetchDepartmentBoard(boardProfileId),
+    const [questionsData, attention] = await Promise.all([
+      fetchDepartmentBoardQuestions(),
       boardProfileId
         ? fetchSalesBoardAttentionSnapshot(boardProfileId).catch(() => null)
         : Promise.resolve(null),
     ]);
-    board = boardData;
+    questions = questionsData.questions;
     unseenQuestionIds = attention?.unseenQuestionIds ?? [];
     boardAttention = attention;
+
+    if (focusThreadId && !questions.some((question) => question.id === focusThreadId)) {
+      const kind = await fetchDepartmentBoardThreadKind(focusThreadId);
+      if (kind === "announcement") {
+        const params = new URLSearchParams();
+        params.set(MOJE_ANNOUNCEMENT_FOCUS_PARAM, focusThreadId);
+        if (previewSalesPersonId?.trim()) params.set("dla", previewSalesPersonId.trim());
+        redirect(`/moje?${params.toString()}#${MOJE_ANNOUNCEMENTS_SECTION_ID}`);
+      }
+    }
   } catch (e) {
     loadError = e instanceof Error ? e.message : "Nie udało się załadować tablicy.";
   }
 
   const pageTitle =
     isTeamPreview && salesPersonName
-      ? `Tablica: ${salesPersonName}`
+      ? `Pytania zespołu: ${salesPersonName}`
       : DEPARTMENT_BOARD_SALES_PAGE_TITLE;
 
   const boardClient = (
     <DepartmentBoardClient
-      initial={board}
+      initial={{ questions }}
       audience="sales"
       loadError={loadError}
       unseenQuestionIds={unseenQuestionIds}
       boardAttention={boardAttention}
-      initialTab={initialTab}
       focusQuestionId={focusQuestionId}
-      focusAnnouncementId={focusAnnouncementId}
       readOnly={readOnlyPreview}
       pageTitle={pageTitle}
       previewHint={
@@ -163,6 +179,7 @@ export default async function SalesBoardPage({
           ? "Podgląd — wysyłanie pytań i oznaczanie odczytów są wyłączone."
           : undefined
       }
+      currentSalesPersonId={salesPersonId}
     />
   );
 
@@ -187,7 +204,7 @@ export default async function SalesBoardPage({
           nie tego handlowca.
         </Alert>
       ) : null}
-      {boardClient}
+      <Suspense fallback={<TablicaLoading />}>{boardClient}</Suspense>
     </SalesPreviewPageChrome>
   );
 }

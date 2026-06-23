@@ -1,7 +1,7 @@
 "use client";
 
 import { memo } from "react";
-import { zdFulfillmentDeadlineChangeShortLabel } from "@/components/orders/ZdFulfillmentDeadlineChangeNotice";
+import { zdFulfillmentDeadlineChangeShortLabel } from "@/lib/orders/zd-fulfillment-deadline-change";
 import { parseDateOnly } from "@/lib/orders/dates";
 import { isPastExpectedDate } from "@/lib/orders/delivery-eta";
 import {

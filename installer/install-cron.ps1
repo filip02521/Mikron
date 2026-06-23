@@ -20,13 +20,14 @@ param(
 Set-StrictMode -Version Latest
 $ErrorActionPreference = "Stop"
 
+$CatalogZdSyncSlots = @("0200", "0220", "0240", "0300", "0320", "0340", "0400", "0420", "0440")
 $TaskNames = @(
   "OnTime Cron Morning",
   "OnTime Cron Process Deliveries",
   "OnTime Cron ZD ETA Sync",
   "OnTime Cron Catalog ZD Sync",
   "OnTime Cron Catalog ZD Sync Continue"
-)
+) + ($CatalogZdSyncSlots | ForEach-Object { "OnTime Cron Catalog ZD Sync $_" })
 
 function Write-Step([string]$Message) {
   Write-Host ""
@@ -201,21 +202,20 @@ function Install-CronScheduledTasks {
   Register-WeekdayRepeatingCronTask -Name "OnTime Cron ZD ETA Sync" -Root $Root -JobName "zd-eta-sync" -Interval "PT2H"
 
   $trSync = Get-CronInvokeCommand -Root $Root -JobName "catalog-zd-sync"
-  New-SchTasksCronTask "OnTime Cron Catalog ZD Sync" @(
-    "/Create", "/F", "/TN", "OnTime Cron Catalog ZD Sync", "/TR", $trSync,
-    "/RU", "SYSTEM", "/RL", "HIGHEST", "/SC", "DAILY", "/ST", "02:00"
-  )
-  New-SchTasksCronTask "OnTime Cron Catalog ZD Sync Continue" @(
-    "/Create", "/F", "/TN", "OnTime Cron Catalog ZD Sync Continue", "/TR", $trSync,
-    "/RU", "SYSTEM", "/RL", "HIGHEST", "/SC", "DAILY", "/ST", "02:20"
-  )
+  foreach ($slot in @("02:00", "02:20", "02:40", "03:00", "03:20", "03:40", "04:00", "04:20", "04:40")) {
+    $slotId = $slot.Replace(":", "")
+    New-SchTasksCronTask "OnTime Cron Catalog ZD Sync $slotId" @(
+      "/Create", "/F", "/TN", "OnTime Cron Catalog ZD Sync $slotId", "/TR", $trSync,
+      "/RU", "SYSTEM", "/RL", "HIGHEST", "/SC", "DAILY", "/ST", $slot
+    )
+  }
 
   Write-Host ""
   Write-Host "Harmonogram:" -ForegroundColor White
   Write-Host "  06:00 pn-pt     -> morning"
   Write-Host "  08-18 pn-pt     -> process-deliveries (co godz.)"
   Write-Host "  08-18 pn-pt     -> zd-eta-sync (co 2 h)"
-  Write-Host "  02:00 + 02:20   -> catalog-zd-sync (noc, Subiekt LAN)"
+  Write-Host "  02:00-04:40     -> catalog-zd-sync (co 20 min, noc, Subiekt LAN)"
   Write-Host ""
   Write-Host "Logi: $Root\logs\cron-*.log"
   Write-Host "Podglad: taskschd.msc (Harmonogram zadan)"

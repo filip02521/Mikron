@@ -380,7 +380,7 @@ export function navForRole(
     operationsNotatki?: number;
     /** Otwarte zgłoszenia od handlowców (/admin/zgloszenia). */
     adminBugReports?: number;
-    /** Nieprzeczytane ogłoszenia (/tablica). */
+    /** Nowe odpowiedzi zakupów na /tablica (pytania zespołu). */
     salesTablica?: number;
     /** Pytania handlowców bez odpowiedzi (/zakupy/tablica). */
     departmentBoardQuestions?: number;
@@ -428,7 +428,7 @@ export function navForRole(
       href: "/moje",
       label: "Moje zamówienia",
       mobileLabel: "Moje",
-      description: "Start dnia — prośby, przypomnienia i tablica",
+      description: "Start dnia — prośby, ogłoszenia i przypomnienia",
       icon: "myOrders",
       tone: "indigo",
       tier: "primary",
@@ -488,7 +488,7 @@ export function navForRole(
       href: "/tablica",
       label: "Tablica",
       mobileLabel: "Tablica",
-      description: "Ogłoszenia i pytania do zakupów",
+      description: "Pytania i odpowiedzi z działem zakupów",
       icon: "board",
       tone: "indigo",
       tier: "primary",
