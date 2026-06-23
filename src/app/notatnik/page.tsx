@@ -1,8 +1,10 @@
 import { redirect } from "next/navigation";
+import { Suspense } from "react";
 import { fetchSalesNotesPageData } from "@/lib/data/sales-notepad";
 import { isSalesAccount } from "@/lib/auth-roles";
 import { SalesAccountLinkRequired } from "@/components/sales/SalesAccountLinkRequired";
 import { NotatnikClient } from "@/components/notatnik/NotatnikClient";
+import NotatnikLoading from "./loading";
 import { getSubiektAvailability } from "@/lib/subiekt/availability";
 import { isInvalidNotatnikTabParam, parseNotatnikPageTab } from "@/lib/sales/notepad-page-tabs";
 import {
@@ -79,39 +81,41 @@ export default async function NotatnikPage({
   const initialTab = parseNotatnikPageTab(tab) ?? "notes";
 
   return (
-    <NotatnikClient
-      surface="notes"
-      initial={{
-        zkWatches: [],
-        archivedZkWatches: [],
-        zkLinkableOrders: [],
-        ...notesData,
-      }}
-      initialFocusWatchId={focusWatch?.trim() || null}
-      initialTab={initialTab}
-      readOnly={!!access.isTeamPreview}
-      subiektAvailability={subiektAvailability}
-      pageTitle={access.isTeamPreview ? `Notatnik: ${access.salesPersonName}` : "Notatnik"}
-      pageDescription={
-        access.isTeamPreview
-          ? "Podgląd notatek i archiwum wybranego handlowca. Edycja tylko we własnym Notatniku."
-          : undefined
-      }
-      linkError={
-        access.linkError && (access.previewSalesPersonId || access.role === "sales")
-          ? access.linkError
-          : null
-      }
-      loadError={loadError}
-      teamPreview={
-        access.isTeamPreview && access.salesPersonId && access.salesPersonName
-          ? {
-              salesPersonId: access.salesPersonId,
-              salesPersonName: access.salesPersonName,
-              readOnly: access.role === "admin",
-            }
-          : null
-      }
-    />
+    <Suspense fallback={<NotatnikLoading />}>
+      <NotatnikClient
+        surface="notes"
+        initial={{
+          zkWatches: [],
+          archivedZkWatches: [],
+          zkLinkableOrders: [],
+          ...notesData,
+        }}
+        initialFocusWatchId={focusWatch?.trim() || null}
+        initialTab={initialTab}
+        readOnly={!!access.isTeamPreview}
+        subiektAvailability={subiektAvailability}
+        pageTitle={access.isTeamPreview ? `Notatnik: ${access.salesPersonName}` : "Notatnik"}
+        pageDescription={
+          access.isTeamPreview
+            ? "Podgląd notatek i archiwum wybranego handlowca. Edycja tylko we własnym Notatniku."
+            : undefined
+        }
+        linkError={
+          access.linkError && (access.previewSalesPersonId || access.role === "sales")
+            ? access.linkError
+            : null
+        }
+        loadError={loadError}
+        teamPreview={
+          access.isTeamPreview && access.salesPersonId && access.salesPersonName
+            ? {
+                salesPersonId: access.salesPersonId,
+                salesPersonName: access.salesPersonName,
+                readOnly: access.role === "admin",
+              }
+            : null
+        }
+      />
+    </Suspense>
   );
 }

@@ -23,7 +23,7 @@ import {
   sidebarNavToneActiveClass,
 } from "@/lib/ui/ontime-theme";
 import { isSalesManager } from "@/lib/auth-roles";
-import { hrefWithAdminSalesPreview, shouldPreserveAdminSalesPreviewInNav } from "@/lib/nav/sales-preview-href";
+import { hrefWithAdminSalesPreview, shouldPreserveSalesPreviewInNav } from "@/lib/nav/sales-preview-href";
 import type { AdminPanelContext } from "@/lib/auth/admin-panel-context";
 import type { UserRole } from "@/types/database";
 import { useSalesNavLocked } from "@/components/sales/SalesOnboardingContext";
@@ -47,7 +47,7 @@ export function MobileSalesNav({
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const previewDla = searchParams.get("dla");
-  const preservePreviewDla = shouldPreserveAdminSalesPreviewInNav(
+  const preservePreviewDla = shouldPreserveSalesPreviewInNav(
     realRole,
     adminPanelContext,
     previewDla

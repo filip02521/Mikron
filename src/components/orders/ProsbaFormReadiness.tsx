@@ -178,7 +178,6 @@ export function ProsbaFormReadiness({
             title={readinessCopy.title}
             showOptionalLabel={false}
             defaultOpen={expandSteps}
-            detailsKey={expandSteps ? "steps-open" : "steps-collapsed"}
             className="mt-2 border-black/5 bg-white/50 open:bg-white/80"
             summaryClassName="px-2.5 py-2"
             bodyClassName="border-black/5 px-2.5 pb-2.5 pt-0"

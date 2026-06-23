@@ -1,7 +1,9 @@
 import { describe, expect, it } from "vitest";
 import {
   hrefWithAdminSalesPreview,
+  mergeSalesPreviewSearchParams,
   shouldPreserveAdminSalesPreviewInNav,
+  shouldPreserveSalesPreviewInNav,
 } from "./sales-preview-href";
 
 describe("shouldPreserveAdminSalesPreviewInNav", () => {
@@ -15,6 +17,23 @@ describe("shouldPreserveAdminSalesPreviewInNav", () => {
     expect(
       shouldPreserveAdminSalesPreviewInNav("sales", "sales", "sp-1")
     ).toBe(false);
+  });
+});
+
+describe("shouldPreserveSalesPreviewInNav", () => {
+  it("włącza ?dla= dla kierownika z podglądem zespołu", () => {
+    expect(shouldPreserveSalesPreviewInNav("sales_manager", "admin", "sp-1")).toBe(
+      true
+    );
+    expect(shouldPreserveSalesPreviewInNav("sales", "admin", null)).toBe(false);
+  });
+});
+
+describe("mergeSalesPreviewSearchParams", () => {
+  it("dokleja ?dla= z argumentu gdy brak w searchParams", () => {
+    const params = mergeSalesPreviewSearchParams(new URLSearchParams("tab=archive"), "sp-9");
+    expect(params.get("dla")).toBe("sp-9");
+    expect(params.get("tab")).toBe("archive");
   });
 });
 

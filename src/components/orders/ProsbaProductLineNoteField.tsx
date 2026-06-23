@@ -30,7 +30,6 @@ export function ProsbaProductLineNoteField({
       title={copy.title}
       description={copy.description}
       defaultOpen={hasNote}
-      detailsKey={hasNote ? "note-open" : "note-collapsed"}
       teaser={hasNote ? value.trim() : null}
       className={className}
     >

@@ -139,8 +139,10 @@ export function ZkWatchGroupedList({
   onDeleted,
   unseenWatchIds,
   newLineKeysByWatchId,
+  newlyAddedWatchIds,
   onWarehouseArrivalSeen,
   onNewZkLinesSeen,
+  onNewlyAddedZkWatchSeen,
   onProsbaScopeRequested,
   focusWatchId,
   onFocusWatchHandled,
@@ -151,8 +153,10 @@ export function ZkWatchGroupedList({
   linkableOrders?: ZkLinkableOrder[];
   unseenWatchIds?: Set<string>;
   newLineKeysByWatchId?: Record<string, string[]>;
+  newlyAddedWatchIds?: Set<string>;
   onWarehouseArrivalSeen?: (watchId: string) => void;
   onNewZkLinesSeen?: (watchId: string) => void;
+  onNewlyAddedZkWatchSeen?: (watchId: string) => void;
   onProsbaScopeRequested?: (watchId: string) => void;
   /** Po wejściu z linku (#watch-…) — rozwiń miesiąc i podświetl kartę. */
   focusWatchId?: string | null;
@@ -273,11 +277,16 @@ export function ZkWatchGroupedList({
       if ((newLineKeysByWatchId?.[watchId]?.length ?? 0) > 0) {
         onNewZkLinesSeen?.(watchId);
       }
+      if (newlyAddedWatchIds?.has(watchId)) {
+        onNewlyAddedZkWatchSeen?.(watchId);
+      }
     },
     [
       closeLinesModal,
       newLineKeysByWatchId,
+      newlyAddedWatchIds,
       onNewZkLinesSeen,
+      onNewlyAddedZkWatchSeen,
       onWarehouseArrivalSeen,
       unseenWatchIds,
     ]
@@ -388,6 +397,7 @@ export function ZkWatchGroupedList({
               }}
               hasNewWarehouseArrival={unseenWatchIds?.has(watch.id) ?? false}
               hasNewZkLines={(newLineKeysByWatchId?.[watch.id]?.length ?? 0) > 0}
+              isNewlyAdded={newlyAddedWatchIds?.has(watch.id) ?? false}
               newLineKeys={newLineKeysByWatchId?.[watch.id]}
               onProsbaScopeRequested={onProsbaScopeRequested}
             />

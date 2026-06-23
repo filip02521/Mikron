@@ -14,6 +14,7 @@ import { SectionHeadingIcon } from "@/components/icons/SectionHeadingIcon";
 import { MyOrderPickupShelfDialogProvider } from "@/components/moje/MyOrderPickupShelfDialogProvider";
 import { AppBrandContentFooter } from "@/components/layout/AppBrandContentFooter";
 import { salesChromeInsetClass } from "@/lib/ui/ontime-theme";
+import { cn } from "@/lib/cn";
 import { mergeRecordsByUpdatedAt, uniqueById } from "@/lib/sales/notepad-list";
 import { useClientHydrated } from "@/lib/client/use-client-hydrated";
 import { sortZkWatches } from "@/lib/sales/zk-watch-sort";
@@ -53,6 +54,13 @@ import {
   loadZkNewLinesSnapshot,
 } from "@/lib/client/zk-watch-new-lines-snapshot";
 import {
+  clearNewlyAddedZkWatch,
+  loadZkNewlyAddedSnapshot,
+  markZkWatchNewlyAdded,
+  reconcileZkNewlyAddedSnapshot,
+  saveZkNewlyAddedSnapshot,
+} from "@/lib/client/zk-watch-newly-added-snapshot";
+import {
   buildValidLineKeysByWatchId,
   reconcileZkNewLinesSnapshot,
   syncZkNewLinesSnapshot,
@@ -68,7 +76,7 @@ import { TodayTasksSection } from "./TodayTasksSection";
 import { NotatnikTabBar } from "./NotatnikTabBar";
 import { NOTATNIK_PAGE_CLASS } from "./notatnik-layout";
 import { ZkWatchSection } from "./ZkWatchSection";
-import { cn } from "@/lib/cn";
+import { mergeSalesPreviewSearchParams } from "@/lib/nav/sales-preview-href";
 import { useUndoShortcutLabel } from "@/lib/platform/keyboard-shortcut-label";
 import { NOTATNIK_NOTES_PAGE_HINT } from "@/lib/sales/notatnik-notes-copy";
 import { SalesPageAlerts } from "@/components/sales/SalesPageAlerts";
@@ -228,6 +236,7 @@ export function NotatnikClient({
   const [warehouseSnapshotReady, setWarehouseSnapshotReady] = useState(false);
   const [appliedWarehouseUnseenKey, setAppliedWarehouseUnseenKey] = useState("");
   const [newLineKeysByWatchId, setNewLineKeysByWatchId] = useState<Record<string, string[]>>({});
+  const [newlyAddedWatchIds, setNewlyAddedWatchIds] = useState<Set<string>>(() => new Set());
   const [refreshPromptQueue, setRefreshPromptQueue] = useState<
     Array<{
       watch: SalesZkWatch;
@@ -267,7 +276,10 @@ export function NotatnikClient({
       if (tourDemo) return;
 
       const path = notatnikPagePathForTab(tab, isZkSurface ? "zk" : "notes");
-      const params = new URLSearchParams(searchParams.toString());
+      const params = mergeSalesPreviewSearchParams(
+        new URLSearchParams(searchParams.toString()),
+        searchParams.get("dla")
+      );
 
       if (options?.focusWatch !== undefined) {
         const fw = options.focusWatch?.trim();
@@ -409,7 +421,7 @@ export function NotatnikClient({
   }, [navigateToTab, tourDemo]);
 
   const syncWatchFocusFromLocation = useCallback(() => {
-    const params = new URLSearchParams(window.location.search);
+    const params = mergeSalesPreviewSearchParams(new URLSearchParams(window.location.search));
     const previewDla = params.get("dla")?.trim() || null;
     const extraParams = previewDla ? { dla: previewDla } : undefined;
     const watchId = resolveNotepadWatchFocusId(
@@ -657,6 +669,20 @@ export function NotatnikClient({
     [salesPersonId]
   );
 
+  const markNewlyAddedZkWatchSeen = useCallback(
+    (watchId: string) => {
+      if (!salesPersonId) return;
+      clearNewlyAddedZkWatch(salesPersonId, watchId);
+      setNewlyAddedWatchIds((prev) => {
+        if (!prev.has(watchId)) return prev;
+        const next = new Set(prev);
+        next.delete(watchId);
+        return next;
+      });
+    },
+    [salesPersonId]
+  );
+
   const validLineKeysByWatchId = useMemo(
     () => buildValidLineKeysByWatchId(zkWatches),
     [zkWatches]
@@ -762,6 +788,14 @@ export function NotatnikClient({
   if (hydrated && !warehouseSnapshotReady && salesPersonId && !tourDemo) {
     const snapshot = loadZkArrivedSnapshot(salesPersonId);
     const newLinesSnapshot = loadZkNewLinesSnapshot(salesPersonId);
+    const newlyAddedSnapshot = loadZkNewlyAddedSnapshot(salesPersonId);
+    const validWatchIds = new Set(zkWatches.map((watch) => watch.id));
+    const reconciledNewlyAdded = reconcileZkNewlyAddedSnapshot(newlyAddedSnapshot, validWatchIds);
+    if (JSON.stringify(reconciledNewlyAdded) !== JSON.stringify(newlyAddedSnapshot)) {
+      saveZkNewlyAddedSnapshot(salesPersonId, reconciledNewlyAdded);
+    }
+    setNewlyAddedWatchIds(new Set(reconciledNewlyAdded));
+
     const hintsMap = computeAllZkWatchOrderHints(zkWatches, zkLinkableOrders);
     const reconciledNewLines = reconcileZkNewLinesSnapshot({
       snapshot: newLinesSnapshot,
@@ -873,9 +907,21 @@ export function NotatnikClient({
     setProsbaScopeOpenNonce((nonce) => nonce + 1);
   }
 
+  function handleWatchAlreadyOnList(watch: SalesZkWatch) {
+    setFocusWatchId(watch.id);
+    if (!tourDemo) {
+      navigateToTab("zk", { focusWatch: watch.id, hash: `watch-${watch.id}` });
+    }
+    flashNotepadAnchor(`watch-${watch.id}`);
+  }
+
   function handleWatchAdded(watch: SalesZkWatch) {
     setZkWatches((prev) => uniqueById(sortZkWatches([watch, ...prev])));
     setArchivedWatches((prev) => prev.filter((w) => w.id !== watch.id));
+    if (salesPersonId && !tourDemo) {
+      markZkWatchNewlyAdded(salesPersonId, watch.id);
+      setNewlyAddedWatchIds((prev) => new Set([watch.id, ...prev]));
+    }
     const hasProductLines = buildZkWatchLineViews(watch).some((line) => line.key !== "summary");
     if (hasProductLines) {
       setProsbaScopeWatchId(watch.id);
@@ -885,12 +931,13 @@ export function NotatnikClient({
     if (!tourDemo) {
       navigateToTab("zk", { focusWatch: watch.id, hash: `watch-${watch.id}` });
     }
-    refresh();
+    window.setTimeout(() => refresh(), 0);
     flashNotepadAnchor(`watch-${watch.id}`);
   }
 
   function handleProsbaScopeConfigured(watchId: string) {
     setProsbaScopeWatchId((current) => (current === watchId ? null : current));
+    markNewlyAddedZkWatchSeen(watchId);
   }
 
   function handleWatchClosed(watchId: string, closedAt: string) {
@@ -914,11 +961,18 @@ export function NotatnikClient({
     setZkWatches((prev) => prev.filter((w) => w.id !== watchId));
     if (salesPersonId) {
       clearUnseenNewZkLineKeys(salesPersonId, watchId);
+      clearNewlyAddedZkWatch(salesPersonId, watchId);
     }
     setNewLineKeysByWatchId((prev) => {
       if (!(watchId in prev)) return prev;
       const next = { ...prev };
       delete next[watchId];
+      return next;
+    });
+    setNewlyAddedWatchIds((prev) => {
+      if (!prev.has(watchId)) return prev;
+      const next = new Set(prev);
+      next.delete(watchId);
       return next;
     });
     if (closingFocusedWatch) {
@@ -1011,11 +1065,18 @@ export function NotatnikClient({
     setArchivedWatches((prev) => prev.filter((w) => w.id !== watchId));
     if (salesPersonId) {
       clearUnseenNewZkLineKeys(salesPersonId, watchId);
+      clearNewlyAddedZkWatch(salesPersonId, watchId);
     }
     setNewLineKeysByWatchId((prev) => {
       if (!(watchId in prev)) return prev;
       const next = { ...prev };
       delete next[watchId];
+      return next;
+    });
+    setNewlyAddedWatchIds((prev) => {
+      if (!prev.has(watchId)) return prev;
+      const next = new Set(prev);
+      next.delete(watchId);
       return next;
     });
     refresh();
@@ -1168,8 +1229,10 @@ export function NotatnikClient({
                 linkableOrders={zkLinkableOrders}
                 unseenWatchIds={unseenWatchIds}
                 newLineKeysByWatchId={reconciledNewLineKeysByWatchId}
+                newlyAddedWatchIds={newlyAddedWatchIds}
                 onWarehouseArrivalSeen={markWarehouseArrivalSeen}
                 onNewZkLinesSeen={markNewZkLinesSeen}
+                onNewlyAddedZkWatchSeen={markNewlyAddedZkWatchSeen}
                 readOnly={effectiveReadOnly}
                 tourPreview={tourDemo}
                 embedded
@@ -1183,6 +1246,7 @@ export function NotatnikClient({
                     : undefined
                 }
                 onWatchAdded={tourDemo ? undefined : handleWatchAdded}
+                onWatchAlreadyOnList={tourDemo ? undefined : handleWatchAlreadyOnList}
                 onWatchClosed={tourDemo ? undefined : handleWatchClosed}
                 onWatchRefreshed={tourDemo ? undefined : handleWatchRefreshed}
                 prosbaScopeWatchId={prosbaScopeWatchId}
