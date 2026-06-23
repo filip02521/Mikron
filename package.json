@@ -58,16 +58,16 @@
     "verify-sales-request-note": "tsx scripts/verify-sales-request-note-migration.ts"
   },
   "dependencies": {
-    "@supabase/ssr": "^0.10.3",
+    "@supabase/ssr": "^0.12.0",
     "@supabase/supabase-js": "^2.107.0",
     "@tanstack/react-virtual": "^3.14.3",
     "date-fns": "^4.4.0",
-    "next": "16.2.7",
+    "next": "16.2.9",
     "react": "19.2.7",
     "react-dom": "19.2.7",
-    "resend": "^6.12.4",
+    "resend": "^6.14.0",
     "tailwind-merge": "^3.6.0",
-    "uuid": "^14.0.0",
+    "uuid": "^14.0.1",
     "zod": "^4.4.3"
   },
   "overrides": {
@@ -75,7 +75,7 @@
     "postcss": "^8.5.10"
   },
   "devDependencies": {
-    "@playwright/test": "^1.60.0",
+    "@playwright/test": "^1.61.1",
     "@tailwindcss/postcss": "^4",
     "@testing-library/dom": "^10.4.1",
     "@testing-library/react": "^16.3.2",
@@ -83,14 +83,14 @@
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "@types/uuid": "^10.0.0",
-    "@vitejs/plugin-react": "^6.0.2",
+    "@vitejs/plugin-react": "^6.0.3",
     "eslint": "^9",
-    "eslint-config-next": "16.2.7",
-    "happy-dom": "^20.10.2",
-    "pg": "^8.21.0",
+    "eslint-config-next": "16.2.9",
+    "happy-dom": "^20.10.6",
+    "pg": "^8.22.0",
     "tailwindcss": "^4",
     "tsx": "^4.22.4",
     "typescript": "^5",
-    "vitest": "^4.1.8"
+    "vitest": "^4.1.9"
   }
 }
