@@ -83,7 +83,7 @@ function Remove-ScheduledTaskIfExists([string]$Name) {
   return $true
 }
 
-function New-ScheduledTask {
+function New-SchTasksCronTask {
   param(
     [string]$Name,
     [string[]]$CreateArgs
@@ -94,6 +94,79 @@ function New-ScheduledTask {
   if ($result.ExitCode -ne 0) {
     throw "Nie udalo sie utworzyc $Name : $($result.Output)"
   }
+  Write-Ok "Utworzono: $Name"
+}
+
+function Register-WeekdayRepeatingCronTask {
+  param(
+    [string]$Name,
+    [string]$Root,
+    [string]$JobName,
+    [string]$Interval,
+    [int]$DurationHours = 11,
+    [string]$StartTime = "08:00:00"
+  )
+
+  Remove-ScheduledTaskIfExists $Name | Out-Null
+
+  $cronScript = Join-Path $PSScriptRoot "cron-invoke.ps1"
+  if (-not (Test-Path $cronScript)) {
+    throw "Brak $cronScript"
+  }
+
+  $psArgs = "-NoProfile -ExecutionPolicy Bypass -File `"$cronScript`" -Job $JobName -ProjectRoot `"$Root`""
+  $escapedArgs = [System.Security.SecurityElement]::Escape($psArgs)
+  $startDate = (Get-Date).ToString("yyyy-MM-dd")
+  $duration = "PT${DurationHours}H"
+
+  $xml = @"
+<?xml version="1.0" encoding="UTF-16"?>
+<Task version="1.4" xmlns="http://schemas.microsoft.com/windows/2004/02/mit/task">
+  <Triggers>
+    <CalendarTrigger>
+      <StartBoundary>${startDate}T${StartTime}</StartBoundary>
+      <Enabled>true</Enabled>
+      <ScheduleByWeek>
+        <DaysOfWeek>
+          <Monday />
+          <Tuesday />
+          <Wednesday />
+          <Thursday />
+          <Friday />
+        </DaysOfWeek>
+        <WeeksInterval>1</WeeksInterval>
+      </ScheduleByWeek>
+      <Repetition>
+        <Interval>$Interval</Interval>
+        <Duration>$duration</Duration>
+        <StopAtDurationEnd>true</StopAtDurationEnd>
+      </Repetition>
+    </CalendarTrigger>
+  </Triggers>
+  <Principals>
+    <Principal id="Author">
+      <UserId>S-1-5-18</UserId>
+      <RunLevel>HighestAvailable</RunLevel>
+    </Principal>
+  </Principals>
+  <Settings>
+    <MultipleInstancesPolicy>IgnoreNew</MultipleInstancesPolicy>
+    <DisallowStartIfOnBatteries>false</DisallowStartIfOnBatteries>
+    <StopIfGoingOnBatteries>false</StopIfGoingOnBatteries>
+    <StartWhenAvailable>true</StartWhenAvailable>
+    <Enabled>true</Enabled>
+    <ExecutionTimeLimit>PT1H</ExecutionTimeLimit>
+  </Settings>
+  <Actions Context="Author">
+    <Exec>
+      <Command>powershell.exe</Command>
+      <Arguments>$escapedArgs</Arguments>
+    </Exec>
+  </Actions>
+</Task>
+"@
+
+  Register-ScheduledTask -TaskName $Name -Xml $xml -Force | Out-Null
   Write-Ok "Utworzono: $Name"
 }
 
@@ -113,35 +186,26 @@ function Get-CronInvokeCommand {
 function Install-CronScheduledTasks {
   param([string]$Root)
 
-  Write-Step "Harmonogram zadan OnTime (Europe/Warsaw — ustaw strefe serwera na Windows)"
+  Write-Step "Harmonogram zadan OnTime (Europe/Warsaw - ustaw strefe serwera na Windows)"
 
   $trMorning = Get-CronInvokeCommand -Root $Root -JobName "morning"
-  New-ScheduledTask "OnTime Cron Morning" @(
+  New-SchTasksCronTask "OnTime Cron Morning" @(
     "/Create", "/F", "/TN", "OnTime Cron Morning", "/TR", $trMorning,
     "/RU", "SYSTEM", "/RL", "HIGHEST", "/SC", "WEEKLY",
     "/D", "MON,TUE,WED,THU,FRI", "/ST", "06:00"
   )
 
   $trDeliveries = Get-CronInvokeCommand -Root $Root -JobName "process-deliveries"
-  New-ScheduledTask "OnTime Cron Process Deliveries" @(
-    "/Create", "/F", "/TN", "OnTime Cron Process Deliveries", "/TR", $trDeliveries,
-    "/RU", "SYSTEM", "/RL", "HIGHEST", "/SC", "DAILY",
-    "/ST", "08:00", "/RI", "60", "/DU", "11:00", "/D", "MON,TUE,WED,THU,FRI"
-  )
+  Register-WeekdayRepeatingCronTask -Name "OnTime Cron Process Deliveries" -Root $Root -JobName "process-deliveries" -Interval "PT1H"
 
-  $trEta = Get-CronInvokeCommand -Root $Root -JobName "zd-eta-sync"
-  New-ScheduledTask "OnTime Cron ZD ETA Sync" @(
-    "/Create", "/F", "/TN", "OnTime Cron ZD ETA Sync", "/TR", $trEta,
-    "/RU", "SYSTEM", "/RL", "HIGHEST", "/SC", "DAILY",
-    "/ST", "08:00", "/RI", "120", "/DU", "11:00", "/D", "MON,TUE,WED,THU,FRI"
-  )
+  Register-WeekdayRepeatingCronTask -Name "OnTime Cron ZD ETA Sync" -Root $Root -JobName "zd-eta-sync" -Interval "PT2H"
 
   $trSync = Get-CronInvokeCommand -Root $Root -JobName "catalog-zd-sync"
-  New-ScheduledTask "OnTime Cron Catalog ZD Sync" @(
+  New-SchTasksCronTask "OnTime Cron Catalog ZD Sync" @(
     "/Create", "/F", "/TN", "OnTime Cron Catalog ZD Sync", "/TR", $trSync,
     "/RU", "SYSTEM", "/RL", "HIGHEST", "/SC", "DAILY", "/ST", "02:00"
   )
-  New-ScheduledTask "OnTime Cron Catalog ZD Sync Continue" @(
+  New-SchTasksCronTask "OnTime Cron Catalog ZD Sync Continue" @(
     "/Create", "/F", "/TN", "OnTime Cron Catalog ZD Sync Continue", "/TR", $trSync,
     "/RU", "SYSTEM", "/RL", "HIGHEST", "/SC", "DAILY", "/ST", "02:20"
   )
@@ -205,7 +269,7 @@ if ($List) {
 }
 
 # Domyslnie: podglad + instrukcja
-Write-Step "OnTime — cron na Windows"
+Write-Step "OnTime - cron na Windows"
 Write-Host "Katalog projektu: $Root"
 Write-Host ""
 Write-Host "Instalacja (Administrator):" -ForegroundColor Yellow
