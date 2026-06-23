@@ -1,5 +1,5 @@
 import { shouldApplyAdminSalesPreviewHeader, type AdminPanelContext } from "@/lib/auth/admin-panel-context";
-import { isAdmin } from "@/lib/auth-roles";
+import { isAdmin, isSalesManager } from "@/lib/auth-roles";
 import type { UserRole } from "@/types/database";
 
 const SALES_PREVIEW_PATHS = ["/moje", "/prosba", "/plan", "/tablica", "/notatnik", "/zk"];
@@ -10,6 +10,19 @@ function isSalesPreviewPath(href: string): boolean {
   const qIndex = pathAndQuery.indexOf("?");
   const path = qIndex >= 0 ? pathAndQuery.slice(0, qIndex) : pathAndQuery;
   return SALES_PREVIEW_PATHS.includes(path);
+}
+
+/** Czy menu ma doklejać ?dla= (admin w podglądzie handlowca lub kierownik z ?dla=). */
+export function shouldPreserveSalesPreviewInNav(
+  realRole: UserRole | null | undefined,
+  panelContext: AdminPanelContext,
+  previewDla: string | null | undefined
+): boolean {
+  if (!previewDla?.trim()) return false;
+  if (realRole && isAdmin(realRole)) {
+    return shouldPreserveAdminSalesPreviewInNav(realRole, panelContext, previewDla);
+  }
+  return Boolean(realRole && isSalesManager(realRole));
 }
 
 /** Czy menu admina ma doklejać ?dla= (tylko cookie „sales”, nie po powrocie do administracji). */
@@ -45,5 +58,21 @@ export function hrefWithAdminSalesPreview(
 
 /** Zachowuje ?dla= z bieżącego URL (podgląd admina / delegacja kierownika). */
 export function hrefWithSalesPreviewFromUrl(href: string, previewDla: string | null): string {
-  return hrefWithAdminSalesPreview(href, previewDla, Boolean(previewDla));
+  return hrefWithAdminSalesPreview(href, previewDla, Boolean(previewDla?.trim()));
+}
+
+/** Parametry zapytania z zachowaniem ?dla= (np. przy router.replace w NotatnikClient). */
+export function mergeSalesPreviewSearchParams(
+  searchParams: URLSearchParams,
+  previewDla?: string | null
+): URLSearchParams {
+  const params = new URLSearchParams(searchParams.toString());
+  const dla =
+    previewDla?.trim() ||
+    params.get("dla")?.trim() ||
+    (typeof window !== "undefined"
+      ? new URLSearchParams(window.location.search).get("dla")?.trim()
+      : null);
+  if (dla) params.set("dla", dla);
+  return params;
 }

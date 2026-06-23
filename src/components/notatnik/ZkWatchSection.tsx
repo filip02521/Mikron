@@ -5,11 +5,14 @@ import { useMemo, useRef, useState } from "react";
 import {
   actionAddZkWatchByNumber,
   actionAddZkWatchBySubiektDokId,
+  actionFindActiveZkWatchByQuery,
 } from "@/app/actions/sales-notepad";
+import { isServerActionTransportError } from "@/lib/client/server-action-transport-error";
 import { Alert } from "@/components/ui/Alert";
 import { Button } from "@/components/ui/Button";
 import { IconPlusCircle } from "@/components/icons/StrokeIcons";
 import { validateZkQueryForSubmit } from "@/lib/subiekt/zk-search";
+import { zkNumbersEquivalent } from "@/lib/subiekt/zk-document";
 import type { ZkSearchCandidate } from "@/lib/subiekt/resolve-zk-document";
 import { cn } from "@/lib/cn";
 import { brandLinkSubtleClass, notatnikPrimaryAddButtonClass, salesChromeInsetClass, salesTypography } from "@/lib/ui/ontime-theme";
@@ -59,12 +62,15 @@ export function ZkWatchSection({
   subiektReachable = true,
   subiektBlockedHint,
   onWatchAdded,
+  onWatchAlreadyOnList,
   onWatchClosed,
   onWatchRefreshed,
   unseenWatchIds,
   newLineKeysByWatchId,
+  newlyAddedWatchIds,
   onWarehouseArrivalSeen,
   onNewZkLinesSeen,
+  onNewlyAddedZkWatchSeen,
   prosbaScopeWatchId,
   prosbaScopeOpenNonce = 0,
   onProsbaScopeConfigured,
@@ -78,8 +84,10 @@ export function ZkWatchSection({
   linkableOrders?: ZkLinkableOrder[];
   unseenWatchIds?: Set<string>;
   newLineKeysByWatchId?: Record<string, string[]>;
+  newlyAddedWatchIds?: Set<string>;
   onWarehouseArrivalSeen?: (watchId: string) => void;
   onNewZkLinesSeen?: (watchId: string) => void;
+  onNewlyAddedZkWatchSeen?: (watchId: string) => void;
   prosbaScopeWatchId?: string | null;
   prosbaScopeOpenNonce?: number;
   onProsbaScopeConfigured?: (watchId: string) => void;
@@ -94,6 +102,8 @@ export function ZkWatchSection({
   subiektReachable?: boolean;
   subiektBlockedHint?: string;
   onWatchAdded?: (watch: SalesZkWatch) => void;
+  /** ZK już na liście — przewiń do karty bez oznaczania jako nowe. */
+  onWatchAlreadyOnList?: (watch: SalesZkWatch) => void;
   onWatchClosed?: (watchId: string, closedAt: string) => void;
   onWatchRefreshed?: (
     watch: SalesZkWatch,
@@ -125,6 +135,69 @@ export function ZkWatchSection({
     onWatchAdded?.(watch);
     collapseAddPanel();
     setAddSectionNonce((value) => value + 1);
+  }
+
+  async function recoverWatchAfterTransportError(
+    zkQuery: string
+  ): Promise<SalesZkWatch | null> {
+    try {
+      const { watch } = await actionFindActiveZkWatchByQuery(zkQuery);
+      return watch;
+    } catch {
+      return null;
+    }
+  }
+
+  async function finishWatchAdd(watch: SalesZkWatch) {
+    setQuery("");
+    handleWatchAdded(watch);
+    inputRef.current?.focus();
+  }
+
+  function focusExistingWatch(watch: SalesZkWatch) {
+    setQuery("");
+    clearChoose();
+    collapseAddPanel();
+    onWatchAlreadyOnList?.(watch);
+    onLiveAnnounce?.(
+      `${watch.zk_number} jest już na liście — pokazuję kartę.`
+    );
+    inputRef.current?.focus();
+  }
+
+  function isDuplicateZkOnListMessage(message: string): boolean {
+    return message.includes("jest już na liście oczekujących");
+  }
+
+  async function handleAddFailure(error: unknown, zkQueryForRecovery: string) {
+    const message = error instanceof Error ? error.message : "";
+
+    if (isDuplicateZkOnListMessage(message)) {
+      const onList = watches.find((watch) =>
+        zkNumbersEquivalent(watch.zk_number, zkQueryForRecovery)
+      );
+      if (onList) {
+        focusExistingWatch(onList);
+        return;
+      }
+      const recovered = await recoverWatchAfterTransportError(zkQueryForRecovery);
+      if (recovered) {
+        focusExistingWatch(recovered);
+        return;
+      }
+      setError(message);
+      return;
+    }
+
+    if (isServerActionTransportError(error)) {
+      const recovered = await recoverWatchAfterTransportError(zkQueryForRecovery);
+      if (recovered) {
+        await finishWatchAdd(recovered);
+        return;
+      }
+    }
+
+    setError(message || "Nie udało się dodać zamówienia.");
   }
 
   const filteredWatches = useMemo(
@@ -246,11 +319,9 @@ export function ZkWatchSection({
         setChooseHint(result.hint);
         return;
       }
-      setQuery("");
-      handleWatchAdded(result.watch);
-      inputRef.current?.focus();
+      await finishWatchAdd(result.watch);
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Nie udało się dodać zamówienia.");
+      await handleAddFailure(e, value);
     } finally {
       setLoading(false);
     }
@@ -262,12 +333,10 @@ export function ZkWatchSection({
     setError(null);
     try {
       const { watch } = await actionAddZkWatchBySubiektDokId(candidate.subiektDokId);
-      setQuery("");
       clearChoose();
-      handleWatchAdded(watch);
-      inputRef.current?.focus();
+      await finishWatchAdd(watch);
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Nie udało się dodać zamówienia.");
+      await handleAddFailure(e, candidate.zkNumber);
     } finally {
       setLoading(false);
     }
@@ -289,8 +358,10 @@ export function ZkWatchSection({
         linkableOrders={linkableOrders}
         unseenWatchIds={unseenWatchIds}
         newLineKeysByWatchId={newLineKeysByWatchId}
+        newlyAddedWatchIds={newlyAddedWatchIds}
         onWarehouseArrivalSeen={onWarehouseArrivalSeen}
         onNewZkLinesSeen={onNewZkLinesSeen}
+        onNewlyAddedZkWatchSeen={onNewlyAddedZkWatchSeen}
         focusWatchId={focusWatchId}
         onFocusWatchHandled={onFocusWatchHandled}
         onLiveAnnounce={onLiveAnnounce}
@@ -459,6 +530,7 @@ export function ZkWatchSection({
 
       {prosbaScopeWatch ? (
         <ZkWatchProsbaScopeModal
+          key={`${prosbaScopeWatch.id}:${prosbaScopeOpenNonce}`}
           watch={prosbaScopeWatch}
           open={prosbaScopeModalOpen}
           required={!prosbaScopeConfigured}

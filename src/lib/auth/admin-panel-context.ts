@@ -11,6 +11,42 @@ export type AdminPanelContext =
 
 export const ADMIN_PANEL_COOKIE = "ontime_admin_panel";
 
+/** Wybrany handlowiec w podglądzie admina — zapas gdy URL nie ma ?dla=. */
+export const PREVIEW_SALES_PERSON_COOKIE = "ontime_preview_sales_person";
+
+const PREVIEW_COOKIE_MAX_AGE = 60 * 60 * 24 * 30;
+
+export function parsePreviewSalesPersonCookie(
+  raw: string | undefined | null
+): string | null {
+  const id = raw?.trim();
+  return id || null;
+}
+
+export function previewSalesPersonCookieOptions(salesPersonId: string) {
+  return {
+    name: PREVIEW_SALES_PERSON_COOKIE,
+    value: salesPersonId.trim(),
+    httpOnly: true,
+    secure: process.env.NODE_ENV === "production",
+    sameSite: "lax" as const,
+    path: "/",
+    maxAge: PREVIEW_COOKIE_MAX_AGE,
+  };
+}
+
+export function clearPreviewSalesPersonCookieOptions() {
+  return {
+    name: PREVIEW_SALES_PERSON_COOKIE,
+    value: "",
+    httpOnly: true,
+    secure: process.env.NODE_ENV === "production",
+    sameSite: "lax" as const,
+    path: "/",
+    maxAge: 0,
+  };
+}
+
 const VALID_CONTEXTS: AdminPanelContext[] = [
   "admin",
   "zakupy",

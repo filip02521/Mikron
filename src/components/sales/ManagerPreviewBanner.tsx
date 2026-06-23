@@ -76,7 +76,14 @@ export function ManagerPreviewBanner({
         </Link>
       ) : null}
       {scope === "notatnik" || scope === "zk" ? (
-        <Link href={scope === "zk" ? buildNotatnikPageHref() : buildNotatnikPageHref({ tab: "notes" })}>
+        <Link
+          href={buildNotatnikPageHref({
+            preview: true,
+            salesPersonId,
+            tab: scope === "zk" ? "zk" : "notes",
+            surface: scope === "zk" ? "zk" : "notes",
+          })}
+        >
           <Button size="sm" variant="outline" className={salesTouchTargetClass}>
             {scope === "zk" ? "Moje ZK" : "Mój notatnik"}
           </Button>

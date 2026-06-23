@@ -1,5 +1,10 @@
+"use client";
+
 import Link from "next/link";
+import { useMemo } from "react";
+import { useSearchParams } from "next/navigation";
 import { buildNotatnikPageHref } from "@/lib/sales/notepad-page-tabs";
+import { hrefWithSalesPreviewFromUrl } from "@/lib/nav/sales-preview-href";
 import { cn } from "@/lib/cn";
 import { salesChromeInsetClass, salesTypography } from "@/lib/ui/ontime-theme";
 
@@ -11,10 +16,14 @@ export function NotatnikArchiveCrossLink({
   surface: "zk" | "notes";
   className?: string;
 }) {
-  const otherHref =
-    surface === "zk"
-      ? buildNotatnikPageHref({ tab: "archive", surface: "notes" })
-      : buildNotatnikPageHref({ tab: "archive", surface: "zk" });
+  const previewDla = useSearchParams().get("dla");
+  const otherHref = useMemo(() => {
+    const base =
+      surface === "zk"
+        ? buildNotatnikPageHref({ tab: "archive", surface: "notes" })
+        : buildNotatnikPageHref({ tab: "archive", surface: "zk" });
+    return hrefWithSalesPreviewFromUrl(base, previewDla);
+  }, [surface, previewDla]);
 
   return (
     <p

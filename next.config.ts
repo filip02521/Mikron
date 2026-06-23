@@ -32,6 +32,8 @@ const nextConfig: NextConfig = {
         ...defaultLanOrigins,
         ...extraActionOrigins,
       ],
+      /** Duże ZK z wieloma pozycjami — pełny snapshot w odpowiedzi action. */
+      bodySizeLimit: "4mb",
     },
   },
 };

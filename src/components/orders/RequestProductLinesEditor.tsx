@@ -334,11 +334,6 @@ export function RequestProductLinesEditor({
                   title={PROSBA_OPTIONAL_SECTION_COPY.client.title}
                   description={PROSBA_OPTIONAL_SECTION_COPY.client.description}
                   defaultOpen={Boolean(line.clientName?.trim() || line.clientKhId)}
-                  detailsKey={
-                    line.clientName?.trim() || line.clientKhId
-                      ? "client-open"
-                      : "client-collapsed"
-                  }
                   teaser={line.clientName?.trim() || null}
                   className="mt-2"
                 >

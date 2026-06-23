@@ -62,6 +62,7 @@ export function ZkWatchCard({
   onLinesModalOpenChange,
   hasNewWarehouseArrival = false,
   hasNewZkLines = false,
+  isNewlyAdded = false,
   newLineKeys,
   onProsbaScopeRequested,
   onRequestCloseWatch,
@@ -87,6 +88,7 @@ export function ZkWatchCard({
   onLinesModalOpenChange?: (open: boolean, options?: { focusNote?: boolean }) => void;
   hasNewWarehouseArrival?: boolean;
   hasNewZkLines?: boolean;
+  isNewlyAdded?: boolean;
   newLineKeys?: string[];
   /** Ponowne otwarcie modala zakresu prośby (gdy jeszcze nie skonfigurowano). */
   onProsbaScopeRequested?: (watchId: string) => void;
@@ -163,6 +165,12 @@ export function ZkWatchCard({
     !followUpDue &&
     !hasNewWarehouseArrival &&
     !hasPhysicalDeliverySignal;
+  const isNewlyAddedAccent =
+    isNewlyAdded &&
+    !archived &&
+    !hasNewWarehouseArrival &&
+    !hasNewZkLines &&
+    !isInformacjaReadyAccent;
   const uncoveredLineKeys = orderHints?.uncoveredLineKeys ?? [];
   const openProsbaLineKeys = orderHints?.openProsbaCoveredLineKeys ?? [];
   const productLineCount = lineViews.filter((line) => line.key !== "summary").length;
@@ -323,6 +331,7 @@ export function ZkWatchCard({
     `${displayNumber} ${watch.client_label}`,
     readyToClose ? "gotowe do zamknięcia" : null,
     followUpDue ? "przypomnienie do działania" : null,
+    isNewlyAdded ? "nowo dodane ZK" : null,
     hasNewZkLines ? "nowe pozycje w ZK" : null,
     hasTrackedScope && hiddenOutsideScope > 0
       ? `${hiddenOutsideScope} pozycji spoza wybranego zakresu`
@@ -413,8 +422,16 @@ export function ZkWatchCard({
           isAction: readyToClose,
           isUrgent: followUpDue,
           isInformacja: false,
-          deliveryBorderAccent: isInformacjaReadyAccent ? "border-l-sky-500" : undefined,
-          deliveryCollapsedBg: isInformacjaReadyAccent ? "bg-sky-50/35" : undefined,
+          deliveryBorderAccent: isNewlyAddedAccent
+            ? "border-l-violet-500"
+            : isInformacjaReadyAccent
+              ? "border-l-sky-500"
+              : undefined,
+          deliveryCollapsedBg: isNewlyAddedAccent
+            ? "bg-violet-50/30"
+            : isInformacjaReadyAccent
+              ? "bg-sky-50/35"
+              : undefined,
           visualTone: archived ? "archive" : "default",
         }),
         followUpDue && readyToClose && "ring-1 ring-inset ring-amber-300/50",
@@ -424,6 +441,7 @@ export function ZkWatchCard({
           "ring-1 ring-inset ring-sky-300/70",
         hasNewWarehouseArrival && "ring-1 ring-inset ring-teal-300/80",
         hasNewZkLines && !hasNewWarehouseArrival && "ring-1 ring-inset ring-amber-300/70",
+        isNewlyAddedAccent && "ring-1 ring-inset ring-violet-300/70",
         closePreviewLoading && "relative"
       )}
     >
@@ -465,6 +483,11 @@ export function ZkWatchCard({
               {hasNewWarehouseArrival ? (
                 <Badge variant="success" className="shrink-0 text-[9px]">
                   Na regale
+                </Badge>
+              ) : null}
+              {isNewlyAdded && !archived ? (
+                <Badge variant="purple" className="shrink-0 text-[9px]">
+                  Nowe
                 </Badge>
               ) : null}
               {hasNewZkLines ? (

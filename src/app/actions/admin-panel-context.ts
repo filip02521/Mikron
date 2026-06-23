@@ -7,8 +7,10 @@ import { resolvePreviewSalesPerson } from "@/lib/auth/resolve-preview-sales-pers
 import {
   ADMIN_PANEL_COOKIE,
   type AdminPanelContext,
+  clearPreviewSalesPersonCookieOptions,
   homePathForAdminPanelContext,
   parseAdminPanelContext,
+  previewSalesPersonCookieOptions,
 } from "@/lib/auth/admin-panel-context";
 
 const COOKIE_MAX_AGE = 60 * 60 * 24 * 30;
@@ -36,6 +38,9 @@ export async function actionSetAdminPanelContext(context: AdminPanelContext) {
   }
   const cookieStore = await cookies();
   cookieStore.set(setPanelCookie(context));
+  if (context !== "sales") {
+    cookieStore.set(clearPreviewSalesPersonCookieOptions());
+  }
   redirect(homePathForAdminPanelContext(context));
 }
 
@@ -55,6 +60,7 @@ export async function actionOpenSalesPersonPreview(salesPersonId: string) {
   }
   const cookieStore = await cookies();
   cookieStore.set(setPanelCookie("sales"));
+  cookieStore.set(previewSalesPersonCookieOptions(preview.id));
   redirect(`/moje?dla=${encodeURIComponent(preview.id)}`);
 }
 
@@ -71,4 +77,5 @@ export async function actionClearAdminPanelContext() {
     path: "/",
     maxAge: 0,
   });
+  cookieStore.set(clearPreviewSalesPersonCookieOptions());
 }

@@ -4,12 +4,14 @@ import Link from "next/link";
 import { HelpPopover, GuideIcon } from "@/components/ui/HelpPopover";
 import { HelpBlock } from "@/components/ui/HelpBlock";
 import type { NotatnikSurface } from "@/lib/sales/notepad-page-tabs";
+import { useSalesPreviewHref } from "@/lib/nav/use-sales-preview-href";
 import { cn } from "@/lib/cn";
 import { pageToolbarSizingClass, pageToolbarSurfaceClass } from "@/lib/ui/ontime-theme";
 import { ZkWatchStatusGuideContent } from "./ZkWatchStatusGuideContent";
 
 export function NotatnikGuide({ surface }: { surface: NotatnikSurface }) {
   const isZk = surface === "zk";
+  const previewHref = useSalesPreviewHref();
 
   return (
     <HelpPopover
@@ -33,7 +35,7 @@ export function NotatnikGuide({ surface }: { surface: NotatnikSurface }) {
             <p>
               Z pozycji ZK możesz złożyć prośbę do zakupów. Gdy towar dotrze, status zmieni się na
               magazynie — śledzisz to tutaj i w{" "}
-              <Link href="/moje" className="font-medium text-indigo-800 hover:underline">
+              <Link href={previewHref("/moje")} className="font-medium text-indigo-800 hover:underline">
                 Moje zamówienia
               </Link>
               .
@@ -54,7 +56,7 @@ export function NotatnikGuide({ surface }: { surface: NotatnikSurface }) {
           <HelpBlock title="ZK vs notatnik">
             <p>
               Zamówienia klientów (ZK) są w zakładce{" "}
-              <Link href="/zk" className="font-medium text-indigo-800 hover:underline">
+              <Link href={previewHref("/zk")} className="font-medium text-indigo-800 hover:underline">
                 ZK czekające
               </Link>
               . Notatnik to osobna lista przypomnień.

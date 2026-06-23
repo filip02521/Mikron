@@ -19,7 +19,6 @@ export function ProsbaOptionalSection({
   hintAriaLabel = "O tej sekcji",
   teaser,
   defaultOpen = false,
-  detailsKey,
   open,
   onOpenChange,
   className,
@@ -38,7 +37,6 @@ export function ProsbaOptionalSection({
   /** Podgląd wypełnionej treści (np. notatka, klient) — tylko gdy zwinięte. */
   teaser?: string | null;
   defaultOpen?: boolean;
-  detailsKey?: string;
   /** Kontrolowane rozwinięcie (np. link z meta-paska). */
   open?: boolean;
   onOpenChange?: (open: boolean) => void;
@@ -56,7 +54,7 @@ export function ProsbaOptionalSection({
     if (defaultOpen && detailsRef.current && open === undefined) {
       detailsRef.current.open = true;
     }
-  }, [defaultOpen, detailsKey, open]);
+  }, [defaultOpen, open]);
 
   useEffect(() => {
     if (open === undefined || !detailsRef.current) return;
@@ -66,7 +64,6 @@ export function ProsbaOptionalSection({
   return (
     <details
       ref={detailsRef}
-      key={detailsKey}
       onToggle={(event) => {
         onOpenChange?.((event.currentTarget as HTMLDetailsElement).open);
       }}

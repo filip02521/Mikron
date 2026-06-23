@@ -3,6 +3,7 @@
 // @service-role-ok — autoryzacja require*(); service role z pełnym scope po warstwie aplikacji.
 
 import { revalidatePath } from "next/cache";
+import { after } from "next/server";
 import { getSessionUser } from "@/lib/auth";
 import { resolveSalesPersonForUser } from "@/lib/auth/sales-person";
 import { isSalesAccount } from "@/lib/auth-roles";
@@ -15,6 +16,8 @@ import {
   searchZkForAdd,
   type ZkSearchCandidate,
 } from "@/lib/subiekt/resolve-zk-document";
+import { validateZkQueryForSubmit } from "@/lib/subiekt/zk-search";
+import { extractZkSerial, zkNumbersEquivalent } from "@/lib/subiekt/zk-document";
 import { isSubiektReachable } from "@/lib/subiekt/availability";
 import { UNDO_WINDOW_MS } from "@/lib/orders/daily-panel-undo";
 import {
@@ -68,7 +71,14 @@ async function resolveSalesPersonIdForProsbaPrefill(
 function revalidateNotepad() {
   revalidatePath("/notatnik");
   revalidatePath("/zk");
-  revalidatePath("/", "layout");
+}
+
+/** Odłóż rewalidację po odpowiedzi action — duże ZK nie timeoutują UI. */
+function scheduleNotepadRevalidation() {
+  after(() => {
+    revalidateNotepad();
+    revalidatePath("/", "layout");
+  });
 }
 
 function isDuplicateKeyError(error: { code?: string } | null): boolean {
@@ -165,7 +175,7 @@ async function persistZkWatch(
       .select("*")
       .single();
     if (error) throw new Error(error.message);
-    revalidateNotepad();
+    scheduleNotepadRevalidation();
     return data as SalesZkWatch;
   }
 
@@ -182,7 +192,7 @@ async function persistZkWatch(
     throw new Error(error.message);
   }
 
-  revalidateNotepad();
+  scheduleNotepadRevalidation();
   return data as SalesZkWatch;
 }
 
@@ -218,6 +228,52 @@ export async function actionAddZkWatchBySubiektDokId(
   return { watch };
 }
 
+/**
+ * Odzyskanie po błędzie transportu server action — ZK mogło zostać zapisane w DB.
+ * Dopasowanie po numerze (równoważne formaty, np. 3188/M/06/2026).
+ */
+export async function actionFindActiveZkWatchByQuery(
+  zkQuery: string
+): Promise<{ watch: SalesZkWatch }> {
+  const salesPersonId = await salesPersonIdForAction();
+  const validated = validateZkQueryForSubmit(zkQuery);
+  if (!validated.ok) throw new Error(validated.message);
+
+  const supabase = createAdminClient();
+  const normalized = validated.normalized;
+  const serial =
+    extractZkSerial(normalized) ?? (/^\d+$/.test(normalized) ? normalized : null);
+
+  let query = supabase
+    .from("sales_zk_watches")
+    .select("*")
+    .eq("sales_person_id", salesPersonId)
+    .is("closed_at", null)
+    .is("archived_at", null);
+
+  if (serial) {
+    query = query.ilike("zk_number", `%${serial}%`);
+  } else {
+    const compact = normalized.replace(/\s+/g, "");
+    if (compact) {
+      query = query.ilike("zk_number", `%${compact}%`);
+    }
+  }
+
+  const { data, error } = await query.order("updated_at", { ascending: false }).limit(24);
+
+  if (error) throw new Error(error.message);
+
+  const match = (data ?? []).find((row) =>
+    zkNumbersEquivalent(String(row.zk_number ?? ""), validated.normalized)
+  );
+  if (!match) {
+    throw new Error("Nie znaleziono aktywnego ZK na liście — odśwież stronę i sprawdź listę.");
+  }
+
+  return { watch: match as SalesZkWatch };
+}
+
 export async function actionCloseZkWatch(watchId: string) {
   const salesPersonId = await salesPersonIdForAction();
   const supabase = createAdminClient();
@@ -242,7 +298,7 @@ export async function actionCloseZkWatch(watchId: string) {
     .eq("id", watchId);
 
   if (error) throw new Error(error.message);
-  revalidateNotepad();
+  scheduleNotepadRevalidation();
   return { success: true as const, closedAt: now };
 }
 
@@ -280,7 +336,7 @@ export async function actionRestoreZkWatch(watchId: string) {
     .single();
 
   if (error) throw new Error(error.message);
-  revalidateNotepad();
+  scheduleNotepadRevalidation();
   return { watch: data as SalesZkWatch };
 }
 
@@ -317,7 +373,7 @@ export async function actionUndoCloseZkWatch(watchId: string) {
     .single();
 
   if (error) throw new Error(error.message);
-  revalidateNotepad();
+  scheduleNotepadRevalidation();
   return { watch: data as SalesZkWatch };
 }
 
@@ -373,7 +429,7 @@ export async function actionRefreshZkWatchFromSubiekt(watchId: string) {
     .single();
 
   if (error) throw new Error(error.message);
-  revalidateNotepad();
+  scheduleNotepadRevalidation();
   const refreshedWatch = data as SalesZkWatch;
   const refreshDiff = computeZkWatchRefreshDiff(row as SalesZkWatch, refreshedWatch);
   return { watch: refreshedWatch, refreshDiff };
@@ -405,7 +461,7 @@ export async function actionUpdateZkWatchNote(watchId: string, note: string) {
     .eq("id", watchId);
 
   if (error) throw new Error(error.message);
-  revalidateNotepad();
+  scheduleNotepadRevalidation();
   return { success: true };
 }
 
@@ -474,7 +530,7 @@ export async function actionUpdateZkWatchLineChecks(
     throw new Error(error.message);
   }
 
-  revalidateNotepad();
+  scheduleNotepadRevalidation();
   return { watch: data as SalesZkWatch };
 }
 
@@ -528,7 +584,7 @@ export async function actionUpdateZkWatchProsbaScope(
 
   if (error) throw new Error(error.message);
 
-  revalidateNotepad();
+  scheduleNotepadRevalidation();
   return { watch: data as SalesZkWatch };
 }
 
@@ -585,7 +641,7 @@ export async function actionPatchZkWatchProsbaScopeLines(
 
   if (error) throw new Error(error.message);
 
-  revalidateNotepad();
+  scheduleNotepadRevalidation();
   return { watch: data as SalesZkWatch };
 }
 
@@ -620,7 +676,7 @@ export async function actionUpdateZkWatchFollowUp(
     .single();
 
   if (error) throw new Error(error.message);
-  revalidateNotepad();
+  scheduleNotepadRevalidation();
   return { watch: data as SalesZkWatch };
 }
 
@@ -662,7 +718,7 @@ export async function actionCreateSalesNote(
     .single();
 
   if (error) throw new Error(error.message);
-  revalidateNotepad();
+  scheduleNotepadRevalidation();
   return { note: data as SalesNote };
 }
 
@@ -706,7 +762,7 @@ export async function actionUpdateSalesNote(
 
   const { error } = await supabase.from("sales_notes").update(patch).eq("id", noteId);
   if (error) throw new Error(error.message);
-  revalidateNotepad();
+  scheduleNotepadRevalidation();
   return { success: true };
 }
 
@@ -755,7 +811,7 @@ export async function actionReorderSalesNotes(noteIds: string[]) {
     if (error) throw new Error(error.message);
   }
 
-  revalidateNotepad();
+  scheduleNotepadRevalidation();
   return { success: true };
 }
 
@@ -782,7 +838,7 @@ export async function actionArchiveSalesNote(noteId: string) {
     .eq("id", noteId);
 
   if (error) throw new Error(error.message);
-  revalidateNotepad();
+  scheduleNotepadRevalidation();
   return { success: true };
 }
 
@@ -823,7 +879,7 @@ export async function actionRestoreSalesNote(noteId: string) {
     .single();
 
   if (error) throw new Error(error.message);
-  revalidateNotepad();
+  scheduleNotepadRevalidation();
   return { note: data as SalesNote };
 }
 
@@ -848,7 +904,7 @@ export async function actionDeleteArchivedZkWatch(watchId: string) {
 
   const { error } = await supabase.from("sales_zk_watches").delete().eq("id", watchId);
   if (error) throw new Error(error.message);
-  revalidateNotepad();
+  scheduleNotepadRevalidation();
   return { success: true };
 }
 
@@ -871,7 +927,7 @@ export async function actionDeleteArchivedSalesNote(noteId: string) {
 
   const { error } = await supabase.from("sales_notes").delete().eq("id", noteId);
   if (error) throw new Error(error.message);
-  revalidateNotepad();
+  scheduleNotepadRevalidation();
   return { success: true };
 }
 

@@ -5,6 +5,9 @@ import { middlewareNeedsBootstrap } from "@/lib/setup/middleware-bootstrap";
 import {
   ADMIN_PANEL_COOKIE,
   homePathForAdminPanelContext,
+  parsePreviewSalesPersonCookie,
+  PREVIEW_SALES_PERSON_COOKIE,
+  previewSalesPersonCookieOptions,
   resolveAdminPanelContext,
   shouldApplyAdminSalesPreviewHeader,
 } from "@/lib/auth/admin-panel-context";
@@ -144,18 +147,35 @@ export async function proxy(request: NextRequest) {
     });
   }
 
-  const previewSalesPersonId = request.nextUrl.searchParams.get("dla");
+  const previewSalesPersonIdFromUrl = request.nextUrl.searchParams.get("dla");
   const adminPanelContext = isAdmin(role)
     ? resolveAdminPanelContext(request.cookies.get(ADMIN_PANEL_COOKIE)?.value)
     : null;
+  const previewSalesPersonIdFromCookie =
+    isAdmin(role) && adminPanelContext === "sales"
+      ? parsePreviewSalesPersonCookie(
+          request.cookies.get(PREVIEW_SALES_PERSON_COOKIE)?.value
+        )
+      : null;
+  const previewSalesPersonId =
+    previewSalesPersonIdFromUrl?.trim() || previewSalesPersonIdFromCookie;
 
   if (
     isAdmin(role) &&
     adminPanelContext === "sales" &&
     matchesPrefix(pathname, SALES_PREFIXES) &&
-    !previewSalesPersonId &&
+    !previewSalesPersonIdFromUrl?.trim() &&
     pathname !== "/admin/wybor-handlowca"
   ) {
+    if (previewSalesPersonIdFromCookie) {
+      const url = request.nextUrl.clone();
+      url.searchParams.set("dla", previewSalesPersonIdFromCookie);
+      return redirectWithSession(
+        request,
+        sessionResponse,
+        `${url.pathname}${url.search}`
+      );
+    }
     return redirectWithSession(
       request,
       sessionResponse,
@@ -237,6 +257,16 @@ export async function proxy(request: NextRequest) {
       "x-preview-sales-person-id",
       previewSalesPersonId!
     );
+  }
+
+  const urlPreviewId = previewSalesPersonIdFromUrl?.trim();
+  if (
+    isAdmin(role) &&
+    adminPanelContext === "sales" &&
+    urlPreviewId &&
+    urlPreviewId !== previewSalesPersonIdFromCookie
+  ) {
+    sessionResponse.cookies.set(previewSalesPersonCookieOptions(urlPreviewId));
   }
 
   return sessionResponse;
