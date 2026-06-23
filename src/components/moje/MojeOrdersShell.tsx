@@ -14,7 +14,9 @@ import {
   buildOnboardingDayStartContext,
   buildOnboardingMojePresented,
   buildOnboardingMojeArchiveDemo,
+  buildOnboardingMojeAnnouncements,
 } from "@/lib/sales/sales-onboarding-demo-data";
+import type { DepartmentBoardAnnouncementsSlice } from "@/lib/data/department-board";
 import type { SalesDayStartContext } from "@/lib/sales/sales-day-start";
 import {
   isSubiektAvailableForZdSync,
@@ -34,6 +36,9 @@ export function MojeOrdersShell({
   zdEtaSyncMountCount = 0,
   zdEtaSyncEligibleCount = 0,
   dayStartContext = null,
+  boardAnnouncements = null,
+  boardAnnouncementsError = null,
+  focusAnnouncementId = null,
   ...viewProps
 }: {
   initial: Presented;
@@ -44,9 +49,17 @@ export function MojeOrdersShell({
   /** Pozycje wymagające sync przy dostępnym Subiekcie. */
   zdEtaSyncEligibleCount?: number;
   dayStartContext?: SalesDayStartContext | null;
+  boardAnnouncements?: DepartmentBoardAnnouncementsSlice | null;
+  boardAnnouncementsError?: string | null;
+  focusAnnouncementId?: string | null;
 } & Omit<
   React.ComponentProps<typeof MojeOrdersView>,
-  "zamowienia" | "informacje" | "productLineCount" | "dayStartContext"
+  | "zamowienia"
+  | "informacje"
+  | "productLineCount"
+  | "dayStartContext"
+  | "boardAnnouncements"
+  | "focusAnnouncementId"
 >) {
   const tourDemo = useSalesOnboardingDemo("moje");
   const router = useRouter();
@@ -56,6 +69,7 @@ export function MojeOrdersShell({
     () => (salesPersonId ? buildOnboardingDayStartContext(salesPersonId) : null),
     [salesPersonId]
   );
+  const demoAnnouncements = useMemo(() => buildOnboardingMojeAnnouncements(), []);
   const effectiveInitial = tourDemo ? demoPresented : initial;
   const presented = effectiveInitial;
   const [subiektReachable, setSubiektReachable] = useState(() =>
@@ -102,6 +116,9 @@ export function MojeOrdersShell({
       archiwumRecent={tourDemo ? demoArchive.archiwumRecent : viewProps.archiwumRecent}
       archiwumExtended={tourDemo ? demoArchive.archiwumExtended : viewProps.archiwumExtended}
       dayStartContext={tourDemo ? demoDayStartContext : dayStartContext}
+      boardAnnouncements={tourDemo ? demoAnnouncements : boardAnnouncements}
+      boardAnnouncementsError={tourDemo ? null : boardAnnouncementsError}
+      focusAnnouncementId={focusAnnouncementId}
     />
     </>
   );

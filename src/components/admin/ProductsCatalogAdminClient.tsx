@@ -849,7 +849,7 @@ export function ProductsCatalogAdminClient({
         />
       ) : null}
 
-      <div className="flex flex-wrap items-center justify-end gap-2 border-b border-slate-100 pb-3">
+      <div className="flex flex-wrap items-center justify-end gap-2 border-b border-slate-100 px-3 pb-3 sm:px-4 lg:px-5">
         <Button variant="secondary" onClick={backfillFromSymbol} disabled={pending}>
           Uzupełnij z symbolu (Subiekt)
         </Button>
@@ -869,7 +869,7 @@ export function ProductsCatalogAdminClient({
           syncRunning={catalogSync?.state?.status === "running"}
         />
 
-        <div className="mt-4 rounded-md border border-slate-200 bg-white p-4">
+        <div className="rounded-md border border-slate-200/90 bg-slate-50/30 p-3 sm:p-4">
           <p className="text-sm font-semibold text-slate-900">
             <FlowSteps steps={["Indeks ZD", "dostawca"]} chevronClassName="text-indigo-300" />
           </p>

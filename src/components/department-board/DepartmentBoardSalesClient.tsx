@@ -8,136 +8,137 @@ import {
   ONBOARDING_TABLICA_UNSEEN_QUESTION_IDS,
 } from "@/lib/sales/sales-onboarding-demo-data";
 import { DepartmentBoardAnswersBanner } from "@/components/department-board/DepartmentBoardAnswersBanner";
-import { DepartmentBoardUnreadBanner } from "@/components/department-board/DepartmentBoardUnreadBanner";
 import type { DepartmentBoardAttentionBanners } from "@/lib/department-board/board-attention-banners";
-import {
-  shouldShowBoardAnswersBanner,
-  shouldShowBoardUnreadBanner,
-} from "@/lib/department-board/board-attention-banners";
+import { shouldShowBoardAnswersBanner } from "@/lib/department-board/board-attention-banners";
 import { useRouter } from "next/navigation";
-import Link from "next/link";
 import { Alert } from "@/components/ui/Alert";
-import { Button } from "@/components/ui/Button";
 import { Card, CardHeader } from "@/components/ui/Card";
+import { Toast } from "@/components/ui/Toast";
 import { SectionHeadingIcon } from "@/components/icons/SectionHeadingIcon";
-import { IconClipboardPen, IconInbox } from "@/components/icons/StrokeIcons";
-import { NOTATNIK_INPUT_CLASS, NOTATNIK_TEXTAREA_CLASS } from "@/components/notatnik/notatnik-layout";
-import { AnnouncementCard } from "@/components/department-board/AnnouncementCard";
+import { IconClipboardPen } from "@/components/icons/StrokeIcons";
 import { QuestionThreadCard } from "@/components/department-board/QuestionThreadCard";
-import {
-  DepartmentBoardQuestionFilters,
-  DepartmentBoardTabBar,
-} from "@/components/department-board/DepartmentBoardSalesChrome";
-import {
-  DepartmentBoardAnnouncementsEmpty,
-  DepartmentBoardQuestionsEmpty,
-} from "@/components/department-board/DepartmentBoardEmptyPanel";
+import type { DepartmentBoardQuestionFilter } from "@/components/department-board/DepartmentBoardSalesChrome";
+import { DepartmentBoardQuestionsEmpty } from "@/components/department-board/DepartmentBoardEmptyPanel";
 import { DepartmentBoardGuide } from "@/components/department-board/DepartmentBoardGuide";
-import { DepartmentBoardIntroBanner } from "@/components/department-board/DepartmentBoardIntroBanner";
+import { DepartmentBoardQuestionForm } from "@/components/department-board/DepartmentBoardQuestionForm";
+import { DepartmentBoardQuestionToolbar } from "@/components/department-board/DepartmentBoardQuestionToolbar";
 import {
   DEPARTMENT_BOARD_NOTES_DISTINCTION_SALES,
   DEPARTMENT_BOARD_QUESTIONS_EXPLAINER,
+  DEPARTMENT_BOARD_QUESTIONS_FILTERS,
+  DEPARTMENT_BOARD_QUESTIONS_FORM,
   DEPARTMENT_BOARD_SALES_PAGE_DESC,
   DEPARTMENT_BOARD_SALES_PAGE_TITLE,
 } from "@/lib/department-board/copy";
-import type { DepartmentBoardData } from "@/lib/data/department-board";
-import { countUnreadAnnouncements } from "@/lib/department-board/unread";
+import {
+  departmentBoardQuestionFilterCounts,
+  filterDepartmentBoardQuestions,
+  resolveQuestionFilterAfterUnseenCleared,
+} from "@/lib/department-board/question-filters";
+import { boardQuestionListClass } from "@/lib/department-board/department-board-thread-styles";
+import type { DepartmentBoardQuestionsSlice } from "@/lib/data/department-board";
 import { cn } from "@/lib/cn";
-import { mojeShipmentListClass } from "@/lib/ui/moje-shipment-row-styles";
 import { AppBrandContentFooter } from "@/components/layout/AppBrandContentFooter";
-import { salesPageShellClass, salesTypography, sectionIconTileBrandClass, brandLinkClass, salesChromeInsetClass } from "@/lib/ui/ontime-theme";
-import { NotatnikPanel } from "@/components/notatnik/NotatnikPanel";
-import { NotatnikListFilterBar } from "@/components/notatnik/NotatnikListFilterBar";
-import { salesSearchPlaceholder } from "@/lib/sales/sales-search-ui";
-import { SALES_SEARCH_COPY } from "@/lib/sales/sales-page-ui-copy";
+import {
+  salesPageShellClass,
+  sectionIconTileBrandClass,
+  salesChromeInsetClass,
+} from "@/lib/ui/ontime-theme";
 import { SalesListFilterEmptyHint } from "@/components/sales/SalesListEmptyHints";
-import { filterDepartmentBoardQuestionsByQuery } from "@/lib/department-board/question-search";
 import { actionCreateQuestion } from "@/app/actions/department-board";
 import { useDeepLinkScrollOnce } from "@/hooks/use-deep-link-scroll-once";
-
-type QuestionFilter = "all" | "open" | "answered";
-type BoardTab = "announcements" | "questions";
+import { useDepartmentBoardSalesQuestionUrl } from "@/hooks/use-department-board-sales-question-url";
 
 export function DepartmentBoardSalesClient({
   initial,
   loadError = null,
   unseenQuestionIds = [],
   boardAttention = null,
-  initialTab,
   focusQuestionId = null,
-  focusAnnouncementId = null,
   readOnly = false,
   pageTitle,
   previewHint,
+  currentSalesPersonId = null,
 }: {
-  initial: DepartmentBoardData;
+  initial: DepartmentBoardQuestionsSlice;
   loadError?: string | null;
   unseenQuestionIds?: string[];
   boardAttention?: DepartmentBoardAttentionBanners | null;
-  initialTab?: BoardTab;
   focusQuestionId?: string | null;
-  focusAnnouncementId?: string | null;
   readOnly?: boolean;
   pageTitle?: string;
   previewHint?: string;
+  currentSalesPersonId?: string | null;
 }) {
   const router = useRouter();
+  const {
+    questionFilter,
+    questionSearch,
+    setFilter: setQuestionFilter,
+    setSearch: setQuestionSearch,
+    clearSearch: clearQuestionSearch,
+  } = useDepartmentBoardSalesQuestionUrl();
   const tourDemo = useSalesOnboardingDemo("tablica");
   const demoBoard = useMemo(() => buildOnboardingTablicaDemo(), []);
-  const board = tourDemo ? demoBoard : initial;
+  const board = tourDemo ? { questions: demoBoard.questions } : initial;
   const effectiveUnseenQuestionIds = useMemo(
     () => (tourDemo ? [...ONBOARDING_TABLICA_UNSEEN_QUESTION_IDS] : unseenQuestionIds),
     [tourDemo, unseenQuestionIds]
-  );
-  const readSet = useMemo(
-    () => new Set(board.readAnnouncementIds),
-    [board.readAnnouncementIds]
   );
   const unseenSet = useMemo(
     () => new Set(effectiveUnseenQuestionIds),
     [effectiveUnseenQuestionIds]
   );
-  const unreadAnnouncements = useMemo(() => countUnreadAnnouncements(board), [board]);
-  const openQuestionsCount = board.questions.filter((q) => q.status === "open").length;
   const unseenAnswersCount = effectiveUnseenQuestionIds.length;
 
-  const [activeTab, setActiveTab] = useState<BoardTab>(() => {
-    if (initialTab) return initialTab;
-    if (focusAnnouncementId) return "announcements";
-    if (focusQuestionId || unseenAnswersCount > 0) return "questions";
-    return unreadAnnouncements > 0 ? "announcements" : "questions";
-  });
-  const [tourDemoTab, setTourDemoTab] = useState<BoardTab>("announcements");
-  const [questionFilter, setQuestionFilter] = useState<QuestionFilter>("all");
-  const forceAllQuestions = Boolean(focusQuestionId) || unseenAnswersCount > 0;
-  const activeQuestionFilter: QuestionFilter = forceAllQuestions ? "all" : questionFilter;
+  const filterCtx = useMemo(
+    () => ({ unseenIds: unseenSet, currentSalesPersonId }),
+    [unseenSet, currentSalesPersonId]
+  );
+
+  const filtersLockedByFocus = Boolean(focusQuestionId);
+  const activeQuestionFilter: DepartmentBoardQuestionFilter = filtersLockedByFocus
+    ? "all"
+    : resolveQuestionFilterAfterUnseenCleared(questionFilter, unseenAnswersCount);
+  const focusQuestionMissing = Boolean(
+    focusQuestionId && !board.questions.some((question) => question.id === focusQuestionId)
+  );
   const [questionTitle, setQuestionTitle] = useState("");
   const [questionBody, setQuestionBody] = useState("");
   const [questionFormError, setQuestionFormError] = useState<string | null>(null);
-  const [questionSearch, setQuestionSearch] = useState("");
   const [saving, setSaving] = useState(false);
+  const [successToast, setSuccessToast] = useState(false);
 
-  const statusFilteredQuestions = useMemo(() => {
-    if (activeQuestionFilter === "open") {
-      return board.questions.filter((q) => q.status === "open");
-    }
-    if (activeQuestionFilter === "answered") {
-      return board.questions.filter((q) => q.status === "answered");
-    }
-    return board.questions;
-  }, [board.questions, activeQuestionFilter]);
+  const questionFilterCounts = useMemo(
+    () =>
+      departmentBoardQuestionFilterCounts(board.questions, {
+        search: questionSearch,
+        ctx: filterCtx,
+      }),
+    [board.questions, questionSearch, filterCtx]
+  );
+
+  const statusFilteredQuestions = useMemo(
+    () =>
+      filterDepartmentBoardQuestions(board.questions, {
+        filter: activeQuestionFilter,
+        search: "",
+        ctx: filterCtx,
+      }),
+    [board.questions, activeQuestionFilter, filterCtx]
+  );
 
   const questionSearchNeedle = questionSearch.trim();
-  const filteredQuestions = useMemo(() => {
-    const searched = filterDepartmentBoardQuestionsByQuery(statusFilteredQuestions, questionSearch);
-    if (!focusQuestionId || searched.some((q) => q.id === focusQuestionId)) {
-      return searched;
-    }
-    const focused =
-      statusFilteredQuestions.find((q) => q.id === focusQuestionId) ??
-      board.questions.find((q) => q.id === focusQuestionId);
-    return focused ? [focused, ...searched] : searched;
-  }, [board.questions, focusQuestionId, questionSearch, statusFilteredQuestions]);
+  const filteredQuestions = useMemo(
+    () =>
+      filterDepartmentBoardQuestions(board.questions, {
+        filter: activeQuestionFilter,
+        search: questionSearch,
+        ctx: filterCtx,
+        focusQuestionId,
+      }),
+    [board.questions, activeQuestionFilter, questionSearch, filterCtx, focusQuestionId]
+  );
 
   function refresh() {
     router.refresh();
@@ -145,12 +146,7 @@ export function DepartmentBoardSalesClient({
 
   useDeepLinkScrollOnce(
     focusQuestionId ? `question-${focusQuestionId}` : null,
-    Boolean(focusQuestionId) && activeTab === "questions"
-  );
-  useDeepLinkScrollOnce(
-    focusAnnouncementId ? `announcement-${focusAnnouncementId}` : null,
-    Boolean(focusAnnouncementId) && activeTab === "announcements",
-    180
+    Boolean(focusQuestionId)
   );
 
   async function submitQuestion() {
@@ -160,79 +156,50 @@ export function DepartmentBoardSalesClient({
       await actionCreateQuestion(questionTitle, questionBody);
       setQuestionTitle("");
       setQuestionBody("");
-      setActiveTab("questions");
-      setQuestionFilter("all");
+      const nextFilter = currentSalesPersonId ? "mine" : "all";
+      setQuestionFilter(nextFilter);
+      setSuccessToast(true);
       refresh();
     } catch (e) {
-      setQuestionFormError(e instanceof Error ? e.message : "Nie udało się wysłać pytania.");
+      const message = e instanceof Error ? e.message : "Nie udało się wysłać pytania.";
+      setQuestionFormError(message);
+      throw new Error(message);
     } finally {
       setSaving(false);
     }
   }
 
   const pageDescription = `${DEPARTMENT_BOARD_SALES_PAGE_DESC} ${DEPARTMENT_BOARD_NOTES_DISTINCTION_SALES}`;
-  const resolvedTab = tourDemo ? tourDemoTab : activeTab;
-  const handleTabChange = tourDemo ? setTourDemoTab : setActiveTab;
-  const showAnnouncements = resolvedTab === "announcements";
-  const showQuestions = resolvedTab === "questions";
   const effectiveAttention = tourDemo ? buildOnboardingBoardAttention() : boardAttention;
-  const showUnreadBanner =
-    effectiveAttention != null &&
-    shouldShowBoardUnreadBanner(effectiveAttention, resolvedTab);
   const showAnswersBanner =
     effectiveAttention != null &&
-    shouldShowBoardAnswersBanner(effectiveAttention, resolvedTab);
+    shouldShowBoardAnswersBanner(effectiveAttention) &&
+    activeQuestionFilter !== "unseen";
 
-  const questionFormPanel =
-    readOnly ? null : (
-      <div className="space-y-2 border-b border-slate-100 pb-4">
-        <p className={salesTypography.sectionHint}>
-          {DEPARTMENT_BOARD_QUESTIONS_EXPLAINER.body}{" "}
-          <Link href="/prosba" className={brandLinkClass}>
-            Nowa prośba
-          </Link>{" "}
-          służy do zamówień u dostawcy.
-        </p>
-        <input
-          type="text"
-          value={questionTitle}
-          onChange={(e) => setQuestionTitle(e.target.value)}
-          placeholder="Temat pytania"
-          className={cn(NOTATNIK_INPUT_CLASS, "w-full")}
-        />
-        <textarea
-          rows={2}
-          value={questionBody}
-          onChange={(e) => setQuestionBody(e.target.value)}
-          placeholder="Treść pytania…"
-          className={cn(NOTATNIK_TEXTAREA_CLASS, "w-full")}
-        />
-        {questionFormError ? (
-          <p className="text-xs text-red-600">{questionFormError}</p>
-        ) : null}
-        <Button
-          size="sm"
-          disabled={tourDemo || saving || !questionTitle.trim() || !questionBody.trim()}
-          onClick={() => void submitQuestion()}
-        >
-          {tourDemo ? "Podgląd — bez wysyłki" : saving ? "Wysyłanie…" : "Wyślij pytanie"}
-        </Button>
-      </div>
-    );
+  const filtersDisabledReason = filtersLockedByFocus
+    ? DEPARTMENT_BOARD_QUESTIONS_FILTERS.focusDisabledHint
+    : null;
 
   return (
     <div className={salesPageShellClass}>
+      {successToast ? (
+        <Toast
+          message={DEPARTMENT_BOARD_QUESTIONS_FORM.successToast}
+          onDismiss={() => setSuccessToast(false)}
+        />
+      ) : null}
+
       <Card padding={false} className="overflow-hidden">
         <CardHeader
           inset
           density="compact"
           title={pageTitle ?? DEPARTMENT_BOARD_SALES_PAGE_TITLE}
           hint={pageDescription}
-          hintAriaLabel="O tablicy"
+          hintAriaLabel="O pytaniach zespołu"
           action={<DepartmentBoardGuide />}
           leading={
             <SectionHeadingIcon tileClassName={sectionIconTileBrandClass}>
-              <IconInbox size={20} />
+              <IconClipboardPen size={20} />
             </SectionHeadingIcon>
           }
         />
@@ -245,130 +212,90 @@ export function DepartmentBoardSalesClient({
 
         {previewHint ? (
           <div className="border-b border-slate-100 px-3 py-2.5 sm:px-4">
-            <p className={salesTypography.sectionHint}>{previewHint}</p>
+            <p className="text-xs leading-relaxed text-slate-600">{previewHint}</p>
           </div>
         ) : null}
 
-        {tourDemo ? null : <DepartmentBoardIntroBanner />}
-
-        <DepartmentBoardTabBar
-          domain="sales"
-          activeTab={resolvedTab}
-          onTabChange={handleTabChange}
-          unreadAnnouncements={unreadAnnouncements}
-          openQuestions={openQuestionsCount}
-          unseenAnswers={unseenAnswersCount}
-        />
-
-        {showUnreadBanner || showAnswersBanner ? (
-          <div className="space-y-2 border-b border-slate-100 px-3 py-2.5 sm:px-4">
-            {showUnreadBanner && effectiveAttention ? (
-              <DepartmentBoardUnreadBanner
-                unreadCount={effectiveAttention.unreadAnnouncementBannerCount}
-                latestTitle={effectiveAttention.unreadAnnouncementBannerLatestTitle}
-              />
-            ) : null}
-            {showAnswersBanner && effectiveAttention ? (
-              <DepartmentBoardAnswersBanner
-                count={effectiveAttention.unseenAnswerCount}
-                preview={effectiveAttention.unseenAnswerPreview}
-              />
-            ) : null}
+        {focusQuestionMissing ? (
+          <div className="border-b border-slate-100 px-3 py-2.5 sm:px-4">
+            <Alert tone="warning">
+              Nie znaleziono wskazanego pytania — mogło zostać zarchiwizowane lub usunięte.
+            </Alert>
           </div>
         ) : null}
 
-        {showAnnouncements ? (
-          <div className="space-y-3 p-3 sm:p-4">
-            <NotatnikPanel
-              title="Ogłoszenia od zakupów"
-              description="Komunikaty do odczytu — bez odpowiedzi w tej sekcji."
-              count={board.announcements.length || undefined}
-              icon={<IconInbox size={17} />}
-              accent="neutral"
-            >
-              {board.announcements.length === 0 ? (
-                <DepartmentBoardAnnouncementsEmpty domain="sales" />
-              ) : (
-                <div className={cn(mojeShipmentListClass, "-mx-3 -mb-3 sm:-mx-4 sm:-mb-4")}>
-                  {board.announcements.map((thread) => (
-                    <AnnouncementCard
-                      key={thread.id}
-                      thread={thread}
-                      embedded
-                      unread={!readSet.has(thread.id)}
-                      autoMarkRead={!tourDemo && !readOnly}
-                      onChanged={refresh}
-                    />
-                  ))}
-                </div>
-              )}
-            </NotatnikPanel>
+        {showAnswersBanner && effectiveAttention ? (
+          <div className="border-b border-slate-100 px-3 py-2.5 sm:px-4">
+            <DepartmentBoardAnswersBanner
+              count={effectiveAttention.unseenAnswerCount}
+              preview={effectiveAttention.unseenAnswerPreview}
+            />
           </div>
         ) : null}
 
-        {showQuestions ? (
-          <div className="space-y-3 p-3 sm:p-4">
-            <NotatnikPanel
-              title="Pytania zespołu"
-              description="Wspólna lista pytań i odpowiedzi zakupów."
-              count={board.questions.length || undefined}
-              icon={<IconClipboardPen size={17} />}
-              accent="neutral"
-              bodyClassName="space-y-3"
-            >
-              {questionFormPanel}
+        <div className="space-y-4 p-3 pb-20 sm:p-4 sm:pb-4">
+          <p className="text-xs leading-relaxed text-slate-600">
+            {DEPARTMENT_BOARD_QUESTIONS_EXPLAINER.body}
+          </p>
 
-              <DepartmentBoardQuestionFilters
-                value={activeQuestionFilter}
-                onChange={setQuestionFilter}
-                disabled={forceAllQuestions}
-              />
-              {board.questions.length > 0 ? (
-                <NotatnikListFilterBar
+          {!readOnly ? (
+            <DepartmentBoardQuestionForm
+              embedded
+              title={questionTitle}
+              body={questionBody}
+              error={questionFormError}
+              saving={saving}
+              tourDemo={tourDemo}
+              defaultExpanded={board.questions.length === 0}
+              hasQuestions={board.questions.length > 0}
+              onTitleChange={setQuestionTitle}
+              onBodyChange={setQuestionBody}
+              onSubmit={() => void submitQuestion()}
+            />
+          ) : null}
+
+          <DepartmentBoardQuestionToolbar
+            domain="sales"
+            filter={activeQuestionFilter}
+            onFilterChange={setQuestionFilter}
+            filtersDisabled={filtersLockedByFocus}
+            filtersDisabledReason={filtersDisabledReason}
+            search={questionSearch}
+            onSearchChange={setQuestionSearch}
+            matchCount={filteredQuestions.length}
+            totalCount={statusFilteredQuestions.length}
+            showSearch={board.questions.length > 0}
+            filterCounts={questionFilterCounts}
+            showMine={Boolean(currentSalesPersonId)}
+            showUnseen={unseenAnswersCount > 0}
+            searchLabel="Szukaj w pytaniach zespołu"
+            searchActive={Boolean(questionSearchNeedle)}
+          />
+
+          {questionSearchNeedle && filteredQuestions.length === 0 && statusFilteredQuestions.length > 0 ? (
+            <SalesListFilterEmptyHint
+              query={questionSearchNeedle}
+              onClear={clearQuestionSearch}
+              entityLabel="pytań"
+            />
+          ) : filteredQuestions.length === 0 ? (
+            <DepartmentBoardQuestionsEmpty domain="sales" filter={activeQuestionFilter} />
+          ) : (
+            <div className={boardQuestionListClass}>
+              {filteredQuestions.map((question) => (
+                <QuestionThreadCard
+                  key={`${question.id}:${unseenSet.has(question.id)}:${focusQuestionId === question.id}`}
+                  question={question}
                   embedded
-                  bleed
-                  visibleLabel="Szukaj w pytaniach"
-                  value={questionSearch}
-                  onChange={setQuestionSearch}
-                  matchCount={filteredQuestions.length}
-                  totalCount={statusFilteredQuestions.length}
-                  placeholder={salesSearchPlaceholder(SALES_SEARCH_COPY.boardQuestions)}
-                  searchLabel="Szukaj w pytaniach zespołu"
-                  showIdleHint={false}
-                  showActiveDetail={false}
-                  emptyMatchHint="Brak dopasowań — sprawdź temat, treść, autora lub odpowiedź."
+                  unseenReply={unseenSet.has(question.id)}
+                  autoMarkSeen={!tourDemo && !readOnly && question.status === "answered"}
+                  defaultExpanded={tourDemo || focusQuestionId === question.id}
+                  onChanged={refresh}
                 />
-              ) : null}
-              {questionSearchNeedle && filteredQuestions.length === 0 && statusFilteredQuestions.length > 0 ? (
-                <SalesListFilterEmptyHint
-                  query={questionSearchNeedle}
-                  onClear={() => setQuestionSearch("")}
-                  entityLabel="pytań"
-                />
-              ) : filteredQuestions.length === 0 ? (
-                <DepartmentBoardQuestionsEmpty domain="sales" filter={activeQuestionFilter} />
-              ) : (
-                <div className={cn(mojeShipmentListClass, "-mx-3 sm:-mx-4")}>
-                  {filteredQuestions.map((question) => (
-                    <QuestionThreadCard
-                      key={question.id}
-                      question={question}
-                      embedded
-                      unseenReply={unseenSet.has(question.id)}
-                      autoMarkSeen={!tourDemo && !readOnly && question.status === "answered"}
-                      defaultExpanded={
-                        tourDemo ||
-                        focusQuestionId === question.id ||
-                        unseenSet.has(question.id)
-                      }
-                      onChanged={refresh}
-                    />
-                  ))}
-                </div>
-              )}
-            </NotatnikPanel>
-          </div>
-        ) : null}
+              ))}
+            </div>
+          )}
+        </div>
       </Card>
       <AppBrandContentFooter mobileOnly variant="page" />
     </div>

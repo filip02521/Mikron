@@ -115,14 +115,14 @@ describe("sales onboarding steps", () => {
     expect(plan?.bullets[2]).toMatch(/Plan działu dostaw/i);
   });
 
-  it("tablica step uses full tab labels and distinguishes from prośba", () => {
+  it("tablica step focuses on questions and points announcements to moje", () => {
     const tablica = getSalesOnboardingSteps("sales").find((s) => s.id === "tablica");
     expect(tablica?.href).toBe("/tablica");
-    expect(tablica?.bullets.some((b) => /Ogłoszenia od zakupów/i.test(b))).toBe(true);
-    expect(tablica?.bullets.some((b) => /Pytania zespołu/i.test(b))).toBe(true);
+    expect(tablica?.title).toBe("Pytania zespołu");
+    expect(tablica?.bullets.some((b) => /Moje zamówienia/i.test(b))).toBe(true);
     expect(tablica?.bullets.some((b) => /Nowa prośba/i.test(b))).toBe(true);
     expect(tablica?.bullets.some((b) => /P:/i.test(b))).toBe(false);
-    expect(tablica?.tip).toMatch(/Przełącz zakładki/i);
+    expect(tablica?.tip).toMatch(/Zadaj pytanie/i);
   });
 
   it("finish step aligns email messaging with welcome", () => {

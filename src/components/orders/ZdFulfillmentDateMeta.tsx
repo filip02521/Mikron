@@ -1,7 +1,6 @@
 import { DeliveryDateMetaValue } from "@/components/orders/DeliveryDateMetaValue";
 import { DeliveryTimingMeta } from "@/components/orders/DeliveryTimingMeta";
 import { DeliveryUrgencyBadge } from "@/components/orders/DeliveryUrgencyBadge";
-import { ZdFulfillmentDeadlineChangeNotice } from "@/components/orders/ZdFulfillmentDeadlineChangeNotice";
 import { cn } from "@/lib/cn";
 import { formatPlDate } from "@/lib/display-labels";
 import {
@@ -71,9 +70,6 @@ export function ZdFulfillmentDateMeta({
   className,
   collapsed = false,
   lines = [],
-  onDismissDeadlineChange,
-  dismissDeadlineChangePending = false,
-  showDeadlineChangeDismiss = false,
 }: {
   fulfillment: MyOrderZdFulfillment;
   className?: string;
@@ -87,9 +83,6 @@ export function ZdFulfillmentDateMeta({
     | "zdEtaPending"
     | "historyEstimateLabel"
   >[];
-  onDismissDeadlineChange?: () => void;
-  dismissDeadlineChangePending?: boolean;
-  showDeadlineChangeDismiss?: boolean;
 }) {
   const slots = zdFulfillmentSlots(fulfillment);
   const multiple = zdFulfillmentHasMultipleSlots(fulfillment);
@@ -206,14 +199,6 @@ export function ZdFulfillmentDateMeta({
           {hint}
         </p>
       ))}
-      {deadlineChange ? (
-        <ZdFulfillmentDeadlineChangeNotice
-          change={deadlineChange}
-          compact
-          onDismiss={showDeadlineChangeDismiss ? onDismissDeadlineChange : undefined}
-          dismissPending={dismissDeadlineChangePending}
-        />
-      ) : null}
     </div>
   );
 }

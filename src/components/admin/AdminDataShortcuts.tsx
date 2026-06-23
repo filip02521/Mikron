@@ -1,6 +1,8 @@
 import Link from "next/link";
 import { LinkChevron } from "@/components/ui/UiGlyphs";
 import { Card, CardHeader } from "@/components/ui/Card";
+import { cn } from "@/lib/cn";
+import { panelTextLinkClass, panelTypography } from "@/lib/ui/ontime-theme";
 import { supplierHubPaths } from "@/lib/supplier-hub";
 
 const adminPaths = supplierHubPaths("admin");
@@ -29,8 +31,8 @@ const shortcuts = [
   },
   {
     href: "/admin/produkty",
-    title: "Produkty (baza własna)",
-    description: "Powiązania produkt ↔ dostawca (Subiekt tw_Id) + notatki i metryki.",
+    title: "Katalog produktów",
+    description: "Powiązania produkt ↔ dostawca, synchronizacja ZD i metryki.",
   },
 ] as const;
 
@@ -41,27 +43,34 @@ export function AdminDataShortcuts() {
         inset
         density="compact"
         title="Dane operacyjne"
-        description="Skróty do hubu dostawców i katalogu. Administrator domyślnie korzysta z wersji admin w menu po lewej."
+        description="Skróty do hubu dostawców i katalogu. Wersja admin dostawców jest też w menu po lewej."
       />
-      <ul className="divide-y divide-slate-100">
+      <div className="grid gap-3 px-3 pb-4 sm:grid-cols-2 sm:px-4 lg:px-5">
         {shortcuts.map((item) => (
-          <li key={item.href}>
-            <Link
-              href={item.href}
-              className="flex flex-col gap-0.5 px-3 py-3 transition hover:bg-slate-50/80 sm:flex-row sm:items-center sm:justify-between sm:px-4 lg:px-5"
+          <Link
+            key={item.href}
+            href={item.href}
+            className={cn(
+              "group flex min-h-[5.5rem] flex-col justify-between rounded-md border border-slate-200/90",
+              "bg-white p-3 transition hover:border-indigo-200/90 hover:bg-indigo-50/20"
+            )}
+          >
+            <div className="min-w-0">
+              <p className={panelTypography.rowTitle}>{item.title}</p>
+              <p className={cn(panelTypography.rowMeta, "mt-1")}>{item.description}</p>
+            </div>
+            <span
+              className={cn(
+                panelTextLinkClass,
+                "mt-3 inline-flex items-center gap-1 text-sm font-medium"
+              )}
             >
-              <div className="min-w-0">
-                <p className="font-medium text-slate-900">{item.title}</p>
-                <p className="mt-0.5 text-sm text-slate-500">{item.description}</p>
-              </div>
-              <span className="mt-2 inline-flex shrink-0 items-center gap-1 text-sm font-medium text-indigo-700 sm:mt-0">
-                Otwórz
-                <LinkChevron tone="brand" />
-              </span>
-            </Link>
-          </li>
+              Otwórz
+              <LinkChevron tone="brand" />
+            </span>
+          </Link>
         ))}
-      </ul>
+      </div>
     </Card>
   );
 }

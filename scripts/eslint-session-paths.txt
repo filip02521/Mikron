@@ -1,6 +1,5 @@
 src/components/auth/LoginAccountPicker.tsx
 src/components/department-board/AnnouncementCard.tsx
-src/components/department-board/DepartmentBoardIntroBanner.tsx
 src/components/department-board/DepartmentBoardProcurementClient.tsx
 src/components/department-board/DepartmentBoardSalesClient.tsx
 src/components/department-board/ProsbaVsBoardHint.tsx

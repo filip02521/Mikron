@@ -20,7 +20,7 @@ export const PAGE_TITLES = {
   plan: "Harmonogram",
   zk: "ZK czekające",
   notatnik: "Notatnik",
-  tablica: "Tablica",
+  tablica: "Pytania zespołu",
   podsumowanie: "Panel dzienny",
   kolejka: "Przyjęcie towaru",
   weryfikacja: "Weryfikacja",

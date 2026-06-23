@@ -66,9 +66,13 @@ export async function GET(request: NextRequest) {
   const deliveries = await readCronRun("process_deliveries");
   const morning = await readCronRun("morning_routine");
   const morningSync = await readCronRun("morning_sync");
+  const catalogZd = await readCronRun("catalog_zd_sync");
+  const zdEta = await readCronRun("zd_eta_sync");
   if (deliveries) checks.cron_process_deliveries = deliveries.at;
   if (morning) checks.cron_morning_routine = morning.at;
   if (morningSync) checks.cron_morning_sync = morningSync.at;
+  if (catalogZd) checks.cron_catalog_zd_sync = catalogZd.at;
+  if (zdEta) checks.cron_zd_eta_sync = zdEta.at;
 
   const healthy = issues.length === 0;
 

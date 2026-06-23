@@ -35,8 +35,17 @@ export function shouldShowMyOrderCollapsedDeliveryTiming(
     | "pickupPendingCount"
     | "cancelledAckOrderIds"
     | "cancelNoticeOrderIds"
+    | "zdFulfillment"
   >
 ): boolean {
+  const zd = row.zdFulfillment;
+  if (zd?.deadlineChange || zd?.deadline?.trim()) {
+    const hideForArrivedPickup =
+      (row.acknowledgeMode === "pickup" || row.acknowledgeMode === "availability") &&
+      row.pickupPendingCount > 0;
+    if (!hideForArrivedPickup) return true;
+  }
+
   if (row.acknowledgeMode === "pickup" && row.pickupPendingCount > 0) return false;
   if (row.acknowledgeMode === "availability" && row.pickupPendingCount > 0) return false;
   if (row.acknowledgeMode === "cancelled" && row.cancelledAckOrderIds.length > 0) {

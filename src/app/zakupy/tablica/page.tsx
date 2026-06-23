@@ -5,7 +5,9 @@ import { DepartmentBoardClient } from "@/components/department-board/DepartmentB
 import { fetchDepartmentBoard } from "@/lib/data/department-board";
 
 import type { Metadata } from "next";
+import { Suspense } from "react";
 import { pageMetadataFor } from "@/lib/ui/page-metadata";
+import ProcurementTablicaLoading from "./loading";
 
 export const metadata: Metadata = pageMetadataFor("procurementBoard");
 
@@ -38,17 +40,29 @@ export default async function ProcurementBoardPage({
   if (widok === "pytania") initialTab = "questions";
   if (widok === "ogloszenia") initialTab = "announcements";
 
-  const focusQuestionId = widok === "pytania" ? focusThreadId : null;
-  const focusAnnouncementId = widok === "ogloszenia" ? focusThreadId : null;
+  let focusQuestionId = widok === "pytania" ? focusThreadId : null;
+  let focusAnnouncementId = widok === "ogloszenia" ? focusThreadId : null;
+
+  if (focusThreadId && !widok) {
+    if (board.questions.some((question) => question.id === focusThreadId)) {
+      focusQuestionId = focusThreadId;
+      initialTab = "questions";
+    } else if (board.announcements.some((announcement) => announcement.id === focusThreadId)) {
+      focusAnnouncementId = focusThreadId;
+      initialTab = "announcements";
+    }
+  }
 
   return (
-    <DepartmentBoardClient
-      initial={board}
-      audience="procurement"
-      loadError={loadError}
-      initialTab={initialTab}
-      focusQuestionId={focusQuestionId}
-      focusAnnouncementId={focusAnnouncementId}
-    />
+    <Suspense fallback={<ProcurementTablicaLoading />}>
+      <DepartmentBoardClient
+        initial={board}
+        audience="procurement"
+        loadError={loadError}
+        initialTab={initialTab}
+        focusQuestionId={focusQuestionId}
+        focusAnnouncementId={focusAnnouncementId}
+      />
+    </Suspense>
   );
 }

@@ -13,6 +13,11 @@ import { formatProsbaZkLinkNumber } from "@/lib/orders/zk-prosba-link-display";
 import { buildNotatnikPageHref } from "@/lib/sales/notepad-page-tabs";
 import { appendMojeFocusOrderIds } from "@/lib/orders/moje-order-focus";
 import { mojeSectionDomId } from "@/lib/orders/moje-section-focus";
+import {
+  MOJE_ANNOUNCEMENTS_SECTION_ID,
+  salesMojeAnnouncementHref,
+  salesMojeAnnouncementsListHref,
+} from "@/lib/department-board/moje-announcements-ui";
 import type { SalesNote, SalesZkWatch } from "@/types/database";
 
 export type SalesDayStartSource =
@@ -234,8 +239,8 @@ function buildBoardItems(
     const preview = board.unseenAnswerPreview;
     const href =
       board.unseenAnswerCount === 1 && preview
-        ? `/tablica${previewQs}${previewQs ? "&" : "?"}widok=pytania&watek=${preview.threadId}`
-        : `/tablica${previewQs}${previewQs ? "&" : "?"}widok=pytania`;
+        ? `/tablica${previewQs}${previewQs ? "&" : "?"}watek=${preview.threadId}`
+        : `/tablica${previewQs}`;
 
     items.push({
       id: "board-answers",
@@ -259,8 +264,8 @@ function buildBoardItems(
     const latestId = board.unreadAnnouncementBannerLatestId;
     const href =
       board.unreadAnnouncementBannerCount === 1 && latestId
-        ? `/tablica${previewQs}${previewQs ? "&" : "?"}widok=ogloszenia&watek=${encodeURIComponent(latestId)}`
-        : `/tablica${previewQs}${previewQs ? "&" : "?"}widok=ogloszenia`;
+        ? salesMojeAnnouncementHref(latestId, { previewDla })
+        : salesMojeAnnouncementsListHref({ previewDla });
 
     items.push({
       id: "board-announcements",
@@ -272,6 +277,7 @@ function buildBoardItems(
           : `${board.unreadAnnouncementBannerCount} nowe ogłoszenia`,
       subtitle: board.unreadAnnouncementBannerLatestTitle ?? undefined,
       href,
+      scrollTarget: MOJE_ANNOUNCEMENTS_SECTION_ID,
       count: board.unreadAnnouncementBannerCount,
       ctaLabel: "Przeczytaj",
     });

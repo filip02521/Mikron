@@ -28,6 +28,17 @@ export function normalizeOrderDateKey(value: string | null | undefined): string 
   return parsed ? formatDateString(parsed) : null;
 }
 
+/** Termin ZD równy dniu złożenia zamówienia u dostawcy (bez sprawdzania changed_at). */
+export function deadlineMatchesPlacementDay(
+  deadline: string | null | undefined,
+  placementAt: string | null | undefined
+): boolean {
+  const deadlineKey = normalizeOrderDateKey(deadline);
+  const placementKey = normalizeOrderDateKey(placementAt);
+  if (!deadlineKey || !placementKey) return false;
+  return deadlineKey === placementKey;
+}
+
 /**
  * Termin ZD równy dniu złożenia zamówienia u dostawcy i bez późniejszej korekty —
  * typowy placeholder z Subiekta, nie realna data dostawy dla handlowca.
@@ -38,10 +49,7 @@ export function isPlaceholderZdFulfillmentDeadline(input: {
   deadlineChangedAt?: string | null;
 }): boolean {
   if (input.deadlineChangedAt?.trim()) return false;
-  const deadlineKey = normalizeOrderDateKey(input.deadline);
-  const placementKey = normalizeOrderDateKey(input.placementAt);
-  if (!deadlineKey || !placementKey) return false;
-  return deadlineKey === placementKey;
+  return deadlineMatchesPlacementDay(input.deadline, input.placementAt);
 }
 
 export function resolvePlaceholderZdFulfillmentDeadlineFromOrder(

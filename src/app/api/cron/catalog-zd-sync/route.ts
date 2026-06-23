@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { authorizeCronRequest } from "@/lib/services/cron-auth";
 import { recordCronRun, type CronRunPayload } from "@/lib/services/cron-run-log";
 import {
+  CATALOG_ZD_SYNC_CRON_BUDGET_MS,
   isWarsawCatalogSyncWindow,
   runCatalogZdSync,
 } from "@/lib/subiekt/catalog-zd-sync";
@@ -9,7 +10,7 @@ import { runZdEtaSyncGlobalBackup } from "@/lib/subiekt/zd-eta-sync";
 import { recordCronSkipped, warsawCronContext } from "@/lib/time/warsaw-cron";
 
 export const dynamic = "force-dynamic";
-export const maxDuration = 300;
+export const maxDuration = 900;
 
 /**
  * Nocna synchronizacja katalogu produktów ze Subiekta (indeks ZD + import linii).
@@ -33,7 +34,7 @@ export async function GET(request: NextRequest) {
   }
 
   try {
-    const result = await runCatalogZdSync({ force, maxDurationMs: 4 * 60 * 1000 });
+    const result = await runCatalogZdSync({ force, maxDurationMs: CATALOG_ZD_SYNC_CRON_BUDGET_MS });
 
     const detail: Record<string, unknown> = {
       skipped: result.skipped ?? false,
@@ -50,8 +51,14 @@ export async function GET(request: NextRequest) {
       runId: result.state.runId,
     };
 
+    const partialContinuation =
+      result.timedOut &&
+      !result.subiektOffline &&
+      !result.skipped &&
+      !result.state.lastError;
+
     const payload: Omit<CronRunPayload, "at"> = {
-      ok: result.ok && !result.subiektOffline,
+      ok: (result.ok && !result.subiektOffline) || partialContinuation,
       detail,
       error: result.state.lastError ?? (result.subiektOffline ? "subiekt_offline" : undefined),
     };

@@ -9,7 +9,6 @@ describe("countUnreadAnnouncements", () => {
           { id: "a1" } as never,
           { id: "a2" } as never,
         ],
-        questions: [],
         readAnnouncementIds: ["a1"],
       })
     ).toBe(1);

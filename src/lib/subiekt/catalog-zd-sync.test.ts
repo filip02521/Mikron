@@ -13,7 +13,7 @@ describe("catalogSyncDataOd", () => {
     expect(od).toBe(expected.toISOString().slice(0, 10));
   });
 
-  it("domyślnie 21 dni", () => {
+  it("domyślnie 365 dni", () => {
     const od = catalogSyncDataOd();
     const expected = new Date();
     expected.setDate(expected.getDate() - CATALOG_SYNC_DAYS_BACK);

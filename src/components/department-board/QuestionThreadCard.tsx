@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Button } from "@/components/ui/Button";
 import { IconChevronDown } from "@/components/icons/StrokeIcons";
 import {
@@ -13,13 +13,20 @@ import {
 import {
   BOARD_PROCUREMENT_AUTHOR_LABEL,
   boardAwaitingReplyClass,
+  boardProcurementReplyShellClass,
+  boardQuestionPreviewClass,
   boardQuestionRowClass,
+  boardQuestionStatusBadgeClass,
   boardQuestionUnseenDotClass,
 } from "@/lib/department-board/department-board-thread-styles";
+import {
+  boardQuestionExpandedShellClass,
+  boardQuestionInlineReplyShellClass,
+  boardQuestionRowHeaderClass,
+} from "@/lib/department-board/department-board-questions-ui";
 import type { DepartmentBoardQuestion } from "@/lib/data/department-board";
 import { NOTATNIK_TEXTAREA_CLASS } from "@/components/notatnik/notatnik-layout";
 import { cn } from "@/lib/cn";
-import { mojeShipmentExpandedPanelClass, mojeShipmentExpandedRowShellClass } from "@/lib/ui/moje-shipment-row-styles";
 import { salesTypography } from "@/lib/ui/ontime-theme";
 import {
   actionArchiveQuestion,
@@ -27,20 +34,32 @@ import {
   actionReplyToQuestion,
 } from "@/app/actions/department-board";
 
+function procurementReplyLabel(indexAmongProcurement: number): string {
+  return indexAmongProcurement === 0 ? "Odpowiedź" : "Doprecyzowanie";
+}
+
 function ThreadMessage({
   authorLabel,
   body,
   createdAt,
   tone = "default",
+  replyKind,
 }: {
   authorLabel: string;
   body: string;
   createdAt: string;
   tone?: "default" | "procurement";
+  replyKind?: string;
 }) {
-  return (
+  const content = (
     <div className="space-y-1">
       <p className={salesTypography.rowMeta}>
+        {replyKind ? (
+          <>
+            <span className="font-semibold text-slate-600">{replyKind}</span>
+            <span className="text-slate-400"> · </span>
+          </>
+        ) : null}
         <span
           className={cn(
             "font-medium",
@@ -55,6 +74,12 @@ function ThreadMessage({
       <p className="whitespace-pre-wrap text-sm leading-relaxed text-slate-800">{body}</p>
     </div>
   );
+
+  if (tone === "procurement") {
+    return <div className={boardProcurementReplyShellClass}>{content}</div>;
+  }
+
+  return content;
 }
 
 export function QuestionThreadCard({
@@ -77,43 +102,73 @@ export function QuestionThreadCard({
   onChanged?: () => void;
 }) {
   const [expanded, setExpanded] = useState(defaultExpanded);
+  const [inlineReply, setInlineReply] = useState(false);
   const [locallySeen, setLocallySeen] = useState(!unseenReply);
   const [reply, setReply] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const questionSyncKey = `${question.id}\0${unseenReply}\0${defaultExpanded}`;
-  const [storedQuestionSyncKey, setStoredQuestionSyncKey] = useState(questionSyncKey);
-  if (questionSyncKey !== storedQuestionSyncKey) {
-    setStoredQuestionSyncKey(questionSyncKey);
-    setLocallySeen(!unseenReply);
-    setExpanded(defaultExpanded);
-  }
+  const expandedByUserRef = useRef(false);
+  const markSeenRequestedRef = useRef(false);
 
   const author = questionAuthorLabel(question.sales_person, question.author);
   const isOpen = question.status === "open";
   const replyCount = question.posts.length;
   const showUnseen = unseenReply && !locallySeen;
+
+  const latestActivityPost = useMemo(() => {
+    if (question.posts.length === 0) return null;
+    return question.posts.reduce((latest, post) =>
+      post.created_at > latest.created_at ? post : latest
+    );
+  }, [question.posts]);
+
   const previewLine = useMemo(() => {
     if (expanded) return null;
-    const answer = question.posts.find((post) =>
-      isOperationsAuthorRole(post.author?.role ?? null)
-    );
-    if (answer) return answer.body;
-    if (question.posts[0]) return question.posts[0].body;
+    if (latestActivityPost) {
+      const fromOps = isOperationsAuthorRole(latestActivityPost.author?.role ?? null);
+      const label = fromOps
+        ? BOARD_PROCUREMENT_AUTHOR_LABEL
+        : authorLabelFromProfile(latestActivityPost.author);
+      return `${label}: ${latestActivityPost.body}`;
+    }
     return question.body;
-  }, [expanded, question.body, question.posts]);
+  }, [expanded, latestActivityPost, question.body]);
+
+  let procurementReplyIndex = 0;
 
   useEffect(() => {
     if (!expanded || !autoMarkSeen || !showUnseen || question.posts.length === 0) return;
+    if (!expandedByUserRef.current && !defaultExpanded) return;
+    if (markSeenRequestedRef.current) return;
+
+    markSeenRequestedRef.current = true;
     void actionMarkQuestionThreadSeen(question.id)
       .then(() => {
         setLocallySeen(true);
         onChanged?.();
       })
       .catch(() => {
-        /* badge zniknie po odświeżeniu */
+        markSeenRequestedRef.current = false;
       });
-  }, [expanded, autoMarkSeen, showUnseen, question.id, question.posts.length, onChanged]);
+  }, [
+    expanded,
+    autoMarkSeen,
+    showUnseen,
+    defaultExpanded,
+    question.id,
+    question.posts.length,
+    onChanged,
+  ]);
+
+  function toggleExpanded() {
+    expandedByUserRef.current = true;
+    setExpanded((open) => {
+      if (!open) {
+        setInlineReply(false);
+      }
+      return !open;
+    });
+  }
 
   async function submitReply() {
     setBusy(true);
@@ -121,6 +176,7 @@ export function QuestionThreadCard({
     try {
       await actionReplyToQuestion(question.id, reply);
       setReply("");
+      setInlineReply(false);
       onChanged?.();
     } catch (e) {
       setError(e instanceof Error ? e.message : "Nie udało się wysłać odpowiedzi.");
@@ -150,58 +206,100 @@ export function QuestionThreadCard({
         ? boardReplyCountLabel(replyCount)
         : "Odpowiedziano";
 
+  const showInlineReplyForm = inlineReply && !expanded && canReply;
+  const expandLabel = `Pytanie: ${question.title}`;
+
   return (
     <article
       id={`question-${question.id}`}
       className={cn(
         embedded
           ? boardQuestionRowClass({ unseen: showUnseen, open: isOpen, expanded })
-          : "rounded-md border border-slate-200/90 bg-white shadow-sm",
-        embedded && expanded && mojeShipmentExpandedRowShellClass
+          : "rounded-md border border-slate-200/90 bg-white shadow-sm"
       )}
     >
-      <button
-        type="button"
-        className="flex w-full items-start gap-2 px-3 py-3 text-left sm:gap-2.5 sm:px-4"
-        onClick={() => setExpanded((v) => !v)}
-        aria-expanded={expanded}
-      >
-        <IconChevronDown
-          open={expanded}
-          size={16}
-          className="mt-0.5 shrink-0 text-slate-400"
-        />
-        <span className="min-w-0 flex-1 space-y-1">
-          <span className="flex min-w-0 items-center gap-2">
-            {showUnseen ? (
-              <span className={boardQuestionUnseenDotClass} aria-hidden />
-            ) : null}
-            <span className={cn(salesTypography.rowTitle, "min-w-0 truncate")}>
-              {question.title}
+      <div className="flex items-start gap-1 pr-2 sm:pr-3">
+        <button
+          type="button"
+          className={cn("min-w-0 flex-1 text-left", boardQuestionRowHeaderClass)}
+          onClick={toggleExpanded}
+          aria-expanded={expanded}
+          aria-label={expandLabel}
+        >
+          <span className="flex items-start gap-2 sm:gap-2.5">
+            <IconChevronDown
+              open={expanded}
+              size={16}
+              className="mt-0.5 shrink-0 text-slate-400"
+            />
+            <span className="min-w-0 flex-1 space-y-1">
+              <span className="flex min-w-0 flex-wrap items-center gap-2">
+                {showUnseen ? (
+                  <span className={boardQuestionUnseenDotClass} aria-hidden />
+                ) : null}
+                <span className={cn(salesTypography.rowTitle, "min-w-0 truncate")}>
+                  {question.title}
+                </span>
+                <span
+                  className={boardQuestionStatusBadgeClass({ unseen: showUnseen, open: isOpen })}
+                >
+                  {statusLabel}
+                </span>
+              </span>
+              <span className={cn(salesTypography.rowMeta, "block")}>
+                {author}
+                <span className="text-slate-400"> · </span>
+                {formatBoardDate(question.created_at)}
+              </span>
+              {previewLine ? (
+                <span className={boardQuestionPreviewClass}>{previewLine}</span>
+              ) : null}
             </span>
           </span>
-          <span className={cn(salesTypography.rowMeta, "block")}>
-            {author}
-            <span className="text-slate-400"> · </span>
-            {formatBoardDate(question.created_at)}
-            <span className="text-slate-400"> · </span>
-            <span
-              className={cn(
-                isOpen && "font-medium text-amber-800",
-                showUnseen && !isOpen && "font-medium text-sky-700"
-              )}
-            >
-              {statusLabel}
-            </span>
-          </span>
-          {previewLine ? (
-            <span className={cn(salesTypography.rowBody, "block truncate")}>{previewLine}</span>
-          ) : null}
-        </span>
-      </button>
+        </button>
+
+        {canReply && !expanded ? (
+          <Button
+            type="button"
+            size="sm"
+            variant="secondary"
+            className="mt-2.5 shrink-0"
+            disabled={busy}
+            onClick={() => {
+              setInlineReply((v) => !v);
+              setError(null);
+            }}
+          >
+            {inlineReply ? "Anuluj" : "Odpowiedz"}
+          </Button>
+        ) : null}
+      </div>
+
+      {showInlineReplyForm ? (
+        <div className={boardQuestionInlineReplyShellClass}>
+          <label
+            className={cn(salesTypography.rowMeta, "block font-medium text-slate-600")}
+            htmlFor={`inline-reply-${question.id}`}
+          >
+            {isOpen ? "Odpowiedź zakupów" : "Doprecyzowanie (widoczne dla wszystkich)"}
+          </label>
+          <textarea
+            id={`inline-reply-${question.id}`}
+            rows={3}
+            value={reply}
+            onChange={(e) => setReply(e.target.value)}
+            placeholder="Treść wiadomości…"
+            className={cn(NOTATNIK_TEXTAREA_CLASS, "w-full text-sm")}
+          />
+          <Button size="sm" disabled={busy || !reply.trim()} onClick={() => void submitReply()}>
+            {busy ? "Wysyłanie…" : "Wyślij"}
+          </Button>
+          {error ? <p className="text-xs text-red-600">{error}</p> : null}
+        </div>
+      ) : null}
 
       {expanded ? (
-        <div className={cn(mojeShipmentExpandedPanelClass, "space-y-4")}>
+        <div className={boardQuestionExpandedShellClass}>
           <ThreadMessage
             authorLabel={author}
             body={question.body}
@@ -211,9 +309,12 @@ export function QuestionThreadCard({
           {question.posts.length === 0 ? (
             <p className={boardAwaitingReplyClass}>Zakupy jeszcze nie odpowiedziały.</p>
           ) : (
-            <div className="space-y-4 border-t border-slate-100 pt-3">
+            <div className="space-y-3">
               {question.posts.map((post) => {
                 const fromOps = isOperationsAuthorRole(post.author?.role ?? null);
+                const replyKind = fromOps
+                  ? procurementReplyLabel(procurementReplyIndex++)
+                  : undefined;
                 return (
                   <ThreadMessage
                     key={post.id}
@@ -225,6 +326,7 @@ export function QuestionThreadCard({
                     body={post.body}
                     createdAt={post.created_at}
                     tone={fromOps ? "procurement" : "default"}
+                    replyKind={replyKind}
                   />
                 );
               })}
@@ -253,7 +355,9 @@ export function QuestionThreadCard({
             </div>
           ) : null}
 
-          {error ? <p className="text-xs text-red-600">{error}</p> : null}
+          {error && !showInlineReplyForm ? (
+            <p className="text-xs text-red-600">{error}</p>
+          ) : null}
 
           {canArchive ? (
             <Button size="sm" variant="ghost" disabled={busy} onClick={() => void archive()}>

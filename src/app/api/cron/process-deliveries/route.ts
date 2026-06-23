@@ -24,7 +24,19 @@ export async function GET(request: NextRequest) {
   }
 
   try {
-    const result = await processMarkedDeliveries();
+    const result = await processMarkedDeliveries({ lockedBy: "cron-process-deliveries" });
+
+    if (result.skipped) {
+      await recordCronSkipped("process_deliveries", result.skipReason ?? "skipped", {
+        lockHeld: true,
+      });
+      return NextResponse.json({
+        success: true,
+        skipped: true,
+        reason: result.skipReason ?? "skipped",
+      });
+    }
+
     const hasEmailIssues = result.emailFailures.length > 0;
     const emailNotConfigured =
       isProductionRuntime() && !isEmailConfigured() && result.processed > 0;
@@ -45,27 +57,22 @@ export async function GET(request: NextRequest) {
     });
 
     if (hasEmailIssues) {
-      return NextResponse.json(
-        {
-          success: false,
-          processed: result.processed,
-          emailSent: result.emailSent,
-          emailFailures: result.emailFailures,
-        },
-        { status: 207 }
-      );
+      return NextResponse.json({
+        success: false,
+        processed: result.processed,
+        emailSent: result.emailSent,
+        emailFailures: result.emailFailures,
+        warning: "Statusy zaktualizowane — część e-maili nie wyszła",
+      });
     }
 
     if (emailNotConfigured) {
-      return NextResponse.json(
-        {
-          success: false,
-          processed: result.processed,
-          emailSent: result.emailSent,
-          warning: "E-mail nie skonfigurowany — statusy zaktualizowane, powiadomienia nie wysłane",
-        },
-        { status: 207 }
-      );
+      return NextResponse.json({
+        success: false,
+        processed: result.processed,
+        emailSent: result.emailSent,
+        warning: "E-mail nie skonfigurowany — statusy zaktualizowane, powiadomienia nie wysłane",
+      });
     }
 
     return NextResponse.json({

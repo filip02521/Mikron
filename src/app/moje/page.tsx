@@ -43,7 +43,9 @@ import { SalesPageAlerts } from "@/components/sales/SalesPageAlerts";
 import { SystemNotice } from "@/components/ui/SystemNotice";
 import {
   fetchSalesBoardAttentionSnapshot,
+  fetchDepartmentBoardAnnouncements,
   type SalesBoardAttentionSnapshot,
+  type DepartmentBoardAnnouncementsSlice,
 } from "@/lib/data/department-board";
 import { fetchSalesDayStartNotepadSlice } from "@/lib/data/sales-notepad";
 import {
@@ -68,6 +70,7 @@ export default async function MojePage({
     zkWatch?: string;
     zk?: string;
     focusOrders?: string;
+    ogloszenie?: string;
   }>;
 }) {
   const {
@@ -78,6 +81,7 @@ export default async function MojePage({
     zkWatch: zkWatchParam,
     zk: zkNumberParam,
     focusOrders: focusOrdersParam,
+    ogloszenie: focusAnnouncementParam,
   } = await searchParams;
   const parsedKh = khParam ? Math.trunc(Number(khParam)) : null;
   const initialClientKhId =
@@ -98,6 +102,7 @@ export default async function MojePage({
   let sessionUserId: string | null = null;
   let boardAttention: SalesBoardAttentionSnapshot | null = null;
   let dayStartContext: SalesDayStartContext | null = null;
+  let boardAnnouncements: DepartmentBoardAnnouncementsSlice | null = null;
 
   try {
     const user = await getSessionUser();
@@ -181,6 +186,11 @@ export default async function MojePage({
   const adminSalesPreview = Boolean(role === "admin" && previewSalesPersonId && salesPersonId);
   const salesPanelView =
     (isSalesAccount(role ?? "sales") && salesPersonId) || adminSalesPreview;
+  /** Ogłoszenia są działowe — pokazuj zalogowanemu użytkownikowi (także w podglądzie ?dla=). */
+  const loadMojeAnnouncements = Boolean(
+    sessionUserId && (isSalesAccount(role ?? "sales") || adminSalesPreview)
+  );
+  let boardAnnouncementsError: string | null = null;
   /** Własny panel lub podgląd cudzego konta (kierownik / admin) — ten sam widok listy + archiwum RO. */
   const showSalesPersonOrdersPanel = Boolean(
     salesPanelView && salesPersonId && (viewingOwnPanel || isTeamPreview)
@@ -190,7 +200,7 @@ export default async function MojePage({
 
   try {
     if (salesPanelView && salesPersonId) {
-      const [orderRows, statsRows, acknowledgedRows, supplierRows, boardSnap, notepadData] =
+      const [orderRows, statsRows, acknowledgedRows, supplierRows, boardSnap, notepadData, announcementsSlice] =
         await Promise.all([
         fetchIndividualOrders({
           salesPersonId,
@@ -210,8 +220,19 @@ export default async function MojePage({
         viewingOwnPanel
           ? fetchSalesDayStartNotepadSlice(salesPersonId).catch(() => null)
           : Promise.resolve(null),
+        loadMojeAnnouncements
+          ? fetchDepartmentBoardAnnouncements(sessionUserId!).catch((e) => {
+              boardAnnouncementsError =
+                e instanceof Error
+                  ? e.message
+                  : "Nie udało się załadować ogłoszeń od zakupów.";
+              console.error("[moje/page] fetchDepartmentBoardAnnouncements", e);
+              return null;
+            })
+          : Promise.resolve(null),
       ]);
       boardAttention = boardSnap;
+      boardAnnouncements = announcementsSlice;
       notepadSlice = notepadData;
       orders = orderRows;
       stats = statsRows as DeliveryStats[];
@@ -392,6 +413,9 @@ export default async function MojePage({
         zdEtaSyncMountCount={zdEtaSyncMountCount}
         zdEtaSyncEligibleCount={zdEtaSyncEligibleCount}
         dayStartContext={dayStartContext}
+        boardAnnouncements={boardAnnouncements}
+        boardAnnouncementsError={boardAnnouncementsError}
+        focusAnnouncementId={focusAnnouncementParam?.trim() || null}
       />
     </div>
   );

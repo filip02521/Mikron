@@ -1,5 +1,6 @@
 import type { CatalogZdSyncState } from "@/lib/subiekt/catalog-zd-sync";
 import type { CronRunPayload } from "@/lib/services/cron-run-log";
+import { formatWarsawDateTime } from "@/lib/time/warsaw";
 
 export type CatalogZdSyncSummary = {
   headline: string;
@@ -23,12 +24,11 @@ const PHASE_LABEL: Record<CatalogZdSyncState["phase"], string> = {
 
 function formatWarsawShort(iso: string | null | undefined): string {
   if (!iso) return "—";
-  return iso.slice(0, 19).replace("T", " ");
+  return formatWarsawDateTime(iso).slice(0, 16);
 }
 
 export function catalogZdSyncNeedsContinue(state: CatalogZdSyncState | null | undefined): boolean {
   if (!state) return false;
-  if (state.status === "running") return false;
   if (state.status === "failed") return true;
   if (state.status === "done") return false;
   return !state.indexComplete || !state.importComplete;

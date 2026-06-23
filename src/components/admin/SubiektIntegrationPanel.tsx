@@ -18,6 +18,11 @@ import { Badge } from "@/components/ui/Badge";
 import { Alert } from "@/components/ui/Alert";
 import { Spinner } from "@/components/ui/Spinner";
 import { Input } from "@/components/ui/Field";
+import { HelpBlock } from "@/components/ui/HelpBlock";
+import { HelpPopover } from "@/components/ui/HelpPopover";
+import { PanelSummaryMetric } from "@/components/ui/PanelSummaryMetric";
+import { cn } from "@/lib/cn";
+import { panelTypography } from "@/lib/ui/ontime-theme";
 
 const AUTH_LABELS: Record<SubiektAuthMode, string> = {
   bearer: "Bearer (klucz API)",
@@ -36,6 +41,40 @@ function formatSupplier(k: SubiektKontrahent): string {
   const sym = k.kh_Symbol ?? "—";
   const name = k.adr_NazwaPelna ?? k.adr_Nazwa ?? "";
   return `${sym}${name ? ` — ${name}` : ""}`;
+}
+
+function LookupResults({
+  title,
+  items,
+}: {
+  title: string;
+  items: { id: number; label: string }[];
+}) {
+  if (!items.length) return null;
+
+  return (
+    <div className="overflow-hidden rounded-md border border-slate-200/90 bg-white">
+      <p className="border-b border-slate-100 bg-slate-50/80 px-3 py-2 text-[11px] font-semibold uppercase tracking-wide text-slate-500">
+        {title}
+      </p>
+      <ul className="divide-y divide-slate-100">
+        {items.map((item) => (
+          <li key={item.id} className="px-3 py-2 text-sm text-slate-800">
+            {item.label}
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+
+function shortApiHost(url: string | null): string {
+  if (!url) return "—";
+  try {
+    return new URL(url).host;
+  } catch {
+    return url.length > 36 ? `${url.slice(0, 33)}…` : url;
+  }
 }
 
 export function SubiektIntegrationPanel({
@@ -75,9 +114,7 @@ export function SubiektIntegrationPanel({
         const result = await actionTestSubiektConnection();
         setTestOk(result.ok);
         if (result.ok && !result.feedback) {
-          setTestSuccessDetail(
-            result.message ?? "Połączenie działa."
-          );
+          setTestSuccessDetail(result.message ?? "Połączenie działa.");
           setTestFeedback(null);
         } else if (result.feedback) {
           setTestFeedback(result.feedback);
@@ -126,33 +163,59 @@ export function SubiektIntegrationPanel({
     });
   };
 
+  const productItems =
+    productResults?.map((p) => ({ id: p.tw_Id, label: formatProduct(p) })) ?? [];
+  const supplierItems =
+    supplierResults?.map((k) => ({ id: k.kh_Id, label: formatSupplier(k) })) ?? [];
+
   return (
     <Card padding={false} className="overflow-hidden">
       <CardHeader
         inset
         density="compact"
         title="Integracja Subiekt"
-        description="REST API v1 w sieci LAN (odczyt). Komunikaty błędów: src/lib/subiekt/feedback.ts"
+        description="REST API v1 w sieci LAN — odczyt towarów, dostawców i ZD dla katalogu."
         action={
-          <Badge variant={configured ? "success" : "warning"}>
-            {configured ? "Skonfigurowane" : "Brak konfiguracji"}
-          </Badge>
+          <div className="flex flex-wrap items-center justify-end gap-2">
+            <HelpPopover
+              label="Pomoc — integracja Subiekt"
+              title="Subiekt GT — REST API"
+              shortLabel="Pomoc"
+            >
+              <HelpBlock title="Konfiguracja">
+                <p>
+                  Adres API i uwierzytelnianie ustawiasz w zmiennych środowiskowych serwera. System
+                  łączy się tylko odczytem — zapis realizacji odbywa się w panelu OnTime.
+                </p>
+              </HelpBlock>
+              <HelpBlock title="Test odczytu">
+                <p>
+                  Po udanym teście połączenia możesz wyszukać towar lub dostawcę — to szybka
+                  diagnostyka sieci LAN, nie pełny import katalogu.
+                </p>
+              </HelpBlock>
+            </HelpPopover>
+            <Badge variant={configured ? "success" : "warning"}>
+              {configured ? "Skonfigurowane" : "Brak konfiguracji"}
+            </Badge>
+          </div>
         }
       />
       <div className="space-y-4 px-3 pb-4 sm:px-4 lg:px-5">
         {configured ? (
-          <dl className="grid gap-2 text-sm sm:grid-cols-2">
-            <div>
-              <dt className="text-slate-500">Adres API</dt>
-              <dd className="font-mono text-xs text-slate-900">{baseUrl}</dd>
-            </div>
-            <div>
-              <dt className="text-slate-500">Uwierzytelnianie</dt>
-              <dd className="text-slate-900">
-                {authMode ? AUTH_LABELS[authMode] : "—"}
-              </dd>
-            </div>
-          </dl>
+          <div className="grid gap-3 sm:grid-cols-2">
+            <PanelSummaryMetric
+              label="Adres API"
+              value={shortApiHost(baseUrl)}
+              hint={baseUrl ?? "—"}
+            />
+            <PanelSummaryMetric
+              label="Uwierzytelnianie"
+              value={authMode ? AUTH_LABELS[authMode].split("(")[0].trim() : "—"}
+              hint={authMode ? AUTH_LABELS[authMode] : "Nie ustawiono"}
+              tone={authMode ? "success" : "warning"}
+            />
+          </div>
         ) : (
           <SubiektFeedbackAlert feedback={getSubiektFeedback("not_configured")} />
         )}
@@ -178,12 +241,20 @@ export function SubiektIntegrationPanel({
         </div>
 
         {configured ? (
-          <div className="space-y-4 border-t border-slate-200 pt-4">
-            <p className="text-sm font-medium text-slate-800">Szybki test odczytu (LAN)</p>
+          <div className="space-y-4 rounded-md border border-slate-200/90 bg-slate-50/30 p-3 sm:p-4">
+            <div>
+              <p className={panelTypography.sectionLabel}>Szybki test odczytu</p>
+              <p className={cn(panelTypography.sectionDesc, "mt-1")}>
+                Wyszukiwanie po symbolu, nazwie lub NIP — wyniki z API Subiekta w LAN.
+              </p>
+            </div>
 
             <div className="flex flex-col gap-2 sm:flex-row sm:items-end">
               <div className="min-w-0 flex-1">
-                <label className="mb-1 block text-xs text-slate-500" htmlFor="subiekt-product-q">
+                <label
+                  className="mb-1.5 block text-[11px] font-semibold uppercase tracking-wide text-slate-500"
+                  htmlFor="subiekt-product-q"
+                >
                   Symbol / towar
                 </label>
                 <Input
@@ -206,7 +277,10 @@ export function SubiektIntegrationPanel({
 
             <div className="flex flex-col gap-2 sm:flex-row sm:items-end">
               <div className="min-w-0 flex-1">
-                <label className="mb-1 block text-xs text-slate-500" htmlFor="subiekt-supplier-q">
+                <label
+                  className="mb-1.5 block text-[11px] font-semibold uppercase tracking-wide text-slate-500"
+                  htmlFor="subiekt-supplier-q"
+                >
                   Dostawca
                 </label>
                 <Input
@@ -229,28 +303,15 @@ export function SubiektIntegrationPanel({
 
             {lookupFeedback ? <SubiektFeedbackAlert feedback={lookupFeedback} /> : null}
 
-            {productResults && productResults.length > 0 ? (
-              <ul className="list-inside list-disc text-sm text-slate-700">
-                {productResults.map((p) => (
-                  <li key={p.tw_Id}>{formatProduct(p)}</li>
-                ))}
-              </ul>
+            {productItems.length > 0 ? (
+              <LookupResults title="Towary" items={productItems} />
             ) : null}
 
-            {supplierResults && supplierResults.length > 0 ? (
-              <ul className="list-inside list-disc text-sm text-slate-700">
-                {supplierResults.map((k) => (
-                  <li key={k.kh_Id}>{formatSupplier(k)}</li>
-                ))}
-              </ul>
+            {supplierItems.length > 0 ? (
+              <LookupResults title="Dostawcy" items={supplierItems} />
             ) : null}
           </div>
         ) : null}
-
-        <p className="text-xs leading-relaxed text-slate-500">
-          Słownik komunikatów:{" "}
-          <code className="rounded bg-slate-100 px-1">src/lib/subiekt/feedback.ts</code>
-        </p>
       </div>
     </Card>
   );

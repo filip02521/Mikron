@@ -137,11 +137,16 @@ BASE=${BASE_URL}
 # Pon–pt co 2 h 8–18 — backup sync terminów ZD (w godzinach pracy)
 0 8,10,12,14,16,18 * * 1-5 root curl -fsS -H "Authorization: Bearer \$CRON_SECRET" "\$BASE/api/cron/zd-eta-sync" >> /var/log/system-dostaw-cron.log 2>&1
 
-# Noc 02:00 — synchronizacja katalogu ZD (wymaga Subiekta w LAN)
+# Noc 02:00–04:40 co 20 min — synchronizacja katalogu ZD (do ~14 min na wywołanie)
 0 2 * * * root curl -fsS -H "Authorization: Bearer \$CRON_SECRET" "\$BASE/api/cron/catalog-zd-sync" >> /var/log/system-dostaw-catalog.log 2>&1
-
-# Noc 02:20 — kontynuacja catalog-zd-sync (limit ~4 min na wywołanie)
 20 2 * * * root curl -fsS -H "Authorization: Bearer \$CRON_SECRET" "\$BASE/api/cron/catalog-zd-sync" >> /var/log/system-dostaw-catalog.log 2>&1
+40 2 * * * root curl -fsS -H "Authorization: Bearer \$CRON_SECRET" "\$BASE/api/cron/catalog-zd-sync" >> /var/log/system-dostaw-catalog.log 2>&1
+0 3 * * * root curl -fsS -H "Authorization: Bearer \$CRON_SECRET" "\$BASE/api/cron/catalog-zd-sync" >> /var/log/system-dostaw-catalog.log 2>&1
+20 3 * * * root curl -fsS -H "Authorization: Bearer \$CRON_SECRET" "\$BASE/api/cron/catalog-zd-sync" >> /var/log/system-dostaw-catalog.log 2>&1
+40 3 * * * root curl -fsS -H "Authorization: Bearer \$CRON_SECRET" "\$BASE/api/cron/catalog-zd-sync" >> /var/log/system-dostaw-catalog.log 2>&1
+0 4 * * * root curl -fsS -H "Authorization: Bearer \$CRON_SECRET" "\$BASE/api/cron/catalog-zd-sync" >> /var/log/system-dostaw-catalog.log 2>&1
+20 4 * * * root curl -fsS -H "Authorization: Bearer \$CRON_SECRET" "\$BASE/api/cron/catalog-zd-sync" >> /var/log/system-dostaw-catalog.log 2>&1
+40 4 * * * root curl -fsS -H "Authorization: Bearer \$CRON_SECRET" "\$BASE/api/cron/catalog-zd-sync" >> /var/log/system-dostaw-catalog.log 2>&1
 EOF
 }
 
@@ -157,7 +162,7 @@ log "Harmonogram (Europe/Warsaw):"
 log "  06:00 pn–pt     → /api/cron/morning"
 log "  08–18 pn–pt    → /api/cron/process-deliveries (co godzinę)"
 log "  08–18 pn–pt    → /api/cron/zd-eta-sync (8,10,12,14,16,18)"
-log "  02:00 + 02:20  → /api/cron/catalog-zd-sync (noc, Subiekt LAN)"
+log "  02:00–04:40     → /api/cron/catalog-zd-sync (co 20 min, noc, Subiekt LAN)"
 log ""
 log "Baza HTTP: ${BASE_URL}"
 log ""

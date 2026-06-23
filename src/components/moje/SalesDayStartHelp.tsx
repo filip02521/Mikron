@@ -25,7 +25,7 @@ export function SalesDayStartHelp() {
         <p>
           Pozycje z zamówień przewijają listę do sekcji{" "}
           <strong className="font-medium text-slate-800">Potwierdź odbiór z regału</strong> i podświetlają ją.
-          Przypomnienia ZK, notatki i tablica otwierają odpowiednią stronę.
+          Przypomnienia ZK i notatki otwierają odpowiednią stronę. Ogłoszenia przewijają do sekcji poniżej.
         </p>
       </HelpBlock>
 
@@ -34,7 +34,7 @@ export function SalesDayStartHelp() {
           <li>Gotowe do odbioru z regału — najpilniejsze</li>
           <li>Anulowania i informacje do potwierdzenia</li>
           <li>Przypomnienia ZK i notatek</li>
-          <li>Odpowiedzi i ogłoszenia od zakupów</li>
+          <li>Odpowiedzi na Tablicy i ogłoszenia na liście poniżej</li>
         </ol>
       </HelpBlock>
     </HelpPopover>

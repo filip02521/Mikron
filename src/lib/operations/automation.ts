@@ -1,10 +1,18 @@
 import { syncSuppliersFromSettings } from "@/lib/services/sync";
 import { processMarkedDeliveries } from "@/lib/services/orders";
 import { tryAcquireLock, releaseLock } from "@/lib/services/locks";
-import { purgeDataRetention } from "@/lib/services/history-cleanup";
-import type { DataRetentionResult } from "@/lib/services/history-cleanup";
+import {
+  purgeDataRetention,
+  type DataRetentionResult,
+} from "@/lib/services/history-cleanup";
+import {
+  dataRetentionCutoffDateOnly,
+  dataRetentionCutoffIso,
+} from "@/lib/data/data-retention";
 
 const MORNING_LOCK = "MORNING_ROUTINE";
+const DATA_RETENTION_LOCK_KEY = "history_retention_purge";
+const DATA_RETENTION_LOCK_TTL_SEC = 24 * 60 * 60;
 
 export type MorningSyncResult = {
   schedulesProcessed: number;
@@ -32,6 +40,7 @@ export type MorningRoutineResult = {
   sync: MorningSyncResult;
   deliveries: Awaited<ReturnType<typeof processMarkedDeliveries>>;
   historyCleanup: DataRetentionResult;
+  historyRetentionSkipped: boolean;
 };
 
 /**
@@ -40,7 +49,44 @@ export type MorningRoutineResult = {
  */
 export async function runMorningRoutine(): Promise<MorningRoutineResult> {
   const sync = await runMorningScheduleSync();
-  const deliveries = await processMarkedDeliveries();
-  const historyCleanup = await purgeDataRetention();
-  return { sync, deliveries, historyCleanup };
+  const deliveries = await processMarkedDeliveries({ lockedBy: "morning-cron" });
+  const { cleanup: historyCleanup, skipped: historyRetentionSkipped } =
+    await runMorningHistoryCleanup();
+  return { sync, deliveries, historyCleanup, historyRetentionSkipped };
+}
+
+async function runMorningHistoryCleanup(): Promise<{
+  cleanup: DataRetentionResult;
+  skipped: boolean;
+}> {
+  const acquired = await tryAcquireLock(
+    DATA_RETENTION_LOCK_KEY,
+    DATA_RETENTION_LOCK_TTL_SEC,
+    "morning-cron"
+  );
+  if (!acquired) {
+    return {
+      skipped: true,
+      cleanup: {
+        cutoffIso: dataRetentionCutoffIso(),
+        cutoffDateOnly: dataRetentionCutoffDateOnly(),
+        individualDeleted: 0,
+        normalDeleted: 0,
+        warehouseReceiptsDeleted: 0,
+        operationsNotesDeleted: 0,
+        productEventsDeleted: 0,
+        salesBugReportsDeleted: 0,
+        departmentBoardThreadsDeleted: 0,
+        passwordResetOtpsDeleted: 0,
+        subiektZdIndexDeleted: 0,
+        authRateLimitEventsDeleted: 0,
+      },
+    };
+  }
+  try {
+    return { skipped: false, cleanup: await purgeDataRetention() };
+  } catch (e) {
+    console.error("[morning-cron] history retention purge failed:", e);
+    throw e;
+  }
 }

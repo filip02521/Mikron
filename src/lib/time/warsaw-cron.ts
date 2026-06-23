@@ -5,7 +5,7 @@ import { warsawNowParts } from "@/lib/time/warsaw";
 export async function morningRoutineAlreadyRanToday(): Promise<boolean> {
   const { dateKey } = warsawNowParts();
   const last = await readCronRun("morning_routine");
-  if (!last?.ok) return false;
+  if (!last) return false;
   const detail = last.detail as { warsawDateKey?: string; skipped?: boolean } | undefined;
   if (detail?.skipped) return false;
   return detail?.warsawDateKey === dateKey;

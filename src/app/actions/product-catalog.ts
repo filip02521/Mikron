@@ -56,6 +56,7 @@ import {
 } from "@/lib/subiekt/zd-import-all-suppliers-job";
 import {
   readCatalogZdSyncState,
+  CATALOG_ZD_SYNC_CRON_BUDGET_MS,
   runCatalogZdSync,
   type CatalogZdSyncState,
 } from "@/lib/subiekt/catalog-zd-sync";
@@ -654,7 +655,7 @@ export async function actionContinueCatalogZdSync() {
   }
   const result = await runCatalogZdSync({
     force: true,
-    maxDurationMs: 2 * 60 * 1000,
+    maxDurationMs: CATALOG_ZD_SYNC_CRON_BUDGET_MS,
   });
   revalidatePath("/admin/produkty");
   return result;
@@ -669,7 +670,7 @@ export async function actionRunCatalogZdSyncNow(options?: { reset?: boolean }) {
   const result = await runCatalogZdSync({
     force: true,
     reset: options?.reset === true,
-    maxDurationMs: 2 * 60 * 1000,
+    maxDurationMs: CATALOG_ZD_SYNC_CRON_BUDGET_MS,
   });
   revalidatePath("/admin/produkty");
   return result;

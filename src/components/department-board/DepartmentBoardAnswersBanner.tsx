@@ -1,6 +1,10 @@
+"use client";
+
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import { SystemNotice } from "@/components/ui/SystemNotice";
 import { Button } from "@/components/ui/Button";
+import { hrefWithSalesPreviewFromUrl } from "@/lib/nav/sales-preview-href";
 
 function answerBannerDetail(
   count: number,
@@ -28,7 +32,7 @@ function answerBannerDetail(
     return `„${title}” — odpowiedź widoczna dla całego działu.`;
   }
 
-  return "Sprawdź zakładkę Pytania zespołu w Komunikacji z zakupami.";
+  return "Sprawdź listę pytań na Tablicy.";
 }
 
 export function DepartmentBoardAnswersBanner({
@@ -42,6 +46,9 @@ export function DepartmentBoardAnswersBanner({
     isOwnQuestion: boolean;
   } | null;
 }) {
+  const searchParams = useSearchParams();
+  const previewDla = searchParams.get("dla");
+
   if (count <= 0) return null;
 
   const label = preview?.isOwnQuestion
@@ -52,10 +59,12 @@ export function DepartmentBoardAnswersBanner({
       ? "1 nowa odpowiedź zakupów w zespole"
       : `${count} nowe odpowiedzi zakupów w zespole`;
 
-  const href =
+  const href = hrefWithSalesPreviewFromUrl(
     count === 1 && preview
-      ? `/tablica?widok=pytania&watek=${preview.threadId}`
-      : "/tablica?widok=pytania";
+      ? `/tablica?watek=${preview.threadId}`
+      : "/tablica?filtr=unseen",
+    previewDla
+  );
 
   return (
     <SystemNotice
