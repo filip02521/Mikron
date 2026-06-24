@@ -146,6 +146,21 @@ export function adminAssignPrimaryOrderCount(
   return Math.max(target?.orderCount ?? 0, maxOther + 1, 1);
 }
 
+export const PRODUCT_CATALOG_BULK_ASSIGN_MAX = 150;
+
+export function normalizeProductCatalogBulkTwIds(ids: number[]): number[] {
+  const seen = new Set<number>();
+  const out: number[] = [];
+  for (const raw of ids) {
+    const id = Math.trunc(raw);
+    if (!Number.isFinite(id) || id <= 0 || seen.has(id)) continue;
+    seen.add(id);
+    out.push(id);
+    if (out.length >= PRODUCT_CATALOG_BULK_ASSIGN_MAX) break;
+  }
+  return out;
+}
+
 /** Ręczne mapowanie produkt → dostawca z panelu admina (/admin/produkty). */
 export async function assignProductSupplierLinkAdmin(input: {
   subiektTwId: number;

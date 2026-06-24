@@ -7,6 +7,7 @@ import type {
   ProductCatalogRow,
 } from "@/lib/data/product-catalog-queries";
 import { CatalogZdSyncStatusPanel } from "@/components/admin/CatalogZdSyncStatusPanel";
+import { ProductCatalogBulkAssignBar } from "@/components/admin/ProductCatalogBulkAssignBar";
 import { ZdUnmappedKhPanel } from "@/components/admin/ZdUnmappedKhPanel";
 import type { ZdUnmappedKhReport } from "@/lib/subiekt/zd-unmapped-kh";
 import { ProductCatalogSupplierAssign } from "@/components/admin/ProductCatalogSupplierAssign";
@@ -15,10 +16,12 @@ import { Input, Select } from "@/components/ui/Field";
 import { Toast } from "@/components/ui/Toast";
 import { FlowSteps } from "@/components/ui/UiGlyphs";
 import { cn } from "@/lib/cn";
+import { checkboxBrandClass } from "@/lib/ui/ontime-theme";
 import {
   actionBackfillOrdersSubiektTwIdFromSymbol,
   actionRebuildProductCatalogFromOrders,
   actionAssignProductSupplier,
+  actionBulkAssignProductSuppliers,
   actionCountProductCatalogCoverage,
   actionFetchProductCatalogPage,
   actionContinueCatalogZdSync,
@@ -105,6 +108,9 @@ export function ProductsCatalogAdminClient({
     linksTotal: number;
     linksZdImport: number;
   }> | null>(null);
+  const [selected, setSelected] = useState<Record<number, boolean>>({});
+  const [bulkSupplierId, setBulkSupplierId] = useState("");
+  const headerCheckboxRef = useRef<HTMLInputElement>(null);
 
   const stopTickLoop = () => {
     if (tickTimer.current != null) {
@@ -343,9 +349,63 @@ export function ProductsCatalogAdminClient({
     });
   }, [rows, filter, listMode]);
 
+  const selectedTwIds = useMemo(
+    () =>
+      Object.entries(selected)
+        .filter(([, on]) => on)
+        .map(([id]) => Number(id))
+        .filter((id) => Number.isFinite(id) && id > 0),
+    [selected]
+  );
+  const selectedCount = selectedTwIds.length;
+  const visibleSelectedCount = useMemo(
+    () => filtered.filter((r) => selected[r.subiektTwId]).length,
+    [filtered, selected]
+  );
+  const allVisibleSelected =
+    filtered.length > 0 && visibleSelectedCount === filtered.length;
+  const someVisibleSelected = visibleSelectedCount > 0 && !allVisibleSelected;
+
+  useEffect(() => {
+    const el = headerCheckboxRef.current;
+    if (el) el.indeterminate = someVisibleSelected;
+  }, [someVisibleSelected]);
+
   const canLoadMore = loaded < total;
 
+  const clearSelection = () => setSelected({});
+
+  const toggleRowSelected = (subiektTwId: number) => {
+    setSelected((prev) => {
+      const next = { ...prev };
+      if (next[subiektTwId]) delete next[subiektTwId];
+      else next[subiektTwId] = true;
+      return next;
+    });
+  };
+
+  const selectAllVisible = () => {
+    setSelected((prev) => {
+      const next = { ...prev };
+      for (const row of filtered) next[row.subiektTwId] = true;
+      return next;
+    });
+  };
+
+  const toggleAllVisible = () => {
+    if (allVisibleSelected) {
+      setSelected((prev) => {
+        const next = { ...prev };
+        for (const row of filtered) delete next[row.subiektTwId];
+        return next;
+      });
+      return;
+    }
+    selectAllVisible();
+  };
+
   const switchListMode = (mode: CatalogListMode) => {
+    clearSelection();
     setListMode(mode);
     setRows([]);
     setLoaded(0);
@@ -819,6 +879,48 @@ export function ProductsCatalogAdminClient({
       } catch (e) {
         setToast({
           text: e instanceof Error ? e.message : "Błąd przypisania dostawcy",
+          tone: "error",
+        });
+      }
+    });
+  };
+
+  const bulkAssignSupplier = () => {
+    if (!bulkSupplierId || !selectedTwIds.length) return;
+    start(async () => {
+      try {
+        const result = await actionBulkAssignProductSuppliers(selectedTwIds, bulkSupplierId);
+        const rowById = new Map(result.rows.map((row) => [row.subiektTwId, row]));
+        setRows((prev) => {
+          if (listMode === "noSupplier") {
+            return prev.filter((r) => !result.succeededTwIds.includes(r.subiektTwId));
+          }
+          return prev.map((r) => rowById.get(r.subiektTwId) ?? r);
+        });
+        if (listMode === "noSupplier") {
+          setTotal((t) => Math.max(0, t - result.succeededTwIds.length));
+          setLoaded((n) => Math.max(0, n - result.succeededTwIds.length));
+        }
+        clearSelection();
+        refreshCoverage();
+        const supplierName =
+          assignSuppliers.find((s) => s.id === bulkSupplierId)?.name ?? "dostawca";
+        const extra =
+          result.autoAssign.updated > 0
+            ? ` · uzupełniono ${result.autoAssign.updated} prośb w weryfikacji`
+            : "";
+        const partial =
+          result.failed.length > 0
+            ? ` · nie udało się: ${result.failed.length}`
+            : "";
+        const limitNote = result.truncated ? " · limit 150 na operację" : "";
+        setToast({
+          text: `Przypisano ${supplierName} do ${result.succeededTwIds.length} produktów${extra}${partial}${limitNote}.`,
+          tone: result.failed.length ? "error" : "success",
+        });
+      } catch (e) {
+        setToast({
+          text: e instanceof Error ? e.message : "Błąd grupowego przypisania",
           tone: "error",
         });
       }
@@ -1327,7 +1429,8 @@ export function ProductsCatalogAdminClient({
         <p className="mt-2 text-xs text-slate-500">
           {listMode === "noSupplier" ? "Raport: bez dostawcy · " : ""}
           Pokazuję {filtered.length} z {rows.length} (wczytane: {loaded}/{total}
-          {listMode === "all" ? ` · z mapą: ${coverage.withSupplier}` : ""}).
+          {listMode === "all" ? ` · z mapą: ${coverage.withSupplier}` : ""}). Zaznacz
+          checkboxem, aby przypisać dostawcę grupowo.
         </p>
         {canLoadMore ? (
           <div className="mt-3">
@@ -1338,21 +1441,65 @@ export function ProductsCatalogAdminClient({
         ) : null}
       </div>
 
+      {selectedCount > 0 ? (
+        <div className="px-6 pb-3">
+          <ProductCatalogBulkAssignBar
+            selectedCount={selectedCount}
+            visibleCount={filtered.length}
+            allVisibleSelected={allVisibleSelected}
+            supplierId={bulkSupplierId}
+            suppliers={assignSuppliers}
+            disabled={pending}
+            onSupplierChange={setBulkSupplierId}
+            onSelectAllVisible={selectAllVisible}
+            onClearSelection={clearSelection}
+            onApply={bulkAssignSupplier}
+          />
+        </div>
+      ) : null}
+
       <div className="border-t border-slate-100">
         <div
-          className="hidden border-b border-slate-100 bg-slate-50/90 px-4 py-2 text-[11px] font-semibold uppercase tracking-wide text-slate-500 lg:grid lg:grid-cols-[minmax(0,1fr)_minmax(220px,1fr)_minmax(140px,180px)] lg:gap-3"
+          className="hidden border-b border-slate-100 bg-slate-50/90 px-4 py-2 text-[11px] font-semibold uppercase tracking-wide text-slate-500 lg:grid lg:grid-cols-[auto_minmax(0,1fr)_minmax(220px,1fr)_minmax(140px,180px)] lg:items-center lg:gap-3"
           aria-hidden
         >
+          <span className="flex w-9 justify-center">
+            <input
+              ref={headerCheckboxRef}
+              type="checkbox"
+              className={cn("size-4", checkboxBrandClass)}
+              checked={allVisibleSelected}
+              onChange={toggleAllVisible}
+              disabled={pending || filtered.length === 0}
+              aria-label="Zaznacz wszystkie widoczne produkty"
+            />
+          </span>
           <span>Produkt</span>
           <span>Dostawca</span>
           <span>Notatka</span>
         </div>
         <ul className="divide-y divide-slate-100">
-          {filtered.map((r) => (
+          {filtered.map((r) => {
+            const isSelected = Boolean(selected[r.subiektTwId]);
+            return (
             <li
               key={r.subiektTwId}
-              className="px-4 py-2.5 transition-colors hover:bg-slate-50/60 lg:grid lg:grid-cols-[minmax(0,1fr)_minmax(220px,1fr)_minmax(140px,180px)] lg:items-center lg:gap-3"
+              className={cn(
+                "px-4 py-2.5 transition-colors hover:bg-slate-50/60 lg:grid lg:grid-cols-[auto_minmax(0,1fr)_minmax(220px,1fr)_minmax(140px,180px)] lg:items-center lg:gap-3",
+                isSelected && "bg-indigo-50/40 ring-1 ring-inset ring-indigo-200/70"
+              )}
             >
+              <div className="mb-2 flex items-center gap-2 lg:mb-0 lg:w-9 lg:justify-center">
+                <input
+                  type="checkbox"
+                  className={cn("size-4 shrink-0", checkboxBrandClass)}
+                  checked={isSelected}
+                  disabled={pending}
+                  aria-label={`Zaznacz ${r.name || `produkt ${r.subiektTwId}`}`}
+                  onChange={() => toggleRowSelected(r.subiektTwId)}
+                />
+                <span className="text-[11px] font-medium text-slate-500 lg:hidden">Zaznacz</span>
+              </div>
               <div className="min-w-0">
                 <div className="flex min-w-0 items-baseline gap-2">
                   <p
@@ -1406,7 +1553,8 @@ export function ProductsCatalogAdminClient({
                 />
               </div>
             </li>
-          ))}
+            );
+          })}
         </ul>
         {!filtered.length ? (
           <div className="px-4 py-8 text-sm text-slate-600">Brak wyników.</div>

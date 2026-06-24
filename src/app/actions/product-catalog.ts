@@ -11,6 +11,7 @@ import { searchSubiektProducts } from "@/lib/subiekt/api";
 import {
   assignProductSupplierLinkAdmin,
   indexOrderLineToProductCatalog,
+  normalizeProductCatalogBulkTwIds,
 } from "@/lib/data/product-catalog";
 import { getAppSupplierRefsCached } from "@/lib/data/supplier-refs";
 import { autoAssignMissingSuppliersFromCatalog } from "@/lib/services/auto-assign-suppliers";
@@ -162,6 +163,63 @@ export async function actionAssignProductSupplier(
   revalidatePath("/podsumowanie");
 
   return { row, autoAssign: { updated: autoAssign.updated, promoted: autoAssign.promoted } };
+}
+
+export async function actionBulkAssignProductSuppliers(
+  subiektTwIds: number[],
+  supplierId: string
+): Promise<{
+  rows: ProductCatalogRow[];
+  succeededTwIds: number[];
+  failed: Array<{ subiektTwId: number; error: string }>;
+  autoAssign: { updated: number; promoted: number };
+  truncated: boolean;
+}> {
+  await requireAdminForMutation();
+  const twIds = normalizeProductCatalogBulkTwIds(subiektTwIds);
+  if (!twIds.length) throw new Error("Zaznacz co najmniej jeden produkt.");
+  const truncated = subiektTwIds.length > twIds.length;
+
+  const succeededTwIds: number[] = [];
+  const failed: Array<{ subiektTwId: number; error: string }> = [];
+
+  for (const twId of twIds) {
+    try {
+      await assignProductSupplierLinkAdmin({ subiektTwId: twId, supplierId });
+      succeededTwIds.push(twId);
+    } catch (e) {
+      failed.push({
+        subiektTwId: twId,
+        error: e instanceof Error ? e.message : "Błąd przypisania",
+      });
+    }
+  }
+
+  if (!succeededTwIds.length) {
+    throw new Error(failed[0]?.error ?? "Nie udało się przypisać dostawcy.");
+  }
+
+  const supabase = createAdminClient();
+  const { data: pendingOrders, error: ordErr } = await supabase
+    .from("individual_orders")
+    .select("id")
+    .in("subiekt_tw_id", succeededTwIds)
+    .eq("status", "Weryfikacja")
+    .is("supplier_id", null);
+  if (ordErr) throw new Error(ordErr.message);
+
+  const orderIds = (pendingOrders ?? []).map((o) => String((o as { id: string }).id));
+  const autoAssign = orderIds.length
+    ? await autoAssignMissingSuppliersFromCatalog({ orderIds, limit: orderIds.length })
+    : { checked: 0, updated: 0, promoted: 0 };
+
+  const rows = await fetchProductCatalogRowsByTwIds(succeededTwIds);
+
+  revalidatePath("/admin/produkty");
+  revalidatePath("/weryfikacja");
+  revalidatePath("/podsumowanie");
+
+  return { rows, succeededTwIds, failed, autoAssign, truncated };
 }
 
 export async function actionRebuildProductCatalogFromOrders(options?: { limit?: number }) {
