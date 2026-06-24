@@ -17,6 +17,7 @@ import {
   isZkProsbaScopePartialStock,
   type ZkProsbaScopeLineInput,
 } from "@/lib/orders/prosba-stock-check";
+import { shouldRedirectZkRefreshToOpenProsba } from "@/lib/sales/zk-watch-refresh-diff";
 import { appendMojeFocusOrderIds } from "@/lib/orders/moje-order-focus";
 import {
   prosbaHrefFromZkWatch,
@@ -162,7 +163,11 @@ export function ZkWatchRefreshPromptModal({
       ),
     [watch, orderHints.matchingOpenRequestIds]
   );
-  const redirectToOpenProsba = allOnStock && hasOpenMatchingProsba;
+  const redirectToOpenProsba = shouldRedirectZkRefreshToOpenProsba({
+    allOnStock,
+    hasOpenMatchingProsba,
+    linesToAddCount,
+  });
   const scopeSkippedMeta = zkWatchLineUiStateMeta("scope_excluded");
   const scopeOrderMeta = zkWatchLineUiStateMeta("uncovered");
 

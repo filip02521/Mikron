@@ -325,6 +325,7 @@ export function ZkWatchCard({
   const prosbaActionCount = uncoveredLineKeys.length;
 
   function handleProsbaClick(event: MouseEvent<HTMLAnchorElement>) {
+    setProsbaStockArmed(true);
     const ok = stashZkProsbaPrefill(watch, {
       ...prosbaPrefillOptions,
       stockByTwId: prosbaStockByTwId,
@@ -598,6 +599,7 @@ export function ZkWatchCard({
             className="flex items-center justify-end gap-1"
             onMouseEnter={() => setProsbaStockArmed(true)}
             onFocusCapture={() => setProsbaStockArmed(true)}
+            onMouseDown={() => setProsbaStockArmed(true)}
           >
             <ZkWatchProsbaActions
               archived={archived}
