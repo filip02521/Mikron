@@ -1,9 +1,9 @@
 "use server";
 
-// @service-role-ok — autoryzacja requireAdmin(); zapis listy zębów.
+// @service-role-ok — autoryzacja require*(); zapis listy zębów.
 
 import { revalidatePath } from "next/cache";
-import { requireAdmin } from "@/lib/auth";
+import { requireAdmin, requireAdminForMutation } from "@/lib/auth";
 import { fetchTeethProducts, type TeethProductRow } from "@/lib/data/teeth-products";
 import { upsertSubiektProduct } from "@/lib/data/product-catalog";
 import { createAdminClient } from "@/lib/supabase/admin";
@@ -74,7 +74,7 @@ export async function actionAddTeethProduct(input: {
   plu?: string | null;
   note?: string;
 }): Promise<{ success: true } | { error: string }> {
-  const user = await requireAdmin();
+  const user = await requireAdminForMutation();
 
   const subiektTwId = Math.trunc(input.subiektTwId);
   if (!Number.isFinite(subiektTwId) || subiektTwId <= 0) {
@@ -126,7 +126,7 @@ export async function actionUpdateTeethProductNote(
   subiektTwId: number,
   note: string
 ): Promise<{ success: true } | { error: string }> {
-  await requireAdmin();
+  await requireAdminForMutation();
 
   const id = Math.trunc(subiektTwId);
   const trimmed = note.trim();
@@ -155,7 +155,7 @@ export async function actionUpdateTeethProductNote(
 export async function actionRemoveTeethProduct(
   subiektTwId: number
 ): Promise<{ success: true } | { error: string }> {
-  await requireAdmin();
+  await requireAdminForMutation();
 
   const id = Math.trunc(subiektTwId);
   const supabase = createAdminClient();
