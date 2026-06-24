@@ -3,15 +3,17 @@ import { isInformacjaStockOutReorder } from "@/lib/orders/informacja-stock-out-r
 import { normalizeMyOrderSearchText } from "@/lib/orders/my-order-search";
 import {
   clientsMatchForSalesClient,
-  normalizeSalesClientKhId,
 } from "@/lib/orders/sales-client-match";
-import { normalizeSalesClientName } from "@/lib/orders/sales-client-label";
+import {
+  normalizeSalesClientKhId,
+  normalizeSalesClientName,
+} from "@/lib/orders/sales-client-label";
 import { isAwaitingInformacjaAck } from "@/lib/orders/sales-pickup";
 import {
   isOpenProsbaOrder,
   type ZkLinkableOrder,
 } from "@/lib/sales/zk-watch-order-link";
-import type { IndividualOrder } from "@/types/database";
+import type { IndividualOrder, IndividualRequestKind } from "@/types/database";
 
 export type InformacjaDuplicateProductInput = {
   subiektTwId?: number | null;
@@ -32,7 +34,7 @@ export type InformacjaDuplicateCandidate = InformacjaDuplicateProductInput &
 
 export type InformacjaDuplicateOrderLike = InformacjaDuplicateCandidate & {
   id?: string;
-  request_kind?: string | null;
+  request_kind?: IndividualRequestKind | null;
   status: string;
   sales_acknowledged_at?: string | null;
   sales_cancelled_at?: string | null;
@@ -103,7 +105,7 @@ export function isActiveInformacjaOrder(
   if (!isInformacjaRequest(order)) return false;
   if (order.status === "Anulowane") return false;
 
-  if (isInformacjaStockOutReorder(order)) {
+  if (isInformacjaStockOutReorder(order as IndividualOrder)) {
     return order.status === "Nowe" || order.status === "Weryfikacja";
   }
 

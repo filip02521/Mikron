@@ -37,7 +37,7 @@ function mapInformacjaDuplicateRow(row: InformacjaDuplicateRow): InformacjaDupli
     symbol: row.symbol,
     product: row.products,
     mikranCode: row.mikran_code,
-    request_kind: row.request_kind,
+    request_kind: row.request_kind as IndividualRequestKind | null,
     status: row.status,
     sales_acknowledged_at: row.sales_acknowledged_at,
     sales_cancelled_at: row.sales_cancelled_at,

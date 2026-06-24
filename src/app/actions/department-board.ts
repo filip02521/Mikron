@@ -73,7 +73,7 @@ async function fetchThread(threadId: string): Promise<DepartmentBoardThreadRow> 
 
   if (error) throw new Error(error.message);
   if (!data) throw new Error("Nie znaleziono wpisu na tablicy.");
-  return data as DepartmentBoardThreadRow;
+  return data as unknown as unknown as DepartmentBoardThreadRow;
 }
 
 export async function actionCreateAnnouncement(
@@ -112,7 +112,7 @@ export async function actionCreateAnnouncement(
 
   if (error) throw new Error(error.message);
   revalidateDepartmentBoard();
-  return { thread: data as DepartmentBoardThreadRow };
+  return { thread: data as unknown as DepartmentBoardThreadRow };
 }
 
 export async function actionArchiveAnnouncement(threadId: string) {
@@ -137,7 +137,7 @@ export async function actionArchiveAnnouncement(threadId: string) {
 
   if (error) throw new Error(error.message);
   revalidateDepartmentBoard();
-  return { thread: data as DepartmentBoardThreadRow };
+  return { thread: data as unknown as DepartmentBoardThreadRow };
 }
 
 export async function actionMarkAnnouncementRead(threadId: string) {
@@ -222,7 +222,7 @@ export async function actionCreateQuestion(
 
   if (error) throw new Error(error.message);
   revalidateDepartmentBoard();
-  return { thread: data as DepartmentBoardThreadRow };
+  return { thread: data as unknown as DepartmentBoardThreadRow };
 }
 
 export async function actionReplyToQuestion(threadId: string, body: string) {
@@ -292,7 +292,7 @@ export async function actionArchiveQuestion(threadId: string) {
 
   if (error) throw new Error(error.message);
   revalidateDepartmentBoard();
-  return { thread: data as DepartmentBoardThreadRow };
+  return { thread: data as unknown as DepartmentBoardThreadRow };
 }
 
 export async function actionToggleAnnouncementPin(threadId: string, pinned: boolean) {
@@ -312,5 +312,5 @@ export async function actionToggleAnnouncementPin(threadId: string, pinned: bool
 
   if (error) throw new Error(error.message);
   revalidateDepartmentBoard();
-  return { thread: data as DepartmentBoardThreadRow };
+  return { thread: data as unknown as DepartmentBoardThreadRow };
 }
