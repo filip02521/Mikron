@@ -12,6 +12,7 @@ W katalogu projektu:
 
 ```powershell
 cd C:\Users\Administrator\projects\Mikron
+# Nie ustawiaj NODE_ENV=production przed npm ci — inaczej npm pominie czesc zaleznosci.
 npm ci
 npm run build
 ```

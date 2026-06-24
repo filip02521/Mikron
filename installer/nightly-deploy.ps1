@@ -197,10 +197,23 @@ function Invoke-NightlyDeploy {
 
   Push-Location $ProjectRoot
   try {
-    if ($lockChanged) {
-      Write-Log "npm ci (zmiana package.json / package-lock.json)"
-      & $npm ci
+    $needInstall = $lockChanged
+    if (-not $needInstall) {
+      $tailwind = Join-Path $ProjectRoot "node_modules\tailwindcss\package.json"
+      $postcss = Join-Path $ProjectRoot "node_modules\@tailwindcss\postcss\package.json"
+      if (-not (Test-Path $tailwind) -or -not (Test-Path $postcss)) {
+        Write-Log "Brak tailwind w node_modules - wymuszam npm ci"
+        $needInstall = $true
+      }
+    }
+
+    if ($needInstall) {
+      Write-Log "npm ci (zmiana lockfile lub brak modulow build)"
+      $savedNodeEnv = $env:NODE_ENV
+      Remove-Item Env:NODE_ENV -ErrorAction SilentlyContinue
+      & $npm ci --no-audit --no-fund
       if ($LASTEXITCODE -ne 0) { throw "npm ci nie powiodlo sie" }
+      if ($savedNodeEnv) { $env:NODE_ENV = $savedNodeEnv }
     }
 
     Write-Log "npm run build"

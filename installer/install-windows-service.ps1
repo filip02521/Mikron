@@ -154,12 +154,15 @@ function Invoke-NpmInstall {
 
   Write-Host "  (npm ci moze trwac 2-5 min na Windowsie - to normalne, poczekaj...)"
   $sw = [System.Diagnostics.Stopwatch]::StartNew()
+  $savedNodeEnv = $env:NODE_ENV
+  Remove-Item Env:NODE_ENV -ErrorAction SilentlyContinue
   & $Npm ci --no-audit --no-fund
   if ($LASTEXITCODE -ne 0) {
     Write-Warn "npm ci nie powiodlo sie (lock file?) - probuje npm install"
     & $Npm install --no-audit --no-fund
     if ($LASTEXITCODE -ne 0) { throw "npm install nie powiodlo sie" }
   }
+  if ($savedNodeEnv) { $env:NODE_ENV = $savedNodeEnv }
   $sw.Stop()
   Write-Ok "Zaleznosci zainstalowane ($([math]::Round($sw.Elapsed.TotalSeconds)) s)"
 }
