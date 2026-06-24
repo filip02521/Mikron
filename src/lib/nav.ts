@@ -77,12 +77,18 @@ function navHrefPath(href: string): string {
   return href.split("?")[0]!;
 }
 
-const SALES_DUE_REMINDER_NAV_PATHS = new Set(["/notatnik", "/zk"]);
+const DEPARTMENT_BOARD_PROCUREMENT_PATH = "/zakupy/tablica";
 
-/** Notatnik lub ZK czekające z licznikiem przypomnień na dziś/wcześniej. */
+const SALES_DUE_REMINDER_NAV_PATHS = new Set(["/notatnik", "/zk"]);
+const PROCUREMENT_BOARD_ATTENTION_PATHS = new Set([DEPARTMENT_BOARD_PROCUREMENT_PATH]);
+
+/** Notatnik, ZK lub tablica z otwartymi pytaniami — subtelne podświetlenie w menu. */
 export function navItemHasDueReminders(item: NavItem): boolean {
-  if (!SALES_DUE_REMINDER_NAV_PATHS.has(navHrefPath(item.href))) return false;
-  return (item.badge ?? 0) > 0;
+  const path = navHrefPath(item.href);
+  if (SALES_DUE_REMINDER_NAV_PATHS.has(path) || PROCUREMENT_BOARD_ATTENTION_PATHS.has(path)) {
+    return (item.badge ?? 0) > 0;
+  }
+  return false;
 }
 
 /** Ton wizualny w menu — amber w spoczynku przy przypomnieniach; aktywna strona zachowuje ton pozycji. */
@@ -122,8 +128,6 @@ export function isNavItemActive(
 const OPERATIONS_NOTATKI_PATH = "/notatki";
 /** Magazyn — jawny dział w URL (zakupy/admin domyślnie bez parametru). */
 const OPERATIONS_NOTATKI_MAGAZYN = "/notatki?dzial=magazyn";
-
-const DEPARTMENT_BOARD_PROCUREMENT_PATH = "/zakupy/tablica";
 
 function operationsTodayItems(badges: {
   nowe?: number;

@@ -15,6 +15,7 @@ import {
   OperationsUpdatesBanner,
   OperationsUpdatesProvider,
 } from "@/components/operations/OperationsUpdatesContext";
+import { OperationsBoardQuestionsNotice } from "@/components/operations/OperationsBoardQuestionsNotice";
 import { SalesOnboardingGate } from "@/components/sales/SalesOnboardingGate";
 import { AppRoleProvider } from "@/components/layout/AppRoleContext";
 import { useSalesCoachPaddingClass } from "@/components/sales/SalesOnboardingContext";
@@ -222,6 +223,9 @@ export function AppShellClient({
                 (adminPanelPreview === "admin" || adminPanelPreview === "zakupy") ? (
                   <OperationsGlobalPinnedStrip pinned={operationsPinnedAnnouncements} />
                 ) : null}
+                {adminPanelPreview === "admin" || adminPanelPreview === "zakupy" ? (
+                  <OperationsBoardQuestionsNotice />
+                ) : null}
               </>
             ) : salesLive ? (
               <>
@@ -237,6 +241,7 @@ export function AppShellClient({
                 {operationsPinnedAnnouncements.length > 0 ? (
                   <OperationsGlobalPinnedStrip pinned={operationsPinnedAnnouncements} />
                 ) : null}
+                <OperationsBoardQuestionsNotice />
                 <OperationsUpdatesBanner />
               </>
             ) : null

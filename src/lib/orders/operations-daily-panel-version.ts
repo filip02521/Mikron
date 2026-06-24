@@ -4,6 +4,7 @@ import {
   fetchSalesCancelledOrders,
   fetchSuppliersWithSchedules,
 } from "@/lib/data/queries";
+import { countOpenDepartmentBoardQuestions } from "@/lib/data/department-board";
 import { fetchSalesPeopleForPicker } from "@/lib/data/sales-people-admin";
 import {
   countDailyPanelNavBadge,
@@ -17,6 +18,7 @@ export type OperationsDailyPanelMetrics = {
   version: string;
   navBadge: number;
   verificationCount: number;
+  openBoardQuestionsCount: number;
 };
 
 function maxSubmittedAt(groups: { submittedAtLatest: string }[]): string {
@@ -39,10 +41,11 @@ function maxCancelledAt(
   return max;
 }
 
-/** Skrót stanu panelu dziennego — zmiana = nowa prośba, weryfikacja, harmonogram itd. */
+/** Skrót stanu panelu dziennego — zmiana = nowa prośba, weryfikacja, pytanie na tablicy itd. */
 export function computeOperationsDailyPanelVersion(params: {
   workspace: SummaryWorkspaceData;
   verificationCount: number;
+  openBoardQuestionsCount?: number;
 }): string {
   const inbox = summarizeDailyInbox(params.workspace);
   const navBadge = countDailyPanelNavBadge(params.workspace);
@@ -55,6 +58,7 @@ export function computeOperationsDailyPanelVersion(params: {
   return [
     navBadge,
     params.verificationCount,
+    params.openBoardQuestionsCount ?? 0,
     inbox.forSomeoneGroupCount,
     inbox.forSomeoneLineCount,
     inbox.stockOutGroupCount,
@@ -88,14 +92,20 @@ async function fetchOperationsDailyPanelWorkspace(): Promise<SummaryWorkspaceDat
 
 /** Jedno pobranie workspace + wersji (AppShell, polling API). */
 export async function fetchOperationsDailyPanelMetrics(): Promise<OperationsDailyPanelMetrics> {
-  const [workspace, verificationCount] = await Promise.all([
+  const [workspace, verificationCount, openBoardQuestionsCount] = await Promise.all([
     fetchOperationsDailyPanelWorkspace(),
     countVerificationOrders(),
+    countOpenDepartmentBoardQuestions().catch(() => 0),
   ]);
 
   return {
-    version: computeOperationsDailyPanelVersion({ workspace, verificationCount }),
+    version: computeOperationsDailyPanelVersion({
+      workspace,
+      verificationCount,
+      openBoardQuestionsCount,
+    }),
     navBadge: countDailyPanelNavBadge(workspace),
     verificationCount,
+    openBoardQuestionsCount,
   };
 }

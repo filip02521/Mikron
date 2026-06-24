@@ -15,6 +15,7 @@ import { Button } from "@/components/ui/Button";
 import { SystemNotice } from "@/components/ui/SystemNotice";
 import { systemNoticePanelStripClass } from "@/lib/ui/ontime-theme";
 import { MICROCOPY } from "@/lib/ui/microcopy";
+import { usePatchAppShellNavBadges } from "@/components/layout/AppShellMetricsContext";
 
 const POLL_MS = 25_000;
 const AUTO_REFRESH_MS = 3 * 60_000;
@@ -41,16 +42,26 @@ export function useOperationsUpdates() {
   return useContext(OperationsUpdatesContext);
 }
 
-async function fetchVersion(): Promise<string | null> {
+async function fetchVersion(): Promise<{
+  version: string | null;
+  openBoardQuestions: number | null;
+}> {
   try {
     const res = await fetch("/api/operations/daily-panel-version", {
       cache: "no-store",
     });
-    if (!res.ok) return null;
-    const body = (await res.json()) as { version?: string };
-    return body.version ?? null;
+    if (!res.ok) return { version: null, openBoardQuestions: null };
+    const body = (await res.json()) as {
+      version?: string;
+      openBoardQuestions?: number;
+    };
+    return {
+      version: body.version ?? null,
+      openBoardQuestions:
+        typeof body.openBoardQuestions === "number" ? body.openBoardQuestions : null,
+    };
   } catch {
-    return null;
+    return { version: null, openBoardQuestions: null };
   }
 }
 
@@ -65,6 +76,7 @@ export function OperationsUpdatesProvider({
 }) {
   const router = useRouter();
   const pathname = usePathname();
+  const patchNavBadges = usePatchAppShellNavBadges();
   const [baseline, setBaseline] = useState(initialVersion);
   const [latest, setLatest] = useState(initialVersion);
   const autoRefresh = usePersistedFlag(autoRefreshStore);
@@ -96,8 +108,11 @@ export function OperationsUpdatesProvider({
     router.refresh();
     if (latest) setBaseline(latest);
     void fetchVersion()
-      .then((v) => {
-        if (v) syncBaseline(v);
+      .then(({ version, openBoardQuestions }) => {
+        if (version) syncBaseline(version);
+        if (openBoardQuestions != null) {
+          patchNavBadges({ departmentBoardQuestions: openBoardQuestions });
+        }
         const now = Date.now();
         setLastSyncedAt(now);
         setLastPollAt(now);
@@ -107,16 +122,19 @@ export function OperationsUpdatesProvider({
       .finally(() => {
         syncingRef.current = false;
       });
-  }, [router, latest, syncBaseline]);
+  }, [router, latest, syncBaseline, patchNavBadges]);
 
   const poll = useCallback(async () => {
-    const v = await fetchVersion();
-    if (!v) return;
+    const { version, openBoardQuestions } = await fetchVersion();
+    if (openBoardQuestions != null) {
+      patchNavBadges({ departmentBoardQuestions: openBoardQuestions });
+    }
+    if (!version) return;
     const now = Date.now();
-    setLatest(v);
+    setLatest(version);
     setLastPollAt(now);
-    setBaseline((prev) => prev ?? v);
-  }, []);
+    setBaseline((prev) => prev ?? version);
+  }, [patchNavBadges]);
 
   useEffect(() => {
     if (!enabled) return;

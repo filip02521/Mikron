@@ -65,3 +65,13 @@ export const DEPARTMENT_BOARD_NOTES_DISTINCTION_SALES =
 
 export const DEPARTMENT_BOARD_NOTES_DISTINCTION_PROCUREMENT =
   "Wewnętrzne notatki działu (prywatne/wspólne) nadal są w Notatki — ta strona dotyczy komunikacji z handlowcami.";
+
+export function departmentBoardOpenQuestionsLabel(count: number): string {
+  if (count <= 0) return "";
+  if (count === 1) return "1 otwarte pytanie na tablicy";
+  if (count >= 2 && count < 5) return `${count} otwarte pytania na tablicy`;
+  return `${count} otwartych pytań na tablicy`;
+}
+
+export const DEPARTMENT_BOARD_PROCUREMENT_OPEN_QUESTIONS_HINT =
+  "Handlowcy czekają na odpowiedź działu zakupów.";

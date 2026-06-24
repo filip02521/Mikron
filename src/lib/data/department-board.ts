@@ -200,6 +200,10 @@ export function procurementBoardQuestionHref(threadId: string): string {
   return `/zakupy/tablica?widok=pytania&watek=${encodeURIComponent(threadId)}`;
 }
 
+export function procurementBoardQuestionsListHref(): string {
+  return "/zakupy/tablica?widok=pytania";
+}
+
 /** Przypięte, aktywne ogłoszenia — wspólne dla handlowców i panelu zakupów. */
 export async function fetchPinnedActiveAnnouncements(): Promise<
   Pick<DepartmentBoardThreadRow, "id" | "title" | "body">[]
