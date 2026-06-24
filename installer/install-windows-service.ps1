@@ -143,6 +143,17 @@ function Test-NodeModulesFresh {
     return $false
   }
 
+  $requiredPackages = @(
+    (Join-Path $modules "next"),
+    (Join-Path $modules "@tailwindcss\postcss"),
+    (Join-Path $modules "tailwindcss")
+  )
+  foreach ($path in $requiredPackages) {
+    if (-not (Test-Path $path)) {
+      return $false
+    }
+  }
+
   $modulesTime = (Get-Item $modules).LastWriteTime
   $lockTime = (Get-Item $lock).LastWriteTime
   $pkgTime = (Get-Item $pkg).LastWriteTime
@@ -154,11 +165,17 @@ function Invoke-NpmInstall {
 
   Write-Host "  (npm ci moze trwac 2-5 min na Windowsie - to normalne, poczekaj...)"
   $sw = [System.Diagnostics.Stopwatch]::StartNew()
-  & $Npm ci --no-audit --no-fund
-  if ($LASTEXITCODE -ne 0) {
-    Write-Warn "npm ci nie powiodlo sie (lock file?) - probuje npm install"
-    & $Npm install --no-audit --no-fund
-    if ($LASTEXITCODE -ne 0) { throw "npm install nie powiodlo sie" }
+  $prevNodeEnv = $env:NODE_ENV
+  $env:NODE_ENV = $null
+  try {
+    & $Npm ci --include=dev --no-audit --no-fund
+    if ($LASTEXITCODE -ne 0) {
+      Write-Warn "npm ci nie powiodlo sie (lock file?) - probuje npm install"
+      & $Npm install --include=dev --no-audit --no-fund
+      if ($LASTEXITCODE -ne 0) { throw "npm install nie powiodlo sie" }
+    }
+  } finally {
+    if ($prevNodeEnv) { $env:NODE_ENV = $prevNodeEnv } else { Remove-Item Env:NODE_ENV -ErrorAction SilentlyContinue }
   }
   $sw.Stop()
   Write-Ok "Zaleznosci zainstalowane ($([math]::Round($sw.Elapsed.TotalSeconds)) s)"
