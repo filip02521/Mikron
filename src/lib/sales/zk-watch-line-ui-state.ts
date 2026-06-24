@@ -262,9 +262,18 @@ export function formatZkProsbaCardActionLabelAfterStockFilter(input: {
   filteredCount: number;
   sourceCount: number;
   hasOpenMatchingProsba?: boolean;
+  /** Zakres pozycji wybrany w modalu ZK — nie blokuj CTA mimo stanu magazynowego. */
+  explicitScopeSelection?: boolean;
 }): string {
-  const { action, stockLoading, allOnStock, filteredCount, sourceCount, hasOpenMatchingProsba } =
-    input;
+  const {
+    action,
+    stockLoading,
+    allOnStock,
+    filteredCount,
+    sourceCount,
+    hasOpenMatchingProsba,
+    explicitScopeSelection = false,
+  } = input;
 
   if (action.kind === "none") return "";
 
@@ -280,6 +289,12 @@ export function formatZkProsbaCardActionLabelAfterStockFilter(input: {
 
   if (allOnStock) {
     if (hasOpenMatchingProsba) return "Otwórz prośbę";
+    if (explicitScopeSelection && sourceCount > 0) {
+      if (action.kind === "supplement") {
+        return sourceCount === 1 ? "Uzupełnij (1)" : `Uzupełnij (${sourceCount})`;
+      }
+      return sourceCount === 1 ? "Utwórz prośbę (1)" : `Utwórz prośbę (${sourceCount})`;
+    }
     return action.kind === "supplement" ? "Na stanie" : "Wszystko na stanie";
   }
 
@@ -300,11 +315,54 @@ export function applyZkProsbaStockFilterToCardAction(input: {
   stockLoading: boolean;
   allOnStock: boolean;
   hasOpenMatchingProsba: boolean;
+  /** Zakres pozycji wybrany w modalu ZK — pozwól utworzyć prośbę mimo stanu. */
+  explicitScopeSelection?: boolean;
 }): ZkWatchProsbaCardAction {
-  const { action, stockLoading, allOnStock, hasOpenMatchingProsba } = input;
+  const { action, stockLoading, allOnStock, hasOpenMatchingProsba, explicitScopeSelection = false } =
+    input;
+  if (explicitScopeSelection) return action;
   if (stockLoading || !allOnStock || !hasOpenMatchingProsba) return action;
   if (action.kind !== "supplement" && action.kind !== "new_prosba") return action;
   return { kind: "view_open", label: "Otwórz prośbę" };
+}
+
+/** Klucze pozycji do prefill prośby z akcji na karcie ZK. */
+export function resolveZkWatchProsbaCardLineKeys(input: {
+  action: Extract<ZkWatchProsbaCardAction, { kind: "new_prosba" | "supplement" }>;
+  uncoveredLineKeys: string[];
+}): string[] {
+  if (input.action.kind === "supplement") return input.action.lineKeys;
+  return input.action.lineKeys ?? input.uncoveredLineKeys;
+}
+
+/**
+ * Klucze linii do prefill — przy zapisanym zakresie ZK respektuje wybór użytkownika
+ * (bez filtrowania stanem; potwierdzenie przy wysyłce prośby).
+ */
+export function resolveZkWatchProsbaPrefillLineKeys(input: {
+  action: ZkWatchProsbaCardAction;
+  uncoveredLineKeys: string[];
+  prosbaScopeConfigured: boolean;
+  stockFilteredKeys: string[];
+  applyStockFilter: boolean;
+}): string[] | undefined {
+  if (input.action.kind !== "new_prosba" && input.action.kind !== "supplement") {
+    return undefined;
+  }
+  const scopeKeys = resolveZkWatchProsbaCardLineKeys({
+    action: input.action,
+    uncoveredLineKeys: input.uncoveredLineKeys,
+  });
+  if (input.prosbaScopeConfigured) {
+    return scopeKeys.length ? scopeKeys : undefined;
+  }
+  if (input.applyStockFilter && input.stockFilteredKeys.length > 0) {
+    return input.stockFilteredKeys;
+  }
+  if (input.action.kind === "new_prosba" && !input.action.lineKeys && scopeKeys.length === 0) {
+    return undefined;
+  }
+  return scopeKeys.length ? scopeKeys : undefined;
 }
 
 export type ZkWatchLineUiStateCounts = Record<ZkWatchLineUiState, number>;
