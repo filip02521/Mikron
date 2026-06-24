@@ -38,6 +38,7 @@ import { MobileOperationsNav } from "./MobileOperationsNav";
 import { MobileOperationsHeader } from "./MobileOperationsHeader";
 import { useAppShellMetrics } from "./AppShellMetricsContext";
 import { AppWorkspaceBackdrop } from "./AppWorkspaceBackdrop";
+import { TeethExemptProvider } from "@/components/layout/TeethExemptContext";
 
 function SalesGlobalPinnedStrip({
   attention,
@@ -112,6 +113,7 @@ export function AppShellClient({
   mustChangePassword = false,
   salesOnboardingCompletedAt = null,
   salesOnboardingActive = false,
+  teethExemptTwIds = [],
 }: {
   children: React.ReactNode;
   role: UserRole | null;
@@ -124,6 +126,7 @@ export function AppShellClient({
   salesOnboardingCompletedAt?: string | null;
   /** Tour onboarding — wyłącz live badge i polling zamówień. */
   salesOnboardingActive?: boolean;
+  teethExemptTwIds?: number[];
 }) {
   const {
     navBadges,
@@ -133,6 +136,7 @@ export function AppShellClient({
     userAssignmentLabel,
     salesBoardAttention,
     operationsPinnedAnnouncements,
+    ready: metricsReady,
   } = useAppShellMetrics();
   const pathname = usePathname();
   const isAuthScreen =
@@ -150,6 +154,7 @@ export function AppShellClient({
   const mobileChrome = salesLive || operationsLive;
 
   return (
+    <TeethExemptProvider twIds={teethExemptTwIds}>
     <AdminPanelPreviewProvider
       readOnly={isAdminOperationsPreviewReadOnly(realRole, adminPanelPreview)}
       panelContext={adminPanelPreview}
@@ -158,12 +163,16 @@ export function AppShellClient({
     <OperationsUpdatesProvider
       enabled={operationsLive && !salesLive}
       initialVersion={operationsDailyPanelVersion}
+      initialOpenBoardQuestions={navBadges.departmentBoardQuestions ?? 0}
+      soundBaselineReady={metricsReady}
     >
     <Suspense fallback={null}>
     <SalesUpdatesProvider
       enabled={salesLive && !salesOnboardingActive && !adminPanelPreview}
       initialVersion={salesActivityVersion}
+      initialUnseenOwnAnswers={salesBoardAttention?.unseenOwnAnswerCount ?? 0}
       sessionSalesPersonId={salesPersonId}
+      soundBaselineReady={metricsReady}
     >
       <SalesOnboardingGate
         role={role}
@@ -270,5 +279,6 @@ export function AppShellClient({
     </OperationsUpdatesProvider>
     </AppRoleProvider>
     </AdminPanelPreviewProvider>
+    </TeethExemptProvider>
   );
 }

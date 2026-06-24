@@ -529,6 +529,7 @@ export const ONBOARDING_TABLICA_UNSEEN_QUESTION_IDS = ["demo-board-question-answ
 export function buildOnboardingBoardAttention() {
   return {
     unseenAnswerCount: 1,
+    unseenOwnAnswerCount: 0,
     unseenAnswerPreview: {
       threadId: "demo-board-question-answered",
       title: "Próbki implantów poza harmonogramem?",
@@ -551,6 +552,7 @@ export function buildOnboardingDayStartContext(salesPersonId: string) {
       unreadAnnouncementBannerLatestTitle: "Zamówienia importowe — podaj kod Mikran",
       unreadAnnouncementBannerLatestId: "demo-board-announcement",
       unseenAnswerCount: 1,
+      unseenOwnAnswerCount: 0,
       unseenAnswerPreview: {
         threadId: "demo-board-question-answered",
         title: "Próbki implantów poza harmonogramem?",

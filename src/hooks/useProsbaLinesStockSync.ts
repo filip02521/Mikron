@@ -23,7 +23,8 @@ export function useProsbaLinesStockSync(
   lines: ProductLineDraft[],
   onChange: (lines: ProductLineDraft[]) => void,
   requestKind: IndividualRequestKind,
-  enabled: boolean
+  enabled: boolean,
+  stockExemptTwIds?: ReadonlySet<number>
 ) {
   const linesRef = useRef(lines);
   const onChangeRef = useRef(onChange);
@@ -45,7 +46,7 @@ export function useProsbaLinesStockSync(
     const timer = window.setTimeout(() => {
       void (async () => {
         const currentLines = linesRef.current;
-        const twIds = collectProsbaLineTwIdsMissingStock(currentLines, requestKind);
+        const twIds = collectProsbaLineTwIdsMissingStock(currentLines, requestKind, stockExemptTwIds);
         if (!twIds.length) return;
 
         try {
@@ -68,5 +69,5 @@ export function useProsbaLinesStockSync(
       cancelled = true;
       window.clearTimeout(timer);
     };
-  }, [enabled, requestKind, syncSignature]);
+  }, [enabled, requestKind, syncSignature, stockExemptTwIds]);
 }

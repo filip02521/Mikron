@@ -208,5 +208,6 @@ export async function fetchAppShellMetrics(
     userAssignmentLabel,
     salesBoardAttention,
     operationsPinnedAnnouncements,
+    ready: true,
   };
 }

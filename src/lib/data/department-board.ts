@@ -1,6 +1,7 @@
 import { createAdminClient } from "@/lib/supabase/admin";
 import {
   isBoardAnswerUnseen,
+  countUnseenOwnBoardAnswers,
   latestQuestionActivityAt,
   pickUnseenAnswerPreview,
   type UnseenBoardAnswer,
@@ -242,6 +243,8 @@ export type SalesBoardAttentionSnapshot = {
   unreadAnnouncementBannerLatestTitle: string | null;
   unreadAnnouncementBannerLatestId: string | null;
   unseenAnswerCount: number;
+  /** Nieprzeczytane odpowiedzi na własne pytania handlowca. */
+  unseenOwnAnswerCount: number;
   unseenAnswerPreview: {
     threadId: string;
     title: string;
@@ -352,6 +355,7 @@ export async function fetchSalesBoardAttentionSnapshot(
   }
 
   const preview = pickUnseenAnswerPreview(unseenAnswerItems);
+  const unseenOwnAnswerCount = countUnseenOwnBoardAnswers(unseenAnswerItems);
 
   return {
     unreadAnnouncementCount,
@@ -360,6 +364,7 @@ export async function fetchSalesBoardAttentionSnapshot(
     unreadAnnouncementBannerLatestTitle,
     unreadAnnouncementBannerLatestId,
     unseenAnswerCount: unseenAnswerItems.length,
+    unseenOwnAnswerCount,
     unseenAnswerPreview: preview
       ? {
           threadId: preview.threadId,

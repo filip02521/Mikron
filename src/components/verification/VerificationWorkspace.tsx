@@ -63,6 +63,7 @@ import type { ProductLineDraft } from "@/components/orders/request-product-lines
 import { buildProsbaSubmitStockConfirm } from "@/lib/orders/prosba-stock-check";
 import { handleProsbaStockSubmitError } from "@/lib/orders/prosba-stock-submit-error";
 import { useProsbaLinesStockSync } from "@/hooks/useProsbaLinesStockSync";
+import { useTeethExemptTwIds } from "@/components/layout/TeethExemptContext";
 import type { SubiektFeedback } from "@/lib/subiekt/feedback";
 import { toAppSupplierRefs } from "@/lib/subiekt/match-supplier";
 import {
@@ -94,6 +95,7 @@ export function VerificationWorkspace({
   const inModal = layout === "modal";
   const router = useRouter();
   const { readOnly } = useAdminPanelPreview();
+  const teethExemptTwIds = useTeethExemptTwIds();
   const [pending, start] = useTransition();
   const [pendingMessage, setPendingMessage] = useState<string | null>(null);
   const [toast, setToast] = useState<{ text: string; tone: "success" | "error" } | null>(
@@ -343,7 +345,8 @@ export function VerificationWorkspace({
       }));
     },
     form.requestKind,
-    form.requestKind === "zamowienie"
+    form.requestKind === "zamowienie",
+    teethExemptTwIds
   );
 
   const performSave = (options?: { acknowledgeSufficientStock?: boolean }) => {
@@ -416,7 +419,8 @@ export function VerificationWorkspace({
     }
     const stockConfirm = buildProsbaSubmitStockConfirm(
       verificationProductLines,
-      form.requestKind
+      form.requestKind,
+      teethExemptTwIds
     );
     if (stockConfirm) {
       setStockConfirmMessage(stockConfirm.message);

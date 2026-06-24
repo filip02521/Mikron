@@ -1,6 +1,7 @@
 import type { ProductLineDraft } from "@/components/orders/request-product-lines";
 import { parseOrderQuantity } from "@/lib/orders/individual";
 import { buildProsbaSufficientStockSummary } from "@/lib/orders/prosba-line-stock-ui";
+import { isStockExemptTwId } from "@/lib/orders/teeth-stock-exempt";
 import type { SubiektProduct } from "@/lib/subiekt/types";
 import type { IndividualRequestKind } from "@/types/database";
 
@@ -102,9 +103,11 @@ export function assessProsbaLineStock(input: {
 
 export function assessProsbaLineStockFromDraft(
   line: ProductLineDraft,
-  requestKind: IndividualRequestKind
+  requestKind: IndividualRequestKind,
+  stockExemptTwIds?: ReadonlySet<number>
 ): ProsbaLineStockAssessment {
   if (requestKind !== "zamowienie") return "unknown";
+  if (isStockExemptTwId(line.subiektTwId, stockExemptTwIds)) return "unknown";
   const requestedQty = parseOrderQuantity(line.quantity);
   const stock = stockSnapshotFromLineDraft(line);
   return assessProsbaLineStock({ requestedQty, stock });
@@ -112,25 +115,28 @@ export function assessProsbaLineStockFromDraft(
 
 export function isProsbaLineStockSufficient(
   line: ProductLineDraft,
-  requestKind: IndividualRequestKind
+  requestKind: IndividualRequestKind,
+  stockExemptTwIds?: ReadonlySet<number>
 ): boolean {
-  return assessProsbaLineStockFromDraft(line, requestKind) === "sufficient";
+  return assessProsbaLineStockFromDraft(line, requestKind, stockExemptTwIds) === "sufficient";
 }
 
 export function filterProsbaLinesWithSufficientStock(
   lines: ProductLineDraft[],
-  requestKind: IndividualRequestKind
+  requestKind: IndividualRequestKind,
+  stockExemptTwIds?: ReadonlySet<number>
 ): ProductLineDraft[] {
-  return lines.filter((line) => isProsbaLineStockSufficient(line, requestKind));
+  return lines.filter((line) => isProsbaLineStockSufficient(line, requestKind, stockExemptTwIds));
 }
 
 /** Stan dialogu potwierdzenia wysyłki / zapisu przy pełnym stanie magazynowym. */
 export function buildProsbaSubmitStockConfirm(
   lines: ProductLineDraft[],
-  requestKind: IndividualRequestKind
+  requestKind: IndividualRequestKind,
+  stockExemptTwIds?: ReadonlySet<number>
 ): { sufficientLines: ProductLineDraft[]; message: string } | null {
   if (requestKind !== "zamowienie") return null;
-  const sufficientLines = filterProsbaLinesWithSufficientStock(lines, requestKind);
+  const sufficientLines = filterProsbaLinesWithSufficientStock(lines, requestKind, stockExemptTwIds);
   if (!sufficientLines.length) return null;
   return {
     sufficientLines,
@@ -202,8 +208,10 @@ export function isZkProsbaScopePartialStock(input: {
 /** Czy pozycja ZK wymaga zamówienia (nie ma pełnego pokrycia stanem). */
 export function zkProsbaScopeLineNeedsOrdering(
   line: ZkProsbaScopeLineInput,
-  stockByTwId: Record<number, ProsbaLineStockSnapshot>
+  stockByTwId: Record<number, ProsbaLineStockSnapshot>,
+  stockExemptTwIds?: ReadonlySet<number>
 ): boolean {
+  if (isStockExemptTwId(line.subiektTwId, stockExemptTwIds)) return true;
   const twId = line.subiektTwId;
   if (!twId) return true;
   const snap = stockByTwId[twId];
@@ -217,12 +225,13 @@ export function zkProsbaScopeLineNeedsOrdering(
  */
 export function deriveZkProsbaScopeInStockKeys(
   lines: ZkProsbaScopeLineInput[],
-  stockByTwId: Record<number, ProsbaLineStockSnapshot>
+  stockByTwId: Record<number, ProsbaLineStockSnapshot>,
+  stockExemptTwIds?: ReadonlySet<number>
 ): string[] {
   const hasAnyStock = Object.keys(stockByTwId).length > 0;
   if (!hasAnyStock) return [];
   return lines
-    .filter((line) => !zkProsbaScopeLineNeedsOrdering(line, stockByTwId))
+    .filter((line) => !zkProsbaScopeLineNeedsOrdering(line, stockByTwId, stockExemptTwIds))
     .map((line) => line.key);
 }
 
@@ -232,12 +241,13 @@ export function deriveZkProsbaScopeInStockKeys(
  */
 export function deriveZkProsbaScopeSuggestedOrderKeys(
   lines: ZkProsbaScopeLineInput[],
-  stockByTwId: Record<number, ProsbaLineStockSnapshot>
+  stockByTwId: Record<number, ProsbaLineStockSnapshot>,
+  stockExemptTwIds?: ReadonlySet<number>
 ): string[] {
   const hasAnyStock = Object.keys(stockByTwId).length > 0;
   if (!hasAnyStock) return [];
   return lines
-    .filter((line) => zkProsbaScopeLineNeedsOrdering(line, stockByTwId))
+    .filter((line) => zkProsbaScopeLineNeedsOrdering(line, stockByTwId, stockExemptTwIds))
     .map((line) => line.key);
 }
 
@@ -260,14 +270,17 @@ export function buildZkProsbaScopeInitialOrderMarked(input: {
   stockByTwId: Record<number, ProsbaLineStockSnapshot>;
   existingScope: string[] | null;
   needsProsbaByKey: ReadonlyMap<string, boolean>;
+  stockExemptTwIds?: ReadonlySet<number>;
 }): string[] {
-  const { lines, stockByTwId, existingScope, needsProsbaByKey } = input;
+  const { lines, stockByTwId, existingScope, needsProsbaByKey, stockExemptTwIds } = input;
 
   if (existingScope !== null) {
     return [...existingScope];
   }
 
-  const autoFromStock = new Set(deriveZkProsbaScopeSuggestedOrderKeys(lines, stockByTwId));
+  const autoFromStock = new Set(
+    deriveZkProsbaScopeSuggestedOrderKeys(lines, stockByTwId, stockExemptTwIds)
+  );
   const marked = new Set<string>();
 
   for (const line of lines) {
@@ -329,13 +342,14 @@ export function zkProsbaScopeStockUnavailable(lines: ZkProsbaScopeLineInput[]): 
 export function filterZkProsbaScopeLineKeysNeedingOrder(
   lines: ZkProsbaScopeLineInput[],
   keys: Iterable<string>,
-  stockByTwId: Record<number, ProsbaLineStockSnapshot>
+  stockByTwId: Record<number, ProsbaLineStockSnapshot>,
+  stockExemptTwIds?: ReadonlySet<number>
 ): string[] {
   const lineByKey = new Map(lines.map((line) => [line.key, line]));
   const result: string[] = [];
   for (const key of keys) {
     const line = lineByKey.get(key);
-    if (!line || zkProsbaScopeLineNeedsOrdering(line, stockByTwId)) {
+    if (!line || zkProsbaScopeLineNeedsOrdering(line, stockByTwId, stockExemptTwIds)) {
       result.push(key);
     }
   }
@@ -345,10 +359,12 @@ export function filterZkProsbaScopeLineKeysNeedingOrder(
 /** Wszystkie pozycje ZK mają pełne pokrycie stanem (po załadowaniu danych). */
 export function zkProsbaScopeAllLinesSufficient(
   lines: ZkProsbaScopeLineInput[],
-  stockByTwId: Record<number, ProsbaLineStockSnapshot>
+  stockByTwId: Record<number, ProsbaLineStockSnapshot>,
+  stockExemptTwIds?: ReadonlySet<number>
 ): boolean {
   if (!lines.length || !Object.keys(stockByTwId).length) return false;
   return lines.every((line) => {
+    if (isStockExemptTwId(line.subiektTwId, stockExemptTwIds)) return false;
     const twId = line.subiektTwId;
     if (!twId) return false;
     const snap = stockByTwId[twId];
@@ -360,13 +376,15 @@ export function zkProsbaScopeAllLinesSufficient(
 /** tw_Id pozycji prośby bez wczytanego stanu (do batch fetch). */
 export function collectProsbaLineTwIdsMissingStock(
   lines: ProductLineDraft[],
-  requestKind: IndividualRequestKind
+  requestKind: IndividualRequestKind,
+  stockExemptTwIds?: ReadonlySet<number>
 ): number[] {
   if (requestKind !== "zamowienie") return [];
   const ids = new Set<number>();
   for (const line of lines) {
     const twId = line.subiektTwId;
     if (twId == null || twId <= 0) continue;
+    if (isStockExemptTwId(twId, stockExemptTwIds)) continue;
     if (line.stockSource === "subiekt" && line.available != null) continue;
     ids.add(Math.trunc(twId));
   }
