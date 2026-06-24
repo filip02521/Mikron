@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  countUnseenOwnBoardAnswers,
   isBoardAnswerUnseen,
   latestQuestionActivityAt,
   pickUnseenAnswerPreview,
@@ -34,5 +35,24 @@ describe("department-board attention", () => {
       },
     ]);
     expect(preview?.threadId).toBe("b");
+  });
+
+  it("liczy tylko własne pytania z nieprzeczytaną odpowiedzią", () => {
+    expect(
+      countUnseenOwnBoardAnswers([
+        {
+          threadId: "a",
+          title: "Team",
+          isOwnQuestion: false,
+          latestActivityAt: "2026-01-03T10:00:00Z",
+        },
+        {
+          threadId: "b",
+          title: "Mine",
+          isOwnQuestion: true,
+          latestActivityAt: "2026-01-01T10:00:00Z",
+        },
+      ])
+    ).toBe(1);
   });
 });

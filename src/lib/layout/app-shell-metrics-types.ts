@@ -24,6 +24,8 @@ export type AppShellMetrics = {
     SalesBoardAttentionSnapshot["pinnedAnnouncements"][number],
     "id" | "title" | "body"
   >[];
+  /** Metryki z SSR załadowane — przed tym liczniki dźwięku tablicy nie są wiarygodne. */
+  ready: boolean;
 };
 
 export const EMPTY_APP_SHELL_METRICS: AppShellMetrics = {
@@ -34,4 +36,5 @@ export const EMPTY_APP_SHELL_METRICS: AppShellMetrics = {
   userAssignmentLabel: null,
   salesBoardAttention: null,
   operationsPinnedAnnouncements: [],
+  ready: false,
 };

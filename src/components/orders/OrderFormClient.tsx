@@ -79,6 +79,7 @@ import { clearUnseenNewZkLineKeys, removeUnseenNewZkLineKeys } from "@/lib/clien
 import { ProsbaStockConfirmDialog } from "@/components/orders/ProsbaStockConfirmDialog";
 import { buildProsbaSubmitStockConfirm, buildProsbaSubmitZkQuantityConfirm, formatProsbaZkQuantityFormBanner, applyProsbaLineStockMap, collectProsbaLineTwIdsMissingStock } from "@/lib/orders/prosba-stock-check";
 import { handleProsbaStockSubmitError } from "@/lib/orders/prosba-stock-submit-error";
+import { useTeethExemptTwIds } from "@/components/layout/TeethExemptContext";
 
 function formatSubmitResult(
   r: {
@@ -186,6 +187,7 @@ export function OrderFormClient({
   const { readOnly: panelReadOnly } = useAdminPanelPreview();
   const readOnly = forceReadOnly || panelReadOnly;
   const tourDemo = useSalesOnboardingDemo("prosba");
+  const teethExemptTwIds = useTeethExemptTwIds();
   const lockedId = lockedSalesPerson?.id ?? "";
   const [requestKind, setRequestKind] = useState<IndividualRequestKind>("zamowienie");
   const [informacjaPath, setInformacjaPath] = useState<InformacjaFlowPath>(
@@ -325,7 +327,7 @@ export function OrderFormClient({
         zkQuantity: line.zkQuantity ?? null,
       }));
 
-      const twIds = collectProsbaLineTwIdsMissingStock(baseLines, nextRequestKind);
+      const twIds = collectProsbaLineTwIdsMissingStock(baseLines, nextRequestKind, teethExemptTwIds);
       if (twIds.length > 0) {
         try {
           const { actionFetchProsbaLineStock } = await import("@/app/actions/subiekt");
@@ -417,7 +419,7 @@ export function OrderFormClient({
     return () => {
       cancelled = true;
     };
-  }, [lockedId, searchParams, tourDemo]);
+  }, [lockedId, searchParams, tourDemo, teethExemptTwIds]);
 
   const supplierRefs = useMemo(() => toAppSupplierRefs(suppliers), [suppliers]);
 
@@ -604,7 +606,7 @@ export function OrderFormClient({
     const mergedAck = { ...pendingSubmitAckRef.current, ...ack };
 
     if (requestKind === "zamowienie" && !mergedAck.acknowledgeSufficientStock) {
-      const stockConfirm = buildProsbaSubmitStockConfirm(entries, "zamowienie");
+      const stockConfirm = buildProsbaSubmitStockConfirm(entries, "zamowienie", teethExemptTwIds);
       if (stockConfirm) {
         pendingSubmitEntriesRef.current = entries;
         pendingSubmitAckRef.current = mergedAck;

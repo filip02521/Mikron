@@ -2,6 +2,7 @@
 
 import { useMemo } from "react";
 import { useProsbaLineStockBatchFetch } from "@/hooks/useProsbaLineStockBatchFetch";
+import { useTeethExemptTwIds } from "@/components/layout/TeethExemptContext";
 import {
   collectZkProsbaScopeLineTwIds,
   filterZkProsbaScopeLineKeysNeedingOrder,
@@ -22,6 +23,7 @@ export function useZkProsbaLineKeysStockFilter(
     orderMarkedKeys?: string[] | null;
   }
 ) {
+  const teethExemptTwIds = useTeethExemptTwIds();
   const twIds = useMemo(() => collectZkProsbaScopeLineTwIds(scopeLines), [scopeLines]);
   const fetchEnabled = enabled && sourceKeys.length > 0 && twIds.length > 0;
   const { stockByTwId, loading: stockLoading, timedOut: stockFetchTimedOut } =
@@ -35,8 +37,13 @@ export function useZkProsbaLineKeysStockFilter(
       const marked = new Set(orderMarkedKeys);
       return sourceKeys.filter((key) => marked.has(key));
     }
-    return filterZkProsbaScopeLineKeysNeedingOrder(scopeLines, sourceKeys, stockByTwId);
-  }, [enabled, orderMarkedKeys, scopeLines, sourceKeys, stockByTwId]);
+    return filterZkProsbaScopeLineKeysNeedingOrder(
+      scopeLines,
+      sourceKeys,
+      stockByTwId,
+      teethExemptTwIds
+    );
+  }, [enabled, orderMarkedKeys, scopeLines, sourceKeys, stockByTwId, teethExemptTwIds]);
 
   const sourceCount = sourceKeys.length;
   const unmarkedCount = sourceCount - lineKeysToOrder.length;
@@ -45,7 +52,12 @@ export function useZkProsbaLineKeysStockFilter(
     !stockLoading &&
     sourceCount > 0 &&
     (options?.orderMarkedKeys != null
-      ? filterZkProsbaScopeLineKeysNeedingOrder(scopeLines, sourceKeys, stockByTwId).length === 0
+      ? filterZkProsbaScopeLineKeysNeedingOrder(
+          scopeLines,
+          sourceKeys,
+          stockByTwId,
+          teethExemptTwIds
+        ).length === 0
       : lineKeysToOrder.length === 0);
   const stockFetchFailed =
     enabled &&

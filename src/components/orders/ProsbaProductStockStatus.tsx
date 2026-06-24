@@ -13,6 +13,8 @@ import { cn } from "@/lib/cn";
 import { IconAlertCircle, IconPackage, IconWarehouse } from "@/components/icons/StrokeIcons";
 import type { IndividualRequestKind } from "@/types/database";
 import { formatProsbaZkQuantityInlineHint } from "@/lib/orders/prosba-stock-check";
+import { useTeethExemptTwIds } from "@/components/layout/TeethExemptContext";
+import { isStockExemptTwId } from "@/lib/orders/teeth-stock-exempt";
 
 function StockStatusIcon({
   tone,
@@ -41,7 +43,8 @@ export function ProsbaProductStockStatus({
   requestKind: IndividualRequestKind;
   className?: string;
 }) {
-  const view = buildProsbaLineStockStatusView(line, requestKind);
+  const teethExemptTwIds = useTeethExemptTwIds();
+  const view = buildProsbaLineStockStatusView(line, requestKind, teethExemptTwIds);
   if (!view) return null;
 
   return (
@@ -94,6 +97,43 @@ export function ProsbaZkQuantityHint({
         aria-hidden
       />
       <p className="text-xs leading-relaxed text-indigo-950">{hint}</p>
+    </div>
+  );
+}
+
+/** Produkt z listy zębów — pomijamy kontrolę stanu magazynowego. */
+export function ProsbaTeethExemptHint({
+  line,
+  className,
+}: {
+  line: ProductLineDraft;
+  className?: string;
+}) {
+  const teethExemptTwIds = useTeethExemptTwIds();
+  if (!isStockExemptTwId(line.subiektTwId, teethExemptTwIds)) return null;
+
+  return (
+    <div
+      role="status"
+      className={cn(
+        "flex items-start gap-2.5 rounded-md border border-violet-200/90 bg-violet-50/70 px-3 py-2.5",
+        className
+      )}
+    >
+      <IconWarehouse
+        size={18}
+        strokeWidth={2.25}
+        className="mt-0.5 shrink-0 text-violet-700"
+        aria-hidden
+      />
+      <div className="min-w-0">
+        <p className="text-xs font-semibold leading-snug text-violet-950">
+          Produkt z listy zębów
+        </p>
+        <p className="mt-0.5 text-xs leading-relaxed text-violet-900/90">
+          Stan magazynowy nie jest weryfikowany — prośba przejdzie bez ostrzeżeń o dostępności.
+        </p>
+      </div>
     </div>
   );
 }

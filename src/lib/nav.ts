@@ -321,6 +321,14 @@ function adminSystemItems(badges: { adminBugReports?: number }): NavItem[] {
       ...compact,
     },
     {
+      href: "/admin/produkty/zeby",
+      label: "Produkty zębne",
+      description: "Wyjątek od kontroli stanu",
+      icon: "catalog",
+      tone: "violet",
+      ...compact,
+    },
+    {
       href: "/zespol/grupy",
       label: "Grupy",
       description: "Sklep, Biuro — kolejność",
@@ -581,6 +589,7 @@ export function pageTitle(pathname: string): string {
     if (pathname.startsWith("/admin/uzytkownicy")) return "Konta";
     if (pathname.startsWith("/admin/zgloszenia")) return "Zgłoszenia";
     if (pathname.startsWith("/admin/handlowcy")) return "Handlowcy";
+    if (pathname.startsWith("/admin/produkty/zeby")) return "Produkty zębne";
     if (pathname.startsWith("/admin/produkty")) return "Katalog produktów";
     return "Administracja";
   }

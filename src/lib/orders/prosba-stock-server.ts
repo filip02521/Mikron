@@ -1,11 +1,13 @@
 import type { IndividualRequestKind } from "@/types/database";
 import { parseOrderQuantity } from "@/lib/orders/individual";
+import { fetchTeethProductTwIdSet } from "@/lib/data/teeth-products";
 import {
   assessProsbaLineStock,
   stockSnapshotFromLineDraft,
   PROSBA_STOCK_ACK_REQUIRED_HINT,
   type ProsbaLineStockSnapshot,
 } from "@/lib/orders/prosba-stock-check";
+import { isStockExemptTwId } from "@/lib/orders/teeth-stock-exempt";
 import { fetchProsbaLineStock } from "@/lib/orders/fetch-prosba-line-stock";
 
 export const PROSBA_STOCK_ACK_REQUIRED_CODE = "PROSBA_SUFFICIENT_STOCK_ACK_REQUIRED";
@@ -58,15 +60,20 @@ export async function findProsbaLinesWithSufficientStock(input: {
   lines: ProsbaStockServerLine[];
   requestKind: IndividualRequestKind;
   stockByTwId?: Record<number, ProsbaLineStockSnapshot>;
+  stockExemptTwIds?: ReadonlySet<number>;
 }): Promise<ProsbaStockServerLine[]> {
   const { lines, requestKind } = input;
   if (requestKind !== "zamowienie") return [];
+
+  const stockExemptTwIds =
+    input.stockExemptTwIds ?? (await fetchTeethProductTwIdSet());
 
   const twIds = [
     ...new Set(
       lines
         .map((line) => line.subiektTwId)
         .filter((id): id is number => id != null && id > 0)
+        .filter((id) => !isStockExemptTwId(id, stockExemptTwIds))
         .map((id) => Math.trunc(id))
     ),
   ];
@@ -79,6 +86,7 @@ export async function findProsbaLinesWithSufficientStock(input: {
   for (const line of lines) {
     const twId = line.subiektTwId;
     if (twId == null || twId <= 0) continue;
+    if (isStockExemptTwId(twId, stockExemptTwIds)) continue;
 
     const requestedQty = parseOrderQuantity(line.quantity ?? "");
     if (requestedQty == null || requestedQty <= 0) continue;
