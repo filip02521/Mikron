@@ -19,7 +19,7 @@ import {
 } from "@/lib/subiekt/match-order-to-zd";
 import {
   getSubiektZdDocumentCached,
-  searchSubiektZdCached,
+  searchSubiektZdCachedForEta,
 } from "@/lib/subiekt/subiekt-runtime-cache";
 import type { SubiektDocument, SubiektProduct } from "@/lib/subiekt/types";
 import { extractAnyKhLabelFromDocument } from "@/lib/subiekt/kontrahent-from-document";
@@ -27,6 +27,7 @@ import { lineTowId } from "@/lib/subiekt/zd-catalog-import";
 import {
   isActiveZdFulfillmentDocument,
   parseZdFulfillmentDeadline,
+  shouldSkipZdListItemForEta,
 } from "@/lib/subiekt/zd-fulfillment-date";
 import { browseZdDocumentsForKhIds } from "@/lib/subiekt/zd-eta-browse";
 import { sortZdCandidatesByNewestIssue } from "@/lib/subiekt/zd-placement-sort";
@@ -637,7 +638,7 @@ export async function liveSearchProductZdBySymbolWindows(
 
       const listings: { id: number; issueDate: string }[] = [];
       for (let page = 1; page <= PRODUCT_ZD_LOOKUP_SYMBOL_LIST_MAX_PAGES; page++) {
-        const list = await searchSubiektZdCached({
+        const list = await searchSubiektZdCachedForEta({
           ...(khId != null ? { khId } : {}),
           symbol,
           dataOd: chunk.dataOd,
@@ -649,6 +650,7 @@ export async function liveSearchProductZdBySymbolWindows(
         if (!rows.length) break;
 
         for (const row of rows) {
+          if (shouldSkipZdListItemForEta(row)) continue;
           const id = Math.trunc(Number(row.dok_Id));
           if (!Number.isFinite(id) || id <= 0 || listedIds.has(id) || skipDocIds.has(id)) {
             continue;

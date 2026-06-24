@@ -21,6 +21,8 @@ export type SubiektListParams = {
   plu?: string;
   /** Kontrahent (kh_Id) — działa razem z `search` na GET /documents/zd. */
   khId?: number;
+  /** Status dokumentu ZD (pojedyncza wartość — ETA filtruje 5/6/7 po stronie aplikacji). */
+  status?: number;
   name?: string;
   limit?: number;
   typ?: number;

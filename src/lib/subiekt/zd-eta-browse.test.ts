@@ -1,10 +1,10 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { SubiektDocument } from "./types";
 
-const searchSubiektZdCached = vi.fn();
+const searchSubiektZdCachedForEta = vi.fn();
 
 vi.mock("@/lib/subiekt/subiekt-runtime-cache", () => ({
-  searchSubiektZdCached: (...args: unknown[]) => searchSubiektZdCached(...args),
+  searchSubiektZdCachedForEta: (...args: unknown[]) => searchSubiektZdCachedForEta(...args),
 }));
 
 import { browseZdDocumentsForKhIds } from "./zd-eta-browse";
@@ -21,11 +21,11 @@ function doc(id: number, date: string): SubiektDocument {
 describe("browseZdDocumentsForKhIds", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    searchSubiektZdCached.mockReset();
+    searchSubiektZdCachedForEta.mockReset();
   });
 
   it("przegląda ZD po każdym kh_Id dostawcy", async () => {
-    searchSubiektZdCached
+    searchSubiektZdCachedForEta
       .mockResolvedValueOnce({ data: [{ dok_Id: 1, dok_DataWyst: "2026-06-10" }] })
       .mockResolvedValueOnce({ data: [{ dok_Id: 2, dok_DataWyst: "2026-06-08" }] });
 
@@ -38,13 +38,13 @@ describe("browseZdDocumentsForKhIds", () => {
       loadDoc,
     });
 
-    expect(searchSubiektZdCached).toHaveBeenCalledTimes(2);
+    expect(searchSubiektZdCachedForEta).toHaveBeenCalledTimes(2);
     expect(result.docs.map((d) => d.dok_Id)).toEqual([1, 2]);
     expect(loadDoc).toHaveBeenCalledTimes(2);
   });
 
   it("pomija już znane dok_Id i respektuje budżet", async () => {
-    searchSubiektZdCached.mockResolvedValue({
+    searchSubiektZdCachedForEta.mockResolvedValue({
       data: [
         { dok_Id: 1, dok_DataWyst: "2026-06-10" },
         { dok_Id: 2, dok_DataWyst: "2026-06-09" },
@@ -68,7 +68,7 @@ describe("browseZdDocumentsForKhIds", () => {
   });
 
   it("przy matchDoc najpierw listuje strony, potem ładuje wg bliskości daty", async () => {
-    searchSubiektZdCached
+    searchSubiektZdCachedForEta
       .mockResolvedValueOnce({
         data: [
           { dok_Id: 100, dok_DataWyst: "2026-06-20" },
@@ -99,7 +99,7 @@ describe("browseZdDocumentsForKhIds", () => {
   });
 
   it("monthChunks — przegląda kolejne miesiące i zatrzymuje się na matchDoc", async () => {
-    searchSubiektZdCached
+    searchSubiektZdCachedForEta
       .mockResolvedValueOnce({
         data: [{ dok_Id: 200, dok_DataWyst: "2026-06-20" }],
       })
@@ -126,10 +126,10 @@ describe("browseZdDocumentsForKhIds", () => {
     });
 
     expect(result.matched?.dok_Id).toBe(62);
-    expect(searchSubiektZdCached).toHaveBeenCalledWith(
+    expect(searchSubiektZdCachedForEta).toHaveBeenCalledWith(
       expect.objectContaining({ dataOd: "2026-06-01", dataDo: "2026-07-01" })
     );
-    expect(searchSubiektZdCached).toHaveBeenCalledWith(
+    expect(searchSubiektZdCachedForEta).toHaveBeenCalledWith(
       expect.objectContaining({ dataOd: "2026-02-01", dataDo: "2026-03-01" })
     );
   });

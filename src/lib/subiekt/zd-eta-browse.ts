@@ -1,4 +1,5 @@
-import { searchSubiektZdCached } from "@/lib/subiekt/subiekt-runtime-cache";
+import { searchSubiektZdCachedForEta } from "@/lib/subiekt/subiekt-runtime-cache";
+import { shouldSkipZdListItemForEta } from "@/lib/subiekt/zd-fulfillment-date";
 import {
   sortZdCandidatesForPlacementMatch,
   type ZdDateCandidate,
@@ -87,7 +88,7 @@ async function collectZdListings(
         break outer;
       }
 
-      const list = await searchSubiektZdCached({
+      const list = await searchSubiektZdCachedForEta({
         khId,
         dataOd: options.dataOd,
         dataDo: options.dataDo,
@@ -100,6 +101,7 @@ async function collectZdListings(
       if (!rows.length) break;
 
       for (const item of rows) {
+        if (shouldSkipZdListItemForEta(item)) continue;
         const id = Math.trunc(Number(item.dok_Id));
         if (!Number.isFinite(id) || id <= 0 || seen.has(id) || skip.has(id)) continue;
 
@@ -148,6 +150,7 @@ async function loadListedZdDocuments(
 
     const full = await options.loadDoc(item.id);
     if (!full) continue;
+    if (shouldSkipZdListItemForEta(full)) continue;
     fetched++;
 
     const fullDate = docIssueDateKey(full);

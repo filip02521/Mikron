@@ -29,8 +29,17 @@ const STOP_WORDS = new Set([
   "ml",
 ]);
 
+/** Kod SKU z myślnikami (np. RS-F2-GPCL-41) w nazwie produktu. */
+export function extractHyphenatedProductSku(name: string): string {
+  const match = name.match(/\b([A-Za-z]{2,}(?:-[A-Za-z0-9]{1,12}){2,})\b/);
+  return match?.[1] ?? "";
+}
+
 /** Kod alfanumeryczny z końca nazwy (np. „Komet węglik H364RNF” → H364RNF). */
 export function extractAlphanumericProductCodeFromName(name: string): string {
+  const hyphenated = extractHyphenatedProductSku(name);
+  if (hyphenated) return hyphenated;
+
   const tokens = name
     .trim()
     .split(/[\s,;/]+/)

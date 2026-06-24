@@ -13,8 +13,9 @@ import { getAppSupplierRefsCached } from "@/lib/data/supplier-refs";
 import { zdSearchPlansForOrderWithKhIds, prioritizeZdLiveSearchPlans } from "@/lib/subiekt/zd-search-for-product";
 import {
   getSubiektZdDocumentCached,
-  searchSubiektZdCached,
+  searchSubiektZdCachedForEta,
 } from "@/lib/subiekt/subiekt-runtime-cache";
+import { shouldSkipZdListItemForEta } from "@/lib/subiekt/zd-fulfillment-date";
 import {
   SubiektNetworkError,
   SubiektNotConfiguredError,
@@ -742,11 +743,12 @@ export async function liveSearchZdDocsForOrder(
     if (fetched >= docBudget) break;
     for (let page = 1; page <= ZD_ETA_LIVE_SEARCH_MAX_PAGES; page++) {
       if (fetched >= docBudget) break;
-      const list = await searchSubiektZdCached({ ...plan, page });
+      const list = await searchSubiektZdCachedForEta({ ...plan, page });
       const items = list.data ?? [];
       if (!items.length) break;
       for (const item of items) {
         if (fetched >= docBudget) break;
+        if (shouldSkipZdListItemForEta(item)) continue;
         const id = Math.trunc(Number(item.dok_Id));
         if (!Number.isFinite(id) || id <= 0 || seen.has(id) || knownDocIds.has(id)) {
           continue;

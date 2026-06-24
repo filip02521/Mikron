@@ -98,6 +98,9 @@ describe("zdSearchPlansForOrderInput", () => {
     expect(extractAlphanumericProductCodeFromName("Komet węglik H364RNF")).toBe(
       "H364RNF"
     );
+    expect(extractAlphanumericProductCodeFromName("Formlabs żywica RS-F2-GPCL-41 1L")).toBe(
+      "RS-F2-GPCL-41"
+    );
     expect(
       effectiveProductSymbol({
         tw_Id: 0,

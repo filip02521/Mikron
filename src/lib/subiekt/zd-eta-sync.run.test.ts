@@ -29,6 +29,8 @@ vi.mock("@/lib/subiekt/subiekt-runtime-cache", async (importOriginal) => {
     getSubiektZdDocumentCached: (...args: unknown[]) =>
       mocks.getSubiektZdDocumentCached(...args),
     searchSubiektZdCached: (...args: unknown[]) => mocks.searchSubiektZdCached(...args),
+    searchSubiektZdCachedForEta: (...args: unknown[]) =>
+      mocks.searchSubiektZdCached(...args),
   };
 });
 
