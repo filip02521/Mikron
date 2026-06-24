@@ -80,8 +80,8 @@ export function ProductCatalogSupplierAssign({
       <div className="mt-2">{controls}</div>
       {row.topSupplier && unchanged ? (
         <p className="mt-1.5 text-[11px] text-slate-500">
-          Wybierz innego dostawcę z listy, aby dodać lub zmienić powiązanie (stare linki pozostają w
-          historii).
+          Wybierz innego dostawcę z listy — stanie się głównym w katalogu (starsze mapowania
+          zostają w historii).
         </p>
       ) : (
         <p className="mt-1.5 text-[11px] text-slate-500">

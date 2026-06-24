@@ -131,6 +131,21 @@ export async function recordProductEvent(input: {
   if (error) throw new Error(error.message);
 }
 
+/**
+ * Ręczne przypisanie w panelu admina ustawia „głównego” dostawcę w katalogu
+ * (najwyższy order_count). Starsze linki zostają w historii z niższym priorytetem.
+ */
+export function adminAssignPrimaryOrderCount(
+  links: Array<{ supplierId: string; orderCount: number }>,
+  targetSupplierId: string
+): number {
+  const target = links.find((l) => l.supplierId === targetSupplierId);
+  const maxOther = links
+    .filter((l) => l.supplierId !== targetSupplierId)
+    .reduce((max, l) => Math.max(max, l.orderCount), 0);
+  return Math.max(target?.orderCount ?? 0, maxOther + 1, 1);
+}
+
 /** Ręczne mapowanie produkt → dostawca z panelu admina (/admin/produkty). */
 export async function assignProductSupplierLinkAdmin(input: {
   subiektTwId: number;
@@ -160,16 +175,20 @@ export async function assignProductSupplierLinkAdmin(input: {
   if (supErr) throw new Error(supErr.message);
   if (!supplier) throw new Error("Nie znaleziono dostawcy.");
 
-  const { data: existing, error: fetchError } = await supabase
+  const { data: allLinks, error: linksErr } = await supabase
     .from("product_supplier_links")
-    .select("order_count")
-    .eq("subiekt_tw_id", subiektTwId)
-    .eq("supplier_id", supplierId)
-    .maybeSingle();
-  if (fetchError) throw new Error(fetchError.message);
+    .select("supplier_id, order_count")
+    .eq("subiekt_tw_id", subiektTwId);
+  if (linksErr) throw new Error(linksErr.message);
 
   const at = nowIso();
-  const orderCount = Math.max(Number(existing?.order_count ?? 0), 1);
+  const orderCount = adminAssignPrimaryOrderCount(
+    (allLinks ?? []).map((row) => ({
+      supplierId: String(row.supplier_id),
+      orderCount: Number(row.order_count ?? 0),
+    })),
+    supplierId
+  );
 
   const { error } = await supabase.from("product_supplier_links").upsert(
     {
