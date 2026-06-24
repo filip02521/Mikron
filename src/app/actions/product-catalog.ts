@@ -68,6 +68,7 @@ const MAX_NOTE_LEN = 500;
 export async function actionFetchProductCatalogPage(options?: {
   limit?: number;
   offset?: number;
+  supplierId?: string | null;
 }): Promise<ProductCatalogPage> {
   await requireAdmin();
   return fetchProductCatalogPage(options);
@@ -77,6 +78,7 @@ export async function actionSearchProductCatalogPage(options: {
   query: string;
   limit?: number;
   offset?: number;
+  supplierId?: string | null;
 }): Promise<ProductCatalogPage> {
   await requireAdmin();
   return searchProductCatalogPage(options);

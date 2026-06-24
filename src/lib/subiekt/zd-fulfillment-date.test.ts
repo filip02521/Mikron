@@ -3,6 +3,7 @@ import {
   isActiveZdFulfillmentDeadline,
   isActiveZdFulfillmentDocument,
   isFulfilledZdDocumentStatus,
+  partitionZdListItemsForEtaLoad,
   parseZdFulfillmentDeadline,
 } from "./zd-fulfillment-date";
 
@@ -43,23 +44,17 @@ describe("isActiveZdFulfillmentDeadline", () => {
     expect(isActiveZdFulfillmentDeadline("2026-07-15", at)).toBe(true);
   });
 
-  it("termin w przeszłości — nieaktywny (już zrealizowany)", () => {
+  it("termin w przeszłości — nieaktywny", () => {
     expect(isActiveZdFulfillmentDeadline("2026-02-27", at)).toBe(false);
     expect(isActiveZdFulfillmentDeadline(null, at)).toBe(false);
   });
 
-  it("isActiveZdFulfillmentDocument na dokumencie", () => {
+  it("isActiveZdFulfillmentDocument bez statusu — wg terminu", () => {
     expect(
-      isActiveZdFulfillmentDocument(
-        { dok_TerminRealizacji: "2026-07-15" },
-        at
-      )
+      isActiveZdFulfillmentDocument({ dok_TerminRealizacji: "2026-07-15" }, at)
     ).toBe(true);
     expect(
-      isActiveZdFulfillmentDocument(
-        { dok_TerminRealizacji: "2026-02-27" },
-        at
-      )
+      isActiveZdFulfillmentDocument({ dok_TerminRealizacji: "2026-02-27" }, at)
     ).toBe(false);
   });
 
@@ -73,12 +68,28 @@ describe("isActiveZdFulfillmentDeadline", () => {
     ).toBe(false);
   });
 
-  it("uwzględnia ZD Aktywne (7) niezależnie od terminu", () => {
-    expect(
-      isActiveZdFulfillmentDocument(
-        { dok_Status: 7, dok_TerminRealizacji: "2020-01-01" },
-        at
-      )
-    ).toBe(true);
+  it("uwzględnia ZD niezrealizowane (5/6/7)", () => {
+    for (const status of [5, 6, 7]) {
+      expect(
+        isActiveZdFulfillmentDocument(
+          { dok_Status: status, dok_TerminRealizacji: "2026-07-15" },
+          at
+        )
+      ).toBe(true);
+    }
+  });
+});
+
+describe("partitionZdListItemsForEtaLoad", () => {
+  it("najpierw niezrealizowane (5/6/7), potem reszta bez pomijanych", () => {
+    const { open, later } = partitionZdListItemsForEtaLoad([
+      { dok_Id: 1, dok_Status: 8 },
+      { dok_Id: 2, dok_Status: 6 },
+      { dok_Id: 3, dok_Status: null },
+      { dok_Id: 4, dok_Status: 7 },
+      { dok_Id: 5, dok_Status: 99 },
+    ]);
+    expect(open.map((r) => r.dok_Id)).toEqual([2, 4]);
+    expect(later.map((r) => r.dok_Id)).toEqual([3]);
   });
 });

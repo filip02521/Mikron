@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { NotatnikListFilterBar } from "@/components/notatnik/NotatnikListFilterBar";
@@ -174,7 +174,7 @@ export function MojeAnnouncementsSection({
   );
   const initialUnread = announcements.filter((a) => !readAnnouncementIds.includes(a.id)).length;
   const autoSectionExpanded = Boolean(focusAnnouncementId) || initialUnread > 0;
-  const [hashExpand, setHashExpand] = useState(false);
+  const [hashExpand] = useState(() => hashRequestsAnnouncementsExpand());
   const [userSectionExpanded, setUserSectionExpanded] = useState<boolean | null>(null);
   const sectionExpanded = userSectionExpanded ?? (autoSectionExpanded || hashExpand);
   const [userOpenRowId, setUserOpenRowId] = useState<string | null>(null);
@@ -184,10 +184,6 @@ export function MojeAnnouncementsSection({
       ? focusAnnouncementId
       : null;
   const openRowId = userOpenRowId ?? effectiveFocusId;
-
-  useLayoutEffect(() => {
-    if (hashRequestsAnnouncementsExpand()) setHashExpand(true);
-  }, []);
 
   const unreadCount = useMemo(
     () => announcements.filter((a) => !readIds.has(a.id)).length,

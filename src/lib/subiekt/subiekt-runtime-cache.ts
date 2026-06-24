@@ -6,6 +6,7 @@ import {
   searchSubiektZd,
   type SubiektListParams,
 } from "@/lib/subiekt/api";
+import { withZdEtaSubiektListParams } from "@/lib/subiekt/zd-fulfillment-date";
 import type {
   SubiektDocument,
   SubiektKontrahent,
@@ -138,6 +139,13 @@ export async function searchSubiektZdCached(
 
   zdListInflight.set(key, load);
   return load;
+}
+
+/** Lista ZD na potrzeby sync ETA / Moje (filtrowanie statusu po odpowiedzi API). */
+export async function searchSubiektZdCachedForEta(
+  params: SubiektListParams
+): Promise<SubiektListEnvelope<SubiektDocument>> {
+  return searchSubiektZdCached(withZdEtaSubiektListParams(params));
 }
 
 /** Wyszukiwanie kontrahentów-dostawców — cache w procesie (typeahead). */

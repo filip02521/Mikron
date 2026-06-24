@@ -321,6 +321,55 @@ export function zdPlacementIssueDateInBrowseWindow(
   );
 }
 
+/** Dolna granica listy ZD po tw_Id — od początku roku zamówienia (otwarte ZD bywa z wcześniejszych miesięcy). */
+export function zdTwIdListDataOd(
+  placementIso: string | null | undefined,
+  at: Date = new Date()
+): string {
+  const extended = zdContractorExtendedDataOdForPlacement(placementIso, at);
+  const placement = placementIso?.trim().slice(0, 10);
+  if (!placement || !/^\d{4}-\d{2}-\d{2}$/.test(placement)) return extended;
+  const yearStart = `${placement.slice(0, 4)}-01-01`;
+  return yearStart < extended ? clampDataOd(yearStart, at) : extended;
+}
+
+/**
+ * Miesięczne okna browse dla tw_Id: od {@link zdTwIdListDataOd} do końca okna placement.
+ * Uzupełnia zwykły browse (np. luty przy zgłoszeniu w czerwcu).
+ */
+export function zdTwIdBrowseMonthChunks(
+  placementIso: string | null | undefined,
+  at: Date = new Date()
+): ZdMonthBrowseChunk[] {
+  const floorKey = zdTwIdListDataOd(placementIso, at);
+  const floorDate = parseDateOnly(floorKey) ?? startOfMonth(at);
+  const floorMonth = startOfMonth(floorDate);
+
+  const placementChunks = zdPlacementBrowseMonthChunks(placementIso, at);
+  const lastExclusive =
+    placementChunks.length > 0
+      ? placementChunks[placementChunks.length - 1]!.dataDo
+      : formatDateString(addMonths(startOfMonth(at), 1));
+  const endLimit = parseDateOnly(lastExclusive) ?? addMonths(startOfMonth(at), 1);
+
+  const chunkMap = new Map<string, ZdMonthBrowseChunk>();
+  let cursor = floorMonth;
+  while (cursor < endLimit) {
+    const chunk = monthBrowseChunkFromAnchor(cursor);
+    chunkMap.set(`${chunk.dataOd}|${chunk.dataDo}`, chunk);
+    cursor = addMonths(cursor, 1);
+  }
+
+  if (!chunkMap.size) {
+    return sortMonthChunksNearPlacement(
+      [monthBrowseChunkFromAnchor(floorMonth)],
+      placementIso
+    );
+  }
+
+  return sortMonthChunksNearPlacement([...chunkMap.values()], placementIso);
+}
+
 /** Jedno okno listy API dla live search — spółny zakres miesięcznych chunków. */
 export function zdPlacementListWindowForApi(
   placementIso: string | null | undefined,

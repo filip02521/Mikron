@@ -29,6 +29,8 @@ vi.mock("@/lib/subiekt/subiekt-runtime-cache", async (importOriginal) => {
     getSubiektZdDocumentCached: (...args: unknown[]) =>
       mocks.getSubiektZdDocumentCached(...args),
     searchSubiektZdCached: (...args: unknown[]) => mocks.searchSubiektZdCached(...args),
+    searchSubiektZdCachedForEta: (...args: unknown[]) =>
+      mocks.searchSubiektZdCached(...args),
   };
 });
 
@@ -95,6 +97,15 @@ function overdueOrder(overrides: Partial<IndividualOrder> = {}): IndividualOrder
       stats_mode: "LACZNIE",
     } as IndividualOrder["supplier"],
     ...overrides,
+  };
+}
+
+function zdListItem(id: number, khId = 9001) {
+  return {
+    dok_Id: id,
+    dok_OdbiorcaId: khId,
+    dok_PlatnikId: khId,
+    dok_Status: 6,
   };
 }
 
@@ -337,7 +348,7 @@ describe("runZdEtaSync (integracja)", () => {
 
   it("liveSearchZdDocsForOrder dopasowuje dokument z wyszukiwania", async () => {
     searchSubiektZdCached.mockResolvedValue({
-      data: [{ dok_Id: 301 }],
+      data: [zdListItem(301)],
     });
     getSubiektZdDocumentCached.mockResolvedValue(
       zdDoc(301, "2026-06-01", "ABC-1", "2026-08-20")
@@ -360,7 +371,7 @@ describe("runZdEtaSync (integracja)", () => {
   it("runZdEtaSync uruchamia live search gdy brak dopasowania w indeksie", async () => {
     mockIndexRows = [];
     searchSubiektZdCached.mockResolvedValue({
-      data: [{ dok_Id: 301 }],
+      data: [zdListItem(301)],
     });
     getSubiektZdDocumentCached.mockResolvedValue(
       zdDoc(301, "2026-06-01", "ABC-1", "2026-08-20")

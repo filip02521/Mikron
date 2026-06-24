@@ -15,11 +15,12 @@ import {
 import type { AppSupplierRef } from "@/lib/subiekt/match-supplier";
 import {
   findBestMatchingZdDocument,
+  isConfidentZdMatchForOrder,
   orderMatchesZdDocument,
 } from "@/lib/subiekt/match-order-to-zd";
 import {
   getSubiektZdDocumentCached,
-  searchSubiektZdCached,
+  searchSubiektZdCachedForEta,
 } from "@/lib/subiekt/subiekt-runtime-cache";
 import type { SubiektDocument, SubiektProduct } from "@/lib/subiekt/types";
 import { extractAnyKhLabelFromDocument } from "@/lib/subiekt/kontrahent-from-document";
@@ -27,11 +28,16 @@ import { lineTowId } from "@/lib/subiekt/zd-catalog-import";
 import {
   isActiveZdFulfillmentDocument,
   parseZdFulfillmentDeadline,
+  partitionZdListItemsForEtaLoad,
+  ZD_ETA_OPEN_DOCUMENT_STATUSES,
 } from "@/lib/subiekt/zd-fulfillment-date";
 import { browseZdDocumentsForKhIds } from "@/lib/subiekt/zd-eta-browse";
 import { sortZdCandidatesByNewestIssue } from "@/lib/subiekt/zd-placement-sort";
+import { zdListItemMatchesSupplierKhIds } from "@/lib/subiekt/zd-document-kh";
 import {
+  liveSearchZdDocsByTwIdForOrder,
   liveSearchZdDocsForOrder,
+  loadExtraKhIdsBySupplierIdFromZdIndex,
   resolveSupplierKhIds,
   buildZdIndexSearchEarlyStopHandlers,
   zdDocumentMatchesSupplierKhIds,
@@ -46,6 +52,7 @@ import {
 import {
   buildZdSearchPlacements,
   earliestZdContractorExtendedDataOd,
+  placementIsOlderThanRollingWindow,
   sortMonthChunksNewestFirst,
   sortMonthChunksNearPlacement,
   zdContractorExtendedDataOd,
@@ -549,35 +556,43 @@ async function resolveProductSupplierKhIdsForLookup(
 }
 
 async function loadExtraKhBySupplierId(): Promise<Map<string, number[]>> {
-  const supabase = createAdminClient();
-  const { data, error } = await supabase
-    .from("subiekt_zd_index")
-    .select("supplier_id, subiekt_kh_id")
-    .not("supplier_id", "is", null);
-  if (error) throw new Error(error.message);
-
-  const map = new Map<string, Set<number>>();
-  for (const row of data ?? []) {
-    const supplierId = (row as { supplier_id: string | null }).supplier_id;
-    const kh = Math.trunc(Number((row as { subiekt_kh_id: number }).subiekt_kh_id));
-    if (!supplierId || !Number.isFinite(kh) || kh <= 0) continue;
-    const set = map.get(supplierId) ?? new Set<number>();
-    set.add(kh);
-    map.set(supplierId, set);
-  }
-
-  const out = new Map<string, number[]>();
-  for (const [supplierId, ids] of map) out.set(supplierId, [...ids]);
-  return out;
+  return loadExtraKhIdsBySupplierIdFromZdIndex();
 }
 
-async function fetchZdDocumentSafe(dokId: number): Promise<SubiektDocument | null> {
+async function fetchZdDocumentSafe(
+  dokId: number,
+  options?: { forceFresh?: boolean }
+): Promise<SubiektDocument | null> {
   try {
-    return await getSubiektZdDocumentCached(dokId);
+    return await getSubiektZdDocumentCached(dokId, options);
   } catch (error) {
     if (isSubiektOfflineError(error)) throw error;
     return null;
   }
+}
+
+function loadDocForLookup(dokId: number): Promise<SubiektDocument | null> {
+  return fetchZdDocumentSafe(dokId, { forceFresh: true });
+}
+
+type LookupIncompleteFlags = {
+  historiaUnavailable: boolean;
+  indexStoppedEarly: boolean;
+  indexRowsUnsearched: boolean;
+  symbolExhausted: boolean;
+  browseStoppedEarly: boolean;
+  liveSearchExhausted: boolean;
+};
+
+function isLookupSearchIncomplete(flags: LookupIncompleteFlags): boolean {
+  return (
+    flags.historiaUnavailable ||
+    flags.indexStoppedEarly ||
+    flags.indexRowsUnsearched ||
+    flags.symbolExhausted ||
+    flags.browseStoppedEarly ||
+    flags.liveSearchExhausted
+  );
 }
 
 function productZdDocumentMatchesLookup(
@@ -588,6 +603,17 @@ function productZdDocumentMatchesLookup(
   if (khIds.length > 0 && !zdDocumentMatchesSupplierKhIds(doc, khIds)) return false;
   if (!orderMatchesZdDocument(order, doc)) return false;
   return isActiveZdFulfillmentDocument(doc);
+}
+
+function productZdConfidentMatchLookup(
+  order: IndividualOrder,
+  doc: SubiektDocument,
+  khIds: readonly number[]
+): boolean {
+  return (
+    productZdDocumentMatchesLookup(order, doc, khIds) &&
+    isConfidentZdMatchForOrder(order, doc)
+  );
 }
 
 /**
@@ -620,72 +646,95 @@ export async function liveSearchProductZdBySymbolWindows(
 
   const docs: SubiektDocument[] = [];
   let fetched = 0;
-  const khIdList = khIds.length ? khIds : [null];
-  const perChunkBudget =
-    khIds.length > 0
-      ? budget
-      : Math.max(
-          PRODUCT_ZD_LOOKUP_SYMBOL_MIN_DOCS_PER_CHUNK,
-          Math.floor(budget / Math.max(chunks.length, 1))
-        );
+  const perChunkBudget = Math.max(
+    PRODUCT_ZD_LOOKUP_SYMBOL_MIN_DOCS_PER_CHUNK,
+    Math.floor(budget / Math.max(chunks.length, 1))
+  );
 
-  for (const khId of khIdList) {
-    for (const chunk of chunks) {
-      if (fetched >= budget) break;
-      let chunkFetched = 0;
-      const listedIds = new Set<number>();
+  for (const chunk of chunks) {
+    if (fetched >= budget) break;
+    let chunkFetched = 0;
+    const listedIds = new Set<number>();
 
-      const listings: { id: number; issueDate: string }[] = [];
+    const openListings: { id: number; issueDate: string }[] = [];
+    const laterListings: { id: number; issueDate: string }[] = [];
+
+    const pushListing = (
+      target: { id: number; issueDate: string }[],
+      row: SubiektDocument
+    ) => {
+      if (khIds.length > 0 && !zdListItemMatchesSupplierKhIds(row, khIds)) {
+        return;
+      }
+      const id = Math.trunc(Number(row.dok_Id));
+      if (!Number.isFinite(id) || id <= 0 || listedIds.has(id) || skipDocIds.has(id)) {
+        return;
+      }
+      const issueDate = (row.dok_DataWyst ?? "").slice(0, 10);
+      if (issueDate < chunk.dataOd || (chunk.dataDo && issueDate >= chunk.dataDo)) {
+        return;
+      }
+      listedIds.add(id);
+      target.push({ id, issueDate });
+    };
+
+    const statusPasses: readonly (number | undefined)[] = [
+      ...ZD_ETA_OPEN_DOCUMENT_STATUSES,
+      undefined,
+    ];
+
+    for (const status of statusPasses) {
       for (let page = 1; page <= PRODUCT_ZD_LOOKUP_SYMBOL_LIST_MAX_PAGES; page++) {
-        const list = await searchSubiektZdCached({
-          ...(khId != null ? { khId } : {}),
+        const list = await searchSubiektZdCachedForEta({
           symbol,
           dataOd: chunk.dataOd,
           dataDo: chunk.dataDo,
           page,
           pageSize: PRODUCT_ZD_LOOKUP_SYMBOL_PAGE_SIZE,
+          ...(status != null ? { status } : {}),
         });
         const rows = list.data ?? [];
         if (!rows.length) break;
 
-        for (const row of rows) {
-          const id = Math.trunc(Number(row.dok_Id));
-          if (!Number.isFinite(id) || id <= 0 || listedIds.has(id) || skipDocIds.has(id)) {
-            continue;
-          }
-          const issueDate = (row.dok_DataWyst ?? "").slice(0, 10);
-          if (issueDate < chunk.dataOd || (chunk.dataDo && issueDate >= chunk.dataDo)) {
-            continue;
-          }
-          listedIds.add(id);
-          listings.push({ id, issueDate });
-        }
+        const { open, later } = partitionZdListItemsForEtaLoad(rows);
+        for (const row of open) pushListing(openListings, row);
+        for (const row of later) pushListing(laterListings, row);
 
         if (rows.length < PRODUCT_ZD_LOOKUP_SYMBOL_PAGE_SIZE) break;
       }
+    }
 
-      const ordered = sortZdCandidatesByNewestIssue(listings);
+    const ordered = [
+      ...sortZdCandidatesByNewestIssue(openListings),
+      ...sortZdCandidatesByNewestIssue(laterListings),
+    ];
 
-      for (const item of ordered) {
-        if (fetched >= budget || chunkFetched >= perChunkBudget) break;
-        const full = await loadDoc(item.id);
-        if (!full) continue;
-        if (khIds.length > 0 && !zdDocumentMatchesSupplierKhIds(full, khIds)) continue;
-        fetched++;
-        chunkFetched++;
-        docs.push(full);
-        if (productZdDocumentMatchesLookup(order, full, khIds)) {
-          return { docs, fetched, matched: full };
-        }
+    for (const item of ordered) {
+      if (fetched >= budget || chunkFetched >= perChunkBudget) break;
+      const full = await loadDoc(item.id);
+      if (!full) continue;
+      if (khIds.length > 0 && !zdDocumentMatchesSupplierKhIds(full, khIds)) continue;
+      fetched++;
+      chunkFetched++;
+      docs.push(full);
+      if (productZdConfidentMatchLookup(order, full, khIds)) {
+        return {
+          docs,
+          fetched,
+          matched: findBestMatchingZdDocument(order, docs) ?? full,
+        };
       }
     }
   }
 
-  const matched = docs.find((doc) => productZdDocumentMatchesLookup(order, doc, khIds)) ?? null;
+  const matchingDocs = docs.filter((doc) => productZdDocumentMatchesLookup(order, doc, khIds));
+  const matched = matchingDocs.length
+    ? findBestMatchingZdDocument(order, matchingDocs)
+    : null;
   return { docs, fetched, matched };
 }
 
-async function searchProductZdWithSupplier(
+export async function searchProductZdWithSupplier(
   product: SubiektProduct,
   supplier: SupplierResolution,
   appSuppliers: AppSupplierRef[],
@@ -700,6 +749,14 @@ async function searchProductZdWithSupplier(
   }
 
   const syncAt = new Date();
+  const incompleteFlags: LookupIncompleteFlags = {
+    historiaUnavailable: false,
+    indexStoppedEarly: false,
+    indexRowsUnsearched: false,
+    symbolExhausted: false,
+    browseStoppedEarly: false,
+    liveSearchExhausted: false,
+  };
   let historiaUnavailable = false;
   const supplierOrderDates = supplier.supplierId
     ? await loadSupplierHistoriaOrderDates(supplier.supplierId).catch((error) => {
@@ -708,12 +765,29 @@ async function searchProductZdWithSupplier(
         return [] as string[];
       })
     : [];
+  incompleteFlags.historiaUnavailable = historiaUnavailable;
   const searchPlacements = buildZdSearchPlacements(placementAt, supplierOrderDates, syncAt);
+  const oldPlacement = Boolean(
+    placementAt && placementIsOlderThanRollingWindow(placementAt, syncAt)
+  );
 
   const skipDocIds = new Set<number>();
   const docs: SubiektDocument[] = [];
   let fetched = 0;
-  let searchIncomplete = false;
+  /** Osobny licznik pełnych ZD dla tw_Id / live — nie zależy od budżetu symbolu. */
+  let liveSearchDocLoads = 0;
+
+  const ingestDocs = (incoming: readonly SubiektDocument[]) => {
+    for (const doc of incoming) {
+      const id = Math.trunc(Number(doc.dok_Id));
+      if (!Number.isFinite(id) || id <= 0 || skipDocIds.has(id)) continue;
+      skipDocIds.add(id);
+      docs.push(doc);
+    }
+  };
+
+  const collectMatches = (): ProductZdLookupMatch[] =>
+    collectActiveProductZdMatches(product, docs, supplier, appSuppliers);
 
   const indexPlacementInputs = searchPlacements.length
     ? searchPlacements
@@ -741,27 +815,24 @@ async function searchProductZdWithSupplier(
   const indexSearch = await searchZdFromIndexForOrder(scopedIndexRows, {
     maxDocsToFetch: indexBudget,
     skipDocIds,
-    loadDoc: fetchZdDocumentSafe,
+    loadDoc: loadDocForLookup,
     preferIssueDateNear: placementAt ?? searchPlacements[0] ?? undefined,
     ...buildZdIndexSearchEarlyStopHandlers(order, khIds),
   });
   fetched += indexSearch.fetched;
-  for (const doc of indexSearch.docs) {
-    if (!zdDocumentMatchesSupplierKhIds(doc, khIds)) continue;
-    docs.push(doc);
-    skipDocIds.add(Math.trunc(Number(doc.dok_Id)));
-  }
+  incompleteFlags.indexStoppedEarly = indexSearch.stoppedEarly;
+  incompleteFlags.indexRowsUnsearched = scopedIndexRows.length > indexSearch.fetched;
+  ingestDocs(indexSearch.docs.filter((doc) => zdDocumentMatchesSupplierKhIds(doc, khIds)));
 
-  let matches = collectActiveProductZdMatches(product, docs, supplier, appSuppliers);
+  let matches = collectMatches();
   if (matches.length > 0) {
     return {
       matches,
-      searchIncomplete: indexSearch.stoppedEarly || fetched >= PRODUCT_ZD_LOOKUP_MAX_DOCS,
+      searchIncomplete: isLookupSearchIncomplete(incompleteFlags),
     };
   }
 
   const symbolBudget = Math.max(0, PRODUCT_ZD_LOOKUP_SYMBOL_MAX_DOCS - fetched);
-  let symbolExhausted = false;
   if (symbolBudget > 0) {
     const symbolLive = await liveSearchProductZdBySymbolWindows(
       product,
@@ -771,27 +842,78 @@ async function searchProductZdWithSupplier(
       placementAt,
       symbolBudget,
       skipDocIds,
-      fetchZdDocumentSafe
+      loadDocForLookup
     );
     fetched += symbolLive.fetched;
-    symbolExhausted = symbolLive.fetched >= symbolBudget;
-    for (const doc of symbolLive.docs) {
-      docs.push(doc);
-      skipDocIds.add(Math.trunc(Number(doc.dok_Id)));
-    }
-    matches = collectActiveProductZdMatches(product, docs, supplier, appSuppliers);
+    incompleteFlags.symbolExhausted = symbolLive.fetched >= symbolBudget;
+    ingestDocs(symbolLive.docs);
+    matches = collectMatches();
     if (matches.length > 0) {
       return {
         matches,
-        searchIncomplete:
-          fetched >= PRODUCT_ZD_LOOKUP_MAX_DOCS ||
-          symbolLive.fetched >= symbolBudget,
+        searchIncomplete: isLookupSearchIncomplete(incompleteFlags),
       };
     }
   }
 
-  const liveBudget = PRODUCT_ZD_LOOKUP_MAX_DOCS;
-  if (liveBudget > 0) {
+  const browseChunks = zdMergedPlacementBrowseMonthChunks(
+    searchPlacements,
+    placementAt ?? searchPlacements[0] ?? null,
+    syncAt
+  );
+  const browseDataOd =
+    searchPlacements.length > 1
+      ? earliestZdContractorExtendedDataOd(searchPlacements, syncAt)
+      : zdContractorExtendedDataOdForPlacement(placementAt, syncAt);
+
+  const runPlacementBrowse = async (budget: number, maxPagesPerKh: number) => {
+    if (budget <= 0 || searchPlacements.length === 0) {
+      return [] as SubiektDocument[];
+    }
+    const browse = await browseZdDocumentsForKhIds({
+      khIds,
+      dataOd: browseChunks[0]?.dataOd ?? browseDataOd,
+      monthChunks: browseChunks,
+      pageSize: 25,
+      maxPagesPerKh,
+      maxDocsToFetch: budget,
+      skipDocIds,
+      loadDoc: loadDocForLookup,
+      preferIssueDateNear: placementAt ?? searchPlacements[0] ?? undefined,
+      matchDoc: (doc) => productZdConfidentMatchLookup(order, doc, khIds),
+    });
+    fetched += browse.fetched;
+    if (browse.stoppedEarly) incompleteFlags.browseStoppedEarly = true;
+    return browse.docs.filter((doc) => zdDocumentMatchesSupplierKhIds(doc, khIds));
+  };
+
+  const remainingLiveSearchBudget = () =>
+    Math.max(0, PRODUCT_ZD_LOOKUP_MAX_DOCS - liveSearchDocLoads);
+
+  const runTwIdSearch = async (): Promise<boolean> => {
+    const twBudget = remainingLiveSearchBudget();
+    const twId = Math.trunc(Number(order.subiekt_tw_id));
+    if (twBudget <= 0 || !Number.isFinite(twId) || twId <= 0) return false;
+
+    const twSearch = await liveSearchZdDocsByTwIdForOrder(
+      order,
+      khIds,
+      twBudget,
+      skipDocIds,
+      loadDocForLookup
+    );
+    if (!twSearch.doc) return false;
+    liveSearchDocLoads += 1;
+    fetched += 1;
+    ingestDocs([twSearch.doc]);
+    matches = collectMatches();
+    return matches.length > 0;
+  };
+
+  const runGenericLiveSearch = async (): Promise<boolean> => {
+    const liveBudget = remainingLiveSearchBudget();
+    if (liveBudget <= 0) return false;
+
     const live = await liveSearchZdDocsForOrder(
       order,
       khIds,
@@ -799,96 +921,68 @@ async function searchProductZdWithSupplier(
       liveBudget,
       liveBudget,
       skipDocIds,
-      fetchZdDocumentSafe
+      loadDocForLookup
     );
     fetched += live.fetched;
+    liveSearchDocLoads += live.fetched;
+    if (live.fetched >= liveBudget) incompleteFlags.liveSearchExhausted = true;
     const liveDocs = live.docs.filter((doc) => zdDocumentMatchesSupplierKhIds(doc, khIds));
     if (live.matched && zdDocumentMatchesSupplierKhIds(live.matched, khIds)) {
-      matches = collectActiveProductZdMatches(
-        product,
-        [live.matched, ...liveDocs.filter((doc) => doc.dok_Id !== live.matched?.dok_Id)],
-        supplier,
-        appSuppliers
-      );
+      ingestDocs([
+        live.matched,
+        ...liveDocs.filter((doc) => doc.dok_Id !== live.matched?.dok_Id),
+      ]);
     } else {
-      matches = collectActiveProductZdMatches(
-        product,
-        [...docs, ...liveDocs],
-        supplier,
-        appSuppliers
-      );
+      ingestDocs(liveDocs);
+    }
+    matches = collectMatches();
+    return matches.length > 0;
+  };
+
+  if (oldPlacement) {
+    const browseDocs = await runPlacementBrowse(
+      Math.max(0, PRODUCT_ZD_LOOKUP_PLACEMENT_BROWSE_MAX_DOCS - fetched),
+      8
+    );
+    ingestDocs(browseDocs);
+    matches = collectMatches();
+    if (matches.length > 0) {
+      return { matches, searchIncomplete: isLookupSearchIncomplete(incompleteFlags) };
     }
   }
 
-  if (matches.length === 0 && searchPlacements.length > 0) {
-    const browseChunks = zdMergedPlacementBrowseMonthChunks(
-      searchPlacements,
-      placementAt ?? searchPlacements[0] ?? null,
-      syncAt
-    );
-    const browseDataOd =
-      searchPlacements.length > 1
-        ? earliestZdContractorExtendedDataOd(searchPlacements, syncAt)
-        : zdContractorExtendedDataOdForPlacement(placementAt, syncAt);
+  if (await runTwIdSearch()) {
+    return { matches, searchIncomplete: isLookupSearchIncomplete(incompleteFlags) };
+  }
+  if (await runGenericLiveSearch()) {
+    return { matches, searchIncomplete: isLookupSearchIncomplete(incompleteFlags) };
+  }
 
-    const runPlacementBrowse = async (budget: number, maxPagesPerKh: number) => {
-      if (budget <= 0) return [] as SubiektDocument[];
-      const browse = await browseZdDocumentsForKhIds({
-        khIds,
-        dataOd: browseChunks[0]?.dataOd ?? browseDataOd,
-        monthChunks: browseChunks,
-        pageSize: 25,
-        maxPagesPerKh,
-        maxDocsToFetch: budget,
-        skipDocIds,
-        loadDoc: fetchZdDocumentSafe,
-        preferIssueDateNear: placementAt ?? searchPlacements[0] ?? undefined,
-        matchDoc: (doc) => productZdDocumentMatchesLookup(order, doc, khIds),
-      });
-      fetched += browse.fetched;
-      if (browse.stoppedEarly) searchIncomplete = true;
-      return browse.docs.filter((doc) => zdDocumentMatchesSupplierKhIds(doc, khIds));
-    };
-
-    const primaryBrowseBudget = Math.max(
-      0,
-      PRODUCT_ZD_LOOKUP_PLACEMENT_BROWSE_MAX_DOCS - fetched
+  if (!oldPlacement && searchPlacements.length > 0) {
+    let browseDocs = await runPlacementBrowse(
+      Math.max(0, PRODUCT_ZD_LOOKUP_PLACEMENT_BROWSE_MAX_DOCS - fetched),
+      8
     );
-    let browseDocs = await runPlacementBrowse(primaryBrowseBudget, 8);
-    matches = collectActiveProductZdMatches(
-      product,
-      [...docs, ...browseDocs],
-      supplier,
-      appSuppliers
-    );
+    ingestDocs(browseDocs);
+    matches = collectMatches();
 
     if (matches.length === 0) {
-      const extraBrowseBudget = Math.max(
-        0,
-        PRODUCT_ZD_LOOKUP_PLACEMENT_BROWSE_MAX_DOCS + PRODUCT_ZD_LOOKUP_MAX_DOCS - fetched
-      );
       browseDocs = [
         ...browseDocs,
-        ...(await runPlacementBrowse(extraBrowseBudget, 12)),
+        ...(await runPlacementBrowse(
+          Math.max(
+            0,
+            PRODUCT_ZD_LOOKUP_PLACEMENT_BROWSE_MAX_DOCS + PRODUCT_ZD_LOOKUP_MAX_DOCS - fetched
+          ),
+          12
+        )),
       ];
-      matches = collectActiveProductZdMatches(
-        product,
-        [...docs, ...browseDocs],
-        supplier,
-        appSuppliers
-      );
+      ingestDocs(browseDocs);
+      matches = collectMatches();
     }
   }
 
-  searchIncomplete =
-    searchIncomplete ||
-    historiaUnavailable ||
-    indexSearch.stoppedEarly ||
-    scopedIndexRows.length > indexSearch.fetched ||
-    symbolExhausted ||
-    fetched >= PRODUCT_ZD_LOOKUP_SYMBOL_MAX_DOCS + PRODUCT_ZD_LOOKUP_PLACEMENT_BROWSE_MAX_DOCS;
-
-  return { matches, searchIncomplete };
+  return { matches, searchIncomplete: isLookupSearchIncomplete(incompleteFlags) };
 }
 
 export async function lookupProductZdDelivery(

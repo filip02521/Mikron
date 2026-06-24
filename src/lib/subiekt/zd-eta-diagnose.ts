@@ -11,6 +11,7 @@ import { parseZdFulfillmentDeadline } from "@/lib/subiekt/zd-fulfillment-date";
 import { getSubiektZdDocumentCached } from "@/lib/subiekt/subiekt-runtime-cache";
 import {
   isZdEtaSyncEligible,
+  liveSearchZdDocsByTwIdForOrder,
   liveSearchZdDocsForOrder,
   resolveSupplierKhIds,
   selectZdEtaSyncCandidates,
@@ -251,6 +252,17 @@ export async function diagnoseZdEtaForOrder(
   };
 
   const runLive = async (): Promise<ZdEtaOrderDiagnosis | null> => {
+    const twSearch = await liveSearchZdDocsByTwIdForOrder(
+      order,
+      khIds,
+      maxDocsPerPhase,
+      skip,
+      loadDocForPhase(maxDocsPerPhase)
+    );
+    if (twSearch.doc) {
+      return finish("live", twSearch.doc, { indexCandidates: indexRows.length });
+    }
+
     const live = await liveSearchZdDocsForOrder(
       order,
       khIds,

@@ -26,12 +26,134 @@ export type ProductCatalogCoverageStats = {
   withoutSupplier: number;
 };
 
+export function formatCatalogSupplierSubtitle(
+  row: ProductCatalogRow,
+  filteredSupplierId: string | null,
+  filteredSupplierName: string | null
+): string {
+  if (filteredSupplierId && filteredSupplierName) {
+    const main =
+      row.topSupplier && row.topSupplier.id !== filteredSupplierId
+        ? ` · główny: ${row.topSupplier.name} (${row.topSupplier.orderCount})`
+        : "";
+    return `${filteredSupplierName} (filtr)${main}`;
+  }
+  if (row.topSupplier) return `${row.topSupplier.name} (${row.topSupplier.orderCount})`;
+  return "bez dostawcy";
+}
+
 /** Limit PostgREST / Supabase na jedną stronę (domyślnie 1000). */
 const SUPABASE_PAGE = 1000;
 
 type SubiektTwIdRow = {
   subiekt_tw_id: number | string;
 };
+
+function buildIlikePattern(q: string): string {
+  return `%${q.replaceAll("%", "\\%").replaceAll("_", "\\_")}%`;
+}
+
+function parseTwIdQuery(q: string): number | null {
+  if (!/^\d+$/.test(q)) return null;
+  const twId = Number(q);
+  return Number.isFinite(twId) && twId > 0 ? Math.trunc(twId) : null;
+}
+
+/** Paginacja produktów dostawcy po last_seen_at (bez ładowania całego katalogu do pamięci). */
+async function fetchSupplierLinkTwIdPage(options: {
+  supplierId: string;
+  limit: number;
+  offset: number;
+  productFilter?: { twId: number } | { textQuery: string };
+}): Promise<{ twIds: number[]; total: number }> {
+  const supabase = createAdminClient();
+  let query = supabase
+    .from("product_supplier_links")
+    .select("subiekt_tw_id, subiekt_products!inner(last_seen_at)", { count: "exact" })
+    .eq("supplier_id", options.supplierId);
+
+  if (options.productFilter) {
+    if ("twId" in options.productFilter) {
+      query = query.eq("subiekt_tw_id", options.productFilter.twId);
+    } else {
+      const pattern = buildIlikePattern(options.productFilter.textQuery);
+      query = query.or(
+        `symbol.ilike.${pattern},name.ilike.${pattern},plu.ilike.${pattern},note.ilike.${pattern}`,
+        { foreignTable: "subiekt_products" }
+      );
+    }
+  }
+
+  const { data, count, error } = await query
+    .order("last_seen_at", { foreignTable: "subiekt_products", ascending: false })
+    .range(options.offset, options.offset + options.limit - 1);
+  if (error) throw new Error(error.message);
+
+  const twIds = (data ?? [])
+    .map((row) => Number((row as { subiekt_tw_id: unknown }).subiekt_tw_id))
+    .filter((id) => Number.isFinite(id) && id > 0)
+    .map((id) => Math.trunc(id));
+
+  return { twIds, total: Number(count ?? 0) };
+}
+
+/** Wszystkie tw_Id pasujące do pól produktu (bez paginacji wyniku). */
+async function listAllTwIdsFromProductTextSearch(q: string): Promise<number[]> {
+  const supabase = createAdminClient();
+  const pattern = buildIlikePattern(q);
+  const ids: number[] = [];
+  let offset = 0;
+
+  while (true) {
+    const { data, error } = await supabase
+      .from("subiekt_products")
+      .select("subiekt_tw_id")
+      .or(`symbol.ilike.${pattern},name.ilike.${pattern},plu.ilike.${pattern},note.ilike.${pattern}`)
+      .order("last_seen_at", { ascending: false })
+      .range(offset, offset + SUPABASE_PAGE - 1);
+    if (error) throw new Error(error.message);
+    const batch = data ?? [];
+    for (const row of batch) {
+      const id = Number((row as { subiekt_tw_id: unknown }).subiekt_tw_id);
+      if (Number.isFinite(id) && id > 0) ids.push(Math.trunc(id));
+    }
+    if (batch.length < SUPABASE_PAGE) break;
+    offset += SUPABASE_PAGE;
+  }
+
+  return ids;
+}
+
+/** Produkty powiązane z dostawcą, którego nazwa pasuje do zapytania. */
+async function listTwIdsBySupplierNameMatch(q: string): Promise<number[]> {
+  const supabase = createAdminClient();
+  const pattern = buildIlikePattern(q);
+  const ids: number[] = [];
+  let offset = 0;
+
+  while (true) {
+    const { data, error } = await supabase
+      .from("product_supplier_links")
+      .select("subiekt_tw_id, suppliers!inner(name)")
+      .ilike("suppliers.name", pattern)
+      .order("subiekt_tw_id", { ascending: true })
+      .range(offset, offset + SUPABASE_PAGE - 1);
+    if (error) throw new Error(error.message);
+    const batch = data ?? [];
+    for (const row of batch) {
+      const id = Number((row as { subiekt_tw_id: unknown }).subiekt_tw_id);
+      if (Number.isFinite(id) && id > 0) ids.push(Math.trunc(id));
+    }
+    if (batch.length < SUPABASE_PAGE) break;
+    offset += SUPABASE_PAGE;
+  }
+
+  return ids;
+}
+
+export function mergeUniqueTwIds(...groups: number[][]): number[] {
+  return [...new Set(groups.flat())];
+}
 
 function supplierNameFromLinkRow(
   suppliers: { name?: string | null } | { name?: string | null }[] | null | undefined
@@ -131,6 +253,76 @@ async function listUnlinkedSubiektTwIds(): Promise<number[]> {
   }
 
   return unlinked;
+}
+
+async function sortTwIdsByLastSeenAt(twIds: number[]): Promise<number[]> {
+  if (!twIds.length) return [];
+  const supabase = createAdminClient();
+  const lastSeenByTwId = new Map<number, string>();
+  const batchSize = 200;
+
+  for (let i = 0; i < twIds.length; i += batchSize) {
+    const batch = twIds.slice(i, i + batchSize);
+    const { data, error } = await supabase
+      .from("subiekt_products")
+      .select("subiekt_tw_id, last_seen_at")
+      .in("subiekt_tw_id", batch);
+    if (error) throw new Error(error.message);
+    for (const row of data ?? []) {
+      const id = Number((row as { subiekt_tw_id: unknown }).subiekt_tw_id);
+      if (Number.isFinite(id) && id > 0) {
+        lastSeenByTwId.set(Math.trunc(id), String((row as { last_seen_at: unknown }).last_seen_at ?? ""));
+      }
+    }
+  }
+
+  return [...twIds].sort((a, b) =>
+    (lastSeenByTwId.get(b) ?? "").localeCompare(lastSeenByTwId.get(a) ?? "")
+  );
+}
+
+export async function fetchProductCatalogBySupplierPage(options: {
+  supplierId: string;
+  limit?: number;
+  offset?: number;
+}): Promise<ProductCatalogPage> {
+  const limit = options.limit != null ? Math.max(1, Math.min(500, options.limit)) : 250;
+  const offset = options.offset != null ? Math.max(0, options.offset) : 0;
+  const supplierId = options.supplierId.trim();
+  if (!supplierId) return fetchProductCatalogPage({ limit, offset });
+
+  const { twIds, total } = await fetchSupplierLinkTwIdPage({
+    supplierId,
+    limit,
+    offset,
+  });
+  const rows = await fetchProductCatalogRowsByTwIds(twIds);
+  return { rows, total, offset, limit };
+}
+
+/** Wyszukiwanie wśród produktów powiązanych z wybranym dostawcą. */
+export async function searchProductCatalogBySupplierPage(options: {
+  supplierId: string;
+  query: string;
+  limit?: number;
+  offset?: number;
+}): Promise<ProductCatalogPage> {
+  const limit = options.limit != null ? Math.max(1, Math.min(500, options.limit)) : 250;
+  const offset = options.offset != null ? Math.max(0, options.offset) : 0;
+  const supplierId = options.supplierId.trim();
+  const q = options.query.trim();
+  if (!supplierId) return searchProductCatalogPage({ query: q, limit, offset });
+  if (!q) return fetchProductCatalogBySupplierPage({ supplierId, limit, offset });
+
+  const twId = parseTwIdQuery(q);
+  const { twIds, total } = await fetchSupplierLinkTwIdPage({
+    supplierId,
+    limit,
+    offset,
+    productFilter: twId != null ? { twId } : { textQuery: q },
+  });
+  const rows = await fetchProductCatalogRowsByTwIds(twIds);
+  return { rows, total, offset, limit };
 }
 
 export async function fetchProductsWithoutSupplierPage(options?: {
@@ -248,10 +440,14 @@ export async function fetchProductCatalogRowsByTwIds(twIds: number[]): Promise<P
 export async function fetchProductCatalogPage(options?: {
   limit?: number;
   offset?: number;
+  supplierId?: string | null;
 }): Promise<ProductCatalogPage> {
-  const supabase = createAdminClient();
   const limit = options?.limit != null ? Math.max(1, Math.min(500, options.limit)) : 250;
   const offset = options?.offset != null ? Math.max(0, options.offset) : 0;
+  const supplierId = options?.supplierId?.trim() ?? "";
+  if (supplierId) return fetchProductCatalogBySupplierPage({ supplierId, limit, offset });
+
+  const supabase = createAdminClient();
 
   const { data: idsRaw, count, error: idsErr } = await supabase
     .from("subiekt_products")
@@ -271,36 +467,59 @@ export async function searchProductCatalogPage(options: {
   query: string;
   limit?: number;
   offset?: number;
+  supplierId?: string | null;
 }): Promise<ProductCatalogPage> {
-  const supabase = createAdminClient();
   const limit = options.limit != null ? Math.max(1, Math.min(500, options.limit)) : 250;
   const offset = options.offset != null ? Math.max(0, options.offset) : 0;
   const q = options.query.trim();
+  const supplierId = options.supplierId?.trim() ?? "";
+  if (supplierId) return searchProductCatalogBySupplierPage({ supplierId, query: q, limit, offset });
   if (!q) return fetchProductCatalogPage({ limit, offset });
 
-  const twId = /^\d+$/.test(q) ? Number(q) : null;
-  const pattern = `%${q.replaceAll("%", "\\%").replaceAll("_", "\\_")}%`;
+  const supabase = createAdminClient();
+  const twId = parseTwIdQuery(q);
 
-  let query = supabase
-    .from("subiekt_products")
-    .select("subiekt_tw_id", { count: "exact" })
-    .order("last_seen_at", { ascending: false });
-
-  if (twId && Number.isFinite(twId)) {
-    query = query.eq("subiekt_tw_id", Math.trunc(twId));
-  } else {
-    // symbol/name/plu/note - ilike po całej bazie (server-side)
-    query = query.or(
-      `symbol.ilike.${pattern},name.ilike.${pattern},plu.ilike.${pattern},note.ilike.${pattern}`
-    );
+  if (twId != null) {
+    const { data: idsRaw, count, error } = await supabase
+      .from("subiekt_products")
+      .select("subiekt_tw_id", { count: "exact" })
+      .eq("subiekt_tw_id", twId)
+      .range(offset, offset + limit - 1);
+    if (error) throw new Error(error.message);
+    const total = Number(count ?? 0);
+    const twIds = (idsRaw ?? [])
+      .map((r) => Number((r as SubiektTwIdRow).subiekt_tw_id))
+      .filter((id) => id > 0);
+    const rows = await fetchProductCatalogRowsByTwIds(twIds);
+    return { rows, total, offset, limit };
   }
 
-  const { data: idsRaw, count, error } = await query.range(offset, offset + limit - 1);
-  if (error) throw new Error(error.message);
+  const pattern = buildIlikePattern(q);
+  const supplierNameTwIds = await listTwIdsBySupplierNameMatch(q);
+  if (!supplierNameTwIds.length) {
+    const query = supabase
+      .from("subiekt_products")
+      .select("subiekt_tw_id", { count: "exact" })
+      .order("last_seen_at", { ascending: false })
+      .or(`symbol.ilike.${pattern},name.ilike.${pattern},plu.ilike.${pattern},note.ilike.${pattern}`);
 
-  const total = Number(count ?? 0);
-  const twIds = (idsRaw ?? []).map((r) => Number((r as SubiektTwIdRow).subiekt_tw_id)).filter((n) => n > 0);
-  const rows = await fetchProductCatalogRowsByTwIds(twIds);
+    const { data: idsRaw, count, error } = await query.range(offset, offset + limit - 1);
+    if (error) throw new Error(error.message);
+
+    const total = Number(count ?? 0);
+    const twIds = (idsRaw ?? [])
+      .map((r) => Number((r as SubiektTwIdRow).subiekt_tw_id))
+      .filter((id) => id > 0);
+    const rows = await fetchProductCatalogRowsByTwIds(twIds);
+    return { rows, total, offset, limit };
+  }
+
+  const [productTwIds] = await Promise.all([listAllTwIdsFromProductTextSearch(q)]);
+  const merged = mergeUniqueTwIds(productTwIds, supplierNameTwIds);
+  const sorted = await sortTwIdsByLastSeenAt(merged);
+  const total = sorted.length;
+  const slice = sorted.slice(offset, offset + limit);
+  const rows = await fetchProductCatalogRowsByTwIds(slice);
   return { rows, total, offset, limit };
 }
 
