@@ -14,7 +14,7 @@ import type {
 } from "@/types/database";
 
 export const DEPARTMENT_BOARD_THREAD_SELECT =
-  "*, author:profiles!created_by(email, role), sales_person:sales_people(id, name)";
+  "id, kind, status, created_by, sales_person_id, title, body, product_symbol, product_name, subiekt_tw_id, mikran_code, color, pinned, published_at, expires_at, answered_at, archived_at, created_at, updated_at, author:profiles!created_by(email, role), sales_person:sales_people(id, name)";
 
 export const DEPARTMENT_BOARD_POST_SELECT =
   "*, author:profiles!created_by(email, role)";

@@ -17,6 +17,10 @@ import {
 } from "@/lib/data/department-board";
 import { createAdminClient } from "@/lib/supabase/admin";
 import type { SalesNoteColor } from "@/types/database";
+import {
+  normalizeBoardQuestionProductInput,
+  type BoardQuestionProductInput,
+} from "@/lib/department-board/question-product";
 
 function revalidateDepartmentBoard() {
   revalidatePath("/tablica");
@@ -183,12 +187,18 @@ export async function actionMarkQuestionThreadSeen(threadId: string) {
   return { ok: true as const };
 }
 
-export async function actionCreateQuestion(title: string, body: string) {
+export async function actionCreateQuestion(
+  title: string,
+  body: string,
+  product?: BoardQuestionProductInput | null
+) {
   const { userId, salesPersonId } = await assertSalesAccess();
   const trimmedTitle = trimTitle(title);
   const trimmedBody = trimBody(body);
   if (!trimmedTitle) throw new Error("Podaj temat pytania.");
   if (!trimmedBody) throw new Error("Treść pytania nie może być pusta.");
+
+  const productFields = normalizeBoardQuestionProductInput(product);
 
   const supabase = createAdminClient();
   const { data, error } = await supabase
@@ -200,6 +210,12 @@ export async function actionCreateQuestion(title: string, body: string) {
       sales_person_id: salesPersonId,
       title: trimmedTitle,
       body: trimmedBody,
+      ...(productFields ?? {
+        product_symbol: null,
+        product_name: null,
+        subiekt_tw_id: null,
+        mikran_code: null,
+      }),
     })
     .select(DEPARTMENT_BOARD_THREAD_SELECT)
     .single();

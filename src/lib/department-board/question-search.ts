@@ -1,11 +1,13 @@
 import { questionAuthorLabel } from "@/lib/department-board/format";
+import { boardQuestionProductSearchText } from "@/lib/department-board/question-product";
 import type { DepartmentBoardQuestion } from "@/lib/data/department-board";
 
-/** Tekst przeszukiwany w wątku pytania (temat, treść, autor, odpowiedzi). */
+/** Tekst przeszukiwany w wątku pytania (temat, treść, autor, produkt, odpowiedzi). */
 export function departmentBoardQuestionSearchHaystack(question: DepartmentBoardQuestion): string {
   const parts = [
     question.title,
     question.body,
+    boardQuestionProductSearchText(question),
     questionAuthorLabel(question.sales_person, question.author),
     ...question.posts.map((post) => post.body),
   ];

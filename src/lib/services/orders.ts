@@ -48,6 +48,8 @@ import { resolveVerificationInformacjaFlags } from "@/lib/orders/verification-in
 import type { InformacjaFlowPath } from "@/lib/orders/informacja-stock-out-reorder";
 import { isProcurementDraftReady } from "@/lib/orders/procurement-readiness";
 import { normalizeSalesClientName } from "@/lib/orders/sales-client-label";
+import { assertNoDuplicateInformacjaEntries } from "@/lib/orders/informacja-duplicate-server";
+import { resolveOrderLineSubiektTwIdFromCatalog } from "@/lib/orders/resolve-order-line-subiekt-tw-id";
 import { normalizeSalesRequestNote } from "@/lib/orders/sales-request-note";
 import {
   normalizeProcurementCancelNote,
@@ -266,51 +268,6 @@ export async function batchAddIndividualOrders(
     // Nowe podejście: jeśli handlowiec wpisał symbol / kod, ale nie wybrał pozycji z podpowiedzi Subiekta,
     // spróbuj dopasować tw_Id po naszej bazie `subiekt_products` (symbol/plu).
     // Dzięki temu dalsze kroki (katalog mapowań produkt→dostawca) działają bez ZD.
-    const escapeIlike = (v: string) => v.replaceAll("\\", "\\\\").replaceAll("%", "\\%").replaceAll("_", "\\_");
-    const resolveTwIdFromCatalog = async (input: {
-      subiektTwId?: number | null;
-      symbol?: string;
-      mikranCode?: string;
-    }): Promise<number | null> => {
-      const existing = input.subiektTwId != null ? Math.trunc(Number(input.subiektTwId)) : null;
-      if (existing && Number.isFinite(existing) && existing > 0) return existing;
-
-      const symbol = String(input.symbol ?? "").trim();
-      const plu = String(input.mikranCode ?? "").trim();
-
-      // 1) symbol exact (case-insensitive) => ilike bez wildcardów
-      if (symbol) {
-        const pattern = escapeIlike(symbol);
-        const { data, error } = await supabase
-          .from("subiekt_products")
-          .select("subiekt_tw_id, symbol")
-          .ilike("symbol", pattern)
-          .limit(2);
-        if (error) throw new Error(error.message);
-        if ((data ?? []).length === 1) {
-          const row = (data ?? [])[0] as { subiekt_tw_id: number | string };
-          return Number(row.subiekt_tw_id) || null;
-        }
-      }
-
-      // 2) PLU (Mikran) exact
-      if (plu) {
-        const pattern = escapeIlike(plu);
-        const { data, error } = await supabase
-          .from("subiekt_products")
-          .select("subiekt_tw_id, plu")
-          .ilike("plu", pattern)
-          .limit(2);
-        if (error) throw new Error(error.message);
-        if ((data ?? []).length === 1) {
-          const row = (data ?? [])[0] as { subiekt_tw_id: number | string };
-          return Number(row.subiekt_tw_id) || null;
-        }
-      }
-
-      return null;
-    };
-
     const rows = await Promise.all(entries.map(async (e) => {
       const sanitized = sanitizeOrderDraftFields({
         symbol: e.symbol,
@@ -334,7 +291,7 @@ export async function batchAddIndividualOrders(
         quantity: sanitized.quantity,
         requestKind: kind,
         informacjaQueueViaDailyPanel,
-        subiektTwId: await resolveTwIdFromCatalog({
+        subiektTwId: await resolveOrderLineSubiektTwIdFromCatalog(supabase, {
           subiektTwId: e.subiektTwId,
           symbol: sanitized.symbol,
           mikranCode: sanitized.mikranCode,
@@ -396,6 +353,19 @@ export async function batchAddIndividualOrders(
         }),
       };
     }));
+    await assertNoDuplicateInformacjaEntries(
+      supabase,
+      rows.map((row) => ({
+        salesPersonId: row.sales_person_id,
+        clientName: row.sales_client_name,
+        clientKhId: row.sales_client_kh_id,
+        symbol: row.symbol,
+        mikranCode: row.mikran_code,
+        product: row.products,
+        subiektTwId: row.subiekt_tw_id,
+        requestKind: row.request_kind,
+      }))
+    );
     const { error } = await supabase.from("individual_orders").insert(rows);
     if (error) {
       const msg = formatDbError(error);
@@ -687,6 +657,35 @@ export async function updateIndividualRequestGroup(
   };
 
   const existingOrderIds = existing.map((order) => order.id);
+
+  const duplicateCandidates = await Promise.all(
+    payload.lines.map(async (line) => {
+      const sanitized = sanitizeOrderDraftFields({
+        symbol: line.symbol,
+        mikranCode: line.mikranCode,
+        product: line.product,
+        quantity: line.quantity,
+      });
+      const subiektTwId = await resolveOrderLineSubiektTwIdFromCatalog(supabase, {
+        subiektTwId: line.subiektTwId,
+        symbol: sanitized.symbol,
+        mikranCode: sanitized.mikranCode,
+      });
+      return {
+        salesPersonId: payload.salesPersonId,
+        clientName: line.clientName,
+        clientKhId: line.clientKhId,
+        symbol: sanitized.symbol,
+        mikranCode: sanitized.mikranCode,
+        product: sanitized.product,
+        subiektTwId,
+        requestKind: payload.requestKind,
+      };
+    })
+  );
+  await assertNoDuplicateInformacjaEntries(supabase, duplicateCandidates, {
+    excludeOrderIds: orderIds,
+  });
 
   for (const line of payload.lines) {
     const kind = payload.requestKind;
