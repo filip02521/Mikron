@@ -1,10 +1,11 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState, useTransition } from "react";
-import type {
-  ProductCatalogCoverageStats,
-  ProductCatalogPage,
-  ProductCatalogRow,
+import {
+  formatCatalogSupplierSubtitle,
+  type ProductCatalogCoverageStats,
+  type ProductCatalogPage,
+  type ProductCatalogRow,
 } from "@/lib/data/product-catalog-queries";
 import { CatalogZdSyncStatusPanel } from "@/components/admin/CatalogZdSyncStatusPanel";
 import { ProductCatalogBulkAssignBar } from "@/components/admin/ProductCatalogBulkAssignBar";
@@ -74,6 +75,7 @@ export function ProductsCatalogAdminClient({
   const [loaded, setLoaded] = useState<number>(initial.rows.length);
   const pageSize = initial.limit;
   const [filter, setFilter] = useState("");
+  const [supplierFilter, setSupplierFilter] = useState("");
   const [listMode, setListMode] = useState<CatalogListMode>("all");
   const [coverage, setCoverage] = useState<ProductCatalogCoverageStats>(initialCoverage);
   const [importSupplierId, setImportSupplierId] = useState<string>(suppliers[0]?.id ?? "");
@@ -111,6 +113,7 @@ export function ProductsCatalogAdminClient({
   const [selected, setSelected] = useState<Record<number, boolean>>({});
   const [bulkSupplierId, setBulkSupplierId] = useState("");
   const headerCheckboxRef = useRef<HTMLInputElement>(null);
+  const catalogLoadSeqRef = useRef(0);
 
   const stopTickLoop = () => {
     if (tickTimer.current != null) {
@@ -328,6 +331,29 @@ export function ProductsCatalogAdminClient({
   // Uwaga: statystyki per-dostawca mogą być kosztowne (wiele zapytań),
   // więc odpalamy je wyłącznie ręcznie po kliknięciu.
 
+  const assignSuppliersSorted = useMemo(
+    () => [...assignSuppliers].sort((a, b) => a.name.localeCompare(b.name, "pl")),
+    [assignSuppliers]
+  );
+
+  const catalogSupplierId = supplierFilter.trim() || null;
+  const filteredSupplierName = useMemo(
+    () => assignSuppliersSorted.find((s) => s.id === catalogSupplierId)?.name ?? null,
+    [assignSuppliersSorted, catalogSupplierId]
+  );
+
+  const resetCatalogList = () => {
+    setSelected({});
+    setRows([]);
+    setLoaded(0);
+    setTotal(0);
+  };
+
+  const handleSupplierFilterChange = (nextSupplierId: string) => {
+    resetCatalogList();
+    setSupplierFilter(nextSupplierId);
+  };
+
   const filtered = useMemo(() => {
     const q = filter.trim().toLowerCase();
     let list = rows;
@@ -342,6 +368,7 @@ export function ProductsCatalogAdminClient({
         r.name ?? "",
         r.plu ?? "",
         r.note ?? "",
+        r.topSupplier?.name ?? "",
       ]
         .join(" ")
         .toLowerCase();
@@ -405,47 +432,56 @@ export function ProductsCatalogAdminClient({
   };
 
   const switchListMode = (mode: CatalogListMode) => {
-    clearSelection();
+    resetCatalogList();
+    if (mode === "noSupplier") setSupplierFilter("");
     setListMode(mode);
-    setRows([]);
-    setLoaded(0);
-    setTotal(0);
   };
 
   // Server-side search po całej bazie (nie tylko po wczytanych 250).
   useEffect(() => {
     const q = filter.trim();
+    const seq = ++catalogLoadSeqRef.current;
 
-    const loadNoSupplier = async () => {
-      if (!q) {
-        const page = await actionFetchProductsWithoutSupplierPage({ limit: pageSize, offset: 0 });
-        setRows(page.rows);
-        setTotal(page.total);
-        setLoaded(page.rows.length);
-        return;
-      }
-      const page = await actionSearchProductsWithoutSupplierPage({
-        query: q,
-        limit: pageSize,
-        offset: 0,
-      });
+    const applyPage = (page: ProductCatalogPage) => {
+      if (seq !== catalogLoadSeqRef.current) return;
       setRows(page.rows);
       setTotal(page.total);
       setLoaded(page.rows.length);
     };
 
-    const loadAll = async () => {
+    const loadNoSupplier = async () => {
       if (!q) {
-        const page = await actionFetchProductCatalogPage({ limit: pageSize, offset: 0 });
-        setRows(page.rows);
-        setTotal(page.total);
-        setLoaded(page.rows.length);
+        applyPage(await actionFetchProductsWithoutSupplierPage({ limit: pageSize, offset: 0 }));
         return;
       }
-      const page = await actionSearchProductCatalogPage({ query: q, limit: pageSize, offset: 0 });
-      setRows(page.rows);
-      setTotal(page.total);
-      setLoaded(page.rows.length);
+      applyPage(
+        await actionSearchProductsWithoutSupplierPage({
+          query: q,
+          limit: pageSize,
+          offset: 0,
+        })
+      );
+    };
+
+    const loadAll = async () => {
+      if (!q) {
+        applyPage(
+          await actionFetchProductCatalogPage({
+            limit: pageSize,
+            offset: 0,
+            supplierId: catalogSupplierId,
+          })
+        );
+        return;
+      }
+      applyPage(
+        await actionSearchProductCatalogPage({
+          query: q,
+          limit: pageSize,
+          offset: 0,
+          supplierId: catalogSupplierId,
+        })
+      );
     };
 
     const run = () => {
@@ -454,6 +490,7 @@ export function ProductsCatalogAdminClient({
           if (listMode === "noSupplier") await loadNoSupplier();
           else await loadAll();
         } catch (e) {
+          if (seq !== catalogLoadSeqRef.current) return;
           setToast({
             text: e instanceof Error ? e.message : "Błąd pobierania listy",
             tone: "error",
@@ -470,10 +507,11 @@ export function ProductsCatalogAdminClient({
     const t = window.setTimeout(run, 250);
     return () => window.clearTimeout(t);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [filter, listMode]);
+  }, [filter, listMode, supplierFilter]);
 
   const loadMore = () => {
     if (!canLoadMore) return;
+    const seq = catalogLoadSeqRef.current;
     start(async () => {
       try {
         const q = filter.trim();
@@ -491,13 +529,24 @@ export function ProductsCatalogAdminClient({
               });
         } else {
           next = q
-            ? await actionSearchProductCatalogPage({ query: q, limit: pageSize, offset: loaded })
-            : await actionFetchProductCatalogPage({ limit: pageSize, offset: loaded });
+            ? await actionSearchProductCatalogPage({
+                query: q,
+                limit: pageSize,
+                offset: loaded,
+                supplierId: catalogSupplierId,
+              })
+            : await actionFetchProductCatalogPage({
+                limit: pageSize,
+                offset: loaded,
+                supplierId: catalogSupplierId,
+              });
         }
+        if (seq !== catalogLoadSeqRef.current) return;
         setRows((prev) => [...prev, ...next.rows]);
         setTotal(next.total);
         setLoaded((prev) => prev + next.rows.length);
       } catch (e) {
+        if (seq !== catalogLoadSeqRef.current) return;
         setToast({ text: e instanceof Error ? e.message : "Błąd pobierania", tone: "error" });
       }
     });
@@ -1421,13 +1470,44 @@ export function ProductsCatalogAdminClient({
             przypisaniem przy weryfikacji prośby lub ręcznie poniżej (lista dostawców).
           </p>
         ) : null}
-        <Input
-          value={filter}
-          onChange={(e) => setFilter(e.target.value)}
-          placeholder="Szukaj: tw_Id / symbol / nazwa / kod / dostawca / notatka…"
-        />
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-end">
+          {listMode === "all" ? (
+            <div className="sm:w-64">
+              <label className="mb-1 block text-[11px] font-semibold uppercase tracking-wide text-slate-500">
+                Dostawca
+              </label>
+              <Select
+                value={supplierFilter}
+                onChange={(e) => handleSupplierFilterChange(e.target.value)}
+                disabled={pending}
+              >
+                <option value="">Wszyscy dostawcy</option>
+                {assignSuppliersSorted.map((s) => (
+                  <option key={s.id} value={s.id}>
+                    {s.name}
+                  </option>
+                ))}
+              </Select>
+            </div>
+          ) : null}
+          <div className="min-w-0 flex-1">
+            {listMode === "all" ? (
+              <label className="mb-1 block text-[11px] font-semibold uppercase tracking-wide text-slate-500">
+                Szukaj
+              </label>
+            ) : null}
+            <Input
+              value={filter}
+              onChange={(e) => setFilter(e.target.value)}
+              placeholder="Szukaj: tw_Id / symbol / nazwa / kod / dostawca / notatka…"
+            />
+          </div>
+        </div>
         <p className="mt-2 text-xs text-slate-500">
           {listMode === "noSupplier" ? "Raport: bez dostawcy · " : ""}
+          {listMode === "all" && supplierFilter
+            ? `Filtr: ${filteredSupplierName ?? "dostawca"} · `
+            : ""}
           Pokazuję {filtered.length} z {rows.length} (wczytane: {loaded}/{total}
           {listMode === "all" ? ` · z mapą: ${coverage.withSupplier}` : ""}). Zaznacz
           checkboxem, aby przypisać dostawcę grupowo.
@@ -1518,9 +1598,7 @@ export function ProductsCatalogAdminClient({
                     `${r.totalOrders} zlec.`,
                     r.lastActionAt ? r.lastActionAt.slice(0, 10) : null,
                     r.plu ? `PLU ${r.plu}` : null,
-                    r.topSupplier
-                      ? `${r.topSupplier.name} (${r.topSupplier.orderCount})`
-                      : "bez dostawcy",
+                    formatCatalogSupplierSubtitle(r, catalogSupplierId, filteredSupplierName),
                   ]
                     .filter(Boolean)
                     .join(" · ")}
@@ -1531,6 +1609,7 @@ export function ProductsCatalogAdminClient({
                 <ProductCatalogSupplierAssign
                   row={r}
                   suppliers={assignSuppliers}
+                  preferredSupplierId={catalogSupplierId}
                   disabled={pending}
                   onAssign={assignSupplier}
                   compact

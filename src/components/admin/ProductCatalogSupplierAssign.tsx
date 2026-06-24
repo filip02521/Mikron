@@ -11,24 +11,29 @@ export function ProductCatalogSupplierAssign({
   suppliers,
   disabled,
   onAssign,
+  preferredSupplierId,
   compact = false,
 }: {
   row: ProductCatalogRow;
   suppliers: Array<{ id: string; name: string; subiektKhId: number | null }>;
   disabled?: boolean;
   onAssign: (subiektTwId: number, supplierId: string) => void;
+  /** Gdy ustawiony (filtr katalogu), dropdown startuje od tego dostawcy. */
+  preferredSupplierId?: string | null;
   /** Zwarty wiersz na liście katalogu (bez ramki i długich podpowiedzi). */
   compact?: boolean;
 }) {
-  const supplierKey = `${row.subiektTwId}\0${row.topSupplier?.id ?? ""}`;
-  const [supplierId, setSupplierId] = useState(row.topSupplier?.id ?? "");
+  const preferredId = preferredSupplierId?.trim() || null;
+  const defaultSupplierId = preferredId ?? row.topSupplier?.id ?? "";
+  const supplierKey = `${row.subiektTwId}\0${defaultSupplierId}`;
+  const [supplierId, setSupplierId] = useState(defaultSupplierId);
   const [appliedSupplierKey, setAppliedSupplierKey] = useState(supplierKey);
   if (supplierKey !== appliedSupplierKey) {
     setAppliedSupplierKey(supplierKey);
-    setSupplierId(row.topSupplier?.id ?? "");
+    setSupplierId(defaultSupplierId);
   }
 
-  const unchanged = Boolean(row.topSupplier?.id && row.topSupplier.id === supplierId);
+  const unchanged = Boolean(defaultSupplierId && defaultSupplierId === supplierId);
   const canSave = Boolean(supplierId) && !unchanged;
 
   const controls = (
