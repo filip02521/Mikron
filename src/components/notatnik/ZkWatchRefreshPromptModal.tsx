@@ -215,7 +215,10 @@ export function ZkWatchRefreshPromptModal({
           uncoveredAddedKeys
         );
         onScopePatched?.(updated);
-        const ok = stashZkProsbaPrefill(updated, supplementOptions);
+        const ok = stashZkProsbaPrefill(updated, {
+          ...supplementOptions,
+          stockByTwId,
+        });
         if (!ok) {
           setPrefillError("Nie udało się przygotować pozycji — odśwież ZK z Subiekta.");
           return;

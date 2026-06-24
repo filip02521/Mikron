@@ -219,6 +219,7 @@ export function ZkWatchCard({
     stockLoading: prosbaStockLoading,
     allOnStock: prosbaAllOnStock,
     lineKeysToOrder: prosbaStockFilteredKeys,
+    stockByTwId: prosbaStockByTwId,
   } = useZkProsbaLineKeysStockFilter(
     prosbaScopeLines,
     uncoveredLineKeys,
@@ -324,7 +325,10 @@ export function ZkWatchCard({
   const prosbaActionCount = uncoveredLineKeys.length;
 
   function handleProsbaClick(event: MouseEvent<HTMLAnchorElement>) {
-    const ok = stashZkProsbaPrefill(watch, prosbaPrefillOptions);
+    const ok = stashZkProsbaPrefill(watch, {
+      ...prosbaPrefillOptions,
+      stockByTwId: prosbaStockByTwId,
+    });
     if (!ok) {
       event.preventDefault();
       setError({

@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   buildProsbaPrefillFromUrlParams,
+  enrichZkProsbaPrefillWithStock,
   extractProsbaLinesFromZkWatch,
   parseProsbaClientKhParam,
   parseProsbaZkLineKeysParam,
@@ -158,6 +159,16 @@ describe("zk-watch-prosba-prefill", () => {
     });
     expect(prefill.lineKeys).toEqual(["ob:0"]);
     expect(prefill.mode).toBe("supplement");
+  });
+
+  it("enrichZkProsbaPrefillWithStock uzupełnia linie o stan magazynowy", () => {
+    const prefill = zkProsbaPrefillFromWatch(baseWatch);
+    const enriched = enrichZkProsbaPrefillWithStock(prefill, {
+      99: { onHand: 10, reserved: 2, available: 8, source: "subiekt" },
+    });
+    expect(enriched.lines[0]?.stockSource).toBe("subiekt");
+    expect(enriched.lines[0]?.available).toBe(8);
+    expect(enriched.lines[0]?.onHand).toBe(10);
   });
 
   it("stashZkProsbaPrefill zwraca false gdy brak linii po filtrze", () => {

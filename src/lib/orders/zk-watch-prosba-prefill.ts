@@ -1,6 +1,15 @@
 import { randomId } from "@/lib/ensure-crypto";
 import { buildZkWatchLineViews } from "@/lib/sales/zk-watch-lines";
 import type { ProductLineDraft } from "@/components/orders/request-product-lines";
+import {
+  applyProsbaLineStockMap,
+  uniqueProsbaLineTwIds,
+  type ProsbaLineStockSnapshot,
+} from "@/lib/orders/prosba-stock-check";
+import {
+  prosbaStockTwIdsKey,
+  readProsbaStockCache,
+} from "@/lib/orders/prosba-stock-fetch-cache";
 import type { IndividualRequestKind, SalesZkWatch } from "@/types/database";
 import { prosbaHref } from "./prosba-url";
 
@@ -24,7 +33,29 @@ export type ZkProsbaPrefillOptions = {
   lineKeys?: string[];
   mode?: ZkProsbaPrefillMode;
   requestKind?: IndividualRequestKind;
+  /** Opcjonalny stan z Subiekta (np. z karty ZK) — dołączany do linii prefill. */
+  stockByTwId?: Record<number, ProsbaLineStockSnapshot>;
 };
+
+function resolvePrefillStockMap(
+  lines: ProductLineDraft[],
+  stockByTwId?: Record<number, ProsbaLineStockSnapshot>
+): Record<number, ProsbaLineStockSnapshot> {
+  const twIds = uniqueProsbaLineTwIds(lines);
+  const fromCache = twIds.length ? readProsbaStockCache(prosbaStockTwIdsKey(twIds)) : null;
+  return { ...(fromCache ?? {}), ...(stockByTwId ?? {}) };
+}
+
+/** Uzupełnia linie prefill o stan magazynowy z mapy tw_Id → snapshot. */
+export function enrichZkProsbaPrefillWithStock(
+  prefill: ZkProsbaPrefill,
+  stockByTwId?: Record<number, ProsbaLineStockSnapshot>
+): ZkProsbaPrefill {
+  const stock = resolvePrefillStockMap(prefill.lines, stockByTwId);
+  if (!Object.keys(stock).length) return prefill;
+  const { next } = applyProsbaLineStockMap(prefill.lines, stock);
+  return { ...prefill, lines: next };
+}
 
 function normalizeSubiektTwId(value: unknown): number | null {
   const n = Math.trunc(Number(value));
@@ -61,17 +92,20 @@ export function zkProsbaPrefillFromWatch(
         ? "supplement"
         : "full");
 
-  return {
-    zkWatchId: watch.id ? String(watch.id) : null,
-    clientName: String(watch.client_label ?? "").trim(),
-    clientKhId: normalizePrefillKhId(watch.client_kh_id),
-    zkNumber: String(watch.zk_number ?? "").trim(),
-    lines,
-    mode,
-    ...(mode === "supplement" ? { supplementLineCount: lines.length } : {}),
-    ...(options?.lineKeys?.length ? { lineKeys: [...options.lineKeys] } : {}),
-    ...(options?.requestKind ? { requestKind: options.requestKind } : {}),
-  };
+  return enrichZkProsbaPrefillWithStock(
+    {
+      zkWatchId: watch.id ? String(watch.id) : null,
+      clientName: String(watch.client_label ?? "").trim(),
+      clientKhId: normalizePrefillKhId(watch.client_kh_id),
+      zkNumber: String(watch.zk_number ?? "").trim(),
+      lines,
+      mode,
+      ...(mode === "supplement" ? { supplementLineCount: lines.length } : {}),
+      ...(options?.lineKeys?.length ? { lineKeys: [...options.lineKeys] } : {}),
+      ...(options?.requestKind ? { requestKind: options.requestKind } : {}),
+    },
+    options?.stockByTwId
+  );
 }
 
 export function extractProsbaLinesFromZkWatch(
@@ -155,6 +189,17 @@ export function readZkProsbaPrefill(): ZkProsbaPrefill | null {
       zkNumber: parsed.zkNumber ?? "",
       lines: parsed.lines.map((line) => ({
         ...line,
+        subiektTwId:
+          line.subiektTwId != null && Number.isFinite(Number(line.subiektTwId))
+            ? Math.trunc(Number(line.subiektTwId))
+            : undefined,
+        onHand: line.onHand ?? undefined,
+        reserved: line.reserved ?? undefined,
+        available: line.available ?? undefined,
+        stockSource:
+          line.stockSource === "subiekt" || line.stockSource === null
+            ? line.stockSource ?? undefined
+            : undefined,
         zkQuantity:
           typeof line.zkQuantity === "number" && Number.isFinite(line.zkQuantity)
             ? line.zkQuantity

@@ -9,9 +9,8 @@ import {
 } from "@/lib/orders/prosba-stock-fetch-cache";
 import {
   applyProsbaLineStockMap,
-  PROSBA_STOCK_FETCH_UI_TIMEOUT_MS,
+  collectProsbaLineTwIdsMissingStock,
   prosbaLinesStockSyncSignature,
-  uniqueProsbaLineTwIds,
 } from "@/lib/orders/prosba-stock-check";
 import type { IndividualRequestKind } from "@/types/database";
 
@@ -46,12 +45,8 @@ export function useProsbaLinesStockSync(
     const timer = window.setTimeout(() => {
       void (async () => {
         const currentLines = linesRef.current;
-        const twIds = uniqueProsbaLineTwIds(currentLines);
+        const twIds = collectProsbaLineTwIdsMissingStock(currentLines, requestKind);
         if (!twIds.length) return;
-
-        const timeoutId = window.setTimeout(() => {
-          cancelled = true;
-        }, PROSBA_STOCK_FETCH_UI_TIMEOUT_MS);
 
         try {
           const twIdsKey = prosbaStockTwIdsKey(twIds);
@@ -61,12 +56,10 @@ export function useProsbaLinesStockSync(
             actionFetchProsbaLineStock
           );
           if (cancelled) return;
-          const { next, changed } = applyProsbaLineStockMap(currentLines, stock);
+          const { next, changed } = applyProsbaLineStockMap(linesRef.current, stock);
           if (changed) onChangeRef.current(next);
         } catch {
           /* stan — best effort */
-        } finally {
-          window.clearTimeout(timeoutId);
         }
       })();
     }, STOCK_SYNC_DEBOUNCE_MS);
