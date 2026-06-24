@@ -4,6 +4,7 @@ import {
   zdContractorRecentDataOd,
   zdPlacementListWindowForApi,
   zdProductSearchDataOd,
+  zdTwIdListDataOd,
 } from "@/lib/subiekt/zd-search-scope";
 import { parseSubiektKhId } from "@/lib/subiekt/parse-kh-id";
 import { collectKhIdsForSupplierRef } from "@/lib/data/supplier-subiekt-kh";
@@ -303,13 +304,13 @@ export function zdSearchPlansForOrderInput(input: {
 
   const orderTwId = Math.trunc(Number(input.subiekt_tw_id));
   if (Number.isFinite(orderTwId) && orderTwId > 0) {
-    plans.push(
-      withDateWindow({
-        id: orderTwId,
-        pageSize: 25,
-        page: 1,
-      })
-    );
+    plans.push({
+      id: orderTwId,
+      dataOd: zdTwIdListDataOd(input.placementAt ?? null),
+      pageSize: 25,
+      page: 1,
+      ...(dataDo ? { dataDo } : {}),
+    });
   }
 
   // Symbol pierwszy — precyzyjniejszy niż marka z nazwy (np. H364RNF przy symbol „-”).

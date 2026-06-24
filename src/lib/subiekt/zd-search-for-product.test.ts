@@ -194,6 +194,18 @@ describe("zdSearchPlansForOrderInput", () => {
     expect(plans.some((p) => p.id === 16745 && p.khId === 2114)).toBe(true);
   });
 
+  it("plan tw_Id sięga od początku roku zamówienia", () => {
+    const plans = zdSearchPlansForOrderInput({
+      symbol: "MSDHLGY-104C",
+      products: "EcoPrint żywica Craftsman",
+      subiekt_tw_id: 16012,
+      subiekt_kh_id: 28295,
+      placementAt: "2026-06-15T12:00:00+02:00",
+    });
+    const twPlan = plans.find((p) => p.id === 16012 && p.khId === 28295);
+    expect(twPlan?.dataOd).toBe("2026-01-01");
+  });
+
   it("priorytetyzuje plan po symbolu przed marką z nazwy", () => {
     const plans = zdSearchPlansForOrderInput({
       symbol: "-",

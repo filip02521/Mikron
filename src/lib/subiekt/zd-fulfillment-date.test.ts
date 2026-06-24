@@ -3,6 +3,7 @@ import {
   isActiveZdFulfillmentDeadline,
   isActiveZdFulfillmentDocument,
   isFulfilledZdDocumentStatus,
+  partitionZdListItemsForEtaLoad,
   parseZdFulfillmentDeadline,
 } from "./zd-fulfillment-date";
 
@@ -76,5 +77,19 @@ describe("isActiveZdFulfillmentDeadline", () => {
         )
       ).toBe(true);
     }
+  });
+});
+
+describe("partitionZdListItemsForEtaLoad", () => {
+  it("najpierw niezrealizowane (5/6/7), potem reszta bez pomijanych", () => {
+    const { open, later } = partitionZdListItemsForEtaLoad([
+      { dok_Id: 1, dok_Status: 8 },
+      { dok_Id: 2, dok_Status: 6 },
+      { dok_Id: 3, dok_Status: null },
+      { dok_Id: 4, dok_Status: 7 },
+      { dok_Id: 5, dok_Status: 99 },
+    ]);
+    expect(open.map((r) => r.dok_Id)).toEqual([2, 4]);
+    expect(later.map((r) => r.dok_Id)).toEqual([3]);
   });
 });

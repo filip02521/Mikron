@@ -20,6 +20,8 @@ import {
   zdPlacementIssueDateInBrowseWindow,
   zdPlacementListWindowForApi,
   zdProductSearchDataOd,
+  zdTwIdListDataOd,
+  zdTwIdBrowseMonthChunks,
 } from "./zd-search-scope";
 
 describe("zd-search-scope", () => {
@@ -127,11 +129,17 @@ describe("zd-search-scope", () => {
     expect(merged[0]).toEqual({ dataOd: "2026-05-01", dataDo: "2026-06-01" });
   });
 
-  it("zdMergedPlacementBrowseMonthChunks — bez daty zaczyna od bieżącego miesiąca", () => {
+  it("zdTwIdListDataOd — od początku roku zamówienia (otwarty ZD z lutego przy prośbie w czerwcu)", () => {
     const syncAt = new Date("2026-06-18T12:00:00+02:00");
-    expect(zdMergedPlacementBrowseMonthChunks([], null, syncAt)[0]).toEqual({
-      dataOd: "2026-06-01",
-      dataDo: "2026-07-01",
-    });
+    expect(zdTwIdListDataOd("2026-06-15", syncAt)).toBe("2026-01-01");
+    expect(zdTwIdListDataOd("2026-02-10", syncAt)).toBe("2026-01-01");
+  });
+
+  it("zdTwIdBrowseMonthChunks — obejmuje luty przy prośbie w czerwcu", () => {
+    const syncAt = new Date("2026-06-18T12:00:00+02:00");
+    const chunks = zdTwIdBrowseMonthChunks("2026-06-15", syncAt);
+    expect(chunks.some((c) => c.dataOd === "2026-02-01")).toBe(true);
+    expect(chunks.some((c) => c.dataOd === "2026-01-01")).toBe(true);
+    expect(chunks[0]).toEqual({ dataOd: "2026-06-01", dataDo: "2026-07-01" });
   });
 });

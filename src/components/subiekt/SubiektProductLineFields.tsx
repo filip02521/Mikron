@@ -10,6 +10,7 @@ import { Spinner } from "@/components/ui/Spinner";
 import { IconCircleCheck } from "@/components/icons/StrokeIcons";
 import { SubiektFeedbackAlert } from "@/components/subiekt/SubiektFeedbackAlert";
 import {
+  TYPEAHEAD_KEYBOARD_HINT,
   TypeaheadDropdown,
   TypeaheadOption,
   TypeaheadSectionLabel,
@@ -157,8 +158,6 @@ function subiektFieldLabel(field: ActiveField): string {
   if (field === "name") return "Produkt";
   return "Symbol";
 }
-
-const TYPEAHEAD_KEYBOARD_HINT = "↑↓ wybierz · Enter zatwierdź · Esc zamknij";
 
 export function SubiektProductLineFields({
   value,

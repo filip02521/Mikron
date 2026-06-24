@@ -1,6 +1,15 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState, useTransition } from "react";
+import {
+  useCallback,
+  useEffect,
+  useId,
+  useMemo,
+  useRef,
+  useState,
+  useTransition,
+  type KeyboardEvent,
+} from "react";
 import {
   actionSubiektSuggestSuppliers,
   type SubiektSupplierSuggestion,
@@ -9,12 +18,15 @@ import { SubiektFeedbackAlert } from "@/components/subiekt/SubiektFeedbackAlert"
 import { Input } from "@/components/ui/Field";
 import { Spinner } from "@/components/ui/Spinner";
 import {
+  TYPEAHEAD_KEYBOARD_HINT,
   TypeaheadDropdown,
+  TypeaheadInfoRow,
   TypeaheadOption,
   TypeaheadSectionLabel,
 } from "@/components/ui/TypeaheadDropdown";
 import { useDebouncedValue } from "@/hooks/useDebouncedValue";
 import { filterSuppliersByName } from "@/lib/orders/filter-suppliers";
+import { cn } from "@/lib/cn";
 import type { SubiektFeedback } from "@/lib/subiekt/feedback";
 
 export type SupplierPickerOption = {
@@ -37,6 +49,7 @@ export function SupplierPickerField({
   showInlineFeedback = true,
   onSubiektFeedbackChange,
   dropdownSize = "default",
+  portalled = true,
 }: {
   suppliers: SupplierPickerOption[];
   value: string;
@@ -49,8 +62,13 @@ export function SupplierPickerField({
   showInlineFeedback?: boolean;
   onSubiektFeedbackChange?: (feedbacks: SubiektFeedback[]) => void;
   dropdownSize?: "default" | "comfortable";
+  /** Portal do body — omija overflow w modalach (domyślnie włączony). */
+  portalled?: boolean;
 }) {
-  const ref = useRef<HTMLDivElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const anchorRef = useRef<HTMLDivElement>(null);
+  const typeaheadId = useId();
+  const listboxId = `${typeaheadId}-listbox`;
   const subiektRequestId = useRef(0);
   const [query, setQuery] = useState("");
   const [open, setOpen] = useState(false);
@@ -58,6 +76,7 @@ export function SupplierPickerField({
   const [feedback, setFeedback] = useState<SubiektFeedback | null>(null);
   const [subiektWarning, setSubiektWarning] = useState<SubiektFeedback | null>(null);
   const [status, setStatus] = useState<"idle" | "loading" | "error">("idle");
+  const [highlightedIndex, setHighlightedIndex] = useState(0);
   const [isPending, startTransition] = useTransition();
   const debouncedForSubiekt = useDebouncedValue(query.trim(), SUBIEKT_DEBOUNCE_MS);
 
@@ -92,7 +111,10 @@ export function SupplierPickerField({
   }, [appRows, subiektRows]);
 
   const subiektQueryActive = debouncedForSubiekt.length >= SUBIEKT_MIN_QUERY_LEN;
-  const visibleSubiektRows = subiektQueryActive ? shownSubiektRows : [];
+  const visibleSubiektRows = useMemo(
+    () => (subiektQueryActive ? shownSubiektRows : []),
+    [shownSubiektRows, subiektQueryActive]
+  );
   const visibleFeedback = subiektQueryActive ? feedback : null;
   const visibleSubiektWarning = subiektQueryActive ? subiektWarning : null;
   const visibleStatus = subiektQueryActive
@@ -101,13 +123,58 @@ export function SupplierPickerField({
       : status
     : "idle";
 
+  const showDropdown =
+    open &&
+    (allowEmpty ||
+      appRows.length > 0 ||
+      visibleSubiektRows.length > 0 ||
+      visibleStatus === "loading");
+
+  const keyboardOptions = useMemo(() => {
+    const rows: { key: string; supplierId: string; label: string }[] = [];
+    if (allowEmpty && !query.trim()) {
+      rows.push({ key: "__empty__", supplierId: "", label: emptyLabel });
+    }
+    for (const s of appRows) {
+      if (s.supplierId) {
+        rows.push({ key: s.supplierId, supplierId: s.supplierId, label: s.label });
+      }
+    }
+    for (const s of visibleSubiektRows) {
+      if (s.supplierId) {
+        rows.push({
+          key: s.supplierId,
+          supplierId: s.supplierId,
+          label: s.label,
+        });
+      }
+    }
+    return rows;
+  }, [allowEmpty, appRows, emptyLabel, query, visibleSubiektRows]);
+
+  const keyboardOptionsKey = keyboardOptions.map((row) => row.key).join("\0");
+  const [appliedKeyboardOptionsKey, setAppliedKeyboardOptionsKey] =
+    useState(keyboardOptionsKey);
+  if (keyboardOptionsKey !== appliedKeyboardOptionsKey) {
+    setAppliedKeyboardOptionsKey(keyboardOptionsKey);
+    setHighlightedIndex(0);
+  }
+
+  const listVisible = showDropdown && keyboardOptions.length > 0;
+
   useEffect(() => {
     const onDoc = (e: MouseEvent) => {
-      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+      const target = e.target as Node;
+      if (containerRef.current?.contains(target)) return;
+      if (portalled && target instanceof Element) {
+        const listbox = document.getElementById(listboxId);
+        if (listbox?.contains(target)) return;
+      }
+      setOpen(false);
     };
     document.addEventListener("mousedown", onDoc);
     return () => document.removeEventListener("mousedown", onDoc);
-  }, []);
+  }, [listboxId, portalled]);
 
   useEffect(() => {
     if (!subiektQueryActive) return;
@@ -133,29 +200,75 @@ export function SupplierPickerField({
 
   const displayValue = open ? query : (selected?.name ?? "");
 
-  const select = (id: string, name: string) => {
-    onChange(id);
-    setQuery(name);
-    setOpen(false);
-    setFeedback(null);
-    setSubiektWarning(null);
-    setSubiektRows([]);
-  };
-
-  const clear = () => {
+  const clear = useCallback(() => {
     onChange("");
     setQuery("");
     setOpen(false);
     setFeedback(null);
     setSubiektRows([]);
-  };
+    setHighlightedIndex(0);
+  }, [onChange]);
 
-  const showDropdown =
-    open &&
-    (allowEmpty ||
-      appRows.length > 0 ||
-      visibleSubiektRows.length > 0 ||
-      visibleStatus === "loading");
+  const select = useCallback(
+    (id: string, name: string) => {
+      onChange(id);
+      setQuery(name);
+      setOpen(false);
+      setFeedback(null);
+      setSubiektWarning(null);
+      setSubiektRows([]);
+      setHighlightedIndex(0);
+    },
+    [onChange]
+  );
+
+  const handleKeyDown = useCallback(
+    (e: KeyboardEvent<HTMLInputElement>) => {
+      const hasList = keyboardOptions.length > 0;
+
+      if (e.key === "ArrowDown" && hasList) {
+        e.preventDefault();
+        if (!open) {
+          setOpen(true);
+          setHighlightedIndex(0);
+          return;
+        }
+        setHighlightedIndex((i) => Math.min(i + 1, keyboardOptions.length - 1));
+        return;
+      }
+
+      if (e.key === "ArrowUp" && hasList && open) {
+        e.preventDefault();
+        setHighlightedIndex((i) => Math.max(i - 1, 0));
+        return;
+      }
+
+      if (e.key === "Enter") {
+        if (listVisible) {
+          e.preventDefault();
+          e.stopPropagation();
+          const chosen = keyboardOptions[highlightedIndex];
+          if (!chosen) return;
+          if (chosen.supplierId) select(chosen.supplierId, chosen.label);
+          else clear();
+        }
+        return;
+      }
+
+      if (e.key === "Escape" && open) {
+        e.preventDefault();
+        e.stopPropagation();
+        setOpen(false);
+        setHighlightedIndex(0);
+      }
+    },
+    [clear, highlightedIndex, keyboardOptions, listVisible, open, select]
+  );
+
+  const optionIndexForKey = useCallback(
+    (key: string) => keyboardOptions.findIndex((row) => row.key === key),
+    [keyboardOptions]
+  );
 
   const showInfoFeedback =
     visibleFeedback &&
@@ -184,13 +297,27 @@ export function SupplierPickerField({
   }, [pickerFeedbacks, onSubiektFeedbackChange]);
 
   return (
-    <div ref={ref} className="relative space-y-2">
-      <div className="relative">
+    <div ref={containerRef} className="relative space-y-2">
+      <div
+        ref={anchorRef}
+        className={cn(
+          "relative rounded-md transition-[box-shadow]",
+          showDropdown && "z-30 ring-2 ring-indigo-400/80 ring-offset-2"
+        )}
+      >
         <Input
           disabled={disabled}
           placeholder={placeholder}
           value={displayValue}
           autoComplete="off"
+          role="combobox"
+          aria-autocomplete="list"
+          aria-expanded={showDropdown}
+          aria-controls={showDropdown ? listboxId : undefined}
+          aria-activedescendant={
+            listVisible ? `${listboxId}-opt-${highlightedIndex}` : undefined
+          }
+          onKeyDown={handleKeyDown}
           onChange={(e) => {
             const v = e.target.value;
             setQuery(v);
@@ -226,8 +353,12 @@ export function SupplierPickerField({
       ) : null}
 
       <TypeaheadDropdown
+        listboxId={listboxId}
         open={showDropdown}
         size={dropdownSize}
+        portalled={portalled}
+        anchorRef={portalled ? anchorRef : undefined}
+        footer={listVisible ? TYPEAHEAD_KEYBOARD_HINT : undefined}
         emptyMessage={
           visibleStatus === "loading" && appRows.length === 0
             ? "Szukam w Subiekcie…"
@@ -238,8 +369,12 @@ export function SupplierPickerField({
       >
         {allowEmpty && !query.trim() ? (
           <TypeaheadOption
+            optionId={`${listboxId}-opt-${optionIndexForKey("__empty__")}`}
             title={emptyLabel}
             subtitle="Dział dostaw może uzupełnić później"
+            size={dropdownSize}
+            highlighted={highlightedIndex === optionIndexForKey("__empty__")}
+            onHighlight={() => setHighlightedIndex(optionIndexForKey("__empty__"))}
             onSelect={clear}
           />
         ) : null}
@@ -247,35 +382,56 @@ export function SupplierPickerField({
         {appRows.length > 0 ? (
           <>
             <TypeaheadSectionLabel>W systemie</TypeaheadSectionLabel>
-            {appRows.map((s) =>
-              s.supplierId ? (
+            {appRows.map((s) => {
+              const supplierId = s.supplierId;
+              if (!supplierId) return null;
+              return (
                 <TypeaheadOption
-                  key={s.supplierId}
+                  key={supplierId}
+                  optionId={`${listboxId}-opt-${optionIndexForKey(supplierId)}`}
                   title={s.label}
                   subtitle={s.detail}
                   size={dropdownSize}
-                  onSelect={() => select(s.supplierId!, s.label)}
+                  highlighted={highlightedIndex === optionIndexForKey(supplierId)}
+                  onHighlight={() => setHighlightedIndex(optionIndexForKey(supplierId))}
+                  onSelect={() => select(supplierId, s.label)}
                 />
-              ) : null
-            )}
+              );
+            })}
           </>
         ) : null}
 
         {visibleSubiektRows.length > 0 ? (
           <>
             <TypeaheadSectionLabel>Subiekt — brak w bazie</TypeaheadSectionLabel>
-            {visibleSubiektRows.map((s, i) => (
-              <TypeaheadOption
-                key={s.supplierId ?? `unmapped-${i}`}
-                title={s.label}
-                subtitle={s.detail}
-                size={dropdownSize}
-                onSelect={() => {
-                  if (s.supplierId) select(s.supplierId, s.label);
-                  else setOpen(false);
-                }}
-              />
-            ))}
+            {visibleSubiektRows.map((s, i) => {
+              const supplierId = s.supplierId;
+              if (!supplierId) {
+                return (
+                  <TypeaheadInfoRow
+                    key={`unmapped-${i}`}
+                    title={s.label}
+                    subtitle={
+                      s.detail ??
+                      "Brak w bazie aplikacji — dodaj dostawcę w katalogu lub wybierz z listy „W systemie”."
+                    }
+                    size={dropdownSize}
+                  />
+                );
+              }
+              return (
+                <TypeaheadOption
+                  key={supplierId}
+                  optionId={`${listboxId}-opt-${optionIndexForKey(supplierId)}`}
+                  title={s.label}
+                  subtitle={s.detail}
+                  size={dropdownSize}
+                  highlighted={highlightedIndex === optionIndexForKey(supplierId)}
+                  onHighlight={() => setHighlightedIndex(optionIndexForKey(supplierId))}
+                  onSelect={() => select(supplierId, s.label)}
+                />
+              );
+            })}
           </>
         ) : null}
       </TypeaheadDropdown>

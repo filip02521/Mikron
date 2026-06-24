@@ -73,6 +73,31 @@ Wszystkie listy zwracają envelope:
 | GET | `/examples` | Przykłady zapytań |
 | GET | `/docs` | Dokumentacja OpenAPI (HTML) |
 
+### Semantyka `GET /documents/zd` (lista)
+
+**Nagłówek wiersza** (bez `dok_Pozycja` — linie tylko w `GET /documents/zd/:id`):
+
+| Pole | Znaczenie |
+|------|-----------|
+| `dok_Id`, `dok_NrPelny`, `dok_Typ` (15) | Identyfikator i numer ZD |
+| `dok_DataWyst` | Data wystawienia |
+| `dok_Status` | 5/6/7 = otwarte, 8 = zrealizowane (filtr `status` w API bywa nieskuteczny) |
+| `dok_TerminRealizacji` | Termin realizacji (ETA) |
+| `dok_OdbiorcaId`, `dok_PlatnikId` | Dostawca na ZD — **używane do prefiltracji bez `loadDoc`** |
+| `kh__Kontrahent_Odbiorca` / `Platnik` | Nazwa i `kh_Id` kontrahenta z listy |
+
+**Parametry query — ważne ograniczenia:**
+
+| Parametr | Zachowanie |
+|----------|------------|
+| `dataOd`, `dataDo` | Filtr daty wystawienia — działa |
+| `khId` | **Nie filtruje** listy po kontrahencie dokumentu (ten sam `totalCount` z/bez `khId`) |
+| `id` (tw_Id) | Zwraca dokumenty „powiązane” z towarem, ale **bez gwarancji linii** — wymaga weryfikacji `ob_TowId` po `GET /:id` |
+| `symbol` | Podobnie — fałszywe trafienia; weryfikacja po pełnym dokumencie |
+| `status` | Często ignorowany — status 8 bywa w wynikach przy `status=6` |
+
+Aplikacja filtruje listę po `dok_OdbiorcaId` / `dok_PlatnikId` (`zdListItemMatchesSupplierKhIds`) zanim załaduje pełny dokument.
+
 ## Kod w repozytorium
 
 | Plik | Rola |
@@ -117,6 +142,19 @@ Komponenty: `SubiektProductLineFields`, `SupplierPickerField`, `SubiektFeedbackA
 ### Termin dostawy w „Moje zamówienia”
 
 Dla zamówień (nie informacji) aplikacja szuka w Subiekcie dokumentu **ZD** z pasującą pozycją (symbol, nazwa lub `tw_Id`) **wyłącznie u dostawcy powiązanego z Subiektem** (`suppliers.subiekt_kh_id` / kh_Id z prośby). Bez powiązania — tylko szacunek z historii dostaw (`delivery_stats`). Termin z pól `dok_TerminRealizacji` / `dok_DataRealizacji`. Wymaga LAN i `SUBIEKT_API_BASE_URL`.
+
+**Sprawdź termin dostawy** (toolbar na `/prosba`): rozszerzony silnik wyszukiwania ZD — wspólna logika z sync `/moje` (indeks, browse, `tw_Id`, live search, prefiltr kh), plus dodatkowa faza **symbol** w oknach miesięcznych (gdy indeks nie trafia). Lista API filtruje `dok_OdbiorcaId` / `dok_PlatnikId` przed `loadDoc`.
+
+**Budżety lookup (Sprawdź termin dostawy):**
+
+| Faza | Limit pełnych ZD |
+|------|------------------|
+| Indeks | 24 |
+| Symbol (okna miesięczne) | do 192 |
+| `tw_Id` + live search | 24 (osobny budżet, niezależny od symbolu) |
+| Browse placement | do 48 (+ drugi przebieg przy braku trafienia) |
+
+Lookup ładuje dokumenty z `forceFresh` (świeże dane przy każdym sprawdzeniu). Flaga `searchIncomplete` gdy wyczerpano budżet fazy, historia niedostępna lub browse przerwany wcześniej.
 
 **Ograniczanie obciążenia API (Moje zamówienia):**
 

@@ -45,6 +45,23 @@ export function shouldSkipZdListItemForEta(
   return !isZdEtaOpenDocumentStatus(item.dok_Status);
 }
 
+/**
+ * Kolejność ładowania ZD z listy API: najpierw niezrealizowane (5/6/7), potem reszta
+ * (np. brak statusu w odpowiedzi) — bez pomijanych wpisów (8, zamknięte).
+ */
+export function partitionZdListItemsForEtaLoad<
+  T extends Pick<SubiektDocument, "dok_Status">,
+>(items: readonly T[]): { open: T[]; later: T[] } {
+  const open: T[] = [];
+  const later: T[] = [];
+  for (const item of items) {
+    if (shouldSkipZdListItemForEta(item)) continue;
+    if (isZdEtaOpenDocumentStatus(item.dok_Status)) open.push(item);
+    else later.push(item);
+  }
+  return { open, later };
+}
+
 /** Czy termin realizacji ZD jest dziś lub w przyszłości (przeszłe = już zrealizowane). */
 export function isActiveZdFulfillmentDeadline(
   deadline: string | null | undefined,

@@ -10,14 +10,28 @@ import {
 } from "react";
 import { createPortal } from "react-dom";
 import { cn } from "@/lib/cn";
+import { SCROLL_LOCK_ALLOW_ATTR } from "@/lib/ui/page-scroll-lock";
+
+export const TYPEAHEAD_KEYBOARD_HINT = "↑↓ wybierz · Enter zatwierdź · Esc zamknij listę";
 
 type TypeaheadDropdownPosition = {
-  top: number;
+  top?: number;
+  bottom?: number;
   left: number;
   width: number;
+  maxHeight: number;
 };
 
 const TYPEAHEAD_PORTAL_GAP = 4;
+
+function typeaheadMaxHeightPx(size: NonNullable<TypeaheadDropdownProps["size"]>): number {
+  if (typeof window === "undefined") {
+    return size === "comfortable" ? 352 : 288;
+  }
+  const dvhCap = window.innerHeight * (size === "comfortable" ? 0.52 : 0.45);
+  const remCap = (size === "comfortable" ? 22 : 18) * 16;
+  return Math.min(remCap, dvhCap, size === "comfortable" ? 352 : 288);
+}
 
 type TypeaheadDropdownProps = {
   open: boolean;
@@ -72,13 +86,16 @@ function TypeaheadDropdownPanel({
     <ul
       id={listboxId}
       role="listbox"
+      {...{ [SCROLL_LOCK_ALLOW_ATTR]: "" }}
       style={
         portalled && portalPosition
           ? {
               position: "fixed",
               top: portalPosition.top,
+              bottom: portalPosition.bottom,
               left: portalPosition.left,
               width: portalPosition.width,
+              maxHeight: portalPosition.maxHeight,
             }
           : undefined
       }
@@ -99,6 +116,7 @@ function TypeaheadDropdownPanel({
 
 function PortalledTypeaheadDropdown({
   anchorRef,
+  size = "default",
   ...panelProps
 }: Omit<TypeaheadDropdownProps, "open" | "portalled" | "anchorRef"> & {
   anchorRef: RefObject<HTMLElement | null>;
@@ -109,12 +127,19 @@ function PortalledTypeaheadDropdown({
     const anchor = anchorRef.current;
     if (!anchor) return;
     const rect = anchor.getBoundingClientRect();
+    const maxHeight = typeaheadMaxHeightPx(size);
+    const spaceBelow = window.innerHeight - rect.bottom - TYPEAHEAD_PORTAL_GAP;
+    const spaceAbove = rect.top - TYPEAHEAD_PORTAL_GAP;
+    const openAbove = spaceBelow < Math.min(maxHeight, 120) && spaceAbove > spaceBelow;
+
     setPortalPosition({
-      top: rect.bottom + TYPEAHEAD_PORTAL_GAP,
+      top: openAbove ? undefined : rect.bottom + TYPEAHEAD_PORTAL_GAP,
+      bottom: openAbove ? window.innerHeight - rect.top + TYPEAHEAD_PORTAL_GAP : undefined,
       left: rect.left,
       width: rect.width,
+      maxHeight,
     });
-  }, [anchorRef]);
+  }, [anchorRef, size]);
 
   useLayoutEffect(() => {
     updatePortalPosition();
@@ -126,7 +151,7 @@ function PortalledTypeaheadDropdown({
       window.removeEventListener("resize", updatePortalPosition);
       window.removeEventListener("scroll", updatePortalPosition, true);
     };
-  }, [updatePortalPosition]);
+  }, [updatePortalPosition, panelProps.children]);
 
   if (!portalPosition) return null;
 
@@ -136,7 +161,7 @@ function PortalledTypeaheadDropdown({
         {...panelProps}
         portalled
         portalPosition={portalPosition}
-        size={panelProps.size ?? "default"}
+        size={size}
       />
     );
   }
@@ -146,7 +171,7 @@ function PortalledTypeaheadDropdown({
       {...panelProps}
       portalled
       portalPosition={portalPosition}
-      size={panelProps.size ?? "default"}
+      size={size}
     />,
     document.body
   );
@@ -198,6 +223,30 @@ export function TypeaheadSectionLabel({ children }: { children: React.ReactNode 
   return (
     <li className="px-3 pb-0.5 pt-2 text-[10px] font-bold uppercase tracking-wider text-indigo-600/80">
       {children}
+    </li>
+  );
+}
+
+/** Wiersz informacyjny (np. kontrahent Subiekt bez mapowania w aplikacji). */
+export function TypeaheadInfoRow({
+  title,
+  subtitle,
+  size = "default",
+}: {
+  title: string;
+  subtitle?: string;
+  size?: "default" | "comfortable";
+}) {
+  return (
+    <li
+      role="presentation"
+      className={cn(
+        "text-left text-sm text-slate-600",
+        size === "comfortable" ? "px-3.5 py-3" : "px-3 py-2.5"
+      )}
+    >
+      <span className="font-medium text-slate-800">{title}</span>
+      {subtitle ? <span className="mt-0.5 block text-xs text-slate-500">{subtitle}</span> : null}
     </li>
   );
 }

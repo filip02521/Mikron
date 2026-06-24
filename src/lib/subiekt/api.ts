@@ -19,9 +19,9 @@ export type SubiektListParams = {
   id?: number | string;
   /** Towar — tw_PLU (Kod Mikran). */
   plu?: string;
-  /** Kontrahent (kh_Id) — działa razem z `search` na GET /documents/zd. */
+  /** Kontrahent (kh_Id) — w query nie filtruje listy ZD; używaj {@link zdListItemMatchesSupplierKhIds}. */
   khId?: number;
-  /** Status dokumentu ZD (pojedyncza wartość — ETA filtruje 5/6/7 po stronie aplikacji). */
+  /** Status dokumentu ZD — filtr API nieskuteczny; ETA filtruje 5/6/7 po stronie aplikacji. */
   status?: number;
   name?: string;
   limit?: number;

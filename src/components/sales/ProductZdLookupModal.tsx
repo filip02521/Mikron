@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useId, useMemo, useRef, useState, useTransition, type ReactNode } from "react";
+import { useCallback, useEffect, useId, useMemo, useRef, useState, useTransition, type KeyboardEvent, type ReactNode } from "react";
 import { SupplierPickerField } from "@/components/orders/SupplierPickerField";
 import { actionSubiektSuggestProductsForZdLookup } from "@/app/actions/subiekt";
 import { actionLookupProductZdDelivery } from "@/app/actions/product-zd-lookup";
@@ -17,6 +17,7 @@ import {
   TypeaheadDropdown,
   TypeaheadOption,
   TypeaheadSectionLabel,
+  TYPEAHEAD_KEYBOARD_HINT,
 } from "@/components/ui/TypeaheadDropdown";
 import { IconCalendar, IconPackage, IconSearch } from "@/components/icons/StrokeIcons";
 import { useDebouncedValue } from "@/hooks/useDebouncedValue";
@@ -228,6 +229,8 @@ export function ProductZdLookupModal({
   const [lookupResult, setLookupResult] = useState<ProductZdLookupResult | null>(null);
   const [lookupError, setLookupError] = useState<string | null>(null);
   const [manualSupplierId, setManualSupplierId] = useState("");
+  const [highlightedIndex, setHighlightedIndex] = useState(0);
+  const [productTypeaheadOpen, setProductTypeaheadOpen] = useState(true);
   const [pending, startTransition] = useTransition();
 
   const supplierPickerOptions = useMemo(
@@ -251,6 +254,8 @@ export function ProductZdLookupModal({
     setLookupResult(null);
     setLookupError(null);
     setManualSupplierId("");
+    setHighlightedIndex(0);
+    setProductTypeaheadOpen(true);
   }, []);
 
   const handleClose = useCallback(() => {
@@ -265,10 +270,39 @@ export function ProductZdLookupModal({
     phase === "search" &&
     !selectedProduct &&
     trimmedDebouncedQuery.length >= minProductSearchLength(productSearchField);
-  const visibleSuggestions = productSearchActive ? suggestions : [];
+  const visibleSuggestions = useMemo(
+    () => (productSearchActive ? suggestions : []),
+    [productSearchActive, suggestions]
+  );
   const visibleSuggestError = productSearchActive ? suggestError : null;
   const visibleSuggestFeedback = productSearchActive ? suggestFeedback : null;
   const visibleSuggestLoading = productSearchActive && suggestLoading;
+  const [typeaheadQueryKey, setTypeaheadQueryKey] = useState(trimmedDebouncedQuery);
+  if (trimmedDebouncedQuery !== typeaheadQueryKey) {
+    setTypeaheadQueryKey(trimmedDebouncedQuery);
+    setProductTypeaheadOpen(true);
+  }
+  const typeaheadListVisible = visibleSuggestions.length > 0;
+  const typeaheadPanelVisible =
+    productSearchActive &&
+    productTypeaheadOpen &&
+    (visibleSuggestLoading || typeaheadListVisible);
+
+  useEffect(() => {
+    if (!typeaheadPanelVisible) return;
+
+    const onDoc = (event: MouseEvent) => {
+      const target = event.target as Node;
+      if (searchAnchorRef.current?.contains(target)) return;
+      if (target instanceof Element) {
+        const listbox = document.getElementById(listboxId);
+        if (listbox?.contains(target)) return;
+      }
+      setProductTypeaheadOpen(false);
+    };
+    document.addEventListener("mousedown", onDoc);
+    return () => document.removeEventListener("mousedown", onDoc);
+  }, [listboxId, typeaheadPanelVisible]);
 
   useEffect(() => {
     if (!productSearchActive) return;
@@ -295,6 +329,13 @@ export function ProductZdLookupModal({
       setSuggestLoading(false);
     };
   }, [productSearchActive, trimmedDebouncedQuery]);
+
+  const suggestionsKey = visibleSuggestions.map((product) => product.tw_Id).join("\0");
+  const [appliedSuggestionsKey, setAppliedSuggestionsKey] = useState(suggestionsKey);
+  if (suggestionsKey !== appliedSuggestionsKey) {
+    setAppliedSuggestionsKey(suggestionsKey);
+    setHighlightedIndex(0);
+  }
 
   const runLookup = useCallback((product: SubiektProduct, supplierId?: string | null) => {
     setPhase("loading");
@@ -346,6 +387,50 @@ export function ProductZdLookupModal({
     [runLookup]
   );
 
+  const handleTypeaheadKeyDown = useCallback(
+    (event: KeyboardEvent<HTMLInputElement>) => {
+      if (
+        event.key === "Escape" &&
+        (typeaheadPanelVisible || visibleSuggestLoading)
+      ) {
+        event.preventDefault();
+        event.stopPropagation();
+        setProductTypeaheadOpen(false);
+        setSuggestions([]);
+        setHighlightedIndex(0);
+        return;
+      }
+
+      if (!typeaheadListVisible) return;
+
+      if (event.key === "ArrowDown") {
+        event.preventDefault();
+        setHighlightedIndex((index) => Math.min(index + 1, visibleSuggestions.length - 1));
+        return;
+      }
+      if (event.key === "ArrowUp") {
+        event.preventDefault();
+        setHighlightedIndex((index) => Math.max(index - 1, 0));
+        return;
+      }
+      if (event.key === "Enter") {
+        event.preventDefault();
+        event.stopPropagation();
+        const chosen = visibleSuggestions[highlightedIndex];
+        if (chosen) pickProduct(chosen);
+        return;
+      }
+    },
+    [
+      highlightedIndex,
+      pickProduct,
+      typeaheadListVisible,
+      typeaheadPanelVisible,
+      visibleSuggestLoading,
+      visibleSuggestions,
+    ]
+  );
+
   const appOrderHint = productZdLookupAppOrderHint(lookupResult);
 
   const stockOutPrefill = useMemo((): ProductZdLookupStockOutPrefill | null => {
@@ -361,9 +446,6 @@ export function ProductZdLookupModal({
     };
   }, [selectedProduct]);
 
-  const typeaheadListVisible = visibleSuggestions.length > 0;
-  const typeaheadPanelVisible =
-    productSearchActive && (visibleSuggestLoading || typeaheadListVisible);
   const showResultLayout =
     (phase === "loading" || phase === "result") && selectedProduct != null;
   const modalBodyClassName = "px-5 py-5 sm:px-6 sm:py-6";
@@ -406,7 +488,7 @@ export function ProductZdLookupModal({
                 <div
                   ref={searchAnchorRef}
                   className={cn(
-                    "relative",
+                    "relative rounded-md transition-[box-shadow]",
                     typeaheadPanelVisible && "z-30 ring-2 ring-indigo-400/80 ring-offset-2"
                   )}
                 >
@@ -414,24 +496,36 @@ export function ProductZdLookupModal({
                     className="pointer-events-none absolute left-3 top-1/2 z-[1] -translate-y-1/2 text-slate-400"
                     aria-hidden
                   >
-                    {visibleSuggestLoading ? (
-                      <Spinner size="sm" />
-                    ) : (
-                      <IconSearch size={18} strokeWidth={2} />
-                    )}
+                    <IconSearch size={18} strokeWidth={2} />
                   </span>
                   <Input
                     value={query}
+                    role="combobox"
                     onChange={(event) => {
                       setSelectedProduct(null);
                       setQuery(event.target.value);
+                      setProductTypeaheadOpen(true);
                     }}
+                    onFocus={() => setProductTypeaheadOpen(true)}
+                    onKeyDown={handleTypeaheadKeyDown}
                     placeholder={PRODUCT_ZD_LOOKUP_MODAL.searchPlaceholder}
                     autoComplete="off"
-                    aria-controls={listboxId}
+                    aria-autocomplete="list"
+                    aria-expanded={typeaheadPanelVisible}
+                    aria-controls={typeaheadPanelVisible ? listboxId : undefined}
+                    aria-activedescendant={
+                      typeaheadListVisible
+                        ? `${listboxId}-opt-${highlightedIndex}`
+                        : undefined
+                    }
                     className="pl-10"
                     autoFocus
                   />
+                  {visibleSuggestLoading ? (
+                    <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2">
+                      <Spinner size="sm" />
+                    </span>
+                  ) : null}
                   <TypeaheadDropdown
                     listboxId={listboxId}
                     open={typeaheadPanelVisible}
@@ -439,15 +533,19 @@ export function ProductZdLookupModal({
                     anchorRef={searchAnchorRef}
                     size="comfortable"
                     emptyMessage={visibleSuggestLoading ? "Szukam w Subiekcie…" : undefined}
+                    footer={typeaheadListVisible ? TYPEAHEAD_KEYBOARD_HINT : undefined}
                   >
                     <TypeaheadSectionLabel>Subiekt — wybierz produkt</TypeaheadSectionLabel>
                     {typeaheadListVisible
-                      ? visibleSuggestions.map((product) => {
+                      ? visibleSuggestions.map((product, index) => {
                           const { title, subtitle } = formatSubiektProductOption(product);
                           return (
                             <TypeaheadOption
                               key={product.tw_Id}
+                              optionId={`${listboxId}-opt-${index}`}
                               onSelect={() => pickProduct(product)}
+                              onHighlight={() => setHighlightedIndex(index)}
+                              highlighted={highlightedIndex === index}
                               title={title}
                               subtitle={subtitle}
                               size="comfortable"
