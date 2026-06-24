@@ -50,6 +50,12 @@ export const boardQuestionPreviewClass = cn(
   "block truncate italic text-slate-500"
 );
 
+export const boardQuestionProductChipClass =
+  "inline-flex max-w-full items-center gap-1.5 rounded-md border border-indigo-200/80 bg-indigo-50/70 px-2 py-0.5 text-[11px] font-semibold text-indigo-900";
+
+export const boardQuestionProductContextClass =
+  "rounded-lg border border-indigo-200/80 bg-gradient-to-r from-indigo-50/80 via-indigo-50/40 to-white px-3 py-2.5 shadow-sm shadow-indigo-100/40";
+
 export const boardProcurementReplyShellClass =
   "rounded-lg border border-indigo-100/90 bg-indigo-50/70 px-3.5 py-3 shadow-sm shadow-indigo-100/30";
 

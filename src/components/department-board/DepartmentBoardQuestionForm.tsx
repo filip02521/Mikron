@@ -20,6 +20,8 @@ import {
   boardQuestionsFormHeaderClass,
   boardQuestionsFormShellClass,
 } from "@/lib/department-board/department-board-questions-ui";
+import type { BoardQuestionProductDraft } from "@/lib/department-board/question-product";
+import { BoardQuestionProductField } from "@/components/department-board/BoardQuestionProductField";
 import { cn } from "@/lib/cn";
 import { floatingToastBottomClass } from "@/lib/ui/sales-mobile-chrome";
 import { brandLinkClass, salesTypography } from "@/lib/ui/ontime-theme";
@@ -31,7 +33,6 @@ function QuestionFormIntro() {
       <Link href="/prosba" className={brandLinkClass}>
         {DEPARTMENT_BOARD_QUESTIONS_FORM.introLinkLabel}
       </Link>
-      .
     </p>
   );
 }
@@ -39,23 +40,27 @@ function QuestionFormIntro() {
 function QuestionFormFields({
   title,
   body,
+  product,
   error,
   saving,
   tourDemo,
   embedded,
   onTitleChange,
   onBodyChange,
+  onProductChange,
   onSubmit,
   idPrefix,
 }: {
   title: string;
   body: string;
+  product: BoardQuestionProductDraft;
   error: string | null;
   saving: boolean;
   tourDemo: boolean;
   embedded?: boolean;
   onTitleChange: (value: string) => void;
   onBodyChange: (value: string) => void;
+  onProductChange: (patch: Partial<BoardQuestionProductDraft>) => void;
   onSubmit: () => void | Promise<void>;
   idPrefix: string;
 }) {
@@ -76,6 +81,13 @@ function QuestionFormFields({
           className={cn(NOTATNIK_INPUT_CLASS, "h-9 w-full text-sm")}
         />
       </div>
+
+      <BoardQuestionProductField
+        value={product}
+        onChange={onProductChange}
+        disabled={tourDemo || saving}
+        idPrefix={idPrefix}
+      />
 
       <div>
         <label htmlFor={`${idPrefix}-body`} className={boardQuestionsFieldLabelClass}>
@@ -113,6 +125,7 @@ function QuestionFormFields({
 export function DepartmentBoardQuestionForm({
   title,
   body,
+  product,
   error,
   saving,
   tourDemo,
@@ -121,10 +134,12 @@ export function DepartmentBoardQuestionForm({
   embedded = false,
   onTitleChange,
   onBodyChange,
+  onProductChange,
   onSubmit,
 }: {
   title: string;
   body: string;
+  product: BoardQuestionProductDraft;
   error: string | null;
   saving: boolean;
   tourDemo: boolean;
@@ -134,6 +149,7 @@ export function DepartmentBoardQuestionForm({
   embedded?: boolean;
   onTitleChange: (value: string) => void;
   onBodyChange: (value: string) => void;
+  onProductChange: (patch: Partial<BoardQuestionProductDraft>) => void;
   onSubmit: () => void | Promise<void>;
 }) {
   const [userExpanded, setUserExpanded] = useState<boolean | null>(null);
@@ -197,12 +213,14 @@ export function DepartmentBoardQuestionForm({
           <QuestionFormFields
             title={title}
             body={body}
+            product={product}
             error={error}
             saving={saving}
             tourDemo={tourDemo}
             embedded={embedded}
             onTitleChange={onTitleChange}
             onBodyChange={onBodyChange}
+            onProductChange={onProductChange}
             onSubmit={() => submit()}
             idPrefix="board-question-desktop"
           />
@@ -230,11 +248,13 @@ export function DepartmentBoardQuestionForm({
         <QuestionFormFields
           title={title}
           body={body}
+          product={product}
           error={error}
           saving={saving}
           tourDemo={tourDemo}
           onTitleChange={onTitleChange}
           onBodyChange={onBodyChange}
+          onProductChange={onProductChange}
           onSubmit={() => submit()}
           idPrefix="board-question-mobile"
         />

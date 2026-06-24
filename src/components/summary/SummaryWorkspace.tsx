@@ -39,6 +39,7 @@ import { OnDemandSuppliersSheet } from "@/components/summary/OnDemandSuppliersSh
 import { DailyPanelActionsBar } from "@/components/summary/DailyPanelActionsBar";
 import { DailyPanelExceptionsView } from "@/components/summary/DailyPanelExceptionsView";
 import { OperationsPanelRefreshStrip } from "@/components/operations/OperationsUpdatesContext";
+import { DailyPanelBoardQuestionsBanner } from "@/components/summary/DailyPanelBoardQuestionsBanner";
 import {
   IconLayoutPanel,
 } from "@/components/icons/StrokeIcons";
@@ -354,6 +355,10 @@ export function SummaryWorkspace({
               onOpenOnDemand={() => setOnDemandOpen(true)}
             />
           }
+        />
+
+        <DailyPanelBoardQuestionsBanner
+          className={cn(panelChromeInsetClass, "border-b border-slate-100 px-3 py-2 sm:px-4")}
         />
 
         <DailyPanelToolbar

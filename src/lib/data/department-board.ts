@@ -14,7 +14,7 @@ import type {
 } from "@/types/database";
 
 export const DEPARTMENT_BOARD_THREAD_SELECT =
-  "*, author:profiles!created_by(email, role), sales_person:sales_people(id, name)";
+  "id, kind, status, created_by, sales_person_id, title, body, product_symbol, product_name, subiekt_tw_id, mikran_code, color, pinned, published_at, expires_at, answered_at, archived_at, created_at, updated_at, author:profiles!created_by(email, role), sales_person:sales_people(id, name)";
 
 export const DEPARTMENT_BOARD_POST_SELECT =
   "*, author:profiles!created_by(email, role)";
@@ -90,7 +90,7 @@ export async function fetchDepartmentBoardQuestions(): Promise<DepartmentBoardQu
 
   if (questionsRes.error) throw new Error(questionsRes.error.message);
 
-  const questionRows = (questionsRes.data ?? []) as DepartmentBoardThreadRow[];
+  const questionRows = (questionsRes.data ?? []) as unknown as DepartmentBoardThreadRow[];
   const questionIds = questionRows.map((q) => q.id);
 
   let posts: DepartmentBoardPostRow[] = [];
@@ -101,7 +101,7 @@ export async function fetchDepartmentBoardQuestions(): Promise<DepartmentBoardQu
       .in("thread_id", questionIds)
       .order("created_at", { ascending: true });
     if (postsRes.error) throw new Error(postsRes.error.message);
-    posts = (postsRes.data ?? []) as DepartmentBoardPostRow[];
+    posts = (postsRes.data ?? []) as unknown as DepartmentBoardPostRow[];
   }
 
   const postsByThread = new Map<string, DepartmentBoardPostRow[]>();
@@ -138,7 +138,7 @@ export async function fetchDepartmentBoardAnnouncements(
   if (announcementsRes.error) throw new Error(announcementsRes.error.message);
 
   const announcements = sortAnnouncements(
-    (announcementsRes.data ?? []).filter(isAnnouncementActive) as DepartmentBoardThreadRow[]
+    (announcementsRes.data ?? []).filter(isAnnouncementActive) as unknown as DepartmentBoardThreadRow[]
   );
 
   let readAnnouncementIds: string[] = [];
@@ -200,6 +200,10 @@ export function procurementBoardQuestionHref(threadId: string): string {
   return `/zakupy/tablica?widok=pytania&watek=${encodeURIComponent(threadId)}`;
 }
 
+export function procurementBoardQuestionsListHref(): string {
+  return "/zakupy/tablica?widok=pytania";
+}
+
 /** Przypięte, aktywne ogłoszenia — wspólne dla handlowców i panelu zakupów. */
 export async function fetchPinnedActiveAnnouncements(): Promise<
   Pick<DepartmentBoardThreadRow, "id" | "title" | "body">[]
@@ -209,7 +213,7 @@ export async function fetchPinnedActiveAnnouncements(): Promise<
   if (error) return [];
 
   return sortAnnouncements(
-    ((data ?? []) as DepartmentBoardThreadRow[]).filter(isAnnouncementActive)
+    ((data ?? []) as unknown as DepartmentBoardThreadRow[]).filter(isAnnouncementActive)
   )
     .filter((row) => row.pinned)
     .map((row) => ({ id: row.id, title: row.title, body: row.body }));
@@ -275,7 +279,7 @@ export async function fetchSalesBoardAttentionSnapshot(
   ]);
 
   const announcements = sortAnnouncements(
-    ((announcementsRes.data ?? []) as DepartmentBoardThreadRow[]).filter(isAnnouncementActive)
+    ((announcementsRes.data ?? []) as unknown as DepartmentBoardThreadRow[]).filter(isAnnouncementActive)
   );
 
   let unreadAnnouncementCount = 0;

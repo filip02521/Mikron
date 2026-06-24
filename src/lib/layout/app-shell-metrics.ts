@@ -19,7 +19,6 @@ import {
 import { fetchOperationsDailyPanelMetrics } from "@/lib/orders/operations-daily-panel-version";
 import { fetchSalesShellMetrics } from "@/lib/orders/sales-shell-metrics";
 import {
-  countOpenDepartmentBoardQuestions,
   fetchPinnedActiveAnnouncements,
   fetchSalesBoardAttentionSnapshot,
 } from "@/lib/data/department-board";
@@ -64,16 +63,15 @@ export async function fetchAppShellMetrics(
 
   if (role && canAccessOperations(role)) {
     try {
-      const [metrics, openQuestions, pinnedAnnouncements] = await Promise.all([
+      const [metrics, pinnedAnnouncements] = await Promise.all([
         fetchOperationsDailyPanelMetrics(),
-        countOpenDepartmentBoardQuestions().catch(() => 0),
         fetchPinnedActiveAnnouncements().catch(() => []),
       ]);
       navBadges = {
         ...navBadges,
         weryfikacja: metrics.verificationCount,
         nowe: metrics.navBadge,
-        departmentBoardQuestions: openQuestions,
+        departmentBoardQuestions: metrics.openBoardQuestionsCount,
       };
       operationsDailyPanelVersion = metrics.version;
       operationsPinnedAnnouncements = pinnedAnnouncements;

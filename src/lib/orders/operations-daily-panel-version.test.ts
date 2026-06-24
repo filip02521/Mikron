@@ -107,4 +107,18 @@ describe("computeOperationsDailyPanelVersion", () => {
 
     expect(unseenVersion).toBe(seenVersion);
   });
+
+  it("zmienia się przy nowym otwartym pytaniu na tablicy", () => {
+    const without = computeOperationsDailyPanelVersion({
+      workspace: emptyWorkspace,
+      verificationCount: 0,
+      openBoardQuestionsCount: 0,
+    });
+    const withQuestion = computeOperationsDailyPanelVersion({
+      workspace: emptyWorkspace,
+      verificationCount: 0,
+      openBoardQuestionsCount: 2,
+    });
+    expect(without).not.toBe(withQuestion);
+  });
 });

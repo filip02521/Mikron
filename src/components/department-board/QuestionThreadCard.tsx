@@ -26,6 +26,9 @@ import {
 } from "@/lib/department-board/department-board-questions-ui";
 import type { DepartmentBoardQuestion } from "@/lib/data/department-board";
 import { NOTATNIK_TEXTAREA_CLASS } from "@/components/notatnik/notatnik-layout";
+import { BoardQuestionProductChip } from "@/components/department-board/BoardQuestionProductChip";
+import { BoardQuestionProductContext } from "@/components/department-board/BoardQuestionProductContext";
+import { boardQuestionHasProduct } from "@/lib/department-board/question-product";
 import { cn } from "@/lib/cn";
 import { salesTypography } from "@/lib/ui/ontime-theme";
 import {
@@ -114,6 +117,7 @@ export function QuestionThreadCard({
   const isOpen = question.status === "open";
   const replyCount = question.posts.length;
   const showUnseen = unseenReply && !locallySeen;
+  const hasProduct = boardQuestionHasProduct(question);
 
   const latestActivityPost = useMemo(() => {
     if (question.posts.length === 0) return null;
@@ -233,13 +237,16 @@ export function QuestionThreadCard({
               className="mt-0.5 shrink-0 text-slate-400"
             />
             <span className="min-w-0 flex-1 space-y-1">
-              <span className="flex min-w-0 flex-wrap items-center gap-2">
+              <span className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1">
                 {showUnseen ? (
                   <span className={boardQuestionUnseenDotClass} aria-hidden />
                 ) : null}
                 <span className={cn(salesTypography.rowTitle, "min-w-0 truncate")}>
                   {question.title}
                 </span>
+                {hasProduct ? (
+                  <BoardQuestionProductChip product={question} compact className="max-w-[min(100%,14rem)]" />
+                ) : null}
                 <span
                   className={boardQuestionStatusBadgeClass({ unseen: showUnseen, open: isOpen })}
                 >
@@ -300,6 +307,8 @@ export function QuestionThreadCard({
 
       {expanded ? (
         <div className={boardQuestionExpandedShellClass}>
+          {hasProduct ? <BoardQuestionProductContext product={question} /> : null}
+
           <ThreadMessage
             authorLabel={author}
             body={question.body}
