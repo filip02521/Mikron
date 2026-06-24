@@ -27,6 +27,8 @@ param(
 Set-StrictMode -Version Latest
 $ErrorActionPreference = "Stop"
 
+. (Join-Path $PSScriptRoot "npm-ci-for-build.ps1")
+
 $LogDir = Join-Path $ProjectRoot "logs"
 $LogFile = Join-Path $LogDir "nightly-deploy.log"
 
@@ -199,21 +201,15 @@ function Invoke-NightlyDeploy {
   try {
     $needInstall = $lockChanged
     if (-not $needInstall) {
-      $tailwind = Join-Path $ProjectRoot "node_modules\tailwindcss\package.json"
-      $postcss = Join-Path $ProjectRoot "node_modules\@tailwindcss\postcss\package.json"
-      if (-not (Test-Path $tailwind) -or -not (Test-Path $postcss)) {
-        Write-Log "Brak tailwind w node_modules - wymuszam npm ci"
+      if (-not (Test-NodeModulesComplete -Root $ProjectRoot)) {
+        Write-Log "Brak wymaganych modulow build (next/tailwind/typescript) - wymuszam npm ci"
         $needInstall = $true
       }
     }
 
     if ($needInstall) {
-      Write-Log "npm ci (zmiana lockfile lub brak modulow build)"
-      $savedNodeEnv = $env:NODE_ENV
-      Remove-Item Env:NODE_ENV -ErrorAction SilentlyContinue
-      & $npm ci --no-audit --no-fund
-      if ($LASTEXITCODE -ne 0) { throw "npm ci nie powiodlo sie" }
-      if ($savedNodeEnv) { $env:NODE_ENV = $savedNodeEnv }
+      Write-Log "npm run deps:ci (zmiana lockfile lub brak modulow build)"
+      Invoke-NpmCiForBuild -Npm $npm
     }
 
     Write-Log "npm run build"

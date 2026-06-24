@@ -27,6 +27,8 @@ param(
 Set-StrictMode -Version Latest
 $ErrorActionPreference = "Stop"
 
+. (Join-Path $PSScriptRoot "npm-ci-for-build.ps1")
+
 function Write-Step([string]$Message) {
   Write-Host ""
   Write-Host "=== $Message ===" -ForegroundColor Cyan
@@ -136,6 +138,10 @@ function Get-ServiceExists([string]$Name) {
 function Test-NodeModulesFresh {
   param([string]$Root)
 
+  if (-not (Test-NodeModulesComplete -Root $Root)) {
+    return $false
+  }
+
   $lock = Join-Path $Root "package-lock.json"
   $modules = Join-Path $Root "node_modules"
   $pkg = Join-Path $Root "package.json"
@@ -154,15 +160,7 @@ function Invoke-NpmInstall {
 
   Write-Host "  (npm ci moze trwac 2-5 min na Windowsie - to normalne, poczekaj...)"
   $sw = [System.Diagnostics.Stopwatch]::StartNew()
-  $savedNodeEnv = $env:NODE_ENV
-  Remove-Item Env:NODE_ENV -ErrorAction SilentlyContinue
-  & $Npm ci --no-audit --no-fund
-  if ($LASTEXITCODE -ne 0) {
-    Write-Warn "npm ci nie powiodlo sie (lock file?) - probuje npm install"
-    & $Npm install --no-audit --no-fund
-    if ($LASTEXITCODE -ne 0) { throw "npm install nie powiodlo sie" }
-  }
-  if ($savedNodeEnv) { $env:NODE_ENV = $savedNodeEnv }
+  Invoke-NpmCiForBuild -Npm $Npm -AllowInstallFallback
   $sw.Stop()
   Write-Ok "Zaleznosci zainstalowane ($([math]::Round($sw.Elapsed.TotalSeconds)) s)"
 }
