@@ -9,6 +9,7 @@ import {
 } from "@/lib/auth/admin-panel-context";
 import { readAdminPanelContextForSession } from "@/lib/auth/read-admin-panel-context";
 import { isSalesAccount } from "@/lib/auth-roles";
+import { fetchTeethProductTwIds } from "@/lib/data/teeth-products";
 import { AppShellClient } from "./AppShellClient";
 import { AppShellMetricsProvider } from "./AppShellMetricsContext";
 import { AppShellMetricsLoader } from "./AppShellMetricsLoader";
@@ -38,6 +39,9 @@ export async function AppShell({ children }: { children: React.ReactNode }) {
     !session?.mustChangePassword &&
     !session?.salesOnboardingCompletedAt;
 
+  const teethExemptTwIds =
+    session && !lightShell ? await fetchTeethProductTwIds().catch(() => []) : [];
+
   const shell = (
     <AppShellClient
       role={role}
@@ -49,6 +53,7 @@ export async function AppShell({ children }: { children: React.ReactNode }) {
       mustChangePassword={session?.mustChangePassword ?? false}
       salesOnboardingCompletedAt={session?.salesOnboardingCompletedAt ?? null}
       salesOnboardingActive={showSalesOnboarding}
+      teethExemptTwIds={teethExemptTwIds}
     >
       {children}
     </AppShellClient>

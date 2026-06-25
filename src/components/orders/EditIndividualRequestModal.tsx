@@ -53,6 +53,7 @@ import {
 import { ProsbaStockConfirmDialog } from "@/components/orders/ProsbaStockConfirmDialog";
 import { buildProsbaSubmitStockConfirm } from "@/lib/orders/prosba-stock-check";
 import { handleProsbaStockSubmitError } from "@/lib/orders/prosba-stock-submit-error";
+import { useTeethExemptTwIds } from "@/components/layout/TeethExemptContext";
 
 export type EditIndividualRequestInitial = {
   supplierId: string;
@@ -82,6 +83,7 @@ export function EditIndividualRequestModal({
   onSaved?: (message: string) => void;
 }) {
   const { pending, pendingMessage, run } = useActionPending();
+  const teethExemptTwIds = useTeethExemptTwIds();
   const [supplierId, setSupplierId] = useState("");
   const [salesPersonId, setSalesPersonId] = useState("");
   const [requestKind, setRequestKind] = useState<IndividualRequestKind>("zamowienie");
@@ -257,7 +259,7 @@ export function EditIndividualRequestModal({
       }
     }
 
-    const stockConfirm = buildProsbaSubmitStockConfirm(linesToSave, requestKind);
+    const stockConfirm = buildProsbaSubmitStockConfirm(linesToSave, requestKind, teethExemptTwIds);
     if (stockConfirm) {
       pendingSaveLinesRef.current = linesToSave;
       setStockConfirmMessage(stockConfirm.message);

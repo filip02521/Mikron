@@ -306,9 +306,10 @@ install_and_build() {
   log "=== 3/6 — Zależności i build ==="
   if ! $SKIP_INSTALL; then
     if [[ -f package-lock.json ]]; then
-      npm ci
+      # NODE_ENV=production powoduje pomijanie devDependencies — build wymaga pełnych modulow.
+      env -u NODE_ENV npm run deps:ci
     else
-      npm install
+      env -u NODE_ENV npm install --include=dev
     fi
   else
     log "Pominięto npm install"

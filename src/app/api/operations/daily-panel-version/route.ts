@@ -10,5 +10,8 @@ export async function GET() {
   }
 
   const metrics = await fetchOperationsDailyPanelMetrics();
-  return NextResponse.json({ version: metrics.version });
+  return NextResponse.json({
+    version: metrics.version,
+    openBoardQuestions: metrics.openBoardQuestionsCount,
+  });
 }

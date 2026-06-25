@@ -1,6 +1,7 @@
 import { describe, expect, it, vi, beforeEach } from "vitest";
 import {
   assertProsbaSubmitStockAllowed,
+  findProsbaLinesWithSufficientStock,
   ProsbaSufficientStockError,
   PROSBA_STOCK_ACK_REQUIRED_CODE,
 } from "./prosba-stock-server";
@@ -79,5 +80,17 @@ describe("assertProsbaSubmitStockAllowed", () => {
       expect(e).toBeInstanceOf(ProsbaSufficientStockError);
       expect((e as ProsbaSufficientStockError).message).toContain("Implant");
     }
+  });
+
+  it("pomija produkty z listy zębów", async () => {
+    mockFetch.mockResolvedValue({
+      42: { onHand: 10, reserved: 0, available: 10, source: "subiekt" },
+    });
+    const sufficient = await findProsbaLinesWithSufficientStock({
+      lines: [{ subiektTwId: 42, quantity: "1", product: "Implant" }],
+      requestKind: "zamowienie",
+      stockExemptTwIds: new Set([42]),
+    });
+    expect(sufficient).toEqual([]);
   });
 });

@@ -9,8 +9,10 @@ import {
   isZkWatchLineCheckboxChecked,
   canToggleZkWatchLineCheckbox,
   countZkWatchLineUiStates,
+  applyZkProsbaStockFilterToCardAction,
   deriveZkWatchProsbaCardAction,
   formatZkProsbaCardActionLabelAfterStockFilter,
+  resolveZkWatchProsbaPrefillLineKeys,
   resolveZkWatchLineUiState,
   ZK_WATCH_LINE_FLOW_ORDER,
   ZK_WATCH_STATUS_GUIDE_ITEMS,
@@ -241,6 +243,85 @@ describe("formatZkProsbaCardActionLabelAfterStockFilter", () => {
         sourceCount: 3,
       })
     ).toBe("Uzupełnij (1)");
+  });
+
+  it("przy zapisanym zakresie ZK nie blokuje CTA etykietą Na stanie", () => {
+    expect(
+      formatZkProsbaCardActionLabelAfterStockFilter({
+        action: { kind: "new_prosba", label: "Utwórz prośbę (2)", lineKeys: ["a", "b"] },
+        stockLoading: false,
+        allOnStock: true,
+        filteredCount: 2,
+        sourceCount: 2,
+        explicitScopeSelection: true,
+      })
+    ).toBe("Utwórz prośbę (2)");
+  });
+});
+
+describe("resolveZkWatchProsbaPrefillLineKeys", () => {
+  it("przy zapisanym zakresie zwraca wszystkie wybrane pozycje mimo filtra stanu", () => {
+    const action = {
+      kind: "supplement" as const,
+      label: "Uzupełnij (2)",
+      lineKeys: ["a", "b"],
+    };
+    expect(
+      resolveZkWatchProsbaPrefillLineKeys({
+        action,
+        uncoveredLineKeys: ["a", "b"],
+        prosbaScopeConfigured: true,
+        stockFilteredKeys: ["a"],
+        applyStockFilter: true,
+      })
+    ).toEqual(["a", "b"]);
+  });
+
+  it("bez zakresu stosuje filtr stanu gdy jest aktywny", () => {
+    const action = {
+      kind: "supplement" as const,
+      label: "Uzupełnij (2)",
+      lineKeys: ["a", "b"],
+    };
+    expect(
+      resolveZkWatchProsbaPrefillLineKeys({
+        action,
+        uncoveredLineKeys: ["a", "b"],
+        prosbaScopeConfigured: false,
+        stockFilteredKeys: ["a"],
+        applyStockFilter: true,
+      })
+    ).toEqual(["a"]);
+  });
+});
+
+describe("applyZkProsbaStockFilterToCardAction", () => {
+  it("nie zamienia akcji na view_open gdy zakres ZK jest jawnie wybrany", () => {
+    const action = {
+      kind: "new_prosba" as const,
+      label: "Utwórz prośbę (2)",
+      lineKeys: ["a", "b"],
+    };
+    expect(
+      applyZkProsbaStockFilterToCardAction({
+        action,
+        stockLoading: false,
+        allOnStock: true,
+        hasOpenMatchingProsba: true,
+        explicitScopeSelection: true,
+      })
+    ).toEqual(action);
+  });
+
+  it("przekierowuje do otwartej prośby gdy wszystko na stanie bez jawnego zakresu", () => {
+    expect(
+      applyZkProsbaStockFilterToCardAction({
+        action: { kind: "supplement", label: "Uzupełnij (2)", lineKeys: ["a", "b"] },
+        stockLoading: false,
+        allOnStock: true,
+        hasOpenMatchingProsba: true,
+      })
+    ).toEqual({ kind: "view_open", label: "Otwórz prośbę" });
   });
 });
 

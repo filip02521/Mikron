@@ -7,7 +7,7 @@ import {
   computeZkWatchRefreshDiff,
   hasZkWatchRefreshDiff,
   shouldPromptZkRefreshSupplement,
-  uncoveredAddedLineKeys,
+  addedLineKeysForSupplementPrompt,
   type ZkWatchRefreshDiff,
 } from "@/lib/sales/zk-watch-refresh-diff";
 import type { SalesZkWatch } from "@/types/database";
@@ -73,7 +73,11 @@ export function computeZkWatchSupplementSync(options: {
   existingNewLineKeys: string[];
 }): ZkWatchSupplementSyncResult {
   const hints = computeZkWatchOrderHints(options.watch, options.orders);
-  const uncoveredAdded = uncoveredAddedLineKeys(options.diff, hints.uncoveredLineKeys);
+  const uncoveredAdded = addedLineKeysForSupplementPrompt(
+    options.diff,
+    options.watch,
+    hints.uncoveredLineKeys
+  );
   const newlyUncoveredAdded = uncoveredAdded.filter(
     (key) => !options.existingNewLineKeys.includes(key)
   );
@@ -92,6 +96,7 @@ export function computeZkWatchSupplementSync(options: {
     newlyUncoveredAdded.length > 0 &&
     shouldPromptZkRefreshSupplement({
       diff: options.diff,
+      watch: options.watch,
       uncoveredLineKeys: hints.uncoveredLineKeys,
     });
 

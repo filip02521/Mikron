@@ -11,6 +11,7 @@ export function DailyPanelSyncControl({ embedded = false }: { embedded?: boolean
   const ctx = useOperationsUpdates();
   const hydrated = useClientHydrated();
   const autoRefresh = hydrated && ctx ? ctx.autoRefresh : false;
+  const boardQuestionsSound = hydrated && ctx ? ctx.boardQuestionsSound : false;
   const syncLabel = useSyncRelativeTime(
     ctx?.lastSyncedAt ?? null,
     ctx?.lastPollAt ?? null
@@ -54,26 +55,49 @@ export function DailyPanelSyncControl({ embedded = false }: { embedded?: boolean
         )}
       </div>
 
-      <label
-        className={cn(
-          "inline-flex min-h-11 w-full cursor-pointer items-center justify-between gap-3 rounded-md border px-3 py-2 font-medium shadow-sm transition-colors sm:min-h-0 sm:w-fit sm:justify-start sm:gap-2 sm:px-2.5 sm:py-1.5",
-          panelTypography.chrome,
-          autoRefresh
-            ? "border-indigo-200/90 bg-indigo-50/50 text-indigo-900"
-            : "border-slate-200/80 bg-white/80 text-slate-600 hover:border-indigo-100 hover:bg-indigo-50/30"
-        )}
-      >
-        <span className="whitespace-nowrap">Auto przy zmianach</span>
-        <input
-          type="checkbox"
-          role="switch"
-          aria-checked={autoRefresh}
-          aria-label="Automatyczne odświeżanie panelu przy wykrytych zmianach co 3 minuty"
-          checked={autoRefresh}
-          onChange={(e) => ctx.setAutoRefresh(e.target.checked)}
-          className="size-5 shrink-0 rounded border-slate-300 text-indigo-600 focus:ring-indigo-300 sm:size-4"
-        />
-      </label>
+      <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:items-center">
+        <label
+          className={cn(
+            "inline-flex min-h-11 w-full cursor-pointer items-center justify-between gap-3 rounded-md border px-3 py-2 font-medium shadow-sm transition-colors sm:min-h-0 sm:w-fit sm:justify-start sm:gap-2 sm:px-2.5 sm:py-1.5",
+            panelTypography.chrome,
+            boardQuestionsSound
+              ? "border-amber-200/90 bg-amber-50/45 text-amber-950"
+              : "border-slate-200/80 bg-white/80 text-slate-600 hover:border-amber-100 hover:bg-amber-50/25"
+          )}
+        >
+          <span className="whitespace-nowrap">Dźwięk przy pytaniu</span>
+          <input
+            type="checkbox"
+            role="switch"
+            aria-checked={boardQuestionsSound}
+            aria-label="Powiadomienie dźwiękowe, gdy handlowiec doda pytanie na tablicy"
+            checked={boardQuestionsSound}
+            onChange={(e) => ctx.setBoardQuestionsSound(e.target.checked)}
+            className="size-5 shrink-0 rounded border-slate-300 text-amber-600 focus:ring-amber-300 sm:size-4"
+          />
+        </label>
+
+        <label
+          className={cn(
+            "inline-flex min-h-11 w-full cursor-pointer items-center justify-between gap-3 rounded-md border px-3 py-2 font-medium shadow-sm transition-colors sm:min-h-0 sm:w-fit sm:justify-start sm:gap-2 sm:px-2.5 sm:py-1.5",
+            panelTypography.chrome,
+            autoRefresh
+              ? "border-indigo-200/90 bg-indigo-50/50 text-indigo-900"
+              : "border-slate-200/80 bg-white/80 text-slate-600 hover:border-indigo-100 hover:bg-indigo-50/30"
+          )}
+        >
+          <span className="whitespace-nowrap">Auto przy zmianach</span>
+          <input
+            type="checkbox"
+            role="switch"
+            aria-checked={autoRefresh}
+            aria-label="Automatyczne odświeżanie panelu przy wykrytych zmianach co 3 minuty"
+            checked={autoRefresh}
+            onChange={(e) => ctx.setAutoRefresh(e.target.checked)}
+            className="size-5 shrink-0 rounded border-slate-300 text-indigo-600 focus:ring-indigo-300 sm:size-4"
+          />
+        </label>
+      </div>
     </div>
   );
 }

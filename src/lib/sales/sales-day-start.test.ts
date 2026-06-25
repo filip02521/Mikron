@@ -86,6 +86,7 @@ describe("buildSalesDayStartSnapshot", () => {
       unreadAnnouncementBannerLatestTitle: "Urlop",
       unreadAnnouncementBannerLatestId: "ann-1",
       unseenAnswerCount: 1,
+      unseenOwnAnswerCount: 1,
       unseenAnswerPreview: {
         threadId: "t1",
         title: "Termin",

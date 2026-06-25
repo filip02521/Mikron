@@ -26,6 +26,10 @@ function testQuestion(): DepartmentBoardQuestion {
     published_at: "",
     title: "Termin dostawy",
     body: "Kiedy będzie towar?",
+    product_symbol: "606402",
+    product_name: "Implant testowy",
+    subiekt_tw_id: 123,
+    mikran_code: null,
     expires_at: null,
     answered_at: "2026-01-02T10:00:00Z",
     archived_at: null,
@@ -66,6 +70,17 @@ describe("QuestionThreadCard", () => {
     await waitFor(() => {
       expect(actionMarkQuestionThreadSeen).not.toHaveBeenCalled();
     });
+  });
+
+  it("pokazuje chip produktu w wierszu tytułu", () => {
+    render(<QuestionThreadCard question={testQuestion()} embedded defaultExpanded={false} />);
+    expect(screen.getByText("606402 — Implant testowy")).toBeTruthy();
+  });
+
+  it("pokazuje kontekst produktu po rozwinięciu", () => {
+    render(<QuestionThreadCard question={testQuestion()} embedded defaultExpanded />);
+    expect(screen.getByText("Produkt")).toBeTruthy();
+    expect(screen.getAllByText("606402 — Implant testowy").length).toBeGreaterThan(0);
   });
 
   it("oznacza wątek po ręcznym rozwinięciu", async () => {

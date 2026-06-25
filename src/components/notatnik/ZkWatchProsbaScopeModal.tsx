@@ -27,9 +27,11 @@ import {
   needsProsbaByKeyFromChecks,
 } from "@/lib/sales/zk-watch-prosba-scope";
 import { salesTypography } from "@/lib/ui/ontime-theme";
+import { useTeethExemptTwIds } from "@/components/layout/TeethExemptContext";
 import type { SalesZkWatch } from "@/types/database";
 
 function useZkProsbaScopeSelection(watch: SalesZkWatch, open: boolean) {
+  const teethExemptTwIds = useTeethExemptTwIds();
   const lineViews = useMemo(() => buildZkWatchLineViews(watch), [watch]);
   const productLines = useMemo(
     () => lineViews.filter((line) => line.key !== "summary"),
@@ -67,6 +69,7 @@ function useZkProsbaScopeSelection(watch: SalesZkWatch, open: boolean) {
         stockByTwId: {},
         existingScope,
         needsProsbaByKey,
+        stockExemptTwIds: teethExemptTwIds,
       });
       queueMicrotask(() => {
         setOrderMarked(new Set(keys));
@@ -83,6 +86,7 @@ function useZkProsbaScopeSelection(watch: SalesZkWatch, open: boolean) {
       stockByTwId,
       existingScope,
       needsProsbaByKey,
+      stockExemptTwIds: teethExemptTwIds,
     });
     queueMicrotask(() => setOrderMarked(new Set(keys)));
   }, [
@@ -95,6 +99,7 @@ function useZkProsbaScopeSelection(watch: SalesZkWatch, open: boolean) {
     stockFetchTimedOut,
     scopeInitDone,
     userTouchedSelection,
+    teethExemptTwIds,
   ]);
 
   function setOrderMarkedWithTouch(value: Set<string> | ((prev: Set<string>) => Set<string>)) {
@@ -127,6 +132,7 @@ export function ZkWatchProsbaScopeModal({
   onClose: () => void;
   onSaved: (watch: SalesZkWatch) => void;
 }) {
+  const teethExemptTwIds = useTeethExemptTwIds();
   const { productLines, orderMarked, setOrderMarked, stockByTwId, stockLoading, stockFetchTimedOut, hasExistingScope } =
     useZkProsbaScopeSelection(watch, open);
   const [saving, setSaving] = useState(false);
@@ -136,7 +142,7 @@ export function ZkWatchProsbaScopeModal({
   const scopeOrderMeta = zkWatchLineUiStateMeta("uncovered");
   const lineKeysToOrder = zkProsbaScopeLineKeysToOrder(productLines, orderMarked);
   const allLinesSufficient =
-    !stockLoading && zkProsbaScopeAllLinesSufficient(productLines, stockByTwId);
+    !stockLoading && zkProsbaScopeAllLinesSufficient(productLines, stockByTwId, teethExemptTwIds);
   const noneMarkedForOrder = orderMarked.size === 0 && productLines.length > 0;
   const stockUnavailable =
     !stockLoading &&
@@ -144,7 +150,7 @@ export function ZkWatchProsbaScopeModal({
   const awaitingAutoMark = stockLoading && !hasExistingScope && !stockFetchTimedOut;
   const autoMarkedCount =
     !stockLoading && !hasExistingScope
-      ? deriveZkProsbaScopeSuggestedOrderKeys(productLines, stockByTwId).length
+      ? deriveZkProsbaScopeSuggestedOrderKeys(productLines, stockByTwId, teethExemptTwIds).length
       : 0;
 
   function toggleLine(key: string) {

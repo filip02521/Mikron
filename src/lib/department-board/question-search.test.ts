@@ -16,6 +16,10 @@ function testQuestion(
     color: "default",
     pinned: false,
     published_at: "",
+    product_symbol: null,
+    product_name: null,
+    subiekt_tw_id: null,
+    mikran_code: null,
     expires_at: null,
     answered_at: null,
     archived_at: null,
@@ -61,6 +65,18 @@ describe("filterDepartmentBoardQuestionsByQuery", () => {
   it("szuka po autorze i treści odpowiedzi", () => {
     expect(filterDepartmentBoardQuestionsByQuery(questions, "jan nowak")).toHaveLength(1);
     expect(filterDepartmentBoardQuestionsByQuery(questions, "pdf")).toHaveLength(1);
+  });
+
+  it("szuka po symbolu i nazwie produktu", () => {
+    const withProduct = testQuestion({
+      id: "q3",
+      title: "Stan magazynowy",
+      body: "Czy mamy na stanie?",
+      product_symbol: "606402",
+      product_name: "Straumann implant",
+    });
+    expect(filterDepartmentBoardQuestionsByQuery([withProduct], "606402")).toHaveLength(1);
+    expect(filterDepartmentBoardQuestionsByQuery([withProduct], "straumann implant")).toHaveLength(1);
   });
 
   it("buduje haystack z autorem i odpowiedziami", () => {

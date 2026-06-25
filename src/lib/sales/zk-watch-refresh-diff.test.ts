@@ -1,7 +1,9 @@
 import { describe, expect, it } from "vitest";
 import {
+  addedLineKeysForSupplementPrompt,
   computeZkWatchRefreshDiff,
   shouldPromptZkRefreshSupplement,
+  shouldRedirectZkRefreshToOpenProsba,
   uncoveredAddedLineKeys,
 } from "./zk-watch-refresh-diff";
 import type { SalesZkWatch } from "@/types/database";
@@ -96,34 +98,83 @@ describe("computeZkWatchRefreshDiff", () => {
 
 describe("shouldPromptZkRefreshSupplement", () => {
   it("proponuje uzupełnienie tylko gdy nowe linie są niepokryte prośbą", () => {
-    const diff = computeZkWatchRefreshDiff(
-      watch({
-        subiekt_snapshot: {
-          dok_Pozycja: [{ ob_Id: 10, tw_Nazwa: "A", ob_Ilosc: 1 }],
-        },
-      }),
-      watch({
-        subiekt_snapshot: {
-          dok_Pozycja: [
-            { ob_Id: 10, tw_Nazwa: "A", ob_Ilosc: 1 },
-            { ob_Id: 11, tw_Nazwa: "B", ob_Ilosc: 1 },
-          ],
-        },
-      })
-    );
+    const previous = watch({
+      subiekt_snapshot: {
+        dok_Pozycja: [{ ob_Id: 10, tw_Nazwa: "A", ob_Ilosc: 1 }],
+      },
+    });
+    const next = watch({
+      subiekt_snapshot: {
+        dok_Pozycja: [
+          { ob_Id: 10, tw_Nazwa: "A", ob_Ilosc: 1 },
+          { ob_Id: 11, tw_Nazwa: "B", ob_Ilosc: 1 },
+        ],
+      },
+    });
+    const diff = computeZkWatchRefreshDiff(previous, next);
 
     expect(
       shouldPromptZkRefreshSupplement({
         diff,
+        watch: next,
         uncoveredLineKeys: ["ob:11"],
       })
     ).toBe(true);
     expect(
       shouldPromptZkRefreshSupplement({
         diff,
+        watch: next,
         uncoveredLineKeys: [],
       })
-    ).toBe(false);
+    ).toBe(true);
     expect(uncoveredAddedLineKeys(diff, ["ob:11", "ob:99"])).toEqual(["ob:11"]);
+  });
+
+  it("nie proponuje pozycji jawnie oznaczonych jako na stanie", () => {
+    const previous = watch({
+      line_checks: [{ key: "ob:10", arrived: false, needs_prosba: true }],
+      subiekt_snapshot: {
+        dok_Pozycja: [{ ob_Id: 10, tw_Nazwa: "A", ob_Ilosc: 1 }],
+      },
+    });
+    const next = watch({
+      line_checks: [
+        { key: "ob:10", arrived: false, needs_prosba: true },
+        { key: "ob:11", arrived: false, needs_prosba: false },
+      ],
+      subiekt_snapshot: {
+        dok_Pozycja: [
+          { ob_Id: 10, tw_Nazwa: "A", ob_Ilosc: 1 },
+          { ob_Id: 11, tw_Nazwa: "B", ob_Ilosc: 1 },
+        ],
+      },
+    });
+    const diff = computeZkWatchRefreshDiff(previous, next);
+
+    expect(
+      addedLineKeysForSupplementPrompt(diff, next, [])
+    ).toEqual([]);
+  });
+});
+
+describe("shouldRedirectZkRefreshToOpenProsba", () => {
+  it("nie przekierowuje gdy użytkownik zaznaczył pozycje mimo stanu", () => {
+    expect(
+      shouldRedirectZkRefreshToOpenProsba({
+        allOnStock: true,
+        hasOpenMatchingProsba: true,
+        linesToAddCount: 2,
+      })
+    ).toBe(false);
+  });
+
+  it("przekierowuje tylko gdy brak pozycji do dodania", () => {
+    expect(
+      shouldRedirectZkRefreshToOpenProsba({
+        allOnStock: true,
+        hasOpenMatchingProsba: true,
+        linesToAddCount: 0,
+      })
+    ).toBe(true);
   });
 });

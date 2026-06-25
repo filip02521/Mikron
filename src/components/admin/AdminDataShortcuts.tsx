@@ -29,12 +29,17 @@ const shortcuts = [
     title: "Urlopy dostawców",
     description: "Okresy niedostępności i przeliczanie harmonogramów.",
   },
-  {
-    href: "/admin/produkty",
-    title: "Katalog produktów",
-    description: "Powiązania produkt ↔ dostawca, synchronizacja ZD i metryki.",
-  },
-] as const;
+    {
+      href: "/admin/produkty",
+      title: "Katalog produktów",
+      description: "Powiązania produkt ↔ dostawca, synchronizacja ZD i metryki.",
+    },
+    {
+      href: "/admin/produkty/zeby",
+      title: "Produkty zębne",
+      description: "Lista towarów bez kontroli stanu magazynowego przy prośbach o zamówienie.",
+    },
+  ] as const;
 
 export function AdminDataShortcuts() {
   return (

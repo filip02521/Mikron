@@ -146,6 +146,24 @@ describe("filterProsbaLinesWithSufficientStock", () => {
     expect(filtered.map((l) => l.id)).toEqual(["1"]);
     expect(isProsbaLineStockSufficient(lines[1]!, "zamowienie")).toBe(false);
   });
+
+  it("pomija produkty z listy zębów", () => {
+    const exempt = new Set([42]);
+    const lines: ProductLineDraft[] = [
+      {
+        ...baseLine,
+        id: "teeth",
+        subiektTwId: 42,
+        quantity: "1",
+        onHand: 99,
+        reserved: 0,
+        available: 99,
+        stockSource: "subiekt",
+      },
+    ];
+    expect(filterProsbaLinesWithSufficientStock(lines, "zamowienie", exempt)).toEqual([]);
+    expect(buildProsbaSubmitStockConfirm(lines, "zamowienie", exempt)).toBeNull();
+  });
 });
 
 describe("buildProsbaSubmitStockConfirm", () => {

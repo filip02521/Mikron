@@ -27,6 +27,8 @@ param(
 Set-StrictMode -Version Latest
 $ErrorActionPreference = "Stop"
 
+. (Join-Path $PSScriptRoot "npm-ci-for-build.ps1")
+
 $LogDir = Join-Path $ProjectRoot "logs"
 $LogFile = Join-Path $LogDir "nightly-deploy.log"
 
@@ -62,20 +64,6 @@ function Invoke-Git {
 
 function Test-ServiceExists([string]$Name) {
   return $null -ne (Get-Service -Name $Name -ErrorAction SilentlyContinue)
-}
-
-function Test-NodeModulesComplete {
-  param([string]$Root)
-
-  $required = @(
-    (Join-Path $Root "node_modules\next"),
-    (Join-Path $Root "node_modules\@tailwindcss\postcss"),
-    (Join-Path $Root "node_modules\tailwindcss")
-  )
-  foreach ($path in $required) {
-    if (-not (Test-Path $path)) { return $false }
-  }
-  return $true
 }
 
 function Invoke-SchTasks {
@@ -211,20 +199,17 @@ function Invoke-NightlyDeploy {
 
   Push-Location $ProjectRoot
   try {
-    if ($lockChanged -or -not (Test-NodeModulesComplete -Root $ProjectRoot)) {
-      if (-not $lockChanged) {
-        Write-Log "npm ci (niekompletne node_modules)"
-      } else {
-        Write-Log "npm ci (zmiana package.json / package-lock.json)"
+    $needInstall = $lockChanged
+    if (-not $needInstall) {
+      if (-not (Test-NodeModulesComplete -Root $ProjectRoot)) {
+        Write-Log "Brak wymaganych modulow build (next/tailwind/typescript) - wymuszam npm ci"
+        $needInstall = $true
       }
-      $prevNodeEnv = $env:NODE_ENV
-      $env:NODE_ENV = $null
-      try {
-        & $npm ci --include=dev --no-audit --no-fund
-        if ($LASTEXITCODE -ne 0) { throw "npm ci nie powiodlo sie" }
-      } finally {
-        if ($prevNodeEnv) { $env:NODE_ENV = $prevNodeEnv } else { Remove-Item Env:NODE_ENV -ErrorAction SilentlyContinue }
-      }
+    }
+
+    if ($needInstall) {
+      Write-Log "npm run deps:ci (zmiana lockfile lub brak modulow build)"
+      Invoke-NpmCiForBuild -Npm $npm
     }
 
     Write-Log "npm run build"

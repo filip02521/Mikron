@@ -1,4 +1,5 @@
-import { buildZkWatchLineViews } from "@/lib/sales/zk-watch-lines";
+import { buildZkWatchLineViews, parseZkWatchLineChecks } from "@/lib/sales/zk-watch-lines";
+import { needsProsbaByKeyFromChecks } from "@/lib/sales/zk-watch-prosba-scope";
 import type { SalesZkWatch } from "@/types/database";
 
 export type ZkWatchRefreshDiff = {
@@ -61,9 +62,50 @@ export function uncoveredAddedLineKeys(
   return diff.addedLineKeys.filter((key) => uncovered.has(key));
 }
 
+/**
+ * Nowe pozycje ZK wymagające decyzji w modalu uzupełnienia prośby.
+ * Obejmuje niepokryte prośbą oraz świeżo dodane bez zapisanego needs_prosba.
+ */
+export function addedLineKeysForSupplementPrompt(
+  diff: ZkWatchRefreshDiff,
+  watch: Pick<SalesZkWatch, "line_checks" | "subiekt_snapshot" | "line_summary">,
+  uncoveredLineKeys: string[]
+): string[] {
+  if (!diff.addedLineKeys.length) return [];
+  const views = buildZkWatchLineViews(watch as SalesZkWatch).filter((v) => v.key !== "summary");
+  const viewKeys = new Set(views.map((v) => v.key));
+  const needsByKey = needsProsbaByKeyFromChecks(parseZkWatchLineChecks(watch.line_checks));
+  const uncovered = new Set(uncoveredLineKeys);
+
+  return diff.addedLineKeys.filter((key) => {
+    if (!viewKeys.has(key)) return false;
+    if (needsByKey.get(key) === false) return false;
+    if (uncovered.has(key)) return true;
+    return !needsByKey.has(key);
+  });
+}
+
+/** Gdy wszystko na stanie i jest otwarta prośba — przekieruj tylko bez ręcznego wyboru pozycji. */
+export function shouldRedirectZkRefreshToOpenProsba(input: {
+  allOnStock: boolean;
+  hasOpenMatchingProsba: boolean;
+  linesToAddCount: number;
+}): boolean {
+  return (
+    input.allOnStock && input.hasOpenMatchingProsba && input.linesToAddCount === 0
+  );
+}
+
 export function shouldPromptZkRefreshSupplement(options: {
   diff: ZkWatchRefreshDiff;
+  watch: Pick<SalesZkWatch, "line_checks" | "subiekt_snapshot" | "line_summary">;
   uncoveredLineKeys: string[];
 }): boolean {
-  return uncoveredAddedLineKeys(options.diff, options.uncoveredLineKeys).length > 0;
+  return (
+    addedLineKeysForSupplementPrompt(
+      options.diff,
+      options.watch,
+      options.uncoveredLineKeys
+    ).length > 0
+  );
 }
