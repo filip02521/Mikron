@@ -254,11 +254,24 @@ export async function actionCompletePasswordChange(
   if (updateError) return { error: updateError.message };
 
   const admin = createAdminClient();
-  const { error: profileError } = await admin
-    .from("profiles")
-    .update({ must_change_password: false })
-    .eq("id", user.id);
-  if (profileError) return { error: profileError.message };
+  let profileError: { message: string } | null = null;
+  for (let attempt = 0; attempt < 2; attempt += 1) {
+    const { error } = await admin
+      .from("profiles")
+      .update({ must_change_password: false })
+      .eq("id", user.id);
+    if (!error) {
+      profileError = null;
+      break;
+    }
+    profileError = error;
+  }
+  if (profileError) {
+    return {
+      error:
+        "Hasło zostało zapisane, ale nie udało się zakończyć konfiguracji konta. Spróbuj ponownie lub skontaktuj się z administratorem.",
+    };
+  }
 
   const finalize = await actionFinalizeSalesPersonInvite(user);
   if ("error" in finalize) return { error: finalize.error };
