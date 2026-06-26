@@ -299,11 +299,16 @@ export async function actionGenerateSalesPersonInviteLink(
   return { success: true, invite: result };
 }
 
+type FinalizeSalesPersonInviteUser = {
+  id: string;
+  email: string;
+};
+
 /** Po ustawieniu hasła z linku zaproszenia — dopina powiązanie z handlowcem. */
-export async function actionFinalizeSalesPersonInvite(): Promise<
-  { success: true } | { error: string }
-> {
-  const session = await getSessionUser();
+export async function actionFinalizeSalesPersonInvite(
+  knownUser?: FinalizeSalesPersonInviteUser
+): Promise<{ success: true } | { error: string }> {
+  const session = knownUser ?? (await getSessionUser());
   if (!session) return { error: "Brak aktywnej sesji." };
 
   const supabase = createAdminClient();
