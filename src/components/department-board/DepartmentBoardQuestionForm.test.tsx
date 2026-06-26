@@ -16,7 +16,7 @@ vi.mock("@/components/ui/ModalShell", () => ({
 }));
 
 vi.mock("@/app/actions/subiekt", () => ({
-  actionSubiektSuggestProducts: vi.fn().mockResolvedValue({ ok: true, items: [] }),
+  actionSubiektSuggestProductsForZdLookup: vi.fn().mockResolvedValue({ ok: true, items: [] }),
   actionSubiektSuggestionsEnabled: vi.fn().mockResolvedValue({ enabled: false }),
 }));
 
