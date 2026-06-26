@@ -281,6 +281,12 @@ export async function actionSetUserPassword(
 
   if (error) return { error: error.message };
 
+  const { error: profileError } = await supabase
+    .from("profiles")
+    .update({ must_change_password: false })
+    .eq("id", userId);
+  if (profileError) return { error: profileError.message };
+
   return { success: true };
 }
 
