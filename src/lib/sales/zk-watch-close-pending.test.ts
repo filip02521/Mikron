@@ -124,13 +124,14 @@ describe("collectZkWatchPendingAckItems", () => {
   });
 
   it("zbiera zmianę terminu ZD obok odbioru", () => {
+    const recentChangeAt = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
     const items = collectZkWatchPendingAckItems(watch(), [
       linkOrder({
         id: "o-zd",
         status: "Zamowione",
         zd_fulfillment_deadline: "2026-07-15",
         zd_fulfillment_previous_deadline: "2026-07-01",
-        zd_fulfillment_deadline_changed_at: "2026-06-18T08:00:00Z",
+        zd_fulfillment_deadline_changed_at: recentChangeAt,
         zd_fulfillment_deadline_change_seen_at: null,
       }),
     ]);
@@ -138,13 +139,14 @@ describe("collectZkWatchPendingAckItems", () => {
   });
 
   it("collectZkWatchPendingAckOrderIds zwraca unikalne ID", () => {
+    const recentChangeAt = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
     const orders = [
       linkOrder({
         id: "o-zd",
         status: "Zrealizowane",
         zd_fulfillment_deadline: "2026-07-15",
         zd_fulfillment_previous_deadline: "2026-07-01",
-        zd_fulfillment_deadline_changed_at: "2026-06-18T08:00:00Z",
+        zd_fulfillment_deadline_changed_at: recentChangeAt,
       }),
     ];
     expect(collectZkWatchPendingAckOrderIds(watch(), orders)).toEqual(["o-zd"]);
