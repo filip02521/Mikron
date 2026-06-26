@@ -29,6 +29,10 @@ import {
   redirectWithSession,
   refreshSupabaseSession,
 } from "@/lib/supabase/middleware";
+import {
+  isPasswordChangeExemptApiPath,
+  MUST_CHANGE_PASSWORD_MESSAGE,
+} from "@/lib/auth/must-change-password-guard";
 
 const OPERATIONS_PREFIXES = [
   "/podsumowanie",
@@ -72,6 +76,24 @@ export async function proxy(request: NextRequest) {
   const { response: sessionResponse, user } = await refreshSupabaseSession(request);
   sessionResponse.headers.set("x-pathname", pathname);
 
+  if (
+    pathname.startsWith("/api/") &&
+    user &&
+    !isPasswordChangeExemptApiPath(pathname)
+  ) {
+    const profile = await fetchProfileByUserId(user.id);
+    if (profile?.must_change_password) {
+      const blocked = NextResponse.json(
+        { error: MUST_CHANGE_PASSWORD_MESSAGE },
+        { status: 403 }
+      );
+      for (const cookie of sessionResponse.cookies.getAll()) {
+        blocked.cookies.set(cookie.name, cookie.value);
+      }
+      return blocked;
+    }
+  }
+
   if (pathname === "/auth/entering") {
     if (!user) {
       const next = request.nextUrl.searchParams.get("next");
@@ -85,6 +107,11 @@ export async function proxy(request: NextRequest) {
   if (publicAuthPaths.includes(pathname)) {
     if (pathname === "/login" && user) {
       const profile = await fetchProfileByUserId(user.id);
+      if (profile?.must_change_password) {
+        return redirectWithSession(request, sessionResponse, "/ustaw-haslo", {
+          wymagane: "1",
+        });
+      }
       if (profile && !profile.must_change_password) {
         const loginRole = profile.role as UserRole;
         const loginPanelContext = isAdmin(loginRole)
