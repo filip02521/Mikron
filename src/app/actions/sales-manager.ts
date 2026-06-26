@@ -11,6 +11,7 @@ import {
   canAccessSalesPerson,
 } from "@/lib/data/sales-group-access";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { createClient } from "@/lib/supabase/server";
 import { assertUniqueSalesPersonLink } from "@/lib/users/sales-person-link";
 import {
   generateSalesPersonInviteLink,
@@ -248,19 +249,18 @@ export async function actionCompletePasswordChange(
   const passwordError = passwordValidationError(password);
   if (passwordError) return { error: passwordError };
 
-  const supabase = createAdminClient();
-  const { error: updateError } = await supabase.auth.admin.updateUserById(user.id, {
-    password,
-  });
+  const supabase = await createClient();
+  const { error: updateError } = await supabase.auth.updateUser({ password });
   if (updateError) return { error: updateError.message };
 
-  const { error: profileError } = await supabase
+  const admin = createAdminClient();
+  const { error: profileError } = await admin
     .from("profiles")
     .update({ must_change_password: false })
     .eq("id", user.id);
   if (profileError) return { error: profileError.message };
 
-  const finalize = await actionFinalizeSalesPersonInvite();
+  const finalize = await actionFinalizeSalesPersonInvite(user);
   if ("error" in finalize) return { error: finalize.error };
 
   const { panelContext } = await readAdminPanelContextForSession();
