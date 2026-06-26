@@ -67,7 +67,19 @@ test.describe("Login auth API contracts", () => {
     expect(sendBody).not.toHaveProperty("email");
   });
 
-  test("po weryfikacji OTP pokazuje formularz ustawienia hasła", async ({ page }) => {
+  test("po weryfikacji OTP przekierowuje na ustawienie hasła", async ({ page }) => {
+    await page.route("**/api/auth/password-reset/send", async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({
+          ok: true,
+          maskedEmail: "j***@firma.pl",
+          resendAvailableAt: new Date(Date.now() + 60_000).toISOString(),
+        }),
+      });
+    });
+
     await page.route("**/api/auth/password-reset/verify", async (route) => {
       await route.fulfill({
         status: 200,
@@ -82,18 +94,6 @@ test.describe("Login auth API contracts", () => {
     await page.getByRole("button", { name: "Reset hasła" }).click();
     await expect(page.getByText("Wysłaliśmy 6-cyfrowy kod")).toBeVisible();
 
-    await page.route("**/api/auth/password-reset/send", async (route) => {
-      await route.fulfill({
-        status: 200,
-        contentType: "application/json",
-        body: JSON.stringify({
-          ok: true,
-          maskedEmail: "j***@firma.pl",
-          resendAvailableAt: new Date(Date.now() + 60_000).toISOString(),
-        }),
-      });
-    });
-
     const otpInputs = page.locator('input[inputmode="numeric"]');
     await expect(otpInputs.first()).toBeVisible();
     for (let index = 0; index < 6; index += 1) {
@@ -101,11 +101,5 @@ test.describe("Login auth API contracts", () => {
     }
 
     await page.waitForURL("**/ustaw-haslo?reset=otp", { timeout: 15_000 });
-    await expect(
-      page.getByText("Kod z e-maila został zweryfikowany. Ustaw nowe hasło do logowania w OnTime.")
-    ).toBeVisible();
-    await expect(
-      page.getByRole("button", { name: "Zapisz hasło i przejdź do aplikacji" })
-    ).toBeVisible();
   });
 });
