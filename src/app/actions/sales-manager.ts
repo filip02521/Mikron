@@ -243,8 +243,36 @@ export async function actionGenerateSalesTeamInviteLink(
 export async function actionCompletePasswordChange(
   password: string
 ): Promise<{ success: true; redirectTo: string } | { error: string }> {
-  const user = await getSessionUser();
-  if (!user) return { error: "Brak sesji." };
+  let user = await getSessionUser();
+  if (!user) {
+    // Dla resetu hasła przez OTP spróbuj pobrać sesję bezpośrednio z Supabase
+    const supabase = await createClient();
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session) return { error: "Brak aktywnej sesji. Spróbuj ponownie zresetować hasło." };
+    
+    // Pobierz dane użytkownika z sesji
+    const { data: { user: authUser } } = await supabase.auth.getUser();
+    if (!authUser) return { error: "Brak aktywnej sesji. Spróbuj ponownie zresetować hasło." };
+    
+    // Pobierz profil z bazy danych
+    const admin = createAdminClient();
+    const { data: profile } = await admin
+      .from("profiles")
+      .select("id, email, role, sales_person_id, must_change_password, sales_onboarding_completed_at")
+      .eq("id", authUser.id)
+      .maybeSingle();
+    
+    if (!profile) return { error: "Nie znaleziono profilu użytkownika." };
+    
+    user = {
+      id: profile.id,
+      email: profile.email ?? "",
+      role: profile.role,
+      salesPersonId: profile.sales_person_id,
+      mustChangePassword: profile.must_change_password,
+      salesOnboardingCompletedAt: profile.sales_onboarding_completed_at,
+    };
+  }
 
   const passwordError = passwordValidationError(password);
   if (passwordError) return { error: passwordError };

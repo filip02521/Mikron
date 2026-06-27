@@ -94,9 +94,22 @@ import {
   buildDailyPanelUndoPayload,
   isUndoPayloadExpired,
   undoWindowShortLabel,
+  UNDO_WINDOW_MS,
 } from "@/lib/orders/daily-panel-undo";
 import type { DailyPanelActionResult } from "@/lib/orders/daily-panel-undo";
 import type { DailyPanelUndoPayload } from "@/lib/orders/daily-panel-undo";
+import {
+  buildDeliveryUndoPayload,
+  captureDeliverySnapshot,
+  captureDeliverySnapshots,
+  isDeliveryUndoExpired,
+  revertDeliverySnapshots,
+  type DeliveryUndoPayload,
+} from "@/lib/orders/receive-queue-undo";
+import {
+  cancelDeliveryNotificationQueueEntries,
+  sendPendingDeliveryNotifications,
+} from "@/lib/orders/delivery-notification-queue";
 import {
   captureIndividualOrdersSnapshot,
   captureScheduleSnapshot,
@@ -734,9 +747,31 @@ export async function actionSetProcurementCancelDisposition(
 export async function actionUpdateDelivered(orderId: string, qty: string) {
   const { requireWarehouse } = await import("@/lib/auth");
   await requireWarehouse("mutate");
-  const { emailSent, emailError } = await updateDeliveredQuantity(orderId, qty);
+  const snapshot = await captureDeliverySnapshot(orderId);
+  const { emailSent, emailError, queueId } = await updateDeliveredQuantity(orderId, qty);
   revalidateAll();
-  return { success: true, emailSent, emailError };
+
+  if (queueId) {
+    const { after } = await import("next/server");
+    after(async () => {
+      try {
+        await new Promise((resolve) => setTimeout(resolve, UNDO_WINDOW_MS));
+        await sendPendingDeliveryNotifications([queueId]);
+      } catch (e) {
+        console.error("[delivery-notification] after() failed", e);
+      }
+    });
+  }
+
+  return {
+    success: true,
+    emailSent,
+    emailError,
+    emailScheduled: !!queueId,
+    undo: snapshot
+      ? buildDeliveryUndoPayload({ kind: "delivery", snapshots: [{ ...snapshot, queueId }] })
+      : undefined,
+  };
 }
 
 const WAREHOUSE_CANCEL_FULFILLED_MIGRATION_HINT =
@@ -827,8 +862,10 @@ export async function actionBatchUpdateDelivered(
       saved: number;
       savedOrderIds: string[];
       emailSent: number;
+      emailScheduled: boolean;
       errors: string[];
       emailError?: string;
+      undo?: DeliveryUndoPayload;
     }
   | { error: string }
 > {
@@ -837,6 +874,7 @@ export async function actionBatchUpdateDelivered(
   if (!updates.length) return { error: "Zaznacz pozycje i wpisz ilości do zapisania." };
 
   try {
+    const snapshots = await captureDeliverySnapshots(updates.map((u) => u.orderId));
     const result = await batchUpdateDeliveredQuantities(
       updates.map((u) => ({ orderId: u.orderId, deliveredQuantity: u.qty }))
     );
@@ -848,17 +886,57 @@ export async function actionBatchUpdateDelivered(
       };
     }
 
+    const savedSnapshots = snapshots
+      .filter((s) => result.savedOrderIds.includes(s.orderId))
+      .map((s) => {
+        const idx = result.savedOrderIds.indexOf(s.orderId);
+        const queueId = result.queueIds[idx];
+        return queueId ? { ...s, queueId } : s;
+      });
+
+    const queueIds = result.queueIds.filter((id): id is string => Boolean(id));
+    if (queueIds.length) {
+      const { after } = await import("next/server");
+      after(async () => {
+        try {
+          await new Promise((resolve) => setTimeout(resolve, UNDO_WINDOW_MS));
+          await sendPendingDeliveryNotifications(queueIds);
+        } catch (e) {
+          console.error("[delivery-notification] batch after() failed", e);
+        }
+      });
+    }
+
     return {
       success: true,
       saved: result.saved,
       savedOrderIds: result.savedOrderIds,
-      emailSent: result.emailSent,
+      emailSent: 0,
+      emailScheduled: result.queueIds.some(Boolean),
       errors: result.errors,
-      emailError: result.emailError,
+      undo: savedSnapshots.length
+        ? buildDeliveryUndoPayload({ kind: "delivery", snapshots: savedSnapshots })
+        : undefined,
     };
   } catch (e) {
     return { error: e instanceof Error ? e.message : "Nie udało się zapisać." };
   }
+}
+
+export async function actionUndoDelivery(payload: DeliveryUndoPayload) {
+  const { requireWarehouse } = await import("@/lib/auth");
+  await requireWarehouse("mutate");
+  if (isDeliveryUndoExpired(payload)) {
+    throw new Error(`Minął czas na cofnięcie przyjęcia towaru (${undoWindowShortLabel()}).`);
+  }
+  const queueIds = payload.token.snapshots
+    .map((s) => s.queueId)
+    .filter((id): id is string => Boolean(id));
+  await cancelDeliveryNotificationQueueEntries(queueIds);
+  await revertDeliverySnapshots(payload.token.snapshots);
+  await recalculateAllStats();
+  revalidateAll();
+  return { success: true };
 }
 
 export async function actionProcessDeliveries() {

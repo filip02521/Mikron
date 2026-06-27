@@ -319,6 +319,7 @@ export function RequestProductLinesEditor({
                 reserved: line.reserved,
                 available: line.available,
                 stockSource: line.stockSource,
+                source: line.source,
               }}
               onChange={(patch) =>
                 onChange(updateProductLine(lines, index, patch))

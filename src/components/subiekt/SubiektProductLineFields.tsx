@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useId, useMemo, useRef, useState, useTransition } from "react";
 import type { KeyboardEvent } from "react";
-import { actionSubiektSuggestProducts } from "@/app/actions/subiekt";
+import { actionSuggestProducts } from "@/app/actions/subiekt";
 import type { IndividualRequestKind } from "@/types/database";
 import { Field, Input } from "@/components/ui/Field";
 import { Button } from "@/components/ui/Button";
@@ -65,6 +65,7 @@ export type SubiektProductLineValue = Pick<
   | "reserved"
   | "available"
   | "stockSource"
+  | "source"
 >;
 
 type ActiveField = Exclude<ProductSearchField, "combined">;
@@ -114,9 +115,11 @@ function SubiektInputShell({
 function SubiektLinkedLineBanner({
   symbol,
   mikranCode,
+  fromCatalog,
 }: {
   symbol: string | null;
   mikranCode: string;
+  fromCatalog?: boolean;
 }) {
   const meta: string[] = [];
   if (symbol) meta.push(`Symbol: ${symbol}`);
@@ -126,7 +129,7 @@ function SubiektLinkedLineBanner({
     <div
       className="flex items-start gap-2 rounded-md border border-emerald-200/90 bg-emerald-50/70 px-3 py-2"
       role="status"
-      aria-label="Powiązano z Subiektem"
+      aria-label={fromCatalog ? "Wybrano z bazy" : "Powiązano z Subiektem"}
     >
       <IconCircleCheck
         size={18}
@@ -134,7 +137,9 @@ function SubiektLinkedLineBanner({
         className="mt-0.5 shrink-0 text-emerald-600"
       />
       <div className="min-w-0 text-xs leading-snug text-emerald-900">
-        <p className="font-semibold">Powiązano z Subiektem</p>
+        <p className="font-semibold">
+          {fromCatalog ? "Wybrano z bazy" : "Powiązano z Subiektem"}
+        </p>
         {meta.length ? (
           <p className="mt-0.5 text-emerald-800">{meta.join(" · ")}</p>
         ) : null}
@@ -210,6 +215,7 @@ export function SubiektProductLineFields({
   const searchGenerationRef = useRef(0);
   const typeaheadInstanceId = useId();
   const [enabled, setEnabled] = useState(false);
+  const [catalogFallback, setCatalogFallback] = useState(false);
   const [highlightedIndex, setHighlightedIndex] = useState(0);
   const [configFeedback, setConfigFeedback] = useState<SubiektFeedback | null>(null);
   const [activeField, setActiveField] = useState<ActiveField>("name");
@@ -230,10 +236,11 @@ export function SubiektProductLineFields({
   const isInformacja = requestKind === "informacja";
   const linkedFromSubiekt = value.subiektTwId != null;
   const minQueryLen = minProductSearchLength(activeField);
+  const typeaheadEnabled = enabled || catalogFallback;
   const searchActive =
-    enabled && !linkedFromSubiekt && debounced.length >= minQueryLen;
+    typeaheadEnabled && !linkedFromSubiekt && debounced.length >= minQueryLen;
   const shortQueryFeedback =
-    enabled &&
+    typeaheadEnabled &&
     !linkedFromSubiekt &&
     debounced.length > 0 &&
     debounced.length < minQueryLen
@@ -265,6 +272,7 @@ export function SubiektProductLineFields({
       const { actionSubiektSuggestionsEnabled } = await import("@/app/actions/subiekt");
       const r = await actionSubiektSuggestionsEnabled();
       setEnabled(r.enabled);
+      setCatalogFallback(r.catalogFallback ?? false);
       setConfigFeedback(r.feedback ?? null);
     })();
   }, []);
@@ -299,7 +307,7 @@ export function SubiektProductLineFields({
     const generation = ++searchGenerationRef.current;
     startTransition(async () => {
       try {
-        const res = await actionSubiektSuggestProducts(
+        const res = await actionSuggestProducts(
           debounced,
           productSuggestSearchField(activeField)
         );
@@ -324,7 +332,7 @@ export function SubiektProductLineFields({
 
   const typeaheadListVisible = open && visibleItems.length > 0;
   const typeaheadPanelVisible =
-    enabled &&
+    typeaheadEnabled &&
     !linkedFromSubiekt &&
     (visibleStatus === "loading" || typeaheadListVisible);
 
@@ -347,6 +355,25 @@ export function SubiektProductLineFields({
       setHighlightedIndex(0);
 
       if (!suppliers?.length || !onSupplierResolved) return;
+
+      const catalogSource = (p as { _source?: string; _topSupplier?: AppSupplierRef | null })._source;
+      const topSupplier = (p as { _source?: string; _topSupplier?: AppSupplierRef | null })._topSupplier;
+
+      // Wynik z własnej bazy (Subiekt offline) — dostawca jest już znany.
+      if (catalogSource === "catalog" && topSupplier) {
+        onSupplierResolved({
+          supplierId: topSupplier.id,
+          supplierName: topSupplier.name,
+          documentNumber: null,
+        });
+        return;
+      }
+
+      // Produkt z katalogu bez zmapowanego dostawcy — nie próbuj Subiekta (jest offline).
+      if (catalogSource === "catalog") {
+        onSupplierMappingMissing?.();
+        return;
+      }
 
       // Nowe podejście: dopasowanie dostawcy robimy po naszej bazie (product_supplier_links),
       // więc jest szybkie. Dla prośby handlowca robimy to "po cichu" (bez spinnera),
@@ -398,6 +425,10 @@ export function SubiektProductLineFields({
               onSupplierResolveFeedback?.(res.feedback);
             }
           }
+        } catch {
+          if (!silentResolve) {
+            onSupplierMappingMissing?.();
+          }
         } finally {
           onResolvingSupplierChange?.(false);
           if (!silentResolve) setResolvingSupplier(false);
@@ -422,17 +453,21 @@ export function SubiektProductLineFields({
     patch: Partial<SubiektProductLineValue>,
     clearSubiekt = false
   ) => {
-    onChange(clearSubiekt ? { ...patch, subiektTwId: null, ...mergeStockIntoLinePatch(null) } : patch);
+    onChange(
+      clearSubiekt
+        ? { ...patch, subiektTwId: null, source: null, ...mergeStockIntoLinePatch(null) }
+        : patch
+    );
   };
 
   const unlinkSubiektForEdit = () => {
-    onChange({ subiektTwId: null, ...mergeStockIntoLinePatch(null) });
+    onChange({ subiektTwId: null, source: null, ...mergeStockIntoLinePatch(null) });
     setOpen(true);
   };
 
   const handleTypeaheadKeyDown = useCallback(
     (e: KeyboardEvent<HTMLInputElement>) => {
-      if (!enabled || linkedFromSubiekt) return;
+      if (!typeaheadEnabled || linkedFromSubiekt) return;
 
       const hasList = typeaheadListVisible;
 
@@ -464,7 +499,7 @@ export function SubiektProductLineFields({
       }
     },
     [
-      enabled,
+      typeaheadEnabled,
       linkedFromSubiekt,
       typeaheadListVisible,
       visibleItems,
@@ -502,23 +537,25 @@ export function SubiektProductLineFields({
         size={typeaheadSize}
         listboxId={listboxId}
         className="left-0 right-0"
-        emptyMessage={visibleStatus === "loading" ? "Szukam w Subiekcie…" : undefined}
+        emptyMessage={visibleStatus === "loading" ? (catalogFallback ? "Szukam w bazie…" : "Szukam w Subiekcie…") : undefined}
         footer={typeaheadListVisible ? TYPEAHEAD_KEYBOARD_HINT : undefined}
       >
         {typeaheadListVisible ? (
           <>
             <TypeaheadSectionLabel>
-              Subiekt — {typeaheadSectionLabel(activeField)} · {resultLabel}
+              {visibleItems[0]?._source === "catalog"
+                ? `Lokalna baza — ${typeaheadSectionLabel(activeField)} · ${resultLabel}`
+                : `Subiekt (na żywo) — ${typeaheadSectionLabel(activeField)} · ${resultLabel}`}
             </TypeaheadSectionLabel>
             {visibleItems.map((p, index) => {
-              const { title, subtitle } = formatSubiektProductOption(p);
+              const { title, subtitle, badge } = formatSubiektProductOption(p);
               return (
                 <TypeaheadOption
                   key={p.tw_Id}
                   optionId={`${listboxId}-opt-${index}`}
                   title={title}
                   subtitle={subtitle}
-                  badge="towar"
+                  badge={badge ?? "Subiekt"}
                   size={typeaheadSize}
                   highlighted={highlightedIndex === index}
                   onHighlight={() => setHighlightedIndex(index)}
@@ -583,10 +620,12 @@ export function SubiektProductLineFields({
         hint={
           !mergedProductField.error && !mergedProductField.state
             ? mikranOnlyHint ??
-              (enabled && !prosba
-                ? "Wpisz nazwę lub krótki symbol — wyniki z Subiekta pod polem"
-                : !enabled
-                  ? "Nazwa lub symbol towaru (wpis ręczny)"
+              (typeaheadEnabled && !prosba
+                ? catalogFallback
+                  ? "Wpisz nazwę lub symbol — wyniki z lokalnej bazy"
+                  : "Wpisz nazwę lub symbol — wyniki z Subiekta pojawią się poniżej"
+                : !typeaheadEnabled
+                  ? "Nazwa lub symbol produktu (wpis ręczny)"
                   : undefined)
             : undefined
         }
@@ -605,8 +644,10 @@ export function SubiektProductLineFields({
               placeholder={
                 isInformacja
                   ? "np. Śruba M6 lub ABC-12"
-                  : enabled
-                    ? "Szukaj w Subiekcie: nazwa lub symbol…"
+                  : typeaheadEnabled
+                    ? catalogFallback
+                      ? "Szukaj w bazie: nazwa lub symbol…"
+                      : "Szukaj w Subiekcie: nazwa lub symbol…"
                     : "Nazwa lub symbol produktu"
               }
               maxLength={MAX_PRODUCT_TEXT_LEN}
@@ -662,7 +703,7 @@ export function SubiektProductLineFields({
         {...mikranField}
         hint={
           !mikranField.error && !mikranField.state
-            ? enabled
+            ? typeaheadEnabled
               ? "PLU (min. 1 cyfra)"
               : "Kod PLU"
             : undefined
@@ -752,6 +793,7 @@ export function SubiektProductLineFields({
           <SubiektLinkedLineBanner
             symbol={linkedBannerSymbol}
             mikranCode={value.mikranCode}
+            fromCatalog={value.source === "catalog"}
           />
           <Button
             type="button"
@@ -777,16 +819,17 @@ export function SubiektProductLineFields({
         </>
       ) : null}
 
-      {!enabled && configFeedback && !delegateAlerts && !prosba ? (
+      {!typeaheadEnabled && configFeedback && !delegateAlerts && !prosba ? (
         <SubiektFeedbackAlert feedback={configFeedback} compact />
       ) : null}
 
-      {enabled ? (
+      {typeaheadEnabled ? (
         <>
           {!delegateAlerts && !prosba && !visibleFeedback && !resolvingSupplier && !linkedFromSubiekt ? (
             <p className="text-xs text-slate-400">
-              Wpisz nazwę lub symbol w dużym polu, kod Mikran i ilość obok — lista
-              Subiekta pojawi się pod produktem.
+              {catalogFallback
+                ? "Wpisz nazwę lub symbol w dużym polu — wyniki z lokalnej bazy pojawią się pod produktem."
+                : "Wpisz nazwę lub symbol w dużym polu, kod Mikran i ilość obok — lista z Subiekta pojawi się pod produktem."}
             </p>
           ) : null}
 

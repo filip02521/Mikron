@@ -319,10 +319,10 @@ export function productSearchParams(
 
 /** Uzupełnia pola linii prośby po wyborze z Subiekta (zamówienie i informacja). */
 export function buildProductPickFromSubiekt(
-  p: SubiektProduct,
+  p: SubiektProduct & { _source?: string },
   requestKind: IndividualRequestKind,
   existingQuantity = ""
-): SubiektProductPick {
+): SubiektProductPick & { source: "subiekt" | "catalog" } {
   const sym = safeTrim(p.tw_Symbol);
   const name = safeTrim(p.tw_Nazwa);
   const plu = safeTrim(p.tw_PLU);
@@ -331,38 +331,47 @@ export function buildProductPickFromSubiekt(
   const mikranCode = plu;
 
   const subiektTwId = p.tw_Id;
+  const source = p._source === "catalog" ? "catalog" : "subiekt";
 
   if (requestKind === "informacja") {
-    return { symbol, product, quantity: "", subiektTwId, mikranCode };
+    return { symbol, product, quantity: "", subiektTwId, mikranCode, source };
   }
 
   const prev = existingQuantity.trim();
   const quantity =
     prev && parseOrderQuantity(prev) !== null ? prev : "1";
 
-  return { symbol, product, quantity, subiektTwId, mikranCode };
+  return { symbol, product, quantity, subiektTwId, mikranCode, source };
 }
 
-export function formatSubiektProductOption(p: SubiektProduct): {
+export function formatSubiektProductOption(
+  p: SubiektProduct & { _source?: string; _topSupplier?: { name: string } | null }
+): {
   title: string;
   subtitle: string;
+  badge?: string;
 } {
   const sym = safeTrim(p.tw_Symbol);
   const name = safeTrim(p.tw_Nazwa);
   const plu = safeTrim(p.tw_PLU);
+  const isCatalog = p._source === "catalog";
+  const topSupplier = p._topSupplier;
   const parts = [
     sym ? `Symbol: ${sym}` : null,
     plu ? `Kod Mikran: ${plu}` : null,
+    topSupplier ? `Dostawca: ${topSupplier.name}` : null,
   ].filter(Boolean);
 
   if (name) {
     return {
       title: sym ? `${sym} — ${name}` : name,
       subtitle: parts.length ? parts.join(" · ") : "Bez symbolu i kodu",
+      badge: isCatalog ? "baza" : "Subiekt",
     };
   }
   return {
     title: sym || plu || "—",
-    subtitle: parts.length ? parts.join(" · ") : "Bez nazwy w kartotece",
+    subtitle: parts.length ? parts.join(" · ") : "Bez nazwy w bazie",
+    badge: isCatalog ? "baza" : "Subiekt",
   };
 }

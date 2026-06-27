@@ -48,7 +48,7 @@ const TEMPLATES: Record<SubiektErrorCode, FeedbackTemplate> = {
   },
   short_query: {
     title: "Za krótkie wyszukiwanie",
-    message: "Wpisz co najmniej 2 znaki, aby wyszukać w Subiekcie.",
+    message: "Wpisz co najmniej 2 znaki, aby wyszukać produkt.",
     tone: "info",
   },
   empty_query: {
@@ -57,8 +57,8 @@ const TEMPLATES: Record<SubiektErrorCode, FeedbackTemplate> = {
     tone: "info",
   },
   not_found_product: {
-    title: "Nie znaleziono towaru",
-    message: "Brak pozycji w kartotece Subiekta dla podanej frazy.",
+    title: "Nie znaleziono produktu",
+    message: "Brak pozycji pasującej do wpisanej frazy.",
     hint: "Sprawdź symbol lub wpisz opis produktu ręcznie — prośbę można wysłać bez podpowiedzi.",
     tone: "info",
   },
@@ -71,7 +71,7 @@ const TEMPLATES: Record<SubiektErrorCode, FeedbackTemplate> = {
   catalog_supplier_unmapped: {
     title: "Brak przypisanego dostawcy",
     message:
-      "Towar jest w Subiekcie, ale nie mamy jeszcze powiązania z dostawcą w naszej bazie.",
+      "Produkt jest w bazie, ale nie ma jeszcze powiązania z dostawcą.",
     hint: "Wybierz dostawcę ręcznie — po zapisie powstanie powiązanie.",
     tone: "info",
   },
@@ -136,9 +136,9 @@ const TEMPLATES: Record<SubiektErrorCode, FeedbackTemplate> = {
     tone: "error",
   },
   subiekt_unavailable: {
-    title: "Subiekt chwilowo niedostępny",
-    message: "API Subiekta nie odpowiada — np. poza LAN lub serwis wyłączony.",
-    hint: "Spróbuj w sieci firmowej później. Teraz wpisz symbol i opis ręcznie.",
+    title: "Subiekt niedostępny",
+    message: "API Subiekta nie odpowiada — np. poza siecią firmową (LAN) lub serwis wyłączony.",
+    hint: "Wpisz nazwę lub symbol produktu — wyniki pojawią się z lokalnej bazy.",
     tone: "info",
   },
   unknown: {
@@ -223,7 +223,7 @@ export function feedbackFromException(
 
 export function notFoundProductFeedback(query: string): SubiektFeedback {
   return getSubiektFeedback("not_found_product", {
-    message: `Brak towaru w Subiekcie dla „${query}”.`,
+    message: `Brak produktu dla „${query}”.`,
   });
 }
 

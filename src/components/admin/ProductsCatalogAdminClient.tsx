@@ -128,7 +128,7 @@ export function ProductsCatalogAdminClient({
     if (tickTimer.current == null) {
       tickTimer.current = window.setInterval(() => {
         void tickImportRef.current?.();
-      }, 1500);
+      }, 2500);
     }
   };
 
@@ -145,7 +145,7 @@ export function ProductsCatalogAdminClient({
     if (indexTimer.current == null) {
       indexTimer.current = window.setInterval(() => {
         void tickIndexRef.current?.();
-      }, 1500);
+      }, 2500);
     }
   };
 
@@ -162,7 +162,7 @@ export function ProductsCatalogAdminClient({
     if (allTimer.current == null) {
       allTimer.current = window.setInterval(() => {
         void tickAllRef.current?.();
-      }, 1500);
+      }, 2500);
     }
   };
 
@@ -653,7 +653,7 @@ export function ProductsCatalogAdminClient({
     if (!importSupplierId || tickImportInFlight.current) return;
     tickImportInFlight.current = true;
     try {
-      const s = await actionTickZdImportSupplierJob({ supplierId: importSupplierId, maxDocs: 3 });
+      const s = await actionTickZdImportSupplierJob({ supplierId: importSupplierId });
       setImportState(s);
       if (
         s?.status === "done" ||
@@ -740,7 +740,7 @@ export function ProductsCatalogAdminClient({
     if (tickIndexInFlight.current) return;
     tickIndexInFlight.current = true;
     try {
-      const s = await actionTickZdIndexJob({ maxDocs: 3 });
+      const s = await actionTickZdIndexJob();
       setIndexState(s);
       const indexFinished =
         s?.status === "done" ||

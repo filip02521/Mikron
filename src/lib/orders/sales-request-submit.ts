@@ -19,6 +19,8 @@ export type SalesRequestSubmitPlan = {
 
 export type SalesRequestDraft = RequestDraft & {
   subiektTwId?: number | null;
+  /** Produkt wybrany z naszej bazy gdy Subiekt offline — traktujemy jako zweryfikowany. */
+  source?: "subiekt" | "catalog" | null;
 };
 
 export type SalesSubmitHintTone = "success" | "warning" | "info";
@@ -126,6 +128,7 @@ export function assessSalesGroupSubmittable(
     product?: string;
     quantity?: string;
     subiektTwId?: number | null;
+    source?: "subiekt" | "catalog" | null;
   }>,
   groupSupplierId: string,
   requestKind: IndividualRequestKind
@@ -142,6 +145,7 @@ export function assessSalesGroupSubmittable(
       quantity: row.quantity,
       requestKind,
       subiektTwId: row.subiektTwId,
+      source: row.source ?? null,
     };
     if (!hasAnyProductHint(draft)) continue;
     anyLine = true;

@@ -24,7 +24,7 @@ export type RequestDraft = {
   informacjaStockOutReorder?: boolean;
 };
 
-function hasText(value?: string): boolean {
+export function hasText(value?: string): boolean {
   const t = value?.trim();
   return !!t && t !== "-";
 }

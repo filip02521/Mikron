@@ -29,6 +29,12 @@ function nowIso(): string {
   return new Date().toISOString();
 }
 
+/** Duży indeks (np. wieloletnia historia z Ivoclar) — 1 dokument na tick, mniejsze po 3. */
+function chooseIndexMaxDocs(totalPages: number | null, pageSize: number): number {
+  if (totalPages != null && totalPages * pageSize > 5000) return 1;
+  return 3;
+}
+
 async function writeState(state: ZdIndexJobState): Promise<void> {
   const supabase = createAdminClient();
   const { error } = await supabase.from("app_settings").upsert({ key: JOB_KEY, value: state });
@@ -118,8 +124,6 @@ export async function tickZdIndexJob(options?: { maxDocs?: number }): Promise<Zd
       return next;
     }
 
-    const maxDocs = options?.maxDocs ?? 3;
-
     try {
       const list = await searchSubiektZdCached({
         dataOd: current.dataOd,
@@ -129,6 +133,8 @@ export async function tickZdIndexJob(options?: { maxDocs?: number }): Promise<Zd
       });
 
       const totalPages = list.pagination?.totalPages ?? null;
+      const maxDocs =
+        options?.maxDocs ?? chooseIndexMaxDocs(totalPages, current.pageSize);
       const docs = list.data ?? [];
       if (!docs.length) {
         const done: ZdIndexJobState = {

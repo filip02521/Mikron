@@ -38,6 +38,7 @@ type EditLineDraft = {
   reserved?: number | null;
   available?: number | null;
   stockSource?: "subiekt" | null;
+  source?: "subiekt" | "catalog" | null;
   requestNote?: string;
 };
 
@@ -80,6 +81,7 @@ export function toIndividualRequestEditLinePayload(
     reserved: line.reserved,
     available: line.available,
     stockSource: line.stockSource,
+    source: line.source,
     requestNote: line.requestNote,
   };
 }
@@ -98,6 +100,7 @@ export type IndividualRequestEditLineInput = {
   reserved?: number | null;
   available?: number | null;
   stockSource?: "subiekt" | null;
+  source?: "subiekt" | "catalog" | null;
   requestNote?: string | null;
 };
 
@@ -144,6 +147,7 @@ export type AddIndividualOrdersEntry = {
   clientKhId?: number | null;
   requestNote?: string | null;
   subiektTwId?: number | null;
+  source?: "subiekt" | "catalog" | null;
   sourceZkWatchId?: string | null;
   sourceZkNumber?: string | null;
   informacjaQueueViaDailyPanel?: boolean;

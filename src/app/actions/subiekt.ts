@@ -69,6 +69,7 @@ import { expandSupplierSearchQueries } from "@/lib/subiekt/supplier-search-token
 import type { SubiektKontrahent, SubiektProduct } from "@/lib/subiekt/types";
 import type { ProsbaLineStockSnapshot } from "@/lib/orders/prosba-stock-check";
 import { fetchProsbaLineStock } from "@/lib/orders/fetch-prosba-line-stock";
+import { searchProductCatalogSuggestions } from "@/lib/orders/product-catalog-suggest";
 
 export async function actionGetSubiektStatus() {
   await requireAdmin();
@@ -106,6 +107,7 @@ export async function actionGetSubiektAvailability(options?: {
 /** Czy podpowiedzi Subiekt są dostępne (LAN + env). */
 export async function actionSubiektSuggestionsEnabled(): Promise<{
   enabled: boolean;
+  catalogFallback?: boolean;
   feedback?: SubiektFeedback;
 }> {
   await requireSubiektLookup();
@@ -119,8 +121,9 @@ export async function actionSubiektSuggestionsEnabled(): Promise<{
   if (!reachable) {
     return {
       enabled: false,
+      catalogFallback: true,
       feedback: getSubiektFeedback("subiekt_unavailable", {
-        hint: "Poza siecią firmową lub API Subiekta nie odpowiada — wpisz dane ręcznie.",
+        hint: "Subiekt offline — wpisz nazwę lub symbol, wyniki pojawią się z lokalnej bazy.",
       }),
     };
   }
@@ -142,6 +145,87 @@ export async function actionSubiektSuggestProducts(
 ): Promise<SubiektLookupResult<SubiektProduct>> {
   await requireSubiektLookup();
   return suggestProducts(query, searchField);
+}
+
+function catalogSuggestionToSubiektProduct(
+  s: Awaited<ReturnType<typeof searchProductCatalogSuggestions>>[number]
+): SubiektProduct {
+  return {
+    tw_Id: s.subiektTwId,
+    tw_Symbol: s.symbol,
+    tw_Nazwa: s.name,
+    tw_PLU: s.plu,
+    tw_PodstKodKresk: null,
+    tw_Rodzaj: null,
+    tw_Zablokowany: null,
+    tw_Stan: null,
+    tw_StanRez: null,
+    // Marker dla UI, że wynik pochodzi z naszej bazy offline.
+    _source: "catalog",
+    _topSupplier: s.topSupplier,
+  };
+}
+
+export async function actionSuggestProducts(
+  query: string,
+  searchField: ProductSearchField = "name"
+): Promise<SubiektLookupResult<SubiektProduct>> {
+  await requireSubiektLookup();
+
+  const reachable = await isSubiektReachable();
+  if (reachable) {
+    try {
+      return await suggestProducts(query, searchField);
+    } catch (e) {
+      // Subiekt reachable ale API zwróciło błąd — spróbuj katalogu lokalnego.
+      const fallback = await tryCatalogFallback(query);
+      if (fallback) return fallback;
+      return lookupFailure(e);
+    }
+  }
+
+  try {
+    const suggestions = await searchProductCatalogSuggestions(query);
+    if (suggestions.length === 0) {
+      return {
+        ok: true,
+        items: [],
+        totalCount: 0,
+        feedback: getSubiektFeedback("subiekt_unavailable", {
+          hint: "Brak produktu w lokalnej bazie. Wpisz dane ręcznie lub spróbuj ponownie w sieci firmowej.",
+        }),
+      };
+    }
+    return {
+      ok: true,
+      items: suggestions.map(catalogSuggestionToSubiektProduct),
+      totalCount: suggestions.length,
+      feedback: getSubiektFeedback("subiekt_unavailable", {
+        hint: "Wyniki z lokalnej bazy — Subiekt offline.",
+      }),
+    };
+  } catch (e) {
+    return lookupFailure(e);
+  }
+}
+
+async function tryCatalogFallback(
+  query: string
+): Promise<SubiektLookupResult<SubiektProduct> | null> {
+  try {
+    const suggestions = await searchProductCatalogSuggestions(query);
+    if (suggestions.length === 0) return null;
+    return {
+      ok: true,
+      items: suggestions.map(catalogSuggestionToSubiektProduct),
+      totalCount: suggestions.length,
+      feedback: getSubiektFeedback("subiekt_unavailable", {
+        hint: "Wyniki z lokalnej bazy — API Subiekta zwróciło błąd.",
+      }),
+    };
+  } catch {
+    return null;
+  }
 }
 
 /** Podpowiedzi towaru w modalu „Sprawdź termin dostawy” — symbol i kod Mikran równolegle. */
@@ -254,7 +338,7 @@ async function lookupSupplierFromCatalogTwId(
     return {
       ok: false,
       feedback: catalogSupplierUnmappedFeedback({
-        message: "Brak ID towaru (tw_Id) — wybierz dostawcę ręcznie.",
+        message: "Brak ID towaru — wybierz dostawcę ręcznie.",
       }),
     };
   }
@@ -287,7 +371,7 @@ async function lookupSupplierFromCatalogTwId(
       ok: false,
       feedback: catalogSupplierUnmappedFeedback({
         message:
-          "Brak przypisanego dostawcy w naszej bazie dla tego towaru — wybierz dostawcę ręcznie (powstanie powiązanie po zapisie).",
+          "Brak przypisanego dostawcy dla tego produktu — wybierz dostawcę ręcznie (powstanie powiązanie po zapisie).",
       }),
     };
   }
@@ -307,7 +391,7 @@ async function lookupSupplierFromCatalogTwId(
       ok: false,
       feedback: catalogSupplierUnmappedFeedback({
         message:
-          "Dostawca z naszej bazy nie jest dostępny na liście dostawców — wybierz ręcznie.",
+          "Dostawca powiązany z produktem nie jest dostępny na liście — wybierz dostawcę ręcznie.",
       }),
     };
   }
@@ -344,7 +428,7 @@ export async function actionSubiektResolveSupplierForProduct(
     return {
       ok: false,
       feedback: catalogSupplierUnmappedFeedback({
-        message: "Brak ID towaru (tw_Id) — wybierz dostawcę ręcznie lub zostaw puste.",
+        message: "Brak ID towaru — wybierz dostawcę ręcznie lub zostaw puste.",
       }),
     };
   }

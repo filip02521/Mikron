@@ -63,6 +63,7 @@ import {
   zkProsbaSourceFromOrder,
 } from "@/lib/orders/zk-prosba-source";
 import { WAREHOUSE_SHELF_DEFAULT } from "@/lib/orders/warehouse-inventory";
+import { createDeliveryNotificationQueueEntry } from "@/lib/orders/delivery-notification-queue";
 import type { SalesPersonEmailBatch } from "@/lib/email/sales-notification-types";
 import {
   buildDeliveryNotificationItem,
@@ -239,6 +240,7 @@ export async function batchAddIndividualOrders(
     clientKhId?: number | null;
     requestNote?: string | null;
     subiektTwId?: number | null;
+    source?: "subiekt" | "catalog" | null;
     sourceZkWatchId?: string | null;
     sourceZkNumber?: string | null;
     informacjaQueueViaDailyPanel?: boolean;
@@ -291,6 +293,7 @@ export async function batchAddIndividualOrders(
         quantity: sanitized.quantity,
         requestKind: kind,
         informacjaQueueViaDailyPanel,
+        source: e.source ?? null,
         subiektTwId: await resolveOrderLineSubiektTwIdFromCatalog(supabase, {
           subiektTwId: e.subiektTwId,
           symbol: sanitized.symbol,
@@ -550,6 +553,7 @@ function statusForEditedLine(
     quantity?: string;
     requestKind: IndividualRequestKind;
     subiektTwId?: number | null;
+    source?: "subiekt" | "catalog" | null;
   }
 ): { status: IndividualOrderStatus; supplierResolvePending: boolean } {
   const plan = planSalesRequestSubmit({
@@ -560,6 +564,7 @@ function statusForEditedLine(
     quantity: draft.quantity,
     requestKind: draft.requestKind,
     subiektTwId: draft.subiektTwId,
+    source: draft.source ?? null,
   });
   if (!plan.submittable) {
     return { status: "Weryfikacja", supplierResolvePending: false };
@@ -706,6 +711,7 @@ export async function updateIndividualRequestGroup(
       requestKind: kind,
       informacjaQueueViaDailyPanel: informacjaFlags.informacjaQueueViaDailyPanel,
       informacjaStockOutReorder: informacjaFlags.informacjaStockOutReorder,
+      source: line.source ?? null,
     };
     if (!hasAnyProductHint(draft)) {
       throw new Error("Podaj symbol, kod Mikran lub opis produktu w każdej pozycji.");
@@ -1271,13 +1277,6 @@ export async function cancelIndividualOrder(
   return notifyProcurementCancelForOrders([orderId]);
 }
 
-type DeliveryNotifyPayload = {
-  personId: string;
-  email: string;
-  name: string;
-  item: ReturnType<typeof buildDeliveryNotificationItem>;
-};
-
 type PersonEmailCache = Map<
   string,
   Awaited<ReturnType<typeof resolveSalesPersonEmail>>
@@ -1288,10 +1287,16 @@ async function applyDeliveredQuantityUpdate(
   deliveredQuantity: string,
   opts?: { personEmailCache?: PersonEmailCache }
 ): Promise<{
-  notify?: DeliveryNotifyPayload;
   statsUpdated: boolean;
   /** Zapis OK, ale brak adresu e-mail przy oczekiwanym powiadomieniu. */
   notifySkipped?: string;
+  /** Dane do opóźnionej kolejki powiadomień (nie wysyłamy maila natychmiast). */
+  queueEntry?: {
+    orderId: string;
+    deliveredQuantity: string;
+    status: string;
+    salesPersonId: string | null;
+  };
 }> {
   const qtyInput = deliveredQuantity.trim().slice(0, MAX_DELIVERED_QTY_LEN);
   const supabase = createAdminClient();
@@ -1411,39 +1416,21 @@ async function applyDeliveredQuantityUpdate(
     };
   }
 
-  const item = buildDeliveryNotificationItem(
-    { ...order, status, delivered_quantity: finalDelivered },
-    { deliveredQuantity: finalDelivered }
-  );
-
   return {
     statsUpdated,
-    notify: {
-      personId: person.personId,
-      email: person.email,
-      name: person.name,
-      item,
+    queueEntry: {
+      orderId,
+      deliveredQuantity: finalDelivered,
+      status,
+      salesPersonId: order.sales_person_id,
     },
   };
-}
-
-async function flushDeliveryNotifications(
-  notifications: Map<string, SalesPersonEmailBatch>
-): Promise<{ emailSent: number; emailError?: string }> {
-  if (!notifications.size) {
-    return { emailSent: 0 };
-  }
-  const mailResult = await sendDeliveryNotificationEmails(notifications);
-  const emailError = mailResult.failures.length
-    ? `${mailResult.failures[0].to}: ${mailResult.failures[0].error}`
-    : undefined;
-  return { emailSent: mailResult.sent, emailError };
 }
 
 export async function updateDeliveredQuantity(
   orderId: string,
   deliveredQuantity: string
-): Promise<{ emailSent: boolean; emailError?: string }> {
+): Promise<{ emailSent: boolean; emailError?: string; queueId?: string }> {
   const result = await applyDeliveredQuantityUpdate(orderId, deliveredQuantity);
   if (result.statsUpdated) scheduleHistoryRetentionPurge();
 
@@ -1454,27 +1441,25 @@ export async function updateDeliveredQuantity(
     };
   }
 
-  if (!result.notify) {
+  if (!result.queueEntry) {
     return { emailSent: false };
   }
 
-  const notifications = new Map<string, SalesPersonEmailBatch>([
-    [
-      result.notify.personId,
-      {
-        email: result.notify.email,
-        name: result.notify.name,
-        items: [result.notify.item],
-      },
-    ],
-  ]);
-  const { emailSent, emailError } = await flushDeliveryNotifications(notifications);
-  return { emailSent: emailSent > 0, emailError };
+  const queueId = await createDeliveryNotificationQueueEntry(
+    result.queueEntry.orderId,
+    result.queueEntry.deliveredQuantity,
+    result.queueEntry.status,
+    result.queueEntry.salesPersonId
+  );
+
+  return { emailSent: false, queueId };
 }
 
 export type BatchDeliveredUpdateResult = {
   saved: number;
   savedOrderIds: string[];
+  /** queueId dla danego savedOrderIds (undefined gdy brak powiadomienia). */
+  queueIds: (string | undefined)[];
   emailSent: number;
   errors: string[];
   emailError?: string;
@@ -1485,7 +1470,7 @@ export async function batchUpdateDeliveredQuantities(
   updates: Array<{ orderId: string; deliveredQuantity: string }>
 ): Promise<BatchDeliveredUpdateResult> {
   if (!updates.length) {
-    return { saved: 0, savedOrderIds: [], emailSent: 0, errors: ["Brak pozycji do zapisania."] };
+    return { saved: 0, savedOrderIds: [], queueIds: [], emailSent: 0, errors: ["Brak pozycji do zapisania."] };
   }
 
   const byOrderId = new Map<string, string>();
@@ -1499,7 +1484,12 @@ export async function batchUpdateDeliveredQuantities(
 
   assertMaxBatchSize(uniqueUpdates.length, MAX_QUEUE_BATCH_SIZE, "pozycji dostaw");
 
-  const notifications = new Map<string, SalesPersonEmailBatch>();
+  const queueEntries: Array<{
+    orderId: string;
+    deliveredQuantity: string;
+    status: string;
+    salesPersonId: string | null;
+  }> = [];
   const personEmailCache: PersonEmailCache = new Map();
   let saved = 0;
   const savedOrderIds: string[] = [];
@@ -1514,17 +1504,8 @@ export async function batchUpdateDeliveredQuantities(
       saved++;
       savedOrderIds.push(orderId);
       if (result.statsUpdated) statsTouches++;
-      if (result.notify) {
-        const existing = notifications.get(result.notify.personId);
-        if (existing) {
-          existing.items.push(result.notify.item);
-        } else {
-          notifications.set(result.notify.personId, {
-            email: result.notify.email,
-            name: result.notify.name,
-            items: [result.notify.item],
-          });
-        }
+      if (result.queueEntry) {
+        queueEntries.push(result.queueEntry);
       } else if (result.notifySkipped) {
         errors.push(
           `${result.notifySkipped}: brak e-maila — zapisano bez powiadomienia`
@@ -1537,9 +1518,22 @@ export async function batchUpdateDeliveredQuantities(
 
   if (statsTouches > 0) scheduleHistoryRetentionPurge();
 
-  const { emailSent, emailError } = await flushDeliveryNotifications(notifications);
+  const queueIdByOrderId = new Map<string, string>();
+  await Promise.all(
+    queueEntries.map(async (entry) => {
+      const queueId = await createDeliveryNotificationQueueEntry(
+        entry.orderId,
+        entry.deliveredQuantity,
+        entry.status,
+        entry.salesPersonId
+      );
+      queueIdByOrderId.set(entry.orderId, queueId);
+    })
+  );
 
-  return { saved, savedOrderIds, emailSent, errors, emailError };
+  const queueIds = savedOrderIds.map((orderId) => queueIdByOrderId.get(orderId));
+
+  return { saved, savedOrderIds, queueIds, emailSent: 0, errors };
 }
 
 async function fetchSupplierCompletedOrdersForStats(

@@ -31,6 +31,7 @@ import {
   isVacationHistorical,
   isVacationScheduledInactive,
 } from "@/lib/orders/vacation-status";
+import { Field, Input, Select } from "@/components/ui/Field";
 import { usePreviewMutationBlocker } from "@/components/layout/usePreviewMutationBlocker";
 
 type VacationRow = {
@@ -41,6 +42,14 @@ type VacationRow = {
   last_order_date: string;
   active: boolean;
   suppliers?: { name: string };
+};
+
+type VacationSortField = "name" | "start_date" | "end_date" | "last_order_date";
+type VacationSortDirection = "asc" | "desc";
+
+type VacationSortState = {
+  field: VacationSortField;
+  direction: VacationSortDirection;
 };
 
 
@@ -227,6 +236,10 @@ export function VacationsAdminClient({
   suppliers: { id: string; name: string }[];
   todayDateKey: string;
 }) {
+  const [sortState, setSortState] = useState<VacationSortState>({
+    field: "start_date",
+    direction: "asc",
+  });
   const router = useRouter();
   const { pending, pendingMessage, run } = useActionPending();
   const [rows, setRows] = useState(initialVacations);
@@ -246,13 +259,18 @@ export function VacationsAdminClient({
   const [formOpen, setFormOpen] = useState(false);
   const [form, setForm] = useState<VacationAdminFormState>(emptyVacationAdminForm);
   const [deleteTarget, setDeleteTarget] = useState<VacationRow | null>(null);
+  const [searchQuery, setSearchQuery] = useState("");
   const formRef = useLatest(form);
 
-  const { activeRows, scheduledRows, pastRows } = useMemo(() => {
+  const normalizedSearch = searchQuery.trim().toLowerCase();
+
+  const { activeRows, scheduledRows, pastRows, totalCount } = useMemo(() => {
     const active: VacationRow[] = [];
     const scheduled: VacationRow[] = [];
     const past: VacationRow[] = [];
     for (const row of rows) {
+      const name = (row.suppliers?.name ?? "").toLowerCase();
+      if (normalizedSearch && !name.includes(normalizedSearch)) continue;
       if (isVacationEffectivelyActive(row, todayDateKey)) {
         active.push(row);
       } else if (isVacationScheduledInactive(row, todayDateKey)) {
@@ -263,8 +281,43 @@ export function VacationsAdminClient({
         past.push(row);
       }
     }
-    return { activeRows: active, scheduledRows: scheduled, pastRows: past };
-  }, [rows, todayDateKey]);
+    
+    const sortRows = (rowsToSort: VacationRow[]) => {
+      return [...rowsToSort].sort((a, b) => {
+        let comparison = 0;
+        
+        switch (sortState.field) {
+          case "name": {
+            const nameA = a.suppliers?.name ?? "";
+            const nameB = b.suppliers?.name ?? "";
+            comparison = nameA.localeCompare(nameB, "pl");
+            break;
+          }
+          case "start_date": {
+            comparison = a.start_date.localeCompare(b.start_date);
+            break;
+          }
+          case "end_date": {
+            comparison = a.end_date.localeCompare(b.end_date);
+            break;
+          }
+          case "last_order_date": {
+            comparison = a.last_order_date.localeCompare(b.last_order_date);
+            break;
+          }
+        }
+        
+        return sortState.direction === "asc" ? comparison : -comparison;
+      });
+    };
+    
+    return {
+      activeRows: sortRows(active),
+      scheduledRows: sortRows(scheduled),
+      pastRows: sortRows(past),
+      totalCount: active.length + scheduled.length + past.length,
+    };
+  }, [rows, todayDateKey, sortState, normalizedSearch]);
 
   const resetForm = () => {
     setForm(emptyVacationAdminForm());
@@ -460,6 +513,24 @@ export function VacationsAdminClient({
         </Button>
       ) : null}
 
+      <div className="flex items-center gap-3">
+        <div className="min-w-0 flex-1">
+          <Input
+            type="search"
+            placeholder="Szukaj dostawcy…"
+            aria-label="Szukaj dostawcy po nazwie"
+            className="w-full py-2 text-sm"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+          />
+        </div>
+        {searchQuery ? (
+          <span className="shrink-0 text-xs text-slate-500">
+            {totalCount} {totalCount === 1 ? "wynik" : totalCount >= 2 && totalCount <= 4 ? "wyniki" : "wyników"}
+          </span>
+        ) : null}
+      </div>
+
       <Card
         padding={false}
         className={cn("overflow-hidden", pending && "pointer-events-none select-none opacity-75")}
@@ -469,9 +540,30 @@ export function VacationsAdminClient({
           density="compact"
           title={`Aktywne urlopy (${activeRows.length})`}
           description="Kliknij wiersz lub Edytuj, aby zmienić okres. Po zapisie system przelicza terminy."
+          action={
+            <Field label="Sortuj" labelClassName="text-[10px] uppercase tracking-wide text-slate-500">
+              <Select
+                value={`${sortState.field}-${sortState.direction}`}
+                onChange={(e) => {
+                  const [field, direction] = e.target.value.split("-") as [VacationSortField, VacationSortDirection];
+                  setSortState({ field, direction });
+                }}
+                className="min-w-[140px]"
+              >
+                <option value="name-asc">Dostawca (A-Z)</option>
+                <option value="name-desc">Dostawca (Z-A)</option>
+                <option value="start_date-asc">Od (najstarsza)</option>
+                <option value="start_date-desc">Od (najnowsza)</option>
+                <option value="end_date-asc">Do (najstarsza)</option>
+                <option value="end_date-desc">Do (najnowsza)</option>
+                <option value="last_order_date-asc">Ostatnie zam. (najstarsza)</option>
+                <option value="last_order_date-desc">Ostatnie zam. (najnowsza)</option>
+              </Select>
+            </Field>
+          }
         />
         {!activeRows.length ? (
-          <EmptyState title="Brak aktywnych urlopów" />
+          <EmptyState title={searchQuery ? "Brak dopasowań" : "Brak aktywnych urlopów"} />
         ) : (
           <VacationRowsTable
             rows={activeRows}
@@ -492,6 +584,27 @@ export function VacationsAdminClient({
             density="compact"
             title={`Wyłączone (przyszłe) (${scheduledRows.length})`}
             description="Zapisane okresy bez wpływu na harmonogram — można je ponownie włączyć."
+            action={
+              <Field label="Sortuj" labelClassName="text-[10px] uppercase tracking-wide text-slate-500">
+                <Select
+                  value={`${sortState.field}-${sortState.direction}`}
+                  onChange={(e) => {
+                    const [field, direction] = e.target.value.split("-") as [VacationSortField, VacationSortDirection];
+                    setSortState({ field, direction });
+                  }}
+                  className="min-w-[140px]"
+                >
+                  <option value="name-asc">Dostawca (A-Z)</option>
+                  <option value="name-desc">Dostawca (Z-A)</option>
+                  <option value="start_date-asc">Od (najstarsza)</option>
+                  <option value="start_date-desc">Od (najnowsza)</option>
+                  <option value="end_date-asc">Do (najstarsza)</option>
+                  <option value="end_date-desc">Do (najnowsza)</option>
+                  <option value="last_order_date-asc">Ostatnie zam. (najstarsza)</option>
+                  <option value="last_order_date-desc">Ostatnie zam. (najnowsza)</option>
+                </Select>
+              </Field>
+            }
           />
           <VacationRowsTable
             rows={scheduledRows}
@@ -528,9 +641,30 @@ export function VacationsAdminClient({
               </span>
             </span>
           </summary>
-          <p className="border-t border-slate-100 px-3 pb-2 text-xs text-slate-500 sm:px-4">
-            Zakończone wpisy można edytować albo trwale usunąć, żeby uporządkować listę.
-          </p>
+          <div className="border-t border-slate-100 px-3 pb-2 sm:px-4">
+            <p className="pb-2 text-xs text-slate-500">
+              Zakończone wpisy można edytować albo trwale usunąć, żeby uporządkować listę.
+            </p>
+            <Field label="Sortuj" labelClassName="text-[10px] uppercase tracking-wide text-slate-500">
+              <Select
+                value={`${sortState.field}-${sortState.direction}`}
+                onChange={(e) => {
+                  const [field, direction] = e.target.value.split("-") as [VacationSortField, VacationSortDirection];
+                  setSortState({ field, direction });
+                }}
+                className="min-w-[140px]"
+              >
+                <option value="name-asc">Dostawca (A-Z)</option>
+                <option value="name-desc">Dostawca (Z-A)</option>
+                <option value="start_date-asc">Od (najstarsza)</option>
+                <option value="start_date-desc">Od (najnowsza)</option>
+                <option value="end_date-asc">Do (najstarsza)</option>
+                <option value="end_date-desc">Do (najnowsza)</option>
+                <option value="last_order_date-asc">Ostatnie zam. (najstarsza)</option>
+                <option value="last_order_date-desc">Ostatnie zam. (najnowsza)</option>
+              </Select>
+            </Field>
+          </div>
           <VacationRowsTable
             rows={pastRows}
             form={form}

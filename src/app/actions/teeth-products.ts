@@ -7,7 +7,7 @@ import { requireAdmin, requireAdminForMutation } from "@/lib/auth";
 import { fetchTeethProducts, type TeethProductRow } from "@/lib/data/teeth-products";
 import { upsertSubiektProduct } from "@/lib/data/product-catalog";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { actionSubiektLookupProduct } from "@/app/actions/subiekt";
+import { actionSubiektSuggestProducts } from "@/app/actions/subiekt";
 import type { SubiektProduct } from "@/lib/subiekt/types";
 
 function revalidateTeethPaths() {
@@ -53,8 +53,9 @@ export async function actionSearchSubiektProductsForTeethAdmin(
     return { ok: false, error: "Wpisz co najmniej 2 znaki symbolu, nazwy lub kodu." };
   }
 
-  const result = await actionSubiektLookupProduct(q);
+  const result = await actionSubiektSuggestProducts(q, "combined");
   if (!result.ok) {
+    console.error("Subiekt lookup error for teeth products:", result.feedback);
     return { ok: false, error: result.feedback?.message ?? "Nie udało się wyszukać w Subiekcie." };
   }
 

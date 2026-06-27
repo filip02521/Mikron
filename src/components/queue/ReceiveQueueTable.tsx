@@ -3,15 +3,18 @@
 import { Fragment, useCallback, useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import type { IndividualOrder } from "@/types/database";
+import type { DeliveryUndoPayload } from "@/lib/orders/receive-queue-undo";
 import {
   actionAcknowledgeWarehouseCancelDisposition,
   actionBatchUpdateDelivered,
   actionMarkInformacjaArrived,
+  actionUndoDelivery,
   actionUpdateDelivered,
 } from "@/app/actions/admin";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { DataTable, TableScroll } from "@/components/ui/DataTable";
+import { UndoToast } from "@/components/ui/UndoToast";
 import { QueueGroupExpandControl } from "@/components/queue/QueueGroupExpandControl";
 import { SupplierFilterChips } from "@/components/queue/SupplierFilterChips";
 import { ReceiveQueueSearchField } from "@/components/queue/ReceiveQueueSearchField";
@@ -24,6 +27,8 @@ import { ReceiveQueueRow } from "@/components/queue/receive-queue/ReceiveQueueRo
 import { ReceiveQueueVirtualTbody } from "@/components/queue/receive-queue/ReceiveQueueVirtualTbody";
 import { ReceiveQueueSelectionBar } from "@/components/queue/receive-queue/ReceiveQueueSelectionBar";
 import { usePreviewMutationBlocker } from "@/components/layout/usePreviewMutationBlocker";
+import { useUndoShortcutLabel } from "@/lib/platform/keyboard-shortcut-label";
+import { isUndoExpired } from "@/lib/orders/daily-panel-undo";
 import {
   getDeliveryProgress,
   isInformacjaRequest,
@@ -119,6 +124,50 @@ export function ReceiveQueueTable({
     fullQuantity?: boolean;
   } | null>(null);
   const [notifyConfirmIds, setNotifyConfirmIds] = useState<string[] | null>(null);
+  const [undo, setUndo] = useState<DeliveryUndoPayload | null>(null);
+  const [undoError, setUndoError] = useState<string | null>(null);
+
+  const clearUndo = useCallback(() => {
+    setUndo(null);
+    setUndoError(null);
+  }, []);
+
+  const undoShortcut = useUndoShortcutLabel();
+
+  const handleUndo = useCallback(() => {
+    if (!undo) return;
+    setUndoError(null);
+    if (isUndoExpired(undo.expiresAt)) {
+      setUndoError("Minął czas na cofnięcie przyjęcia towaru.");
+      return;
+    }
+    start(async () => {
+      try {
+        onPendingChange("Cofanie przyjęcia towaru…");
+        await actionUndoDelivery(undo);
+        clearUndo();
+        router.refresh();
+        onToast({ text: "Przyjęcie towaru zostało cofnięte", tone: "success" });
+      } catch (e) {
+        setUndoError(e instanceof Error ? e.message : "Nie udało się cofnąć przyjęcia towaru.");
+      } finally {
+        onPendingChange(null);
+      }
+    });
+  }, [undo, clearUndo, onPendingChange, onToast, router]);
+
+  useEffect(() => {
+    if (!undo) return;
+    const onKeyDown = (event: KeyboardEvent) => {
+      const tag = (event.target as HTMLElement | null)?.tagName;
+      if (tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT") return;
+      if (!(event.metaKey || event.ctrlKey) || event.key.toLowerCase() !== "z") return;
+      event.preventDefault();
+      handleUndo();
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [undo, handleUndo]);
 
   const receiveQueue = useMemo(
     () => mergeReceiveQueueOrders(deliveryOrders, informacjaOrders),
@@ -312,8 +361,14 @@ export function ReceiveQueueTable({
           delete next[order.id];
           return next;
         });
+        if (result.undo) {
+          setUndoError(null);
+          setUndo(result.undo);
+        }
         const progress = deliveryProgressForOrder(order, value);
         const person = order.sales_person?.name ?? "handlowiec";
+
+        const emailScheduledNote = result.emailScheduled ? " · mail zaplanowany" : "";
 
         if (result.emailError) {
           onToast({
@@ -323,21 +378,17 @@ export function ReceiveQueueTable({
           });
         } else if (progress.remaining === 0 && progress.hasNumericQty) {
           onToast({
-            text: result.emailSent
-              ? `Zrealizowano · ${person} · wysłano e-mail`
-              : `Zrealizowano · ${person}`,
+            text: `Zrealizowano · ${person}${emailScheduledNote}`,
             tone: "success",
           });
         } else if (progress.delivered > 0 && progress.hasNumericQty) {
           onToast({
-            text: result.emailSent
-              ? `${progress.fractionLabel} · ${person} · brakuje ${progress.remaining} szt. · wysłano e-mail`
-              : `${progress.fractionLabel} · ${person} · brakuje ${progress.remaining} szt.`,
+            text: `${progress.fractionLabel} · ${person} · brakuje ${progress.remaining} szt.${emailScheduledNote}`,
             tone: "success",
           });
         } else {
           onToast({
-            text: result.emailSent ? "Zapisano · wysłano e-mail" : "Zapisano",
+            text: `Zapisano${emailScheduledNote}`,
             tone: "success",
           });
         }
@@ -419,14 +470,17 @@ export function ReceiveQueueTable({
             delete next[only.orderId];
             return next;
           });
+          if (result.undo) {
+            setUndoError(null);
+            setUndo(result.undo);
+          }
           const order = receiveQueue.find((o) => o.id === only.orderId);
           const person = order?.sales_person?.name ?? "handlowiec";
+          const emailScheduledNote = result.emailScheduled ? " · mail zaplanowany" : "";
           onToast({
             text: result.emailError
               ? `Zapisano, ale e-mail: ${result.emailError}`
-              : result.emailSent
-                ? `Zapisano · ${person} · wysłano mail`
-                : `Zapisano · ${person}`,
+              : `Zapisano · ${person}${emailScheduledNote}`,
             tone: result.emailError ? "error" : "success",
             durationMs: result.emailError ? QUEUE_EMAIL_WARNING_TOAST_MS : undefined,
           });
@@ -446,6 +500,10 @@ export function ReceiveQueueTable({
             for (const id of result.savedOrderIds) delete next[id];
             return next;
           });
+          if (result.undo) {
+            setUndoError(null);
+            setUndo(result.undo);
+          }
           const toast = formatDeliveryBatchToast(result);
           if (skippedQty > 0) {
             toast.text += ` · ${skippedQty} bez ilości (pominięto)`;
@@ -701,6 +759,31 @@ export function ReceiveQueueTable({
           saveBatch(orderIds, fullQuantity ? { fullQuantity: true } : undefined);
         }}
       />
+
+      {undo ? (
+        <UndoToast
+          title={undoError ? "Błąd cofania" : "Przyjęto towar"}
+          description={
+            undoError
+              ? undoError
+              : "Masz 10 sekund na cofnięcie przyjęcia towaru."
+          }
+          detailLines={
+            undoError
+              ? undefined
+              : [
+                  "Masz 10 sekund na cofnięcie. Powiadomienie e-mail do handlowca zostanie wysłane dopiero po tym czasie.",
+                ]
+          }
+          tone={undoError ? "error" : "success"}
+          placement="floating"
+          expiresAt={undo.expiresAt}
+          onDismiss={clearUndo}
+          onUndo={() => void handleUndo()}
+          undoLabel="Cofnij przyjęcie"
+          undoShortcut={undoShortcut}
+        />
+      ) : null}
 
       <ConfirmDialog
         open={notifyConfirmIds != null}

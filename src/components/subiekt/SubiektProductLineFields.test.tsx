@@ -14,7 +14,7 @@ import { useState, type ComponentProps } from "react";
 import { SubiektProductLineFields } from "./SubiektProductLineFields";
 import type { SubiektProductLineValue } from "./SubiektProductLineFields";
 import {
-  actionSubiektSuggestProducts,
+  actionSuggestProducts,
   actionSubiektSuggestionsEnabled,
 } from "@/app/actions/subiekt";
 
@@ -23,7 +23,7 @@ vi.mock("@/hooks/useDebouncedValue", () => ({
 }));
 
 vi.mock("@/app/actions/subiekt", () => ({
-  actionSubiektSuggestProducts: vi.fn().mockResolvedValue({
+  actionSuggestProducts: vi.fn().mockResolvedValue({
     ok: true,
     items: [],
   }),
@@ -67,7 +67,7 @@ describe("SubiektProductLineFields", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     vi.mocked(actionSubiektSuggestionsEnabled).mockResolvedValue({ enabled: false });
-    vi.mocked(actionSubiektSuggestProducts).mockResolvedValue({
+    vi.mocked(actionSuggestProducts).mockResolvedValue({
       ok: true,
       items: [],
     });
@@ -200,7 +200,9 @@ describe("SubiektProductLineFields", () => {
     );
 
     fireEvent.click(screen.getByRole("button", { name: "Zmień towar" }));
-    expect(onChange).toHaveBeenCalledWith({ subiektTwId: null });
+    expect(onChange).toHaveBeenCalledWith(
+      expect.objectContaining({ subiektTwId: null, source: null })
+    );
   });
 
   it("nie renderuje ilości przy prośbie typu informacja", () => {
@@ -237,7 +239,7 @@ describe("SubiektProductLineFields", () => {
 
   it("pokazuje typeahead Subiekta pod polem produktu", async () => {
     vi.mocked(actionSubiektSuggestionsEnabled).mockResolvedValue({ enabled: true });
-    vi.mocked(actionSubiektSuggestProducts).mockResolvedValue({
+    vi.mocked(actionSuggestProducts).mockResolvedValue({
       ok: true,
       items: [subiektProduct],
     });
@@ -262,15 +264,15 @@ describe("SubiektProductLineFields", () => {
     );
 
     await waitFor(() => {
-      expect(actionSubiektSuggestProducts).toHaveBeenCalledWith("gum", "combined");
+      expect(actionSuggestProducts).toHaveBeenCalledWith("gum", "combined");
     });
-    expect(screen.getByText(/Subiekt — po symbolu i nazwie/)).toBeTruthy();
+    expect(screen.getByText(/Subiekt \(na żywo\) — po symbolu i nazwie/)).toBeTruthy();
     expect(screen.getByText(/4200 — Gumka test/)).toBeTruthy();
   });
 
   it("zachowuje ilość po wyborze towaru z Subiekta", async () => {
     vi.mocked(actionSubiektSuggestionsEnabled).mockResolvedValue({ enabled: true });
-    vi.mocked(actionSubiektSuggestProducts).mockResolvedValue({
+    vi.mocked(actionSuggestProducts).mockResolvedValue({
       ok: true,
       items: [subiektProduct],
     });
@@ -341,7 +343,7 @@ describe("SubiektProductLineFields", () => {
     );
 
     expect(screen.queryByText(/Symbol w Subiekcie:/)).toBeNull();
-    expect(actionSubiektSuggestProducts).not.toHaveBeenCalled();
+    expect(actionSuggestProducts).not.toHaveBeenCalled();
     expect(screen.getByLabelText("Powiązano z Subiektem")).toBeTruthy();
   });
 
@@ -366,5 +368,40 @@ describe("SubiektProductLineFields", () => {
     expect(
       screen.getByPlaceholderText(/Szukaj w Subiekcie/i)
     ).toBeTruthy();
+  });
+
+  it("pokazuje typeahead z lokalnej bazy gdy catalogFallback (Subiekt offline)", async () => {
+    vi.mocked(actionSubiektSuggestionsEnabled).mockResolvedValue({
+      enabled: false,
+      catalogFallback: true,
+    });
+    vi.mocked(actionSuggestProducts).mockResolvedValue({
+      ok: true,
+      items: [subiektProduct],
+    });
+
+    render(
+      <ControlledSubiektLine
+        appearance="prosba"
+        requestKind="zamowienie"
+        initialValue={baseValue}
+      />
+    );
+
+    await waitFor(() =>
+      expect(
+        screen.getByPlaceholderText("Szukaj w bazie: nazwa lub symbol…")
+      ).toBeTruthy()
+    );
+
+    fireEvent.change(
+      screen.getByPlaceholderText("Szukaj w bazie: nazwa lub symbol…"),
+      { target: { value: "gum" } }
+    );
+
+    await waitFor(() => {
+      expect(actionSuggestProducts).toHaveBeenCalledWith("gum", "combined");
+    });
+    expect(screen.getByText(/4200 — Gumka test/)).toBeTruthy();
   });
 });

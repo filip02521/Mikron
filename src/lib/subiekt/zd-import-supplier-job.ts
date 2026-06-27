@@ -38,6 +38,12 @@ function nowIso(): string {
   return new Date().toISOString();
 }
 
+/** Dostawcy z dużą liczbą ZD (np. Ivoclar) przetwarzamy 1 dokument na tick, reszta po 3. */
+function chooseImportMaxDocs(totalDocs: number | null, batchDocs: number): number {
+  if (totalDocs != null && totalDocs > 500) return 1;
+  return Math.max(1, batchDocs || 3);
+}
+
 export async function readZdImportSupplierJobState(
   supplierId: string
 ): Promise<ZdImportSupplierJobState | null> {
@@ -158,7 +164,8 @@ export async function tickZdImportForSupplier(input: {
       return next;
     }
 
-    const maxDocs = input.maxDocs ?? current.batchDocs ?? 3;
+    const maxDocs =
+      input.maxDocs ?? chooseImportMaxDocs(current.indexTotalDocs, current.batchDocs);
     const scope = { supplierId: current.supplierId, dataOd: current.dataOd };
 
     try {

@@ -30,7 +30,7 @@ export function ProsbaLineFieldMessages({
               <Spinner size="sm" className="mt-0.5 shrink-0" />
               <div className="min-w-0 text-xs leading-relaxed text-indigo-900">
                 <p className="font-semibold text-indigo-950">Sprawdzam dostawcę</p>
-                <p className="mt-0.5 text-indigo-800/90">Dopasowanie z naszej bazy produktów…</p>
+                <p className="mt-0.5 text-indigo-800/90">Szukam dopasowania w bazie powiązań produkt–dostawca…</p>
               </div>
             </div>
           );

@@ -55,6 +55,7 @@ describe("getSubiektFeedback", () => {
     expect(f.code).toBe("catalog_supplier_unmapped");
     expect(f.title).toBe("Brak przypisanego dostawcy");
     expect(f.title).not.toContain("Subiekt");
-    expect(f.message).toContain("Subiekcie");
+    expect(f.message).toContain("bazie");
+    expect(f.message).not.toContain("Subiekt");
   });
 });

@@ -62,8 +62,8 @@ export function batchDeliveryConfirmMessage(
   const people = countSalesPeopleInOrders(orders, orderIds);
   const emailPart =
     people <= 1
-      ? "Handlowiec dostanie e-mail o przyjęciu towaru."
-      : `${people} handlowców dostanie osobne e-maile o przyjęciu towaru.`;
+      ? "Handlowiec dostanie e-mail o przyjęciu towaru (z 10-sekundowym opóźnieniem — możliwym do cofnięcia)."
+      : `${people} handlowców dostanie osobne e-maile o przyjęciu towaru (z 10-sekundowym opóźnieniem — możliwym do cofnięcia).`;
   const qtyPart = opts?.fullQuantity
     ? "Dla każdej pozycji zostanie zapisana pełna zamówiona ilość (Całość)."
     : "Zostanie zapisana ilość z kolumny „Dost.” dla każdej zaznaczonej pozycji.";
@@ -102,17 +102,20 @@ function withEmailWarningDuration(toast: BatchOperationToast): BatchOperationToa
 export function formatDeliveryBatchToast(result: {
   saved: number;
   emailSent: number;
+  emailScheduled?: boolean;
   errors: string[];
   emailError?: string;
 }): BatchOperationToast {
   const partial = result.errors.length > 0;
   const emailPart = result.emailError
     ? ` Uwaga e-mail: ${result.emailError}`
-    : result.emailSent === 0
-      ? ""
-      : result.emailSent === 1
-        ? " · wysłano mail do handlowca"
-        : ` · wysłano ${result.emailSent} maile (po handlowcu)`;
+    : result.emailScheduled
+      ? " · mail zaplanowany"
+      : result.emailSent === 0
+        ? ""
+        : result.emailSent === 1
+          ? " · wysłano mail do handlowca"
+          : ` · wysłano ${result.emailSent} maile (po handlowcu)`;
   const errPart = partial
     ? ` Uwagi (${result.errors.length}): ${result.errors.slice(0, 2).join("; ")}${result.errors.length > 2 ? "…" : ""}`
     : "";

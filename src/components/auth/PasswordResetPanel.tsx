@@ -122,7 +122,11 @@ export function PasswordResetPanel({
     }
 
     writeStoredPasswordResetSession(null);
-    window.location.assign(postLoginEnteringUrl(result.redirectTo));
+    const targetUrl = postLoginEnteringUrl(result.redirectTo);
+    const urlWithResetFlag = targetUrl.includes("?") 
+      ? `${targetUrl}&reset=otp` 
+      : `${targetUrl}?reset=otp`;
+    window.location.assign(urlWithResetFlag);
   }, [busy, code, codeComplete, accountId]);
 
   useEffect(() => {

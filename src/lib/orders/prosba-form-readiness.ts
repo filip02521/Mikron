@@ -33,6 +33,7 @@ export type ProsbaReadinessLine = {
   quantity?: string;
   supplierId?: string;
   subiektTwId?: number | null;
+  source?: "subiekt" | "catalog" | null;
 };
 
 export type ProsbaFormReadinessOptions = {

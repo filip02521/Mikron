@@ -676,7 +676,7 @@ export async function actionStartZdImportAllSuppliersJob(options?: {
 
 export async function actionTickZdImportAllSuppliersJob(): Promise<ZdImportAllSuppliersJobState> {
   await requireAdminForMutation();
-  const next = await tickZdImportAllSuppliersJob({ maxDocs: 3 });
+  const next = await tickZdImportAllSuppliersJob();
   revalidatePath("/admin/produkty");
   return next;
 }

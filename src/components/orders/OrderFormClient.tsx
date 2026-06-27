@@ -129,6 +129,7 @@ interface Entry {
   reserved?: number | null;
   available?: number | null;
   stockSource?: "subiekt" | null;
+  source?: "subiekt" | "catalog" | null;
   zkQuantity?: number | null;
   requestNote?: string;
 }
@@ -425,6 +426,9 @@ export function OrderFormClient({
 
   const isProcurementGroupForm = !(singleGroup && lockedSalesPerson);
 
+  const groupHasCatalogProduct = (group: Entry[]) =>
+    group.some((e) => e.source === "catalog");
+
   const procurementCanSubmit = useMemo(() => {
     if (!isProcurementGroupForm) return false;
 
@@ -513,6 +517,7 @@ export function OrderFormClient({
             reserved: e.reserved,
             available: e.available,
             stockSource: e.stockSource,
+            source: e.source,
             requestNote: e.requestNote || undefined,
             sourceZkWatchId: zkCtx?.zkWatchId ?? undefined,
             sourceZkNumber: zkCtx?.zkNumber ?? undefined,
@@ -1378,6 +1383,9 @@ export function OrderFormClient({
                         }}
                         allowEmpty
                         emptyLabel="Wybierz dostawcę"
+                        disabled={
+                          !isProcurementGroupForm && groupHasCatalogProduct(group)
+                        }
                         placeholder="Szukaj dostawcy w systemie lub Subiekcie…"
                         showInlineFeedback={false}
                       />
@@ -1397,6 +1405,9 @@ export function OrderFormClient({
                         )
                       );
                     }}
+                    disabled={
+                      !isProcurementGroupForm && groupHasCatalogProduct(group)
+                    }
                     allowEmpty
                     emptyLabel="Wybierz dostawcę"
                     placeholder="Szukaj dostawcy w systemie lub Subiekcie…"

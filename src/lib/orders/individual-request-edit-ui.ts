@@ -44,6 +44,7 @@ export function editInitialFromForSomeoneGroup(
       clientName: l.clientName ?? "",
       clientKhId: l.clientKhId ?? null,
       subiektTwId: l.subiektTwId ?? null,
+      source: null,
       requestNote: normalizeSalesRequestNote(l.requestNote) ?? "",
     })),
   };
@@ -65,6 +66,7 @@ export function editInitialFromMyOrderRow(row: MyOrderRow): EditIndividualReques
       clientName: l.clientName ?? "",
       clientKhId: l.clientKhId ?? null,
       subiektTwId: l.subiektTwId ?? null,
+      source: null,
       requestNote: normalizeSalesRequestNote(l.requestNote) ?? "",
     })),
   };
@@ -88,6 +90,7 @@ export function editInitialFromOrders(orders: IndividualOrder[]): EditIndividual
       clientName: l.clientName ?? "",
       clientKhId: l.clientKhId ?? null,
       subiektTwId: l.subiektTwId ?? null,
+      source: null,
       requestNote: l.requestNote ?? "",
     })),
   };

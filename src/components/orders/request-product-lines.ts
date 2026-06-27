@@ -18,6 +18,8 @@ export type ProductLineDraft = {
   available?: number | null;
   /** Stan magazynowy z Subiekta (tylko UI / walidacja). */
   stockSource?: "subiekt" | null;
+  /** Skąd pochodzi wybór produktu (Subiekt API lub nasza baza). */
+  source?: "subiekt" | "catalog" | null;
   /** Ilość z pozycji ZK (prefill) — walidacja prośby vs ZK. */
   zkQuantity?: number | null;
   /** Uwagi handlowca — zapis per pozycja w `sales_request_note`. */
@@ -31,6 +33,7 @@ export function newProductLine(): ProductLineDraft {
     mikranCode: "",
     product: "",
     quantity: "",
+    source: null,
   };
 }
 
