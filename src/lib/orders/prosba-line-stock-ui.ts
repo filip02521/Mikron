@@ -5,6 +5,7 @@ import {
   stockSnapshotFromLineDraft,
   type ProsbaLineStockAssessment,
 } from "@/lib/orders/prosba-stock-check";
+import { isStockExemptTwId } from "@/lib/orders/teeth-stock-exempt";
 import type { IndividualRequestKind } from "@/types/database";
 
 export type ProsbaLineStockTone = "amber" | "sky" | "slate";
@@ -84,13 +85,15 @@ function formatAvailable(available: number): string {
 /** Widok stanu magazynowego pozycji — tylko gdy mamy dane z Subiekta. */
 export function buildProsbaLineStockStatusView(
   line: ProductLineDraft,
-  requestKind: IndividualRequestKind
+  requestKind: IndividualRequestKind,
+  stockExemptTwIds?: ReadonlySet<number>
 ): ProsbaLineStockStatusView | null {
   if (requestKind !== "zamowienie") return null;
+  if (isStockExemptTwId(line.subiektTwId, stockExemptTwIds)) return null;
   const stock = stockSnapshotFromLineDraft(line);
   if (!stock) return null;
 
-  const assessment = assessProsbaLineStockFromDraft(line, requestKind);
+  const assessment = assessProsbaLineStockFromDraft(line, requestKind, stockExemptTwIds);
   const requestedQty = parseOrderQuantity(line.quantity);
   const availLabel = formatAvailable(stock.available);
 

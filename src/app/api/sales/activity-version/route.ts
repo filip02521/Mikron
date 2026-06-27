@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { getSessionUser } from "@/lib/auth";
 import { resolveSalesPersonForUser } from "@/lib/auth/sales-person";
 import { isSalesAccount } from "@/lib/auth-roles";
+import { fetchSalesBoardAttentionSnapshot } from "@/lib/data/department-board";
 import { computeSalesActivityVersion } from "@/lib/orders/sales-activity-version";
 
 export async function GET() {
@@ -15,6 +16,13 @@ export async function GET() {
     return NextResponse.json({ error: "Brak powiązanego handlowca" }, { status: 403 });
   }
 
-  const version = await computeSalesActivityVersion(salesPerson.id);
-  return NextResponse.json({ version });
+  const [version, boardAttention] = await Promise.all([
+    computeSalesActivityVersion(salesPerson.id),
+    fetchSalesBoardAttentionSnapshot(user.id).catch(() => null),
+  ]);
+
+  return NextResponse.json({
+    version,
+    unseenOwnAnswers: boardAttention?.unseenOwnAnswerCount ?? 0,
+  });
 }

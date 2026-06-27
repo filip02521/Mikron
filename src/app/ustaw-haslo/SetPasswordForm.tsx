@@ -16,7 +16,7 @@ import {
 } from "@/lib/auth/establish-password-link-session";
 import { createClient } from "@/lib/supabase/client";
 import { postLoginEnteringUrl } from "@/lib/auth/post-login-entering";
-import { translatePasswordLinkError } from "@/lib/auth/password-link-errors";
+import { translatePasswordLinkError, translatePasswordUpdateError } from "@/lib/auth/password-link-errors";
 import { actionCompletePasswordChange } from "@/app/actions/sales-manager";
 
 type Phase = "checking" | "ready" | "error" | "no_session";
@@ -100,7 +100,7 @@ export function SetPasswordForm() {
     const result = await actionCompletePasswordChange(password);
     if ("error" in result) {
       setLoading(false);
-      setError(result.error);
+      setError(translatePasswordUpdateError(result.error));
       return;
     }
 

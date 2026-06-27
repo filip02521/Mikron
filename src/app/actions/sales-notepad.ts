@@ -33,6 +33,7 @@ import {
   zkProsbaPrefillFromWatch,
 } from "@/lib/orders/zk-watch-prosba-prefill";
 import { fetchZkWatchForProsbaPrefill } from "@/lib/sales/fetch-zk-watch-for-prefill";
+import { enrichZkProsbaPrefillWithLiveStock } from "@/lib/orders/fetch-prosba-line-stock";
 import type { SalesNote, SalesNoteColor, SalesZkWatch } from "@/types/database";
 
 async function salesPersonIdForAction(): Promise<string> {
@@ -966,7 +967,8 @@ export async function actionGetZkProsbaPrefillByWatchId(
   };
   const hasOptions = Object.keys(options).length > 0;
 
-  return zkProsbaPrefillFromWatch(watch, hasOptions ? options : undefined);
+  const prefill = zkProsbaPrefillFromWatch(watch, hasOptions ? options : undefined);
+  return enrichZkProsbaPrefillWithLiveStock(prefill);
 }
 
 /** Prefill prośby z ZK po numerze (np. nowa karta — bez sessionStorage). */
@@ -987,5 +989,6 @@ export async function actionGetZkProsbaPrefill(
   const supabase = createAdminClient();
   const watch = await fetchZkWatchForProsbaPrefill(supabase, salesPersonId, trimmed);
   if (!watch) return null;
-  return zkProsbaPrefillFromWatch(watch);
+  const prefill = zkProsbaPrefillFromWatch(watch);
+  return enrichZkProsbaPrefillWithLiveStock(prefill);
 }

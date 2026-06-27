@@ -7,6 +7,8 @@ import {
   prosbaLineStockBadgeClass,
   prosbaLineStockRowTintClass,
 } from "@/lib/orders/prosba-line-stock-ui";
+import { useTeethExemptTwIds } from "@/components/layout/TeethExemptContext";
+import { isStockExemptTwId } from "@/lib/orders/teeth-stock-exempt";
 import type { IndividualRequestKind } from "@/types/database";
 import { Button } from "@/components/ui/Button";
 import { IconCircleCheck, IconAlertCircle } from "@/components/icons/StrokeIcons";
@@ -29,8 +31,12 @@ export function ProsbaProductLineCollapsedRow({
   onEdit: () => void;
   onRemove: () => void;
 }) {
+  const teethExemptTwIds = useTeethExemptTwIds();
+  const isTeethProduct = isStockExemptTwId(line.subiektTwId, teethExemptTwIds);
   const summary = formatProsbaLineSummary(line, requestKind);
-  const stockView = buildProsbaLineStockStatusView(line, requestKind);
+  const stockView = isTeethProduct
+    ? null
+    : buildProsbaLineStockStatusView(line, requestKind, teethExemptTwIds);
 
   return (
     <div
@@ -38,11 +44,13 @@ export function ProsbaProductLineCollapsedRow({
         "flex items-start gap-3 px-3 py-2.5 sm:items-center sm:px-4",
         hasFieldIssues
           ? "bg-white"
-          : stockView
-            ? prosbaLineStockRowTintClass(stockView.tone)
-            : summary.fromSubiekt
-              ? "bg-emerald-50/70"
-              : "bg-white"
+          : isTeethProduct
+            ? "bg-violet-50/55"
+            : stockView
+              ? prosbaLineStockRowTintClass(stockView.tone)
+              : summary.fromSubiekt
+                ? "bg-emerald-50/70"
+                : "bg-white"
       )}
     >
       <span
@@ -50,20 +58,24 @@ export function ProsbaProductLineCollapsedRow({
           "mt-0.5 flex size-8 shrink-0 items-center justify-center rounded-full sm:mt-0",
           hasFieldIssues
             ? "bg-amber-100 text-amber-800"
-            : stockView
-              ? "bg-slate-100 text-slate-600"
-              : summary.fromSubiekt
-                ? "bg-emerald-100 text-emerald-700"
-                : "bg-indigo-100 text-indigo-700"
+            : isTeethProduct
+              ? "bg-violet-100 text-violet-700"
+              : stockView
+                ? "bg-slate-100 text-slate-600"
+                : summary.fromSubiekt
+                  ? "bg-emerald-100 text-emerald-700"
+                  : "bg-indigo-100 text-indigo-700"
         )}
         title={
           hasFieldIssues
             ? "Uzupełnij brakujące pola"
-            : stockView
-              ? stockView.title
-              : summary.fromSubiekt
-                ? "Powiązano z Subiektem"
-                : "Pozycja gotowa"
+            : isTeethProduct
+              ? "Produkt z listy zębów — bez kontroli stanu"
+              : stockView
+                ? stockView.title
+                : summary.fromSubiekt
+                  ? "Powiązano z Subiektem"
+                  : "Pozycja gotowa"
         }
       >
         {hasFieldIssues ? (
@@ -84,7 +96,11 @@ export function ProsbaProductLineCollapsedRow({
               {summary.quantityLabel}
             </span>
           ) : null}
-          {stockView ? (
+          {isTeethProduct ? (
+            <span className="shrink-0 rounded-full bg-violet-100 px-1.5 py-0.5 text-[11px] font-semibold text-violet-900 ring-1 ring-violet-200/80">
+              Zęby · bez kontroli stanu
+            </span>
+          ) : stockView ? (
             <span
               className={cn(
                 "shrink-0 rounded-full px-1.5 py-0.5 text-[11px] font-semibold",

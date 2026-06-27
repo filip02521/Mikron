@@ -5,6 +5,8 @@ import { usePathname } from "next/navigation";
 import {
   isNavItemActive,
   navForRole,
+  navItemDisplayTone,
+  navItemHasDueReminders,
   navMobileOverflowItems,
   navMobilePrimaryItems,
 } from "@/lib/nav";
@@ -13,10 +15,11 @@ import { cn } from "@/lib/cn";
 import { NavIcon, navIconTileActiveClassForTone, navIconTileClassForTone } from "@/components/icons/NavIcon";
 import { MobileNavOverflowSheet } from "@/components/layout/MobileNavOverflowSheet";
 import {
-  mobileNavBadgeClass,
+  mobileNavAttentionIdleClass,
   mobileNavLinkBaseClass,
   mobileNavLinkIdleClass,
   mobileSalesNavClass,
+  sidebarNavBadgeClassForTone,
   sidebarNavToneActiveClass,
 } from "@/lib/ui/ontime-theme";
 import type { UserRole } from "@/types/database";
@@ -53,6 +56,8 @@ export function MobileOperationsNav({
         {primaryItems.map((item) => {
           const active = isNavItemActive(pathname, item.href, allPrimaryHrefs);
           const attentionBadge = item.badge != null && item.badge > 0 ? item.badge : 0;
+          const displayTone = navItemDisplayTone(item, active);
+          const attentionIdle = navItemHasDueReminders(item) && !active;
           const showLiveDot =
             item.href === "/podsumowanie" &&
             Boolean(operationsUpdates?.hasUpdates) &&
@@ -65,7 +70,11 @@ export function MobileOperationsNav({
                 className={cn(
                   mobileNavLinkBaseClass,
                   "px-1",
-                  active ? sidebarNavToneActiveClass(item.tone) : mobileNavLinkIdleClass
+                  active
+                    ? sidebarNavToneActiveClass(item.tone)
+                    : attentionIdle
+                      ? mobileNavAttentionIdleClass
+                      : mobileNavLinkIdleClass
                 )}
                 aria-current={active ? "page" : undefined}
                 title={item.description ?? item.label}
@@ -85,7 +94,7 @@ export function MobileOperationsNav({
                     <span
                       className={cn(
                         "absolute -right-1.5 -top-1 flex h-3.5 min-w-3.5 items-center justify-center rounded-full px-0.5 text-[8px] font-bold tabular-nums",
-                        mobileNavBadgeClass
+                        sidebarNavBadgeClassForTone(displayTone, false)
                       )}
                     >
                       {attentionBadge > 9 ? "9+" : attentionBadge}

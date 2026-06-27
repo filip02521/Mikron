@@ -199,6 +199,10 @@ export interface DepartmentBoardThread {
   sales_person_id: string | null;
   title: string;
   body: string;
+  product_symbol: string | null;
+  product_name: string | null;
+  subiekt_tw_id: number | null;
+  mikran_code: string | null;
   color: SalesNoteColor;
   pinned: boolean;
   published_at: string;

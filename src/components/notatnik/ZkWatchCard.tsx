@@ -23,6 +23,8 @@ import {
   formatZkProsbaCardActionLabelAfterStockFilter,
   formatZkWatchLineCheckboxPreview,
   formatZkWatchLineCheckboxShort,
+  resolveZkWatchProsbaCardLineKeys,
+  resolveZkWatchProsbaPrefillLineKeys,
 } from "@/lib/sales/zk-watch-line-ui-state";
 import type { ZkWatchRefreshDiff } from "@/lib/sales/zk-watch-refresh-diff";
 import type { SalesZkWatch } from "@/types/database";
@@ -171,7 +173,10 @@ export function ZkWatchCard({
     !hasNewWarehouseArrival &&
     !hasNewZkLines &&
     !isInformacjaReadyAccent;
-  const uncoveredLineKeys = orderHints?.uncoveredLineKeys ?? [];
+  const uncoveredLineKeys = useMemo(
+    () => orderHints?.uncoveredLineKeys ?? [],
+    [orderHints?.uncoveredLineKeys]
+  );
   const openProsbaLineKeys = orderHints?.openProsbaCoveredLineKeys ?? [];
   const productLineCount = lineViews.filter((line) => line.key !== "summary").length;
   const prosbaScopeConfigured = orderHints?.prosbaScopeConfigured ?? false;
@@ -194,6 +199,15 @@ export function ZkWatchCard({
         .map((line) => zkWatchLineViewToProsbaScopeLine(line)),
     [lineViews]
   );
+  const prosbaActionLineKeys = useMemo(() => {
+    if (prosbaCardAction.kind !== "new_prosba" && prosbaCardAction.kind !== "supplement") {
+      return [] as string[];
+    }
+    return resolveZkWatchProsbaCardLineKeys({
+      action: prosbaCardAction,
+      uncoveredLineKeys,
+    });
+  }, [prosbaCardAction, uncoveredLineKeys]);
   const prosbaStockFilterEnabled =
     prosbaStockArmed &&
     !archived &&
@@ -205,10 +219,12 @@ export function ZkWatchCard({
     stockLoading: prosbaStockLoading,
     allOnStock: prosbaAllOnStock,
     lineKeysToOrder: prosbaStockFilteredKeys,
+    stockByTwId: prosbaStockByTwId,
   } = useZkProsbaLineKeysStockFilter(
     prosbaScopeLines,
     uncoveredLineKeys,
-    prosbaStockFilterEnabled
+    prosbaStockFilterEnabled,
+    prosbaScopeConfigured ? { orderMarkedKeys: prosbaActionLineKeys } : undefined
   );
   const displayProsbaCardAction = useMemo(
     () =>
@@ -217,8 +233,15 @@ export function ZkWatchCard({
         stockLoading: prosbaStockLoading,
         allOnStock: prosbaAllOnStock,
         hasOpenMatchingProsba,
+        explicitScopeSelection: prosbaScopeConfigured,
       }),
-    [prosbaCardAction, prosbaStockLoading, prosbaAllOnStock, hasOpenMatchingProsba]
+    [
+      prosbaCardAction,
+      prosbaStockLoading,
+      prosbaAllOnStock,
+      hasOpenMatchingProsba,
+      prosbaScopeConfigured,
+    ]
   );
   const prosbaButtonLabel = useMemo(() => {
     if (displayProsbaCardAction.kind === "view_open") {
@@ -230,13 +253,11 @@ export function ZkWatchCard({
     ) {
       return undefined;
     }
-    const sourceCount =
-      displayProsbaCardAction.kind === "supplement"
-        ? (displayProsbaCardAction.lineKeys?.length ?? uncoveredLineKeys.length)
-        : uncoveredLineKeys.length;
-    const filteredCount = prosbaStockFilterEnabled
-      ? prosbaStockFilteredKeys.length
-      : sourceCount;
+    const sourceCount = prosbaActionLineKeys.length;
+    const filteredCount =
+      prosbaScopeConfigured || !prosbaStockFilterEnabled
+        ? sourceCount
+        : prosbaStockFilteredKeys.length;
     return formatZkProsbaCardActionLabelAfterStockFilter({
       action: displayProsbaCardAction,
       stockLoading: prosbaStockLoading,
@@ -244,34 +265,43 @@ export function ZkWatchCard({
       filteredCount,
       sourceCount,
       hasOpenMatchingProsba,
+      explicitScopeSelection: prosbaScopeConfigured,
     });
   }, [
     displayProsbaCardAction,
+    prosbaActionLineKeys.length,
+    prosbaScopeConfigured,
     prosbaStockFilterEnabled,
     prosbaStockFilteredKeys.length,
-    uncoveredLineKeys.length,
     prosbaStockLoading,
     prosbaAllOnStock,
     hasOpenMatchingProsba,
   ]);
 
   const prosbaPrefillOptions: ZkProsbaPrefillOptions | undefined = useMemo(() => {
-    const stockFilteredKeys =
-      prosbaStockFilterEnabled && prosbaStockFilteredKeys.length > 0
-        ? prosbaStockFilteredKeys
+    const lineKeys = resolveZkWatchProsbaPrefillLineKeys({
+      action: prosbaCardAction,
+      uncoveredLineKeys,
+      prosbaScopeConfigured,
+      stockFilteredKeys: prosbaStockFilteredKeys,
+      applyStockFilter: prosbaStockFilterEnabled,
+    });
+    if (prosbaCardAction.kind === "supplement") {
+      return lineKeys?.length
+        ? { lineKeys, mode: "supplement" }
         : undefined;
-    if (displayProsbaCardAction.kind === "supplement") {
-      return {
-        lineKeys: stockFilteredKeys ?? displayProsbaCardAction.lineKeys,
-        mode: "supplement",
-      };
     }
-    if (displayProsbaCardAction.kind === "new_prosba") {
-      const keys = stockFilteredKeys ?? displayProsbaCardAction.lineKeys;
-      return keys?.length ? { lineKeys: keys } : undefined;
+    if (prosbaCardAction.kind === "new_prosba") {
+      return lineKeys?.length ? { lineKeys } : undefined;
     }
     return undefined;
-  }, [displayProsbaCardAction, prosbaStockFilterEnabled, prosbaStockFilteredKeys]);
+  }, [
+    prosbaCardAction,
+    uncoveredLineKeys,
+    prosbaScopeConfigured,
+    prosbaStockFilteredKeys,
+    prosbaStockFilterEnabled,
+  ]);
 
   const prosbaHref = prosbaHrefFromZkWatch(watch, prosbaPrefillOptions);
 
@@ -295,7 +325,11 @@ export function ZkWatchCard({
   const prosbaActionCount = uncoveredLineKeys.length;
 
   function handleProsbaClick(event: MouseEvent<HTMLAnchorElement>) {
-    const ok = stashZkProsbaPrefill(watch, prosbaPrefillOptions);
+    setProsbaStockArmed(true);
+    const ok = stashZkProsbaPrefill(watch, {
+      ...prosbaPrefillOptions,
+      stockByTwId: prosbaStockByTwId,
+    });
     if (!ok) {
       event.preventDefault();
       setError({
@@ -565,6 +599,7 @@ export function ZkWatchCard({
             className="flex items-center justify-end gap-1"
             onMouseEnter={() => setProsbaStockArmed(true)}
             onFocusCapture={() => setProsbaStockArmed(true)}
+            onMouseDown={() => setProsbaStockArmed(true)}
           >
             <ZkWatchProsbaActions
               archived={archived}

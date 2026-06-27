@@ -281,6 +281,12 @@ export async function actionSetUserPassword(
 
   if (error) return { error: error.message };
 
+  const { error: profileError } = await supabase
+    .from("profiles")
+    .update({ must_change_password: false })
+    .eq("id", userId);
+  if (profileError) return { error: profileError.message };
+
   return { success: true };
 }
 
@@ -299,11 +305,16 @@ export async function actionGenerateSalesPersonInviteLink(
   return { success: true, invite: result };
 }
 
+type FinalizeSalesPersonInviteUser = {
+  id: string;
+  email: string;
+};
+
 /** Po ustawieniu hasła z linku zaproszenia — dopina powiązanie z handlowcem. */
-export async function actionFinalizeSalesPersonInvite(): Promise<
-  { success: true } | { error: string }
-> {
-  const session = await getSessionUser();
+export async function actionFinalizeSalesPersonInvite(
+  knownUser?: FinalizeSalesPersonInviteUser
+): Promise<{ success: true } | { error: string }> {
+  const session = knownUser ?? (await getSessionUser());
   if (!session) return { error: "Brak aktywnej sesji." };
 
   const supabase = createAdminClient();

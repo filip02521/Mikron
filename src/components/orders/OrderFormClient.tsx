@@ -77,8 +77,9 @@ import {
 } from "@/lib/orders/zk-watch-prosba-prefill";
 import { clearUnseenNewZkLineKeys, removeUnseenNewZkLineKeys } from "@/lib/client/zk-watch-new-lines-snapshot";
 import { ProsbaStockConfirmDialog } from "@/components/orders/ProsbaStockConfirmDialog";
-import { buildProsbaSubmitStockConfirm, buildProsbaSubmitZkQuantityConfirm, formatProsbaZkQuantityFormBanner } from "@/lib/orders/prosba-stock-check";
+import { buildProsbaSubmitStockConfirm, buildProsbaSubmitZkQuantityConfirm, formatProsbaZkQuantityFormBanner, applyProsbaLineStockMap, collectProsbaLineTwIdsMissingStock } from "@/lib/orders/prosba-stock-check";
 import { handleProsbaStockSubmitError } from "@/lib/orders/prosba-stock-submit-error";
+import { useTeethExemptTwIds } from "@/components/layout/TeethExemptContext";
 
 function formatSubmitResult(
   r: {
@@ -186,6 +187,7 @@ export function OrderFormClient({
   const { readOnly: panelReadOnly } = useAdminPanelPreview();
   const readOnly = forceReadOnly || panelReadOnly;
   const tourDemo = useSalesOnboardingDemo("prosba");
+  const teethExemptTwIds = useTeethExemptTwIds();
   const lockedId = lockedSalesPerson?.id ?? "";
   const [requestKind, setRequestKind] = useState<IndividualRequestKind>("zamowienie");
   const [informacjaPath, setInformacjaPath] = useState<InformacjaFlowPath>(
@@ -284,7 +286,7 @@ export function OrderFormClient({
 
     let cancelled = false;
 
-    function applyZkPrefill(prefill: ZkProsbaPrefill) {
+    async function applyZkPrefill(prefill: ZkProsbaPrefill) {
       if (!prefill.lines.length) return;
       const clientName = prefill.clientName?.trim() || "";
       const clientKhId = prefill.clientKhId ?? null;
@@ -307,7 +309,7 @@ export function OrderFormClient({
           lineKeys: prefill.lineKeys,
         });
       }
-      const baseLines = prefill.lines.map((line) => ({
+      let baseLines = prefill.lines.map((line) => ({
         id: line.id,
         supplierId: "",
         salesPersonId: lockedId,
@@ -324,7 +326,23 @@ export function OrderFormClient({
         stockSource: line.stockSource,
         zkQuantity: line.zkQuantity ?? null,
       }));
-      setGroups([baseLines]);
+
+      const twIds = collectProsbaLineTwIdsMissingStock(baseLines, nextRequestKind, teethExemptTwIds);
+      if (twIds.length > 0) {
+        try {
+          const { actionFetchProsbaLineStock } = await import("@/app/actions/subiekt");
+          const stock = await actionFetchProsbaLineStock(twIds);
+          if (!cancelled) {
+            baseLines = applyProsbaLineStockMap(baseLines, stock).next as typeof baseLines;
+          }
+        } catch {
+          /* stan — best effort; useProsbaLinesStockSync dogoni */
+        }
+      }
+
+      if (!cancelled) {
+        setGroups([baseLines]);
+      }
     }
 
     async function loadZkPrefill() {
@@ -334,7 +352,7 @@ export function OrderFormClient({
       const fromStorage = readZkProsbaPrefill();
       if (fromStorage?.lines.length) {
         if (!cancelled) {
-          applyZkPrefill(fromStorage);
+          await applyZkPrefill(fromStorage);
           clearZkProsbaPrefill();
         }
         return;
@@ -356,7 +374,7 @@ export function OrderFormClient({
             requestKindFromUrl
           );
           if (!cancelled && fromWatch?.lines.length) {
-            applyZkPrefill(fromWatch);
+            await applyZkPrefill(fromWatch);
             return;
           }
           if (!cancelled && zkLineKeys?.length) {
@@ -370,7 +388,7 @@ export function OrderFormClient({
         if (zk) {
           const fromServer = await actionGetZkProsbaPrefill(zk, delegateId || undefined);
           if (!cancelled && fromServer?.lines.length) {
-            applyZkPrefill(fromServer);
+            await applyZkPrefill(fromServer);
             return;
           }
         }
@@ -393,7 +411,7 @@ export function OrderFormClient({
         zkWatch: searchParams.get("zkWatch"),
       });
       if (!cancelled && fromUrl?.lines.length && !zkLineKeys?.length) {
-        applyZkPrefill(fromUrl);
+        await applyZkPrefill(fromUrl);
       }
     }
 
@@ -401,7 +419,7 @@ export function OrderFormClient({
     return () => {
       cancelled = true;
     };
-  }, [lockedId, searchParams, tourDemo]);
+  }, [lockedId, searchParams, tourDemo, teethExemptTwIds]);
 
   const supplierRefs = useMemo(() => toAppSupplierRefs(suppliers), [suppliers]);
 
@@ -588,7 +606,7 @@ export function OrderFormClient({
     const mergedAck = { ...pendingSubmitAckRef.current, ...ack };
 
     if (requestKind === "zamowienie" && !mergedAck.acknowledgeSufficientStock) {
-      const stockConfirm = buildProsbaSubmitStockConfirm(entries, "zamowienie");
+      const stockConfirm = buildProsbaSubmitStockConfirm(entries, "zamowienie", teethExemptTwIds);
       if (stockConfirm) {
         pendingSubmitEntriesRef.current = entries;
         pendingSubmitAckRef.current = mergedAck;

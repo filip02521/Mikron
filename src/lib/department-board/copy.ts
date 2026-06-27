@@ -13,20 +13,27 @@ export const DEPARTMENT_BOARD_ANNOUNCEMENTS_EXPLAINER = {
 
 export const DEPARTMENT_BOARD_QUESTIONS_EXPLAINER = {
   title: "Pytania do zakupów",
-  body: "Pytania i odpowiedzi są widoczne dla całego działu.",
+  body: "Widoczne dla całego działu.",
 };
 
 export const DEPARTMENT_BOARD_QUESTIONS_FORM = {
   title: "Zadaj pytanie",
-  titlePlaceholder: "Np. Termin dostawy u dostawcy X",
-  bodyPlaceholder: "Dostawca, numer ZK, co już wiesz…",
+  titlePlaceholder: "Np. termin dostawy",
+  bodyPlaceholder: "Szczegóły pytania…",
   titleLabel: "Temat",
   bodyLabel: "Treść",
-  submit: "Wyślij pytanie",
+  productLabel: "Produkt (opcjonalnie)",
+  productPlaceholder: "Symbol, nazwa lub kod Mikran",
+  productLinked: "Wybrano z Subiekta",
+  productSelected: "Wybrano",
+  productRemove: "Usuń",
+  productChange: "Zmień",
+  productContextLabel: "Produkt",
+  productSearchLoading: "Szukam…",
+  submit: "Wyślij",
   submitting: "Wysyłanie…",
-  successToast: "Pytanie wysłane. Odpowiedź pojawi się na liście.",
-  /** Jedna linia pod nagłówkiem formularza — reszta jest w opisie sekcji i placeholderach. */
-  introBeforeLink: "Zamówienie do realizacji zgłaszasz w",
+  successToast: "Pytanie wysłane.",
+  introBeforeLink: "Zamówienie towaru —",
   introLinkLabel: "Nowa prośba",
   expandHint: "Rozwiń",
 };
@@ -37,7 +44,8 @@ export const DEPARTMENT_BOARD_QUESTIONS_FILTERS = {
   toolbarLabel: "Filtruj listę",
   toolbarHint:
     "Zawęż wątki według statusu. Liczby przy chipach pokazują wynik w obrębie aktywnego filtra i wyszukiwania.",
-  searchHint: "Szukaj po temacie, treści pytania, autorze lub fragmencie odpowiedzi zakupów.",
+  searchHint:
+    "Szukaj po temacie, treści pytania, produkcie, autorze lub fragmencie odpowiedzi zakupów.",
   chips: {
     all: "Wszystkie aktywne pytania na tablicy.",
     open: "Pytania bez odpowiedzi działu zakupów.",
@@ -57,3 +65,13 @@ export const DEPARTMENT_BOARD_NOTES_DISTINCTION_SALES =
 
 export const DEPARTMENT_BOARD_NOTES_DISTINCTION_PROCUREMENT =
   "Wewnętrzne notatki działu (prywatne/wspólne) nadal są w Notatki — ta strona dotyczy komunikacji z handlowcami.";
+
+export function departmentBoardOpenQuestionsLabel(count: number): string {
+  if (count <= 0) return "";
+  if (count === 1) return "1 otwarte pytanie na tablicy";
+  if (count >= 2 && count < 5) return `${count} otwarte pytania na tablicy`;
+  return `${count} otwartych pytań na tablicy`;
+}
+
+export const DEPARTMENT_BOARD_PROCUREMENT_OPEN_QUESTIONS_HINT =
+  "Handlowcy czekają na odpowiedź działu zakupów.";

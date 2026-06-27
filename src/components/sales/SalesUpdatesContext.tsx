@@ -10,12 +10,21 @@ import {
 } from "react";
 import { createPersistedFlagStore } from "@/lib/client/persisted-flag-store";
 import { usePersistedFlag } from "@/lib/client/use-persisted-flag";
+import { useClientHydrated } from "@/lib/client/use-client-hydrated";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/Button";
 import { SystemNotice } from "@/components/ui/SystemNotice";
 import { MICROCOPY } from "@/lib/ui/microcopy";
+import { useBoardNotificationSoundEffects } from "@/lib/client/board-notification-sound-effects";
+import {
+  isSalesBoardAnswerSoundEnabled,
+  salesBoardAnswerSoundMutedStore,
+} from "@/lib/client/sales-board-answer-sound";
+import { unlockNotificationSound } from "@/lib/client/notification-sound";
 
 const POLL_MS = 45_000;
+/** Pierwszy poll z opóźnieniem — SSR licznika może być nieaktualny; unikamy fałszywego dźwięku. */
+const INITIAL_POLL_DELAY_MS = 4_000;
 const AUTO_REFRESH_MS = 3 * 60_000;
 const NOTATNIK_AUTO_REFRESH_COOLDOWN_MS = 15_000;
 const MOJE_AUTO_REFRESH_COOLDOWN_MS = 12_000;
@@ -30,6 +39,8 @@ type SalesUpdatesContextValue = {
   refreshNow: () => void;
   autoRefresh: boolean;
   setAutoRefresh: (value: boolean) => void;
+  boardAnswerSound: boolean;
+  setBoardAnswerSound: (value: boolean) => void;
   lastSyncedAt: number | null;
   lastPollAt: number | null;
 };
@@ -40,30 +51,44 @@ export function useSalesUpdates() {
   return useContext(SalesUpdatesContext);
 }
 
-async function fetchVersion(): Promise<string | null> {
+async function fetchVersion(): Promise<{
+  version: string | null;
+  unseenOwnAnswers: number | null;
+}> {
   try {
     const res = await fetch("/api/sales/activity-version", {
       cache: "no-store",
     });
-    if (!res.ok) return null;
-    const body = (await res.json()) as { version?: string };
-    return body.version ?? null;
+    if (!res.ok) return { version: null, unseenOwnAnswers: null };
+    const body = (await res.json()) as {
+      version?: string;
+      unseenOwnAnswers?: number;
+    };
+    return {
+      version: body.version ?? null,
+      unseenOwnAnswers:
+        typeof body.unseenOwnAnswers === "number" ? body.unseenOwnAnswers : null,
+    };
   } catch {
-    return null;
+    return { version: null, unseenOwnAnswers: null };
   }
 }
 
 export function SalesUpdatesProvider({
   children,
   initialVersion,
+  initialUnseenOwnAnswers = 0,
   enabled,
   sessionSalesPersonId = null,
+  soundBaselineReady = true,
 }: {
   children: React.ReactNode;
   initialVersion: string | null;
+  initialUnseenOwnAnswers?: number;
   enabled: boolean;
   /** Własny profil handlowca — do wykrycia podglądu ?dla= innego handlowca. */
   sessionSalesPersonId?: string | null;
+  soundBaselineReady?: boolean;
 }) {
   const router = useRouter();
   const pathname = usePathname();
@@ -76,6 +101,9 @@ export function SalesUpdatesProvider({
   const [baseline, setBaseline] = useState(initialVersion);
   const [latest, setLatest] = useState(initialVersion);
   const autoRefresh = usePersistedFlag(autoRefreshStore);
+  const hydrated = useClientHydrated();
+  const boardAnswerSoundMuted = usePersistedFlag(salesBoardAnswerSoundMutedStore);
+  const boardAnswerSound = isSalesBoardAnswerSoundEnabled(boardAnswerSoundMuted);
   const [lastSyncedAt, setLastSyncedAt] = useState<number | null>(null);
   const [lastPollAt, setLastPollAt] = useState<number | null>(null);
   const syncingRef = useRef(false);
@@ -92,6 +120,20 @@ export function SalesUpdatesProvider({
   const setAutoRefresh = useCallback((value: boolean) => {
     autoRefreshStore.setValue(value);
   }, []);
+
+  const setBoardAnswerSound = useCallback((value: boolean) => {
+    salesBoardAnswerSoundMutedStore.setValue(!value);
+    if (value) {
+      void unlockNotificationSound();
+    }
+  }, []);
+
+  const { applyCount: applyUnseenOwnAnswersCount } = useBoardNotificationSoundEffects({
+    enabled: effectiveEnabled,
+    soundEnabled: hydrated && boardAnswerSound,
+    initialCount: initialUnseenOwnAnswers,
+    baselineReady: soundBaselineReady,
+  });
 
   const syncBaseline = useCallback((version: string | null) => {
     setBaseline(version);
@@ -113,8 +155,9 @@ export function SalesUpdatesProvider({
           }
         }
         router.refresh();
-        const v = await fetchVersion();
-        if (v) syncBaseline(v);
+        const { version, unseenOwnAnswers } = await fetchVersion();
+        if (version) syncBaseline(version);
+        applyUnseenOwnAnswersCount(unseenOwnAnswers);
         const now = Date.now();
         setLastSyncedAt(now);
         setLastPollAt(now);
@@ -124,29 +167,29 @@ export function SalesUpdatesProvider({
     };
 
     void run();
-  }, [router, syncBaseline, pathname, teamPreviewActive]);
+  }, [router, syncBaseline, pathname, teamPreviewActive, applyUnseenOwnAnswersCount]);
 
   const poll = useCallback(async () => {
-    const v = await fetchVersion();
-    if (!v) return;
+    const { version, unseenOwnAnswers } = await fetchVersion();
+    applyUnseenOwnAnswersCount(unseenOwnAnswers);
+    if (!version) return;
     const now = Date.now();
-    setLatest(v);
+    setLatest(version);
     setLastPollAt(now);
-  }, []);
+  }, [applyUnseenOwnAnswersCount]);
 
   useEffect(() => {
     if (!effectiveEnabled) return;
     const timer = window.setTimeout(() => {
       void poll();
-    }, 0);
+    }, INITIAL_POLL_DELAY_MS);
     return () => window.clearTimeout(timer);
-  }, [effectiveEnabled, poll, pathname]);
+  }, [effectiveEnabled, poll]);
 
   useEffect(() => {
     if (!effectiveEnabled) return;
 
     const id = window.setInterval(() => {
-      if (document.visibilityState === "hidden") return;
       void poll();
     }, POLL_MS);
 
@@ -211,6 +254,8 @@ export function SalesUpdatesProvider({
         refreshNow,
         autoRefresh,
         setAutoRefresh,
+        boardAnswerSound,
+        setBoardAnswerSound,
         lastSyncedAt,
         lastPollAt,
       }}

@@ -163,13 +163,17 @@ describe("my-order-delivery-timing-display", () => {
   });
 
   it("dokNr w estimate — bez powtórzenia w detail", () => {
+    const deadlineKey = formatDateString(addDays(todayInWarsaw(), 5));
+    const deadlinePl = formatDateString(addDays(todayInWarsaw(), 5), "dd.MM.yyyy");
+    const syncedKey = formatDateString(addDays(todayInWarsaw(), -1));
+    const syncedPl = formatDateString(addDays(todayInWarsaw(), -1), "dd.MM.yyyy");
     const display = buildMyOrderDeliveryTimingDisplay(
       row({
-        timingLabel: "do 24.06.2026 · ZD 173/M/06/2026",
+        timingLabel: `do ${deadlinePl} · ZD 173/M/06/2026`,
         zdFulfillment: {
-          deadline: "2026-06-24",
+          deadline: deadlineKey,
           dokNr: "ZD 173/M/06/2026",
-          syncedAt: "2026-06-19T08:00:00Z",
+          syncedAt: `${syncedKey}T08:00:00Z`,
           source: "zd",
         },
         zdEtaNoMatch: true,
@@ -177,24 +181,27 @@ describe("my-order-delivery-timing-display", () => {
     );
     expect(display?.estimate).toContain("ZD 173/M/06/2026");
     expect(display?.detail).not.toContain("ZD 173/M/06/2026 ·");
-    expect(display?.detail).toContain("zaktualizowano 19.06.2026");
+    expect(display?.detail).toContain(`zaktualizowano ${syncedPl}`);
   });
 
   it("grupa mieszana — callout ZD z podpowiedzią o szacunku przy produktach", () => {
+    const deadlineKey = formatDateString(addDays(todayInWarsaw(), 5));
+    const deadlinePl = formatDateString(addDays(todayInWarsaw(), 5), "dd.MM.yyyy");
+    const syncedKey = formatDateString(addDays(todayInWarsaw(), -2));
     const display = buildMyOrderDeliveryTimingDisplay(
       row({
-        timingLabel: "do 24.06.2026 · ZD 173/M/06/2026",
+        timingLabel: `do ${deadlinePl} · ZD 173/M/06/2026`,
         zdFulfillment: {
-          deadline: "2026-06-24",
+          deadline: deadlineKey,
           dokNr: "ZD 173/M/06/2026",
-          syncedAt: "2026-06-18T08:00:00Z",
+          syncedAt: `${syncedKey}T08:00:00Z`,
           source: "zd",
         },
         zdEtaNoMatch: true,
       })
     );
     expect(display?.title).toBe("Planowana dostawa z dokumentu ZD");
-    expect(display?.estimate).toContain("24.06.2026");
+    expect(display?.estimate).toContain(deadlinePl);
     expect(display?.detail).toContain(MY_ORDER_HISTORY_ESTIMATE_MIXED_ZD_GROUP_DETAIL);
   });
 

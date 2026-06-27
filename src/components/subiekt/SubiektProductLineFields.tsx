@@ -39,7 +39,7 @@ import {
   ProsbaLineFieldMessages,
   type ProsbaLineMessageItem,
 } from "@/components/orders/ProsbaLineFieldMessages";
-import { ProsbaProductStockStatus } from "@/components/orders/ProsbaProductStockStatus";
+import { ProsbaProductStockStatus, ProsbaTeethExemptHint } from "@/components/orders/ProsbaProductStockStatus";
 import type { ProsbaLineFieldMap } from "@/lib/orders/prosba-line-field-validation";
 import {
   MAX_MIKRAN_CODE_LEN,
@@ -771,7 +771,10 @@ export function SubiektProductLineFields({
       ) : null}
 
       {prosba && requestKind === "zamowienie" ? (
-        <ProsbaProductStockStatus line={value as ProductLineDraft} requestKind={requestKind} />
+        <>
+          <ProsbaTeethExemptHint line={value as ProductLineDraft} />
+          <ProsbaProductStockStatus line={value as ProductLineDraft} requestKind={requestKind} />
+        </>
       ) : null}
 
       {!enabled && configFeedback && !delegateAlerts && !prosba ? (

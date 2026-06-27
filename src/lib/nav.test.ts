@@ -201,10 +201,23 @@ function salesNavItem(href: string, badge?: number): NavItem {
   throw new Error(`missing nav item ${href}`);
 }
 
+function operationsNavItem(href: string, badge?: number): NavItem {
+  const groups = navForRole("zakupy", { departmentBoardQuestions: 0 });
+  for (const group of groups) {
+    const item = group.items.find((i) => i.href === href);
+    if (item) return { ...item, badge };
+  }
+  throw new Error(`missing nav item ${href}`);
+}
+
 describe("navItemHasDueReminders", () => {
   it("zwraca true dla Notatnik i ZK z badge > 0", () => {
     expect(navItemHasDueReminders(salesNavItem("/notatnik", 2))).toBe(true);
     expect(navItemHasDueReminders(salesNavItem("/zk", 1))).toBe(true);
+  });
+
+  it("zwraca true dla tablicy zakupów z otwartymi pytaniami", () => {
+    expect(navItemHasDueReminders(operationsNavItem("/zakupy/tablica", 2))).toBe(true);
   });
 
   it("zwraca false bez badge lub na innych ścieżkach", () => {
@@ -212,6 +225,7 @@ describe("navItemHasDueReminders", () => {
     expect(navItemHasDueReminders(salesNavItem("/zk"))).toBe(false);
     expect(navItemHasDueReminders(salesNavItem("/moje", 3))).toBe(false);
     expect(navItemHasDueReminders(salesNavItem("/tablica", 2))).toBe(false);
+    expect(navItemHasDueReminders(operationsNavItem("/zakupy/tablica", 0))).toBe(false);
   });
 });
 
@@ -219,6 +233,7 @@ describe("navItemDisplayTone", () => {
   it("używa amber w spoczynku przy przypomnieniach", () => {
     expect(navItemDisplayTone(salesNavItem("/notatnik", 2), false)).toBe("amber");
     expect(navItemDisplayTone(salesNavItem("/zk", 1), false)).toBe("amber");
+    expect(navItemDisplayTone(operationsNavItem("/zakupy/tablica", 2), false)).toBe("amber");
   });
 
   it("zachowuje ton pozycji gdy aktywna lub brak przypomnień", () => {
