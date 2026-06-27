@@ -26,6 +26,10 @@ export type UnseenBoardAnswer = {
   latestActivityAt: string;
 };
 
+export function countUnseenOwnBoardAnswers(items: readonly UnseenBoardAnswer[]): number {
+  return items.filter((item) => item.isOwnQuestion).length;
+}
+
 export function pickUnseenAnswerPreview(
   items: UnseenBoardAnswer[]
 ): UnseenBoardAnswer | null {

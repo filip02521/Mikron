@@ -32,6 +32,7 @@ export const PAGE_TITLES = {
   adminSales: "Handlowcy",
   adminSuppliers: "Dostawcy",
   adminProducts: "Katalog produktów",
+  adminTeethProducts: "Produkty zębne",
   adminVacations: "Urlopy",
   adminReports: "Zgłoszenia",
   procurementBoard: "Tablica",
@@ -51,6 +52,8 @@ export const PAGE_DESCRIPTIONS: Partial<Record<keyof typeof PAGE_TITLES, string>
   podsumowanie: "Kolejka dnia, prośby handlowców i harmonogram dostawców",
   kolejka: "Przyjęcie towaru i kolejka realizacji magazynu",
   admin: "Konfiguracja systemu, użytkownicy i narzędzia serwisowe",
+  adminTeethProducts:
+    "Lista towarów z wyłączoną kontrolą stanu magazynowego przy prośbach o zamówienie",
 };
 
 export function pageMetadataFor(

@@ -15,6 +15,11 @@ vi.mock("@/components/ui/ModalShell", () => ({
   }) => (open ? <div data-testid="question-modal">{children}</div> : null),
 }));
 
+vi.mock("@/app/actions/subiekt", () => ({
+  actionSubiektSuggestProductsForZdLookup: vi.fn().mockResolvedValue({ ok: true, items: [] }),
+  actionSubiektSuggestionsEnabled: vi.fn().mockResolvedValue({ enabled: false }),
+}));
+
 describe("DepartmentBoardQuestionForm", () => {
   afterEach(() => {
     cleanup();
@@ -24,6 +29,7 @@ describe("DepartmentBoardQuestionForm", () => {
   const baseProps = {
     title: "Temat",
     body: "Treść pytania",
+    product: { symbol: "", product: "", subiektTwId: null, mikranCode: "" },
     error: null,
     saving: false,
     tourDemo: false,
@@ -31,6 +37,7 @@ describe("DepartmentBoardQuestionForm", () => {
     hasQuestions: false,
     onTitleChange: vi.fn(),
     onBodyChange: vi.fn(),
+    onProductChange: vi.fn(),
     onSubmit: vi.fn().mockResolvedValue(undefined),
   };
 
@@ -44,7 +51,7 @@ describe("DepartmentBoardQuestionForm", () => {
     expect(screen.getByTestId("question-modal")).toBeTruthy();
 
     const modal = screen.getByTestId("question-modal");
-    fireEvent.click(within(modal).getByRole("button", { name: "Wyślij pytanie" }));
+    fireEvent.click(within(modal).getByRole("button", { name: "Wyślij" }));
 
     await vi.waitFor(() => {
       expect(onSubmit).toHaveBeenCalled();
@@ -60,7 +67,7 @@ describe("DepartmentBoardQuestionForm", () => {
 
     fireEvent.click(screen.getByLabelText("Zadaj pytanie"));
     const modal = screen.getByTestId("question-modal");
-    fireEvent.click(within(modal).getByRole("button", { name: "Wyślij pytanie" }));
+    fireEvent.click(within(modal).getByRole("button", { name: "Wyślij" }));
 
     await vi.waitFor(() => {
       expect(screen.queryByTestId("question-modal")).toBeNull();

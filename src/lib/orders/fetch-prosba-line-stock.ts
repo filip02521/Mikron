@@ -1,9 +1,14 @@
 import {
   PROSBA_STOCK_FETCH_MAX_CONCURRENT,
   PROSBA_STOCK_FETCH_SERVER_TIMEOUT_MS,
+  collectProsbaLineTwIdsMissingStock,
   stockSnapshotFromSubiektProduct,
   type ProsbaLineStockSnapshot,
 } from "@/lib/orders/prosba-stock-check";
+import {
+  enrichZkProsbaPrefillWithStock,
+  type ZkProsbaPrefill,
+} from "@/lib/orders/zk-watch-prosba-prefill";
 import { isSubiektReachable } from "@/lib/subiekt/availability";
 import { isSubiektConfigured } from "@/lib/subiekt/config";
 import { getSubiektProduct } from "@/lib/subiekt/api";
@@ -64,4 +69,15 @@ export async function fetchProsbaLineStock(
   } finally {
     if (timeoutId) clearTimeout(timeoutId);
   }
+}
+
+/** Pobiera stan z Subiekta i uzupełnia linie prefill ZK (Server Action / SSR). */
+export async function enrichZkProsbaPrefillWithLiveStock(
+  prefill: ZkProsbaPrefill
+): Promise<ZkProsbaPrefill> {
+  if (prefill.requestKind === "informacja") return prefill;
+  const twIds = collectProsbaLineTwIdsMissingStock(prefill.lines, "zamowienie");
+  if (!twIds.length) return prefill;
+  const stock = await fetchProsbaLineStock(twIds);
+  return enrichZkProsbaPrefillWithStock(prefill, stock);
 }

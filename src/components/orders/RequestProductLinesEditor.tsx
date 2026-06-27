@@ -21,6 +21,7 @@ import { ProsbaProductStockSummary } from "@/components/orders/ProsbaProductStoc
 import { ProsbaZkQuantityHint } from "@/components/orders/ProsbaProductStockStatus";
 import { filterProsbaLinesWithSufficientStock } from "@/lib/orders/prosba-stock-check";
 import { useProsbaLinesStockSync } from "@/hooks/useProsbaLinesStockSync";
+import { useTeethExemptTwIds } from "@/components/layout/TeethExemptContext";
 import {
   assessProsbaLineFields,
   prosbaLineHasFieldIssues,
@@ -106,12 +107,13 @@ export function RequestProductLinesEditor({
   const [subiektOfflineFeedback, setSubiektOfflineFeedback] =
     useState<SubiektFeedback | null>(null);
   const visibleSubiektOfflineFeedback = prosba ? subiektOfflineFeedback : null;
+  const teethExemptTwIds = useTeethExemptTwIds();
   const stockChecksEnabled = requestKind === "zamowienie";
   const sufficientStockCount = stockChecksEnabled
-    ? filterProsbaLinesWithSufficientStock(lines, requestKind).length
+    ? filterProsbaLinesWithSufficientStock(lines, requestKind, teethExemptTwIds).length
     : 0;
 
-  useProsbaLinesStockSync(lines, onChange, requestKind, stockChecksEnabled);
+  useProsbaLinesStockSync(lines, onChange, requestKind, stockChecksEnabled, teethExemptTwIds);
 
   useEffect(() => {
     if (!prosba) return;

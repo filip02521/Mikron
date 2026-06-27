@@ -17,6 +17,8 @@ import {
   isZkProsbaScopePartialStock,
   type ZkProsbaScopeLineInput,
 } from "@/lib/orders/prosba-stock-check";
+import { useTeethExemptTwIds } from "@/components/layout/TeethExemptContext";
+import { shouldRedirectZkRefreshToOpenProsba } from "@/lib/sales/zk-watch-refresh-diff";
 import { appendMojeFocusOrderIds } from "@/lib/orders/moje-order-focus";
 import {
   prosbaHrefFromZkWatch,
@@ -84,6 +86,7 @@ export function ZkWatchRefreshPromptModal({
   onLater: () => void;
   onScopePatched?: (watch: SalesZkWatch) => void;
 }) {
+  const teethExemptTwIds = useTeethExemptTwIds();
   const lineViews = useMemo(() => buildZkWatchLineViews(watch), [watch]);
   const displayNumber = formatZkWatchDisplayNumber(watch.zk_number);
   const addedCount = uncoveredAddedKeys.length;
@@ -124,8 +127,8 @@ export function ZkWatchRefreshPromptModal({
 
   const suggestedOrderKeys = useMemo(() => {
     if (!open || stockLoading || stockFetchFailed) return [] as string[];
-    return deriveZkProsbaScopeSuggestedOrderKeys(addedScopeLines, stockByTwId);
-  }, [open, stockLoading, stockFetchFailed, addedScopeLines, stockByTwId]);
+    return deriveZkProsbaScopeSuggestedOrderKeys(addedScopeLines, stockByTwId, teethExemptTwIds);
+  }, [open, stockLoading, stockFetchFailed, addedScopeLines, stockByTwId, teethExemptTwIds]);
 
   if (selectionEpoch !== selectionSessionKey) {
     setSelectionEpoch(selectionSessionKey);
@@ -147,7 +150,7 @@ export function ZkWatchRefreshPromptModal({
   const skippedCount = unmarkedCount;
   const autoMarkedCount =
     !stockLoading && selectionInitialized && !stockFetchFailed
-      ? deriveZkProsbaScopeSuggestedOrderKeys(addedScopeLines, stockByTwId).length
+      ? deriveZkProsbaScopeSuggestedOrderKeys(addedScopeLines, stockByTwId, teethExemptTwIds).length
       : 0;
   const hasOpenMatchingProsba = orderHints.matchingOpenRequestCount > 0;
   const prosbaInTokuHref = useMemo(
@@ -162,7 +165,11 @@ export function ZkWatchRefreshPromptModal({
       ),
     [watch, orderHints.matchingOpenRequestIds]
   );
-  const redirectToOpenProsba = allOnStock && hasOpenMatchingProsba;
+  const redirectToOpenProsba = shouldRedirectZkRefreshToOpenProsba({
+    allOnStock,
+    hasOpenMatchingProsba,
+    linesToAddCount,
+  });
   const scopeSkippedMeta = zkWatchLineUiStateMeta("scope_excluded");
   const scopeOrderMeta = zkWatchLineUiStateMeta("uncovered");
 
@@ -215,7 +222,10 @@ export function ZkWatchRefreshPromptModal({
           uncoveredAddedKeys
         );
         onScopePatched?.(updated);
-        const ok = stashZkProsbaPrefill(updated, supplementOptions);
+        const ok = stashZkProsbaPrefill(updated, {
+          ...supplementOptions,
+          stockByTwId,
+        });
         if (!ok) {
           setPrefillError("Nie udało się przygotować pozycji — odśwież ZK z Subiekta.");
           return;

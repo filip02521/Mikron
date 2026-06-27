@@ -46,6 +46,10 @@ import {
 } from "@/lib/ui/ontime-theme";
 import { SalesListFilterEmptyHint } from "@/components/sales/SalesListEmptyHints";
 import { actionCreateQuestion } from "@/app/actions/department-board";
+import {
+  emptyBoardQuestionProductDraft,
+  type BoardQuestionProductDraft,
+} from "@/lib/department-board/question-product";
 import { useDeepLinkScrollOnce } from "@/hooks/use-deep-link-scroll-once";
 import { useDepartmentBoardSalesQuestionUrl } from "@/hooks/use-department-board-sales-question-url";
 
@@ -105,6 +109,9 @@ export function DepartmentBoardSalesClient({
   );
   const [questionTitle, setQuestionTitle] = useState("");
   const [questionBody, setQuestionBody] = useState("");
+  const [questionProduct, setQuestionProduct] = useState<BoardQuestionProductDraft>(
+    emptyBoardQuestionProductDraft()
+  );
   const [questionFormError, setQuestionFormError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [successToast, setSuccessToast] = useState(false);
@@ -153,9 +160,15 @@ export function DepartmentBoardSalesClient({
     setSaving(true);
     setQuestionFormError(null);
     try {
-      await actionCreateQuestion(questionTitle, questionBody);
+      await actionCreateQuestion(questionTitle, questionBody, {
+        symbol: questionProduct.symbol,
+        productName: questionProduct.product,
+        subiektTwId: questionProduct.subiektTwId,
+        mikranCode: questionProduct.mikranCode,
+      });
       setQuestionTitle("");
       setQuestionBody("");
+      setQuestionProduct(emptyBoardQuestionProductDraft());
       const nextFilter = currentSalesPersonId ? "mine" : "all";
       setQuestionFilter(nextFilter);
       setSuccessToast(true);
@@ -163,7 +176,6 @@ export function DepartmentBoardSalesClient({
     } catch (e) {
       const message = e instanceof Error ? e.message : "Nie udało się wysłać pytania.";
       setQuestionFormError(message);
-      throw new Error(message);
     } finally {
       setSaving(false);
     }
@@ -243,6 +255,7 @@ export function DepartmentBoardSalesClient({
               embedded
               title={questionTitle}
               body={questionBody}
+              product={questionProduct}
               error={questionFormError}
               saving={saving}
               tourDemo={tourDemo}
@@ -250,6 +263,9 @@ export function DepartmentBoardSalesClient({
               hasQuestions={board.questions.length > 0}
               onTitleChange={setQuestionTitle}
               onBodyChange={setQuestionBody}
+              onProductChange={(patch) =>
+                setQuestionProduct((current) => ({ ...current, ...patch }))
+              }
               onSubmit={() => void submitQuestion()}
             />
           ) : null}

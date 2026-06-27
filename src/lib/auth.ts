@@ -1,4 +1,5 @@
 import { fetchOwnProfileForSession } from "@/lib/auth/profile";
+import { assertPasswordChangeCompleted } from "@/lib/auth/must-change-password-guard";
 import {
   assertAdminNotInReadOnlyPanelPreview,
   assertAdminPanelAllowsOperationsMutations,
@@ -141,6 +142,7 @@ export async function getSessionUserForMutation(): Promise<SessionUser> {
   if (!user) {
     throw new Error("Brak sesji — zaloguj się ponownie.");
   }
+  assertPasswordChangeCompleted(user);
   await assertAdminPanelAllowsOperationsMutations(user);
   return user;
 }

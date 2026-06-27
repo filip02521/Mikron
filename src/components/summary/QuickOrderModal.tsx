@@ -44,6 +44,7 @@ import {
 import { ProsbaStockConfirmDialog } from "@/components/orders/ProsbaStockConfirmDialog";
 import { buildProsbaSubmitStockConfirm } from "@/lib/orders/prosba-stock-check";
 import { handleProsbaStockSubmitError } from "@/lib/orders/prosba-stock-submit-error";
+import { useTeethExemptTwIds } from "@/components/layout/TeethExemptContext";
 import type { AddIndividualOrdersEntry } from "@/lib/orders/individual-request-edit";
 
 export function QuickOrderModal({
@@ -59,6 +60,7 @@ export function QuickOrderModal({
   salesPeople: { id: string; name: string; email: string }[];
 }) {
   const router = useRouter();
+  const teethExemptTwIds = useTeethExemptTwIds();
   const [pending, start] = useTransition();
   const [pendingMessage, setPendingMessage] = useState<string | null>(null);
   const [requestKind, setRequestKind] = useState<IndividualRequestKind>("zamowienie");
@@ -220,7 +222,7 @@ export function QuickOrderModal({
       });
       return;
     }
-    const stockConfirm = buildProsbaSubmitStockConfirm(lines, requestKind);
+    const stockConfirm = buildProsbaSubmitStockConfirm(lines, requestKind, teethExemptTwIds);
     if (stockConfirm) {
       pendingSubmitRef.current = entries;
       setStockConfirmMessage(stockConfirm.message);

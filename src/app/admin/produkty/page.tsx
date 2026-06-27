@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { AdminSecondaryShell } from "@/components/admin/AdminSecondaryShell";
 import { ProductsCatalogAdminClient } from "@/components/admin/ProductsCatalogAdminClient";
 import {
@@ -29,6 +30,14 @@ export default async function AdminProduktyPage() {
       title="Katalog produktów"
       description="Własna baza powiązań produkt → dostawca (Subiekt tw_Id). Źródła: historia prośb, weryfikacja zakupów, import z ZD."
       iconKey="groupOrder"
+      action={
+        <Link
+          href="/admin/produkty/zeby"
+          className="inline-flex min-h-9 items-center rounded-md border border-slate-200 bg-white px-3 py-1.5 text-sm font-medium text-slate-700 shadow-sm hover:bg-slate-50"
+        >
+          Produkty zębne
+        </Link>
+      }
     >
       <ProductsCatalogAdminClient
         initial={page}

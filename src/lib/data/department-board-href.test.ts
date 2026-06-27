@@ -1,5 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { procurementBoardAnnouncementHref, procurementBoardQuestionHref, salesBoardAnnouncementHref } from "./department-board";
+import {
+  procurementBoardAnnouncementHref,
+  procurementBoardQuestionHref,
+  procurementBoardQuestionsListHref,
+  salesBoardAnnouncementHref,
+} from "./department-board";
 
 describe("salesBoardAnnouncementHref", () => {
   it("otwiera /moje na konkretnym ogłoszeniu", () => {
@@ -20,5 +25,11 @@ describe("procurementBoardQuestionHref", () => {
     expect(procurementBoardQuestionHref("q-1")).toBe(
       "/zakupy/tablica?widok=pytania&watek=q-1"
     );
+  });
+});
+
+describe("procurementBoardQuestionsListHref", () => {
+  it("otwiera widok pytań na tablicy zakupów", () => {
+    expect(procurementBoardQuestionsListHref()).toBe("/zakupy/tablica?widok=pytania");
   });
 });

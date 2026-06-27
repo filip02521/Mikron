@@ -81,6 +81,20 @@ async function main() {
     console.log("✓ migracja 059 — individual_orders.sales_cancelled_quantity");
   } else markFail();
 
+  const { error: teethError } = await supabase
+    .from("prosba_teeth_products")
+    .select("subiekt_tw_id")
+    .limit(0);
+  if (teethError?.message?.includes("prosba_teeth_products")) {
+    console.error("✗ Brak tabeli prosba_teeth_products — uruchom migrację 074.");
+    markFail();
+  } else if (teethError) {
+    console.error("✗ Błąd sprawdzania 074:", teethError.message);
+    markFail();
+  } else {
+    console.log("✓ migracja 074 — prosba_teeth_products");
+  }
+
   const { error: otpError } = await supabase.from("password_reset_otps").select("id").limit(0);
   if (otpError?.message?.includes("password_reset_otps")) {
     console.error("✗ Brak tabeli password_reset_otps — uruchom migrację 060.");

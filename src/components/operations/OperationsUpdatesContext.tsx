@@ -10,23 +10,36 @@ import {
 } from "react";
 import { createPersistedFlagStore } from "@/lib/client/persisted-flag-store";
 import { usePersistedFlag } from "@/lib/client/use-persisted-flag";
+import { useClientHydrated } from "@/lib/client/use-client-hydrated";
 import { usePathname, useRouter } from "next/navigation";
 import { Button } from "@/components/ui/Button";
 import { SystemNotice } from "@/components/ui/SystemNotice";
 import { systemNoticePanelStripClass } from "@/lib/ui/ontime-theme";
 import { MICROCOPY } from "@/lib/ui/microcopy";
+import { usePatchAppShellNavBadges } from "@/components/layout/AppShellMetricsContext";
+import {
+  boardQuestionsSoundMutedStore,
+  isBoardQuestionsSoundEnabled,
+} from "@/lib/client/board-questions-sound";
+import { useBoardNotificationSoundEffects } from "@/lib/client/board-notification-sound-effects";
+import { unlockNotificationSound } from "@/lib/client/notification-sound";
 
 const POLL_MS = 25_000;
+/** Pierwszy poll z opóźnieniem — SSR licznika może być nieaktualny; unikamy fałszywego dźwięku. */
+const INITIAL_POLL_DELAY_MS = 4_000;
 const AUTO_REFRESH_MS = 3 * 60_000;
 const FRESH_HIGHLIGHT_MS = 5_000;
 const STORAGE_KEY = "operations-auto-refresh";
 const autoRefreshStore = createPersistedFlagStore(STORAGE_KEY);
+const boardQuestionsSoundStore = boardQuestionsSoundMutedStore;
 
 type OperationsUpdatesContextValue = {
   hasUpdates: boolean;
   refreshNow: () => void;
   autoRefresh: boolean;
   setAutoRefresh: (value: boolean) => void;
+  boardQuestionsSound: boolean;
+  setBoardQuestionsSound: (value: boolean) => void;
   lastSyncedAt: number | null;
   lastPollAt: number | null;
   refreshGeneration: number;
@@ -41,33 +54,50 @@ export function useOperationsUpdates() {
   return useContext(OperationsUpdatesContext);
 }
 
-async function fetchVersion(): Promise<string | null> {
+async function fetchVersion(): Promise<{
+  version: string | null;
+  openBoardQuestions: number | null;
+}> {
   try {
     const res = await fetch("/api/operations/daily-panel-version", {
       cache: "no-store",
     });
-    if (!res.ok) return null;
-    const body = (await res.json()) as { version?: string };
-    return body.version ?? null;
+    if (!res.ok) return { version: null, openBoardQuestions: null };
+    const body = (await res.json()) as {
+      version?: string;
+      openBoardQuestions?: number;
+    };
+    return {
+      version: body.version ?? null,
+      openBoardQuestions:
+        typeof body.openBoardQuestions === "number" ? body.openBoardQuestions : null,
+    };
   } catch {
-    return null;
+    return { version: null, openBoardQuestions: null };
   }
 }
 
 export function OperationsUpdatesProvider({
   children,
   initialVersion,
+  initialOpenBoardQuestions = 0,
   enabled,
+  soundBaselineReady = true,
 }: {
   children: React.ReactNode;
   initialVersion: string | null;
+  initialOpenBoardQuestions?: number;
   enabled: boolean;
+  soundBaselineReady?: boolean;
 }) {
   const router = useRouter();
-  const pathname = usePathname();
+  const patchNavBadges = usePatchAppShellNavBadges();
+  const hydrated = useClientHydrated();
   const [baseline, setBaseline] = useState(initialVersion);
   const [latest, setLatest] = useState(initialVersion);
   const autoRefresh = usePersistedFlag(autoRefreshStore);
+  const boardQuestionsSoundMuted = usePersistedFlag(boardQuestionsSoundStore);
+  const boardQuestionsSound = isBoardQuestionsSoundEnabled(boardQuestionsSoundMuted);
   const [lastSyncedAt, setLastSyncedAt] = useState<number | null>(null);
   const [lastPollAt, setLastPollAt] = useState<number | null>(null);
   const [refreshGeneration, setRefreshGeneration] = useState(0);
@@ -85,6 +115,28 @@ export function OperationsUpdatesProvider({
     autoRefreshStore.setValue(value);
   }, []);
 
+  const setBoardQuestionsSound = useCallback((value: boolean) => {
+    boardQuestionsSoundStore.setValue(!value);
+    if (value) {
+      void unlockNotificationSound();
+    }
+  }, []);
+
+  const onBoardQuestionsCountApplied = useCallback(
+    (nextCount: number) => {
+      patchNavBadges({ departmentBoardQuestions: nextCount });
+    },
+    [patchNavBadges]
+  );
+
+  const { applyCount: applyOpenBoardQuestionsCount } = useBoardNotificationSoundEffects({
+    enabled,
+    soundEnabled: hydrated && boardQuestionsSound,
+    initialCount: initialOpenBoardQuestions,
+    baselineReady: soundBaselineReady,
+    onCountApplied: onBoardQuestionsCountApplied,
+  });
+
   const syncBaseline = useCallback((version: string | null) => {
     setBaseline(version);
     setLatest(version);
@@ -96,8 +148,9 @@ export function OperationsUpdatesProvider({
     router.refresh();
     if (latest) setBaseline(latest);
     void fetchVersion()
-      .then((v) => {
-        if (v) syncBaseline(v);
+      .then(({ version, openBoardQuestions }) => {
+        if (version) syncBaseline(version);
+        applyOpenBoardQuestionsCount(openBoardQuestions);
         const now = Date.now();
         setLastSyncedAt(now);
         setLastPollAt(now);
@@ -107,30 +160,30 @@ export function OperationsUpdatesProvider({
       .finally(() => {
         syncingRef.current = false;
       });
-  }, [router, latest, syncBaseline]);
+  }, [router, latest, syncBaseline, applyOpenBoardQuestionsCount]);
 
   const poll = useCallback(async () => {
-    const v = await fetchVersion();
-    if (!v) return;
+    const { version, openBoardQuestions } = await fetchVersion();
+    applyOpenBoardQuestionsCount(openBoardQuestions);
+    if (!version) return;
     const now = Date.now();
-    setLatest(v);
+    setLatest(version);
     setLastPollAt(now);
-    setBaseline((prev) => prev ?? v);
-  }, []);
+    setBaseline((prev) => prev ?? version);
+  }, [applyOpenBoardQuestionsCount]);
 
   useEffect(() => {
     if (!enabled) return;
     const timer = window.setTimeout(() => {
       void poll();
-    }, 0);
+    }, INITIAL_POLL_DELAY_MS);
     return () => window.clearTimeout(timer);
-  }, [enabled, poll, pathname]);
+  }, [enabled, poll]);
 
   useEffect(() => {
     if (!enabled) return;
 
     const id = window.setInterval(() => {
-      if (document.visibilityState === "hidden") return;
       void poll();
     }, POLL_MS);
 
@@ -167,6 +220,8 @@ export function OperationsUpdatesProvider({
         refreshNow,
         autoRefresh,
         setAutoRefresh,
+        boardQuestionsSound,
+        setBoardQuestionsSound,
         lastSyncedAt,
         lastPollAt,
         refreshGeneration,
