@@ -4,6 +4,7 @@ import { SubiektRequestError } from "@/lib/subiekt/errors";
 import { defaultZdSearchDataOd, getSubiektZdDocumentCached, searchSubiektZdCached } from "@/lib/subiekt/subiekt-runtime-cache";
 import { resolveKhLabelForZdDocument } from "@/lib/subiekt/kontrahent-from-document";
 import { extractDocKhIds } from "@/lib/subiekt/zd-document-kh";
+import { parseZdFulfillmentDeadline } from "@/lib/subiekt/zd-fulfillment-date";
 import { tryAcquireLock, releaseLock } from "@/lib/services/locks";
 import type { SubiektDocument } from "@/lib/subiekt/types";
 
@@ -189,6 +190,8 @@ export async function tickZdIndexJob(options?: { maxDocs?: number }): Promise<Zd
             subiekt_kh_label: khLabel,
             supplier_id: supplierId,
             verified,
+            dok_status: doc.dok_Status ?? null,
+            dok_termin_realizacji: parseZdFulfillmentDeadline(doc),
             processed_at: nowIso(),
             updated_at: nowIso(),
           },

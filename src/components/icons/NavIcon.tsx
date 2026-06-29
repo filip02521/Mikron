@@ -55,6 +55,7 @@ const HREF_TO_NAV_ICON: Record<string, NavIconKey> = {
   "/podsumowanie": "dailyPanel",
   "/weryfikacja": "verification",
   "/kolejka": "warehouse",
+  "/dostawy": "schedule",
   "/historia": "history",
   "/zakupy/dostawcy": "suppliers",
   "/admin/dostawcy": "suppliers",

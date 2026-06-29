@@ -420,6 +420,16 @@ export function navForRole(
             badge: badges.realizacja,
           },
           {
+            href: "/dostawy",
+            label: "Plan dostaw",
+            mobileLabel: "Dostawy",
+            description: "Nadchodzące dostawy w tygodniu",
+            icon: "schedule",
+            tone: "sky",
+            tier: "primary",
+            mobileSlot: "primary",
+          },
+          {
             href: OPERATIONS_NOTATKI_MAGAZYN,
             label: "Notatki",
             mobileLabel: "Notatki",

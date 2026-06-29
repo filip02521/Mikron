@@ -11,6 +11,7 @@ import {
 } from "@/lib/subiekt/zd-catalog-import";
 import { warsawNowParts } from "@/lib/time/warsaw";
 import { resolveKhLabelForZdDocument } from "@/lib/subiekt/kontrahent-from-document";
+import { parseZdFulfillmentDeadline } from "@/lib/subiekt/zd-fulfillment-date";
 import type { SubiektDocument } from "@/lib/subiekt/types";
 
 export const CATALOG_ZD_SYNC_STATE_KEY = "catalog_zd_sync_state";
@@ -240,6 +241,8 @@ async function indexBatch(
         subiekt_kh_label: khLabel,
         supplier_id: supplierId,
         verified,
+        dok_status: doc.dok_Status ?? null,
+        dok_termin_realizacji: parseZdFulfillmentDeadline(doc),
         processed_at: nowIso(),
         updated_at: nowIso(),
       },

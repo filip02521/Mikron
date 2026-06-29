@@ -53,11 +53,12 @@ export function canManageSuppliers(role: UserRole): boolean {
 const PROCUREMENT_PREFIXES = ["/zakupy"];
 const SALES_TEAM_PREFIXES = ["/zespol"];
 
-const WAREHOUSE_PATH_PREFIXES = ["/kolejka", "/notatki"];
+const WAREHOUSE_PATH_PREFIXES = ["/kolejka", "/dostawy", "/notatki"];
 
 const OPERATIONS_PATH_PREFIXES = [
   "/podsumowanie",
   "/kolejka",
+  "/dostawy",
   "/historia",
   "/lokalizacje",
   "/zamowienia",

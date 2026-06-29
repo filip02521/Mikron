@@ -23,6 +23,7 @@ export const PAGE_TITLES = {
   tablica: "Pytania zespołu",
   podsumowanie: "Panel dzienny",
   kolejka: "Przyjęcie towaru",
+  dostawy: "Nadchodzące dostawy",
   weryfikacja: "Weryfikacja",
   historia: "Historia",
   notatki: "Notatki działu",
@@ -51,6 +52,7 @@ export const PAGE_DESCRIPTIONS: Partial<Record<keyof typeof PAGE_TITLES, string>
   tablica: ONTIME_APP_DESCRIPTION,
   podsumowanie: "Kolejka dnia, prośby handlowców i harmonogram dostawców",
   kolejka: "Przyjęcie towaru i kolejka realizacji magazynu",
+  dostawy: "Nadchodzące dostawy — terminy ZD i prognoza paczek",
   admin: "Konfiguracja systemu, użytkownicy i narzędzia serwisowe",
   adminTeethProducts:
     "Lista towarów z wyłączoną kontrolą stanu magazynowego przy prośbach o zamówienie",

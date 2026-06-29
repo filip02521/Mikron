@@ -145,41 +145,63 @@ export async function summarizeDeliveryReceiptsForDate(
 async function fetchLearnedCarrierHint(
   supplierId: string
 ): Promise<WarehouseCarrierHint | null> {
+  const hints = await fetchLearnedCarrierHintsBatch([supplierId]);
+  return hints.get(supplierId) ?? null;
+}
+
+async function fetchLearnedCarrierHintsBatch(
+  supplierIds: readonly string[]
+): Promise<Map<string, WarehouseCarrierHint>> {
+  const scoped = [...new Set(supplierIds.filter(Boolean))];
+  if (!scoped.length) return new Map();
+
   const supabase = createAdminClient();
   const { data, error } = await supabase
     .from("warehouse_carrier_hints")
     .select(
-      "carrier, shipment_form, typical_package_count, typical_pallet_count, use_count, last_used_at"
+      "supplier_id, carrier, shipment_form, typical_package_count, typical_pallet_count, use_count, last_used_at"
     )
-    .eq("supplier_id", supplierId);
+    .in("supplier_id", scoped);
   if (error) throw new Error(error.message);
-  if (!data?.length) return null;
+  if (!data?.length) return new Map();
 
   type HintRow = (typeof data)[number];
-  const carrierScore = new Map<string, number>();
+  const bySupplier = new Map<string, HintRow[]>();
   for (const row of data) {
-    const carrier = String(row.carrier);
-    carrierScore.set(carrier, (carrierScore.get(carrier) ?? 0) + Number(row.use_count ?? 0));
+    const sid = String(row.supplier_id);
+    const list = bySupplier.get(sid) ?? [];
+    list.push(row);
+    bySupplier.set(sid, list);
   }
-  const dominantCarrier = [...carrierScore.entries()].sort((a, b) => b[1] - a[1])[0]?.[0];
-  if (!dominantCarrier) return null;
 
-  const forCarrier = data.filter((r) => String(r.carrier) === dominantCarrier) as HintRow[];
-  const best = forCarrier.sort((a, b) => {
-    const uc = Number(b.use_count ?? 0) - Number(a.use_count ?? 0);
-    if (uc !== 0) return uc;
-    return String(b.last_used_at ?? "").localeCompare(String(a.last_used_at ?? ""));
-  })[0];
-  if (!best) return null;
+  const result = new Map<string, WarehouseCarrierHint>();
+  for (const [sid, rows] of bySupplier) {
+    const carrierScore = new Map<string, number>();
+    for (const row of rows) {
+      const carrier = String(row.carrier);
+      carrierScore.set(carrier, (carrierScore.get(carrier) ?? 0) + Number(row.use_count ?? 0));
+    }
+    const dominantCarrier = [...carrierScore.entries()].sort((a, b) => b[1] - a[1])[0]?.[0];
+    if (!dominantCarrier) continue;
 
-  return {
-    carrier: String(best.carrier) as WarehouseCarrier,
-    shipmentForm: String(best.shipment_form) as WarehouseShipmentForm,
-    typicalPackageCount: Number(best.typical_package_count ?? 1),
-    typicalPalletCount: Number(best.typical_pallet_count ?? 0),
-    useCount: carrierScore.get(dominantCarrier) ?? Number(best.use_count ?? 1),
-    source: "learned",
-  };
+    const forCarrier = rows.filter((r) => String(r.carrier) === dominantCarrier);
+    const best = forCarrier.sort((a, b) => {
+      const uc = Number(b.use_count ?? 0) - Number(a.use_count ?? 0);
+      if (uc !== 0) return uc;
+      return String(b.last_used_at ?? "").localeCompare(String(a.last_used_at ?? ""));
+    })[0];
+    if (!best) continue;
+
+    result.set(sid, {
+      carrier: String(best.carrier) as WarehouseCarrier,
+      shipmentForm: String(best.shipment_form) as WarehouseShipmentForm,
+      typicalPackageCount: Number(best.typical_package_count ?? 1),
+      typicalPalletCount: Number(best.typical_pallet_count ?? 0),
+      useCount: carrierScore.get(dominantCarrier) ?? Number(best.use_count ?? 1),
+      source: "learned",
+    });
+  }
+  return result;
 }
 
 export async function fetchCarrierHintForSupplier(
@@ -211,6 +233,54 @@ export async function fetchCarrierHintForSupplier(
     useCount: learned?.useCount ?? 0,
     source: "default",
   };
+}
+
+export async function fetchCarrierHintsForSuppliers(
+  supplierIds: readonly string[]
+): Promise<Map<string, WarehouseCarrierHint>> {
+  const scoped = [...new Set(supplierIds.filter(Boolean))];
+  if (!scoped.length) return new Map();
+
+  const supabase = createAdminClient();
+  const { data: suppliers, error: supplierError } = await supabase
+    .from("suppliers")
+    .select("id, default_delivery_carrier, default_delivery_shipment_form")
+    .in("id", scoped);
+  if (supplierError) throw new Error(supplierError.message);
+
+  const learnedMap = await fetchLearnedCarrierHintsBatch(scoped);
+
+  const result = new Map<string, WarehouseCarrierHint>();
+  for (const supplier of suppliers ?? []) {
+    const sid = String(supplier.id);
+    const learned = learnedMap.get(sid) ?? null;
+    const defaultCarrier = supplier.default_delivery_carrier
+      ? (String(supplier.default_delivery_carrier) as WarehouseCarrier)
+      : null;
+    if (!defaultCarrier) {
+      if (learned) result.set(sid, learned);
+      continue;
+    }
+
+    const defaultForm = supplier.default_delivery_shipment_form
+      ? (String(supplier.default_delivery_shipment_form) as WarehouseShipmentForm)
+      : learned?.shipmentForm ?? "paczki";
+
+    result.set(sid, {
+      carrier: defaultCarrier,
+      shipmentForm: defaultForm,
+      typicalPackageCount: learned?.typicalPackageCount ?? 1,
+      typicalPalletCount: learned?.typicalPalletCount ?? 0,
+      useCount: learned?.useCount ?? 0,
+      source: "default",
+    });
+  }
+
+  for (const [sid, learned] of learnedMap) {
+    if (!result.has(sid)) result.set(sid, learned);
+  }
+
+  return result;
 }
 
 async function upsertCarrierHint(input: {

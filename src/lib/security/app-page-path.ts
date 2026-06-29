@@ -8,6 +8,7 @@ const ALLOWED_PREFIXES = [
   "/podsumowanie",
   "/weryfikacja",
   "/kolejka",
+  "/dostawy",
   "/historia",
   "/zespol",
   "/admin",

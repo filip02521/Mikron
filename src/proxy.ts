@@ -39,6 +39,7 @@ const OPERATIONS_PREFIXES = [
   "/weryfikacja",
   "/lokalizacje",
   "/kolejka",
+  "/dostawy",
   "/historia",
   "/zamowienia",
   "/notatki",
@@ -247,7 +248,9 @@ export async function proxy(request: NextRequest) {
     (pathname === "/notatki" ||
       pathname.startsWith("/notatki/") ||
       pathname === "/kolejka" ||
-      pathname.startsWith("/kolejka/"));
+      pathname.startsWith("/kolejka/") ||
+      pathname === "/dostawy" ||
+      pathname.startsWith("/dostawy/"));
 
   if (matchesPrefix(pathname, PROCUREMENT_PREFIXES) && !canAccessOperations(role)) {
     return redirectWithSession(
