@@ -32,7 +32,7 @@ function mapSubiektProduct(product: SubiektProduct): {
     subiektTwId,
     symbol: product.tw_Symbol?.trim() || null,
     name,
-    plu: product.tw_PLU?.trim() || product.tw_PodstKodKresk?.trim() || null,
+    plu: String(product.tw_PLU ?? "").trim() || product.tw_PodstKodKresk?.trim() || null,
   };
 }
 
