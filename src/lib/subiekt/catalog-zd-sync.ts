@@ -15,7 +15,7 @@ import { parseZdFulfillmentDeadline } from "@/lib/subiekt/zd-fulfillment-date";
 import type { SubiektDocument } from "@/lib/subiekt/types";
 
 export const CATALOG_ZD_SYNC_STATE_KEY = "catalog_zd_sync_state";
-export const CATALOG_SYNC_DAYS_BACK = 365;
+export const CATALOG_SYNC_DAYS_BACK = 90;
 export const CATALOG_SYNC_INDEX_PAGE_SIZE = 25;
 export const CATALOG_SYNC_INDEX_BATCH_DOCS = 10;
 export const CATALOG_SYNC_IMPORT_BATCH_DOCS = 15;
