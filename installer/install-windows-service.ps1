@@ -160,7 +160,7 @@ function Invoke-NpmInstall {
 
   Write-Host "  (npm ci moze trwac 2-5 min na Windowsie - to normalne, poczekaj...)"
   $sw = [System.Diagnostics.Stopwatch]::StartNew()
-  Invoke-NpmCiForBuild -Npm $Npm -AllowInstallFallback
+  Invoke-NpmCiForBuild -Npm $Npm -ProjectRoot $Root -ServiceName $ServiceName -AllowInstallFallback
   $sw.Stop()
   Write-Ok "Zaleznosci zainstalowane ($([math]::Round($sw.Elapsed.TotalSeconds)) s)"
 }

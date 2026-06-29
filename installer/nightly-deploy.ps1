@@ -199,6 +199,8 @@ function Invoke-NightlyDeploy {
 
   Push-Location $ProjectRoot
   try {
+    Stop-ServiceForNodeInstall -ProjectRoot $ProjectRoot -ServiceName $ServiceName
+
     $needInstall = $lockChanged
     if (-not $needInstall) {
       if (-not (Test-NodeModulesComplete -Root $ProjectRoot)) {
@@ -209,7 +211,7 @@ function Invoke-NightlyDeploy {
 
     if ($needInstall) {
       Write-Log "npm run deps:ci (zmiana lockfile lub brak modulow build)"
-      Invoke-NpmCiForBuild -Npm $npm
+      Invoke-NpmCiForBuild -Npm $npm -ProjectRoot $ProjectRoot -ServiceName $ServiceName
     }
 
     Write-Log "npm run build"
