@@ -4,6 +4,7 @@ import Link from "next/link";
 import { LinkChevron } from "@/components/ui/UiGlyphs";
 import { useMemo, useState, useTransition, useCallback, useEffect } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { useLatest } from "@/hooks/useLatest";
 import { actionUpdateScheduleDates } from "@/app/actions/admin";
 import { ActionLoadingOverlay } from "@/components/ui/ActionLoadingOverlay";
 import { Card, CardHeader } from "@/components/ui/Card";
@@ -116,21 +117,24 @@ export function LocationScheduleClient({
     setFilter(parseTermFilter(searchParams.get("term")));
   }
 
+  const searchParamsRef = useLatest(searchParams);
+
   useEffect(() => {
     const timer = window.setTimeout(() => {
-      const params = new URLSearchParams(searchParams.toString());
+      const sp = searchParamsRef.current;
+      const params = new URLSearchParams(sp.toString());
       const q = search.trim();
       if (q) params.set("q", q);
       else params.delete("q");
       if (filter !== "all") params.set("term", filter);
       else params.delete("term");
       const next = params.toString();
-      if (next !== searchParams.toString()) {
+      if (next !== sp.toString()) {
         router.replace(next ? `${pathname}?${next}` : pathname, { scroll: false });
       }
     }, 300);
     return () => window.clearTimeout(timer);
-  }, [search, filter, pathname, router, searchParams]);
+  }, [search, filter, pathname, router, searchParamsRef]);
 
   const filtered = useMemo(() => {
     let rows = [...initialRows];

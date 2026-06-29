@@ -103,9 +103,12 @@ export function InactiveSuppliersAdminClient({
     setSubiektFilter(parseSubiektFilter(searchParams.get("subiekt")));
   }
 
+  const searchParamsRef = useLatest(searchParams);
+
   useEffect(() => {
     const timer = window.setTimeout(() => {
-      const params = new URLSearchParams(searchParams.toString());
+      const sp = searchParamsRef.current;
+      const params = new URLSearchParams(sp.toString());
       const q = search.trim();
       if (q) params.set("q", q);
       else params.delete("q");
@@ -114,12 +117,12 @@ export function InactiveSuppliersAdminClient({
       if (subiektFilter !== "all") params.set("subiekt", subiektFilter);
       else params.delete("subiekt");
       const next = params.toString();
-      if (next !== searchParams.toString()) {
+      if (next !== sp.toString()) {
         router.replace(next ? `${pathname}?${next}` : pathname, { scroll: false });
       }
     }, 300);
     return () => window.clearTimeout(timer);
-  }, [search, locationFilter, subiektFilter, pathname, router, searchParams]);
+  }, [search, locationFilter, subiektFilter, pathname, router, searchParamsRef]);
 
   const locationScopedRows = useMemo(() => {
     if (locationFilter === "all") return rows;
