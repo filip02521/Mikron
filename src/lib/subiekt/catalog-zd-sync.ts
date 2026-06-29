@@ -335,15 +335,32 @@ async function importBatch(
 
 /**
  * Wybór stanu startowego — `force` pomija „już dziś”, ale NIE zeruje postępu.
- * Pełny restart tylko przy `reset: true` lub nowym dniu (inny runId).
+ * Pełny restart tylko przy `reset: true` lub gdy poprzedni przebieg zakończył się
+ * sukcesem (status "done" z ukończonym indeksem i importem).
+ *
+ * Jeśli poprzedni przebieg nie ukończył indeksu (timeout, błąd), kontynuujemy
+ * od zapisanej strony — inaczej przy dużej liczbie ZD cron nigdy nie dojdzie
+ * do późniejszych stron i dokumenty tam nigdy nie dostaną supplier_id.
  */
 export function resolveCatalogZdSyncStartState(
   existing: CatalogZdSyncState | null,
   runId: string,
   options?: { force?: boolean; reset?: boolean }
 ): CatalogZdSyncState {
-  if (options?.reset || !existing || existing.runId !== runId) {
+  if (options?.reset || !existing) {
     return freshState(runId);
+  }
+  if (existing.runId !== runId) {
+    if (existing.status === "done" && existing.indexComplete && existing.importComplete) {
+      return freshState(runId);
+    }
+    return {
+      ...existing,
+      runId,
+      status: "running",
+      lastError: null,
+      lastUpdatedAt: nowIso(),
+    };
   }
   if (existing.status === "running") {
     return existing;

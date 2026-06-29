@@ -49,6 +49,37 @@ describe("resolveCatalogZdSyncStartState", () => {
     expect(next.indexProcessed).toBe(0);
     expect(next.indexPage).toBe(1);
   });
+
+  it("nowy dzień z nieukończonym poprzednim — kontynuuje od zapisanej strony", () => {
+    const prev = baseState({
+      runId: "2026-05-27",
+      indexProcessed: 42,
+      indexPage: 5,
+      indexComplete: false,
+      importComplete: false,
+      status: "running",
+    });
+    const next = resolveCatalogZdSyncStartState(prev, "2026-05-28");
+    expect(next.indexProcessed).toBe(42);
+    expect(next.indexPage).toBe(5);
+    expect(next.runId).toBe("2026-05-28");
+    expect(next.status).toBe("running");
+  });
+
+  it("nowy dzień z ukończonym poprzednim — świeży stan", () => {
+    const prev = baseState({
+      runId: "2026-05-27",
+      indexProcessed: 100,
+      indexPage: 10,
+      indexComplete: true,
+      importComplete: true,
+      status: "done",
+    });
+    const next = resolveCatalogZdSyncStartState(prev, "2026-05-28");
+    expect(next.indexProcessed).toBe(0);
+    expect(next.indexPage).toBe(1);
+    expect(next.runId).toBe("2026-05-28");
+  });
 });
 
 describe("catalogZdSyncNeedsContinue", () => {
