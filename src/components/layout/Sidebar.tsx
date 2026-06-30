@@ -59,6 +59,7 @@ function NavLink({
   href: string;
 }) {
   const compact = item.tier === "compact";
+  const indented = Boolean(item.indent);
   const hasBadge = item.badge != null && item.badge > 0;
   const showDescription = Boolean(item.description) && !compact;
   const displayTone = navItemDisplayTone(item, active);
@@ -67,6 +68,7 @@ function NavLink({
   const className = cn(
     "group block rounded-md",
     compact ? sidebarNavCompactPaddingClass : "px-2.5 py-2",
+    indented && "ml-5",
     controlFocusClass,
     active
       ? sidebarNavToneActiveClass(item.tone)
@@ -86,17 +88,34 @@ function NavLink({
   const content = (
     <span className="flex items-start justify-between gap-2">
       <span className={cn("flex min-w-0 flex-1 items-start", compact ? "gap-2" : "gap-2.5")}>
-        <span
-          className={cn(
-            "mt-0.5 flex shrink-0 items-center justify-center rounded-md",
-            compact ? "h-7 w-7" : "h-8 w-8",
-            active
-              ? navIconTileActiveClassForTone(item.tone)
-              : navIconTileClassForTone(displayTone)
-          )}
-        >
-          <NavIcon navKey={item.icon} size={compact ? 16 : 17} />
-        </span>
+        {indented ? (
+          <span className="relative mt-0.5 flex shrink-0 items-center">
+            <span className="absolute -left-3 top-1/2 h-px w-3 bg-slate-300" />
+            <span className="absolute -left-3 -top-2 bottom-1/2 w-px bg-slate-200" />
+            <span
+              className={cn(
+                "flex h-6 w-6 items-center justify-center rounded-md",
+                active
+                  ? "bg-slate-100 text-slate-700 ring-1 ring-slate-200/80"
+                  : "text-slate-400 group-hover:text-slate-600"
+              )}
+            >
+              <NavIcon navKey={item.icon} size={15} />
+            </span>
+          </span>
+        ) : (
+          <span
+            className={cn(
+              "mt-0.5 flex shrink-0 items-center justify-center rounded-md",
+              compact ? "h-7 w-7" : "h-8 w-8",
+              active
+                ? navIconTileActiveClassForTone(item.tone)
+                : navIconTileClassForTone(displayTone)
+            )}
+          >
+            <NavIcon navKey={item.icon} size={compact ? 16 : 17} />
+          </span>
+        )}
         <span className="min-w-0 flex-1">
           <span
             className={cn(
@@ -177,6 +196,8 @@ function NavSection({
   adminSalesPreview: boolean;
 }) {
   const pathname = usePathname();
+  const searchParams = useSearchParams();
+  const activeSearch = searchParams.toString() ? `?${searchParams.toString()}` : "";
   const salesUpdates = useSalesUpdates();
   const operationsUpdates = useOperationsUpdates();
   const allHrefs = group.items.map((item) => item.href);
@@ -186,7 +207,7 @@ function NavSection({
       <h2 className={sidebarNavSectionTitleClass}>{group.title}</h2>
       <ul className="space-y-0.5">
         {group.items.map((item) => {
-          const active = isNavItemActive(pathname, item.href, allHrefs);
+          const active = isNavItemActive(pathname, item.href, allHrefs, activeSearch);
           const showDot =
             (item.href === "/moje" && Boolean(salesUpdates?.hasUpdates) && !active) ||
             (item.href === "/podsumowanie" &&
@@ -240,6 +261,7 @@ export function Sidebar({
     adminBugReports?: number;
     operationsNotatki?: number;
     departmentBoardQuestions?: number;
+    teethQueue?: number;
   };
 }) {
   const router = useRouter();

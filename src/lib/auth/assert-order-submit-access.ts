@@ -4,7 +4,7 @@ import {
   assertAdminPanelAllowsProcurementBoardMutations,
 } from "@/lib/auth/guard-admin-panel-preview";
 import { canAccessSalesPerson } from "@/lib/data/sales-group-access";
-import { canAccessOperations, isAdmin, isSales, isSalesManager } from "@/lib/auth-roles";
+import { canAccessOperations, canAccessTeethPanel, isAdmin, isSales, isSalesManager } from "@/lib/auth-roles";
 
 type OrderEntry = { salesPersonId?: string | null };
 
@@ -15,6 +15,7 @@ export async function assertCanSubmitIndividualOrders(
 ): Promise<void> {
   if (
     !canAccessOperations(user.role) &&
+    !canAccessTeethPanel(user.role) &&
     !isSales(user.role) &&
     !isSalesManager(user.role)
   ) {

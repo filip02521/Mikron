@@ -49,6 +49,7 @@ const NAV_ICON_BY_KEY: Record<
   team: IconUsers,
   teamAccounts: IconUserCog,
   teamGroups: IconUserGroup,
+  teeth: IconPackage,
 };
 
 const HREF_TO_NAV_ICON: Record<string, NavIconKey> = {
@@ -77,6 +78,7 @@ const HREF_TO_NAV_ICON: Record<string, NavIconKey> = {
   "/zespol": "team",
   "/zespol/handlowcy": "teamAccounts",
   "/zespol/grupy": "teamGroups",
+  "/zeby": "teeth",
 };
 
 export function navIconKeyFromHref(href: string): NavIconKey {

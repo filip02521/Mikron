@@ -893,6 +893,11 @@ export const MyOrderShipmentCard = memo(function MyOrderShipmentCard({
                 className={cn("truncate", salesTypography.rowTitle)}
               />
               <MyOrderKindBadge row={row} listKind={listKind} />
+              {row.isTeeth ? (
+                <span className="shrink-0 rounded bg-emerald-100 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-emerald-800">
+                  Zęby
+                </span>
+              ) : null}
             </div>
             {suppressSharedHeadline ? (
               <span className="sr-only">{headline}</span>

@@ -368,7 +368,7 @@ export function ReceiveQueueTable({
         const progress = deliveryProgressForOrder(order, value);
         const person = order.sales_person?.name ?? "handlowiec";
 
-        const emailScheduledNote = result.emailScheduled ? " · mail zaplanowany" : "";
+        const emailNote = result.emailSent ? " · wysłano mail do handlowca" : "";
 
         if (result.emailError) {
           onToast({
@@ -378,17 +378,17 @@ export function ReceiveQueueTable({
           });
         } else if (progress.remaining === 0 && progress.hasNumericQty) {
           onToast({
-            text: `Zrealizowano · ${person}${emailScheduledNote}`,
+            text: `Zrealizowano · ${person}${emailNote}`,
             tone: "success",
           });
         } else if (progress.delivered > 0 && progress.hasNumericQty) {
           onToast({
-            text: `${progress.fractionLabel} · ${person} · brakuje ${progress.remaining} szt.${emailScheduledNote}`,
+            text: `${progress.fractionLabel} · ${person} · brakuje ${progress.remaining} szt.${emailNote}`,
             tone: "success",
           });
         } else {
           onToast({
-            text: `Zapisano${emailScheduledNote}`,
+            text: `Zapisano${emailNote}`,
             tone: "success",
           });
         }
@@ -476,11 +476,11 @@ export function ReceiveQueueTable({
           }
           const order = receiveQueue.find((o) => o.id === only.orderId);
           const person = order?.sales_person?.name ?? "handlowiec";
-          const emailScheduledNote = result.emailScheduled ? " · mail zaplanowany" : "";
+          const emailNote = result.emailSent ? " · wysłano mail do handlowca" : "";
           onToast({
             text: result.emailError
               ? `Zapisano, ale e-mail: ${result.emailError}`
-              : `Zapisano · ${person}${emailScheduledNote}`,
+              : `Zapisano · ${person}${emailNote}`,
             tone: result.emailError ? "error" : "success",
             durationMs: result.emailError ? QUEUE_EMAIL_WARNING_TOAST_MS : undefined,
           });
@@ -772,7 +772,7 @@ export function ReceiveQueueTable({
             undoError
               ? undefined
               : [
-                  "Masz 10 sekund na cofnięcie. Powiadomienie e-mail do handlowca zostanie wysłane dopiero po tym czasie.",
+                  "Cofnięcie przywraca poprzedni stan towaru na magazynie.",
                 ]
           }
           tone={undoError ? "error" : "success"}

@@ -53,7 +53,7 @@ import {
 import { ProsbaStockConfirmDialog } from "@/components/orders/ProsbaStockConfirmDialog";
 import { buildProsbaSubmitStockConfirm } from "@/lib/orders/prosba-stock-check";
 import { handleProsbaStockSubmitError } from "@/lib/orders/prosba-stock-submit-error";
-import { useTeethExemptTwIds } from "@/components/layout/TeethExemptContext";
+import { useTeethExemptTwIds, useTeethProductInfo } from "@/components/layout/TeethExemptContext";
 
 export type EditIndividualRequestInitial = {
   supplierId: string;
@@ -84,6 +84,7 @@ export function EditIndividualRequestModal({
 }) {
   const { pending, pendingMessage, run } = useActionPending();
   const teethExemptTwIds = useTeethExemptTwIds();
+  const teethProductInfo = useTeethProductInfo();
   const [supplierId, setSupplierId] = useState("");
   const [salesPersonId, setSalesPersonId] = useState("");
   const [requestKind, setRequestKind] = useState<IndividualRequestKind>("zamowienie");
@@ -170,7 +171,21 @@ export function EditIndividualRequestModal({
       setInformacjaPath(initial.informacjaPath ?? DEFAULT_INFORMACJA_FLOW_PATH);
       setLines(
         initial.lines.length > 0
-          ? initial.lines.map((line) => ({ ...line }))
+          ? initial.lines.map((line) => {
+              const twId = line.subiektTwId;
+              const isTeeth = twId != null && twId > 0 && teethProductInfo.twIds.has(twId);
+              const detectedManufacturer = isTeeth
+                ? (teethProductInfo.manufacturerByTwId.get(twId!) ?? null)
+                : null;
+              const detectedKind = isTeeth
+                ? (teethProductInfo.kindByTwId.get(twId!) ?? null)
+                : null;
+              return {
+                ...line,
+                teethManufacturer: line.teethManufacturer ?? detectedManufacturer,
+                teethKind: line.teethKind ?? detectedKind,
+              };
+            })
           : [newProductLine()]
       );
       setValidationAttempted(false);

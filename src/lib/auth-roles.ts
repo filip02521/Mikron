@@ -10,6 +10,15 @@ export function isZakupy(role: UserRole): boolean {
   return role === "zakupy";
 }
 
+export function isZakupyZeby(role: UserRole): boolean {
+  return role === "zakupy_zeby";
+}
+
+/** Dostęp do panelu zębów (admin + zakupy + zakupy_zeby). */
+export function canAccessTeethPanel(role: UserRole): boolean {
+  return role === "admin" || role === "zakupy" || role === "zakupy_zeby";
+}
+
 export function isMagazyn(role: UserRole): boolean {
   return role === "magazyn";
 }
@@ -73,6 +82,7 @@ export const SALES_HOME_PATH = "/moje";
 
 export function homePathForRole(role: UserRole): string {
   if (isMagazyn(role)) return "/kolejka";
+  if (isZakupyZeby(role)) return "/zeby";
   if (canAccessOperations(role)) return "/podsumowanie";
   return SALES_HOME_PATH;
 }
@@ -98,6 +108,12 @@ export function canAccessPath(
   }
 
   if (pathname.startsWith("/admin")) return isAdmin(role);
+  if (pathname === "/zeby" || pathname.startsWith("/zeby/")) {
+    return canAccessTeethPanel(role);
+  }
+  if (pathname === "/zakupy/tablica" || pathname.startsWith("/zakupy/tablica/")) {
+    return canAccessOperations(role) || canAccessTeethPanel(role);
+  }
   if (isMagazyn(role)) {
     return WAREHOUSE_PATH_PREFIXES.some(
       (p) => pathname === p || pathname.startsWith(`${p}/`)
@@ -110,7 +126,7 @@ export function canAccessPath(
     return canManageSalesTeam(role);
   }
   if (pathname === "/notatki" || pathname.startsWith("/notatki/")) {
-    return isAdmin(role) || isZakupy(role) || isMagazyn(role);
+    return canAccessOperations(role) || isMagazyn(role) || canAccessTeethPanel(role);
   }
   if (
     SALES_PATH_PREFIXES.some((p) => pathname === p || pathname.startsWith(`${p}/`))

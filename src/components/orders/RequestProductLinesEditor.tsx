@@ -38,6 +38,11 @@ import { SubiektOfflineHint } from "@/components/subiekt/SubiektOfflineHint";
 import {
   copyProsbaLineNoteToAllLines,
 } from "@/lib/orders/prosba-line-note-copy";
+import {
+  TeethProgressBadge,
+  TeethReviewSummary,
+  useTeethLinesStatus,
+} from "@/components/teeth/TeethWizardProgress";
 
 export function RequestProductLinesEditor({
   lines,
@@ -191,6 +196,10 @@ export function RequestProductLinesEditor({
         </div>
       ) : null}
 
+      {prosba && requestKind === "zamowienie" ? (
+        <TeethProgressLine lines={lines} />
+      ) : null}
+
       {sufficientStockCount > 1 ? (
         <ProsbaProductStockSummary count={sufficientStockCount} />
       ) : null}
@@ -320,6 +329,9 @@ export function RequestProductLinesEditor({
                 available: line.available,
                 stockSource: line.stockSource,
                 source: line.source,
+                teethManufacturer: line.teethManufacturer,
+                teethKind: line.teethKind,
+                teethDetails: line.teethDetails,
               }}
               onChange={(patch) =>
                 onChange(updateProductLine(lines, index, patch))
@@ -365,7 +377,6 @@ export function RequestProductLinesEditor({
 
             {lineNotes ? (
               <ProsbaProductLineNoteField
-                id={`prosba-line-note-${line.id}`}
                 value={line.requestNote ?? ""}
                 onChange={(requestNote) =>
                   onChange(updateProductLine(lines, index, { requestNote }))
@@ -389,6 +400,10 @@ export function RequestProductLinesEditor({
         </Button>
       ) : null}
 
+      {prosba && requestKind === "zamowienie" ? (
+        <TeethReviewSummary lines={lines} />
+      ) : null}
+
       <Button
         type="button"
         variant={prosba ? "secondary" : "ghost"}
@@ -404,6 +419,12 @@ export function RequestProductLinesEditor({
       </Button>
     </div>
   );
+}
+
+function TeethProgressLine({ lines }: { lines: ProductLineDraft[] }) {
+  const { completedCount, totalCount } = useTeethLinesStatus(lines);
+  if (totalCount === 0) return null;
+  return <TeethProgressBadge completed={completedCount} total={totalCount} />;
 }
 
 export function initialProductLines(count = 1): ProductLineDraft[] {

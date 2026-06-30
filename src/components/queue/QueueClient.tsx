@@ -45,6 +45,7 @@ export function QueueClient({
   warehouseCarriers,
   canManageCarriers = false,
   isMagazynRole = false,
+  isZakupyZebyRole = false,
   loadError = null,
 }: {
   orders: IndividualOrder[];
@@ -60,6 +61,7 @@ export function QueueClient({
   warehouseCarriers: WarehouseCarrierRow[];
   canManageCarriers?: boolean;
   isMagazynRole?: boolean;
+  isZakupyZebyRole?: boolean;
   loadError?: string | null;
 }) {
   const [view, setView] = useState<QueueView>("receive");
@@ -179,7 +181,8 @@ export function QueueClient({
           pickupReadyCount={pickupReadyCount}
           inventoryCount={inventoryCount}
           journalCount={deliveryJournal.summary.receiptCount}
-          showProcurementLinks={!isMagazynRole}
+          showProcurementLinks={!isMagazynRole && !isZakupyZebyRole}
+          showTeethLink={isZakupyZebyRole}
         />
 
         {/* Widoki pozostają zamontowane — filtry, zaznaczenia i formularze nie giną przy zmianie zakładki. */}

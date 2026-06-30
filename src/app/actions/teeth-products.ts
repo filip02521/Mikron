@@ -9,6 +9,7 @@ import { upsertSubiektProduct } from "@/lib/data/product-catalog";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { actionSuggestProducts } from "@/app/actions/subiekt";
 import type { SubiektProduct } from "@/lib/subiekt/types";
+import { isTeethManufacturer, detectTeethKind, type TeethManufacturer, type TeethKind } from "@/lib/teeth/teeth-catalog";
 
 function revalidateTeethPaths() {
   revalidatePath("/admin/produkty/zeby");
@@ -74,6 +75,8 @@ export async function actionAddTeethProduct(input: {
   name: string;
   plu?: string | null;
   note?: string;
+  manufacturer?: string | null;
+  kind?: string | null;
 }): Promise<{ success: true } | { error: string }> {
   const user = await requireAdminForMutation();
 
@@ -87,6 +90,14 @@ export async function actionAddTeethProduct(input: {
 
   const note = (input.note ?? "").trim();
   if (note.length > 500) return { error: "Notatka jest zbyt długa (max 500 znaków)." };
+
+  const manufacturerRaw = (input.manufacturer ?? "").trim();
+  const manufacturer = manufacturerRaw && isTeethManufacturer(manufacturerRaw) ? manufacturerRaw : null;
+
+  const kindRaw = (input.kind ?? "").trim();
+  const kind: TeethKind | null = kindRaw === "anterior" || kindRaw === "posterior"
+    ? kindRaw
+    : detectTeethKind(name);
 
   const supabase = createAdminClient();
   const { data: existing } = await supabase
@@ -113,6 +124,8 @@ export async function actionAddTeethProduct(input: {
     name,
     plu: input.plu ?? null,
     note,
+    manufacturer,
+    kind,
     created_by: user.id === "dev" ? null : user.id,
     updated_at: now,
   });
@@ -145,6 +158,66 @@ export async function actionUpdateTeethProductNote(
   const { error } = await supabase
     .from("prosba_teeth_products")
     .update({ note: trimmed, updated_at: new Date().toISOString() })
+    .eq("subiekt_tw_id", id);
+
+  if (error) return { error: error.message };
+
+  revalidateTeethPaths();
+  return { success: true };
+}
+
+export async function actionUpdateTeethProductManufacturer(
+  subiektTwId: number,
+  manufacturer: string | null
+): Promise<{ success: true } | { error: string }> {
+  await requireAdminForMutation();
+
+  const id = Math.trunc(subiektTwId);
+  const raw = (manufacturer ?? "").trim();
+  const parsed = raw && isTeethManufacturer(raw) ? (raw as TeethManufacturer) : null;
+
+  const supabase = createAdminClient();
+  const { data: row } = await supabase
+    .from("prosba_teeth_products")
+    .select("subiekt_tw_id")
+    .eq("subiekt_tw_id", id)
+    .maybeSingle();
+
+  if (!row) return { error: "Nie znaleziono pozycji na liście." };
+
+  const { error } = await supabase
+    .from("prosba_teeth_products")
+    .update({ manufacturer: parsed, updated_at: new Date().toISOString() })
+    .eq("subiekt_tw_id", id);
+
+  if (error) return { error: error.message };
+
+  revalidateTeethPaths();
+  return { success: true };
+}
+
+export async function actionUpdateTeethProductKind(
+  subiektTwId: number,
+  kind: string | null
+): Promise<{ success: true } | { error: string }> {
+  await requireAdminForMutation();
+
+  const id = Math.trunc(subiektTwId);
+  const raw = (kind ?? "").trim();
+  const parsed: TeethKind | null = raw === "anterior" || raw === "posterior" ? raw : null;
+
+  const supabase = createAdminClient();
+  const { data: row } = await supabase
+    .from("prosba_teeth_products")
+    .select("subiekt_tw_id")
+    .eq("subiekt_tw_id", id)
+    .maybeSingle();
+
+  if (!row) return { error: "Nie znaleziono pozycji na liście." };
+
+  const { error } = await supabase
+    .from("prosba_teeth_products")
+    .update({ kind: parsed, updated_at: new Date().toISOString() })
     .eq("subiekt_tw_id", id);
 
   if (error) return { error: error.message };

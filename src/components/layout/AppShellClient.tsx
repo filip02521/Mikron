@@ -15,6 +15,10 @@ import {
   OperationsUpdatesBanner,
   OperationsUpdatesProvider,
 } from "@/components/operations/OperationsUpdatesContext";
+import {
+  TeethUpdatesBanner,
+  TeethUpdatesProvider,
+} from "@/components/zeby/TeethUpdatesContext";
 import { OperationsBoardQuestionsNotice } from "@/components/operations/OperationsBoardQuestionsNotice";
 import { SalesOnboardingGate } from "@/components/sales/SalesOnboardingGate";
 import { AppRoleProvider } from "@/components/layout/AppRoleContext";
@@ -33,7 +37,7 @@ import { appMainClass, appMainInsetClass, appShellClass } from "@/lib/ui/ontime-
 import type { AdminPanelContext } from "@/lib/auth/admin-panel-context";
 import { isAdminOperationsPreviewReadOnly } from "@/lib/auth/admin-panel-context";
 import type { UserRole } from "@/types/database";
-import { canAccessOperations, isSalesAccount } from "@/lib/auth-roles";
+import { canAccessOperations, canAccessTeethPanel, isSalesAccount } from "@/lib/auth-roles";
 import { MobileOperationsNav } from "./MobileOperationsNav";
 import { MobileOperationsHeader } from "./MobileOperationsHeader";
 import { useAppShellMetrics } from "./AppShellMetricsContext";
@@ -113,7 +117,7 @@ export function AppShellClient({
   mustChangePassword = false,
   salesOnboardingCompletedAt = null,
   salesOnboardingActive = false,
-  teethExemptTwIds = [],
+  teethProductInfo = [],
 }: {
   children: React.ReactNode;
   role: UserRole | null;
@@ -126,12 +130,13 @@ export function AppShellClient({
   salesOnboardingCompletedAt?: string | null;
   /** Tour onboarding — wyłącz live badge i polling zamówień. */
   salesOnboardingActive?: boolean;
-  teethExemptTwIds?: number[];
+  teethProductInfo?: { twId: number; manufacturer: string | null; kind?: string | null }[];
 }) {
   const {
     navBadges,
     salesActivityVersion,
     operationsDailyPanelVersion,
+    teethPanelVersion,
     salesPersonName,
     userAssignmentLabel,
     salesBoardAttention,
@@ -151,10 +156,13 @@ export function AppShellClient({
 
   const salesLive = role ? isSalesAccount(role) : false;
   const operationsLive = role ? canAccessOperations(role) : false;
-  const mobileChrome = salesLive || operationsLive;
+  const teethLive = role ? canAccessTeethPanel(role) && !operationsLive : false;
+  const teethAccess = role ? canAccessTeethPanel(role) : false;
+  const teethInitialVersion = teethPanelVersion;
+  const mobileChrome = salesLive || operationsLive || teethLive;
 
   return (
-    <TeethExemptProvider twIds={teethExemptTwIds}>
+    <TeethExemptProvider teethProductInfo={teethProductInfo}>
     <AdminPanelPreviewProvider
       readOnly={isAdminOperationsPreviewReadOnly(realRole, adminPanelPreview)}
       panelContext={adminPanelPreview}
@@ -165,6 +173,10 @@ export function AppShellClient({
       initialVersion={operationsDailyPanelVersion}
       initialOpenBoardQuestions={navBadges.departmentBoardQuestions ?? 0}
       soundBaselineReady={metricsReady}
+    >
+    <TeethUpdatesProvider
+      enabled={teethAccess && !salesLive}
+      initialVersion={teethInitialVersion}
     >
     <Suspense fallback={null}>
     <SalesUpdatesProvider
@@ -217,6 +229,13 @@ export function AppShellClient({
             userAssignmentLabel={userAssignmentLabel}
           />
         ) : null}
+        {teethLive && !salesLive && !operationsLive ? (
+          <MobileOperationsHeader
+            role={role}
+            userEmail={userEmail}
+            userAssignmentLabel={userAssignmentLabel}
+          />
+        ) : null}
         <AppShellMain
           mobileChrome={mobileChrome}
           topNotices={
@@ -252,7 +271,10 @@ export function AppShellClient({
                 ) : null}
                 <OperationsBoardQuestionsNotice />
                 <OperationsUpdatesBanner />
+                <TeethUpdatesBanner />
               </>
+            ) : teethLive && !salesLive ? (
+              <TeethUpdatesBanner />
             ) : null
           }
         >
@@ -272,10 +294,14 @@ export function AppShellClient({
         {operationsLive && !salesLive && role ? (
           <MobileOperationsNav role={role} navBadges={navBadges} />
         ) : null}
+        {teethLive && !salesLive && !operationsLive && role ? (
+          <MobileOperationsNav role={role} navBadges={navBadges} />
+        ) : null}
       </div>
       </SalesOnboardingGate>
     </SalesUpdatesProvider>
     </Suspense>
+    </TeethUpdatesProvider>
     </OperationsUpdatesProvider>
     </AppRoleProvider>
     </AdminPanelPreviewProvider>

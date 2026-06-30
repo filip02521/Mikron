@@ -1,4 +1,5 @@
 import { createAdminClient, hasSupabaseConfig } from "@/lib/supabase/admin";
+import { parseTeethManufacturer, parseTeethKind, type TeethManufacturer, type TeethKind } from "@/lib/teeth/teeth-catalog";
 
 export type TeethProductRow = {
   subiektTwId: number;
@@ -6,8 +7,16 @@ export type TeethProductRow = {
   name: string;
   plu: string | null;
   note: string;
+  manufacturer: TeethManufacturer | null;
+  kind: TeethKind | null;
   createdAt: string;
   updatedAt: string;
+};
+
+export type TeethProductInfoEntry = {
+  twId: number;
+  manufacturer: TeethManufacturer | null;
+  kind: TeethKind | null;
 };
 
 function mapRow(row: Record<string, unknown>): TeethProductRow {
@@ -17,6 +26,8 @@ function mapRow(row: Record<string, unknown>): TeethProductRow {
     name: String(row.name ?? ""),
     plu: row.plu != null ? String(row.plu) : null,
     note: String(row.note ?? ""),
+    manufacturer: parseTeethManufacturer(row.manufacturer),
+    kind: parseTeethKind(row.kind),
     createdAt: String(row.created_at ?? ""),
     updatedAt: String(row.updated_at ?? ""),
   };
@@ -28,11 +39,22 @@ export async function fetchTeethProducts(): Promise<TeethProductRow[]> {
   const supabase = createAdminClient();
   const { data, error } = await supabase
     .from("prosba_teeth_products")
-    .select("subiekt_tw_id, symbol, name, plu, note, created_at, updated_at")
+    .select("subiekt_tw_id, symbol, name, plu, note, manufacturer, kind, created_at, updated_at")
     .order("name")
     .order("symbol");
 
-  if (error) throw new Error(error.message);
+  if (error) {
+    if (error.message.includes("manufacturer") || error.code === "42703") {
+      const { data: fallback, error: fallbackErr } = await supabase
+        .from("prosba_teeth_products")
+        .select("subiekt_tw_id, symbol, name, plu, note, created_at, updated_at")
+        .order("name")
+        .order("symbol");
+      if (fallbackErr) throw new Error(fallbackErr.message);
+      return (fallback ?? []).map((row) => mapRow(row as Record<string, unknown>));
+    }
+    throw new Error(error.message);
+  }
   return (data ?? []).map((row) => mapRow(row as Record<string, unknown>));
 }
 
@@ -44,4 +66,13 @@ export async function fetchTeethProductTwIds(): Promise<number[]> {
 export async function fetchTeethProductTwIdSet(): Promise<Set<number>> {
   const ids = await fetchTeethProductTwIds();
   return new Set(ids.map((id) => Math.trunc(id)));
+}
+
+export async function fetchTeethProductInfo(): Promise<TeethProductInfoEntry[]> {
+  const rows = await fetchTeethProducts();
+  return rows.map((row) => ({
+    twId: row.subiektTwId,
+    manufacturer: row.manufacturer,
+    kind: row.kind,
+  }));
 }

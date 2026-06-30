@@ -14,6 +14,7 @@ import {
 import {
   canAccessOperations,
   canAccessPath,
+  canAccessTeethPanel,
   canAccessWarehouse,
   canManageSalesTeam,
   homePathForRole,
@@ -44,6 +45,8 @@ const OPERATIONS_PREFIXES = [
   "/zamowienia",
   "/notatki",
 ];
+
+const TEETH_PREFIXES = ["/zeby"];
 
 const ADMIN_PREFIXES = ["/admin"];
 
@@ -140,6 +143,7 @@ export async function proxy(request: NextRequest) {
   const isProtected =
     matchesPrefix(pathname, OPERATIONS_PREFIXES) ||
     matchesPrefix(pathname, PROCUREMENT_PREFIXES) ||
+    matchesPrefix(pathname, TEETH_PREFIXES) ||
     matchesPrefix(pathname, ADMIN_PREFIXES) ||
     matchesPrefix(pathname, SALES_PREFIXES) ||
     matchesPrefix(pathname, SALES_TEAM_PREFIXES);
@@ -252,12 +256,21 @@ export async function proxy(request: NextRequest) {
       pathname === "/dostawy" ||
       pathname.startsWith("/dostawy/"));
 
+  if (
+    matchesPrefix(pathname, TEETH_PREFIXES) &&
+    !canAccessTeethPanel(role)
+  ) {
+    return redirectWithSession(request, sessionResponse, homePathForRole(role));
+  }
+
   if (matchesPrefix(pathname, PROCUREMENT_PREFIXES) && !canAccessOperations(role)) {
-    return redirectWithSession(
-      request,
-      sessionResponse,
-      homePathForRole(role)
-    );
+    if (pathname === "/zakupy/tablica" || pathname.startsWith("/zakupy/tablica/")) {
+      if (!canAccessTeethPanel(role)) {
+        return redirectWithSession(request, sessionResponse, homePathForRole(role));
+      }
+    } else {
+      return redirectWithSession(request, sessionResponse, homePathForRole(role));
+    }
   }
 
   if (

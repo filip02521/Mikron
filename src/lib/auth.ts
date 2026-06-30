@@ -7,6 +7,7 @@ import {
 } from "@/lib/auth/guard-admin-panel-preview";
 import {
   canAccessOperations,
+  canAccessTeethPanel,
   canAccessWarehouse,
   canManageSalesTeam,
   canManageSuppliers,
@@ -122,6 +123,20 @@ export async function requireWarehouse(
   return user;
 }
 
+/** Panel zębów: oznaczanie zamówionych, edycja próśb (admin + zakupy + zakupy_zeby). */
+export async function requireTeethPanel(
+  intent: AuthIntent = "read"
+): Promise<SessionUser> {
+  const user = await getSessionUser();
+  if (!user || !canAccessTeethPanel(user.role)) {
+    throw new Error("Brak uprawnień do panelu zębów");
+  }
+  if (intent === "mutate") {
+    await assertAdminPanelAllowsOperationsMutations(user);
+  }
+  return user;
+}
+
 /** Zarządzanie dostawcami i urlopami (admin + zakupy). */
 export async function requireSupplierManagement(
   intent: AuthIntent = "read"
@@ -150,7 +165,7 @@ export async function getSessionUserForMutation(): Promise<SessionUser> {
 /** Podpowiedzi Subiekt przy składaniu / edycji próśb (handlowiec, zakupy, admin). */
 export async function requireSubiektLookup(): Promise<SessionUser> {
   const user = await getSessionUser();
-  if (!user || (!isSalesAccount(user.role) && !canAccessOperations(user.role))) {
+  if (!user || (!isSalesAccount(user.role) && !canAccessOperations(user.role) && !canAccessTeethPanel(user.role))) {
     throw new Error("Brak uprawnień do podpowiedzi Subiekt");
   }
   return user;

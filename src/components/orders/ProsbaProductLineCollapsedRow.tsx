@@ -9,6 +9,11 @@ import {
 } from "@/lib/orders/prosba-line-stock-ui";
 import { useTeethExemptTwIds } from "@/components/layout/TeethExemptContext";
 import { isStockExemptTwId } from "@/lib/orders/teeth-stock-exempt";
+import {
+  allTeethDetailsComplete,
+  expandTeethDetails,
+  isTeethDetailComplete,
+} from "@/lib/teeth/teeth-catalog";
 import type { IndividualRequestKind } from "@/types/database";
 import { Button } from "@/components/ui/Button";
 import { IconCircleCheck, IconAlertCircle } from "@/components/icons/StrokeIcons";
@@ -37,6 +42,14 @@ export function ProsbaProductLineCollapsedRow({
   const stockView = isTeethProduct
     ? null
     : buildProsbaLineStockStatusView(line, requestKind, teethExemptTwIds);
+
+  const teethComplete = isTeethProduct && line.teethManufacturer
+    ? allTeethDetailsComplete(
+        line.teethDetails,
+        line.teethManufacturer,
+        Math.max(1, parseInt(line.quantity, 10) || 1),
+      )
+    : null;
 
   return (
     <div
@@ -108,6 +121,15 @@ export function ProsbaProductLineCollapsedRow({
               )}
             >
               {stockView.shortLabel}
+            </span>
+          ) : null}
+          {teethComplete === false ? (
+            <span className="shrink-0 rounded-full bg-amber-100 px-1.5 py-0.5 text-[11px] font-semibold text-amber-800 ring-1 ring-amber-200/80">
+              Zęby do uzupełnienia
+            </span>
+          ) : teethComplete === true ? (
+            <span className="shrink-0 rounded-full bg-violet-600 px-1.5 py-0.5 text-[11px] font-semibold text-white">
+              Zęby gotowe
             </span>
           ) : null}
         </div>

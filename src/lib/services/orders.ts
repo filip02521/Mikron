@@ -51,6 +51,8 @@ import { normalizeSalesClientName } from "@/lib/orders/sales-client-label";
 import { assertNoDuplicateInformacjaEntries } from "@/lib/orders/informacja-duplicate-server";
 import { resolveOrderLineSubiektTwIdFromCatalog } from "@/lib/orders/resolve-order-line-subiekt-tw-id";
 import { normalizeSalesRequestNote } from "@/lib/orders/sales-request-note";
+import { fetchTeethProductTwIdSet } from "@/lib/data/teeth-products";
+import type { TeethLineDetail } from "@/lib/teeth/teeth-catalog";
 import {
   normalizeProcurementCancelNote,
   throwIfProcurementCancelNoteColumnMissing,
@@ -63,7 +65,7 @@ import {
   zkProsbaSourceFromOrder,
 } from "@/lib/orders/zk-prosba-source";
 import { WAREHOUSE_SHELF_DEFAULT } from "@/lib/orders/warehouse-inventory";
-import { createDeliveryNotificationQueueEntry } from "@/lib/orders/delivery-notification-queue";
+import { sendDeliveryNotificationDirect } from "@/lib/orders/delivery-notification-queue";
 import type { SalesPersonEmailBatch } from "@/lib/email/sales-notification-types";
 import {
   buildDeliveryNotificationItem,
@@ -227,6 +229,41 @@ export async function shiftSupplierOrder(
   );
 }
 
+async function saveTeethDetailsForOrders(
+  supabase: SupabaseClient,
+  entries: { orderId: string; isTeeth: boolean; teethDetails: TeethLineDetail[] | null }[],
+): Promise<void> {
+  for (const entry of entries) {
+    if (!entry.isTeeth) {
+      await supabase
+        .from("individual_order_teeth_details")
+        .delete()
+        .eq("order_id", entry.orderId);
+      continue;
+    }
+    if (!entry.teethDetails || entry.teethDetails.length === 0) continue;
+    await supabase
+      .from("individual_order_teeth_details")
+      .delete()
+      .eq("order_id", entry.orderId);
+    const rows = entry.teethDetails
+      .filter((d) => d.color.trim())
+      .map((d) => ({
+        order_id: entry.orderId,
+        position: d.position,
+        color: d.color.trim(),
+        mould: d.mould?.trim() || null,
+        jaw: d.jaw ?? null,
+        kind: d.kind ?? null,
+      }));
+    if (rows.length === 0) continue;
+    const { error } = await supabase.from("individual_order_teeth_details").insert(rows);
+    if (error) {
+      console.error("[saveTeethDetailsForOrders]", error.message);
+    }
+  }
+}
+
 export async function batchAddIndividualOrders(
   entries: Array<{
     supplierId?: string;
@@ -245,6 +282,7 @@ export async function batchAddIndividualOrders(
     sourceZkNumber?: string | null;
     informacjaQueueViaDailyPanel?: boolean;
     informacjaStockOutReorder?: boolean;
+    teethDetails?: TeethLineDetail[] | null;
   }>,
   createdBy?: string,
   options?: { submitMode?: "sales" | "procurement" }
@@ -263,6 +301,7 @@ export async function batchAddIndividualOrders(
   const submissionGroupId = uuidv4();
   const procurementMode = options?.submitMode === "procurement";
   const catalogSource = procurementMode ? "procurement_verification" : "order_history";
+  const teethTwIdSet = await fetchTeethProductTwIdSet().catch(() => new Set<number>());
   try {
     let complete = 0;
     let verification = 0;
@@ -350,6 +389,10 @@ export async function batchAddIndividualOrders(
         mikran_code: sanitized.mikranCode?.trim() || null,
         informacja_queue_via_daily_panel: informacjaQueueViaDailyPanel,
         informacja_stock_out_reorder: informacjaStockOutReorder,
+        is_teeth:
+          draft.subiektTwId != null && draft.subiektTwId > 0
+            ? teethTwIdSet.has(Math.trunc(draft.subiektTwId))
+            : false,
         ...normalizeZkProsbaSourceInput({
           sourceZkWatchId: e.sourceZkWatchId,
           sourceZkNumber: e.sourceZkNumber,
@@ -389,6 +432,15 @@ export async function batchAddIndividualOrders(
       }
       throw new Error(msg);
     }
+
+    await saveTeethDetailsForOrders(
+      supabase,
+      rows.map((row, i) => ({
+        orderId: row.id,
+        isTeeth: Boolean(row.is_teeth),
+        teethDetails: entries[i]?.teethDetails ?? null,
+      })),
+    );
 
     const { after } = await import("next/server");
     after(async () => {
@@ -438,10 +490,12 @@ export async function completeVerificationOrder(
     requestKind?: IndividualRequestKind;
     subiektTwId?: number | null;
     informacjaPath?: InformacjaFlowPath;
+    teethDetails?: TeethLineDetail[] | null;
   }
 ) {
   const kind = (data.requestKind ?? "zamowienie") as IndividualRequestKind;
   const supabase = createAdminClient();
+  const teethTwIdSet = await fetchTeethProductTwIdSet().catch(() => new Set<number>());
   const { data: priorRow, error: priorErr } = await supabase
     .from("individual_orders")
     .select(
@@ -507,6 +561,10 @@ export async function completeVerificationOrder(
       mikran_code: sanitized.mikranCode?.trim() || null,
       informacja_queue_via_daily_panel: informacjaFlags.informacjaQueueViaDailyPanel,
       informacja_stock_out_reorder: informacjaFlags.informacjaStockOutReorder,
+      is_teeth:
+        data.subiektTwId != null && data.subiektTwId > 0
+          ? teethTwIdSet.has(Math.trunc(data.subiektTwId))
+          : false,
     })
     .eq("id", orderId)
     .eq("status", "Weryfikacja")
@@ -517,6 +575,14 @@ export async function completeVerificationOrder(
   if (!updated) {
     throw new Error("Prośba została już przetworzona — odśwież listę.");
   }
+
+  const isTeeth =
+    data.subiektTwId != null && data.subiektTwId > 0
+      ? teethTwIdSet.has(Math.trunc(data.subiektTwId))
+      : false;
+  await saveTeethDetailsForOrders(supabase, [
+    { orderId, isTeeth, teethDetails: data.teethDetails ?? null },
+  ]);
 
   try {
     const twId =
@@ -602,6 +668,7 @@ export async function updateIndividualRequestGroup(
   });
 
   const supabase = options.supabase ?? createAdminClient();
+  const teethTwIdSet = await fetchTeethProductTwIdSet().catch(() => new Set<number>());
   const { data: rawRows, error: fetchError } = await supabase
     .from("individual_orders")
     .select("*")
@@ -692,6 +759,8 @@ export async function updateIndividualRequestGroup(
     excludeOrderIds: orderIds,
   });
 
+  const teethDetailsToSave: { orderId: string; isTeeth: boolean; teethDetails: TeethLineDetail[] | null }[] = [];
+
   for (const line of payload.lines) {
     const kind = payload.requestKind;
     const existingLineId = resolveIndividualRequestEditLineId(line.id, existingOrderIds);
@@ -734,6 +803,10 @@ export async function updateIndividualRequestGroup(
           : existingLineId
             ? undefined
             : null;
+    const isTeeth =
+      line.subiektTwId != null && line.subiektTwId > 0
+        ? teethTwIdSet.has(Math.trunc(line.subiektTwId))
+        : false;
     const rowPayload = {
       supplier_id: payload.supplierId.trim() || null,
       sales_person_id: payload.salesPersonId,
@@ -753,6 +826,7 @@ export async function updateIndividualRequestGroup(
       mikran_code: sanitized.mikranCode?.trim() || null,
       informacja_queue_via_daily_panel: informacjaFlags.informacjaQueueViaDailyPanel,
       informacja_stock_out_reorder: informacjaFlags.informacjaStockOutReorder,
+      is_teeth: isTeeth,
     };
 
     if (existingLineId) {
@@ -764,6 +838,7 @@ export async function updateIndividualRequestGroup(
       if (error) throw new Error(error.message);
       keptIds.add(existingLineId);
       updated++;
+      teethDetailsToSave.push({ orderId: existingLineId, isTeeth, teethDetails: line.teethDetails ?? null });
 
       try {
         await indexOrderLineToProductCatalog({
@@ -794,6 +869,7 @@ export async function updateIndividualRequestGroup(
       });
       if (error) throw new Error(formatDbError(error));
       inserted++;
+      teethDetailsToSave.push({ orderId: newId, isTeeth, teethDetails: line.teethDetails ?? null });
 
       try {
         await indexOrderLineToProductCatalog({
@@ -815,6 +891,8 @@ export async function updateIndividualRequestGroup(
       }
     }
   }
+
+  await saveTeethDetailsForOrders(supabase, teethDetailsToSave);
 
   const removeIds = orderIds.filter((id) => !keptIds.has(id));
   let removed = 0;
@@ -903,18 +981,20 @@ export async function processIndividualFromSummary(
   orderIds: string[],
   action: "GLOWNE" | "POBOCZNE" | "ANULOWANO",
   userEmail: string,
-  procurementCancelNote?: string | null
+  procurementCancelNote?: string | null,
+  userId?: string
 ) {
   const supabase = createAdminClient();
   const { data: statusRows } = await supabase
     .from("individual_orders")
     .select(
-      "id, request_kind, status, supplier_id, symbol, products, quantity, informacja_queue_via_daily_panel, informacja_stock_out_reorder"
+      "id, request_kind, status, supplier_id, symbol, products, quantity, informacja_queue_via_daily_panel, informacja_stock_out_reorder, is_teeth"
     )
     .in("id", orderIds);
 
   const processableNowe = (statusRows ?? []).filter((r) => {
     if (r.status !== "Nowe") return false;
+    if (r.is_teeth === true) return false;
     const kind = r.request_kind ?? "zamowienie";
     if (kind === "zamowienie") return true;
     return (
@@ -1045,6 +1125,12 @@ export async function processIndividualFromSummary(
         order_type: orderType,
         ordered_at: batchOrderedAt,
         placement_group_id: placementGroupId,
+        ...(order.is_teeth && userId
+          ? {
+              teeth_ordered_by: userId,
+              teeth_ordered_at: batchOrderedAt,
+            }
+          : {}),
         ...seenPatch,
       })
       .eq("id", id);
@@ -1430,7 +1516,7 @@ async function applyDeliveredQuantityUpdate(
 export async function updateDeliveredQuantity(
   orderId: string,
   deliveredQuantity: string
-): Promise<{ emailSent: boolean; emailError?: string; queueId?: string }> {
+): Promise<{ emailSent: boolean; emailError?: string }> {
   const result = await applyDeliveredQuantityUpdate(orderId, deliveredQuantity);
   if (result.statsUpdated) scheduleHistoryRetentionPurge();
 
@@ -1445,21 +1531,16 @@ export async function updateDeliveredQuantity(
     return { emailSent: false };
   }
 
-  const queueId = await createDeliveryNotificationQueueEntry(
-    result.queueEntry.orderId,
-    result.queueEntry.deliveredQuantity,
-    result.queueEntry.status,
-    result.queueEntry.salesPersonId
-  );
-
-  return { emailSent: false, queueId };
+  const mailResult = await sendDeliveryNotificationDirect([result.queueEntry]);
+  return {
+    emailSent: mailResult.sent > 0,
+    emailError: mailResult.error,
+  };
 }
 
 export type BatchDeliveredUpdateResult = {
   saved: number;
   savedOrderIds: string[];
-  /** queueId dla danego savedOrderIds (undefined gdy brak powiadomienia). */
-  queueIds: (string | undefined)[];
   emailSent: number;
   errors: string[];
   emailError?: string;
@@ -1470,7 +1551,7 @@ export async function batchUpdateDeliveredQuantities(
   updates: Array<{ orderId: string; deliveredQuantity: string }>
 ): Promise<BatchDeliveredUpdateResult> {
   if (!updates.length) {
-    return { saved: 0, savedOrderIds: [], queueIds: [], emailSent: 0, errors: ["Brak pozycji do zapisania."] };
+    return { saved: 0, savedOrderIds: [], emailSent: 0, errors: ["Brak pozycji do zapisania."] };
   }
 
   const byOrderId = new Map<string, string>();
@@ -1518,22 +1599,15 @@ export async function batchUpdateDeliveredQuantities(
 
   if (statsTouches > 0) scheduleHistoryRetentionPurge();
 
-  const queueIdByOrderId = new Map<string, string>();
-  await Promise.all(
-    queueEntries.map(async (entry) => {
-      const queueId = await createDeliveryNotificationQueueEntry(
-        entry.orderId,
-        entry.deliveredQuantity,
-        entry.status,
-        entry.salesPersonId
-      );
-      queueIdByOrderId.set(entry.orderId, queueId);
-    })
-  );
+  let emailSent = 0;
+  let emailError: string | undefined;
+  if (queueEntries.length) {
+    const mailResult = await sendDeliveryNotificationDirect(queueEntries);
+    emailSent = mailResult.sent;
+    emailError = mailResult.error;
+  }
 
-  const queueIds = savedOrderIds.map((orderId) => queueIdByOrderId.get(orderId));
-
-  return { saved, savedOrderIds, queueIds, emailSent: 0, errors };
+  return { saved, savedOrderIds, emailSent, errors, emailError };
 }
 
 async function fetchSupplierCompletedOrdersForStats(

@@ -102,20 +102,17 @@ function withEmailWarningDuration(toast: BatchOperationToast): BatchOperationToa
 export function formatDeliveryBatchToast(result: {
   saved: number;
   emailSent: number;
-  emailScheduled?: boolean;
   errors: string[];
   emailError?: string;
 }): BatchOperationToast {
   const partial = result.errors.length > 0;
   const emailPart = result.emailError
     ? ` Uwaga e-mail: ${result.emailError}`
-    : result.emailScheduled
-      ? " · mail zaplanowany"
-      : result.emailSent === 0
-        ? ""
-        : result.emailSent === 1
-          ? " · wysłano mail do handlowca"
-          : ` · wysłano ${result.emailSent} maile (po handlowcu)`;
+    : result.emailSent === 0
+      ? ""
+      : result.emailSent === 1
+        ? " · wysłano mail do handlowca"
+        : ` · wysłano ${result.emailSent} maile (po handlowcu)`;
   const errPart = partial
     ? ` Uwagi (${result.errors.length}): ${result.errors.slice(0, 2).join("; ")}${result.errors.length > 2 ? "…" : ""}`
     : "";

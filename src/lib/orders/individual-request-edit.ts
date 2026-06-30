@@ -2,6 +2,7 @@ import type { IndividualOrder, IndividualRequestKind } from "@/types/database";
 import type { InformacjaFlowPath } from "@/lib/orders/informacja-stock-out-reorder";
 import { hasAnyProductHint } from "@/lib/orders/request-completeness";
 import { normalizeSalesRequestNote } from "@/lib/orders/sales-request-note";
+import type { TeethLineDetail } from "@/lib/teeth/teeth-catalog";
 
 /** Prośbę można edytować, dopóki dział dostaw jej nie złożył u dostawcy. */
 export function isIndividualOrderEditable(order: IndividualOrder): boolean {
@@ -40,6 +41,7 @@ type EditLineDraft = {
   stockSource?: "subiekt" | null;
   source?: "subiekt" | "catalog" | null;
   requestNote?: string;
+  teethDetails?: TeethLineDetail[] | undefined;
 };
 
 /**
@@ -83,6 +85,7 @@ export function toIndividualRequestEditLinePayload(
     stockSource: line.stockSource,
     source: line.source,
     requestNote: line.requestNote,
+    teethDetails: line.teethDetails ?? null,
   };
 }
 
@@ -102,6 +105,7 @@ export type IndividualRequestEditLineInput = {
   stockSource?: "subiekt" | null;
   source?: "subiekt" | "catalog" | null;
   requestNote?: string | null;
+  teethDetails?: TeethLineDetail[] | null;
 };
 
 /** @deprecated Używaj `requestNote` na każdej linii w `lines`. */
@@ -156,6 +160,7 @@ export type AddIndividualOrdersEntry = {
   reserved?: number | null;
   available?: number | null;
   stockSource?: "subiekt" | null;
+  teethDetails?: TeethLineDetail[] | null;
 };
 
 export type AddIndividualOrdersInput = {
@@ -183,5 +188,13 @@ export function ordersToEditLines(orders: IndividualOrder[]): IndividualRequestE
     clientKhId: o.sales_client_kh_id ?? null,
     subiektTwId: o.subiekt_tw_id ?? null,
     requestNote: normalizeSalesRequestNote(o.sales_request_note) ?? "",
+    teethDetails: o.teeth_details?.map((d) => ({
+      position: d.position,
+      color: d.color,
+      mould: d.mould,
+      size: d.size,
+      jaw: d.jaw,
+      kind: d.kind,
+    })) ?? null,
   }));
 }

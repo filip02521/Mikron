@@ -251,7 +251,10 @@ describe("VerificationWorkspace", () => {
     fireEvent.click(submit);
 
     await waitFor(() => {
-      expect(mockComplete).toHaveBeenCalledWith("o1", {
+      expect(mockComplete).toHaveBeenCalledOnce();
+      const [callId, callData] = mockComplete.mock.calls[0]!;
+      expect(callId).toBe("o1");
+      expect(callData).toMatchObject({
         supplierId: "sup-a",
         salesPersonId: "sp-1",
         symbol: "XYZ",

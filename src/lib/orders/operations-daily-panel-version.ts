@@ -76,7 +76,7 @@ export function computeOperationsDailyPanelVersion(params: {
 async function fetchOperationsDailyPanelWorkspace(): Promise<SummaryWorkspaceData> {
   const [schedules, newOrders, salesPeople, salesCancelledOrders] = await Promise.all([
     fetchSuppliersWithSchedules(undefined, { activeOnly: true }),
-    fetchIndividualOrders({ status: "Nowe", hideSalesAcknowledged: false }),
+    fetchIndividualOrders({ status: "Nowe", hideSalesAcknowledged: false, excludeTeeth: true }),
     fetchSalesPeopleForPicker(),
     fetchSalesCancelledOrders(7).catch(() => []),
   ]);

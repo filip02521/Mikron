@@ -35,6 +35,7 @@ describe("orderToVerificationForm", () => {
       requestKind: "zamowienie",
       subiektTwId: null,
       informacjaPath: null,
+      teethDetails: null,
     });
   });
 

@@ -91,6 +91,75 @@ export async function getPendingDeliveryNotificationQueueEntries(
   }));
 }
 
+export type DeliveryNotificationDirectInput = {
+  orderId: string;
+  deliveredQuantity: string;
+  status: string;
+  salesPersonId: string | null;
+};
+
+export async function sendDeliveryNotificationDirect(
+  entries: DeliveryNotificationDirectInput[]
+): Promise<{ sent: number; error?: string }> {
+  if (!entries.length) return { sent: 0 };
+
+  const supabase = createAdminClient();
+  const notifications = new Map<string, SalesPersonEmailBatch>();
+  const skipped: string[] = [];
+
+  for (const entry of entries) {
+    const { data: raw } = await supabase
+      .from("individual_orders")
+      .select("*, supplier:suppliers(*), sales_person:sales_people(*)")
+      .eq("id", entry.orderId)
+      .single();
+
+    const order = raw ? normalizeIndividualOrder(raw) : null;
+    if (!order) {
+      skipped.push(entry.orderId);
+      continue;
+    }
+
+    const person = await resolveSalesPersonEmail(supabase, order);
+    if (!person) {
+      skipped.push(order.sales_person?.name?.trim() ?? "Handlowiec");
+      continue;
+    }
+
+    const item = buildDeliveryNotificationItem(
+      { ...order, status: entry.status as IndividualOrderStatus, delivered_quantity: entry.deliveredQuantity },
+      { deliveredQuantity: entry.deliveredQuantity }
+    );
+
+    const existing = notifications.get(person.personId);
+    if (existing) {
+      existing.items.push(item);
+    } else {
+      notifications.set(person.personId, {
+        email: person.email,
+        name: person.name,
+        items: [item],
+      });
+    }
+  }
+
+  const result = await sendDeliveryNotificationEmails(notifications);
+  const sent = result.sent;
+
+  let error: string | undefined;
+  if (result.failures.length) {
+    error = `${result.failures[0].to}: ${result.failures[0].error}`;
+  } else if (skipped.length) {
+    const skipNote =
+      skipped.length === 1
+        ? `${skipped[0]}: brak e-maila — zapisano bez powiadomienia`
+        : `${skipped.length} handlowców bez e-maila — zapisano bez powiadomienia`;
+    error = error ? `${error}; ${skipNote}` : skipNote;
+  }
+
+  return { sent, error };
+}
+
 export async function sendPendingDeliveryNotifications(ids: string[]): Promise<{
   sent: number;
   error?: string;

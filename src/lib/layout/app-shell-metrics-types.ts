@@ -11,12 +11,14 @@ export type AppShellNavBadges = {
   operationsNotatki?: number;
   departmentBoardQuestions?: number;
   adminBugReports?: number;
+  teethQueue?: number;
 };
 
 export type AppShellMetrics = {
   navBadges: AppShellNavBadges;
   salesActivityVersion: string | null;
   operationsDailyPanelVersion: string | null;
+  teethPanelVersion: string | null;
   salesPersonName: string | null;
   userAssignmentLabel: string | null;
   salesBoardAttention: SalesBoardAttentionSnapshot | null;
@@ -32,6 +34,7 @@ export const EMPTY_APP_SHELL_METRICS: AppShellMetrics = {
   navBadges: { nowe: 0, weryfikacja: 0, realizacja: 0 },
   salesActivityVersion: null,
   operationsDailyPanelVersion: null,
+  teethPanelVersion: null,
   salesPersonName: null,
   userAssignmentLabel: null,
   salesBoardAttention: null,

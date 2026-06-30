@@ -1,10 +1,12 @@
 import { describe, expect, it } from "vitest";
 import {
   canAccessPath,
+  canAccessTeethPanel,
   canManageSalesTeam,
   homePathForRole,
   isSalesAccount,
   isSalesManager,
+  isZakupyZeby,
   redirectPathAfterLogin,
 } from "./auth-roles";
 
@@ -50,6 +52,62 @@ describe("redirectPathAfterLogin role defaults", () => {
     expect(redirectPathAfterLogin("admin", null, { adminPanelContext: "sales_manager" })).toBe(
       "/zespol"
     );
+  });
+});
+
+describe("auth-roles zakupy_zeby", () => {
+  it("kieruje zakupy_zeby na panel zębów", () => {
+    expect(homePathForRole("zakupy_zeby")).toBe("/zeby");
+  });
+
+  it("isZakupyZeby rozpoznaje rolę", () => {
+    expect(isZakupyZeby("zakupy_zeby")).toBe(true);
+    expect(isZakupyZeby("zakupy")).toBe(false);
+    expect(isZakupyZeby("admin")).toBe(false);
+  });
+
+  it("canAccessTeethPanel zezwala admin, zakupy, zakupy_zeby", () => {
+    expect(canAccessTeethPanel("admin")).toBe(true);
+    expect(canAccessTeethPanel("zakupy")).toBe(true);
+    expect(canAccessTeethPanel("zakupy_zeby")).toBe(true);
+    expect(canAccessTeethPanel("magazyn")).toBe(false);
+    expect(canAccessTeethPanel("sales")).toBe(false);
+  });
+
+  it("canAccessPath zezwala na /zeby, /notatki, /zakupy/tablica", () => {
+    expect(canAccessPath("zakupy_zeby", "/zeby")).toBe(true);
+    expect(canAccessPath("zakupy_zeby", "/notatki")).toBe(true);
+    expect(canAccessPath("zakupy_zeby", "/zakupy/tablica")).toBe(true);
+  });
+
+  it("canAccessPath odrzuca /moje, /admin, /podsumowanie, /kolejka, /zakupy/dostawcy", () => {
+    expect(canAccessPath("zakupy_zeby", "/moje")).toBe(false);
+    expect(canAccessPath("zakupy_zeby", "/admin")).toBe(false);
+    expect(canAccessPath("zakupy_zeby", "/podsumowanie")).toBe(false);
+    expect(canAccessPath("zakupy_zeby", "/kolejka")).toBe(false);
+    expect(canAccessPath("zakupy_zeby", "/zakupy/dostawcy")).toBe(false);
+  });
+
+  it("canAccessPath zezwala admin i zakupy na /zeby", () => {
+    expect(canAccessPath("admin", "/zeby")).toBe(true);
+    expect(canAccessPath("zakupy", "/zeby")).toBe(true);
+  });
+
+  it("canAccessPath odrzuca magazyn i sales na /zeby", () => {
+    expect(canAccessPath("magazyn", "/zeby")).toBe(false);
+    expect(canAccessPath("sales", "/zeby")).toBe(false);
+  });
+
+  it("redirectPathAfterLogin kieruje na /zeby", () => {
+    expect(redirectPathAfterLogin("zakupy_zeby", null)).toBe("/zeby");
+    expect(redirectPathAfterLogin("zakupy_zeby", "/zeby")).toBe("/zeby");
+    expect(redirectPathAfterLogin("zakupy_zeby", "/notatki")).toBe("/notatki");
+  });
+
+  it("redirectPathAfterLogin odrzuca niedozwolony next", () => {
+    expect(redirectPathAfterLogin("zakupy_zeby", "/moje")).toBe("/zeby");
+    expect(redirectPathAfterLogin("zakupy_zeby", "/kolejka")).toBe("/zeby");
+    expect(redirectPathAfterLogin("zakupy_zeby", "/podsumowanie")).toBe("/zeby");
   });
 });
 

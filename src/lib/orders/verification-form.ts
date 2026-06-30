@@ -3,6 +3,7 @@ import {
   informacjaFlowPathFromOrder,
   type InformacjaFlowPath,
 } from "@/lib/orders/informacja-stock-out-reorder";
+import type { TeethLineDetail, TeethManufacturer, TeethKind } from "@/lib/teeth/teeth-catalog";
 
 export type { OrderFormSupplierOption as VerificationSupplierOption } from "@/lib/orders/order-form-suppliers";
 
@@ -20,6 +21,9 @@ export type VerificationFormState = {
   reserved?: number | null;
   available?: number | null;
   stockSource?: "subiekt" | null;
+  teethManufacturer?: TeethManufacturer | null;
+  teethKind?: TeethKind | null;
+  teethDetails?: TeethLineDetail[] | null;
 };
 
 /** Mapuje wiersz kolejki weryfikacji na stan formularza. */
@@ -37,6 +41,14 @@ export function orderToVerificationForm(order: IndividualOrder): VerificationFor
       order.request_kind === "informacja"
         ? (informacjaFlowPathFromOrder(order) ?? "direct")
         : null,
+    teethDetails: order.teeth_details?.map((d) => ({
+      position: d.position,
+      color: d.color,
+      mould: d.mould,
+      size: d.size,
+      jaw: d.jaw,
+      kind: d.kind,
+    })) ?? null,
   };
 }
 

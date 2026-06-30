@@ -63,7 +63,7 @@ import type { ProductLineDraft } from "@/components/orders/request-product-lines
 import { buildProsbaSubmitStockConfirm } from "@/lib/orders/prosba-stock-check";
 import { handleProsbaStockSubmitError } from "@/lib/orders/prosba-stock-submit-error";
 import { useProsbaLinesStockSync } from "@/hooks/useProsbaLinesStockSync";
-import { useTeethExemptTwIds } from "@/components/layout/TeethExemptContext";
+import { useTeethExemptTwIds, useTeethProductInfo } from "@/components/layout/TeethExemptContext";
 import type { SubiektFeedback } from "@/lib/subiekt/feedback";
 import { toAppSupplierRefs } from "@/lib/subiekt/match-supplier";
 import {
@@ -115,6 +115,7 @@ export function VerificationWorkspace({
   }, [orders.length, onQueueEmpty]);
 
   const active = orders.find((order) => order.id === resolvedActiveId) ?? null;
+  const teethProductInfo = useTeethProductInfo();
   const cancelTargetOrder = useMemo(
     () => orders.find((order) => order.id === cancelTargetId) ?? null,
     [orders, cancelTargetId]
@@ -131,9 +132,16 @@ export function VerificationWorkspace({
 
   const supplierRefs = useMemo(() => toAppSupplierRefs(suppliers), [suppliers]);
 
-  const [form, setForm] = useState(() =>
-    orders[0] ? orderToVerificationForm(orders[0]) : emptyVerificationForm()
-  );
+  const [form, setForm] = useState(() => {
+    if (!orders[0]) return emptyVerificationForm();
+    const f = orderToVerificationForm(orders[0]);
+    const twId = orders[0].subiekt_tw_id;
+    if (twId && twId > 0 && teethProductInfo.twIds.has(twId)) {
+      f.teethManufacturer = teethProductInfo.manufacturerByTwId.get(twId) ?? null;
+      f.teethKind = teethProductInfo.kindByTwId.get(twId) ?? null;
+    }
+    return f;
+  });
   const [loadedOrderId, setLoadedOrderId] = useState<string | null>(null);
 
   if (resolvedActiveId && resolvedActiveId !== loadedOrderId) {
@@ -143,7 +151,13 @@ export function VerificationWorkspace({
       setValidationAttempted(false);
       setSupplierSubiektFeedback(null);
       setResolvingSupplier(shouldLookupSupplierFromCatalog(order));
-      setForm(orderToVerificationForm(order));
+      const f = orderToVerificationForm(order);
+      const twId = order.subiekt_tw_id;
+      if (twId && twId > 0 && teethProductInfo.twIds.has(twId)) {
+        f.teethManufacturer = teethProductInfo.manufacturerByTwId.get(twId) ?? null;
+        f.teethKind = teethProductInfo.kindByTwId.get(twId) ?? null;
+      }
+      setForm(f);
     }
   }
 
@@ -372,6 +386,7 @@ export function VerificationWorkspace({
               ? form.informacjaPath
               : undefined,
           acknowledgeSufficientStock: options?.acknowledgeSufficientStock,
+          teethDetails: form.teethDetails ?? null,
         });
         setToast({
           text:
@@ -693,6 +708,9 @@ export function VerificationWorkspace({
                       reserved: form.reserved,
                       available: form.available,
                       stockSource: form.stockSource,
+                      teethManufacturer: form.teethManufacturer ?? null,
+                      teethKind: form.teethKind ?? null,
+                      teethDetails: form.teethDetails ?? undefined,
                     }}
                     onChange={(patch) => setForm((f) => ({ ...f, ...patch }))}
                   />

@@ -53,5 +53,7 @@ export const MICROCOPY = {
     operationsUpdates:
       "Handlowiec mógł dodać prośbę albo zmienić się kolejka — odśwież widok, aby zobaczyć aktualny stan.",
     operationsQueueChanged: "Kolejka się zmieniła — odśwież, aby zobaczyć nowe prośby.",
+    teethUpdates:
+      "Kolejka zamówień na zęby uległa zmianie — odśwież widok, aby zobaczyć aktualny stan.",
   },
 } as const;

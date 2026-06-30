@@ -90,6 +90,8 @@ export async function fetchIndividualOrders(filters?: {
   salesPersonId?: string;
   /** Domyślnie true — ukrywa potwierdzone przez handlowca. */
   hideSalesAcknowledged?: boolean;
+  /** Gdy true — wyklucza zamówienia zębowe (is_teeth = true). */
+  excludeTeeth?: boolean;
 }): Promise<IndividualOrder[]> {
   if (!hasSupabaseConfig()) return [];
   const supabase = createAdminClient();
@@ -101,6 +103,9 @@ export async function fetchIndividualOrders(filters?: {
   if (filters?.salesPersonId) q = q.eq("sales_person_id", filters.salesPersonId);
   if (filters?.hideSalesAcknowledged !== false) {
     q = q.is("sales_acknowledged_at", null);
+  }
+  if (filters?.excludeTeeth) {
+    q = q.neq("is_teeth", true);
   }
   const { data, error } = await q;
   if (error) throw new Error(error.message);
@@ -198,6 +203,7 @@ export async function fetchVerificationOrders(): Promise<IndividualOrder[]> {
     .from("individual_orders")
     .select("*, supplier:suppliers(*), sales_person:sales_people(*)")
     .eq("status", "Weryfikacja")
+    .neq("is_teeth", true)
     .order("action_at", { ascending: true });
   if (error) throw new Error(error.message);
   return normalizeIndividualOrders(data ?? []);
@@ -210,7 +216,8 @@ export async function countVerificationOrders(): Promise<number> {
   const { count, error } = await supabase
     .from("individual_orders")
     .select("*", { count: "exact", head: true })
-    .eq("status", "Weryfikacja");
+    .eq("status", "Weryfikacja")
+    .neq("is_teeth", true);
   if (error) return 0;
   return count ?? 0;
 }
@@ -437,7 +444,7 @@ export async function fetchSummaryWorkspace(options?: { salesPersonId?: string }
   }
   const { fetchSalesPeopleForPicker } = await import("@/lib/data/sales-people-admin");
   const [allNewOrders, salesPeople, statsRows, formSuppliers] = await Promise.all([
-    fetchIndividualOrders({ status: "Nowe", hideSalesAcknowledged: false }),
+    fetchIndividualOrders({ status: "Nowe", hideSalesAcknowledged: false, excludeTeeth: true }),
     fetchSalesPeopleForPicker(),
     fetchDeliveryStats(),
     fetchSuppliersForRequestForms(),

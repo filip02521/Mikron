@@ -175,7 +175,27 @@ export async function actionSuggestProducts(
   const reachable = await isSubiektReachable();
   if (reachable) {
     try {
-      return await suggestProducts(query, searchField);
+      const result = await suggestProducts(query, searchField);
+
+      // Subiekt zwrócił wyniki — uzupełnij o dostawców z naszej bazy dla wyników bez _topSupplier.
+      if (result.ok && result.items.length > 0) {
+        const enriched = await enrichSubiektResultsWithCatalogSuppliers(result.items);
+        return { ...result, items: enriched };
+      }
+
+      // Subiekt znalazł 0 wyników — spróbuj katalogu lokalnego.
+      if (result.ok && result.items.length === 0) {
+        const fallback = await tryCatalogFallback(query);
+        if (fallback) return fallback;
+      }
+
+      // Subiekt zwrócił błąd (np. 500) — spróbuj katalogu lokalnego.
+      if (!result.ok) {
+        const fallback = await tryCatalogFallback(query);
+        if (fallback) return fallback;
+      }
+
+      return result;
     } catch (e) {
       // Subiekt reachable ale API zwróciło błąd — spróbuj katalogu lokalnego.
       const fallback = await tryCatalogFallback(query);
@@ -207,6 +227,87 @@ export async function actionSuggestProducts(
   } catch (e) {
     return lookupFailure(e);
   }
+}
+
+/**
+ * Uzupełnia wyniki z Subiekta o dostawcę z naszej bazy (product_supplier_links).
+ * Wyniki z katalogu (z _topSupplier) są pomijane.
+ */
+async function enrichSubiektResultsWithCatalogSuppliers(
+  items: SubiektProduct[]
+): Promise<SubiektProduct[]> {
+  const needsEnrich = items.filter(
+    (p) => !p._topSupplier && Math.trunc(Number(p.tw_Id)) > 0
+  );
+  if (needsEnrich.length === 0) return items;
+
+  const twIds = needsEnrich.map((p) => Math.trunc(Number(p.tw_Id)));
+  const supplierMap = await batchLookupCatalogSuppliers(twIds);
+  if (supplierMap.size === 0) return items;
+
+  return items.map((p) => {
+    const twId = Math.trunc(Number(p.tw_Id));
+    const supplier = supplierMap.get(twId);
+    if (supplier && !p._topSupplier) {
+      return { ...p, _topSupplier: supplier };
+    }
+    return p;
+  });
+}
+
+/** Batch lookup dostawców z product_supplier_links dla wielu tw_Id. */
+async function batchLookupCatalogSuppliers(
+  twIds: number[]
+): Promise<Map<number, AppSupplierRef>> {
+  if (twIds.length === 0) return new Map();
+  const supabase = createAdminClient();
+  const { data, error } = await supabase
+    .from("product_supplier_links")
+    .select("subiekt_tw_id, supplier_id, order_count, last_source, suppliers(name)")
+    .in("subiekt_tw_id", twIds);
+  if (error) return new Map();
+
+  const byTwId = new Map<number, Array<{
+    supplierId: string;
+    orderCount: number;
+    lastSource: string | null;
+    supplierName: string;
+  }>>();
+
+  for (const row of data ?? []) {
+    const r = row as {
+      subiekt_tw_id: number | string;
+      supplier_id: string | number;
+      order_count?: number | null;
+      last_source?: string | null;
+      suppliers?: { name?: string | null } | null;
+    };
+    const twId = Math.trunc(Number(r.subiekt_tw_id));
+    if (twId <= 0) continue;
+    if (!byTwId.has(twId)) byTwId.set(twId, []);
+    byTwId.get(twId)!.push({
+      supplierId: String(r.supplier_id),
+      orderCount: Number(r.order_count ?? 0),
+      lastSource: (r.last_source as string | null) ?? null,
+      supplierName: r.suppliers?.name != null ? String(r.suppliers.name) : "Dostawca",
+    });
+  }
+
+  const result = new Map<number, AppSupplierRef>();
+  const scoreSource = (s: string | null) =>
+    s === "procurement_verification" ? 3 : s === "order_history" ? 2 : s === "zd_import" ? 1 : 0;
+
+  for (const [twId, links] of byTwId) {
+    links.sort((a, b) => {
+      const c = (b.orderCount ?? 0) - (a.orderCount ?? 0);
+      if (c !== 0) return c;
+      return scoreSource(b.lastSource) - scoreSource(a.lastSource);
+    });
+    const best = links[0]!;
+    result.set(twId, { id: best.supplierId, name: best.supplierName });
+  }
+
+  return result;
 }
 
 async function tryCatalogFallback(

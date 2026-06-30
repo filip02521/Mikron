@@ -176,6 +176,8 @@ type MyOrderRowCore = {
   timingLabel: string | null;
   badgeVariant: "info" | "warning" | "success" | "default" | "purple" | "danger";
   rowColor: string;
+  /** Czy pozycja jest „zęby" (denormalizowane z individual_orders). */
+  isTeeth?: boolean;
 };
 
 export type MyOrderRow = MyOrderRowCore &
@@ -533,6 +535,7 @@ function presentInformacja(order: IndividualOrder): MyOrderRow {
     quantityLabel: "—",
     progressLabel: null,
     rowColor: SUMMARY_COLORS.informacja,
+    isTeeth: Boolean(order.is_teeth),
   };
 
   const finalize = (row: MyOrderRowDraft): MyOrderRow =>
@@ -678,6 +681,7 @@ function presentZamowienie(
             ? `${displayQty} szt. zamówione`
             : null),
     rowColor: SUMMARY_COLORS.historyNew,
+    isTeeth: Boolean(order.is_teeth),
   };
 
   const zdFulfillment = resolveZdFulfillmentFromOrder(order);
@@ -720,7 +724,11 @@ function presentZamowienie(
     : null;
 
   let timingLabel: string | null = null;
-  if (zdFulfillment) {
+  if (order.is_teeth && order.teeth_delivery_date) {
+    const teethDate = parseDateOnly(order.teeth_delivery_date);
+    const overdue = teethDate != null && isPastExpectedDate(teethDate);
+    timingLabel = `Planowana dostawa: ${formatPlDate(order.teeth_delivery_date)}${overdue ? " · po terminie" : ""}`;
+  } else if (zdFulfillment) {
     if (zdFulfillment.pendingConfirmation) {
       timingLabel = salesZdPrimarySlotTimingLabel(zdFulfillment, false);
     } else {

@@ -12,6 +12,7 @@ import { Toast } from "@/components/ui/Toast";
 import { Field, Select } from "@/components/ui/Field";
 import { SupplierPickerField } from "@/components/orders/SupplierPickerField";
 import type { IndividualRequestKind } from "@/types/database";
+import type { TeethManufacturer, TeethLineDetail } from "@/lib/teeth/teeth-catalog";
 import { ProsbaFormSection } from "@/components/orders/ProsbaFormSection";
 import { prosbaHref } from "@/lib/orders/prosba-url";
 import { IconLayers, IconPlusCircle, IconUserCog, IconUserGroup } from "@/components/icons/StrokeIcons";
@@ -132,6 +133,8 @@ interface Entry {
   source?: "subiekt" | "catalog" | null;
   zkQuantity?: number | null;
   requestNote?: string;
+  teethManufacturer?: TeethManufacturer | null;
+  teethDetails?: TeethLineDetail[];
 }
 
 function emptyEntry(salesPersonId = ""): Entry {
@@ -523,6 +526,7 @@ export function OrderFormClient({
             sourceZkNumber: zkCtx?.zkNumber ?? undefined,
             informacjaQueueViaDailyPanel: informacjaFlags.informacjaQueueViaDailyPanel,
             informacjaStockOutReorder: informacjaFlags.informacjaStockOutReorder,
+            teethDetails: e.teethDetails ?? undefined,
           })),
           acknowledgeSufficientStock: options?.acknowledgeSufficientStock,
         });

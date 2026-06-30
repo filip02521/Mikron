@@ -203,12 +203,19 @@ export const ReceiveQueueRow = memo(function ReceiveQueueRow({
           <p className="truncate pl-3 text-xs text-slate-500">↳ ten sam towar</p>
         ) : (
           <div className="min-w-0">
-            <SearchHighlightText
-              text={order.products}
-              searchQuery={searchQuery}
-              className="truncate font-medium text-slate-800"
-              as="p"
-            />
+            <div className="flex items-center gap-1.5">
+              <SearchHighlightText
+                text={order.products}
+                searchQuery={searchQuery}
+                className="truncate font-medium text-slate-800"
+                as="p"
+              />
+              {order.is_teeth ? (
+                <span className="shrink-0 rounded bg-emerald-100 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-emerald-800">
+                  Zęby
+                </span>
+              ) : null}
+            </div>
             {order.symbol && order.symbol !== "-" ? (
               <SearchHighlightText
                 text={order.symbol}

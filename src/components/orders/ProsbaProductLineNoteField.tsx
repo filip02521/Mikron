@@ -1,5 +1,6 @@
 "use client";
 
+import { useId } from "react";
 import { fieldControlClass } from "@/components/ui/Field";
 import { ProsbaOptionalSection } from "@/components/orders/ProsbaOptionalSection";
 import { PROSBA_OPTIONAL_SECTION_COPY } from "@/lib/orders/prosba-optional-section-copy";
@@ -11,15 +12,15 @@ export function ProsbaProductLineNoteField({
   value,
   onChange,
   disabled,
-  id,
   className,
 }: {
   value: string;
   onChange: (value: string) => void;
   disabled?: boolean;
-  id: string;
   className?: string;
 }) {
+  const reactId = useId();
+  const textareaId = `prosba-line-note-${reactId}`;
   const hasNote = value.trim().length > 0;
   const length = value.trim().length;
   const copy = PROSBA_OPTIONAL_SECTION_COPY.lineNote;
@@ -34,7 +35,7 @@ export function ProsbaProductLineNoteField({
       className={className}
     >
       <textarea
-        id={id}
+        id={textareaId}
         value={value}
         onChange={(e) => onChange(e.target.value)}
         disabled={disabled}

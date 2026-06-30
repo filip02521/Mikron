@@ -9,7 +9,10 @@ import {
   actionRemoveTeethProduct,
   actionSearchSubiektProductsForTeethAdmin,
   actionUpdateTeethProductNote,
+  actionUpdateTeethProductManufacturer,
+  actionUpdateTeethProductKind,
 } from "@/app/actions/teeth-products";
+import { TEETH_MANUFACTURERS, TEETH_KIND_LABELS, teethManufacturerLabel, detectTeethKind, type TeethManufacturer, type TeethKind } from "@/lib/teeth/teeth-catalog";
 import { Button } from "@/components/ui/Button";
 import { Field, Input, fieldControlClass } from "@/components/ui/Field";
 import { Toast } from "@/components/ui/Toast";
@@ -46,8 +49,12 @@ export function TeethProductsAdminClient({ initial }: { initial: TeethProductRow
   const [searchError, setSearchError] = useState<string | null>(null);
   const [selectedHit, setSelectedHit] = useState<SearchHit | null>(null);
   const [addNote, setAddNote] = useState("");
+  const [addManufacturer, setAddManufacturer] = useState<string>("");
+  const [addKind, setAddKind] = useState<string>("");
   const [deleteTarget, setDeleteTarget] = useState<TeethProductRow | null>(null);
   const [noteDrafts, setNoteDrafts] = useState<Record<number, string>>({});
+  const [manufacturerDrafts, setManufacturerDrafts] = useState<Record<number, string>>({});
+  const [kindDrafts, setKindDrafts] = useState<Record<number, string>>({});
   const [debouncedSearchQuery, setDebouncedSearchQuery] = useState("");
   const [resolvedSearchQuery, setResolvedSearchQuery] = useState("");
   const searchDebounceRef = useRef<number | null>(null);
@@ -108,6 +115,21 @@ export function TeethProductsAdminClient({ initial }: { initial: TeethProductRow
   const visibleSearchHits = searchActive ? searchHits : [];
   const visibleSearchError = searchActive ? searchError : null;
 
+  const saveKind = (row: TeethProductRow) => {
+    const draft = kindDrafts[row.subiektTwId] ?? row.kind ?? "";
+    const current = row.kind ?? "";
+    if (draft === current) return;
+    start(async () => {
+      const result = await actionUpdateTeethProductKind(row.subiektTwId, draft || null);
+      if ("error" in result) {
+        setToast({ text: result.error, tone: "error" });
+        return;
+      }
+      setToast({ text: "Zapisano typ zęba.", tone: "success" });
+      refreshRows();
+    });
+  };
+
   const refreshRows = () => {
     start(async () => {
       try {
@@ -129,6 +151,8 @@ export function TeethProductsAdminClient({ initial }: { initial: TeethProductRow
         name: selectedHit.name,
         plu: selectedHit.plu,
         note: addNote,
+        manufacturer: addManufacturer || null,
+        kind: addKind || null,
       });
       if ("error" in result) {
         setToast({ text: result.error, tone: "error" });
@@ -137,6 +161,8 @@ export function TeethProductsAdminClient({ initial }: { initial: TeethProductRow
       setToast({ text: "Dodano produkt do listy zębów.", tone: "success" });
       setSelectedHit(null);
       setAddNote("");
+      setAddManufacturer("");
+      setAddKind("");
       setSearchQuery("");
       setSearchHits([]);
       setDebouncedSearchQuery("");
@@ -155,6 +181,21 @@ export function TeethProductsAdminClient({ initial }: { initial: TeethProductRow
         return;
       }
       setToast({ text: "Zapisano notatkę.", tone: "success" });
+      refreshRows();
+    });
+  };
+
+  const saveManufacturer = (row: TeethProductRow) => {
+    const draft = manufacturerDrafts[row.subiektTwId] ?? row.manufacturer ?? "";
+    const current = row.manufacturer ?? "";
+    if (draft === current) return;
+    start(async () => {
+      const result = await actionUpdateTeethProductManufacturer(row.subiektTwId, draft || null);
+      if ("error" in result) {
+        setToast({ text: result.error, tone: "error" });
+        return;
+      }
+      setToast({ text: "Zapisano producenta.", tone: "success" });
       refreshRows();
     });
   };
@@ -291,7 +332,35 @@ export function TeethProductsAdminClient({ initial }: { initial: TeethProductRow
               <p className="mt-1 text-xs text-violet-900/80">
                 Zostanie dodany jako produkt z wyłączoną kontrolą stanu magazynowego.
               </p>
-              <div className="mt-3">
+              <div className="mt-3 grid gap-3 sm:grid-cols-3">
+                <Field label="Producent" hint="Określa paletę kolorów/wzorów w formularzu prośby.">
+                  <select
+                    value={addManufacturer}
+                    onChange={(event) => setAddManufacturer(event.target.value)}
+                    className={fieldControlClass()}
+                  >
+                    <option value="">— wybierz —</option>
+                    {TEETH_MANUFACTURERS.map((m) => (
+                      <option key={m.id} value={m.id}>{m.label}</option>
+                    ))}
+                  </select>
+                </Field>
+                <Field label="Typ zęba" hint="Przednie czy tylne. Auto-wykrywane z nazwy.">
+                  <select
+                    value={addKind}
+                    onChange={(event) => setAddKind(event.target.value)}
+                    className={fieldControlClass()}
+                  >
+                    <option value="">— auto —</option>
+                    <option value="anterior">{TEETH_KIND_LABELS.anterior}</option>
+                    <option value="posterior">{TEETH_KIND_LABELS.posterior}</option>
+                  </select>
+                  {selectedHit && !addKind && detectTeethKind(selectedHit.name) ? (
+                    <p className="mt-1 text-xs text-slate-500">
+                      Wykryto: {TEETH_KIND_LABELS[detectTeethKind(selectedHit.name)!]}
+                    </p>
+                  ) : null}
+                </Field>
                 <Field label="Notatka (opcjonalnie)" hint="Dla administratora — np. seria, uwagi.">
                   <textarea
                     value={addNote}
@@ -365,6 +434,24 @@ export function TeethProductsAdminClient({ initial }: { initial: TeethProductRow
                           {row.plu ? (
                             <span className="text-xs text-slate-500">{row.plu}</span>
                           ) : null}
+                          {row.manufacturer ? (
+                            <Badge variant="purple" className="text-[10px]">
+                              {teethManufacturerLabel(row.manufacturer)}
+                            </Badge>
+                          ) : (
+                            <Badge variant="warning" className="text-[10px]">
+                              Producent nieustalony
+                            </Badge>
+                          )}
+                          {row.kind ? (
+                            <Badge variant="info" className="text-[10px]">
+                              {TEETH_KIND_LABELS[row.kind]}
+                            </Badge>
+                          ) : (
+                            <Badge variant="warning" className="text-[10px]">
+                              Typ nieustalony
+                            </Badge>
+                          )}
                         </div>
                         <div
                           className={cn(
@@ -374,7 +461,42 @@ export function TeethProductsAdminClient({ initial }: { initial: TeethProductRow
                         >
                           Bez kontroli stanu magazynowego w prośbach
                         </div>
-                        <div className="mt-3 max-w-xl">
+                        <div className="mt-3 grid gap-3 sm:grid-cols-3">
+                          <Field label="Producent">
+                            <select
+                              value={manufacturerDrafts[row.subiektTwId] ?? row.manufacturer ?? ""}
+                              onChange={(event) =>
+                                setManufacturerDrafts((prev) => ({
+                                  ...prev,
+                                  [row.subiektTwId]: event.target.value,
+                                }))
+                              }
+                              onBlur={() => saveManufacturer(row)}
+                              className={fieldControlClass()}
+                            >
+                              <option value="">— brak —</option>
+                              {TEETH_MANUFACTURERS.map((m) => (
+                                <option key={m.id} value={m.id}>{m.label}</option>
+                              ))}
+                            </select>
+                          </Field>
+                          <Field label="Typ zęba">
+                            <select
+                              value={kindDrafts[row.subiektTwId] ?? row.kind ?? ""}
+                              onChange={(event) =>
+                                setKindDrafts((prev) => ({
+                                  ...prev,
+                                  [row.subiektTwId]: event.target.value,
+                                }))
+                              }
+                              onBlur={() => saveKind(row)}
+                              className={fieldControlClass()}
+                            >
+                              <option value="">— brak —</option>
+                              <option value="anterior">{TEETH_KIND_LABELS.anterior}</option>
+                              <option value="posterior">{TEETH_KIND_LABELS.posterior}</option>
+                            </select>
+                          </Field>
                           <Field label="Notatka">
                             <textarea
                               value={noteValue}
@@ -390,19 +512,19 @@ export function TeethProductsAdminClient({ initial }: { initial: TeethProductRow
                               className={fieldControlClass()}
                             />
                           </Field>
-                          {noteDirty ? (
-                            <Button
-                              type="button"
-                              size="sm"
-                              variant="outline"
-                              className="mt-2"
-                              disabled={pending}
-                              onClick={() => saveNote(row)}
-                            >
-                              Zapisz notatkę
-                            </Button>
-                          ) : null}
                         </div>
+                        {noteDirty ? (
+                          <Button
+                            type="button"
+                            size="sm"
+                            variant="outline"
+                            className="mt-2"
+                            disabled={pending}
+                            onClick={() => saveNote(row)}
+                          >
+                            Zapisz notatkę
+                          </Button>
+                        ) : null}
                       </div>
                       <Button
                         type="button"

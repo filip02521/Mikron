@@ -14,7 +14,10 @@ export type VacationNote =
   | "PRZESUNIETE_PO"
   | "PRZYSPIESZONE_PRZED"
   | "OSTATNIE_ZAMOWIENIE";
-export type UserRole = "admin" | "zakupy" | "magazyn" | "sales" | "sales_manager";
+export type UserRole = "admin" | "zakupy" | "zakupy_zeby" | "magazyn" | "sales" | "sales_manager";
+
+/** Dzień tygodnia dla harmonogramu zębów: 1=Pn, 2=Wt, 3=Śr, 4=Cz, 5=Pt. */
+export type DayOfWeek = 1 | 2 | 3 | 4 | 5;
 
 export interface Supplier {
   id: string;
@@ -162,11 +165,48 @@ export interface IndividualOrder {
   zd_fulfillment_deadline_changed_at?: string | null;
   /** Kiedy handlowiec potwierdził zmianę terminu. */
   zd_fulfillment_deadline_change_seen_at?: string | null;
+  /** Czy pozycja jest „zęby" (denormalizowane z prosba_teeth_products). */
+  is_teeth?: boolean;
+  /** Kto zamówił zęby (UUID profilu) — osoba z działu zębów lub głównego działu. */
+  teeth_ordered_by?: string | null;
+  /** Kiedy zęby zostały oznaczone jako zamówione. */
+  teeth_ordered_at?: string | null;
+  /** Planowana data dostawy dla zamówień zębowych (ręczna lub wyliczona z historii zębowej). */
+  teeth_delivery_date?: string | null;
+  /** Szczegóły zębowe (kolor, wzór, rozmiar) per pozycja — dołączone przy pobieraniu. */
+  teeth_details?: IndividualOrderTeethDetail[] | null;
   supplier?: Supplier;
   sales_person?: SalesPerson;
 }
 
+export type IndividualOrderTeethDetail = {
+  id: string;
+  order_id: string;
+  position: number;
+  color: string;
+  mould: string | null;
+  size: string | null;
+  jaw: "upper" | "lower" | null;
+  kind: "anterior" | "posterior" | null;
+};
+
 export type SalesNoteColor = "default" | "yellow" | "green" | "blue" | "pink";
+
+export interface TeethSupplierSchedule {
+  id: string;
+  supplier_id: string;
+  order_day_of_week: DayOfWeek;
+  interval_weeks: number;
+  last_order_date: string | null;
+  shift_date: string | null;
+  computed_next_date: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface TeethSupplierScheduleWithSupplier extends TeethSupplierSchedule {
+  supplier_name: string;
+}
 
 export type OperationsDepartment = "zakupy" | "magazyn";
 export type OperationsNoteVisibility = "private" | "public";

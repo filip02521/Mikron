@@ -3,6 +3,8 @@ import type { ProductLineDraft } from "@/components/orders/request-product-lines
 import {
   assessProsbaLineFields,
   shouldShowProsbaLineFieldValidation,
+  prosbaLineHasTeethBlockers,
+  prosbaLineHasSubmitBlockers,
 } from "./prosba-line-field-validation";
 
 const baseLine: ProductLineDraft = {
@@ -86,5 +88,127 @@ describe("assessProsbaLineFields", () => {
       "strict"
     );
     expect(fields.quantity.state).toBe("default");
+  });
+});
+
+describe("prosbaLineHasTeethBlockers", () => {
+  const teethLine: ProductLineDraft = {
+    ...baseLine,
+    product: "Ząb",
+    quantity: "1",
+    subiektTwId: 123,
+    teethManufacturer: "ivoclar",
+  };
+
+  it("returns false when requestKind is not zamowienie", () => {
+    expect(prosbaLineHasTeethBlockers(teethLine, "informacja")).toBe(false);
+  });
+
+  it("returns false when no teeth manufacturer", () => {
+    expect(
+      prosbaLineHasTeethBlockers({ ...teethLine, teethManufacturer: null }, "zamowienie"),
+    ).toBe(false);
+  });
+
+  it("returns true when teeth details are missing", () => {
+    expect(
+      prosbaLineHasTeethBlockers(
+        { ...teethLine, teethDetails: undefined },
+        "zamowienie",
+      ),
+    ).toBe(true);
+  });
+
+  it("returns true when teeth details lack jaw", () => {
+    expect(
+      prosbaLineHasTeethBlockers(
+        {
+          ...teethLine,
+          teethDetails: [{ position: 1, color: "A1", mould: "A11", jaw: null, kind: null }],
+        },
+        "zamowienie",
+      ),
+    ).toBe(true);
+  });
+
+  it("returns true when teeth details lack mould for ivoclar anterior", () => {
+    expect(
+      prosbaLineHasTeethBlockers(
+        {
+          ...teethLine,
+          teethDetails: [{ position: 1, color: "A1", mould: null, jaw: "upper", kind: "anterior" }],
+        },
+        "zamowienie",
+      ),
+    ).toBe(true);
+  });
+
+  it("returns false when teeth details are complete for ivoclar (color + mould + jaw + kind)", () => {
+    expect(
+      prosbaLineHasTeethBlockers(
+        {
+          ...teethLine,
+          teethDetails: [{ position: 1, color: "A1", mould: "A11", jaw: "upper", kind: "anterior" }],
+        },
+        "zamowienie",
+      ),
+    ).toBe(false);
+  });
+
+  it("returns false when teeth details are complete for wiedent (color + mould + jaw + kind)", () => {
+    expect(
+      prosbaLineHasTeethBlockers(
+        {
+          ...teethLine,
+          teethManufacturer: "wiedent",
+          teethDetails: [{ position: 1, color: "A1", mould: "12", jaw: "upper", kind: "anterior" }],
+        },
+        "zamowienie",
+      ),
+    ).toBe(false);
+  });
+
+  it("respects quantity for expected count", () => {
+    expect(
+      prosbaLineHasTeethBlockers(
+        {
+          ...teethLine,
+          quantity: "3",
+          teethManufacturer: "wiedent",
+          teethDetails: [
+            { position: 1, color: "A1", mould: "12", jaw: "upper", kind: "anterior" },
+            { position: 2, color: "B2", mould: "12", jaw: "upper", kind: "anterior" },
+          ],
+        },
+        "zamowienie",
+      ),
+    ).toBe(true);
+  });
+});
+
+describe("prosbaLineHasSubmitBlockers (with teeth)", () => {
+  const teethLine: ProductLineDraft = {
+    ...baseLine,
+    product: "Ząb",
+    quantity: "1",
+    subiektTwId: 123,
+    teethManufacturer: "ivoclar",
+  };
+
+  it("returns true when teeth details are incomplete even if other fields are fine", () => {
+    expect(prosbaLineHasSubmitBlockers(teethLine, "zamowienie")).toBe(true);
+  });
+
+  it("returns false when all fields and teeth details are complete", () => {
+    expect(
+      prosbaLineHasSubmitBlockers(
+        {
+          ...teethLine,
+          teethManufacturer: "wiedent",
+          teethDetails: [{ position: 1, color: "A1", mould: "12", jaw: "upper", kind: "anterior" }],
+        },
+        "zamowienie",
+      ),
+    ).toBe(false);
   });
 });

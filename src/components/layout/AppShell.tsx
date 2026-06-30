@@ -9,7 +9,7 @@ import {
 } from "@/lib/auth/admin-panel-context";
 import { readAdminPanelContextForSession } from "@/lib/auth/read-admin-panel-context";
 import { isSalesAccount } from "@/lib/auth-roles";
-import { fetchTeethProductTwIds } from "@/lib/data/teeth-products";
+import { fetchTeethProductInfo } from "@/lib/data/teeth-products";
 import { AppShellClient } from "./AppShellClient";
 import { AppShellMetricsProvider } from "./AppShellMetricsContext";
 import { AppShellMetricsLoader } from "./AppShellMetricsLoader";
@@ -39,8 +39,13 @@ export async function AppShell({ children }: { children: React.ReactNode }) {
     !session?.mustChangePassword &&
     !session?.salesOnboardingCompletedAt;
 
-  const teethExemptTwIds =
-    session && !lightShell ? await fetchTeethProductTwIds().catch(() => []) : [];
+  const teethProductInfo =
+    session && !lightShell
+      ? await fetchTeethProductInfo().catch((e) => {
+          console.error("[AppShell] fetchTeethProductInfo failed:", e?.message ?? e);
+          return [];
+        })
+      : [];
 
   const shell = (
     <AppShellClient
@@ -53,7 +58,7 @@ export async function AppShell({ children }: { children: React.ReactNode }) {
       mustChangePassword={session?.mustChangePassword ?? false}
       salesOnboardingCompletedAt={session?.salesOnboardingCompletedAt ?? null}
       salesOnboardingActive={showSalesOnboarding}
-      teethExemptTwIds={teethExemptTwIds}
+      teethProductInfo={teethProductInfo}
     >
       {children}
     </AppShellClient>

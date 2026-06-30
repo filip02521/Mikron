@@ -1,5 +1,5 @@
 import type { OperationsDepartment, UserRole } from "@/types/database";
-import { canAccessOperations, isAdmin, isMagazyn, isZakupy } from "@/lib/auth-roles";
+import { canAccessOperations, isAdmin, isMagazyn, isZakupy, isZakupyZeby } from "@/lib/auth-roles";
 
 export const OPERATIONS_DEPARTMENT_LABELS: Record<OperationsDepartment, string> = {
   zakupy: "Zakupy",
@@ -8,7 +8,7 @@ export const OPERATIONS_DEPARTMENT_LABELS: Record<OperationsDepartment, string> 
 
 export function departmentsForRole(role: UserRole): OperationsDepartment[] {
   if (isAdmin(role)) return ["zakupy", "magazyn"];
-  if (isZakupy(role) || canAccessOperations(role)) return ["zakupy"];
+  if (isZakupy(role) || isZakupyZeby(role) || canAccessOperations(role)) return ["zakupy"];
   if (isMagazyn(role)) return ["magazyn"];
   return [];
 }

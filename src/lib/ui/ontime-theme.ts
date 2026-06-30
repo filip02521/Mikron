@@ -170,6 +170,7 @@ export function roleBadgeClass(role: string): string {
   const tint: Record<string, string> = {
     admin: "border-violet-200/80 bg-violet-50/90 text-violet-800",
     zakupy: "border-amber-200/80 bg-amber-50/90 text-amber-900",
+    zakupy_zeby: "border-emerald-200/80 bg-emerald-50/90 text-emerald-800",
     magazyn: "border-emerald-200/80 bg-emerald-50/90 text-emerald-800",
     sales: "border-indigo-200/80 bg-indigo-50/90 text-indigo-800",
     sales_manager: "border-indigo-200/70 bg-indigo-50/80 text-indigo-800",

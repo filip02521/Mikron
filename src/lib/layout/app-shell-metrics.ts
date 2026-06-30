@@ -7,6 +7,7 @@ import type { SessionUser } from "@/lib/auth";
 import { resolveSalesPersonForUser } from "@/lib/auth/sales-person";
 import {
   canAccessOperations,
+  canAccessTeethPanel,
   canAccessWarehouse,
   isAdmin,
   isSalesAccount,
@@ -56,6 +57,7 @@ export async function fetchAppShellMetrics(
   let navBadges = { ...EMPTY_APP_SHELL_METRICS.navBadges };
   let salesActivityVersion: string | null = null;
   let operationsDailyPanelVersion: string | null = null;
+  let teethPanelVersion: string | null = null;
   let salesPersonName: string | null = null;
   let headerSalesPersonId: string | null = null;
   let salesBoardAttention = null as AppShellMetrics["salesBoardAttention"];
@@ -75,6 +77,20 @@ export async function fetchAppShellMetrics(
       };
       operationsDailyPanelVersion = metrics.version;
       operationsPinnedAnnouncements = pinnedAnnouncements;
+    } catch {
+      /* badge opcjonalny */
+    }
+  }
+
+  if (role && canAccessTeethPanel(role)) {
+    try {
+      const { countTeethQueue, fetchTeethQueueVersion } = await import("@/lib/data/teeth-queue");
+      const [teethCount, teethVersion] = await Promise.all([
+        countTeethQueue(),
+        fetchTeethQueueVersion(),
+      ]);
+      navBadges = { ...navBadges, teethQueue: teethCount };
+      teethPanelVersion = teethVersion;
     } catch {
       /* badge opcjonalny */
     }
@@ -204,6 +220,7 @@ export async function fetchAppShellMetrics(
     navBadges,
     salesActivityVersion,
     operationsDailyPanelVersion,
+    teethPanelVersion,
     salesPersonName,
     userAssignmentLabel,
     salesBoardAttention,

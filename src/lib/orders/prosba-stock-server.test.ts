@@ -10,13 +10,21 @@ vi.mock("@/lib/orders/fetch-prosba-line-stock", () => ({
   fetchProsbaLineStock: vi.fn(),
 }));
 
+vi.mock("@/lib/data/teeth-products", () => ({
+  fetchTeethProductTwIdSet: vi.fn().mockResolvedValue(new Set<number>()),
+}));
+
 import { fetchProsbaLineStock } from "@/lib/orders/fetch-prosba-line-stock";
+import { fetchTeethProductTwIdSet } from "@/lib/data/teeth-products";
 
 const mockFetch = vi.mocked(fetchProsbaLineStock);
+const mockTeethTwIds = vi.mocked(fetchTeethProductTwIdSet);
 
 describe("assertProsbaSubmitStockAllowed", () => {
   beforeEach(() => {
     mockFetch.mockReset();
+    mockTeethTwIds.mockReset();
+    mockTeethTwIds.mockResolvedValue(new Set<number>());
   });
 
   it("pomija informację", async () => {

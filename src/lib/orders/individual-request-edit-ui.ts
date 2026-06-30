@@ -92,6 +92,7 @@ export function editInitialFromOrders(orders: IndividualOrder[]): EditIndividual
       subiektTwId: l.subiektTwId ?? null,
       source: null,
       requestNote: l.requestNote ?? "",
+      teethDetails: l.teethDetails ?? undefined,
     })),
   };
 }

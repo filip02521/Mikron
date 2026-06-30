@@ -4,6 +4,7 @@ import {
   hasValidOrderQuantity,
 } from "@/lib/orders/request-completeness";
 import type { IndividualRequestKind } from "@/types/database";
+import { allTeethDetailsComplete } from "@/lib/teeth/teeth-catalog";
 
 export type ProsbaFieldKey = "symbol" | "mikranCode" | "product" | "quantity";
 
@@ -68,7 +69,20 @@ export function prosbaLineHasSubmitBlockers(
   requestKind: IndividualRequestKind
 ): boolean {
   const fields = assessProsbaLineFields(line, requestKind, "strict");
-  return prosbaLineHasFieldIssues(fields);
+  if (prosbaLineHasFieldIssues(fields)) return true;
+  if (prosbaLineHasTeethBlockers(line, requestKind)) return true;
+  return false;
+}
+
+/** Czy linia zębowa ma brakujące szczegóły (kolor/wzór/rozmiar). */
+export function prosbaLineHasTeethBlockers(
+  line: ProductLineDraft,
+  requestKind: IndividualRequestKind
+): boolean {
+  if (requestKind !== "zamowienie") return false;
+  if (!line.teethManufacturer) return false;
+  const qty = parseInt(line.quantity, 10) || 1;
+  return !allTeethDetailsComplete(line.teethDetails, line.teethManufacturer, qty);
 }
 
 /** Stan wizualny pól pozycji prośby (braki, ilość). */

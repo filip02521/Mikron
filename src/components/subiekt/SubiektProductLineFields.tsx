@@ -5,6 +5,7 @@ import type { KeyboardEvent } from "react";
 import { actionSuggestProducts } from "@/app/actions/subiekt";
 import type { IndividualRequestKind } from "@/types/database";
 import { Field, Input } from "@/components/ui/Field";
+import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { Spinner } from "@/components/ui/Spinner";
 import { IconCircleCheck } from "@/components/icons/StrokeIcons";
@@ -53,6 +54,9 @@ import {
   stockSnapshotFromSubiektProduct,
 } from "@/lib/orders/prosba-stock-check";
 import type { ProductLineDraft } from "@/components/orders/request-product-lines";
+import { useTeethProductInfo } from "@/components/layout/TeethExemptContext";
+import { TeethPicker } from "@/components/teeth/TeethPicker";
+import type { TeethManufacturer, TeethKind, TeethLineDetail } from "@/lib/teeth/teeth-catalog";
 
 export type SubiektProductLineValue = Pick<
   ProductLineDraft,
@@ -66,6 +70,9 @@ export type SubiektProductLineValue = Pick<
   | "available"
   | "stockSource"
   | "source"
+  | "teethManufacturer"
+  | "teethKind"
+  | "teethDetails"
 >;
 
 type ActiveField = Exclude<ProductSearchField, "combined">;
@@ -228,6 +235,7 @@ export function SubiektProductLineFields({
   );
   const [resolvingSupplier, setResolvingSupplier] = useState(false);
   const [isPending, startTransition] = useTransition();
+  const teethProductInfo = useTeethProductInfo();
 
   const prosba = appearance === "prosba";
   const querySource = activeFieldQuery(value, activeField);
@@ -343,10 +351,25 @@ export function SubiektProductLineFields({
       searchGenerationRef.current++;
       const patch = buildProductPickFromSubiekt(p, requestKind, value.quantity);
       const stockSnap = stockSnapshotFromSubiektProduct(p);
+      const twId = Math.trunc(Number(p.tw_Id));
+      const detectedManufacturer = twId > 0
+        ? (teethProductInfo.manufacturerByTwId.get(twId) ?? null)
+        : null;
+      const detectedKind = twId > 0
+        ? (teethProductInfo.kindByTwId.get(twId) ?? null)
+        : null;
+      const isTeethProduct = twId > 0 && teethProductInfo.twIds.has(twId);
+      const manufacturerChanged = value.teethManufacturer !== detectedManufacturer;
+      const kindChanged = value.teethKind !== detectedKind;
       onChange({
         ...patch,
         subiektTwId: patch.subiektTwId,
         ...mergeStockIntoLinePatch(stockSnap),
+        teethManufacturer: isTeethProduct ? detectedManufacturer : null,
+        teethKind: isTeethProduct ? detectedKind : null,
+        teethDetails: isTeethProduct && detectedManufacturer
+          ? ((manufacturerChanged || kindChanged) ? undefined : value.teethDetails)
+          : undefined,
       });
       setFeedback(null);
       setOpen(false);
@@ -359,8 +382,8 @@ export function SubiektProductLineFields({
       const catalogSource = (p as { _source?: string; _topSupplier?: AppSupplierRef | null })._source;
       const topSupplier = (p as { _source?: string; _topSupplier?: AppSupplierRef | null })._topSupplier;
 
-      // Wynik z własnej bazy (Subiekt offline) — dostawca jest już znany.
-      if (catalogSource === "catalog" && topSupplier) {
+      // Dostawca już znany z naszej bazy (product_supplier_links) — użyj natychmiast.
+      if (topSupplier) {
         onSupplierResolved({
           supplierId: topSupplier.id,
           supplierName: topSupplier.name,
@@ -446,6 +469,7 @@ export function SubiektProductLineFields({
       requestKind,
       suppliers,
       value.quantity,
+      teethProductInfo,
     ]
   );
 
@@ -455,13 +479,13 @@ export function SubiektProductLineFields({
   ) => {
     onChange(
       clearSubiekt
-        ? { ...patch, subiektTwId: null, source: null, ...mergeStockIntoLinePatch(null) }
+        ? { ...patch, subiektTwId: null, source: null, teethManufacturer: null, teethKind: null, teethDetails: undefined, ...mergeStockIntoLinePatch(null) }
         : patch
     );
   };
 
   const unlinkSubiektForEdit = () => {
-    onChange({ subiektTwId: null, source: null, ...mergeStockIntoLinePatch(null) });
+    onChange({ subiektTwId: null, source: null, teethManufacturer: null, teethKind: null, teethDetails: undefined, ...mergeStockIntoLinePatch(null) });
     setOpen(true);
   };
 
@@ -817,6 +841,28 @@ export function SubiektProductLineFields({
           <ProsbaTeethExemptHint line={value as ProductLineDraft} />
           <ProsbaProductStockStatus line={value as ProductLineDraft} requestKind={requestKind} />
         </>
+      ) : null}
+
+      {value.teethManufacturer && requestKind === "zamowienie" ? (
+        <TeethPicker
+          manufacturer={value.teethManufacturer}
+          quantity={Math.max(1, parseInt(value.quantity, 10) || 1)}
+          details={value.teethDetails ?? undefined}
+          onChange={(teethDetails) => onChange({ teethDetails })}
+          disabled={disabled}
+          defaultKind={value.teethKind ?? null}
+        />
+      ) : null}
+
+      {value.subiektTwId != null && value.subiektTwId > 0
+        && teethProductInfo.twIds.has(Math.trunc(value.subiektTwId))
+        && !value.teethManufacturer
+        && requestKind === "zamowienie" ? (
+        <div role="status" aria-live="polite">
+          <Badge variant="warning" className="text-[10px]">
+            Producent nieustalony — uzupełnij w adminie
+          </Badge>
+        </div>
       ) : null}
 
       {!typeaheadEnabled && configFeedback && !delegateAlerts && !prosba ? (

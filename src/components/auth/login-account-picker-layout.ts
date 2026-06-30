@@ -14,6 +14,7 @@ export const LOGIN_ACCOUNT_SEARCH_THRESHOLD = 4;
 const LOGIN_ACCOUNT_ROLE_DOT_CLASS: Record<UserRole, string> = {
   admin: "bg-violet-500",
   zakupy: "bg-amber-500",
+  zakupy_zeby: "bg-teal-500",
   magazyn: "bg-emerald-500",
   sales: "bg-indigo-500",
   sales_manager: "bg-indigo-400",

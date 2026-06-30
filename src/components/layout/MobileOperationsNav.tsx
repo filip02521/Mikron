@@ -35,6 +35,7 @@ export function MobileOperationsNav({
     realizacja?: number;
     operationsNotatki?: number;
     departmentBoardQuestions?: number;
+    teethQueue?: number;
   };
 }) {
   const pathname = usePathname();

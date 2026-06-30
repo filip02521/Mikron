@@ -24,7 +24,8 @@ export type NavIconKey =
   | "board"
   | "team"
   | "teamAccounts"
-  | "teamGroups";
+  | "teamGroups"
+  | "teeth";
 
 export type NavTone = "indigo" | "amber" | "orange" | "emerald" | "sky" | "slate" | "violet";
 
@@ -44,6 +45,8 @@ export type NavItem = {
   tier?: NavTier;
   /** Delikatne wyróżnienie punktu startowego (Panel / Moje). */
   highlight?: boolean;
+  /** Wcięty sub-item pod poprzednią pozycją (np. Panel zębów pod Panel dzienny). */
+  indent?: boolean;
   mobileSlot?: NavMobileSlot;
 };
 
@@ -100,13 +103,16 @@ export function navItemDisplayTone(item: NavItem, active: boolean): NavTone {
 /**
  * Czy punkt menu jest aktywny.
  * Nie podświetla krótszego href (np. /zespol), gdy pathname pasuje do dokładniejszego siblinga (/zespol/handlowcy).
+ * Gdy href zawiera query string (np. /zeby?tab=harmonogram), sprawdza też activeSearch.
  */
 export function isNavItemActive(
   pathname: string,
   href: string,
-  siblingHrefs: string[] = []
+  siblingHrefs: string[] = [],
+  activeSearch?: string,
 ): boolean {
   const hrefPath = navHrefPath(href);
+  const hrefQuery = href.includes("?") ? href.split("?")[1] ?? "" : null;
 
   if (hrefPath === "/admin") {
     return isAdminSidebarRootActive(pathname);
@@ -114,26 +120,76 @@ export function isNavItemActive(
   if (hrefPath.startsWith("/lokalizacje/") && pathname.startsWith("/lokalizacje/")) {
     return true;
   }
-  if (pathname === hrefPath) return true;
-  if (!pathname.startsWith(`${hrefPath}/`)) return false;
+
+  const pathMatches =
+    pathname === hrefPath ||
+    (pathname.startsWith(`${hrefPath}/`) &&
+      !siblingHrefs.some(
+        (other) =>
+          other !== href &&
+          navHrefPath(other).startsWith(`${hrefPath}/`) &&
+          (pathname === navHrefPath(other) || pathname.startsWith(`${navHrefPath(other)}/`))
+      ));
+
+  if (!pathMatches) return false;
   if (hrefPath.endsWith("/dostawcy") && pathname.includes("/nieaktywni")) return false;
-  return !siblingHrefs.some(
-    (other) =>
-      other !== href &&
-      navHrefPath(other).startsWith(`${hrefPath}/`) &&
-      (pathname === navHrefPath(other) || pathname.startsWith(`${navHrefPath(other)}/`))
+
+  const currentQuery = activeSearch !== undefined ? activeSearch.replace(/^\?/, "") : null;
+
+  if (hrefQuery !== null) {
+    if (currentQuery === null) return true;
+    return currentQuery === hrefQuery;
+  }
+
+  const siblingsWithQuery = siblingHrefs.filter(
+    (other) => other !== href && navHrefPath(other) === hrefPath && other.includes("?")
   );
+  if (siblingsWithQuery.length > 0 && currentQuery !== null) {
+    return !siblingsWithQuery.some((s) => s.split("?")[1] === currentQuery);
+  }
+
+  return true;
 }
 
 const OPERATIONS_NOTATKI_PATH = "/notatki";
 /** Magazyn — jawny dział w URL (zakupy/admin domyślnie bez parametru). */
 const OPERATIONS_NOTATKI_MAGAZYN = "/notatki?dzial=magazyn";
 
+function teethTodayItems(badges: {
+  teethQueue?: number;
+}): NavItem[] {
+  return [
+    {
+      href: "/zeby",
+      label: "Panel zębów",
+      mobileLabel: "Zęby",
+      description: "Kolejka zamówień na zęby",
+      icon: "teeth",
+      tone: "indigo",
+      tier: "primary",
+      highlight: true,
+      mobileSlot: "primary",
+      badge: badges.teethQueue,
+    },
+    {
+      href: "/zeby?tab=harmonogram",
+      label: "Harmonogram",
+      mobileLabel: "Harmonogram",
+      description: "Cykliczny plan dostawców zębów",
+      icon: "schedule",
+      tone: "sky",
+      tier: "primary",
+      mobileSlot: "primary",
+    },
+  ];
+}
+
 function operationsTodayItems(badges: {
   nowe?: number;
   weryfikacja?: number;
   realizacja?: number;
-}): NavItem[] {
+  teethQueue?: number;
+}, role: UserRole): NavItem[] {
   return [
     {
       href: "/podsumowanie",
@@ -146,6 +202,18 @@ function operationsTodayItems(badges: {
       highlight: true,
       mobileSlot: "primary",
       badge: badges.nowe,
+    },
+    {
+      href: "/zeby",
+      label: "Panel zębów",
+      mobileLabel: "Zęby",
+      description: "Kolejka zamówień na zęby",
+      icon: "teeth",
+      tone: "indigo",
+      tier: "compact",
+      indent: true,
+      mobileSlot: "overflow",
+      badge: badges.teethQueue,
     },
     {
       href: "/weryfikacja",
@@ -207,6 +275,27 @@ function supplierHubItemsForRole(role: UserRole): NavItem[] {
     tier: "compact" as const,
     mobileSlot: "overflow" as const,
   };
+
+  if (role === "zakupy_zeby") {
+    return [
+      {
+        href: "/zakupy/dostawcy",
+        label: "Karty dostawców",
+        description: "Kontakt i dane dostawców",
+        icon: "suppliers",
+        tone: "sky",
+        ...compact,
+      },
+      {
+        href: "/zakupy/urlopy",
+        label: "Urlopy",
+        description: "Niedostępność dostawcy",
+        icon: "vacation",
+        tone: "sky",
+        ...compact,
+      },
+    ];
+  }
 
   if (role !== "admin") {
     return [
@@ -345,13 +434,21 @@ function operationsNavGroups(
     nowe?: number;
     weryfikacja?: number;
     realizacja?: number;
+    teethQueue?: number;
     operationsNotatki?: number;
     departmentBoardQuestions?: number;
     adminBugReports?: number;
   }
 ): NavGroup[] {
+  if (role === "zakupy_zeby") {
+    return [
+      { title: NAV_SECTION_TODAY, items: teethTodayItems(badges) },
+      { title: NAV_SECTION_TEAM, items: operationsTeamItems(badges) },
+    ];
+  }
+
   const groups: NavGroup[] = [
-    { title: NAV_SECTION_TODAY, items: operationsTodayItems(badges) },
+    { title: NAV_SECTION_TODAY, items: operationsTodayItems(badges, role) },
     { title: NAV_SECTION_TEAM, items: operationsTeamItems(badges) },
     { title: NAV_SECTION_SUPPLIERS, items: supplierHubItemsForRole(role) },
     { title: NAV_SECTION_TOOLS, items: archiveToolItems },
@@ -396,9 +493,11 @@ export function navForRole(
     salesTablica?: number;
     /** Pytania handlowców bez odpowiedzi (/zakupy/tablica). */
     departmentBoardQuestions?: number;
+    /** Pozycje zębów oczekujące na zamówienie (/zeby). */
+    teethQueue?: number;
   } = {}
 ): NavGroup[] {
-  if (role === "admin" || role === "zakupy") {
+  if (role === "admin" || role === "zakupy" || role === "zakupy_zeby") {
     return operationsNavGroups(role, badges);
   }
 

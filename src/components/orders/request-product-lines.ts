@@ -1,5 +1,6 @@
 import { randomId } from "@/lib/ensure-crypto";
 import { MAX_BATCH_ORDER_LINES } from "@/lib/security/text-limits";
+import type { TeethManufacturer, TeethKind, TeethLineDetail } from "@/lib/teeth/teeth-catalog";
 
 export type ProductLineDraft = {
   /** Id UI (React). Dla zapisu edycji liczy się tylko id z orderIds — nowe linie dostają losowe id. */
@@ -24,6 +25,12 @@ export type ProductLineDraft = {
   zkQuantity?: number | null;
   /** Uwagi handlowca — zapis per pozycja w `sales_request_note`. */
   requestNote?: string;
+  /** Producent zębów (auto-detekcja z prosba_teeth_products). */
+  teethManufacturer?: TeethManufacturer | null;
+  /** Typ zęba — przednie/tylne (auto-detekcja z prosba_teeth_products). */
+  teethKind?: TeethKind | null;
+  /** Szczegóły zębowe per sztuka (kolor, wzór, rozmiar). */
+  teethDetails?: TeethLineDetail[];
 };
 
 export function newProductLine(): ProductLineDraft {

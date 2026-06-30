@@ -5,6 +5,7 @@ import { isAdmin } from "@/lib/auth-roles";
 export type AdminPanelContext =
   | "admin"
   | "zakupy"
+  | "zakupy_zeby"
   | "magazyn"
   | "sales"
   | "sales_manager";
@@ -50,6 +51,7 @@ export function clearPreviewSalesPersonCookieOptions() {
 const VALID_CONTEXTS: AdminPanelContext[] = [
   "admin",
   "zakupy",
+  "zakupy_zeby",
   "magazyn",
   "sales",
   "sales_manager",
@@ -77,6 +79,8 @@ export function homePathForAdminPanelContext(context: AdminPanelContext): string
       return "/admin";
     case "zakupy":
       return "/podsumowanie";
+    case "zakupy_zeby":
+      return "/zeby";
     case "magazyn":
       return "/kolejka";
     case "sales":
@@ -92,6 +96,8 @@ export function labelForAdminPanelContext(context: AdminPanelContext): string {
       return "Administracja";
     case "zakupy":
       return "Zakupy";
+    case "zakupy_zeby":
+      return "Zęby";
     case "magazyn":
       return "Magazyn";
     case "sales":
@@ -171,6 +177,11 @@ export const ADMIN_PANEL_CONTEXT_OPTIONS: {
     value: "zakupy",
     label: "Zakupy",
     title: "Panel dzienny i dostawcy",
+  },
+  {
+    value: "zakupy_zeby",
+    label: "Zęby",
+    title: "Panel zębów i harmonogram",
   },
   {
     value: "magazyn",

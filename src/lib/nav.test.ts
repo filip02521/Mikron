@@ -8,6 +8,7 @@ import {
   navMobilePrimaryItems,
   NAV_SECTION_DAILY,
   NAV_SECTION_SUPPLIERS,
+  NAV_SECTION_TEAM,
   NAV_SECTION_TODAY,
   NAV_SECTION_TOOLS,
   NAV_SECTION_ZK,
@@ -46,6 +47,18 @@ describe("isNavItemActive", () => {
 
   it("podświetla notatki magazynu na /notatki", () => {
     expect(isNavItemActive("/notatki", "/notatki?dzial=magazyn")).toBe(true);
+  });
+
+  it("nie podświetla /zeby?tab=harmonogram gdy URL to /zeby bez query (sidebar przekazuje activeSearch=\"\")", () => {
+    const siblings = ["/zeby", "/zeby?tab=harmonogram"];
+    expect(isNavItemActive("/zeby", "/zeby?tab=harmonogram", siblings, "")).toBe(false);
+    expect(isNavItemActive("/zeby", "/zeby", siblings, "")).toBe(true);
+  });
+
+  it("podświetla /zeby?tab=harmonogram gdy URL to /zeby?tab=harmonogram", () => {
+    const siblings = ["/zeby", "/zeby?tab=harmonogram"];
+    expect(isNavItemActive("/zeby", "/zeby?tab=harmonogram", siblings, "?tab=harmonogram")).toBe(true);
+    expect(isNavItemActive("/zeby", "/zeby", siblings, "?tab=harmonogram")).toBe(false);
   });
 
   it("nie podświetla kart dostawców na /admin/dostawcy/nieaktywni", () => {
@@ -128,21 +141,71 @@ describe("navForRole struktura zakupów", () => {
     ]);
   });
 
-  it("sekcja Dziś ma rozróżnialne tony semantyczne", () => {
+  it("sekcja Dziś ma rozróżnialne tony semanticzne", () => {
     const today = navForRole("zakupy").find((g) => g.title === NAV_SECTION_TODAY);
     expect(today?.items.map((item) => [item.label, item.tone])).toEqual([
       ["Panel dzienny", "indigo"],
+      ["Panel zębów", "indigo"],
       ["Weryfikacja", "amber"],
       ["Przyjęcie towaru", "emerald"],
     ]);
   });
 
-  it("mobile overflow zawiera notatki i narzędzia", () => {
+  it("mobile overflow zawiera notatki, panel zębów i narzędzia", () => {
     const groups = navForRole("zakupy");
     const labels = navMobileOverflowItems(groups).map((item) => item.label);
     expect(labels).toContain("Notatki");
+    expect(labels).toContain("Panel zębów");
     expect(labels).toContain("Historia");
     expect(labels).toContain("Zamówienie grupowe");
+  });
+});
+
+describe("navForRole zakupy_zeby", () => {
+  it("ma tylko sekcje Dziś i Zespół", () => {
+    const groups = navForRole("zakupy_zeby");
+    expect(groups.map((g) => g.title)).toEqual([
+      NAV_SECTION_TODAY,
+      NAV_SECTION_TEAM,
+    ]);
+  });
+
+  it("sekcja Dziś zawiera Panel zębów i Harmonogram jako pełnoprawne pozycje", () => {
+    const groups = navForRole("zakupy_zeby");
+    const today = groups.find((g) => g.title === NAV_SECTION_TODAY);
+    expect(today?.items.map((item) => item.href)).toEqual([
+      "/zeby",
+      "/zeby?tab=harmonogram",
+    ]);
+  });
+
+  it("Panel zębów jest primary+highlight, Harmonogram jest primary+sky", () => {
+    const groups = navForRole("zakupy_zeby");
+    const today = groups.find((g) => g.title === NAV_SECTION_TODAY);
+    const panel = today?.items.find((i) => i.href === "/zeby");
+    const harmonogram = today?.items.find((i) => i.href === "/zeby?tab=harmonogram");
+    expect(panel?.tier).toBe("primary");
+    expect(panel?.highlight).toBe(true);
+    expect(panel?.indent).toBeUndefined();
+    expect(harmonogram?.tier).toBe("primary");
+    expect(harmonogram?.tone).toBe("sky");
+    expect(harmonogram?.indent).toBeUndefined();
+  });
+
+  it("zakupy nie ma harmonogramu zębów w nawigacji", () => {
+    const groups = navForRole("zakupy");
+    const today = groups.find((g) => g.title === NAV_SECTION_TODAY);
+    const harmonogram = today?.items.find((i) => i.href === "/zeby?tab=harmonogram");
+    expect(harmonogram).toBeUndefined();
+  });
+
+  it("mobile primary zawiera Zęby, Harmonogram i Tablicę", () => {
+    const primary = navMobilePrimaryItems(navForRole("zakupy_zeby"));
+    expect(primary.map((item) => item.mobileLabel ?? item.label)).toEqual([
+      "Zęby",
+      "Harmonogram",
+      "Tablica",
+    ]);
   });
 });
 
