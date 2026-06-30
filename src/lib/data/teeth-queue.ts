@@ -3,46 +3,21 @@ import { normalizeIndividualOrders } from "@/lib/data/normalize-order";
 import { estimateTeethDeliveryEta, resolveTeethDeliveryDate } from "@/lib/data/teeth-delivery-eta";
 import { markTeethScheduleOrdered, fetchTeethSchedules } from "@/lib/data/teeth-schedule";
 import { todayInWarsaw } from "@/lib/time/warsaw";
-import { formatDateString, toDateOnly } from "@/lib/orders/dates";
+import { formatDateString } from "@/lib/orders/dates";
 import type { IndividualOrder, IndividualOrderTeethDetail } from "@/types/database";
+import { fetchTeethDetailsForOrders } from "@/lib/data/teeth-order-details";
+import { fetchTeethProductInfo } from "@/lib/data/teeth-products";
+import { enrichTeethDetailsForDisplay } from "@/lib/teeth/teeth-validation";
+import type { TeethKind } from "@/lib/teeth/teeth-catalog";
 
-export async function fetchTeethDetailsForOrders(
-  orderIds: string[]
-): Promise<Map<string, IndividualOrderTeethDetail[]>> {
-  if (!orderIds.length) return new Map();
-  if (!hasSupabaseConfig()) return new Map();
+export { fetchTeethDetailsForOrders } from "@/lib/data/teeth-order-details";
 
-  const supabase = createAdminClient();
-  const { data, error } = await supabase
-    .from("individual_order_teeth_details")
-    .select("id, order_id, position, color, mould, size, jaw, kind")
-    .in("order_id", orderIds)
-    .order("position", { ascending: true });
-
-  if (error) return new Map();
-
-  const map = new Map<string, IndividualOrderTeethDetail[]>();
-  for (const row of data ?? []) {
-    const orderId = row.order_id as string;
-    const entry: IndividualOrderTeethDetail = {
-      id: row.id as string,
-      order_id: orderId,
-      position: row.position as number,
-      color: row.color as string,
-      mould: (row.mould as string | null) ?? null,
-      size: (row.size as string | null) ?? null,
-      jaw: (row.jaw as "upper" | "lower" | null) ?? null,
-      kind: (row.kind as "anterior" | "posterior" | null) ?? null,
-    };
-    const existing = map.get(orderId);
-    if (existing) {
-      existing.push(entry);
-    } else {
-      map.set(orderId, [entry]);
-    }
-  }
-  return map;
-}
+export type TeethSupplierDeliveryEta = {
+  expectedDate: string;
+  avgBusinessDays: number;
+  sampleCount: number;
+  lowConfidence: boolean;
+};
 
 export type TeethQueueItem = IndividualOrder & {
   supplier_name: string | null;
@@ -71,6 +46,10 @@ export type TeethQueueGroup = {
   items: TeethQueueEntry[];
   /** Czy grupa zawiera tylko zaplanowane pozycje (bez prawdziwych zamówień). */
   scheduledOnly: boolean;
+  /** Cykl z harmonogramu przypadający na dziś — także gdy są prośby handlowców. */
+  dueSchedule?: TeethScheduledItem | null;
+  /** Szacowana dostawa po zamówieniu (na podstawie historii zębów u dostawcy). */
+  deliveryEta?: TeethSupplierDeliveryEta | null;
 };
 
 function mapQueueItems(orders: IndividualOrder[]): TeethQueueItem[] {
@@ -78,6 +57,104 @@ function mapQueueItems(orders: IndividualOrder[]): TeethQueueItem[] {
     ...order,
     supplier_name: order.supplier?.name ?? null,
     sales_person_name: order.sales_person?.name ?? null,
+  }));
+}
+
+export async function attachTeethDetailsToIndividualOrders(orders: IndividualOrder[]) {
+  const orderIds = orders.map((o) => o.id);
+  if (!orderIds.length) return orders.map((o) => ({ ...o, teeth_details: null as IndividualOrderTeethDetail[] | null }));
+
+  const [teethDetailsMap, teethProducts] = await Promise.all([
+    fetchTeethDetailsForOrders(orderIds),
+    fetchTeethProductInfo().catch(() => []),
+  ]);
+  const kindByTwId = new Map<number, TeethKind | null>(
+    teethProducts.map((row) => [row.twId, row.kind])
+  );
+
+  return orders.map((order) => {
+    const twId =
+      order.subiekt_tw_id != null && order.subiekt_tw_id > 0
+        ? Math.trunc(order.subiekt_tw_id)
+        : null;
+    const adminKind = twId != null ? (kindByTwId.get(twId) ?? null) : null;
+    return {
+      ...order,
+      teeth_details: enrichTeethDetailsForDisplay(
+        teethDetailsMap.get(order.id) ?? null,
+        adminKind
+      ),
+    };
+  });
+}
+
+/** Grupuje pozycje zębów wg dostawcy (kolejka / historia). */
+export function groupTeethItemsBySupplier(items: TeethQueueItem[]): TeethQueueGroup[] {
+  const groupsMap = new Map<string, TeethQueueGroup>();
+  for (const item of items) {
+    const key = item.supplier_id ?? "__no_supplier";
+    const existing = groupsMap.get(key);
+    if (existing) {
+      existing.items.push(item);
+    } else {
+      groupsMap.set(key, {
+        supplierId: item.supplier_id,
+        supplierName: item.supplier_name ?? "Bez dostawcy",
+        items: [item],
+        scheduledOnly: false,
+      });
+    }
+  }
+  return Array.from(groupsMap.values()).sort((a, b) =>
+    a.supplierName.localeCompare(b.supplierName, "pl")
+  );
+}
+
+function scheduledItemFromSchedule(sched: {
+  supplier_id: string;
+  supplier_name: string;
+  computed_next_date: string | null;
+  shift_date: string | null;
+}): TeethScheduledItem {
+  return {
+    id: `sched:${sched.supplier_id}`,
+    supplier_id: sched.supplier_id,
+    supplier_name: sched.supplier_name,
+    computed_next_date: sched.computed_next_date,
+    shift_date: sched.shift_date,
+    is_scheduled: true,
+  };
+}
+
+async function enrichTeethGroupsWithDeliveryEta(
+  groups: TeethQueueGroup[]
+): Promise<TeethQueueGroup[]> {
+  const placementAt = new Date().toISOString();
+  const supplierIds = [
+    ...new Set(groups.map((g) => g.supplierId).filter((id): id is string => Boolean(id))),
+  ];
+
+  const etaMap = new Map<string, TeethSupplierDeliveryEta>();
+  await Promise.all(
+    supplierIds.map(async (supplierId) => {
+      try {
+        const estimate = await estimateTeethDeliveryEta(supplierId, placementAt);
+        if (!estimate) return;
+        etaMap.set(supplierId, {
+          expectedDate: formatDateString(estimate.expectedDate),
+          avgBusinessDays: estimate.avgBusinessDays,
+          sampleCount: estimate.sampleCount,
+          lowConfidence: estimate.lowConfidence ?? false,
+        });
+      } catch {
+        // ETA opcjonalne
+      }
+    })
+  );
+
+  return groups.map((group) => ({
+    ...group,
+    deliveryEta: group.supplierId ? (etaMap.get(group.supplierId) ?? null) : null,
   }));
 }
 
@@ -96,14 +173,8 @@ export async function fetchTeethQueue(): Promise<TeethQueueGroup[]> {
   if (error) throw new Error(error.message);
 
   const orders = normalizeIndividualOrders(data ?? []);
-  const orderIds = orders.map((o) => o.id);
-  const teethDetailsMap = await fetchTeethDetailsForOrders(orderIds);
-  const items = mapQueueItems(
-    orders.map((o) => ({
-      ...o,
-      teeth_details: teethDetailsMap.get(o.id) ?? null,
-    })),
-  );
+  const ordersWithTeeth = await attachTeethDetailsToIndividualOrders(orders);
+  const items = mapQueueItems(ordersWithTeeth);
 
   // Pobierz zaplanowanych dostawców z harmonogramu (computed_next_date <= today)
   const todayStr = formatDateString(todayInWarsaw());
@@ -128,30 +199,40 @@ export async function fetchTeethQueue(): Promise<TeethQueueGroup[]> {
     }
   }
 
-  // Dodaj zaplanowanych dostawców, którzy nie mają jeszcze pozycji w kolejce
+  // Połącz harmonogram z grupami dostawców (także gdy są już prośby handlowców)
   for (const sched of dueSchedules) {
     const key = sched.supplier_id;
-    if (groupsMap.has(key)) continue;
-    groupsMap.set(key, {
-      supplierId: sched.supplier_id,
-      supplierName: sched.supplier_name,
-      items: [
-        {
-          id: `sched:${sched.supplier_id}`,
-          supplier_id: sched.supplier_id,
-          supplier_name: sched.supplier_name,
-          computed_next_date: sched.computed_next_date,
-          shift_date: sched.shift_date,
-          is_scheduled: true,
-        },
-      ],
-      scheduledOnly: true,
-    });
+    const schedItem = scheduledItemFromSchedule(sched);
+    const existing = groupsMap.get(key);
+    if (existing) {
+      existing.dueSchedule = schedItem;
+      const hasSchedRow = existing.items.some((item) => isScheduledItem(item));
+      if (!hasSchedRow) {
+        existing.items.unshift(schedItem);
+      }
+    } else {
+      groupsMap.set(key, {
+        supplierId: sched.supplier_id,
+        supplierName: sched.supplier_name,
+        items: [schedItem],
+        scheduledOnly: true,
+        dueSchedule: schedItem,
+      });
+    }
   }
 
-  return Array.from(groupsMap.values()).sort((a, b) =>
+  const sorted = Array.from(groupsMap.values()).sort((a, b) =>
     a.supplierName.localeCompare(b.supplierName, "pl")
   );
+  return enrichTeethGroupsWithDeliveryEta(sorted  );
+}
+
+/** Historia zamówień zębów pogrupowana wg dostawcy. */
+export async function fetchTeethHistoryGroups(
+  supplierId?: string | null
+): Promise<TeethQueueGroup[]> {
+  const items = await fetchTeethHistory(supplierId);
+  return groupTeethItemsBySupplier(items);
 }
 
 /** Pobierz historię zamówień zębów (status Zamowione lub nowszy). */
@@ -176,14 +257,8 @@ export async function fetchTeethHistory(supplierId?: string | null): Promise<Tee
   if (error) throw new Error(error.message);
 
   const orders = normalizeIndividualOrders(data ?? []);
-  const orderIds = orders.map((o) => o.id);
-  const teethDetailsMap = await fetchTeethDetailsForOrders(orderIds);
-  return mapQueueItems(
-    orders.map((o) => ({
-      ...o,
-      teeth_details: teethDetailsMap.get(o.id) ?? null,
-    })),
-  );
+  const ordersWithTeeth = await attachTeethDetailsToIndividualOrders(orders);
+  return mapQueueItems(ordersWithTeeth);
 }
 
 /** Oznacz pozycje zębów jako zamówione. */
@@ -376,5 +451,31 @@ export async function fetchTeethQueueVersion(): Promise<string | null> {
     .sort()
     .pop() ?? "";
 
-  return `${count}:${maxCreatedAt ?? ""}:${maxSchedUpdated}`;
+  const { data: queueIds } = await supabase
+    .from("individual_orders")
+    .select("id")
+    .eq("is_teeth", true)
+    .in("status", ["Nowe", "Weryfikacja"]);
+  const orderIds = (queueIds ?? []).map((row) => row.id);
+
+  let teethDetailsVersion = "";
+  if (orderIds.length > 0) {
+    const { count: teethDetailCount, error: teethCountError } = await supabase
+      .from("individual_order_teeth_details")
+      .select("id", { count: "exact", head: true })
+      .in("order_id", orderIds);
+
+    const { data: latestTeeth, error: teethLatestError } = await supabase
+      .from("individual_order_teeth_details")
+      .select("created_at")
+      .in("order_id", orderIds)
+      .order("created_at", { ascending: false })
+      .limit(1);
+
+    if (!teethCountError && !teethLatestError) {
+      teethDetailsVersion = `${teethDetailCount ?? 0}:${latestTeeth?.[0]?.created_at ?? ""}`;
+    }
+  }
+
+  return `${count}:${maxCreatedAt ?? ""}:${maxSchedUpdated}:${teethDetailsVersion}`;
 }

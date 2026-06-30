@@ -9,7 +9,18 @@ import { upsertSubiektProduct } from "@/lib/data/product-catalog";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { actionSuggestProducts } from "@/app/actions/subiekt";
 import type { SubiektProduct } from "@/lib/subiekt/types";
-import { isTeethManufacturer, detectTeethKind, type TeethManufacturer, type TeethKind } from "@/lib/teeth/teeth-catalog";
+import {
+  isTeethManufacturer,
+  isTeethProductLine,
+  detectTeethKind,
+  detectTeethProductLine,
+  manufacturerForProductLine,
+  defaultProductLineForManufacturer,
+  parseTeethProductLine,
+  type TeethManufacturer,
+  type TeethKind,
+  type TeethProductLine,
+} from "@/lib/teeth/teeth-catalog";
 
 function revalidateTeethPaths() {
   revalidatePath("/admin/produkty/zeby");
@@ -76,6 +87,7 @@ export async function actionAddTeethProduct(input: {
   plu?: string | null;
   note?: string;
   manufacturer?: string | null;
+  productLine?: string | null;
   kind?: string | null;
 }): Promise<{ success: true } | { error: string }> {
   const user = await requireAdminForMutation();
@@ -92,7 +104,17 @@ export async function actionAddTeethProduct(input: {
   if (note.length > 500) return { error: "Notatka jest zbyt długa (max 500 znaków)." };
 
   const manufacturerRaw = (input.manufacturer ?? "").trim();
-  const manufacturer = manufacturerRaw && isTeethManufacturer(manufacturerRaw) ? manufacturerRaw : null;
+  let manufacturer = manufacturerRaw && isTeethManufacturer(manufacturerRaw) ? manufacturerRaw : null;
+
+  const productLineRaw = (input.productLine ?? "").trim();
+  let productLine: TeethProductLine | null =
+    productLineRaw && isTeethProductLine(productLineRaw) ? productLineRaw : null;
+  if (!productLine) {
+    productLine = detectTeethProductLine(name, { manufacturer });
+  }
+  if (productLine && !manufacturer) {
+    manufacturer = manufacturerForProductLine(productLine);
+  }
 
   const kindRaw = (input.kind ?? "").trim();
   const kind: TeethKind | null = kindRaw === "anterior" || kindRaw === "posterior"
@@ -125,6 +147,7 @@ export async function actionAddTeethProduct(input: {
     plu: input.plu ?? null,
     note,
     manufacturer,
+    product_line: productLine,
     kind,
     created_by: user.id === "dev" ? null : user.id,
     updated_at: now,
@@ -179,15 +202,71 @@ export async function actionUpdateTeethProductManufacturer(
   const supabase = createAdminClient();
   const { data: row } = await supabase
     .from("prosba_teeth_products")
+    .select("subiekt_tw_id, product_line")
+    .eq("subiekt_tw_id", id)
+    .maybeSingle();
+
+  if (!row) return { error: "Nie znaleziono pozycji na liście." };
+
+  let nextProductLine = parseTeethProductLine(row.product_line);
+  if (parsed) {
+    if (
+      !nextProductLine ||
+      manufacturerForProductLine(nextProductLine) !== parsed
+    ) {
+      nextProductLine = defaultProductLineForManufacturer(parsed);
+    }
+  }
+
+  const { error } = await supabase
+    .from("prosba_teeth_products")
+    .update({
+      manufacturer: parsed,
+      product_line: nextProductLine,
+      updated_at: new Date().toISOString(),
+    })
+    .eq("subiekt_tw_id", id);
+
+  if (error) return { error: error.message };
+
+  revalidateTeethPaths();
+  return { success: true };
+}
+
+export async function actionUpdateTeethProductProductLine(
+  subiektTwId: number,
+  productLine: string | null
+): Promise<{ success: true } | { error: string }> {
+  await requireAdminForMutation();
+
+  const id = Math.trunc(subiektTwId);
+  const raw = (productLine ?? "").trim();
+  const parsed: TeethProductLine | null = raw && isTeethProductLine(raw) ? raw : null;
+
+  const supabase = createAdminClient();
+  const { data: row } = await supabase
+    .from("prosba_teeth_products")
     .select("subiekt_tw_id")
     .eq("subiekt_tw_id", id)
     .maybeSingle();
 
   if (!row) return { error: "Nie znaleziono pozycji na liście." };
 
+  const updatePayload: {
+    product_line: TeethProductLine | null;
+    updated_at: string;
+    manufacturer?: TeethManufacturer | null;
+  } = {
+    product_line: parsed,
+    updated_at: new Date().toISOString(),
+  };
+  if (parsed) {
+    updatePayload.manufacturer = manufacturerForProductLine(parsed);
+  }
+
   const { error } = await supabase
     .from("prosba_teeth_products")
-    .update({ manufacturer: parsed, updated_at: new Date().toISOString() })
+    .update(updatePayload)
     .eq("subiekt_tw_id", id);
 
   if (error) return { error: error.message };

@@ -5,6 +5,7 @@ import { requireTeethPanel } from "@/lib/auth";
 import {
   fetchTeethQueue,
   fetchTeethHistory,
+  fetchTeethHistoryGroups,
   markTeethOrdered,
   unmarkTeethOrdered,
   overrideTeethDeliveryDate,
@@ -12,6 +13,7 @@ import {
   type TeethQueueGroup,
   type TeethQueueItem,
 } from "@/lib/data/teeth-queue";
+import { fetchTeethOrderEditContext, type TeethEditContext } from "@/lib/data/teeth-edit-context";
 import {
   fetchTeethSchedules,
   upsertTeethSchedule,
@@ -37,6 +39,20 @@ export async function actionFetchTeethHistory(
 ): Promise<TeethQueueItem[]> {
   await requireTeethPanel("read");
   return fetchTeethHistory(supplierId);
+}
+
+export async function actionFetchTeethHistoryGroups(
+  supplierId?: string | null
+): Promise<TeethQueueGroup[]> {
+  await requireTeethPanel("read");
+  return fetchTeethHistoryGroups(supplierId);
+}
+
+export async function actionFetchTeethEditContext(
+  orderId: string
+): Promise<TeethEditContext> {
+  await requireTeethPanel("read");
+  return fetchTeethOrderEditContext(orderId);
 }
 
 export async function actionMarkTeethOrdered(

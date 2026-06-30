@@ -189,7 +189,7 @@ function operationsTodayItems(badges: {
   weryfikacja?: number;
   realizacja?: number;
   teethQueue?: number;
-}, role: UserRole): NavItem[] {
+}): NavItem[] {
   return [
     {
       href: "/podsumowanie",
@@ -448,7 +448,7 @@ function operationsNavGroups(
   }
 
   const groups: NavGroup[] = [
-    { title: NAV_SECTION_TODAY, items: operationsTodayItems(badges, role) },
+    { title: NAV_SECTION_TODAY, items: operationsTodayItems(badges) },
     { title: NAV_SECTION_TEAM, items: operationsTeamItems(badges) },
     { title: NAV_SECTION_SUPPLIERS, items: supplierHubItemsForRole(role) },
     { title: NAV_SECTION_TOOLS, items: archiveToolItems },

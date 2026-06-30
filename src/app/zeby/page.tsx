@@ -12,6 +12,8 @@ import { pageMetadataFor } from "@/lib/ui/page-metadata";
 
 export const metadata: Metadata = pageMetadataFor("zeby");
 
+export const dynamic = "force-dynamic";
+
 export default async function ZebyPage() {
   await requireTeethPanel("read");
 
@@ -28,7 +30,7 @@ export default async function ZebyPage() {
     <>
       {error ? (
         <Alert tone="warning" className={cn(panelWorkspaceShellClass, "mb-4")}>
-          {error}. Sprawdź połączenie z Supabase.
+          Nie udało się wczytać kolejki zębów{error ? `: ${error}` : ""}. Odśwież stronę lub spróbuj ponownie za chwilę.
         </Alert>
       ) : null}
 

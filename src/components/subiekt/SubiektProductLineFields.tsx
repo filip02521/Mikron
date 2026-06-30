@@ -55,8 +55,16 @@ import {
 } from "@/lib/orders/prosba-stock-check";
 import type { ProductLineDraft } from "@/components/orders/request-product-lines";
 import { useTeethProductInfo } from "@/components/layout/TeethExemptContext";
-import { TeethPicker } from "@/components/teeth/TeethPicker";
-import type { TeethManufacturer, TeethKind, TeethLineDetail } from "@/lib/teeth/teeth-catalog";
+import { TeethOrderBuilderCard } from "@/components/teeth/TeethOrderBuilderCard";
+import { teethProsbaQuantityInputClass } from "@/lib/teeth/teeth-prosba-ui";
+import {
+  authoritativeTeethProductLine,
+  manufacturerForProductLine,
+  resolveTeethCatalogFromDraft,
+  shouldClearTeethDetailsOnCatalogSync,
+  type TeethProductLine,
+} from "@/lib/teeth/teeth-catalog";
+import { TeethOrderBuilderModal } from "@/components/teeth/TeethOrderBuilderModal";
 
 export type SubiektProductLineValue = Pick<
   ProductLineDraft,
@@ -71,6 +79,7 @@ export type SubiektProductLineValue = Pick<
   | "stockSource"
   | "source"
   | "teethManufacturer"
+  | "teethProductLine"
   | "teethKind"
   | "teethDetails"
 >;
@@ -190,6 +199,8 @@ export function SubiektProductLineFields({
   compactControls = false,
   fieldValidation,
   typeaheadSize = "default",
+  onAfterTeethListSave,
+  autoOpenTeethList = false,
 }: {
   value: SubiektProductLineValue;
   onChange: (patch: Partial<SubiektProductLineValue>) => void;
@@ -217,6 +228,9 @@ export function SubiektProductLineFields({
   fieldValidation?: ProsbaLineFieldMap;
   lineIndex?: number;
   typeaheadSize?: "default" | "comfortable";
+  onAfterTeethListSave?: (teethDetails: import("@/lib/teeth/teeth-catalog").TeethLineDetail[], totalQuantity: number) => void;
+  /** Otwiera modal listy zębów po wejściu w edycję (panel zakupów). */
+  autoOpenTeethList?: boolean;
 }) {
   const ref = useRef<HTMLDivElement>(null);
   const searchGenerationRef = useRef(0);
@@ -234,10 +248,36 @@ export function SubiektProductLineFields({
     null
   );
   const [resolvingSupplier, setResolvingSupplier] = useState(false);
+  const pendingTeethModalRef = useRef(false);
   const [isPending, startTransition] = useTransition();
   const teethProductInfo = useTeethProductInfo();
 
   const prosba = appearance === "prosba";
+  const linkedTeethTwId =
+    value.subiektTwId != null && value.subiektTwId > 0 ? Math.trunc(value.subiektTwId) : null;
+  const adminProductLine = linkedTeethTwId != null
+    ? (teethProductInfo.productLineByTwId.get(linkedTeethTwId) ?? null)
+    : null;
+  const isTeethOrderLine =
+    prosba && requestKind === "zamowienie" && Boolean(value.teethManufacturer);
+  const resolvedTeethCatalog = useMemo(
+    () => resolveTeethCatalogFromDraft({
+      adminProductLine,
+      teethProductLine: value.teethProductLine,
+      teethManufacturer: value.teethManufacturer,
+      product: value.product,
+      subiektTwId: value.subiektTwId,
+    }),
+    [adminProductLine, value.teethProductLine, value.teethManufacturer, value.product, value.subiektTwId],
+  );
+  const resolvedTeethProductLine = resolvedTeethCatalog?.productLine ?? null;
+  const shouldAutoOpenTeethModal =
+    autoOpenTeethList && isTeethOrderLine && Boolean(resolvedTeethProductLine) && !disabled;
+  const [teethModalOpen, setTeethModalOpen] = useState(shouldAutoOpenTeethModal);
+  const [teethModalKey, setTeethModalKey] = useState(() => (shouldAutoOpenTeethModal ? 1 : 0));
+  const autoOpenTeethListRequestedRef = useRef(false);
+  const teethModalInstanceKey = `${teethModalKey}-${resolvedTeethProductLine ?? "none"}-${value.teethDetails?.length ?? 0}`;
+  const teethQuantityFromList = value.teethDetails?.length ?? 0;
   const querySource = activeFieldQuery(value, activeField);
   const symbolPreview = combinedProductSymbolPreview(value);
   const debounced = useDebouncedValue(querySource.trim(), 320);
@@ -302,6 +342,69 @@ export function SubiektProductLineFields({
   }, [resolvingSupplier, onResolvingSupplierChange]);
 
   useEffect(() => {
+    if (!pendingTeethModalRef.current || !resolvedTeethProductLine) return;
+    pendingTeethModalRef.current = false;
+    setTeethModalKey((k) => k + 1);
+    setTeethModalOpen(true);
+  }, [resolvedTeethProductLine]);
+
+  /** Usuwa przekłamanie: katalog zawsze wynika z towaru, nie z ręcznej zmiany linii w UI. */
+  useEffect(() => {
+    if (!linkedTeethTwId || !resolvedTeethProductLine) return;
+    const expectedManufacturer = manufacturerForProductLine(resolvedTeethProductLine);
+    const catalogLineDrifted = shouldClearTeethDetailsOnCatalogSync(
+      value.teethProductLine,
+      resolvedTeethProductLine,
+    );
+    const manufacturerStale = value.teethManufacturer !== expectedManufacturer;
+    const productLineStale = value.teethProductLine !== resolvedTeethProductLine;
+    if (!productLineStale && !manufacturerStale) return;
+
+    onChange({
+      teethProductLine: resolvedTeethProductLine,
+      teethManufacturer: expectedManufacturer,
+      ...(catalogLineDrifted && value.teethDetails?.length
+        ? { teethDetails: undefined, quantity: "" }
+        : {}),
+    });
+    if (catalogLineDrifted && value.teethDetails?.length) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- reset modala po zmianie linii katalogu
+      setTeethModalOpen(false);
+      setTeethModalKey((k) => k + 1);
+    }
+  }, [
+    linkedTeethTwId,
+    resolvedTeethProductLine,
+    value.teethProductLine,
+    value.teethManufacturer,
+    value.teethDetails?.length,
+    onChange,
+  ]);
+
+  const openTeethModal = useCallback(() => {
+    setTeethModalKey((k) => k + 1);
+    setTeethModalOpen(true);
+  }, []);
+
+  useEffect(() => {
+    if (!autoOpenTeethList) {
+      autoOpenTeethListRequestedRef.current = false;
+      return;
+    }
+    if (!isTeethOrderLine || !resolvedTeethProductLine || disabled) return;
+    if (autoOpenTeethListRequestedRef.current || teethModalOpen) return;
+    autoOpenTeethListRequestedRef.current = true;
+    openTeethModal();
+  }, [
+    autoOpenTeethList,
+    isTeethOrderLine,
+    resolvedTeethProductLine,
+    disabled,
+    teethModalOpen,
+    openTeethModal,
+  ]);
+
+  useEffect(() => {
     const onDoc = (e: MouseEvent) => {
       if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
     };
@@ -358,19 +461,40 @@ export function SubiektProductLineFields({
       const detectedKind = twId > 0
         ? (teethProductInfo.kindByTwId.get(twId) ?? null)
         : null;
+      const detectedProductLine = twId > 0
+        ? (teethProductInfo.productLineByTwId.get(twId) ?? null)
+        : null;
+      const productName = p.tw_Nazwa?.trim() || patch.product?.trim() || "";
+      const autoLine: TeethProductLine | null = authoritativeTeethProductLine({
+        adminProductLine: detectedProductLine,
+        teethManufacturer: detectedManufacturer,
+        product: productName,
+      });
+      const finalManufacturer = detectedManufacturer
+        ?? (autoLine ? manufacturerForProductLine(autoLine) : null);
       const isTeethProduct = twId > 0 && teethProductInfo.twIds.has(twId);
-      const manufacturerChanged = value.teethManufacturer !== detectedManufacturer;
-      const kindChanged = value.teethKind !== detectedKind;
+      const specChanged =
+        value.teethManufacturer !== finalManufacturer
+        || value.teethKind !== detectedKind
+        || value.teethProductLine !== autoLine;
       onChange({
         ...patch,
         subiektTwId: patch.subiektTwId,
         ...mergeStockIntoLinePatch(stockSnap),
-        teethManufacturer: isTeethProduct ? detectedManufacturer : null,
+        teethManufacturer: isTeethProduct ? finalManufacturer : null,
+        teethProductLine: isTeethProduct ? autoLine : null,
         teethKind: isTeethProduct ? detectedKind : null,
-        teethDetails: isTeethProduct && detectedManufacturer
-          ? ((manufacturerChanged || kindChanged) ? undefined : value.teethDetails)
+        teethDetails: isTeethProduct && finalManufacturer
+          ? (specChanged ? undefined : value.teethDetails)
           : undefined,
+        quantity:
+          isTeethProduct && finalManufacturer && specChanged
+            ? ""
+            : patch.quantity,
       });
+      if (isTeethProduct && finalManufacturer && requestKind === "zamowienie") {
+        pendingTeethModalRef.current = true;
+      }
       setFeedback(null);
       setOpen(false);
       setItems([]);
@@ -469,6 +593,10 @@ export function SubiektProductLineFields({
       requestKind,
       suppliers,
       value.quantity,
+      value.teethDetails,
+      value.teethKind,
+      value.teethManufacturer,
+      value.teethProductLine,
       teethProductInfo,
     ]
   );
@@ -479,13 +607,13 @@ export function SubiektProductLineFields({
   ) => {
     onChange(
       clearSubiekt
-        ? { ...patch, subiektTwId: null, source: null, teethManufacturer: null, teethKind: null, teethDetails: undefined, ...mergeStockIntoLinePatch(null) }
+        ? { ...patch, subiektTwId: null, source: null, teethManufacturer: null, teethProductLine: null, teethKind: null, teethDetails: undefined, ...mergeStockIntoLinePatch(null) }
         : patch
     );
   };
 
   const unlinkSubiektForEdit = () => {
-    onChange({ subiektTwId: null, source: null, teethManufacturer: null, teethKind: null, teethDetails: undefined, ...mergeStockIntoLinePatch(null) });
+    onChange({ subiektTwId: null, source: null, teethManufacturer: null, teethProductLine: null, teethKind: null, teethDetails: undefined, ...mergeStockIntoLinePatch(null) });
     setOpen(true);
   };
 
@@ -777,31 +905,46 @@ export function SubiektProductLineFields({
         <Field
           label="Ilość"
           className="w-[5.5rem] shrink-0"
-          {...(showQuantityValidation ? quantityField : {})}
+          {...(showQuantityValidation && !isTeethOrderLine ? quantityField : {})}
           hint={
-            prosba && !quantityField.error && !quantityField.state
-              ? "Sztuk"
-              : undefined
+            isTeethOrderLine
+              ? teethQuantityFromList > 0
+                ? "Z listy"
+                : "Uzupełnij listę"
+              : prosba && !quantityField.error && !quantityField.state
+                ? "Sztuk"
+                : undefined
           }
         >
           <Input
             type="number"
             min={1}
             step={1}
-            required
-            disabled={disabled}
+            required={!isTeethOrderLine}
+            disabled={disabled || isTeethOrderLine}
+            readOnly={isTeethOrderLine}
             maxLength={MAX_QUANTITY_LEN}
-            placeholder="1"
+            placeholder={isTeethOrderLine ? "—" : "1"}
             inputMode="numeric"
             aria-label="Ilość sztuk"
-            value={value.quantity}
-            state={showQuantityValidation ? quantityField.state : undefined}
+            value={
+              isTeethOrderLine
+                ? teethQuantityFromList > 0
+                  ? String(teethQuantityFromList)
+                  : ""
+                : value.quantity
+            }
+            state={showQuantityValidation && !isTeethOrderLine ? quantityField.state : undefined}
             className={cn(
               compactControls
                 ? "min-h-11 px-2 text-center text-base tabular-nums sm:min-h-[2.5rem] sm:text-sm"
-                : "min-h-12 px-2 text-center text-base tabular-nums sm:min-h-[2.75rem] sm:text-sm"
+                : "min-h-12 px-2 text-center text-base tabular-nums sm:min-h-[2.75rem] sm:text-sm",
+              isTeethOrderLine && teethProsbaQuantityInputClass,
             )}
-            onChange={(e) => onChange({ quantity: e.target.value })}
+            onChange={(e) => {
+              if (isTeethOrderLine) return;
+              onChange({ quantity: e.target.value });
+            }}
           />
         </Field>
       ) : null}
@@ -837,20 +980,42 @@ export function SubiektProductLineFields({
       ) : null}
 
       {prosba && requestKind === "zamowienie" ? (
-        <>
-          <ProsbaTeethExemptHint line={value as ProductLineDraft} />
-          <ProsbaProductStockStatus line={value as ProductLineDraft} requestKind={requestKind} />
-        </>
+        value.teethManufacturer && resolvedTeethProductLine ? (
+          <TeethOrderBuilderCard
+            manufacturer={manufacturerForProductLine(resolvedTeethProductLine)}
+            productLine={resolvedTeethProductLine}
+            productName={value.product}
+            defaultKind={value.teethKind ?? null}
+            details={value.teethDetails ?? undefined}
+            disabled={disabled}
+            onOpenModal={openTeethModal}
+          />
+        ) : (
+          <>
+            <ProsbaTeethExemptHint line={value as ProductLineDraft} />
+            <ProsbaProductStockStatus line={value as ProductLineDraft} requestKind={requestKind} />
+          </>
+        )
       ) : null}
 
-      {value.teethManufacturer && requestKind === "zamowienie" ? (
-        <TeethPicker
-          manufacturer={value.teethManufacturer}
-          quantity={Math.max(1, parseInt(value.quantity, 10) || 1)}
-          details={value.teethDetails ?? undefined}
-          onChange={(teethDetails) => onChange({ teethDetails })}
-          disabled={disabled}
+      {value.teethManufacturer && resolvedTeethProductLine && requestKind === "zamowienie" ? (
+        <TeethOrderBuilderModal
+          key={teethModalInstanceKey}
+          open={teethModalOpen}
+          onClose={() => setTeethModalOpen(false)}
+          productLine={resolvedTeethProductLine}
+          manufacturer={manufacturerForProductLine(resolvedTeethProductLine)}
           defaultKind={value.teethKind ?? null}
+          productLabel={value.product?.trim() || value.symbol?.trim() || undefined}
+          initialDetails={value.teethDetails ?? undefined}
+          disabled={disabled}
+          onSave={(teethDetails, totalQuantity) => {
+            onChange({
+              teethDetails,
+              quantity: String(totalQuantity),
+            });
+            onAfterTeethListSave?.(teethDetails, totalQuantity);
+          }}
         />
       ) : null}
 

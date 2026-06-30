@@ -12,7 +12,7 @@ import { Toast } from "@/components/ui/Toast";
 import { Field, Select } from "@/components/ui/Field";
 import { SupplierPickerField } from "@/components/orders/SupplierPickerField";
 import type { IndividualRequestKind } from "@/types/database";
-import type { TeethManufacturer, TeethLineDetail } from "@/lib/teeth/teeth-catalog";
+import type { TeethManufacturer, TeethLineDetail, TeethProductLine, TeethKind } from "@/lib/teeth/teeth-catalog";
 import { ProsbaFormSection } from "@/components/orders/ProsbaFormSection";
 import { prosbaHref } from "@/lib/orders/prosba-url";
 import { IconLayers, IconPlusCircle, IconUserCog, IconUserGroup } from "@/components/icons/StrokeIcons";
@@ -36,6 +36,8 @@ import {
 } from "@/lib/orders/informacja-stock-out-reorder";
 import { assertProcurementEntryComplete } from "@/lib/orders/procurement-submit";
 import { assessSalesGroupSubmittable } from "@/lib/orders/sales-request-submit";
+import { prosbaLineHasTeethBlockers } from "@/lib/orders/prosba-line-field-validation";
+import { TEETH_LIST_INCOMPLETE_MESSAGE } from "@/lib/teeth/teeth-validation";
 import { buildProsbaFormReadiness, buildProsbaFormReadinessWithSupplier } from "@/lib/orders/prosba-form-readiness";
 import { PROSBA_FORM_SECTION_COPY } from "@/lib/orders/prosba-form-section-copy";
 import { PROSBA_PAGE_HEADER_HINTS } from "@/lib/orders/prosba-optional-section-copy";
@@ -134,6 +136,8 @@ interface Entry {
   zkQuantity?: number | null;
   requestNote?: string;
   teethManufacturer?: TeethManufacturer | null;
+  teethProductLine?: TeethProductLine | null;
+  teethKind?: TeethKind | null;
   teethDetails?: TeethLineDetail[];
 }
 
@@ -460,14 +464,18 @@ export function OrderFormClient({
           quantity: row.quantity,
           supplierId,
           subiektTwId: row.subiektTwId,
+          teethDetails: row.teethDetails,
+          teethManufacturer: row.teethManufacturer,
+          teethProductLine: row.teethProductLine,
         })),
         requestKind,
+        teethExemptTwIds,
         ...flagsFromInformacjaFlowPath(
           requestKind === "informacja" ? informacjaPath : "direct"
         ),
       }).canSubmit;
     });
-  }, [groups, requestKind, informacjaPath, lockedId, isProcurementGroupForm]);
+  }, [groups, requestKind, informacjaPath, lockedId, isProcurementGroupForm, teethExemptTwIds]);
 
   const informacjaFlags = useMemo(
     () =>
@@ -676,6 +684,17 @@ export function OrderFormClient({
         });
         return;
       }
+      const teethBlocked = group.some((line) =>
+        prosbaLineHasTeethBlockers(line, requestKind, { exemptTwIds: teethExemptTwIds })
+      );
+      if (teethBlocked) {
+        setValidationAttempted(true);
+        setFormNotice({
+          text: TEETH_LIST_INCOMPLETE_MESSAGE,
+          tone: "error",
+        });
+        return;
+      }
     }
 
     if (!singleGroup && !lockedId) {
@@ -791,6 +810,17 @@ export function OrderFormClient({
       }
     }
 
+    if (
+      requestKind === "zamowienie" &&
+      entries.some((entry) =>
+        prosbaLineHasTeethBlockers(entry, requestKind, { exemptTwIds: teethExemptTwIds })
+      )
+    ) {
+      setValidationAttempted(true);
+      setFormNotice({ text: TEETH_LIST_INCOMPLETE_MESSAGE, tone: "error" });
+      return;
+    }
+
     runSubmitWithConfirms(entries);
   };
   useEffect(() => {
@@ -865,6 +895,7 @@ export function OrderFormClient({
     const prosbaReadiness = buildProsbaFormReadiness(group, requestKind, salesSubmitPlan, {
       resolvingSupplier,
       informacjaPath,
+      teethExemptTwIds,
     });
     return {
       group,
@@ -881,6 +912,7 @@ export function OrderFormClient({
     requestKind,
     resolvingSupplier,
     informacjaPath,
+    teethExemptTwIds,
   ]);
 
   const zkQuantityFormBanner = useMemo(() => {
@@ -1010,6 +1042,7 @@ export function OrderFormClient({
       buildProsbaFormReadiness(group, requestKind, salesSubmitPlan, {
         resolvingSupplier,
         informacjaPath,
+        teethExemptTwIds,
       });
     const canSubmitProsba = salesProsbaSubmitState?.canSubmit ?? false;
     /** Prefill z harmonogramu (?dostawca=) — pokazuj, dopóki Subiekt nie wskaże innego dostawcy. */

@@ -40,9 +40,9 @@ import {
 } from "@/lib/orders/prosba-line-note-copy";
 import {
   TeethProgressBadge,
-  TeethReviewSummary,
   useTeethLinesStatus,
 } from "@/components/teeth/TeethWizardProgress";
+import type { TeethLineDetail } from "@/lib/teeth/teeth-catalog";
 
 export function RequestProductLinesEditor({
   lines,
@@ -65,6 +65,8 @@ export function RequestProductLinesEditor({
   liveValidation = false,
   showLineNotes,
   typeaheadSize = "default",
+  onAfterTeethListSave,
+  autoOpenTeethList = false,
 }: {
   lines: ProductLineDraft[];
   onChange: (lines: ProductLineDraft[]) => void;
@@ -95,6 +97,13 @@ export function RequestProductLinesEditor({
   showLineNotes?: boolean;
   /** Wyższa lista podpowiedzi Subiekta / dostawcy w modalach. */
   typeaheadSize?: "default" | "comfortable";
+  onAfterTeethListSave?: (
+    lineIndex: number,
+    teethDetails: TeethLineDetail[],
+    totalQuantity: number
+  ) => void;
+  /** Otwiera modal listy zębów dla pierwszej linii (panel zakupów). */
+  autoOpenTeethList?: boolean;
 }) {
   const canRemove = lines.length > minLines;
   const prosba = appearance === "prosba";
@@ -330,12 +339,20 @@ export function RequestProductLinesEditor({
                 stockSource: line.stockSource,
                 source: line.source,
                 teethManufacturer: line.teethManufacturer,
+                teethProductLine: line.teethProductLine,
                 teethKind: line.teethKind,
                 teethDetails: line.teethDetails,
               }}
               onChange={(patch) =>
                 onChange(updateProductLine(lines, index, patch))
               }
+              onAfterTeethListSave={
+                onAfterTeethListSave
+                  ? (teethDetails, totalQuantity) =>
+                      onAfterTeethListSave(index, teethDetails, totalQuantity)
+                  : undefined
+              }
+              autoOpenTeethList={autoOpenTeethList && index === 0}
             />
 
             {prosba ? (
@@ -343,7 +360,7 @@ export function RequestProductLinesEditor({
             ) : null}
 
             {showClientField ? (
-              prosba && lines.length === 1 ? (
+              prosba ? (
                 <ProsbaOptionalSection
                   kind="client"
                   title={PROSBA_OPTIONAL_SECTION_COPY.client.title}
@@ -400,10 +417,6 @@ export function RequestProductLinesEditor({
         </Button>
       ) : null}
 
-      {prosba && requestKind === "zamowienie" ? (
-        <TeethReviewSummary lines={lines} />
-      ) : null}
-
       <Button
         type="button"
         variant={prosba ? "secondary" : "ghost"}
@@ -423,8 +436,8 @@ export function RequestProductLinesEditor({
 
 function TeethProgressLine({ lines }: { lines: ProductLineDraft[] }) {
   const { completedCount, totalCount } = useTeethLinesStatus(lines);
-  if (totalCount === 0) return null;
-  return <TeethProgressBadge completed={completedCount} total={totalCount} />;
+  if (totalCount < 2 || completedCount === totalCount) return null;
+  return <TeethProgressBadge incompleteCount={totalCount - completedCount} />;
 }
 
 export function initialProductLines(count = 1): ProductLineDraft[] {

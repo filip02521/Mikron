@@ -1,38 +1,30 @@
 "use client";
 
-import { useEffect, useMemo, useState, useCallback } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import {
-  teethManufacturerLabel,
-  teethColorsFor,
-  toothMouldsFor,
-  hasMouldsForKind,
+  teethProductLineLabel,
   expandTeethDetails,
   isTeethDetailComplete,
-  TEETH_KIND_LABELS,
-  type TeethManufacturer,
+  resolveTeethCatalogFromDraft,
+  type TeethProductLine,
   type TeethLineDetail,
-  type TeethJaw,
   type TeethKind,
+  type TeethCatalogRef,
 } from "@/lib/teeth/teeth-catalog";
+import { TeethSpecFields } from "@/components/teeth/TeethSpecFields";
 import { cn } from "@/lib/cn";
 import {
   panelChoiceChipClass,
   panelChoiceChipIdleClass,
   panelChoiceChipSelectedClass,
-  controlFocusClass,
 } from "@/lib/ui/ontime-theme";
 
 /**
- * TeethPicker — wybór parametrów klapki/klapek.
- *
- * `quantity` = liczba klapek (np. 4).
- * `details`  = tablica TeethLineDetail o długości quantity (jedna per klapka).
- * `onChange` = callback z nową tablicą details.
- *
- * Tryb "wszystkie takie same": jeden picker kopiowany na wszystkie pozycje.
- * Tryb "każda inna": N osobnych pickerów.
+ * TeethPicker — wybór parametrów klapki/klapek (tryb inline, np. edycja).
+ * W formularzu prośby preferowany jest TeethOrderBuilderModal.
  */
 export function TeethPicker({
+  productLine,
   manufacturer,
   quantity,
   details,
@@ -40,27 +32,32 @@ export function TeethPicker({
   disabled,
   defaultKind,
 }: {
-  manufacturer: TeethManufacturer;
+  productLine: TeethProductLine;
+  manufacturer?: import("@/lib/teeth/teeth-catalog").TeethManufacturer;
   quantity: number;
   details: TeethLineDetail[] | undefined;
   onChange: (details: TeethLineDetail[]) => void;
   disabled?: boolean;
   defaultKind?: TeethKind | null;
 }) {
+  const catalog = useMemo(
+    () => resolveTeethCatalogFromDraft({ teethProductLine: productLine, teethManufacturer: manufacturer ?? null })!,
+    [productLine, manufacturer],
+  );
   const safeQty = Math.max(1, quantity || 1);
-  const label = teethManufacturerLabel(manufacturer);
+  const label = teethProductLineLabel(productLine);
 
   const [allSame, setAllSame] = useState(true);
   const [activeKlapka, setActiveKlapka] = useState(0);
-
-  useEffect(() => {
+  const [qtyEpoch, setQtyEpoch] = useState(safeQty);
+  if (safeQty !== qtyEpoch) {
+    setQtyEpoch(safeQty);
     setAllSame(true);
     setActiveKlapka(0);
-  }, [safeQty]);
+  }
 
   const expanded = useMemo(
     () => expandTeethDetails(details, safeQty),
-    // eslint-disable-next-line react-hooks/exhaustive-deps
     [details, safeQty],
   );
 
@@ -68,8 +65,7 @@ export function TeethPicker({
     if (defaultKind && expanded.some((d) => d.kind !== defaultKind)) {
       onChange(expanded.map((d) => ({ ...d, kind: defaultKind })));
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [defaultKind]);
+  }, [defaultKind, expanded, onChange]);
 
   const handleToggleAllSame = () => {
     if (allSame) {
@@ -125,18 +121,24 @@ export function TeethPicker({
       </div>
 
       {allSame ? (
-        <SingleKlapkaPicker
-          label={safeQty > 1 ? `Wszystkie ${safeQty} klapki` : undefined}
-          manufacturer={manufacturer}
-          detail={expanded[0] ?? { position: 1, color: "", mould: null, jaw: null, kind: defaultKind ?? null }}
-          onChange={(patch) => handleChangeOne(0, patch)}
-          disabled={disabled}
-          lockedKind={defaultKind ?? null}
-        />
+        <div className="rounded-md border border-slate-200 bg-white p-3">
+          {safeQty > 1 ? (
+            <p className="mb-3 text-[11px] font-semibold uppercase tracking-wide text-slate-500">
+              Wszystkie {safeQty} klapki
+            </p>
+          ) : null}
+          <TeethSpecFields
+            productLine={catalog.productLine}
+            detail={expanded[0] ?? { position: 1, color: "", mould: null, jaw: null, kind: defaultKind ?? null }}
+            lockedKind={defaultKind ?? null}
+            disabled={disabled}
+            onChange={(patch) => handleChangeOne(0, patch)}
+          />
+        </div>
       ) : (
         <KlapkaWizard
           expanded={expanded}
-          manufacturer={manufacturer}
+          catalog={catalog}
           disabled={disabled}
           defaultKind={defaultKind ?? null}
           activeKlapka={activeKlapka}
@@ -150,7 +152,7 @@ export function TeethPicker({
 
 function KlapkaWizard({
   expanded,
-  manufacturer,
+  catalog,
   disabled,
   defaultKind,
   activeKlapka,
@@ -158,7 +160,7 @@ function KlapkaWizard({
   onChangeOne,
 }: {
   expanded: TeethLineDetail[];
-  manufacturer: TeethManufacturer;
+  catalog: TeethCatalogRef;
   disabled?: boolean;
   defaultKind: TeethKind | null;
   activeKlapka: number;
@@ -168,8 +170,7 @@ function KlapkaWizard({
   const total = expanded.length;
   const current = expanded[activeKlapka] ?? expanded[0]!;
   const isLast = activeKlapka === total - 1;
-
-  const isCurrentComplete = isTeethDetailComplete(current, manufacturer);
+  const isCurrentComplete = isTeethDetailComplete(current, catalog);
 
   const goNext = useCallback(() => {
     if (activeKlapka < total - 1) onActiveChange(activeKlapka + 1);
@@ -179,15 +180,14 @@ function KlapkaWizard({
     if (activeKlapka > 0) onActiveChange(activeKlapka - 1);
   }, [activeKlapka, onActiveChange]);
 
-  const completedCount = expanded.filter((d) => isTeethDetailComplete(d, manufacturer)).length;
+  const completedCount = expanded.filter((d) => isTeethDetailComplete(d, catalog)).length;
 
   return (
     <div className="space-y-2.5">
-      {/* Pasek nawigacji — doty statusu + licznik */}
       <div className="flex items-center gap-2">
         <div className="flex flex-wrap gap-1">
           {expanded.map((d, i) => {
-            const complete = isTeethDetailComplete(d, manufacturer);
+            const complete = isTeethDetailComplete(d, catalog);
             const isActive = i === activeKlapka;
             return (
               <button
@@ -199,9 +199,7 @@ function KlapkaWizard({
                 className={cn(
                   "flex size-6 items-center justify-center rounded text-[11px] font-bold tabular-nums transition-colors",
                   isActive
-                    ? complete
-                      ? "bg-violet-600 text-white ring-2 ring-violet-300"
-                      : "bg-violet-600 text-white ring-2 ring-violet-300"
+                    ? "bg-violet-600 text-white ring-2 ring-violet-300"
                     : complete
                       ? "bg-violet-100 text-violet-700 hover:bg-violet-200"
                       : "bg-slate-100 text-slate-400 hover:bg-slate-200",
@@ -224,17 +222,19 @@ function KlapkaWizard({
         </span>
       </div>
 
-      {/* Aktywny picker */}
-      <SingleKlapkaPicker
-        label={`Klapka ${activeKlapka + 1} z ${total}`}
-        manufacturer={manufacturer}
-        detail={current}
-        onChange={(patch) => onChangeOne(activeKlapka, patch)}
-        disabled={disabled}
-        lockedKind={defaultKind}
-      />
+      <div className="rounded-md border border-slate-200 bg-white p-3">
+        <p className="mb-3 text-[11px] font-semibold uppercase tracking-wide text-slate-500">
+          Klapka {activeKlapka + 1} z {total}
+        </p>
+        <TeethSpecFields
+          productLine={catalog.productLine}
+          detail={current}
+          lockedKind={defaultKind}
+          disabled={disabled}
+          onChange={(patch) => onChangeOne(activeKlapka, patch)}
+        />
+      </div>
 
-      {/* Nawigacja prev/next */}
       <div className="flex items-center justify-between gap-2">
         <button
           type="button"
@@ -269,265 +269,6 @@ function KlapkaWizard({
           </span>
         )}
       </div>
-    </div>
-  );
-}
-
-function SingleKlapkaPicker({
-  label,
-  manufacturer,
-  detail,
-  onChange,
-  disabled,
-  lockedKind,
-}: {
-  label?: string;
-  manufacturer: TeethManufacturer;
-  detail: TeethLineDetail;
-  onChange: (patch: Partial<TeethLineDetail>) => void;
-  disabled?: boolean;
-  lockedKind?: TeethKind | null;
-}) {
-  const colors = useMemo(() => teethColorsFor(manufacturer), [manufacturer]);
-  const jaw = (detail.jaw ?? null) as TeethJaw | null;
-  const kind = (detail.kind ?? null) as TeethKind | null;
-  const moulds = useMemo(
-    () => (kind ? toothMouldsFor(manufacturer, kind) : []),
-    [manufacturer, kind],
-  );
-  const showMoulds = kind != null && hasMouldsForKind(manufacturer, kind);
-
-  const handleJaw = (j: TeethJaw) => {
-    if (disabled) return;
-    const next: Partial<TeethLineDetail> = { jaw: j };
-    onChange(next);
-  };
-
-  const handleKind = (k: TeethKind) => {
-    if (disabled) return;
-    const next: Partial<TeethLineDetail> = { kind: k };
-    if (k !== kind) next.mould = null;
-    onChange(next);
-  };
-
-  const isComplete = !!jaw && !!kind && !!detail.color && (!showMoulds || !!detail.mould);
-
-  return (
-    <div className={cn(
-      "rounded-md border bg-white p-3 space-y-3 transition-colors",
-      isComplete ? "border-indigo-200/80" : "border-slate-200",
-    )}>
-      {label && (
-        <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">{label}</p>
-      )}
-
-      {/* Szczęka */}
-      <div>
-        <p className="mb-1.5 text-[11px] font-semibold uppercase tracking-wide text-slate-500">
-          Szczęka{!jaw && <span className="ml-1 text-rose-500">*</span>}
-        </p>
-        <div className="flex gap-2">
-          <JawButton label="Górna" value="upper" selected={jaw === "upper"} disabled={disabled} onSelect={handleJaw} />
-          <JawButton label="Dolna" value="lower" selected={jaw === "lower"} disabled={disabled} onSelect={handleJaw} />
-        </div>
-      </div>
-
-      {/* Typ zęba */}
-      {lockedKind ? (
-        <div>
-          <p className="mb-1.5 text-[11px] font-semibold uppercase tracking-wide text-slate-500">
-            Typ
-          </p>
-          <div className="flex gap-2">
-            <span className={cn(panelChoiceChipClass, "px-4 py-1.5 text-sm", panelChoiceChipSelectedClass)}>
-              {TEETH_KIND_LABELS[lockedKind]}
-            </span>
-          </div>
-        </div>
-      ) : (
-        <div>
-          <p className="mb-1.5 text-[11px] font-semibold uppercase tracking-wide text-slate-500">
-            Typ{!kind && <span className="ml-1 text-rose-500">*</span>}
-          </p>
-          <div className="flex gap-2">
-            <KindButton label={TEETH_KIND_LABELS.anterior} value="anterior" selected={kind === "anterior"} disabled={disabled} onSelect={handleKind} />
-            <KindButton label={TEETH_KIND_LABELS.posterior} value="posterior" selected={kind === "posterior"} disabled={disabled} onSelect={handleKind} />
-          </div>
-        </div>
-      )}
-
-      {/* Kolor */}
-      <div>
-        <p className="mb-1.5 text-[11px] font-semibold uppercase tracking-wide text-slate-500">
-          Kolor{!detail.color && <span className="ml-1 text-rose-500">*</span>}
-        </p>
-        <div className="flex flex-wrap gap-1.5">
-          {colors.map((c) => (
-            <ChipButton
-              key={c}
-              label={c}
-              selected={detail.color === c}
-              disabled={disabled}
-              onSelect={() => !disabled && onChange({ color: c })}
-            />
-          ))}
-        </div>
-      </div>
-
-      {/* Fason */}
-      {showMoulds ? (
-        <div>
-          <p className="mb-1.5 text-[11px] font-semibold uppercase tracking-wide text-slate-500">
-            Fason / Wielkość{!detail.mould && <span className="ml-1 text-rose-500">*</span>}
-          </p>
-          <div className="flex flex-wrap gap-1.5">
-            {moulds.map((m) => (
-              <ChipButton
-                key={m}
-                label={m}
-                selected={detail.mould === m}
-                disabled={disabled}
-                onSelect={() => !disabled && onChange({ mould: m })}
-              />
-            ))}
-          </div>
-        </div>
-      ) : kind != null ? (
-        <div>
-          <p className="mb-1.5 text-[11px] font-semibold uppercase tracking-wide text-slate-500">Fason / Wielkość</p>
-          <input
-            type="text"
-            value={detail.mould ?? ""}
-            disabled={disabled}
-            onChange={(e) => onChange({ mould: e.target.value || null })}
-            placeholder="Wpisz fason lub zostaw puste"
-            className={cn(
-              "w-full rounded-md border border-slate-300 px-3 py-1.5 text-sm",
-              controlFocusClass,
-              "disabled:cursor-not-allowed disabled:bg-slate-50 disabled:text-slate-400",
-            )}
-          />
-        </div>
-      ) : null}
-
-      {/* Podsumowanie */}
-      <KlapkaSummary detail={detail} complete={isComplete} />
-    </div>
-  );
-}
-
-function JawButton({
-  label,
-  value,
-  selected,
-  disabled,
-  onSelect,
-}: {
-  label: string;
-  value: TeethJaw;
-  selected: boolean;
-  disabled?: boolean;
-  onSelect: (v: TeethJaw) => void;
-}) {
-  return (
-    <button
-      type="button"
-      disabled={disabled}
-      onClick={() => onSelect(value)}
-      aria-pressed={selected}
-      className={cn(
-        panelChoiceChipClass,
-        "px-4 py-1.5 text-sm",
-        selected ? panelChoiceChipSelectedClass : panelChoiceChipIdleClass,
-        disabled && "cursor-not-allowed opacity-50",
-      )}
-    >
-      {label}
-    </button>
-  );
-}
-
-function KindButton({
-  label,
-  value,
-  selected,
-  disabled,
-  onSelect,
-}: {
-  label: string;
-  value: TeethKind;
-  selected: boolean;
-  disabled?: boolean;
-  onSelect: (v: TeethKind) => void;
-}) {
-  return (
-    <button
-      type="button"
-      disabled={disabled}
-      onClick={() => onSelect(value)}
-      aria-pressed={selected}
-      className={cn(
-        panelChoiceChipClass,
-        "px-4 py-1.5 text-sm",
-        selected ? panelChoiceChipSelectedClass : panelChoiceChipIdleClass,
-        disabled && "cursor-not-allowed opacity-50",
-      )}
-    >
-      {label}
-    </button>
-  );
-}
-
-function ChipButton({
-  label,
-  selected,
-  disabled,
-  onSelect,
-}: {
-  label: string;
-  selected: boolean;
-  disabled?: boolean;
-  onSelect: () => void;
-}) {
-  return (
-    <button
-      type="button"
-      disabled={disabled}
-      onClick={onSelect}
-      aria-pressed={selected}
-      className={cn(
-        panelChoiceChipClass,
-        "px-2 py-0.5 text-xs",
-        selected ? panelChoiceChipSelectedClass : panelChoiceChipIdleClass,
-        disabled && "cursor-not-allowed opacity-50",
-      )}
-    >
-      {label}
-    </button>
-  );
-}
-
-function KlapkaSummary({ detail, complete }: { detail: TeethLineDetail; complete: boolean }) {
-  const parts: string[] = [];
-  if (detail.jaw === "upper") parts.push("Górna");
-  else if (detail.jaw === "lower") parts.push("Dolna");
-  if (detail.kind) parts.push(TEETH_KIND_LABELS[detail.kind]);
-  if (detail.color) parts.push(detail.color);
-  if (detail.mould) parts.push(detail.mould);
-  if (parts.length === 0) return null;
-  return (
-    <div className={cn(
-      "flex items-center gap-1.5 rounded px-3 py-1.5 text-sm font-medium",
-      complete
-        ? "bg-indigo-50 text-indigo-800"
-        : "bg-slate-50 text-slate-600",
-    )}>
-      {complete && (
-        <svg className="h-3.5 w-3.5 shrink-0 text-indigo-500" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true">
-          <path fillRule="evenodd" d="M12.416 3.376a.75.75 0 0 1 .208 1.04l-5 7.5a.75.75 0 0 1-1.154.114l-3-3a.75.75 0 0 1 1.06-1.06l2.353 2.353 4.493-6.74a.75.75 0 0 1 1.04-.207Z" clipRule="evenodd" />
-        </svg>
-      )}
-      <span>{parts.join(" · ")}</span>
     </div>
   );
 }

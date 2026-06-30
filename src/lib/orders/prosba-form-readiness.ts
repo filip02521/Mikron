@@ -1,9 +1,11 @@
 import { hasAnyProductHint, hasValidOrderQuantity } from "@/lib/orders/request-completeness";
+import { prosbaLineHasTeethBlockers } from "@/lib/orders/prosba-line-field-validation";
 import { PROCUREMENT_TEAM_LABEL } from "./procurement-copy";
 import type { SalesRequestSubmitPlan } from "@/lib/orders/sales-request-submit";
 import { assessSalesGroupSubmittable } from "@/lib/orders/sales-request-submit";
 import type { IndividualRequestKind } from "@/types/database";
 import type { InformacjaFlowPath } from "@/lib/orders/informacja-stock-out-reorder";
+import type { TeethLineDetail, TeethManufacturer, TeethProductLine } from "@/lib/teeth/teeth-catalog";
 import {
   informacjaFlowUiForPath,
   informacjaReadinessSubline,
@@ -34,11 +36,15 @@ export type ProsbaReadinessLine = {
   supplierId?: string;
   subiektTwId?: number | null;
   source?: "subiekt" | "catalog" | null;
+  teethDetails?: TeethLineDetail[] | null;
+  teethManufacturer?: TeethManufacturer | null;
+  teethProductLine?: TeethProductLine | null;
 };
 
 export type ProsbaFormReadinessOptions = {
   informacjaPath?: InformacjaFlowPath;
   resolvingSupplier?: boolean;
+  teethExemptTwIds?: ReadonlySet<number>;
 };
 
 function linesWithProductHint(lines: ProsbaReadinessLine[]): ProsbaReadinessLine[] {
@@ -48,6 +54,28 @@ function linesWithProductHint(lines: ProsbaReadinessLine[]): ProsbaReadinessLine
       mikranCode: line.mikranCode,
       product: line.product,
     })
+  );
+}
+
+function lineHasTeethBlockers(
+  line: ProsbaReadinessLine,
+  requestKind: IndividualRequestKind,
+  exemptTwIds?: ReadonlySet<number>
+): boolean {
+  return prosbaLineHasTeethBlockers(
+    {
+      id: "readiness-check",
+      symbol: line.symbol ?? "",
+      mikranCode: line.mikranCode ?? "",
+      product: line.product ?? "",
+      quantity: line.quantity ?? "",
+      subiektTwId: line.subiektTwId ?? null,
+      teethDetails: line.teethDetails ?? undefined,
+      teethManufacturer: line.teethManufacturer ?? null,
+      teethProductLine: line.teethProductLine ?? null,
+    },
+    requestKind,
+    { exemptTwIds }
   );
 }
 
@@ -161,6 +189,21 @@ export function buildProsbaFormReadiness(
       steps: steps.map((s) =>
         s.id === "quantity" && !quantityDone ? { ...s, state: "action" as const } : s
       ),
+      canSubmit: false,
+    };
+  }
+
+  const teethBlocked =
+    isZamowienie &&
+    filled.some((line) =>
+      lineHasTeethBlockers(line, requestKind, options?.teethExemptTwIds)
+    );
+  if (teethBlocked) {
+    return {
+      headline: "Uzupełnij listę zębów",
+      subline: "Przy pozycjach zębowych podaj kolor, fason, szczękę i typ dla każdej sztuki.",
+      tone: "blocked",
+      steps,
       canSubmit: false,
     };
   }

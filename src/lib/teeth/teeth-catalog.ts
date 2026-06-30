@@ -1,42 +1,75 @@
-export type TeethManufacturer = "ivoclar" | "wiedent" | "dentex" | "major" | "hansen" | "mgm" | "formed";
+import {
+  TEETH_LINE_DEFINITIONS,
+  TEETH_LINE_BY_ID,
+  teethLineDefinition,
+  teethLinesForManufacturer,
+  teethColorsForLine,
+  toothMouldsForLine,
+  hasMouldsForLineKind,
+  lineHasAnyMoulds,
+  lineOptionalMould,
+  type TeethLineDefinition,
+} from "./teeth-lines-data";
+import { TEETH_CHIP_OTHER } from "./teeth-palettes";
+import type {
+  TeethManufacturer,
+  TeethProductLine,
+  TeethJaw,
+  TeethKind,
+} from "./teeth-catalog-types";
 
-export type TeethJaw = "upper" | "lower";
-
-export type TeethKind = "anterior" | "posterior";
+export type { TeethManufacturer, TeethProductLine, TeethJaw, TeethKind };
+export { parseTeethJaw, parseTeethKind } from "./teeth-catalog-types";
+export { TEETH_CHIP_OTHER };
 
 export const TEETH_KIND_LABELS: Record<TeethKind, string> = {
   anterior: "Przednie",
   posterior: "Tylne",
 };
 
-export const TEETH_MANUFACTURERS: {
-  id: TeethManufacturer;
-  label: string;
-}[] = [
+export const TEETH_MANUFACTURERS: { id: TeethManufacturer; label: string }[] = [
   { id: "ivoclar", label: "Ivoclar" },
   { id: "wiedent", label: "Wiedent" },
   { id: "dentex", label: "Dentex" },
   { id: "major", label: "Major Dental" },
+  { id: "schottlander", label: "Schottlander" },
   { id: "hansen", label: "Hansen Dental" },
   { id: "mgm", label: "MGM System" },
   { id: "formed", label: "Formed" },
 ];
+
+export const TEETH_PRODUCT_LINES: TeethLineDefinition[] = [...TEETH_LINE_DEFINITIONS];
+
+const MANUFACTURER_IDS = new Set<string>(TEETH_MANUFACTURERS.map((m) => m.id));
+const PRODUCT_LINE_IDS = new Set<string>(TEETH_LINE_DEFINITIONS.map((d) => d.id));
+
+const DEFAULT_LINE_BY_MANUFACTURER: Record<TeethManufacturer, TeethProductLine> = {
+  wiedent: "wiedent_estetic",
+  ivoclar: "ivoclar_ivostar",
+  dentex: "dentex_amberlux",
+  major: "major_super_lux",
+  schottlander: "schottlander_enigmalife",
+  hansen: "hansen_generic",
+  mgm: "mgm_generic",
+  formed: "formed_generic",
+};
 
 export function teethManufacturerLabel(id: TeethManufacturer | null | undefined): string | null {
   if (!id) return null;
   return TEETH_MANUFACTURERS.find((m) => m.id === id)?.label ?? null;
 }
 
+export function teethProductLineLabel(id: TeethProductLine | null | undefined): string | null {
+  if (!id) return null;
+  return TEETH_LINE_BY_ID.get(id)?.label ?? null;
+}
+
 export function isTeethManufacturer(value: string): value is TeethManufacturer {
-  return (
-    value === "ivoclar" ||
-    value === "wiedent" ||
-    value === "dentex" ||
-    value === "major" ||
-    value === "hansen" ||
-    value === "mgm" ||
-    value === "formed"
-  );
+  return MANUFACTURER_IDS.has(value);
+}
+
+export function isTeethProductLine(value: string): value is TeethProductLine {
+  return PRODUCT_LINE_IDS.has(value);
 }
 
 export function parseTeethManufacturer(value: unknown): TeethManufacturer | null {
@@ -44,13 +77,21 @@ export function parseTeethManufacturer(value: unknown): TeethManufacturer | null
   return isTeethManufacturer(value) ? value : null;
 }
 
-export function parseTeethKind(value: unknown): TeethKind | null {
-  if (value === "anterior" || value === "posterior") return value;
-  return null;
+export function parseTeethProductLine(value: unknown): TeethProductLine | null {
+  if (typeof value !== "string") return null;
+  return isTeethProductLine(value) ? value : null;
 }
 
-const ANTERIOR_KEYWORDS = ["przednie", "przód", "przod", "przedni", "front"];
-const POSTERIOR_KEYWORDS = ["boczne", "boczny", "tylne", "tylny", "tył", "tyl", "back"];
+export function manufacturerForProductLine(line: TeethProductLine): TeethManufacturer {
+  return teethLineDefinition(line).manufacturer;
+}
+
+export function defaultProductLineForManufacturer(manufacturer: TeethManufacturer): TeethProductLine {
+  return DEFAULT_LINE_BY_MANUFACTURER[manufacturer];
+}
+
+const ANTERIOR_KEYWORDS = ["przednie", "przód", "przod", "przedni", "front", "przody"];
+const POSTERIOR_KEYWORDS = ["boczne", "boczny", "tylne", "tylny", "tył", "tyl", "back", "boki"];
 
 export function detectTeethKind(name: string): TeethKind | null {
   const lower = name.toLowerCase();
@@ -59,109 +100,120 @@ export function detectTeethKind(name: string): TeethKind | null {
   return null;
 }
 
-export const TEETH_COLORS: Record<TeethManufacturer, string[]> = {
-  ivoclar: [
-    "A1", "A2", "A3", "A3.5", "A4",
-    "B1", "B2", "B3", "B4",
-    "C1", "C2", "C3", "C4",
-    "D2", "D3", "D4",
-    "BL1", "BL2", "BL3", "BL4",
-  ],
-  wiedent: [
-    "A1", "A2", "A3", "A3.5", "A4",
-    "B1", "B2", "B3", "B4",
-    "C1", "C2", "C3", "C4",
-    "D2", "D3", "D4",
-    "G1", "G2", "G3",
-    "N2", "N3", "N5",
-    "R1", "R3", "R5",
-    "0M1", "0M3",
-  ],
-  dentex: [
-    "A1", "A2", "A3", "A3.5", "A4",
-    "B1", "B2", "B3", "B4",
-    "C1", "C2", "C3", "C4",
-    "D2", "D3", "D4",
-  ],
-  major: [
-    "A1", "A2", "A3", "A3.5", "A4",
-    "B1", "B2", "B3", "B4",
-    "C1", "C2", "C3", "C4",
-    "D2", "D3", "D4",
-    "2C", "2D", "2E", "2N", "2P",
-    "3D", "3M", "3N", "3P", "3R",
-  ],
-  hansen: [
-    "A1", "A2", "A3", "A3.5", "A4",
-    "B1", "B2", "B3", "B4",
-    "C1", "C2", "C3", "C4",
-    "D2", "D3", "D4",
-  ],
-  mgm: [
-    "A1", "A2", "A3", "A3.5", "A4",
-    "B1", "B2", "B3", "B4",
-    "C1", "C2", "C3", "C4",
-    "D2", "D3", "D4",
-  ],
-  formed: [
-    "A1", "A2", "A3", "A3.5", "A4",
-    "B1", "B2", "B3", "B4",
-    "C1", "C2", "C3", "C4",
-    "D2", "D3", "D4",
-  ],
+/** Wykrywa linię produktową z nazwy towaru (Subiekt / Mikran). */
+export function detectTeethProductLine(
+  productName: string,
+  hints?: { manufacturer?: TeethManufacturer | null },
+): TeethProductLine | null {
+  const n = productName.toLowerCase().normalize("NFD").replace(/\p{M}/gu, "");
+
+  if (n.includes("classic") && (n.includes("wiedent") || n.includes("wident"))) {
+    return "wiedent_classic";
+  }
+  if (/om\s*1|om\s*3|0m1|0m3|wybielon/.test(n) && n.includes("wiedent")) {
+    return "wiedent_estetic_om";
+  }
+  if ((/wg\.?\s*vity|wg vity/.test(n) || (n.includes("vita") && n.includes("estetic"))) && n.includes("wiedent")) {
+    return "wiedent_estetic_vita";
+  }
+  if (n.includes("wiedent") || n.includes("wident")) {
+    return "wiedent_estetic";
+  }
+
+  if (n.includes("phonares")) return "ivoclar_phonares_ii";
+  if (n.includes("vivodent")) return "ivoclar_vivodent_dcl";
+  if (n.includes("orthotyp")) return "ivoclar_orthotyp_dcl";
+  if (n.includes("gnathostar")) return "ivoclar_gnathostar";
+  if (n.includes("ivostar")) return "ivoclar_ivostar";
+
+  if (n.includes("super") && n.includes("lux")) return "major_super_lux";
+  if (n.includes("kompozyt") && n.includes("major")) return "major_composite";
+  if (n.includes("major") && n.includes("dent")) return "major_dent";
+  if (n.includes("major")) return "major_super_lux";
+
+  if (n.includes("dentex") || n.includes("amberlux") || n.includes("amber lux")) {
+    return "dentex_amberlux";
+  }
+
+  if (n.includes("enigma")) return "schottlander_enigmalife";
+  if (n.includes("schottlander")) return "schottlander_enigmalife";
+
+  if (n.includes("hansen")) return "hansen_generic";
+  if (n.includes("mgm")) return "mgm_generic";
+  if (n.includes("formed")) return "formed_generic";
+
+  if (hints?.manufacturer) {
+    return defaultProductLineForManufacturer(hints.manufacturer);
+  }
+
+  return null;
+}
+
+export type TeethCatalogRef = {
+  productLine: TeethProductLine;
 };
 
-export type TeethMouldsByKind = {
-  anterior: string[] | null;
-  posterior: string[] | null;
-};
+export function resolveTeethCatalog(input: {
+  /** Mapowanie admina (prosba_teeth_products) — najwyższy priorytet. */
+  adminProductLine?: TeethProductLine | null;
+  manufacturer?: TeethManufacturer | null;
+  productName?: string | null;
+  /** Linia zamrożona przy wyborze towaru — tylko gdy nazwa nie pozwala wykryć linii. */
+  frozenProductLine?: TeethProductLine | null;
+}): TeethCatalogRef | null {
+  const line = authoritativeTeethProductLine({
+    adminProductLine: input.adminProductLine,
+    teethManufacturer: input.manufacturer,
+    product: input.productName,
+    frozenProductLine: input.frozenProductLine,
+  });
+  return line ? { productLine: line } : null;
+}
 
-export const TEETH_MOULDS: Record<TeethManufacturer, TeethMouldsByKind> = {
-  ivoclar: {
-    anterior: [
-      "A11", "A12", "A13", "A14", "A15", "A17",
-      "A22", "A24", "A24B", "A25", "A27",
-      "A32", "A36",
-      "A41", "A42", "A44", "A54", "A56", "A66", "A68",
-    ],
-    posterior: [
-      "S61", "S62", "S63", "S71", "S72", "S73", "S81", "S82", "S83",
-      "B61", "B62", "B63", "B71", "B72", "B73", "B81", "B82", "B83",
-    ],
-  },
-  wiedent: {
-    anterior: [
-      "12", "13", "14", "15", "17", "18",
-      "20", "21", "22", "23", "25", "26", "27", "28", "29",
-      "31", "32", "33", "34", "35", "36", "37", "38", "39",
-      "40", "41", "42", "43", "45", "47", "48", "49", "50",
-    ],
-    posterior: [
-      "60", "62", "65", "70", "72", "74", "76", "77", "79", "80",
-    ],
-  },
-  dentex: {
-    anterior: [
-      "I", "II", "III", "IV", "V", "VI", "VII", "VIII", "IX", "X",
-      "XI", "XII", "XIII", "XIV", "XV", "XVI", "XVII", "XVIII",
-      "XIX", "XX", "XXI", "XXII", "XXIII", "XXIV",
-    ],
-    posterior: [
-      "I", "II", "III", "IV", "V", "VI", "VII", "VIII", "IX",
-    ],
-  },
-  major: {
-    anterior: [
-      "2", "5", "7A", "8A", "10", "12", "16", "17",
-      "18A", "19A", "22", "24", "27A", "29A", "30A",
-      "33A", "35A", "36", "37A", "38A", "39", "40A", "45A",
-    ],
-    posterior: null,
-  },
-  hansen: { anterior: null, posterior: null },
-  mgm: { anterior: null, posterior: null },
-  formed: { anterior: null, posterior: null },
-};
+/**
+ * Wyznacza linię produktową wyłącznie z towaru (admin + nazwa).
+ * Ręczna zmiana linii w UI nie jest dozwolona — inny katalog = inny towar.
+ */
+export function authoritativeTeethProductLine(input: {
+  adminProductLine?: TeethProductLine | null;
+  teethManufacturer?: TeethManufacturer | null;
+  product?: string | null;
+  frozenProductLine?: TeethProductLine | null;
+}): TeethProductLine | null {
+  if (input.adminProductLine) {
+    return input.adminProductLine;
+  }
+  const fromName = input.product?.trim()
+    ? detectTeethProductLine(input.product, { manufacturer: input.teethManufacturer })
+    : null;
+  if (fromName) return fromName;
+  if (input.frozenProductLine) return input.frozenProductLine;
+  if (input.teethManufacturer) {
+    return defaultProductLineForManufacturer(input.teethManufacturer);
+  }
+  return null;
+}
+
+export function teethColorsFor(catalog: TeethCatalogRef): readonly string[] {
+  return teethColorsForLine(catalog.productLine);
+}
+
+export function toothMouldsFor(catalog: TeethCatalogRef, kind: TeethKind): readonly string[] {
+  return toothMouldsForLine(catalog.productLine, kind);
+}
+
+export function hasMouldsForKind(catalog: TeethCatalogRef, kind: TeethKind): boolean {
+  return hasMouldsForLineKind(catalog.productLine, kind);
+}
+
+export function hasMoulds(catalog: TeethCatalogRef): boolean {
+  return lineHasAnyMoulds(catalog.productLine);
+}
+
+export function mouldRequiredForKind(catalog: TeethCatalogRef, kind: TeethKind): boolean {
+  if (lineOptionalMould(catalog.productLine)) return false;
+  return hasMouldsForLineKind(catalog.productLine, kind);
+}
 
 export type TeethLineDetail = {
   position: number;
@@ -173,55 +225,26 @@ export type TeethLineDetail = {
   size?: string | null;
 };
 
-/** Zwraca listę fasonów/wzorów dla danego producenta i rodzaju zębów. */
-export function toothMouldsFor(
-  manufacturer: TeethManufacturer,
-  kind: "anterior" | "posterior",
-): readonly string[] {
-  return TEETH_MOULDS[manufacturer][kind] ?? [];
-}
-
-export function hasMoulds(manufacturer: TeethManufacturer): boolean {
-  const m = TEETH_MOULDS[manufacturer];
-  return (m.anterior != null && m.anterior.length > 0) || (m.posterior != null && m.posterior.length > 0);
-}
-
-export function hasMouldsForKind(
-  manufacturer: TeethManufacturer,
-  kind: "anterior" | "posterior",
-): boolean {
-  const list = TEETH_MOULDS[manufacturer][kind];
-  return list != null && list.length > 0;
-}
-
-export function teethColorsFor(manufacturer: TeethManufacturer): readonly string[] {
-  return TEETH_COLORS[manufacturer];
-}
-
-/** @deprecated use toothMouldsFor */
-export function teethMouldsFor(manufacturer: TeethManufacturer): readonly string[] {
-  return TEETH_MOULDS[manufacturer].anterior ?? TEETH_MOULDS[manufacturer].posterior ?? [];
-}
-
 export function isTeethDetailComplete(
   detail: TeethLineDetail,
-  manufacturer: TeethManufacturer,
+  catalog: TeethCatalogRef,
 ): boolean {
-  if (!detail.color.trim()) return false;
+  if (!detail.color.trim() || detail.color === TEETH_CHIP_OTHER) return false;
   if (!detail.jaw) return false;
   if (!detail.kind) return false;
-  if (hasMouldsForKind(manufacturer, detail.kind) && !detail.mould?.trim()) return false;
+  if (mouldRequiredForKind(catalog, detail.kind) && !detail.mould?.trim()) return false;
+  if (detail.mould === TEETH_CHIP_OTHER) return false;
   return true;
 }
 
 export function allTeethDetailsComplete(
   details: TeethLineDetail[] | undefined,
-  manufacturer: TeethManufacturer | null | undefined,
+  catalog: TeethCatalogRef | null | undefined,
   expectedCount: number,
 ): boolean {
-  if (!manufacturer) return true;
+  if (!catalog) return true;
   if (!details || details.length < expectedCount) return false;
-  return details.slice(0, expectedCount).every((d) => isTeethDetailComplete(d, manufacturer));
+  return details.slice(0, expectedCount).every((d) => isTeethDetailComplete(d, catalog));
 }
 
 export function expandTeethDetails(
@@ -251,11 +274,19 @@ export function expandTeethDetails(
   ];
 }
 
+export type TeethGroupedDetail = {
+  color: string;
+  mould: string | null;
+  jaw: TeethJaw | null;
+  kind: TeethKind | null;
+  count: number;
+};
+
 export function groupTeethDetails(
   details: TeethLineDetail[] | undefined,
-): { color: string; mould: string | null; jaw: TeethJaw | null; kind: TeethKind | null; count: number }[] {
+): TeethGroupedDetail[] {
   if (!details || details.length === 0) return [];
-  const map = new Map<string, { color: string; mould: string | null; jaw: TeethJaw | null; kind: TeethKind | null; count: number }>();
+  const map = new Map<string, TeethGroupedDetail>();
   for (const d of details) {
     const jaw = (d.jaw ?? null) as TeethJaw | null;
     const kind = (d.kind ?? null) as TeethKind | null;
@@ -268,4 +299,124 @@ export function groupTeethDetails(
     }
   }
   return Array.from(map.values());
+}
+
+export type TeethGroupDraft = TeethGroupedDetail & {
+  id: string;
+};
+
+export function createTeethGroupDraft(
+  partial?: Partial<Omit<TeethGroupDraft, "id">> & { id?: string },
+): TeethGroupDraft {
+  return {
+    id: partial?.id ?? `tg-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`,
+    color: partial?.color ?? "",
+    mould: partial?.mould ?? null,
+    jaw: partial?.jaw ?? null,
+    kind: partial?.kind ?? null,
+    count: Math.max(1, partial?.count ?? 1),
+  };
+}
+
+export function teethGroupsFromDetails(
+  details: TeethLineDetail[] | undefined,
+): TeethGroupDraft[] {
+  return groupTeethDetails(details).map((g, i) =>
+    createTeethGroupDraft({ ...g, id: `tg-import-${i}` }),
+  );
+}
+
+export function expandTeethGroups(groups: TeethGroupDraft[]): TeethLineDetail[] {
+  const result: TeethLineDetail[] = [];
+  let position = 1;
+  for (const g of groups) {
+    const count = Math.max(1, g.count);
+    for (let i = 0; i < count; i++) {
+      result.push({
+        position: position++,
+        color: g.color,
+        mould: g.mould,
+        jaw: g.jaw,
+        kind: g.kind,
+      });
+    }
+  }
+  return result;
+}
+
+export function totalTeethCountFromGroups(groups: TeethGroupDraft[]): number {
+  return groups.reduce((sum, g) => sum + Math.max(1, g.count), 0);
+}
+
+export function isTeethGroupComplete(
+  group: Pick<TeethGroupDraft, "color" | "mould" | "jaw" | "kind" | "count">,
+  catalog: TeethCatalogRef,
+): boolean {
+  if (group.count < 1) return false;
+  return isTeethDetailComplete(
+    {
+      position: 1,
+      color: group.color,
+      mould: group.mould,
+      jaw: group.jaw,
+      kind: group.kind,
+    },
+    catalog,
+  );
+}
+
+export function allTeethGroupsComplete(
+  groups: TeethGroupDraft[],
+  catalog: TeethCatalogRef,
+): boolean {
+  if (groups.length === 0) return false;
+  return groups.every((g) => isTeethGroupComplete(g, catalog));
+}
+
+const JAW_SHORT: Record<TeethJaw, string> = { upper: "góra", lower: "dół" };
+
+export function formatTeethGroupLabel(
+  group: Pick<TeethGroupDraft, "color" | "mould" | "jaw" | "kind" | "count">,
+  options?: { includeCount?: boolean },
+): string {
+  const includeCount = options?.includeCount !== false;
+  const parts: string[] = [];
+  if (group.color.trim()) parts.push(group.color.trim());
+  if (group.mould?.trim()) parts.push(group.mould.trim());
+  if (group.jaw) parts.push(JAW_SHORT[group.jaw]);
+  if (group.kind) parts.push(TEETH_KIND_LABELS[group.kind].toLowerCase());
+  const spec = parts.length > 0 ? parts.join(" · ") : "—";
+  if (!includeCount) return spec;
+  const n = Math.max(1, group.count);
+  return `${spec} × ${n} szt.`;
+}
+
+/** Rozwiązuje katalog z pól pozycji zamówienia / prośby. */
+export function resolveTeethCatalogFromDraft(input: {
+  teethProductLine?: TeethProductLine | null;
+  teethManufacturer?: TeethManufacturer | null;
+  product?: string | null;
+  /** Mapowanie admina dla subiektTwId — ma pierwszeństwo nad frozenProductLine. */
+  adminProductLine?: TeethProductLine | null;
+  subiektTwId?: number | null;
+}): TeethCatalogRef | null {
+  return resolveTeethCatalog({
+    adminProductLine: input.adminProductLine,
+    manufacturer: input.teethManufacturer,
+    productName: input.product,
+    frozenProductLine: input.teethProductLine,
+  });
+}
+
+export { teethLinesForManufacturer, teethLineDefinition, lineOptionalMould };
+
+/** Czy sync katalogu z admina unieważnia listę (nie przy pierwszym uzupełnieniu linii z null). */
+export function shouldClearTeethDetailsOnCatalogSync(
+  currentProductLine: TeethProductLine | null | undefined,
+  resolvedProductLine: TeethProductLine,
+): boolean {
+  return (
+    currentProductLine != null &&
+    currentProductLine !== resolvedProductLine
+  );
 }

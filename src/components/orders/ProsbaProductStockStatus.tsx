@@ -101,7 +101,7 @@ export function ProsbaZkQuantityHint({
   );
 }
 
-/** Produkt z listy zębów — pomijamy kontrolę stanu magazynowego. */
+/** Produkt z listy zębów bez przypisanego producenta (admin) — tylko informacja o stanie. */
 export function ProsbaTeethExemptHint({
   line,
   className,
@@ -111,6 +111,7 @@ export function ProsbaTeethExemptHint({
 }) {
   const teethExemptTwIds = useTeethExemptTwIds();
   if (!isStockExemptTwId(line.subiektTwId, teethExemptTwIds)) return null;
+  if (line.teethManufacturer) return null;
 
   return (
     <div

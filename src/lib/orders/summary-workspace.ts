@@ -19,6 +19,7 @@ import {
   buildSalesCancelledNotices,
   type SalesCancelledNotice,
 } from "@/lib/orders/sales-cancelled-notices";
+import type { TeethLineDetail } from "@/lib/teeth/teeth-catalog";
 import { mapOrderToForSomeoneLine } from "@/lib/orders/product-source";
 import { isInformacjaStockOutReorder } from "@/lib/orders/informacja-stock-out-reorder";
 import {
@@ -95,6 +96,8 @@ export type ForSomeoneLine = {
   clientKhId?: number | null;
   /** Notatka handlowca do zakupów (opcjonalnie). */
   requestNote?: string | null;
+  /** Lista zębów — gdy pozycja zębowa. */
+  teethDetails?: TeethLineDetail[];
 };
 
 export type SummaryForSomeoneEnriched = {

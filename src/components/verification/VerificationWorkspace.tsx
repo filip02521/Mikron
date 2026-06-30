@@ -61,6 +61,8 @@ import { SubiektProductLineFields } from "@/components/subiekt/SubiektProductLin
 import { ProsbaStockConfirmDialog } from "@/components/orders/ProsbaStockConfirmDialog";
 import type { ProductLineDraft } from "@/components/orders/request-product-lines";
 import { buildProsbaSubmitStockConfirm } from "@/lib/orders/prosba-stock-check";
+import { prosbaLineHasTeethBlockers } from "@/lib/orders/prosba-line-field-validation";
+import { TEETH_LIST_INCOMPLETE_MESSAGE } from "@/lib/teeth/teeth-validation";
 import { handleProsbaStockSubmitError } from "@/lib/orders/prosba-stock-submit-error";
 import { useProsbaLinesStockSync } from "@/hooks/useProsbaLinesStockSync";
 import { useTeethExemptTwIds, useTeethProductInfo } from "@/components/layout/TeethExemptContext";
@@ -138,6 +140,7 @@ export function VerificationWorkspace({
     const twId = orders[0].subiekt_tw_id;
     if (twId && twId > 0 && teethProductInfo.twIds.has(twId)) {
       f.teethManufacturer = teethProductInfo.manufacturerByTwId.get(twId) ?? null;
+      f.teethProductLine = teethProductInfo.productLineByTwId.get(twId) ?? null;
       f.teethKind = teethProductInfo.kindByTwId.get(twId) ?? null;
     }
     return f;
@@ -155,6 +158,7 @@ export function VerificationWorkspace({
       const twId = order.subiekt_tw_id;
       if (twId && twId > 0 && teethProductInfo.twIds.has(twId)) {
         f.teethManufacturer = teethProductInfo.manufacturerByTwId.get(twId) ?? null;
+        f.teethProductLine = teethProductInfo.productLineByTwId.get(twId) ?? null;
         f.teethKind = teethProductInfo.kindByTwId.get(twId) ?? null;
       }
       setForm(f);
@@ -341,6 +345,9 @@ export function VerificationWorkspace({
         reserved: form.reserved,
         available: form.available,
         stockSource: form.stockSource,
+        teethDetails: form.teethDetails ?? undefined,
+        teethManufacturer: form.teethManufacturer,
+        teethProductLine: form.teethProductLine,
       },
     ];
   }, [loadedOrderId, form]);
@@ -430,6 +437,17 @@ export function VerificationWorkspace({
             : "Uzupełnij dostawcę oraz opis produktu, aby zatwierdzić.",
         tone: "error",
       });
+      return;
+    }
+    const verificationLine = verificationProductLines[0];
+    if (
+      form.requestKind === "zamowienie" &&
+      verificationLine &&
+      prosbaLineHasTeethBlockers(verificationLine, form.requestKind, {
+        exemptTwIds: teethExemptTwIds,
+      })
+    ) {
+      setToast({ text: TEETH_LIST_INCOMPLETE_MESSAGE, tone: "error" });
       return;
     }
     const stockConfirm = buildProsbaSubmitStockConfirm(
@@ -709,6 +727,7 @@ export function VerificationWorkspace({
                       available: form.available,
                       stockSource: form.stockSource,
                       teethManufacturer: form.teethManufacturer ?? null,
+                      teethProductLine: form.teethProductLine ?? null,
                       teethKind: form.teethKind ?? null,
                       teethDetails: form.teethDetails ?? undefined,
                     }}

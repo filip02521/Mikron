@@ -1,5 +1,12 @@
 import { createAdminClient, hasSupabaseConfig } from "@/lib/supabase/admin";
-import { parseTeethManufacturer, parseTeethKind, type TeethManufacturer, type TeethKind } from "@/lib/teeth/teeth-catalog";
+import {
+  parseTeethManufacturer,
+  parseTeethProductLine,
+  parseTeethKind,
+  type TeethManufacturer,
+  type TeethProductLine,
+  type TeethKind,
+} from "@/lib/teeth/teeth-catalog";
 
 export type TeethProductRow = {
   subiektTwId: number;
@@ -8,6 +15,7 @@ export type TeethProductRow = {
   plu: string | null;
   note: string;
   manufacturer: TeethManufacturer | null;
+  productLine: TeethProductLine | null;
   kind: TeethKind | null;
   createdAt: string;
   updatedAt: string;
@@ -16,6 +24,7 @@ export type TeethProductRow = {
 export type TeethProductInfoEntry = {
   twId: number;
   manufacturer: TeethManufacturer | null;
+  productLine: TeethProductLine | null;
   kind: TeethKind | null;
 };
 
@@ -27,6 +36,7 @@ function mapRow(row: Record<string, unknown>): TeethProductRow {
     plu: row.plu != null ? String(row.plu) : null,
     note: String(row.note ?? ""),
     manufacturer: parseTeethManufacturer(row.manufacturer),
+    productLine: parseTeethProductLine(row.product_line),
     kind: parseTeethKind(row.kind),
     createdAt: String(row.created_at ?? ""),
     updatedAt: String(row.updated_at ?? ""),
@@ -39,15 +49,15 @@ export async function fetchTeethProducts(): Promise<TeethProductRow[]> {
   const supabase = createAdminClient();
   const { data, error } = await supabase
     .from("prosba_teeth_products")
-    .select("subiekt_tw_id, symbol, name, plu, note, manufacturer, kind, created_at, updated_at")
+    .select("subiekt_tw_id, symbol, name, plu, note, manufacturer, product_line, kind, created_at, updated_at")
     .order("name")
     .order("symbol");
 
   if (error) {
-    if (error.message.includes("manufacturer") || error.code === "42703") {
+    if (error.message.includes("manufacturer") || error.message.includes("product_line") || error.code === "42703") {
       const { data: fallback, error: fallbackErr } = await supabase
         .from("prosba_teeth_products")
-        .select("subiekt_tw_id, symbol, name, plu, note, created_at, updated_at")
+        .select("subiekt_tw_id, symbol, name, plu, note, manufacturer, kind, created_at, updated_at")
         .order("name")
         .order("symbol");
       if (fallbackErr) throw new Error(fallbackErr.message);
@@ -73,6 +83,7 @@ export async function fetchTeethProductInfo(): Promise<TeethProductInfoEntry[]> 
   return rows.map((row) => ({
     twId: row.subiektTwId,
     manufacturer: row.manufacturer,
+    productLine: row.productLine,
     kind: row.kind,
   }));
 }

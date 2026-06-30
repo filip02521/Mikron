@@ -27,6 +27,8 @@ type TeethUpdatesContextValue = {
   refreshNow: () => void;
   autoRefresh: boolean;
   setAutoRefresh: (value: boolean) => void;
+  lastSyncedAt: number | null;
+  lastPollAt: number | null;
 };
 
 const TeethUpdatesContext = createContext<TeethUpdatesContextValue | null>(
@@ -75,6 +77,8 @@ export function TeethUpdatesProvider({
   const [latest, setLatest] = useState(initialVersion);
   const autoRefresh = usePersistedFlag(autoRefreshStore);
   const syncingRef = useRef(false);
+  const [lastSyncedAt, setLastSyncedAt] = useState<number | null>(null);
+  const [lastPollAt, setLastPollAt] = useState<number | null>(null);
   const versionKey = `${enabled}\0${initialVersion ?? ""}`;
   const [appliedVersionKey, setAppliedVersionKey] = useState("");
   if (enabled && initialVersion != null && versionKey !== appliedVersionKey) {
@@ -101,6 +105,9 @@ export function TeethUpdatesProvider({
       .then(({ version, queueCount }) => {
         if (version) syncBaseline(version);
         if (queueCount != null) patchNavBadges({ teethQueue: queueCount });
+        const now = Date.now();
+        setLastSyncedAt(now);
+        setLastPollAt(now);
       })
       .finally(() => {
         syncingRef.current = false;
@@ -111,7 +118,9 @@ export function TeethUpdatesProvider({
     const { version, queueCount } = await fetchTeethVersion();
     if (queueCount != null) patchNavBadges({ teethQueue: queueCount });
     if (!version) return;
+    const now = Date.now();
     setLatest(version);
+    setLastPollAt(now);
     setBaseline((prev) => prev ?? version);
   }, [patchNavBadges]);
 
@@ -155,7 +164,14 @@ export function TeethUpdatesProvider({
 
   return (
     <TeethUpdatesContext.Provider
-      value={{ hasUpdates, refreshNow, autoRefresh, setAutoRefresh }}
+      value={{
+        hasUpdates,
+        refreshNow,
+        autoRefresh,
+        setAutoRefresh,
+        lastSyncedAt,
+        lastPollAt,
+      }}
     >
       {children}
     </TeethUpdatesContext.Provider>

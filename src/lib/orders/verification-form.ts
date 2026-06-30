@@ -3,7 +3,7 @@ import {
   informacjaFlowPathFromOrder,
   type InformacjaFlowPath,
 } from "@/lib/orders/informacja-stock-out-reorder";
-import type { TeethLineDetail, TeethManufacturer, TeethKind } from "@/lib/teeth/teeth-catalog";
+import type { TeethLineDetail, TeethManufacturer, TeethProductLine, TeethKind } from "@/lib/teeth/teeth-catalog";
 
 export type { OrderFormSupplierOption as VerificationSupplierOption } from "@/lib/orders/order-form-suppliers";
 
@@ -22,6 +22,7 @@ export type VerificationFormState = {
   available?: number | null;
   stockSource?: "subiekt" | null;
   teethManufacturer?: TeethManufacturer | null;
+  teethProductLine?: TeethProductLine | null;
   teethKind?: TeethKind | null;
   teethDetails?: TeethLineDetail[] | null;
 };

@@ -5,6 +5,7 @@ import {
   type RequestCompleteness,
 } from "@/lib/orders/request-completeness";
 import type { ProsbaReadinessLine } from "@/lib/orders/prosba-form-readiness";
+import { prosbaLineHasTeethBlockers } from "@/lib/orders/prosba-line-field-validation";
 import type { IndividualRequestKind } from "@/types/database";
 
 export type ProcurementReadinessStepState = "empty" | "done";
@@ -69,6 +70,7 @@ export function buildProcurementFormReadiness(input: {
   requestKind: IndividualRequestKind;
   informacjaViaDailyPanel?: boolean;
   informacjaStockOutReorder?: boolean;
+  teethExemptTwIds?: ReadonlySet<number>;
 }): ProcurementFormReadinessView {
   const { salesPersonId, supplierId, lines, requestKind } = input;
   const isZamowienie = requestKind === "zamowienie";
@@ -117,8 +119,28 @@ export function buildProcurementFormReadiness(input: {
     });
   }
 
+  const teethBlocked =
+    isZamowienie &&
+    filled.some((line) =>
+      prosbaLineHasTeethBlockers(
+        {
+          id: "readiness-check",
+          symbol: line.symbol ?? "",
+          mikranCode: line.mikranCode ?? "",
+          product: line.product ?? "",
+          quantity: line.quantity ?? "",
+          subiektTwId: line.subiektTwId ?? null,
+          teethDetails: line.teethDetails ?? undefined,
+          teethManufacturer: line.teethManufacturer ?? null,
+          teethProductLine: line.teethProductLine ?? null,
+        },
+        requestKind,
+        { exemptTwIds: input.teethExemptTwIds }
+      )
+    );
+
   const canSubmit =
-    salesDone && supplierDone && groupComplete === "complete";
+    salesDone && supplierDone && groupComplete === "complete" && !teethBlocked;
 
   if (canSubmit) {
     return {
@@ -139,10 +161,12 @@ export function buildProcurementFormReadiness(input: {
 
   const missing = steps.filter((s) => s.state === "empty").map((s) => s.label.toLowerCase());
   return {
-    headline: "Uzupełnij zgłoszenie",
-    subline: missing.length
-      ? `Brakuje: ${missing.join(", ")}.`
-      : "Sprawdź ilość i opis przy każdej pozycji.",
+    headline: teethBlocked ? "Uzupełnij listę zębów" : "Uzupełnij zgłoszenie",
+    subline: teethBlocked
+      ? "Przy pozycjach zębowych podaj kolor, fason, szczękę i typ dla każdej sztuki."
+      : missing.length
+        ? `Brakuje: ${missing.join(", ")}.`
+        : "Sprawdź ilość i opis przy każdej pozycji.",
     tone: "neutral",
     steps,
     canSubmit: false,

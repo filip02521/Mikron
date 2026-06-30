@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import type { TeethLineDetail } from "@/lib/teeth/teeth-catalog";
 import type { IndividualRequestKind } from "@/types/database";
 import { actionUpdateIndividualRequest } from "@/app/actions/admin";
 import { actionUpdateMyIndividualRequest } from "@/app/actions/my-orders";
@@ -14,6 +15,8 @@ import {
   toIndividualRequestEditLinePayload,
 } from "@/lib/orders/individual-request-edit";
 import { buildProsbaFormReadiness, buildProsbaFormReadinessWithSupplier } from "@/lib/orders/prosba-form-readiness";
+import { prosbaLineHasTeethBlockers } from "@/lib/orders/prosba-line-field-validation";
+import { TEETH_LIST_INCOMPLETE_MESSAGE } from "@/lib/teeth/teeth-validation";
 import { ProsbaFormReadiness } from "@/components/orders/ProsbaFormReadiness";
 import {
   ProsbaFormInformacjaSection,
@@ -72,6 +75,7 @@ export function EditIndividualRequestModal({
   suppliers,
   salesPeople = [],
   onSaved,
+  autoSaveAfterTeethList = false,
 }: {
   open: boolean;
   onClose: () => void;
@@ -81,6 +85,8 @@ export function EditIndividualRequestModal({
   suppliers: OrderFormSupplierOption[];
   salesPeople?: { id: string; name: string }[];
   onSaved?: (message: string) => void;
+  /** Po „Zapisz listę” w modalu zębów od razu zapisuje prośbę (panel zębów). */
+  autoSaveAfterTeethList?: boolean;
 }) {
   const { pending, pendingMessage, run } = useActionPending();
   const teethExemptTwIds = useTeethExemptTwIds();
@@ -118,8 +124,9 @@ export function EditIndividualRequestModal({
     return buildProsbaFormReadiness(lines, requestKind, salesSubmitPlan, {
       informacjaPath,
       resolvingSupplier,
+      teethExemptTwIds,
     });
-  }, [mode, lines, requestKind, salesSubmitPlan, informacjaPath, resolvingSupplier]);
+  }, [mode, lines, requestKind, salesSubmitPlan, informacjaPath, resolvingSupplier, teethExemptTwIds]);
 
   const canSaveSales = salesFormReadiness?.canSubmit ?? false;
 
@@ -128,8 +135,9 @@ export function EditIndividualRequestModal({
     return buildProsbaFormReadinessWithSupplier(lines, supplierId, requestKind, {
       informacjaPath,
       resolvingSupplier,
+      teethExemptTwIds,
     });
-  }, [mode, lines, supplierId, requestKind, informacjaPath, resolvingSupplier]);
+  }, [mode, lines, supplierId, requestKind, informacjaPath, resolvingSupplier, teethExemptTwIds]);
 
   const canSaveProcurement =
     mode === "procurement" &&
@@ -157,7 +165,8 @@ export function EditIndividualRequestModal({
           initial.requestKind,
           initial.informacjaPath ?? DEFAULT_INFORMACJA_FLOW_PATH,
           ...initial.lines.map(
-            (line) => `${line.id}\0${line.requestNote ?? ""}\0${line.product}`
+            (line) =>
+              `${line.id}\0${line.requestNote ?? ""}\0${line.product}\0${line.teethDetails?.length ?? 0}\0${line.teethDetails?.map((d) => `${d.color}|${d.mould}|${d.jaw}|${d.kind}`).join(";") ?? ""}`
           ),
         ].join("\0")
       : "";
@@ -180,9 +189,13 @@ export function EditIndividualRequestModal({
               const detectedKind = isTeeth
                 ? (teethProductInfo.kindByTwId.get(twId!) ?? null)
                 : null;
+              const detectedProductLine = isTeeth
+                ? (teethProductInfo.productLineByTwId.get(twId!) ?? null)
+                : null;
               return {
                 ...line,
                 teethManufacturer: line.teethManufacturer ?? detectedManufacturer,
+                teethProductLine: line.teethProductLine ?? detectedProductLine,
                 teethKind: line.teethKind ?? detectedKind,
               };
             })
@@ -198,137 +211,203 @@ export function EditIndividualRequestModal({
 
   const saveRef = useRef<() => void>(() => {});
   const addLineRef = useRef<() => void>(() => {});
+  const performSaveRef = useRef<
+    (linesToSave: ProductLineDraft[], options?: { acknowledgeSufficientStock?: boolean }) => void
+  >(() => {});
 
-  const save = () => {
-    if (!initial) return;
-    setFormNotice(null);
+  const performSave = useCallback(
+    (
+      linesToSave: ProductLineDraft[],
+      options?: { acknowledgeSufficientStock?: boolean }
+    ) => {
+      if (!initial) return;
+      run(
+        async () => {
+          try {
+            const payload = {
+              supplierId: mode === "sales" ? "" : supplierId,
+              salesPersonId,
+              requestKind,
+              informacjaPath:
+                requestKind === "informacja" ? informacjaPath : undefined,
+              lines: linesToSave.map((line) =>
+                toIndividualRequestEditLinePayload(line, orderIds)
+              ),
+              acknowledgeSufficientStock: options?.acknowledgeSufficientStock,
+            };
+            if (mode === "procurement") {
+              await actionUpdateIndividualRequest(orderIds, payload);
+            } else {
+              await actionUpdateMyIndividualRequest(orderIds, payload);
+            }
+            onSaved?.("Zapisano zmiany w prośbie.");
+            onClose();
+            setStockConfirmOpen(false);
+          } catch (e) {
+            handleProsbaStockSubmitError(
+              e,
+              (message) => {
+                setStockConfirmMessage(message);
+                setStockConfirmOpen(true);
+              },
+              (message) => {
+                setValidationAttempted(true);
+                setFormNotice({ text: message, tone: "error" });
+              }
+            );
+          }
+        },
+        "Zapisywanie prośby…"
+      );
+    },
+    [
+      initial,
+      run,
+      mode,
+      supplierId,
+      salesPersonId,
+      requestKind,
+      informacjaPath,
+      orderIds,
+      onSaved,
+      onClose,
+    ]
+  );
 
-    const linesToSave = filterIndividualRequestEditLinesForSave(lines, orderIds, {
-      supplierId: mode === "procurement" ? supplierId : "",
-    });
-    if (!linesToSave.length) {
-      setValidationAttempted(true);
-      setFormNotice({
-        text: "Dodaj co najmniej jedną pozycję z produktem.",
-        tone: "error",
+  useEffect(() => {
+    performSaveRef.current = performSave;
+  }, [performSave]);
+
+  const submitLines = useCallback(
+    (sourceLines: ProductLineDraft[]) => {
+      if (!initial) return;
+      setFormNotice(null);
+
+      const linesToSave = filterIndividualRequestEditLinesForSave(sourceLines, orderIds, {
+        supplierId: mode === "procurement" ? supplierId : "",
       });
-      return;
-    }
-
-    if (mode === "procurement") {
-      if (requestKind === "zamowienie" && !supplierId.trim()) {
+      if (!linesToSave.length) {
         setValidationAttempted(true);
-        setFormNotice({ text: "Wybierz dostawcę.", tone: "error" });
+        setFormNotice({
+          text: "Dodaj co najmniej jedną pozycję z produktem.",
+          tone: "error",
+        });
         return;
       }
-      try {
-        for (const line of linesToSave) {
-          assertProcurementEntryComplete({
-            supplierId,
-            symbol: line.symbol,
-            mikranCode: line.mikranCode,
-            product: line.product,
-            quantity: line.quantity,
-            requestKind,
-            subiektTwId: line.subiektTwId,
-            ...informacjaFlags,
-          });
+
+      if (mode === "procurement") {
+        if (requestKind === "zamowienie" && !supplierId.trim()) {
+          setValidationAttempted(true);
+          setFormNotice({ text: "Wybierz dostawcę.", tone: "error" });
+          return;
         }
-      } catch (e) {
-        setValidationAttempted(true);
-        setFormNotice({
-          text: e instanceof Error ? e.message : "Uzupełnij wymagane pola.",
-          tone: "error",
-        });
-        return;
+        try {
+          for (const line of linesToSave) {
+            assertProcurementEntryComplete({
+              supplierId,
+              symbol: line.symbol,
+              mikranCode: line.mikranCode,
+              product: line.product,
+              quantity: line.quantity,
+              requestKind,
+              subiektTwId: line.subiektTwId,
+              ...informacjaFlags,
+            });
+          }
+        } catch (e) {
+          setValidationAttempted(true);
+          setFormNotice({
+            text: e instanceof Error ? e.message : "Uzupełnij wymagane pola.",
+            tone: "error",
+          });
+          return;
+        }
       }
-    }
 
-    if (mode === "sales") {
-      const plan = assessSalesGroupSubmittable(linesToSave, "", requestKind);
-      if (!plan?.submittable) {
-        setValidationAttempted(true);
-        setFormNotice({
-          text:
-            requestKind === "informacja"
-              ? "Uzupełnij wymagane pola — symbol, kod Mikran lub opis produktu."
-              : "Uzupełnij wymagane pola — produkt i ilość przy każdej pozycji.",
-          tone: "error",
-        });
-        return;
+      if (mode === "sales") {
+        const plan = assessSalesGroupSubmittable(linesToSave, "", requestKind);
+        if (!plan?.submittable) {
+          setValidationAttempted(true);
+          setFormNotice({
+            text:
+              requestKind === "informacja"
+                ? "Uzupełnij wymagane pola — symbol, kod Mikran lub opis produktu."
+                : "Uzupełnij wymagane pola — produkt i ilość przy każdej pozycji.",
+            tone: "error",
+          });
+          return;
+        }
+        if (
+          requestKind === "zamowienie" &&
+          linesToSave.some(
+            (l) =>
+              (l.symbol.trim() || l.mikranCode.trim() || l.product.trim()) &&
+              !hasValidOrderQuantity(l.quantity, "zamowienie")
+          )
+        ) {
+          setValidationAttempted(true);
+          setFormNotice({
+            text: "Każda pozycja zamówienia musi mieć ilość (liczba sztuk, np. 1).",
+            tone: "error",
+          });
+          return;
+        }
       }
+
       if (
         requestKind === "zamowienie" &&
-        linesToSave.some(
-          (l) =>
-            (l.symbol.trim() || l.mikranCode.trim() || l.product.trim()) &&
-            !hasValidOrderQuantity(l.quantity, "zamowienie")
+        linesToSave.some((line) =>
+          prosbaLineHasTeethBlockers(line, requestKind, { exemptTwIds: teethExemptTwIds })
         )
       ) {
         setValidationAttempted(true);
-        setFormNotice({
-          text: "Każda pozycja zamówienia musi mieć ilość (liczba sztuk, np. 1).",
-          tone: "error",
-        });
+        setFormNotice({ text: TEETH_LIST_INCOMPLETE_MESSAGE, tone: "error" });
         return;
       }
-    }
 
-    const stockConfirm = buildProsbaSubmitStockConfirm(linesToSave, requestKind, teethExemptTwIds);
-    if (stockConfirm) {
-      pendingSaveLinesRef.current = linesToSave;
-      setStockConfirmMessage(stockConfirm.message);
-      setStockConfirmOpen(true);
-      return;
-    }
+      const stockConfirm = buildProsbaSubmitStockConfirm(
+        linesToSave,
+        requestKind,
+        teethExemptTwIds
+      );
+      if (stockConfirm) {
+        pendingSaveLinesRef.current = linesToSave;
+        setStockConfirmMessage(stockConfirm.message);
+        setStockConfirmOpen(true);
+        return;
+      }
 
-    performSave(linesToSave);
+      performSaveRef.current(linesToSave);
+    },
+    [
+      initial,
+      orderIds,
+      mode,
+      supplierId,
+      requestKind,
+      informacjaFlags,
+      teethExemptTwIds,
+    ]
+  );
+
+  const handleAfterTeethListSave = useCallback(
+    (lineIndex: number, teethDetails: TeethLineDetail[], totalQuantity: number) => {
+      if (!autoSaveAfterTeethList || pending) return;
+      const nextLines = lines.map((line, index) =>
+        index === lineIndex
+          ? { ...line, teethDetails, quantity: String(totalQuantity) }
+          : line
+      );
+      setLines(nextLines);
+      submitLines(nextLines);
+    },
+    [autoSaveAfterTeethList, lines, submitLines, pending],
+  );
+
+  const save = () => {
+    submitLines(lines);
   };
 
-  const performSave = (
-    linesToSave: ProductLineDraft[],
-    options?: { acknowledgeSufficientStock?: boolean }
-  ) => {
-    if (!initial) return;
-    run(
-      async () => {
-        try {
-          const payload = {
-            supplierId: mode === "sales" ? "" : supplierId,
-            salesPersonId,
-            requestKind,
-            informacjaPath:
-              requestKind === "informacja" ? informacjaPath : undefined,
-            lines: linesToSave.map((line) =>
-              toIndividualRequestEditLinePayload(line, orderIds)
-            ),
-            acknowledgeSufficientStock: options?.acknowledgeSufficientStock,
-          };
-          if (mode === "procurement") {
-            await actionUpdateIndividualRequest(orderIds, payload);
-          } else {
-            await actionUpdateMyIndividualRequest(orderIds, payload);
-          }
-          onSaved?.("Zapisano zmiany w prośbie.");
-          onClose();
-          setStockConfirmOpen(false);
-        } catch (e) {
-          handleProsbaStockSubmitError(
-            e,
-            (message) => {
-              setStockConfirmMessage(message);
-              setStockConfirmOpen(true);
-            },
-            (message) => {
-              setValidationAttempted(true);
-              setFormNotice({ text: message, tone: "error" });
-            }
-          );
-        }
-      },
-      "Zapisywanie prośby…"
-    );
-  };
   useEffect(() => {
     saveRef.current = save;
     addLineRef.current = () => setLines((prev) => appendProductLine(prev));
@@ -380,7 +459,9 @@ export function EditIndividualRequestModal({
           pendingSaveLinesRef.current = [];
         }}
         onConfirm={() =>
-          performSave(pendingSaveLinesRef.current, { acknowledgeSufficientStock: true })
+          performSaveRef.current(pendingSaveLinesRef.current, {
+            acknowledgeSufficientStock: true,
+          })
         }
       />
     <ModalShell
@@ -530,6 +611,10 @@ export function EditIndividualRequestModal({
               onResolvingSupplierChange={
                 mode === "procurement" ? setResolvingSupplier : undefined
               }
+              onAfterTeethListSave={
+                autoSaveAfterTeethList ? handleAfterTeethListSave : undefined
+              }
+              autoOpenTeethList={autoSaveAfterTeethList && open}
             />
 
             <ProsbaFormReadiness

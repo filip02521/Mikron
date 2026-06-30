@@ -237,6 +237,10 @@ export default async function MojePage({
       orders = orderRows;
       stats = statsRows as DeliveryStats[];
       suppliers = supplierRows;
+      if (orders.some((o) => o.is_teeth)) {
+        const { attachTeethDetailsToIndividualOrders } = await import("@/lib/data/teeth-queue");
+        orders = await attachTeethDetailsToIndividualOrders(orders);
+      }
       ({ supplierScheduleById, weekDays: plannedOrderWeekDays } =
         await loadPlannedOrderScheduleContext(orderRows, todayDateKey));
 
@@ -278,6 +282,10 @@ export default async function MojePage({
       orders = orderRows;
       stats = statsRows as DeliveryStats[];
       suppliers = supplierRows;
+      if (orders.some((o) => o.is_teeth)) {
+        const { attachTeethDetailsToIndividualOrders } = await import("@/lib/data/teeth-queue");
+        orders = await attachTeethDetailsToIndividualOrders(orders);
+      }
       ({ supplierScheduleById, weekDays: plannedOrderWeekDays } =
         await loadPlannedOrderScheduleContext(orderRows, todayDateKey));
 

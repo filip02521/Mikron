@@ -9,11 +9,8 @@ import {
 } from "@/lib/orders/prosba-line-stock-ui";
 import { useTeethExemptTwIds } from "@/components/layout/TeethExemptContext";
 import { isStockExemptTwId } from "@/lib/orders/teeth-stock-exempt";
-import {
-  allTeethDetailsComplete,
-  expandTeethDetails,
-  isTeethDetailComplete,
-} from "@/lib/teeth/teeth-catalog";
+import { TeethGroupChips } from "@/components/teeth/TeethGroupChips";
+import { allTeethDetailsComplete, resolveTeethCatalogFromDraft } from "@/lib/teeth/teeth-catalog";
 import type { IndividualRequestKind } from "@/types/database";
 import { Button } from "@/components/ui/Button";
 import { IconCircleCheck, IconAlertCircle } from "@/components/icons/StrokeIcons";
@@ -43,13 +40,26 @@ export function ProsbaProductLineCollapsedRow({
     ? null
     : buildProsbaLineStockStatusView(line, requestKind, teethExemptTwIds);
 
-  const teethComplete = isTeethProduct && line.teethManufacturer
-    ? allTeethDetailsComplete(
-        line.teethDetails,
-        line.teethManufacturer,
-        Math.max(1, parseInt(line.quantity, 10) || 1),
-      )
-    : null;
+  const teethCatalog = isTeethProduct ? resolveTeethCatalogFromDraft(line) : null;
+  const teethQty = line.teethDetails?.length ?? 0;
+  const teethComplete =
+    isTeethProduct && teethCatalog
+      ? teethQty > 0 &&
+        allTeethDetailsComplete(line.teethDetails, teethCatalog, teethQty)
+      : null;
+  const teethNeedsList = isTeethProduct && teethCatalog && teethComplete === false;
+
+  const statusTitle = hasFieldIssues
+    ? "Uzupełnij brakujące pola"
+    : teethNeedsList
+      ? "Uzupełnij listę zębów"
+      : isTeethProduct && teethComplete
+        ? "Lista zębów gotowa"
+        : stockView
+          ? stockView.title
+          : summary.fromSubiekt
+            ? "Powiązano z Subiektem"
+            : "Pozycja gotowa";
 
   return (
     <div
@@ -57,41 +67,33 @@ export function ProsbaProductLineCollapsedRow({
         "flex items-start gap-3 px-3 py-2.5 sm:items-center sm:px-4",
         hasFieldIssues
           ? "bg-white"
-          : isTeethProduct
-            ? "bg-violet-50/55"
-            : stockView
-              ? prosbaLineStockRowTintClass(stockView.tone)
-              : summary.fromSubiekt
-                ? "bg-emerald-50/70"
-                : "bg-white"
+          : teethNeedsList
+            ? "bg-amber-50/40"
+            : isTeethProduct && teethComplete
+              ? "bg-violet-50/55"
+              : stockView
+                ? prosbaLineStockRowTintClass(stockView.tone)
+                : summary.fromSubiekt
+                  ? "bg-emerald-50/70"
+                  : "bg-white",
       )}
     >
       <span
         className={cn(
           "mt-0.5 flex size-8 shrink-0 items-center justify-center rounded-full sm:mt-0",
-          hasFieldIssues
+          hasFieldIssues || teethNeedsList
             ? "bg-amber-100 text-amber-800"
-            : isTeethProduct
+            : isTeethProduct && teethComplete
               ? "bg-violet-100 text-violet-700"
               : stockView
                 ? "bg-slate-100 text-slate-600"
                 : summary.fromSubiekt
                   ? "bg-emerald-100 text-emerald-700"
-                  : "bg-indigo-100 text-indigo-700"
+                  : "bg-indigo-100 text-indigo-700",
         )}
-        title={
-          hasFieldIssues
-            ? "Uzupełnij brakujące pola"
-            : isTeethProduct
-              ? "Produkt z listy zębów — bez kontroli stanu"
-              : stockView
-                ? stockView.title
-                : summary.fromSubiekt
-                  ? "Powiązano z Subiektem"
-                  : "Pozycja gotowa"
-        }
+        title={statusTitle}
       >
-        {hasFieldIssues ? (
+        {hasFieldIssues || teethNeedsList ? (
           <IconAlertCircle size={18} strokeWidth={2.25} />
         ) : (
           <IconCircleCheck size={18} strokeWidth={2.25} />
@@ -109,27 +111,18 @@ export function ProsbaProductLineCollapsedRow({
               {summary.quantityLabel}
             </span>
           ) : null}
-          {isTeethProduct ? (
-            <span className="shrink-0 rounded-full bg-violet-100 px-1.5 py-0.5 text-[11px] font-semibold text-violet-900 ring-1 ring-violet-200/80">
-              Zęby · bez kontroli stanu
+          {teethNeedsList ? (
+            <span className="shrink-0 rounded-full bg-amber-100 px-1.5 py-0.5 text-[11px] font-semibold text-amber-800 ring-1 ring-amber-200/80">
+              Lista do uzupełnienia
             </span>
           ) : stockView ? (
             <span
               className={cn(
                 "shrink-0 rounded-full px-1.5 py-0.5 text-[11px] font-semibold",
-                prosbaLineStockBadgeClass(stockView.tone)
+                prosbaLineStockBadgeClass(stockView.tone),
               )}
             >
               {stockView.shortLabel}
-            </span>
-          ) : null}
-          {teethComplete === false ? (
-            <span className="shrink-0 rounded-full bg-amber-100 px-1.5 py-0.5 text-[11px] font-semibold text-amber-800 ring-1 ring-amber-200/80">
-              Zęby do uzupełnienia
-            </span>
-          ) : teethComplete === true ? (
-            <span className="shrink-0 rounded-full bg-violet-600 px-1.5 py-0.5 text-[11px] font-semibold text-white">
-              Zęby gotowe
             </span>
           ) : null}
         </div>
@@ -145,6 +138,9 @@ export function ProsbaProductLineCollapsedRow({
           <p className="mt-0.5 truncate text-xs text-slate-500">
             Notatka: {line.requestNote.trim()}
           </p>
+        ) : null}
+        {teethComplete ? (
+          <TeethGroupChips details={line.teethDetails} compact className="mt-1.5" />
         ) : null}
       </div>
 

@@ -53,7 +53,7 @@ export const PAGE_DESCRIPTIONS: Partial<Record<keyof typeof PAGE_TITLES, string>
   tablica: ONTIME_APP_DESCRIPTION,
   podsumowanie: "Kolejka dnia, prośby handlowców i harmonogram dostawców",
   kolejka: "Przyjęcie towaru i kolejka realizacji magazynu",
-  zeby: "Kolejka zamówień na zęby — oznaczanie jako zamówione",
+  zeby: "Prośby handlowców na zęby syntetyczne — kolejka zamówień u dostawcy",
   dostawy: "Nadchodzące dostawy — terminy ZD i prognoza paczek",
   admin: "Konfiguracja systemu, użytkownicy i narzędzia serwisowe",
   adminTeethProducts:

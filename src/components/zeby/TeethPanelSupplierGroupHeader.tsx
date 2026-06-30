@@ -1,0 +1,111 @@
+"use client";
+
+import type { ReactNode } from "react";
+import { cn } from "@/lib/cn";
+import { panelSubsectionInsetClass, panelTypography } from "@/lib/ui/ontime-theme";
+import { teethPanelHeaderMetaClass, teethPanelSupplierHeaderClass } from "@/lib/teeth/teeth-panel-ui";
+import { Button } from "@/components/ui/Button";
+import { TeethPanelSupplierEta } from "@/components/zeby/TeethPanelSupplierEta";
+import type { TeethQueueGroup } from "@/lib/data/teeth-queue";
+import { formatPlDate } from "@/lib/display-labels";
+import { plPozycja } from "@/lib/ui/polish-plurals";
+import { IconTruck } from "@/components/icons/StrokeIcons";
+import {
+  TEETH_MARK_ORDERED_LABEL,
+  TEETH_MARK_ORDERED_TITLE,
+} from "@/components/zeby/teeth-panel-copy";
+
+function formatScheduleDateLabel(
+  computedNext: string | null | undefined,
+  shiftDate: string | null | undefined,
+): string | null {
+  if (!computedNext) return null;
+  const formatted = formatPlDate(computedNext);
+  if (shiftDate && shiftDate !== computedNext) {
+    return `cykl ${formatted} (przesunięty)`;
+  }
+  return `cykl ${formatted}`;
+}
+
+export function TeethPanelSupplierGroupHeader({
+  group,
+  orderCount,
+  actions,
+}: {
+  group: TeethQueueGroup;
+  orderCount: number;
+  actions?: ReactNode;
+}) {
+  const schedule = group.dueSchedule;
+  const scheduleMeta = schedule
+    ? formatScheduleDateLabel(schedule.computed_next_date, schedule.shift_date)
+    : null;
+
+  return (
+    <div className={cn(teethPanelSupplierHeaderClass, panelSubsectionInsetClass)}>
+      <div className="flex min-w-0 flex-wrap items-baseline gap-x-2 gap-y-1">
+        <span className={panelTypography.sectionTitle}>{group.supplierName}</span>
+        {orderCount > 0 ? (
+          <span className={teethPanelHeaderMetaClass}>
+            {orderCount} {plPozycja(orderCount)}
+          </span>
+        ) : null}
+        {group.scheduledOnly ? (
+          <span className={teethPanelHeaderMetaClass}>z harmonogramu</span>
+        ) : scheduleMeta ? (
+          <span className={teethPanelHeaderMetaClass}>· {scheduleMeta}</span>
+        ) : null}
+        <TeethPanelSupplierEta eta={group.deliveryEta} />
+      </div>
+      {actions ? (
+        <div className="flex shrink-0 flex-wrap items-center gap-2">{actions}</div>
+      ) : null}
+    </div>
+  );
+}
+
+export function TeethPanelSupplierQueueActions({
+  allSelected,
+  pending,
+  showSelectAll,
+  canMark,
+  onToggleAll,
+  onMark,
+}: {
+  allSelected: boolean;
+  pending: boolean;
+  showSelectAll: boolean;
+  canMark: boolean;
+  onToggleAll: () => void;
+  onMark: () => void;
+}) {
+  if (!canMark && !showSelectAll) return null;
+
+  return (
+    <>
+      {showSelectAll ? (
+        <button
+          type="button"
+          onClick={onToggleAll}
+          className="text-xs font-medium text-slate-600 transition-colors hover:text-slate-900"
+        >
+          {allSelected ? "Odznacz wszystkie" : "Zaznacz wszystkie"}
+        </button>
+      ) : null}
+      {canMark ? (
+        <Button
+          type="button"
+          size="sm"
+          disabled={pending}
+          className="min-h-8 text-xs"
+          title={TEETH_MARK_ORDERED_TITLE}
+          onClick={onMark}
+        >
+          <IconTruck size={14} strokeWidth={2} />
+          {TEETH_MARK_ORDERED_LABEL}
+        </Button>
+      ) : null}
+    </>
+  );
+}
+

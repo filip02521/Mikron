@@ -177,6 +177,20 @@ export function normalizeAddIndividualOrdersInput(
   return input;
 }
 
+export function mapOrderTeethDetailsToEdit(
+  details: IndividualOrder["teeth_details"]
+): TeethLineDetail[] | undefined {
+  if (!details?.length) return undefined;
+  return details.map((d) => ({
+    position: d.position,
+    color: d.color,
+    mould: d.mould,
+    size: d.size,
+    jaw: d.jaw,
+    kind: d.kind,
+  }));
+}
+
 export function ordersToEditLines(orders: IndividualOrder[]): IndividualRequestEditLineInput[] {
   return orders.map((o) => ({
     id: o.id,
@@ -188,13 +202,6 @@ export function ordersToEditLines(orders: IndividualOrder[]): IndividualRequestE
     clientKhId: o.sales_client_kh_id ?? null,
     subiektTwId: o.subiekt_tw_id ?? null,
     requestNote: normalizeSalesRequestNote(o.sales_request_note) ?? "",
-    teethDetails: o.teeth_details?.map((d) => ({
-      position: d.position,
-      color: d.color,
-      mould: d.mould,
-      size: d.size,
-      jaw: d.jaw,
-      kind: d.kind,
-    })) ?? null,
+    teethDetails: mapOrderTeethDetailsToEdit(o.teeth_details) ?? null,
   }));
 }

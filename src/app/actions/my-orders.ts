@@ -512,6 +512,7 @@ export async function actionUpdateMyIndividualRequest(
   revalidatePath("/moje");
   revalidatePath("/podsumowanie");
   revalidatePath("/prosba");
+  revalidatePath("/zeby");
   return { success: true as const, ...result };
 }
 

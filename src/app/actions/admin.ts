@@ -407,6 +407,7 @@ export async function actionAddIndividualOrders(
     revalidatePath("/notatnik");
     revalidatePath("/zk");
     revalidatePath("/weryfikacja");
+    revalidatePath("/zeby");
     revalidatePath("/", "layout");
   } else {
     revalidateAll();

@@ -10,9 +10,18 @@ import {
   actionSearchSubiektProductsForTeethAdmin,
   actionUpdateTeethProductNote,
   actionUpdateTeethProductManufacturer,
+  actionUpdateTeethProductProductLine,
   actionUpdateTeethProductKind,
 } from "@/app/actions/teeth-products";
-import { TEETH_MANUFACTURERS, TEETH_KIND_LABELS, teethManufacturerLabel, detectTeethKind, type TeethManufacturer, type TeethKind } from "@/lib/teeth/teeth-catalog";
+import {
+  TEETH_MANUFACTURERS,
+  TEETH_KIND_LABELS,
+  teethManufacturerLabel,
+  teethProductLineLabel,
+  detectTeethKind,
+  teethLinesForManufacturer,
+  type TeethManufacturer,
+} from "@/lib/teeth/teeth-catalog";
 import { Button } from "@/components/ui/Button";
 import { Field, Input, fieldControlClass } from "@/components/ui/Field";
 import { Toast } from "@/components/ui/Toast";
@@ -54,6 +63,7 @@ export function TeethProductsAdminClient({ initial }: { initial: TeethProductRow
   const [deleteTarget, setDeleteTarget] = useState<TeethProductRow | null>(null);
   const [noteDrafts, setNoteDrafts] = useState<Record<number, string>>({});
   const [manufacturerDrafts, setManufacturerDrafts] = useState<Record<number, string>>({});
+  const [productLineDrafts, setProductLineDrafts] = useState<Record<number, string>>({});
   const [kindDrafts, setKindDrafts] = useState<Record<number, string>>({});
   const [debouncedSearchQuery, setDebouncedSearchQuery] = useState("");
   const [resolvedSearchQuery, setResolvedSearchQuery] = useState("");
@@ -114,6 +124,21 @@ export function TeethProductsAdminClient({ initial }: { initial: TeethProductRow
       (debouncedSearchQuery !== resolvedSearchQuery && debouncedSearchQuery.length > 0));
   const visibleSearchHits = searchActive ? searchHits : [];
   const visibleSearchError = searchActive ? searchError : null;
+
+  const saveProductLine = (row: TeethProductRow) => {
+    const draft = productLineDrafts[row.subiektTwId] ?? row.productLine ?? "";
+    const current = row.productLine ?? "";
+    if (draft === current) return;
+    start(async () => {
+      const result = await actionUpdateTeethProductProductLine(row.subiektTwId, draft || null);
+      if ("error" in result) {
+        setToast({ text: result.error, tone: "error" });
+        return;
+      }
+      setToast({ text: "Zapisano linię produktową.", tone: "success" });
+      refreshRows();
+    });
+  };
 
   const saveKind = (row: TeethProductRow) => {
     const draft = kindDrafts[row.subiektTwId] ?? row.kind ?? "";
@@ -434,8 +459,13 @@ export function TeethProductsAdminClient({ initial }: { initial: TeethProductRow
                           {row.plu ? (
                             <span className="text-xs text-slate-500">{row.plu}</span>
                           ) : null}
-                          {row.manufacturer ? (
+                          {row.productLine ? (
                             <Badge variant="purple" className="text-[10px]">
+                              {teethProductLineLabel(row.productLine)}
+                            </Badge>
+                          ) : null}
+                          {row.manufacturer ? (
+                            <Badge variant="default" className="text-[10px]">
                               {teethManufacturerLabel(row.manufacturer)}
                             </Badge>
                           ) : (
@@ -461,22 +491,53 @@ export function TeethProductsAdminClient({ initial }: { initial: TeethProductRow
                         >
                           Bez kontroli stanu magazynowego w prośbach
                         </div>
-                        <div className="mt-3 grid gap-3 sm:grid-cols-3">
+                        <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
                           <Field label="Producent">
                             <select
                               value={manufacturerDrafts[row.subiektTwId] ?? row.manufacturer ?? ""}
-                              onChange={(event) =>
+                              onChange={(event) => {
+                                const manufacturer = event.target.value;
                                 setManufacturerDrafts((prev) => ({
                                   ...prev,
-                                  [row.subiektTwId]: event.target.value,
-                                }))
-                              }
+                                  [row.subiektTwId]: manufacturer,
+                                }));
+                                const lines = manufacturer
+                                  ? teethLinesForManufacturer(manufacturer as TeethManufacturer)
+                                  : [];
+                                if (lines.length === 1) {
+                                  setProductLineDrafts((prev) => ({
+                                    ...prev,
+                                    [row.subiektTwId]: lines[0]!.id,
+                                  }));
+                                }
+                              }}
                               onBlur={() => saveManufacturer(row)}
                               className={fieldControlClass()}
                             >
                               <option value="">— brak —</option>
                               {TEETH_MANUFACTURERS.map((m) => (
                                 <option key={m.id} value={m.id}>{m.label}</option>
+                              ))}
+                            </select>
+                          </Field>
+                          <Field label="Linia produktowa">
+                            <select
+                              value={productLineDrafts[row.subiektTwId] ?? row.productLine ?? ""}
+                              onChange={(event) =>
+                                setProductLineDrafts((prev) => ({
+                                  ...prev,
+                                  [row.subiektTwId]: event.target.value,
+                                }))
+                              }
+                              onBlur={() => saveProductLine(row)}
+                              className={fieldControlClass()}
+                              disabled={!((manufacturerDrafts[row.subiektTwId] ?? row.manufacturer) as string)}
+                            >
+                              <option value="">— auto z nazwy —</option>
+                              {teethLinesForManufacturer(
+                                (manufacturerDrafts[row.subiektTwId] ?? row.manufacturer ?? "ivoclar") as TeethManufacturer,
+                              ).map((line) => (
+                                <option key={line.id} value={line.id}>{line.label}</option>
                               ))}
                             </select>
                           </Field>

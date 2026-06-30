@@ -77,18 +77,9 @@ import {
   procurementCancelNotesSummary,
   procurementInitiatedCancelStatusCopy,
 } from "@/lib/orders/procurement-cancel-note";
+import type { TeethLineDetail } from "@/lib/teeth/teeth-catalog";
+import { mapOrderTeethDetailsToEdit } from "@/lib/orders/individual-request-edit";
 import { describeVerificationGaps } from "@/lib/orders/verification-gaps";
-
-function weryfikacjaPresentation(order: IndividualOrder) {
-  return {
-    supplierName: order.supplier?.name ?? "Do ustalenia",
-    statusTitle: "W dziale dostaw",
-    statusDetail: describeVerificationGaps(order),
-    timingLabel: null,
-    badgeVariant: "warning" as const,
-    rowColor: SUMMARY_COLORS.historyVerification,
-  };
-}
 import {
   canPartialSalesCancel,
   canSalesCancelOrders,
@@ -106,6 +97,17 @@ import {
 import { canEditIndividualRequestGroup } from "@/lib/orders/individual-request-edit";
 import { salesCancelUndoRestoreSnapshot } from "@/lib/orders/sales-cancel-db";
 import type { SalesCancelUndoRestore } from "@/lib/orders/sales-cancel-db";
+
+function weryfikacjaPresentation(order: IndividualOrder) {
+  return {
+    supplierName: order.supplier?.name ?? "Do ustalenia",
+    statusTitle: "W dziale dostaw",
+    statusDetail: describeVerificationGaps(order),
+    timingLabel: null,
+    badgeVariant: "warning" as const,
+    rowColor: SUMMARY_COLORS.historyVerification,
+  };
+}
 
 /** Stan pojedynczej pozycji względem magazynu (przy częściowej dostawie grupy). */
 export type MyOrderLineStockStatus = "waiting" | "partial" | "on_stock" | "na";
@@ -156,6 +158,8 @@ export type MyOrderLine = {
   /** Szacunek z historii — gdy brak terminu w ZD dla tej pozycji. */
   historyEstimateLabel?: string | null;
   historyEstimateLowConfidence?: boolean;
+  /** Lista zębów — do edycji prośby zębowej. */
+  teethDetails?: TeethLineDetail[];
 };
 
 type MyOrderRowCore = {
@@ -336,6 +340,7 @@ function rowToLine(
     zdEtaNoMatch: lineZdEtaNoMatch,
     historyEstimateLabel: historyEstimate?.label ?? null,
     historyEstimateLowConfidence: historyEstimate?.lowConfidence ?? false,
+    teethDetails: mapOrderTeethDetailsToEdit(order.teeth_details),
   };
 }
 

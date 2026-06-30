@@ -130,7 +130,7 @@ export function AppShellClient({
   salesOnboardingCompletedAt?: string | null;
   /** Tour onboarding — wyłącz live badge i polling zamówień. */
   salesOnboardingActive?: boolean;
-  teethProductInfo?: { twId: number; manufacturer: string | null; kind?: string | null }[];
+  teethProductInfo?: { twId: number; manufacturer: string | null; productLine?: string | null; kind?: string | null }[];
 }) {
   const {
     navBadges,

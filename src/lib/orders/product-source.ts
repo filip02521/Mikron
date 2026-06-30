@@ -8,6 +8,7 @@ import { normalizeSalesClientName } from "@/lib/orders/sales-client-label";
 import { normalizeSalesRequestNote } from "@/lib/orders/sales-request-note";
 import { isInformacjaStockOutReorder } from "@/lib/orders/informacja-stock-out-reorder";
 import { isInformacjaQueueViaDailyPanel } from "@/lib/orders/informacja-via-daily-panel";
+import { mapOrderTeethDetailsToEdit } from "@/lib/orders/individual-request-edit";
 import { submittedAt } from "@/lib/orders/order-timing";
 import type { ForSomeoneLine } from "@/lib/orders/summary-workspace";
 
@@ -54,5 +55,6 @@ export function mapOrderToForSomeoneLine(item: IndividualOrder): ForSomeoneLine 
         ? item.sales_client_kh_id
         : null,
     requestNote: normalizeSalesRequestNote(item.sales_request_note),
+    teethDetails: mapOrderTeethDetailsToEdit(item.teeth_details),
   };
 }

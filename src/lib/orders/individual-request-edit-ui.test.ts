@@ -219,4 +219,45 @@ describe("editInitialFromMyOrderRow", () => {
     );
     expect(initial?.lines[0]?.requestNote).toBe("");
   });
+
+  it("mapuje listę zębów na linię edycji", () => {
+    const initial = editInitialFromMyOrderRow(
+      myOrderRow({
+        lines: [
+          {
+            id: "ord-1",
+            product: "Zęby",
+            symbol: "Z1",
+            subiektTwId: 100,
+            mikranCode: null,
+            quantity: "2",
+            quantityLabel: "2 szt.",
+            progressLabel: null,
+            stockStatus: "waiting",
+            canAcknowledgePickup: false,
+            canCancelBySales: false,
+            salesCancelPhase: null,
+            maxSalesCancelQuantity: null,
+            defaultSalesCancelQuantity: null,
+            canPartialSalesCancel: false,
+            showSalesCancelRemainder: false,
+            showSalesCancelSupplierQuick: false,
+            salesCancelDeliveredQty: 0,
+            salesCancelUndoRestore: { status: "Nowe", quantity: "2", delivered_quantity: "0" },
+            clientName: null,
+            clientKhId: null,
+            requestNote: null,
+            procurementCancelNote: null,
+            teethDetails: [
+              { position: 1, color: "A2", mould: "T1", jaw: "upper", kind: "anterior" },
+            ],
+          },
+        ],
+        lineCount: 1,
+      })
+    );
+    expect(initial?.lines[0]?.teethDetails).toEqual([
+      { position: 1, color: "A2", mould: "T1", jaw: "upper", kind: "anterior" },
+    ]);
+  });
 });

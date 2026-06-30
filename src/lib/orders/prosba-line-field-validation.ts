@@ -4,7 +4,9 @@ import {
   hasValidOrderQuantity,
 } from "@/lib/orders/request-completeness";
 import type { IndividualRequestKind } from "@/types/database";
-import { allTeethDetailsComplete } from "@/lib/teeth/teeth-catalog";
+import { resolveTeethCatalogFromDraft } from "@/lib/teeth/teeth-catalog";
+import { isStockExemptTwId } from "@/lib/orders/teeth-stock-exempt";
+import { teethLineDetailsComplete } from "@/lib/teeth/teeth-validation";
 
 export type ProsbaFieldKey = "symbol" | "mikranCode" | "product" | "quantity";
 
@@ -77,12 +79,31 @@ export function prosbaLineHasSubmitBlockers(
 /** Czy linia zębowa ma brakujące szczegóły (kolor/wzór/rozmiar). */
 export function prosbaLineHasTeethBlockers(
   line: ProductLineDraft,
-  requestKind: IndividualRequestKind
+  requestKind: IndividualRequestKind,
+  options?: { exemptTwIds?: ReadonlySet<number> }
 ): boolean {
   if (requestKind !== "zamowienie") return false;
-  if (!line.teethManufacturer) return false;
-  const qty = parseInt(line.quantity, 10) || 1;
-  return !allTeethDetailsComplete(line.teethDetails, line.teethManufacturer, qty);
+
+  const catalog = resolveTeethCatalogFromDraft({
+    teethProductLine: line.teethProductLine,
+    teethManufacturer: line.teethManufacturer,
+    product: line.product,
+    subiektTwId: line.subiektTwId,
+    adminProductLine: line.teethProductLine,
+  });
+  const isTeethProduct = isStockExemptTwId(line.subiektTwId, options?.exemptTwIds);
+
+  if (!catalog && !isTeethProduct) return false;
+
+  return !teethLineDetailsComplete({
+    teethDetails: line.teethDetails,
+    quantity: line.quantity,
+    product: line.product,
+    subiektTwId: line.subiektTwId,
+    adminProductLine: line.teethProductLine,
+    adminManufacturer: line.teethManufacturer,
+    isTeethProduct: true,
+  });
 }
 
 /** Stan wizualny pól pozycji prośby (braki, ilość). */

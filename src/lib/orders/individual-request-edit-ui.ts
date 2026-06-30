@@ -2,7 +2,9 @@ import type { SummaryForSomeoneEnriched } from "@/lib/orders/summary-workspace";
 import type { MyOrderRow } from "@/lib/orders/my-order-presenter";
 import type { EditIndividualRequestInitial } from "@/components/orders/EditIndividualRequestModal";
 import type { IndividualOrder } from "@/types/database";
-import { ordersToEditLines } from "@/lib/orders/individual-request-edit";
+import {
+  ordersToEditLines,
+} from "@/lib/orders/individual-request-edit";
 import { normalizeSalesRequestNote } from "@/lib/orders/sales-request-note";
 import {
   informacjaFlowPathFromOrder,
@@ -46,6 +48,7 @@ export function editInitialFromForSomeoneGroup(
       subiektTwId: l.subiektTwId ?? null,
       source: null,
       requestNote: normalizeSalesRequestNote(l.requestNote) ?? "",
+      teethDetails: l.teethDetails ?? undefined,
     })),
   };
 }
@@ -68,6 +71,7 @@ export function editInitialFromMyOrderRow(row: MyOrderRow): EditIndividualReques
       subiektTwId: l.subiektTwId ?? null,
       source: null,
       requestNote: normalizeSalesRequestNote(l.requestNote) ?? "",
+      teethDetails: l.teethDetails ?? undefined,
     })),
   };
 }

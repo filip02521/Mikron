@@ -2,13 +2,14 @@
 
 import { useEffect, useMemo, useState } from "react";
 import {
-  TEETH_MANUFACTURERS,
-  teethManufacturerLabel,
+  teethProductLineLabel,
   teethColorsFor,
-  teethMouldsFor,
-  hasMoulds,
+  toothMouldsFor,
+  hasMouldsForKind,
   expandTeethDetails,
-  type TeethManufacturer,
+  resolveTeethCatalog,
+  type TeethProductLine,
+  type TeethKind,
   type TeethLineDetail,
 } from "@/lib/teeth/teeth-catalog";
 import { Badge } from "@/components/ui/Badge";
@@ -17,24 +18,28 @@ import { cn } from "@/lib/cn";
 import { panelTypography } from "@/lib/ui/ontime-theme";
 
 export function TeethDetailsInlineGrid({
-  manufacturer,
+  productLine,
   quantity,
   details,
   onChange,
   disabled,
+  kind = "anterior",
 }: {
-  manufacturer: TeethManufacturer;
+  productLine: TeethProductLine;
   quantity: number;
   details: TeethLineDetail[] | undefined;
   onChange: (details: TeethLineDetail[]) => void;
   disabled?: boolean;
+  kind?: TeethKind;
 }) {
   const [allSame, setAllSame] = useState(true);
-  const showMoulds = hasMoulds(manufacturer);
-  const showSizes = false;
-  const colors = useMemo(() => teethColorsFor(manufacturer), [manufacturer]);
-  const moulds = useMemo(() => teethMouldsFor(manufacturer), [manufacturer]);
-  const sizes: readonly string[] = [];
+  const catalog = useMemo(
+    () => resolveTeethCatalog({ adminProductLine: productLine })!,
+    [productLine],
+  );
+  const showMoulds = hasMouldsForKind(catalog, kind);
+  const colors = useMemo(() => teethColorsFor(catalog), [catalog]);
+  const moulds = useMemo(() => toothMouldsFor(catalog, kind), [catalog, kind]);
 
   const safeQty = Math.max(1, quantity || 1);
 
@@ -52,7 +57,8 @@ export function TeethDetailsInlineGrid({
             position: i + 1,
             color: first.color,
             mould: first.mould ?? null,
-            size: first.size ?? null,
+            jaw: first.jaw ?? null,
+            kind: first.kind ?? kind,
           })),
         );
       }
@@ -62,7 +68,7 @@ export function TeethDetailsInlineGrid({
     if (next.length !== details?.length) {
       onChange(next);
     }
-  }, [safeQty, allSame, details, onChange]);
+  }, [safeQty, allSame, details, onChange, kind]);
 
   const updateRow = (index: number, patch: Partial<TeethLineDetail>) => {
     const next = expanded.map((d, i) =>
@@ -74,7 +80,8 @@ export function TeethDetailsInlineGrid({
           position: i + 1,
           color: next[0]!.color,
           mould: next[0]!.mould ?? null,
-          size: next[0]!.size ?? null,
+          jaw: next[0]!.jaw ?? null,
+          kind: next[0]!.kind ?? kind,
         })),
       );
     } else {
@@ -90,12 +97,13 @@ export function TeethDetailsInlineGrid({
         position: i + 1,
         color: first.color,
         mould: first.mould ?? null,
-        size: first.size ?? null,
+        jaw: first.jaw ?? null,
+        kind: first.kind ?? kind,
       })),
     );
   };
 
-  const label = teethManufacturerLabel(manufacturer);
+  const label = teethProductLineLabel(productLine);
 
   if (safeQty === 1 && allSame) {
     return (
@@ -114,20 +122,11 @@ export function TeethDetailsInlineGrid({
           />
           {showMoulds ? (
             <TeethSelect
-              label="Wzór"
+              label="Fason"
               value={expanded[0]?.mould ?? ""}
               options={moulds}
               disabled={disabled}
               onChange={(v) => updateRow(0, { mould: v })}
-            />
-          ) : null}
-          {showSizes ? (
-            <TeethSelect
-              label="Rozmiar"
-              value={expanded[0]?.size ?? ""}
-              options={sizes}
-              disabled={disabled}
-              onChange={(v) => updateRow(0, { size: v })}
             />
           ) : null}
         </div>
@@ -168,7 +167,8 @@ export function TeethDetailsInlineGrid({
                       position: i + 1,
                       color: first.color,
                       mould: first.mould ?? null,
-                      size: first.size ?? null,
+                      jaw: first.jaw ?? null,
+                      kind: first.kind ?? kind,
                     })),
                   );
                 }
@@ -192,20 +192,11 @@ export function TeethDetailsInlineGrid({
           />
           {showMoulds ? (
             <TeethSelect
-              label="Wzór (wszystkie)"
+              label="Fason (wszystkie)"
               value={expanded[0]?.mould ?? ""}
               options={moulds}
               disabled={disabled}
               onChange={(v) => updateRow(0, { mould: v })}
-            />
-          ) : null}
-          {showSizes ? (
-            <TeethSelect
-              label="Rozmiar (wszystkie)"
-              value={expanded[0]?.size ?? ""}
-              options={sizes}
-              disabled={disabled}
-              onChange={(v) => updateRow(0, { size: v })}
             />
           ) : null}
         </div>
@@ -216,8 +207,7 @@ export function TeethDetailsInlineGrid({
               <tr className="border-b border-slate-200 text-left text-xs font-medium text-slate-500">
                 <th className="w-8 py-1.5 pr-2">#</th>
                 <th className="py-1.5 pr-2">Kolor</th>
-                {showMoulds ? <th className="py-1.5 pr-2">Wzór</th> : null}
-                {showSizes ? <th className="py-1.5 pr-2">Rozmiar</th> : null}
+                {showMoulds ? <th className="py-1.5 pr-2">Fason</th> : null}
               </tr>
             </thead>
             <tbody>
@@ -239,23 +229,11 @@ export function TeethDetailsInlineGrid({
                   {showMoulds ? (
                     <td className="py-1.5 pr-2">
                       <TeethSelect
-                        label={`Wzór zęba ${i + 1}`}
+                        label={`Fason zęba ${i + 1}`}
                         value={row.mould ?? ""}
                         options={moulds}
                         disabled={disabled}
                         onChange={(v) => updateRow(i, { mould: v })}
-                        compact
-                      />
-                    </td>
-                  ) : null}
-                  {showSizes ? (
-                    <td className="py-1.5 pr-2">
-                      <TeethSelect
-                        label={`Rozmiar zęba ${i + 1}`}
-                        value={row.size ?? ""}
-                        options={sizes}
-                        disabled={disabled}
-                        onChange={(v) => updateRow(i, { size: v })}
                         compact
                       />
                     </td>

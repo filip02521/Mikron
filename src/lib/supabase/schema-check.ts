@@ -4,10 +4,16 @@ async function columnExists(
   supabase: SupabaseClient,
   column: string
 ): Promise<boolean> {
-  const { error } = await supabase.from("individual_orders").select(column).limit(0);
+  return columnExistsOnTable(supabase, "individual_orders", column);
+}
 
+async function columnExistsOnTable(
+  supabase: SupabaseClient,
+  table: string,
+  column: string
+): Promise<boolean> {
+  const { error } = await supabase.from(table).select(column).limit(0);
   if (!error) return true;
-
   const msg = error.message ?? "";
   if (
     error.code === "42703" ||
@@ -16,8 +22,39 @@ async function columnExists(
   ) {
     return false;
   }
-
   return true;
+}
+
+export async function hasTeethOrderDetailsTable(
+  supabase: SupabaseClient
+): Promise<boolean> {
+  const { error } = await supabase
+    .from("individual_order_teeth_details")
+    .select("id")
+    .limit(0);
+  if (!error) return true;
+  const msg = error.message ?? "";
+  if (
+    error.code === "42P01" ||
+    (msg.includes("individual_order_teeth_details") && msg.includes("does not exist"))
+  ) {
+    return false;
+  }
+  return false;
+}
+
+export async function hasTeethOrderDetailsJawColumn(
+  supabase: SupabaseClient
+): Promise<boolean> {
+  if (!(await hasTeethOrderDetailsTable(supabase))) return false;
+  return columnExistsOnTable(supabase, "individual_order_teeth_details", "jaw");
+}
+
+export async function hasTeethOrderDetailsKindColumn(
+  supabase: SupabaseClient
+): Promise<boolean> {
+  if (!(await hasTeethOrderDetailsTable(supabase))) return false;
+  return columnExistsOnTable(supabase, "individual_order_teeth_details", "kind");
 }
 
 export async function hasRequestKindColumn(
@@ -203,6 +240,22 @@ export async function runSchemaChecks(
     issues.push(
       "Brak funkcji try_acquire_job_lock — uruchom supabase/migrations/013_job_lock_atomic.sql"
     );
+  }
+  if (!(await hasTeethOrderDetailsTable(supabase))) {
+    issues.push(
+      "Brak tabeli individual_order_teeth_details — uruchom supabase/migrations/079_teeth_order_details.sql"
+    );
+  } else {
+    if (!(await hasTeethOrderDetailsJawColumn(supabase))) {
+      issues.push(
+        "Brak kolumny individual_order_teeth_details.jaw — uruchom supabase/migrations/080_teeth_jaw.sql"
+      );
+    }
+    if (!(await hasTeethOrderDetailsKindColumn(supabase))) {
+      issues.push(
+        "Brak kolumny individual_order_teeth_details.kind — uruchom supabase/migrations/081_teeth_kind.sql"
+      );
+    }
   }
 
   return { ok: issues.length === 0, issues };

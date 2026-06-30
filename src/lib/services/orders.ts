@@ -51,8 +51,10 @@ import { normalizeSalesClientName } from "@/lib/orders/sales-client-label";
 import { assertNoDuplicateInformacjaEntries } from "@/lib/orders/informacja-duplicate-server";
 import { resolveOrderLineSubiektTwIdFromCatalog } from "@/lib/orders/resolve-order-line-subiekt-tw-id";
 import { normalizeSalesRequestNote } from "@/lib/orders/sales-request-note";
-import { fetchTeethProductTwIdSet } from "@/lib/data/teeth-products";
+import { fetchTeethProductTwIdSet, fetchTeethProductInfo } from "@/lib/data/teeth-products";
 import type { TeethLineDetail } from "@/lib/teeth/teeth-catalog";
+import { assertTeethOrderLineIfApplicable, normalizeTeethDetailsForSave } from "@/lib/teeth/teeth-validation";
+import { saveTeethDetailsForOrders } from "@/lib/data/teeth-order-details";
 import {
   normalizeProcurementCancelNote,
   throwIfProcurementCancelNoteColumnMissing,
@@ -229,41 +231,6 @@ export async function shiftSupplierOrder(
   );
 }
 
-async function saveTeethDetailsForOrders(
-  supabase: SupabaseClient,
-  entries: { orderId: string; isTeeth: boolean; teethDetails: TeethLineDetail[] | null }[],
-): Promise<void> {
-  for (const entry of entries) {
-    if (!entry.isTeeth) {
-      await supabase
-        .from("individual_order_teeth_details")
-        .delete()
-        .eq("order_id", entry.orderId);
-      continue;
-    }
-    if (!entry.teethDetails || entry.teethDetails.length === 0) continue;
-    await supabase
-      .from("individual_order_teeth_details")
-      .delete()
-      .eq("order_id", entry.orderId);
-    const rows = entry.teethDetails
-      .filter((d) => d.color.trim())
-      .map((d) => ({
-        order_id: entry.orderId,
-        position: d.position,
-        color: d.color.trim(),
-        mould: d.mould?.trim() || null,
-        jaw: d.jaw ?? null,
-        kind: d.kind ?? null,
-      }));
-    if (rows.length === 0) continue;
-    const { error } = await supabase.from("individual_order_teeth_details").insert(rows);
-    if (error) {
-      console.error("[saveTeethDetailsForOrders]", error.message);
-    }
-  }
-}
-
 export async function batchAddIndividualOrders(
   entries: Array<{
     supplierId?: string;
@@ -302,6 +269,8 @@ export async function batchAddIndividualOrders(
   const procurementMode = options?.submitMode === "procurement";
   const catalogSource = procurementMode ? "procurement_verification" : "order_history";
   const teethTwIdSet = await fetchTeethProductTwIdSet().catch(() => new Set<number>());
+  const teethProductInfo = await fetchTeethProductInfo().catch(() => []);
+  const teethInfoByTwId = new Map(teethProductInfo.map((row) => [row.twId, row]));
   try {
     let complete = 0;
     let verification = 0;
@@ -399,6 +368,21 @@ export async function batchAddIndividualOrders(
         }),
       };
     }));
+    for (let i = 0; i < rows.length; i++) {
+      const row = rows[i];
+      const entry = entries[i];
+      if (!row || !entry) continue;
+      assertTeethOrderLineIfApplicable({
+        requestKind: (entry.requestKind ?? "zamowienie") as IndividualRequestKind,
+        subiektTwId: row.subiekt_tw_id,
+        quantity: entry.quantity ?? "",
+        product: entry.product,
+        teethDetails: entry.teethDetails,
+        teethTwIdSet,
+        teethInfoByTwId,
+        label: entries.length > 1 ? `Pozycja ${i + 1}` : undefined,
+      });
+    }
     await assertNoDuplicateInformacjaEntries(
       supabase,
       rows.map((row) => ({
@@ -433,14 +417,25 @@ export async function batchAddIndividualOrders(
       throw new Error(msg);
     }
 
-    await saveTeethDetailsForOrders(
-      supabase,
-      rows.map((row, i) => ({
-        orderId: row.id,
-        isTeeth: Boolean(row.is_teeth),
-        teethDetails: entries[i]?.teethDetails ?? null,
-      })),
-    );
+    const insertedIds = rows.map((row) => row.id);
+    try {
+      await saveTeethDetailsForOrders(
+        supabase,
+        rows.map((row, i) => ({
+          orderId: row.id,
+          isTeeth: Boolean(row.is_teeth),
+          teethDetails: normalizeTeethDetailsForSave(
+            entries[i]?.teethDetails,
+            row.subiekt_tw_id != null && row.subiekt_tw_id > 0
+              ? (teethInfoByTwId.get(Math.trunc(row.subiekt_tw_id))?.kind ?? null)
+              : null
+          ),
+        })),
+      );
+    } catch (teethError) {
+      await supabase.from("individual_orders").delete().in("id", insertedIds);
+      throw teethError;
+    }
 
     const { after } = await import("next/server");
     after(async () => {
@@ -496,6 +491,8 @@ export async function completeVerificationOrder(
   const kind = (data.requestKind ?? "zamowienie") as IndividualRequestKind;
   const supabase = createAdminClient();
   const teethTwIdSet = await fetchTeethProductTwIdSet().catch(() => new Set<number>());
+  const teethProductInfo = await fetchTeethProductInfo().catch(() => []);
+  const teethInfoByTwId = new Map(teethProductInfo.map((row) => [row.twId, row]));
   const { data: priorRow, error: priorErr } = await supabase
     .from("individual_orders")
     .select(
@@ -540,6 +537,16 @@ export async function completeVerificationOrder(
     );
   }
 
+  assertTeethOrderLineIfApplicable({
+    requestKind: kind,
+    subiektTwId: data.subiektTwId,
+    quantity: sanitized.quantity,
+    product: sanitized.product,
+    teethDetails: data.teethDetails,
+    teethTwIdSet,
+    teethInfoByTwId,
+  });
+
   const { products, symbol } = normalizeDraftProducts({
     ...data,
     symbol: sanitized.symbol,
@@ -580,8 +587,16 @@ export async function completeVerificationOrder(
     data.subiektTwId != null && data.subiektTwId > 0
       ? teethTwIdSet.has(Math.trunc(data.subiektTwId))
       : false;
+  const adminKind =
+    data.subiektTwId != null && data.subiektTwId > 0
+      ? (teethInfoByTwId.get(Math.trunc(data.subiektTwId))?.kind ?? null)
+      : null;
   await saveTeethDetailsForOrders(supabase, [
-    { orderId, isTeeth, teethDetails: data.teethDetails ?? null },
+    {
+      orderId,
+      isTeeth,
+      teethDetails: normalizeTeethDetailsForSave(data.teethDetails ?? null, adminKind),
+    },
   ]);
 
   try {
@@ -669,6 +684,8 @@ export async function updateIndividualRequestGroup(
 
   const supabase = options.supabase ?? createAdminClient();
   const teethTwIdSet = await fetchTeethProductTwIdSet().catch(() => new Set<number>());
+  const teethProductInfo = await fetchTeethProductInfo().catch(() => []);
+  const teethInfoByTwId = new Map(teethProductInfo.map((row) => [row.twId, row]));
   const { data: rawRows, error: fetchError } = await supabase
     .from("individual_orders")
     .select("*")
@@ -807,6 +824,27 @@ export async function updateIndividualRequestGroup(
       line.subiektTwId != null && line.subiektTwId > 0
         ? teethTwIdSet.has(Math.trunc(line.subiektTwId))
         : false;
+    assertTeethOrderLineIfApplicable({
+      requestKind: kind,
+      subiektTwId: line.subiektTwId,
+      quantity: sanitized.quantity,
+      product: sanitized.product,
+      teethDetails: line.teethDetails,
+      teethTwIdSet,
+      teethInfoByTwId,
+      label:
+        payload.lines.length > 1
+          ? `Pozycja ${payload.lines.indexOf(line) + 1}`
+          : undefined,
+    });
+    const teethDetailsForSave = isTeeth
+      ? normalizeTeethDetailsForSave(
+          line.teethDetails,
+          line.subiektTwId != null && line.subiektTwId > 0
+            ? (teethInfoByTwId.get(Math.trunc(line.subiektTwId))?.kind ?? null)
+            : null
+        )
+      : null;
     const rowPayload = {
       supplier_id: payload.supplierId.trim() || null,
       sales_person_id: payload.salesPersonId,
@@ -838,7 +876,7 @@ export async function updateIndividualRequestGroup(
       if (error) throw new Error(error.message);
       keptIds.add(existingLineId);
       updated++;
-      teethDetailsToSave.push({ orderId: existingLineId, isTeeth, teethDetails: line.teethDetails ?? null });
+      teethDetailsToSave.push({ orderId: existingLineId, isTeeth, teethDetails: teethDetailsForSave });
 
       try {
         await indexOrderLineToProductCatalog({
@@ -869,7 +907,7 @@ export async function updateIndividualRequestGroup(
       });
       if (error) throw new Error(formatDbError(error));
       inserted++;
-      teethDetailsToSave.push({ orderId: newId, isTeeth, teethDetails: line.teethDetails ?? null });
+      teethDetailsToSave.push({ orderId: newId, isTeeth, teethDetails: teethDetailsForSave });
 
       try {
         await indexOrderLineToProductCatalog({
