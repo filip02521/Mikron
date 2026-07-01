@@ -1,5 +1,9 @@
 import type { TeethLineDetail, TeethKind, TeethManufacturer, TeethProductLine } from "@/lib/teeth/teeth-catalog";
 import {
+  resolveTeethCatalogFromDraft,
+  teethProductLineLabel,
+} from "@/lib/teeth/teeth-catalog";
+import {
   normalizeTeethDetailsForSave,
   teethLineDetailsComplete,
   type TeethProductInfoLookup,
@@ -41,6 +45,49 @@ export function teethPanelReadinessContextFromMaps(maps: {
     });
   }
   return { teethInfoByTwId };
+}
+
+/** Linia katalogowa zębów dla pozycji w panelu (admin + nazwa towaru). */
+export function resolveTeethProductLineForPanelOrder(
+  order: Pick<TeethPanelOrderLike, "products" | "subiekt_tw_id">,
+  ctx?: TeethPanelReadinessContext,
+): TeethProductLine | null {
+  const twId =
+    order.subiekt_tw_id != null && order.subiekt_tw_id > 0
+      ? Math.trunc(order.subiekt_tw_id)
+      : null;
+  const info = twId != null ? ctx?.teethInfoByTwId?.get(twId) : undefined;
+  return (
+    resolveTeethCatalogFromDraft({
+      adminProductLine: info?.productLine ?? null,
+      teethManufacturer: info?.manufacturer ?? null,
+      product: order.products,
+      subiektTwId: twId,
+    })?.productLine ?? null
+  );
+}
+
+export function teethPanelProductLineLabelForOrder(
+  order: Pick<TeethPanelOrderLike, "products" | "subiekt_tw_id">,
+  ctx?: TeethPanelReadinessContext,
+): string | null {
+  const line = resolveTeethProductLineForPanelOrder(order, ctx);
+  return line ? teethProductLineLabel(line) : null;
+}
+
+export function distinctTeethProductLineLabelsForOrders(
+  orders: Array<Pick<TeethPanelOrderLike, "products" | "subiekt_tw_id">>,
+  ctx?: TeethPanelReadinessContext,
+): string[] {
+  const labels: string[] = [];
+  const seen = new Set<string>();
+  for (const order of orders) {
+    const label = teethPanelProductLineLabelForOrder(order, ctx);
+    if (!label || seen.has(label)) continue;
+    seen.add(label);
+    labels.push(label);
+  }
+  return labels;
 }
 
 function toLineDetails(details: IndividualOrderTeethDetail[]): TeethLineDetail[] {

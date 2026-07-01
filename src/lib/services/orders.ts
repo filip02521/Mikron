@@ -330,6 +330,13 @@ export async function batchAddIndividualOrders(
           throw new Error("Uzupełnij wymagane pola prośby.");
         }
         status = submitPlan.initialStatus;
+        const isTeethProduct =
+          draft.subiektTwId != null &&
+          draft.subiektTwId > 0 &&
+          teethTwIdSet.has(Math.trunc(draft.subiektTwId));
+        if (isTeethProduct && status === "Weryfikacja") {
+          status = "Nowe";
+        }
         if (status === "Nowe") complete++;
         else verification++;
       }
@@ -1020,7 +1027,7 @@ export async function processIndividualFromSummary(
   action: "GLOWNE" | "POBOCZNE" | "ANULOWANO",
   userEmail: string,
   procurementCancelNote?: string | null,
-  userId?: string
+  _userId?: string
 ) {
   const supabase = createAdminClient();
   const { data: statusRows } = await supabase
@@ -1163,12 +1170,6 @@ export async function processIndividualFromSummary(
         order_type: orderType,
         ordered_at: batchOrderedAt,
         placement_group_id: placementGroupId,
-        ...(order.is_teeth && userId
-          ? {
-              teeth_ordered_by: userId,
-              teeth_ordered_at: batchOrderedAt,
-            }
-          : {}),
         ...seenPatch,
       })
       .eq("id", id);
@@ -1409,7 +1410,10 @@ type PersonEmailCache = Map<
 async function applyDeliveredQuantityUpdate(
   orderId: string,
   deliveredQuantity: string,
-  opts?: { personEmailCache?: PersonEmailCache }
+  opts?: {
+    personEmailCache?: PersonEmailCache;
+    teethLineDelivered?: Record<string, number> | null;
+  }
 ): Promise<{
   statsUpdated: boolean;
   /** Zapis OK, ale brak adresu e-mail przy oczekiwanym powiadomieniu. */
@@ -1480,9 +1484,12 @@ async function applyDeliveredQuantityUpdate(
     delivered_quantity: finalDelivered,
     status,
   };
+  if (order.is_teeth && opts?.teethLineDelivered) {
+    update.teeth_line_delivered = opts.teethLineDelivered;
+  }
   if (status === "Zrealizowane" || status === "Czesciowo_zrealizowane") {
     update.delivery_at = new Date().toISOString();
-    if (!order.warehouse_shelf?.trim()) {
+    if (!order.is_teeth && !order.warehouse_shelf?.trim()) {
       update.warehouse_shelf = WAREHOUSE_SHELF_DEFAULT;
     }
   } else if (status === "Zamowione") {
@@ -1518,6 +1525,7 @@ async function applyDeliveredQuantityUpdate(
   }
 
   const shouldNotify =
+    !order.is_teeth &&
     !isInformacjaStockOutReorder(order) &&
     !order.sales_cancelled_at &&
     status !== "Zamowione" &&
@@ -1553,9 +1561,10 @@ async function applyDeliveredQuantityUpdate(
 
 export async function updateDeliveredQuantity(
   orderId: string,
-  deliveredQuantity: string
+  deliveredQuantity: string,
+  opts?: { teethLineDelivered?: Record<string, number> | null }
 ): Promise<{ emailSent: boolean; emailError?: string }> {
-  const result = await applyDeliveredQuantityUpdate(orderId, deliveredQuantity);
+  const result = await applyDeliveredQuantityUpdate(orderId, deliveredQuantity, opts);
   if (result.statsUpdated) scheduleHistoryRetentionPurge();
 
   if (result.notifySkipped) {
@@ -1586,20 +1595,30 @@ export type BatchDeliveredUpdateResult = {
 
 /** Zbiorczy zapis dostaw — jeden e-mail na handlowca z wieloma pozycjami. */
 export async function batchUpdateDeliveredQuantities(
-  updates: Array<{ orderId: string; deliveredQuantity: string }>
+  updates: Array<{
+    orderId: string;
+    deliveredQuantity: string;
+    teethLineDelivered?: Record<string, number> | null;
+  }>
 ): Promise<BatchDeliveredUpdateResult> {
   if (!updates.length) {
     return { saved: 0, savedOrderIds: [], emailSent: 0, errors: ["Brak pozycji do zapisania."] };
   }
 
-  const byOrderId = new Map<string, string>();
-  for (const { orderId, deliveredQuantity } of updates) {
-    byOrderId.set(orderId, deliveredQuantity);
+  const byOrderId = new Map<
+    string,
+    { deliveredQuantity: string; teethLineDelivered?: Record<string, number> | null }
+  >();
+  for (const { orderId, deliveredQuantity, teethLineDelivered } of updates) {
+    byOrderId.set(orderId, { deliveredQuantity, teethLineDelivered });
   }
-  const uniqueUpdates = [...byOrderId.entries()].map(([orderId, deliveredQuantity]) => ({
-    orderId,
-    deliveredQuantity,
-  }));
+  const uniqueUpdates = [...byOrderId.entries()].map(
+    ([orderId, { deliveredQuantity, teethLineDelivered }]) => ({
+      orderId,
+      deliveredQuantity,
+      teethLineDelivered,
+    }),
+  );
 
   assertMaxBatchSize(uniqueUpdates.length, MAX_QUEUE_BATCH_SIZE, "pozycji dostaw");
 
@@ -1615,10 +1634,11 @@ export async function batchUpdateDeliveredQuantities(
   let statsTouches = 0;
   const errors: string[] = [];
 
-  for (const { orderId, deliveredQuantity } of uniqueUpdates) {
+  for (const { orderId, deliveredQuantity, teethLineDelivered } of uniqueUpdates) {
     try {
       const result = await applyDeliveredQuantityUpdate(orderId, deliveredQuantity, {
         personEmailCache,
+        teethLineDelivered,
       });
       saved++;
       savedOrderIds.push(orderId);
@@ -1829,7 +1849,11 @@ async function processMarkedDeliveriesUnlocked(): Promise<ProcessDeliveriesResul
           ? String(ordered)
           : deliveredQty,
     };
-    if (status === "Zrealizowane" || status === "Czesciowo_zrealizowane") {
+    if (
+      !order.is_teeth &&
+      (status === "Zrealizowane" || status === "Czesciowo_zrealizowane") &&
+      !order.warehouse_shelf?.trim()
+    ) {
       updatePayload.warehouse_shelf = WAREHOUSE_SHELF_DEFAULT;
     }
 
@@ -1871,20 +1895,22 @@ async function processMarkedDeliveriesUnlocked(): Promise<ProcessDeliveriesResul
       }
     }
 
-    const person = await resolveSalesPersonEmail(supabase, order);
-    if (person) {
-      if (!notifications.has(person.personId)) {
-        notifications.set(person.personId, {
-          email: person.email,
-          name: person.name,
-          items: [],
-        });
+    if (!order.is_teeth) {
+      const person = await resolveSalesPersonEmail(supabase, order);
+      if (person) {
+        if (!notifications.has(person.personId)) {
+          notifications.set(person.personId, {
+            email: person.email,
+            name: person.name,
+            items: [],
+          });
+        }
+        const item = buildDeliveryNotificationItem(
+          { ...order, status, delivered_quantity: finalQty },
+          { deliveredQuantity: finalQty }
+        );
+        notifications.get(person.personId)!.items.push(item);
       }
-      const item = buildDeliveryNotificationItem(
-        { ...order, status, delivered_quantity: finalQty },
-        { deliveredQuantity: finalQty }
-      );
-      notifications.get(person.personId)!.items.push(item);
     }
   }
 

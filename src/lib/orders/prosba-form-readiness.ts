@@ -10,6 +10,11 @@ import {
   informacjaFlowUiForPath,
   informacjaReadinessSubline,
 } from "@/lib/orders/informacja-flow-ui";
+import {
+  prosbaReadinessTargetsTeethPanel,
+  TEETH_READINESS_READY_SUBLINE,
+  TEETH_READINESS_SUPPLIER_DETAIL,
+} from "@/lib/teeth/teeth-procurement-flow-copy";
 
 export type ProsbaReadinessStepState = "empty" | "done" | "action" | "handoff";
 
@@ -89,6 +94,10 @@ export function buildProsbaFormReadiness(
   const filled = linesWithProductHint(lines);
   const isZamowienie = requestKind === "zamowienie";
   const informacjaPath = options?.informacjaPath ?? "direct";
+  const teethOnlyPanel = prosbaReadinessTargetsTeethPanel(
+    filled,
+    options?.teethExemptTwIds
+  );
   void options?.resolvingSupplier;
 
   const productDone = filled.length > 0;
@@ -148,7 +157,9 @@ export function buildProsbaFormReadiness(
     supplierStep = {
       ...supplierStep,
       state: "done",
-      detail: "Wybrany — trafia do panelu dziennego",
+      detail: teethOnlyPanel
+        ? TEETH_READINESS_SUPPLIER_DETAIL
+        : "Wybrany — trafia do panelu dziennego",
     };
   } else {
     supplierStep = {
@@ -212,7 +223,9 @@ export function buildProsbaFormReadiness(
     return {
       headline: "Gotowe do wysłania",
       subline: isZamowienie
-        ? "Kompletne — trafi od razu do realizacji."
+        ? teethOnlyPanel
+          ? TEETH_READINESS_READY_SUBLINE
+          : "Kompletne — trafi od razu do realizacji."
         : informacjaReadinessSubline(informacjaPath, "complete"),
       tone: "ready",
       steps,

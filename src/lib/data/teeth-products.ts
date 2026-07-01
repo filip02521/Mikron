@@ -26,6 +26,9 @@ export type TeethProductInfoEntry = {
   manufacturer: TeethManufacturer | null;
   productLine: TeethProductLine | null;
   kind: TeethKind | null;
+  symbol: string | null;
+  name: string;
+  plu: string | null;
 };
 
 function mapRow(row: Record<string, unknown>): TeethProductRow {
@@ -85,5 +88,8 @@ export async function fetchTeethProductInfo(): Promise<TeethProductInfoEntry[]> 
     manufacturer: row.manufacturer,
     productLine: row.productLine,
     kind: row.kind,
+    symbol: row.symbol,
+    name: row.name,
+    plu: row.plu,
   }));
 }

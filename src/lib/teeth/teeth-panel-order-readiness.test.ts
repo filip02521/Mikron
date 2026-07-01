@@ -1,5 +1,11 @@
 import { describe, expect, it } from "vitest";
-import { orderTeethListReadyForOrder } from "./teeth-panel-order-readiness";
+import {
+  orderTeethListReadyForOrder,
+  resolveTeethProductLineForPanelOrder,
+  teethPanelProductLineLabelForOrder,
+  distinctTeethProductLineLabelsForOrders,
+  teethPanelReadinessContextFromMaps,
+} from "./teeth-panel-order-readiness";
 import type { TeethProductInfoLookup } from "./teeth-validation";
 
 const wiedentEsteticInfo: TeethProductInfoLookup = {
@@ -7,6 +13,53 @@ const wiedentEsteticInfo: TeethProductInfoLookup = {
   manufacturer: "wiedent",
   kind: "anterior",
 };
+
+describe("resolveTeethProductLineForPanelOrder", () => {
+  const ctx = teethPanelReadinessContextFromMaps({
+    productLineByTwId: new Map([[100, "wiedent_estetic"]]),
+    manufacturerByTwId: new Map([[100, "wiedent"]]),
+    kindByTwId: new Map([[100, "anterior"]]),
+  });
+
+  it("prefers Vita line from product name over generic admin estetic", () => {
+    expect(
+      resolveTeethProductLineForPanelOrder(
+        { subiekt_tw_id: 100, products: "Wiedent Vita zęby przody" },
+        ctx,
+      ),
+    ).toBe("wiedent_estetic_vita");
+    expect(
+      teethPanelProductLineLabelForOrder(
+        { subiekt_tw_id: 100, products: "Wiedent Vita zęby przody" },
+        ctx,
+      ),
+    ).toBe("Wiedent Estetic wg Vity");
+  });
+
+  it("collects distinct line labels in supplier group", () => {
+    const labels = distinctTeethProductLineLabelsForOrders(
+      [
+        { subiekt_tw_id: 100, products: "Wiedent Vita zęby przody" },
+        { subiekt_tw_id: 101, products: "Wiedent Estetic skala W przody" },
+      ],
+      teethPanelReadinessContextFromMaps({
+        productLineByTwId: new Map([
+          [100, "wiedent_estetic"],
+          [101, "wiedent_estetic"],
+        ]),
+        manufacturerByTwId: new Map([
+          [100, "wiedent"],
+          [101, "wiedent"],
+        ]),
+        kindByTwId: new Map([
+          [100, "anterior"],
+          [101, "anterior"],
+        ]),
+      }),
+    );
+    expect(labels).toEqual(["Wiedent Estetic wg Vity", "Wiedent Estetic (skala W)"]);
+  });
+});
 
 describe("orderTeethListReadyForOrder", () => {
   const ctx = {

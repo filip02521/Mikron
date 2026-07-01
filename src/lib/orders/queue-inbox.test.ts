@@ -46,4 +46,13 @@ describe("queue-inbox", () => {
     expect(s.activeCount).toBe(2);
     expect(s.informacjaCount).toBe(1);
   });
+
+  it("wyklucza zęby z podsumowania zakładki Przyjęcie", () => {
+    const s = summarizeQueueInbox([
+      order({ id: "z1" }),
+      order({ id: "t1", is_teeth: true }),
+    ]);
+    expect(s.activeCount).toBe(1);
+    expect(s.zamowienieCount).toBe(1);
+  });
 });

@@ -7,7 +7,7 @@ import {
 import { runOrderMaintenanceBeforePageLoad } from "@/lib/services/deferred-order-maintenance";
 import { actionFetchTodayDeliveryJournal, actionListWarehouseAssignSuppliers } from "@/app/actions/warehouse-delivery";
 import { getSessionUser } from "@/lib/auth";
-import { canManageSuppliers, isMagazyn, isZakupyZeby } from "@/lib/auth-roles";
+import { canManageSuppliers, isMagazyn } from "@/lib/auth-roles";
 import { fetchWarehouseCarriers } from "@/lib/data/warehouse-carriers";
 import { QueueClient } from "@/components/queue/QueueClient";
 import type { IndividualOrder } from "@/types/database";
@@ -38,7 +38,7 @@ export default async function KolejkaPage() {
 
   try {
     [orders, informacjaOrders, pickupReadyCount, warehouseInventory] = await Promise.all([
-      fetchDeliveryQueue(),
+      fetchDeliveryQueue({ lane: "regular" }),
       fetchInformacjaQueue(),
       countPickupReadyForSales(),
       fetchWarehouseInventory(),
@@ -69,7 +69,6 @@ export default async function KolejkaPage() {
       warehouseCarriers={warehouseCarriers}
       canManageCarriers={role != null && canManageSuppliers(role)}
       isMagazynRole={role != null && isMagazyn(role)}
-      isZakupyZebyRole={role != null && isZakupyZeby(role)}
       loadError={error}
     />
   );

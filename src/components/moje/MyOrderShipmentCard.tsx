@@ -168,7 +168,7 @@ function ShipmentToolbar({
   shelfPickup?: boolean;
 }) {
   const pendingForLabel = pickupIds.length || pickupCount;
-  const compactPickup = ackMode === "pickup";
+  const compactPickup = ackMode === "pickup" || ackMode === "teeth_handover";
   const pickupLabel = myOrderPickupAckLabel(pendingForLabel, ackMode, { compact: compactPickup });
   const pickupTitle = myOrderPickupAckTitle(pendingForLabel, ackMode);
   const ackPrimaryVariant = isInformacjaAck ? "segmentInformacja" : "segmentPrimary";
@@ -403,7 +403,9 @@ export const MyOrderShipmentCard = memo(function MyOrderShipmentCard({
   const showRowHeadline = !suppressSharedHeadline;
 
   const needsAck =
-    row.acknowledgeMode === "pickup" || row.acknowledgeMode === "availability";
+    row.acknowledgeMode === "pickup" ||
+    row.acknowledgeMode === "teeth_handover" ||
+    row.acknowledgeMode === "availability";
   const needsCancelAck =
     row.acknowledgeMode === "cancelled" && row.cancelledAckOrderIds.length > 0;
   const needsCancelNoticeAck =
@@ -426,8 +428,12 @@ export const MyOrderShipmentCard = memo(function MyOrderShipmentCard({
     : onAcknowledgeCancelled!;
 
   const ackMode: MyOrderPickupAckMode =
-    row.acknowledgeMode === "availability" ? "availability" : "pickup";
-  const compactPickup = ackMode === "pickup";
+    row.acknowledgeMode === "availability"
+      ? "availability"
+      : row.acknowledgeMode === "teeth_handover"
+        ? "teeth_handover"
+        : "pickup";
+  const compactPickup = ackMode === "pickup" || ackMode === "teeth_handover";
   const pickupAckLabel = myOrderPickupAckLabel(row.pickupPendingIds.length, ackMode, {
     compact: compactPickup,
   });
@@ -458,7 +464,8 @@ export const MyOrderShipmentCard = memo(function MyOrderShipmentCard({
   const isCancelAck = showDismissAck;
   const isAction =
     headlineTone === "action" ||
-    row.acknowledgeMode === "pickup";
+    row.acknowledgeMode === "pickup" ||
+    row.acknowledgeMode === "teeth_handover";
   const isUrgent = headlineTone === "warning";
   const isDismiss = headlineTone === "dismiss";
   const isStock = headlineTone === "stock";
@@ -684,7 +691,9 @@ export const MyOrderShipmentCard = memo(function MyOrderShipmentCard({
   const compactPickupOrAvailability =
     compactActionLayout &&
     !expanded &&
-    (row.acknowledgeMode === "pickup" || row.acknowledgeMode === "availability") &&
+    (row.acknowledgeMode === "pickup" ||
+      row.acknowledgeMode === "teeth_handover" ||
+      row.acknowledgeMode === "availability") &&
     needsAck;
   const compactCancelAck =
     compactActionLayout && !expanded && isCancelAck;

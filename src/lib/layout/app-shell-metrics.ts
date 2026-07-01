@@ -24,6 +24,7 @@ import {
   fetchSalesBoardAttentionSnapshot,
 } from "@/lib/data/department-board";
 import { countOpenSalesBugReports } from "@/lib/data/sales-bug-reports";
+import type { ProcurementWorkspace } from "@/lib/auth/procurement-workspace";
 import type { UserRole } from "@/types/database";
 import {
   EMPTY_APP_SHELL_METRICS,
@@ -39,6 +40,7 @@ export type AppShellMetricsInput = {
   adminPanelPreview: AdminPanelContext | null;
   showSalesOnboarding: boolean;
   previewHeaderId: string | null;
+  procurementWorkspace?: ProcurementWorkspace | null;
 };
 
 export async function fetchAppShellMetrics(
@@ -52,7 +54,17 @@ export async function fetchAppShellMetrics(
     adminPanelPreview,
     showSalesOnboarding,
     previewHeaderId,
+    procurementWorkspace = null,
   } = input;
+
+  const showOperationsBadges =
+    Boolean(role && canAccessOperations(role)) &&
+    (procurementWorkspace === "dostawy" ||
+      (procurementWorkspace == null && role !== "zakupy_zeby"));
+  const showTeethBadges =
+    Boolean(role && canAccessTeethPanel(role)) &&
+    (procurementWorkspace === "zeby" ||
+      (procurementWorkspace == null && role === "zakupy_zeby"));
 
   let navBadges = { ...EMPTY_APP_SHELL_METRICS.navBadges };
   let salesActivityVersion: string | null = null;
@@ -63,7 +75,7 @@ export async function fetchAppShellMetrics(
   let salesBoardAttention = null as AppShellMetrics["salesBoardAttention"];
   let operationsPinnedAnnouncements = EMPTY_APP_SHELL_METRICS.operationsPinnedAnnouncements;
 
-  if (role && canAccessOperations(role)) {
+  if (showOperationsBadges) {
     try {
       const [metrics, pinnedAnnouncements] = await Promise.all([
         fetchOperationsDailyPanelMetrics(),
@@ -82,14 +94,20 @@ export async function fetchAppShellMetrics(
     }
   }
 
-  if (role && canAccessTeethPanel(role)) {
+  if (showTeethBadges) {
     try {
       const { countTeethQueue, fetchTeethQueueVersion } = await import("@/lib/data/teeth-queue");
-      const [teethCount, teethVersion] = await Promise.all([
+      const { fetchTeethWarehouseStatus } = await import("@/lib/data/teeth-warehouse-status");
+      const [teethCount, teethVersion, warehouseStatus] = await Promise.all([
         countTeethQueue(),
         fetchTeethQueueVersion(),
+        fetchTeethWarehouseStatus().catch(() => null),
       ]);
-      navBadges = { ...navBadges, teethQueue: teethCount };
+      navBadges = {
+        ...navBadges,
+        teethQueue: teethCount,
+        teethReceivePending: warehouseStatus?.summary.activeCount ?? 0,
+      };
       teethPanelVersion = teethVersion;
     } catch {
       /* badge opcjonalny */
@@ -183,7 +201,7 @@ export async function fetchAppShellMetrics(
     }
   }
 
-  if (role && session.id && canAccessOperationsNotepad(role)) {
+  if (role && session.id && canAccessOperationsNotepad(role) && showOperationsBadges) {
     try {
       const { countOperationsNotepadBadge } = await import("@/lib/data/operations-notepad");
       const count = await countOperationsNotepadBadge(

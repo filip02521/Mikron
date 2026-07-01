@@ -38,6 +38,8 @@ function sourceRowAccent(source: SalesDayStartItem["source"]): string {
     case "pickup":
     case "zk_warehouse":
       return "border-l-emerald-500 hover:bg-emerald-50/35";
+    case "teeth_handover":
+      return "border-l-violet-500 hover:bg-violet-50/40";
     case "cancel_ack":
       return "border-l-amber-500 hover:bg-amber-50/50";
     case "informacja_ready":
@@ -56,6 +58,8 @@ function sourceTagClass(source: SalesDayStartItem["source"]): string {
   switch (source) {
     case "pickup":
       return "bg-emerald-50 text-emerald-800 ring-emerald-100";
+    case "teeth_handover":
+      return "bg-violet-50 text-violet-800 ring-violet-100";
     case "zk_warehouse":
       return "bg-emerald-50 text-emerald-900 ring-emerald-100";
     case "cancel_ack":
@@ -74,7 +78,9 @@ function sourceTagClass(source: SalesDayStartItem["source"]): string {
 
 function ctaControlClass(item: SalesDayStartItem): string {
   if (
-    (item.source === "pickup" || item.source === "zk_warehouse") &&
+    (item.source === "pickup" ||
+      item.source === "teeth_handover" ||
+      item.source === "zk_warehouse") &&
     item.ctaLabel === "Potwierdź"
   ) {
     return mojePickupControlClass;

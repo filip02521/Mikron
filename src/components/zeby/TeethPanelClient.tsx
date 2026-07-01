@@ -3,30 +3,29 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useTeethProductInfo } from "@/components/layout/TeethExemptContext";
-import { panelWorkspaceShellClass } from "@/lib/ui/ontime-theme";
 import { plPozycja, plZaznaczonaPozycja } from "@/lib/ui/polish-plurals";
-import { Card, CardHeader } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { ModalShell } from "@/components/ui/ModalShell";
 import { Toast } from "@/components/ui/Toast";
 import { Input } from "@/components/ui/Field";
-import { SectionHeadingIcon } from "@/components/icons/SectionHeadingIcon";
-import { IconTooth } from "@/components/icons/StrokeIcons";
+import { IconTooth, IconCircleCheck } from "@/components/icons/StrokeIcons";
 import type { TeethQueueGroup, TeethQueueItem } from "@/lib/data/teeth-queue";
 import { isScheduledItem } from "@/lib/data/teeth-queue";
 import { TeethPanelTabs } from "@/components/zeby/TeethPanelTabs";
 import {
-  TEETH_PANEL_HINT,
-  TEETH_PANEL_TITLE,
   TEETH_TAB_HINTS,
+  TEETH_TAB_PAGE_TITLES,
 } from "@/components/zeby/teeth-panel-copy";
 import { TeethPanelEmpty, TeethPanelTabPanel } from "@/components/zeby/TeethPanelSection";
+import { TeethPanelWorkspaceCard } from "@/components/zeby/TeethPanelWorkspaceCard";
 import { TeethPanelFiltersBar } from "@/components/zeby/TeethPanelFiltersBar";
 import { TeethPanelKolejkaView } from "@/components/zeby/TeethPanelKolejkaView";
 import { TeethPanelHistoriaView } from "@/components/zeby/TeethPanelHistoriaView";
-import { TeethPanelHarmonogramView } from "@/components/zeby/TeethPanelHarmonogramView";
 import { TeethPanelMarkOrderedDialog } from "@/components/zeby/TeethPanelMarkOrderedDialog";
-import { TeethPanelContentFooter } from "@/components/zeby/TeethPanelContentFooter";
+import {
+  TEETH_HISTORIA_ICON_TILE,
+  TEETH_PANEL_ICON_TILE,
+} from "@/lib/teeth/teeth-panel-shell";
 import type { Tab } from "@/components/zeby/teeth-panel-types";
 import { VALID_TEETH_PANEL_TABS } from "@/components/zeby/teeth-panel-types";
 import {
@@ -41,7 +40,6 @@ import {
   extractTeethFilterOptions,
   filterTeethQueueGroups,
   mergeTeethFilterOptions,
-  teethQueueStatsBySupplier,
   type TeethPanelFilters,
 } from "@/lib/teeth/teeth-panel-filters";
 import {
@@ -50,13 +48,17 @@ import {
 } from "@/lib/teeth/teeth-mark-ordered";
 import { teethPanelReadinessContextFromMaps } from "@/lib/teeth/teeth-panel-order-readiness";
 
-const TEETH_ICON_TILE =
-  "bg-gradient-to-br from-emerald-600 to-teal-600 text-white shadow-[var(--shadow-brand)] ring-1 ring-emerald-500/30";
+const TEETH_TAB_PATHS: Record<Tab, string> = {
+  kolejka: "/zeby/kolejka",
+  historia: "/zeby/historia",
+};
 
 export function TeethPanelClient({
   initialGroups,
+  activeTab: activeTabProp,
 }: {
   initialGroups: TeethQueueGroup[];
+  activeTab?: Tab;
 }) {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -66,8 +68,9 @@ export function TeethPanelClient({
     [teethProductInfo],
   );
   const tabParam = searchParams.get("tab");
-  const tab: Tab =
-    tabParam && VALID_TEETH_PANEL_TABS.includes(tabParam as Tab) ? (tabParam as Tab) : "kolejka";
+  const tabFromQuery =
+    tabParam && VALID_TEETH_PANEL_TABS.includes(tabParam as Tab) ? (tabParam as Tab) : null;
+  const tab: Tab = activeTabProp ?? tabFromQuery ?? "kolejka";
 
   const [groups, setGroups] = useState(initialGroups);
   const [prevInitialGroups, setPrevInitialGroups] = useState(initialGroups);
@@ -93,7 +96,6 @@ export function TeethPanelClient({
   const [markConfirmOpen, setMarkConfirmOpen] = useState(false);
   const [markAnalysis, setMarkAnalysis] = useState<TeethMarkOrderedAnalysis | null>(null);
   const [markSupplierName, setMarkSupplierName] = useState<string | null>(null);
-  const [pendingMarkIds, setPendingMarkIds] = useState<string[]>([]);
   const [historyGroupsForFilters, setHistoryGroupsForFilters] = useState<TeethQueueGroup[]>([]);
 
   const reloadHistoryFilterOptions = useCallback(() => {
@@ -111,6 +113,14 @@ export function TeethPanelClient({
   useEffect(() => {
     if (tab === "historia") reloadHistoryFilterOptions();
   }, [tab, reloadHistoryFilterOptions]);
+
+  const displayFilters = useMemo(
+    () =>
+      tab === "historia"
+        ? { ...filters, missingSpecOnly: false, verificationOnly: false }
+        : filters,
+    [tab, filters],
+  );
 
   const filterOptions = useMemo(
     () =>
@@ -144,11 +154,6 @@ export function TeethPanelClient({
     }
     return next;
   }, [selectedIdsRaw, visibleOrderIds]);
-
-  const queueStatsBySupplier = useMemo(
-    () => teethQueueStatsBySupplier(groups, readinessCtx),
-    [groups, readinessCtx],
-  );
 
   const ordersById = useMemo(() => {
     const map = new Map<string, TeethQueueItem>();
@@ -195,7 +200,6 @@ export function TeethPanelClient({
       const unique = [...new Set(orderIds)].filter((id) => ordersById.has(id));
       if (unique.length === 0) return;
       const analysis = analyzeTeethMarkOrdered(unique, ordersById, readinessCtx);
-      setPendingMarkIds(unique);
       setMarkAnalysis(analysis);
       setMarkSupplierName(supplierName ?? null);
       setMarkConfirmOpen(true);
@@ -205,26 +209,30 @@ export function TeethPanelClient({
 
   const handleConfirmMarkOrdered = useCallback(async () => {
     setMarkConfirmOpen(false);
-    if (pendingMarkIds.length === 0) return;
+    const idsToMark = markAnalysis?.withSpecIds ?? [];
+    if (idsToMark.length === 0) return;
     setPending(true);
     try {
-      const result = await actionMarkTeethOrdered(pendingMarkIds);
+      const result = await actionMarkTeethOrdered(idsToMark);
       if (result.updated === 0) {
         setToast({
           message: "Nie udało się oznaczyć pozycji — być może zostały już zamówione.",
           tone: "error",
         });
       } else {
+        const skipped = (markAnalysis?.withoutSpecIds.length ?? 0);
         setToast({
           message:
-            result.updated === 1
-              ? "1 pozycja oznaczona jako zamówiona"
-              : `${result.updated} ${plPozycja(result.updated)} oznaczonych jako zamówione`,
+            skipped > 0
+              ? `Oznaczono ${result.updated} ${plPozycja(result.updated)} — ${skipped} pominięto (niekompletna lista zębów).`
+              : result.updated === 1
+                ? "1 pozycja oznaczona jako zamówiona"
+                : `${result.updated} ${plPozycja(result.updated)} oznaczonych jako zamówione`,
           tone: "success",
         });
         setSelectedIds((prev) => {
           const next = new Set(prev);
-          for (const id of pendingMarkIds) next.delete(id);
+          for (const id of idsToMark) next.delete(id);
           return next;
         });
         reloadHistoryFilterOptions();
@@ -237,11 +245,10 @@ export function TeethPanelClient({
       });
     } finally {
       setPending(false);
-      setPendingMarkIds([]);
       setMarkAnalysis(null);
       setMarkSupplierName(null);
     }
-  }, [pendingMarkIds, router, reloadHistoryFilterOptions]);
+  }, [markAnalysis, router, reloadHistoryFilterOptions]);
 
   const handleSetDeliveryDate = useCallback(async () => {
     setDeliveryDateOpen(false);
@@ -293,40 +300,42 @@ export function TeethPanelClient({
 
   const navigateTab = useCallback(
     (id: Tab) => {
-      const params = new URLSearchParams(searchParams.toString());
-      if (id === "kolejka") {
-        params.delete("tab");
-      } else {
-        params.set("tab", id);
-      }
-      const qs = params.toString();
-      router.replace(qs ? `/zeby?${qs}` : "/zeby", { scroll: false });
+      router.push(TEETH_TAB_PATHS[id], { scroll: false });
     },
-    [router, searchParams],
+    [router],
   );
 
   return (
-    <div className={panelWorkspaceShellClass}>
-      <Card padding={false} className="overflow-x-clip">
-        <CardHeader
-          inset
-          density="compact"
-          leading={
-            <SectionHeadingIcon tileClassName={TEETH_ICON_TILE}>
-              <IconTooth size={20} />
-            </SectionHeadingIcon>
-          }
-          title={TEETH_PANEL_TITLE}
-          hint={TEETH_PANEL_HINT}
-          hintAriaLabel="Informacja o panelu zębów"
-        />
-
-        <TeethPanelTabs
-          active={tab}
-          queueCount={totalItems}
-          hint={TEETH_TAB_HINTS[tab]}
-          onChange={navigateTab}
-        />
+    <>
+      <TeethPanelWorkspaceCard
+        title={TEETH_TAB_PAGE_TITLES[tab]}
+        hint={TEETH_TAB_HINTS[tab]}
+        icon={
+          tab === "historia" ? (
+            <IconCircleCheck size={20} strokeWidth={1.75} />
+          ) : (
+            <IconTooth size={20} />
+          )
+        }
+        iconTileClassName={tab === "historia" ? TEETH_HISTORIA_ICON_TILE : TEETH_PANEL_ICON_TILE}
+        beforeCard={
+          toast ? (
+            <Toast
+              message={toast.message}
+              tone={toast.tone}
+              onDismiss={() => setToast(null)}
+            />
+          ) : null
+        }
+      >
+        <div className="md:hidden">
+          <TeethPanelTabs
+            active={tab}
+            queueCount={totalItems}
+            hint={TEETH_TAB_HINTS[tab]}
+            onChange={navigateTab}
+          />
+        </div>
 
         {tab === "kolejka" ? (
           <TeethPanelTabPanel id="teeth-panel-view-kolejka" labelledBy="teeth-panel-tab-kolejka">
@@ -364,29 +373,25 @@ export function TeethPanelClient({
               />
             )}
           </TeethPanelTabPanel>
-        ) : tab === "historia" ? (
+        ) : (
           <TeethPanelTabPanel id="teeth-panel-view-historia" labelledBy="teeth-panel-tab-historia">
             <TeethPanelFiltersBar
-              filters={filters}
+              filters={displayFilters}
               onChange={setFilters}
               suppliers={filterOptions.suppliers}
               salesPeople={filterOptions.salesPeople}
+              showQueueFilters={false}
             />
             <TeethPanelHistoriaView
               groups={null}
               readinessCtx={readinessCtx}
-              filters={filters}
+              filters={displayFilters}
               onToast={setToast}
               onReloadQueue={() => router.refresh()}
             />
           </TeethPanelTabPanel>
-        ) : (
-          <TeethPanelTabPanel id="teeth-panel-view-harmonogram" labelledBy="teeth-panel-tab-harmonogram">
-            <TeethPanelHarmonogramView onToast={setToast} queueStatsBySupplier={queueStatsBySupplier} />
-          </TeethPanelTabPanel>
         )}
-        <TeethPanelContentFooter />
-      </Card>
+      </TeethPanelWorkspaceCard>
 
       <TeethPanelMarkOrderedDialog
         open={markConfirmOpen}
@@ -396,7 +401,6 @@ export function TeethPanelClient({
         onConfirm={() => void handleConfirmMarkOrdered()}
         onCancel={() => {
           setMarkConfirmOpen(false);
-          setPendingMarkIds([]);
           setMarkAnalysis(null);
           setMarkSupplierName(null);
         }}
@@ -446,15 +450,6 @@ export function TeethPanelClient({
           className="w-full"
         />
       </ModalShell>
-
-      {/* Toast */}
-      {toast ? (
-        <Toast
-          message={toast.message}
-          tone={toast.tone}
-          onDismiss={() => setToast(null)}
-        />
-      ) : null}
-    </div>
+    </>
   );
 }

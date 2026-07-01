@@ -61,12 +61,14 @@ export function SupplierFilterChips({
   value,
   onChange,
   totalLabel = "Wszyscy",
+  fieldLabel = "Dostawca",
   className,
 }: {
   chips: SupplierCountChip[];
   value: string;
   onChange: (supplierKey: string) => void;
   totalLabel?: string;
+  fieldLabel?: string;
   className?: string;
 }) {
   const [query, setQuery] = useState("");
@@ -120,7 +122,7 @@ export function SupplierFilterChips({
   return (
     <div className={cn("min-w-0 flex-1", className)}>
       <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
-        <span className={queueToolbarFieldLabelClass}>Dostawca</span>
+        <span className={queueToolbarFieldLabelClass}>{fieldLabel}</span>
         {value ? (
           <button
             type="button"

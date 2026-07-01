@@ -30,7 +30,6 @@ export function QueuePanelToolbar({
   inventoryCount = 0,
   journalCount = 0,
   showProcurementLinks = true,
-  showTeethLink = false,
 }: {
   view: QueueView;
   onViewChange: (view: QueueView) => void;
@@ -39,7 +38,6 @@ export function QueuePanelToolbar({
   inventoryCount?: number;
   journalCount?: number;
   showProcurementLinks?: boolean;
-  showTeethLink?: boolean;
 }) {
   const receiveHint = buildReceiveHint(summary);
   const inventoryHint =
@@ -99,12 +97,8 @@ export function QueuePanelToolbar({
           <Link href="/podsumowanie" className={brandLinkClass}>
             panelu dziennym
           </Link>
-          .
-        </p>
-      ) : showTeethLink ? (
-        <p className="mt-2 text-[10px] text-slate-500">
-          Zęby oznaczasz w{" "}
-          <Link href="/zeby" className={brandLinkClass}>
+          . Zęby przyjmujesz w{" "}
+          <Link href="/zeby/przyjecie" className={brandLinkClass}>
             panelu zębów
           </Link>
           .

@@ -102,6 +102,7 @@ export function TeethPanelEditOrderTrigger({
           suppliers={editState.suppliers}
           salesPeople={editState.salesPeople}
           autoSaveAfterTeethList
+          teethRequest
           onSaved={(message) => {
             setOpen(false);
             setEditState(null);

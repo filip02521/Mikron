@@ -423,7 +423,7 @@ export async function actionUpdateIndividualRequest(
   if (!user || (!canAccessOperations(user.role) && !canAccessTeethPanel(user.role))) {
     throw new Error("Brak uprawnień do edycji prośby");
   }
-  if (canAccessOperations(user.role) && !canAccessTeethPanel(user.role)) {
+  if (isAdmin(user.role)) {
     await assertAdminPanelAllowsOperationsMutations(user);
   }
   const result = await updateIndividualRequestGroup(orderIds, payload, {});
@@ -752,11 +752,17 @@ export async function actionSetProcurementCancelDisposition(
   return { success: true };
 }
 
-export async function actionUpdateDelivered(orderId: string, qty: string) {
-  const { requireWarehouse } = await import("@/lib/auth");
-  await requireWarehouse("mutate");
+export async function actionUpdateDelivered(
+  orderId: string,
+  qty: string,
+  teethLineDelivered?: Record<string, number> | null,
+) {
+  const { requireReceiveMutateForOrders } = await import("@/lib/auth");
+  await requireReceiveMutateForOrders([orderId], "mutate");
   const snapshot = await captureDeliverySnapshot(orderId);
-  const { emailSent, emailError } = await updateDeliveredQuantity(orderId, qty);
+  const { emailSent, emailError } = await updateDeliveredQuantity(orderId, qty, {
+    teethLineDelivered,
+  });
   revalidateAll();
 
   return {
@@ -850,7 +856,7 @@ export async function actionSetWarehouseShelf(orderId: string, shelf: string) {
 }
 
 export async function actionBatchUpdateDelivered(
-  updates: Array<{ orderId: string; qty: string }>
+  updates: Array<{ orderId: string; qty: string; teethLineDelivered?: Record<string, number> | null }>
 ): Promise<
   | {
       success: true;
@@ -863,14 +869,19 @@ export async function actionBatchUpdateDelivered(
     }
   | { error: string }
 > {
-  const { requireWarehouse } = await import("@/lib/auth");
-  await requireWarehouse("mutate");
   if (!updates.length) return { error: "Zaznacz pozycje i wpisz ilości do zapisania." };
+
+  const { requireReceiveMutateForOrders } = await import("@/lib/auth");
+  await requireReceiveMutateForOrders(updates.map((u) => u.orderId), "mutate");
 
   try {
     const snapshots = await captureDeliverySnapshots(updates.map((u) => u.orderId));
     const result = await batchUpdateDeliveredQuantities(
-      updates.map((u) => ({ orderId: u.orderId, deliveredQuantity: u.qty }))
+      updates.map((u) => ({
+        orderId: u.orderId,
+        deliveredQuantity: u.qty,
+        teethLineDelivered: u.teethLineDelivered,
+      })),
     );
     revalidateAll();
 
@@ -900,8 +911,11 @@ export async function actionBatchUpdateDelivered(
 }
 
 export async function actionUndoDelivery(payload: DeliveryUndoPayload) {
-  const { requireWarehouse } = await import("@/lib/auth");
-  await requireWarehouse("mutate");
+  const { requireReceiveMutateForOrders } = await import("@/lib/auth");
+  await requireReceiveMutateForOrders(
+    payload.token.snapshots.map((s) => s.orderId),
+    "mutate",
+  );
   if (isDeliveryUndoExpired(payload)) {
     throw new Error(`Minął czas na cofnięcie przyjęcia towaru (${undoWindowShortLabel()}).`);
   }

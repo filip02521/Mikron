@@ -8,6 +8,10 @@ import {
   toDateOnly,
 } from "@/lib/orders/dates";
 import type { DayOfWeek, TeethSupplierSchedule, TeethSupplierScheduleWithSupplier } from "@/types/database";
+import {
+  appendTeethOrderHistory,
+  type TeethOrderHistoryActor,
+} from "@/lib/data/teeth-order-history";
 
 export const DAY_OF_WEEK_LABELS: Record<DayOfWeek, string> = {
   1: "Poniedziałek",
@@ -111,6 +115,55 @@ function findNextWeekday(date: Date, targetDow: DayOfWeek): Date {
   const result = new Date(d);
   result.setDate(d.getDate() + diff);
   return result;
+}
+
+export type TeethSupplierLaneSnapshot = {
+  supplierId: string;
+  computedNextDate: string | null;
+  shiftDate: string | null;
+  lastOrderDate: string | null;
+  orderDayOfWeek: DayOfWeek | null;
+  intervalWeeks: number | null;
+};
+
+function mapLaneSnapshot(row: Record<string, unknown>): TeethSupplierLaneSnapshot {
+  return {
+    supplierId: String(row.supplier_id),
+    computedNextDate: (row.computed_next_date as string | null) ?? null,
+    shiftDate: (row.shift_date as string | null) ?? null,
+    lastOrderDate: (row.last_order_date as string | null) ?? null,
+    orderDayOfWeek: (row.order_day_of_week as DayOfWeek | null) ?? null,
+    intervalWeeks:
+      row.interval_weeks != null && Number.isFinite(Number(row.interval_weeks))
+        ? Number(row.interval_weeks)
+        : null,
+  };
+}
+
+/** Lekki indeks harmonogramów zębów — do panelu dziennego (dual lane). */
+export async function fetchTeethSupplierLaneIndex(): Promise<
+  Map<string, TeethSupplierLaneSnapshot>
+> {
+  if (!hasSupabaseConfig()) return new Map();
+
+  const supabase = createAdminClient();
+  const { data, error } = await supabase
+    .from("teeth_supplier_schedules")
+    .select(
+      "supplier_id, computed_next_date, shift_date, last_order_date, order_day_of_week, interval_weeks"
+    );
+
+  if (error) {
+    if (error.message?.includes("teeth_supplier_schedules")) return new Map();
+    throw new Error(error.message);
+  }
+
+  const map = new Map<string, TeethSupplierLaneSnapshot>();
+  for (const row of data ?? []) {
+    const snap = mapLaneSnapshot(row as Record<string, unknown>);
+    map.set(snap.supplierId, snap);
+  }
+  return map;
 }
 
 /** Pobierz wszystkie harmonogramy zębów z nazwami dostawców. */
@@ -256,7 +309,8 @@ export async function markTeethScheduleOrdered(
 /** Jednorazowe przesunięcie harmonogramu zębów. */
 export async function shiftTeethSchedule(
   supplierId: string,
-  manualDate: Date | null
+  manualDate: Date | null,
+  actor?: TeethOrderHistoryActor
 ): Promise<void> {
   if (!hasSupabaseConfig()) return;
 
@@ -287,6 +341,15 @@ export async function shiftTeethSchedule(
   }
 
   await recalcTeethSchedule(supplierId);
+
+  await appendTeethOrderHistory({
+    action: "schedule_shift",
+    actor,
+    supplierId,
+    meta: {
+      shiftDate: manualDate ? formatDateString(snapToBusinessDay(manualDate)) : null,
+    },
+  });
 }
 
 /** Pobierz listę aktywnych dostawców niebędących jeszcze w harmonogramie zębów. */

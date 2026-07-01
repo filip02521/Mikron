@@ -175,6 +175,8 @@ export interface IndividualOrder {
   teeth_delivery_date?: string | null;
   /** Szczegóły zębowe (kolor, wzór, rozmiar) per pozycja — dołączone przy pobieraniu. */
   teeth_details?: IndividualOrderTeethDetail[] | null;
+  /** Przyjęte sztuki per linia spec (klucz: teethReceiveGroupKey). */
+  teeth_line_delivered?: Record<string, number> | null;
   supplier?: Supplier;
   sales_person?: SalesPerson;
 }

@@ -24,7 +24,7 @@ export { TEETH_CHIP_OTHER };
 
 export const TEETH_KIND_LABELS: Record<TeethKind, string> = {
   anterior: "Przednie",
-  posterior: "Tylne",
+  posterior: "Boczne",
 };
 
 export const TEETH_MANUFACTURERS: { id: TeethManufacturer; label: string }[] = [
@@ -93,6 +93,17 @@ export function defaultProductLineForManufacturer(manufacturer: TeethManufacture
 const ANTERIOR_KEYWORDS = ["przednie", "przód", "przod", "przedni", "front", "przody"];
 const POSTERIOR_KEYWORDS = ["boczne", "boczny", "tylne", "tylny", "tył", "tyl", "back", "boki"];
 
+/** Nazwa towaru wskazuje linię Wiedent Estetic wg skali VITA (nie skala W). */
+export function isWiedentEsteticVitaProductName(productName: string): boolean {
+  const n = productName.toLowerCase().normalize("NFD").replace(/\p{M}/gu, "");
+  if (!n.includes("wiedent") && !n.includes("wident")) return false;
+  if (/wg\.?\s*vity|wg\s+vity/.test(n)) return true;
+  if (n.includes("estetic") && n.includes("vita")) return true;
+  // np. „Wiedent Vita zęby przody” — bez słowa „estetic”
+  if (/\bvita\b/.test(n)) return true;
+  return n.includes("vita");
+}
+
 export function detectTeethKind(name: string): TeethKind | null {
   const lower = name.toLowerCase();
   if (ANTERIOR_KEYWORDS.some((kw) => lower.includes(kw))) return "anterior";
@@ -113,7 +124,7 @@ export function detectTeethProductLine(
   if (/om\s*1|om\s*3|0m1|0m3|wybielon/.test(n) && n.includes("wiedent")) {
     return "wiedent_estetic_om";
   }
-  if ((/wg\.?\s*vity|wg vity/.test(n) || (n.includes("vita") && n.includes("estetic"))) && n.includes("wiedent")) {
+  if (isWiedentEsteticVitaProductName(productName)) {
     return "wiedent_estetic_vita";
   }
   if (n.includes("wiedent") || n.includes("wident")) {
@@ -180,12 +191,20 @@ export function authoritativeTeethProductLine(input: {
   product?: string | null;
   frozenProductLine?: TeethProductLine | null;
 }): TeethProductLine | null {
-  if (input.adminProductLine) {
-    return input.adminProductLine;
-  }
   const fromName = input.product?.trim()
     ? detectTeethProductLine(input.product, { manufacturer: input.teethManufacturer })
     : null;
+
+  if (input.adminProductLine) {
+    // Legacy admin: ogólny estetic zamiast linii Vita wykrytej z nazwy towaru.
+    if (
+      input.adminProductLine === "wiedent_estetic" &&
+      fromName === "wiedent_estetic_vita"
+    ) {
+      return fromName;
+    }
+    return input.adminProductLine;
+  }
   if (fromName) return fromName;
   if (input.frozenProductLine) return input.frozenProductLine;
   if (input.teethManufacturer) {

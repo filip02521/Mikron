@@ -60,7 +60,9 @@ function orderProductLabel(order: IndividualOrder): string {
 }
 
 /** Szacunek wysokości wiersza — lekko zawyżony, żeby ograniczyć „przeskakiwanie” przed pomiarem. */
-export function estimateReceiveQueueVirtualItemSize(item: ReceiveQueueVirtualItem): number {
+export function estimateReceiveQueueVirtualItemSize(
+  item: ReceiveQueueVirtualItem,
+): number {
   if (item.kind === "supplier-header") {
     return RECEIVE_QUEUE_HEADER_ESTIMATE_PX;
   }

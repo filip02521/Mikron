@@ -9,7 +9,7 @@ export type OrderMaintenanceOnLoadOptions = {
 
 /**
  * Naprawa statusów (+ opcjonalnie auto-assign) przed fetch danych strony.
- * Nie wywoływać z AppShell / lekkich countów — tylko z page.tsx zakupów/magazynu.
+ * Nie wywoływać z AppShell / lekkich countów — tylko z page.tsx zakupów/magazynu/zębów.
  */
 export async function runOrderMaintenanceBeforePageLoad(
   options: OrderMaintenanceOnLoadOptions = {}

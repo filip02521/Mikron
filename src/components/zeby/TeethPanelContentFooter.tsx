@@ -6,6 +6,7 @@ import { AppBrandFooterLine } from "@/components/layout/AppBrandContentFooter";
 import { TeethPanelHowItWorksContent } from "@/components/zeby/TeethPanelHowItWorks";
 import { useTeethUpdates } from "@/components/zeby/TeethUpdatesContext";
 import { useSyncRelativeTime } from "@/hooks/useSyncRelativeTime";
+import { teethSupplierCardsHref } from "@/lib/teeth/teeth-supplier-dual-lane";
 import {
   panelContentFooterClass,
   panelContentFooterLinkClass,
@@ -27,11 +28,17 @@ export function TeethPanelContentFooter() {
         aria-label="Skróty panelu zębów"
         className="flex flex-wrap items-center justify-center gap-x-4 gap-y-2"
       >
-        <Link href="/podsumowanie" className={panelContentFooterLinkClass}>
-          Panel dzienny
+        <Link href="/zeby/kolejka" className={panelContentFooterLinkClass}>
+          Kolejka
         </Link>
-        <Link href="/zeby?tab=harmonogram" className={panelContentFooterLinkClass}>
-          Harmonogram
+        <Link href="/zeby/przyjecie" className={panelContentFooterLinkClass}>
+          Przyjęcie
+        </Link>
+        <Link href="/zeby/historia" className={panelContentFooterLinkClass}>
+          Historia
+        </Link>
+        <Link href={teethSupplierCardsHref()} className={panelContentFooterLinkClass}>
+          Karty dostawców
         </Link>
         <Link href="/zakupy/tablica" className={panelContentFooterLinkClass}>
           Tablica

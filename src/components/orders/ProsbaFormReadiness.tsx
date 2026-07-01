@@ -118,6 +118,7 @@ export function ProsbaFormReadiness({
   validationAttempted = false,
   compact = true,
   className,
+  teethExemptTwIds,
 }: {
   lines: ProsbaReadinessLine[];
   requestKind: IndividualRequestKind;
@@ -130,10 +131,12 @@ export function ProsbaFormReadiness({
   /** Zwarty widok: ukryj gdy gotowe; kroki w rozwijanym panelu. */
   compact?: boolean;
   className?: string;
+  teethExemptTwIds?: ReadonlySet<number>;
 }) {
   const view = buildProsbaFormReadiness(lines, requestKind, salesSubmitPlan, {
     resolvingSupplier,
     informacjaPath,
+    teethExemptTwIds,
   });
   const styles = toneStyles(view.tone);
 

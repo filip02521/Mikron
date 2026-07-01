@@ -44,6 +44,7 @@ export function ModalShell({
   bodyClassName,
   loadingMessage,
   disableBackdropClose = false,
+  bodyScroll = true,
 }: {
   open: boolean;
   onClose: () => void;
@@ -63,6 +64,8 @@ export function ModalShell({
   bodyClassName?: string;
   loadingMessage?: string | null;
   disableBackdropClose?: boolean;
+  /** Domyślnie treść modala przewija się wewnątrz panelu; wyłącz dla krótkich formularzy bez wewnętrznego scrolla. */
+  bodyScroll?: boolean;
 }) {
   useBodyScrollLock(open);
 
@@ -129,7 +132,10 @@ export function ModalShell({
           </header>
         ) : null}
         <div
-          className={cn("relative min-h-0 flex-1 overflow-y-auto", bodyClassName)}
+          className={cn(
+            bodyScroll ? "relative min-h-0 flex-1 overflow-y-auto" : "relative shrink-0 overflow-visible",
+            bodyClassName,
+          )}
           {...{ [SCROLL_LOCK_ALLOW_ATTR]: "" }}
         >
           {children}

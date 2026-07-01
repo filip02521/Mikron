@@ -33,6 +33,14 @@ export function VerificationHelp() {
       <HelpBlock title="Anulowanie">
         <p>Usuwa prośbę z systemu — używaj tylko wtedy, gdy zgłoszenie było błędne.</p>
       </HelpBlock>
+
+      <HelpBlock title="Prośby na zęby">
+        <p>
+          Zamówień zębowych nie uzupełniasz tutaj — trafiają do{" "}
+          <strong className="font-medium text-slate-800">panelu zębów</strong> (/zeby), gdzie
+          uzupełnia się listę zębów i oznacza zamówienie u labu.
+        </p>
+      </HelpBlock>
     </HelpPopover>
   );
 }

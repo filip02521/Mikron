@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import type { ProductLineDraft } from "@/components/orders/request-product-lines";
 import {
   formatProsbaLineSummary,
+  focusLineIdAfterTeethSave,
   isProsbaLineFromSubiekt,
   isProsbaLineReady,
   shouldCollapseProsbaLine,
@@ -52,6 +53,29 @@ describe("shouldCollapseProsbaLine", () => {
     const active = { ...baseLine, id: "2" };
     expect(shouldCollapseProsbaLine(ready, "zamowienie", 2, active.id)).toBe(true);
     expect(shouldCollapseProsbaLine(active, "zamowienie", 2, active.id)).toBe(false);
+  });
+
+  it("zwija wszystkie gotowe pozycje gdy brak aktywnej linii", () => {
+    const readyA = { ...baseLine, id: "1", product: "A", quantity: "1", subiektTwId: 1 };
+    const readyB = { ...baseLine, id: "2", product: "B", quantity: "2", subiektTwId: 2 };
+    expect(shouldCollapseProsbaLine(readyA, "zamowienie", 2, "")).toBe(true);
+    expect(shouldCollapseProsbaLine(readyB, "zamowienie", 2, "")).toBe(true);
+  });
+});
+
+describe("focusLineIdAfterTeethSave", () => {
+  it("zwija zapisane pozycje gdy wszystkie gotowe", () => {
+    const lines = [
+      { ...baseLine, id: "1", product: "Przednie", quantity: "4", subiektTwId: 1, teethDetails: [{} as never] },
+      { ...baseLine, id: "2", product: "Boczne", quantity: "8", subiektTwId: 2, teethDetails: [{} as never] },
+    ];
+    expect(focusLineIdAfterTeethSave(lines, ["1", "2"], "zamowienie")).toBeNull();
+  });
+
+  it("zostawia rozwiniętą niegotową pozycję", () => {
+    const ready = { ...baseLine, id: "1", product: "A", quantity: "1", subiektTwId: 1 };
+    const draft = { ...baseLine, id: "2", product: "" };
+    expect(focusLineIdAfterTeethSave([ready, draft], ["1"], "zamowienie")).toBe("2");
   });
 });
 

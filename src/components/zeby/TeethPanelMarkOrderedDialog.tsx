@@ -1,6 +1,5 @@
 "use client";
 
-import { useState } from "react";
 import { Button } from "@/components/ui/Button";
 import { ModalShell } from "@/components/ui/ModalShell";
 import {
@@ -25,19 +24,9 @@ export function TeethPanelMarkOrderedDialog({
   onConfirm: () => void;
   onCancel: () => void;
 }) {
-  const analysisOrderKey = analysis?.orderIds.join(",") ?? "";
-  const ackResetKey = open ? analysisOrderKey : "closed";
-  const [ackMissingSpec, setAckMissingSpec] = useState(false);
-  const [prevAckResetKey, setPrevAckResetKey] = useState(ackResetKey);
-  if (ackResetKey !== prevAckResetKey) {
-    setPrevAckResetKey(ackResetKey);
-    setAckMissingSpec(false);
-  }
-
   if (!analysis || analysis.orderIds.length === 0) return null;
 
-  const needsAck = analysis.hasMissingSpec;
-  const canConfirm = !needsAck || ackMissingSpec;
+  const canConfirm = analysis.canMarkAny;
 
   return (
     <ModalShell
@@ -60,34 +49,21 @@ export function TeethPanelMarkOrderedDialog({
           >
             Anuluj
           </Button>
-          <Button
-            variant={needsAck ? "danger" : "primary"}
-            className="min-h-11 w-full sm:w-auto"
-            onClick={onConfirm}
-            disabled={pending || !canConfirm}
-          >
-            {teethMarkOrderedConfirmLabel(analysis)}
-          </Button>
+          {canConfirm ? (
+            <Button
+              className="min-h-11 w-full sm:w-auto"
+              onClick={onConfirm}
+              disabled={pending}
+            >
+              {teethMarkOrderedConfirmLabel(analysis)}
+            </Button>
+          ) : null}
         </div>
       }
     >
       <p className="whitespace-pre-line text-sm leading-relaxed text-slate-600">
         {teethMarkOrderedConfirmMessage(analysis, supplierName)}
       </p>
-      {needsAck ? (
-        <label className="mt-4 flex cursor-pointer items-start gap-2.5 rounded-md border border-amber-200/90 bg-amber-50/80 px-3 py-2.5 text-sm text-amber-950">
-          <input
-            type="checkbox"
-            checked={ackMissingSpec}
-            onChange={(e) => setAckMissingSpec(e.target.checked)}
-            className="mt-0.5 size-4 shrink-0 rounded border-amber-400 text-amber-700"
-          />
-          <span>
-            Potwierdzam zamówienie u dostawcy mimo brakujących list zębów — biorę odpowiedzialność
-            za weryfikację przed telefonem.
-          </span>
-        </label>
-      ) : null}
     </ModalShell>
   );
 }

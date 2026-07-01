@@ -16,7 +16,11 @@ import {
   updateProductLine,
   type ProductLineDraft,
 } from "@/components/orders/request-product-lines";
-import { shouldCollapseProsbaLine } from "@/lib/orders/prosba-product-line-ui";
+import {
+  focusLineIdAfterTeethSave,
+  shouldCollapseProsbaLine,
+} from "@/lib/orders/prosba-product-line-ui";
+import type { TeethDualKindCommitSummary } from "@/lib/teeth/teeth-dual-kind";
 import { ProsbaProductStockSummary } from "@/components/orders/ProsbaProductStockStatus";
 import { ProsbaZkQuantityHint } from "@/components/orders/ProsbaProductStockStatus";
 import { filterProsbaLinesWithSufficientStock } from "@/lib/orders/prosba-stock-check";
@@ -66,6 +70,8 @@ export function RequestProductLinesEditor({
   showLineNotes,
   typeaheadSize = "default",
   onAfterTeethListSave,
+  onTeethListCommitNotice,
+  onTeethDualKindCommit,
   autoOpenTeethList = false,
 }: {
   lines: ProductLineDraft[];
@@ -100,8 +106,16 @@ export function RequestProductLinesEditor({
   onAfterTeethListSave?: (
     lineIndex: number,
     teethDetails: TeethLineDetail[],
-    totalQuantity: number
+    totalQuantity: number,
+    saveResult?: import("@/components/teeth/TeethOrderBuilderModal").TeethOrderBuilderSaveResult,
   ) => void;
+  onTeethListCommitNotice?: (message: string, tone?: "success" | "error") => void;
+  onTeethDualKindCommit?: (payload: {
+    lineIndex: number;
+    lines: ProductLineDraft[];
+    summary: import("@/lib/teeth/teeth-dual-kind").TeethDualKindCommitSummary;
+    focusLineId: string | null;
+  }) => void;
   /** Otwiera modal listy zębów dla pierwszej linii (panel zakupów). */
   autoOpenTeethList?: boolean;
 }) {
@@ -112,12 +126,15 @@ export function RequestProductLinesEditor({
   const showLineLabel = !prosba || lines.length > 1;
   const wrapLine = prosba ? lines.length > 1 : true;
 
-  const [focusedLineId, setFocusedLineId] = useState(
-    () => lines[lines.length - 1]?.id ?? ""
+  const [focusedLineId, setFocusedLineId] = useState<string | null>(
+    () => lines[lines.length - 1]?.id ?? null,
   );
-  const activeLineId = lines.some((line) => line.id === focusedLineId)
-    ? focusedLineId
-    : (lines[lines.length - 1]?.id ?? "");
+  const activeLineId =
+    focusedLineId != null && lines.some((line) => line.id === focusedLineId)
+      ? focusedLineId
+      : focusedLineId === null
+        ? ""
+        : (lines[lines.length - 1]?.id ?? "");
   const [subiektOfflineFeedback, setSubiektOfflineFeedback] =
     useState<SubiektFeedback | null>(null);
   const visibleSubiektOfflineFeedback = prosba ? subiektOfflineFeedback : null;
@@ -170,8 +187,8 @@ export function RequestProductLinesEditor({
     const removedId = lines[index]?.id;
     const next = removeProductLineAt(lines, index, minLines);
     onChange(next);
-    if (removedId === activeLineId) {
-      setFocusedLineId(next[next.length - 1]?.id ?? "");
+    if (removedId === activeLineId || removedId === focusedLineId) {
+      setFocusedLineId(next[next.length - 1]?.id ?? null);
     }
   };
 
@@ -218,29 +235,30 @@ export function RequestProductLinesEditor({
           return (
             <div
               key={segment.indexes.map((i) => lines[i]!.id).join("|")}
-              className="overflow-hidden rounded-md border border-slate-200 bg-white shadow-sm"
+              className="space-y-2"
             >
-              <ul className="divide-y divide-slate-100">
-                {segment.indexes.map((index) => {
-                  const line = lines[index]!;
-                  return (
-                    <li key={line.id}>
-                      <ProsbaProductLineCollapsedRow
-                        index={index}
-                        line={line}
-                        requestKind={requestKind}
-                        canRemove={canRemove}
-                        hasFieldIssues={
-                          (validationAttempted || liveValidation) &&
-                          prosbaLineHasSubmitBlockers(line, requestKind)
-                        }
-                        onEdit={() => setFocusedLineId(line.id)}
-                        onRemove={() => removeLine(index)}
-                      />
-                    </li>
-                  );
-                })}
-              </ul>
+              {segment.indexes.map((index) => {
+                const line = lines[index]!;
+                return (
+                  <div
+                    key={line.id}
+                    className="overflow-hidden rounded-md border border-slate-200 bg-white shadow-sm"
+                  >
+                    <ProsbaProductLineCollapsedRow
+                      index={index}
+                      line={line}
+                      requestKind={requestKind}
+                      canRemove={canRemove}
+                      hasFieldIssues={
+                        (validationAttempted || liveValidation) &&
+                        prosbaLineHasSubmitBlockers(line, requestKind)
+                      }
+                      onEdit={() => setFocusedLineId(line.id)}
+                      onRemove={() => removeLine(index)}
+                    />
+                  </div>
+                );
+              })}
             </div>
           );
         }
@@ -327,6 +345,7 @@ export function RequestProductLinesEditor({
               typeaheadSize={typeaheadSize}
               fieldValidation={fieldValidation}
               lineIndex={index}
+              allLines={lines}
               value={{
                 symbol: line.symbol,
                 mikranCode: line.mikranCode,
@@ -346,12 +365,35 @@ export function RequestProductLinesEditor({
               onChange={(patch) =>
                 onChange(updateProductLine(lines, index, patch))
               }
-              onAfterTeethListSave={
-                onAfterTeethListSave
-                  ? (teethDetails, totalQuantity) =>
-                      onAfterTeethListSave(index, teethDetails, totalQuantity)
-                  : undefined
-              }
+              onTeethDualKindCommit={(payload) => {
+                onChange(payload.lines);
+                setFocusedLineId(
+                  focusLineIdAfterTeethSave(
+                    payload.lines,
+                    collectDualTeethCommitLineIds(
+                      payload.lines,
+                      payload.summary,
+                      payload.lineIndex,
+                    ),
+                    requestKind,
+                  ),
+                );
+                onTeethDualKindCommit?.(payload);
+              }}
+              onTeethListCommitNotice={onTeethListCommitNotice}
+              onAfterTeethListSave={(teethDetails, totalQuantity, saveResult) => {
+                if (saveResult?.mode !== "dual") {
+                  const lineId = lines[index]!.id;
+                  const nextLines = updateProductLine(lines, index, {
+                    teethDetails,
+                    quantity: String(totalQuantity),
+                  });
+                  setFocusedLineId(
+                    focusLineIdAfterTeethSave(nextLines, [lineId], requestKind),
+                  );
+                }
+                onAfterTeethListSave?.(index, teethDetails, totalQuantity, saveResult);
+              }}
               autoOpenTeethList={autoOpenTeethList && index === 0}
             />
 
@@ -438,6 +480,33 @@ function TeethProgressLine({ lines }: { lines: ProductLineDraft[] }) {
   const { completedCount, totalCount } = useTeethLinesStatus(lines);
   if (totalCount < 2 || completedCount === totalCount) return null;
   return <TeethProgressBadge incompleteCount={totalCount - completedCount} />;
+}
+
+function collectDualTeethCommitLineIds(
+  lines: ProductLineDraft[],
+  summary: TeethDualKindCommitSummary,
+  anchorIndex: number,
+): string[] {
+  const anchor = lines[anchorIndex];
+  const productLine = anchor?.teethProductLine;
+  const clientName = anchor?.clientName ?? "";
+  if (!productLine) return [];
+
+  const kinds = new Set(
+    [...summary.added, ...summary.updated].map((item) => item.kind),
+  );
+  if (kinds.size === 0) return [];
+
+  return lines
+    .filter(
+      (line) =>
+        line.teethProductLine === productLine
+        && (line.clientName ?? "") === clientName
+        && line.teethKind != null
+        && kinds.has(line.teethKind)
+        && (line.teethDetails?.length ?? 0) > 0,
+    )
+    .map((line) => line.id);
 }
 
 export function initialProductLines(count = 1): ProductLineDraft[] {

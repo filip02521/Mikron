@@ -42,6 +42,7 @@ import { SupplierEditSheet } from "@/components/admin/SupplierEditSheet";
 import { SUPPLIER_HUB_LIST_META_DESCRIPTION } from "@/lib/supplier-hub";
 import type { WarehouseCarrierRow } from "@/lib/data/warehouse-carriers";
 import { usePreviewMutationBlocker } from "@/components/layout/usePreviewMutationBlocker";
+import { Badge } from "@/components/ui/Badge";
 import { cn } from "@/lib/cn";
 
 function scheduleHref(location: SupplierLocation, name: string): string {
@@ -74,14 +75,18 @@ export function SuppliersAdminClient({
   initial,
   allowDelete = true,
   warehouseCarriers = [],
+  teethScheduleSupplierIds,
 }: {
   initial: SupplierWithSchedule[];
   allowDelete?: boolean;
   warehouseCarriers?: WarehouseCarrierRow[];
+  /** ID dostawców z aktywnym cyklem zębów — tor ?tor=zeby */
+  teethScheduleSupplierIds?: string[];
 }) {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
+  const teethLane = searchParams.get("tor") === "zeby";
   const [rows, setRows] = useState(initial);
   const [pending, start] = useTransition();
   const [toast, setToast] = useState<{ text: string; tone: "success" | "error" } | null>(
@@ -140,10 +145,25 @@ export function SuppliersAdminClient({
     return () => window.clearTimeout(timer);
   }, [search, locationFilter, subiektFilter, pathname, router, searchParamsRef]);
 
+  const teethScheduleIds = useMemo(
+    () => new Set(teethScheduleSupplierIds ?? []),
+    [teethScheduleSupplierIds]
+  );
+
+  const sortedRows = useMemo(() => {
+    if (!teethLane || teethScheduleIds.size === 0) return rows;
+    return [...rows].sort((a, b) => {
+      const aHas = teethScheduleIds.has(a.id);
+      const bHas = teethScheduleIds.has(b.id);
+      if (aHas === bHas) return a.name.localeCompare(b.name, "pl");
+      return aHas ? -1 : 1;
+    });
+  }, [rows, teethLane, teethScheduleIds]);
+
   const locationScopedRows = useMemo(() => {
-    if (locationFilter === "all") return rows;
-    return rows.filter((s) => s.location === locationFilter);
-  }, [rows, locationFilter]);
+    if (locationFilter === "all") return sortedRows;
+    return sortedRows.filter((s) => s.location === locationFilter);
+  }, [sortedRows, locationFilter]);
 
   const locationCounts = useMemo(() => countSuppliersByLocation(rows), [rows]);
   const subiektCounts = useMemo(
@@ -154,13 +174,13 @@ export function SuppliersAdminClient({
   const filtered = useMemo(
     () =>
       filterSuppliersForAdmin(
-        rows,
+        sortedRows,
         locationFilter,
         search,
         subiektFilter,
         subiektFilter === "all"
       ),
-    [rows, locationFilter, search, subiektFilter]
+    [sortedRows, locationFilter, search, subiektFilter]
   );
 
   const startEdit = (s: SupplierWithSchedule) => {
@@ -366,6 +386,8 @@ export function SuppliersAdminClient({
             onChange={setForm}
             onPatchCycleFields={patchCycleFields}
             carrierOptions={warehouseCarriers}
+            showTeethSchedule={teethLane}
+            onTeethScheduleToast={(message, tone) => setToast({ text: message, tone })}
             onSubiektLinked={(khId) => {
               setForm((f) => ({ ...f, subiekt_kh_id: khId }));
               if (form.id) {
@@ -417,12 +439,17 @@ export function SuppliersAdminClient({
           ) : (
             <>
               <div
-                className="hidden border-b border-slate-100 bg-slate-50/90 px-4 py-2 text-[11px] font-semibold uppercase tracking-wide text-slate-500 md:grid md:grid-cols-[minmax(0,1.6fr)_minmax(120px,180px)_minmax(88px,100px)_minmax(120px,160px)] md:gap-3 lg:px-5"
+                className={cn(
+                  "hidden border-b border-slate-100 bg-slate-50/90 px-4 py-2 text-[11px] font-semibold uppercase tracking-wide text-slate-500 md:grid md:gap-3 lg:px-5",
+                  teethLane
+                    ? "md:grid-cols-[minmax(0,1.6fr)_minmax(120px,180px)_minmax(120px,160px)]"
+                    : "md:grid-cols-[minmax(0,1.6fr)_minmax(120px,180px)_minmax(88px,100px)_minmax(120px,160px)]"
+                )}
                 aria-hidden
               >
                 <span>Dostawca</span>
-                <span>Cykl</span>
-                <span>Terminy</span>
+                <span>{teethLane ? "Cykl dostaw" : "Cykl"}</span>
+                {teethLane ? null : <span>Terminy</span>}
                 <span className="text-right">Akcje</span>
               </div>
               <ul className="divide-y divide-slate-100">
@@ -439,13 +466,27 @@ export function SuppliersAdminClient({
                         supplierRowClass(s, isEditing)
                       )}
                     >
-                      <div className="flex items-start gap-2 md:grid md:grid-cols-[minmax(0,1.6fr)_minmax(120px,180px)_minmax(88px,100px)_minmax(120px,160px)] md:items-center md:gap-3">
+                      <div
+                        className={cn(
+                          "flex items-start gap-2 md:grid md:items-center md:gap-3",
+                          teethLane
+                            ? "md:grid-cols-[minmax(0,1.6fr)_minmax(120px,180px)_minmax(120px,160px)]"
+                            : "md:grid-cols-[minmax(0,1.6fr)_minmax(120px,180px)_minmax(88px,100px)_minmax(120px,160px)]"
+                        )}
+                      >
                         <div className="min-w-0 flex-1 md:contents">
                           <div className="min-w-0 md:block">
                             <SupplierAdminNameCell
                               supplier={s}
                               isEditing={isEditing}
                               onEdit={() => startEdit(s)}
+                              trailingBadge={
+                                teethLane && !teethScheduleIds.has(s.id) ? (
+                                  <Badge variant="warning" className="text-[10px]">
+                                    Brak cyklu zębów
+                                  </Badge>
+                                ) : undefined
+                              }
                             />
                             <p className="mt-1 text-xs text-slate-500 md:mt-0.5">
                               {formatSupplierListMeta(s)}
@@ -461,6 +502,7 @@ export function SuppliersAdminClient({
                           >
                             {cycleSummary}
                           </p>
+                          {!teethLane ? (
                           <Link
                             href={scheduleHref(s.location, s.name)}
                             className="mt-2 inline-flex items-center gap-1 text-xs font-medium text-sky-700 hover:text-sky-900 hover:underline md:mt-0 md:text-sm"
@@ -469,6 +511,7 @@ export function SuppliersAdminClient({
                             <LinkChevron size={12} tone="sky" className="md:hidden" />
                             <LinkChevron size={14} tone="sky" className="hidden md:inline" />
                           </Link>
+                        ) : null}
                         </div>
                         <div className="flex shrink-0 items-center gap-1 md:justify-end">
                           <Button

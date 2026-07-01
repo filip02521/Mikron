@@ -17,11 +17,20 @@ import {
   canAccessTeethPanel,
   canAccessWarehouse,
   canManageSalesTeam,
+  canManageSuppliers,
   homePathForRole,
   isAdmin,
   isSalesAccount,
   redirectPathAfterLogin,
 } from "@/lib/auth-roles";
+import {
+  homePathForUser,
+  PROCUREMENT_WORKSPACE_COOKIE,
+  buildProcurementWorkspaceCookie,
+  grantedProcurementFunctions,
+  parseProcurementWorkspace,
+  resolveProcurementWorkspace,
+} from "@/lib/auth/procurement-workspace";
 import {
   postLoginEnteringUrl,
   splitInternalRedirectPath,
@@ -126,7 +135,13 @@ export async function proxy(request: NextRequest) {
         const loginHome = redirectPathAfterLogin(
           loginRole,
           request.nextUrl.searchParams.get("next"),
-          { adminPanelContext: loginPanelContext }
+          {
+            adminPanelContext: loginPanelContext,
+            procurementWorkspace: resolveProcurementWorkspace(
+              loginRole,
+              request.cookies.get(PROCUREMENT_WORKSPACE_COOKIE)?.value
+            ),
+          }
         );
         const entering = splitInternalRedirectPath(postLoginEnteringUrl(loginHome));
         return redirectWithSession(
@@ -215,17 +230,34 @@ export async function proxy(request: NextRequest) {
     );
   }
 
+  const procurementWorkspace = isAdmin(role)
+    ? null
+    : resolveProcurementWorkspace(
+        role,
+        request.cookies.get(PROCUREMENT_WORKSPACE_COOKIE)?.value
+      );
+
   if (
     !canAccessPath(role, pathname, {
       previewSalesPersonId,
       adminPanelContext,
+      procurementWorkspace,
     })
   ) {
     const home =
       isAdmin(role) && adminPanelContext && adminPanelContext !== "admin"
         ? homePathForAdminPanelContext(adminPanelContext)
-        : homePathForRole(role);
+        : homePathForUser(role, procurementWorkspace);
     return redirectWithSession(request, sessionResponse, home);
+  }
+
+  if (
+    !isAdmin(role) &&
+    grantedProcurementFunctions(role).length > 0 &&
+    procurementWorkspace &&
+    !parseProcurementWorkspace(request.cookies.get(PROCUREMENT_WORKSPACE_COOKIE)?.value)
+  ) {
+    sessionResponse.cookies.set(buildProcurementWorkspaceCookie(procurementWorkspace));
   }
 
   if (matchesPrefix(pathname, ADMIN_PREFIXES) && role !== "admin") {
@@ -266,6 +298,13 @@ export async function proxy(request: NextRequest) {
   if (matchesPrefix(pathname, PROCUREMENT_PREFIXES) && !canAccessOperations(role)) {
     if (pathname === "/zakupy/tablica" || pathname.startsWith("/zakupy/tablica/")) {
       if (!canAccessTeethPanel(role)) {
+        return redirectWithSession(request, sessionResponse, homePathForRole(role));
+      }
+    } else if (
+      pathname.startsWith("/zakupy/dostawcy") ||
+      pathname.startsWith("/zakupy/urlopy")
+    ) {
+      if (!canManageSuppliers(role)) {
         return redirectWithSession(request, sessionResponse, homePathForRole(role));
       }
     } else {

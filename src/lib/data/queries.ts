@@ -3,6 +3,8 @@ import { normalizeIndividualOrders } from "@/lib/data/normalize-order";
 import { runRepairIncompleteIndividualOrders } from "@/lib/services/repair-incomplete-orders-runner";
 import { mapRowToOrderFormSupplier, mapRowsToOrderFormSuppliers } from "@/lib/orders/order-form-suppliers";
 import { buildSummaryWorkspace } from "@/lib/orders/summary-workspace";
+import { fetchTeethSupplierLaneIndex } from "@/lib/data/teeth-schedule";
+import { teethLaneIndexToRecord } from "@/lib/teeth/teeth-supplier-dual-lane";
 import { sortIndividualOrdersBySupplier } from "@/lib/orders/queue-sort";
 import { sortInformacjaQueueForDisplay } from "@/lib/orders/queue-product-groups";
 import {
@@ -11,6 +13,10 @@ import {
   countInformacjaWarehouseQueueRows,
 } from "@/lib/data/queue-counts";
 import { isInformacjaWarehouseQueueOrder } from "@/lib/orders/informacja-warehouse-queue";
+import {
+  filterDeliveryQueueByLane,
+  type DeliveryQueueLane,
+} from "@/lib/teeth/teeth-lifecycle";
 import {
   hasActiveSupplierFulfillment,
   isSalesCancelledForQueue,
@@ -222,16 +228,26 @@ export async function countVerificationOrders(): Promise<number> {
   return count ?? 0;
 }
 
-export async function fetchIndividualHistory(): Promise<IndividualOrder[]> {
+export async function fetchIndividualHistory(options?: {
+  /**
+   * Domyślnie true — historia toru standardowego (/historia).
+   * Zamówienia zębowe są w panelu /zeby → Historia.
+   */
+  excludeTeeth?: boolean;
+}): Promise<IndividualOrder[]> {
   if (!hasSupabaseConfig()) return [];
   const supabase = createAdminClient();
-  const { data, error } = await supabase
+  let q = supabase
     .from("individual_orders")
     .select("*, supplier:suppliers(*), sales_person:sales_people(*)")
     .neq("request_kind", "informacja")
     .neq("status", "Weryfikacja")
     .gte("action_at", historyRetentionCutoffIso())
     .order("action_at", { ascending: false });
+  if (options?.excludeTeeth !== false) {
+    q = q.neq("is_teeth", true);
+  }
+  const { data, error } = await q;
   if (error) throw new Error(error.message);
   return normalizeIndividualOrders(data ?? []);
 }
@@ -367,7 +383,15 @@ export async function fetchWarehouseInventory(): Promise<IndividualOrder[]> {
 }
 
 /** Kolejka dostaw: zamówienia dla handlowca do przyjęcia towaru — bez informacji. */
-export async function fetchDeliveryQueue(): Promise<IndividualOrder[]> {
+export async function fetchDeliveryQueue(options?: {
+  /**
+   * `regular` — bez zębów (zakładka Przyjęcie).
+   * `teeth` — tylko zęby (zakładka Zęby).
+   * `all` — oba tory (domyślnie, kompatybilność wsteczna).
+   */
+  lane?: DeliveryQueueLane;
+}): Promise<IndividualOrder[]> {
+  const lane = options?.lane ?? "all";
   if (!hasSupabaseConfig()) return [];
   const supabase = createAdminClient();
 
@@ -428,11 +452,12 @@ export async function fetchDeliveryQueue(): Promise<IndividualOrder[]> {
   );
 
   const active = normalizeIndividualOrders(activeRes.data ?? []);
-  return sortIndividualOrdersBySupplier([
+  const merged = sortIndividualOrdersBySupplier([
     ...cancelledForQueue,
     ...partialActive,
     ...active,
   ]);
+  return filterDeliveryQueueByLane(merged, lane);
 }
 
 export async function fetchSummaryWorkspace(options?: { salesPersonId?: string }) {
@@ -443,11 +468,13 @@ export async function fetchSummaryWorkspace(options?: { salesPersonId?: string }
     schedules = allSchedules.filter((s) => allowed.has(s.id));
   }
   const { fetchSalesPeopleForPicker } = await import("@/lib/data/sales-people-admin");
-  const [allNewOrders, salesPeople, statsRows, formSuppliers] = await Promise.all([
+  const [allNewOrders, salesPeople, statsRows, formSuppliers, teethLaneIndex] =
+    await Promise.all([
     fetchIndividualOrders({ status: "Nowe", hideSalesAcknowledged: false, excludeTeeth: true }),
     fetchSalesPeopleForPicker(),
     fetchDeliveryStats(),
     fetchSuppliersForRequestForms(),
+    fetchTeethSupplierLaneIndex(),
   ]);
   const newOrders = options?.salesPersonId
     ? allNewOrders.filter((o) => o.sales_person_id === options.salesPersonId)
@@ -482,6 +509,7 @@ export async function fetchSummaryWorkspace(options?: { salesPersonId?: string }
     salesPeople,
     statsBySupplierId,
     supplierStatsMode,
+    teethLaneBySupplierId: teethLaneIndexToRecord(teethLaneIndex),
   };
 }
 

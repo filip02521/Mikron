@@ -71,6 +71,37 @@ describe("buildProsbaFormReadiness", () => {
     expect(view.steps.find((s) => s.id === "supplier")?.detail).toContain("panelu dziennego");
   });
 
+  it("zęby z dopasowanym dostawcą — panel zębów", () => {
+    const exempt = new Set([42]);
+    const plan = planSalesRequestSubmit({
+      symbol: "A",
+      product: "Zęby",
+      quantity: "1",
+      subiektTwId: 42,
+      supplierId: "sup-1",
+      requestKind: "zamowienie",
+    });
+    const view = buildProsbaFormReadiness(
+      [
+        {
+          symbol: "A",
+          product: "Zęby",
+          quantity: "1",
+          subiektTwId: 42,
+          supplierId: "sup-1",
+          teethDetails: [
+            { position: 1, color: "A1", mould: "A11", jaw: "upper", kind: "anterior" },
+          ],
+        },
+      ],
+      "zamowienie",
+      plan,
+      { teethExemptTwIds: exempt }
+    );
+    expect(view.steps.find((s) => s.id === "supplier")?.detail).toContain("panelu zębów");
+    expect(view.subline).toContain("panelu zębów");
+  });
+
   it("informacja stock out — ścieżka w checklistie", () => {
     const plan = planSalesRequestSubmit({
       symbol: "A",

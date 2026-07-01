@@ -34,7 +34,7 @@ export type ProductLineDraft = {
   teethManufacturer?: TeethManufacturer | null;
   /** Linia produktowa — ustalana przy wyborze towaru (admin lub nazwa). Nie zmienia się w modalu listy. */
   teethProductLine?: TeethProductLine | null;
-  /** Typ zęba — przednie/tylne (auto-detekcja z prosba_teeth_products). */
+  /** Typ zęba — przednie/boczne (auto-detekcja z prosba_teeth_products). */
   teethKind?: TeethKind | null;
   /** Szczegóły zębowe per sztuka (kolor, wzór, rozmiar). */
   teethDetails?: TeethLineDetail[];

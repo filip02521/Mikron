@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/Button";
 import { IconClipboardList, IconCircleCheck } from "@/components/icons/StrokeIcons";
 import { TeethGroupChips } from "@/components/teeth/TeethGroupChips";
 import {
+  TEETH_KIND_LABELS,
   teethProductLineLabel,
   type TeethKind,
   type TeethLineDetail,
@@ -11,6 +12,8 @@ import {
   type TeethProductLine,
 } from "@/lib/teeth/teeth-catalog";
 import { teethLineDetailsComplete } from "@/lib/teeth/teeth-validation";
+import { countTeethDetailsByKind } from "@/lib/teeth/teeth-dual-kind";
+import { TEETH_DUAL_CARD_HINT } from "@/lib/teeth/teeth-builder-copy";
 import {
   teethProsbaDetailClass,
   teethProsbaIconClass,
@@ -33,6 +36,7 @@ export function TeethOrderBuilderCard({
   productName,
   defaultKind,
   details,
+  dualKindMode = false,
   disabled,
   onOpenModal,
 }: {
@@ -41,20 +45,41 @@ export function TeethOrderBuilderCard({
   productName?: string;
   defaultKind?: TeethKind | null;
   details?: TeethLineDetail[];
+  dualKindMode?: boolean;
   disabled?: boolean;
   onOpenModal: () => void;
 }) {
+  const counts = countTeethDetailsByKind(details);
   const total = details?.length ?? 0;
   const complete =
-    total > 0 &&
-    teethLineDetailsComplete({
-      teethDetails: details,
-      quantity: String(total),
-      product: productName,
-      adminProductLine: productLine,
-      adminManufacturer: manufacturer,
-      isTeethProduct: true,
-    });
+    total > 0
+    && (dualKindMode
+      ? (counts.anterior === 0
+          || teethLineDetailsComplete({
+            teethDetails: details?.filter((d) => d.kind !== "posterior"),
+            quantity: String(counts.anterior),
+            product: productName,
+            adminProductLine: productLine,
+            adminManufacturer: manufacturer,
+            isTeethProduct: true,
+          }))
+        && (counts.posterior === 0
+          || teethLineDetailsComplete({
+            teethDetails: details?.filter((d) => d.kind === "posterior"),
+            quantity: String(counts.posterior),
+            product: productName,
+            adminProductLine: productLine,
+            adminManufacturer: manufacturer,
+            isTeethProduct: true,
+          }))
+      : teethLineDetailsComplete({
+          teethDetails: details,
+          quantity: String(total),
+          product: productName,
+          adminProductLine: productLine,
+          adminManufacturer: manufacturer,
+          isTeethProduct: true,
+        }));
   const lineLabel = productLine ? teethProductLineLabel(productLine) : null;
   const hasList = total > 0;
 
@@ -66,19 +91,36 @@ export function TeethOrderBuilderCard({
         : `Lista zębów${lineLabel ? ` · ${lineLabel}` : ""}`;
 
   const detail = complete ? (
-    <>
-      Razem <span className="font-semibold tabular-nums">{total}</span>{" "}
-      {total === 1 ? "sztuka" : total < 5 ? "sztuki" : "sztuk"}.
-    </>
+    dualKindMode && (counts.anterior > 0 || counts.posterior > 0) ? (
+      <>
+        {counts.anterior > 0 ? (
+          <>
+            <span className="font-semibold tabular-nums">{counts.anterior}</span> przednich
+          </>
+        ) : null}
+        {counts.anterior > 0 && counts.posterior > 0 ? " · " : null}
+        {counts.posterior > 0 ? (
+          <>
+            <span className="font-semibold tabular-nums">{counts.posterior}</span> bocznych
+          </>
+        ) : null}
+        .
+      </>
+    ) : (
+      <>
+        Razem <span className="font-semibold tabular-nums">{total}</span>{" "}
+        {total === 1 ? "sztuka" : total < 5 ? "sztuki" : "sztuk"}.
+      </>
+    )
   ) : hasList ? (
     "Brakuje parametrów w co najmniej jednej pozycji listy."
   ) : (
     <>
-      Wpisz pozycje z kartki klienta — ilość zamówienia ustawi się sama.
-      {defaultKind ? (
+      {dualKindMode ? TEETH_DUAL_CARD_HINT : "Wpisz pozycje z kartki klienta — ilość zamówienia ustawi się sama."}
+      {!dualKindMode && defaultKind ? (
         <>
           {" "}
-          Produkt: {defaultKind === "anterior" ? "przednie" : "tylne"}.
+          Produkt: {TEETH_KIND_LABELS[defaultKind].toLowerCase()}.
         </>
       ) : null}
     </>

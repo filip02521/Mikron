@@ -1,22 +1,44 @@
+import Link from "next/link";
 import { HelpBlock } from "@/components/ui/HelpBlock";
 import { TEETH_MARK_ORDERED_LABEL } from "@/components/zeby/teeth-panel-copy";
+import { TEETH_PROCUREMENT_FLOW_STAGES } from "@/lib/teeth/teeth-procurement-flow-copy";
+import { teethSupplierCardsHref } from "@/lib/teeth/teeth-supplier-dual-lane";
 
 export function TeethPanelHowItWorksContent() {
   return (
     <>
-      <HelpBlock title="Zakładki">
+      <HelpBlock title="Tor zębów — etapy">
+        <ul className="list-disc space-y-1.5 pl-4">
+          {TEETH_PROCUREMENT_FLOW_STAGES.map((step) => (
+            <li key={step.stage}>
+              <strong className="font-medium text-slate-800">{step.stage}</strong> —{" "}
+              {step.where}
+              <span className="text-slate-600"> ({step.detail})</span>
+            </li>
+          ))}
+        </ul>
+      </HelpBlock>
+
+      <HelpBlock title="Ekrany menu (od najczęstszych)">
         <ul className="list-disc space-y-1.5 pl-4">
           <li>
             <strong className="font-medium text-slate-800">Kolejka</strong> — prośby handlowców
-            pogrupowane wg dostawcy. Tu oznaczasz zamówienie u dostawcy i uzupełniasz listę zębów.
+            pogrupowane wg labu. Tu oznaczasz zamówienie i uzupełniasz listę zębów.
+          </li>
+          <li>
+            <strong className="font-medium text-slate-800">Przyjęcie</strong> — porównujesz dostawę
+            z zamówieniem u labu: wpisujesz co dotarło, a co nie (bez e-maila i regału).
           </li>
           <li>
             <strong className="font-medium text-slate-800">Historia</strong> — pozycje już
-            zamówione. Możesz cofnąć błędne oznaczenie lub skorygować datę dostawy.
+            zamówione u labu. ETA, audyt i korekty błędnego oznaczenia.
           </li>
           <li>
-            <strong className="font-medium text-slate-800">Harmonogram</strong> — cykl zamówień u
-            dostawców i liczba prośb czekających u każdego.
+            <strong className="font-medium text-slate-800">Cykl zębów</strong> — ustawiasz w{" "}
+            <Link href={teethSupplierCardsHref()} className="font-medium text-indigo-700 underline">
+              kartach dostawców
+            </Link>
+            .
           </li>
         </ul>
       </HelpBlock>

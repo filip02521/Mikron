@@ -44,6 +44,12 @@ import {
 import { ProsbaStockConfirmDialog } from "@/components/orders/ProsbaStockConfirmDialog";
 import { buildProsbaSubmitStockConfirm } from "@/lib/orders/prosba-stock-check";
 import { handleProsbaStockSubmitError } from "@/lib/orders/prosba-stock-submit-error";
+import { prosbaLineHasTeethBlockers } from "@/lib/orders/prosba-line-field-validation";
+import { TEETH_LIST_INCOMPLETE_MESSAGE } from "@/lib/teeth/teeth-validation";
+import {
+  classifyProsbaLinesByLane,
+  procurementSubmitSuccessMessage,
+} from "@/lib/teeth/teeth-procurement-flow-copy";
 import { useTeethExemptTwIds } from "@/components/layout/TeethExemptContext";
 import type { AddIndividualOrdersEntry } from "@/lib/orders/individual-request-edit";
 
@@ -93,6 +99,9 @@ export function QuickOrderModal({
         subiektTwId: l.subiektTwId,
         clientName: l.clientName,
         clientKhId: l.clientKhId,
+        teethDetails: l.teethDetails,
+        teethManufacturer: l.teethManufacturer,
+        teethProductLine: l.teethProductLine,
       })),
     [lines, supplierId]
   );
@@ -113,8 +122,9 @@ export function QuickOrderModal({
       buildProsbaFormReadinessWithSupplier(readinessLines, supplierId, requestKind, {
         informacjaPath,
         resolvingSupplier,
+        teethExemptTwIds,
       }),
-    [readinessLines, supplierId, requestKind, informacjaPath, resolvingSupplier]
+    [readinessLines, supplierId, requestKind, informacjaPath, resolvingSupplier, teethExemptTwIds]
   );
 
   const canSubmitProsba =
@@ -178,6 +188,7 @@ export function QuickOrderModal({
         clientName: l.clientName,
         clientKhId: l.clientKhId,
         requestNote: l.requestNote?.trim() || undefined,
+        teethDetails: l.teethDetails ?? undefined,
       }));
     if (!entries.length) {
       setValidationAttempted(true);
@@ -193,6 +204,16 @@ export function QuickOrderModal({
         text: "Każda pozycja musi mieć ilość (liczba sztuk, np. 1).",
         tone: "error",
       });
+      return;
+    }
+    if (
+      requestKind === "zamowienie" &&
+      lines.some((line) =>
+        prosbaLineHasTeethBlockers(line, requestKind, { exemptTwIds: teethExemptTwIds })
+      )
+    ) {
+      setValidationAttempted(true);
+      setFormNotice({ text: TEETH_LIST_INCOMPLETE_MESSAGE, tone: "error" });
       return;
     }
     try {
@@ -243,15 +264,22 @@ export function QuickOrderModal({
           entries,
           acknowledgeSufficientStock: options?.acknowledgeSufficientStock,
         });
+        const lanes = classifyProsbaLinesByLane(entries, teethExemptTwIds);
         setFormNotice({
           text:
             requestKind === "informacja"
-              ? informacjaFlags.informacjaStockOutReorder
-                ? `Dodano ${r.count} sygnał(ów) „brak na stanie” — w panelu Dziś (Prośby handlowców).`
-                : informacjaFlags.informacjaQueueViaDailyPanel
-                  ? `Dodano ${r.count} prośb(y) informacyjn(e) — najpierw kolejka Dziś (Główne/Uzupełniające).`
-                  : `Dodano ${r.count} prośb(y) informacyjn(e) — od razu do kolejki magazynu.`
-              : `Dodano ${r.count} pozycji do panelu dziennego.`,
+              ? procurementSubmitSuccessMessage({
+                  count: r.count,
+                  requestKind,
+                  lanes,
+                  informacjaStockOutReorder: informacjaFlags.informacjaStockOutReorder,
+                  informacjaQueueViaDailyPanel: informacjaFlags.informacjaQueueViaDailyPanel,
+                })
+              : procurementSubmitSuccessMessage({
+                  count: r.count,
+                  requestKind,
+                  lanes,
+                }),
           tone: "success",
         });
         router.refresh();
@@ -446,6 +474,7 @@ export function QuickOrderModal({
               resolvingSupplier={resolvingSupplier}
               informacjaPath={informacjaPath}
               validationAttempted={validationAttempted}
+              teethExemptTwIds={teethExemptTwIds}
             />
           </div>
         </ProsbaFormProductsSection>

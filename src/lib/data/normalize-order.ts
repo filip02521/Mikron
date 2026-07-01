@@ -1,4 +1,5 @@
 import type { IndividualOrder, SalesPerson, Supplier } from "@/types/database";
+import { parseTeethLineDelivered } from "@/lib/teeth/teeth-receive-picker";
 
 type RawIndividualOrder = IndividualOrder & {
   suppliers?: Supplier | Supplier[] | null;
@@ -17,6 +18,7 @@ export function normalizeIndividualOrder(row: RawIndividualOrder): IndividualOrd
   return {
     ...row,
     request_kind: row.request_kind ?? "zamowienie",
+    teeth_line_delivered: parseTeethLineDelivered(row.teeth_line_delivered),
     supplier,
     sales_person,
   };

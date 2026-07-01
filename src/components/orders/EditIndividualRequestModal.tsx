@@ -57,6 +57,11 @@ import { ProsbaStockConfirmDialog } from "@/components/orders/ProsbaStockConfirm
 import { buildProsbaSubmitStockConfirm } from "@/lib/orders/prosba-stock-check";
 import { handleProsbaStockSubmitError } from "@/lib/orders/prosba-stock-submit-error";
 import { useTeethExemptTwIds, useTeethProductInfo } from "@/components/layout/TeethExemptContext";
+import { TeethProcurementRequestBanner } from "@/components/teeth/TeethProcurementRequestBanner";
+import {
+  classifyProsbaLinesByLane,
+  TEETH_EDIT_REQUEST_TITLE,
+} from "@/lib/teeth/teeth-procurement-flow-copy";
 
 export type EditIndividualRequestInitial = {
   supplierId: string;
@@ -76,6 +81,7 @@ export function EditIndividualRequestModal({
   salesPeople = [],
   onSaved,
   autoSaveAfterTeethList = false,
+  teethRequest = false,
 }: {
   open: boolean;
   onClose: () => void;
@@ -87,6 +93,8 @@ export function EditIndividualRequestModal({
   onSaved?: (message: string) => void;
   /** Po „Zapisz listę” w modalu zębów od razu zapisuje prośbę (panel zębów). */
   autoSaveAfterTeethList?: boolean;
+  /** Jawny tryb edycji prośby zębowej (panel /zeby). */
+  teethRequest?: boolean;
 }) {
   const { pending, pendingMessage, run } = useActionPending();
   const teethExemptTwIds = useTeethExemptTwIds();
@@ -113,6 +121,10 @@ export function EditIndividualRequestModal({
   );
   const supplierRefs = useMemo(() => toAppSupplierRefs(suppliers), [suppliers]);
   const [resolvingSupplier, setResolvingSupplier] = useState(false);
+
+  const isTeethRequestEdit =
+    teethRequest ||
+    classifyProsbaLinesByLane(lines, teethExemptTwIds).hasTeeth;
 
   const salesSubmitPlan = useMemo(() => {
     if (mode !== "sales") return null;
@@ -240,7 +252,11 @@ export function EditIndividualRequestModal({
             } else {
               await actionUpdateMyIndividualRequest(orderIds, payload);
             }
-            onSaved?.("Zapisano zmiany w prośbie.");
+            onSaved?.(
+              isTeethRequestEdit
+                ? "Zapisano listę zębów — zmiany są widoczne w panelu zębów."
+                : "Zapisano zmiany w prośbie."
+            );
             onClose();
             setStockConfirmOpen(false);
           } catch (e) {
@@ -271,6 +287,7 @@ export function EditIndividualRequestModal({
       orderIds,
       onSaved,
       onClose,
+      isTeethRequestEdit,
     ]
   );
 
@@ -391,17 +408,33 @@ export function EditIndividualRequestModal({
   );
 
   const handleAfterTeethListSave = useCallback(
-    (lineIndex: number, teethDetails: TeethLineDetail[], totalQuantity: number) => {
+    (
+      lineIndex: number,
+      teethDetails: TeethLineDetail[],
+      totalQuantity: number,
+      saveResult?: import("@/components/teeth/TeethOrderBuilderModal").TeethOrderBuilderSaveResult,
+    ) => {
       if (!autoSaveAfterTeethList || pending) return;
+      if (saveResult?.mode === "dual") return;
       const nextLines = lines.map((line, index) =>
         index === lineIndex
           ? { ...line, teethDetails, quantity: String(totalQuantity) }
-          : line
+          : line,
       );
       setLines(nextLines);
       submitLines(nextLines);
     },
     [autoSaveAfterTeethList, lines, submitLines, pending],
+  );
+
+  const handleTeethDualKindCommit = useCallback(
+    (payload: { lines: typeof lines }) => {
+      setLines(payload.lines);
+      if (autoSaveAfterTeethList && !pending) {
+        submitLines(payload.lines);
+      }
+    },
+    [autoSaveAfterTeethList, pending, submitLines],
   );
 
   const save = () => {
@@ -467,7 +500,13 @@ export function EditIndividualRequestModal({
     <ModalShell
       open
       onClose={onClose}
-      title={mode === "procurement" ? "Popraw prośbę handlowca" : "Popraw swoją prośbę"}
+      title={
+        isTeethRequestEdit
+          ? TEETH_EDIT_REQUEST_TITLE
+          : mode === "procurement"
+            ? "Popraw prośbę handlowca"
+            : "Popraw swoją prośbę"
+      }
       titleHint={
         mode === "procurement"
           ? PROSBA_PAGE_HEADER_HINTS.editProcurement
@@ -512,6 +551,8 @@ export function EditIndividualRequestModal({
       />
 
       <div className="min-h-0 flex-1 space-y-3 overflow-y-auto p-3 sm:p-4">
+        {isTeethRequestEdit ? <TeethProcurementRequestBanner /> : null}
+
         {mode === "procurement" ? (
           <ProsbaFormSection
             title={PROSBA_FORM_SECTION_COPY.delegateProcurement.title}
@@ -614,6 +655,7 @@ export function EditIndividualRequestModal({
               onAfterTeethListSave={
                 autoSaveAfterTeethList ? handleAfterTeethListSave : undefined
               }
+              onTeethDualKindCommit={handleTeethDualKindCommit}
               autoOpenTeethList={autoSaveAfterTeethList && open}
             />
 

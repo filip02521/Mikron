@@ -8,6 +8,8 @@ import {
   type AdminPanelContext,
 } from "@/lib/auth/admin-panel-context";
 import { readAdminPanelContextForSession } from "@/lib/auth/read-admin-panel-context";
+import { readProcurementWorkspaceForSession } from "@/lib/auth/read-procurement-workspace";
+import type { ProcurementWorkspace } from "@/lib/auth/procurement-workspace";
 import { isSalesAccount } from "@/lib/auth-roles";
 import { fetchTeethProductInfo } from "@/lib/data/teeth-products";
 import { AppShellClient } from "./AppShellClient";
@@ -23,6 +25,9 @@ export async function AppShell({ children }: { children: React.ReactNode }) {
   const { panelContext } = lightShell
     ? { panelContext: null as AdminPanelContext | null }
     : await readAdminPanelContextForSession();
+  const { procurementWorkspace, canSwitchProcurementWorkspace } = lightShell
+    ? { procurementWorkspace: null as ProcurementWorkspace | null, canSwitchProcurementWorkspace: false }
+    : await readProcurementWorkspaceForSession();
   const role = realRole ? effectiveNavRole(realRole, panelContext) : null;
   const adminPanelPreview =
     !lightShell &&
@@ -52,6 +57,8 @@ export async function AppShell({ children }: { children: React.ReactNode }) {
       role={role}
       realRole={realRole}
       adminPanelPreview={adminPanelPreview as AdminPanelContext | null}
+      procurementWorkspace={procurementWorkspace}
+      canSwitchProcurementWorkspace={canSwitchProcurementWorkspace}
       userEmail={session?.email ?? null}
       showLoginLink={!realRole}
       salesPersonId={session?.salesPersonId ?? null}
@@ -82,6 +89,7 @@ export async function AppShell({ children }: { children: React.ReactNode }) {
             adminPanelPreview,
             showSalesOnboarding,
             previewHeaderId,
+            procurementWorkspace,
           }}
         />
       </Suspense>

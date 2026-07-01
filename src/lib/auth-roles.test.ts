@@ -56,8 +56,8 @@ describe("redirectPathAfterLogin role defaults", () => {
 });
 
 describe("auth-roles zakupy_zeby", () => {
-  it("kieruje zakupy_zeby na panel zębów", () => {
-    expect(homePathForRole("zakupy_zeby")).toBe("/zeby");
+  it("kieruje zakupy_zeby na kolejkę zębów", () => {
+    expect(homePathForRole("zakupy_zeby")).toBe("/zeby/kolejka");
   });
 
   it("isZakupyZeby rozpoznaje rolę", () => {
@@ -66,48 +66,79 @@ describe("auth-roles zakupy_zeby", () => {
     expect(isZakupyZeby("admin")).toBe(false);
   });
 
-  it("canAccessTeethPanel zezwala admin, zakupy, zakupy_zeby", () => {
+  it("canAccessTeethPanel zezwala admin i zakupy_zeby", () => {
     expect(canAccessTeethPanel("admin")).toBe(true);
-    expect(canAccessTeethPanel("zakupy")).toBe(true);
     expect(canAccessTeethPanel("zakupy_zeby")).toBe(true);
+    expect(canAccessTeethPanel("zakupy")).toBe(false);
     expect(canAccessTeethPanel("magazyn")).toBe(false);
     expect(canAccessTeethPanel("sales")).toBe(false);
   });
 
-  it("canAccessPath zezwala na /zeby, /notatki, /zakupy/tablica", () => {
-    expect(canAccessPath("zakupy_zeby", "/zeby")).toBe(true);
+  it("canAccessPath zezwala zakupy_zeby na /zeby, /notatki, /zakupy/tablica, /zakupy/dostawcy", () => {
+    expect(canAccessPath("zakupy_zeby", "/zeby/kolejka")).toBe(true);
     expect(canAccessPath("zakupy_zeby", "/notatki")).toBe(true);
     expect(canAccessPath("zakupy_zeby", "/zakupy/tablica")).toBe(true);
+    expect(canAccessPath("zakupy_zeby", "/zakupy/dostawcy")).toBe(true);
+    expect(canAccessPath("zakupy_zeby", "/podsumowanie")).toBe(true);
   });
 
-  it("canAccessPath odrzuca /moje, /admin, /podsumowanie, /kolejka, /zakupy/dostawcy", () => {
+  it("canAccessPath odrzuca /moje i /admin", () => {
     expect(canAccessPath("zakupy_zeby", "/moje")).toBe(false);
     expect(canAccessPath("zakupy_zeby", "/admin")).toBe(false);
-    expect(canAccessPath("zakupy_zeby", "/podsumowanie")).toBe(false);
-    expect(canAccessPath("zakupy_zeby", "/kolejka")).toBe(false);
-    expect(canAccessPath("zakupy_zeby", "/zakupy/dostawcy")).toBe(false);
   });
 
-  it("canAccessPath zezwala admin i zakupy na /zeby", () => {
-    expect(canAccessPath("admin", "/zeby")).toBe(true);
-    expect(canAccessPath("zakupy", "/zeby")).toBe(true);
+  it("canAccessPath zezwala na tor dostaw (/kolejka) dzięki funkcji dostawy", () => {
+    expect(canAccessPath("zakupy_zeby", "/kolejka")).toBe(true);
   });
 
-  it("canAccessPath odrzuca magazyn i sales na /zeby", () => {
-    expect(canAccessPath("magazyn", "/zeby")).toBe(false);
-    expect(canAccessPath("sales", "/zeby")).toBe(false);
+  it("canAccessPath zezwala admin na /zeby", () => {
+    expect(canAccessPath("admin", "/zeby/kolejka")).toBe(true);
   });
 
-  it("redirectPathAfterLogin kieruje na /zeby", () => {
-    expect(redirectPathAfterLogin("zakupy_zeby", null)).toBe("/zeby");
-    expect(redirectPathAfterLogin("zakupy_zeby", "/zeby")).toBe("/zeby");
+  it("canAccessPath odrzuca zakupy na /zeby", () => {
+    expect(canAccessPath("zakupy", "/zeby/kolejka")).toBe(false);
+  });
+
+  it("redirectPathAfterLogin kieruje na /zeby/kolejka", () => {
+    expect(redirectPathAfterLogin("zakupy_zeby", null)).toBe("/zeby/kolejka");
+    expect(redirectPathAfterLogin("zakupy_zeby", "/zeby/kolejka")).toBe("/zeby/kolejka");
     expect(redirectPathAfterLogin("zakupy_zeby", "/notatki")).toBe("/notatki");
   });
 
-  it("redirectPathAfterLogin odrzuca niedozwolony next", () => {
-    expect(redirectPathAfterLogin("zakupy_zeby", "/moje")).toBe("/zeby");
-    expect(redirectPathAfterLogin("zakupy_zeby", "/kolejka")).toBe("/zeby");
-    expect(redirectPathAfterLogin("zakupy_zeby", "/podsumowanie")).toBe("/zeby");
+  it("redirectPathAfterLogin honoruje dozwolone ścieżki obu torów", () => {
+    expect(redirectPathAfterLogin("zakupy_zeby", "/moje")).toBe("/zeby/kolejka");
+    expect(redirectPathAfterLogin("zakupy_zeby", "/kolejka")).toBe("/kolejka");
+    expect(redirectPathAfterLogin("zakupy_zeby", "/podsumowanie")).toBe("/podsumowanie");
+  });
+
+  it("redirectPathAfterLogin honoruje zapisany obszar pracy", () => {
+    expect(
+      redirectPathAfterLogin("zakupy_zeby", null, { procurementWorkspace: "dostawy" })
+    ).toBe("/podsumowanie");
+    expect(
+      redirectPathAfterLogin("zakupy_zeby", null, { procurementWorkspace: "zeby" })
+    ).toBe("/zeby/kolejka");
+  });
+
+  it("canAccessPath z workspace blokuje obcy tor", () => {
+    expect(
+      canAccessPath("zakupy_zeby", "/podsumowanie", { procurementWorkspace: "zeby" })
+    ).toBe(false);
+    expect(
+      canAccessPath("zakupy_zeby", "/zeby/kolejka", { procurementWorkspace: "zeby" })
+    ).toBe(true);
+    expect(
+      canAccessPath("zakupy_zeby", "/podsumowanie", { procurementWorkspace: "dostawy" })
+    ).toBe(true);
+    expect(
+      canAccessPath("zakupy_zeby", "/zeby/kolejka", { procurementWorkspace: "dostawy" })
+    ).toBe(false);
+    expect(canAccessPath("zakupy_zeby", "/notatki", { procurementWorkspace: "zeby" })).toBe(
+      true
+    );
+    expect(
+      redirectPathAfterLogin("zakupy_zeby", "/podsumowanie", { procurementWorkspace: "zeby" })
+    ).toBe("/zeby/kolejka");
   });
 });
 

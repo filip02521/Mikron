@@ -33,6 +33,7 @@ import { DailyWeekView } from "@/components/summary/DailyWeekView";
 import { ActionLoadingOverlay } from "@/components/ui/ActionLoadingOverlay";
 import { SupplierVacationModal } from "@/components/procurement/SupplierVacationModal";
 import { SupplierEditModal } from "@/components/procurement/SupplierEditModal";
+import type { OrderFormSupplierOption } from "@/lib/orders/order-form-suppliers";
 import type { SupplierDirectoryEntry } from "@/components/procurement/SupplierSearchField";
 import { VerificationModal } from "@/components/verification/VerificationModal";
 import { OnDemandSuppliersSheet } from "@/components/summary/OnDemandSuppliersSheet";
@@ -48,7 +49,7 @@ import { SectionHeadingIcon } from "@/components/icons/SectionHeadingIcon";
 import { brandIconTileClass, panelChromeInsetClass, panelSectionInsetClass, panelWorkspaceShellClass } from "@/lib/ui/ontime-theme";
 import { SALES_PAGE_HEADER_HINTS } from "@/lib/sales/sales-page-ui-copy";
 import { cn } from "@/lib/cn";
-import type { OrderFormSupplierOption } from "@/lib/orders/order-form-suppliers";
+import type { TeethSupplierLaneSnapshot } from "@/lib/data/teeth-schedule";
 
 export function SummaryWorkspace({
   workspace,
@@ -58,6 +59,7 @@ export function SummaryWorkspace({
   statsBySupplierId = {},
   supplierStatsMode = {},
   verificationOrders = [],
+  teethLaneBySupplierId = {},
 }: {
   workspace: SummaryWorkspaceData;
   suppliers: OrderFormSupplierOption[];
@@ -66,6 +68,7 @@ export function SummaryWorkspace({
   statsBySupplierId?: Record<string, DeliveryStats>;
   supplierStatsMode?: Record<string, StatsMode>;
   verificationOrders?: IndividualOrder[];
+  teethLaneBySupplierId?: Record<string, TeethSupplierLaneSnapshot>;
 }) {
   const {
     pendingMessage,
@@ -440,6 +443,7 @@ export function SummaryWorkspace({
 
       <SupplierDrawer
         supplier={drawerSupplier}
+        teethLane={drawerId ? teethLaneBySupplierId[drawerId] ?? null : null}
         onClose={() => setDrawerId(null)}
         isScopePending={isScopePending}
         run={run}

@@ -29,6 +29,7 @@ import {
 import { buildTeethSupplierBatchSummary } from "@/lib/teeth/teeth-panel-aggregate";
 
 import type { TeethPanelReadinessContext } from "@/lib/teeth/teeth-panel-order-readiness";
+import { distinctTeethProductLineLabelsForOrders } from "@/lib/teeth/teeth-panel-order-readiness";
 
 import type { TeethQueueGroup, TeethQueueItem } from "@/lib/data/teeth-queue";
 
@@ -254,6 +255,8 @@ export function TeethPanelKolejkaView({
 
               orderCount={realItems.length}
 
+              productLineLabels={distinctTeethProductLineLabelsForOrders(realItems, readinessCtx)}
+
               actions={
 
                 <TeethPanelSupplierQueueActions
@@ -319,6 +322,8 @@ export function TeethPanelKolejkaView({
                     variant="queue"
 
                     mergedBatch={Boolean(batchSummary)}
+
+                    specIncludedInBatch={Boolean(batchSummary && batchSummary.mergedGroups.length > 0)}
 
                     supplierName={group.supplierName}
 

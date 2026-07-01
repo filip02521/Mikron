@@ -56,6 +56,14 @@ export function parseTeethKind(raw: unknown): TeethKind | null {
   const token = normalizeTeethToken(raw);
   if (!token) return null;
   if (token === "anterior" || token.startsWith("przed")) return "anterior";
-  if (token === "posterior" || token.startsWith("tyln")) return "posterior";
+  if (
+    token === "posterior" ||
+    token.startsWith("tyln") ||
+    token.startsWith("bocz") ||
+    token === "boki" ||
+    token.startsWith("bok")
+  ) {
+    return "posterior";
+  }
   return null;
 }

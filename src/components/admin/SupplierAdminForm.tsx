@@ -17,6 +17,7 @@ import {
   WAREHOUSE_SHIPMENT_FORMS,
   activeWarehouseCarrierOptions,
 } from "@/lib/warehouse/delivery-carriers";
+import { TeethSupplierScheduleFields } from "@/components/teeth/TeethSupplierScheduleFields";
 
 export type SupplierAdminFormState = {
   id?: string;
@@ -44,6 +45,8 @@ export function SupplierAdminForm({
   onPatchCycleFields,
   onSubiektLinked,
   carrierOptions = [],
+  showTeethSchedule = false,
+  onTeethScheduleToast,
 }: {
   form: SupplierAdminFormState;
   disabled?: boolean;
@@ -53,6 +56,9 @@ export function SupplierAdminForm({
   ) => void;
   onSubiektLinked?: (khId: number | null) => void;
   carrierOptions?: WarehouseCarrierRow[];
+  /** Sekcja cyklu zębów — karty dostawców z ?tor=zeby */
+  showTeethSchedule?: boolean;
+  onTeethScheduleToast?: (message: string, tone: "success" | "error") => void;
 }) {
   const carriers = activeWarehouseCarrierOptions(
     carrierOptions.length
@@ -315,6 +321,22 @@ export function SupplierAdminForm({
           Zlecamy odbiór palety
         </label>
       </SupplierFormSection>
+
+      {showTeethSchedule && form.id && onTeethScheduleToast ? (
+        <div className="sm:col-span-2">
+          <TeethSupplierScheduleFields
+            supplierId={form.id}
+            supplierName={form.name.trim() || "Dostawca"}
+            disabled={disabled}
+            onToast={onTeethScheduleToast}
+          />
+        </div>
+      ) : null}
+      {showTeethSchedule && !form.id ? (
+        <p className="text-sm text-slate-500 sm:col-span-2">
+          Zapisz nową kartę dostawcy, aby ustawić cykl zamówień zębów.
+        </p>
+      ) : null}
     </div>
   );
 }

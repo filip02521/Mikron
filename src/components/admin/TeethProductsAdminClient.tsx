@@ -262,6 +262,10 @@ export function TeethProductsAdminClient({ initial }: { initial: TeethProductRow
           Produkty z tej listy <strong>nie przechodzą kontroli stanu magazynowego</strong> przy
           składaniu prośby o zamówienie — bez ostrzeżeń „towar na stanie” i bez blokady zapisu.
           Identyfikator <code className="text-xs">tw_Id</code> pochodzi z Subiekta.
+          <p className="mt-2 text-sm leading-relaxed">
+            Aby handlowiec mógł zamawiać przody i boki z jednego okna, zarejestruj oba towary
+            Subiekta tej samej linii produktowej — jeden jako Przednie, drugi jako Boczne.
+          </p>
         </Alert>
 
         <section className="rounded-md border border-slate-200/90 bg-white p-4 shadow-sm sm:p-5">
@@ -370,7 +374,7 @@ export function TeethProductsAdminClient({ initial }: { initial: TeethProductRow
                     ))}
                   </select>
                 </Field>
-                <Field label="Typ zęba" hint="Przednie czy tylne. Auto-wykrywane z nazwy.">
+                <Field label="Typ zęba" hint="Przednie czy boczne. Auto-wykrywane z nazwy.">
                   <select
                     value={addKind}
                     onChange={(event) => setAddKind(event.target.value)}

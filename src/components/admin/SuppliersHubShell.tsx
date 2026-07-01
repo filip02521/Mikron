@@ -27,6 +27,7 @@ export function SuppliersHubShell({
   scheduleLocation = "POLSKA",
   locationNav,
   inactiveCount = 0,
+  teethLane = false,
   children,
 }: {
   title: string;
@@ -36,6 +37,7 @@ export function SuppliersHubShell({
   scheduleLocation?: SupplierLocation;
   locationNav?: React.ReactNode;
   inactiveCount?: number;
+  teethLane?: boolean;
   children: React.ReactNode;
 }) {
   const iconKey = TAB_ICON[activeTab];
@@ -71,6 +73,7 @@ export function SuppliersHubShell({
             context={context}
             scheduleLocation={scheduleLocation}
             inactiveCount={inactiveCount}
+            teethLane={teethLane}
           />
           {locationNav ? <div className="mt-3">{locationNav}</div> : null}
         </div>

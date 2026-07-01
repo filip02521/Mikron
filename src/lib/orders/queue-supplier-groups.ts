@@ -84,10 +84,11 @@ export function queueSupplierRowClass(
     variant?: QueueTableVariant;
     isPartial?: boolean;
     isFirstInSupplierGroup?: boolean;
+    stripeIndex?: number;
   }
 ): string {
   const variant = options?.variant ?? "delivery";
-  const palette = supplierGroupPalette(groupIndex, variant);
+  const palette = supplierGroupPalette(options?.stripeIndex ?? groupIndex, variant);
 
   return cn(
     options?.isPartial ? "bg-amber-50/85" : palette.bg,
@@ -98,9 +99,9 @@ export function queueSupplierRowClass(
 /** Lewy pasek grupy — musi być na pierwszej komórce wiersza (border na `<tr>` nie renderuje się przy border-collapse). */
 export function queueSupplierLeadingCellClass(
   groupIndex: number,
-  options?: { variant?: QueueTableVariant }
+  options?: { variant?: QueueTableVariant; stripeIndex?: number }
 ): string {
   const variant = options?.variant ?? "delivery";
-  const palette = supplierGroupPalette(groupIndex, variant);
+  const palette = supplierGroupPalette(options?.stripeIndex ?? groupIndex, variant);
   return cn("border-l-[3px]", palette.border);
 }

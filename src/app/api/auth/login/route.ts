@@ -13,6 +13,12 @@ import {
   sleepMs,
 } from "@/lib/auth/auth-rate-limit";
 import { isAdmin, redirectPathAfterLogin } from "@/lib/auth-roles";
+import {
+  PROCUREMENT_WORKSPACE_COOKIE,
+  buildProcurementWorkspaceCookie,
+  grantedProcurementFunctions,
+  resolveProcurementWorkspace,
+} from "@/lib/auth/procurement-workspace";
 import { fetchProfileByUserId } from "@/lib/auth/profile";
 import { resolveLoginEmailFromAccountId } from "@/lib/auth/resolve-login-account";
 import { translateAuthError } from "@/lib/auth-errors";
@@ -219,12 +225,31 @@ export async function POST(request: NextRequest) {
     const adminPanelContext = isAdmin(role)
       ? resolveAdminPanelContext(request.cookies.get(ADMIN_PANEL_COOKIE)?.value)
       : null;
-    redirectTo = redirectPathAfterLogin(role, next, { adminPanelContext });
+    redirectTo = redirectPathAfterLogin(role, next, {
+      adminPanelContext,
+      procurementWorkspace: resolveProcurementWorkspace(
+        role,
+        request.cookies.get(PROCUREMENT_WORKSPACE_COOKIE)?.value
+      ),
+    });
   }
 
   const jsonResponse = NextResponse.json({ ok: true as const, redirectTo, accountId: userId });
   for (const { name, value, options } of cookiesToAttach) {
     jsonResponse.cookies.set(name, value, options);
+  }
+
+  if (!profile.must_change_password) {
+    const role = profile.role as UserRole;
+    if (grantedProcurementFunctions(role).length > 0) {
+      const workspace = resolveProcurementWorkspace(
+        role,
+        request.cookies.get(PROCUREMENT_WORKSPACE_COOKIE)?.value
+      );
+      if (workspace) {
+        jsonResponse.cookies.set(buildProcurementWorkspaceCookie(workspace));
+      }
+    }
   }
 
   return jsonResponse;

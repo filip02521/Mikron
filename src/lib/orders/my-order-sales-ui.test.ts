@@ -72,6 +72,63 @@ describe("enrichMyOrderSalesUi", () => {
     expect(ui.subline).toBeNull();
   });
 
+  it("priorytetyzuje osobisty odbiór zębów", () => {
+    const row = presentMyOrders(
+      [{ ...baseOrder, status: "Zrealizowane", is_teeth: true }],
+      []
+    ).zamowienia[0];
+    const ui = enrichMyOrderSalesUi(row);
+    expect(ui.headline).toBe("Zęby gotowe do odbioru");
+    expect(ui.subline).toContain("osobiste");
+    expect(ui.sortPriority).toBe(1);
+  });
+
+  it("zęby zamówione u labu — bez języka planowej dostawy", () => {
+    const row = presentMyOrder(
+      {
+        ...baseOrder,
+        is_teeth: true,
+        status: "Zamowione",
+        order_type: "Glowne",
+        teeth_ordered_at: "2026-06-10",
+        teeth_delivery_date: "2026-06-24",
+      },
+      {}
+    );
+    expect(row.statusTitle).toBe("Zamówione u labu");
+    expect(row.statusDetail).toContain("10.06.2026");
+    expect(row.statusDetail).toContain("24.06.2026");
+    expect(row.statusDetail).not.toContain("planowej dostawie");
+  });
+
+  it("zęby przed zamówieniem — kolejka panelu zębów", () => {
+    const row = presentMyOrder(
+      {
+        ...baseOrder,
+        is_teeth: true,
+        status: "Nowe",
+        ordered_at: null,
+        teeth_ordered_at: null,
+      },
+      {}
+    );
+    expect(row.statusTitle).toBe("Przed zamówieniem u labu");
+    expect(row.statusDetail).toContain("panelu zębów");
+  });
+
+  it("zęby w Weryfikacji — copy panelu zębów, nie działu dostaw", () => {
+    const row = presentMyOrder(
+      {
+        ...baseOrder,
+        is_teeth: true,
+        status: "Weryfikacja",
+      },
+      {}
+    );
+    expect(row.statusTitle).toBe("W kolejce panelu zębów");
+    expect(row.statusDetail).not.toContain("W dziale dostaw");
+  });
+
   it("oznacza opóźnienie po terminie", () => {
     const row = presentMyOrder(baseOrder, {
       sup1: {

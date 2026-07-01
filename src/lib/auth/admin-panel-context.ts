@@ -80,7 +80,7 @@ export function homePathForAdminPanelContext(context: AdminPanelContext): string
     case "zakupy":
       return "/podsumowanie";
     case "zakupy_zeby":
-      return "/zeby";
+      return "/zeby/kolejka";
     case "magazyn":
       return "/kolejka";
     case "sales":

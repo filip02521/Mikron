@@ -9,10 +9,14 @@ export function supplierHubContextForRole(role: UserRole | null | undefined): Su
   return role === "admin" ? "admin" : "zakupy";
 }
 
-export function supplierHubPaths(ctx: SupplierHubContext) {
+export function supplierHubPaths(
+  ctx: SupplierHubContext,
+  opts?: { teethLane?: boolean }
+) {
   const base = ctx === "admin" ? "/admin" : "/zakupy";
+  const teethQuery = opts?.teethLane ? "?tor=zeby" : "";
   return {
-    cards: `${base}/dostawcy`,
+    cards: `${base}/dostawcy${teethQuery}`,
     inactive: `${base}/dostawcy/nieaktywni`,
     vacations: `${base}/urlopy`,
     schedule: (location: SupplierLocation) => `/lokalizacje/${location}`,

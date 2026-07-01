@@ -292,3 +292,8 @@ export function lineHasAnyMoulds(line: TeethProductLine): boolean {
 export function lineOptionalMould(line: TeethProductLine): boolean {
   return teethLineDefinition(line).optionalMould === true;
 }
+
+/** Linia katalogowa z osobnymi paletami fasonów dla przodów i boków. */
+export function catalogLineSupportsDualKind(line: TeethProductLine): boolean {
+  return hasMouldsForLineKind(line, "anterior") && hasMouldsForLineKind(line, "posterior");
+}

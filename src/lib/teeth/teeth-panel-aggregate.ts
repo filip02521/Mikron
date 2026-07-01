@@ -1,6 +1,14 @@
-import { groupTeethDetails, type TeethGroupedDetail, type TeethLineDetail } from "@/lib/teeth/teeth-catalog";
+import {
+  groupTeethDetails,
+  type TeethGroupedDetail,
+  type TeethLineDetail,
+  type TeethProductLine,
+} from "@/lib/teeth/teeth-catalog";
 import {
   orderTeethListReadyForOrder,
+  distinctTeethProductLineLabelsForOrders,
+  resolveTeethProductLineForPanelOrder,
+  teethPanelProductLineLabelForOrder,
   type TeethPanelReadinessContext,
 } from "@/lib/teeth/teeth-panel-order-readiness";
 import type { IndividualOrderTeethDetail } from "@/types/database";
@@ -15,6 +23,14 @@ export type TeethOrderSpecSummary = {
   hasSpec: boolean;
 };
 
+export type TeethSupplierBatchLineBlock = {
+  productLine: TeethProductLine | null;
+  productLineLabel: string;
+  mergedGroups: TeethGroupedDetail[];
+  totalPieces: number;
+  orderIds: string[];
+};
+
 export type TeethSupplierBatchSummary = {
   mergedGroups: TeethGroupedDetail[];
   totalPieces: number;
@@ -22,6 +38,10 @@ export type TeethSupplierBatchSummary = {
   ordersWithSpec: number;
   ordersMissingSpec: number;
   byOrder: TeethOrderSpecSummary[];
+  /** Unikalne linie produktowe w grupie (np. Vita vs skala W). */
+  productLineLabels: string[];
+  /** Scalone specyfikacje per linia produktowa — osobny blok „Do zamówienia”. */
+  byProductLine: TeethSupplierBatchLineBlock[];
 };
 
 function teethDetailKey(g: Pick<TeethGroupedDetail, "color" | "mould" | "jaw" | "kind">): string {
@@ -121,6 +141,42 @@ export function buildTeethSupplierBatchSummary(
   const withSpec = byOrder.filter((o) => o.hasSpec);
   const mergedGroups = mergeTeethGroupedDetails(withSpec.map((o) => o.groups));
   const totalPieces = withSpec.reduce((sum, o) => sum + o.pieceCount, 0);
+  const productLineLabels = distinctTeethProductLineLabelsForOrders(orders, ctx);
+
+  const lineBlocks = new Map<
+    string,
+    { productLine: TeethProductLine | null; label: string; groups: TeethGroupedDetail[][]; orderIds: string[] }
+  >();
+
+  for (const order of orders) {
+    const productLine = resolveTeethProductLineForPanelOrder(order, ctx);
+    const label = teethPanelProductLineLabelForOrder(order, ctx) ?? "Inna linia";
+    const key = productLine ?? `__unknown:${label}`;
+    const summary = byOrder.find((o) => o.orderId === order.id);
+    if (!summary?.hasSpec) continue;
+    const block = lineBlocks.get(key) ?? {
+      productLine,
+      label,
+      groups: [],
+      orderIds: [],
+    };
+    block.groups.push(summary.groups);
+    block.orderIds.push(order.id);
+    lineBlocks.set(key, block);
+  }
+
+  const byProductLine: TeethSupplierBatchLineBlock[] = Array.from(lineBlocks.values()).map(
+    (block) => ({
+      productLine: block.productLine,
+      productLineLabel: block.label,
+      mergedGroups: mergeTeethGroupedDetails(block.groups),
+      totalPieces: block.groups.reduce(
+        (sum, groups) => sum + groups.reduce((s, g) => s + g.count, 0),
+        0,
+      ),
+      orderIds: block.orderIds,
+    }),
+  );
 
   return {
     mergedGroups,
@@ -129,5 +185,7 @@ export function buildTeethSupplierBatchSummary(
     ordersWithSpec: withSpec.length,
     ordersMissingSpec: byOrder.length - withSpec.length,
     byOrder,
+    productLineLabels,
+    byProductLine,
   };
 }

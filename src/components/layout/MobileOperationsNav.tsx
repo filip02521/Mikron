@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
   isNavItemActive,
+  navForAppContext,
   navForRole,
   navItemDisplayTone,
   navItemHasDueReminders,
@@ -11,6 +12,7 @@ import {
   navMobilePrimaryItems,
 } from "@/lib/nav";
 import { useOperationsUpdates } from "@/components/operations/OperationsUpdatesContext";
+import { useTeethUpdates } from "@/components/zeby/TeethUpdatesContext";
 import { cn } from "@/lib/cn";
 import { NavIcon, navIconTileActiveClassForTone, navIconTileClassForTone } from "@/components/icons/NavIcon";
 import { MobileNavOverflowSheet } from "@/components/layout/MobileNavOverflowSheet";
@@ -22,13 +24,19 @@ import {
   sidebarNavBadgeClassForTone,
   sidebarNavToneActiveClass,
 } from "@/lib/ui/ontime-theme";
+import type { ProcurementWorkspace } from "@/lib/auth/procurement-workspace";
+import { isAdmin } from "@/lib/auth-roles";
 import type { UserRole } from "@/types/database";
 
 export function MobileOperationsNav({
   role,
+  realRole = null,
+  procurementWorkspace = null,
   navBadges = { nowe: 0, weryfikacja: 0, realizacja: 0 },
 }: {
   role: UserRole;
+  realRole?: UserRole | null;
+  procurementWorkspace?: ProcurementWorkspace | null;
   navBadges?: {
     nowe?: number;
     weryfikacja?: number;
@@ -36,11 +44,21 @@ export function MobileOperationsNav({
     operationsNotatki?: number;
     departmentBoardQuestions?: number;
     teethQueue?: number;
+    teethReceivePending?: number;
   };
 }) {
   const pathname = usePathname();
   const operationsUpdates = useOperationsUpdates();
-  const groups = navForRole(role, navBadges);
+  const teethUpdates = useTeethUpdates();
+  const groups =
+    realRole && !isAdmin(realRole)
+      ? navForAppContext({
+          realRole,
+          navRole: role,
+          procurementWorkspace,
+          badges: navBadges,
+        })
+      : navForRole(role, navBadges);
   const primaryItems = navMobilePrimaryItems(groups);
   const overflowItems = navMobileOverflowItems(groups);
   const allPrimaryHrefs = primaryItems.map((item) => item.href);
@@ -50,7 +68,11 @@ export function MobileOperationsNav({
       className={mobileSalesNavClass}
       style={{ paddingBottom: "env(safe-area-inset-bottom, 0px)" }}
       aria-label={
-        role === "magazyn" ? "Nawigacja magazynu" : "Nawigacja działu zakupów"
+        procurementWorkspace === "zeby"
+          ? "Nawigacja obszaru zębów"
+          : role === "magazyn"
+            ? "Nawigacja magazynu"
+            : "Nawigacja działu zakupów"
       }
     >
       <ul className="mx-auto flex max-w-lg items-stretch justify-around gap-0.5 px-0.5">
@@ -60,9 +82,9 @@ export function MobileOperationsNav({
           const displayTone = navItemDisplayTone(item, active);
           const attentionIdle = navItemHasDueReminders(item) && !active;
           const showLiveDot =
-            item.href === "/podsumowanie" &&
-            Boolean(operationsUpdates?.hasUpdates) &&
-            !active;
+            !active &&
+            ((item.href === "/podsumowanie" && Boolean(operationsUpdates?.hasUpdates)) ||
+              (item.href === "/zeby/kolejka" && Boolean(teethUpdates?.hasUpdates)));
           const label = item.mobileLabel ?? item.label;
           return (
             <li key={item.href} className="min-w-0 flex-1">

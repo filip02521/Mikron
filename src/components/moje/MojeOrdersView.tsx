@@ -71,6 +71,8 @@ import {
 } from "@/lib/department-board/moje-announcements-ui";
 import {
   MY_ORDER_ACTION_SECTION_COPY,
+  MY_ORDER_TEETH_ACTION_SECTION_COPY,
+  MOJE_TEETH_ACTION_SECTION_ID,
   MY_ORDER_INFORMACJA_SECTION_COPY,
   MY_ORDER_PROGRESS_SECTION_COPY,
   MY_ORDER_PROGRESS_SECTION_EMPTY,
@@ -568,6 +570,16 @@ function MojeOrdersViewContent({
     };
   }, [filteredZamowienia]);
 
+  const { actionShelfZamowienia, actionTeethZamowienia } = useMemo(() => {
+    const shelf: typeof actionZamowienia = [];
+    const teeth: typeof actionZamowienia = [];
+    for (const row of actionZamowienia) {
+      if (row.isTeeth) teeth.push(row);
+      else shelf.push(row);
+    }
+    return { actionShelfZamowienia: shelf, actionTeethZamowienia: teeth };
+  }, [actionZamowienia]);
+
   const { actionInformacje, progressInformacje } = useMemo(() => {
     const { needsAction, inProgress } = partitionMyOrderRowsBySalesAction(filteredInformacje);
     return {
@@ -587,11 +599,8 @@ function MojeOrdersViewContent({
     !searchActive && zamowieniaListRows.length > 0;
   const showProgressSectionLabels = showZamowieniaProgressSplit;
 
-  const actionSectionRows = useMemo(
-    () => [...actionZamowienia, ...actionInformacje],
-    [actionZamowienia, actionInformacje]
-  );
-  const actionSectionCallouts = useMyOrderSectionCallouts(actionSectionRows);
+  const actionShelfSectionCallouts = useMyOrderSectionCallouts(actionShelfZamowienia);
+  const actionTeethSectionCallouts = useMyOrderSectionCallouts(actionTeethZamowienia);
   const informacjeSectionCallouts = useMyOrderSectionCallouts(informacjeListRows);
 
   const allRows = useMemo(
@@ -684,6 +693,8 @@ function MojeOrdersViewContent({
   const shipmentCount = zamowienia.length + informacje.length;
   const filteredCount = filteredZamowienia.length + filteredInformacje.length;
   const actionCount = actionZamowienia.length + actionInformacje.length;
+  const actionShelfCount = actionShelfZamowienia.length + actionInformacje.length;
+  const actionTeethCount = actionTeethZamowienia.length;
 
   const hasArchiveData = archiwumRecent.length > 0 || archiwumExtended.length > 0;
   const archiwumRecentFiltered = useMemo(
@@ -1051,36 +1062,65 @@ function MojeOrdersViewContent({
 
         <div className="space-y-3 p-3 sm:p-4">
         {actionCount > 0 ? (
-          <MojeSectionShell sectionIcon={MY_ORDER_ACTION_SECTION_COPY.icon}>
-            <MojeSectionListLabel
-              title={MY_ORDER_ACTION_SECTION_COPY.title}
-              hint={MY_ORDER_ACTION_SECTION_COPY.hint}
-              count={actionCount}
-              accent={MY_ORDER_ACTION_SECTION_COPY.accent}
-              icon={MY_ORDER_ACTION_SECTION_COPY.icon}
-            />
-            <MyOrderSectionNoticeList
-              callouts={actionSectionCallouts.callouts}
-              singleHints={actionSectionCallouts.singleHints}
-            />
-            <MyOrderShipmentBlock
-              embedded
-              rows={actionZamowienia}
-              listKind="zamowienie"
-              showProgress
-              suppressedSectionPatterns={actionSectionCallouts.suppressedPatterns}
-              {...listProps}
-            />
-            <MyOrderShipmentBlock
-              embedded
-              continuation
-              rows={actionInformacje}
-              listKind="informacja"
-              showProgress={false}
-              suppressedSectionPatterns={actionSectionCallouts.suppressedPatterns}
-              {...listProps}
-            />
-          </MojeSectionShell>
+          <div className="space-y-3">
+            {actionShelfCount > 0 ? (
+              <MojeSectionShell sectionIcon={MY_ORDER_ACTION_SECTION_COPY.icon}>
+                <MojeSectionListLabel
+                  title={MY_ORDER_ACTION_SECTION_COPY.title}
+                  hint={MY_ORDER_ACTION_SECTION_COPY.hint}
+                  count={actionShelfCount}
+                  accent={MY_ORDER_ACTION_SECTION_COPY.accent}
+                  icon={MY_ORDER_ACTION_SECTION_COPY.icon}
+                />
+                <MyOrderSectionNoticeList
+                  callouts={actionShelfSectionCallouts.callouts}
+                  singleHints={actionShelfSectionCallouts.singleHints}
+                />
+                <MyOrderShipmentBlock
+                  embedded
+                  rows={actionShelfZamowienia}
+                  listKind="zamowienie"
+                  showProgress
+                  suppressedSectionPatterns={actionShelfSectionCallouts.suppressedPatterns}
+                  {...listProps}
+                />
+                <MyOrderShipmentBlock
+                  embedded
+                  continuation
+                  rows={actionInformacje}
+                  listKind="informacja"
+                  showProgress={false}
+                  suppressedSectionPatterns={actionShelfSectionCallouts.suppressedPatterns}
+                  {...listProps}
+                />
+              </MojeSectionShell>
+            ) : null}
+            {actionTeethCount > 0 ? (
+              <MojeSectionShell sectionIcon={MY_ORDER_TEETH_ACTION_SECTION_COPY.icon}>
+                <div id={MOJE_TEETH_ACTION_SECTION_ID}>
+                  <MojeSectionListLabel
+                    title={MY_ORDER_TEETH_ACTION_SECTION_COPY.title}
+                    hint={MY_ORDER_TEETH_ACTION_SECTION_COPY.hint}
+                    count={actionTeethCount}
+                    accent={MY_ORDER_TEETH_ACTION_SECTION_COPY.accent}
+                    icon={MY_ORDER_TEETH_ACTION_SECTION_COPY.icon}
+                  />
+                </div>
+                <MyOrderSectionNoticeList
+                  callouts={actionTeethSectionCallouts.callouts}
+                  singleHints={actionTeethSectionCallouts.singleHints}
+                />
+                <MyOrderShipmentBlock
+                  embedded
+                  rows={actionTeethZamowienia}
+                  listKind="zamowienie"
+                  showProgress
+                  suppressedSectionPatterns={actionTeethSectionCallouts.suppressedPatterns}
+                  {...listProps}
+                />
+              </MojeSectionShell>
+            ) : null}
+          </div>
         ) : null}
 
         {showZamowieniaProgressSplit ? (

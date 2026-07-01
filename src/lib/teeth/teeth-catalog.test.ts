@@ -37,9 +37,29 @@ describe("teeth-catalog", () => {
 
     it("detects product line from product name", () => {
       expect(detectTeethProductLine("Wiedent zęby Classic przody")).toBe("wiedent_classic");
+      expect(detectTeethProductLine("Wiedent Vita zęby przody")).toBe("wiedent_estetic_vita");
+      expect(detectTeethProductLine("Wiedent Estetic wg Vity boczne")).toBe("wiedent_estetic_vita");
+      expect(detectTeethProductLine("Wiedent Estetic skala W przody")).toBe("wiedent_estetic");
       expect(detectTeethProductLine("Phonares Typ II zęby przednie")).toBe("ivoclar_phonares_ii");
       expect(detectTeethProductLine("Zęby przednie Major Super Lux")).toBe("major_super_lux");
       expect(detectTeethProductLine("Zęby Dentex/AmberLux boczne")).toBe("dentex_amberlux");
+    });
+
+    it("Vita line uses VITA palette, not Wiedent W scale", () => {
+      const vita: TeethCatalogRef = { productLine: "wiedent_estetic_vita" };
+      expect(teethColorsFor(vita)).toContain("A1");
+      expect(teethColorsFor(vita)).not.toContain("G1");
+      expect(teethColorsFor(wiedentEstetic)).toContain("G1");
+    });
+
+    it("prefers Vita line from product name over stale admin estetic mapping", () => {
+      expect(
+        authoritativeTeethProductLine({
+          adminProductLine: "wiedent_estetic",
+          product: "Wiedent Vita zęby przody",
+          teethManufacturer: "wiedent",
+        }),
+      ).toBe("wiedent_estetic_vita");
     });
 
     it("admin product line overrides ambiguous product name", () => {

@@ -40,7 +40,12 @@ import {
 import { warehouseCancelFulfillToast } from "@/lib/orders/warehouse-cancel-fulfillment";
 import { checkboxBrandClass } from "@/lib/ui/ontime-theme";
 import { MICROCOPY } from "@/lib/ui/microcopy";
-import { QUEUE_LIST_BODY_CLASS, receiveQueueToolbarSectionClass, queueToolbarFieldLabelClass, queueToolbarControlClass } from "@/lib/ui/queue-panel-styles";
+import {
+  QUEUE_LIST_BODY_CLASS,
+  receiveQueueToolbarSectionClass,
+  queueToolbarFieldLabelClass,
+  queueToolbarControlClass,
+} from "@/lib/ui/queue-panel-styles";
 import { InlineCheck } from "@/components/ui/UiGlyphs";
 import { countOrdersBySupplier, filterOrdersBySupplier } from "@/lib/orders/supplier-filter-summary";
 import {
@@ -200,7 +205,10 @@ export function ReceiveQueueTable({
   }, [supplierFiltered, zdFilter]);
 
   const supplierChips = useMemo(() => countOrdersBySupplier(receiveQueue), [receiveQueue]);
-  const supplierGroups = useMemo(() => groupReceiveQueueBySupplier(filtered), [filtered]);
+  const supplierGroups = useMemo(
+    () => groupReceiveQueueBySupplier(filtered),
+    [filtered],
+  );
   const supplierMetrics = useMemo(
     () => buildSupplierGroupMetrics(deliveryOrders, warehouseInventory),
     [deliveryOrders, warehouseInventory]
@@ -368,7 +376,7 @@ export function ReceiveQueueTable({
         const progress = deliveryProgressForOrder(order, value);
         const person = order.sales_person?.name ?? "handlowiec";
 
-        const emailNote = result.emailSent ? " · wysłano mail do handlowca" : "";
+        const emailNote = !result.emailSent ? "" : " · wysłano mail do handlowca";
 
         if (result.emailError) {
           onToast({
@@ -441,7 +449,12 @@ export function ReceiveQueueTable({
         const order = receiveQueue.find((o) => o.id === id);
         if (!order || isInformacjaRequest(order)) return null;
         const ordered = receiveQueueTargetQuantity(order);
-        const value = opts?.fullQuantity && ordered != null ? String(ordered) : getQty(order);
+        let value = "";
+        if (opts?.fullQuantity && ordered != null) {
+          value = String(ordered);
+        } else {
+          value = getQty(order);
+        }
         if (!value.trim()) return null;
         return { orderId: id, qty: value };
       })
@@ -450,7 +463,10 @@ export function ReceiveQueueTable({
     const skippedQty = orderIds.length - updates.length;
 
     if (!updates.length) {
-      onToast({ text: "Wpisz ilość w polu dostawy lub użyj menu grupy „Całość”.", tone: "error" });
+      onToast({
+        text: "Wpisz ilość w polu dostawy lub użyj menu grupy „Całość”.",
+        tone: "error",
+      });
       return;
     }
 
@@ -476,7 +492,7 @@ export function ReceiveQueueTable({
           }
           const order = receiveQueue.find((o) => o.id === only.orderId);
           const person = order?.sales_person?.name ?? "handlowiec";
-          const emailNote = result.emailSent ? " · wysłano mail do handlowca" : "";
+          const emailNote = !result.emailSent ? "" : " · wysłano mail do handlowca";
           onToast({
             text: result.emailError
               ? `Zapisano, ale e-mail: ${result.emailError}`
@@ -608,7 +624,7 @@ export function ReceiveQueueTable({
                   zdFilter
                     ? panelChoiceChipSuccessSelectedClass
                     : "border-emerald-200/90 bg-emerald-50/60 text-emerald-900 hover:bg-emerald-50",
-                  "inline-flex w-full items-center justify-center gap-2 px-3 font-semibold"
+                  "inline-flex w-full items-center justify-center gap-2 px-3 font-semibold",
                 )}
               >
                 <IconClipboardList size={16} className="shrink-0" aria-hidden />
@@ -670,7 +686,8 @@ export function ReceiveQueueTable({
           <p className="min-w-0 text-[10px] leading-relaxed text-slate-500">
             <span className="inline-flex items-center gap-1">
               <span className="size-1.5 shrink-0 rounded-full bg-emerald-500" aria-hidden />
-              zamówienie: wpisz ilość, Enter lub <InlineCheck size={10} className="inline align-[-2px]" />
+              zamówienie: wpisz ilość, Enter lub{" "}
+              <InlineCheck size={10} className="inline align-[-2px]" />
             </span>
             <span className="mx-1.5 text-slate-300" aria-hidden>
               ·

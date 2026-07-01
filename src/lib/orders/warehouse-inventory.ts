@@ -52,6 +52,7 @@ function waitingLevel(days: number): WarehouseWaitingLevel {
 
 function classifyOnShelf(order: IndividualOrder): WarehouseInventoryKind | null {
   if (order.sales_acknowledged_at || order.sales_cancelled_at) return null;
+  if (order.is_teeth) return null;
 
   if (order.request_kind === "informacja" && order.status === "Zrealizowane") {
     return "informacja_ready";

@@ -55,7 +55,7 @@ describe("mapTeethDetailRow", () => {
     expect(row.jaw).toBe("upper");
   });
 
-  it("parses Polish jaw labels", () => {
+  it("parses Polish jaw and kind labels", () => {
     expect(
       mapTeethDetailRow({
         id: "x",
@@ -65,9 +65,21 @@ describe("mapTeethDetailRow", () => {
         mould: null,
         size: null,
         jaw: "Dolna",
-        kind: "Tylne",
+        kind: "Boczne",
       }).jaw
     ).toBe("lower");
+    expect(
+      mapTeethDetailRow({
+        id: "x",
+        order_id: "o",
+        position: 1,
+        color: "A1",
+        mould: null,
+        size: null,
+        jaw: "Dolna",
+        kind: "Boczne",
+      }).kind
+    ).toBe("posterior");
     expect(
       mapTeethDetailRow({
         id: "x",

@@ -1,5 +1,6 @@
 import type { UserRole } from "@/types/database";
 import { isSalesManager } from "@/lib/auth-roles";
+import type { ProcurementWorkspace } from "@/lib/auth/procurement-workspace";
 import { salesManagerNavTeamDescriptions } from "@/lib/sales/team-ui";
 import { supplierHubPaths } from "@/lib/supplier-hub";
 import { ROLE_LABELS } from "@/lib/users/labels";
@@ -63,6 +64,8 @@ export const NAV_SECTION_SYSTEM = "System";
 export const NAV_SECTION_DAILY = "Codziennie";
 export const NAV_SECTION_ZK = "ZK i terminy";
 export const NAV_SECTION_INFO = "Informacje";
+export const NAV_SECTION_REALIZATION = "Realizacja";
+export const NAV_SECTION_HELP = "Pomoc";
 
 /**
  * Sidebar „Administracja” (/admin) = hub system + konta + handlowcy.
@@ -103,7 +106,7 @@ export function navItemDisplayTone(item: NavItem, active: boolean): NavTone {
 /**
  * Czy punkt menu jest aktywny.
  * Nie podświetla krótszego href (np. /zespol), gdy pathname pasuje do dokładniejszego siblinga (/zespol/handlowcy).
- * Gdy href zawiera query string (np. /zeby?tab=harmonogram), sprawdza też activeSearch.
+ * Gdy href zawiera query string (np. /zakupy/dostawcy?tor=zeby), sprawdza też activeSearch.
  */
 export function isNavItemActive(
   pathname: string,
@@ -155,28 +158,56 @@ const OPERATIONS_NOTATKI_PATH = "/notatki";
 /** Magazyn — jawny dział w URL (zakupy/admin domyślnie bez parametru). */
 const OPERATIONS_NOTATKI_MAGAZYN = "/notatki?dzial=magazyn";
 
-function teethTodayItems(badges: {
+const TEETH_SUPPLIERS_PATH = "/zakupy/dostawcy?tor=zeby";
+
+export type NavBadges = {
+  nowe?: number;
+  weryfikacja?: number;
+  realizacja?: number;
+  salesMoje?: number;
+  salesZkDue?: number;
+  salesNotesDue?: number;
+  salesTablica?: number;
+  operationsNotatki?: number;
+  departmentBoardQuestions?: number;
+  adminBugReports?: number;
   teethQueue?: number;
-}): NavItem[] {
+  teethReceivePending?: number;
+};
+
+function teethTodayNavItems(
+  badges: Pick<NavBadges, "teethQueue" | "teethReceivePending">
+): NavItem[] {
   return [
     {
-      href: "/zeby",
-      label: "Panel zębów",
-      mobileLabel: "Zęby",
-      description: "Kolejka zamówień na zęby",
+      href: "/zeby/kolejka",
+      label: "Kolejka",
+      mobileLabel: "Kolejka",
+      description: "Prośby handlowców — oznacz zamówione u labu",
       icon: "teeth",
-      tone: "indigo",
+      tone: "emerald",
       tier: "primary",
       highlight: true,
       mobileSlot: "primary",
       badge: badges.teethQueue,
     },
     {
-      href: "/zeby?tab=harmonogram",
-      label: "Harmonogram",
-      mobileLabel: "Harmonogram",
-      description: "Cykliczny plan dostawców zębów",
-      icon: "schedule",
+      href: "/zeby/przyjecie",
+      label: "Przyjęcie",
+      mobileLabel: "Przyjęcie",
+      description: "Co dotarło od labu — wpisz ilości i braki",
+      icon: "warehouse",
+      tone: "amber",
+      tier: "primary",
+      mobileSlot: "primary",
+      badge: badges.teethReceivePending,
+    },
+    {
+      href: "/zeby/historia",
+      label: "Historia",
+      mobileLabel: "Historia",
+      description: "Zamówione u labu — ETA, audyt i korekty",
+      icon: "history",
       tone: "sky",
       tier: "primary",
       mobileSlot: "primary",
@@ -184,12 +215,62 @@ function teethTodayItems(badges: {
   ];
 }
 
-function operationsTodayItems(badges: {
-  nowe?: number;
-  weryfikacja?: number;
-  realizacja?: number;
-  teethQueue?: number;
+function teethSupplierNavItems(): NavItem[] {
+  const compact = {
+    tier: "compact" as const,
+    mobileSlot: "overflow" as const,
+  };
+  return [
+    {
+      href: TEETH_SUPPLIERS_PATH,
+      label: "Karty dostawców",
+      description: "Cykl zębów, kontakt i dane labu",
+      icon: "suppliers",
+      tone: "sky",
+      ...compact,
+    },
+  ];
+}
+
+function teethTeamNavItems(badges: {
+  operationsNotatki?: number;
+  departmentBoardQuestions?: number;
 }): NavItem[] {
+  return [
+    {
+      href: DEPARTMENT_BOARD_PROCUREMENT_PATH,
+      label: "Tablica",
+      mobileLabel: "Tablica",
+      description: "Ogłoszenia i pytania handlowców",
+      icon: "board",
+      tone: "indigo",
+      tier: "compact",
+      mobileSlot: "overflow",
+      badge: badges.departmentBoardQuestions,
+    },
+    {
+      href: OPERATIONS_NOTATKI_PATH,
+      label: "Notatki",
+      mobileLabel: "Notatki",
+      description: "Notatki zespołu zakupów",
+      icon: "notepad",
+      tone: "indigo",
+      tier: "compact",
+      mobileSlot: "overflow",
+      badge: badges.operationsNotatki,
+    },
+  ];
+}
+
+export function teethNavGroups(badges: NavBadges = {}): NavGroup[] {
+  return [
+    { title: NAV_SECTION_TODAY, items: teethTodayNavItems(badges) },
+    { title: NAV_SECTION_TEAM, items: teethTeamNavItems(badges) },
+    { title: NAV_SECTION_SUPPLIERS, items: teethSupplierNavItems() },
+  ];
+}
+
+function operationsTodayItems(badges: Pick<NavBadges, "nowe" | "weryfikacja" | "realizacja">): NavItem[] {
   return [
     {
       href: "/podsumowanie",
@@ -202,18 +283,6 @@ function operationsTodayItems(badges: {
       highlight: true,
       mobileSlot: "primary",
       badge: badges.nowe,
-    },
-    {
-      href: "/zeby",
-      label: "Panel zębów",
-      mobileLabel: "Zęby",
-      description: "Kolejka zamówień na zęby",
-      icon: "teeth",
-      tone: "indigo",
-      tier: "compact",
-      indent: true,
-      mobileSlot: "overflow",
-      badge: badges.teethQueue,
     },
     {
       href: "/weryfikacja",
@@ -279,9 +348,9 @@ function supplierHubItemsForRole(role: UserRole): NavItem[] {
   if (role === "zakupy_zeby") {
     return [
       {
-        href: "/zakupy/dostawcy",
+        href: TEETH_SUPPLIERS_PATH,
         label: "Karty dostawców",
-        description: "Kontakt i dane dostawców",
+        description: "Labs i dostawcy zębów",
         icon: "suppliers",
         tone: "sky",
         ...compact,
@@ -428,25 +497,7 @@ function adminSystemItems(badges: { adminBugReports?: number }): NavItem[] {
   ];
 }
 
-function operationsNavGroups(
-  role: UserRole,
-  badges: {
-    nowe?: number;
-    weryfikacja?: number;
-    realizacja?: number;
-    teethQueue?: number;
-    operationsNotatki?: number;
-    departmentBoardQuestions?: number;
-    adminBugReports?: number;
-  }
-): NavGroup[] {
-  if (role === "zakupy_zeby") {
-    return [
-      { title: NAV_SECTION_TODAY, items: teethTodayItems(badges) },
-      { title: NAV_SECTION_TEAM, items: operationsTeamItems(badges) },
-    ];
-  }
-
+function operationsNavGroups(role: UserRole, badges: NavBadges): NavGroup[] {
   const groups: NavGroup[] = [
     { title: NAV_SECTION_TODAY, items: operationsTodayItems(badges) },
     { title: NAV_SECTION_TEAM, items: operationsTeamItems(badges) },
@@ -459,6 +510,29 @@ function operationsNavGroups(
   }
 
   return groups;
+}
+
+export type NavAppContext = {
+  realRole: UserRole;
+  /** Rola efektywna (podgląd admina). */
+  navRole: UserRole;
+  procurementWorkspace: ProcurementWorkspace | null;
+  badges?: NavBadges;
+};
+
+/** Nawigacja z uwzględnieniem obszaru pracy zakupów (Dostawy vs Zęby). */
+export function navForAppContext(ctx: NavAppContext): NavGroup[] {
+  const badges = ctx.badges ?? {};
+  if (ctx.realRole === "admin") {
+    return navForRole(ctx.navRole, badges);
+  }
+  if (ctx.procurementWorkspace === "zeby") {
+    return teethNavGroups(badges);
+  }
+  if (ctx.realRole === "zakupy" || ctx.realRole === "zakupy_zeby") {
+    return operationsNavGroups(ctx.navRole === "zakupy_zeby" ? "zakupy" : ctx.navRole, badges);
+  }
+  return navForRole(ctx.navRole, badges);
 }
 
 export function flattenNavGroups(groups: NavGroup[]): NavItem[] {
@@ -475,29 +549,13 @@ export function navMobileOverflowItems(groups: NavGroup[]): NavItem[] {
 
 export function navForRole(
   role: UserRole,
-  badges: {
-    nowe?: number;
-    weryfikacja?: number;
-    realizacja?: number;
-    /** Aktywne karty wymagające uwagi handlowca (/moje). */
-    salesMoje?: number;
-    /** Przypomnienia ZK z follow-up na dziś/wcześniej (/zk). */
-    salesZkDue?: number;
-    /** Przypomnienia notatek z follow-up na dziś/wcześniej (/notatnik). */
-    salesNotesDue?: number;
-    /** Przypomnienia w notatkach zakupów/magazynu (/notatki). */
-    operationsNotatki?: number;
-    /** Otwarte zgłoszenia od handlowców (/admin/zgloszenia). */
-    adminBugReports?: number;
-    /** Nowe odpowiedzi zakupów na /tablica (pytania zespołu). */
-    salesTablica?: number;
-    /** Pytania handlowców bez odpowiedzi (/zakupy/tablica). */
-    departmentBoardQuestions?: number;
-    /** Pozycje zębów oczekujące na zamówienie (/zeby). */
-    teethQueue?: number;
-  } = {}
+  badges: NavBadges = {}
 ): NavGroup[] {
-  if (role === "admin" || role === "zakupy" || role === "zakupy_zeby") {
+  if (role === "zakupy_zeby") {
+    return teethNavGroups(badges);
+  }
+
+  if (role === "admin" || role === "zakupy") {
     return operationsNavGroups(role, badges);
   }
 
@@ -677,8 +735,12 @@ export function pageTitle(pathname: string): string {
     return "Urlopy";
   }
   if (pathname.startsWith("/lokalizacje/")) return "Terminy zamówień";
+  if (pathname.startsWith("/zeby/przyjecie")) return "Przyjęcie";
+  if (pathname.startsWith("/zeby/kolejka")) return "Kolejka";
+  if (pathname.startsWith("/zeby/historia")) return "Historia";
+  if (pathname.startsWith("/zeby")) return "Kolejka";
 
-  for (const role of ["admin", "zakupy", "magazyn", "sales", "sales_manager"] as const) {
+  for (const role of ["admin", "zakupy", "zakupy_zeby", "magazyn", "sales", "sales_manager"] as const) {
     for (const g of navForRole(role)) {
       const hrefs = g.items.map((i) => i.href);
       const matches = g.items.filter((i) => isNavItemActive(pathname, i.href, hrefs));

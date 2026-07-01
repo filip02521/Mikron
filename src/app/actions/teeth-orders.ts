@@ -6,23 +6,40 @@ import {
   fetchTeethQueue,
   fetchTeethHistory,
   fetchTeethHistoryGroups,
+  fetchTeethHistoryPage,
   markTeethOrdered,
   unmarkTeethOrdered,
   overrideTeethDeliveryDate,
   clearTeethDeliveryDateOverride,
+  type TeethHistoryFetchOptions,
   type TeethQueueGroup,
   type TeethQueueItem,
 } from "@/lib/data/teeth-queue";
 import { fetchTeethOrderEditContext, type TeethEditContext } from "@/lib/data/teeth-edit-context";
 import {
+  fetchTeethOrderHistoryAudit,
+  type TeethOrderHistoryRow,
+} from "@/lib/data/teeth-order-history";
+import {
   fetchTeethSchedules,
+  fetchTeethScheduleForSupplier,
   upsertTeethSchedule,
   removeTeethSchedule,
   shiftTeethSchedule,
   markTeethScheduleOrdered,
   fetchAvailableSuppliersForTeethSchedule,
 } from "@/lib/data/teeth-schedule";
-import type { DayOfWeek, TeethSupplierScheduleWithSupplier } from "@/types/database";
+import type { DayOfWeek, TeethSupplierSchedule, TeethSupplierScheduleWithSupplier } from "@/types/database";
+import type { SessionUser } from "@/lib/auth";
+
+function teethHistoryActor(user: SessionUser) {
+  return { id: user.id, email: user.email };
+}
+
+function revalidateTeethSupplierPaths() {
+  revalidatePath("/zeby");
+  revalidatePath("/zakupy/dostawcy");
+}
 
 export type TeethQueueResult = {
   groups: TeethQueueGroup[];
@@ -35,17 +52,31 @@ export async function actionFetchTeethQueue(): Promise<TeethQueueResult> {
 }
 
 export async function actionFetchTeethHistory(
-  supplierId?: string | null
+  options?: TeethHistoryFetchOptions
 ): Promise<TeethQueueItem[]> {
   await requireTeethPanel("read");
-  return fetchTeethHistory(supplierId);
+  return fetchTeethHistory(options);
 }
 
 export async function actionFetchTeethHistoryGroups(
-  supplierId?: string | null
+  options?: TeethHistoryFetchOptions
 ): Promise<TeethQueueGroup[]> {
   await requireTeethPanel("read");
-  return fetchTeethHistoryGroups(supplierId);
+  return fetchTeethHistoryGroups(options);
+}
+
+export async function actionFetchTeethHistoryPage(
+  options?: TeethHistoryFetchOptions
+): Promise<Awaited<ReturnType<typeof fetchTeethHistoryPage>>> {
+  await requireTeethPanel("read");
+  return fetchTeethHistoryPage(options);
+}
+
+export async function actionFetchTeethOrderHistoryAudit(
+  options?: { limit?: number; supplierId?: string | null }
+): Promise<TeethOrderHistoryRow[]> {
+  await requireTeethPanel("read");
+  return fetchTeethOrderHistoryAudit(options);
 }
 
 export async function actionFetchTeethEditContext(
@@ -59,7 +90,7 @@ export async function actionMarkTeethOrdered(
   orderIds: string[]
 ): Promise<{ success: boolean; updated: number }> {
   const user = await requireTeethPanel("mutate");
-  const result = await markTeethOrdered(orderIds, user.id);
+  const result = await markTeethOrdered(orderIds, user.id, teethHistoryActor(user));
   revalidatePath("/zeby");
   revalidatePath("/podsumowanie");
   revalidatePath("/kolejka");
@@ -70,13 +101,22 @@ export async function actionMarkTeethOrdered(
 export async function actionUnmarkTeethOrdered(
   orderIds: string[]
 ): Promise<{ success: boolean; updated: number }> {
-  await requireTeethPanel("mutate");
-  const result = await unmarkTeethOrdered(orderIds);
+  const user = await requireTeethPanel("mutate");
+  const result = await unmarkTeethOrdered(orderIds, teethHistoryActor(user));
   revalidatePath("/zeby");
   revalidatePath("/podsumowanie");
   revalidatePath("/kolejka");
   revalidatePath("/moje");
   return { success: true, updated: result.updated };
+}
+
+export async function actionFetchTeethScheduleForSupplier(
+  supplierId: string
+): Promise<TeethSupplierSchedule | null> {
+  await requireTeethPanel("read");
+  const id = supplierId?.trim();
+  if (!id) return null;
+  return fetchTeethScheduleForSupplier(id);
 }
 
 export async function actionFetchTeethSchedules(): Promise<{
@@ -101,7 +141,7 @@ export async function actionUpsertTeethSchedule(
 ): Promise<{ success: boolean }> {
   await requireTeethPanel("mutate");
   await upsertTeethSchedule(supplierId, orderDayOfWeek, intervalWeeks);
-  revalidatePath("/zeby");
+  revalidateTeethSupplierPaths();
   return { success: true };
 }
 
@@ -110,7 +150,7 @@ export async function actionRemoveTeethSchedule(
 ): Promise<{ success: boolean }> {
   await requireTeethPanel("mutate");
   await removeTeethSchedule(supplierId);
-  revalidatePath("/zeby");
+  revalidateTeethSupplierPaths();
   return { success: true };
 }
 
@@ -118,10 +158,10 @@ export async function actionShiftTeethSchedule(
   supplierId: string,
   manualDate: string | null
 ): Promise<{ success: boolean }> {
-  await requireTeethPanel("mutate");
+  const user = await requireTeethPanel("mutate");
   const date = manualDate ? new Date(manualDate) : null;
-  await shiftTeethSchedule(supplierId, date);
-  revalidatePath("/zeby");
+  await shiftTeethSchedule(supplierId, date, teethHistoryActor(user));
+  revalidateTeethSupplierPaths();
   return { success: true };
 }
 
@@ -130,7 +170,7 @@ export async function actionMarkTeethScheduleOrdered(
 ): Promise<{ success: boolean }> {
   await requireTeethPanel("mutate");
   await markTeethScheduleOrdered(supplierId, new Date());
-  revalidatePath("/zeby");
+  revalidateTeethSupplierPaths();
   return { success: true };
 }
 
@@ -138,8 +178,12 @@ export async function actionOverrideTeethDeliveryDate(
   orderIds: string[],
   deliveryDate: string
 ): Promise<{ success: boolean; updated: number }> {
-  await requireTeethPanel("mutate");
-  const result = await overrideTeethDeliveryDate(orderIds, deliveryDate);
+  const user = await requireTeethPanel("mutate");
+  const result = await overrideTeethDeliveryDate(
+    orderIds,
+    deliveryDate,
+    teethHistoryActor(user)
+  );
   revalidatePath("/zeby");
   revalidatePath("/moje");
   return { success: true, updated: result.updated };
@@ -148,8 +192,8 @@ export async function actionOverrideTeethDeliveryDate(
 export async function actionClearTeethDeliveryDateOverride(
   orderIds: string[]
 ): Promise<{ success: boolean; updated: number }> {
-  await requireTeethPanel("mutate");
-  const result = await clearTeethDeliveryDateOverride(orderIds);
+  const user = await requireTeethPanel("mutate");
+  const result = await clearTeethDeliveryDateOverride(orderIds, teethHistoryActor(user));
   revalidatePath("/zeby");
   revalidatePath("/moje");
   return { success: true, updated: result.updated };

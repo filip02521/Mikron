@@ -56,18 +56,26 @@ export function requiresQueueBatchConfirm(orderIds: string[]): boolean {
 export function batchDeliveryConfirmMessage(
   orders: IndividualOrder[],
   orderIds: string[],
-  opts?: { fullQuantity?: boolean }
+  opts?: { fullQuantity?: boolean; teethHandover?: boolean }
 ): string {
   const n = orderIds.length;
   const people = countSalesPeopleInOrders(orders, orderIds);
-  const emailPart =
-    people <= 1
+  const emailPart = opts?.teethHandover
+    ? "Handlowiec zobaczy przyjętą ilość w Moje zamówienia (bez e-maila) i potwierdzi osobisty odbiór zębów."
+    : people <= 1
       ? "Handlowiec dostanie e-mail o przyjęciu towaru (z 10-sekundowym opóźnieniem — możliwym do cofnięcia)."
       : `${people} handlowców dostanie osobne e-maile o przyjęciu towaru (z 10-sekundowym opóźnieniem — możliwym do cofnięcia).`;
   const qtyPart = opts?.fullQuantity
-    ? "Dla każdej pozycji zostanie zapisana pełna zamówiona ilość (Całość)."
-    : "Zostanie zapisana ilość z kolumny „Dost.” dla każdej zaznaczonej pozycji.";
-  return `Zapiszesz dostawę dla ${polishPozycjeLabel(n)}. ${qtyPart} ${emailPart} Sprawdź zaznaczenie — błędny zapis utrudni późniejszą korektę.`;
+    ? opts?.teethHandover
+      ? "Dla każdej pozycji zostanie uzupełniona pełna brakująca ilość (Całość sekcji)."
+      : "Dla każdej pozycji zostanie zapisana pełna zamówiona ilość (Całość)."
+    : opts?.teethHandover
+      ? "Zostanie zapisana ilość wpisana w tabeli linii dla każdego zamówienia z wprowadzoną ilością."
+      : "Zostanie zapisana ilość z kolumny „Dost.” dla każdej zaznaczonej pozycji.";
+  const checkPart = opts?.teethHandover
+    ? "Sprawdź wpisane ilości"
+    : "Sprawdź zaznaczenie";
+  return `Zapiszesz dostawę dla ${polishPozycjeLabel(n)}. ${qtyPart} ${emailPart} ${checkPart} — błędny zapis utrudni późniejszą korektę.`;
 }
 
 /** Treść modala przed zbiorczym powiadomieniem informacyjnym. */

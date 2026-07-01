@@ -123,7 +123,7 @@ export async function requireWarehouse(
   return user;
 }
 
-/** Panel zębów: oznaczanie zamówionych, edycja próśb (admin + zakupy + zakupy_zeby). */
+/** Panel zębów: oznaczanie zamówionych, edycja próśb, przyjęcie dostaw (admin + zakupy_zeby). */
 export async function requireTeethPanel(
   intent: AuthIntent = "read"
 ): Promise<SessionUser> {
@@ -135,6 +135,38 @@ export async function requireTeethPanel(
     await assertAdminPanelAllowsOperationsMutations(user);
   }
   return user;
+}
+
+/** Przyjęcie towaru — magazyn (zwykły) lub panel zębów (pozycje is_teeth). */
+export async function requireReceiveMutateForOrders(
+  orderIds: string[],
+  intent: AuthIntent = "mutate"
+): Promise<SessionUser> {
+  const ids = [...new Set(orderIds.filter(Boolean))];
+  if (!ids.length) {
+    throw new Error("Brak pozycji do przyjęcia");
+  }
+
+  const { createAdminClient } = await import("@/lib/supabase/admin");
+  const supabase = createAdminClient();
+  const { data, error } = await supabase
+    .from("individual_orders")
+    .select("id, is_teeth")
+    .in("id", ids);
+
+  if (error) throw new Error(error.message);
+  if (!data?.length) throw new Error("Nie znaleziono zamówień");
+
+  const teeth = data.filter((row) => row.is_teeth === true);
+  const regular = data.filter((row) => row.is_teeth !== true);
+  if (teeth.length && regular.length) {
+    throw new Error("Nie można mieszać zębów z innym towarem w jednej operacji przyjęcia");
+  }
+
+  if (teeth.length) {
+    return requireTeethPanel(intent);
+  }
+  return requireWarehouse(intent);
 }
 
 /** Zarządzanie dostawcami i urlopami (admin + zakupy). */

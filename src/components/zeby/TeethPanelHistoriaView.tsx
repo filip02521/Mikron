@@ -5,29 +5,30 @@ import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { ModalShell } from "@/components/ui/ModalShell";
 import { Input } from "@/components/ui/Field";
 import { Button } from "@/components/ui/Button";
-import { panelSubsectionInsetClass } from "@/lib/ui/ontime-theme";
-import { cn } from "@/lib/cn";
-import { TeethPanelEmpty } from "@/components/zeby/TeethPanelSection";
-import { TeethPanelOrderEntry } from "@/components/zeby/TeethPanelOrderEntry";
-import { TeethPanelSupplierGroupHeader } from "@/components/zeby/TeethPanelSupplierGroupHeader";
-import { TeethSupplierBatchSummary } from "@/components/teeth/TeethSupplierBatchSummary";
-import { buildTeethSupplierBatchSummary } from "@/lib/teeth/teeth-panel-aggregate";
+import { TeethPanelEmpty, TeethPanelListSkeleton } from "@/components/zeby/TeethPanelSection";
+import { TeethPanelHistoryOrderEntry } from "@/components/zeby/TeethPanelHistoryOrderEntry";
 import type { TeethPanelReadinessContext } from "@/lib/teeth/teeth-panel-order-readiness";
+import { TeethPanelSupplierGroupHeader } from "@/components/zeby/TeethPanelSupplierGroupHeader";
 import {
   EMPTY_TEETH_PANEL_FILTERS,
   filterTeethHistoryGroups,
   countActiveTeethPanelFilters,
   type TeethPanelFilters,
 } from "@/lib/teeth/teeth-panel-filters";
-import { teethPanelSupplierCardClass } from "@/lib/teeth/teeth-panel-ui";
+import { teethPanelHistoryOrdersListClass, teethPanelSupplierCardClass } from "@/lib/teeth/teeth-panel-ui";
 import type { TeethQueueGroup, TeethQueueItem } from "@/lib/data/teeth-queue";
-import { isScheduledItem } from "@/lib/data/teeth-queue";
 import {
-  actionFetchTeethHistoryGroups,
+  groupTeethItemsBySupplier,
+  isScheduledItem,
+  TEETH_HISTORY_PAGE_SIZE,
+} from "@/lib/data/teeth-queue";
+import {
+  actionFetchTeethHistoryPage,
   actionOverrideTeethDeliveryDate,
   actionClearTeethDeliveryDateOverride,
   actionUnmarkTeethOrdered,
 } from "@/app/actions/teeth-orders";
+import { TeethPanelAuditLog } from "@/components/zeby/TeethPanelAuditLog";
 import { IconCircleCheck } from "@/components/icons/StrokeIcons";
 
 type ToastState = { message: string; tone: "success" | "error" } | null;
@@ -48,27 +49,71 @@ export function TeethPanelHistoriaView({
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(groups === null);
   const [historyGroups, setHistoryGroups] = useState<TeethQueueGroup[] | null>(groups);
+  const [hasMore, setHasMore] = useState(false);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [historyOffset, setHistoryOffset] = useState(0);
   const [editingDateId, setEditingDateId] = useState<string | null>(null);
   const [dateValue, setDateValue] = useState("");
   const [datePending, setDatePending] = useState(false);
   const [unmarkId, setUnmarkId] = useState<string | null>(null);
   const [unmarkPending, setUnmarkPending] = useState(false);
 
+  const historyQuery = useCallback(
+    () => ({
+      supplierId: filters.supplierId,
+      salesPersonId: filters.salesPersonId,
+      limit: TEETH_HISTORY_PAGE_SIZE,
+    }),
+    [filters.supplierId, filters.salesPersonId]
+  );
+
   const reloadHistory = useCallback(async () => {
     setLoading(true);
     try {
-      const data = await actionFetchTeethHistoryGroups();
-      setHistoryGroups(data);
+      const page = await actionFetchTeethHistoryPage({
+        ...historyQuery(),
+        offset: 0,
+      });
+      setHistoryOffset(page.items.length);
+      setHasMore(page.hasMore);
+      setHistoryGroups(groupTeethItemsBySupplier(page.items));
       setError(null);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Błąd ładowania historii");
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [historyQuery]);
+
+  const loadMoreHistory = useCallback(async () => {
+    if (!hasMore || loadingMore) return;
+    setLoadingMore(true);
+    try {
+      const page = await actionFetchTeethHistoryPage({
+        ...historyQuery(),
+        offset: historyOffset,
+      });
+      const merged = [
+        ...(historyGroups?.flatMap((g) =>
+          g.items.filter((i): i is TeethQueueItem => !isScheduledItem(i))
+        ) ?? []),
+        ...page.items,
+      ];
+      setHistoryOffset(merged.length);
+      setHasMore(page.hasMore);
+      setHistoryGroups(groupTeethItemsBySupplier(merged));
+    } catch (e) {
+      onToast({
+        message: e instanceof Error ? e.message : "Błąd ładowania kolejnej strony",
+        tone: "error",
+      });
+    } finally {
+      setLoadingMore(false);
+    }
+  }, [hasMore, loadingMore, historyQuery, historyOffset, historyGroups, onToast]);
 
   useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect -- pierwsze pobranie historii po montażu widoku
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- przeładowanie przy zmianie filtrów
     void reloadHistory();
   }, [reloadHistory]);
 
@@ -154,18 +199,14 @@ export function TeethPanelHistoriaView({
       <TeethPanelEmpty
         title="Nie udało się wczytać historii"
         description={error}
+        tone="sky"
         icon={<IconCircleCheck size={24} strokeWidth={1.75} />}
       />
     );
   }
 
   if (loading || historyGroups === null) {
-    return (
-      <TeethPanelEmpty
-        title="Wczytywanie historii…"
-        icon={<IconCircleCheck size={24} strokeWidth={1.75} />}
-      />
-    );
+    return <TeethPanelListSkeleton />;
   }
 
   if (historyGroups.length === 0) {
@@ -181,6 +222,7 @@ export function TeethPanelHistoriaView({
             ? "Zmień filtry, aby zobaczyć historię zamówień zębów."
             : "Po oznaczeniu pozycji w kolejce jako zamówione u dostawcy trafią tutaj wraz z planowaną datą dostawy."
         }
+        tone="sky"
         icon={<IconCircleCheck size={24} strokeWidth={1.75} />}
       />
     );
@@ -192,6 +234,7 @@ export function TeethPanelHistoriaView({
       <TeethPanelEmpty
         title="Brak pozycji spełniających filtry"
         description="Zmień filtry historii zamówień zębów."
+        tone="sky"
         icon={<IconCircleCheck size={24} strokeWidth={1.75} />}
       />
     );
@@ -199,38 +242,25 @@ export function TeethPanelHistoriaView({
 
   return (
     <>
-      {displayGroups.map((group) => {
+      <div className="space-y-3">
+        {displayGroups.map((group) => {
         const items = group.items.filter(
           (i): i is TeethQueueItem => !isScheduledItem(i),
         );
-        const batchSummary =
-          items.length >= 2 ? buildTeethSupplierBatchSummary(items, readinessCtx) : null;
 
         return (
           <div key={group.supplierId ?? "__no_supplier"} className={teethPanelSupplierCardClass}>
-            <TeethPanelSupplierGroupHeader group={group} orderCount={items.length} />
+            <TeethPanelSupplierGroupHeader
+              group={group}
+              orderCount={items.length}
+              hideProductLines
+            />
 
-            {batchSummary ? <TeethSupplierBatchSummary batch={batchSummary} /> : null}
-
-            {batchSummary ? (
-              <div
-                className={cn(
-                  "border-t border-slate-100 py-1.5",
-                  panelSubsectionInsetClass,
-                )}
-              >
-                <span className="text-xs text-slate-500">Prośby handlowców</span>
-              </div>
-            ) : null}
-
-            <div>
+            <div className={teethPanelHistoryOrdersListClass}>
               {items.map((item) => (
-                <TeethPanelOrderEntry
+                <TeethPanelHistoryOrderEntry
                   key={item.id}
                   item={item}
-                  variant="history"
-                  mergedBatch={Boolean(batchSummary)}
-                  supplierName={group.supplierName}
                   onEditDate={() => openDateEditor(item)}
                   onUnmark={
                     item.status === "Zamowione" ? () => setUnmarkId(item.id) : undefined
@@ -241,6 +271,22 @@ export function TeethPanelHistoriaView({
           </div>
         );
       })}
+      </div>
+
+      {hasMore ? (
+        <div className="flex justify-center px-3 pb-2 pt-1">
+          <Button
+            variant="ghost"
+            className="min-h-10"
+            disabled={loadingMore}
+            onClick={() => void loadMoreHistory()}
+          >
+            {loadingMore ? "Wczytywanie…" : "Pokaż starsze zamówienia"}
+          </Button>
+        </div>
+      ) : null}
+
+      <TeethPanelAuditLog supplierId={filters.supplierId} className="mt-3" />
 
       <ConfirmDialog
         open={unmarkId !== null}

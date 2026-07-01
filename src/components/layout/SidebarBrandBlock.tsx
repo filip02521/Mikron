@@ -50,10 +50,12 @@ function OnTimeWordmark({
 
 function RoleLine({
   role,
+  roleLabel,
   assignmentLabel,
   compact = false,
 }: {
   role: UserRole;
+  roleLabel?: string;
   assignmentLabel?: string | null;
   compact?: boolean;
 }) {
@@ -61,7 +63,7 @@ function RoleLine({
     <p className="min-w-0">
       <LoginAccountRoleLine
         role={role}
-        roleLabel={ROLE_LABELS[role]}
+        roleLabel={roleLabel ?? ROLE_LABELS[role]}
         assignmentLabel={assignmentLabel}
         compact={compact}
       />
@@ -71,12 +73,14 @@ function RoleLine({
 
 function SidebarUserRow({
   role,
+  workspaceSubtitle = null,
   userEmail,
   salesPersonName,
   userAssignmentLabel,
   compact = false,
 }: {
   role: UserRole | null;
+  workspaceSubtitle?: string | null;
   userEmail?: string | null;
   salesPersonName?: string | null;
   userAssignmentLabel?: string | null;
@@ -96,9 +100,10 @@ function SidebarUserRow({
         ? initialsFromEmail(userEmail)
         : initialsFromName(primaryLabel)
     : "?";
+  const roleLineLabel = workspaceSubtitle ?? (role ? ROLE_LABELS[role] : null);
   const hoverDetail = [
     primaryLabel,
-    role ? ROLE_LABELS[role] : null,
+    roleLineLabel,
     userAssignmentLabel,
     userEmail,
   ]
@@ -117,7 +122,14 @@ function SidebarUserRow({
             {primaryLabel}
           </p>
         ) : null}
-        {role ? <RoleLine role={role} assignmentLabel={userAssignmentLabel} compact /> : null}
+        {role ? (
+          <RoleLine
+            role={role}
+            roleLabel={workspaceSubtitle ?? ROLE_LABELS[role]}
+            assignmentLabel={userAssignmentLabel}
+            compact
+          />
+        ) : null}
       </div>
     );
   }
@@ -143,7 +155,13 @@ function SidebarUserRow({
           ) : (
             <p className="text-sm font-medium text-slate-500">Niezalogowany</p>
           )}
-          {role ? <RoleLine role={role} assignmentLabel={userAssignmentLabel} /> : null}
+          {role ? (
+            <RoleLine
+              role={role}
+              roleLabel={workspaceSubtitle ?? ROLE_LABELS[role]}
+              assignmentLabel={userAssignmentLabel}
+            />
+          ) : null}
         </div>
       </div>
     </div>
@@ -153,11 +171,13 @@ function SidebarUserRow({
 /** Marka + użytkownik — sidebar desktop (bez osobnej karty). */
 export function SidebarBrandBlock({
   role,
+  workspaceSubtitle = null,
   userEmail,
   salesPersonName,
   userAssignmentLabel,
 }: {
   role: UserRole | null;
+  workspaceSubtitle?: string | null;
   userEmail?: string | null;
   salesPersonName?: string | null;
   userAssignmentLabel?: string | null;
@@ -176,6 +196,7 @@ export function SidebarBrandBlock({
       </div>
       <SidebarUserRow
         role={role}
+        workspaceSubtitle={workspaceSubtitle}
         userEmail={userEmail}
         salesPersonName={salesPersonName}
         userAssignmentLabel={userAssignmentLabel}

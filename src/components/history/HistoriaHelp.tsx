@@ -34,6 +34,13 @@ export function HistoriaHelp() {
         </p>
       </HelpBlock>
 
+      <HelpBlock title="Zamówienia zębowe">
+        <p>
+          Historia zamówień zębów (oznaczenia w panelu zębów, ETA labu) jest w{" "}
+          <strong>panelu zębów → Historia</strong> — nie w tej sekcji indywidualnej.
+        </p>
+      </HelpBlock>
+
       <HelpBlock title="Administrator">
         <p>Administrator może ręcznie usunąć pojedynczy wpis — np. po błędnym imporcie.</p>
       </HelpBlock>

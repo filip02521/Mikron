@@ -10,21 +10,25 @@ import { SectionTabNav, type SectionTab } from "@/components/ui/SectionTabNav";
 import type { SupplierLocation } from "@/types/database";
 
 const TAB_ORDER: SupplierHubTab[] = ["cards", "schedules", "inactive", "vacations"];
+const TEETH_TAB_ORDER: SupplierHubTab[] = ["cards", "vacations"];
 
 export function SuppliersHubNav({
   activeTab,
   context,
   scheduleLocation = "POLSKA",
   inactiveCount = 0,
+  teethLane = false,
 }: {
   activeTab: SupplierHubTab;
   context: SupplierHubContext;
   scheduleLocation?: SupplierLocation;
   inactiveCount?: number;
+  teethLane?: boolean;
 }) {
-  const paths = supplierHubPaths(context);
+  const paths = supplierHubPaths(context, { teethLane });
+  const tabOrder = teethLane ? TEETH_TAB_ORDER : TAB_ORDER;
 
-  const tabs: SectionTab<SupplierHubTab>[] = TAB_ORDER.map((id) => ({
+  const tabs: SectionTab<SupplierHubTab>[] = tabOrder.map((id) => ({
     id,
     label: SUPPLIER_HUB_TAB_COPY[id].label,
     hint: SUPPLIER_HUB_TAB_COPY[id].hint,

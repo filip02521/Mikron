@@ -13,6 +13,7 @@ export const MY_ORDER_PROGRESS_SECTION_ORDER: MyOrderProgressSectionId[] = [
 ];
 
 import type { MyOrderSectionAccent } from "@/lib/orders/my-order-section-accent";
+import { mojeSectionDomId } from "@/lib/orders/moje-section-focus";
 
 /** Sekcja u góry listy — wymaga kliknięcia handlowca. */
 export const MY_ORDER_ACTION_SECTION_COPY = {
@@ -21,6 +22,15 @@ export const MY_ORDER_ACTION_SECTION_COPY = {
   icon: "action" as const,
   accent: "emerald" as const satisfies MyOrderSectionAccent,
 };
+
+export const MY_ORDER_TEETH_ACTION_SECTION_COPY = {
+  title: "Potwierdź odbiór zębów",
+  hint: "Magazyn przyjął zęby i doręczy je osobiście — potwierdź, że je otrzymałeś/aś (nie na regał).",
+  icon: "teeth" as const,
+  accent: "violet" as const satisfies MyOrderSectionAccent,
+};
+
+export const MOJE_TEETH_ACTION_SECTION_ID = mojeSectionDomId("teeth");
 
 export const MY_ORDER_INFORMACJA_SECTION_COPY = {
   title: "Sprawdzamy dostępność",

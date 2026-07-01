@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   extractTeethFilterOptions,
+  filterTeethHistoryGroups,
   filterTeethQueueGroups,
   mergeTeethFilterOptionGroups,
   mergeTeethFilterOptions,
@@ -19,10 +20,11 @@ const sampleGroup: TeethQueueGroup = {
       products: "Phonares",
       quantity: "2",
       status: "Nowe",
+      supplier_id: "sup-1",
       sales_person_id: "sp1",
       sales_person_name: "Jan",
-      supplier_id: "sup-1",
       supplier_name: "Mikran",
+      symbol: "PH",
       teeth_details: [
         {
           id: "t1",
@@ -40,11 +42,12 @@ const sampleGroup: TeethQueueGroup = {
       id: "o2",
       products: "Major",
       quantity: "1",
-      status: "Weryfikacja",
+      status: "Nowe",
       sales_person_id: "sp2",
       sales_person_name: "Anna",
-      supplier_id: "sup-1",
+      supplier_id: null,
       supplier_name: "Mikran",
+      symbol: "-",
       teeth_details: null,
     } as TeethQueueGroup["items"][number],
   ],
@@ -81,7 +84,7 @@ describe("orderHasTeethSpec", () => {
 });
 
 describe("filterTeethQueueGroups", () => {
-  it("filters missing spec and verification", () => {
+  it("filters missing spec and incomplete header data", () => {
     const missingOnly = filterTeethQueueGroups([sampleGroup], {
       supplierId: null,
       salesPersonId: null,
@@ -91,14 +94,33 @@ describe("filterTeethQueueGroups", () => {
     expect(missingOnly[0]?.items).toHaveLength(1);
     expect((missingOnly[0]?.items[0] as { id: string }).id).toBe("o2");
 
-    const verificationOnly = filterTeethQueueGroups([sampleGroup], {
+    const headerOnly = filterTeethQueueGroups([sampleGroup], {
       supplierId: null,
       salesPersonId: null,
       missingSpecOnly: false,
       verificationOnly: true,
     });
-    expect(verificationOnly[0]?.items).toHaveLength(1);
-    expect((verificationOnly[0]?.items[0] as { id: string }).id).toBe("o2");
+    expect(headerOnly[0]?.items).toHaveLength(1);
+    expect((headerOnly[0]?.items[0] as { id: string }).id).toBe("o2");
+  });
+});
+
+describe("filterTeethHistoryGroups", () => {
+  it("ignoruje filtry kolejki (specyfikacja, dane ogólne)", () => {
+    const historyGroup: TeethQueueGroup = {
+      ...sampleGroup,
+      items: sampleGroup.items.map((item) => ({
+        ...item,
+        status: "Zamowione",
+      })),
+    };
+    const filtered = filterTeethHistoryGroups([historyGroup], {
+      supplierId: null,
+      salesPersonId: null,
+      missingSpecOnly: true,
+      verificationOnly: true,
+    });
+    expect(filtered[0]?.items).toHaveLength(2);
   });
 });
 

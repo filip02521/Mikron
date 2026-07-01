@@ -41,6 +41,7 @@ export function TeethSpecFields({
   disabled,
   lockedKind,
   compact,
+  hideKindField = false,
 }: {
   productLine: TeethProductLine;
   detail: Pick<TeethLineDetail, "color" | "mould" | "jaw" | "kind">;
@@ -48,6 +49,8 @@ export function TeethSpecFields({
   disabled?: boolean;
   lockedKind?: TeethKind | null;
   compact?: boolean;
+  /** Ukryj pole typu — typ wybierany poza formularzem (np. przełącznik w modalu). */
+  hideKindField?: boolean;
 }) {
   const catalog = useMemo<TeethCatalogRef>(() => ({ productLine }), [productLine]);
   const colors = useMemo(() => teethColorsFor(catalog), [catalog]);
@@ -102,7 +105,7 @@ export function TeethSpecFields({
         </div>
       </div>
 
-      {lockedKind ? (
+      {hideKindField ? null : lockedKind ? (
         <div className={sectionGap}>
           <FieldLabel>Typ</FieldLabel>
           <span className={cn(panelChoiceChipClass, "px-4 py-1.5 text-sm", panelChoiceChipSelectedClass)}>

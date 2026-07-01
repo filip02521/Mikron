@@ -16,12 +16,15 @@ import { Button } from "@/components/ui/Button";
 import { ShiftMenu } from "@/components/summary/ShiftMenu";
 import { actionFetchSupplierRecentHistory, actionMarkOrdered, actionShiftOrder } from "@/app/actions/admin";
 import type { DailyPanelRunFn } from "@/components/summary/useDailyPanelRunner";
+import { SCROLL_LOCK_ALLOW_ATTR, useBodyScrollLock } from "@/lib/ui/page-scroll-lock";
 import { cn } from "@/lib/cn";
 import { FlowChevron } from "@/components/ui/UiGlyphs";
 import { SupplierSubiektLinkIndicator } from "@/components/admin/SupplierSubiektLinkIndicator";
 import { useSupplierHubContext } from "@/components/layout/AppRoleContext";
 import { supplierCardsHref } from "@/lib/supplier-hub";
-import { SCROLL_LOCK_ALLOW_ATTR, useBodyScrollLock } from "@/lib/ui/page-scroll-lock";
+import { TeethDualLaneNotice } from "@/components/teeth/TeethDualLaneNotice";
+import type { TeethSupplierLaneSnapshot } from "@/lib/data/teeth-schedule";
+import { TEETH_DUAL_LANE_COPY } from "@/lib/teeth/teeth-supplier-dual-lane";
 
 type HistoryRow = {
   action_at: string;
@@ -38,6 +41,7 @@ const supplierHistoryCache = new Map<
 
 export function SupplierDrawer({
   supplier,
+  teethLane,
   onClose,
   isScopePending,
   run,
@@ -45,6 +49,7 @@ export function SupplierDrawer({
   onEdit,
 }: {
   supplier: SupplierSummaryMeta | null;
+  teethLane?: TeethSupplierLaneSnapshot | null;
   onClose: () => void;
   isScopePending: (supplierId: string) => boolean;
   run: DailyPanelRunFn;
@@ -199,6 +204,9 @@ export function SupplierDrawer({
           className="flex-1 overflow-y-auto px-5 py-5"
           {...{ [SCROLL_LOCK_ALLOW_ATTR]: "" }}
         >
+          <p className="mb-2 text-[11px] font-medium uppercase tracking-wide text-slate-500">
+            {TEETH_DUAL_LANE_COPY.dailyPanelScheduleCaption}
+          </p>
           <div className="grid gap-3 sm:grid-cols-2">
             <DateCard
               label="Ostatnie zamówienie"
@@ -219,6 +227,8 @@ export function SupplierDrawer({
               </span>
             </p>
           ) : null}
+
+          {teethLane ? <TeethDualLaneNotice lane={teethLane} /> : null}
 
           <DrawerBlock title="Kontakt i zamówienia" className="mt-6">
             <div className="mb-4 flex flex-wrap items-center gap-2 rounded-md border border-slate-200 bg-slate-50/80 px-3 py-2.5">

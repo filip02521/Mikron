@@ -54,7 +54,7 @@ import {
   stockSnapshotFromSubiektProduct,
 } from "@/lib/orders/prosba-stock-check";
 import type { ProductLineDraft } from "@/components/orders/request-product-lines";
-import { useTeethProductInfo } from "@/components/layout/TeethExemptContext";
+import { useTeethProductInfo, useSupportsDualKindBuilder } from "@/components/layout/TeethExemptContext";
 import { TeethOrderBuilderCard } from "@/components/teeth/TeethOrderBuilderCard";
 import { teethProsbaQuantityInputClass } from "@/lib/teeth/teeth-prosba-ui";
 import {
@@ -62,9 +62,20 @@ import {
   manufacturerForProductLine,
   resolveTeethCatalogFromDraft,
   shouldClearTeethDetailsOnCatalogSync,
+  type TeethLineDetail,
   type TeethProductLine,
 } from "@/lib/teeth/teeth-catalog";
-import { TeethOrderBuilderModal } from "@/components/teeth/TeethOrderBuilderModal";
+import {
+  TeethOrderBuilderModal,
+  buildDualKindInitialDetails,
+  type TeethOrderBuilderSaveResult,
+} from "@/components/teeth/TeethOrderBuilderModal";
+import {
+  commitDualKindTeethLines,
+  findTeethSiblingLineIndex,
+  type TeethDualKindCommitSummary,
+} from "@/lib/teeth/teeth-dual-kind";
+import { teethDualCommitToastMessage } from "@/lib/teeth/teeth-builder-copy";
 
 export type SubiektProductLineValue = Pick<
   ProductLineDraft,
@@ -199,7 +210,11 @@ export function SubiektProductLineFields({
   compactControls = false,
   fieldValidation,
   typeaheadSize = "default",
+  lineIndex = 0,
+  allLines,
   onAfterTeethListSave,
+  onTeethDualKindCommit,
+  onTeethListCommitNotice,
   autoOpenTeethList = false,
 }: {
   value: SubiektProductLineValue;
@@ -227,8 +242,20 @@ export function SubiektProductLineFields({
   /** Stany pól (prośba handlowca). */
   fieldValidation?: ProsbaLineFieldMap;
   lineIndex?: number;
+  allLines?: ProductLineDraft[];
   typeaheadSize?: "default" | "comfortable";
-  onAfterTeethListSave?: (teethDetails: import("@/lib/teeth/teeth-catalog").TeethLineDetail[], totalQuantity: number) => void;
+  onAfterTeethListSave?: (
+    teethDetails: TeethLineDetail[],
+    totalQuantity: number,
+    saveResult?: TeethOrderBuilderSaveResult,
+  ) => void;
+  onTeethDualKindCommit?: (payload: {
+    lineIndex: number;
+    lines: ProductLineDraft[];
+    summary: TeethDualKindCommitSummary;
+    focusLineId: string | null;
+  }) => void;
+  onTeethListCommitNotice?: (message: string, tone?: "success" | "error") => void;
   /** Otwiera modal listy zębów po wejściu w edycję (panel zakupów). */
   autoOpenTeethList?: boolean;
 }) {
@@ -271,12 +298,35 @@ export function SubiektProductLineFields({
     [adminProductLine, value.teethProductLine, value.teethManufacturer, value.product, value.subiektTwId],
   );
   const resolvedTeethProductLine = resolvedTeethCatalog?.productLine ?? null;
+  const dualKindMode =
+    useSupportsDualKindBuilder(resolvedTeethProductLine) && Boolean(allLines);
+  const siblingLineIndex =
+    allLines && dualKindMode ? findTeethSiblingLineIndex(allLines, lineIndex) : null;
+  const siblingLine =
+    siblingLineIndex != null && allLines ? allLines[siblingLineIndex] : null;
+  const dualKindInitialDetails = useMemo(() => {
+    if (!dualKindMode) return undefined;
+    return buildDualKindInitialDetails(
+      value.teethDetails,
+      siblingLine?.teethDetails,
+      value.teethKind,
+    );
+  }, [dualKindMode, value.teethDetails, value.teethKind, siblingLine?.teethDetails]);
+  const combinedDualDetails = useMemo(() => {
+    if (!dualKindMode) return value.teethDetails;
+    const anterior = dualKindInitialDetails?.anterior ?? [];
+    const posterior = dualKindInitialDetails?.posterior ?? [];
+    return [...anterior, ...posterior];
+  }, [dualKindMode, dualKindInitialDetails, value.teethDetails]);
   const shouldAutoOpenTeethModal =
     autoOpenTeethList && isTeethOrderLine && Boolean(resolvedTeethProductLine) && !disabled;
   const [teethModalOpen, setTeethModalOpen] = useState(shouldAutoOpenTeethModal);
   const [teethModalKey, setTeethModalKey] = useState(() => (shouldAutoOpenTeethModal ? 1 : 0));
   const autoOpenTeethListRequestedRef = useRef(false);
-  const teethModalInstanceKey = `${teethModalKey}-${resolvedTeethProductLine ?? "none"}-${value.teethDetails?.length ?? 0}`;
+  const dualDetailsFingerprint = dualKindMode
+    ? `${dualKindInitialDetails?.anterior?.length ?? 0}-${dualKindInitialDetails?.posterior?.length ?? 0}-${siblingLineIndex ?? "x"}`
+    : "";
+  const teethModalInstanceKey = `${teethModalKey}-${resolvedTeethProductLine ?? "none"}-${dualKindMode ? "dual" : "single"}-${dualDetailsFingerprint}`;
   const teethQuantityFromList = value.teethDetails?.length ?? 0;
   const querySource = activeFieldQuery(value, activeField);
   const symbolPreview = combinedProductSymbolPreview(value);
@@ -385,6 +435,65 @@ export function SubiektProductLineFields({
     setTeethModalKey((k) => k + 1);
     setTeethModalOpen(true);
   }, []);
+
+  const handleTeethModalSave = useCallback(
+    (result: TeethOrderBuilderSaveResult): boolean => {
+      if (result.mode === "single") {
+        onChange({
+          teethDetails: result.details,
+          quantity: String(result.totalQuantity),
+        });
+        onAfterTeethListSave?.(result.details, result.totalQuantity, result);
+        return true;
+      }
+      if (!allLines) {
+        onTeethListCommitNotice?.(
+          "Nie można zapisać obu typów w tym widoku — użyj formularza prośby z wieloma pozycjami.",
+          "error",
+        );
+        return false;
+      }
+      const commit = commitDualKindTeethLines(
+        allLines,
+        lineIndex,
+        result.anteriorGroups,
+        result.posteriorGroups,
+        teethProductInfo.registryIndex,
+      );
+      if (!commit.ok) {
+        onTeethListCommitNotice?.(commit.error, "error");
+        return false;
+      }
+      const toastMsg = teethDualCommitToastMessage(commit.summary.added, commit.summary.updated);
+      if (toastMsg) onTeethListCommitNotice?.(toastMsg, "success");
+      onTeethDualKindCommit?.({
+        lineIndex,
+        lines: commit.lines,
+        summary: commit.summary,
+        focusLineId: commit.focusLineId,
+      });
+      const focusLine = commit.focusLineId
+        ? commit.lines.find((line) => line.id === commit.focusLineId)
+        : commit.lines[lineIndex];
+      if (focusLine?.teethDetails) {
+        onAfterTeethListSave?.(
+          focusLine.teethDetails,
+          parseInt(focusLine.quantity, 10) || focusLine.teethDetails.length,
+          result,
+        );
+      }
+      return true;
+    },
+    [
+      allLines,
+      lineIndex,
+      onChange,
+      onAfterTeethListSave,
+      onTeethDualKindCommit,
+      onTeethListCommitNotice,
+      teethProductInfo.registryIndex,
+    ],
+  );
 
   useEffect(() => {
     if (!autoOpenTeethList) {
@@ -986,7 +1095,8 @@ export function SubiektProductLineFields({
             productLine={resolvedTeethProductLine}
             productName={value.product}
             defaultKind={value.teethKind ?? null}
-            details={value.teethDetails ?? undefined}
+            details={dualKindMode ? combinedDualDetails : (value.teethDetails ?? undefined)}
+            dualKindMode={dualKindMode}
             disabled={disabled}
             onOpenModal={openTeethModal}
           />
@@ -1008,14 +1118,10 @@ export function SubiektProductLineFields({
           defaultKind={value.teethKind ?? null}
           productLabel={value.product?.trim() || value.symbol?.trim() || undefined}
           initialDetails={value.teethDetails ?? undefined}
+          dualKindMode={dualKindMode}
+          dualKindInitialDetails={dualKindInitialDetails}
           disabled={disabled}
-          onSave={(teethDetails, totalQuantity) => {
-            onChange({
-              teethDetails,
-              quantity: String(totalQuantity),
-            });
-            onAfterTeethListSave?.(teethDetails, totalQuantity);
-          }}
+          onSave={handleTeethModalSave}
         />
       ) : null}
 

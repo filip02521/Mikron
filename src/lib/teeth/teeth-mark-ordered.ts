@@ -2,11 +2,16 @@ import type { IndividualOrderTeethDetail } from "@/types/database";
 import { plPozycja } from "@/lib/ui/polish-plurals";
 import { orderHasTeethSpec } from "@/lib/teeth/teeth-panel-filters";
 import type { TeethPanelReadinessContext } from "@/lib/teeth/teeth-panel-order-readiness";
+
+export const TEETH_MARK_ORDERED_BLOCKED_MESSAGE =
+  "Uzupełnij kompletną listę zębów przed oznaczeniem zamówienia u dostawcy.";
+
 export type TeethMarkOrderedAnalysis = {
   orderIds: string[];
   withSpecIds: string[];
   withoutSpecIds: string[];
   hasMissingSpec: boolean;
+  canMarkAny: boolean;
 };
 
 export function analyzeTeethMarkOrdered(
@@ -40,6 +45,7 @@ export function analyzeTeethMarkOrdered(
     withSpecIds,
     withoutSpecIds,
     hasMissingSpec: withoutSpecIds.length > 0,
+    canMarkAny: withSpecIds.length > 0,
   };
 }
 
@@ -47,30 +53,37 @@ export function teethMarkOrderedConfirmMessage(
   analysis: TeethMarkOrderedAnalysis,
   supplierName?: string | null
 ): string {
-  const n = analysis.orderIds.length;
+  const ready = analysis.withSpecIds.length;
+  const skipped = analysis.withoutSpecIds.length;
+
+  if (!analysis.canMarkAny) {
+    return (
+      `${TEETH_MARK_ORDERED_BLOCKED_MESSAGE}\n\n` +
+      `Użyj „Edytuj listę” przy każdej pozycji — kolor, fason, szczęka i typ muszą być kompletne.`
+    );
+  }
+
   const prefix =
     supplierName != null
-      ? `Oznaczyć ${n} ${plPozycja(n)} u dostawcy ${supplierName} jako zamówione?`
-      : n === 1
+      ? `Oznaczyć ${ready} ${plPozycja(ready)} u dostawcy ${supplierName} jako zamówione?`
+      : ready === 1
         ? "Czy na pewno chcesz oznaczyć 1 pozycję jako zamówioną u dostawcy?"
-        : `Czy na pewno chcesz oznaczyć ${n} ${plPozycja(n)} jako zamówione u dostawcy?`;
+        : `Czy na pewno chcesz oznaczyć ${ready} ${plPozycja(ready)} jako zamówione u dostawcy?`;
 
   if (!analysis.hasMissingSpec) {
     return prefix;
   }
 
-  const missing = analysis.withoutSpecIds.length;
   return (
     `${prefix}\n\n` +
-    `Uwaga: ${missing} ${missing === 1 ? "pozycja nie ma" : "pozycji nie ma"} uzupełnionej listy zębów. ` +
-    `Zamówienie u dostawcy bez pełnej specyfikacji może skończyć się błędnym towarem.\n\n` +
-    `Uzupełnij listę (Edytuj listę) albo potwierdź świadome zamówienie mimo braków.`
+    `${skipped} ${skipped === 1 ? "pozycja nie ma" : "pozycji nie ma"} kompletnej listy zębów — ` +
+    `pominę ${skipped === 1 ? "ją" : "je"} i oznaczę tylko gotowe. Uzupełnij listę u pozostałych przed kolejnym zamówieniem.`
   );
 }
 
 export function teethMarkOrderedConfirmLabel(analysis: TeethMarkOrderedAnalysis): string {
-  if (analysis.hasMissingSpec) {
-    return "Zamów mimo braków";
+  if (!analysis.canMarkAny) {
+    return "Zamknij";
   }
   return "Oznacz jako zamówione";
 }

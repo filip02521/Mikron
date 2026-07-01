@@ -33,6 +33,17 @@ vi.mock("@/hooks/useDebouncedValue", () => ({
   useDebouncedValue: (value: string) => value,
 }));
 
+vi.mock("@/components/layout/TeethExemptContext", () => ({
+  useTeethExemptTwIds: () => new Set<number>([42]),
+  useTeethProductInfo: () => ({
+    twIds: new Set<number>([42]),
+    manufacturerByTwId: new Map(),
+    kindByTwId: new Map(),
+    productLineByTwId: new Map(),
+  }),
+  useSupportsDualKindBuilder: () => false,
+}));
+
 const initial = {
   supplierId: "",
   salesPersonId: "sp1",
@@ -112,6 +123,35 @@ describe("EditIndividualRequestModal", () => {
         informacjaPath: "stock_out",
       })
     );
+  });
+
+  it("pokazuje baner edycji prośby zębowej", () => {
+    render(
+      <EditIndividualRequestModal
+        open
+        onClose={vi.fn()}
+        mode="procurement"
+        orderIds={["ord-1"]}
+        initial={{
+          ...initial,
+          requestKind: "zamowienie",
+          lines: [
+            {
+              ...newProductLine(),
+              id: "ord-1",
+              product: "Phonares",
+              quantity: "4",
+              subiektTwId: 42,
+            },
+          ],
+        }}
+        suppliers={[]}
+        teethRequest
+      />
+    );
+
+    expect(screen.getByRole("note").textContent).toContain("panel zębów");
+    expect(screen.getByRole("heading", { name: "Edycja prośby zębowej" })).toBeTruthy();
   });
 
   it("zapisuje notatkę dodaną przy edycji prośby bez wcześniejszej notatki", async () => {

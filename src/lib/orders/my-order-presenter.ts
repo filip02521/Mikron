@@ -52,6 +52,15 @@ import {
   isAwaitingInformacjaAck,
   isAwaitingSalesPickup,
 } from "@/lib/orders/sales-pickup";
+import { teethProcurementDeliveryEta, teethProcurementOrderedAt } from "@/lib/teeth/teeth-lifecycle";
+import {
+  TEETH_SALES_STATUS_NEW_DETAIL,
+  TEETH_SALES_STATUS_NEW_TITLE,
+  TEETH_SALES_STATUS_ORDERED_TITLE,
+  TEETH_SALES_STATUS_VERIFICATION_DETAIL,
+  TEETH_SALES_STATUS_VERIFICATION_TITLE,
+  teethSalesOrderedStatusDetail,
+} from "@/lib/teeth/teeth-procurement-flow-copy";
 import {
   canEstimateDeliveryEta,
   orderPlacementAt,
@@ -116,6 +125,7 @@ export type MyOrderAcknowledgeMode =
   | "cancelled"
   | "cancel_notice"
   | "pickup"
+  | "teeth_handover"
   | "availability"
   | "none";
 
@@ -265,6 +275,10 @@ function resolveAcknowledgeMode(orders: IndividualOrder[]): MyOrderAcknowledgeMo
     return "cancelled";
   }
   if (open.some((o) => isAwaitingSalesPickup(o))) {
+    const pickupPending = open.filter((o) => isAwaitingSalesPickup(o));
+    if (pickupPending.every((o) => o.is_teeth)) {
+      return "teeth_handover";
+    }
     return "pickup";
   }
   if (open.some((o) => isAwaitingInformacjaAck(o))) {
@@ -527,6 +541,25 @@ function salesProgressLabel(
   return `0 z ${q} szt.`;
 }
 
+function teethHandoverStatusDetail(
+  order: IndividualOrder,
+  progress: DeliveryProgress
+): string {
+  if (!progress.hasNumericQty || progress.ordered == null) {
+    return "Zęby są doręczane osobiście — nie trafiają na regał. Potwierdź odbiór po otrzymaniu od magazynu.";
+  }
+  const q = progress.ordered;
+  const d = progress.delivered;
+  if (order.status === "Czesciowo_zrealizowane") {
+    const remaining =
+      progress.remaining != null && progress.remaining > 0
+        ? ` Reszta (${progress.remaining} szt.) czeka u dostawcy.`
+        : "";
+    return `Magazyn przyjął ${d} z ${q} szt. zębów.${remaining} Odbiór osobisty — potwierdź, gdy je otrzymasz od magazynu.`;
+  }
+  return `Magazyn przyjął ${d} z ${q} szt. zębów. Odbierz je osobiście — nie są odkładane na regał. Potwierdź odbiór po doręczeniu.`;
+}
+
 function presentInformacja(order: IndividualOrder): MyOrderRow {
   const base = {
     id: order.id,
@@ -729,10 +762,11 @@ function presentZamowienie(
     : null;
 
   let timingLabel: string | null = null;
-  if (order.is_teeth && order.teeth_delivery_date) {
-    const teethDate = parseDateOnly(order.teeth_delivery_date);
+  const teethDeliveryDate = teethProcurementDeliveryEta(order);
+  if (order.is_teeth && teethDeliveryDate) {
+    const teethDate = parseDateOnly(teethDeliveryDate);
     const overdue = teethDate != null && isPastExpectedDate(teethDate);
-    timingLabel = `Planowana dostawa: ${formatPlDate(order.teeth_delivery_date)}${overdue ? " · po terminie" : ""}`;
+    timingLabel = `Planowana dostawa: ${formatPlDate(teethDeliveryDate)}${overdue ? " · po terminie" : ""}`;
   } else if (zdFulfillment) {
     if (zdFulfillment.pendingConfirmation) {
       timingLabel = salesZdPrimarySlotTimingLabel(zdFulfillment, false);
@@ -765,11 +799,31 @@ function presentZamowienie(
 
   switch (order.status) {
     case "Weryfikacja":
+      if (order.is_teeth) {
+        return finalize({
+          ...base,
+          statusTitle: TEETH_SALES_STATUS_VERIFICATION_TITLE,
+          statusDetail: TEETH_SALES_STATUS_VERIFICATION_DETAIL,
+          timingLabel,
+          badgeVariant: "purple",
+          rowColor: SUMMARY_COLORS.historyNew,
+        });
+      }
       return finalize({
         ...base,
         ...weryfikacjaPresentation(order),
       });
     case "Nowe":
+      if (order.is_teeth) {
+        return finalize({
+          ...base,
+          statusTitle: TEETH_SALES_STATUS_NEW_TITLE,
+          statusDetail: TEETH_SALES_STATUS_NEW_DETAIL,
+          timingLabel,
+          badgeVariant: "purple",
+          rowColor: SUMMARY_COLORS.historyNew,
+        });
+      }
       return finalize({
         ...base,
         statusTitle: "Przed zamówieniem",
@@ -782,6 +836,17 @@ function presentZamowienie(
         rowColor: SUMMARY_COLORS.historyNew,
       });
     case "Zamowione":
+      if (order.is_teeth) {
+        const teethOrderedAt = teethProcurementOrderedAt(order);
+        return finalize({
+          ...base,
+          statusTitle: TEETH_SALES_STATUS_ORDERED_TITLE,
+          statusDetail: teethSalesOrderedStatusDetail(teethOrderedAt, teethDeliveryDate),
+          timingLabel,
+          badgeVariant: timingBadgeOverdue ? "danger" : "info",
+          rowColor: SUMMARY_COLORS.historyPending,
+        });
+      }
       return finalize({
         ...base,
         statusTitle: "Zamówione",
@@ -801,14 +866,16 @@ function presentZamowienie(
     case "Czesciowo_zrealizowane":
       return finalize({
         ...base,
-        statusTitle: "Częściowo na magazynie",
-        statusDetail: [
-          progress.remaining != null && progress.remaining > 0
-            ? `Magazyn przyjął część dostawy (${progress.delivered} z ${progress.ordered} szt.). U dostawcy brakuje jeszcze ${progress.remaining} szt.`
-            : "Magazyn przyjął część towaru. Reszta zamówienia czeka u dostawcy.",
-        ]
-          .filter(Boolean)
-          .join(" · "),
+        statusTitle: order.is_teeth ? "Zęby częściowo przyjęte" : "Częściowo na magazynie",
+        statusDetail: order.is_teeth
+          ? teethHandoverStatusDetail(order, progress)
+          : [
+              progress.remaining != null && progress.remaining > 0
+                ? `Magazyn przyjął część dostawy (${progress.delivered} z ${progress.ordered} szt.). U dostawcy brakuje jeszcze ${progress.remaining} szt.`
+                : "Magazyn przyjął część towaru. Reszta zamówienia czeka u dostawcy.",
+            ]
+              .filter(Boolean)
+              .join(" · "),
         timingLabel,
         badgeVariant: timingBadgeOverdue ? "danger" : "warning",
         rowColor: SUMMARY_COLORS.historyPartial,
@@ -817,13 +884,15 @@ function presentZamowienie(
       return finalize(
         {
           ...base,
-          statusTitle: "Do odbioru",
-          statusDetail: [
-            orderTypeHintForSales(order.order_type),
-            "Całość jest na magazynie. Potwierdź odbiór — wtedy wpis zniknie z listy.",
-          ]
-            .filter(Boolean)
-            .join(" · "),
+          statusTitle: order.is_teeth ? "Zęby do odbioru" : "Do odbioru",
+          statusDetail: order.is_teeth
+            ? teethHandoverStatusDetail(order, progress)
+            : [
+                orderTypeHintForSales(order.order_type),
+                "Całość jest na magazynie. Potwierdź odbiór — wtedy wpis zniknie z listy.",
+              ]
+                .filter(Boolean)
+                .join(" · "),
           timingLabel: null,
           badgeVariant: "success",
           rowColor: SUMMARY_COLORS.historyCompleted,

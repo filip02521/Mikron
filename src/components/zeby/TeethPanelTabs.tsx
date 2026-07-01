@@ -12,12 +12,11 @@ import {
 } from "@/lib/ui/ontime-theme";
 import type { Tab } from "@/components/zeby/teeth-panel-types";
 
-const TAB_ORDER: Tab[] = ["kolejka", "historia", "harmonogram"];
+const TAB_ORDER: Tab[] = ["kolejka", "historia"];
 
 const TAB_LABELS: Record<Tab, string> = {
   kolejka: "Kolejka",
   historia: "Historia",
-  harmonogram: "Harmonogram",
 };
 
 export function TeethPanelTabs({

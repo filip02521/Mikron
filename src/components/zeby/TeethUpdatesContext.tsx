@@ -1,13 +1,6 @@
 "use client";
 
-import {
-  createContext,
-  useCallback,
-  useContext,
-  useEffect,
-  useRef,
-  useState,
-} from "react";
+import { createContext, useCallback, useContext, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { Button } from "@/components/ui/Button";
 import { SystemNotice } from "@/components/ui/SystemNotice";
@@ -81,11 +74,14 @@ export function TeethUpdatesProvider({
   const [lastPollAt, setLastPollAt] = useState<number | null>(null);
   const versionKey = `${enabled}\0${initialVersion ?? ""}`;
   const [appliedVersionKey, setAppliedVersionKey] = useState("");
-  if (enabled && initialVersion != null && versionKey !== appliedVersionKey) {
+
+  useLayoutEffect(() => {
+    if (!enabled || initialVersion == null) return;
+    if (versionKey === appliedVersionKey) return;
     setAppliedVersionKey(versionKey);
     setBaseline(initialVersion);
     setLatest(initialVersion);
-  }
+  }, [enabled, initialVersion, versionKey, appliedVersionKey]);
 
   const setAutoRefresh = useCallback((value: boolean) => {
     autoRefreshStore.setValue(value);
@@ -181,7 +177,7 @@ export function TeethUpdatesProvider({
 export function TeethUpdatesBanner() {
   const ctx = useTeethUpdates();
   const pathname = usePathname();
-  if (!ctx?.hasUpdates || pathname === "/zeby") return null;
+  if (!ctx?.hasUpdates || pathname.startsWith("/zeby")) return null;
 
   return (
     <SystemNotice

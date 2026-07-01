@@ -187,6 +187,17 @@ export function enrichMyOrderSalesUi(row: MyOrderRow): MyOrderSalesUi {
     };
   }
 
+  if (row.acknowledgeMode === "teeth_handover" && row.pickupPendingCount > 0) {
+    const n = row.pickupPendingCount;
+    return {
+      headline:
+        n === 1 ? "Zęby gotowe do odbioru" : `Zęby gotowe do odbioru · ${n} poz.`,
+      headlineTone: "action",
+      subline: "Doręczenie osobiste — potwierdź odbiór od magazynu",
+      sortPriority: 1,
+    };
+  }
+
   if (
     row.acknowledgeMode === "cancel_notice" &&
     row.cancelNoticeOrderIds.length > 0

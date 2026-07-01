@@ -1,5 +1,6 @@
 import { createAdminClient } from "@/lib/supabase/admin";
 import { UNDO_WINDOW_MS } from "@/lib/orders/daily-panel-undo";
+import { parseTeethLineDelivered } from "@/lib/teeth/teeth-receive-picker";
 
 export type DeliverySnapshot = {
   orderId: string;
@@ -7,6 +8,7 @@ export type DeliverySnapshot = {
   status: string;
   deliveryAt: string | null;
   warehouseShelf: string | null;
+  teethLineDelivered?: Record<string, number> | null;
   /** Identyfikator wpisu w kolejce opóźnionych powiadomień e-mail. */
   queueId?: string;
 };
@@ -39,7 +41,7 @@ export async function captureDeliverySnapshot(orderId: string): Promise<Delivery
   const supabase = createAdminClient();
   const { data, error } = await supabase
     .from("individual_orders")
-    .select("id, delivered_quantity, status, delivery_at, warehouse_shelf")
+    .select("id, delivered_quantity, status, delivery_at, warehouse_shelf, teeth_line_delivered")
     .eq("id", orderId)
     .maybeSingle();
 
@@ -51,6 +53,7 @@ export async function captureDeliverySnapshot(orderId: string): Promise<Delivery
     status: (data.status as string) ?? "",
     deliveryAt: (data.delivery_at as string | null) ?? null,
     warehouseShelf: (data.warehouse_shelf as string | null) ?? null,
+    teethLineDelivered: parseTeethLineDelivered(data.teeth_line_delivered),
   };
 }
 
@@ -60,7 +63,7 @@ export async function captureDeliverySnapshots(orderIds: string[]): Promise<Deli
   const supabase = createAdminClient();
   const { data, error } = await supabase
     .from("individual_orders")
-    .select("id, delivered_quantity, status, delivery_at, warehouse_shelf")
+    .select("id, delivered_quantity, status, delivery_at, warehouse_shelf, teeth_line_delivered")
     .in("id", unique);
 
   if (error) throw new Error(error.message);
@@ -71,6 +74,7 @@ export async function captureDeliverySnapshots(orderIds: string[]): Promise<Deli
     status: (row.status as string) ?? "",
     deliveryAt: (row.delivery_at as string | null) ?? null,
     warehouseShelf: (row.warehouse_shelf as string | null) ?? null,
+    teethLineDelivered: parseTeethLineDelivered(row.teeth_line_delivered),
   }));
 }
 
@@ -81,6 +85,7 @@ export async function revertDeliverySnapshot(snapshot: DeliverySnapshot): Promis
     status: snapshot.status,
     delivery_at: snapshot.deliveryAt,
     warehouse_shelf: snapshot.warehouseShelf,
+    teeth_line_delivered: snapshot.teethLineDelivered ?? null,
   };
   const { error } = await supabase.from("individual_orders").update(update).eq("id", snapshot.orderId);
   if (error) throw new Error(error.message);

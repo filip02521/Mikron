@@ -81,6 +81,14 @@ describe("queue-batch-notify", () => {
     expect(msg).toContain("2 handlowców");
   });
 
+  it("batchDeliveryConfirmMessage — zęby, wpisane ilości", () => {
+    const orders = [o("1", "p1", "A"), o("2", "p2", "A")];
+    const msg = batchDeliveryConfirmMessage(orders, ["1", "2"], { teethHandover: true });
+    expect(msg).toContain("wpisana w tabeli linii");
+    expect(msg).not.toContain("Dost.");
+    expect(msg).toContain("bez e-maila");
+  });
+
   it("batchInformacjaConfirmMessage — wiele osób", () => {
     const orders = [o("1", "p1", "A"), o("2", "p2", "A")];
     const msg = batchInformacjaConfirmMessage(orders, ["1", "2"]);

@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import {
   isNavItemActive,
+  navForAppContext,
   navForRole,
   navItemDisplayTone,
   navItemHasDueReminders,
@@ -12,6 +13,7 @@ import {
 } from "@/lib/nav";
 import { useSalesUpdates } from "@/components/sales/SalesUpdatesContext";
 import { useOperationsUpdates } from "@/components/operations/OperationsUpdatesContext";
+import { useTeethUpdates } from "@/components/zeby/TeethUpdatesContext";
 import { SidebarBrandBlock } from "@/components/layout/SidebarBrandBlock";
 import {
   brandSidebarFooter,
@@ -40,8 +42,11 @@ import { createClient } from "@/lib/supabase/client";
 import { NavIcon, navIconTileActiveClassForTone, navIconTileClassForTone } from "@/components/icons/NavIcon";
 import { useSalesNavLocked } from "@/components/sales/SalesOnboardingContext";
 import { AdminPanelContextSwitcher } from "@/components/layout/AdminPanelContextSwitcher";
+import { ProcurementWorkspaceSwitcher } from "@/components/layout/ProcurementWorkspaceSwitcher";
 import { actionClearAdminPanelContext } from "@/app/actions/admin-panel-context";
 import type { AdminPanelContext } from "@/lib/auth/admin-panel-context";
+import type { ProcurementWorkspace } from "@/lib/auth/procurement-workspace";
+import { subtitleForProcurementWorkspace } from "@/lib/auth/procurement-workspace";
 import { isAdmin } from "@/lib/auth-roles";
 import { hrefWithAdminSalesPreview, shouldPreserveSalesPreviewInNav } from "@/lib/nav/sales-preview-href";
 
@@ -201,6 +206,7 @@ function NavSection({
   const activeSearch = searchParams.toString() ? `?${searchParams.toString()}` : "";
   const salesUpdates = useSalesUpdates();
   const operationsUpdates = useOperationsUpdates();
+  const teethUpdates = useTeethUpdates();
   const allHrefs = group.items.map((item) => item.href);
 
   return (
@@ -213,6 +219,9 @@ function NavSection({
             (item.href === "/moje" && Boolean(salesUpdates?.hasUpdates) && !active) ||
             (item.href === "/podsumowanie" &&
               Boolean(operationsUpdates?.hasUpdates) &&
+              !active) ||
+            (item.href === "/zeby/kolejka" &&
+              Boolean(teethUpdates?.hasUpdates) &&
               !active);
 
           const href = hrefWithAdminSalesPreview(item.href, previewDla, adminSalesPreview);
@@ -238,6 +247,8 @@ export function Sidebar({
   role,
   realRole = null,
   adminPanelContext = "admin",
+  procurementWorkspace = null,
+  canSwitchProcurementWorkspace = false,
   userEmail,
   salesPersonName,
   userAssignmentLabel,
@@ -247,6 +258,8 @@ export function Sidebar({
   role: UserRole | null;
   realRole?: UserRole | null;
   adminPanelContext?: AdminPanelContext;
+  procurementWorkspace?: ProcurementWorkspace | null;
+  canSwitchProcurementWorkspace?: boolean;
   userEmail?: string | null;
   salesPersonName?: string | null;
   userAssignmentLabel?: string | null;
@@ -274,7 +287,17 @@ export function Sidebar({
     previewDla
   );
   const navLocked = useSalesNavLocked();
-  const groups = role ? navForRole(role, navBadges) : [];
+  const groups = role
+    ? realRole && !isAdmin(realRole)
+      ? navForAppContext({
+          realRole,
+          navRole: role,
+          procurementWorkspace,
+          badges: navBadges,
+        })
+      : navForRole(role, navBadges)
+    : [];
+  const workspaceSubtitle = subtitleForProcurementWorkspace(procurementWorkspace);
 
   async function signOut() {
     if (realRole && isAdmin(realRole)) {
@@ -296,6 +319,7 @@ export function Sidebar({
       <header className={sidebarHeaderClass}>
         <SidebarBrandBlock
           role={realRole && isAdmin(realRole) ? realRole : role}
+          workspaceSubtitle={workspaceSubtitle}
           userEmail={userEmail}
           salesPersonName={salesPersonName}
           userAssignmentLabel={userAssignmentLabel}
@@ -318,6 +342,9 @@ export function Sidebar({
       <div className={brandSidebarFooter}>
         {realRole && isAdmin(realRole) ? (
           <AdminPanelContextSwitcher current={adminPanelContext} />
+        ) : null}
+        {canSwitchProcurementWorkspace && procurementWorkspace ? (
+          <ProcurementWorkspaceSwitcher current={procurementWorkspace} />
         ) : null}
         {showLoginLink ? (
           <Link

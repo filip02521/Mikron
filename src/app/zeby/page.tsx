@@ -1,42 +1,30 @@
-import { Suspense } from "react";
-import { fetchTeethQueue } from "@/lib/data/teeth-queue";
-import { TeethPanelClient } from "@/components/zeby/TeethPanelClient";
-import { Alert } from "@/components/ui/Alert";
-import { cn } from "@/lib/cn";
-import { panelWorkspaceShellClass } from "@/lib/ui/ontime-theme";
-import { PanelDailyRouteLoadingSkeleton } from "@/components/layout/PanelRouteLoading";
-import { requireTeethPanel } from "@/lib/auth";
-
+import { redirect } from "next/navigation";
 import type { Metadata } from "next";
 import { pageMetadataFor } from "@/lib/ui/page-metadata";
+import type { Tab } from "@/components/zeby/teeth-panel-types";
+import { VALID_TEETH_PANEL_TABS } from "@/components/zeby/teeth-panel-types";
 
 export const metadata: Metadata = pageMetadataFor("zeby");
 
 export const dynamic = "force-dynamic";
 
-export default async function ZebyPage() {
-  await requireTeethPanel("read");
+type SearchParams = Promise<{ tab?: string }>;
 
-  let groups: Awaited<ReturnType<typeof fetchTeethQueue>> = [];
-  let error: string | null = null;
-
-  try {
-    groups = await fetchTeethQueue();
-  } catch (e) {
-    error = e instanceof Error ? e.message : "Błąd ładowania";
+export default async function ZebyIndexPage({
+  searchParams,
+}: {
+  searchParams: SearchParams;
+}) {
+  const params = await searchParams;
+  const tab = params.tab;
+  if (tab === "harmonogram") {
+    redirect("/zakupy/dostawcy?tor=zeby");
   }
-
-  return (
-    <>
-      {error ? (
-        <Alert tone="warning" className={cn(panelWorkspaceShellClass, "mb-4")}>
-          Nie udało się wczytać kolejki zębów{error ? `: ${error}` : ""}. Odśwież stronę lub spróbuj ponownie za chwilę.
-        </Alert>
-      ) : null}
-
-      <Suspense fallback={<PanelDailyRouteLoadingSkeleton />}>
-        <TeethPanelClient initialGroups={groups} />
-      </Suspense>
-    </>
-  );
+  if (tab && VALID_TEETH_PANEL_TABS.includes(tab as Tab)) {
+    if (tab === "kolejka") {
+      redirect("/zeby/kolejka");
+    }
+    redirect(`/zeby/${tab}`);
+  }
+  redirect("/zeby/kolejka");
 }

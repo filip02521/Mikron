@@ -12,6 +12,7 @@ export type AppShellNavBadges = {
   departmentBoardQuestions?: number;
   adminBugReports?: number;
   teethQueue?: number;
+  teethReceivePending?: number;
 };
 
 export type AppShellMetrics = {

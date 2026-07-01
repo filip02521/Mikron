@@ -71,9 +71,24 @@ export function shouldCollapseProsbaLine(
   line: ProductLineDraft,
   requestKind: IndividualRequestKind,
   lineCount: number,
-  activeLineId: string
+  activeLineId: string,
 ): boolean {
   if (lineCount <= 1) return false;
+  if (!activeLineId) return isProsbaLineReady(line, requestKind);
   if (line.id === activeLineId) return false;
   return isProsbaLineReady(line, requestKind);
+}
+
+/** Po zapisie listy zębów — zwijamy uzupełnione pozycje; zostawiamy rozwiniętą pierwszą niegotową. */
+export function focusLineIdAfterTeethSave(
+  lines: ProductLineDraft[],
+  savedLineIds: Iterable<string>,
+  requestKind: IndividualRequestKind,
+): string | null {
+  const saved = new Set(savedLineIds);
+  const nextIncomplete = lines.find(
+    (line) => !saved.has(line.id) && !isProsbaLineReady(line, requestKind),
+  );
+  if (nextIncomplete) return nextIncomplete.id;
+  return lines.length > 1 ? null : lines[0]?.id ?? null;
 }

@@ -83,6 +83,10 @@ import { ProsbaStockConfirmDialog } from "@/components/orders/ProsbaStockConfirm
 import { buildProsbaSubmitStockConfirm, buildProsbaSubmitZkQuantityConfirm, formatProsbaZkQuantityFormBanner, applyProsbaLineStockMap, collectProsbaLineTwIdsMissingStock } from "@/lib/orders/prosba-stock-check";
 import { handleProsbaStockSubmitError } from "@/lib/orders/prosba-stock-submit-error";
 import { useTeethExemptTwIds } from "@/components/layout/TeethExemptContext";
+import {
+  classifyProsbaLinesByLane,
+  procurementSubmitSuccessMessage,
+} from "@/lib/teeth/teeth-procurement-flow-copy";
 
 function formatSubmitResult(
   r: {
@@ -545,13 +549,16 @@ export function OrderFormClient({
               : requestKind === "informacja" && informacjaFlags.informacjaQueueViaDailyPanel
                 ? "Prośba zapisana — zakupy najpierw zamówią u dostawcy, potem magazyn wyśle informację e-mailem."
                 : formatSubmitResult(r, requestKind, true)
-            : requestKind === "informacja"
-              ? informacjaFlags.informacjaStockOutReorder
-                ? `Dodano ${r.count} sygnał(ów) „brak na stanie” — w panelu Dziś (Prośby handlowców).`
-                : informacjaFlags.informacjaQueueViaDailyPanel
-                  ? `Dodano ${r.count} prośb(y) informacyjn(e) — najpierw kolejka Dziś (Główne/Uzupełniające).`
-                  : `Dodano ${r.count} prośb(y) informacyjn(e) — od razu do kolejki magazynu.`
-              : `Dodano ${r.count} pozycji do panelu dziennego.`;
+            : procurementSubmitSuccessMessage({
+                count: r.count,
+                requestKind,
+                lanes: classifyProsbaLinesByLane(
+                  entries.map((e) => ({ subiektTwId: e.subiektTwId })),
+                  teethExemptTwIds
+                ),
+                informacjaStockOutReorder: informacjaFlags.informacjaStockOutReorder,
+                informacjaQueueViaDailyPanel: informacjaFlags.informacjaQueueViaDailyPanel,
+              });
 
         const stockOutHidden =
           requestKind === "informacja" && informacjaFlags.informacjaStockOutReorder;
@@ -1227,6 +1234,7 @@ export function OrderFormClient({
                   onResolvingSupplierChange={setResolvingSupplier}
                   validationAttempted={validationAttempted}
                   liveValidation={!tourDemo}
+                  onTeethListCommitNotice={(text, tone = "success") => setMsg({ text, tone })}
                 />
 
                 <ProsbaFormReadiness
@@ -1489,6 +1497,7 @@ export function OrderFormClient({
                   onResolvingSupplierChange={setResolvingSupplier}
                   validationAttempted={validationAttempted}
                   liveValidation
+                  onTeethListCommitNotice={(text, tone = "success") => setMsg({ text, tone })}
                 />
 
                 <ProsbaFormReadiness

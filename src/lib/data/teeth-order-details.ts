@@ -233,7 +233,7 @@ async function insertTeethDetailRows(
         );
       }
       throw new Error(
-        "Nie zapisano typu zęba (przednie/tylne). Uruchom migrację supabase/migrations/081_teeth_kind.sql w Supabase."
+        "Nie zapisano typu zęba (przednie/boczne). Uruchom migrację supabase/migrations/081_teeth_kind.sql w Supabase."
       );
     }
   }

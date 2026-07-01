@@ -45,15 +45,20 @@ export function TeethPanelFiltersBar({
   onChange,
   suppliers,
   salesPeople,
+  showQueueFilters = true,
   className,
 }: {
   filters: TeethPanelFilters;
   onChange: (next: TeethPanelFilters) => void;
   suppliers: { id: string; name: string }[];
   salesPeople: { id: string; name: string }[];
+  /** Filtry specyficzne dla kolejki (specyfikacja, dane ogólne). */
+  showQueueFilters?: boolean;
   className?: string;
 }) {
-  const activeCount = countActiveTeethPanelFilters(filters);
+  const activeCount = countActiveTeethPanelFilters(
+    showQueueFilters ? filters : { ...filters, missingSpecOnly: false, verificationOnly: false },
+  );
 
   return (
     <div
@@ -127,20 +132,24 @@ export function TeethPanelFiltersBar({
             role="group"
             aria-label="Szybkie filtry"
           >
-            <FilterToggleChip
-              label="Do uzupełnienia"
-              active={filters.missingSpecOnly}
-              onClick={() =>
-                onChange({ ...filters, missingSpecOnly: !filters.missingSpecOnly })
-              }
-            />
-            <FilterToggleChip
-              label="Do weryfikacji"
-              active={filters.verificationOnly}
-              onClick={() =>
-                onChange({ ...filters, verificationOnly: !filters.verificationOnly })
-              }
-            />
+            {showQueueFilters ? (
+              <>
+                <FilterToggleChip
+                  label="Do uzupełnienia"
+                  active={filters.missingSpecOnly}
+                  onClick={() =>
+                    onChange({ ...filters, missingSpecOnly: !filters.missingSpecOnly })
+                  }
+                />
+                <FilterToggleChip
+                  label="Brak danych ogólnych"
+                  active={filters.verificationOnly}
+                  onClick={() =>
+                    onChange({ ...filters, verificationOnly: !filters.verificationOnly })
+                  }
+                />
+              </>
+            ) : null}
           </div>
         </div>
       </div>

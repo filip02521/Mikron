@@ -45,7 +45,6 @@ export function QueueClient({
   warehouseCarriers,
   canManageCarriers = false,
   isMagazynRole = false,
-  isZakupyZebyRole = false,
   loadError = null,
 }: {
   orders: IndividualOrder[];
@@ -61,7 +60,6 @@ export function QueueClient({
   warehouseCarriers: WarehouseCarrierRow[];
   canManageCarriers?: boolean;
   isMagazynRole?: boolean;
-  isZakupyZebyRole?: boolean;
   loadError?: string | null;
 }) {
   const [view, setView] = useState<QueueView>("receive");
@@ -72,22 +70,26 @@ export function QueueClient({
 
   const receiveQueue = useMemo(
     () => mergeReceiveQueueOrders(orders, informacjaOrders),
-    [orders, informacjaOrders]
+    [orders, informacjaOrders],
   );
 
   const inventoryCount = useMemo(
     () => buildWarehouseInventoryRows(warehouseInventory).length,
-    [warehouseInventory]
+    [warehouseInventory],
   );
 
   const inboxSummary = useMemo(
     () => summarizeQueueInbox(orders, informacjaOrders),
-    [orders, informacjaOrders]
+    [orders, informacjaOrders],
   );
 
   useEffect(() => {
     const sync = () => {
       const hash = window.location.hash;
+      if (hash === "#kolejka-zeby") {
+        window.location.replace("/zeby/przyjecie");
+        return;
+      }
       if (hash === "#informacja" || hash === "#dostawy-handlowcy") {
         const canonical = `${window.location.pathname}${window.location.search}#kolejka-przyjecie`;
         window.history.replaceState(null, "", canonical);
@@ -181,11 +183,9 @@ export function QueueClient({
           pickupReadyCount={pickupReadyCount}
           inventoryCount={inventoryCount}
           journalCount={deliveryJournal.summary.receiptCount}
-          showProcurementLinks={!isMagazynRole && !isZakupyZebyRole}
-          showTeethLink={isZakupyZebyRole}
+          showProcurementLinks={!isMagazynRole}
         />
 
-        {/* Widoki pozostają zamontowane — filtry, zaznaczenia i formularze nie giną przy zmianie zakładki. */}
         <div
           role="tabpanel"
           id="queue-panel-receive"

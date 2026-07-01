@@ -2,6 +2,7 @@
 
 import { Suspense } from "react";
 import { usePathname } from "next/navigation";
+import { LegacyProcurementRouteRedirect } from "@/components/layout/LegacyProcurementRouteRedirect";
 import { AdminPanelPreviewProvider } from "./AdminPanelPreviewContext";
 import { AdminPreviewBanner } from "./AdminPreviewBanner";
 import { Sidebar } from "./Sidebar";
@@ -36,6 +37,7 @@ import { salesMobileChromeRoot } from "@/lib/ui/sales-mobile-chrome";
 import { appMainClass, appMainInsetClass, appShellClass } from "@/lib/ui/ontime-theme";
 import type { AdminPanelContext } from "@/lib/auth/admin-panel-context";
 import { isAdminOperationsPreviewReadOnly } from "@/lib/auth/admin-panel-context";
+import type { ProcurementWorkspace } from "@/lib/auth/procurement-workspace";
 import type { UserRole } from "@/types/database";
 import { canAccessOperations, canAccessTeethPanel, isSalesAccount } from "@/lib/auth-roles";
 import { MobileOperationsNav } from "./MobileOperationsNav";
@@ -111,6 +113,8 @@ export function AppShellClient({
   role,
   realRole = null,
   adminPanelPreview = null,
+  procurementWorkspace = null,
+  canSwitchProcurementWorkspace = false,
   userEmail,
   showLoginLink,
   salesPersonId = null,
@@ -123,6 +127,8 @@ export function AppShellClient({
   role: UserRole | null;
   realRole?: UserRole | null;
   adminPanelPreview?: AdminPanelContext | null;
+  procurementWorkspace?: ProcurementWorkspace | null;
+  canSwitchProcurementWorkspace?: boolean;
   userEmail?: string | null;
   showLoginLink?: boolean;
   salesPersonId?: string | null;
@@ -155,9 +161,14 @@ export function AppShellClient({
   }
 
   const salesLive = role ? isSalesAccount(role) : false;
-  const operationsLive = role ? canAccessOperations(role) : false;
-  const teethLive = role ? canAccessTeethPanel(role) && !operationsLive : false;
-  const teethAccess = role ? canAccessTeethPanel(role) : false;
+  const inTeethWorkspace = procurementWorkspace === "zeby";
+  const inDostawyWorkspace =
+    procurementWorkspace === "dostawy" ||
+    (procurementWorkspace == null && role != null && canAccessOperations(role) && !inTeethWorkspace);
+  const operationsLive =
+    Boolean(role && inDostawyWorkspace && canAccessOperations(role ?? "sales")) && !salesLive;
+  const teethLive =
+    Boolean(role && inTeethWorkspace && canAccessTeethPanel(role ?? "sales")) && !salesLive;
   const teethInitialVersion = teethPanelVersion;
   const mobileChrome = salesLive || operationsLive || teethLive;
 
@@ -175,7 +186,7 @@ export function AppShellClient({
       soundBaselineReady={metricsReady}
     >
     <TeethUpdatesProvider
-      enabled={teethAccess && !salesLive}
+      enabled={teethLive && !salesLive}
       initialVersion={teethInitialVersion}
     >
     <Suspense fallback={null}>
@@ -194,6 +205,7 @@ export function AppShellClient({
         salesPersonName={salesPersonName}
         adminPanelPreview={Boolean(adminPanelPreview)}
       >
+      <LegacyProcurementRouteRedirect />
       <div
         className={cn(
           appShellClass,
@@ -206,6 +218,8 @@ export function AppShellClient({
               role={role}
               realRole={realRole}
               adminPanelContext={adminPanelPreview ?? "admin"}
+              procurementWorkspace={procurementWorkspace}
+              canSwitchProcurementWorkspace={canSwitchProcurementWorkspace}
               userEmail={userEmail}
               salesPersonName={salesPersonName}
               userAssignmentLabel={userAssignmentLabel}
@@ -292,10 +306,20 @@ export function AppShellClient({
         ) : null}
         {salesLive && !adminPanelPreview ? <SalesBugReportTrigger /> : null}
         {operationsLive && !salesLive && role ? (
-          <MobileOperationsNav role={role} navBadges={navBadges} />
+          <MobileOperationsNav
+            role={role}
+            realRole={realRole}
+            procurementWorkspace={procurementWorkspace}
+            navBadges={navBadges}
+          />
         ) : null}
-        {teethLive && !salesLive && !operationsLive && role ? (
-          <MobileOperationsNav role={role} navBadges={navBadges} />
+        {teethLive && !salesLive && role ? (
+          <MobileOperationsNav
+            role={role}
+            realRole={realRole}
+            procurementWorkspace={procurementWorkspace}
+            navBadges={navBadges}
+          />
         ) : null}
       </div>
       </SalesOnboardingGate>

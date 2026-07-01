@@ -5,6 +5,7 @@ import {
   type TeethPanelOrderLike,
   type TeethPanelReadinessContext,
 } from "@/lib/teeth/teeth-panel-order-readiness";
+import { teethQueueOrderNeedsHeaderData } from "@/lib/teeth/teeth-queue-gate";
 import type { IndividualOrderTeethDetail } from "@/types/database";
 
 export { groupTeethItemsBySupplier } from "@/lib/data/teeth-queue";
@@ -152,7 +153,7 @@ function matchesTeethItemFilters(
   if (filters.missingSpecOnly && orderHasTeethSpec(item, ctx)) {
     return false;
   }
-  if (filters.verificationOnly && item.status !== "Weryfikacja") {
+  if (filters.verificationOnly && !teethQueueOrderNeedsHeaderData(item)) {
     return false;
   }
   return true;
@@ -185,20 +186,25 @@ export function filterTeethQueueGroups(
     .filter((group): group is TeethQueueGroup => group != null);
 }
 
-/** Filtruje grupy historii (bez pozycji harmonogramu). */
+/** Filtruje grupy historii (bez pozycji harmonogramu; bez filtrów kolejki). */
 export function filterTeethHistoryGroups(
   groups: TeethQueueGroup[],
   filters: TeethPanelFilters,
   ctx?: TeethPanelReadinessContext,
 ): TeethQueueGroup[] {
+  const historyFilters: TeethPanelFilters = {
+    ...filters,
+    missingSpecOnly: false,
+    verificationOnly: false,
+  };
   const result: TeethQueueGroup[] = [];
   for (const group of groups) {
-    if (filters.supplierId && group.supplierId !== filters.supplierId) continue;
+    if (historyFilters.supplierId && group.supplierId !== historyFilters.supplierId) continue;
     const orders = group.items.filter(
       (item): item is TeethQueueItem => !isScheduledItem(item)
     );
     const filteredOrders = orders.filter((item) =>
-      matchesTeethItemFilters(item, filters, ctx),
+      matchesTeethItemFilters(item, historyFilters, ctx),
     );
     if (filteredOrders.length === 0) continue;
     result.push({ ...group, items: filteredOrders, scheduledOnly: false });
@@ -206,7 +212,7 @@ export function filterTeethHistoryGroups(
   return result;
 }
 
-/** Statystyki kolejki per dostawca — do zakładki harmonogram. */
+/** Statystyki kolejki per dostawca — do kart dostawców (tor zębów). */
 export function teethQueueStatsBySupplier(
   groups: TeethQueueGroup[],
   ctx?: TeethPanelReadinessContext,

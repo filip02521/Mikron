@@ -29,6 +29,9 @@ export default async function PodsumowaniePage() {
   let statsBySupplierId: Record<string, import("@/types/database").DeliveryStats> =
     {};
   let supplierStatsMode: Record<string, import("@/types/database").StatsMode> = {};
+  let teethLaneBySupplierId: Awaited<
+    ReturnType<typeof fetchSummaryWorkspace>
+  >["teethLaneBySupplierId"] = {};
   let verificationOrders: IndividualOrder[] = [];
   let error: string | null = null;
 
@@ -44,6 +47,7 @@ export default async function PodsumowaniePage() {
     salesPeople = data.salesPeople;
     statsBySupplierId = data.statsBySupplierId;
     supplierStatsMode = data.supplierStatsMode;
+    teethLaneBySupplierId = data.teethLaneBySupplierId;
   } catch (e) {
     error = e instanceof Error ? e.message : "Błąd ładowania";
   }
@@ -65,6 +69,7 @@ export default async function PodsumowaniePage() {
           statsBySupplierId={statsBySupplierId}
           supplierStatsMode={supplierStatsMode}
           verificationOrders={verificationOrders}
+          teethLaneBySupplierId={teethLaneBySupplierId}
         />
       </Suspense>
     </>
