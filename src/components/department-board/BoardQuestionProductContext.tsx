@@ -24,9 +24,9 @@ export function BoardQuestionProductContext({
   return (
     <div className={cn(boardQuestionProductContextClass, className)}>
       <div className="flex items-start gap-2.5">
-        <IconPackage size={16} className="mt-0.5 shrink-0 text-indigo-600" aria-hidden />
+        <IconPackage size={16} className="mt-0.5 shrink-0 text-slate-500" aria-hidden />
         <div className="min-w-0">
-          <p className="text-[11px] font-semibold uppercase tracking-wide text-indigo-700/90">
+          <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">
             {DEPARTMENT_BOARD_QUESTIONS_FORM.productContextLabel}
           </p>
           <p className="mt-0.5 text-sm font-medium leading-snug text-slate-900">{label}</p>

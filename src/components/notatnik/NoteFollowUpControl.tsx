@@ -5,6 +5,7 @@ import { cn } from "@/lib/cn";
 import { controlFocusClass } from "@/lib/ui/ontime-theme";
 import { formatFollowUpLabel, isFollowUpDue } from "@/lib/sales/notepad-follow-up";
 import { FollowUpQuickDates } from "./FollowUpQuickDates";
+import { IconClock } from "@/components/icons/StrokeIcons";
 
 export function NoteFollowUpControl({
   value,
@@ -95,11 +96,13 @@ export function NoteFollowUpControl({
       disabled={disabled || saving}
       onClick={startEditing}
       className={cn(
-        "inline-flex max-w-full items-center gap-1 rounded px-1 py-0.5 text-left text-[11px] transition hover:bg-black/5 disabled:opacity-50",
-        due ? "font-semibold text-violet-800" : "text-slate-500"
+        "inline-flex max-w-full items-center gap-1.5 rounded-md px-1.5 py-1 text-left text-[11px] font-medium transition disabled:opacity-50",
+        due
+          ? "bg-violet-50 text-violet-800 hover:bg-violet-100"
+          : "text-slate-500 hover:bg-slate-100/80 hover:text-slate-700"
       )}
     >
-      <span aria-hidden>⏰</span>
+      <IconClock size={13} strokeWidth={2} className={due ? "text-violet-600" : "text-slate-400"} />
       <span className="truncate">{label ? `Przypomnienie: ${label}` : "Przypomnij…"}</span>
     </button>
   );

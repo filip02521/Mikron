@@ -13,6 +13,7 @@ import {
   IconPackage,
   IconPackageCheck,
   IconPlusCircle,
+  IconTooth,
   IconSettings,
   IconSun,
   IconUserCog,
@@ -49,7 +50,7 @@ const NAV_ICON_BY_KEY: Record<
   team: IconUsers,
   teamAccounts: IconUserCog,
   teamGroups: IconUserGroup,
-  teeth: IconPackage,
+  teeth: IconTooth,
 };
 
 const HREF_TO_NAV_ICON: Record<string, NavIconKey> = {

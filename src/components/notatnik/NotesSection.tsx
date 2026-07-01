@@ -27,15 +27,14 @@ import {
 } from "./notatnik-layout";
 import { noteStickyBoardDividerClass, noteStickyPaperClass } from "./note-styles";
 import { NoteBodyDisplay } from "./NoteBodyDisplay";
-import { NoteFormatToolbar, NOTE_COMPOSE_TEXTAREA_INNER_CLASS, NOTE_COMPOSE_TEXTAREA_SHELL_CLASS } from "./NoteFormatToolbar";
 import { NoteStickyFrame } from "./NoteStickyFrame";
-import { handleNoteFormatKeyDown } from "@/lib/sales/note-body-format";
 import { DragHandleGlyph, PinGlyph } from "@/components/ui/UiGlyphs";
 import { SalesListFilterEmptyHint, SalesSectionEmptyHint } from "@/components/sales/SalesListEmptyHints";
 import { NotatnikListFilterBar } from "./NotatnikListFilterBar";
 import { SalesKeyboardShortcutsStrip } from "@/components/sales/SalesKeyboardShortcutsStrip";
 import { NOTATNIK_NOTES_SEARCH_PLACEHOLDER, NOTATNIK_NOTES_SECTION_COPY } from "@/lib/sales/notatnik-notes-copy";
 import { flashNotepadAnchor } from "@/lib/sales/notepad-anchor";
+import { RichNoteEditor } from "./RichNoteEditor";
 
 export const NOTATNIK_KEYBOARD_HINTS = [
   { keys: ["N"], label: "nowa notatka" },
@@ -44,6 +43,7 @@ export const NOTATNIK_KEYBOARD_HINTS = [
   { keys: ["E"], label: "edytuj" },
   { keys: ["P"], label: "przypnij" },
   { keys: ["Ctrl", "B"], label: "pogrubienie" },
+  { keys: ["Ctrl", "I"], label: "kursywa" },
   { keys: ["Ctrl", "Enter"], label: "zapisz" },
   { keys: ["Ctrl", "Z"], label: "cofnij" },
 ] as const;
@@ -83,43 +83,47 @@ const NoteCard = memo(function NoteCard({
   onDragOver?: (e: React.DragEvent) => void;
   onDrop?: (e: React.DragEvent) => void;
 }) {
-  const [editing, setEditing] = useState(Boolean(startInEditMode));
+  const [active, setActive] = useState(Boolean(startInEditMode));
   const [body, setBody] = useState(note.body);
   const [title, setTitle] = useState(note.title ?? "");
   const [color, setColor] = useState(note.color);
   const [pinned, setPinned] = useState(note.pinned);
   const [followUpAt, setFollowUpAt] = useState<string | null>(note.follow_up_at?.slice(0, 10) ?? null);
-  const [followUpDraft, setFollowUpDraft] = useState(note.follow_up_at?.slice(0, 10) ?? "");
   const [saving, setSaving] = useState(false);
   const [savingFollowUp, setSavingFollowUp] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const bodyTextareaRef = useRef<HTMLTextAreaElement>(null);
+  const hasChangesRef = useRef(false);
 
-  function setEditingState(next: boolean) {
-    setEditing(next);
-    onEditingChange?.(next);
+  if (startInEditMode && !active) {
+    setActive(true);
   }
 
+  useEffect(() => {
+    if (startInEditMode) {
+      const timer = setTimeout(() => {
+        document.querySelector<HTMLElement>(`#note-${note.id} .rich-note-editor`)?.focus();
+      }, 0);
+      return () => clearTimeout(timer);
+    }
+  }, [startInEditMode, note.id]);
+
   async function save() {
+    if (!hasChangesRef.current) return;
+    hasChangesRef.current = false;
     setSaving(true);
     setError(null);
     try {
-      const trimmedFollowUp = followUpDraft.trim() || null;
       await actionUpdateSalesNote(note.id, {
         body,
         title: title || null,
         color,
-        follow_up_at: trimmedFollowUp,
       });
-      setFollowUpAt(trimmedFollowUp);
       onUpdated?.({
         ...note,
         body: body.trim(),
         title: title.trim() || null,
         color,
-        follow_up_at: trimmedFollowUp,
       });
-      setEditingState(false);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Nie udało się zapisać notatki.");
     } finally {
@@ -169,13 +173,6 @@ const NoteCard = memo(function NoteCard({
   }
 
   async function archive() {
-    if (
-      !window.confirm(
-        "Usunąć notatkę? Trafia do archiwum — możesz ją przywrócić w zakładce Archiwum."
-      )
-    ) {
-      return;
-    }
     setError(null);
     try {
       await actionArchiveSalesNote(note.id);
@@ -186,19 +183,17 @@ const NoteCard = memo(function NoteCard({
   }
 
   const followUpDue = isFollowUpDue(followUpAt);
-  const displayTitle = editing ? title : note.title;
-  const displayBody = editing ? body : note.body;
-  const displayColor = editing ? color : note.color;
-  const straightFrame = editing || focused || isDragging;
+  const displayColor = color;
+  const straightFrame = active || focused || isDragging;
 
   return (
-    <NoteStickyFrame seed={note.id} straight={straightFrame} showPin={pinned && !editing}>
+    <NoteStickyFrame seed={note.id} straight={straightFrame} showPin={pinned && !active}>
       <article
         id={anchorId}
         tabIndex={focused ? 0 : -1}
-        draggable={draggable && !editing}
+        draggable={draggable && !active}
         onDragStart={(e) => {
-          if (!draggable || editing) return;
+          if (!draggable || active) return;
           e.dataTransfer.effectAllowed = "move";
           onDragStart?.();
         }}
@@ -206,9 +201,6 @@ const NoteCard = memo(function NoteCard({
         onDragOver={onDragOver}
         onDrop={onDrop}
         onFocus={onFocus}
-        onDoubleClick={() => {
-          if (!readOnly && !editing) setEditingState(true);
-        }}
         className={cn(
           anchorId && "scroll-mt-6 scroll-mb-6",
           noteStickyPaperClass(displayColor, {
@@ -217,127 +209,100 @@ const NoteCard = memo(function NoteCard({
             focused,
             dragOver,
             isDragging,
-            editing,
-          })
+            editing: active,
+          }),
+          "transition-all duration-200 ease-out",
+          active ? "pb-3" : "pb-1"
         )}
       >
-      {editing && !readOnly ? (
-        <div className="space-y-2 p-2.5 pt-3">
-          <input
-            type="text"
-            value={title}
-            onChange={(e) => setTitle(e.target.value)}
-            placeholder="Tytuł (opcjonalnie)"
-            className={cn(NOTATNIK_INPUT_CLASS, "w-full text-sm font-semibold")}
-          />
-          <div className={NOTE_COMPOSE_TEXTAREA_SHELL_CLASS}>
-            <textarea
-              ref={bodyTextareaRef}
-              rows={4}
-              value={body}
-              onChange={(e) => setBody(e.target.value)}
-              onKeyDown={(e) => {
-                const el = e.currentTarget;
-                if (
-                  handleNoteFormatKeyDown(e, body, el.selectionStart, el.selectionEnd, (next, start, end) => {
-                    setBody(next);
-                    requestAnimationFrame(() => el.setSelectionRange(start, end));
-                  })
-                ) {
-                  return;
-                }
-                if ((e.metaKey || e.ctrlKey) && e.key === "Enter") {
-                  e.preventDefault();
-                  void save();
-                }
-              }}
-              className={cn(NOTE_COMPOSE_TEXTAREA_INNER_CLASS, "min-h-[5.5rem]")}
-            />
-            <NoteFormatToolbar
-              textareaRef={bodyTextareaRef}
-              value={body}
-              onChange={setBody}
-              disabled={saving}
-              embedded
-            />
-          </div>
-          <div className="flex flex-wrap items-center gap-2 border-t border-slate-100 pt-2">
-            <span className={cn(salesTypography.chrome, "text-slate-600")}>Przypomnij</span>
-            <input
-              type="date"
-              value={followUpDraft}
-              onChange={(e) => setFollowUpDraft(e.target.value)}
-              className={cn(NOTATNIK_INPUT_CLASS, "h-8 w-auto text-xs")}
-            />
-          </div>
-          <NoteColorPicker value={color} onChange={setColor} disabled={saving} size="sm" />
-          <div className="flex flex-wrap gap-1.5 border-t border-slate-100 pt-2">
-            <Button size="sm" disabled={saving} onClick={() => void save()}>
-              {saving ? "Zapis…" : "Zapisz"}
-            </Button>
-            <Button size="sm" variant="ghost" onClick={() => setEditingState(false)}>
-              Anuluj
-            </Button>
-          </div>
-        </div>
-      ) : (
-        <>
-          <div className="relative px-2.5 pb-1 pt-3.5">
-            {draggable && !readOnly ? (
-              <span
-                className="absolute left-1 top-2 cursor-grab text-slate-400 opacity-0 transition group-hover/sticky:opacity-100 active:cursor-grabbing"
-                aria-hidden
-                title="Przeciągnij, aby zmienić kolejność"
-              >
-                <IconGripVertical size={14} strokeWidth={2.5} />
-              </span>
-            ) : null}
-            {displayTitle?.trim() ? (
-              <h3 className="pr-4 text-[13px] font-bold leading-snug text-slate-900">{displayTitle}</h3>
-            ) : null}
-            <div className={cn(displayTitle?.trim() && "mt-1", "pr-1")}>
-              <NoteBodyDisplay body={displayBody} />
-            </div>
-            {pinned && !readOnly ? (
-              <span
-                className="absolute right-1.5 top-2 text-indigo-600/80"
-                title="Przypięta"
-                aria-label="Przypięta"
-              >
-                <PinGlyph size={12} />
-              </span>
-            ) : null}
-          </div>
-
-          {!readOnly ? (
-            <div className="mt-auto space-y-1 overflow-visible border-t border-slate-100 px-2.5 py-2">
-              <NoteFollowUpControl
-                value={followUpAt}
-                onChange={changeFollowUp}
-                saving={savingFollowUp}
-              />
-              <div className="space-y-1 overflow-visible py-0.5 opacity-100 transition-opacity sm:opacity-0 sm:group-hover/sticky:opacity-100 sm:group-focus-within/sticky:opacity-100">
-                <NoteColorPicker
-                  value={displayColor}
-                  onChange={(c) => void changeColor(c)}
-                  size="sm"
-                />
-                <NoteCardToolbar
-                  pinned={pinned}
-                  saving={saving || savingFollowUp}
-                  onEdit={() => setEditingState(true)}
-                  onTogglePin={() => void togglePin()}
-                  onArchive={() => void archive()}
-                />
-              </div>
-            </div>
-          ) : followUpAt ? (
-            <div className="mt-auto border-t border-slate-100 px-2.5 py-2">
-              <NoteFollowUpControl value={followUpAt} onChange={() => {}} disabled />
-            </div>
+        <div className="relative px-2.5 pb-1 pt-3.5">
+          {draggable && !readOnly ? (
+            <span
+              className="absolute left-1 top-2 cursor-grab text-slate-400 opacity-0 transition group-hover/sticky:opacity-100 active:cursor-grabbing"
+              aria-hidden
+              title="Przeciągnij, aby zmienić kolejność"
+            >
+              <IconGripVertical size={14} strokeWidth={2.5} />
+            </span>
           ) : null}
-        </>
-      )}
+          {readOnly ? (
+            note.title?.trim() ? (
+              <h3 className="pr-4 text-[13px] font-bold leading-snug text-slate-900">{note.title}</h3>
+            ) : null
+          ) : (
+            <input
+              type="text"
+              value={title}
+              onChange={(e) => {
+                setTitle(e.target.value);
+                hasChangesRef.current = true;
+              }}
+              onBlur={() => void save()}
+              placeholder="Tytuł (opcjonalnie)"
+              className={cn(
+                "w-full bg-transparent pr-4 text-[13px] font-bold leading-snug text-slate-900 outline-none placeholder:text-slate-400/70"
+              )}
+            />
+          )}
+          <div className={cn("mt-1 pr-1")}>
+            {readOnly ? (
+              <NoteBodyDisplay body={note.body} />
+            ) : (
+              <RichNoteEditor
+                value={body}
+                onChange={(md) => {
+                  setBody(md);
+                  hasChangesRef.current = true;
+                }}
+                onSave={() => void save()}
+                onActiveChange={(isActive) => {
+                  setActive(isActive);
+                  if (!isActive) onEditingChange?.(false);
+                  else onEditingChange?.(true);
+                }}
+                editable={!readOnly}
+                placeholder="Wpisz notatkę…"
+              />
+            )}
+          </div>
+          {pinned && !readOnly ? (
+            <span
+              className="absolute right-1.5 top-2 text-indigo-600/80"
+              title="Przypięta"
+              aria-label="Przypięta"
+            >
+              <PinGlyph size={12} />
+            </span>
+          ) : null}
+        </div>
+
+        {!readOnly ? (
+          <div className="mt-auto space-y-1 overflow-visible border-t border-slate-100 px-2.5 py-2">
+            <NoteFollowUpControl
+              value={followUpAt}
+              onChange={changeFollowUp}
+              saving={savingFollowUp}
+            />
+            <div className="space-y-1 overflow-visible py-0.5 opacity-100 transition-opacity sm:opacity-0 sm:group-hover/sticky:opacity-100 sm:group-focus-within/sticky:opacity-100">
+              <NoteColorPicker
+                value={displayColor}
+                onChange={(c) => void changeColor(c)}
+                size="sm"
+              />
+              <NoteCardToolbar
+                pinned={pinned}
+                saving={saving || savingFollowUp}
+                onEdit={() => setActive(true)}
+                onTogglePin={() => void togglePin()}
+                onArchive={() => void archive()}
+              />
+            </div>
+          </div>
+        ) : followUpAt ? (
+          <div className="mt-auto border-t border-slate-100 px-2.5 py-2">
+            <NoteFollowUpControl value={followUpAt} onChange={() => {}} disabled />
+          </div>
+        ) : null}
       {error ? <p className="px-2.5 pb-2 text-[11px] text-red-700">{error}</p> : null}
       </article>
     </NoteStickyFrame>
@@ -378,7 +343,6 @@ export function NotesSection({
   const [focusedNoteId, setFocusedNoteId] = useState<string | null>(null);
   const [editingNoteId, setEditingNoteId] = useState<string | null>(null);
   const composeRef = useRef<HTMLDivElement>(null);
-  const composeTextareaRef = useRef<HTMLTextAreaElement>(null);
   const focusFlashHandledRef = useRef<string | null>(null);
 
   const scrollFocusedNoteIntoView = useCallback((noteId: string) => {
@@ -392,7 +356,7 @@ export function NotesSection({
     composeOpen || Boolean(draft.trim() || draftTitle.trim() || draftFollowUp);
 
   useEffect(() => {
-    if (composeOpen) composeRef.current?.querySelector<HTMLElement>("textarea")?.focus();
+    if (composeOpen) composeRef.current?.querySelector<HTMLElement>(".rich-note-editor")?.focus();
   }, [composeOpen]);
 
   useEffect(() => {
@@ -413,7 +377,7 @@ export function NotesSection({
     }
   }, [focusNoteId]);
 
-  const sorted = sortSalesNotes(notes);
+  const sorted = useMemo(() => sortSalesNotes(notes), [notes]);
   const needle = searchQuery.trim();
   const filtered = useMemo(
     () => filterSalesNotesByQuery(sorted, searchQuery),
@@ -528,7 +492,8 @@ export function NotesSection({
 
     const onKey = (e: KeyboardEvent) => {
       const tag = (e.target as HTMLElement)?.tagName;
-      const inField = tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT";
+      const inField = tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT" ||
+        (e.target as HTMLElement)?.isContentEditable;
 
       if (inField) {
         if (e.key === "Escape") (e.target as HTMLElement).blur();
@@ -631,44 +596,14 @@ export function NotesSection({
             placeholder="Tytuł (opcjonalnie)"
             className={cn(NOTATNIK_INPUT_CLASS, "w-full text-sm font-semibold")}
           />
-          <div className={NOTE_COMPOSE_TEXTAREA_SHELL_CLASS}>
-            <textarea
-              ref={composeTextareaRef}
-              rows={3}
-              value={draft}
-              onChange={(e) => setDraft(e.target.value)}
-              onKeyDown={(e) => {
-                const el = e.currentTarget;
-                if (
-                  handleNoteFormatKeyDown(
-                    e,
-                    draft,
-                    el.selectionStart,
-                    el.selectionEnd,
-                    (next, start, end) => {
-                      setDraft(next);
-                      requestAnimationFrame(() => el.setSelectionRange(start, end));
-                    }
-                  )
-                ) {
-                  return;
-                }
-                if ((e.metaKey || e.ctrlKey) && e.key === "Enter") {
-                  e.preventDefault();
-                  void createNote();
-                }
-              }}
-              placeholder="Wpisz notatkę…"
-              className={cn(NOTE_COMPOSE_TEXTAREA_INNER_CLASS, "min-h-[5rem]")}
-            />
-            <NoteFormatToolbar
-              textareaRef={composeTextareaRef}
-              value={draft}
-              onChange={setDraft}
-              disabled={saving}
-              embedded
-            />
-          </div>
+          <RichNoteEditor
+            value={draft}
+            onChange={setDraft}
+            onSave={() => void createNote()}
+            saveOnBlur={false}
+            editable={!saving}
+            placeholder="Wpisz notatkę…"
+          />
           <div className="space-y-1.5 border-t border-slate-100 pt-2">
             <span className={cn(salesTypography.chrome, "text-slate-600")}>Przypomnij</span>
             <FollowUpQuickDates

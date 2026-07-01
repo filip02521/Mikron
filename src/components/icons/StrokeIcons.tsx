@@ -592,6 +592,15 @@ export function DailySectionIcon({
   return <Icon className={className} size={size} />;
 }
 
+/** Ząb — prosty zaryst zęba */
+export function IconTooth(props: StrokeIconProps) {
+  return (
+    <Svg {...props}>
+      <path d="M7 3c-2 0-3.5 1.5-3.5 4 0 2 .5 3.5 1 5.5s.5 4 1 6c.3 1.2.8 2 1.5 2s1-.8 1-2c0-1.5.5-3 2-3s2 1.5 2 3c0 1.2.3 2 1 2s1.2-.8 1.5-2c.5-2 .5-4 1-6s1-3.5 1-5.5c0-2.5-1.5-4-3.5-4-1.5 0-2 .5-3 .5S8.5 3 7 3z" transform="translate(2 0)" />
+    </Svg>
+  );
+}
+
 export function dailySectionIconTileClass(kind: DailySectionIconKind): string {
   switch (kind) {
     case "dzis":

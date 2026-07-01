@@ -86,10 +86,10 @@ function NavLink({
   );
 
   const content = (
-    <span className="flex items-start justify-between gap-2">
-      <span className={cn("flex min-w-0 flex-1 items-start", compact ? "gap-2" : "gap-2.5")}>
+    <span className={cn("flex items-start justify-between gap-2", compact && "items-center")}>
+      <span className={cn("flex min-w-0 flex-1", compact ? "items-center gap-2" : "items-start gap-2.5")}>
         {indented ? (
-          <span className="relative mt-0.5 flex shrink-0 items-center">
+          <span className={cn("relative flex shrink-0 items-center", !compact && "mt-0.5")}>
             <span className="absolute -left-3 top-1/2 h-px w-3 bg-slate-300" />
             <span className="absolute -left-3 -top-2 bottom-1/2 w-px bg-slate-200" />
             <span
@@ -100,20 +100,21 @@ function NavLink({
                   : "text-slate-400 group-hover:text-slate-600"
               )}
             >
-              <NavIcon navKey={item.icon} size={15} />
+              <NavIcon navKey={item.icon} size={item.icon === "teeth" ? 18 : 15} />
             </span>
           </span>
         ) : (
           <span
             className={cn(
-              "mt-0.5 flex shrink-0 items-center justify-center rounded-md",
+              "flex shrink-0 items-center justify-center rounded-md",
+              !compact && "mt-0.5",
               compact ? "h-7 w-7" : "h-8 w-8",
               active
                 ? navIconTileActiveClassForTone(item.tone)
                 : navIconTileClassForTone(displayTone)
             )}
           >
-            <NavIcon navKey={item.icon} size={compact ? 16 : 17} />
+            <NavIcon navKey={item.icon} size={item.icon === "teeth" ? 19 : compact ? 16 : 17} />
           </span>
         )}
         <span className="min-w-0 flex-1">

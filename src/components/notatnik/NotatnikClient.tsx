@@ -86,7 +86,6 @@ import { SALES_PAGE_HEADER_HINTS } from "@/lib/sales/sales-page-ui-copy";
 import { sectionIconTileBrandClass } from "@/lib/ui/ontime-theme";
 import {
   isUndoExpired,
-  undoExpiresAtFromAnchor,
   undoExpiresAtNow,
   undoWindowBannerDescription,
 } from "@/lib/orders/daily-panel-undo";
@@ -942,10 +941,7 @@ export function NotatnikClient({
 
   function handleWatchClosed(watchId: string, closedAt: string) {
     const watch = zkWatches.find((w) => w.id === watchId);
-    const closedMs = Date.parse(closedAt);
-    const expiresAt = Number.isFinite(closedMs)
-      ? undoExpiresAtFromAnchor(closedMs)
-      : undoExpiresAtNow();
+    const expiresAt = undoExpiresAtNow();
     const closingFocusedWatch =
       focusWatchId === watchId || searchParams.get("focusWatch")?.trim() === watchId;
     if (watch) {

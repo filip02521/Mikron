@@ -211,10 +211,10 @@ describe("my-order-row-layout", () => {
       timingLabel: "ok. 20.06.2026 (~8 dni rob.)",
       subline: null,
     });
-    expect(myOrderCollapsedSubline(r)).toBe("ok. 20.06.2026 (~8 dni rob.)");
+    expect(myOrderCollapsedSubline(r)).toBe("Produkt A · SYM · 2 szt.");
   });
 
-  it("„Zamówione” z ostrzeżeniem o historii — subline ma pierwszeństwo przed terminem", () => {
+  it("zamowione z ostrzezeniem o historii — subline ma pierwszenstwo przed terminem", () => {
     const r = row({
       statusTitle: "Zamówione",
       headlineTone: "info",
@@ -226,7 +226,7 @@ describe("my-order-row-layout", () => {
     );
   });
 
-  it("termin realizacji na zwiniętym wierszu w subline", () => {
+  it("po terminie — towar na zwiniętym wierszu zamiast terminu", () => {
     const r = row({
       lineCount: 4,
       lines: Array.from({ length: 4 }, (_, i) => ({
@@ -236,8 +236,9 @@ describe("my-order-row-layout", () => {
       })),
       headlineTone: "warning",
       timingLabel: "ok. 10.05.2026 (~5 dni rob.) · po terminie",
+      subline: null,
     });
-    expect(myOrderCollapsedSubline(r)).toBe("ok. 10.05.2026 (~5 dni rob.)");
+    expect(myOrderCollapsedSubline(r)).toBe("P0 · +3 poz.");
     const collapsed = myOrderCollapsedMetaFields(r, true);
     expect(collapsed.some((f) => f.label === "Termin")).toBe(false);
     expect(collapsed.some((f) => f.label === "Szacunek")).toBe(false);

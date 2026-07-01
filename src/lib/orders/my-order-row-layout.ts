@@ -38,15 +38,20 @@ export function myOrderCollapsedSubline(row: MyOrderRow): string | null {
   }
 
   if (row.headlineTone === "warning") {
+    if (row.subline?.trim()) return row.subline;
     if (row.timingLabel?.trim()) {
+      const product = myOrderProductPreviewLine(row);
+      if (product) return product;
       return row.timingLabel.replace(" · po terminie", "").trim();
     }
-    return row.subline ?? null;
+    return null;
   }
 
   if (row.headlineTone === "info" && row.statusTitle === "Zamówione") {
     if (row.subline?.trim()) return row.subline;
     if (row.timingLabel?.trim()) {
+      const product = myOrderProductPreviewLine(row);
+      if (product) return product;
       return row.timingLabel.replace(" · po terminie", "").trim();
     }
   }

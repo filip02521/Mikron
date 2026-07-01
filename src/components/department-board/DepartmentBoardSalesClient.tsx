@@ -300,7 +300,7 @@ export function DepartmentBoardSalesClient({
             <div className={boardQuestionListClass}>
               {filteredQuestions.map((question) => (
                 <QuestionThreadCard
-                  key={`${question.id}:${unseenSet.has(question.id)}:${focusQuestionId === question.id}`}
+                  key={question.id}
                   question={question}
                   embedded
                   unseenReply={unseenSet.has(question.id)}

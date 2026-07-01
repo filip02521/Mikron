@@ -14,10 +14,12 @@ import {
   BOARD_PROCUREMENT_AUTHOR_LABEL,
   boardAwaitingReplyClass,
   boardProcurementReplyShellClass,
+  boardQuestionMessageShellClass,
   boardQuestionPreviewClass,
   boardQuestionRowClass,
   boardQuestionStatusBadgeClass,
   boardQuestionUnseenDotClass,
+  boardReplyFormShellClass,
 } from "@/lib/department-board/department-board-thread-styles";
 import {
   boardQuestionExpandedShellClass,
@@ -51,35 +53,41 @@ function ThreadMessage({
   authorLabel: string;
   body: string;
   createdAt: string;
-  tone?: "default" | "procurement";
+  tone?: "default" | "procurement" | "question";
   replyKind?: string;
 }) {
   const content = (
     <div className="space-y-1">
-      <p className={salesTypography.rowMeta}>
+      <p className={cn(salesTypography.rowMeta, "flex items-center gap-1.5")}>
         {replyKind ? (
-          <>
-            <span className="font-semibold text-slate-600">{replyKind}</span>
-            <span className="text-slate-400"> · </span>
-          </>
+          <span className="font-semibold text-slate-600">{replyKind}</span>
         ) : null}
         <span
           className={cn(
             "font-medium",
-            tone === "procurement" ? "text-indigo-800" : "text-slate-700"
+            tone === "procurement"
+              ? "text-indigo-800"
+              : tone === "question"
+                ? "text-amber-800"
+                : "text-slate-700"
           )}
         >
           {authorLabel}
         </span>
-        <span className="text-slate-400"> · </span>
-        {formatBoardDate(createdAt)}
       </p>
       <p className="whitespace-pre-wrap text-sm leading-relaxed text-slate-800">{body}</p>
+      <p className={cn(salesTypography.rowMeta, "text-[11px] text-slate-400")}>
+        {formatBoardDate(createdAt)}
+      </p>
     </div>
   );
 
   if (tone === "procurement") {
     return <div className={boardProcurementReplyShellClass}>{content}</div>;
+  }
+
+  if (tone === "question") {
+    return <div className={boardQuestionMessageShellClass}>{content}</div>;
   }
 
   return content;
@@ -130,12 +138,10 @@ export function QuestionThreadCard({
     if (expanded) return null;
     if (latestActivityPost) {
       const fromOps = isOperationsAuthorRole(latestActivityPost.author?.role ?? null);
-      const label = fromOps
-        ? BOARD_PROCUREMENT_AUTHOR_LABEL
-        : authorLabelFromProfile(latestActivityPost.author);
-      return `${label}: ${latestActivityPost.body}`;
+      const prefix = fromOps ? "Ostatnia odpowiedź:" : "Ostatnia wiadomość:";
+      return `${prefix} ${latestActivityPost.body}`;
     }
-    return question.body;
+    return `Pytanie: ${question.body}`;
   }, [expanded, latestActivityPost, question.body]);
 
   let procurementReplyIndex = 0;
@@ -285,10 +291,10 @@ export function QuestionThreadCard({
       {showInlineReplyForm ? (
         <div className={boardQuestionInlineReplyShellClass}>
           <label
-            className={cn(salesTypography.rowMeta, "block font-medium text-slate-600")}
+            className={cn(salesTypography.rowMeta, "block font-medium text-indigo-700")}
             htmlFor={`inline-reply-${question.id}`}
           >
-            {isOpen ? "Odpowiedź zakupów" : "Doprecyzowanie (widoczne dla wszystkich)"}
+            {isOpen ? "Odpowiedź działu zakupów" : "Doprecyzowanie"}
           </label>
           <textarea
             id={`inline-reply-${question.id}`}
@@ -309,14 +315,20 @@ export function QuestionThreadCard({
         <div className={boardQuestionExpandedShellClass}>
           {hasProduct ? <BoardQuestionProductContext product={question} /> : null}
 
-          <ThreadMessage
-            authorLabel={author}
-            body={question.body}
-            createdAt={question.created_at}
-          />
+          <div className="space-y-1.5">
+            <p className={cn(salesTypography.rowMeta, "font-semibold uppercase tracking-wide text-amber-700")}>
+              Pytanie
+            </p>
+            <ThreadMessage
+              authorLabel={author}
+              body={question.body}
+              createdAt={question.created_at}
+              tone="question"
+            />
+          </div>
 
           {question.posts.length === 0 ? (
-            <p className={boardAwaitingReplyClass}>Zakupy jeszcze nie odpowiedziały.</p>
+            <p className={boardAwaitingReplyClass}>Dział zakupów jeszcze nie odpowiedział.</p>
           ) : (
             <div className="space-y-3">
               {question.posts.map((post) => {
@@ -343,12 +355,12 @@ export function QuestionThreadCard({
           )}
 
           {canReply ? (
-            <div className="space-y-2 border-t border-slate-100 pt-3">
+            <div className={boardReplyFormShellClass}>
               <label
-                className={cn(salesTypography.rowMeta, "block font-medium text-slate-600")}
+                className={cn(salesTypography.rowMeta, "block font-medium text-indigo-700")}
                 htmlFor={`reply-${question.id}`}
               >
-                {isOpen ? "Odpowiedź zakupów" : "Doprecyzowanie (widoczne dla wszystkich)"}
+                {isOpen ? "Odpowiedź działu zakupów" : "Doprecyzowanie"}
               </label>
               <textarea
                 id={`reply-${question.id}`}
@@ -369,9 +381,11 @@ export function QuestionThreadCard({
           ) : null}
 
           {canArchive ? (
-            <Button size="sm" variant="ghost" disabled={busy} onClick={() => void archive()}>
-              Archiwizuj pytanie
-            </Button>
+            <div className="pt-1">
+              <Button size="sm" variant="ghost" className="text-xs text-slate-400" disabled={busy} onClick={() => void archive()}>
+                Archiwizuj pytanie
+              </Button>
+            </div>
           ) : null}
         </div>
       ) : null}

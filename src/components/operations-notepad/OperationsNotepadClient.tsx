@@ -255,7 +255,7 @@ export function OperationsNotepadClient({
           undoShortcut={undoShortcut}
         />
       ) : null}
-      <Card padding={false} className="overflow-hidden">
+      <Card padding={false} className="overflow-visible">
         <CardHeader
           inset
           density="compact"
@@ -321,6 +321,8 @@ export function OperationsNotepadClient({
             description="Widzisz tylko Ty — karteczki nie są widoczne dla zespołu."
             count={privateNotes.length || undefined}
             icon={<IconClipboardPen size={17} />}
+            className="overflow-visible"
+            bodyClassName="overflow-visible"
           >
             <OperationsNotesSection
               notes={privateNotes}
@@ -345,6 +347,8 @@ export function OperationsNotepadClient({
             count={publicNotes.length || undefined}
             icon={<IconUsers size={17} />}
             tileClassName="bg-sky-100 text-sky-800"
+            className="overflow-visible"
+            bodyClassName="overflow-visible"
           >
             <OperationsNotesSection
               notes={publicNotes}

@@ -40,7 +40,7 @@ describe("NotesSection", () => {
       />
     );
 
-    expect(screen.getByRole("heading", { name: "Do oddzwonienia" })).toBeTruthy();
+    expect(screen.getByDisplayValue("Do oddzwonienia")).toBeTruthy();
     expect(screen.getByText("Klient czeka na wycenę.")).toBeTruthy();
   });
 
@@ -54,7 +54,7 @@ describe("NotesSection", () => {
     render(<NotesSection embedded notes={[]} />);
     fireEvent.click(screen.getByRole("button", { name: /Przypnij nową karteczkę/i }));
     expect(screen.getByText("Nowa karteczka")).toBeTruthy();
-    expect(screen.getByPlaceholderText("Wpisz notatkę…")).toBeTruthy();
+    expect(document.querySelector('[data-placeholder="Wpisz notatkę…"]')).toBeTruthy();
   });
 
   it("podświetla notatkę z deep linku tylko raz", () => {

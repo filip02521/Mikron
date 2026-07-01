@@ -51,13 +51,19 @@ export const boardQuestionPreviewClass = cn(
 );
 
 export const boardQuestionProductChipClass =
-  "inline-flex max-w-full items-center gap-1.5 rounded-md border border-indigo-200/80 bg-indigo-50/70 px-2 py-0.5 text-[11px] font-semibold text-indigo-900";
+  "inline-flex max-w-full items-center gap-1.5 rounded-md border border-slate-200/90 bg-slate-100/80 px-2 py-0.5 text-[11px] font-semibold text-slate-700";
 
 export const boardQuestionProductContextClass =
-  "rounded-lg border border-indigo-200/80 bg-gradient-to-r from-indigo-50/80 via-indigo-50/40 to-white px-3 py-2.5 shadow-sm shadow-indigo-100/40";
+  "rounded-lg border border-slate-200/90 bg-slate-50/80 px-3 py-2.5";
 
 export const boardProcurementReplyShellClass =
-  "rounded-lg border border-indigo-100/90 bg-indigo-50/70 px-3.5 py-3 shadow-sm shadow-indigo-100/30";
+  "rounded-lg border border-indigo-200/80 border-l-[3px] border-l-indigo-500 bg-indigo-50/60 px-3.5 py-3";
+
+export const boardQuestionMessageShellClass =
+  "rounded-lg border border-amber-200/80 border-l-[3px] border-l-amber-400 bg-amber-50/40 px-3.5 py-3";
+
+export const boardReplyFormShellClass =
+  "space-y-2 rounded-lg border border-indigo-100/80 bg-indigo-50/30 px-3.5 py-3";
 
 export const boardAwaitingReplyClass = cn(
   salesTypography.rowMeta,

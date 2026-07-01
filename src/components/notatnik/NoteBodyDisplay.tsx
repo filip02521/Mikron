@@ -21,7 +21,7 @@ export function NoteBodyDisplay({
   }
 
   return (
-    <div className={cn("space-y-1.5 text-[13px] leading-snug text-slate-900/90", className)}>
+    <div className={cn("note-body-display space-y-1.5 text-[13px] leading-snug text-slate-900/90", className)}>
       {blocks.map((block, index) => {
         if (block.type === "paragraph") {
           return (
@@ -36,6 +36,18 @@ export function NoteBodyDisplay({
               {block.items.map((item, itemIndex) => (
                 <li key={itemIndex} className="whitespace-pre-wrap">
                   {formatInlineNoteText(item)}
+                </li>
+              ))}
+            </ul>
+          );
+        }
+        if (block.type === "todo") {
+          return (
+            <ul key={`todo-${index}`} className="todo-list">
+              {block.items.map((item, itemIndex) => (
+                <li key={itemIndex} data-checked={item.checked}>
+                  <span className="todo-checkbox" data-checked={item.checked} aria-hidden />
+                  <span className="whitespace-pre-wrap">{formatInlineNoteText(item.text)}</span>
                 </li>
               ))}
             </ul>

@@ -86,6 +86,12 @@ export function NoteFormatToolbar({
         disabled={disabled}
         onClick={() => run("bold")}
       />
+      <FormatButton
+        label="I"
+        title="Kursywa (Ctrl+I)"
+        disabled={disabled}
+        onClick={() => run("italic")}
+      />
     </div>
   );
 }

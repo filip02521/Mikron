@@ -11,7 +11,7 @@ import { ModalShell } from "@/components/ui/ModalShell";
 import { Toast } from "@/components/ui/Toast";
 import { Input } from "@/components/ui/Field";
 import { SectionHeadingIcon } from "@/components/icons/SectionHeadingIcon";
-import { IconPackage } from "@/components/icons/StrokeIcons";
+import { IconTooth } from "@/components/icons/StrokeIcons";
 import type { TeethQueueGroup, TeethQueueItem } from "@/lib/data/teeth-queue";
 import { isScheduledItem } from "@/lib/data/teeth-queue";
 import { TeethPanelTabs } from "@/components/zeby/TeethPanelTabs";
@@ -313,7 +313,7 @@ export function TeethPanelClient({
           density="compact"
           leading={
             <SectionHeadingIcon tileClassName={TEETH_ICON_TILE}>
-              <IconPackage size={20} />
+              <IconTooth size={20} />
             </SectionHeadingIcon>
           }
           title={TEETH_PANEL_TITLE}
@@ -340,7 +340,7 @@ export function TeethPanelClient({
               <TeethPanelEmpty
                 title="Kolejka jest pusta"
                 description="Gdy handlowiec złoży prośbę na zęby syntetyczne, pozycja pojawi się tutaj do zamówienia u dostawcy."
-                icon={<IconPackage size={24} strokeWidth={1.75} />}
+                icon={<IconTooth size={24} strokeWidth={1.75} />}
               />
             ) : (
               <TeethPanelKolejkaView

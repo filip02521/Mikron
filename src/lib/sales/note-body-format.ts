@@ -3,10 +3,12 @@ import { createElement, Fragment, type ReactNode } from "react";
 export type NoteBodyBlock =
   | { type: "paragraph"; text: string }
   | { type: "ul"; items: string[] }
-  | { type: "ol"; items: string[] };
+  | { type: "ol"; items: string[] }
+  | { type: "todo"; items: { text: string; checked: boolean }[] };
 
 const BULLET_LINE_RE = /^(\s*)([-*•])\s+(.+)$/;
 const ORDERED_LINE_RE = /^(\s*)(\d+)\.\s+(.+)$/;
+const TODO_LINE_RE = /^(\s*)([-*])\s+\[([ xX])\]\s+(.+)$/;
 
 /** Dzieli treść notatki na akapity i listy (markdown-lite). */
 export function parseNoteBodyBlocks(body: string): NoteBodyBlock[] {
@@ -15,6 +17,7 @@ export function parseNoteBodyBlocks(body: string): NoteBodyBlock[] {
   let paragraph: string[] = [];
   let ul: string[] = [];
   let ol: string[] = [];
+  let todo: { text: string; checked: boolean }[] = [];
 
   function flushParagraph() {
     const text = paragraph.join("\n").trimEnd();
@@ -32,11 +35,26 @@ export function parseNoteBodyBlocks(body: string): NoteBodyBlock[] {
     ol = [];
   }
 
+  function flushTodo() {
+    if (todo.length) blocks.push({ type: "todo", items: [...todo] });
+    todo = [];
+  }
+
   for (const line of lines) {
     if (!line.trim()) {
       flushParagraph();
       flushUl();
       flushOl();
+      flushTodo();
+      continue;
+    }
+
+    const todoMatch = line.match(TODO_LINE_RE);
+    if (todoMatch) {
+      flushParagraph();
+      flushUl();
+      flushOl();
+      todo.push({ text: todoMatch[4]!, checked: todoMatch[3]!.toLowerCase() === "x" });
       continue;
     }
 
@@ -44,6 +62,7 @@ export function parseNoteBodyBlocks(body: string): NoteBodyBlock[] {
     if (bullet) {
       flushParagraph();
       flushOl();
+      flushTodo();
       ul.push(bullet[3]!);
       continue;
     }
@@ -52,18 +71,21 @@ export function parseNoteBodyBlocks(body: string): NoteBodyBlock[] {
     if (ordered) {
       flushParagraph();
       flushUl();
+      flushTodo();
       ol.push(ordered[3]!);
       continue;
     }
 
     flushUl();
     flushOl();
+    flushTodo();
     paragraph.push(line);
   }
 
   flushParagraph();
   flushUl();
   flushOl();
+  flushTodo();
   return blocks;
 }
 
@@ -91,9 +113,9 @@ export function formatInlineNoteText(text: string): ReactNode {
   return parts.length === 1 ? parts[0]! : createElement(Fragment, null, ...parts);
 }
 
-export type NoteTextFormatAction = "bullet" | "number" | "bold";
+export type NoteTextFormatAction = "bullet" | "number" | "bold" | "italic";
 
-/** Skróty Ctrl/Cmd+B w polu tekstowym notatki. Zwraca true, gdy obsłużono. */
+/** Skróty Ctrl/Cmd+B i Ctrl/Cmd+I w polu tekstowym notatki. Zwraca true, gdy obsłużono. */
 export function handleNoteFormatKeyDown(
   e: { key: string; metaKey: boolean; ctrlKey: boolean; shiftKey: boolean; preventDefault: () => void },
   value: string,
@@ -101,9 +123,12 @@ export function handleNoteFormatKeyDown(
   selectionEnd: number,
   onChange: (next: string, selectionStart: number, selectionEnd: number) => void
 ): boolean {
-  if (!(e.metaKey || e.ctrlKey) || e.shiftKey || e.key.toLowerCase() !== "b") return false;
+  if (!(e.metaKey || e.ctrlKey) || e.shiftKey) return false;
+  const key = e.key.toLowerCase();
+  if (key !== "b" && key !== "i") return false;
   e.preventDefault();
-  const result = applyNoteTextFormat(value, selectionStart, selectionEnd, "bold");
+  const action: NoteTextFormatAction = key === "b" ? "bold" : "italic";
+  const result = applyNoteTextFormat(value, selectionStart, selectionEnd, action);
   onChange(result.text, result.selectionStart, result.selectionEnd);
   return true;
 }
@@ -161,21 +186,22 @@ export function applyNoteTextFormat(
   selectionEnd: number,
   action: NoteTextFormatAction
 ): { text: string; selectionStart: number; selectionEnd: number } {
-  if (action === "bold") {
+  if (action === "bold" || action === "italic") {
+    const marker = action === "bold" ? "**" : "*";
     const { safeStart, safeEnd } = lineRange(text, selectionStart, selectionEnd);
     if (safeStart === safeEnd) {
-      const marker = "****";
-      const next = text.slice(0, safeStart) + marker + text.slice(safeEnd);
-      const cursor = safeStart + 2;
+      const insert = marker + marker;
+      const next = text.slice(0, safeStart) + insert + text.slice(safeEnd);
+      const cursor = safeStart + marker.length;
       return { text: next, selectionStart: cursor, selectionEnd: cursor };
     }
     const selected = text.slice(safeStart, safeEnd);
-    const wrapped = `**${selected}**`;
+    const wrapped = `${marker}${selected}${marker}`;
     const next = text.slice(0, safeStart) + wrapped + text.slice(safeEnd);
     return {
       text: next,
-      selectionStart: safeStart + 2,
-      selectionEnd: safeEnd + 2,
+      selectionStart: safeStart + marker.length,
+      selectionEnd: safeEnd + marker.length,
     };
   }
 
@@ -215,4 +241,126 @@ export function applyNoteTextFormat(
     selectionStart: nextStart,
     selectionEnd: nextEnd,
   };
+}
+
+/* ─── Konwersje markdown ↔ HTML dla edytora contentEditable ─── */
+
+function escapeHtml(text: string): string {
+  return text
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;");
+}
+
+function inlineMarkdownToHtml(text: string): string {
+  let out = escapeHtml(text);
+  out = out.replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>");
+  out = out.replace(/\*(.+?)\*/g, "<em>$1</em>");
+  return out;
+}
+
+/** Konwertuje markdown notatki na HTML dla contentEditable. */
+export function markdownToHtml(body: string): string {
+  const blocks = parseNoteBodyBlocks(body);
+  const parts: string[] = [];
+
+  for (const block of blocks) {
+    if (block.type === "paragraph") {
+      const lines = block.text.split("\n");
+      parts.push(lines.map((line) => `<p>${inlineMarkdownToHtml(line)}</p>`).join(""));
+    } else if (block.type === "ul") {
+      const items = block.items.map((item) => `<li>${inlineMarkdownToHtml(item)}</li>`).join("");
+      parts.push(`<ul>${items}</ul>`);
+    } else if (block.type === "todo") {
+      const items = block.items.map((item) => `<li data-checked="${item.checked}"><span class="todo-checkbox" contenteditable="false" data-checked="${item.checked}"></span>${inlineMarkdownToHtml(item.text)}</li>`).join("");
+      parts.push(`<ul class="todo-list">${items}</ul>`);
+    } else {
+      const items = block.items.map((item) => `<li>${inlineMarkdownToHtml(item)}</li>`).join("");
+      parts.push(`<ol>${items}</ol>`);
+    }
+  }
+
+  return parts.join("");
+}
+
+function unescapeHtml(text: string): string {
+  return text
+    .replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">")
+    .replace(/&amp;/g, "&");
+}
+
+function isBoldNode(el: Element): boolean {
+  const tag = el.tagName.toLowerCase();
+  if (tag === "strong" || tag === "b") return true;
+  const style = (el as HTMLElement).style;
+  if (style.fontWeight === "bold" || style.fontWeight === "700" || style.fontWeight === "600") return true;
+  return false;
+}
+
+function isItalicNode(el: Element): boolean {
+  const tag = el.tagName.toLowerCase();
+  if (tag === "em" || tag === "i") return true;
+  const style = (el as HTMLElement).style;
+  if (style.fontStyle === "italic") return true;
+  return false;
+}
+
+function nodeToMarkdown(node: Node): string {
+  if (node.nodeType === Node.TEXT_NODE) {
+    return unescapeHtml(node.textContent ?? "");
+  }
+  if (node.nodeType !== Node.ELEMENT_NODE) return "";
+
+  const el = node as Element;
+  const tag = el.tagName.toLowerCase();
+  const inner = Array.from(el.childNodes).map(nodeToMarkdown).join("");
+
+  if (isBoldNode(el)) return `**${inner}**`;
+  if (isItalicNode(el)) return `*${inner}*`;
+
+  if (tag === "br") return "\n";
+  if (tag === "p") return `${inner}\n\n`;
+  if (tag === "div") return `${inner}\n`;
+  if (tag === "ul") {
+    const isTodo = el.classList.contains("todo-list");
+    return Array.from(el.children)
+      .map((li) => {
+        if (isTodo) {
+          const checked = li.getAttribute("data-checked") === "true";
+          const inner = Array.from(li.childNodes)
+            .filter((n) => !(n.nodeType === Node.ELEMENT_NODE && (n as Element).classList.contains("todo-checkbox")))
+            .map(nodeToMarkdown)
+            .join("");
+          return `- [${checked ? "x" : " "}] ${inner}`;
+        }
+        return `- ${Array.from(li.childNodes).map(nodeToMarkdown).join("")}`;
+      })
+      .join("\n") + "\n";
+  }
+  if (tag === "ol") {
+    return Array.from(el.children)
+      .map((li, i) => `${i + 1}. ${Array.from(li.childNodes).map(nodeToMarkdown).join("")}`)
+      .join("\n") + "\n";
+  }
+  if (tag === "li") return inner;
+
+  return inner;
+}
+
+/** Konwertuje HTML z contentEditable z powrotem na markdown. */
+export function htmlToMarkdown(html: string): string {
+  const parser = new DOMParser();
+  const doc = parser.parseFromString(html, "text/html");
+  const root = doc.body;
+  let markdown = Array.from(root.childNodes).map(nodeToMarkdown).join("");
+
+  markdown = markdown
+    .replace(/\u200B/g, "")
+    .replace(/\n{3,}/g, "\n\n")
+    .replace(/^\n+/, "")
+    .replace(/\n+$/, "")
+    .trim();
+
+  return markdown;
 }
