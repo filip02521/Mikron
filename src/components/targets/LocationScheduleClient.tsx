@@ -72,8 +72,32 @@ function isThisWeek(next: string | null): boolean {
   return d >= monday && d <= sunday;
 }
 
-function sortBySupplierName(a: ScheduleRow, b: ScheduleRow): number {
-  return a.name.localeCompare(b.name, "pl", { sensitivity: "base" });
+type SortKey = "name" | "order_date" | "next_date" | "shift_date" | "vacation_note";
+type SortDir = "asc" | "desc";
+
+function compareRows(a: ScheduleRow, b: ScheduleRow, key: SortKey, dir: SortDir): number {
+  let cmp = 0;
+  switch (key) {
+    case "name":
+      cmp = a.name.localeCompare(b.name, "pl", { sensitivity: "base" });
+      break;
+    case "order_date":
+      cmp = (a.order_date ?? "").localeCompare(b.order_date ?? "");
+      break;
+    case "next_date":
+      cmp = (a.next_date ?? "").localeCompare(b.next_date ?? "");
+      break;
+    case "shift_date":
+      cmp = (a.shift_date ?? "").localeCompare(b.shift_date ?? "");
+      break;
+    case "vacation_note":
+      cmp = (a.vacation_note ?? "").localeCompare(b.vacation_note ?? "");
+      break;
+  }
+  if (cmp === 0 && key !== "name") {
+    cmp = a.name.localeCompare(b.name, "pl", { sensitivity: "base" });
+  }
+  return dir === "asc" ? cmp : -cmp;
 }
 
 function cardHref(base: string, name: string): string {
@@ -100,6 +124,8 @@ export function LocationScheduleClient({
   const [pendingMessage, setPendingMessage] = useState<string | null>(null);
   const [filter, setFilter] = useState<FilterKey>("all");
   const [search, setSearch] = useState("");
+  const [sortKey, setSortKey] = useState<SortKey>("name");
+  const [sortDir, setSortDir] = useState<SortDir>("asc");
   const [toast, setToast] = useState<{ text: string; tone: "success" | "error" } | null>(
     null
   );
@@ -147,8 +173,8 @@ export function LocationScheduleClient({
     else if (filter === "vacation")
       rows = rows.filter((r) => !!r.vacation_note);
 
-    return rows.sort(sortBySupplierName);
-  }, [initialRows, filter, search]);
+    return rows.sort((a, b) => compareRows(a, b, sortKey, sortDir));
+  }, [initialRows, filter, search, sortKey, sortDir]);
 
   const counts = useMemo(
     () => ({
@@ -192,6 +218,15 @@ export function LocationScheduleClient({
   };
 
   const locLabel = locationLabel(location);
+
+  const handleSort = useCallback((field: SortKey) => {
+    if (field === sortKey) {
+      setSortDir((d) => (d === "asc" ? "desc" : "asc"));
+    } else {
+      setSortKey(field);
+      setSortDir("asc");
+    }
+  }, [sortKey]);
 
   const filterActive = filter !== "all" || search.trim().length > 0;
 
@@ -261,11 +296,11 @@ export function LocationScheduleClient({
             <DataTable>
               <thead>
                 <tr>
-                  <th>Dostawca</th>
-                  <th>Ostatnie zamówienie</th>
-                  <th>Następne zamówienie</th>
-                  <th>Przesunięcie</th>
-                  <th>Urlop</th>
+                  <SortableTh label="Dostawca" sortKey={sortKey} sortDir={sortDir} field="name" onSort={handleSort} />
+                  <SortableTh label="Ostatnie zamówienie" sortKey={sortKey} sortDir={sortDir} field="order_date" onSort={handleSort} />
+                  <SortableTh label="Następne zamówienie" sortKey={sortKey} sortDir={sortDir} field="next_date" onSort={handleSort} />
+                  <SortableTh label="Przesunięcie" sortKey={sortKey} sortDir={sortDir} field="shift_date" onSort={handleSort} />
+                  <SortableTh label="Urlop" sortKey={sortKey} sortDir={sortDir} field="vacation_note" onSort={handleSort} />
                 </tr>
               </thead>
               <tbody>
@@ -374,5 +409,42 @@ function DateCell({
         <p className="text-[10px] text-slate-500 tabular-nums">{hint}</p>
       </div>
     </td>
+  );
+}
+
+function SortableTh({
+  label,
+  sortKey,
+  sortDir,
+  field,
+  onSort,
+}: {
+  label: string;
+  sortKey: SortKey;
+  sortDir: SortDir;
+  field: SortKey;
+  onSort: (field: SortKey) => void;
+}) {
+  const isActive = sortKey === field;
+  return (
+    <th>
+      <button
+        type="button"
+        onClick={() => onSort(field)}
+        className={cn(
+          "inline-flex items-center gap-1 text-left font-semibold transition-colors hover:text-slate-900",
+          isActive ? "text-slate-900" : "text-slate-600",
+        )}
+      >
+        {label}
+        {isActive ? (
+          <span className="text-xs">
+            {sortDir === "asc" ? "▲" : "▼"}
+          </span>
+        ) : (
+          <span className="text-xs text-slate-300">↕</span>
+        )}
+      </button>
+    </th>
   );
 }
