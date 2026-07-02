@@ -97,14 +97,6 @@ export function TeethSpecFields({
 
   return (
     <div className={cn("space-y-3", compact && "space-y-2")}>
-      <div className={sectionGap}>
-        <FieldLabel required={!jaw}>Szczęka</FieldLabel>
-        <div className="flex gap-2">
-          <ChoiceButton label="Górna" selected={jaw === "upper"} disabled={disabled} onClick={() => handleJaw("upper")} />
-          <ChoiceButton label="Dolna" selected={jaw === "lower"} disabled={disabled} onClick={() => handleJaw("lower")} />
-        </div>
-      </div>
-
       {hideKindField ? null : lockedKind ? (
         <div className={sectionGap}>
           <FieldLabel>Typ</FieldLabel>
@@ -239,6 +231,14 @@ export function TeethSpecFields({
           />
         </div>
       ) : null}
+
+      <div className={sectionGap}>
+        <FieldLabel required={!jaw}>Szczęka</FieldLabel>
+        <div className="flex gap-2">
+          <ChoiceButton label="Górna" selected={jaw === "upper"} disabled={disabled} onClick={() => handleJaw("upper")} />
+          <ChoiceButton label="Dolna" selected={jaw === "lower"} disabled={disabled} onClick={() => handleJaw("lower")} />
+        </div>
+      </div>
 
       {detail.color || jaw || kind ? (
         <div

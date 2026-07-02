@@ -90,33 +90,44 @@ export function mojeShipmentRowClass({
 }
 
 export const mojeShipmentExpandedRowShellClass =
-  "relative z-[1] mb-2.5 shadow-sm ring-1 ring-inset ring-slate-200/70";
+  "relative z-[1] mb-2";
 
 export const mojeShipmentExpandedMetaShellClass =
-  "rounded-md border border-slate-200/80 bg-slate-50/70 px-2.5 py-1.5";
+  "px-0 py-0";
 
 export const mojeShipmentExpandedPanelClass =
-  "space-y-2.5 border-t border-slate-200/80 bg-gradient-to-b from-slate-50/90 to-white px-3 pt-2.5 pb-3.5 sm:px-4 sm:pt-3 sm:pb-4";
+  "space-y-2 border-t border-slate-200/80 bg-white px-3 pt-2 pb-3 sm:px-4 sm:pb-3.5";
+
+export const mojeShipmentExpandedInfoBlockClass =
+  "space-y-1.5 px-3 py-2";
 
 export const mojeShipmentExpandedNotesClass =
-  "rounded-md border border-indigo-100/90 bg-indigo-50/60 px-3 py-2 text-xs leading-relaxed text-indigo-950";
+  "text-xs leading-relaxed text-slate-600";
 
 export const mojeShipmentExpandedClientsClass =
   "rounded-md border border-slate-200/80 bg-slate-50/80 px-3 py-2 text-xs text-slate-600";
 
+export const mojeShipmentSectionHeaderClass =
+  "flex items-center justify-between gap-2 border-b border-slate-200/80 bg-slate-50/80 px-3 py-1.5";
+
+export const mojeShipmentSectionHeaderTitleClass = cn(
+  salesTypography.sectionLabel,
+  "normal-case tracking-normal text-slate-500"
+);
+
 export const mojeShipmentLinesHeaderClass =
-  "flex items-center justify-between gap-2 border-b border-slate-100 bg-slate-50/90 px-3 py-1.5";
+  "flex items-center justify-between gap-2 border-b border-slate-200/80 bg-slate-50/80 px-3 py-1.5";
 
 export const mojeShipmentLinesHeaderTitleClass = cn(
   salesTypography.sectionLabel,
-  "normal-case tracking-normal text-slate-600"
+  "normal-case tracking-normal text-slate-500"
 );
 
 export const mojeShipmentLinesShellClass =
-  "overflow-hidden rounded-md border border-slate-200/90 bg-white shadow-sm";
+  "overflow-hidden rounded-md border border-slate-200/90 bg-white";
 
 export const mojeShipmentLineRowClass =
-  "border-b border-slate-100 px-3 py-2.5 last:border-b-0 sm:py-3";
+  "border-b border-slate-100 px-3 py-2 last:border-b-0 sm:py-2.5";
 
 export const mojeShipmentExpandedActionsClass =
   "flex justify-end border-t border-slate-100 bg-slate-50/60 px-3 py-2.5";

@@ -3,7 +3,6 @@ import { DeliveryUrgencyBadge } from "@/components/orders/DeliveryUrgencyBadge";
 import { cn } from "@/lib/cn";
 import type { MyOrderDeliveryTimingDisplay } from "@/lib/orders/my-order-delivery-timing-display";
 import { deliveryUrgencyShowsBadge } from "@/lib/orders/my-order-delivery-urgency";
-import { mojeShipmentExpandedMetaShellClass } from "@/lib/ui/moje-shipment-row-styles";
 import { deliveryMetaTypography, panelTypography, salesTypography } from "@/lib/ui/ontime-theme";
 
 export function MyOrderExpandedDeliveryTiming({
@@ -24,8 +23,8 @@ export function MyOrderExpandedDeliveryTiming({
   return (
     <section
       className={cn(
-        mojeShipmentExpandedMetaShellClass,
-        isOverdue && "border-amber-200/80 bg-amber-50/50",
+        "rounded-md",
+        isOverdue && "bg-amber-50/50 px-2.5 py-1.5",
         className
       )}
       aria-label={display.title}

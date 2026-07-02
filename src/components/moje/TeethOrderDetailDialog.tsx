@@ -4,7 +4,6 @@ import { useMemo, useState } from "react";
 import { ModalShell } from "@/components/ui/ModalShell";
 import { Button } from "@/components/ui/Button";
 import { IconTooth } from "@/components/icons/StrokeIcons";
-import { TeethGroupChips } from "@/components/teeth/TeethGroupChips";
 import {
   groupTeethDetails,
   formatTeethGroupLabel,
@@ -17,6 +16,13 @@ import {
 } from "@/lib/teeth/teeth-receive-picker";
 import { cn } from "@/lib/cn";
 import type { IndividualOrder } from "@/types/database";
+import {
+  mojeShipmentLinesShellClass,
+  mojeShipmentSectionHeaderClass,
+  mojeShipmentSectionHeaderTitleClass,
+  mojeShipmentLineRowClass,
+} from "@/lib/ui/moje-shipment-row-styles";
+import { salesTypography } from "@/lib/ui/ontime-theme";
 
 type TeethLineSummary = {
   group: TeethGroupedDetail;
@@ -133,93 +139,88 @@ export function TeethOrderDetailDialog({
           </div>
         }
       >
-        <div className="space-y-4 px-5 py-4 sm:px-6">
+        <div className="space-y-2 px-3 py-3 sm:px-4">
           {/* Summary band */}
           <div className="grid grid-cols-3 gap-2">
-            <div className="rounded-md border border-slate-200/80 bg-white px-3 py-2.5">
-              <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">
+            <div className="rounded-md border border-slate-200/80 bg-white px-3 py-2">
+              <p className={cn(salesTypography.sectionLabel, "text-slate-400")}>
                 Zamówiono
               </p>
-              <p className="mt-0.5 text-xl font-semibold tabular-nums text-slate-900">
+              <p className="mt-0.5 text-lg font-semibold tabular-nums text-slate-900">
                 {totalOrdered}
               </p>
             </div>
-            <div className="rounded-md border border-emerald-200/80 bg-emerald-50/50 px-3 py-2.5">
-              <p className="text-[10px] font-semibold uppercase tracking-wide text-emerald-700">
+            <div className="rounded-md border border-emerald-200/80 bg-emerald-50/40 px-3 py-2">
+              <p className={cn(salesTypography.sectionLabel, "text-emerald-600")}>
                 Przyjęto
               </p>
-              <p className="mt-0.5 text-xl font-semibold tabular-nums text-emerald-900">
+              <p className="mt-0.5 text-lg font-semibold tabular-nums text-emerald-900">
                 {totalDelivered}
               </p>
             </div>
-            <div className="rounded-md border border-amber-200/80 bg-amber-50/50 px-3 py-2.5">
-              <p className="text-[10px] font-semibold uppercase tracking-wide text-amber-700">
+            <div className="rounded-md border border-amber-200/80 bg-amber-50/40 px-3 py-2">
+              <p className={cn(salesTypography.sectionLabel, "text-amber-600")}>
                 Brakuje
               </p>
-              <p className="mt-0.5 text-xl font-semibold tabular-nums text-amber-900">
+              <p className="mt-0.5 text-lg font-semibold tabular-nums text-amber-900">
                 {totalRemaining}
               </p>
             </div>
           </div>
 
-          {/* Chips preview */}
-          <div>
-            <p className="mb-1.5 text-[11px] font-medium text-slate-500">Lista zębów</p>
-            <TeethGroupChips
-              details={teethDetails}
-              variant="prosba"
-              compact
-            />
-          </div>
-
           {/* Detail table */}
-          <div className="overflow-x-auto rounded-md border border-slate-200/80">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b border-slate-200/80 bg-slate-50/60">
-                  <th className="px-3 py-2 text-left text-[10px] font-semibold uppercase tracking-wide text-slate-500">
-                    Specyfikacja
-                  </th>
-                  <th className="px-3 py-2 text-center text-[10px] font-semibold uppercase tracking-wide text-slate-500">
-                    Zamówiono
-                  </th>
-                  <th className="px-3 py-2 text-center text-[10px] font-semibold uppercase tracking-wide text-slate-500">
-                    Przyjęto
-                  </th>
-                  <th className="px-3 py-2 text-center text-[10px] font-semibold uppercase tracking-wide text-slate-500">
-                    Brakuje
-                  </th>
-                  <th className="px-3 py-2 text-center text-[10px] font-semibold uppercase tracking-wide text-slate-500">
-                    Status
-                  </th>
-                </tr>
-              </thead>
-              <tbody>
-                {summaries.map((s) => (
-                  <tr
-                    key={s.groupKey}
-                    className="border-b border-slate-100 last:border-b-0"
-                  >
-                    <td className="px-3 py-2.5 font-medium text-slate-800">
-                      {formatTeethGroupLabel(s.group, { includeCount: false })}
-                    </td>
-                    <td className="px-3 py-2.5 text-center tabular-nums font-semibold text-slate-700">
-                      {s.ordered}
-                    </td>
-                    <td className="px-3 py-2.5 text-center tabular-nums font-semibold text-emerald-700">
-                      {s.delivered > 0 ? s.delivered : "—"}
-                    </td>
-                    <td className="px-3 py-2.5 text-center tabular-nums font-semibold text-amber-700">
-                      {s.remaining > 0 ? s.remaining : "—"}
-                    </td>
-                    <td className="px-3 py-2.5 text-center">
-                      <DeliveryBadge delivered={s.delivered} ordered={s.ordered} />
-                    </td>
+          <section className={mojeShipmentLinesShellClass}>
+            <div className={mojeShipmentSectionHeaderClass}>
+              <h4 className={mojeShipmentSectionHeaderTitleClass}>Pozycje</h4>
+            </div>
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b border-slate-100">
+                    <th className="px-3 py-1.5 text-left text-[10px] font-semibold uppercase tracking-wide text-slate-400">
+                      Specyfikacja
+                    </th>
+                    <th className="px-3 py-1.5 text-center text-[10px] font-semibold uppercase tracking-wide text-slate-400">
+                      Zam.
+                    </th>
+                    <th className="px-3 py-1.5 text-center text-[10px] font-semibold uppercase tracking-wide text-slate-400">
+                      Przyj.
+                    </th>
+                    <th className="px-3 py-1.5 text-center text-[10px] font-semibold uppercase tracking-wide text-slate-400">
+                      Brak
+                    </th>
+                    <th className="px-3 py-1.5 text-center text-[10px] font-semibold uppercase tracking-wide text-slate-400">
+                      Status
+                    </th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+                </thead>
+                <tbody>
+                  {summaries.map((s) => (
+                    <tr
+                      key={s.groupKey}
+                      className={mojeShipmentLineRowClass}
+                    >
+                      <td className="px-3 py-2 font-medium text-slate-800 text-xs">
+                        {formatTeethGroupLabel(s.group, { includeCount: false })}
+                      </td>
+                      <td className="px-3 py-2 text-center tabular-nums font-semibold text-slate-600 text-xs">
+                        {s.ordered}
+                      </td>
+                      <td className="px-3 py-2 text-center tabular-nums font-semibold text-emerald-700 text-xs">
+                        {s.delivered > 0 ? s.delivered : "—"}
+                      </td>
+                      <td className="px-3 py-2 text-center tabular-nums font-semibold text-amber-700 text-xs">
+                        {s.remaining > 0 ? s.remaining : "—"}
+                      </td>
+                      <td className="px-3 py-2 text-center">
+                        <DeliveryBadge delivered={s.delivered} ordered={s.ordered} />
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </section>
 
           {totalRemaining > 0 ? (
             <p className="text-xs leading-relaxed text-slate-500">

@@ -87,6 +87,7 @@ import {
   mojeQueueRowLayoutClass,
   mojeQueueRowMainClass,
   mojeShipmentExpandedActionsClass,
+  mojeShipmentExpandedInfoBlockClass,
   mojeShipmentExpandedNotesClass,
   mojeShipmentExpandedPanelClass,
   mojeShipmentExpandedRowShellClass,
@@ -94,6 +95,8 @@ import {
   mojeShipmentLinesHeaderTitleClass,
   mojeShipmentLinesShellClass,
   mojeShipmentRowClass,
+  mojeShipmentSectionHeaderClass,
+  mojeShipmentSectionHeaderTitleClass,
   type MojeShipmentRowVisualTone,
 } from "@/lib/ui/moje-shipment-row-styles";
 import { mojeActionBarShellClass } from "@/lib/ui/surfaces";
@@ -355,6 +358,8 @@ export const MyOrderShipmentCard = memo(function MyOrderShipmentCard({
       maxQty: number;
       defaultQty: number;
       deliveredQty?: number;
+      teethDetails?: import("@/lib/teeth/teeth-catalog").TeethLineDetail[];
+      teethLineDelivered?: Record<string, number> | null;
     }
   ) => void;
   onSaveClient?: (orderId: string, patch: SalesClientAssignment) => void | Promise<void>;
@@ -511,6 +516,9 @@ export const MyOrderShipmentCard = memo(function MyOrderShipmentCard({
     myOrderExpandedMetaFields(row, showProgress)
       .filter((field) => !(field.label === "Klient" && canEditClient))
       .filter((field) => field.label !== "ZK")
+      .filter((field) => !(field.label === "Klient" && row.clientLabel))
+      .filter((field) => field.label !== "Uwagi")
+      .filter((field) => field.label !== "Od dostaw")
   );
   const expandedDeliveryTiming = buildMyOrderDeliveryTimingDisplay(row);
   const showExpandedDeliveryTiming = shouldShowMyOrderExpandedDeliveryTiming(
@@ -600,6 +608,8 @@ export const MyOrderShipmentCard = memo(function MyOrderShipmentCard({
       maxQty: partialMaxQty,
       defaultQty,
       deliveredQty: line.salesCancelDeliveredQty,
+      teethDetails: line.teethDetails,
+      teethLineDelivered: line.teethLineDelivered,
     });
   };
 
@@ -753,7 +763,6 @@ export const MyOrderShipmentCard = memo(function MyOrderShipmentCard({
   );
 
   const hideLineClient =
-    !expanded &&
     row.lineCount === 1 &&
     Boolean(row.clientLabel) &&
     !canEditClient;
@@ -761,7 +770,7 @@ export const MyOrderShipmentCard = memo(function MyOrderShipmentCard({
     row.requestNote && !isRequestNotesAggregateSummary(row.requestNote)
       ? row.requestNote
       : null;
-  const hideLineRequestNote = Boolean(sharedRequestNote) && !expanded;
+  const hideLineRequestNote = Boolean(sharedRequestNote);
   const sharedProcurementCancelNote =
     row.procurementCancelNote &&
     !isProcurementCancelNotesAggregateSummary(row.procurementCancelNote)
@@ -958,27 +967,7 @@ export const MyOrderShipmentCard = memo(function MyOrderShipmentCard({
                 as="p"
               />
             ) : null}
-            {!expanded && row.clientLabel ? (
-              <MyOrderAssignedClient
-                name={row.clientLabel}
-                searchQuery={searchQuery}
-                className="mt-0.5 max-w-full truncate"
-              />
-            ) : null}
-            {!expanded && sharedRequestNote ? (
-              <MyOrderRequestNote
-                note={sharedRequestNote}
-                searchQuery={searchQuery}
-                className="mt-0.5 line-clamp-2 max-w-full"
-              />
-            ) : null}
-            {!expanded && sharedProcurementCancelNote ? (
-              <MyOrderProcurementCancelNote
-                note={sharedProcurementCancelNote}
-                searchQuery={searchQuery}
-                className="mt-0.5 line-clamp-2 max-w-full"
-              />
-            ) : null}
+            {/* Client/note/procurement note — only in expanded view */}
           </button>
           {row.sourceZkNumber ? (
             <ZkProsbaLinkChip
@@ -1002,7 +991,7 @@ export const MyOrderShipmentCard = memo(function MyOrderShipmentCard({
         </div>
 
         {!expanded ? (
-          <div className="hidden min-w-0 max-w-[46%] shrink-0 flex-col items-end gap-1 sm:flex">
+          <div className="hidden min-w-0 max-w-[42%] shrink-0 items-center justify-end gap-2 sm:flex">
             {showInformacjaTimingMeta && row.timingLabel ? (
               <InformacjaEmailSentMeta timingLabel={row.timingLabel} />
             ) : null}
@@ -1048,6 +1037,7 @@ export const MyOrderShipmentCard = memo(function MyOrderShipmentCard({
         </div>
       </div>
 
+      {/* Mobile meta — single inline row, no border-t duplication */}
       {!expanded &&
       (showStatusBadge ||
         productSummary ||
@@ -1057,7 +1047,7 @@ export const MyOrderShipmentCard = memo(function MyOrderShipmentCard({
         showZdEtaNoMatchMeta ||
         showInformacjaTimingMeta ||
         showEstimatedDeliveryMeta) ? (
-        <div className="flex flex-wrap items-center justify-end gap-2 border-t border-slate-100/80 px-3 pb-1.5 pt-0 sm:hidden">
+        <div className="flex flex-wrap items-center justify-end gap-1.5 px-3 pb-1 pt-0 sm:hidden">
           {showInformacjaTimingMeta && row.timingLabel ? (
             <InformacjaEmailSentMeta timingLabel={row.timingLabel} />
           ) : null}
@@ -1102,36 +1092,69 @@ export const MyOrderShipmentCard = memo(function MyOrderShipmentCard({
         >
           {requestProgress ? <MyOrderRequestProgressBar track={requestProgress} /> : null}
 
-          {(showExpandedStatusBadge || expandedNotes) && (
-            <div className="space-y-2">
-              {showExpandedStatusBadge ? (
-                <MyOrderStatusPill
-                  label={row.statusTitle}
-                  variant={row.badgeVariant}
-                  searchQuery={searchQuery}
-                  className="text-xs"
-                />
-              ) : null}
-              {expandedNotes ? (
-                <SearchHighlightText
-                  text={expandedNotes}
-                  searchQuery={searchQuery}
-                  className={mojeShipmentExpandedNotesClass}
-                  as="p"
-                />
-              ) : null}
-            </div>
-          )}
+          {/* Info section */}
+          {(showExpandedStatusBadge || expandedNotes || row.clientLabel || (showExpandedDeliveryTiming && expandedDeliveryTiming)) ? (
+            <section className={mojeShipmentLinesShellClass}>
+              <div className={mojeShipmentSectionHeaderClass}>
+                <h4 className={mojeShipmentSectionHeaderTitleClass}>Informacje o dostawie</h4>
+              </div>
+              <div className={mojeShipmentExpandedInfoBlockClass}>
+                <div className="flex flex-wrap items-center gap-2">
+                  {showExpandedStatusBadge ? (
+                    <MyOrderStatusPill
+                      label={row.statusTitle}
+                      variant={row.badgeVariant}
+                      searchQuery={searchQuery}
+                      className="text-xs"
+                    />
+                  ) : null}
+                  {row.clientLabel ? (
+                    <MyOrderAssignedClient
+                      name={row.clientLabel}
+                      searchQuery={searchQuery}
+                    />
+                  ) : null}
+                </div>
+                {showExpandedDeliveryTiming && expandedDeliveryTiming ? (
+                  <MyOrderExpandedDeliveryTiming
+                    display={expandedDeliveryTiming}
+                    searchQuery={searchQuery}
+                  />
+                ) : null}
+                {expandedNotes ? (
+                  <SearchHighlightText
+                    text={expandedNotes}
+                    searchQuery={searchQuery}
+                    className={mojeShipmentExpandedNotesClass}
+                    as="p"
+                  />
+                ) : null}
+              </div>
+            </section>
+          ) : null}
 
-          <MyOrderExpandedMeta fields={expandedMeta} searchQuery={searchQuery} />
-
-          {showExpandedDeliveryTiming && expandedDeliveryTiming ? (
-            <div className="space-y-2">
-              <MyOrderExpandedDeliveryTiming
-                display={expandedDeliveryTiming}
-                searchQuery={searchQuery}
-              />
-            </div>
+          {/* Details section */}
+          {expandedMeta.length > 0 || sharedRequestNote || sharedProcurementCancelNote ? (
+            <section className={mojeShipmentLinesShellClass}>
+              <div className={mojeShipmentSectionHeaderClass}>
+                <h4 className={mojeShipmentSectionHeaderTitleClass}>Szczegóły</h4>
+              </div>
+              <div className="space-y-1.5 px-3 py-2">
+                <MyOrderExpandedMeta fields={expandedMeta} searchQuery={searchQuery} />
+                {sharedRequestNote ? (
+                  <MyOrderRequestNote
+                    note={sharedRequestNote}
+                    searchQuery={searchQuery}
+                  />
+                ) : null}
+                {sharedProcurementCancelNote ? (
+                  <MyOrderProcurementCancelNote
+                    note={sharedProcurementCancelNote}
+                    searchQuery={searchQuery}
+                  />
+                ) : null}
+              </div>
+            </section>
           ) : null}
 
           {row.lineCount > 0 ? (

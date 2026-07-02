@@ -28,6 +28,18 @@ import {
 import type { IndividualOrder } from "@/types/database";
 import { updateIndividualRequestGroup } from "@/lib/services/orders";
 import type { IndividualRequestEditPayload } from "@/lib/orders/individual-request-edit";
+import {
+  groupTeethDetails,
+  expandTeethGroups,
+  type TeethGroupDraft,
+} from "@/lib/teeth/teeth-catalog";
+import {
+  saveTeethDetailsForOrders,
+  fetchTeethDetailsForOrders,
+} from "@/lib/data/teeth-order-details";
+import { normalizeTeethDetailsForSave } from "@/lib/teeth/teeth-validation";
+import { parseOrderQuantity } from "@/lib/orders/individual";
+import { deliveryProgressFor } from "@/lib/orders/sales-cancel";
 import { UNDO_WINDOW_MS } from "@/lib/orders/daily-panel-undo";
 import type { SalesZkWatch } from "@/types/database";
 import { resolveZkWatchPendingAckItemsForWatch } from "@/lib/sales/zk-watch-close-pending-fetch";
@@ -275,6 +287,167 @@ export async function actionSalesCancelOrders(
     success: true,
     count: toCancel.length,
     phases: [...new Set(toCancel.map((t) => t.phase))],
+  };
+}
+
+/** Wycofanie konkretnych grup zębów przez handlowca. */
+export async function actionSalesCancelTeethGroups(
+  orderId: string,
+  cancelGroups: { color: string; mould: string | null; jaw: string | null; kind: string | null; count: number }[]
+) {
+  if (!orderId) throw new Error("Brak pozycji do anulowania.");
+  if (!cancelGroups?.length) throw new Error("Wybierz co najmniej jedną grupę do wycofania.");
+
+  const salesPersonId = await salesPersonIdForAction();
+  const supabase = await salesOrderSupabase();
+  const caps = await getSalesCancelDbCaps(supabase);
+  const now = new Date().toISOString();
+
+  const { data: rowRaw, error: fetchError } = await supabase
+    .from("individual_orders")
+    .select(salesCancelOrderSelect(caps))
+    .eq("id", orderId)
+    .maybeSingle();
+
+  if (fetchError) throw new Error(fetchError.message);
+  if (!rowRaw) throw new Error("Nie znaleziono pozycji.");
+  const order = rowRaw as unknown as IndividualOrder;
+
+  if (order.sales_person_id !== salesPersonId) {
+    throw new Error("Brak uprawnień do tej pozycji.");
+  }
+  if (order.sales_acknowledged_at) {
+    throw new Error("Ta pozycja jest już zamknięta.");
+  }
+
+  const phase = resolveSalesCancelPhase(order);
+  if (!phase) {
+    throw new Error("Tej prośby nie można już wycofać.");
+  }
+
+  const teethMap = await fetchTeethDetailsForOrders([orderId]);
+  const existingDetails = teethMap.get(orderId) ?? [];
+  if (!existingDetails.length) {
+    throw new Error("Brak listy zębów dla tej pozycji.");
+  }
+
+  const existingGroups = groupTeethDetails(
+    existingDetails.map((d) => ({
+      position: d.position,
+      color: d.color,
+      mould: d.mould ?? null,
+      jaw: d.jaw ?? null,
+      kind: d.kind ?? null,
+    }))
+  );
+
+  const groupKey = (g: { color: string; mould: string | null; jaw: string | null; kind: string | null }) =>
+    `${g.color}|${g.mould ?? ""}|${g.jaw ?? ""}|${g.kind ?? ""}`;
+
+  let totalCancelQty = 0;
+  const remainingGroups: TeethGroupDraft[] = [];
+
+  for (const eg of existingGroups) {
+    const key = groupKey(eg);
+    const cancelEntry = cancelGroups.find((cg) => groupKey(cg) === key);
+    const cancelCount = cancelEntry?.count ?? 0;
+
+    if (cancelCount < 0 || cancelCount > eg.count) {
+      throw new Error(`Nieprawidłowa ilość do wycofania dla grupy ${eg.color}.`);
+    }
+
+    totalCancelQty += cancelCount;
+    const remaining = eg.count - cancelCount;
+    if (remaining > 0) {
+      remainingGroups.push({
+        id: `tg-${key}`,
+        color: eg.color,
+        mould: eg.mould,
+        jaw: eg.jaw,
+        kind: eg.kind,
+        count: remaining,
+      });
+    }
+  }
+
+  if (totalCancelQty < 1) {
+    throw new Error("Wybierz co najmniej 1 szt. do wycofania.");
+  }
+
+  const orderedQty = parseOrderQuantity(order.quantity);
+  if (orderedQty == null) {
+    throw new Error("Brak ilości liczbowej — możliwa tylko pełna rezygnacja.");
+  }
+
+  const existingCancelled = (() => {
+    const explicit = parseOrderQuantity(order.sales_cancelled_quantity ?? "");
+    if (explicit != null && order.sales_cancelled_at) return explicit;
+    if (!order.sales_cancelled_at) return 0;
+    if (order.status === "Anulowane") return orderedQty;
+    const delivered = deliveryProgressFor(order).delivered;
+    return Math.max(0, orderedQty - delivered);
+  })();
+
+  const newTotalCancelled = existingCancelled + totalCancelQty;
+  const newActiveQty = orderedQty - newTotalCancelled;
+  const fullyWithdrawn = newActiveQty <= 0;
+
+  const storedCancelledQuantity = fullyWithdrawn ? null : String(newTotalCancelled);
+
+  let statusAfter: IndividualOrder["status"] | undefined;
+  if (fullyWithdrawn && phase === "before_order") {
+    statusAfter = "Anulowane";
+  } else if (!fullyWithdrawn) {
+    const delivered = deliveryProgressFor(order).delivered;
+    if (delivered > 0 && delivered >= newActiveQty) {
+      statusAfter = "Zrealizowane";
+    }
+  }
+
+  const keepLineActive = !fullyWithdrawn && statusAfter !== "Anulowane";
+
+  const update = buildSalesCancelUpdate(caps, phase, now, {
+    storedCancelledQuantity,
+    statusAfter,
+    keepLineActiveForSales: keepLineActive,
+  });
+  if (!update) {
+    throw new Error(SALES_CANCEL_MIGRATION_HINT);
+  }
+  mergeSalesCancelUserAutoAck(update, order, caps, now);
+
+  if (!keepLineActive) {
+    update.sales_acknowledged_at = now;
+  }
+
+  const { error: updateError } = await supabase
+    .from("individual_orders")
+    .update(update)
+    .eq("id", orderId)
+    .eq("sales_person_id", salesPersonId)
+    .is("sales_acknowledged_at", null);
+
+  if (updateError) throw new Error(updateError.message);
+
+  if (!fullyWithdrawn && remainingGroups.length > 0) {
+    const newDetails = expandTeethGroups(remainingGroups);
+    await saveTeethDetailsForOrders(supabase, [
+      {
+        orderId,
+        isTeeth: true,
+        teethDetails: normalizeTeethDetailsForSave(newDetails, null),
+      },
+    ]);
+  }
+
+  revalidatePath("/moje");
+  revalidatePath("/podsumowanie");
+  revalidatePath("/kolejka");
+  revalidatePath("/zeby");
+  return {
+    success: true as const,
+    cancelledQty: totalCancelQty,
+    fullyWithdrawn,
   };
 }
 

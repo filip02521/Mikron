@@ -109,6 +109,8 @@ export const MyOrderLineItem = memo(function MyOrderLineItem({
       maxQty: number;
       defaultQty: number;
       deliveredQty?: number;
+      teethDetails?: import("@/lib/teeth/teeth-catalog").TeethLineDetail[];
+      teethLineDelivered?: Record<string, number> | null;
     }
   ) => void;
   canEditClient?: boolean;
@@ -158,7 +160,6 @@ export const MyOrderLineItem = memo(function MyOrderLineItem({
         : null;
 
   const detailParts = [
-    line.quantityLabel,
     showProgress ? line.progressLabel : null,
     zdLineDetail,
   ].filter(Boolean);
@@ -212,14 +213,19 @@ export const MyOrderLineItem = memo(function MyOrderLineItem({
                 compact ? "text-xs leading-snug" : "text-sm text-slate-800"
               )}
             />
-            {line.symbol?.trim() ? (
+            {line.quantityLabel?.trim() ? (
+              <span className="shrink-0 tabular-nums text-xs font-semibold text-slate-500">
+                {line.quantityLabel}
+              </span>
+            ) : null}
+            {line.symbol?.trim() && !(line.teethDetails && line.teethDetails.length > 0) ? (
               <SearchHighlightText
                 text={line.symbol.trim()}
                 searchQuery={searchQuery}
                 className="shrink-0 rounded bg-slate-100 px-1 py-0.5 font-mono text-[10px] font-semibold text-slate-600"
               />
             ) : null}
-            {line.mikranCode?.trim() ? (
+            {line.mikranCode?.trim() && !(line.teethDetails && line.teethDetails.length > 0) ? (
               <span title="Kod Mikran (PLU)">
                 <SearchHighlightText
                   text={`PLU ${line.mikranCode.trim()}`}
@@ -310,7 +316,7 @@ export const MyOrderLineItem = memo(function MyOrderLineItem({
           line.canCancelBySales &&
           line.salesCancelPhase &&
           (onCancelLine || onPartialCancelLine) ? (
-            <div className="flex flex-col items-end gap-0.5">
+            <div className="flex flex-row flex-wrap items-end justify-end gap-0.5">
               {showRemainderCancel ? (
                 <MyOrderCancelButton
                   disabled={pending}
@@ -321,6 +327,8 @@ export const MyOrderLineItem = memo(function MyOrderLineItem({
                       maxQty: partialMaxQty,
                       defaultQty: partialDefaultQty!,
                       deliveredQty: line.salesCancelDeliveredQty,
+                      teethDetails: line.teethDetails,
+                      teethLineDelivered: line.teethLineDelivered,
                     })
                   }
                   className={cancelButtonRevealClass}
@@ -338,6 +346,8 @@ export const MyOrderLineItem = memo(function MyOrderLineItem({
                       maxQty: partialMaxQty,
                       defaultQty: 1,
                       deliveredQty: line.salesCancelDeliveredQty,
+                      teethDetails: line.teethDetails,
+                      teethLineDelivered: line.teethLineDelivered,
                     })
                   }
                   className={cancelButtonRevealClass}
@@ -360,6 +370,8 @@ export const MyOrderLineItem = memo(function MyOrderLineItem({
                             ? 1
                             : partialDefaultQty ?? 1,
                       deliveredQty: line.salesCancelDeliveredQty,
+                      teethDetails: line.teethDetails,
+                      teethLineDelivered: line.teethLineDelivered,
                     })
                   }
                   className={cancelButtonRevealClass}

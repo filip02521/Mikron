@@ -873,15 +873,17 @@ export function NotatnikClient({
   }
 
   const archiveGuardKey = `${activeTab}\0${hasArchive}\0${defaultTab}`;
-  if (
-    !tourDemo &&
-    activeTab === "archive" &&
-    !hasArchive &&
-    archiveGuardKey !== appliedArchiveGuardKey
-  ) {
-    setAppliedArchiveGuardKey(archiveGuardKey);
-    navigateToTab(defaultTab);
-  }
+  useEffect(() => {
+    if (
+      !tourDemo &&
+      activeTab === "archive" &&
+      !hasArchive &&
+      archiveGuardKey !== appliedArchiveGuardKey
+    ) {
+      setAppliedArchiveGuardKey(archiveGuardKey);
+      navigateToTab(defaultTab);
+    }
+  }, [tourDemo, activeTab, hasArchive, archiveGuardKey, appliedArchiveGuardKey, defaultTab, navigateToTab]);
 
   function handleTodayTaskClick(anchor: string, kind: NotepadTodayTaskKind) {
     if (kind === "note-follow-up") {

@@ -148,31 +148,7 @@ function SubiektLinkedLineBanner({
   mikranCode: string;
   fromCatalog?: boolean;
 }) {
-  const meta: string[] = [];
-  if (symbol) meta.push(`Symbol: ${symbol}`);
-  if (mikranCode.trim()) meta.push(`Kod Mikran: ${mikranCode.trim()}`);
-
-  return (
-    <div
-      className="flex items-start gap-2 rounded-md border border-emerald-200/90 bg-emerald-50/70 px-3 py-2"
-      role="status"
-      aria-label={fromCatalog ? "Wybrano z bazy" : "Powiązano z Subiektem"}
-    >
-      <IconCircleCheck
-        size={18}
-        strokeWidth={2.25}
-        className="mt-0.5 shrink-0 text-emerald-600"
-      />
-      <div className="min-w-0 text-xs leading-snug text-emerald-900">
-        <p className="font-semibold">
-          {fromCatalog ? "Wybrano z bazy" : "Powiązano z Subiektem"}
-        </p>
-        {meta.length ? (
-          <p className="mt-0.5 text-emerald-800">{meta.join(" · ")}</p>
-        ) : null}
-      </div>
-    </div>
-  );
+  return null;
 }
 
 function activeFieldQuery(value: SubiektProductLineValue, field: ActiveField): string {
@@ -872,9 +848,19 @@ export function SubiektProductLineFields({
     <div className="flex flex-col gap-3 sm:flex-row sm:items-start">
       <Field
         label={
-          isInformacja
-            ? "Produkt (symbol lub nazwa)"
-            : "Produkt — symbol lub nazwa"
+          <span className="flex items-center gap-2">
+            <span>
+              {isInformacja
+                ? "Produkt (symbol lub nazwa)"
+                : "Produkt — symbol lub nazwa"}
+            </span>
+            {linkedFromSubiekt ? (
+              <span className="inline-flex items-center gap-1 text-xs font-medium text-emerald-700">
+                <IconCircleCheck size={14} strokeWidth={2.5} className="shrink-0" />
+                {value.source === "catalog" ? "Z bazy" : "Powiązano z Subiektem"}
+              </span>
+            ) : null}
+          </span>
         }
         className={cn("min-w-0 flex-1", productFieldClassName)}
         {...mergedProductField}
@@ -949,6 +935,11 @@ export function SubiektProductLineFields({
             />
           </SubiektInputShell>
           {renderTypeaheadPanel()}
+          {linkedFromSubiekt && symbolPreview ? (
+            <p className="mt-1 text-xs text-slate-500">
+              <span className="font-medium text-slate-700">{symbolPreview}</span>
+            </p>
+          ) : null}
           {!linkedFromSubiekt && symbolPreview ? (
             <p className="mt-1.5 text-xs text-slate-500">
               Symbol w Subiekcie:{" "}
@@ -1065,12 +1056,7 @@ export function SubiektProductLineFields({
       {productSearchRow}
 
       {linkedFromSubiekt ? (
-        <div className="space-y-2">
-          <SubiektLinkedLineBanner
-            symbol={linkedBannerSymbol}
-            mikranCode={value.mikranCode}
-            fromCatalog={value.source === "catalog"}
-          />
+        <div className="flex justify-end">
           <Button
             type="button"
             variant="ghost"

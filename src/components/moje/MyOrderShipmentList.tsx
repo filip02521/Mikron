@@ -10,6 +10,7 @@ import {
   actionAcknowledgeCancelled,
   actionAcknowledgeSalesCancelNotice,
   actionSalesCancelOrders,
+  actionSalesCancelTeethGroups,
   actionUpdateSalesClientName,
 } from "@/app/actions/my-orders";
 import {
@@ -26,8 +27,10 @@ import {
 } from "@/lib/ui/moje-shipment-row-styles";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { SalesPartialCancelDialog } from "@/components/moje/SalesPartialCancelDialog";
+import { TeethPartialCancelDialog } from "@/components/moje/TeethPartialCancelDialog";
 import type { SalesCancelPhase } from "@/lib/orders/sales-cancel";
 import type { SalesCancelUndoRestore } from "@/lib/orders/sales-cancel-db";
+import type { TeethLineDetail } from "@/lib/teeth/teeth-catalog";
 import { useMyOrderPickupShelfDialog } from "@/components/moje/MyOrderPickupShelfDialogProvider";
 import { useMyOrderShipmentUndo } from "@/components/moje/MyOrderShipmentUndoProvider";
 import { Toast } from "@/components/ui/Toast";
@@ -71,6 +74,8 @@ type PartialCancelConfirmState = {
   maxQty: number;
   defaultQty: number;
   deliveredQty: number;
+  teethDetails?: TeethLineDetail[];
+  teethLineDelivered?: Record<string, number> | null;
 };
 
 export function MyOrderShipmentList({
@@ -388,6 +393,8 @@ export function MyOrderShipmentList({
         maxQty: number;
         defaultQty: number;
         deliveredQty?: number;
+        teethDetails?: TeethLineDetail[];
+        teethLineDelivered?: Record<string, number> | null;
       }
     ) => {
       if (tourPreview) return;
@@ -552,24 +559,63 @@ export function MyOrderShipmentList({
         }}
       />
       {partialCancel ? (
-        <SalesPartialCancelDialog
-          key={`${partialCancel.orderId}-${partialCancel.defaultQty}`}
-          open
-          product={partialCancel.product}
-          phase={partialCancel.phase}
-          maxQty={partialCancel.maxQty}
-          defaultQty={partialCancel.defaultQty}
-          deliveredQty={partialCancel.deliveredQty}
-          pending={pending}
-          onCancel={() => {
-            if (!pending) setPartialCancel(null);
-          }}
-          onConfirm={(quantity) => {
-            const { orderId } = partialCancel;
-            setPartialCancel(null);
-            runCancel([orderId], { [orderId]: quantity });
-          }}
-        />
+        partialCancel.teethDetails && partialCancel.teethDetails.length > 0 ? (
+          <TeethPartialCancelDialog
+            key={`teeth-${partialCancel.orderId}`}
+            open
+            product={partialCancel.product}
+            phase={partialCancel.phase}
+            teethDetails={partialCancel.teethDetails}
+            teethLineDelivered={partialCancel.teethLineDelivered}
+            pending={pending}
+            onCancel={() => {
+              if (!pending) setPartialCancel(null);
+            }}
+            onConfirm={(cancelGroups) => {
+              const { orderId } = partialCancel;
+              setPartialCancel(null);
+              setPendingMessage("Wycofywanie grup zębów…");
+              start(async () => {
+                try {
+                  await actionSalesCancelTeethGroups(orderId, cancelGroups);
+                  reportUndo({
+                    orderIds: [orderId],
+                    kind: "cancel",
+                    title: "Grupy zębów wycofane",
+                  });
+                  router.refresh();
+                } catch (e) {
+                  setErrorToast(
+                    e instanceof Error
+                      ? e.message
+                      : "Nie udało się wycofać grup zębów"
+                  );
+                } finally {
+                  setPendingMessage(null);
+                }
+              });
+            }}
+          />
+        ) : (
+          <SalesPartialCancelDialog
+            key={`${partialCancel.orderId}-${partialCancel.defaultQty}`}
+            open
+            product={partialCancel.product}
+            phase={partialCancel.phase}
+            maxQty={partialCancel.maxQty}
+            defaultQty={partialCancel.defaultQty}
+            deliveredQty={partialCancel.deliveredQty}
+            pending={pending}
+            onCancel={() => {
+              if (!pending) setPartialCancel(null);
+            }}
+            onConfirm={(quantity) => {
+              const { orderId } = partialCancel;
+              setPartialCancel(null);
+              runCancel([orderId], { [orderId]: quantity });
+            }}
+          />
+        )
       ) : null}
       {cancelConfirm ? (
         <ConfirmDialog

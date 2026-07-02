@@ -569,6 +569,98 @@ function TeethSingleKindOrderBuilderModal({
       }
     >
       <div className="space-y-3">
+        {/* Step flow guide */}
+        <div className="flex items-center gap-1.5 text-[11px] font-medium">
+          <StepBadge number={1} label="Kolor" done={!!draft.color.trim()} />
+          <span className="text-slate-300">›</span>
+          <StepBadge number={2} label="Fason" done={!!draft.mould?.trim()} />
+          <span className="text-slate-300">›</span>
+          <StepBadge number={3} label="Szczęka" done={!!draft.jaw} />
+          <span className="text-slate-300">›</span>
+          <StepBadge number={4} label="Ilość" done={false} />
+        </div>
+
+        {/* Input section */}
+        <section className="rounded-lg border border-slate-200 bg-slate-50/50 p-3">
+          <div className="mb-2 flex items-center justify-between gap-2">
+            <h3 className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+              {editingId ? "Edytuj pozycję" : "Nowa pozycja"}
+            </h3>
+            {editingId ? (
+              <Button type="button" variant="ghost" size="sm" onClick={resetDraft} disabled={disabled}>
+                Anuluj edycję
+              </Button>
+            ) : null}
+          </div>
+
+          <TeethSpecFields
+            productLine={productLine}
+            detail={draftSpec}
+            lockedKind={defaultKind ?? null}
+            disabled={disabled}
+            compact
+            onChange={(patch) =>
+              setDraft((prev) => ({
+                ...prev,
+                color: patch.color ?? prev.color,
+                mould: patch.mould !== undefined ? patch.mould : prev.mould,
+                jaw: patch.jaw !== undefined ? patch.jaw : prev.jaw,
+                kind: patch.kind !== undefined ? patch.kind : prev.kind,
+              }))
+            }
+          />
+
+          <div className="mt-3 flex flex-wrap items-end gap-3 border-t border-slate-200/80 pt-3">
+            <div>
+              <label className="mb-1.5 flex items-center gap-1 text-[11px] font-semibold uppercase tracking-wide text-slate-500">
+                <span className="flex size-4 items-center justify-center rounded-full bg-violet-100 text-[10px] font-bold text-violet-700">4</span>
+                Ilość (szt.)
+              </label>
+              <div className="flex items-center gap-1">
+                <QuantityStepButton
+                  label="−"
+                  disabled={disabled || draft.count <= 1}
+                  onClick={() => setDraft((p) => ({ ...p, count: Math.max(1, p.count - 1) }))}
+                />
+                <input
+                  type="number"
+                  min={1}
+                  max={99}
+                  disabled={disabled}
+                  value={draft.count}
+                  onChange={(e) => {
+                    const n = parseInt(e.target.value, 10);
+                    setDraft((p) => ({ ...p, count: Number.isFinite(n) && n >= 1 ? Math.min(99, n) : 1 }));
+                  }}
+                  className={cn(
+                    "w-16 rounded-md border border-slate-300 bg-white px-2 py-1.5 text-center text-sm font-semibold tabular-nums",
+                    controlFocusClass,
+                  )}
+                  aria-label="Ilość sztuk tej pozycji"
+                />
+                <QuantityStepButton
+                  label="+"
+                  disabled={disabled || draft.count >= 99}
+                  onClick={() => setDraft((p) => ({ ...p, count: Math.min(99, p.count + 1) }))}
+                />
+              </div>
+            </div>
+
+            <div className="flex flex-1 flex-wrap justify-end gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                disabled={disabled || !draftComplete}
+                onClick={handleAddOrUpdate}
+              >
+                {editingId ? "Zaktualizuj pozycję" : "Dodaj do listy"}
+              </Button>
+            </div>
+          </div>
+        </section>
+
+        {/* List section at bottom */}
         {groups.length > 0 ? (
           <section className="space-y-2">
             <div className="flex items-center justify-between gap-2">
@@ -581,7 +673,7 @@ function TeethSingleKindOrderBuilderModal({
                 <span className="text-[11px] font-medium text-violet-600">Gotowe do zapisu</span>
               )}
             </div>
-            <ul className="max-h-32 divide-y divide-slate-100 overflow-y-auto rounded-lg border border-slate-200 bg-white">
+            <ul className="max-h-40 divide-y divide-slate-100 overflow-y-auto rounded-lg border border-slate-200 bg-white">
               {groups.map((g) => (
                 <li
                   key={g.id}
@@ -622,91 +714,38 @@ function TeethSingleKindOrderBuilderModal({
             </ul>
           </section>
         ) : (
-          <div className="rounded-lg border border-dashed border-violet-200 bg-violet-50/40 px-4 py-4 text-center">
-            <p className="text-sm font-medium text-violet-900">Brak pozycji na liście</p>
-            <p className="mt-1 text-xs text-violet-700/90">
-              Dodaj pierwszą pozycję poniżej — np. A2 · 56 · góra × 4 szt.
-            </p>
+          <div className="rounded-lg border border-dashed border-slate-200 bg-slate-50/30 px-4 py-3 text-center">
+            <p className="text-xs font-medium text-slate-500">Lista jest pusta — dodaj pierwszą pozycję powyżej</p>
           </div>
         )}
-
-        <section className="rounded-lg border border-slate-200 bg-slate-50/50 p-3">
-          <h3 className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-500">
-            {editingId ? "Edytuj pozycję" : "Nowa pozycja"}
-          </h3>
-
-          <TeethSpecFields
-            productLine={productLine}
-            detail={draftSpec}
-            lockedKind={defaultKind ?? null}
-            disabled={disabled}
-            compact
-            onChange={(patch) =>
-              setDraft((prev) => ({
-                ...prev,
-                color: patch.color ?? prev.color,
-                mould: patch.mould !== undefined ? patch.mould : prev.mould,
-                jaw: patch.jaw !== undefined ? patch.jaw : prev.jaw,
-                kind: patch.kind !== undefined ? patch.kind : prev.kind,
-              }))
-            }
-          />
-
-          <div className="mt-3 flex flex-wrap items-end gap-3 border-t border-slate-200/80 pt-3">
-            <div>
-              <label className="mb-1.5 block text-[11px] font-semibold uppercase tracking-wide text-slate-500">
-                Ilość (szt.)
-              </label>
-              <div className="flex items-center gap-1">
-                <QuantityStepButton
-                  label="−"
-                  disabled={disabled || draft.count <= 1}
-                  onClick={() => setDraft((p) => ({ ...p, count: Math.max(1, p.count - 1) }))}
-                />
-                <input
-                  type="number"
-                  min={1}
-                  max={99}
-                  disabled={disabled}
-                  value={draft.count}
-                  onChange={(e) => {
-                    const n = parseInt(e.target.value, 10);
-                    setDraft((p) => ({ ...p, count: Number.isFinite(n) && n >= 1 ? Math.min(99, n) : 1 }));
-                  }}
-                  className={cn(
-                    "w-16 rounded-md border border-slate-300 bg-white px-2 py-1.5 text-center text-sm font-semibold tabular-nums",
-                    controlFocusClass,
-                  )}
-                  aria-label="Ilość sztuk tej pozycji"
-                />
-                <QuantityStepButton
-                  label="+"
-                  disabled={disabled || draft.count >= 99}
-                  onClick={() => setDraft((p) => ({ ...p, count: Math.min(99, p.count + 1) }))}
-                />
-              </div>
-            </div>
-
-            <div className="flex flex-1 flex-wrap justify-end gap-2">
-              {editingId ? (
-                <Button type="button" variant="ghost" size="sm" onClick={resetDraft} disabled={disabled}>
-                  Anuluj edycję
-                </Button>
-              ) : null}
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                disabled={disabled || !draftComplete}
-                onClick={handleAddOrUpdate}
-              >
-                {editingId ? "Zaktualizuj pozycję" : "Dodaj do listy"}
-              </Button>
-            </div>
-          </div>
-        </section>
       </div>
     </ModalShell>
+  );
+}
+
+function StepBadge({
+  number,
+  label,
+  done,
+}: {
+  number: number;
+  label: string;
+  done?: boolean;
+}) {
+  return (
+    <span className="flex items-center gap-1">
+      <span
+        className={cn(
+          "flex size-4 items-center justify-center rounded-full text-[10px] font-bold",
+          done
+            ? "bg-violet-600 text-white"
+            : "bg-violet-100 text-violet-700",
+        )}
+      >
+        {done ? "✓" : number}
+      </span>
+      <span className={cn(done ? "text-violet-700" : "text-slate-400")}>{label}</span>
+    </span>
   );
 }
 
