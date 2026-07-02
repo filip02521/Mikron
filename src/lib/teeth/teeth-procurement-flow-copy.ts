@@ -54,13 +54,13 @@ export const TEETH_READINESS_SUPPLIER_DETAIL = "Wybrany — trafia do panelu zę
 export const TEETH_READINESS_READY_SUBLINE =
   "Kompletne — trafi do kolejki panelu zębów.";
 
-export const TEETH_SALES_STATUS_NEW_TITLE = "Przed zamówieniem u labu";
+export const TEETH_SALES_STATUS_NEW_TITLE = "Przed zamówieniem";
 export const TEETH_SALES_STATUS_NEW_DETAIL =
-  "Prośba jest w kolejce panelu zębów — dział zakupów zębów zamówi u dostawcy.";
-export const TEETH_SALES_STATUS_VERIFICATION_TITLE = "W kolejce panelu zębów";
+  "Prośba jest u działu dostaw. Złożymy zamówienie u dostawcy zębów.";
+export const TEETH_SALES_STATUS_VERIFICATION_TITLE = "W dziale dostaw";
 export const TEETH_SALES_STATUS_VERIFICATION_DETAIL =
-  "Dział zakupów zębów doprecyzuje szczegóły — nie przechodzi przez panel dzienny.";
-export const TEETH_SALES_STATUS_ORDERED_TITLE = "Zamówione u labu";
+  "Dział dostaw doprecyzuje szczegóły zamówienia.";
+export const TEETH_SALES_STATUS_ORDERED_TITLE = "Zamówione";
 
 export type ProsbaLaneClassification = {
   hasTeeth: boolean;
@@ -164,7 +164,7 @@ export function teethSalesOrderedStatusDetail(
     parts.push(`Planowana dostawa: ${formatPlDate(deliveryEta)}`);
   }
   if (parts.length === 0) {
-    return "Lab przygotowuje zamówienie — termin dostawy pojawi się po ustaleniu z dostawcą.";
+    return "Dostawca przygotowuje zamówienie — termin dostawy pojawi się po ustaleniu.";
   }
   return parts.join(" · ");
 }

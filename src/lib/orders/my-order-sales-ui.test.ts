@@ -83,7 +83,7 @@ describe("enrichMyOrderSalesUi", () => {
     expect(ui.sortPriority).toBe(1);
   });
 
-  it("zęby zamówione u labu — bez języka planowej dostawy", () => {
+  it("zęby zamówione — bez języka planowej dostawy", () => {
     const row = presentMyOrder(
       {
         ...baseOrder,
@@ -95,13 +95,13 @@ describe("enrichMyOrderSalesUi", () => {
       },
       {}
     );
-    expect(row.statusTitle).toBe("Zamówione u labu");
+    expect(row.statusTitle).toBe("Zamówione");
     expect(row.statusDetail).toContain("10.06.2026");
     expect(row.statusDetail).toContain("24.06.2026");
     expect(row.statusDetail).not.toContain("planowej dostawie");
   });
 
-  it("zęby przed zamówieniem — kolejka panelu zębów", () => {
+  it("zęby przed zamówieniem — neutralny copy", () => {
     const row = presentMyOrder(
       {
         ...baseOrder,
@@ -112,11 +112,11 @@ describe("enrichMyOrderSalesUi", () => {
       },
       {}
     );
-    expect(row.statusTitle).toBe("Przed zamówieniem u labu");
-    expect(row.statusDetail).toContain("panelu zębów");
+    expect(row.statusTitle).toBe("Przed zamówieniem");
+    expect(row.statusDetail).toContain("działu dostaw");
   });
 
-  it("zęby w Weryfikacji — copy panelu zębów, nie działu dostaw", () => {
+  it("zęby w Weryfikacji — neutralny copy jak zwykłe produkty", () => {
     const row = presentMyOrder(
       {
         ...baseOrder,
@@ -125,8 +125,8 @@ describe("enrichMyOrderSalesUi", () => {
       },
       {}
     );
-    expect(row.statusTitle).toBe("W kolejce panelu zębów");
-    expect(row.statusDetail).not.toContain("W dziale dostaw");
+    expect(row.statusTitle).toBe("W dziale dostaw");
+    expect(row.statusDetail).toContain("Dział dostaw");
   });
 
   it("oznacza opóźnienie po terminie", () => {

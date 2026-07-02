@@ -552,7 +552,7 @@ function teethHandoverStatusDetail(
   progress: DeliveryProgress
 ): string {
   if (!progress.hasNumericQty || progress.ordered == null) {
-    return "Zęby są doręczane osobiście — nie trafiają na regał. Potwierdź odbiór po otrzymaniu od magazynu.";
+    return "Dostawa jest doręczana osobiście — nie trafia na regał. Potwierdź odbiór po otrzymaniu od magazynu.";
   }
   const q = progress.ordered;
   const d = progress.delivered;
@@ -561,9 +561,9 @@ function teethHandoverStatusDetail(
       progress.remaining != null && progress.remaining > 0
         ? ` Reszta (${progress.remaining} szt.) czeka u dostawcy.`
         : "";
-    return `Magazyn przyjął ${d} z ${q} szt. zębów.${remaining} Odbiór osobisty — potwierdź, gdy je otrzymasz od magazynu.`;
+    return `Magazyn przyjął ${d} z ${q} szt.${remaining} Odbiór osobisty — potwierdź, gdy otrzymasz od magazynu.`;
   }
-  return `Magazyn przyjął ${d} z ${q} szt. zębów. Odbierz je osobiście — nie są odkładane na regał. Potwierdź odbiór po doręczeniu.`;
+  return `Magazyn przyjął ${d} z ${q} szt. Odbierz osobiście — nie trafia na regał. Potwierdź odbiór po doręczeniu.`;
 }
 
 function presentInformacja(order: IndividualOrder): MyOrderRow {
@@ -872,7 +872,7 @@ function presentZamowienie(
     case "Czesciowo_zrealizowane":
       return finalize({
         ...base,
-        statusTitle: order.is_teeth ? "Zęby częściowo przyjęte" : "Częściowo na magazynie",
+        statusTitle: "Częściowo na magazynie",
         statusDetail: order.is_teeth
           ? teethHandoverStatusDetail(order, progress)
           : [
@@ -890,7 +890,7 @@ function presentZamowienie(
       return finalize(
         {
           ...base,
-          statusTitle: order.is_teeth ? "Zęby do odbioru" : "Do odbioru",
+          statusTitle: "Do odbioru",
           statusDetail: order.is_teeth
             ? teethHandoverStatusDetail(order, progress)
             : [

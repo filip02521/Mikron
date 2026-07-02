@@ -55,7 +55,7 @@ describe("teeth-procurement-flow-copy", () => {
     ).toBe(false);
   });
 
-  it("status zamówione u labu dla handlowca", () => {
+  it("status zamówione dla handlowca", () => {
     expect(
       teethSalesOrderedStatusDetail("2026-07-01", "2026-07-15")
     ).toContain("01.07.2026");
