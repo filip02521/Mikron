@@ -14,11 +14,6 @@ import { buildNotatnikPageHref } from "@/lib/sales/notepad-page-tabs";
 import { appendMojeFocusOrderIds } from "@/lib/orders/moje-order-focus";
 import { mojeSectionDomId } from "@/lib/orders/moje-section-focus";
 import { MOJE_TEETH_ACTION_SECTION_ID } from "@/lib/orders/my-order-inbox-sections";
-import {
-  MOJE_ANNOUNCEMENTS_SECTION_ID,
-  salesMojeAnnouncementHref,
-  salesMojeAnnouncementsListHref,
-} from "@/lib/department-board/moje-announcements-ui";
 import type { SalesNote, SalesZkWatch } from "@/types/database";
 
 export type SalesDayStartSource =
@@ -290,52 +285,30 @@ function buildBoardItems(
 ): SalesDayStartItem[] {
   const items: SalesDayStartItem[] = [];
   const previewQs = previewDla ? `?dla=${encodeURIComponent(previewDla)}` : "";
+  const ownAnswerCount = board.unseenOwnAnswerCount;
+  const ownQuestionIds = board.unseenOwnQuestionIds ?? [];
 
-  if (board.unseenAnswerCount > 0) {
-    const preview = board.unseenAnswerPreview;
+  if (ownAnswerCount > 0) {
+    const preview =
+      board.unseenAnswerPreview?.isOwnQuestion ? board.unseenAnswerPreview : null;
+    const singleThreadId = preview?.threadId ?? ownQuestionIds[0] ?? null;
     const href =
-      board.unseenAnswerCount === 1 && preview
-        ? `/tablica${previewQs}${previewQs ? "&" : "?"}watek=${preview.threadId}`
-        : `/tablica${previewQs}`;
+      ownAnswerCount === 1 && singleThreadId
+        ? `/tablica${previewQs}${previewQs ? "&" : "?"}watek=${singleThreadId}`
+        : `/tablica${previewQs}${previewQs ? "&" : "?"}filtr=own_unseen`;
 
     items.push({
       id: "board-answers",
       source: "board_answer",
       priority: PRIORITY.board_answer,
-      title: preview?.isOwnQuestion
-        ? board.unseenAnswerCount === 1
+      title:
+        ownAnswerCount === 1
           ? "Zakupy odpowiedziały na Twoje pytanie"
-          : `Zakupy odpowiedziały (${board.unseenAnswerCount})`
-        : board.unseenAnswerCount === 1
-          ? "Nowa odpowiedź zakupów"
-          : `${board.unseenAnswerCount} nowe odpowiedzi zakupów`,
+          : `Zakupy odpowiedziały na Twoje pytania (${ownAnswerCount})`,
       subtitle: preview?.title ? `„${preview.title}”` : undefined,
       href,
-      count: board.unseenAnswerCount,
+      count: ownAnswerCount,
       ctaLabel: "Tablica",
-    });
-  }
-
-  if (board.unreadAnnouncementBannerCount > 0) {
-    const latestId = board.unreadAnnouncementBannerLatestId;
-    const href =
-      board.unreadAnnouncementBannerCount === 1 && latestId
-        ? salesMojeAnnouncementHref(latestId, { previewDla })
-        : salesMojeAnnouncementsListHref({ previewDla });
-
-    items.push({
-      id: "board-announcements",
-      source: "board_announcement",
-      priority: PRIORITY.board_announcement,
-      title:
-        board.unreadAnnouncementBannerCount === 1
-          ? "Nowe ogłoszenie od zakupów"
-          : `${board.unreadAnnouncementBannerCount} nowe ogłoszenia`,
-      subtitle: board.unreadAnnouncementBannerLatestTitle ?? undefined,
-      href,
-      scrollTarget: MOJE_ANNOUNCEMENTS_SECTION_ID,
-      count: board.unreadAnnouncementBannerCount,
-      ctaLabel: "Przeczytaj",
     });
   }
 

@@ -10,6 +10,7 @@ export type TeethManufacturer =
 
 export type TeethProductLine =
   | "wiedent_classic"
+  | "wiedent_almamiss"
   | "wiedent_estetic"
   | "wiedent_estetic_vita"
   | "wiedent_estetic_om"
@@ -22,6 +23,7 @@ export type TeethProductLine =
   | "major_composite"
   | "major_dent"
   | "dentex_amberlux"
+  | "dentex_amberlux_v"
   | "schottlander_enigmalife"
   | "hansen_generic"
   | "mgm_generic"

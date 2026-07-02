@@ -25,6 +25,11 @@ export const IVOSTAR_COLORS = [
   ...IVOSTAR_CHROMASCOP,
 ] as const;
 
+export const WIEDENT_ALMAMISS_COLORS = [
+  ...VITA_AD,
+  "OM1", "OM3", "0M1", "0M3",
+] as const;
+
 export const WIEDENT_CLASSIC_COLORS = [
   "A1", "A2", "A3", "A3.5", "A4", "B2", "C2", "C3", "D3",
 ] as const;
@@ -43,6 +48,12 @@ export const WIEDENT_ESTETIC_OM_COLORS = ["OM1", "OM3", "0M1", "0M3"] as const;
 export const DENTEX_AMBERLUX_COLORS = [
   "A1", "A2", "B2", "B3", "C3", "D3", "D4",
   "G1", "G2", "N2", "N3", "R1", "R2", "R5",
+] as const;
+
+/** Skala DENTEX-V (wg katalogu — 14 odcieni z sufiksem V). */
+export const DENTEX_V_COLORS = [
+  "A1V", "A2V", "A3V", "A3.5V", "B1V", "B2V", "B3V", "B4V",
+  "C1V", "C2V", "C3V", "D2V", "D3V", "D4V",
 ] as const;
 
 export const MAJOR_DENT_COLORS = [

@@ -1,12 +1,48 @@
 import type { TeethKind, TeethManufacturer, TeethProductLine } from "./teeth-catalog-types";
 import {
+  MAJOR_SUPER_LUX_LOWER_ANTERIOR,
+  MAJOR_SUPER_LUX_POSTERIOR,
+  MAJOR_SUPER_LUX_UPPER_OVAL,
+  MAJOR_SUPER_LUX_UPPER_SQUARE,
+  MAJOR_SUPER_LUX_UPPER_TRIANGULAR,
+} from "./major-super-lux-mould-shapes";
+import {
+  DENTEX_AMBERLUX_LOWER_ANTERIOR,
+  DENTEX_AMBERLUX_POSTERIOR,
+  DENTEX_AMBERLUX_UPPER_OVAL,
+  DENTEX_AMBERLUX_UPPER_SQUARE,
+  DENTEX_AMBERLUX_UPPER_TRIANGULAR,
+} from "./dentex-amberlux-mould-shapes";
+import {
+  PHONARES_II_ANTERIOR,
+  PHONARES_II_POSTERIOR,
+} from "./ivoclar-phonares-ii-mould-shapes";
+import {
+  VIVODENT_DCL_ANTERIOR,
+} from "./ivoclar-vivodent-dcl-mould-shapes";
+import {
+  ORTHOTYP_DCL_POSTERIOR,
+} from "./ivoclar-orthotyp-dcl-mould-shapes";
+import {
+  WIEDENT_ALMAMISS_LOWER_ANTERIOR,
+  WIEDENT_ALMAMISS_POSTERIOR,
+  WIEDENT_ALMAMISS_UPPER_ANTERIOR,
+} from "./wiedent-almamiss-mould-shapes";
+import {
+  WIEDENT_CLASSIC_LOWER_ANTERIOR,
+  WIEDENT_CLASSIC_POSTERIOR,
+  WIEDENT_CLASSIC_UPPER_ANTERIOR,
+} from "./wiedent-classic-mould-shapes";
+import {
   VITA_AD,
   VITA_AD_BL,
   IVOSTAR_COLORS,
+  WIEDENT_ALMAMISS_COLORS,
   WIEDENT_CLASSIC_COLORS,
   WIEDENT_ESTETIC_COLORS,
   WIEDENT_ESTETIC_OM_COLORS,
   DENTEX_AMBERLUX_COLORS,
+  DENTEX_V_COLORS,
   MAJOR_DENT_COLORS,
   ENIGMALIFE_COLORS,
 } from "./teeth-palettes";
@@ -26,15 +62,15 @@ export type TeethLineDefinition = {
   optionalMould?: boolean;
 };
 
-const WIEDENT_ESTETIC_ANTERIOR = [
+const WIEDENT_ESTETIC_ANTERIOR_LOWER = [
+  "00", "02", "03", "04", "05", "06", "07", "08", "08x", "09", "010", "011",
+] as const;
+
+const WIEDENT_ESTETIC_ANTERIOR_UPPER = [
   "12", "13", "14", "15", "17", "18",
   "20", "21", "22", "23", "25", "26", "27", "28", "29",
   "31", "32", "33", "34", "35", "36", "37", "38", "39",
-  "40", "41", "42", "43", "45", "47", "48", "49", "50",
-] as const;
-
-const WIEDENT_ESTETIC_ANTERIOR_LOWER = [
-  "00", "03", "04", "05", "06", "07", "08", "08x", "09", "010", "011",
+  "40", "41", "42", "43", "45", "46", "47", "48", "49", "50",
 ] as const;
 
 const WIEDENT_ESTETIC_POSTERIOR = [
@@ -49,11 +85,18 @@ export const TEETH_LINE_DEFINITIONS: readonly TeethLineDefinition[] = [
     label: "Wiedent Classic",
     colors: WIEDENT_CLASSIC_COLORS,
     moulds: {
-      anterior: [
-        "402", "421", "431", "437", "441", "461", "471", "480", "481", "507",
-        "635", "636", "637",
-      ],
-      posterior: ["14", "16", "33", "36", "52", "54", "55", "57"],
+      anterior: [...WIEDENT_CLASSIC_UPPER_ANTERIOR, ...WIEDENT_CLASSIC_LOWER_ANTERIOR],
+      posterior: WIEDENT_CLASSIC_POSTERIOR,
+    },
+  },
+  {
+    id: "wiedent_almamiss",
+    manufacturer: "wiedent",
+    label: "Wiedent Almamiss",
+    colors: WIEDENT_ALMAMISS_COLORS,
+    moulds: {
+      anterior: [...WIEDENT_ALMAMISS_UPPER_ANTERIOR, ...WIEDENT_ALMAMISS_LOWER_ANTERIOR],
+      posterior: WIEDENT_ALMAMISS_POSTERIOR,
     },
   },
   {
@@ -62,7 +105,7 @@ export const TEETH_LINE_DEFINITIONS: readonly TeethLineDefinition[] = [
     label: "Wiedent Estetic (skala W)",
     colors: WIEDENT_ESTETIC_COLORS,
     moulds: {
-      anterior: [...WIEDENT_ESTETIC_ANTERIOR, ...WIEDENT_ESTETIC_ANTERIOR_LOWER],
+      anterior: [...WIEDENT_ESTETIC_ANTERIOR_UPPER, ...WIEDENT_ESTETIC_ANTERIOR_LOWER],
       posterior: WIEDENT_ESTETIC_POSTERIOR,
     },
   },
@@ -72,7 +115,7 @@ export const TEETH_LINE_DEFINITIONS: readonly TeethLineDefinition[] = [
     label: "Wiedent Estetic wg Vity",
     colors: VITA_AD,
     moulds: {
-      anterior: [...WIEDENT_ESTETIC_ANTERIOR, ...WIEDENT_ESTETIC_ANTERIOR_LOWER],
+      anterior: [...WIEDENT_ESTETIC_ANTERIOR_UPPER, ...WIEDENT_ESTETIC_ANTERIOR_LOWER],
       posterior: WIEDENT_ESTETIC_POSTERIOR,
     },
   },
@@ -115,14 +158,10 @@ export const TEETH_LINE_DEFINITIONS: readonly TeethLineDefinition[] = [
     id: "ivoclar_phonares_ii",
     manufacturer: "ivoclar",
     label: "Ivoclar SR Phonares II",
-    colors: VITA_AD,
+    colors: VITA_AD_BL,
     moulds: {
-      anterior: [
-        "S61", "S62", "S63", "S71", "S72", "S73", "S81", "S82", "S83",
-        "B61", "B62", "B63", "B71", "B72", "B73", "B81", "B82", "B83",
-        "L50", "L51", "L52", "L53",
-      ],
-      posterior: ["NU3", "NU5", "NU6", "NL3", "NL5", "NL6"],
+      anterior: PHONARES_II_ANTERIOR,
+      posterior: PHONARES_II_POSTERIOR,
     },
   },
   {
@@ -131,12 +170,7 @@ export const TEETH_LINE_DEFINITIONS: readonly TeethLineDefinition[] = [
     label: "Ivoclar SR Vivodent S DCL",
     colors: VITA_AD_BL,
     moulds: {
-      anterior: [
-        "A11", "A12", "A13", "A14", "A15", "A17",
-        "A22", "A24", "A24B", "A25", "A26", "A27",
-        "A32", "A36", "A41", "A42", "A44", "A54", "A56", "A66", "A68",
-        "A3", "A4", "A5", "A6", "A7", "A8", "A9", "A10",
-      ],
+      anterior: VIVODENT_DCL_ANTERIOR,
       posterior: null,
     },
   },
@@ -147,7 +181,7 @@ export const TEETH_LINE_DEFINITIONS: readonly TeethLineDefinition[] = [
     colors: VITA_AD_BL,
     moulds: {
       anterior: null,
-      posterior: ["N3", "N4", "N5", "N6"],
+      posterior: ORTHOTYP_DCL_POSTERIOR,
     },
   },
   {
@@ -157,12 +191,12 @@ export const TEETH_LINE_DEFINITIONS: readonly TeethLineDefinition[] = [
     colors: VITA_AD,
     moulds: {
       anterior: [
-        "0/0", "0/3", "0/4", "0/5", "0/6", "0/8", "0/10", "0/11", "0/53",
-        "1/13", "1/17", "1/20", "1/22", "1/25", "1/27", "1/30", "1/32",
-        "1/35", "1/37", "1/40", "1/44", "1/47", "1/48", "1/49",
-        "50", "52", "53", "56", "58", "59", "62",
+        ...MAJOR_SUPER_LUX_UPPER_TRIANGULAR,
+        ...MAJOR_SUPER_LUX_UPPER_OVAL,
+        ...MAJOR_SUPER_LUX_UPPER_SQUARE,
+        ...MAJOR_SUPER_LUX_LOWER_ANTERIOR,
       ],
-      posterior: ["1/60", "1/65", "1/72", "1/74", "70N", "76N", "77N", "79N"],
+      posterior: MAJOR_SUPER_LUX_POSTERIOR,
     },
   },
   {
@@ -202,11 +236,27 @@ export const TEETH_LINE_DEFINITIONS: readonly TeethLineDefinition[] = [
     colors: DENTEX_AMBERLUX_COLORS,
     moulds: {
       anterior: [
-        "0", "00", "1", "01", "2", "02", "3", "03", "4", "04", "5", "05",
-        "6", "7", "07", "8", "08", "9", "09", "10", "11", "12", "13", "14",
-        "15", "16", "17", "18", "26", "28", "38", "41", "48",
+        ...DENTEX_AMBERLUX_UPPER_TRIANGULAR,
+        ...DENTEX_AMBERLUX_UPPER_SQUARE,
+        ...DENTEX_AMBERLUX_UPPER_OVAL,
+        ...DENTEX_AMBERLUX_LOWER_ANTERIOR,
       ],
-      posterior: ["I", "II", "III", "IV", "V", "VI", "VII", "VIII", "IX", "X"],
+      posterior: DENTEX_AMBERLUX_POSTERIOR,
+    },
+  },
+  {
+    id: "dentex_amberlux_v",
+    manufacturer: "dentex",
+    label: "Dentex AmberLux (skala V)",
+    colors: DENTEX_V_COLORS,
+    moulds: {
+      anterior: [
+        ...DENTEX_AMBERLUX_UPPER_TRIANGULAR,
+        ...DENTEX_AMBERLUX_UPPER_SQUARE,
+        ...DENTEX_AMBERLUX_UPPER_OVAL,
+        ...DENTEX_AMBERLUX_LOWER_ANTERIOR,
+      ],
+      posterior: DENTEX_AMBERLUX_POSTERIOR,
     },
   },
   {

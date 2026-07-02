@@ -6,10 +6,11 @@ import {
   type TeethManufacturer,
   type TeethProductLine,
 } from "@/lib/teeth/teeth-catalog";
+import { jawRequiredForKind } from "@/lib/teeth/teeth-mould-shape-groups";
 import type { IndividualOrderTeethDetail } from "@/types/database";
 
 export const TEETH_LIST_INCOMPLETE_MESSAGE =
-  "Uzupełnij listę zębów (kolor, fason, szczęka i typ) przy każdej pozycji zębowej.";
+  "Uzupełnij listę zębów (kolor, fason i typ; u boków także szczęka) przy każdej pozycji zębowej.";
 
 export type TeethLineValidationInput = {
   teethDetails: TeethLineDetail[] | null | undefined;
@@ -25,7 +26,9 @@ export function isMinimalTeethDetailRowComplete(
   detail: Pick<TeethLineDetail, "color" | "jaw" | "kind">
 ): boolean {
   const color = detail.color?.trim() ?? "";
-  return Boolean(color && detail.jaw && detail.kind);
+  if (!color || !detail.kind) return false;
+  if (jawRequiredForKind(detail.kind) && !detail.jaw) return false;
+  return true;
 }
 
 function minimalTeethRowComplete(detail: TeethLineDetail): boolean {

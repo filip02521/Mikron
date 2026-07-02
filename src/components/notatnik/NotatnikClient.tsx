@@ -228,7 +228,7 @@ export function NotatnikClient({
   const [subiektStatus, setSubiektStatus] = useState<SubiektAvailability | undefined>(undefined);
   const [appliedSubiektPropKey, setAppliedSubiektPropKey] = useState("");
   const [appliedUrlTabKey, setAppliedUrlTabKey] = useState("");
-  const [appliedArchiveGuardKey, setAppliedArchiveGuardKey] = useState("");
+  const appliedArchiveGuardKeyRef = useRef("");
   const [prosbaScopeWatchId, setProsbaScopeWatchId] = useState<string | null>(null);
   const [prosbaScopeOpenNonce, setProsbaScopeOpenNonce] = useState(0);
   const [appliedDataSyncKey, setAppliedDataSyncKey] = useState("");
@@ -874,16 +874,11 @@ export function NotatnikClient({
 
   const archiveGuardKey = `${activeTab}\0${hasArchive}\0${defaultTab}`;
   useEffect(() => {
-    if (
-      !tourDemo &&
-      activeTab === "archive" &&
-      !hasArchive &&
-      archiveGuardKey !== appliedArchiveGuardKey
-    ) {
-      setAppliedArchiveGuardKey(archiveGuardKey);
-      navigateToTab(defaultTab);
-    }
-  }, [tourDemo, activeTab, hasArchive, archiveGuardKey, appliedArchiveGuardKey, defaultTab, navigateToTab]);
+    if (tourDemo || activeTab !== "archive" || hasArchive) return;
+    if (archiveGuardKey === appliedArchiveGuardKeyRef.current) return;
+    appliedArchiveGuardKeyRef.current = archiveGuardKey;
+    navigateToTab(defaultTab);
+  }, [tourDemo, activeTab, hasArchive, archiveGuardKey, defaultTab, navigateToTab]);
 
   function handleTodayTaskClick(anchor: string, kind: NotepadTodayTaskKind) {
     if (kind === "note-follow-up") {

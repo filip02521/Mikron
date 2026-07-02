@@ -4,6 +4,7 @@ import { filterDepartmentBoardQuestionsByQuery } from "@/lib/department-board/qu
 
 export type DepartmentBoardQuestionFilterContext = {
   unseenIds?: ReadonlySet<string>;
+  unseenOwnIds?: ReadonlySet<string>;
   currentSalesPersonId?: string | null;
 };
 
@@ -19,6 +20,8 @@ export function filterDepartmentBoardQuestionsByStatus(
       return questions.filter((q) => q.status === "answered");
     case "unseen":
       return questions.filter((q) => ctx.unseenIds?.has(q.id) ?? false);
+    case "own_unseen":
+      return questions.filter((q) => ctx.unseenOwnIds?.has(q.id) ?? false);
     case "mine":
       if (!ctx.currentSalesPersonId) return [];
       return questions.filter((q) => q.sales_person_id === ctx.currentSalesPersonId);
@@ -63,9 +66,11 @@ export function countDepartmentBoardQuestionsByFilter(
 /** Gdy znikną nieprzeczytane odpowiedzi, filtr „unseen” nie ma sensu. */
 export function resolveQuestionFilterAfterUnseenCleared(
   filter: DepartmentBoardQuestionFilter,
-  unseenCount: number
+  unseenCount: number,
+  ownUnseenCount = 0
 ): DepartmentBoardQuestionFilter {
   if (unseenCount === 0 && filter === "unseen") return "all";
+  if (ownUnseenCount === 0 && filter === "own_unseen") return "all";
   return filter;
 }
 
@@ -89,6 +94,7 @@ export function departmentBoardQuestionFilterCounts(
     open: searched.filter((q) => q.status === "open").length,
     answered: searched.filter((q) => q.status === "answered").length,
     unseen: searched.filter((q) => ctx.unseenIds?.has(q.id) ?? false).length,
+    own_unseen: searched.filter((q) => ctx.unseenOwnIds?.has(q.id) ?? false).length,
     mine: ctx.currentSalesPersonId
       ? searched.filter((q) => q.sales_person_id === ctx.currentSalesPersonId).length
       : 0,

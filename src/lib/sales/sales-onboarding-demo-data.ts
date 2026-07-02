@@ -559,6 +559,7 @@ export function buildOnboardingDayStartContext(salesPersonId: string) {
         isOwnQuestion: false,
       },
       unseenQuestionIds: ["demo-board-question-answered"],
+      unseenOwnQuestionIds: [],
       pinnedAnnouncements: [
         {
           id: "demo-board-announcement-pinned",
@@ -575,7 +576,7 @@ export function buildOnboardingDayStartContext(salesPersonId: string) {
           answered_at: null,
         } as never,
       ],
-      navBadgeCount: 1,
+      navBadgeCount: 0,
     },
     previewDla: null,
   };

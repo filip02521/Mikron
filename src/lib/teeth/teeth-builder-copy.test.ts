@@ -1,8 +1,38 @@
 import { describe, expect, it } from "vitest";
 import {
+  teethBuilderSteps,
   teethDualSaveBlockReason,
   teethDualSaveReady,
 } from "@/lib/teeth/teeth-builder-copy";
+
+describe("teethBuilderSteps", () => {
+  it("omits jaw step for anterior", () => {
+    const steps = teethBuilderSteps({
+      kind: "anterior",
+      color: "A2",
+      mould: "32",
+    });
+    expect(steps.map((s) => s.label)).toEqual(["Kolor", "Kształt · fason", "Ilość"]);
+    expect(steps[0]?.done).toBe(true);
+    expect(steps[1]?.done).toBe(true);
+  });
+
+  it("includes jaw step for posterior", () => {
+    const steps = teethBuilderSteps({
+      kind: "posterior",
+      color: "A2",
+      mould: "60",
+      jawMode: "both",
+    });
+    expect(steps.map((s) => s.label)).toEqual([
+      "Kolor",
+      "Kształt · fason",
+      "Szczęka",
+      "Ilość",
+    ]);
+    expect(steps[2]?.done).toBe(true);
+  });
+});
 
 describe("teethDualSaveReady", () => {
   const empty = { hasItems: false, complete: false };

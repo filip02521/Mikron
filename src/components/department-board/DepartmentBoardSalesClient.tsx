@@ -43,6 +43,7 @@ import {
   salesPageShellClass,
   sectionIconTileBrandClass,
   salesChromeInsetClass,
+  salesTypography,
 } from "@/lib/ui/ontime-theme";
 import { SalesListFilterEmptyHint } from "@/components/sales/SalesListEmptyHints";
 import { actionCreateQuestion } from "@/app/actions/department-board";
@@ -57,6 +58,7 @@ export function DepartmentBoardSalesClient({
   initial,
   loadError = null,
   unseenQuestionIds = [],
+  unseenOwnQuestionIds = [],
   boardAttention = null,
   focusQuestionId = null,
   readOnly = false,
@@ -67,6 +69,7 @@ export function DepartmentBoardSalesClient({
   initial: DepartmentBoardQuestionsSlice;
   loadError?: string | null;
   unseenQuestionIds?: string[];
+  unseenOwnQuestionIds?: string[];
   boardAttention?: DepartmentBoardAttentionBanners | null;
   focusQuestionId?: string | null;
   readOnly?: boolean;
@@ -89,21 +92,38 @@ export function DepartmentBoardSalesClient({
     () => (tourDemo ? [...ONBOARDING_TABLICA_UNSEEN_QUESTION_IDS] : unseenQuestionIds),
     [tourDemo, unseenQuestionIds]
   );
+  const effectiveUnseenOwnQuestionIds = useMemo(
+    () => (tourDemo ? [] : unseenOwnQuestionIds),
+    [tourDemo, unseenOwnQuestionIds]
+  );
   const unseenSet = useMemo(
     () => new Set(effectiveUnseenQuestionIds),
     [effectiveUnseenQuestionIds]
   );
+  const unseenOwnSet = useMemo(
+    () => new Set(effectiveUnseenOwnQuestionIds),
+    [effectiveUnseenOwnQuestionIds]
+  );
   const unseenAnswersCount = effectiveUnseenQuestionIds.length;
+  const unseenOwnAnswersCount = effectiveUnseenOwnQuestionIds.length;
 
   const filterCtx = useMemo(
-    () => ({ unseenIds: unseenSet, currentSalesPersonId }),
-    [unseenSet, currentSalesPersonId]
+    () => ({
+      unseenIds: unseenSet,
+      unseenOwnIds: unseenOwnSet,
+      currentSalesPersonId,
+    }),
+    [unseenSet, unseenOwnSet, currentSalesPersonId]
   );
 
   const filtersLockedByFocus = Boolean(focusQuestionId);
   const activeQuestionFilter: DepartmentBoardQuestionFilter = filtersLockedByFocus
     ? "all"
-    : resolveQuestionFilterAfterUnseenCleared(questionFilter, unseenAnswersCount);
+    : resolveQuestionFilterAfterUnseenCleared(
+        questionFilter,
+        unseenAnswersCount,
+        unseenOwnAnswersCount
+      );
   const focusQuestionMissing = Boolean(
     focusQuestionId && !board.questions.some((question) => question.id === focusQuestionId)
   );
@@ -186,7 +206,8 @@ export function DepartmentBoardSalesClient({
   const showAnswersBanner =
     effectiveAttention != null &&
     shouldShowBoardAnswersBanner(effectiveAttention) &&
-    activeQuestionFilter !== "unseen";
+    activeQuestionFilter !== "unseen" &&
+    activeQuestionFilter !== "own_unseen";
 
   const filtersDisabledReason = filtersLockedByFocus
     ? DEPARTMENT_BOARD_QUESTIONS_FILTERS.focusDisabledHint
@@ -287,6 +308,12 @@ export function DepartmentBoardSalesClient({
             searchLabel="Szukaj w pytaniach zespołu"
             searchActive={Boolean(questionSearchNeedle)}
           />
+
+          {activeQuestionFilter === "own_unseen" ? (
+            <p className={cn(salesTypography.sectionHint, "-mt-2")}>
+              Tylko Twoje pytania z nową odpowiedzią zakupów, której jeszcze nie otworzyłeś.
+            </p>
+          ) : null}
 
           {questionSearchNeedle && filteredQuestions.length === 0 && statusFilteredQuestions.length > 0 ? (
             <SalesListFilterEmptyHint

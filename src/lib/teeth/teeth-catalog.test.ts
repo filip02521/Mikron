@@ -32,17 +32,21 @@ describe("teeth-catalog", () => {
 
     it("returns product line label", () => {
       expect(teethProductLineLabel("wiedent_classic")).toBe("Wiedent Classic");
+      expect(teethProductLineLabel("wiedent_almamiss")).toBe("Wiedent Almamiss");
       expect(teethProductLineLabel("major_super_lux")).toBe("Major Super Lux");
     });
 
     it("detects product line from product name", () => {
       expect(detectTeethProductLine("Wiedent zęby Classic przody")).toBe("wiedent_classic");
+      expect(detectTeethProductLine("Zęby Almamiss przody")).toBe("wiedent_almamiss");
+      expect(detectTeethProductLine("Wiedent Almamiss boczne")).toBe("wiedent_almamiss");
       expect(detectTeethProductLine("Wiedent Vita zęby przody")).toBe("wiedent_estetic_vita");
       expect(detectTeethProductLine("Wiedent Estetic wg Vity boczne")).toBe("wiedent_estetic_vita");
       expect(detectTeethProductLine("Wiedent Estetic skala W przody")).toBe("wiedent_estetic");
       expect(detectTeethProductLine("Phonares Typ II zęby przednie")).toBe("ivoclar_phonares_ii");
       expect(detectTeethProductLine("Zęby przednie Major Super Lux")).toBe("major_super_lux");
       expect(detectTeethProductLine("Zęby Dentex/AmberLux boczne")).toBe("dentex_amberlux");
+      expect(detectTeethProductLine("Dentex-V zęby przody A3V")).toBe("dentex_amberlux_v");
     });
 
     it("Vita line uses VITA palette, not Wiedent W scale", () => {
@@ -116,51 +120,88 @@ describe("teeth-catalog", () => {
     it("Phonares anterior uses S/B/L codes not A11", () => {
       const phonares: TeethCatalogRef = { productLine: "ivoclar_phonares_ii" };
       expect(toothMouldsFor(phonares, "anterior")).toContain("S61");
+      expect(toothMouldsFor(phonares, "anterior")).toContain("L55");
       expect(toothMouldsFor(phonares, "anterior")).not.toContain("A11");
+      expect(toothMouldsFor(phonares, "posterior")).toContain("LU3");
+      expect(toothMouldsFor(phonares, "posterior")).toContain("LL6");
+    });
+
+    it("Phonares uses VITA A-D and Bleach shades", () => {
+      const phonares: TeethCatalogRef = { productLine: "ivoclar_phonares_ii" };
+      expect(teethColorsFor(phonares)).toContain("A1");
+      expect(teethColorsFor(phonares)).toContain("BL1");
+      expect(teethColorsFor(phonares)).toHaveLength(20);
+    });
+
+    it("Vivodent DCL anterior moulds and colors match PDF", () => {
+      expect(toothMouldsFor(ivoclarVivodent, "anterior")).toContain("A25");
+      expect(toothMouldsFor(ivoclarVivodent, "anterior")).toContain("A7");
+      expect(toothMouldsFor(ivoclarVivodent, "anterior")).toHaveLength(29);
+      expect(teethColorsFor(ivoclarVivodent)).toContain("BL2");
+    });
+
+    it("Orthotyp DCL posterior uses N*U/N*L and Lingual LU/LL", () => {
+      const orthotyp: TeethCatalogRef = { productLine: "ivoclar_orthotyp_dcl" };
+      expect(toothMouldsFor(orthotyp, "posterior")).toContain("N5U");
+      expect(toothMouldsFor(orthotyp, "posterior")).toContain("LU3");
+      expect(toothMouldsFor(orthotyp, "posterior")).toContain("N4");
     });
   });
 
   describe("isTeethDetailComplete", () => {
-    it("requires color, jaw, kind", () => {
+    it("requires color and kind; jaw only for posterior", () => {
       expect(isTeethDetailComplete({ position: 1, color: "", jaw: "upper", kind: "anterior" }, wiedentEstetic)).toBe(false);
-      expect(isTeethDetailComplete({ position: 1, color: "A1", mould: "12", jaw: null, kind: "anterior" }, wiedentEstetic)).toBe(false);
+      expect(isTeethDetailComplete({ position: 1, color: "A1", mould: "12", jaw: null, kind: "anterior" }, wiedentEstetic)).toBe(true);
+      expect(isTeethDetailComplete({ position: 1, color: "A1", mould: "12", jaw: null, kind: "posterior" }, wiedentEstetic)).toBe(false);
       expect(isTeethDetailComplete({ position: 1, color: "A1", mould: "12", jaw: "upper", kind: null }, wiedentEstetic)).toBe(false);
     });
 
     it("requires mould for wiedent estetic anterior", () => {
       expect(
-        isTeethDetailComplete({ position: 1, color: "A1", mould: null, jaw: "upper", kind: "anterior" }, wiedentEstetic),
+        isTeethDetailComplete({ position: 1, color: "A1", mould: null, jaw: null, kind: "anterior" }, wiedentEstetic),
       ).toBe(false);
       expect(
-        isTeethDetailComplete({ position: 1, color: "A1", mould: "12", jaw: "upper", kind: "anterior" }, wiedentEstetic),
+        isTeethDetailComplete({ position: 1, color: "A1", mould: "12", jaw: null, kind: "anterior" }, wiedentEstetic),
       ).toBe(true);
     });
 
     it("does not require mould for hansen", () => {
       expect(
-        isTeethDetailComplete({ position: 1, color: "A1", jaw: "upper", kind: "anterior" }, hansen),
+        isTeethDetailComplete({ position: 1, color: "A1", jaw: null, kind: "anterior" }, hansen),
       ).toBe(true);
     });
   });
 
   describe("teeth group builder", () => {
-    it("formatTeethGroupLabel renders Major Super Lux example", () => {
+    it("formatTeethGroupLabel omits jaw for anterior", () => {
+      expect(
+        formatTeethGroupLabel({
+          color: "A2",
+          mould: "S61",
+          jaw: "upper",
+          kind: "anterior",
+          count: 4,
+        }),
+      ).toBe("A2 · S61 · przednie × 4 szt.");
+    });
+
+    it("formatTeethGroupLabel renders Major Super Lux posterior example", () => {
       expect(
         formatTeethGroupLabel({
           color: "A2",
           mould: "56",
           jaw: "upper",
-          kind: "anterior",
+          kind: "posterior",
           count: 4,
         }),
-      ).toBe("A2 · 56 · góra · przednie × 4 szt.");
+      ).toBe("A2 · 56 · góra · boczne × 4 szt.");
     });
 
     it("isTeethGroupComplete validates group spec", () => {
       const ok = createTeethGroupDraft({
         color: "A1",
         mould: "12",
-        jaw: "upper",
+        jaw: null,
         kind: "anterior",
         count: 3,
       });

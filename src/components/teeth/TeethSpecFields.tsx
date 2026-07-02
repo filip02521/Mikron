@@ -3,7 +3,6 @@
 import { useMemo, useState } from "react";
 import {
   teethColorsFor,
-  toothMouldsFor,
   hasMouldsForKind,
   isTeethDetailComplete,
   mouldRequiredForKind,
@@ -16,6 +15,12 @@ import {
   type TeethKind,
   type TeethProductLine,
 } from "@/lib/teeth/teeth-catalog";
+import {
+  shouldShowJawPicker,
+  isJawModeSatisfied,
+  type TeethJawMode,
+} from "@/lib/teeth/teeth-mould-shape-groups";
+import { TeethMouldShapePicker } from "@/components/teeth/TeethMouldShapePicker";
 import { cn } from "@/lib/cn";
 import {
   panelChoiceChipClass,
@@ -24,13 +29,12 @@ import {
   controlFocusClass,
 } from "@/lib/ui/ontime-theme";
 
+export type TeethSpecFieldsDetail = Pick<TeethLineDetail, "color" | "mould" | "jaw" | "kind"> & {
+  jawMode?: TeethJawMode | null;
+};
+
 function colorIsCustom(color: string, palette: readonly string[]): boolean {
   const t = color.trim();
-  return t.length > 0 && !palette.includes(t) && t !== TEETH_CHIP_OTHER;
-}
-
-function mouldIsCustom(mould: string | null | undefined, palette: readonly string[]): boolean {
-  const t = mould?.trim() ?? "";
   return t.length > 0 && !palette.includes(t) && t !== TEETH_CHIP_OTHER;
 }
 
@@ -42,65 +46,97 @@ export function TeethSpecFields({
   lockedKind,
   compact,
   hideKindField = false,
+  hidePreview = false,
+  allowJawBoth = true,
+  builderMode = false,
 }: {
   productLine: TeethProductLine;
-  detail: Pick<TeethLineDetail, "color" | "mould" | "jaw" | "kind">;
-  onChange: (patch: Partial<TeethLineDetail>) => void;
+  detail: TeethSpecFieldsDetail;
+  onChange: (patch: Partial<TeethSpecFieldsDetail>) => void;
   disabled?: boolean;
   lockedKind?: TeethKind | null;
   compact?: boolean;
-  /** Ukryj pole typu — typ wybierany poza formularzem (np. przełącznik w modalu). */
   hideKindField?: boolean;
+  /** Ukryj podgląd w builderze listy — kroki breadcrumb już pokazują postęp. */
+  hidePreview?: boolean;
+  /** „Oba” tylko w builderze listy — w inline pickerze tworzyłoby jedną niekompletną pozycję. */
+  allowJawBoth?: boolean;
+  /** Ciaśniejszy układ w modalu listy zębów. */
+  builderMode?: boolean;
 }) {
   const catalog = useMemo<TeethCatalogRef>(() => ({ productLine }), [productLine]);
   const colors = useMemo(() => teethColorsFor(catalog), [catalog]);
   const jaw = (detail.jaw ?? null) as TeethJaw | null;
+  const jawMode = detail.jawMode ?? null;
   const kind = (detail.kind ?? null) as TeethKind | null;
-  const moulds = useMemo(
-    () => (kind ? toothMouldsFor(catalog, kind) : []),
-    [catalog, kind],
-  );
   const showMouldChips = kind != null && hasMouldsForKind(catalog, kind);
   const freeformMould = lineOptionalMould(productLine);
   const mouldRequired = kind != null && mouldRequiredForKind(catalog, kind);
+  const showJaw = shouldShowJawPicker(kind);
 
   const [customColorOpen, setCustomColorOpen] = useState(() =>
     colorIsCustom(detail.color, colors),
   );
-  const [customMouldOpen, setCustomMouldOpen] = useState(() =>
-    mouldIsCustom(detail.mould, moulds),
-  );
 
   const customColorActive = customColorOpen || colorIsCustom(detail.color, colors);
-  const customMouldActive = customMouldOpen || mouldIsCustom(detail.mould, moulds);
 
-  const isComplete = isTeethDetailComplete(
-    { position: 1, color: detail.color, mould: detail.mould, jaw: detail.jaw, kind: detail.kind },
-    catalog,
-  );
+  const isComplete =
+    kind != null &&
+    isJawModeSatisfied(kind, jaw, jawMode) &&
+    isTeethDetailComplete(
+      {
+        position: 1,
+        color: detail.color,
+        mould: detail.mould,
+        jaw:
+          kind === "posterior"
+            ? jawMode === "both"
+              ? "upper"
+              : jawMode === "upper" || jawMode === "lower"
+                ? jawMode
+                : jaw
+            : null,
+        kind,
+      },
+      catalog,
+    );
 
-  const handleJaw = (j: TeethJaw) => {
+  const handleJawMode = (mode: TeethJawMode) => {
     if (disabled) return;
-    onChange({ jaw: j });
+    if (mode === "both") {
+      onChange({ jawMode: "both", jaw: null });
+    } else {
+      onChange({ jawMode: mode, jaw: mode });
+    }
   };
 
   const handleKind = (k: TeethKind) => {
     if (disabled) return;
-    const next: Partial<TeethLineDetail> = { kind: k };
-    if (k !== kind) next.mould = null;
+    const next: Partial<TeethSpecFieldsDetail> = { kind: k };
+    if (k !== kind) {
+      next.mould = null;
+      if (k === "anterior") {
+        next.jaw = null;
+        next.jawMode = null;
+      } else {
+        next.jaw = null;
+        next.jawMode = null;
+      }
+    }
     onChange(next);
-    setCustomMouldOpen(false);
   };
 
-  const chipPad = compact ? "px-2 py-0.5 text-xs" : "px-2 py-0.5 text-xs";
-  const sectionGap = compact ? "space-y-2.5" : "space-y-3";
+  const tight = builderMode || compact;
+  const chipPad = tight ? "px-1.5 py-0.5 text-[11px]" : "px-2 py-0.5 text-xs";
+  const sectionGap = tight ? "space-y-1.5" : "space-y-3";
+  const choicePad = tight ? "px-3 py-1 text-xs" : "px-4 py-1.5 text-sm";
 
   return (
-    <div className={cn("space-y-3", compact && "space-y-2")}>
+    <div className={cn(tight ? "space-y-2" : "space-y-3")}>
       {hideKindField ? null : lockedKind ? (
         <div className={sectionGap}>
           <FieldLabel>Typ</FieldLabel>
-          <span className={cn(panelChoiceChipClass, "px-4 py-1.5 text-sm", panelChoiceChipSelectedClass)}>
+          <span className={cn(panelChoiceChipClass, choicePad, panelChoiceChipSelectedClass)}>
             {TEETH_KIND_LABELS[lockedKind]}
           </span>
         </div>
@@ -112,12 +148,14 @@ export function TeethSpecFields({
               label={TEETH_KIND_LABELS.anterior}
               selected={kind === "anterior"}
               disabled={disabled}
+              className={choicePad}
               onClick={() => handleKind("anterior")}
             />
             <ChoiceButton
               label={TEETH_KIND_LABELS.posterior}
               selected={kind === "posterior"}
               disabled={disabled}
+              className={choicePad}
               onClick={() => handleKind("posterior")}
             />
           </div>
@@ -126,7 +164,7 @@ export function TeethSpecFields({
 
       <div className={sectionGap}>
         <FieldLabel required={!detail.color.trim()}>Kolor</FieldLabel>
-        <div className="flex flex-wrap gap-1.5">
+        <div className="flex flex-wrap gap-1">
           {colors.map((c) => (
             <ChipButton
               key={c}
@@ -161,7 +199,7 @@ export function TeethSpecFields({
             onChange={(e) => onChange({ color: e.target.value })}
             placeholder="Wpisz kolor spoza listy"
             className={cn(
-              "mt-1.5 w-full rounded-md border border-slate-300 px-3 py-1.5 text-sm",
+              "mt-1 w-full rounded-md border border-slate-200 bg-white px-2.5 py-1.5 text-xs",
               controlFocusClass,
               "disabled:cursor-not-allowed disabled:bg-slate-50 disabled:text-slate-400",
             )}
@@ -169,51 +207,18 @@ export function TeethSpecFields({
         ) : null}
       </div>
 
-      {showMouldChips ? (
-        <div className={sectionGap}>
-          <FieldLabel required={mouldRequired && !detail.mould?.trim()}>Fason / wielkość</FieldLabel>
-          <div className="flex flex-wrap gap-1.5">
-            {moulds.map((m) => (
-              <ChipButton
-                key={m}
-                label={m}
-                selected={!customMouldActive && detail.mould === m}
-                disabled={disabled}
-                className={chipPad}
-                onSelect={() => {
-                  if (disabled) return;
-                  setCustomMouldOpen(false);
-                  onChange({ mould: m });
-                }}
-              />
-            ))}
-            <ChipButton
-              label={TEETH_CHIP_OTHER}
-              selected={customMouldActive}
-              disabled={disabled}
-              className={chipPad}
-              onSelect={() => {
-                if (disabled) return;
-                setCustomMouldOpen(true);
-                if (!customMouldActive) onChange({ mould: "" });
-              }}
-            />
-          </div>
-          {customMouldActive ? (
-            <input
-              type="text"
-              value={mouldIsCustom(detail.mould, moulds) ? (detail.mould ?? "") : ""}
-              disabled={disabled}
-              onChange={(e) => onChange({ mould: e.target.value || null })}
-              placeholder="Wpisz fason spoza listy"
-              className={cn(
-                "mt-1.5 w-full rounded-md border border-slate-300 px-3 py-1.5 text-sm",
-                controlFocusClass,
-                "disabled:cursor-not-allowed disabled:bg-slate-50 disabled:text-slate-400",
-              )}
-            />
-          ) : null}
-        </div>
+      {showMouldChips && kind ? (
+        <TeethMouldShapePicker
+          key={`${productLine}-${kind}`}
+          productLine={productLine}
+          kind={kind}
+          mould={detail.mould ?? null}
+          onMouldChange={(m) => onChange({ mould: m })}
+          disabled={disabled}
+          compact={compact}
+          builderMode={builderMode}
+          required={mouldRequired}
+        />
       ) : kind != null ? (
         <div className={sectionGap}>
           <FieldLabel required={false}>Fason / wielkość</FieldLabel>
@@ -224,7 +229,7 @@ export function TeethSpecFields({
             onChange={(e) => onChange({ mould: e.target.value || null })}
             placeholder={freeformMould ? "Wpisz fason (opcjonalnie)" : "Wpisz fason lub zostaw puste"}
             className={cn(
-              "w-full rounded-md border border-slate-300 px-3 py-1.5 text-sm",
+              "w-full rounded-md border border-slate-200 bg-white px-2.5 py-1.5 text-xs",
               controlFocusClass,
               "disabled:cursor-not-allowed disabled:bg-slate-50 disabled:text-slate-400",
             )}
@@ -232,15 +237,38 @@ export function TeethSpecFields({
         </div>
       ) : null}
 
-      <div className={sectionGap}>
-        <FieldLabel required={!jaw}>Szczęka</FieldLabel>
-        <div className="flex gap-2">
-          <ChoiceButton label="Górna" selected={jaw === "upper"} disabled={disabled} onClick={() => handleJaw("upper")} />
-          <ChoiceButton label="Dolna" selected={jaw === "lower"} disabled={disabled} onClick={() => handleJaw("lower")} />
+      {showJaw ? (
+        <div className={sectionGap}>
+          <FieldLabel required={!isJawModeSatisfied(kind, jaw, jawMode)}>Szczęka</FieldLabel>
+          <div className="flex flex-wrap gap-1.5">
+            <ChoiceButton
+              label="Górna"
+              selected={jawMode === "upper" || (!jawMode && jaw === "upper")}
+              disabled={disabled}
+              className={choicePad}
+              onClick={() => handleJawMode("upper")}
+            />
+            <ChoiceButton
+              label="Dolna"
+              selected={jawMode === "lower" || (!jawMode && jaw === "lower")}
+              disabled={disabled}
+              className={choicePad}
+              onClick={() => handleJawMode("lower")}
+            />
+            {allowJawBoth ? (
+              <ChoiceButton
+                label="Oba"
+                selected={jawMode === "both"}
+                disabled={disabled}
+                className={choicePad}
+                onClick={() => handleJawMode("both")}
+              />
+            ) : null}
+          </div>
         </div>
-      </div>
+      ) : null}
 
-      {detail.color || jaw || kind ? (
+      {!hidePreview && (detail.color || jaw || jawMode || kind) ? (
         <div
           className={cn(
             "flex items-center gap-1.5 rounded px-3 py-1.5 text-sm font-medium",
@@ -263,14 +291,13 @@ export function TeethSpecFields({
   );
 }
 
-export function TeethSpecPreview({
-  detail,
-}: {
-  detail: Pick<TeethLineDetail, "color" | "mould" | "jaw" | "kind">;
-}) {
+export function TeethSpecPreview({ detail }: { detail: TeethSpecFieldsDetail }) {
   const parts: string[] = [];
-  if (detail.jaw === "upper") parts.push("Górna");
-  else if (detail.jaw === "lower") parts.push("Dolna");
+  if (detail.kind === "posterior") {
+    if (detail.jawMode === "both") parts.push("Oba");
+    else if (detail.jaw === "upper") parts.push("Górna");
+    else if (detail.jaw === "lower") parts.push("Dolna");
+  }
   if (detail.kind) parts.push(TEETH_KIND_LABELS[detail.kind]);
   if (detail.color) parts.push(detail.color);
   if (detail.mould) parts.push(detail.mould);
@@ -280,7 +307,7 @@ export function TeethSpecPreview({
 
 function FieldLabel({ children, required }: { children: React.ReactNode; required?: boolean }) {
   return (
-    <p className="mb-1.5 text-[11px] font-semibold uppercase tracking-wide text-slate-500">
+    <p className="mb-1 text-[10px] font-semibold uppercase tracking-wide text-slate-500">
       {children}
       {required ? <span className="ml-1 text-rose-500">*</span> : null}
     </p>
@@ -291,11 +318,13 @@ function ChoiceButton({
   label,
   selected,
   disabled,
+  className,
   onClick,
 }: {
   label: string;
   selected: boolean;
   disabled?: boolean;
+  className?: string;
   onClick: () => void;
 }) {
   return (
@@ -306,7 +335,7 @@ function ChoiceButton({
       aria-pressed={selected}
       className={cn(
         panelChoiceChipClass,
-        "px-4 py-1.5 text-sm",
+        className ?? "px-4 py-1.5 text-sm",
         selected ? panelChoiceChipSelectedClass : panelChoiceChipIdleClass,
         disabled && "cursor-not-allowed opacity-50",
       )}

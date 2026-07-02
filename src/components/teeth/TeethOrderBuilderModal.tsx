@@ -5,6 +5,11 @@ import { ModalShell, type ModalTier } from "@/components/ui/ModalShell";
 import { Button } from "@/components/ui/Button";
 import { TeethSpecFields } from "@/components/teeth/TeethSpecFields";
 import {
+  draftSpecToGroupInputs,
+  isTeethBuilderDraftComplete,
+  type TeethBuilderDraftSpec,
+} from "@/lib/teeth/teeth-draft-jaw";
+import {
   TeethOrderBuilderSection,
   type TeethOrderBuilderSectionHandle,
 } from "@/components/teeth/TeethOrderBuilderSection";
@@ -12,7 +17,6 @@ import {
   allTeethGroupsComplete,
   createTeethGroupDraft,
   expandTeethGroups,
-  formatTeethGroupLabel,
   isTeethGroupComplete,
   teethGroupsFromDetails,
   teethManufacturerLabel,
@@ -28,23 +32,33 @@ import {
 import {
   TEETH_DUAL_KIND_LABELS,
   TEETH_DUAL_MODAL_TITLE_HINT,
+  teethSingleModalTitleHint,
   type TeethDualSectionStatus,
+  teethBuilderSteps,
   teethDualSaveBlockReason,
   teethDualSaveReady,
   teethDualSavePreviewMessage,
 } from "@/lib/teeth/teeth-builder-copy";
+import {
+  TeethBuilderEmptyList,
+  TeethBuilderFormShell,
+  TeethBuilderGroupList,
+  TeethBuilderQuantityRow,
+  TeethBuilderWorkspace,
+  teethBuilderModalSize,
+} from "@/components/teeth/TeethOrderBuilderParts";
 import { partitionTeethDetailsByKind } from "@/lib/teeth/teeth-dual-kind";
 import { cn } from "@/lib/cn";
-import { controlFocusClass, panelChoiceChipClass, panelChoiceChipIdleClass, panelChoiceChipSelectedClass } from "@/lib/ui/ontime-theme";
+import { panelChoiceChipClass, panelChoiceChipIdleClass, panelChoiceChipSelectedClass } from "@/lib/ui/ontime-theme";
 
 const TEETH_MODAL_SHELL_LAYOUT = {
   bodyScroll: false,
-  bodyClassName: "overflow-visible px-5 py-3 sm:px-6",
+  bodyClassName: "overflow-visible px-4 py-2.5 sm:px-5",
   className:
     "top-[max(0.75rem,env(safe-area-inset-top))] max-h-[calc(100dvh-env(safe-area-inset-top)-env(safe-area-inset-bottom)-0.75rem)] -translate-y-0",
 } as const;
 
-type DraftSpec = Pick<TeethGroupDraft, "color" | "mould" | "jaw" | "kind" | "count">;
+type DraftSpec = TeethBuilderDraftSpec;
 
 export type TeethOrderBuilderSaveResult =
   | { mode: "single"; details: TeethLineDetail[]; totalQuantity: number }
@@ -60,6 +74,7 @@ const EMPTY_DRAFT = (): DraftSpec => ({
   jaw: null,
   kind: null,
   count: 1,
+  jawMode: null,
 });
 
 function draftFromGroup(group: TeethGroupDraft): DraftSpec {
@@ -69,6 +84,7 @@ function draftFromGroup(group: TeethGroupDraft): DraftSpec {
     jaw: group.jaw,
     kind: group.kind,
     count: group.count,
+    jawMode: group.jaw === "upper" ? "upper" : group.jaw === "lower" ? "lower" : null,
   };
 }
 
@@ -235,6 +251,7 @@ function TeethDualKindOrderBuilderModal({
   const saveBlockReason = teethDualSaveBlockReason(anteriorStatus, posteriorStatus);
   const previewMessage = teethDualSavePreviewMessage(anteriorCount, posteriorCount);
   const activeCount = activeKind === "anterior" ? anteriorCount : posteriorCount;
+  const modalSize = teethBuilderModalSize(productLine, activeKind);
 
   const validateAndSave = () => {
     if (!canSave) return;
@@ -254,7 +271,7 @@ function TeethDualKindOrderBuilderModal({
     <ModalShell
       open={open}
       onClose={onClose}
-      size="lg"
+      size={modalSize}
       tier={tier}
       title="Lista zębów"
       description={
@@ -271,16 +288,16 @@ function TeethDualKindOrderBuilderModal({
               {anteriorCount > 0 || posteriorCount > 0 ? (
                 <>
                   {TEETH_DUAL_KIND_LABELS.anterior}:{" "}
-                  <span className="text-violet-700">{anteriorCount}</span>
+                  <span className="text-indigo-700">{anteriorCount}</span>
                   {" · "}
                   {TEETH_DUAL_KIND_LABELS.posterior}:{" "}
-                  <span className="text-violet-700">{posteriorCount}</span>
+                  <span className="text-indigo-700">{posteriorCount}</span>
                   {" · "}
-                  razem <span className="text-violet-700">{totalCount}</span> szt.
+                  razem <span className="text-indigo-700">{totalCount}</span> szt.
                 </>
               ) : (
                 <>
-                  Razem: <span className="text-violet-700">0</span> szt.
+                  Razem: <span className="text-indigo-700">0</span> szt.
                 </>
               )}
             </span>
@@ -303,7 +320,7 @@ function TeethDualKindOrderBuilderModal({
         </>
       }
     >
-      <div className="space-y-3">
+      <div className="space-y-2.5">
         <TeethDualKindToggle
           activeKind={activeKind}
           onChange={setActiveKind}
@@ -316,11 +333,11 @@ function TeethDualKindOrderBuilderModal({
         />
 
         <div>
-          <div className="mb-2 flex items-center justify-between gap-2">
-            <p className="text-sm font-semibold text-slate-800">
+          <div className="mb-1.5 flex items-center justify-between gap-2">
+            <p className="text-xs font-semibold text-slate-800">
               {TEETH_DUAL_KIND_LABELS[activeKind]}
             </p>
-            <span className="text-xs font-medium tabular-nums text-violet-700">
+            <span className="text-[10px] font-medium tabular-nums text-indigo-700">
               {activeCount} szt. na liście
             </span>
           </div>
@@ -389,18 +406,18 @@ function TeethDualKindToggle({
   return (
     <div className="space-y-1.5">
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">Typ</p>
+        <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">Typ</p>
         {saveBlockReason ? (
           <p className="text-[11px] font-medium text-amber-700" role="status">
             {saveBlockReason}
           </p>
         ) : anteriorCount > 0 || posteriorCount > 0 ? (
-          <p className="text-[11px] font-medium text-violet-600" role="status">
+          <p className="text-[10px] font-medium text-indigo-600" role="status">
             Gotowe do zapisu
           </p>
         ) : null}
       </div>
-      <div className="flex flex-wrap gap-2" role="tablist" aria-label="Typ zębów">
+      <div className="flex flex-wrap gap-1.5" role="tablist" aria-label="Typ zębów">
         {kinds.map((kind) => {
           const selected = activeKind === kind;
           const count = counts[kind];
@@ -415,7 +432,7 @@ function TeethDualKindToggle({
               onClick={() => onChange(kind)}
               className={cn(
                 panelChoiceChipClass,
-                "min-w-[7.5rem] px-4 py-2 text-sm font-semibold",
+                "min-w-[6.5rem] px-3 py-1.5 text-xs font-semibold",
                 selected ? panelChoiceChipSelectedClass : panelChoiceChipIdleClass,
                 needsAttention && !selected && "ring-1 ring-amber-300/90",
               )}
@@ -474,7 +491,7 @@ function TeethSingleKindOrderBuilderModal({
   const manufacturerName = teethManufacturerLabel(manufacturer);
   const lineName = teethProductLineLabel(productLine);
   const totalCount = totalTeethCountFromGroups(groups);
-  const draftComplete = isTeethGroupComplete(
+  const draftComplete = isTeethBuilderDraftComplete(
     { ...draft, kind: defaultKind ?? draft.kind },
     catalog,
   );
@@ -487,25 +504,27 @@ function TeethSingleKindOrderBuilderModal({
 
   const handleAddOrUpdate = () => {
     const resolvedKind = defaultKind ?? draft.kind;
-    const nextGroup = createTeethGroupDraft({
-      ...draft,
-      kind: resolvedKind,
-      id: editingId ?? undefined,
-    });
-    if (!isTeethGroupComplete(nextGroup, catalog)) return;
+    const fullDraft: DraftSpec = { ...draft, kind: resolvedKind };
+    if (!isTeethBuilderDraftComplete(fullDraft, catalog)) return;
 
-    setGroups((prev) => {
-      if (editingId) {
-        return prev.map((g) => (g.id === editingId ? nextGroup : g));
-      }
-      return [...prev, nextGroup];
-    });
     if (editingId) {
+      const nextGroup = createTeethGroupDraft({
+        color: fullDraft.color,
+        mould: fullDraft.mould,
+        jaw: fullDraft.jaw,
+        kind: fullDraft.kind,
+        count: fullDraft.count,
+        id: editingId,
+      });
+      setGroups((prev) => prev.map((g) => (g.id === editingId ? nextGroup : g)));
       setEditingId(nextGroup.id);
       setDraft(draftFromGroup(nextGroup));
-    } else {
-      resetDraft();
+      return;
     }
+
+    const expanded = draftSpecToGroupInputs(fullDraft, productLine);
+    setGroups((prev) => [...prev, ...expanded.map((row) => createTeethGroupDraft(row))]);
+    resetDraft();
   };
 
   const handleEdit = (group: TeethGroupDraft) => {
@@ -525,21 +544,44 @@ function TeethSingleKindOrderBuilderModal({
     if (shouldClose !== false) onClose();
   };
 
+  const resolvedKind = defaultKind ?? draft.kind;
   const draftSpec = useMemo(
     () => ({
       color: draft.color,
       mould: draft.mould,
       jaw: draft.jaw,
-      kind: defaultKind ?? draft.kind,
+      kind: resolvedKind,
+      jawMode: draft.jawMode,
     }),
-    [draft, defaultKind],
+    [draft, resolvedKind],
   );
+  const steps = useMemo(
+    () =>
+      teethBuilderSteps({
+        kind: resolvedKind,
+        color: draft.color,
+        mould: draft.mould,
+        jawMode: draft.jawMode,
+        jaw: draft.jaw,
+        includeKindStep: !defaultKind,
+        kindSelected: !!resolvedKind,
+      }),
+    [resolvedKind, draft.color, draft.mould, draft.jawMode, draft.jaw, defaultKind],
+  );
+  const modalSize = teethBuilderModalSize(productLine, resolvedKind);
+  const wideLayout = modalSize === "xl";
+  const saveBlockReason =
+    groups.length === 0
+      ? "Dodaj co najmniej jedną pozycję na liście"
+      : !listComplete
+        ? "Uzupełnij wszystkie pozycje na liście"
+        : null;
 
   return (
     <ModalShell
       open={open}
       onClose={onClose}
-      size="lg"
+      size={modalSize}
       tier={tier}
       title="Lista zębów"
       description={
@@ -547,12 +589,12 @@ function TeethSingleKindOrderBuilderModal({
           ? `${productLabel}${lineName ? ` · ${lineName}` : manufacturerName ? ` · ${manufacturerName}` : ""}`
           : lineName ?? manufacturerName ?? undefined
       }
-      titleHint="Dodaj pozycje z kartki klienta (kolor, fason, szczęka i ilość). Łączna liczba sztuk ustawi się automatycznie w zamówieniu."
+      titleHint={teethSingleModalTitleHint(productLine)}
       {...TEETH_MODAL_SHELL_LAYOUT}
       footer={
         <>
           <span className="mr-auto self-center text-sm font-medium text-slate-600 tabular-nums">
-            Razem: <span className="text-violet-700">{totalCount || 0}</span> szt.
+            Razem: <span className="text-indigo-700">{totalCount || 0}</span> szt.
           </span>
           <Button type="button" variant="secondary" onClick={onClose} disabled={disabled}>
             Anuluj
@@ -561,6 +603,7 @@ function TeethSingleKindOrderBuilderModal({
             type="button"
             variant="primary"
             disabled={disabled || !listComplete}
+            title={saveBlockReason ?? undefined}
             onClick={handleSave}
           >
             Zapisz listę
@@ -568,209 +611,72 @@ function TeethSingleKindOrderBuilderModal({
         </>
       }
     >
-      <div className="space-y-3">
-        {/* Step flow guide */}
-        <div className="flex items-center gap-1.5 text-[11px] font-medium">
-          <StepBadge number={1} label="Kolor" done={!!draft.color.trim()} />
-          <span className="text-slate-300">›</span>
-          <StepBadge number={2} label="Fason" done={!!draft.mould?.trim()} />
-          <span className="text-slate-300">›</span>
-          <StepBadge number={3} label="Szczęka" done={!!draft.jaw} />
-          <span className="text-slate-300">›</span>
-          <StepBadge number={4} label="Ilość" done={false} />
-        </div>
-
-        {/* Input section */}
-        <section className="rounded-lg border border-slate-200 bg-slate-50/50 p-3">
-          <div className="mb-2 flex items-center justify-between gap-2">
-            <h3 className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-              {editingId ? "Edytuj pozycję" : "Nowa pozycja"}
-            </h3>
-            {editingId ? (
-              <Button type="button" variant="ghost" size="sm" onClick={resetDraft} disabled={disabled}>
-                Anuluj edycję
-              </Button>
-            ) : null}
-          </div>
-
-          <TeethSpecFields
-            productLine={productLine}
-            detail={draftSpec}
-            lockedKind={defaultKind ?? null}
-            disabled={disabled}
-            compact
-            onChange={(patch) =>
-              setDraft((prev) => ({
-                ...prev,
-                color: patch.color ?? prev.color,
-                mould: patch.mould !== undefined ? patch.mould : prev.mould,
-                jaw: patch.jaw !== undefined ? patch.jaw : prev.jaw,
-                kind: patch.kind !== undefined ? patch.kind : prev.kind,
-              }))
+      <TeethBuilderWorkspace
+        wide={wideLayout}
+        steps={steps}
+        form={
+          <TeethBuilderFormShell
+            title={editingId ? "Edytuj pozycję" : "Nowa pozycja"}
+            headerAction={
+              editingId ? (
+                <Button type="button" variant="ghost" size="sm" onClick={resetDraft} disabled={disabled}>
+                  Anuluj edycję
+                </Button>
+              ) : null
             }
-          />
-
-          <div className="mt-3 flex flex-wrap items-end gap-3 border-t border-slate-200/80 pt-3">
-            <div>
-              <label className="mb-1.5 flex items-center gap-1 text-[11px] font-semibold uppercase tracking-wide text-slate-500">
-                <span className="flex size-4 items-center justify-center rounded-full bg-violet-100 text-[10px] font-bold text-violet-700">4</span>
-                Ilość (szt.)
-              </label>
-              <div className="flex items-center gap-1">
-                <QuantityStepButton
-                  label="−"
-                  disabled={disabled || draft.count <= 1}
-                  onClick={() => setDraft((p) => ({ ...p, count: Math.max(1, p.count - 1) }))}
-                />
-                <input
-                  type="number"
-                  min={1}
-                  max={99}
-                  disabled={disabled}
-                  value={draft.count}
-                  onChange={(e) => {
-                    const n = parseInt(e.target.value, 10);
-                    setDraft((p) => ({ ...p, count: Number.isFinite(n) && n >= 1 ? Math.min(99, n) : 1 }));
-                  }}
-                  className={cn(
-                    "w-16 rounded-md border border-slate-300 bg-white px-2 py-1.5 text-center text-sm font-semibold tabular-nums",
-                    controlFocusClass,
-                  )}
-                  aria-label="Ilość sztuk tej pozycji"
-                />
-                <QuantityStepButton
-                  label="+"
-                  disabled={disabled || draft.count >= 99}
-                  onClick={() => setDraft((p) => ({ ...p, count: Math.min(99, p.count + 1) }))}
-                />
-              </div>
-            </div>
-
-            <div className="flex flex-1 flex-wrap justify-end gap-2">
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                disabled={disabled || !draftComplete}
-                onClick={handleAddOrUpdate}
-              >
-                {editingId ? "Zaktualizuj pozycję" : "Dodaj do listy"}
-              </Button>
-            </div>
-          </div>
-        </section>
-
-        {/* List section at bottom */}
-        {groups.length > 0 ? (
-          <section className="space-y-2">
-            <div className="flex items-center justify-between gap-2">
-              <h3 className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-                Twoja lista ({groups.length})
-              </h3>
-              {!listComplete ? (
-                <span className="text-[11px] font-medium text-amber-600">Uzupełnij wszystkie pozycje</span>
-              ) : (
-                <span className="text-[11px] font-medium text-violet-600">Gotowe do zapisu</span>
-              )}
-            </div>
-            <ul className="max-h-40 divide-y divide-slate-100 overflow-y-auto rounded-lg border border-slate-200 bg-white">
-              {groups.map((g) => (
-                <li
-                  key={g.id}
-                  className={cn(
-                    "flex items-start gap-2 px-3 py-2.5",
-                    editingId === g.id && "bg-violet-50/60",
-                  )}
-                >
-                  <div className="min-w-0 flex-1">
-                    <p className="text-sm font-medium text-slate-800">
-                      {formatTeethGroupLabel(g)}
-                    </p>
-                  </div>
-                  <div className="flex shrink-0 gap-1">
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="sm"
-                      disabled={disabled}
-                      className="text-slate-600"
-                      onClick={() => handleEdit(g)}
-                    >
-                      Edytuj
-                    </Button>
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="sm"
-                      disabled={disabled}
-                      className="text-rose-600 hover:bg-rose-50 hover:text-rose-700"
-                      onClick={() => handleRemove(g.id)}
-                    >
-                      Usuń
-                    </Button>
-                  </div>
-                </li>
-              ))}
-            </ul>
-          </section>
-        ) : (
-          <div className="rounded-lg border border-dashed border-slate-200 bg-slate-50/30 px-4 py-3 text-center">
-            <p className="text-xs font-medium text-slate-500">Lista jest pusta — dodaj pierwszą pozycję powyżej</p>
-          </div>
-        )}
-      </div>
+            footer={
+              <TeethBuilderQuantityRow
+                count={draft.count}
+                disabled={disabled}
+                draftComplete={draftComplete}
+                editingId={editingId}
+                jawModeBoth={draft.jawMode === "both"}
+                onCountChange={(count) => setDraft((p) => ({ ...p, count }))}
+                onAddOrUpdate={handleAddOrUpdate}
+              />
+            }
+          >
+            <TeethSpecFields
+              productLine={productLine}
+              detail={draftSpec}
+              lockedKind={defaultKind ?? null}
+              disabled={disabled}
+              compact
+              builderMode
+              hidePreview
+              onChange={(patch) =>
+                setDraft((prev) => ({
+                  ...prev,
+                  color: patch.color ?? prev.color,
+                  mould: patch.mould !== undefined ? patch.mould : prev.mould,
+                  jaw: patch.jaw !== undefined ? patch.jaw : prev.jaw,
+                  kind: patch.kind !== undefined ? patch.kind : prev.kind,
+                  jawMode: patch.jawMode !== undefined ? patch.jawMode : prev.jawMode,
+                }))
+              }
+            />
+          </TeethBuilderFormShell>
+        }
+        list={
+          groups.length > 0 ? (
+            <TeethBuilderGroupList
+              groups={groups}
+              editingId={editingId}
+              listComplete={listComplete}
+              disabled={disabled}
+              onEdit={handleEdit}
+              onRemove={handleRemove}
+            />
+          ) : (
+            <TeethBuilderEmptyList
+              kind={resolvedKind ?? "anterior"}
+              productLine={productLine}
+              compact
+            />
+          )
+        }
+      />
     </ModalShell>
-  );
-}
-
-function StepBadge({
-  number,
-  label,
-  done,
-}: {
-  number: number;
-  label: string;
-  done?: boolean;
-}) {
-  return (
-    <span className="flex items-center gap-1">
-      <span
-        className={cn(
-          "flex size-4 items-center justify-center rounded-full text-[10px] font-bold",
-          done
-            ? "bg-violet-600 text-white"
-            : "bg-violet-100 text-violet-700",
-        )}
-      >
-        {done ? "✓" : number}
-      </span>
-      <span className={cn(done ? "text-violet-700" : "text-slate-400")}>{label}</span>
-    </span>
-  );
-}
-
-function QuantityStepButton({
-  label,
-  disabled,
-  onClick,
-}: {
-  label: string;
-  disabled?: boolean;
-  onClick: () => void;
-}) {
-  return (
-    <button
-      type="button"
-      disabled={disabled}
-      onClick={onClick}
-      className={cn(
-        "flex size-8 items-center justify-center rounded-md border border-slate-300 bg-white text-sm font-bold text-slate-700",
-        "hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40",
-      )}
-      aria-label={label === "+" ? "Zwiększ ilość" : "Zmniejsz ilość"}
-    >
-      {label}
-    </button>
   );
 }
 

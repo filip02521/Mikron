@@ -60,6 +60,16 @@ describe("filterDepartmentBoardQuestionsByStatus", () => {
     ).toHaveLength(1);
   });
 
+  it("filtruje własne nieprzeczytane odpowiedzi", () => {
+    const unseenOwn = new Set(["q3"]);
+    expect(
+      filterDepartmentBoardQuestionsByStatus(questions, "own_unseen", { unseenOwnIds: unseenOwn })
+    ).toHaveLength(1);
+    expect(
+      filterDepartmentBoardQuestionsByStatus(questions, "own_unseen", { unseenOwnIds: new Set(["q-missing"]) })
+    ).toHaveLength(0);
+  });
+
   it("filtruje tylko moje pytania", () => {
     expect(
       filterDepartmentBoardQuestionsByStatus(questions, "mine", { currentSalesPersonId: "sp1" })
@@ -99,6 +109,8 @@ describe("resolveQuestionFilterAfterUnseenCleared", () => {
     expect(resolveQuestionFilterAfterUnseenCleared("unseen", 0)).toBe("all");
     expect(resolveQuestionFilterAfterUnseenCleared("open", 0)).toBe("open");
     expect(resolveQuestionFilterAfterUnseenCleared("unseen", 2)).toBe("unseen");
+    expect(resolveQuestionFilterAfterUnseenCleared("own_unseen", 2, 0)).toBe("all");
+    expect(resolveQuestionFilterAfterUnseenCleared("own_unseen", 2, 1)).toBe("own_unseen");
   });
 });
 

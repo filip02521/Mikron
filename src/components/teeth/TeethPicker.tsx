@@ -11,7 +11,7 @@ import {
   type TeethKind,
   type TeethCatalogRef,
 } from "@/lib/teeth/teeth-catalog";
-import { TeethSpecFields } from "@/components/teeth/TeethSpecFields";
+import { TeethSpecFields, type TeethSpecFieldsDetail } from "@/components/teeth/TeethSpecFields";
 import { cn } from "@/lib/cn";
 import {
   panelChoiceChipClass,
@@ -92,6 +92,12 @@ export function TeethPicker({
     }
   };
 
+  const applySpecPatch = (idx: number, patch: Partial<TeethSpecFieldsDetail>) => {
+    const rowPatch = { ...patch };
+    delete rowPatch.jawMode;
+    handleChangeOne(idx, rowPatch);
+  };
+
   return (
     <div className="space-y-2">
       <div className="flex items-center justify-between gap-2">
@@ -132,7 +138,8 @@ export function TeethPicker({
             detail={expanded[0] ?? { position: 1, color: "", mould: null, jaw: null, kind: defaultKind ?? null }}
             lockedKind={defaultKind ?? null}
             disabled={disabled}
-            onChange={(patch) => handleChangeOne(0, patch)}
+            allowJawBoth={false}
+            onChange={(patch) => applySpecPatch(0, patch)}
           />
         </div>
       ) : (
@@ -143,7 +150,7 @@ export function TeethPicker({
           defaultKind={defaultKind ?? null}
           activeKlapka={activeKlapka}
           onActiveChange={setActiveKlapka}
-          onChangeOne={handleChangeOne}
+          onChangeOne={applySpecPatch}
         />
       )}
     </div>
@@ -165,7 +172,7 @@ function KlapkaWizard({
   defaultKind: TeethKind | null;
   activeKlapka: number;
   onActiveChange: (idx: number) => void;
-  onChangeOne: (idx: number, patch: Partial<TeethLineDetail>) => void;
+  onChangeOne: (idx: number, patch: Partial<TeethSpecFieldsDetail>) => void;
 }) {
   const total = expanded.length;
   const current = expanded[activeKlapka] ?? expanded[0]!;
@@ -231,6 +238,7 @@ function KlapkaWizard({
           detail={current}
           lockedKind={defaultKind}
           disabled={disabled}
+          allowJawBoth={false}
           onChange={(patch) => onChangeOne(activeKlapka, patch)}
         />
       </div>

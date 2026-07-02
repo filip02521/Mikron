@@ -7,6 +7,7 @@ import {
   type TeethLineDetail,
   type TeethGroupedDetail,
 } from "@/lib/teeth/teeth-catalog";
+import { jawRequiredForKind } from "@/lib/teeth/teeth-mould-shape-groups";
 import {
   teethProsbaChipClass,
   teethProsbaChipCountClass,
@@ -57,7 +58,12 @@ function formatChipLabel(
   g: TeethGroupedDetail,
   countClass: string,
 ): ReactNode {
-  const jawLabel = g.jaw === "upper" ? "góra" : g.jaw === "lower" ? "dół" : null;
+  const jawLabel =
+    g.kind && jawRequiredForKind(g.kind) && g.jaw === "upper"
+      ? "góra"
+      : g.kind && jawRequiredForKind(g.kind) && g.jaw === "lower"
+        ? "dół"
+        : null;
   const kindLabel = g.kind ? TEETH_KIND_LABELS[g.kind].toLowerCase() : null;
   const segments: string[] = [];
   if (g.color) segments.push(g.color);

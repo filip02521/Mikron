@@ -1027,7 +1027,6 @@ export async function processIndividualFromSummary(
   action: "GLOWNE" | "POBOCZNE" | "ANULOWANO",
   userEmail: string,
   procurementCancelNote?: string | null,
-  _userId?: string
 ) {
   const supabase = createAdminClient();
   const { data: statusRows } = await supabase

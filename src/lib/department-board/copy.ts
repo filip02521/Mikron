@@ -51,6 +51,7 @@ export const DEPARTMENT_BOARD_QUESTIONS_FILTERS = {
     open: "Pytania bez odpowiedzi działu zakupów.",
     answered: "Pytania z co najmniej jedną odpowiedzią zakupów.",
     unseen: "Odpowiedzi zakupów, których jeszcze nie otworzyłeś.",
+    own_unseen: "Twoje pytania z nową odpowiedzią zakupów, której jeszcze nie otworzyłeś.",
     mine: "Pytania złożone przez Ciebie (powiązane z Twoim profilem handlowca).",
   },
 };

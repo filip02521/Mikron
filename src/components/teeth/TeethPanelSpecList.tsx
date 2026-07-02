@@ -7,6 +7,7 @@ import {
   type TeethGroupedDetail,
   type TeethLineDetail,
 } from "@/lib/teeth/teeth-catalog";
+import { jawRequiredForKind } from "@/lib/teeth/teeth-mould-shape-groups";
 import { cn } from "@/lib/cn";
 import { panelTypography } from "@/lib/ui/ontime-theme";
 import { plPozycja } from "@/lib/ui/polish-plurals";
@@ -14,7 +15,8 @@ import { teethPanelSpecInsetClass, teethPanelSpecInsetDenseClass } from "@/lib/t
 
 const JAW_LABELS = { upper: "Góra", lower: "Dół" } as const;
 
-function jawLabel(jaw: TeethGroupedDetail["jaw"]): string {
+function jawLabel(jaw: TeethGroupedDetail["jaw"], kind: TeethGroupedDetail["kind"]): string {
+  if (!kind || !jawRequiredForKind(kind)) return "—";
   if (jaw === "upper") return JAW_LABELS.upper;
   if (jaw === "lower") return JAW_LABELS.lower;
   return "—";
@@ -102,7 +104,7 @@ export function TeethPanelSpecList({
                   {g.mould?.trim() || "—"}
                 </td>
                 <td className={cn("pr-2 text-slate-700", compact ? "py-0.5" : "py-1.5")}>
-                  {jawLabel(g.jaw)}
+                  {jawLabel(g.jaw, g.kind)}
                 </td>
                 <td className={cn("pr-2 text-slate-700", compact ? "py-0.5" : "py-1.5")}>
                   {kindLabel(g.kind)}

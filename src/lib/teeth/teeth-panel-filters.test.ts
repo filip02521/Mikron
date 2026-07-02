@@ -65,15 +65,20 @@ describe("orderHasTeethSpec", () => {
     kind: "anterior" as const,
   };
 
-  it("returns true when every row has color, jaw and kind", () => {
+  it("returns true when anterior row has color and kind (jaw optional)", () => {
     expect(orderHasTeethSpec({ teeth_details: [completeRow] })).toBe(true);
-  });
-
-  it("returns false when jaw is missing", () => {
     expect(
       orderHasTeethSpec({
         teeth_details: [{ ...completeRow, jaw: null }],
-      })
+      }),
+    ).toBe(true);
+  });
+
+  it("returns false when posterior jaw is missing", () => {
+    expect(
+      orderHasTeethSpec({
+        teeth_details: [{ ...completeRow, jaw: null, kind: "posterior" }],
+      }),
     ).toBe(false);
   });
 

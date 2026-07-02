@@ -251,7 +251,10 @@ export type SalesBoardAttentionSnapshot = {
     isOwnQuestion: boolean;
   } | null;
   unseenQuestionIds: string[];
+  /** Nieprzeczytane odpowiedzi wyłącznie na własne pytania handlowca. */
+  unseenOwnQuestionIds: string[];
   pinnedAnnouncements: DepartmentBoardThreadRow[];
+  /** Badge /moje: tylko nieprzeczytane odpowiedzi na własne pytania (bez ogłoszeń i cudzych wątków). */
   navBadgeCount: number;
 };
 
@@ -356,6 +359,9 @@ export async function fetchSalesBoardAttentionSnapshot(
 
   const preview = pickUnseenAnswerPreview(unseenAnswerItems);
   const unseenOwnAnswerCount = countUnseenOwnBoardAnswers(unseenAnswerItems);
+  const unseenOwnQuestionIds = unseenAnswerItems
+    .filter((item) => item.isOwnQuestion)
+    .map((item) => item.threadId);
 
   return {
     unreadAnnouncementCount,
@@ -373,8 +379,9 @@ export async function fetchSalesBoardAttentionSnapshot(
         }
       : null,
     unseenQuestionIds: unseenAnswerItems.map((i) => i.threadId),
+    unseenOwnQuestionIds,
     pinnedAnnouncements,
-    navBadgeCount: unreadAnnouncementCount + unseenAnswerItems.length,
+    navBadgeCount: unseenOwnAnswerCount,
   };
 }
 

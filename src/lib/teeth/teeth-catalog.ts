@@ -10,6 +10,7 @@ import {
   lineOptionalMould,
   type TeethLineDefinition,
 } from "./teeth-lines-data";
+import { jawRequiredForKind } from "./teeth-mould-shape-groups";
 import { TEETH_CHIP_OTHER } from "./teeth-palettes";
 import type {
   TeethManufacturer,
@@ -121,6 +122,9 @@ export function detectTeethProductLine(
   if (n.includes("classic") && (n.includes("wiedent") || n.includes("wident"))) {
     return "wiedent_classic";
   }
+  if (/alma\s*miss|almamiss/.test(n)) {
+    return "wiedent_almamiss";
+  }
   if (/om\s*1|om\s*3|0m1|0m3|wybielon/.test(n) && n.includes("wiedent")) {
     return "wiedent_estetic_om";
   }
@@ -143,6 +147,13 @@ export function detectTeethProductLine(
   if (n.includes("major")) return "major_super_lux";
 
   if (n.includes("dentex") || n.includes("amberlux") || n.includes("amber lux")) {
+    if (
+      /\bdentex[\s-]*v\b/.test(n) ||
+      /skala\s*v/.test(n) ||
+      /\b(a|b|c|d)\d+(\.5)?v\b/.test(n)
+    ) {
+      return "dentex_amberlux_v";
+    }
     return "dentex_amberlux";
   }
 
@@ -249,8 +260,8 @@ export function isTeethDetailComplete(
   catalog: TeethCatalogRef,
 ): boolean {
   if (!detail.color.trim() || detail.color === TEETH_CHIP_OTHER) return false;
-  if (!detail.jaw) return false;
   if (!detail.kind) return false;
+  if (jawRequiredForKind(detail.kind) && !detail.jaw) return false;
   if (mouldRequiredForKind(catalog, detail.kind) && !detail.mould?.trim()) return false;
   if (detail.mould === TEETH_CHIP_OTHER) return false;
   return true;
@@ -402,7 +413,9 @@ export function formatTeethGroupLabel(
   const parts: string[] = [];
   if (group.color.trim()) parts.push(group.color.trim());
   if (group.mould?.trim()) parts.push(group.mould.trim());
-  if (group.jaw) parts.push(JAW_SHORT[group.jaw]);
+  if (group.kind && jawRequiredForKind(group.kind) && group.jaw) {
+    parts.push(JAW_SHORT[group.jaw]);
+  }
   if (group.kind) parts.push(TEETH_KIND_LABELS[group.kind].toLowerCase());
   const spec = parts.length > 0 ? parts.join(" · ") : "—";
   if (!includeCount) return spec;

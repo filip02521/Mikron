@@ -13,6 +13,7 @@ export function DepartmentBoardClient({
   audience,
   loadError = null,
   unseenQuestionIds = [],
+  unseenOwnQuestionIds = [],
   boardAttention = null,
   initialTab,
   focusQuestionId = null,
@@ -26,6 +27,7 @@ export function DepartmentBoardClient({
   audience: "sales" | "procurement";
   loadError?: string | null;
   unseenQuestionIds?: string[];
+  unseenOwnQuestionIds?: string[];
   boardAttention?: DepartmentBoardAttentionBanners | null;
   initialTab?: "announcements" | "questions";
   focusQuestionId?: string | null;
@@ -46,6 +48,7 @@ export function DepartmentBoardClient({
         initial={questionsInitial}
         loadError={loadError}
         unseenQuestionIds={unseenQuestionIds}
+        unseenOwnQuestionIds={unseenOwnQuestionIds}
         boardAttention={boardAttention}
         focusQuestionId={focusQuestionId}
         readOnly={readOnly}

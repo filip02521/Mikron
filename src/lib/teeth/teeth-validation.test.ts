@@ -28,14 +28,25 @@ describe("teethLineDetailsComplete", () => {
     ).toBe(false);
   });
 
-  it("returns false when jaw is missing", () => {
+  it("returns false when jaw is missing on posterior", () => {
     expect(
       teethLineDetailsComplete({
-        teethDetails: [{ position: 1, color: "A1", mould: "A11", jaw: null, kind: "anterior" }],
+        teethDetails: [{ position: 1, color: "A1", mould: "A11", jaw: null, kind: "posterior" }],
         quantity: "1",
         isTeethProduct: true,
       })
     ).toBe(false);
+  });
+
+  it("allows anterior without jaw", () => {
+    expect(
+      teethLineDetailsComplete({
+        teethDetails: [{ position: 1, color: "A1", mould: "S61", jaw: null, kind: "anterior" }],
+        quantity: "1",
+        adminProductLine: "ivoclar_phonares_ii",
+        isTeethProduct: true,
+      })
+    ).toBe(true);
   });
 
   it("returns false when kind is missing", () => {
@@ -76,12 +87,20 @@ describe("assertMinimalTeethDetailsForDb", () => {
     expect(() => assertMinimalTeethDetailsForDb([])).toThrow(/listę zębów/i);
   });
 
-  it("throws when jaw is missing", () => {
+  it("throws when jaw is missing on posterior", () => {
     expect(() =>
       assertMinimalTeethDetailsForDb([
-        { position: 1, color: "A1", mould: "A11", jaw: null, kind: "anterior" },
+        { position: 1, color: "A1", mould: "A11", jaw: null, kind: "posterior" },
       ])
     ).toThrow(/listę zębów/i);
+  });
+
+  it("passes anterior without jaw", () => {
+    expect(() =>
+      assertMinimalTeethDetailsForDb([
+        { position: 1, color: "A1", mould: "S61", jaw: null, kind: "anterior" },
+      ])
+    ).not.toThrow();
   });
 
   it("passes when color, jaw and kind are set", () => {

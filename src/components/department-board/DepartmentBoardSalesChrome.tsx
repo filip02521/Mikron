@@ -12,7 +12,7 @@ import {
 } from "@/lib/ui/ontime-theme";
 
 export type DepartmentBoardTab = "announcements" | "questions";
-export type DepartmentBoardQuestionFilter = "all" | "open" | "answered" | "unseen" | "mine";
+export type DepartmentBoardQuestionFilter = "all" | "open" | "answered" | "unseen" | "own_unseen" | "mine";
 
 const TAB_CHIP_CLASS = cn(
   panelChoiceChipClass,

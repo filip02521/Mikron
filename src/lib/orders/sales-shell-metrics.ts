@@ -24,7 +24,7 @@ import type { DeliveryStats } from "@/types/database";
 export type SalesShellMetrics = {
   activityVersion: string;
   navAttention: number;
-  /** Badge „Moje zamówienia”: suma Start dnia (prośby + przypomnienia ZK/notatki + tablica). */
+  /** Badge „Moje zamówienia”: Start dnia + własne odpowiedzi na tablicy (bez ogłoszeń). */
   dayStartNavCount: number;
   /** Badge „ZK czekające” — zaległe przypomnienia ZK. */
   zkNavBadge: number;

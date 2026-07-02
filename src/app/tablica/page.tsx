@@ -133,6 +133,7 @@ export default async function SalesBoardPage({
   let loadError: string | null = null;
   let questions = [] as Awaited<ReturnType<typeof fetchDepartmentBoardQuestions>>["questions"];
   let unseenQuestionIds: string[] = [];
+  let unseenOwnQuestionIds: string[] = [];
   let boardAttention = null;
 
   try {
@@ -144,6 +145,7 @@ export default async function SalesBoardPage({
     ]);
     questions = questionsData.questions;
     unseenQuestionIds = attention?.unseenQuestionIds ?? [];
+    unseenOwnQuestionIds = attention?.unseenOwnQuestionIds ?? [];
     boardAttention = attention;
 
     if (focusThreadId && !questions.some((question) => question.id === focusThreadId)) {
@@ -170,6 +172,7 @@ export default async function SalesBoardPage({
       audience="sales"
       loadError={loadError}
       unseenQuestionIds={unseenQuestionIds}
+      unseenOwnQuestionIds={unseenOwnQuestionIds}
       boardAttention={boardAttention}
       focusQuestionId={focusQuestionId}
       readOnly={readOnlyPreview}

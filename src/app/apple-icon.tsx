@@ -18,6 +18,8 @@ export default function AppleIcon() {
           background: "transparent",
         }}
       >
+        {/* next/og ImageResponse wymaga <img> z data URI */}
+        {/* eslint-disable-next-line @next/next/no-img-element */}
         <img src={brandAppIconDataUri()} width={180} height={180} alt="" />
       </div>
     ),

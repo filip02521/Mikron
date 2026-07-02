@@ -78,23 +78,24 @@ describe("buildSalesDayStartSnapshot", () => {
     expect(pickupItems[0]?.ctaLabel).toBe("Potwierdź");
   });
 
-  it("łączy notatnik i tablicę w totalActionCount", () => {
+  it("łączy notatnik i własne odpowiedzi tablicy w totalActionCount (bez ogłoszeń)", () => {
     const board: SalesBoardAttentionSnapshot = {
       unreadAnnouncementCount: 1,
       unreadAnnouncementLatestTitle: "Urlop",
       unreadAnnouncementBannerCount: 1,
       unreadAnnouncementBannerLatestTitle: "Urlop",
       unreadAnnouncementBannerLatestId: "ann-1",
-      unseenAnswerCount: 1,
+      unseenAnswerCount: 2,
       unseenOwnAnswerCount: 1,
       unseenAnswerPreview: {
         threadId: "t1",
         title: "Termin",
         isOwnQuestion: true,
       },
-      unseenQuestionIds: ["t1"],
+      unseenQuestionIds: ["t1", "t2"],
+      unseenOwnQuestionIds: ["t1"],
       pinnedAnnouncements: [],
-      navBadgeCount: 2,
+      navBadgeCount: 1,
     };
 
     const snapshot = buildSalesDayStartSnapshot({
@@ -121,9 +122,125 @@ describe("buildSalesDayStartSnapshot", () => {
       boardAttention: board,
     });
 
-    expect(snapshot.totalActionCount).toBe(4);
-    const announcementItem = snapshot.items.find((i) => i.source === "board_announcement");
-    expect(announcementItem?.href).toContain("ogloszenie=ann-1");
+    expect(snapshot.totalActionCount).toBe(3);
+    expect(snapshot.items.find((i) => i.source === "board_announcement")).toBeUndefined();
+    const answerItem = snapshot.items.find((i) => i.source === "board_answer");
+    expect(answerItem?.title).toContain("Twoje pytanie");
+    expect(answerItem?.count).toBe(1);
+    expect(answerItem?.href).toContain("watek=t1");
+  });
+
+  it("linkuje do filtra własnych odpowiedzi gdy kilka nieprzeczytanych", () => {
+    const board: SalesBoardAttentionSnapshot = {
+      unreadAnnouncementCount: 0,
+      unreadAnnouncementLatestTitle: null,
+      unreadAnnouncementBannerCount: 0,
+      unreadAnnouncementBannerLatestTitle: null,
+      unreadAnnouncementBannerLatestId: null,
+      unseenAnswerCount: 3,
+      unseenOwnAnswerCount: 2,
+      unseenAnswerPreview: {
+        threadId: "t1",
+        title: "Termin",
+        isOwnQuestion: true,
+      },
+      unseenQuestionIds: ["t1", "t2", "t3"],
+      unseenOwnQuestionIds: ["t1", "t3"],
+      pinnedAnnouncements: [],
+      navBadgeCount: 2,
+    };
+
+    const snapshot = buildSalesDayStartSnapshot({
+      rows: [],
+      boardAttention: board,
+    });
+
+    const answerItem = snapshot.items.find((i) => i.source === "board_answer");
+    expect(answerItem?.title).toContain("(2)");
+    expect(answerItem?.href).toContain("filtr=own_unseen");
+  });
+
+  it("linkuje do wątku gdy jedna własna odpowiedź", () => {
+    const board: SalesBoardAttentionSnapshot = {
+      unreadAnnouncementCount: 0,
+      unreadAnnouncementLatestTitle: null,
+      unreadAnnouncementBannerCount: 0,
+      unreadAnnouncementBannerLatestTitle: null,
+      unreadAnnouncementBannerLatestId: null,
+      unseenAnswerCount: 1,
+      unseenOwnAnswerCount: 1,
+      unseenAnswerPreview: {
+        threadId: "t-own",
+        title: "Moje pytanie",
+        isOwnQuestion: true,
+      },
+      unseenQuestionIds: ["t-own"],
+      unseenOwnQuestionIds: ["t-own"],
+      pinnedAnnouncements: [],
+      navBadgeCount: 1,
+    };
+
+    const snapshot = buildSalesDayStartSnapshot({
+      rows: [],
+      boardAttention: board,
+    });
+
+    const answerItem = snapshot.items.find((i) => i.source === "board_answer");
+    expect(answerItem?.href).toContain("watek=t-own");
+    expect(answerItem?.href).not.toContain("filtr=");
+  });
+
+  it("nie pokazuje odpowiedzi tablicy w start dnia gdy to pytanie kolegi", () => {
+    const board: SalesBoardAttentionSnapshot = {
+      unreadAnnouncementCount: 0,
+      unreadAnnouncementLatestTitle: null,
+      unreadAnnouncementBannerCount: 0,
+      unreadAnnouncementBannerLatestTitle: null,
+      unreadAnnouncementBannerLatestId: null,
+      unseenAnswerCount: 1,
+      unseenOwnAnswerCount: 0,
+      unseenAnswerPreview: {
+        threadId: "t2",
+        title: "Pytanie kolegi",
+        isOwnQuestion: false,
+      },
+      unseenQuestionIds: ["t2"],
+      unseenOwnQuestionIds: [],
+      pinnedAnnouncements: [],
+      navBadgeCount: 0,
+    };
+
+    const snapshot = buildSalesDayStartSnapshot({
+      rows: [],
+      boardAttention: board,
+    });
+
+    expect(snapshot.items.find((i) => i.source === "board_answer")).toBeUndefined();
+    expect(snapshot.cleared).toBe(true);
+  });
+
+  it("nie duplikuje ogłoszeń zakupów w start dnia", () => {
+    const board: SalesBoardAttentionSnapshot = {
+      unreadAnnouncementCount: 2,
+      unreadAnnouncementLatestTitle: "Urlop",
+      unreadAnnouncementBannerCount: 2,
+      unreadAnnouncementBannerLatestTitle: "Urlop",
+      unreadAnnouncementBannerLatestId: "ann-1",
+      unseenAnswerCount: 0,
+      unseenOwnAnswerCount: 0,
+      unseenAnswerPreview: null,
+      unseenQuestionIds: [],
+      unseenOwnQuestionIds: [],
+      pinnedAnnouncements: [],
+      navBadgeCount: 0,
+    };
+
+    const snapshot = buildSalesDayStartSnapshot({
+      rows: [],
+      boardAttention: board,
+    });
+
+    expect(snapshot.items.find((i) => i.source === "board_announcement")).toBeUndefined();
   });
 
   it("linkuje przypomnienie ZK do /zk z focusWatch", () => {

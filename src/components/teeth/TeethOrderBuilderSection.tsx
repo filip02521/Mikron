@@ -11,9 +11,21 @@ import {
 import { Button } from "@/components/ui/Button";
 import { TeethSpecFields } from "@/components/teeth/TeethSpecFields";
 import {
+  TeethBuilderEmptyList,
+  TeethBuilderFormShell,
+  TeethBuilderGroupList,
+  TeethBuilderQuantityRow,
+  TeethBuilderWorkspace,
+  teethBuilderModalSize,
+} from "@/components/teeth/TeethOrderBuilderParts";
+import {
+  draftSpecToGroupInputs,
+  isTeethBuilderDraftComplete,
+  type TeethBuilderDraftSpec,
+} from "@/lib/teeth/teeth-draft-jaw";
+import {
   allTeethGroupsComplete,
   createTeethGroupDraft,
-  formatTeethGroupLabel,
   isTeethGroupComplete,
   teethGroupsFromDetails,
   totalTeethCountFromGroups,
@@ -23,10 +35,11 @@ import {
   type TeethLineDetail,
   type TeethProductLine,
 } from "@/lib/teeth/teeth-catalog";
-import { cn } from "@/lib/cn";
-import { controlFocusClass } from "@/lib/ui/ontime-theme";
+import {
+  teethBuilderSteps,
+} from "@/lib/teeth/teeth-builder-copy";
 
-type DraftSpec = Pick<TeethGroupDraft, "color" | "mould" | "jaw" | "kind" | "count">;
+type DraftSpec = TeethBuilderDraftSpec;
 
 const emptyDraft = (kind: TeethKind): DraftSpec => ({
   color: "",
@@ -34,6 +47,7 @@ const emptyDraft = (kind: TeethKind): DraftSpec => ({
   jaw: null,
   kind,
   count: 1,
+  jawMode: null,
 });
 
 function draftFromGroup(group: TeethGroupDraft): DraftSpec {
@@ -43,6 +57,7 @@ function draftFromGroup(group: TeethGroupDraft): DraftSpec {
     jaw: group.jaw,
     kind: group.kind,
     count: group.count,
+    jawMode: group.jaw === "upper" ? "upper" : group.jaw === "lower" ? "lower" : null,
   };
 }
 
@@ -91,7 +106,17 @@ export const TeethOrderBuilderSection = forwardRef<
     onStatusChange?: (status: { hasItems: boolean; complete: boolean }) => void;
   }
 >(function TeethOrderBuilderSection(
-  { productLine, lockedKind, initialDetails, disabled, sectionLabel, embedded = false, dense = false, onTotalsChange, onStatusChange },
+  {
+    productLine,
+    lockedKind,
+    initialDetails,
+    disabled,
+    sectionLabel,
+    embedded = false,
+    dense = false,
+    onTotalsChange,
+    onStatusChange,
+  },
   ref,
 ) {
   const catalog = useMemo<TeethCatalogRef>(() => ({ productLine }), [productLine]);
@@ -107,7 +132,7 @@ export const TeethOrderBuilderSection = forwardRef<
 
   const totalCount = totalTeethCountFromGroups(groups);
   const listComplete = groups.length > 0 && allTeethGroupsComplete(groups, catalog);
-  const draftComplete = isTeethGroupComplete({ ...draft, kind: lockedKind }, catalog);
+  const draftComplete = isTeethBuilderDraftComplete({ ...draft, kind: lockedKind }, catalog);
 
   useEffect(() => {
     onTotalsChange?.(totalCount);
@@ -134,25 +159,20 @@ export const TeethOrderBuilderSection = forwardRef<
   }, [lockedKind]);
 
   const handleAddOrUpdate = () => {
-    const nextGroup = createTeethGroupDraft({
-      ...draft,
-      kind: lockedKind,
-      id: editingId ?? undefined,
-    });
-    if (!isTeethGroupComplete(nextGroup, catalog)) return;
+    const fullDraft: DraftSpec = { ...draft, kind: lockedKind };
+    if (!isTeethBuilderDraftComplete(fullDraft, catalog)) return;
 
-    setGroups((prev) => {
-      if (editingId) {
-        return prev.map((g) => (g.id === editingId ? nextGroup : g));
-      }
-      return [...prev, nextGroup];
-    });
     if (editingId) {
+      const nextGroup = createTeethGroupDraft({ ...fullDraft, id: editingId });
+      setGroups((prev) => prev.map((g) => (g.id === editingId ? nextGroup : g)));
       setEditingId(nextGroup.id);
       setDraft(draftFromGroup(nextGroup));
-    } else {
-      resetDraft();
+      return;
     }
+
+    const expanded = draftSpecToGroupInputs(fullDraft, productLine);
+    setGroups((prev) => [...prev, ...expanded.map((row) => createTeethGroupDraft(row))]);
+    resetDraft();
   };
 
   const handleEdit = (group: TeethGroupDraft) => {
@@ -171,210 +191,110 @@ export const TeethOrderBuilderSection = forwardRef<
       mould: draft.mould,
       jaw: draft.jaw,
       kind: lockedKind,
+      jawMode: draft.jawMode,
     }),
     [draft, lockedKind],
   );
 
-  const listBlock = (
-    <>
-      {groups.length > 0 ? (
-        <section className="space-y-2">
-          <div className="flex items-center justify-between gap-2">
-            <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">
-              Twoja lista ({groups.length})
-            </p>
-            {!listComplete ? (
-              <span className="text-[11px] font-medium text-amber-600">Uzupełnij pozycje</span>
-            ) : (
-              <span className="text-[11px] font-medium text-violet-600">Gotowe do zapisu</span>
-            )}
-          </div>
-          <ul
-            className={cn(
-              "divide-y divide-slate-100 rounded-lg border border-slate-200 bg-white",
-              dense ? "max-h-32 overflow-y-auto" : "overflow-hidden",
-            )}
-          >
-            {groups.map((g) => (
-              <li
-                key={g.id}
-                className={cn(
-                  "flex items-start gap-2 px-3 py-2.5",
-                  editingId === g.id && "bg-violet-50/60",
-                )}
-              >
-                <div className="min-w-0 flex-1">
-                  <p className="text-sm font-medium text-slate-800">
-                    {formatTeethGroupLabel({ ...g, kind: lockedKind })}
-                  </p>
-                </div>
-                <div className="flex shrink-0 gap-1">
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="sm"
-                    disabled={disabled}
-                    className="text-slate-600"
-                    onClick={() => handleEdit(g)}
-                  >
-                    Edytuj
-                  </Button>
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="sm"
-                    disabled={disabled}
-                    className="text-rose-600 hover:bg-rose-50 hover:text-rose-700"
-                    onClick={() => handleRemove(g.id)}
-                  >
-                    Usuń
-                  </Button>
-                </div>
-              </li>
-            ))}
-          </ul>
-        </section>
-      ) : (
-        <div
-          className={cn(
-            "rounded-lg border border-dashed border-violet-200 bg-violet-50/40 px-4 text-center",
-            dense ? "py-4" : "py-6",
-          )}
-        >
-          <p className="text-sm font-medium text-violet-900">Brak pozycji na liście</p>
-          <p className="mt-1 text-xs text-violet-700/90">
-            Dodaj pierwszą pozycję poniżej — np. A2 · S61 · góra × 4 szt.
-          </p>
-        </div>
-      )}
+  const steps = useMemo(
+    () =>
+      teethBuilderSteps({
+        kind: lockedKind,
+        color: draft.color,
+        mould: draft.mould,
+        jawMode: draft.jawMode,
+        jaw: draft.jaw,
+      }),
+    [lockedKind, draft.color, draft.mould, draft.jawMode, draft.jaw],
+  );
 
-      <section
-        className={cn(
-          "rounded-lg border border-slate-200 bg-slate-50/50",
-          dense ? "mt-3 p-3" : embedded ? "mt-4 p-4" : "p-4",
-        )}
-      >
-        <h4
-          className={cn(
-            "text-xs font-semibold uppercase tracking-wide text-slate-500",
-            dense ? "mb-2" : "mb-3",
-          )}
-        >
-          {editingId ? "Edytuj pozycję" : "Nowa pozycja"}
-        </h4>
+  const wideLayout = teethBuilderModalSize(productLine, lockedKind) === "xl";
 
-        <TeethSpecFields
-          productLine={productLine}
-          detail={draftSpec}
-          lockedKind={lockedKind}
+  const formBlock = (
+    <TeethBuilderFormShell
+      title={editingId ? "Edytuj pozycję" : "Nowa pozycja"}
+      headerAction={
+        editingId ? (
+          <Button type="button" variant="ghost" size="sm" onClick={resetDraft} disabled={disabled}>
+            Anuluj edycję
+          </Button>
+        ) : null
+      }
+      footer={
+        <TeethBuilderQuantityRow
+          count={draft.count}
           disabled={disabled}
-          compact
-          hideKindField
-          onChange={(patch) =>
-            setDraft((prev) => ({
-              ...prev,
-              color: patch.color ?? prev.color,
-              mould: patch.mould !== undefined ? patch.mould : prev.mould,
-              jaw: patch.jaw !== undefined ? patch.jaw : prev.jaw,
-            }))
-          }
+          draftComplete={draftComplete}
+          editingId={editingId}
+          jawModeBoth={draft.jawMode === "both"}
+          onCountChange={(count) => setDraft((p) => ({ ...p, count }))}
+          onAddOrUpdate={handleAddOrUpdate}
         />
+      }
+    >
+      <TeethSpecFields
+        productLine={productLine}
+        detail={draftSpec}
+        lockedKind={lockedKind}
+        disabled={disabled}
+        compact
+        builderMode
+        hideKindField
+        hidePreview
+        onChange={(patch) =>
+          setDraft((prev) => ({
+            ...prev,
+            color: patch.color ?? prev.color,
+            mould: patch.mould !== undefined ? patch.mould : prev.mould,
+            jaw: patch.jaw !== undefined ? patch.jaw : prev.jaw,
+            jawMode: patch.jawMode !== undefined ? patch.jawMode : prev.jawMode,
+          }))
+        }
+      />
+    </TeethBuilderFormShell>
+  );
 
-        <div className={cn("flex flex-wrap items-end gap-3 border-t border-slate-200/80", dense ? "mt-3 pt-3" : "mt-4 pt-4")}>
-          <div>
-            <label className="mb-1.5 block text-[11px] font-semibold uppercase tracking-wide text-slate-500">
-              Ilość (szt.)
-            </label>
-            <div className="flex items-center gap-1">
-              <QuantityStepButton
-                label="−"
-                disabled={disabled || draft.count <= 1}
-                onClick={() => setDraft((p) => ({ ...p, count: Math.max(1, p.count - 1) }))}
-              />
-              <input
-                type="number"
-                min={1}
-                max={99}
-                disabled={disabled}
-                value={draft.count}
-                onChange={(e) => {
-                  const n = parseInt(e.target.value, 10);
-                  setDraft((p) => ({
-                    ...p,
-                    count: Number.isFinite(n) && n >= 1 ? Math.min(99, n) : 1,
-                  }));
-                }}
-                className={cn(
-                  "w-16 rounded-md border border-slate-300 bg-white px-2 py-1.5 text-center text-sm font-semibold tabular-nums",
-                  controlFocusClass,
-                )}
-                aria-label={sectionLabel ? `Ilość sztuk — ${sectionLabel}` : "Ilość sztuk"}
-              />
-              <QuantityStepButton
-                label="+"
-                disabled={disabled || draft.count >= 99}
-                onClick={() => setDraft((p) => ({ ...p, count: Math.min(99, p.count + 1) }))}
-              />
-            </div>
-          </div>
+  const listBlock =
+    groups.length > 0 ? (
+      <TeethBuilderGroupList
+        groups={groups}
+        lockedKind={lockedKind}
+        editingId={editingId}
+        listComplete={listComplete}
+        disabled={disabled}
+        dense={dense}
+        onEdit={handleEdit}
+        onRemove={handleRemove}
+      />
+    ) : (
+      <TeethBuilderEmptyList
+        kind={lockedKind}
+        productLine={productLine}
+        variant={embedded ? "neutral" : "accent"}
+        compact={dense}
+      />
+    );
 
-          <div className="flex flex-1 flex-wrap justify-end gap-2">
-            {editingId ? (
-              <Button type="button" variant="ghost" size="sm" onClick={resetDraft} disabled={disabled}>
-                Anuluj edycję
-              </Button>
-            ) : null}
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              disabled={disabled || !draftComplete}
-              onClick={handleAddOrUpdate}
-            >
-              {editingId ? "Zaktualizuj pozycję" : "Dodaj do listy"}
-            </Button>
-          </div>
-        </div>
-      </section>
-    </>
+  const content = (
+    <TeethBuilderWorkspace
+      wide={wideLayout && !dense}
+      steps={steps}
+      form={formBlock}
+      list={listBlock}
+    />
   );
 
   if (embedded) {
-    return <div className={cn(dense ? "space-y-3" : "space-y-5")}>{listBlock}</div>;
+    return content;
   }
 
   return (
-    <div className="space-y-3 rounded-lg border border-slate-200 bg-white p-4">
+    <div className="space-y-2.5 rounded-lg ring-1 ring-indigo-100/80 bg-white p-3">
       <div className="flex items-center justify-between gap-2">
-        <h3 className="text-sm font-semibold text-slate-800">{sectionLabel}</h3>
-        <span className="text-xs font-medium tabular-nums text-violet-700">{totalCount} szt.</span>
+        <h3 className="text-xs font-semibold text-slate-800">{sectionLabel}</h3>
+        <span className="text-[10px] font-medium tabular-nums text-indigo-700">{totalCount} szt.</span>
       </div>
-      {listBlock}
+      {content}
     </div>
   );
 });
-
-function QuantityStepButton({
-  label,
-  disabled,
-  onClick,
-}: {
-  label: string;
-  disabled?: boolean;
-  onClick: () => void;
-}) {
-  return (
-    <button
-      type="button"
-      disabled={disabled}
-      onClick={onClick}
-      className={cn(
-        "flex size-8 items-center justify-center rounded-md border border-slate-300 bg-white text-sm font-bold text-slate-700",
-        "hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40",
-      )}
-      aria-label={label === "+" ? "Zwiększ ilość" : "Zmniejsz ilość"}
-    >
-      {label}
-    </button>
-  );
-}

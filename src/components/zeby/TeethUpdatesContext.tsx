@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, useCallback, useContext, useEffect, useLayoutEffect, useRef, useState } from "react";
+import { createContext, useCallback, useContext, useEffect, useRef, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { Button } from "@/components/ui/Button";
 import { SystemNotice } from "@/components/ui/SystemNotice";
@@ -73,15 +73,13 @@ export function TeethUpdatesProvider({
   const [lastSyncedAt, setLastSyncedAt] = useState<number | null>(null);
   const [lastPollAt, setLastPollAt] = useState<number | null>(null);
   const versionKey = `${enabled}\0${initialVersion ?? ""}`;
-  const [appliedVersionKey, setAppliedVersionKey] = useState("");
+  const [appliedVersionKey, setAppliedVersionKey] = useState(versionKey);
 
-  useLayoutEffect(() => {
-    if (!enabled || initialVersion == null) return;
-    if (versionKey === appliedVersionKey) return;
+  if (enabled && initialVersion != null && versionKey !== appliedVersionKey) {
     setAppliedVersionKey(versionKey);
     setBaseline(initialVersion);
     setLatest(initialVersion);
-  }, [enabled, initialVersion, versionKey, appliedVersionKey]);
+  }
 
   const setAutoRefresh = useCallback((value: boolean) => {
     autoRefreshStore.setValue(value);

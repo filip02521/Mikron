@@ -8,7 +8,6 @@ import { Field, Input } from "@/components/ui/Field";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { Spinner } from "@/components/ui/Spinner";
-import { IconCircleCheck } from "@/components/icons/StrokeIcons";
 import { SubiektFeedbackAlert } from "@/components/subiekt/SubiektFeedbackAlert";
 import {
   TYPEAHEAD_KEYBOARD_HINT,
@@ -148,7 +147,22 @@ function SubiektLinkedLineBanner({
   mikranCode: string;
   fromCatalog?: boolean;
 }) {
-  return null;
+  const title = fromCatalog ? "Z bazy" : "Powiązano z Subiektem";
+
+  return (
+    <div
+      role="status"
+      aria-label={title}
+      className="rounded-md border border-emerald-200/80 bg-emerald-50/70 px-3 py-2 text-xs text-emerald-950"
+    >
+      <p className="font-semibold">{title}</p>
+      <p className="mt-0.5 text-emerald-900/90">
+        {symbol ? <span>Symbol: {symbol}</span> : null}
+        {symbol && mikranCode.trim() ? <span> · </span> : null}
+        {mikranCode.trim() ? <span>Kod Mikran: {mikranCode.trim()}</span> : null}
+      </p>
+    </div>
+  );
 }
 
 function activeFieldQuery(value: SubiektProductLineValue, field: ActiveField): string {
@@ -825,7 +839,6 @@ export function SubiektProductLineFields({
   const showQuantityValidation = prosba || Boolean(fieldValidation);
   const productInputLoading = activeField !== "plu" && visibleStatus === "loading";
   const mikranInputLoading = activeField === "plu" && visibleStatus === "loading";
-  const linkedBannerSymbol = symbolPreview;
 
   const prosbaMessageItems: ProsbaLineMessageItem[] = [];
   if (prosba && !delegateAlerts) {
@@ -848,18 +861,10 @@ export function SubiektProductLineFields({
     <div className="flex flex-col gap-3 sm:flex-row sm:items-start">
       <Field
         label={
-          <span className="flex items-center gap-2">
-            <span>
-              {isInformacja
-                ? "Produkt (symbol lub nazwa)"
-                : "Produkt — symbol lub nazwa"}
-            </span>
-            {linkedFromSubiekt ? (
-              <span className="inline-flex items-center gap-1 text-xs font-medium text-emerald-700">
-                <IconCircleCheck size={14} strokeWidth={2.5} className="shrink-0" />
-                {value.source === "catalog" ? "Z bazy" : "Powiązano z Subiektem"}
-              </span>
-            ) : null}
+          <span>
+            {isInformacja
+              ? "Produkt (symbol lub nazwa)"
+              : "Produkt — symbol lub nazwa"}
           </span>
         }
         className={cn("min-w-0 flex-1", productFieldClassName)}
@@ -935,11 +940,6 @@ export function SubiektProductLineFields({
             />
           </SubiektInputShell>
           {renderTypeaheadPanel()}
-          {linkedFromSubiekt && symbolPreview ? (
-            <p className="mt-1 text-xs text-slate-500">
-              <span className="font-medium text-slate-700">{symbolPreview}</span>
-            </p>
-          ) : null}
           {!linkedFromSubiekt && symbolPreview ? (
             <p className="mt-1.5 text-xs text-slate-500">
               Symbol w Subiekcie:{" "}
@@ -1054,6 +1054,14 @@ export function SubiektProductLineFields({
   return (
     <div ref={ref} className="relative space-y-3">
       {productSearchRow}
+
+      {linkedFromSubiekt ? (
+        <SubiektLinkedLineBanner
+          symbol={symbolPreview}
+          mikranCode={value.mikranCode}
+          fromCatalog={value.source === "catalog"}
+        />
+      ) : null}
 
       {linkedFromSubiekt ? (
         <div className="flex justify-end">

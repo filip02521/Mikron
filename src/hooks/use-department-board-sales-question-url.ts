@@ -12,6 +12,7 @@ const VALID_FILTERS = new Set<DepartmentBoardQuestionFilter>([
   "open",
   "answered",
   "unseen",
+  "own_unseen",
   "mine",
 ]);
 

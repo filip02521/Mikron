@@ -273,7 +273,6 @@ export async function actionProcessIndividual(
     action,
     user.email,
     procurementCancelNote,
-    user.id
   );
   revalidateAll();
 
