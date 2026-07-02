@@ -208,6 +208,7 @@ export function AppShellClient({
     <SalesInboxProvider
       enabled={salesInboxEnabled}
       initialSnapshot={salesInboxSnapshot}
+      sessionSalesPersonId={salesPersonId}
     >
       <SalesOnboardingGate
         role={role}

@@ -9,9 +9,10 @@ import {
   useState,
   type ReactNode,
 } from "react";
+import { useSearchParams } from "next/navigation";
 import type { SalesDayStartSnapshot } from "@/lib/sales/sales-day-start";
 import { useSalesUpdates } from "@/components/sales/SalesUpdatesContext";
-import { SalesInboxPanel } from "@/components/sales/SalesInboxBell";
+import { SalesInboxPanel } from "@/components/sales/SalesInboxPanel";
 
 const POLL_MS = 45_000;
 const INITIAL_POLL_DELAY_MS = 4_000;
@@ -23,6 +24,7 @@ type SalesInboxContextValue = {
   setOpen: (open: boolean) => void;
   refresh: () => Promise<void>;
   ringing: boolean;
+  visible: boolean;
 };
 
 const SalesInboxContext = createContext<SalesInboxContextValue | null>(null);
@@ -45,61 +47,86 @@ export function SalesInboxProvider({
   children,
   initialSnapshot = null,
   enabled,
+  sessionSalesPersonId = null,
 }: {
   children: ReactNode;
   initialSnapshot?: SalesDayStartSnapshot | null;
   enabled: boolean;
+  /** Własny profil handlowca — ukryj inbox w podglądzie ?dla= innego handlowca. */
+  sessionSalesPersonId?: string | null;
 }) {
   const salesUpdates = useSalesUpdates();
+  const searchParams = useSearchParams();
+  const previewDla = searchParams.get("dla")?.trim() || null;
+  const teamPreviewActive = Boolean(
+    previewDla && sessionSalesPersonId && previewDla !== sessionSalesPersonId
+  );
+  const effectiveEnabled = enabled && !teamPreviewActive;
+
   const [snapshot, setSnapshot] = useState<SalesDayStartSnapshot | null>(initialSnapshot);
   const [open, setOpen] = useState(false);
   const [ringing, setRinging] = useState(false);
   const prevCountRef = useRef(initialSnapshot?.totalActionCount ?? 0);
+  const bootstrappedRef = useRef(Boolean(initialSnapshot));
   const ringingTimerRef = useRef<number | null>(null);
 
   const applySnapshot = useCallback((next: SalesDayStartSnapshot | null) => {
     if (!next) return;
     const prev = prevCountRef.current;
     const nextCount = next.totalActionCount;
-    if (nextCount > prev && prev >= 0) {
+    if (bootstrappedRef.current && nextCount > prev) {
       setRinging(true);
       if (ringingTimerRef.current) window.clearTimeout(ringingTimerRef.current);
       ringingTimerRef.current = window.setTimeout(() => setRinging(false), 1400);
     }
     prevCountRef.current = nextCount;
     setSnapshot(next);
+    bootstrappedRef.current = true;
+  }, []);
+
+  const bootstrapSnapshot = useCallback((next: SalesDayStartSnapshot | null) => {
+    if (!next) return;
+    prevCountRef.current = next.totalActionCount;
+    setSnapshot(next);
+    bootstrappedRef.current = true;
   }, []);
 
   const refresh = useCallback(async () => {
-    if (!enabled) return;
+    if (!effectiveEnabled) return;
     const next = await fetchInboxSnapshot();
     applySnapshot(next);
-  }, [applySnapshot, enabled]);
+  }, [applySnapshot, effectiveEnabled]);
 
   useEffect(() => {
-    if (!enabled || !initialSnapshot) return;
-    const id = window.setTimeout(() => applySnapshot(initialSnapshot), 0);
+    if (effectiveEnabled || !open) return;
+    const id = window.setTimeout(() => setOpen(false), 0);
     return () => window.clearTimeout(id);
-  }, [applySnapshot, enabled, initialSnapshot]);
+  }, [effectiveEnabled, open]);
 
   useEffect(() => {
-    if (!enabled || !open) return;
+    if (!effectiveEnabled || !initialSnapshot) return;
+    const id = window.setTimeout(() => bootstrapSnapshot(initialSnapshot), 0);
+    return () => window.clearTimeout(id);
+  }, [bootstrapSnapshot, effectiveEnabled, initialSnapshot]);
+
+  useEffect(() => {
+    if (!effectiveEnabled || !open) return;
     const id = window.setTimeout(() => {
       void refresh();
     }, 0);
     return () => window.clearTimeout(id);
-  }, [enabled, open, refresh]);
+  }, [effectiveEnabled, open, refresh]);
 
   useEffect(() => {
-    if (!enabled || !salesUpdates?.hasUpdates) return;
+    if (!effectiveEnabled || !salesUpdates?.hasUpdates) return;
     const id = window.setTimeout(() => {
       void refresh();
     }, 0);
     return () => window.clearTimeout(id);
-  }, [enabled, refresh, salesUpdates?.hasUpdates]);
+  }, [effectiveEnabled, refresh, salesUpdates?.hasUpdates]);
 
   useEffect(() => {
-    if (!enabled) return;
+    if (!effectiveEnabled) return;
     let cancelled = false;
     let intervalId: number | null = null;
 
@@ -118,7 +145,7 @@ export function SalesInboxProvider({
       window.clearTimeout(initialId);
       if (intervalId) window.clearInterval(intervalId);
     };
-  }, [applySnapshot, enabled]);
+  }, [applySnapshot, effectiveEnabled]);
 
   useEffect(
     () => () => {
@@ -138,10 +165,11 @@ export function SalesInboxProvider({
         setOpen,
         refresh,
         ringing,
+        visible: effectiveEnabled,
       }}
     >
       {children}
-      {enabled ? <SalesInboxPanel open={open} onClose={() => setOpen(false)} /> : null}
+      {effectiveEnabled ? <SalesInboxPanel open={open} onClose={() => setOpen(false)} /> : null}
     </SalesInboxContext.Provider>
   );
 }
