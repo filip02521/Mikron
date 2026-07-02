@@ -13,6 +13,8 @@ import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { SystemNotice } from "@/components/ui/SystemNotice";
 import { UndoToast } from "@/components/ui/UndoToast";
+import { Button } from "@/components/ui/Button";
+import { IconTooth } from "@/components/icons/StrokeIcons";
 import { SupplierFilterChips } from "@/components/queue/SupplierFilterChips";
 import { ReceiveQueueSearchField } from "@/components/queue/ReceiveQueueSearchField";
 import { ReceiveQueueActiveFilters } from "@/components/queue/ReceiveQueueActiveFilters";
@@ -208,7 +210,7 @@ export function TeethReceiveLinesPanel({
   const productLineChips = useMemo(
     () =>
       countTeethReceiveOrdersByProductLine(receiveQueue, readinessCtx).map((chip) => ({
-        supplierName: chip.label,
+        key: chip.label,
         count: chip.count,
       })),
     [receiveQueue, readinessCtx],
@@ -423,6 +425,7 @@ export function TeethReceiveLinesPanel({
       <EmptyState
         title={TEETH_RECEIVE_PANEL_COPY.emptyTitle}
         description={TEETH_RECEIVE_PANEL_COPY.emptyDescription}
+        icon={<IconTooth size={24} strokeWidth={1.75} />}
       />
     );
   }
@@ -532,27 +535,25 @@ export function TeethReceiveLinesPanel({
               : "Ktoś mógł oznaczyć zamówienia w kolejce — odśwież, żeby zobaczyć aktualną listę."
           }
           action={
-            <button
+            <Button
               type="button"
+              size="sm"
+              variant="ghost"
               onClick={requestRefresh}
-              className="rounded-lg border border-indigo-200 bg-white px-3 py-1.5 text-xs font-semibold text-indigo-800 hover:bg-indigo-50"
             >
               Odśwież widok
-            </button>
+            </Button>
           }
         />
       ) : null}
 
       <div className={cn(teethPanelFiltersBarClass, "border-b border-slate-200/80 py-3")}>
         <div className="space-y-3">
-          <div className="rounded-lg border border-amber-200/70 bg-amber-50/40 px-3 py-2">
-            <p className="text-sm font-semibold text-amber-950">
-              {TEETH_RECEIVE_PANEL_COPY.bannerTitle}
-            </p>
-            <p className="mt-0.5 text-xs leading-relaxed text-amber-900/85">
-              {TEETH_RECEIVE_PANEL_COPY.bannerBody}
-            </p>
-          </div>
+          <SystemNotice
+            variant="pinned"
+            title={TEETH_RECEIVE_PANEL_COPY.bannerTitle}
+            description={TEETH_RECEIVE_PANEL_COPY.bannerBody}
+          />
 
           <div className={cn(receiveQueueToolbarSectionClass, "border-slate-200/80 shadow-none")}>
             <ReceiveQueueSearchField
@@ -574,7 +575,7 @@ export function TeethReceiveLinesPanel({
             ) : null}
           </div>
 
-          <div className={receiveQueueToolbarSectionClass}>
+          <div className={cn(receiveQueueToolbarSectionClass, "border-slate-200/80")}>
             <SupplierFilterChips
               chips={productLineChips}
               value={productLineFilter}

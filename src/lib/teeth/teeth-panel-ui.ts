@@ -93,7 +93,7 @@ export const teethReceiveSalesPersonBannerClass =
   "relative flex items-center gap-3 px-4 py-3 sm:px-5";
 
 export const teethReceiveSaveButtonClass =
-  "rounded-lg border border-violet-200 bg-violet-600 px-3 py-1.5 text-[11px] font-semibold text-white shadow-sm transition hover:bg-violet-700 disabled:opacity-50";
+  "rounded-lg border border-indigo-200 bg-indigo-600 px-3 py-1.5 text-[11px] font-semibold text-white shadow-sm transition hover:bg-indigo-700 disabled:opacity-50";
 
 export const teethReceiveSectionOutlineButtonClass =
   "rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-[11px] font-semibold text-slate-700 shadow-sm transition hover:bg-slate-50 disabled:opacity-50";
@@ -101,7 +101,7 @@ export const teethReceiveSectionOutlineButtonClass =
 export const teethReceiveDataRowClass =
   "border-b border-slate-100/90 transition-colors hover:bg-slate-50/60";
 
-export const teethReceiveDataRowActiveClass = "bg-violet-50/35 hover:bg-violet-50/45";
+export const teethReceiveDataRowActiveClass = "bg-indigo-50/35 hover:bg-indigo-50/45";
 
 export const teethReceiveDataRowDoneClass = "bg-emerald-50/40 hover:bg-emerald-50/50";
 
@@ -113,7 +113,7 @@ export const teethReceiveQtyInputClass =
   "w-12 rounded-md border border-slate-200 bg-white px-1.5 py-1.5 text-center text-xs font-semibold tabular-nums shadow-sm";
 
 export const teethReceiveQtyInputFilledClass =
-  "border-violet-300 bg-violet-50/80 text-violet-950";
+  "border-indigo-300 bg-indigo-50/80 text-indigo-950";
 
 export const teethReceiveQtyInputDoneClass =
   "border-emerald-300 bg-emerald-50/80 text-emerald-950";
@@ -122,10 +122,10 @@ export const teethReceiveManualCellClass =
   "rounded-md border border-amber-200/70 bg-amber-50/35 px-2.5 py-2";
 
 const TEETH_RECEIVE_SALES_PERSON_DOTS = [
-  "bg-violet-500",
+  "bg-indigo-500",
   "bg-slate-500",
-  "bg-violet-400",
   "bg-indigo-400",
+  "bg-sky-400",
 ] as const;
 
 export function teethReceiveSalesPersonDotClass(stripeIndex: number): string {

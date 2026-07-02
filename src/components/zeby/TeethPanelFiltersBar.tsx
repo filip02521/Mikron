@@ -4,7 +4,7 @@ import { cn } from "@/lib/cn";
 import {
   panelChoiceChipClass,
   panelChoiceChipIdleClass,
-  panelChoiceChipSuccessSelectedClass,
+  panelChoiceChipSelectedClass,
   panelTypography,
 } from "@/lib/ui/ontime-theme";
 import { Field, Select } from "@/components/ui/Field";
@@ -32,7 +32,7 @@ function FilterToggleChip({
       className={cn(
         panelChoiceChipClass,
         "min-h-9 shrink-0 px-2.5 py-1.5 text-xs",
-        active ? panelChoiceChipSuccessSelectedClass : panelChoiceChipIdleClass,
+        active ? panelChoiceChipSelectedClass : panelChoiceChipIdleClass,
       )}
     >
       {label}
@@ -70,7 +70,7 @@ export function TeethPanelFiltersBar({
             <span className={panelTypography.sectionLabel}>Filtry</span>
             {activeCount > 0 ? (
               <span
-                className="rounded-full bg-emerald-100/90 px-2 py-0.5 text-[10px] font-semibold tabular-nums text-emerald-900 ring-1 ring-emerald-200/60"
+                className="rounded-full bg-indigo-100/90 px-2 py-0.5 text-[10px] font-semibold tabular-nums text-indigo-900 ring-1 ring-indigo-200/60"
                 aria-live="polite"
               >
                 {activeCount} {activeCount === 1 ? "aktywny" : "aktywne"}
@@ -81,7 +81,7 @@ export function TeethPanelFiltersBar({
             <button
               type="button"
               onClick={() => onChange(EMPTY_TEETH_PANEL_FILTERS)}
-              className="text-[11px] font-medium text-emerald-700 transition-colors hover:text-emerald-900"
+              className="text-[11px] font-medium text-indigo-700 transition-colors hover:text-indigo-900"
             >
               Wyczyść filtry
             </button>
@@ -127,30 +127,28 @@ export function TeethPanelFiltersBar({
             </Field>
           </div>
 
-          <div
-            className="flex flex-wrap gap-1.5 lg:shrink-0 lg:pb-0.5"
-            role="group"
-            aria-label="Szybkie filtry"
-          >
-            {showQueueFilters ? (
-              <>
-                <FilterToggleChip
-                  label="Do uzupełnienia"
-                  active={filters.missingSpecOnly}
-                  onClick={() =>
-                    onChange({ ...filters, missingSpecOnly: !filters.missingSpecOnly })
-                  }
-                />
-                <FilterToggleChip
-                  label="Brak danych ogólnych"
-                  active={filters.verificationOnly}
-                  onClick={() =>
-                    onChange({ ...filters, verificationOnly: !filters.verificationOnly })
-                  }
-                />
-              </>
-            ) : null}
-          </div>
+          {showQueueFilters ? (
+            <div
+              className="flex flex-wrap gap-1.5 lg:shrink-0 lg:pb-0.5"
+              role="group"
+              aria-label="Szybkie filtry"
+            >
+              <FilterToggleChip
+                label="Do uzupełnienia"
+                active={filters.missingSpecOnly}
+                onClick={() =>
+                  onChange({ ...filters, missingSpecOnly: !filters.missingSpecOnly })
+                }
+              />
+              <FilterToggleChip
+                label="Brak danych ogólnych"
+                active={filters.verificationOnly}
+                onClick={() =>
+                  onChange({ ...filters, verificationOnly: !filters.verificationOnly })
+                }
+              />
+            </div>
+          ) : null}
         </div>
       </div>
     </div>

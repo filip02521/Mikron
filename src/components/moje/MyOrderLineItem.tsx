@@ -26,6 +26,8 @@ import { MyOrderRequestNote } from "@/components/moje/MyOrderRequestNote";
 import { MyOrderProcurementCancelNote } from "@/components/moje/MyOrderProcurementCancelNote";
 import { MyOrderLineClientField } from "@/components/moje/MyOrderLineClientField";
 import { MyOrderAckButton } from "@/components/moje/MyOrderAckButton";
+import { TeethOrderDetailDialog } from "@/components/moje/TeethOrderDetailDialog";
+import { TeethGroupChips } from "@/components/teeth/TeethGroupChips";
 import { MyOrderCancelButton } from "@/components/moje/MyOrderCancelButton";
 import { IconCircleCheck } from "@/components/icons/StrokeIcons";
 import type { SalesClientAssignment } from "@/lib/orders/sales-client-label";
@@ -241,6 +243,12 @@ export const MyOrderLineItem = memo(function MyOrderLineItem({
             </p>
           ) : null}
 
+          {line.teethDetails && line.teethDetails.length > 0 ? (
+            <div className={cn("mt-1.5", !compact && "pl-5")}>
+              <TeethGroupChips details={line.teethDetails} variant="prosba" compact />
+            </div>
+          ) : null}
+
           {canEditClient && onSaveClient && onStartEditClient ? (
             <MyOrderLineClientField
               clientName={line.clientName}
@@ -275,6 +283,16 @@ export const MyOrderLineItem = memo(function MyOrderLineItem({
         </div>
 
         <div className="flex shrink-0 flex-col items-end gap-0.5">
+          {line.teethDetails && line.teethDetails.length > 0 ? (
+            <TeethOrderDetailDialog
+              teethDetails={line.teethDetails}
+              teethLineDelivered={line.teethLineDelivered}
+              deliveredQuantity={line.deliveredQuantity}
+              triggerSize="sm"
+              triggerVariant="ghost"
+              triggerClassName="text-[10px] font-medium text-indigo-700 hover:text-indigo-900"
+            />
+          ) : null}
           {badge ? (
             <span
               className={cn(

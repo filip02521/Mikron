@@ -170,6 +170,10 @@ export type MyOrderLine = {
   historyEstimateLowConfidence?: boolean;
   /** Lista zębów — do edycji prośby zębowej. */
   teethDetails?: TeethLineDetail[];
+  /** Przyjęte sztuki per linia spec (klucz: teethReceiveGroupKey). */
+  teethLineDelivered?: Record<string, number> | null;
+  /** Łączna przyjęta ilość (delivered_quantity z bazy). */
+  deliveredQuantity?: string | null;
 };
 
 type MyOrderRowCore = {
@@ -355,6 +359,8 @@ function rowToLine(
     historyEstimateLabel: historyEstimate?.label ?? null,
     historyEstimateLowConfidence: historyEstimate?.lowConfidence ?? false,
     teethDetails: mapOrderTeethDetailsToEdit(order.teeth_details),
+    teethLineDelivered: order.teeth_line_delivered ?? null,
+    deliveredQuantity: order.delivered_quantity ?? null,
   };
 }
 

@@ -118,7 +118,7 @@ function SalesPersonDivider({
                 type="button"
                 disabled={pending}
                 onClick={onFillAll}
-                className="shrink-0 rounded-md px-1.5 py-0.5 text-[10px] font-semibold text-violet-700 hover:bg-violet-50 hover:text-violet-900 disabled:opacity-50"
+                className="shrink-0 rounded-md px-1.5 py-0.5 text-[10px] font-semibold text-indigo-700 hover:bg-indigo-50 hover:text-indigo-900 disabled:opacity-50"
               >
                 Całość
               </button>
@@ -229,7 +229,7 @@ export function TeethReceiveLinesSection({
           <span
             className={cn(
               panelTypography.sectionTitle,
-              canSaveInput && "decoration-violet-400 decoration-2 underline-offset-2",
+              canSaveInput && "decoration-indigo-400 decoration-2 underline-offset-2",
               canSaveInput && "underline",
             )}
           >
@@ -478,14 +478,31 @@ export function TeethReceiveLinesSection({
                             {isClosed ? (
                               <span className={panelTypography.caption}>komplet</span>
                             ) : (
-                              <QtyInput
-                                value={manualQty[row.orderId] ?? ""}
-                                disabled={pending}
-                                filled={hasSessionInput}
-                                done={false}
-                                ariaLabel={`Przyjęto ${row.productLabel}`}
-                                onChange={(value) => onManualQtyChange(row.orderId, value)}
-                              />
+                              <div className="inline-flex items-center justify-end gap-1.5">
+                                <label className="inline-flex cursor-pointer items-center">
+                                  <input
+                                    type="checkbox"
+                                    className={cn("size-3.5", checkboxBrandClass)}
+                                    checked={hasSessionInput && sessionQty >= orderRemaining}
+                                    disabled={pending}
+                                    aria-label={`Cała pozycja ${row.productLabel}`}
+                                    onChange={(e) =>
+                                      onManualQtyChange(
+                                        row.orderId,
+                                        e.target.checked ? String(orderRemaining) : "",
+                                      )
+                                    }
+                                  />
+                                </label>
+                                <QtyInput
+                                  value={manualQty[row.orderId] ?? ""}
+                                  disabled={pending}
+                                  filled={hasSessionInput}
+                                  done={hasSessionInput && sessionQty >= orderRemaining}
+                                  ariaLabel={`Przyjęto ${row.productLabel}`}
+                                  onChange={(value) => onManualQtyChange(row.orderId, value)}
+                                />
+                              </div>
                             )}
                           </td>
                         </>

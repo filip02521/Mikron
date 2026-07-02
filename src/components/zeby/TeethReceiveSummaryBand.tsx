@@ -20,10 +20,10 @@ export function TeethReceiveSummaryBand({
         className,
       )}
     >
-      <div className="rounded-md border border-amber-200/80 bg-amber-50/50 px-3 py-2.5">
-        <p className={cn(panelTypography.sectionLabel, "text-amber-800/90")}>W kolejce</p>
-        <p className="mt-0.5 text-2xl font-semibold tabular-nums text-amber-950">{summary.activeCount}</p>
-        <p className={cn(panelTypography.caption, "mt-0.5 text-amber-900/75")}>
+      <div className="rounded-md border border-emerald-200/80 bg-emerald-50/50 px-3 py-2.5">
+        <p className={cn(panelTypography.sectionLabel, "text-emerald-800/90")}>W kolejce</p>
+        <p className="mt-0.5 text-2xl font-semibold tabular-nums text-emerald-950">{summary.activeCount}</p>
+        <p className={cn(panelTypography.caption, "mt-0.5 text-emerald-900/75")}>
           {queueCount === 0
             ? "Po oznaczeniu zamówienia w kolejce"
             : `${queueCount} ${queueCount === 1 ? "pozycja" : queueCount < 5 ? "pozycje" : "pozycji"} do rozliczenia`}
