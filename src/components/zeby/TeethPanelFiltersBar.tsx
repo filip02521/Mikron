@@ -96,7 +96,6 @@ export function TeethPanelFiltersBar({
                 onChange={(e) =>
                   onChange({ ...filters, supplierId: e.target.value || null })
                 }
-                state={filters.supplierId ? "success" : "default"}
                 className="min-h-9 py-1.5"
               >
                 <option value="">Wszyscy dostawcy</option>
@@ -114,7 +113,6 @@ export function TeethPanelFiltersBar({
                 onChange={(e) =>
                   onChange({ ...filters, salesPersonId: e.target.value || null })
                 }
-                state={filters.salesPersonId ? "success" : "default"}
                 className="min-h-9 py-1.5"
               >
                 <option value="">Wszyscy handlowcy</option>

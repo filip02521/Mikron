@@ -582,6 +582,7 @@ export function TeethReceiveLinesPanel({
               onChange={setProductLineFilter}
               totalLabel="Wszystkie linie"
               fieldLabel="Linia produktowa"
+              accentVariant="indigo"
             />
           </div>
         </div>

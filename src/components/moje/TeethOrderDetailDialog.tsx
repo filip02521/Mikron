@@ -7,7 +7,7 @@ import { IconTooth } from "@/components/icons/StrokeIcons";
 import { TeethGroupChips } from "@/components/teeth/TeethGroupChips";
 import {
   groupTeethDetails,
-  TEETH_KIND_LABELS,
+  formatTeethGroupLabel,
   type TeethGroupedDetail,
   type TeethLineDetail,
 } from "@/lib/teeth/teeth-catalog";
@@ -53,17 +53,6 @@ function buildTeethLineSummaries(
       remaining: Math.max(0, ordered - delivered),
     };
   });
-}
-
-function formatGroupSpec(g: TeethGroupedDetail): string {
-  const jawLabel = g.jaw === "upper" ? "góra" : g.jaw === "lower" ? "dół" : null;
-  const kindLabel = g.kind ? TEETH_KIND_LABELS[g.kind].toLowerCase() : null;
-  const segments: string[] = [];
-  if (g.color) segments.push(g.color);
-  if (g.mould) segments.push(g.mould);
-  if (jawLabel) segments.push(jawLabel);
-  if (kindLabel) segments.push(kindLabel);
-  return segments.join(" · ") || "—";
 }
 
 function DeliveryBadge({ delivered, ordered }: { delivered: number; ordered: number }) {
@@ -212,7 +201,7 @@ export function TeethOrderDetailDialog({
                     className="border-b border-slate-100 last:border-b-0"
                   >
                     <td className="px-3 py-2.5 font-medium text-slate-800">
-                      {formatGroupSpec(s.group)}
+                      {formatTeethGroupLabel(s.group, { includeCount: false })}
                     </td>
                     <td className="px-3 py-2.5 text-center tabular-nums font-semibold text-slate-700">
                       {s.ordered}
@@ -234,7 +223,7 @@ export function TeethOrderDetailDialog({
 
           {totalRemaining > 0 ? (
             <p className="text-xs leading-relaxed text-slate-500">
-              Brakuje jeszcze {totalRemaining} {totalRemaining === 1 ? "szt." : "szt."} — reszta czeka u dostawcy.
+              Brakuje jeszcze {totalRemaining} {totalRemaining === 1 ? "sztuki" : "szt."} — reszta czeka u dostawcy.
               Magazynier przyjmie je w kolejnej dostawie, a status zaktualizuje się automatycznie.
             </p>
           ) : (

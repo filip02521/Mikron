@@ -10,6 +10,7 @@ import {
 import {
   panelChoiceChipClass,
   panelChoiceChipIdleClass,
+  panelChoiceChipSelectedClass,
   panelChoiceChipSuccessSelectedClass,
 } from "@/lib/ui/ontime-theme";
 
@@ -22,12 +23,16 @@ function SupplierChip({
   active,
   onClick,
   title,
+  activeClass = panelChoiceChipSuccessSelectedClass,
+  activeCountClass = "bg-emerald-100/80 text-emerald-900",
 }: {
   label: string;
   count?: number;
   active: boolean;
   onClick: () => void;
   title?: string;
+  activeClass?: string;
+  activeCountClass?: string;
 }) {
   return (
     <button
@@ -38,7 +43,7 @@ function SupplierChip({
       className={cn(
         panelChoiceChipClass,
         "inline-flex max-w-[14rem] shrink-0 items-center gap-1.5 px-2.5 py-1.5",
-        active ? panelChoiceChipSuccessSelectedClass : panelChoiceChipIdleClass
+        active ? activeClass : panelChoiceChipIdleClass
       )}
     >
       <span className="truncate">{label}</span>
@@ -46,7 +51,7 @@ function SupplierChip({
         <span
           className={cn(
             "shrink-0 rounded px-1 py-px text-[10px] font-semibold tabular-nums",
-            active ? "bg-emerald-100/80 text-emerald-900" : "bg-slate-100 text-slate-600"
+            active ? activeCountClass : "bg-slate-100 text-slate-600"
           )}
         >
           {count}
@@ -63,6 +68,7 @@ export function SupplierFilterChips({
   totalLabel = "Wszyscy",
   fieldLabel = "Dostawca",
   className,
+  accentVariant = "emerald",
 }: {
   chips: SupplierCountChip[];
   value: string;
@@ -70,6 +76,7 @@ export function SupplierFilterChips({
   totalLabel?: string;
   fieldLabel?: string;
   className?: string;
+  accentVariant?: "emerald" | "indigo";
 }) {
   const [query, setQuery] = useState("");
   const [expanded, setExpanded] = useState(false);
@@ -117,6 +124,19 @@ export function SupplierFilterChips({
   const hiddenCount =
     canCollapse && !expanded ? Math.max(0, filteredChips.length - visibleChips.length) : 0;
 
+  const activeClass =
+    accentVariant === "indigo"
+      ? panelChoiceChipSelectedClass
+      : panelChoiceChipSuccessSelectedClass;
+  const activeCountClass =
+    accentVariant === "indigo"
+      ? "bg-indigo-100/80 text-indigo-900"
+      : "bg-emerald-100/80 text-emerald-900";
+  const clearFilterClass =
+    accentVariant === "indigo"
+      ? "text-[10px] font-medium text-indigo-700 transition hover:text-indigo-900"
+      : "text-[10px] font-medium text-emerald-700 transition hover:text-emerald-900";
+
   if (chips.length === 0) return null;
 
   return (
@@ -127,7 +147,7 @@ export function SupplierFilterChips({
           <button
             type="button"
             onClick={clearFilter}
-            className="text-[10px] font-medium text-emerald-700 transition hover:text-emerald-900"
+            className={clearFilterClass}
           >
             Wyczyść filtr
           </button>
@@ -162,6 +182,8 @@ export function SupplierFilterChips({
           count={total}
           active={!value}
           onClick={clearFilter}
+          activeClass={activeClass}
+          activeCountClass={activeCountClass}
         />
         {visibleChips.map((chip) => (
           <SupplierChip
@@ -170,6 +192,8 @@ export function SupplierFilterChips({
             count={chip.count}
             active={value === chip.key}
             onClick={() => onChange(value === chip.key ? "" : chip.key)}
+            activeClass={activeClass}
+            activeCountClass={activeCountClass}
           />
         ))}
         {hiddenCount > 0 ? (
