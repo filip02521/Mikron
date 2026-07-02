@@ -13,6 +13,10 @@ import {
   SalesUpdatesProvider,
 } from "@/components/sales/SalesUpdatesContext";
 import {
+  SalesInboxFloatingBell,
+} from "@/components/sales/SalesInboxBell";
+import { SalesInboxProvider } from "@/components/sales/SalesInboxContext";
+import {
   OperationsUpdatesBanner,
   OperationsUpdatesProvider,
 } from "@/components/operations/OperationsUpdatesContext";
@@ -146,6 +150,7 @@ export function AppShellClient({
     salesPersonName,
     userAssignmentLabel,
     salesBoardAttention,
+    salesInboxSnapshot,
     operationsPinnedAnnouncements,
     ready: metricsReady,
   } = useAppShellMetrics();
@@ -172,6 +177,9 @@ export function AppShellClient({
   const teethInitialVersion = teethPanelVersion;
   const mobileChrome = salesLive || operationsLive || teethLive;
 
+  const salesInboxEnabled =
+    salesLive && !salesOnboardingActive && !adminPanelPreview && metricsReady;
+
   return (
     <TeethExemptProvider teethProductInfo={teethProductInfo}>
     <AdminPanelPreviewProvider
@@ -196,6 +204,10 @@ export function AppShellClient({
       initialUnseenOwnAnswers={salesBoardAttention?.unseenOwnAnswerCount ?? 0}
       sessionSalesPersonId={salesPersonId}
       soundBaselineReady={metricsReady}
+    >
+    <SalesInboxProvider
+      enabled={salesInboxEnabled}
+      initialSnapshot={salesInboxSnapshot}
     >
       <SalesOnboardingGate
         role={role}
@@ -234,8 +246,10 @@ export function AppShellClient({
             userEmail={userEmail}
             salesPersonName={salesPersonName}
             userAssignmentLabel={userAssignmentLabel}
+            showInboxBell={salesInboxEnabled}
           />
         ) : null}
+        {salesInboxEnabled ? <SalesInboxFloatingBell /> : null}
         {operationsLive && !salesLive ? (
           <MobileOperationsHeader
             role={role}
@@ -323,6 +337,7 @@ export function AppShellClient({
         ) : null}
       </div>
       </SalesOnboardingGate>
+    </SalesInboxProvider>
     </SalesUpdatesProvider>
     </Suspense>
     </TeethUpdatesProvider>

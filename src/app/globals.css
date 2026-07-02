@@ -470,3 +470,39 @@ html.ontime-scroll-locked main {
   text-decoration: none;
   opacity: 1;
 }
+
+@keyframes sales-bell-ring {
+  0%,
+  100% {
+    transform: rotate(0);
+  }
+  20% {
+    transform: rotate(12deg);
+  }
+  40% {
+    transform: rotate(-10deg);
+  }
+  60% {
+    transform: rotate(8deg);
+  }
+  80% {
+    transform: rotate(-6deg);
+  }
+}
+
+.sales-bell-ring {
+  animation: sales-bell-ring 0.9s ease-in-out;
+}
+
+@keyframes sales-inbox-panel-enter {
+  from {
+    transform: translateX(100%);
+  }
+  to {
+    transform: translateX(0);
+  }
+}
+
+.sales-inbox-panel-enter {
+  animation: sales-inbox-panel-enter 0.22s ease-out;
+}

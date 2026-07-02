@@ -1,4 +1,5 @@
 import type { SalesBoardAttentionSnapshot } from "@/lib/data/department-board";
+import type { SalesDayStartSnapshot } from "@/lib/sales/sales-day-start";
 
 export type AppShellNavBadges = {
   nowe: number;
@@ -23,6 +24,7 @@ export type AppShellMetrics = {
   salesPersonName: string | null;
   userAssignmentLabel: string | null;
   salesBoardAttention: SalesBoardAttentionSnapshot | null;
+  salesInboxSnapshot: SalesDayStartSnapshot | null;
   operationsPinnedAnnouncements: Pick<
     SalesBoardAttentionSnapshot["pinnedAnnouncements"][number],
     "id" | "title" | "body"
@@ -39,6 +41,7 @@ export const EMPTY_APP_SHELL_METRICS: AppShellMetrics = {
   salesPersonName: null,
   userAssignmentLabel: null,
   salesBoardAttention: null,
+  salesInboxSnapshot: null,
   operationsPinnedAnnouncements: [],
   ready: false,
 };

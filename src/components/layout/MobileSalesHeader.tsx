@@ -1,6 +1,7 @@
 "use client";
 
 import { MobileBrandBlock } from "@/components/layout/SidebarBrandBlock";
+import { SalesInboxBellTrigger } from "@/components/sales/SalesInboxBell";
 import { createClient } from "@/lib/supabase/client";
 import type { UserRole } from "@/types/database";
 import { mobileSalesHeaderClass } from "@/lib/ui/ontime-theme";
@@ -10,11 +11,13 @@ export function MobileSalesHeader({
   userEmail,
   salesPersonName,
   userAssignmentLabel,
+  showInboxBell = false,
 }: {
   role: UserRole | null;
   userEmail?: string | null;
   salesPersonName?: string | null;
   userAssignmentLabel?: string | null;
+  showInboxBell?: boolean;
 }) {
   async function signOut() {
     const supabase = createClient();
@@ -32,13 +35,16 @@ export function MobileSalesHeader({
           userAssignmentLabel={userAssignmentLabel}
         />
       </div>
-      <button
-        type="button"
-        onClick={() => void signOut()}
-        className="min-h-10 shrink-0 cursor-pointer rounded-md border border-slate-200/90 bg-white px-3 py-2 text-xs font-semibold text-slate-600 shadow-sm hover:bg-slate-50"
-      >
-        Wyloguj
-      </button>
+      <div className="flex shrink-0 items-center gap-2">
+        {showInboxBell ? <SalesInboxBellTrigger className="md:hidden" /> : null}
+        <button
+          type="button"
+          onClick={() => void signOut()}
+          className="min-h-10 shrink-0 cursor-pointer rounded-md border border-slate-200/90 bg-white px-3 py-2 text-xs font-semibold text-slate-600 shadow-sm hover:bg-slate-50"
+        >
+          Wyloguj
+        </button>
+      </div>
     </header>
   );
 }

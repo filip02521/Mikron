@@ -19,6 +19,7 @@ import {
 } from "@/lib/data/queries";
 import { fetchOperationsDailyPanelMetrics } from "@/lib/orders/operations-daily-panel-version";
 import { fetchSalesShellMetrics } from "@/lib/orders/sales-shell-metrics";
+import { fetchSalesInboxSnapshot } from "@/lib/sales/fetch-sales-inbox";
 import {
   fetchPinnedActiveAnnouncements,
   fetchSalesBoardAttentionSnapshot,
@@ -73,6 +74,7 @@ export async function fetchAppShellMetrics(
   let salesPersonName: string | null = null;
   let headerSalesPersonId: string | null = null;
   let salesBoardAttention = null as AppShellMetrics["salesBoardAttention"];
+  let salesInboxSnapshot = null as AppShellMetrics["salesInboxSnapshot"];
   let operationsPinnedAnnouncements = EMPTY_APP_SHELL_METRICS.operationsPinnedAnnouncements;
 
   if (showOperationsBadges) {
@@ -181,12 +183,14 @@ export async function fetchAppShellMetrics(
             salesTablica: 0,
           };
         } else {
-          const [metrics, boardAttention] = await Promise.all([
+          const [metrics, boardAttention, inboxSnapshot] = await Promise.all([
             fetchSalesShellMetrics(salesPerson.id, session.id),
             fetchSalesBoardAttentionSnapshot(session.id).catch(() => null),
+            fetchSalesInboxSnapshot(salesPerson.id, session.id).catch(() => null),
           ]);
           salesActivityVersion = metrics.activityVersion;
           salesBoardAttention = boardAttention;
+          salesInboxSnapshot = inboxSnapshot;
           navBadges = {
             ...navBadges,
             salesMoje: metrics.dayStartNavCount,
@@ -242,6 +246,7 @@ export async function fetchAppShellMetrics(
     salesPersonName,
     userAssignmentLabel,
     salesBoardAttention,
+    salesInboxSnapshot,
     operationsPinnedAnnouncements,
     ready: true,
   };
