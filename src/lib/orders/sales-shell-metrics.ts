@@ -1,18 +1,13 @@
-import {
-  fetchDeliveryStats,
-  fetchIndividualOrders,
-} from "@/lib/data/queries";
-import { presentMyOrders } from "@/lib/orders/my-order-presenter";
 import { filterIndividualOrdersForSalesMyOrders } from "@/lib/orders/informacja-stock-out-reorder";
+import { presentMyOrders } from "@/lib/orders/my-order-presenter";
 import { summarizeMyOrdersInbox } from "@/lib/orders/my-order-sales-ui";
-import { salesDayStartNavCount } from "@/lib/sales/sales-day-start";
+import type { SalesBoardAttentionSnapshot } from "@/lib/data/department-board";
 import {
-  countNotesDueNavBadge,
-  countZkDueNavBadge,
-} from "@/lib/data/sales-notepad";
-import {
-  fetchSalesBoardAttentionSnapshot,
-} from "@/lib/data/department-board";
+  buildSalesInboxSnapshotFromLoadedData,
+  inboxNavBadgesFromLoadedData,
+  loadSalesInboxData,
+} from "@/lib/sales/fetch-sales-inbox";
+import type { SalesDayStartSnapshot } from "@/lib/sales/sales-day-start";
 import {
   composeSalesActivityVersion,
   computeSalesActivityVersionFromRows,
@@ -24,38 +19,25 @@ import type { DeliveryStats } from "@/types/database";
 export type SalesShellMetrics = {
   activityVersion: string;
   navAttention: number;
-  /** Badge „Moje zamówienia”: Start dnia + własne odpowiedzi na tablicy (bez ogłoszeń). */
+  /** Badge „Moje” — ten sam licznik co dzwonek (totalActionCount inboxu). */
   dayStartNavCount: number;
   /** Badge „ZK czekające” — zaległe przypomnienia ZK. */
   zkNavBadge: number;
   /** Badge „Notatnik” — zaległe przypomnienia notatek. */
   notesNavBadge: number;
-  /** Badge na Komunikacji — nieprzeczytane ogłoszenia + nowe odpowiedzi. */
+  /** Badge na Komunikacji — nieprzeczytane odpowiedzi. */
   boardNavBadge: number;
+  inboxSnapshot: SalesDayStartSnapshot | null;
+  boardAttention: SalesBoardAttentionSnapshot | null;
 };
 
-/** Jedno pobranie listy + statystyk dla badge i wersji aktywności (AppShell). */
+/** Jedno pobranie listy + statystyk dla badge, wersji aktywności i inboxu (AppShell). */
 export async function fetchSalesShellMetrics(
   salesPersonId: string,
   profileId?: string | null
 ): Promise<SalesShellMetrics> {
-  const [orders, statsRows] = await Promise.all([
-    fetchIndividualOrders({ salesPersonId, hideSalesAcknowledged: false }),
-    fetchDeliveryStats(),
-  ]);
-  const salesVisibleOrders = filterIndividualOrdersForSalesMyOrders(orders);
-  const { zamowienia, informacje } = presentMyOrders(
-    salesVisibleOrders,
-    statsRows as DeliveryStats[]
-  );
-  const inbox = summarizeMyOrdersInbox([...zamowienia, ...informacje]);
-
-  const [zkDue, notesDue, boardSnapshot, watchesRes] = await Promise.all([
-    countZkDueNavBadge(salesPersonId).catch(() => 0),
-    countNotesDueNavBadge(salesPersonId).catch(() => 0),
-    profileId
-      ? fetchSalesBoardAttentionSnapshot(profileId).catch(() => null)
-      : Promise.resolve(null),
+  const [loaded, watchesRes] = await Promise.all([
+    loadSalesInboxData(salesPersonId, profileId ?? null),
     createAdminClient()
       .from("sales_zk_watches")
       .select("updated_at, line_checks")
@@ -64,8 +46,17 @@ export async function fetchSalesShellMetrics(
       .is("archived_at", null),
   ]);
 
-  const boardNavForMoje = boardSnapshot?.navBadgeCount ?? 0;
-  const boardNavForTablica = boardSnapshot?.unseenAnswerCount ?? 0;
+  const salesVisibleOrders = filterIndividualOrdersForSalesMyOrders(loaded.orders);
+  const { zamowienia, informacje } = presentMyOrders(
+    salesVisibleOrders,
+    loaded.statsRows as DeliveryStats[]
+  );
+  const inbox = summarizeMyOrdersInbox([...zamowienia, ...informacje]);
+  const navBadges = inboxNavBadgesFromLoadedData(loaded);
+
+  const inboxSnapshot = profileId
+    ? await buildSalesInboxSnapshotFromLoadedData(loaded)
+    : null;
 
   const activityRows: SalesActivityRow[] = salesVisibleOrders.map((o) => ({
     action_at: o.action_at,
@@ -88,9 +79,11 @@ export async function fetchSalesShellMetrics(
     activityVersion: composeSalesActivityVersion(ordersPart, watchesRes.data ?? []),
     navAttention:
       inbox.pickupCount + inbox.cancelAckCount + inbox.informacjaReadyCount,
-    dayStartNavCount: salesDayStartNavCount(inbox, zkDue + notesDue, boardNavForMoje),
-    zkNavBadge: zkDue,
-    notesNavBadge: notesDue,
-    boardNavBadge: boardNavForTablica,
+    dayStartNavCount: inboxSnapshot?.totalActionCount ?? 0,
+    zkNavBadge: navBadges.zkNavBadge,
+    notesNavBadge: navBadges.notesNavBadge,
+    boardNavBadge: navBadges.boardNavBadge,
+    inboxSnapshot,
+    boardAttention: loaded.boardAttention,
   };
 }

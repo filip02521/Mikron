@@ -156,6 +156,28 @@ export async function countActiveZkWatches(salesPersonId: string): Promise<numbe
   return count ?? 0;
 }
 
+/** Badge ZK z już pobranej listy (bez dodatkowego zapytania). */
+export function countZkDueFromWatches(watches: SalesZkWatch[]): number {
+  const today = formatDateString(todayInWarsaw());
+  let count = 0;
+  for (const watch of watches) {
+    if (watch.closed_at || watch.archived_at || !watch.follow_up_at) continue;
+    if (watch.follow_up_at <= today) count += 1;
+  }
+  return count;
+}
+
+/** Badge notatek z już pobranej listy (bez dodatkowego zapytania). */
+export function countNotesDueFromSlice(notes: SalesNote[]): number {
+  const today = formatDateString(todayInWarsaw());
+  let count = 0;
+  for (const note of notes) {
+    if (note.archived_at || !note.follow_up_at) continue;
+    if (note.follow_up_at <= today) count += 1;
+  }
+  return count;
+}
+
 /** Badge ZK: follow-up na dziś/wcześniej (tylko aktywne ZK). */
 export async function countZkDueNavBadge(salesPersonId: string): Promise<number> {
   const supabase = createAdminClient();

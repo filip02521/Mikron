@@ -19,10 +19,8 @@ import {
 } from "@/lib/data/queries";
 import { fetchOperationsDailyPanelMetrics } from "@/lib/orders/operations-daily-panel-version";
 import { fetchSalesShellMetrics } from "@/lib/orders/sales-shell-metrics";
-import { fetchSalesInboxSnapshot } from "@/lib/sales/fetch-sales-inbox";
 import {
   fetchPinnedActiveAnnouncements,
-  fetchSalesBoardAttentionSnapshot,
 } from "@/lib/data/department-board";
 import { countOpenSalesBugReports } from "@/lib/data/sales-bug-reports";
 import type { ProcurementWorkspace } from "@/lib/auth/procurement-workspace";
@@ -183,14 +181,10 @@ export async function fetchAppShellMetrics(
             salesTablica: 0,
           };
         } else {
-          const [metrics, boardAttention, inboxSnapshot] = await Promise.all([
-            fetchSalesShellMetrics(salesPerson.id, session.id),
-            fetchSalesBoardAttentionSnapshot(session.id).catch(() => null),
-            fetchSalesInboxSnapshot(salesPerson.id, session.id).catch(() => null),
-          ]);
+          const metrics = await fetchSalesShellMetrics(salesPerson.id, session.id);
           salesActivityVersion = metrics.activityVersion;
-          salesBoardAttention = boardAttention;
-          salesInboxSnapshot = inboxSnapshot;
+          salesBoardAttention = metrics.boardAttention;
+          salesInboxSnapshot = metrics.inboxSnapshot;
           navBadges = {
             ...navBadges,
             salesMoje: metrics.dayStartNavCount,

@@ -12,27 +12,28 @@ import {
   ZD_ETA_LINE_PENDING_LABEL,
 } from "@/lib/orders/my-order-zd-eta-copy";
 import { salesZdTimingLabel } from "@/lib/orders/my-order-sales-ui";
+import { resolveExpandedLineQuantityDisplay } from "@/lib/orders/my-order-line-quantity-display";
 import type { MyOrderLine, MyOrderLineStockStatus } from "@/lib/orders/my-order-presenter";
 import type { SalesCancelPhase } from "@/lib/orders/sales-cancel";
-import {
-  salesCancelLineCustomQtyLabel,
-  salesCancelLineRemainderLabel,
-  salesCancelLineRemainderAriaLabel,
-  salesCancelLineShortLabel,
-  salesCancelQuickActionLabel,
-} from "@/lib/orders/sales-cancel";
 import { MyOrderAssignedClient } from "@/components/moje/MyOrderAssignedClient";
 import { MyOrderRequestNote } from "@/components/moje/MyOrderRequestNote";
 import { MyOrderProcurementCancelNote } from "@/components/moje/MyOrderProcurementCancelNote";
 import { MyOrderLineClientField } from "@/components/moje/MyOrderLineClientField";
-import { MyOrderAckButton } from "@/components/moje/MyOrderAckButton";
+import { MyOrderLineActionBar } from "@/components/moje/MyOrderLineActionBar";
+import { MyOrderLineCancelMenu } from "@/components/moje/MyOrderLineCancelMenu";
 import { TeethOrderDetailDialog } from "@/components/moje/TeethOrderDetailDialog";
 import { TeethGroupChips } from "@/components/teeth/TeethGroupChips";
-import { MyOrderCancelButton } from "@/components/moje/MyOrderCancelButton";
 import { IconCircleCheck } from "@/components/icons/StrokeIcons";
 import type { SalesClientAssignment } from "@/lib/orders/sales-client-label";
 import { cn } from "@/lib/cn";
-import { mojeShipmentLineRowClass } from "@/lib/ui/moje-shipment-row-styles";
+import {
+  mojeActionOverflowSegmentClass,
+  panelSegmentLastClass,
+} from "@/lib/ui/ontime-theme";
+import {
+  mojeShipmentLineActionColumnClass,
+  mojeShipmentLineRowClass,
+} from "@/lib/ui/moje-shipment-row-styles";
 import {
   SearchHighlightJoined,
   SearchHighlightText,
@@ -68,7 +69,7 @@ export const MyOrderLineItem = memo(function MyOrderLineItem({
   compact = false,
   canAcknowledge,
   pending,
-  acknowledgeLineLabel = "Potwierdź",
+  acknowledgeLineLabel = "Potwierdź tę pozycję",
   acknowledgeLineTitle,
   onAcknowledgePickup,
   canCancelLine,
@@ -83,6 +84,11 @@ export const MyOrderLineItem = memo(function MyOrderLineItem({
   hideClientLabel = false,
   hideRequestNote = false,
   hideProcurementCancelNote = false,
+  hideZdLineDetail = false,
+  hideWarehouseProgress = false,
+  lineActionColumn = false,
+  informacjaAck = false,
+  tourPreview = false,
   searchQuery,
   listKind = "zamowienie",
   historyEstimateLabel = null,
@@ -123,6 +129,14 @@ export const MyOrderLineItem = memo(function MyOrderLineItem({
   hideRequestNote?: boolean;
   /** Gdy wiadomość od zakupów jest już na karcie grupy — nie duplikuj przy produkcie. */
   hideProcurementCancelNote?: boolean;
+  /** Gdy termin ZD jest już w sekcji „Informacje o dostawie” grupy. */
+  hideZdLineDetail?: boolean;
+  /** Magazyn grupy w „Szczegółach” — ukryj postęp magazynowy per pozycja. */
+  hideWarehouseProgress?: boolean;
+  /** Wyrównana kolumna akcji (rozwinięta lista z potwierdzeniami per pozycja). */
+  lineActionColumn?: boolean;
+  informacjaAck?: boolean;
+  tourPreview?: boolean;
   searchQuery?: string | null;
   listKind?: "zamowienie" | "informacja";
   /** Szacunek z historii grupy — gdy linia czeka na ZD lub nie ma terminu w ZD u dostawcy. */
@@ -159,15 +173,20 @@ export const MyOrderLineItem = memo(function MyOrderLineItem({
           : ZD_ETA_LINE_NO_MATCH_LABEL
         : null;
 
+  const { quantityLabel: lineQuantityLabel, progressInDetail } =
+    resolveExpandedLineQuantityDisplay(line, {
+      compact,
+      showProgress,
+      hideWarehouseProgress,
+    });
+
   const detailParts = [
-    showProgress ? line.progressLabel : null,
-    zdLineDetail,
+    progressInDetail,
+    hideZdLineDetail ? null : zdLineDetail,
   ].filter(Boolean);
 
   const partialDefaultQty = line.defaultSalesCancelQuantity;
   const partialMaxQty = line.maxSalesCancelQuantity ?? partialDefaultQty ?? 1;
-  const cancelButtonRevealClass =
-    "opacity-70 transition-opacity group-hover/line:opacity-100 group-focus-within/line:opacity-100 focus-visible:opacity-100";
 
   const showRemainderCancel =
     Boolean(line.showSalesCancelRemainder && partialDefaultQty != null && onPartialCancelLine);
@@ -177,11 +196,130 @@ export const MyOrderLineItem = memo(function MyOrderLineItem({
   const showFullLineCancel =
     Boolean(onCancelLine) && !showRemainderCancel && !showSupplierQuickCancel;
 
+  const showLinePickupAck =
+    canAcknowledge && line.canAcknowledgePickup && onAcknowledgePickup;
+  const showCancelActions = Boolean(
+    canCancelLine &&
+      line.canCancelBySales &&
+      line.salesCancelPhase &&
+      (onCancelLine || onPartialCancelLine)
+  );
+  const showTeethDetail = Boolean(line.teethDetails && line.teethDetails.length > 0);
+
+  const partialCustomDefaultQty =
+    showRemainderCancel || showSupplierQuickCancel
+      ? 1
+      : line.salesCancelPhase === "in_transit"
+        ? 1
+        : partialDefaultQty ?? 1;
+
+  const runPartialCancel = (defaultQty: number) => {
+    if (!onPartialCancelLine || !line.salesCancelPhase) return;
+    onPartialCancelLine(line.id, line.salesCancelPhase, {
+      product: line.product,
+      maxQty: partialMaxQty,
+      defaultQty,
+      deliveredQty: line.salesCancelDeliveredQty,
+      teethDetails: line.teethDetails,
+      teethLineDelivered: line.teethLineDelivered,
+    });
+  };
+
+  const lineCancelMenu = showCancelActions ? (
+    <MyOrderLineCancelMenu
+      product={line.product}
+      listKind={listKind}
+      pending={pending}
+      showRemainderCancel={showRemainderCancel}
+      partialDefaultQty={partialDefaultQty}
+      showSupplierQuickCancel={showSupplierQuickCancel}
+      showPartialQtyCancel={showPartialQtyCancel}
+      showFullLineCancel={showFullLineCancel}
+      partialCustomDefaultQty={partialCustomDefaultQty}
+      cancelLineLabel={cancelLineLabel}
+      cancelLineAriaLabel={cancelLineAriaLabel}
+      onRunPartialCancel={runPartialCancel}
+      onCancelLine={
+        showFullLineCancel && onCancelLine && line.salesCancelPhase
+          ? () => onCancelLine(line.id, line.salesCancelPhase!)
+          : undefined
+      }
+      variant={showLinePickupAck && showCancelActions ? "segment" : "standalone"}
+      className={
+        showLinePickupAck && showCancelActions
+          ? cn(mojeActionOverflowSegmentClass, panelSegmentLastClass)
+          : undefined
+      }
+    />
+  ) : null;
+
+  const lineActionBar = (
+    <MyOrderLineActionBar
+      showPickup={Boolean(showLinePickupAck)}
+      pickupLabel={
+        showLinePickupAck && showCancelActions ? "Potwierdź" : acknowledgeLineLabel
+      }
+      pickupTitle={acknowledgeLineTitle}
+      onPickup={
+        showLinePickupAck && onAcknowledgePickup
+          ? () => onAcknowledgePickup(line.id)
+          : undefined
+      }
+      pending={pending}
+      preview={tourPreview}
+      informacjaAck={informacjaAck}
+      cancelMenu={lineCancelMenu}
+    />
+  );
+
+  const showLineActionBar = showLinePickupAck || lineCancelMenu;
+  /** ⋮ bez „Potwierdź” — w nagłówku pozycji, nie na środku wiersza. */
+  const inlineLineActionBar =
+    compact && showLineActionBar && !showLinePickupAck;
+  const showActionInColumn = showLineActionBar && !inlineLineActionBar;
+
+  const teethDetailBlock = showTeethDetail ? (
+    <TeethOrderDetailDialog
+      teethDetails={line.teethDetails!}
+      teethLineDelivered={line.teethLineDelivered}
+      deliveredQuantity={line.deliveredQuantity}
+      triggerSize="sm"
+      triggerVariant="ghost"
+      triggerClassName="text-[10px] font-medium text-indigo-700 hover:text-indigo-900"
+    />
+  ) : null;
+  const showTeethDetailInline = inlineLineActionBar && showTeethDetail;
+
+  const lineSideMeta =
+    badge || (showTeethDetail && !showTeethDetailInline) ? (
+    <div className="flex flex-wrap items-center justify-end gap-1.5">
+      {showTeethDetail && !showTeethDetailInline ? teethDetailBlock : null}
+      {badge ? (
+        <span
+          className={cn(
+            "inline-flex shrink-0 items-center gap-1 rounded-md px-1.5 py-0.5 text-[10px] font-semibold ring-1",
+            badge.className
+          )}
+        >
+          {onStock ? (
+            <IconCircleCheck size={12} strokeWidth={2.5} className="shrink-0" aria-hidden />
+          ) : null}
+          {badge.label}
+        </span>
+      ) : null}
+    </div>
+  ) : null;
+
+  const showLineSideMeta = Boolean(lineSideMeta);
+  const hasRightColumn = showActionInColumn || showLineSideMeta;
+  const useActionColumn = lineActionColumn && hasRightColumn;
+
   return (
     <li
       className={cn(
         "group/line",
         compact ? mojeShipmentLineRowClass : "py-1.5 px-0.5",
+        compact && useActionColumn && showLinePickupAck && "bg-emerald-50/20",
         !compact && emphasizeStock && onStock && "border-l-2 border-emerald-500 pl-2",
         !compact && emphasizeStock && partial && "border-l-2 border-sky-400 pl-2",
         compact &&
@@ -194,9 +332,15 @@ export const MyOrderLineItem = memo(function MyOrderLineItem({
           "border-l-[3px] border-l-sky-400 bg-sky-50/20"
       )}
     >
-      <div className="flex items-start justify-between gap-3">
+      <div
+        className={cn(
+          "flex gap-2.5",
+          useActionColumn ? "flex-col sm:flex-row sm:items-start sm:gap-3" : "items-start justify-between sm:gap-3"
+        )}
+      >
         <div className="min-w-0 flex-1">
-          <div className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
+          <div className="flex items-start gap-2">
+            <div className="flex min-w-0 flex-1 flex-wrap items-baseline gap-x-2 gap-y-0.5">
             <span
               className={cn(
                 "shrink-0 tabular-nums font-semibold text-slate-400",
@@ -213,9 +357,9 @@ export const MyOrderLineItem = memo(function MyOrderLineItem({
                 compact ? "text-xs leading-snug" : "text-sm text-slate-800"
               )}
             />
-            {line.quantityLabel?.trim() ? (
+            {lineQuantityLabel ? (
               <span className="shrink-0 tabular-nums text-xs font-semibold text-slate-500">
-                {line.quantityLabel}
+                {lineQuantityLabel}
               </span>
             ) : null}
             {line.symbol?.trim() && !(line.teethDetails && line.teethDetails.length > 0) ? (
@@ -233,6 +377,10 @@ export const MyOrderLineItem = memo(function MyOrderLineItem({
                   className="shrink-0 rounded bg-violet-50 px-1 py-0.5 font-mono text-[10px] font-semibold text-violet-800 ring-1 ring-violet-200/80"
                 />
               </span>
+            ) : null}
+            </div>
+            {inlineLineActionBar ? (
+              <div className="shrink-0 self-start">{lineActionBar}</div>
             ) : null}
           </div>
 
@@ -253,6 +401,10 @@ export const MyOrderLineItem = memo(function MyOrderLineItem({
             <div className={cn("mt-1.5", !compact && "pl-5")}>
               <TeethGroupChips details={line.teethDetails} variant="prosba" compact />
             </div>
+          ) : null}
+
+          {showTeethDetailInline ? (
+            <div className={cn("mt-1.5", !compact && "pl-5")}>{teethDetailBlock}</div>
           ) : null}
 
           {canEditClient && onSaveClient && onStartEditClient ? (
@@ -288,128 +440,18 @@ export const MyOrderLineItem = memo(function MyOrderLineItem({
           ) : null}
         </div>
 
-        <div className="flex shrink-0 flex-col items-end gap-0.5">
-          {line.teethDetails && line.teethDetails.length > 0 ? (
-            <TeethOrderDetailDialog
-              teethDetails={line.teethDetails}
-              teethLineDelivered={line.teethLineDelivered}
-              deliveredQuantity={line.deliveredQuantity}
-              triggerSize="sm"
-              triggerVariant="ghost"
-              triggerClassName="text-[10px] font-medium text-indigo-700 hover:text-indigo-900"
-            />
-          ) : null}
-          {badge ? (
-            <span
-              className={cn(
-                "inline-flex shrink-0 items-center gap-1 rounded-md px-1.5 py-0.5 text-[10px] font-semibold ring-1",
-                badge.className
-              )}
-            >
-              {onStock ? (
-                <IconCircleCheck size={12} strokeWidth={2.5} className="shrink-0" aria-hidden />
-              ) : null}
-              {badge.label}
-            </span>
-          ) : null}
-          {canCancelLine &&
-          line.canCancelBySales &&
-          line.salesCancelPhase &&
-          (onCancelLine || onPartialCancelLine) ? (
-            <div className="flex flex-row flex-wrap items-end justify-end gap-0.5">
-              {showRemainderCancel ? (
-                <MyOrderCancelButton
-                  disabled={pending}
-                  ariaLabel={salesCancelLineRemainderAriaLabel(partialDefaultQty!)}
-                  onClick={() =>
-                    onPartialCancelLine!(line.id, line.salesCancelPhase!, {
-                      product: line.product,
-                      maxQty: partialMaxQty,
-                      defaultQty: partialDefaultQty!,
-                      deliveredQty: line.salesCancelDeliveredQty,
-                      teethDetails: line.teethDetails,
-                      teethLineDelivered: line.teethLineDelivered,
-                    })
-                  }
-                  className={cancelButtonRevealClass}
-                >
-                  {salesCancelLineRemainderLabel(partialDefaultQty!)}
-                </MyOrderCancelButton>
-              ) : null}
-              {showSupplierQuickCancel ? (
-                <MyOrderCancelButton
-                  disabled={pending}
-                  ariaLabel={salesCancelQuickActionLabel()}
-                  onClick={() =>
-                    onPartialCancelLine!(line.id, line.salesCancelPhase!, {
-                      product: line.product,
-                      maxQty: partialMaxQty,
-                      defaultQty: 1,
-                      deliveredQty: line.salesCancelDeliveredQty,
-                      teethDetails: line.teethDetails,
-                      teethLineDelivered: line.teethLineDelivered,
-                    })
-                  }
-                  className={cancelButtonRevealClass}
-                >
-                  {salesCancelQuickActionLabel()}
-                </MyOrderCancelButton>
-              ) : null}
-              {showPartialQtyCancel ? (
-                <MyOrderCancelButton
-                  disabled={pending}
-                  ariaLabel={`${salesCancelLineCustomQtyLabel()} ${line.product}`}
-                  onClick={() =>
-                    onPartialCancelLine!(line.id, line.salesCancelPhase!, {
-                      product: line.product,
-                      maxQty: partialMaxQty,
-                      defaultQty:
-                        showRemainderCancel || showSupplierQuickCancel
-                          ? 1
-                          : line.salesCancelPhase === "in_transit"
-                            ? 1
-                            : partialDefaultQty ?? 1,
-                      deliveredQty: line.salesCancelDeliveredQty,
-                      teethDetails: line.teethDetails,
-                      teethLineDelivered: line.teethLineDelivered,
-                    })
-                  }
-                  className={cancelButtonRevealClass}
-                >
-                  {salesCancelLineCustomQtyLabel()}
-                </MyOrderCancelButton>
-              ) : null}
-              {showFullLineCancel ? (
-                <MyOrderCancelButton
-                  disabled={pending}
-                  ariaLabel={
-                    cancelLineAriaLabel ??
-                    `${salesCancelLineShortLabel(listKind)}: ${line.product}`
-                  }
-                  onClick={() => onCancelLine!(line.id, line.salesCancelPhase!)}
-                  className={cancelButtonRevealClass}
-                >
-                  {cancelLineLabel ??
-                    salesCancelLineShortLabel(listKind)}
-                </MyOrderCancelButton>
-              ) : null}
-            </div>
-          ) : null}
-        </div>
+        {useActionColumn ? (
+          <div className={mojeShipmentLineActionColumnClass}>
+            {showActionInColumn ? lineActionBar : null}
+            {showLineSideMeta ? lineSideMeta : null}
+          </div>
+        ) : hasRightColumn ? (
+          <div className="flex shrink-0 flex-col items-end gap-1.5 self-start">
+            {showActionInColumn ? lineActionBar : null}
+            {showLineSideMeta ? lineSideMeta : null}
+          </div>
+        ) : null}
       </div>
-
-      {canAcknowledge && line.canAcknowledgePickup && onAcknowledgePickup ? (
-        <MyOrderAckButton
-          variant="inline"
-          className="mt-2"
-          disabled={pending}
-          title={acknowledgeLineTitle}
-          ariaLabel={acknowledgeLineTitle}
-          onClick={() => onAcknowledgePickup(line.id)}
-        >
-          {acknowledgeLineLabel}
-        </MyOrderAckButton>
-      ) : null}
     </li>
   );
 });

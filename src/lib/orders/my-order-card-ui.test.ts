@@ -191,6 +191,15 @@ describe("my-order-card-ui", () => {
     ).toBe(false);
   });
 
+  it("ukrywa badge w rozwinięciu gdy jest blok terminu dostawy", () => {
+    expect(
+      shouldShowExpandedOrderStatusBadge(row(), {
+        hasRequestProgress: false,
+        hasExpandedDeliveryTiming: true,
+      })
+    ).toBe(false);
+  });
+
   it("filtruje zduplikowane metadane magazynu", () => {
     const fields = filterRedundantExpandedMetaFields(
       row({

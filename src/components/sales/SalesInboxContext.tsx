@@ -10,7 +10,10 @@ import {
   type ReactNode,
 } from "react";
 import { useSearchParams } from "next/navigation";
-import type { SalesDayStartSnapshot } from "@/lib/sales/sales-day-start";
+import {
+  snapshotActionWeight,
+  type SalesDayStartSnapshot,
+} from "@/lib/sales/sales-day-start";
 import { useSalesUpdates } from "@/components/sales/SalesUpdatesContext";
 import { SalesInboxPanel } from "@/components/sales/SalesInboxPanel";
 
@@ -24,6 +27,8 @@ type SalesInboxContextValue = {
   setOpen: (open: boolean) => void;
   refresh: () => Promise<void>;
   ringing: boolean;
+  /** Inkrementowany przy każdym ring — restart CSS animation. */
+  ringToken: number;
   visible: boolean;
 };
 
@@ -66,20 +71,31 @@ export function SalesInboxProvider({
   const [snapshot, setSnapshot] = useState<SalesDayStartSnapshot | null>(initialSnapshot);
   const [open, setOpen] = useState(false);
   const [ringing, setRinging] = useState(false);
+  const [ringToken, setRingToken] = useState(0);
   const prevCountRef = useRef(initialSnapshot?.totalActionCount ?? 0);
+  const prevWeightRef = useRef(
+    initialSnapshot ? snapshotActionWeight(initialSnapshot) : 0
+  );
   const bootstrappedRef = useRef(Boolean(initialSnapshot));
   const ringingTimerRef = useRef<number | null>(null);
 
   const applySnapshot = useCallback((next: SalesDayStartSnapshot | null) => {
     if (!next) return;
     const prev = prevCountRef.current;
+    const prevWeight = prevWeightRef.current;
     const nextCount = next.totalActionCount;
-    if (bootstrappedRef.current && nextCount > prev) {
+    const nextWeight = snapshotActionWeight(next);
+    if (
+      bootstrappedRef.current &&
+      (nextCount > prev || nextWeight > prevWeight)
+    ) {
+      setRingToken((token) => token + 1);
       setRinging(true);
       if (ringingTimerRef.current) window.clearTimeout(ringingTimerRef.current);
       ringingTimerRef.current = window.setTimeout(() => setRinging(false), 1400);
     }
     prevCountRef.current = nextCount;
+    prevWeightRef.current = nextWeight;
     setSnapshot(next);
     bootstrappedRef.current = true;
   }, []);
@@ -87,6 +103,7 @@ export function SalesInboxProvider({
   const bootstrapSnapshot = useCallback((next: SalesDayStartSnapshot | null) => {
     if (!next) return;
     prevCountRef.current = next.totalActionCount;
+    prevWeightRef.current = snapshotActionWeight(next);
     setSnapshot(next);
     bootstrappedRef.current = true;
   }, []);
@@ -165,6 +182,7 @@ export function SalesInboxProvider({
         setOpen,
         refresh,
         ringing,
+        ringToken,
         visible: effectiveEnabled,
       }}
     >

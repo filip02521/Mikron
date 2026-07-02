@@ -129,6 +129,20 @@ export const mojeShipmentLinesShellClass =
 export const mojeShipmentLineRowClass =
   "border-b border-slate-100 px-3 py-2 last:border-b-0 sm:py-2.5";
 
+/** Stała szerokość kolumny akcji przy rozwiniętej liście z potwierdzeniami per pozycja. */
+export const mojeShipmentLineActionColumnClass =
+  "flex w-full min-w-0 flex-col items-stretch gap-1.5 self-start sm:w-auto sm:max-w-[14rem]";
+
+/** Kompaktowy trigger ⋮ przy pozycji produktu — widoczny, spójny z menu karty. */
+export const mojeLineCancelMenuTriggerClass = cn(
+  "h-8 w-8 border-slate-200/90 text-slate-500 shadow-sm",
+  "hover:border-slate-300 hover:bg-slate-50 hover:text-slate-700"
+);
+
+/** Stopka zbiorczego potwierdzenia pod listą produktów. */
+export const mojeShipmentBulkPickupFooterClass =
+  "border-t border-emerald-100/90 bg-gradient-to-b from-emerald-50/50 via-emerald-50/20 to-white px-3 py-3 sm:px-4";
+
 export const mojeShipmentExpandedActionsClass =
   "flex justify-end border-t border-slate-100 bg-slate-50/60 px-3 py-2.5";
 

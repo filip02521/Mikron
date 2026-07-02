@@ -380,6 +380,11 @@ export function salesDayStartPanelDescription(totalActionCount: number): string 
   return `${totalActionCount} pilnych spraw — od najważniejszych. Kliknij wiersz, aby przejść dalej.`;
 }
 
+/** Suma pozycji do zrobienia — uwzględnia agregację linii (np. „Potwierdź odbiór zębów (3)”). */
+export function snapshotActionWeight(snapshot: SalesDayStartSnapshot): number {
+  return snapshot.items.reduce((sum, item) => sum + (item.count ?? 1), 0);
+}
+
 export function salesDayStartNavCount(
   inboxSummary: MyOrdersInboxSummary,
   notepadDueCount: number,

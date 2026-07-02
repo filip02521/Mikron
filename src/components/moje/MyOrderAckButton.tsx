@@ -8,9 +8,11 @@ import {
   mojeAckSegmentLabelClass,
   mojeAckSegmentOutlineClass,
   mojeAckSegmentPrimaryClass,
+  mojeBulkPickupAckClass,
   mojeCancelAckControlClass,
   mojeControlHeightClass,
   mojeInformacjaAckControlClass,
+  mojeLinePickupAckClass,
   mojePickupControlClass,
   mojeSecondaryControlClass,
   panelSegmentLastClass,
@@ -35,6 +37,8 @@ export function MyOrderAckButton({
     | "bannerInformacja"
     | "inline"
     | "action"
+    | "linePickup"
+    | "bulkPickup"
     | "informacjaAck"
     | "segmentPrimary"
     | "segmentInformacja"
@@ -67,13 +71,28 @@ export function MyOrderAckButton({
         </span>
       );
     }
-    if (variant === "action" || variant === "segmentPrimary") {
+    if (variant === "action" || variant === "segmentPrimary" || variant === "bulkPickup") {
       return (
         <span
           role="img"
           aria-label={previewTitle}
           title={previewTitle}
-          className={cn(mojePickupControlClass, className)}
+          className={cn(
+            variant === "bulkPickup" ? mojeBulkPickupAckClass : mojePickupControlClass,
+            className
+          )}
+        >
+          {children}
+        </span>
+      );
+    }
+    if (variant === "linePickup") {
+      return (
+        <span
+          role="img"
+          aria-label={previewTitle}
+          title={previewTitle}
+          className={cn(mojeLinePickupAckClass, className)}
         >
           {children}
         </span>
@@ -151,6 +170,36 @@ export function MyOrderAckButton({
         aria-label={accessibleName}
         onClick={onClick}
         className={cn(mojeSecondaryControlClass, "text-violet-800", className)}
+      >
+        {children}
+      </button>
+    );
+  }
+
+  if (variant === "linePickup") {
+    return (
+      <button
+        type="button"
+        disabled={disabled}
+        title={title}
+        aria-label={accessibleName}
+        onClick={onClick}
+        className={cn(mojeLinePickupAckClass, className)}
+      >
+        {children}
+      </button>
+    );
+  }
+
+  if (variant === "bulkPickup") {
+    return (
+      <button
+        type="button"
+        disabled={disabled}
+        title={title}
+        aria-label={accessibleName}
+        onClick={onClick}
+        className={cn(mojeBulkPickupAckClass, className)}
       >
         {children}
       </button>

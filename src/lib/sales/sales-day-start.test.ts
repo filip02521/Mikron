@@ -6,6 +6,7 @@ import {
   salesDayStartNavCount,
   salesDayStartPanelDescription,
   sliceSalesDayStartItems,
+  snapshotActionWeight,
 } from "./sales-day-start";
 
 function row(partial: Partial<MyOrderRow> & Pick<MyOrderRow, "id">): MyOrderRow {
@@ -57,6 +58,28 @@ describe("buildSalesDayStartSnapshot", () => {
     expect(pickupItems[0]?.ctaLabel).toBe("Przejdź");
     expect(pickupItems[0]?.scrollTarget).toBe("moje-section-action");
     expect(snapshot.totalActionCount).toBe(3);
+  });
+
+  it("łączy odbiór zębów w jedno powiadomienie zbiorcze", () => {
+    const snapshot = buildSalesDayStartSnapshot({
+      rows: [
+        row({
+          id: "t1",
+          supplierName: "Lab Zęby",
+          acknowledgeMode: "teeth_handover",
+          pickupPendingIds: ["o1", "o2"],
+          pickupPendingCount: 2,
+        }),
+      ],
+    });
+
+    const teethItems = snapshot.items.filter((i) => i.source === "teeth_handover");
+    expect(teethItems).toHaveLength(1);
+    expect(teethItems[0]?.title).toBe("Potwierdź odbiór zębów (2)");
+    expect(teethItems[0]?.scrollTarget).toBe("moje-section-teeth");
+    expect(teethItems[0]?.href).toBe("/moje#moje-section-teeth");
+    expect(snapshotActionWeight(snapshot)).toBe(2);
+    expect(snapshot.totalActionCount).toBe(1);
   });
 
   it("pokazuje dostawcę gdy jest tylko jedna pozycja odbioru", () => {

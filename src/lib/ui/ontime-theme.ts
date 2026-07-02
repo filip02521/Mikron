@@ -7,11 +7,12 @@ import { cn } from "@/lib/cn";
 import { panelActionSegmentClass } from "@/lib/ui/surfaces";
 import type { NavTone } from "@/lib/nav";
 
-/** Tło całej aplikacji (main + shell) */
-export const appShellClass = "min-h-screen bg-transparent";
+/** Tło całej aplikacji — kolumna flex, żeby `<main>` miał realną wysokość scrolla. */
+export const appShellClass = "flex h-dvh flex-col overflow-hidden bg-transparent";
 
-/** Obszar treści — lekki kontrast względem sidebara */
-export const appMainClass = "min-h-screen overflow-y-auto bg-transparent";
+/** Obszar treści — jedyny pionowy scroll w AppShell (flex-1 + min-h-0). */
+export const appMainClass =
+  "min-h-0 flex-1 overflow-y-auto scroll-smooth bg-transparent";
 
 /** Padding main — bez max-width; szerokość ustawia shell każdej strony. */
 export const appMainInsetClass = "mx-auto w-full px-3 py-5 sm:px-4 sm:py-6 lg:px-5";
@@ -270,6 +271,21 @@ export const mojePickupControlClass = cn(
   mojeControlHeightClass
 );
 
+/** Potwierdzenie pojedynczej pozycji w rozwiniętej liście — pełna szerokość kolumny akcji. */
+export const mojeLinePickupAckClass = cn(
+  "inline-flex w-full min-w-0 items-center justify-center rounded-md border border-emerald-200/90 bg-white px-2 py-2 text-center text-[11px] font-semibold leading-snug text-emerald-800 shadow-sm transition sm:text-xs",
+  "hover:border-emerald-300 hover:bg-emerald-50 active:bg-emerald-100/90 disabled:cursor-not-allowed disabled:opacity-50",
+  "focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-500/40",
+  "min-h-9 sm:min-h-10"
+);
+
+/** Zbiorcze potwierdzenie pod listą produktów. */
+export const mojeBulkPickupAckClass = cn(
+  "inline-flex w-full min-h-10 items-center justify-center rounded-md border border-emerald-600 bg-emerald-600 px-4 text-center text-xs font-semibold leading-none text-white shadow-sm transition",
+  "hover:border-emerald-700 hover:bg-emerald-700 active:bg-emerald-800 disabled:cursor-not-allowed disabled:opacity-50",
+  "focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-500/50 sm:w-auto sm:min-w-[10.5rem]"
+);
+
 /** Potwierdzenie powiadomienia informacyjnego od magazynu. */
 export const mojeInformacjaAckControlClass = cn(
   "inline-flex items-center justify-center gap-0.5 rounded-md border border-violet-200/90 bg-violet-50/90 px-3 text-xs font-semibold text-violet-800 shadow-sm transition",
@@ -306,6 +322,14 @@ export const mojeDestructiveSubtleControlClass = cn(
   "inline-flex shrink-0 items-center justify-center rounded-sm px-1 py-0.5 text-[10px] font-medium text-slate-400/90 transition",
   "hover:text-red-700 focus-visible:text-red-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-red-400/50",
   "disabled:cursor-not-allowed disabled:opacity-40"
+);
+
+/** Anulowanie pojedynczej pozycji w rozwiniętej liście — pełna szerokość kolumny akcji. */
+export const mojeLineCancelControlClass = cn(
+  "inline-flex w-full min-w-0 items-center justify-center rounded-md border border-red-200/90 bg-white px-2 py-2 text-center text-[11px] font-semibold leading-snug text-red-800 shadow-sm transition sm:text-xs",
+  "hover:border-red-300 hover:bg-red-50 active:bg-red-100/90 disabled:cursor-not-allowed disabled:opacity-50",
+  "focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-red-400/50",
+  "min-h-9 sm:min-h-10"
 );
 
 /**
@@ -463,7 +487,7 @@ export const informacjaSurfaceClass =
 
 /** Mobile — widok handlowca */
 export const mobileSalesHeaderClass =
-  "relative sticky top-0 z-30 flex min-h-14 items-center justify-between gap-3 border-b border-slate-200/80 bg-[var(--card)]/95 px-4 shadow-[var(--shadow-card-elevated)] backdrop-blur-md md:hidden pt-[max(0.75rem,env(safe-area-inset-top,0px))]";
+  "relative sticky top-0 z-30 flex shrink-0 min-h-14 items-center justify-between gap-3 border-b border-slate-200/80 bg-[var(--card)]/95 px-4 shadow-[var(--shadow-card-elevated)] backdrop-blur-md md:hidden pt-[max(0.75rem,env(safe-area-inset-top,0px))]";
 
 export const mobileSalesNavClass =
   "fixed inset-x-0 bottom-0 z-50 border-t border-slate-200/80 bg-[var(--card)]/95 shadow-[var(--shadow-card-elevated)] backdrop-blur-md md:hidden";

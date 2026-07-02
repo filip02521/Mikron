@@ -1,12 +1,13 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { IconBell, IconSun } from "@/components/icons/StrokeIcons";
 import { SectionHeadingIcon } from "@/components/icons/SectionHeadingIcon";
 import { SalesDayStartItemRow } from "@/components/sales/SalesDayStartItemRow";
 import { useSalesInbox } from "@/components/sales/SalesInboxContext";
+import { useFocusTrap } from "@/hooks/useFocusTrap";
 import { useClientHydrated } from "@/lib/client/use-client-hydrated";
 import { hrefWithSalesPreviewFromUrl } from "@/lib/nav/sales-preview-href";
 import { scrollToMojeSectionWhenReady } from "@/lib/orders/moje-section-focus";
@@ -44,11 +45,13 @@ export function SalesInboxPanel({
   const searchParams = useSearchParams();
   const previewDla = searchParams.get("dla");
   const hydrated = useClientHydrated();
+  const panelRef = useRef<HTMLElement>(null);
   const [itemsExpanded, setItemsExpanded] = useState(false);
   const snapshot = inbox?.snapshot;
   const count = inbox?.count ?? 0;
 
   useBodyScrollLock(open);
+  useFocusTrap(panelRef, open);
 
   const handleClose = useCallback(() => {
     setItemsExpanded(false);
@@ -73,7 +76,11 @@ export function SalesInboxPanel({
     (scrollTarget: string, fallbackHref: string) => {
       const targetHref = previewHref(fallbackHref);
       if (pathname === "/moje") {
-        scrollToMojeSectionWhenReady(scrollTarget, () => router.push(targetHref));
+        scrollToMojeSectionWhenReady(
+          scrollTarget,
+          () => router.push(targetHref),
+          { delayMs: 120, maxAttempts: 10, initialDelayMs: 150 }
+        );
         return;
       }
       router.push(targetHref);
@@ -98,6 +105,7 @@ export function SalesInboxPanel({
         onClick={handleClose}
       />
       <aside
+        ref={panelRef}
         id={SALES_INBOX_PANEL_ID}
         role="dialog"
         aria-modal="true"

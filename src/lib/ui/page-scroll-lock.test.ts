@@ -1,8 +1,12 @@
 /**
  * @vitest-environment happy-dom
  */
-import { afterEach, describe, expect, it } from "vitest";
-import { lockPageScroll, unlockPageScroll } from "./page-scroll-lock";
+import { afterEach, describe, expect, it, vi } from "vitest";
+import {
+  lockPageScroll,
+  runAfterScrollUnlock,
+  unlockPageScroll,
+} from "./page-scroll-lock";
 
 function setupMain() {
   const main = document.createElement("main");
@@ -52,5 +56,22 @@ describe("page-scroll-lock", () => {
 
     unlockPageScroll();
     expect(document.documentElement.classList.contains("ontime-scroll-locked")).toBe(false);
+  });
+
+  it("runAfterScrollUnlock uruchamia callback po odblokowaniu main", async () => {
+    vi.useFakeTimers();
+    setupMain();
+    lockPageScroll();
+
+    const fn = vi.fn();
+    runAfterScrollUnlock(fn);
+
+    unlockPageScroll();
+    expect(fn).not.toHaveBeenCalled();
+
+    await vi.runAllTimersAsync();
+    expect(fn).toHaveBeenCalledTimes(1);
+
+    vi.useRealTimers();
   });
 });

@@ -17,6 +17,7 @@ type SavedStyles = {
 
 let depth = 0;
 let saved: SavedStyles | null = null;
+const afterUnlockQueue: Array<() => void> = [];
 
 function queryMain(): HTMLElement | null {
   const main = document.querySelector("main");
@@ -46,6 +47,18 @@ function detachScrollBlockListeners() {
   document.removeEventListener("wheel", preventBackgroundScroll);
   document.removeEventListener("touchmove", preventBackgroundScroll);
   listenersAttached = false;
+}
+
+function flushAfterUnlockQueue(): void {
+  if (afterUnlockQueue.length === 0) return;
+  const queue = afterUnlockQueue.splice(0);
+  requestAnimationFrame(() => {
+    requestAnimationFrame(() => {
+      window.setTimeout(() => {
+        for (const fn of queue) fn();
+      }, SCROLL_AFTER_UNLOCK_MS);
+    });
+  });
 }
 
 export function lockPageScroll(): void {
@@ -91,11 +104,37 @@ export function unlockPageScroll(): void {
   const main = queryMain();
   if (main) {
     main.style.overflow = saved.mainOverflow;
-    main.scrollTop = saved.mainScrollTop;
   }
 
   detachScrollBlockListeners();
   saved = null;
+  flushAfterUnlockQueue();
+}
+
+/** Po zamknięciu overlayu — krótka pauza po odblokowaniu `<main>` (layout + smooth scroll). */
+export const SCROLL_AFTER_UNLOCK_MS = 100;
+
+export function runAfterScrollUnlock(fn: () => void, delayMs = SCROLL_AFTER_UNLOCK_MS): () => void {
+  const run = () => {
+    if (delayMs > 0) {
+      window.setTimeout(fn, delayMs);
+      return;
+    }
+    fn();
+  };
+
+  if (depth > 0) {
+    afterUnlockQueue.push(run);
+    return () => {
+      const index = afterUnlockQueue.indexOf(run);
+      if (index >= 0) afterUnlockQueue.splice(index, 1);
+    };
+  }
+
+  requestAnimationFrame(() => {
+    requestAnimationFrame(run);
+  });
+  return () => {};
 }
 
 /**

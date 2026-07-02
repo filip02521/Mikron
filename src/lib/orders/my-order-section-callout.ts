@@ -205,10 +205,14 @@ function patternTone(pattern: MyOrderSectionPatternId): MyOrderSectionCalloutTon
   return calloutForPattern(pattern, 1).tone;
 }
 
-/** Wyjaśnienie wzorca przy pojedynczym wierszu (ikona ?). */
-export function resolveMyOrderRowPatternHint(row: MyOrderRow): MyOrderRowPatternHint | null {
+/** Wyjaśnienie wzorca przy pojedynczym wierszu (ikona ?) — nie gdy sekcja ma już hint/callout. */
+export function resolveMyOrderRowPatternHint(
+  row: MyOrderRow,
+  suppressedPatterns?: Set<MyOrderSectionPatternId>
+): MyOrderRowPatternHint | null {
   const ui = enrichMyOrderSalesUi(row);
   if (ui.sortPriority === 5) {
+    if (suppressedPatterns?.has("verification")) return null;
     return {
       pattern: "verification",
       tone: patternTone("verification"),

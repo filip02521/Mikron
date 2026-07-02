@@ -89,11 +89,10 @@ export function BrandClockHandsAnimated({
     () => false
   );
   const [introAngles, setIntroAngles] = useState<BrandClockAngles>(BRAND_CLOCK_INTRO_ANGLES);
-  const angles =
-    hydrated && reducedMotion ? brandClockAnglesFromDate() : introAngles;
+  const angles = introAngles;
 
   useEffect(() => {
-    if (!hydrated || reducedMotion) return;
+    if (!hydrated) return;
 
     const introStart = performance.now();
     const introTarget = brandClockAnglesFromDate();
@@ -114,7 +113,9 @@ export function BrandClockHandsAnimated({
       }
 
       syncLive();
-      interval = window.setInterval(syncLive, 1000);
+      if (!reducedMotion) {
+        interval = window.setInterval(syncLive, 1000);
+      }
     };
 
     frame = requestAnimationFrame(() => {

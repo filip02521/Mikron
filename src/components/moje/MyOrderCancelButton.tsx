@@ -4,6 +4,7 @@ import { cn } from "@/lib/cn";
 import {
   mojeDestructiveOutlineControlClass,
   mojeDestructiveSubtleControlClass,
+  mojeLineCancelControlClass,
 } from "@/lib/ui/ontime-theme";
 
 /** Anulowanie pojedynczej pozycji — spójne z kontrolkami /moje. */
@@ -22,7 +23,7 @@ export function MyOrderCancelButton({
   className?: string;
   title?: string;
   ariaLabel?: string;
-  variant?: "subtle" | "outline";
+  variant?: "subtle" | "outline" | "lineAction";
 }) {
   return (
     <button
@@ -32,9 +33,11 @@ export function MyOrderCancelButton({
       aria-label={ariaLabel}
       onClick={onClick}
       className={cn(
-        variant === "outline"
-          ? mojeDestructiveOutlineControlClass
-          : mojeDestructiveSubtleControlClass,
+        variant === "lineAction"
+          ? mojeLineCancelControlClass
+          : variant === "outline"
+            ? mojeDestructiveOutlineControlClass
+            : mojeDestructiveSubtleControlClass,
         className
       )}
     >

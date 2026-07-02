@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   canSalesCancelOrders,
+  canPartialSalesCancel,
   effectiveSalesCancelledQuantity,
   effectiveSalesCancelPhase,
   isSalesCancelNoticePending,
@@ -383,6 +384,19 @@ describe("sales-cancel", () => {
     const plan = planSalesCancelQuantity(o, 1);
     expect(plan.totalCancelledQty).toBe(3);
     expect(plan.storedCancelledQuantity).toBe("3");
+  });
+
+  it("resolveSalesCancelPhase — częściowa rezygnacja, potem przyjęcie na magazyn", () => {
+    const o = order("Zrealizowane", {
+      quantity: "6",
+      delivered_quantity: "3",
+      sales_cancelled_at: "2026-05-01",
+      sales_cancelled_quantity: "3",
+      sales_cancel_phase: "in_transit",
+    });
+    expect(resolveSalesCancelPhase(o)).toBe("on_stock");
+    expect(maxSalesCancelQuantity(o)).toBe(3);
+    expect(canPartialSalesCancel(o)).toBe(true);
   });
 
   it("isSalesCancelledForQueue — pomija częściową z resztą u dostawcy", () => {

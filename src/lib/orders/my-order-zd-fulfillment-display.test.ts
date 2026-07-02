@@ -3,6 +3,7 @@ import { aggregateGroupZdEtaState } from "./my-order-sales-ui";
 import {
   buildCollapsedZdMixedNoMatchHint,
   buildCollapsedZdMultiSlotHint,
+  isLineZdDetailRedundantWithExpandedGroupTiming,
   salesZdGroupTimingLabel,
   salesZdPrimarySlotTimingLabel,
   zdFulfillmentCollapsedCaption,
@@ -182,6 +183,115 @@ describe("buildCollapsedZdMixedNoMatchHint", () => {
       { zdFulfillment: { deadline: "2026-06-24", dokNr: "ZD/1", syncedAt: null, source: "zd" } },
     ]);
     expect(hint).toBe("2 pozycje czekają na termin w ZD — rozwiń po szczegóły");
+  });
+});
+
+describe("isLineZdDetailRedundantWithExpandedGroupTiming", () => {
+  it("ukrywa ten sam slot ZD co grupa w rozwinięciu", () => {
+    const zd = {
+      deadline: "2026-07-15",
+      dokNr: "ZD/1",
+      syncedAt: null,
+      source: "zd" as const,
+    };
+    const row = { zdFulfillment: zd, zdEtaPending: false, zdEtaNoMatch: false };
+    const line = { zdFulfillment: zd, zdEtaPending: false, zdEtaNoMatch: false };
+    expect(isLineZdDetailRedundantWithExpandedGroupTiming(row, line, true)).toBe(true);
+    expect(isLineZdDetailRedundantWithExpandedGroupTiming(row, line, false)).toBe(false);
+  });
+
+  it("zostawia termin linii gdy różni się od grupy", () => {
+    const row = {
+      zdFulfillment: {
+        deadline: "2026-07-15",
+        dokNr: "ZD/1",
+        syncedAt: null,
+        source: "zd" as const,
+        slots: [
+          { deadline: "2026-07-15", dokNr: "ZD/1", count: 1 },
+          { deadline: "2026-07-22", dokNr: "ZD/2", count: 1 },
+        ],
+      },
+      zdEtaPending: false,
+      zdEtaNoMatch: false,
+    };
+    const line = {
+      zdFulfillment: {
+        deadline: "2026-07-22",
+        dokNr: "ZD/2",
+        syncedAt: null,
+        source: "zd" as const,
+      },
+      zdEtaPending: false,
+      zdEtaNoMatch: false,
+    };
+    expect(isLineZdDetailRedundantWithExpandedGroupTiming(row, line, true)).toBe(true);
+
+    const otherLine = {
+      zdFulfillment: {
+        deadline: "2026-08-01",
+        dokNr: "ZD/9",
+        syncedAt: null,
+        source: "zd" as const,
+      },
+      zdEtaPending: false,
+      zdEtaNoMatch: false,
+    };
+    expect(isLineZdDetailRedundantWithExpandedGroupTiming(row, otherLine, true)).toBe(false);
+  });
+
+  it("ukrywa ten sam szacunek z historii co grupa (zdEtaNoMatch)", () => {
+    const row = {
+      timingLabel: "ok. 08.07.2026 (~5 dni rob.)",
+      zdFulfillment: null,
+      zdEtaPending: false,
+      zdEtaNoMatch: true,
+    };
+    const line = {
+      zdFulfillment: null,
+      zdEtaPending: false,
+      zdEtaNoMatch: true,
+      historyEstimateLabel: "ok. 08.07.2026 (~5 dni rob.)",
+    };
+    expect(isLineZdDetailRedundantWithExpandedGroupTiming(row, line, true)).toBe(true);
+  });
+
+  it("zostawia inny szacunek z historii niż grupa", () => {
+    const row = {
+      timingLabel: "ok. 08.07.2026 (~5 dni rob.)",
+      zdFulfillment: null,
+      zdEtaPending: false,
+      zdEtaNoMatch: true,
+    };
+    const line = {
+      zdFulfillment: null,
+      zdEtaPending: false,
+      zdEtaNoMatch: true,
+      historyEstimateLabel: "ok. 15.07.2026 (~5 dni rob.)",
+    };
+    expect(isLineZdDetailRedundantWithExpandedGroupTiming(row, line, true)).toBe(false);
+  });
+
+  it("grupa mieszana ZD — zostawia historię przy produkcie", () => {
+    const zd = {
+      deadline: "2026-07-15",
+      dokNr: "ZD/1",
+      syncedAt: null,
+      source: "zd" as const,
+    };
+    const row = {
+      timingLabel: "ok. 08.07.2026 (~5 dni rob.)",
+      zdFulfillment: zd,
+      zdEtaPending: false,
+      zdEtaNoMatch: true,
+    };
+    const line = {
+      zdFulfillment: null,
+      zdEtaPending: false,
+      zdEtaNoMatch: true,
+      historyEstimateLabel: "ok. 08.07.2026 (~5 dni rob.)",
+    };
+    expect(isLineZdDetailRedundantWithExpandedGroupTiming(row, line, true)).toBe(false);
   });
 });
 

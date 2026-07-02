@@ -5,6 +5,8 @@ export type MyOrderPickupAckMode = "pickup" | "teeth_handover" | "availability";
 export const MY_ORDER_PICKUP_ACK_LABEL = "Potwierdź odbiór";
 export const MY_ORDER_TEETH_ACK_LABEL = "Potwierdź odbiór zębów";
 export const MY_ORDER_AVAILABILITY_ACK_LABEL = "Potwierdź";
+export const MY_ORDER_PICKUP_ACK_LINE_LABEL = "Potwierdź tę pozycję";
+export const MY_ORDER_PICKUP_ACK_ALL_LABEL = "Potwierdź wszystko";
 
 export type MyOrderPickupAckLabelOptions = {
   /** Krótka forma na liście — wiersz już ma status „Gotowe”. */
@@ -30,6 +32,31 @@ export function myOrderPickupAckLabel(
   }
   if (n > 1) return `${MY_ORDER_PICKUP_ACK_LABEL} (${n})`;
   return MY_ORDER_PICKUP_ACK_LABEL;
+}
+
+/** Etykieta potwierdzenia pojedynczej pozycji w rozwiniętej liście produktów. */
+export function myOrderPickupAckLineLabel(): string {
+  return MY_ORDER_PICKUP_ACK_LINE_LABEL;
+}
+
+/** Etykieta zbiorczego potwierdzenia na dole rozwiniętej listy. */
+export function myOrderPickupAckAllLabel(): string {
+  return MY_ORDER_PICKUP_ACK_ALL_LABEL;
+}
+
+/** Opis akcji dla jednej pozycji (title / aria-label). */
+export function myOrderPickupAckLineTitle(
+  product: string,
+  mode: MyOrderPickupAckMode = "pickup"
+): string {
+  const suffix = product.trim() ? `: ${product.trim()}` : "";
+  if (mode === "availability") {
+    return `Potwierdzam powiadomienie o dostępności${suffix}`;
+  }
+  if (mode === "teeth_handover") {
+    return `Potwierdzam odbiór zębów od magazynu${suffix}`;
+  }
+  return `Potwierdzam odbiór towaru z magazynu${suffix}`;
 }
 
 /** Pełny opis dla title / aria-label. */

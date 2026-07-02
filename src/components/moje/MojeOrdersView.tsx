@@ -72,7 +72,6 @@ import {
 import {
   MY_ORDER_ACTION_SECTION_COPY,
   MY_ORDER_TEETH_ACTION_SECTION_COPY,
-  MOJE_TEETH_ACTION_SECTION_ID,
   MY_ORDER_INFORMACJA_SECTION_COPY,
   MY_ORDER_PROGRESS_SECTION_COPY,
   MY_ORDER_PROGRESS_SECTION_EMPTY,
@@ -107,10 +106,8 @@ function lineUnitLabel(n: number): string {
 function MojeOrdersOverviewStats({
   shipmentCount,
   lineCount,
-  filteredCount,
   searchActive,
   clientLinkFilterActive = false,
-  archiveMatchCount = 0,
   className,
 }: {
   shipmentCount: number;
@@ -121,38 +118,21 @@ function MojeOrdersOverviewStats({
   archiveMatchCount?: number;
   className?: string;
 }) {
-  const narrowed = searchActive;
-  if (clientLinkFilterActive && !narrowed) return null;
+  if (searchActive) return null;
+  if (clientLinkFilterActive) return null;
   return (
     <div className={cn("min-w-0 flex-1", className)}>
-      {narrowed ? (
-        <p className={cn(salesTypography.chrome, "leading-relaxed")} aria-live="polite">
-          Pokazano{" "}
-          <span className={salesTypography.statValue}>{filteredCount}</span>
-          {" z "}
+      <div className="flex flex-wrap items-center gap-3">
+        <div className="inline-flex items-baseline gap-1.5">
           <span className={salesTypography.statValue}>{shipmentCount}</span>
-          <span className="ml-2 inline-flex rounded-full bg-sky-100 px-2 py-0.5 text-[11px] font-semibold text-sky-900">
-            szukaj
-          </span>
-          {archiveMatchCount ? (
-            <span className="ml-2 text-slate-500">
-              +{archiveMatchCount} w archiwum
-            </span>
-          ) : null}
-        </p>
-      ) : (
-        <div className="flex flex-wrap items-center gap-3">
-          <div className="inline-flex items-baseline gap-1.5">
-            <span className={salesTypography.statValue}>{shipmentCount}</span>
-            <span className={salesTypography.statLabel}>{prosbaUnitLabel(shipmentCount)}</span>
-          </div>
-          <span className="hidden h-3.5 w-px bg-slate-200 sm:block" aria-hidden />
-          <div className="inline-flex items-baseline gap-1.5">
-            <span className={salesTypography.statValue}>{lineCount}</span>
-            <span className={salesTypography.statLabel}>{lineUnitLabel(lineCount)}</span>
-          </div>
+          <span className={salesTypography.statLabel}>{prosbaUnitLabel(shipmentCount)}</span>
         </div>
-      )}
+        <span className="hidden h-3.5 w-px bg-slate-200 sm:block" aria-hidden />
+        <div className="inline-flex items-baseline gap-1.5">
+          <span className={salesTypography.statValue}>{lineCount}</span>
+          <span className={salesTypography.statLabel}>{lineUnitLabel(lineCount)}</span>
+        </div>
+      </div>
     </div>
   );
 }
@@ -444,6 +424,8 @@ function MojeOrdersViewContent({
   const [imperativeAnnouncementId, setImperativeAnnouncementId] = useState<string | null>(
     null
   );
+  const [imperativeFocusOrderIds, setImperativeFocusOrderIds] = useState<string[]>([]);
+  const focusScrollDoneRef = useRef(false);
   const validImperativeAnnouncementId =
     imperativeAnnouncementId &&
     boardAnnouncements?.announcements.some((row) => row.id === imperativeAnnouncementId)
@@ -456,10 +438,11 @@ function MojeOrdersViewContent({
   const clientLinkLabel = (initialClientKhLabel ?? initialClientQuery ?? "").trim() || null;
   const clientZkWatchId = initialClientZkWatchId?.trim() || null;
   const clientZkNumber = initialClientZkNumber?.trim() || null;
-  const focusOrderIds = useMemo(
-    () => parseMojeFocusOrderIds(initialFocusOrderIds),
-    [initialFocusOrderIds]
-  );
+  const focusOrderIds = useMemo(() => {
+    const fromUrl = parseMojeFocusOrderIds(initialFocusOrderIds);
+    if (fromUrl.length) return fromUrl;
+    return imperativeFocusOrderIds;
+  }, [initialFocusOrderIds, imperativeFocusOrderIds]);
   const clientLinkFilterActive =
     clientKhFilter != null ||
     Boolean(clientLinkLabel) ||
@@ -574,7 +557,7 @@ function MojeOrdersViewContent({
     const shelf: typeof actionZamowienia = [];
     const teeth: typeof actionZamowienia = [];
     for (const row of actionZamowienia) {
-      if (row.isTeeth) teeth.push(row);
+      if (row.acknowledgeMode === "teeth_handover") teeth.push(row);
       else shelf.push(row);
     }
     return { actionShelfZamowienia: shelf, actionTeethZamowienia: teeth };
@@ -635,6 +618,11 @@ function MojeOrdersViewContent({
         parsedUrl.searchParams.get(MOJE_FOCUS_ORDERS_PARAM)
       );
 
+      if (focusIds.length) {
+        setImperativeFocusOrderIds(focusIds);
+        focusScrollDoneRef.current = false;
+      }
+
       const scrollToFocusRow = () => {
         if (!focusIds.length) return;
         const targetRowId = findMyOrderRowIdsForFocusOrderIds(allRows, focusIds)[0];
@@ -654,9 +642,13 @@ function MojeOrdersViewContent({
         return;
       }
 
-      scrollToMojeSectionWhenReady(scrollTarget, () => {
-        router.push(hrefWithSalesPreviewFromUrl(fallbackHref, previewDla));
-      });
+      scrollToMojeSectionWhenReady(
+        scrollTarget,
+        () => {
+          router.push(hrefWithSalesPreviewFromUrl(fallbackHref, previewDla));
+        },
+        { delayMs: 120, maxAttempts: 10, initialDelayMs: 150 }
+      );
       if (focusIds.length) window.setTimeout(scrollToFocusRow, 500);
     },
     [router, searchParams, allRows]
@@ -674,6 +666,12 @@ function MojeOrdersViewContent({
     </Suspense>
   ) : null;
 
+  const shellPinnedAnnouncementIds = useMemo(
+    () =>
+      dayStartContext?.boardAttention?.pinnedAnnouncements.map((row) => row.id) ?? [],
+    [dayStartContext]
+  );
+
   const announcementsPanel = boardAnnouncementsError ? (
     <Alert tone="error">{boardAnnouncementsError}</Alert>
   ) : boardAnnouncements && boardAnnouncements.announcements.length > 0 ? (
@@ -682,6 +680,7 @@ function MojeOrdersViewContent({
         readAnnouncementIds={boardAnnouncements.readAnnouncementIds}
         focusAnnouncementId={effectiveFocusAnnouncementId}
         tourDemo={tourPreview}
+        shellPinnedAnnouncementIds={shellPinnedAnnouncementIds}
       />
     ) : null;
 
@@ -778,7 +777,7 @@ function MojeOrdersViewContent({
         zkNumber={clientZkNumber}
         zkWatchId={clientZkWatchId}
         salesPersonId={zamowienia[0]?.salesPersonId ?? informacje[0]?.salesPersonId ?? null}
-        matchCount={searchMatchCount}
+        matchCount={searchActive ? undefined : searchMatchCount}
         totalCount={shipmentCount}
         onClear={clearNotepadClientFilter}
       />
@@ -822,8 +821,6 @@ function MojeOrdersViewContent({
     if (markDoneIfScrolled()) return;
     window.setTimeout(markDoneIfScrolled, 120);
   }, [focusOrderIds.length]);
-
-  const focusScrollDoneRef = useRef(false);
 
   useEffect(() => {
     if (focusScrollDoneRef.current || focusRowIds.size === 0) return;
@@ -1097,15 +1094,13 @@ function MojeOrdersViewContent({
             ) : null}
             {actionTeethCount > 0 ? (
               <MojeSectionShell sectionIcon={MY_ORDER_TEETH_ACTION_SECTION_COPY.icon}>
-                <div id={MOJE_TEETH_ACTION_SECTION_ID}>
-                  <MojeSectionListLabel
-                    title={MY_ORDER_TEETH_ACTION_SECTION_COPY.title}
-                    hint={MY_ORDER_TEETH_ACTION_SECTION_COPY.hint}
-                    count={actionTeethCount}
-                    accent={MY_ORDER_TEETH_ACTION_SECTION_COPY.accent}
-                    icon={MY_ORDER_TEETH_ACTION_SECTION_COPY.icon}
-                  />
-                </div>
+                <MojeSectionListLabel
+                  title={MY_ORDER_TEETH_ACTION_SECTION_COPY.title}
+                  hint={MY_ORDER_TEETH_ACTION_SECTION_COPY.hint}
+                  count={actionTeethCount}
+                  accent={MY_ORDER_TEETH_ACTION_SECTION_COPY.accent}
+                  icon={MY_ORDER_TEETH_ACTION_SECTION_COPY.icon}
+                />
                 <MyOrderSectionNoticeList
                   callouts={actionTeethSectionCallouts.callouts}
                   singleHints={actionTeethSectionCallouts.singleHints}

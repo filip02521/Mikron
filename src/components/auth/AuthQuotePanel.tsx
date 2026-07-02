@@ -12,6 +12,48 @@ import {
 import { cn } from "@/lib/cn";
 
 const ROTATE_MS = 9000;
+const FADE_MS = 320;
+
+type QuoteAnimClass = "auth-quote-enter" | "auth-quote-exit";
+
+function QuoteText({
+  quote,
+  animClass,
+  compact,
+}: {
+  quote: AuthQuote;
+  animClass: QuoteAnimClass;
+  compact: boolean;
+}) {
+  return (
+    <>
+      <blockquote
+        key={`${quote.text}-${animClass}`}
+        className={cn(
+          compact
+            ? "relative mt-2.5 text-sm font-medium leading-snug tracking-tight text-white sm:mt-3 sm:text-base"
+            : "mt-10 text-2xl font-medium leading-snug tracking-tight text-white xl:mt-12",
+          animClass
+        )}
+      >
+        „{quote.text}"
+      </blockquote>
+      {quote.attribution ? (
+        <p
+          key={`${quote.attribution}-${animClass}`}
+          className={cn(
+            compact
+              ? "relative mt-2 text-xs text-indigo-200/80"
+              : "mt-4 text-sm text-indigo-200/80",
+            animClass
+          )}
+        >
+          — {quote.attribution}
+        </p>
+      ) : null}
+    </>
+  );
+}
 
 export function AuthQuotePanel({
   className,
@@ -22,17 +64,18 @@ export function AuthQuotePanel({
   compact?: boolean;
 }) {
   const [index, setIndex] = useState(0);
-  const [visible, setVisible] = useState(true);
+  const [animClass, setAnimClass] = useState<QuoteAnimClass>("auth-quote-enter");
 
   useEffect(() => {
-    const id = window.setInterval(() => {
-      setVisible(false);
+    const rotateId = window.setInterval(() => {
+      setAnimClass("auth-quote-exit");
       window.setTimeout(() => {
         setIndex((i) => (i + 1) % AUTH_QUOTES.length);
-        setVisible(true);
-      }, 320);
+        setAnimClass("auth-quote-enter");
+      }, FADE_MS);
     }, ROTATE_MS);
-    return () => window.clearInterval(id);
+
+    return () => window.clearInterval(rotateId);
   }, []);
 
   const quote: AuthQuote = AUTH_QUOTES[index]!;
@@ -45,8 +88,8 @@ export function AuthQuotePanel({
           className
         )}
       >
-        {!isAuthVisualVariant('minimal') ? <AuthCompactQuoteBackdrop /> : null}
-        {!isAuthVisualVariant('minimal') ? (
+        {!isAuthVisualVariant("minimal") ? <AuthCompactQuoteBackdrop /> : null}
+        {!isAuthVisualVariant("minimal") ? (
           <div
             className="pointer-events-none absolute -right-8 top-0 h-24 w-24 rounded-full bg-indigo-400/20 blur-2xl"
             aria-hidden
@@ -56,24 +99,7 @@ export function AuthQuotePanel({
           {ONTIME_COMPANY} · {ONTIME_APP_NAME}
         </p>
         <p className="relative mt-0.5 text-xs font-medium text-sky-100/95">{ONTIME_TAGLINE}</p>
-        <blockquote
-          className={cn(
-            "relative mt-2.5 text-sm font-medium leading-snug tracking-tight text-white transition-all duration-300 ease-out motion-reduce:transition-none sm:mt-3 sm:text-base",
-            visible ? "translate-y-0 opacity-100" : "translate-y-1 opacity-0"
-          )}
-        >
-          „{quote.text}”
-        </blockquote>
-        {quote.attribution ? (
-          <p
-            className={cn(
-              "relative mt-2 text-xs text-indigo-200/80 transition-opacity duration-300 motion-reduce:transition-none",
-              visible ? "opacity-100" : "opacity-0"
-            )}
-          >
-            — {quote.attribution}
-          </p>
-        ) : null}
+        <QuoteText quote={quote} animClass={animClass} compact />
         <p className="relative mt-3 text-[10px] tabular-nums text-indigo-200/50">
           {index + 1} / {AUTH_QUOTES.length}
         </p>
@@ -95,24 +121,7 @@ export function AuthQuotePanel({
           <span className="text-sky-200">Time</span>
         </p>
         <p className="mt-2 text-sm font-medium text-sky-100/95">{ONTIME_TAGLINE}</p>
-        <blockquote
-          className={cn(
-            "mt-10 text-2xl font-medium leading-snug tracking-tight text-white transition-all duration-300 ease-out motion-reduce:transition-none xl:mt-12",
-            visible ? "translate-y-0 opacity-100" : "translate-y-2 opacity-0"
-          )}
-        >
-          „{quote.text}”
-        </blockquote>
-        {quote.attribution ? (
-          <p
-            className={cn(
-              "mt-4 text-sm text-indigo-200/80 transition-opacity duration-300 motion-reduce:transition-none",
-              visible ? "opacity-100" : "opacity-0"
-            )}
-          >
-            — {quote.attribution}
-          </p>
-        ) : null}
+        <QuoteText quote={quote} animClass={animClass} compact={false} />
       </div>
       <p className="text-xs text-indigo-200/50">
         {index + 1} / {AUTH_QUOTES.length}

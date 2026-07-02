@@ -70,13 +70,28 @@ export function scrollToMojeSection(
 export function scrollToMojeSectionWhenReady(
   sectionId: string,
   onGiveUp?: () => void,
-  delayMs = 120
+  opts?: { delayMs?: number; maxAttempts?: number; initialDelayMs?: number }
 ): void {
-  const attempt = () => scrollToMojeSection(sectionId);
-  if (attempt()) return;
-  window.setTimeout(() => {
-    if (!attempt()) onGiveUp?.();
-  }, delayMs);
+  const delayMs = opts?.delayMs ?? 120;
+  const maxAttempts = opts?.maxAttempts ?? 3;
+  const initialDelayMs = opts?.initialDelayMs ?? 0;
+  let attempt = 0;
+
+  const run = () => {
+    attempt += 1;
+    if (scrollToMojeSection(sectionId)) return;
+    if (attempt < maxAttempts) {
+      window.setTimeout(run, delayMs);
+      return;
+    }
+    onGiveUp?.();
+  };
+
+  if (initialDelayMs > 0) {
+    window.setTimeout(run, initialDelayMs);
+  } else {
+    run();
+  }
 }
 
 /** Przewiń do karty prośby — z krótkim opóźnieniem i ponowieniem (np. po rozwinięciu archiwum). */

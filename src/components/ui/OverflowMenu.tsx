@@ -48,6 +48,7 @@ export function OverflowMenu({
   variant = "standalone",
   triggerClassName,
   iconOnly = false,
+  triggerLabel,
 }: {
   label: string;
   align?: "start" | "end";
@@ -57,6 +58,8 @@ export function OverflowMenu({
   variant?: "standalone" | "segment";
   triggerClassName?: string;
   iconOnly?: boolean;
+  /** Etykieta na przycisku (domyślnie „Więcej”). */
+  triggerLabel?: string;
 }) {
   const [open, setOpen] = useState(false);
   const [menuPos, setMenuPos] = useState<MenuPosition | null>(null);
@@ -151,7 +154,11 @@ export function OverflowMenu({
         <span className="inline-flex items-center justify-center leading-none">
           <MoreIcon />
         </span>
-        {iconOnly ? <span className="sr-only">Więcej</span> : <span>Więcej</span>}
+        {iconOnly ? (
+          <span className="sr-only">{triggerLabel ?? "Więcej"}</span>
+        ) : (
+          <span>{triggerLabel ?? "Więcej"}</span>
+        )}
       </button>
     ) : iconOnly ? (
       <button
@@ -192,7 +199,7 @@ export function OverflowMenu({
         )}
       >
         <MoreIcon />
-        <span>Więcej</span>
+        <span>{triggerLabel ?? "Więcej"}</span>
       </Button>
     );
 

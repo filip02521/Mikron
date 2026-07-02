@@ -58,12 +58,12 @@ export function shouldShowOrderStatusBadge(row: MyOrderRow): boolean {
   return true;
 }
 
-/** Badge statusu w rozwinięciu — ukryty gdy pasek postępu niesie ten sam kontekst. */
+/** Badge statusu w rozwinięciu — ukryty gdy pasek postępu lub blok terminu niesie ten sam kontekst. */
 export function shouldShowExpandedOrderStatusBadge(
   row: MyOrderRow,
-  opts: { hasRequestProgress: boolean }
+  opts: { hasRequestProgress: boolean; hasExpandedDeliveryTiming?: boolean }
 ): boolean {
-  if (opts.hasRequestProgress) return false;
+  if (opts.hasRequestProgress || opts.hasExpandedDeliveryTiming) return false;
   return shouldShowOrderStatusBadge(row);
 }
 

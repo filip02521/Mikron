@@ -1,6 +1,9 @@
 import { describe, expect, it } from "vitest";
 import {
+  myOrderPickupAckAllLabel,
   myOrderPickupAckLabel,
+  myOrderPickupAckLineLabel,
+  myOrderPickupAckLineTitle,
   myOrderPickupAckTitle,
 } from "./my-order-pickup-ack-copy";
 
@@ -28,5 +31,23 @@ describe("myOrderPickupAckLabel", () => {
 describe("myOrderPickupAckTitle", () => {
   it("odbiór wielu pozycji", () => {
     expect(myOrderPickupAckTitle(3)).toContain("3 poz.");
+  });
+});
+
+describe("myOrderPickupAckLineLabel", () => {
+  it("zawsze opisuje pojedynczą pozycję", () => {
+    expect(myOrderPickupAckLineLabel()).toBe("Potwierdź tę pozycję");
+  });
+});
+
+describe("myOrderPickupAckAllLabel", () => {
+  it("zawsze opisuje zbiorcze potwierdzenie", () => {
+    expect(myOrderPickupAckAllLabel()).toBe("Potwierdź wszystko");
+  });
+});
+
+describe("myOrderPickupAckLineTitle", () => {
+  it("zawiera nazwę produktu", () => {
+    expect(myOrderPickupAckLineTitle("Filtr ABC")).toContain("Filtr ABC");
   });
 });

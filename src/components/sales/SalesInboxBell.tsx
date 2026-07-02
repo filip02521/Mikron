@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useRef } from "react";
 import { IconBell } from "@/components/icons/StrokeIcons";
 import { useSalesInbox } from "@/components/sales/SalesInboxContext";
 import { SALES_INBOX_PANEL_ID } from "@/components/sales/SalesInboxPanel";
@@ -14,9 +15,23 @@ export function SalesInboxBellTrigger({
   size?: "md" | "lg";
 }) {
   const inbox = useSalesInbox();
+  const bellAnimRef = useRef<HTMLSpanElement>(null);
+
+  useEffect(() => {
+    const el = bellAnimRef.current;
+    if (!el) return;
+    if (!inbox?.ringing) {
+      el.classList.remove("sales-bell-ring");
+      return;
+    }
+    el.classList.remove("sales-bell-ring");
+    void el.getBoundingClientRect();
+    el.classList.add("sales-bell-ring");
+  }, [inbox?.ringing, inbox?.ringToken]);
+
   if (!inbox?.visible) return null;
 
-  const { count, open, setOpen, ringing } = inbox;
+  const { count, open, setOpen, ringing, ringToken } = inbox;
   const showBadge = count > 0;
   const iconSize = size === "lg" ? 24 : 20;
   const buttonSize = size === "lg" ? "h-12 w-12" : "h-10 w-10";
@@ -33,19 +48,22 @@ export function SalesInboxBellTrigger({
       aria-controls={SALES_INBOX_PANEL_ID}
       onClick={() => setOpen(!open)}
       className={cn(
-        "relative inline-flex shrink-0 cursor-pointer items-center justify-center rounded-full border border-slate-200/90 bg-white text-slate-700 shadow-sm transition hover:border-indigo-200 hover:bg-indigo-50/40 hover:text-indigo-800",
+        "relative inline-flex shrink-0 cursor-pointer items-center justify-center rounded-full border border-slate-200/90 bg-white text-slate-700 shadow-sm hover:border-indigo-200 hover:bg-indigo-50/40 hover:text-indigo-800",
+        !ringing && "transition",
         buttonSize,
         controlFocusClass,
-        ringing && "sales-bell-ring",
         className
       )}
     >
-      <IconBell size={iconSize} strokeWidth={2} />
+      <span ref={bellAnimRef} className="inline-flex items-center justify-center">
+        <IconBell size={iconSize} strokeWidth={2} />
+      </span>
       {showBadge ? (
         <span
+          key={ringing ? `badge-pulse-${ringToken}` : "badge-idle"}
           className={cn(
             "absolute -right-1 -top-1 flex min-h-[1.125rem] min-w-[1.125rem] items-center justify-center rounded-full bg-indigo-600 px-1 text-[10px] font-bold leading-none text-white ring-2 ring-white",
-            ringing && "animate-pulse"
+            ringing && "sales-inbox-badge-pulse"
           )}
         >
           {count > 99 ? "99+" : count}

@@ -1,12 +1,17 @@
 import { formatPlDate } from "@/lib/display-labels";
-import { parseDateOnly } from "@/lib/orders/dates";
+import {
+  parseDeliveryEstimateFromTimingLabel,
+  resolveMyOrderHistoryDeliveryEstimate,
+} from "@/lib/orders/delivery-date-meta-label";
+import { formatDateString, parseDateOnly } from "@/lib/orders/dates";
 import { isPastExpectedDate } from "@/lib/orders/delivery-eta";
+import { parseMyOrderTimingLabel } from "@/lib/orders/my-order-delivery-timing-display";
 import {
   classifyDeliveryUrgency,
   type DeliveryUrgency,
   type MyOrderDeliveryUrgency,
 } from "@/lib/orders/my-order-delivery-urgency";
-import type { MyOrderLine } from "@/lib/orders/my-order-presenter";
+import type { MyOrderLine, MyOrderRow } from "@/lib/orders/my-order-presenter";
 import type { MyOrderZdFulfillment, MyOrderZdFulfillmentSlot } from "@/lib/orders/my-order-sales-ui";
 import {
   ZD_FULFILLMENT_PLACEHOLDER_TIMING_LABEL,
@@ -234,4 +239,77 @@ export function zdFulfillmentGroupOverdue(slots: MyOrderZdFulfillmentSlot[]): bo
     const d = parseDateOnly(slot.deadline);
     return d != null && isPastExpectedDate(d);
   });
+}
+
+function sameExpectedDeliveryDate(a: Date, b: Date): boolean {
+  return formatDateString(a) === formatDateString(b);
+}
+
+/** Ten sam szacunek z historii co w sekcji „Informacje o dostawie” grupy. */
+export function lineHistoryEstimateMatchesGroupTiming(
+  row: Pick<MyOrderRow, "timingLabel" | "zdFulfillment" | "zdEtaPending" | "zdEtaNoMatch">,
+  lineHistoryLabel: string | null | undefined
+): boolean {
+  const label = lineHistoryLabel?.trim();
+  if (!label) return false;
+
+  const lineParsed = parseDeliveryEstimateFromTimingLabel(label);
+  if (!lineParsed.expectedDate) return false;
+
+  const groupHistory = resolveMyOrderHistoryDeliveryEstimate(row);
+  if (groupHistory?.parsed.expectedDate) {
+    return sameExpectedDeliveryDate(lineParsed.expectedDate, groupHistory.parsed.expectedDate);
+  }
+
+  if (row.zdEtaPending && !row.zdFulfillment) {
+    const raw = row.timingLabel?.trim();
+    if (raw) {
+      const { estimate } = parseMyOrderTimingLabel(raw);
+      const pendingParsed = parseDeliveryEstimateFromTimingLabel(estimate);
+      if (pendingParsed.expectedDate) {
+        return sameExpectedDeliveryDate(lineParsed.expectedDate, pendingParsed.expectedDate);
+      }
+    }
+  }
+
+  return false;
+}
+
+/** Ukryj termin ZD na pozycji, gdy grupa już pokazuje ten sam termin w rozwinięciu. */
+export function isLineZdDetailRedundantWithExpandedGroupTiming(
+  row: Pick<
+    MyOrderRow,
+    "timingLabel" | "zdFulfillment" | "zdEtaPending" | "zdEtaNoMatch"
+  >,
+  line: LineZdTermState,
+  showGroupExpandedTiming: boolean
+): boolean {
+  if (!showGroupExpandedTiming) return false;
+
+  const groupZd = row.zdFulfillment;
+  if (line.zdFulfillment && groupZd) {
+    const slots = zdFulfillmentSlots(groupZd);
+    return slots.some((slot) => lineMatchesZdSlot(line, slot));
+  }
+
+  if (
+    groupZd &&
+    (row.zdEtaNoMatch || row.zdEtaPending) &&
+    !line.zdFulfillment &&
+    (line.zdEtaNoMatch || line.zdEtaPending)
+  ) {
+    return false;
+  }
+
+  if (!line.zdFulfillment && line.zdEtaPending && row.zdEtaPending && !groupZd) {
+    if (!line.historyEstimateLabel?.trim()) return true;
+    return lineHistoryEstimateMatchesGroupTiming(row, line.historyEstimateLabel);
+  }
+
+  if (!line.zdFulfillment && line.zdEtaNoMatch && row.zdEtaNoMatch && !groupZd) {
+    if (!line.historyEstimateLabel?.trim()) return true;
+    return lineHistoryEstimateMatchesGroupTiming(row, line.historyEstimateLabel);
+  }
+
+  return false;
 }

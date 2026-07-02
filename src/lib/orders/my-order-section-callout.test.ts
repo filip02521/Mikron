@@ -172,5 +172,8 @@ describe("my-order-section-callout", () => {
       headlineTone: "info",
     });
     expect(resolveMyOrderRowPatternHint(verification)?.pattern).toBe("verification");
+    expect(
+      resolveMyOrderRowPatternHint(verification, new Set(["verification"]))
+    ).toBeNull();
   });
 });

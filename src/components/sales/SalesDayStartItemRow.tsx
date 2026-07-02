@@ -1,6 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
+import { runAfterScrollUnlock } from "@/lib/ui/page-scroll-lock";
 import type { SalesDayStartItem } from "@/lib/sales/sales-day-start";
 import { salesDayStartSourceLabel } from "@/lib/sales/sales-day-start";
 import { cn } from "@/lib/cn";
@@ -88,12 +89,21 @@ export function SalesDayStartItemRow({
   const router = useRouter();
 
   const handleClick = () => {
-    onNavigate?.();
-    if (item.scrollTarget && onScrollToSection) {
-      onScrollToSection(item.scrollTarget, item.href);
+    const run = () => {
+      if (item.scrollTarget && onScrollToSection) {
+        onScrollToSection(item.scrollTarget, item.href);
+        return;
+      }
+      router.push(previewHref(item.href));
+    };
+
+    if (onNavigate) {
+      onNavigate();
+      runAfterScrollUnlock(run);
       return;
     }
-    router.push(previewHref(item.href));
+
+    run();
   };
 
   return (

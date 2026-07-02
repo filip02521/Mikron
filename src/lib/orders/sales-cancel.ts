@@ -364,9 +364,22 @@ export function isPendingSalesPickupAfterPartialCancel(order: IndividualOrder): 
 }
 
 /** Pozostała ilość do wycofania (bez rekurencji z resolveSalesCancelPhase). */
+function orderCancelFulfillmentIsOnStock(order: IndividualOrder): boolean {
+  if (order.status === "Zrealizowane") return true;
+  if (order.status === "Czesciowo_zrealizowane") {
+    return deliveryProgressFor(order).delivered > 0;
+  }
+  return false;
+}
+
 function remainingCancelQuantity(order: IndividualOrder): number {
   if (!order.sales_cancelled_at) {
     return maxSalesCancelQuantity(order) ?? 0;
+  }
+  /** Status mógł przejść na magazyn mimo zapisanej fazy in_transit (np. zęby po częściowej rezygnacji). */
+  if (orderCancelFulfillmentIsOnStock(order)) {
+    const active = activeOrderQuantity(order);
+    return active ?? 0;
   }
   const storedPhase = effectiveSalesCancelPhase(order);
   if (storedPhase === "on_stock") {

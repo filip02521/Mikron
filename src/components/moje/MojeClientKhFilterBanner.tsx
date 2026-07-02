@@ -66,15 +66,23 @@ export function MojeClientKhFilterBanner({
           </p>
         )}
         <p className={cn("mt-0.5", salesTypography.rowMeta, "text-slate-600")}>
-          {matchLabel}
-          {totalCount > 0 ? (
+          {matchCount != null ? (
             <>
-              {" "}
-              · pełna lista ma{" "}
-              <span className="font-semibold tabular-nums">{totalCount}</span>{" "}
-              {totalCount === 1 ? "prośbę" : totalCount < 5 ? "prośby" : "prośb"}
+              {matchLabel}
+              {totalCount > 0 ? (
+                <>
+                  {" "}
+                  · pełna lista ma{" "}
+                  <span className="font-semibold tabular-nums">{totalCount}</span>{" "}
+                  {totalCount === 1 ? "prośbę" : totalCount < 5 ? "prośby" : "prośb"}
+                </>
+              ) : null}
             </>
-          ) : null}
+          ) : (
+            <>
+              Filtr aktywny — licznik wyników przy polu szukaj poniżej
+            </>
+          )}
         </p>
       </div>
       <Button

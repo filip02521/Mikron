@@ -156,11 +156,14 @@ export function MojeAnnouncementsSection({
   readAnnouncementIds,
   focusAnnouncementId = null,
   tourDemo = false,
+  shellPinnedAnnouncementIds = [],
 }: {
   announcements: DepartmentBoardAnnouncementsSlice["announcements"];
   readAnnouncementIds: string[];
   focusAnnouncementId?: string | null;
   tourDemo?: boolean;
+  /** Ogłoszenia już widoczne w pasku AppShell — ukryte z listy (chyba że focus/szukaj). */
+  shellPinnedAnnouncementIds?: string[];
 }) {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -185,11 +188,6 @@ export function MojeAnnouncementsSection({
       : null;
   const openRowId = userOpenRowId ?? effectiveFocusId;
 
-  const unreadCount = useMemo(
-    () => announcements.filter((a) => !readIds.has(a.id)).length,
-    [announcements, readIds]
-  );
-
   const focusAnnouncementMissing = Boolean(
     focusAnnouncementId && !announcements.some((row) => row.id === focusAnnouncementId)
   );
@@ -202,10 +200,26 @@ export function MojeAnnouncementsSection({
     router.replace(qs ? `/moje?${qs}` : "/moje", { scroll: false });
   };
 
+  const shellPinnedIds = useMemo(
+    () => new Set(shellPinnedAnnouncementIds),
+    [shellPinnedAnnouncementIds]
+  );
+
   const searchNeedle = search.trim();
+  const listAnnouncements = useMemo(() => {
+    if (searchNeedle || effectiveFocusId) return announcements;
+    if (shellPinnedIds.size === 0) return announcements;
+    return announcements.filter((row) => !shellPinnedIds.has(row.id));
+  }, [announcements, effectiveFocusId, searchNeedle, shellPinnedIds]);
+
+  const unreadCount = useMemo(
+    () => listAnnouncements.filter((a) => !readIds.has(a.id)).length,
+    [listAnnouncements, readIds]
+  );
+
   const filtered = useMemo(
-    () => filterDepartmentBoardAnnouncementsByQuery(announcements, search),
-    [announcements, search]
+    () => filterDepartmentBoardAnnouncementsByQuery(listAnnouncements, search),
+    [listAnnouncements, search]
   );
 
   const sorted = useMemo(
@@ -221,7 +235,28 @@ export function MojeAnnouncementsSection({
     180
   );
 
-  if (announcements.length === 0) return null;
+  if (listAnnouncements.length === 0 && announcements.length === 0) return null;
+  if (listAnnouncements.length === 0 && announcements.length > 0) {
+    return (
+      <div id={MOJE_ANNOUNCEMENTS_SECTION_ID} className="scroll-mt-24">
+        <div className={mojeShipmentSectionShellClass}>
+          <div className="flex w-full items-center gap-2.5 border-b border-slate-100 bg-slate-50/60 px-3 py-2.5 sm:px-4">
+            <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-sky-100 text-sky-800">
+              <IconInbox size={16} />
+            </span>
+            <span className="min-w-0 flex-1">
+              <span className={cn(salesTypography.blockTitle, "text-slate-900")}>
+                {DEPARTMENT_BOARD_ANNOUNCEMENTS_EXPLAINER.title}
+              </span>
+              <span className={cn(salesTypography.sectionHint, "ml-1.5")}>
+                · przypięte u góry strony
+              </span>
+            </span>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   function refresh() {
     router.refresh();
@@ -235,7 +270,13 @@ export function MojeAnnouncementsSection({
   const sectionSummary =
     unreadCount > 0
       ? `${unreadCount} ${unreadCount === 1 ? "nowe" : "nowych"}`
-      : `${announcements.length} ${announcements.length === 1 ? "ogłoszenie" : announcements.length < 5 ? "ogłoszenia" : "ogłoszeń"}`;
+      : `${listAnnouncements.length} ${
+          listAnnouncements.length === 1
+            ? "ogłoszenie"
+            : listAnnouncements.length < 5
+              ? "ogłoszenia"
+              : "ogłoszeń"
+        }`;
 
   return (
     <div id={MOJE_ANNOUNCEMENTS_SECTION_ID} className="scroll-mt-24">
@@ -274,7 +315,7 @@ export function MojeAnnouncementsSection({
               </div>
             ) : null}
 
-            {announcements.length > 4 ? (
+            {listAnnouncements.length > 4 ? (
               <div className="border-b border-slate-100 px-3 py-2 sm:px-4">
                 <NotatnikListFilterBar
                   embedded
@@ -283,7 +324,7 @@ export function MojeAnnouncementsSection({
                   value={search}
                   onChange={setSearch}
                   matchCount={filtered.length}
-                  totalCount={announcements.length}
+                  totalCount={listAnnouncements.length}
                   placeholder={salesSearchPlaceholder(SALES_SEARCH_COPY.boardAnnouncements)}
                   searchLabel={DEPARTMENT_BOARD_ANNOUNCEMENTS_SEARCH.label}
                   showIdleHint={false}
@@ -332,7 +373,7 @@ export function MojeAnnouncementsSection({
               </ul>
             )}
 
-            {!searchNeedle && announcements.length > 3 ? (
+            {!searchNeedle && listAnnouncements.length > 3 ? (
               <p className="border-t border-slate-100 px-3 py-2 text-[11px] text-slate-500 sm:px-4">
                 Pytania do zakupów zadajesz na{" "}
                 <Link href={tablicaHref} className={brandLinkClass}>

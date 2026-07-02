@@ -91,12 +91,12 @@ export function SalesPanelSyncControl({
                 : "border-slate-200/80 bg-white/80 text-slate-600 hover:border-amber-100 hover:bg-amber-50/25"
             )}
           >
-            <span className="whitespace-nowrap">Dźwięk przy odpowiedzi</span>
+            <span className="whitespace-nowrap">Dźwięk przy powiadomieniach</span>
             <input
               type="checkbox"
               role="switch"
               aria-checked={boardAnswerSound}
-              aria-label="Powiadomienie dźwiękowe, gdy zakupy odpowiedzą na Twoje pytanie na tablicy"
+              aria-label="Powiadomienie dźwiękowe, gdy pojawi się nowa pilna sprawa w dzwonku"
               checked={boardAnswerSound}
               onChange={(e) => ctx.setBoardAnswerSound(e.target.checked)}
               className="size-5 shrink-0 rounded border-slate-300 text-amber-600 focus:ring-amber-300 sm:size-4"
