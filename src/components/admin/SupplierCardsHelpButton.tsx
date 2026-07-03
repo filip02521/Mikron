@@ -29,7 +29,7 @@ export function SupplierCardsHelpButton({ context }: { context: SupplierHubConte
             <>
               {" "}
               oraz <strong className="font-medium text-slate-800">cykl zębów</strong> (dzień i
-              częstotliwość zamówień u labu).
+              częstotliwość zamówień u dostawcy).
             </>
           ) : (
             <>

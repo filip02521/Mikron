@@ -9,7 +9,7 @@ import { ModalShell } from "@/components/ui/ModalShell";
 import { Toast } from "@/components/ui/Toast";
 import { Input } from "@/components/ui/Field";
 import { IconTooth, IconCircleCheck } from "@/components/icons/StrokeIcons";
-import type { TeethQueueGroup, TeethQueueItem } from "@/lib/data/teeth-queue";
+import type { TeethQueueGroup, TeethQueueItem, TeethPositionSelection } from "@/lib/data/teeth-queue";
 import { isScheduledItem } from "@/lib/data/teeth-queue";
 import { TeethPanelTabs } from "@/components/zeby/TeethPanelTabs";
 import {
@@ -29,7 +29,7 @@ import {
 import type { Tab } from "@/components/zeby/teeth-panel-types";
 import { VALID_TEETH_PANEL_TABS } from "@/components/zeby/teeth-panel-types";
 import {
-  actionMarkTeethOrdered,
+  actionMarkTeethPositionsOrdered,
   actionMarkTeethScheduleOrdered,
   actionOverrideTeethDeliveryDate,
   actionFetchTeethHistoryGroups,
@@ -146,15 +146,6 @@ export function TeethPanelClient({
     return ids;
   }, [filteredGroups]);
 
-  const [selectedIdsRaw, setSelectedIds] = useState<Set<string>>(new Set());
-  const selectedIds = useMemo(() => {
-    const next = new Set<string>();
-    for (const id of selectedIdsRaw) {
-      if (visibleOrderIds.has(id)) next.add(id);
-    }
-    return next;
-  }, [selectedIdsRaw, visibleOrderIds]);
-
   const ordersById = useMemo(() => {
     const map = new Map<string, TeethQueueItem>();
     for (const group of groups) {
@@ -167,39 +158,89 @@ export function TeethPanelClient({
     return map;
   }, [groups]);
 
+  const [positionSelectionRaw, setPositionSelection] = useState<Map<string, Set<number>>>(new Map());
+
+  const positionSelection = useMemo(() => {
+    const next = new Map<string, Set<number>>();
+    for (const [orderId, positions] of positionSelectionRaw) {
+      if (visibleOrderIds.has(orderId)) {
+        const order = ordersById.get(orderId);
+        if (order) {
+          const validPositions = new Set<number>();
+          const detailPositions = new Set((order.teeth_details ?? []).map((d) => d.position));
+          for (const pos of positions) {
+            if (detailPositions.has(pos)) validPositions.add(pos);
+          }
+          if (validPositions.size > 0) next.set(orderId, validPositions);
+        }
+      }
+    }
+    return next;
+  }, [positionSelectionRaw, visibleOrderIds, ordersById]);
+
   const totalItems = useMemo(
     () => groups.reduce((sum, g) => sum + g.items.length, 0),
     [groups]
   );
 
-  const toggleSelect = useCallback((id: string) => {
-    setSelectedIds((prev) => {
-      const next = new Set(prev);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
+  const togglePosition = useCallback((orderId: string, position: number) => {
+    setPositionSelection((prev) => {
+      const next = new Map(prev);
+      const positions = next.get(orderId) ?? new Set<number>();
+      const updated = new Set(positions);
+      if (updated.has(position)) updated.delete(position);
+      else updated.add(position);
+      if (updated.size > 0) next.set(orderId, updated);
+      else next.delete(orderId);
       return next;
     });
   }, []);
 
   const toggleSelectAllInGroup = useCallback((group: TeethQueueGroup) => {
-    setSelectedIds((prev) => {
-      const next = new Set(prev);
-      const realItems = group.items.filter((item) => !isScheduledItem(item));
-      const allSelected = realItems.every((item) => next.has(item.id));
+    setPositionSelection((prev) => {
+      const next = new Map(prev);
+      const realItems = group.items.filter(
+        (item): item is TeethQueueItem => !isScheduledItem(item),
+      );
+      const allUnorderedPositions: { orderId: string; positions: Set<number> }[] = [];
+      for (const item of realItems) {
+        const unordered = (item.teeth_details ?? [])
+          .filter((d) => !d.ordered_at)
+          .map((d) => d.position);
+        if (unordered.length > 0) {
+          allUnorderedPositions.push({ orderId: item.id, positions: new Set(unordered) });
+        }
+      }
+      const allSelected = allUnorderedPositions.every(({ orderId, positions }) => {
+        const sel = next.get(orderId);
+        return sel && [...positions].every((p) => sel.has(p));
+      });
       if (allSelected) {
-        realItems.forEach((item) => next.delete(item.id));
+        for (const { orderId, positions } of allUnorderedPositions) {
+          const sel = next.get(orderId);
+          if (sel) {
+            const updated = new Set(sel);
+            for (const p of positions) updated.delete(p);
+            if (updated.size > 0) next.set(orderId, updated);
+            else next.delete(orderId);
+          }
+        }
       } else {
-        realItems.forEach((item) => next.add(item.id));
+        for (const { orderId, positions } of allUnorderedPositions) {
+          next.set(orderId, new Set([...(next.get(orderId) ?? []), ...positions]));
+        }
       }
       return next;
     });
   }, []);
 
-  const requestMarkOrdered = useCallback(
-    (orderIds: string[], supplierName?: string | null) => {
-      const unique = [...new Set(orderIds)].filter((id) => ordersById.has(id));
-      if (unique.length === 0) return;
-      const analysis = analyzeTeethMarkOrdered(unique, ordersById, readinessCtx);
+  const requestMarkPositionsOrdered = useCallback(
+    (selections: TeethPositionSelection[], supplierName?: string | null) => {
+      if (selections.length === 0) return;
+      const orderIds = selections.map((s) => s.orderId);
+      const positionCount = selections.reduce((sum, s) => sum + s.positions.length, 0);
+      const analysis = analyzeTeethMarkOrdered(orderIds, ordersById, readinessCtx);
+      analysis.selectedPositionCount = positionCount;
       setMarkAnalysis(analysis);
       setMarkSupplierName(supplierName ?? null);
       setMarkConfirmOpen(true);
@@ -209,11 +250,16 @@ export function TeethPanelClient({
 
   const handleConfirmMarkOrdered = useCallback(async () => {
     setMarkConfirmOpen(false);
-    const idsToMark = markAnalysis?.withSpecIds ?? [];
-    if (idsToMark.length === 0) return;
+    const selections: TeethPositionSelection[] = [];
+    for (const [orderId, positions] of positionSelection) {
+      if (positions.size > 0) {
+        selections.push({ orderId, positions: Array.from(positions) });
+      }
+    }
+    if (selections.length === 0) return;
     setPending(true);
     try {
-      const result = await actionMarkTeethOrdered(idsToMark);
+      const result = await actionMarkTeethPositionsOrdered(selections);
       if (result.updated === 0) {
         setToast({
           message: "Nie udało się oznaczyć pozycji — być może zostały już zamówione.",
@@ -221,21 +267,21 @@ export function TeethPanelClient({
         });
       } else {
         const skipped = (markAnalysis?.withoutSpecIds.length ?? 0);
+        const completed = result.ordersCompleted > 0
+          ? ` — ${result.ordersCompleted} ${result.ordersCompleted === 1 ? "zamówienie ukończone" : "zamówień ukończonych"}`
+          : "";
         setToast({
           message:
             skipped > 0
-              ? `Oznaczono ${result.updated} ${plPozycja(result.updated)} — ${skipped} pominięto (niekompletna lista zębów).`
+              ? `Oznaczono ${result.updated} ${plPozycja(result.updated)}${completed} — ${skipped} ${skipped === 1 ? "zamówienie pominięto" : "zamówień pominięto"} (niekompletna lista zębów).`
               : result.updated === 1
-                ? "1 pozycja oznaczona jako zamówiona"
-                : `${result.updated} ${plPozycja(result.updated)} oznaczonych jako zamówione`,
+                ? `1 ząb oznaczony jako zamówiony${completed}`
+                : `${result.updated} ${plPozycja(result.updated)} oznaczonych jako zamówione${completed}`,
           tone: "success",
         });
-        setSelectedIds((prev) => {
-          const next = new Set(prev);
-          for (const id of idsToMark) next.delete(id);
-          return next;
-        });
+        setPositionSelection(new Map());
         reloadHistoryFilterOptions();
+        void reloadQueue();
       }
       router.refresh();
     } catch (e) {
@@ -248,15 +294,15 @@ export function TeethPanelClient({
       setMarkAnalysis(null);
       setMarkSupplierName(null);
     }
-  }, [markAnalysis, router, reloadHistoryFilterOptions]);
+  }, [positionSelection, markAnalysis, router, reloadHistoryFilterOptions, reloadQueue]);
 
   const handleSetDeliveryDate = useCallback(async () => {
     setDeliveryDateOpen(false);
-    if (!deliveryDateValue || selectedIds.size === 0) return;
+    const selectedOrderIds = Array.from(positionSelection.keys());
+    if (!deliveryDateValue || selectedOrderIds.length === 0) return;
     setPending(true);
     try {
-      const ids = Array.from(selectedIds);
-      const result = await actionOverrideTeethDeliveryDate(ids, deliveryDateValue);
+      const result = await actionOverrideTeethDeliveryDate(selectedOrderIds, deliveryDateValue);
       setToast({
         message:
           result.updated === 1
@@ -264,7 +310,7 @@ export function TeethPanelClient({
             : `Ustawiono datę dostawy dla ${result.updated} ${plPozycja(result.updated)}`,
         tone: "success",
       });
-      setSelectedIds(new Set());
+      setPositionSelection(new Map());
       setDeliveryDateValue("");
       router.refresh();
     } catch (e) {
@@ -275,9 +321,13 @@ export function TeethPanelClient({
     } finally {
       setPending(false);
     }
-  }, [deliveryDateValue, selectedIds, router]);
+  }, [deliveryDateValue, positionSelection, router]);
 
-  const selectedCount = selectedIds.size;
+  const selectedPositionCount = useMemo(
+    () => Array.from(positionSelection.values()).reduce((sum, positions) => sum + positions.size, 0),
+    [positionSelection],
+  );
+  const selectedOrderCount = positionSelection.size;
 
   const handleMarkScheduleOrdered = useCallback(async (supplierId: string, supplierName: string) => {
     setPending(true);
@@ -355,12 +405,13 @@ export function TeethPanelClient({
               <TeethPanelKolejkaView
                 groups={filteredGroups}
                 readinessCtx={readinessCtx}
-                selectedIds={selectedIds}
+                positionSelection={positionSelection}
                 pending={pending}
-                selectedCount={selectedCount}
-                onToggleSelect={toggleSelect}
+                selectedPositionCount={selectedPositionCount}
+                selectedOrderCount={selectedOrderCount}
+                onTogglePosition={togglePosition}
                 onToggleSelectAllInGroup={toggleSelectAllInGroup}
-                onRequestMarkOrdered={requestMarkOrdered}
+                onRequestMarkPositionsOrdered={requestMarkPositionsOrdered}
                 onSetDeliveryDate={() => setDeliveryDateOpen(true)}
                 onMarkScheduleOrdered={handleMarkScheduleOrdered}
                 onEditSaved={(message) => {
@@ -414,7 +465,7 @@ export function TeethPanelClient({
           setDeliveryDateValue("");
         }}
         title="Ustaw datę dostawy"
-        description={`Podaj planowaną datę dostawy dla ${selectedCount} ${plZaznaczonaPozycja(selectedCount)}.`}
+        description={`Podaj planowaną datę dostawy dla ${selectedOrderCount} ${plZaznaczonaPozycja(selectedOrderCount)}.`}
         size="sm"
         tier="raised"
         bodyClassName="px-5 py-4 sm:px-6"

@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import type { IndividualRequestKind } from "@/types/database";
 import { Button } from "@/components/ui/Button";
 import { Field } from "@/components/ui/Field";
+import { IconPlusCircle } from "@/components/icons/StrokeIcons";
 import { SubiektClientNameField } from "@/components/subiekt/SubiektClientNameField";
 import { SubiektProductLineFields } from "@/components/subiekt/SubiektProductLineFields";
 import { ProsbaProductLineCollapsedRow } from "@/components/orders/ProsbaProductLineCollapsedRow";
@@ -461,13 +462,16 @@ export function RequestProductLinesEditor({
 
       <Button
         type="button"
-        variant={prosba ? "secondary" : "ghost"}
-        size="sm"
-        className={prosba ? "w-full sm:w-auto" : undefined}
+        variant={prosba ? "outline" : "ghost"}
+        size="md"
+        className={cn(
+          prosba && "w-full border-dashed",
+        )}
         disabled={lines.length >= MAX_BATCH_ORDER_LINES}
         onClick={addLine}
       >
-        {addLabel}
+        <IconPlusCircle size={18} className="shrink-0" />
+        {prosba ? "Dodaj kolejny produkt" : addLabel}
         {lines.length >= MAX_BATCH_ORDER_LINES
           ? ` (maks. ${MAX_BATCH_ORDER_LINES})`
           : ""}

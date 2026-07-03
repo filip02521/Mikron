@@ -44,7 +44,7 @@ export function TeethSupplierBatchSummary({
     <div className={cn(teethPanelBatchStripClass, className)}>
       <div className={cn("space-y-3 py-2.5", panelSubsectionInsetClass)}>
         <div className="flex flex-wrap items-baseline gap-x-2 gap-y-1">
-          <span className={panelTypography.rowTitle}>Do zamówienia u labu</span>
+          <span className={panelTypography.rowTitle}>Do zamówienia u dostawcy</span>
           {batch.totalPieces > 0 ? (
             <span className={cn(panelTypography.caption, "text-slate-600")}>
               {batch.totalPieces} {plPozycja(batch.totalPieces)} · {batch.orderCount}{" "}

@@ -190,6 +190,7 @@ export type IndividualOrderTeethDetail = {
   size: string | null;
   jaw: "upper" | "lower" | null;
   kind: "anterior" | "posterior" | null;
+  ordered_at?: string | null;
 };
 
 export type SalesNoteColor = "default" | "yellow" | "green" | "blue" | "pink";

@@ -34,6 +34,7 @@ export function mapTeethDetailRow(row: Record<string, unknown>): IndividualOrder
     size: row.size != null ? String(row.size) : null,
     jaw: parseTeethJaw(row.jaw, row.size),
     kind: parseTeethKind(row.kind),
+    ordered_at: row.ordered_at != null ? String(row.ordered_at) : null,
   };
 }
 
@@ -96,7 +97,7 @@ export async function fetchTeethDetailsForOrders(
   if (!hasSupabaseConfig()) return new Map();
 
   const supabase = createAdminClient();
-  const fullSelect = "id, order_id, position, color, mould, size, jaw, kind";
+  const fullSelect = "id, order_id, position, color, mould, size, jaw, kind, ordered_at";
 
   const { data: fullData, error: fullError } = await supabase
     .from("individual_order_teeth_details")

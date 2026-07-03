@@ -22,13 +22,10 @@ import {
   MyOrderShipmentUndoToast,
 } from "@/components/moje/MyOrderShipmentUndoProvider";
 import { MyOrderArchiveSection } from "@/components/moje/MyOrderArchiveSection";
-import { SalesDayStartPanel } from "@/components/moje/SalesDayStartPanel";
 import { MojeAnnouncementsSection } from "@/components/moje/MojeAnnouncementsSection";
 import { ZdFulfillmentDeadlineChangeAutoAck } from "@/components/moje/ZdFulfillmentDeadlineChangeAutoAck";
-import {
-  buildSalesDayStartSnapshot,
-  type SalesDayStartContext,
-} from "@/lib/sales/sales-day-start";
+import { type SalesDayStartContext } from "@/lib/sales/sales-day-start";
+import { useSalesInbox } from "@/components/sales/SalesInboxContext";
 import { MyOrderShipmentList } from "@/components/moje/MyOrderShipmentList";
 import { MyOrdersRowLegend } from "@/components/moje/MyOrdersRowLegend";
 import { MojeOrdersHelp } from "@/components/moje/MojeOrdersGuide";
@@ -61,12 +58,9 @@ import {
   mojeSectionHeadingDomId,
   parseMojeSectionHash,
   scrollToMojeSection,
-  scrollToMojeSectionWhenReady,
   scrollToMojeCardWhenReady,
 } from "@/lib/orders/moje-section-focus";
-import { hrefWithSalesPreviewFromUrl } from "@/lib/nav/sales-preview-href";
 import {
-  MOJE_ANNOUNCEMENT_FOCUS_PARAM,
   MOJE_ANNOUNCEMENTS_SECTION_ID,
 } from "@/lib/department-board/moje-announcements-ui";
 import {
@@ -591,80 +585,13 @@ function MojeOrdersViewContent({
     [sortedZamowienia, sortedInformacje]
   );
 
-  const dayStartSnapshot = useMemo(() => {
-    if (!dayStartContext) return null;
-    return buildSalesDayStartSnapshot({
-      rows: allRows,
-      watches: dayStartContext.watches,
-      notes: dayStartContext.notes,
-      boardAttention: dayStartContext.boardAttention,
-      previewDla: dayStartContext.previewDla,
-    });
-  }, [allRows, dayStartContext]);
-
-
-  /** Pełna liczba pozycji wymagających reakcji — niezależna od wyszukiwania. */
+  /** Pełna liczba pozycji wymagających reakcji — z systemu powiadomień (dzwonek). */
+  const inbox = useSalesInbox();
   const needsActionTotal = useMemo(
     () => partitionMyOrderRowsBySalesAction(allRows).needsAction.length,
     [allRows]
   );
-  const dayStartActionCount = dayStartSnapshot?.totalActionCount ?? needsActionTotal;
-
-  const handleDayStartScrollToSection = useCallback(
-    (scrollTarget: string, fallbackHref: string) => {
-      const previewDla = searchParams.get("dla");
-      const parsedUrl = new URL(fallbackHref, window.location.origin);
-      const focusIds = parseMojeFocusOrderIds(
-        parsedUrl.searchParams.get(MOJE_FOCUS_ORDERS_PARAM)
-      );
-
-      if (focusIds.length) {
-        setImperativeFocusOrderIds(focusIds);
-        focusScrollDoneRef.current = false;
-      }
-
-      const scrollToFocusRow = () => {
-        if (!focusIds.length) return;
-        const targetRowId = findMyOrderRowIdsForFocusOrderIds(allRows, focusIds)[0];
-        if (!targetRowId) return;
-        const card = document.getElementById(cardDomId(targetRowId));
-        if (!card) return;
-        card.scrollIntoView({ behavior: "smooth", block: "center" });
-        flashMojeCard(card);
-      };
-
-      if (scrollToMojeSection(scrollTarget)) {
-        if (scrollTarget === MOJE_ANNOUNCEMENTS_SECTION_ID) {
-          const announcementId = parsedUrl.searchParams.get(MOJE_ANNOUNCEMENT_FOCUS_PARAM);
-          if (announcementId) setImperativeAnnouncementId(announcementId);
-        }
-        if (focusIds.length) window.setTimeout(scrollToFocusRow, 400);
-        return;
-      }
-
-      scrollToMojeSectionWhenReady(
-        scrollTarget,
-        () => {
-          router.push(hrefWithSalesPreviewFromUrl(fallbackHref, previewDla));
-        },
-        { delayMs: 120, maxAttempts: 10, initialDelayMs: 150 }
-      );
-      if (focusIds.length) window.setTimeout(scrollToFocusRow, 500);
-    },
-    [router, searchParams, allRows]
-  );
-
-  const showDayStart =
-    canAcknowledge && dayStartSnapshot != null && !dayStartSnapshot.cleared;
-
-  const dayStartPanel = showDayStart ? (
-    <Suspense fallback={null}>
-      <SalesDayStartPanel
-        snapshot={dayStartSnapshot}
-        onScrollToSection={handleDayStartScrollToSection}
-      />
-    </Suspense>
-  ) : null;
+  const dayStartActionCount = inbox?.count ?? needsActionTotal;
 
   const shellPinnedAnnouncementIds = useMemo(
     () =>
@@ -931,7 +858,6 @@ function MojeOrdersViewContent({
   if (!shipmentCount) {
     return (
       <div className="space-y-5">
-        {dayStartPanel}
         {announcementsPanel}
         {zdDeadlineAutoAck}
         <Card padding={false} className="overflow-hidden">
@@ -1003,7 +929,6 @@ function MojeOrdersViewContent({
 
   return (
     <div className="space-y-5">
-      {dayStartPanel}
       {announcementsPanel}
       {zdDeadlineAutoAck}
       <Card padding={false}>

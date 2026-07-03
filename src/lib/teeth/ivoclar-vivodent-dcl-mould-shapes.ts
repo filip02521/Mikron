@@ -51,16 +51,16 @@ export function ivoclarVivodentDclMouldShapeGroups(kind: TeethKind): TeethMouldS
       moulds: VIVODENT_DCL_UPPER_TRIANGULAR,
     },
     {
-      shapeId: "oval",
-      label: "Owalne",
-      hint: "Górne · A2*",
-      moulds: VIVODENT_DCL_UPPER_OVAL,
-    },
-    {
       shapeId: "square",
       label: "Kwadratowe",
       hint: "Górne · A4–A6*",
       moulds: VIVODENT_DCL_UPPER_SQUARE,
+    },
+    {
+      shapeId: "oval",
+      label: "Owalne",
+      hint: "Górne · A2*",
+      moulds: VIVODENT_DCL_UPPER_OVAL,
     },
     {
       shapeId: "lower",

@@ -44,7 +44,6 @@
 }
 
 html {
-  scroll-behavior: smooth;
   font-size: 16px;
 }
 
@@ -556,4 +555,30 @@ html.ontime-scroll-locked main {
 
 .sales-inbox-panel-enter {
   animation: sales-inbox-panel-enter 0.22s ease-out;
+}
+
+/* ——— Animacja rozwijania/zwijania panelu w /moje ——— */
+.moje-expand-grid {
+  display: grid;
+  grid-template-rows: 0fr;
+  opacity: 0;
+  transition:
+    grid-template-rows 0.2s cubic-bezier(0.22, 1, 0.36, 1),
+    opacity 0.18s ease-out;
+}
+
+.moje-expand-grid.moje-expand-grid--open {
+  grid-template-rows: 1fr;
+  opacity: 1;
+}
+
+.moje-expand-grid > .moje-expand-grid-inner {
+  overflow: hidden;
+  min-height: 0;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .moje-expand-grid {
+    transition: none;
+  }
 }

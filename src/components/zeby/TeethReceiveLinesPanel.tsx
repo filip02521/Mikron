@@ -166,6 +166,7 @@ export function TeethReceiveLinesPanel({
         await actionUndoDelivery(undo);
         clearUndo();
         router.refresh();
+        teethUpdates?.refreshNow();
         onToast({ text: "Przyjęcie zębów zostało cofnięte", tone: "success" });
       } catch (e) {
         setUndoError(e instanceof Error ? e.message : "Nie udało się cofnąć przyjęcia zębów.");
@@ -173,7 +174,7 @@ export function TeethReceiveLinesPanel({
         onPendingChange(null);
       }
     });
-  }, [undo, clearUndo, onPendingChange, onToast, router]);
+  }, [undo, clearUndo, onPendingChange, onToast, router, teethUpdates]);
 
   useEffect(() => {
     if (!undo) return;
@@ -365,6 +366,7 @@ export function TeethReceiveLinesPanel({
         setFlatLineQty({});
         setManualQty({});
         router.refresh();
+        teethUpdates?.refreshNow();
       } catch (e) {
         onToast({
           text: e instanceof Error ? e.message : "Nie udało się zapisać",
@@ -527,7 +529,7 @@ export function TeethReceiveLinesPanel({
       {teethUpdates?.hasUpdates ? (
         <SystemNotice
           variant="action"
-          className="mx-1 mb-3 sm:mx-2"
+          className="mb-3"
           title="Są nowe pozycje w kolejce przyjęcia"
           description={
             hasUnsavedInput
@@ -549,12 +551,6 @@ export function TeethReceiveLinesPanel({
 
       <div className={cn(teethPanelFiltersBarClass, "border-b border-slate-200/80 py-3")}>
         <div className="space-y-3">
-          <SystemNotice
-            variant="pinned"
-            title={TEETH_RECEIVE_PANEL_COPY.bannerTitle}
-            description={TEETH_RECEIVE_PANEL_COPY.bannerBody}
-          />
-
           <div className={cn(receiveQueueToolbarSectionClass, "border-slate-200/80 shadow-none")}>
             <ReceiveQueueSearchField
               key={`teeth-receive-search-${productSearchResetToken}`}
@@ -594,7 +590,7 @@ export function TeethReceiveLinesPanel({
           description="Spróbuj innego zapytania albo wyczyść filtry."
         />
       ) : (
-        <div className="space-y-2 px-1 py-3 sm:px-2">
+        <div className="space-y-2 py-3">
           {productLineGroups.map((group) => {
             const orderIds = group.orders.map((o) => o.id);
             const flatRows = buildTeethReceiveFlatRows(group.orders, canPickSpec);

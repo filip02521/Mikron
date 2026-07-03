@@ -12,11 +12,9 @@ import { plPozycja } from "@/lib/ui/polish-plurals";
 
 import { Button } from "@/components/ui/Button";
 
-import { TeethSupplierBatchSummary } from "@/components/teeth/TeethSupplierBatchSummary";
-
 import { TeethPanelEmpty } from "@/components/zeby/TeethPanelSection";
 
-import { TeethPanelOrderEntry } from "@/components/zeby/TeethPanelOrderEntry";
+import { TeethQueueBatchTable } from "@/components/zeby/TeethQueueBatchTable";
 
 import {
 
@@ -26,12 +24,10 @@ import {
 
 } from "@/components/zeby/TeethPanelSupplierGroupHeader";
 
-import { buildTeethSupplierBatchSummary } from "@/lib/teeth/teeth-panel-aggregate";
-
 import type { TeethPanelReadinessContext } from "@/lib/teeth/teeth-panel-order-readiness";
 import { distinctTeethProductLineLabelsForOrders } from "@/lib/teeth/teeth-panel-order-readiness";
 
-import type { TeethQueueGroup, TeethQueueItem } from "@/lib/data/teeth-queue";
+import type { TeethQueueGroup, TeethQueueItem, TeethPositionSelection } from "@/lib/data/teeth-queue";
 
 import { isScheduledItem } from "@/lib/data/teeth-queue";
 
@@ -61,17 +57,19 @@ export function TeethPanelKolejkaView({
 
   readinessCtx,
 
-  selectedIds,
+  positionSelection,
 
   pending,
 
-  selectedCount,
+  selectedPositionCount,
 
-  onToggleSelect,
+  selectedOrderCount,
+
+  onTogglePosition,
 
   onToggleSelectAllInGroup,
 
-  onRequestMarkOrdered,
+  onRequestMarkPositionsOrdered,
 
   onMarkScheduleOrdered,
 
@@ -85,17 +83,22 @@ export function TeethPanelKolejkaView({
 
   readinessCtx?: TeethPanelReadinessContext;
 
-  selectedIds: Set<string>;
+  positionSelection: Map<string, Set<number>>;
 
   pending: boolean;
 
-  selectedCount: number;
+  selectedPositionCount: number;
 
-  onToggleSelect: (id: string) => void;
+  selectedOrderCount: number;
+
+  onTogglePosition: (orderId: string, position: number) => void;
 
   onToggleSelectAllInGroup: (group: TeethQueueGroup) => void;
 
-  onRequestMarkOrdered: (orderIds: string[], supplierName?: string | null) => void;
+  onRequestMarkPositionsOrdered: (
+    selections: TeethPositionSelection[],
+    supplierName?: string | null,
+  ) => void;
 
   onMarkScheduleOrdered: (supplierId: string, supplierName: string) => void;
 
@@ -129,7 +132,7 @@ export function TeethPanelKolejkaView({
 
     <>
 
-      {selectedCount > 0 ? (
+      {selectedPositionCount > 0 ? (
 
         <div
 
@@ -145,9 +148,9 @@ export function TeethPanelKolejkaView({
 
           <span className="text-sm font-medium text-slate-800">
 
-            Zaznaczono {selectedCount}{" "}
+            Zaznaczono {selectedPositionCount} {plPozycja(selectedPositionCount)}
 
-            {selectedCount === 1 ? "pozycję" : plPozycja(selectedCount)}
+            {selectedOrderCount > 0 ? ` z ${selectedOrderCount} ${selectedOrderCount === 1 ? "zamówienia" : "zamówień"}` : ""}
 
           </span>
 
@@ -177,7 +180,23 @@ export function TeethPanelKolejkaView({
 
               size="sm"
 
-              onClick={() => onRequestMarkOrdered(Array.from(selectedIds))}
+              onClick={() => {
+
+                const selections: TeethPositionSelection[] = [];
+
+                for (const [orderId, positions] of positionSelection) {
+
+                  if (positions.size > 0) {
+
+                    selections.push({ orderId, positions: Array.from(positions) });
+
+                  }
+
+                }
+
+                onRequestMarkPositionsOrdered(selections);
+
+              }}
 
               disabled={pending}
 
@@ -209,15 +228,14 @@ export function TeethPanelKolejkaView({
 
         );
 
-        const batchSummary =
-
-          realItems.length >= 2 ? buildTeethSupplierBatchSummary(realItems, readinessCtx) : null;
-
-        const groupOrderIds = realItems.map((item) => item.id);
-
         const allSelected =
 
-          realItems.length > 0 && realItems.every((item) => selectedIds.has(item.id));
+          realItems.length > 0 && realItems.every((item) => {
+            const unordered = (item.teeth_details ?? []).filter((d) => !d.ordered_at);
+            if (unordered.length === 0) return true;
+            const sel = positionSelection.get(item.id);
+            return sel && unordered.every((d) => sel.has(d.position));
+          });
 
         const scheduleOnly = group.scheduledOnly || (realItems.length === 0 && Boolean(group.dueSchedule));
 
@@ -229,8 +247,18 @@ export function TeethPanelKolejkaView({
 
           if (realItems.length > 0) {
 
-            onRequestMarkOrdered(groupOrderIds, group.supplierName);
-
+            const selections: TeethPositionSelection[] = [];
+            for (const item of realItems) {
+              const unordered = (item.teeth_details ?? [])
+                .filter((d) => !d.ordered_at)
+                .map((d) => d.position);
+              if (unordered.length > 0) {
+                selections.push({ orderId: item.id, positions: unordered });
+              }
+            }
+            if (selections.length > 0) {
+              onRequestMarkPositionsOrdered(selections, group.supplierName);
+            }
             return;
 
           }
@@ -281,63 +309,19 @@ export function TeethPanelKolejkaView({
 
 
 
-            {batchSummary ? <TeethSupplierBatchSummary batch={batchSummary} /> : null}
-
-
-
-            {batchSummary ? (
-
-              <div
-
-                className={cn(
-
-                  "border-t border-slate-100 py-1.5",
-
-                  panelSubsectionInsetClass,
-
-                )}
-
-              >
-
-                <span className="text-xs text-slate-500">Prośby handlowców</span>
-
-              </div>
-
-            ) : null}
-
-
-
             {realItems.length > 0 ? (
 
-              <div>
+              <TeethQueueBatchTable
 
-                {realItems.map((item) => (
+                items={realItems}
 
-                  <TeethPanelOrderEntry
+                positionSelection={positionSelection}
 
-                    key={item.id}
+                onTogglePosition={onTogglePosition}
 
-                    item={item}
+                onEditSaved={onEditSaved}
 
-                    variant="queue"
-
-                    mergedBatch={Boolean(batchSummary)}
-
-                    specIncludedInBatch={Boolean(batchSummary && batchSummary.mergedGroups.length > 0)}
-
-                    supplierName={group.supplierName}
-
-                    checked={selectedIds.has(item.id)}
-
-                    onToggleSelect={() => onToggleSelect(item.id)}
-
-                    onEditSaved={onEditSaved}
-
-                  />
-
-                ))}
-
-              </div>
+              />
 
             ) : null}
 

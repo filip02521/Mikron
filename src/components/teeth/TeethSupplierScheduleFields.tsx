@@ -158,7 +158,7 @@ export function TeethSupplierScheduleFields({
             </div>
 
             <div className="grid gap-3 sm:grid-cols-2">
-              <Field label="Dzień zamówienia u labu">
+              <Field label="Dzień zamówienia u dostawcy">
                 <Select
                   value={String(orderDay)}
                   disabled={disabled || pending}
@@ -224,7 +224,7 @@ export function TeethSupplierScheduleFields({
               z cyklicznym zamówieniem.
             </p>
             <div className="grid gap-3 sm:grid-cols-2">
-              <Field label="Dzień zamówienia u labu">
+              <Field label="Dzień zamówienia u dostawcy">
                 <Select
                   value={String(orderDay)}
                   disabled={disabled || pending}

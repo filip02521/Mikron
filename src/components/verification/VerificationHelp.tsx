@@ -38,7 +38,7 @@ export function VerificationHelp() {
         <p>
           Zamówień zębowych nie uzupełniasz tutaj — trafiają do{" "}
           <strong className="font-medium text-slate-800">panelu zębów</strong> (/zeby), gdzie
-          uzupełnia się listę zębów i oznacza zamówienie u labu.
+          uzupełnia się listę zębów i oznacza zamówienie u dostawcy.
         </p>
       </HelpBlock>
     </HelpPopover>

@@ -93,16 +93,16 @@ export function ivoclarPhonaresIiMouldShapeGroups(kind: TeethKind): TeethMouldSh
 
   return [
     {
-      shapeId: "oval",
-      label: "Soft",
-      hint: "S* · górne",
-      moulds: PHONARES_II_ANTERIOR_SOFT,
-    },
-    {
       shapeId: "square",
       label: "Bold",
       hint: "B* · górne",
       moulds: PHONARES_II_ANTERIOR_BOLD,
+    },
+    {
+      shapeId: "oval",
+      label: "Soft",
+      hint: "S* · górne",
+      moulds: PHONARES_II_ANTERIOR_SOFT,
     },
     {
       shapeId: "lower",

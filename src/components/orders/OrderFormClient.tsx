@@ -1536,13 +1536,14 @@ export function OrderFormClient({
           <div className="flex flex-wrap gap-2">
             {!singleGroup ? (
               <Button
-                variant="secondary"
+                variant="outline"
                 type="button"
                 onClick={() => {
                   setGroups((g) => [...g, emptyGroup(lockedId)]);
                 }}
               >
-                + Nowa grupa
+                <IconPlusCircle size={18} className="shrink-0" />
+                Nowa grupa
               </Button>
             ) : null}
             <Button

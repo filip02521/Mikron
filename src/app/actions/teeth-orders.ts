@@ -8,12 +8,14 @@ import {
   fetchTeethHistoryGroups,
   fetchTeethHistoryPage,
   markTeethOrdered,
+  markTeethPositionsOrdered,
   unmarkTeethOrdered,
   overrideTeethDeliveryDate,
   clearTeethDeliveryDateOverride,
   type TeethHistoryFetchOptions,
   type TeethQueueGroup,
   type TeethQueueItem,
+  type TeethPositionSelection,
 } from "@/lib/data/teeth-queue";
 import { fetchTeethOrderEditContext, type TeethEditContext } from "@/lib/data/teeth-edit-context";
 import {
@@ -96,6 +98,18 @@ export async function actionMarkTeethOrdered(
   revalidatePath("/kolejka");
   revalidatePath("/moje");
   return { success: true, updated: result.updated };
+}
+
+export async function actionMarkTeethPositionsOrdered(
+  selections: TeethPositionSelection[]
+): Promise<{ success: boolean; updated: number; ordersCompleted: number }> {
+  const user = await requireTeethPanel("mutate");
+  const result = await markTeethPositionsOrdered(selections, user.id, teethHistoryActor(user));
+  revalidatePath("/zeby");
+  revalidatePath("/podsumowanie");
+  revalidatePath("/kolejka");
+  revalidatePath("/moje");
+  return { success: true, updated: result.updated, ordersCompleted: result.ordersCompleted };
 }
 
 export async function actionUnmarkTeethOrdered(

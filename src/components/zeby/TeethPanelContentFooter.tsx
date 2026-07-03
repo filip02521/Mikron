@@ -28,15 +28,6 @@ export function TeethPanelContentFooter() {
         aria-label="Skróty panelu zębów"
         className="flex flex-wrap items-center justify-center gap-x-4 gap-y-2"
       >
-        <Link href="/zeby/kolejka" className={panelContentFooterLinkClass}>
-          Kolejka
-        </Link>
-        <Link href="/zeby/przyjecie" className={panelContentFooterLinkClass}>
-          Przyjęcie
-        </Link>
-        <Link href="/zeby/historia" className={panelContentFooterLinkClass}>
-          Historia
-        </Link>
         <Link href={teethSupplierCardsHref()} className={panelContentFooterLinkClass}>
           Karty dostawców
         </Link>

@@ -12,6 +12,7 @@ export type TeethMarkOrderedAnalysis = {
   withoutSpecIds: string[];
   hasMissingSpec: boolean;
   canMarkAny: boolean;
+  selectedPositionCount?: number;
 };
 
 export function analyzeTeethMarkOrdered(
@@ -53,8 +54,8 @@ export function teethMarkOrderedConfirmMessage(
   analysis: TeethMarkOrderedAnalysis,
   supplierName?: string | null
 ): string {
-  const ready = analysis.withSpecIds.length;
-  const skipped = analysis.withoutSpecIds.length;
+  const ready = analysis.selectedPositionCount ?? analysis.withSpecIds.length;
+  const skippedOrders = analysis.withoutSpecIds.length;
 
   if (!analysis.canMarkAny) {
     return (
@@ -67,7 +68,7 @@ export function teethMarkOrderedConfirmMessage(
     supplierName != null
       ? `Oznaczyć ${ready} ${plPozycja(ready)} u dostawcy ${supplierName} jako zamówione?`
       : ready === 1
-        ? "Czy na pewno chcesz oznaczyć 1 pozycję jako zamówioną u dostawcy?"
+        ? "Czy na pewno chcesz oznaczyć 1 ząb jako zamówiony u dostawcy?"
         : `Czy na pewno chcesz oznaczyć ${ready} ${plPozycja(ready)} jako zamówione u dostawcy?`;
 
   if (!analysis.hasMissingSpec) {
@@ -76,8 +77,8 @@ export function teethMarkOrderedConfirmMessage(
 
   return (
     `${prefix}\n\n` +
-    `${skipped} ${skipped === 1 ? "pozycja nie ma" : "pozycji nie ma"} kompletnej listy zębów — ` +
-    `pominę ${skipped === 1 ? "ją" : "je"} i oznaczę tylko gotowe. Uzupełnij listę u pozostałych przed kolejnym zamówieniem.`
+    `${skippedOrders} ${skippedOrders === 1 ? "zamówienie nie ma" : "zamówień nie ma"} kompletnej listy zębów — ` +
+    `pominę ${skippedOrders === 1 ? "je" : "je"} i oznaczę tylko gotowe. Uzupełnij listę u pozostałych przed kolejnym zamówieniem.`
   );
 }
 

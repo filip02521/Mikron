@@ -46,7 +46,7 @@ export function filterDeliveryQueueByLane<T extends IndividualOrder>(
   return orders.filter((o) => !isTeethZamowienie(o));
 }
 
-/** Kanoniczna data złożenia zamówienia u labu (tor zębów). */
+/** Kanoniczna data złożenia zamówienia u dostawcy (tor zębów). */
 export function teethProcurementOrderedAt(
   order: Pick<IndividualOrder, "teeth_ordered_at" | "ordered_at">
 ): string | null {

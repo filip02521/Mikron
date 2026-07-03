@@ -6,6 +6,7 @@ import { useTeethProductInfo } from "@/components/layout/TeethExemptContext";
 import { panelTypography } from "@/lib/ui/ontime-theme";
 import {
   teethPanelHistoryOrderCardClass,
+  teethPanelHistoryOrderCardCancelledClass,
   teethPanelHistoryOrderCardDoneClass,
   teethPanelHistoryOrderCardOrderedClass,
   teethPanelHistoryOrderCardPartialClass,
@@ -41,12 +42,14 @@ function toLineDetails(details: IndividualOrderTeethDetail[] | null | undefined)
 }
 
 function historySurfaceClass(item: TeethQueueItem): string {
+  if (item.status === "Anulowane" || item.sales_cancelled_at) return teethPanelHistoryOrderCardCancelledClass;
   if (item.status === "Zrealizowane") return teethPanelHistoryOrderCardDoneClass;
   if (item.status === "Czesciowo_zrealizowane") return teethPanelHistoryOrderCardPartialClass;
   return teethPanelHistoryOrderCardOrderedClass;
 }
 
 function historyStatusHint(item: TeethQueueItem): string | null {
+  if (item.status === "Anulowane" || item.sales_cancelled_at) return "anulowane";
   if (item.status === "Czesciowo_zrealizowane") return "częściowo";
   if (item.status === "Zrealizowane") return "zrealizowane";
   return null;

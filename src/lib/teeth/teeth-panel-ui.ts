@@ -93,10 +93,10 @@ export const teethReceiveSalesPersonBannerClass =
   "relative flex items-center gap-3 px-4 py-3 sm:px-5";
 
 export const teethReceiveSaveButtonClass =
-  "rounded-lg border border-indigo-200 bg-indigo-600 px-3 py-1.5 text-[11px] font-semibold text-white shadow-sm transition hover:bg-indigo-700 disabled:opacity-50";
+  "rounded-md bg-gradient-to-b from-indigo-600 to-indigo-700 px-3 py-1.5 text-[11px] font-semibold text-white shadow-sm shadow-indigo-600/15 transition hover:to-indigo-800 disabled:opacity-50";
 
 export const teethReceiveSectionOutlineButtonClass =
-  "rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-[11px] font-semibold text-slate-700 shadow-sm transition hover:bg-slate-50 disabled:opacity-50";
+  "rounded-md border border-slate-200 bg-white px-3 py-1.5 text-[11px] font-semibold text-slate-700 shadow-sm transition hover:bg-slate-50 disabled:opacity-50";
 
 export const teethReceiveDataRowClass =
   "border-b border-slate-100/90 transition-colors hover:bg-slate-50/60";
@@ -144,3 +144,5 @@ export const teethPanelHistoryOrderCardOrderedClass = "border-l-4 border-l-sky-5
 export const teethPanelHistoryOrderCardPartialClass = "border-l-4 border-l-amber-500";
 
 export const teethPanelHistoryOrderCardDoneClass = "border-l-4 border-l-slate-400";
+
+export const teethPanelHistoryOrderCardCancelledClass = "border-l-4 border-l-red-400";

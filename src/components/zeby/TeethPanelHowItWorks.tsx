@@ -27,11 +27,11 @@ export function TeethPanelHowItWorksContent() {
           </li>
           <li>
             <strong className="font-medium text-slate-800">Przyjęcie</strong> — porównujesz dostawę
-            z zamówieniem u labu: wpisujesz co dotarło, a co nie (bez e-maila i regału).
+            z zamówieniem u dostawcy: wpisujesz co dotarło, a co nie (bez e-maila i regału).
           </li>
           <li>
             <strong className="font-medium text-slate-800">Historia</strong> — pozycje już
-            zamówione u labu. ETA, audyt i korekty błędnego oznaczenia.
+            zamówione u dostawcy. ETA, audyt i korekty błędnego oznaczenia.
           </li>
           <li>
             <strong className="font-medium text-slate-800">Cykl zębów</strong> — ustawiasz w{" "}

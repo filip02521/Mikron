@@ -521,7 +521,7 @@ export function EditIndividualRequestModal({
       bodyClassName="flex min-h-0 flex-1 flex-col"
       footer={
         <>
-          <Button variant="ghost" disabled={pending} onClick={onClose}>
+          <Button variant="secondary" disabled={pending} onClick={onClose}>
             Anuluj
           </Button>
           <Button
@@ -595,6 +595,7 @@ export function EditIndividualRequestModal({
 
         <ProsbaFormRequestKindSection
           value={requestKind}
+          disabled={pending}
           onChange={(kind) => {
             setRequestKind(kind);
             if (kind === "informacja") setInformacjaPath(DEFAULT_INFORMACJA_FLOW_PATH);
@@ -669,6 +670,7 @@ export function EditIndividualRequestModal({
               informacjaPath={informacjaPath}
               resolvingSupplier={resolvingSupplier}
               validationAttempted={validationAttempted}
+              teethExemptTwIds={teethExemptTwIds}
             />
           </div>
         </ProsbaFormProductsSection>

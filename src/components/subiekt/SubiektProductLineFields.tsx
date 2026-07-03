@@ -8,6 +8,7 @@ import { Field, Input } from "@/components/ui/Field";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { Spinner } from "@/components/ui/Spinner";
+import { IconCircleCheck } from "@/components/icons/StrokeIcons";
 import { SubiektFeedbackAlert } from "@/components/subiekt/SubiektFeedbackAlert";
 import {
   TYPEAHEAD_KEYBOARD_HINT,
@@ -140,7 +141,6 @@ function SubiektInputShell({
 
 function SubiektLinkedLineBanner({
   symbol,
-  mikranCode,
   fromCatalog,
 }: {
   symbol: string | null;
@@ -153,14 +153,13 @@ function SubiektLinkedLineBanner({
     <div
       role="status"
       aria-label={title}
-      className="rounded-md border border-emerald-200/80 bg-emerald-50/70 px-3 py-2 text-xs text-emerald-950"
+      className="flex items-center gap-1.5 text-xs font-medium text-emerald-700"
     >
-      <p className="font-semibold">{title}</p>
-      <p className="mt-0.5 text-emerald-900/90">
-        {symbol ? <span>Symbol: {symbol}</span> : null}
-        {symbol && mikranCode.trim() ? <span> · </span> : null}
-        {mikranCode.trim() ? <span>Kod Mikran: {mikranCode.trim()}</span> : null}
-      </p>
+      <IconCircleCheck size={14} strokeWidth={2.5} className="shrink-0 text-emerald-600" aria-hidden />
+      <span className="font-semibold">{title}</span>
+      {symbol?.trim() ? (
+        <span className="text-emerald-600/90">· {symbol.trim()}</span>
+      ) : null}
     </div>
   );
 }
@@ -386,7 +385,7 @@ export function SubiektProductLineFields({
     pendingTeethModalRef.current = false;
     setTeethModalKey((k) => k + 1);
     setTeethModalOpen(true);
-  }, [resolvedTeethProductLine]);
+  }, [resolvedTeethProductLine, value.subiektTwId]);
 
   /** Usuwa przekłamanie: katalog zawsze wynika z towaru, nie z ręcznej zmiany linii w UI. */
   useEffect(() => {
@@ -946,6 +945,15 @@ export function SubiektProductLineFields({
               <span className="font-medium text-slate-700">{symbolPreview}</span>
             </p>
           ) : null}
+          {linkedFromSubiekt ? (
+            <div className="mt-1.5">
+              <SubiektLinkedLineBanner
+                symbol={symbolPreview}
+                mikranCode={value.mikranCode}
+                fromCatalog={value.source === "catalog"}
+              />
+            </div>
+          ) : null}
         </div>
       </Field>
 
@@ -1054,14 +1062,6 @@ export function SubiektProductLineFields({
   return (
     <div ref={ref} className="relative space-y-3">
       {productSearchRow}
-
-      {linkedFromSubiekt ? (
-        <SubiektLinkedLineBanner
-          symbol={symbolPreview}
-          mikranCode={value.mikranCode}
-          fromCatalog={value.source === "catalog"}
-        />
-      ) : null}
 
       {linkedFromSubiekt ? (
         <div className="flex justify-end">

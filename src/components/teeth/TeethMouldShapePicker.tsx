@@ -41,7 +41,7 @@ export function TeethMouldShapePicker({
   const groups = useMemo(() => {
     const raw = mouldShapeGroupsFor(productLine, kind);
     if (raw.length <= 1 || catalogUsesFixedMouldColumns(productLine)) return raw;
-    return [...raw].sort((a, b) => a.moulds.length - b.moulds.length);
+    return raw;
   }, [productLine, kind]);
   const allMoulds = useMemo(() => groups.flatMap((g) => g.moulds), [groups]);
   const groupedLayout = groups.length > 1;
@@ -142,17 +142,17 @@ function GroupedMouldSections({
   onSelectOther: () => void;
 }) {
   return (
-    <div className="overflow-hidden rounded-lg bg-white ring-1 ring-indigo-100/80">
+    <div className="rounded-lg bg-white ring-1 ring-indigo-100/80">
       <div
         className={cn(
-          "flex divide-x divide-indigo-100/60 overflow-x-auto",
+          "flex gap-1.5 overflow-x-auto p-1.5",
           compact ? "max-h-48" : "max-h-56",
         )}
       >
         {groups.map((group) => (
           <section
             key={`${group.shapeId}-${group.label}`}
-            className="flex min-w-[4.75rem] flex-1 flex-col"
+            className="flex min-w-[4.5rem] flex-1 flex-col rounded-md ring-1 ring-indigo-100/50 overflow-hidden"
             aria-label={group.label}
           >
             <ShapeSectionHeader group={group} compact={compact} />

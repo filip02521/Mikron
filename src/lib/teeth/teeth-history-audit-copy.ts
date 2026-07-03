@@ -1,7 +1,7 @@
 import type { TeethOrderHistoryAction } from "@/lib/data/teeth-order-history";
 
 export const TEETH_ORDER_HISTORY_ACTION_LABELS: Record<TeethOrderHistoryAction, string> = {
-  ordered: "Oznaczono zamówione u labu",
+  ordered: "Oznaczono zamówione u dostawcy",
   unmark: "Cofnięto do kolejki",
   delivery_override: "Ustawiono datę dostawy",
   delivery_clear: "Wyczyszczono datę dostawy",

@@ -15,8 +15,6 @@ import {
   IconChevronRight,
   IconCircleCheck,
 } from "@/components/icons/StrokeIcons";
-import { ProsbaOptionalSection } from "@/components/orders/ProsbaOptionalSection";
-import { PROSBA_OPTIONAL_SECTION_COPY } from "@/lib/orders/prosba-optional-section-copy";
 import { SubmitHintChevron } from "@/components/ui/UiGlyphs";
 import { cn } from "@/lib/cn";
 
@@ -146,17 +144,22 @@ export function ProsbaFormReadiness({
 
   if (compact) {
     const expandSteps = validationAttempted || Boolean(formMessage);
-    const readinessCopy = PROSBA_OPTIONAL_SECTION_COPY.readiness;
+
+    const compactIcon =
+      view.tone === "ready" ? (
+        <IconCircleCheck size={14} strokeWidth={2.5} className="shrink-0 text-emerald-600" />
+      ) : view.tone === "blocked" ? (
+        <IconAlertCircle size={14} strokeWidth={2.5} className="shrink-0 text-amber-600" />
+      ) : (
+        <IconChevronRight size={14} strokeWidth={2.5} className="shrink-0 text-indigo-500" />
+      );
 
     return (
-      <div
-        className={cn("overflow-hidden rounded-md border", styles.shell, className)}
-        aria-live="polite"
-      >
+      <div className={className} aria-live="polite">
         {formMessage ? (
           <div
             className={cn(
-              "border-b px-3 py-2.5 text-sm",
+              "mb-2 rounded-md border px-3 py-2.5 text-sm",
               formMessage.tone === "error" && "border-red-200 bg-red-50 text-red-950",
               formMessage.tone === "warning" && "border-amber-200 bg-amber-50 text-amber-950",
               formMessage.tone === "success" && "border-emerald-200 bg-emerald-50 text-emerald-950"
@@ -166,28 +169,27 @@ export function ProsbaFormReadiness({
           </div>
         ) : null}
 
-        <div className="px-3 py-2.5 sm:px-4">
-          <p className={cn("text-sm font-semibold leading-snug", styles.headline)}>
-            {view.headline}
-          </p>
-          {view.subline ? (
-            <p className={cn("mt-0.5 text-xs leading-relaxed", styles.subline)}>
-              {view.subline}
-            </p>
-          ) : null}
-
-          <ProsbaOptionalSection
-            kind="readiness"
-            title={readinessCopy.title}
-            showOptionalLabel={false}
-            defaultOpen={expandSteps}
-            className="mt-2 border-black/5 bg-white/50 open:bg-white/80"
-            summaryClassName="px-2.5 py-2"
-            bodyClassName="border-black/5 px-2.5 pb-2.5 pt-0"
+        <details open={expandSteps} className="group">
+          <summary
+            className={cn(
+              "flex cursor-pointer list-none items-center gap-1.5 py-1 text-xs font-medium text-slate-500 marker:content-none [&::-webkit-details-marker]:hidden",
+              view.tone === "ready" && "text-emerald-700",
+              view.tone === "blocked" && "text-amber-800",
+              view.tone === "handoff" && "text-indigo-700",
+            )}
           >
+            {compactIcon}
+            <span className="leading-snug">{view.headline}</span>
+            {view.subline ? (
+              <span className="hidden text-slate-400 sm:inline">· {view.subline}</span>
+            ) : null}
+            <span className="ml-0.5 text-[11px] text-slate-400 group-open:hidden">· pokaż kroki</span>
+          </summary>
+
+          <div className="mt-1.5 pl-5">
             <ReadinessStepsList steps={view.steps} />
-          </ProsbaOptionalSection>
-        </div>
+          </div>
+        </details>
       </div>
     );
   }

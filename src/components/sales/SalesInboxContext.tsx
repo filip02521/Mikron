@@ -85,10 +85,10 @@ export function SalesInboxProvider({
     const prevWeight = prevWeightRef.current;
     const nextCount = next.totalActionCount;
     const nextWeight = snapshotActionWeight(next);
-    if (
-      bootstrappedRef.current &&
-      (nextCount > prev || nextWeight > prevWeight)
-    ) {
+    const shouldRing = !bootstrappedRef.current
+      ? nextCount > 0
+      : nextCount > prev || nextWeight > prevWeight;
+    if (shouldRing) {
       setRingToken((token) => token + 1);
       setRinging(true);
       if (ringingTimerRef.current) window.clearTimeout(ringingTimerRef.current);
@@ -102,10 +102,17 @@ export function SalesInboxProvider({
 
   const bootstrapSnapshot = useCallback((next: SalesDayStartSnapshot | null) => {
     if (!next) return;
-    prevCountRef.current = next.totalActionCount;
+    const nextCount = next.totalActionCount;
+    prevCountRef.current = nextCount;
     prevWeightRef.current = snapshotActionWeight(next);
     setSnapshot(next);
     bootstrappedRef.current = true;
+    if (nextCount > 0) {
+      setRingToken((token) => token + 1);
+      setRinging(true);
+      if (ringingTimerRef.current) window.clearTimeout(ringingTimerRef.current);
+      ringingTimerRef.current = window.setTimeout(() => setRinging(false), 1400);
+    }
   }, []);
 
   const refresh = useCallback(async () => {

@@ -4,7 +4,7 @@ export const TEETH_PANEL_TITLE = "Panel zębów";
 
 export const TEETH_PRZYJECIE_PAGE_TITLE = "Przyjęcie";
 export const TEETH_PRZYJECIE_PAGE_HINT =
-  "Porównaj dostawę z zamówieniem u labu — wpisz co dotarło, a czego brakuje. Bez e-maila i regału.";
+  "Porównaj dostawę z zamówieniem u dostawcy — wpisz co dotarło, a czego brakuje. Bez e-maila i regału.";
 
 export const TEETH_TAB_PAGE_TITLES: Record<Tab, string> = {
   kolejka: "Kolejka",

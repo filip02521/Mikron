@@ -54,12 +54,6 @@ export function dentexAmberluxMouldShapeGroups(kind: TeethKind): TeethMouldShape
 
   return [
     {
-      shapeId: "lower",
-      label: "Dolne",
-      hint: "Szczęka dolna",
-      moulds: DENTEX_AMBERLUX_LOWER_ANTERIOR,
-    },
-    {
       shapeId: "triangular",
       label: "Trójkątne",
       hint: "Górne",
@@ -76,6 +70,12 @@ export function dentexAmberluxMouldShapeGroups(kind: TeethKind): TeethMouldShape
       label: "Owalne",
       hint: "Górne",
       moulds: DENTEX_AMBERLUX_UPPER_OVAL,
+    },
+    {
+      shapeId: "lower",
+      label: "Dolne",
+      hint: "Szczęka dolna",
+      moulds: DENTEX_AMBERLUX_LOWER_ANTERIOR,
     },
   ];
 }

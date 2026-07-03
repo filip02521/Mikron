@@ -288,30 +288,24 @@ export const MyOrderLineItem = memo(function MyOrderLineItem({
       triggerClassName="text-[10px] font-medium text-indigo-700 hover:text-indigo-900"
     />
   ) : null;
-  const showTeethDetailInline = inlineLineActionBar && showTeethDetail;
+  const showTeethDetailInline = false;
 
   const lineSideMeta =
-    badge || (showTeethDetail && !showTeethDetailInline) ? (
-    <div className="flex flex-wrap items-center justify-end gap-1.5">
-      {showTeethDetail && !showTeethDetailInline ? teethDetailBlock : null}
-      {badge ? (
-        <span
-          className={cn(
-            "inline-flex shrink-0 items-center gap-1 rounded-md px-1.5 py-0.5 text-[10px] font-semibold ring-1",
-            badge.className
-          )}
-        >
-          {onStock ? (
-            <IconCircleCheck size={12} strokeWidth={2.5} className="shrink-0" aria-hidden />
-          ) : null}
-          {badge.label}
-        </span>
+    badge ? (
+    <span
+      className={cn(
+        "inline-flex shrink-0 items-center gap-1 rounded-md px-1.5 py-0.5 text-[10px] font-semibold ring-1",
+        badge.className
+      )}
+    >
+      {onStock ? (
+        <IconCircleCheck size={12} strokeWidth={2.5} className="shrink-0" aria-hidden />
       ) : null}
-    </div>
+      {badge.label}
+    </span>
   ) : null;
 
-  const showLineSideMeta = Boolean(lineSideMeta);
-  const hasRightColumn = showActionInColumn || showLineSideMeta;
+  const hasRightColumn = showActionInColumn;
   const useActionColumn = lineActionColumn && hasRightColumn;
 
   return (
@@ -378,9 +372,13 @@ export const MyOrderLineItem = memo(function MyOrderLineItem({
                 />
               </span>
             ) : null}
+            {lineSideMeta ? lineSideMeta : null}
             </div>
             {inlineLineActionBar ? (
-              <div className="shrink-0 self-start">{lineActionBar}</div>
+              <div className="flex shrink-0 items-center gap-1.5 self-center">
+                {showTeethDetail ? teethDetailBlock : null}
+                {lineActionBar}
+              </div>
             ) : null}
           </div>
 
@@ -401,10 +399,6 @@ export const MyOrderLineItem = memo(function MyOrderLineItem({
             <div className={cn("mt-1.5", !compact && "pl-5")}>
               <TeethGroupChips details={line.teethDetails} variant="prosba" compact />
             </div>
-          ) : null}
-
-          {showTeethDetailInline ? (
-            <div className={cn("mt-1.5", !compact && "pl-5")}>{teethDetailBlock}</div>
           ) : null}
 
           {canEditClient && onSaveClient && onStartEditClient ? (
@@ -443,12 +437,10 @@ export const MyOrderLineItem = memo(function MyOrderLineItem({
         {useActionColumn ? (
           <div className={mojeShipmentLineActionColumnClass}>
             {showActionInColumn ? lineActionBar : null}
-            {showLineSideMeta ? lineSideMeta : null}
           </div>
         ) : hasRightColumn ? (
           <div className="flex shrink-0 flex-col items-end gap-1.5 self-start">
             {showActionInColumn ? lineActionBar : null}
-            {showLineSideMeta ? lineSideMeta : null}
           </div>
         ) : null}
       </div>

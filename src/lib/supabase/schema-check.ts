@@ -57,6 +57,13 @@ export async function hasTeethOrderDetailsKindColumn(
   return columnExistsOnTable(supabase, "individual_order_teeth_details", "kind");
 }
 
+export async function hasTeethOrderDetailsOrderedAtColumn(
+  supabase: SupabaseClient
+): Promise<boolean> {
+  if (!(await hasTeethOrderDetailsTable(supabase))) return false;
+  return columnExistsOnTable(supabase, "individual_order_teeth_details", "ordered_at");
+}
+
 export async function hasRequestKindColumn(
   supabase: SupabaseClient
 ): Promise<boolean> {
@@ -254,6 +261,11 @@ export async function runSchemaChecks(
     if (!(await hasTeethOrderDetailsKindColumn(supabase))) {
       issues.push(
         "Brak kolumny individual_order_teeth_details.kind — uruchom supabase/migrations/081_teeth_kind.sql"
+      );
+    }
+    if (!(await hasTeethOrderDetailsOrderedAtColumn(supabase))) {
+      issues.push(
+        "Brak kolumny individual_order_teeth_details.ordered_at — uruchom supabase/migrations/087_teeth_detail_ordered_at.sql"
       );
     }
   }

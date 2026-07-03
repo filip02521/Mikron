@@ -89,16 +89,16 @@ export function majorSuperLuxMouldShapeGroups(kind: TeethKind): TeethMouldShapeG
 
   return [
     {
-      shapeId: "lower",
-      label: "Dolne",
-      hint: "Szczęka dolna · 0/*",
-      moulds: MAJOR_SUPER_LUX_LOWER_ANTERIOR,
-    },
-    {
       shapeId: "triangular",
       label: "Trójkątne",
       hint: "Górne",
       moulds: MAJOR_SUPER_LUX_UPPER_TRIANGULAR,
+    },
+    {
+      shapeId: "square",
+      label: "Kwadratowe",
+      hint: "Górne",
+      moulds: MAJOR_SUPER_LUX_UPPER_SQUARE,
     },
     {
       shapeId: "oval",
@@ -107,10 +107,10 @@ export function majorSuperLuxMouldShapeGroups(kind: TeethKind): TeethMouldShapeG
       moulds: MAJOR_SUPER_LUX_UPPER_OVAL,
     },
     {
-      shapeId: "square",
-      label: "Kwadratowe",
-      hint: "Górne",
-      moulds: MAJOR_SUPER_LUX_UPPER_SQUARE,
+      shapeId: "lower",
+      label: "Dolne",
+      hint: "Szczęka dolna · 0/*",
+      moulds: MAJOR_SUPER_LUX_LOWER_ANTERIOR,
     },
   ];
 }

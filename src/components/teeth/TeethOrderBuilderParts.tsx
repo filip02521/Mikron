@@ -23,8 +23,8 @@ export function teethBuilderModalSize(
   productLine: TeethProductLine,
   kind: TeethKind | null,
 ): ModalSize {
-  if (!kind) return "lg";
-  return mouldShapeGroupsFor(productLine, kind).length > 1 ? "xl" : "lg";
+  if (!kind) return "md";
+  return mouldShapeGroupsFor(productLine, kind).length > 1 ? "lg" : "md";
 }
 
 export function TeethBuilderWorkspace({

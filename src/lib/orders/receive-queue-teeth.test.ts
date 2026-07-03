@@ -64,6 +64,22 @@ describe("receive-queue-teeth", () => {
     expect(queue.map((o) => o.id)).toEqual(["t"]);
   });
 
+  it("nie pokazuje w pełni dostarczonych pozycji w kolejce", () => {
+    const queue = buildTeethReceiveQueue([
+      order({ id: "done", is_teeth: true, status: "Zrealizowane", delivered_quantity: "3", quantity: "3" }),
+      order({ id: "pending", is_teeth: true, status: "Zamowione" }),
+    ]);
+    expect(queue.map((o) => o.id)).toEqual(["pending"]);
+  });
+
+  it("nie liczy w pełni dostarczonych pozycji w inbox", () => {
+    const s = summarizeTeethReceiveInbox([
+      order({ id: "done", is_teeth: true, status: "Zrealizowane", delivered_quantity: "3", quantity: "3" }),
+      order({ id: "pending", is_teeth: true, status: "Zamowione" }),
+    ]);
+    expect(s.activeCount).toBe(1);
+  });
+
   it("sortuje w obrębie dostawcy po handlowcu", () => {
     const sorted = sortTeethReceiveOrders([
       order({

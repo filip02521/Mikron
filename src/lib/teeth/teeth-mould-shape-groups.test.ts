@@ -18,8 +18,8 @@ describe("teeth-mould-shape-groups", () => {
     expect(groups).toHaveLength(4);
     expect(groups.map((g) => g.label)).toEqual([
       "Trójkątne",
-      "Owalne",
       "Kwadratowe",
+      "Owalne",
       "Dolne",
     ]);
     expect(groups[3]?.moulds).toContain("A10");
@@ -49,7 +49,7 @@ describe("teeth-mould-shape-groups", () => {
 
     expect(groups).toHaveLength(3);
 
-    expect(groups.map((g) => g.label)).toEqual(["Soft", "Bold", "Dolne"]);
+    expect(groups.map((g) => g.label)).toEqual(["Bold", "Soft", "Dolne"]);
 
     const soft = groups.find((g) => g.label === "Soft");
 
@@ -149,15 +149,15 @@ describe("teeth-mould-shape-groups", () => {
 
     expect(groups).toHaveLength(4);
 
-    expect(groups.map((g) => g.shapeId)).toEqual(["lower", "triangular", "square", "oval"]);
+    expect(groups.map((g) => g.shapeId)).toEqual(["triangular", "square", "oval", "lower"]);
 
-    expect(groups[0]!.moulds).toContain("00");
+    expect(groups[0]!.moulds).toContain("12");
 
-    expect(groups[1]!.moulds).toContain("12");
+    expect(groups[1]!.moulds).toContain("27");
 
-    expect(groups[2]!.moulds).toContain("27");
+    expect(groups[2]!.moulds).toContain("32");
 
-    expect(groups[3]!.moulds).toContain("32");
+    expect(groups[3]!.moulds).toContain("00");
 
   });
 
@@ -197,7 +197,7 @@ describe("teeth-mould-shape-groups", () => {
 
     expect(groups).toHaveLength(4);
 
-    expect(groups.map((g) => g.shapeId)).toEqual(["lower", "triangular", "square", "oval"]);
+    expect(groups.map((g) => g.shapeId)).toEqual(["triangular", "square", "oval", "lower"]);
 
   });
 
@@ -207,11 +207,11 @@ describe("teeth-mould-shape-groups", () => {
 
     const groups = mouldShapeGroupsFor("dentex_amberlux", "anterior");
 
-    expect(groups.map((g) => g.shapeId)).toEqual(["lower", "triangular", "square", "oval"]);
+    expect(groups.map((g) => g.shapeId)).toEqual(["triangular", "square", "oval", "lower"]);
 
-    expect(groups[1]!.moulds).toContain("41");
+    expect(groups[0]!.moulds).toContain("41");
 
-    expect(groups[3]!.moulds).toContain("48");
+    expect(groups[2]!.moulds).toContain("48");
 
   });
 
@@ -233,11 +233,11 @@ describe("teeth-mould-shape-groups", () => {
 
     const groups = mouldShapeGroupsFor("major_super_lux", "anterior");
 
-    expect(groups.map((g) => g.shapeId)).toEqual(["lower", "triangular", "oval", "square"]);
+    expect(groups.map((g) => g.shapeId)).toEqual(["triangular", "square", "oval", "lower"]);
 
-    expect(groups[0]!.moulds).toContain("0/11");
+    expect(groups[3]!.moulds).toContain("0/11");
 
-    expect(groups[3]!.moulds).toContain("62");
+    expect(groups[0]!.moulds).toContain("1/44");
 
   });
 
@@ -255,13 +255,11 @@ describe("teeth-mould-shape-groups", () => {
 
 
 
-  it("inne linie — kolumny sortowane po liczbie fasonów", () => {
+  it("inne linie — kolumny w kolejności trójkątne, kwadratowe, owalne", () => {
 
     const raw = mouldShapeGroupsFor("schottlander_enigmalife", "anterior");
 
-    const sorted = [...raw].sort((a, b) => a.moulds.length - b.moulds.length);
-
-    expect(sorted[0]!.moulds.length).toBeLessThanOrEqual(sorted[sorted.length - 1]!.moulds.length);
+    expect(raw.map((g) => g.shapeId)).toEqual(["triangular", "square", "oval"]);
 
   });
 

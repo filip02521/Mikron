@@ -71,7 +71,7 @@ function groupByShape(
     }
     buckets[shape].push(mould);
   }
-  const order: Exclude<TeethMouldShapeId, "all">[] = ["oval", "triangular", "square"];
+  const order: Exclude<TeethMouldShapeId, "all">[] = ["triangular", "square", "oval"];
   return order
     .filter((shapeId) => buckets[shapeId].length > 0)
     .map((shapeId) => ({

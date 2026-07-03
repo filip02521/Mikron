@@ -80,6 +80,7 @@ import { cn } from "@/lib/cn";
 import {
   brandLinkSubtleClass,
   mojeActionOverflowSegmentClass,
+  mojeSecondaryControlClass,
   panelSegmentFirstClass,
   panelSegmentLastClass,
   salesTypography,
@@ -122,7 +123,7 @@ function ChevronIcon({ open }: { open?: boolean }) {
       aria-hidden
       viewBox="0 0 20 20"
       className={cn(
-        "size-4 shrink-0 transition-transform",
+        "size-4 shrink-0 transition-transform duration-200 transition-colors",
         open ? "rotate-90 text-indigo-700" : "text-slate-500"
       )}
       fill="currentColor"
@@ -1110,7 +1111,15 @@ export const MyOrderShipmentCard = memo(function MyOrderShipmentCard({
         </div>
       ) : null}
 
-      {needsExpand && expanded ? (
+      {needsExpand ? (
+        <div
+          className={cn(
+            "moje-expand-grid",
+            expanded && "moje-expand-grid--open"
+          )}
+          aria-hidden={!expanded}
+        >
+        <div className="moje-expand-grid-inner">
         <div
           id={panelId}
           role="region"
@@ -1262,6 +1271,22 @@ export const MyOrderShipmentCard = memo(function MyOrderShipmentCard({
               ) : null}
             </div>
           ) : null}
+
+          <div className="flex justify-center px-3 pb-2 pt-1">
+            <button
+              type="button"
+              onClick={handleToggle}
+              className={cn(
+                mojeSecondaryControlClass,
+                "h-auto min-h-0 py-1.5 text-slate-600 hover:text-slate-800"
+              )}
+            >
+              <span className="-rotate-90"><ChevronIcon open={false} /></span>
+              Zwiń
+            </button>
+          </div>
+        </div>
+        </div>
         </div>
       ) : null}
     </Root>

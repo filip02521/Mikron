@@ -130,6 +130,11 @@ function revalidateAll() {
   revalidatePath("/prosba");
   revalidatePath("/weryfikacja");
   revalidatePath("/zeby");
+  revalidatePath("/zeby/przyjecie");
+  revalidatePath("/zeby/kolejka");
+  revalidatePath("/zeby/historia");
+  revalidatePath("/zeby/harmonogram");
+  revalidatePath("/zeby/status-magazynu");
   revalidatePath("/lokalizacje/[location]", "page");
   revalidatePath("/admin");
   revalidatePath("/admin/handlowcy");
