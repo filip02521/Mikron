@@ -90,13 +90,13 @@ export function mojeShipmentRowClass({
 }
 
 export const mojeShipmentExpandedRowShellClass =
-  "relative z-[1] mb-2";
+  "relative z-[2] mb-2 mt-0.5 rounded-lg shadow-lg ring-1 ring-slate-200/60";
 
 export const mojeShipmentExpandedMetaShellClass =
   "px-0 py-0";
 
 export const mojeShipmentExpandedPanelClass =
-  "space-y-2 border-t border-slate-200/80 bg-white px-3 pt-2 pb-3 sm:px-4 sm:pb-3.5";
+  "space-y-2 rounded-lg border border-slate-200/80 bg-white px-3 pt-2 pb-3 sm:px-4 sm:pb-3.5";
 
 export const mojeShipmentExpandedInfoBlockClass =
   "space-y-1.5 px-3 py-2";

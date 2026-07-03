@@ -582,3 +582,25 @@ html.ontime-scroll-locked main {
     transition: none;
   }
 }
+
+/* ——— Floating panel — rozwinięta karta /moje ——— */
+@keyframes moje-expand-panel-enter {
+  from {
+    opacity: 0;
+    transform: scale(0.98) translateY(-4px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+.moje-expand-grid--open > .moje-expand-grid-inner > * {
+  animation: moje-expand-panel-enter 0.28s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .moje-expand-grid--open > .moje-expand-grid-inner > * {
+    animation: none;
+  }
+}

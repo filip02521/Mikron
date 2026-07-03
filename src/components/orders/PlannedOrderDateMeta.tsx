@@ -6,13 +6,19 @@ import { panelTypography } from "@/lib/ui/ontime-theme";
 export function PlannedOrderDateMeta({
   display,
   className,
+  inline = false,
 }: {
   display: PlannedOrderDateDisplay;
   className?: string;
+  inline?: boolean;
 }) {
   return (
     <div
-      className={cn("flex min-w-0 flex-col items-end gap-0.5 text-right", className)}
+      className={cn(
+        "min-w-0",
+        inline ? "flex items-center gap-1" : "flex flex-col items-end gap-0.5 text-right",
+        className
+      )}
       title={display.title}
     >
       <span

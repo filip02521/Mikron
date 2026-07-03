@@ -16,6 +16,7 @@ import {
 } from "@/lib/orders/informacja-flow-copy";
 import { progressLabelInSubline } from "@/lib/orders/my-order-card-ui";
 import { isRequestNotesAggregateSummary } from "@/lib/orders/sales-request-note";
+import { isClientNamesAggregateSummary } from "@/lib/orders/sales-client-label";
 import {
   isProcurementCancelNotesAggregateSummary,
   procurementCancelNotesMojeSublineSuffix,
@@ -52,7 +53,7 @@ export type MyOrderHeadlineTone =
   | "dismiss";
 
 /** Nagłówek wiersza przy częściowej dostawie z towarem na magazynie (bez potwierdzenia odbioru). */
-export const MY_ORDER_PARTIAL_STOCK_HEADLINE = "Część towaru dotarła na magazyn";
+export const MY_ORDER_PARTIAL_STOCK_HEADLINE = "Część towaru na magazynie";
 
 export function isMyOrderPartialStockRow(row: MyOrderRow): boolean {
   if (row.kind !== "zamowienie" || row.statusTitle !== "Częściowo na magazynie") {
@@ -238,15 +239,15 @@ export function enrichMyOrderSalesUi(row: MyOrderRow): MyOrderSalesUi {
       subline: zdOverdue
         ? [
             row.progressLabel
-              ? `Magazyn: ${row.progressLabel.replace(" na magazynie", "")} · reszta w drodze`
-              : "Reszta czeka u dostawcy",
+              ? `Magazyn: ${row.progressLabel.replace(" na magazynie", "")}`
+              : null,
             row.timingLabel?.replace(/\s*·\s*po terminie\s*/i, "").trim(),
           ]
             .filter(Boolean)
             .join(" · ")
         : row.progressLabel
-          ? `Magazyn: ${row.progressLabel.replace(" na magazynie", "")} · reszta w drodze`
-          : "Reszta czeka u dostawcy",
+          ? `Magazyn: ${row.progressLabel.replace(" na magazynie", "")}`
+          : null,
       sortPriority: onStock > 0 ? 2 : 6,
     };
   }
@@ -366,7 +367,7 @@ export function myOrderMetaFields(
     { label: "Zgłoszono", value: row.submittedLabel },
   ];
 
-  if (row.clientLabel && row.lineCount <= 1) {
+  if (row.clientLabel && !isClientNamesAggregateSummary(row.clientLabel)) {
     fields.push({
       label: "Klient",
       value: row.clientLabel,
@@ -614,7 +615,7 @@ export function salesZdTimingLabel(
     ? formatDateString(parsed, "dd.MM.yyyy")
     : deadline;
   const overdueSuffix = overdue ? " · po terminie" : "";
-  return `do ${date} · ${dokNr}${overdueSuffix}`;
+  return `${date} · ${dokNr}${overdueSuffix}`;
 }
 
 /** Łączy terminy ZD wielu pozycji grupy — najwcześniejszy termin, pending jeśli któraś czeka. */

@@ -15,6 +15,7 @@ export type MyOrderRequestProgressStep = {
   id: string;
   label: string;
   state: MyOrderRequestProgressStepState;
+  date?: string | null;
 };
 
 export type MyOrderRequestProgressTrack = {
@@ -44,11 +45,13 @@ export function deriveMyOrderRequestProgress(
 }
 
 function markSteps(
-  labels: readonly { id: string; label: string }[],
+  labels: readonly { id: string; label: string; date?: string | null }[],
   currentIndex: number
 ): MyOrderRequestProgressStep[] {
   return labels.map((step, index) => ({
-    ...step,
+    id: step.id,
+    label: step.label,
+    date: step.date ?? null,
     state:
       index < currentIndex ? "done" : index === currentIndex ? "current" : "upcoming",
   }));
@@ -56,9 +59,9 @@ function markSteps(
 
 function deriveZamowienieRequestProgress(row: MyOrderRow): MyOrderRequestProgressTrack | null {
   const labels = [
-    { id: "request", label: "Prośba" },
-    { id: "order", label: "Zamówienie" },
-    { id: "delivery", label: "Dostawa" },
+    { id: "request", label: "Prośba", date: row.submittedLabel },
+    { id: "order", label: "Zamówienie", date: row.orderedAtLabel ?? null },
+    { id: "delivery", label: "Dostawa", date: row.deliveryAtLabel ?? null },
     { id: "pickup", label: "Odbiór" },
   ] as const;
 
@@ -96,13 +99,15 @@ function zamowienieCurrentStepIndex(row: MyOrderRow): number {
 
 function deriveInformacjaRequestProgress(row: MyOrderRow): MyOrderRequestProgressTrack | null {
   const title = row.statusTitle;
+  const submitDate = row.submittedLabel;
+  const orderDate = row.orderedAtLabel ?? null;
 
   if (title === INFORMACJA_FLOW_SALES_STOCK_OUT.statusTitle) {
     return {
       accent: "informacja",
       steps: markSteps(
         [
-          { id: "submit", label: "Zgłoszenie" },
+          { id: "submit", label: "Zgłoszenie", date: submitDate },
           { id: "order", label: "Zamówienie u dostawcy" },
         ],
         0
@@ -115,8 +120,8 @@ function deriveInformacjaRequestProgress(row: MyOrderRow): MyOrderRequestProgres
       accent: "informacja",
       steps: markSteps(
         [
-          { id: "submit", label: "Zgłoszenie" },
-          { id: "order", label: "Zamówienie u dostawcy" },
+          { id: "submit", label: "Zgłoszenie", date: submitDate },
+          { id: "order", label: "Zamówienie u dostawcy", date: orderDate },
         ],
         1
       ),
@@ -124,8 +129,8 @@ function deriveInformacjaRequestProgress(row: MyOrderRow): MyOrderRequestProgres
   }
 
   const viaPanelLabels = [
-    { id: "submit", label: "Zgłoszenie" },
-    { id: "order", label: "Zamówienie u dostawcy" },
+    { id: "submit", label: "Zgłoszenie", date: submitDate },
+    { id: "order", label: "Zamówienie u dostawcy", date: orderDate },
     { id: "warehouse", label: "Magazyn" },
     { id: "notify", label: "Powiadomienie" },
   ] as const;
@@ -145,7 +150,7 @@ function deriveInformacjaRequestProgress(row: MyOrderRow): MyOrderRequestProgres
   }
 
   const directLabels = [
-    { id: "submit", label: "Zgłoszenie" },
+    { id: "submit", label: "Zgłoszenie", date: submitDate },
     { id: "warehouse", label: "Magazyn obserwuje" },
     { id: "notify", label: "Powiadomienie" },
   ] as const;

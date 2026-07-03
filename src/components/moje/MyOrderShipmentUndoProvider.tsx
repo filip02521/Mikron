@@ -5,6 +5,7 @@ import {
   useCallback,
   useContext,
   useEffect,
+  useRef,
   useState,
   useTransition,
   type ReactNode,
@@ -91,6 +92,7 @@ export function MyOrderShipmentUndoProvider({
   const router = useRouter();
   const [undo, setUndo] = useState<ShipmentUndoState | null>(null);
   const [undoError, setUndoError] = useState<string | null>(null);
+  const undoInFlightRef = useRef(false);
   const [, start] = useTransition();
 
   const clearUndoError = useCallback(() => setUndoError(null), []);
@@ -110,13 +112,14 @@ export function MyOrderShipmentUndoProvider({
   );
 
   const handleUndo = useCallback(() => {
-    if (!undo || disabled) return;
+    if (!undo || disabled || undoInFlightRef.current) return;
     const snapshot = undo;
     if (isUndoExpired(snapshot.expiresAt)) {
       setUndo(null);
       return;
     }
     setUndoError(null);
+    undoInFlightRef.current = true;
     start(async () => {
       try {
         if (snapshot.kind === "dismiss") {
@@ -134,6 +137,8 @@ export function MyOrderShipmentUndoProvider({
         if (!isUndoExpired(snapshot.expiresAt)) setUndo(snapshot);
         setUndoError(undoFailureMessage(snapshot.kind));
         router.refresh();
+      } finally {
+        undoInFlightRef.current = false;
       }
     });
   }, [undo, disabled, router]);

@@ -6,13 +6,19 @@ import { salesTypography } from "@/lib/ui/ontime-theme";
 export function DeliveryDateMetaValue({
   display,
   className,
+  inline = false,
 }: {
   display: DeliveryDateMetaDisplay;
   className?: string;
+  inline?: boolean;
 }) {
   return (
     <div
-      className={cn("flex min-w-0 max-w-full flex-col items-end gap-0.5", className)}
+      className={cn(
+        "min-w-0 max-w-full",
+        inline ? "flex items-center gap-1" : "flex flex-col items-end gap-0.5",
+        className
+      )}
       title={display.title}
     >
       <span

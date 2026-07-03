@@ -98,13 +98,19 @@ export async function fetchIndividualOrders(filters?: {
   hideSalesAcknowledged?: boolean;
   /** Gdy true — wyklucza zamówienia zębowe (is_teeth = true). */
   excludeTeeth?: boolean;
+  /** Gdy true — pozwala na pobranie wszystkich zamówień bez salesPersonId (panel operacyjny). */
+  allowAll?: boolean;
 }): Promise<IndividualOrder[]> {
   if (!hasSupabaseConfig()) return [];
+  if (!filters?.salesPersonId && !filters?.allowAll) {
+    throw new Error("fetchIndividualOrders wymaga salesPersonId lub allowAll=true");
+  }
   const supabase = createAdminClient();
   let q = supabase
     .from("individual_orders")
     .select("*, supplier:suppliers(*), sales_person:sales_people(*)")
-    .order("action_at", { ascending: false });
+    .order("action_at", { ascending: false })
+    .limit(500);
   if (filters?.status) q = q.eq("status", filters.status);
   if (filters?.salesPersonId) q = q.eq("sales_person_id", filters.salesPersonId);
   if (filters?.hideSalesAcknowledged !== false) {
@@ -470,7 +476,7 @@ export async function fetchSummaryWorkspace(options?: { salesPersonId?: string }
   const { fetchSalesPeopleForPicker } = await import("@/lib/data/sales-people-admin");
   const [allNewOrders, salesPeople, statsRows, formSuppliers, teethLaneIndex] =
     await Promise.all([
-    fetchIndividualOrders({ status: "Nowe", hideSalesAcknowledged: false, excludeTeeth: true }),
+    fetchIndividualOrders({ status: "Nowe", hideSalesAcknowledged: false, excludeTeeth: true, allowAll: true }),
     fetchSalesPeopleForPicker(),
     fetchDeliveryStats(),
     fetchSuppliersForRequestForms(),

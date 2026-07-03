@@ -25,6 +25,7 @@ export function DeliveryTimingMeta({
   children,
   className,
   title,
+  inline = false,
 }: {
   caption: string;
   captionTone?: DeliveryTimingMetaCaptionTone;
@@ -32,13 +33,20 @@ export function DeliveryTimingMeta({
   children: ReactNode;
   className?: string;
   title?: string;
+  inline?: boolean;
 }) {
   return (
     <div
-      className={cn("flex min-w-0 flex-col items-end gap-0.5 text-right", className)}
+      className={cn(
+        "min-w-0",
+        inline
+          ? "flex items-center gap-1.5"
+          : "flex flex-col items-end gap-0.5 text-right",
+        className
+      )}
       title={title}
     >
-      <div className="flex flex-wrap items-center justify-end gap-1">
+      <div className={cn("flex items-center gap-1", inline ? "" : "flex-wrap justify-end")}>
         <span className={captionToneClass[captionTone]}>{caption}</span>
         {accessory}
       </div>

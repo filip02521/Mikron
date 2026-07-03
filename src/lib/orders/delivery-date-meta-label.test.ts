@@ -95,7 +95,7 @@ describe("resolveMyOrderHistoryDeliveryEstimate", () => {
   it("pomija etykietę ZD i pusty timingLabel", () => {
     expect(
       resolveMyOrderHistoryDeliveryEstimate({
-        timingLabel: "do 15.07.2026 · ZD/1",
+        timingLabel: "15.07.2026 · ZD/1",
       })
     ).toBeNull();
     expect(resolveMyOrderHistoryDeliveryEstimate({ timingLabel: null })).toBeNull();

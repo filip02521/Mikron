@@ -112,7 +112,12 @@ export function ZkProsbaLinkChip({
     </span>
   ) : (
     <span className="inline-flex max-w-full min-w-0 items-center gap-1.5">
-      <span className={salesZkLabelClass}>ZK</span>
+      <span className={cn(salesZkLabelClass, "items-center gap-0.5 leading-none")}>
+        <svg viewBox="0 0 16 16" className="size-3" fill="currentColor" aria-hidden>
+          <path d="M4 2a1 1 0 0 0-1 1v11a1 1 0 0 0 1.6.8L8 12.5l3.4 2.3a1 1 0 0 0 1.6-.8V3a1 1 0 0 0-1-1H4Zm0 1h8v11L8 11.5 4 14V3Z" />
+        </svg>
+        ZK
+      </span>
       {linkedNumber}
     </span>
   );

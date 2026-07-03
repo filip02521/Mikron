@@ -85,6 +85,8 @@ function row(extra: Partial<MyOrderRow> = {}): MyOrderRow {
     headline: "Zamówione",
     headlineTone: "info",
     subline: null,
+    requestNote: null,
+    procurementCancelNote: null,
     ...extra,
   };
 }
@@ -140,7 +142,7 @@ describe("sortOrderedProgressByDelivery", () => {
         syncedAt: null,
         source: "zd",
       },
-      timingLabel: "do 15.07.2026 · ZD/1",
+      timingLabel: "15.07.2026 · ZD/1",
     });
     const near = row({
       id: "near",

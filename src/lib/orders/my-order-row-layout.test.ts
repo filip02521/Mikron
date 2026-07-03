@@ -32,6 +32,17 @@ function row(extra: Partial<MyOrderRow> = {}): MyOrderRow {
         clientName: null,
         clientKhId: null,
         canAcknowledgePickup: false,
+        canCancelBySales: false,
+        salesCancelPhase: null,
+        maxSalesCancelQuantity: null,
+        defaultSalesCancelQuantity: null,
+        canPartialSalesCancel: false,
+        showSalesCancelRemainder: false,
+        showSalesCancelSupplierQuick: false,
+        salesCancelDeliveredQty: 0,
+        salesCancelUndoRestore: {},
+        requestNote: null,
+        procurementCancelNote: null,
       },
     ],
     submittedLabel: "01.05",
@@ -64,6 +75,8 @@ function row(extra: Partial<MyOrderRow> = {}): MyOrderRow {
     headline: "Zamówione — czekamy na dostawę",
     headlineTone: "info",
     subline: "Mało dostaw w historii — termin jest orientacyjny",
+    requestNote: null,
+    procurementCancelNote: null,
     ...extra,
   };
 }
@@ -92,7 +105,7 @@ describe("my-order-row-layout", () => {
           subline: "Magazyn: 5/8 szt. · 2 prod.",
         })
       )
-    ).toBe("Magazyn: 5/8 szt. · 2 prod.");
+    ).toBe("Produkt A · Magazyn: 5/8 szt. · 2 prod.");
   });
 
   it("weryfikacja — skrót na liście bez powtórzenia w expanded", () => {
@@ -211,7 +224,7 @@ describe("my-order-row-layout", () => {
       timingLabel: "ok. 20.06.2026 (~8 dni rob.)",
       subline: null,
     });
-    expect(myOrderCollapsedSubline(r)).toBe("Produkt A · SYM · 2 szt.");
+    expect(myOrderCollapsedSubline(r)).toBe("Produkt A");
   });
 
   it("zamowione z ostrzezeniem o historii — subline ma pierwszenstwo przed terminem", () => {
@@ -238,7 +251,7 @@ describe("my-order-row-layout", () => {
       timingLabel: "ok. 10.05.2026 (~5 dni rob.) · po terminie",
       subline: null,
     });
-    expect(myOrderCollapsedSubline(r)).toBe("P0 · +3 poz.");
+    expect(myOrderCollapsedSubline(r)).toBe("P0");
     const collapsed = myOrderCollapsedMetaFields(r, true);
     expect(collapsed.some((f) => f.label === "Termin")).toBe(false);
     expect(collapsed.some((f) => f.label === "Szacunek")).toBe(false);

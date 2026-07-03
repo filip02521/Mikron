@@ -355,21 +355,21 @@ export const salesTypography = {
 
 /** Etykieta „Uwagi” przy notatce handlowca — spójna w /moje i panelu dziennym. */
 export const salesRequestNoteLabelClass =
-  "inline-flex items-center rounded bg-indigo-50 px-1 py-0.5 font-semibold uppercase tracking-wide text-indigo-700";
+  "inline-flex items-center rounded bg-indigo-50 px-1 py-0.5 text-[10px] font-medium text-indigo-500";
 
 /** Etykieta wiadomości od zakupów przy anulowaniu — widoczna u handlowca. */
 export const procurementCancelNoteLabelClass =
-  "inline-flex items-center rounded bg-amber-50 px-1 py-0.5 font-semibold uppercase tracking-wide text-amber-800";
+  "inline-flex items-center rounded bg-amber-50 px-1 py-0.5 text-[10px] font-medium text-amber-600";
 
 /** Etykieta klienta końcowego — ten sam układ co „Uwagi”, ton indigo. */
 export const salesClientLabelClass =
-  "inline-flex items-center rounded bg-indigo-50 px-1 py-0.5 font-semibold uppercase tracking-wide text-indigo-700";
+  "inline-flex items-center rounded bg-indigo-50 px-1 py-0.5 text-[10px] font-medium text-indigo-500";
 
 export const salesClientNameClass = "font-medium text-indigo-900";
 
 /** Etykieta powiązania ZK — fiolet jak w notatniku, ten sam układ co „Klient”. */
 export const salesZkLabelClass =
-  "inline-flex items-center rounded bg-violet-50 px-1 py-0.5 font-semibold uppercase tracking-wide text-violet-700";
+  "inline-flex items-center rounded bg-violet-50 px-1 py-0.5 text-[10px] font-medium text-violet-600";
 
 export const salesZkNumberClass = "font-medium text-violet-900";
 

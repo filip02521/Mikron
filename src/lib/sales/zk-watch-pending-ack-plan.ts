@@ -111,20 +111,23 @@ export async function acknowledgeZdDeadlineWithClient(
 
   if (!pendingIds.length) return { count: 0, ackedIds: [] };
 
-  const { error } = await supabase
+  const { data: updatedRows, error } = await supabase
     .from("individual_orders")
     .update({ zd_fulfillment_deadline_change_seen_at: now })
     .in("id", pendingIds)
     .eq("sales_person_id", salesPersonId)
-    .is("zd_fulfillment_deadline_change_seen_at", null);
+    .is("zd_fulfillment_deadline_change_seen_at", null)
+    .select("id");
 
   if (error) throw new Error(error.message);
+
+  const ackedIds = (updatedRows ?? []).map((r) => r.id);
 
   if (options?.revalidate !== false) {
     revalidatePath("/moje");
   }
 
-  return { count: pendingIds.length, ackedIds: pendingIds };
+  return { count: ackedIds.length, ackedIds };
 }
 
 export async function acknowledgeOrdersWithClient(
@@ -174,14 +177,18 @@ export async function acknowledgeOrdersWithClient(
   const pendingIds = pendingRows.map((row) => row.id);
   if (!pendingIds.length) return { count: 0, ackedIds: [] };
 
-  const { error } = await supabase
+  const { data: updatedRows, error } = await supabase
     .from("individual_orders")
     .update({ sales_acknowledged_at: now })
     .in("id", pendingIds)
     .eq("sales_person_id", salesPersonId)
-    .is("sales_acknowledged_at", null);
+    .is("sales_acknowledged_at", null)
+    .select("id");
 
   if (error) throw new Error(error.message);
+
+  const ackedIds = (updatedRows ?? []).map((r) => r.id);
+  const ackedRows = pendingRows.filter((row) => ackedIds.includes(row.id));
 
   if (ackOptions?.revalidate !== false) {
     revalidateSalesOrderPaths();
@@ -190,7 +197,7 @@ export async function acknowledgeOrdersWithClient(
   try {
     const { syncZkWatchLineChecksFromOrder } = await import("@/lib/sales/zk-watch-order-sync");
     await Promise.all(
-      pendingRows.map((row) =>
+      ackedRows.map((row) =>
         syncZkWatchLineChecksFromOrder({
           ...row,
           sales_acknowledged_at: now,
@@ -201,7 +208,7 @@ export async function acknowledgeOrdersWithClient(
     console.error("[acknowledgeOrders syncZkWatchLineChecks]", e);
   }
 
-  return { count: pendingIds.length, ackedIds: pendingIds };
+  return { count: ackedIds.length, ackedIds };
 }
 
 /** Kolejność: ZD → odbiór/informacja → rezygnacja → anulowanie. Przy błędzie — rollback. */

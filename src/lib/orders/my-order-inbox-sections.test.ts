@@ -43,6 +43,8 @@ function row(extra: Partial<MyOrderRow> = {}): MyOrderRow {
     headline: "Test",
     headlineTone: "info",
     subline: null,
+    requestNote: null,
+    procurementCancelNote: null,
     ...extra,
   };
 }
@@ -73,7 +75,7 @@ describe("my-order-inbox-sections", () => {
     const far = row({
       id: "far",
       statusTitle: "Zamówione",
-      timingLabel: "do 15.07.2026 · ZD/1",
+      timingLabel: "15.07.2026 · ZD/1",
       zdFulfillment: {
         deadline: "2026-07-15",
         dokNr: "ZD/1",

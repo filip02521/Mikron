@@ -171,7 +171,7 @@ describe("enrichMyOrderSalesUi", () => {
       []
     ).zamowienia[0]!;
     const ui = enrichMyOrderSalesUi(partial);
-    expect(ui.headline).toBe("Część towaru dotarła na magazyn");
+    expect(ui.headline).toBe("Część towaru na magazynie");
     expect(ui.headlineTone).toBe("stock");
   });
 });

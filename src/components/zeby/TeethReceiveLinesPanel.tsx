@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState, useTransition } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import type { IndividualOrder } from "@/types/database";
 import type { DeliveryUndoPayload } from "@/lib/orders/receive-queue-undo";
@@ -130,6 +130,7 @@ export function TeethReceiveLinesPanel({
   const [refreshConfirm, setRefreshConfirm] = useState(false);
   const [undo, setUndo] = useState<DeliveryUndoPayload | null>(null);
   const [undoError, setUndoError] = useState<string | null>(null);
+  const undoInFlightRef = useRef(false);
 
   const clearUndo = useCallback(() => {
     setUndo(null);
@@ -154,12 +155,13 @@ export function TeethReceiveLinesPanel({
   }, [hasUnsavedInput]);
 
   const handleUndo = useCallback(() => {
-    if (!undo) return;
+    if (!undo || undoInFlightRef.current) return;
     setUndoError(null);
     if (isUndoExpired(undo.expiresAt)) {
       setUndoError("Minął czas na cofnięcie przyjęcia zębów.");
       return;
     }
+    undoInFlightRef.current = true;
     start(async () => {
       try {
         onPendingChange("Cofanie przyjęcia zębów…");
@@ -171,6 +173,7 @@ export function TeethReceiveLinesPanel({
       } catch (e) {
         setUndoError(e instanceof Error ? e.message : "Nie udało się cofnąć przyjęcia zębów.");
       } finally {
+        undoInFlightRef.current = false;
         onPendingChange(null);
       }
     });

@@ -64,6 +64,7 @@ export function ZdFulfillmentDeadlineChangeAutoAck({
   const [retryNonce, setRetryNonce] = useState(0);
   const processedKeyRef = useRef<string>("");
   const inFlightRef = useRef(false);
+  const queuedKeyRef = useRef<string | null>(null);
   const failedAttemptsRef = useRef<Record<string, number>>({});
 
   useEffect(() => {
@@ -74,7 +75,11 @@ export function ZdFulfillmentDeadlineChangeAutoAck({
 
     const orderIds = [...new Set(pending.flatMap((item) => item.orderIds))];
     const key = buildZdDeadlineChangeAckKey(pending);
-    if (!key || key === processedKeyRef.current || inFlightRef.current) return;
+    if (!key || key === processedKeyRef.current) return;
+    if (inFlightRef.current) {
+      queuedKeyRef.current = key;
+      return;
+    }
 
     const failedAttempts = failedAttemptsRef.current[key] ?? 0;
     if (failedAttempts >= ZD_DEADLINE_ACK_MAX_RETRIES) return;
@@ -109,6 +114,11 @@ export function ZdFulfillmentDeadlineChangeAutoAck({
         }
       } finally {
         inFlightRef.current = false;
+        const queued = queuedKeyRef.current;
+        if (queued && queued !== processedKeyRef.current) {
+          queuedKeyRef.current = null;
+          setRetryNonce((value) => value + 1);
+        }
       }
     })();
   }, [canAcknowledge, rows, router, tourPreview, retryNonce]);

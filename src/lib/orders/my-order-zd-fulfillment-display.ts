@@ -156,7 +156,7 @@ export function salesZdPrimarySlotTimingLabel(
   }
   const primary = zdFulfillmentPrimarySlot(fulfillment);
   const overdueSuffix = overdue ? " · po terminie" : "";
-  return `do ${formatPlDate(primary.deadline)} · ${primary.dokNr}${overdueSuffix}`;
+  return `${formatPlDate(primary.deadline)} · ${primary.dokNr}${overdueSuffix}`;
 }
 
 export function zdFulfillmentCollapsedCaption(
@@ -212,7 +212,7 @@ export function salesZdGroupTimingLabel(
   if (slots.length <= 1) {
     const slot = slots[0]!;
     const overdueSuffix = overdue ? " · po terminie" : "";
-    return `do ${formatPlDate(slot.deadline)} · ${slot.dokNr}${overdueSuffix}`;
+    return `${formatPlDate(slot.deadline)} · ${slot.dokNr}${overdueSuffix}`;
   }
 
   const sorted = [...slots].sort((a, b) => {
@@ -226,7 +226,7 @@ export function salesZdGroupTimingLabel(
   const overdueSuffix = overdue ? " · po terminie" : "";
 
   if (uniqueDates.length === 1) {
-    return `do ${uniqueDates[0]} · ${sorted.length} poz.${overdueSuffix}`;
+    return `${uniqueDates[0]} · ${sorted.length} poz.${overdueSuffix}`;
   }
   if (sorted.length === 2) {
     return `2 terminy: ${uniqueDates[0]} i ${uniqueDates[uniqueDates.length - 1]}${overdueSuffix}`;

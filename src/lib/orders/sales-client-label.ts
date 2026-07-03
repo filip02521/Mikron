@@ -54,6 +54,12 @@ export function clientNamesSummary(
   return `${names.length} różnych klientów`;
 }
 
+/** Czy etykieta to skrót „N różnych klientów” (a nie pojedynczy klient)? */
+export function isClientNamesAggregateSummary(label: string | null): boolean {
+  if (!label) return false;
+  return / różnych klientów$/.test(label);
+}
+
 /** Skrót klientów z linii prośby (panel zakupów). */
 export function clientNamesSummaryFromLines(
   lines: Pick<{ clientName?: string | null }, "clientName">[]

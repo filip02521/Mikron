@@ -1,6 +1,6 @@
 "use client";
 
-import { memo } from "react";
+import { memo, useCallback, useState } from "react";
 import { zdFulfillmentDeadlineChangeShortLabel } from "@/lib/orders/zd-fulfillment-deadline-change";
 import { parseDateOnly } from "@/lib/orders/dates";
 import { isPastExpectedDate } from "@/lib/orders/delivery-eta";
@@ -38,6 +38,46 @@ import {
   SearchHighlightJoined,
   SearchHighlightText,
 } from "@/components/moje/SearchHighlightText";
+
+function CopyBadge({
+  text,
+  copyValue,
+  title,
+  className,
+  searchQuery,
+}: {
+  text: string;
+  copyValue: string;
+  title: string;
+  className: string;
+  searchQuery?: string | null;
+}) {
+  const [copied, setCopied] = useState(false);
+  const onClick = useCallback(async () => {
+    try {
+      await navigator.clipboard.writeText(copyValue);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1200);
+    } catch {
+      // ignore
+    }
+  }, [copyValue]);
+
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      title={copied ? "Skopiowano!" : `${title} — kliknij, aby skopiować`}
+      className={cn(
+        "shrink-0 cursor-pointer rounded px-1 py-0.5 font-mono text-[10px] font-semibold transition-colors",
+        className,
+        copied && "ring-2 ring-emerald-400"
+      )}
+    >
+      <SearchHighlightText text={copied ? "✓ skopiowano" : text} searchQuery={searchQuery} />
+    </button>
+  );
+}
 
 function stockBadge(status: MyOrderLineStockStatus): { label: string; className: string } | null {
   switch (status) {
@@ -347,8 +387,8 @@ export const MyOrderLineItem = memo(function MyOrderLineItem({
               text={line.product}
               searchQuery={searchQuery}
               className={cn(
-                "min-w-0 font-medium text-slate-900",
-                compact ? "text-xs leading-snug" : "text-sm text-slate-800"
+                "min-w-0 font-semibold text-slate-900",
+                compact ? "text-sm leading-snug" : "text-sm text-slate-800"
               )}
             />
             {lineQuantityLabel ? (
@@ -357,42 +397,46 @@ export const MyOrderLineItem = memo(function MyOrderLineItem({
               </span>
             ) : null}
             {line.symbol?.trim() && !(line.teethDetails && line.teethDetails.length > 0) ? (
-              <SearchHighlightText
+              <CopyBadge
                 text={line.symbol.trim()}
+                copyValue={line.symbol.trim()}
+                title="Symbol"
+                className="bg-slate-100 text-slate-600"
                 searchQuery={searchQuery}
-                className="shrink-0 rounded bg-slate-100 px-1 py-0.5 font-mono text-[10px] font-semibold text-slate-600"
               />
             ) : null}
             {line.mikranCode?.trim() && !(line.teethDetails && line.teethDetails.length > 0) ? (
-              <span title="Kod Mikran (PLU)">
-                <SearchHighlightText
-                  text={`PLU ${line.mikranCode.trim()}`}
-                  searchQuery={searchQuery}
-                  className="shrink-0 rounded bg-violet-50 px-1 py-0.5 font-mono text-[10px] font-semibold text-violet-800 ring-1 ring-violet-200/80"
-                />
-              </span>
+              <CopyBadge
+                text={`PLU ${line.mikranCode.trim()}`}
+                copyValue={line.mikranCode.trim()}
+                title="Kod Mikran (PLU)"
+                className="bg-violet-50 text-violet-800 ring-1 ring-violet-200/80"
+                searchQuery={searchQuery}
+              />
             ) : null}
-            {lineSideMeta ? lineSideMeta : null}
             </div>
-            {inlineLineActionBar ? (
-              <div className="flex shrink-0 items-center gap-1.5 self-center">
-                {showTeethDetail ? teethDetailBlock : null}
-                {lineActionBar}
-              </div>
-            ) : null}
           </div>
 
-          {detailParts.length > 0 ? (
-            <p
+          {(detailParts.length > 0 || lineSideMeta) ? (
+            <div
               className={cn(
-                "mt-0.5 text-[11px] leading-relaxed text-slate-500",
-                !compact && "pl-5",
-                emphasizeStock && onStock && "font-medium text-emerald-800",
-                emphasizeStock && partial && "font-medium text-sky-900"
+                "mt-0.5 flex flex-wrap items-center gap-1.5",
+                !compact && "pl-5"
               )}
             >
-              <SearchHighlightJoined parts={detailParts} searchQuery={searchQuery} />
-            </p>
+              {lineSideMeta}
+              {detailParts.length > 0 ? (
+                <p
+                  className={cn(
+                    "text-[11px] leading-relaxed text-slate-500",
+                    emphasizeStock && onStock && "font-medium text-emerald-800",
+                    emphasizeStock && partial && "font-medium text-sky-900"
+                  )}
+                >
+                  <SearchHighlightJoined parts={detailParts} searchQuery={searchQuery} />
+                </p>
+              ) : null}
+            </div>
           ) : null}
 
           {line.teethDetails && line.teethDetails.length > 0 ? (
@@ -407,7 +451,7 @@ export const MyOrderLineItem = memo(function MyOrderLineItem({
               clientKhId={line.clientKhId}
               disabled={pending}
               editing={openClientEditor}
-              className={cn("mt-1.5", !compact && "pl-5")}
+              className={cn("mt-2 border-t border-slate-100 pt-2", !compact && "pl-5")}
               onStartEdit={onStartEditClient}
               onSave={(patch) => onSaveClient(line.id, patch)}
             />
@@ -415,7 +459,7 @@ export const MyOrderLineItem = memo(function MyOrderLineItem({
             <MyOrderAssignedClient
               name={line.clientName}
               searchQuery={searchQuery}
-              className={cn("mt-1.5", !compact && "pl-5")}
+              className={cn("mt-2 border-t border-slate-100 pt-2", !compact && "pl-5")}
             />
           ) : null}
           {!hideRequestNote && line.requestNote?.trim() ? (
@@ -433,6 +477,13 @@ export const MyOrderLineItem = memo(function MyOrderLineItem({
             />
           ) : null}
         </div>
+
+        {inlineLineActionBar ? (
+          <div className="flex shrink-0 items-center gap-1.5 self-center">
+            {showTeethDetail ? teethDetailBlock : null}
+            {lineActionBar}
+          </div>
+        ) : null}
 
         {useActionColumn ? (
           <div className={mojeShipmentLineActionColumnClass}>

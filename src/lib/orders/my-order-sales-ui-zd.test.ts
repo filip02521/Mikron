@@ -119,6 +119,9 @@ describe("resolveZdEtaPendingFromOrder", () => {
 describe("resolveZdFulfillmentFromOrder", () => {
   it("akceptuje termin ZD bez numeru dokumentu", () => {
     const zd = resolveZdFulfillmentFromOrder({
+      status: "Zamowione",
+      action_at: "2026-06-18T08:00:00Z",
+      ordered_at: "2026-06-18T08:00:00Z",
       zd_fulfillment_source: "zd",
       zd_fulfillment_deadline: "2026-07-03",
       zd_fulfillment_dok_nr: null,
@@ -132,6 +135,9 @@ describe("resolveZdFulfillmentFromOrder", () => {
     const at = new Date("2026-06-18T12:00:00+02:00");
     const zd = resolveZdFulfillmentFromOrder(
       {
+        status: "Zamowione",
+        action_at: "2026-03-01T10:00:00+01:00",
+        ordered_at: "2026-03-01T10:00:00+01:00",
         zd_fulfillment_source: "zd",
         zd_fulfillment_deadline: "2026-02-27",
         zd_fulfillment_dok_nr: "ZD 78/M/02/2026",
@@ -147,6 +153,9 @@ describe("resolveZdFulfillmentFromOrder", () => {
     const at = new Date("2026-06-18T12:00:00+02:00");
     const zd = resolveZdFulfillmentFromOrder(
       {
+        status: "Zamowione",
+        action_at: "2026-06-18T08:00:00Z",
+        ordered_at: "2026-06-18T08:00:00Z",
         zd_fulfillment_source: "zd",
         zd_fulfillment_deadline: "2026-07-22",
         zd_fulfillment_dok_nr: "ZD/1",
@@ -236,7 +245,7 @@ describe("aggregateGroupZdEtaState", () => {
 describe("salesZdTimingLabel", () => {
   it("formatuje termin z numerem ZD", () => {
     expect(salesZdTimingLabel("2026-07-03", "ZD/81/2026", false)).toBe(
-      "do 03.07.2026 · ZD/81/2026"
+      "03.07.2026 · ZD/81/2026"
     );
   });
 

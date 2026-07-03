@@ -52,6 +52,8 @@ function row(extra: Partial<MyOrderRow> = {}): MyOrderRow {
     headline: "Zamówione — czekamy na dostawę",
     headlineTone: "info",
     subline: null,
+    requestNote: null,
+    procurementCancelNote: null,
     ...extra,
   };
 }
@@ -129,7 +131,7 @@ describe("my-order-delivery-timing-display", () => {
     const tomorrowPl = formatDateString(addDays(todayInWarsaw(), 1), "dd.MM.yyyy");
     const display = buildMyOrderDeliveryTimingDisplay(
       row({
-        timingLabel: `do ${tomorrowPl} · ZD/1`,
+        timingLabel: `${tomorrowPl} · ZD/1`,
         zdFulfillment: {
           deadline: tomorrowKey,
           dokNr: "ZD/1",
@@ -147,7 +149,7 @@ describe("my-order-delivery-timing-display", () => {
   it("buduje blok dla terminu z ZD", () => {
     const display = buildMyOrderDeliveryTimingDisplay(
       row({
-        timingLabel: "do 03.07.2026 · ZD/81/2026",
+        timingLabel: "03.07.2026 · ZD/81/2026",
         zdFulfillment: {
           deadline: "2026-07-03",
           dokNr: "ZD/81/2026",
@@ -156,20 +158,19 @@ describe("my-order-delivery-timing-display", () => {
         },
       })
     );
-    expect(display?.title).toBe("Planowana dostawa z dokumentu ZD");
+    expect(display?.title).toBe("Planowana dostawa:");
     expect(display?.tone).toBe("zd-sourced");
     expect(display?.estimate).toContain("ZD/81/2026");
-    expect(display?.detail).toBe("zaktualizowano 18.06.2026");
+    expect(display?.detail ?? "").not.toContain("zaktualizowano");
   });
 
   it("dokNr w estimate — bez powtórzenia w detail", () => {
     const deadlineKey = formatDateString(addDays(todayInWarsaw(), 5));
     const deadlinePl = formatDateString(addDays(todayInWarsaw(), 5), "dd.MM.yyyy");
     const syncedKey = formatDateString(addDays(todayInWarsaw(), -1));
-    const syncedPl = formatDateString(addDays(todayInWarsaw(), -1), "dd.MM.yyyy");
     const display = buildMyOrderDeliveryTimingDisplay(
       row({
-        timingLabel: `do ${deadlinePl} · ZD 173/M/06/2026`,
+        timingLabel: `${deadlinePl} · ZD 173/M/06/2026`,
         zdFulfillment: {
           deadline: deadlineKey,
           dokNr: "ZD 173/M/06/2026",
@@ -180,8 +181,8 @@ describe("my-order-delivery-timing-display", () => {
       })
     );
     expect(display?.estimate).toContain("ZD 173/M/06/2026");
-    expect(display?.detail).not.toContain("ZD 173/M/06/2026 ·");
-    expect(display?.detail).toContain(`zaktualizowano ${syncedPl}`);
+    expect(display?.detail ?? "").not.toContain("ZD 173/M/06/2026 ·");
+    expect(display?.detail ?? "").not.toContain("zaktualizowano");
   });
 
   it("grupa mieszana — callout ZD z podpowiedzią o szacunku przy produktach", () => {
@@ -190,7 +191,7 @@ describe("my-order-delivery-timing-display", () => {
     const syncedKey = formatDateString(addDays(todayInWarsaw(), -2));
     const display = buildMyOrderDeliveryTimingDisplay(
       row({
-        timingLabel: `do ${deadlinePl} · ZD 173/M/06/2026`,
+        timingLabel: `${deadlinePl} · ZD 173/M/06/2026`,
         zdFulfillment: {
           deadline: deadlineKey,
           dokNr: "ZD 173/M/06/2026",
@@ -200,7 +201,7 @@ describe("my-order-delivery-timing-display", () => {
         zdEtaNoMatch: true,
       })
     );
-    expect(display?.title).toBe("Planowana dostawa z dokumentu ZD");
+    expect(display?.title).toBe("Planowana dostawa:");
     expect(display?.estimate).toContain(deadlinePl);
     expect(display?.detail).toContain(MY_ORDER_HISTORY_ESTIMATE_MIXED_ZD_GROUP_DETAIL);
   });
@@ -208,7 +209,7 @@ describe("my-order-delivery-timing-display", () => {
   it("w rozwinięciu wymienia wszystkie terminy ZD", () => {
     const display = buildMyOrderDeliveryTimingDisplay(
       row({
-        timingLabel: "do 15.07.2026 · ZD/1",
+        timingLabel: "15.07.2026 · ZD/1",
         zdFulfillment: {
           deadline: "2026-07-15",
           dokNr: "ZD/1",
@@ -278,6 +279,8 @@ describe("my-order-delivery-timing-display", () => {
         zdFulfillment: {
           deadline: "2026-06-26",
           dokNr: "ZD 1/M/06/2026",
+          syncedAt: null,
+          source: "zd",
         },
       })
     ).toBe(true);

@@ -14,9 +14,11 @@ import type { MyOrderRow } from "@/lib/orders/my-order-presenter";
 export function MyOrderEstimatedDeliveryMeta({
   row,
   className,
+  inline = false,
 }: {
   row: Pick<MyOrderRow, "timingLabel" | "zdFulfillment" | "zdEtaPending" | "zdEtaNoMatch">;
   className?: string;
+  inline?: boolean;
 }) {
   const estimate = resolveMyOrderHistoryDeliveryEstimate(row);
   if (!estimate) return null;
@@ -39,8 +41,9 @@ export function MyOrderEstimatedDeliveryMeta({
       caption={MY_ORDER_HISTORY_ESTIMATE_CAPTION}
       captionTone={parsed.overdue ? "overdue" : "default"}
       title={title}
+      inline={inline}
     >
-      <DeliveryDateMetaValue display={display} />
+      <DeliveryDateMetaValue display={display} inline={inline} />
     </DeliveryTimingMeta>
   );
 }

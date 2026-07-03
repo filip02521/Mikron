@@ -34,7 +34,8 @@ export function myOrderCollapsedSubline(row: MyOrderRow): string | null {
   }
 
   if (row.statusTitle === "Częściowo na magazynie" && row.subline?.trim()) {
-    return row.subline;
+    const product = myOrderProductPreviewLine(row);
+    return product ? `${product} · ${row.subline}` : row.subline;
   }
 
   if (row.headlineTone === "warning") {
@@ -121,13 +122,9 @@ export function myOrderCollapsedMetaFields(
 
 export function myOrderProductPreviewLine(row: MyOrderRow): string {
   if (row.lineCount <= 1) {
-    const line = row.lines[0];
-    if (!line) return row.product;
-    return [line.product, line.symbol, line.quantityLabel].filter(Boolean).join(" · ");
+    return row.lines[0]?.product ?? row.product;
   }
-  const first = row.lines[0]?.product ?? row.product;
-  const n = row.lineCount - 1;
-  return `${first} · +${n} ${n === 1 ? "poz." : "poz."}`;
+  return row.lines[0]?.product ?? row.product;
 }
 
 export type MyOrderExpandContext = {

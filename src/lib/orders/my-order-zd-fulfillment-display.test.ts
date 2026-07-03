@@ -133,7 +133,7 @@ describe("salesZdPrimarySlotTimingLabel", () => {
       ],
     };
     expect(salesZdPrimarySlotTimingLabel(fulfillment, false)).toBe(
-      "do 15.07.2026 · ZD/1"
+      "15.07.2026 · ZD/1"
     );
   });
 });
@@ -194,7 +194,7 @@ describe("isLineZdDetailRedundantWithExpandedGroupTiming", () => {
       syncedAt: null,
       source: "zd" as const,
     };
-    const row = { zdFulfillment: zd, zdEtaPending: false, zdEtaNoMatch: false };
+    const row = { timingLabel: null, zdFulfillment: zd, zdEtaPending: false, zdEtaNoMatch: false };
     const line = { zdFulfillment: zd, zdEtaPending: false, zdEtaNoMatch: false };
     expect(isLineZdDetailRedundantWithExpandedGroupTiming(row, line, true)).toBe(true);
     expect(isLineZdDetailRedundantWithExpandedGroupTiming(row, line, false)).toBe(false);
@@ -202,6 +202,7 @@ describe("isLineZdDetailRedundantWithExpandedGroupTiming", () => {
 
   it("zostawia termin linii gdy różni się od grupy", () => {
     const row = {
+      timingLabel: null,
       zdFulfillment: {
         deadline: "2026-07-15",
         dokNr: "ZD/1",

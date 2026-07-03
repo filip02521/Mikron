@@ -53,21 +53,16 @@ import {
   myOrderExpandHint,
   myOrderExpandedNotes,
   myOrderNeedsExpand,
+  myOrderProductPreviewLine,
 } from "@/lib/orders/my-order-row-layout";
 import { myOrderExpandedMetaFields } from "@/lib/orders/my-order-sales-ui";
-import { MyOrderExpandedMeta } from "@/components/moje/MyOrderExpandedMeta";
-import { MyOrderExpandedDeliveryTiming } from "@/components/moje/MyOrderExpandedDeliveryTiming";
 import {
   buildMyOrderDeliveryTimingDisplay,
-  shouldShowMyOrderCollapsedDeliveryTiming,
   shouldShowMyOrderExpandedDeliveryTiming,
 } from "@/lib/orders/my-order-delivery-timing-display";
 import { isLineZdDetailRedundantWithExpandedGroupTiming } from "@/lib/orders/my-order-zd-fulfillment-display";
 import { resolveMyOrderDeliveryRowVisual } from "@/lib/orders/my-order-delivery-urgency";
 import { MyOrderAckButton } from "@/components/moje/MyOrderAckButton";
-import { MyOrderAssignedClient } from "@/components/moje/MyOrderAssignedClient";
-import { MyOrderRequestNote } from "@/components/moje/MyOrderRequestNote";
-import { MyOrderProcurementCancelNote } from "@/components/moje/MyOrderProcurementCancelNote";
 import { isRequestNotesAggregateSummary } from "@/lib/orders/sales-request-note";
 import { isProcurementCancelNotesAggregateSummary } from "@/lib/orders/procurement-cancel-note";
 import { MyOrderLineItem } from "@/components/moje/MyOrderLineItem";
@@ -90,16 +85,12 @@ import {
   mojeQueueRowLayoutClass,
   mojeQueueRowMainClass,
   mojeShipmentBulkPickupFooterClass,
-  mojeShipmentExpandedInfoBlockClass,
-  mojeShipmentExpandedNotesClass,
   mojeShipmentExpandedPanelClass,
   mojeShipmentExpandedRowShellClass,
   mojeShipmentLinesHeaderClass,
   mojeShipmentLinesHeaderTitleClass,
   mojeShipmentLinesShellClass,
   mojeShipmentRowClass,
-  mojeShipmentSectionHeaderClass,
-  mojeShipmentSectionHeaderTitleClass,
   type MojeShipmentRowVisualTone,
 } from "@/lib/ui/moje-shipment-row-styles";
 import { mojeActionBarShellClass } from "@/lib/ui/surfaces";
@@ -497,6 +488,7 @@ export const MyOrderShipmentCard = memo(function MyOrderShipmentCard({
   const expandCtx = { listKind, showGroupPickup };
   const needsExpand = myOrderNeedsExpand(row, expandCtx);
   const collapsedSubline = myOrderCollapsedSubline(row);
+  const productPreviewLine = myOrderProductPreviewLine(row);
   const showHeadlineBanner = shouldShowMyOrderHeadlineBanner(row, {
     expanded,
     compactActionLayout,
@@ -522,12 +514,17 @@ export const MyOrderShipmentCard = memo(function MyOrderShipmentCard({
   });
   const expandedMeta = filterRedundantExpandedMetaFields(
     row,
-    myOrderExpandedMetaFields(row, showProgress)
-      .filter((field) => !(field.label === "Klient" && canEditClient))
+    [
+      { label: "Dostawca", value: row.supplierName },
+      ...myOrderExpandedMetaFields(row, showProgress),
+    ]
+      .filter((field) => field.label !== "Klient")
       .filter((field) => field.label !== "ZK")
-      .filter((field) => !(field.label === "Klient" && row.clientLabel))
       .filter((field) => field.label !== "Uwagi")
       .filter((field) => field.label !== "Od dostaw")
+      .filter((field) => field.label !== "Zgłoszono")
+      .filter((field) => field.label !== "Zamówiono")
+      .filter((field) => field.label !== "Magazyn")
   );
   const expandedDeliveryTiming = buildMyOrderDeliveryTimingDisplay(row);
   const showExpandedDeliveryTiming = shouldShowMyOrderExpandedDeliveryTiming(
@@ -543,19 +540,11 @@ export const MyOrderShipmentCard = memo(function MyOrderShipmentCard({
     hasCollapsedSubline: Boolean(collapsedSubline),
   });
   const productSummary = showCollapsedProductSummary ? productSummaryRaw : null;
-  const showCollapsedDeliveryTiming = shouldShowMyOrderCollapsedDeliveryTiming(row);
-  const plannedOrderDate =
-    showCollapsedDeliveryTiming ? (row.plannedOrderDate ?? null) : null;
-  const zdFulfillment =
-    showCollapsedDeliveryTiming ? (row.zdFulfillment ?? null) : null;
-  const zdEtaPending = Boolean(
-    showCollapsedDeliveryTiming && row.zdEtaPending && subiektReachable
-  );
-  const zdEtaNoMatch = Boolean(
-    showCollapsedDeliveryTiming && row.zdEtaNoMatch && !zdEtaPending
-  );
-  const showInformacjaTimingMeta =
-    showCollapsedDeliveryTiming && shouldShowInformacjaEmailSentMeta(row);
+  const plannedOrderDate = row.plannedOrderDate ?? null;
+  const zdFulfillment = row.zdFulfillment ?? null;
+  const zdEtaPending = Boolean(row.zdEtaPending && subiektReachable);
+  const zdEtaNoMatch = Boolean(row.zdEtaNoMatch && !zdEtaPending);
+  const showInformacjaTimingMeta = shouldShowInformacjaEmailSentMeta(row);
   const historyDeliveryEstimate = resolveMyOrderHistoryDeliveryEstimate(row);
   const showEstimatedDeliveryMeta =
     !showInformacjaTimingMeta &&
@@ -772,21 +761,18 @@ export const MyOrderShipmentCard = memo(function MyOrderShipmentCard({
     />
   );
 
-  const hideLineClient =
-    row.lineCount === 1 &&
-    Boolean(row.clientLabel) &&
-    !canEditClient;
+  const hideLineClient = false;
   const sharedRequestNote =
     row.requestNote && !isRequestNotesAggregateSummary(row.requestNote)
       ? row.requestNote
       : null;
-  const hideLineRequestNote = Boolean(sharedRequestNote);
+  const hideLineRequestNote = false;
   const sharedProcurementCancelNote =
     row.procurementCancelNote &&
     !isProcurementCancelNotesAggregateSummary(row.procurementCancelNote)
       ? row.procurementCancelNote
       : null;
-  const hideLineProcurementCancelNote = Boolean(sharedProcurementCancelNote);
+  const hideLineProcurementCancelNote = false;
   const expandedLineActionColumn =
     expanded && row.lineCount > 1 && (showGroupPickup || showPerLineCancel);
   const hideLineWarehouseProgress =
@@ -931,19 +917,62 @@ export const MyOrderShipmentCard = memo(function MyOrderShipmentCard({
                 "hover:bg-black/[0.02] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-indigo-300"
             )}
           >
-            <div className="flex min-w-0 items-baseline gap-2">
-              <SearchHighlightText
-                text={row.supplierName}
-                searchQuery={searchQuery}
-                className={cn("truncate", salesTypography.rowTitle)}
-              />
-              <MyOrderKindBadge row={row} listKind={listKind} />
-              {row.isTeeth ? (
-                <span className="shrink-0 rounded bg-emerald-100 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-emerald-800">
-                  Zęby
-                </span>
-              ) : null}
-            </div>
+            {!showHeadlineBanner && showCollapsedSublineText && collapsedSubline ? (
+              <div className="flex min-w-0 items-baseline gap-2">
+                <SearchHighlightText
+                  text={collapsedSubline}
+                  searchQuery={searchQuery}
+                  className={cn(
+                    "truncate",
+                    salesTypography.rowTitle,
+                    isStock && "text-sky-800",
+                    suppressSharedHeadline &&
+                      isUrgent &&
+                      "text-amber-900",
+                    suppressSharedHeadline &&
+                      isStock &&
+                      "text-sky-900",
+                    suppressSharedHeadline &&
+                      headlineTone === "info" &&
+                      !isInformacja &&
+                      "text-indigo-800",
+                    suppressSharedHeadline &&
+                      isInformacja &&
+                      "text-violet-900"
+                  )}
+                />
+                {row.lineCount > 1 ? (
+                  <span className="shrink-0 rounded bg-indigo-100 px-1.5 py-0.5 text-[10px] font-semibold tabular-nums text-indigo-700">
+                    +{row.lineCount - 1}
+                  </span>
+                ) : null}
+                <MyOrderKindBadge row={row} listKind={listKind} />
+                {row.isTeeth ? (
+                  <span className="shrink-0 rounded bg-emerald-100 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-emerald-800">
+                    Zęby
+                  </span>
+                ) : null}
+              </div>
+            ) : (
+              <div className="flex min-w-0 items-baseline gap-2">
+                <SearchHighlightText
+                  text={productPreviewLine || row.supplierName}
+                  searchQuery={searchQuery}
+                  className={cn("truncate", salesTypography.rowTitle)}
+                />
+                {row.lineCount > 1 ? (
+                  <span className="shrink-0 rounded bg-indigo-100 px-1.5 py-0.5 text-[10px] font-semibold tabular-nums text-indigo-700">
+                    +{row.lineCount - 1}
+                  </span>
+                ) : null}
+                <MyOrderKindBadge row={row} listKind={listKind} />
+                {row.isTeeth ? (
+                  <span className="shrink-0 rounded bg-emerald-100 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-emerald-800">
+                    Zęby
+                  </span>
+                ) : null}
+              </div>
+            )}
             {suppressSharedHeadline ? (
               <span className="sr-only">{headline}</span>
             ) : null}
@@ -955,27 +984,13 @@ export const MyOrderShipmentCard = memo(function MyOrderShipmentCard({
                 as="p"
               />
             ) : null}
-            {!showHeadlineBanner && !expanded && showCollapsedSublineText && collapsedSubline ? (
+            {(!showHeadlineBanner && showCollapsedSublineText && collapsedSubline) || productPreviewLine ? (
               <SearchHighlightText
-                text={collapsedSubline}
+                text={row.supplierName}
                 searchQuery={searchQuery}
                 className={cn(
                   "mt-0.5 truncate",
-                  salesTypography.rowMeta,
-                  isStock && "font-medium text-sky-800",
-                  suppressSharedHeadline &&
-                    isUrgent &&
-                    "font-medium text-amber-900",
-                  suppressSharedHeadline &&
-                    isStock &&
-                    "font-medium text-sky-900",
-                  suppressSharedHeadline &&
-                    headlineTone === "info" &&
-                    !isInformacja &&
-                    "font-medium text-indigo-800",
-                  suppressSharedHeadline &&
-                    isInformacja &&
-                    "font-medium text-violet-900"
+                  salesTypography.rowMeta
                 )}
                 as="p"
               />
@@ -996,14 +1011,26 @@ export const MyOrderShipmentCard = memo(function MyOrderShipmentCard({
             ) : null}
             {/* Client/note/procurement note — only in expanded view */}
           </button>
-          {row.sourceZkNumber ? (
-            <ZkProsbaLinkChip
-              zkNumber={row.sourceZkNumber}
-              zkWatchId={row.sourceZkWatchId}
-              salesPersonId={row.salesPersonId}
-              searchQuery={searchQuery}
-              className="mt-0.5 max-w-full truncate"
-            />
+          {(row.sourceZkNumber || sharedRequestNote || sharedProcurementCancelNote) ? (
+            <div className="mt-0.5 flex items-center gap-1.5">
+              {sharedRequestNote || sharedProcurementCancelNote ? (
+                <span className="shrink-0 inline-flex items-center gap-0.5 rounded bg-indigo-50 px-1 py-0.5 text-[10px] font-medium leading-none text-indigo-500" title="Prośba zawiera uwagi">
+                  <svg viewBox="0 0 16 16" className="size-3" fill="currentColor" aria-hidden>
+                    <path d="M3 2a1 1 0 0 0-1 1v10a1 1 0 0 0 1 1h6a1 1 0 0 0 .7-.3l3-3a1 1 0 0 0 .3-.7V3a1 1 0 0 0-1-1H3Zm1 2h7v5H8a1 1 0 0 0-1 1v2H4V4Z" />
+                  </svg>
+                  Uwagi
+                </span>
+              ) : null}
+              {row.sourceZkNumber ? (
+                <ZkProsbaLinkChip
+                  zkNumber={row.sourceZkNumber}
+                  zkWatchId={row.sourceZkWatchId}
+                  salesPersonId={row.salesPersonId}
+                  searchQuery={searchQuery}
+                  className="max-w-full"
+                />
+              ) : null}
+            </div>
           ) : null}
           </div>
           {rowPatternHint &&
@@ -1126,16 +1153,30 @@ export const MyOrderShipmentCard = memo(function MyOrderShipmentCard({
           aria-label={`Szczegóły: ${row.supplierName}`}
           className={mojeShipmentExpandedPanelClass}
         >
-          {requestProgress ? <MyOrderRequestProgressBar track={requestProgress} /> : null}
+          {requestProgress ? <MyOrderRequestProgressBar track={requestProgress} className="mt-2 -mb-1" /> : null}
 
-          {/* Info section */}
-          {(showExpandedStatusBadge || expandedNotes || row.clientLabel || (showExpandedDeliveryTiming && expandedDeliveryTiming)) ? (
-            <section className={mojeShipmentLinesShellClass}>
-              <div className={mojeShipmentSectionHeaderClass}>
-                <h4 className={mojeShipmentSectionHeaderTitleClass}>Informacje o dostawie</h4>
-              </div>
-              <div className={mojeShipmentExpandedInfoBlockClass}>
-                <div className="flex flex-wrap items-center gap-2">
+          {/* Meta + notes — single row: notes left, meta right */}
+          {(expandedMeta.length > 0 || showExpandedStatusBadge || expandedNotes) ? (
+            <div className="flex items-start justify-end gap-3 px-3 pt-2 mb-0.5">
+              {/* Notes — left (spacer to push meta right) */}
+              {expandedNotes ? (
+                <div className="min-w-0 flex-1">
+                  <span className="inline-flex items-start gap-1 rounded bg-sky-50 px-1.5 py-1 text-[10px] leading-snug text-sky-700">
+                    <svg viewBox="0 0 16 16" className="mt-0.5 size-3 shrink-0" fill="currentColor" aria-hidden>
+                      <path d="M8 1a7 7 0 1 0 0 14A7 7 0 0 0 8 1Zm0 3a.75.75 0 0 1 .75.75v3.5a.75.75 0 0 1-1.5 0v-3.5A.75.75 0 0 1 8 4Zm0 8a.875.875 0 1 1 0-1.75.875.875 0 0 1 0 1.75Z" />
+                    </svg>
+                    <SearchHighlightText
+                      text={expandedNotes}
+                      searchQuery={searchQuery}
+                      className="text-sky-700"
+                    />
+                  </span>
+                </div>
+              ) : null}
+
+              {/* Meta — right */}
+              {expandedMeta.length > 0 || showExpandedStatusBadge ? (
+                <div className="flex shrink-0 flex-wrap items-baseline justify-end gap-x-1.5 gap-y-0 text-[10px] leading-tight">
                   {showExpandedStatusBadge ? (
                     <MyOrderStatusPill
                       label={row.statusTitle}
@@ -1144,53 +1185,23 @@ export const MyOrderShipmentCard = memo(function MyOrderShipmentCard({
                       className="text-xs"
                     />
                   ) : null}
-                  {row.clientLabel ? (
-                    <MyOrderAssignedClient
-                      name={row.clientLabel}
-                      searchQuery={searchQuery}
-                    />
-                  ) : null}
+                  {expandedMeta.map((f, i) => (
+                    <span key={f.label} className="inline-flex items-baseline gap-0.5">
+                      {i > 0 ? <span className="text-slate-300">·</span> : null}
+                      <span className="font-medium text-indigo-400">{f.label}</span>
+                      <SearchHighlightText
+                        text={f.value}
+                        searchQuery={searchQuery}
+                        className={cn(
+                          "text-slate-600",
+                          f.emphasize && "font-semibold text-amber-700"
+                        )}
+                      />
+                    </span>
+                  ))}
                 </div>
-                {showExpandedDeliveryTiming && expandedDeliveryTiming ? (
-                  <MyOrderExpandedDeliveryTiming
-                    display={expandedDeliveryTiming}
-                    searchQuery={searchQuery}
-                  />
-                ) : null}
-                {expandedNotes ? (
-                  <SearchHighlightText
-                    text={expandedNotes}
-                    searchQuery={searchQuery}
-                    className={mojeShipmentExpandedNotesClass}
-                    as="p"
-                  />
-                ) : null}
-              </div>
-            </section>
-          ) : null}
-
-          {/* Details section */}
-          {expandedMeta.length > 0 || sharedRequestNote || sharedProcurementCancelNote ? (
-            <section className={mojeShipmentLinesShellClass}>
-              <div className={mojeShipmentSectionHeaderClass}>
-                <h4 className={mojeShipmentSectionHeaderTitleClass}>Szczegóły</h4>
-              </div>
-              <div className="space-y-1.5 px-3 py-2">
-                <MyOrderExpandedMeta fields={expandedMeta} searchQuery={searchQuery} />
-                {sharedRequestNote ? (
-                  <MyOrderRequestNote
-                    note={sharedRequestNote}
-                    searchQuery={searchQuery}
-                  />
-                ) : null}
-                {sharedProcurementCancelNote ? (
-                  <MyOrderProcurementCancelNote
-                    note={sharedProcurementCancelNote}
-                    searchQuery={searchQuery}
-                  />
-                ) : null}
-              </div>
-            </section>
+              ) : null}
+            </div>
           ) : null}
 
           {row.lineCount > 0 ? (
@@ -1269,6 +1280,26 @@ export const MyOrderShipmentCard = memo(function MyOrderShipmentCard({
                   </div>
                 </div>
               ) : null}
+            </div>
+          ) : null}
+
+          {/* Delivery timing — below product section */}
+          {showExpandedDeliveryTiming && expandedDeliveryTiming ? (
+            <div className="flex flex-wrap items-center gap-2 px-3 py-0 text-[10px] leading-tight">
+              {showInformacjaTimingMeta && row.timingLabel ? (
+                <InformacjaEmailSentMeta timingLabel={row.timingLabel} />
+              ) : null}
+              {!showInformacjaTimingMeta && zdFulfillment ? (
+                <ZdFulfillmentDateMeta
+                  fulfillment={zdFulfillment}
+                  inline
+                  lines={row.lines}
+                />
+              ) : null}
+              {!showInformacjaTimingMeta && showEstimatedDeliveryMeta ? (
+                <MyOrderEstimatedDeliveryMeta row={row} inline />
+              ) : null}
+              {plannedOrderDate ? <PlannedOrderDateMeta display={plannedOrderDate} inline /> : null}
             </div>
           ) : null}
 

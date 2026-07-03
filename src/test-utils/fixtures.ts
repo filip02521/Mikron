@@ -98,6 +98,8 @@ export function testMyOrderRow(
     lineCount: 1,
     lines: [testMyOrderLine({ id: "l1" })],
     submittedLabel: "01.01",
+    deliveryAtLabel: null,
+    orderedAtLabel: null,
     supplierName: "Dostawca",
     product: "Produkt",
     symbol: "SYM",

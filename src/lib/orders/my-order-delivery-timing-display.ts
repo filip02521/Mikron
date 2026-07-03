@@ -1,5 +1,6 @@
 import type { MyOrderRow } from "@/lib/orders/my-order-presenter";
 import { formatPlDate } from "@/lib/display-labels";
+import { parseDateOnly, formatDateString } from "@/lib/orders/dates";
 import {
   MY_ORDER_HISTORY_ESTIMATE_OVERDUE_LABEL,
   resolveMyOrderHistoryDeliveryEstimate,
@@ -26,6 +27,16 @@ import {
   type DeliveryUrgency,
 } from "@/lib/orders/my-order-delivery-urgency";
 import { zdFulfillmentSlots } from "@/lib/orders/my-order-zd-fulfillment-display";
+
+const WEEKDAY_LABELS = ["Niedz", "Pon", "Wt", "Śr", "Czw", "Pt", "Sob"];
+
+function formatPlDateWithWeekday(iso: string): string {
+  const parsed = parseDateOnly(iso);
+  if (!parsed) return formatPlDate(iso);
+  const weekday = WEEKDAY_LABELS[parsed.getDay()] ?? "";
+  const dateStr = formatDateString(parsed, "dd.MM.yyyy");
+  return weekday ? `${weekday} ${dateStr}` : dateStr;
+}
 
 /** Sekcja „Potwierdź odbiór” — bez planowanej dostawy (towar już dotarł lub czeka na zamknięcie). */
 export function shouldShowMyOrderCollapsedDeliveryTiming(
@@ -103,11 +114,7 @@ function buildZdFulfillmentDetailLine(
   multiSlotDetail: string | null
 ): string | null {
   if (multiSlotDetail) return multiSlotDetail;
-  const synced = zd.syncedAt ? formatPlDate(zd.syncedAt.slice(0, 10)) : null;
   const dokNrInEstimate = estimateMentionsZdDocNumber(estimate, zd.dokNr);
-  if (synced) {
-    return dokNrInEstimate ? `zaktualizowano ${synced}` : `${zd.dokNr} · zaktualizowano ${synced}`;
-  }
   return dokNrInEstimate ? null : zd.dokNr;
 }
 
@@ -181,7 +188,7 @@ export function buildMyOrderDeliveryTimingDisplay(
       slots.length > 1
         ? `${slots.length} terminy: ${slots.map((s) => formatPlDate(s.deadline)).join(" · ")}`
         : null;
-    const zdEstimate = estimate || `do ${formatPlDate(zd.deadline)} · ${zd.dokNr}`;
+    const zdEstimate = estimate || `${formatPlDateWithWeekday(zd.deadline)} · ${zd.dokNr}`;
     const baseDetail = buildZdFulfillmentDetailLine(zdEstimate, zd, multiSlotDetail);
     const mixedDetail = row.zdEtaNoMatch
       ? [baseDetail, MY_ORDER_HISTORY_ESTIMATE_MIXED_ZD_GROUP_DETAIL].filter(Boolean).join(" · ")
@@ -190,7 +197,7 @@ export function buildMyOrderDeliveryTimingDisplay(
         : baseDetail;
     return withUrgency(
       {
-        title: overdue ? "Planowana dostawa po terminie" : "Planowana dostawa z dokumentu ZD",
+        title: overdue ? "Planowana dostawa po terminie" : "Planowana dostawa:",
         estimate: zdEstimate,
         detail: mixedDetail,
         tone: overdue ? "overdue" : "zd-sourced",

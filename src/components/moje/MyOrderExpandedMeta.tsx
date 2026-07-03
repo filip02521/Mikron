@@ -16,12 +16,12 @@ export function MyOrderExpandedMeta({
 
   return (
     <div className={cn(mojeShipmentExpandedMetaShellClass, className)}>
-      <dl className="grid grid-cols-1 gap-x-4 gap-y-2.5 sm:grid-cols-2">
+      <dl className="grid grid-cols-1 gap-x-4 gap-y-1.5 sm:grid-cols-2">
         {fields.map((f) => (
           <div key={f.label} className="min-w-0">
             <dt
               className={cn(
-                "font-semibold uppercase tracking-wide text-slate-400",
+                "font-medium text-slate-400",
                 salesTypography.rowMeta
               )}
             >

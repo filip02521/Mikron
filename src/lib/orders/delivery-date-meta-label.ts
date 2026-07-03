@@ -158,7 +158,7 @@ export function parseDeliveryEstimateFromTimingLabel(timingLabel: string): {
   return { expectedDate, avgBusinessDays, lowConfidence, overdue };
 }
 
-export const ZD_TIMING_LABEL = /^do\s+\d{2}\.\d{2}\.\d{4}\s*·/i;
+export const ZD_TIMING_LABEL = /^\d{2}\.\d{2}\.\d{4}\s*·\s*ZD/i;
 
 function isHistoryTimingLabel(raw: string): boolean {
   return (

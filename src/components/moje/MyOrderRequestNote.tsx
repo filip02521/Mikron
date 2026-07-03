@@ -15,10 +15,13 @@ export function MyOrderRequestNote({
   const trimmed = note.trim();
   if (!trimmed) return null;
   return (
-    <p className={cn(salesTypography.rowMeta, className)}>
-      <span className={salesRequestNoteLabelClass}>
+    <p className={cn(salesTypography.rowMeta, "inline-flex items-center gap-1", className)}>
+      <span className={cn(salesRequestNoteLabelClass, "gap-0.5")}>
+        <svg viewBox="0 0 16 16" className="size-3" fill="currentColor" aria-hidden>
+          <path d="M3 2a1 1 0 0 0-1 1v10a1 1 0 0 0 1 1h6a1 1 0 0 0 .7-.3l3-3a1 1 0 0 0 .3-.7V3a1 1 0 0 0-1-1H3Zm1 2h7v5H8a1 1 0 0 0-1 1v2H4V4Z" />
+        </svg>
         Uwagi
-      </span>{" "}
+      </span>
       <SearchHighlightText
         text={trimmed}
         searchQuery={searchQuery}

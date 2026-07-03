@@ -183,6 +183,10 @@ type MyOrderRowCore = {
   lineCount: number;
   lines: MyOrderLine[];
   submittedLabel: string;
+  /** Data dostarczenia na magazyn (jeśli dostępna). */
+  deliveryAtLabel?: string | null;
+  /** Data zamówienia u dostawcy (jeśli dostępna). */
+  orderedAtLabel?: string | null;
   supplierName: string;
   /** Skrót przy grupie; szczegóły w lines. */
   product: string;
@@ -573,6 +577,12 @@ function presentInformacja(order: IndividualOrder): MyOrderRow {
     lines: [] as MyOrderLine[],
     kind: "informacja" as const,
     submittedLabel: formatPlDate(submittedAt(order).slice(0, 10)),
+    deliveryAtLabel: order.delivery_at?.trim()
+      ? formatPlDate(order.delivery_at.slice(0, 10))
+      : null,
+    orderedAtLabel: order.ordered_at?.trim()
+      ? formatPlDate(order.ordered_at.slice(0, 10))
+      : null,
     supplierName: order.supplier?.name ?? "—",
     product: order.products,
     symbol: order.symbol && order.symbol !== "-" ? order.symbol : null,
@@ -706,6 +716,12 @@ function presentZamowienie(
     lines: [] as MyOrderLine[],
     kind: "zamowienie" as const,
     submittedLabel: formatPlDate(submittedAt(order).slice(0, 10)),
+    deliveryAtLabel: order.delivery_at?.trim()
+      ? formatPlDate(order.delivery_at.slice(0, 10))
+      : null,
+    orderedAtLabel: order.ordered_at?.trim()
+      ? formatPlDate(order.ordered_at.slice(0, 10))
+      : null,
     supplierName: order.supplier?.name ?? "—",
     product: order.products,
     symbol: order.symbol && order.symbol !== "-" ? order.symbol : null,
@@ -1001,6 +1017,26 @@ export function presentMyOrderGroup(
             .reverse()[0]
             .slice(0, 10)
         ),
+        deliveryAtLabel: (() => {
+          const deliveryDates = orders
+            .map((o) => o.delivery_at?.trim())
+            .filter(Boolean)
+            .sort()
+            .reverse();
+          return deliveryDates[0]
+            ? formatPlDate(deliveryDates[0].slice(0, 10))
+            : null;
+        })(),
+        orderedAtLabel: (() => {
+          const orderedDates = orders
+            .map((o) => o.ordered_at?.trim())
+            .filter(Boolean)
+            .sort()
+            .reverse();
+          return orderedDates[0]
+            ? formatPlDate(orderedDates[0].slice(0, 10))
+            : null;
+        })(),
         timingLabel,
         badgeVariant,
       },

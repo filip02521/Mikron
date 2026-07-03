@@ -33,12 +33,14 @@ import { salesTypography } from "@/lib/ui/ontime-theme";
 function ZdSlotDateValue({
   slot,
   pendingConfirmation = false,
+  inline = false,
 }: {
   slot: MyOrderZdFulfillmentSlot;
   pendingConfirmation?: boolean;
+  inline?: boolean;
 }) {
   if (pendingConfirmation) {
-    return <DeliveryDateMetaValue display={buildPlaceholderZdDeliveryDateMetaDisplay()} />;
+    return <DeliveryDateMetaValue display={buildPlaceholderZdDeliveryDateMetaDisplay()} inline={inline} />;
   }
 
   const parsed = parseDateOnly(slot.deadline);
@@ -54,8 +56,11 @@ function ZdSlotDateValue({
   const countSuffix = slot.count > 1 ? ` · ${slot.count} prod.` : "";
 
   return (
-    <div className="flex max-w-full flex-col items-end gap-0.5">
-      <DeliveryDateMetaValue display={display} />
+    <div className={cn(
+      "max-w-full",
+      inline ? "flex items-center gap-1" : "flex flex-col items-end gap-0.5"
+    )}>
+      <DeliveryDateMetaValue display={display} inline={inline} />
       {countSuffix ? (
         <span className={cn("font-medium text-slate-500", salesTypography.rowMeta)}>
           {countSuffix.replace(/^ · /, "")}
@@ -69,12 +74,15 @@ export function ZdFulfillmentDateMeta({
   fulfillment,
   className,
   collapsed = false,
+  inline = false,
   lines = [],
 }: {
   fulfillment: MyOrderZdFulfillment;
   className?: string;
   /** Zwinięta karta — jeden najwcześniejszy termin + podpowiedź o pozostałych. */
   collapsed?: boolean;
+  /** Poziomy układ w jednej linii (np. w rozwiniętej karcie). */
+  inline?: boolean;
   lines?: Pick<
     MyOrderLine,
     | "product"
@@ -136,11 +144,16 @@ export function ZdFulfillmentDateMeta({
   const showUrgencyBadge = shouldShowDeliveryUrgencyBadgeBesideDateMeta(primaryDisplay, urgency);
 
   return (
-    <div className={cn("flex min-w-0 max-w-full flex-col items-end gap-1", className)}>
+    <div className={cn(
+      "min-w-0 max-w-full",
+      inline ? "flex items-center gap-1.5" : "flex flex-col items-end gap-1",
+      className
+    )}>
       <DeliveryTimingMeta
         caption={zdFulfillmentCollapsedCaption(slots.length, { overdue: anyOverdue })}
         captionTone={pendingConfirmation ? "pending" : anyOverdue ? "overdue" : "zd"}
         title={tooltip}
+        inline={inline}
         className="max-w-full"
         accessory={
           showUrgencyBadge && badgeLabel ? (
@@ -157,21 +170,29 @@ export function ZdFulfillmentDateMeta({
             <ZdSlotDateValue
               slot={primarySlot}
               pendingConfirmation={primaryPending}
+              inline={inline}
             />
             <span className="max-w-full truncate text-[9px] font-medium text-slate-500">
               {primarySlot.dokNr}
             </span>
           </>
         ) : multiple ? (
-          <div className="flex max-w-full flex-col items-end gap-1.5">
+          <div className={cn(
+            "max-w-full",
+            inline ? "flex items-center gap-1.5" : "flex flex-col items-end gap-1.5"
+          )}>
             {visibleSlots.map((slot) => (
               <div
                 key={`${slot.deadline}|${slot.dokNr}`}
-                className="flex max-w-full flex-col items-end gap-0.5"
+                className={cn(
+                  "max-w-full",
+                  inline ? "flex items-center gap-0.5" : "flex flex-col items-end gap-0.5"
+                )}
               >
                 <ZdSlotDateValue
                   slot={slot}
                   pendingConfirmation={slot.pendingConfirmation ?? pendingConfirmation}
+                  inline={inline}
                 />
                 <span className="max-w-full truncate text-[9px] font-medium text-slate-500">
                   {slot.dokNr}
@@ -181,14 +202,14 @@ export function ZdFulfillmentDateMeta({
           </div>
         ) : primaryDisplay ? (
           <>
-            <DeliveryDateMetaValue display={primaryDisplay} className="max-w-full" />
+            <DeliveryDateMetaValue display={primaryDisplay} className="max-w-full" inline={inline} />
             <span className="max-w-full truncate text-[9px] font-medium text-slate-500">
               {fulfillment.dokNr}
             </span>
           </>
         ) : null}
       </DeliveryTimingMeta>
-      {collapsedHints.map((hint) => (
+      {!inline ? collapsedHints.map((hint) => (
         <p
           key={hint}
           className={cn(
@@ -198,7 +219,7 @@ export function ZdFulfillmentDateMeta({
         >
           {hint}
         </p>
-      ))}
+      )) : null}
     </div>
   );
 }
