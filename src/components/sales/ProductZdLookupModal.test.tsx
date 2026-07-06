@@ -81,7 +81,7 @@ describe("ProductZdLookupModal", () => {
       expect(screen.getByText("ZD 197/M/02/2026")).toBeTruthy();
     });
     expect(screen.getByText("Termin z dokumentu ZD")).toBeTruthy();
-    expect(screen.getByText("03.07.2026")).toBeTruthy();
+    expect(screen.getAllByText("03.07.2026").length).toBeGreaterThan(0);
   });
 
   it("pokazuje prośbę o dostawcę gdy brak powiązania w bazie", async () => {

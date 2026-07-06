@@ -10,6 +10,7 @@ const baseCounts = {
   open: 2,
   answered: 3,
   unseen: 1,
+  own_unseen: 0,
   mine: 2,
 };
 

@@ -236,7 +236,7 @@ export async function executeZkWatchPendingAckPlan(
       total += result.count;
     }
 
-    const pickupIds = [...new Set([...grouped.pickup, ...grouped.availability])];
+    const pickupIds = [...new Set([...grouped.pickup, ...grouped.teeth_handover, ...grouped.availability])];
     if (pickupIds.length) {
       const result = await acknowledgeOrdersWithClient(
         supabase,

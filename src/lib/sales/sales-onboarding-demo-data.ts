@@ -737,6 +737,7 @@ export function buildOnboardingNotepadDemo(salesPersonId: string): SalesNotepadD
         zd_fulfillment_deadline_changed_at: null,
         sales_acknowledged_at: null,
         sales_cancelled_at: null,
+        is_teeth: false,
       },
       {
         id: "demo-link-delivered",
@@ -759,6 +760,7 @@ export function buildOnboardingNotepadDemo(salesPersonId: string): SalesNotepadD
         zd_fulfillment_deadline_changed_at: null,
         sales_acknowledged_at: null,
         sales_cancelled_at: null,
+        is_teeth: false,
       },
     ],
   };

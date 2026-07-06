@@ -328,7 +328,6 @@ export const MyOrderLineItem = memo(function MyOrderLineItem({
       triggerClassName="text-[10px] font-medium text-indigo-700 hover:text-indigo-900"
     />
   ) : null;
-  const showTeethDetailInline = false;
 
   const lineSideMeta =
     badge ? (

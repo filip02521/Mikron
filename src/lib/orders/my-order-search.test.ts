@@ -11,44 +11,16 @@ import {
   shouldAutoExpandOrderLinesForSearch,
 } from "./my-order-search";
 import type { MyOrderRow } from "@/lib/orders/my-order-presenter";
+import { createTestMyOrderLine, createTestMyOrderRow } from "./test-fixtures";
 
 function row(partial: Partial<MyOrderRow>): MyOrderRow {
-  return {
-    id: "r1",
-    kind: "zamowienie",
-    lineCount: 1,
-    lines: [],
-    submittedLabel: "",
+  return createTestMyOrderRow({
     supplierName: "Straumann",
     product: "Implant TLX",
     symbol: "STR-001",
-    quantityLabel: "2",
-    progressLabel: null,
-    statusTitle: "Zamówione",
-    statusDetail: null,
-    timingLabel: null,
-    badgeVariant: "info",
-    rowColor: "",
-    orderIds: ["o1"],
-    acknowledgeMode: "none",
-    pickupPendingCount: 0,
-    pickupPendingIds: [],
-    pickupReadyTotal: 0,
-    pickupAcknowledgedCount: 0,
-    canCancelBySales: false,
-    salesCancelPhase: null,
-    salesCancelOrderIds: [],
-    cancelNoticeOrderIds: [],
-    cancelledAckOrderIds: [],
     clientLabel: "Klinika Alfa",
-    requestNote: null,
-    procurementCancelNote: null,
-    supplierId: "s1",
-    salesPersonId: "sp1",
-    requestKind: "zamowienie",
-    canEditBySales: true,
     ...partial,
-  };
+  });
 }
 
 describe("rowMatchesSearchQuery", () => {
@@ -68,20 +40,12 @@ describe("rowMatchesSearchQuery", () => {
     const r = row({
       clientLabel: null,
       lines: [
-        {
+        createTestMyOrderLine({
           id: "l1",
           product: "X",
-          symbol: null,
-          subiektTwId: null,
-          mikranCode: null,
-          quantity: "1",
-          quantityLabel: "1",
-          progressLabel: null,
-          stockStatus: "waiting",
-          canAcknowledgePickup: false,
-          clientKhId: null,
           clientName: "Dr Kowalski",
-        },
+          clientKhId: null,
+        }),
       ],
     });
     expect(rowMatchesSearchQuery(r, "kowalski")).toBe(true);
@@ -91,20 +55,14 @@ describe("rowMatchesSearchQuery", () => {
     const r = row({
       symbol: null,
       lines: [
-        {
+        createTestMyOrderLine({
           id: "l1",
           product: "Y",
           symbol: "ABC",
-          subiektTwId: null,
           mikranCode: "M123",
-          quantity: "1",
-          quantityLabel: "1",
-          progressLabel: null,
-          stockStatus: "waiting",
-          canAcknowledgePickup: false,
           clientKhId: null,
           clientName: null,
-        },
+        }),
       ],
     });
     expect(rowMatchesSearchQuery(r, "abc")).toBe(true);
@@ -135,20 +93,12 @@ describe("shouldAutoExpandOrderLinesForSearch", () => {
   it("nie rozwija przy trafieniu tylko w dostawcy", () => {
     const r = row({
       lines: [
-        {
+        createTestMyOrderLine({
           id: "l1",
           product: "Implant",
-          symbol: null,
-          subiektTwId: null,
-          mikranCode: null,
-          quantity: "1",
-          quantityLabel: "1",
-          progressLabel: null,
-          stockStatus: "waiting",
-          canAcknowledgePickup: false,
           clientKhId: null,
           clientName: null,
-        },
+        }),
       ],
     });
     expect(rowSearchMatchesSupplierOnly(r, "straumann")).toBe(true);
@@ -159,20 +109,12 @@ describe("shouldAutoExpandOrderLinesForSearch", () => {
     const r = row({
       product: "Implant grupowy",
       lines: [
-        {
+        createTestMyOrderLine({
           id: "l1",
           product: "Inny",
-          symbol: null,
-          subiektTwId: null,
-          mikranCode: null,
-          quantity: "1",
-          quantityLabel: "1",
-          progressLabel: null,
-          stockStatus: "waiting",
-          canAcknowledgePickup: false,
           clientKhId: null,
           clientName: null,
-        },
+        }),
       ],
     });
     expect(rowSearchMatchesProductHeader(r, "implant")).toBe(true);
@@ -183,20 +125,12 @@ describe("shouldAutoExpandOrderLinesForSearch", () => {
     const r = row({
       product: "Implant TLX",
       lines: [
-        {
+        createTestMyOrderLine({
           id: "l1",
           product: "Implant TLX",
-          symbol: null,
-          subiektTwId: null,
-          mikranCode: null,
-          quantity: "1",
-          quantityLabel: "1",
-          progressLabel: null,
-          stockStatus: "waiting",
-          canAcknowledgePickup: false,
           clientKhId: null,
           clientName: null,
-        },
+        }),
       ],
     });
     expect(shouldAutoExpandOrderLinesForSearch(r, "tlx")).toBe(true);
@@ -208,20 +142,12 @@ describe("rowSearchHighlightsProductLines", () => {
     const r = row({
       product: "Grupa",
       lines: [
-        {
+        createTestMyOrderLine({
           id: "l1",
           product: "Implant tytanowy",
-          symbol: null,
-          subiektTwId: null,
-          mikranCode: null,
-          quantity: "1",
-          quantityLabel: "1",
-          progressLabel: null,
-          stockStatus: "waiting",
-          canAcknowledgePickup: false,
           clientKhId: null,
           clientName: null,
-        },
+        }),
       ],
     });
     expect(rowSearchHighlightsProductLines(r, "implant")).toBe(true);
@@ -262,39 +188,23 @@ describe("filterMyOrderRowsByClientKh", () => {
       row({
         id: "a",
         lines: [
-          {
+          createTestMyOrderLine({
             id: "l1",
             product: "P",
-            symbol: null,
-            subiektTwId: null,
-            mikranCode: null,
-            quantity: "1",
-            quantityLabel: "1",
-            progressLabel: null,
-            stockStatus: "waiting",
-            canAcknowledgePickup: false,
             clientName: "Alfa",
             clientKhId: 10,
-          },
+          }),
         ],
       }),
       row({
         id: "b",
         lines: [
-          {
+          createTestMyOrderLine({
             id: "l2",
             product: "Q",
-            symbol: null,
-            subiektTwId: null,
-            mikranCode: null,
-            quantity: "1",
-            quantityLabel: "1",
-            progressLabel: null,
-            stockStatus: "waiting",
-            canAcknowledgePickup: false,
             clientName: "Beta",
             clientKhId: 20,
-          },
+          }),
         ],
       }),
     ];
@@ -307,20 +217,12 @@ describe("filterMyOrderRowsByClientKh", () => {
       row({
         id: "a",
         lines: [
-          {
+          createTestMyOrderLine({
             id: "l1",
             product: "P",
-            symbol: null,
-            subiektTwId: null,
-            mikranCode: null,
-            quantity: "1",
-            quantityLabel: "1",
-            progressLabel: null,
-            stockStatus: "waiting",
-            canAcknowledgePickup: false,
             clientName: "Klinika Smile",
             clientKhId: null,
-          },
+          }),
         ],
       }),
     ];

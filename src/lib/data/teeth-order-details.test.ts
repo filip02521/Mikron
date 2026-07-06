@@ -22,6 +22,7 @@ describe("mapTeethDetailRow", () => {
       size: null,
       jaw: "upper",
       kind: "anterior",
+      ordered_at: null,
     });
   });
 

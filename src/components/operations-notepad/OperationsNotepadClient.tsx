@@ -31,7 +31,7 @@ import {
 } from "@/lib/orders/daily-panel-undo";
 import { isAdmin } from "@/lib/auth-roles";
 import { sortOperationsNotes } from "@/lib/operations/operations-note-sort";
-import type { OperationsDepartment, OperationsNote, OperationsNoteVisibility, UserRole } from "@/types/database";
+import type { OperationsDepartment, OperationsNote, OperationsNoteVisibility, UserRole, Workspace } from "@/types/database";
 import {
   actionReorderOperationsNotes,
   actionRestoreOperationsNote,
@@ -68,17 +68,19 @@ export function OperationsNotepadClient({
   department,
   userId,
   role,
+  assignedWorkspaces = [],
   loadError = null,
 }: {
   initial: OperationsNotepadData;
   department: OperationsDepartment;
   userId: string;
   role: UserRole;
+  assignedWorkspaces?: Workspace[];
   loadError?: string | null;
 }) {
   const router = useRouter();
   const undoShortcut = useUndoShortcutLabel();
-  const allowedDepartments = departmentsForRole(role);
+  const allowedDepartments = departmentsForRole(role, assignedWorkspaces);
 
   const [privateNotes, setPrivateNotes] = useState(initial.privateNotes);
   const [publicNotes, setPublicNotes] = useState(initial.publicNotes);

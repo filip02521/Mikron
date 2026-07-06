@@ -41,7 +41,7 @@ describe("BoardQuestionProductField", () => {
     vi.mocked(actionSubiektSuggestProductsForZdLookup).mockResolvedValue({
       ok: true,
       items: [],
-      feedback: null,
+      feedback: undefined,
     });
 
     render(<ProductFieldHarness />);
@@ -66,7 +66,7 @@ describe("BoardQuestionProductField", () => {
     vi.mocked(actionSubiektSuggestProductsForZdLookup).mockResolvedValue({
       ok: true,
       items: [],
-      feedback: null,
+      feedback: undefined,
     });
 
     render(<ProductFieldHarness />);
@@ -113,7 +113,7 @@ describe("BoardQuestionProductField", () => {
           tw_PLU: "896",
         },
       ],
-      feedback: null,
+      feedback: undefined,
     });
 
     render(<ProductFieldHarness />);

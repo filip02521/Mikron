@@ -40,7 +40,7 @@ function trimBody(body: string): string {
 async function assertProcurementAccess(): Promise<string> {
   const user = await getSessionUser();
   if (!user?.id) throw new Error("Zaloguj się ponownie.");
-  if (!canAccessOperations(user.role)) {
+  if (!canAccessOperations(user.role, user.assignedWorkspaces)) {
     throw new Error("Brak uprawnień do tablicy zakupów.");
   }
   await assertAdminPanelAllowsProcurementBoardMutations(user);

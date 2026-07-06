@@ -424,7 +424,7 @@ export async function actionUpdateIndividualRequest(
   payload: IndividualRequestEditPayload
 ) {
   const user = await getSessionUser();
-  if (!user || (!canAccessOperations(user.role) && !canAccessTeethPanel(user.role))) {
+  if (!user || (!canAccessOperations(user.role, user.assignedWorkspaces) && !canAccessTeethPanel(user.role, user.assignedWorkspaces))) {
     throw new Error("Brak uprawnień do edycji prośby");
   }
   if (isAdmin(user.role)) {

@@ -2,7 +2,7 @@ import { isMagazyn, isSales, isSalesManager, isZakupy } from "@/lib/auth-roles";
 import { fetchManagerGroupIdsByProfile } from "@/lib/data/sales-group-access";
 import { fetchSalesGroups } from "@/lib/data/sales-groups";
 import { OPERATIONS_DEPARTMENT_LABELS } from "@/lib/operations/notepad-department";
-import type { UserRole } from "@/types/database";
+import type { UserRole, Workspace } from "@/types/database";
 
 type SalesPeopleJoin = {
   sales_groups?: { name?: string | null } | { name?: string | null }[] | null;
@@ -12,6 +12,7 @@ export type LoginDirectoryProfileForLabel = {
   id: string;
   role: UserRole;
   sales_people?: SalesPeopleJoin | SalesPeopleJoin[];
+  assigned_workspaces?: Workspace[] | null;
 };
 
 function salesPersonGroupName(profile: LoginDirectoryProfileForLabel): string | null {
@@ -45,7 +46,16 @@ export function resolveLoginDirectoryAssignmentLabel(
     return salesPersonGroupName(profile);
   }
 
-  if (isZakupy(role)) return OPERATIONS_DEPARTMENT_LABELS.zakupy;
+  if (isZakupy(role)) {
+    const workspaces = (profile.assigned_workspaces ?? []) as Workspace[];
+    if (workspaces.length > 0) {
+      const labels: string[] = [];
+      if (workspaces.includes("dostawy") || workspaces.includes("zeby")) labels.push(OPERATIONS_DEPARTMENT_LABELS.zakupy);
+      if (workspaces.includes("magazyn")) labels.push(OPERATIONS_DEPARTMENT_LABELS.magazyn);
+      return labels.length > 0 ? labels.join(", ") : OPERATIONS_DEPARTMENT_LABELS.zakupy;
+    }
+    return OPERATIONS_DEPARTMENT_LABELS.zakupy;
+  }
   if (isMagazyn(role)) return OPERATIONS_DEPARTMENT_LABELS.magazyn;
   return null;
 }

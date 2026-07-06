@@ -21,7 +21,7 @@ function line(
     teethDetails: teethRows(4, {
       color: "B3",
       mould: "NU6",
-      kind: "lateral",
+      kind: "posterior",
       jaw: "lower",
     }),
     ...extra,

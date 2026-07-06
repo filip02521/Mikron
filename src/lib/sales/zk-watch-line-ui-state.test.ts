@@ -435,8 +435,8 @@ describe("allZkWatchLinesCheckboxChecked", () => {
     expect(
       allZkWatchLinesCheckboxChecked({
         lineViews: [
-          { key: "a", arrived: false },
-          { key: "b", arrived: false },
+          { key: "a", product: "A", arrived: false },
+          { key: "b", product: "B", arrived: false },
         ],
         newLineKeys: [],
         inStockLineKeys: [],
@@ -449,7 +449,7 @@ describe("allZkWatchLinesCheckboxChecked", () => {
   it("true gdy odebrane z regału bez ręcznego zakończenia", () => {
     expect(
       allZkWatchLinesCheckboxChecked({
-        lineViews: [{ key: "a", arrived: false }],
+        lineViews: [{ key: "a", product: "A", arrived: false }],
         newLineKeys: [],
         inStockLineKeys: ["a"],
         scopeExcludedLineKeys: [],
@@ -461,7 +461,7 @@ describe("allZkWatchLinesCheckboxChecked", () => {
   it("false gdy brakuje zaznaczenia częściowej dostawy", () => {
     expect(
       allZkWatchLinesCheckboxChecked({
-        lineViews: [{ key: "a", arrived: false, shelf_marked: false }],
+        lineViews: [{ key: "a", product: "A", arrived: false, shelf_marked: false }],
         newLineKeys: [],
         inStockLineKeys: [],
         scopeExcludedLineKeys: [],
@@ -474,8 +474,8 @@ describe("allZkWatchLinesCheckboxChecked", () => {
     expect(
       allZkWatchLinesCheckboxChecked({
         lineViews: [
-          { key: "a", arrived: false },
-          { key: "x", arrived: false },
+          { key: "a", product: "A", arrived: false },
+          { key: "x", product: "X", arrived: false },
         ],
         newLineKeys: [],
         inStockLineKeys: [],
@@ -489,8 +489,8 @@ describe("allZkWatchLinesCheckboxChecked", () => {
     expect(
       allZkWatchLinesCheckboxChecked({
         lineViews: [
-          { key: "a", arrived: false },
-          { key: "b", arrived: false },
+          { key: "a", product: "A", arrived: false },
+          { key: "b", product: "B", arrived: false },
         ],
         newLineKeys: [],
         inStockLineKeys: [],
@@ -622,6 +622,7 @@ describe("buildContextualZkWatchStatusLegend", () => {
       scope_excluded: 0,
       in_request: 0,
       partial: 0,
+      informacja_ready: 0,
       delivered: 0,
       in_stock: 1,
       arrived: 0,

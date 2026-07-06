@@ -13,6 +13,7 @@ import { isAdmin } from "@/lib/auth-roles";
 import { canAccessSalesPerson } from "@/lib/data/sales-group-access";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { assertUniqueSalesPersonLink } from "@/lib/users/sales-person-link";
+import type { UserRole, Workspace } from "@/types/database";
 import {
   generateSalesPersonInviteLink,
   type SalesInviteLinkResult,
@@ -24,7 +25,6 @@ import {
   passwordSetupConfirmUrl,
 } from "@/lib/auth/password-link-redirect";
 import { passwordValidationError } from "@/lib/auth/password-policy";
-import type { UserRole } from "@/types/database";
 import { isValidEmail } from "@/lib/security/text-limits";
 import {
   deleteSalesManagerGroupsForProfile,
@@ -49,6 +49,7 @@ export async function actionCreateAppUser(form: {
   role: UserRole;
   salesPersonId: string | null;
   password: string;
+  assignedWorkspaces?: Workspace[];
 }): Promise<{ success: true; user: AppUserRow } | { error: string }> {
   await requireAdminForMutation();
 
@@ -82,6 +83,9 @@ export async function actionCreateAppUser(form: {
       email,
       role: form.role,
       sales_person_id: roleRequiresSalesPerson(form.role) ? form.salesPersonId : null,
+      ...(form.role === "zakupy"
+        ? { assigned_workspaces: form.assignedWorkspaces ?? [] }
+        : {}),
     })
     .eq("id", created.user.id);
 
@@ -114,6 +118,7 @@ export async function actionCreateAppUser(form: {
       salesPersonName,
       createdAt: created.user.created_at ?? new Date().toISOString(),
       lastSignInAt: null,
+      assignedWorkspaces: form.role === "zakupy" ? (form.assignedWorkspaces ?? []) : [],
     },
   };
 }
@@ -166,6 +171,7 @@ export async function actionUpdateAppUser(form: {
     .update({
       role: form.role,
       sales_person_id: roleRequiresSalesPerson(form.role) ? form.salesPersonId : null,
+      ...(form.role !== "zakupy" ? { assigned_workspaces: [] } : {}),
     })
     .eq("id", form.userId);
 
@@ -192,6 +198,7 @@ export async function actionSaveAppUserPermissions(form: {
   role: UserRole;
   salesPersonId: string | null;
   managerGroupIds: string[];
+  assignedWorkspaces?: Workspace[];
 }): Promise<{ success: true } | { error: string }> {
   const current = await requireAdminForMutation();
 
@@ -237,6 +244,9 @@ export async function actionSaveAppUserPermissions(form: {
     .update({
       role: form.role,
       sales_person_id: roleRequiresSalesPerson(form.role) ? form.salesPersonId : null,
+      ...(form.role === "zakupy"
+        ? { assigned_workspaces: form.assignedWorkspaces ?? [] }
+        : { assigned_workspaces: [] }),
     })
     .eq("id", form.userId);
 

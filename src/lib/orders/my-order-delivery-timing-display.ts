@@ -280,7 +280,11 @@ export function shouldShowMyOrderExpandedDeliveryTiming(
   showProgress: boolean
 ): boolean {
   if (!shouldShowMyOrderCollapsedDeliveryTiming(row)) return false;
-  if (!showProgress || row.kind !== "zamowienie") return false;
+  const hasZdData = Boolean(
+    row.zdFulfillment || row.zdEtaPending || row.zdEtaNoMatch
+  );
+  if (row.kind === "informacja" && !hasZdData) return false;
+  if (!showProgress && !hasZdData) return false;
   if (
     !row.timingLabel?.trim() &&
     !row.zdEtaPending &&
@@ -289,6 +293,12 @@ export function shouldShowMyOrderExpandedDeliveryTiming(
   ) {
     return false;
   }
-  if (row.statusTitle === "Do odbioru" || row.statusTitle === "Anulowane") return false;
+  if (
+    row.statusTitle === "Do odbioru" ||
+    row.statusTitle === "Anulowane" ||
+    row.statusTitle === "Dostępne" ||
+    row.statusTitle === "Anulowano"
+  )
+    return false;
   return buildMyOrderDeliveryTimingDisplay(row) !== null;
 }

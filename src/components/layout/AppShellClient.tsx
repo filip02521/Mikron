@@ -42,8 +42,8 @@ import { appMainClass, appMainInsetClass, appShellClass } from "@/lib/ui/ontime-
 import type { AdminPanelContext } from "@/lib/auth/admin-panel-context";
 import { isAdminOperationsPreviewReadOnly } from "@/lib/auth/admin-panel-context";
 import type { ProcurementWorkspace } from "@/lib/auth/procurement-workspace";
-import type { UserRole } from "@/types/database";
-import { canAccessOperations, canAccessTeethPanel, isSalesAccount } from "@/lib/auth-roles";
+import type { UserRole, Workspace } from "@/types/database";
+import { canAccessOperations, canAccessTeethPanel, canAccessWarehouse, isSalesAccount } from "@/lib/auth-roles";
 import { MobileOperationsNav } from "./MobileOperationsNav";
 import { MobileOperationsHeader } from "./MobileOperationsHeader";
 import { useAppShellMetrics } from "./AppShellMetricsContext";
@@ -126,6 +126,7 @@ export function AppShellClient({
   salesOnboardingCompletedAt = null,
   salesOnboardingActive = false,
   teethProductInfo = [],
+  assignedWorkspaces = [],
 }: {
   children: React.ReactNode;
   role: UserRole | null;
@@ -133,6 +134,7 @@ export function AppShellClient({
   adminPanelPreview?: AdminPanelContext | null;
   procurementWorkspace?: ProcurementWorkspace | null;
   canSwitchProcurementWorkspace?: boolean;
+  assignedWorkspaces?: Workspace[];
   userEmail?: string | null;
   showLoginLink?: boolean;
   salesPersonId?: string | null;
@@ -167,15 +169,18 @@ export function AppShellClient({
 
   const salesLive = role ? isSalesAccount(role) : false;
   const inTeethWorkspace = procurementWorkspace === "zeby";
+  const inMagazynWorkspace = procurementWorkspace === "magazyn";
   const inDostawyWorkspace =
     procurementWorkspace === "dostawy" ||
-    (procurementWorkspace == null && role != null && canAccessOperations(role) && !inTeethWorkspace);
+    (procurementWorkspace == null && role != null && canAccessOperations(role, assignedWorkspaces) && !inTeethWorkspace);
   const operationsLive =
-    Boolean(role && inDostawyWorkspace && canAccessOperations(role ?? "sales")) && !salesLive;
+    Boolean(role && inDostawyWorkspace && canAccessOperations(role ?? "sales", assignedWorkspaces)) && !salesLive;
   const teethLive =
-    Boolean(role && inTeethWorkspace && canAccessTeethPanel(role ?? "sales")) && !salesLive;
+    Boolean(role && inTeethWorkspace && canAccessTeethPanel(role ?? "sales", assignedWorkspaces)) && !salesLive;
+  const magazynLive =
+    Boolean(role && inMagazynWorkspace && canAccessWarehouse(role ?? "sales", assignedWorkspaces)) && !salesLive && !operationsLive && !teethLive;
   const teethInitialVersion = teethPanelVersion;
-  const mobileChrome = salesLive || operationsLive || teethLive;
+  const mobileChrome = salesLive || operationsLive || teethLive || magazynLive;
 
   const salesInboxEnabled =
     salesLive && !salesOnboardingActive && !adminPanelPreview && metricsReady;
@@ -233,6 +238,7 @@ export function AppShellClient({
               adminPanelContext={adminPanelPreview ?? "admin"}
               procurementWorkspace={procurementWorkspace}
               canSwitchProcurementWorkspace={canSwitchProcurementWorkspace}
+              assignedWorkspaces={assignedWorkspaces}
               userEmail={userEmail}
               salesPersonName={salesPersonName}
               userAssignmentLabel={userAssignmentLabel}
@@ -259,6 +265,13 @@ export function AppShellClient({
           />
         ) : null}
         {teethLive && !salesLive && !operationsLive ? (
+          <MobileOperationsHeader
+            role={role}
+            userEmail={userEmail}
+            userAssignmentLabel={userAssignmentLabel}
+          />
+        ) : null}
+        {magazynLive && !salesLive && !operationsLive && !teethLive ? (
           <MobileOperationsHeader
             role={role}
             userEmail={userEmail}
@@ -304,6 +317,8 @@ export function AppShellClient({
               </>
             ) : teethLive && !salesLive ? (
               <TeethUpdatesBanner />
+            ) : magazynLive && !salesLive ? (
+              <OperationsUpdatesBanner />
             ) : null
           }
         >
@@ -329,6 +344,14 @@ export function AppShellClient({
           />
         ) : null}
         {teethLive && !salesLive && role ? (
+          <MobileOperationsNav
+            role={role}
+            realRole={realRole}
+            procurementWorkspace={procurementWorkspace}
+            navBadges={navBadges}
+          />
+        ) : null}
+        {magazynLive && !salesLive && !operationsLive && !teethLive && role ? (
           <MobileOperationsNav
             role={role}
             realRole={realRole}

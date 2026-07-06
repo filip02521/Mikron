@@ -1,5 +1,6 @@
 import type {
   IndividualOrder,
+  IndividualRequestKind,
   StatsMode,
   SupplierLocation,
   SupplierWithSchedule,
@@ -84,6 +85,8 @@ export type ForSomeoneLine = {
   quantity: string;
   fromSubiekt: boolean;
   subiektTwId?: number | null;
+  /** Rodzaj prośby — zamówienie lub informacja. */
+  requestKind?: IndividualRequestKind | null;
   /** Informacja z opcją „najpierw panel Dziś”. */
   informacjaViaPanel?: boolean;
   informacjaStockOut?: boolean;

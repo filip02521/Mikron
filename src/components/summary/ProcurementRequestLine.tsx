@@ -97,8 +97,9 @@ function ProcurementRequestLineContent({
   suppressRequestNote?: boolean;
   suppressClient?: boolean;
 }) {
+  const isInformacja = line.requestKind === "informacja";
   const hasMeta =
-    (line.symbol && line.symbol !== "-") || (line.quantity && line.quantity !== "-");
+    (line.symbol && line.symbol !== "-") || (line.quantity && line.quantity !== "-" && !isInformacja);
 
   return (
     <>
@@ -119,14 +120,14 @@ function ProcurementRequestLineContent({
       {hasMeta ? (
         <p className={cn("mt-0.5 text-slate-500", compact ? "pl-5 text-[10px]" : "text-xs")}>
           {line.symbol && line.symbol !== "-" ? line.symbol : null}
-          {line.symbol && line.symbol !== "-" && line.quantity && line.quantity !== "-"
+          {line.symbol && line.symbol !== "-" && line.quantity && line.quantity !== "-" && line.quantity !== "—" && !isInformacja
             ? " · "
             : null}
-          {line.quantity && line.quantity !== "-" && line.quantity !== "—"
-            ? line.quantity === "informacja"
-              ? "Informacja o dostępności"
-              : `Ilość: ${line.quantity}`
-            : null}
+          {isInformacja
+            ? "Informacja o dostępności"
+            : line.quantity && line.quantity !== "-" && line.quantity !== "—"
+              ? `Ilość: ${line.quantity}`
+              : null}
         </p>
       ) : null}
       {line.clientName && !suppressClient ? (

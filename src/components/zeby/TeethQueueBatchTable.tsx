@@ -205,7 +205,6 @@ export function TeethQueueBatchTable({
       const salesName = item.sales_person_name ?? null;
       if (!salesName) continue;
       const hasList = orderHasTeethList(item);
-      const hasSpec = orderHasTeethSpec(item, readinessCtx);
       const hasIncomplete = orderHasIncompleteTeethSpec(item, readinessCtx);
       const needsHeader = teethQueueOrderNeedsHeaderData(item);
       let entry = map.get(salesName);

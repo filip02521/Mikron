@@ -129,22 +129,44 @@ vi.mock("@/lib/supabase/admin", () => ({
   createAdminClient: () => ({
     from: (table: string) => {
       if (table === "individual_orders") {
+        const terminalResult = () => Promise.resolve({ data: mockOrders, error: null });
+        const rangeResult = (from: number, to: number) => {
+          rangeCalls.push({ from, to });
+          const batch = mockOrders.slice(from, to + 1);
+          return Promise.resolve({ data: batch, error: null });
+        };
+        const orderChain = () => ({
+          order: () => ({
+            range: rangeResult,
+          }),
+          range: rangeResult,
+        });
         return {
           select: () => ({
             in: () => ({
               eq: () => ({
                 is: () => ({
-                  eq: () => Promise.resolve({ data: mockOrders, error: null }),
-                  order: () => ({
-                    order: () => ({
-                      range: (from: number, to: number) => {
-                        rangeCalls.push({ from, to });
-                        const batch = mockOrders.slice(from, to + 1);
-                        return Promise.resolve({ data: batch, error: null });
-                      },
-                    }),
+                  eq: terminalResult,
+                  order: orderChain,
+                }),
+              }),
+            }),
+            eq: () => ({
+              in: () => ({
+                not: () => ({
+                  is: () => ({
+                    eq: terminalResult,
+                    order: orderChain,
                   }),
                 }),
+                is: () => ({
+                  eq: terminalResult,
+                  order: orderChain,
+                }),
+              }),
+              is: () => ({
+                eq: terminalResult,
+                order: orderChain,
               }),
             }),
           }),
@@ -269,10 +291,11 @@ describe("runZdEtaSync (integracja)", () => {
   });
 
   it("przy backupie bez dopasowania tylko odświeża synced_at gdy termin już zapisany", async () => {
+    const futureDeadline = new Date(Date.now() + 30 * 86_400_000).toISOString().slice(0, 10);
     mockOrders = [
       overdueOrder({
         zd_fulfillment_source: "zd",
-        zd_fulfillment_deadline: "2026-07-01",
+        zd_fulfillment_deadline: futureDeadline,
         zd_fulfillment_dok_nr: "ZD/stary",
         zd_fulfillment_synced_at: "2026-06-01T00:00:00Z",
       }),
@@ -295,10 +318,11 @@ describe("runZdEtaSync (integracja)", () => {
   });
 
   it("przy force zachowuje aktywny termin ZD gdy brak nowego dopasowania", async () => {
+    const futureDeadline = new Date(Date.now() + 30 * 86_400_000).toISOString().slice(0, 10);
     mockOrders = [
       overdueOrder({
         zd_fulfillment_source: "zd",
-        zd_fulfillment_deadline: "2026-07-01",
+        zd_fulfillment_deadline: futureDeadline,
         zd_fulfillment_dok_nr: "ZD/stary",
         zd_fulfillment_synced_at: "2026-06-01T00:00:00Z",
       }),
@@ -322,13 +346,15 @@ describe("runZdEtaSync (integracja)", () => {
   });
 
   it("wybiera najwcześniejszy termin ZD przy wielu dopasowaniach w indeksie", async () => {
+    const earlyDeadline = new Date(Date.now() + 20 * 86_400_000).toISOString().slice(0, 10);
+    const lateDeadline = new Date(Date.now() + 60 * 86_400_000).toISOString().slice(0, 10);
     mockIndexRows = [
       { dok_id: 201, dok_nr_pelny: "ZD/201/2026", dok_data_wyst: "2026-05-01" },
       { dok_id: 202, dok_nr_pelny: "ZD/202/2026", dok_data_wyst: "2026-06-15" },
     ];
     getSubiektZdDocumentCached.mockImplementation(async (id: number) => {
-      if (id === 201) return zdDoc(201, "2026-05-01", "ABC-1", "2026-07-01");
-      if (id === 202) return zdDoc(202, "2026-06-15", "ABC-1", "2026-09-01");
+      if (id === 201) return zdDoc(201, "2026-05-01", "ABC-1", earlyDeadline);
+      if (id === 202) return zdDoc(202, "2026-06-15", "ABC-1", lateDeadline);
       return null;
     });
 
@@ -341,7 +367,7 @@ describe("runZdEtaSync (integracja)", () => {
     });
 
     expect(result.updated).toBe(1);
-    expect(orderUpdates[0]?.patch.zd_fulfillment_deadline).toBe("2026-07-01");
+    expect(orderUpdates[0]?.patch.zd_fulfillment_deadline).toBe(earlyDeadline);
     expect(orderUpdates[0]?.patch.zd_fulfillment_dok_nr).toBe("ZD/201/2026");
     expect(orderUpdates[0]?.patch.zd_fulfillment_dok_id).toBe(201);
   });

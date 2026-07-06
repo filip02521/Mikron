@@ -60,12 +60,22 @@ export function myOrderCollapsedSubline(row: MyOrderRow): string | null {
   if (
     row.headlineTone === "info" &&
     row.statusTitle !== "Zamówione" &&
+    !isInformacjaFlowSublineExpandedOnly(row.statusTitle) &&
     row.subline?.trim()
   ) {
     return row.subline;
   }
 
   return null;
+}
+
+/** Statusy informacyjne, których subline ma się pojawić dopiero po rozwinięciu jako badge — nie w zwiniętej karcie. */
+function isInformacjaFlowSublineExpandedOnly(statusTitle: string): boolean {
+  return (
+    statusTitle === "Czekamy na zamówienie u dostawcy" ||
+    statusTitle === "Zamówione — czekamy na magazyn" ||
+    isInformacjaAvailabilityPendingStatusTitle(statusTitle)
+  );
 }
 
 /** Dłuższe wyjaśnienia — wyłącznie w rozwinięciu. */

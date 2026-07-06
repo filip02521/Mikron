@@ -1,5 +1,5 @@
 import { createAdminClient, hasSupabaseConfig } from "@/lib/supabase/admin";
-import type { UserRole } from "@/types/database";
+import type { UserRole, Workspace } from "@/types/database";
 
 export type AppUserRow = {
   id: string;
@@ -9,6 +9,7 @@ export type AppUserRow = {
   salesPersonName: string | null;
   createdAt: string;
   lastSignInAt: string | null;
+  assignedWorkspaces: Workspace[];
 };
 
 export async function fetchAllAuthUsersLastSignIn(
@@ -39,7 +40,7 @@ export async function fetchAppUsers(): Promise<AppUserRow[]> {
 
   const { data: profiles, error: profileError } = await supabase
     .from("profiles")
-    .select("id, email, role, sales_person_id, created_at, sales_people(name)")
+    .select("id, email, role, sales_person_id, created_at, assigned_workspaces, sales_people(name)")
     .order("created_at", { ascending: true });
 
   if (profileError) throw new Error(profileError.message);
@@ -58,6 +59,7 @@ export async function fetchAppUsers(): Promise<AppUserRow[]> {
       salesPersonName: salesPerson?.name ?? null,
       createdAt: p.created_at,
       lastSignInAt: lastSignIn.get(p.id) ?? null,
+      assignedWorkspaces: (p.assigned_workspaces ?? []) as Workspace[],
     };
   });
 }

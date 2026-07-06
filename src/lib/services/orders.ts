@@ -1159,6 +1159,7 @@ export async function processIndividualFromSummary(
           ...seenPatch,
         })
         .eq("id", id);
+      zdEtaSyncSalesPersonIds.push(order.sales_person_id);
       continue;
     }
 
@@ -1173,9 +1174,7 @@ export async function processIndividualFromSummary(
       })
       .eq("id", id);
 
-    if (order.request_kind !== "informacja") {
-      zdEtaSyncSalesPersonIds.push(order.sales_person_id);
-    }
+    zdEtaSyncSalesPersonIds.push(order.sales_person_id);
   }
 
   if (action !== "ANULOWANO" && zdEtaSyncSalesPersonIds.length) {

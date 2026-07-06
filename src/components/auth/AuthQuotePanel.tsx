@@ -36,7 +36,7 @@ function QuoteText({
           animClass
         )}
       >
-        „{quote.text}"
+        „{quote.text}&quot;
       </blockquote>
       {quote.attribution ? (
         <p

@@ -20,6 +20,8 @@ const lines: ZkWatchLineView[] = [
     quantity: 1,
     subiektTwId: 1,
     arrived: false,
+    shelf_marked: false,
+    completed_manually: false,
   },
   {
     key: "ob:2",
@@ -29,6 +31,8 @@ const lines: ZkWatchLineView[] = [
     quantity: 2,
     subiektTwId: 2,
     arrived: false,
+    shelf_marked: false,
+    completed_manually: false,
   },
 ];
 
@@ -94,6 +98,8 @@ describe("zk-watch-prosba-scope", () => {
         quantity: 1,
         subiektTwId: 3,
         arrived: false,
+        shelf_marked: false,
+        completed_manually: false,
       },
     ];
     expect(
@@ -124,6 +130,8 @@ describe("zk-watch-prosba-scope", () => {
         quantity: 1,
         subiektTwId: 3,
         arrived: false,
+        shelf_marked: false,
+        completed_manually: false,
       },
     ];
     const scoped = filterZkWatchProductLineViewsForScope(withOrphans, watch, {

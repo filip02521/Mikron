@@ -13,6 +13,7 @@ import {
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 import { assertUniqueSalesPersonLink } from "@/lib/users/sales-person-link";
+import type { Workspace } from "@/types/database";
 import {
   generateSalesPersonInviteLink,
   type SalesInviteLinkResult,
@@ -258,7 +259,7 @@ export async function actionCompletePasswordChange(
     const admin = createAdminClient();
     const { data: profile } = await admin
       .from("profiles")
-      .select("id, email, role, sales_person_id, must_change_password, sales_onboarding_completed_at")
+      .select("id, email, role, sales_person_id, must_change_password, sales_onboarding_completed_at, assigned_workspaces")
       .eq("id", authUser.id)
       .maybeSingle();
     
@@ -271,8 +272,11 @@ export async function actionCompletePasswordChange(
       salesPersonId: profile.sales_person_id,
       mustChangePassword: profile.must_change_password,
       salesOnboardingCompletedAt: profile.sales_onboarding_completed_at,
+      assignedWorkspaces: (profile.assigned_workspaces ?? []) as Workspace[],
     };
   }
+
+  if (!user) return { error: "Brak aktywnej sesji." };
 
   const passwordError = passwordValidationError(password);
   if (passwordError) return { error: passwordError };
@@ -307,6 +311,7 @@ export async function actionCompletePasswordChange(
   const { panelContext } = await readAdminPanelContextForSession();
   const redirectTo = redirectPathAfterLogin(user.role, null, {
     adminPanelContext: panelContext,
+    workspaces: user.assignedWorkspaces,
   });
 
   revalidatePath("/");

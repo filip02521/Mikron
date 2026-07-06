@@ -66,6 +66,7 @@ export async function AppShell({ children }: { children: React.ReactNode }) {
       salesOnboardingCompletedAt={session?.salesOnboardingCompletedAt ?? null}
       salesOnboardingActive={showSalesOnboarding}
       teethProductInfo={teethProductInfo}
+      assignedWorkspaces={session?.assignedWorkspaces ?? []}
     >
       {children}
     </AppShellClient>
@@ -90,6 +91,7 @@ export async function AppShell({ children }: { children: React.ReactNode }) {
             showSalesOnboarding,
             previewHeaderId,
             procurementWorkspace,
+            workspaces: session.assignedWorkspaces,
           }}
         />
       </Suspense>

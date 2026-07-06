@@ -50,7 +50,7 @@ describe("isAuthUserLoginEligible", () => {
       isAuthUserLoginEligible({
         email: "jan@mikran.com",
         is_anonymous: false,
-        banned_until: null,
+        banned_until: undefined,
         email_confirmed_at: "2026-01-01T00:00:00.000Z",
       })
     ).toBe(true);
@@ -59,7 +59,7 @@ describe("isAuthUserLoginEligible", () => {
       isAuthUserLoginEligible({
         email: "jan@mikran.com",
         is_anonymous: true,
-        banned_until: null,
+        banned_until: undefined,
         email_confirmed_at: "2026-01-01T00:00:00.000Z",
       })
     ).toBe(false);
@@ -68,7 +68,7 @@ describe("isAuthUserLoginEligible", () => {
       isAuthUserLoginEligible({
         email: "",
         is_anonymous: false,
-        banned_until: null,
+        banned_until: undefined,
         email_confirmed_at: "2026-01-01T00:00:00.000Z",
       })
     ).toBe(false);
@@ -77,8 +77,8 @@ describe("isAuthUserLoginEligible", () => {
       isAuthUserLoginEligible({
         email: "jan@mikran.com",
         is_anonymous: false,
-        banned_until: null,
-        email_confirmed_at: null,
+        banned_until: undefined,
+        email_confirmed_at: undefined,
       })
     ).toBe(false);
 

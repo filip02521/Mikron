@@ -67,8 +67,8 @@ export default async function KolejkaPage() {
       deliveryJournal={deliveryJournal}
       journalSuppliers={journalSuppliers}
       warehouseCarriers={warehouseCarriers}
-      canManageCarriers={role != null && canManageSuppliers(role)}
-      isMagazynRole={role != null && isMagazyn(role)}
+      canManageCarriers={role != null && canManageSuppliers(role, session?.assignedWorkspaces)}
+      isMagazynRole={role != null && isMagazyn(role, session?.assignedWorkspaces)}
       loadError={error}
     />
   );

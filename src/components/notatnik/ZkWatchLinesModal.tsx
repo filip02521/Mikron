@@ -29,6 +29,7 @@ import { ZkWatchLinesMetaSection } from "./ZkWatchLinesMetaSection";
 import { ZkWatchLinesPanel } from "./ZkWatchLinesPanel";
 import { ZkWatchNoteSection } from "./ZkWatchNoteSection";
 import { ZkWatchProsbaSection } from "./ZkWatchProsbaSection";
+import { ZkWatchTeethPreviewSection } from "./ZkWatchTeethPreviewSection";
 
 function polishCountLabel(
   n: number,
@@ -283,6 +284,11 @@ export function ZkWatchLinesModal({
               tourPreview={tourPreview}
               archived={archived}
               showSubiektRealizedCloseHint={showSubiektRealizedCloseHint}
+            />
+            <ZkWatchTeethPreviewSection
+              watch={watch}
+              tourPreview={tourPreview}
+              readOnly={readOnly}
             />
             <ZkWatchLinesPanel
               key={watchKey}

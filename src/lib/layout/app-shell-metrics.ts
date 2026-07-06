@@ -24,7 +24,7 @@ import {
 } from "@/lib/data/department-board";
 import { countOpenSalesBugReports } from "@/lib/data/sales-bug-reports";
 import type { ProcurementWorkspace } from "@/lib/auth/procurement-workspace";
-import type { UserRole } from "@/types/database";
+import type { UserRole, Workspace } from "@/types/database";
 import {
   EMPTY_APP_SHELL_METRICS,
   type AppShellMetrics,
@@ -40,6 +40,7 @@ export type AppShellMetricsInput = {
   showSalesOnboarding: boolean;
   previewHeaderId: string | null;
   procurementWorkspace?: ProcurementWorkspace | null;
+  workspaces?: Workspace[];
 };
 
 export async function fetchAppShellMetrics(
@@ -54,14 +55,15 @@ export async function fetchAppShellMetrics(
     showSalesOnboarding,
     previewHeaderId,
     procurementWorkspace = null,
+    workspaces = [],
   } = input;
 
   const showOperationsBadges =
-    Boolean(role && canAccessOperations(role)) &&
+    Boolean(role && canAccessOperations(role, workspaces)) &&
     (procurementWorkspace === "dostawy" ||
       (procurementWorkspace == null && role !== "zakupy_zeby"));
   const showTeethBadges =
-    Boolean(role && canAccessTeethPanel(role)) &&
+    Boolean(role && canAccessTeethPanel(role, workspaces)) &&
     (procurementWorkspace === "zeby" ||
       (procurementWorkspace == null && role === "zakupy_zeby"));
 
@@ -114,7 +116,7 @@ export async function fetchAppShellMetrics(
     }
   }
 
-  if (role && canAccessWarehouse(role)) {
+  if (role && canAccessWarehouse(role, workspaces)) {
     try {
       const [realizacjaCount, informacjaCount] = await Promise.all([
         countDeliveryQueue(),
@@ -199,12 +201,12 @@ export async function fetchAppShellMetrics(
     }
   }
 
-  if (role && session.id && canAccessOperationsNotepad(role) && showOperationsBadges) {
+  if (role && session.id && canAccessOperationsNotepad(role, workspaces)) {
     try {
       const { countOperationsNotepadBadge } = await import("@/lib/data/operations-notepad");
       const count = await countOperationsNotepadBadge(
         session.id,
-        departmentsForRole(role)
+        departmentsForRole(role, workspaces)
       );
       navBadges = { ...navBadges, operationsNotatki: count };
     } catch {

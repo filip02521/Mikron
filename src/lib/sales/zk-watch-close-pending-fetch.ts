@@ -1,10 +1,11 @@
 import { escapeIlikePattern } from "@/lib/security/ilike-pattern";
 import { orderExplicitlyLinkedToZkWatch } from "@/lib/orders/zk-prosba-source";
 import { clientsMatchForZk } from "@/lib/sales/zk-watch-order-link";
-import type { ZkLinkableOrder } from "@/lib/sales/zk-watch-order-link";
+import type { ZkLinkableOrder, ZkTeethOrder } from "@/lib/sales/zk-watch-order-link";
 import {
   ZK_LINKABLE_ORDER_SELECT,
   ZK_PENDING_ACK_OR_FILTER,
+  ZK_TEETH_ORDER_SELECT,
 } from "@/lib/sales/zk-linkable-order-select";
 import { normalizeSalesClientKhId } from "@/lib/orders/sales-client-match";
 import { extractZkSerial } from "@/lib/subiekt/zk-document";
@@ -207,4 +208,64 @@ export async function resolveZkWatchPendingAckItemsForWatch(
 ): Promise<ZkWatchPendingAckItem[]> {
   const orders = await fetchZkWatchPendingAckOrderCandidates(watch, supabase);
   return collectZkWatchPendingAckItems(watch, orders);
+}
+
+/** Pobiera wszystkie zamówienia zębowe powiązane z danym ZK (bez filtra pending ack). */
+export async function fetchTeethOrdersForZkWatch(
+  watch: SalesZkWatch,
+  supabase: SupabaseClient
+): Promise<ZkTeethOrder[]> {
+  const salesPersonId = watch.sales_person_id;
+  const batches: ZkTeethOrder[] = [];
+
+  const { data: byWatchId, error: watchIdError } = await supabase
+    .from("individual_orders")
+    .select(ZK_TEETH_ORDER_SELECT)
+    .eq("sales_person_id", salesPersonId)
+    .eq("source_zk_watch_id", watch.id)
+    .eq("is_teeth", true)
+    .limit(100);
+
+  if (watchIdError) throw new Error(watchIdError.message);
+  batches.push(...((byWatchId ?? []) as ZkTeethOrder[]));
+
+  const zkNumber = watch.zk_number?.trim();
+  if (zkNumber) {
+    const { data: byZkNumber, error: zkNumberError } = await supabase
+      .from("individual_orders")
+      .select(ZK_TEETH_ORDER_SELECT)
+      .eq("sales_person_id", salesPersonId)
+      .eq("source_zk_number", zkNumber)
+      .eq("is_teeth", true)
+      .limit(100);
+
+    if (zkNumberError) throw new Error(zkNumberError.message);
+    batches.push(...((byZkNumber ?? []) as ZkTeethOrder[]));
+
+    const serial = extractZkSerial(zkNumber);
+    if (serial) {
+      const pattern = `%${escapeIlikePattern(serial)}%`;
+      const { data: bySerial, error: serialError } = await supabase
+        .from("individual_orders")
+        .select(ZK_TEETH_ORDER_SELECT)
+        .eq("sales_person_id", salesPersonId)
+        .eq("is_teeth", true)
+        .not("source_zk_number", "is", null)
+        .ilike("source_zk_number", pattern)
+        .limit(100);
+
+      if (serialError) throw new Error(serialError.message);
+      batches.push(
+        ...((bySerial ?? []) as ZkTeethOrder[]).filter((order) =>
+          orderExplicitlyLinkedToZkWatch(order, watch)
+        )
+      );
+    }
+  }
+
+  const byId = new Map<string, ZkTeethOrder>();
+  for (const order of batches) {
+    byId.set(order.id, order);
+  }
+  return [...byId.values()];
 }

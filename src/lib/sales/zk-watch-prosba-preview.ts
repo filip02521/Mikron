@@ -100,13 +100,18 @@ export function formatZkProsbaProductLabel(
 export function formatZkProsbaPreviewMetaLine(
   entry: Pick<
     ZkWatchProsbaPreviewEntry,
-    "quantityLabel" | "progressLabel" | "deliveryCaption" | "deliveryDisplay" | "deliveryEmptyLabel"
+    "quantityLabel" | "progressLabel" | "deliveryCaption" | "deliveryDisplay" | "deliveryEmptyLabel" | "requestKind"
   >,
   options?: { compact?: boolean }
 ): string {
   const compact = options?.compact ?? true;
-  const parts = [`Liczba: ${entry.quantityLabel}`];
-  if (entry.progressLabel) parts.push(entry.progressLabel);
+  const isInformacja = entry.requestKind === "informacja";
+  const parts: string[] = [];
+
+  if (!isInformacja) {
+    parts.push(`Liczba: ${entry.quantityLabel}`);
+    if (entry.progressLabel) parts.push(entry.progressLabel);
+  }
 
   if (entry.deliveryDisplay) {
     if (
@@ -133,7 +138,7 @@ export function formatZkProsbaPreviewMetaLine(
 export function formatZkProsbaPreviewMetaTooltip(
   entry: Pick<
     ZkWatchProsbaPreviewEntry,
-    "quantityLabel" | "progressLabel" | "deliveryCaption" | "deliveryDisplay" | "deliveryEmptyLabel"
+    "quantityLabel" | "progressLabel" | "deliveryCaption" | "deliveryDisplay" | "deliveryEmptyLabel" | "requestKind"
   >
 ): string {
   return formatZkProsbaPreviewMetaLine(entry, { compact: false });
@@ -154,15 +159,6 @@ export function resolveZkProsbaPreviewDelivery(
   ZkWatchProsbaPreviewEntry,
   "deliveryCaption" | "deliveryTone" | "deliveryDisplay" | "deliveryEmptyLabel"
 > {
-  if (order.request_kind === "informacja") {
-    return {
-      deliveryCaption: "Prośba informacyjna",
-      deliveryTone: "pending",
-      deliveryDisplay: null,
-      deliveryEmptyLabel: "Termin dostawy nie dotyczy — czekamy na info z magazynu.",
-    };
-  }
-
   if (order.status === "Zrealizowane") {
     return {
       deliveryCaption: "",
@@ -209,6 +205,15 @@ export function resolveZkProsbaPreviewDelivery(
         deliveryEmptyLabel: null,
       };
     }
+  }
+
+  if (order.request_kind === "informacja") {
+    return {
+      deliveryCaption: "Termin dostawy",
+      deliveryTone: "pending",
+      deliveryDisplay: null,
+      deliveryEmptyLabel: "Prośba informacyjna — bez terminu dostawy",
+    };
   }
 
   return {

@@ -14,8 +14,8 @@ export async function assertCanSubmitIndividualOrders(
   entries: OrderEntry[]
 ): Promise<void> {
   if (
-    !canAccessOperations(user.role) &&
-    !canAccessTeethPanel(user.role) &&
+    !canAccessOperations(user.role, user.assignedWorkspaces) &&
+    !canAccessTeethPanel(user.role, user.assignedWorkspaces) &&
     !isSales(user.role) &&
     !isSalesManager(user.role)
   ) {

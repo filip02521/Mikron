@@ -27,7 +27,6 @@ function watch(): SalesZkWatch {
       ],
     },
     line_checks: [],
-    prosba_scope_lines: null,
     note: null,
     follow_up_at: null,
     closed_at: null,
@@ -63,6 +62,7 @@ function linkOrder(
     zd_fulfillment_deadline_change_seen_at: null,
     sales_acknowledged_at: null,
     sales_cancelled_at: null,
+    is_teeth: false,
     ...partial,
   };
 }

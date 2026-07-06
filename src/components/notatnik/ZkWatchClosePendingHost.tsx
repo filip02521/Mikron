@@ -14,7 +14,6 @@ import {
 } from "@/lib/orders/my-order-pickup-shelf-notice";
 import {
   collectZkWatchPendingAckOrderIdsFromItems,
-  zkWatchPendingAckItemsIncludePickup,
   type ZkWatchPendingAckItem,
 } from "@/lib/sales/zk-watch-close-pending";
 import type { SalesZkWatch } from "@/types/database";
@@ -159,8 +158,9 @@ function ZkWatchClosePendingHostActive({
       await markClosed();
       return;
     }
+    const hasRegularPickup = next.some((item) => item.kind === "pickup");
     const needsShelfNotice =
-      zkWatchPendingAckItemsIncludePickup(next) && shouldShowPickupShelfNotice();
+      hasRegularPickup && shouldShowPickupShelfNotice();
     if (needsShelfNotice) {
       requestShelfPickupNotice(collectZkWatchPendingAckOrderIdsFromItems(next), () => {
         markPickupShelfNoticeSeen();

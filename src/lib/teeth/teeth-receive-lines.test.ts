@@ -21,7 +21,7 @@ function order(extra: Partial<IndividualOrder> = {}): IndividualOrder {
     symbol: "A",
     products: "Zęby",
     quantity: "3",
-    delivered_quantity: null,
+    delivered_quantity: "0",
     order_type: "Glowne",
     request_kind: "zamowienie",
     status: "Zamowione",

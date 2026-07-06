@@ -4,6 +4,7 @@ export const ZK_MODAL_SECTION_TITLES = {
   note: "Notatka do sprawy",
   details: "Szczegóły",
   lines: "Lista towaru",
+  teeth: "Zęby — status zamówienia",
 } as const;
 
 /** Podpowiedzi (?) sekcji modalu szczegółów ZK. */
@@ -14,6 +15,8 @@ export const ZK_MODAL_SECTION_HINTS = {
   details: "Dane klienta i ZK zsynchronizowane z Subiekta.",
   lines:
     "Postęp realizacji wybranych pozycji. Domyślnie widać zakres z konfiguracji ZK — pełną listę z Subiekta rozwiniesz przyciskiem w sekcji.",
+  teeth:
+    "Pozycje zębowe powiązane z tym ZK — status zamówienia u dostawcy i przyjęcia na magazyn.",
 } as const;
 
 /** Copy sekcji powiązanych prośb w modalu ZK. */

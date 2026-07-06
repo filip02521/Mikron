@@ -5,7 +5,7 @@ import { fetchOperationsDailyPanelMetrics } from "@/lib/orders/operations-daily-
 
 export async function GET() {
   const user = await getSessionUser();
-  if (!user || !canAccessOperations(user.role)) {
+  if (!user || !canAccessOperations(user.role, user.assignedWorkspaces)) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 

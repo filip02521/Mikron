@@ -1,5 +1,5 @@
 import { NextResponse, type NextRequest } from "next/server";
-import type { UserRole } from "@/types/database";
+import type { UserRole, Workspace } from "@/types/database";
 import { fetchProfileByUserId } from "@/lib/auth/profile";
 import { middlewareNeedsBootstrap } from "@/lib/setup/middleware-bootstrap";
 import {
@@ -132,6 +132,7 @@ export async function proxy(request: NextRequest) {
               request.cookies.get(ADMIN_PANEL_COOKIE)?.value
             )
           : null;
+        const loginWorkspaces = (profile.assigned_workspaces ?? []) as Workspace[];
         const loginHome = redirectPathAfterLogin(
           loginRole,
           request.nextUrl.searchParams.get("next"),
@@ -139,8 +140,10 @@ export async function proxy(request: NextRequest) {
             adminPanelContext: loginPanelContext,
             procurementWorkspace: resolveProcurementWorkspace(
               loginRole,
-              request.cookies.get(PROCUREMENT_WORKSPACE_COOKIE)?.value
+              request.cookies.get(PROCUREMENT_WORKSPACE_COOKIE)?.value,
+              loginWorkspaces
             ),
+            workspaces: loginWorkspaces,
           }
         );
         const entering = splitInternalRedirectPath(postLoginEnteringUrl(loginHome));
@@ -183,6 +186,7 @@ export async function proxy(request: NextRequest) {
   }
 
   const role = profile.role as UserRole;
+  const workspaces = (profile.assigned_workspaces ?? []) as Workspace[];
 
   if (
     profile.must_change_password &&
@@ -234,7 +238,8 @@ export async function proxy(request: NextRequest) {
     ? null
     : resolveProcurementWorkspace(
         role,
-        request.cookies.get(PROCUREMENT_WORKSPACE_COOKIE)?.value
+        request.cookies.get(PROCUREMENT_WORKSPACE_COOKIE)?.value,
+        workspaces
       );
 
   if (
@@ -242,6 +247,7 @@ export async function proxy(request: NextRequest) {
       previewSalesPersonId,
       adminPanelContext,
       procurementWorkspace,
+      workspaces,
     })
   ) {
     const home =
@@ -253,7 +259,7 @@ export async function proxy(request: NextRequest) {
 
   if (
     !isAdmin(role) &&
-    grantedProcurementFunctions(role).length > 0 &&
+    grantedProcurementFunctions(role, workspaces).length > 0 &&
     procurementWorkspace &&
     !parseProcurementWorkspace(request.cookies.get(PROCUREMENT_WORKSPACE_COOKIE)?.value)
   ) {
@@ -264,7 +270,7 @@ export async function proxy(request: NextRequest) {
     return redirectWithSession(
       request,
       sessionResponse,
-      homePathForRole(role)
+      homePathForRole(role, workspaces)
     );
   }
 
@@ -275,12 +281,12 @@ export async function proxy(request: NextRequest) {
     return redirectWithSession(
       request,
       sessionResponse,
-      homePathForRole(role)
+      homePathForRole(role, workspaces)
     );
   }
 
   const warehouseExtraPaths =
-    canAccessWarehouse(role) &&
+    canAccessWarehouse(role, workspaces) &&
     (pathname === "/notatki" ||
       pathname.startsWith("/notatki/") ||
       pathname === "/kolejka" ||
@@ -290,31 +296,31 @@ export async function proxy(request: NextRequest) {
 
   if (
     matchesPrefix(pathname, TEETH_PREFIXES) &&
-    !canAccessTeethPanel(role)
+    !canAccessTeethPanel(role, workspaces)
   ) {
-    return redirectWithSession(request, sessionResponse, homePathForRole(role));
+    return redirectWithSession(request, sessionResponse, homePathForRole(role, workspaces));
   }
 
-  if (matchesPrefix(pathname, PROCUREMENT_PREFIXES) && !canAccessOperations(role)) {
+  if (matchesPrefix(pathname, PROCUREMENT_PREFIXES) && !canAccessOperations(role, workspaces)) {
     if (pathname === "/zakupy/tablica" || pathname.startsWith("/zakupy/tablica/")) {
-      if (!canAccessTeethPanel(role)) {
-        return redirectWithSession(request, sessionResponse, homePathForRole(role));
+      if (!canAccessTeethPanel(role, workspaces)) {
+        return redirectWithSession(request, sessionResponse, homePathForRole(role, workspaces));
       }
     } else if (
       pathname.startsWith("/zakupy/dostawcy") ||
       pathname.startsWith("/zakupy/urlopy")
     ) {
-      if (!canManageSuppliers(role)) {
-        return redirectWithSession(request, sessionResponse, homePathForRole(role));
+      if (!canManageSuppliers(role, workspaces)) {
+        return redirectWithSession(request, sessionResponse, homePathForRole(role, workspaces));
       }
     } else {
-      return redirectWithSession(request, sessionResponse, homePathForRole(role));
+      return redirectWithSession(request, sessionResponse, homePathForRole(role, workspaces));
     }
   }
 
   if (
     matchesPrefix(pathname, OPERATIONS_PREFIXES) &&
-    !canAccessOperations(role) &&
+    !canAccessOperations(role, workspaces) &&
     !warehouseExtraPaths
   ) {
     if (pathname.startsWith("/zamowienia")) {
@@ -323,7 +329,7 @@ export async function proxy(request: NextRequest) {
     return redirectWithSession(
       request,
       sessionResponse,
-      homePathForRole(role)
+      homePathForRole(role, workspaces)
     );
   }
 

@@ -570,7 +570,45 @@ function teethHandoverStatusDetail(
   return `Magazyn przyjął ${d} z ${q} szt. Odbierz osobiście — nie trafia na regał. Potwierdź odbiór po doręczeniu.`;
 }
 
-function presentInformacja(order: IndividualOrder): MyOrderRow {
+function presentInformacja(
+  order: IndividualOrder,
+  stats?: DeliveryStats,
+  options?: {
+    supplierKhIdsBySupplierId?: import("@/lib/orders/my-order-sales-ui").SupplierKhIdsLookup;
+    subiektReachable?: boolean;
+  }
+): MyOrderRow {
+  const statsMode = (order.supplier?.stats_mode ?? "LACZNIE") as StatsMode;
+  const zdFulfillment = resolveZdFulfillmentFromOrder(order);
+  const zdEtaPending = resolveZdEtaPendingFromOrder(
+    order,
+    stats,
+    statsMode,
+    options?.supplierKhIdsBySupplierId,
+    options?.subiektReachable ?? true
+  );
+  const zdEtaNoMatch = resolveZdEtaNoMatchFromOrder(
+    order,
+    stats,
+    statsMode,
+    options?.supplierKhIdsBySupplierId
+  );
+
+  let zdTimingLabel: string | null = null;
+  if (zdFulfillment) {
+    if (zdFulfillment.pendingConfirmation) {
+      zdTimingLabel = salesZdPrimarySlotTimingLabel(zdFulfillment, false);
+    } else {
+      const deadlineDate = parseDateOnly(zdFulfillment.deadline);
+      const overdue = deadlineDate != null && isPastExpectedDate(deadlineDate);
+      zdTimingLabel = salesZdTimingLabel(
+        zdFulfillment.deadline,
+        zdFulfillment.dokNr,
+        overdue
+      );
+    }
+  }
+
   const base = {
     id: order.id,
     lineCount: 1,
@@ -592,21 +630,26 @@ function presentInformacja(order: IndividualOrder): MyOrderRow {
     isTeeth: Boolean(order.is_teeth),
   };
 
-  const finalize = (row: MyOrderRowDraft): MyOrderRow =>
-    withAckMeta(
+  const finalize = (row: MyOrderRowDraft): MyOrderRow => ({
+    ...withAckMeta(
       {
         ...row,
         lines: [rowToLine(row, order)],
         lineCount: 1,
       },
       [order]
-    );
+    ),
+    zdFulfillment,
+    zdEtaPending,
+    zdEtaNoMatch,
+  });
 
   switch (order.status) {
     case "Weryfikacja":
       return finalize({
         ...base,
         ...weryfikacjaPresentation(order),
+        timingLabel: zdTimingLabel ?? null,
       });
     case "Nowe":
       if (isInformacjaStockOutReorder(order)) {
@@ -614,7 +657,7 @@ function presentInformacja(order: IndividualOrder): MyOrderRow {
           ...base,
           statusTitle: INFORMACJA_FLOW_SALES_STOCK_OUT.statusTitle,
           statusDetail: INFORMACJA_FLOW_SALES_STOCK_OUT.statusDetail,
-          timingLabel: null,
+          timingLabel: zdTimingLabel,
           badgeVariant: "warning",
         });
       }
@@ -623,9 +666,10 @@ function presentInformacja(order: IndividualOrder): MyOrderRow {
           ...base,
           statusTitle: INFORMACJA_FLOW_SALES_AWAITING_WAREHOUSE.statusTitle,
           statusDetail: INFORMACJA_FLOW_SALES_AWAITING_WAREHOUSE.statusDetail,
-          timingLabel: order.ordered_at
-            ? `Zamówione ${formatPlDate(order.ordered_at.slice(0, 10))}`
-            : null,
+          timingLabel: zdTimingLabel ??
+            (order.ordered_at
+              ? `Zamówione ${formatPlDate(order.ordered_at.slice(0, 10))}`
+              : null),
           badgeVariant: "info",
         });
       }
@@ -634,7 +678,7 @@ function presentInformacja(order: IndividualOrder): MyOrderRow {
           ...base,
           statusTitle: INFORMACJA_FLOW_SALES_AWAITING_PROCUREMENT.statusTitle,
           statusDetail: INFORMACJA_FLOW_SALES_AWAITING_PROCUREMENT.statusDetail,
-          timingLabel: null,
+          timingLabel: zdTimingLabel,
           badgeVariant: "info",
         });
       }
@@ -642,7 +686,7 @@ function presentInformacja(order: IndividualOrder): MyOrderRow {
         ...base,
         statusTitle: INFORMACJA_FLOW_SALES_DIRECT.statusTitle,
         statusDetail: INFORMACJA_FLOW_SALES_DIRECT.statusDetail,
-        timingLabel: null,
+        timingLabel: zdTimingLabel,
         badgeVariant: "purple",
       });
     case "Zrealizowane":
@@ -682,9 +726,10 @@ function presentInformacja(order: IndividualOrder): MyOrderRow {
           ...base,
           statusTitle: INFORMACJA_FLOW_SALES_STOCK_OUT_ORDERED.statusTitle,
           statusDetail: INFORMACJA_FLOW_SALES_STOCK_OUT_ORDERED.statusDetail,
-          timingLabel: order.ordered_at
-            ? `Zamówione ${formatPlDate(order.ordered_at.slice(0, 10))}`
-            : null,
+          timingLabel: zdTimingLabel ??
+            (order.ordered_at
+              ? `Zamówione ${formatPlDate(order.ordered_at.slice(0, 10))}`
+              : null),
           badgeVariant: "warning",
         });
       }
@@ -692,7 +737,7 @@ function presentInformacja(order: IndividualOrder): MyOrderRow {
         ...base,
         statusTitle: order.status,
         statusDetail: null,
-        timingLabel: null,
+        timingLabel: zdTimingLabel,
         badgeVariant: "info",
       });
   }
@@ -1058,7 +1103,8 @@ export function presentMyOrder(
   }
 ): MyOrderRow {
   if (isInformacjaRequest(order)) {
-    return presentInformacja(order);
+    const stats = order.supplier_id ? statsBySupplier[order.supplier_id] : undefined;
+    return presentInformacja(order, stats, options);
   }
   const stats = order.supplier_id
     ? statsBySupplier[order.supplier_id]

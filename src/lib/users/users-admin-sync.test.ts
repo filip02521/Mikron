@@ -15,6 +15,7 @@ const row = (patch: Partial<AppUserRow>): AppUserRow => ({
   salesPersonName: null,
   createdAt: "2020-01-01",
   lastSignInAt: null,
+  assignedWorkspaces: [],
   ...patch,
 });
 

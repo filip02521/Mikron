@@ -1,4 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
+import type { SupabaseClient } from "@supabase/supabase-js";
 import type { SalesZkWatch } from "@/types/database";
 import type { ZkLinkableOrder } from "./zk-watch-order-link";
 import {
@@ -62,6 +63,7 @@ type StoredOrder = {
   zd_fulfillment_deadline_change_seen_at: string | null;
   sales_acknowledged_at: string | null;
   sales_cancelled_at: string | null;
+  is_teeth: boolean | null;
   sales_cancel_phase?: string | null;
   sales_cancelled_quantity?: string | null;
 };
@@ -90,7 +92,6 @@ function watch(partial: Partial<SalesZkWatch> = {}): SalesZkWatch {
       ],
     },
     line_checks: [],
-    prosba_scope_lines: null,
     note: null,
     follow_up_at: null,
     closed_at: null,
@@ -127,6 +128,7 @@ function pickupOrder(
     zd_fulfillment_deadline_change_seen_at: null,
     sales_acknowledged_at: null,
     sales_cancelled_at: null,
+    is_teeth: false,
     ...partial,
   };
 }
@@ -230,7 +232,7 @@ function createAckSupabase(
                 Object.assign(row, updatePatch);
               }
             }
-            resolve({ data: null, error: null });
+            resolve({ data: selectedIds.map((id) => ({ id })) as unknown as StoredOrder[], error: null });
             return;
           }
           const rows = (selectedIds ?? [])
@@ -272,7 +274,7 @@ describe("zk-watch-close workflow — audyt poprawek", () => {
       });
 
       const supabase = createFetchSupabase([labelOnlyOrder, khOrder, unrelated]);
-      const candidates = await fetchZkWatchPendingAckOrderCandidates(watch(), supabase);
+      const candidates = await fetchZkWatchPendingAckOrderCandidates(watch(), supabase as unknown as SupabaseClient);
 
       expect(candidates.map((order) => order.id).sort()).toEqual(["by-kh", "label-only"]);
     });
@@ -286,7 +288,7 @@ describe("zk-watch-close workflow — audyt poprawek", () => {
       ]);
 
       const result = await acknowledgeOrdersWithClient(
-        supabase,
+        supabase as unknown as SupabaseClient,
         SALES_PERSON_ID,
         ["done", "pending"],
         { allowedStatuses: ["Zrealizowane"] },
@@ -316,7 +318,7 @@ describe("zk-watch-close workflow — audyt poprawek", () => {
       ]);
 
       const result = await acknowledgeZdDeadlineWithClient(
-        supabase,
+        supabase as unknown as SupabaseClient,
         SALES_PERSON_ID,
         ["zd-done", "zd-pending"],
         { revalidate: false }
@@ -337,8 +339,8 @@ describe("zk-watch-close workflow — audyt poprawek", () => {
         symbol: "INNY",
         products: "Inny produkt",
       });
-      expect(isOrderPendingAckForZkClose(unrelated, watch())).toBe(false);
-      expect(collectZkWatchPendingAckItems(watch(), [unrelated])).toEqual([]);
+      expect(isOrderPendingAckForZkClose(unrelated as unknown as ZkLinkableOrder, watch())).toBe(false);
+      expect(collectZkWatchPendingAckItems(watch(), [unrelated as unknown as ZkLinkableOrder])).toEqual([]);
     });
   });
 
@@ -356,10 +358,10 @@ describe("zk-watch-close workflow — audyt poprawek", () => {
       const supabase = createAckSupabase([zdOrder, pickup], {
         failUpdateOnField: "sales_acknowledged_at",
       });
-      const items = collectZkWatchPendingAckItems(watch(), [zdOrder, pickup]);
+      const items = collectZkWatchPendingAckItems(watch(), [zdOrder, pickup].map((o) => o as unknown as ZkLinkableOrder));
 
       await expect(
-        executeZkWatchPendingAckPlan(watch(), items, supabase, SALES_PERSON_ID)
+        executeZkWatchPendingAckPlan(watch(), items, supabase as unknown as SupabaseClient, SALES_PERSON_ID)
       ).rejects.toThrow("Symulowany błąd: sales_acknowledged_at");
 
       expect(supabase.orders.get("zd-step")?.zd_fulfillment_deadline_change_seen_at).toBeNull();
@@ -389,7 +391,7 @@ describe("zk-watch-close workflow — pełny przebieg", () => {
       labelCompanion,
       alreadyDone,
     ]);
-    const previewItems = await resolveZkWatchPendingAckItemsForWatch(w, fetchSupabase);
+    const previewItems = await resolveZkWatchPendingAckItemsForWatch(w, fetchSupabase as unknown as SupabaseClient);
 
     expect(previewItems.map((item) => item.orderId).sort()).toEqual([
       "explicit-pickup",
@@ -400,7 +402,7 @@ describe("zk-watch-close workflow — pełny przebieg", () => {
     const ackCount = await executeZkWatchPendingAckPlan(
       w,
       previewItems,
-      ackSupabase,
+      ackSupabase as unknown as SupabaseClient,
       SALES_PERSON_ID
     );
 
@@ -414,7 +416,7 @@ describe("zk-watch-close workflow — pełny przebieg", () => {
         sales_acknowledged_at: ackSupabase.orders.get(order.id)?.sales_acknowledged_at ?? null,
       }))
     );
-    const remaining = await resolveZkWatchPendingAckItemsForWatch(w, postAckFetch);
+    const remaining = await resolveZkWatchPendingAckItemsForWatch(w, postAckFetch as unknown as SupabaseClient);
     expect(remaining).toEqual([]);
   });
 
@@ -425,26 +427,26 @@ describe("zk-watch-close workflow — pełny przebieg", () => {
       sales_acknowledged_at: "2026-06-10T08:00:00Z",
     });
     const supabase = createFetchSupabase([done]);
-    const items = await resolveZkWatchPendingAckItemsForWatch(w, supabase);
+    const items = await resolveZkWatchPendingAckItemsForWatch(w, supabase as unknown as SupabaseClient);
     expect(items).toEqual([]);
   });
 
   it("race: drugi ack pomija już potwierdzone i kończy z pustą listą pending", async () => {
     const w = watch();
     const order = pickupOrder({ id: "race-pickup" });
-    const items = collectZkWatchPendingAckItems(w, [order]);
+    const items = collectZkWatchPendingAckItems(w, [order as unknown as ZkLinkableOrder]);
 
     const supabase = createAckSupabase([
       pickupOrder({ id: "race-pickup", sales_acknowledged_at: "2026-06-18T08:00:00Z" }),
     ]);
 
-    const ackCount = await executeZkWatchPendingAckPlan(w, items, supabase, SALES_PERSON_ID);
+    const ackCount = await executeZkWatchPendingAckPlan(w, items, supabase as unknown as SupabaseClient, SALES_PERSON_ID);
     expect(ackCount).toBe(0);
 
     const postAck = createFetchSupabase([
       { ...order, sales_acknowledged_at: "2026-06-18T08:00:00Z" },
     ]);
-    const remaining = await resolveZkWatchPendingAckItemsForWatch(w, postAck);
+    const remaining = await resolveZkWatchPendingAckItemsForWatch(w, postAck as unknown as SupabaseClient);
     expect(remaining).toEqual([]);
   });
 });

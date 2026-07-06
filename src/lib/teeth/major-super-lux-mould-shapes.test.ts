@@ -10,13 +10,13 @@ import {
 } from "./major-super-lux-mould-shapes";
 
 describe("major-super-lux-mould-shapes", () => {
-  it("przody — dolne, trójkątne, owalne, kwadratowe", () => {
+  it("przody — trójkątne, kwadratowe, owalne, dolne", () => {
     const groups = majorSuperLuxMouldShapeGroups("anterior");
-    expect(groups.map((g) => g.shapeId)).toEqual(["lower", "triangular", "oval", "square"]);
-    expect(groups[0]!.moulds).toEqual(MAJOR_SUPER_LUX_LOWER_ANTERIOR);
-    expect(groups[1]!.moulds).toEqual(MAJOR_SUPER_LUX_UPPER_TRIANGULAR);
+    expect(groups.map((g) => g.shapeId)).toEqual(["triangular", "square", "oval", "lower"]);
+    expect(groups[0]!.moulds).toEqual(MAJOR_SUPER_LUX_UPPER_TRIANGULAR);
+    expect(groups[1]!.moulds).toEqual(MAJOR_SUPER_LUX_UPPER_SQUARE);
     expect(groups[2]!.moulds).toEqual(MAJOR_SUPER_LUX_UPPER_OVAL);
-    expect(groups[3]!.moulds).toEqual(MAJOR_SUPER_LUX_UPPER_SQUARE);
+    expect(groups[3]!.moulds).toEqual(MAJOR_SUPER_LUX_LOWER_ANTERIOR);
   });
 
   it("boki — L-cusp wg kształtu + N-cusp", () => {

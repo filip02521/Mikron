@@ -51,7 +51,7 @@ describe("informacja-duplicate", () => {
   it("rozpoznaje aktywną prośbę informacyjną", () => {
     expect(
       isActiveInformacjaOrder({
-        request_kind: "informacja",
+        request_kind: "informacja" as const,
         status: "Nowe",
         sales_acknowledged_at: null,
         sales_cancelled_at: null,
@@ -60,7 +60,7 @@ describe("informacja-duplicate", () => {
     ).toBe(true);
     expect(
       isActiveInformacjaOrder({
-        request_kind: "informacja",
+        request_kind: "informacja" as const,
         status: "Zrealizowane",
         sales_acknowledged_at: null,
         sales_cancelled_at: null,
@@ -69,7 +69,7 @@ describe("informacja-duplicate", () => {
     ).toBe(true);
     expect(
       isActiveInformacjaOrder({
-        request_kind: "informacja",
+        request_kind: "informacja" as const,
         status: "Zrealizowane",
         sales_acknowledged_at: "2026-01-01T00:00:00Z",
         sales_cancelled_at: null,
@@ -78,7 +78,7 @@ describe("informacja-duplicate", () => {
     ).toBe(false);
     expect(
       isActiveInformacjaOrder({
-        request_kind: "informacja",
+        request_kind: "informacja" as const,
         status: "Anulowane",
         sales_acknowledged_at: null,
         sales_cancelled_at: null,
@@ -114,7 +114,7 @@ describe("informacja-duplicate", () => {
         symbol: "SYM-1",
         product: "Implant",
         status: "Nowe",
-        request_kind: "informacja",
+        request_kind: "informacja" as const,
         sales_acknowledged_at: null,
         sales_cancelled_at: null,
         informacja_stock_out_reorder: false,
@@ -147,7 +147,7 @@ describe("informacja-duplicate", () => {
         symbol: "SYM-1",
         product: "Implant",
         status: "Nowe",
-        request_kind: "informacja",
+        request_kind: "informacja" as const,
         sales_acknowledged_at: null,
         sales_cancelled_at: null,
         informacja_stock_out_reorder: false,
@@ -210,7 +210,7 @@ describe("informacja-duplicate", () => {
             subiektTwId: 5,
             product: "Implant",
             status: "Nowe",
-            request_kind: "informacja",
+            request_kind: "informacja" as const,
             sales_acknowledged_at: null,
             sales_cancelled_at: null,
             informacja_stock_out_reorder: false,

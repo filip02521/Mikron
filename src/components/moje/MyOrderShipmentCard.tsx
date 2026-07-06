@@ -475,10 +475,13 @@ export const MyOrderShipmentCard = memo(function MyOrderShipmentCard({
   const isDismiss = headlineTone === "dismiss";
   const isStock = headlineTone === "stock";
   const isInformacja = row.kind === "informacja";
+  const zdFulfillment = row.zdFulfillment ?? null;
   const deliveryRowVisual =
     showProgress && listKind === "zamowienie"
       ? resolveMyOrderDeliveryRowVisual(row)
-      : null;
+      : listKind === "informacja" && zdFulfillment
+        ? resolveMyOrderDeliveryRowVisual(row)
+        : null;
 
   const emphasizeStock =
     showProgress &&
@@ -541,7 +544,6 @@ export const MyOrderShipmentCard = memo(function MyOrderShipmentCard({
   });
   const productSummary = showCollapsedProductSummary ? productSummaryRaw : null;
   const plannedOrderDate = row.plannedOrderDate ?? null;
-  const zdFulfillment = row.zdFulfillment ?? null;
   const zdEtaPending = Boolean(row.zdEtaPending && subiektReachable);
   const zdEtaNoMatch = Boolean(row.zdEtaNoMatch && !zdEtaPending);
   const showInformacjaTimingMeta = shouldShowInformacjaEmailSentMeta(row);

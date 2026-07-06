@@ -278,7 +278,22 @@ function statsBySupplierId(
 
 /** Pozycja zamówienia kwalifikująca się do synchronizacji terminu ZD (bez TTL). */
 export function isZdEtaSyncEligible(order: IndividualOrder): boolean {
-  if (order.request_kind === "informacja") return false;
+  if (order.request_kind === "informacja") {
+    if (
+      order.status === "Zrealizowane" ||
+      order.status === "Anulowane" ||
+      order.status === "Weryfikacja"
+    ) {
+      return false;
+    }
+    if (!order.supplier_id) return false;
+    if (!order.ordered_at?.trim()) return false;
+    const hasTwId = order.subiekt_tw_id != null && order.subiekt_tw_id > 0;
+    const hasSymbol = order.symbol && order.symbol.trim() && order.symbol.trim() !== "-";
+    const hasMikran = order.mikran_code && order.mikran_code.trim();
+    if (!hasTwId && !hasSymbol && !hasMikran) return false;
+    return true;
+  }
   if (order.status !== "Zamowione" && order.status !== "Czesciowo_zrealizowane") {
     return false;
   }
@@ -975,10 +990,26 @@ async function fetchZdEtaSyncOrderPool(salesPersonId?: string): Promise<Individu
       .eq("request_kind", "zamowienie")
       .is("sales_acknowledged_at", null);
 
+  const buildInformacjaQuery = () =>
+    supabase
+      .from("individual_orders")
+      .select("*, supplier:suppliers(*)")
+      .eq("request_kind", "informacja")
+      .in("status", ["Nowe", "Zamowione", "Czesciowo_zrealizowane"])
+      .not("ordered_at", "is", null)
+      .is("sales_acknowledged_at", null);
+
   if (salesPersonId) {
-    const res = await buildBaseQuery().eq("sales_person_id", salesPersonId);
-    if (res.error) throw new Error(res.error.message);
-    return normalizeIndividualOrders(res.data ?? []);
+    const [zamRes, infRes] = await Promise.all([
+      buildBaseQuery().eq("sales_person_id", salesPersonId),
+      buildInformacjaQuery().eq("sales_person_id", salesPersonId),
+    ]);
+    if (zamRes.error) throw new Error(zamRes.error.message);
+    if (infRes.error) throw new Error(infRes.error.message);
+    return [
+      ...normalizeIndividualOrders(zamRes.data ?? []),
+      ...normalizeIndividualOrders(infRes.data ?? []),
+    ];
   }
 
   const all: IndividualOrder[] = [];
@@ -989,6 +1020,21 @@ async function fetchZdEtaSyncOrderPool(salesPersonId?: string): Promise<Individu
   ) {
     const res = await buildBaseQuery()
       .order("ordered_at", { ascending: true, nullsFirst: false })
+      .order("action_at", { ascending: true })
+      .range(offset, offset + ZD_ETA_GLOBAL_ORDER_SCAN_PAGE - 1);
+    if (res.error) throw new Error(res.error.message);
+    const batch = normalizeIndividualOrders(res.data ?? []);
+    if (!batch.length) break;
+    all.push(...batch);
+    if (batch.length < ZD_ETA_GLOBAL_ORDER_SCAN_PAGE) break;
+  }
+
+  for (
+    let offset = 0;
+    offset < ZD_ETA_GLOBAL_ORDER_SCAN_MAX;
+    offset += ZD_ETA_GLOBAL_ORDER_SCAN_PAGE
+  ) {
+    const res = await buildInformacjaQuery()
       .order("action_at", { ascending: true })
       .range(offset, offset + ZD_ETA_GLOBAL_ORDER_SCAN_PAGE - 1);
     if (res.error) throw new Error(res.error.message);

@@ -54,7 +54,7 @@ describe("MyOrderShipment overflow shell", () => {
 
   const baseProps = {
     supplierName: "Test Supplier",
-    listKind: "prosba" as const,
+    listKind: "zamowienie" as const,
     hasClient: false,
     canAssignClient: true,
     canEdit: false,

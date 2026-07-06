@@ -63,6 +63,9 @@ describe("evaluateCronJob", () => {
       autoAssignUpdated: 0,
       lastUpdatedAt: "2026-06-18T04:30:00.000Z",
       startedAt: "2026-06-18T02:00:00.000Z",
+      finishedAt: "2026-06-18T04:30:00.000Z",
+      lastDocNumber: null,
+      lastError: null,
     });
     expect(row.statusLabel).toBe("OK — zakończono dziś");
     expect(row.tone).toBe("success");
@@ -129,6 +132,9 @@ describe("buildCronMonitorSnapshot", () => {
         autoAssignUpdated: 0,
         lastUpdatedAt: "2026-06-23T00:24:00.000Z",
         startedAt: "2026-06-23T00:00:00.000Z",
+        finishedAt: null,
+        lastDocNumber: null,
+        lastError: null,
       }
     );
     const catalog = snapshot.jobs.find((j) => j.id === "catalog_zd_sync");

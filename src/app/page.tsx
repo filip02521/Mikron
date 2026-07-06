@@ -1,5 +1,5 @@
 import { redirect } from "next/navigation";
-import { getAppRole } from "@/lib/auth-dev";
+import { getSessionUser } from "@/lib/auth";
 import { homePathForRole } from "@/lib/auth-roles";
 import { needsBootstrapSetup } from "@/lib/setup/bootstrap";
 
@@ -13,7 +13,7 @@ export const dynamic = "force-dynamic";
 export default async function Home() {
   if (await needsBootstrapSetup()) redirect("/setup");
 
-  const role = await getAppRole();
-  if (!role) redirect("/login");
-  redirect(homePathForRole(role));
+  const session = await getSessionUser();
+  if (!session?.role) redirect("/login");
+  redirect(homePathForRole(session.role, session.assignedWorkspaces));
 }

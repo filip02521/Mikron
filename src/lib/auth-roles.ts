@@ -7,7 +7,7 @@ import {
   pathAllowedForProcurementWorkspace,
 } from "@/lib/auth/procurement-workspace";
 import type { ProcurementWorkspace } from "@/lib/auth/procurement-workspace";
-import type { UserRole } from "@/types/database";
+import type { UserRole, Workspace } from "@/types/database";
 
 export function isAdmin(role: UserRole): boolean {
   return role === "admin";
@@ -22,16 +22,21 @@ export function isZakupyZeby(role: UserRole): boolean {
 }
 
 /** Dostęp do toru zębów — funkcja zeby na koncie (admin zawsze). */
-export function canAccessTeethPanel(role: UserRole): boolean {
+export function canAccessTeethPanel(role: UserRole, workspaces?: Workspace[]): boolean {
+  if (workspaces && workspaces.length > 0) return workspaces.includes("zeby");
   return isAdmin(role) || hasProcurementFunction(role, "zeby");
 }
 
-export function isMagazyn(role: UserRole): boolean {
+export function isMagazyn(role: UserRole, workspaces?: Workspace[]): boolean {
+  if (workspaces && workspaces.length > 0)
+    return workspaces.includes("magazyn") && !workspaces.includes("dostawy");
   return role === "magazyn";
 }
 
 /** Magazyn i regał — przyjęcie towaru + dziennik dostaw. */
-export function canAccessWarehouse(role: UserRole): boolean {
+export function canAccessWarehouse(role: UserRole, workspaces?: Workspace[]): boolean {
+  if (workspaces && workspaces.length > 0)
+    return workspaces.includes("dostawy") || workspaces.includes("magazyn");
   return role === "admin" || role === "zakupy" || role === "magazyn";
 }
 
@@ -57,12 +62,15 @@ export function canViewTeamMemberOrders(role: UserRole): boolean {
 }
 
 /** Panel dzienny, kolejka towaru, harmonogramy PL/ZA, formularz grupowy */
-export function canAccessOperations(role: UserRole): boolean {
+export function canAccessOperations(role: UserRole, workspaces?: Workspace[]): boolean {
+  if (workspaces && workspaces.length > 0) return workspaces.includes("dostawy");
   return isAdmin(role) || hasProcurementFunction(role, "dostawy");
 }
 
 /** Baza dostawców i urlopy (tor dzienny lub zęby). */
-export function canManageSuppliers(role: UserRole): boolean {
+export function canManageSuppliers(role: UserRole, workspaces?: Workspace[]): boolean {
+  if (workspaces && workspaces.length > 0)
+    return workspaces.includes("dostawy") || workspaces.includes("zeby");
   return canAccessOperations(role) || hasProcurementFunction(role, "zeby");
 }
 
@@ -87,7 +95,12 @@ const SALES_PATH_PREFIXES = ["/moje", "/plan", "/prosba", "/notatnik", "/zk", "/
 /** Domyślna strona startowa handlowca po logowaniu. */
 export const SALES_HOME_PATH = "/moje";
 
-export function homePathForRole(role: UserRole): string {
+export function homePathForRole(role: UserRole, workspaces?: Workspace[]): string {
+  if (workspaces && workspaces.length > 0) {
+    if (workspaces.includes("dostawy")) return "/podsumowanie";
+    if (workspaces.includes("zeby")) return "/zeby/kolejka";
+    if (workspaces.includes("magazyn")) return "/kolejka";
+  }
   if (isMagazyn(role)) return "/kolejka";
   if (isZakupyZeby(role)) return "/zeby/kolejka";
   if (canAccessOperations(role)) return "/podsumowanie";
@@ -101,6 +114,8 @@ export type CanAccessPathOptions = {
   adminPanelContext?: AdminPanelContext | null;
   /** Aktywny obszar pracy — ogranicza URL dla kont z przełącznikiem. */
   procurementWorkspace?: ProcurementWorkspace | null;
+  /** Przypisane obszary robocze (z profiles.assigned_workspaces). */
+  workspaces?: Workspace[];
 };
 
 function canAccessPathForRole(
@@ -108,6 +123,8 @@ function canAccessPathForRole(
   pathname: string,
   options?: CanAccessPathOptions
 ): boolean {
+  const ws = options?.workspaces;
+
   if (isAdmin(role) && options?.adminPanelContext && options.adminPanelContext !== "admin") {
     if (pathname === "/admin/wybor-handlowca") return true;
     return canAccessPathForRole(options.adminPanelContext, pathname, {
@@ -117,30 +134,30 @@ function canAccessPathForRole(
 
   if (pathname.startsWith("/admin")) return isAdmin(role);
   if (pathname === "/zeby" || pathname.startsWith("/zeby/")) {
-    return canAccessTeethPanel(role);
+    return canAccessTeethPanel(role, ws);
   }
   if (pathname === "/zakupy/tablica" || pathname.startsWith("/zakupy/tablica/")) {
-    return canAccessOperations(role) || canAccessTeethPanel(role);
+    return canAccessOperations(role, ws) || canAccessTeethPanel(role, ws);
   }
   if (
     pathname.startsWith("/zakupy/dostawcy") ||
     pathname.startsWith("/zakupy/urlopy")
   ) {
-    return canManageSuppliers(role);
+    return canManageSuppliers(role, ws);
   }
-  if (isMagazyn(role)) {
+  if (isMagazyn(role, ws)) {
     return WAREHOUSE_PATH_PREFIXES.some(
       (p) => pathname === p || pathname.startsWith(`${p}/`)
     );
   }
   if (OPERATIONS_PATH_PREFIXES.some((p) => pathname === p || pathname.startsWith(`${p}/`))) {
-    return canAccessOperations(role);
+    return canAccessOperations(role, ws);
   }
   if (SALES_TEAM_PREFIXES.some((p) => pathname === p || pathname.startsWith(`${p}/`))) {
     return canManageSalesTeam(role);
   }
   if (pathname === "/notatki" || pathname.startsWith("/notatki/")) {
-    return canAccessOperations(role) || isMagazyn(role) || canAccessTeethPanel(role);
+    return canAccessOperations(role, ws) || isMagazyn(role, ws) || canAccessTeethPanel(role, ws);
   }
   if (
     SALES_PATH_PREFIXES.some((p) => pathname === p || pathname.startsWith(`${p}/`))
@@ -160,7 +177,8 @@ export function canAccessPath(
 ): boolean {
   if (!canAccessPathForRole(role, pathname, options)) return false;
   const workspace = options?.procurementWorkspace;
-  if (workspace && canSwitchProcurementWorkspace(role)) {
+  const ws = options?.workspaces;
+  if (workspace && canSwitchProcurementWorkspace(role, ws)) {
     return pathAllowedForProcurementWorkspace(pathname, workspace);
   }
   return true;
@@ -172,15 +190,17 @@ export function redirectPathAfterLogin(
   options?: {
     adminPanelContext?: AdminPanelContext | null;
     procurementWorkspace?: ProcurementWorkspace | null;
+    workspaces?: Workspace[];
   }
 ): string {
   const adminPanelContext = options?.adminPanelContext ?? null;
   const procurementWorkspace = options?.procurementWorkspace ?? null;
+  const workspaces = options?.workspaces;
   const target = next?.trim() || "/";
   const targetPath = target.split("?")[0] ?? target;
   if (
     target !== "/" &&
-    canAccessPath(role, targetPath, { adminPanelContext, procurementWorkspace })
+    canAccessPath(role, targetPath, { adminPanelContext, procurementWorkspace, workspaces })
   ) {
     return target;
   }
@@ -189,5 +209,5 @@ export function redirectPathAfterLogin(
   }
   if (isSalesAccount(role)) return SALES_HOME_PATH;
   if (procurementWorkspace) return homePathForUser(role, procurementWorkspace);
-  return homePathForRole(role);
+  return homePathForRole(role, workspaces);
 }

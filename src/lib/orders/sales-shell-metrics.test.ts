@@ -5,9 +5,14 @@ import type { MyOrdersInboxSummary } from "@/lib/orders/my-order-sales-ui";
 describe("salesDayStartNavCount", () => {
   const inbox: MyOrdersInboxSummary = {
     pickupCount: 2,
+    partialReadyCount: 0,
     cancelAckCount: 1,
+    overdueCount: 0,
+    verificationCount: 0,
+    przedZamowieniemCount: 0,
+    zamowioneCount: 0,
+    availabilityPendingCount: 0,
     informacjaReadyCount: 1,
-    weekPlanCount: 0,
   };
 
   it("sumuje inbox, przypomnienia notatnika i tablicę dla badge Moje", () => {

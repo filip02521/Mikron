@@ -12,7 +12,7 @@ function order(id: string, supplier = "Dostawca A"): IndividualOrder {
     id,
     supplier_name: supplier,
     products: "Produkt testowy",
-  } as IndividualOrder;
+  } as unknown as IndividualOrder;
 }
 
 function group(supplierKey: string, orderIds: string[]): SupplierOrderGroup {

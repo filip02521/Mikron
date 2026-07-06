@@ -3,8 +3,9 @@
 import Link from "next/link";
 import { useMemo, useState, useTransition, useCallback, useEffect, useRef } from "react";
 import type { AppUserRow } from "@/lib/data/users";
-import type { UserRole } from "@/types/database";
+import type { UserRole, Workspace } from "@/types/database";
 import { ROLE_LABELS, ROLE_OPTIONS, roleRequiresSalesPerson } from "@/lib/users/labels";
+import { PROCUREMENT_WORKSPACE_OPTIONS } from "@/lib/auth/procurement-workspace";
 import {
   actionCreateAppUser,
   actionSaveAppUserPermissions,
@@ -101,10 +102,11 @@ export function UsersAdminClient({
     role: "zakupy" as UserRole,
     salesPersonId: "",
     password: "",
+    assignedWorkspaces: [] as Workspace[],
   });
 
   const [edits, setEdits] = useState<
-    Record<string, { role: UserRole; salesPersonId: string }>
+    Record<string, { role: UserRole; salesPersonId: string; assignedWorkspaces?: Workspace[] }>
   >(() => buildUserEditsFromRows(initialUsers));
 
   const [managerGroups, setManagerGroups] =
@@ -167,6 +169,7 @@ export function UsersAdminClient({
       role: "sales",
       salesPersonId: prefillSalesPersonId,
       password: "",
+      assignedWorkspaces: [],
     });
     setCreateOpen(true);
   }, [prefillSalesPersonId, salesPeople]);
@@ -218,16 +221,20 @@ export function UsersAdminClient({
     });
   }, [users, search, roleFilter, edits, salesPeople]);
 
-  const updateEdit = (userId: string, patch: Partial<{ role: UserRole; salesPersonId: string }>) => {
+  const updateEdit = (userId: string, patch: Partial<{ role: UserRole; salesPersonId: string; assignedWorkspaces: Workspace[] }>) => {
     setEdits((prev) => {
       const saved = users.find((u) => u.id === userId);
       const current = prev[userId] ?? {
         role: saved?.role ?? "zakupy",
         salesPersonId: saved?.salesPersonId ?? "",
+        assignedWorkspaces: saved?.assignedWorkspaces ?? [],
       };
       const next = { ...current, ...patch };
       if (patch.role && !roleRequiresSalesPerson(patch.role)) {
         next.salesPersonId = "";
+      }
+      if (patch.role && patch.role !== "zakupy") {
+        next.assignedWorkspaces = [];
       }
       return { ...prev, [userId]: next };
     });
@@ -264,6 +271,7 @@ export function UsersAdminClient({
       role: "zakupy",
       salesPersonId: "",
       password: "",
+      assignedWorkspaces: [],
     });
   };
 
@@ -281,6 +289,7 @@ export function UsersAdminClient({
         role: savedRole,
         salesPersonId: savedSalesPersonId,
         managerGroupIds: groupIds,
+        assignedWorkspaces: savedRole === "zakupy" ? (edit.assignedWorkspaces ?? []) : [],
       });
       if ("error" in r) {
         setToast({ text: r.error, tone: "error" });
@@ -297,7 +306,8 @@ export function UsersAdminClient({
         u.id,
         savedRole,
         savedSalesPersonId,
-        spName === "—" ? null : spName
+        spName === "—" ? null : spName,
+        edit.assignedWorkspaces
       );
       setUsers(nextUsers);
       usersSignatureRef.current = usersAdminListSignature(nextUsers);
@@ -404,6 +414,7 @@ export function UsersAdminClient({
                       ? createForm.salesPersonId || null
                       : null,
                     password: createForm.password,
+                    assignedWorkspaces: createForm.role === "zakupy" ? (createForm.assignedWorkspaces ?? []) : [],
                   });
                   if ("error" in r) {
                     setToast({ text: r.error, tone: "error" });
@@ -417,6 +428,7 @@ export function UsersAdminClient({
                     [r.user.id]: {
                       role: r.user.role,
                       salesPersonId: r.user.salesPersonId ?? "",
+                      assignedWorkspaces: r.user.assignedWorkspaces ?? [],
                     },
                   }));
                   setToast({ text: "Konto utworzone.", tone: "success" });
@@ -481,6 +493,33 @@ export function UsersAdminClient({
                     </option>
                   ))}
                 </Select>
+                {createForm.role === "zakupy" ? (
+                  <div className="mt-2">
+                    <p className="mb-1.5 text-xs font-medium text-slate-600">Obszary pracy</p>
+                    <div className="flex flex-wrap gap-1.5">
+                      {PROCUREMENT_WORKSPACE_OPTIONS.map((opt) => {
+                        const checked = createForm.assignedWorkspaces.includes(opt.value);
+                        return (
+                          <button
+                            key={opt.value}
+                            type="button"
+                            onClick={() => {
+                              setCreateForm((f) => ({
+                                ...f,
+                                assignedWorkspaces: checked
+                                  ? f.assignedWorkspaces.filter((w) => w !== opt.value)
+                                  : [...f.assignedWorkspaces, opt.value],
+                              }));
+                            }}
+                            className={managerGroupToggleClass(checked)}
+                          >
+                            {opt.label}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                ) : null}
               </Field>
               {roleRequiresSalesPerson(createForm.role) ? (
                 <Field
@@ -679,6 +718,29 @@ export function UsersAdminClient({
                                 </option>
                               ))}
                             </Select>
+                            {displayRole === "zakupy" ? (
+                              <div className="flex flex-wrap gap-1.5 pt-1">
+                                {PROCUREMENT_WORKSPACE_OPTIONS.map((opt) => {
+                                  const checked = (edit?.assignedWorkspaces ?? u.assignedWorkspaces ?? []).includes(opt.value);
+                                  return (
+                                    <button
+                                      key={opt.value}
+                                      type="button"
+                                      onClick={() => {
+                                        const current = edit?.assignedWorkspaces ?? u.assignedWorkspaces ?? [];
+                                        const next = checked
+                                          ? current.filter((w) => w !== opt.value)
+                                          : [...current, opt.value];
+                                        updateEdit(u.id, { assignedWorkspaces: next as Workspace[] });
+                                      }}
+                                      className={managerGroupToggleClass(checked)}
+                                    >
+                                      {opt.label}
+                                    </button>
+                                  );
+                                })}
+                              </div>
+                            ) : null}
                           </div>
                         </td>
                         <td>
@@ -781,6 +843,7 @@ export function UsersAdminClient({
                                       [u.id]: {
                                         role: u.role,
                                         salesPersonId: u.salesPersonId ?? "",
+                                        assignedWorkspaces: u.assignedWorkspaces ?? [],
                                       },
                                     }));
                                     setManagerGroups((prev) => ({

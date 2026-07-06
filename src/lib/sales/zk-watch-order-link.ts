@@ -45,8 +45,14 @@ export type ZkLinkableOrder = {
   zd_fulfillment_previous_deadline?: string | null;
   zd_fulfillment_deadline_changed_at?: string | null;
   zd_fulfillment_deadline_change_seen_at?: string | null;
+  is_teeth: boolean | null;
   sales_acknowledged_at: string | null;
   sales_cancelled_at: string | null;
+};
+
+export type ZkTeethOrder = ZkLinkableOrder & {
+  teeth_ordered_at: string | null;
+  teeth_delivery_date: string | null;
 };
 
 function orderHasExplicitZkLink(

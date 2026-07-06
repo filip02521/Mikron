@@ -4,7 +4,7 @@ import type { LoginDirectoryAccountPublic } from "@/lib/auth/login-directory-pub
 import { buildLoginDirectoryAssignmentLabelMap } from "@/lib/auth/login-directory-assignment-label";
 import { resolveLoginDisplayName } from "@/lib/users/display-name";
 import { ROLE_LABELS } from "@/lib/users/labels";
-import type { UserRole } from "@/types/database";
+import type { UserRole, Workspace } from "@/types/database";
 import type { User } from "@supabase/supabase-js";
 
 export type LoginDirectoryAccount = {
@@ -141,7 +141,7 @@ export async function fetchLoginDirectoryAccounts(): Promise<LoginDirectoryAccou
 
   const { data: profiles, error } = await supabase
     .from("profiles")
-    .select("id, email, role, sales_people(name, sales_groups(name))")
+    .select("id, email, role, assigned_workspaces, sales_people(name, sales_groups(name))")
     .order("created_at", { ascending: true });
 
   if (error) {
@@ -155,6 +155,7 @@ export async function fetchLoginDirectoryAccounts(): Promise<LoginDirectoryAccou
       id: profile.id,
       role: profile.role as UserRole,
       sales_people: profile.sales_people,
+      assigned_workspaces: (profile.assigned_workspaces ?? null) as Workspace[] | null,
     }))
   );
 

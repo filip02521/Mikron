@@ -48,21 +48,16 @@ import type { MyOrderSectionPatternId } from "@/lib/orders/my-order-section-call
 import { deriveMyOrderSectionDisplayState } from "@/lib/orders/my-order-section-callout";
 import {
   findMyOrderRowIdsForFocusOrderIds,
-  MOJE_FOCUS_ORDERS_PARAM,
   parseMojeFocusOrderIds,
 } from "@/lib/orders/moje-order-focus";
 import { sortInformacjaProgressRows } from "@/lib/orders/my-order-informacja-progress-sort";
 import { MojeSectionShell } from "@/components/moje/MojeSectionShell";
 import {
-  flashMojeCard,
   mojeSectionHeadingDomId,
   parseMojeSectionHash,
   scrollToMojeSection,
   scrollToMojeCardWhenReady,
 } from "@/lib/orders/moje-section-focus";
-import {
-  MOJE_ANNOUNCEMENTS_SECTION_ID,
-} from "@/lib/department-board/moje-announcements-ui";
 import {
   MY_ORDER_ACTION_SECTION_COPY,
   MY_ORDER_TEETH_ACTION_SECTION_COPY,
@@ -415,10 +410,10 @@ function MojeOrdersViewContent({
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
-  const [imperativeAnnouncementId, setImperativeAnnouncementId] = useState<string | null>(
+  const [imperativeAnnouncementId] = useState<string | null>(
     null
   );
-  const [imperativeFocusOrderIds, setImperativeFocusOrderIds] = useState<string[]>([]);
+  const [imperativeFocusOrderIds] = useState<string[]>([]);
   const focusScrollDoneRef = useRef(false);
   const validImperativeAnnouncementId =
     imperativeAnnouncementId &&

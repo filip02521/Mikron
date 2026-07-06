@@ -6,9 +6,9 @@ import {
 } from "./wiedent-estetic-mould-shapes";
 
 describe("wiedent-estetic-mould-shapes", () => {
-  it("grupuje przody wg katalogu PDF (owal / kwadrat / trójkąt / dolne)", () => {
+  it("grupuje przody wg katalogu PDF (trójkąt / kwadrat / owal / dolne)", () => {
     const groups = wiedentEsteticMouldShapeGroups("anterior");
-    expect(groups.map((g) => g.shapeId)).toEqual(["lower", "triangular", "square", "oval"]);
+    expect(groups.map((g) => g.shapeId)).toEqual(["triangular", "square", "oval", "lower"]);
     expect(groups.find((g) => g.shapeId === "oval")?.moulds).toEqual(WIEDENT_ESTETIC_UPPER_OVAL);
     expect(groups.find((g) => g.shapeId === "square")?.moulds).toContain("46");
     expect(groups.find((g) => g.shapeId === "triangular")?.moulds).toContain("12");

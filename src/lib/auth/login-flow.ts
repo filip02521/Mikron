@@ -6,7 +6,7 @@ ensureCryptoRandomUUID();
 import { translateAuthError } from "@/lib/auth-errors";
 import { loginServerResponseErrorMessage } from "@/lib/auth/login-messages";
 import { createClient } from "@/lib/supabase/client";
-import type { UserRole } from "@/types/database";
+import type { UserRole, Workspace } from "@/types/database";
 
 export type LoginFlowResult =
   | { ok: true; redirectTo: string; accountId: string }
@@ -55,7 +55,7 @@ async function resolveRedirect(
   const supabase = createClient();
   const { data: profile, error: profileError } = await supabase
     .from("profiles")
-    .select("role, must_change_password")
+    .select("role, must_change_password, assigned_workspaces")
     .eq("id", userId)
     .maybeSingle();
 
@@ -85,6 +85,7 @@ async function resolveRedirect(
     ok: true,
     redirectTo: redirectPathAfterLogin(profile.role as UserRole, next, {
       adminPanelContext,
+      workspaces: (profile.assigned_workspaces ?? []) as Workspace[],
     }),
     accountId: userId,
   };

@@ -42,7 +42,7 @@ import { parseOrderQuantity } from "@/lib/orders/individual";
 import { deliveryProgressFor } from "@/lib/orders/sales-cancel";
 import { UNDO_WINDOW_MS } from "@/lib/orders/daily-panel-undo";
 import type { SalesZkWatch } from "@/types/database";
-import { resolveZkWatchPendingAckItemsForWatch } from "@/lib/sales/zk-watch-close-pending-fetch";
+import { resolveZkWatchPendingAckItemsForWatch, fetchTeethOrdersForZkWatch } from "@/lib/sales/zk-watch-close-pending-fetch";
 import {
   acknowledgeOrdersWithClient,
   acknowledgeZdDeadlineWithClient,
@@ -491,11 +491,14 @@ export async function actionUnacknowledgePickup(orderIds: string[]) {
     .update({ sales_acknowledged_at: null })
     .in("id", orderIds)
     .eq("sales_person_id", salesPersonId)
-    .eq("status", "Zrealizowane");
+    .eq("status", "Zrealizowane")
+    .not("sales_acknowledged_at", "is", null);
 
   if (error) throw new Error(error.message);
 
   revalidatePath("/moje");
+  revalidatePath("/podsumowanie");
+  revalidatePath("/kolejka");
   revalidatePath("/notatnik");
   revalidatePath("/zk");
 
@@ -596,6 +599,8 @@ export async function actionUnacknowledgeSalesCancel(
   revalidatePath("/moje");
   revalidatePath("/podsumowanie");
   revalidatePath("/kolejka");
+  revalidatePath("/notatnik");
+  revalidatePath("/zk");
   return { success: true, count: restoredCount };
 }
 
@@ -669,6 +674,10 @@ export async function actionUnacknowledgeDismiss(orderIds: string[]) {
   }
 
   revalidatePath("/moje");
+  revalidatePath("/podsumowanie");
+  revalidatePath("/kolejka");
+  revalidatePath("/notatnik");
+  revalidatePath("/zk");
   return { success: true, count: orderIds.length };
 }
 
@@ -735,4 +744,21 @@ export async function actionAcknowledgeAndCloseZkWatch(watchId: string) {
 
   const { closedAt } = await actionCloseZkWatch(watchId);
   return { success: true as const, ackCount, closedAt };
+}
+
+/** Podgląd zamówionych zębów powiązanych z danym ZK (read-only). */
+export async function actionFetchZkWatchTeethPreview(watchId: string) {
+  const salesPersonId = await salesPersonIdForAction();
+  const supabase = await salesOrderSupabase();
+  const watch = await loadZkWatchForPendingAck(supabase, watchId, salesPersonId);
+
+  const teethOrders = await fetchTeethOrdersForZkWatch(watch, supabase);
+  if (teethOrders.length === 0) {
+    return { success: true as const, rows: [] as import("@/lib/sales/zk-watch-teeth-preview").ZkTeethPreviewRow[] };
+  }
+
+  const teethDetailsMap = await fetchTeethDetailsForOrders(teethOrders.map((o) => o.id));
+  const { buildZkTeethPreviewRows } = await import("@/lib/sales/zk-watch-teeth-preview");
+  const rows = buildZkTeethPreviewRows(teethOrders, teethDetailsMap);
+  return { success: true as const, rows };
 }

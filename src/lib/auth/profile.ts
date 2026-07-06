@@ -1,6 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient, hasSupabaseConfig } from "@/lib/supabase/admin";
-import type { UserRole } from "@/types/database";
+import type { UserRole, Workspace } from "@/types/database";
 
 export type ProfileRow = {
   role: UserRole;
@@ -8,18 +8,24 @@ export type ProfileRow = {
   email: string | null;
   must_change_password: boolean;
   sales_onboarding_completed_at: string | null;
+  assigned_workspaces: Workspace[];
 };
 
 const PROFILE_SELECT =
-  "role, sales_person_id, email, must_change_password, sales_onboarding_completed_at";
+  "role, sales_person_id, email, must_change_password, sales_onboarding_completed_at, assigned_workspaces";
 
 function mapProfileRow(data: Record<string, unknown>): ProfileRow {
+  const rawWorkspaces = data.assigned_workspaces;
+  const workspaces = Array.isArray(rawWorkspaces)
+    ? (rawWorkspaces.filter((w) => typeof w === "string") as Workspace[])
+    : [];
   return {
     role: data.role as UserRole,
     sales_person_id: data.sales_person_id as string | null,
     email: data.email as string | null,
     must_change_password: Boolean(data.must_change_password),
     sales_onboarding_completed_at: (data.sales_onboarding_completed_at as string | null) ?? null,
+    assigned_workspaces: workspaces,
   };
 }
 

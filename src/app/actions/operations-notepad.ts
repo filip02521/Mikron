@@ -42,7 +42,7 @@ async function assertNoteAccess(
   if (error) throw new Error(error.message);
   if (!row) throw new Error("Nie znaleziono notatki.");
 
-  assertDepartmentAccess(row.department, user.role);
+  assertDepartmentAccess(row.department, user.role, user.assignedWorkspaces);
 
   if (row.created_by !== userId && !isAdmin(user.role)) {
     throw new Error("Brak uprawnień do tej notatki.");
@@ -59,9 +59,10 @@ async function assertNoteAccess(
 
 function assertDepartmentAccess(
   department: OperationsDepartment,
-  role: string | undefined
+  role: string | undefined,
+  workspaces?: import("@/types/database").Workspace[]
 ): void {
-  const allowed = departmentsForRole((role ?? "sales") as import("@/types/database").UserRole);
+  const allowed = departmentsForRole((role ?? "sales") as import("@/types/database").UserRole, workspaces);
   if (!allowed.includes(department)) {
     throw new Error("Brak dostępu do tego działu.");
   }
@@ -74,7 +75,7 @@ export async function actionCreateOperationsNote(
   options?: { title?: string | null; color?: SalesNoteColor; follow_up_at?: string | null }
 ) {
   const user = await getSessionUserForMutation();
-  assertDepartmentAccess(department, user.role);
+  assertDepartmentAccess(department, user.role, user.assignedWorkspaces);
 
   const trimmed = body.trim();
   if (!trimmed) throw new Error("Notatka nie może być pusta.");
@@ -154,7 +155,7 @@ export async function actionReorderOperationsNotes(
 ) {
   const userId = await userIdForMutation();
   const user = await getSessionUser();
-  assertDepartmentAccess(department, user?.role);
+  assertDepartmentAccess(department, user?.role, user?.assignedWorkspaces);
   if (!noteIds.length) return { success: true };
 
   const uniqueIds = [...new Set(noteIds)];

@@ -11,7 +11,7 @@ import {
 
 const placementOrder = {
   ordered_at: "2026-06-18T10:00:00+02:00",
-  action_at: null,
+  action_at: "2026-06-18T10:00:00+02:00",
   status: "Zamowione" as const,
 };
 

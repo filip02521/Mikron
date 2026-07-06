@@ -512,6 +512,49 @@ function operationsNavGroups(role: UserRole, badges: NavBadges): NavGroup[] {
   return groups;
 }
 
+function magazynNavGroups(badges: NavBadges): NavGroup[] {
+  return [
+    {
+      title: NAV_SECTION_TODAY,
+      items: [
+        {
+          href: "/kolejka",
+          label: "Przyjęcie towaru",
+          mobileLabel: "Magazyn",
+          description: "Przyjęcie i dziennik dostaw",
+          icon: "warehouse",
+          tone: "emerald",
+          tier: "primary",
+          highlight: true,
+          mobileSlot: "primary",
+          badge: badges.realizacja,
+        },
+        {
+          href: "/dostawy",
+          label: "Plan dostaw",
+          mobileLabel: "Dostawy",
+          description: "Nadchodzące dostawy w tygodniu",
+          icon: "schedule",
+          tone: "sky",
+          tier: "primary",
+          mobileSlot: "primary",
+        },
+        {
+          href: OPERATIONS_NOTATKI_MAGAZYN,
+          label: "Notatki",
+          mobileLabel: "Notatki",
+          description: "Notatki magazynu",
+          icon: "notepad",
+          tone: "indigo",
+          tier: "primary",
+          mobileSlot: "primary",
+          badge: badges.operationsNotatki,
+        },
+      ],
+    },
+  ];
+}
+
 export type NavAppContext = {
   realRole: UserRole;
   /** Rola efektywna (podgląd admina). */
@@ -520,7 +563,7 @@ export type NavAppContext = {
   badges?: NavBadges;
 };
 
-/** Nawigacja z uwzględnieniem obszaru pracy zakupów (Dostawy vs Zęby). */
+/** Nawigacja z uwzględnieniem obszaru pracy zakupów (Dostawy vs Zęby vs Magazyn). */
 export function navForAppContext(ctx: NavAppContext): NavGroup[] {
   const badges = ctx.badges ?? {};
   if (ctx.realRole === "admin") {
@@ -528,6 +571,9 @@ export function navForAppContext(ctx: NavAppContext): NavGroup[] {
   }
   if (ctx.procurementWorkspace === "zeby") {
     return teethNavGroups(badges);
+  }
+  if (ctx.procurementWorkspace === "magazyn") {
+    return magazynNavGroups(badges);
   }
   if (ctx.realRole === "zakupy" || ctx.realRole === "zakupy_zeby") {
     return operationsNavGroups(ctx.navRole === "zakupy_zeby" ? "zakupy" : ctx.navRole, badges);
@@ -560,46 +606,7 @@ export function navForRole(
   }
 
   if (role === "magazyn") {
-    return [
-      {
-        title: NAV_SECTION_TODAY,
-        items: [
-          {
-            href: "/kolejka",
-            label: "Przyjęcie towaru",
-            mobileLabel: "Magazyn",
-            description: "Przyjęcie i dziennik dostaw",
-            icon: "warehouse",
-            tone: "emerald",
-            tier: "primary",
-            highlight: true,
-            mobileSlot: "primary",
-            badge: badges.realizacja,
-          },
-          {
-            href: "/dostawy",
-            label: "Plan dostaw",
-            mobileLabel: "Dostawy",
-            description: "Nadchodzące dostawy w tygodniu",
-            icon: "schedule",
-            tone: "sky",
-            tier: "primary",
-            mobileSlot: "primary",
-          },
-          {
-            href: OPERATIONS_NOTATKI_MAGAZYN,
-            label: "Notatki",
-            mobileLabel: "Notatki",
-            description: "Notatki magazynu",
-            icon: "notepad",
-            tone: "indigo",
-            tier: "primary",
-            mobileSlot: "primary",
-            badge: badges.operationsNotatki,
-          },
-        ],
-      },
-    ];
+    return magazynNavGroups(badges);
   }
 
   const dailyItems: NavItem[] = [

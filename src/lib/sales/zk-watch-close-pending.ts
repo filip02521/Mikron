@@ -17,6 +17,7 @@ import {
 
 export type ZkWatchPendingAckKind =
   | "pickup"
+  | "teeth_handover"
   | "availability"
   | "cancel_notice"
   | "cancelled"
@@ -34,6 +35,7 @@ export type ZkWatchPendingAckItem = {
 
 const STATUS_LABELS: Record<ZkWatchPendingAckKind, string> = {
   pickup: "Gotowe do odbioru z magazynu",
+  teeth_handover: "Gotowe do odbioru zębów od magazynu",
   availability: "Informacja — towar na magazynie",
   cancel_notice: "Rezygnacja do potwierdzenia",
   cancelled: "Anulowane — do ukrycia z listy",
@@ -42,6 +44,7 @@ const STATUS_LABELS: Record<ZkWatchPendingAckKind, string> = {
 
 const KIND_BADGE_LABELS: Record<ZkWatchPendingAckKind, string> = {
   pickup: "Odbiór",
+  teeth_handover: "Odbiór zębów",
   availability: "Informacja",
   cancel_notice: "Rezygnacja",
   cancelled: "Anulowanie",
@@ -53,6 +56,7 @@ export function zkWatchPendingAckKindBadgeVariant(
 ): "success" | "info" | "warning" | "danger" | "default" {
   switch (kind) {
     case "pickup":
+    case "teeth_handover":
       return "success";
     case "availability":
       return "info";
@@ -81,6 +85,7 @@ function formatOrderProductLabel(order: ZkLinkableOrder): string {
 }
 
 function formatOrderQuantityLabel(order: ZkLinkableOrder): string {
+  if (isInformacjaRequest(asIndividualOrder(order))) return "—";
   const qty = order.quantity?.trim();
   if (!qty || qty === "-") return "—";
   return qty.includes("szt") ? qty : `${qty} szt.`;
@@ -116,7 +121,7 @@ export function classifyZkWatchPendingAckKinds(
   } else if (order.status === "Anulowane" && !order.sales_acknowledged_at) {
     kinds.push("cancelled");
   } else if (isAwaitingSalesPickup(row)) {
-    kinds.push("pickup");
+    kinds.push(order.is_teeth ? "teeth_handover" : "pickup");
   } else if (isAwaitingInformacjaAck(row)) {
     kinds.push("availability");
   }
@@ -135,6 +140,7 @@ export function isZkWatchPendingAckOrder(order: ZkLinkableOrder): boolean {
 function pendingAckSortRank(kind: ZkWatchPendingAckKind): number {
   switch (kind) {
     case "pickup":
+    case "teeth_handover":
       return 0;
     case "availability":
       return 1;
@@ -207,7 +213,9 @@ export function collectZkWatchPendingAckOrderIdsFromItems(
 export function zkWatchPendingAckItemsIncludePickup(
   items: ZkWatchPendingAckItem[]
 ): boolean {
-  return items.some((item) => item.kind === "pickup");
+  return items.some(
+    (item) => item.kind === "pickup" || item.kind === "teeth_handover"
+  );
 }
 
 export function groupZkWatchPendingAckOrderIdsByKind(
@@ -215,6 +223,7 @@ export function groupZkWatchPendingAckOrderIdsByKind(
 ): Record<ZkWatchPendingAckKind, string[]> {
   const grouped: Record<ZkWatchPendingAckKind, string[]> = {
     pickup: [],
+    teeth_handover: [],
     availability: [],
     cancel_notice: [],
     cancelled: [],

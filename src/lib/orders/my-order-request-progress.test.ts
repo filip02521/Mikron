@@ -11,45 +11,10 @@ import {
   INFORMACJA_FLOW_SALES_STOCK_OUT,
   INFORMACJA_FLOW_SALES_STOCK_OUT_ORDERED,
 } from "./informacja-flow-copy";
+import { createTestMyOrderRow } from "./test-fixtures";
 
 function row(extra: Partial<MyOrderRow> = {}): MyOrderRow {
-  return {
-    id: "1",
-    kind: "zamowienie",
-    lineCount: 1,
-    lines: [],
-    submittedLabel: "01.05",
-    supplierName: "Dostawca",
-    product: "P",
-    symbol: null,
-    quantityLabel: "2 szt.",
-    progressLabel: null,
-    statusTitle: "Zamówione",
-    statusDetail: null,
-    timingLabel: null,
-    badgeVariant: "info",
-    rowColor: "#fff",
-    orderIds: ["1"],
-    acknowledgeMode: "none",
-    pickupPendingCount: 0,
-    pickupPendingIds: [],
-    pickupReadyTotal: 0,
-    pickupAcknowledgedCount: 0,
-    canCancelBySales: false,
-    salesCancelPhase: null,
-    salesCancelOrderIds: [],
-    cancelNoticeOrderIds: [],
-    cancelledAckOrderIds: [],
-    clientLabel: null,
-    supplierId: "s",
-    salesPersonId: "sp",
-    requestKind: "zamowienie",
-    canEditBySales: false,
-    headline: "Zamówione — czekamy na dostawę",
-    headlineTone: "info",
-    subline: null,
-    ...extra,
-  };
+  return createTestMyOrderRow(extra);
 }
 
 describe("my-order-request-progress", () => {

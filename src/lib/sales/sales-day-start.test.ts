@@ -11,13 +11,12 @@ import {
 
 function row(partial: Partial<MyOrderRow> & Pick<MyOrderRow, "id">): MyOrderRow {
   return {
-    id: partial.id,
-    kind: partial.kind ?? "zamowienie",
-    supplierName: partial.supplierName ?? "Mikran",
-    statusTitle: partial.statusTitle ?? "Zrealizowane",
-    acknowledgeMode: partial.acknowledgeMode ?? "none",
-    pickupPendingIds: partial.pickupPendingIds ?? [],
-    lines: partial.lines ?? [],
+    kind: "zamowienie",
+    supplierName: "Mikran",
+    statusTitle: "Zrealizowane",
+    acknowledgeMode: "none",
+    pickupPendingIds: [],
+    lines: [],
     ...partial,
   } as MyOrderRow;
 }

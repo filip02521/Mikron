@@ -72,11 +72,10 @@ function DispositionLineRow({
   disabled?: boolean;
   onChoose: (value: ProcurementCancelDisposition) => void;
 }) {
+  const isInformacja = line.requestKind === "informacja";
   const qtyLabel =
-    line.quantity && line.quantity !== "-" && line.quantity !== "—"
-      ? line.quantity === "informacja"
-        ? null
-        : line.quantity
+    !isInformacja && line.quantity && line.quantity !== "-" && line.quantity !== "—"
+      ? line.quantity
       : null;
 
   return (

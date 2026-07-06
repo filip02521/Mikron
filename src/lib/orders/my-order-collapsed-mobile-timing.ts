@@ -14,14 +14,6 @@ import { parseDateOnly } from "@/lib/orders/dates";
 export function formatCollapsedDeliveryTimingLabel(
   row: Pick<MyOrderRow, "kind" | "timingLabel" | "zdFulfillment">
 ): string | null {
-  const informacjaRaw = row.timingLabel?.trim();
-  if (row.kind === "informacja" && informacjaRaw) {
-    const informacja = buildInformacjaTimingMetaDisplay(informacjaRaw);
-    if (informacja) {
-      return `${informacja.caption} · ${informacja.dateLabel}`;
-    }
-  }
-
   const zdDeadline = row.zdFulfillment?.deadline?.trim();
   if (zdDeadline) {
     if (row.zdFulfillment?.pendingConfirmation) {
@@ -33,6 +25,14 @@ export function formatCollapsedDeliveryTimingLabel(
       return display.detailLabel
         ? `${display.primaryLabel} · ${display.detailLabel}`
         : display.primaryLabel;
+    }
+  }
+
+  const informacjaRaw = row.timingLabel?.trim();
+  if (row.kind === "informacja" && informacjaRaw) {
+    const informacja = buildInformacjaTimingMetaDisplay(informacjaRaw);
+    if (informacja) {
+      return `${informacja.caption} · ${informacja.dateLabel}`;
     }
   }
 
@@ -58,7 +58,8 @@ export function myOrderCollapsedMobileTiming(
     collapsedSubline: string | null;
   }
 ): string | null {
-  if (opts.expanded || !opts.showProgress) return null;
+  if (opts.expanded) return null;
+  if (!opts.showProgress && !(row.kind === "informacja" && row.zdFulfillment)) return null;
   if (!shouldShowMyOrderCollapsedDeliveryTiming(row)) return null;
 
   const timing = formatCollapsedDeliveryTimingLabel(row);

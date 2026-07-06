@@ -21,7 +21,7 @@ export default async function ProcurementBoardPage({
   const { widok, watek } = await searchParams;
   const focusThreadId = watek?.trim() || null;
   const user = await getSessionUser();
-  if (!user?.role || !canAccessOperations(user.role)) {
+  if (!user?.role || !canAccessOperations(user.role, user.assignedWorkspaces)) {
     redirect("/login");
   }
 

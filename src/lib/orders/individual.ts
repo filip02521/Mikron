@@ -15,7 +15,7 @@ export function formatOrderQuantityLabel(
   quantity?: string | null,
   requestKind?: IndividualRequestKind | null
 ): string {
-  if (requestKind === "informacja") return "informacja";
+  if (requestKind === "informacja") return "—";
   const t = quantity?.trim();
   if (!t || t === INFORMACJA_NO_QUANTITY) return "—";
   return t;

@@ -128,8 +128,7 @@ describe("SubiektProductLineFields", () => {
 
     expect(screen.getByLabelText("Powiązano z Subiektem")).toBeTruthy();
     expect(screen.getByText(/Powiązano z Subiektem/)).toBeTruthy();
-    expect(screen.getByText(/Symbol: 4200/)).toBeTruthy();
-    expect(screen.getByText(/Kod Mikran: 789/)).toBeTruthy();
+    expect(screen.getByText(/4200/)).toBeTruthy();
     expect(screen.queryAllByLabelText("Wybrano z Subiekta")).toHaveLength(0);
   });
 
@@ -318,6 +317,10 @@ describe("SubiektProductLineFields", () => {
         subiektTwId: 1001,
       })
     );
+
+    const mikranInput = screen.getByPlaceholderText("896") as HTMLInputElement;
+    expect(mikranInput.value).toBe("789");
+    expect(mikranInput.readOnly).toBe(true);
   });
 
   it("po powiązaniu z Subiektem ukrywa podgląd symbolu i listę wyników", async () => {

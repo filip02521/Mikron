@@ -51,7 +51,7 @@ import { fetchSalesDayStartNotepadSlice } from "@/lib/data/sales-notepad";
 import {
   type SalesDayStartContext,
 } from "@/lib/sales/sales-day-start";
-import type { DeliveryStats, IndividualOrder } from "@/types/database";
+import type { DeliveryStats, IndividualOrder, Workspace } from "@/types/database";
 import { autoAssignMissingSuppliersFromCatalog } from "@/lib/services/auto-assign-suppliers";
 
 import type { Metadata } from "next";
@@ -94,6 +94,7 @@ export default async function MojePage({
     ? (searchQuery?.trim() || null)
     : (searchQuery ?? clientQuery)?.trim() || null;
   const role = await getAppRole();
+  let workspaces: Workspace[] = [];
   let salesPersonId: string | null = null;
   let salesPersonName: string | null = null;
   let ownSalesPersonId: string | null = null;
@@ -107,6 +108,7 @@ export default async function MojePage({
   try {
     const user = await getSessionUser();
     sessionUserId = user?.id ?? null;
+    workspaces = user?.assignedWorkspaces ?? [];
     if (user && isAdmin(user.role) && previewSalesPersonId) {
       const preview = await resolvePreviewSalesPerson(previewSalesPersonId, user);
       if (preview) {
@@ -273,7 +275,7 @@ export default async function MojePage({
           groupLimit: ARCHIVE_EXPANDED_GROUP_LIMIT,
         });
       }
-    } else if (role && canAccessOperations(role) && salesPersonId) {
+    } else if (role && canAccessOperations(role, workspaces) && salesPersonId) {
       const [orderRows, statsRows, supplierRows] = await Promise.all([
         fetchIndividualOrders({ salesPersonId }),
         fetchDeliveryStats(),
@@ -339,7 +341,7 @@ export default async function MojePage({
   }
 
   const salesHeaderActions =
-    role && !canAccessOperations(role) ? (
+    role && !canAccessOperations(role, workspaces) ? (
       !isTeamPreview ? (
         <Link
           href="/prosba"
@@ -355,7 +357,7 @@ export default async function MojePage({
     ) : undefined;
 
   const showSalesSync = Boolean(
-    !adminSalesPreview && (role && !canAccessOperations(role))
+    !adminSalesPreview && (role && !canAccessOperations(role, workspaces))
   );
 
   return (
@@ -379,7 +381,7 @@ export default async function MojePage({
         <Alert tone="error">{loadError}</Alert>
       ) : null}
 
-      {role && canAccessOperations(role) && !salesPersonId && isAdmin(role ?? "admin") ? (
+      {role && canAccessOperations(role, workspaces) && !salesPersonId && isAdmin(role ?? "admin") ? (
         <SystemNotice
           variant="action"
           className="mb-4"
@@ -388,7 +390,7 @@ export default async function MojePage({
           href="/admin/wybor-handlowca"
           actionLabel="Wybierz handlowca"
         />
-      ) : role && canAccessOperations(role) && !salesPersonId ? (
+      ) : role && canAccessOperations(role, workspaces) && !salesPersonId ? (
         <Alert tone="warning" className="mb-4">
           Tryb operacyjny — widzisz wszystkie zamówienia we wszystkich kontach handlowców.
         </Alert>

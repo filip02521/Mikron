@@ -14,7 +14,7 @@ import {
   isAdmin,
   isSalesAccount,
 } from "@/lib/auth-roles";
-import type { UserRole } from "@/types/database";
+import type { UserRole, Workspace } from "@/types/database";
 
 type AuthIntent = "read" | "mutate";
 
@@ -25,6 +25,7 @@ export interface SessionUser {
   salesPersonId: string | null;
   mustChangePassword: boolean;
   salesOnboardingCompletedAt: string | null;
+  assignedWorkspaces: Workspace[];
 }
 
 export async function getSessionUser(): Promise<SessionUser | null> {
@@ -38,6 +39,7 @@ export async function getSessionUser(): Promise<SessionUser | null> {
     salesPersonId: profile.sales_person_id,
     mustChangePassword: profile.must_change_password,
     salesOnboardingCompletedAt: profile.sales_onboarding_completed_at,
+    assignedWorkspaces: profile.assigned_workspaces,
   };
 }
 
@@ -100,7 +102,7 @@ export async function requireOperations(
   intent: AuthIntent = "read"
 ): Promise<SessionUser> {
   const user = await getSessionUser();
-  if (!user || !canAccessOperations(user.role)) {
+  if (!user || !canAccessOperations(user.role, user.assignedWorkspaces)) {
     throw new Error("Brak uprawnień do operacji zakupowych");
   }
   if (intent === "mutate") {
@@ -114,7 +116,7 @@ export async function requireWarehouse(
   intent: AuthIntent = "read"
 ): Promise<SessionUser> {
   const user = await getSessionUser();
-  if (!user || !canAccessWarehouse(user.role)) {
+  if (!user || !canAccessWarehouse(user.role, user.assignedWorkspaces)) {
     throw new Error("Brak uprawnień magazynu");
   }
   if (intent === "mutate") {
@@ -128,7 +130,7 @@ export async function requireTeethPanel(
   intent: AuthIntent = "read"
 ): Promise<SessionUser> {
   const user = await getSessionUser();
-  if (!user || !canAccessTeethPanel(user.role)) {
+  if (!user || !canAccessTeethPanel(user.role, user.assignedWorkspaces)) {
     throw new Error("Brak uprawnień do panelu zębów");
   }
   if (intent === "mutate") {
@@ -174,7 +176,7 @@ export async function requireSupplierManagement(
   intent: AuthIntent = "read"
 ): Promise<SessionUser> {
   const user = await getSessionUser();
-  if (!user || !canManageSuppliers(user.role)) {
+  if (!user || !canManageSuppliers(user.role, user.assignedWorkspaces)) {
     throw new Error("Brak uprawnień do zarządzania dostawcami");
   }
   if (intent === "mutate") {
@@ -197,7 +199,7 @@ export async function getSessionUserForMutation(): Promise<SessionUser> {
 /** Podpowiedzi Subiekt przy składaniu / edycji próśb (handlowiec, zakupy, admin). */
 export async function requireSubiektLookup(): Promise<SessionUser> {
   const user = await getSessionUser();
-  if (!user || (!isSalesAccount(user.role) && !canAccessOperations(user.role) && !canAccessTeethPanel(user.role))) {
+  if (!user || (!isSalesAccount(user.role) && !canAccessOperations(user.role, user.assignedWorkspaces) && !canAccessTeethPanel(user.role, user.assignedWorkspaces))) {
     throw new Error("Brak uprawnień do podpowiedzi Subiekt");
   }
   return user;

@@ -9,15 +9,15 @@ import {
 } from "./dentex-amberlux-mould-shapes";
 
 describe("dentex-amberlux-mould-shapes", () => {
-  it("przody — 4 sekcje wg katalogu (dolne, trójkątne, kwadratowe, owalne)", () => {
+  it("przody — 4 sekcje wg katalogu (trójkątne, kwadratowe, owalne, dolne)", () => {
     const groups = dentexAmberluxMouldShapeGroups("anterior");
-    expect(groups.map((g) => g.shapeId)).toEqual(["lower", "triangular", "square", "oval"]);
-    expect(groups[0]!.moulds).toEqual(DENTEX_AMBERLUX_LOWER_ANTERIOR);
-    expect(groups[1]!.moulds).toEqual(DENTEX_AMBERLUX_UPPER_TRIANGULAR);
-    expect(groups[2]!.moulds).toEqual(DENTEX_AMBERLUX_UPPER_SQUARE);
-    expect(groups[3]!.moulds).toEqual(DENTEX_AMBERLUX_UPPER_OVAL);
-    expect(groups[1]!.moulds).toContain("0");
-    expect(groups[1]!.moulds).not.toContain("00");
+    expect(groups.map((g) => g.shapeId)).toEqual(["triangular", "square", "oval", "lower"]);
+    expect(groups[0]!.moulds).toEqual(DENTEX_AMBERLUX_UPPER_TRIANGULAR);
+    expect(groups[1]!.moulds).toEqual(DENTEX_AMBERLUX_UPPER_SQUARE);
+    expect(groups[2]!.moulds).toEqual(DENTEX_AMBERLUX_UPPER_OVAL);
+    expect(groups[3]!.moulds).toEqual(DENTEX_AMBERLUX_LOWER_ANTERIOR);
+    expect(groups[0]!.moulds).toContain("0");
+    expect(groups[0]!.moulds).not.toContain("00");
   });
 
   it("boki — 9 fasonów rzymskich bez IX", () => {

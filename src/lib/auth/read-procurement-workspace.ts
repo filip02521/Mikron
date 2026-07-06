@@ -25,11 +25,11 @@ export async function readProcurementWorkspaceForSession(): Promise<{
 
   const cookieStore = await cookies();
   const raw = cookieStore.get(PROCUREMENT_WORKSPACE_COOKIE)?.value;
-  const workspace = resolveProcurementWorkspace(session.role, raw);
+  const workspace = resolveProcurementWorkspace(session.role, raw, session.assignedWorkspaces);
 
   return {
     realRole: session.role,
     procurementWorkspace: workspace,
-    canSwitchProcurementWorkspace: canSwitchProcurementWorkspace(session.role),
+    canSwitchProcurementWorkspace: canSwitchProcurementWorkspace(session.role, session.assignedWorkspaces),
   };
 }

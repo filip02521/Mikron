@@ -1,6 +1,6 @@
 import { fetchIndividualHistory, fetchNormalHistory } from "@/lib/data/queries";
 import { HistoriaClient } from "@/components/history/HistoriaClient";
-import { getAppRole } from "@/lib/auth-dev";
+import { getSessionUser } from "@/lib/auth";
 import { logDevPageError } from "@/lib/dev/log-page-error";
 import { canAccessOperations, isAdmin } from "@/lib/auth-roles";
 import { Alert } from "@/components/ui/Alert";
@@ -13,9 +13,11 @@ import { pageMetadataFor } from "@/lib/ui/page-metadata";
 export const metadata: Metadata = pageMetadataFor("historia");
 
 export default async function HistoriaPage() {
-  const role = await getAppRole();
+  const session = await getSessionUser();
+  const role = session?.role ?? null;
+  const workspaces = session?.assignedWorkspaces ?? [];
   const canManageHistory = role ? isAdmin(role) : false;
-  const canOperateOrders = role ? canAccessOperations(role) : false;
+  const canOperateOrders = role ? canAccessOperations(role, workspaces) : false;
   let individual: IndividualOrder[] = [];
   let normal: Awaited<ReturnType<typeof fetchNormalHistory>> = [];
   let loadError: string | null = null;

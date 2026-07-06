@@ -36,7 +36,7 @@ import {
   buttonPrimaryClass,
 } from "@/lib/ui/ontime-theme";
 import { ONTIME_AUTH_FOOTER } from "@/lib/ui/ontime-brand";
-import type { UserRole } from "@/types/database";
+import type { UserRole, Workspace } from "@/types/database";
 import { cn } from "@/lib/cn";
 import { createClient } from "@/lib/supabase/client";
 import { NavIcon, navIconTileActiveClassForTone, navIconTileClassForTone } from "@/components/icons/NavIcon";
@@ -46,7 +46,7 @@ import { ProcurementWorkspaceSwitcher } from "@/components/layout/ProcurementWor
 import { actionClearAdminPanelContext } from "@/app/actions/admin-panel-context";
 import type { AdminPanelContext } from "@/lib/auth/admin-panel-context";
 import type { ProcurementWorkspace } from "@/lib/auth/procurement-workspace";
-import { subtitleForProcurementWorkspace } from "@/lib/auth/procurement-workspace";
+import { PROCUREMENT_WORKSPACE_OPTIONS, subtitleForProcurementWorkspace } from "@/lib/auth/procurement-workspace";
 import { isAdmin } from "@/lib/auth-roles";
 import { hrefWithAdminSalesPreview, shouldPreserveSalesPreviewInNav } from "@/lib/nav/sales-preview-href";
 
@@ -249,6 +249,7 @@ export function Sidebar({
   adminPanelContext = "admin",
   procurementWorkspace = null,
   canSwitchProcurementWorkspace = false,
+  assignedWorkspaces = [],
   userEmail,
   salesPersonName,
   userAssignmentLabel,
@@ -260,6 +261,7 @@ export function Sidebar({
   adminPanelContext?: AdminPanelContext;
   procurementWorkspace?: ProcurementWorkspace | null;
   canSwitchProcurementWorkspace?: boolean;
+  assignedWorkspaces?: Workspace[];
   userEmail?: string | null;
   salesPersonName?: string | null;
   userAssignmentLabel?: string | null;
@@ -344,7 +346,12 @@ export function Sidebar({
           <AdminPanelContextSwitcher current={adminPanelContext} />
         ) : null}
         {canSwitchProcurementWorkspace && procurementWorkspace ? (
-          <ProcurementWorkspaceSwitcher current={procurementWorkspace} />
+          <ProcurementWorkspaceSwitcher
+            current={procurementWorkspace}
+            options={PROCUREMENT_WORKSPACE_OPTIONS.filter((opt) =>
+              assignedWorkspaces.includes(opt.value)
+            )}
+          />
         ) : null}
         {showLoginLink ? (
           <Link

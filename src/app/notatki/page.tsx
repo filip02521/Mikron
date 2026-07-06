@@ -20,13 +20,13 @@ export default async function OperationsNotatkiPage({
   searchParams: Promise<{ dzial?: string }>;
 }) {
   const user = await getSessionUser();
-  if (!user?.id || !user.role || !canAccessOperationsNotepad(user.role)) {
+  if (!user?.id || !user.role || !canAccessOperationsNotepad(user.role, user.assignedWorkspaces)) {
     redirect("/login");
   }
 
   const { dzial } = await searchParams;
-  const parsed = parseOperationsDepartment(dzial, user.role);
-  const department = parsed ?? defaultDepartmentForRole(user.role);
+  const parsed = parseOperationsDepartment(dzial, user.role, user.assignedWorkspaces);
+  const department = parsed ?? defaultDepartmentForRole(user.role, user.assignedWorkspaces);
 
   if (!department) {
     return <Alert tone="error">Brak dostępu do notatek.</Alert>;
@@ -62,6 +62,7 @@ export default async function OperationsNotatkiPage({
       department={department}
       userId={user.id}
       role={user.role}
+      assignedWorkspaces={user.assignedWorkspaces}
       loadError={loadError}
     />
   );

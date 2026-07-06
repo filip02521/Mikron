@@ -980,6 +980,7 @@ export function SubiektProductLineFields({
           <SubiektInputShell loading={mikranInputLoading}>
             <Input
               disabled={disabled}
+              readOnly={linkedFromSubiekt}
               placeholder="896"
               inputMode="numeric"
               maxLength={MAX_MIKRAN_CODE_LEN}
@@ -990,7 +991,8 @@ export function SubiektProductLineFields({
                 compactControls
                   ? "min-h-11 px-2.5 text-base tabular-nums sm:min-h-[2.5rem] sm:text-sm"
                   : "min-h-12 px-2.5 text-base tabular-nums sm:min-h-[2.75rem] sm:text-sm",
-                mikranInputLoading ? "pr-9 text-left" : "text-center"
+                mikranInputLoading ? "pr-9 text-left" : "text-center",
+                linkedFromSubiekt && "bg-slate-50 text-slate-600"
               )}
               onKeyDown={handleTypeaheadKeyDown}
               {...typeaheadInputA11y("plu")}

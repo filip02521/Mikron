@@ -7,18 +7,18 @@ import {
 } from "./ivoclar-vivodent-dcl-mould-shapes";
 
 describe("ivoclar-vivodent-dcl-mould-shapes", () => {
-  it("grupuje przody na trójkątne / owalne / kwadratowe / dolne", () => {
+  it("grupuje przody na trójkątne / kwadratowe / owalne / dolne", () => {
     const groups = ivoclarVivodentDclMouldShapeGroups("anterior");
     expect(groups).toHaveLength(4);
     expect(groups.map((g) => g.label)).toEqual([
       "Trójkątne",
-      "Owalne",
       "Kwadratowe",
+      "Owalne",
       "Dolne",
     ]);
     expect(groups[0]?.moulds).toContain("A11");
-    expect(groups[1]?.moulds).toContain("A25");
-    expect(groups[2]?.moulds).toContain("A54");
+    expect(groups[1]?.moulds).toContain("A54");
+    expect(groups[2]?.moulds).toContain("A25");
     expect(groups[3]?.moulds).toEqual(VIVODENT_DCL_LOWER_ANTERIOR);
   });
 

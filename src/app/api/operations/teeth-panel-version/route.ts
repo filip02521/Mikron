@@ -5,7 +5,7 @@ import { countTeethQueue, fetchTeethQueueVersion } from "@/lib/data/teeth-queue"
 
 export async function GET() {
   const user = await getSessionUser();
-  if (!user || !canAccessTeethPanel(user.role)) {
+  if (!user || !canAccessTeethPanel(user.role, user.assignedWorkspaces)) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 

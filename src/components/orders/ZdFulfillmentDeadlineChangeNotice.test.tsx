@@ -25,7 +25,7 @@ function rowWithDeadlineChange(
     supplierName,
     lines: [],
     zdFulfillment: { deadline: "2026-06-26", dokNr: "ZD 1", deadlineChange: change },
-  } as MyOrderRow;
+  } as unknown as MyOrderRow;
 }
 
 describe("zdFulfillmentDeadlineChangeShortLabel", () => {

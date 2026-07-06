@@ -16,7 +16,7 @@ export const metadata: Metadata = pageMetadataFor("dostawy");
 
 export default async function DostawyPage() {
   const session = await getSessionUser();
-  const isWarehouse = session != null && canAccessWarehouse(session.role);
+  const isWarehouse = session != null && canAccessWarehouse(session.role, session.assignedWorkspaces);
 
   let initialPayload: UpcomingDeliveriesPayload | null = null;
   let loadError: string | null = null;

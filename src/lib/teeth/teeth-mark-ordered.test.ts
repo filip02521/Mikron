@@ -9,9 +9,12 @@ import {
 describe("analyzeTeethMarkOrdered", () => {
   it("separates orders with and without spec", () => {
     const completeRow = {
+      id: "t1",
+      order_id: "a",
       position: 1,
       color: "A2",
       mould: "T1",
+      size: null,
       jaw: "upper" as const,
       kind: "anterior" as const,
     };
@@ -28,7 +31,7 @@ describe("analyzeTeethMarkOrdered", () => {
 
   it("treats incomplete rows as missing spec", () => {
     const map = new Map([
-      ["a", { teeth_details: [{ position: 1, color: "A2" }] }],
+      ["a", { teeth_details: [{ id: "t2", order_id: "a", position: 1, color: "A2", mould: null, size: null, jaw: null, kind: null }] }],
     ]);
     const analysis = analyzeTeethMarkOrdered(["a"], map);
     expect(analysis.withSpecIds).toEqual([]);

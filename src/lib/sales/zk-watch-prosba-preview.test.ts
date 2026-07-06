@@ -40,6 +40,7 @@ const baseOrder = {
   zd_fulfillment_deadline_changed_at: null,
   sales_acknowledged_at: null,
   sales_cancelled_at: null,
+  is_teeth: false,
 };
 
 describe("buildZkWatchOpenProsbaPreviewEntries", () => {
@@ -135,6 +136,39 @@ describe("buildZkWatchProsbaPreviewEntries", () => {
 
     expect(entries.map((entry) => entry.order.id)).toEqual(["mine"]);
   });
+
+  it("pokazuje anulowaną prośbę (procurement cancel) w wcześniejszych prośbach", () => {
+    const orders = [
+      { id: "proc-cancel", ...baseOrder, status: "Anulowane", delivered_quantity: "0" },
+    ];
+    const hints = computeZkWatchOrderHints(watch, orders);
+    const entries = buildZkWatchProsbaPreviewEntries(watch, orders, hints);
+
+    expect(entries).toHaveLength(1);
+    expect(entries[0]?.order.id).toBe("proc-cancel");
+    expect(entries[0]?.isOpen).toBe(false);
+    expect(entries[0]?.statusLabel).toBe("Anulowana");
+  });
+
+  it("pokazuje anulowaną prośbę (full sales cancel) w wcześniejszych prośbach", () => {
+    const orders = [
+      {
+        id: "sales-cancel",
+        ...baseOrder,
+        status: "Anulowane",
+        delivered_quantity: "0",
+        sales_cancelled_at: "2026-06-20T10:00:00Z",
+        sales_acknowledged_at: "2026-06-20T10:00:00Z",
+      },
+    ];
+    const hints = computeZkWatchOrderHints(watch, orders);
+    const entries = buildZkWatchProsbaPreviewEntries(watch, orders, hints);
+
+    expect(entries).toHaveLength(1);
+    expect(entries[0]?.order.id).toBe("sales-cancel");
+    expect(entries[0]?.isOpen).toBe(false);
+    expect(entries[0]?.statusLabel).toBe("Anulowana");
+  });
 });
 
 describe("resolveZkProsbaPreviewDelivery", () => {
@@ -152,6 +186,7 @@ describe("resolveZkProsbaPreviewDelivery", () => {
       formatZkProsbaPreviewMetaLine({
         quantityLabel: "2 szt.",
         progressLabel: "2/2 szt.",
+        requestKind: "zamowienie",
         ...delivery,
       })
     ).toBe("Liczba: 2 szt. · 2/2 szt.");
@@ -204,6 +239,7 @@ describe("formatZkProsbaPreviewMetaLine", () => {
       formatZkProsbaPreviewMetaLine({
         quantityLabel: "2 szt.",
         progressLabel: "0/2",
+        requestKind: "zamowienie",
         ...delivery,
       })
     ).toContain("Z historii:");
@@ -218,15 +254,41 @@ describe("formatZkProsbaPreviewMetaLine", () => {
     });
 
     expect(formatZkProsbaPreviewMetaLine({
-      quantityLabel: "1 szt.",
+      quantityLabel: "—",
       progressLabel: null,
+      requestKind: "informacja",
       ...delivery,
-    })).toContain("Termin dostawy nie dotyczy");
+    })).toBe("Prośba informacyjna — bez terminu dostawy");
     expect(formatZkProsbaPreviewMetaLine({
-      quantityLabel: "1 szt.",
+      quantityLabel: "—",
       progressLabel: null,
+      requestKind: "informacja",
       ...delivery,
     })).not.toContain("brak terminu");
+  });
+
+  it("pokazuje termin ZD dla informacja gdy jest dostępny", () => {
+    const delivery = resolveZkProsbaPreviewDelivery({
+      ...baseOrder,
+      request_kind: "informacja",
+      status: "Nowe",
+      ordered_at: null,
+      action_at: "2026-06-01T08:00:00Z",
+      delivery_at: null,
+      zd_fulfillment_deadline: "2026-07-15",
+      zd_fulfillment_deadline_changed_at: null,
+    });
+
+    expect(delivery.deliveryDisplay).not.toBeNull();
+    expect(delivery.deliveryDisplay?.primaryLabel).toContain("15.07");
+    expect(
+      formatZkProsbaPreviewMetaLine({
+        quantityLabel: "—",
+        progressLabel: null,
+        requestKind: "informacja",
+        ...delivery,
+      })
+    ).toContain("15.07");
   });
 
   it("nie pokazuje Dziś gdy termin ZD = dzień złożenia u dostawcy", () => {
@@ -241,11 +303,13 @@ describe("formatZkProsbaPreviewMetaLine", () => {
     expect(formatZkProsbaPreviewMetaLine({
       quantityLabel: "2 szt.",
       progressLabel: null,
+      requestKind: "zamowienie",
       ...delivery,
     })).toBe("Liczba: 2 szt. · Ustalamy termin dostawy");
     expect(formatZkProsbaPreviewMetaTooltip({
       quantityLabel: "2 szt.",
       progressLabel: null,
+      requestKind: "zamowienie",
       ...delivery,
     })).toContain("Potwierdzanie terminu");
   });

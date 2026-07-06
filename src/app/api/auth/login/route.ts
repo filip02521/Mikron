@@ -229,8 +229,10 @@ export async function POST(request: NextRequest) {
       adminPanelContext,
       procurementWorkspace: resolveProcurementWorkspace(
         role,
-        request.cookies.get(PROCUREMENT_WORKSPACE_COOKIE)?.value
+        request.cookies.get(PROCUREMENT_WORKSPACE_COOKIE)?.value,
+        profile.assigned_workspaces
       ),
+      workspaces: profile.assigned_workspaces,
     });
   }
 
@@ -241,10 +243,11 @@ export async function POST(request: NextRequest) {
 
   if (!profile.must_change_password) {
     const role = profile.role as UserRole;
-    if (grantedProcurementFunctions(role).length > 0) {
+    if (grantedProcurementFunctions(role, profile.assigned_workspaces).length > 0) {
       const workspace = resolveProcurementWorkspace(
         role,
-        request.cookies.get(PROCUREMENT_WORKSPACE_COOKIE)?.value
+        request.cookies.get(PROCUREMENT_WORKSPACE_COOKIE)?.value,
+        profile.assigned_workspaces
       );
       if (workspace) {
         jsonResponse.cookies.set(buildProcurementWorkspaceCookie(workspace));

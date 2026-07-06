@@ -273,7 +273,7 @@ export function enrichMyOrderSalesUi(row: MyOrderRow): MyOrderSalesUi {
     return {
       headline: zd ? "Po terminie u dostawcy" : "Po przewidywanym terminie",
       headlineTone: "warning",
-      subline: row.timingLabel?.replace(" · po terminie", "") ?? null,
+      subline: null,
       sortPriority: 4,
     };
   }

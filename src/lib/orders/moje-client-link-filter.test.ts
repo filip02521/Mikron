@@ -1,41 +1,10 @@
 import { describe, expect, it } from "vitest";
 import { filterMyOrderRowsByClientLink } from "./moje-client-link-filter";
 import type { MyOrderRow } from "@/lib/orders/my-order-presenter";
+import { createTestMyOrderLine, createTestMyOrderRow } from "./test-fixtures";
 
 function row(partial: Partial<MyOrderRow> & { lines: MyOrderRow["lines"] }): MyOrderRow {
-  return {
-    id: "r1",
-    kind: "zamowienie",
-    lineCount: partial.lines.length,
-    submittedLabel: "",
-    supplierName: "Dostawca",
-    product: "P",
-    symbol: null,
-    quantityLabel: "1",
-    progressLabel: null,
-    statusTitle: "Zamówione",
-    statusDetail: null,
-    timingLabel: null,
-    badgeVariant: "info",
-    rowColor: "",
-    orderIds: ["o1"],
-    acknowledgeMode: "none",
-    pickupPendingCount: 0,
-    pickupPendingIds: [],
-    pickupReadyTotal: 0,
-    pickupAcknowledgedCount: 0,
-    canCancelBySales: false,
-    salesCancelPhase: null,
-    salesCancelOrderIds: [],
-    cancelNoticeOrderIds: [],
-    cancelledAckOrderIds: [],
-    clientLabel: "Klinika Smile",
-    supplierId: "s1",
-    salesPersonId: "sp1",
-    requestKind: "zamowienie",
-    canEditBySales: true,
-    ...partial,
-  };
+  return createTestMyOrderRow({ ...partial, lineCount: partial.lines.length });
 }
 
 describe("filterMyOrderRowsByClientLink", () => {
@@ -44,20 +13,12 @@ describe("filterMyOrderRowsByClientLink", () => {
       row({
         id: "a",
         lines: [
-          {
+          createTestMyOrderLine({
             id: "l1",
             product: "P",
-            symbol: null,
-            subiektTwId: null,
-            mikranCode: null,
-            quantity: "1",
-            quantityLabel: "1",
-            progressLabel: null,
-            stockStatus: "waiting",
-            canAcknowledgePickup: false,
             clientName: "Inna",
             clientKhId: 42,
-          },
+          }),
         ],
       }),
     ];
@@ -74,40 +35,24 @@ describe("filterMyOrderRowsByClientLink", () => {
         id: "a",
         clientLabel: "Klinika Smile",
         lines: [
-          {
+          createTestMyOrderLine({
             id: "l1",
             product: "P",
-            symbol: null,
-            subiektTwId: null,
-            mikranCode: null,
-            quantity: "1",
-            quantityLabel: "1",
-            progressLabel: null,
-            stockStatus: "waiting",
-            canAcknowledgePickup: false,
             clientName: "Klinika Smile",
             clientKhId: null,
-          },
+          }),
         ],
       }),
       row({
         id: "b",
         clientLabel: "Inny Klient",
         lines: [
-          {
+          createTestMyOrderLine({
             id: "l2",
             product: "Q",
-            symbol: null,
-            subiektTwId: null,
-            mikranCode: null,
-            quantity: "1",
-            quantityLabel: "1",
-            progressLabel: null,
-            stockStatus: "waiting",
-            canAcknowledgePickup: false,
             clientName: "Inny",
             clientKhId: null,
-          },
+          }),
         ],
       }),
     ];
@@ -126,20 +71,12 @@ describe("filterMyOrderRowsByClientLink", () => {
         sourceZkWatchId: "watch-1",
         sourceZkNumber: "ZK/2026/0142",
         lines: [
-          {
+          createTestMyOrderLine({
             id: "l1",
             product: "P",
-            symbol: null,
-            subiektTwId: null,
-            mikranCode: null,
-            quantity: "1",
-            quantityLabel: "1",
-            progressLabel: null,
-            stockStatus: "waiting",
-            canAcknowledgePickup: false,
             clientName: "Inna nazwa wpisana",
             clientKhId: null,
-          },
+          }),
         ],
       }),
     ];

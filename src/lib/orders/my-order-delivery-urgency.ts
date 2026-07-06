@@ -210,6 +210,12 @@ export function resolveMyOrderDeliveryRowVisual(
   const partialVisual = resolveMyOrderPartialStockRowVisual(row);
   if (partialVisual) return partialVisual;
 
+  if (row.kind === "informacja") {
+    if (!row.zdFulfillment) return null;
+    const { urgency } = resolveMyOrderDeliveryUrgency(row, at);
+    return deliveryUrgencyRowVisual(urgency);
+  }
+
   if (row.statusTitle !== "Zamówione" && row.statusTitle !== "Częściowo_zrealizowane") {
     return null;
   }

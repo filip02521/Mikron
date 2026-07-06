@@ -120,7 +120,7 @@ function SalesCancelledNoticeModal({
                   <span className="font-medium text-slate-900">{line.symbol}</span>
                   {" — "}
                   {line.products}
-                  {line.quantity && line.quantity !== "—" ? (
+                  {line.quantity && line.quantity !== "—" && line.quantity !== "-" && line.requestKind !== "informacja" ? (
                     <span className="text-slate-500"> · {line.quantity}</span>
                   ) : null}
                 </li>

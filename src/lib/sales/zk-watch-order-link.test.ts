@@ -40,6 +40,7 @@ function linkOrder(
     zd_fulfillment_deadline_changed_at: null,
     sales_acknowledged_at: null,
     sales_cancelled_at: null,
+    is_teeth: false,
     ...partial,
   };
 }
@@ -126,6 +127,8 @@ describe("productMatchesZkLine + merge checks", () => {
       quantity: 2,
       subiektTwId: 100,
       arrived: false,
+      shelf_marked: false,
+      completed_manually: false,
     };
     expect(
       productMatchesZkLine(
@@ -148,6 +151,8 @@ describe("productMatchesZkLine + merge checks", () => {
           product: "Filtr",
           symbol: "FIL",
           subiektTwId: 200,
+          shelf_marked: false,
+          completed_manually: false,
         }
       )
     ).toBe(false);
@@ -758,6 +763,8 @@ describe("isZkLineFullyDeliveredByOrders", () => {
       quantity: 3,
       subiektTwId: 100,
       arrived: false,
+      shelf_marked: false,
+      completed_manually: false,
     };
     const order = linkOrder({
       id: "less-order",
@@ -796,6 +803,8 @@ describe("buildZkLineProsbaQuantityMeta", () => {
       quantity: 3,
       subiektTwId: 100,
       arrived: false,
+      shelf_marked: false,
+      completed_manually: false,
     };
     const order = linkOrder({
       id: "o-less",
@@ -821,6 +830,8 @@ describe("buildZkLineProsbaQuantityMeta", () => {
       quantity: 2,
       subiektTwId: 100,
       arrived: false,
+      shelf_marked: false,
+      completed_manually: false,
     };
 
     const meta = buildZkLineProsbaQuantityMeta(line, [], w);
@@ -851,6 +862,8 @@ describe("buildZkLineProsbaQuantityMeta", () => {
       quantity: 3,
       subiektTwId: 100,
       arrived: false,
+      shelf_marked: false,
+      completed_manually: false,
     };
     const otherClientOrder = linkOrder({
       id: "other",
@@ -888,6 +901,8 @@ describe("buildZkLineProsbaQuantityMeta", () => {
       quantity: 5,
       subiektTwId: 100,
       arrived: false,
+      shelf_marked: false,
+      completed_manually: false,
     };
     const closed = linkOrder({
       id: "closed",
@@ -953,14 +968,21 @@ describe("computeAllZkWatchOrderHints", () => {
 });
 
 function buildLineFromWatch(w: SalesZkWatch) {
-  const pos = w.subiekt_snapshot!.dok_Pozycja![0]!;
+  const snapshot = w.subiekt_snapshot as { dok_Pozycja: Array<Record<string, unknown>> } | null;
+  const pos = snapshot!.dok_Pozycja![0]! as {
+    tw_Nazwa: string;
+    tw_Symbol: string | null;
+    ob_TowId: number | null;
+  };
   return {
     key: "ob:1",
-    product: pos.tw_Nazwa!,
+    product: pos.tw_Nazwa,
     symbol: pos.tw_Symbol ?? null,
     quantityLabel: "5 szt.",
     quantity: 5,
     subiektTwId: pos.ob_TowId ?? null,
     arrived: false,
+    shelf_marked: false,
+    completed_manually: false,
   };
 }

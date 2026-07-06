@@ -45,6 +45,7 @@ export function mapOrderToForSomeoneLine(item: IndividualOrder): ForSomeoneLine 
     quantity: formatQuantityWithCancellation(item),
     fromSubiekt: isSubiektVerifiedOrder(item),
     subiektTwId: item.subiekt_tw_id ?? null,
+    requestKind: item.request_kind ?? "zamowienie",
     informacjaViaPanel: isInformacjaQueueViaDailyPanel(item),
     informacjaStockOut: isInformacjaStockOutReorder(item),
     submittedAt: submittedAt(item),

@@ -77,7 +77,57 @@ describe("isZdEtaSyncEligible", () => {
         })
       )
     ).toBe(true);
-    expect(isZdEtaSyncEligible(baseOrder({ request_kind: "informacja" }))).toBe(false);
+    expect(isZdEtaSyncEligible(baseOrder({ request_kind: "informacja" }))).toBe(true);
+  });
+
+  it("kwalifikuje informację z symbol lub mikran_code", () => {
+    expect(
+      isZdEtaSyncEligible(
+        baseOrder({ request_kind: "informacja", status: "Nowe", subiekt_tw_id: 10 })
+      )
+    ).toBe(true);
+    expect(
+      isZdEtaSyncEligible(
+        baseOrder({ request_kind: "informacja", status: "Nowe", symbol: "-", subiekt_tw_id: null, mikran_code: "MK1" })
+      )
+    ).toBe(true);
+  });
+
+  it("odrzuca informację bez danych do dopasowania ZD", () => {
+    expect(
+      isZdEtaSyncEligible(
+        baseOrder({ request_kind: "informacja", status: "Nowe", symbol: "-", subiekt_tw_id: null, mikran_code: null })
+      )
+    ).toBe(false);
+  });
+
+  it("odrzuca informację zrealizowaną lub anulowaną", () => {
+    expect(
+      isZdEtaSyncEligible(
+        baseOrder({ request_kind: "informacja", status: "Zrealizowane" })
+      )
+    ).toBe(false);
+    expect(
+      isZdEtaSyncEligible(
+        baseOrder({ request_kind: "informacja", status: "Anulowane" })
+      )
+    ).toBe(false);
+  });
+
+  it("odrzuca informację w weryfikacji", () => {
+    expect(
+      isZdEtaSyncEligible(
+        baseOrder({ request_kind: "informacja", status: "Weryfikacja" })
+      )
+    ).toBe(false);
+  });
+
+  it("odrzuca informację bez ordered_at — nie zamówiono u dostawcy", () => {
+    expect(
+      isZdEtaSyncEligible(
+        baseOrder({ request_kind: "informacja", status: "Nowe", ordered_at: null })
+      )
+    ).toBe(false);
   });
 });
 
@@ -277,11 +327,11 @@ describe("needsZdEtaSync", () => {
     ).toBe(false);
   });
 
-  it("pomija informacje i statusy bez ETA", () => {
+  it("pomija statusy bez ETA i informację bez danych do dopasowania", () => {
     const now = Date.now();
     expect(
       needsZdEtaSync(
-        baseOrder({ request_kind: "informacja" }),
+        baseOrder({ request_kind: "informacja", symbol: "-", subiekt_tw_id: null, mikran_code: null }),
         stats,
         "LACZNIE",
         now
@@ -289,6 +339,30 @@ describe("needsZdEtaSync", () => {
     ).toBe(false);
     expect(
       needsZdEtaSync(baseOrder({ status: "Nowe" }), stats, "LACZNIE", now)
+    ).toBe(false);
+  });
+
+  it("kwalifikuje informację z symbol do sync ZD", () => {
+    const now = Date.now();
+    expect(
+      needsZdEtaSync(
+        baseOrder({ request_kind: "informacja", status: "Nowe", ordered_at: "2026-06-01T10:00:00+02:00" }),
+        stats,
+        "LACZNIE",
+        now
+      )
+    ).toBe(true);
+  });
+
+  it("nie kwalifikuje informacji bez ordered_at do sync ZD", () => {
+    const now = Date.now();
+    expect(
+      needsZdEtaSync(
+        baseOrder({ request_kind: "informacja", status: "Nowe", ordered_at: null }),
+        stats,
+        "LACZNIE",
+        now
+      )
     ).toBe(false);
   });
 
@@ -415,9 +489,10 @@ describe("selectZdEtaSyncCandidates", () => {
     const now = new Date("2026-06-18T12:00:00+02:00").getTime();
     const supplier = {
       id: "s1",
+      name: "Dostawca",
       subiektKhId: 1,
       additionalSubiektKhIds: [],
-    } as import("@/lib/data/supplier-refs").AppSupplierRef;
+    } as import("@/lib/subiekt/match-supplier").AppSupplierRef;
     const supplierById = new Map([["s1", supplier]]);
     const statsMap = { s1: stats };
 
@@ -452,9 +527,10 @@ describe("selectZdEtaSyncCandidates", () => {
     const now = new Date("2026-06-18T12:00:00+02:00").getTime();
     const supplier = {
       id: "s1",
+      name: "Dostawca",
       subiektKhId: 1,
       additionalSubiektKhIds: [],
-    } as import("@/lib/data/supplier-refs").AppSupplierRef;
+    } as import("@/lib/subiekt/match-supplier").AppSupplierRef;
     const supplierById = new Map([["s1", supplier]]);
     const statsMap = { s1: stats };
 
@@ -520,6 +596,8 @@ describe("shouldMarkMojeZdEtaSessionDone", () => {
       shouldMarkMojeZdEtaSessionDone({
         candidates: 5,
         processed: 2,
+        updated: 0,
+        cleared: 0,
         subiektOffline: true,
       })
     ).toBe(false);
@@ -527,6 +605,8 @@ describe("shouldMarkMojeZdEtaSessionDone", () => {
       shouldMarkMojeZdEtaSessionDone({
         candidates: 5,
         processed: 2,
+        updated: 0,
+        cleared: 0,
         timedOut: true,
       })
     ).toBe(false);
@@ -537,6 +617,8 @@ describe("shouldMarkMojeZdEtaSessionDone", () => {
       shouldMarkMojeZdEtaSessionDone({
         candidates: 3,
         processed: 3,
+        updated: 0,
+        cleared: 0,
       })
     ).toBe(true);
   });
@@ -550,6 +632,8 @@ describe("shouldMarkMojeZdEtaSessionDone", () => {
           subiektOffline: true,
           candidates: 0,
           processed: 0,
+          updated: 0,
+          cleared: 0,
         },
         4
       )
@@ -560,11 +644,11 @@ describe("shouldMarkMojeZdEtaSessionDone", () => {
 describe("shouldRefreshMojeZdEtaPage", () => {
   it("odświeża tylko gdy zaktualizowano lub wyczyszczono terminy", () => {
     expect(shouldRefreshMojeZdEtaPage(null)).toBe(false);
-    expect(shouldRefreshMojeZdEtaPage({ candidates: 3, processed: 3 })).toBe(false);
-    expect(shouldRefreshMojeZdEtaPage({ candidates: 2, processed: 2, updated: 1 })).toBe(
+    expect(shouldRefreshMojeZdEtaPage({ candidates: 3, processed: 3, updated: 0, cleared: 0 })).toBe(false);
+    expect(shouldRefreshMojeZdEtaPage({ candidates: 2, processed: 2, updated: 1, cleared: 0 })).toBe(
       true
     );
-    expect(shouldRefreshMojeZdEtaPage({ candidates: 1, processed: 1, cleared: 1 })).toBe(
+    expect(shouldRefreshMojeZdEtaPage({ candidates: 1, processed: 1, updated: 0, cleared: 1 })).toBe(
       true
     );
   });
@@ -576,7 +660,7 @@ describe("shouldSkipMojeZdEtaSessionSync", () => {
   it("nie pomija gdy spadła liczba pozycji po częściowym syncu", () => {
     const state = buildMojeZdEtaSessionState(
       20,
-      { candidates: 20, processed: 20 },
+      { candidates: 20, processed: 20, updated: 0, cleared: 0 },
       now
     );
     expect(shouldSkipMojeZdEtaSessionSync(8, state, now)).toBe(false);
@@ -585,7 +669,7 @@ describe("shouldSkipMojeZdEtaSessionSync", () => {
   it("pomija gdy pełny przebieg i ta sama liczba pozycji", () => {
     const state = buildMojeZdEtaSessionState(
       8,
-      { candidates: 8, processed: 8 },
+      { candidates: 8, processed: 8, updated: 0, cleared: 0 },
       now
     );
     expect(shouldSkipMojeZdEtaSessionSync(8, state, now)).toBe(true);
@@ -594,7 +678,7 @@ describe("shouldSkipMojeZdEtaSessionSync", () => {
   it("nie pomija gdy wzrosła liczba pozycji", () => {
     const state = buildMojeZdEtaSessionState(
       5,
-      { candidates: 5, processed: 5 },
+      { candidates: 5, processed: 5, updated: 0, cleared: 0 },
       now
     );
     expect(shouldSkipMojeZdEtaSessionSync(9, state, now)).toBe(false);
@@ -605,14 +689,14 @@ describe("shouldRetryMojeZdEtaSync", () => {
   it("ponawia przy częściowym wyniku do limitu", () => {
     expect(
       shouldRetryMojeZdEtaSync(
-        { candidates: 4, processed: 1, timedOut: true },
+        { candidates: 4, processed: 1, updated: 0, cleared: 0, timedOut: true },
         0,
         2
       )
     ).toBe(true);
     expect(
       shouldRetryMojeZdEtaSync(
-        { candidates: 4, processed: 1, timedOut: true },
+        { candidates: 4, processed: 1, updated: 0, cleared: 0, timedOut: true },
         2,
         2
       )
@@ -623,19 +707,19 @@ describe("shouldRetryMojeZdEtaSync", () => {
 describe("zdDocumentMatchesSupplierKhIds", () => {
   it("akceptuje dokument z kh_Id dostawcy", () => {
     expect(
-      zdDocumentMatchesSupplierKhIds({ dok_DostawcaId: 9001, dok_Pozycja: [] }, [9001, 9002])
+      zdDocumentMatchesSupplierKhIds({ dok_Id: 1, dok_DostawcaId: 9001, dok_Pozycja: [] }, [9001, 9002])
     ).toBe(true);
   });
 
   it("odrzuca dokument innego kontrahenta", () => {
     expect(
-      zdDocumentMatchesSupplierKhIds({ dok_DostawcaId: 7777, dok_Pozycja: [] }, [9001])
+      zdDocumentMatchesSupplierKhIds({ dok_Id: 2, dok_DostawcaId: 7777, dok_Pozycja: [] }, [9001])
     ).toBe(false);
   });
 
   it("odrzuca dopasowanie przy pustym zbiorze kh_Id", () => {
     expect(
-      zdDocumentMatchesSupplierKhIds({ dok_DostawcaId: 9001, dok_Pozycja: [] }, [])
+      zdDocumentMatchesSupplierKhIds({ dok_Id: 3, dok_DostawcaId: 9001, dok_Pozycja: [] }, [])
     ).toBe(false);
   });
 });
@@ -643,9 +727,10 @@ describe("zdDocumentMatchesSupplierKhIds", () => {
 describe("countZdEtaMojeClientSyncTriggers", () => {
   const supplier = {
     id: "s1",
+    name: "Dostawca",
     subiektKhId: 1,
     additionalSubiektKhIds: [],
-  } as import("@/lib/data/supplier-refs").AppSupplierRef;
+  } as import("@/lib/subiekt/match-supplier").AppSupplierRef;
 
   it("nie liczy ponownie w krótkim TTL miss (spójnie z cronem)", () => {
     const orders = [
@@ -673,10 +758,13 @@ describe("countZdEtaMojeClientSyncTriggers", () => {
   });
 
   it("pomija pozycje ze świeżą synchronizacją ZD (TTL)", () => {
+    const futureDeadline = new Date(Date.now() + 30 * 86_400_000)
+      .toISOString()
+      .slice(0, 10);
     const orders = [
       baseOrder({
         zd_fulfillment_source: "zd",
-        zd_fulfillment_deadline: "2026-07-01",
+        zd_fulfillment_deadline: futureDeadline,
         zd_fulfillment_dok_nr: "ZD/1",
         zd_fulfillment_synced_at: new Date().toISOString(),
       }),
@@ -687,10 +775,13 @@ describe("countZdEtaMojeClientSyncTriggers", () => {
   });
 
   it("liczy pozycje ze starym terminem ZD po upływie TTL", () => {
+    const futureDeadline = new Date(Date.now() + 30 * 86_400_000)
+      .toISOString()
+      .slice(0, 10);
     const orders = [
       baseOrder({
         zd_fulfillment_source: "zd",
-        zd_fulfillment_deadline: "2026-07-01",
+        zd_fulfillment_deadline: futureDeadline,
         zd_fulfillment_dok_nr: "ZD/1",
         zd_fulfillment_synced_at: new Date(
           Date.now() - ZD_ETA_SYNC_TTL_MS - 60_000
@@ -703,10 +794,13 @@ describe("countZdEtaMojeClientSyncTriggers", () => {
   });
 
   it("liczy szybciej pozycje ze znanym dok_id (krótszy TTL)", () => {
+    const futureDeadline = new Date(Date.now() + 30 * 86_400_000)
+      .toISOString()
+      .slice(0, 10);
     const orders = [
       baseOrder({
         zd_fulfillment_source: "zd",
-        zd_fulfillment_deadline: "2026-07-01",
+        zd_fulfillment_deadline: futureDeadline,
         zd_fulfillment_dok_id: 99,
         zd_fulfillment_dok_nr: "ZD/1",
         zd_fulfillment_synced_at: new Date(

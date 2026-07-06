@@ -70,6 +70,7 @@ export function individualOrderToZkLinkableOrder(
     zd_fulfillment_deadline_changed_at: order.zd_fulfillment_deadline_changed_at ?? null,
     zd_fulfillment_deadline_change_seen_at:
       order.zd_fulfillment_deadline_change_seen_at ?? null,
+    is_teeth: order.is_teeth ?? null,
     sales_acknowledged_at: order.sales_acknowledged_at ?? null,
     sales_cancelled_at: order.sales_cancelled_at ?? null,
   };

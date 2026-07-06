@@ -147,11 +147,13 @@ describe("my-order-delivery-timing-display", () => {
   });
 
   it("buduje blok dla terminu z ZD", () => {
+    const futureKey = formatDateString(addDays(todayInWarsaw(), 14));
+    const futurePl = formatDateString(addDays(todayInWarsaw(), 14), "dd.MM.yyyy");
     const display = buildMyOrderDeliveryTimingDisplay(
       row({
-        timingLabel: "03.07.2026 · ZD/81/2026",
+        timingLabel: `${futurePl} · ZD/81/2026`,
         zdFulfillment: {
-          deadline: "2026-07-03",
+          deadline: futureKey,
           dokNr: "ZD/81/2026",
           syncedAt: "2026-06-18T08:00:00Z",
           source: "zd",
@@ -235,6 +237,27 @@ describe("my-order-delivery-timing-display", () => {
       shouldShowMyOrderExpandedDeliveryTiming(
         row({ acknowledgeMode: "pickup", pickupPendingCount: 1 }),
         true
+      )
+    ).toBe(false);
+  });
+
+  it("pokazuje blok ZD dla informacja bez showProgress", () => {
+    const zdFulfillment = {
+      deadline: "2026-07-15",
+      dokNr: "ZD/1/2026",
+      syncedAt: null,
+      source: "zd" as const,
+    };
+    expect(
+      shouldShowMyOrderExpandedDeliveryTiming(
+        row({ kind: "informacja", zdFulfillment, timingLabel: "15.07.2026 · ZD/1/2026", statusTitle: "Oczekiwanie na magazyn" }),
+        false
+      )
+    ).toBe(true);
+    expect(
+      shouldShowMyOrderExpandedDeliveryTiming(
+        row({ kind: "informacja", zdFulfillment, statusTitle: "Dostępne" }),
+        false
       )
     ).toBe(false);
   });

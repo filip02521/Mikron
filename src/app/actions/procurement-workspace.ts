@@ -25,7 +25,7 @@ export async function actionSetProcurementWorkspace(workspace: ProcurementWorksp
   if (!parseProcurementWorkspace(workspace)) {
     throw new Error("Nieprawidłowy obszar pracy");
   }
-  if (!hasProcurementFunction(user.role, workspace)) {
+  if (!hasProcurementFunction(user.role, workspace, user.assignedWorkspaces)) {
     throw new Error("Ten obszar nie jest dostępny na Twoim koncie");
   }
 

@@ -16,6 +16,9 @@ export type VacationNote =
   | "OSTATNIE_ZAMOWIENIE";
 export type UserRole = "admin" | "zakupy" | "zakupy_zeby" | "magazyn" | "sales" | "sales_manager";
 
+/** Obszary robocze przypisywane użytkownikom przez admina. */
+export type Workspace = "dostawy" | "zeby" | "magazyn";
+
 /** Dzień tygodnia dla harmonogramu zębów: 1=Pn, 2=Wt, 3=Śr, 4=Cz, 5=Pt. */
 export type DayOfWeek = 1 | 2 | 3 | 4 | 5;
 

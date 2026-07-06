@@ -4,6 +4,7 @@
 import { describe, expect, it } from "vitest";
 import { render, screen } from "@testing-library/react";
 import { ProcurementRequestClientMeta, procurementGroupRequestNote } from "@/components/summary/ProcurementRequestLine";
+import type { ForSomeoneLine } from "@/lib/orders/summary-workspace";
 import {
   shouldSuppressProcurementGroupPlannedOrderDate,
   shouldSuppressProcurementLineClient,
@@ -50,7 +51,7 @@ describe("procurementGroupRequestNote", () => {
       procurementGroupRequestNote([
         { requestNote: "pilne" },
         { requestNote: "pilne" },
-      ])
+      ] as unknown as ForSomeoneLine[])
     ).toBe("pilne");
   });
 
@@ -59,7 +60,7 @@ describe("procurementGroupRequestNote", () => {
       procurementGroupRequestNote([
         { requestNote: "a" },
         { requestNote: "b" },
-      ])
+      ] as unknown as ForSomeoneLine[])
     ).toBeNull();
   });
 });

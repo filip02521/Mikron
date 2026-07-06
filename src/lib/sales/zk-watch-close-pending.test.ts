@@ -3,7 +3,9 @@ import {
   classifyZkWatchPendingAckKinds,
   collectZkWatchPendingAckItems,
   collectZkWatchPendingAckOrderIds,
+  groupZkWatchPendingAckOrderIdsByKind,
   isOrderPendingAckForZkClose,
+  zkWatchPendingAckItemsIncludePickup,
 } from "./zk-watch-close-pending";
 import type { ZkLinkableOrder } from "./zk-watch-order-link";
 import type { SalesZkWatch } from "@/types/database";
@@ -34,6 +36,7 @@ function linkOrder(
     zd_fulfillment_deadline_change_seen_at: null,
     sales_acknowledged_at: null,
     sales_cancelled_at: null,
+    is_teeth: false,
     ...partial,
   };
 }
@@ -62,7 +65,6 @@ function watch(): SalesZkWatch {
       ],
     },
     line_checks: [],
-    prosba_scope_lines: null,
     note: null,
     follow_up_at: null,
     closed_at: null,
@@ -218,5 +220,59 @@ describe("collectZkWatchPendingAckItems", () => {
     expect(isOrderPendingAckForZkClose(explicit, w)).toBe(true);
     expect(isOrderPendingAckForZkClose(matched, w)).toBe(true);
     expect(isOrderPendingAckForZkClose(unrelated, w)).toBe(false);
+  });
+
+  it("klasyfikuje teeth order jako teeth_handover nie pickup", () => {
+    const items = collectZkWatchPendingAckItems(watch(), [
+      linkOrder({
+        id: "o-teeth",
+        status: "Zrealizowane",
+        is_teeth: true,
+      }),
+    ]);
+    expect(items).toHaveLength(1);
+    expect(items[0]?.kind).toBe("teeth_handover");
+    expect(items[0]?.statusLabel).toBe("Gotowe do odbioru zębów od magazynu");
+  });
+
+  it("klasyfikuje regular order jako pickup nie teeth_handover", () => {
+    const items = collectZkWatchPendingAckItems(watch(), [
+      linkOrder({
+        id: "o-regular",
+        status: "Zrealizowane",
+        is_teeth: false,
+      }),
+    ]);
+    expect(items).toHaveLength(1);
+    expect(items[0]?.kind).toBe("pickup");
+  });
+
+  it("zkWatchPendingAckItemsIncludePickup obejmuje teeth_handover", () => {
+    const items = collectZkWatchPendingAckItems(watch(), [
+      linkOrder({
+        id: "o-teeth",
+        status: "Zrealizowane",
+        is_teeth: true,
+      }),
+    ]);
+    expect(zkWatchPendingAckItemsIncludePickup(items)).toBe(true);
+  });
+
+  it("groupZkWatchPendingAckOrderIdsByKind grupuje teeth_handover osobno", () => {
+    const items = collectZkWatchPendingAckItems(watch(), [
+      linkOrder({
+        id: "o-teeth",
+        status: "Zrealizowane",
+        is_teeth: true,
+      }),
+      linkOrder({
+        id: "o-regular",
+        status: "Zrealizowane",
+        is_teeth: false,
+      }),
+    ]);
+    const grouped = groupZkWatchPendingAckOrderIdsByKind(items);
+    expect(grouped.pickup).toEqual(["o-regular"]);
+    expect(grouped.teeth_handover).toEqual(["o-teeth"]);
   });
 });

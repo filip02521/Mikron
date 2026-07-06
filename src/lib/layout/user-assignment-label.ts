@@ -10,7 +10,7 @@ import {
 } from "@/lib/auth-roles";
 import { OPERATIONS_DEPARTMENT_LABELS } from "@/lib/operations/notepad-department";
 import { createAdminClient, hasSupabaseConfig } from "@/lib/supabase/admin";
-import type { UserRole } from "@/types/database";
+import type { UserRole, Workspace } from "@/types/database";
 
 export async function fetchSalesPersonGroupName(
   salesPersonId: string
@@ -46,8 +46,16 @@ async function fetchManagerGroupNames(
   return names.length > 0 ? names.join(", ") : null;
 }
 
-function operationsDepartmentLabel(role: UserRole): string | null {
-  if (isZakupy(role)) return OPERATIONS_DEPARTMENT_LABELS.zakupy;
+function operationsDepartmentLabel(role: UserRole, workspaces?: Workspace[]): string | null {
+  if (isZakupy(role)) {
+    if (workspaces && workspaces.length > 0) {
+      const labels: string[] = [];
+      if (workspaces.includes("dostawy") || workspaces.includes("zeby")) labels.push(OPERATIONS_DEPARTMENT_LABELS.zakupy);
+      if (workspaces.includes("magazyn")) labels.push(OPERATIONS_DEPARTMENT_LABELS.magazyn);
+      return labels.length > 0 ? labels.join(", ") : OPERATIONS_DEPARTMENT_LABELS.zakupy;
+    }
+    return OPERATIONS_DEPARTMENT_LABELS.zakupy;
+  }
   if (isMagazyn(role)) return OPERATIONS_DEPARTMENT_LABELS.magazyn;
   return null;
 }
@@ -84,5 +92,5 @@ export async function resolveUserAssignmentLabel(input: {
     return fetchSalesPersonGroupName(resolvedId);
   }
 
-  return operationsDepartmentLabel(role);
+  return operationsDepartmentLabel(role, session.assignedWorkspaces);
 }

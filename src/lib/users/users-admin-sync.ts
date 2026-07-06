@@ -1,8 +1,8 @@
 import type { AppUserRow } from "@/lib/data/users";
 import { roleRequiresSalesPerson } from "@/lib/users/labels";
-import type { UserRole } from "@/types/database";
+import type { UserRole, Workspace } from "@/types/database";
 
-export type UserPermissionEdit = { role: UserRole; salesPersonId: string };
+export type UserPermissionEdit = { role: UserRole; salesPersonId: string; assignedWorkspaces?: Workspace[] };
 
 /** Sygnatura listy kont — stabilna przy tym samym stanie z serwera. */
 export function usersAdminListSignature(users: AppUserRow[]): string {
@@ -25,7 +25,12 @@ export function buildUserEditsFromRows(
   users: AppUserRow[]
 ): Record<string, UserPermissionEdit> {
   return Object.fromEntries(
-    users.map((u) => [u.id, { role: u.role, salesPersonId: u.salesPersonId ?? "" }])
+    users.map((u) => {
+      const edit: UserPermissionEdit = { role: u.role, salesPersonId: u.salesPersonId ?? "" };
+      const ws = u.assignedWorkspaces ?? [];
+      if (ws.length > 0) edit.assignedWorkspaces = ws;
+      return [u.id, edit];
+    })
   );
 }
 
@@ -59,6 +64,12 @@ export function userRowHasUnsavedChanges(
     if (draftSig !== savedSig) return true;
   }
 
+  if (edit.role === "zakupy") {
+    const draftWs = (edit.assignedWorkspaces ?? []).slice().sort().join(",");
+    const savedWs = (user.assignedWorkspaces ?? []).slice().sort().join(",");
+    if (draftWs !== savedWs) return true;
+  }
+
   return false;
 }
 
@@ -74,7 +85,8 @@ export function applyUserPermissionSave(
   userId: string,
   role: UserRole,
   salesPersonId: string | null,
-  salesPersonName: string | null
+  salesPersonName: string | null,
+  assignedWorkspaces?: Workspace[]
 ): AppUserRow[] {
   return users.map((row) =>
     row.id === userId
@@ -83,6 +95,7 @@ export function applyUserPermissionSave(
           role,
           salesPersonId,
           salesPersonName: salesPersonName ?? row.salesPersonName,
+          assignedWorkspaces: role === "zakupy" ? (assignedWorkspaces ?? row.assignedWorkspaces ?? []) : [],
         }
       : row
   );
