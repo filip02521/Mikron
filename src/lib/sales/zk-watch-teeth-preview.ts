@@ -30,7 +30,6 @@ function resolveTeethStatus(
   orderedAt: string | null,
   orderStatus: string,
   salesAcknowledgedAt: string | null,
-  salesCancelledAt: string | null
 ): { label: string; tone: ZkTeethPreviewTone } {
   if (orderStatus === "Anulowane")
     return { label: "Anulowane", tone: "pending" };
@@ -56,7 +55,6 @@ export function buildZkTeethPreviewRows(
         order.teeth_ordered_at ?? order.ordered_at ?? null,
         order.status,
         order.sales_acknowledged_at,
-        order.sales_cancelled_at
       );
       rows.push({
         orderId: order.id,
@@ -81,7 +79,6 @@ export function buildZkTeethPreviewRows(
         detail.ordered_at ?? order.teeth_ordered_at ?? order.ordered_at ?? null,
         order.status,
         order.sales_acknowledged_at,
-        order.sales_cancelled_at
       );
       rows.push({
         orderId: order.id,

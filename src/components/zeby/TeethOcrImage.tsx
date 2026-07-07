@@ -1,11 +1,32 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useReducer, useState } from "react";
+import Image from "next/image";
 import { cn } from "@/lib/cn";
 import { ModalShell } from "@/components/ui/ModalShell";
 import { Spinner } from "@/components/ui/Spinner";
 import { actionGetOcrImageUrl } from "@/app/actions/teeth-orders";
 import { IconAlertCircle } from "@/components/icons/StrokeIcons";
+
+type FetchState = { status: "idle" | "loading" | "done" | "error"; url: string | null };
+
+type FetchAction =
+  | { type: "start" }
+  | { type: "success"; url: string }
+  | { type: "error" };
+
+function fetchReducer(state: FetchState, action: FetchAction): FetchState {
+  switch (action.type) {
+    case "start":
+      return { status: "loading", url: null };
+    case "success":
+      return { status: "done", url: action.url };
+    case "error":
+      return { status: "error", url: null };
+    default:
+      return state;
+  }
+}
 
 export function TeethOcrImage({
   imagePath,
@@ -14,30 +35,21 @@ export function TeethOcrImage({
   imagePath: string | null | undefined;
   className?: string;
 }) {
-  const [url, setUrl] = useState<string | null>(null);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState(false);
+  const [state, dispatch] = useReducer(fetchReducer, { status: "idle", url: null });
   const [zoomOpen, setZoomOpen] = useState(false);
 
   useEffect(() => {
-    if (!imagePath) {
-      setUrl(null);
-      return;
-    }
+    if (!imagePath) return;
     let cancelled = false;
-    setLoading(true);
-    setError(false);
+    dispatch({ type: "start" });
     void actionGetOcrImageUrl(imagePath)
       .then((result) => {
         if (cancelled) return;
-        setUrl(result.url);
-        if (!result.url) setError(true);
+        if (result.url) dispatch({ type: "success", url: result.url });
+        else dispatch({ type: "error" });
       })
       .catch(() => {
-        if (!cancelled) setError(true);
-      })
-      .finally(() => {
-        if (!cancelled) setLoading(false);
+        if (!cancelled) dispatch({ type: "error" });
       });
     return () => {
       cancelled = true;
@@ -46,7 +58,7 @@ export function TeethOcrImage({
 
   if (!imagePath) return null;
 
-  if (loading) {
+  if (state.status === "loading") {
     return (
       <div
         className={cn(
@@ -60,7 +72,7 @@ export function TeethOcrImage({
     );
   }
 
-  if (error || !url) {
+  if (state.status === "error" || !state.url) {
     return (
       <div
         className={cn(
@@ -86,11 +98,13 @@ export function TeethOcrImage({
         title="Kliknij aby powiększyć"
         aria-label="Powiększ zdjęcie kartki"
       >
-        <img
-          src={url}
+        <Image
+          src={state.url}
           alt="Zdjęcie kartki z zamówieniem zębów"
+          fill
+          unoptimized
           className="h-full max-h-full w-full object-contain"
-          onError={() => setError(true)}
+          onError={() => dispatch({ type: "error" })}
         />
         <div className="pointer-events-none absolute inset-0 flex items-end justify-end bg-gradient-to-t from-black/30 to-transparent p-1.5 opacity-0 transition-opacity group-hover:opacity-100">
           <span className="rounded bg-white/90 px-1.5 py-0.5 text-[10px] font-semibold text-slate-700">
@@ -108,11 +122,14 @@ export function TeethOcrImage({
         bodyClassName="p-2 sm:p-3"
       >
         <div className="flex items-center justify-center">
-          <img
-            src={url}
+          <Image
+            src={state.url}
             alt="Zdjęcie kartki z zamówieniem zębów"
+            width={800}
+            height={600}
+            unoptimized
             className="max-h-[80vh] w-auto rounded-lg object-contain"
-            onError={() => setError(true)}
+            onError={() => dispatch({ type: "error" })}
           />
         </div>
       </ModalShell>

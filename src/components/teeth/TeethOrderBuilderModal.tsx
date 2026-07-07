@@ -95,7 +95,6 @@ function draftFromGroup(group: TeethGroupDraft): DraftSpec {
 function createTeethOrderBuilderState(
   initialDetails: TeethLineDetail[] | undefined,
   defaultKind: TeethKind | null | undefined,
-  productLine: TeethProductLine,
 ) {
   const groups = teethGroupsFromDetails(initialDetails);
   return {
@@ -510,13 +509,13 @@ function TeethSingleKindOrderBuilderModal({
 }) {
   const catalog = useMemo<TeethCatalogRef>(() => ({ productLine }), [productLine]);
   const [groups, setGroups] = useState<TeethGroupDraft[]>(
-    () => createTeethOrderBuilderState(initialDetails, defaultKind, productLine).groups,
+    () => createTeethOrderBuilderState(initialDetails, defaultKind).groups,
   );
   const [draft, setDraft] = useState<DraftSpec>(
-    () => createTeethOrderBuilderState(initialDetails, defaultKind, productLine).draft,
+    () => createTeethOrderBuilderState(initialDetails, defaultKind).draft,
   );
   const [editingId, setEditingId] = useState<string | null>(
-    () => createTeethOrderBuilderState(initialDetails, defaultKind, productLine).editingId,
+    () => createTeethOrderBuilderState(initialDetails, defaultKind).editingId,
   );
   const [fromOcr, setFromOcr] = useState(initialFromOcr ?? false);
   const [ocrImagePath, setOcrImagePath] = useState<string | null>(initialOcrImagePath ?? null);
