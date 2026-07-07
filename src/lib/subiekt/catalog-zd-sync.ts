@@ -358,6 +358,7 @@ export function resolveCatalogZdSyncStartState(
       ...existing,
       runId,
       status: "running",
+      dataOd: catalogSyncDataOd(),
       lastError: null,
       lastUpdatedAt: nowIso(),
     };
@@ -368,6 +369,7 @@ export function resolveCatalogZdSyncStartState(
   return {
     ...existing,
     status: "running",
+    dataOd: catalogSyncDataOd(),
     lastError: null,
     lastUpdatedAt: nowIso(),
   };

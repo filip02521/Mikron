@@ -90,7 +90,7 @@ export function CatalogZdSyncStatusPanel({
         inset
         density="compact"
         title="Synchronizacja nocna (cron)"
-        description="Indeks ZD (365 dni) + import linii do katalogu — harmonogram na serwerze w firmie."
+        description="Indeks ZD (90 dni) + import linii do katalogu — harmonogram na serwerze w firmie."
         action={
           <div className="flex flex-wrap items-center justify-end gap-2">
             <HelpPopover
