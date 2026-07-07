@@ -53,8 +53,8 @@ export function SalesKeyboardShortcutsStrip({
     <div
       className={cn(
         embedded
-          ? cn(salesChromeInsetClass, "border-b border-slate-100 bg-white py-2")
-          : "py-2",
+          ? cn(salesChromeInsetClass, "hidden border-b border-slate-100 bg-white py-2 sm:block")
+          : "hidden py-2 sm:block",
         className
       )}
     >

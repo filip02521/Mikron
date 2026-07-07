@@ -55,9 +55,9 @@ import { panelChoiceChipClass, panelChoiceChipIdleClass, panelChoiceChipSelected
 
 const TEETH_MODAL_SHELL_LAYOUT = {
   bodyScroll: false,
-  bodyClassName: "overflow-visible px-4 py-2.5 sm:px-5",
+  bodyClassName: "overflow-visible px-3 py-3 sm:px-5",
   className:
-    "top-[max(0.75rem,env(safe-area-inset-top))] max-h-[calc(100dvh-env(safe-area-inset-top)-env(safe-area-inset-bottom)-0.75rem)] -translate-y-0",
+    "top-[max(0.5rem,env(safe-area-inset-top))] max-h-[calc(100dvh-env(safe-area-inset-top)-env(safe-area-inset-bottom)-0.75rem)] -translate-y-0",
 } as const;
 
 type DraftSpec = TeethBuilderDraftSpec;

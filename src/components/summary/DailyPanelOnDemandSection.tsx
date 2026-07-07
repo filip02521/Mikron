@@ -72,7 +72,7 @@ export function DailyPanelOnDemandSection({
                 <div className="min-w-0 flex-1">
                   <button
                     type="button"
-                    className={cn(panelTypography.rowTitle, panelNameLinkClass)}
+                    className={cn(panelTypography.rowTitle, panelNameLinkClass, "break-words")}
                     onClick={() => onOpenSupplier(row.supplierId)}
                   >
                     {row.supplierName}

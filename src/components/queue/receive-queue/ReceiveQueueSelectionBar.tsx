@@ -40,6 +40,7 @@ export function ReceiveQueueSelectionBar({
         <Button
           variant="primary"
           size="sm"
+          className="min-h-11 sm:min-h-9"
           disabled={pending || !canSaveZamowienie}
           title={
             canSaveZamowienie
@@ -55,14 +56,14 @@ export function ReceiveQueueSelectionBar({
         <Button
           variant="primary"
           size="sm"
+          className="min-h-11 bg-sky-600 hover:bg-sky-700 sm:min-h-9"
           disabled={pending}
-          className="bg-sky-600 hover:bg-sky-700"
           onClick={onNotifyInformacja}
         >
           Powiadom ({informacja.length})
         </Button>
       ) : null}
-      <Button variant="ghost" size="sm" disabled={pending} onClick={onClear}>
+      <Button variant="ghost" size="sm" className="min-h-11 sm:min-h-9" disabled={pending} onClick={onClear}>
         Odznacz
       </Button>
     </div>

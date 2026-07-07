@@ -10,7 +10,7 @@ export function TableScroll({
   className?: string;
 }) {
   return (
-    <div className={cn("table-scroll -mx-px overflow-x-auto px-6 pb-6", className)}>
+    <div className={cn("table-scroll -mx-px overflow-x-auto px-0 pb-0 sm:px-6 sm:pb-6", className)}>
       {children}
     </div>
   );

@@ -158,7 +158,7 @@ export const ReceiveQueueRow = memo(function ReceiveQueueRow({
     >
       <td
         className={cn(
-          "w-9 text-center",
+          "w-10 text-center",
           queueSupplierLeadingCellClass(groupIndex, {
             variant: isInfo ? "informacja" : "delivery",
           })
@@ -174,7 +174,7 @@ export const ReceiveQueueRow = memo(function ReceiveQueueRow({
         />
       </td>
 
-      <td className="min-w-[7rem] max-w-[9rem] whitespace-nowrap">
+      <td className="min-w-[6rem] max-w-[8rem] whitespace-nowrap">
         <div className="flex items-center gap-1.5">
           <span
             className={cn(
@@ -250,7 +250,7 @@ export const ReceiveQueueRow = memo(function ReceiveQueueRow({
         )}
       </td>
 
-      <td className={cn("whitespace-nowrap text-right", cancelDisposition ? "w-[12rem]" : "w-[9.5rem]")}>
+      <td className={cn("whitespace-nowrap text-right", cancelDisposition ? "min-w-[10rem]" : "min-w-[9.5rem]")}>
         {isInfo ? (
           <button
             type="button"
@@ -309,7 +309,7 @@ export const ReceiveQueueRow = memo(function ReceiveQueueRow({
                   onChange={(e) => onQtyChange(e.target.value)}
                   onKeyDown={onQtyKeyDown}
                   className={cn(
-                    "w-11 rounded-md border border-slate-200 px-1 py-1 text-center text-sm font-semibold",
+                    "w-14 rounded-md border border-slate-200 px-1 py-1 text-center text-sm font-semibold sm:w-12",
                     controlFocusClass
                   )}
                   aria-label={`Przyjęto z rezygnacji dla ${personName}`}
@@ -321,7 +321,7 @@ export const ReceiveQueueRow = memo(function ReceiveQueueRow({
                   aria-label="Zapisz przyjęcie"
                   onClick={onSaveDelivery}
                   className={cn(
-                    "inline-flex size-8 items-center justify-center rounded-lg border transition",
+                    "inline-flex size-10 items-center justify-center rounded-lg border transition sm:size-8",
                     canSave
                       ? "border-violet-200 bg-violet-600 text-white hover:bg-violet-700"
                       : "border-slate-200 bg-slate-50 text-slate-300"
@@ -376,7 +376,7 @@ export const ReceiveQueueRow = memo(function ReceiveQueueRow({
               onChange={(e) => onQtyChange(e.target.value)}
               onKeyDown={onQtyKeyDown}
               className={cn(
-                "w-11 rounded-md border border-slate-200 px-1 py-1 text-center text-sm font-semibold",
+                "w-14 rounded-md border border-slate-200 px-1 py-1 text-center text-sm font-semibold sm:w-12",
                 controlFocusClass
               )}
               aria-label={`Dostarczono dla ${personName}`}
@@ -405,7 +405,7 @@ export const ReceiveQueueRow = memo(function ReceiveQueueRow({
               aria-label="Zapisz dostawę"
               onClick={onSaveDelivery}
               className={cn(
-                "ml-0.5 inline-flex size-8 items-center justify-center rounded-lg border transition",
+                "ml-0.5 inline-flex size-10 items-center justify-center rounded-lg border transition sm:size-8",
                 canSave
                   ? "border-violet-200 bg-violet-600 text-white hover:bg-violet-700"
                   : "border-slate-200 bg-slate-50 text-slate-300"

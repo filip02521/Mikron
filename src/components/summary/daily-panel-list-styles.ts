@@ -8,7 +8,7 @@ export const dailyPanelListInsetClass = "p-2 sm:p-2.5";
 export const dailyPanelListBodyClass = cn(dailyPanelListInsetClass, "space-y-1.5");
 
 /** Padding pojedynczego wiersza w płaskiej liście (divide-y). */
-export const dailyPanelListRowPaddingClass = "px-2.5 py-2 sm:px-3";
+export const dailyPanelListRowPaddingClass = "px-3 py-2.5 sm:px-3.5 sm:py-3";
 
 export type DailyPanelListDivideTone = "neutral" | "amber" | "indigo" | "sky";
 

@@ -17,7 +17,7 @@ export function ProsbaFormMetaStrip({
     <div
       className={cn(
         salesChromeInsetClass,
-        "border-t border-slate-200/80 bg-slate-50/35 py-2",
+        "hidden border-t border-slate-200/80 bg-slate-50/35 py-2 sm:flex",
         className
       )}
     >

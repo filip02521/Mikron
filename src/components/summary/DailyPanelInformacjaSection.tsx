@@ -46,7 +46,7 @@ export function DailyPanelInformacjaSection({
             >
               <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
                 <div className="min-w-0 flex-1">
-                  <p className={panelTypography.rowTitle}>{g.supplierName}</p>
+                  <p className={cn(panelTypography.rowTitle, "break-words")}>{g.supplierName}</p>
                   <p className={panelTypography.rowMeta}>
                     {g.person}
                     {" · "}

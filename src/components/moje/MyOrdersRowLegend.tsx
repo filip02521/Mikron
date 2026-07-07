@@ -15,7 +15,7 @@ export function MyOrdersRowLegend({ className }: { className?: string }) {
   return (
     <div
       className={cn(
-        "flex flex-wrap items-center gap-x-3 gap-y-1.5",
+        "hidden flex-wrap items-center gap-x-3 gap-y-1.5 sm:flex",
         salesTypography.chrome,
         className
       )}

@@ -53,7 +53,7 @@ export function ProsbaFormSection({
     domain === "panel" ? panelTypography.sectionDesc : salesTypography.sectionHint;
 
   return (
-    <section className={cn("space-y-2.5", className)}>
+    <section className={cn("space-y-3", className)}>
       <div>
         <div className="flex flex-wrap items-center gap-1.5">
           <h3 className={titleClass}>{title}</h3>

@@ -1,6 +1,6 @@
 /** Przewijana lista w karcie magazynu (~60–70 pozycji bez scrollowania całej strony). */
 export const QUEUE_LIST_BODY_CLASS =
-  "max-h-[min(70vh,34rem)] overflow-y-auto overscroll-y-contain";
+  "max-h-[min(60vh,30rem)] overflow-y-auto overscroll-y-contain sm:max-h-[min(70vh,34rem)]";
 
 /** Zwarty pasek filtrów / wyszukiwania w sekcji magazynu. */
 export const queueToolbarShellClass =

@@ -386,7 +386,7 @@ export const MyOrderLineItem = memo(function MyOrderLineItem({
               text={line.product}
               searchQuery={searchQuery}
               className={cn(
-                "min-w-0 font-semibold text-slate-900",
+                "min-w-0 break-words font-semibold text-slate-900",
                 compact ? "text-sm leading-snug" : "text-sm text-slate-800"
               )}
             />

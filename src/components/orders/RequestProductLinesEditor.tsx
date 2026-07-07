@@ -290,7 +290,7 @@ export function RequestProductLinesEditor({
             className={cn(
               wrapLine
                 ? prosba
-                  ? "rounded-md border border-slate-200 bg-white p-4 shadow-sm"
+                  ? "rounded-md border border-slate-200 bg-white p-3 shadow-sm sm:p-4"
                   : "rounded-md border border-dashed border-slate-200 bg-slate-50/50 p-3"
                 : "space-y-3"
             )}
@@ -305,7 +305,7 @@ export function RequestProductLinesEditor({
                     type="button"
                     variant="ghost"
                     size="sm"
-                    className="text-red-700 hover:bg-red-50"
+                    className="min-h-9 text-red-700 hover:bg-red-50"
                     onClick={() => removeLine(index)}
                   >
                     Usuń
@@ -318,7 +318,7 @@ export function RequestProductLinesEditor({
                   type="button"
                   variant="ghost"
                   size="sm"
-                  className="text-red-700 hover:bg-red-50"
+                  className="min-h-9 text-red-700 hover:bg-red-50"
                   onClick={() => removeLine(index)}
                 >
                   Usuń

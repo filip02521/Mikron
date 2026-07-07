@@ -1123,7 +1123,7 @@ export function OrderFormClient({
 
           {zkQuantityFormBanner ? (
             <div
-              className="border-b border-indigo-200/80 bg-indigo-50/70 px-3 py-2 text-xs leading-relaxed text-indigo-950 sm:px-4"
+              className="border-b border-indigo-200/80 bg-indigo-50/70 px-3 py-2.5 text-xs leading-relaxed text-indigo-950 sm:px-4"
               role="status"
             >
               {zkQuantityFormBanner}
@@ -1256,7 +1256,7 @@ export function OrderFormClient({
 
           <div
             className={cn(
-              "flex flex-col gap-2.5 border-t border-slate-200/80 bg-slate-50/35 px-3 py-3 sm:flex-row sm:items-center sm:px-4",
+              "flex flex-col gap-3 border-t border-slate-200/80 bg-slate-50/35 px-3 py-3 sm:flex-row sm:items-center sm:px-4",
               requestKind === "informacja" ? "sm:justify-between" : "sm:justify-end"
             )}
           >

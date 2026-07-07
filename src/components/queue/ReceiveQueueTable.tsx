@@ -605,7 +605,7 @@ export function ReceiveQueueTable({
   );
 
   const toolbar = (
-    <div className="border-b border-slate-100 px-4 py-3 sm:px-6">
+    <div className="border-b border-slate-100 px-3 py-3 sm:px-4 lg:px-6">
       <div className="space-y-3">
         <div className={receiveQueueToolbarSectionClass}>
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-[minmax(0,1fr)_12rem] sm:items-end">
@@ -682,7 +682,7 @@ export function ReceiveQueueTable({
           />
         </div>
 
-        <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2 rounded-md bg-slate-50/80 px-3 py-2">
+        <div className="hidden flex-wrap items-center justify-between gap-x-3 gap-y-2 rounded-md bg-slate-50/80 px-3 py-2 sm:flex">
           <p className="min-w-0 text-[10px] leading-relaxed text-slate-500">
             <span className="inline-flex items-center gap-1">
               <span className="size-1.5 shrink-0 rounded-full bg-emerald-500" aria-hidden />

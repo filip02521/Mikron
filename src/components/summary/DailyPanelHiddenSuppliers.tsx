@@ -79,7 +79,7 @@ export function DailyPanelHiddenSuppliers({
                       <button
                         type="button"
                         onClick={() => onOpenSupplier(row.supplierId)}
-                        className={cn("text-sm", panelNameLinkClass)}
+                        className={cn("text-sm break-words", panelNameLinkClass)}
                       >
                         {row.supplierName}
                       </button>

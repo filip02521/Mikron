@@ -252,8 +252,8 @@ export const salesCardBodyClass = "space-y-3 p-3 sm:p-4";
 /** Min. obszar dotyku — 44px mobile, kompakt od sm (WCAG / Apple HIG). */
 export const salesTouchTargetClass = "min-h-11 sm:min-h-8";
 
-/** Jedna wysokość kontrolek listy /moje — jak toolbar nagłówka (40px). */
-export const mojeControlHeightClass = "h-10 min-h-10";
+/** Jedna wysokość kontrolek listy /moje — 44px mobile (touch target), 40px od sm. */
+export const mojeControlHeightClass = "min-h-11 sm:h-10 sm:min-h-10";
 
 /** Drugorzędny przycisk / chip akcji na /moje. */
 export const mojeSecondaryControlClass = cn(
