@@ -1,7 +1,7 @@
 "use client";
 
 import { Button } from "@/components/ui/Button";
-import { IconClipboardList, IconCircleCheck } from "@/components/icons/StrokeIcons";
+import { IconClipboardList, IconCircleCheck, IconPlusCircle } from "@/components/icons/StrokeIcons";
 import { TeethGroupChips } from "@/components/teeth/TeethGroupChips";
 import {
   TEETH_KIND_LABELS,
@@ -162,17 +162,18 @@ export function TeethOrderBuilderCard({
           </div>
           <Button
             type="button"
-            variant="ghost"
+            variant="outline"
             size="sm"
             disabled={disabled}
             className={cn(
-              "h-auto shrink-0 px-2 py-1 text-xs font-semibold",
+              "h-auto shrink-0 px-3 py-1.5 text-xs font-semibold",
               complete
-                ? "text-violet-800 hover:bg-violet-100/80"
-                : "text-amber-900 hover:bg-amber-100/80",
+                ? "text-violet-800 hover:bg-violet-50"
+                : "text-amber-900 hover:bg-amber-50",
             )}
             onClick={onOpenModal}
           >
+            {hasList ? <IconClipboardList size={14} /> : <IconPlusCircle size={14} />}
             {hasList ? "Edytuj listę" : "Otwórz listę"}
           </Button>
         </div>

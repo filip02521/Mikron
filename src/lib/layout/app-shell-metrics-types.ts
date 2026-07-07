@@ -13,6 +13,7 @@ export type AppShellNavBadges = {
   departmentBoardQuestions?: number;
   adminBugReports?: number;
   teethQueue?: number;
+  teethVerification?: number;
   teethReceivePending?: number;
 };
 

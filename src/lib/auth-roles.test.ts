@@ -99,6 +99,15 @@ describe("auth-roles zakupy_zeby", () => {
     expect(canAccessPath("zakupy", "/zeby/kolejka")).toBe(false);
   });
 
+  it("canAccessPath zezwala wszystkim rolom na /ustawienia", () => {
+    expect(canAccessPath("sales", "/ustawienia")).toBe(true);
+    expect(canAccessPath("sales_manager", "/ustawienia")).toBe(true);
+    expect(canAccessPath("admin", "/ustawienia")).toBe(true);
+    expect(canAccessPath("zakupy", "/ustawienia")).toBe(true);
+    expect(canAccessPath("magazyn", "/ustawienia")).toBe(true);
+    expect(canAccessPath("zakupy_zeby", "/ustawienia")).toBe(true);
+  });
+
   it("redirectPathAfterLogin kieruje na /zeby/kolejka", () => {
     expect(redirectPathAfterLogin("zakupy_zeby", null)).toBe("/zeby/kolejka");
     expect(redirectPathAfterLogin("zakupy_zeby", "/zeby/kolejka")).toBe("/zeby/kolejka");

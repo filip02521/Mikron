@@ -12,21 +12,24 @@ import {
 } from "@/lib/ui/ontime-theme";
 import type { Tab } from "@/components/zeby/teeth-panel-types";
 
-const TAB_ORDER: Tab[] = ["kolejka", "historia"];
+const TAB_ORDER: Tab[] = ["kolejka", "weryfikacja", "historia"];
 
 const TAB_LABELS: Record<Tab, string> = {
   kolejka: "Kolejka",
+  weryfikacja: "Weryfikacja",
   historia: "Historia",
 };
 
 export function TeethPanelTabs({
   active,
   queueCount,
+  verificationCount,
   onChange,
   hint,
 }: {
   active: Tab;
   queueCount: number;
+  verificationCount?: number;
   onChange: (tab: Tab) => void;
   hint?: string;
 }) {
@@ -83,7 +86,12 @@ export function TeethPanelTabs({
       >
         {TAB_ORDER.map((id) => {
           const selected = active === id;
-          const count = id === "kolejka" && queueCount > 0 ? queueCount : undefined;
+          const count =
+            id === "kolejka" && queueCount > 0
+              ? queueCount
+              : id === "weryfikacja" && verificationCount && verificationCount > 0
+                ? verificationCount
+                : undefined;
           return (
             <button
               key={id}

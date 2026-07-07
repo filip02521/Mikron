@@ -59,6 +59,7 @@
     "verify-sales-request-note": "tsx scripts/verify-sales-request-note-migration.ts"
   },
   "dependencies": {
+    "@google/genai": "^2.10.0",
     "@supabase/ssr": "^0.12.0",
     "@supabase/supabase-js": "^2.107.0",
     "@tailwindcss/postcss": "^4",

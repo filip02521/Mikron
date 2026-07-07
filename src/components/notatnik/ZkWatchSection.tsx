@@ -56,6 +56,7 @@ export function ZkWatchSection({
   zkHintsByWatchId,
   linkableOrders = [],
   readOnly,
+  delegatePreview = false,
   tourPreview = false,
   embedded,
   compact,
@@ -96,6 +97,7 @@ export function ZkWatchSection({
   onFocusWatchHandled?: (watchId: string) => void;
   onLiveAnnounce?: (message: string) => void;
   readOnly?: boolean;
+  delegatePreview?: boolean;
   tourPreview?: boolean;
   embedded?: boolean;
   compact?: boolean;
@@ -300,7 +302,7 @@ export function ZkWatchSection({
 
   async function submit(nextQuery?: string) {
     const value = (nextQuery ?? query).trim();
-    if (!value || loading || readOnly || tourPreview || !canAddZk) return;
+    if (!value || loading || readOnly || delegatePreview || tourPreview || !canAddZk) return;
 
     const validated = validateZkQueryForSubmit(value);
     if (!validated.ok) {
@@ -328,7 +330,7 @@ export function ZkWatchSection({
   }
 
   async function pickCandidate(candidate: ZkSearchCandidate) {
-    if (loading || readOnly || tourPreview || !canAddZk) return;
+    if (loading || readOnly || delegatePreview || tourPreview || !canAddZk) return;
     setLoading(true);
     setError(null);
     try {
@@ -366,6 +368,7 @@ export function ZkWatchSection({
         onFocusWatchHandled={onFocusWatchHandled}
         onLiveAnnounce={onLiveAnnounce}
         readOnly={readOnly}
+        delegatePreview={delegatePreview}
         tourPreview={tourPreview}
         compact={compact}
         subiektReachable={subiektReachable}
@@ -396,7 +399,7 @@ export function ZkWatchSection({
           </div>
         ) : null}
 
-        {!embedded && !readOnly && !tourPreview ? (
+        {!embedded && !readOnly && !delegatePreview && !tourPreview ? (
           <ZkWatchAddSection
             key={`${watches.length === 0 ? "zk-add-empty" : "zk-add-has-items"}-${addSectionNonce}`}
             defaultOpen={watches.length === 0}
@@ -434,7 +437,7 @@ export function ZkWatchSection({
         <section className={mojeShipmentSectionShellClass} aria-label={ZK_PAGE_SECTION_COPY.listTitle}>
           <div className="border-b border-slate-100 bg-slate-50/40">
             <div className={cn(salesChromeInsetClass, "space-y-2.5 py-2.5")}>
-              {!readOnly && !tourPreview && addPanelOpen ? (
+              {!readOnly && !delegatePreview && !tourPreview && addPanelOpen ? (
                 <ZkWatchAddInlineStrip
                   showCollapse={watches.length > 0}
                   onCollapse={collapseAddPanel}
@@ -444,7 +447,7 @@ export function ZkWatchSection({
               ) : null}
 
               <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:gap-2">
-                {!readOnly && !tourPreview && watches.length > 0 && !addPanelOpen ? (
+                {!readOnly && !delegatePreview && !tourPreview && watches.length > 0 && !addPanelOpen ? (
                   <Button
                     type="button"
                     variant="secondary"

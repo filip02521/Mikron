@@ -93,6 +93,8 @@ export type SubiektProductLineValue = Pick<
   | "teethProductLine"
   | "teethKind"
   | "teethDetails"
+  | "teethOcrPending"
+  | "teethOcrImagePath"
 >;
 
 type ActiveField = Exclude<ProductSearchField, "combined">;
@@ -431,6 +433,8 @@ export function SubiektProductLineFields({
         onChange({
           teethDetails: result.details,
           quantity: String(result.totalQuantity),
+          teethOcrPending: result.fromOcr ?? false,
+          teethOcrImagePath: result.ocrImagePath ?? null,
         });
         onAfterTeethListSave?.(result.details, result.totalQuantity, result);
         return true;
@@ -448,6 +452,8 @@ export function SubiektProductLineFields({
         result.anteriorGroups,
         result.posteriorGroups,
         teethProductInfo.registryIndex,
+        result.fromOcr,
+        result.ocrImagePath,
       );
       if (!commit.ok) {
         onTeethListCommitNotice?.(commit.error, "error");
@@ -1114,6 +1120,8 @@ export function SubiektProductLineFields({
           defaultKind={value.teethKind ?? null}
           productLabel={value.product?.trim() || value.symbol?.trim() || undefined}
           initialDetails={value.teethDetails ?? undefined}
+          initialFromOcr={value.teethOcrPending}
+          initialOcrImagePath={value.teethOcrImagePath}
           dualKindMode={dualKindMode}
           dualKindInitialDetails={dualKindInitialDetails}
           disabled={disabled}

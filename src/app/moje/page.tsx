@@ -14,7 +14,7 @@ import {
 } from "@/lib/orders/my-order-archive";
 import { getSessionUser } from "@/lib/auth";
 import { resolveSalesPersonForUser } from "@/lib/auth/sales-person";
-import { resolvePreviewSalesPerson } from "@/lib/auth/resolve-preview-sales-person";
+import { resolvePreviewSalesPerson, resolveDelegatePreviewSalesPerson } from "@/lib/auth/resolve-preview-sales-person";
 import { getAppRole } from "@/lib/auth-dev";
 import { logDevPageError } from "@/lib/dev/log-page-error";
 import { canAccessOperations, isAdmin, isSalesAccount, isSalesManager } from "@/lib/auth-roles";
@@ -48,6 +48,7 @@ import {
   type DepartmentBoardAnnouncementsSlice,
 } from "@/lib/data/department-board";
 import { fetchSalesDayStartNotepadSlice } from "@/lib/data/sales-notepad";
+import { fetchActiveDelegationsForDelegate, type VacationDelegationRow } from "@/lib/data/vacation-delegations";
 import {
   type SalesDayStartContext,
 } from "@/lib/sales/sales-day-start";
@@ -100,6 +101,8 @@ export default async function MojePage({
   let ownSalesPersonId: string | null = null;
   let linkError: string | null = null;
   let isTeamPreview = false;
+  let isDelegatePreview = false;
+  let activeDelegations: VacationDelegationRow[] = [];
   let sessionUserId: string | null = null;
   let boardAttention: SalesBoardAttentionSnapshot | null = null;
   let dayStartContext: SalesDayStartContext | null = null;
@@ -133,13 +136,32 @@ export default async function MojePage({
       } else {
         salesPersonId = own?.id ?? null;
         salesPersonName = own?.name ?? null;
+
+        // Pobierz aktywne delegacje dla przełącznika (zastępca)
+        if (user.role === "sales" || user.role === "sales_manager") {
+          try {
+            activeDelegations = await fetchActiveDelegationsForDelegate(user.id);
+          } catch {}
+        }
+
+        // Sprawdzenie delegacji — przed blokiem błędu ?dla= dla sales
         if (
           user.role === "sales" &&
           previewSalesPersonId &&
           previewSalesPersonId !== ownSalesPersonId
         ) {
-          linkError =
-            "Możesz przeglądać tylko własne dane handlowca — parametr ?dla= został zignorowany.";
+          const delegatePreview = await resolveDelegatePreviewSalesPerson(
+            previewSalesPersonId,
+            user
+          );
+          if (delegatePreview) {
+            salesPersonId = delegatePreview.id;
+            salesPersonName = delegatePreview.name;
+            isDelegatePreview = true;
+          } else {
+            linkError =
+              "Możesz przeglądać tylko własne dane handlowca — parametr ?dla= został zignorowany.";
+          }
         }
       }
       if (!ownSalesPersonId && user.role === "sales") {
@@ -185,6 +207,8 @@ export default async function MojePage({
   const viewingOwnPanel =
     isSalesAccount(role ?? "sales") && salesPersonId && salesPersonId === ownSalesPersonId;
 
+  const delegatePreviewActive = isDelegatePreview && salesPersonId && salesPersonId !== ownSalesPersonId;
+
   const adminSalesPreview = Boolean(role === "admin" && previewSalesPersonId && salesPersonId);
   const salesPanelView =
     (isSalesAccount(role ?? "sales") && salesPersonId) || adminSalesPreview;
@@ -195,21 +219,21 @@ export default async function MojePage({
   let boardAnnouncementsError: string | null = null;
   /** Własny panel lub podgląd cudzego konta (kierownik / admin) — ten sam widok listy + archiwum RO. */
   const showSalesPersonOrdersPanel = Boolean(
-    salesPanelView && salesPersonId && (viewingOwnPanel || isTeamPreview)
+    salesPanelView && salesPersonId && (viewingOwnPanel || isTeamPreview || delegatePreviewActive)
   );
 
   let notepadSlice: Awaited<ReturnType<typeof fetchSalesDayStartNotepadSlice>> | null = null;
 
   try {
     if (salesPanelView && salesPersonId) {
-      const [orderRows, statsRows, acknowledgedRows, supplierRows, boardSnap, notepadData, announcementsSlice] =
+      const [orderRows, statsRows, acknowledgedRows_, supplierRows, boardSnap, notepadData, announcementsSlice] =
         await Promise.all([
         fetchIndividualOrders({
           salesPersonId,
           hideSalesAcknowledged: false,
         }),
         fetchDeliveryStats(),
-        viewingOwnPanel || isTeamPreview
+        viewingOwnPanel || isTeamPreview || delegatePreviewActive
           ? fetchSalesAcknowledgedOrders(salesPersonId, {
               acknowledgedSince: archiveAcknowledgedSinceExpanded(),
               limit: 200,
@@ -233,6 +257,7 @@ export default async function MojePage({
             })
           : Promise.resolve(null),
       ]);
+      let acknowledgedRows = acknowledgedRows_;
       boardAttention = boardSnap;
       boardAnnouncements = announcementsSlice;
       notepadSlice = notepadData;
@@ -263,6 +288,10 @@ export default async function MojePage({
         });
       }
       if (showSalesPersonOrdersPanel) {
+        if (acknowledgedRows.some((o) => o.is_teeth)) {
+          const { attachTeethDetailsToIndividualOrders } = await import("@/lib/data/teeth-queue");
+          acknowledgedRows = await attachTeethDetailsToIndividualOrders(acknowledgedRows);
+        }
         const legacyUnackedCancelled = orderRows.filter(
           (o) => o.status === "Anulowane" && !o.sales_acknowledged_at
         );
@@ -342,7 +371,7 @@ export default async function MojePage({
 
   const salesHeaderActions =
     role && !canAccessOperations(role, workspaces) ? (
-      !isTeamPreview ? (
+      !isTeamPreview && !isDelegatePreview ? (
         <Link
           href="/prosba"
           className={cn(
@@ -357,8 +386,12 @@ export default async function MojePage({
     ) : undefined;
 
   const showSalesSync = Boolean(
-    !adminSalesPreview && (role && !canAccessOperations(role, workspaces))
+    !adminSalesPreview && !isDelegatePreview && (role && !canAccessOperations(role, workspaces))
   );
+
+  const activeDelegationForRow = isDelegatePreview && salesPersonId
+    ? activeDelegations.find((d) => d.salesPersonId === salesPersonId)
+    : null;
 
   return (
     <div className={salesPageShellClass}>
@@ -371,7 +404,17 @@ export default async function MojePage({
                 readOnly: adminSalesPreview,
                 scope: "orders",
               }
-            : null
+            : isDelegatePreview && salesPersonId && salesPersonName
+              ? {
+                  salesPersonId,
+                  salesPersonName,
+                  readOnly: false,
+                  scope: "orders",
+                  isDelegate: true,
+                  startDate: activeDelegationForRow?.startDate ?? null,
+                  endDate: activeDelegationForRow?.endDate ?? null,
+                }
+              : null
         }
         linkError={linkError}
         showLinkError={Boolean(linkError && previewSalesPersonId)}
@@ -379,6 +422,17 @@ export default async function MojePage({
 
       {loadError ? (
         <Alert tone="error">{loadError}</Alert>
+      ) : null}
+
+      {viewingOwnPanel && !isTeamPreview && !isDelegatePreview ? (
+        <div className="flex justify-end pb-1">
+          <Link
+            href="/ustawienia"
+            className="text-xs font-medium text-slate-400 underline decoration-slate-300/60 underline-offset-2 transition-colors hover:text-slate-600"
+          >
+            Ustawienia i urlopy →
+          </Link>
+        </div>
       ) : null}
 
       {role && canAccessOperations(role, workspaces) && !salesPersonId && isAdmin(role ?? "admin") ? (
@@ -399,17 +453,20 @@ export default async function MojePage({
       <MojeOrdersShell
         initial={{ zamowienia, informacje, productLineCount }}
         salesPersonId={salesPersonId}
-        pageTitle={isTeamPreview ? `Prośby: ${salesPersonName}` : "Moje zamówienia"}
+        pageTitle={isTeamPreview ? `Prośby: ${salesPersonName}` : isDelegatePreview ? `Zastępujesz: ${salesPersonName}` : "Moje zamówienia"}
         pageDescription={
           isTeamPreview
             ? "Podgląd prośb wybranego handlowca — statusy i odbiór."
-            : undefined
+            : isDelegatePreview
+              ? "Tryb zastępstwa — potwierdzenie odbioru i zamknięcie ZK aktywne. Edycja i anulowanie są wyłączone."
+              : undefined
         }
         headerActions={salesHeaderActions}
         archiwumRecent={showSalesPersonOrdersPanel ? archiwumRecent : []}
         archiwumExtended={showSalesPersonOrdersPanel ? archiwumExtended : []}
-        canAcknowledge={!!viewingOwnPanel}
-        showProsbaCta={isSalesAccount(role ?? "sales") && !isTeamPreview}
+        canAcknowledge={!!viewingOwnPanel || isDelegatePreview}
+        canEdit={!!viewingOwnPanel}
+        showProsbaCta={isSalesAccount(role ?? "sales") && !isTeamPreview && !isDelegatePreview}
         suppliers={suppliers}
         subiektAvailability={subiektAvailability}
         initialSearchQuery={initialSearchQuery}
@@ -418,11 +475,13 @@ export default async function MojePage({
         initialClientZkWatchId={zkWatchParam?.trim() || null}
         initialClientZkNumber={zkNumberParam?.trim() || null}
         initialFocusOrderIds={focusOrdersParam?.trim() || null}
-        syncSearchUrl={!isTeamPreview}
+        syncSearchUrl={!isTeamPreview && !isDelegatePreview}
         showSalesSync={showSalesSync}
         zdEtaSyncMountCount={zdEtaSyncMountCount}
         zdEtaSyncEligibleCount={zdEtaSyncEligibleCount}
-        dayStartContext={dayStartContext}
+        dayStartContext={isDelegatePreview ? null : dayStartContext}
+        activeDelegations={activeDelegations}
+        isDelegatePreview={isDelegatePreview}
         boardAnnouncements={boardAnnouncements}
         boardAnnouncementsError={boardAnnouncementsError}
         focusAnnouncementId={focusAnnouncementParam?.trim() || null}

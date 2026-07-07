@@ -629,3 +629,23 @@ export function dailySectionIconTileClass(kind: DailySectionIconKind): string {
       return "bg-indigo-100/70 text-indigo-800/90";
   }
 }
+
+/** Aparat / zdjęcie */
+export function IconCamera(props: StrokeIconProps) {
+  return (
+    <Svg {...props}>
+      <path d="M14.5 4h-5L7 7H4a2 2 0 00-2 2v9a2 2 0 002 2h16a2 2 0 002-2V9a2 2 0 00-2-2h-3l-2.5-3z" />
+      <circle cx="12" cy="13" r="3" />
+    </Svg>
+  );
+}
+
+/** Skan / linia skanowania */
+export function IconScanLine(props: StrokeIconProps) {
+  return (
+    <Svg {...props}>
+      <path d="M3 7V5a2 2 0 012-2h2M17 3h2a2 2 0 012 2v2M21 17v2a2 2 0 01-2 2h-2M7 21H5a2 2 0 01-2-2v-2" />
+      <path d="M3 12h18" />
+    </Svg>
+  );
+}

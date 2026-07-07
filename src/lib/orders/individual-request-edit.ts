@@ -42,6 +42,8 @@ type EditLineDraft = {
   source?: "subiekt" | "catalog" | null;
   requestNote?: string;
   teethDetails?: TeethLineDetail[] | undefined;
+  teethOcrPending?: boolean;
+  teethOcrImagePath?: string | null;
 };
 
 /**
@@ -86,6 +88,8 @@ export function toIndividualRequestEditLinePayload(
     source: line.source,
     requestNote: line.requestNote,
     teethDetails: line.teethDetails ?? null,
+    teethOcrPending: line.teethOcrPending,
+    teethOcrImagePath: line.teethOcrImagePath ?? null,
   };
 }
 
@@ -106,6 +110,8 @@ export type IndividualRequestEditLineInput = {
   source?: "subiekt" | "catalog" | null;
   requestNote?: string | null;
   teethDetails?: TeethLineDetail[] | null;
+  teethOcrPending?: boolean;
+  teethOcrImagePath?: string | null;
 };
 
 /** @deprecated Używaj `requestNote` na każdej linii w `lines`. */
@@ -161,6 +167,8 @@ export type AddIndividualOrdersEntry = {
   available?: number | null;
   stockSource?: "subiekt" | null;
   teethDetails?: TeethLineDetail[] | null;
+  teethOcrPending?: boolean;
+  teethOcrImagePath?: string | null;
 };
 
 export type AddIndividualOrdersInput = {
@@ -203,5 +211,7 @@ export function ordersToEditLines(orders: IndividualOrder[]): IndividualRequestE
     subiektTwId: o.subiekt_tw_id ?? null,
     requestNote: normalizeSalesRequestNote(o.sales_request_note) ?? "",
     teethDetails: mapOrderTeethDetailsToEdit(o.teeth_details) ?? null,
+    teethOcrPending: o.teeth_ocr_pending ?? undefined,
+    teethOcrImagePath: o.teeth_ocr_image_path ?? null,
   }));
 }

@@ -550,6 +550,22 @@ export const undoNoticeProgressTrackClass = "absolute inset-x-0 top-0 h-0.5 bg-s
 
 export const undoNoticeProgressFillClass = "undo-notice-progress-fill h-full bg-indigo-500";
 
+/** Toast — kafelek ikony zależny od tonu (success / warning / error). */
+export const toastIconTileClass = cn(
+  brandIconTileClass,
+  "flex h-9 w-9 shrink-0 items-center justify-center rounded-md"
+);
+export const toastIconTileSuccessClass = "from-emerald-600 to-emerald-700 ring-emerald-500/30";
+export const toastIconTileWarningClass = "from-amber-500 to-amber-600 ring-amber-500/30";
+export const toastIconTileErrorClass = "from-red-600 to-red-700 ring-red-500/30";
+
+/** Toast — pasek postępu auto-znikania. */
+export const toastProgressTrackClass = "absolute inset-x-0 top-0 h-0.5 bg-slate-100";
+export const toastProgressFillClass = "toast-notice-progress-fill h-full";
+export const toastProgressFillSuccessClass = "bg-emerald-500";
+export const toastProgressFillWarningClass = "bg-amber-500";
+export const toastProgressFillErrorClass = "bg-red-500";
+
 /** @deprecated Użyj {@link systemNoticeActionClass}. */
 export const salesUpdatesBannerClass = cn(systemNoticeActionClass, "mb-4 sm:mb-6");
 

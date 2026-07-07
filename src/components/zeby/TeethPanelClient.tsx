@@ -20,11 +20,13 @@ import { TeethPanelEmpty, TeethPanelTabPanel } from "@/components/zeby/TeethPane
 import { TeethPanelWorkspaceCard } from "@/components/zeby/TeethPanelWorkspaceCard";
 import { TeethPanelFiltersBar } from "@/components/zeby/TeethPanelFiltersBar";
 import { TeethPanelKolejkaView } from "@/components/zeby/TeethPanelKolejkaView";
+import { TeethPanelWeryfikacjaView } from "@/components/zeby/TeethPanelWeryfikacjaView";
 import { TeethPanelHistoriaView } from "@/components/zeby/TeethPanelHistoriaView";
 import { TeethPanelMarkOrderedDialog } from "@/components/zeby/TeethPanelMarkOrderedDialog";
 import {
+  TEETH_KOLEJKA_ICON_TILE,
+  TEETH_WERYFIKACJA_ICON_TILE,
   TEETH_HISTORIA_ICON_TILE,
-  TEETH_PANEL_ICON_TILE,
 } from "@/lib/teeth/teeth-panel-shell";
 import type { Tab } from "@/components/zeby/teeth-panel-types";
 import { VALID_TEETH_PANEL_TABS } from "@/components/zeby/teeth-panel-types";
@@ -34,6 +36,7 @@ import {
   actionOverrideTeethDeliveryDate,
   actionFetchTeethHistoryGroups,
   actionFetchTeethQueue,
+  actionFetchTeethVerificationQueue,
 } from "@/app/actions/teeth-orders";
 import {
   EMPTY_TEETH_PANEL_FILTERS,
@@ -50,6 +53,7 @@ import { teethPanelReadinessContextFromMaps } from "@/lib/teeth/teeth-panel-orde
 
 const TEETH_TAB_PATHS: Record<Tab, string> = {
   kolejka: "/zeby/kolejka",
+  weryfikacja: "/zeby/weryfikacja",
   historia: "/zeby/historia",
 };
 
@@ -81,12 +85,17 @@ export function TeethPanelClient({
 
   const reloadQueue = useCallback(async () => {
     try {
-      const { groups: nextGroups } = await actionFetchTeethQueue();
-      setGroups(nextGroups);
+      if (tab === "weryfikacja") {
+        const { groups: nextGroups } = await actionFetchTeethVerificationQueue();
+        setGroups(nextGroups);
+      } else {
+        const { groups: nextGroups } = await actionFetchTeethQueue();
+        setGroups(nextGroups);
+      }
     } catch {
       router.refresh();
     }
-  }, [router]);
+  }, [router, tab]);
 
   const [pending, setPending] = useState(false);
   const [toast, setToast] = useState<{ message: string; tone: "success" | "error" } | null>(null);
@@ -367,7 +376,12 @@ export function TeethPanelClient({
             <IconTooth size={20} />
           )
         }
-        iconTileClassName={tab === "historia" ? TEETH_HISTORIA_ICON_TILE : TEETH_PANEL_ICON_TILE}
+        iconTileClassName={
+          tab === "kolejka" ? TEETH_KOLEJKA_ICON_TILE
+          : tab === "weryfikacja" ? TEETH_WERYFIKACJA_ICON_TILE
+          : tab === "historia" ? TEETH_HISTORIA_ICON_TILE
+          : TEETH_KOLEJKA_ICON_TILE
+        }
         beforeCard={
           toast ? (
             <Toast
@@ -382,6 +396,7 @@ export function TeethPanelClient({
           <TeethPanelTabs
             active={tab}
             queueCount={totalItems}
+            verificationCount={tab === "weryfikacja" ? totalItems : undefined}
             hint={TEETH_TAB_HINTS[tab]}
             onChange={navigateTab}
           />
@@ -423,6 +438,23 @@ export function TeethPanelClient({
                 }}
               />
             )}
+          </TeethPanelTabPanel>
+        ) : tab === "weryfikacja" ? (
+          <TeethPanelTabPanel id="teeth-panel-view-weryfikacja" labelledBy="teeth-panel-tab-weryfikacja">
+            <TeethPanelWeryfikacjaView
+              groups={filteredGroups}
+              pending={pending}
+              onApproveDone={(message, tone) => {
+                setToast({ message, tone });
+                void reloadQueue();
+              }}
+              onEditSaved={(message) => {
+                if (message) {
+                  setToast({ message, tone: "success" });
+                }
+                void reloadQueue();
+              }}
+            />
           </TeethPanelTabPanel>
         ) : (
           <TeethPanelTabPanel id="teeth-panel-view-historia" labelledBy="teeth-panel-tab-historia">

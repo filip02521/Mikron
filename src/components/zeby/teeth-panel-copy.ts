@@ -8,6 +8,7 @@ export const TEETH_PRZYJECIE_PAGE_HINT =
 
 export const TEETH_TAB_PAGE_TITLES: Record<Tab, string> = {
   kolejka: "Kolejka",
+  weryfikacja: "Weryfikacja zębów",
   historia: "Historia",
 };
 
@@ -32,6 +33,9 @@ export const TEETH_TAB_HINTS: Record<Tab, string> = {
   kolejka:
 
     "Prośby pogrupowane wg dostawcy. Jedno „Oznacz jako zamówione” — dla prośb handlowców i/lub cyklu z harmonogramu.",
+
+  weryfikacja:
+    "Prośby z listą zębów wczytaną ze zdjęcia. Zweryfikuj pozycje i zatwierdź, lub popraw przed zamówieniem.",
 
   historia:
     "Zamówienia u dostawcy pogrupowane wg labu. Korekta daty dostawy, cofnięcie błędnego oznaczenia i dziennik operacji.",

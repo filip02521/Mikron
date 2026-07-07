@@ -129,6 +129,7 @@ export function ZkWatchGroupedList({
   zkHintsByWatchId,
   linkableOrders = [],
   readOnly,
+  delegatePreview = false,
   tourPreview,
   compact,
   archived,
@@ -163,6 +164,7 @@ export function ZkWatchGroupedList({
   onFocusWatchHandled?: (watchId: string) => void;
   onLiveAnnounce?: (message: string) => void;
   readOnly?: boolean;
+  delegatePreview?: boolean;
   tourPreview?: boolean;
   compact?: boolean;
   archived?: boolean;
@@ -381,6 +383,7 @@ export function ZkWatchGroupedList({
               anchorId={`watch-${watch.id}`}
               orderHints={zkHintsByWatchId?.get(watch.id)}
               readOnly={readOnly}
+              delegatePreview={delegatePreview}
               tourPreview={tourPreview}
               compact={compact}
               archived={archived}
@@ -408,7 +411,7 @@ export function ZkWatchGroupedList({
         <ZkWatchLinesModal
           watch={modalWatch}
           open
-          readOnly={readOnly}
+          readOnly={readOnly || delegatePreview}
           tourPreview={tourPreview}
           archived={archived}
           focusNote={linesModalFocusNote}
@@ -432,6 +435,7 @@ export function ZkWatchGroupedList({
       <ZkWatchClosePendingHost
         session={closeSession}
         readOnly={readOnly}
+        delegatePreview={delegatePreview}
         tourPreview={tourPreview}
         onDismiss={() => setCloseSession(null)}
         onPreviewLoadingChange={setClosePreviewWatchId}

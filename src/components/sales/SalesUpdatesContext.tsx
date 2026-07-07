@@ -8,9 +8,9 @@ import {
   useRef,
   useState,
 } from "react";
-import { createPersistedFlagStore } from "@/lib/client/persisted-flag-store";
 import { usePersistedFlag } from "@/lib/client/use-persisted-flag";
 import { useClientHydrated } from "@/lib/client/use-client-hydrated";
+import { salesAutoRefreshStore as autoRefreshStore } from "@/lib/client/sales-auto-refresh-store";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/Button";
 import { SystemNotice } from "@/components/ui/SystemNotice";
@@ -28,8 +28,6 @@ const INITIAL_POLL_DELAY_MS = 4_000;
 const AUTO_REFRESH_MS = 3 * 60_000;
 const NOTATNIK_AUTO_REFRESH_COOLDOWN_MS = 15_000;
 const MOJE_AUTO_REFRESH_COOLDOWN_MS = 12_000;
-const STORAGE_KEY = "sales-auto-refresh";
-const autoRefreshStore = createPersistedFlagStore(STORAGE_KEY);
 
 import { isSalesZkNavPath } from "@/lib/sales/notepad-page-tabs";
 import { clearMojeZdEtaSessionSync } from "@/components/moje/MojeZdEtaSyncClient";

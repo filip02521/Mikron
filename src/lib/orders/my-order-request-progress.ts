@@ -9,7 +9,7 @@ import {
 } from "@/lib/orders/informacja-flow-copy";
 import { isProsbaHandoffStatus } from "@/lib/orders/my-order-sales-ui";
 
-export type MyOrderRequestProgressStepState = "done" | "current" | "upcoming";
+export type MyOrderRequestProgressStepState = "done" | "current" | "upcoming" | "cancelled";
 
 export type MyOrderRequestProgressStep = {
   id: string;
@@ -21,11 +21,12 @@ export type MyOrderRequestProgressStep = {
 export type MyOrderRequestProgressTrack = {
   steps: MyOrderRequestProgressStep[];
   /** Akcent paska — spójny z typem prośby. */
-  accent: "default" | "informacja";
+  accent: "default" | "informacja" | "archive";
 };
 
 /** Czy pokazać pasek postępu w rozwiniętym wierszu. */
 export function shouldShowMyOrderRequestProgress(row: MyOrderRow): boolean {
+  if (row.isArchive) return true;
   if (row.acknowledgeMode === "cancelled" || row.acknowledgeMode === "cancel_notice") {
     return false;
   }
@@ -38,6 +39,7 @@ export function shouldShowMyOrderRequestProgress(row: MyOrderRow): boolean {
 export function deriveMyOrderRequestProgress(
   row: MyOrderRow
 ): MyOrderRequestProgressTrack | null {
+  if (row.isArchive) return deriveArchiveRequestProgress(row);
   if (row.kind === "informacja") {
     return deriveInformacjaRequestProgress(row);
   }
@@ -180,4 +182,75 @@ function deriveInformacjaRequestProgress(row: MyOrderRow): MyOrderRequestProgres
   }
 
   return null;
+}
+
+/** Pasek postępu dla archiwum — wszystkie kroki zakończone lub anulowane. */
+function deriveArchiveRequestProgress(row: MyOrderRow): MyOrderRequestProgressTrack | null {
+  const completedDate = row.subline ?? null;
+
+  if (row.kind === "informacja") {
+    const labels = [
+      { id: "submit", label: "Zgłoszenie", date: row.submittedLabel },
+      { id: "order", label: "Zamówienie", date: row.orderedAtLabel ?? null },
+      { id: "warehouse", label: "Magazyn" },
+      { id: "notify", label: "Powiadomienie", date: completedDate },
+    ];
+
+    if (row.statusTitle === "Anulowano") {
+      return {
+        accent: "archive",
+        steps: labels.map((step, i) => ({
+          ...step,
+          state: i === 0 ? "done" : "cancelled" as const,
+        })),
+      };
+    }
+
+    return {
+      accent: "archive",
+      steps: labels.map((step) => ({ ...step, state: "done" as const })),
+    };
+  }
+
+  const labels = [
+    { id: "request", label: "Prośba", date: row.submittedLabel },
+    { id: "order", label: "Zamówienie", date: row.orderedAtLabel ?? null },
+    { id: "delivery", label: "Dostawa", date: row.deliveryAtLabel ?? null },
+    { id: "pickup", label: "Odbiór", date: completedDate },
+  ];
+
+  if (row.statusTitle === "Anulowane" || row.statusTitle === "Częściowo wycofane") {
+    return {
+      accent: "archive",
+      steps: labels.map((step, i) => ({
+        ...step,
+        state: i === 0 ? "done" : "cancelled" as const,
+      })),
+    };
+  }
+
+  if (row.statusTitle === "Rezygnacja — towar w drodze") {
+    return {
+      accent: "archive",
+      steps: labels.map((step, i) => ({
+        ...step,
+        state: i <= 1 ? "done" : "cancelled" as const,
+      })),
+    };
+  }
+
+  if (row.statusTitle === "Rezygnacja — towar na magazynie") {
+    return {
+      accent: "archive",
+      steps: labels.map((step, i) => ({
+        ...step,
+        state: i <= 2 ? "done" : "cancelled" as const,
+      })),
+    };
+  }
+
+  return {
+    accent: "archive",
+    steps: labels.map((step) => ({ ...step, state: "done" as const })),
+  };
 }

@@ -291,3 +291,109 @@ export async function saveTeethDetailsForOrders(
     await insertTeethDetailRows(supabase, rows);
   }
 }
+
+export type TeethSpecIdentifier = {
+  color: string;
+  mould: string | null;
+  jaw: string | null;
+  kind: string;
+};
+
+export type TeethSpecPatch = {
+  color?: string;
+  mould?: string | null;
+  jaw?: string | null;
+  kind?: string;
+};
+
+/** Aktualizuj grupę wierszy o tej samej specyfikacji (inline edit w weryfikacji OCR). */
+export async function updateTeethSpecGroup(
+  supabase: SupabaseClient,
+  orderId: string,
+  spec: TeethSpecIdentifier,
+  newSpec: TeethSpecPatch,
+  newCount?: number,
+): Promise<void> {
+  let query = supabase
+    .from("individual_order_teeth_details")
+    .select("id, position, ordered_at")
+    .eq("order_id", orderId)
+    .eq("color", spec.color)
+    .eq("kind", spec.kind);
+
+  if (spec.mould) query = query.eq("mould", spec.mould);
+  else query = query.is("mould", null);
+
+  if (spec.jaw) query = query.eq("jaw", spec.jaw);
+  else query = query.is("jaw", null);
+
+  const { data: existing, error } = await query.order("position", { ascending: true });
+  if (error) throw new Error(`Nie udało się pobrać pozycji: ${formatDbError(error)}`);
+  if (!existing || existing.length === 0) return;
+
+  const updatePayload: Record<string, unknown> = {};
+  if (newSpec.color !== undefined) updatePayload.color = newSpec.color;
+  if (newSpec.mould !== undefined) updatePayload.mould = newSpec.mould ?? null;
+  if (newSpec.jaw !== undefined) updatePayload.jaw = newSpec.jaw ?? null;
+  if (newSpec.kind !== undefined) updatePayload.kind = newSpec.kind;
+
+  if (Object.keys(updatePayload).length > 0) {
+    const ids = existing.map((r) => r.id);
+    const { error: updateError } = await supabase
+      .from("individual_order_teeth_details")
+      .update(updatePayload)
+      .in("id", ids);
+    if (updateError) throw new Error(`Nie udało się zaktualizować: ${formatDbError(updateError)}`);
+  }
+
+  if (newCount !== undefined && newCount !== existing.length) {
+    const diff = newCount - existing.length;
+    if (diff > 0) {
+      const maxPos = existing.reduce((max, r) => Math.max(max, r.position), 0);
+      const newRows: TeethDetailInsertRow[] = Array.from({ length: diff }, (_, i) => ({
+        order_id: orderId,
+        position: maxPos + i + 1,
+        color: newSpec.color ?? spec.color,
+        mould: newSpec.mould ?? spec.mould ?? null,
+        jaw: (newSpec.jaw ?? spec.jaw) as "upper" | "lower" | null,
+        kind: (newSpec.kind ?? spec.kind) as "anterior" | "posterior" | null,
+      }));
+      await insertTeethDetailRows(supabase, newRows);
+    } else if (diff < 0) {
+      const toRemove = existing.slice(diff);
+      const idsToRemove = toRemove.map((r) => r.id);
+      const { error: deleteError } = await supabase
+        .from("individual_order_teeth_details")
+        .delete()
+        .in("id", idsToRemove);
+      if (deleteError) throw new Error(`Nie udało się usunąć pozycji: ${formatDbError(deleteError)}`);
+    }
+  }
+}
+
+/** Wstaw nową grupę specyfikacji (nowe pozycje zębów) do zamówienia. */
+export async function insertTeethSpecGroup(
+  supabase: SupabaseClient,
+  orderId: string,
+  spec: TeethSpecIdentifier,
+  count: number,
+): Promise<void> {
+  const { data: existing, error: fetchError } = await supabase
+    .from("individual_order_teeth_details")
+    .select("position")
+    .eq("order_id", orderId)
+    .order("position", { ascending: false })
+    .limit(1);
+  if (fetchError) throw new Error(`Nie udało się pobrać pozycji: ${formatDbError(fetchError)}`);
+  const maxPos = existing?.[0]?.position ?? 0;
+
+  const rows: TeethDetailInsertRow[] = Array.from({ length: count }, (_, i) => ({
+    order_id: orderId,
+    position: maxPos + i + 1,
+    color: spec.color,
+    mould: spec.mould ?? null,
+    jaw: (spec.jaw ?? null) as "upper" | "lower" | null,
+    kind: (spec.kind ?? null) as "anterior" | "posterior" | null,
+  }));
+  await insertTeethDetailRows(supabase, rows);
+}

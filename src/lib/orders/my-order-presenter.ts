@@ -200,6 +200,8 @@ type MyOrderRowCore = {
   rowColor: string;
   /** Czy pozycja jest „zęby" (denormalizowane z individual_orders). */
   isTeeth?: boolean;
+  /** Czy wiersz pochodzi z archiwum (decorateArchivedRow) — wpływa na subline i styl. */
+  isArchive?: boolean;
 };
 
 export type MyOrderRow = MyOrderRowCore &
@@ -1017,7 +1019,8 @@ export function presentMyOrderGroup(
   const ordersForZd = (visibleOrders.length ? visibleOrders : orders).filter(
     (order) => !isAwaitingSalesPickup(order) && !isAwaitingInformacjaAck(order)
   );
-  const lines = visibleOrders.map((o) => {
+  const ordersForLines = visibleOrders.length ? visibleOrders : orders;
+  const lines = ordersForLines.map((o) => {
     const row = presentMyOrder(o, statsBySupplier, options);
     return rowToLine(row, o);
   });

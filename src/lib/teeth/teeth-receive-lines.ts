@@ -1,4 +1,4 @@
-import type { IndividualOrder, IndividualOrderTeethDetail } from "@/types/database";
+import type { IndividualOrder } from "@/types/database";
 import type { TeethGroupedDetail } from "@/lib/teeth/teeth-catalog";
 import {
   buildTeethReceiveLineDeliveredToSave,
@@ -10,7 +10,9 @@ import {
   teethReceiveGroupKey,
   teethReceiveGroupsFromOrder,
   teethReceiveHasSessionInput,
+  teethReceiveLineRemaining,
   teethReceiveRemaining,
+  toLineDetails,
 } from "@/lib/teeth/teeth-receive-picker";
 import {
   sortTeethReceiveOrders,
@@ -44,17 +46,6 @@ export function lineQtyForOrder(
     if (groupKey) result[groupKey] = value;
   }
   return result;
-}
-
-function toLineDetails(details: IndividualOrderTeethDetail[] | null | undefined) {
-  if (!details?.length) return [];
-  return details.map((d) => ({
-    position: d.position,
-    color: d.color,
-    mould: d.mould,
-    jaw: d.jaw,
-    kind: d.kind,
-  }));
 }
 
 export type TeethReceiveSpecRow = {
@@ -101,6 +92,7 @@ export function buildTeethReceiveFlatRows(
       const groups = teethReceiveGroupsFromOrder(toLineDetails(order.teeth_details));
       for (const group of groups) {
         const groupKey = teethReceiveGroupKey(group);
+        if (teethReceiveLineRemaining(order, group, groups) <= 0) continue;
         rows.push({
           kind: "spec",
           rowKey: teethReceiveRowKey(order.id, groupKey),

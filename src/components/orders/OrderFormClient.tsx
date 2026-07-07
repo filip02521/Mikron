@@ -143,6 +143,8 @@ interface Entry {
   teethProductLine?: TeethProductLine | null;
   teethKind?: TeethKind | null;
   teethDetails?: TeethLineDetail[];
+  teethOcrPending?: boolean;
+  teethOcrImagePath?: string | null;
 }
 
 function emptyEntry(salesPersonId = ""): Entry {
@@ -539,6 +541,8 @@ export function OrderFormClient({
             informacjaQueueViaDailyPanel: informacjaFlags.informacjaQueueViaDailyPanel,
             informacjaStockOutReorder: informacjaFlags.informacjaStockOutReorder,
             teethDetails: e.teethDetails ?? undefined,
+            teethOcrPending: e.teethOcrPending ?? undefined,
+            teethOcrImagePath: e.teethOcrImagePath ?? undefined,
           })),
           acknowledgeSufficientStock: options?.acknowledgeSufficientStock,
         });
@@ -1062,7 +1066,7 @@ export function OrderFormClient({
     const mojeLabel = submitForOther ? "Prośby handlowca" : "Moje zamówienia";
 
     return (
-      <div className="relative space-y-5">
+      <div className={cn("relative space-y-5", msg && "pb-44")}>
         {pendingMessage ? (
           <ActionLoadingOverlay message={pendingMessage} variant="viewport" />
         ) : null}
@@ -1283,7 +1287,7 @@ export function OrderFormClient({
   }
 
   return (
-    <div className="relative space-y-6">
+    <div className={cn("relative space-y-6", msg && "pb-44")}>
       {pendingMessage ? (
         <ActionLoadingOverlay message={pendingMessage} variant="viewport" />
       ) : null}

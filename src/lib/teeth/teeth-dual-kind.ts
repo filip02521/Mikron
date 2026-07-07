@@ -202,6 +202,8 @@ function buildTeethLineFromRegistry(
   product: TeethRegistryProduct,
   details: TeethLineDetail[],
   lineId: string,
+  fromOcr?: boolean,
+  ocrImagePath?: string | null,
 ): ProductLineDraft {
   return {
     ...template,
@@ -214,6 +216,8 @@ function buildTeethLineFromRegistry(
     teethProductLine: product.productLine,
     teethKind: product.kind,
     teethDetails: details,
+    teethOcrPending: fromOcr ?? false,
+    teethOcrImagePath: ocrImagePath ?? null,
     quantity: String(details.length),
   };
 }
@@ -242,6 +246,8 @@ export function commitDualKindTeethLines(
   anteriorGroups: TeethGroupDraft[],
   posteriorGroups: TeethGroupDraft[],
   index: TeethRegistryIndex,
+  fromOcr?: boolean,
+  ocrImagePath?: string | null,
 ): TeethDualKindCommitResult {
   const anchor = lines[anchorIndex];
   if (!anchor?.teethProductLine) {
@@ -317,6 +323,8 @@ export function commitDualKindTeethLines(
         anteriorProduct,
         anteriorDetails,
         preservedIds.get("anterior") ?? newProductLine().id,
+        fromOcr,
+        ocrImagePath,
       ),
     );
   }
@@ -327,6 +335,8 @@ export function commitDualKindTeethLines(
         posteriorProduct,
         posteriorDetails,
         preservedIds.get("posterior") ?? newProductLine().id,
+        fromOcr,
+        ocrImagePath,
       ),
     );
   }

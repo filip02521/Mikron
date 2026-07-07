@@ -77,7 +77,7 @@ export function canManageSuppliers(role: UserRole, workspaces?: Workspace[]): bo
 const PROCUREMENT_PREFIXES = ["/zakupy"];
 const SALES_TEAM_PREFIXES = ["/zespol"];
 
-const WAREHOUSE_PATH_PREFIXES = ["/kolejka", "/dostawy", "/notatki"];
+const WAREHOUSE_PATH_PREFIXES = ["/kolejka", "/dostawy", "/notatki", "/ustawienia"];
 
 const OPERATIONS_PATH_PREFIXES = [
   "/podsumowanie",
@@ -166,7 +166,7 @@ function canAccessPathForRole(
     if (isAdmin(role) && options?.previewSalesPersonId?.trim()) return true;
     return false;
   }
-  return pathname === "/" || pathname === "/login" || pathname === "/ustaw-haslo";
+  return pathname === "/" || pathname === "/login" || pathname === "/ustaw-haslo" || pathname === "/ustawienia";
 }
 
 /** Czy rola może wejść na ścieżkę (do przekierowania po logowaniu). */

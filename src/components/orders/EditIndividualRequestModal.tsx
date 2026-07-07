@@ -418,7 +418,13 @@ export function EditIndividualRequestModal({
       if (saveResult?.mode === "dual") return;
       const nextLines = lines.map((line, index) =>
         index === lineIndex
-          ? { ...line, teethDetails, quantity: String(totalQuantity) }
+          ? {
+              ...line,
+              teethDetails,
+              quantity: String(totalQuantity),
+              teethOcrPending: saveResult?.fromOcr ?? line.teethOcrPending,
+              teethOcrImagePath: saveResult?.ocrImagePath ?? line.teethOcrImagePath ?? null,
+            }
           : line,
       );
       setLines(nextLines);

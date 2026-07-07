@@ -38,6 +38,10 @@ export type ProductLineDraft = {
   teethKind?: TeethKind | null;
   /** Szczegóły zębowe per sztuka (kolor, wzór, rozmiar). */
   teethDetails?: TeethLineDetail[];
+  /** Czy lista zębów pochodzi z OCR (zdjęcie) — wymaga weryfikacji. */
+  teethOcrPending?: boolean;
+  /** Ścieżka zdjęcia OCR w Supabase Storage — do wyświetlenia w weryfikacji. */
+  teethOcrImagePath?: string | null;
 };
 
 export function newProductLine(): ProductLineDraft {

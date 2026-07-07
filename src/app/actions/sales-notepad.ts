@@ -7,6 +7,7 @@ import { after } from "next/server";
 import { getSessionUser } from "@/lib/auth";
 import { resolveSalesPersonForUser } from "@/lib/auth/sales-person";
 import { isSalesAccount } from "@/lib/auth-roles";
+import { isProfileActiveDelegateForSalesPerson } from "@/lib/data/vacation-delegations";
 import { canAccessSalesPerson } from "@/lib/data/sales-group-access";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getSubiektZk } from "@/lib/subiekt/api";
@@ -36,11 +37,18 @@ import { fetchZkWatchForProsbaPrefill } from "@/lib/sales/fetch-zk-watch-for-pre
 import { enrichZkProsbaPrefillWithLiveStock } from "@/lib/orders/fetch-prosba-line-stock";
 import type { SalesNote, SalesNoteColor, SalesZkWatch } from "@/types/database";
 
-async function salesPersonIdForAction(): Promise<string> {
+async function salesPersonIdForAction(delegateFor?: string): Promise<string> {
   const user = await getSessionUser();
   if (!user) throw new Error("Wymagane logowanie");
   if (!isSalesAccount(user.role)) {
     throw new Error("Brak uprawnień do tej operacji.");
+  }
+  if (delegateFor && delegateFor.trim()) {
+    const isDelegate = await isProfileActiveDelegateForSalesPerson(user.id, delegateFor);
+    if (!isDelegate) {
+      throw new Error("Brak uprawnień do tego panelu.");
+    }
+    return delegateFor;
   }
   const resolved = await resolveSalesPersonForUser(user);
   if (!resolved) {
@@ -275,8 +283,8 @@ export async function actionFindActiveZkWatchByQuery(
   return { watch: match as SalesZkWatch };
 }
 
-export async function actionCloseZkWatch(watchId: string) {
-  const salesPersonId = await salesPersonIdForAction();
+export async function actionCloseZkWatch(watchId: string, delegateFor?: string) {
+  const salesPersonId = await salesPersonIdForAction(delegateFor);
   const supabase = createAdminClient();
   const now = new Date().toISOString();
 

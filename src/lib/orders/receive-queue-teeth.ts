@@ -3,6 +3,7 @@ import { isTeethZamowienie, partitionOrdersByProcurementLane } from "@/lib/teeth
 import { hasActiveSupplierFulfillment } from "@/lib/orders/sales-cancel";
 import { mergeReceiveQueueOrders } from "@/lib/orders/receive-queue";
 import { supplierKey, type SupplierOrderGroup } from "@/lib/orders/queue-supplier-groups";
+import { orderHasOpenTeethReceiveLines } from "@/lib/teeth/teeth-receive-picker";
 
 export type TeethReceiveInboxSummary = {
   activeCount: number;
@@ -24,6 +25,7 @@ export function partitionDeliveryOrdersByTeeth(orders: IndividualOrder[]): {
 function isActiveReceiveOrder(order: IndividualOrder): boolean {
   if (order.warehouse_cancel_fulfilled_at) return false;
   if (order.status === "Zrealizowane") return false;
+  if (!orderHasOpenTeethReceiveLines(order)) return false;
   return (
     !order.sales_cancelled_at ||
     Boolean(order.procurement_cancel_disposition) ||
@@ -46,7 +48,7 @@ export function summarizeTeethReceiveInbox(
 export function buildTeethReceiveQueue(deliveryOrders: IndividualOrder[]): IndividualOrder[] {
   const teeth = deliveryOrders.filter(isTeethReceiveOrder);
   return mergeReceiveQueueOrders(teeth, []).filter(
-    (o) => o.status !== "Zrealizowane",
+    (o) => o.status !== "Zrealizowane" && orderHasOpenTeethReceiveLines(o),
   );
 }
 

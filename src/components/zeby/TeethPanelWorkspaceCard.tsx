@@ -5,14 +5,14 @@ import { Card, CardHeader } from "@/components/ui/Card";
 import { SectionHeadingIcon } from "@/components/icons/SectionHeadingIcon";
 import { TeethPanelContentFooter } from "@/components/zeby/TeethPanelContentFooter";
 import { panelWorkspaceShellClass } from "@/lib/ui/ontime-theme";
-import { TEETH_PANEL_ICON_TILE } from "@/lib/teeth/teeth-panel-shell";
+import { TEETH_KOLEJKA_ICON_TILE } from "@/lib/teeth/teeth-panel-shell";
 
 export function TeethPanelWorkspaceCard({
   title,
   hint,
   hintAriaLabel,
   icon,
-  iconTileClassName = TEETH_PANEL_ICON_TILE,
+  iconTileClassName = TEETH_KOLEJKA_ICON_TILE,
   headerAside,
   children,
   showFooter = true,

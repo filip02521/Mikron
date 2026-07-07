@@ -1,32 +1,13 @@
 import { AppBrandMark } from "@/components/ui/AppBrandMark";
-import { LoginAccountRoleLine } from "@/components/auth/LoginAccountRoleLine";
+import { UserSettingsMenu } from "@/components/layout/UserSettingsMenu";
 import {
   ONTIME_APP_NAME,
   ONTIME_COMPANY,
   ONTIME_TAGLINE_SHORT,
 } from "@/lib/ui/ontime-brand";
-import { resolveUserDisplayName } from "@/lib/users/display-name";
-import { ROLE_LABELS } from "@/lib/users/labels";
 import type { UserRole } from "@/types/database";
+import type { VacationDelegationRow } from "@/lib/data/vacation-delegations";
 import { cn } from "@/lib/cn";
-
-function initialsFromName(name: string): string {
-  const parts = name.trim().split(/\s+/).filter(Boolean);
-  if (parts.length >= 2) {
-    return `${parts[0]![0] ?? ""}${parts[1]![0] ?? ""}`.toUpperCase();
-  }
-  return name.slice(0, 2).toUpperCase();
-}
-
-function initialsFromEmail(email: string): string {
-  const local = (email.split("@")[0] ?? "").trim();
-  if (!local) return "?";
-  const parts = local.split(/[._-]+/).filter(Boolean);
-  if (parts.length >= 2) {
-    return `${parts[0]![0] ?? ""}${parts[1]![0] ?? ""}`.toUpperCase();
-  }
-  return local.slice(0, 2).toUpperCase();
-}
 
 function OnTimeWordmark({
   className,
@@ -48,29 +29,6 @@ function OnTimeWordmark({
   );
 }
 
-function RoleLine({
-  role,
-  roleLabel,
-  assignmentLabel,
-  compact = false,
-}: {
-  role: UserRole;
-  roleLabel?: string;
-  assignmentLabel?: string | null;
-  compact?: boolean;
-}) {
-  return (
-    <p className="min-w-0">
-      <LoginAccountRoleLine
-        role={role}
-        roleLabel={roleLabel ?? ROLE_LABELS[role]}
-        assignmentLabel={assignmentLabel}
-        compact={compact}
-      />
-    </p>
-  );
-}
-
 function SidebarUserRow({
   role,
   workspaceSubtitle = null,
@@ -78,6 +36,7 @@ function SidebarUserRow({
   salesPersonName,
   userAssignmentLabel,
   compact = false,
+  delegations = [],
 }: {
   role: UserRole | null;
   workspaceSubtitle?: string | null;
@@ -85,86 +44,18 @@ function SidebarUserRow({
   salesPersonName?: string | null;
   userAssignmentLabel?: string | null;
   compact?: boolean;
+  delegations?: VacationDelegationRow[];
 }) {
-  if (!role && !userEmail && !salesPersonName) return null;
-
-  const displayName = resolveUserDisplayName({
-    salesPersonName,
-    email: userEmail,
-  });
-  const primaryLabel = displayName || userEmail?.trim() || null;
-  const initials = primaryLabel
-    ? displayName
-      ? initialsFromName(displayName)
-      : userEmail
-        ? initialsFromEmail(userEmail)
-        : initialsFromName(primaryLabel)
-    : "?";
-  const roleLineLabel = workspaceSubtitle ?? (role ? ROLE_LABELS[role] : null);
-  const hoverDetail = [
-    primaryLabel,
-    roleLineLabel,
-    userAssignmentLabel,
-    userEmail,
-  ]
-    .filter(Boolean)
-    .join(" · ");
-
-  if (compact) {
-    return (
-      <div
-        className="mt-1 min-w-0"
-        title={hoverDetail || undefined}
-        {...(primaryLabel ? { "aria-label": `Zalogowany jako ${primaryLabel}` } : {})}
-      >
-        {primaryLabel ? (
-          <p className="truncate text-[11px] font-semibold leading-tight text-slate-900">
-            {primaryLabel}
-          </p>
-        ) : null}
-        {role ? (
-          <RoleLine
-            role={role}
-            roleLabel={workspaceSubtitle ?? ROLE_LABELS[role]}
-            assignmentLabel={userAssignmentLabel}
-            compact
-          />
-        ) : null}
-      </div>
-    );
-  }
-
   return (
-    <div
-      className="mt-4 border-t border-slate-100 pt-4"
-      title={hoverDetail || undefined}
-      {...(primaryLabel ? { "aria-label": `Zalogowany jako ${primaryLabel}` } : {})}
-    >
-      <div className="flex min-w-0 items-center gap-3">
-        <span
-          className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-slate-100 text-xs font-semibold text-slate-600 ring-1 ring-slate-200/80"
-          aria-hidden
-        >
-          {initials}
-        </span>
-        <div className="min-w-0 flex-1 space-y-1">
-          {primaryLabel ? (
-            <p className="truncate text-sm font-semibold leading-tight text-slate-900">
-              {primaryLabel}
-            </p>
-          ) : (
-            <p className="text-sm font-medium text-slate-500">Niezalogowany</p>
-          )}
-          {role ? (
-            <RoleLine
-              role={role}
-              roleLabel={workspaceSubtitle ?? ROLE_LABELS[role]}
-              assignmentLabel={userAssignmentLabel}
-            />
-          ) : null}
-        </div>
-      </div>
-    </div>
+    <UserSettingsMenu
+      role={role}
+      workspaceSubtitle={workspaceSubtitle}
+      userEmail={userEmail}
+      salesPersonName={salesPersonName}
+      userAssignmentLabel={userAssignmentLabel}
+      compact={compact}
+      delegations={delegations}
+    />
   );
 }
 
@@ -175,12 +66,14 @@ export function SidebarBrandBlock({
   userEmail,
   salesPersonName,
   userAssignmentLabel,
+  activeDelegations = [],
 }: {
   role: UserRole | null;
   workspaceSubtitle?: string | null;
   userEmail?: string | null;
   salesPersonName?: string | null;
   userAssignmentLabel?: string | null;
+  activeDelegations?: VacationDelegationRow[];
 }) {
   return (
     <div>
@@ -200,6 +93,7 @@ export function SidebarBrandBlock({
         userEmail={userEmail}
         salesPersonName={salesPersonName}
         userAssignmentLabel={userAssignmentLabel}
+        delegations={activeDelegations}
       />
     </div>
   );
@@ -211,11 +105,13 @@ export function MobileBrandBlock({
   userEmail,
   salesPersonName,
   userAssignmentLabel,
+  delegations = [],
 }: {
   role: UserRole | null;
   userEmail?: string | null;
   salesPersonName?: string | null;
   userAssignmentLabel?: string | null;
+  delegations?: VacationDelegationRow[];
 }) {
   return (
     <div className="flex min-w-0 items-center gap-2.5">
@@ -228,6 +124,7 @@ export function MobileBrandBlock({
           salesPersonName={salesPersonName}
           userAssignmentLabel={userAssignmentLabel}
           compact
+          delegations={delegations}
         />
       </div>
     </div>

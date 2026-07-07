@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { MyOrderRow } from "@/lib/orders/my-order-presenter";
-import { ARCHIVE_RECENT_DAYS } from "@/lib/orders/my-order-archive";
+import { ARCHIVE_RECENT_DAYS, ARCHIVE_EXPANDED_DAYS } from "@/lib/orders/my-order-archive";
 import {
   filterMyOrderRowsBySearch,
   searchQueryTokens,
@@ -10,7 +10,12 @@ import {
 import { MyOrderShipmentList } from "@/components/moje/MyOrderShipmentList";
 import { Card, CardHeader } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
-import { MojeSectionIcon, mojeSectionIconTileClass } from "@/components/icons/StrokeIcons";
+import {
+  MojeSectionIcon,
+  mojeSectionIconTileClass,
+  IconChevronDown,
+  IconArchive,
+} from "@/components/icons/StrokeIcons";
 import { SectionHeadingIcon } from "@/components/icons/SectionHeadingIcon";
 
 export function MyOrderArchiveSection({
@@ -100,21 +105,25 @@ export function MyOrderArchiveSection({
   const countLabel = (n: number) =>
     `${n} ${n === 1 ? "wpis" : n < 5 ? "wpisy" : "wpisów"}`;
 
+  const totalRecent = rowsRecent.length;
+
   const description = open
     ? showMore
-      ? `${countLabel(filteredExtended.length)} z ostatnich 90 dni — tylko do wglądu`
+      ? `${countLabel(filteredExtended.length)} · ostatnie ${ARCHIVE_EXPANDED_DAYS} dni`
       : hasRecent
-        ? `${countLabel(filteredRecent.length)} z ostatnich ${ARCHIVE_RECENT_DAYS} dni — tylko do wglądu`
+        ? `${countLabel(filteredRecent.length)} · ostatnie ${ARCHIVE_RECENT_DAYS} dni`
         : searchActive
           ? "Brak zakończonych prośb pasujących do wyszukiwania"
           : `Brak wpisów z ostatnich ${ARCHIVE_RECENT_DAYS} dni`
     : searchActive
       ? "Zakończone prośby pasujące do wyszukiwania"
-      : `Odebrane, wycofane i zakończone prośby z ostatnich ${ARCHIVE_RECENT_DAYS} dni`;
+      : totalRecent > 0
+        ? `${countLabel(totalRecent)} ${totalRecent === 1 ? "zakończony" : "zakończone"} · ostatnie ${ARCHIVE_RECENT_DAYS} dni`
+        : `Odebrane i zakończone prośby z ostatnich ${ARCHIVE_RECENT_DAYS} dni`;
 
   return (
-    <div id="moje-ostatnio-zakonczone" className="mt-8 border-t-2 border-dashed border-slate-200/90 pt-6">
-    <Card padding={false} className="border-slate-200/70 bg-slate-50/80 shadow-none">
+    <div id="moje-ostatnio-zakonczone" className="mt-6 border-t border-slate-200/70 pt-5">
+    <Card padding={false} className="border-slate-200/60 bg-slate-50/50 shadow-none">
       <CardHeader
         inset
         density="compact"
@@ -126,19 +135,21 @@ export function MyOrderArchiveSection({
           </SectionHeadingIcon>
         }
         action={
-          <button
+          <Button
             type="button"
+            variant="outline"
+            size="sm"
             onClick={() => {
               setOpen((v) => {
                 if (v) setShowMore(false);
                 return !v;
               });
             }}
-            className="min-h-11 cursor-pointer rounded-md border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50 sm:min-h-8"
             aria-expanded={open}
           >
+            <IconChevronDown size={14} open={open} />
             {open ? "Zwiń" : "Pokaż"}
-          </button>
+          </Button>
         }
       />
       {open ? (
@@ -155,24 +166,54 @@ export function MyOrderArchiveSection({
               cardIdPrefix={cardIdPrefix}
             />
           ) : (
-            <p className="px-4 py-6 text-sm text-slate-500">
-              W ostatnich {ARCHIVE_RECENT_DAYS} dniach nie ma zakończonych wpisów.
-              {hasMoreToLoad
-                ? " Starsze pozycje zobaczysz po kliknięciu „Pokaż więcej” poniżej."
-                : null}
-            </p>
+            <div className="flex flex-col items-center gap-2 px-4 py-8 text-center">
+              <span className="flex h-10 w-10 items-center justify-center rounded-full bg-slate-100 text-slate-400">
+                <IconArchive size={20} />
+              </span>
+              <p className="text-sm text-slate-500">
+                {searchActive
+                  ? "Brak zakończonych prośb pasujących do wyszukiwania"
+                  : `W ostatnich ${ARCHIVE_RECENT_DAYS} dniach nie ma zakończonych wpisów.`}
+              </p>
+              {hasMoreToLoad ? (
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setShowMore(true)}
+                >
+                  Pokaż starsze pozycje
+                </Button>
+              ) : null}
+            </div>
           )}
+          {visibleRows.length > 0 ? (
+            <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5 border-t border-slate-100 px-4 py-2 text-[10px] text-slate-500" aria-label="Znaczenie kolorów w archiwum">
+              <span className="inline-flex items-center gap-1.5">
+                <span className="h-3 w-1 shrink-0 rounded-full bg-emerald-300" aria-hidden />
+                <span>Zrealizowane</span>
+              </span>
+              <span className="inline-flex items-center gap-1.5">
+                <span className="h-3 w-1 shrink-0 rounded-full bg-red-300" aria-hidden />
+                <span>Anulowane / wycofane</span>
+              </span>
+              <span className="inline-flex items-center gap-1.5">
+                <span className="h-3 w-1 shrink-0 rounded-full bg-violet-300" aria-hidden />
+                <span>Informacyjne</span>
+              </span>
+            </div>
+          ) : null}
           {hasMoreToLoad ? (
-            <div className="border-t border-slate-100 px-4 py-3">
+            <div className="flex items-center justify-center border-t border-slate-100 px-4 py-3">
               <Button
                 type="button"
-                variant="secondary"
-                className="w-full sm:w-auto"
+                variant="outline"
+                size="sm"
                 onClick={() => setShowMore((v) => !v)}
               >
                 {showMore
-                  ? "Pokaż tylko ostatnie 7 dni"
-                  : `Pokaż więcej (${countLabel(filteredExtended.length)} z 90 dni)`}
+                  ? `Pokaż tylko ostatnie ${ARCHIVE_RECENT_DAYS} dni`
+                  : `Pokaż więcej · ${countLabel(filteredExtended.length)} z ${ARCHIVE_EXPANDED_DAYS} dni`}
               </Button>
             </div>
           ) : null}

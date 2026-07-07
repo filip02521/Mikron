@@ -2,7 +2,45 @@
 
 import { useEffect, useRef } from "react";
 import { cn } from "@/lib/cn";
+import { playToastNotificationSound } from "@/lib/client/notification-sound";
+import { Button } from "@/components/ui/Button";
+import {
+  IconCircleCheck,
+  IconAlertCircle,
+} from "@/components/icons/StrokeIcons";
 import { floatingToastBottomClass, floatingToastStackAboveClass } from "@/lib/ui/sales-mobile-chrome";
+import {
+  systemNoticeUndoClass,
+  toastIconTileClass,
+  toastIconTileSuccessClass,
+  toastIconTileWarningClass,
+  toastIconTileErrorClass,
+  toastProgressTrackClass,
+  toastProgressFillClass,
+  toastProgressFillSuccessClass,
+  toastProgressFillWarningClass,
+  toastProgressFillErrorClass,
+} from "@/lib/ui/ontime-theme";
+
+type ToastTone = "success" | "error" | "warning";
+
+const toneIconTile: Record<ToastTone, string> = {
+  success: toastIconTileSuccessClass,
+  warning: toastIconTileWarningClass,
+  error: toastIconTileErrorClass,
+};
+
+const toneProgressFill: Record<ToastTone, string> = {
+  success: toastProgressFillSuccessClass,
+  warning: toastProgressFillWarningClass,
+  error: toastProgressFillErrorClass,
+};
+
+function ToneIcon({ tone }: { tone: ToastTone }) {
+  if (tone === "error") return <IconAlertCircle size={18} strokeWidth={2.25} />;
+  if (tone === "warning") return <IconAlertCircle size={18} strokeWidth={2.25} />;
+  return <IconCircleCheck size={18} strokeWidth={2.25} />;
+}
 
 export function Toast({
   message,
@@ -13,7 +51,7 @@ export function Toast({
   stacked = false,
 }: {
   message: string;
-  tone?: "success" | "error" | "warning";
+  tone?: ToastTone;
   onDismiss: () => void;
   durationMs?: number;
   action?: React.ReactNode;
@@ -30,23 +68,62 @@ export function Toast({
     return () => clearTimeout(t);
   }, [message, autoMs]);
 
+  useEffect(() => {
+    void playToastNotificationSound();
+  }, []);
+
   return (
     <div
       role="status"
       aria-live="polite"
+      aria-atomic="true"
       className={cn(
-        "fixed z-[60] max-w-sm rounded-md border px-4 py-3 text-sm shadow-lg",
+        systemNoticeUndoClass,
+        "fixed z-[60] max-w-[min(100vw-1.5rem,26rem)]",
         stacked ? floatingToastStackAboveClass : floatingToastBottomClass,
         "left-4 right-4 sm:left-auto sm:right-6",
-        tone === "success"
-          ? "border-emerald-200 bg-emerald-50 text-emerald-900"
-          : tone === "warning"
-            ? "border-amber-200 bg-amber-50 text-amber-950"
-            : "border-red-200 bg-red-50 text-red-900"
       )}
+      style={{ ["--toast-duration" as string]: `${autoMs}ms` }}
     >
-      <p className="font-medium">{message}</p>
-      {action ? <div className="mt-3">{action}</div> : null}
+      <div className={toastProgressTrackClass} aria-hidden>
+        <div className={cn(toastProgressFillClass, toneProgressFill[tone])} />
+      </div>
+
+      <div className="flex flex-col gap-3 px-3 py-3 sm:flex-row sm:items-start sm:justify-between sm:gap-4 sm:px-4">
+        <div className="flex min-w-0 items-start gap-2.5">
+          <span className={cn(toastIconTileClass, toneIconTile[tone])}>
+            <ToneIcon tone={tone} />
+          </span>
+          <div className="min-w-0 space-y-1 pt-0.5">
+            <p className="text-sm font-semibold leading-snug text-slate-900">{message}</p>
+          </div>
+        </div>
+
+        {action ? (
+          <div className="flex shrink-0 flex-wrap items-center gap-2 sm:flex-col sm:items-stretch sm:pt-0.5">
+            {action}
+            <Button
+              type="button"
+              size="sm"
+              variant="ghost"
+              className="min-h-10 w-full text-slate-600 sm:min-w-[7.5rem]"
+              onClick={onDismiss}
+            >
+              Zamknij
+            </Button>
+          </div>
+        ) : (
+          <Button
+            type="button"
+            size="sm"
+            variant="ghost"
+            className="min-h-10 shrink-0 self-end text-slate-600 sm:self-start"
+            onClick={onDismiss}
+          >
+            Zamknij
+          </Button>
+        )}
+      </div>
     </div>
   );
 }

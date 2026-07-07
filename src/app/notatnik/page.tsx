@@ -92,13 +92,16 @@ export default async function NotatnikPage({
         }}
         initialFocusWatchId={focusWatch?.trim() || null}
         initialTab={initialTab}
-        readOnly={!!access.isTeamPreview}
+        readOnly={!!access.isTeamPreview && !access.isDelegatePreview}
+        delegatePreview={!!access.isDelegatePreview}
         subiektAvailability={subiektAvailability}
-        pageTitle={access.isTeamPreview ? `Notatnik: ${access.salesPersonName}` : "Notatnik"}
+        pageTitle={access.isTeamPreview || access.isDelegatePreview ? `Notatnik: ${access.salesPersonName}` : "Notatnik"}
         pageDescription={
           access.isTeamPreview
             ? "Podgląd notatek i archiwum wybranego handlowca. Edycja tylko we własnym Notatniku."
-            : undefined
+            : access.isDelegatePreview
+              ? "Tryb zastępstwa — notatki tylko do odczytu. ZK można zamykać w zakładce ZK."
+              : undefined
         }
         linkError={
           access.linkError && (access.previewSalesPersonId || access.role === "sales")
@@ -107,11 +110,14 @@ export default async function NotatnikPage({
         }
         loadError={loadError}
         teamPreview={
-          access.isTeamPreview && access.salesPersonId && access.salesPersonName
+          (access.isTeamPreview || access.isDelegatePreview) && access.salesPersonId && access.salesPersonName
             ? {
                 salesPersonId: access.salesPersonId,
                 salesPersonName: access.salesPersonName,
-                readOnly: access.role === "admin",
+                readOnly: access.role === "admin" && !access.isDelegatePreview,
+                isDelegate: access.isDelegatePreview,
+                startDate: access.delegationStartDate,
+                endDate: access.delegationEndDate,
               }
             : null
         }

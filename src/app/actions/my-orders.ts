@@ -6,6 +6,7 @@ import { revalidatePath } from "next/cache";
 import { getSessionUser } from "@/lib/auth";
 import { resolveSalesPersonForUser } from "@/lib/auth/sales-person";
 import { isSalesAccount } from "@/lib/auth-roles";
+import { isProfileActiveDelegateForSalesPerson } from "@/lib/data/vacation-delegations";
 import { createClient } from "@/lib/supabase/server";
 import {
   effectiveSalesCancelPhase,
@@ -51,11 +52,18 @@ import {
 } from "@/lib/sales/zk-watch-pending-ack-plan";
 import { actionCloseZkWatch } from "@/app/actions/sales-notepad";
 
-async function salesPersonIdForAction(): Promise<string> {
+async function salesPersonIdForAction(delegateFor?: string): Promise<string> {
   const user = await getSessionUser();
   if (!user) throw new Error("Wymagane logowanie");
   if (!isSalesAccount(user.role)) {
     throw new Error("Brak uprawnień do tej operacji.");
+  }
+  if (delegateFor && delegateFor.trim()) {
+    const isDelegate = await isProfileActiveDelegateForSalesPerson(user.id, delegateFor);
+    if (!isDelegate) {
+      throw new Error("Brak uprawnień do tego panelu.");
+    }
+    return delegateFor;
   }
   const resolved = await resolveSalesPersonForUser(user);
   if (!resolved) {
@@ -70,10 +78,11 @@ async function salesOrderSupabase() {
 
 async function acknowledgeOrders(
   orderIds: string[],
-  options: AckOptions = {}
+  options: AckOptions = {},
+  delegateFor?: string
 ) {
   if (!orderIds.length) throw new Error("Brak pozycji do potwierdzenia.");
-  const salesPersonId = await salesPersonIdForAction();
+  const salesPersonId = await salesPersonIdForAction(delegateFor);
   const supabase = await salesOrderSupabase();
   const { count } = await acknowledgeOrdersWithClient(
     supabase,
@@ -163,13 +172,13 @@ export async function actionUpdateSalesClientName(
 }
 
 /** Ukrycie anulowanej prośby / dostawy. */
-export async function actionAcknowledgeCancelled(orderIds: string[]) {
-  return acknowledgeOrders(orderIds, { allowedStatuses: ["Anulowane"] });
+export async function actionAcknowledgeCancelled(orderIds: string[], delegateFor?: string) {
+  return acknowledgeOrders(orderIds, { allowedStatuses: ["Anulowane"] }, delegateFor);
 }
 
 /** Ukrycie informacji o rezygnacji (towar w drodze / na stanie). */
-export async function actionAcknowledgeSalesCancelNotice(orderIds: string[]) {
-  return acknowledgeOrders(orderIds, { requireSalesCancelled: true });
+export async function actionAcknowledgeSalesCancelNotice(orderIds: string[], delegateFor?: string) {
+  return acknowledgeOrders(orderIds, { requireSalesCancelled: true }, delegateFor);
 }
 
 /** Wycofanie prośby przez handlowca (klient się rozmyślił). */
@@ -452,8 +461,8 @@ export async function actionSalesCancelTeethGroups(
 }
 
 /** Potwierdzenie odbioru z magazynu (pojedyncza pozycja lub linia w grupie). */
-export async function actionAcknowledgePickup(orderIds: string[]) {
-  return acknowledgeOrders(orderIds, { allowedStatuses: ["Zrealizowane"] });
+export async function actionAcknowledgePickup(orderIds: string[], delegateFor?: string) {
+  return acknowledgeOrders(orderIds, { allowedStatuses: ["Zrealizowane"] }, delegateFor);
 }
 
 export async function actionUnacknowledgePickup(orderIds: string[]) {
@@ -698,19 +707,19 @@ export async function actionUpdateMyIndividualRequest(
   return { success: true as const, ...result };
 }
 
-export async function actionAcknowledgeZdFulfillmentDeadlineChange(orderIds: string[]) {
+export async function actionAcknowledgeZdFulfillmentDeadlineChange(orderIds: string[], delegateFor?: string) {
   const uniqueIds = [...new Set(orderIds.map((id) => id.trim()).filter(Boolean))];
   if (!uniqueIds.length) throw new Error("Brak pozycji do potwierdzenia.");
 
-  const salesPersonId = await salesPersonIdForAction();
+  const salesPersonId = await salesPersonIdForAction(delegateFor);
   const supabase = await salesOrderSupabase();
   const { count } = await acknowledgeZdDeadlineWithClient(supabase, salesPersonId, uniqueIds);
   return { success: true as const, count };
 }
 
 /** Potwierdza wszystkie oczekujące pozycje powiązane z danym ZK (jak ręcznie w /moje). */
-export async function actionAcknowledgeZkWatchPendingOrders(watchId: string) {
-  const salesPersonId = await salesPersonIdForAction();
+export async function actionAcknowledgeZkWatchPendingOrders(watchId: string, delegateFor?: string) {
+  const salesPersonId = await salesPersonIdForAction(delegateFor);
   const supabase = await salesOrderSupabase();
   const watch = await loadZkWatchForPendingAck(supabase, watchId, salesPersonId);
   const items = await resolveZkWatchPendingAckItemsForWatch(watch, supabase);
@@ -719,8 +728,8 @@ export async function actionAcknowledgeZkWatchPendingOrders(watchId: string) {
 }
 
 /** Świeża lista niepotwierdzonych pozycji przed zamknięciem ZK (źródło prawdy: serwer). */
-export async function actionFetchZkWatchClosePendingPreview(watchId: string) {
-  const salesPersonId = await salesPersonIdForAction();
+export async function actionFetchZkWatchClosePendingPreview(watchId: string, delegateFor?: string) {
+  const salesPersonId = await salesPersonIdForAction(delegateFor);
   const supabase = await salesOrderSupabase();
   const watch = await loadZkWatchForPendingAck(supabase, watchId, salesPersonId);
   const items = await resolveZkWatchPendingAckItemsForWatch(watch, supabase);
@@ -728,8 +737,8 @@ export async function actionFetchZkWatchClosePendingPreview(watchId: string) {
 }
 
 /** Potwierdza wszystkie wiszące pozycje i zamyka sprawę ZK w jednej operacji serwerowej. */
-export async function actionAcknowledgeAndCloseZkWatch(watchId: string) {
-  const salesPersonId = await salesPersonIdForAction();
+export async function actionAcknowledgeAndCloseZkWatch(watchId: string, delegateFor?: string) {
+  const salesPersonId = await salesPersonIdForAction(delegateFor);
   const supabase = await salesOrderSupabase();
   const watch = await loadZkWatchForPendingAck(supabase, watchId, salesPersonId);
   const items = await resolveZkWatchPendingAckItemsForWatch(watch, supabase);
@@ -742,13 +751,13 @@ export async function actionAcknowledgeAndCloseZkWatch(watchId: string) {
     );
   }
 
-  const { closedAt } = await actionCloseZkWatch(watchId);
+  const { closedAt } = await actionCloseZkWatch(watchId, delegateFor);
   return { success: true as const, ackCount, closedAt };
 }
 
 /** Podgląd zamówionych zębów powiązanych z danym ZK (read-only). */
-export async function actionFetchZkWatchTeethPreview(watchId: string) {
-  const salesPersonId = await salesPersonIdForAction();
+export async function actionFetchZkWatchTeethPreview(watchId: string, delegateFor?: string) {
+  const salesPersonId = await salesPersonIdForAction(delegateFor);
   const supabase = await salesOrderSupabase();
   const watch = await loadZkWatchForPendingAck(supabase, watchId, salesPersonId);
 

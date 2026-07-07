@@ -83,6 +83,7 @@ export function MyOrderShipmentList({
   listKind,
   showProgress,
   canAcknowledge,
+  canEdit: canEditProp,
   cardIdPrefix,
   suppliers = [],
   embedded = false,
@@ -100,6 +101,7 @@ export function MyOrderShipmentList({
   listKind: "zamowienie" | "informacja";
   showProgress: boolean;
   canAcknowledge: boolean;
+  canEdit?: boolean;
   cardIdPrefix?: (rowId: string) => string;
   suppliers?: OrderFormSupplierOption[];
   /** Wewnątrz wspólnej obwódki sekcji (bez drugiego rounded-md). */
@@ -464,17 +466,17 @@ export function MyOrderShipmentList({
             : undefined
         }
         onCancelRequest={
-          canAcknowledge && row.salesCancelOrderIds.length && row.salesCancelPhase
+          (canEditProp ?? canAcknowledge) && row.salesCancelOrderIds.length && row.salesCancelPhase
             ? requestCancel
             : undefined
         }
         onPartialCancelRequest={
-          canAcknowledge && row.salesCancelOrderIds.length
+          (canEditProp ?? canAcknowledge) && row.salesCancelOrderIds.length
             ? requestPartialCancel
             : undefined
         }
-        onSaveClient={canAcknowledge ? saveClient : undefined}
-        onEditRequest={canAcknowledge && !tourPreview ? handleEditRequest : undefined}
+        onSaveClient={(canEditProp ?? canAcknowledge) ? saveClient : undefined}
+        onEditRequest={(canEditProp ?? canAcknowledge) && !tourPreview ? handleEditRequest : undefined}
         searchQuery={searchQuery}
         tourPreview={tourPreview}
         compactActionLayout={compactActionLayout}
@@ -487,6 +489,7 @@ export function MyOrderShipmentList({
     [
       ackPending,
       canAcknowledge,
+      canEditProp,
       cardIdPrefix,
       compactActionLayout,
       expandedIds,

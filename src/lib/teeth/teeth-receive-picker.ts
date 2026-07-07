@@ -1,4 +1,4 @@
-import type { IndividualOrder } from "@/types/database";
+import type { IndividualOrder, IndividualOrderTeethDetail } from "@/types/database";
 import {
   groupTeethDetails,
   type TeethGroupedDetail,
@@ -6,6 +6,7 @@ import {
 } from "@/lib/teeth/teeth-catalog";
 import { parseOrderQuantity } from "@/lib/orders/individual";
 import { receiveQueueTargetQuantity } from "@/lib/orders/sales-cancel";
+import { orderHasTeethList } from "@/lib/teeth/teeth-panel-filters";
 
 export function teethReceiveGroupKey(group: TeethGroupedDetail): string {
   return `${group.color}|${group.mould ?? ""}|${group.jaw ?? ""}|${group.kind ?? ""}`;
@@ -15,6 +16,23 @@ export function teethReceiveGroupsFromOrder(
   details: TeethLineDetail[] | undefined,
 ): TeethGroupedDetail[] {
   return groupTeethDetails(details);
+}
+
+export function toLineDetails(details: IndividualOrderTeethDetail[] | null | undefined): TeethLineDetail[] {
+  if (!details?.length) return [];
+  return details.map((d) => ({
+    position: d.position,
+    color: d.color,
+    mould: d.mould,
+    jaw: d.jaw,
+    kind: d.kind,
+  }));
+}
+
+export function orderHasOpenTeethReceiveLines(order: IndividualOrder): boolean {
+  if (!orderHasTeethList(order)) return true;
+  const groups = teethReceiveGroupsFromOrder(toLineDetails(order.teeth_details));
+  return groups.some((group) => teethReceiveLineRemaining(order, group, groups) > 0);
 }
 
 export function teethReceiveAlreadyDelivered(order: IndividualOrder): number {

@@ -90,15 +90,18 @@ export default async function ZkPage({
       }}
       initialFocusWatchId={focusWatch?.trim() || null}
       initialTab={initialTab}
-      readOnly={!!access.isTeamPreview}
+      readOnly={!!access.isTeamPreview && !access.isDelegatePreview}
+      delegatePreview={!!access.isDelegatePreview}
       subiektAvailability={subiektAvailability}
       pageTitle={
-        access.isTeamPreview ? `ZK czekające: ${access.salesPersonName}` : "ZK czekające"
+        access.isTeamPreview ? `ZK czekające: ${access.salesPersonName}` : access.isDelegatePreview ? `ZK: ${access.salesPersonName}` : "ZK czekające"
       }
       pageDescription={
         access.isTeamPreview
           ? "Podgląd ZK czekających wybranego handlowca. Edycja tylko we własnej zakładce ZK czekające."
-          : undefined
+          : access.isDelegatePreview
+            ? "Tryb zastępstwa — możesz zamykać ZK. Edycja notatek i dodawanie ZK są wyłączone."
+            : undefined
       }
       linkError={
         access.linkError && (access.previewSalesPersonId || access.role === "sales")
@@ -107,11 +110,14 @@ export default async function ZkPage({
       }
       loadError={loadError}
       teamPreview={
-        access.isTeamPreview && access.salesPersonId && access.salesPersonName
+        (access.isTeamPreview || access.isDelegatePreview) && access.salesPersonId && access.salesPersonName
           ? {
               salesPersonId: access.salesPersonId,
               salesPersonName: access.salesPersonName,
-              readOnly: access.role === "admin",
+              readOnly: access.role === "admin" && !access.isDelegatePreview,
+              isDelegate: access.isDelegatePreview,
+              startDate: access.delegationStartDate,
+              endDate: access.delegationEndDate,
             }
           : null
       }

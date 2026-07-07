@@ -6,14 +6,12 @@ import { Button } from "@/components/ui/Button";
 import { SystemNotice } from "@/components/ui/SystemNotice";
 import { MICROCOPY } from "@/lib/ui/microcopy";
 import { usePatchAppShellNavBadges } from "@/components/layout/AppShellMetricsContext";
-import { createPersistedFlagStore } from "@/lib/client/persisted-flag-store";
 import { usePersistedFlag } from "@/lib/client/use-persisted-flag";
+import { teethAutoRefreshStore as autoRefreshStore } from "@/lib/client/teeth-auto-refresh-store";
 
 const POLL_MS = 25_000;
 const INITIAL_POLL_DELAY_MS = 4_000;
 const AUTO_REFRESH_MS = 3 * 60_000;
-const STORAGE_KEY = "teeth-auto-refresh";
-const autoRefreshStore = createPersistedFlagStore(STORAGE_KEY);
 
 type TeethUpdatesContextValue = {
   hasUpdates: boolean;
@@ -35,23 +33,27 @@ export function useTeethUpdates() {
 async function fetchTeethVersion(): Promise<{
   version: string | null;
   queueCount: number | null;
+  verificationCount: number | null;
 }> {
   try {
     const res = await fetch("/api/operations/teeth-panel-version", {
       cache: "no-store",
     });
-    if (!res.ok) return { version: null, queueCount: null };
+    if (!res.ok) return { version: null, queueCount: null, verificationCount: null };
     const body = (await res.json()) as {
       version?: string;
       queueCount?: number;
+      verificationCount?: number;
     };
     return {
       version: body.version ?? null,
       queueCount:
         typeof body.queueCount === "number" ? body.queueCount : null,
+      verificationCount:
+        typeof body.verificationCount === "number" ? body.verificationCount : null,
     };
   } catch {
-    return { version: null, queueCount: null };
+    return { version: null, queueCount: null, verificationCount: null };
   }
 }
 
@@ -96,9 +98,10 @@ export function TeethUpdatesProvider({
     router.refresh();
     if (latest) setBaseline(latest);
     void fetchTeethVersion()
-      .then(({ version, queueCount }) => {
+      .then(({ version, queueCount, verificationCount }) => {
         if (version) syncBaseline(version);
         if (queueCount != null) patchNavBadges({ teethQueue: queueCount });
+        if (verificationCount != null) patchNavBadges({ teethVerification: verificationCount });
         const now = Date.now();
         setLastSyncedAt(now);
         setLastPollAt(now);
@@ -109,8 +112,9 @@ export function TeethUpdatesProvider({
   }, [router, latest, syncBaseline, patchNavBadges]);
 
   const poll = useCallback(async () => {
-    const { version, queueCount } = await fetchTeethVersion();
+    const { version, queueCount, verificationCount } = await fetchTeethVersion();
     if (queueCount != null) patchNavBadges({ teethQueue: queueCount });
+    if (verificationCount != null) patchNavBadges({ teethVerification: verificationCount });
     if (!version) return;
     const now = Date.now();
     setLatest(version);

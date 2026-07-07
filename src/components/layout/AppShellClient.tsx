@@ -38,6 +38,7 @@ import {
 } from "@/lib/data/department-board";
 import { cn } from "@/lib/cn";
 import { salesMobileChromeRoot } from "@/lib/ui/sales-mobile-chrome";
+import type { VacationDelegationRow } from "@/lib/data/vacation-delegations";
 import { appMainClass, appMainInsetClass, appShellClass } from "@/lib/ui/ontime-theme";
 import type { AdminPanelContext } from "@/lib/auth/admin-panel-context";
 import { isAdminOperationsPreviewReadOnly } from "@/lib/auth/admin-panel-context";
@@ -127,6 +128,7 @@ export function AppShellClient({
   salesOnboardingActive = false,
   teethProductInfo = [],
   assignedWorkspaces = [],
+  activeDelegations = [],
 }: {
   children: React.ReactNode;
   role: UserRole | null;
@@ -143,6 +145,7 @@ export function AppShellClient({
   /** Tour onboarding — wyłącz live badge i polling zamówień. */
   salesOnboardingActive?: boolean;
   teethProductInfo?: { twId: number; manufacturer: string | null; productLine?: string | null; kind?: string | null }[];
+  activeDelegations?: VacationDelegationRow[];
 }) {
   const {
     navBadges,
@@ -244,6 +247,7 @@ export function AppShellClient({
               userAssignmentLabel={userAssignmentLabel}
               showLoginLink={showLoginLink}
               navBadges={navBadges}
+              activeDelegations={activeDelegations}
             />
           </Suspense>
         </div>
@@ -254,6 +258,7 @@ export function AppShellClient({
             salesPersonName={salesPersonName}
             userAssignmentLabel={userAssignmentLabel}
             showInboxBell={salesInboxEnabled}
+            delegations={activeDelegations}
           />
         ) : null}
         {salesInboxEnabled ? <SalesInboxFloatingBell /> : null}

@@ -362,6 +362,8 @@ export function RequestProductLinesEditor({
                 teethProductLine: line.teethProductLine,
                 teethKind: line.teethKind,
                 teethDetails: line.teethDetails,
+                teethOcrPending: line.teethOcrPending,
+                teethOcrImagePath: line.teethOcrImagePath,
               }}
               onChange={(patch) =>
                 onChange(updateProductLine(lines, index, patch))
@@ -388,6 +390,8 @@ export function RequestProductLinesEditor({
                   const nextLines = updateProductLine(lines, index, {
                     teethDetails,
                     quantity: String(totalQuantity),
+                    teethOcrPending: saveResult?.fromOcr ?? false,
+                    teethOcrImagePath: saveResult?.ocrImagePath ?? null,
                   });
                   setFocusedLineId(
                     focusLineIdAfterTeethSave(nextLines, [lineId], requestKind),

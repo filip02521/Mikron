@@ -279,6 +279,7 @@ export function shouldShowMyOrderExpandedDeliveryTiming(
   row: MyOrderRow,
   showProgress: boolean
 ): boolean {
+  if (row.isArchive) return false;
   if (!shouldShowMyOrderCollapsedDeliveryTiming(row)) return false;
   const hasZdData = Boolean(
     row.zdFulfillment || row.zdEtaPending || row.zdEtaNoMatch

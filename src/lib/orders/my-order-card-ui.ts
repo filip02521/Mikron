@@ -37,6 +37,7 @@ export function myOrderUsesSalesHeadline(row: MyOrderRow): boolean {
 
 /** Badge statusu — ukryty, gdy nagłówek wiersza już niesie ten sam komunikat. */
 export function shouldShowOrderStatusBadge(row: MyOrderRow): boolean {
+  if (row.isArchive) return false;
   if (rowNeedsSalesAcknowledgement(row)) return false;
   if (row.kind === "informacja") return false;
   if (
@@ -69,6 +70,7 @@ export function shouldShowExpandedOrderStatusBadge(
 
 /** Szary opis w rozwinięciu — tylko gdy dodaje coś ponad nagłówek. */
 export function shouldShowOrderStatusDetail(row: MyOrderRow): boolean {
+  if (row.isArchive) return false;
   if (!row.statusDetail?.trim()) return false;
   if (row.acknowledgeMode === "pickup" || row.acknowledgeMode === "availability") {
     return false;

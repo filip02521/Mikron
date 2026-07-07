@@ -170,6 +170,10 @@ export interface IndividualOrder {
   zd_fulfillment_deadline_change_seen_at?: string | null;
   /** Czy pozycja jest „zęby" (denormalizowane z prosba_teeth_products). */
   is_teeth?: boolean;
+  /** Czy lista zębów została wczytana ze zdjęcia (OCR) i oczekuje weryfikacji. */
+  teeth_ocr_pending?: boolean;
+  /** Ścieżka do zdjęcia kartki w Supabase Storage (bucket teeth-ocr-images). */
+  teeth_ocr_image_path?: string | null;
   /** Kto zamówił zęby (UUID profilu) — osoba z działu zębów lub głównego działu. */
   teeth_ordered_by?: string | null;
   /** Kiedy zęby zostały oznaczone jako zamówione. */
@@ -339,6 +343,17 @@ export const SUMMARY_COLORS = {
   historyPartial: "#fff3cd",
   historyPending: "#e3f2fd",
 } as const;
+
+export type VacationDelegation = {
+  id: string;
+  salesPersonId: string;
+  salesPersonName: string;
+  delegateProfileId: string;
+  startDate: string;
+  endDate: string;
+  createdBy: string | null;
+  createdAt: string;
+};
 
 export const LOCATION_FLAGS: Record<SupplierLocation, string> = {
   POLSKA: "🇵🇱 ",

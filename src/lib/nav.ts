@@ -43,6 +43,8 @@ export type NavItem = {
   badge?: number;
   icon: NavIconKey;
   tone: NavTone;
+  /** Opcjonalny ton dla kafelka ikony — gdy różny od `tone`. */
+  iconTone?: NavTone;
   tier?: NavTier;
   /** Delikatne wyróżnienie punktu startowego (Panel / Moje). */
   highlight?: boolean;
@@ -172,11 +174,12 @@ export type NavBadges = {
   departmentBoardQuestions?: number;
   adminBugReports?: number;
   teethQueue?: number;
+  teethVerification?: number;
   teethReceivePending?: number;
 };
 
 function teethTodayNavItems(
-  badges: Pick<NavBadges, "teethQueue" | "teethReceivePending">
+  badges: Pick<NavBadges, "teethQueue" | "teethVerification" | "teethReceivePending">
 ): NavItem[] {
   return [
     {
@@ -185,11 +188,24 @@ function teethTodayNavItems(
       mobileLabel: "Kolejka",
       description: "Prośby handlowców — oznacz zamówione u dostawcy",
       icon: "teeth",
-      tone: "emerald",
+      tone: "slate",
+      iconTone: "indigo",
       tier: "primary",
       highlight: true,
       mobileSlot: "primary",
       badge: badges.teethQueue,
+    },
+    {
+      href: "/zeby/weryfikacja",
+      label: "Weryfikacja",
+      mobileLabel: "Weryfikacja",
+      description: "Prośby z listą zębów ze zdjęcia — zweryfikuj i zatwierdź",
+      icon: "teeth",
+      tone: "slate",
+      iconTone: "amber",
+      tier: "primary",
+      mobileSlot: "primary",
+      badge: badges.teethVerification,
     },
     {
       href: "/zeby/przyjecie",
@@ -197,7 +213,8 @@ function teethTodayNavItems(
       mobileLabel: "Przyjęcie",
       description: "Co dotarło od labu — wpisz ilości i braki",
       icon: "warehouse",
-      tone: "amber",
+      tone: "slate",
+      iconTone: "emerald",
       tier: "primary",
       mobileSlot: "primary",
       badge: badges.teethReceivePending,
@@ -208,7 +225,8 @@ function teethTodayNavItems(
       mobileLabel: "Historia",
       description: "Zamówione u dostawcy — ETA, audyt i korekty",
       icon: "history",
-      tone: "sky",
+      tone: "slate",
+      iconTone: "sky",
       tier: "primary",
       mobileSlot: "primary",
     },
@@ -722,6 +740,15 @@ export function navForRole(
           tier: "compact",
           mobileSlot: "overflow",
         },
+        {
+          href: "/zespol/urlopy",
+          label: "Urlopy",
+          description: teamNav.urlopy,
+          icon: "vacation",
+          tone: "slate",
+          tier: "compact",
+          mobileSlot: "overflow",
+        },
       ],
     });
   }
@@ -744,6 +771,7 @@ export function pageTitle(pathname: string): string {
   if (pathname.startsWith("/lokalizacje/")) return "Terminy zamówień";
   if (pathname.startsWith("/zeby/przyjecie")) return "Przyjęcie";
   if (pathname.startsWith("/zeby/kolejka")) return "Kolejka";
+  if (pathname.startsWith("/zeby/weryfikacja")) return "Weryfikacja zębów";
   if (pathname.startsWith("/zeby/historia")) return "Historia";
   if (pathname.startsWith("/zeby")) return "Kolejka";
 
@@ -758,9 +786,11 @@ export function pageTitle(pathname: string): string {
   if (pathname.startsWith("/zk")) return "ZK czekające";
   if (pathname.startsWith("/notatnik")) return "Notatnik";
   if (pathname.startsWith("/notatki")) return "Notatki";
+  if (pathname.startsWith("/ustawienia")) return "Ustawienia";
   if (pathname.startsWith("/zespol")) {
     if (pathname.startsWith("/zespol/handlowcy")) return "Handlowcy";
     if (pathname.startsWith("/zespol/grupy")) return "Grupy";
+    if (pathname.startsWith("/zespol/urlopy")) return "Urlopy";
     return "Podgląd zespołu";
   }
   if (pathname.startsWith("/admin")) {

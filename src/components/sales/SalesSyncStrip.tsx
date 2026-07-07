@@ -3,9 +3,9 @@
 import { SalesPanelSyncControl } from "@/components/sales/SalesPanelSyncControl";
 import { useSalesUpdates } from "@/components/sales/SalesUpdatesContext";
 import { cn } from "@/lib/cn";
-import { panelStickyChromeClass, salesChromeInsetClass } from "@/lib/ui/ontime-theme";
+import { salesChromeInsetClass } from "@/lib/ui/ontime-theme";
 
-/** Sticky pasek synchronizacji — wspólny dla Moje, ZK i notatnika. */
+/** Dyskretny pasek synchronizacji — wspólny dla Moje, ZK i notatnika. */
 export function SalesSyncStrip({
   variant = "orders",
   className,
@@ -19,8 +19,7 @@ export function SalesSyncStrip({
   return (
     <div
       className={cn(
-        panelStickyChromeClass,
-        "border-t-0 border-b-0 py-2",
+        "py-1 text-xs text-slate-400",
         salesChromeInsetClass,
         className
       )}

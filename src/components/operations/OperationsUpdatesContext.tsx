@@ -8,8 +8,8 @@ import {
   useRef,
   useState,
 } from "react";
-import { createPersistedFlagStore } from "@/lib/client/persisted-flag-store";
 import { usePersistedFlag } from "@/lib/client/use-persisted-flag";
+import { operationsAutoRefreshStore as autoRefreshStore } from "@/lib/client/operations-auto-refresh-store";
 import { useClientHydrated } from "@/lib/client/use-client-hydrated";
 import { usePathname, useRouter } from "next/navigation";
 import { Button } from "@/components/ui/Button";
@@ -29,8 +29,6 @@ const POLL_MS = 25_000;
 const INITIAL_POLL_DELAY_MS = 4_000;
 const AUTO_REFRESH_MS = 3 * 60_000;
 const FRESH_HIGHLIGHT_MS = 5_000;
-const STORAGE_KEY = "operations-auto-refresh";
-const autoRefreshStore = createPersistedFlagStore(STORAGE_KEY);
 const boardQuestionsSoundStore = boardQuestionsSoundMutedStore;
 
 type OperationsUpdatesContextValue = {

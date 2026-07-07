@@ -60,6 +60,7 @@ function filterAcknowledgedSince(
 function archivedStatusCopy(orders: IndividualOrder[]): {
   statusTitle: string;
   statusDetail: string | null;
+  activityLabel: string | null;
 } {
   const activityAt = orders
     .map(archiveActivityAt)
@@ -79,7 +80,8 @@ function archivedStatusCopy(orders: IndividualOrder[]): {
       ordered != null && cancelled > 0 && cancelled < ordered
         ? { cancelledQty: cancelled, orderedQty: ordered }
         : null;
-    return salesCancelArchiveDetail(phase, activityLabel, partial);
+    const detail = salesCancelArchiveDetail(phase, activityLabel, partial);
+    return { ...detail, activityLabel };
   }
 
   const when = activityLabel ? `Potwierdzono ${activityLabel}` : null;
@@ -91,6 +93,7 @@ function archivedStatusCopy(orders: IndividualOrder[]): {
     return {
       statusTitle: copy.statusTitle,
       statusDetail: when ?? copy.statusDetail,
+      activityLabel,
     };
   }
 
@@ -98,6 +101,7 @@ function archivedStatusCopy(orders: IndividualOrder[]): {
     return {
       statusTitle: "Powiadomienie potwierdzone",
       statusDetail: when ?? "Prośba informacyjna zamknięta",
+      activityLabel,
     };
   }
 
@@ -105,12 +109,14 @@ function archivedStatusCopy(orders: IndividualOrder[]): {
     return {
       statusTitle: "Odebrane z magazynu",
       statusDetail: when ?? "Odbiór potwierdzony",
+      activityLabel,
     };
   }
 
   return {
     statusTitle: "Zakończone",
     statusDetail: when,
+    activityLabel,
   };
 }
 
@@ -118,7 +124,7 @@ function decorateArchivedRow(
   row: MyOrderRow,
   orders: IndividualOrder[]
 ): MyOrderRow {
-  const { statusTitle, statusDetail } = archivedStatusCopy(orders);
+  const { statusTitle, statusDetail, activityLabel } = archivedStatusCopy(orders);
   return {
     ...row,
     statusTitle,
@@ -129,8 +135,13 @@ function decorateArchivedRow(
     pickupPendingIds: [],
     headline: statusTitle,
     headlineTone: "neutral",
-    subline: statusDetail,
+    subline: activityLabel,
+    timingLabel: null,
+    zdFulfillment: null,
+    zdEtaPending: false,
+    zdEtaNoMatch: false,
     sortPriority: 100,
+    isArchive: true,
   };
 }
 

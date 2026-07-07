@@ -12,6 +12,7 @@ import { readProcurementWorkspaceForSession } from "@/lib/auth/read-procurement-
 import type { ProcurementWorkspace } from "@/lib/auth/procurement-workspace";
 import { isSalesAccount } from "@/lib/auth-roles";
 import { fetchTeethProductInfo } from "@/lib/data/teeth-products";
+import { fetchActiveDelegationsForDelegate, type VacationDelegationRow } from "@/lib/data/vacation-delegations";
 import { AppShellClient } from "./AppShellClient";
 import { AppShellMetricsProvider } from "./AppShellMetricsContext";
 import { AppShellMetricsLoader } from "./AppShellMetricsLoader";
@@ -52,6 +53,14 @@ export async function AppShell({ children }: { children: React.ReactNode }) {
         })
       : [];
 
+  const activeDelegations: VacationDelegationRow[] =
+    session && !lightShell && isSalesAccount(session.role)
+      ? await fetchActiveDelegationsForDelegate(session.id).catch((e) => {
+          console.error("[AppShell] fetchActiveDelegationsForDelegate failed:", e?.message ?? e);
+          return [];
+        })
+      : [];
+
   const shell = (
     <AppShellClient
       role={role}
@@ -67,6 +76,7 @@ export async function AppShell({ children }: { children: React.ReactNode }) {
       salesOnboardingActive={showSalesOnboarding}
       teethProductInfo={teethProductInfo}
       assignedWorkspaces={session?.assignedWorkspaces ?? []}
+      activeDelegations={activeDelegations}
     >
       {children}
     </AppShellClient>

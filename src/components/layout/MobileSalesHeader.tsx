@@ -4,6 +4,7 @@ import { MobileBrandBlock } from "@/components/layout/SidebarBrandBlock";
 import { SalesInboxBellTrigger } from "@/components/sales/SalesInboxBell";
 import { createClient } from "@/lib/supabase/client";
 import type { UserRole } from "@/types/database";
+import type { VacationDelegationRow } from "@/lib/data/vacation-delegations";
 import { mobileSalesHeaderClass } from "@/lib/ui/ontime-theme";
 
 export function MobileSalesHeader({
@@ -12,12 +13,14 @@ export function MobileSalesHeader({
   salesPersonName,
   userAssignmentLabel,
   showInboxBell = false,
+  delegations = [],
 }: {
   role: UserRole | null;
   userEmail?: string | null;
   salesPersonName?: string | null;
   userAssignmentLabel?: string | null;
   showInboxBell?: boolean;
+  delegations?: VacationDelegationRow[];
 }) {
   async function signOut() {
     const supabase = createClient();
@@ -33,6 +36,7 @@ export function MobileSalesHeader({
           userEmail={userEmail}
           salesPersonName={salesPersonName}
           userAssignmentLabel={userAssignmentLabel}
+          delegations={delegations}
         />
       </div>
       <div className="flex shrink-0 items-center gap-2">

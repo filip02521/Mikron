@@ -6,6 +6,7 @@ import { useAdminPanelPreview } from "@/components/layout/AdminPanelPreviewConte
 import { Button } from "@/components/ui/Button";
 import { SystemNotice } from "@/components/ui/SystemNotice";
 import { salesTouchTargetClass } from "@/lib/ui/ontime-theme";
+import { IconChevronLeft, IconSun } from "@/components/icons/StrokeIcons";
 
 export type ManagerPreviewScope = "orders" | "notatnik" | "zk" | "plan" | "tablica" | "prosba";
 
@@ -23,6 +24,9 @@ export function ManagerPreviewBanner({
   salesPersonId,
   scope = "orders",
   readOnly,
+  isDelegate,
+  startDate,
+  endDate,
   className,
 }: {
   salesPersonName: string;
@@ -30,6 +34,9 @@ export function ManagerPreviewBanner({
   scope?: ManagerPreviewScope;
   /** Administrator — tylko podgląd, bez składania prośb. */
   readOnly?: boolean;
+  isDelegate?: boolean;
+  startDate?: string | null;
+  endDate?: string | null;
   className?: string;
 }) {
   const { readOnly: globalPanelPreview } = useAdminPanelPreview();
@@ -40,7 +47,21 @@ export function ManagerPreviewBanner({
 
   const scopeLabel = SCOPE_LABEL[scope];
 
-  const description = readOnly
+  const dateRange = startDate && endDate
+    ? `${startDate} → ${endDate}`
+    : endDate
+      ? `do ${endDate}`
+      : null;
+
+  const description = isDelegate
+    ? scope === "zk"
+      ? "Tryb zastępstwa — możesz zamykać ZK i potwierdzać odbiory. Edycja notatek i dodawanie ZK są wyłączone."
+      : scope === "notatnik"
+        ? "Tryb zastępstwa — notatki tylko do odczytu. ZK możesz zamykać w zakładce ZK."
+        : scope === "orders"
+          ? "Tryb zastępstwa — możesz potwierdzać odbiory i zamykać ZK. Edycja, anulowanie i składanie nowych próśb są wyłączone."
+          : "Tryb zastępstwa — ograniczone uprawnienia."
+    : readOnly
     ? scope === "zk"
       ? "Tryb administratora — tylko odczyt. Edycja ZK i składanie prośb są wyłączone."
       : scope === "notatnik"
@@ -60,8 +81,43 @@ export function ManagerPreviewBanner({
             ? "Potwierdzenie odbioru tylko na własnym koncie. Archiwum w podglądzie jest tylko do odczytu."
             : "Potwierdzenie odbioru i archiwum są dostępne tylko na własnym koncie handlowca.";
 
-  const actions = !readOnly ? (
+  const backToOwnPanel = (
+    <Link href="/moje">
+      <Button size="sm" variant="primary" className={salesTouchTargetClass}>
+        <IconChevronLeft size={14} />
+        Wróć do swojego panelu
+      </Button>
+    </Link>
+  );
+
+  const actions = isDelegate ? (
     <>
+      {backToOwnPanel}
+      {scope === "notatnik" || scope === "zk" ? (
+        <Link href={`/moje?dla=${salesPersonId}`}>
+          <Button size="sm" variant="secondary" className={salesTouchTargetClass}>
+            Panel zamówień
+          </Button>
+        </Link>
+      ) : null}
+      {scope === "notatnik" || scope === "zk" ? (
+        <Link
+          href={buildNotatnikPageHref({
+            preview: true,
+            salesPersonId,
+            tab: scope === "zk" ? "zk" : "notes",
+            surface: scope === "zk" ? "zk" : "notes",
+          })}
+        >
+          <Button size="sm" variant="outline" className={salesTouchTargetClass}>
+            {scope === "zk" ? "Moje ZK" : "Mój notatnik"}
+          </Button>
+        </Link>
+      ) : null}
+    </>
+  ) : !readOnly ? (
+    <>
+      {backToOwnPanel}
       {scope === "notatnik" || scope === "zk" ? (
         <Link href={`/moje?dla=${salesPersonId}`}>
           <Button size="sm" variant="secondary" className={salesTouchTargetClass}>
@@ -88,16 +144,11 @@ export function ManagerPreviewBanner({
             {scope === "zk" ? "Moje ZK" : "Mój notatnik"}
           </Button>
         </Link>
-      ) : scope === "orders" ? (
-        <Link href="/moje">
-          <Button size="sm" variant="outline" className={salesTouchTargetClass}>
-            Moje zamówienia
-          </Button>
-        </Link>
       ) : null}
     </>
   ) : (
     <>
+      {backToOwnPanel}
       <Link href={`/moje?dla=${salesPersonId}`}>
         <Button size="sm" variant="secondary" className={salesTouchTargetClass}>
           Prośby
@@ -130,8 +181,26 @@ export function ManagerPreviewBanner({
     <SystemNotice
       variant="action"
       className={className ?? "mb-4"}
-      title={`Podgląd ${scopeLabel}: ${salesPersonName}`}
-      description={description}
+      title={
+        isDelegate ? (
+          <span className="inline-flex items-center gap-2">
+            <IconSun size={16} className="text-amber-500" />
+            {`Zastępujesz: ${salesPersonName}`}
+          </span>
+        ) : (
+          `Podgląd ${scopeLabel}: ${salesPersonName}`
+        )
+      }
+      description={
+        isDelegate && dateRange ? (
+          <span>
+            <span className="font-medium text-slate-700">Aktywne zastępstwo: {dateRange}</span>
+            <span className="mt-0.5 block">{description}</span>
+          </span>
+        ) : (
+          description
+        )
+      }
       action={actions}
     />
   );

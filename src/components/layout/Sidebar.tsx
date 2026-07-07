@@ -40,6 +40,8 @@ import type { UserRole, Workspace } from "@/types/database";
 import { cn } from "@/lib/cn";
 import { createClient } from "@/lib/supabase/client";
 import { NavIcon, navIconTileActiveClassForTone, navIconTileClassForTone } from "@/components/icons/NavIcon";
+import { IconSettings } from "@/components/icons/StrokeIcons";
+import type { VacationDelegationRow } from "@/lib/data/vacation-delegations";
 import { useSalesNavLocked } from "@/components/sales/SalesOnboardingContext";
 import { AdminPanelContextSwitcher } from "@/components/layout/AdminPanelContextSwitcher";
 import { ProcurementWorkspaceSwitcher } from "@/components/layout/ProcurementWorkspaceSwitcher";
@@ -115,8 +117,8 @@ function NavLink({
               !compact && "mt-0.5",
               compact ? "h-7 w-7" : "h-8 w-8",
               active
-                ? navIconTileActiveClassForTone(item.tone)
-                : navIconTileClassForTone(displayTone)
+                ? navIconTileActiveClassForTone(item.iconTone ?? item.tone)
+                : navIconTileClassForTone(item.iconTone ?? displayTone)
             )}
           >
             <NavIcon navKey={item.icon} size={item.icon === "teeth" ? 19 : compact ? 16 : 17} />
@@ -255,6 +257,7 @@ export function Sidebar({
   userAssignmentLabel,
   showLoginLink,
   navBadges = { nowe: 0, weryfikacja: 0, realizacja: 0, salesMoje: 0 },
+  activeDelegations = [],
 }: {
   role: UserRole | null;
   realRole?: UserRole | null;
@@ -279,6 +282,7 @@ export function Sidebar({
     departmentBoardQuestions?: number;
     teethQueue?: number;
   };
+  activeDelegations?: VacationDelegationRow[];
 }) {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -325,6 +329,7 @@ export function Sidebar({
           userEmail={userEmail}
           salesPersonName={salesPersonName}
           userAssignmentLabel={userAssignmentLabel}
+          activeDelegations={activeDelegations}
         />
       </header>
 
@@ -365,13 +370,22 @@ export function Sidebar({
           </Link>
         ) : (
           <>
-            <button
-              type="button"
-              onClick={() => void signOut()}
-              className="w-full min-h-10 rounded-md border border-slate-200 bg-white px-4 py-2.5 text-sm font-medium text-slate-600 shadow-sm transition hover:border-slate-300 hover:bg-slate-50"
-            >
-              Wyloguj
-            </button>
+            <div className="flex items-stretch gap-2">
+              <Link
+                href="/ustawienia"
+                className="flex min-h-10 shrink-0 items-center justify-center rounded-md border border-slate-200 bg-white px-3 text-slate-500 shadow-sm transition hover:border-slate-300 hover:bg-slate-50 hover:text-slate-700"
+                aria-label="Ustawienia"
+              >
+                <IconSettings size={16} />
+              </Link>
+              <button
+                type="button"
+                onClick={() => void signOut()}
+                className="min-h-10 flex-1 rounded-md border border-slate-200 bg-white px-4 py-2.5 text-sm font-medium text-slate-600 shadow-sm transition hover:border-slate-300 hover:bg-slate-50"
+              >
+                Wyloguj
+              </button>
+            </div>
             <p className="mt-2.5 text-center text-[10px] font-medium uppercase tracking-[0.14em] text-slate-400">
               {ONTIME_AUTH_FOOTER}
             </p>

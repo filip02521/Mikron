@@ -10,6 +10,9 @@ export type SalesTeamPreview = {
   readOnly?: boolean;
   scope: ManagerPreviewScope;
   bannerClassName?: string;
+  isDelegate?: boolean;
+  startDate?: string | null;
+  endDate?: string | null;
 };
 
 export function resolveSalesLinkErrorTone(linkError: string): "warning" | "error" {
@@ -37,6 +40,9 @@ export function SalesPageAlerts({
       salesPersonName={teamPreview.salesPersonName}
       scope={teamPreview.scope}
       readOnly={teamPreview.readOnly}
+      isDelegate={teamPreview.isDelegate}
+      startDate={teamPreview.startDate}
+      endDate={teamPreview.endDate}
       className={teamPreview.bannerClassName}
     />
   ) : null;

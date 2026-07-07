@@ -162,10 +162,12 @@ export function salesManagerNavTeamDescriptions(): {
   overview: string;
   handlowcy: string;
   grupy: string;
+  urlopy: string;
 } {
   return {
     overview: "Handlowcy z Twoich grup",
     handlowcy: "Dodawanie osób, konta, przypisanie do grupy",
     grupy: "Edycja grup przypisanych przez admina",
+    urlopy: "Kalendarz urlopów i wyznaczanie zastępców",
   };
 }

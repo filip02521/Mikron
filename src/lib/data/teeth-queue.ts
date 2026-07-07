@@ -4,6 +4,8 @@ import { estimateTeethDeliveryEta, resolveTeethDeliveryDate } from "@/lib/data/t
 import { markTeethScheduleOrdered, fetchTeethSchedules } from "@/lib/data/teeth-schedule";
 import { todayInWarsaw } from "@/lib/time/warsaw";
 import { formatDateString } from "@/lib/orders/dates";
+import { assertMaxBatchSize } from "@/lib/security/text-limits";
+import { MAX_BATCH_ORDER_LINES } from "@/lib/security/text-limits";
 import type { IndividualOrder, IndividualOrderTeethDetail, TeethSupplierScheduleWithSupplier } from "@/types/database";
 import { fetchTeethDetailsForOrders } from "@/lib/data/teeth-order-details";
 import { fetchTeethProductInfo } from "@/lib/data/teeth-products";
@@ -193,6 +195,7 @@ export async function fetchTeethQueue(): Promise<TeethQueueGroup[]> {
     .from("individual_orders")
     .select("*, supplier:suppliers(*), sales_person:sales_people(*)")
     .eq("is_teeth", true)
+    .eq("teeth_ocr_pending", false)
     .in("status", [...TEETH_QUEUE_PENDING_STATUSES])
     .order("created_at", { ascending: true })
     .limit(500);
@@ -836,6 +839,7 @@ export async function countTeethQueue(): Promise<number> {
     .from("individual_orders")
     .select("*", { count: "exact", head: true })
     .eq("is_teeth", true)
+    .eq("teeth_ocr_pending", false)
     .in("status", [...TEETH_QUEUE_PENDING_STATUSES]);
 
   if (error) return 0;
@@ -862,6 +866,7 @@ export async function fetchTeethQueueVersion(): Promise<string | null> {
       .from("individual_orders")
       .select("id, created_at", { count: "exact" })
       .eq("is_teeth", true)
+      .eq("teeth_ocr_pending", false)
       .in("status", [...TEETH_QUEUE_PENDING_STATUSES])
       .order("created_at", { ascending: false }),
     fetchTeethSchedules().catch(() => [] as TeethSupplierScheduleWithSupplier[]),
@@ -899,4 +904,103 @@ export async function fetchTeethQueueVersion(): Promise<string | null> {
   }
 
   return `${count}:${maxCreatedAt ?? ""}:${maxSchedUpdated}:${teethDetailsVersion}`;
+}
+
+/** Pobierz pozycje zębów oczekujące na weryfikację OCR. */
+export async function fetchTeethVerificationQueue(): Promise<TeethQueueGroup[]> {
+  if (!hasSupabaseConfig()) return [];
+
+  const supabase = createAdminClient();
+  const { data, error } = await supabase
+    .from("individual_orders")
+    .select("*, supplier:suppliers(*), sales_person:sales_people(*)")
+    .eq("is_teeth", true)
+    .eq("teeth_ocr_pending", true)
+    .in("status", [...TEETH_QUEUE_PENDING_STATUSES])
+    .order("created_at", { ascending: true })
+    .limit(200);
+
+  if (error) throw new Error(error.message);
+
+  const orders = normalizeIndividualOrders(data ?? []);
+  const ordersWithTeeth = await attachTeethDetailsToIndividualOrders(orders);
+  const items = mapQueueItems(ordersWithTeeth);
+
+  const groupsMap = new Map<string, TeethQueueGroup>();
+  for (const item of items) {
+    const key = item.supplier_id ?? "__no_supplier";
+    const existing = groupsMap.get(key);
+    if (existing) {
+      existing.items.push(item);
+    } else {
+      groupsMap.set(key, {
+        supplierId: item.supplier_id,
+        supplierName: item.supplier_name ?? "Bez dostawcy",
+        items: [item],
+        scheduledOnly: false,
+      });
+    }
+  }
+
+  return Array.from(groupsMap.values()).sort((a, b) =>
+    a.supplierName.localeCompare(b.supplierName, "pl"),
+  );
+}
+
+/** Policz pozycje zębów oczekujące na weryfikację OCR — do badge w tabs. */
+export async function countTeethVerificationQueue(): Promise<number> {
+  if (!hasSupabaseConfig()) return 0;
+
+  const supabase = createAdminClient();
+  const { count, error } = await supabase
+    .from("individual_orders")
+    .select("*", { count: "exact", head: true })
+    .eq("is_teeth", true)
+    .eq("teeth_ocr_pending", true)
+    .in("status", [...TEETH_QUEUE_PENDING_STATUSES]);
+
+  if (error) return 0;
+  return count ?? 0;
+}
+
+/** Zatwierdź pozycje OCR — usuń flagę pending i ustaw status na "Nowe". */
+export async function approveTeethOcr(orderIds: string[]): Promise<{ updated: number }> {
+  if (!hasSupabaseConfig()) return { updated: 0 };
+  if (orderIds.length === 0) return { updated: 0 };
+  assertMaxBatchSize(orderIds.length, MAX_BATCH_ORDER_LINES, "pozycji do zatwierdzenia");
+
+  const supabase = createAdminClient();
+
+  // Pobierz ścieżki zdjęć przed aktualizacją, żeby móc je usunąć po zatwierdzeniu.
+  const { data: beforeRows } = await supabase
+    .from("individual_orders")
+    .select("id, teeth_ocr_image_path")
+    .in("id", orderIds)
+    .eq("is_teeth", true)
+    .eq("teeth_ocr_pending", true);
+
+  const { data, error } = await supabase
+    .from("individual_orders")
+    .update({ teeth_ocr_pending: false, status: "Nowe" })
+    .in("id", orderIds)
+    .eq("is_teeth", true)
+    .eq("teeth_ocr_pending", true)
+    .select("id");
+
+  if (error) throw new Error(error.message);
+
+  // Usuń zdjęcia z Storage po udanej aktualizacji.
+  const imagePaths = (beforeRows ?? [])
+    .map((r) => r.teeth_ocr_image_path)
+    .filter((p): p is string => Boolean(p));
+  if (imagePaths.length > 0) {
+    const { error: rmError } = await supabase.storage
+      .from("teeth-ocr-images")
+      .remove(imagePaths);
+    if (rmError) {
+      console.error("[approveTeethOcr] Storage cleanup error:", rmError.message);
+    }
+  }
+
+  return { updated: data?.length ?? 0 };
 }

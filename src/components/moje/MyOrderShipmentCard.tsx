@@ -92,6 +92,7 @@ import {
   mojeShipmentLinesShellClass,
   mojeShipmentRowClass,
   type MojeShipmentRowVisualTone,
+  type MojeShipmentRowArchiveAccent,
 } from "@/lib/ui/moje-shipment-row-styles";
 import { mojeActionBarShellClass } from "@/lib/ui/surfaces";
 import {
@@ -505,10 +506,10 @@ export const MyOrderShipmentCard = memo(function MyOrderShipmentCard({
   const expandedNotes = myOrderExpandedNotes(row);
   const requestProgress = useMemo(
     () =>
-      rowVisualTone !== "archive" && shouldShowMyOrderRequestProgress(row)
+      shouldShowMyOrderRequestProgress(row)
         ? deriveMyOrderRequestProgress(row)
         : null,
-    [row, rowVisualTone]
+    [row]
   );
   const showCollapsedSublineText = shouldShowCollapsedSubline(collapsedSubline, {
     showHeadlineBanner,
@@ -856,6 +857,18 @@ export const MyOrderShipmentCard = memo(function MyOrderShipmentCard({
 
   const bannerSubline = collapsedSubline;
 
+  const archiveAccent: MojeShipmentRowArchiveAccent = row.isArchive
+    ? row.kind === "informacja"
+      ? "informacja"
+      : row.statusTitle === "Anulowane" ||
+          row.statusTitle === "Częściowo wycofane" ||
+          row.statusTitle === "Rezygnacja — towar w drodze" ||
+          row.statusTitle === "Rezygnacja — towar na magazynie" ||
+          row.statusTitle === "Anulowano"
+        ? "cancelled"
+        : "completed"
+    : "default";
+
   return (
     <Root
       id={domId}
@@ -872,6 +885,7 @@ export const MyOrderShipmentCard = memo(function MyOrderShipmentCard({
           visualTone: rowVisualTone,
           deliveryBorderAccent: deliveryRowVisual?.borderAccent,
           deliveryCollapsedBg: deliveryRowVisual?.collapsedBg,
+          archiveAccent,
         }),
         expanded && needsExpand && mojeShipmentExpandedRowShellClass,
         highlighted && "z-[2] ring-2 ring-inset ring-indigo-300/80"

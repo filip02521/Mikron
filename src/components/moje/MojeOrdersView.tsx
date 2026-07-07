@@ -353,6 +353,7 @@ function MojeOrdersViewContent({
   archiwumExtended = [],
   productLineCount,
   canAcknowledge = false,
+  canEdit: canEditProp,
   showProsbaCta = false,
   suppliers = [],
   pageTitle = "Moje zamówienia",
@@ -383,6 +384,7 @@ function MojeOrdersViewContent({
   archiwumExtended?: MyOrderRow[];
   productLineCount?: number;
   canAcknowledge?: boolean;
+  canEdit?: boolean;
   showProsbaCta?: boolean;
   suppliers?: OrderFormSupplierOption[];
   pageTitle?: string;
@@ -914,6 +916,7 @@ function MojeOrdersViewContent({
 
   const listProps = {
     canAcknowledge,
+    canEdit: canEditProp ?? canAcknowledge,
     suppliers,
     searchQuery,
     tourPreview,

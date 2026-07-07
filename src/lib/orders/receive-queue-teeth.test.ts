@@ -72,9 +72,47 @@ describe("receive-queue-teeth", () => {
     expect(queue.map((o) => o.id)).toEqual(["pending"]);
   });
 
+  it("nie pokazuje pozycji częściowo zrealizowanej gdy wszystkie linie zębowe są zamknięte", () => {
+    const queue = buildTeethReceiveQueue([
+      order({
+        id: "lines-closed",
+        is_teeth: true,
+        status: "Czesciowo_zrealizowane",
+        delivered_quantity: "3",
+        quantity: "5",
+        teeth_line_delivered: { "A1|W1|upper|anterior": 1, "A2|W2|lower|posterior": 2 },
+        teeth_details: [
+          { id: "d1", order_id: "lines-closed", position: 1, color: "A1", mould: "W1", jaw: "upper", kind: "anterior", size: null },
+          { id: "d2", order_id: "lines-closed", position: 2, color: "A2", mould: "W2", jaw: "lower", kind: "posterior", size: null },
+        ],
+      }),
+      order({ id: "pending", is_teeth: true, status: "Zamowione" }),
+    ]);
+    expect(queue.map((o) => o.id)).toEqual(["pending"]);
+  });
+
   it("nie liczy w pełni dostarczonych pozycji w inbox", () => {
     const s = summarizeTeethReceiveInbox([
       order({ id: "done", is_teeth: true, status: "Zrealizowane", delivered_quantity: "3", quantity: "3" }),
+      order({ id: "pending", is_teeth: true, status: "Zamowione" }),
+    ]);
+    expect(s.activeCount).toBe(1);
+  });
+
+  it("nie liczy pozycji częściowo zrealizowanej gdy wszystkie linie zębowe są zamknięte", () => {
+    const s = summarizeTeethReceiveInbox([
+      order({
+        id: "lines-closed",
+        is_teeth: true,
+        status: "Czesciowo_zrealizowane",
+        delivered_quantity: "3",
+        quantity: "5",
+        teeth_line_delivered: { "A1|W1|upper|anterior": 1, "A2|W2|lower|posterior": 2 },
+        teeth_details: [
+          { id: "d1", order_id: "lines-closed", position: 1, color: "A1", mould: "W1", jaw: "upper", kind: "anterior", size: null },
+          { id: "d2", order_id: "lines-closed", position: 2, color: "A2", mould: "W2", jaw: "lower", kind: "posterior", size: null },
+        ],
+      }),
       order({ id: "pending", is_teeth: true, status: "Zamowione" }),
     ]);
     expect(s.activeCount).toBe(1);

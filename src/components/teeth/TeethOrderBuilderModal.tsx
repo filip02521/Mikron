@@ -17,7 +17,6 @@ import {
   allTeethGroupsComplete,
   createTeethGroupDraft,
   expandTeethGroups,
-  isTeethGroupComplete,
   teethGroupsFromDetails,
   teethManufacturerLabel,
   teethProductLineLabel,
@@ -46,8 +45,11 @@ import {
   TeethBuilderQuantityRow,
   TeethBuilderWorkspace,
   teethBuilderModalSize,
+  teethBuilderAlertClass,
 } from "@/components/teeth/TeethOrderBuilderParts";
+import { IconAlertCircle, IconCircleCheck } from "@/components/icons/StrokeIcons";
 import { partitionTeethDetailsByKind } from "@/lib/teeth/teeth-dual-kind";
+import { TeethVisionUpload } from "@/components/teeth/TeethVisionUpload";
 import { cn } from "@/lib/cn";
 import { panelChoiceChipClass, panelChoiceChipIdleClass, panelChoiceChipSelectedClass } from "@/lib/ui/ontime-theme";
 
@@ -61,11 +63,13 @@ const TEETH_MODAL_SHELL_LAYOUT = {
 type DraftSpec = TeethBuilderDraftSpec;
 
 export type TeethOrderBuilderSaveResult =
-  | { mode: "single"; details: TeethLineDetail[]; totalQuantity: number }
+  | { mode: "single"; details: TeethLineDetail[]; totalQuantity: number; fromOcr?: boolean; ocrImagePath?: string | null }
   | {
       mode: "dual";
       anteriorGroups: TeethGroupDraft[];
       posteriorGroups: TeethGroupDraft[];
+      fromOcr?: boolean;
+      ocrImagePath?: string | null;
     };
 
 const EMPTY_DRAFT = (): DraftSpec => ({
@@ -88,28 +92,16 @@ function draftFromGroup(group: TeethGroupDraft): DraftSpec {
   };
 }
 
-function pickGroupForInitialEdit(
-  groups: TeethGroupDraft[],
-  catalog: TeethCatalogRef,
-): TeethGroupDraft | null {
-  if (groups.length === 0) return null;
-  return groups.find((group) => !isTeethGroupComplete(group, catalog)) ?? groups[0];
-}
-
 function createTeethOrderBuilderState(
   initialDetails: TeethLineDetail[] | undefined,
   defaultKind: TeethKind | null | undefined,
   productLine: TeethProductLine,
 ) {
-  const catalog: TeethCatalogRef = { productLine };
   const groups = teethGroupsFromDetails(initialDetails);
-  const editTarget = pickGroupForInitialEdit(groups, catalog);
   return {
     groups,
-    draft: editTarget
-      ? draftFromGroup(editTarget)
-      : { ...EMPTY_DRAFT(), kind: defaultKind ?? null },
-    editingId: editTarget?.id ?? null,
+    draft: { ...EMPTY_DRAFT(), kind: defaultKind ?? null },
+    editingId: null,
   };
 }
 
@@ -123,6 +115,8 @@ export function TeethOrderBuilderModal({
   initialDetails,
   dualKindInitialDetails,
   dualKindMode = false,
+  initialFromOcr,
+  initialOcrImagePath,
   onSave,
   disabled,
   tier = "stack",
@@ -140,6 +134,10 @@ export function TeethOrderBuilderModal({
     posterior?: TeethLineDetail[];
   };
   dualKindMode?: boolean;
+  /** Czy lista została pierwotnie wczytana z OCR — zachowaj przy edycji bez ponownego uploadu. */
+  initialFromOcr?: boolean;
+  /** Ścieżka zdjęcia OCR zapisana wcześniej — zachowaj przy edycji bez ponownego uploadu. */
+  initialOcrImagePath?: string | null;
   onSave: (result: TeethOrderBuilderSaveResult) => void | boolean;
   disabled?: boolean;
   tier?: ModalTier;
@@ -154,6 +152,8 @@ export function TeethOrderBuilderModal({
         productLabel={productLabel}
         defaultKind={defaultKind}
         dualKindInitialDetails={dualKindInitialDetails}
+        initialFromOcr={initialFromOcr}
+        initialOcrImagePath={initialOcrImagePath}
         onSave={onSave}
         disabled={disabled}
         tier={tier}
@@ -170,6 +170,8 @@ export function TeethOrderBuilderModal({
       defaultKind={defaultKind}
       productLabel={productLabel}
       initialDetails={initialDetails}
+      initialFromOcr={initialFromOcr}
+      initialOcrImagePath={initialOcrImagePath}
       onSave={onSave}
       disabled={disabled}
       tier={tier}
@@ -198,6 +200,8 @@ function TeethDualKindOrderBuilderModal({
   productLabel,
   defaultKind,
   dualKindInitialDetails,
+  initialFromOcr,
+  initialOcrImagePath,
   onSave,
   disabled,
   tier,
@@ -212,6 +216,8 @@ function TeethDualKindOrderBuilderModal({
     anterior?: TeethLineDetail[];
     posterior?: TeethLineDetail[];
   };
+  initialFromOcr?: boolean;
+  initialOcrImagePath?: string | null;
   onSave: (result: TeethOrderBuilderSaveResult) => void | boolean;
   disabled?: boolean;
   tier?: ModalTier;
@@ -243,6 +249,8 @@ function TeethDualKindOrderBuilderModal({
   const [posteriorCount, setPosteriorCount] = useState(
     () => totalTeethCountFromGroups(teethGroupsFromDetails(partitioned.posterior)),
   );
+  const [dualFromOcr, setDualFromOcr] = useState(initialFromOcr ?? false);
+  const [dualOcrImagePath, setDualOcrImagePath] = useState<string | null>(initialOcrImagePath ?? null);
 
   const manufacturerName = teethManufacturerLabel(manufacturer);
   const lineName = teethProductLineLabel(productLine);
@@ -263,6 +271,8 @@ function TeethDualKindOrderBuilderModal({
       mode: "dual",
       anteriorGroups: anterior.getGroups(),
       posteriorGroups: posterior.getGroups(),
+      fromOcr: dualFromOcr,
+      ocrImagePath: dualOcrImagePath,
     });
     if (shouldClose !== false) onClose();
   };
@@ -282,8 +292,23 @@ function TeethDualKindOrderBuilderModal({
       titleHint={TEETH_DUAL_MODAL_TITLE_HINT}
       {...TEETH_MODAL_SHELL_LAYOUT}
       footer={
-        <>
-          <div className="mr-auto min-w-0 space-y-0.5 self-center">
+        <div className="flex w-full flex-wrap items-center gap-2">
+          <TeethVisionUpload
+            disabled={disabled}
+            shouldReplaceExistingList={() =>
+              (anteriorCount === 0 && posteriorCount === 0) ||
+              window.confirm("Masz już pozycje na liście. Czy wczytać z zdjęcia i zastąpić obecną listę?")
+            }
+            onResult={(ocrGroups, _detectedProductLines, imagePath) => {
+              const anterior = ocrGroups.filter((g) => g.kind === "anterior");
+              const posterior = ocrGroups.filter((g) => g.kind === "posterior");
+              if (anterior.length) anteriorRef.current?.setGroups(anterior);
+              if (posterior.length) posteriorRef.current?.setGroups(posterior);
+              setDualFromOcr(true);
+              setDualOcrImagePath(imagePath);
+            }}
+          />
+          <div className="ml-auto min-w-0 space-y-0.5 text-right">
             <span className="block text-sm font-medium text-slate-600 tabular-nums">
               {anteriorCount > 0 || posteriorCount > 0 ? (
                 <>
@@ -317,7 +342,7 @@ function TeethDualKindOrderBuilderModal({
           >
             Zapisz listę
           </Button>
-        </>
+        </div>
       }
     >
       <div className="space-y-2.5">
@@ -408,13 +433,15 @@ function TeethDualKindToggle({
       <div className="flex flex-wrap items-center justify-between gap-2">
         <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">Typ</p>
         {saveBlockReason ? (
-          <p className="text-[11px] font-medium text-amber-700" role="status">
+          <span className={teethBuilderAlertClass} role="status">
+            <IconAlertCircle size={12} />
             {saveBlockReason}
-          </p>
+          </span>
         ) : anteriorCount > 0 || posteriorCount > 0 ? (
-          <p className="text-[10px] font-medium text-indigo-600" role="status">
+          <span className="inline-flex items-center gap-1 rounded-md border border-indigo-200/80 bg-indigo-50/80 px-2 py-0.5 text-[11px] font-medium text-indigo-700" role="status">
+            <IconCircleCheck size={12} />
             Gotowe do zapisu
-          </p>
+          </span>
         ) : null}
       </div>
       <div className="flex flex-wrap gap-1.5" role="tablist" aria-label="Typ zębów">
@@ -462,6 +489,8 @@ function TeethSingleKindOrderBuilderModal({
   defaultKind,
   productLabel,
   initialDetails,
+  initialFromOcr,
+  initialOcrImagePath,
   onSave,
   disabled,
   tier,
@@ -473,6 +502,8 @@ function TeethSingleKindOrderBuilderModal({
   defaultKind?: TeethKind | null;
   productLabel?: string;
   initialDetails?: TeethLineDetail[];
+  initialFromOcr?: boolean;
+  initialOcrImagePath?: string | null;
   onSave: (result: TeethOrderBuilderSaveResult) => void | boolean;
   disabled?: boolean;
   tier?: ModalTier;
@@ -487,6 +518,8 @@ function TeethSingleKindOrderBuilderModal({
   const [editingId, setEditingId] = useState<string | null>(
     () => createTeethOrderBuilderState(initialDetails, defaultKind, productLine).editingId,
   );
+  const [fromOcr, setFromOcr] = useState(initialFromOcr ?? false);
+  const [ocrImagePath, setOcrImagePath] = useState<string | null>(initialOcrImagePath ?? null);
 
   const manufacturerName = teethManufacturerLabel(manufacturer);
   const lineName = teethProductLineLabel(productLine);
@@ -540,7 +573,7 @@ function TeethSingleKindOrderBuilderModal({
   const handleSave = () => {
     if (!listComplete) return;
     const details = expandTeethGroups(groups);
-    const shouldClose = onSave({ mode: "single", details, totalQuantity: totalCount });
+    const shouldClose = onSave({ mode: "single", details, totalQuantity: totalCount, fromOcr, ocrImagePath });
     if (shouldClose !== false) onClose();
   };
 
@@ -592,8 +625,22 @@ function TeethSingleKindOrderBuilderModal({
       titleHint={teethSingleModalTitleHint(productLine)}
       {...TEETH_MODAL_SHELL_LAYOUT}
       footer={
-        <>
-          <span className="mr-auto self-center text-sm font-medium text-slate-600 tabular-nums">
+        <div className="flex w-full flex-wrap items-center gap-2">
+          <TeethVisionUpload
+            disabled={disabled}
+            shouldReplaceExistingList={() =>
+              groups.length === 0 ||
+              window.confirm("Masz już pozycje na liście. Czy wczytać z zdjęcia i zastąpić obecną listę?")
+            }
+            onResult={(ocrGroups, _detectedProductLines, imagePath) => {
+              setGroups(ocrGroups);
+              setEditingId(null);
+              setDraft({ ...EMPTY_DRAFT(), kind: defaultKind ?? null });
+              setFromOcr(true);
+              setOcrImagePath(imagePath);
+            }}
+          />
+          <span className="ml-auto text-sm font-medium text-slate-600 tabular-nums">
             Razem: <span className="text-indigo-700">{totalCount || 0}</span> szt.
           </span>
           <Button type="button" variant="secondary" onClick={onClose} disabled={disabled}>
@@ -608,7 +655,7 @@ function TeethSingleKindOrderBuilderModal({
           >
             Zapisz listę
           </Button>
-        </>
+        </div>
       }
     >
       <TeethBuilderWorkspace

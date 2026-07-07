@@ -18,6 +18,11 @@ import { mouldShapeGroupsFor } from "@/lib/teeth/teeth-mould-shape-groups";
 import type { ModalSize } from "@/components/ui/ModalShell";
 import { cn } from "@/lib/cn";
 import { controlFocusClass } from "@/lib/ui/ontime-theme";
+import { IconAlertCircle } from "@/components/icons/StrokeIcons";
+
+/** Spójny styl komunikatu ostrzegawczego w modalu zębów. */
+export const teethBuilderAlertClass =
+  "flex items-center gap-1.5 rounded-md border border-amber-200/80 bg-amber-50/80 px-2 py-1 text-[11px] font-medium text-amber-800";
 
 export function teethBuilderModalSize(
   productLine: TeethProductLine,
@@ -148,10 +153,13 @@ export function TeethBuilderGroupList({
         </h3>
         <span
           className={cn(
-            "text-[10px] font-medium",
-            listComplete ? "text-indigo-600" : "text-amber-600",
+            "inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-[10px] font-semibold",
+            listComplete
+              ? "border border-indigo-200/80 bg-indigo-50/80 text-indigo-700"
+              : "border border-amber-200/80 bg-amber-50/80 text-amber-800",
           )}
         >
+          {!listComplete && <IconAlertCircle size={11} />}
           {listComplete ? "Gotowe" : "Uzupełnij"}
         </span>
       </div>
@@ -170,7 +178,7 @@ export function TeethBuilderGroupList({
             )}
           >
             <p className="min-w-0 flex-1 truncate text-xs font-medium text-slate-800">
-              {formatTeethGroupLabel(lockedKind ? { ...g, kind: lockedKind } : g)}
+              {formatTeethGroupLabel(lockedKind ? { ...g, kind: lockedKind } : g, { includeCount: false })}
               <span className="ml-1.5 font-semibold tabular-nums text-slate-500">
                 × {g.count}
               </span>

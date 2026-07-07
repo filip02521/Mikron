@@ -406,6 +406,13 @@ export function myOrderMetaFields(
     });
   }
 
+  if (row.isArchive && row.subline?.trim()) {
+    fields.push({
+      label: "Zakończono",
+      value: row.subline,
+    });
+  }
+
   return fields;
 }
 

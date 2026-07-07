@@ -1,5 +1,5 @@
 import { Suspense } from "react";
-import { fetchTeethQueue } from "@/lib/data/teeth-queue";
+import { fetchTeethQueue, fetchTeethVerificationQueue } from "@/lib/data/teeth-queue";
 import { TeethPanelClient } from "@/components/zeby/TeethPanelClient";
 import { Alert } from "@/components/ui/Alert";
 import { cn } from "@/lib/cn";
@@ -19,6 +19,12 @@ export async function TeethPanelRoute({ tab }: { tab: Tab }) {
   if (tab === "kolejka") {
     try {
       groups = await fetchTeethQueue();
+    } catch (e) {
+      error = e instanceof Error ? e.message : "Błąd ładowania";
+    }
+  } else if (tab === "weryfikacja") {
+    try {
+      groups = await fetchTeethVerificationQueue();
     } catch (e) {
       error = e instanceof Error ? e.message : "Błąd ładowania";
     }

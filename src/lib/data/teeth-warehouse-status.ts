@@ -14,7 +14,7 @@ export async function fetchTeethWarehouseStatus(): Promise<TeethWarehouseStatusS
   const deliveryOrders = await fetchDeliveryQueue({ lane: "teeth" });
   const teethOrders = buildTeethReceiveQueue(deliveryOrders);
   return {
-    summary: summarizeTeethReceiveInbox(deliveryOrders),
+    summary: summarizeTeethReceiveInbox(teethOrders),
     orders: teethOrders,
   };
 }

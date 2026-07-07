@@ -1,6 +1,6 @@
 import { getSessionUser } from "@/lib/auth";
 import { resolveSalesPersonForUser } from "@/lib/auth/sales-person";
-import { resolvePreviewSalesPerson } from "@/lib/auth/resolve-preview-sales-person";
+import { resolvePreviewSalesPerson, resolveDelegatePreviewSalesPerson } from "@/lib/auth/resolve-preview-sales-person";
 import { getAppRole } from "@/lib/auth-dev";
 import { logDevPageError } from "@/lib/dev/log-page-error";
 import { isAdmin, isSalesAccount, isSalesManager } from "@/lib/auth-roles";
@@ -12,7 +12,10 @@ export type SalesNotepadPageAccess = {
   salesPersonName: string | null;
   linkError: string | null;
   isTeamPreview: boolean;
+  isDelegatePreview: boolean;
   previewSalesPersonId: string | null;
+  delegationStartDate: string | null;
+  delegationEndDate: string | null;
 };
 
 /** Wspólna autoryzacja i podgląd handlowca dla /zk oraz /notatnik. */
@@ -26,6 +29,9 @@ export async function resolveSalesNotepadPageAccess(input: {
   let ownSalesPersonId: string | null = null;
   let linkError: string | null = null;
   let isTeamPreview = false;
+  let isDelegatePreview = false;
+  let delegationStartDate: string | null = null;
+  let delegationEndDate: string | null = null;
 
   try {
     const user = await getSessionUser();
@@ -58,7 +64,26 @@ export async function resolveSalesNotepadPageAccess(input: {
           previewSalesPersonId &&
           previewSalesPersonId !== ownSalesPersonId
         ) {
-          linkError = "Możesz przeglądać tylko własne dane handlowca — parametr ?dla= został zignorowany.";
+          const delegatePreview = await resolveDelegatePreviewSalesPerson(
+            previewSalesPersonId,
+            user
+          );
+          if (delegatePreview) {
+            salesPersonId = delegatePreview.id;
+            salesPersonName = delegatePreview.name;
+            isDelegatePreview = true;
+            try {
+              const { fetchActiveDelegationsForDelegate } = await import("@/lib/data/vacation-delegations");
+              const delegations = await fetchActiveDelegationsForDelegate(user.id);
+              const match = delegations.find((d) => d.salesPersonId === delegatePreview.id);
+              if (match) {
+                delegationStartDate = match.startDate;
+                delegationEndDate = match.endDate;
+              }
+            } catch {}
+          } else {
+            linkError = "Możesz przeglądać tylko własne dane handlowca — parametr ?dla= został zignorowany.";
+          }
         }
       }
 
@@ -81,7 +106,10 @@ export async function resolveSalesNotepadPageAccess(input: {
     salesPersonName,
     linkError,
     isTeamPreview,
+    isDelegatePreview,
     previewSalesPersonId,
+    delegationStartDate,
+    delegationEndDate,
   };
 }
 

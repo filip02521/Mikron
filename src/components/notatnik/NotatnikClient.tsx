@@ -151,6 +151,7 @@ export function NotatnikClient({
   initialTab,
   surface,
   readOnly,
+  delegatePreview = false,
   pageTitle,
   pageDescription,
   subiektAvailability,
@@ -163,6 +164,7 @@ export function NotatnikClient({
   initialTab?: NotatnikPageTab;
   surface: NotatnikSurface;
   readOnly?: boolean;
+  delegatePreview?: boolean;
   pageTitle: string;
   pageDescription?: string;
   subiektAvailability?: SubiektAvailability;
@@ -172,6 +174,9 @@ export function NotatnikClient({
     salesPersonId: string;
     salesPersonName: string;
     readOnly?: boolean;
+    isDelegate?: boolean;
+    startDate?: string | null;
+    endDate?: string | null;
   } | null;
 }) {
   const router = useRouter();
@@ -197,7 +202,9 @@ export function NotatnikClient({
     : (["note-follow-up"] as const);
   /** W tourze pokazujemy pełny UI kart ZK (kliknięcia i tak blokuje warstwa touru). */
   const effectiveReadOnly = tourDemo ? false : Boolean(readOnly);
-  const showSalesSyncStrip = isZkSurface && !effectiveReadOnly && !tourDemo;
+  const effectiveDelegatePreview = Boolean(delegatePreview);
+  const notesReadOnly = effectiveReadOnly || effectiveDelegatePreview;
+  const showSalesSyncStrip = isZkSurface && !effectiveReadOnly && !tourDemo && !effectiveDelegatePreview;
   const initialFocus = initialFocusWatchId?.trim() || null;
   const initialFocusSections = initialFocus
     ? watchFocusOpensSections(initialFocus, source.zkWatches, source.archivedZkWatches)
@@ -1122,6 +1129,9 @@ export function NotatnikClient({
                 salesPersonName: teamPreview.salesPersonName,
                 readOnly: teamPreview.readOnly,
                 scope: isZkSurface ? "zk" : "notatnik",
+                isDelegate: teamPreview.isDelegate,
+                startDate: teamPreview.startDate,
+                endDate: teamPreview.endDate,
               }
             : null
         }
@@ -1227,6 +1237,7 @@ export function NotatnikClient({
                 onNewZkLinesSeen={markNewZkLinesSeen}
                 onNewlyAddedZkWatchSeen={markNewlyAddedZkWatchSeen}
                 readOnly={effectiveReadOnly}
+                delegatePreview={effectiveDelegatePreview}
                 tourPreview={tourDemo}
                 embedded
                 compact={!tourDemo}
@@ -1272,7 +1283,7 @@ export function NotatnikClient({
           {!isZkSurface && activeTab === "notes" ? (
             <NotesSection
               notes={notes}
-              readOnly={effectiveReadOnly}
+              readOnly={notesReadOnly}
               embedded
               focusNoteId={focusNoteId}
               onFocusNoteHandled={handleFocusNoteHandled}
@@ -1290,7 +1301,7 @@ export function NotatnikClient({
                 mode="notes"
                 archivedWatches={[]}
                 archivedNotes={archivedNotes}
-                readOnly={effectiveReadOnly}
+                readOnly={notesReadOnly}
                 focusNoteId={focusNoteId}
                 onFocusNoteHandled={handleFocusNoteHandled}
                 onNoteRestored={handleNoteRestored}

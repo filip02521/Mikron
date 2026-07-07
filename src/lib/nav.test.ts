@@ -167,10 +167,11 @@ describe("teethNavGroups", () => {
     ]);
   });
 
-  it("sekcja Dziś — kolejność workflow: kolejka, przyjęcie, historia", () => {
+  it("sekcja Dziś — kolejność workflow: kolejka, weryfikacja, przyjęcie, historia", () => {
     const today = teethNavGroups().find((g) => g.title === NAV_SECTION_TODAY);
     expect(today?.items.map((item) => item.href)).toEqual([
       "/zeby/kolejka",
+      "/zeby/weryfikacja",
       "/zeby/przyjecie",
       "/zeby/historia",
     ]);
@@ -178,17 +179,19 @@ describe("teethNavGroups", () => {
 
   it("sekcja Dziś ma rozróżnialne tony i rozmiary (primary)", () => {
     const today = teethNavGroups().find((g) => g.title === NAV_SECTION_TODAY);
-    expect(today?.items.map((item) => [item.label, item.tone, item.tier, item.highlight])).toEqual([
-      ["Kolejka", "emerald", "primary", true],
-      ["Przyjęcie", "amber", "primary", undefined],
-      ["Historia", "sky", "primary", undefined],
+    expect(today?.items.map((item) => [item.label, item.tone, item.iconTone, item.tier, item.highlight])).toEqual([
+      ["Kolejka", "slate", "indigo", "primary", true],
+      ["Weryfikacja", "slate", "amber", "primary", undefined],
+      ["Przyjęcie", "slate", "emerald", "primary", undefined],
+      ["Historia", "slate", "sky", "primary", undefined],
     ]);
   });
 
-  it("mobile primary — trzy codzienne ekrany workflow", () => {
+  it("mobile primary — cztery codzienne ekrany workflow", () => {
     const primary = navMobilePrimaryItems(teethNavGroups());
     expect(primary.map((item) => item.mobileLabel ?? item.label)).toEqual([
       "Kolejka",
+      "Weryfikacja",
       "Przyjęcie",
       "Historia",
     ]);

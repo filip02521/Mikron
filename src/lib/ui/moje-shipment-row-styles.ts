@@ -21,6 +21,12 @@ export const mojeShipmentListClass = "divide-y divide-slate-100 pb-0.5";
 
 export type MojeShipmentRowVisualTone = "default" | "archive";
 
+export type MojeShipmentRowArchiveAccent =
+  | "completed"
+  | "cancelled"
+  | "informacja"
+  | "default";
+
 export function mojeShipmentRowClass({
   expanded,
   isAction,
@@ -32,6 +38,7 @@ export function mojeShipmentRowClass({
   visualTone = "default",
   deliveryBorderAccent,
   deliveryCollapsedBg,
+  archiveAccent = "default",
 }: {
   expanded: boolean;
   isAction: boolean;
@@ -43,10 +50,20 @@ export function mojeShipmentRowClass({
   visualTone?: MojeShipmentRowVisualTone;
   deliveryBorderAccent?: string | null;
   deliveryCollapsedBg?: string | null;
+  archiveAccent?: MojeShipmentRowArchiveAccent;
 }): string {
   if (visualTone === "archive") {
+    const accent =
+      archiveAccent === "cancelled"
+        ? "border-l-red-300"
+        : archiveAccent === "informacja"
+          ? "border-l-violet-300"
+          : archiveAccent === "completed"
+            ? "border-l-emerald-300"
+            : "border-l-slate-200/70";
     return cn(
-      "border-l-[3px] border-l-slate-200/70 transition-colors duration-150",
+      "border-l-[3px] transition-colors duration-150",
+      accent,
       expanded ? "bg-slate-50/70" : "bg-slate-50/45 hover:bg-slate-50/65"
     );
   }

@@ -54,6 +54,7 @@ export function ZkWatchCard({
   anchorId,
   orderHints,
   readOnly,
+  delegatePreview = false,
   tourPreview = false,
   onRestored,
   onRefreshed,
@@ -76,6 +77,7 @@ export function ZkWatchCard({
   anchorId?: string;
   orderHints?: ZkWatchOrderHints;
   readOnly?: boolean;
+  delegatePreview?: boolean;
   tourPreview?: boolean;
   onRestored?: (watch: SalesZkWatch) => void;
   onRefreshed?: (
@@ -339,6 +341,7 @@ export function ZkWatchCard({
     }
   }
   const canEdit = !readOnly && !tourPreview && !archived;
+  const canEditZkActions = canEdit && !delegatePreview;
   const pending =
     restoring ||
     deleting ||
@@ -577,7 +580,7 @@ export function ZkWatchCard({
               >
                 {notePreview}
               </button>
-            ) : canEdit ? (
+            ) : canEditZkActions ? (
               <button
                 type="button"
                 data-zk-row-action=""
@@ -615,7 +618,7 @@ export function ZkWatchCard({
             {!archived ? (
               <ZkWatchFollowUpButton
                 watch={watch}
-                readOnly={readOnly}
+                readOnly={readOnly || delegatePreview}
                 tourPreview={tourPreview}
                 archived={archived}
                 disabled={pending}
@@ -634,11 +637,11 @@ export function ZkWatchCard({
               linesLabel={linesMenuLabel}
               onOpenLines={() => openLinesModal(false)}
               onEditProsbaScope={
-                canEdit && productLineCount > 0
+                canEditZkActions && productLineCount > 0
                   ? () => onProsbaScopeRequested?.(watch.id)
                   : undefined
               }
-              onRefresh={canEdit ? () => void refreshFromSubiekt() : undefined}
+              onRefresh={canEditZkActions ? () => void refreshFromSubiekt() : undefined}
               refreshDisabled={refreshing || !subiektReachable}
               mojeClientHref={mojeClientHref}
               onClose={canEdit && onRequestCloseWatch ? () => onRequestCloseWatch(watch) : undefined}

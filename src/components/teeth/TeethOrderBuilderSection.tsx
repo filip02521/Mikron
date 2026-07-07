@@ -86,6 +86,7 @@ function createSectionState(
 
 export type TeethOrderBuilderSectionHandle = {
   getGroups: () => TeethGroupDraft[];
+  setGroups: (groups: TeethGroupDraft[]) => void;
   hasItems: () => boolean;
   isComplete: () => boolean;
   getTotalCount: () => number;
@@ -146,11 +147,16 @@ export const TeethOrderBuilderSection = forwardRef<
     ref,
     () => ({
       getGroups: () => groups,
+      setGroups: (next) => {
+        setGroups(next);
+        setEditingId(null);
+        setDraft(emptyDraft(lockedKind));
+      },
       hasItems: () => groups.length > 0,
       isComplete: () => listComplete,
       getTotalCount: () => totalCount,
     }),
-    [groups, listComplete, totalCount],
+    [groups, listComplete, totalCount, lockedKind],
   );
 
   const resetDraft = useCallback(() => {

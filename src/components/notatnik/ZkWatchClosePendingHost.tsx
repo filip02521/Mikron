@@ -31,6 +31,7 @@ export type ZkWatchClosePendingSession = {
 type ZkWatchClosePendingHostProps = {
   session: ZkWatchClosePendingSession | null;
   readOnly?: boolean;
+  delegatePreview?: boolean;
   tourPreview?: boolean;
   onDismiss: () => void;
   onClosed: (watchId: string, closedAt: string) => void;
@@ -50,6 +51,7 @@ export function ZkWatchClosePendingHost(props: ZkWatchClosePendingHostProps) {
 function ZkWatchClosePendingHostActive({
   session,
   readOnly,
+  delegatePreview = false,
   tourPreview,
   onDismiss,
   onClosed,
@@ -70,12 +72,13 @@ function ZkWatchClosePendingHostActive({
   const epochRef = useRef(0);
 
   const canEdit = !readOnly && !tourPreview;
+  const delegateFor = delegatePreview ? watch.sales_person_id : undefined;
 
   const markClosed = useCallback(async () => {
     if (!canEdit) return;
     setError(null);
     try {
-      const { closedAt } = await actionCloseZkWatch(watch.id);
+      const { closedAt } = await actionCloseZkWatch(watch.id, delegateFor);
       setOpen(false);
       onFlowError?.(watch.id, null);
       onClosed(watch.id, closedAt);
@@ -86,25 +89,25 @@ function ZkWatchClosePendingHostActive({
       setError(message);
       onFlowError?.(watch.id, message);
     }
-  }, [watch.id, canEdit, onClosed, onDismiss, onFlowError, router]);
+  }, [watch.id, canEdit, delegateFor, onClosed, onDismiss, onFlowError, router]);
 
   const refreshPreview = useCallback(async (): Promise<ZkWatchPendingAckItem[]> => {
     setListRefreshing(true);
     try {
-      const { items: next } = await actionFetchZkWatchClosePendingPreview(watch.id);
+      const { items: next } = await actionFetchZkWatchClosePendingPreview(watch.id, delegateFor);
       setItems(next);
       return next;
     } finally {
       setListRefreshing(false);
     }
-  }, [watch.id]);
+  }, [watch.id, delegateFor]);
 
   const runAcknowledgeAndClose = useCallback(async () => {
     if (!canEdit || acknowledging || listRefreshing) return;
     setAcknowledging(true);
     setError(null);
     try {
-      const { closedAt } = await actionAcknowledgeAndCloseZkWatch(watch.id);
+      const { closedAt } = await actionAcknowledgeAndCloseZkWatch(watch.id, delegateFor);
       setOpen(false);
       onFlowError?.(watch.id, null);
       onClosed(watch.id, closedAt);
@@ -127,6 +130,7 @@ function ZkWatchClosePendingHostActive({
   }, [
     watch.id,
     canEdit,
+    delegateFor,
     acknowledging,
     listRefreshing,
     onClosed,
@@ -227,6 +231,7 @@ function ZkWatchClosePendingHostActive({
     linesModalOpen,
     closeLinesModal,
     canEdit,
+    delegateFor,
     onClosed,
     onDismiss,
     onFlowError,

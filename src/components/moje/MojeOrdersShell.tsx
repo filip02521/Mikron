@@ -18,6 +18,9 @@ import {
 } from "@/lib/sales/sales-onboarding-demo-data";
 import type { DepartmentBoardAnnouncementsSlice } from "@/lib/data/department-board";
 import type { SalesDayStartContext } from "@/lib/sales/sales-day-start";
+import type { VacationDelegationRow } from "@/lib/data/vacation-delegations";
+import { DelegatePreviewProvider } from "@/components/moje/DelegatePreviewContext";
+import { DelegateSwitcher } from "@/components/moje/DelegateSwitcher";
 import {
   isSubiektAvailableForZdSync,
   type SubiektAvailability,
@@ -39,6 +42,8 @@ export function MojeOrdersShell({
   boardAnnouncements = null,
   boardAnnouncementsError = null,
   focusAnnouncementId = null,
+  activeDelegations = [],
+  isDelegatePreview = false,
   ...viewProps
 }: {
   initial: Presented;
@@ -52,6 +57,8 @@ export function MojeOrdersShell({
   boardAnnouncements?: DepartmentBoardAnnouncementsSlice | null;
   boardAnnouncementsError?: string | null;
   focusAnnouncementId?: string | null;
+  activeDelegations?: VacationDelegationRow[];
+  isDelegatePreview?: boolean;
 } & Omit<
   React.ComponentProps<typeof MojeOrdersView>,
   | "zamowienia"
@@ -102,6 +109,10 @@ export function MojeOrdersShell({
           subiektReachable={subiektReachable}
         />
       ) : null}
+      <DelegatePreviewProvider delegateFor={isDelegatePreview ? salesPersonId : null}>
+      {!isDelegatePreview && activeDelegations.length > 0 ? (
+        <DelegateSwitcher delegations={activeDelegations} activeDelegateFor={null} />
+      ) : null}
       <MojeOrdersView
       {...viewProps}
       onSubiektStatusChange={handleSubiektStatusChange}
@@ -111,6 +122,7 @@ export function MojeOrdersShell({
       informacje={presented.informacje}
       productLineCount={presented.productLineCount}
       canAcknowledge={tourDemo ? true : viewProps.canAcknowledge}
+      canEdit={tourDemo ? true : viewProps.canEdit ?? viewProps.canAcknowledge}
       tourPreview={tourDemo}
       showProsbaCta={tourDemo ? false : viewProps.showProsbaCta}
       archiwumRecent={tourDemo ? demoArchive.archiwumRecent : viewProps.archiwumRecent}
@@ -120,6 +132,7 @@ export function MojeOrdersShell({
       boardAnnouncementsError={tourDemo ? null : boardAnnouncementsError}
       focusAnnouncementId={focusAnnouncementId}
     />
+    </DelegatePreviewProvider>
     </>
   );
 }

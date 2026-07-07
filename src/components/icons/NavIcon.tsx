@@ -79,6 +79,8 @@ const HREF_TO_NAV_ICON: Record<string, NavIconKey> = {
   "/zespol": "team",
   "/zespol/handlowcy": "teamAccounts",
   "/zespol/grupy": "teamGroups",
+  "/zespol/urlopy": "vacation",
+  "/ustawienia": "admin",
   "/zeby": "teeth",
 };
 
@@ -92,7 +94,9 @@ export function navIconKeyFromHref(href: string): NavIconKey {
   }
   if (path.startsWith("/zespol/handlowcy")) return "teamAccounts";
   if (path.startsWith("/zespol/grupy")) return "teamGroups";
+  if (path.startsWith("/zespol/urlopy")) return "vacation";
   if (path.startsWith("/zespol")) return "team";
+  if (path.startsWith("/ustawienia")) return "admin";
   if (path.startsWith("/admin")) return "admin";
   return "dailyPanel";
 }

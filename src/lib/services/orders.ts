@@ -250,6 +250,8 @@ export async function batchAddIndividualOrders(
     informacjaQueueViaDailyPanel?: boolean;
     informacjaStockOutReorder?: boolean;
     teethDetails?: TeethLineDetail[] | null;
+    teethOcrPending?: boolean;
+    teethOcrImagePath?: string | null;
   }>,
   createdBy?: string,
   options?: { submitMode?: "sales" | "procurement" }
@@ -334,7 +336,7 @@ export async function batchAddIndividualOrders(
           draft.subiektTwId != null &&
           draft.subiektTwId > 0 &&
           teethTwIdSet.has(Math.trunc(draft.subiektTwId));
-        if (isTeethProduct && status === "Weryfikacja") {
+        if (isTeethProduct && status === "Weryfikacja" && !e.teethOcrPending) {
           status = "Nowe";
         }
         if (status === "Nowe") complete++;
@@ -369,6 +371,8 @@ export async function batchAddIndividualOrders(
           draft.subiektTwId != null && draft.subiektTwId > 0
             ? teethTwIdSet.has(Math.trunc(draft.subiektTwId))
             : false,
+        teeth_ocr_pending: Boolean(e.teethOcrPending),
+        teeth_ocr_image_path: e.teethOcrImagePath ?? null,
         ...normalizeZkProsbaSourceInput({
           sourceZkWatchId: e.sourceZkWatchId,
           sourceZkNumber: e.sourceZkNumber,
@@ -872,6 +876,8 @@ export async function updateIndividualRequestGroup(
       informacja_queue_via_daily_panel: informacjaFlags.informacjaQueueViaDailyPanel,
       informacja_stock_out_reorder: informacjaFlags.informacjaStockOutReorder,
       is_teeth: isTeeth,
+      teeth_ocr_pending: Boolean(line.teethOcrPending),
+      teeth_ocr_image_path: line.teethOcrImagePath ?? null,
     };
 
     if (existingLineId) {

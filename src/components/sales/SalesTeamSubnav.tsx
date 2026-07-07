@@ -12,7 +12,7 @@ import {
   salesChromeInsetClass,
 } from "@/lib/ui/ontime-theme";
 
-const SIBLING_HREFS = ["/zespol", "/zespol/handlowcy", "/zespol/grupy"] as const;
+const SIBLING_HREFS = ["/zespol", "/zespol/handlowcy", "/zespol/grupy", "/zespol/urlopy"] as const;
 
 const TAB_CHIP_CLASS = cn(
   panelChoiceChipClass,
@@ -27,6 +27,7 @@ export function SalesTeamSubnav() {
     { href: "/zespol", label: "Podgląd zespołu", title: "Karty handlowców i skróty do prośb oraz ZK" },
     { href: "/zespol/handlowcy", label: "Handlowcy", title: "Lista osób, konta i przypisanie do grup" },
     { href: "/zespol/grupy", label: "Grupy", title: "Nazwy i kolejność grup w podglądzie" },
+    { href: "/zespol/urlopy", label: "Urlopy", title: "Zastępstwa urlopowe handlowców" },
   ] as const;
 
   return (

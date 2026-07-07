@@ -181,11 +181,14 @@ export function TeethQueueBatchTable({
   positionSelection,
   onTogglePosition,
   onEditSaved,
+  alwaysShowEdit = false,
 }: {
   items: TeethQueueItem[];
   positionSelection: Map<string, Set<number>>;
   onTogglePosition: (orderId: string, position: number) => void;
   onEditSaved?: (message?: string) => void;
+  /** Pokaż przycisk "Edytuj listę" przy każdej pozycji, nie tylko przy problemowych (np. weryfikacja OCR). */
+  alwaysShowEdit?: boolean;
 }) {
   const teethProductInfo = useTeethProductInfo();
   const readinessCtx = useMemo(
@@ -417,6 +420,7 @@ export function TeethQueueBatchTable({
                         <div className="flex flex-col gap-0.5">
                           {row.orderEntries
                             .filter((e) => {
+                              if (alwaysShowEdit) return true;
                               const hasList = orderHasTeethList(e.item);
                               const hasSpec = orderHasTeethSpec(e.item, readinessCtx);
                               const hasIncomplete = orderHasIncompleteTeethSpec(e.item, readinessCtx);

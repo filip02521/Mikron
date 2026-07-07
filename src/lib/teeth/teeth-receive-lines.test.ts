@@ -63,6 +63,22 @@ describe("teeth-receive-lines", () => {
     expect(rows[0]!.salesPersonName).toBe("Adam");
   });
 
+  it("pomija wiersze zębowe które są już kompletne", () => {
+    const rows = buildTeethReceiveFlatRows(
+      [
+        order({
+          delivered_quantity: "1",
+          teeth_line_delivered: { "A1|W1|upper|anterior": 1 },
+          status: "Czesciowo_zrealizowane",
+        }),
+      ],
+      () => true,
+    );
+    expect(rows).toHaveLength(1);
+    expect(rows[0]!.kind).toBe("spec");
+    expect(rows[0]!.rowKey).toBe("o1\0A2|W2|lower|posterior");
+  });
+
   it("grupuje ilości z powrotem na zamówienie", () => {
     const rows = buildTeethReceiveFlatRows([order()], () => true);
     const flat = {
