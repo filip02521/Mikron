@@ -148,7 +148,7 @@ export function TeethPanelHistoriaView({
     setDatePending(true);
     try {
       await actionClearTeethDeliveryDateOverride([editingDateId]);
-      onToast({ message: "Wyczyszczono datę dostawy", tone: "success" });
+      onToast(TEETH_PANEL_TOAST.historiaDeliveryDateCleared);
       setEditingDateId(null);
       setDateValue("");
       await reloadHistory();

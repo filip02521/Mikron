@@ -9,8 +9,7 @@ export const boardQuestionListClass =
   "overflow-hidden rounded-xl border border-slate-200/80 bg-slate-50/25 shadow-sm ring-1 ring-slate-900/[0.03]";
 
 /** Lista ogłoszeń — ten sam kontener co pytania. */
-export const boardAnnouncementListClass =
-  "divide-y divide-slate-100 overflow-hidden rounded-xl border border-slate-200/80 bg-white shadow-sm ring-1 ring-slate-900/[0.03]";
+export const boardAnnouncementListClass = boardQuestionListClass;
 
 export function boardAnnouncementRowClass(opts: {
   unread: boolean;
@@ -19,7 +18,7 @@ export function boardAnnouncementRowClass(opts: {
   return cn(
     "bg-white px-3 py-3.5 transition-[background-color,box-shadow] duration-200 sm:px-4 sm:py-4",
     opts.unread
-      ? "bg-sky-50/40 ring-1 ring-inset ring-sky-200/55"
+      ? "bg-indigo-50/40 ring-1 ring-inset ring-indigo-200/55"
       : opts.pinned
         ? "bg-indigo-50/20 hover:bg-indigo-50/30"
         : "hover:bg-slate-50/70"
@@ -37,7 +36,7 @@ export function boardAnnouncementAvatarClass(opts: {
   return cn(
     "flex size-9 shrink-0 items-center justify-center rounded-full ring-1",
     opts.unread
-      ? "bg-sky-100 text-sky-800 ring-sky-200/80"
+      ? "bg-indigo-100 text-indigo-800 ring-indigo-200/80"
       : opts.pinned
         ? "bg-indigo-100 text-indigo-800 ring-indigo-200/80"
         : "bg-slate-100 text-slate-600 ring-slate-200/80"

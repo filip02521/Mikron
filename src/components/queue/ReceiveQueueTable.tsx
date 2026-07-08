@@ -1,5 +1,5 @@
 "use client";
-import { WAREHOUSE_TOAST, toastFromError, type ToastNotice } from "@/lib/ui/notice-copy";
+import { WAREHOUSE_TOAST, receiveQueueDeliverySavedToast, receiveQueueSingleLineSavedToast, toastFromError, type ToastNotice } from "@/lib/ui/notice-copy";
 import { isUndoExpired, undoWindowBannerDescription } from "@/lib/orders/daily-panel-undo";
 
 import { Fragment, useCallback, useEffect, useMemo, useRef, useState, useTransition } from "react";
@@ -118,7 +118,7 @@ export function ReceiveQueueTable({
 }) {
   const router = useRouter();
   const { blockIfReadOnly } = usePreviewMutationBlocker((text) =>
-    onToast({ text, tone: "error" })
+    onToast(toastFromError(text))
   );
   const [pending, start] = useTransition();
   const [qty, setQty] = useState<Record<string, string>>({});
@@ -324,8 +324,7 @@ export function ReceiveQueueTable({
   const subiektOfflineToast = useCallback(
     () =>
       onToast({
-        text: "Subiekt był częściowo niedostępny — użyto danych z lokalnego indeksu.",
-        tone: "warning",
+        ...WAREHOUSE_TOAST.subiektOffline,
         durationMs: QUEUE_EMAIL_WARNING_TOAST_MS,
       }),
     [onToast]
@@ -390,30 +389,24 @@ export function ReceiveQueueTable({
         const progress = deliveryProgressForOrder(order, value);
         const person = order.sales_person?.name ?? "handlowiec";
 
-        const emailNote = result.emailQueued ? " · powiadomienie e-mail za chwilę" : "";
-
-        if (result.emailError) {
-          onToast({
-            text: `Zapisano dostawę, ale e-mail nie poszedł: ${result.emailError}`,
-            tone: "error",
-            durationMs: QUEUE_EMAIL_WARNING_TOAST_MS,
-          });
-        } else if (progress.remaining === 0 && progress.hasNumericQty) {
-          onToast({
-            text: `Zrealizowano · ${person}${emailNote}`,
-            tone: "success",
-          });
-        } else if (progress.delivered > 0 && progress.hasNumericQty) {
-          onToast({
-            text: `${progress.fractionLabel} · ${person} · brakuje ${progress.remaining} szt.${emailNote}`,
-            tone: "success",
-          });
-        } else {
-          onToast({
-            text: `Zapisano${emailNote}`,
-            tone: "success",
-          });
-        }
+        const savedToast = receiveQueueDeliverySavedToast({
+          person,
+          emailQueued: Boolean(result.emailQueued),
+          emailError: result.emailError,
+          fulfilled: progress.remaining === 0 && progress.hasNumericQty,
+          fractionLabel:
+            progress.delivered > 0 && progress.hasNumericQty && progress.remaining > 0
+              ? progress.fractionLabel
+              : undefined,
+          remaining:
+            progress.delivered > 0 && progress.hasNumericQty && progress.remaining > 0
+              ? progress.remaining
+              : undefined,
+        });
+        onToast({
+          ...savedToast,
+          durationMs: result.emailError ? QUEUE_EMAIL_WARNING_TOAST_MS : undefined,
+        });
         router.refresh();
       } catch (e) {
         onToast({
@@ -441,15 +434,19 @@ export function ReceiveQueueTable({
           text:
             result.count > 0
               ? warehouseCancelFulfillToast(order)
-              : "Pozycja rozliczona",
+              : WAREHOUSE_TOAST.cancelDispositionDone.text,
+          title:
+            result.count > 0 ? "Rozliczono" : WAREHOUSE_TOAST.cancelDispositionDone.title,
           tone: "success",
         });
         router.refresh();
       } catch (e) {
-        onToast({
-          text: e instanceof Error ? e.message : "Nie udało się rozliczyć",
-          tone: "error",
-        });
+        onToast(
+          toastFromError(
+            e instanceof Error ? e.message : undefined,
+            WAREHOUSE_TOAST.cancelDispositionFailed.text
+          )
+        );
       } finally {
         onPendingChange(null);
       }
@@ -477,10 +474,7 @@ export function ReceiveQueueTable({
     const skippedQty = orderIds.length - updates.length;
 
     if (!updates.length) {
-      onToast({
-        text: "Wpisz ilość w polu dostawy lub użyj menu grupy „Całość”.",
-        tone: "error",
-      });
+      onToast(WAREHOUSE_TOAST.batchNoQuantity);
       return;
     }
 
@@ -506,18 +500,19 @@ export function ReceiveQueueTable({
           }
           const order = receiveQueue.find((o) => o.id === only.orderId);
           const person = order?.sales_person?.name ?? "handlowiec";
-          const emailNote = result.emailQueued ? " · powiadomienie e-mail za chwilę" : "";
+          const lineToast = receiveQueueSingleLineSavedToast({
+            person,
+            emailQueued: Boolean(result.emailQueued),
+            emailError: result.emailError,
+          });
           onToast({
-            text: result.emailError
-              ? `Zapisano, ale e-mail: ${result.emailError}`
-              : `Zapisano · ${person}${emailNote}`,
-            tone: result.emailError ? "error" : "success",
+            ...lineToast,
             durationMs: result.emailError ? QUEUE_EMAIL_WARNING_TOAST_MS : undefined,
           });
         } else {
           const result = await actionBatchUpdateDelivered(updates);
           if ("error" in result) {
-            onToast({ text: result.error, tone: "error" });
+            onToast(toastFromError(result.error));
             return;
           }
           setSelected((s) => {
@@ -543,10 +538,12 @@ export function ReceiveQueueTable({
         }
         router.refresh();
       } catch (e) {
-        onToast({
-          text: e instanceof Error ? e.message : "Nie udało się zapisać",
-          tone: "error",
-        });
+        onToast(
+          toastFromError(
+            e instanceof Error ? e.message : undefined,
+            WAREHOUSE_TOAST.deliverySaveFailed.text
+          )
+        );
       } finally {
         onPendingChange(null);
       }
@@ -570,7 +567,7 @@ export function ReceiveQueueTable({
       try {
         const r = await actionMarkInformacjaArrived(orderIds);
         if ("error" in r) {
-          onToast({ text: r.error, tone: "error" });
+          onToast(toastFromError(r.error));
           return;
         }
         setSelected((s) => {
@@ -581,10 +578,12 @@ export function ReceiveQueueTable({
         onToast(formatInformacjaBatchToast(r));
         router.refresh();
       } catch (e) {
-        onToast({
-          text: e instanceof Error ? e.message : "Nie udało się zapisać",
-          tone: "error",
-        });
+        onToast(
+          toastFromError(
+            e instanceof Error ? e.message : undefined,
+            WAREHOUSE_TOAST.deliverySaveFailed.text
+          )
+        );
       } finally {
         onPendingChange(null);
       }
@@ -613,7 +612,7 @@ export function ReceiveQueueTable({
       onClose={() => setZdModalOpen(false)}
       receiveQueue={receiveQueue}
       onApply={applyZdFilter}
-      onError={(message) => onToast({ text: message, tone: "error" })}
+      onError={(message) => onToast(toastFromError(message))}
       onSubiektOffline={subiektOfflineToast}
     />
   );
@@ -809,7 +808,6 @@ export function ReceiveQueueTable({
         <NoticeToast
           notice={undoError}
           stacked={Boolean(undo)}
-          tone={undoError.tone}
           onDismiss={() => setUndoError(null)}
         />
       ) : null}

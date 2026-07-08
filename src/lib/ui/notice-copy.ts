@@ -5,6 +5,7 @@
 
 import type { FormMessage, NoticeToastPayload } from "@/lib/ui/notice-content";
 import { undoWindowLongLabel } from "@/lib/orders/daily-panel-undo";
+import { TEETH_LIST_INCOMPLETE_MESSAGE } from "@/lib/teeth/teeth-validation";
 
 export type { FormMessage };
 
@@ -44,6 +45,18 @@ export function formSuccess(title: string, text: string): FormMessage {
   return { title, text, tone: "success" };
 }
 
+/** Toast z komunikatu formularza (np. walidacja prośby). */
+export function formMessageToToast(
+  message: FormMessage,
+  tone: ToastNotice["tone"] = message.tone === "info" ? "error" : message.tone
+): ToastNotice {
+  return {
+    title: message.title,
+    text: message.text,
+    tone,
+  };
+}
+
 // ——— Tryb podglądu ———
 
 export const ADMIN_PREVIEW_NOTICE = formWarning(
@@ -55,6 +68,81 @@ export const ADMIN_PREVIEW_TOAST = toastError(
   "Tryb podglądu panelu",
   "Zmiany są wyłączone. Wróć do administracji, aby edytować.",
 );
+
+/** Toast panelu admina — nagłówek + treść zamiast samego stringa. */
+export function adminPanelNotice(
+  text: string,
+  tone: ToastNotice["tone"] = "success",
+  title = "Panel administracyjny",
+): ToastNotice {
+  if (tone === "success") return toastSuccess(title, text);
+  if (tone === "warning") return toastWarning(title, text);
+  return toastError(title, text);
+}
+
+export function catalogAdminError(error: unknown, fallback: string): ToastNotice {
+  return toastFromError(error instanceof Error ? error.message : undefined, fallback);
+}
+
+export function catalogAdminNotice(
+  text: string,
+  tone: ToastNotice["tone"],
+): ToastNotice {
+  return adminPanelNotice(text, tone, "Katalog produktów");
+}
+
+export const CATALOG_ADMIN_TOAST = {
+  noPausedImport: toastError("Import ZD", "Brak wstrzymanego importu do wznowienia."),
+  importPausedUseContinue: toastError(
+    "Import ZD",
+    "Import jest wstrzymany — użyj Kontynuuj, żeby nie stracić postępu.",
+  ),
+  importPausedFromSupplierRow: toastError(
+    "Import ZD",
+    "Import wstrzymany — użyj Kontynuuj w sekcji importu.",
+  ),
+  resumeImportSupplier: toastSuccess(
+    "Import ZD",
+    "Wznawiam import ZD dla wybranego dostawcy…",
+  ),
+  startImportSupplier: toastSuccess(
+    "Import ZD",
+    "Start importu z ZD — uruchamiam przetwarzanie…",
+  ),
+  importStopped: toastSuccess(
+    "Import ZD",
+    "Import wstrzymany — jutro użyj Kontynuuj (postęp zostaje w bazie).",
+  ),
+  noPausedIndex: toastError("Indeks ZD", "Brak wstrzymanego indeksowania do wznowienia."),
+  indexPausedUseContinue: toastError(
+    "Indeks ZD",
+    "Indeksowanie jest wstrzymane — użyj Kontynuuj, żeby nie stracić postępu.",
+  ),
+  startIndex: toastSuccess("Indeks ZD", "Start indeksowania ZD — uruchamiam…"),
+  indexStopped: toastSuccess(
+    "Indeks ZD",
+    "Indeksowanie wstrzymane — użyj Kontynuuj, żeby wznowić od bieżącej strony.",
+  ),
+  noPausedAutopilot: toastError("Autopilot ZD", "Brak wstrzymanego autopilota do wznowienia."),
+  autopilotPausedUseContinue: toastError(
+    "Autopilot ZD",
+    "Autopilot jest wstrzymany — użyj Kontynuuj, żeby nie stracić postępu.",
+  ),
+  startAutopilot: toastSuccess("Autopilot ZD", "Autopilot: start importu po dostawcach…"),
+  autopilotStopped: toastSuccess(
+    "Autopilot ZD",
+    "Autopilot wstrzymany — jutro użyj Kontynuuj (postęp zostaje w bazie).",
+  ),
+  savedNote: toastSuccess("Zapisano", "Notatka produktu została zaktualizowana."),
+  subiektOfflineBackfill: toastError(
+    "Subiekt niedostępny",
+    "Subiekt offline lub poza LAN — nie da się teraz uzupełnić po symbolu.",
+  ),
+  nightlySyncAlreadyDone: toastSuccess(
+    "Synchronizacja nocna",
+    "Synchronizacja na dziś już zakończona (użyj restartu, aby zacząć od nowa).",
+  ),
+} as const;
 
 // ——— Urlopy i zastępstwa ———
 
@@ -173,7 +261,71 @@ export const WAREHOUSE_TOAST = {
   savedShelfLocation: toastSuccess("Zapisano", "Lokalizacja regału została zaktualizowana."),
   savedDeliveryEntry: toastSuccess("Zapisano", "Możesz wpisać kolejną dostawę."),
   deletedCarrier: toastSuccess("Usunięto", "Kurier został usunięty z listy."),
+  subiektOffline: toastWarning(
+    "Subiekt częściowo niedostępny",
+    "Użyto danych z lokalnego indeksu.",
+  ),
+  batchNoQuantity: toastError(
+    "Brak ilości",
+    "Wpisz ilość w polu dostawy lub użyj menu grupy „Całość”.",
+  ),
+  cancelDispositionDone: toastSuccess("Rozliczono", "Pozycja rozliczona."),
+  cancelDispositionFailed: toastFromError(undefined, "Nie udało się rozliczyć pozycji."),
+  deliverySaveFailed: toastFromError(undefined, "Nie udało się zapisać dostawy."),
 } as const;
+
+/** Krótka adnotacja przy zapisie — mail po oknie cofania. */
+export function receiveQueueEmailQueuedSuffix(emailQueued: boolean): string {
+  return emailQueued ? " · powiadomienie e-mail za chwilę" : "";
+}
+
+export function receiveQueueDeliverySavedToast(opts: {
+  person: string;
+  emailQueued: boolean;
+  emailError?: string;
+  fulfilled?: boolean;
+  fractionLabel?: string;
+  remaining?: number;
+}): ToastNotice {
+  const emailNote = receiveQueueEmailQueuedSuffix(opts.emailQueued);
+  if (opts.emailError) {
+    return toastError(
+      "Zapisano dostawę",
+      `E-mail nie poszedł: ${opts.emailError}`
+    );
+  }
+  if (opts.fulfilled) {
+    return toastSuccess("Zrealizowano", `${opts.person}${emailNote}`);
+  }
+  if (
+    opts.fractionLabel &&
+    opts.remaining != null &&
+    opts.remaining > 0
+  ) {
+    return toastSuccess(
+      "Częściowa dostawa",
+      `${opts.fractionLabel} · ${opts.person} · brakuje ${opts.remaining} szt.${emailNote}`
+    );
+  }
+  if (emailNote) {
+    return toastSuccess("Zapisano", emailNote.replace(/^ · /, ""));
+  }
+  return toastSuccess("Zapisano", opts.person);
+}
+
+export function receiveQueueSingleLineSavedToast(opts: {
+  person: string;
+  emailQueued: boolean;
+  emailError?: string;
+}): ToastNotice {
+  if (opts.emailError) {
+    return toastError("Zapisano dostawę", `E-mail: ${opts.emailError}`);
+  }
+  return toastSuccess(
+    "Zapisano",
+    `${opts.person}${receiveQueueEmailQueuedSuffix(opts.emailQueued)}`
+  );
+}
 
 export const TEETH_RECEIVE_TOAST = {
   undoSuccess: toastSuccess("Cofnięto", "Przyjęcie zębów zostało cofnięte."),
@@ -185,6 +337,13 @@ export const TEETH_RECEIVE_TOAST = {
     "Nie udało się cofnąć",
     "Przyjęcie zębów nie zostało wycofane.",
   ),
+  batchNoQuantity: toastError(
+    "Brak ilości",
+    "Wpisz przyjęte ilości w tabeli lub użyj „Całość”.",
+  ),
+  lineSaved: (person: string) =>
+    toastSuccess("Przyjęto zęby", person),
+  saveFailed: toastFromError(undefined, "Nie udało się zapisać przyjęcia zębów."),
 } as const;
 
 // ——— Wspólne komunikaty cofania ———
@@ -299,6 +458,31 @@ export const REQUEST_EDIT_FORM = {
     "Brak ilości",
     "Każda pozycja zamówienia musi mieć liczbę sztuk (np. 1).",
   ),
+  teethListIncomplete: (() => {
+    const dash = TEETH_LIST_INCOMPLETE_MESSAGE.indexOf(" — ");
+    if (dash >= 0) {
+      return formError(
+        TEETH_LIST_INCOMPLETE_MESSAGE.slice(0, dash).trim(),
+        TEETH_LIST_INCOMPLETE_MESSAGE.slice(dash + 3).trim()
+      );
+    }
+    return formError("Uzupełnij listę zębów", TEETH_LIST_INCOMPLETE_MESSAGE);
+  })(),
+} as const;
+
+/** Walidacja szybkiego zamówienia z panelu dziennego. */
+export const QUICK_ORDER_FORM = {
+  missingSupplierAndSales: formError(
+    "Brak danych",
+    "Wybierz dostawcę i handlowca.",
+  ),
+  missingProducts: formError(
+    "Brak pozycji",
+    "Dodaj co najmniej jeden produkt z opisem.",
+  ),
+  missingQuantity: REQUEST_EDIT_FORM.missingQuantity,
+  teethListIncomplete: REQUEST_EDIT_FORM.teethListIncomplete,
+  incompleteFields: formError("Uzupełnij pola", "Uzupełnij wymagane pola formularza."),
 } as const;
 
 // ——— Tablica zespołu ———

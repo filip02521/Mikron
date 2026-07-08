@@ -16,7 +16,6 @@ import {
 } from "@/lib/orders/individual-request-edit";
 import { buildProsbaFormReadiness, buildProsbaFormReadinessWithSupplier } from "@/lib/orders/prosba-form-readiness";
 import { prosbaLineHasTeethBlockers } from "@/lib/orders/prosba-line-field-validation";
-import { TEETH_LIST_INCOMPLETE_MESSAGE } from "@/lib/teeth/teeth-validation";
 import { REQUEST_EDIT_FORM, formError, type FormMessage } from "@/lib/ui/notice-copy";
 import { ProsbaFormReadiness } from "@/components/orders/ProsbaFormReadiness";
 import {
@@ -276,7 +275,7 @@ export function EditIndividualRequestModal({
               },
               (message) => {
                 setValidationAttempted(true);
-                setFormNotice({ text: message, tone: "error" });
+                setFormNotice(formError("Błąd zapisu", message));
               }
             );
           }
@@ -380,7 +379,7 @@ export function EditIndividualRequestModal({
         )
       ) {
         setValidationAttempted(true);
-        setFormNotice({ text: TEETH_LIST_INCOMPLETE_MESSAGE, tone: "error" });
+        setFormNotice(REQUEST_EDIT_FORM.teethListIncomplete);
         return;
       }
 

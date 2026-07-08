@@ -2,6 +2,8 @@
 
 import { useMemo } from "react";
 import type { ProductLineDraft } from "@/components/orders/request-product-lines";
+import { useTeethExemptTwIds, useTeethProductInfo } from "@/components/layout/TeethExemptContext";
+import { isStockExemptTwId } from "@/lib/orders/teeth-stock-exempt";
 import {
   expandTeethDetails,
   isTeethDetailComplete,
@@ -35,11 +37,27 @@ export function useTeethLinesStatus(lines: ProductLineDraft[]): {
   completedCount: number;
   totalCount: number;
 } {
+  const exemptTwIds = useTeethExemptTwIds();
+  const teethProductInfo = useTeethProductInfo();
   return useMemo(() => {
     const teethLines: TeethLineStatus[] = [];
     for (let i = 0; i < lines.length; i++) {
       const line = lines[i]!;
-      const catalog = resolveTeethCatalogFromDraft(line);
+      if (!isStockExemptTwId(line.subiektTwId, exemptTwIds)) continue;
+      const linkedTwId =
+        line.subiektTwId != null && line.subiektTwId > 0
+          ? Math.trunc(line.subiektTwId)
+          : null;
+      const catalog = resolveTeethCatalogFromDraft({
+        adminProductLine:
+          linkedTwId != null
+            ? teethProductInfo.productLineByTwId.get(linkedTwId) ?? null
+            : null,
+        teethProductLine: line.teethProductLine,
+        teethManufacturer: line.teethManufacturer,
+        product: line.product,
+        subiektTwId: line.subiektTwId,
+      });
       if (!catalog) continue;
       const qty = line.teethDetails?.length ?? 0;
       const expanded = expandTeethDetails(line.teethDetails, Math.max(qty, 1));
@@ -64,7 +82,7 @@ export function useTeethLinesStatus(lines: ProductLineDraft[]): {
       completedCount: teethLines.filter((l) => l.isComplete).length,
       totalCount: teethLines.length,
     };
-  }, [lines]);
+  }, [exemptTwIds, lines, teethProductInfo]);
 }
 
 /** Tylko przy wielu pozycjach zębowych — skrót „co jeszcze brakuje”. */

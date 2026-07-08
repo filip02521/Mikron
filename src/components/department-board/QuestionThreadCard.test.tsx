@@ -14,6 +14,27 @@ vi.mock("@/app/actions/department-board", () => ({
 
 import { actionMarkQuestionThreadSeen } from "@/app/actions/department-board";
 
+class MockIntersectionObserver implements IntersectionObserver {
+  readonly root = null;
+  readonly rootMargin = "";
+  readonly thresholds = [0.45, 0.6];
+
+  constructor(private callback: IntersectionObserverCallback) {}
+
+  observe(target: Element) {
+    this.callback(
+      [{ isIntersecting: true, intersectionRatio: 1, target } as IntersectionObserverEntry],
+      this
+    );
+  }
+
+  disconnect() {}
+  unobserve() {}
+  takeRecords() {
+    return [];
+  }
+}
+
 function testQuestion(): DepartmentBoardQuestion {
   return {
     id: "q1",
@@ -85,7 +106,9 @@ describe("QuestionThreadCard", () => {
     expect(screen.getByText("Odpowiedź")).toBeTruthy();
   });
 
-  it("oznacza wątek po ręcznym rozwinięciu", async () => {
+  it("oznacza wątek po rozwinięciu i wejściu w widok", async () => {
+    vi.stubGlobal("IntersectionObserver", MockIntersectionObserver);
+
     render(
       <QuestionThreadCard
         question={testQuestion()}
@@ -101,5 +124,7 @@ describe("QuestionThreadCard", () => {
     await waitFor(() => {
       expect(actionMarkQuestionThreadSeen).toHaveBeenCalledWith("q1");
     });
+
+    vi.unstubAllGlobals();
   });
 });

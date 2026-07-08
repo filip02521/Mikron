@@ -75,6 +75,7 @@ export function QuestionThreadCard({
   const [error, setError] = useState<string | null>(null);
   const expandedByUserRef = useRef(false);
   const markSeenRequestedRef = useRef(false);
+  const cardRef = useRef<HTMLElement | null>(null);
 
   const author = questionAuthorLabel(question.sales_person, question.author);
   const isOpen = question.status === "open";
@@ -103,23 +104,32 @@ export function QuestionThreadCard({
 
   useEffect(() => {
     if (!expanded || !autoMarkSeen || !showUnseen || question.posts.length === 0) return;
-    if (!expandedByUserRef.current && !defaultExpanded) return;
-    if (markSeenRequestedRef.current) return;
+    const node = cardRef.current;
+    if (!node) return;
 
-    markSeenRequestedRef.current = true;
-    void actionMarkQuestionThreadSeen(question.id)
-      .then(() => {
-        setLocallySeen(true);
-        onChanged?.();
-      })
-      .catch(() => {
-        markSeenRequestedRef.current = false;
-      });
+    const observer = new IntersectionObserver(
+      (entries) => {
+        const visible = entries.some((e) => e.isIntersecting && e.intersectionRatio >= 0.45);
+        if (!visible || markSeenRequestedRef.current) return;
+        markSeenRequestedRef.current = true;
+        void actionMarkQuestionThreadSeen(question.id)
+          .then(() => {
+            setLocallySeen(true);
+            onChanged?.();
+          })
+          .catch(() => {
+            markSeenRequestedRef.current = false;
+          });
+      },
+      { threshold: [0.45, 0.6] }
+    );
+
+    observer.observe(node);
+    return () => observer.disconnect();
   }, [
     expanded,
     autoMarkSeen,
     showUnseen,
-    defaultExpanded,
     question.id,
     question.posts.length,
     onChanged,
@@ -176,6 +186,7 @@ export function QuestionThreadCard({
 
   return (
     <article
+      ref={cardRef}
       id={`question-${question.id}`}
       className={cn(
         embedded

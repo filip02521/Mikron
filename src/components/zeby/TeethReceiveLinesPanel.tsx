@@ -115,7 +115,7 @@ export function TeethReceiveLinesPanel({
   );
 
   const { blockIfReadOnly } = usePreviewMutationBlocker((text) =>
-    onToast({ text, tone: "error" }),
+    onToast(toastFromError(text)),
   );
   const [pending, start] = useTransition();
   const [flatLineQty, setFlatLineQty] = useState<Record<string, string>>({});
@@ -340,10 +340,7 @@ export function TeethReceiveLinesPanel({
     );
 
     if (!updates.length) {
-      onToast({
-        text: "Wpisz przyjęte ilości w tabeli lub użyj „Całość”.",
-        tone: "error",
-      });
+      onToast(TEETH_RECEIVE_TOAST.batchNoQuantity);
       return;
     }
 
@@ -362,14 +359,13 @@ export function TeethReceiveLinesPanel({
             setUndo(result.undo);
           }
           const order = receiveQueue.find((o) => o.id === only.orderId);
-          onToast({
-            text: `Przyjęto zęby · ${order?.sales_person?.name ?? "handlowiec"}`,
-            tone: "success",
-          });
+          onToast(
+            TEETH_RECEIVE_TOAST.lineSaved(order?.sales_person?.name ?? "handlowiec")
+          );
         } else {
           const result = await actionBatchUpdateDelivered(updates);
           if ("error" in result) {
-            onToast({ text: result.error, tone: "error" });
+            onToast(toastFromError(result.error));
             return;
           }
           if (result.undo) {
@@ -384,10 +380,12 @@ export function TeethReceiveLinesPanel({
         router.refresh();
         teethUpdates?.refreshNow();
       } catch (e) {
-        onToast({
-          text: e instanceof Error ? e.message : "Nie udało się zapisać",
-          tone: "error",
-        });
+        onToast(
+          toastFromError(
+            e instanceof Error ? e.message : undefined,
+            TEETH_RECEIVE_TOAST.saveFailed.text
+          )
+        );
       } finally {
         onPendingChange(null);
       }
@@ -468,7 +466,6 @@ export function TeethReceiveLinesPanel({
         <NoticeToast
           notice={undoError}
           stacked={Boolean(undo)}
-          tone={undoError.tone}
           onDismiss={() => setUndoError(null)}
         />
       ) : null}

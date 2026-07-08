@@ -1,5 +1,5 @@
 "use client";
-import { VACATION_TOAST, type ToastNotice } from "@/lib/ui/notice-copy";
+import { VACATION_TOAST, toastFromError, type ToastNotice } from "@/lib/ui/notice-copy";
 
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
@@ -420,19 +420,18 @@ export function VacationsAdminClient({
         setRows((list) => list.filter((row) => row.id !== deleteTarget.id));
         if (form.id === deleteTarget.id) resetForm();
         setDeleteTarget(null);
-        setToast({ text: `Usunięto wpis urlopu (${name}).`, tone: "success" });
+        setToast(VACATION_TOAST.removedVacationEntry(name));
         router.refresh();
       },
       `Usuwanie urlopu (${name})…`,
       {
         onError: (error) => {
-          setToast({
-            text:
-              error instanceof Error
-                ? error.message
-                : "Nie udało się usunąć urlopu.",
-            tone: "error",
-          });
+          setToast(
+            toastFromError(
+              error instanceof Error ? error.message : undefined,
+              "Nie udało się usunąć urlopu.",
+            ),
+          );
         },
       }
     );

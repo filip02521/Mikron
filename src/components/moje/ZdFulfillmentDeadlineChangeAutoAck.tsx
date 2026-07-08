@@ -127,7 +127,7 @@ export function ZdFulfillmentDeadlineChangeAutoAck({
 
   return (
     <NoticeToast
-      notice={{ message: toast.message, tone: toast.tone, durationMs: 4500 }}
+      notice={{ text: toast.message, tone: toast.tone, durationMs: 4500 }}
       stacked
       onDismiss={() => setToast(null)}
     />

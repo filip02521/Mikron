@@ -3,6 +3,11 @@
 import { useEffect, useMemo, useRef, useState, useTransition } from "react";
 import type { ToastNotice } from "@/lib/ui/notice-copy";
 import {
+  CATALOG_ADMIN_TOAST,
+  catalogAdminError,
+  catalogAdminNotice,
+} from "@/lib/ui/notice-copy";
+import {
   formatCatalogSupplierSubtitle,
   type ProductCatalogCoverageStats,
   type ProductCatalogPage,
@@ -192,7 +197,7 @@ export function ProductsCatalogAdminClient({
           startImportTickLoop();
         }
       } catch (e) {
-        setToast({ text: e instanceof Error ? e.message : "Błąd odczytu joba", tone: "error" });
+        setToast(catalogAdminError(e, "Błąd odczytu zadania importu ZD."));
       }
     });
   };
@@ -203,10 +208,7 @@ export function ProductsCatalogAdminClient({
         const data = await actionReadCatalogZdSyncStatus();
         setCatalogSync(data);
       } catch (e) {
-        setToast({
-          text: e instanceof Error ? e.message : "Błąd odczytu synchronizacji nocnej",
-          tone: "error",
-        });
+        setToast(catalogAdminError(e, "Błąd odczytu synchronizacji nocnej."));
       }
     });
   };
@@ -217,10 +219,7 @@ export function ProductsCatalogAdminClient({
         const next = await actionCountProductCatalogCoverage();
         setCoverage(next);
       } catch (e) {
-        setToast({
-          text: e instanceof Error ? e.message : "Błąd liczenia produktów bez dostawcy",
-          tone: "error",
-        });
+        setToast(catalogAdminError(e, "Błąd liczenia produktów bez dostawcy."));
       }
     });
   };
@@ -236,19 +235,20 @@ export function ProductsCatalogAdminClient({
         const s = result.state;
         const label =
           mode === "continue" ? "Kontynuacja" : mode === "reset" ? "Restart" : "Przebieg";
-        setToast({
-          text: result.skipped
-            ? "Synchronizacja na dziś już zakończona (użyj restartu, aby zacząć od nowa)."
-            : result.timedOut
-              ? `${label} (limit czasu) — indeks: ${s.indexProcessed}, import ZD: ${s.importProcessedDocs}, auto-przypisanie: ${s.autoAssignUpdated}`
-              : `${label}: ${s.status} — indeks: ${s.indexProcessed}, import: ${s.importProcessedDocs}, auto-przypisanie: ${s.autoAssignUpdated}`,
-          tone: result.ok || result.skipped ? "success" : "error",
-        });
+        if (result.skipped) {
+          setToast(CATALOG_ADMIN_TOAST.nightlySyncAlreadyDone);
+        } else {
+          setToast(
+            catalogAdminNotice(
+              result.timedOut
+                ? `${label} (limit czasu) — indeks: ${s.indexProcessed}, import ZD: ${s.importProcessedDocs}, auto-przypisanie: ${s.autoAssignUpdated}`
+                : `${label}: ${s.status} — indeks: ${s.indexProcessed}, import: ${s.importProcessedDocs}, auto-przypisanie: ${s.autoAssignUpdated}`,
+              result.ok ? "success" : "error",
+            ),
+          );
+        }
       } catch (e) {
-        setToast({
-          text: e instanceof Error ? e.message : "Błąd synchronizacji",
-          tone: "error",
-        });
+        setToast(catalogAdminError(e, "Błąd synchronizacji nocnej."));
       }
     });
   };
@@ -261,10 +261,7 @@ export function ProductsCatalogAdminClient({
         const report = await actionListZdUnmappedKh();
         setZdUnmapped(report);
       } catch (e) {
-        setToast({
-          text: e instanceof Error ? e.message : "Błąd listy kontrahentów bez dostawcy",
-          tone: "error",
-        });
+        setToast(catalogAdminError(e, "Błąd listy kontrahentów bez dostawcy."));
       } finally {
         zdUnmappedFetchRef.current = false;
       }
@@ -282,7 +279,7 @@ export function ProductsCatalogAdminClient({
           stopIndexLoop();
         }
       } catch (e) {
-        setToast({ text: e instanceof Error ? e.message : "Błąd odczytu indeksu ZD", tone: "error" });
+        setToast(catalogAdminError(e, "Błąd odczytu indeksu ZD."));
       }
     });
   };
@@ -296,7 +293,7 @@ export function ProductsCatalogAdminClient({
           startAllTickLoop();
         }
       } catch (e) {
-        setToast({ text: e instanceof Error ? e.message : "Błąd odczytu autopilota", tone: "error" });
+        setToast(catalogAdminError(e, "Błąd odczytu autopilota."));
       }
     });
   };
@@ -324,7 +321,7 @@ export function ProductsCatalogAdminClient({
         const stats = await actionSupplierProductLinkStats();
         setSupplierStats(stats);
       } catch (e) {
-        setToast({ text: e instanceof Error ? e.message : "Błąd odczytu statystyk dostawców", tone: "error" });
+        setToast(catalogAdminError(e, "Błąd odczytu statystyk dostawców."));
       }
     });
   };
@@ -492,10 +489,7 @@ export function ProductsCatalogAdminClient({
           else await loadAll();
         } catch (e) {
           if (seq !== catalogLoadSeqRef.current) return;
-          setToast({
-            text: e instanceof Error ? e.message : "Błąd pobierania listy",
-            tone: "error",
-          });
+          setToast(catalogAdminError(e, "Błąd pobierania listy produktów."));
         }
       });
     };
@@ -548,7 +542,7 @@ export function ProductsCatalogAdminClient({
         setLoaded((prev) => prev + next.rows.length);
       } catch (e) {
         if (seq !== catalogLoadSeqRef.current) return;
-        setToast({ text: e instanceof Error ? e.message : "Błąd pobierania", tone: "error" });
+        setToast(catalogAdminError(e, "Błąd pobierania strony katalogu."));
       }
     });
   };
@@ -559,14 +553,14 @@ export function ProductsCatalogAdminClient({
       try {
         const s = await actionContinueZdImportSupplierJob(importSupplierId);
         if (!s) {
-          setToast({ text: "Brak wstrzymanego importu do wznowienia.", tone: "error" });
+          setToast(CATALOG_ADMIN_TOAST.noPausedImport);
           return;
         }
         setImportState(s);
-        setToast({ text: "Wznawiam import ZD dla wybranego dostawcy…", tone: "success" });
+        setToast(CATALOG_ADMIN_TOAST.resumeImportSupplier);
         startImportTickLoop();
       } catch (e) {
-        setToast({ text: e instanceof Error ? e.message : "Błąd wznowienia importu", tone: "error" });
+        setToast(catalogAdminError(e, "Błąd wznowienia importu ZD."));
       }
     });
   };
@@ -574,10 +568,7 @@ export function ProductsCatalogAdminClient({
   const startImport = () => {
     if (!importSupplierId) return;
     if (importJobResumable && importState?.status === "paused") {
-      setToast({
-        text: "Import jest wstrzymany — użyj Kontynuuj, żeby nie stracić postępu.",
-        tone: "error",
-      });
+      setToast(CATALOG_ADMIN_TOAST.importPausedUseContinue);
       return;
     }
     if (
@@ -596,10 +587,10 @@ export function ProductsCatalogAdminClient({
           monthsBack: zdMonthsBack,
         });
         setImportState(s);
-        setToast({ text: "Start importu z ZD — uruchamiam przetwarzanie…", tone: "success" });
+        setToast(CATALOG_ADMIN_TOAST.startImportSupplier);
         startImportTickLoop();
       } catch (e) {
-        setToast({ text: e instanceof Error ? e.message : "Błąd startu importu", tone: "error" });
+        setToast(catalogAdminError(e, "Błąd startu importu ZD."));
       }
     });
   };
@@ -612,12 +603,9 @@ export function ProductsCatalogAdminClient({
       try {
         const s = await actionStopZdImportSupplierJob(importSupplierId);
         setImportState(s);
-        setToast({
-          text: "Import wstrzymany — jutro użyj Kontynuuj (postęp zostaje w bazie).",
-          tone: "success",
-        });
+        setToast(CATALOG_ADMIN_TOAST.importStopped);
       } catch (e) {
-        setToast({ text: e instanceof Error ? e.message : "Błąd zatrzymania importu", tone: "error" });
+        setToast(catalogAdminError(e, "Błąd zatrzymania importu ZD."));
       }
     });
   };
@@ -638,14 +626,16 @@ export function ProductsCatalogAdminClient({
           monthsBack: zdMonthsBack,
         });
         setImportState(null);
-        setToast({
-          text: `Usunięto ${res.removedLinks} mapowań i zresetowano ${res.resetZdFlags} flag ZD — możesz uruchomić import od nowa.`,
-          tone: "success",
-        });
+        setToast(
+          catalogAdminNotice(
+            `Usunięto ${res.removedLinks} mapowań i zresetowano ${res.resetZdFlags} flag ZD — możesz uruchomić import od nowa.`,
+            "success",
+          ),
+        );
         refreshImportState();
         refreshCoverage();
       } catch (e) {
-        setToast({ text: e instanceof Error ? e.message : "Błąd czyszczenia", tone: "error" });
+        setToast(catalogAdminError(e, "Błąd czyszczenia importu ZD."));
       }
     });
   };
@@ -666,7 +656,7 @@ export function ProductsCatalogAdminClient({
       }
     } catch (e) {
       stopTickLoop();
-      setToast({ text: e instanceof Error ? e.message : "Błąd tick", tone: "error" });
+      setToast(catalogAdminError(e, "Błąd przetwarzania importu ZD."));
     } finally {
       tickImportInFlight.current = false;
     }
@@ -677,27 +667,26 @@ export function ProductsCatalogAdminClient({
       try {
         const s = await actionContinueZdIndexJob();
         if (!s) {
-          setToast({ text: "Brak wstrzymanego indeksowania do wznowienia.", tone: "error" });
+          setToast(CATALOG_ADMIN_TOAST.noPausedIndex);
           return;
         }
         setIndexState(s);
-        setToast({
-          text: `Wznawiam indeksowanie od strony ${s.page ?? "?"}…`,
-          tone: "success",
-        });
+        setToast(
+          catalogAdminNotice(
+            `Wznawiam indeksowanie od strony ${s.page ?? "?"}…`,
+            "success",
+          ),
+        );
         startIndexTickLoop();
       } catch (e) {
-        setToast({ text: e instanceof Error ? e.message : "Błąd wznowienia indeksowania", tone: "error" });
+        setToast(catalogAdminError(e, "Błąd wznowienia indeksowania ZD."));
       }
     });
   };
 
   const startIndex = () => {
     if (indexJobResumable && indexState?.status === "paused") {
-      setToast({
-        text: "Indeksowanie jest wstrzymane — użyj Kontynuuj, żeby nie stracić postępu.",
-        tone: "error",
-      });
+      setToast(CATALOG_ADMIN_TOAST.indexPausedUseContinue);
       return;
     }
     if (
@@ -713,10 +702,10 @@ export function ProductsCatalogAdminClient({
       try {
         const s = await actionStartZdIndexJob({ monthsBack: indexMonthsBack });
         setIndexState(s);
-        setToast({ text: "Start indeksowania ZD — uruchamiam…", tone: "success" });
+        setToast(CATALOG_ADMIN_TOAST.startIndex);
         startIndexTickLoop();
       } catch (e) {
-        setToast({ text: e instanceof Error ? e.message : "Błąd startu indeksowania", tone: "error" });
+        setToast(catalogAdminError(e, "Błąd startu indeksowania ZD."));
       }
     });
   };
@@ -727,12 +716,9 @@ export function ProductsCatalogAdminClient({
       try {
         const s = await actionStopZdIndexJob();
         setIndexState(s);
-        setToast({
-          text: "Indeksowanie wstrzymane — użyj Kontynuuj, żeby wznowić od bieżącej strony.",
-          tone: "success",
-        });
+        setToast(CATALOG_ADMIN_TOAST.indexStopped);
       } catch (e) {
-        setToast({ text: e instanceof Error ? e.message : "Błąd stop indeksowania", tone: "error" });
+        setToast(catalogAdminError(e, "Błąd zatrzymania indeksowania ZD."));
       }
     });
   };
@@ -756,7 +742,7 @@ export function ProductsCatalogAdminClient({
       }
     } catch (e) {
       stopIndexLoop();
-      setToast({ text: e instanceof Error ? e.message : "Błąd tick indeksu", tone: "error" });
+      setToast(catalogAdminError(e, "Błąd przetwarzania indeksu ZD."));
     } finally {
       tickIndexInFlight.current = false;
     }
@@ -767,7 +753,7 @@ export function ProductsCatalogAdminClient({
       try {
         const s = await actionContinueZdImportAllSuppliersJob();
         if (!s) {
-          setToast({ text: "Brak wstrzymanego autopilota do wznowienia.", tone: "error" });
+          setToast(CATALOG_ADMIN_TOAST.noPausedAutopilot);
           return;
         }
         setAllState(s);
@@ -775,20 +761,19 @@ export function ProductsCatalogAdminClient({
           s.supplierIds?.length != null
             ? `${(s.processedSuppliers ?? 0) + 1}/${s.supplierIds.length}`
             : "?";
-        setToast({ text: `Wznawiam autopilot od dostawcy ${at}…`, tone: "success" });
+        setToast(
+          catalogAdminNotice(`Wznawiam autopilot od dostawcy ${at}…`, "success"),
+        );
         startAllTickLoop();
       } catch (e) {
-        setToast({ text: e instanceof Error ? e.message : "Błąd wznowienia autopilota", tone: "error" });
+        setToast(catalogAdminError(e, "Błąd wznowienia autopilota ZD."));
       }
     });
   };
 
   const startAll = () => {
     if (allJobResumable && allState?.status === "paused") {
-      setToast({
-        text: "Autopilot jest wstrzymany — użyj Kontynuuj, żeby nie stracić postępu.",
-        tone: "error",
-      });
+      setToast(CATALOG_ADMIN_TOAST.autopilotPausedUseContinue);
       return;
     }
     if (
@@ -804,10 +789,10 @@ export function ProductsCatalogAdminClient({
       try {
         const s = await actionStartZdImportAllSuppliersJob({ monthsBack: zdMonthsBack, batchDocs: 3 });
         setAllState(s);
-        setToast({ text: "Autopilot: start importu po dostawcach…", tone: "success" });
+        setToast(CATALOG_ADMIN_TOAST.startAutopilot);
         startAllTickLoop();
       } catch (e) {
-        setToast({ text: e instanceof Error ? e.message : "Błąd startu autopilota", tone: "error" });
+        setToast(catalogAdminError(e, "Błąd startu autopilota ZD."));
       }
     });
   };
@@ -818,12 +803,9 @@ export function ProductsCatalogAdminClient({
       try {
         const s = await actionStopZdImportAllSuppliersJob();
         setAllState(s);
-        setToast({
-          text: "Autopilot wstrzymany — jutro użyj Kontynuuj (postęp zostaje w bazie).",
-          tone: "success",
-        });
+        setToast(CATALOG_ADMIN_TOAST.autopilotStopped);
       } catch (e) {
-        setToast({ text: e instanceof Error ? e.message : "Błąd stop autopilota", tone: "error" });
+        setToast(catalogAdminError(e, "Błąd zatrzymania autopilota ZD."));
       }
     });
   };
@@ -844,7 +826,7 @@ export function ProductsCatalogAdminClient({
       }
     } catch (e) {
       stopAllLoop();
-      setToast({ text: e instanceof Error ? e.message : "Błąd tick autopilota", tone: "error" });
+      setToast(catalogAdminError(e, "Błąd przetwarzania autopilota ZD."));
     } finally {
       tickAllInFlight.current = false;
     }
@@ -861,15 +843,17 @@ export function ProductsCatalogAdminClient({
     start(async () => {
       try {
         const res = await actionRebuildProductCatalogFromOrders({ limit: 5000 });
-        setToast({
-          text: `Odbudowano: ${res.products} produktów, ${res.links} powiązań (zeskanowano ${res.scanned}). Odświeżam widok…`,
-          tone: "success",
-        });
+        setToast(
+          catalogAdminNotice(
+            `Odbudowano: ${res.products} produktów, ${res.links} powiązań (zeskanowano ${res.scanned}). Odświeżam widok…`,
+            "success",
+          ),
+        );
         // Najprościej: pełny reload danych po stronie serwera (user może odświeżyć),
         // ale dla UX robimy szybki refresh w przeglądarce przez reload.
         window.location.reload();
       } catch (e) {
-        setToast({ text: e instanceof Error ? e.message : "Błąd odbudowy", tone: "error" });
+        setToast(catalogAdminError(e, "Błąd odbudowy katalogu."));
       }
     });
   };
@@ -886,19 +870,18 @@ export function ProductsCatalogAdminClient({
       try {
         const res = await actionBackfillOrdersSubiektTwIdFromSymbol({ limit: 250 });
         if (res.skippedOffline) {
-          setToast({
-            text: "Subiekt offline / poza LAN — nie da się teraz uzupełnić po symbolu.",
-            tone: "error",
-          });
+          setToast(CATALOG_ADMIN_TOAST.subiektOfflineBackfill);
           return;
         }
-        setToast({
-          text: `Uzupełniono: zeskanowano ${res.scanned}, zapisano tw_Id w ${res.updated}, zindeksowano ${res.indexed}. Odświeżam…`,
-          tone: "success",
-        });
+        setToast(
+          catalogAdminNotice(
+            `Uzupełniono: zeskanowano ${res.scanned}, zapisano tw_Id w ${res.updated}, zindeksowano ${res.indexed}. Odświeżam…`,
+            "success",
+          ),
+        );
         window.location.reload();
       } catch (e) {
-        setToast({ text: e instanceof Error ? e.message : "Błąd uzupełniania", tone: "error" });
+        setToast(catalogAdminError(e, "Błąd uzupełniania tw_Id po symbolu."));
       }
     });
   };
@@ -922,15 +905,14 @@ export function ProductsCatalogAdminClient({
           autoAssign.updated > 0
             ? ` · uzupełniono ${autoAssign.updated} prośb w weryfikacji`
             : "";
-        setToast({
-          text: `Przypisano dostawcę: ${row.topSupplier?.name ?? "—"}${extra}.`,
-          tone: "success",
-        });
+        setToast(
+          catalogAdminNotice(
+            `Przypisano dostawcę: ${row.topSupplier?.name ?? "—"}${extra}.`,
+            "success",
+          ),
+        );
       } catch (e) {
-        setToast({
-          text: e instanceof Error ? e.message : "Błąd przypisania dostawcy",
-          tone: "error",
-        });
+        setToast(catalogAdminError(e, "Błąd przypisania dostawcy do produktu."));
       }
     });
   };
@@ -964,15 +946,14 @@ export function ProductsCatalogAdminClient({
             ? ` · nie udało się: ${result.failed.length}`
             : "";
         const limitNote = result.truncated ? " · limit 150 na operację" : "";
-        setToast({
-          text: `Przypisano ${supplierName} do ${result.succeededTwIds.length} produktów${extra}${partial}${limitNote}.`,
-          tone: result.failed.length ? "error" : "success",
-        });
+        setToast(
+          catalogAdminNotice(
+            `Przypisano ${supplierName} do ${result.succeededTwIds.length} produktów${extra}${partial}${limitNote}.`,
+            result.failed.length ? "error" : "success",
+          ),
+        );
       } catch (e) {
-        setToast({
-          text: e instanceof Error ? e.message : "Błąd grupowego przypisania",
-          tone: "error",
-        });
+        setToast(catalogAdminError(e, "Błąd grupowego przypisania dostawcy."));
       }
     });
   };
@@ -984,9 +965,9 @@ export function ProductsCatalogAdminClient({
         setRows((prev) =>
           prev.map((r) => (r.subiektTwId === subiektTwId ? { ...r, note } : r))
         );
-        setToast({ text: "Zapisano notatkę.", tone: "success" });
+        setToast(CATALOG_ADMIN_TOAST.savedNote);
       } catch (e) {
-        setToast({ text: e instanceof Error ? e.message : "Błąd zapisu notatki", tone: "error" });
+        setToast(catalogAdminError(e, "Błąd zapisu notatki produktu."));
       }
     });
   };
@@ -1166,10 +1147,7 @@ export function ProductsCatalogAdminClient({
                               const existing = await actionReadZdImportSupplierJob(s.id);
                               if (existing?.status === "paused") {
                                 setImportState(existing);
-                                setToast({
-                                  text: "Import wstrzymany — użyj Kontynuuj w sekcji importu.",
-                                  tone: "error",
-                                });
+                                setToast(CATALOG_ADMIN_TOAST.importPausedFromSupplierRow);
                                 return;
                               }
                               if (
@@ -1186,10 +1164,12 @@ export function ProductsCatalogAdminClient({
                                 monthsBack: zdMonthsBack,
                               });
                               setImportState(st);
-                              setToast({ text: `Start importu ZD dla: ${s.name}`, tone: "success" });
+                              setToast(
+                                catalogAdminNotice(`Start importu ZD dla: ${s.name}`, "success"),
+                              );
                               startImportTickLoop();
                             } catch (e) {
-                              setToast({ text: e instanceof Error ? e.message : "Błąd startu importu", tone: "error" });
+                              setToast(catalogAdminError(e, "Błąd startu importu ZD."));
                             }
                           });
                         }}

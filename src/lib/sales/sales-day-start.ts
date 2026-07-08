@@ -13,12 +13,16 @@ import { formatProsbaZkLinkNumber } from "@/lib/orders/zk-prosba-link-display";
 import { buildNotatnikPageHref } from "@/lib/sales/notepad-page-tabs";
 import { appendMojeFocusOrderIds } from "@/lib/orders/moje-order-focus";
 import { mojeSectionDomId } from "@/lib/orders/moje-section-focus";
-import { MOJE_TEETH_ACTION_SECTION_ID } from "@/lib/orders/my-order-inbox-sections";
+import {
+  MOJE_MIXED_ACTION_SECTION_ID,
+  MOJE_TEETH_ACTION_SECTION_ID,
+} from "@/lib/orders/my-order-inbox-sections";
 import type { SalesNote, SalesZkWatch } from "@/types/database";
 
 export type SalesDayStartSource =
   | "pickup"
   | "teeth_handover"
+  | "mixed_pickup"
   | "zk_warehouse"
   | "cancel_ack"
   | "informacja_ready"
@@ -49,6 +53,7 @@ export type SalesDayStartSnapshot = {
 
 const PRIORITY: Record<SalesDayStartSource, number> = {
   pickup: 10,
+  mixed_pickup: 11,
   teeth_handover: 12,
   zk_warehouse: 15,
   cancel_ack: 20,
@@ -106,6 +111,29 @@ function countTeethHandoverLines(rows: MyOrderRow[]): number {
     total += row.pickupPendingIds.length;
   }
   return total;
+}
+
+function countMixedPickupLines(rows: MyOrderRow[]): number {
+  let total = 0;
+  for (const row of rows) {
+    if (row.acknowledgeMode !== "mixed_pickup" || row.pickupPendingIds.length === 0) continue;
+    total += row.pickupPendingIds.length;
+  }
+  return total;
+}
+
+function groupMixedPickupBySupplier(
+  rows: MyOrderRow[]
+): { supplierName: string; lineCount: number }[] {
+  const bySupplier = new Map<string, number>();
+  for (const row of rows) {
+    if (row.acknowledgeMode !== "mixed_pickup" || row.pickupPendingIds.length === 0) continue;
+    const name = row.supplierName?.trim() || "Do ustalenia";
+    bySupplier.set(name, (bySupplier.get(name) ?? 0) + row.pickupPendingIds.length);
+  }
+  return [...bySupplier.entries()]
+    .map(([supplierName, lineCount]) => ({ supplierName, lineCount }))
+    .sort((a, b) => b.lineCount - a.lineCount || a.supplierName.localeCompare(b.supplierName, "pl"));
 }
 
 function groupTeethHandoverBySupplier(
@@ -182,6 +210,36 @@ function buildOrderActionItems(rows: MyOrderRow[]): SalesDayStartItem[] {
       href: `/moje#${MOJE_TEETH_ACTION_SECTION_ID}`,
       scrollTarget: MOJE_TEETH_ACTION_SECTION_ID,
       count: 1,
+      ctaLabel: "Potwierdź",
+    });
+  }
+
+  const mixedGroups = groupMixedPickupBySupplier(actionRows);
+  const mixedLineCount = countMixedPickupLines(actionRows);
+
+  if (mixedLineCount >= PICKUP_AGGREGATE_FROM) {
+    items.push({
+      id: "mixed-pickup-ready",
+      source: "mixed_pickup",
+      priority: PRIORITY.mixed_pickup,
+      title: `Potwierdź odbiór zębów i towaru (${mixedLineCount})`,
+      subtitle: "Każdy typ potwierdzasz osobno — inny przepływ magazynowy",
+      href: `/moje#${MOJE_MIXED_ACTION_SECTION_ID}`,
+      scrollTarget: MOJE_MIXED_ACTION_SECTION_ID,
+      count: mixedLineCount,
+      ctaLabel: "Przejdź",
+    });
+  } else if (mixedLineCount > 0 && mixedGroups[0]) {
+    const group = mixedGroups[0];
+    items.push({
+      id: `mixed-pickup-${group.supplierName}`,
+      source: "mixed_pickup",
+      priority: PRIORITY.mixed_pickup,
+      title: group.supplierName,
+      subtitle: "Zęby i towar gotowe — potwierdź osobno",
+      href: `/moje#${MOJE_MIXED_ACTION_SECTION_ID}`,
+      scrollTarget: MOJE_MIXED_ACTION_SECTION_ID,
+      count: group.lineCount,
       ctaLabel: "Potwierdź",
     });
   }
@@ -355,6 +413,8 @@ export function salesDayStartSourceLabel(source: SalesDayStartSource): string {
       return "Gotowe";
     case "teeth_handover":
       return "Zęby";
+    case "mixed_pickup":
+      return "Mieszane";
     case "zk_warehouse":
       return "Na regale";
     case "cancel_ack":

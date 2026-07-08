@@ -16,6 +16,7 @@ import { resolveExpandedLineQuantityDisplay } from "@/lib/orders/my-order-line-q
 import type { MyOrderLine, MyOrderLineStockStatus } from "@/lib/orders/my-order-presenter";
 import type { SalesCancelPhase } from "@/lib/orders/sales-cancel";
 import { MyOrderAssignedClient } from "@/components/moje/MyOrderAssignedClient";
+import { MyOrderProductLaneBadge } from "@/components/moje/MyOrderProductLaneBadge";
 import { MyOrderRequestNote } from "@/components/moje/MyOrderRequestNote";
 import { MyOrderProcurementCancelNote } from "@/components/moje/MyOrderProcurementCancelNote";
 import { MyOrderLineClientField } from "@/components/moje/MyOrderLineClientField";
@@ -132,6 +133,7 @@ export const MyOrderLineItem = memo(function MyOrderLineItem({
   searchQuery,
   listKind = "zamowienie",
   historyEstimateLabel = null,
+  showPerLineLaneBadge = false,
 }: {
   line: MyOrderLine;
   index: number;
@@ -181,6 +183,8 @@ export const MyOrderLineItem = memo(function MyOrderLineItem({
   listKind?: "zamowienie" | "informacja";
   /** Szacunek z historii grupy — gdy linia czeka na ZD lub nie ma terminu w ZD u dostawcy. */
   historyEstimateLabel?: string | null;
+  /** Oznaczenie toru (zęby / towar) przy mieszanych prośbach. */
+  showPerLineLaneBadge?: boolean;
 }) {
   const badge = showProgress && emphasizeStock ? stockBadge(line.stockStatus) : null;
   const onStock = line.stockStatus === "on_stock";
@@ -390,6 +394,12 @@ export const MyOrderLineItem = memo(function MyOrderLineItem({
                 compact ? "text-sm leading-snug" : "text-sm text-slate-800"
               )}
             />
+            {showPerLineLaneBadge ? (
+              <MyOrderProductLaneBadge
+                laneKind={line.isTeeth ? "teeth" : "regular"}
+                className="px-1 py-0 text-[9px]"
+              />
+            ) : null}
             {lineQuantityLabel ? (
               <span className="shrink-0 tabular-nums text-xs font-semibold text-slate-500">
                 {lineQuantityLabel}

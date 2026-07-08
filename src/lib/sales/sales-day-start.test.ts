@@ -81,6 +81,28 @@ describe("buildSalesDayStartSnapshot", () => {
     expect(snapshot.totalActionCount).toBe(1);
   });
 
+  it("łączy mieszany odbiór zębów i towaru w jedno powiadomienie", () => {
+    const snapshot = buildSalesDayStartSnapshot({
+      rows: [
+        row({
+          id: "m1",
+          supplierName: "Lab Mix",
+          acknowledgeMode: "mixed_pickup",
+          pickupPendingIds: ["t1", "r1"],
+          pickupPendingCount: 2,
+          pickupTeethPendingIds: ["t1"],
+          pickupShelfPendingIds: ["r1"],
+        }),
+      ],
+    });
+
+    const mixedItems = snapshot.items.filter((i) => i.source === "mixed_pickup");
+    expect(mixedItems).toHaveLength(1);
+    expect(mixedItems[0]?.title).toBe("Potwierdź odbiór zębów i towaru (2)");
+    expect(mixedItems[0]?.scrollTarget).toBe("moje-section-mixed-pickup");
+    expect(mixedItems[0]?.href).toBe("/moje#moje-section-mixed-pickup");
+  });
+
   it("pokazuje dostawcę gdy jest tylko jedna pozycja odbioru", () => {
     const snapshot = buildSalesDayStartSnapshot({
       rows: [

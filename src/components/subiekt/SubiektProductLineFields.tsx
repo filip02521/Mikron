@@ -296,6 +296,8 @@ export function SubiektProductLineFields({
     [adminProductLine, value.teethProductLine, value.teethManufacturer, value.product, value.subiektTwId],
   );
   const resolvedTeethProductLine = resolvedTeethCatalog?.productLine ?? null;
+  const canUseTeethBuilder =
+    isTeethOrderLine && Boolean(resolvedTeethProductLine);
   const dualKindMode =
     useSupportsDualKindBuilder(resolvedTeethProductLine) && Boolean(allLines);
   const siblingLineIndex =
@@ -495,7 +497,10 @@ export function SubiektProductLineFields({
         result.ocrImagePath,
       );
       if (!commit.ok) {
-        onTeethListCommitNotice?.(commit.error, "error");
+        onTeethListCommitNotice?.(
+          { title: "Nie można zapisać", text: commit.error },
+          "error",
+        );
         return false;
       }
       const toastMsg = teethDualCommitToastMessage(commit.summary.added, commit.summary.updated);
@@ -1130,7 +1135,7 @@ export function SubiektProductLineFields({
       ) : null}
 
       {prosba && requestKind === "zamowienie" ? (
-        value.teethManufacturer && resolvedTeethProductLine ? (
+        canUseTeethBuilder ? (
           <TeethOrderBuilderCard
             manufacturer={manufacturerForProductLine(resolvedTeethProductLine)}
             productLine={resolvedTeethProductLine}
@@ -1149,7 +1154,7 @@ export function SubiektProductLineFields({
         )
       ) : null}
 
-      {value.teethManufacturer && resolvedTeethProductLine && requestKind === "zamowienie" ? (
+      {canUseTeethBuilder ? (
         <TeethOrderBuilderModal
           key={teethModalInstanceKey}
           open={teethModalOpen}
@@ -1168,10 +1173,7 @@ export function SubiektProductLineFields({
         />
       ) : null}
 
-      {value.subiektTwId != null && value.subiektTwId > 0
-        && teethProductInfo.twIds.has(Math.trunc(value.subiektTwId))
-        && !value.teethManufacturer
-        && requestKind === "zamowienie" ? (
+      {isRegistryTeethTw && !resolvedTeethProductLine && requestKind === "zamowienie" ? (
         <div role="status" aria-live="polite">
           <Badge variant="warning" className="text-[10px]">
             Producent nieustalony — uzupełnij w adminie

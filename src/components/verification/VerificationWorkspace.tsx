@@ -1,5 +1,5 @@
 "use client";
-import { ADMIN_PREVIEW_TOAST, VERIFICATION_TOAST, toastFromError, type ToastNotice } from "@/lib/ui/notice-copy";
+import { ADMIN_PREVIEW_TOAST, REQUEST_EDIT_FORM, VERIFICATION_TOAST, formMessageToToast, toastFromError, type ToastNotice } from "@/lib/ui/notice-copy";
 
 import { useState, useTransition, useEffect, useMemo, useRef, useCallback } from "react";
 import { useRouter } from "next/navigation";
@@ -62,7 +62,6 @@ import { ProsbaStockConfirmDialog } from "@/components/orders/ProsbaStockConfirm
 import type { ProductLineDraft } from "@/components/orders/request-product-lines";
 import { buildProsbaSubmitStockConfirm } from "@/lib/orders/prosba-stock-check";
 import { prosbaLineHasTeethBlockers } from "@/lib/orders/prosba-line-field-validation";
-import { TEETH_LIST_INCOMPLETE_MESSAGE } from "@/lib/teeth/teeth-validation";
 import { handleProsbaStockSubmitError } from "@/lib/orders/prosba-stock-submit-error";
 import { useProsbaLinesStockSync } from "@/hooks/useProsbaLinesStockSync";
 import { useTeethExemptTwIds, useTeethProductInfo } from "@/components/layout/TeethExemptContext";
@@ -442,7 +441,7 @@ export function VerificationWorkspace({
         exemptTwIds: teethExemptTwIds,
       })
     ) {
-      setToast({ text: TEETH_LIST_INCOMPLETE_MESSAGE, tone: "error" });
+      setToast(formMessageToToast(REQUEST_EDIT_FORM.teethListIncomplete));
       return;
     }
     const stockConfirm = buildProsbaSubmitStockConfirm(

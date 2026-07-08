@@ -38,6 +38,7 @@ import {
 } from "@/lib/data/department-board";
 import { cn } from "@/lib/cn";
 import { useNotificationSoundUnlockOnGesture } from "@/lib/client/use-notification-sound-unlock";
+import { useDueDeliveryNotificationSafetyFlush } from "@/lib/client/use-delivery-notification-flush";
 import { salesMobileChromeRoot } from "@/lib/ui/sales-mobile-chrome";
 import type { VacationDelegationRow } from "@/lib/data/vacation-delegations";
 import { appMainClass, appMainInsetClass, appShellClass } from "@/lib/ui/ontime-theme";
@@ -167,6 +168,13 @@ export function AppShellClient({
     pathname === "/setup" ||
     pathname === "/ustaw-haslo" ||
     pathname === "/auth/entering";
+  const receiveNotificationFlushEnabled = Boolean(
+    role &&
+      !isAuthScreen &&
+      (canAccessWarehouse(role, assignedWorkspaces) ||
+        canAccessTeethPanel(role, assignedWorkspaces))
+  );
+  useDueDeliveryNotificationSafetyFlush(receiveNotificationFlushEnabled);
 
   if (isAuthScreen) {
     return <div className="min-h-dvh overflow-x-hidden">{children}</div>;

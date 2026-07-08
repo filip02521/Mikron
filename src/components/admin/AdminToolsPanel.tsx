@@ -5,6 +5,7 @@ import { SyncButton } from "@/components/admin/SyncButton";
 import { AdminActionButton } from "@/components/admin/AdminActionButton";
 import { NoticeToast } from "@/components/ui/NoticeToast";
 import type { ToastNotice } from "@/lib/ui/notice-copy";
+import { adminPanelNotice } from "@/lib/ui/notice-copy";
 import { Card, CardHeader } from "@/components/ui/Card";
 import { HelpBlock } from "@/components/ui/HelpBlock";
 import { HelpPopover } from "@/components/ui/HelpPopover";
@@ -21,7 +22,7 @@ export function AdminToolsPanel() {
   const dismiss = useCallback(() => setToast(null), []);
 
   const notify = (text: string, tone: "success" | "error" = "success") =>
-    setToast({ text, tone });
+    setToast(adminPanelNotice(text, tone, "Narzędzia serwisowe"));
 
   return (
     <>

@@ -26,6 +26,7 @@ import { ZdEtaNoMatchMeta } from "@/components/orders/ZdEtaNoMatchMeta";
 import { resolveMyOrderHistoryDeliveryEstimate } from "@/lib/orders/delivery-date-meta-label";
 import { MyOrderKindBadge } from "@/components/moje/MyOrderKindBadge";
 import { MyOrderProductLaneBadge } from "@/components/moje/MyOrderProductLaneBadge";
+import { displayProductLaneKind } from "@/lib/orders/my-order-lane-meta";
 import { MyOrderSubmissionGroupCallout } from "@/components/moje/MyOrderSubmissionGroupCallout";
 import { MyOrderRequestProgressBar } from "@/components/moje/MyOrderRequestProgressBar";
 import {
@@ -418,8 +419,7 @@ export const MyOrderShipmentCard = memo(function MyOrderShipmentCard({
     row.acknowledgeMode === "availability";
   const needsCancelAck =
     row.acknowledgeMode === "cancelled" && row.cancelledAckOrderIds.length > 0;
-  const needsCancelNoticeAck =
-    row.acknowledgeMode === "cancel_notice" && row.cancelNoticeOrderIds.length > 0;
+  const needsCancelNoticeAck = row.cancelNoticeOrderIds.length > 0;
   const showDismissAck =
     canAcknowledge &&
     (needsCancelAck || needsCancelNoticeAck) &&
@@ -445,6 +445,7 @@ export const MyOrderShipmentCard = memo(function MyOrderShipmentCard({
         : row.acknowledgeMode === "mixed_pickup"
           ? "pickup"
           : "pickup";
+  const displayLaneKind = displayProductLaneKind(row.productLaneKind, row.acknowledgeMode);
   const isMixedPickup = row.acknowledgeMode === "mixed_pickup";
   const compactPickup = ackMode === "pickup" || ackMode === "teeth_handover" || isMixedPickup;
   const pickupAckLabel = isMixedPickup
@@ -998,7 +999,7 @@ export const MyOrderShipmentCard = memo(function MyOrderShipmentCard({
                   </span>
                 ) : null}
                 <MyOrderKindBadge row={row} listKind={listKind} />
-                <MyOrderProductLaneBadge laneKind={row.productLaneKind} />
+                <MyOrderProductLaneBadge laneKind={displayLaneKind} />
               </div>
             ) : (
               <div className="flex min-w-0 items-baseline gap-2">
@@ -1013,7 +1014,7 @@ export const MyOrderShipmentCard = memo(function MyOrderShipmentCard({
                   </span>
                 ) : null}
                 <MyOrderKindBadge row={row} listKind={listKind} />
-                <MyOrderProductLaneBadge laneKind={row.productLaneKind} />
+                <MyOrderProductLaneBadge laneKind={displayLaneKind} />
               </div>
             )}
             {suppressSharedHeadline ? (
@@ -1271,6 +1272,7 @@ export const MyOrderShipmentCard = memo(function MyOrderShipmentCard({
                     index={i}
                     searchQuery={searchQuery}
                     listKind={row.kind}
+                    showPerLineLaneBadge={row.productLaneKind === "mixed"}
                     {...lineItemProps(line)}
                     canCancelLine={showPerLineCancel}
                     cancelLineAriaLabel={salesCancelLineAriaLabel(row.kind, line.product)}

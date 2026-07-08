@@ -2,6 +2,7 @@
 
 import { useCallback, useMemo, useState, useTransition } from "react";
 import type { ToastNotice } from "@/lib/ui/notice-copy";
+import { adminPanelNotice } from "@/lib/ui/notice-copy";
 import {
   actionFetchDeliveryStatsDiagnostics,
   actionRecalculateStats,
@@ -275,8 +276,9 @@ export function DeliveryStatsDiagnosticsPanel({
 
   const dismissToast = useCallback(() => setToast(null), []);
   const notify = useCallback(
-    (text: string, tone: "success" | "error" = "success") => setToast({ text, tone }),
-    []
+    (text: string, tone: "success" | "error" = "success") =>
+      setToast(adminPanelNotice(text, tone, "Diagnostyka dostaw")),
+    [],
   );
 
   const refresh = useCallback(() => {

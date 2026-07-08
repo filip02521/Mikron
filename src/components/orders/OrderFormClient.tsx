@@ -8,9 +8,8 @@ import { actionAddIndividualOrders } from "@/app/actions/admin";
 import { useAdminPanelPreview } from "@/components/layout/AdminPanelPreviewContext";
 import { Card, CardHeader } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
-import { Toast } from "@/components/ui/Toast";
+import { NoticeToast } from "@/components/ui/NoticeToast";
 import type { FormMessage, TransientNotice } from "@/lib/ui/notice-content";
-import { resolveNoticeCopy } from "@/lib/ui/notice-content";
 import { Field, Select } from "@/components/ui/Field";
 import { SupplierPickerField } from "@/components/orders/SupplierPickerField";
 import type { IndividualRequestKind } from "@/types/database";
@@ -39,7 +38,7 @@ import {
 import { assertProcurementEntryComplete } from "@/lib/orders/procurement-submit";
 import { assessSalesGroupSubmittable } from "@/lib/orders/sales-request-submit";
 import { prosbaLineHasTeethBlockers } from "@/lib/orders/prosba-line-field-validation";
-import { TEETH_LIST_INCOMPLETE_MESSAGE } from "@/lib/teeth/teeth-validation";
+import { REQUEST_EDIT_FORM } from "@/lib/ui/notice-copy";
 import { buildProsbaFormReadiness, buildProsbaFormReadinessWithSupplier } from "@/lib/orders/prosba-form-readiness";
 import { PROSBA_FORM_SECTION_COPY } from "@/lib/orders/prosba-form-section-copy";
 import { PROSBA_PAGE_HEADER_HINTS } from "@/lib/orders/prosba-optional-section-copy";
@@ -701,7 +700,7 @@ export function OrderFormClient({
       );
       if (teethBlocked) {
         setValidationAttempted(true);
-        setFormNotice({ text: TEETH_LIST_INCOMPLETE_MESSAGE, tone: "error" });
+        setFormNotice(REQUEST_EDIT_FORM.teethListIncomplete);
         return;
       }
     }
@@ -832,7 +831,7 @@ export function OrderFormClient({
       )
     ) {
       setValidationAttempted(true);
-      setFormNotice({ text: TEETH_LIST_INCOMPLETE_MESSAGE, tone: "error" });
+      setFormNotice(REQUEST_EDIT_FORM.teethListIncomplete);
       return;
     }
 
@@ -1004,12 +1003,9 @@ export function OrderFormClient({
     );
   };
 
-  const toastCopy = msg ? resolveNoticeCopy(msg) : null;
-  const toastSlot = msg && toastCopy ? (
-    <Toast
-      title={toastCopy.title}
-      description={toastCopy.description}
-      tone={msg.tone}
+  const toastSlot = msg ? (
+    <NoticeToast
+      notice={msg}
       onDismiss={dismissToast}
       action={
         msg.tone === "success" && singleGroup && lockedSalesPerson && msg.actionHref ? (

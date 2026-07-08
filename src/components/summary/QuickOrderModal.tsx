@@ -45,7 +45,8 @@ import { ProsbaStockConfirmDialog } from "@/components/orders/ProsbaStockConfirm
 import { buildProsbaSubmitStockConfirm } from "@/lib/orders/prosba-stock-check";
 import { handleProsbaStockSubmitError } from "@/lib/orders/prosba-stock-submit-error";
 import { prosbaLineHasTeethBlockers } from "@/lib/orders/prosba-line-field-validation";
-import { TEETH_LIST_INCOMPLETE_MESSAGE } from "@/lib/teeth/teeth-validation";
+import type { FormMessage } from "@/lib/ui/notice-content";
+import { QUICK_ORDER_FORM, formError } from "@/lib/ui/notice-copy";
 import {
   classifyProsbaLinesByLane,
   procurementSubmitSuccessMessage,
@@ -77,10 +78,7 @@ export function QuickOrderModal({
   const [salesPersonId, setSalesPersonId] = useState("");
   const [lines, setLines] = useState(initialProductLines);
   const [validationAttempted, setValidationAttempted] = useState(false);
-  const [formNotice, setFormNotice] = useState<{
-    text: string;
-    tone: "error" | "warning" | "success";
-  } | null>(null);
+  const [formNotice, setFormNotice] = useState<FormMessage | null>(null);
   const [resolvingSupplier, setResolvingSupplier] = useState(false);
   const [stockConfirmOpen, setStockConfirmOpen] = useState(false);
   const [stockConfirmMessage, setStockConfirmMessage] = useState("");
@@ -165,7 +163,7 @@ export function QuickOrderModal({
     setValidationAttempted(false);
     if (!supplierId || !salesPersonId) {
       setValidationAttempted(true);
-      setFormNotice({ text: "Wybierz dostawcę i handlowca.", tone: "error" });
+      setFormNotice(QUICK_ORDER_FORM.missingSupplierAndSales);
       return;
     }
     const entries = lines
@@ -192,7 +190,7 @@ export function QuickOrderModal({
       }));
     if (!entries.length) {
       setValidationAttempted(true);
-      setFormNotice({ text: "Dodaj co najmniej jeden produkt z opisem.", tone: "error" });
+      setFormNotice(QUICK_ORDER_FORM.missingProducts);
       return;
     }
     if (
@@ -200,10 +198,7 @@ export function QuickOrderModal({
       entries.some((e) => !hasValidOrderQuantity(e.quantity, "zamowienie"))
     ) {
       setValidationAttempted(true);
-      setFormNotice({
-        text: "Każda pozycja musi mieć ilość (liczba sztuk, np. 1).",
-        tone: "error",
-      });
+      setFormNotice(QUICK_ORDER_FORM.missingQuantity);
       return;
     }
     if (
@@ -213,7 +208,7 @@ export function QuickOrderModal({
       )
     ) {
       setValidationAttempted(true);
-      setFormNotice({ text: TEETH_LIST_INCOMPLETE_MESSAGE, tone: "error" });
+      setFormNotice(QUICK_ORDER_FORM.teethListIncomplete);
       return;
     }
     try {
@@ -237,10 +232,11 @@ export function QuickOrderModal({
       }
     } catch (err) {
       setValidationAttempted(true);
-      setFormNotice({
-        text: err instanceof Error ? err.message : "Uzupełnij wymagane pola.",
-        tone: "error",
-      });
+      setFormNotice(
+        err instanceof Error
+          ? { ...QUICK_ORDER_FORM.incompleteFields, text: err.message }
+          : QUICK_ORDER_FORM.incompleteFields
+      );
       return;
     }
     const stockConfirm = buildProsbaSubmitStockConfirm(lines, requestKind, teethExemptTwIds);
@@ -295,7 +291,7 @@ export function QuickOrderModal({
             setStockConfirmOpen(true);
           },
           (message) => {
-            setFormNotice({ text: message, tone: "error" });
+            setFormNotice(formError("Nie udało się wysłać", message));
           }
         );
       } finally {

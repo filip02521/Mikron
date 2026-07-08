@@ -108,7 +108,7 @@ export function AnnouncementCard({
         </span>
       ) : null}
       {showUnread ? (
-        <span className="rounded-full bg-sky-100 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-sky-800">
+        <span className="rounded-full bg-indigo-100 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-indigo-800">
           Nowe
         </span>
       ) : null}
@@ -172,7 +172,7 @@ export function AnnouncementCard({
           "relative rounded-xl border p-4 shadow-sm",
           cardTone,
           thread.pinned && "ring-1 ring-indigo-200/80",
-          showUnread && "ring-2 ring-sky-300/70 ring-offset-1"
+          showUnread && "ring-2 ring-indigo-300/70 ring-offset-1"
         )}
       >
         <header className="space-y-1.5 pr-8">
