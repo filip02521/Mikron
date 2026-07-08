@@ -1,4 +1,5 @@
 "use client";
+import { VACATION_TOAST, toastFromError, ToastNotice } from "@/lib/ui/notice-copy";
 
 import { useState, useTransition, useCallback } from "react";
 import { useRouter } from "next/navigation";
@@ -11,7 +12,7 @@ import type { VacationDelegationRow } from "@/lib/data/vacation-delegations";
 import { Card, CardHeader } from "@/components/ui/Card";
 import { Field, Input } from "@/components/ui/Field";
 import { Button } from "@/components/ui/Button";
-import { Toast } from "@/components/ui/Toast";
+import { NoticeToast } from "@/components/ui/NoticeToast";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { Badge } from "@/components/ui/Badge";
 import { cn } from "@/lib/cn";
@@ -62,7 +63,7 @@ export function VacationDelegationManager({
   const router = useRouter();
   const [delegations, setDelegations] = useState(initialDelegations);
   const [pending, start] = useTransition();
-  const [toast, setToast] = useState<{ text: string; tone: "success" | "error" } | null>(null);
+  const [toast, setToast] = useState<ToastNotice | null>(null);
   const dismiss = useCallback(() => setToast(null), []);
   const [deleteTarget, setDeleteTarget] = useState<VacationDelegationRow | null>(null);
   const [formOpen, setFormOpen] = useState(false);
@@ -79,15 +80,15 @@ export function VacationDelegationManager({
 
   const save = () => {
     if (!form.delegateProfileId) {
-      setToast({ text: "Wybierz zastępcę.", tone: "error" });
+      setToast(VACATION_TOAST.missingDelegate);
       return;
     }
     if (!form.startDate || !form.endDate) {
-      setToast({ text: "Podaj daty rozpoczęcia i zakończenia.", tone: "error" });
+      setToast(VACATION_TOAST.missingDates);
       return;
     }
     if (form.startDate > form.endDate) {
-      setToast({ text: "Data rozpoczęcia nie może być późniejsza niż zakończenia.", tone: "error" });
+      setToast(VACATION_TOAST.invalidDateRange);
       return;
     }
     start(async () => {
@@ -98,11 +99,11 @@ export function VacationDelegationManager({
         endDate: form.endDate,
       });
       if ("error" in r) {
-        setToast({ text: r.error, tone: "error" });
+        setToast(toastFromError(r.error));
         return;
       }
       resetForm();
-      setToast({ text: "Zapisano zastępstwo.", tone: "success" });
+      setToast(VACATION_TOAST.savedDelegation);
       const updated = await actionFetchDelegationsForSalesPerson(salesPersonId);
       setDelegations(updated);
       router.refresh();
@@ -113,11 +114,11 @@ export function VacationDelegationManager({
     start(async () => {
       const r = await actionRemoveVacationDelegation(id);
       if ("error" in r) {
-        setToast({ text: r.error, tone: "error" });
+        setToast(toastFromError(r.error));
         return;
       }
       setDeleteTarget(null);
-      setToast({ text: "Usunięto zastępstwo.", tone: "success" });
+      setToast(VACATION_TOAST.removedDelegation);
       const updated = await actionFetchDelegationsForSalesPerson(salesPersonId);
       setDelegations(updated);
       router.refresh();
@@ -130,7 +131,7 @@ export function VacationDelegationManager({
 
   return (
     <div>
-      {toast ? <Toast message={toast.text} tone={toast.tone} onDismiss={dismiss} /> : null}
+      {toast ? <NoticeToast notice={toast} onDismiss={dismiss} /> : null}
 
       {canManage && !readOnlyPreview && !formOpen ? (
         <div className="mb-4 flex justify-end">

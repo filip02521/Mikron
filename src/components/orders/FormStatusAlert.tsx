@@ -1,15 +1,11 @@
 "use client";
 
 import { cn } from "@/lib/cn";
+import { NoticeContent } from "@/components/ui/NoticeContent";
+import type { NoticeTone } from "@/lib/ui/notice-content";
+import { noticeToneShellClass } from "@/lib/ui/notice-content";
 
-export type FormStatusTone = "info" | "success" | "warning" | "error";
-
-const toneClass: Record<FormStatusTone, string> = {
-  info: "border-indigo-200 bg-indigo-50/80 text-indigo-950",
-  success: "border-emerald-200 bg-emerald-50 text-emerald-950",
-  warning: "border-amber-200 bg-amber-50 text-amber-950",
-  error: "border-red-200 bg-red-50 text-red-950",
-};
+export type FormStatusTone = NoticeTone;
 
 /** Jednolity komunikat w panelu statusu formularza (weryfikacja, prośba). */
 export function FormStatusAlert({
@@ -23,18 +19,25 @@ export function FormStatusAlert({
   children: React.ReactNode;
   className?: string;
 }) {
+  const bodyText = typeof children === "string" ? children : null;
+
   return (
     <div
       className={cn(
-        "rounded-md border px-3 py-2 text-xs leading-relaxed",
-        toneClass[tone],
-        className
+        "rounded-md border px-3 py-2",
+        noticeToneShellClass[tone],
+        className,
       )}
     >
-      {title ? <p className="font-semibold leading-snug">{title}</p> : null}
-      <div className={cn(title ? "mt-0.5" : undefined, "text-xs leading-relaxed opacity-95")}>
-        {children}
-      </div>
+      {title ? (
+        <NoticeContent
+          title={title}
+          description={bodyText ?? undefined}
+          variant="inline"
+        />
+      ) : null}
+      {title && !bodyText ? <div className="mt-1 text-xs leading-relaxed opacity-95">{children}</div> : null}
+      {!title ? <div className="text-xs leading-relaxed opacity-95">{children}</div> : null}
     </div>
   );
 }

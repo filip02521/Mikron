@@ -199,6 +199,20 @@ export function enrichMyOrderSalesUi(row: MyOrderRow): MyOrderSalesUi {
     };
   }
 
+  if (row.acknowledgeMode === "mixed_pickup" && row.pickupPendingCount > 0) {
+    const teethN = row.pickupTeethPendingIds.length;
+    const shelfN = row.pickupShelfPendingIds.length;
+    const parts: string[] = [];
+    if (teethN > 0) parts.push(teethN === 1 ? "zęby" : `${teethN} poz. zębowych`);
+    if (shelfN > 0) parts.push(shelfN === 1 ? "towar z regału" : `${shelfN} poz. z regału`);
+    return {
+      headline: "Gotowe do odbioru — zęby i towar",
+      headlineTone: "action",
+      subline: parts.length ? `Potwierdź osobno: ${parts.join(" · ")}` : null,
+      sortPriority: 1,
+    };
+  }
+
   if (
     row.acknowledgeMode === "cancel_notice" &&
     row.cancelNoticeOrderIds.length > 0

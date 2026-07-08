@@ -1,4 +1,5 @@
 "use client";
+import { ADMIN_PREVIEW_TOAST, VERIFICATION_TOAST, toastFromError, type ToastNotice } from "@/lib/ui/notice-copy";
 
 import { useState, useTransition, useEffect, useMemo, useRef, useCallback } from "react";
 import { useRouter } from "next/navigation";
@@ -14,13 +15,12 @@ import {
   actionCompleteVerification,
 } from "@/app/actions/admin";
 import { useAdminPanelPreview } from "@/components/layout/AdminPanelPreviewContext";
-import { ADMIN_PANEL_PREVIEW_MUTATION_BLOCKED } from "@/lib/auth/admin-panel-preview-messages";
 import { actionLookupSupplierFromCatalogTwId } from "@/app/actions/subiekt";
 import { assessRequestCompleteness } from "@/lib/orders/request-completeness";
 import { Card, CardHeader } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { Field, Select } from "@/components/ui/Field";
-import { Toast } from "@/components/ui/Toast";
+import { NoticeToast } from "@/components/ui/NoticeToast";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { SectionListLabel } from "@/components/ui/SectionListLabel";
 import { SectionHeadingIcon } from "@/components/icons/SectionHeadingIcon";
@@ -100,9 +100,7 @@ export function VerificationWorkspace({
   const teethExemptTwIds = useTeethExemptTwIds();
   const [pending, start] = useTransition();
   const [pendingMessage, setPendingMessage] = useState<string | null>(null);
-  const [toast, setToast] = useState<{ text: string; tone: "success" | "error" } | null>(
-    null
-  );
+  const [toast, setToast] = useState<ToastNotice | null>(null);
   const [activeId, setActiveId] = useState<string | null>(orders[0]?.id ?? null);
   const [validationAttempted, setValidationAttempted] = useState(false);
   const [cancelTargetId, setCancelTargetId] = useState<string | null>(null);
@@ -395,12 +393,11 @@ export function VerificationWorkspace({
           acknowledgeSufficientStock: options?.acknowledgeSufficientStock,
           teethDetails: form.teethDetails ?? null,
         });
-        setToast({
-          text:
-            informacjaUi?.completeSuccessMessage ??
-            "Uzupełniono — prośba trafiła do panelu dziennego jako „Nowe”.",
-          tone: "success",
-        });
+        setToast(
+          informacjaUi?.completeSuccessMessage
+            ? VERIFICATION_TOAST.savedInformacja(informacjaUi.completeSuccessMessage)
+            : VERIFICATION_TOAST.saved,
+        );
         setStockConfirmOpen(false);
         router.refresh();
       } catch (e) {
@@ -411,7 +408,7 @@ export function VerificationWorkspace({
             setStockConfirmOpen(true);
           },
           (message) => {
-            setToast({ text: message, tone: "error" });
+            setToast(toastFromError(message));
           }
         );
       } finally {
@@ -425,18 +422,16 @@ export function VerificationWorkspace({
   const save = () => {
     if (!active) return;
     if (readOnly) {
-      setToast({ text: ADMIN_PANEL_PREVIEW_MUTATION_BLOCKED, tone: "error" });
+      setToast(ADMIN_PREVIEW_TOAST);
       return;
     }
     setValidationAttempted(true);
     if (assessment !== "complete") {
-      setToast({
-        text:
-          form.requestKind === "zamowienie"
-            ? "Uzupełnij dostawcę, opis produktu i ilość (np. 1), aby zatwierdzić."
-            : "Uzupełnij dostawcę oraz opis produktu, aby zatwierdzić.",
-        tone: "error",
-      });
+      setToast(
+        form.requestKind === "zamowienie"
+          ? VERIFICATION_TOAST.incompleteOrder
+          : VERIFICATION_TOAST.incompleteInformacja,
+      );
       return;
     }
     const verificationLine = verificationProductLines[0];
@@ -504,7 +499,7 @@ export function VerificationWorkspace({
 
   const cancel = (id: string) => {
     if (readOnly) {
-      setToast({ text: ADMIN_PANEL_PREVIEW_MUTATION_BLOCKED, tone: "error" });
+      setToast(ADMIN_PREVIEW_TOAST);
       return;
     }
     setCancelTargetId(id);
@@ -517,17 +512,10 @@ export function VerificationWorkspace({
     start(async () => {
       try {
         const result = await actionCancelVerification(id, note);
-        const emailSuffix = result.emailError ? ` (${result.emailError})` : "";
-        setToast({
-          text: `Prośba anulowana.${emailSuffix}`,
-          tone: result.emailError ? "error" : "success",
-        });
+        setToast(VERIFICATION_TOAST.cancelled(result.emailError));
         router.refresh();
       } catch (e) {
-        setToast({
-          text: e instanceof Error ? e.message : "Błąd",
-          tone: "error",
-        });
+        setToast(toastFromError(e instanceof Error ? e.message : undefined, VERIFICATION_TOAST.cancelFailed.text));
       } finally {
         setPendingMessage(null);
         setCancelTargetId(null);
@@ -811,7 +799,7 @@ export function VerificationWorkspace({
         />
       ) : null}
       {toast ? (
-        <Toast message={toast.text} tone={toast.tone} onDismiss={() => setToast(null)} />
+        <NoticeToast notice={toast} onDismiss={() => setToast(null)} />
       ) : null}
       <ProcurementCancelDialog
         open={cancelTargetId !== null}

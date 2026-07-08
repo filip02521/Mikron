@@ -43,10 +43,12 @@ describe("queue-batch-notify", () => {
   it("formatDeliveryBatchToast — wiele maili", () => {
     const t = formatDeliveryBatchToast({
       saved: 5,
-      emailSent: 2,
+      emailQueued: 2,
       errors: [],
     });
-    expect(t.text).toContain("2 maile");
+    expect(t.title).toBe("Zapisano dostawę");
+    expect(t.text).toContain("2 powiadomienia");
+    expect(t.text).toContain("Zaplanowano");
     expect(t.tone).toBe("success");
     expect(t.durationMs).toBeUndefined();
   });
@@ -59,7 +61,8 @@ describe("queue-batch-notify", () => {
       emailError: "Resend timeout",
     });
     expect(t.tone).toBe("error");
-    expect(t.text).toContain("e-mail");
+    expect(t.title).toBe("Zapisano dostawę z uwagami");
+    expect(t.text).toContain("E-mail");
     expect(t.durationMs).toBe(15_000);
   });
 

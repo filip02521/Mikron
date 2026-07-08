@@ -1,4 +1,5 @@
 "use client";
+import { toastFromError, toastSuccess, SUPPLIER_TOAST, type ToastNotice } from "@/lib/ui/notice-copy";
 
 import Link from "next/link";
 import { LinkChevron } from "@/components/ui/UiGlyphs";
@@ -15,7 +16,7 @@ import { isSupplierActive, inactiveSupplierRowClass } from "@/lib/suppliers/acti
 import { formatSupplierCycleSummary, formatSupplierListMeta } from "@/lib/suppliers/supplier-list-labels";
 import { Card, CardHeader } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
-import { Toast } from "@/components/ui/Toast";
+import { NoticeToast } from "@/components/ui/NoticeToast";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { SupplierAdminCardsFilterBar } from "@/components/admin/SupplierHubListFilters";
 import { SupplierAdminRowMenu } from "@/components/admin/SupplierAdminRowMenu";
@@ -89,11 +90,9 @@ export function SuppliersAdminClient({
   const teethLane = searchParams.get("tor") === "zeby";
   const [rows, setRows] = useState(initial);
   const [pending, start] = useTransition();
-  const [toast, setToast] = useState<{ text: string; tone: "success" | "error" } | null>(
-    null
-  );
+  const [toast, setToast] = useState<ToastNotice | null>(null);
   const { readOnly, blockIfReadOnly } = usePreviewMutationBlocker((text) =>
-    setToast({ text, tone: "error" })
+    setToast(toastFromError(text))
   );
   const dismiss = useCallback(() => setToast(null), []);
   const [search, setSearch] = useState("");
@@ -251,15 +250,14 @@ export function SuppliersAdminClient({
         setRows((list) => list.filter((x) => x.id !== s.id));
         if (form.id === s.id) resetForm();
         setDeactivateTarget(null);
-        setToast({
-          text: `„${s.name}” oznaczono jako nieaktywny — nie pojawi się w panelu dziennym.`,
-          tone: "success",
-        });
+        setToast(
+          toastSuccess(
+            "Oznaczono jako nieaktywny",
+            `Dostawca „${s.name}” nie pojawi się w panelu dziennym.`,
+          ),
+        );
       } catch (e) {
-        setToast({
-          text: e instanceof Error ? e.message : "Nie udało się zapisać",
-          tone: "error",
-        });
+        setToast(toastFromError(e instanceof Error ? e.message : undefined));
       }
     });
   };
@@ -267,7 +265,7 @@ export function SuppliersAdminClient({
   const save = () => {
     if (blockIfReadOnly()) return;
     if (!form.name.trim()) {
-      setToast({ text: "Podaj nazwę dostawcy", tone: "error" });
+      setToast(SUPPLIER_TOAST.missingName);
       return;
     }
     start(async () => {
@@ -296,7 +294,7 @@ export function SuppliersAdminClient({
         resetForm();
         router.refresh();
       } catch (e) {
-        setToast({ text: e instanceof Error ? e.message : "Błąd zapisu", tone: "error" });
+        setToast(toastFromError(e instanceof Error ? e.message : undefined, SUPPLIER_TOAST.saveFailed.text));
       }
     });
   };
@@ -311,7 +309,7 @@ export function SuppliersAdminClient({
 
   return (
     <>
-      {toast ? <Toast message={toast.text} tone={toast.tone} onDismiss={dismiss} /> : null}
+      {toast ? <NoticeToast notice={toast} onDismiss={dismiss} /> : null}
       <ConfirmDialog
         open={!!deactivateTarget}
         title="Oznaczyć jako nieaktywnego?"
@@ -344,13 +342,13 @@ export function SuppliersAdminClient({
             start(async () => {
               const r = await actionDeleteSupplier(deleteTarget.id);
               if ("error" in r) {
-                setToast({ text: r.error, tone: "error" });
+                setToast(toastFromError(r.error));
                 setDeleteTarget(null);
                 return;
               }
               setRows((list) => list.filter((x) => x.id !== deleteTarget.id));
               setDeleteTarget(null);
-              setToast({ text: "Dostawca usunięty", tone: "success" });
+              setToast(SUPPLIER_TOAST.deleted);
             });
           }}
         />
@@ -387,7 +385,7 @@ export function SuppliersAdminClient({
             onPatchCycleFields={patchCycleFields}
             carrierOptions={warehouseCarriers}
             showTeethSchedule={teethLane}
-            onTeethScheduleToast={(message, tone) => setToast({ text: message, tone })}
+            onTeethScheduleToast={(notice) => setToast(notice)}
             onSubiektLinked={(khId) => {
               setForm((f) => ({ ...f, subiekt_kh_id: khId }));
               if (form.id) {

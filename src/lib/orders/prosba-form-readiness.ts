@@ -14,6 +14,8 @@ import {
   prosbaReadinessTargetsTeethPanel,
   TEETH_READINESS_READY_SUBLINE,
   TEETH_READINESS_SUPPLIER_DETAIL,
+  MIXED_PROCUREMENT_READINESS_SUBLINE,
+  classifyProsbaLinesByLane,
 } from "@/lib/teeth/teeth-procurement-flow-copy";
 
 export type ProsbaReadinessStepState = "empty" | "done" | "action" | "handoff";
@@ -98,6 +100,8 @@ export function buildProsbaFormReadiness(
     filled,
     options?.teethExemptTwIds
   );
+  const lanes = classifyProsbaLinesByLane(filled, options?.teethExemptTwIds);
+  const mixedLanes = lanes.hasTeeth && lanes.hasRegular;
   void options?.resolvingSupplier;
 
   const productDone = filled.length > 0;
@@ -159,7 +163,9 @@ export function buildProsbaFormReadiness(
       state: "done",
       detail: teethOnlyPanel
         ? TEETH_READINESS_SUPPLIER_DETAIL
-        : "Wybrany — trafia do panelu dziennego",
+        : mixedLanes
+          ? "Wybrany — część trafi do panelu zębów, część do dziennego"
+          : "Wybrany — trafia do panelu dziennego",
     };
   } else {
     supplierStep = {
@@ -221,11 +227,13 @@ export function buildProsbaFormReadiness(
 
   if (plan?.bannerKind === "complete") {
     return {
-      headline: "Gotowe do wysłania",
+      headline: mixedLanes ? "Gotowe do wysłania (dwa tory)" : "Gotowe do wysłania",
       subline: isZamowienie
-        ? teethOnlyPanel
-          ? TEETH_READINESS_READY_SUBLINE
-          : "Kompletne — trafi od razu do realizacji."
+        ? mixedLanes
+          ? MIXED_PROCUREMENT_READINESS_SUBLINE
+          : teethOnlyPanel
+            ? TEETH_READINESS_READY_SUBLINE
+            : "Kompletne — trafi od razu do realizacji."
         : informacjaReadinessSubline(informacjaPath, "complete"),
       tone: "ready",
       steps,
@@ -234,9 +242,15 @@ export function buildProsbaFormReadiness(
   }
 
   return {
-    headline: isZamowienie ? "Możesz wysłać prośbę" : "Możesz wysłać informację",
+    headline: isZamowienie
+      ? mixedLanes
+        ? "Możesz wysłać prośbę mieszaną"
+        : "Możesz wysłać prośbę"
+      : "Możesz wysłać informację",
     subline: isZamowienie
-      ? "Dział dostaw dopracuje dostawcę — śledź postęp w „Moje zamówienia”."
+      ? mixedLanes
+        ? MIXED_PROCUREMENT_READINESS_SUBLINE
+        : "Dział dostaw dopracuje dostawcę — śledź postęp w „Moje zamówienia”."
       : informacjaReadinessSubline(informacjaPath, "incomplete"),
     tone: "handoff",
     steps,

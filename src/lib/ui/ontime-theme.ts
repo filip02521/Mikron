@@ -566,6 +566,12 @@ export const toastProgressFillSuccessClass = "bg-emerald-500";
 export const toastProgressFillWarningClass = "bg-amber-500";
 export const toastProgressFillErrorClass = "bg-red-500";
 
+/** Wspólna typografia powiadomień — nagłówek + treść. */
+export const noticeTitleClass = "text-sm font-semibold leading-snug text-slate-900";
+export const noticeBodyClass = "text-xs leading-relaxed text-slate-600";
+export const noticeTitleInlineClass = "text-sm font-semibold leading-snug";
+export const noticeBodyInlineClass = "text-xs leading-relaxed opacity-95";
+
 /** @deprecated Użyj {@link systemNoticeActionClass}. */
 export const salesUpdatesBannerClass = cn(systemNoticeActionClass, "mb-4 sm:mb-6");
 

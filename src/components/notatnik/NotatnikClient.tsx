@@ -8,7 +8,7 @@ import { buildOnboardingNotepadDemo } from "@/lib/sales/sales-onboarding-demo-da
 import { Card, CardHeader } from "@/components/ui/Card";
 import { Alert } from "@/components/ui/Alert";
 import { UndoToast } from "@/components/ui/UndoToast";
-import { Toast } from "@/components/ui/Toast";
+import { NoticeToast } from "@/components/ui/NoticeToast";
 import { IconPackageCheck, IconClipboardPen } from "@/components/icons/StrokeIcons";
 import { SectionHeadingIcon } from "@/components/icons/SectionHeadingIcon";
 import { MyOrderPickupShelfDialogProvider } from "@/components/moje/MyOrderPickupShelfDialogProvider";
@@ -78,11 +78,12 @@ import { NOTATNIK_PAGE_CLASS } from "./notatnik-layout";
 import { ZkWatchSection } from "./ZkWatchSection";
 import { mergeSalesPreviewSearchParams } from "@/lib/nav/sales-preview-href";
 import { useUndoShortcutLabel } from "@/lib/platform/keyboard-shortcut-label";
-import { NOTATNIK_NOTES_PAGE_HINT } from "@/lib/sales/notatnik-notes-copy";
+import { NOTEPAD_UNDO_TOAST, toastFromError, type ToastNotice } from "@/lib/ui/notice-copy";
 import { SalesPageAlerts } from "@/components/sales/SalesPageAlerts";
 import { NotatnikZkStatusChrome } from "./NotatnikZkStatusChrome";
 import { NotatnikGuide } from "./NotatnikGuide";
 import { SALES_PAGE_HEADER_HINTS } from "@/lib/sales/sales-page-ui-copy";
+import { NOTATNIK_NOTES_PAGE_HINT } from "@/lib/sales/notatnik-notes-copy";
 import { sectionIconTileBrandClass } from "@/lib/ui/ontime-theme";
 import {
   isUndoExpired,
@@ -120,7 +121,12 @@ type NotatnikUndoState = (
   | { type: "archive"; note: SalesNote }
   | { type: "reorder"; notes: SalesNote[] }
   | { type: "close-zk"; watch: SalesZkWatch }
-) & { expiresAt: number };
+) & { expiresAt: number; performedAt: number };
+
+function createUndoTiming() {
+  const performedAt = Date.now();
+  return { performedAt, expiresAt: undoExpiresAtNow(performedAt) };
+}
 
 export type { NotatnikSurface };
 
@@ -230,6 +236,7 @@ export function NotatnikClient({
   const [focusWatchError, setFocusWatchError] = useState<string | null>(null);
   const [liveAnnouncement, setLiveAnnouncement] = useState("");
   const [undo, setUndo] = useState<NotatnikUndoState | null>(null);
+  const [undoFeedback, setUndoFeedback] = useState<ToastNotice | null>(null);
   const [unseenWatchIds, setUnseenWatchIds] = useState<Set<string>>(() => new Set());
   const [warehouseToast, setWarehouseToast] = useState<string | null>(null);
   const [subiektStatus, setSubiektStatus] = useState<SubiektAvailability | undefined>(undefined);
@@ -339,12 +346,16 @@ export function NotatnikClient({
     const snapshot = undo;
     if (isUndoExpired(snapshot.expiresAt)) {
       setUndo(null);
+      setUndoFeedback(NOTEPAD_UNDO_TOAST.expired);
       return;
     }
     setUndo(null);
+    setUndoFeedback(null);
     try {
       if (snapshot.type === "archive") {
-        const { note } = await actionRestoreSalesNote(snapshot.note.id);
+        const { note } = await actionRestoreSalesNote(snapshot.note.id, {
+          enforceUndoWindow: true,
+        });
         setArchivedNotes((prev) => prev.filter((n) => n.id !== snapshot.note.id));
         setNotes((prev) => uniqueById([note, ...prev]));
         flashNotepadAnchor(`note-${note.id}`);
@@ -361,12 +372,16 @@ export function NotatnikClient({
         navigateToTab("zk", { hash: `watch-${watch.id}`, focusWatch: watch.id });
       } else {
         const ids = sortSalesNotes(snapshot.notes).map((n) => n.id);
-        await actionReorderSalesNotes(ids);
+        await actionReorderSalesNotes(ids, { undoPerformedAt: snapshot.performedAt });
         setNotes(uniqueById(snapshot.notes));
       }
+      setUndoFeedback(NOTEPAD_UNDO_TOAST.success);
       refresh();
-    } catch {
+    } catch (e) {
       if (!isUndoExpired(snapshot.expiresAt)) setUndo(snapshot);
+      setUndoFeedback(
+        toastFromError(e instanceof Error ? e.message : undefined, NOTEPAD_UNDO_TOAST.failed.text)
+      );
     }
   }, [undo, navigateToTab, refresh]);
 
@@ -945,7 +960,7 @@ export function NotatnikClient({
 
   function handleWatchClosed(watchId: string, closedAt: string) {
     const watch = zkWatches.find((w) => w.id === watchId);
-    const expiresAt = undoExpiresAtNow();
+    const timing = createUndoTiming();
     const closingFocusedWatch =
       focusWatchId === watchId || searchParams.get("focusWatch")?.trim() === watchId;
     if (watch) {
@@ -955,7 +970,7 @@ export function NotatnikClient({
       setUndo({
         type: "close-zk",
         watch: { ...watch, closed_at: closedAt, updated_at: closedAt },
-        expiresAt,
+        ...timing,
       });
     }
     setZkWatches((prev) => prev.filter((w) => w.id !== watchId));
@@ -1042,7 +1057,7 @@ export function NotatnikClient({
   function handleNotesReordered(next: SalesNote[], previousForUndo?: SalesNote[]) {
     setNotes(uniqueById(next));
     if (previousForUndo) {
-      setUndo({ type: "reorder", notes: previousForUndo, expiresAt: undoExpiresAtNow() });
+      setUndo({ type: "reorder", notes: previousForUndo, ...createUndoTiming() });
     }
   }
 
@@ -1052,7 +1067,7 @@ export function NotatnikClient({
     setArchivedNotes((archived) =>
       uniqueById([{ ...note, archived_at: now, updated_at: now }, ...archived])
     );
-    setUndo({ type: "archive", note, expiresAt: undoExpiresAtNow() });
+    setUndo({ type: "archive", note, ...createUndoTiming() });
   }
 
   function handleNoteRestored(note: SalesNote) {
@@ -1104,7 +1119,15 @@ export function NotatnikClient({
     <MyOrderPickupShelfDialogProvider>
     <div className={NOTATNIK_PAGE_CLASS}>
       {warehouseToast && !effectiveReadOnly ? (
-        <Toast message={warehouseToast} onDismiss={() => setWarehouseToast(null)} />
+        <NoticeToast notice={warehouseToast} onDismiss={() => setWarehouseToast(null)} />
+      ) : null}
+      {undoFeedback && !effectiveReadOnly ? (
+        <NoticeToast
+          notice={undoFeedback}
+          stacked={Boolean(undo)}
+          tone={undoFeedback.tone}
+          onDismiss={() => setUndoFeedback(null)}
+        />
       ) : null}
       {undo && !effectiveReadOnly ? (
         <UndoToast

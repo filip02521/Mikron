@@ -37,6 +37,7 @@ import {
   type SalesBoardAttentionSnapshot,
 } from "@/lib/data/department-board";
 import { cn } from "@/lib/cn";
+import { useNotificationSoundUnlockOnGesture } from "@/lib/client/use-notification-sound-unlock";
 import { salesMobileChromeRoot } from "@/lib/ui/sales-mobile-chrome";
 import type { VacationDelegationRow } from "@/lib/data/vacation-delegations";
 import { appMainClass, appMainInsetClass, appShellClass } from "@/lib/ui/ontime-theme";
@@ -159,6 +160,7 @@ export function AppShellClient({
     operationsPinnedAnnouncements,
     ready: metricsReady,
   } = useAppShellMetrics();
+  useNotificationSoundUnlockOnGesture();
   const pathname = usePathname();
   const isAuthScreen =
     pathname === "/login" ||

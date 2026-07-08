@@ -1,4 +1,5 @@
 "use client";
+import { VACATION_TOAST, toastFromError, ToastNotice } from "@/lib/ui/notice-copy";
 
 import {
   useCallback,
@@ -23,7 +24,7 @@ import type { VacationPeriodRow } from "@/lib/data/sales-vacation-periods";
 import type { VacationDelegationRow, DelegateOption } from "@/lib/data/vacation-delegations";
 import { Button } from "@/components/ui/Button";
 import { Field, Input } from "@/components/ui/Field";
-import { Toast } from "@/components/ui/Toast";
+import { NoticeToast } from "@/components/ui/NoticeToast";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { Badge } from "@/components/ui/Badge";
 import { EmptyState } from "@/components/ui/EmptyState";
@@ -224,7 +225,7 @@ export function VacationCalendar({
 }) {
   const router = useRouter();
   const [pending, start] = useTransition();
-  const [toast, setToast] = useState<{ text: string; tone: "success" | "error" } | null>(null);
+  const [toast, setToast] = useState<ToastNotice | null>(null);
   const dismiss = useCallback(() => setToast(null), []);
   const [deleteTarget, setDeleteTarget] = useState<DeleteTarget>(null);
 
@@ -382,15 +383,15 @@ export function VacationCalendar({
 
   const saveVacation = () => {
     if (!vacationForm.startDate || !vacationForm.endDate) {
-      setToast({ text: "Podaj daty rozpoczęcia i zakończenia.", tone: "error" });
+      setToast(VACATION_TOAST.missingDates);
       return;
     }
     if (vacationForm.startDate > vacationForm.endDate) {
-      setToast({ text: "Data rozpoczęcia nie może być późniejsza niż zakończenia.", tone: "error" });
+      setToast(VACATION_TOAST.invalidDateRange);
       return;
     }
     if (!vacationForm.salesPersonId) {
-      setToast({ text: "Wybierz handlowca.", tone: "error" });
+      setToast(VACATION_TOAST.missingSalesPerson);
       return;
     }
     start(async () => {
@@ -401,11 +402,11 @@ export function VacationCalendar({
         note: vacationForm.note || null,
       });
       if ("error" in r) {
-        setToast({ text: r.error, tone: "error" });
+        setToast(toastFromError(r.error));
         return;
       }
       resetVacationForm();
-      setToast({ text: "Zapisano okres urlopu.", tone: "success" });
+      setToast(VACATION_TOAST.savedPeriod);
       const [vy, vm] = vacationForm.startDate.split("-").map(Number);
       setCurrentMonth(vm - 1);
       setCurrentYear(vy);
@@ -415,7 +416,7 @@ export function VacationCalendar({
 
   const assignDelegate = () => {
     if (!selectedPeriodData || !selectedDelegateId) {
-      setToast({ text: "Wybierz zastępcę.", tone: "error" });
+      setToast(VACATION_TOAST.missingDelegate);
       return;
     }
     const { period, salesPerson } = selectedPeriodData;
@@ -428,12 +429,12 @@ export function VacationCalendar({
         endDate: period.endDate,
       });
       if ("error" in r) {
-        setToast({ text: r.error, tone: "error" });
+        setToast(toastFromError(r.error));
         return;
       }
       setAssigningDelegate(false);
       setSelectedDelegateId("");
-      setToast({ text: "Przypisano zastępcę.", tone: "success" });
+      setToast(VACATION_TOAST.savedDelegation);
       closePopover();
       router.refresh();
     });
@@ -444,17 +445,17 @@ export function VacationCalendar({
       if (target.kind === "vacation") {
         const r = await actionRemoveVacationPeriod(target.id);
         if ("error" in r) {
-          setToast({ text: r.error, tone: "error" });
+          setToast(toastFromError(r.error));
           return;
         }
-        setToast({ text: "Usunięto urlop.", tone: "success" });
+        setToast(VACATION_TOAST.removedPeriod);
       } else {
         const r = await actionRemoveVacationDelegation(target.id);
         if ("error" in r) {
-          setToast({ text: r.error, tone: "error" });
+          setToast(toastFromError(r.error));
           return;
         }
-        setToast({ text: "Usunięto zastępcę.", tone: "success" });
+        setToast(VACATION_TOAST.removedDelegation);
       }
       setDeleteTarget(null);
       closePopover();
@@ -643,7 +644,7 @@ export function VacationCalendar({
 
   return (
     <div>
-      {toast ? <Toast message={toast.text} tone={toast.tone} onDismiss={dismiss} /> : null}
+      {toast ? <NoticeToast notice={toast} onDismiss={dismiss} /> : null}
 
       <div className="mb-3 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex items-center gap-2">

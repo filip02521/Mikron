@@ -96,18 +96,26 @@ import { todayDateKeyInWarsaw } from "@/lib/time/warsaw";
 import {
   buildDailyPanelUndoPayload,
   isUndoPayloadExpired,
-  undoWindowShortLabel,
+  undoExpiredServerMessage,
 } from "@/lib/orders/daily-panel-undo";
 import type { DailyPanelActionResult } from "@/lib/orders/daily-panel-undo";
 import type { DailyPanelUndoPayload } from "@/lib/orders/daily-panel-undo";
 import {
+  attachDeliveryNotificationQueueIds,
   buildDeliveryUndoPayload,
   captureDeliverySnapshot,
   captureDeliverySnapshots,
+  collectDeliveryNotificationQueueIds,
   isDeliveryUndoExpired,
   revertDeliverySnapshots,
+  syncZkWatchAfterDeliveryRevert,
   type DeliveryUndoPayload,
 } from "@/lib/orders/receive-queue-undo";
+import {
+  cancelDeliveryNotificationQueueEntries,
+  flushAllDueDeliveryNotifications,
+  sendPendingDeliveryNotifications,
+} from "@/lib/orders/delivery-notification-queue";
 import {
   captureIndividualOrdersSnapshot,
   captureScheduleSnapshot,
@@ -273,7 +281,7 @@ export async function actionProcessIndividual(
       ? await captureScheduleSnapshots(glowneSupplierIds)
       : [];
 
-  await processIndividualFromSummary(
+  const processResult = await processIndividualFromSummary(
     orderIds,
     action,
     user.email,
@@ -293,12 +301,21 @@ export async function actionProcessIndividual(
   const feedbackLines =
     action === "ANULOWANO"
       ? undefined
-      : await buildProcessIndividualFeedback(orderIds, action, glowneSupplierIds);
+      : [
+          ...(await buildProcessIndividualFeedback(orderIds, action, glowneSupplierIds)),
+          ...(processResult.skippedTeethCount > 0
+            ? [
+                processResult.skippedTeethCount === 1
+                  ? "1 pozycja zębowa realizowana jest w panelu /zeby — pominięto w panelu dziennym."
+                  : `${processResult.skippedTeethCount} pozycje zębowe realizowane są w panelu /zeby — pominięto w panelu dziennym.`,
+              ]
+            : []),
+        ];
 
   return {
     success: true,
     undo: buildDailyPanelUndoPayload(token),
-    feedbackLines,
+    feedbackLines: feedbackLines?.length ? feedbackLines : undefined,
   };
 }
 
@@ -354,7 +371,7 @@ export async function actionBulkOrdered(
 export async function actionUndoDailyPanelChange(payload: DailyPanelUndoPayload) {
   await requireOperations("mutate");
   if (isUndoPayloadExpired(payload)) {
-    throw new Error(`Minął czas na cofnięcie (${undoWindowShortLabel()}). Odśwież panel.`);
+    throw new Error(undoExpiredServerMessage("przy cofaniu zmiany w panelu dziennym"));
   }
   await revertDailyPanelChange(payload.token);
   revalidateAll();
@@ -764,17 +781,26 @@ export async function actionUpdateDelivered(
   const { requireReceiveMutateForOrders } = await import("@/lib/auth");
   await requireReceiveMutateForOrders([orderId], "mutate");
   const snapshot = await captureDeliverySnapshot(orderId);
-  const { emailSent, emailError } = await updateDeliveredQuantity(orderId, qty, {
+  const { emailQueued, queueId, emailError } = await updateDeliveredQuantity(orderId, qty, {
     teethLineDelivered,
   });
   revalidateAll();
 
+  const snapshotsWithQueue = snapshot
+    ? attachDeliveryNotificationQueueIds(
+        [snapshot],
+        queueId ? { [orderId]: queueId } : {}
+      )
+    : [];
+
   return {
     success: true,
-    emailSent,
+    emailQueued,
     emailError,
-    undo: snapshot
-      ? buildDeliveryUndoPayload({ kind: "delivery", snapshots: [snapshot] })
+    /** @deprecated użyj {@link emailQueued} */
+    emailSent: false,
+    undo: snapshotsWithQueue.length
+      ? buildDeliveryUndoPayload({ kind: "delivery", snapshots: snapshotsWithQueue })
       : undefined,
   };
 }
@@ -866,9 +892,11 @@ export async function actionBatchUpdateDelivered(
       success: true;
       saved: number;
       savedOrderIds: string[];
-      emailSent: number;
+      emailQueued: number;
       errors: string[];
       emailError?: string;
+      /** @deprecated użyj {@link emailQueued} */
+      emailSent: number;
       undo?: DeliveryUndoPayload;
     }
   | { error: string }
@@ -895,16 +923,19 @@ export async function actionBatchUpdateDelivered(
       };
     }
 
-    const savedSnapshots = snapshots
-      .filter((s) => result.savedOrderIds.includes(s.orderId));
+    const savedSnapshots = attachDeliveryNotificationQueueIds(
+      snapshots.filter((s) => result.savedOrderIds.includes(s.orderId)),
+      result.queueIdByOrderId
+    );
 
     return {
       success: true,
       saved: result.saved,
       savedOrderIds: result.savedOrderIds,
-      emailSent: result.emailSent,
+      emailQueued: result.emailQueued,
       errors: result.errors,
       emailError: result.emailError,
+      emailSent: 0,
       undo: savedSnapshots.length
         ? buildDeliveryUndoPayload({ kind: "delivery", snapshots: savedSnapshots })
         : undefined,
@@ -921,12 +952,48 @@ export async function actionUndoDelivery(payload: DeliveryUndoPayload) {
     "mutate",
   );
   if (isDeliveryUndoExpired(payload)) {
-    throw new Error(`Minął czas na cofnięcie przyjęcia towaru (${undoWindowShortLabel()}).`);
+    throw new Error(undoExpiredServerMessage("przy cofaniu przyjęcia towaru"));
   }
+
+  const queueIds = collectDeliveryNotificationQueueIds(payload.token.snapshots);
+  if (queueIds.length) {
+    await cancelDeliveryNotificationQueueEntries(queueIds);
+  }
+
   await revertDeliverySnapshots(payload.token.snapshots);
+  await syncZkWatchAfterDeliveryRevert(
+    payload.token.snapshots.map((snapshot) => snapshot.orderId)
+  );
   await recalculateAllStats();
   revalidateAll();
   return { success: true };
+}
+
+/** Wyślij zaplanowane powiadomienia po oknie cofania (wywołanie z klienta). */
+export async function actionFlushDeliveryNotifications(queueIds: string[]) {
+  const unique = [...new Set(queueIds.filter(Boolean))];
+  if (!unique.length) return { success: true as const, sent: 0 };
+
+  const { requireReceiveMutateForOrders } = await import("@/lib/auth");
+  const { getOrderIdsForNotificationQueueIds } = await import(
+    "@/lib/orders/delivery-notification-queue"
+  );
+  const orderIds = await getOrderIdsForNotificationQueueIds(unique);
+  if (!orderIds.length) {
+    throw new Error("Nie znaleziono powiązanych zamówień do powiadomienia");
+  }
+  await requireReceiveMutateForOrders(orderIds, "mutate");
+
+  const result = await sendPendingDeliveryNotifications(unique);
+  return { success: true as const, sent: result.sent, emailError: result.error };
+}
+
+/** Bezpiecznik — wysyła zaległe powiadomienia po terminie send_at (wg uprawnień użytkownika). */
+export async function actionFlushDueDeliveryNotifications() {
+  const { requireReceiveNotificationFlush } = await import("@/lib/auth");
+  const { scope } = await requireReceiveNotificationFlush();
+  const result = await flushAllDueDeliveryNotifications(scope);
+  return { success: true as const, sent: result.sent, emailError: result.error };
 }
 
 export async function actionProcessDeliveries() {

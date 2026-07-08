@@ -28,6 +28,7 @@ describe("teeth-vision-prompt", () => {
       expect(resolveOcrColor("1C", "ivoclar_ivostar")).toBe("140/1C");
       expect(resolveOcrColor("1A", "ivoclar_ivostar")).toBe("120/1A");
       expect(resolveOcrColor("2B", "ivoclar_ivostar")).toBe("210/2B");
+      expect(resolveOcrColor("01", "ivoclar_ivostar")).toBe("110/01");
     });
 
     it("zwraca oryginał gdy sufiks nie pasuje do żadnego koloru Ivostar", () => {
@@ -75,6 +76,20 @@ describe("teeth-vision-prompt", () => {
     it("null dla nieprawidłowego fasonu", () => {
       const result = resolveOcrMouldAndKind("wiedent_estetic", "999", "anterior");
       expect(result).toBeNull();
+    });
+
+    it("mapuje Gnathostar 84 bez prefiksu D na D84 (posterior)", () => {
+      const result = resolveOcrMouldAndKind("ivoclar_ivostar", "84", "posterior");
+      expect(result).toEqual({
+        kind: "posterior",
+        mould: "D84",
+        productLine: "ivoclar_gnathostar",
+      });
+    });
+
+    it("mapuje Ivostar 42 jako anterior na linii ivostar", () => {
+      const result = resolveOcrMouldAndKind("ivoclar_ivostar", "42", "anterior");
+      expect(result).toEqual({ kind: "anterior", mould: "42" });
     });
   });
 

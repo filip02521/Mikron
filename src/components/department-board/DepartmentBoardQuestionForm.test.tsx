@@ -73,4 +73,13 @@ describe("DepartmentBoardQuestionForm", () => {
       expect(screen.queryByTestId("question-modal")).toBeNull();
     });
   });
+
+  it("blokuje pola tekstowe podczas wysyłki", () => {
+    render(
+      <DepartmentBoardQuestionForm {...baseProps} saving />
+    );
+
+    expect(screen.getByLabelText("Temat").getAttribute("disabled")).not.toBeNull();
+    expect(screen.getByLabelText("Treść").getAttribute("disabled")).not.toBeNull();
+  });
 });

@@ -3,6 +3,7 @@ import {
   buildSalesCancelUndoUpdate,
   buildSalesCancelUpdate,
   salesCancelOrderSelect,
+  salesCancelUndoMatchKind,
 } from "./sales-cancel-db";
 import { planSalesCancelQuantity, salesCancelUndoRestoreStatus } from "./sales-cancel";
 import type { IndividualOrder } from "@/types/database";
@@ -200,5 +201,39 @@ describe("sales-cancel-db", () => {
         "in_transit"
       )
     ).toBeNull();
+  });
+
+  it("salesCancelUndoMatchKind — dopasowanie stanu wiersza", () => {
+    const caps = { hasCancelledAt: true, hasCancelPhase: true, hasCancelledQuantity: true };
+  const legacy = { hasCancelledAt: false, hasCancelPhase: false, hasCancelledQuantity: false };
+
+    expect(
+      salesCancelUndoMatchKind(
+        {
+          sales_cancelled_at: "2026-06-01T10:00:00Z",
+          sales_acknowledged_at: null,
+          status: "Zamowione",
+        },
+        caps
+      )
+    ).toBe("cancelled_at");
+
+    expect(
+      salesCancelUndoMatchKind(
+        {
+          sales_cancelled_at: null,
+          sales_acknowledged_at: "2026-06-01T10:00:00Z",
+          status: "Anulowane",
+        },
+        caps
+      )
+    ).toBe("ack_only");
+
+    expect(
+      salesCancelUndoMatchKind(
+        { sales_cancelled_at: null, sales_acknowledged_at: null, status: "Anulowane" },
+        legacy
+      )
+    ).toBe("legacy_anulowane");
   });
 });

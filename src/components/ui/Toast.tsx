@@ -2,7 +2,7 @@
 
 import { useEffect, useRef } from "react";
 import { cn } from "@/lib/cn";
-import { playToastNotificationSound } from "@/lib/client/notification-sound";
+import { useToastNotificationSound } from "@/lib/client/use-toast-notification-sound";
 import { Button } from "@/components/ui/Button";
 import {
   IconCircleCheck,
@@ -21,6 +21,8 @@ import {
   toastProgressFillWarningClass,
   toastProgressFillErrorClass,
 } from "@/lib/ui/ontime-theme";
+import { NoticeContent } from "@/components/ui/NoticeContent";
+import { resolveNoticeCopy } from "@/lib/ui/notice-content";
 
 type ToastTone = "success" | "error" | "warning";
 
@@ -44,19 +46,28 @@ function ToneIcon({ tone }: { tone: ToastTone }) {
 
 export function Toast({
   message,
+  text,
+  title,
+  description,
   tone = "success",
   onDismiss,
   durationMs,
   action,
   stacked = false,
 }: {
-  message: string;
+  /** @deprecated Preferuj {@link title} + {@link description}. */
+  message?: string;
+  /** Alias {@link message}. */
+  text?: string;
+  title?: string;
+  description?: string;
   tone?: ToastTone;
   onDismiss: () => void;
   durationMs?: number;
   action?: React.ReactNode;
   stacked?: boolean;
 }) {
+  const copy = resolveNoticeCopy({ title, description, message: message ?? text });
   const autoMs = durationMs ?? (action ? 12_000 : 4500);
   const onDismissRef = useRef(onDismiss);
   useEffect(() => {
@@ -66,11 +77,9 @@ export function Toast({
   useEffect(() => {
     const t = setTimeout(() => onDismissRef.current(), autoMs);
     return () => clearTimeout(t);
-  }, [message, autoMs]);
+  }, [copy.title, copy.description, autoMs]);
 
-  useEffect(() => {
-    void playToastNotificationSound();
-  }, []);
+  useToastNotificationSound(copy.title, copy.description);
 
   return (
     <div
@@ -94,9 +103,12 @@ export function Toast({
           <span className={cn(toastIconTileClass, toneIconTile[tone])}>
             <ToneIcon tone={tone} />
           </span>
-          <div className="min-w-0 space-y-1 pt-0.5">
-            <p className="text-sm font-semibold leading-snug text-slate-900">{message}</p>
-          </div>
+          <NoticeContent
+            title={copy.title}
+            description={copy.description}
+            variant="floating"
+            className="pt-0.5"
+          />
         </div>
 
         {action ? (

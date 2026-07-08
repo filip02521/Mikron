@@ -1,33 +1,52 @@
 import { cn } from "@/lib/cn";
-
-type Tone = "info" | "success" | "warning" | "error";
-
-const tones: Record<Tone, string> = {
-  info: "border-indigo-200 bg-indigo-50 text-indigo-900",
-  success: "border-emerald-200 bg-emerald-50 text-emerald-900",
-  warning: "border-amber-200 bg-amber-50 text-amber-900",
-  error: "border-red-200 bg-red-50 text-red-900",
-};
+import { NoticeContent } from "@/components/ui/NoticeContent";
+import type { NoticeTone } from "@/lib/ui/notice-content";
+import { noticeToneShellClass, splitNoticeText } from "@/lib/ui/notice-content";
 
 export function Alert({
   children,
+  title,
   tone = "info",
   className,
 }: {
   children: React.ReactNode;
-  tone?: Tone;
+  /** Krótki nagłówek — treść w {@link children}. */
+  title?: string;
+  tone?: NoticeTone;
   className?: string;
 }) {
+  const bodyText = typeof children === "string" ? children : null;
+  const copy = title
+    ? { title, description: bodyText ?? undefined }
+    : bodyText
+      ? splitNoticeText(bodyText)
+      : { title: "", description: undefined };
+
   return (
     <div
       role="alert"
       className={cn(
-        "rounded-md border px-4 py-3 text-sm leading-relaxed break-words",
-        tones[tone],
-        className
+        "rounded-md border px-4 py-3 leading-relaxed break-words",
+        noticeToneShellClass[tone],
+        className,
       )}
     >
-      {children}
+      {copy.title ? (
+        copy.description && typeof children === "string" ? (
+          <NoticeContent title={copy.title} description={copy.description} variant="inline" />
+        ) : title ? (
+          <>
+            <NoticeContent title={copy.title} variant="inline" />
+            {typeof children !== "string" ? (
+              <div className="mt-1 text-sm leading-relaxed opacity-95">{children}</div>
+            ) : null}
+          </>
+        ) : (
+          <NoticeContent title={copy.title} description={copy.description} variant="inline" />
+        )
+      ) : (
+        <div className="text-sm leading-relaxed">{children}</div>
+      )}
     </div>
   );
 }

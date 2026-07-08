@@ -1,4 +1,5 @@
 "use client";
+import { toastFromError, WAREHOUSE_TOAST, type ToastNotice } from "@/lib/ui/notice-copy";
 
 import { useRouter } from "next/navigation";
 import { useCallback, useMemo, useState, useTransition } from "react";
@@ -11,7 +12,7 @@ import {
 import { ModalShell } from "@/components/ui/ModalShell";
 import { Button } from "@/components/ui/Button";
 import { Field, Input } from "@/components/ui/Field";
-import { Toast } from "@/components/ui/Toast";
+import { NoticeToast } from "@/components/ui/NoticeToast";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { Badge } from "@/components/ui/Badge";
 import { EmptyState } from "@/components/ui/EmptyState";
@@ -33,9 +34,7 @@ export function WarehouseCarriersModal({
 }) {
   const router = useRouter();
   const [pending, start] = useTransition();
-  const [toast, setToast] = useState<{ text: string; tone: "success" | "error" } | null>(
-    null
-  );
+  const [toast, setToast] = useState<ToastNotice | null>(null);
   const dismiss = useCallback(() => setToast(null), []);
   const [formOpen, setFormOpen] = useState(false);
   const [form, setForm] = useState<FormState>(emptyForm);
@@ -69,7 +68,7 @@ export function WarehouseCarriersModal({
         sortOrder: Number.isFinite(sortOrder) ? sortOrder : undefined,
       });
       if ("error" in result) {
-        setToast({ text: result.error, tone: "error" });
+        setToast(toastFromError(result.error));
         return;
       }
       resetForm();
@@ -85,7 +84,7 @@ export function WarehouseCarriersModal({
     start(async () => {
       const result = await actionSetWarehouseCarrierActive(carrier.slug, !carrier.isActive);
       if ("error" in result) {
-        setToast({ text: result.error, tone: "error" });
+        setToast(toastFromError(result.error));
         return;
       }
       setToast({
@@ -98,7 +97,7 @@ export function WarehouseCarriersModal({
 
   return (
     <>
-      {toast ? <Toast message={toast.text} tone={toast.tone} onDismiss={dismiss} /> : null}
+      {toast ? <NoticeToast notice={toast} onDismiss={dismiss} /> : null}
       <ConfirmDialog
         open={!!deleteTarget}
         tier="stack"
@@ -117,12 +116,12 @@ export function WarehouseCarriersModal({
           start(async () => {
             const result = await actionDeleteWarehouseCarrier(deleteTarget.slug);
             if ("error" in result) {
-              setToast({ text: result.error, tone: "error" });
+              setToast(toastFromError(result.error));
               setDeleteTarget(null);
               return;
             }
             setDeleteTarget(null);
-            setToast({ text: "Kurier usunięty.", tone: "success" });
+            setToast(WAREHOUSE_TOAST.deletedCarrier);
             router.refresh();
           });
         }}

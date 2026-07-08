@@ -8,7 +8,7 @@ import {
   zdDeadlineChangeToastTone,
   type PendingZdDeadlineChange,
 } from "@/components/moje/zd-fulfillment-deadline-change-auto-ack-copy";
-import { Toast } from "@/components/ui/Toast";
+import { NoticeToast } from "@/components/ui/NoticeToast";
 import type { MyOrderRow } from "@/lib/orders/my-order-presenter";
 import type { ZdFulfillmentDeadlineChangeDisplay } from "@/lib/orders/zd-fulfillment-deadline-change";
 
@@ -126,10 +126,8 @@ export function ZdFulfillmentDeadlineChangeAutoAck({
   if (!toast) return null;
 
   return (
-    <Toast
-      message={toast.message}
-      tone={toast.tone}
-      durationMs={4500}
+    <NoticeToast
+      notice={{ message: toast.message, tone: toast.tone, durationMs: 4500 }}
       stacked
       onDismiss={() => setToast(null)}
     />

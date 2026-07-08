@@ -1,4 +1,5 @@
 "use client";
+import { VACATION_TOAST, toastFromError, ToastNotice } from "@/lib/ui/notice-copy";
 
 import { useState, useTransition, useCallback } from "react";
 import { useRouter } from "next/navigation";
@@ -11,7 +12,7 @@ import type { VacationDelegationRow } from "@/lib/data/vacation-delegations";
 import { Card, CardHeader } from "@/components/ui/Card";
 import { Field, Input } from "@/components/ui/Field";
 import { Button } from "@/components/ui/Button";
-import { Toast } from "@/components/ui/Toast";
+import { NoticeToast } from "@/components/ui/NoticeToast";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { Badge } from "@/components/ui/Badge";
 import { SectionHeadingIcon } from "@/components/icons/SectionHeadingIcon";
@@ -59,7 +60,7 @@ export function SelfDelegationManager({
   const router = useRouter();
   const [delegations, setDelegations] = useState(initialDelegations);
   const [pending, start] = useTransition();
-  const [toast, setToast] = useState<{ text: string; tone: "success" | "error" } | null>(null);
+  const [toast, setToast] = useState<ToastNotice | null>(null);
   const dismiss = useCallback(() => setToast(null), []);
   const [deleteTarget, setDeleteTarget] = useState<VacationDelegationRow | null>(null);
   const [formOpen, setFormOpen] = useState(false);
@@ -76,7 +77,7 @@ export function SelfDelegationManager({
 
   const save = () => {
     if (!form.delegateProfileId) {
-      setToast({ text: "Wybierz zastępcę.", tone: "error" });
+      setToast(VACATION_TOAST.missingDelegate);
       return;
     }
     start(async () => {
@@ -87,11 +88,11 @@ export function SelfDelegationManager({
         endDate: form.endDate,
       });
       if ("error" in r) {
-        setToast({ text: r.error, tone: "error" });
+        setToast(toastFromError(r.error));
         return;
       }
       resetForm();
-      setToast({ text: "Zapisano zastępstwo.", tone: "success" });
+      setToast(VACATION_TOAST.savedDelegation);
       const updated = await actionFetchDelegationsForSalesPerson(salesPersonId);
       setDelegations(updated);
       router.refresh();
@@ -102,11 +103,11 @@ export function SelfDelegationManager({
     start(async () => {
       const r = await actionRemoveVacationDelegation(id);
       if ("error" in r) {
-        setToast({ text: r.error, tone: "error" });
+        setToast(toastFromError(r.error));
         return;
       }
       setDeleteTarget(null);
-      setToast({ text: "Usunięto zastępstwo.", tone: "success" });
+      setToast(VACATION_TOAST.removedDelegation);
       const updated = await actionFetchDelegationsForSalesPerson(salesPersonId);
       setDelegations(updated);
       router.refresh();
@@ -140,7 +141,7 @@ export function SelfDelegationManager({
         }
       />
       <div className={salesChromeInsetClass}>
-        {toast ? <Toast message={toast.text} tone={toast.tone} onDismiss={dismiss} /> : null}
+        {toast ? <NoticeToast notice={toast} onDismiss={dismiss} /> : null}
 
         {formOpen ? (
           <div className="mb-4 space-y-4 rounded-md border border-slate-200 bg-slate-50/50 p-4">

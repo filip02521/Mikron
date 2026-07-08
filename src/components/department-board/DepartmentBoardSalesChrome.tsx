@@ -3,6 +3,7 @@
 import { cn } from "@/lib/cn";
 import { DEPARTMENT_BOARD_QUESTIONS_FILTERS } from "@/lib/department-board/copy";
 import type { DepartmentBoardQuestionFilterCounts } from "@/lib/department-board/question-filters";
+import { DepartmentBoardCountBadge } from "@/components/department-board/DepartmentBoardCountBadge";
 import {
   panelChoiceChipClass,
   panelChoiceChipIdleClass,
@@ -10,7 +11,6 @@ import {
   panelChromeInsetClass,
   salesTypography,
 } from "@/lib/ui/ontime-theme";
-
 export type DepartmentBoardTab = "announcements" | "questions";
 export type DepartmentBoardQuestionFilter = "all" | "open" | "answered" | "unseen" | "own_unseen" | "mine";
 
@@ -31,27 +31,33 @@ export function DepartmentBoardTabBar({
   activeTab,
   onTabChange,
   activeAnnouncements = 0,
+  totalQuestions = 0,
   openQuestions = 0,
 }: {
   activeTab: DepartmentBoardTab;
   onTabChange: (tab: DepartmentBoardTab) => void;
   activeAnnouncements?: number;
+  totalQuestions?: number;
   openQuestions?: number;
 }) {
   const tabs: {
     id: DepartmentBoardTab;
     label: string;
-    badge?: string;
+    count: number;
+    countEmphasis?: "default" | "warning" | "action";
+    hint?: string;
   }[] = [
     {
       id: "announcements",
       label: "Ogłoszenia",
-      badge: activeAnnouncements > 0 ? `${activeAnnouncements} aktyw.` : undefined,
+      count: activeAnnouncements,
     },
     {
       id: "questions",
       label: "Pytania",
-      badge: openQuestions > 0 ? `${openQuestions} bez odp.` : undefined,
+      count: totalQuestions,
+      countEmphasis: openQuestions > 0 ? "warning" : "default",
+      hint: openQuestions > 0 ? `${openQuestions} bez odpowiedzi` : undefined,
     },
   ];
 
@@ -77,12 +83,16 @@ export function DepartmentBoardTabBar({
               TAB_CHIP_CLASS,
               active ? panelChoiceChipSelectedClass : panelChoiceChipIdleClass
             )}
+            title={tab.hint}
           >
             <span>{tab.label}</span>
-            {tab.badge ? (
-              <span className="tabular-nums text-[10px] font-semibold opacity-80">
-                {tab.badge}
-              </span>
+            <DepartmentBoardCountBadge
+              count={tab.count}
+              active={active}
+              emphasis={active ? "default" : tab.countEmphasis}
+            />
+            {tab.hint && !active ? (
+              <span className="sr-only"> — {tab.hint}</span>
             ) : null}
           </button>
         );
@@ -126,12 +136,23 @@ export function DepartmentBoardQuestionFilters({
     filters.push({ id: "unseen", label: "Nowe odpowiedzi", count: counts.unseen });
   }
 
+  if (showMine && counts.own_unseen > 0) {
+    filters.push({
+      id: "own_unseen",
+      label: "Moje z nową odpowiedzią",
+      count: counts.own_unseen,
+    });
+  }
+
   if (showMine) {
     filters.push({ id: "mine", label: "Tylko moje", count: counts.mine });
   }
 
   return (
     <div className="space-y-2">
+      <p className={cn(salesTypography.sectionHint, "px-0.5")}>
+        {DEPARTMENT_BOARD_QUESTIONS_FILTERS.toolbarHint}
+      </p>
       <div
         className="flex flex-wrap items-center gap-1.5"
         role="group"
@@ -139,10 +160,12 @@ export function DepartmentBoardQuestionFilters({
       >
         {filters.map((filter) => {
           const active = value === filter.id;
-          const showCount =
-            filter.count != null &&
-            filter.count > 0 &&
-            (active || value === "all" || filter.id === "unseen");
+          const countEmphasis =
+            filter.id === "open" && (filter.count ?? 0) > 0
+              ? "warning"
+              : filter.id === "unseen" || filter.id === "own_unseen"
+                ? "action"
+                : "default";
           return (
             <button
               key={filter.id}
@@ -158,10 +181,12 @@ export function DepartmentBoardQuestionFilters({
               )}
             >
               <span>{filter.label}</span>
-              {showCount ? (
-                <span className="tabular-nums text-[10px] font-semibold opacity-75">
-                  {filter.count}
-                </span>
+              {filter.count != null ? (
+                <DepartmentBoardCountBadge
+                  count={filter.count}
+                  active={active}
+                  emphasis={active ? "default" : countEmphasis}
+                />
               ) : null}
             </button>
           );

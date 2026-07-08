@@ -1,4 +1,5 @@
 "use client";
+import { MY_ORDERS_TOAST, type ToastNotice } from "@/lib/ui/notice-copy";
 
 import dynamic from "next/dynamic";
 import { useCallback, useEffect, useMemo, useRef, useState, useTransition } from "react";
@@ -33,7 +34,7 @@ import type { SalesCancelUndoRestore } from "@/lib/orders/sales-cancel-db";
 import type { TeethLineDetail } from "@/lib/teeth/teeth-catalog";
 import { useMyOrderPickupShelfDialog } from "@/components/moje/MyOrderPickupShelfDialogProvider";
 import { useMyOrderShipmentUndo } from "@/components/moje/MyOrderShipmentUndoProvider";
-import { Toast } from "@/components/ui/Toast";
+import { NoticeToast } from "@/components/ui/NoticeToast";
 import { ActionLoadingOverlay } from "@/components/ui/ActionLoadingOverlay";
 import type { EditIndividualRequestInitial } from "@/components/orders/EditIndividualRequestModal";
 import { editInitialFromMyOrderRow } from "@/lib/orders/individual-request-edit-ui";
@@ -216,8 +217,8 @@ export function MyOrderShipmentList({
     orderIds: string[];
     initial: EditIndividualRequestInitial;
   } | null>(null);
-  const [errorToast, setErrorToast] = useState<string | null>(null);
-  const [successToast, setSuccessToast] = useState<string | null>(null);
+  const [errorToast, setErrorToast] = useState<ToastNotice | null>(null);
+  const [successToast, setSuccessToast] = useState<ToastNotice | null>(null);
 
   const runPickup = useCallback(
     (orderIds: string[], options?: { markShelfNotice?: boolean }) => {
@@ -236,9 +237,7 @@ export function MyOrderShipmentList({
           });
           router.refresh();
         } catch (e) {
-          setErrorToast(
-            e instanceof Error ? e.message : "Nie udało się potwierdzić odbioru"
-          );
+          setErrorToast(MY_ORDERS_TOAST.actionFailed(e instanceof Error ? e.message : undefined));
         } finally {
           setPendingMessage(null);
         }
@@ -281,9 +280,7 @@ export function MyOrderShipmentList({
           });
           router.refresh();
         } catch (e) {
-          setErrorToast(
-            e instanceof Error ? e.message : "Nie udało się potwierdzić anulowania"
-          );
+          setErrorToast(MY_ORDERS_TOAST.actionFailed(e instanceof Error ? e.message : undefined));
         } finally {
           setPendingMessage(null);
         }
@@ -314,11 +311,7 @@ export function MyOrderShipmentList({
           });
           router.refresh();
         } catch (e) {
-          setErrorToast(
-            e instanceof Error
-              ? e.message
-              : "Nie udało się potwierdzić informacji o rezygnacji"
-          );
+          setErrorToast(MY_ORDERS_TOAST.actionFailed(e instanceof Error ? e.message : undefined));
         } finally {
           setPendingMessage(null);
         }
@@ -336,9 +329,7 @@ export function MyOrderShipmentList({
           await actionUpdateSalesClientName(orderId, patch.clientName, patch.clientKhId);
           router.refresh();
         } catch (e) {
-          setErrorToast(
-            e instanceof Error ? e.message : "Nie udało się zapisać klienta"
-          );
+          setErrorToast(MY_ORDERS_TOAST.actionFailed(e instanceof Error ? e.message : undefined));
         } finally {
           setPendingMessage(null);
         }
@@ -371,13 +362,7 @@ export function MyOrderShipmentList({
           });
           router.refresh();
         } catch (e) {
-          setErrorToast(
-            e instanceof Error
-              ? e.message
-              : n === 1
-                ? "Nie udało się anulować pozycji"
-                : "Nie udało się anulować wybranych pozycji"
-          );
+          setErrorToast(MY_ORDERS_TOAST.actionFailed(e instanceof Error ? e.message : undefined));
         } finally {
           setPendingMessage(null);
         }
@@ -520,10 +505,8 @@ export function MyOrderShipmentList({
         <ActionLoadingOverlay message={pendingMessage} variant="section" />
       ) : null}
       {successToast ? (
-        <Toast
-          message={successToast}
-          tone="success"
-          durationMs={6000}
+        <NoticeToast
+          notice={{ ...successToast, durationMs: 6000 }}
           onDismiss={() => setSuccessToast(null)}
           action={
             <button
@@ -542,11 +525,7 @@ export function MyOrderShipmentList({
         />
       ) : null}
       {errorToast ? (
-        <Toast
-          message={errorToast}
-          tone="error"
-          onDismiss={() => setErrorToast(null)}
-        />
+        <NoticeToast notice={errorToast} onDismiss={() => setErrorToast(null)} />
       ) : null}
       <EditIndividualRequestModal
         open={editTarget !== null}
@@ -557,7 +536,7 @@ export function MyOrderShipmentList({
         onClose={() => setEditTarget(null)}
         onSaved={() => {
           setEditTarget(null);
-          setSuccessToast("Zapisano zmiany w prośbie.");
+          setSuccessToast(MY_ORDERS_TOAST.savedRequest);
           router.refresh();
         }}
       />
@@ -575,7 +554,10 @@ export function MyOrderShipmentList({
               if (!pending) setPartialCancel(null);
             }}
             onConfirm={(cancelGroups) => {
-              const { orderId } = partialCancel;
+              const { orderId, teethDetails } = partialCancel;
+              const line = sortedRows
+                .flatMap((row) => row.lines)
+                .find((entry) => entry.id === orderId);
               setPartialCancel(null);
               setPendingMessage("Wycofywanie grup zębów…");
               start(async () => {
@@ -585,14 +567,15 @@ export function MyOrderShipmentList({
                     orderIds: [orderId],
                     kind: "cancel",
                     title: "Grupy zębów wycofane",
+                    restoreById: line
+                      ? { [orderId]: line.salesCancelUndoRestore }
+                      : undefined,
+                    teethDetailsById:
+                      teethDetails?.length ? { [orderId]: teethDetails } : undefined,
                   });
                   router.refresh();
                 } catch (e) {
-                  setErrorToast(
-                    e instanceof Error
-                      ? e.message
-                      : "Nie udało się wycofać grup zębów"
-                  );
+                  setErrorToast(MY_ORDERS_TOAST.actionFailed(e instanceof Error ? e.message : undefined));
                 } finally {
                   setPendingMessage(null);
                 }

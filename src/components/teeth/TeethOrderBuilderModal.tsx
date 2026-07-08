@@ -48,7 +48,7 @@ import {
   teethBuilderAlertClass,
 } from "@/components/teeth/TeethOrderBuilderParts";
 import { IconAlertCircle, IconCircleCheck } from "@/components/icons/StrokeIcons";
-import { partitionTeethDetailsByKind } from "@/lib/teeth/teeth-dual-kind";
+import { partitionTeethDetailsByKind, catalogLineForDualKind } from "@/lib/teeth/teeth-dual-kind";
 import { TeethVisionUpload } from "@/components/teeth/TeethVisionUpload";
 import { cn } from "@/lib/cn";
 import { panelChoiceChipClass, panelChoiceChipIdleClass, panelChoiceChipSelectedClass } from "@/lib/ui/ontime-theme";
@@ -236,11 +236,20 @@ function TeethDualKindOrderBuilderModal({
     return { anterior: [], posterior: [] };
   }, [dualKindInitialDetails]);
 
+  const anteriorCatalogLine = useMemo(
+    () => catalogLineForDualKind(productLine, "anterior"),
+    [productLine],
+  );
+  const posteriorCatalogLine = useMemo(
+    () => catalogLineForDualKind(productLine, "posterior"),
+    [productLine],
+  );
+
   const [anteriorStatus, setAnteriorStatus] = useState<TeethDualSectionStatus>(() =>
-    sectionStatusFromDetails(partitioned.anterior, productLine),
+    sectionStatusFromDetails(partitioned.anterior, anteriorCatalogLine),
   );
   const [posteriorStatus, setPosteriorStatus] = useState<TeethDualSectionStatus>(() =>
-    sectionStatusFromDetails(partitioned.posterior, productLine),
+    sectionStatusFromDetails(partitioned.posterior, posteriorCatalogLine),
   );
   const [anteriorCount, setAnteriorCount] = useState(
     () => totalTeethCountFromGroups(teethGroupsFromDetails(partitioned.anterior)),
@@ -258,7 +267,8 @@ function TeethDualKindOrderBuilderModal({
   const saveBlockReason = teethDualSaveBlockReason(anteriorStatus, posteriorStatus);
   const previewMessage = teethDualSavePreviewMessage(anteriorCount, posteriorCount);
   const activeCount = activeKind === "anterior" ? anteriorCount : posteriorCount;
-  const modalSize = teethBuilderModalSize(productLine, activeKind);
+  const activeCatalogLine = activeKind === "anterior" ? anteriorCatalogLine : posteriorCatalogLine;
+  const modalSize = teethBuilderModalSize(activeCatalogLine, activeKind);
 
   const validateAndSave = () => {
     if (!canSave) return;
@@ -369,7 +379,7 @@ function TeethDualKindOrderBuilderModal({
           <div className={activeKind === "anterior" ? undefined : "hidden"} aria-hidden={activeKind !== "anterior"}>
             <TeethOrderBuilderSection
               ref={anteriorRef}
-              productLine={productLine}
+              productLine={anteriorCatalogLine}
               lockedKind="anterior"
               initialDetails={partitioned.anterior}
               disabled={disabled}
@@ -382,7 +392,7 @@ function TeethDualKindOrderBuilderModal({
           <div className={activeKind === "posterior" ? undefined : "hidden"} aria-hidden={activeKind !== "posterior"}>
             <TeethOrderBuilderSection
               ref={posteriorRef}
-              productLine={productLine}
+              productLine={posteriorCatalogLine}
               lockedKind="posterior"
               initialDetails={partitioned.posterior}
               disabled={disabled}

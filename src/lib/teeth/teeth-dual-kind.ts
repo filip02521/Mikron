@@ -15,6 +15,11 @@ import {
 } from "@/lib/teeth/teeth-catalog";
 import { catalogLineSupportsDualKind } from "@/lib/teeth/teeth-lines-data";
 import {
+  catalogLineForDualKind,
+  isCrossLineDualKindPair,
+  TEETH_CROSS_LINE_DUAL_KIND_PAIRS,
+} from "@/lib/teeth/teeth-cross-line-pairs";
+import {
   TEETH_DUAL_EMPTY_SECTIONS,
   TEETH_DUAL_LINE_LIMIT_MESSAGE,
   teethDualMissingRegistryProductMessage,
@@ -62,6 +67,12 @@ export type TeethDualKindCommitResult =
 function lineKindKey(productLine: TeethProductLine, kind: TeethKind): string {
   return `${productLine}:${kind}`;
 }
+
+export {
+  catalogLineForDualKind,
+  isCrossLineDualKindPair,
+  TEETH_CROSS_LINE_DUAL_KIND_PAIRS as CROSS_LINE_DUAL_KIND_PAIRS,
+} from "@/lib/teeth/teeth-cross-line-pairs";
 
 /** Uzupełnia brakujące product_line / kind z nazwy towaru (legacy admin, ogólne nazwy Subiekta). */
 export function enrichTeethRegistryEntry(entry: TeethRegistryEntry): TeethRegistryEntry | null {
@@ -132,11 +143,11 @@ export function supportsDualKindBuilder(
   const hasPosterior = index.byLineAndKind.has(lineKindKey(productLine, "posterior"));
   if (hasAnterior && hasPosterior) return true;
 
-  // Specjalne traktowanie dla Ivoclar: Ivostar (przednie) + Gnathostar (boczne)
-  if (productLine === "ivoclar_ivostar" || productLine === "ivoclar_gnathostar") {
-    const hasIvostarAnterior = index.byLineAndKind.has(lineKindKey("ivoclar_ivostar", "anterior"));
-    const hasGnathostarPosterior = index.byLineAndKind.has(lineKindKey("ivoclar_gnathostar", "posterior"));
-    if (hasIvostarAnterior && hasGnathostarPosterior) return true;
+  for (const [anteriorLine, posteriorLine] of TEETH_CROSS_LINE_DUAL_KIND_PAIRS) {
+    if (productLine !== anteriorLine && productLine !== posteriorLine) continue;
+    const hasAnterior = index.byLineAndKind.has(lineKindKey(anteriorLine, "anterior"));
+    const hasPosterior = index.byLineAndKind.has(lineKindKey(posteriorLine, "posterior"));
+    if (hasAnterior && hasPosterior) return true;
   }
 
   // Katalog z przodami i bokami (np. Phonares) — UI dual nawet gdy w adminie brakuje pary.
@@ -148,12 +159,13 @@ export function resolveTeethCatalogProduct(
   productLine: TeethProductLine,
   kind: TeethKind,
 ): TeethRegistryProduct | null {
-  // Specjalne traktowanie dla Ivoclar: anterior -> ivoclar_ivostar, posterior -> ivoclar_gnathostar
-  if (productLine === "ivoclar_ivostar" && kind === "posterior") {
-    return index.byLineAndKind.get(lineKindKey("ivoclar_gnathostar", "posterior")) ?? null;
-  }
-  if (productLine === "ivoclar_gnathostar" && kind === "anterior") {
-    return index.byLineAndKind.get(lineKindKey("ivoclar_ivostar", "anterior")) ?? null;
+  for (const [anteriorLine, posteriorLine] of TEETH_CROSS_LINE_DUAL_KIND_PAIRS) {
+    if (productLine === anteriorLine && kind === "posterior") {
+      return index.byLineAndKind.get(lineKindKey(posteriorLine, "posterior")) ?? null;
+    }
+    if (productLine === posteriorLine && kind === "anterior") {
+      return index.byLineAndKind.get(lineKindKey(anteriorLine, "anterior")) ?? null;
+    }
   }
   return index.byLineAndKind.get(lineKindKey(productLine, kind)) ?? null;
 }
@@ -195,12 +207,16 @@ function expandGroupsWithKind(
 }
 
 function isPairedTeethLine(line: ProductLineDraft, anchor: ProductLineDraft): boolean {
-  if (line.teethProductLine !== anchor.teethProductLine) return false;
+  const anchorLine = anchor.teethProductLine;
+  const lineLine = line.teethProductLine;
+  if (!anchorLine || !lineLine) return false;
   const anchorKind = anchor.teethKind;
   if (anchorKind !== "anterior" && anchorKind !== "posterior") return false;
   const oppositeKind: TeethKind = anchorKind === "anterior" ? "posterior" : "anterior";
   if (line.teethKind !== oppositeKind) return false;
-  return (line.clientName ?? "") === (anchor.clientName ?? "");
+  if ((line.clientName ?? "") !== (anchor.clientName ?? "")) return false;
+  if (anchorLine === lineLine) return true;
+  return isCrossLineDualKindPair(anchorLine, lineLine);
 }
 
 function pairedLineInsertIndex(
@@ -228,7 +244,7 @@ function buildTeethLineFromRegistry(
     mikranCode: product.plu?.trim() || template.mikranCode,
     subiektTwId: product.twId,
     teethManufacturer: product.manufacturer,
-    teethProductLine: template.teethProductLine || product.productLine,
+    teethProductLine: product.productLine,
     teethKind: product.kind,
     teethDetails: details,
     teethOcrPending: fromOcr ?? false,
@@ -239,13 +255,14 @@ function buildTeethLineFromRegistry(
 
 function lineExistedWithQuantity(
   lines: ProductLineDraft[],
-  productLine: TeethProductLine,
+  anchorLine: TeethProductLine,
   kind: TeethKind,
   clientName: string | undefined,
 ): { existed: boolean; quantity: number; product: string } {
+  const catalogLine = catalogLineForDualKind(anchorLine, kind);
   const match = lines.find(
     (line) =>
-      line.teethProductLine === productLine
+      line.teethProductLine === catalogLine
       && line.teethKind === kind
       && (line.clientName ?? "") === (clientName ?? ""),
   );
@@ -428,13 +445,8 @@ export function findTeethSiblingLineIndex(
 ): number | null {
   const anchor = lines[anchorIndex];
   if (!anchor?.teethProductLine) return null;
-  const oppositeKind: TeethKind = anchor.teethKind === "posterior" ? "anterior" : "posterior";
   const idx = lines.findIndex(
-    (line, i) =>
-      i !== anchorIndex
-      && line.teethProductLine === anchor.teethProductLine
-      && line.teethKind === oppositeKind
-      && (line.clientName ?? "") === (anchor.clientName ?? ""),
+    (line, i) => i !== anchorIndex && isPairedTeethLine(line, anchor),
   );
   return idx >= 0 ? idx : null;
 }

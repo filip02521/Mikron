@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   DAILY_PANEL_UNDO_MS,
   UNDO_WINDOW_MS,
+  undoExpiredServerMessage,
   undoWindowBannerDescription,
   undoWindowLongLabel,
   undoWindowShortLabel,
@@ -17,5 +18,7 @@ describe("undo window", () => {
     expect(undoWindowBannerDescription("Sprawdź terminy poniżej")).toBe(
       "Sprawdź terminy poniżej — masz 10 sekund na cofnięcie."
     );
+    expect(undoExpiredServerMessage()).toContain("10 s");
+    expect(undoExpiredServerMessage("przy cofaniu odbioru")).toContain("przy cofaniu odbioru");
   });
 });

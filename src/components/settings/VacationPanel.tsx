@@ -1,4 +1,5 @@
 "use client";
+import { VACATION_TOAST, toastFromError, ToastNotice } from "@/lib/ui/notice-copy";
 
 import { useState, useTransition, useCallback } from "react";
 import { useRouter } from "next/navigation";
@@ -17,7 +18,7 @@ import type { VacationDelegationRow } from "@/lib/data/vacation-delegations";
 import { Card, CardHeader } from "@/components/ui/Card";
 import { Field, Input } from "@/components/ui/Field";
 import { Button } from "@/components/ui/Button";
-import { Toast } from "@/components/ui/Toast";
+import { NoticeToast } from "@/components/ui/NoticeToast";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { Badge } from "@/components/ui/Badge";
 import { SectionHeadingIcon } from "@/components/icons/SectionHeadingIcon";
@@ -79,7 +80,7 @@ export function VacationPanel({
   const [periods, setPeriods] = useState(initialPeriods);
   const [delegations, setDelegations] = useState(initialDelegations);
   const [pending, start] = useTransition();
-  const [toast, setToast] = useState<{ text: string; tone: "success" | "error" } | null>(null);
+  const [toast, setToast] = useState<ToastNotice | null>(null);
   const dismiss = useCallback(() => setToast(null), []);
   const [deleteTarget, setDeleteTarget] = useState<DeleteTarget>(null);
 
@@ -112,11 +113,11 @@ export function VacationPanel({
 
   const saveVacation = () => {
     if (!vacationForm.startDate || !vacationForm.endDate) {
-      setToast({ text: "Podaj daty rozpoczęcia i zakończenia.", tone: "error" });
+      setToast(VACATION_TOAST.missingDates);
       return;
     }
     if (vacationForm.startDate > vacationForm.endDate) {
-      setToast({ text: "Data rozpoczęcia nie może być późniejsza niż zakończenia.", tone: "error" });
+      setToast(VACATION_TOAST.invalidDateRange);
       return;
     }
     start(async () => {
@@ -127,18 +128,18 @@ export function VacationPanel({
         note: vacationForm.note || null,
       });
       if ("error" in r) {
-        setToast({ text: r.error, tone: "error" });
+        setToast(toastFromError(r.error));
         return;
       }
       resetVacationForm();
-      setToast({ text: "Zapisano okres urlopu.", tone: "success" });
+      setToast(VACATION_TOAST.savedPeriod);
       await refreshAll();
     });
   };
 
   const assignDelegate = (period: VacationPeriodRow) => {
     if (!selectedDelegateId) {
-      setToast({ text: "Wybierz zastępcę.", tone: "error" });
+      setToast(VACATION_TOAST.missingDelegate);
       return;
     }
     start(async () => {
@@ -149,12 +150,12 @@ export function VacationPanel({
         endDate: period.endDate,
       });
       if ("error" in r) {
-        setToast({ text: r.error, tone: "error" });
+        setToast(toastFromError(r.error));
         return;
       }
       setAssigningPeriodId(null);
       setSelectedDelegateId("");
-      setToast({ text: "Przypisano zastępcę do urlopu.", tone: "success" });
+      setToast(VACATION_TOAST.savedDelegationToVacation);
       await refreshAll();
     });
   };
@@ -164,17 +165,17 @@ export function VacationPanel({
       if (target.kind === "vacation") {
         const r = await actionRemoveVacationPeriod(target.id);
         if ("error" in r) {
-          setToast({ text: r.error, tone: "error" });
+          setToast(toastFromError(r.error));
           return;
         }
-        setToast({ text: "Usunięto okres urlopu.", tone: "success" });
+        setToast(VACATION_TOAST.removedPeriod);
       } else {
         const r = await actionRemoveVacationDelegation(target.id);
         if ("error" in r) {
-          setToast({ text: r.error, tone: "error" });
+          setToast(toastFromError(r.error));
           return;
         }
-        setToast({ text: "Usunięto zastępcę z urlopu.", tone: "success" });
+        setToast(VACATION_TOAST.removedDelegateFromVacation);
       }
       setDeleteTarget(null);
       await refreshAll();
@@ -221,7 +222,7 @@ export function VacationPanel({
       />
 
       <div className={cn(salesChromeInsetClass, "py-3")}>
-        {toast ? <Toast message={toast.text} tone={toast.tone} onDismiss={dismiss} /> : null}
+        {toast ? <NoticeToast notice={toast} onDismiss={dismiss} /> : null}
 
         {/* Formularz dodawania urlopu */}
         {vacationFormOpen && canEdit ? (

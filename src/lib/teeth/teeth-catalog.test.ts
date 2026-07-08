@@ -225,5 +225,14 @@ describe("teeth-catalog", () => {
         shouldClearTeethDetailsOnCatalogSync("ivoclar_vivodent_dcl", "wiedent_estetic"),
       ).toBe(true);
     });
+
+    it("does not clear for ivostar/gnathostar cross-line pair", () => {
+      expect(
+        shouldClearTeethDetailsOnCatalogSync("ivoclar_ivostar", "ivoclar_gnathostar"),
+      ).toBe(false);
+      expect(
+        shouldClearTeethDetailsOnCatalogSync("ivoclar_gnathostar", "ivoclar_ivostar"),
+      ).toBe(false);
+    });
   });
 });

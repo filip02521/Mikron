@@ -25,6 +25,8 @@ export function createTestMyOrderLine(overrides: Partial<MyOrderLine> = {}): MyO
     clientKhId: null,
     requestNote: null,
     procurementCancelNote: null,
+    isTeeth: false,
+    lineAcknowledgeMode: "none",
     ...overrides,
   };
 }
@@ -50,6 +52,8 @@ export function createTestMyOrderRow(overrides: Partial<MyOrderRow> = {}): MyOrd
     acknowledgeMode: "none",
     pickupPendingCount: 0,
     pickupPendingIds: [],
+    pickupTeethPendingIds: [],
+    pickupShelfPendingIds: [],
     pickupReadyTotal: 0,
     pickupAcknowledgedCount: 0,
     canCancelBySales: false,
@@ -67,6 +71,9 @@ export function createTestMyOrderRow(overrides: Partial<MyOrderRow> = {}): MyOrd
     subline: null,
     requestNote: null,
     procurementCancelNote: null,
+    productLaneKind: "regular",
+    submissionGroupId: null,
+    submissionGroupSplitHint: null,
     ...overrides,
   };
 }

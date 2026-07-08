@@ -25,6 +25,8 @@ import { ZdEtaPendingMeta } from "@/components/orders/ZdEtaPendingMeta";
 import { ZdEtaNoMatchMeta } from "@/components/orders/ZdEtaNoMatchMeta";
 import { resolveMyOrderHistoryDeliveryEstimate } from "@/lib/orders/delivery-date-meta-label";
 import { MyOrderKindBadge } from "@/components/moje/MyOrderKindBadge";
+import { MyOrderProductLaneBadge } from "@/components/moje/MyOrderProductLaneBadge";
+import { MyOrderSubmissionGroupCallout } from "@/components/moje/MyOrderSubmissionGroupCallout";
 import { MyOrderRequestProgressBar } from "@/components/moje/MyOrderRequestProgressBar";
 import {
   deriveMyOrderRequestProgress,
@@ -101,6 +103,7 @@ import {
   myOrderPickupAckLineLabel,
   myOrderPickupAckLineTitle,
   myOrderPickupAckTitle,
+  myOrderMixedPickupBulkHint,
   type MyOrderPickupAckMode,
 } from "@/lib/orders/my-order-pickup-ack-copy";
 import { SearchHighlightText } from "@/components/moje/SearchHighlightText";
@@ -411,6 +414,7 @@ export const MyOrderShipmentCard = memo(function MyOrderShipmentCard({
   const needsAck =
     row.acknowledgeMode === "pickup" ||
     row.acknowledgeMode === "teeth_handover" ||
+    row.acknowledgeMode === "mixed_pickup" ||
     row.acknowledgeMode === "availability";
   const needsCancelAck =
     row.acknowledgeMode === "cancelled" && row.cancelledAckOrderIds.length > 0;
@@ -438,12 +442,17 @@ export const MyOrderShipmentCard = memo(function MyOrderShipmentCard({
       ? "availability"
       : row.acknowledgeMode === "teeth_handover"
         ? "teeth_handover"
-        : "pickup";
-  const compactPickup = ackMode === "pickup" || ackMode === "teeth_handover";
-  const pickupAckLabel = myOrderPickupAckLabel(row.pickupPendingIds.length, ackMode, {
-    compact: compactPickup,
-  });
-  const pickupAckTitle = myOrderPickupAckTitle(row.pickupPendingIds.length, ackMode);
+        : row.acknowledgeMode === "mixed_pickup"
+          ? "pickup"
+          : "pickup";
+  const isMixedPickup = row.acknowledgeMode === "mixed_pickup";
+  const compactPickup = ackMode === "pickup" || ackMode === "teeth_handover" || isMixedPickup;
+  const pickupAckLabel = isMixedPickup
+    ? myOrderPickupAckLabel(row.pickupPendingIds.length, "pickup", { compact: compactPickup })
+    : myOrderPickupAckLabel(row.pickupPendingIds.length, ackMode, { compact: compactPickup });
+  const pickupAckTitle = isMixedPickup
+    ? "Potwierdź odbiór zębów i towaru z regału — osobno dla każdego typu"
+    : myOrderPickupAckTitle(row.pickupPendingIds.length, ackMode);
   const shelfPickup = row.acknowledgeMode === "pickup";
 
   const showSinglePickup =
@@ -471,7 +480,8 @@ export const MyOrderShipmentCard = memo(function MyOrderShipmentCard({
   const isAction =
     headlineTone === "action" ||
     row.acknowledgeMode === "pickup" ||
-    row.acknowledgeMode === "teeth_handover";
+    row.acknowledgeMode === "teeth_handover" ||
+    row.acknowledgeMode === "mixed_pickup";
   const isUrgent = headlineTone === "warning";
   const isDismiss = headlineTone === "dismiss";
   const isStock = headlineTone === "stock";
@@ -705,6 +715,7 @@ export const MyOrderShipmentCard = memo(function MyOrderShipmentCard({
     !expanded &&
     (row.acknowledgeMode === "pickup" ||
       row.acknowledgeMode === "teeth_handover" ||
+      row.acknowledgeMode === "mixed_pickup" ||
       row.acknowledgeMode === "availability") &&
     needsAck;
   const compactCancelAck =
@@ -785,7 +796,12 @@ export const MyOrderShipmentCard = memo(function MyOrderShipmentCard({
     Boolean(row.progressLabel?.trim()) &&
     !progressLabelInSubline(row);
 
-  const lineItemProps = (line: MyOrderLine) => ({
+  const lineItemProps = (line: MyOrderLine) => {
+    const lineAckMode =
+      line.lineAcknowledgeMode && line.lineAcknowledgeMode !== "none"
+        ? line.lineAcknowledgeMode
+        : ackMode;
+    return {
     showProgress,
     emphasizeStock,
     compact: true,
@@ -803,10 +819,19 @@ export const MyOrderShipmentCard = memo(function MyOrderShipmentCard({
     informacjaAck: isInformacjaAck,
     tourPreview,
     pending,
-    acknowledgeLineLabel: myOrderPickupAckLineLabel(),
-    acknowledgeLineTitle: myOrderPickupAckLineTitle(line.product, ackMode),
+    acknowledgeLineLabel:
+      lineAckMode === "teeth_handover"
+        ? "Potwierdź zęby"
+        : lineAckMode === "pickup"
+          ? myOrderPickupAckLineLabel()
+          : myOrderPickupAckLineLabel(),
+    acknowledgeLineTitle: myOrderPickupAckLineTitle(line.product, lineAckMode),
     onAcknowledgePickup: showGroupPickup
-      ? (id: string) => onAcknowledgePickup([id], shelfPickup)
+      ? (id: string) => {
+          const target = row.lines.find((entry) => entry.id === id);
+          const shelf = target?.lineAcknowledgeMode === "pickup";
+          onAcknowledgePickup([id], shelf);
+        }
       : undefined,
     canEditClient,
     onSaveClient: onSaveClient
@@ -822,7 +847,8 @@ export const MyOrderShipmentCard = memo(function MyOrderShipmentCard({
           setClientEditorLineId(line.id);
         }
       : undefined,
-  });
+    };
+  };
 
   const headlineClass = cn(
     salesTypography.rowBody,
@@ -899,6 +925,11 @@ export const MyOrderShipmentCard = memo(function MyOrderShipmentCard({
           action={bannerAction}
         />
       ) : null}
+      {row.submissionGroupSplitHint ? (
+        <div className="px-2 pt-1 sm:px-3">
+          <MyOrderSubmissionGroupCallout hint={row.submissionGroupSplitHint} />
+        </div>
+      ) : null}
       <div className={cn("px-2 py-1.5 sm:px-3 sm:py-2", mojeQueueRowLayoutClass)}>
         <div className={mojeQueueRowMainClass}>
         <button
@@ -963,11 +994,7 @@ export const MyOrderShipmentCard = memo(function MyOrderShipmentCard({
                   </span>
                 ) : null}
                 <MyOrderKindBadge row={row} listKind={listKind} />
-                {row.isTeeth ? (
-                  <span className="shrink-0 rounded bg-emerald-100 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-emerald-800">
-                    Zęby
-                  </span>
-                ) : null}
+                <MyOrderProductLaneBadge laneKind={row.productLaneKind} />
               </div>
             ) : (
               <div className="flex min-w-0 items-baseline gap-2">
@@ -982,11 +1009,7 @@ export const MyOrderShipmentCard = memo(function MyOrderShipmentCard({
                   </span>
                 ) : null}
                 <MyOrderKindBadge row={row} listKind={listKind} />
-                {row.isTeeth ? (
-                  <span className="shrink-0 rounded bg-emerald-100 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-emerald-800">
-                    Zęby
-                  </span>
-                ) : null}
+                <MyOrderProductLaneBadge laneKind={row.productLaneKind} />
               </div>
             )}
             {suppressSharedHeadline ? (
@@ -1271,7 +1294,12 @@ export const MyOrderShipmentCard = memo(function MyOrderShipmentCard({
                 <div className={mojeShipmentBulkPickupFooterClass}>
                   <div className="flex flex-col gap-2.5 sm:flex-row sm:items-center sm:justify-between">
                     <p className="text-xs leading-relaxed text-slate-600 sm:max-w-[60%]">
-                      {row.pickupPendingIds.length === 1 ? (
+                      {isMixedPickup ? (
+                        myOrderMixedPickupBulkHint(
+                          row.pickupTeethPendingIds.length,
+                          row.pickupShelfPendingIds.length
+                        )
+                      ) : row.pickupPendingIds.length === 1 ? (
                         <>Potwierdź odbiór pozycji oznaczonej powyżej.</>
                       ) : (
                         <>
@@ -1283,6 +1311,44 @@ export const MyOrderShipmentCard = memo(function MyOrderShipmentCard({
                         </>
                       )}
                     </p>
+                    {isMixedPickup ? (
+                      <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:justify-end">
+                        {row.pickupTeethPendingIds.length > 0 ? (
+                          <MyOrderAckButton
+                            variant="bulkPickup"
+                            disabled={pending}
+                            preview={tourPreview}
+                            title={myOrderPickupAckTitle(row.pickupTeethPendingIds.length, "teeth_handover")}
+                            ariaLabel={myOrderPickupAckTitle(row.pickupTeethPendingIds.length, "teeth_handover")}
+                            onClick={() =>
+                              onAcknowledgePickup(row.pickupTeethPendingIds, false)
+                            }
+                          >
+                            {myOrderPickupAckLabel(
+                              row.pickupTeethPendingIds.length,
+                              "teeth_handover"
+                            )}
+                          </MyOrderAckButton>
+                        ) : null}
+                        {row.pickupShelfPendingIds.length > 0 ? (
+                          <MyOrderAckButton
+                            variant="bulkPickup"
+                            disabled={pending}
+                            preview={tourPreview}
+                            title={myOrderPickupAckTitle(row.pickupShelfPendingIds.length, "pickup")}
+                            ariaLabel={myOrderPickupAckTitle(row.pickupShelfPendingIds.length, "pickup")}
+                            onClick={() =>
+                              onAcknowledgePickup(row.pickupShelfPendingIds, true)
+                            }
+                          >
+                            {myOrderPickupAckLabel(
+                              row.pickupShelfPendingIds.length,
+                              "pickup"
+                            )}
+                          </MyOrderAckButton>
+                        ) : null}
+                      </div>
+                    ) : (
                     <MyOrderAckButton
                       variant="bulkPickup"
                       disabled={pending}
@@ -1293,6 +1359,7 @@ export const MyOrderShipmentCard = memo(function MyOrderShipmentCard({
                     >
                       {myOrderPickupAckAllLabel()}
                     </MyOrderAckButton>
+                    )}
                   </div>
                 </div>
               ) : null}

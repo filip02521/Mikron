@@ -54,6 +54,17 @@ export const TEETH_READINESS_SUPPLIER_DETAIL = "Wybrany — trafia do panelu zę
 export const TEETH_READINESS_READY_SUBLINE =
   "Kompletne — trafi do kolejki panelu zębów.";
 
+export const MIXED_PROCUREMENT_READINESS_SUBLINE =
+  "Kompletne — zęby trafią do panelu zębów, pozostałe pozycje do panelu dziennego.";
+
+export const MIXED_PROCUREMENT_REQUEST_BANNER_TITLE = "Prośba na dwa tory realizacji";
+export const MIXED_PROCUREMENT_REQUEST_BANNER =
+  "Ta prośba zawiera zęby syntetyczne i inny towar. Zęby realizuje panel /zeby, resztę panel dzienny — postęp śledź w obu miejscach lub w rozwinięciu karty poniżej.";
+
+export const MIXED_PROCUREMENT_EDIT_BANNER_TITLE = "Edycja prośby mieszanej";
+export const MIXED_PROCUREMENT_EDIT_BANNER =
+  "Zmiany dotyczą wszystkich linii. Zęby trafią do panelu zębów, pozostałe produkty do panelu dziennego.";
+
 export const TEETH_SALES_STATUS_NEW_TITLE = "Przed zamówieniem";
 export const TEETH_SALES_STATUS_NEW_DETAIL =
   "Prośba jest u działu dostaw. Złożymy zamówienie u dostawcy zębów.";

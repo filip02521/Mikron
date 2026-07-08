@@ -74,13 +74,14 @@ describe("repairIncompleteIndividualOrders", () => {
 });
 
 describe("repairTeethOrdersFromVerification", () => {
-  it("przywraca zęby ze statusu Weryfikacja do Nowe", async () => {
+  it("przywraca zęby ze statusu Weryfikacja do Nowe (pomija OCR pending)", async () => {
     const inMock = vi.fn().mockResolvedValue({ error: null });
     const updateMock = vi.fn().mockReturnValue({ in: inMock });
     const selectChain = {
       eq: vi.fn(),
     };
     selectChain.eq
+      .mockReturnValueOnce(selectChain)
       .mockReturnValueOnce(selectChain)
       .mockResolvedValueOnce({ data: [{ id: "teeth-v1" }], error: null });
     const supabase = {
@@ -96,5 +97,6 @@ describe("repairTeethOrdersFromVerification", () => {
     expect(fixed).toBe(1);
     expect(updateMock).toHaveBeenCalledWith({ status: "Nowe" });
     expect(inMock).toHaveBeenCalledWith("id", ["teeth-v1"]);
+    expect(selectChain.eq).toHaveBeenCalledWith("teeth_ocr_pending", false);
   });
 });

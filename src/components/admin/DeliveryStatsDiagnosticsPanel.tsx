@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useMemo, useState, useTransition } from "react";
+import type { ToastNotice } from "@/lib/ui/notice-copy";
 import {
   actionFetchDeliveryStatsDiagnostics,
   actionRecalculateStats,
@@ -15,7 +16,7 @@ import { HelpPopover } from "@/components/ui/HelpPopover";
 import { HelpBlock } from "@/components/ui/HelpBlock";
 import { PanelSummaryMetric } from "@/components/ui/PanelSummaryMetric";
 import { Spinner } from "@/components/ui/Spinner";
-import { Toast } from "@/components/ui/Toast";
+import { NoticeToast } from "@/components/ui/NoticeToast";
 import { cn } from "@/lib/cn";
 import {
   deliveryStatsHealthLabel,
@@ -269,7 +270,7 @@ export function DeliveryStatsDiagnosticsPanel({
   const [healthFilter, setHealthFilter] = useState<HealthFilter>("all");
   const [activeOnly, setActiveOnly] = useState(false);
   const [expandedId, setExpandedId] = useState<string | null>(null);
-  const [toast, setToast] = useState<{ text: string; tone: "success" | "error" } | null>(null);
+  const [toast, setToast] = useState<ToastNotice | null>(null);
   const [refreshing, startRefresh] = useTransition();
 
   const dismissToast = useCallback(() => setToast(null), []);
@@ -333,7 +334,7 @@ export function DeliveryStatsDiagnosticsPanel({
 
   return (
     <>
-      {toast ? <Toast message={toast.text} tone={toast.tone} onDismiss={dismissToast} /> : null}
+      {toast ? <NoticeToast notice={toast} onDismiss={dismissToast} /> : null}
 
       <Card padding={false} className="overflow-hidden">
         <CardHeader

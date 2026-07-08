@@ -6,7 +6,14 @@ import { useTeethProductInfo } from "@/components/layout/TeethExemptContext";
 import { plPozycja, plZaznaczonaPozycja } from "@/lib/ui/polish-plurals";
 import { Button } from "@/components/ui/Button";
 import { ModalShell } from "@/components/ui/ModalShell";
-import { Toast } from "@/components/ui/Toast";
+import { NoticeToast } from "@/components/ui/NoticeToast";
+import {
+  TEETH_PANEL_TOAST,
+  teethMarkOrderedToast,
+  toastFromError,
+  toastSuccess,
+  type ToastNotice,
+} from "@/lib/ui/notice-copy";
 import { Input } from "@/components/ui/Field";
 import { IconTooth, IconCircleCheck } from "@/components/icons/StrokeIcons";
 import type { TeethQueueGroup, TeethQueueItem, TeethPositionSelection } from "@/lib/data/teeth-queue";
@@ -98,12 +105,13 @@ export function TeethPanelClient({
   }, [router, tab]);
 
   const [pending, setPending] = useState(false);
-  const [toast, setToast] = useState<{ message: string; tone: "success" | "error" } | null>(null);
+  const [toast, setToast] = useState<ToastNotice | null>(null);
   const [deliveryDateOpen, setDeliveryDateOpen] = useState(false);
   const [deliveryDateValue, setDeliveryDateValue] = useState("");
   const [filters, setFilters] = useState<TeethPanelFilters>(EMPTY_TEETH_PANEL_FILTERS);
   const [markConfirmOpen, setMarkConfirmOpen] = useState(false);
   const [markAnalysis, setMarkAnalysis] = useState<TeethMarkOrderedAnalysis | null>(null);
+  const [markSelections, setMarkSelections] = useState<TeethPositionSelection[]>([]);
   const [markSupplierName, setMarkSupplierName] = useState<string | null>(null);
   const [historyGroupsForFilters, setHistoryGroupsForFilters] = useState<TeethQueueGroup[]>([]);
 
@@ -250,6 +258,7 @@ export function TeethPanelClient({
       const positionCount = selections.reduce((sum, s) => sum + s.positions.length, 0);
       const analysis = analyzeTeethMarkOrdered(orderIds, ordersById, readinessCtx);
       analysis.selectedPositionCount = positionCount;
+      setMarkSelections(selections);
       setMarkAnalysis(analysis);
       setMarkSupplierName(supplierName ?? null);
       setMarkConfirmOpen(true);
@@ -259,51 +268,36 @@ export function TeethPanelClient({
 
   const handleConfirmMarkOrdered = useCallback(async () => {
     setMarkConfirmOpen(false);
-    const selections: TeethPositionSelection[] = [];
-    for (const [orderId, positions] of positionSelection) {
-      if (positions.size > 0) {
-        selections.push({ orderId, positions: Array.from(positions) });
-      }
-    }
+    const selections = markSelections.filter((s) => s.positions.length > 0);
     if (selections.length === 0) return;
     setPending(true);
     try {
       const result = await actionMarkTeethPositionsOrdered(selections);
       if (result.updated === 0) {
-        setToast({
-          message: "Nie udało się oznaczyć pozycji — być może zostały już zamówione.",
-          tone: "error",
-        });
+        setToast(TEETH_PANEL_TOAST.markFailed);
       } else {
-        const skipped = (markAnalysis?.withoutSpecIds.length ?? 0);
-        const completed = result.ordersCompleted > 0
-          ? ` — ${result.ordersCompleted} ${result.ordersCompleted === 1 ? "zamówienie ukończone" : "zamówień ukończonych"}`
-          : "";
-        setToast({
-          message:
-            skipped > 0
-              ? `Oznaczono ${result.updated} ${plPozycja(result.updated)}${completed} — ${skipped} ${skipped === 1 ? "zamówienie pominięto" : "zamówień pominięto"} (niekompletna lista zębów).`
-              : result.updated === 1
-                ? `1 ząb oznaczony jako zamówiony${completed}`
-                : `${result.updated} ${plPozycja(result.updated)} oznaczonych jako zamówione${completed}`,
-          tone: "success",
-        });
+        setToast(
+          teethMarkOrderedToast({
+            updated: result.updated,
+            ordersCompleted: result.ordersCompleted,
+            skipped: markAnalysis?.withoutSpecIds.length ?? 0,
+            plPozycja,
+          }),
+        );
         setPositionSelection(new Map());
         reloadHistoryFilterOptions();
         void reloadQueue();
       }
       router.refresh();
     } catch (e) {
-      setToast({
-        message: e instanceof Error ? e.message : "Błąd oznaczania zamówionych",
-        tone: "error",
-      });
+      setToast(toastFromError(e instanceof Error ? e.message : undefined, TEETH_PANEL_TOAST.markError.text));
     } finally {
       setPending(false);
       setMarkAnalysis(null);
+      setMarkSelections([]);
       setMarkSupplierName(null);
     }
-  }, [positionSelection, markAnalysis, router, reloadHistoryFilterOptions, reloadQueue]);
+  }, [markSelections, markAnalysis, router, reloadHistoryFilterOptions, reloadQueue]);
 
   const handleSetDeliveryDate = useCallback(async () => {
     setDeliveryDateOpen(false);
@@ -312,21 +306,12 @@ export function TeethPanelClient({
     setPending(true);
     try {
       const result = await actionOverrideTeethDeliveryDate(selectedOrderIds, deliveryDateValue);
-      setToast({
-        message:
-          result.updated === 1
-            ? "Ustawiono datę dostawy dla 1 pozycji"
-            : `Ustawiono datę dostawy dla ${result.updated} ${plPozycja(result.updated)}`,
-        tone: "success",
-      });
+      setToast(TEETH_PANEL_TOAST.deliveryDateSet(result.updated, plPozycja));
       setPositionSelection(new Map());
       setDeliveryDateValue("");
       router.refresh();
     } catch (e) {
-      setToast({
-        message: e instanceof Error ? e.message : "Błąd ustawiania daty dostawy",
-        tone: "error",
-      });
+      setToast(toastFromError(e instanceof Error ? e.message : undefined, TEETH_PANEL_TOAST.deliveryDateSetFailed.text));
     } finally {
       setPending(false);
     }
@@ -342,16 +327,10 @@ export function TeethPanelClient({
     setPending(true);
     try {
       await actionMarkTeethScheduleOrdered(supplierId);
-      setToast({
-        message: `Oznaczono jako zamówione u dostawcy ${supplierName} — harmonogram przesunięty na następny termin`,
-        tone: "success",
-      });
+      setToast(TEETH_PANEL_TOAST.scheduleMarked(supplierName));
       router.refresh();
     } catch (e) {
-      setToast({
-        message: e instanceof Error ? e.message : "Błąd oznaczania zamówienia",
-        tone: "error",
-      });
+      setToast(toastFromError(e instanceof Error ? e.message : undefined, TEETH_PANEL_TOAST.scheduleMarkFailed.text));
     } finally {
       setPending(false);
     }
@@ -384,11 +363,7 @@ export function TeethPanelClient({
         }
         beforeCard={
           toast ? (
-            <Toast
-              message={toast.message}
-              tone={toast.tone}
-              onDismiss={() => setToast(null)}
-            />
+            <NoticeToast notice={toast} onDismiss={() => setToast(null)} />
           ) : null
         }
       >
@@ -430,10 +405,7 @@ export function TeethPanelClient({
                 onSetDeliveryDate={() => setDeliveryDateOpen(true)}
                 onMarkScheduleOrdered={handleMarkScheduleOrdered}
                 onEditSaved={(message) => {
-                  setToast({
-                    message: message ?? "Zapisano listę zębów.",
-                    tone: "success",
-                  });
+                  setToast(toastSuccess("Zapisano", message ?? "Lista zębów została zaktualizowana."));
                   void reloadQueue();
                 }}
               />
@@ -445,12 +417,16 @@ export function TeethPanelClient({
               groups={filteredGroups}
               pending={pending}
               onApproveDone={(message, tone) => {
-                setToast({ message, tone });
+                setToast(
+                  tone === "error"
+                    ? toastFromError(message)
+                    : toastSuccess("Zapisano", message),
+                );
                 void reloadQueue();
               }}
               onEditSaved={(message) => {
                 if (message) {
-                  setToast({ message, tone: "success" });
+                  setToast(toastSuccess("Zapisano", message));
                 }
                 void reloadQueue();
               }}
@@ -485,6 +461,7 @@ export function TeethPanelClient({
         onCancel={() => {
           setMarkConfirmOpen(false);
           setMarkAnalysis(null);
+          setMarkSelections([]);
           setMarkSupplierName(null);
         }}
       />

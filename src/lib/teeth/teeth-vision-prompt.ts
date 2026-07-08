@@ -69,7 +69,7 @@ export function buildTeethVisionPrompt(catalog?: TeethCatalogRef): string {
   parts.push(`\n## Typowe wzorce zapisu na kartkach zamówień:`);
   parts.push(`Klienci zapisują zamówienia ręcznie na różne sposoby. Poniżej opisane są najczęstsze wzorce — rozpoznaj, który wzorzec występuje na zdjęciu i zastosuj go konsekwentnie dla całej kartki lub sekcji.`);
   parts.push(`\n**A. Nagłówek koloru dla sekcji.** Kolor (np. "A2", "A3", "B2") bywa zapisany jako nagłówek nad blokiem pozycji i obowiązuje dla WSZYSTKICH linii poniżej, aż do napotkania kolejnego nagłówka koloru. Może być kilka kolumn obok siebie należących do tego samego nagłówka koloru.`);
-  parts.push(`\n**B. Format linii pozycji.** Zwykle to "FASON x ILOŚĆ" lub "FASON × ILOŚĆ" (znak "x"/"×" przed liczbą sztuk na końcu linii). Czasem separatorem jest myślnik "-" zamiast "x". Ilość zawsze jest liczbą na końcu linii.`);
+  parts.push(`\n**B. Format linii pozycji.** Zwykle to "FASON x ILOŚĆ" lub "FASON × ILOŚĆ" (znak "x"/"×" przed liczbą sztuk). **WAŻNE: brak "x" przy fasonie = count=1** — klienci prawie nigdy nie zapisują "x1" dla pojedynczej sztuki; sam numer fasonu (np. "42", "15", "84↑") oznacza dokładnie jedną sztukę. Sufiks "x2", "x3", "x4" itd. pojawia się TYLKO gdy ilość jest większa niż 1. Czasem separatorem jest myślnik "-" zamiast "x".`);
   parts.push(`\n**C. Prefiks "0/" i "1/" przy fasonie.** W niektórych liniach (np. Major Super Lux) fasony przednie dolne mają prefiks "0/" (np. "0/8" = fason "0/8", ZĄB PRZEDNI DOLNY, jaw=null), a niektóre fasony przednie górne i boczne mają prefiks "1/" (np. "1/40" = fason przedni górny, "1/60" = fason boczny). Prefiks sam w sobie NIE decyduje jednoznacznie o kind — zawsze dopasuj DOKŁADNY zapis fasonu (z prefiksem) do listy fasonów przednich/bocznych danej linii podanej wyżej i na tej podstawie ustal kind.`);
   parts.push(`\n**D. Sam numer bez prefiksu.** Niektóre fasony (przednie i boczne) w danej linii nie mają żadnego prefiksu — to normalne, dopasuj numer do właściwej listy (przedniej lub bocznej) dla tej linii.`);
   parts.push(`\n**E. Fasony boczne "N-cusp" — klienci często pomijają literę "N".** Jeśli fason boczny w katalogu kończy się na "N" (np. "70N", "76N", "77N", "79N"), klienci czasem zapisują go bez tej litery (samo "70", "76" itd.). Jeśli widzisz sam numer ze strzałką, a w katalogu bocznym dla tej linii istnieje odpowiadający fason z "N" na końcu — zwróć PEŁNY fason z katalogu (z literą "N"), nie sam numer.`);
@@ -81,7 +81,15 @@ export function buildTeethVisionPrompt(catalog?: TeethCatalogRef): string {
   parts.push(`\n**K. Kilka kolorów dla jednej tabeli/listy.** Jeśli po lewej stronie przed tabelą lub listą wypisano kilka kolorów naraz (np. "A2" i "A3" połączone klamrą/nawiasem lub napisane jedno pod drugim bez osobnych list ilości), oznacza to, że CAŁA tabela/lista fasonów i ilości poniżej dotyczy KAŻDEGO z tych kolorów z osobna. Wygeneruj powtórzone pozycje (te same fasony, te same ilości) dla każdego wymienionego koloru.`);
   parts.push(`\n**L. Notatki niebędące pozycjami zębów.** Kartki czasem zawierają dodatkowe uwagi tekstowe niezwiązane z konkretnym zamówieniem zębów, np. o akcesoriach/narzędziach (np. "łopatka do cementu"), ogólne komentarze (np. "pozostałe kolory/fasony podstawowe zamawiamy na bieżąco"). Takie linie POMIŃ całkowicie — nie twórz dla nich pozycji w items.`);
   parts.push(`\n**M. UWAGA: kolor "A3" vs "A3.5" — łatwo pomylić.** To DWA RÓŻNE kolory w katalogu. "A3.5" bywa zapisywany z przecinkiem zamiast kropką ("A3,5") lub z małą, doklejoną "5" tuż przy "A3" — sprawdź UWAŻNIE, czy zaraz po "A3" nie ma dodatkowej cyfry "5" (oddzielonej kropką, przecinkiem, ukośnikiem albo po prostu blisko dopisanej). Jeśli tej dodatkowej "5" nie ma — to zwykłe "A3". Nie zgaduj — jeśli nie masz pewności, wybierz wariant lepiej pasujący do reszty kolorów widocznych na kartce (np. jeśli klient konsekwentnie używa pełnej skali z ".5", to prawdopodobnie tu też).`);
-  parts.push(`\n**N. UWAGA: Ivostar Chromascop — klienci często piszą tylko sufiks.** Dla Ivostar Chromascop (np. "140/1C", "120/1A", "210/2B") klienci często zapisują tylko sufiks po ukośniku (np. "1c", "1A", "2B") bez prefixu liczbowego. Jeśli widzisz sufiks pasujący do katalogu Chromascop (np. "1C", "1A", "2A", "2B", "1D", "1E", "2C", "3A", "5B", "2E", "3E", "4A", "6B", "4B", "6C", "6D", "4C", "3C", "4D") — dopasuj go do PEŁNEGO koloru z katalogu (z prefixem). Jeśli sufiks pasuje do kilku prefixów (np. "2C" występuje w "240/2C" i "520/4C") — wybierz ten, który lepiej pasuje do kontekstu (np. jeśli są inne kolory z tej samej grupy prefixów na kartce).`);
+  parts.push(`\n**N. UWAGA: Ivostar Chromascop — klienci często piszą tylko sufiks.** Dla Ivostar Chromascop (np. "140/1C", "120/1A", "210/2B") klienci często zapisują tylko sufiks po ukośniku (np. "1c", "1A", "2B") bez prefixu liczbowego — albo sam numer "01" zamiast "110/01". Jeśli widzisz sufiks pasujący do katalogu Chromascop (np. "01", "1C", "1A", "2A", "2B", "1D", "1E", "2C", "3A", "5B", "2E", "3E", "4A", "6B", "4B", "6C", "6D", "4C", "3C", "4D") — dopasuj go do PEŁNEGO koloru z katalogu (z prefixem). Jeśli sufiks pasuje do kilku prefixów (np. "2C" występuje w "240/2C" i "520/4C") — wybierz ten, który lepiej pasuje do kontekstu (np. jeśli są inne kolory z tej samej grupy prefixów na kartce).`);
+  parts.push(`\n**P. Ivostar + Gnathostar — kartka „kolor na początku wiersza, potem fasony”.** Bardzo częsty format odręczny (Mikran):`);
+  parts.push(`- **Pierwszy token w wierszu to KOLOR** (np. "01", "1A", "2A", "1C", "2B", "1D", "4A", "6B", "4B", "6C", "3C", "4D"). Wszystkie fasony w tym wierszu (i w kontynuacji w następnym wierszu BEZ nowego koloru) należą do tego koloru.`);
+  parts.push(`- **Kolor dopiero potem fasony** — nie myl kolejności. Przykład: "1C 03 31x2 42 84↑x4 84↓" = kolor 1C, potem fasony 03, 31 (×2), 42, 84 góra (×4), 84 dół (×1).`);
+  parts.push(`- **count=1 bez zapisu:** sam fason "42", "15", "03", "80↕" BEZ "x1" = dokładnie **count: 1**. "31x2" = count: 2. "84↑x4" = count: 4.`);
+  parts.push(`- **Przody Ivostar** (productLine: "ivoclar_ivostar", kind: "anterior", jaw: null): fasony 2-cyfrowe z katalogu przednich, np. "03", "14", "15", "31", "42", "45" — zwykle BEZ strzałek.`);
+  parts.push(`- **Boki Gnathostar** (productLine: "ivoclar_gnathostar", kind: "posterior"): fasony "80", "82", "84", "86", "88" — na kartce często BEZ litery "D" (w wyniku użyj "D80", "D84" itd.). Strzałki: ↑=jaw "upper", ↓=jaw "lower", ↕=OBIE szczęki → **dwie pozycje** (upper i lower) z tą samą ilością.`);
+  parts.push(`- **Kontynuacja wiersza:** jeśli pod wierszem z kolorem (np. "1A 31x2 42 14 15x2") następna linia ma same fasony (np. "↕84 80↕") — nadal stosuj kolor "1A" z wiersza powyżej.`);
+  parts.push(`- **Przykład pełnego wiersza:** "01 42 15 84↕ 80↕" → kolor 110/01; pozycje: 42×1 przód; 15×1 przód; 84 góra×1 + 84 dół×1 bok; 80 góra×1 + 80 dół×1 bok.`);
   parts.push(`\n**O. UWAGA: cyfry "8" i "9" są często mylone w piśmie odręcznym.** Dolna pętla cyfry "8" jest w pełni zamknięta, a "9" ma prostą "nóżkę" bez zamkniętej dolnej pętli. Przy odczytywaniu KAŻDEGO numeru fasonu i KAŻDEJ ilości zawierającej cyfrę 8 lub 9 — przyjrzyj się dokładnie kształtowi tej cyfry zanim ją zapiszesz. Pomyłka między 8 a 9 jest jednym z najczęstszych błędów odczytu — nie spiesz się z tą cyfrą. JEŚLI widzisz dwie sąsiednie wartości, które wyglądają identycznie lub prawie identycznie (np. dwa fasony zapisane jako "48, 48") — NIE zakładaj automatycznie, że to zamierzony duplikat. Przyjrzyj się KAŻDEJ z osobna od nowa — to częsty przypadek, gdzie druga wartość to w rzeczywistości INNA liczba (np. "48" i "49"), tylko napisana podobnie. Porównaj oba kształty cyfra po cyfrze zamiast zakładać, że druga jest taka sama jak pierwsza.`);
 
   parts.push(`\n## Zasady odczytu:`);
@@ -90,7 +98,7 @@ export function buildTeethVisionPrompt(catalog?: TeethCatalogRef): string {
   parts.push(`3. color — obowiązkowe, musi być dokładnie z listy kolorów dla danej linii. Nie wymyślaj nowych.`);
   parts.push(`4. mould — musi być z listy fasonów dla danej linii i kind. Jeśli brak fasonów lub fason opcjonalny — ustaw null.`);
   parts.push(`5. jaw — obowiązkowe gdy kind="posterior": "upper" (góra) lub "lower" (dół). Dla kind="anterior" ZAWSZE ustaw jaw=null — przednie zęby nie mają szczęki.`);
-  parts.push(`6. count — liczba sztuk tej samej pozycji (positive integer, min 1, max 200).`);
+  parts.push(`6. count — liczba sztuk tej samej pozycji (positive integer, min 1, max 200). **Jeśli przy fasonie nie ma "xN" — ustaw count=1.**`);
   parts.push(`7. Nie wymyślaj danych — odczytaj tylko to, co jest widoczne na zdjęciu.`);
   parts.push(`8. Jeśli pozycja jest nieczytelna lub niepewna — pomiń ją.`);
   parts.push(`9. Rozpoznaj linię produktu po nazwie na opakowaniu lub po znanych kolorach/fasonach.`);
@@ -184,10 +192,49 @@ export function resolveOcrMouldAndKind(
   productLine: TeethProductLine,
   rawMould: string,
   aiKind: TeethKind,
-): { kind: TeethKind; mould: string } | null {
+): { kind: TeethKind; mould: string; productLine?: TeethProductLine } | null {
   const trimmed = rawMould.trim();
   if (!trimmed) return null;
 
+  const mouldCandidates = expandOcrMouldCandidates(trimmed, productLine);
+  const productLinesToTry = ivoclarIvostarGnathostarPair(productLine)
+    ? (["ivoclar_ivostar", "ivoclar_gnathostar"] as const)
+    : ([productLine] as const);
+
+  for (const line of productLinesToTry) {
+    const kindsToTry: TeethKind[] =
+      line === productLine
+        ? aiKind === "anterior"
+          ? ["anterior", "posterior"]
+          : ["posterior", "anterior"]
+        : ["anterior", "posterior"];
+
+    for (const kind of kindsToTry) {
+      const list = toothMouldsForLine(line, kind);
+      for (const candidate of mouldCandidatesForLine(mouldCandidates, line, trimmed)) {
+        if (list.includes(candidate)) {
+          return {
+            kind,
+            mould: candidate,
+            ...(line !== productLine ? { productLine: line } : {}),
+          };
+        }
+      }
+    }
+  }
+
+  return null;
+}
+
+function ivoclarIvostarGnathostarPair(productLine: TeethProductLine): boolean {
+  return productLine === "ivoclar_ivostar" || productLine === "ivoclar_gnathostar";
+}
+
+/** Gnathostar: klienci piszą "84" zamiast "D84". */
+function expandOcrMouldCandidates(
+  trimmed: string,
+  productLine: TeethProductLine,
+): Set<string> {
   const candidates = new Set<string>([trimmed]);
   if (/n$/i.test(trimmed)) {
     candidates.add(trimmed.slice(0, -1));
@@ -195,14 +242,29 @@ export function resolveOcrMouldAndKind(
     candidates.add(`${trimmed}N`);
   }
 
-  const kindsToTry: TeethKind[] = aiKind === "anterior" ? ["anterior", "posterior"] : ["posterior", "anterior"];
-  for (const kind of kindsToTry) {
-    const list = toothMouldsForLine(productLine, kind);
-    for (const candidate of candidates) {
-      if (list.includes(candidate)) {
-        return { kind, mould: candidate };
-      }
+  if (ivoclarIvostarGnathostarPair(productLine)) {
+    const upper = trimmed.toUpperCase();
+    const gnathostarNums = ["80", "82", "84", "86", "88"] as const;
+    const bare = upper.replace(/^D/, "");
+    if (gnathostarNums.includes(bare as (typeof gnathostarNums)[number])) {
+      candidates.add(`D${bare}`);
+      candidates.add(bare);
     }
   }
-  return null;
+
+  return candidates;
+}
+
+function mouldCandidatesForLine(
+  base: Set<string>,
+  productLine: TeethProductLine,
+  trimmed: string,
+): string[] {
+  if (productLine !== "ivoclar_gnathostar") return [...base];
+  const out = new Set(base);
+  const upper = trimmed.toUpperCase().replace(/^D/, "");
+  if (/^\d{2}$/.test(upper)) {
+    out.add(`D${upper}`);
+  }
+  return [...out];
 }

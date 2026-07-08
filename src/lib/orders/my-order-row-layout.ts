@@ -23,6 +23,8 @@ export function myOrderCollapsedSubline(row: MyOrderRow): string | null {
   if (
     row.acknowledgeMode === "pickup" ||
     row.acknowledgeMode === "availability" ||
+    row.acknowledgeMode === "teeth_handover" ||
+    row.acknowledgeMode === "mixed_pickup" ||
     row.acknowledgeMode === "cancel_notice" ||
     row.acknowledgeMode === "cancelled"
   ) {

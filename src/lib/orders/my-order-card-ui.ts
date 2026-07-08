@@ -5,7 +5,12 @@ import type { MyOrderMetaField } from "@/lib/orders/my-order-sales-ui";
 
 /** Czy wiersz wymaga potwierdzenia od handlowca (odbiór, anulowanie, informacja). */
 export function rowNeedsSalesAcknowledgement(row: MyOrderRow): boolean {
-  if (row.acknowledgeMode === "pickup" || row.acknowledgeMode === "availability") {
+  if (
+    row.acknowledgeMode === "pickup" ||
+    row.acknowledgeMode === "availability" ||
+    row.acknowledgeMode === "teeth_handover" ||
+    row.acknowledgeMode === "mixed_pickup"
+  ) {
     return row.pickupPendingCount > 0;
   }
   if (row.acknowledgeMode === "cancelled") {
@@ -72,7 +77,12 @@ export function shouldShowExpandedOrderStatusBadge(
 export function shouldShowOrderStatusDetail(row: MyOrderRow): boolean {
   if (row.isArchive) return false;
   if (!row.statusDetail?.trim()) return false;
-  if (row.acknowledgeMode === "pickup" || row.acknowledgeMode === "availability") {
+  if (
+    row.acknowledgeMode === "pickup" ||
+    row.acknowledgeMode === "availability" ||
+    row.acknowledgeMode === "teeth_handover" ||
+    row.acknowledgeMode === "mixed_pickup"
+  ) {
     return false;
   }
   if (row.kind === "informacja" && row.statusTitle === "Dostępne") return false;

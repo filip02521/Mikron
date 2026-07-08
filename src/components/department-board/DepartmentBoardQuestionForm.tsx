@@ -78,6 +78,7 @@ function QuestionFormFields({
           value={title}
           onChange={(e) => onTitleChange(e.target.value)}
           placeholder={DEPARTMENT_BOARD_QUESTIONS_FORM.titlePlaceholder}
+          disabled={tourDemo || saving}
           className={cn(NOTATNIK_INPUT_CLASS, "h-9 w-full text-sm")}
         />
       </div>
@@ -99,6 +100,7 @@ function QuestionFormFields({
           value={body}
           onChange={(e) => onBodyChange(e.target.value)}
           placeholder={DEPARTMENT_BOARD_QUESTIONS_FORM.bodyPlaceholder}
+          disabled={tourDemo || saving}
           className={cn(NOTATNIK_TEXTAREA_CLASS, "w-full text-sm leading-relaxed")}
         />
       </div>

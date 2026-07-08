@@ -192,17 +192,24 @@ export function teethDualSavePreviewMessage(
 export function teethDualCommitToastMessage(
   added: Array<{ kind: TeethKind; product: string; quantity: number }>,
   updated: Array<{ kind: TeethKind; quantity: number }>,
-): string {
-  const sentences: string[] = [];
+): { title: string; text: string } | null {
+  const details: string[] = [];
   for (const item of added) {
     const label = TEETH_DUAL_KIND_LABELS[item.kind].toLowerCase();
-    sentences.push(
-      `Dodano pozycję (${label}) do prośby: ${item.product} · ${item.quantity} szt.`,
-    );
+    details.push(`Dodano ${label}: ${item.product} · ${item.quantity} szt.`);
   }
   for (const item of updated) {
     const label = TEETH_DUAL_KIND_LABELS[item.kind].toLowerCase();
-    sentences.push(`Zaktualizowano ${label}: ${item.quantity} szt.`);
+    details.push(`Zaktualizowano ${label}: ${item.quantity} szt.`);
   }
-  return sentences.join(" ");
+  if (details.length === 0) return null;
+
+  const title =
+    added.length > 0 && updated.length > 0
+      ? "Zapisano listę zębów"
+      : added.length > 0
+        ? "Dodano pozycje zębowe"
+        : "Zaktualizowano listę zębów";
+
+  return { title, text: details.join(" ") };
 }

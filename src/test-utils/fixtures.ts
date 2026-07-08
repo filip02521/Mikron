@@ -114,6 +114,8 @@ export function testMyOrderRow(
     acknowledgeMode: "none",
     pickupPendingCount: 0,
     pickupPendingIds: [],
+    pickupTeethPendingIds: [],
+    pickupShelfPendingIds: [],
     pickupReadyTotal: 0,
     pickupAcknowledgedCount: 0,
     canCancelBySales: false,

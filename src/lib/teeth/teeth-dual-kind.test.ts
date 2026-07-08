@@ -3,6 +3,7 @@ import { newProductLine } from "@/components/orders/request-product-lines";
 import {
   buildTeethRegistryIndex,
   commitDualKindTeethLines,
+  findTeethSiblingLineIndex,
   partitionTeethDetailsByKind,
   resolveTeethCatalogProduct,
   supportsDualKindBuilder,
@@ -304,5 +305,125 @@ describe("teeth-dual-kind", () => {
     expect(result.ok).toBe(false);
     if (result.ok) return;
     expect(result.error).toMatch(/limit/i);
+  });
+});
+
+const IVOSTAR_LINE = "ivoclar_ivostar" as const;
+const GNATHOSTAR_LINE = "ivoclar_gnathostar" as const;
+
+const ivoclarRegistryEntries: TeethRegistryEntry[] = [
+  {
+    twId: 301,
+    manufacturer: "ivoclar",
+    productLine: IVOSTAR_LINE,
+    kind: "anterior",
+    symbol: "IV-PRZ",
+    name: "Ivostar przednie",
+    plu: "3001",
+  },
+  {
+    twId: 302,
+    manufacturer: "ivoclar",
+    productLine: GNATHOSTAR_LINE,
+    kind: "posterior",
+    symbol: "IV-BOC",
+    name: "Gnathostar boczne",
+    plu: "3002",
+  },
+];
+
+const ivoclarIndex = buildTeethRegistryIndex(ivoclarRegistryEntries);
+
+function ivostarAnchorLine() {
+  return {
+    ...newProductLine(),
+    id: "ivostar-anchor",
+    product: "Ivostar przednie",
+    symbol: "IV-PRZ",
+    mikranCode: "3001",
+    subiektTwId: 301,
+    teethManufacturer: "ivoclar" as const,
+    teethProductLine: IVOSTAR_LINE,
+    teethKind: "anterior" as const,
+    clientName: "Jan Kowalski",
+  };
+}
+
+function ivostarAnteriorGroup(count: number) {
+  return createTeethGroupDraft({
+    color: "140/1C",
+    mould: "03",
+    jaw: "upper",
+    kind: "anterior",
+    count,
+  });
+}
+
+function gnathostarPosteriorGroup(count: number) {
+  return createTeethGroupDraft({
+    color: "140/1C",
+    mould: "D80",
+    jaw: "upper",
+    kind: "posterior",
+    count,
+  });
+}
+
+describe("teeth-dual-kind ivostar/gnathostar", () => {
+  it("supports dual kind across ivostar and gnathostar registry lines", () => {
+    expect(supportsDualKindBuilder(ivoclarIndex, IVOSTAR_LINE)).toBe(true);
+    expect(supportsDualKindBuilder(ivoclarIndex, GNATHOSTAR_LINE)).toBe(true);
+    expect(resolveTeethCatalogProduct(ivoclarIndex, IVOSTAR_LINE, "posterior")?.twId).toBe(302);
+    expect(resolveTeethCatalogProduct(ivoclarIndex, GNATHOSTAR_LINE, "anterior")?.twId).toBe(301);
+  });
+
+  it("splits ivostar/gnathostar into two lines with correct catalog lines", () => {
+    const result = commitDualKindTeethLines(
+      [ivostarAnchorLine()],
+      0,
+      [ivostarAnteriorGroup(2)],
+      [gnathostarPosteriorGroup(4)],
+      ivoclarIndex,
+      true,
+      "teeth-ocr/test.jpg",
+    );
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+
+    expect(result.lines).toHaveLength(2);
+    const anterior = result.lines.find((l) => l.teethKind === "anterior");
+    const posterior = result.lines.find((l) => l.teethKind === "posterior");
+    expect(anterior?.teethProductLine).toBe(IVOSTAR_LINE);
+    expect(anterior?.subiektTwId).toBe(301);
+    expect(anterior?.teethOcrPending).toBe(true);
+    expect(anterior?.teethOcrImagePath).toBe("teeth-ocr/test.jpg");
+    expect(posterior?.teethProductLine).toBe(GNATHOSTAR_LINE);
+    expect(posterior?.subiektTwId).toBe(302);
+    expect(posterior?.teethOcrPending).toBe(true);
+    expect(posterior?.teethOcrImagePath).toBe("teeth-ocr/test.jpg");
+  });
+
+  it("finds gnathostar sibling when product lines differ", () => {
+    const anterior = ivostarAnchorLine();
+    const posterior = {
+      ...newProductLine(),
+      id: "gnathostar-line",
+      product: "Gnathostar boczne",
+      subiektTwId: 302,
+      teethManufacturer: "ivoclar" as const,
+      teethProductLine: GNATHOSTAR_LINE,
+      teethKind: "posterior" as const,
+      clientName: "Jan Kowalski",
+      quantity: "3",
+      teethDetails: Array.from({ length: 3 }, (_, i) => ({
+        position: i + 1,
+        color: "140/1C",
+        mould: "D82",
+        jaw: "upper" as const,
+        kind: "posterior" as const,
+      })),
+    };
+    expect(findTeethSiblingLineIndex([anterior, posterior], 0)).toBe(1);
+    expect(findTeethSiblingLineIndex([anterior, posterior], 1)).toBe(0);
   });
 });

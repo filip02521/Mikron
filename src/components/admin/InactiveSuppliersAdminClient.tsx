@@ -1,4 +1,5 @@
 "use client";
+import { SUPPLIER_TOAST, type ToastNotice } from "@/lib/ui/notice-copy";
 
 import Link from "next/link";
 import { LinkChevron } from "@/components/ui/UiGlyphs";
@@ -11,7 +12,7 @@ import { formatPlDate } from "@/lib/display-labels";
 import { formatSupplierCycleSummary, formatSupplierListMeta } from "@/lib/suppliers/supplier-list-labels";
 import { Card, CardHeader } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
-import { Toast } from "@/components/ui/Toast";
+import { NoticeToast } from "@/components/ui/NoticeToast";
 import { SupplierAdminCardsFilterBar } from "@/components/admin/SupplierHubListFilters";
 import { SupplierAdminNameCell } from "@/components/admin/SupplierAdminNameCell";
 import { InactiveSupplierRowMenu } from "@/components/admin/InactiveSupplierRowMenu";
@@ -73,9 +74,7 @@ export function InactiveSuppliersAdminClient({
   const cardsPath = supplierHubPaths(context).cards;
   const [rows, setRows] = useState(initial);
   const [pending, start] = useTransition();
-  const [toast, setToast] = useState<{ text: string; tone: "success" | "error" } | null>(
-    null
-  );
+  const [toast, setToast] = useState<ToastNotice | null>(null);
   const { readOnly, blockIfReadOnly } = usePreviewMutationBlocker((text) =>
     setToast({ text, tone: "error" })
   );
@@ -185,7 +184,7 @@ export function InactiveSuppliersAdminClient({
   const save = () => {
     if (blockIfReadOnly()) return;
     if (!form.name.trim()) {
-      setToast({ text: "Podaj nazwę dostawcy", tone: "error" });
+      setToast(SUPPLIER_TOAST.missingName);
       return;
     }
     start(async () => {
@@ -205,7 +204,7 @@ export function InactiveSuppliersAdminClient({
                 r.id === snapshot.id ? applyAdminFormToSupplierRow(r, snapshot) : r
               )
             );
-            setToast({ text: "Zapisano kartę dostawcy", tone: "success" });
+            setToast(SUPPLIER_TOAST.savedCard);
           }
         }
         resetForm();
@@ -241,7 +240,7 @@ export function InactiveSuppliersAdminClient({
 
   return (
     <>
-      {toast ? <Toast message={toast.text} tone={toast.tone} onDismiss={dismiss} /> : null}
+      {toast ? <NoticeToast notice={toast} onDismiss={dismiss} /> : null}
 
       <SupplierEditSheet
         open={formOpen}

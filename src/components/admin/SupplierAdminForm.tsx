@@ -12,6 +12,7 @@ import {
   SUPPLIER_STOCK_PRESETS,
 } from "@/lib/suppliers/cycle-presets";
 import type { WarehouseCarrierRow } from "@/lib/data/warehouse-carriers";
+import type { ToastNotice } from "@/lib/ui/notice-copy";
 import {
   WAREHOUSE_CARRIERS,
   WAREHOUSE_SHIPMENT_FORMS,
@@ -58,7 +59,7 @@ export function SupplierAdminForm({
   carrierOptions?: WarehouseCarrierRow[];
   /** Sekcja cyklu zębów — karty dostawców z ?tor=zeby */
   showTeethSchedule?: boolean;
-  onTeethScheduleToast?: (message: string, tone: "success" | "error") => void;
+  onTeethScheduleToast?: (notice: ToastNotice) => void;
 }) {
   const carriers = activeWarehouseCarrierOptions(
     carrierOptions.length

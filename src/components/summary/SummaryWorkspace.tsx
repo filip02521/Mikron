@@ -5,7 +5,7 @@ import type { SummaryWorkspaceData } from "@/lib/orders/summary-workspace";
 import type { DeliveryStats, IndividualOrder, StatsMode } from "@/types/database";
 import type { SummaryStandardItem } from "@/lib/orders/summary";
 import { actionBulkOrdered, actionMarkOrdered } from "@/app/actions/admin";
-import { Toast } from "@/components/ui/Toast";
+import { NoticeToast } from "@/components/ui/NoticeToast";
 import { UndoToast } from "@/components/ui/UndoToast";
 import { Card, CardHeader } from "@/components/ui/Card";
 import { SupplierDrawer } from "@/components/summary/SupplierDrawer";
@@ -297,7 +297,7 @@ export function SummaryWorkspace({
         <ActionLoadingOverlay message={pendingMessage} variant="viewport" />
       ) : null}
       {flash && !undo ? (
-        <Toast message={flash.text} tone={flash.tone} onDismiss={dismissFlash} />
+        <NoticeToast notice={flash} onDismiss={dismissFlash} />
       ) : null}
       {undo ? (
         <UndoToast

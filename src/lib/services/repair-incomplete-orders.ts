@@ -9,7 +9,7 @@ const REPAIR_STATUSES: IndividualOrderStatus[] = [
   "Czesciowo_zrealizowane",
 ];
 
-/** Zęby w statusie Weryfikacja → Nowe (tor zębów, nie /weryfikacja). */
+/** Zęby w statusie Weryfikacja → Nowe (tor zębów, nie /weryfikacja). Pomija OCR oczekujące w /zeby/weryfikacja. */
 export async function repairTeethOrdersFromVerification(
   supabase: SupabaseClient
 ): Promise<number> {
@@ -17,7 +17,8 @@ export async function repairTeethOrdersFromVerification(
     .from("individual_orders")
     .select("id")
     .eq("is_teeth", true)
-    .eq("status", "Weryfikacja");
+    .eq("status", "Weryfikacja")
+    .eq("teeth_ocr_pending", false);
 
   if (error) throw new Error(error.message);
   const ids = (data ?? []).map((r) => String(r.id));

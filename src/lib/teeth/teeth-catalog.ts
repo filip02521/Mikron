@@ -18,6 +18,7 @@ import type {
   TeethJaw,
   TeethKind,
 } from "./teeth-catalog-types";
+import { isCrossLineDualKindPair } from "./teeth-cross-line-pairs";
 
 export type { TeethManufacturer, TeethProductLine, TeethJaw, TeethKind };
 export { parseTeethJaw, parseTeethKind } from "./teeth-catalog-types";
@@ -447,8 +448,11 @@ export function shouldClearTeethDetailsOnCatalogSync(
   currentProductLine: TeethProductLine | null | undefined,
   resolvedProductLine: TeethProductLine,
 ): boolean {
-  return (
-    currentProductLine != null &&
-    currentProductLine !== resolvedProductLine
-  );
+  if (currentProductLine == null || currentProductLine === resolvedProductLine) {
+    return false;
+  }
+  if (isCrossLineDualKindPair(currentProductLine, resolvedProductLine)) {
+    return false;
+  }
+  return true;
 }

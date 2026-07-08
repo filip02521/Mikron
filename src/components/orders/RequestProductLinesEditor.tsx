@@ -110,7 +110,10 @@ export function RequestProductLinesEditor({
     totalQuantity: number,
     saveResult?: import("@/components/teeth/TeethOrderBuilderModal").TeethOrderBuilderSaveResult,
   ) => void;
-  onTeethListCommitNotice?: (message: string, tone?: "success" | "error") => void;
+  onTeethListCommitNotice?: (
+    message: string | { title: string; text: string },
+    tone?: "success" | "error",
+  ) => void;
   onTeethDualKindCommit?: (payload: {
     lineIndex: number;
     lines: ProductLineDraft[];
@@ -252,7 +255,9 @@ export function RequestProductLinesEditor({
                       canRemove={canRemove}
                       hasFieldIssues={
                         (validationAttempted || liveValidation) &&
-                        prosbaLineHasSubmitBlockers(line, requestKind)
+                        prosbaLineHasSubmitBlockers(line, requestKind, {
+                          exemptTwIds: teethExemptTwIds,
+                        })
                       }
                       onEdit={() => setFocusedLineId(line.id)}
                       onRemove={() => removeLine(index)}

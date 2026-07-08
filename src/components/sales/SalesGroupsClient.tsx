@@ -1,4 +1,5 @@
 "use client";
+import { toastFromError, SALES_TOAST, type ToastNotice } from "@/lib/ui/notice-copy";
 
 import { useRouter } from "next/navigation";
 import { useMemo, useState, useTransition, useCallback } from "react";
@@ -10,7 +11,7 @@ import {
 import { Card, CardHeader } from "@/components/ui/Card";
 import { Field, Input } from "@/components/ui/Field";
 import { Button } from "@/components/ui/Button";
-import { Toast } from "@/components/ui/Toast";
+import { NoticeToast } from "@/components/ui/NoticeToast";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { Badge } from "@/components/ui/Badge";
@@ -49,9 +50,7 @@ export function SalesGroupsClient({
     [initial, deletedIds]
   );
   const [pending, start] = useTransition();
-  const [toast, setToast] = useState<{ text: string; tone: "success" | "error" } | null>(
-    null
-  );
+  const [toast, setToast] = useState<ToastNotice | null>(null);
   const dismiss = useCallback(() => setToast(null), []);
   const [formOpen, setFormOpen] = useState(false);
   const [form, setForm] = useState<FormState>(emptyForm);
@@ -85,11 +84,11 @@ export function SalesGroupsClient({
         sortOrder: Number.isFinite(sortOrder) ? sortOrder : 0,
       });
       if ("error" in r) {
-        setToast({ text: r.error, tone: "error" });
+        setToast(toastFromError(r.error));
         return;
       }
       resetForm();
-      setToast({ text: form.id ? "Zapisano grupę." : "Dodano grupę.", tone: "success" });
+      setToast(form.id ? SALES_TOAST.savedGroup : SALES_TOAST.addedGroup);
       router.refresh();
     });
   };
@@ -260,7 +259,7 @@ export function SalesGroupsClient({
 
   return (
     <>
-      {toast ? <Toast message={toast.text} tone={toast.tone} onDismiss={dismiss} /> : null}
+      {toast ? <NoticeToast notice={toast} onDismiss={dismiss} /> : null}
       <ConfirmDialog
         open={!!deleteTarget}
         title="Usunąć grupę?"
@@ -283,13 +282,13 @@ export function SalesGroupsClient({
           start(async () => {
             const r = await actionDeleteSalesGroup(deleteTarget.id);
             if ("error" in r) {
-              setToast({ text: r.error, tone: "error" });
+              setToast(toastFromError(r.error));
               setDeleteTarget(null);
               return;
             }
             setDeletedIds((ids) => new Set(ids).add(deleteTarget.id));
             setDeleteTarget(null);
-            setToast({ text: "Grupa usunięta.", tone: "success" });
+            setToast(SALES_TOAST.deletedGroup);
             router.refresh();
           });
         }}

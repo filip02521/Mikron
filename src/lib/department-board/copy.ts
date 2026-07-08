@@ -1,3 +1,5 @@
+import { DEPARTMENT_BOARD_SUCCESS_TOAST } from "@/lib/ui/notice-copy";
+
 export const DEPARTMENT_BOARD_SALES_PAGE_TITLE = "Pytania zespołu";
 export const DEPARTMENT_BOARD_SALES_PAGE_DESC =
   "Wspólne pytania i odpowiedzi z działem zakupów. Ogłoszenia od zakupów znajdziesz w Moje zamówienia.";
@@ -32,7 +34,7 @@ export const DEPARTMENT_BOARD_QUESTIONS_FORM = {
   productSearchLoading: "Szukam…",
   submit: "Wyślij",
   submitting: "Wysyłanie…",
-  successToast: "Pytanie wysłane.",
+  successToast: DEPARTMENT_BOARD_SUCCESS_TOAST,
   introBeforeLink: "Zamówienie towaru —",
   introLinkLabel: "Nowa prośba",
   expandHint: "Rozwiń",

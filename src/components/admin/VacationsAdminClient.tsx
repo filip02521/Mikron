@@ -1,4 +1,5 @@
 "use client";
+import { VACATION_TOAST, type ToastNotice } from "@/lib/ui/notice-copy";
 
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
@@ -12,7 +13,7 @@ import { useActionPending } from "@/hooks/useActionPending";
 import { Card, CardHeader } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/Badge";
-import { Toast } from "@/components/ui/Toast";
+import { NoticeToast } from "@/components/ui/NoticeToast";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { ActionLoadingOverlay } from "@/components/ui/ActionLoadingOverlay";
 import { Spinner } from "@/components/ui/Spinner";
@@ -249,9 +250,7 @@ export function VacationsAdminClient({
     setAppliedInitialKey(initialKey);
     setRows(initialVacations);
   }
-  const [toast, setToast] = useState<{ text: string; tone: "success" | "error" } | null>(
-    null
-  );
+  const [toast, setToast] = useState<ToastNotice | null>(null);
   const { readOnly, blockIfReadOnly } = usePreviewMutationBlocker((text) =>
     setToast({ text, tone: "error" })
   );
@@ -352,7 +351,7 @@ export function VacationsAdminClient({
       !snapshot.end_date ||
       !snapshot.last_order_date
     ) {
-      setToast({ text: "Uzupełnij wszystkie pola urlopu.", tone: "error" });
+      setToast(VACATION_TOAST.incompleteFields);
       return;
     }
 
@@ -453,7 +452,7 @@ export function VacationsAdminClient({
         />
       ) : null}
 
-      {toast ? <Toast message={toast.text} tone={toast.tone} onDismiss={dismiss} /> : null}
+      {toast ? <NoticeToast notice={toast} onDismiss={dismiss} /> : null}
 
       <ConfirmDialog
         open={deleteTarget != null}

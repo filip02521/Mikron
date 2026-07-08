@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState, useTransition } from "react";
+import type { ToastNotice } from "@/lib/ui/notice-copy";
 import {
   formatCatalogSupplierSubtitle,
   type ProductCatalogCoverageStats,
@@ -14,7 +15,7 @@ import type { ZdUnmappedKhReport } from "@/lib/subiekt/zd-unmapped-kh";
 import { ProductCatalogSupplierAssign } from "@/components/admin/ProductCatalogSupplierAssign";
 import { Button } from "@/components/ui/Button";
 import { Input, Select } from "@/components/ui/Field";
-import { Toast } from "@/components/ui/Toast";
+import { NoticeToast } from "@/components/ui/NoticeToast";
 import { FlowSteps } from "@/components/ui/UiGlyphs";
 import { cn } from "@/lib/cn";
 import { checkboxBrandClass } from "@/lib/ui/ontime-theme";
@@ -69,7 +70,7 @@ export function ProductsCatalogAdminClient({
   assignSuppliers: Array<{ id: string; name: string; subiektKhId: number | null }>;
 }) {
   const [pending, start] = useTransition();
-  const [toast, setToast] = useState<{ text: string; tone: "success" | "error" } | null>(null);
+  const [toast, setToast] = useState<ToastNotice | null>(null);
   const [rows, setRows] = useState<ProductCatalogRow[]>(initial.rows);
   const [total, setTotal] = useState<number>(initial.total);
   const [loaded, setLoaded] = useState<number>(initial.rows.length);
@@ -993,11 +994,7 @@ export function ProductsCatalogAdminClient({
   return (
     <>
       {toast ? (
-        <Toast
-          tone={toast.tone}
-          message={toast.text}
-          onDismiss={() => setToast(null)}
-        />
+        <NoticeToast notice={toast} onDismiss={() => setToast(null)} />
       ) : null}
 
       <div className="flex flex-wrap items-center justify-end gap-2 border-b border-slate-100 px-3 pb-3 sm:px-4 lg:px-5">

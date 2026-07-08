@@ -92,20 +92,39 @@ describe("assessProsbaLineFields", () => {
 });
 
 describe("prosbaLineHasTeethBlockers", () => {
+  const TEETH_TW = 123;
+  const teethExempt = { exemptTwIds: new Set([TEETH_TW]) };
   const teethLine: ProductLineDraft = {
     ...baseLine,
     product: "Ząb",
     quantity: "1",
-    subiektTwId: 123,
+    subiektTwId: TEETH_TW,
     teethManufacturer: "ivoclar",
     teethProductLine: "ivoclar_vivodent_dcl",
   };
 
   it("returns false when requestKind is not zamowienie", () => {
-    expect(prosbaLineHasTeethBlockers(teethLine, "informacja")).toBe(false);
+    expect(prosbaLineHasTeethBlockers(teethLine, "informacja", teethExempt)).toBe(false);
   });
 
-  it("returns false when no teeth catalog (no line, no manufacturer)", () => {
+  it("returns false when product is not on teeth registry (np. szczotka Wiedent)", () => {
+    expect(
+      prosbaLineHasTeethBlockers(
+        {
+          ...baseLine,
+          product: "Wiedent szczotka",
+          quantity: "1",
+          subiektTwId: 9999,
+          teethManufacturer: "wiedent",
+          teethProductLine: "wiedent_estetic",
+        },
+        "zamowienie",
+        { exemptTwIds: new Set([TEETH_TW]) },
+      ),
+    ).toBe(false);
+  });
+
+  it("returns false when no teeth registry match", () => {
     expect(
       prosbaLineHasTeethBlockers(
         { ...teethLine, teethManufacturer: null, teethProductLine: null },
@@ -119,6 +138,7 @@ describe("prosbaLineHasTeethBlockers", () => {
       prosbaLineHasTeethBlockers(
         { ...teethLine, teethDetails: undefined },
         "zamowienie",
+        teethExempt,
       ),
     ).toBe(true);
   });
@@ -131,6 +151,7 @@ describe("prosbaLineHasTeethBlockers", () => {
           teethDetails: [{ position: 1, color: "A1", mould: "A11", jaw: null, kind: null }],
         },
         "zamowienie",
+        teethExempt,
       ),
     ).toBe(true);
   });
@@ -143,6 +164,7 @@ describe("prosbaLineHasTeethBlockers", () => {
           teethDetails: [{ position: 1, color: "A1", mould: "A11", jaw: "upper", kind: null }],
         },
         "zamowienie",
+        teethExempt,
       ),
     ).toBe(true);
   });
@@ -157,7 +179,7 @@ describe("prosbaLineHasTeethBlockers", () => {
           teethDetails: undefined,
         },
         "zamowienie",
-        { exemptTwIds: new Set([123]) },
+        teethExempt,
       ),
     ).toBe(true);
   });
@@ -170,6 +192,7 @@ describe("prosbaLineHasTeethBlockers", () => {
           teethDetails: [{ position: 1, color: "A1", mould: null, jaw: "upper", kind: "anterior" }],
         },
         "zamowienie",
+        teethExempt,
       ),
     ).toBe(true);
   });
@@ -182,6 +205,7 @@ describe("prosbaLineHasTeethBlockers", () => {
           teethDetails: [{ position: 1, color: "A1", mould: "A11", jaw: "upper", kind: "anterior" }],
         },
         "zamowienie",
+        teethExempt,
       ),
     ).toBe(false);
   });
@@ -196,6 +220,7 @@ describe("prosbaLineHasTeethBlockers", () => {
           teethDetails: [{ position: 1, color: "A1", mould: "12", jaw: "upper", kind: "anterior" }],
         },
         "zamowienie",
+        teethExempt,
       ),
     ).toBe(false);
   });
@@ -213,23 +238,28 @@ describe("prosbaLineHasTeethBlockers", () => {
           ],
         },
         "zamowienie",
+        teethExempt,
       ),
     ).toBe(true);
   });
 });
 
 describe("prosbaLineHasSubmitBlockers (with teeth)", () => {
+  const TEETH_TW = 123;
+  const teethExempt = { exemptTwIds: new Set([TEETH_TW]) };
   const teethLine: ProductLineDraft = {
     ...baseLine,
     product: "Ząb",
     quantity: "1",
-    subiektTwId: 123,
+    subiektTwId: TEETH_TW,
     teethManufacturer: "ivoclar",
     teethProductLine: "ivoclar_vivodent_dcl",
   };
 
   it("returns true when teeth details are incomplete even if other fields are fine", () => {
-    expect(prosbaLineHasSubmitBlockers(teethLine, "zamowienie")).toBe(true);
+    expect(
+      prosbaLineHasSubmitBlockers(teethLine, "zamowienie", teethExempt),
+    ).toBe(true);
   });
 
   it("returns false when all fields and teeth details are complete", () => {
@@ -242,6 +272,7 @@ describe("prosbaLineHasSubmitBlockers (with teeth)", () => {
           teethDetails: [{ position: 1, color: "A1", mould: "12", jaw: "upper", kind: "anterior" }],
         },
         "zamowienie",
+        teethExempt,
       ),
     ).toBe(false);
   });

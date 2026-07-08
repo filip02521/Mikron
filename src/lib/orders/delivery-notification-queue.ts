@@ -98,6 +98,86 @@ export type DeliveryNotificationDirectInput = {
   salesPersonId: string | null;
 };
 
+export async function queueDeliveryNotifications(
+  entries: DeliveryNotificationDirectInput[]
+): Promise<{ queueIdByOrderId: Record<string, string>; errors: string[] }> {
+  const queueIdByOrderId: Record<string, string> = {};
+  const errors: string[] = [];
+
+  for (const entry of entries) {
+    try {
+      const id = await createDeliveryNotificationQueueEntry(
+        entry.orderId,
+        entry.deliveredQuantity,
+        entry.status,
+        entry.salesPersonId
+      );
+      queueIdByOrderId[entry.orderId] = id;
+    } catch (e) {
+      errors.push(e instanceof Error ? e.message : "Nie udało się zaplanować powiadomienia e-mail.");
+    }
+  }
+
+  return { queueIdByOrderId, errors };
+}
+
+export type DeliveryNotificationFlushScope = "warehouse" | "teeth" | "all";
+
+export async function getOrderIdsForNotificationQueueIds(
+  queueIds: string[]
+): Promise<string[]> {
+  if (!queueIds.length) return [];
+  const supabase = createAdminClient();
+  const { data, error } = await supabase
+    .from("delivery_notification_queue")
+    .select("order_id")
+    .in("id", queueIds);
+  if (error) throw new Error(error.message);
+  return [...new Set((data ?? []).map((row) => String(row.order_id)))];
+}
+
+export async function flushAllDueDeliveryNotifications(
+  scope: DeliveryNotificationFlushScope = "all"
+): Promise<{
+  sent: number;
+  error?: string;
+}> {
+  const supabase = createAdminClient();
+  const now = new Date().toISOString();
+  const { data, error } = await supabase
+    .from("delivery_notification_queue")
+    .select("id, order_id")
+    .is("sent_at", null)
+    .is("cancelled_at", null)
+    .lte("send_at", now);
+
+  if (error) throw new Error(error.message);
+  if (!data?.length) return { sent: 0 };
+
+  const orderIds = [...new Set(data.map((row) => String(row.order_id)))];
+  const { data: orders, error: ordersError } = await supabase
+    .from("individual_orders")
+    .select("id, is_teeth")
+    .in("id", orderIds);
+  if (ordersError) throw new Error(ordersError.message);
+
+  const teethByOrderId = new Map(
+    (orders ?? []).map((row) => [String(row.id), row.is_teeth === true])
+  );
+
+  const eligibleIds = data
+    .filter((row) => {
+      const isTeeth = teethByOrderId.get(String(row.order_id)) === true;
+      if (scope === "teeth") return isTeeth;
+      if (scope === "warehouse") return !isTeeth;
+      return true;
+    })
+    .map((row) => row.id as string);
+
+  if (!eligibleIds.length) return { sent: 0 };
+  return sendPendingDeliveryNotifications(eligibleIds);
+}
+
 export async function sendDeliveryNotificationDirect(
   entries: DeliveryNotificationDirectInput[]
 ): Promise<{ sent: number; error?: string }> {

@@ -1,4 +1,5 @@
 "use client";
+import { toastFromError, ToastNotice, TEETH_CATALOG_TOAST } from "@/lib/ui/notice-copy";
 
 import { useCallback, useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
@@ -24,7 +25,7 @@ import {
 } from "@/lib/teeth/teeth-catalog";
 import { Button } from "@/components/ui/Button";
 import { Field, Input, fieldControlClass } from "@/components/ui/Field";
-import { Toast } from "@/components/ui/Toast";
+import { NoticeToast } from "@/components/ui/NoticeToast";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { Alert } from "@/components/ui/Alert";
@@ -49,7 +50,7 @@ export function TeethProductsAdminClient({ initial }: { initial: TeethProductRow
   const router = useRouter();
   const [rows, setRows] = useState(initial);
   const [pending, start] = useTransition();
-  const [toast, setToast] = useState<{ text: string; tone: "success" | "error" } | null>(null);
+  const [toast, setToast] = useState<ToastNotice | null>(null);
   const dismissToast = useCallback(() => setToast(null), []);
 
   const [filter, setFilter] = useState("");
@@ -132,10 +133,10 @@ export function TeethProductsAdminClient({ initial }: { initial: TeethProductRow
     start(async () => {
       const result = await actionUpdateTeethProductProductLine(row.subiektTwId, draft || null);
       if ("error" in result) {
-        setToast({ text: result.error, tone: "error" });
+        setToast(toastFromError(result.error));
         return;
       }
-      setToast({ text: "Zapisano linię produktową.", tone: "success" });
+      setToast(TEETH_CATALOG_TOAST.savedProductLine);
       refreshRows();
     });
   };
@@ -147,10 +148,10 @@ export function TeethProductsAdminClient({ initial }: { initial: TeethProductRow
     start(async () => {
       const result = await actionUpdateTeethProductKind(row.subiektTwId, draft || null);
       if ("error" in result) {
-        setToast({ text: result.error, tone: "error" });
+        setToast(toastFromError(result.error));
         return;
       }
-      setToast({ text: "Zapisano typ zęba.", tone: "success" });
+      setToast(TEETH_CATALOG_TOAST.savedKind);
       refreshRows();
     });
   };
@@ -162,7 +163,7 @@ export function TeethProductsAdminClient({ initial }: { initial: TeethProductRow
         setRows(next);
         router.refresh();
       } catch {
-        setToast({ text: "Nie udało się odświeżyć listy.", tone: "error" });
+        setToast(TEETH_CATALOG_TOAST.refreshFailed);
       }
     });
   };
@@ -180,10 +181,10 @@ export function TeethProductsAdminClient({ initial }: { initial: TeethProductRow
         kind: addKind || null,
       });
       if ("error" in result) {
-        setToast({ text: result.error, tone: "error" });
+        setToast(toastFromError(result.error));
         return;
       }
-      setToast({ text: "Dodano produkt do listy zębów.", tone: "success" });
+      setToast(TEETH_CATALOG_TOAST.addedProduct);
       setSelectedHit(null);
       setAddNote("");
       setAddManufacturer("");
@@ -202,10 +203,10 @@ export function TeethProductsAdminClient({ initial }: { initial: TeethProductRow
     start(async () => {
       const result = await actionUpdateTeethProductNote(row.subiektTwId, draft);
       if ("error" in result) {
-        setToast({ text: result.error, tone: "error" });
+        setToast(toastFromError(result.error));
         return;
       }
-      setToast({ text: "Zapisano notatkę.", tone: "success" });
+      setToast(TEETH_CATALOG_TOAST.savedNote);
       refreshRows();
     });
   };
@@ -217,17 +218,17 @@ export function TeethProductsAdminClient({ initial }: { initial: TeethProductRow
     start(async () => {
       const result = await actionUpdateTeethProductManufacturer(row.subiektTwId, draft || null);
       if ("error" in result) {
-        setToast({ text: result.error, tone: "error" });
+        setToast(toastFromError(result.error));
         return;
       }
-      setToast({ text: "Zapisano producenta.", tone: "success" });
+      setToast(TEETH_CATALOG_TOAST.savedManufacturer);
       refreshRows();
     });
   };
 
   return (
     <>
-      {toast ? <Toast message={toast.text} tone={toast.tone} onDismiss={dismissToast} /> : null}
+      {toast ? <NoticeToast notice={toast} onDismiss={dismissToast} /> : null}
 
       <ConfirmDialog
         open={!!deleteTarget}
@@ -247,11 +248,11 @@ export function TeethProductsAdminClient({ initial }: { initial: TeethProductRow
           start(async () => {
             const result = await actionRemoveTeethProduct(deleteTarget.subiektTwId);
             if ("error" in result) {
-              setToast({ text: result.error, tone: "error" });
+              setToast(toastFromError(result.error));
               return;
             }
             setDeleteTarget(null);
-            setToast({ text: "Usunięto z listy zębów.", tone: "success" });
+            setToast(TEETH_CATALOG_TOAST.removedFromList);
             refreshRows();
           });
         }}

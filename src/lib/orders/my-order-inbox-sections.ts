@@ -30,7 +30,15 @@ export const MY_ORDER_TEETH_ACTION_SECTION_COPY = {
   accent: "violet" as const satisfies MyOrderSectionAccent,
 };
 
+export const MY_ORDER_MIXED_ACTION_SECTION_COPY = {
+  title: "Potwierdź odbiór (zęby i towar)",
+  hint: "W tej prośbie są zęby i towar z regału — każdy typ potwierdzasz osobno (inny przepływ magazynowy).",
+  icon: "action" as const,
+  accent: "indigo" as const satisfies MyOrderSectionAccent,
+};
+
 export const MOJE_TEETH_ACTION_SECTION_ID = mojeSectionDomId("teeth");
+export const MOJE_MIXED_ACTION_SECTION_ID = mojeSectionDomId("mixed-pickup");
 
 export const MY_ORDER_INFORMACJA_SECTION_COPY = {
   title: "Sprawdzamy dostępność",

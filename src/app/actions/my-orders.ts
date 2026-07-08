@@ -24,8 +24,10 @@ import {
   SALES_CANCEL_QUANTITY_MIGRATION_HINT,
   salesCancelAckSelect,
   salesCancelOrderSelect,
+  salesCancelUndoMatchKind,
   type SalesCancelUndoRestore,
 } from "@/lib/orders/sales-cancel-db";
+import type { TeethLineDetail } from "@/lib/teeth/teeth-catalog";
 import type { IndividualOrder } from "@/types/database";
 import { updateIndividualRequestGroup } from "@/lib/services/orders";
 import type { IndividualRequestEditPayload } from "@/lib/orders/individual-request-edit";
@@ -41,7 +43,7 @@ import {
 import { normalizeTeethDetailsForSave } from "@/lib/teeth/teeth-validation";
 import { parseOrderQuantity } from "@/lib/orders/individual";
 import { deliveryProgressFor } from "@/lib/orders/sales-cancel";
-import { UNDO_WINDOW_MS } from "@/lib/orders/daily-panel-undo";
+import { UNDO_WINDOW_MS, undoExpiredServerMessage } from "@/lib/orders/daily-panel-undo";
 import type { SalesZkWatch } from "@/types/database";
 import { resolveZkWatchPendingAckItemsForWatch, fetchTeethOrdersForZkWatch } from "@/lib/sales/zk-watch-close-pending-fetch";
 import {
@@ -429,14 +431,18 @@ export async function actionSalesCancelTeethGroups(
     update.sales_acknowledged_at = now;
   }
 
-  const { error: updateError } = await supabase
+  const { data: updatedRows, error: updateError } = await supabase
     .from("individual_orders")
     .update(update)
     .eq("id", orderId)
     .eq("sales_person_id", salesPersonId)
-    .is("sales_acknowledged_at", null);
+    .is("sales_acknowledged_at", null)
+    .select("id");
 
   if (updateError) throw new Error(updateError.message);
+  if (!updatedRows?.length) {
+    throw new Error("Nie udało się wycofać pozycji — odśwież listę i spróbuj ponownie.");
+  }
 
   if (!fullyWithdrawn && remainingGroups.length > 0) {
     const newDetails = expandTeethGroups(remainingGroups);
@@ -491,7 +497,7 @@ export async function actionUnacknowledgePickup(orderIds: string[]) {
     }
     const ackAt = new Date(row.sales_acknowledged_at).getTime();
     if (now - ackAt > UNDO_WINDOW_MS) {
-      throw new Error("Minął czas na cofnięcie — odśwież listę.");
+      throw new Error(undoExpiredServerMessage("przy cofaniu odbioru"));
     }
   }
 
@@ -531,7 +537,11 @@ export async function actionUnacknowledgePickup(orderIds: string[]) {
 /** Cofnięcie wycofania prośby (okno undo po actionSalesCancelOrders). */
 export async function actionUnacknowledgeSalesCancel(
   orderIds: string[],
-  options?: { restoreById?: Record<string, SalesCancelUndoRestore> }
+  options?: {
+    restoreById?: Record<string, SalesCancelUndoRestore>;
+    /** Migawka listy zębów sprzed wycofania grup (actionSalesCancelTeethGroups). */
+    teethDetailsById?: Record<string, TeethLineDetail[]>;
+  }
 ) {
   if (!orderIds.length) throw new Error("Brak pozycji do cofnięcia.");
   const salesPersonId = await salesPersonIdForAction();
@@ -566,7 +576,7 @@ export async function actionUnacknowledgeSalesCancel(
     }
     const anchorMs = new Date(undoAnchor).getTime();
     if (now - anchorMs > UNDO_WINDOW_MS) {
-      throw new Error("Minął czas na cofnięcie — odśwież listę.");
+      throw new Error(undoExpiredServerMessage("przy cofaniu anulowania"));
     }
   }
 
@@ -590,10 +600,13 @@ export async function actionUnacknowledgeSalesCancel(
       .eq("id", row.id)
       .eq("sales_person_id", salesPersonId);
 
-    if (caps.hasCancelledAt) {
-      q = q.not("sales_cancelled_at", "is", null);
-    } else {
+    const matchKind = salesCancelUndoMatchKind(row, caps);
+    if (matchKind === "legacy_anulowane") {
       q = q.eq("status", "Anulowane");
+    } else if (matchKind === "ack_only") {
+      q = q.eq("status", "Anulowane").not("sales_acknowledged_at", "is", null);
+    } else {
+      q = q.not("sales_cancelled_at", "is", null);
     }
 
     const { data: updated, error } = await q.select("id");
@@ -605,11 +618,44 @@ export async function actionUnacknowledgeSalesCancel(
     throw new Error("Nie udało się cofnąć — odśwież listę i spróbuj ponownie.");
   }
 
+  const teethRestore = options?.teethDetailsById;
+  if (teethRestore && Object.keys(teethRestore).length > 0) {
+    await saveTeethDetailsForOrders(
+      supabase,
+      Object.entries(teethRestore).map(([orderId, teethDetails]) => ({
+        orderId,
+        isTeeth: true,
+        teethDetails: normalizeTeethDetailsForSave(teethDetails, null),
+      }))
+    );
+  }
+
   revalidatePath("/moje");
   revalidatePath("/podsumowanie");
   revalidatePath("/kolejka");
   revalidatePath("/notatnik");
   revalidatePath("/zk");
+  revalidatePath("/zeby");
+
+  try {
+    const { data: restoredRows } = await supabase
+      .from("individual_orders")
+      .select("id, sales_person_id, status, sales_acknowledged_at, delivered_quantity, source_zk_watch_id, source_zk_number")
+      .in("id", orderIds);
+    if (restoredRows?.length) {
+      const { syncZkWatchLineChecksFromOrder } = await import(
+        "@/lib/sales/zk-watch-order-sync"
+      );
+      await Promise.all(
+        (restoredRows as IndividualOrder[]).map((row) =>
+          syncZkWatchLineChecksFromOrder(row)
+        )
+      );
+    }
+  } catch (e) {
+    console.error("[actionUnacknowledgeSalesCancel syncZkWatch]", e);
+  }
+
   return { success: true, count: restoredCount };
 }
 
@@ -644,7 +690,7 @@ export async function actionUnacknowledgeDismiss(orderIds: string[]) {
     }
     const ackAt = new Date(row.sales_acknowledged_at).getTime();
     if (now - ackAt > UNDO_WINDOW_MS) {
-      throw new Error("Minął czas na cofnięcie — odśwież listę.");
+      throw new Error(undoExpiredServerMessage("przy cofaniu odbioru"));
     }
   }
 

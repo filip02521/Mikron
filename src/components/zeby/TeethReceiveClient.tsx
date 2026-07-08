@@ -1,8 +1,9 @@
 "use client";
 
 import { useCallback, useMemo, useState } from "react";
+import type { ToastNotice } from "@/lib/ui/notice-copy";
 import type { IndividualOrder } from "@/types/database";
-import { Toast } from "@/components/ui/Toast";
+import { NoticeToast } from "@/components/ui/NoticeToast";
 import { ActionLoadingOverlay } from "@/components/ui/ActionLoadingOverlay";
 import { Alert } from "@/components/ui/Alert";
 import { IconTooth } from "@/components/icons/StrokeIcons";
@@ -28,7 +29,7 @@ export function TeethReceiveClient({
   loadError?: string | null;
 }) {
   const [pendingMessage, setPendingMessage] = useState<string | null>(null);
-  const [toast, setToast] = useState<{ text: string; tone: "success" | "error" | "warning"; durationMs?: number } | null>(null);
+  const [toast, setToast] = useState<ToastNotice | null>(null);
   const dismissToast = useCallback(() => setToast(null), []);
 
   const teethReceiveQueue = useMemo(() => buildTeethReceiveQueue(orders), [orders]);
@@ -45,12 +46,7 @@ export function TeethReceiveClient({
         <ActionLoadingOverlay message={pendingMessage} variant="viewport" />
       ) : null}
       {toast ? (
-        <Toast
-          message={toast.text}
-          tone={toast.tone}
-          durationMs={toast.durationMs}
-          onDismiss={dismissToast}
-        />
+        <NoticeToast notice={toast} onDismiss={dismissToast} />
       ) : null}
     </>
   );

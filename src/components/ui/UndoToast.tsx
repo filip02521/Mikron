@@ -4,6 +4,9 @@ import { useEffect, useRef, useState } from "react";
 import { IconCircleCheck } from "@/components/icons/StrokeIcons";
 import { Button } from "@/components/ui/Button";
 import { cn } from "@/lib/cn";
+import { useToastNotificationSound } from "@/lib/client/use-toast-notification-sound";
+import { NoticeContent } from "@/components/ui/NoticeContent";
+import { resolveNoticeCopy } from "@/lib/ui/notice-content";
 import { UNDO_WINDOW_MS, undoWindowBannerDescription } from "@/lib/orders/daily-panel-undo";
 import { floatingToastBottomClass } from "@/lib/ui/sales-mobile-chrome";
 import {
@@ -52,14 +55,19 @@ export function UndoToast({
     onDismissRef.current = onDismiss;
   }, [onDismiss]);
 
-  const resolvedTitle = title ?? message ?? "Zapisano zmianę";
+  const copy = resolveNoticeCopy({ title, description, message });
+  const resolvedTitle = copy.title || "Zapisano zmianę";
   const resolvedDescription =
-    description ??
+    copy.description ??
     (message && title
       ? undefined
       : message && !title && message.includes("cofn")
         ? undefined
-        : undoWindowBannerDescription());
+        : !copy.description && !title && !message
+          ? undoWindowBannerDescription()
+          : undefined);
+
+  useToastNotificationSound(resolvedTitle, resolvedDescription);
 
   const [remainingMs, setRemainingMs] = useState(durationMs);
 
@@ -114,20 +122,21 @@ export function UndoToast({
           <span className={cn(undoNoticeIconTileClass, isError && "from-red-600 to-red-700 ring-red-500/30")}>
             <IconCircleCheck size={18} strokeWidth={2.25} />
           </span>
-          <div className="min-w-0 space-y-1 pt-0.5">
-            <p className="text-sm font-semibold leading-snug text-slate-900">{resolvedTitle}</p>
-            {resolvedDescription ? (
-              <p className="text-xs leading-relaxed text-slate-600">{resolvedDescription}</p>
-            ) : null}
+          <div className="min-w-0 pt-0.5">
+            <NoticeContent
+              title={resolvedTitle}
+              description={resolvedDescription}
+              variant="floating"
+            />
             {detailLines?.length ? (
-              <ul className="max-h-36 space-y-1 overflow-y-auto border-t border-slate-100 pt-2 text-xs leading-relaxed text-slate-600">
+              <ul className="mt-2 max-h-36 space-y-1 overflow-y-auto border-t border-slate-100 pt-2 text-xs leading-relaxed text-slate-600">
                 {detailLines.map((line, i) => (
                   <li key={i}>{line}</li>
                 ))}
               </ul>
             ) : null}
             {undoShortcut ? (
-              <p className="text-[11px] text-slate-500">
+              <p className="mt-1 text-[11px] text-slate-500">
                 <kbd className="rounded border border-slate-200 bg-slate-50 px-1 py-0.5 font-mono text-[10px] text-slate-700">
                   {undoShortcut}
                 </kbd>{" "}

@@ -3,7 +3,8 @@
 import { useState, useCallback } from "react";
 import { SyncButton } from "@/components/admin/SyncButton";
 import { AdminActionButton } from "@/components/admin/AdminActionButton";
-import { Toast } from "@/components/ui/Toast";
+import { NoticeToast } from "@/components/ui/NoticeToast";
+import type { ToastNotice } from "@/lib/ui/notice-copy";
 import { Card, CardHeader } from "@/components/ui/Card";
 import { HelpBlock } from "@/components/ui/HelpBlock";
 import { HelpPopover } from "@/components/ui/HelpPopover";
@@ -16,9 +17,7 @@ import {
 } from "@/app/actions/admin";
 
 export function AdminToolsPanel() {
-  const [toast, setToast] = useState<{ text: string; tone: "success" | "error" } | null>(
-    null
-  );
+  const [toast, setToast] = useState<ToastNotice | null>(null);
   const dismiss = useCallback(() => setToast(null), []);
 
   const notify = (text: string, tone: "success" | "error" = "success") =>
@@ -26,7 +25,7 @@ export function AdminToolsPanel() {
 
   return (
     <>
-      {toast ? <Toast message={toast.text} tone={toast.tone} onDismiss={dismiss} /> : null}
+      {toast ? <NoticeToast notice={toast} onDismiss={dismiss} /> : null}
 
       <Card padding={false} className="overflow-hidden">
         <CardHeader

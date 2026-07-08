@@ -17,6 +17,7 @@ import {
 import { buildProsbaFormReadiness, buildProsbaFormReadinessWithSupplier } from "@/lib/orders/prosba-form-readiness";
 import { prosbaLineHasTeethBlockers } from "@/lib/orders/prosba-line-field-validation";
 import { TEETH_LIST_INCOMPLETE_MESSAGE } from "@/lib/teeth/teeth-validation";
+import { REQUEST_EDIT_FORM, formError, type FormMessage } from "@/lib/ui/notice-copy";
 import { ProsbaFormReadiness } from "@/components/orders/ProsbaFormReadiness";
 import {
   ProsbaFormInformacjaSection,
@@ -58,8 +59,10 @@ import { buildProsbaSubmitStockConfirm } from "@/lib/orders/prosba-stock-check";
 import { handleProsbaStockSubmitError } from "@/lib/orders/prosba-stock-submit-error";
 import { useTeethExemptTwIds, useTeethProductInfo } from "@/components/layout/TeethExemptContext";
 import { TeethProcurementRequestBanner } from "@/components/teeth/TeethProcurementRequestBanner";
+import { MixedProcurementRequestBanner } from "@/components/teeth/MixedProcurementRequestBanner";
 import {
   classifyProsbaLinesByLane,
+  MIXED_PROCUREMENT_EDIT_BANNER_TITLE,
   TEETH_EDIT_REQUEST_TITLE,
 } from "@/lib/teeth/teeth-procurement-flow-copy";
 
@@ -107,10 +110,7 @@ export function EditIndividualRequestModal({
   );
   const [lines, setLines] = useState<ProductLineDraft[]>([newProductLine()]);
   const [validationAttempted, setValidationAttempted] = useState(false);
-  const [formNotice, setFormNotice] = useState<{
-    text: string;
-    tone: "error" | "warning";
-  } | null>(null);
+  const [formNotice, setFormNotice] = useState<FormMessage | null>(null);
   const [stockConfirmOpen, setStockConfirmOpen] = useState(false);
   const [stockConfirmMessage, setStockConfirmMessage] = useState("");
   const pendingSaveLinesRef = useRef<ProductLineDraft[]>([]);
@@ -122,9 +122,15 @@ export function EditIndividualRequestModal({
   const supplierRefs = useMemo(() => toAppSupplierRefs(suppliers), [suppliers]);
   const [resolvingSupplier, setResolvingSupplier] = useState(false);
 
-  const isTeethRequestEdit =
-    teethRequest ||
-    classifyProsbaLinesByLane(lines, teethExemptTwIds).hasTeeth;
+  const procurementLanes = useMemo(
+    () => classifyProsbaLinesByLane(lines, teethExemptTwIds),
+    [lines, teethExemptTwIds]
+  );
+  const isTeethOnlyEdit =
+    teethRequest || (procurementLanes.hasTeeth && !procurementLanes.hasRegular);
+  const isMixedProcurementEdit =
+    !teethRequest && procurementLanes.hasTeeth && procurementLanes.hasRegular;
+  const isTeethRequestEdit = isTeethOnlyEdit || isMixedProcurementEdit;
 
   const salesSubmitPlan = useMemo(() => {
     if (mode !== "sales") return null;
@@ -253,9 +259,11 @@ export function EditIndividualRequestModal({
               await actionUpdateMyIndividualRequest(orderIds, payload);
             }
             onSaved?.(
-              isTeethRequestEdit
-                ? "Zapisano listę zębów — zmiany są widoczne w panelu zębów."
-                : "Zapisano zmiany w prośbie."
+              isMixedProcurementEdit
+                ? "Zapisano zmiany — zęby w panelu /zeby, pozostałe pozycje w panelu dziennym."
+                : isTeethOnlyEdit
+                  ? "Zapisano listę zębów — zmiany są widoczne w panelu zębów."
+                  : "Zapisano zmiany w prośbie."
             );
             onClose();
             setStockConfirmOpen(false);
@@ -305,17 +313,14 @@ export function EditIndividualRequestModal({
       });
       if (!linesToSave.length) {
         setValidationAttempted(true);
-        setFormNotice({
-          text: "Dodaj co najmniej jedną pozycję z produktem.",
-          tone: "error",
-        });
+        setFormNotice(REQUEST_EDIT_FORM.missingLines);
         return;
       }
 
       if (mode === "procurement") {
         if (requestKind === "zamowienie" && !supplierId.trim()) {
           setValidationAttempted(true);
-          setFormNotice({ text: "Wybierz dostawcę.", tone: "error" });
+          setFormNotice(REQUEST_EDIT_FORM.missingSupplier);
           return;
         }
         try {
@@ -333,10 +338,12 @@ export function EditIndividualRequestModal({
           }
         } catch (e) {
           setValidationAttempted(true);
-          setFormNotice({
-            text: e instanceof Error ? e.message : "Uzupełnij wymagane pola.",
-            tone: "error",
-          });
+          setFormNotice(
+            formError(
+              "Uzupełnij pola",
+              e instanceof Error ? e.message : REQUEST_EDIT_FORM.incompleteFields.text,
+            ),
+          );
           return;
         }
       }
@@ -345,13 +352,11 @@ export function EditIndividualRequestModal({
         const plan = assessSalesGroupSubmittable(linesToSave, "", requestKind);
         if (!plan?.submittable) {
           setValidationAttempted(true);
-          setFormNotice({
-            text:
-              requestKind === "informacja"
-                ? "Uzupełnij wymagane pola — symbol, kod Mikran lub opis produktu."
-                : "Uzupełnij wymagane pola — produkt i ilość przy każdej pozycji.",
-            tone: "error",
-          });
+          setFormNotice(
+            requestKind === "informacja"
+              ? REQUEST_EDIT_FORM.incompleteSalesInformacja
+              : REQUEST_EDIT_FORM.incompleteSalesOrder,
+          );
           return;
         }
         if (
@@ -363,10 +368,7 @@ export function EditIndividualRequestModal({
           )
         ) {
           setValidationAttempted(true);
-          setFormNotice({
-            text: "Każda pozycja zamówienia musi mieć ilość (liczba sztuk, np. 1).",
-            tone: "error",
-          });
+          setFormNotice(REQUEST_EDIT_FORM.missingQuantity);
           return;
         }
       }
@@ -507,11 +509,13 @@ export function EditIndividualRequestModal({
       open
       onClose={onClose}
       title={
-        isTeethRequestEdit
-          ? TEETH_EDIT_REQUEST_TITLE
-          : mode === "procurement"
-            ? "Popraw prośbę handlowca"
-            : "Popraw swoją prośbę"
+        isMixedProcurementEdit
+          ? MIXED_PROCUREMENT_EDIT_BANNER_TITLE
+          : isTeethOnlyEdit
+            ? TEETH_EDIT_REQUEST_TITLE
+            : mode === "procurement"
+              ? "Popraw prośbę handlowca"
+              : "Popraw swoją prośbę"
       }
       titleHint={
         mode === "procurement"
@@ -557,7 +561,8 @@ export function EditIndividualRequestModal({
       />
 
       <div className="min-h-0 flex-1 space-y-3 overflow-y-auto p-3 sm:p-4">
-        {isTeethRequestEdit ? <TeethProcurementRequestBanner /> : null}
+        {isMixedProcurementEdit ? <MixedProcurementRequestBanner /> : null}
+        {isTeethOnlyEdit ? <TeethProcurementRequestBanner /> : null}
 
         {mode === "procurement" ? (
           <ProsbaFormSection

@@ -3,7 +3,8 @@ import { salesTypography } from "@/lib/ui/ontime-theme";
 
 export const boardQuestionsSectionClass = "space-y-4";
 
-export const boardQuestionsToolbarShellClass = "space-y-3 border-b border-slate-100 pb-3";
+export const boardQuestionsToolbarShellClass =
+  "space-y-3 rounded-lg border border-slate-200/70 bg-slate-50/50 px-3 py-3 sm:px-3.5";
 
 export const boardQuestionsFormShellClass =
   "overflow-hidden rounded-lg border border-indigo-200/80 bg-white shadow-sm";
@@ -46,7 +47,7 @@ export const boardQuestionsListFooterClass =
 export const boardQuestionRowHeaderClass = "px-3 py-3.5 sm:px-4 sm:py-4";
 
 export const boardQuestionExpandedShellClass =
-  "space-y-4 border-t border-slate-100/90 bg-slate-50/30 px-3 pb-4 pt-3.5 sm:px-4 sm:pb-5 sm:pt-4";
+  "space-y-4 border-t border-indigo-100/60 bg-gradient-to-b from-indigo-50/20 via-white to-white px-3 pb-4 pt-4 sm:px-4 sm:pb-5";
 
 export const boardQuestionInlineReplyShellClass =
   "space-y-2.5 border-t border-indigo-100/80 bg-indigo-50/20 px-3 pb-3.5 pt-3 sm:px-4";

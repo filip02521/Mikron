@@ -6,6 +6,8 @@ import {
   systemNoticeActionClass,
   systemNoticePinnedClass,
   systemNoticeTourClass,
+  noticeBodyInlineClass,
+  noticeTitleInlineClass,
 } from "@/lib/ui/ontime-theme";
 
 export type SystemNoticeVariant = "pinned" | "action" | "tour";
@@ -83,12 +85,11 @@ export function SystemNotice({
         <div className="min-w-0">
           <p
             className={cn(
-              "text-sm leading-snug",
               variant === "tour"
-                ? "font-semibold text-white"
+                ? "text-sm font-semibold leading-snug text-white"
                 : variant === "pinned"
-                  ? "min-w-0 font-normal text-slate-900"
-                  : "font-semibold text-slate-900"
+                  ? cn(noticeTitleInlineClass, "min-w-0 font-normal")
+                  : noticeTitleInlineClass,
             )}
           >
             {title}
@@ -97,8 +98,7 @@ export function SystemNotice({
             <p
               className={cn(
                 variant === "pinned" ? "mt-1.5" : "mt-0.5",
-                "text-xs leading-relaxed",
-                variant === "tour" ? "text-indigo-100" : "text-slate-600"
+                variant === "tour" ? "text-xs leading-relaxed text-indigo-100" : noticeBodyInlineClass,
               )}
             >
               {description}

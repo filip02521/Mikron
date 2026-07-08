@@ -4,7 +4,9 @@ import type { DeliveryStats, IndividualRequestKind, StatsMode } from "@/types/da
 import { RequestCompletenessBanner } from "@/components/orders/RequestCompletenessBanner";
 import { SupplierLeadTimeHint } from "@/components/orders/SupplierLeadTimeHint";
 import { SubiektFeedbackAlert } from "@/components/subiekt/SubiektFeedbackAlert";
+import { FormNoticeMessage } from "@/components/ui/FormNoticeMessage";
 import { FormStatusAlert } from "@/components/orders/FormStatusAlert";
+import type { FormMessage } from "@/lib/ui/notice-content";
 import { Spinner } from "@/components/ui/Spinner";
 import type { SubiektFeedback } from "@/lib/subiekt/feedback";
 import {
@@ -47,7 +49,7 @@ export function RequestFormStatusPanel({
     statsMode: StatsMode;
   } | null;
   scheduleHint?: string | null;
-  formMessage?: { text: string; tone: "error" | "warning" | "success" } | null;
+  formMessage?: FormMessage | null;
   className?: string;
   audience?: "procurement" | "default";
   /** Po nieudanym zapisie — kompletność pokazują już błędy przy polach. */
@@ -76,19 +78,19 @@ export function RequestFormStatusPanel({
         Status formularza
       </p>
 
-      {formMessage ? (
-        <FormStatusAlert tone={formMessage.tone}>{formMessage.text}</FormStatusAlert>
-      ) : null}
+      {formMessage ? <FormNoticeMessage message={formMessage} /> : null}
 
       {scheduleHint ? (
-        <FormStatusAlert tone="info">{scheduleHint}</FormStatusAlert>
+        <FormStatusAlert tone="info" title="Harmonogram dostaw">
+          {scheduleHint}
+        </FormStatusAlert>
       ) : null}
 
       {resolvingSupplier ? (
-        <FormStatusAlert tone="info">
+        <FormStatusAlert tone="info" title="Sprawdzam dostawcę">
           <span className="flex items-center gap-2">
             <Spinner size="sm" />
-            Sprawdzam dostawcę w naszej bazie…
+            Szukam dopasowania w naszej bazie…
           </span>
         </FormStatusAlert>
       ) : null}

@@ -29,9 +29,8 @@ export function SubiektFeedbackAlert({
   }
 
   return (
-    <Alert tone={feedback.tone} className={className}>
-      <p className="font-medium">{feedback.title}</p>
-      <p className="mt-0.5 opacity-90">{body}</p>
+    <Alert tone={feedback.tone} title={feedback.title} className={className}>
+      {body}
     </Alert>
   );
 }

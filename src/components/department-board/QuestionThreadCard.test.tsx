@@ -74,13 +74,15 @@ describe("QuestionThreadCard", () => {
 
   it("pokazuje chip produktu w wierszu tytułu", () => {
     render(<QuestionThreadCard question={testQuestion()} embedded defaultExpanded={false} />);
-    expect(screen.getByText("606402 — Implant testowy")).toBeTruthy();
+    expect(screen.getAllByText("606402 — Implant testowy").length).toBeGreaterThan(0);
   });
 
   it("pokazuje kontekst produktu po rozwinięciu", () => {
     render(<QuestionThreadCard question={testQuestion()} embedded defaultExpanded />);
     expect(screen.getByText("Produkt")).toBeTruthy();
     expect(screen.getAllByText("606402 — Implant testowy").length).toBeGreaterThan(0);
+    expect(screen.getByText("Pytanie handlowca")).toBeTruthy();
+    expect(screen.getByText("Odpowiedź")).toBeTruthy();
   });
 
   it("oznacza wątek po ręcznym rozwinięciu", async () => {

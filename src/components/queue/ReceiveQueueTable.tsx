@@ -1,9 +1,12 @@
 "use client";
+import { WAREHOUSE_TOAST, toastFromError, type ToastNotice } from "@/lib/ui/notice-copy";
+import { isUndoExpired, undoWindowBannerDescription } from "@/lib/orders/daily-panel-undo";
 
 import { Fragment, useCallback, useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import type { IndividualOrder } from "@/types/database";
 import type { DeliveryUndoPayload } from "@/lib/orders/receive-queue-undo";
+import { collectDeliveryNotificationQueueIds } from "@/lib/orders/receive-queue-undo";
 import {
   actionAcknowledgeWarehouseCancelDisposition,
   actionBatchUpdateDelivered,
@@ -15,6 +18,7 @@ import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { DataTable, TableScroll } from "@/components/ui/DataTable";
 import { UndoToast } from "@/components/ui/UndoToast";
+import { NoticeToast } from "@/components/ui/NoticeToast";
 import { QueueGroupExpandControl } from "@/components/queue/QueueGroupExpandControl";
 import { SupplierFilterChips } from "@/components/queue/SupplierFilterChips";
 import { ReceiveQueueSearchField } from "@/components/queue/ReceiveQueueSearchField";
@@ -28,7 +32,7 @@ import { ReceiveQueueVirtualTbody } from "@/components/queue/receive-queue/Recei
 import { ReceiveQueueSelectionBar } from "@/components/queue/receive-queue/ReceiveQueueSelectionBar";
 import { usePreviewMutationBlocker } from "@/components/layout/usePreviewMutationBlocker";
 import { useUndoShortcutLabel } from "@/lib/platform/keyboard-shortcut-label";
-import { isUndoExpired } from "@/lib/orders/daily-panel-undo";
+import { useDeliveryNotificationFlush, cancelScheduledNotificationFlushes } from "@/lib/client/use-delivery-notification-flush";
 import {
   getDeliveryProgress,
   isInformacjaRequest,
@@ -93,7 +97,8 @@ import {
 const COL_COUNT = 4;
 
 export type ReceiveQueueToast = {
-  text: string;
+  title?: string;
+  text?: string;
   tone: "success" | "error" | "warning";
   durationMs?: number;
 };
@@ -130,7 +135,7 @@ export function ReceiveQueueTable({
   } | null>(null);
   const [notifyConfirmIds, setNotifyConfirmIds] = useState<string[] | null>(null);
   const [undo, setUndo] = useState<DeliveryUndoPayload | null>(null);
-  const [undoError, setUndoError] = useState<string | null>(null);
+  const [undoError, setUndoError] = useState<ToastNotice | null>(null);
 
   const clearUndo = useCallback(() => {
     setUndo(null);
@@ -138,23 +143,32 @@ export function ReceiveQueueTable({
   }, []);
 
   const undoShortcut = useUndoShortcutLabel();
+  useDeliveryNotificationFlush(undo);
 
   const handleUndo = useCallback(() => {
     if (!undo) return;
     setUndoError(null);
     if (isUndoExpired(undo.expiresAt)) {
-      setUndoError("Minął czas na cofnięcie przyjęcia towaru.");
+      setUndoError(WAREHOUSE_TOAST.undoReceiveExpired);
       return;
     }
     start(async () => {
       try {
         onPendingChange("Cofanie przyjęcia towaru…");
+        cancelScheduledNotificationFlushes(
+          collectDeliveryNotificationQueueIds(undo.token.snapshots)
+        );
         await actionUndoDelivery(undo);
         clearUndo();
         router.refresh();
-        onToast({ text: "Przyjęcie towaru zostało cofnięte", tone: "success" });
+        onToast(WAREHOUSE_TOAST.undoReceiveSuccess);
       } catch (e) {
-        setUndoError(e instanceof Error ? e.message : "Nie udało się cofnąć przyjęcia towaru.");
+        setUndoError(
+          toastFromError(
+            e instanceof Error ? e.message : undefined,
+            WAREHOUSE_TOAST.undoReceiveFailed.text
+          )
+        );
       } finally {
         onPendingChange(null);
       }
@@ -376,7 +390,7 @@ export function ReceiveQueueTable({
         const progress = deliveryProgressForOrder(order, value);
         const person = order.sales_person?.name ?? "handlowiec";
 
-        const emailNote = !result.emailSent ? "" : " · wysłano mail do handlowca";
+        const emailNote = result.emailQueued ? " · powiadomienie e-mail za chwilę" : "";
 
         if (result.emailError) {
           onToast({
@@ -492,7 +506,7 @@ export function ReceiveQueueTable({
           }
           const order = receiveQueue.find((o) => o.id === only.orderId);
           const person = order?.sales_person?.name ?? "handlowiec";
-          const emailNote = !result.emailSent ? "" : " · wysłano mail do handlowca";
+          const emailNote = result.emailQueued ? " · powiadomienie e-mail za chwilę" : "";
           onToast({
             text: result.emailError
               ? `Zapisano, ale e-mail: ${result.emailError}`
@@ -779,26 +793,24 @@ export function ReceiveQueueTable({
 
       {undo ? (
         <UndoToast
-          title={undoError ? "Błąd cofania" : "Przyjęto towar"}
-          description={
-            undoError
-              ? undoError
-              : "Masz 10 sekund na cofnięcie przyjęcia towaru."
-          }
-          detailLines={
-            undoError
-              ? undefined
-              : [
-                  "Cofnięcie przywraca poprzedni stan towaru na magazynie.",
-                ]
-          }
-          tone={undoError ? "error" : "success"}
+          title="Przyjęto towar"
+          description={undoWindowBannerDescription(
+            "Cofnięcie przywraca stan magazynu i anuluje zaplanowany e-mail do handlowca"
+          )}
           placement="floating"
           expiresAt={undo.expiresAt}
           onDismiss={clearUndo}
           onUndo={() => void handleUndo()}
           undoLabel="Cofnij przyjęcie"
           undoShortcut={undoShortcut}
+        />
+      ) : null}
+      {undoError ? (
+        <NoticeToast
+          notice={undoError}
+          stacked={Boolean(undo)}
+          tone={undoError.tone}
+          onDismiss={() => setUndoError(null)}
         />
       ) : null}
 

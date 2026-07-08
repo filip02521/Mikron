@@ -4,7 +4,6 @@ import {
   hasValidOrderQuantity,
 } from "@/lib/orders/request-completeness";
 import type { IndividualRequestKind } from "@/types/database";
-import { resolveTeethCatalogFromDraft } from "@/lib/teeth/teeth-catalog";
 import { isStockExemptTwId } from "@/lib/orders/teeth-stock-exempt";
 import { teethLineDetailsComplete } from "@/lib/teeth/teeth-validation";
 
@@ -68,11 +67,12 @@ export function shouldShowProsbaLineFieldValidation(
 /** Czy linia ma braki wymagane do wysłania (do podświetlenia zwiniętej pozycji). */
 export function prosbaLineHasSubmitBlockers(
   line: ProductLineDraft,
-  requestKind: IndividualRequestKind
+  requestKind: IndividualRequestKind,
+  options?: { exemptTwIds?: ReadonlySet<number> }
 ): boolean {
   const fields = assessProsbaLineFields(line, requestKind, "strict");
   if (prosbaLineHasFieldIssues(fields)) return true;
-  if (prosbaLineHasTeethBlockers(line, requestKind)) return true;
+  if (prosbaLineHasTeethBlockers(line, requestKind, options)) return true;
   return false;
 }
 
@@ -84,16 +84,8 @@ export function prosbaLineHasTeethBlockers(
 ): boolean {
   if (requestKind !== "zamowienie") return false;
 
-  const catalog = resolveTeethCatalogFromDraft({
-    teethProductLine: line.teethProductLine,
-    teethManufacturer: line.teethManufacturer,
-    product: line.product,
-    subiektTwId: line.subiektTwId,
-    adminProductLine: line.teethProductLine,
-  });
   const isTeethProduct = isStockExemptTwId(line.subiektTwId, options?.exemptTwIds);
-
-  if (!catalog && !isTeethProduct) return false;
+  if (!isTeethProduct) return false;
 
   return !teethLineDetailsComplete({
     teethDetails: line.teethDetails,

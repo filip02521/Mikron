@@ -1,4 +1,5 @@
 "use client";
+import { toastFromError, SALES_TOAST, type ToastNotice } from "@/lib/ui/notice-copy";
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -23,7 +24,7 @@ import type { SalesInviteLinkResult } from "@/lib/users/sales-invite";
 import { Card, CardHeader } from "@/components/ui/Card";
 import { Field, Input, Select } from "@/components/ui/Field";
 import { Button } from "@/components/ui/Button";
-import { Toast } from "@/components/ui/Toast";
+import { NoticeToast } from "@/components/ui/NoticeToast";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { DataTable, TableScroll } from "@/components/ui/DataTable";
 import { EmptyState } from "@/components/ui/EmptyState";
@@ -102,9 +103,7 @@ export function SalesAdminClient({
     setRows(initial);
   }
   const [pending, start] = useTransition();
-  const [toast, setToast] = useState<{ text: string; tone: "success" | "error" } | null>(
-    null
-  );
+  const [toast, setToast] = useState<ToastNotice | null>(null);
   const dismiss = useCallback(() => setToast(null), []);
   const [search, setSearch] = useState("");
   const [groupFilter, setGroupFilter] = useState<GroupFilter>("all");
@@ -183,7 +182,7 @@ export function SalesAdminClient({
       ? await actionGenerateSalesTeamInviteLink(salesPersonId)
       : await actionGenerateSalesPersonInviteLink(salesPersonId);
     if ("error" in r) {
-      setToast({ text: r.error, tone: "error" });
+      setToast(toastFromError(r.error));
       return;
     }
     setInviteDialog(r.invite);
@@ -213,7 +212,7 @@ export function SalesAdminClient({
   const save = () => {
     const wasNew = !form.id;
     if ((requireGroupOnCreate || managerMode) && !form.groupId.trim()) {
-      setToast({ text: "Wybierz grupę z listy przypisanych.", tone: "error" });
+      setToast(SALES_TOAST.missingGroup);
       return;
     }
     start(async () => {
@@ -224,7 +223,7 @@ export function SalesAdminClient({
           groupId: form.groupId || null,
         });
         if ("error" in r) {
-          setToast({ text: r.error, tone: "error" });
+          setToast(toastFromError(r.error));
           return;
         }
         resetForm();
@@ -245,14 +244,14 @@ export function SalesAdminClient({
         groupId: form.groupId || null,
       });
       if ("error" in r) {
-        setToast({ text: r.error, tone: "error" });
+        setToast(toastFromError(r.error));
         return;
       }
       resetForm();
       if (wasNew && !managerMode) {
         await runInviteLink(r.id, true);
       } else {
-        setToast({ text: "Zapisano zmiany handlowca.", tone: "success" });
+        setToast(SALES_TOAST.savedSalesPerson);
         router.refresh();
       }
     });
@@ -570,7 +569,7 @@ export function SalesAdminClient({
 
   return (
     <>
-      {toast ? <Toast message={toast.text} tone={toast.tone} onDismiss={dismiss} /> : null}
+      {toast ? <NoticeToast notice={toast} onDismiss={dismiss} /> : null}
       {inviteDialog ? (
         <InviteLinkDialog invite={inviteDialog} onClose={() => setInviteDialog(null)} />
       ) : null}
@@ -604,7 +603,7 @@ export function SalesAdminClient({
             const r = await actionResetSalesTeamUserPassword(resetTarget.id);
             setResetTarget(null);
             if ("error" in r) {
-              setToast({ text: r.error, tone: "error" });
+              setToast(toastFromError(r.error));
               return;
             }
             setTempPasswordDialog({
@@ -645,13 +644,13 @@ export function SalesAdminClient({
           start(async () => {
             const r = await actionDeleteSalesPerson(deleteTarget.id);
             if ("error" in r) {
-              setToast({ text: r.error, tone: "error" });
+              setToast(toastFromError(r.error));
               setDeleteTarget(null);
               return;
             }
             setRows((list) => list.filter((x) => x.id !== deleteTarget.id));
             setDeleteTarget(null);
-            setToast({ text: "Handlowiec usunięty.", tone: "success" });
+            setToast(SALES_TOAST.deletedSalesPerson);
             router.refresh();
           });
         }}

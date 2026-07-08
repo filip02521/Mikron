@@ -1,4 +1,5 @@
 "use client";
+import { ADMIN_PREVIEW_TOAST, DAILY_PANEL_TOAST, toastFromError, toastSuccess, type ToastNotice } from "@/lib/ui/notice-copy";
 
 import { useCallback, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
@@ -11,7 +12,6 @@ import {
   undoWindowBannerDescription,
 } from "@/lib/orders/daily-panel-undo";
 import { useAdminPanelPreview } from "@/components/layout/AdminPanelPreviewContext";
-import { ADMIN_PANEL_PREVIEW_MUTATION_BLOCKED } from "@/lib/auth/admin-panel-preview-messages";
 
 export const DAILY_PANEL_SCOPE_BULK = "__bulk__";
 export const DAILY_PANEL_SCOPE_GLOBAL = "__global__";
@@ -48,9 +48,7 @@ export function useDailyPanelRunner() {
   const [pendingScope, setPendingScope] = useState<string | null>(null);
   const [pendingMessage, setPendingMessage] = useState<string | null>(null);
   const [undo, setUndo] = useState<UndoState | null>(null);
-  const [flash, setFlash] = useState<{ text: string; tone: "success" | "error" } | null>(
-    null
-  );
+  const [flash, setFlash] = useState<ToastNotice | null>(null);
   const undoPayloadRef = useRef<DailyPanelUndoPayload | null>(null);
 
   const dismissFlash = useCallback(() => setFlash(null), []);
@@ -71,7 +69,7 @@ export function useDailyPanelRunner() {
   const run: DailyPanelRunFn = useCallback(
     (action, successMessage, pendingMsg = "Przetwarzanie…", options) => {
       if (readOnly) {
-        setFlash({ text: ADMIN_PANEL_PREVIEW_MUTATION_BLOCKED, tone: "error" });
+        setFlash(ADMIN_PREVIEW_TOAST);
         return;
       }
 
@@ -102,17 +100,14 @@ export function useDailyPanelRunner() {
           } else {
             setUndo(null);
             undoPayloadRef.current = null;
-            setFlash({ text: successMessage, tone: "success" });
+            setFlash(toastSuccess(successMessage));
           }
           options?.onSuccess?.();
           router.refresh();
         } catch (e) {
           setUndo(null);
           undoPayloadRef.current = null;
-          setFlash({
-            text: e instanceof Error ? e.message : "Wystąpił błąd",
-            tone: "error",
-          });
+          setFlash(toastFromError(e instanceof Error ? e.message : undefined, DAILY_PANEL_TOAST.genericError.text));
         } finally {
           setPendingScope(null);
           setPendingMessage(null);
@@ -124,7 +119,7 @@ export function useDailyPanelRunner() {
 
   const handleUndo = useCallback(() => {
     if (readOnly) {
-      setFlash({ text: ADMIN_PANEL_PREVIEW_MUTATION_BLOCKED, tone: "error" });
+      setFlash(ADMIN_PREVIEW_TOAST);
       return;
     }
     const payload = undo?.payload ?? undoPayloadRef.current;
@@ -132,10 +127,7 @@ export function useDailyPanelRunner() {
     if (isUndoPayloadExpired(payload)) {
       setUndo(null);
       undoPayloadRef.current = null;
-      setFlash({
-        text: "Minął czas na cofnięcie — odśwież panel.",
-        tone: "error",
-      });
+      setFlash(DAILY_PANEL_TOAST.undoExpired);
       return;
     }
     setPendingScope(DAILY_PANEL_SCOPE_GLOBAL);
@@ -145,11 +137,11 @@ export function useDailyPanelRunner() {
         await actionUndoDailyPanelChange(payload);
         setUndo(null);
         undoPayloadRef.current = null;
-        setFlash({ text: "Cofnięto ostatnią akcję.", tone: "success" });
+        setFlash(DAILY_PANEL_TOAST.undoSuccess);
         router.refresh();
       } catch (e) {
         const message = e instanceof Error ? e.message : "Nie udało się cofnąć";
-        setFlash({ text: message, tone: "error" });
+        setFlash(toastFromError(message, DAILY_PANEL_TOAST.undoFailed.text));
         if (isUndoPayloadExpired(payload)) {
           setUndo(null);
           undoPayloadRef.current = null;
@@ -165,7 +157,7 @@ export function useDailyPanelRunner() {
   const notify = useCallback((text: string, tone: "success" | "error" = "success") => {
     setUndo(null);
     undoPayloadRef.current = null;
-    setFlash({ text, tone });
+    setFlash(tone === "error" ? toastFromError(text) : toastSuccess(text));
   }, []);
 
   return {

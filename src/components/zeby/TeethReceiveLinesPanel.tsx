@@ -1,9 +1,12 @@
 "use client";
+import { TEETH_RECEIVE_TOAST, toastFromError, type ToastNotice } from "@/lib/ui/notice-copy";
+import { isUndoExpired, undoWindowBannerDescription } from "@/lib/orders/daily-panel-undo";
 
 import { useCallback, useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import type { IndividualOrder } from "@/types/database";
 import type { DeliveryUndoPayload } from "@/lib/orders/receive-queue-undo";
+import { collectDeliveryNotificationQueueIds } from "@/lib/orders/receive-queue-undo";
 import {
   actionBatchUpdateDelivered,
   actionUndoDelivery,
@@ -13,6 +16,7 @@ import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { SystemNotice } from "@/components/ui/SystemNotice";
 import { UndoToast } from "@/components/ui/UndoToast";
+import { NoticeToast } from "@/components/ui/NoticeToast";
 import { Button } from "@/components/ui/Button";
 import { IconTooth } from "@/components/icons/StrokeIcons";
 import { SupplierFilterChips } from "@/components/queue/SupplierFilterChips";
@@ -20,13 +24,13 @@ import { ReceiveQueueSearchField } from "@/components/queue/ReceiveQueueSearchFi
 import { ReceiveQueueActiveFilters } from "@/components/queue/ReceiveQueueActiveFilters";
 import { TeethReceiveLinesSection } from "@/components/zeby/TeethReceiveLinesSection";
 import { usePreviewMutationBlocker } from "@/components/layout/usePreviewMutationBlocker";
+import { useUndoShortcutLabel } from "@/lib/platform/keyboard-shortcut-label";
 import { useTeethProductInfo } from "@/components/layout/TeethExemptContext";
 import { useTeethUpdates } from "@/components/zeby/TeethUpdatesContext";
 import { cn } from "@/lib/cn";
 import { teethPanelFiltersBarClass } from "@/lib/teeth/teeth-panel-ui";
 import { receiveQueueToolbarSectionClass } from "@/lib/ui/queue-panel-styles";
-import { useUndoShortcutLabel } from "@/lib/platform/keyboard-shortcut-label";
-import { isUndoExpired } from "@/lib/orders/daily-panel-undo";
+import { useDeliveryNotificationFlush, cancelScheduledNotificationFlushes } from "@/lib/client/use-delivery-notification-flush";
 import {
   filterReceiveQueueTable,
   receiveQueueProductSearchEmptyTitle,
@@ -129,7 +133,8 @@ export function TeethReceiveLinesPanel({
   } | null>(null);
   const [refreshConfirm, setRefreshConfirm] = useState(false);
   const [undo, setUndo] = useState<DeliveryUndoPayload | null>(null);
-  const [undoError, setUndoError] = useState<string | null>(null);
+  const [undoError, setUndoError] = useState<ToastNotice | null>(null);
+  useDeliveryNotificationFlush(undo);
   const undoInFlightRef = useRef(false);
 
   const clearUndo = useCallback(() => {
@@ -158,20 +163,28 @@ export function TeethReceiveLinesPanel({
     if (!undo || undoInFlightRef.current) return;
     setUndoError(null);
     if (isUndoExpired(undo.expiresAt)) {
-      setUndoError("Minął czas na cofnięcie przyjęcia zębów.");
+      setUndoError(TEETH_RECEIVE_TOAST.undoExpired);
       return;
     }
     undoInFlightRef.current = true;
     start(async () => {
       try {
         onPendingChange("Cofanie przyjęcia zębów…");
+        cancelScheduledNotificationFlushes(
+          collectDeliveryNotificationQueueIds(undo.token.snapshots)
+        );
         await actionUndoDelivery(undo);
         clearUndo();
         router.refresh();
         teethUpdates?.refreshNow();
-        onToast({ text: "Przyjęcie zębów zostało cofnięte", tone: "success" });
+        onToast(TEETH_RECEIVE_TOAST.undoSuccess);
       } catch (e) {
-        setUndoError(e instanceof Error ? e.message : "Nie udało się cofnąć przyjęcia zębów.");
+        setUndoError(
+          toastFromError(
+            e instanceof Error ? e.message : undefined,
+            TEETH_RECEIVE_TOAST.undoFailed.text
+          )
+        );
       } finally {
         undoInFlightRef.current = false;
         onPendingChange(null);
@@ -439,24 +452,24 @@ export function TeethReceiveLinesPanel({
     <>
       {undo ? (
         <UndoToast
-          title={undoError ? "Błąd cofania" : "Przyjęto zęby"}
-          description={
-            undoError
-              ? undoError
-              : "Masz 10 sekund na cofnięcie ostatniego zapisu."
-          }
-          detailLines={
-            undoError
-              ? undefined
-              : ["Cofnięcie przywraca poprzedni stan u handlowca w Moje zamówienia."]
-          }
-          tone={undoError ? "error" : "success"}
+          title="Przyjęto zęby"
+          description={undoWindowBannerDescription(
+            "Cofnięcie przywraca stan u handlowca i anuluje zaplanowany e-mail"
+          )}
           placement="floating"
           expiresAt={undo.expiresAt}
           onDismiss={clearUndo}
           onUndo={() => void handleUndo()}
           undoLabel="Cofnij przyjęcie"
           undoShortcut={undoShortcut}
+        />
+      ) : null}
+      {undoError ? (
+        <NoticeToast
+          notice={undoError}
+          stacked={Boolean(undo)}
+          tone={undoError.tone}
+          onDismiss={() => setUndoError(null)}
         />
       ) : null}
 

@@ -1,4 +1,5 @@
 "use client";
+import { ToastNotice, WAREHOUSE_TOAST } from "@/lib/ui/notice-copy";
 
 import { Fragment, useCallback, useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
@@ -17,7 +18,7 @@ import { QueueMetricTab } from "@/components/queue/QueueMetricTab";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { DataTable, TableScroll } from "@/components/ui/DataTable";
 import { Button } from "@/components/ui/Button";
-import { Toast } from "@/components/ui/Toast";
+import { NoticeToast } from "@/components/ui/NoticeToast";
 import { SegmentedControl } from "@/components/ui/SegmentedControl";
 import { SupplierFilterChips } from "@/components/queue/SupplierFilterChips";
 import { SupplierGroupHeaderRow } from "@/components/queue/SupplierGroupHeaderRow";
@@ -159,7 +160,7 @@ export function WarehouseInventorySection({
   deliveryQueueOrders?: IndividualOrder[];
 }) {
   const router = useRouter();
-  const [toast, setToast] = useState<{ text: string; tone: "success" | "error" } | null>(null);
+  const [toast, setToast] = useState<ToastNotice | null>(null);
   const { blockIfReadOnly } = usePreviewMutationBlocker((text) =>
     setToast({ text, tone: "error" })
   );
@@ -260,7 +261,7 @@ export function WarehouseInventorySection({
       start(async () => {
         try {
           await actionSetWarehouseShelf(orderId, shelf);
-          setToast({ text: "Zapisano lokalizację regału", tone: "success" });
+          setToast(WAREHOUSE_TOAST.savedShelfLocation);
           router.refresh();
         } catch (e) {
           setToast({
@@ -373,7 +374,7 @@ export function WarehouseInventorySection({
 
   return (
     <section id="inwentaryzacja" className="scroll-mt-20 border-t border-slate-100">
-      {toast ? <Toast message={toast.text} tone={toast.tone} onDismiss={() => setToast(null)} /> : null}
+      {toast ? <NoticeToast notice={toast} onDismiss={() => setToast(null)} /> : null}
 
       <SectionListLabel
         domain="panel"

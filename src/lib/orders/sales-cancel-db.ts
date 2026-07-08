@@ -122,6 +122,17 @@ export function salesCancelUndoRestoreSnapshot(
   };
 }
 
+/** Warunek optymistyczny przy cofaniu rezygnacji — dopasowuje stan wiersza przed UPDATE. */
+export function salesCancelUndoMatchKind(
+  row: Pick<IndividualOrder, "sales_cancelled_at" | "sales_acknowledged_at" | "status">,
+  caps: SalesCancelDbCaps
+): "cancelled_at" | "legacy_anulowane" | "ack_only" {
+  if (!caps.hasCancelledAt) return "legacy_anulowane";
+  if (row.sales_cancelled_at) return "cancelled_at";
+  if (row.sales_acknowledged_at && row.status === "Anulowane") return "ack_only";
+  return "cancelled_at";
+}
+
 export function buildSalesCancelUndoUpdate(
   caps: SalesCancelDbCaps,
   restoreStatus: IndividualOrderStatus | null,

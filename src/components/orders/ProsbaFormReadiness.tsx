@@ -16,6 +16,8 @@ import {
   IconCircleCheck,
 } from "@/components/icons/StrokeIcons";
 import { SubmitHintChevron } from "@/components/ui/UiGlyphs";
+import { FormNoticeMessage } from "@/components/ui/FormNoticeMessage";
+import type { FormMessage } from "@/lib/ui/notice-content";
 import { cn } from "@/lib/cn";
 
 function StepIcon({ state }: { state: ProsbaReadinessStepState }) {
@@ -121,7 +123,7 @@ export function ProsbaFormReadiness({
   lines: ProsbaReadinessLine[];
   requestKind: IndividualRequestKind;
   salesSubmitPlan: SalesRequestSubmitPlan | null;
-  formMessage?: { text: string; tone: "error" | "warning" | "success" } | null;
+  formMessage?: FormMessage | null;
   resolvingSupplier?: boolean;
   informacjaPath?: InformacjaFlowPath;
   /** Po nieudanej próbie wysłania — rozwiń checklistę kroków. */
@@ -157,15 +159,8 @@ export function ProsbaFormReadiness({
     return (
       <div className={className} aria-live="polite">
         {formMessage ? (
-          <div
-            className={cn(
-              "mb-2 rounded-md border px-3 py-2.5 text-sm",
-              formMessage.tone === "error" && "border-red-200 bg-red-50 text-red-950",
-              formMessage.tone === "warning" && "border-amber-200 bg-amber-50 text-amber-950",
-              formMessage.tone === "success" && "border-emerald-200 bg-emerald-50 text-emerald-950"
-            )}
-          >
-            {formMessage.text}
+          <div className="mb-2">
+            <FormNoticeMessage message={formMessage} />
           </div>
         ) : null}
 
@@ -200,14 +195,8 @@ export function ProsbaFormReadiness({
       aria-live="polite"
     >
       {formMessage ? (
-        <div
-          className={cn(
-            "border-b px-3 py-2.5 text-sm",
-            formMessage.tone === "error" && "border-red-200 bg-red-50 text-red-950",
-            formMessage.tone === "warning" && "border-amber-200 bg-amber-50 text-amber-950"
-          )}
-        >
-          {formMessage.text}
+        <div className="border-b">
+          <FormNoticeMessage message={formMessage} className="rounded-none border-0 border-b" />
         </div>
       ) : null}
 

@@ -18,14 +18,20 @@ import {
   actionUnacknowledgeSalesCancel,
 } from "@/app/actions/my-orders";
 import { UndoToast } from "@/components/ui/UndoToast";
-import { Toast } from "@/components/ui/Toast";
+import { NoticeToast } from "@/components/ui/NoticeToast";
 import {
   isUndoExpired,
   undoExpiresAtNow,
   undoWindowBannerDescription,
 } from "@/lib/orders/daily-panel-undo";
 import type { SalesCancelUndoRestore } from "@/lib/orders/sales-cancel-db";
+import type { TeethLineDetail } from "@/lib/teeth/teeth-catalog";
 import { useUndoShortcutLabel } from "@/lib/platform/keyboard-shortcut-label";
+import {
+  MY_ORDERS_TOAST,
+  toastFromError,
+  type ToastNotice,
+} from "@/lib/ui/notice-copy";
 
 export type ShipmentUndoReport = {
   orderIds: string[];
@@ -33,16 +39,16 @@ export type ShipmentUndoReport = {
   kind: "pickup" | "dismiss" | "cancel";
   /** Migawka przed rezygnacją — przywraca poprzednią częściową rezygnację przy cofnięciu. */
   restoreById?: Record<string, SalesCancelUndoRestore>;
+  /** Lista zębów sprzed wycofania grup — tylko actionSalesCancelTeethGroups. */
+  teethDetailsById?: Record<string, TeethLineDetail[]>;
 };
 
 type ShipmentUndoState = ShipmentUndoReport & { expiresAt: number };
 
 type ShipmentUndoContextValue = {
   undo: ShipmentUndoState | null;
-  undoError: string | null;
   reportUndo: (state: ShipmentUndoReport) => void;
   clearUndo: () => void;
-  clearUndoError: () => void;
   handleUndo: () => void;
   disabled: boolean;
 };
@@ -71,14 +77,10 @@ function shipmentUndoCopy(state: ShipmentUndoState): {
   };
 }
 
-function undoFailureMessage(kind: ShipmentUndoState["kind"]): string {
-  if (kind === "pickup") {
-    return "Nie udało się cofnąć odbioru. Spróbuj ponownie.";
-  }
-  if (kind === "cancel") {
-    return "Nie udało się cofnąć anulowania. Spróbuj ponownie.";
-  }
-  return "Nie udało się cofnąć ukrycia. Spróbuj ponownie.";
+function undoFailureFallback(kind: ShipmentUndoState["kind"]): ToastNotice {
+  if (kind === "pickup") return MY_ORDERS_TOAST.undoPickupFailed;
+  if (kind === "cancel") return MY_ORDERS_TOAST.undoCancelFailed;
+  return MY_ORDERS_TOAST.undoDismissFailed;
 }
 
 /** Jeden toast cofnięcia na widoku /moje — unika duplikatów z wielu list. */
@@ -91,21 +93,20 @@ export function MyOrderShipmentUndoProvider({
 }) {
   const router = useRouter();
   const [undo, setUndo] = useState<ShipmentUndoState | null>(null);
-  const [undoError, setUndoError] = useState<string | null>(null);
+  const [feedback, setFeedback] = useState<ToastNotice | null>(null);
   const undoInFlightRef = useRef(false);
   const [, start] = useTransition();
-
-  const clearUndoError = useCallback(() => setUndoError(null), []);
+  const undoShortcut = useUndoShortcutLabel();
 
   const clearUndo = useCallback(() => {
     setUndo(null);
-    setUndoError(null);
+    setFeedback(null);
   }, []);
 
   const reportUndo = useCallback(
     (state: ShipmentUndoReport) => {
       if (disabled) return;
-      setUndoError(null);
+      setFeedback(null);
       setUndo({ ...state, expiresAt: undoExpiresAtNow() });
     },
     [disabled]
@@ -116,9 +117,10 @@ export function MyOrderShipmentUndoProvider({
     const snapshot = undo;
     if (isUndoExpired(snapshot.expiresAt)) {
       setUndo(null);
+      setFeedback(MY_ORDERS_TOAST.undoExpired);
       return;
     }
-    setUndoError(null);
+    setFeedback(null);
     undoInFlightRef.current = true;
     start(async () => {
       try {
@@ -127,15 +129,20 @@ export function MyOrderShipmentUndoProvider({
         } else if (snapshot.kind === "cancel") {
           await actionUnacknowledgeSalesCancel(snapshot.orderIds, {
             restoreById: snapshot.restoreById,
+            teethDetailsById: snapshot.teethDetailsById,
           });
         } else {
           await actionUnacknowledgePickup(snapshot.orderIds);
         }
         setUndo(null);
+        setFeedback(MY_ORDERS_TOAST.undoSuccess);
         router.refresh();
-      } catch {
+      } catch (e) {
         if (!isUndoExpired(snapshot.expiresAt)) setUndo(snapshot);
-        setUndoError(undoFailureMessage(snapshot.kind));
+        const fallback = undoFailureFallback(snapshot.kind);
+        setFeedback(
+          toastFromError(e instanceof Error ? e.message : undefined, fallback.text)
+        );
         router.refresh();
       } finally {
         undoInFlightRef.current = false;
@@ -143,36 +150,8 @@ export function MyOrderShipmentUndoProvider({
     });
   }, [undo, disabled, router]);
 
-  return (
-    <ShipmentUndoContext.Provider
-      value={{
-        undo,
-        undoError,
-        reportUndo,
-        clearUndo,
-        clearUndoError,
-        handleUndo,
-        disabled,
-      }}
-    >
-      {children}
-    </ShipmentUndoContext.Provider>
-  );
-}
-
-/** Toast cofnięcia — pływający u dołu ekranu, widoczny niezależnie od scrolla listy. */
-export function MyOrderShipmentUndoToast() {
-  const ctx = useContext(ShipmentUndoContext);
-  const undo = ctx?.undo ?? null;
-  const undoError = ctx?.undoError ?? null;
-  const disabled = ctx?.disabled ?? true;
-  const handleUndo = ctx?.handleUndo;
-  const clearUndo = ctx?.clearUndo;
-  const clearUndoError = ctx?.clearUndoError;
-  const undoShortcut = useUndoShortcutLabel();
-
   useEffect(() => {
-    if (!undo || disabled || !handleUndo) return;
+    if (!undo || disabled) return;
     const onKeyDown = (event: KeyboardEvent) => {
       const tag = (event.target as HTMLElement | null)?.tagName;
       if (tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT") return;
@@ -184,42 +163,49 @@ export function MyOrderShipmentUndoToast() {
     return () => window.removeEventListener("keydown", onKeyDown);
   }, [undo, disabled, handleUndo]);
 
-  if (disabled || typeof document === "undefined") return null;
+  const toastPortal =
+    !disabled && typeof document !== "undefined"
+      ? createPortal(
+          <>
+            {undo ? (
+              <UndoToast
+                title={undo.title}
+                description={shipmentUndoCopy(undo).description}
+                undoLabel={shipmentUndoCopy(undo).undoLabel}
+                undoShortcut={undoShortcut}
+                placement="floating"
+                expiresAt={undo.expiresAt}
+                onDismiss={clearUndo}
+                onUndo={handleUndo}
+              />
+            ) : null}
+            {feedback ? (
+              <NoticeToast
+                notice={feedback}
+                stacked={Boolean(undo)}
+                tone={feedback.tone}
+                onDismiss={() => setFeedback(null)}
+              />
+            ) : null}
+          </>,
+          document.body
+        )
+      : null;
 
-  const portals: React.ReactNode[] = [];
-
-  if (undo && clearUndo && handleUndo) {
-    const copy = shipmentUndoCopy(undo);
-    portals.push(
-      <UndoToast
-        key="undo"
-        title={undo.title}
-        description={copy.description}
-        undoLabel={copy.undoLabel}
-        undoShortcut={undoShortcut}
-        placement="floating"
-        expiresAt={undo.expiresAt}
-        onDismiss={clearUndo}
-        onUndo={handleUndo}
-      />
-    );
-  }
-
-  if (undoError && clearUndoError) {
-    portals.push(
-      <Toast
-        key="undo-error"
-        message={undoError}
-        tone="error"
-        durationMs={8000}
-        onDismiss={clearUndoError}
-      />
-    );
-  }
-
-  if (!portals.length) return null;
-
-  return createPortal(<>{portals}</>, document.body);
+  return (
+    <ShipmentUndoContext.Provider
+      value={{
+        undo,
+        reportUndo,
+        clearUndo,
+        handleUndo,
+        disabled,
+      }}
+    >
+      {children}
+      {toastPortal}
+    </ShipmentUndoContext.Provider>
+  );
 }
 
 export function useMyOrderShipmentUndo(): ShipmentUndoContextValue {

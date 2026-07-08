@@ -11,6 +11,8 @@ import { SubiektFeedbackAlert } from "@/components/subiekt/SubiektFeedbackAlert"
 import type { IndividualRequestKind } from "@/types/database";
 import { IconCircleCheck } from "@/components/icons/StrokeIcons";
 import { Spinner } from "@/components/ui/Spinner";
+import { FormNoticeMessage } from "@/components/ui/FormNoticeMessage";
+import type { FormMessage } from "@/lib/ui/notice-content";
 import { cn } from "@/lib/cn";
 
 function StepIcon({ state }: { state: ProcurementReadinessStepState }) {
@@ -72,7 +74,7 @@ export function ProcurementFormReadiness({
   requestKind: IndividualRequestKind;
   informacjaViaDailyPanel?: boolean;
   informacjaStockOutReorder?: boolean;
-  formMessage?: { text: string; tone: "error" | "warning" | "success" } | null;
+  formMessage?: FormMessage | null;
   resolvingSupplier?: boolean;
   subiektFeedbacks?: Array<SubiektFeedback | null | undefined>;
   className?: string;
@@ -104,15 +106,8 @@ export function ProcurementFormReadiness({
       aria-live="polite"
     >
       {formMessage ? (
-        <div
-          className={cn(
-            "border-b px-3 py-2 text-sm",
-            formMessage.tone === "error" && "border-red-200 bg-red-50 text-red-950",
-            formMessage.tone === "warning" && "border-amber-200 bg-amber-50 text-amber-950",
-            formMessage.tone === "success" && "border-emerald-200 bg-emerald-50 text-emerald-950"
-          )}
-        >
-          {formMessage.text}
+        <div className="border-b">
+          <FormNoticeMessage message={formMessage} className="rounded-none border-0 border-b" />
         </div>
       ) : null}
 

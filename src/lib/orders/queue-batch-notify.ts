@@ -93,6 +93,7 @@ export function batchInformacjaConfirmMessage(
 }
 
 export type BatchOperationToast = {
+  title?: string;
   text: string;
   tone: "success" | "error";
   /** Dłuższy toast gdy zapis OK, ale mail do handlowca nie poszedł. */
@@ -109,24 +110,40 @@ function withEmailWarningDuration(toast: BatchOperationToast): BatchOperationToa
 /** Spójny komunikat po zbiorczym zapisie dostaw. */
 export function formatDeliveryBatchToast(result: {
   saved: number;
-  emailSent: number;
+  emailQueued?: number;
+  /** @deprecated użyj {@link emailQueued} */
+  emailSent?: number;
   errors: string[];
   emailError?: string;
 }): BatchOperationToast {
   const partial = result.errors.length > 0;
+  const queued = result.emailQueued ?? result.emailSent ?? 0;
   const emailPart = result.emailError
-    ? ` Uwaga e-mail: ${result.emailError}`
-    : result.emailSent === 0
+    ? `E-mail: ${result.emailError}`
+    : queued === 0
       ? ""
-      : result.emailSent === 1
-        ? " · wysłano mail do handlowca"
-        : ` · wysłano ${result.emailSent} maile (po handlowcu)`;
+      : queued === 1
+        ? "Powiadomienie e-mail zaplanowane za chwilę."
+        : `Zaplanowano ${queued} powiadomienia e-mail (osobno dla każdego handlowca).`;
   const errPart = partial
-    ? ` Uwagi (${result.errors.length}): ${result.errors.slice(0, 2).join("; ")}${result.errors.length > 2 ? "…" : ""}`
+    ? `Uwagi (${result.errors.length}): ${result.errors.slice(0, 2).join("; ")}${result.errors.length > 2 ? "…" : ""}`
     : "";
 
+  const title =
+    partial || result.emailError
+      ? "Zapisano dostawę z uwagami"
+      : "Zapisano dostawę";
+  const body = [
+    polishPozycjeLabel(result.saved),
+    emailPart,
+    errPart,
+  ]
+    .filter(Boolean)
+    .join(" ");
+
   return withEmailWarningDuration({
-    text: `Zapisano ${polishPozycjeLabel(result.saved)}${emailPart}${errPart}`,
+    title,
+    text: body,
     tone: partial || result.emailError ? "error" : "success",
   });
 }
@@ -140,21 +157,31 @@ export function formatInformacjaBatchToast(result: {
   emailError?: string;
 }): BatchOperationToast {
   const emailPart = result.emailError
-    ? ` Uwaga: ${result.emailError}`
+    ? `E-mail: ${result.emailError}`
     : result.emailSent === 0
       ? ""
       : result.emailSent === 1
-        ? " · wysłano mail"
-        : ` · wysłano ${result.emailSent} maile (po handlowcu)`;
+        ? "Wysłano powiadomienie do handlowca."
+        : `Wysłano ${result.emailSent} powiadomienia (osobno dla każdego handlowca).`;
   const skipPart =
     result.skipped && result.skipped > 0
-      ? ` · ${result.skipped} pominięto (już zamknięte lub nieaktualne)`
+      ? `${result.skipped} pozycji pominięto (już zamknięte lub nieaktualne).`
       : "";
 
   const partialSkip = (result.skipped ?? 0) > 0;
+  const title =
+    result.emailError || partialSkip ? "Powiadomienie z uwagami" : "Wysłano powiadomienie";
+  const body = [
+    polishPozycjeLabel(result.updated),
+    emailPart,
+    skipPart,
+  ]
+    .filter(Boolean)
+    .join(" ");
 
   return withEmailWarningDuration({
-    text: `Powiadomiono: ${polishPozycjeLabel(result.updated)}${emailPart}${skipPart}`,
+    title,
+    text: body,
     tone: result.emailError || partialSkip ? "error" : "success",
   });
 }

@@ -30,8 +30,11 @@ import {
 } from "@/app/actions/teeth-orders";
 import { TeethPanelAuditLog } from "@/components/zeby/TeethPanelAuditLog";
 import { IconCircleCheck } from "@/components/icons/StrokeIcons";
-
-type ToastState = { message: string; tone: "success" | "error" } | null;
+import {
+  TEETH_PANEL_TOAST,
+  toastFromError,
+  type ToastNotice,
+} from "@/lib/ui/notice-copy";
 
 export function TeethPanelHistoriaView({
   groups,
@@ -43,7 +46,7 @@ export function TeethPanelHistoriaView({
   groups: TeethQueueGroup[] | null;
   readinessCtx?: TeethPanelReadinessContext;
   filters?: TeethPanelFilters;
-  onToast: (toast: ToastState) => void;
+  onToast: (toast: ToastNotice) => void;
   onReloadQueue?: () => void;
 }) {
   const [error, setError] = useState<string | null>(null);
@@ -103,10 +106,7 @@ export function TeethPanelHistoriaView({
       setHasMore(page.hasMore);
       setHistoryGroups(groupTeethItemsBySupplier(merged));
     } catch (e) {
-      onToast({
-        message: e instanceof Error ? e.message : "Błąd ładowania kolejnej strony",
-        tone: "error",
-      });
+      onToast(toastFromError(e instanceof Error ? e.message : undefined, TEETH_PANEL_TOAST.historiaPageFailed.text));
     } finally {
       setLoadingMore(false);
     }
@@ -128,19 +128,16 @@ export function TeethPanelHistoriaView({
     try {
       if (dateValue) {
         await actionOverrideTeethDeliveryDate([editingDateId], dateValue);
-        onToast({ message: "Ustawiono datę dostawy", tone: "success" });
+        onToast(TEETH_PANEL_TOAST.historiaDeliveryDateSet);
       } else {
         await actionClearTeethDeliveryDateOverride([editingDateId]);
-        onToast({ message: "Wyczyszczono datę dostawy", tone: "success" });
+        onToast(TEETH_PANEL_TOAST.historiaDeliveryDateCleared);
       }
       setEditingDateId(null);
       setDateValue("");
       await reloadHistory();
     } catch (e) {
-      onToast({
-        message: e instanceof Error ? e.message : "Błąd ustawiania daty dostawy",
-        tone: "error",
-      });
+      onToast(toastFromError(e instanceof Error ? e.message : undefined, TEETH_PANEL_TOAST.historiaDateFailed.text));
     } finally {
       setDatePending(false);
     }
@@ -156,10 +153,7 @@ export function TeethPanelHistoriaView({
       setDateValue("");
       await reloadHistory();
     } catch (e) {
-      onToast({
-        message: e instanceof Error ? e.message : "Błąd czyszczenia daty dostawy",
-        tone: "error",
-      });
+      onToast(toastFromError(e instanceof Error ? e.message : undefined, TEETH_PANEL_TOAST.historiaDateClearFailed.text));
     } finally {
       setDatePending(false);
     }
@@ -171,24 +165,15 @@ export function TeethPanelHistoriaView({
     try {
       const result = await actionUnmarkTeethOrdered([unmarkId]);
       if (result.updated === 0) {
-        onToast({
-          message: "Nie udało się cofnąć — pozycja mogła zmienić status.",
-          tone: "error",
-        });
+        onToast(TEETH_PANEL_TOAST.unmarkFailed);
       } else {
-        onToast({
-          message: "Cofnięto oznaczenie — pozycja wróciła do kolejki.",
-          tone: "success",
-        });
+        onToast(TEETH_PANEL_TOAST.unmarkSuccess);
         onReloadQueue?.();
         await reloadHistory();
       }
       setUnmarkId(null);
     } catch (e) {
-      onToast({
-        message: e instanceof Error ? e.message : "Błąd cofania zamówienia",
-        tone: "error",
-      });
+      onToast(toastFromError(e instanceof Error ? e.message : undefined, TEETH_PANEL_TOAST.unmarkError.text));
     } finally {
       setUnmarkPending(false);
     }

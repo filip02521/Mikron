@@ -1,4 +1,5 @@
 "use client";
+import { toastFromError, USERS_TOAST, type ToastNotice } from "@/lib/ui/notice-copy";
 
 import Link from "next/link";
 import { useMemo, useState, useTransition, useCallback, useEffect, useRef } from "react";
@@ -18,7 +19,7 @@ import { UsersRoleHelpPanel } from "@/components/admin/UsersRoleHelpPanel";
 import { Card, CardHeader } from "@/components/ui/Card";
 import { Field, Input, Select } from "@/components/ui/Field";
 import { Button } from "@/components/ui/Button";
-import { Toast } from "@/components/ui/Toast";
+import { NoticeToast } from "@/components/ui/NoticeToast";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { DataTable, TableScroll } from "@/components/ui/DataTable";
 import { EmptyState } from "@/components/ui/EmptyState";
@@ -88,9 +89,7 @@ export function UsersAdminClient({
 }) {
   const [users, setUsers] = useState(initialUsers);
   const [pending, start] = useTransition();
-  const [toast, setToast] = useState<{ text: string; tone: "success" | "error" } | null>(
-    null
-  );
+  const [toast, setToast] = useState<ToastNotice | null>(null);
   const dismiss = useCallback(() => setToast(null), []);
   const [search, setSearch] = useState("");
   const [roleFilter, setRoleFilter] = useState<RoleFilter>("all");
@@ -292,7 +291,7 @@ export function UsersAdminClient({
         assignedWorkspaces: savedRole === "zakupy" ? (edit.assignedWorkspaces ?? []) : [],
       });
       if ("error" in r) {
-        setToast({ text: r.error, tone: "error" });
+        setToast(toastFromError(r.error));
         return;
       }
 
@@ -329,13 +328,13 @@ export function UsersAdminClient({
           salesPersonId: savedSalesPersonId ?? "",
         },
       }));
-      setToast({ text: "Zapisano uprawnienia.", tone: "success" });
+      setToast(USERS_TOAST.savedPermissions);
     });
   };
 
   return (
     <>
-      {toast ? <Toast message={toast.text} tone={toast.tone} onDismiss={dismiss} /> : null}
+      {toast ? <NoticeToast notice={toast} onDismiss={dismiss} /> : null}
 
       <ConfirmDialog
         open={!!deleteTarget}
@@ -354,7 +353,7 @@ export function UsersAdminClient({
           start(async () => {
             const r = await actionDeleteAppUser(deleteTarget.id);
             if ("error" in r) {
-              setToast({ text: r.error, tone: "error" });
+              setToast(toastFromError(r.error));
               setDeleteTarget(null);
               return;
             }
@@ -367,7 +366,7 @@ export function UsersAdminClient({
               return next;
             });
             setDeleteTarget(null);
-            setToast({ text: "Konto usunięte.", tone: "success" });
+            setToast(USERS_TOAST.deletedAccount);
           });
         }}
       />
@@ -384,10 +383,10 @@ export function UsersAdminClient({
           start(async () => {
             const r = await actionSetUserPassword(passwordModal.userId, newPassword);
             if ("error" in r) {
-              setToast({ text: r.error, tone: "error" });
+              setToast(toastFromError(r.error));
               return;
             }
-            setToast({ text: "Hasło zaktualizowane.", tone: "success" });
+            setToast(USERS_TOAST.updatedPassword);
             setPasswordModal(null);
           });
         }}
@@ -417,7 +416,7 @@ export function UsersAdminClient({
                     assignedWorkspaces: createForm.role === "zakupy" ? (createForm.assignedWorkspaces ?? []) : [],
                   });
                   if ("error" in r) {
-                    setToast({ text: r.error, tone: "error" });
+                    setToast(toastFromError(r.error));
                     return;
                   }
                   const nextUsers = [...users, r.user];
@@ -431,7 +430,7 @@ export function UsersAdminClient({
                       assignedWorkspaces: r.user.assignedWorkspaces ?? [],
                     },
                   }));
-                  setToast({ text: "Konto utworzone.", tone: "success" });
+                  setToast(USERS_TOAST.createdAccount);
                   closeCreateForm();
                   prefillAppliedRef.current = null;
                 });
@@ -875,7 +874,7 @@ export function UsersAdminClient({
                                   start(async () => {
                                     const r = await actionGeneratePasswordResetLink(u.email);
                                     if ("error" in r) {
-                                      setToast({ text: r.error, tone: "error" });
+                                      setToast(toastFromError(r.error));
                                       return;
                                     }
                                     try {

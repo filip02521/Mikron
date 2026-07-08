@@ -7,11 +7,13 @@ import {
   type OrderFulfillmentProgress,
 } from "@/lib/orders/individual";
 import type { IndividualOrder, IndividualOrderStatus } from "@/types/database";
+import { undoWindowBannerDescription } from "@/lib/orders/daily-panel-undo";
 
 export type SalesCancelPhase = "before_order" | "in_transit" | "on_stock";
 
-const SALES_CANCEL_UNDO_HINT =
-  "Przez kilka sekund możesz cofnąć tę operację (toast u dołu ekranu lub skrót ⌘Z / Ctrl+Z).";
+export function salesCancelUndoHint(): string {
+  return undoWindowBannerDescription("Toast u dołu ekranu lub skrót ⌘Z / Ctrl+Z");
+}
 
 /** Status po cofnięciu anulowania (before_order → było Anulowane). */
 export function salesCancelUndoRestoreStatus(
@@ -287,7 +289,7 @@ export function salesPartialCancelConfirmCopy(
     if (cancelQty >= maxQty) return base;
     return {
       title: "Wycofać część pozycji?",
-      message: `Wycofasz ${qtyPart} pozycji „${product}”. Reszta zostaje w prośbie. ${SALES_CANCEL_UNDO_HINT}`,
+      message: `Wycofasz ${qtyPart} pozycji „${product}”. Reszta zostaje w prośbie. ${salesCancelUndoHint()}`,
       confirmLabel: "Zmień ilość",
     };
   }
@@ -301,7 +303,7 @@ export function salesPartialCancelConfirmCopy(
   if (cancelQty < maxQty) {
     return {
       title: "Zmienić ilość w prośbie?",
-      message: `Wycofasz ${qtyPart} z pozycji „${product}”. Reszta zostaje w prośbie. ${SALES_CANCEL_UNDO_HINT}`,
+      message: `Wycofasz ${qtyPart} z pozycji „${product}”. Reszta zostaje w prośbie. ${salesCancelUndoHint()}`,
       confirmLabel: "Zmień ilość",
     };
   }
@@ -564,7 +566,7 @@ export function salesCancelConfirmForLines(lines: SalesCancelLineContext[]): {
   const products = formatProductList(valid.map((l) => l.product));
   return {
     title: "Wycofać wybrane pozycje?",
-    message: `Pozycje ${products} zostaną wycofane — skutek zależy od etapu każdej z nich (część może być już u dostawcy lub na magazynie). ${SALES_CANCEL_UNDO_HINT}`,
+    message: `Pozycje ${products} zostaną wycofane — skutek zależy od etapu każdej z nich (część może być już u dostawcy lub na magazynie). ${salesCancelUndoHint()}`,
     confirmLabel: "Wycofaj wybrane",
   };
 }
@@ -588,15 +590,15 @@ export function salesCancelConfirmCopy(
       if (single && product) {
         return {
           title: "Wycofać tę pozycję?",
-          message: `„${product}” zniknie z Twojej listy i u działu dostaw. ${SALES_CANCEL_UNDO_HINT}`,
+          message: `„${product}” zniknie z Twojej listy i u działu dostaw. ${salesCancelUndoHint()}`,
           confirmLabel: "Wycofaj pozycję",
         };
       }
       return {
         title: groupProducts ? "Wycofać wszystkie pozycje?" : "Wycofać prośbę?",
         message: groupProducts
-          ? `Pozycje ${groupProducts} znikną z Twojej listy i u działu dostaw. ${SALES_CANCEL_UNDO_HINT}`
-          : `Prośba zniknie z Twojej listy i u działu dostaw. ${SALES_CANCEL_UNDO_HINT}`,
+          ? `Pozycje ${groupProducts} znikną z Twojej listy i u działu dostaw. ${salesCancelUndoHint()}`
+          : `Prośba zniknie z Twojej listy i u działu dostaw. ${salesCancelUndoHint()}`,
         confirmLabel: groupProducts ? "Wycofaj wszystkie" : "Wycofaj prośbę",
       };
     case "in_transit":

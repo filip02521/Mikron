@@ -106,6 +106,14 @@ import {
 import { canEditIndividualRequestGroup } from "@/lib/orders/individual-request-edit";
 import { salesCancelUndoRestoreSnapshot } from "@/lib/orders/sales-cancel-db";
 import type { SalesCancelUndoRestore } from "@/lib/orders/sales-cancel-db";
+import {
+  canAcknowledgePickupForOrder,
+  classifyMyOrderProductLanes,
+  resolveGroupAcknowledgeMode,
+  resolveLinePickupAckMode,
+  splitPickupPendingIds,
+  submissionGroupSplitHint,
+} from "@/lib/orders/my-order-lane-meta";
 
 function weryfikacjaPresentation(order: IndividualOrder) {
   return {
@@ -126,6 +134,7 @@ export type MyOrderAcknowledgeMode =
   | "cancel_notice"
   | "pickup"
   | "teeth_handover"
+  | "mixed_pickup"
   | "availability"
   | "none";
 
@@ -170,6 +179,10 @@ export type MyOrderLine = {
   historyEstimateLowConfidence?: boolean;
   /** Lista zębów — do edycji prośby zębowej. */
   teethDetails?: TeethLineDetail[];
+  /** Linia zębowa (tor panelu zębów). */
+  isTeeth?: boolean;
+  /** Tryb potwierdzenia odbioru dla tej linii. */
+  lineAcknowledgeMode?: import("@/lib/orders/my-order-pickup-ack-copy").MyOrderPickupAckMode | "none";
   /** Przyjęte sztuki per linia spec (klucz: teethReceiveGroupKey). */
   teethLineDelivered?: Record<string, number> | null;
   /** Łączna przyjęta ilość (delivered_quantity z bazy). */
@@ -200,6 +213,12 @@ type MyOrderRowCore = {
   rowColor: string;
   /** Czy pozycja jest „zęby" (denormalizowane z individual_orders). */
   isTeeth?: boolean;
+  /** Zęby + zwykły towar w jednej karcie. */
+  productLaneKind?: import("@/lib/orders/my-order-lane-meta").MyOrderProductLaneKind;
+  /** Wspólny identyfikator prośby z formularza (gdy dotyczy). */
+  submissionGroupId?: string | null;
+  /** Gdy ta sama prośba jest rozbita na kilka kart w /moje. */
+  submissionGroupSplitHint?: string | null;
   /** Czy wiersz pochodzi z archiwum (decorateArchivedRow) — wpływa na subline i styl. */
   isArchive?: boolean;
 };
@@ -210,6 +229,8 @@ export type MyOrderRow = MyOrderRowCore &
     acknowledgeMode: MyOrderAcknowledgeMode;
     pickupPendingCount: number;
     pickupPendingIds: string[];
+    pickupTeethPendingIds: string[];
+    pickupShelfPendingIds: string[];
     pickupReadyTotal: number;
     pickupAcknowledgedCount: number;
     canCancelBySales: boolean;
@@ -271,30 +292,12 @@ export function lineStockStatus(order: IndividualOrder): MyOrderLineStockStatus 
   return "partial";
 }
 
-function canAcknowledgePickupForOrder(order: IndividualOrder): boolean {
-  return isAwaitingSalesPickup(order) || isAwaitingInformacjaAck(order);
+function canAcknowledgePickupForOrderLocal(order: IndividualOrder): boolean {
+  return canAcknowledgePickupForOrder(order);
 }
 
 function resolveAcknowledgeMode(orders: IndividualOrder[]): MyOrderAcknowledgeMode {
-  const open = orders.filter((o) => !o.sales_acknowledged_at);
-  if (!open.length) return "none";
-  if (open.some((o) => isSalesCancelNoticePending(o))) {
-    return "cancel_notice";
-  }
-  if (open.every((o) => o.status === "Anulowane")) {
-    return "cancelled";
-  }
-  if (open.some((o) => isAwaitingSalesPickup(o))) {
-    const pickupPending = open.filter((o) => isAwaitingSalesPickup(o));
-    if (pickupPending.every((o) => o.is_teeth)) {
-      return "teeth_handover";
-    }
-    return "pickup";
-  }
-  if (open.some((o) => isAwaitingInformacjaAck(o))) {
-    return "availability";
-  }
-  return "none";
+  return resolveGroupAcknowledgeMode(orders);
 }
 
 function rowToLine(
@@ -337,7 +340,7 @@ function rowToLine(
     quantityLabel: row.quantityLabel,
     progressLabel: row.progressLabel,
     stockStatus: lineStockStatus(order),
-    canAcknowledgePickup: canAcknowledgePickupForOrder(order),
+    canAcknowledgePickup: canAcknowledgePickupForOrderLocal(order),
     ...(() => {
       const salesCancelPhase = resolveSalesCancelPhase(order);
       return {
@@ -365,20 +368,24 @@ function rowToLine(
     historyEstimateLabel: historyEstimate?.label ?? null,
     historyEstimateLowConfidence: historyEstimate?.lowConfidence ?? false,
     teethDetails: mapOrderTeethDetailsToEdit(order.teeth_details),
+    isTeeth: Boolean(order.is_teeth),
+    lineAcknowledgeMode: resolveLinePickupAckMode(order),
     teethLineDelivered: order.teeth_line_delivered ?? null,
     deliveredQuantity: order.delivered_quantity ?? null,
   };
 }
 
 function pickupMeta(orders: IndividualOrder[]) {
-  const pending = orders.filter(canAcknowledgePickupForOrder);
+  const split = splitPickupPendingIds(orders);
   const readyTotal = orders.filter((o) => o.status === "Zrealizowane").length;
   const acknowledged = orders.filter(
     (o) => o.status === "Zrealizowane" && Boolean(o.sales_acknowledged_at)
   ).length;
   return {
-    pickupPendingCount: pending.length,
-    pickupPendingIds: pending.map((o) => o.id),
+    pickupPendingCount: split.allIds.length,
+    pickupPendingIds: split.allIds,
+    pickupTeethPendingIds: split.teethIds,
+    pickupShelfPendingIds: split.shelfIds,
     pickupReadyTotal: readyTotal,
     pickupAcknowledgedCount: acknowledged,
   };
@@ -427,6 +434,10 @@ function withAckMeta(
     sourceZkNumber:
       visible.map((o) => o.source_zk_number?.trim()).find(Boolean) ??
       orders.map((o) => o.source_zk_number?.trim()).find(Boolean) ??
+      null,
+    submissionGroupId:
+      visible.map((o) => o.submission_group_id).find(Boolean) ??
+      orders.map((o) => o.submission_group_id).find(Boolean) ??
       null,
     ...pickup,
   };
@@ -630,6 +641,7 @@ function presentInformacja(
     progressLabel: null,
     rowColor: SUMMARY_COLORS.informacja,
     isTeeth: Boolean(order.is_teeth),
+    productLaneKind: (order.is_teeth ? "teeth" : "regular") as import("@/lib/orders/my-order-lane-meta").MyOrderProductLaneKind,
   };
 
   const finalize = (row: MyOrderRowDraft): MyOrderRow => ({
@@ -789,6 +801,7 @@ function presentZamowienie(
             : null),
     rowColor: SUMMARY_COLORS.historyNew,
     isTeeth: Boolean(order.is_teeth),
+    productLaneKind: (order.is_teeth ? "teeth" : "regular") as import("@/lib/orders/my-order-lane-meta").MyOrderProductLaneKind,
   };
 
   const zdFulfillment = resolveZdFulfillmentFromOrder(order);
@@ -1045,6 +1058,8 @@ export function presentMyOrderGroup(
     }
   }
 
+  const laneMeta = classifyMyOrderProductLanes(lines);
+
   return {
     ...withAckMeta(
       {
@@ -1054,6 +1069,8 @@ export function presentMyOrderGroup(
         lines,
         product: groupProductSummary(lines),
         symbol: null,
+        isTeeth: laneMeta.hasTeeth,
+        productLaneKind: laneMeta.laneKind,
         progressLabel:
           aggregateProgressLabel(visibleOrders.length ? visibleOrders : orders) ??
           base.progressLabel,
@@ -1210,6 +1227,10 @@ export function presentMyOrders(
       {
         ...row,
         ...enrichMyOrderSalesUi(row),
+        submissionGroupSplitHint: submissionGroupSplitHint(
+          row.submissionGroupId,
+          salesVisibleOrders
+        ),
       },
       options?.supplierScheduleById,
       {

@@ -246,7 +246,10 @@ export function SubiektProductLineFields({
     summary: TeethDualKindCommitSummary;
     focusLineId: string | null;
   }) => void;
-  onTeethListCommitNotice?: (message: string, tone?: "success" | "error") => void;
+  onTeethListCommitNotice?: (
+    message: string | { title: string; text: string },
+    tone?: "success" | "error",
+  ) => void;
   /** Otwiera modal listy zębów po wejściu w edycję (panel zakupów). */
   autoOpenTeethList?: boolean;
 }) {
@@ -392,6 +395,7 @@ export function SubiektProductLineFields({
   /** Usuwa przekłamanie: katalog zawsze wynika z towaru, nie z ręcznej zmiany linii w UI. */
   useEffect(() => {
     if (!linkedTeethTwId || !resolvedTeethProductLine) return;
+    if (!teethProductInfo.twIds.has(linkedTeethTwId)) return;
     const expectedManufacturer = manufacturerForProductLine(resolvedTeethProductLine);
     const catalogLineDrifted = shouldClearTeethDetailsOnCatalogSync(
       value.teethProductLine,
@@ -420,6 +424,34 @@ export function SubiektProductLineFields({
     value.teethManufacturer,
     value.teethDetails?.length,
     onChange,
+    teethProductInfo.twIds,
+  ]);
+
+  /** Towar spoza rejestru zębów — nie trzymaj metadanych zębowych z heurystyki nazwy. */
+  useEffect(() => {
+    if (!linkedTeethTwId || teethProductInfo.twIds.has(linkedTeethTwId)) return;
+    if (
+      !value.teethManufacturer
+      && !value.teethProductLine
+      && !value.teethKind
+      && !value.teethDetails?.length
+    ) {
+      return;
+    }
+    onChange({
+      teethManufacturer: null,
+      teethProductLine: null,
+      teethKind: null,
+      teethDetails: undefined,
+    });
+  }, [
+    linkedTeethTwId,
+    onChange,
+    teethProductInfo.twIds,
+    value.teethDetails?.length,
+    value.teethKind,
+    value.teethManufacturer,
+    value.teethProductLine,
   ]);
 
   const openTeethModal = useCallback(() => {
@@ -441,7 +473,10 @@ export function SubiektProductLineFields({
       }
       if (!allLines) {
         onTeethListCommitNotice?.(
-          "Nie można zapisać obu typów w tym widoku — użyj formularza prośby z wieloma pozycjami.",
+          {
+            title: "Nie można zapisać obu typów",
+            text: "Użyj formularza prośby z wieloma pozycjami.",
+          },
           "error",
         );
         return false;
@@ -1120,8 +1155,8 @@ export function SubiektProductLineFields({
           defaultKind={value.teethKind ?? null}
           productLabel={value.product?.trim() || value.symbol?.trim() || undefined}
           initialDetails={value.teethDetails ?? undefined}
-          initialFromOcr={value.teethOcrPending}
-          initialOcrImagePath={value.teethOcrImagePath}
+          initialFromOcr={value.teethOcrPending || siblingLine?.teethOcrPending}
+          initialOcrImagePath={value.teethOcrImagePath ?? siblingLine?.teethOcrImagePath ?? null}
           dualKindMode={dualKindMode}
           dualKindInitialDetails={dualKindInitialDetails}
           disabled={disabled}

@@ -7,7 +7,7 @@ import { SectionListLabel } from "@/components/ui/SectionListLabel";
 import { SectionHeadingIcon } from "@/components/icons/SectionHeadingIcon";
 import { IconTruck, IconWarehouse } from "@/components/icons/StrokeIcons";
 import { QueuePanelHelp } from "@/components/queue/QueuePanelHelp";
-import { Toast } from "@/components/ui/Toast";
+import { NoticeToast } from "@/components/ui/NoticeToast";
 import { ActionLoadingOverlay } from "@/components/ui/ActionLoadingOverlay";
 import { Alert } from "@/components/ui/Alert";
 import { QueuePanelToolbar, type QueueView } from "@/components/queue/QueuePanelToolbar";
@@ -153,12 +153,7 @@ export function QueueClient({
         <ActionLoadingOverlay message={pendingMessage} variant="viewport" />
       ) : null}
       {toast ? (
-        <Toast
-          message={toast.text}
-          tone={toast.tone}
-          durationMs={toast.durationMs}
-          onDismiss={dismissToast}
-        />
+        <NoticeToast notice={toast} onDismiss={dismissToast} />
       ) : null}
 
       <Card padding={false} className="overflow-hidden">

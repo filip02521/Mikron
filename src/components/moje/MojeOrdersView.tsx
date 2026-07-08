@@ -19,7 +19,6 @@ import { cn } from "@/lib/cn";
 import { MyOrderPickupShelfDialogProvider } from "@/components/moje/MyOrderPickupShelfDialogProvider";
 import {
   MyOrderShipmentUndoProvider,
-  MyOrderShipmentUndoToast,
 } from "@/components/moje/MyOrderShipmentUndoProvider";
 import { MyOrderArchiveSection } from "@/components/moje/MyOrderArchiveSection";
 import { MojeAnnouncementsSection } from "@/components/moje/MojeAnnouncementsSection";
@@ -61,6 +60,7 @@ import {
 import {
   MY_ORDER_ACTION_SECTION_COPY,
   MY_ORDER_TEETH_ACTION_SECTION_COPY,
+  MY_ORDER_MIXED_ACTION_SECTION_COPY,
   MY_ORDER_INFORMACJA_SECTION_COPY,
   MY_ORDER_PROGRESS_SECTION_COPY,
   MY_ORDER_PROGRESS_SECTION_EMPTY,
@@ -544,14 +544,20 @@ function MojeOrdersViewContent({
     };
   }, [filteredZamowienia]);
 
-  const { actionShelfZamowienia, actionTeethZamowienia } = useMemo(() => {
+  const { actionShelfZamowienia, actionTeethZamowienia, actionMixedZamowienia } = useMemo(() => {
     const shelf: typeof actionZamowienia = [];
     const teeth: typeof actionZamowienia = [];
+    const mixed: typeof actionZamowienia = [];
     for (const row of actionZamowienia) {
-      if (row.acknowledgeMode === "teeth_handover") teeth.push(row);
+      if (row.acknowledgeMode === "mixed_pickup") mixed.push(row);
+      else if (row.acknowledgeMode === "teeth_handover") teeth.push(row);
       else shelf.push(row);
     }
-    return { actionShelfZamowienia: shelf, actionTeethZamowienia: teeth };
+    return {
+      actionShelfZamowienia: shelf,
+      actionTeethZamowienia: teeth,
+      actionMixedZamowienia: mixed,
+    };
   }, [actionZamowienia]);
 
   const { actionInformacje, progressInformacje } = useMemo(() => {
@@ -575,6 +581,7 @@ function MojeOrdersViewContent({
 
   const actionShelfSectionCallouts = useMyOrderSectionCallouts(actionShelfZamowienia);
   const actionTeethSectionCallouts = useMyOrderSectionCallouts(actionTeethZamowienia);
+  const actionMixedSectionCallouts = useMyOrderSectionCallouts(actionMixedZamowienia);
   const informacjeSectionCallouts = useMyOrderSectionCallouts(informacjeListRows);
 
   const allRows = useMemo(
@@ -618,6 +625,7 @@ function MojeOrdersViewContent({
   const actionCount = actionZamowienia.length + actionInformacje.length;
   const actionShelfCount = actionShelfZamowienia.length + actionInformacje.length;
   const actionTeethCount = actionTeethZamowienia.length;
+  const actionMixedCount = actionMixedZamowienia.length;
 
   const hasArchiveData = archiwumRecent.length > 0 || archiwumExtended.length > 0;
   const archiwumRecentFiltered = useMemo(
@@ -1015,6 +1023,29 @@ function MojeOrdersViewContent({
                 />
               </MojeSectionShell>
             ) : null}
+            {actionMixedCount > 0 ? (
+              <MojeSectionShell sectionIcon={MY_ORDER_MIXED_ACTION_SECTION_COPY.icon}>
+                <MojeSectionListLabel
+                  title={MY_ORDER_MIXED_ACTION_SECTION_COPY.title}
+                  hint={MY_ORDER_MIXED_ACTION_SECTION_COPY.hint}
+                  count={actionMixedCount}
+                  accent={MY_ORDER_MIXED_ACTION_SECTION_COPY.accent}
+                  icon={MY_ORDER_MIXED_ACTION_SECTION_COPY.icon}
+                />
+                <MyOrderSectionNoticeList
+                  callouts={actionMixedSectionCallouts.callouts}
+                  singleHints={actionMixedSectionCallouts.singleHints}
+                />
+                <MyOrderShipmentBlock
+                  embedded
+                  rows={actionMixedZamowienia}
+                  listKind="zamowienie"
+                  showProgress
+                  suppressedSectionPatterns={actionMixedSectionCallouts.suppressedPatterns}
+                  {...listProps}
+                />
+              </MojeSectionShell>
+            ) : null}
             {actionTeethCount > 0 ? (
               <MojeSectionShell sectionIcon={MY_ORDER_TEETH_ACTION_SECTION_COPY.icon}>
                 <MojeSectionListLabel
@@ -1109,7 +1140,6 @@ export function MojeOrdersView(
   return (
     <MyOrderPickupShelfDialogProvider>
       <MyOrderShipmentUndoProvider disabled={tourPreview || !canAcknowledge}>
-        <MyOrderShipmentUndoToast />
         <Suspense
         fallback={
           <div className="space-y-5">

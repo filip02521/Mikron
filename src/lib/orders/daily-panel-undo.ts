@@ -87,6 +87,12 @@ export function undoWindowBannerDescription(hint?: string): string {
   return `Masz ${windowLabel} na cofnięcie.`;
 }
 
+/** Komunikat serwera po przekroczeniu okna cofania. */
+export function undoExpiredServerMessage(context?: string): string {
+  const suffix = context?.trim() ? ` ${context.trim()}` : "";
+  return `Minął czas na cofnięcie (${undoWindowShortLabel()})${suffix}. Odśwież widok i spróbuj ponownie.`;
+}
+
 export type DailyPanelActionResult = {
   success: true;
   undo?: DailyPanelUndoPayload;

@@ -8,6 +8,15 @@ export const MY_ORDER_AVAILABILITY_ACK_LABEL = "Potwierdź";
 export const MY_ORDER_PICKUP_ACK_LINE_LABEL = "Potwierdź tę pozycję";
 export const MY_ORDER_PICKUP_ACK_ALL_LABEL = "Potwierdź wszystko";
 
+export function myOrderMixedPickupBulkHint(teethCount: number, shelfCount: number): string {
+  const teeth = Math.max(0, Math.trunc(teethCount));
+  const shelf = Math.max(0, Math.trunc(shelfCount));
+  if (teeth > 0 && shelf > 0) {
+    return `${teeth} ${teeth === 1 ? "pozycja zębowa" : "pozycje zębowe"} i ${shelf} ${shelf === 1 ? "towar z regału" : "towary z regału"} — potwierdź każdy typ osobno poniżej.`;
+  }
+  return "Potwierdź odbiór każdej pozycji osobno.";
+}
+
 export type MyOrderPickupAckLabelOptions = {
   /** Krótka forma na liście — wiersz już ma status „Gotowe”. */
   compact?: boolean;

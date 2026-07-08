@@ -13,10 +13,11 @@ import {
 import {
   BOARD_PROCUREMENT_AUTHOR_LABEL,
   boardAwaitingReplyClass,
-  boardProcurementReplyShellClass,
-  boardQuestionMessageShellClass,
   boardQuestionPreviewClass,
+  boardQuestionAuthorNameClass,
+  boardQuestionCollapsedMetaClass,
   boardQuestionRowClass,
+  boardQuestionRowHeaderExpandedClass,
   boardQuestionStatusBadgeClass,
   boardQuestionUnseenDotClass,
   boardReplyFormShellClass,
@@ -30,6 +31,7 @@ import type { DepartmentBoardQuestion } from "@/lib/data/department-board";
 import { NOTATNIK_TEXTAREA_CLASS } from "@/components/notatnik/notatnik-layout";
 import { BoardQuestionProductChip } from "@/components/department-board/BoardQuestionProductChip";
 import { BoardQuestionProductContext } from "@/components/department-board/BoardQuestionProductContext";
+import { BoardThreadMessage } from "@/components/department-board/BoardThreadMessage";
 import { boardQuestionHasProduct } from "@/lib/department-board/question-product";
 import { cn } from "@/lib/cn";
 import { salesTypography } from "@/lib/ui/ontime-theme";
@@ -43,56 +45,6 @@ function procurementReplyLabel(indexAmongProcurement: number): string {
   return indexAmongProcurement === 0 ? "Odpowiedź" : "Doprecyzowanie";
 }
 
-function ThreadMessage({
-  authorLabel,
-  body,
-  createdAt,
-  tone = "default",
-  replyKind,
-}: {
-  authorLabel: string;
-  body: string;
-  createdAt: string;
-  tone?: "default" | "procurement" | "question";
-  replyKind?: string;
-}) {
-  const content = (
-    <div className="space-y-1">
-      <p className={cn(salesTypography.rowMeta, "flex items-center gap-1.5")}>
-        {replyKind ? (
-          <span className="font-semibold text-slate-600">{replyKind}</span>
-        ) : null}
-        <span
-          className={cn(
-            "font-medium",
-            tone === "procurement"
-              ? "text-indigo-800"
-              : tone === "question"
-                ? "text-amber-800"
-                : "text-slate-700"
-          )}
-        >
-          {authorLabel}
-        </span>
-      </p>
-      <p className="whitespace-pre-wrap text-sm leading-relaxed text-slate-800">{body}</p>
-      <p className={cn(salesTypography.rowMeta, "text-[11px] text-slate-400")}>
-        {formatBoardDate(createdAt)}
-      </p>
-    </div>
-  );
-
-  if (tone === "procurement") {
-    return <div className={boardProcurementReplyShellClass}>{content}</div>;
-  }
-
-  if (tone === "question") {
-    return <div className={boardQuestionMessageShellClass}>{content}</div>;
-  }
-
-  return content;
-}
-
 export function QuestionThreadCard({
   question,
   canReply = false,
@@ -101,6 +53,7 @@ export function QuestionThreadCard({
   embedded = false,
   unseenReply = false,
   autoMarkSeen = false,
+  rowAlternate = false,
   onChanged,
 }: {
   question: DepartmentBoardQuestion;
@@ -110,6 +63,8 @@ export function QuestionThreadCard({
   embedded?: boolean;
   unseenReply?: boolean;
   autoMarkSeen?: boolean;
+  /** Co drugi wiersz na liście (zebra). */
+  rowAlternate?: boolean;
   onChanged?: () => void;
 }) {
   const [expanded, setExpanded] = useState(defaultExpanded);
@@ -224,14 +179,27 @@ export function QuestionThreadCard({
       id={`question-${question.id}`}
       className={cn(
         embedded
-          ? boardQuestionRowClass({ unseen: showUnseen, open: isOpen, expanded })
+          ? boardQuestionRowClass({
+              unseen: showUnseen,
+              open: isOpen,
+              expanded,
+              alternate: rowAlternate,
+            })
           : "rounded-md border border-slate-200/90 bg-white shadow-sm"
       )}
     >
-      <div className="flex items-start gap-2 pr-3 sm:pr-4">
+      <div
+        className={cn(
+          "flex items-start gap-2 pr-3 sm:gap-2.5 sm:pr-4",
+          expanded && embedded && boardQuestionRowHeaderExpandedClass
+        )}
+      >
         <button
           type="button"
-          className={cn("min-w-0 flex-1 text-left py-2.5 sm:py-3", boardQuestionRowHeaderClass)}
+          className={cn(
+            "min-w-0 flex-1 text-left py-3 sm:py-3.5",
+            boardQuestionRowHeaderClass
+          )}
           onClick={toggleExpanded}
           aria-expanded={expanded}
           aria-label={expandLabel}
@@ -240,7 +208,10 @@ export function QuestionThreadCard({
             <IconChevronDown
               open={expanded}
               size={16}
-              className="mt-0.5 shrink-0 text-slate-400"
+              className={cn(
+                "mt-0.5 shrink-0 text-slate-400 transition-transform duration-300 ease-out motion-reduce:transition-none",
+                expanded && "text-indigo-500"
+              )}
             />
             <span className="min-w-0 flex-1 space-y-1.5">
               <span className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1">
@@ -259,8 +230,15 @@ export function QuestionThreadCard({
                   {statusLabel}
                 </span>
               </span>
-              <span className={cn(salesTypography.rowBody, "block font-medium text-slate-700")}>
-                Dodał/a: {author}
+              <span
+                className={cn(
+                  salesTypography.rowBody,
+                  "block font-medium",
+                  expanded ? "text-slate-700" : boardQuestionCollapsedMetaClass
+                )}
+              >
+                Dodał/a:{" "}
+                <span className={boardQuestionAuthorNameClass}>{author}</span>
                 <span className="text-slate-400"> · </span>
                 {formatBoardDate(question.created_at)}
               </span>
@@ -276,7 +254,7 @@ export function QuestionThreadCard({
             type="button"
             size="sm"
             variant="secondary"
-            className="mt-2.5 shrink-0"
+            className="mt-3 shrink-0 sm:mt-3.5"
             disabled={busy}
             onClick={() => {
               setInlineReply((v) => !v);
@@ -313,80 +291,81 @@ export function QuestionThreadCard({
 
       {expanded ? (
         <div className={boardQuestionExpandedShellClass}>
-          {hasProduct ? <BoardQuestionProductContext product={question} /> : null}
+        {hasProduct ? <BoardQuestionProductContext product={question} /> : null}
 
-          <div className="space-y-1.5">
-            <p className={cn(salesTypography.rowMeta, "font-semibold uppercase tracking-wide text-amber-700")}>
-              Pytanie
-            </p>
-            <ThreadMessage
-              authorLabel={author}
-              body={question.body}
-              createdAt={question.created_at}
-              tone="question"
-            />
+        <BoardThreadMessage
+          tone="question"
+          authorLabel={author}
+          body={question.body}
+          createdAt={question.created_at}
+        />
+
+        {question.posts.length === 0 ? (
+          <p className={boardAwaitingReplyClass}>Dział zakupów jeszcze nie odpowiedział.</p>
+        ) : (
+          <div className="space-y-3">
+            {question.posts.map((post) => {
+              const fromOps = isOperationsAuthorRole(post.author?.role ?? null);
+              const replyKind = fromOps
+                ? procurementReplyLabel(procurementReplyIndex++)
+                : undefined;
+              return (
+                <BoardThreadMessage
+                  key={post.id}
+                  tone={fromOps ? "procurement" : "sales"}
+                  authorLabel={
+                    fromOps
+                      ? BOARD_PROCUREMENT_AUTHOR_LABEL
+                      : authorLabelFromProfile(post.author)
+                  }
+                  body={post.body}
+                  createdAt={post.created_at}
+                  replyKind={replyKind}
+                />
+              );
+            })}
           </div>
+        )}
 
-          {question.posts.length === 0 ? (
-            <p className={boardAwaitingReplyClass}>Dział zakupów jeszcze nie odpowiedział.</p>
-          ) : (
-            <div className="space-y-3">
-              {question.posts.map((post) => {
-                const fromOps = isOperationsAuthorRole(post.author?.role ?? null);
-                const replyKind = fromOps
-                  ? procurementReplyLabel(procurementReplyIndex++)
-                  : undefined;
-                return (
-                  <ThreadMessage
-                    key={post.id}
-                    authorLabel={
-                      fromOps
-                        ? BOARD_PROCUREMENT_AUTHOR_LABEL
-                        : authorLabelFromProfile(post.author)
-                    }
-                    body={post.body}
-                    createdAt={post.created_at}
-                    tone={fromOps ? "procurement" : "default"}
-                    replyKind={replyKind}
-                  />
-                );
-              })}
-            </div>
-          )}
+        {canReply ? (
+          <div className={boardReplyFormShellClass}>
+            <label
+              className={cn(salesTypography.rowMeta, "block font-medium text-indigo-700")}
+              htmlFor={`reply-${question.id}`}
+            >
+              {isOpen ? "Odpowiedź działu zakupów" : "Doprecyzowanie"}
+            </label>
+            <textarea
+              id={`reply-${question.id}`}
+              rows={3}
+              value={reply}
+              onChange={(e) => setReply(e.target.value)}
+              placeholder="Treść wiadomości…"
+              className={cn(NOTATNIK_TEXTAREA_CLASS, "w-full text-sm")}
+            />
+            <Button size="sm" disabled={busy || !reply.trim()} onClick={() => void submitReply()}>
+              {busy ? "Wysyłanie…" : "Wyślij"}
+            </Button>
+          </div>
+        ) : null}
 
-          {canReply ? (
-            <div className={boardReplyFormShellClass}>
-              <label
-                className={cn(salesTypography.rowMeta, "block font-medium text-indigo-700")}
-                htmlFor={`reply-${question.id}`}
-              >
-                {isOpen ? "Odpowiedź działu zakupów" : "Doprecyzowanie"}
-              </label>
-              <textarea
-                id={`reply-${question.id}`}
-                rows={3}
-                value={reply}
-                onChange={(e) => setReply(e.target.value)}
-                placeholder="Treść wiadomości…"
-                className={cn(NOTATNIK_TEXTAREA_CLASS, "w-full text-sm")}
-              />
-              <Button size="sm" disabled={busy || !reply.trim()} onClick={() => void submitReply()}>
-                {busy ? "Wysyłanie…" : "Wyślij"}
-              </Button>
-            </div>
-          ) : null}
+        {error && !showInlineReplyForm ? (
+          <p className="text-xs text-red-600">{error}</p>
+        ) : null}
 
-          {error && !showInlineReplyForm ? (
-            <p className="text-xs text-red-600">{error}</p>
-          ) : null}
-
-          {canArchive ? (
-            <div className="pt-1">
-              <Button size="sm" variant="ghost" className="text-xs text-slate-400" disabled={busy} onClick={() => void archive()}>
-                Archiwizuj pytanie
-              </Button>
-            </div>
-          ) : null}
+        {canArchive ? (
+          <div className="pt-1">
+            <Button
+              size="sm"
+              variant="ghost"
+              className="text-xs text-slate-400"
+              disabled={busy}
+              onClick={() => void archive()}
+            >
+              Archiwizuj pytanie
+            </Button>
+          </div>
+        ) : null}
         </div>
       ) : null}
     </article>

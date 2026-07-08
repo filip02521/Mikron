@@ -14,6 +14,7 @@ import type {
   OperationsNoteVisibility,
   SalesNoteColor,
 } from "@/types/database";
+import { UNDO_WINDOW_MS, undoExpiredServerMessage } from "@/lib/orders/daily-panel-undo";
 
 function revalidateOperationsNotepad() {
   revalidatePath("/notatki");
@@ -151,12 +152,19 @@ export async function actionUpdateOperationsNote(
 export async function actionReorderOperationsNotes(
   department: OperationsDepartment,
   visibility: OperationsNoteVisibility,
-  noteIds: string[]
+  noteIds: string[],
+  options?: { undoPerformedAt?: number }
 ) {
   const userId = await userIdForMutation();
   const user = await getSessionUser();
   assertDepartmentAccess(department, user?.role, user?.assignedWorkspaces);
   if (!noteIds.length) return { success: true };
+
+  if (options?.undoPerformedAt != null) {
+    if (Date.now() - options.undoPerformedAt > UNDO_WINDOW_MS) {
+      throw new Error(undoExpiredServerMessage("przy cofaniu kolejności notatek"));
+    }
+  }
 
   const uniqueIds = [...new Set(noteIds)];
   const supabase = createAdminClient();
@@ -212,11 +220,31 @@ export async function actionArchiveOperationsNote(noteId: string) {
   return { success: true };
 }
 
-export async function actionRestoreOperationsNote(noteId: string) {
+export async function actionRestoreOperationsNote(
+  noteId: string,
+  options?: { enforceUndoWindow?: boolean }
+) {
   const userId = await userIdForMutation();
   await assertNoteAccess(noteId, userId);
 
   const supabase = createAdminClient();
+
+  if (options?.enforceUndoWindow) {
+    const { data: row, error: fetchError } = await supabase
+      .from("operations_notes")
+      .select("archived_at")
+      .eq("id", noteId)
+      .maybeSingle();
+    if (fetchError) throw new Error(fetchError.message);
+    if (!row?.archived_at) {
+      throw new Error("Notatka nie jest w archiwum.");
+    }
+    const archivedAt = new Date(row.archived_at).getTime();
+    if (Date.now() - archivedAt > UNDO_WINDOW_MS) {
+      throw new Error(undoExpiredServerMessage("przy cofaniu archiwizacji notatki"));
+    }
+  }
+
   const { data, error } = await supabase
     .from("operations_notes")
     .update({ archived_at: null, updated_at: new Date().toISOString() })

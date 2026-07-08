@@ -20,7 +20,7 @@ import {
 import { validateZkQueryForSubmit } from "@/lib/subiekt/zk-search";
 import { extractZkSerial, zkNumbersEquivalent } from "@/lib/subiekt/zk-document";
 import { isSubiektReachable } from "@/lib/subiekt/availability";
-import { UNDO_WINDOW_MS } from "@/lib/orders/daily-panel-undo";
+import { UNDO_WINDOW_MS, undoExpiredServerMessage } from "@/lib/orders/daily-panel-undo";
 import {
   buildZkWatchLineViews,
   mergeLineChecksAfterRefresh,
@@ -371,7 +371,7 @@ export async function actionUndoCloseZkWatch(watchId: string) {
   }
   const closedAt = new Date(row.closed_at).getTime();
   if (Date.now() - closedAt > UNDO_WINDOW_MS) {
-    throw new Error("Minął czas na cofnięcie — odśwież listę.");
+    throw new Error(undoExpiredServerMessage("przy cofaniu zamknięcia sprawy ZK"));
   }
 
   const { data, error } = await supabase
@@ -775,9 +775,18 @@ export async function actionUpdateSalesNote(
   return { success: true };
 }
 
-export async function actionReorderSalesNotes(noteIds: string[]) {
+export async function actionReorderSalesNotes(
+  noteIds: string[],
+  options?: { undoPerformedAt?: number }
+) {
   const salesPersonId = await salesPersonIdForAction();
   if (!noteIds.length) return { success: true };
+
+  if (options?.undoPerformedAt != null) {
+    if (Date.now() - options.undoPerformedAt > UNDO_WINDOW_MS) {
+      throw new Error(undoExpiredServerMessage("przy cofaniu kolejności notatek"));
+    }
+  }
 
   const uniqueIds = [...new Set(noteIds)];
   const supabase = createAdminClient();
@@ -851,7 +860,10 @@ export async function actionArchiveSalesNote(noteId: string) {
   return { success: true };
 }
 
-export async function actionRestoreSalesNote(noteId: string) {
+export async function actionRestoreSalesNote(
+  noteId: string,
+  options?: { enforceUndoWindow?: boolean }
+) {
   const salesPersonId = await salesPersonIdForAction();
   const supabase = createAdminClient();
   const now = new Date().toISOString();
@@ -868,6 +880,13 @@ export async function actionRestoreSalesNote(noteId: string) {
     throw new Error("Brak uprawnień do tej notatki.");
   }
   if (!row.archived_at) throw new Error("Notatka nie jest w archiwum.");
+
+  if (options?.enforceUndoWindow) {
+    const archivedAt = new Date(row.archived_at).getTime();
+    if (Date.now() - archivedAt > UNDO_WINDOW_MS) {
+      throw new Error(undoExpiredServerMessage("przy cofaniu archiwizacji notatki"));
+    }
+  }
 
   const { data: topNote } = await supabase
     .from("sales_notes")

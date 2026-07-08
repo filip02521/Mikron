@@ -1,6 +1,7 @@
 import { createAdminClient } from "@/lib/supabase/admin";
 import { UNDO_WINDOW_MS } from "@/lib/orders/daily-panel-undo";
 import { parseTeethLineDelivered } from "@/lib/teeth/teeth-receive-picker";
+import type { IndividualOrder } from "@/types/database";
 
 export type DeliverySnapshot = {
   orderId: string;
@@ -94,5 +95,54 @@ export async function revertDeliverySnapshot(snapshot: DeliverySnapshot): Promis
 export async function revertDeliverySnapshots(snapshots: DeliverySnapshot[]): Promise<void> {
   for (const snapshot of snapshots) {
     await revertDeliverySnapshot(snapshot);
+  }
+}
+
+export function attachDeliveryNotificationQueueIds(
+  snapshots: DeliverySnapshot[],
+  queueIdByOrderId: Record<string, string>
+): DeliverySnapshot[] {
+  if (!Object.keys(queueIdByOrderId).length) return snapshots;
+  return snapshots.map((snapshot) => ({
+    ...snapshot,
+    queueId: queueIdByOrderId[snapshot.orderId] ?? snapshot.queueId,
+  }));
+}
+
+export function collectDeliveryNotificationQueueIds(
+  snapshots: DeliverySnapshot[]
+): string[] {
+  return [
+    ...new Set(
+      snapshots.map((snapshot) => snapshot.queueId).filter((id): id is string => Boolean(id))
+    ),
+  ];
+}
+
+const ZK_SYNC_ORDER_SELECT =
+  "id, sales_person_id, status, sales_acknowledged_at, delivered_quantity, source_zk_watch_id, source_zk_number";
+
+/** Po cofnięciu przyjęcia — zsynchronizuj line_checks w powiązanych ZK. */
+export async function syncZkWatchAfterDeliveryRevert(orderIds: string[]): Promise<void> {
+  const unique = [...new Set(orderIds.filter(Boolean))];
+  if (!unique.length) return;
+
+  const supabase = createAdminClient();
+  const { data, error } = await supabase
+    .from("individual_orders")
+    .select(ZK_SYNC_ORDER_SELECT)
+    .in("id", unique);
+
+  if (error || !data?.length) return;
+
+  try {
+    const { syncZkWatchLineChecksFromOrder } = await import(
+      "@/lib/sales/zk-watch-order-sync"
+    );
+    await Promise.all(
+      (data as IndividualOrder[]).map((row) => syncZkWatchLineChecksFromOrder(row))
+    );
+  } catch (e) {
+    console.error("[syncZkWatchAfterDeliveryRevert]", e);
   }
 }

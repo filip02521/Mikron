@@ -102,6 +102,44 @@ describe("buildProsbaFormReadiness", () => {
     expect(view.subline).toContain("panelu zębów");
   });
 
+  it("mieszane tory zęby + towar — ostrzeżenie przed wysłaniem", () => {
+    const exempt = new Set([42]);
+    const plan = planSalesRequestSubmit({
+      symbol: "A",
+      product: "Zęby",
+      quantity: "1",
+      subiektTwId: 42,
+      supplierId: "sup-1",
+      requestKind: "zamowienie",
+    });
+    const view = buildProsbaFormReadiness(
+      [
+        {
+          symbol: "A",
+          product: "Zęby",
+          quantity: "1",
+          subiektTwId: 42,
+          supplierId: "sup-1",
+          teethDetails: [
+            { position: 1, color: "A1", mould: "A11", jaw: "upper", kind: "anterior" },
+          ],
+        },
+        {
+          symbol: "B",
+          product: "Towar",
+          quantity: "2",
+          subiektTwId: 99,
+          supplierId: "sup-2",
+        },
+      ],
+      "zamowienie",
+      plan,
+      { teethExemptTwIds: exempt }
+    );
+    expect(view.headline).toContain("dwa tory");
+    expect(view.subline).toContain("panelu zębów");
+  });
+
   it("informacja stock out — ścieżka w checklistie", () => {
     const plan = planSalesRequestSubmit({
       symbol: "A",

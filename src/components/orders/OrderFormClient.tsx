@@ -1,14 +1,16 @@
 "use client";
+import { ADMIN_PREVIEW_NOTICE } from "@/lib/ui/notice-copy";
 
 import { useState, useTransition, useCallback, useMemo, useEffect, useRef } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { actionAddIndividualOrders } from "@/app/actions/admin";
 import { useAdminPanelPreview } from "@/components/layout/AdminPanelPreviewContext";
-import { ADMIN_PANEL_PREVIEW_MUTATION_BLOCKED } from "@/lib/auth/admin-panel-preview-messages";
 import { Card, CardHeader } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { Toast } from "@/components/ui/Toast";
+import type { FormMessage, TransientNotice } from "@/lib/ui/notice-content";
+import { resolveNoticeCopy } from "@/lib/ui/notice-content";
 import { Field, Select } from "@/components/ui/Field";
 import { SupplierPickerField } from "@/components/orders/SupplierPickerField";
 import type { IndividualRequestKind } from "@/types/database";
@@ -212,19 +214,13 @@ export function OrderFormClient({
   );
   const [pending, start] = useTransition();
   const [pendingMessage, setPendingMessage] = useState<string | null>(null);
-  const [msg, setMsg] = useState<{
-    text: string;
-    tone: "success" | "error";
-    actionHref?: string;
-    actionLabel?: string;
-  } | null>(null);
+  const [msg, setMsg] = useState<
+    (TransientNotice & { actionHref?: string; actionLabel?: string }) | null
+  >(null);
   const dismissToast = useCallback(() => setMsg(null), []);
   const [resolvingSupplier, setResolvingSupplier] = useState(false);
   const deferSupplierResolve = Boolean(singleGroup && lockedSalesPerson);
-  const [formNotice, setFormNotice] = useState<{
-    text: string;
-    tone: "error" | "warning";
-  } | null>(null);
+  const [formNotice, setFormNotice] = useState<FormMessage | null>(null);
   /** Po prefill z ZK — link „Moje zamówienia” z tym samym filtrem co w notatniku. */
   const [zkProsbaLinkContext, setZkProsbaLinkContext] = useState<{
     zkWatchId: string | null;
@@ -393,7 +389,8 @@ export function OrderFormClient({
           }
           if (!cancelled && zkLineKeys?.length) {
             setFormNotice({
-              text: "Nie udało się wczytać wybranych pozycji ZK — uzupełnij prośbę ręcznie lub wróć do notatnika.",
+              title: "Nie udało się wczytać ZK",
+              text: "Uzupełnij prośbę ręcznie lub wróć do notatnika.",
               tone: "warning",
             });
             return;
@@ -409,10 +406,11 @@ export function OrderFormClient({
       } catch (err) {
         if (!cancelled) {
           setFormNotice({
+            title: "Nie udało się wczytać ZK",
             text:
               err instanceof Error
                 ? err.message
-                : "Nie udało się wczytać danych ZK — uzupełnij prośbę ręcznie.",
+                : "Uzupełnij prośbę ręcznie.",
             tone: "warning",
           });
         }
@@ -568,8 +566,9 @@ export function OrderFormClient({
           requestKind === "informacja" && informacjaFlags.informacjaStockOutReorder;
 
         setMsg({
+          title: "Prośba zapisana",
           text: zkCtx
-            ? `Prośba zapisana i powiązana z ${zkCtx.zkNumber}.`
+            ? `Powiązano z ${zkCtx.zkNumber}.`
             : defaultSuccessText,
           tone: "success",
           actionHref: stockOutHidden
@@ -669,13 +668,14 @@ export function OrderFormClient({
     setFormNotice(null);
 
     if (readOnly) {
-      setFormNotice({ text: ADMIN_PANEL_PREVIEW_MUTATION_BLOCKED, tone: "warning" });
+      setFormNotice(ADMIN_PREVIEW_NOTICE);
       return;
     }
 
     if (tourDemo) {
       setFormNotice({
-        text: "To tylko podgląd wprowadzenia — w tourze formularz nie wysyła prośby.",
+        title: "Tryb podglądu",
+        text: "Formularz nie wysyła prośby — to tylko demonstracja.",
         tone: "warning",
       });
       return;
@@ -687,10 +687,11 @@ export function OrderFormClient({
       if (!salesPlan?.submittable) {
         setValidationAttempted(true);
         setFormNotice({
+          title: "Uzupełnij wymagane pola",
           text:
             requestKind === "informacja"
-              ? "Uzupełnij wymagane pola — symbol, kod Mikran lub opis produktu."
-              : "Uzupełnij wymagane pola — produkt (symbol, kod Mikran lub opis) i ilość przy każdej pozycji.",
+              ? "Podaj symbol, kod Mikran lub opis produktu."
+              : "Podaj produkt (symbol, kod Mikran lub opis) i ilość przy każdej pozycji.",
           tone: "error",
         });
         return;
@@ -700,10 +701,7 @@ export function OrderFormClient({
       );
       if (teethBlocked) {
         setValidationAttempted(true);
-        setFormNotice({
-          text: TEETH_LIST_INCOMPLETE_MESSAGE,
-          tone: "error",
-        });
+        setFormNotice({ text: TEETH_LIST_INCOMPLETE_MESSAGE, tone: "error" });
         return;
       }
     }
@@ -743,7 +741,11 @@ export function OrderFormClient({
         }
       });
       if (groupIssues.length) {
-        setFormNotice({ text: groupIssues.join(". "), tone: "error" });
+        setFormNotice({
+          title: "Formularz wymaga poprawek",
+          text: groupIssues.join(". "),
+          tone: "error",
+        });
         return;
       }
     }
@@ -773,6 +775,7 @@ export function OrderFormClient({
     if (!entries.length) {
       setValidationAttempted(true);
       setFormNotice({
+        title: "Brak pozycji",
         text: lockedSalesPerson
           ? "Wpisz nazwę lub symbol produktu (kod Mikran obok)."
           : "Wpisz produkt (nazwa lub symbol) oraz wybierz handlowca.",
@@ -786,6 +789,7 @@ export function OrderFormClient({
     ) {
       setValidationAttempted(true);
       setFormNotice({
+        title: "Brak ilości",
         text: "Każda pozycja zamówienia musi mieć ilość (liczba sztuk, np. 1).",
         tone: "error",
       });
@@ -1000,9 +1004,11 @@ export function OrderFormClient({
     );
   };
 
-  const toastSlot = msg ? (
+  const toastCopy = msg ? resolveNoticeCopy(msg) : null;
+  const toastSlot = msg && toastCopy ? (
     <Toast
-      message={msg.text}
+      title={toastCopy.title}
+      description={toastCopy.description}
       tone={msg.tone}
       onDismiss={dismissToast}
       action={
@@ -1238,7 +1244,13 @@ export function OrderFormClient({
                   onResolvingSupplierChange={setResolvingSupplier}
                   validationAttempted={validationAttempted}
                   liveValidation={!tourDemo}
-                  onTeethListCommitNotice={(text, tone = "success") => setMsg({ text, tone })}
+                  onTeethListCommitNotice={(notice, tone = "success") =>
+                    setMsg(
+                      typeof notice === "string"
+                        ? { text: notice, tone }
+                        : { title: notice.title, text: notice.text, tone },
+                    )
+                  }
                 />
 
                 <ProsbaFormReadiness
@@ -1501,7 +1513,13 @@ export function OrderFormClient({
                   onResolvingSupplierChange={setResolvingSupplier}
                   validationAttempted={validationAttempted}
                   liveValidation
-                  onTeethListCommitNotice={(text, tone = "success") => setMsg({ text, tone })}
+                  onTeethListCommitNotice={(notice, tone = "success") =>
+                    setMsg(
+                      typeof notice === "string"
+                        ? { text: notice, tone }
+                        : { title: notice.title, text: notice.text, tone },
+                    )
+                  }
                 />
 
                 <ProsbaFormReadiness

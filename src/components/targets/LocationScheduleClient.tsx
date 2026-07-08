@@ -12,7 +12,8 @@ import { Input } from "@/components/ui/Field";
 import { Button } from "@/components/ui/Button";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { DataTable, TableScroll } from "@/components/ui/DataTable";
-import { Toast } from "@/components/ui/Toast";
+import { LOCATION_SCHEDULE_TOAST, toastFromError, type ToastNotice } from "@/lib/ui/notice-copy";
+import { NoticeToast } from "@/components/ui/NoticeToast";
 import { ColorLegend } from "@/components/summary/ColorLegend";
 import {
   ScheduleListFilterBar,
@@ -126,13 +127,11 @@ export function LocationScheduleClient({
   const [search, setSearch] = useState("");
   const [sortKey, setSortKey] = useState<SortKey>("name");
   const [sortDir, setSortDir] = useState<SortDir>("asc");
-  const [toast, setToast] = useState<{ text: string; tone: "success" | "error" } | null>(
-    null
-  );
+  const [toast, setToast] = useState<ToastNotice | null>(null);
   const [savedId, setSavedId] = useState<string | null>(null);
   const dismissToast = useCallback(() => setToast(null), []);
   const { readOnly, blockIfReadOnly } = usePreviewMutationBlocker((text) =>
-    setToast({ text, tone: "error" })
+    setToast(toastFromError(text)),
   );
 
   const urlFiltersKey = searchParams.toString();
@@ -205,12 +204,9 @@ export function LocationScheduleClient({
         router.refresh();
         setSavedId(row.id);
         setTimeout(() => setSavedId((id) => (id === row.id ? null : id)), 2000);
-        setToast({ text: `Zapisano · ${row.name}`, tone: "success" });
+        setToast(LOCATION_SCHEDULE_TOAST.saved(row.name));
       } catch (e) {
-        setToast({
-          text: e instanceof Error ? e.message : "Nie udało się zapisać",
-          tone: "error",
-        });
+        setToast(toastFromError(e instanceof Error ? e.message : undefined));
       } finally {
         setPendingMessage(null);
       }
@@ -240,7 +236,7 @@ export function LocationScheduleClient({
         />
       ) : null}
       {toast ? (
-        <Toast message={toast.text} tone={toast.tone} onDismiss={dismissToast} />
+        <NoticeToast notice={toast} onDismiss={dismissToast} />
       ) : null}
 
       <Card padding={false} className="overflow-hidden">

@@ -1,4 +1,5 @@
 "use client";
+import { ToastNotice, WAREHOUSE_TOAST } from "@/lib/ui/notice-copy";
 
 import { useCallback, useEffect, useMemo, useRef, useState, useTransition } from "react";
 import {
@@ -40,7 +41,7 @@ import { QueueSupplierDirectoryField } from "@/components/queue/QueueSupplierDir
 import { Button } from "@/components/ui/Button";
 import { Field, Input, Select, fieldControlClass } from "@/components/ui/Field";
 import { EmptyState } from "@/components/ui/EmptyState";
-import { Toast } from "@/components/ui/Toast";
+import { NoticeToast } from "@/components/ui/NoticeToast";
 import { IconChevronLeft, IconChevronRight } from "@/components/icons/StrokeIcons";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { cn } from "@/lib/cn";
@@ -427,7 +428,7 @@ export function DeliveryJournalSection({
   isMagazynRole?: boolean;
   canManageCarriers?: boolean;
 }) {
-  const [toast, setToast] = useState<{ text: string; tone: "success" | "error" } | null>(null);
+  const [toast, setToast] = useState<ToastNotice | null>(null);
   const { readOnly: previewReadOnly, blockIfReadOnly } = usePreviewMutationBlocker(
     (text) => setToast({ text, tone: "error" })
   );
@@ -603,7 +604,7 @@ export function DeliveryJournalSection({
         setCarrierHintForSupplierId(null);
         setSupplierFieldKey((key) => key + 1);
         setFormOpen(true);
-        setToast({ text: "Zapisano — wpisz kolejną dostawę.", tone: "success" });
+        setToast(WAREHOUSE_TOAST.savedDeliveryEntry);
         refresh();
         focusForm();
       } catch (e) {
@@ -898,7 +899,7 @@ export function DeliveryJournalSection({
         </div>
       )}
 
-      {toast ? <Toast message={toast.text} tone={toast.tone} onDismiss={() => setToast(null)} /> : null}
+      {toast ? <NoticeToast notice={toast} onDismiss={() => setToast(null)} /> : null}
       {canManageCarriers ? (
         <WarehouseCarriersModal
           open={carriersModalOpen}

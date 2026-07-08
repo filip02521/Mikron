@@ -13,7 +13,7 @@ import { shouldShowBoardAnswersBanner } from "@/lib/department-board/board-atten
 import { useRouter } from "next/navigation";
 import { Alert } from "@/components/ui/Alert";
 import { Card, CardHeader } from "@/components/ui/Card";
-import { Toast } from "@/components/ui/Toast";
+import { NoticeToast } from "@/components/ui/NoticeToast";
 import { SectionHeadingIcon } from "@/components/icons/SectionHeadingIcon";
 import { IconClipboardPen } from "@/components/icons/StrokeIcons";
 import { QuestionThreadCard } from "@/components/department-board/QuestionThreadCard";
@@ -216,8 +216,8 @@ export function DepartmentBoardSalesClient({
   return (
     <div className={salesPageShellClass}>
       {successToast ? (
-        <Toast
-          message={DEPARTMENT_BOARD_QUESTIONS_FORM.successToast}
+        <NoticeToast
+          notice={DEPARTMENT_BOARD_QUESTIONS_FORM.successToast}
           onDismiss={() => setSuccessToast(false)}
         />
       ) : null}
@@ -267,9 +267,11 @@ export function DepartmentBoardSalesClient({
         ) : null}
 
         <div className="space-y-4 p-3 pb-20 sm:p-4 sm:pb-4">
-          <p className="text-xs leading-relaxed text-slate-600">
-            {DEPARTMENT_BOARD_QUESTIONS_EXPLAINER.body}
-          </p>
+          <div className="rounded-lg border border-slate-200/80 bg-slate-50/70 px-3 py-2.5 sm:px-4">
+            <p className="text-xs leading-relaxed text-slate-600">
+              {DEPARTMENT_BOARD_QUESTIONS_EXPLAINER.body}
+            </p>
+          </div>
 
           {!readOnly ? (
             <DepartmentBoardQuestionForm
@@ -325,11 +327,12 @@ export function DepartmentBoardSalesClient({
             <DepartmentBoardQuestionsEmpty domain="sales" filter={activeQuestionFilter} />
           ) : (
             <div className={boardQuestionListClass}>
-              {filteredQuestions.map((question) => (
+              {filteredQuestions.map((question, index) => (
                 <QuestionThreadCard
                   key={question.id}
                   question={question}
                   embedded
+                  rowAlternate={index % 2 === 1}
                   unseenReply={unseenSet.has(question.id)}
                   autoMarkSeen={!tourDemo && !readOnly && question.status === "answered"}
                   defaultExpanded={tourDemo || focusQuestionId === question.id}

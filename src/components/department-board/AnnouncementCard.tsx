@@ -3,13 +3,18 @@
 import { useEffect, useRef, useState } from "react";
 import { NOTE_COLOR_CARD, NOTE_COLOR_SWATCH } from "@/components/notatnik/note-styles";
 import { Button } from "@/components/ui/Button";
-import { IconPin } from "@/components/icons/StrokeIcons";
+import { IconInbox, IconPin } from "@/components/icons/StrokeIcons";
 import {
   authorLabelFromProfile,
   formatBoardDate,
 } from "@/lib/department-board/format";
 import type { DepartmentBoardThreadRow } from "@/lib/data/department-board";
 import { cn } from "@/lib/cn";
+import {
+  boardAnnouncementAvatarClass,
+  boardAnnouncementRoleBadgeClass,
+  boardAnnouncementRowClass,
+} from "@/lib/department-board/department-board-thread-styles";
 import {
   actionArchiveAnnouncement,
   actionMarkAnnouncementRead,
@@ -46,12 +51,6 @@ export function AnnouncementCard({
   const cardTone = NOTE_COLOR_CARD[thread.color] ?? NOTE_COLOR_CARD.default;
   const colorSwatch = NOTE_COLOR_SWATCH[thread.color] ?? NOTE_COLOR_SWATCH.default;
   const showUnread = unread && !locallyRead;
-
-  const leftAccent = showUnread
-    ? "border-l-sky-500"
-    : thread.pinned
-      ? "border-l-indigo-500"
-      : "border-l-slate-200";
 
   useEffect(() => {
     markedRef.current = false;
@@ -94,72 +93,35 @@ export function AnnouncementCard({
     }
   }
 
-  return (
-    <article
-      ref={articleRef}
-      id={`announcement-${thread.id}`}
-      className={cn(
-        embedded
-          ? cn(
-              "border-l-[3px] bg-white px-3 py-3 transition-colors sm:px-4",
-              leftAccent,
-              showUnread && "bg-sky-50/30"
-            )
-          : cn(
-              "relative rounded-md border p-4 shadow-sm",
-              cardTone,
-              thread.pinned && "ring-1 ring-indigo-200/80",
-              showUnread && "ring-2 ring-sky-300/70 ring-offset-1"
-            )
-      )}
-    >
+  const headerBadges = (
+    <div className="flex flex-wrap items-center gap-1.5">
+      <span className={boardAnnouncementRoleBadgeClass()}>Ogłoszenie zakupów</span>
+      <span
+        className={cn("h-2 w-2 shrink-0 rounded-full", colorSwatch)}
+        title="Kolor ogłoszenia"
+        aria-hidden
+      />
       {thread.pinned ? (
-        <span
-          className="absolute right-3 top-3 text-indigo-500"
-          title="Przypięte"
-          aria-label="Przypięte"
-        >
-          <IconPin size={14} strokeWidth={2.5} />
+        <span className="inline-flex items-center gap-0.5 rounded-full bg-indigo-100 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-indigo-900">
+          <IconPin size={10} strokeWidth={2.5} aria-hidden />
+          Przypięte
         </span>
       ) : null}
+      {showUnread ? (
+        <span className="rounded-full bg-sky-100 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-sky-800">
+          Nowe
+        </span>
+      ) : null}
+    </div>
+  );
 
-      <header className="space-y-1 pr-8">
-        <div className="flex flex-wrap items-center gap-2">
-          {embedded ? (
-            <span
-              className={cn("h-2 w-2 shrink-0 rounded-full", colorSwatch)}
-              aria-hidden
-            />
-          ) : (
-            <span className="rounded-full bg-indigo-100 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-indigo-900">
-              Ogłoszenie · zakupy
-            </span>
-          )}
-          {showUnread ? (
-            <span className="rounded-full bg-sky-100 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-sky-800">
-              Nowe
-            </span>
-          ) : null}
-        </div>
-        <h3 className="text-sm font-semibold text-slate-900">{thread.title}</h3>
-        <p className="text-xs text-slate-600">
-          {author} · {formatBoardDate(thread.published_at)}
-          {thread.expires_at ? (
-            <span className="text-slate-500">
-              {" "}
-              · ważne do {formatBoardDate(thread.expires_at)}
-            </span>
-          ) : null}
-        </p>
-      </header>
-
-      <div className="mt-3 whitespace-pre-wrap text-sm leading-relaxed text-slate-800">
+  const bodyBlock = (
+    <>
+      <div className="mt-2.5 whitespace-pre-wrap text-sm leading-relaxed text-slate-800">
         {thread.body}
       </div>
-
       {error ? <p className="mt-2 text-xs text-red-600">{error}</p> : null}
-
-      <div className="mt-4 flex flex-wrap gap-2">
+      <div className="mt-3 flex flex-wrap gap-2">
         {showUnread && !autoMarkRead ? (
           <Button
             size="sm"
@@ -197,6 +159,69 @@ export function AnnouncementCard({
             </Button>
           </>
         ) : null}
+      </div>
+    </>
+  );
+
+  if (!embedded) {
+    return (
+      <article
+        ref={articleRef}
+        id={`announcement-${thread.id}`}
+        className={cn(
+          "relative rounded-xl border p-4 shadow-sm",
+          cardTone,
+          thread.pinned && "ring-1 ring-indigo-200/80",
+          showUnread && "ring-2 ring-sky-300/70 ring-offset-1"
+        )}
+      >
+        <header className="space-y-1.5 pr-8">
+          {headerBadges}
+          <h3 className="text-sm font-semibold text-slate-900">{thread.title}</h3>
+          <p className="text-xs text-slate-600">
+            {author} · {formatBoardDate(thread.published_at)}
+            {thread.expires_at ? (
+              <span className="text-slate-500">
+                {" "}
+                · ważne do {formatBoardDate(thread.expires_at)}
+              </span>
+            ) : null}
+          </p>
+        </header>
+        {bodyBlock}
+      </article>
+    );
+  }
+
+  return (
+    <article
+      ref={articleRef}
+      id={`announcement-${thread.id}`}
+      className={boardAnnouncementRowClass({ unread: showUnread, pinned: thread.pinned })}
+    >
+      <div className="flex items-start gap-3">
+        <div
+          className={boardAnnouncementAvatarClass({ unread: showUnread, pinned: thread.pinned })}
+          aria-hidden
+        >
+          <IconInbox size={16} />
+        </div>
+        <div className="min-w-0 flex-1">
+          <header className="space-y-1.5">
+            {headerBadges}
+            <h3 className="text-sm font-semibold leading-snug text-slate-900">{thread.title}</h3>
+            <p className="text-xs text-slate-600">
+              {author} · {formatBoardDate(thread.published_at)}
+              {thread.expires_at ? (
+                <span className="text-slate-500">
+                  {" "}
+                  · ważne do {formatBoardDate(thread.expires_at)}
+                </span>
+              ) : null}
+            </p>
+          </header>
+          {bodyBlock}
+        </div>
       </div>
     </article>
   );

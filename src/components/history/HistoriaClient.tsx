@@ -1,4 +1,5 @@
 "use client";
+import { HISTORY_TOAST, toastFromError, type ToastNotice } from "@/lib/ui/notice-copy";
 
 import { useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
@@ -20,7 +21,7 @@ import { HistoriaBrowseSheet } from "@/components/history/HistoriaBrowseSheet";
 import { Card, CardHeader } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { EmptyState } from "@/components/ui/EmptyState";
-import { Toast } from "@/components/ui/Toast";
+import { NoticeToast } from "@/components/ui/NoticeToast";
 import { SectionListLabel } from "@/components/ui/SectionListLabel";
 import { SectionHeadingIcon } from "@/components/icons/SectionHeadingIcon";
 import { IconArchive, IconClipboardList } from "@/components/icons/StrokeIcons";
@@ -111,9 +112,7 @@ export function HistoriaClient({
   const effectiveCanManage = canManageHistory && !readOnly;
   const effectiveCanOperate = canOperateOrders && !readOnly;
   const [pending, start] = useTransition();
-  const [msg, setMsg] = useState<{ text: string; tone: "success" | "error" } | null>(
-    null
-  );
+  const [msg, setMsg] = useState<ToastNotice | null>(null);
   const [sheet, setSheet] = useState<"individual" | "normal" | null>(null);
   const [cancelTarget, setCancelTarget] = useState<IndividualOrder | null>(null);
   const [editNoteTarget, setEditNoteTarget] = useState<IndividualOrder | null>(null);
@@ -136,13 +135,10 @@ export function HistoriaClient({
     start(async () => {
       try {
         await actionDeleteIndividualHistory(id);
-        setMsg({ text: "Wpis usunięty.", tone: "success" });
+        setMsg(HISTORY_TOAST.deletedEntry);
         router.refresh();
       } catch (e) {
-        setMsg({
-          text: e instanceof Error ? e.message : "Błąd usuwania",
-          tone: "error",
-        });
+        setMsg(toastFromError(e instanceof Error ? e.message : undefined, HISTORY_TOAST.deleteFailed.text));
       }
     });
   };
@@ -152,21 +148,15 @@ export function HistoriaClient({
     start(async () => {
       try {
         await actionDeleteNormalHistory(id);
-        setMsg({ text: "Wpis usunięty.", tone: "success" });
+        setMsg(HISTORY_TOAST.deletedEntry);
         router.refresh();
       } catch (e) {
-        setMsg({
-          text: e instanceof Error ? e.message : "Błąd usuwania",
-          tone: "error",
-        });
+        setMsg(toastFromError(e instanceof Error ? e.message : undefined, HISTORY_TOAST.deleteFailed.text));
       }
     });
   };
 
-  const emailWarning = (result: { emailError?: string }) => {
-    if (!result.emailError) return "";
-    return ` (${result.emailError})`;
-  };
+  const emailWarning = (result: { emailError?: string }) => result.emailError;
 
   const cancelOrder = (order: IndividualOrder) => {
     setCancelTarget(order);
@@ -179,16 +169,10 @@ export function HistoriaClient({
       try {
         const result = await actionCancelOrder(target.id, note);
         setCancelTarget(null);
-        setMsg({
-          text: `Prośba anulowana.${emailWarning(result)}`,
-          tone: result.emailError ? "error" : "success",
-        });
+        setMsg(HISTORY_TOAST.cancelledOrder(emailWarning(result)));
         router.refresh();
       } catch (e) {
-        setMsg({
-          text: e instanceof Error ? e.message : "Błąd anulowania",
-          tone: "error",
-        });
+        setMsg(toastFromError(e instanceof Error ? e.message : undefined, HISTORY_TOAST.cancelFailed.text));
       }
     });
   };
@@ -204,16 +188,10 @@ export function HistoriaClient({
       try {
         const result = await actionUpdateProcurementCancelNote(target.id, note);
         setEditNoteTarget(null);
-        setMsg({
-          text: `Wiadomość zapisana.${emailWarning(result)}`,
-          tone: result.emailError ? "error" : "success",
-        });
+        setMsg(HISTORY_TOAST.savedNote(emailWarning(result)));
         router.refresh();
       } catch (e) {
-        setMsg({
-          text: e instanceof Error ? e.message : "Błąd zapisu wiadomości",
-          tone: "error",
-        });
+        setMsg(toastFromError(e instanceof Error ? e.message : undefined, HISTORY_TOAST.saveNoteFailed.text));
       }
     });
   };
@@ -221,7 +199,7 @@ export function HistoriaClient({
   return (
     <div className={procurementArchivePageShellClass}>
       {msg ? (
-        <Toast message={msg.text} tone={msg.tone} onDismiss={() => setMsg(null)} />
+        <NoticeToast notice={msg} onDismiss={() => setMsg(null)} />
       ) : null}
 
       <ProcurementCancelDialog

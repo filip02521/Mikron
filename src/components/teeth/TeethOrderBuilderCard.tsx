@@ -12,7 +12,7 @@ import {
   type TeethProductLine,
 } from "@/lib/teeth/teeth-catalog";
 import { teethLineDetailsComplete } from "@/lib/teeth/teeth-validation";
-import { countTeethDetailsByKind } from "@/lib/teeth/teeth-dual-kind";
+import { countTeethDetailsByKind, catalogLineForDualKind } from "@/lib/teeth/teeth-dual-kind";
 import { TEETH_DUAL_CARD_HINT } from "@/lib/teeth/teeth-builder-copy";
 import {
   teethProsbaDetailClass,
@@ -51,6 +51,10 @@ export function TeethOrderBuilderCard({
 }) {
   const counts = countTeethDetailsByKind(details);
   const total = details?.length ?? 0;
+  const anteriorCatalogLine =
+    dualKindMode && productLine ? catalogLineForDualKind(productLine, "anterior") : productLine;
+  const posteriorCatalogLine =
+    dualKindMode && productLine ? catalogLineForDualKind(productLine, "posterior") : productLine;
   const complete =
     total > 0
     && (dualKindMode
@@ -59,7 +63,7 @@ export function TeethOrderBuilderCard({
             teethDetails: details?.filter((d) => d.kind !== "posterior"),
             quantity: String(counts.anterior),
             product: productName,
-            adminProductLine: productLine,
+            adminProductLine: anteriorCatalogLine,
             adminManufacturer: manufacturer,
             isTeethProduct: true,
           }))
@@ -68,7 +72,7 @@ export function TeethOrderBuilderCard({
             teethDetails: details?.filter((d) => d.kind === "posterior"),
             quantity: String(counts.posterior),
             product: productName,
-            adminProductLine: productLine,
+            adminProductLine: posteriorCatalogLine,
             adminManufacturer: manufacturer,
             isTeethProduct: true,
           }))

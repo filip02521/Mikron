@@ -20,6 +20,7 @@ import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { IconCalendar } from "@/components/icons/StrokeIcons";
 import { plCoTydzien } from "@/lib/ui/polish-plurals";
 import { panelTypography } from "@/lib/ui/ontime-theme";
+import { TEETH_SCHEDULE_TOAST, toastFromError, type ToastNotice } from "@/lib/ui/notice-copy";
 
 const WEEKDAYS: DayOfWeek[] = [1, 2, 3, 4, 5];
 
@@ -32,7 +33,7 @@ export function TeethSupplierScheduleFields({
   supplierId: string;
   supplierName: string;
   disabled?: boolean;
-  onToast: (message: string, tone: "success" | "error") => void;
+  onToast: (notice: ToastNotice) => void;
 }) {
   const [schedule, setSchedule] = useState<TeethSupplierSchedule | null | undefined>(undefined);
   const [pending, setPending] = useState(false);
@@ -52,7 +53,7 @@ export function TeethSupplierScheduleFields({
         setShiftDate(row.shift_date ?? "");
       }
     } catch (e) {
-      onToast(e instanceof Error ? e.message : "Błąd wczytywania cyklu zębów", "error");
+      onToast(toastFromError(e instanceof Error ? e.message : undefined, TEETH_SCHEDULE_TOAST.loadFailed.text));
       setSchedule(null);
     }
   }, [supplierId, onToast]);
@@ -67,10 +68,10 @@ export function TeethSupplierScheduleFields({
     setPending(true);
     try {
       await actionUpsertTeethSchedule(supplierId, orderDay, intervalWeeks);
-      onToast("Zapisano cykl zamówień zębów", "success");
+      onToast(TEETH_SCHEDULE_TOAST.saved);
       await reload();
     } catch (e) {
-      onToast(e instanceof Error ? e.message : "Błąd zapisu cyklu zębów", "error");
+      onToast(toastFromError(e instanceof Error ? e.message : undefined, TEETH_SCHEDULE_TOAST.saveFailed.text));
     } finally {
       setPending(false);
     }
@@ -81,10 +82,10 @@ export function TeethSupplierScheduleFields({
     setPending(true);
     try {
       await actionRemoveTeethSchedule(supplierId);
-      onToast("Wyłączono cykl zębów u tego dostawcy", "success");
+      onToast(TEETH_SCHEDULE_TOAST.disabled);
       await reload();
     } catch (e) {
-      onToast(e instanceof Error ? e.message : "Błąd usuwania cyklu", "error");
+      onToast(toastFromError(e instanceof Error ? e.message : undefined, TEETH_SCHEDULE_TOAST.removeFailed.text));
     } finally {
       setPending(false);
     }
@@ -98,15 +99,14 @@ export function TeethSupplierScheduleFields({
         await actionShiftTeethSchedule(supplierId, clear ? null : shiftDate || null);
         onToast(
           clear
-            ? "Przywrócono automatyczny termin cyklu"
+            ? TEETH_SCHEDULE_TOAST.shiftRestored
             : shiftDate
-              ? `Przesunięto termin na ${formatPlDate(shiftDate)}`
-              : "Zaktualizowano termin",
-          "success"
+              ? TEETH_SCHEDULE_TOAST.shiftToDate(formatPlDate(shiftDate))
+              : TEETH_SCHEDULE_TOAST.shiftUpdated,
         );
         await reload();
       } catch (e) {
-        onToast(e instanceof Error ? e.message : "Błąd przesuwania terminu", "error");
+        onToast(toastFromError(e instanceof Error ? e.message : undefined, TEETH_SCHEDULE_TOAST.shiftFailed.text));
       } finally {
         setPending(false);
       }

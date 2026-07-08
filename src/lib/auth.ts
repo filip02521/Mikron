@@ -171,6 +171,33 @@ export async function requireReceiveMutateForOrders(
   return requireWarehouse(intent);
 }
 
+/** Wysyłka zaplanowanych powiadomień po przyjęciu (magazyn lub panel zębów). */
+export async function requireReceiveNotificationFlush(): Promise<{
+  user: SessionUser;
+  scope: "warehouse" | "teeth" | "all";
+}> {
+  const user = await getSessionUser();
+  if (!user) {
+    throw new Error("Brak sesji — zaloguj się ponownie.");
+  }
+  assertPasswordChangeCompleted(user);
+
+  const warehouse = canAccessWarehouse(user.role, user.assignedWorkspaces);
+  const teeth = canAccessTeethPanel(user.role, user.assignedWorkspaces);
+  if (!warehouse && !teeth) {
+    throw new Error("Brak uprawnień do powiadomień o przyjęciu");
+  }
+  if (warehouse) {
+    await assertAdminPanelAllowsWarehouseMutations(user);
+  }
+  if (teeth) {
+    await assertAdminPanelAllowsOperationsMutations(user);
+  }
+
+  const scope = warehouse && teeth ? "all" : warehouse ? "warehouse" : "teeth";
+  return { user, scope };
+}
+
 /** Zarządzanie dostawcami i urlopami (admin + zakupy). */
 export async function requireSupplierManagement(
   intent: AuthIntent = "read"

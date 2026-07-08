@@ -6,6 +6,8 @@ import { useRouter } from "next/navigation";
 import { Card, CardHeader } from "@/components/ui/Card";
 import { Alert } from "@/components/ui/Alert";
 import { UndoToast } from "@/components/ui/UndoToast";
+import { NoticeToast } from "@/components/ui/NoticeToast";
+import { NOTEPAD_UNDO_TOAST, toastFromError, type ToastNotice } from "@/lib/ui/notice-copy";
 import { IconNotepad, IconArchive, IconClipboardPen, IconUsers } from "@/components/icons/StrokeIcons";
 import { SectionHeadingIcon } from "@/components/icons/SectionHeadingIcon";
 import {
@@ -57,7 +59,12 @@ type OperationsUndoState = (
       visibility: OperationsNoteVisibility;
       notes: OperationsNote[];
     }
-) & { expiresAt: number };
+) & { expiresAt: number; performedAt: number };
+
+function createUndoTiming() {
+  const performedAt = Date.now();
+  return { performedAt, expiresAt: undoExpiresAtNow(performedAt) };
+}
 
 function flashNoteAnchor(noteId: string) {
   flashNotepadAnchor(`note-${noteId}`, { durationMs: 1200 });
@@ -88,6 +95,7 @@ export function OperationsNotepadClient({
   const [showArchive, setShowArchive] = useState(false);
   const [focusNoteId, setFocusNoteId] = useState<string | null>(null);
   const [undo, setUndo] = useState<OperationsUndoState | null>(null);
+  const [undoFeedback, setUndoFeedback] = useState<ToastNotice | null>(null);
   const dismissUndo = useCallback(() => {
     setUndo(null);
     router.refresh();
@@ -133,12 +141,16 @@ export function OperationsNotepadClient({
     const snapshot = undo;
     if (isUndoExpired(snapshot.expiresAt)) {
       setUndo(null);
+      setUndoFeedback(NOTEPAD_UNDO_TOAST.expired);
       return;
     }
     setUndo(null);
+    setUndoFeedback(null);
     try {
       if (snapshot.type === "archive") {
-        const { note: restored } = await actionRestoreOperationsNote(snapshot.note.id);
+        const { note: restored } = await actionRestoreOperationsNote(snapshot.note.id, {
+          enforceUndoWindow: true,
+        });
         setArchivedNotes((prev) => prev.filter((n) => n.id !== snapshot.note.id));
         if (restored.visibility === "private") {
           setPrivateNotes((prev) => sortOperationsNotes([restored, ...prev]));
@@ -148,16 +160,22 @@ export function OperationsNotepadClient({
         flashNoteAnchor(restored.id);
       } else {
         const ids = sortOperationsNotes(snapshot.notes).map((n) => n.id);
-        await actionReorderOperationsNotes(department, snapshot.visibility, ids);
+        await actionReorderOperationsNotes(department, snapshot.visibility, ids, {
+          undoPerformedAt: snapshot.performedAt,
+        });
         if (snapshot.visibility === "private") {
           setPrivateNotes(sortOperationsNotes(snapshot.notes));
         } else {
           setPublicNotes(sortOperationsNotes(snapshot.notes));
         }
       }
+      setUndoFeedback(NOTEPAD_UNDO_TOAST.success);
       refresh();
-    } catch {
+    } catch (e) {
       if (!isUndoExpired(snapshot.expiresAt)) setUndo(snapshot);
+      setUndoFeedback(
+        toastFromError(e instanceof Error ? e.message : undefined, NOTEPAD_UNDO_TOAST.failed.text)
+      );
     }
   }, [undo, department, refresh]);
 
@@ -191,7 +209,7 @@ export function OperationsNotepadClient({
         type: "reorder",
         visibility,
         notes: previousForUndo,
-        expiresAt: undoExpiresAtNow(),
+        ...createUndoTiming(),
       });
     }
   }
@@ -204,7 +222,7 @@ export function OperationsNotepadClient({
       setPublicNotes((prev) => prev.filter((n) => n.id !== note.id));
     }
     setArchivedNotes((prev) => [{ ...note, archived_at: now }, ...prev]);
-    setUndo({ type: "archive", note, visibility, expiresAt: undoExpiresAtNow() });
+    setUndo({ type: "archive", note, visibility, ...createUndoTiming() });
   }
 
   function handlePrivateCreated(note: OperationsNote) {
@@ -246,6 +264,14 @@ export function OperationsNotepadClient({
 
   return (
     <div className={OPERATIONS_NOTEPAD_PAGE_CLASS}>
+      {undoFeedback ? (
+        <NoticeToast
+          notice={undoFeedback}
+          stacked={Boolean(undo)}
+          tone={undoFeedback.tone}
+          onDismiss={() => setUndoFeedback(null)}
+        />
+      ) : null}
       {undo ? (
         <UndoToast
           title={undoTitle}

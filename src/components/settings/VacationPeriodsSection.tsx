@@ -11,7 +11,8 @@ import type { VacationPeriodRow } from "@/lib/data/sales-vacation-periods";
 import { Card, CardHeader } from "@/components/ui/Card";
 import { Field, Input } from "@/components/ui/Field";
 import { Button } from "@/components/ui/Button";
-import { Toast } from "@/components/ui/Toast";
+import { NoticeToast } from "@/components/ui/NoticeToast";
+import { VACATION_TOAST, toastFromError, type ToastNotice } from "@/lib/ui/notice-copy";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { Badge } from "@/components/ui/Badge";
 import { SectionHeadingIcon } from "@/components/icons/SectionHeadingIcon";
@@ -51,7 +52,7 @@ export function VacationPeriodsSection({
   const router = useRouter();
   const [periods, setPeriods] = useState(initialPeriods);
   const [pending, start] = useTransition();
-  const [toast, setToast] = useState<{ text: string; tone: "success" | "error" } | null>(null);
+  const [toast, setToast] = useState<ToastNotice | null>(null);
   const dismiss = useCallback(() => setToast(null), []);
   const [deleteTarget, setDeleteTarget] = useState<VacationPeriodRow | null>(null);
   const [formOpen, setFormOpen] = useState(false);
@@ -68,11 +69,11 @@ export function VacationPeriodsSection({
 
   const save = () => {
     if (!form.startDate || !form.endDate) {
-      setToast({ text: "Podaj daty rozpoczęcia i zakończenia.", tone: "error" });
+      setToast(VACATION_TOAST.missingDates);
       return;
     }
     if (form.startDate > form.endDate) {
-      setToast({ text: "Data rozpoczęcia nie może być późniejsza niż zakończenia.", tone: "error" });
+      setToast(VACATION_TOAST.invalidDateRange);
       return;
     }
     start(async () => {
@@ -83,11 +84,11 @@ export function VacationPeriodsSection({
         note: form.note || null,
       });
       if ("error" in r) {
-        setToast({ text: r.error, tone: "error" });
+        setToast(toastFromError(r.error));
         return;
       }
       resetForm();
-      setToast({ text: "Zapisano okres urlopu.", tone: "success" });
+      setToast(VACATION_TOAST.savedPeriod);
       const updated = await actionFetchVacationPeriods(salesPersonId);
       setPeriods(updated);
       router.refresh();
@@ -98,11 +99,11 @@ export function VacationPeriodsSection({
     start(async () => {
       const r = await actionRemoveVacationPeriod(id);
       if ("error" in r) {
-        setToast({ text: r.error, tone: "error" });
+        setToast(toastFromError(r.error));
         return;
       }
       setDeleteTarget(null);
-      setToast({ text: "Usunięto okres urlopu.", tone: "success" });
+      setToast(VACATION_TOAST.removedPeriod);
       const updated = await actionFetchVacationPeriods(salesPersonId);
       setPeriods(updated);
       router.refresh();
@@ -134,7 +135,7 @@ export function VacationPeriodsSection({
         }
       />
       <div className={salesChromeInsetClass}>
-        {toast ? <Toast message={toast.text} tone={toast.tone} onDismiss={dismiss} /> : null}
+        {toast ? <NoticeToast notice={toast} onDismiss={dismiss} /> : null}
 
         {formOpen ? (
           <div className="mb-4 space-y-4 rounded-md border border-slate-200 bg-slate-50/50 p-4">

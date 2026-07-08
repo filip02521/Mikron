@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { Alert } from "@/components/ui/Alert";
 import { Button } from "@/components/ui/Button";
 import { Card, CardHeader } from "@/components/ui/Card";
+import { NoticeToast } from "@/components/ui/NoticeToast";
 import { SectionHeadingIcon } from "@/components/icons/SectionHeadingIcon";
 import { IconClipboardPen, IconInbox } from "@/components/icons/StrokeIcons";
 import { NoteColorPicker } from "@/components/notatnik/NoteColorPicker";
@@ -41,7 +42,7 @@ import { DEPARTMENT_BOARD_ANNOUNCEMENTS_SEARCH } from "@/lib/department-board/co
 import { NotatnikListFilterBar } from "@/components/notatnik/NotatnikListFilterBar";
 import { salesSearchPlaceholder } from "@/lib/sales/sales-search-ui";
 import { SALES_SEARCH_COPY } from "@/lib/sales/sales-page-ui-copy";
-import { boardQuestionListClass } from "@/lib/department-board/department-board-thread-styles";
+import { boardAnnouncementListClass, boardQuestionListClass } from "@/lib/department-board/department-board-thread-styles";
 import type { DepartmentBoardData } from "@/lib/data/department-board";
 import type { SalesNoteColor } from "@/types/database";
 import { cn } from "@/lib/cn";
@@ -50,12 +51,17 @@ import {
   panelPageShellClass,
   panelTypography,
 } from "@/lib/ui/ontime-theme";
-import { mojeShipmentListClass } from "@/lib/ui/moje-shipment-row-styles";
 import { actionCreateAnnouncement } from "@/app/actions/department-board";
 import { usePreviewMutationBlocker } from "@/components/layout/usePreviewMutationBlocker";
 import { useDeepLinkScrollOnce } from "@/hooks/use-deep-link-scroll-once";
 import { useDepartmentBoardTabUrl } from "@/hooks/use-department-board-tab-url";
 import { SalesListFilterEmptyHint } from "@/components/sales/SalesListEmptyHints";
+import { toastSuccess } from "@/lib/ui/notice-copy";
+
+const PROCUREMENT_ANNOUNCEMENT_SUCCESS_TOAST = toastSuccess(
+  "Opublikowano",
+  "Ogłoszenie jest już widoczne na tablicy handlowców."
+);
 
 export function DepartmentBoardProcurementClient({
   initial,
@@ -97,6 +103,7 @@ export function DepartmentBoardProcurementClient({
   const [announcementExpires, setAnnouncementExpires] = useState("");
   const [announcementFormError, setAnnouncementFormError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+  const [successToast, setSuccessToast] = useState(false);
 
   const openQuestionsCount = initial.questions.filter((q) => q.status === "open").length;
 
@@ -168,6 +175,7 @@ export function DepartmentBoardProcurementClient({
       setAnnouncementPinned(false);
       setAnnouncementExpires("");
       setAnnouncementColor("default");
+      setSuccessToast(true);
       refresh();
     } catch (e) {
       setAnnouncementFormError(
@@ -185,6 +193,13 @@ export function DepartmentBoardProcurementClient({
 
   return (
     <div className={panelPageShellClass}>
+      {successToast ? (
+        <NoticeToast
+          notice={PROCUREMENT_ANNOUNCEMENT_SUCCESS_TOAST}
+          onDismiss={() => setSuccessToast(false)}
+        />
+      ) : null}
+
       {loadError ? <Alert tone="error">{loadError}</Alert> : null}
 
       {focusThreadMissing ? (
@@ -212,6 +227,7 @@ export function DepartmentBoardProcurementClient({
           activeTab={activeTab}
           onTabChange={handleTabChange}
           activeAnnouncements={initial.announcements.length}
+          totalQuestions={initial.questions.length}
           openQuestions={openQuestionsCount}
         />
 
@@ -261,6 +277,7 @@ export function DepartmentBoardProcurementClient({
                     type="date"
                     value={announcementExpires}
                     disabled={readOnly || saving}
+                    min={new Date().toISOString().slice(0, 10)}
                     onChange={(e) => setAnnouncementExpires(e.target.value)}
                     className={cn(NOTATNIK_INPUT_CLASS, "h-8 w-auto text-xs")}
                   />
@@ -316,7 +333,7 @@ export function DepartmentBoardProcurementClient({
                   onShowQuestions={() => handleTabChange("questions")}
                 />
               ) : (
-                <div className={cn(mojeShipmentListClass, "-mx-3 -mb-3 sm:-mx-4 sm:-mb-4")}>
+                <div className={cn(boardAnnouncementListClass, "-mx-3 -mb-3 sm:-mx-4 sm:-mb-4")}>
                   {filteredAnnouncements.map((thread) => (
                     <AnnouncementCard
                       key={thread.id}
@@ -344,6 +361,12 @@ export function DepartmentBoardProcurementClient({
               flushBody
               bodyClassName="space-y-4 p-3 sm:p-4"
             >
+              <div className="rounded-lg border border-slate-200/80 bg-slate-50/70 px-3 py-2.5 sm:px-4">
+                <p className="text-xs leading-relaxed text-slate-600">
+                  {DEPARTMENT_BOARD_QUESTIONS_EXPLAINER.body} Odpowiedzi widzą wszyscy handlowcy.
+                </p>
+              </div>
+
               <DepartmentBoardQuestionToolbar
                 domain="panel"
                 filter={activeQuestionFilter}
@@ -370,11 +393,12 @@ export function DepartmentBoardProcurementClient({
                 <DepartmentBoardQuestionsEmpty domain="panel" filter={activeQuestionFilter} />
               ) : (
                 <div className={cn(boardQuestionListClass, "-mx-1 sm:-mx-0")}>
-                  {filteredQuestions.map((question) => (
+                  {filteredQuestions.map((question, index) => (
                     <QuestionThreadCard
                       key={question.id}
                       question={question}
                       embedded
+                      rowAlternate={index % 2 === 1}
                       canReply={!readOnly}
                       canArchive={!readOnly}
                       defaultExpanded={focusQuestionId === question.id}
