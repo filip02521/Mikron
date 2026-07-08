@@ -421,6 +421,7 @@ export function IconColorLegendSample({ className, size = 14 }: StrokeIconProps)
 
 export type MojeSectionIconKind =
   | "action"
+  | "mixed-pickup"
   | "teeth"
   | "zamowienie"
   | "before_order"
@@ -434,6 +435,7 @@ const MOJE_SECTION_ICON_MAP: Record<
   (props: StrokeIconProps) => React.ReactElement
 > = {
   action: IconCircleCheck,
+  "mixed-pickup": IconTooth,
   teeth: IconTooth,
   zamowienie: IconTruck,
   before_order: IconClipboardList,
@@ -458,6 +460,8 @@ export function mojeSectionIconTileClass(kind: MojeSectionIconKind): string {
   switch (kind) {
     case "action":
       return "bg-emerald-100 text-emerald-800";
+    case "mixed-pickup":
+      return "bg-indigo-100 text-indigo-800";
     case "teeth":
       return "bg-violet-100 text-violet-800";
     case "zamowienie":

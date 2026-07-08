@@ -279,8 +279,12 @@ export function SubiektProductLineFields({
   const adminProductLine = linkedTeethTwId != null
     ? (teethProductInfo.productLineByTwId.get(linkedTeethTwId) ?? null)
     : null;
+  const isRegistryTeethTw =
+    linkedTeethTwId != null && teethProductInfo.twIds.has(Math.trunc(linkedTeethTwId));
   const isTeethOrderLine =
-    prosba && requestKind === "zamowienie" && Boolean(value.teethManufacturer);
+    prosba &&
+    requestKind === "zamowienie" &&
+    (Boolean(value.teethManufacturer) || isRegistryTeethTw);
   const resolvedTeethCatalog = useMemo(
     () => resolveTeethCatalogFromDraft({
       adminProductLine,

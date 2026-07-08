@@ -33,7 +33,7 @@ export const MY_ORDER_TEETH_ACTION_SECTION_COPY = {
 export const MY_ORDER_MIXED_ACTION_SECTION_COPY = {
   title: "Potwierdź odbiór (zęby i towar)",
   hint: "W tej prośbie są zęby i towar z regału — każdy typ potwierdzasz osobno (inny przepływ magazynowy).",
-  icon: "action" as const,
+  icon: "mixed-pickup" as const,
   accent: "indigo" as const satisfies MyOrderSectionAccent,
 };
 

@@ -45,7 +45,7 @@ export const DEPARTMENT_BOARD_QUESTIONS_FILTERS = {
     "Filtry są tymczasowo zablokowane — otworzyłeś konkretny wątek z linku.",
   toolbarLabel: "Filtruj listę",
   toolbarHint:
-    "Zawęż wątki według statusu. Liczby przy chipach pokazują wynik w obrębie aktywnego filtra i wyszukiwania.",
+    "Zawęż wątki według statusu. Liczby przy chipach dotyczą wyników wyszukiwania (niezależnie od aktywnego filtra).",
   searchHint:
     "Szukaj po temacie, treści pytania, produkcie, autorze lub fragmencie odpowiedzi zakupów.",
   chips: {

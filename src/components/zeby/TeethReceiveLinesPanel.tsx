@@ -454,7 +454,7 @@ export function TeethReceiveLinesPanel({
         <UndoToast
           title="Przyjęto zęby"
           description={undoWindowBannerDescription(
-            "Cofnięcie przywraca stan u handlowca i anuluje zaplanowany e-mail"
+            "Cofnięcie przywraca stan u handlowca w /moje"
           )}
           placement="floating"
           expiresAt={undo.expiresAt}

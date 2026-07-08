@@ -55,9 +55,14 @@ export function DepartmentBoardTabBar({
     {
       id: "questions",
       label: "Pytania",
-      count: totalQuestions,
+      count: openQuestions > 0 ? openQuestions : totalQuestions,
       countEmphasis: openQuestions > 0 ? "warning" : "default",
-      hint: openQuestions > 0 ? `${openQuestions} bez odpowiedzi` : undefined,
+      hint:
+        openQuestions > 0
+          ? `${openQuestions} bez odpowiedzi · łącznie ${totalQuestions}`
+          : totalQuestions > 0
+            ? `${totalQuestions} pytań`
+            : undefined,
     },
   ];
 
@@ -132,7 +137,7 @@ export function DepartmentBoardQuestionFilters({
     { id: "answered", label: "Odpowiedziane", count: counts.answered },
   ];
 
-  if (showUnseen && counts.unseen > 0) {
+  if (showUnseen) {
     filters.push({ id: "unseen", label: "Nowe odpowiedzi", count: counts.unseen });
   }
 
@@ -144,7 +149,7 @@ export function DepartmentBoardQuestionFilters({
     });
   }
 
-  if (showMine) {
+  if (showMine && (counts.mine > 0 || value === "mine")) {
     filters.push({ id: "mine", label: "Tylko moje", count: counts.mine });
   }
 

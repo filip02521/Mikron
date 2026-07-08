@@ -354,19 +354,13 @@ export function DepartmentBoardProcurementClient({
             <NotatnikPanel
               domain="panel"
               title="Pytania handlowców"
-              description={DEPARTMENT_BOARD_QUESTIONS_EXPLAINER.body}
+              description={`${DEPARTMENT_BOARD_QUESTIONS_EXPLAINER.body} Odpowiedzi widzą wszyscy handlowcy.`}
               count={initial.questions.length || undefined}
               icon={<IconClipboardPen size={17} />}
               accent="indigo"
               flushBody
               bodyClassName="space-y-4 p-3 sm:p-4"
             >
-              <div className="rounded-lg border border-slate-200/80 bg-slate-50/70 px-3 py-2.5 sm:px-4">
-                <p className="text-xs leading-relaxed text-slate-600">
-                  {DEPARTMENT_BOARD_QUESTIONS_EXPLAINER.body} Odpowiedzi widzą wszyscy handlowcy.
-                </p>
-              </div>
-
               <DepartmentBoardQuestionToolbar
                 domain="panel"
                 filter={activeQuestionFilter}

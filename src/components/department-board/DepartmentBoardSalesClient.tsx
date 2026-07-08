@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useSalesOnboardingDemo } from "@/components/sales/SalesOnboardingContext";
 import {
   buildOnboardingBoardAttention,
@@ -124,6 +124,24 @@ export function DepartmentBoardSalesClient({
         unseenAnswersCount,
         unseenOwnAnswersCount
       );
+
+  useEffect(() => {
+    if (filtersLockedByFocus) return;
+    const resolved = resolveQuestionFilterAfterUnseenCleared(
+      questionFilter,
+      unseenAnswersCount,
+      unseenOwnAnswersCount
+    );
+    if (resolved !== questionFilter) {
+      setQuestionFilter(resolved);
+    }
+  }, [
+    questionFilter,
+    unseenAnswersCount,
+    unseenOwnAnswersCount,
+    filtersLockedByFocus,
+    setQuestionFilter,
+  ]);
   const focusQuestionMissing = Boolean(
     focusQuestionId && !board.questions.some((question) => question.id === focusQuestionId)
   );
@@ -335,7 +353,10 @@ export function DepartmentBoardSalesClient({
                   rowAlternate={index % 2 === 1}
                   unseenReply={unseenSet.has(question.id)}
                   autoMarkSeen={!tourDemo && !readOnly && question.status === "answered"}
-                  defaultExpanded={tourDemo || focusQuestionId === question.id}
+                  defaultExpanded={
+                    focusQuestionId === question.id ||
+                    (tourDemo && ONBOARDING_TABLICA_UNSEEN_QUESTION_IDS.includes(question.id))
+                  }
                   onChanged={refresh}
                 />
               ))}

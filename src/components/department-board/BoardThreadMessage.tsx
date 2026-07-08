@@ -47,7 +47,7 @@ export function BoardThreadMessage({
   const roleLabel = threadRoleLabel(tone, replyKind);
 
   return (
-    <article className={cn(boardThreadMessageShellClass(tone), className)}>
+    <div className={cn(boardThreadMessageShellClass(tone), className)}>
       <div className="flex items-start gap-3">
         <div className={boardThreadAvatarClass(tone)} aria-hidden>
           <ThreadAvatar tone={tone} />
@@ -61,6 +61,6 @@ export function BoardThreadMessage({
           <p className="whitespace-pre-wrap text-sm leading-relaxed text-slate-800">{body}</p>
         </div>
       </div>
-    </article>
+    </div>
   );
 }

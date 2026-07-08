@@ -82,6 +82,19 @@ describe("DepartmentBoardQuestionFilters", () => {
     expect(screen.getByRole("button", { name: /Odpowiedziane/i }).textContent).toContain("3");
     expect(screen.getByRole("button", { name: /Tylko moje/i }).textContent).toContain("2");
   });
+
+  it("pokazuje chip nowych odpowiedzi nawet gdy wyszukiwanie daje zero wyników", () => {
+    render(
+      <DepartmentBoardQuestionFilters
+        value="all"
+        onChange={vi.fn()}
+        counts={{ ...baseCounts, unseen: 0 }}
+        showUnseen
+      />
+    );
+
+    expect(screen.getByRole("button", { name: /Nowe odpowiedzi/i })).toBeTruthy();
+  });
 });
 
 describe("DepartmentBoardTabBar", () => {
@@ -101,6 +114,6 @@ describe("DepartmentBoardTabBar", () => {
     );
 
     expect(screen.getByRole("tab", { name: /Ogłoszenia/i }).textContent).toContain("4");
-    expect(screen.getByRole("tab", { name: /Pytania/i }).textContent).toContain("9");
+    expect(screen.getByRole("tab", { name: /Pytania/i }).textContent).toContain("2");
   });
 });

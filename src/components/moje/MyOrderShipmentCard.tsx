@@ -462,7 +462,11 @@ export const MyOrderShipmentCard = memo(function MyOrderShipmentCard({
     row.lines[0]?.canAcknowledgePickup;
   const showGroupPickup = canAcknowledge && needsAck && row.lineCount > 1;
   const showBulkPickup =
-    showGroupPickup && row.pickupPendingCount > 0 && row.pickupPendingIds.length > 0 && !expanded;
+    showGroupPickup &&
+    row.pickupPendingCount > 0 &&
+    row.pickupPendingIds.length > 0 &&
+    !expanded &&
+    row.acknowledgeMode !== "mixed_pickup";
 
   const showSalesCancelLink =
     canAcknowledge &&
