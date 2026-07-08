@@ -43,7 +43,7 @@ describe("sales email templates", () => {
       ],
     });
     expect(html).toContain("Informacja o dostępności");
-    expect(html).toContain("Na magazynie");
+    expect(html).toContain("Na regale");
     expect(html).toContain("widziałem/am powiadomienie");
   });
 

@@ -174,6 +174,12 @@ export async function analyzeTeethImage(
     const mouldRaw = typeof item.mould === "string" ? item.mould.trim() : null;
     const countRaw = typeof item.count === "number" ? item.count : parseInt(String(item.count), 10);
 
+    if (!colorRaw) {
+      rejectedCount++;
+      console.warn(`[teeth-vision-ocr] rejected: missing color`, JSON.stringify(item));
+      continue;
+    }
+
     if (!isValidOcrProductLine(productLineRaw)) {
       rejectedCount++;
       console.warn(`[teeth-vision-ocr] rejected: bad productLine`, JSON.stringify(item));
@@ -191,7 +197,7 @@ export async function analyzeTeethImage(
     const color = resolveOcrColor(colorRaw, productLine);
     if (!isValidOcrColor(color, productLine)) {
       rejectedCount++;
-      console.warn(`[teeth-vision-ocr] rejected: bad color`, JSON.stringify(item));
+      console.warn(`[teeth-vision-ocr] rejected: bad color`, JSON.stringify(item), { colorRaw, resolvedColor: color, productLine });
       continue;
     }
 

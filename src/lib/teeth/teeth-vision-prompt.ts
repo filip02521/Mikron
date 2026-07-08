@@ -80,8 +80,9 @@ export function buildTeethVisionPrompt(catalog?: TeethCatalogRef): string {
   parts.push(`\n**J. Tabela z nagłówkami kolumn określającymi kind/jaw.** Kartka bywa zorganizowana jako tabela z 4 kolumnami nagłówkowymi typu "GÓRA PRZÓD", "DÓŁ PRZÓD", "GÓRA BOK", "DÓŁ BOK" (lub podobnie: "PRZODY GÓRA/DÓŁ", "BOKI GÓRA/DÓŁ"). Nagłówek obowiązuje dla WSZYSTKICH fasonów wypisanych w tej kolumnie poniżej, aż do końca tabeli. Interpretacja: kolumny "PRZÓD"/"PRZODY" → kind="anterior", jaw=null ZAWSZE (słowo "góra"/"dół" w nagłówku kolumny przedniej NIE wpływa na pole jaw — górna/dolna szczęka przednia wynika z SAMEGO FASONU/prefiksu, patrz reguła C, a nie z jaw). Kolumny "BOK"/"BOKI" → kind="posterior", a słowo "góra"/"dół" w nagłówku tej kolumny ustala jaw="upper"/"lower" wprost.`);
   parts.push(`\n**K. Kilka kolorów dla jednej tabeli/listy.** Jeśli po lewej stronie przed tabelą lub listą wypisano kilka kolorów naraz (np. "A2" i "A3" połączone klamrą/nawiasem lub napisane jedno pod drugim bez osobnych list ilości), oznacza to, że CAŁA tabela/lista fasonów i ilości poniżej dotyczy KAŻDEGO z tych kolorów z osobna. Wygeneruj powtórzone pozycje (te same fasony, te same ilości) dla każdego wymienionego koloru.`);
   parts.push(`\n**L. Notatki niebędące pozycjami zębów.** Kartki czasem zawierają dodatkowe uwagi tekstowe niezwiązane z konkretnym zamówieniem zębów, np. o akcesoriach/narzędziach (np. "łopatka do cementu"), ogólne komentarze (np. "pozostałe kolory/fasony podstawowe zamawiamy na bieżąco"). Takie linie POMIŃ całkowicie — nie twórz dla nich pozycji w items.`);
-  parts.push(`\n**M. UWAGA: kolor "A3" vs "A3.5" — łatwo pomylić.** To DWA RÓŻNE kolory w katalogu. "A3.5" bywa zapisywany z przecinkiem zamiast kropki ("A3,5") lub z małą, doklejoną "5" tuż przy "A3" — sprawdź UWAŻNIE, czy zaraz po "A3" nie ma dodatkowej cyfry "5" (oddzielonej kropką, przecinkiem, ukośnikiem albo po prostu blisko dopisanej). Jeśli tej dodatkowej "5" nie ma — to zwykłe "A3". Nie zgaduj — jeśli nie masz pewności, wybierz wariant lepiej pasujący do reszty kolorów widocznych na kartce (np. jeśli klient konsekwentnie używa pełnej skali z ".5", to prawdopodobnie tu też).`);
-  parts.push(`\n**N. UWAGA: cyfry "8" i "9" są często mylone w piśmie odręcznym.** Dolna pętla cyfry "8" jest w pełni zamknięta, a "9" ma prostą "nóżkę" bez zamkniętej dolnej pętli. Przy odczytywaniu KAŻDEGO numeru fasonu i KAŻDEJ ilości zawierającej cyfrę 8 lub 9 — przyjrzyj się dokładnie kształtowi tej cyfry zanim ją zapiszesz. Pomyłka między 8 a 9 jest jednym z najczęstszych błędów odczytu — nie spiesz się z tą cyfrą. JEŚLI widzisz dwie sąsiednie wartości, które wyglądają identycznie lub prawie identycznie (np. dwa fasony zapisane jako "48, 48") — NIE zakładaj automatycznie, że to zamierzony duplikat. Przyjrzyj się KAŻDEJ z osobna od nowa — to częsty przypadek, gdzie druga wartość to w rzeczywistości INNA liczba (np. "48" i "49"), tylko napisana podobnie. Porównaj oba kształty cyfra po cyfrze zamiast zakładać, że druga jest taka sama jak pierwsza.`);
+  parts.push(`\n**M. UWAGA: kolor "A3" vs "A3.5" — łatwo pomylić.** To DWA RÓŻNE kolory w katalogu. "A3.5" bywa zapisywany z przecinkiem zamiast kropką ("A3,5") lub z małą, doklejoną "5" tuż przy "A3" — sprawdź UWAŻNIE, czy zaraz po "A3" nie ma dodatkowej cyfry "5" (oddzielonej kropką, przecinkiem, ukośnikiem albo po prostu blisko dopisanej). Jeśli tej dodatkowej "5" nie ma — to zwykłe "A3". Nie zgaduj — jeśli nie masz pewności, wybierz wariant lepiej pasujący do reszty kolorów widocznych na kartce (np. jeśli klient konsekwentnie używa pełnej skali z ".5", to prawdopodobnie tu też).`);
+  parts.push(`\n**N. UWAGA: Ivostar Chromascop — klienci często piszą tylko sufiks.** Dla Ivostar Chromascop (np. "140/1C", "120/1A", "210/2B") klienci często zapisują tylko sufiks po ukośniku (np. "1c", "1A", "2B") bez prefixu liczbowego. Jeśli widzisz sufiks pasujący do katalogu Chromascop (np. "1C", "1A", "2A", "2B", "1D", "1E", "2C", "3A", "5B", "2E", "3E", "4A", "6B", "4B", "6C", "6D", "4C", "3C", "4D") — dopasuj go do PEŁNEGO koloru z katalogu (z prefixem). Jeśli sufiks pasuje do kilku prefixów (np. "2C" występuje w "240/2C" i "520/4C") — wybierz ten, który lepiej pasuje do kontekstu (np. jeśli są inne kolory z tej samej grupy prefixów na kartce).`);
+  parts.push(`\n**O. UWAGA: cyfry "8" i "9" są często mylone w piśmie odręcznym.** Dolna pętla cyfry "8" jest w pełni zamknięta, a "9" ma prostą "nóżkę" bez zamkniętej dolnej pętli. Przy odczytywaniu KAŻDEGO numeru fasonu i KAŻDEJ ilości zawierającej cyfrę 8 lub 9 — przyjrzyj się dokładnie kształtowi tej cyfry zanim ją zapiszesz. Pomyłka między 8 a 9 jest jednym z najczęstszych błędów odczytu — nie spiesz się z tą cyfrą. JEŚLI widzisz dwie sąsiednie wartości, które wyglądają identycznie lub prawie identycznie (np. dwa fasony zapisane jako "48, 48") — NIE zakładaj automatycznie, że to zamierzony duplikat. Przyjrzyj się KAŻDEJ z osobna od nowa — to częsty przypadek, gdzie druga wartość to w rzeczywistości INNA liczba (np. "48" i "49"), tylko napisana podobnie. Porównaj oba kształty cyfra po cyfrze zamiast zakładać, że druga jest taka sama jak pierwsza.`);
 
   parts.push(`\n## Zasady odczytu:`);
   parts.push(`1. productLine — obowiązkowe, musi być dokładnie jedną z: ${lines.map((d) => `"${d.id}"`).join(", ")}.`);
@@ -128,6 +129,8 @@ export function isValidOcrColor(color: string, productLine: TeethProductLine): b
  * separator dziesiętny przecinkiem (polska notacja: "A3,5") zamiast kropką ("A3.5",
  * format używany w katalogu). Jeśli znormalizowana wersja pasuje do katalogu danej
  * linii — zwraca ją, w przeciwnym razie zwraca oryginał bez zmian.
+ *
+ * Dla Ivostar Chromascop dopasowuje sufiks-only (np. "1c" -> "140/1C").
  */
 export function resolveOcrColor(color: string, productLine: TeethProductLine): string {
   const trimmed = color.trim();
@@ -135,6 +138,16 @@ export function resolveOcrColor(color: string, productLine: TeethProductLine): s
   if (commaNormalized !== trimmed && teethColorsForLine(productLine).includes(commaNormalized)) {
     return commaNormalized;
   }
+
+  // Ivostar Chromascop suffix-only matching (e.g., "1c" -> "140/1C")
+  const ivostarColors = teethColorsForLine(productLine);
+  const isIvostar = ivostarColors.some((c) => c.includes("/"));
+  if (isIvostar && !trimmed.includes("/")) {
+    const suffixUpper = trimmed.toUpperCase();
+    const match = ivostarColors.find((c) => c.endsWith(`/${suffixUpper}`));
+    if (match) return match;
+  }
+
   return trimmed;
 }
 

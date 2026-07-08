@@ -109,10 +109,6 @@ export function OperationsUpdatesProvider({
     setLatest(initialVersion);
   }
 
-  const setAutoRefresh = useCallback((value: boolean) => {
-    autoRefreshStore.setValue(value);
-  }, []);
-
   const setBoardQuestionsSound = useCallback((value: boolean) => {
     boardQuestionsSoundStore.setValue(!value);
     if (value) {
@@ -159,6 +155,13 @@ export function OperationsUpdatesProvider({
         syncingRef.current = false;
       });
   }, [router, latest, syncBaseline, applyOpenBoardQuestionsCount]);
+
+  const setAutoRefresh = useCallback((value: boolean) => {
+    autoRefreshStore.setValue(value);
+    if (value && enabled && latest && baseline && latest !== baseline) {
+      refreshNow();
+    }
+  }, [enabled, latest, baseline, refreshNow]);
 
   const poll = useCallback(async () => {
     const { version, openBoardQuestions } = await fetchVersion();

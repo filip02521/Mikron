@@ -131,6 +131,14 @@ export function supportsDualKindBuilder(
   const hasAnterior = index.byLineAndKind.has(lineKindKey(productLine, "anterior"));
   const hasPosterior = index.byLineAndKind.has(lineKindKey(productLine, "posterior"));
   if (hasAnterior && hasPosterior) return true;
+
+  // Specjalne traktowanie dla Ivoclar: Ivostar (przednie) + Gnathostar (boczne)
+  if (productLine === "ivoclar_ivostar" || productLine === "ivoclar_gnathostar") {
+    const hasIvostarAnterior = index.byLineAndKind.has(lineKindKey("ivoclar_ivostar", "anterior"));
+    const hasGnathostarPosterior = index.byLineAndKind.has(lineKindKey("ivoclar_gnathostar", "posterior"));
+    if (hasIvostarAnterior && hasGnathostarPosterior) return true;
+  }
+
   // Katalog z przodami i bokami (np. Phonares) — UI dual nawet gdy w adminie brakuje pary.
   return catalogLineSupportsDualKind(productLine);
 }
@@ -140,6 +148,13 @@ export function resolveTeethCatalogProduct(
   productLine: TeethProductLine,
   kind: TeethKind,
 ): TeethRegistryProduct | null {
+  // Specjalne traktowanie dla Ivoclar: anterior -> ivoclar_ivostar, posterior -> ivoclar_gnathostar
+  if (productLine === "ivoclar_ivostar" && kind === "posterior") {
+    return index.byLineAndKind.get(lineKindKey("ivoclar_gnathostar", "posterior")) ?? null;
+  }
+  if (productLine === "ivoclar_gnathostar" && kind === "anterior") {
+    return index.byLineAndKind.get(lineKindKey("ivoclar_ivostar", "anterior")) ?? null;
+  }
   return index.byLineAndKind.get(lineKindKey(productLine, kind)) ?? null;
 }
 
@@ -213,7 +228,7 @@ function buildTeethLineFromRegistry(
     mikranCode: product.plu?.trim() || template.mikranCode,
     subiektTwId: product.twId,
     teethManufacturer: product.manufacturer,
-    teethProductLine: product.productLine,
+    teethProductLine: template.teethProductLine || product.productLine,
     teethKind: product.kind,
     teethDetails: details,
     teethOcrPending: fromOcr ?? false,

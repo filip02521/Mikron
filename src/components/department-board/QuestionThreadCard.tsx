@@ -228,21 +228,21 @@ export function QuestionThreadCard({
           : "rounded-md border border-slate-200/90 bg-white shadow-sm"
       )}
     >
-      <div className="flex items-start gap-1 pr-2 sm:pr-3">
+      <div className="flex items-start gap-2 pr-3 sm:pr-4">
         <button
           type="button"
-          className={cn("min-w-0 flex-1 text-left", boardQuestionRowHeaderClass)}
+          className={cn("min-w-0 flex-1 text-left py-2.5 sm:py-3", boardQuestionRowHeaderClass)}
           onClick={toggleExpanded}
           aria-expanded={expanded}
           aria-label={expandLabel}
         >
-          <span className="flex items-start gap-2 sm:gap-2.5">
+          <span className="flex items-start gap-2.5 sm:gap-3">
             <IconChevronDown
               open={expanded}
               size={16}
               className="mt-0.5 shrink-0 text-slate-400"
             />
-            <span className="min-w-0 flex-1 space-y-1">
+            <span className="min-w-0 flex-1 space-y-1.5">
               <span className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1">
                 {showUnseen ? (
                   <span className={boardQuestionUnseenDotClass} aria-hidden />
@@ -259,8 +259,8 @@ export function QuestionThreadCard({
                   {statusLabel}
                 </span>
               </span>
-              <span className={cn(salesTypography.rowMeta, "block")}>
-                {author}
+              <span className={cn(salesTypography.rowBody, "block font-medium text-slate-700")}>
+                Dodał/a: {author}
                 <span className="text-slate-400"> · </span>
                 {formatBoardDate(question.created_at)}
               </span>

@@ -90,8 +90,8 @@ function renderDeliveryItem(
     emailDataRow(
       "Co dalej",
       isPartial
-        ? "Odbierz dostarczoną ilość. Pozostała część zamówienia nadal oczekuje na magazynie."
-        : "Towar jest na magazynie — możesz go odebrać i potwierdzić odbiór w aplikacji."
+        ? "Odbierz dostarczoną ilość. Pozostała część zamówienia nadal oczekuje na odbiór na regale."
+        : "Towar czeka na odbiór na regale — możesz go odebrać i potwierdzić w aplikacji."
     )
   );
 
@@ -124,7 +124,7 @@ function renderInformacjaItem(
 
   return emailItemCard(
     {
-      label: "Na magazynie",
+      label: "Na regale",
       bg: EMAIL_THEME.infoBg,
       color: EMAIL_THEME.info,
       border: EMAIL_THEME.infoBorder,
@@ -192,8 +192,8 @@ export function renderDeliveryArrivedEmail(params: {
 
   const leadFixed =
     count === 1
-      ? "Zarejestrowaliśmy dostawę Twojego zamówienia indywidualnego na magazyn."
-      : `Zarejestrowaliśmy dostawę na magazyn: <strong>${polishPozycjeLabel(count)}</strong>.`;
+      ? "Zarejestrowaliśmy dostawę Twojego zamówienia indywidualnego — towar czeka na odbiór na regale."
+      : `Zarejestrowaliśmy dostawę — towar czeka na odbiór na regale: <strong>${polishPozycjeLabel(count)}</strong>.`;
 
   const bodyParts = [
     emailGreeting(firstName(params.recipientName)),
@@ -229,13 +229,13 @@ export function renderDeliveryArrivedEmail(params: {
       ? `${sorted[0]!.supplierName} — ${anyPartial ? "częściowa dostawa" : "gotowe do odbioru"}`
       : suppliers > 1
         ? `${polishPozycjeLabel(count)} · ${suppliers} dostawców`
-        : `${polishPozycjeLabel(count)} na magazynie`;
+        : `${polishPozycjeLabel(count)} na regale`;
 
   return {
-    subject: subjectForItems("OnTime · Towar na magazynie", sorted),
+    subject: subjectForItems("OnTime · Towar na regale", sorted),
     html: emailDocument({
       preheader,
-      headerTitle: "Towar na magazynie",
+      headerTitle: "Towar na regale",
       headerSubtitle: "Zamówienie indywidualne",
       bodyHtml: bodyParts.join(""),
     }),
@@ -252,8 +252,8 @@ export function renderInformacjaArrivedEmail(params: {
 
   const leadFixed =
     count === 1
-      ? "Towar, o który prosiłeś/aś wyłącznie o <strong>informację o dostępności</strong>, jest już na magazynie."
-      : `Na magazynie są już <strong>${polishPozycjeLabel(count)}</strong> z prośby informacyjnej.`;
+      ? "Towar, o który prosiłeś/aś wyłącznie o <strong>informację o dostępności</strong>, czeka na odbiór na regale."
+      : `Na regale są już <strong>${polishPozycjeLabel(count)}</strong> z prośby informacyjnej.`;
 
   const body = [
     emailGreeting(firstName(params.recipientName)),
@@ -281,10 +281,10 @@ export function renderInformacjaArrivedEmail(params: {
       ? `Informacja: ${sorted[0]!.supplierName} — towar na stanie`
       : suppliers > 1
         ? `${polishPozycjeLabel(count)} · ${suppliers} dostawców`
-        : `${polishPozycjeLabel(count)} informacyjne na magazynie`;
+        : `${polishPozycjeLabel(count)} informacyjne na regale`;
 
   return {
-    subject: subjectForItems("OnTime · Informacja — na magazynie", sorted),
+    subject: subjectForItems("OnTime · Informacja — na regale", sorted),
     html: emailDocument({
       preheader,
       headerTitle: "Informacja o towarze",
