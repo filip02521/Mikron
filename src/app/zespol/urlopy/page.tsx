@@ -1,73 +1,100 @@
-import { requireSalesTeamManagement } from "@/lib/auth";
-import { fetchSalesPeopleAdminForUser } from "@/lib/data/sales-people-admin";
-import { fetchDelegationsForSalesPerson } from "@/lib/data/vacation-delegations";
-import { fetchVacationPeriodsForSalesPerson } from "@/lib/data/sales-vacation-periods";
+import { requireSalesAccountOrTeamManagement } from "@/lib/auth";
+import { canManageSalesTeam } from "@/lib/auth-roles";
+import { resolveSalesPersonForUser } from "@/lib/auth/sales-person";
+import {
+  fetchSalesPeopleAdminForUser,
+  fetchSalesPeopleInSameGroup,
+} from "@/lib/data/sales-people-admin";
+import {
+  fetchDelegationsForSalesPeople,
+  fetchDelegateOptions,
+} from "@/lib/data/vacation-delegations";
+import { fetchVacationPeriodsForSalesPeople } from "@/lib/data/sales-vacation-periods";
 import { getZespolPageContext } from "@/lib/sales/zespol-page-context";
 import { zespolLoadErrorMessage } from "@/lib/sales/zespol-load-errors";
 import { VacationCalendar } from "@/components/settings/VacationCalendar";
 import { SalesTeamSubnav } from "@/components/sales/SalesTeamSubnav";
 import { SalesTeamWorkspace } from "@/components/sales/SalesTeamWorkspace";
 import { SystemNotice } from "@/components/ui/SystemNotice";
-import { createAdminClient } from "@/lib/supabase/admin";
+import { EmptyState } from "@/components/ui/EmptyState";
+import { IconSun } from "@/components/icons/StrokeIcons";
 import { todayDateKeyInWarsaw } from "@/lib/time/warsaw";
 
 import type { Metadata } from "next";
 import { pageMetadataFor } from "@/lib/ui/page-metadata";
 
-export const metadata: Metadata = pageMetadataFor("team");
+export const metadata: Metadata = pageMetadataFor("team", {
+  title: "Urlopy",
+  description: "Kalendarz urlopów grupy handlowców",
+});
+
+type CalendarSalesPerson = {
+  id: string;
+  name: string;
+  linkedUserId: string | null;
+};
 
 export default async function ZespolUrlopyPage() {
-  const user = await requireSalesTeamManagement();
+  const user = await requireSalesAccountOrTeamManagement();
   const { readOnlyPreview } = await getZespolPageContext(user);
+  const isManager = canManageSalesTeam(user.role);
+  const ownSalesPerson = !isManager ? await resolveSalesPersonForUser(user) : null;
+  const ownSalesPersonId = ownSalesPerson?.id ?? null;
 
-  let salesPeopleRows: Awaited<ReturnType<typeof fetchSalesPeopleAdminForUser>> = [];
+  let salesPeopleForCalendar: CalendarSalesPerson[] = [];
   let loadError: string | null = null;
-  try {
-    salesPeopleRows = await fetchSalesPeopleAdminForUser(user);
-  } catch (e) {
-    loadError = zespolLoadErrorMessage(e, "people");
-  }
 
-  // Fetch delegations and vacation periods for all sales people
-  const delegationsBySalesPerson: Record<string, Awaited<ReturnType<typeof fetchDelegationsForSalesPerson>>> = {};
-  const periodsBySalesPerson: Record<string, Awaited<ReturnType<typeof fetchVacationPeriodsForSalesPerson>>> = {};
-  for (const sp of salesPeopleRows) {
+  if (isManager) {
     try {
-      const [delegations, periods] = await Promise.all([
-        fetchDelegationsForSalesPerson(sp.id),
-        fetchVacationPeriodsForSalesPerson(sp.id),
-      ]);
-      delegationsBySalesPerson[sp.id] = delegations;
-      periodsBySalesPerson[sp.id] = periods;
-    } catch {
-      delegationsBySalesPerson[sp.id] = [];
-      periodsBySalesPerson[sp.id] = [];
+      const rows = await fetchSalesPeopleAdminForUser(user);
+      salesPeopleForCalendar = rows.map((sp) => ({
+        id: sp.id,
+        name: sp.name,
+        linkedUserId: sp.linkedUserId,
+      }));
+    } catch (e) {
+      loadError = zespolLoadErrorMessage(e, "people");
+    }
+  } else if (ownSalesPersonId) {
+    try {
+      salesPeopleForCalendar = await fetchSalesPeopleInSameGroup(ownSalesPersonId);
+      if (!salesPeopleForCalendar.some((sp) => sp.id === ownSalesPersonId)) {
+        salesPeopleForCalendar = [
+          { id: ownSalesPersonId, name: ownSalesPerson!.name, linkedUserId: user.id },
+          ...salesPeopleForCalendar,
+        ];
+      }
+    } catch (e) {
+      loadError = zespolLoadErrorMessage(e, "people");
     }
   }
 
-  // Fetch potential delegates (all sales accounts + sales managers)
-  const supabase = createAdminClient();
-  const { data: delegateProfiles } = await supabase
-    .from("profiles")
-    .select("id, email, role, sales_person_id")
-    .in("role", ["sales", "sales_manager"]);
+  const ids = salesPeopleForCalendar.map((sp) => sp.id);
+  const [periodsBySalesPerson, delegationsBySalesPerson] = await Promise.all([
+    fetchVacationPeriodsForSalesPeople(ids).catch(() => ({})),
+    fetchDelegationsForSalesPeople(ids).catch(() => ({})),
+  ]);
 
-  const delegateOptions = (delegateProfiles ?? []).map((p) => {
-    const sp = salesPeopleRows.find((r) => r.id === p.sales_person_id);
-    return {
-      id: p.id as string,
-      name: sp?.name ?? p.email ?? p.id,
-      email: p.email ?? "",
-    };
-  });
+  let delegateOptions: Awaited<ReturnType<typeof fetchDelegateOptions>> = [];
+  try {
+    delegateOptions = await fetchDelegateOptions(user.id);
+  } catch {}
 
   return (
     <SalesTeamWorkspace
-      title="Urlopy i zastępstwa"
-      description="Przeglądaj urlopy i wyznaczaj zastępców dla handlowców. Zastępca zyskuje dostęp do panelu (odczyt + potwierdzenie odbioru + zamykanie ZK)."
-      hint="Zastępca widzi panel przez przełącznik w /moje z parametrem ?dla="
-      iconKey="team"
-      subnav={<SalesTeamSubnav />}
+      title={isManager ? "Urlopy i zastępstwa" : "Urlopy"}
+      description={
+        isManager
+          ? "Przeglądaj urlopy i wyznaczaj zastępców dla handlowców. Zastępca zyskuje dostęp do panelu (odczyt + potwierdzenie odbioru + zamykanie ZK)."
+          : "Kalendarz urlopów Twojej grupy. Dodaj swój urlop i sprawdź kto jest na urlopie."
+      }
+      hint={
+        isManager
+          ? "Zastępca widzi panel przez przełącznik w /moje z parametrem ?dla="
+          : undefined
+      }
+      iconKey={isManager ? "team" : "vacation"}
+      subnav={isManager ? <SalesTeamSubnav /> : null}
       notices={
         loadError ? (
           <SystemNotice
@@ -79,22 +106,28 @@ export default async function ZespolUrlopyPage() {
         ) : null
       }
     >
-      {!salesPeopleRows.length ? (
-        <p className="py-6 text-center text-sm text-slate-500">
-          Brak handlowców do zarządzania zastępstwami.
-        </p>
+      {!salesPeopleForCalendar.length ? (
+        isManager ? (
+          <p className="py-6 text-center text-sm text-slate-500">
+            Brak handlowców do zarządzania zastępstwami.
+          </p>
+        ) : (
+          <EmptyState
+            brandAccent
+            icon={<IconSun size={28} />}
+            title="Brak grupy handlowców"
+            description="Nie masz przypisanej grupy zespołu. Skontaktuj się z administratorem, aby zostać przypisanym do grupy (np. Sklep, Biuro)."
+          />
+        )
       ) : (
         <VacationCalendar
-          salesPeople={salesPeopleRows.map((sp) => ({
-            id: sp.id,
-            name: sp.name,
-            linkedUserId: sp.linkedUserId,
-          }))}
+          salesPeople={salesPeopleForCalendar}
           periodsBySalesPerson={periodsBySalesPerson}
           delegationsBySalesPerson={delegationsBySalesPerson}
           delegateOptions={delegateOptions}
           canManage={!readOnlyPreview}
           readOnlyPreview={readOnlyPreview}
+          editableSalesPersonId={isManager ? null : ownSalesPersonId}
           todayDateKey={todayDateKeyInWarsaw()}
         />
       )}

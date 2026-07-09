@@ -426,7 +426,8 @@ export type MojeSectionIconKind =
   | "zamowienie"
   | "before_order"
   | "informacja"
-  | "archive";
+  | "archive"
+  | "dismiss";
 
 export type PlanSectionIconKind = "calendar" | "prosby" | "search";
 
@@ -441,6 +442,7 @@ const MOJE_SECTION_ICON_MAP: Record<
   before_order: IconClipboardList,
   informacja: IconAvailability,
   archive: IconArchive,
+  dismiss: IconArchive,
 };
 
 export function MojeSectionIcon({
@@ -472,6 +474,8 @@ export function mojeSectionIconTileClass(kind: MojeSectionIconKind): string {
       return "bg-violet-100 text-violet-800";
     case "archive":
       return "bg-slate-200/80 text-slate-600";
+    case "dismiss":
+      return "bg-slate-100 text-slate-500";
   }
 }
 

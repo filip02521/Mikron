@@ -32,6 +32,7 @@ export function mojeShipmentRowClass({
   isAction,
   isInformacjaAck,
   isCancelAck,
+  isDismiss,
   isUrgent,
   isStock,
   isInformacja,
@@ -44,6 +45,7 @@ export function mojeShipmentRowClass({
   isAction: boolean;
   isInformacjaAck?: boolean;
   isCancelAck?: boolean;
+  isDismiss?: boolean;
   isUrgent: boolean;
   isStock?: boolean;
   isInformacja: boolean;
@@ -72,23 +74,26 @@ export function mojeShipmentRowClass({
     ? "border-l-emerald-500"
     : isInformacjaAck
       ? "border-l-violet-500"
-      : isCancelAck
-        ? "border-l-amber-500"
-        : isUrgent
+      : isDismiss
+        ? "border-l-rose-400"
+        : isCancelAck
           ? "border-l-amber-500"
-          : deliveryBorderAccent
-            ? deliveryBorderAccent
-            : isStock
-              ? "border-l-sky-500"
-              : isInformacja
-                ? "border-l-violet-400"
-                : "border-l-slate-200";
+          : isUrgent
+            ? "border-l-amber-500"
+            : deliveryBorderAccent
+              ? deliveryBorderAccent
+              : isStock
+                ? "border-l-sky-500"
+                : isInformacja
+                  ? "border-l-violet-400"
+                  : "border-l-slate-200";
 
   return cn(
     "border-l-[3px] transition-all duration-150",
     accent,
     isAction && !expanded && "bg-emerald-50/35",
     isInformacjaAck && !expanded && "bg-violet-50/40",
+    isDismiss && !expanded && "bg-rose-50/30",
     isCancelAck && !expanded && "bg-amber-50/50",
     !expanded && isStock && !deliveryCollapsedBg && "bg-sky-50/35",
     !expanded && deliveryCollapsedBg,
@@ -98,8 +103,10 @@ export function mojeShipmentRowClass({
         ? "hover:bg-emerald-50/50"
         : isInformacjaAck
           ? "hover:bg-violet-50/55"
-          : isCancelAck
-            ? "hover:bg-amber-50/65"
+          : isDismiss
+            ? "hover:bg-rose-50/45"
+            : isCancelAck
+              ? "hover:bg-amber-50/65"
             : deliveryCollapsedBg
               ? "hover:brightness-[0.98]"
               : "bg-white hover:bg-slate-50/50"

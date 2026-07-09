@@ -140,6 +140,30 @@ export async function fetchVacationPeriodsForManager(
   return bySalesPerson;
 }
 
+/** Wszystkie okresy urlopu dla wielu handlowców (batch — jedno zapytanie). */
+export async function fetchVacationPeriodsForSalesPeople(
+  salesPersonIds: string[]
+): Promise<Record<string, VacationPeriodRow[]>> {
+  if (!hasSupabaseConfig() || !salesPersonIds.length) return {};
+
+  const supabase = createAdminClient();
+  const { data, error } = await supabase
+    .from("sales_vacation_periods")
+    .select("id, sales_person_id, start_date, end_date, note, created_at")
+    .in("sales_person_id", salesPersonIds)
+    .order("start_date", { ascending: false });
+
+  if (error) throw new Error(error.message);
+
+  const bySalesPerson: Record<string, VacationPeriodRow[]> = {};
+  for (const row of data ?? []) {
+    const mapped = mapRow(row as unknown as VacationPeriodDbRow);
+    if (!bySalesPerson[mapped.salesPersonId]) bySalesPerson[mapped.salesPersonId] = [];
+    bySalesPerson[mapped.salesPersonId].push(mapped);
+  }
+  return bySalesPerson;
+}
+
 /** Usuwa okres urlopu. */
 export async function removeVacationPeriod(id: string): Promise<void> {
   if (!hasSupabaseConfig()) throw new Error("Brak konfiguracji Supabase.");

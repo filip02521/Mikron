@@ -183,7 +183,7 @@ export function ChangelogModal({
       tier="standard"
       footer={
         <Button variant="primary" size="md" onClick={onClose}>
-          Mam, dziękuję
+          Przeczytałem, dziękuję
         </Button>
       }
     >

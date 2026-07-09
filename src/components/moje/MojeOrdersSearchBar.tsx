@@ -54,53 +54,51 @@ export function MojeOrdersSearchBar({
 
   return (
     <div className={cn("border-b border-slate-100 bg-white py-2.5", salesChromeInsetClass)}>
-      <div className="flex flex-col gap-2">
-        <div className="relative min-w-0 flex-1">
-          <label
-            htmlFor={inputId}
-            className={cn(salesTypography.sectionLabel, "mb-1 block normal-case text-slate-700")}
+      <div className="relative min-w-0 flex-1">
+        <label
+          htmlFor={inputId}
+          className={cn(salesTypography.sectionLabel, "sr-only")}
+        >
+          Szukaj w prośbach
+        </label>
+        <div className="relative">
+          <span
+            className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"
+            aria-hidden
           >
-            Szukaj w prośbach
-          </label>
-          <div className="relative">
-            <span
-              className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"
-              aria-hidden
+            <IconSearch size={18} strokeWidth={2} />
+          </span>
+          <Input
+            id={inputId}
+            type="search"
+            value={value}
+            onChange={(e) => onChange(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Escape" && value) {
+                e.preventDefault();
+                onChange("");
+                (e.target as HTMLInputElement).blur();
+              }
+            }}
+            placeholder={salesSearchPlaceholder(SALES_SEARCH_COPY.moje)}
+            className="min-h-11 pl-10 pr-9 sm:min-h-0"
+            autoComplete="off"
+            spellCheck={false}
+            enterKeyHint="search"
+          />
+          {active ? (
+            <button
+              type="button"
+              aria-label="Wyczyść wyszukiwanie"
+              className="absolute right-2 top-1/2 -translate-y-1/2 flex h-7 w-7 items-center justify-center rounded-md text-slate-400 hover:bg-slate-100 hover:text-slate-600"
+              onClick={() => onChange("")}
             >
-              <IconSearch size={18} strokeWidth={2} />
-            </span>
-            <Input
-              id={inputId}
-              type="search"
-              value={value}
-              onChange={(e) => onChange(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === "Escape" && value) {
-                  e.preventDefault();
-                  onChange("");
-                  (e.target as HTMLInputElement).blur();
-                }
-              }}
-              placeholder={salesSearchPlaceholder(SALES_SEARCH_COPY.moje)}
-              className="min-h-11 pl-10 sm:min-h-0"
-              autoComplete="off"
-              spellCheck={false}
-              enterKeyHint="search"
-            />
-          </div>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                <path d="M18 6L6 18M6 6l12 12" />
+              </svg>
+            </button>
+          ) : null}
         </div>
-        {active ? (
-          <button
-            type="button"
-            className={cn(
-              "shrink-0 self-start rounded-md border border-slate-200 bg-slate-50 px-3 py-2.5 text-xs font-semibold text-slate-700",
-              "hover:bg-slate-100 min-h-11 sm:min-h-[2.5rem]"
-            )}
-            onClick={() => onChange("")}
-          >
-            Wyczyść filtr
-          </button>
-        ) : null}
       </div>
       {active ? (
         <p className="mt-2 text-xs leading-relaxed text-slate-600" aria-live="polite">

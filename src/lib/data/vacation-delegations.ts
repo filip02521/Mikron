@@ -224,6 +224,32 @@ export type DelegateOption = {
   email: string;
 };
 
+/** Wszystkie delegacje dla wielu handlowców (batch — jedno zapytanie). */
+export async function fetchDelegationsForSalesPeople(
+  salesPersonIds: string[]
+): Promise<Record<string, VacationDelegationRow[]>> {
+  if (!hasSupabaseConfig() || !salesPersonIds.length) return {};
+
+  const supabase = createAdminClient();
+  const { data, error } = await supabase
+    .from("sales_vacation_delegations")
+    .select(
+      "id, sales_person_id, delegate_profile_id, start_date, end_date, created_by, created_at, sales_person:sales_people(name)"
+    )
+    .in("sales_person_id", salesPersonIds)
+    .order("start_date", { ascending: false });
+
+  if (error) throw new Error(error.message);
+
+  const bySalesPerson: Record<string, VacationDelegationRow[]> = {};
+  for (const row of data ?? []) {
+    const mapped = mapRow(row as unknown as DelegationDbRow);
+    if (!bySalesPerson[mapped.salesPersonId]) bySalesPerson[mapped.salesPersonId] = [];
+    bySalesPerson[mapped.salesPersonId].push(mapped);
+  }
+  return bySalesPerson;
+}
+
 /** Lista możliwych zastępców dla zalogowanego użytkownika (role sales + sales_manager, bez siebie). */
 export async function fetchDelegateOptions(
   excludeUserId: string

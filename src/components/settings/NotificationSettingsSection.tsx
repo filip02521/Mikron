@@ -10,7 +10,7 @@ import { Card, CardHeader } from "@/components/ui/Card";
 import { SectionHeadingIcon } from "@/components/icons/SectionHeadingIcon";
 import { IconBell } from "@/components/icons/StrokeIcons";
 import { cn } from "@/lib/cn";
-import { salesChromeInsetClass, salesTypography, panelTypography } from "@/lib/ui/ontime-theme";
+import { salesChromeInsetClass } from "@/lib/ui/ontime-theme";
 import type { UserRole } from "@/types/database";
 
 type NotificationSettingsSectionProps = {
@@ -38,8 +38,6 @@ export function NotificationSettingsSection({ role }: NotificationSettingsSectio
     if (value) void unlockNotificationSound();
   }, []);
 
-  const typography = isSales ? salesTypography : panelTypography;
-
   return (
     <Card padding={false} className="overflow-hidden">
       <CardHeader
@@ -53,18 +51,20 @@ export function NotificationSettingsSection({ role }: NotificationSettingsSectio
           </SectionHeadingIcon>
         }
       />
-      <div className={cn(salesChromeInsetClass, "space-y-3 py-3")}>
+      <div className={cn(salesChromeInsetClass, "space-y-2.5 py-3.5")}>
         {isSales ? (
           <label
             className={cn(
-              "inline-flex min-h-11 w-full cursor-pointer items-center justify-between gap-3 rounded-md border px-3 py-2 font-medium shadow-sm transition-colors",
-              typography.chrome,
+              "flex min-h-11 w-full cursor-pointer items-center justify-between gap-3 rounded-lg border px-3.5 py-2.5 transition-all",
               salesSound
-                ? "border-amber-200/90 bg-amber-50/45 text-amber-950"
-                : "border-slate-200/80 bg-white/80 text-slate-600 hover:border-amber-100 hover:bg-amber-50/25"
+                ? "border-amber-200/80 bg-amber-50/40"
+                : "border-slate-200/70 bg-white hover:border-slate-300/80 hover:bg-slate-50/40"
             )}
           >
-            <span className="whitespace-nowrap">Dźwięk przy powiadomieniach</span>
+            <span className="flex flex-col gap-0.5">
+              <span className="text-sm font-medium text-slate-800">Dźwięk przy powiadomieniach</span>
+              <span className="text-[11px] leading-snug text-slate-400">Odtwarza dźwięk, gdy pojawi się nowa pilna sprawa w dzwonku</span>
+            </span>
             <input
               type="checkbox"
               role="switch"
@@ -72,7 +72,7 @@ export function NotificationSettingsSection({ role }: NotificationSettingsSectio
               aria-label="Powiadomienie dźwiękowe, gdy pojawi się nowa pilna sprawa w dzwonku"
               checked={salesSound}
               onChange={(e) => setSalesSound(e.target.checked)}
-              className="size-5 shrink-0 rounded border-slate-300 text-amber-600 focus:ring-amber-300 sm:size-4"
+              className="toggle-switch toggle-amber"
             />
           </label>
         ) : null}
@@ -80,14 +80,16 @@ export function NotificationSettingsSection({ role }: NotificationSettingsSectio
         {isOperations ? (
           <label
             className={cn(
-              "inline-flex min-h-11 w-full cursor-pointer items-center justify-between gap-3 rounded-md border px-3 py-2 font-medium shadow-sm transition-colors",
-              typography.chrome,
+              "flex min-h-11 w-full cursor-pointer items-center justify-between gap-3 rounded-lg border px-3.5 py-2.5 transition-all",
               opsSound
-                ? "border-amber-200/90 bg-amber-50/45 text-amber-950"
-                : "border-slate-200/80 bg-white/80 text-slate-600 hover:border-amber-100 hover:bg-amber-50/25"
+                ? "border-amber-200/80 bg-amber-50/40"
+                : "border-slate-200/70 bg-white hover:border-slate-300/80 hover:bg-slate-50/40"
             )}
           >
-            <span className="whitespace-nowrap">Dźwięk przy pytaniu</span>
+            <span className="flex flex-col gap-0.5">
+              <span className="text-sm font-medium text-slate-800">Dźwięk przy pytaniu</span>
+              <span className="text-[11px] leading-snug text-slate-400">Odtwarza dźwięk, gdy handlowiec doda pytanie na tablicy</span>
+            </span>
             <input
               type="checkbox"
               role="switch"
@@ -95,13 +97,13 @@ export function NotificationSettingsSection({ role }: NotificationSettingsSectio
               aria-label="Powiadomienie dźwiękowe, gdy handlowiec doda pytanie na tablicy"
               checked={opsSound}
               onChange={(e) => setOpsSound(e.target.checked)}
-              className="size-5 shrink-0 rounded border-slate-300 text-amber-600 focus:ring-amber-300 sm:size-4"
+              className="toggle-switch toggle-amber"
             />
           </label>
         ) : null}
 
         {!isSales && !isOperations ? (
-          <p className="py-2 text-center text-sm text-slate-500">
+          <p className="py-4 text-center text-sm text-slate-400">
             Brak dostępnych ustawień dźwięku dla Twojej roli.
           </p>
         ) : null}

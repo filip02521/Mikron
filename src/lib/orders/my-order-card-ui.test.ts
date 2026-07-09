@@ -64,7 +64,7 @@ describe("my-order-card-ui", () => {
     ).toBe(false);
     expect(
       shouldShowOrderStatusBadge(
-        row({ headlineTone: "dismiss", headline: "Potwierdź informację o rezygnacji" })
+        row({ headlineTone: "dismiss", headline: "Anulowane" })
       )
     ).toBe(false);
   });
@@ -94,6 +94,26 @@ describe("my-order-card-ui", () => {
           pickupPendingCount: 1,
         }),
         { expanded: false, compactActionLayout: true, canAcknowledge: true }
+      )
+    ).toBe(false);
+    expect(
+      shouldShowMyOrderHeadlineBanner(
+        row({
+          acknowledgeMode: "cancel_notice",
+          headlineTone: "dismiss",
+          cancelNoticeOrderIds: ["x"],
+        }),
+        { expanded: false, compactActionLayout: false, canAcknowledge: true }
+      )
+    ).toBe(false);
+    expect(
+      shouldShowMyOrderHeadlineBanner(
+        row({
+          acknowledgeMode: "cancelled",
+          headlineTone: "dismiss",
+          cancelledAckOrderIds: ["x"],
+        }),
+        { expanded: false, compactActionLayout: false, canAcknowledge: true }
       )
     ).toBe(false);
   });

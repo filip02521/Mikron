@@ -16,8 +16,10 @@ export function useMojeOrdersSearch(initial: string, syncUrl: boolean) {
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const [query, setQueryState] = useState(() => initial.trim());
+  const [debouncedQuery, setDebouncedQuery] = useState(() => initial.trim());
   const lastWrittenToUrl = useRef<string | null>(null);
-  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const urlDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const filterDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const searchParamsRef = useRef(searchParams);
 
   useEffect(() => {
@@ -33,6 +35,7 @@ export function useMojeOrdersSearch(initial: string, syncUrl: boolean) {
     const fromUrl = readSearchFromUrl(searchParams);
     if (fromUrl === (lastWrittenToUrl.current ?? "")) return;
     setQueryState(fromUrl);
+    setDebouncedQuery(fromUrl);
   }, [searchParams, syncUrl]);
 
   const writeSearchToUrl = useCallback(
@@ -57,23 +60,42 @@ export function useMojeOrdersSearch(initial: string, syncUrl: boolean) {
     [pathname, router]
   );
 
+  // Debounce URL sync (350ms)
   useEffect(() => {
     if (!syncUrl) return;
     const trimmed = query.trim();
 
-    if (debounceRef.current) clearTimeout(debounceRef.current);
+    if (urlDebounceRef.current) clearTimeout(urlDebounceRef.current);
 
     if (!trimmed) {
       writeSearchToUrl("");
       return;
     }
 
-    debounceRef.current = setTimeout(() => writeSearchToUrl(trimmed), 350);
+    urlDebounceRef.current = setTimeout(() => writeSearchToUrl(trimmed), 350);
 
     return () => {
-      if (debounceRef.current) clearTimeout(debounceRef.current);
+      if (urlDebounceRef.current) clearTimeout(urlDebounceRef.current);
     };
   }, [query, syncUrl, writeSearchToUrl]);
 
-  return { query, setQuery, trimmed: query.trim() };
+  // Debounce filtering (200ms — shorter than URL sync for snappier UX)
+  useEffect(() => {
+    if (filterDebounceRef.current) clearTimeout(filterDebounceRef.current);
+
+    const trimmed = query.trim();
+    // Immediate update when clearing or when query is very short
+    if (!trimmed || trimmed.length < 3) {
+      filterDebounceRef.current = setTimeout(() => setDebouncedQuery(trimmed), 0);
+      return;
+    }
+
+    filterDebounceRef.current = setTimeout(() => setDebouncedQuery(trimmed), 200);
+
+    return () => {
+      if (filterDebounceRef.current) clearTimeout(filterDebounceRef.current);
+    };
+  }, [query]);
+
+  return { query, setQuery, trimmed: debouncedQuery.trim(), debouncedQuery };
 }

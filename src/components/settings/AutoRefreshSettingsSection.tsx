@@ -10,7 +10,7 @@ import { Card, CardHeader } from "@/components/ui/Card";
 import { SectionHeadingIcon } from "@/components/icons/SectionHeadingIcon";
 import { IconClock } from "@/components/icons/StrokeIcons";
 import { cn } from "@/lib/cn";
-import { salesChromeInsetClass, salesTypography, panelTypography } from "@/lib/ui/ontime-theme";
+import { salesChromeInsetClass } from "@/lib/ui/ontime-theme";
 import type { UserRole } from "@/types/database";
 
 type AutoRefreshSettingsSectionProps = {
@@ -42,8 +42,6 @@ export function AutoRefreshSettingsSection({ role }: AutoRefreshSettingsSectionP
     teethAutoRefreshStore.setValue(value);
   }, []);
 
-  const typography = isSales ? salesTypography : panelTypography;
-
   const showSales = isSales;
   const showOps = isOperations || isMagazyn;
   const showTeeth = isTeeth;
@@ -62,18 +60,20 @@ export function AutoRefreshSettingsSection({ role }: AutoRefreshSettingsSectionP
           </SectionHeadingIcon>
         }
       />
-      <div className={cn(salesChromeInsetClass, "space-y-3 py-3")}>
+      <div className={cn(salesChromeInsetClass, "space-y-2.5 py-3.5")}>
         {showSales ? (
           <label
             className={cn(
-              "inline-flex min-h-11 w-full cursor-pointer items-center justify-between gap-3 rounded-md border px-3 py-2 font-medium shadow-sm transition-colors",
-              typography.chrome,
+              "flex min-h-11 w-full cursor-pointer items-center justify-between gap-3 rounded-lg border px-3.5 py-2.5 transition-all",
               salesValue
-                ? "border-indigo-200/90 bg-indigo-50/50 text-indigo-900"
-                : "border-slate-200/80 bg-white/80 text-slate-600 hover:border-indigo-100 hover:bg-indigo-50/30"
+                ? "border-indigo-200/80 bg-indigo-50/40"
+                : "border-slate-200/70 bg-white hover:border-slate-300/80 hover:bg-slate-50/40"
             )}
           >
-            <span className="whitespace-nowrap">Auto przy zmianach (panel sprzedaży)</span>
+            <span className="flex flex-col gap-0.5">
+              <span className="text-sm font-medium text-slate-800">Auto przy zmianach (panel sprzedaży)</span>
+              <span className="text-[11px] leading-snug text-slate-400">Automatycznie odświeża listę po wykryciu zmian</span>
+            </span>
             <input
               type="checkbox"
               role="switch"
@@ -81,7 +81,7 @@ export function AutoRefreshSettingsSection({ role }: AutoRefreshSettingsSectionP
               aria-label="Automatyczne odświeżanie panelu sprzedaży przy wykrytych zmianach"
               checked={salesValue}
               onChange={(e) => setSales(e.target.checked)}
-              className="size-5 shrink-0 rounded border-slate-300 text-indigo-600 focus:ring-indigo-300 sm:size-4"
+              className="toggle-switch toggle-indigo"
             />
           </label>
         ) : null}
@@ -89,14 +89,16 @@ export function AutoRefreshSettingsSection({ role }: AutoRefreshSettingsSectionP
         {showOps ? (
           <label
             className={cn(
-              "inline-flex min-h-11 w-full cursor-pointer items-center justify-between gap-3 rounded-md border px-3 py-2 font-medium shadow-sm transition-colors",
-              typography.chrome,
+              "flex min-h-11 w-full cursor-pointer items-center justify-between gap-3 rounded-lg border px-3.5 py-2.5 transition-all",
               opsValue
-                ? "border-indigo-200/90 bg-indigo-50/50 text-indigo-900"
-                : "border-slate-200/80 bg-white/80 text-slate-600 hover:border-indigo-100 hover:bg-indigo-50/30"
+                ? "border-indigo-200/80 bg-indigo-50/40"
+                : "border-slate-200/70 bg-white hover:border-slate-300/80 hover:bg-slate-50/40"
             )}
           >
-            <span className="whitespace-nowrap">Auto przy zmianach (panel operacji)</span>
+            <span className="flex flex-col gap-0.5">
+              <span className="text-sm font-medium text-slate-800">Auto przy zmianach (panel operacji)</span>
+              <span className="text-[11px] leading-snug text-slate-400">Automatycznie odświeża listę po wykryciu zmian</span>
+            </span>
             <input
               type="checkbox"
               role="switch"
@@ -104,7 +106,7 @@ export function AutoRefreshSettingsSection({ role }: AutoRefreshSettingsSectionP
               aria-label="Automatyczne odświeżanie panelu operacji przy wykrytych zmianach"
               checked={opsValue}
               onChange={(e) => setOps(e.target.checked)}
-              className="size-5 shrink-0 rounded border-slate-300 text-indigo-600 focus:ring-indigo-300 sm:size-4"
+              className="toggle-switch toggle-indigo"
             />
           </label>
         ) : null}
@@ -112,14 +114,16 @@ export function AutoRefreshSettingsSection({ role }: AutoRefreshSettingsSectionP
         {showTeeth ? (
           <label
             className={cn(
-              "inline-flex min-h-11 w-full cursor-pointer items-center justify-between gap-3 rounded-md border px-3 py-2 font-medium shadow-sm transition-colors",
-              typography.chrome,
+              "flex min-h-11 w-full cursor-pointer items-center justify-between gap-3 rounded-lg border px-3.5 py-2.5 transition-all",
               teethValue
-                ? "border-indigo-200/90 bg-indigo-50/50 text-indigo-900"
-                : "border-slate-200/80 bg-white/80 text-slate-600 hover:border-indigo-100 hover:bg-indigo-50/30"
+                ? "border-indigo-200/80 bg-indigo-50/40"
+                : "border-slate-200/70 bg-white hover:border-slate-300/80 hover:bg-slate-50/40"
             )}
           >
-            <span className="whitespace-nowrap">Auto przy zmianach (panel zębów)</span>
+            <span className="flex flex-col gap-0.5">
+              <span className="text-sm font-medium text-slate-800">Auto przy zmianach (panel zębów)</span>
+              <span className="text-[11px] leading-snug text-slate-400">Automatycznie odświeża listę po wykryciu zmian</span>
+            </span>
             <input
               type="checkbox"
               role="switch"
@@ -127,13 +131,13 @@ export function AutoRefreshSettingsSection({ role }: AutoRefreshSettingsSectionP
               aria-label="Automatyczne odświeżanie panelu zębów przy wykrytych zmianach"
               checked={teethValue}
               onChange={(e) => setTeeth(e.target.checked)}
-              className="size-5 shrink-0 rounded border-slate-300 text-indigo-600 focus:ring-indigo-300 sm:size-4"
+              className="toggle-switch toggle-indigo"
             />
           </label>
         ) : null}
 
         {!hasAny ? (
-          <p className="py-2 text-center text-sm text-slate-500">
+          <p className="py-4 text-center text-sm text-slate-400">
             Brak dostępnych ustawień auto-odświeżania dla Twojej roli.
           </p>
         ) : null}

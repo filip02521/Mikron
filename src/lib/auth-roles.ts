@@ -153,6 +153,7 @@ function canAccessPathForRole(
   if (OPERATIONS_PATH_PREFIXES.some((p) => pathname === p || pathname.startsWith(`${p}/`))) {
     return canAccessOperations(role, ws);
   }
+  if (pathname === "/zespol/urlopy" && isSalesAccount(role)) return true;
   if (SALES_TEAM_PREFIXES.some((p) => pathname === p || pathname.startsWith(`${p}/`))) {
     return canManageSalesTeam(role);
   }

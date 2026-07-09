@@ -753,6 +753,23 @@ export function navForRole(
     });
   }
 
+  if (!isSalesManager(role)) {
+    groups.push({
+      title: NAV_SECTION_TEAM,
+      items: [
+        {
+          href: "/zespol/urlopy",
+          label: "Urlopy",
+          description: "Kalendarz urlopów Twojej grupy",
+          icon: "vacation",
+          tone: "slate",
+          tier: "compact",
+          mobileSlot: "overflow",
+        },
+      ],
+    });
+  }
+
   return groups;
 }
 

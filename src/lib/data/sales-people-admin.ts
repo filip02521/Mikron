@@ -255,3 +255,50 @@ export async function fetchSalesPeopleForPicker(): Promise<
       email: row.email,
     }));
 }
+
+/** Wszyscy handlowcy z tej samej grupy co dany handlowiec (włącznie z nim). */
+export async function fetchSalesPeopleInSameGroup(
+  salesPersonId: string
+): Promise<Array<{ id: string; name: string; linkedUserId: string | null }>> {
+  if (!hasSupabaseConfig()) return [];
+  const supabase = createAdminClient();
+
+  const { data: own, error: ownError } = await supabase
+    .from("sales_people")
+    .select("group_id")
+    .eq("id", salesPersonId)
+    .maybeSingle();
+  if (ownError || !own?.group_id) return [];
+
+  const groupId = own.group_id as string;
+
+  const { data: people, error: peopleError } = await supabase
+    .from("sales_people")
+    .select("id, name, email")
+    .eq("group_id", groupId)
+    .order("name");
+  if (peopleError) throw new Error(peopleError.message);
+
+  const ids = (people ?? []).map((p) => p.id as string);
+  const { data: profiles } = await supabase
+    .from("profiles")
+    .select("id, sales_person_id")
+    .in("sales_person_id", ids);
+  const linkedBySalesId = new Map(
+    (profiles ?? []).map((p) => [p.sales_person_id as string, p.id as string])
+  );
+
+  return (people ?? [])
+    .filter((p) =>
+      isTeamSalesPerson({
+        name: p.name,
+        email: p.email,
+        groupId,
+      })
+    )
+    .map((p) => ({
+      id: p.id as string,
+      name: p.name,
+      linkedUserId: linkedBySalesId.get(p.id) ?? null,
+    }));
+}

@@ -31,6 +31,7 @@ export function shouldShowMyOrderHeadlineBanner(
   opts: { expanded: boolean; compactActionLayout: boolean; canAcknowledge: boolean }
 ): boolean {
   if (opts.expanded || opts.compactActionLayout || !opts.canAcknowledge) return false;
+  if (row.acknowledgeMode === "cancel_notice" || row.acknowledgeMode === "cancelled") return false;
   return rowNeedsSalesAcknowledgement(row);
 }
 

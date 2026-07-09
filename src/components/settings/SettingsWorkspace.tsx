@@ -2,6 +2,7 @@ import { SectionHeadingIcon } from "@/components/icons/SectionHeadingIcon";
 import { AppBrandContentFooter } from "@/components/layout/AppBrandContentFooter";
 import { Card, CardHeader } from "@/components/ui/Card";
 import { IconSettings } from "@/components/icons/StrokeIcons";
+import { cn } from "@/lib/cn";
 import { salesCardBodyClass } from "@/lib/ui/ontime-theme";
 
 export function SettingsWorkspace({
@@ -32,7 +33,7 @@ export function SettingsWorkspace({
         hint={hint}
         hintAriaLabel={hintAriaLabel}
       />
-      <div className={salesCardBodyClass}>
+      <div className={cn(salesCardBodyClass, "space-y-4")}>
         {children}
       </div>
       <AppBrandContentFooter mobileOnly variant="page" />

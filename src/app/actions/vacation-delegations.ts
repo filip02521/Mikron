@@ -27,7 +27,6 @@ function isValidIsoDate(value: string): boolean {
 
 function revalidateDelegationPaths() {
   revalidatePath("/moje");
-  revalidatePath("/ustawienia");
   revalidatePath("/zespol");
   revalidatePath("/zespol/urlopy");
   revalidatePath("/zespol/handlowcy");

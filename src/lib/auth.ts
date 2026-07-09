@@ -69,6 +69,19 @@ export async function requireSalesAccount(
   return user;
 }
 
+export async function requireSalesAccountOrTeamManagement(
+  intent: AuthIntent = "read"
+): Promise<SessionUser> {
+  const user = await getSessionUser();
+  if (!user || (!isSalesAccount(user.role) && !canManageSalesTeam(user.role))) {
+    throw new Error("Brak uprawnień");
+  }
+  if (intent === "mutate") {
+    await assertAdminNotInReadOnlyPanelPreview(user);
+  }
+  return user;
+}
+
 export async function requireAdmin(): Promise<SessionUser> {
   const user = await getSessionUser();
   if (!user || !isAdmin(user.role)) {

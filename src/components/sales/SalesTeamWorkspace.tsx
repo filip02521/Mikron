@@ -24,7 +24,7 @@ export function SalesTeamWorkspace({
   description: string;
   hint?: string;
   hintAriaLabel?: string;
-  iconKey?: "team" | "teamAccounts" | "teamGroups";
+  iconKey?: "team" | "teamAccounts" | "teamGroups" | "vacation";
   action?: React.ReactNode;
   subnav?: React.ReactNode;
   notices?: React.ReactNode;

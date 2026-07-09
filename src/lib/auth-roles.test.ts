@@ -168,6 +168,9 @@ describe("auth-roles sales_manager", () => {
     expect(canAccessPath("sales_manager", "/zespol/handlowcy")).toBe(true);
     expect(canAccessPath("sales_manager", "/zespol/grupy")).toBe(true);
     expect(canAccessPath("sales", "/zespol")).toBe(false);
+    expect(canAccessPath("sales", "/zespol/urlopy")).toBe(true);
+    expect(canAccessPath("sales", "/zespol/handlowcy")).toBe(false);
+    expect(canAccessPath("sales", "/zespol/grupy")).toBe(false);
   });
 
   it("allows admin sales preview with ?dla=", () => {

@@ -213,6 +213,7 @@ export function VacationCalendar({
   delegateOptions,
   canManage,
   readOnlyPreview,
+  editableSalesPersonId = null,
   todayDateKey,
 }: {
   salesPeople: SalesPerson[];
@@ -221,6 +222,7 @@ export function VacationCalendar({
   delegateOptions: DelegateOption[];
   canManage: boolean;
   readOnlyPreview: boolean;
+  editableSalesPersonId?: string | null;
   todayDateKey: string;
 }) {
   const router = useRouter();
@@ -245,13 +247,15 @@ export function VacationCalendar({
 
   const [vacationFormOpen, setVacationFormOpen] = useState(false);
   const [vacationForm, setVacationForm] = useState({
-    salesPersonId: salesPeople.length === 1 ? salesPeople[0].id : "",
+    salesPersonId: editableSalesPersonId ?? (salesPeople.length === 1 ? salesPeople[0].id : ""),
     startDate: todayDateKey,
     endDate: addDaysToDateKey(todayDateKey, 14),
     note: "",
   });
 
   const canEdit = canManage && !readOnlyPreview;
+  const canEditPeriod = (spId: string) =>
+    canEdit && (!editableSalesPersonId || spId === editableSalesPersonId);
   const colorMap = vacationColorMap(salesPeople);
   const delegateNameById = new Map(delegateOptions.map((d) => [d.id, d.name]));
 
@@ -373,7 +377,7 @@ export function VacationCalendar({
 
   const resetVacationForm = () => {
     setVacationForm({
-      salesPersonId: salesPeople.length === 1 ? salesPeople[0].id : "",
+      salesPersonId: editableSalesPersonId ?? (salesPeople.length === 1 ? salesPeople[0].id : ""),
       startDate: todayDateKey,
       endDate: addDaysToDateKey(todayDateKey, 14),
       note: "",
@@ -390,13 +394,14 @@ export function VacationCalendar({
       setToast(VACATION_TOAST.invalidDateRange);
       return;
     }
-    if (!vacationForm.salesPersonId) {
+    const salesPersonId = editableSalesPersonId ?? vacationForm.salesPersonId;
+    if (!salesPersonId) {
       setToast(VACATION_TOAST.missingSalesPerson);
       return;
     }
     start(async () => {
       const r = await actionSetVacationPeriod({
-        salesPersonId: vacationForm.salesPersonId,
+        salesPersonId,
         startDate: vacationForm.startDate,
         endDate: vacationForm.endDate,
         note: vacationForm.note || null,
@@ -486,7 +491,7 @@ export function VacationCalendar({
         id={panelId}
         role="dialog"
         className={cn(
-          "fixed z-[200] min-w-[16rem] w-[min(100vw-2rem,20rem)] p-3",
+          "fixed z-[70] min-w-[16rem] w-[min(100vw-2rem,20rem)] p-3",
           panelDropdownShellClass
         )}
         style={{
@@ -504,24 +509,24 @@ export function VacationCalendar({
             : null;
 
           return (
-            <div className="space-y-2">
+            <div className="space-y-2.5">
               <div className="flex items-center gap-2">
                 {color ? (
                   <span className={cn("h-2.5 w-2.5 rounded-full", color.dot)} />
                 ) : null}
                 <span className={salesTypography.rowTitle}>{sp.name}</span>
               </div>
-              <p className={salesTypography.rowMeta}>
+              <p className={cn(salesTypography.rowMeta, "font-medium")}>
                 {period.startDate} → {period.endDate}
               </p>
               <div className="flex items-center gap-2">
                 {statusBadge(period.startDate, period.endDate, todayDateKey)}
               </div>
               {period.note ? (
-                <p className="text-xs text-slate-500">{period.note}</p>
+                <p className="rounded-md bg-slate-50/60 px-2.5 py-1.5 text-xs text-slate-600">{period.note}</p>
               ) : null}
 
-              <div className="border-t border-slate-100 my-2" />
+              <div className="border-t border-slate-100 my-1" />
 
               <div className="space-y-2">
                 <div className="flex items-center gap-1.5">
@@ -531,7 +536,7 @@ export function VacationCalendar({
                 {delegation && !assigningDelegate ? (
                   <div className="space-y-1.5">
                     <p className="font-medium text-sm text-slate-800">{delegateName}</p>
-                    {canEdit ? (
+                    {canEditPeriod(sp.id) ? (
                       <div className="flex gap-2">
                         <Button
                           variant="ghost"
@@ -600,7 +605,7 @@ export function VacationCalendar({
                       </Button>
                     </div>
                   </div>
-                ) : canEdit ? (
+                ) : canEditPeriod(sp.id) ? (
                   <Button
                     variant="ghost"
                     size="sm"
@@ -617,7 +622,7 @@ export function VacationCalendar({
                 )}
               </div>
 
-              {canEdit ? (
+              {canEditPeriod(sp.id) ? (
                 <>
                   <div className="border-t border-slate-100 my-2" />
                   <Button
@@ -646,19 +651,19 @@ export function VacationCalendar({
     <div>
       {toast ? <NoticeToast notice={toast} onDismiss={dismiss} /> : null}
 
-      <div className="mb-3 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-        <div className="flex items-center gap-2">
-          <Button variant="ghost" size="sm" onClick={goToPrevMonth} aria-label="Poprzedni miesiąc">
+      <div className="mb-3 flex flex-col gap-2.5 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex items-center gap-1.5 rounded-lg border border-slate-200/70 bg-slate-50/40 p-1">
+          <Button variant="ghost" size="sm" onClick={goToPrevMonth} aria-label="Poprzedni miesiąc" className="h-8 w-8 p-0">
             <IconChevronLeft size={16} />
           </Button>
-          <span className={salesTypography.blockTitle}>
+          <span className={cn(salesTypography.blockTitle, "px-1 select-none")}>
             {MONTH_NAMES[currentMonth]} {currentYear}
           </span>
-          <Button variant="ghost" size="sm" onClick={goToNextMonth} aria-label="Następny miesiąc">
+          <Button variant="ghost" size="sm" onClick={goToNextMonth} aria-label="Następny miesiąc" className="h-8 w-8 p-0">
             <IconChevronRight size={16} />
           </Button>
           {!isCurrentMonth ? (
-            <Button variant="outline" size="sm" onClick={goToToday} className="ml-1">
+            <Button variant="outline" size="sm" onClick={goToToday} className="ml-1 h-8">
               Dziś
             </Button>
           ) : null}
@@ -668,15 +673,22 @@ export function VacationCalendar({
             variant="outline"
             size="sm"
             onClick={() => setVacationFormOpen((v) => !v)}
+            className="h-8"
           >
-            {vacationFormOpen ? "Anuluj" : "+ Dodaj urlop"}
+            {vacationFormOpen ? "Anuluj" : editableSalesPersonId ? "+ Dodaj mój urlop" : "+ Dodaj urlop"}
           </Button>
         ) : null}
       </div>
 
       {vacationFormOpen && canEdit ? (
-        <div className="mb-3 space-y-3 rounded-md border border-slate-200 bg-slate-50/50 p-3">
-          {salesPeople.length > 1 ? (
+        <div className="mb-3 space-y-3 rounded-lg border border-slate-200/80 bg-slate-50/40 p-3.5 shadow-sm shadow-slate-200/40">
+          {editableSalesPersonId ? (
+            <div className="flex items-center gap-2 rounded-md bg-indigo-50/70 px-3 py-2 text-xs font-medium text-indigo-700 ring-1 ring-indigo-100/60">
+              <IconSun size={14} className="shrink-0" />
+              Dodajesz urlop dla siebie. Pozostali członkowie grupy widzą go w kalendarzu.
+            </div>
+          ) : null}
+          {salesPeople.length > 1 && !editableSalesPersonId ? (
             <Field label="Handlowiec">
               <select
                 className="w-full rounded-md border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 focus:border-indigo-300 focus:outline-none focus:ring-2 focus:ring-indigo-200/40"
@@ -733,11 +745,11 @@ export function VacationCalendar({
         </div>
       ) : null}
 
-      <div className="grid grid-cols-7 border-t border-l border-slate-100">
+      <div className="grid grid-cols-7 rounded-t-lg border-t border-l border-slate-100 bg-slate-50/30">
         {WEEKDAY_LABELS.map((label) => (
           <div
             key={label}
-            className="border-b border-r border-slate-100 px-1.5 py-2 text-center font-semibold uppercase tracking-wider text-[10px] text-slate-500"
+            className="border-b border-r border-slate-100 px-1.5 py-2.5 text-center font-semibold uppercase tracking-wider text-[10px] text-slate-400"
           >
             {label}
           </div>
@@ -746,12 +758,15 @@ export function VacationCalendar({
 
       {!monthHasPeriods ? (
         <div className="grid grid-cols-7 border-l border-slate-100">
-          <div className="col-span-7 border-b border-r border-slate-100">
+          <div className="col-span-7 border-b border-r border-slate-100 rounded-b-lg">
             <EmptyState
               brandAccent
               icon={<IconSun size={28} />}
               title="Brak urlopów w tym miesiącu"
-              description="Kliknij ‹ › aby przejść do innego miesiąca."
+              description={editableSalesPersonId
+                ? "Nie masz zaplanowanych urlopów w tym miesiącu. Kliknij „Dodaj mój urlop\" aby zaplanować."
+                : "Kliknij ‹ › aby przejść do innego miesiąca."
+              }
             />
           </div>
         </div>
@@ -760,15 +775,15 @@ export function VacationCalendar({
           {cells.map((cell, i) => {
             const bgClasses = cn(
               !cell.isCurrentMonth && "bg-slate-50/20",
-              cell.isWeekend && cell.isCurrentMonth && "bg-slate-50/30",
-              cell.isToday && "bg-sky-50/35"
+              cell.isWeekend && cell.isCurrentMonth && "bg-slate-50/25",
+              cell.isToday && "bg-sky-50/40 ring-1 ring-inset ring-sky-200/40"
             );
 
             return (
               <div
                 key={cell.dateKey + "-" + i}
                 className={cn(
-                  "min-h-[3.5rem] border-b border-r border-slate-100 p-1 sm:min-h-[6rem] sm:p-1.5",
+                  "min-h-[3.5rem] border-b border-r border-slate-100 p-1 transition-colors sm:min-h-[6rem] sm:p-1.5",
                   bgClasses
                 )}
               >
@@ -792,12 +807,14 @@ export function VacationCalendar({
                       {cell.periods.slice(0, 3).map((p, idx) => {
                         const c = colorMap.get(p.salesPersonId);
                         if (!c) return null;
+                        const isOwn = editableSalesPersonId === p.salesPersonId;
                         return (
                           <button
                             key={p.period.id + "-" + idx}
                             type="button"
                             className={cn(
-                              "flex w-full items-center gap-1 rounded-sm px-1.5 py-0.5 text-[10px] font-medium truncate cursor-pointer hover:ring-1 hover:ring-slate-300/50",
+                              "flex w-full items-center gap-1 rounded-sm px-1.5 py-0.5 text-[10px] font-medium truncate cursor-pointer transition hover:ring-1 hover:ring-slate-300/50",
+                              isOwn && "ring-1 ring-slate-400/30 font-semibold",
                               c.bg,
                               c.text
                             )}
@@ -832,12 +849,14 @@ export function VacationCalendar({
                       {cell.periods.slice(0, 4).map((p, idx) => {
                         const c = colorMap.get(p.salesPersonId);
                         if (!c) return null;
+                        const isOwn = editableSalesPersonId === p.salesPersonId;
                         return (
                           <button
                             key={p.period.id + "-" + idx}
                             type="button"
                             className={cn(
-                              "h-2 w-2 rounded-full cursor-pointer hover:ring-1 hover:ring-slate-300/50",
+                              "rounded-full cursor-pointer transition hover:ring-1 hover:ring-slate-300/50",
+                              isOwn ? "h-2.5 w-2.5 ring-1 ring-slate-400/40" : "h-2 w-2",
                               c.dot
                             )}
                             onClick={(e) => onBarClick(e, p.period.id, p.salesPersonId)}
@@ -860,14 +879,21 @@ export function VacationCalendar({
       )}
 
       {activeSalesPeople.length > 0 ? (
-        <div className="flex flex-wrap gap-x-4 gap-y-1.5 py-2">
+        <div className="flex flex-wrap gap-x-4 gap-y-1.5 rounded-md border border-slate-100 bg-slate-50/30 px-3 py-2">
           {activeSalesPeople.map((sp) => {
             const c = colorMap.get(sp.id);
             if (!c) return null;
+            const isOwn = editableSalesPersonId === sp.id;
             return (
               <div key={sp.id} className="flex items-center gap-1.5">
                 <span className={cn("h-2.5 w-2.5 rounded-full", c.dot)} />
-                <span className="text-[10px] text-slate-500">{sp.name}</span>
+                <span className={cn(
+                  "text-[10px]",
+                  isOwn ? "font-semibold text-slate-700" : "text-slate-500"
+                )}>
+                  {sp.name}
+                  {isOwn ? " (Ty)" : ""}
+                </span>
               </div>
             );
           })}
@@ -879,6 +905,7 @@ export function VacationCalendar({
       {deleteTarget ? (
         <ConfirmDialog
           open
+          tier="stack"
           title={deleteTarget.kind === "vacation" ? "Usunąć urlop?" : "Usunąć zastępcę?"}
           message={`${deleteTarget.label} zostanie usunięty.`}
           confirmLabel="Usuń"

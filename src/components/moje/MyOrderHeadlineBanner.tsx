@@ -48,9 +48,9 @@ const toneStyles: Record<
     sub: "text-slate-600",
   },
   dismiss: {
-    wrap: "bg-amber-50 text-amber-950",
-    title: "text-amber-950",
-    sub: "text-amber-800",
+    wrap: "bg-rose-50 text-rose-950",
+    title: "text-rose-950",
+    sub: "text-rose-700",
   },
 };
 

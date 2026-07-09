@@ -25,7 +25,6 @@ function isValidIsoDate(value: string): boolean {
 }
 
 function revalidateVacationPaths() {
-  revalidatePath("/ustawienia");
   revalidatePath("/moje");
   revalidatePath("/zespol");
   revalidatePath("/zespol/urlopy");

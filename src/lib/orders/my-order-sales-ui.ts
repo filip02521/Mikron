@@ -22,7 +22,6 @@ import {
   procurementCancelNotesMojeSublineSuffix,
 } from "@/lib/orders/procurement-cancel-note";
 import {
-  MY_ORDER_HISTORY_ESTIMATE_LOW_CONFIDENCE_DETAIL,
   MY_ORDER_NO_HISTORY_ESTIMATE_YET_SUBLINE,
 } from "@/lib/orders/my-order-history-estimate-copy";
 import {
@@ -218,9 +217,9 @@ export function enrichMyOrderSalesUi(row: MyOrderRow): MyOrderSalesUi {
     row.cancelNoticeOrderIds.length > 0
   ) {
     return {
-      headline: "Potwierdź informację o rezygnacji",
+      headline: row.statusTitle,
       headlineTone: "dismiss",
-      subline: "Po potwierdzeniu wpis zniknie z listy",
+      subline: "Klient zrezygnował z zamówienia. Potwierdź, aby zamknąć sprawę i usunąć ją z listy.",
       sortPriority: 3,
     };
   }
@@ -228,9 +227,9 @@ export function enrichMyOrderSalesUi(row: MyOrderRow): MyOrderSalesUi {
   if (row.acknowledgeMode === "cancelled") {
     const noteSuffix = procurementCancelNotesMojeSublineSuffix(row.lines);
     return {
-      headline: "Potwierdź anulowanie prośby",
+      headline: row.statusTitle,
       headlineTone: "dismiss",
-      subline: `Po potwierdzeniu wpis zniknie z listy${noteSuffix}`,
+      subline: `Prośba została anulowana przez dział dostaw. Potwierdź, aby zamknąć sprawę i usunąć ją z listy.${noteSuffix}`,
       sortPriority: 3,
     };
   }
@@ -304,7 +303,6 @@ export function enrichMyOrderSalesUi(row: MyOrderRow): MyOrderSalesUi {
 
   if (row.statusTitle === "Zamówione") {
     const hasEstimate = Boolean(row.timingLabel);
-    const lowHistory = row.timingLabel?.includes("mało historii");
     return {
       headline: hasEstimate
         ? "Zamówione — czekamy na dostawę"
@@ -312,9 +310,7 @@ export function enrichMyOrderSalesUi(row: MyOrderRow): MyOrderSalesUi {
       headlineTone: "info",
       subline: !hasEstimate
         ? MY_ORDER_NO_HISTORY_ESTIMATE_YET_SUBLINE
-        : lowHistory
-          ? MY_ORDER_HISTORY_ESTIMATE_LOW_CONFIDENCE_DETAIL
-          : null,
+        : null,
       sortPriority: 7,
     };
   }

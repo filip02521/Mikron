@@ -426,8 +426,19 @@ export async function actionDeleteAppUser(
     }
   }
 
+  // Clean up related data that may have FK constraints blocking user deletion
+  await Promise.all([
+    supabase.from("sales_group_managers").delete().eq("profile_id", userId),
+    supabase.from("department_board_reads").delete().eq("profile_id", userId),
+    supabase.from("sales_vacation_delegations").delete().eq("delegate_profile_id", userId),
+    supabase.from("sales_bug_reports").delete().eq("profile_id", userId),
+    // warehouse_delivery_receipts has ON DELETE RESTRICT on created_by (NOT NULL) — reassign to admin
+    supabase.from("warehouse_delivery_receipts").update({ created_by: current.id }).eq("created_by", userId),
+    supabase.from("warehouse_delivery_receipts").update({ updated_by: null }).eq("updated_by", userId),
+  ]);
+
   const { error } = await supabase.auth.admin.deleteUser(userId);
-  if (error) return { error: error.message };
+  if (error) return { error: error.message || "Nie udało się usunąć konta (prawdopodobnie istnieją powiązane dane)." };
 
   revalidateUsers({
     includeHandlowcy: Boolean(target?.sales_person_id),

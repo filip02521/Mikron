@@ -1,37 +1,14 @@
-import {
-  fetchDeliveryStats,
-  fetchIndividualOrders,
-  fetchSalesAcknowledgedOrders,
-  fetchSuppliersForRequestForms,
-} from "@/lib/data/queries";
-import { formatDateString } from "@/lib/orders/dates";
-import { todayInWarsaw } from "@/lib/time/warsaw";
-import {
-  ARCHIVE_EXPANDED_GROUP_LIMIT,
-  archiveAcknowledgedSinceExpanded,
-  archiveAcknowledgedSinceRecent,
-  presentArchivedMyOrders,
-} from "@/lib/orders/my-order-archive";
-import { getSessionUser } from "@/lib/auth";
-import { resolveSalesPersonForUser } from "@/lib/auth/sales-person";
-import { resolvePreviewSalesPerson, resolveDelegatePreviewSalesPerson } from "@/lib/auth/resolve-preview-sales-person";
-import { getAppRole } from "@/lib/auth-dev";
-import { logDevPageError } from "@/lib/dev/log-page-error";
-import { canAccessOperations, isAdmin, isSalesAccount, isSalesManager } from "@/lib/auth-roles";
 import { presentMyOrders } from "@/lib/orders/my-order-presenter";
-import { loadPlannedOrderScheduleContext } from "@/lib/orders/planned-order-schedule";
-import { getSubiektAvailability } from "@/lib/subiekt/availability";
+import { getSubiektAvailability, isSubiektAvailableForZdSync } from "@/lib/subiekt/availability";
 import {
   countZdEtaMojeClientSyncMount,
   countZdEtaMojeClientSyncTriggers,
 } from "@/lib/subiekt/zd-eta-sync";
 import { getAppSupplierRefsCached } from "@/lib/data/supplier-refs";
 import { buildSupplierKhIdsBySupplierId } from "@/lib/data/supplier-subiekt-kh";
-import { isSubiektAvailableForZdSync } from "@/lib/subiekt/availability";
 import Link from "next/link";
 import { Alert } from "@/components/ui/Alert";
 import { MojeOrdersShell } from "@/components/moje/MojeOrdersShell";
-import type { OrderFormSupplierOption } from "@/lib/orders/order-form-suppliers";
 import {
   buttonPrimaryClass,
   pageToolbarSizingClass,
@@ -41,19 +18,15 @@ import { cn } from "@/lib/cn";
 import { SalesAccountLinkRequired } from "@/components/sales/SalesAccountLinkRequired";
 import { SalesPageAlerts } from "@/components/sales/SalesPageAlerts";
 import { SystemNotice } from "@/components/ui/SystemNotice";
+import { canAccessOperations, isAdmin, isSalesAccount } from "@/lib/auth-roles";
 import {
-  fetchSalesBoardAttentionSnapshot,
-  fetchDepartmentBoardAnnouncements,
-  type SalesBoardAttentionSnapshot,
-  type DepartmentBoardAnnouncementsSlice,
-} from "@/lib/data/department-board";
-import { fetchSalesDayStartNotepadSlice } from "@/lib/data/sales-notepad";
-import { fetchActiveDelegationsForDelegate, type VacationDelegationRow } from "@/lib/data/vacation-delegations";
-import {
-  type SalesDayStartContext,
-} from "@/lib/sales/sales-day-start";
-import type { DeliveryStats, IndividualOrder, Workspace } from "@/types/database";
-import { autoAssignMissingSuppliersFromCatalog } from "@/lib/services/auto-assign-suppliers";
+  resolveMojePageContext,
+  loadMojePageData,
+  buildDayStartContext,
+} from "@/lib/orders/moje-page-helpers";
+import { formatDateString } from "@/lib/orders/dates";
+import { todayInWarsaw } from "@/lib/time/warsaw";
+import { IconSettings } from "@/components/icons/StrokeIcons";
 
 import type { Metadata } from "next";
 import { pageMetadataFor } from "@/lib/ui/page-metadata";
@@ -94,90 +67,19 @@ export default async function MojePage({
   const initialSearchQuery = hasNotepadClientLink
     ? (searchQuery?.trim() || null)
     : (searchQuery ?? clientQuery)?.trim() || null;
-  const role = await getAppRole();
-  let workspaces: Workspace[] = [];
-  let salesPersonId: string | null = null;
-  let salesPersonName: string | null = null;
-  let ownSalesPersonId: string | null = null;
-  let linkError: string | null = null;
-  let isTeamPreview = false;
-  let isDelegatePreview = false;
-  let activeDelegations: VacationDelegationRow[] = [];
-  let sessionUserId: string | null = null;
-  let boardAttention: SalesBoardAttentionSnapshot | null = null;
-  let dayStartContext: SalesDayStartContext | null = null;
-  let boardAnnouncements: DepartmentBoardAnnouncementsSlice | null = null;
-
-  try {
-    const user = await getSessionUser();
-    sessionUserId = user?.id ?? null;
-    workspaces = user?.assignedWorkspaces ?? [];
-    if (user && isAdmin(user.role) && previewSalesPersonId) {
-      const preview = await resolvePreviewSalesPerson(previewSalesPersonId, user);
-      if (preview) {
-        salesPersonId = preview.id;
-        salesPersonName = preview.name;
-        isTeamPreview = true;
-      } else {
-        linkError = "Nie znaleziono handlowca do podglądu.";
-      }
-    } else if (user && isSalesAccount(user.role)) {
-      const own = await resolveSalesPersonForUser(user);
-      ownSalesPersonId = own?.id ?? null;
-      if (isSalesManager(user.role) && previewSalesPersonId) {
-        const preview = await resolvePreviewSalesPerson(previewSalesPersonId, user);
-        if (preview) {
-          salesPersonId = preview.id;
-          salesPersonName = preview.name;
-          isTeamPreview = preview.id !== ownSalesPersonId;
-        } else {
-          linkError = "Nie znaleziono handlowca do podglądu.";
-        }
-      } else {
-        salesPersonId = own?.id ?? null;
-        salesPersonName = own?.name ?? null;
-
-        // Pobierz aktywne delegacje dla przełącznika (zastępca)
-        if (user.role === "sales" || user.role === "sales_manager") {
-          try {
-            activeDelegations = await fetchActiveDelegationsForDelegate(user.id);
-          } catch {}
-        }
-
-        // Sprawdzenie delegacji — przed blokiem błędu ?dla= dla sales
-        if (
-          user.role === "sales" &&
-          previewSalesPersonId &&
-          previewSalesPersonId !== ownSalesPersonId
-        ) {
-          const delegatePreview = await resolveDelegatePreviewSalesPerson(
-            previewSalesPersonId,
-            user
-          );
-          if (delegatePreview) {
-            salesPersonId = delegatePreview.id;
-            salesPersonName = delegatePreview.name;
-            isDelegatePreview = true;
-          } else {
-            linkError =
-              "Możesz przeglądać tylko własne dane handlowca — parametr ?dla= został zignorowany.";
-          }
-        }
-      }
-      if (!ownSalesPersonId && user.role === "sales") {
-        linkError =
-          "Twoje konto nie jest przypisane do profilu handlowca. Poproś administratora o link zaproszenia (Admin → Handlowcy).";
-      }
-      if (!ownSalesPersonId && user.role === "sales_manager") {
-        linkError =
-          "Twoje konto kierownika nie jest przypisane do profilu handlowca — poproś administratora o przypisanie w sekcji Użytkownicy.";
-      }
-    } else {
-      salesPersonId = user?.salesPersonId ?? null;
-    }
-  } catch (error) {
-    logDevPageError("moje/page", error);
-  }
+  const ctx = await resolveMojePageContext(previewSalesPersonId);
+  const {
+    role,
+    workspaces,
+    salesPersonId,
+    salesPersonName,
+    ownSalesPersonId,
+    linkError,
+    isTeamPreview,
+    isDelegatePreview,
+    activeDelegations,
+    sessionUserId,
+  } = ctx;
 
   if (role && isSalesAccount(role) && linkError && !previewSalesPersonId) {
     return (
@@ -190,154 +92,49 @@ export default async function MojePage({
     );
   }
 
-  let orders: IndividualOrder[] = [];
-  let stats: DeliveryStats[] = [];
-  let suppliers: OrderFormSupplierOption[] = [];
-  let archiwumRecent: ReturnType<typeof presentArchivedMyOrders> = [];
-  let archiwumExtended: ReturnType<typeof presentArchivedMyOrders> = [];
-  let supplierScheduleById: Awaited<
-    ReturnType<typeof loadPlannedOrderScheduleContext>
-  >["supplierScheduleById"] = {};
-  let plannedOrderWeekDays: Awaited<
-    ReturnType<typeof loadPlannedOrderScheduleContext>
-  >["weekDays"] = [];
-  let loadError: string | null = null;
-  const todayDateKey = formatDateString(todayInWarsaw());
+  const viewingOwnPanel = Boolean(
+    isSalesAccount(role ?? "sales") && salesPersonId && salesPersonId === ownSalesPersonId
+  );
 
-  const viewingOwnPanel =
-    isSalesAccount(role ?? "sales") && salesPersonId && salesPersonId === ownSalesPersonId;
-
-  const delegatePreviewActive = isDelegatePreview && salesPersonId && salesPersonId !== ownSalesPersonId;
+  const delegatePreviewActive = Boolean(
+    isDelegatePreview && salesPersonId && salesPersonId !== ownSalesPersonId
+  );
 
   const adminSalesPreview = Boolean(role === "admin" && previewSalesPersonId && salesPersonId);
-  const salesPanelView =
-    (isSalesAccount(role ?? "sales") && salesPersonId) || adminSalesPreview;
-  /** Ogłoszenia są działowe — pokazuj zalogowanemu użytkownikowi (także w podglądzie ?dla=). */
+  const salesPanelView = Boolean(
+    (isSalesAccount(role ?? "sales") && salesPersonId) || adminSalesPreview
+  );
   const loadMojeAnnouncements = Boolean(
     sessionUserId && (isSalesAccount(role ?? "sales") || adminSalesPreview)
   );
-  let boardAnnouncementsError: string | null = null;
-  /** Własny panel lub podgląd cudzego konta (kierownik / admin) — ten sam widok listy + archiwum RO. */
   const showSalesPersonOrdersPanel = Boolean(
     salesPanelView && salesPersonId && (viewingOwnPanel || isTeamPreview || delegatePreviewActive)
   );
 
-  let notepadSlice: Awaited<ReturnType<typeof fetchSalesDayStartNotepadSlice>> | null = null;
+  const data = await loadMojePageData(ctx, {
+    salesPanelView,
+    viewingOwnPanel,
+    isTeamPreview,
+    delegatePreviewActive,
+    adminSalesPreview,
+    showSalesPersonOrdersPanel,
+    loadMojeAnnouncements,
+  });
 
-  try {
-    if (salesPanelView && salesPersonId) {
-      const [orderRows, statsRows, acknowledgedRows_, supplierRows, boardSnap, notepadData, announcementsSlice] =
-        await Promise.all([
-        fetchIndividualOrders({
-          salesPersonId,
-          hideSalesAcknowledged: false,
-        }),
-        fetchDeliveryStats(),
-        viewingOwnPanel || isTeamPreview || delegatePreviewActive
-          ? fetchSalesAcknowledgedOrders(salesPersonId, {
-              acknowledgedSince: archiveAcknowledgedSinceExpanded(),
-              limit: 200,
-            })
-          : Promise.resolve([]),
-        fetchSuppliersForRequestForms(),
-        viewingOwnPanel && sessionUserId
-          ? fetchSalesBoardAttentionSnapshot(sessionUserId).catch(() => null)
-          : Promise.resolve(null),
-        viewingOwnPanel
-          ? fetchSalesDayStartNotepadSlice(salesPersonId).catch(() => null)
-          : Promise.resolve(null),
-        loadMojeAnnouncements
-          ? fetchDepartmentBoardAnnouncements(sessionUserId!).catch((e) => {
-              boardAnnouncementsError =
-                e instanceof Error
-                  ? e.message
-                  : "Nie udało się załadować ogłoszeń od zakupów.";
-              console.error("[moje/page] fetchDepartmentBoardAnnouncements", e);
-              return null;
-            })
-          : Promise.resolve(null),
-      ]);
-      let acknowledgedRows = acknowledgedRows_;
-      boardAttention = boardSnap;
-      boardAnnouncements = announcementsSlice;
-      notepadSlice = notepadData;
-      orders = orderRows;
-      stats = statsRows as DeliveryStats[];
-      suppliers = supplierRows;
-      if (orders.some((o) => o.is_teeth)) {
-        const { attachTeethDetailsToIndividualOrders } = await import("@/lib/data/teeth-queue");
-        orders = await attachTeethDetailsToIndividualOrders(orders);
-      }
-      ({ supplierScheduleById, weekDays: plannedOrderWeekDays } =
-        await loadPlannedOrderScheduleContext(orderRows, todayDateKey));
-
-      // Sync terminów ZD — tylko klient (MojeZdEtaSyncClient, live search + force).
-      // Robimy to po pobraniu, żeby pierwszy render był szybki.
-      const missing = orderRows.filter((o) => !o.supplier_id && o.subiekt_tw_id);
-      if (missing.length > 0 && !adminSalesPreview) {
-        const { after } = await import("next/server");
-        after(async () => {
-          try {
-            await autoAssignMissingSuppliersFromCatalog({
-              salesPersonId,
-              limit: 80,
-            });
-          } catch (e) {
-            console.error("[autoAssignMissingSuppliersFromCatalog moje]", e);
-          }
-        });
-      }
-      if (showSalesPersonOrdersPanel) {
-        if (acknowledgedRows.some((o) => o.is_teeth)) {
-          const { attachTeethDetailsToIndividualOrders } = await import("@/lib/data/teeth-queue");
-          acknowledgedRows = await attachTeethDetailsToIndividualOrders(acknowledgedRows);
-        }
-        const legacyUnackedCancelled = orderRows.filter(
-          (o) => o.status === "Anulowane" && !o.sales_acknowledged_at
-        );
-        const archiveSource = [...acknowledgedRows, ...legacyUnackedCancelled];
-        archiwumRecent = presentArchivedMyOrders(archiveSource, stats, {
-          acknowledgedSince: archiveAcknowledgedSinceRecent(),
-        });
-        archiwumExtended = presentArchivedMyOrders(archiveSource, stats, {
-          acknowledgedSince: archiveAcknowledgedSinceExpanded(),
-          groupLimit: ARCHIVE_EXPANDED_GROUP_LIMIT,
-        });
-      }
-    } else if (role && canAccessOperations(role, workspaces) && salesPersonId) {
-      const [orderRows, statsRows, supplierRows] = await Promise.all([
-        fetchIndividualOrders({ salesPersonId }),
-        fetchDeliveryStats(),
-        fetchSuppliersForRequestForms(),
-      ]);
-      orders = orderRows;
-      stats = statsRows as DeliveryStats[];
-      suppliers = supplierRows;
-      if (orders.some((o) => o.is_teeth)) {
-        const { attachTeethDetailsToIndividualOrders } = await import("@/lib/data/teeth-queue");
-        orders = await attachTeethDetailsToIndividualOrders(orders);
-      }
-      ({ supplierScheduleById, weekDays: plannedOrderWeekDays } =
-        await loadPlannedOrderScheduleContext(orderRows, todayDateKey));
-
-      const missing = orderRows.filter((o) => !o.supplier_id && o.subiekt_tw_id);
-      if (missing.length > 0) {
-        const { after } = await import("next/server");
-        after(async () => {
-          try {
-            await autoAssignMissingSuppliersFromCatalog({
-              salesPersonId: salesPersonId ?? undefined,
-              limit: 120,
-            });
-          } catch (e) {
-            console.error("[autoAssignMissingSuppliersFromCatalog ops moje]", e);
-          }
-        });
-      }
-    }
-  } catch (e) {
-    loadError = e instanceof Error ? e.message : "Nie udało się załadować zamówień.";
-  }
+  const {
+    orders,
+    stats,
+    suppliers,
+    archiwumRecent,
+    archiwumExtended,
+    supplierScheduleById,
+    plannedOrderWeekDays,
+    boardAttention,
+    boardAnnouncements,
+    boardAnnouncementsError,
+    notepadSlice,
+    loadError,
+  } = data;
 
   const subiektAvailability = await getSubiektAvailability();
   const subiektReachable = isSubiektAvailableForZdSync(subiektAvailability);
@@ -353,21 +150,18 @@ export default async function MojePage({
 
   const { zamowienia, informacje, productLineCount } = presentMyOrders(orders, stats, {
     supplierScheduleById,
-    todayDateKey,
+    todayDateKey: formatDateString(todayInWarsaw()),
     weekDays: plannedOrderWeekDays,
     supplierKhIdsBySupplierId,
     subiektReachable,
   });
 
-  if (viewingOwnPanel && notepadSlice) {
-    /** Start dnia = własna kolejka akcji (zamówienia + notatnik + tablica zalogowanego użytkownika). */
-    dayStartContext = {
-      watches: notepadSlice.zkWatches,
-      notes: notepadSlice.notes,
-      boardAttention,
-      previewDla: previewSalesPersonId ?? null,
-    };
-  }
+  const dayStartContext = buildDayStartContext(
+    Boolean(viewingOwnPanel),
+    notepadSlice,
+    boardAttention,
+    previewSalesPersonId,
+  );
 
   const salesHeaderActions =
     role && !canAccessOperations(role, workspaces) ? (
@@ -428,9 +222,10 @@ export default async function MojePage({
         <div className="flex justify-end pb-1">
           <Link
             href="/ustawienia"
-            className="text-xs font-medium text-slate-400 underline decoration-slate-300/60 underline-offset-2 transition-colors hover:text-slate-600"
+            className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200/80 bg-white/60 px-3 py-1.5 text-xs font-medium text-slate-500 shadow-sm transition-all hover:border-slate-300 hover:bg-white hover:text-slate-700 hover:shadow"
           >
-            Ustawienia i urlopy →
+            <IconSettings size={14} className="shrink-0 text-slate-400" />
+            Ustawienia
           </Link>
         </div>
       ) : null}

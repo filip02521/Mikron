@@ -276,6 +276,7 @@ export async function proxy(request: NextRequest) {
 
   if (
     matchesPrefix(pathname, SALES_TEAM_PREFIXES) &&
+    pathname !== "/zespol/urlopy" &&
     !canManageSalesTeam(role)
   ) {
     return redirectWithSession(

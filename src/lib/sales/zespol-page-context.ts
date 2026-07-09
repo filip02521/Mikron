@@ -29,12 +29,16 @@ export const getZespolPageContext = cache(
 
     let groups: SalesGroupRow[] = [];
     let groupsLoadError: string | null = null;
-    try {
-      const countMode = isAdmin(user.role) ? "all" : "team";
-      groups = filterGroupsByScope(await fetchSalesGroups({ countMode }), scope);
-    } catch (e) {
-      groupsLoadError = zespolLoadErrorMessage(e, "groups");
+    if (scope !== null && scope.length === 0) {
       groups = [];
+    } else {
+      try {
+        const countMode = isAdmin(user.role) ? "all" : "team";
+        groups = filterGroupsByScope(await fetchSalesGroups({ countMode }), scope);
+      } catch (e) {
+        groupsLoadError = zespolLoadErrorMessage(e, "groups");
+        groups = [];
+      }
     }
 
     const teamUi = applyAdminPanelReadOnlyTeamUi(

@@ -37,6 +37,13 @@ export const MY_ORDER_MIXED_ACTION_SECTION_COPY = {
   accent: "indigo" as const satisfies MyOrderSectionAccent,
 };
 
+export const MY_ORDER_DISMISS_SECTION_COPY = {
+  title: "Do zamknięcia",
+  hint: "Anulowania i rezygnacje — potwierdź, aby usunąć wpis z listy.",
+  icon: "dismiss" as const,
+  accent: "slate" as const satisfies MyOrderSectionAccent,
+};
+
 export const MOJE_TEETH_ACTION_SECTION_ID = mojeSectionDomId("teeth");
 export const MOJE_MIXED_ACTION_SECTION_ID = mojeSectionDomId("mixed-pickup");
 

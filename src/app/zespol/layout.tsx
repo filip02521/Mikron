@@ -1,11 +1,11 @@
-import { requireSalesTeamManagement } from "@/lib/auth";
+import { requireSalesAccountOrTeamManagement } from "@/lib/auth";
 import { SalesTeamScopeBanner } from "@/components/sales/SalesTeamScopeBanner";
 import { SystemNotice } from "@/components/ui/SystemNotice";
 import { getZespolPageContext } from "@/lib/sales/zespol-page-context";
 import { salesTeamPageShellClass } from "@/lib/ui/ontime-theme";
 
 export default async function ZespolLayout({ children }: { children: React.ReactNode }) {
-  const user = await requireSalesTeamManagement();
+  const user = await requireSalesAccountOrTeamManagement();
   const { teamUi, groupsLoadError } = await getZespolPageContext(user);
 
   return (

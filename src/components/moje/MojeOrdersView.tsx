@@ -7,7 +7,6 @@ import { partitionMyOrderRowsBySalesAction } from "@/lib/orders/my-order-inbox-f
 import {
   filterMyOrderRowsByClientKh,
   filterMyOrderRowsBySearch,
-  resolveSingleMyOrderSearchScrollTarget,
 } from "@/lib/orders/my-order-search";
 import { MojeClientKhFilterBanner } from "@/components/moje/MojeClientKhFilterBanner";
 import { MojeOrdersSearchBar, MojeOrdersSearchEmptyHint } from "@/components/moje/MojeOrdersSearchBar";
@@ -45,22 +44,18 @@ import { salesChromeInsetClass, salesTypography, sectionIconTileBrandClass } fro
 import type { OrderFormSupplierOption } from "@/lib/orders/order-form-suppliers";
 import type { MyOrderSectionPatternId } from "@/lib/orders/my-order-section-callout";
 import { deriveMyOrderSectionDisplayState } from "@/lib/orders/my-order-section-callout";
-import {
-  findMyOrderRowIdsForFocusOrderIds,
-  parseMojeFocusOrderIds,
-} from "@/lib/orders/moje-order-focus";
+import { useMojeScrollManagement } from "@/components/moje/useMojeScrollManagement";
+import { parseMojeFocusOrderIds } from "@/lib/orders/moje-order-focus";
 import { sortInformacjaProgressRows } from "@/lib/orders/my-order-informacja-progress-sort";
 import { MojeSectionShell } from "@/components/moje/MojeSectionShell";
 import {
   mojeSectionHeadingDomId,
-  parseMojeSectionHash,
-  scrollToMojeSection,
-  scrollToMojeCardWhenReady,
 } from "@/lib/orders/moje-section-focus";
 import {
   MY_ORDER_ACTION_SECTION_COPY,
   MY_ORDER_TEETH_ACTION_SECTION_COPY,
   MY_ORDER_MIXED_ACTION_SECTION_COPY,
+  MY_ORDER_DISMISS_SECTION_COPY,
   MY_ORDER_INFORMACJA_SECTION_COPY,
   MY_ORDER_PROGRESS_SECTION_COPY,
   MY_ORDER_PROGRESS_SECTION_EMPTY,
@@ -416,7 +411,6 @@ function MojeOrdersViewContent({
     null
   );
   const [imperativeFocusOrderIds] = useState<string[]>([]);
-  const focusScrollDoneRef = useRef(false);
   const validImperativeAnnouncementId =
     imperativeAnnouncementId &&
     boardAnnouncements?.announcements.some((row) => row.id === imperativeAnnouncementId)
@@ -444,7 +438,7 @@ function MojeOrdersViewContent({
     clientLinkFilterActive
       ? (initialSearchQuery ?? "").trim()
       : (initialSearchQuery ?? initialClientQuery ?? "").trim();
-  const { query: searchQuery, setQuery: setSearchQuery, trimmed: searchTrimmed } =
+  const { query: searchQuery, setQuery: setSearchQuery, trimmed: filterQuery } =
     useMojeOrdersSearch(initialQ, syncSearchUrl && !tourPreview);
 
   const sortedZamowienia = useMemo(() => sortMyOrderRows(zamowienia), [zamowienia]);
@@ -479,18 +473,18 @@ function MojeOrdersViewContent({
   );
 
   const searchFilteredZamowienia = useMemo(
-    () => filterMyOrderRowsBySearch(khFilteredZamowienia, searchQuery),
-    [khFilteredZamowienia, searchQuery]
+    () => filterMyOrderRowsBySearch(khFilteredZamowienia, filterQuery),
+    [khFilteredZamowienia, filterQuery]
   );
   const searchFilteredInformacje = useMemo(
-    () => filterMyOrderRowsBySearch(khFilteredInformacje, searchQuery),
-    [khFilteredInformacje, searchQuery]
+    () => filterMyOrderRowsBySearch(khFilteredInformacje, filterQuery),
+    [khFilteredInformacje, filterQuery]
   );
 
   const filteredZamowienia = searchFilteredZamowienia;
   const filteredInformacje = searchFilteredInformacje;
 
-  const searchActive = searchTrimmed.length > 0;
+  const searchActive = filterQuery.length > 0;
   const clientKhFilterActive = clientLinkFilterActive;
   const searchMatchCount = searchFilteredZamowienia.length + searchFilteredInformacje.length;
 
@@ -506,14 +500,14 @@ function MojeOrdersViewContent({
       clientKhFilter,
       clientLinkFilterOpts
     );
-    for (const row of filterMyOrderRowsBySearch(recentKh, searchQuery)) {
+    for (const row of filterMyOrderRowsBySearch(recentKh, filterQuery)) {
       ids.add(row.id);
     }
-    for (const row of filterMyOrderRowsBySearch(extendedKh, searchQuery)) {
+    for (const row of filterMyOrderRowsBySearch(extendedKh, filterQuery)) {
       ids.add(row.id);
     }
     return ids.size;
-  }, [archiwumRecent, archiwumExtended, searchQuery, clientKhFilter, clientLinkFilterOpts]);
+  }, [archiwumRecent, archiwumExtended, filterQuery, clientKhFilter, clientLinkFilterOpts]);
 
   const filteredLineCount = useMemo(() => {
     if (!searchActive) {
@@ -544,27 +538,30 @@ function MojeOrdersViewContent({
     };
   }, [filteredZamowienia]);
 
-  const { actionShelfZamowienia, actionTeethZamowienia, actionMixedZamowienia } = useMemo(() => {
+  const { actionShelfZamowienia, actionTeethZamowienia, actionMixedZamowienia, actionDismissZamowienia } = useMemo(() => {
     const shelf: typeof actionZamowienia = [];
     const teeth: typeof actionZamowienia = [];
     const mixed: typeof actionZamowienia = [];
+    const dismiss: typeof actionZamowienia = [];
     for (const row of actionZamowienia) {
       if (row.acknowledgeMode === "mixed_pickup") mixed.push(row);
       else if (row.acknowledgeMode === "teeth_handover") teeth.push(row);
+      else if (row.acknowledgeMode === "cancel_notice" || row.acknowledgeMode === "cancelled") dismiss.push(row);
       else shelf.push(row);
     }
     return {
       actionShelfZamowienia: shelf,
       actionTeethZamowienia: teeth,
       actionMixedZamowienia: mixed,
+      actionDismissZamowienia: dismiss,
     };
   }, [actionZamowienia]);
 
   const { actionInformacje, progressInformacje } = useMemo(() => {
     const { needsAction, inProgress } = partitionMyOrderRowsBySalesAction(filteredInformacje);
     return {
-      actionInformacje: [] as MyOrderRow[],
-      progressInformacje: sortInformacjaProgressRows([...needsAction, ...inProgress]),
+      actionInformacje: needsAction,
+      progressInformacje: sortInformacjaProgressRows(inProgress),
     };
   }, [filteredInformacje]);
 
@@ -626,6 +623,7 @@ function MojeOrdersViewContent({
   const actionShelfCount = actionShelfZamowienia.length + actionInformacje.length;
   const actionTeethCount = actionTeethZamowienia.length;
   const actionMixedCount = actionMixedZamowienia.length;
+  const actionDismissCount = actionDismissZamowienia.length;
 
   const hasArchiveData = archiwumRecent.length > 0 || archiwumExtended.length > 0;
   const archiwumRecentFiltered = useMemo(
@@ -636,23 +634,6 @@ function MojeOrdersViewContent({
     () => filterMyOrderRowsByClientKh(archiwumExtended, clientKhFilter, clientLinkFilterOpts),
     [archiwumExtended, clientKhFilter, clientLinkFilterOpts]
   );
-
-  const focusRowIds = useMemo(() => {
-    if (!focusOrderIds.length) return new Set<string>();
-    const sourceRows = [
-      ...searchFilteredZamowienia,
-      ...searchFilteredInformacje,
-      ...archiwumRecentFiltered,
-      ...archiwumExtendedFiltered,
-    ];
-    return new Set(findMyOrderRowIdsForFocusOrderIds(sourceRows, focusOrderIds));
-  }, [
-    focusOrderIds,
-    searchFilteredZamowienia,
-    searchFilteredInformacje,
-    archiwumRecentFiltered,
-    archiwumExtendedFiltered,
-  ]);
 
   const openArchiveForSearch =
     (searchActive || clientKhFilterActive) &&
@@ -735,105 +716,19 @@ function MojeOrdersViewContent({
     </Suspense>
   );
 
-  const sectionHashDoneRef = useRef(false);
-
-  useEffect(() => {
-    if (sectionHashDoneRef.current || focusOrderIds.length > 0) return;
-    const sectionId = parseMojeSectionHash(window.location.hash);
-    if (!sectionId) return;
-
-    const markDoneIfScrolled = () => {
-      if (scrollToMojeSection(sectionId)) {
-        sectionHashDoneRef.current = true;
-        return true;
-      }
-      return false;
-    };
-
-    if (markDoneIfScrolled()) return;
-    window.setTimeout(markDoneIfScrolled, 120);
-  }, [focusOrderIds.length]);
-
-  useEffect(() => {
-    if (focusScrollDoneRef.current || focusRowIds.size === 0) return;
-
-    const visibleRows = [...filteredZamowienia, ...filteredInformacje];
-    const targetRowId = visibleRows.find((row) => focusRowIds.has(row.id))?.id;
-    if (!targetRowId) return;
-
-    let cancelled = false;
-    let attempts = 0;
-    const maxAttempts = 24;
-
-    const tryScroll = () => {
-      if (cancelled || focusScrollDoneRef.current) return;
-      const card = document.getElementById(cardDomId(targetRowId));
-      if (card) {
-        focusScrollDoneRef.current = true;
-        card.scrollIntoView({ behavior: "smooth", block: "center" });
-        const toggle = card.querySelector<HTMLElement>("[data-moje-row-toggle]");
-        toggle?.focus({ preventScroll: true });
-        return;
-      }
-      attempts += 1;
-      if (attempts < maxAttempts) {
-        window.setTimeout(tryScroll, 100);
-      }
-    };
-
-    const initialTimer = window.setTimeout(tryScroll, 200);
-
-    return () => {
-      cancelled = true;
-      window.clearTimeout(initialTimer);
-    };
-  }, [focusRowIds, filteredZamowienia, filteredInformacje]);
-
-  useEffect(() => {
-    focusScrollDoneRef.current = false;
-  }, [initialFocusOrderIds]);
-
-  const searchScrollKeyRef = useRef<string | null>(null);
-
-  useEffect(() => {
-    if (!searchActive) {
-      searchScrollKeyRef.current = null;
-      return;
-    }
-    if (focusRowIds.size > 0) return;
-
-    const target = resolveSingleMyOrderSearchScrollTarget({
-      searchActive,
-      searchTrimmed,
-      searchMatchCount,
-      archiveMatchCount,
-      activeRows: [...filteredZamowienia, ...filteredInformacje],
-      archiveRecentRows: filterMyOrderRowsBySearch(archiwumRecentFiltered, searchQuery),
-      archiveExtendedRows: filterMyOrderRowsBySearch(archiwumExtendedFiltered, searchQuery),
-    });
-    if (!target) return;
-    if (searchScrollKeyRef.current === target.scrollKey) return;
-    searchScrollKeyRef.current = target.scrollKey;
-
-    const isArchive = target.kind === "archive";
-    return scrollToMojeCardWhenReady(cardDomId(target.rowId), {
-      flashStyle: "outline",
-      initialDelayMs: isArchive ? 220 : 180,
-      retryDelayMs: isArchive ? 180 : 120,
-      maxAttempts: isArchive ? 5 : 2,
-    });
-  }, [
+  const { focusRowIds } = useMojeScrollManagement({
+    focusOrderIds,
+    initialFocusOrderIds: initialFocusOrderIds ?? null,
     searchActive,
-    searchTrimmed,
+    searchTrimmed: filterQuery,
     searchMatchCount,
     archiveMatchCount,
     filteredZamowienia,
     filteredInformacje,
     archiwumRecentFiltered,
     archiwumExtendedFiltered,
-    searchQuery,
-    focusRowIds.size,
-  ]);
+    searchQuery: filterQuery,
+  });
 
   const documentTitleBaseRef = useRef<string | null>(null);
 
@@ -891,7 +786,7 @@ function MojeOrdersViewContent({
           {hasArchiveData ? searchBar : null}
           {clientKhBanner}
           {searchActive && !archiveMatchCount ? (
-            <MojeOrdersSearchEmptyHint query={searchTrimmed} onClear={() => setSearchQuery("")} />
+            <MojeOrdersSearchEmptyHint query={filterQuery} onClear={() => setSearchQuery("")} />
           ) : null}
           <EmptyState
             title={MICROCOPY.empty.orders.title}
@@ -902,13 +797,10 @@ function MojeOrdersViewContent({
             }
             icon={<IconClipboardList size={28} strokeWidth={1.75} />}
           />
-          {showProsbaCta ? (
-            <div className="border-t border-slate-100 px-3 py-4 sm:px-4">
-              <MojeOrdersEmptyGuide showActions embedded />
-            </div>
-          ) : null}
+          <div className="border-t border-slate-100 px-3 py-4 sm:px-4">
+            <MojeOrdersEmptyGuide showActions={showProsbaCta} embedded />
+          </div>
         </Card>
-        {!showProsbaCta ? <MojeOrdersEmptyGuide showActions={false} /> : null}
         <MyOrderArchiveSection
           rowsRecent={archiwumRecentFiltered}
           rowsExtended={archiwumExtendedFiltered}
@@ -977,12 +869,12 @@ function MojeOrdersViewContent({
         />
 
         {searchActive && searchMatchCount === 0 && !archiveMatchCount ? (
-          <MojeOrdersSearchEmptyHint query={searchTrimmed} onClear={() => setSearchQuery("")} />
+          <MojeOrdersSearchEmptyHint query={filterQuery} onClear={() => setSearchQuery("")} />
         ) : null}
 
         {searchActive && searchMatchCount === 0 && archiveMatchCount > 0 ? (
           <MojeOrdersSearchEmptyHint
-            query={searchTrimmed}
+            query={filterQuery}
             onClear={() => setSearchQuery("")}
             archiveOnly
           />
@@ -1065,6 +957,24 @@ function MojeOrdersViewContent({
                   listKind="zamowienie"
                   showProgress
                   suppressedSectionPatterns={actionTeethSectionCallouts.suppressedPatterns}
+                  {...listProps}
+                />
+              </MojeSectionShell>
+            ) : null}
+            {actionDismissCount > 0 ? (
+              <MojeSectionShell sectionIcon={MY_ORDER_DISMISS_SECTION_COPY.icon}>
+                <MojeSectionListLabel
+                  title={MY_ORDER_DISMISS_SECTION_COPY.title}
+                  hint={MY_ORDER_DISMISS_SECTION_COPY.hint}
+                  count={actionDismissCount}
+                  accent={MY_ORDER_DISMISS_SECTION_COPY.accent}
+                  icon={MY_ORDER_DISMISS_SECTION_COPY.icon}
+                />
+                <MyOrderShipmentBlock
+                  embedded
+                  rows={actionDismissZamowienia}
+                  listKind="zamowienie"
+                  showProgress={false}
                   {...listProps}
                 />
               </MojeSectionShell>

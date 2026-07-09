@@ -229,16 +229,14 @@ describe("my-order-row-layout", () => {
     expect(myOrderCollapsedSubline(r)).toBe("Produkt A");
   });
 
-  it("zamowione z ostrzezeniem o historii — subline ma pierwszenstwo przed terminem", () => {
+  it("zamowione z ostrzezeniem o historii — nazwa produktu ma pierwszenstwo przed subline", () => {
     const r = row({
       statusTitle: "Zamówione",
       headlineTone: "info",
       timingLabel: "ok. 20.06.2026 (~8 dni rob.) · mało historii",
-      subline: "Mało dostaw w historii — termin jest orientacyjny",
+      subline: null,
     });
-    expect(myOrderCollapsedSubline(r)).toBe(
-      "Mało dostaw w historii — termin jest orientacyjny"
-    );
+    expect(myOrderCollapsedSubline(r)).toBe("Produkt A");
   });
 
   it("po terminie — towar na zwiniętym wierszu zamiast terminu", () => {
