@@ -709,6 +709,29 @@ html.ontime-scroll-locked main {
   }
 }
 
+/* ——— /moje — rozwinięcie archiwum ——— */
+@keyframes archive-expand-enter {
+  from {
+    opacity: 0;
+    transform: translateY(-8px) scaleY(0.97);
+    transform-origin: top;
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scaleY(1);
+  }
+}
+
+.archive-expand-enter {
+  animation: archive-expand-enter 0.32s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .archive-expand-enter {
+    animation: none;
+  }
+}
+
 /* ——— Search inputs — hide native WebKit/Blink clear button ——— */
 input[type="search"]::-webkit-search-cancel-button {
   -webkit-appearance: none;
