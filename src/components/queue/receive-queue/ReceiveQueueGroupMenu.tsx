@@ -83,16 +83,26 @@ export function ReceiveQueueGroupMenu({
         aria-haspopup="menu"
         onClick={() => setOpen((v) => !v)}
         className={cn(
-          "rounded-md border border-slate-200 bg-white px-2 py-1 text-[11px] font-semibold text-slate-600",
-          "hover:border-slate-300 hover:bg-slate-50"
+          "inline-flex items-center gap-1 rounded-lg border border-slate-200 bg-white px-2 py-1 text-[11px] font-semibold text-slate-600 transition",
+          "hover:border-slate-300 hover:bg-slate-50 hover:text-slate-800",
+          "disabled:opacity-50",
+          open && "border-slate-300 bg-slate-50 text-slate-800",
         )}
       >
-        Grupa ▾
+        Grupa
+        <svg
+          aria-hidden
+          viewBox="0 0 12 12"
+          className={cn("size-3 shrink-0 text-slate-400 transition-transform duration-200", open && "rotate-180")}
+          fill="currentColor"
+        >
+          <path d="M3 4.5L6 7.5L9 4.5" stroke="currentColor" strokeWidth="1.5" fill="none" strokeLinecap="round" strokeLinejoin="round" />
+        </svg>
       </button>
       {open ? (
         <div
           role="menu"
-          className="absolute right-0 top-full z-20 mt-1 min-w-[11rem] rounded-lg border border-slate-200 bg-white py-1 shadow-lg"
+          className="absolute right-0 top-full z-20 mt-1.5 min-w-[12rem] rounded-xl border border-slate-200 bg-white py-1 shadow-lg shadow-slate-200/50"
         >
           {items.map((item) => (
             <button
@@ -102,8 +112,9 @@ export function ReceiveQueueGroupMenu({
               disabled={pending}
               onClick={item.onClick}
               className={cn(
-                "block w-full px-3 py-1.5 text-left text-xs font-medium hover:bg-slate-50",
-                item.tone === "sky" ? "text-sky-800" : "text-slate-700"
+                "block w-full px-3 py-2 text-left text-xs font-medium transition",
+                "hover:bg-slate-50",
+                item.tone === "sky" ? "text-sky-800 hover:bg-sky-50" : "text-slate-700",
               )}
             >
               {item.label}

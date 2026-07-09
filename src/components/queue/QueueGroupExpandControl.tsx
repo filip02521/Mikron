@@ -24,11 +24,27 @@ export function QueueGroupExpandControl({
       onClick={() => (allExpanded ? onCollapseAll() : onExpandAll())}
       className={cn(
         panelTextLinkClass,
-        "shrink-0 text-[11px] transition hover:underline",
-        className
+        "inline-flex shrink-0 items-center gap-1 text-[10px] font-medium transition hover:underline",
+        className,
       )}
     >
-      {allExpanded ? "Zwiń wszystkie grupy" : "Rozwiń wszystkie grupy"}
+      <svg
+        aria-hidden
+        viewBox="0 0 12 12"
+        className={cn("size-3 shrink-0 transition-transform duration-200", allExpanded && "rotate-180")}
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.5"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      >
+        {allExpanded ? (
+          <path d="M3 7.5L6 4.5L9 7.5" />
+        ) : (
+          <path d="M3 4.5L6 7.5L9 4.5" />
+        )}
+      </svg>
+      {allExpanded ? "Zwiń wszystkie" : "Rozwiń wszystkie"}
     </button>
   );
 }

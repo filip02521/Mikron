@@ -4,7 +4,7 @@ import { isUndoExpired, undoWindowBannerDescription } from "@/lib/orders/daily-p
 
 import { Fragment, useCallback, useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import type { IndividualOrder } from "@/types/database";
+import type { IndividualOrder, SupplierWithSchedule } from "@/types/database";
 import type { DeliveryUndoPayload } from "@/lib/orders/receive-queue-undo";
 import { collectDeliveryNotificationQueueIds } from "@/lib/orders/receive-queue-undo";
 import {
@@ -75,6 +75,9 @@ import {
 } from "@/lib/orders/queue-product-groups";
 import { buildSupplierGroupMetrics } from "@/lib/orders/supplier-group-metrics";
 import { useSupplierGroupCollapse } from "@/lib/orders/use-supplier-group-collapse";
+import { orderPlacementAt } from "@/lib/orders/order-timing";
+import { calculateBusinessDays, parseDateOnly } from "@/lib/orders/dates";
+import { todayInWarsaw } from "@/lib/time/warsaw";
 import {
   formatReceiveGroupHeaderSummary,
   groupReceiveQueueBySupplier,
@@ -96,6 +99,21 @@ import {
 
 const COL_COUNT = 4;
 
+function maxWaitingDaysForOrders(orders: IndividualOrder[]): number | null {
+  const today = todayInWarsaw();
+  let max: number | null = null;
+  for (const order of orders) {
+    if (isInformacjaRequest(order)) continue;
+    const placement = orderPlacementAt(order);
+    if (!placement) continue;
+    const start = parseDateOnly(placement);
+    if (!start || start > today) continue;
+    const days = calculateBusinessDays(start, today);
+    if (max == null || days > max) max = days;
+  }
+  return max;
+}
+
 export type ReceiveQueueToast = {
   title?: string;
   text?: string;
@@ -107,12 +125,14 @@ export function ReceiveQueueTable({
   deliveryOrders,
   informacjaOrders,
   warehouseInventory,
+  supplierSchedules = [],
   onToast,
   onPendingChange,
 }: {
   deliveryOrders: IndividualOrder[];
   informacjaOrders: IndividualOrder[];
   warehouseInventory: IndividualOrder[];
+  supplierSchedules?: SupplierWithSchedule[];
   onToast: (toast: ReceiveQueueToast) => void;
   onPendingChange: (message: string | null) => void;
 }) {
@@ -227,6 +247,15 @@ export function ReceiveQueueTable({
     () => buildSupplierGroupMetrics(deliveryOrders, warehouseInventory),
     [deliveryOrders, warehouseInventory]
   );
+  const supplierScheduleMap = useMemo(() => {
+    const map = new Map<string, string | null>();
+    for (const s of supplierSchedules) {
+      const name = s.name?.trim();
+      if (!name) continue;
+      map.set(name, s.schedule?.computed_next_date ?? null);
+    }
+    return map;
+  }, [supplierSchedules]);
   const collapse = useSupplierGroupCollapse(supplierGroups, supplierFilter, {
     collapseMode: "all",
   });
@@ -393,13 +422,13 @@ export function ReceiveQueueTable({
           person,
           emailQueued: Boolean(result.emailQueued),
           emailError: result.emailError,
-          fulfilled: progress.remaining === 0 && progress.hasNumericQty,
+          fulfilled: progress.remaining != null && progress.remaining === 0 && progress.hasNumericQty,
           fractionLabel:
-            progress.delivered > 0 && progress.hasNumericQty && progress.remaining > 0
+            progress.delivered > 0 && progress.hasNumericQty && progress.remaining != null && progress.remaining > 0
               ? progress.fractionLabel
               : undefined,
           remaining:
-            progress.delivered > 0 && progress.hasNumericQty && progress.remaining > 0
+            progress.delivered > 0 && progress.hasNumericQty && progress.remaining != null && progress.remaining > 0
               ? progress.remaining
               : undefined,
         });
@@ -695,7 +724,7 @@ export function ReceiveQueueTable({
           />
         </div>
 
-        <div className="hidden flex-wrap items-center justify-between gap-x-3 gap-y-2 rounded-md bg-slate-50/80 px-3 py-2 sm:flex">
+        <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2 rounded-md border border-slate-100 bg-slate-50/60 px-3 py-2">
           <p className="min-w-0 text-[10px] leading-relaxed text-slate-500">
             <span className="inline-flex items-center gap-1">
               <span className="size-1.5 shrink-0 rounded-full bg-emerald-500" aria-hidden />
@@ -863,22 +892,25 @@ export function ReceiveQueueTable({
             className="queue-table receive-queue-table"
           >
             <thead
-              className={cn(queueVirtualEnabled && "sticky top-0 z-[1] bg-white shadow-sm")}
+              className={cn(
+                "sticky top-0 z-[1] bg-slate-50/95 backdrop-blur-sm",
+                queueVirtualEnabled && "shadow-[0_1px_3px_rgba(0,0,0,0.04)]",
+              )}
             >
-              <tr>
-              <th className="w-9">
+              <tr className="border-b border-slate-200/80">
+              <th className="w-9 bg-slate-50/95 px-2 py-2.5">
                 <input
                   type="checkbox"
-                  className={checkboxBrandClass}
+                  className={cn("size-4", checkboxBrandClass)}
                   checked={allSelected}
                   disabled={pending}
                   aria-label="Zaznacz wszystkie pozycje"
                   onChange={(e) => toggleAll(e.target.checked)}
                 />
               </th>
-              <th className="min-w-[7rem]">Handlowiec</th>
-              <th>Produkt</th>
-              <th className="w-[9.5rem] text-right">Realizacja</th>
+              <th className="bg-slate-50/95 px-2 py-2.5 text-left text-[11px] font-semibold uppercase tracking-wide text-slate-500">Handlowiec</th>
+              <th className="bg-slate-50/95 px-2 py-2.5 text-left text-[11px] font-semibold uppercase tracking-wide text-slate-500">Produkt</th>
+              <th className="w-[9.5rem] bg-slate-50/95 px-2 py-2.5 text-right text-[11px] font-semibold uppercase tracking-wide text-slate-500">Realizacja</th>
             </tr>
           </thead>
           <ReceiveQueueVirtualTbody
@@ -891,6 +923,7 @@ export function ReceiveQueueTable({
             productSearchActive={productSearchActive}
             productSearch={productSearch}
             receiveQueue={receiveQueue}
+            supplierScheduleMap={supplierScheduleMap}
             getQty={getQty}
             zamowienieIdsInGroup={zamowienieIdsInGroup}
             informacjaIdsInGroup={informacjaIdsInGroup}
@@ -925,6 +958,8 @@ export function ReceiveQueueTable({
                       isOpen={isOpen}
                       onToggle={() => collapse.toggle(group.supplierKey)}
                       variant="delivery"
+                      scheduleDate={supplierScheduleMap.get(group.supplierKey) ?? null}
+                      maxWaitingDays={maxWaitingDaysForOrders(group.orders)}
                       actions={
                         <ReceiveQueueGroupMenu
                           groupIds={groupIds}

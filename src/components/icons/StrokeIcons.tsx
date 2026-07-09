@@ -653,3 +653,13 @@ export function IconScanLine(props: StrokeIconProps) {
     </Svg>
   );
 }
+
+/** Co nowego / changelog — iskry */
+export function IconSparkles(props: StrokeIconProps) {
+  return (
+    <Svg {...props}>
+      <path d="M12 3l1.5 4.5L18 9l-4.5 1.5L12 15l-1.5-4.5L6 9l4.5-1.5L12 3z" />
+      <path d="M19 14l.5 1.5L21 16l-1.5.5L19 18l-.5-1.5L17 16l1.5-.5L19 14z" />
+    </Svg>
+  );
+}

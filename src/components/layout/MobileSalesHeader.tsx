@@ -2,6 +2,7 @@
 
 import { MobileBrandBlock } from "@/components/layout/SidebarBrandBlock";
 import { SalesInboxBellTrigger } from "@/components/sales/SalesInboxBell";
+import { ChangelogTriggerIconButton } from "@/components/changelog/ChangelogTriggerIconButton";
 import { createClient } from "@/lib/supabase/client";
 import type { UserRole } from "@/types/database";
 import type { VacationDelegationRow } from "@/lib/data/vacation-delegations";
@@ -40,6 +41,7 @@ export function MobileSalesHeader({
         />
       </div>
       <div className="flex shrink-0 items-center gap-2">
+        <ChangelogTriggerIconButton />
         {showInboxBell ? <SalesInboxBellTrigger className="md:hidden" /> : null}
         <button
           type="button"

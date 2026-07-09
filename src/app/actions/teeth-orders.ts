@@ -333,6 +333,57 @@ export async function actionUpdateTeethSpecGroup(
   return { success: true };
 }
 
+export async function actionAcknowledgeTeethCancellation(
+  orderIds: string[]
+): Promise<{ success: true; count: number }> {
+  const user = await requireTeethPanel("mutate");
+  const ids = [...new Set(orderIds.filter(Boolean))];
+  if (!ids.length) return { success: true, count: 0 };
+
+  const { createAdminClient, hasSupabaseConfig } = await import("@/lib/supabase/admin");
+  if (!hasSupabaseConfig()) {
+    throw new Error("Brak konfiguracji Supabase");
+  }
+  const supabase = createAdminClient();
+
+  const { data, error } = await supabase
+    .from("individual_orders")
+    .select(
+      "id, is_teeth, sales_cancelled_at, warehouse_cancel_fulfilled_at, status"
+    )
+    .in("id", ids);
+
+  if (error) throw new Error(error.message);
+
+  const toAck = (data ?? []).filter(
+    (row) =>
+      row.is_teeth &&
+      row.sales_cancelled_at &&
+      !row.warehouse_cancel_fulfilled_at
+  );
+
+  if (!toAck.length) {
+    throw new Error("Brak pozycji do rozliczenia — pozycje mogą być już rozliczone lub nieanulowane.");
+  }
+
+  const now = new Date().toISOString();
+  const { error: updErr } = await supabase
+    .from("individual_orders")
+    .update({ warehouse_cancel_fulfilled_at: now })
+    .in("id", toAck.map((r) => r.id))
+    .is("warehouse_cancel_fulfilled_at", null);
+
+  if (updErr) throw new Error(updErr.message);
+
+  revalidatePath("/zeby");
+  revalidatePath("/zeby/przyjecie");
+  revalidatePath("/moje");
+  revalidatePath("/podsumowanie");
+  revalidatePath("/", "layout");
+
+  return { success: true, count: toAck.length };
+}
+
 export async function actionAddTeethSpecGroup(
   orderId: string,
   spec: { color: string; mould: string | null; jaw: string | null; kind: string },

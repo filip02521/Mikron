@@ -12,13 +12,14 @@ import {
   actionUndoDelivery,
   actionUpdateDelivered,
 } from "@/app/actions/admin";
+import { actionAcknowledgeTeethCancellation } from "@/app/actions/teeth-orders";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { SystemNotice } from "@/components/ui/SystemNotice";
 import { UndoToast } from "@/components/ui/UndoToast";
 import { NoticeToast } from "@/components/ui/NoticeToast";
 import { Button } from "@/components/ui/Button";
-import { IconTooth } from "@/components/icons/StrokeIcons";
+import { IconTooth, IconChevronDown } from "@/components/icons/StrokeIcons";
 import { SupplierFilterChips } from "@/components/queue/SupplierFilterChips";
 import { ReceiveQueueSearchField } from "@/components/queue/ReceiveQueueSearchField";
 import { ReceiveQueueActiveFilters } from "@/components/queue/ReceiveQueueActiveFilters";
@@ -123,6 +124,7 @@ export function TeethReceiveLinesPanel({
   const [productLineFilter, setProductLineFilter] = useState("");
   const [productSearch, setProductSearch] = useState("");
   const [productSearchResetToken, setProductSearchResetToken] = useState(0);
+  const [filtersOpen, setFiltersOpen] = useState(false);
   const [batchSaveConfirm, setBatchSaveConfirm] = useState<{
     orderIds: string[];
     fullQuantity?: boolean;
@@ -436,6 +438,28 @@ export function TeethReceiveLinesPanel({
     teethUpdates?.refreshNow();
   };
 
+  const handleAcknowledgeCancellation = (orderIds: string[]) => {
+    if (blockIfReadOnly()) return;
+    onPendingChange("Rozliczanie anulacji…");
+    start(async () => {
+      try {
+        const result = await actionAcknowledgeTeethCancellation(orderIds);
+        onToast(TEETH_RECEIVE_TOAST.cancellationAckSuccess(result.count));
+        router.refresh();
+        teethUpdates?.refreshNow();
+      } catch (e) {
+        onToast(
+          toastFromError(
+            e instanceof Error ? e.message : undefined,
+            TEETH_RECEIVE_TOAST.cancellationAckFailed.text,
+          ),
+        );
+      } finally {
+        onPendingChange(null);
+      }
+    });
+  };
+
   if (receiveQueue.length === 0) {
     return (
       <EmptyState
@@ -562,39 +586,92 @@ export function TeethReceiveLinesPanel({
         />
       ) : null}
 
-      <div className={cn(teethPanelFiltersBarClass, "border-b border-slate-200/80 py-3")}>
-        <div className="space-y-3">
-          <div className={cn(receiveQueueToolbarSectionClass, "border-slate-200/80 shadow-none")}>
-            <ReceiveQueueSearchField
-              key={`teeth-receive-search-${productSearchResetToken}`}
-              onDebouncedChange={setProductSearch}
+      <div className={cn(teethPanelFiltersBarClass, "border-b border-slate-200/80")}>
+        <button
+          type="button"
+          onClick={() => setFiltersOpen((v) => !v)}
+          className="flex w-full items-center justify-between gap-2 py-1 text-left"
+          aria-expanded={filtersOpen}
+        >
+          <div className="flex min-w-0 items-center gap-2">
+            <IconChevronDown
+              open={filtersOpen}
+              size={14}
+              strokeWidth={2}
+              className="shrink-0 text-slate-400"
             />
-            {productSearchActive ? (
-              <div className="mt-3 space-y-2 border-t border-slate-100 pt-3">
-                <ReceiveQueueActiveFilters
-                  productSearch={productSearch}
-                  onClearProductSearch={clearProductSearch}
-                  zdFilter={null}
-                  onClearZdFilter={() => {}}
-                />
-                <p className="text-[11px] font-medium text-slate-700">
-                  {receiveQueueSearchToolbarLabel(filtered.length, zdScoped.length, productSearch)}
-                </p>
-              </div>
+            <span className="text-xs font-semibold text-slate-700">Filtry i wyszukiwanie</span>
+            {productSearchActive || productLineFilter ? (
+              <span className="inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-indigo-100 px-1 text-[10px] font-bold tabular-nums text-indigo-700">
+                {[productSearchActive, Boolean(productLineFilter)].filter(Boolean).length}
+              </span>
+            ) : null}
+            {productLineFilter ? (
+              <span className="hidden truncate text-[11px] text-slate-500 sm:inline">
+                {productLineFilter}
+              </span>
             ) : null}
           </div>
-
-          <div className={cn(receiveQueueToolbarSectionClass, "border-slate-200/80")}>
-            <SupplierFilterChips
-              chips={productLineChips}
-              value={productLineFilter}
-              onChange={setProductLineFilter}
-              totalLabel="Wszystkie linie"
-              fieldLabel="Linia produktowa"
-              accentVariant="indigo"
-            />
+          <div className="flex shrink-0 items-center gap-2">
+            {productSearchActive || productLineFilter ? (
+              <span
+                role="button"
+                tabIndex={0}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setProductLineFilter("");
+                  clearProductSearch();
+                }}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" || e.key === " ") {
+                    e.stopPropagation();
+                    e.preventDefault();
+                    setProductLineFilter("");
+                    clearProductSearch();
+                  }
+                }}
+                className="text-[10px] font-medium text-indigo-700 transition hover:text-indigo-900"
+              >
+                Wyczyść
+              </span>
+            ) : null}
           </div>
-        </div>
+        </button>
+
+        {filtersOpen ? (
+          <div className="space-y-3 pt-2">
+            <div className={cn(receiveQueueToolbarSectionClass, "border-slate-200/80 shadow-none")}>
+              <ReceiveQueueSearchField
+                key={`teeth-receive-search-${productSearchResetToken}`}
+                onDebouncedChange={setProductSearch}
+              />
+              {productSearchActive ? (
+                <div className="mt-3 space-y-2 border-t border-slate-100 pt-3">
+                  <ReceiveQueueActiveFilters
+                    productSearch={productSearch}
+                    onClearProductSearch={clearProductSearch}
+                    zdFilter={null}
+                    onClearZdFilter={() => {}}
+                  />
+                  <p className="text-[11px] font-medium text-slate-700">
+                    {receiveQueueSearchToolbarLabel(filtered.length, zdScoped.length, productSearch)}
+                  </p>
+                </div>
+              ) : null}
+            </div>
+
+            <div className={cn(receiveQueueToolbarSectionClass, "border-slate-200/80")}>
+              <SupplierFilterChips
+                chips={productLineChips}
+                value={productLineFilter}
+                onChange={setProductLineFilter}
+                totalLabel="Wszystkie linie"
+                fieldLabel="Linia produktowa"
+                accentVariant="indigo"
+              />
+            </div>
+          </div>
+        ) : null}
       </div>
 
       {filtered.length === 0 ? (
@@ -644,6 +721,7 @@ export function TeethReceiveLinesPanel({
                   const order = receiveQueue.find((o) => o.id === orderId);
                   if (order) handleManualQtyChange(order, value);
                 }}
+                onAcknowledgeCancellation={handleAcknowledgeCancellation}
               />
             );
           })}

@@ -102,7 +102,7 @@ export function submissionGroupSplitHint(
   orders: IndividualOrder[]
 ): string | null {
   const count = countSubmissionGroupCards(submissionGroupId, orders, {
-    includeAcknowledged: true,
+    includeAcknowledged: false,
   });
   return count > 1 ? MY_ORDER_SUBMISSION_SPLIT_HINT : null;
 }

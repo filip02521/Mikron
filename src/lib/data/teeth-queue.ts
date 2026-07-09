@@ -197,6 +197,7 @@ export async function fetchTeethQueue(): Promise<TeethQueueGroup[]> {
     .eq("is_teeth", true)
     .eq("teeth_ocr_pending", false)
     .in("status", [...TEETH_QUEUE_PENDING_STATUSES])
+    .is("sales_cancelled_at", null)
     .order("created_at", { ascending: true })
     .limit(500);
 
@@ -337,7 +338,8 @@ export async function markTeethOrdered(
     .update({ status: "Nowe" })
     .in("id", uniqueIds)
     .eq("is_teeth", true)
-    .eq("status", "Weryfikacja");
+    .eq("status", "Weryfikacja")
+    .is("sales_cancelled_at", null);
 
   if (normalizeErr) throw new Error(normalizeErr.message);
 
@@ -346,7 +348,8 @@ export async function markTeethOrdered(
     .select("*, supplier:suppliers(*), sales_person:sales_people(*)")
     .in("id", uniqueIds)
     .eq("is_teeth", true)
-    .in("status", [...TEETH_QUEUE_PENDING_STATUSES]);
+    .in("status", [...TEETH_QUEUE_PENDING_STATUSES])
+    .is("sales_cancelled_at", null);
 
   if (fetchErr) throw new Error(fetchErr.message);
 
@@ -373,7 +376,8 @@ export async function markTeethOrdered(
     .select("id, supplier_id, teeth_delivery_date")
     .in("id", idsToMark)
     .eq("is_teeth", true)
-    .in("status", [...TEETH_QUEUE_PENDING_STATUSES]);
+    .in("status", [...TEETH_QUEUE_PENDING_STATUSES])
+    .is("sales_cancelled_at", null);
 
   const { data, error } = await supabase
     .from("individual_orders")
@@ -386,6 +390,7 @@ export async function markTeethOrdered(
     .in("id", idsToMark)
     .eq("is_teeth", true)
     .in("status", [...TEETH_QUEUE_PENDING_STATUSES])
+    .is("sales_cancelled_at", null)
     .select("id");
 
   if (error) throw new Error(error.message);
@@ -506,7 +511,8 @@ export async function markTeethPositionsOrdered(
     .select("*, supplier:suppliers(*), sales_person:sales_people(*)")
     .in("id", allOrderIds)
     .eq("is_teeth", true)
-    .in("status", [...TEETH_QUEUE_PENDING_STATUSES]);
+    .in("status", [...TEETH_QUEUE_PENDING_STATUSES])
+    .is("sales_cancelled_at", null);
 
   if (fetchErr) throw new Error(fetchErr.message);
 
@@ -604,7 +610,8 @@ export async function markTeethPositionsOrdered(
       .select("id, supplier_id, teeth_delivery_date")
       .in("id", ordersCompleted)
       .eq("is_teeth", true)
-      .in("status", [...TEETH_QUEUE_PENDING_STATUSES]);
+      .in("status", [...TEETH_QUEUE_PENDING_STATUSES])
+      .is("sales_cancelled_at", null);
 
     const { error: orderErr } = await supabase
       .from("individual_orders")
@@ -616,7 +623,8 @@ export async function markTeethPositionsOrdered(
       })
       .in("id", ordersCompleted)
       .eq("is_teeth", true)
-      .in("status", [...TEETH_QUEUE_PENDING_STATUSES]);
+      .in("status", [...TEETH_QUEUE_PENDING_STATUSES])
+      .is("sales_cancelled_at", null);
 
     if (orderErr) throw new Error(orderErr.message);
 
@@ -840,7 +848,8 @@ export async function countTeethQueue(): Promise<number> {
     .select("*", { count: "exact", head: true })
     .eq("is_teeth", true)
     .eq("teeth_ocr_pending", false)
-    .in("status", [...TEETH_QUEUE_PENDING_STATUSES]);
+    .in("status", [...TEETH_QUEUE_PENDING_STATUSES])
+    .is("sales_cancelled_at", null);
 
   if (error) return 0;
 
@@ -868,6 +877,7 @@ export async function fetchTeethQueueVersion(): Promise<string | null> {
       .eq("is_teeth", true)
       .eq("teeth_ocr_pending", false)
       .in("status", [...TEETH_QUEUE_PENDING_STATUSES])
+      .is("sales_cancelled_at", null)
       .order("created_at", { ascending: false }),
     fetchTeethSchedules().catch(() => [] as TeethSupplierScheduleWithSupplier[]),
   ]);
@@ -917,6 +927,7 @@ export async function fetchTeethVerificationQueue(): Promise<TeethQueueGroup[]> 
     .eq("is_teeth", true)
     .eq("teeth_ocr_pending", true)
     .in("status", [...TEETH_QUEUE_PENDING_STATUSES])
+    .is("sales_cancelled_at", null)
     .order("created_at", { ascending: true })
     .limit(200);
 
@@ -957,7 +968,8 @@ export async function countTeethVerificationQueue(): Promise<number> {
     .select("*", { count: "exact", head: true })
     .eq("is_teeth", true)
     .eq("teeth_ocr_pending", true)
-    .in("status", [...TEETH_QUEUE_PENDING_STATUSES]);
+    .in("status", [...TEETH_QUEUE_PENDING_STATUSES])
+    .is("sales_cancelled_at", null);
 
   if (error) return 0;
   return count ?? 0;
@@ -977,7 +989,8 @@ export async function approveTeethOcr(orderIds: string[]): Promise<{ updated: nu
     .select("id, teeth_ocr_image_path")
     .in("id", orderIds)
     .eq("is_teeth", true)
-    .eq("teeth_ocr_pending", true);
+    .eq("teeth_ocr_pending", true)
+    .is("sales_cancelled_at", null);
 
   const { data, error } = await supabase
     .from("individual_orders")
@@ -985,6 +998,7 @@ export async function approveTeethOcr(orderIds: string[]): Promise<{ updated: nu
     .in("id", orderIds)
     .eq("is_teeth", true)
     .eq("teeth_ocr_pending", true)
+    .is("sales_cancelled_at", null)
     .select("id");
 
   if (error) throw new Error(error.message);

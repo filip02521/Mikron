@@ -18,7 +18,7 @@ export const teethProsbaIncompleteIconClass = "mt-0.5 shrink-0 text-amber-700";
 
 /** Chip pozycji listy — jak badge „Zęby” w zwiniętej pozycji. */
 export const teethProsbaChipClass =
-  "inline-flex max-w-full items-center rounded-full bg-white/80 px-2 py-0.5 text-[11px] font-medium leading-snug text-violet-950 ring-1 ring-violet-200/80";
+  "inline-flex max-w-full items-center rounded-md bg-white/80 px-2 py-0.5 text-[11px] font-medium leading-snug text-violet-950 ring-1 ring-violet-200/80";
 
 export const teethProsbaChipCountClass = "font-semibold tabular-nums text-violet-800";
 

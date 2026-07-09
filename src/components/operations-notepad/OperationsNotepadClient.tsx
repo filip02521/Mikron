@@ -77,6 +77,7 @@ export function OperationsNotepadClient({
   role,
   assignedWorkspaces = [],
   loadError = null,
+  deptBadges = {},
 }: {
   initial: OperationsNotepadData;
   department: OperationsDepartment;
@@ -84,6 +85,7 @@ export function OperationsNotepadClient({
   role: UserRole;
   assignedWorkspaces?: Workspace[];
   loadError?: string | null;
+  deptBadges?: Record<string, number>;
 }) {
   const router = useRouter();
   const undoShortcut = useUndoShortcutLabel();
@@ -309,20 +311,35 @@ export function OperationsNotepadClient({
             aria-label="Dział"
           >
             <span className="text-xs font-medium text-slate-500">Dział</span>
-            {allowedDepartments.map((d) => (
-              <Link
-                key={d}
-                href={`/notatki?dzial=${d}`}
-                aria-current={d === department ? "page" : undefined}
-                className={cn(
-                  panelChoiceChipClass,
-                  "min-h-9 py-2 sm:min-h-0",
-                  d === department ? panelChoiceChipSelectedClass : panelChoiceChipIdleClass
-                )}
-              >
-                {OPERATIONS_DEPARTMENT_LABELS[d]}
-              </Link>
-            ))}
+            {allowedDepartments.map((d) => {
+              const deptCount = deptBadges[d] ?? 0;
+              return (
+                <Link
+                  key={d}
+                  href={`/notatki?dzial=${d}`}
+                  aria-current={d === department ? "page" : undefined}
+                  className={cn(
+                    panelChoiceChipClass,
+                    "min-h-9 py-2 sm:min-h-0",
+                    d === department ? panelChoiceChipSelectedClass : panelChoiceChipIdleClass
+                  )}
+                >
+                  {OPERATIONS_DEPARTMENT_LABELS[d]}
+                  {deptCount > 0 ? (
+                    <span
+                      className={cn(
+                        "ml-1.5 inline-flex h-4 min-w-4 items-center justify-center rounded-full px-1 text-[10px] font-bold tabular-nums",
+                        d === department
+                          ? "bg-indigo-600 text-white"
+                          : "bg-indigo-100 text-indigo-700",
+                      )}
+                    >
+                      {deptCount}
+                    </span>
+                  ) : null}
+                </Link>
+              );
+            })}
           </div>
         ) : (
           <div className={cn(panelChromeInsetClass, "border-b border-slate-100 py-2 text-xs text-slate-600")}>

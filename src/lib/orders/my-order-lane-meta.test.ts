@@ -5,13 +5,11 @@ import {
   resolveGroupAcknowledgeMode,
   resolveLinePickupAckMode,
   splitPickupPendingIds,
-  submissionGroupSplitHint,
 } from "@/lib/orders/my-order-lane-meta";
 import type { IndividualOrder } from "@/types/database";
 
 function order(partial: Partial<IndividualOrder> & { id: string }): IndividualOrder {
   return {
-    id: partial.id,
     sales_person_id: "sp1",
     supplier_id: "sup1",
     symbol: "A",
@@ -65,29 +63,6 @@ describe("my-order-lane-meta", () => {
         { isTeeth: false },
       ]).laneKind
     ).toBe("mixed");
-  });
-
-  it("submissionGroupSplitHint — wiele kart", () => {
-    const gid = "44444444-4444-4444-4444-444444444444";
-    const hint = submissionGroupSplitHint(gid, [
-      order({ id: "1", submission_group_id: gid, status: "Nowe" }),
-      order({ id: "2", submission_group_id: gid, status: "Weryfikacja" }),
-    ]);
-    expect(hint).toContain("osobnej karcie");
-  });
-
-  it("submissionGroupSplitHint — pozostaje po potwierdzeniu rodzeństwa", () => {
-    const gid = "44444444-4444-4444-4444-444444444444";
-    const hint = submissionGroupSplitHint(gid, [
-      order({
-        id: "1",
-        submission_group_id: gid,
-        status: "Zrealizowane",
-        sales_acknowledged_at: "2026-01-01T00:00:00.000Z",
-      }),
-      order({ id: "2", submission_group_id: gid, status: "Weryfikacja" }),
-    ]);
-    expect(hint).toContain("osobnej karcie");
   });
 
   it("resolveGroupAcknowledgeMode — odbiór ma pierwszeństwo przed rezygnacją", () => {

@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo } from "react";
+import { Fragment, useMemo } from "react";
 import { cn } from "@/lib/cn";
 import { useTeethProductInfo } from "@/components/layout/TeethExemptContext";
 import { checkboxBrandClass, panelTypography } from "@/lib/ui/ontime-theme";
@@ -244,6 +244,15 @@ export function TeethQueueBatchTable({
     return !hasSpec || hasIncomplete || !hasList || needsHeader;
   });
 
+  const salesPersonRowCounts = useMemo(() => {
+    const map = new Map<string | null, number>();
+    for (const row of groupRows) {
+      const name = row.salesPersonName;
+      map.set(name, (map.get(name) ?? 0) + 1);
+    }
+    return map;
+  }, [groupRows]);
+
   return (
     <div className={teethPanelBatchStripClass}>
       <div className="space-y-2 py-2.5">
@@ -270,7 +279,6 @@ export function TeethQueueBatchTable({
                 <th className="py-1.5 px-2">Szczęka</th>
                 <th className="py-1.5 px-2">Typ</th>
                 <th className="py-1.5 px-2 text-right tabular-nums">Szt.</th>
-                <th className="py-1.5 px-2">Kto zamawiał</th>
                 <th className="py-1.5 pr-3 pl-2 sm:pr-4 lg:pr-5" />
               </tr>
             </thead>
@@ -325,13 +333,70 @@ export function TeethQueueBatchTable({
 
                 const salesIdx = salesPersonIndexMap.get(row.salesPersonName) ?? 0;
     const isEvenSales = salesIdx % 2 === 0;
-    const salesAccent = isEvenSales ? "bg-blue-50/30" : "bg-violet-50/30";
-    const salesAccentHover = isEvenSales ? "hover:bg-blue-50/50" : "hover:bg-violet-50/50";
-    const salesAccentBorder = isEvenSales ? "border-l-2 border-l-blue-300/50" : "border-l-2 border-l-violet-300/50";
+    const salesAccent = isEvenSales ? "bg-slate-50/40" : "bg-white/40";
+    const salesAccentHover = isEvenSales ? "hover:bg-slate-100/50" : "hover:bg-slate-50/60";
+    const salesAccentBorder = isEvenSales
+      ? "border-l-2 border-l-slate-300/60"
+      : "border-l-2 border-l-indigo-300/50";
+
+                const salesRowCount = salesPersonRowCounts.get(row.salesPersonName) ?? 0;
 
                 return (
+                  <Fragment key={`${row.key}-${index}`}>
+                    {row.isFirstRowOfSalesPerson ? (
+                      <tr>
+                        <td
+                          colSpan={7}
+                          className={cn(
+                            "border-b border-slate-200/80 bg-white/60 px-3 py-1.5 sm:px-4 lg:px-5",
+                            index > 0 && "border-t border-slate-200/80",
+                          )}
+                        >
+                          <div className="flex items-center gap-2">
+                            <span
+                              className={cn(
+                                "size-2 rounded-full",
+                                isEvenSales ? "bg-slate-400" : "bg-indigo-400",
+                              )}
+                            />
+                            <span className="text-xs font-semibold text-slate-800">
+                              {row.salesPersonName ?? "Bez handlowca"}
+                            </span>
+                            <span className="text-[10px] text-slate-400">
+                              {salesRowCount} {salesRowCount === 1 ? "wiersz" : salesRowCount < 5 ? "wiersze" : "wierszy"}
+                            </span>
+                            {salesIssues && (salesIssues.missingList || salesIssues.incomplete || salesIssues.needsHeader || salesIssues.informacja) ? (
+                              <div className="flex flex-wrap items-center gap-1">
+                                {salesIssues.missingList ? (
+                                  <Badge key="missing" variant="warning" className="text-[10px]">
+                                    Brak listy
+                                  </Badge>
+                                ) : null}
+                                {salesIssues.incomplete ? (
+                                  <Badge key="incomplete" variant="warning" className="text-[10px]">
+                                    Niekompletna
+                                  </Badge>
+                                ) : null}
+                                {salesIssues.needsHeader ? (
+                                  <Badge key="header" variant="warning" className="text-[10px]">
+                                    {TEETH_QUEUE_HEADER_DATA_LABEL}
+                                  </Badge>
+                                ) : null}
+                                {salesIssues.informacja ? (
+                                  <Badge key="info" variant="default" className="text-[10px]">
+                                    Informacja
+                                  </Badge>
+                                ) : null}
+                              </div>
+                            ) : null}
+                            {salesIssues && salesIssues.notes.length > 0 ? (
+                              <ProcurementSalesRequestNote note={salesIssues.notes[0].note} compact />
+                            ) : null}
+                          </div>
+                        </td>
+                      </tr>
+                    ) : null}
                   <tr
-                    key={`${row.key}-${index}`}
                     className={cn(
                       "border-b border-slate-100/90 last:border-b-0 transition-colors",
                       salesAccentBorder,
@@ -379,42 +444,6 @@ export function TeethQueueBatchTable({
                         </span>
                       ) : row.totalCount}
                     </td>
-                    <td className="py-1.5 px-2 text-slate-700">
-                      {row.isFirstRowOfSalesPerson ? (
-                        <div className="flex flex-col gap-0.5">
-                          <span className={cn("font-medium", allOrdered ? "text-slate-400" : "text-slate-800")}>
-                            {row.salesPersonName ?? "—"}
-                          </span>
-                          {salesIssues && (salesIssues.missingList || salesIssues.incomplete || salesIssues.needsHeader || salesIssues.informacja) ? (
-                            <div className="flex flex-wrap items-center gap-1">
-                              {salesIssues.missingList ? (
-                                <Badge key="missing" variant="warning" className="text-[10px]">
-                                  Brak listy
-                                </Badge>
-                              ) : null}
-                              {salesIssues.incomplete ? (
-                                <Badge key="incomplete" variant="warning" className="text-[10px]">
-                                  Niekompletna
-                                </Badge>
-                              ) : null}
-                              {salesIssues.needsHeader ? (
-                                <Badge key="header" variant="warning" className="text-[10px]">
-                                  {TEETH_QUEUE_HEADER_DATA_LABEL}
-                                </Badge>
-                              ) : null}
-                              {salesIssues.informacja ? (
-                                <Badge key="info" variant="default" className="text-[10px]">
-                                  Informacja
-                                </Badge>
-                              ) : null}
-                            </div>
-                          ) : null}
-                          {salesIssues && salesIssues.notes.length > 0 ? (
-                            <ProcurementSalesRequestNote note={salesIssues.notes[0].note} compact />
-                          ) : null}
-                        </div>
-                      ) : null}
-                    </td>
                     <td className="py-1.5 pr-3 pl-2 sm:pr-4 lg:pr-5">
                       {onEditSaved ? (
                         <div className="flex flex-col gap-0.5">
@@ -439,6 +468,7 @@ export function TeethQueueBatchTable({
                       ) : null}
                     </td>
                   </tr>
+                  </Fragment>
                 );
               })}
             </tbody>

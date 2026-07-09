@@ -621,3 +621,90 @@ html.ontime-scroll-locked main {
     animation: none;
   }
 }
+
+/* ——— Tablica — rozwinięcie pytania ——— */
+@keyframes board-question-expand {
+  from {
+    opacity: 0;
+    transform: translateY(-6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.board-question-expanded-enter {
+  animation: board-question-expand 0.3s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .board-question-expanded-enter {
+    animation: none;
+  }
+}
+
+/* ——— Tablica — rozwinięcie formularza „Zadaj pytanie" ——— */
+@keyframes board-question-form-enter {
+  from {
+    opacity: 0;
+    transform: translateY(-4px) scaleY(0.98);
+    transform-origin: top;
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scaleY(1);
+  }
+}
+
+.board-question-form-enter {
+  animation: board-question-form-enter 0.28s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .board-question-form-enter {
+    animation: none;
+  }
+}
+
+/* ——— Tablica — puls FAB „Zadaj pytanie" (mobile) ——— */
+@keyframes board-question-fab-pulse {
+  0%, 100% {
+    box-shadow: 0 4px 12px -2px rgba(79, 70, 229, 0.3);
+  }
+  50% {
+    box-shadow: 0 4px 16px -1px rgba(79, 70, 229, 0.45);
+  }
+}
+
+.board-question-fab-pulse {
+  animation: board-question-fab-pulse 2.4s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .board-question-fab-pulse {
+    animation: none;
+  }
+}
+
+/* ——— Changelog — wejście wpisu ——— */
+@keyframes changelog-entry-enter {
+  from {
+    opacity: 0;
+    transform: translateY(6px) scale(0.99);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.changelog-entry-enter {
+  animation: changelog-entry-enter 0.35s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .changelog-entry-enter {
+    animation: none;
+  }
+}

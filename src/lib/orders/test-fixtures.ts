@@ -73,7 +73,6 @@ export function createTestMyOrderRow(overrides: Partial<MyOrderRow> = {}): MyOrd
     procurementCancelNote: null,
     productLaneKind: "regular",
     submissionGroupId: null,
-    submissionGroupSplitHint: null,
     ...overrides,
   };
 }

@@ -92,17 +92,17 @@ export function QueuePanelToolbar({
         />
       </div>
       {showProcurementLinks ? (
-        <p className="mt-2 text-[10px] text-slate-500">
-          Brak dostawcy uzupełnia zakupy w{" "}
-          <Link href="/podsumowanie" className={brandLinkClass}>
+        <div className="mt-2.5 flex flex-wrap items-center gap-x-1.5 gap-y-0.5 rounded-lg bg-slate-50/60 px-3 py-1.5 text-[10px] text-slate-500">
+          <span>Brak dostawcy uzupełnia zakupy w</span>
+          <Link href="/podsumowanie" className={cn(brandLinkClass, "font-medium")}>
             panelu dziennym
           </Link>
-          . Zęby przyjmujesz w{" "}
-          <Link href="/zeby/przyjecie" className={brandLinkClass}>
+          <span aria-hidden className="text-slate-300">·</span>
+          <span>Zęby przyjmujesz w</span>
+          <Link href="/zeby/przyjecie" className={cn(brandLinkClass, "font-medium")}>
             panelu zębów
           </Link>
-          .
-        </p>
+        </div>
       ) : null}
     </div>
   );

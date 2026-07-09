@@ -100,19 +100,19 @@ export function ZkProsbaLinkChip({
 
   const content = pending ? (
     <span
-      className="inline-flex min-w-0 max-w-full items-center gap-1.5 text-violet-800"
+      className="inline-flex min-w-0 max-w-full items-center gap-1.5 text-[11px] text-violet-800"
       role="status"
       aria-busy="true"
       aria-label={zkPendingMessage(nr)}
       title={zkPendingMessage(nr)}
     >
       <Spinner size="sm" className="shrink-0 border-slate-200 border-t-violet-600" />
-      <span className="shrink-0 font-medium leading-none">{ZK_NAV_PENDING_LABEL}</span>
+      <span className="shrink-0 text-[11px] font-medium leading-none">{ZK_NAV_PENDING_LABEL}</span>
       <span className={cn(salesZkNumberClass, "min-w-0 truncate tabular-nums")}>{nr}</span>
     </span>
   ) : (
-    <span className="inline-flex max-w-full min-w-0 items-center gap-1.5">
-      <span className={cn(salesZkLabelClass, "items-center gap-0.5 leading-none")}>
+    <span className="inline-flex max-w-full min-w-0 items-center gap-1.5 leading-none">
+      <span className={cn(salesZkLabelClass, "items-center gap-0.5")}>
         <svg viewBox="0 0 16 16" className="size-3" fill="currentColor" aria-hidden>
           <path d="M4 2a1 1 0 0 0-1 1v11a1 1 0 0 0 1.6.8L8 12.5l3.4 2.3a1 1 0 0 0 1.6-.8V3a1 1 0 0 0-1-1H4Zm0 1h8v11L8 11.5 4 14V3Z" />
         </svg>
@@ -122,7 +122,7 @@ export function ZkProsbaLinkChip({
     </span>
   );
 
-  const wrapperClass = cn(inline ? "inline min-w-0" : salesTypography.rowMeta, "max-w-full", className);
+  const wrapperClass = cn(inline ? "inline-flex items-center min-w-0" : salesTypography.rowMeta, "max-w-full", className);
 
   if (!nr) return null;
 

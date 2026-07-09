@@ -212,26 +212,33 @@ export function DepartmentBoardQuestionForm({
           />
         </button>
         {expanded ? (
-          <QuestionFormFields
-            title={title}
-            body={body}
-            product={product}
-            error={error}
-            saving={saving}
-            tourDemo={tourDemo}
-            embedded={embedded}
-            onTitleChange={onTitleChange}
-            onBodyChange={onBodyChange}
-            onProductChange={onProductChange}
-            onSubmit={() => submit()}
-            idPrefix="board-question-desktop"
-          />
+          <div className="board-question-form-enter">
+            <QuestionFormFields
+              title={title}
+              body={body}
+              product={product}
+              error={error}
+              saving={saving}
+              tourDemo={tourDemo}
+              embedded={embedded}
+              onTitleChange={onTitleChange}
+              onBodyChange={onBodyChange}
+              onProductChange={onProductChange}
+              onSubmit={() => submit()}
+              idPrefix="board-question-desktop"
+            />
+          </div>
         ) : null}
       </div>
 
       <button
         type="button"
-        className={cn(boardQuestionFabClass, "sm:hidden", floatingToastBottomClass, "left-4 right-auto")}
+        className={cn(
+          boardQuestionFabClass,
+          "board-question-fab-pulse sm:hidden",
+          floatingToastBottomClass,
+          "left-4 right-auto",
+        )}
         onClick={() => setMobileOpen(true)}
         aria-label={DEPARTMENT_BOARD_QUESTIONS_FORM.title}
       >

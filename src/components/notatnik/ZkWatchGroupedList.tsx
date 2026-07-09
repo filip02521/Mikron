@@ -357,7 +357,7 @@ export function ZkWatchGroupedList({
                 onClick={() => toggleMonth(group.key)}
                 aria-expanded={isOpen}
                 aria-label={`${group.label}, ${group.watches.length} ZK, ${isOpen ? "rozwinięte" : "zwinięte"}`}
-                className="flex w-full items-center gap-2 border-y border-slate-200/90 bg-slate-50/95 px-3 py-1.5 text-left backdrop-blur-sm transition hover:bg-slate-100/90"
+                className="flex w-full items-center gap-2 border-y border-slate-200/70 bg-slate-50/80 px-3 py-2 text-left transition hover:bg-slate-100/80"
               >
                 <IconChevronRight
                   size={14}

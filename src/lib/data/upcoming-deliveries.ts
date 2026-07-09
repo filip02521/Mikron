@@ -1,17 +1,21 @@
 import { startOfWeek, addDays } from "date-fns";
 import { createAdminClient, hasSupabaseConfig } from "@/lib/supabase/admin";
 import { normalizeIndividualOrders } from "@/lib/data/normalize-order";
-import { formatDateString, parseDateOnly } from "@/lib/orders/dates";
+import { formatDateString, getMondayOfWeek, parseDateOnly, toDateOnly } from "@/lib/orders/dates";
 import { todayInWarsaw } from "@/lib/time/warsaw";
 import {
   fetchCarrierHintsForSuppliers,
   type WarehouseCarrierHint,
 } from "@/lib/warehouse/delivery-receipts";
 import {
+  searchDeliveryReceipts,
+} from "@/lib/warehouse/delivery-journal-insights";
+import {
   warehouseCarrierLabel,
 } from "@/lib/warehouse/delivery-carriers";
 import type { WarehouseCarrierRow } from "@/lib/data/warehouse-carriers";
-import type { IndividualOrder } from "@/types/database";
+import type { IndividualOrder, SupplierLocation, SupplierWithSchedule, VacationNote } from "@/types/database";
+import { isSupplierOrderOnDemand } from "@/lib/orders/supplier-on-demand";
 
 export type UpcomingDeliveryRangePreset = "week" | "7days" | "14days";
 
@@ -122,6 +126,34 @@ function parseQty(value: string | null | undefined): number {
   return isNaN(q) ? 0 : q;
 }
 
+type JournalReceiptSet = Set<string>;
+
+function journalReceiptKey(dateKey: string, supplierId: string): string {
+  return `${dateKey}|${supplierId}`;
+}
+
+async function fetchJournalReceiptSet(
+  dateFrom: string,
+  dateTo: string,
+  todayKey: string
+): Promise<JournalReceiptSet> {
+  try {
+    const receipts = await searchDeliveryReceipts({
+      dateFrom,
+      dateTo: todayKey,
+    });
+    const set = new Set<string>();
+    for (const r of receipts) {
+      if (r.supplierId) {
+        set.add(journalReceiptKey(r.receivedDate, r.supplierId));
+      }
+    }
+    return set;
+  } catch {
+    return new Set();
+  }
+}
+
 export async function fetchUpcomingDeliveries(
   dateFrom: string,
   dateTo: string,
@@ -137,9 +169,8 @@ export async function fetchUpcomingDeliveries(
       .from("individual_orders")
       .select("*, supplier:suppliers(*), sales_person:sales_people(*)")
       .eq("request_kind", "zamowienie")
-      .in("status", ["Zamowione", "Czesciowo_zrealizowane"])
+      .in("status", ["Zamowione", "Czesciowo_zrealizowane", "Zrealizowane"])
       .is("sales_cancelled_at", null)
-      .is("sales_acknowledged_at", null)
       .not("supplier_id", "is", null)
       .not("zd_fulfillment_deadline", "is", null)
       .gte("zd_fulfillment_deadline", dateFrom)
@@ -150,9 +181,8 @@ export async function fetchUpcomingDeliveries(
       .from("individual_orders")
       .select("*, supplier:suppliers(*), sales_person:sales_people(*)")
       .eq("request_kind", "zamowienie")
-      .in("status", ["Zamowione", "Czesciowo_zrealizowane"])
+      .in("status", ["Zamowione", "Czesciowo_zrealizowane", "Zrealizowane"])
       .is("sales_cancelled_at", null)
-      .is("sales_acknowledged_at", null)
       .not("supplier_id", "is", null)
       .not("zd_fulfillment_deadline", "is", null)
       .lt("zd_fulfillment_deadline", todayKey)
@@ -176,8 +206,14 @@ export async function fetchUpcomingDeliveries(
   const rangeOrders = normalizeIndividualOrders(rangeRes.data ?? []);
   const overdueOrders = normalizeIndividualOrders(overdueRes.data ?? []);
 
-  const allOrders = [...overdueOrders, ...rangeOrders];
-  const orderDays = await groupUpcomingDeliveries(allOrders, todayKey, carriers);
+  const seenOrderIds = new Set<string>();
+  const allOrders = [...overdueOrders, ...rangeOrders].filter((o) => {
+    if (seenOrderIds.has(o.id)) return false;
+    seenOrderIds.add(o.id);
+    return true;
+  });
+  const journalReceipts = await fetchJournalReceiptSet(dateFrom, dateTo, todayKey);
+  const orderDays = await groupUpcomingDeliveries(allOrders, todayKey, carriers, journalReceipts);
   return mergeZdIndexDeliveries(orderDays, dateFrom, dateTo, todayKey, carriers);
 }
 
@@ -193,7 +229,7 @@ async function fetchUpcomingDeliveriesLegacy(
       .from("individual_orders")
       .select("*, supplier:suppliers(*), sales_person:sales_people(*)")
       .eq("request_kind", "zamowienie")
-      .in("status", ["Zamowione", "Czesciowo_zrealizowane"])
+      .in("status", ["Zamowione", "Czesciowo_zrealizowane", "Zrealizowane"])
       .is("sales_cancelled_at", null)
       .not("supplier_id", "is", null)
       .not("zd_fulfillment_deadline", "is", null)
@@ -205,7 +241,7 @@ async function fetchUpcomingDeliveriesLegacy(
       .from("individual_orders")
       .select("*, supplier:suppliers(*), sales_person:sales_people(*)")
       .eq("request_kind", "zamowienie")
-      .in("status", ["Zamowione", "Czesciowo_zrealizowane"])
+      .in("status", ["Zamowione", "Czesciowo_zrealizowane", "Zrealizowane"])
       .is("sales_cancelled_at", null)
       .not("supplier_id", "is", null)
       .not("zd_fulfillment_deadline", "is", null)
@@ -220,15 +256,22 @@ async function fetchUpcomingDeliveriesLegacy(
   const rangeOrders = normalizeIndividualOrders(rangeRes.data ?? []);
   const overdueOrders = normalizeIndividualOrders(overdueRes.data ?? []);
 
-  const allOrders = [...overdueOrders, ...rangeOrders];
-  const orderDays = await groupUpcomingDeliveries(allOrders, todayKey, carriers);
+  const seenOrderIds = new Set<string>();
+  const allOrders = [...overdueOrders, ...rangeOrders].filter((o) => {
+    if (seenOrderIds.has(o.id)) return false;
+    seenOrderIds.add(o.id);
+    return true;
+  });
+  const journalReceipts = await fetchJournalReceiptSet(dateFrom, dateTo, todayKey);
+  const orderDays = await groupUpcomingDeliveries(allOrders, todayKey, carriers, journalReceipts);
   return mergeZdIndexDeliveries(orderDays, dateFrom, dateTo, todayKey, carriers);
 }
 
 export async function groupUpcomingDeliveries(
   orders: IndividualOrder[],
   todayKey: string,
-  carriers?: WarehouseCarrierRow[]
+  carriers?: WarehouseCarrierRow[],
+  journalReceipts?: JournalReceiptSet
 ): Promise<UpcomingDeliveryDay[]> {
   const byDate = new Map<string, IndividualOrder[]>();
   for (const order of orders) {
@@ -258,7 +301,7 @@ export async function groupUpcomingDeliveries(
   const days: UpcomingDeliveryDay[] = [];
   for (const dateKey of sortedDates) {
     const dayOrders = byDate.get(dateKey)!;
-    const suppliers = groupBySupplier(dayOrders, hintMap, carriers);
+    const suppliers = groupBySupplier(dayOrders, hintMap, carriers, journalReceipts, dateKey);
     days.push({
       dateKey,
       dateLabel: formatDayLabel(dateKey),
@@ -275,7 +318,9 @@ export async function groupUpcomingDeliveries(
 function groupBySupplier(
   orders: IndividualOrder[],
   hintMap: Map<string, WarehouseCarrierHint>,
-  carriers?: WarehouseCarrierRow[]
+  carriers?: WarehouseCarrierRow[],
+  journalReceipts?: JournalReceiptSet,
+  dateKey?: string
 ): UpcomingDeliverySupplier[] {
   const bySupplier = new Map<string, IndividualOrder[]>();
   for (const order of orders) {
@@ -293,6 +338,10 @@ function groupBySupplier(
     const positionCount = supplierOrders.length;
     const totalQuantity = supplierOrders.reduce((sum, o) => sum + parseQty(o.quantity), 0);
     const totalDelivered = supplierOrders.reduce((sum, o) => sum + parseQty(o.delivered_quantity), 0);
+
+    const hasJournalReceipt = journalReceipts && dateKey && supplierId
+      ? journalReceipts.has(journalReceiptKey(dateKey, supplierId))
+      : false;
 
     const salesPeopleMap = new Map<string, UpcomingDeliverySalesPerson>();
     for (const o of supplierOrders) {
@@ -318,7 +367,9 @@ function groupBySupplier(
       zdDocNumber,
       positionCount,
       totalQuantity,
-      totalDelivered,
+      totalDelivered: hasJournalReceipt && totalDelivered === 0 && totalQuantity > 0
+        ? Math.max(1, Math.ceil(totalQuantity * 0.01))
+        : totalDelivered,
       salesPeople,
       carrierHint,
       carrierLabel,
@@ -361,14 +412,20 @@ export function summarizeUpcomingDeliveries(
 type ZdIndexRow = {
   dok_nr_pelny: string | null;
   supplier_id: string;
+  dok_status: number;
   dok_termin_realizacji: string;
+};
+
+type ZdSupplierEntry = {
+  docNumbers: string[];
+  fulfilled: boolean;
 };
 
 async function fetchZdIndexDeliveries(
   dateFrom: string,
   dateTo: string,
   todayKey: string
-): Promise<Map<string, Map<string, string[]>>> {
+): Promise<Map<string, Map<string, ZdSupplierEntry>>> {
   const supabase = createAdminClient();
   const [rangeRes, overdueRes] = await Promise.all([
     supabase
@@ -376,7 +433,7 @@ async function fetchZdIndexDeliveries(
       .select("dok_nr_pelny, supplier_id, dok_status, dok_termin_realizacji")
       .not("supplier_id", "is", null)
       .not("dok_termin_realizacji", "is", null)
-      .in("dok_status", [5, 6, 7])
+      .in("dok_status", [5, 6, 7, 8])
       .gte("dok_termin_realizacji", dateFrom)
       .lte("dok_termin_realizacji", dateTo)
       .limit(500),
@@ -385,7 +442,7 @@ async function fetchZdIndexDeliveries(
       .select("dok_nr_pelny, supplier_id, dok_status, dok_termin_realizacji")
       .not("supplier_id", "is", null)
       .not("dok_termin_realizacji", "is", null)
-      .in("dok_status", [5, 6, 7])
+      .in("dok_status", [5, 6, 7, 8])
       .lt("dok_termin_realizacji", todayKey)
       .limit(200),
   ]);
@@ -398,15 +455,16 @@ async function fetchZdIndexDeliveries(
     ...(rangeRes.data ?? []),
   ] as ZdIndexRow[];
 
-  const byDateBySupplier = new Map<string, Map<string, string[]>>();
+  const byDateBySupplier = new Map<string, Map<string, ZdSupplierEntry>>();
   for (const row of rows) {
     if (!row.supplier_id || !row.dok_termin_realizacji) continue;
     if (!row.dok_nr_pelny) continue;
     const dateKey = row.dok_termin_realizacji;
-    const bySupplier = byDateBySupplier.get(dateKey) ?? new Map<string, string[]>();
-    const docSet = bySupplier.get(row.supplier_id) ?? [];
-    if (!docSet.includes(row.dok_nr_pelny)) docSet.push(row.dok_nr_pelny);
-    bySupplier.set(row.supplier_id, docSet);
+    const bySupplier = byDateBySupplier.get(dateKey) ?? new Map<string, ZdSupplierEntry>();
+    const entry = bySupplier.get(row.supplier_id) ?? { docNumbers: [], fulfilled: true };
+    if (!entry.docNumbers.includes(row.dok_nr_pelny)) entry.docNumbers.push(row.dok_nr_pelny);
+    if (row.dok_status !== 8) entry.fulfilled = false;
+    bySupplier.set(row.supplier_id, entry);
     byDateBySupplier.set(dateKey, bySupplier);
   }
 
@@ -437,7 +495,7 @@ async function mergeZdIndexDeliveries(
   todayKey: string,
   carriers?: WarehouseCarrierRow[]
 ): Promise<UpcomingDeliveryDay[]> {
-  let zdIndexMap: Map<string, Map<string, string[]>>;
+  let zdIndexMap: Map<string, Map<string, ZdSupplierEntry>>;
   try {
     zdIndexMap = await fetchZdIndexDeliveries(dateFrom, dateTo, todayKey);
   } catch {
@@ -495,7 +553,7 @@ async function mergeZdIndexDeliveries(
 
     const existingSuppliers = existingSuppliersByDate.get(dateKey) ?? new Set<string>();
 
-    for (const [supplierId, docNumbers] of bySupplier) {
+    for (const [supplierId, entry] of bySupplier) {
       if (existingSuppliers.has(supplierId)) {
         const supplier = day.suppliers.find((s) => s.supplierId === supplierId);
         if (supplier) {
@@ -504,7 +562,7 @@ async function mergeZdIndexDeliveries(
               .map((o) => o.zd_fulfillment_dok_nr)
               .filter((n): n is string => Boolean(n?.trim()))
           );
-          for (const docNr of docNumbers) {
+          for (const docNr of entry.docNumbers) {
             if (!existingDocNumbers.has(docNr)) {
               supplier.zdOnlyDocNumbers.push(docNr);
             }
@@ -519,15 +577,15 @@ async function mergeZdIndexDeliveries(
         day.suppliers.push({
           supplierId,
           supplierName,
-          zdDocNumber: docNumbers[0] ?? null,
+          zdDocNumber: entry.docNumbers[0] ?? null,
           positionCount: 0,
-          totalQuantity: 0,
-          totalDelivered: 0,
+          totalQuantity: entry.fulfilled ? 1 : 0,
+          totalDelivered: entry.fulfilled ? 1 : 0,
           salesPeople: [],
           carrierHint,
           carrierLabel,
           orders: [],
-          zdOnlyDocNumbers: docNumbers,
+          zdOnlyDocNumbers: entry.docNumbers,
         });
       }
     }
@@ -537,4 +595,127 @@ async function mergeZdIndexDeliveries(
 
   orderDays.sort((a, b) => a.dateKey.localeCompare(b.dateKey));
   return orderDays;
+}
+
+export type DeliveryScheduleSupplier = {
+  supplierId: string;
+  supplierName: string;
+  location: SupplierLocation;
+  isScheduled: boolean;
+  isOverduePlan: boolean;
+  vacationNote: VacationNote | null;
+};
+
+export type DeliveryScheduleDay = {
+  dateKey: string;
+  weekdayLabel: string;
+  dateLabel: string;
+  isToday: boolean;
+  isPast: boolean;
+  scheduledSuppliers: DeliveryScheduleSupplier[];
+  deliveryDay: UpcomingDeliveryDay | null;
+};
+
+const SHORT_WEEKDAY_LABELS = ["Niedz", "Pon", "Wt", "Śr", "Czw", "Pt", "Sob"];
+
+export function buildDeliveryScheduleWeek(
+  schedules: SupplierWithSchedule[],
+  deliveryDays: UpcomingDeliveryDay[],
+  todayDateKey: string,
+  weekStartDateKey?: string
+): DeliveryScheduleDay[] {
+  const today = parseDateOnly(todayDateKey);
+  if (!today) return [];
+
+  const weekStart = weekStartDateKey
+    ? parseDateOnly(weekStartDateKey)
+    : today;
+  if (!weekStart) return [];
+
+  const monday = getMondayOfWeek(weekStart);
+  const deliveryByDateKey = new Map<string, UpcomingDeliveryDay>();
+  for (const dd of deliveryDays) {
+    deliveryByDateKey.set(dd.dateKey, dd);
+  }
+
+  const scheduleByDateKey = new Map<string, DeliveryScheduleSupplier[]>();
+  for (const s of schedules) {
+    if (isSupplierOrderOnDemand(s)) continue;
+    const nextDate = s.schedule?.computed_next_date?.trim();
+    if (!nextDate) continue;
+    const list = scheduleByDateKey.get(nextDate) ?? [];
+    list.push({
+      supplierId: s.id,
+      supplierName: s.name,
+      location: s.location,
+      isScheduled: true,
+      isOverduePlan: nextDate < todayDateKey,
+      vacationNote: s.schedule?.vacation_note ?? null,
+    });
+    scheduleByDateKey.set(nextDate, list);
+  }
+
+  const days: DeliveryScheduleDay[] = [];
+  for (let i = 0; i < 5; i++) {
+    const d = new Date(monday);
+    d.setDate(monday.getDate() + i);
+    const dateKey = formatDateString(d);
+    const dow = d.getDay();
+
+    const scheduled = scheduleByDateKey.get(dateKey) ?? [];
+    const overdue =
+      dateKey === todayDateKey
+        ? [...scheduleByDateKey.entries()]
+            .filter(([key]) => key < todayDateKey)
+            .flatMap(([, list]) => list)
+        : [];
+
+    const allScheduled = [...scheduled, ...overdue];
+
+    days.push({
+      dateKey,
+      weekdayLabel: SHORT_WEEKDAY_LABELS[dow] ?? "",
+      dateLabel: formatDateString(d, "dd.MM"),
+      isToday: dateKey === todayDateKey,
+      isPast: d < toDateOnly(today) && dateKey !== todayDateKey,
+      scheduledSuppliers: allScheduled.sort((a, b) =>
+        a.supplierName.localeCompare(b.supplierName, "pl")
+      ),
+      deliveryDay: deliveryByDateKey.get(dateKey) ?? null,
+    });
+  }
+
+  return days;
+}
+
+export type ExtendedDeliverySummary = UpcomingDeliverySummary & {
+  scheduledSupplierCount: number;
+  todayDeliveryCount: number;
+  todayScheduledCount: number;
+};
+
+export function summarizeDeliverySchedule(
+  summary: UpcomingDeliverySummary,
+  weekDays: DeliveryScheduleDay[]
+): ExtendedDeliverySummary {
+  const supplierIds = new Set<string>();
+  let todayDeliveryCount = 0;
+  let todayScheduledCount = 0;
+
+  for (const day of weekDays) {
+    for (const s of day.scheduledSuppliers) {
+      supplierIds.add(s.supplierId);
+    }
+    if (day.isToday) {
+      todayDeliveryCount = day.deliveryDay?.suppliers.length ?? 0;
+      todayScheduledCount = day.scheduledSuppliers.length;
+    }
+  }
+
+  return {
+    ...summary,
+    scheduledSupplierCount: supplierIds.size,
+    todayDeliveryCount,
+    todayScheduledCount,
+  };
 }

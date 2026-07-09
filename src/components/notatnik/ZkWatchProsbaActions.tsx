@@ -3,6 +3,7 @@
 import Link from "next/link";
 import type { MouseEvent } from "react";
 import { Button } from "@/components/ui/Button";
+import { IconCircleCheck, IconPackageCheck } from "@/components/icons/StrokeIcons";
 import type { ZkWatchProsbaCardAction } from "@/lib/sales/zk-watch-line-ui-state";
 import { ZkWatchProsbaCoveredChip } from "./ZkWatchProsbaCoveredChip";
 
@@ -46,7 +47,10 @@ export function ZkWatchProsbaActions({
           className="h-8 px-2.5 text-[0.68rem] sm:h-7"
           disabled={pending}
         >
-          {label}
+          <span className="inline-flex items-center gap-1.5">
+            <IconCircleCheck size={13} className="shrink-0" />
+            {label}
+          </span>
         </Button>
       </Link>
     );
@@ -66,7 +70,10 @@ export function ZkWatchProsbaActions({
         className="h-8 px-2.5 text-[0.68rem] sm:h-7"
         disabled={pending}
       >
-        {label}
+        <span className="inline-flex items-center gap-1.5">
+          <IconPackageCheck size={13} className="shrink-0" />
+          {label}
+        </span>
       </Button>
     </Link>
   );

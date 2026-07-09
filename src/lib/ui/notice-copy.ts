@@ -344,6 +344,17 @@ export const TEETH_RECEIVE_TOAST = {
   lineSaved: (person: string) =>
     toastSuccess("Przyjęto zęby", person),
   saveFailed: toastFromError(undefined, "Nie udało się zapisać przyjęcia zębów."),
+  cancellationAckSuccess: (count: number) =>
+    toastSuccess(
+      "Rozliczono anulację",
+      count === 1
+        ? "Pozycja została usunięta z kolejki przyjęcia."
+        : `${count} pozycje zostały usunięte z kolejki przyjęcia.`,
+    ),
+  cancellationAckFailed: toastFromError(
+    undefined,
+    "Nie udało się rozliczyć anulacji.",
+  ),
 } as const;
 
 // ——— Wspólne komunikaty cofania ———

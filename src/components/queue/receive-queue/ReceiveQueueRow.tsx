@@ -24,6 +24,9 @@ import {
   queueSupplierLeadingCellClass,
   queueSupplierRowClass,
 } from "@/lib/orders/queue-supplier-groups";
+import { orderPlacementAt } from "@/lib/orders/order-timing";
+import { calculateBusinessDays, parseDateOnly } from "@/lib/orders/dates";
+import { todayInWarsaw } from "@/lib/time/warsaw";
 
 function NotifyIcon({ className }: { className?: string }) {
   return (
@@ -56,6 +59,22 @@ function SaveIcon({ className }: { className?: string }) {
       className={className}
     >
       <path strokeLinecap="round" strokeLinejoin="round" d="m5 10.5 3 3 7-7" />
+    </svg>
+  );
+}
+
+function ClockIcon({ className }: { className?: string }) {
+  return (
+    <svg
+      aria-hidden
+      viewBox="0 0 16 16"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.5"
+      className={className}
+    >
+      <circle cx="8" cy="8" r="5.5" />
+      <path strokeLinecap="round" strokeLinejoin="round" d="M8 5v3l2 1.5" />
     </svg>
   );
 }
@@ -134,6 +153,17 @@ export const ReceiveQueueRow = memo(function ReceiveQueueRow({
           ? "Powiadom"
           : null;
 
+  const waitingDays = (() => {
+    if (isInfo) return null;
+    const placement = orderPlacementAt(order);
+    if (!placement) return null;
+    const start = parseDateOnly(placement);
+    if (!start) return null;
+    const today = todayInWarsaw();
+    if (start > today) return 0;
+    return calculateBusinessDays(start, today);
+  })();
+
   const onQtyKeyDown = (e: KeyboardEvent<HTMLInputElement>) => {
     if (e.key === "Enter" && canSave) {
       e.preventDefault();
@@ -196,6 +226,20 @@ export const ReceiveQueueRow = memo(function ReceiveQueueRow({
               : "częściowo"}
           </p>
         )}
+        {waitingDays != null && waitingDays > 0 ? (
+          <span
+            className={cn(
+              "mt-0.5 ml-3 inline-flex shrink-0 items-center gap-1 rounded-full px-1.5 py-0.5 text-[10px] font-semibold tabular-nums",
+              waitingDays >= 3
+                ? "bg-rose-100/90 text-rose-700 ring-1 ring-inset ring-rose-200/50"
+                : "bg-slate-100/80 text-slate-600 ring-1 ring-inset ring-slate-200/40",
+            )}
+            title={`Zamówienie czeka ${waitingDays} ${waitingDays === 1 ? "dzień" : "dni"} w przyjęciu`}
+          >
+            <ClockIcon className="size-2.5 shrink-0" />
+            {waitingDays} {waitingDays === 1 ? "dzień" : "dni"}
+          </span>
+        ) : null}
       </td>
 
       <td className="min-w-0 max-w-[1px] w-full">
@@ -211,7 +255,7 @@ export const ReceiveQueueRow = memo(function ReceiveQueueRow({
                 as="p"
               />
               {order.is_teeth ? (
-                <span className="shrink-0 rounded bg-emerald-100 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-emerald-800">
+                <span className="shrink-0 rounded-full bg-emerald-100/80 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-emerald-700 ring-1 ring-inset ring-emerald-200/50">
                   Zęby
                 </span>
               ) : null}
@@ -291,7 +335,7 @@ export const ReceiveQueueRow = memo(function ReceiveQueueRow({
                   title="Przyjmij całą ilość z rezygnacji"
                   onClick={onFillFullQty}
                   className={cn(
-                    "min-w-[1.75rem] rounded px-1 py-0.5 text-sm font-medium text-slate-600",
+                    "min-w-[1.75rem] rounded-md px-1.5 py-0.5 text-sm font-medium text-slate-600 transition",
                     ordered != null && "hover:bg-slate-100 hover:text-slate-900"
                   )}
                 >
@@ -309,7 +353,7 @@ export const ReceiveQueueRow = memo(function ReceiveQueueRow({
                   onChange={(e) => onQtyChange(e.target.value)}
                   onKeyDown={onQtyKeyDown}
                   className={cn(
-                    "w-14 rounded-md border border-slate-200 px-1 py-1 text-center text-sm font-semibold sm:w-12",
+                    "w-14 rounded-lg border border-slate-200 bg-white px-1 py-1 text-center text-sm font-semibold transition focus:border-violet-300 focus:ring-2 focus:ring-violet-200/40 sm:w-12",
                     controlFocusClass
                   )}
                   aria-label={`Przyjęto z rezygnacji dla ${personName}`}
@@ -321,9 +365,9 @@ export const ReceiveQueueRow = memo(function ReceiveQueueRow({
                   aria-label="Zapisz przyjęcie"
                   onClick={onSaveDelivery}
                   className={cn(
-                    "inline-flex size-10 items-center justify-center rounded-lg border transition sm:size-8",
+                    "inline-flex size-10 items-center justify-center rounded-xl border transition sm:size-8",
                     canSave
-                      ? "border-violet-200 bg-violet-600 text-white hover:bg-violet-700"
+                      ? "border-violet-200 bg-violet-600 text-white hover:bg-violet-700 hover:shadow-sm hover:shadow-violet-200/50"
                       : "border-slate-200 bg-slate-50 text-slate-300"
                   )}
                 >
@@ -358,7 +402,7 @@ export const ReceiveQueueRow = memo(function ReceiveQueueRow({
               title="Przyjmij całą zamówioną ilość"
               onClick={onFillFullQty}
               className={cn(
-                "min-w-[1.75rem] rounded px-1 py-0.5 text-sm font-medium text-slate-600",
+                "min-w-[1.75rem] rounded-md px-1.5 py-0.5 text-sm font-medium text-slate-600 transition",
                 ordered != null && "hover:bg-slate-100 hover:text-slate-900"
               )}
             >
@@ -376,7 +420,7 @@ export const ReceiveQueueRow = memo(function ReceiveQueueRow({
               onChange={(e) => onQtyChange(e.target.value)}
               onKeyDown={onQtyKeyDown}
               className={cn(
-                "w-14 rounded-md border border-slate-200 px-1 py-1 text-center text-sm font-semibold sm:w-12",
+                "w-14 rounded-lg border border-slate-200 bg-white px-1 py-1 text-center text-sm font-semibold transition focus:border-violet-300 focus:ring-2 focus:ring-violet-200/40 sm:w-12",
                 controlFocusClass
               )}
               aria-label={`Dostarczono dla ${personName}`}
@@ -405,9 +449,9 @@ export const ReceiveQueueRow = memo(function ReceiveQueueRow({
               aria-label="Zapisz dostawę"
               onClick={onSaveDelivery}
               className={cn(
-                "ml-0.5 inline-flex size-10 items-center justify-center rounded-lg border transition sm:size-8",
+                "ml-0.5 inline-flex size-10 items-center justify-center rounded-xl border transition sm:size-8",
                 canSave
-                  ? "border-violet-200 bg-violet-600 text-white hover:bg-violet-700"
+                  ? "border-violet-200 bg-violet-600 text-white hover:bg-violet-700 hover:shadow-sm hover:shadow-violet-200/50"
                   : "border-slate-200 bg-slate-50 text-slate-300"
               )}
             >

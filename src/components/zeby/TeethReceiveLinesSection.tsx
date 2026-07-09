@@ -26,8 +26,6 @@ import {
   teethReceiveQtyInputClass,
   teethReceiveQtyInputDoneClass,
   teethReceiveQtyInputFilledClass,
-  teethReceiveSalesPersonBannerClass,
-  teethReceiveSalesPersonDotClass,
   teethReceiveSalesPersonRowClass,
   teethReceiveSaveButtonClass,
   teethReceiveSectionOutlineButtonClass,
@@ -91,40 +89,42 @@ function SalesPersonDivider({
   onFillAll?: () => void;
   pending: boolean;
 }) {
+  const isEven = stripeIndex % 2 === 0;
   return (
     <tr className={teethReceiveSalesPersonRowClass}>
       <td colSpan={TABLE_COLS} className="p-0">
-        <div className={teethReceiveSalesPersonBannerClass}>
-          <div className="h-px flex-1 bg-slate-200/90" aria-hidden />
-          <div className="flex max-w-[min(100%,24rem)] shrink-0 items-center gap-2 rounded-full bg-slate-50/90 px-3 py-1.5 ring-1 ring-slate-200/90">
-            <span
-              className={cn(
-                "size-2 shrink-0 rounded-full",
-                teethReceiveSalesPersonDotClass(stripeIndex),
-              )}
-              aria-hidden
-            />
-            <span className="truncate text-xs font-semibold text-slate-900">{name}</span>
-            <span className="shrink-0 text-[10px] font-medium tabular-nums text-slate-500">
-              {lineCount} {plPozycja(lineCount)}
+        <div
+          className={cn(
+            "flex items-center gap-2 border-b border-slate-200/80 bg-white/60 px-3 py-1.5 sm:px-4 lg:px-5",
+            stripeIndex > 0 && "border-t border-slate-200/80",
+          )}
+        >
+          <span
+            className={cn(
+              "size-2 shrink-0 rounded-full",
+              isEven ? "bg-slate-400" : "bg-indigo-400",
+            )}
+            aria-hidden
+          />
+          <span className="truncate text-xs font-semibold text-slate-800">{name}</span>
+          <span className="shrink-0 text-[10px] font-medium tabular-nums text-slate-400">
+            {lineCount} {plPozycja(lineCount)}
+          </span>
+          {hasPartial ? (
+            <span className="shrink-0 rounded-md bg-amber-100/90 px-1.5 py-0.5 text-[10px] font-semibold text-amber-900">
+              częściowo
             </span>
-            {hasPartial ? (
-              <span className="shrink-0 rounded-md bg-amber-100/90 px-1.5 py-0.5 text-[10px] font-semibold text-amber-900">
-                częściowo
-              </span>
-            ) : null}
-            {onFillAll ? (
-              <button
-                type="button"
-                disabled={pending}
-                onClick={onFillAll}
-                className="shrink-0 rounded-md px-1.5 py-0.5 text-[10px] font-semibold text-indigo-700 hover:bg-indigo-50 hover:text-indigo-900 disabled:opacity-50"
-              >
-                Całość
-              </button>
-            ) : null}
-          </div>
-          <div className="h-px flex-1 bg-slate-200/90" aria-hidden />
+          ) : null}
+          {onFillAll ? (
+            <button
+              type="button"
+              disabled={pending}
+              onClick={onFillAll}
+              className="shrink-0 rounded-md px-1.5 py-0.5 text-[10px] font-semibold text-indigo-700 hover:bg-indigo-50 hover:text-indigo-900 disabled:opacity-50"
+            >
+              Całość
+            </button>
+          ) : null}
         </div>
       </td>
     </tr>
@@ -183,6 +183,7 @@ export function TeethReceiveLinesSection({
   onLineQtyChange,
   onToggleLine,
   onManualQtyChange,
+  onAcknowledgeCancellation,
 }: {
   sectionTitle: string;
   orderIds: string[];
@@ -200,6 +201,7 @@ export function TeethReceiveLinesSection({
   onLineQtyChange: (row: TeethReceiveFlatRow, value: string) => void;
   onToggleLine: (row: TeethReceiveFlatRow, checked: boolean) => void;
   onManualQtyChange: (orderId: string, value: string) => void;
+  onAcknowledgeCancellation: (orderIds: string[]) => void;
 }) {
   const sectionOrders = receiveQueue.filter((order) => orderIds.includes(order.id));
   const orderIdsWithInput = teethReceiveOrderIdsWithSessionInput(
@@ -209,6 +211,10 @@ export function TeethReceiveLinesSection({
     canPickSpec,
   );
   const canSaveInput = orderIdsWithInput.length > 0;
+  const cancelledOrderIds = sectionOrders
+    .filter((o) => o.sales_cancelled_at && !o.warehouse_cancel_fulfilled_at)
+    .map((o) => o.id);
+  const hasCancelled = cancelledOrderIds.length > 0;
 
   return (
     <section className={teethPanelSupplierCardClass}>
@@ -238,6 +244,20 @@ export function TeethReceiveLinesSection({
         </button>
         {isOpen ? (
           <div className="flex shrink-0 flex-wrap items-center gap-2">
+            {hasCancelled ? (
+              <button
+                type="button"
+                disabled={pending}
+                onClick={() => onAcknowledgeCancellation(cancelledOrderIds)}
+                className="inline-flex items-center gap-1.5 rounded-md border border-amber-200/90 bg-amber-50/80 px-2.5 py-1.5 text-xs font-semibold text-amber-900 transition hover:border-amber-300 hover:bg-amber-100 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                <span className="hidden sm:inline">Akceptuj anulację</span>
+                <span className="sm:hidden">Anulacja</span>
+                <span className="rounded-md bg-amber-200/60 px-1.5 py-0.5 text-[10px] tabular-nums">
+                  {cancelledOrderIds.length}
+                </span>
+              </button>
+            ) : null}
             {canSaveInput ? (
               <button
                 type="button"
@@ -314,6 +334,9 @@ export function TeethReceiveLinesSection({
                 );
                 const orderRemaining = teethReceiveRemaining(row.order, groups);
                 const isPartial = row.order.status === "Czesciowo_zrealizowane";
+                const isCancelled = Boolean(
+                  row.order.sales_cancelled_at && !row.order.warehouse_cancel_fulfilled_at,
+                );
                 const isClosed = orderRemaining <= 0;
                 const lineTarget = row.kind === "spec" ? Math.max(1, row.group.count) : 0;
                 const lineAlready =
@@ -341,9 +364,19 @@ export function TeethReceiveLinesSection({
                   lineRemaining > 0 &&
                   sessionQty >= lineRemaining;
 
+                const hasStateBg =
+                  isLineClosed ||
+                  (!isLineClosed && isCancelled) ||
+                  (!isLineClosed && isPartial) ||
+                  (!isLineClosed && isLineDone) ||
+                  (!isLineClosed && hasSessionInput && !isLineDone);
+                const salesStripeBg =
+                  !hasStateBg && row.stripeIndex % 2 === 0 ? "bg-slate-50/40" : !hasStateBg ? "bg-white/40" : "";
                 const rowSurfaceClass = cn(
                   teethReceiveDataRowClass,
+                  salesStripeBg,
                   isLineClosed && teethReceiveDataRowClosedClass,
+                  !isLineClosed && isCancelled && "bg-amber-50/40",
                   !isLineClosed && isPartial && teethReceiveDataRowPartialClass,
                   !isLineClosed && isLineDone && teethReceiveDataRowDoneClass,
                   !isLineClosed && hasSessionInput && !isLineDone && teethReceiveDataRowActiveClass,
@@ -387,9 +420,17 @@ export function TeethReceiveLinesSection({
                                 stripeIndex: row.stripeIndex,
                               }),
                               "border-l-[3px]",
+                              isCancelled && "border-amber-300/80",
                             )}
                           >
-                            {row.group.color || "—"}
+                            <span className={cn(isCancelled && "text-slate-500 line-through")}>
+                              {row.group.color || "—"}
+                            </span>
+                            {isCancelled ? (
+                              <span className="ml-1.5 inline-flex rounded bg-amber-100 px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wide text-amber-800">
+                                Anulowane
+                              </span>
+                            ) : null}
                           </td>
                           <td className={cn(teethReceiveTdClass, "font-medium text-slate-800")}>
                             {row.group.mould?.trim() || "—"}
@@ -418,7 +459,11 @@ export function TeethReceiveLinesSection({
                             ) : null}
                           </td>
                           <td className={cn(teethReceiveTdClass, "text-right")}>
-                            {isLineClosed ? (
+                            {isCancelled ? (
+                              <span className={panelTypography.caption}>
+                                anulowane
+                              </span>
+                            ) : isLineClosed ? (
                               <span className={panelTypography.caption}>
                                 komplet{lineAlready > 0 ? ` · ${lineAlready}/${lineTarget}` : ""}
                               </span>
@@ -475,7 +520,9 @@ export function TeethReceiveLinesSection({
                             ) : null}
                           </td>
                           <td className={cn(teethReceiveTdClass, "text-right align-top")}>
-                            {isClosed ? (
+                            {isCancelled ? (
+                              <span className={panelTypography.caption}>anulowane</span>
+                            ) : isClosed ? (
                               <span className={panelTypography.caption}>komplet</span>
                             ) : (
                               <div className="inline-flex items-center justify-end gap-1.5">

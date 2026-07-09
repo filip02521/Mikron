@@ -355,23 +355,23 @@ export const salesTypography = {
 
 /** Etykieta „Uwagi” przy notatce handlowca — spójna w /moje i panelu dziennym. */
 export const salesRequestNoteLabelClass =
-  "inline-flex items-center rounded bg-indigo-50 px-1 py-0.5 text-[10px] font-medium text-indigo-500";
+  "inline-flex items-center rounded-md bg-indigo-50 px-1.5 py-0.5 text-[10px] font-medium leading-none text-indigo-500 ring-1 ring-inset ring-indigo-200/70";
 
 /** Etykieta wiadomości od zakupów przy anulowaniu — widoczna u handlowca. */
 export const procurementCancelNoteLabelClass =
-  "inline-flex items-center rounded bg-amber-50 px-1 py-0.5 text-[10px] font-medium text-amber-600";
+  "inline-flex items-center rounded-md bg-amber-50 px-1.5 py-0.5 text-[10px] font-medium leading-none text-amber-600 ring-1 ring-inset ring-amber-200/70";
 
 /** Etykieta klienta końcowego — ten sam układ co „Uwagi”, ton indigo. */
 export const salesClientLabelClass =
-  "inline-flex items-center rounded bg-indigo-50 px-1 py-0.5 text-[10px] font-medium text-indigo-500";
+  "inline-flex items-center rounded-md bg-indigo-50 px-1.5 py-0.5 text-[10px] font-medium leading-none text-indigo-500 ring-1 ring-inset ring-indigo-200/70";
 
 export const salesClientNameClass = "font-medium text-indigo-900";
 
 /** Etykieta powiązania ZK — fiolet jak w notatniku, ten sam układ co „Klient”. */
 export const salesZkLabelClass =
-  "inline-flex items-center rounded bg-violet-50 px-1 py-0.5 text-[10px] font-medium text-violet-600";
+  "inline-flex items-center rounded-md bg-violet-50 px-1.5 py-0.5 text-[10px] font-medium leading-none text-violet-600 ring-1 ring-inset ring-violet-200/70";
 
-export const salesZkNumberClass = "font-medium text-violet-900";
+export const salesZkNumberClass = "text-[11px] font-medium leading-none text-violet-900";
 
 /** Wewnętrzny padding sekcji panelu. */
 export const panelSectionInsetClass = "px-3 py-3 sm:px-4 sm:py-4 lg:px-5 lg:py-4";
@@ -407,15 +407,15 @@ export const deliveryMetaTypography = {
   captionOverdue: "text-[11px] font-medium uppercase tracking-wide text-amber-800/85",
   captionPending: "text-[11px] font-medium text-slate-500 normal-case tracking-normal",
   dateBadge:
-    "max-w-full whitespace-normal rounded-md bg-slate-50 px-2 py-0.5 text-[10px] font-semibold leading-snug text-slate-700 ring-1 ring-slate-200/90 tabular-nums",
+    "max-w-full whitespace-normal rounded-md bg-slate-50 px-1.5 py-0.5 text-[10px] font-medium leading-none text-slate-700 ring-1 ring-inset ring-slate-200/80 tabular-nums",
   dateBadgeAvailable:
-    "max-w-full whitespace-normal rounded-md bg-sky-50 px-2 py-0.5 text-[10px] font-semibold leading-snug text-sky-950 ring-1 ring-sky-200/90 tabular-nums",
+    "max-w-full whitespace-normal rounded-md bg-sky-50 px-1.5 py-0.5 text-[10px] font-medium leading-none text-sky-800 ring-1 ring-inset ring-sky-200/80 tabular-nums",
   dateBadgeOverdue:
-    "max-w-full whitespace-normal rounded-md bg-amber-50 px-2 py-0.5 text-[10px] font-semibold leading-snug text-amber-950 ring-1 ring-amber-200/90 tabular-nums",
+    "max-w-full whitespace-normal rounded-md bg-amber-50 px-1.5 py-0.5 text-[10px] font-medium leading-none text-amber-800 ring-1 ring-inset ring-amber-200/80 tabular-nums",
   statusBadge:
-    "max-w-full whitespace-normal rounded-md bg-slate-50 px-2 py-0.5 text-[10px] font-semibold leading-snug text-slate-600 ring-1 ring-slate-200/90",
+    "max-w-full whitespace-normal rounded-md bg-slate-50 px-1.5 py-0.5 text-[10px] font-medium leading-none text-slate-600 ring-1 ring-inset ring-slate-200/80",
   statusBadgePending:
-    "max-w-full whitespace-normal rounded-md bg-slate-50 px-2 py-0.5 text-[10px] font-medium leading-snug text-slate-600 ring-1 ring-slate-200/80",
+    "max-w-full whitespace-normal rounded-md bg-slate-50 px-1.5 py-0.5 text-[10px] font-medium leading-none text-slate-600 ring-1 ring-inset ring-slate-200/70",
 } as const;
 
 /** Wypełnienie paska postępu */

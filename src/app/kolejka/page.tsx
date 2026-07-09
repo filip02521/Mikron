@@ -2,6 +2,7 @@ import {
   countPickupReadyForSales,
   fetchDeliveryQueue,
   fetchInformacjaQueue,
+  fetchSuppliersWithSchedules,
   fetchWarehouseInventory,
 } from "@/lib/data/queries";
 import { runOrderMaintenanceBeforePageLoad } from "@/lib/services/deferred-order-maintenance";
@@ -10,7 +11,7 @@ import { getSessionUser } from "@/lib/auth";
 import { canManageSuppliers, isMagazyn } from "@/lib/auth-roles";
 import { fetchWarehouseCarriers } from "@/lib/data/warehouse-carriers";
 import { QueueClient } from "@/components/queue/QueueClient";
-import type { IndividualOrder } from "@/types/database";
+import type { IndividualOrder, SupplierWithSchedule } from "@/types/database";
 
 import type { Metadata } from "next";
 import { pageMetadataFor } from "@/lib/ui/page-metadata";
@@ -26,6 +27,7 @@ export default async function KolejkaPage() {
   let informacjaOrders: IndividualOrder[] = [];
   let pickupReadyCount = 0;
   let warehouseInventory: IndividualOrder[] = [];
+  let supplierSchedules: SupplierWithSchedule[] = [];
   let error: string | null = null;
 
   let deliveryJournal = {
@@ -37,11 +39,12 @@ export default async function KolejkaPage() {
   let warehouseCarriers: Awaited<ReturnType<typeof fetchWarehouseCarriers>> = [];
 
   try {
-    [orders, informacjaOrders, pickupReadyCount, warehouseInventory] = await Promise.all([
+    [orders, informacjaOrders, pickupReadyCount, warehouseInventory, supplierSchedules] = await Promise.all([
       fetchDeliveryQueue({ lane: "regular" }),
       fetchInformacjaQueue(),
       countPickupReadyForSales(),
       fetchWarehouseInventory(),
+      fetchSuppliersWithSchedules(undefined, { activeOnly: true }),
     ]);
     if (session) {
       [deliveryJournal, journalSuppliers, warehouseCarriers] = await Promise.all([
@@ -56,6 +59,7 @@ export default async function KolejkaPage() {
     informacjaOrders = [];
     pickupReadyCount = 0;
     warehouseInventory = [];
+    supplierSchedules = [];
   }
 
   return (
@@ -64,6 +68,7 @@ export default async function KolejkaPage() {
       informacjaOrders={informacjaOrders}
       pickupReadyCount={pickupReadyCount}
       warehouseInventory={warehouseInventory}
+      supplierSchedules={supplierSchedules}
       deliveryJournal={deliveryJournal}
       journalSuppliers={journalSuppliers}
       warehouseCarriers={warehouseCarriers}

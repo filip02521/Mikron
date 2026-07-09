@@ -12,6 +12,8 @@ function row(extra: Partial<MyOrderRow> = {}): MyOrderRow {
     acknowledgeMode: "none",
     pickupPendingCount: 0,
     pickupPendingIds: [],
+    pickupTeethPendingIds: [],
+    pickupShelfPendingIds: [],
     orderIds: extra.orderIds ?? ["o1"],
     submittedLabel: extra.submittedLabel ?? "01.06.2026",
     ...extra,

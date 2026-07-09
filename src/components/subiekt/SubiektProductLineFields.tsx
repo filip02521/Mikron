@@ -1137,8 +1137,8 @@ export function SubiektProductLineFields({
       {prosba && requestKind === "zamowienie" ? (
         canUseTeethBuilder ? (
           <TeethOrderBuilderCard
-            manufacturer={manufacturerForProductLine(resolvedTeethProductLine)}
-            productLine={resolvedTeethProductLine}
+            manufacturer={manufacturerForProductLine(resolvedTeethProductLine!)}
+            productLine={resolvedTeethProductLine!}
             productName={value.product}
             defaultKind={value.teethKind ?? null}
             details={dualKindMode ? combinedDualDetails : (value.teethDetails ?? undefined)}
@@ -1159,8 +1159,8 @@ export function SubiektProductLineFields({
           key={teethModalInstanceKey}
           open={teethModalOpen}
           onClose={() => setTeethModalOpen(false)}
-          productLine={resolvedTeethProductLine}
-          manufacturer={manufacturerForProductLine(resolvedTeethProductLine)}
+          productLine={resolvedTeethProductLine!}
+          manufacturer={manufacturerForProductLine(resolvedTeethProductLine!)}
           defaultKind={value.teethKind ?? null}
           productLabel={value.product?.trim() || value.symbol?.trim() || undefined}
           initialDetails={value.teethDetails ?? undefined}

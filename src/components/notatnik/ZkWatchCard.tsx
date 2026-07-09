@@ -2,7 +2,6 @@
 
 import { useMemo, useState, type KeyboardEvent, type MouseEvent } from "react";
 import { actionRefreshZkWatchFromSubiekt, actionRestoreZkWatch, actionDeleteArchivedZkWatch } from "@/app/actions/sales-notepad";
-import { Badge } from "@/components/ui/Badge";
 import { ActionLoadingOverlay } from "@/components/ui/ActionLoadingOverlay";
 import { cn } from "@/lib/cn";
 import { formatZkWatchDisplayNumber } from "@/lib/sales/notepad-format";
@@ -518,28 +517,28 @@ export function ZkWatchCard({
                 {watch.client_label}
               </span>
               {hasNewWarehouseArrival ? (
-                <Badge variant="success" className="shrink-0 text-[9px]">
+                <span className="shrink-0 inline-flex items-center gap-0.5 rounded-md bg-emerald-50 px-1.5 py-0.5 text-[10px] font-medium leading-none text-emerald-700 ring-1 ring-inset ring-emerald-200/80">
                   Na regale
-                </Badge>
+                </span>
               ) : null}
               {isNewlyAdded && !archived ? (
-                <Badge variant="purple" className="shrink-0 text-[9px]">
+                <span className="shrink-0 inline-flex items-center gap-0.5 rounded-md bg-violet-50 px-1.5 py-0.5 text-[10px] font-medium leading-none text-violet-700 ring-1 ring-inset ring-violet-200/80">
                   Nowe
-                </Badge>
+                </span>
               ) : null}
               {hasNewZkLines ? (
-                <Badge variant="warning" className="shrink-0 text-[9px]">
+                <span className="shrink-0 inline-flex items-center gap-0.5 rounded-md bg-amber-50 px-1.5 py-0.5 text-[10px] font-medium leading-none text-amber-700 ring-1 ring-inset ring-amber-200/80">
                   Nowe pozycje
-                </Badge>
+                </span>
               ) : null}
               {hasTrackedScope && hiddenOutsideScope > 0 ? (
                 <span
                   className="shrink-0"
                   title={`${hiddenOutsideScope} poz. spoza wybranego zakresu — pełną listę zobaczysz w podglądzie ZK`}
                 >
-                  <Badge variant="default" className="text-[9px] text-slate-600">
+                  <span className="inline-flex items-center rounded-md bg-slate-50 px-1.5 py-0.5 text-[10px] font-medium leading-none text-slate-600 ring-1 ring-inset ring-slate-200/80">
                     +{hiddenOutsideScope} poz. ZK
-                  </Badge>
+                  </span>
                 </span>
               ) : null}
             </div>

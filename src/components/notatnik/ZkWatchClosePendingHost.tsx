@@ -200,6 +200,7 @@ function ZkWatchClosePendingHostActive({
         if (preview.length > 0) {
           if (linesModalOpen) closeLinesModal?.();
           setOpen(true);
+          void confirmPendingAndClose();
           return;
         }
         const { closedAt } = await actionCloseZkWatch(watch.id);
@@ -258,7 +259,6 @@ function ZkWatchClosePendingHostActive({
         onFlowError?.(watch.id, null);
         onDismiss();
       }}
-      onConfirmAll={() => void confirmPendingAndClose()}
     />
   );
 }

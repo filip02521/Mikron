@@ -73,22 +73,33 @@ export async function countOperationsNotepadBadge(
   userId: string,
   departments: OperationsDepartment[]
 ): Promise<number> {
-  if (!departments.length) return 0;
+  const perDept = await countOperationsNotepadBadgePerDepartment(userId, departments);
+  return Object.values(perDept).reduce((sum, n) => sum + n, 0);
+}
+
+/** Badge per dział — zwraca mapę department → liczba przypomnień na dziś. */
+export async function countOperationsNotepadBadgePerDepartment(
+  userId: string,
+  departments: OperationsDepartment[]
+): Promise<Record<string, number>> {
+  if (!departments.length) return {};
   const supabase = createAdminClient();
   const { data, error } = await supabase
     .from("operations_notes")
-    .select("id, visibility, created_by, follow_up_at, archived_at")
+    .select("id, department, visibility, created_by, follow_up_at, archived_at")
     .in("department", departments)
     .is("archived_at", null)
     .not("follow_up_at", "is", null);
 
-  if (error) return 0;
+  if (error) return {};
 
-  return (data ?? []).filter((row) => {
-    if (!isFollowUpDue(row.follow_up_at)) return false;
-    if (row.visibility === "public") return true;
-    return row.created_by === userId;
-  }).length;
+  const result: Record<string, number> = {};
+  for (const row of data ?? []) {
+    if (!isFollowUpDue(row.follow_up_at)) continue;
+    if (row.visibility !== "public" && row.created_by !== userId) continue;
+    result[row.department] = (result[row.department] ?? 0) + 1;
+  }
+  return result;
 }
 
 export function collectOperationsTodayTasks(

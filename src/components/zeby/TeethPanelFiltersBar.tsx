@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import { cn } from "@/lib/cn";
 import {
   panelChoiceChipClass,
@@ -14,6 +15,7 @@ import {
 import { teethPanelFiltersBarClass } from "@/lib/teeth/teeth-panel-ui";
 import { receiveQueueToolbarSectionClass } from "@/lib/ui/queue-panel-styles";
 import { queueToolbarFieldLabelClass } from "@/lib/ui/queue-panel-styles";
+import { IconChevronDown } from "@/components/icons/StrokeIcons";
 
 function FilterChip({
   label,
@@ -56,13 +58,73 @@ export function TeethPanelFiltersBar({
   showQueueFilters?: boolean;
   className?: string;
 }) {
+  const [open, setOpen] = useState(false);
   const activeCount = countActiveTeethPanelFilters(
     showQueueFilters ? filters : { ...filters, missingSpecOnly: false, verificationOnly: false },
   );
 
+  const activeSupplier = suppliers.find((s) => s.id === filters.supplierId);
+  const activeSalesPerson = salesPeople.find((sp) => sp.id === filters.salesPersonId);
+
+  const summaryParts: string[] = [];
+  if (activeSupplier) summaryParts.push(activeSupplier.name);
+  if (activeSalesPerson) summaryParts.push(activeSalesPerson.name);
+  if (showQueueFilters && filters.missingSpecOnly) summaryParts.push("Do uzupełnienia");
+  if (showQueueFilters && filters.verificationOnly) summaryParts.push("Brak danych ogólnych");
+
   return (
     <div className={cn(teethPanelFiltersBarClass, className)}>
-      <div className="space-y-2">
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        className="flex w-full items-center justify-between gap-2 py-1 text-left"
+        aria-expanded={open}
+      >
+        <div className="flex min-w-0 items-center gap-2">
+          <IconChevronDown
+            open={open}
+            size={14}
+            strokeWidth={2}
+            className="shrink-0 text-slate-400"
+          />
+          <span className="text-xs font-semibold text-slate-700">Filtry</span>
+          {activeCount > 0 ? (
+            <span className="inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-indigo-100 px-1 text-[10px] font-bold tabular-nums text-indigo-700">
+              {activeCount}
+            </span>
+          ) : null}
+          {summaryParts.length > 0 ? (
+            <span className="hidden truncate text-[11px] text-slate-500 sm:inline">
+              {summaryParts.join(" · ")}
+            </span>
+          ) : null}
+        </div>
+        <div className="flex shrink-0 items-center gap-2">
+          {activeCount > 0 ? (
+            <span
+              role="button"
+              tabIndex={0}
+              onClick={(e) => {
+                e.stopPropagation();
+                onChange(EMPTY_TEETH_PANEL_FILTERS);
+              }}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" || e.key === " ") {
+                  e.stopPropagation();
+                  e.preventDefault();
+                  onChange(EMPTY_TEETH_PANEL_FILTERS);
+                }
+              }}
+              className="text-[10px] font-medium text-indigo-700 transition hover:text-indigo-900"
+            >
+              Wyczyść
+            </span>
+          ) : null}
+        </div>
+      </button>
+
+      {open ? (
+      <div className="space-y-2 pt-1">
         <div className={cn(receiveQueueToolbarSectionClass, "border-slate-200/80 shadow-none")}>
           <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
             <span className={queueToolbarFieldLabelClass}>Dostawca</span>
@@ -167,16 +229,8 @@ export function TeethPanelFiltersBar({
           </div>
         ) : null}
 
-        {activeCount > 0 ? (
-          <button
-            type="button"
-            onClick={() => onChange(EMPTY_TEETH_PANEL_FILTERS)}
-            className="text-[11px] font-medium text-indigo-700 transition-colors hover:text-indigo-900"
-          >
-            Wyczyść wszystkie filtry ({activeCount})
-          </button>
-        ) : null}
       </div>
+      ) : null}
     </div>
   );
 }

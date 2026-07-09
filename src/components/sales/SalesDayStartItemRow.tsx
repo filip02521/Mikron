@@ -35,6 +35,8 @@ export function salesDayStartSourceRowAccent(source: SalesDayStartItem["source"]
       return "border-l-sky-500 hover:bg-sky-50/35";
     case "board_announcement":
       return "border-l-sky-600 hover:bg-sky-50/40";
+    default:
+      return "";
   }
 }
 
@@ -57,6 +59,8 @@ function salesDayStartSourceTagClass(source: SalesDayStartItem["source"]): strin
       return "bg-sky-50 text-sky-900 ring-sky-100";
     case "board_announcement":
       return "bg-sky-50 text-sky-950 ring-sky-200/80";
+    default:
+      return "";
   }
 }
 

@@ -1,7 +1,7 @@
-import { Badge } from "@/components/ui/Badge";
+import { DeliveryTimingMeta } from "@/components/orders/DeliveryTimingMeta";
 import { cn } from "@/lib/cn";
 import type { PlannedOrderDateDisplay } from "@/lib/orders/planned-order-date-label";
-import { panelTypography } from "@/lib/ui/ontime-theme";
+import { salesTypography } from "@/lib/ui/ontime-theme";
 
 export function PlannedOrderDateMeta({
   display,
@@ -13,28 +13,22 @@ export function PlannedOrderDateMeta({
   inline?: boolean;
 }) {
   return (
-    <div
-      className={cn(
-        "min-w-0",
-        inline ? "flex items-center gap-1" : "flex flex-col items-end gap-0.5 text-right",
-        className
-      )}
+    <DeliveryTimingMeta
+      className={className}
+      caption={display.caption}
+      captionTone="default"
       title={display.title}
+      inline={inline}
     >
       <span
         className={cn(
-          panelTypography.caption,
-          "font-medium uppercase tracking-wide text-slate-400"
+          "max-w-full truncate font-semibold leading-snug tabular-nums",
+          salesTypography.rowBody,
+          "text-slate-700"
         )}
       >
-        {display.caption}
-      </span>
-      <Badge
-        variant={display.badgeVariant}
-        className="max-w-full whitespace-normal rounded-md px-2 py-0.5 text-[10px] font-semibold leading-snug tabular-nums"
-      >
         {display.label}
-      </Badge>
-    </div>
+      </span>
+    </DeliveryTimingMeta>
   );
 }

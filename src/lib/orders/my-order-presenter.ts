@@ -112,7 +112,6 @@ import {
   resolveGroupAcknowledgeMode,
   resolveLinePickupAckMode,
   splitPickupPendingIds,
-  submissionGroupSplitHint,
 } from "@/lib/orders/my-order-lane-meta";
 
 function weryfikacjaPresentation(order: IndividualOrder) {
@@ -217,8 +216,6 @@ type MyOrderRowCore = {
   productLaneKind?: import("@/lib/orders/my-order-lane-meta").MyOrderProductLaneKind;
   /** Wspólny identyfikator prośby z formularza (gdy dotyczy). */
   submissionGroupId?: string | null;
-  /** Gdy ta sama prośba jest rozbita na kilka kart w /moje. */
-  submissionGroupSplitHint?: string | null;
   /** Czy wiersz pochodzi z archiwum (decorateArchivedRow) — wpływa na subline i styl. */
   isArchive?: boolean;
 };
@@ -1227,10 +1224,6 @@ export function presentMyOrders(
       {
         ...row,
         ...enrichMyOrderSalesUi(row),
-        submissionGroupSplitHint: submissionGroupSplitHint(
-          row.submissionGroupId,
-          salesVisibleOrders
-        ),
       },
       options?.supplierScheduleById,
       {

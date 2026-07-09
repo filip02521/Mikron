@@ -27,7 +27,6 @@ import { resolveMyOrderHistoryDeliveryEstimate } from "@/lib/orders/delivery-dat
 import { MyOrderKindBadge } from "@/components/moje/MyOrderKindBadge";
 import { MyOrderProductLaneBadge } from "@/components/moje/MyOrderProductLaneBadge";
 import { displayProductLaneKind } from "@/lib/orders/my-order-lane-meta";
-import { MyOrderSubmissionGroupCallout } from "@/components/moje/MyOrderSubmissionGroupCallout";
 import { MyOrderRequestProgressBar } from "@/components/moje/MyOrderRequestProgressBar";
 import {
   deriveMyOrderRequestProgress,
@@ -73,6 +72,7 @@ import { MyOrderShipmentOverflowMenu, type MyOrderShipmentOverflowMenuProps } fr
 import { MyOrderHeadlineBanner } from "@/components/moje/MyOrderHeadlineBanner";
 import { MyOrderRowPatternHint } from "@/components/moje/MyOrderRowPatternHint";
 import { MyOrderStatusPill } from "@/components/moje/MyOrderStatusPill";
+import { IconCircleCheck, IconPackageCheck, IconTooth } from "@/components/icons/StrokeIcons";
 import { ZkProsbaLinkChip } from "@/components/orders/ZkProsbaLinkChip";
 import { cn } from "@/lib/cn";
 import {
@@ -251,7 +251,10 @@ function ShipmentToolbar({
           onClick={() => onAcknowledgeDismiss(dismissAckIds)}
           className={ackSegmentRounding("dismiss")}
         >
-          {dismissAckLabel}
+          <span className="inline-flex items-center gap-1.5">
+            <IconCircleCheck size={13} className="shrink-0" />
+            {dismissAckLabel}
+          </span>
         </MyOrderAckButton>
       ) : null}
       {showSinglePickup && !hideSinglePickup ? (
@@ -273,7 +276,14 @@ function ShipmentToolbar({
           onClick={() => onAcknowledgePickup(pickupIds, shelfPickup)}
           className={ackSegmentRounding("single")}
         >
-          {pickupLabel}
+          <span className="inline-flex items-center gap-1.5">
+            {ackMode === "teeth_handover" ? (
+              <IconTooth size={13} className="shrink-0" />
+            ) : (
+              <IconPackageCheck size={13} className="shrink-0" />
+            )}
+            {pickupLabel}
+          </span>
         </MyOrderAckButton>
       ) : null}
       {showBulkPickup ? (
@@ -289,7 +299,14 @@ function ShipmentToolbar({
           onClick={() => onAcknowledgePickup(pickupIds, shelfPickup)}
           className={ackSegmentRounding("bulk")}
         >
-          {pickupLabel}
+          <span className="inline-flex items-center gap-1.5">
+            {ackMode === "teeth_handover" ? (
+              <IconTooth size={13} className="shrink-0" />
+            ) : (
+              <IconPackageCheck size={13} className="shrink-0" />
+            )}
+            {pickupLabel}
+          </span>
         </MyOrderAckButton>
       ) : null}
     </>
@@ -740,7 +757,10 @@ export const MyOrderShipmentCard = memo(function MyOrderShipmentCard({
       ariaLabel={pickupAckTitle}
       onClick={() => onAcknowledgePickup(row.pickupPendingIds, shelfPickup)}
     >
-      {pickupAckLabel}
+      <span className="inline-flex items-center gap-1.5">
+        <IconPackageCheck size={14} className="shrink-0" />
+        {pickupAckLabel}
+      </span>
     </MyOrderAckButton>
   ) : bannerDismiss ? (
     <MyOrderAckButton
@@ -751,7 +771,10 @@ export const MyOrderShipmentCard = memo(function MyOrderShipmentCard({
       ariaLabel={dismissAckTitle}
       onClick={() => onAcknowledgeDismiss(dismissAckIds)}
     >
-      {dismissAckLabel}
+      <span className="inline-flex items-center gap-1.5">
+        <IconCircleCheck size={14} className="shrink-0" />
+        {dismissAckLabel}
+      </span>
     </MyOrderAckButton>
   ) : undefined;
 
@@ -930,17 +953,15 @@ export const MyOrderShipmentCard = memo(function MyOrderShipmentCard({
           action={bannerAction}
         />
       ) : null}
-      {row.submissionGroupSplitHint ? (
-        <div className="px-2 pt-1 sm:px-3">
-          <MyOrderSubmissionGroupCallout hint={row.submissionGroupSplitHint} />
-        </div>
-      ) : null}
       <div className={cn("px-2 py-1.5 sm:px-3 sm:py-2", mojeQueueRowLayoutClass)}>
-        <div className={mojeQueueRowMainClass}>
+        <div
+          className={cn(mojeQueueRowMainClass, needsExpand && "cursor-pointer")}
+          onClick={needsExpand ? handleToggle : undefined}
+        >
         <button
           type="button"
           data-moje-row-toggle=""
-          onClick={handleToggle}
+          onClick={(e) => { e.stopPropagation(); handleToggle(); }}
           disabled={!needsExpand}
           aria-expanded={needsExpand ? expanded : undefined}
           aria-controls={needsExpand ? panelId : undefined}
@@ -959,14 +980,11 @@ export const MyOrderShipmentCard = memo(function MyOrderShipmentCard({
 
         <div className="flex min-w-0 flex-1 items-start gap-1">
           <div className="min-w-0 flex-1">
-          <button
-            type="button"
-            onClick={handleToggle}
-            disabled={!needsExpand}
+          <div
             className={cn(
               "w-full text-left",
               needsExpand &&
-                "hover:bg-black/[0.02] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-indigo-300"
+                "focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-indigo-300"
             )}
           >
             {!showHeadlineBanner && showCollapsedSublineText && collapsedSubline ? (
@@ -1054,11 +1072,11 @@ export const MyOrderShipmentCard = memo(function MyOrderShipmentCard({
               />
             ) : null}
             {/* Client/note/procurement note — only in expanded view */}
-          </button>
+          </div>
           {(row.sourceZkNumber || sharedRequestNote || sharedProcurementCancelNote) ? (
             <div className="mt-0.5 flex items-center gap-1.5">
               {sharedRequestNote || sharedProcurementCancelNote ? (
-                <span className="shrink-0 inline-flex items-center gap-0.5 rounded bg-indigo-50 px-1 py-0.5 text-[10px] font-medium leading-none text-indigo-500" title="Prośba zawiera uwagi">
+                <span className="shrink-0 inline-flex items-center gap-0.5 rounded-md bg-indigo-50 px-1.5 py-0.5 text-[10px] font-medium leading-none text-indigo-500 ring-1 ring-inset ring-indigo-200/70" title="Prośba zawiera uwagi">
                   <svg viewBox="0 0 16 16" className="size-3" fill="currentColor" aria-hidden>
                     <path d="M3 2a1 1 0 0 0-1 1v10a1 1 0 0 0 1 1h6a1 1 0 0 0 .7-.3l3-3a1 1 0 0 0 .3-.7V3a1 1 0 0 0-1-1H3Zm1 2h7v5H8a1 1 0 0 0-1 1v2H4V4Z" />
                   </svg>
@@ -1071,6 +1089,7 @@ export const MyOrderShipmentCard = memo(function MyOrderShipmentCard({
                   zkWatchId={row.sourceZkWatchId}
                   salesPersonId={row.salesPersonId}
                   searchQuery={searchQuery}
+                  inline
                   className="max-w-full"
                 />
               ) : null}
@@ -1330,10 +1349,13 @@ export const MyOrderShipmentCard = memo(function MyOrderShipmentCard({
                               onAcknowledgePickup(row.pickupTeethPendingIds, false)
                             }
                           >
-                            {myOrderPickupAckLabel(
-                              row.pickupTeethPendingIds.length,
-                              "teeth_handover"
-                            )}
+                            <span className="inline-flex items-center gap-1.5">
+                              <IconTooth size={14} className="shrink-0" />
+                              {myOrderPickupAckLabel(
+                                row.pickupTeethPendingIds.length,
+                                "teeth_handover"
+                              )}
+                            </span>
                           </MyOrderAckButton>
                         ) : null}
                         {row.pickupShelfPendingIds.length > 0 ? (
@@ -1347,10 +1369,13 @@ export const MyOrderShipmentCard = memo(function MyOrderShipmentCard({
                               onAcknowledgePickup(row.pickupShelfPendingIds, true)
                             }
                           >
-                            {myOrderPickupAckLabel(
-                              row.pickupShelfPendingIds.length,
-                              "pickup"
-                            )}
+                            <span className="inline-flex items-center gap-1.5">
+                              <IconPackageCheck size={14} className="shrink-0" />
+                              {myOrderPickupAckLabel(
+                                row.pickupShelfPendingIds.length,
+                                "pickup"
+                              )}
+                            </span>
                           </MyOrderAckButton>
                         ) : null}
                       </div>
@@ -1363,7 +1388,14 @@ export const MyOrderShipmentCard = memo(function MyOrderShipmentCard({
                       ariaLabel={pickupAckTitle}
                       onClick={() => onAcknowledgePickup(row.pickupPendingIds, shelfPickup)}
                     >
-                      {myOrderPickupAckAllLabel()}
+                      <span className="inline-flex items-center gap-1.5">
+                        {ackMode === "teeth_handover" ? (
+                          <IconTooth size={14} className="shrink-0" />
+                        ) : (
+                          <IconPackageCheck size={14} className="shrink-0" />
+                        )}
+                        {myOrderPickupAckAllLabel()}
+                      </span>
                     </MyOrderAckButton>
                     )}
                   </div>

@@ -42,7 +42,7 @@ function SupplierChip({
       onClick={onClick}
       className={cn(
         panelChoiceChipClass,
-        "inline-flex max-w-[14rem] shrink-0 items-center gap-1.5 px-2.5 py-1.5",
+        "inline-flex max-w-[14rem] shrink-0 items-center gap-1.5 px-2.5 py-1.5 transition",
         active ? activeClass : panelChoiceChipIdleClass
       )}
     >

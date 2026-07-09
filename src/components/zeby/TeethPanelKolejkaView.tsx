@@ -15,6 +15,7 @@ import { Button } from "@/components/ui/Button";
 import { TeethPanelEmpty } from "@/components/zeby/TeethPanelSection";
 
 import { TeethQueueBatchTable } from "@/components/zeby/TeethQueueBatchTable";
+import { TeethPanelScheduleBanner } from "@/components/zeby/TeethPanelScheduleBanner";
 
 import {
 
@@ -307,24 +308,21 @@ export function TeethPanelKolejkaView({
 
             />
 
-
-
-            {realItems.length > 0 ? (
-
-              <TeethQueueBatchTable
-
-                items={realItems}
-
-                positionSelection={positionSelection}
-
-                onTogglePosition={onTogglePosition}
-
-                onEditSaved={onEditSaved}
-
+            {group.dueSchedule ? (
+              <TeethPanelScheduleBanner
+                schedule={group.dueSchedule}
+                scheduleOnly={scheduleOnly}
               />
-
             ) : null}
 
+            {realItems.length > 0 ? (
+              <TeethQueueBatchTable
+                items={realItems}
+                positionSelection={positionSelection}
+                onTogglePosition={onTogglePosition}
+                onEditSaved={onEditSaved}
+              />
+            ) : null}
           </div>
 
         );

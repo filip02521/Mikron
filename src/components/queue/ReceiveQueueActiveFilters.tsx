@@ -34,14 +34,14 @@ export function ReceiveQueueActiveFilters({
           className={cn(
             panelChoiceChipClass,
             panelChoiceChipSuccessSelectedClass,
-            "inline-flex max-w-full items-center gap-1.5 px-2.5 py-1.5 text-xs"
+            "inline-flex max-w-full items-center gap-1.5 px-2.5 py-1.5 text-xs transition hover:brightness-95"
           )}
           title={`Wyczyść filtr ZD: ${zdFilter.docNumber}`}
         >
           <span className="truncate">ZD: {zdFilter.docNumber}</span>
-          <span className="shrink-0 text-emerald-800/70" aria-hidden>
-            ✕
-          </span>
+          <svg aria-hidden viewBox="0 0 12 12" className="size-3 shrink-0 text-emerald-800/70" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round">
+            <path d="M3 3L9 9M9 3L3 9" />
+          </svg>
         </button>
       ) : null}
       {hasProduct ? (
@@ -52,14 +52,14 @@ export function ReceiveQueueActiveFilters({
           className={cn(
             panelChoiceChipClass,
             panelChoiceChipIdleClass,
-            "inline-flex max-w-full items-center gap-1.5 border-slate-200 bg-slate-50 px-2.5 py-1.5 text-xs text-slate-800"
+            "inline-flex max-w-full items-center gap-1.5 border-slate-200 bg-slate-50 px-2.5 py-1.5 text-xs text-slate-800 transition hover:bg-slate-100"
           )}
           title="Wyczyść wyszukiwanie towaru"
         >
           <span className="truncate">Szukaj: {productSearch.trim()}</span>
-          <span className="shrink-0 text-slate-500" aria-hidden>
-            ✕
-          </span>
+          <svg aria-hidden viewBox="0 0 12 12" className="size-3 shrink-0 text-slate-500" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round">
+            <path d="M3 3L9 9M9 3L3 9" />
+          </svg>
         </button>
       ) : null}
     </div>

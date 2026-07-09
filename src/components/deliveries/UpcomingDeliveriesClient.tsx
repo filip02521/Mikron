@@ -5,6 +5,8 @@ import { addDays } from "date-fns";
 import { actionFetchUpcomingDeliveries } from "@/app/actions/upcoming-deliveries";
 import type { UpcomingDeliveriesPayload } from "@/app/actions/upcoming-deliveries";
 import {
+  buildDeliveryScheduleWeek,
+  summarizeDeliverySchedule,
   upcomingDeliveryPresetRange,
   type UpcomingDeliveryRangePreset,
 } from "@/lib/data/upcoming-deliveries";
@@ -26,9 +28,10 @@ import {
   panelTypography,
   sectionIconTileBrandClass,
 } from "@/lib/ui/ontime-theme";
-import { QUEUE_LIST_BODY_CLASS } from "@/lib/ui/queue-panel-styles";
 import { UpcomingDeliverySummaryTiles } from "@/components/deliveries/UpcomingDeliverySummaryTiles";
-import { UpcomingDeliveryDayCard } from "@/components/deliveries/UpcomingDeliveryDayCard";
+import { DeliveryTodaySection } from "@/components/deliveries/DeliveryTodaySection";
+import { DeliveryWeekGrid } from "@/components/deliveries/DeliveryWeekGrid";
+import type { SupplierWithSchedule } from "@/types/database";
 
 const PRESET_OPTIONS: { value: UpcomingDeliveryRangePreset; label: string }[] = [
   { value: "week", label: "Tydzień" },
@@ -62,10 +65,14 @@ export function UpcomingDeliveriesClient({
   initialPayload,
   loadError,
   isAuthorized,
+  supplierSchedules,
+  todayDateKey,
 }: {
   initialPayload: UpcomingDeliveriesPayload | null;
   loadError: string | null;
   isAuthorized: boolean;
+  supplierSchedules: SupplierWithSchedule[];
+  todayDateKey: string;
 }) {
   const [payload, setPayload] = useState<UpcomingDeliveriesPayload | null>(initialPayload);
   const [error, setError] = useState<string | null>(loadError);
@@ -119,13 +126,32 @@ export function UpcomingDeliveriesClient({
     return formatRangeLabel(dateFrom, dateTo);
   }, [dateFrom, dateTo]);
 
+  const weekDays = useMemo(
+    () => buildDeliveryScheduleWeek(supplierSchedules, days, todayDateKey, dateFrom || undefined),
+    [supplierSchedules, days, todayDateKey, dateFrom]
+  );
+
+  const extendedSummary = useMemo(
+    () => (summary ? summarizeDeliverySchedule(summary, weekDays) : null),
+    [summary, weekDays]
+  );
+
+  const todayDay = useMemo(
+    () => weekDays.find((d) => d.isToday) ?? null,
+    [weekDays]
+  );
+
+  const weekGridEmpty = weekDays.every(
+    (d) => d.scheduledSuppliers.length === 0 && (!d.deliveryDay || d.deliveryDay.suppliers.length === 0)
+  );
+
   if (!isAuthorized) {
     return (
-      <div className="mx-auto max-w-3xl px-4 py-8 sm:px-6">
+      <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6">
         <Card>
           <EmptyState
             title="Brak uprawnień"
-            description="Panel nadchodzących dostaw jest dostępny dla działu magazynu."
+            description="Panel dostaw jest dostępny dla działu magazynu."
           />
         </Card>
       </div>
@@ -133,12 +159,12 @@ export function UpcomingDeliveriesClient({
   }
 
   return (
-    <div className="mx-auto max-w-3xl px-4 py-6 sm:px-6">
+    <div className="mx-auto max-w-7xl px-4 py-6 sm:px-6">
       <Card padding={false} className="overflow-hidden">
         <CardHeader
-          title="Nadchodzące dostawy"
-          description="Terminy realizacji z dokumentów ZD w Subiekcie"
-          hint="Zamówienia z przypisanym terminem realizacji ZD, pogrupowane wg daty i dostawcy."
+          title="Plan dostaw"
+          description="Centrum dowodzenia — planowi dostawcy i zamówienia ZD"
+          hint="Plan dostawców na podstawie harmonogramu + dokumenty ZD z Subiekta."
           density="compact"
           inset
           leading={
@@ -186,7 +212,14 @@ export function UpcomingDeliveriesClient({
               <span className="text-[11px] text-slate-400">Ładowanie…</span>
             ) : null}
           </div>
-          {summary ? <UpcomingDeliverySummaryTiles summary={summary} /> : null}
+          {extendedSummary ? <UpcomingDeliverySummaryTiles summary={extendedSummary} /> : null}
+          {pending && !extendedSummary ? (
+            <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 xl:grid-cols-6">
+              {Array.from({ length: 6 }).map((_, i) => (
+                <div key={i} className="h-16 animate-pulse rounded-lg bg-slate-100" />
+              ))}
+            </div>
+          ) : null}
         </div>
 
         {error ? (
@@ -195,30 +228,40 @@ export function UpcomingDeliveriesClient({
           </div>
         ) : null}
 
-        {!error && !pending && days.length === 0 ? (
-          <EmptyState
-            title="Brak zaplanowanych dostaw w wybranym okresie"
-            description="Wybierz inny zakres dat lub sprawdź kolejkę przyjęcia towaru."
-          />
-        ) : null}
-
-        {!error && days.length > 0 ? (
-          <div className={cn(QUEUE_LIST_BODY_CLASS, "space-y-3 p-3 sm:p-4")}>
-            {days.map((day) => (
-              <UpcomingDeliveryDayCard key={day.dateKey} day={day} />
-            ))}
+        {!error && todayDay ? (
+          <div className="border-b border-slate-100 px-3 py-3 sm:px-4">
+            <DeliveryTodaySection todayDay={todayDay} pending={pending} />
           </div>
         ) : null}
 
-        {!error && pending && days.length === 0 ? (
-          <div className={panelSectionInsetClass}>
-            <p className="text-sm text-slate-400">Ładowanie dostaw…</p>
+        {!error && !pending && weekGridEmpty && days.length === 0 ? (
+          <div className="px-3 py-3 sm:px-4">
+            <EmptyState
+              title="Brak zaplanowanych dostaw w wybranym okresie"
+              description="Wybierz inny zakres dat lub sprawdź kolejkę przyjęcia towaru."
+            />
+          </div>
+        ) : null}
+
+        {!error && !weekGridEmpty ? (
+          <div className="overflow-hidden border-t border-slate-100">
+            <DeliveryWeekGrid days={weekDays} pending={pending} />
+          </div>
+        ) : null}
+
+        {!error && pending && weekGridEmpty ? (
+          <div className="px-3 py-3 sm:px-4">
+            <div className="grid grid-cols-1 gap-px overflow-hidden bg-slate-100 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
+              {Array.from({ length: 5 }).map((_, i) => (
+                <div key={i} className="h-32 animate-pulse bg-slate-100" />
+              ))}
+            </div>
           </div>
         ) : null}
       </Card>
 
       <p className={cn(panelTypography.caption, "mt-3 text-center")}>
-        Prognoza paczek i palet na podstawie historii dostaw od danego dostawcy.
+        Plan dostawców na podstawie harmonogramu · prognoza paczek i palet z historii dostaw.
       </p>
     </div>
   );

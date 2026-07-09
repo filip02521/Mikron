@@ -6,7 +6,7 @@ import type { UpcomingDeliveryDay } from "@/lib/data/upcoming-deliveries";
 import { UpcomingDeliverySupplierCard } from "@/components/deliveries/UpcomingDeliverySupplierCard";
 
 function dayBadgeClass(day: UpcomingDeliveryDay): string {
-  if (day.isOverdue) return "bg-amber-100 text-amber-800 ring-1 ring-amber-200/80";
+  if (day.isOverdue) return "bg-rose-100 text-rose-800 ring-1 ring-rose-200/80";
   if (day.isToday) return "bg-emerald-100 text-emerald-800 ring-1 ring-emerald-200/80";
   return "bg-slate-100 text-slate-600 ring-1 ring-slate-200/80";
 }
@@ -25,7 +25,7 @@ export function UpcomingDeliveryDayCard({ day }: { day: UpcomingDeliveryDay }) {
   return (
     <div
       className={cn(
-        "rounded-md border bg-white shadow-sm",
+        "rounded-lg border bg-white shadow-sm transition hover:shadow-md",
         day.isOverdue
           ? "border-amber-200/70"
           : day.isToday
@@ -43,7 +43,7 @@ export function UpcomingDeliveryDayCard({ day }: { day: UpcomingDeliveryDay }) {
               : "border-slate-100 bg-slate-50/30"
         )}
       >
-        <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-slate-100 text-slate-600">
+        <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-gradient-to-br from-slate-100 to-slate-50 text-slate-600">
           <span className="text-xs font-bold tabular-nums">
             {day.dateKey.split("-")[2]}
           </span>

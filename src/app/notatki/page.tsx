@@ -3,9 +3,10 @@ import { getSessionUser } from "@/lib/auth";
 import {
   canAccessOperationsNotepad,
   defaultDepartmentForRole,
+  departmentsForRole,
   parseOperationsDepartment,
 } from "@/lib/operations/notepad-department";
-import { fetchOperationsNotepad } from "@/lib/data/operations-notepad";
+import { fetchOperationsNotepad, countOperationsNotepadBadgePerDepartment } from "@/lib/data/operations-notepad";
 import { OperationsNotepadClient } from "@/components/operations-notepad/OperationsNotepadClient";
 import { Alert } from "@/components/ui/Alert";
 
@@ -48,11 +49,21 @@ export default async function OperationsNotatkiPage({
   let initial = { privateNotes: [], publicNotes: [], archivedNotes: [] } as Awaited<
     ReturnType<typeof fetchOperationsNotepad>
   >;
+  let deptBadges: Record<string, number> = {};
 
   try {
     initial = await fetchOperationsNotepad(department, user.id);
   } catch (e) {
     loadError = e instanceof Error ? e.message : "Nie udało się załadować notatek.";
+  }
+
+  try {
+    deptBadges = await countOperationsNotepadBadgePerDepartment(
+      user.id,
+      departmentsForRole(user.role, user.assignedWorkspaces)
+    );
+  } catch {
+    /* badge opcjonalny */
   }
 
   return (
@@ -64,6 +75,7 @@ export default async function OperationsNotatkiPage({
       role={user.role}
       assignedWorkspaces={user.assignedWorkspaces}
       loadError={loadError}
+      deptBadges={deptBadges}
     />
   );
 }

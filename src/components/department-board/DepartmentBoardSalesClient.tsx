@@ -355,7 +355,7 @@ export function DepartmentBoardSalesClient({
                   autoMarkSeen={!tourDemo && !readOnly && question.status === "answered"}
                   defaultExpanded={
                     focusQuestionId === question.id ||
-                    (tourDemo && ONBOARDING_TABLICA_UNSEEN_QUESTION_IDS.includes(question.id))
+                    (tourDemo && (ONBOARDING_TABLICA_UNSEEN_QUESTION_IDS as readonly string[]).includes(question.id))
                   }
                   onChanged={refresh}
                 />

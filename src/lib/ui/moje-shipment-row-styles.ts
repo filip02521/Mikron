@@ -3,7 +3,7 @@ import { salesTypography } from "@/lib/ui/ontime-theme";
 
 /** Jedna sekcja listy (nagłówek + wiersze) — zaokrąglenie tylko na zewnątrz. */
 export const mojeShipmentSectionShellClass =
-  "overflow-hidden rounded-md border border-slate-200/90 bg-white shadow-sm";
+  "overflow-hidden rounded-lg border border-slate-200/80 bg-white shadow-sm shadow-slate-200/40";
 
 /** Układ wiersza — treść nad akcjami na wąskim ekranie. */
 export const mojeQueueRowLayoutClass =
@@ -62,7 +62,7 @@ export function mojeShipmentRowClass({
             ? "border-l-emerald-300"
             : "border-l-slate-200/70";
     return cn(
-      "border-l-[3px] transition-colors duration-150",
+      "border-l-[3px] transition-all duration-150",
       accent,
       expanded ? "bg-slate-50/70" : "bg-slate-50/45 hover:bg-slate-50/65"
     );
@@ -85,7 +85,7 @@ export function mojeShipmentRowClass({
                 : "border-l-slate-200";
 
   return cn(
-    "border-l-[3px] transition-colors duration-150",
+    "border-l-[3px] transition-all duration-150",
     accent,
     isAction && !expanded && "bg-emerald-50/35",
     isInformacjaAck && !expanded && "bg-violet-50/40",
@@ -113,7 +113,7 @@ export const mojeShipmentExpandedMetaShellClass =
   "px-0 py-0";
 
 export const mojeShipmentExpandedPanelClass =
-  "space-y-2 rounded-lg border border-slate-200/80 bg-white px-3 py-3 sm:px-4 sm:py-3.5";
+  "space-y-2 rounded-lg border border-slate-200/70 bg-white shadow-sm shadow-slate-200/30 px-3 py-3 sm:px-4 sm:py-3.5";
 
 export const mojeShipmentExpandedInfoBlockClass =
   "space-y-1.5 px-3 py-2";
@@ -141,7 +141,7 @@ export const mojeShipmentLinesHeaderTitleClass = cn(
 );
 
 export const mojeShipmentLinesShellClass =
-  "overflow-hidden rounded-md border border-slate-200/90 bg-white";
+  "overflow-hidden rounded-lg border border-slate-200/70 bg-white";
 
 export const mojeShipmentLineRowClass =
   "border-b border-slate-100 px-3 py-2 last:border-b-0 sm:py-2.5";

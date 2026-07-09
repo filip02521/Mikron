@@ -17,7 +17,7 @@ export const queueToolbarControlClass = "h-9 py-2 text-sm";
 
 /** Karta sekcji w pasku przyjęcia towaru. */
 export const receiveQueueToolbarSectionClass =
-  "rounded-md border border-emerald-100/70 bg-white p-3 shadow-sm";
+  "rounded-lg border border-slate-200/70 bg-white p-3 shadow-sm";
 
 /** Karta narzędzi w dzienniku dostaw (data, filtry). */
 export const journalToolbarCardClass =

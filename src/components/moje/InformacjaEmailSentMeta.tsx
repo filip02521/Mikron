@@ -1,11 +1,10 @@
-import { Badge } from "@/components/ui/Badge";
 import { DeliveryTimingMeta } from "@/components/orders/DeliveryTimingMeta";
 import { cn } from "@/lib/cn";
 import {
   buildInformacjaTimingMetaDisplay,
   shouldShowInformacjaTimingMeta,
 } from "@/lib/orders/informacja-timing-meta";
-import { deliveryMetaTypography } from "@/lib/ui/ontime-theme";
+import { salesTypography } from "@/lib/ui/ontime-theme";
 
 export { shouldShowInformacjaTimingMeta as shouldShowInformacjaEmailSentMeta };
 
@@ -28,14 +27,15 @@ export function InformacjaEmailSentMeta({
       captionTone={isAvailable ? "available" : "default"}
       title={display.title}
     >
-      <Badge
-        variant="default"
+      <span
         className={cn(
-          isAvailable ? deliveryMetaTypography.dateBadgeAvailable : deliveryMetaTypography.dateBadge
+          "max-w-full truncate font-semibold leading-snug tabular-nums",
+          salesTypography.rowBody,
+          isAvailable ? "text-sky-800" : "text-slate-700"
         )}
       >
         {display.dateLabel}
-      </Badge>
+      </span>
     </DeliveryTimingMeta>
   );
 }

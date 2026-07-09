@@ -47,7 +47,7 @@ export const boardQuestionsListFooterClass =
 export const boardQuestionRowHeaderClass = "px-3 py-3.5 sm:px-4 sm:py-4";
 
 export const boardQuestionExpandedShellClass =
-  "space-y-4 border-t border-indigo-100/60 bg-gradient-to-b from-indigo-50/20 via-white to-white px-3 pb-4 pt-4 sm:px-4 sm:pb-5";
+  "space-y-4 border-t border-indigo-100/60 bg-gradient-to-b from-indigo-50/20 via-white to-white px-3 pb-4 pt-4 sm:px-4 sm:pb-5 board-question-expanded-enter";
 
 export const boardQuestionInlineReplyShellClass =
   "space-y-2.5 border-t border-indigo-100/80 bg-indigo-50/20 px-3 pb-3.5 pt-3 sm:px-4";

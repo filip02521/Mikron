@@ -52,6 +52,8 @@ import { MobileOperationsHeader } from "./MobileOperationsHeader";
 import { useAppShellMetrics } from "./AppShellMetricsContext";
 import { AppWorkspaceBackdrop } from "./AppWorkspaceBackdrop";
 import { TeethExemptProvider } from "@/components/layout/TeethExemptContext";
+import { ChangelogProvider } from "@/components/changelog/ChangelogProvider";
+import { ChangelogAutoOpen } from "@/components/changelog/ChangelogAutoOpen";
 
 function SalesGlobalPinnedStrip({
   attention,
@@ -236,6 +238,8 @@ export function AppShellClient({
         salesPersonName={salesPersonName}
         adminPanelPreview={Boolean(adminPanelPreview)}
       >
+      <ChangelogProvider role={role}>
+      <ChangelogAutoOpen />
       <LegacyProcurementRouteRedirect />
       <div
         className={cn(
@@ -375,6 +379,7 @@ export function AppShellClient({
           />
         ) : null}
       </div>
+      </ChangelogProvider>
       </SalesOnboardingGate>
     </SalesInboxProvider>
     </SalesUpdatesProvider>

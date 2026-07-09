@@ -18,8 +18,6 @@ import type { TeethQueueGroup } from "@/lib/data/teeth-queue";
 
 import { plPozycja } from "@/lib/ui/polish-plurals";
 
-import { formatTeethLaneScheduleMeta } from "@/lib/teeth/teeth-supplier-dual-lane";
-
 import { IconTruck } from "@/components/icons/StrokeIcons";
 
 import {
@@ -57,19 +55,7 @@ export function TeethPanelSupplierGroupHeader({
 
 }) {
 
-  const schedule = group.dueSchedule;
-
-  const scheduleMeta = schedule
-
-    ? formatTeethLaneScheduleMeta({
-
-        computedNextDate: schedule.computed_next_date,
-
-        shiftDate: schedule.shift_date,
-
-      })
-
-    : null;
+  const hasSchedule = Boolean(group.dueSchedule?.computed_next_date);
 
 
 
@@ -103,11 +89,15 @@ export function TeethPanelSupplierGroupHeader({
 
         {group.scheduledOnly ? (
 
-          <span className={teethPanelHeaderMetaClass}>z harmonogramu</span>
+          <span className="inline-flex items-center rounded-full bg-sky-100 px-2 py-0.5 text-[10px] font-semibold text-sky-700">
+            Harmonogram
+          </span>
 
-        ) : scheduleMeta ? (
+        ) : hasSchedule ? (
 
-          <span className={teethPanelHeaderMetaClass}>· {scheduleMeta}</span>
+          <span className="inline-flex items-center rounded-full bg-sky-50 px-2 py-0.5 text-[10px] font-medium text-sky-600">
+            Harmonogram
+          </span>
 
         ) : null}
 

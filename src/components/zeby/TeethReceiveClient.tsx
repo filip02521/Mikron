@@ -6,7 +6,7 @@ import type { IndividualOrder } from "@/types/database";
 import { NoticeToast } from "@/components/ui/NoticeToast";
 import { ActionLoadingOverlay } from "@/components/ui/ActionLoadingOverlay";
 import { Alert } from "@/components/ui/Alert";
-import { IconTooth } from "@/components/icons/StrokeIcons";
+import { IconWarehouse } from "@/components/icons/StrokeIcons";
 import { TeethReceiveLinesPanel } from "@/components/zeby/TeethReceiveLinesPanel";
 import { TeethPanelTabPanel } from "@/components/zeby/TeethPanelSection";
 import { TeethPanelWorkspaceCard } from "@/components/zeby/TeethPanelWorkspaceCard";
@@ -55,7 +55,7 @@ export function TeethReceiveClient({
     <TeethPanelWorkspaceCard
       title={TEETH_PRZYJECIE_PAGE_TITLE}
       hint={TEETH_PRZYJECIE_PAGE_HINT}
-      icon={<IconTooth size={20} />}
+      icon={<IconWarehouse size={20} />}
       iconTileClassName={TEETH_PRZYJECIE_ICON_TILE}
       beforeCard={overlays}
     >

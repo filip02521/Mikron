@@ -15,7 +15,7 @@ import {
   type ToastNotice,
 } from "@/lib/ui/notice-copy";
 import { Input } from "@/components/ui/Field";
-import { IconTooth, IconCircleCheck } from "@/components/icons/StrokeIcons";
+import { IconTooth, IconArchive } from "@/components/icons/StrokeIcons";
 import type { TeethQueueGroup, TeethQueueItem, TeethPositionSelection } from "@/lib/data/teeth-queue";
 import { isScheduledItem } from "@/lib/data/teeth-queue";
 import { TeethPanelTabs } from "@/components/zeby/TeethPanelTabs";
@@ -350,7 +350,7 @@ export function TeethPanelClient({
         hint={TEETH_TAB_HINTS[tab]}
         icon={
           tab === "historia" ? (
-            <IconCircleCheck size={20} strokeWidth={1.75} />
+            <IconArchive size={20} strokeWidth={1.75} />
           ) : (
             <IconTooth size={20} />
           )

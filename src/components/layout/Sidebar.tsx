@@ -51,6 +51,7 @@ import type { ProcurementWorkspace } from "@/lib/auth/procurement-workspace";
 import { PROCUREMENT_WORKSPACE_OPTIONS, subtitleForProcurementWorkspace } from "@/lib/auth/procurement-workspace";
 import { isAdmin } from "@/lib/auth-roles";
 import { hrefWithAdminSalesPreview, shouldPreserveSalesPreviewInNav } from "@/lib/nav/sales-preview-href";
+import { ChangelogTriggerButton } from "@/components/changelog/ChangelogTriggerButton";
 
 function NavLink({
   item,
@@ -370,6 +371,7 @@ export function Sidebar({
           </Link>
         ) : (
           <>
+            <ChangelogTriggerButton />
             <div className="flex items-stretch gap-2">
               <Link
                 href="/ustawienia"

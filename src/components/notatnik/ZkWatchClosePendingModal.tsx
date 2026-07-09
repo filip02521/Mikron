@@ -2,7 +2,6 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { ModalShell } from "@/components/ui/ModalShell";
 import { cn } from "@/lib/cn";
@@ -12,11 +11,12 @@ import { formatZkWatchDisplayNumber } from "@/lib/sales/notepad-format";
 import {
   collectZkWatchPendingAckOrderIdsFromItems,
   zkWatchPendingAckKindBadgeLabel,
-  zkWatchPendingAckKindBadgeVariant,
+  type ZkWatchPendingAckKind,
   type ZkWatchPendingAckItem,
 } from "@/lib/sales/zk-watch-close-pending";
 import { salesTypography } from "@/lib/ui/ontime-theme";
 import type { SalesZkWatch } from "@/types/database";
+import { IconCircleCheck, IconClock } from "@/components/icons/StrokeIcons";
 
 function polishCountLabel(
   n: number,
@@ -31,6 +31,15 @@ function polishCountLabel(
   return `${n} ${forms[2]}`;
 }
 
+const PENDING_ACK_BADGE_CLASS: Record<ZkWatchPendingAckKind, string> = {
+  pickup: "bg-emerald-50 text-emerald-700 ring-1 ring-inset ring-emerald-200/80",
+  teeth_handover: "bg-emerald-50 text-emerald-700 ring-1 ring-inset ring-emerald-200/80",
+  availability: "bg-sky-50 text-sky-700 ring-1 ring-inset ring-sky-200/80",
+  cancel_notice: "bg-amber-50 text-amber-700 ring-1 ring-inset ring-amber-200/80",
+  cancelled: "bg-rose-50 text-rose-700 ring-1 ring-inset ring-rose-200/80",
+  zd_deadline: "bg-amber-50 text-amber-700 ring-1 ring-inset ring-amber-200/80",
+};
+
 export function ZkWatchClosePendingModal({
   watch,
   items,
@@ -41,7 +50,6 @@ export function ZkWatchClosePendingModal({
   confirming,
   actionError,
   onClose,
-  onConfirmAll,
 }: {
   watch: SalesZkWatch;
   items: ZkWatchPendingAckItem[];
@@ -50,13 +58,10 @@ export function ZkWatchClosePendingModal({
   open: boolean;
   refreshing?: boolean;
   confirming?: boolean;
-  /** Błąd z karty (np. po dialogu półki) — wyświetlany w modalu zamiast na karcie. */
   actionError?: string | null;
   onClose: () => void;
-  onConfirmAll: () => void | Promise<void>;
 }) {
   const [error, setError] = useState<string | null>(null);
-  const [listUpdatedHint, setListUpdatedHint] = useState(false);
   const previousItemCountRef = useRef<number | null>(null);
   const displayNumber = formatZkWatchDisplayNumber(watch.zk_number);
   const focusOrderIds = useMemo(
@@ -82,33 +87,18 @@ export function ZkWatchClosePendingModal({
   useEffect(() => {
     if (!open) {
       previousItemCountRef.current = null;
-      queueMicrotask(() => setListUpdatedHint(false));
       return;
     }
     queueMicrotask(() => setError(null));
   }, [open]);
 
-  useEffect(() => {
-    if (!open || refreshing) return;
-    const previousCount = previousItemCountRef.current;
-    if (previousCount != null && previousCount !== items.length) {
-      queueMicrotask(() => setListUpdatedHint(true));
-    }
-    previousItemCountRef.current = items.length;
-  }, [open, items.length, refreshing]);
-
-  async function handleConfirmAll() {
-    if (confirming || refreshing) return;
-    setError(null);
-    try {
-      await onConfirmAll();
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "Nie udało się potwierdzić pozycji.");
-    }
-  }
-
   const busy = confirming || refreshing;
   const displayError = actionError ?? error;
+  const phase: "confirming" | "done" | "error" = displayError
+    ? "error"
+    : confirming
+      ? "confirming"
+      : "done";
 
   return (
     <ModalShell
@@ -121,92 +111,73 @@ export function ZkWatchClosePendingModal({
       loadingMessage={
         refreshing ? "Odświeżam listę…" : confirming ? "Potwierdzanie pozycji…" : null
       }
-      title={`${displayNumber} — niepotwierdzone pozycje`}
+      title={`${displayNumber} — zamykanie`}
       description={watch.client_label}
-      bodyClassName="space-y-4 px-5 py-4 sm:px-6"
+      bodyClassName="space-y-3 px-5 py-4 sm:px-6"
       footer={
-        <div className="flex w-full flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex w-full items-center justify-between gap-2">
+          <Link
+            href={previewHref}
+            onClick={busy ? (event) => event.preventDefault() : onClose}
+            className={cn(
+              "inline-flex items-center justify-center rounded-lg px-3 py-1.5 text-xs font-medium text-slate-600 transition hover:bg-slate-100 hover:text-slate-900",
+              busy && "pointer-events-none opacity-50"
+            )}
+            aria-disabled={busy || undefined}
+            tabIndex={busy ? -1 : undefined}
+          >
+            Podgląd w Moje
+          </Link>
           <Button
             type="button"
             variant="secondary"
             size="sm"
             disabled={busy}
-            className="w-full sm:w-auto"
+            className="shrink-0"
             onClick={onClose}
           >
-            Anuluj
+            Zamknij
           </Button>
-          <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:justify-end">
-            <Link
-              href={previewHref}
-              onClick={busy ? (event) => event.preventDefault() : onClose}
-              className={cn(
-                "inline-flex items-center justify-center rounded-md border border-[var(--card-border)] bg-[var(--card)] px-2.5 py-1.5 text-xs font-medium text-slate-700 shadow-sm transition hover:bg-slate-50",
-                "w-full sm:w-auto",
-                busy && "pointer-events-none opacity-50"
-              )}
-              aria-disabled={busy || undefined}
-              tabIndex={busy ? -1 : undefined}
-            >
-              Podgląd w Moje
-            </Link>
-            <Button
-              type="button"
-              size="sm"
-              disabled={busy || items.length === 0}
-              className="w-full sm:w-auto"
-              onClick={() => void handleConfirmAll()}
-            >
-              {confirming ? "Potwierdzanie…" : "Potwierdź wszystkie i zamknij"}
-            </Button>
-          </div>
         </div>
       }
     >
-      <div className="rounded-lg border border-amber-200/90 bg-amber-50/80 px-3 py-3 text-sm text-amber-950">
-        <p className="font-medium">
-          Zanim zamkniesz sprawę, w /moje czeka{" "}
-          {polishCountLabel(uniqueCount, ["prośba", "prośby", "prośb"])} do potwierdzenia
-          {pendingNoticeCount > uniqueCount
-            ? ` (${polishCountLabel(pendingNoticeCount, [
-                "powiadomienie",
-                "powiadomienia",
-                "powiadomień",
-              ])})`
-            : ""}
-          .
-        </p>
-        <p className="mt-1.5 text-xs leading-relaxed text-amber-900/90">
-          Możesz je przejrzeć w panelu Moje, potwierdzić od razu albo anulować — wtedy ZK
-          pozostanie otwarte.
-        </p>
+      {/* Status banner */}
+      <div
+        className={cn(
+          "flex items-center gap-2.5 rounded-xl px-3.5 py-3 text-sm font-medium",
+          phase === "confirming" && "bg-sky-50 text-sky-900",
+          phase === "done" && "bg-emerald-50 text-emerald-900",
+          phase === "error" && "bg-rose-50 text-rose-900"
+        )}
+      >
+        {phase === "confirming" ? (
+          <IconClock size={18} className="shrink-0 animate-spin text-sky-600" />
+        ) : phase === "done" ? (
+          <IconCircleCheck size={18} className="shrink-0 text-emerald-600" />
+        ) : null}
+        <span>
+          {phase === "confirming"
+            ? `Potwierdzam ${polishCountLabel(uniqueCount, ["prośbę", "prośby", "prośb"])} i zamykam ZK…`
+            : phase === "done"
+              ? `Potwierdzono ${polishCountLabel(uniqueCount, ["prośbę", "prośby", "prośb"])} — ZK zostało zamknięte.`
+              : "Wystąpił błąd — sprawdź szczegóły poniżej."}
+        </span>
       </div>
 
-      {listUpdatedHint ? (
-        <p
-          className={cn(
-            salesTypography.rowMeta,
-            "rounded-md border border-sky-200/90 bg-sky-50/80 px-3 py-2 text-sky-900"
-          )}
-          role="status"
-        >
-          Lista została zaktualizowana — sprawdź pozycje przed potwierdzeniem.
-        </p>
-      ) : null}
-
       {displayError ? (
-        <p className={cn(salesTypography.rowMeta, "text-rose-700")} role="alert">
+        <div className="rounded-lg border border-rose-200 bg-rose-50/60 px-3 py-2.5 text-sm text-rose-800" role="alert">
           {displayError}
-        </p>
+        </div>
       ) : null}
 
+      {/* Items list */}
       <div>
-        <p className={cn(salesTypography.kindTag, "mb-2 text-slate-500")}>
-          Pozycje oczekujące na potwierdzenie
+        <p className="mb-2 text-xs font-medium uppercase tracking-wide text-slate-400">
+          Pozycje ({items.length})
         </p>
         <ul
           className={cn(
-            "divide-y divide-slate-100 rounded-lg border border-slate-200/90 bg-white",
+            "divide-y divide-slate-100 overflow-hidden rounded-xl border border-slate-200/80 bg-white",
             refreshing && "opacity-60"
           )}
           aria-busy={refreshing || undefined}
@@ -214,25 +185,27 @@ export function ZkWatchClosePendingModal({
           {items.map((item) => (
             <li
               key={`${item.orderId}:${item.kind}`}
-              className="flex items-start gap-3 px-3 py-2.5"
+              className="flex items-start gap-3 px-3.5 py-3 transition-colors"
             >
               <div className="min-w-0 flex-1">
-                <p className={cn(salesTypography.rowTitle, "text-slate-900")}>
+                <p className="text-sm font-medium text-slate-900">
                   {item.productLabel}
                 </p>
-                <p className={cn(salesTypography.rowMeta, "mt-0.5 text-slate-600")}>
+                <p className="mt-0.5 text-xs text-slate-500">
                   {[item.symbol, item.quantityLabel].filter(Boolean).join(" · ")}
                 </p>
-                <p className={cn(salesTypography.rowMeta, "mt-1 text-slate-500")}>
+                <p className="mt-1 text-xs text-slate-400">
                   {item.statusLabel}
                 </p>
               </div>
-              <Badge
-                variant={zkWatchPendingAckKindBadgeVariant(item.kind)}
-                className="shrink-0 text-[9px]"
+              <span
+                className={cn(
+                  "inline-flex shrink-0 items-center rounded-md px-1.5 py-0.5 text-[10px] font-medium leading-none",
+                  PENDING_ACK_BADGE_CLASS[item.kind]
+                )}
               >
                 {zkWatchPendingAckKindBadgeLabel(item.kind)}
-              </Badge>
+              </span>
             </li>
           ))}
         </ul>

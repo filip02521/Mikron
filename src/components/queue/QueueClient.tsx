@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState, useCallback, useEffect } from "react";
-import type { IndividualOrder } from "@/types/database";
+import type { IndividualOrder, SupplierWithSchedule } from "@/types/database";
 import { Card, CardHeader } from "@/components/ui/Card";
 import { SectionListLabel } from "@/components/ui/SectionListLabel";
 import { SectionHeadingIcon } from "@/components/icons/SectionHeadingIcon";
@@ -40,6 +40,7 @@ export function QueueClient({
   informacjaOrders,
   pickupReadyCount,
   warehouseInventory,
+  supplierSchedules = [],
   deliveryJournal,
   journalSuppliers,
   warehouseCarriers,
@@ -51,6 +52,7 @@ export function QueueClient({
   informacjaOrders: IndividualOrder[];
   pickupReadyCount: number;
   warehouseInventory: IndividualOrder[];
+  supplierSchedules?: SupplierWithSchedule[];
   deliveryJournal: {
     date: string;
     receipts: WarehouseDeliveryReceipt[];
@@ -201,6 +203,7 @@ export function QueueClient({
               deliveryOrders={orders}
               informacjaOrders={informacjaOrders}
               warehouseInventory={warehouseInventory}
+              supplierSchedules={supplierSchedules}
               onToast={setToast}
               onPendingChange={setPendingMessage}
             />
