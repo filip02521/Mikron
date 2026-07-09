@@ -57,6 +57,18 @@ export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
       "Dodaliśmy dedykowany obszar dla magazynu z własną nawigacją i widokami dostosowanymi do pracy magazyniera — przyjmowanie dostaw i stan magazynu.",
   },
   {
+    id: "2026-07-09-sales-vacations",
+    version: "2026-07-09",
+    date: "2026-07-09",
+    category: "new",
+    audience: "sales",
+    highlight: true,
+    title: "Urlopy i zastępstwa handlowców",
+    description:
+      "Handlowcy mogą teraz samodzielnie ustalać swoje okresy urlopów w Ustawieniach, a kierownicy zarządzają urlopami całego zespołu przez kalendarz w sekcji Zespół. Podczas urlopu system automatycznie wskazuje wyznaczonego zastępcę — zastępca widzi panel nieobecnego handlowca przez przełącznik na górze strony „Moje” i może potwierdzać odbiory oraz zamykać sprawy ZK. Edycja i anulowanie zamówień pozostają zablokowane dla zastępcy.",
+    link: { href: "/ustawienia", label: "Przejdź do Ustawień" },
+  },
+  {
     id: "2026-07-09-sales-inbox-bell",
     version: "2026-07-09",
     date: "2026-07-09",
@@ -97,9 +109,9 @@ export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
     date: "2026-07-09",
     category: "new",
     audience: "sales",
-    title: "Przełącznik delegacji na „Moje”",
+    title: "Przełącznik zastępstw na „Moje”",
     description:
-      "Kierownicy mogą teraz przełączać się między swoim panel a panelami delegowanych handlowców bezpośrednio na stronie „Moje” — bez konieczności wchodzenia w panel admina.",
+      "Jeśli zastępujesz nieobecnego handlowca, na górze strony „Moje” pojawi się pasek z informacją o aktywnym zastępstwie i przyciskiem przełączenia do jego panelu. Przy wielu zastępstwach możesz wybrać konkretnego handlowca z listy. Przycisk „Wróć do mojego panelu” przywraca Twój własny widok.",
   },
   {
     id: "2026-07-09-moje-request-progress",
@@ -243,7 +255,18 @@ export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
     audience: "sales",
     title: "Szczegóły zamówienia zęba dla handlowca",
     description:
-      "Handlowcy mogą teraz kliknąć zamówienie zęba na liście, aby zobaczyć jego szczegóły w oknie — bez przechodzenia do panelu zębów.",
+      "Handlowcy mogą teraz kliknąć zamówienie zęba na liście, aby zobaczyć jego szczegóły w oknie — bez przechodzenia do panelu zębów. Okno pokazuje kolor, wzór, rozmiar, szczękę, typ oraz status każdej pozycji zębowej.",
+  },
+  {
+    id: "2026-07-09-moje-teeth-pickup-icons",
+    version: "2026-07-09",
+    date: "2026-07-09",
+    category: "improvement",
+    audience: "sales",
+    minor: true,
+    title: "Ikony na przyciskach odbioru zębów",
+    description:
+      "Przyciski potwierdzenia odbioru na „Moje” mają teraz ikony: ząb dla zamówień zębowych i paczka dla towaru z regału. Przy zamówieniach mieszanych (zęby + towar) przyciski są podzielone i oznaczone osobno, co ułatwia potwierdzenie właściwego odbioru.",
   },
   {
     id: "2026-07-09-teeth-handover-inbox",
@@ -266,6 +289,18 @@ export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
       "Zamówienia na zęby mogą teraz być realizowane częściowo. Jeśli dostawca wyśle tylko część zamówienia, możesz to oznaczyć, a reszta zostanie w kolejce.",
   },
   {
+    id: "2026-07-09-moje-visual-overhaul",
+    version: "2026-07-09",
+    date: "2026-07-09",
+    category: "improvement",
+    audience: "sales",
+    highlight: true,
+    title: "Odświeżony wygląd stron „Moje”",
+    description:
+      "Zmodernizowaliśmy wygląd kart zamówień i próśb na stronach „Moje” — ujednolicone style odznak (zaokrąglenia, kolory, obrysy), ikony na przyciskach potwierdzenia odbioru (ikona zęba dla zamówień zębowych, ikona paczki dla towaru z regału), spójne metadane dostaw oraz czytelniejsze puste stany z ikonami. Karty mają teraz delikatne cienie, zaokrąglone rogi i efekty najechania.",
+    link: { href: "/moje", label: "Przejdź do Moje" },
+  },
+  {
     id: "2026-07-09-moje-compact-ui",
     version: "2026-07-09",
     date: "2026-07-09",
@@ -282,9 +317,9 @@ export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
     date: "2026-07-09",
     category: "new",
     audience: "admin",
-    title: "Okresy urlopów handlowców",
+    title: "Kalendarz urlopów zespołu",
     description:
-      "Dodaliśmy możliwość definiowania okresów urlopów dla handlowców. System automatycznie pokazuje, kto jest nieobecny, i umożliwia przekazywanie spraw na czas nieobecności.",
+      "Kierownicy mogą zarządzać urlopami i zastępstwami przez kalendarz w sekcji Zespół. Widzą wszystkie okresy urlopów na jednym widoku i mogą wyznaczać zastępców bezpośrednio z kalendarza.",
     link: { href: "/zespol/urlopy", label: "Przejdź do urlopów zespołu" },
   },
   {
@@ -353,6 +388,17 @@ export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
     title: "Ukrywanie dostawców na panelu dziennym",
     description:
       "Dodaliśmy możliwość ukrywania nieaktywnych dostawców na panelu dziennym, żeby skupić się na tych, którzy mają bieżące zamówienia.",
+  },
+  {
+    id: "2026-07-09-zk-watch-visual-overhaul",
+    version: "2026-07-09",
+    date: "2026-07-09",
+    category: "improvement",
+    audience: "sales",
+    minor: true,
+    title: "Odświeżony wygląd sekcji „ZK czekające”",
+    description:
+      "Zmodernizowaliśmy karty obserwowanych ZK w notatniku — ujednolicone odznaki, ikony na przyciskach akcji prośby, nowoczesne nagłówki grup miesięcznych i czytelniejsze puste stany z ikoną wyszukiwania. Podgląd zębów w ZK oraz modal zamykania sprawy otrzymały spójne style odznak.",
   },
   {
     id: "2026-07-09-notatnik-zk-watch-teeth",
