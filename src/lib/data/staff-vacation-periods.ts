@@ -37,8 +37,8 @@ function mapRow(row: StaffVacationDbRow): StaffVacationRow {
   };
 }
 
-/** Wszyscy aktywni użytkownicy z danego działu (po roli). */
-export async function fetchStaffByRole(role: UserRole): Promise<
+/** Wszyscy użytkownicy non-sales (zakupy, magazyn, admin itp.) — widzą się na wzajem. */
+export async function fetchAllNonSalesStaff(): Promise<
   { id: string; name: string; role: UserRole }[]
 > {
   if (!hasSupabaseConfig()) return [];
@@ -46,7 +46,7 @@ export async function fetchStaffByRole(role: UserRole): Promise<
   const { data, error } = await supabase
     .from("profiles")
     .select("id, email, role, sales_people(name)")
-    .eq("role", role)
+    .not("role", "in", '("sales","sales_manager")')
     .order("email", { ascending: true });
   if (error) throw new Error(error.message);
   return (data ?? []).map((p) => {
