@@ -32,6 +32,7 @@ import type { Metadata } from "next";
 import { pageMetadataFor } from "@/lib/ui/page-metadata";
 
 export const metadata: Metadata = pageMetadataFor("moje");
+export const dynamic = "force-dynamic";
 
 export default async function MojePage({
   searchParams,

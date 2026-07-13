@@ -102,7 +102,8 @@ export async function fetchSalesZkPageData(
       .from("sales_zk_watches")
       .select("*")
       .eq("sales_person_id", salesPersonId)
-      .order("created_at", { ascending: true }),
+      .order("created_at", { ascending: true })
+      .limit(500),
     fetchZkLinkableOrdersForSalesPerson(salesPersonId),
   ]);
 
@@ -131,7 +132,8 @@ export async function fetchSalesNotesPageData(
     .eq("sales_person_id", salesPersonId)
     .order("pinned", { ascending: false })
     .order("sort_order", { ascending: true })
-    .order("updated_at", { ascending: false });
+    .order("updated_at", { ascending: false })
+    .limit(500);
 
   if (notesRes.error) throw new Error(notesRes.error.message);
 

@@ -86,7 +86,6 @@ import {
   resolveIndividualRequestEditLineId,
   type IndividualRequestEditPayload,
 } from "@/lib/orders/individual-request-edit";
-import { v4 as uuidv4 } from "uuid";
 import { resolveSalesPersonEmail } from "@/lib/orders/resolve-sales-person-email";
 import {
   assertMaxBatchSize,
@@ -135,7 +134,7 @@ export async function markStandardOrdered(
   const supabase = createAdminClient();
   const { data: supplier } = await supabase
     .from("suppliers")
-    .select("*")
+    .select("id, interval_raw, interval_weeks")
     .eq("id", supplierId)
     .single();
   const interval = resolveSupplierInterval(
@@ -267,7 +266,7 @@ export async function batchAddIndividualOrders(
   if (!ok) throw new Error("Trwa inna operacja dodawania zamówień");
 
   const supabase = createAdminClient();
-  const submissionGroupId = uuidv4();
+  const submissionGroupId = crypto.randomUUID();
   const procurementMode = options?.submitMode === "procurement";
   const catalogSource = procurementMode ? "procurement_verification" : "order_history";
   const teethTwIdSet = await fetchTeethProductTwIdSet().catch(() => new Set<number>());
@@ -347,7 +346,7 @@ export async function batchAddIndividualOrders(
       // Stare podejście (dopasowanie dostawcy z ZD w tle) zostało wycofane.
 
       return {
-        id: uuidv4(),
+        id: crypto.randomUUID(),
         supplier_id: e.supplierId?.trim() || null,
         sales_person_id: e.salesPersonId,
         symbol,
@@ -730,7 +729,7 @@ export async function updateIndividualRequestGroup(
     (options.salesPersonIdConstraint ? "order_history" : "procurement_verification");
 
   const submissionGroupId =
-    existing[0]?.submission_group_id ?? uuidv4();
+    existing[0]?.submission_group_id ?? crypto.randomUUID();
   const inheritedZkSource = zkProsbaSourceFromOrder(existing[0]);
   const keptIds = new Set<string>();
   let updated = 0;
@@ -910,7 +909,7 @@ export async function updateIndividualRequestGroup(
         console.error("[indexOrderLineToProductCatalog updateIndividualRequestGroup update]", e);
       }
     } else {
-      const newId = uuidv4();
+      const newId = crypto.randomUUID();
       const { error } = await supabase.from("individual_orders").insert({
         id: newId,
         ...rowPayload,
@@ -1094,7 +1093,7 @@ export async function processIndividualFromSummary(
 
   const orderType: OrderType = action === "GLOWNE" ? "Glowne" : "Poboczne";
   const batchOrderedAt = new Date().toISOString();
-  const placementGroupId = uuidv4();
+  const placementGroupId = crypto.randomUUID();
 
   const ordersToProcess: IndividualOrder[] = [];
   for (const id of orderIds) {
@@ -1759,7 +1758,7 @@ export async function updateSupplierStats(
   const isMain = orderType === "Glowne";
   const { data: existing } = await supabase
     .from("delivery_stats")
-    .select("*")
+    .select("id, main_sum, side_sum, main_count, side_count")
     .eq("supplier_id", supplierId)
     .maybeSingle();
 

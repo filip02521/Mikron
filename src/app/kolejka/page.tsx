@@ -17,6 +17,7 @@ import type { Metadata } from "next";
 import { pageMetadataFor } from "@/lib/ui/page-metadata";
 
 export const metadata: Metadata = pageMetadataFor("kolejka");
+export const dynamic = "force-dynamic";
 
 export default async function KolejkaPage() {
   await runOrderMaintenanceBeforePageLoad();

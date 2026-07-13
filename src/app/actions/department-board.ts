@@ -73,7 +73,7 @@ async function fetchThread(threadId: string): Promise<DepartmentBoardThreadRow> 
 
   if (error) throw new Error(error.message);
   if (!data) throw new Error("Nie znaleziono wpisu na tablicy.");
-  return data as unknown as unknown as DepartmentBoardThreadRow;
+  return data as unknown as DepartmentBoardThreadRow;
 }
 
 export async function actionCreateAnnouncement(

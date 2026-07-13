@@ -28,6 +28,7 @@ import { pageMetadataFor } from "@/lib/ui/page-metadata";
 import TablicaLoading from "./loading";
 
 export const metadata: Metadata = pageMetadataFor("tablica");
+export const dynamic = "force-dynamic";
 
 export default async function SalesBoardPage({
   searchParams,

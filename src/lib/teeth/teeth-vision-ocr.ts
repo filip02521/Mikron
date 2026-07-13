@@ -155,7 +155,7 @@ async function callGeminiWithRetries(
     for (let attempt = 0; attempt < maxAttempts; attempt++) {
       if (attempt > 0) {
         const delayMs = GEMINI_RETRY_DELAYS_MS[attempt - 1] ?? 12_000;
-        console.log(
+        console.warn(
           `[teeth-vision-ocr] Gemini retry ${attempt}/${maxAttempts - 1} on ${model} after ${delayMs}ms…`,
         );
         await sleep(delayMs);
@@ -240,7 +240,7 @@ export async function analyzeTeethImage(
     const genAI = getGenAI(apiKey);
     const gemini = await callGeminiWithRetries(genAI, imageBase64, mimeType, prompt);
     rawText = gemini.text;
-    console.log(
+    console.debug(
       `[teeth-vision-ocr] Gemini ${gemini.model} responded in ${gemini.elapsedMs}ms`,
     );
   } catch (e) {

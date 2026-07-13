@@ -11,6 +11,7 @@ import type { Metadata } from "next";
 import { pageMetadataFor } from "@/lib/ui/page-metadata";
 
 export const metadata: Metadata = pageMetadataFor("historia");
+export const dynamic = "force-dynamic";
 
 export default async function HistoriaPage() {
   const session = await getSessionUser();

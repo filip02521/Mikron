@@ -14,6 +14,7 @@ import type { Metadata } from "next";
 import { pageMetadataFor } from "@/lib/ui/page-metadata";
 
 export const metadata: Metadata = pageMetadataFor("team");
+export const dynamic = "force-dynamic";
 
 export default async function ZespolPage() {
   const user = await requireSalesTeamManagement();

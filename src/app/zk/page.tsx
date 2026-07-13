@@ -16,6 +16,7 @@ import type { Metadata } from "next";
 import { pageMetadataFor } from "@/lib/ui/page-metadata";
 
 export const metadata: Metadata = pageMetadataFor("zk");
+export const dynamic = "force-dynamic";
 
 type ZkSearchParams = {
   dla?: string;

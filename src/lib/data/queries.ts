@@ -627,6 +627,7 @@ export async function fetchNormalHistory(limit?: number) {
     .gte("action_at", historyRetentionCutoffIso())
     .order("action_at", { ascending: false });
   if (limit != null) q = q.limit(limit);
+  else q = q.limit(1000);
   const { data, error } = await q;
   if (error) throw new Error(error.message);
   return data ?? [];

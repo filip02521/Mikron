@@ -23,6 +23,7 @@ const nextConfig: NextConfig = {
     ...extraActionOrigins,
   ],
   experimental: {
+    optimizePackageImports: ["date-fns"],
     /** Logowanie z LAN (np. http://ontime.mikran.pl:3000) */
     serverActions: {
       allowedOrigins: [

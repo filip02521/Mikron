@@ -21,6 +21,7 @@ import type { Metadata } from "next";
 import { pageMetadataFor } from "@/lib/ui/page-metadata";
 
 export const metadata: Metadata = pageMetadataFor("plan");
+export const dynamic = "force-dynamic";
 
 export default async function PlanPage({
   searchParams,

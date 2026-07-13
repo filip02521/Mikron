@@ -157,8 +157,6 @@ export function TeethVisionUpload({
         <span className="group relative inline-flex">
           <span
             className="cursor-help rounded bg-indigo-50 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider text-indigo-400 transition-colors group-hover:bg-indigo-100"
-            tabIndex={0}
-            role="button"
             aria-label="Funkcja testowa — sczytywanie zębów ze zdjęcia za pomocą AI"
           >
             Beta
