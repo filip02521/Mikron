@@ -8,10 +8,15 @@ import { isAdmin } from "@/lib/auth-roles";
 import {
   createStaffVacationPeriod,
   removeStaffVacationPeriod,
+  type StaffVacationCategory,
 } from "@/lib/data/staff-vacation-periods";
 import { createAdminClient } from "@/lib/supabase/admin";
 
 const ISO_DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
+
+const VALID_CATEGORIES: StaffVacationCategory[] = [
+  "urlop", "nadgodziny", "na_zadanie", "chorobowe", "osobiste", "inne",
+];
 
 function isValidIsoDate(value: string): boolean {
   if (!ISO_DATE_RE.test(value)) return false;
@@ -29,6 +34,7 @@ export async function actionSetStaffVacationPeriod(input: {
   userId: string;
   startDate: string;
   endDate: string;
+  category?: StaffVacationCategory;
   note?: string | null;
 }): Promise<{ success: true } | { error: string }> {
   try {
@@ -39,6 +45,8 @@ export async function actionSetStaffVacationPeriod(input: {
     const startDate = input.startDate.trim();
     const endDate = input.endDate.trim();
     const note = input.note?.trim().slice(0, 500) || null;
+    const category: StaffVacationCategory =
+      input.category && VALID_CATEGORIES.includes(input.category) ? input.category : "urlop";
 
     if (!userId) return { error: "Brak użytkownika." };
     if (!startDate || !endDate) return { error: "Podaj datę rozpoczęcia i zakończenia." };
@@ -53,7 +61,7 @@ export async function actionSetStaffVacationPeriod(input: {
       return { error: "Możesz zarządzać tylko własnymi urlopami." };
     }
 
-    await createStaffVacationPeriod({ userId, startDate, endDate, note });
+    await createStaffVacationPeriod({ userId, startDate, endDate, category, note });
     revalidateStaffVacationPaths();
     return { success: true };
   } catch (e) {

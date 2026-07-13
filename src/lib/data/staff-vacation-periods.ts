@@ -1,11 +1,41 @@
 import { createAdminClient, hasSupabaseConfig } from "@/lib/supabase/admin";
 import type { UserRole } from "@/types/database";
 
+export type StaffVacationCategory =
+  | "urlop"
+  | "nadgodziny"
+  | "na_zadanie"
+  | "chorobowe"
+  | "osobiste"
+  | "inne";
+
+export const STAFF_VACATION_CATEGORIES: {
+  value: StaffVacationCategory;
+  label: string;
+  shortLabel: string;
+}[] = [
+  { value: "urlop", label: "Urlop wypoczynkowy", shortLabel: "Urlop" },
+  { value: "nadgodziny", label: "Odbiór nadgodzin", shortLabel: "Nadgodziny" },
+  { value: "na_zadanie", label: "Urlop na żądanie", shortLabel: "Na żądanie" },
+  { value: "chorobowe", label: "L4 / Chorobowe", shortLabel: "L4" },
+  { value: "osobiste", label: "Sprawa osobista", shortLabel: "Osobiste" },
+  { value: "inne", label: "Inne (z notatką)", shortLabel: "Inne" },
+];
+
+export function staffVacationCategoryLabel(cat: string): string {
+  return STAFF_VACATION_CATEGORIES.find((c) => c.value === cat)?.label ?? "Urlop";
+}
+
+export function staffVacationCategoryShort(cat: string): string {
+  return STAFF_VACATION_CATEGORIES.find((c) => c.value === cat)?.shortLabel ?? "Urlop";
+}
+
 export type StaffVacationRow = {
   id: string;
   userId: string;
   userName: string;
   userRole: UserRole;
+  category: StaffVacationCategory;
   startDate: string;
   endDate: string;
   note: string | null;
@@ -15,6 +45,7 @@ export type StaffVacationRow = {
 type StaffVacationDbRow = {
   id: string;
   user_id: string;
+  category: string;
   start_date: string;
   end_date: string;
   note: string | null;
@@ -30,6 +61,7 @@ function mapRow(row: StaffVacationDbRow): StaffVacationRow {
     userId: row.user_id,
     userName: name,
     userRole: profile?.role ?? "sales",
+    category: (row.category as StaffVacationCategory) ?? "urlop",
     startDate: row.start_date,
     endDate: row.end_date,
     note: row.note,
@@ -69,7 +101,7 @@ export async function fetchStaffVacationPeriods(
   const { data, error } = await supabase
     .from("staff_vacation_periods")
     .select(`
-      id, user_id, start_date, end_date, note, created_at,
+      id, user_id, category, start_date, end_date, note, created_at,
       profiles!inner(email, role, sales_people(name))
     `)
     .in("user_id", userIds)
@@ -90,6 +122,7 @@ export async function createStaffVacationPeriod(input: {
   userId: string;
   startDate: string;
   endDate: string;
+  category?: StaffVacationCategory;
   note?: string | null;
 }): Promise<StaffVacationRow> {
   if (!hasSupabaseConfig()) throw new Error("Brak konfiguracji Supabase.");
@@ -97,6 +130,7 @@ export async function createStaffVacationPeriod(input: {
     throw new Error("Data rozpoczęcia nie może być późniejsza niż data zakończenia.");
   }
   const note = input.note?.trim().slice(0, 500) || null;
+  const category = input.category ?? "urlop";
   const supabase = createAdminClient();
   const { data, error } = await supabase
     .from("staff_vacation_periods")
@@ -104,10 +138,11 @@ export async function createStaffVacationPeriod(input: {
       user_id: input.userId,
       start_date: input.startDate,
       end_date: input.endDate,
+      category,
       note,
     })
     .select(`
-      id, user_id, start_date, end_date, note, created_at,
+      id, user_id, category, start_date, end_date, note, created_at,
       profiles!inner(email, role, sales_people(name))
     `)
     .single();

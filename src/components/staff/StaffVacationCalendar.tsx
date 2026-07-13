@@ -15,7 +15,11 @@ import {
   actionSetStaffVacationPeriod,
   actionRemoveStaffVacationPeriod,
 } from "@/app/actions/staff-vacation-periods";
-import type { StaffVacationRow } from "@/lib/data/staff-vacation-periods";
+import type { StaffVacationRow, StaffVacationCategory } from "@/lib/data/staff-vacation-periods";
+import {
+  STAFF_VACATION_CATEGORIES,
+  staffVacationCategoryShort,
+} from "@/lib/data/staff-vacation-periods";
 import { Button } from "@/components/ui/Button";
 import { Field, Input } from "@/components/ui/Field";
 import { NoticeToast } from "@/components/ui/NoticeToast";
@@ -201,9 +205,15 @@ export function StaffVacationCalendar({
   } | null>(null);
 
   const [vacationFormOpen, setVacationFormOpen] = useState(false);
-  const [vacationForm, setVacationForm] = useState({
+  const [vacationForm, setVacationForm] = useState<{
+    startDate: string;
+    endDate: string;
+    category: StaffVacationCategory;
+    note: string;
+  }>({
     startDate: todayDateKey,
     endDate: addDaysToDateKey(todayDateKey, 14),
+    category: "urlop",
     note: "",
   });
 
@@ -294,7 +304,7 @@ export function StaffVacationCalendar({
   const goToToday = () => { setCurrentMonth(today.month); setCurrentYear(today.year); };
 
   const resetVacationForm = () => {
-    setVacationForm({ startDate: todayDateKey, endDate: addDaysToDateKey(todayDateKey, 14), note: "" });
+    setVacationForm({ startDate: todayDateKey, endDate: addDaysToDateKey(todayDateKey, 14), category: "urlop", note: "" });
     setVacationFormOpen(false);
   };
 
@@ -312,6 +322,7 @@ export function StaffVacationCalendar({
         userId: currentUserId,
         startDate: vacationForm.startDate,
         endDate: vacationForm.endDate,
+        category: vacationForm.category,
         note: vacationForm.note || null,
       });
       if ("error" in r) {
@@ -389,6 +400,9 @@ export function StaffVacationCalendar({
               </p>
               <div className="flex items-center gap-2">
                 {statusBadge(period.startDate, period.endDate, todayDateKey)}
+                <Badge variant="default" className="text-[10px]">
+                  {staffVacationCategoryShort(period.category)}
+                </Badge>
               </div>
               {period.note ? (
                 <p className="rounded-md bg-slate-50/60 px-2.5 py-1.5 text-xs text-slate-600">{period.note}</p>
@@ -473,6 +487,19 @@ export function StaffVacationCalendar({
               />
             </Field>
           </div>
+          <Field label="Rodzaj nieobecności">
+            <select
+              className="w-full rounded-md border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 focus:border-indigo-300 focus:outline-none focus:ring-2 focus:ring-indigo-200/40"
+              value={vacationForm.category}
+              onChange={(e) => setVacationForm({ ...vacationForm, category: e.target.value as StaffVacationCategory })}
+            >
+              {STAFF_VACATION_CATEGORIES.map((c) => (
+                <option key={c.value} value={c.value}>
+                  {c.label}
+                </option>
+              ))}
+            </select>
+          </Field>
           <Field label="Notatka (opcjonalna)">
             <Input
               type="text"
@@ -564,9 +591,14 @@ export function StaffVacationCalendar({
                               c.bg, c.text,
                             )}
                             onClick={(e) => onBarClick(e, p.period.id, p.userId)}
-                            title={p.userName}
+                            title={`${p.userName} — ${staffVacationCategoryShort(p.period.category)}`}
                           >
                             <span className="truncate">{p.userName}</span>
+                            {p.period.category !== "urlop" ? (
+                              <span className="ml-0.5 shrink-0 opacity-70">
+                                · {staffVacationCategoryShort(p.period.category)}
+                              </span>
+                            ) : null}
                           </button>
                         );
                       })}
