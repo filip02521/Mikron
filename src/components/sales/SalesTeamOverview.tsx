@@ -274,7 +274,7 @@ export function SalesTeamOverview({
           {totalPending > 0 ? (
             <div className="flex items-center gap-2.5 rounded-lg border border-amber-200/70 bg-amber-50/50 px-3 py-2.5">
               <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-amber-100 text-amber-700">
-                <IconClipboardList size={16} />
+                <IconMail size={16} />
               </span>
               <div className="min-w-0">
                 <p className="text-xs font-medium text-amber-900">ZK czekają na towar</p>

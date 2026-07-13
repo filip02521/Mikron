@@ -23,7 +23,7 @@ import {
 } from "@/lib/data/staff-vacation-periods";
 import { Button } from "@/components/ui/Button";
 import { AddButton } from "@/components/ui/AddButton";
-import { Field, Input } from "@/components/ui/Field";
+import { Field, Input, Select } from "@/components/ui/Field";
 import { NoticeToast } from "@/components/ui/NoticeToast";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { Badge } from "@/components/ui/Badge";
@@ -32,6 +32,7 @@ import {
   IconSun,
   IconChevronLeft,
   IconChevronRight,
+  IconTrash2,
 } from "@/components/icons/StrokeIcons";
 import { cn } from "@/lib/cn";
 import { salesTypography, panelDropdownShellClass } from "@/lib/ui/ontime-theme";
@@ -450,7 +451,7 @@ export function StaffVacationCalendar({
                   <Button
                     variant="ghost"
                     size="sm"
-                    className="w-full justify-center text-rose-600 hover:text-rose-700 hover:bg-rose-50/60"
+                    className="w-full justify-center gap-1.5 text-rose-600 hover:text-rose-700 hover:bg-rose-50/60"
                     onClick={() => {
                       setDeleteTarget({
                         id: period.id,
@@ -458,6 +459,7 @@ export function StaffVacationCalendar({
                       });
                     }}
                   >
+                    <IconTrash2 size={14} className="shrink-0" />
                     Usuń ten urlop
                   </Button>
                 </>
@@ -524,8 +526,7 @@ export function StaffVacationCalendar({
             </Field>
           </div>
           <Field label="Rodzaj nieobecności">
-            <select
-              className="w-full rounded-md border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 focus:border-indigo-300 focus:outline-none focus:ring-2 focus:ring-indigo-200/40"
+            <Select
               value={vacationForm.category}
               onChange={(e) => setVacationForm({ ...vacationForm, category: e.target.value as StaffVacationCategory })}
             >
@@ -534,7 +535,7 @@ export function StaffVacationCalendar({
                   {c.label}
                 </option>
               ))}
-            </select>
+            </Select>
           </Field>
           <Field label="Notatka (opcjonalna)">
             <Input
@@ -675,16 +676,17 @@ export function StaffVacationCalendar({
       )}
 
       {activeStaff.length > 0 ? (
-        <div className="flex flex-wrap gap-x-4 gap-y-1.5 rounded-md border border-slate-100 bg-slate-50/30 px-3 py-2">
+        <div className="flex flex-wrap items-center gap-x-4 gap-y-2 rounded-lg border border-slate-100 bg-slate-50/40 px-3.5 py-2.5">
+          <span className="text-[10px] font-semibold uppercase tracking-wide text-slate-400">Legenda</span>
           {activeStaff.map((s) => {
             const c = colorMap.get(s.id);
             if (!c) return null;
             const isOwn = s.id === currentUserId;
             return (
               <div key={s.id} className="flex items-center gap-1.5">
-                <span className={cn("h-2.5 w-2.5 rounded-full", c.dot)} />
+                <span className={cn("h-2.5 w-2.5 rounded-full ring-1 ring-inset ring-white/60", c.dot)} />
                 <span className={cn(
-                  "text-[10px]",
+                  "text-[11px]",
                   isOwn ? "font-semibold text-slate-700" : "text-slate-500",
                 )}>
                   {s.name}
