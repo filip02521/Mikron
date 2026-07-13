@@ -280,14 +280,14 @@ describe("formatZkProsbaPreviewMetaLine", () => {
     });
 
     expect(delivery.deliveryDisplay).not.toBeNull();
-    expect(delivery.deliveryDisplay?.primaryLabel).toContain("15.07");
+    expect(delivery.deliveryDisplay?.detailLabel).toContain("15.07");
     expect(
       formatZkProsbaPreviewMetaLine({
         quantityLabel: "—",
         progressLabel: null,
         requestKind: "informacja",
         ...delivery,
-      })
+      }, { compact: false })
     ).toContain("15.07");
   });
 
