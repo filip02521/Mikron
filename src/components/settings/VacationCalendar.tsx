@@ -606,7 +606,7 @@ export function VacationCalendar({
                             setDeleteTarget({
                               kind: "delegation",
                               id: delegation.id,
-                              label: `zastępcę z urlopu ${period.startDate} → ${period.endDate}`,
+                              label: `zastępcę z urlopu ${formatRangeLabel(period.startDate, period.endDate)}`,
                             })
                           }
                           disabled={pending}
@@ -673,11 +673,11 @@ export function VacationCalendar({
 
               {canEditPeriod(sp.id) ? (
                 <>
-                  <div className="border-t border-slate-100 my-2" />
+                  <div className="border-t border-slate-100" />
                   <Button
                     variant="ghost"
                     size="sm"
-                    className="text-rose-600 hover:text-rose-700"
+                    className="w-full justify-center text-rose-600 hover:text-rose-700 hover:bg-rose-50/60"
                     onClick={() => {
                       setDeleteTarget({
                         kind: "vacation",
@@ -686,7 +686,7 @@ export function VacationCalendar({
                       });
                     }}
                   >
-                    Usuń urlop
+                    Usuń ten urlop
                   </Button>
                 </>
               ) : null}

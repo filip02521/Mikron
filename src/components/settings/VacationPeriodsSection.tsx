@@ -46,6 +46,15 @@ function statusBadge(startDate: string, endDate: string) {
   return <Badge variant="success" className="text-[10px]">Trwa teraz</Badge>;
 }
 
+function formatRangeLabel(startDate: string, endDate: string): string {
+  const fmt = (d: string) => {
+    const [y, m, day] = d.split("-").map(Number);
+    const months = ["sty", "lut", "mar", "kwi", "maj", "cze", "lip", "sie", "wrz", "paź", "lis", "gru"];
+    return `${day} ${months[m - 1]} ${y}`;
+  };
+  return startDate === endDate ? fmt(startDate) : `${fmt(startDate)} – ${fmt(endDate)}`;
+}
+
 export function VacationPeriodsSection({
   salesPersonId,
   initialPeriods,
@@ -211,7 +220,7 @@ export function VacationPeriodsSection({
               >
                 <div className="min-w-0">
                   <p className={salesTypography.rowTitle}>
-                    {p.startDate} → {p.endDate}
+                    {formatRangeLabel(p.startDate, p.endDate)}
                   </p>
                   <p className={cn(salesTypography.rowMeta, "mt-0.5 flex items-center gap-2")}>
                     {statusBadge(p.startDate, p.endDate)}
@@ -241,7 +250,7 @@ export function VacationPeriodsSection({
         <ConfirmDialog
           open
           title="Usunąć ten urlop?"
-          message={`„${staffVacationCategoryLabel(deleteTarget.category)} • ${deleteTarget.startDate} → ${deleteTarget.endDate}” zostanie usunięty.`}
+          message={`„${staffVacationCategoryLabel(deleteTarget.category)} • ${formatRangeLabel(deleteTarget.startDate, deleteTarget.endDate)}” zostanie usunięty.`}
           confirmLabel="Usuń"
           cancelLabel="Anuluj"
           danger
