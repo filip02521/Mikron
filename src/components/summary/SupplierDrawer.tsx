@@ -18,10 +18,20 @@ import { actionFetchSupplierRecentHistory, actionMarkOrdered, actionShiftOrder }
 import type { DailyPanelRunFn } from "@/components/summary/useDailyPanelRunner";
 import { SCROLL_LOCK_ALLOW_ATTR, useBodyScrollLock } from "@/lib/ui/page-scroll-lock";
 import { cn } from "@/lib/cn";
-import { FlowChevron } from "@/components/ui/UiGlyphs";
 import { sidePanelBackdropClass, sidePanelShellClass, sidePanelCloseButtonClass, sidePanelHeaderClass, sidePanelContentClass } from "@/lib/ui/surfaces";
-import { IconX } from "@/components/icons/StrokeIcons";
-import { SupplierSubiektLinkIndicator } from "@/components/admin/SupplierSubiektLinkIndicator";
+import {
+  IconX,
+  IconBuilding,
+  IconCalendar,
+  IconClock,
+  IconTruck,
+  IconPackageCheck,
+  IconLink,
+  IconLinkOff,
+  IconCircleCheck,
+  IconSun,
+  IconMail,
+} from "@/components/icons/StrokeIcons";
 import { useSupplierHubContext } from "@/components/layout/AppRoleContext";
 import { supplierCardsHref } from "@/lib/supplier-hub";
 import { TeethDualLaneNotice } from "@/components/teeth/TeethDualLaneNotice";
@@ -130,19 +140,21 @@ export function SupplierDrawer({
         <header className={sidePanelHeaderClass}>
           <div className="flex items-start justify-between gap-3">
             <div className="min-w-0">
-              <p className="text-xs font-medium text-slate-500">
+              <div className="flex items-center gap-1.5 text-xs font-medium text-slate-500">
+                <IconBuilding size={13} className="shrink-0 text-slate-400" />
                 {locationLabel(supplier.location)}
-              </p>
+              </div>
               <h2
                 id="supplier-drawer-title"
-                className="mt-0.5 truncate text-lg font-semibold text-slate-900"
+                className="mt-1 truncate text-lg font-semibold text-slate-900"
               >
                 {supplier.name}
               </h2>
               {supplier.vacation_note ? (
-                <p className="mt-1 text-xs font-medium text-amber-800">
+                <div className="mt-1.5 inline-flex items-center gap-1.5 rounded-full bg-amber-50 px-2.5 py-1 text-xs font-medium text-amber-800 ring-1 ring-inset ring-amber-200/60">
+                  <IconSun size={12} className="shrink-0" />
                   {vacationNoteLabel(supplier.vacation_note)}
-                </p>
+                </div>
               ) : null}
             </div>
             <button
@@ -154,11 +166,13 @@ export function SupplierDrawer({
               <IconX size={18} />
             </button>
           </div>
-          <div className="mt-3 flex flex-wrap gap-2">
+
+          <div className="mt-4 space-y-2.5">
             <Button
               variant="primary"
               size="sm"
               disabled={rowPending}
+              className="w-full justify-center"
               onClick={() =>
                 run(
                   () => actionMarkOrdered(supplier.id),
@@ -168,58 +182,59 @@ export function SupplierDrawer({
                 )
               }
             >
+              <IconCircleCheck size={15} className="shrink-0" />
               Zamówione
             </Button>
-            <ShiftMenu
-              disabled={rowPending}
-              onShiftWeeks={(w) =>
-                run(
-                  () => actionShiftOrder(supplier.id, w, null),
-                  `Przesunięto o ${w} ${w === 1 ? "tydzień" : "tygodnie"}`,
-                  `Przesuwanie terminu…`,
-                  scope
-                )
-              }
-              onShiftDate={(iso) =>
-                run(
-                  () => actionShiftOrder(supplier.id, null, iso),
-                  "Ustawiono datę przesunięcia",
-                  "Zapisywanie daty…",
-                  scope
-                )
-              }
-            />
-            <Button variant="secondary" size="sm" disabled={rowPending} onClick={onVacation}>
-              Urlop
-            </Button>
-            <Button variant="secondary" size="sm" disabled={rowPending} onClick={onEdit}>
-              Edytuj
-            </Button>
-            <Link href={scheduleHref}>
-              <Button variant="ghost" size="sm">
-                Terminy
+            <div className="flex flex-wrap gap-2">
+              <ShiftMenu
+                disabled={rowPending}
+                onShiftWeeks={(w) =>
+                  run(
+                    () => actionShiftOrder(supplier.id, w, null),
+                    `Przesunięto o ${w} ${w === 1 ? "tydzień" : "tygodnie"}`,
+                    `Przesuwanie terminu…`,
+                    scope
+                  )
+                }
+                onShiftDate={(iso) =>
+                  run(
+                    () => actionShiftOrder(supplier.id, null, iso),
+                    "Ustawiono datę przesunięcia",
+                    "Zapisywanie daty…",
+                    scope
+                  )
+                }
+              />
+              <Button variant="secondary" size="sm" disabled={rowPending} onClick={onVacation}>
+                Urlop
               </Button>
-            </Link>
+              <Button variant="secondary" size="sm" disabled={rowPending} onClick={onEdit}>
+                Edytuj
+              </Button>
+              <Link href={scheduleHref} className="ml-auto">
+                <Button variant="ghost" size="sm">
+                  Terminy
+                </Button>
+              </Link>
+            </div>
           </div>
-          <p className="mt-2 text-[11px] text-slate-400">
-            Skróty: <kbd className="rounded bg-slate-100 px-1">Z</kbd> zamówione ·{" "}
-            <kbd className="rounded bg-slate-100 px-1">Esc</kbd> zamknij
-          </p>
         </header>
 
         <div
           className={sidePanelContentClass}
           {...{ [SCROLL_LOCK_ALLOW_ATTR]: "" }}
         >
-          <p className="mb-2 text-[11px] font-medium uppercase tracking-wide text-slate-500">
+          <p className="mb-2.5 text-[11px] font-medium uppercase tracking-wide text-slate-400">
             {TEETH_DUAL_LANE_COPY.dailyPanelScheduleCaption}
           </p>
-          <div className="grid gap-3 sm:grid-cols-2">
+          <div className="grid gap-2.5 sm:grid-cols-2">
             <DateCard
+              icon={<IconCalendar size={15} />}
               label="Ostatnie zamówienie"
               value={formatPlDate(supplier.order_date)}
             />
             <DateCard
+              icon={<IconClock size={15} />}
               label="Planowane zamówienie"
               value={formatPlDate(supplier.computed_next_date)}
               emphasize
@@ -227,33 +242,62 @@ export function SupplierDrawer({
           </div>
 
           {supplier.shift_date ? (
-            <p className="mt-3 text-sm text-slate-600">
-              <span className="text-slate-500">Ręczne przesunięcie:</span>{" "}
-              <span className="font-medium text-slate-800">
+            <div className="mt-3 inline-flex items-center gap-2 rounded-lg bg-slate-100/70 px-3 py-1.5 text-xs text-slate-600">
+              <span className="text-slate-400">Ręczne przesunięcie:</span>
+              <span className="font-semibold tabular-nums text-slate-800">
                 {formatPlDate(supplier.shift_date)}
               </span>
-            </p>
+            </div>
           ) : null}
 
           {teethLane ? <TeethDualLaneNotice lane={teethLane} /> : null}
 
-          <DrawerBlock title="Kontakt i zamówienia" className="mt-6">
-            <div className="mb-4 flex flex-wrap items-center gap-2 rounded-md border border-slate-200 bg-slate-50/80 px-3 py-2.5">
-              <SupplierSubiektLinkIndicator subiektKhId={supplier.subiekt_kh_id} />
+          {supplier.order_on_demand ? (
+            <div className="mt-4 flex items-start gap-2.5 rounded-lg border border-violet-200/70 bg-violet-50/50 px-3.5 py-3 text-sm text-violet-900">
+              <IconPackageCheck size={16} className="mt-0.5 shrink-0 text-violet-600" />
+              <div>
+                <span className="font-semibold">Tylko w razie potrzeby</span>
+                <p className="mt-0.5 text-xs leading-relaxed text-violet-700">
+                  Bez stałego terminu w planie tygodnia. Zamówienie z listy w panelu dziennym.
+                </p>
+              </div>
+            </div>
+          ) : null}
+
+          <DrawerBlock title="Kontakt i zamówienia" icon={<IconMail size={13} />} className="mt-7">
+            <div className="mb-3 flex flex-wrap items-center gap-2.5 rounded-lg border border-slate-200/70 bg-slate-50/50 px-3.5 py-3">
+              <span
+                className={cn(
+                  "flex h-7 w-7 shrink-0 items-center justify-center rounded-md",
+                  supplier.subiekt_kh_id != null
+                    ? "bg-indigo-100 text-indigo-700"
+                    : "bg-slate-200 text-slate-500"
+                )}
+              >
+                {supplier.subiekt_kh_id != null ? <IconLink size={14} /> : <IconLinkOff size={14} />}
+              </span>
               <div className="min-w-0 flex-1 text-sm">
                 {supplier.subiekt_kh_id != null ? (
                   <p className="font-medium text-indigo-900">
-                    Powiązany z Subiektem (kh_Id {supplier.subiekt_kh_id})
+                    Powiązany z Subiektem
+                    <span className="ml-1 text-xs font-normal text-indigo-600">
+                      kh_Id {supplier.subiekt_kh_id}
+                    </span>
                   </p>
                 ) : (
-                  <p className="text-slate-700">
-                    Brak powiązania z Subiektem — auto-dostawca z ZD może nie trafić.
+                  <p className="text-slate-600">
+                    Brak powiązania z Subiektem
                   </p>
                 )}
+                <p className="mt-0.5 text-xs text-slate-400">
+                  {supplier.subiekt_kh_id != null
+                    ? "Auto-dostawca z ZD trafia poprawnie"
+                    : "Auto-dostawca z ZD może nie trafić"}
+                </p>
               </div>
               <Link href={cardsHref}>
                 <Button variant="secondary" size="sm">
-                  {supplier.subiekt_kh_id != null ? "Zmień powiązanie" : "Powiąż Subiekt"}
+                  {supplier.subiekt_kh_id != null ? "Zmień" : "Powiąż"}
                 </Button>
               </Link>
             </div>
@@ -270,21 +314,10 @@ export function SupplierDrawer({
             ) : null}
           </DrawerBlock>
 
-          {supplier.order_on_demand ? (
-            <p className="mt-4 rounded-md border border-violet-200 bg-violet-50/80 px-3 py-2 text-sm text-violet-900">
-              <span className="font-medium">Tylko w razie potrzeby</span>
-              <span className="text-violet-700">
-                {" "}
-                — bez stałego terminu w planie tygodnia. Zamówienie z listy w panelu
-                dziennym.
-              </span>
-            </p>
-          ) : null}
-
-          <DrawerBlock title="Harmonogram dostaw" className="mt-6">
-            <dl className="space-y-3 text-sm">
+          <DrawerBlock title="Harmonogram dostaw" icon={<IconCalendar size={13} />} className="mt-7">
+            <dl className="grid grid-cols-2 gap-3">
               <Field
-                label="Częstotliwość zamówień"
+                label="Częstotliwość"
                 value={formatSupplierInterval(
                   supplier.interval_raw,
                   supplier.interval_weeks
@@ -297,56 +330,56 @@ export function SupplierDrawer({
             </dl>
           </DrawerBlock>
 
-          <DrawerBlock title="Ostatnie akcje" className="mt-6">
+          <DrawerBlock title="Ostatnie akcje" icon={<IconClock size={13} />} className="mt-7">
             {historyLoading ? (
-              <p className="text-sm text-slate-500">Ładowanie historii…</p>
+              <div className="flex items-center gap-2 text-sm text-slate-400">
+                <span className="h-3 w-3 animate-pulse rounded-full bg-slate-300" />
+                Ładowanie historii…
+              </div>
             ) : history.length === 0 ? (
-              <p className="text-sm text-slate-500">Brak zapisów w historii.</p>
+              <p className="text-sm text-slate-400">Brak zapisów w historii.</p>
             ) : (
-              <ul className="space-y-2 text-sm">
+              <ol className="relative space-y-3 pl-4 before:absolute before:left-[5px] before:top-2 before:bottom-2 before:w-px before:bg-slate-200">
                 {history.map((h, i) => (
                   <li
                     key={`${h.action_at}-${i}`}
-                    className="rounded-md border border-slate-100 bg-slate-50/80 px-3 py-2"
+                    className="relative"
                   >
-                    <p className="font-medium text-slate-800">{h.action}</p>
-                    <p className="mt-0.5 inline-flex flex-wrap items-center gap-1 text-xs text-slate-500">
-                      <span>
-                        {formatPlDate(h.action_at.slice(0, 10))} · {h.user_email}
-                      </span>
+                    <span className="absolute -left-4 top-1.5 h-2.5 w-2.5 rounded-full bg-indigo-400 ring-2 ring-white" />
+                    <p className="text-sm font-medium text-slate-800">{h.action}</p>
+                    <p className="mt-0.5 flex flex-wrap items-center gap-x-1.5 text-xs text-slate-500">
+                      <span className="tabular-nums">{formatPlDate(h.action_at.slice(0, 10))}</span>
+                      <span className="text-slate-300">·</span>
+                      <span>{h.user_email}</span>
                       {h.next_date ? (
                         <>
-                          <FlowChevron size={11} className="text-slate-300" />
-                          <span>{formatPlDate(h.next_date)}</span>
+                          <span className="text-slate-300">→</span>
+                          <span className="tabular-nums">{formatPlDate(h.next_date)}</span>
                         </>
                       ) : null}
                     </p>
                   </li>
                 ))}
-              </ul>
+              </ol>
             )}
           </DrawerBlock>
 
-          <DrawerBlock title="Odbiór towaru" className="mt-6">
-            <ul className="space-y-1 text-sm text-slate-800">
+          <DrawerBlock title="Odbiór towaru" icon={<IconTruck size={13} />} className="mt-7">
+            <ul className="space-y-2 text-sm">
               {supplier.pickup_mikran ? (
-                <li className="flex gap-2">
-                  <span className="text-slate-400" aria-hidden>
-                    —
-                  </span>
+                <li className="flex items-center gap-2.5 rounded-lg bg-slate-50/70 px-3 py-2 text-slate-700">
+                  <IconTruck size={15} className="shrink-0 text-slate-400" />
                   Kierowca Mikran
                 </li>
               ) : null}
               {supplier.pickup_pallet ? (
-                <li className="flex gap-2">
-                  <span className="text-slate-400" aria-hidden>
-                    —
-                  </span>
+                <li className="flex items-center gap-2.5 rounded-lg bg-slate-50/70 px-3 py-2 text-slate-700">
+                  <IconPackageCheck size={15} className="shrink-0 text-slate-400" />
                   Zlecenie odbioru palety
                 </li>
               ) : null}
               {!supplier.pickup_mikran && !supplier.pickup_pallet ? (
-                <li className="text-slate-500">Brak zleconego odbioru</li>
+                <li className="text-sm text-slate-400">Brak zleconego odbioru</li>
               ) : null}
             </ul>
           </DrawerBlock>
@@ -357,10 +390,12 @@ export function SupplierDrawer({
 }
 
 function DateCard({
+  icon,
   label,
   value,
   emphasize,
 }: {
+  icon: ReactNode;
   label: string;
   value: string;
   emphasize?: boolean;
@@ -368,15 +403,24 @@ function DateCard({
   return (
     <div
       className={cn(
-        "rounded-md border px-3 py-2.5",
-        emphasize ? "border-slate-300 bg-slate-50" : "border-slate-200 bg-white"
+        "rounded-lg border px-3 py-2.5 transition-colors",
+        emphasize
+          ? "border-indigo-200/70 bg-indigo-50/40"
+          : "border-slate-200/70 bg-white"
       )}
     >
-      <p className="text-xs text-slate-500">{label}</p>
+      <div className="flex items-center gap-1.5">
+        <span className={cn("shrink-0", emphasize ? "text-indigo-500" : "text-slate-400")}>
+          {icon}
+        </span>
+        <p className={cn("text-xs", emphasize ? "text-indigo-600" : "text-slate-500")}>{label}</p>
+      </div>
       <p
         className={cn(
-          "mt-0.5 tabular-nums",
-          emphasize ? "text-base font-semibold text-slate-900" : "font-medium text-slate-800"
+          "mt-1 tabular-nums",
+          emphasize
+            ? "text-base font-semibold text-slate-900"
+            : "text-sm font-medium text-slate-700"
         )}
       >
         {value}
@@ -387,18 +431,23 @@ function DateCard({
 
 function DrawerBlock({
   title,
+  icon,
   children,
   className,
 }: {
   title: string;
+  icon?: ReactNode;
   children: ReactNode;
   className?: string;
 }) {
   return (
     <section className={className}>
-      <h3 className="mb-3 text-xs font-semibold uppercase tracking-wide text-slate-500">
-        {title}
-      </h3>
+      <div className="mb-3 flex items-center gap-1.5">
+        {icon ? <span className="text-slate-400">{icon}</span> : null}
+        <h3 className="text-[11px] font-semibold uppercase tracking-wide text-slate-400">
+          {title}
+        </h3>
+      </div>
       {children}
     </section>
   );
@@ -406,9 +455,9 @@ function DrawerBlock({
 
 function Field({ label, value }: { label: string; value: string }) {
   return (
-    <div>
-      <dt className="text-slate-500">{label}</dt>
-      <dd className="mt-0.5 font-medium text-slate-900">{value}</dd>
+    <div className="rounded-lg bg-slate-50/60 px-3 py-2.5">
+      <dt className="text-xs text-slate-500">{label}</dt>
+      <dd className="mt-0.5 text-sm font-semibold text-slate-900">{value}</dd>
     </div>
   );
 }
