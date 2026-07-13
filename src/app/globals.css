@@ -787,3 +787,37 @@ input[type="checkbox"].toggle-switch.toggle-amber:checked {
 input[type="checkbox"].toggle-switch.toggle-indigo:checked {
   background: rgb(79 70 229);
 }
+
+/* ——— Supplier drawer — slide-in + backdrop fade ——— */
+@keyframes supplier-drawer-enter {
+  from {
+    transform: translateX(100%);
+  }
+  to {
+    transform: translateX(0);
+  }
+}
+
+@keyframes supplier-drawer-backdrop-enter {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.supplier-drawer-enter {
+  animation: supplier-drawer-enter 0.24s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.supplier-drawer-backdrop-enter {
+  animation: supplier-drawer-backdrop-enter 0.2s ease-out both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .supplier-drawer-enter,
+  .supplier-drawer-backdrop-enter {
+    animation: none;
+  }
+}
