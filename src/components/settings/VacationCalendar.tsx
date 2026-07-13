@@ -865,7 +865,7 @@ export function VacationCalendar({
                   ) : null}
                 </div>
                 {cell.isCurrentMonth && cell.periods.length > 0 ? (
-                  <div className="mt-1 space-y-1">
+                  <div className="mt-1.5 flex flex-col gap-1.5">
                     {/* Desktop: bars with names (sm+) */}
                     <div className="hidden sm:block">
                       {cell.periods.slice(0, 4).map((p, idx) => {
@@ -877,8 +877,8 @@ export function VacationCalendar({
                             key={p.period.id + "-" + idx}
                             type="button"
                             className={cn(
-                              "flex w-full items-center gap-1 rounded-sm px-1.5 py-1 text-[10px] font-medium truncate cursor-pointer transition hover:ring-1 hover:ring-slate-300/50 shadow-sm",
-                              isOwn && "ring-1 ring-slate-400/30 font-semibold",
+                              "flex w-full items-center gap-1 rounded px-1.5 py-1 text-[10px] font-medium truncate cursor-pointer transition hover:ring-1 hover:ring-slate-300/50 border border-white/80 shadow-sm",
+                              isOwn && "ring-1 ring-slate-400/40 font-semibold",
                               c.bg,
                               c.text
                             )}
