@@ -45,6 +45,7 @@ import { SUPPLIER_HUB_LIST_META_DESCRIPTION } from "@/lib/supplier-hub";
 import type { WarehouseCarrierRow } from "@/lib/data/warehouse-carriers";
 import { usePreviewMutationBlocker } from "@/components/layout/usePreviewMutationBlocker";
 import { Badge } from "@/components/ui/Badge";
+import { IconPencil, IconMapPin } from "@/components/icons/StrokeIcons";
 import { cn } from "@/lib/cn";
 
 function scheduleHref(location: SupplierLocation, name: string): string {
@@ -424,6 +425,11 @@ export function SuppliersAdminClient({
                   ? "Zmień wyszukiwanie lub filtry."
                   : "Wybierz inną lokalizację albo dodaj nowego dostawcę."
               }
+              action={
+                !search.trim() && subiektFilter === "all" && !readOnly ? (
+                  <AddButton onClick={openNew}>Dodaj dostawcę</AddButton>
+                ) : undefined
+              }
             />
           ) : (
             <>
@@ -481,7 +487,8 @@ export function SuppliersAdminClient({
                                 ) : undefined
                               }
                             />
-                            <p className="mt-1.5 text-xs text-slate-500 md:mt-1">
+                            <p className="mt-1.5 flex items-center gap-1 text-xs text-slate-500 md:mt-1">
+                              <IconMapPin size={12} className="shrink-0 text-slate-400" />
                               {formatSupplierListMeta(s)}
                             </p>
                           </div>
@@ -512,10 +519,11 @@ export function SuppliersAdminClient({
                           <Button
                             variant="secondary"
                             size="sm"
-                            className="hidden md:inline-flex"
+                            className="hidden md:inline-flex gap-1.5"
                             disabled={readOnly || pending}
                             onClick={() => startEdit(s)}
                           >
+                            <IconPencil size={14} className="shrink-0" />
                             Edytuj
                           </Button>
                           <SupplierAdminRowMenu

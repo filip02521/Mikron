@@ -238,7 +238,7 @@ export function SupplierAdminForm({
         <label className="mt-4 flex cursor-pointer items-start gap-2">
           <input
             type="checkbox"
-            className="mt-0.5 h-4 w-4 rounded border-slate-300"
+            className="mt-0.5 h-4 w-4 rounded border-slate-300 accent-indigo-600"
             checked={form.order_on_demand}
             disabled={disabled}
             onChange={(e) => onChange({ ...form, order_on_demand: e.target.checked })}
@@ -252,7 +252,7 @@ export function SupplierAdminForm({
       <label className="flex cursor-pointer items-start gap-2 sm:col-span-2">
         <input
           type="checkbox"
-          className="mt-0.5 h-4 w-4 rounded border-slate-300"
+          className="mt-0.5 h-4 w-4 rounded border-slate-300 accent-indigo-600"
           checked={form.is_active}
           disabled={disabled}
           onChange={(e) => onChange({ ...form, is_active: e.target.checked })}
@@ -309,6 +309,7 @@ export function SupplierAdminForm({
             disabled={disabled}
             checked={form.pickup_mikran}
             onChange={(e) => onChange({ ...form, pickup_mikran: e.target.checked })}
+            className="h-4 w-4 rounded border-slate-300 accent-indigo-600"
           />
           Kierowca Mikran odbiera towar
         </label>
@@ -318,6 +319,7 @@ export function SupplierAdminForm({
             disabled={disabled}
             checked={form.pickup_pallet}
             onChange={(e) => onChange({ ...form, pickup_pallet: e.target.checked })}
+            className="h-4 w-4 rounded border-slate-300 accent-indigo-600"
           />
           Zlecamy odbiór palety
         </label>

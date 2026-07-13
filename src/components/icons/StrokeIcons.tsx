@@ -667,3 +667,32 @@ export function IconSparkles(props: StrokeIconProps) {
     </Svg>
   );
 }
+
+/** Edycja / ołówek */
+export function IconPencil(props: StrokeIconProps) {
+  return (
+    <Svg {...props}>
+      <path d="M12 20h9" />
+      <path d="M16.5 3.5a2.12 2.12 0 013 3L7 19l-4 1 1-4 12.5-12.5z" />
+    </Svg>
+  );
+}
+
+/** Lokalizacja / pinezka mapy */
+export function IconMapPin(props: StrokeIconProps) {
+  return (
+    <Svg {...props}>
+      <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z" />
+      <circle cx="12" cy="10" r="3" />
+    </Svg>
+  );
+}
+
+/** Zamknij / X */
+export function IconX(props: StrokeIconProps) {
+  return (
+    <Svg {...props}>
+      <path d="M18 6L6 18M6 6l12 12" />
+    </Svg>
+  );
+}

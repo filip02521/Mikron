@@ -4,6 +4,7 @@ import { useEffect } from "react";
 import { cn } from "@/lib/cn";
 import { modalBackdropClass } from "@/lib/ui/surfaces";
 import { Button } from "@/components/ui/Button";
+import { IconX } from "@/components/icons/StrokeIcons";
 import { SCROLL_LOCK_ALLOW_ATTR, useBodyScrollLock } from "@/lib/ui/page-scroll-lock";
 
 export function SupplierEditSheet({
@@ -67,11 +68,12 @@ export function SupplierEditSheet({
               type="button"
               variant="ghost"
               size="sm"
-              className="shrink-0"
+              className="shrink-0 h-8 w-8 p-0"
               disabled={pending}
               onClick={onClose}
+              aria-label="Zamknij"
             >
-              Zamknij
+              <IconX size={16} />
             </Button>
           </div>
         </header>
