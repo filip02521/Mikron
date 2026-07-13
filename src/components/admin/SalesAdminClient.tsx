@@ -30,6 +30,7 @@ import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { DataTable, TableScroll } from "@/components/ui/DataTable";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { Badge } from "@/components/ui/Badge";
+import { IconPencil, IconTrash2 } from "@/components/icons/StrokeIcons";
 import { cn } from "@/lib/cn";
 import { brandLinkClass, controlFocusClass, panelChoiceChipClass, panelChoiceChipIdleClass, panelChoiceChipSelectedClass, salesChromeInsetClass } from "@/lib/ui/ontime-theme";
 
@@ -366,8 +367,18 @@ export function SalesAdminClient({
             </thead>
             <tbody>
               {filtered.map((p) => (
-                <tr key={p.id}>
-                  <td className="font-medium text-slate-900">{p.name}</td>
+                <tr key={p.id} className="transition-colors hover:bg-slate-50/50">
+                  <td className="font-medium text-slate-900">
+                    <div className="flex items-center gap-2">
+                      <span
+                        className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-slate-100 text-xs font-bold text-slate-600 ring-1 ring-inset ring-slate-200/60"
+                        aria-hidden
+                      >
+                        {p.name.charAt(0).toUpperCase() || "?"}
+                      </span>
+                      <span className="truncate">{p.name}</span>
+                    </div>
+                  </td>
                   <td>
                     {p.groupName ? (
                       <span className={groupBadgeClass()}>{p.groupName}</span>
@@ -433,14 +444,15 @@ export function SalesAdminClient({
                         )}
                       </div>
                       <div className="flex flex-wrap justify-end gap-2">
-                        <Button variant="ghost" size="sm" onClick={() => startEdit(p)}>
+                        <Button variant="ghost" size="sm" className="gap-1" onClick={() => startEdit(p)}>
+                          <IconPencil size={13} className="shrink-0" />
                           Edytuj
                         </Button>
                         {!managerMode ? (
                           <Button
                             variant="ghost"
                             size="sm"
-                            className="text-rose-600 hover:text-rose-700"
+                            className="gap-1 text-rose-600 hover:text-rose-700"
                             disabled={p.orderCount > 0 || !!p.linkedUserId}
                             title={
                               p.orderCount > 0
@@ -451,6 +463,7 @@ export function SalesAdminClient({
                             }
                             onClick={() => setDeleteTarget(p)}
                           >
+                            <IconTrash2 size={13} className="shrink-0" />
                             Usuń
                           </Button>
                         ) : null}

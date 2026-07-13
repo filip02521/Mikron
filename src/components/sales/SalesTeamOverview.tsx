@@ -17,6 +17,7 @@ import { Button } from "@/components/ui/Button";
 import { AddButton } from "@/components/ui/AddButton";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { SystemNotice } from "@/components/ui/SystemNotice";
+import { IconUsers, IconClipboardList, IconNotebook, IconFilePlus, IconEye } from "@/components/icons/StrokeIcons";
 import { cn } from "@/lib/cn";
 import { salesTypography } from "@/lib/ui/ontime-theme";
 
@@ -51,15 +52,17 @@ function SalesPersonCardActions({
         <Button
           size="sm"
           variant={isSelf ? "primary" : "secondary"}
-          className={NOTATNIK_ZK_BTN_CLASS}
+          className={cn(NOTATNIK_ZK_BTN_CLASS, "gap-1.5")}
         >
+          <IconClipboardList size={14} className="shrink-0" />
           {isSelf ? "Moje zamówienia" : "Zobacz prośby"}
         </Button>
       </TeamCardActionLink>
       <TeamCardActionLink
         href={buildNotatnikPageHref({ extraParams: { dla: rowId } })}
       >
-        <Button size="sm" variant="outline" className={NOTATNIK_ZK_BTN_CLASS}>
+        <Button size="sm" variant="outline" className={cn(NOTATNIK_ZK_BTN_CLASS, "gap-1.5")}>
+          <IconClipboardList size={14} className="shrink-0" />
           ZK czekające
         </Button>
       </TeamCardActionLink>
@@ -70,13 +73,15 @@ function SalesPersonCardActions({
           extraParams: { dla: rowId },
         })}
       >
-        <Button size="sm" variant="outline" className={NOTATNIK_ZK_BTN_CLASS}>
+        <Button size="sm" variant="outline" className={cn(NOTATNIK_ZK_BTN_CLASS, "gap-1.5")}>
+          <IconNotebook size={14} className="shrink-0" />
           Notatnik
         </Button>
       </TeamCardActionLink>
       {!isSelf ? (
         <TeamCardActionLink href={`/prosba?dla=${rowId}`} className="col-span-2">
-          <Button size="sm" variant="outline" className={NOTATNIK_ZK_BTN_CLASS}>
+          <Button size="sm" variant="outline" className={cn(NOTATNIK_ZK_BTN_CLASS, "gap-1.5 w-full")}>
+            {prosbaReadOnly ? <IconEye size={14} className="shrink-0" /> : <IconFilePlus size={14} className="shrink-0" />}
             {prosbaReadOnly ? "Podgląd prośby" : "Prośba w imieniu handlowca"}
           </Button>
         </TeamCardActionLink>
@@ -97,25 +102,38 @@ function SalesPersonCard({
   return (
     <div
       className={cn(
-        "overflow-hidden rounded-md border border-slate-200/80 bg-white",
+        "overflow-hidden rounded-lg border border-slate-200/80 bg-white shadow-sm transition hover:shadow-md",
         isSelf && "ring-1 ring-indigo-200/80"
       )}
     >
       <div className="flex items-start justify-between gap-2 border-b border-slate-100 px-4 py-3">
-        <div className="min-w-0 flex-1">
-          <div className="flex min-w-0 items-center gap-2.5">
-            <h3 className={cn(salesTypography.rowTitle, "truncate")}>{row.name}</h3>
-            {isSelf ? (
-              <Badge variant="info" className="shrink-0 text-[10px]">
-                Ty
-              </Badge>
-            ) : row.groupName ? (
-              <Badge variant="default" className="shrink-0 text-[10px]">
-                {row.groupName}
-              </Badge>
-            ) : null}
+        <div className="flex min-w-0 items-center gap-2.5">
+          <span
+            className={cn(
+              "flex h-9 w-9 shrink-0 items-center justify-center rounded-md text-sm font-bold ring-1 ring-inset",
+              isSelf
+                ? "bg-indigo-100 text-indigo-700 ring-indigo-200/60"
+                : "bg-slate-100 text-slate-600 ring-slate-200/60"
+            )}
+            aria-hidden
+          >
+            {row.name.charAt(0).toUpperCase() || "?"}
+          </span>
+          <div className="min-w-0 flex-1">
+            <div className="flex min-w-0 items-center gap-2">
+              <h3 className={cn(salesTypography.rowTitle, "truncate")}>{row.name}</h3>
+              {isSelf ? (
+                <Badge variant="info" className="shrink-0 text-[10px]">
+                  Ty
+                </Badge>
+              ) : row.groupName ? (
+                <Badge variant="default" className="shrink-0 text-[10px]">
+                  {row.groupName}
+                </Badge>
+              ) : null}
+            </div>
+            <p className={cn(salesTypography.rowMeta, "mt-0.5 truncate")}>{row.email}</p>
           </div>
-          <p className={cn(salesTypography.rowMeta, "mt-0.5 truncate")}>{row.email}</p>
         </div>
       </div>
       <div className="space-y-2.5 px-4 py-3">
@@ -281,6 +299,12 @@ export function SalesTeamOverview({
           <section key={key} className="space-y-3">
             <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 border-b border-slate-100 pb-2.5 pt-0.5">
               <div className="flex flex-wrap items-center gap-2.5 sm:gap-3">
+                <span
+                  className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-slate-100 text-slate-500 ring-1 ring-inset ring-slate-200/60"
+                  aria-hidden
+                >
+                  <IconUsers size={14} />
+                </span>
                 <h2 className={cn(salesTypography.sectionLabel, "normal-case tracking-normal text-slate-700")}>
                   {title}
                 </h2>
