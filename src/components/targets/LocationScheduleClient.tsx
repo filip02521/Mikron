@@ -35,6 +35,7 @@ import {
 import { todayInWarsaw } from "@/lib/time/warsaw";
 import { cn } from "@/lib/cn";
 import { Badge } from "@/components/ui/Badge";
+import { IconCalendar, IconClock, IconSun } from "@/components/icons/StrokeIcons";
 import { InactiveSupplierBadge } from "@/components/suppliers/InactiveSupplierBadge";
 import { inactiveSupplierRowClass, inactiveSupplierNameClass } from "@/lib/suppliers/active";
 import { usePreviewMutationBlocker } from "@/components/layout/usePreviewMutationBlocker";
@@ -305,34 +306,51 @@ export function LocationScheduleClient({
                     key={row.id}
                     style={{ backgroundColor: row.rowColor }}
                     className={cn(
+                      "transition-colors hover:brightness-95",
                       inactiveSupplierRowClass(row.is_active),
                       savedId === row.id && "ring-2 ring-inset ring-emerald-400"
                     )}
                   >
                     <td className={cn("font-semibold", inactiveSupplierNameClass(row.is_active))}>
-                      <p className="flex flex-wrap items-center gap-2">
-                        <span>{row.name}</span>
-                        {!row.is_active ? (
-                          <InactiveSupplierBadge className="text-[10px]" />
-                        ) : null}
-                      </p>
-                      {row.interval_hint ? (
-                        <p className="mt-0.5 text-[11px] font-normal text-slate-500">
-                          Cykl: {row.interval_hint}
-                        </p>
-                      ) : null}
-                      <Link
-                        href={cardHref(cardsBasePath, row.name)}
-                        className="mt-1 inline-flex items-center gap-1 text-xs font-medium text-sky-700 hover:text-sky-900 hover:underline"
-                      >
-                        Karta dostawcy
-                        <LinkChevron size={13} tone="sky" />
-                      </Link>
-                      {savedId === row.id ? (
-                        <span className="ml-2 text-xs font-normal text-emerald-700">
-                          Zapisano
+                      <div className="flex items-center gap-2.5">
+                        <span
+                          className={cn(
+                            "flex h-8 w-8 shrink-0 items-center justify-center rounded-md text-sm font-bold ring-1 ring-inset",
+                            row.is_active
+                              ? "bg-indigo-50 text-indigo-700 ring-indigo-100/60"
+                              : "bg-slate-100 text-slate-400 ring-slate-200/60"
+                          )}
+                          aria-hidden
+                        >
+                          {row.name.charAt(0).toUpperCase() || "?"}
                         </span>
-                      ) : null}
+                        <div className="min-w-0">
+                          <p className="flex flex-wrap items-center gap-2">
+                            <span>{row.name}</span>
+                            {!row.is_active ? (
+                              <InactiveSupplierBadge className="text-[10px]" />
+                            ) : null}
+                          </p>
+                          {row.interval_hint ? (
+                            <p className="mt-0.5 inline-flex items-center gap-1 text-[11px] font-normal text-slate-500">
+                              <IconClock size={11} className="text-slate-400" />
+                              {row.interval_hint}
+                            </p>
+                          ) : null}
+                          <Link
+                            href={cardHref(cardsBasePath, row.name)}
+                            className="mt-1 inline-flex items-center gap-1 text-xs font-medium text-sky-700 hover:text-sky-900 hover:underline"
+                          >
+                            Karta dostawcy
+                            <LinkChevron size={13} tone="sky" />
+                          </Link>
+                          {savedId === row.id ? (
+                            <span className="ml-2 text-xs font-normal text-emerald-700">
+                              Zapisano
+                            </span>
+                          ) : null}
+                        </div>
+                      </div>
                     </td>
                     <DateCell
                       value={row.order_date}
@@ -360,7 +378,8 @@ export function LocationScheduleClient({
                     />
                     <td>
                       {row.vacation_note ? (
-                        <Badge variant="warning">
+                        <Badge variant="warning" className="gap-1">
+                          <IconSun size={11} className="text-amber-500" />
                           {vacationNoteLabel(row.vacation_note)}
                         </Badge>
                       ) : (
@@ -439,7 +458,10 @@ function DateCell({
             if (next !== (value ?? null)) onSave(next);
           }}
         />
-        <p className="text-[10px] text-slate-500 tabular-nums">{hint}</p>
+        <p className="flex items-center gap-1 text-[10px] text-slate-500 tabular-nums">
+          <IconCalendar size={10} className="shrink-0 text-slate-400" />
+          {hint}
+        </p>
       </div>
     </td>
   );

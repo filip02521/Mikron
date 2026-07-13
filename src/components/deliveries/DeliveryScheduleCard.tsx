@@ -1,7 +1,7 @@
 import { cn } from "@/lib/cn";
 import { locationLabel } from "@/lib/display-labels";
 import { getVacationMessage } from "@/lib/orders/colors";
-import { IconCalendar, IconSun } from "@/components/icons/StrokeIcons";
+import { IconSun, IconMapPin } from "@/components/icons/StrokeIcons";
 import type { DeliveryScheduleSupplier } from "@/lib/data/upcoming-deliveries";
 
 export function DeliveryScheduleCard({
@@ -26,17 +26,18 @@ export function DeliveryScheduleCard({
       )}
     >
       <div className="flex items-center gap-2">
-        <div
+        <span
           className={cn(
-            "flex shrink-0 items-center justify-center rounded-lg",
+            "flex shrink-0 items-center justify-center rounded-md text-xs font-bold ring-1 ring-inset",
             supplier.isOverduePlan
-              ? "bg-rose-100 text-rose-600"
-              : "bg-indigo-100 text-indigo-600",
+              ? "bg-rose-100 text-rose-600 ring-rose-200/60"
+              : "bg-indigo-50 text-indigo-700 ring-indigo-100/60",
             compact ? "h-7 w-7" : "h-8 w-8"
           )}
+          aria-hidden
         >
-          <IconCalendar size={compact ? 14 : 16} />
-        </div>
+          {supplier.supplierName.charAt(0).toUpperCase() || "?"}
+        </span>
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-1.5">
             <p className={cn("min-w-0 truncate font-semibold text-slate-900", compact ? "text-xs" : "text-sm")}>
@@ -55,7 +56,8 @@ export function DeliveryScheduleCard({
             </span>
           </div>
           {!compact ? (
-            <p className="mt-0.5 text-xs text-slate-500">
+            <p className="mt-0.5 inline-flex items-center gap-1 text-xs text-slate-500">
+              <IconMapPin size={11} className="text-slate-400" />
               {locationLabel(supplier.location)}
             </p>
           ) : null}

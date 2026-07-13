@@ -2,6 +2,7 @@ import { cn } from "@/lib/cn";
 import type { DeliveryScheduleDay } from "@/lib/data/upcoming-deliveries";
 import { UpcomingDeliverySupplierCard } from "@/components/deliveries/UpcomingDeliverySupplierCard";
 import { DeliveryScheduleCard } from "@/components/deliveries/DeliveryScheduleCard";
+import { IconCalendar } from "@/components/icons/StrokeIcons";
 
 export function DeliveryWeekGrid({
   days,
@@ -66,10 +67,11 @@ function DeliveryWeekDayColumn({
         <div className="min-w-0">
           <p
             className={cn(
-              "text-[10px] font-semibold uppercase tracking-wider",
+              "flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wider",
               day.isToday ? "text-sky-800" : "text-slate-500"
             )}
           >
+            {day.isToday ? <IconCalendar size={11} /> : null}
             {day.weekdayLabel}
           </p>
           <p className={cn("text-sm font-semibold", day.isToday ? "text-sky-900" : "text-slate-900")}>
@@ -110,7 +112,7 @@ function DeliveryWeekDayColumn({
 
       <div className="flex min-w-0 flex-1 flex-col gap-2 p-2">
         {totalCount === 0 && !pending ? (
-          <div className="flex flex-1 items-center justify-center py-4 text-center text-xs text-slate-400">
+          <div className="flex flex-1 items-center justify-center rounded-lg border border-dashed border-slate-100 py-4 text-center text-xs text-slate-300">
             Brak
           </div>
         ) : null}
