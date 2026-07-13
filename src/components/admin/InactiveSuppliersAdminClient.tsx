@@ -12,6 +12,7 @@ import { formatPlDate } from "@/lib/display-labels";
 import { formatSupplierCycleSummary, formatSupplierListMeta } from "@/lib/suppliers/supplier-list-labels";
 import { Card, CardHeader } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
+import { IconPencil, IconMapPin } from "@/components/icons/StrokeIcons";
 import { NoticeToast } from "@/components/ui/NoticeToast";
 import { SupplierAdminCardsFilterBar } from "@/components/admin/SupplierHubListFilters";
 import { SupplierAdminNameCell } from "@/components/admin/SupplierAdminNameCell";
@@ -330,7 +331,7 @@ export function InactiveSuppliersAdminClient({
                 <span>Terminy</span>
                 <span className="text-right">Akcje</span>
               </div>
-              <ul className="divide-y divide-slate-100">
+              <ul className="space-y-1.5 p-2 sm:p-3 lg:p-4">
                 {filtered.map((s) => {
                   const isEditing = formOpen && form.id === s.id;
                   const cycleSummary = formatSupplierCycleSummary(s);
@@ -340,9 +341,10 @@ export function InactiveSuppliersAdminClient({
                       key={s.id}
                       id={`inactive-supplier-row-${s.id}`}
                       className={cn(
-                        "px-3 py-3 sm:px-4 lg:px-5",
+                        "rounded-lg border border-slate-100 bg-white px-3 py-3 transition-all sm:px-4 lg:px-5",
+                        "hover:border-slate-200 hover:shadow-sm",
                         inactiveRowClass(isEditing),
-                        s.subiekt_kh_id == null && "bg-amber-50/40"
+                        s.subiekt_kh_id == null && "border-amber-100/60 bg-amber-50/20"
                       )}
                     >
                       <div className="flex items-start gap-2 md:grid md:grid-cols-[minmax(0,1.6fr)_minmax(120px,180px)_minmax(100px,120px)_minmax(88px,100px)_minmax(120px,160px)] md:items-center md:gap-3">
@@ -354,7 +356,8 @@ export function InactiveSuppliersAdminClient({
                               onEdit={() => startEdit(s)}
                               trailingBadge={<InactiveSupplierBadge className="text-[10px]" />}
                             />
-                            <p className="mt-1 text-xs text-slate-500 md:mt-0.5">
+                            <p className="mt-1.5 flex items-center gap-1 text-xs text-slate-500 md:mt-1">
+                              <IconMapPin size={12} className="shrink-0 text-slate-400" />
                               {formatSupplierListMeta(s)}
                             </p>
                           </div>
@@ -384,10 +387,11 @@ export function InactiveSuppliersAdminClient({
                           <Button
                             variant="secondary"
                             size="sm"
-                            className="hidden md:inline-flex"
+                            className="hidden md:inline-flex gap-1.5"
                             disabled={readOnly || pending}
                             onClick={() => startEdit(s)}
                           >
+                            <IconPencil size={14} className="shrink-0" />
                             Edytuj
                           </Button>
                           <InactiveSupplierRowMenu
