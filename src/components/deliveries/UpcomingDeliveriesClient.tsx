@@ -119,7 +119,7 @@ export function UpcomingDeliveriesClient({
     loadData(next.dateFrom, next.dateTo);
   }, [dateFrom, dateTo, loadData]);
 
-  const days = payload?.days ?? [];
+  const days = useMemo(() => payload?.days ?? [], [payload?.days]);
   const summary = payload?.summary;
   const rangeLabel = useMemo(() => {
     if (!dateFrom || !dateTo) return "";

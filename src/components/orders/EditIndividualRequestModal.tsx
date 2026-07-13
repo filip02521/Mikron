@@ -129,7 +129,6 @@ export function EditIndividualRequestModal({
     teethRequest || (procurementLanes.hasTeeth && !procurementLanes.hasRegular);
   const isMixedProcurementEdit =
     !teethRequest && procurementLanes.hasTeeth && procurementLanes.hasRegular;
-  const isTeethRequestEdit = isTeethOnlyEdit || isMixedProcurementEdit;
 
   const salesSubmitPlan = useMemo(() => {
     if (mode !== "sales") return null;
@@ -294,7 +293,8 @@ export function EditIndividualRequestModal({
       orderIds,
       onSaved,
       onClose,
-      isTeethRequestEdit,
+      isMixedProcurementEdit,
+      isTeethOnlyEdit,
     ]
   );
 

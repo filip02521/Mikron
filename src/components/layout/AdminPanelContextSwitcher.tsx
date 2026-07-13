@@ -16,7 +16,6 @@ import {
 } from "@/components/icons/NavIcon";
 import {
   controlFocusClass,
-  panelTypography,
 } from "@/lib/ui/ontime-theme";
 
 const CONTEXT_ICON: Record<AdminPanelContext, NavIconKey> = {

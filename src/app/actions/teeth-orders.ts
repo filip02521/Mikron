@@ -336,7 +336,7 @@ export async function actionUpdateTeethSpecGroup(
 export async function actionAcknowledgeTeethCancellation(
   orderIds: string[]
 ): Promise<{ success: true; count: number }> {
-  const user = await requireTeethPanel("mutate");
+  await requireTeethPanel("mutate");
   const ids = [...new Set(orderIds.filter(Boolean))];
   if (!ids.length) return { success: true, count: 0 };
 

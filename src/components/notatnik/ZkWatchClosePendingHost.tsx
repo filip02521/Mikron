@@ -238,6 +238,7 @@ function ZkWatchClosePendingHostActive({
     onFlowError,
     onPreviewLoadingChange,
     router,
+    confirmPendingAndClose,
   ]);
 
   if (!open && !error) return null;

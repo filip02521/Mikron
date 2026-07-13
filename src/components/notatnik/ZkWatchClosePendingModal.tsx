@@ -14,7 +14,6 @@ import {
   type ZkWatchPendingAckKind,
   type ZkWatchPendingAckItem,
 } from "@/lib/sales/zk-watch-close-pending";
-import { salesTypography } from "@/lib/ui/ontime-theme";
 import type { SalesZkWatch } from "@/types/database";
 import { IconCircleCheck, IconClock } from "@/components/icons/StrokeIcons";
 
@@ -69,7 +68,6 @@ export function ZkWatchClosePendingModal({
     [items]
   );
   const uniqueCount = focusOrderIds.length;
-  const pendingNoticeCount = items.length;
   const previewHref = useMemo(
     () =>
       appendMojeFocusOrderIds(
