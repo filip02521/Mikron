@@ -847,7 +847,7 @@ export function VacationCalendar({
               <div
                 key={cell.dateKey + "-" + i}
                 className={cn(
-                  "min-h-[3.5rem] border-b border-r border-slate-100 p-1 transition-colors sm:min-h-[6rem] sm:p-1.5",
+                  "min-h-[3.5rem] border-b border-r border-slate-100 p-1 transition-colors sm:min-h-[7.5rem] sm:p-1.5",
                   bgClasses
                 )}
               >
@@ -865,10 +865,10 @@ export function VacationCalendar({
                   ) : null}
                 </div>
                 {cell.isCurrentMonth && cell.periods.length > 0 ? (
-                  <div className="mt-1 space-y-0.5">
+                  <div className="mt-1 space-y-1">
                     {/* Desktop: bars with names (sm+) */}
                     <div className="hidden sm:block">
-                      {cell.periods.slice(0, 3).map((p, idx) => {
+                      {cell.periods.slice(0, 4).map((p, idx) => {
                         const c = colorMap.get(p.salesPersonId);
                         if (!c) return null;
                         const isOwn = editableSalesPersonId === p.salesPersonId;
@@ -877,7 +877,7 @@ export function VacationCalendar({
                             key={p.period.id + "-" + idx}
                             type="button"
                             className={cn(
-                              "flex w-full items-center gap-1 rounded-sm px-1.5 py-0.5 text-[10px] font-medium truncate cursor-pointer transition hover:ring-1 hover:ring-slate-300/50",
+                              "flex w-full items-center gap-1 rounded-sm px-1.5 py-1 text-[10px] font-medium truncate cursor-pointer transition hover:ring-1 hover:ring-slate-300/50 shadow-sm",
                               isOwn && "ring-1 ring-slate-400/30 font-semibold",
                               c.bg,
                               c.text
@@ -907,15 +907,15 @@ export function VacationCalendar({
                           </button>
                         );
                       })}
-                      {cell.periods.length > 3 ? (
-                        <p className="text-[10px] text-slate-400">
-                          +{cell.periods.length - 3} więcej
+                      {cell.periods.length > 4 ? (
+                        <p className="text-[10px] font-medium text-slate-500">
+                          +{cell.periods.length - 4} więcej
                         </p>
                       ) : null}
                     </div>
                     {/* Mobile: colored dots (<sm) */}
-                    <div className="flex flex-wrap gap-1 sm:hidden">
-                      {cell.periods.slice(0, 4).map((p, idx) => {
+                    <div className="flex flex-wrap gap-1.5 sm:hidden">
+                      {cell.periods.slice(0, 5).map((p, idx) => {
                         const c = colorMap.get(p.salesPersonId);
                         if (!c) return null;
                         const isOwn = editableSalesPersonId === p.salesPersonId;
@@ -925,7 +925,7 @@ export function VacationCalendar({
                             type="button"
                             className={cn(
                               "rounded-full cursor-pointer transition hover:ring-1 hover:ring-slate-300/50",
-                              isOwn ? "h-2.5 w-2.5 ring-1 ring-slate-400/40" : "h-2 w-2",
+                              isOwn ? "h-3 w-3 ring-1 ring-slate-400/40" : "h-2.5 w-2.5",
                               c.dot
                             )}
                             onClick={(e) => onBarClick(e, p.period.id, p.salesPersonId)}
@@ -933,9 +933,9 @@ export function VacationCalendar({
                           />
                         );
                       })}
-                      {cell.periods.length > 4 ? (
-                        <span className="text-[10px] text-slate-400">
-                          +{cell.periods.length - 4}
+                      {cell.periods.length > 5 ? (
+                        <span className="text-[10px] font-medium text-slate-500">
+                          +{cell.periods.length - 5}
                         </span>
                       ) : null}
                     </div>
