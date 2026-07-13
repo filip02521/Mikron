@@ -281,6 +281,7 @@ export function AppShellClient({
             role={role}
             userEmail={userEmail}
             userAssignmentLabel={userAssignmentLabel}
+            procurementWorkspace={procurementWorkspace}
           />
         ) : null}
         {teethLive && !salesLive && !operationsLive ? (
@@ -288,6 +289,7 @@ export function AppShellClient({
             role={role}
             userEmail={userEmail}
             userAssignmentLabel={userAssignmentLabel}
+            procurementWorkspace={procurementWorkspace}
           />
         ) : null}
         {magazynLive && !salesLive && !operationsLive && !teethLive ? (
@@ -295,6 +297,7 @@ export function AppShellClient({
             role={role}
             userEmail={userEmail}
             userAssignmentLabel={userAssignmentLabel}
+            procurementWorkspace={procurementWorkspace}
           />
         ) : null}
         <AppShellMain

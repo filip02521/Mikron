@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/cn";
 import { isNavItemActive } from "@/lib/nav";
+import { NavIcon } from "@/components/icons/NavIcon";
 import {
   controlFocusClass,
   panelChoiceChipClass,
@@ -16,7 +17,7 @@ const SIBLING_HREFS = ["/zespol", "/zespol/handlowcy", "/zespol/grupy", "/zespol
 
 const TAB_CHIP_CLASS = cn(
   panelChoiceChipClass,
-  "inline-flex min-h-11 shrink-0 items-center py-2 sm:min-h-9",
+  "inline-flex min-h-11 shrink-0 items-center gap-1.5 py-2 sm:min-h-9",
   controlFocusClass
 );
 
@@ -24,10 +25,10 @@ export function SalesTeamSubnav() {
   const pathname = usePathname();
 
   const items = [
-    { href: "/zespol", label: "Podgląd zespołu", title: "Karty handlowców i skróty do prośb oraz ZK" },
-    { href: "/zespol/handlowcy", label: "Handlowcy", title: "Lista osób, konta i przypisanie do grup" },
-    { href: "/zespol/grupy", label: "Grupy", title: "Nazwy i kolejność grup w podglądzie" },
-    { href: "/zespol/urlopy", label: "Urlopy", title: "Zastępstwa urlopowe handlowców" },
+    { href: "/zespol", label: "Podgląd zespołu", title: "Karty handlowców i skróty do prośb oraz ZK", icon: "team" as const },
+    { href: "/zespol/handlowcy", label: "Handlowcy", title: "Lista osób, konta i przypisanie do grup", icon: "teamAccounts" as const },
+    { href: "/zespol/grupy", label: "Grupy", title: "Nazwy i kolejność grup w podglądzie", icon: "teamGroups" as const },
+    { href: "/zespol/urlopy", label: "Urlopy", title: "Zastępstwa urlopowe handlowców", icon: "vacation" as const },
   ] as const;
 
   return (
@@ -51,6 +52,7 @@ export function SalesTeamSubnav() {
               active ? panelChoiceChipSelectedClass : panelChoiceChipIdleClass
             )}
           >
+            <NavIcon navKey={item.icon} size={15} />
             {item.label}
           </Link>
         );
