@@ -4,12 +4,10 @@
 
 import { revalidatePath } from "next/cache";
 import { getSessionUser } from "@/lib/auth";
-import { isAdmin, isSalesAccount } from "@/lib/auth-roles";
+import { isAdmin } from "@/lib/auth-roles";
 import {
   createStaffVacationPeriod,
   removeStaffVacationPeriod,
-  fetchStaffVacationPeriods,
-  type StaffVacationRow,
 } from "@/lib/data/staff-vacation-periods";
 import { createAdminClient } from "@/lib/supabase/admin";
 
@@ -94,13 +92,4 @@ export async function actionRemoveStaffVacationPeriod(
   } catch (e) {
     return { error: e instanceof Error ? e.message : "Nie udało się usunąć urlopu." };
   }
-}
-
-export async function actionFetchStaffVacationPeriods(
-  userIds: string[]
-): Promise<Record<string, StaffVacationRow[]>> {
-  const user = await getSessionUser();
-  if (!user) return {};
-  if (isSalesAccount(user.role)) return {};
-  return fetchStaffVacationPeriods(userIds);
 }

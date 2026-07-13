@@ -1,6 +1,7 @@
 -- Urlopy pracowników działów niewyłącznie handlowych (zakupy, magazyn, itp.).
--- Każdy widzi urlopy osób z tego samego działu (na wzajem).
+-- Każdy non-sales widzi urlopy wszystkich non-sales (cross-department).
 -- Brak zastępstw — tylko informacja o niedostępności.
+-- Uwaga: RLS select zostało zaktualizowane w migracji 096.
 
 CREATE TABLE staff_vacation_periods (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
