@@ -322,7 +322,8 @@ export async function proxy(request: NextRequest) {
   if (
     matchesPrefix(pathname, OPERATIONS_PREFIXES) &&
     !canAccessOperations(role, workspaces) &&
-    !warehouseExtraPaths
+    !warehouseExtraPaths &&
+    !(pathname === "/notatki" && canAccessTeethPanel(role, workspaces))
   ) {
     if (pathname.startsWith("/zamowienia")) {
       return redirectWithSession(request, sessionResponse, "/prosba");
