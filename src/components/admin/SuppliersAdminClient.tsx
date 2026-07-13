@@ -12,7 +12,7 @@ import {
   actionDeleteSupplier,
   actionSetSupplierActive,
 } from "@/app/actions/admin";
-import { isSupplierActive, inactiveSupplierRowClass } from "@/lib/suppliers/active";
+import { isSupplierActive } from "@/lib/suppliers/active";
 import { formatSupplierCycleSummary, formatSupplierListMeta } from "@/lib/suppliers/supplier-list-labels";
 import { Card, CardHeader } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
@@ -61,16 +61,6 @@ function parseSubiektFilter(raw: string | null): SupplierSubiektFilter {
   return "all";
 }
 
-function supplierRowClass(
-  s: SupplierWithSchedule,
-  isEditing: boolean
-): string {
-  return cn(
-    inactiveSupplierRowClass(isSupplierActive(s)),
-    s.subiekt_kh_id == null && "bg-amber-50/40",
-    isEditing && "bg-indigo-50/80 ring-1 ring-inset ring-indigo-200"
-  );
-}
 
 export function SuppliersAdminClient({
   initial,
@@ -438,7 +428,7 @@ export function SuppliersAdminClient({
             <>
               <div
                 className={cn(
-                  "hidden border-b border-slate-100 bg-slate-50/90 px-4 py-2 text-[11px] font-semibold uppercase tracking-wide text-slate-500 md:grid md:gap-3 lg:px-5",
+                  "hidden border-b border-slate-100 bg-slate-50/60 px-4 py-2.5 text-[10px] font-semibold uppercase tracking-wider text-slate-400 md:grid md:gap-3 lg:px-5",
                   teethLane
                     ? "md:grid-cols-[minmax(0,1.6fr)_minmax(120px,180px)_minmax(120px,160px)]"
                     : "md:grid-cols-[minmax(0,1.6fr)_minmax(120px,180px)_minmax(88px,100px)_minmax(120px,160px)]"
@@ -450,23 +440,27 @@ export function SuppliersAdminClient({
                 {teethLane ? null : <span>Terminy</span>}
                 <span className="text-right">Akcje</span>
               </div>
-              <ul className="divide-y divide-slate-100">
+              <ul className="space-y-1.5 p-2 sm:p-3 lg:p-4">
                 {filtered.map((s) => {
                   const isEditing = formOpen && form.id === s.id;
                   const cycleSummary = formatSupplierCycleSummary(s);
                   const cycleIncomplete = cycleSummary === "Uzupełnij cykl";
+                  const isActive = isSupplierActive(s);
                   return (
                     <li
                       key={s.id}
                       id={`supplier-row-${s.id}`}
                       className={cn(
-                        "px-3 py-3 sm:px-4 lg:px-5",
-                        supplierRowClass(s, isEditing)
+                        "rounded-lg border border-slate-100 bg-white px-3 py-3 transition-all sm:px-4 lg:px-5",
+                        "hover:border-slate-200 hover:shadow-sm",
+                        !isActive && "opacity-70",
+                        s.subiekt_kh_id == null && "border-amber-100/60 bg-amber-50/20",
+                        isEditing && "border-indigo-200 bg-indigo-50/60 ring-1 ring-inset ring-indigo-200 shadow-sm"
                       )}
                     >
                       <div
                         className={cn(
-                          "flex items-start gap-2 md:grid md:items-center md:gap-3",
+                          "flex items-start gap-3 md:grid md:items-center md:gap-3",
                           teethLane
                             ? "md:grid-cols-[minmax(0,1.6fr)_minmax(120px,180px)_minmax(120px,160px)]"
                             : "md:grid-cols-[minmax(0,1.6fr)_minmax(120px,180px)_minmax(88px,100px)_minmax(120px,160px)]"
@@ -486,20 +480,22 @@ export function SuppliersAdminClient({
                                 ) : undefined
                               }
                             />
-                            <p className="mt-1 text-xs text-slate-500 md:mt-0.5">
+                            <p className="mt-1.5 text-xs text-slate-500 md:mt-1">
                               {formatSupplierListMeta(s)}
                             </p>
                           </div>
-                          <p
-                            className={cn(
-                              "mt-2 text-sm md:mt-0",
-                              cycleIncomplete
-                                ? "font-medium text-amber-800"
-                                : "text-slate-700"
-                            )}
-                          >
-                            {cycleSummary}
-                          </p>
+                          <div className="mt-2 md:mt-0">
+                            <span
+                              className={cn(
+                                "inline-flex items-center rounded-md px-2 py-1 text-xs font-medium",
+                                cycleIncomplete
+                                  ? "bg-amber-50 text-amber-800 ring-1 ring-inset ring-amber-100"
+                                  : "bg-slate-50 text-slate-700 ring-1 ring-inset ring-slate-100"
+                              )}
+                            >
+                              {cycleSummary}
+                            </span>
+                          </div>
                           {!teethLane ? (
                           <Link
                             href={scheduleHref(s.location, s.name)}

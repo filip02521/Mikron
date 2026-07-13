@@ -16,7 +16,7 @@ import {
 import type { SupplierLocation } from "@/types/database";
 
 export const supplierHubFilterBarClass =
-  "space-y-4 border-b border-slate-100 px-3 pb-4 sm:px-4 lg:px-5";
+  "space-y-4 border-b border-slate-100 bg-slate-50/40 px-3 pb-4 pt-3 sm:px-4 lg:px-5";
 
 export const supplierHubFilterGridClass =
   "grid gap-4 xl:grid-cols-[minmax(0,1.1fr)_minmax(0,0.9fr)_minmax(220px,280px)] xl:items-end";
