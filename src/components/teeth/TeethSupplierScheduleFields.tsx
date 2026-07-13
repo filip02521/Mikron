@@ -133,12 +133,12 @@ export function TeethSupplierScheduleFields({
         description={`Osobny harmonogram toru zębów dla ${supplierName} — niezależny od panelu dziennego.`}
         defaultOpen
       >
-        <p className="mb-3 rounded-md border border-emerald-100 bg-emerald-50/60 px-3 py-2 text-xs leading-relaxed text-emerald-950">
+        <p className="mb-3 rounded-md border border-emerald-100 bg-emerald-50/60 px-3 py-2 text-xs leading-relaxed text-emerald-950 sm:col-span-2">
           {TEETH_DUAL_LANE_COPY.harmonogramBannerBody}
         </p>
 
         {schedule ? (
-          <div className="space-y-3">
+          <div className="space-y-3 sm:col-span-2">
             <div className="flex flex-wrap items-center gap-2">
               {schedule.computed_next_date ? (
                 <Badge variant="info">
@@ -218,7 +218,7 @@ export function TeethSupplierScheduleFields({
             </div>
           </div>
         ) : (
-          <div className="space-y-3">
+          <div className="space-y-3 sm:col-span-2">
             <p className="text-sm text-slate-600">
               Brak cyklu zębów — ustaw dzień i częstotliwość, aby dostawca pojawiał się w kolejce
               z cyklicznym zamówieniem.
