@@ -155,22 +155,26 @@ export function SupplierSubiektLinkField({
   };
 
   return (
-    <div className="rounded-md border border-slate-200 bg-slate-50/80 p-3 space-y-3">
-      <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+    <div className="rounded-lg border border-slate-200/70 bg-slate-50/50 p-3.5 space-y-3">
+      <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-400">
         Powiązanie z Subiektem
       </p>
       {subiektKhId != null ? (
-        <p className="text-sm text-indigo-800">
-          Główne:{" "}
-          <span className="font-medium">
-            {kontrahentDisplayName(linkedLabel ?? primaryLabel, subiektKhId)}
+        <div className="flex items-center gap-2 rounded-lg bg-indigo-50/60 px-3 py-2 ring-1 ring-inset ring-indigo-100/40">
+          <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-indigo-100 text-indigo-700">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M10 13a5 5 0 007.07 0l1.41-1.41a5 5 0 00-7.07-7.07L10 5.93" /><path d="M14 11a5 5 0 00-7.07 0L5.51 12.41a5 5 0 007.07 7.07L14 18.07" /></svg>
           </span>
-          <span className="mt-0.5 block text-[11px] font-normal text-indigo-600/90">
-            id {subiektKhId}
-          </span>
-        </p>
+          <div className="min-w-0 flex-1">
+            <p className="text-sm font-medium text-indigo-900">
+              {kontrahentDisplayName(linkedLabel ?? primaryLabel, subiektKhId)}
+            </p>
+            <p className="text-[11px] text-indigo-600/80">
+              id {subiektKhId}
+            </p>
+          </div>
+        </div>
       ) : (
-        <p className="text-xs text-slate-600">
+        <p className="text-xs leading-relaxed text-slate-500">
           Wyszukaj kontrahenta po nazwie w Subiekcie i ustaw jako głównego albo dodaj dodatkowego
           (np. po zmianie firmy) — indeks ZD dopasuje dokumenty z każdej z tych kart do tego
           dostawcy.
@@ -178,15 +182,15 @@ export function SupplierSubiektLinkField({
       )}
 
       {aliases.length > 0 ? (
-        <div className="space-y-1">
-          <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">
-            Dodatkowe kontrahenci
+        <div className="space-y-1.5">
+          <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-400">
+            Dodatkowi kontrahenci
           </p>
           <ul className="space-y-1">
             {aliases.map((a) => (
               <li
                 key={a.id}
-                className="flex flex-wrap items-center justify-between gap-2 rounded-md border border-slate-200 bg-white px-2 py-1.5 text-sm"
+                className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-slate-200/70 bg-white px-3 py-2 text-sm"
               >
                 <span>
                   <span className="font-medium text-slate-900">
@@ -245,15 +249,15 @@ export function SupplierSubiektLinkField({
       ) : null}
 
       {results.length > 0 ? (
-        <ul className="max-h-48 space-y-1 overflow-y-auto rounded-md border border-slate-200 bg-white p-1">
+        <ul className="max-h-48 space-y-1 overflow-y-auto rounded-lg border border-slate-200/70 bg-white p-1.5">
           {results.map((k) => {
             const isPrimary = subiektKhId === k.kh_Id;
             const isAlias = aliases.some((a) => a.subiektKhId === k.kh_Id);
             return (
-              <li key={k.kh_Id} className="rounded-md border border-transparent p-1 hover:border-slate-100">
+              <li key={k.kh_Id} className="rounded-lg border border-transparent p-1.5 transition hover:border-slate-200 hover:bg-slate-50/50">
                 <div className="px-1 py-0.5">
                   <div className="flex flex-wrap items-baseline justify-between gap-2">
-                    <span className="text-sm font-medium">{formatSubiektKontrahentLabel(k)}</span>
+                    <span className="text-sm font-medium text-slate-900">{formatSubiektKontrahentLabel(k)}</span>
                     <span className="text-xs text-slate-400">id {k.kh_Id}</span>
                   </div>
                   <div className="mt-0.5 flex flex-wrap gap-x-3 gap-y-0.5 text-[11px] text-slate-500">
@@ -261,7 +265,7 @@ export function SupplierSubiektLinkField({
                     {k.adr_Miejscowosc ? <span>{k.adr_Miejscowosc}</span> : null}
                   </div>
                 </div>
-                <div className="mt-1 flex flex-wrap gap-1 px-1">
+                <div className="mt-1.5 flex flex-wrap gap-1.5 px-1">
                   {!isPrimary ? (
                     <Button
                       type="button"
@@ -273,7 +277,7 @@ export function SupplierSubiektLinkField({
                       Ustaw jako główne
                     </Button>
                   ) : (
-                    <span className="self-center px-2 text-[11px] text-indigo-700">Główne</span>
+                    <span className="self-center px-2 text-[11px] font-medium text-indigo-700">Główne</span>
                   )}
                   {!isAlias && !isPrimary ? (
                     <Button
@@ -286,7 +290,7 @@ export function SupplierSubiektLinkField({
                       Dodaj dodatkowy
                     </Button>
                   ) : isAlias ? (
-                    <span className="self-center px-2 text-[11px] text-slate-500">Już dodatkowy</span>
+                    <span className="self-center px-2 text-[11px] text-slate-400">Już dodatkowy</span>
                   ) : null}
                 </div>
               </li>
