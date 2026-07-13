@@ -11,7 +11,6 @@ import type { SalesTeamUiContext } from "@/lib/sales/team-ui";
 import { groupSalesPeopleForTeamView } from "@/lib/sales/team-grouping";
 import { formatPrzypomnienieCount } from "@/lib/sales/team-plural";
 import { buildNotatnikPageHref } from "@/lib/sales/notepad-page-tabs";
-import { NOTATNIK_ZK_BTN_CLASS } from "@/components/notatnik/notatnik-layout";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { AddButton } from "@/components/ui/AddButton";
@@ -51,7 +50,7 @@ function SalesPersonCardActions({
         <Button
           size="sm"
           variant={isSelf ? "primary" : "secondary"}
-          className={cn(NOTATNIK_ZK_BTN_CLASS, "gap-1.5")}
+          className="h-9 w-full gap-1.5 px-2 text-xs"
         >
           <IconClipboardList size={14} className="shrink-0" />
           {isSelf ? "Moje zamówienia" : "Zobacz prośby"}
@@ -60,7 +59,7 @@ function SalesPersonCardActions({
       <TeamCardActionLink
         href={buildNotatnikPageHref({ extraParams: { dla: rowId } })}
       >
-        <Button size="sm" variant="outline" className={cn(NOTATNIK_ZK_BTN_CLASS, "gap-1.5")}>
+        <Button size="sm" variant="outline" className="h-9 w-full gap-1.5 px-2 text-xs">
           <IconClipboardList size={14} className="shrink-0" />
           ZK czekające
         </Button>
@@ -72,16 +71,16 @@ function SalesPersonCardActions({
           extraParams: { dla: rowId },
         })}
       >
-        <Button size="sm" variant="outline" className={cn(NOTATNIK_ZK_BTN_CLASS, "gap-1.5")}>
+        <Button size="sm" variant="outline" className="h-9 w-full gap-1.5 px-2 text-xs">
           <IconNotebook size={14} className="shrink-0" />
           Notatnik
         </Button>
       </TeamCardActionLink>
       {!isSelf ? (
-        <TeamCardActionLink href={`/prosba?dla=${rowId}`} className="col-span-2">
-          <Button size="sm" variant="outline" className={cn(NOTATNIK_ZK_BTN_CLASS, "gap-1.5 w-full")}>
+        <TeamCardActionLink href={`/prosba?dla=${rowId}`}>
+          <Button size="sm" variant="outline" className="h-9 w-full gap-1.5 px-2 text-xs">
             {prosbaReadOnly ? <IconEye size={14} className="shrink-0" /> : <IconFilePlus size={14} className="shrink-0" />}
-            {prosbaReadOnly ? "Podgląd formularza" : "Prośba w imieniu handlowca"}
+            {prosbaReadOnly ? "Podgląd formularza" : "Nowa prośba"}
           </Button>
         </TeamCardActionLink>
       ) : null}
