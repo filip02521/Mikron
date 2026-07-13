@@ -27,7 +27,7 @@ import {
 } from "@/lib/ui/ontime-theme";
 import type { ProcurementWorkspace } from "@/lib/auth/procurement-workspace";
 import { ProcurementWorkspaceSwitcher } from "@/components/layout/ProcurementWorkspaceSwitcher";
-import { PROCUREMENT_WORKSPACE_OPTIONS } from "@/lib/auth/procurement-workspace";
+import { PROCUREMENT_WORKSPACE_OPTIONS, grantedProcurementFunctions } from "@/lib/auth/procurement-workspace";
 import { isAdmin } from "@/lib/auth-roles";
 import type { UserRole, Workspace } from "@/types/database";
 
@@ -153,7 +153,7 @@ export function MobileOperationsNav({
               <ProcurementWorkspaceSwitcher
                 current={procurementWorkspace}
                 options={PROCUREMENT_WORKSPACE_OPTIONS.filter((opt) =>
-                  assignedWorkspaces?.includes(opt.value)
+                  grantedProcurementFunctions(realRole ?? role, assignedWorkspaces).includes(opt.value)
                 )}
               />
             ) : null

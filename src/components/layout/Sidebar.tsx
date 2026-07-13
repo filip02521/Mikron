@@ -49,7 +49,7 @@ import { ProcurementWorkspaceSwitcher } from "@/components/layout/ProcurementWor
 import { actionClearAdminPanelContext } from "@/app/actions/admin-panel-context";
 import type { AdminPanelContext } from "@/lib/auth/admin-panel-context";
 import type { ProcurementWorkspace } from "@/lib/auth/procurement-workspace";
-import { PROCUREMENT_WORKSPACE_OPTIONS, subtitleForProcurementWorkspace } from "@/lib/auth/procurement-workspace";
+import { PROCUREMENT_WORKSPACE_OPTIONS, subtitleForProcurementWorkspace, grantedProcurementFunctions } from "@/lib/auth/procurement-workspace";
 import { isAdmin } from "@/lib/auth-roles";
 import { hrefWithAdminSalesPreview, shouldPreserveSalesPreviewInNav } from "@/lib/nav/sales-preview-href";
 import { ChangelogTriggerButton } from "@/components/changelog/ChangelogTriggerButton";
@@ -361,7 +361,7 @@ export function Sidebar({
           <ProcurementWorkspaceSwitcher
             current={procurementWorkspace}
             options={PROCUREMENT_WORKSPACE_OPTIONS.filter((opt) =>
-              assignedWorkspaces.includes(opt.value)
+              grantedProcurementFunctions(realRole ?? role ?? "zakupy", assignedWorkspaces).includes(opt.value)
             )}
           />
         ) : null}

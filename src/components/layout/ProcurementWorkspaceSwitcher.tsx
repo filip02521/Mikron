@@ -1,6 +1,6 @@
 "use client";
 
-import { useTransition } from "react";
+import { useTransition, useState, useCallback } from "react";
 import { actionSetProcurementWorkspace } from "@/app/actions/procurement-workspace";
 import { runServerActionWithRedirect } from "@/lib/client/server-action-redirect";
 import {
@@ -38,12 +38,22 @@ export function ProcurementWorkspaceSwitcher({
   options?: typeof PROCUREMENT_WORKSPACE_OPTIONS;
 }) {
   const [pending, startTransition] = useTransition();
+  const [error, setError] = useState<string | null>(null);
+  const dismissError = useCallback(() => setError(null), []);
 
   return (
     <div className="mb-3">
       <p className="mb-2 px-3 text-[11px] font-semibold uppercase tracking-wide text-slate-500">
         Obszar pracy
       </p>
+      {error ? (
+        <div className="mb-1.5 mx-2 flex items-center justify-between gap-2 rounded-md bg-rose-50 px-2.5 py-1.5 text-xs text-rose-700 ring-1 ring-inset ring-rose-100">
+          <span className="min-w-0 truncate">{error}</span>
+          <button type="button" onClick={dismissError} className="shrink-0 text-rose-400 hover:text-rose-600">
+            ✕
+          </button>
+        </div>
+      ) : null}
       <div
         className={cn("grid gap-1 px-2", pending && "opacity-60")}
         role="group"
@@ -64,9 +74,13 @@ export function ProcurementWorkspaceSwitcher({
               aria-pressed={isActive}
               onClick={() => {
                 if (pending || isActive) return;
+                setError(null);
                 startTransition(() => {
-                  void runServerActionWithRedirect(() =>
-                    actionSetProcurementWorkspace(opt.value)
+                  void runServerActionWithRedirect(
+                    () => actionSetProcurementWorkspace(opt.value),
+                    (err) => {
+                      setError(err instanceof Error ? err.message : "Nie udało się przełączyć obszaru");
+                    }
                   );
                 });
               }}
