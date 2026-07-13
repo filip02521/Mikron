@@ -792,9 +792,14 @@ input[type="checkbox"].toggle-switch.toggle-indigo:checked {
 @keyframes supplier-drawer-enter {
   from {
     transform: translateX(100%);
+    box-shadow: 0 0 0 rgba(0, 0, 0, 0);
+  }
+  60% {
+    box-shadow: -12px 0 40px -8px rgba(0, 0, 0, 0.15);
   }
   to {
     transform: translateX(0);
+    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
   }
 }
 
@@ -808,11 +813,11 @@ input[type="checkbox"].toggle-switch.toggle-indigo:checked {
 }
 
 .supplier-drawer-enter {
-  animation: supplier-drawer-enter 0.24s cubic-bezier(0.22, 1, 0.36, 1) both;
+  animation: supplier-drawer-enter 0.32s cubic-bezier(0.22, 1, 0.36, 1) both;
 }
 
 .supplier-drawer-backdrop-enter {
-  animation: supplier-drawer-backdrop-enter 0.2s ease-out both;
+  animation: supplier-drawer-backdrop-enter 0.28s ease-out both;
 }
 
 @media (prefers-reduced-motion: reduce) {
