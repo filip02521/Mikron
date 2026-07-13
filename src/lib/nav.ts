@@ -277,6 +277,16 @@ function teethTeamNavItems(badges: {
       mobileSlot: "overflow",
       badge: badges.operationsNotatki,
     },
+    {
+      href: "/urlopy",
+      label: "Urlopy",
+      mobileLabel: "Urlopy",
+      description: "Urlopy działu — kto jest niedostępny",
+      icon: "vacation",
+      tone: "amber",
+      tier: "compact",
+      mobileSlot: "overflow",
+    },
   ];
 }
 
@@ -353,6 +363,16 @@ function operationsTeamItems(badges: {
       tier: "primary",
       mobileSlot: "overflow",
       badge: badges.operationsNotatki,
+    },
+    {
+      href: "/urlopy",
+      label: "Urlopy",
+      mobileLabel: "Urlopy",
+      description: "Urlopy działu — kto jest niedostępny",
+      icon: "vacation",
+      tone: "amber",
+      tier: "compact",
+      mobileSlot: "overflow",
     },
   ];
 }
@@ -567,6 +587,16 @@ function magazynNavGroups(badges: NavBadges): NavGroup[] {
           tier: "primary",
           mobileSlot: "primary",
           badge: badges.operationsNotatki,
+        },
+        {
+          href: "/urlopy",
+          label: "Urlopy",
+          mobileLabel: "Urlopy",
+          description: "Urlopy działu — kto jest niedostępny",
+          icon: "vacation",
+          tone: "amber",
+          tier: "compact",
+          mobileSlot: "overflow",
         },
       ],
     },

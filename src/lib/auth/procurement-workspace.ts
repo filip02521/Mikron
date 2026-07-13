@@ -145,6 +145,7 @@ const PROCUREMENT_SHARED_PATH_PREFIXES = [
   "/zakupy/dostawcy",
   "/zakupy/urlopy",
   "/ustawienia",
+  "/urlopy",
 ];
 
 const DOSTAWY_WORKSPACE_PATH_PREFIXES = [

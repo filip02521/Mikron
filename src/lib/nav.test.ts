@@ -202,6 +202,7 @@ describe("teethNavGroups", () => {
     expect(overflow.map((item) => item.label)).toEqual([
       "Tablica",
       "Notatki",
+      "Urlopy",
       "Karty dostawców",
     ]);
     expect(overflow.every((item) => item.tier === "compact")).toBe(true);

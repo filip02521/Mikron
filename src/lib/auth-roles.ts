@@ -77,7 +77,7 @@ export function canManageSuppliers(role: UserRole, workspaces?: Workspace[]): bo
 const PROCUREMENT_PREFIXES = ["/zakupy"];
 const SALES_TEAM_PREFIXES = ["/zespol"];
 
-const WAREHOUSE_PATH_PREFIXES = ["/kolejka", "/dostawy", "/notatki", "/ustawienia"];
+const WAREHOUSE_PATH_PREFIXES = ["/kolejka", "/dostawy", "/notatki", "/ustawienia", "/urlopy"];
 
 const OPERATIONS_PATH_PREFIXES = [
   "/podsumowanie",
@@ -154,6 +154,9 @@ function canAccessPathForRole(
     return canAccessOperations(role, ws);
   }
   if (pathname === "/zespol/urlopy" && isSalesAccount(role)) return true;
+  if (pathname === "/urlopy" || pathname.startsWith("/urlopy/")) {
+    return !isSalesAccount(role);
+  }
   if (SALES_TEAM_PREFIXES.some((p) => pathname === p || pathname.startsWith(`${p}/`))) {
     return canManageSalesTeam(role);
   }
